@@ -148,6 +148,9 @@ class ConfigManager:
                 "runtime": config.runtime.name,
                 "tech_stack": config.tech_stack,
             },
+            "templates": {
+                "mode": getattr(config, 'templates_mode', 'copy')
+            },
             "constitution": {
                 "simplicity": {"max_projects": 3, "enforce": True},
                 "architecture": {"library_first": True, "enforce": True},
