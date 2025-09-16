@@ -1,3 +1,0 @@
-[console_scripts]
-moai = moai_adk.cli:main
-moai-install = moai_adk.install.post_install:main
