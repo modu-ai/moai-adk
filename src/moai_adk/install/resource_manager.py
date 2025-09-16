@@ -7,7 +7,7 @@ MoAI-ADK Resource Manager
 
 import shutil
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Callable
 from importlib import resources
 import logging
 
@@ -71,7 +71,8 @@ class ResourceManager:
             return None
 
     def copy_template(self, template_name: str, target_path: Path,
-                     overwrite: bool = False) -> bool:
+                     overwrite: bool = False,
+                     exclude_subdirs: Optional[List[str]] = None) -> bool:
         """
         템플릿을 대상 경로로 복사
 
@@ -114,9 +115,17 @@ class ResourceManager:
                             return dst
                         return shutil.copy2(src, dst, **kwargs)
 
-                    shutil.copytree(source_path, target_path,
-                                  dirs_exist_ok=True,
-                                  copy_function=copy_function if not overwrite else shutil.copy2)
+                    ignore: Optional[Callable] = None
+                    if exclude_subdirs:
+                        ignore = shutil.ignore_patterns(*exclude_subdirs)
+
+                    shutil.copytree(
+                        source_path,
+                        target_path,
+                        dirs_exist_ok=True,
+                        copy_function=copy_function if not overwrite else shutil.copy2,
+                        ignore=ignore,
+                    )
                 else:
                     shutil.copy2(source_path, target_path)
 
@@ -150,7 +159,8 @@ class ResourceManager:
         return copied_files
 
     def copy_moai_resources(self, project_path: Path,
-                           overwrite: bool = False) -> List[Path]:
+                           overwrite: bool = False,
+                           exclude_templates: bool = False) -> List[Path]:
         """
         MoAI 관련 리소스를 프로젝트에 복사
 
@@ -166,7 +176,12 @@ class ResourceManager:
 
         for resource in moai_resources:
             target_path = project_path / resource
-            if self.copy_template(resource, target_path, overwrite):
+            if self.copy_template(
+                resource,
+                target_path,
+                overwrite,
+                exclude_subdirs=['_templates'] if exclude_templates else None,
+            ):
                 copied_files.append(target_path)
 
         return copied_files

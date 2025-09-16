@@ -1,7 +1,7 @@
 # MoAI-ADK 설치 및 초기화
 
 > **완전 자동화된 설치 시스템** - pip 기반 PyPI 패키지 설치
-> **Last Updated**: 2025-09-16 | **Package Version**: v0.1.15
+> **Last Updated**: 2025-09-16 | **Package Version**: v0.1.16
 > **Difficulty**: 🟢 Basic
 
 ## 🚀 설치 과정 개요
@@ -31,16 +31,16 @@ moai --version
 
 ### 시스템 요구사항
 
-- **Python**: 3.8 이상 (3.8-3.13 완전 호환성 검증 완료)
+- **Python**: 3.11 이상 (3.11-3.13 완전 호환성 검증 완료)
 - **운영체제**: Windows, macOS, Linux
 - **디스크 공간**: 50MB (전역 리소스)
 - **권한**: 일반 사용자 권한 (Windows에서 심볼릭 링크 사용 시 관리자 권한 권장)
 
-### ✅ v0.1.15 안정성 보장
+### ✅ v0.1.16 안정성 보장
 
 **완전히 테스트된 안정 버전**:
 - 🧪 **7가지 핵심 기능** 완전 동작 검증
-- 🐍 **Python 3.8-3.13** 교차 호환성 확인
+- 🐍 **Python 3.11-3.13** 교차 호환성 확인
 - 🚫 **치명적 버그 5개** 완전 수정
 - ⚡ **설치 성공률 100%** 달성
 
@@ -95,6 +95,7 @@ moai init .
 ### 7. 문서 템플릿 시스템 설치
 - SPEC, PLAN, TASKS 템플릿 설치
 - 동적 템플릿 엔진 구성
+- 템플릿 설치 모드 적용: `.moai/config.json`의 `templates.mode`가 `package`인 경우 `.moai/_templates/` 복사를 생략하고, 생성 시 패키지 템플릿으로 폴백
 
 ### 8. 메모리 시스템 설치
 - 프로젝트 가이드라인, Constitution, ADR 템플릿 설치
@@ -128,7 +129,7 @@ moai init .
 - `CLAUDE.md` 시스템 구성
 - 프로젝트별 메모리 설정
 
-### 16. 자동 버전 관리 시스템 설치 (v0.1.14)
+### 16. 자동 버전 관리 시스템 설치 (v0.1.16)
 - `scripts/update_version.py`: 독립실행형 버전 관리 스크립트
 - `TemplateEngine`: 자동 버전 변수 주입 시스템
 - `CLI update-version`: 개발자용 버전 동기화 명령어
@@ -146,7 +147,7 @@ moai init .
 
 ### 패키지 내장 리소스 분석
 
-MoAI-ADK v0.1.15부터 패키지 내장 리소스 시스템을 사용합니다:
+MoAI-ADK v0.1.16부터 패키지 내장 리소스 시스템을 사용합니다:
 
 ```python
 # 패키지 내장 리소스 접근
@@ -154,10 +155,10 @@ from importlib import resources
 self.resources_root = resources.files('moai_adk.resources')
 self.templates_root = self.resources_root / 'templates'
 
-# 각 프로젝트로 복사되는 리소스
+# 각 프로젝트로 복사되는 리소스 (기본)
 .claude/agents/moai/      # 11개 에이전트 파일
 .claude/commands/moai/    # 6개 슬래시 명령어
-.moai/templates/          # 문서 템플릿들
+.moai/_templates/         # 문서 템플릿들 (templates.mode=package일 때는 복사 생략)
 ```
 
 ### 파일 복사 아키텍처
@@ -200,7 +201,7 @@ python .moai/scripts/validate_tags.py
 python .moai/scripts/check-traceability.py
 ```
 
-## 🔄 업데이트 시스템 (v0.1.14)
+## 🔄 업데이트 시스템 (v0.1.16)
 
 ### 사용자용 업데이트
 
@@ -220,16 +221,16 @@ moai update --resources-only   # 글로벌 리소스만 업데이트
 
 ```bash
 # 전체 버전 동기화
-moai update-version 0.1.14
+moai update-version 0.1.16
 
 # 안전한 사전 테스트
-moai update-version 0.1.14 --dry-run
+moai update-version 0.1.16 --dry-run
 
 # 검증 포함
-moai update-version 0.1.14 --verify
+moai update-version 0.1.16 --verify
 
 # Git 커밋 제외
-moai update-version 0.1.14 --no-git
+moai update-version 0.1.16 --no-git
 ```
 
 ## 🚨 문제 해결
@@ -244,7 +245,7 @@ moai update-version 0.1.14 --no-git
 
 2. **Python 버전 호환성**
    ```bash
-   # Python 3.8+ 확인
+   # Python 3.11+ 확인
    python --version
 
    # 가상환경 사용 권장

@@ -180,9 +180,15 @@ class SimplifiedInstaller:
     def _install_moai_resources(self) -> List[Path]:
         """MoAI 리소스 설치"""
         try:
+            # templates_mode: 'copy' | 'package'
+            exclude_templates = False
+            if hasattr(self.config, 'templates_mode') and str(getattr(self.config, 'templates_mode') or '').lower() == 'package':
+                exclude_templates = True
+
             return self.resource_manager.copy_moai_resources(
                 self.config.project_path,
-                overwrite=self.config.force_overwrite
+                overwrite=self.config.force_overwrite,
+                exclude_templates=exclude_templates,
             )
         except Exception as e:
             logger.error("Failed to install MoAI resources: %s", e)

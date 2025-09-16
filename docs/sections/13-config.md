@@ -14,7 +14,7 @@ MoAI-ADK는 두 개의 주요 설정 파일을 사용합니다:
   "defaultMode": "default",
   "env": {
     "MOAI_PROJECT": "true",
-    "MOAI_VERSION": "0.1.14"
+    "MOAI_VERSION": "0.1.16"
   },
   "hooks": {
     "PreToolUse": [
@@ -93,7 +93,7 @@ MoAI-ADK는 두 개의 주요 설정 파일을 사용합니다:
     "framework": "nextjs"
   },
   "moai": {
-    "version": "0.1.14",
+    "version": "0.1.16",
     "constitution_version": "1.0",
     "pipeline_stage": "INIT"
   },
@@ -158,7 +158,7 @@ MoAI-ADK는 두 개의 주요 설정 파일을 사용합니다:
 ```bash
 # MoAI 프로젝트 식별
 export MOAI_PROJECT=true
-export MOAI_VERSION=0.1.14
+export MOAI_VERSION=0.1.16
 
 # 성능 설정
 export MOAI_MAX_PARALLEL_TASKS=5
@@ -174,7 +174,7 @@ export MOAI_LOG_LEVEL=INFO
 {
   "env": {
     "MOAI_PROJECT": "true",
-    "MOAI_VERSION": "0.1.14",
+    "MOAI_VERSION": "0.1.16",
     "CONSTITUTION_MODE": "strict",
     "TAG_VALIDATION": "enabled"
   }
@@ -267,3 +267,28 @@ moai config reset
 3. 시스템 기본값
 
 설정 파일은 **프로젝트 특성에 맞는 맞춤형 개발 환경**을 제공합니다.
+
+## 템플릿 모드 설정 (vNext)
+
+프로젝트에서 문서 템플릿 설치/참조 방식을 선택할 수 있습니다.
+
+- 옵션: `templates.mode` = `copy` | `package`
+- 기본값: `copy`
+- 동작:
+  - `copy`: 설치 시 `.moai/_templates/`를 프로젝트에 복사합니다(현행 기본).
+  - `package`: 설치 시 `.moai/_templates/` 복사를 생략하고, 템플릿 생성 시 패키지 내장 템플릿으로 폴백합니다.
+
+예시
+```json
+{
+  "templates": {
+    "mode": "package",
+    "spec_template": "ears",
+    "task_template": "tdd"
+  }
+}
+```
+
+주의
+- `package` 모드에서도 프로젝트별 오버라이드가 필요하면 `.moai/_templates/` 디렉토리를 수동으로 생성하여 원하는 템플릿만 추가하면 됩니다(프로젝트가 우선).
+- TemplateEngine 탐색 순서: 프로젝트 `.moai/_templates` → 패키지 `moai_adk.resources/templates/.moai/_templates`.

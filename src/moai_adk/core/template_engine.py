@@ -10,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from string import Template
 from typing import Any, Dict, Optional
+from importlib import resources
 
 from ..utils.logger import get_logger
 from .._version import get_version, __version__, VERSIONS, VERSION_FORMATS
@@ -35,6 +36,15 @@ class TemplateEngine:
         self.template_dir = template_dir
         self.templates_root = template_dir / "_templates"
 
+        # Package-level templates fallback (read-only)
+        # moai_adk.resources/templates/.moai/_templates
+        try:
+            self.pkg_templates_root = (
+                resources.files('moai_adk.resources') / 'templates' / '.moai' / '_templates'
+            )
+        except Exception:
+            self.pkg_templates_root = None
+
         logger.info(f"TemplateEngine initialized with template dir: {template_dir}")
 
     def create_from_template(
@@ -57,24 +67,38 @@ class TemplateEngine:
             bool: True if successful
         """
         try:
-            # Locate template file (try different extensions)
-            template_path = None
+            # Locate template file (project → package fallback)
+            template_path: Optional[Path] = None
+            template_content: Optional[str] = None
+
             for extension in ['.template.md', '.template.json', '.template']:
+                # 1) Project-local template
                 test_path = self.templates_root / f"{template_name}{extension}"
                 if test_path.exists():
                     template_path = test_path
+                    template_content = test_path.read_text(encoding='utf-8')
                     break
 
-            if template_path is None:
-                logger.error("Template not found for: %s in %s", template_name, self.templates_root)
-                return False
+                # 2) Package fallback template
+                if self.pkg_templates_root is not None:
+                    try:
+                        traversable = self.pkg_templates_root / f"{template_name}{extension}"
+                        with resources.as_file(traversable) as pkg_path:
+                            if pkg_path.exists():
+                                template_path = pkg_path
+                                template_content = pkg_path.read_text(encoding='utf-8')
+                                break
+                    except Exception:
+                        # Continue trying other extensions
+                        pass
 
-            if not template_path.exists():
-                logger.error("Template not found: %s", template_path)
+            if template_content is None:
+                logger.error(
+                    "Template not found for: %s (searched %s and package fallback)",
+                    template_name,
+                    self.templates_root,
+                )
                 return False
-
-            # Read template content
-            template_content = template_path.read_text(encoding='utf-8')
             logger.debug("Template content loaded: %s (%d chars)", template_name, len(template_content))
 
             # Process template with context

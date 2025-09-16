@@ -45,6 +45,7 @@ class Config:
     include_github: bool = True  # Include GitHub workflows
     initialize_git: bool = True  # Initialize Git repository
     created_at: datetime | None = None
+    templates_mode: str = "copy"  # 'copy' (default) or 'package' (no _templates copy)
 
     def __init__(self, name: str, **kwargs):
         """Initialize Config with backward compatibility for project_path parameter."""
@@ -70,6 +71,7 @@ class Config:
         self.include_github = kwargs.get('include_github', True)
         self.initialize_git = kwargs.get('initialize_git', True)
         self.created_at = kwargs.get('created_at', None)
+        self.templates_mode = kwargs.get('templates_mode', 'copy')
 
         self.__post_init__()
     
@@ -94,6 +96,10 @@ class Config:
         
         if self.template not in ["minimal", "standard", "enterprise"]:
             raise ValueError(f"Unsupported template: {self.template}")
+        
+        # templates_mode validation
+        if str(self.templates_mode).lower() not in ["copy", "package"]:
+            raise ValueError("templates_mode must be 'copy' or 'package'")
         
         # Validate tech stack
         valid_tech = {
