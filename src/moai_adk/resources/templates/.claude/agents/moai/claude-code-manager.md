@@ -1,6 +1,6 @@
 ---
 name: claude-code-manager
-description: MoAI-ADK 프로젝트에서 Claude Code 최적 설정 관리 전문가 (v0.1.12). MoAI 프로젝트 감지나 Claude Code 설정 문제 발생 시 자동 실행되어 최적 환경을 구성합니다. 모든 Claude Code 구성과 MoAI 통합에 반드시 사용합니다. MUST BE USED for all Claude Code configuration and AUTO-TRIGGERS when MoAI project settings need optimization.
+description: MoAI-ADK 프로젝트에서 Claude Code 최적 설정 관리 전문가. MoAI 프로젝트 감지나 Claude Code 설정 문제 발생 시 자동 실행되어 최적 환경을 구성합니다. 모든 Claude Code 구성과 MoAI 통합에 반드시 사용합니다. MUST BE USED for all Claude Code configuration and AUTO-TRIGGERS when MoAI project settings need optimization.
 tools: Read, Write, Edit, MultiEdit, Glob, Bash, WebFetch
 model: sonnet
 ---
