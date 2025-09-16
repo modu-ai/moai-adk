@@ -2,6 +2,26 @@
 
 > MoAI-ADK 기반 프로젝트의 표준 명령어 모음집
 
+## ✅ 권장 도구와 안전 수칙(추가)
+
+- 검색/목록: `rg`(ripgrep), `fd` 사용 권장 — 기존 `grep/find` 대비 빠르고 안전한 패턴 지정이 가능
+- 쉘 안전: `set -euo pipefail`와 인자 quoting(`"$VAR"`) 습관화, `--` 구분자 사용
+- 위험 명령 차단: 무심코 `rm -rf` 사용 금지. 꼭 필요한 경우 대상 경로를 풀리솔브 후 확인
+- 네트워크: `curl -m <timeout> --retry <n>` 등 타임아웃/재시도 옵션 사용
+- 권한: `sudo` 최소화, 민감 경로(`.env`, `.git/`, keys) 직접 조작 금지
+
+예시(검색/파일 목록):
+```bash
+# files 목록
+rg --files -g "*.ts" src | head -50
+
+# 내용 검색(줄번호 포함)
+rg -n "TODO|FIXME" src
+
+# find 대체(fd)
+fd -e py tests
+```
+
 ## 🔨 빌드와 테스트
 
 ### Python 프로젝트
@@ -127,13 +147,13 @@ docker-compose down                     # 서비스 중지 및 제거
 ### 파일 작업
 ```bash
 # 파일 검색
-find . -name "*.py" -type f             # 파일 찾기
-find . -name "*.log" -delete            # 로그 파일 삭제
-locate filename                         # 빠른 파일 검색
+fd -e py                                 # (권장) 파일 찾기
+fd -e log -X rm -f                       # (주의) 삭제 전 목록 확인 권장
+rg -n "filename"                         # (권장) 빠른 파일 검색
 
 # 텍스트 처리
-grep -r "TODO" src/                     # 재귀 검색
-grep -E "error|Error|ERROR" logs/       # 정규식 검색
+rg -n "TODO" src/                        # (권장) 재귀 검색
+rg -n "error|Error|ERROR" logs/          # (권장) 정규식 검색
 sed 's/old_text/new_text/g' file.txt    # 텍스트 치환
 awk '{print $1}' file.txt               # 컬럼 추출
 ```

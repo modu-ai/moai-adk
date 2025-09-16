@@ -88,6 +88,25 @@ MoAI-ADK의 모든 에이전트는 **짧은 모델명만** 사용합니다:
 **✅ 올바른 형식**: `model: sonnet`
 **❌ 잘못된 형식**: `model: claude-3-5-sonnet-20241022`
 
+### 모델 사용 가이드 (opusplan 권장)
+
+- 계획/설계/리뷰/ADR/Constitution: plan 모드에서 `opusplan` 권장
+  - plan 단계에서 `opus`로 추론 후 실행 단계는 자동 `sonnet` 전환
+- 구현/리팩터/디버깅/테스트: 기본 `sonnet`
+- 문서 동기화/인덱싱/대량 갱신: `haiku`
+- 명령/에이전트는 기본적으로 `sonnet`을 상속하며, 속도 중심 태스크만 `haiku`를 명시합니다.
+
+예시:
+
+```bash
+# 설계/계획은 opusplan, 구현은 sonnet
+claude --model opusplan
+> /think plan
+> /moai:3-plan SPEC-001
+/model sonnet
+> /moai:5-dev T001
+```
+
 ## 🏷️ 핵심 TAG 활용
 
 ### 요구사항 추적
@@ -102,7 +121,7 @@ MoAI-ADK의 모든 에이전트는 **짧은 모델명만** 사용합니다:
 ### 추적성 체인
 
 - **Primary**: @REQ → @DESIGN → @TASK → @TEST
-- **Steering**: @VISION → @STRUCT → @TECH → @STACK
+- **Steering**: @VISION → @STRUCT → @TECH → @ADR
 - **Quality**: @PERF → @SEC → @DEBT → @TODO
 
 ## 🛡️ 자동화된 품질 보장
@@ -121,6 +140,18 @@ MoAI-ADK의 모든 에이전트는 **짧은 모델명만** 사용합니다:
 - **PostToolUse**: TAG 동기화, 문서 업데이트
 - **SessionStart**: 프로젝트 상태 알림
 - **MCP 통합**: memory, filesystem 서버 자동 연결
+
+### Hallucination 저감 3원칙
+
+1. 모르면 “모름”이라고 명시한다.
+2. 모든 주장/설계에는 근거를 로컬 파일 경로로 인용한다. 근거가 없으면 해당 문장을 제거한다.
+3. 외부 지식은 금지한다(명시적으로 허용된 자료/리서치 범위에서만 사용).
+
+### 파일 생성/변경 가드(운영 규정)
+
+- 단일 응답 내 신규 파일 생성은 최대 5개, 총 생성 용량은 200KB를 권장 상한으로 한다.
+- 대량 생성/재생성은 `/moai:6-sync force` 또는 명시적 플래그 사용 시에만 수행한다.
+- 민감 경로(`.env`, `.git/`, `keys`, `secrets`) 수정/생성 금지.
 
 ## 📂 프로젝트 구조
 

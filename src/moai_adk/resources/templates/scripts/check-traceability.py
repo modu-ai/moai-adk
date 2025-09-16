@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 MoAI-ADK Traceability Checker
-14-Core TAG 시스템의 추적성 검증
+16-Core TAG 시스템의 추적성 검증
 """
 import sys
 import json
@@ -18,18 +18,18 @@ class TraceabilityChecker:
         self.moai_path = project_root / '.moai'
         self.indexes_path = self.moai_path / 'indexes'
         
-        # 14-Core TAG 패턴
+        # 16-Core TAG 패턴
         self.tag_patterns = {
-            'SPEC': ['REQ', 'DESIGN', 'TASK'],
-            'STEERING': ['VISION', 'STRUCT', 'TECH', 'STACK'],
+            'SPEC': ['REQ', 'SPEC', 'DESIGN', 'TASK'],
+            'STEERING': ['VISION', 'STRUCT', 'TECH', 'ADR'],
             'IMPLEMENTATION': ['FEATURE', 'API', 'TEST', 'DATA'],
             'QUALITY': ['PERF', 'SEC', 'DEBT', 'TODO']
         }
         
         # 추적성 체인
         self.traceability_chains = {
-            'primary': ['REQ', 'DESIGN', 'TASK', 'TEST'],
-            'steering': ['VISION', 'STRUCT', 'TECH', 'STACK'],
+            'primary': ['REQ', 'SPEC', 'DESIGN', 'TASK', 'TEST'],
+            'steering': ['VISION', 'STRUCT', 'TECH', 'ADR'],
             'implementation': ['FEATURE', 'API', 'DATA'],
             'quality': ['PERF', 'SEC', 'DEBT', 'TODO']
         }
@@ -91,7 +91,7 @@ class TraceabilityChecker:
                     results['invalid_tags'] += 1
                     results['naming_errors'].append({
                         'tag': tag,
-                        'error': f"'{tag_type}'는 14-Core 체계에 없는 태그 타입",
+                        'error': f"'{tag_type}'는 16-Core 체계에 없는 태그 타입",
                         'locations': locations[:3]  # 최대 3개 위치만 표시
                     })
                     continue
@@ -251,7 +251,7 @@ class TraceabilityChecker:
     
     def generate_report(self) -> Dict[str, any]:
         """전체 추적성 보고서 생성"""
-        print("🔍 14-Core TAG 시스템 스캔 중...")
+        print("🔍 16-Core TAG 시스템 스캔 중...")
         tags = self.scan_all_tags()
         
         print(f"📊 총 {len(tags)}개 태그 발견")

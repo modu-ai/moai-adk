@@ -239,7 +239,7 @@ class ConfigManager:
 
     def create_initial_indexes(self, project_path: Path, config: Config) -> List[Path]:
         """
-        Create initial 14-Core TAG index files.
+        Create initial 16-Core TAG index files.
 
         Args:
             project_path: Project root path
@@ -252,10 +252,10 @@ class ConfigManager:
         indexes_dir = project_path / ".moai" / "indexes"
         indexes_dir.mkdir(parents=True, exist_ok=True)
 
-        # 1. tags.json - 14-Core TAG system initialization
+        # 1. tags.json - 16-Core TAG system initialization
         tags_data = {
             "metadata": {
-                "version": "14-core",
+                "version": "16-core",
                 "generated_at": datetime.now().isoformat(),
                 "total_tags": 0,
                 "categories": {
@@ -265,8 +265,8 @@ class ConfigManager:
             },
             "tags": {},
             "categories": {
-                "SPEC": {"REQ": [], "DESIGN": [], "TASK": []},
-                "Steering": {"VISION": [], "STRUCT": [], "TECH": [], "STACK": []},
+                "SPEC": {"REQ": [], "SPEC": [], "DESIGN": [], "TASK": []},
+                "Steering": {"VISION": [], "STRUCT": [], "TECH": [], "ADR": []},
                 "Implementation": {"FEATURE": [], "API": [], "TEST": [], "DATA": []},
                 "Quality": {"PERF": [], "SEC": [], "DEBT": [], "TODO": []},
                 "Legacy": {

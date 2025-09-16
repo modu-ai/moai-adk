@@ -5,7 +5,7 @@
 # - Python 단위 테스트 (pytest)
 # - 통합 테스트 및 E2E 테스트
 # - Constitution 5원칙 검증
-# - 14-Core TAG 시스템 검증
+# - 16-Core TAG 시스템 검증
 # - 라이선스 및 보안 검사
 # - 코드 커버리지 측정
 #
@@ -295,7 +295,7 @@ run_constitution_check() {
 
 # TAG 시스템 검증
 run_tag_validation() {
-    log_header "14-Core TAG 시스템 검증"
+    log_header "16-Core TAG 시스템 검증"
     
     local tag_script="$SCRIPT_DIR/validate_tags.py" 
     if [[ -f "$tag_script" ]]; then

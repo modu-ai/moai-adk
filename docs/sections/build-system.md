@@ -2,11 +2,11 @@
 
 > **완전 자동화된 빌드 기반 버전 동기화 시스템**
 > 개발자가 실수할 수 없는 완전 자동화된 빌드 프로세스
-> **Last Updated**: 2025-09-16 | **Version**: v0.1.15
+> **Last Updated**: 2025-09-16 | **Version**: v0.1.16
 
 ## 🗿 시스템 개요
 
-MoAI-ADK v0.1.15부터 도입된 새로운 빌드 시스템은 **빌드와 버전 동기화를 완전히 통합**하여 개발자의 실수를 원천적으로 방지합니다. v0.1.15에서는 패키지 구조 재편과 함께 더욱 안정적인 빌드 시스템을 제공합니다.
+MoAI-ADK v0.1.16부터 도입된 새로운 빌드 시스템은 **빌드와 버전 동기화를 완전히 통합**하여 개발자의 실수를 원천적으로 방지합니다. v0.1.16에서는 패키지 구조 재편과 함께 더욱 안정적인 빌드 시스템을 제공합니다.
 
 ### 핵심 혁신
 - **빌드 = 버전 동기화**: 패키지 빌드 시 자동으로 25개 파일 버전 동기화
@@ -37,7 +37,7 @@ ls -la dist/
 # 버전 확인
 python -c "from src.moai_adk._version import __version__; print(__version__)"
 
-# 패키지 구조 검증 (v0.1.15 신규)
+# 패키지 구조 검증 (v0.1.16 신규)
 python -c "import sys; sys.path.insert(0, 'src'); from moai_adk.core import SecurityManager; from moai_adk.cli import CLICommands; print('✅ Package structure verified')"
 ```
 
@@ -56,7 +56,7 @@ python -c "import sys; sys.path.insert(0, 'src'); from moai_adk.core import Secu
 
 #### 2️⃣ **자동 버전 동기화**
 ```bash
-🗿 MoAI-ADK Build Hook: Auto-syncing versions for v0.1.15
+🗿 MoAI-ADK Build Hook: Auto-syncing versions for v0.1.16
   ✓ pyproject.toml
   ✓ tests/test_build.py
   ✓ CLAUDE.md
@@ -68,12 +68,12 @@ python -c "import sys; sys.path.insert(0, 'src'); from moai_adk.core import Secu
 
 #### 3️⃣ **패키지 빌드**
 ```bash
-Building packages for MoAI-ADK v0.1.15...
+Building packages for MoAI-ADK v0.1.16...
 running sdist
 running bdist_wheel
 ```
 
-#### 4️⃣ **패키지 구조 검증** (v0.1.15 신규)
+#### 4️⃣ **패키지 구조 검증** (v0.1.16 신규)
 ```bash
 🗿 MoAI-ADK Package Structure Verification
 ============================================================
@@ -140,7 +140,7 @@ def sync_versions_hook():
     """빌드 시 자동 버전 동기화"""
     sync_manager = VersionSyncManager(str(project_root))
 
-    # v0.1.15: 패키지 구조 검증 추가
+    # v0.1.16: 패키지 구조 검증 추가
     if not validate_package_structure():
         raise BuildError("Package structure validation failed")
 
@@ -159,7 +159,7 @@ python build_hooks.py --dry-run        # 시뮬레이션
 
 ## 📁 동기화 대상 파일 (25개)
 
-### v0.1.15 업데이트된 패키지 구조
+### v0.1.16 업데이트된 패키지 구조
 ```
 src/moai_adk/
 ├── cli/
@@ -187,10 +187,10 @@ src/moai_adk/
 ### 버전 패턴 자동 교체
 ```bash
 # 자동으로 교체되는 패턴들
-__version__ = "0.1.15"                    # Python 변수
-version = "0.1.15"                        # 설정 파일
-MoAI-ADK v0.1.15                         # 문서
-"moai_version": "0.1.15"                 # JSON 설정
+__version__ = "0.1.16"                    # Python 변수
+version = "0.1.16"                        # 설정 파일
+MoAI-ADK v0.1.16                         # 문서
+"moai_version": "0.1.16"                 # JSON 설정
 ```
 
 ## 🎯 개발자 워크플로우
@@ -204,7 +204,7 @@ MoAI-ADK v0.1.15                         # 문서
 4. 누락된 파일 재확인 및 수정
 ```
 
-### After (v0.1.15)
+### After (v0.1.16)
 ```bash
 # 간단한 한 번의 명령어
 1. _version.py 수정
@@ -242,7 +242,7 @@ python -c "from src.moai_adk.core import SecurityManager; print('Core module OK'
 python -c "from src.moai_adk.cli import CLICommands; print('CLI module OK')"
 
 # 특정 파일의 버전 확인
-grep -r "v0.1.15" docs/ | head -5
+grep -r "v0.1.16" docs/ | head -5
 
 # 빌드 아티팩트 확인
 ls -la dist/moai_adk-*.whl dist/moai_adk-*.tar.gz
@@ -337,7 +337,7 @@ chmod +x scripts/build.sh
 chmod +x build_hooks.py
 ```
 
-#### 패키지 구조 오류 (v0.1.15 신규)
+#### 패키지 구조 오류 (v0.1.16 신규)
 ```bash
 # 오류: ModuleNotFoundError
 # 해결: 패키지 구조 확인
@@ -388,7 +388,7 @@ def custom_build_hook():
 
 ## 🎉 마이그레이션 가이드
 
-### v0.1.13에서 v0.1.15로
+### v0.1.13에서 v0.1.16로
 ```bash
 # 기존 방식 (더 이상 사용하지 않음)
 python sync_versions.py
@@ -403,7 +403,7 @@ make build
 ## 📚 관련 문서
 
 - **[패키지 구조](package-structure.md)**: cli/, core/, install/ 상세 설명
-- **[버전 관리](02-changelog.md)**: v0.1.15 변경사항
+- **[버전 관리](02-changelog.md)**: v0.1.16 변경사항
 - **[설치 가이드](05-installation.md)**: 개발 환경 설정
 - **[Constitution](15-constitution.md)**: 품질 게이트 및 검증
 

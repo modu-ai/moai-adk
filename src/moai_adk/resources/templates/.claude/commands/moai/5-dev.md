@@ -120,7 +120,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 Task tool로 tag-indexer 에이전트 호출:
 - 구현된 기능의 @TAG 매핑 업데이트
 - 완전한 추적성 매트릭스 구축
-- 14-Core TAG 시스템 무결성 검증
+- 16-Core TAG 시스템 무결성 검증
 - 향후 유지보수를 위한 연관성 기록
 
 @TAG 처리 결과:

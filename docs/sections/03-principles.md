@@ -47,7 +47,7 @@ Red-Green-Refactor 사이클을 엄격히 준수합니다.
 
 ## 4. Full Traceability: 모든 요구사항은 추적 가능
 
-14-Core @TAG 시스템으로 완전한 추적성을 제공합니다.
+16-Core @TAG 시스템으로 완전한 추적성을 제공합니다.
 
 ### 원칙
 - @REQ → @DESIGN → @TASK → @TEST 체인 보장
@@ -56,7 +56,7 @@ Red-Green-Refactor 사이클을 엄격히 준수합니다.
 
 ### 적용
 - Primary Chain: @REQ → @DESIGN → @TASK → @TEST
-- Steering Chain: @VISION → @STRUCT → @TECH → @STACK
+- Steering Chain: @VISION → @STRUCT → @TECH → @ADR
 - Quality Chain: @PERF → @SEC → @DEBT → @TODO
 
 ## 5. YAGNI: 필요한 것만 구현

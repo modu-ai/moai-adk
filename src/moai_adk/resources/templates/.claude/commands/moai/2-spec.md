@@ -387,7 +387,7 @@ WHERE 모바일 환경에서,
   │   ├── acceptance.md     # Given-When-Then 수락 기준 (45개 시나리오)
   │   └── user-stories.md   # User Stories (US-001~015)
   └── .moai/indexes/
-      └── tags.json         # 14-Core TAG 시스템 업데이트
+      └── tags.json         # 16-Core TAG 시스템 업데이트
 
 **명세 품질 지표**:
   - User Stories: 15개 생성
@@ -395,7 +395,7 @@ WHERE 모바일 환경에서,
   - 수락 기준: 45개 시나리오 (평균 3개/Story)
   - 명확성 점수: 92% ([NEEDS CLARIFICATION] 3개/총 48개 항목)
 
-**14-Core TAG 매핑**:
+**16-Core TAG 매핑**:
   - @REQ:BUS-001~008: 비즈니스 요구사항
   - @REQ:SEC-001~003: 보안 요구사항
   - @REQ:PERF-001~002: 성능 요구사항
@@ -415,7 +415,7 @@ WHERE 모바일 환경에서,
 **Pro Tips**:
 - [NEEDS CLARIFICATION] 해결 전까지 /moai:3-plan 진행 불가
 - 각 단계별 컨텍스트 초기화 권장 (/clear 또는 새 탭)
-- 모든 변경사항은 14-Core TAG로 자동 추적됩니다
+- 모든 변경사항은 16-Core TAG로 자동 추적됩니다
 ```
 
 ## ⚠️ 에러 처리

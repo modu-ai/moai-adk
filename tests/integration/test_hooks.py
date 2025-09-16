@@ -53,7 +53,7 @@ class TestConfigLoader(unittest.TestCase):
         }
         
         self.moai_config = {
-            "moai_version": "0.1.15",
+            "moai_version": "0.1.16",
             "constitution": {
                 "maxProjects": 3,
                 "enforceTDD": True
@@ -342,7 +342,7 @@ class TestIntegration(unittest.TestCase):
         }
         
         moai_config = {
-            "moai_version": "0.1.15",
+            "moai_version": "0.1.16",
             "constitution": {"maxProjects": 3, "enforceTDD": True},
             "tag_system": {"enabled": True, "categories": {"SPEC": {"tags": ["REQ"]}}},
             "quality_gates": {"coverageTarget": 0.8}

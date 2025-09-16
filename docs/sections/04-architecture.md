@@ -29,14 +29,14 @@ MoAI-ADK는 Claude Code 표준을 완전히 준수하면서도 체계적인 문�
 │   │   ├── code-generator.md      # TDD 기반 코드 생성 전문가
 │   │   ├── test-automator.md      # TDD 자동화 전문가 (v0.1.9 신규)
 │   │   ├── doc-syncer.md          # Living Document 동기화 전문가
-│   │   ├── tag-indexer.md         # 14-Core @TAG 시스템 관리
+│   │   ├── tag-indexer.md         # 16-Core @TAG 시스템 관리
 │   │   ├── integration-manager.md # 외부 서비스 연동 관리
 │   │   └── deployment-specialist.md # 배포 전략 및 자동화
 │   ├── hooks/moai/               # MoAI Hook 스크립트 (Python)
 │   │   │                          # v0.1.12: stdin JSON 처리로 안정화
 │   │   ├── policy_block.py       # PreToolUse: 정책 차단 (✅ JSON 처리)
 │   │   ├── constitution_guard.py # PreToolUse: Constitution 보호 (🔧 v0.1.12 수정)
-│   │   ├── tag_validator.py      # PreToolUse: 14-Core 태그 검증 (✅ JSON 처리)
+│   │   ├── tag_validator.py      # PreToolUse: 16-Core 태그 검증 (✅ JSON 처리)
 │   │   ├── post_stage_guard.py   # PostToolUse: 단계 검수 (✅ JSON 처리)
 │   │   ├── session_start_notice.py # SessionStart: 상태 알림 (✅ JSON 처리)
 │   │   └── test_hook.py          # Hook 시스템 테스트 스크립트 (v0.1.12 신규)
@@ -258,7 +258,7 @@ flowchart TD
 
 ### 인덱스 파일
 
-- **tags.json**: 14-Core @TAG 실시간 인덱스
+- **tags.json**: 16-Core @TAG 실시간 인덱스
 - **traceability.json**: 요구사항-구현 추적성 매트릭스
 - **state.json**: 프로젝트 현재 상태 및 진행률
 

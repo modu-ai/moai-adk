@@ -166,7 +166,7 @@ ls -la dist/
 # 3. 배포
 git add -A
 git commit -m "feat: new feature implementation"
-git tag v0.1.14
+git tag v0.1.16
 git push origin main --tags
 python -m twine upload dist/*
 ```
@@ -280,7 +280,7 @@ moai init --force-copy  # 대안 사용
 ---
 
 **마지막 업데이트**: 2025-09-16
-**MoAI-ADK 버전**: v0.1.15
+**MoAI-ADK 버전**: v0.1.16
 **CLI 버전**: v2.0.0
 
 **🎯 "올바른 명령어로 효율적인 워크플로우를 경험하세요!"**

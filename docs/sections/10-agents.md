@@ -21,7 +21,7 @@ MoAI-ADK는 각 개발 단계에 특화된 11개의 전문 에이전트를 제�
 
 #### 🔧 시스템 관리 에이전트
 - **claude-code-manager**: MoAI-Claude 통합 전문가
-- **tag-indexer**: 14-Core @TAG 시스템 관리
+- **tag-indexer**: 16-Core @TAG 시스템 관리
 - **integration-manager**: 외부 서비스 연동 관리
 - **deployment-specialist**: 배포 전략 및 자동화
 

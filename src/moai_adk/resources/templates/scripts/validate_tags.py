@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
 MoAI-ADK Tag System Validator v0.1.12
-14-Core @TAG 무결성 검사 및 추적성 매트릭스 검증
+16-Core @TAG 무결성 검사 및 추적성 매트릭스 검증
 
 이 스크립트는 프로젝트 전체의 @TAG 시스템을:
-- 14-Core 태그 체계 준수 검증
+- 16-Core 태그 체계 준수 검증
 - 고아 태그 및 연결 끊김 감지  
 - 태그 인덱스 일관성 확인
 - 추적성 매트릭스 업데이트
@@ -42,20 +42,20 @@ class TagHealthReport:
     recommendations: List[str] = field(default_factory=list)
 
 class TagValidator:
-    """14-Core TAG 시스템 검증기"""
+    """16-Core TAG 시스템 검증기"""
     
     def __init__(self, project_root: Path):
         self.project_root = project_root
         self.moai_dir = project_root / ".moai"
         self.indexes_dir = self.moai_dir / "indexes"
         
-        # 14-Core 태그 체계
+        # 16-Core 태그 체계
         self.tag_categories = {
-            'Primary': ['REQ', 'DESIGN', 'TASK', 'TEST'],
-            'Steering': ['VISION', 'STRUCT', 'TECH', 'STACK'],
+            'Primary': ['REQ', 'SPEC', 'DESIGN', 'TASK', 'TEST'],
+            'Steering': ['VISION', 'STRUCT', 'TECH', 'ADR'],
             'Implementation': ['FEATURE', 'API', 'DATA'],
             'Quality': ['PERF', 'SEC', 'DEBT', 'TODO'],
-            'Legacy': ['SPEC', 'ADR', 'US', 'FR', 'NFR', 'BUG', 'REVIEW']
+            'Legacy': ['US', 'FR', 'NFR', 'BUG', 'REVIEW']
         }
         
         self.valid_tag_types = []
@@ -314,7 +314,7 @@ class TagValidator:
         # 이슈 수집
         if invalid_tags > 0:
             issues.append(f"{invalid_tags} invalid tag format(s)")
-            recommendations.append("Fix invalid tag formats using 14-Core naming conventions")
+            recommendations.append("Fix invalid tag formats using 16-Core naming conventions")
         
         if orphan_tags:
             issues.append(f"{len(orphan_tags)} orphan tag(s) found")
@@ -345,7 +345,7 @@ class TagValidator:
     def run_validation(self) -> TagHealthReport:
         """전체 태그 검증 실행"""
         
-        print("🏷️  Starting 14-Core TAG system validation...")
+        print("🏷️  Starting 16-Core TAG system validation...")
         
         # 1. 프로젝트 스캔
         print("  Scanning project files for tags...")
@@ -412,7 +412,7 @@ def main():
         
         # 결과 출력
         print("\n" + "="*60)
-        print("🏷️  14-CORE TAG VALIDATION REPORT")
+        print("🏷️  16-CORE TAG VALIDATION REPORT")
         print("="*60)
         
         print(f"Total Tags: {report.total_tags}")

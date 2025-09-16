@@ -19,10 +19,10 @@ class TagRepairer:
         self.indexes_path = self.moai_path / 'indexes'
         self.templates_path = self.moai_path / 'templates'
         
-        # 14-Core TAG 체계
+        # 16-Core TAG 체계
         self.tag_categories = {
-            'SPEC': ['REQ', 'DESIGN', 'TASK'],
-            'STEERING': ['VISION', 'STRUCT', 'TECH', 'STACK'],
+            'SPEC': ['REQ', 'SPEC', 'DESIGN', 'TASK'],
+            'STEERING': ['VISION', 'STRUCT', 'TECH', 'ADR'],
             'IMPLEMENTATION': ['FEATURE', 'API', 'TEST', 'DATA'],
             'QUALITY': ['PERF', 'SEC', 'DEBT', 'TODO']
         }
@@ -30,7 +30,7 @@ class TagRepairer:
         # 추적성 체인
         self.traceability_chains = {
             'primary': ['REQ', 'DESIGN', 'TASK', 'TEST'],
-            'steering': ['VISION', 'STRUCT', 'TECH', 'STACK'],
+            'steering': ['VISION', 'STRUCT', 'TECH', 'ADR'],
             'implementation': ['FEATURE', 'API', 'DATA'],
             'quality': ['PERF', 'SEC', 'DEBT', 'TODO']
         }

@@ -154,7 +154,7 @@ Q10. 품질 목표는?
 - `.moai/steering/structure.md` - 코드 구조와 원칙
 - `.moai/steering/tech.md` - 기술 스택과 결정사항
 - `.moai/config.json` - MoAI 설정 및 Constitution 규칙
-- `.moai/indexes/tags.json` - 14-Core TAG 시스템 초기화
+- `.moai/indexes/tags.json` - 16-Core TAG 시스템 초기화
 - `.moai/specs/SPEC-001~003/` - 초기 명세 문서
 - `CLAUDE.md` - 프로젝트 메모리 자동 구성
 - `.claude/agents/moai/` - 10개 전문 에이전트 활성화
@@ -264,7 +264,7 @@ React + Vue를 동시에 선택하셨습니다.
 ## 완료 시 안내 메시지
 
 ```
-완료: MoAI-ADK v0.1.15 프로젝트 설정이 완료되었습니다!
+완료: MoAI-ADK 프로젝트 설정이 완료되었습니다!
 
 생성된 파일:
   ├── .moai/
@@ -273,7 +273,7 @@ React + Vue를 동시에 선택하셨습니다.
   │   │   ├── structure.md    # 코드 구조 원칙  
   │   │   └── tech.md         # 기술 스택 결정
   │   ├── config.json         # MoAI 설정 및 Constitution
-  │   ├── indexes/tags.json   # 14-Core TAG 시스템
+  │   ├── indexes/tags.json   # 16-Core TAG 시스템
   │   └── specs/SPEC-001~003/ # 초기 명세 문서 (3개)
   └── .claude/
       ├── agents/moai/        # 10개 전문 에이전트
@@ -283,7 +283,7 @@ React + Vue를 동시에 선택하셨습니다.
 활성화된 시스템:
   - 10개 전문 에이전트: claude-code-manager, steering-architect, spec-manager 등
   - 4단계 파이프라인: SPECIFY → PLAN → TASKS → IMPLEMENT
-  - 14-Core TAG 시스템: 완전한 추적성 보장
+  - 16-Core TAG 시스템: 완전한 추적성 보장
   - Constitution Check: 5개 원칙 자동 검증
 
 다음 단계 (4단계 파이프라인):
@@ -296,7 +296,7 @@ React + Vue를 동시에 선택하셨습니다.
 **Pro Tips:**
 - 언제든지 /moai:1-project setting으로 설정을 수정할 수 있습니다
 - Constitution 위반 시 Hook이 자동으로 차단합니다
-- 모든 변경사항은 14-Core TAG로 완전 추적됩니다
+- 모든 변경사항은 16-Core TAG로 완전 추적됩니다
 - TDD 사이클이 강제되어 품질이 자동 보장됩니다
 ```
 

@@ -2,6 +2,33 @@
 
 > MoAI-ADK 프로젝트의 코딩 표준 및 아키텍처 설계 원칙
 
+## 🌐 Cross-Language Core 규칙(공통)
+
+- 파일 ≤ 300 LOC, 함수 ≤ 50 LOC, 매개변수 ≤ 5, 순환복잡도 ≤ 10 (초과 시 분리/리팩터)
+- 단일 책임과 가드절 우선; 코드 구조는 입력 → 처리 → 반환으로 구성
+- 상수는 심볼화(하드코딩 금지), 부수효과(I/O/네트워크/전역)는 경계층으로 격리
+- 명시적 예외 처리(구체 타입)와 사용자 친화적 메시지, 구조화 로깅(민감정보 금지)
+- 시간대/TZ/DST 고려(저장은 UTC, 표시만 로컬), 숫자/날짜/통화 로캘 주의
+- 입력 검증·정규화·인코딩 및 파라미터화(보안 기본), 최소 권한 원칙 적용
+- 테스트: 단위/통합/E2E(성공 ≥1, 실패 ≥1), 커버리지 ≥ 80%, 테스트 독립/결정성 유지
+- 문서/코드 동기화(Living Doc), @TAG 추적성(@REQ/@TASK/@TEST) 일치 유지
+- 모델 사용: 설계/계획은 plan 모드 + `opusplan`, 구현/리팩터는 `sonnet`, 문서/인덱싱은 `haiku`
+
+참고: 언어별 상세 규칙은 Python/TypeScript 예시를 우선 제공하며, 추후 Go/Java/Kotlin/.NET/Rust/Swift/SQL/Shell/IaC 프로파일로 확장(@imports) 예정.
+
+### 언어/플랫폼 프로파일(@imports)
+@.claude/memory/coding_standards/python.md
+@.claude/memory/coding_standards/typescript.md
+@.claude/memory/coding_standards/go.md
+@.claude/memory/coding_standards/java-kotlin.md
+@.claude/memory/coding_standards/csharp.md
+@.claude/memory/coding_standards/rust.md
+@.claude/memory/coding_standards/swift.md
+@.claude/memory/coding_standards/sql.md
+@.claude/memory/coding_standards/shell.md
+@.claude/memory/coding_standards/terraform.md
+@.claude/memory/coding_standards/frameworks.md
+
 ## 💻 언어별 코딩 표준
 
 ### Python

@@ -1,7 +1,7 @@
 # MoAI-ADK 시스템 개요
 
 > Claude Code 2025 최신 표준 기반 완전 자동화 Spec-First TDD 개발 시스템
-> Python 패키지 기반 - 완전 자동화 버전 관리 시스템 및 통합 구조 관리 - v0.1.14 최신 버전
+> Python 패키지 기반 - 완전 자동화 버전 관리 시스템 및 통합 구조 관리 - v0.1.16 최신 버전
 
 ## 🎯 목표와 범위
 
@@ -29,7 +29,7 @@
 
 ## 시스템 특징
 
-### 🤖 완전 자동화 (v0.1.14)
+### 🤖 완전 자동화 (v0.1.16)
 - **버전 관리**: 24개 파일 하드코딩 버전 일괄 동기화
 - **사용자 업데이트**: `moai update` 한 번으로 패키지 + 리소스 자동 업그레이드
 - **개발자 생산성**: `moai update-version` 명령어로 95% 시간 절약
@@ -55,14 +55,14 @@
 - **code-generator**: TDD 기반 코드 생성
 - **test-automator**: TDD 자동화
 - **doc-syncer**: Living Document 동기화
-- **tag-indexer**: 14-Core @TAG 시스템 관리
+- **tag-indexer**: 16-Core @TAG 시스템 관리
 - **integration-manager**: 외부 서비스 연동
 - **deployment-specialist**: 배포 전략 및 자동화
 - **claude-code-manager**: MoAI-Claude 통합 전문가
 
-### 🏷️ 14-Core @TAG 추적성 시스템
+### 🏷️ 16-Core @TAG 추적성 시스템
 - **Primary**: @REQ → @DESIGN → @TASK → @TEST
-- **Steering**: @VISION → @STRUCT → @TECH → @STACK
+- **Steering**: @VISION → @STRUCT → @TECH → @ADR
 - **Quality**: @PERF → @SEC → @DEBT → @TODO
 
 ### 🛡️ 품질 보증 시스템

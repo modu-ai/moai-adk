@@ -1,7 +1,7 @@
 # MoAI-ADK Documentation Index
 
 > **AI Navigation Guide**: 빠른 문서 검색을 위한 체계적 인덱스
-> **Last Updated**: 2025-09-16 | **Package Version**: v0.1.15
+> **Last Updated**: 2025-09-16 | **Package Version**: v0.1.16
 
 ---
 
@@ -18,8 +18,8 @@
 **난이도**: 🟢 Basic
 
 ### [02-changelog.md](02-changelog.md) - 변경 이력
-**핵심 내용**: 버전별 변경사항, v0.1.15 패키지 구조 개선, 자동화 기능 개선
-**키워드**: `changelog`, `version`, `updates`, `v0.1.15`, `package-restructure`
+**핵심 내용**: 버전별 변경사항, v0.1.16 패키지 구조 개선, 자동화 기능 개선
+**키워드**: `changelog`, `version`, `updates`, `v0.1.16`, `package-restructure`
 **난이도**: 🟢 Basic
 
 ---
@@ -61,7 +61,7 @@
 **난이도**: 🟢 Basic
 
 ### [build-system.md](build-system.md) - 빌드 및 버전 관리 ⭐ NEW
-**핵심 내용**: 자동 빌드, 버전 동기화, Makefile, CI/CD 통합, VersionSyncManager (BUILD.md + v0.1.14 내용 통합)
+**핵심 내용**: 자동 빌드, 버전 동기화, Makefile, CI/CD 통합, VersionSyncManager (BUILD.md + v0.1.16 내용 통합)
 **키워드**: `build`, `version-sync`, `makefile`, `ci-cd`, `automation`
 **난이도**: 🔴 Advanced
 
@@ -80,7 +80,7 @@
 **난이도**: 🔴 Advanced
 
 ### [12-tag-system.md](12-tag-system.md) - TAG 추적성 시스템
-**핵심 내용**: 14-Core @TAG, 추적성 체인, 자동 인덱싱, 무결성 검사
+**핵심 내용**: 16-Core @TAG, 추적성 체인, 자동 인덱싱, 무결성 검사
 **키워드**: `tags`, `traceability`, `14-core`, `indexing`, `integrity`
 **난이도**: 🔴 Advanced
 

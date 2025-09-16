@@ -188,7 +188,7 @@ moai restore .moai_backup_20241215_143022
 
 - 🚀 Initial beta release of MoAI-ADK (MoAI Agentic Development Kit)
 - 🤖 Complete Claude Code project initialization system
-- 📋 14-Core TAG system for perfect traceability
+- 📋 16-Core TAG system for perfect traceability
 - 🔧 Node.js native Hook system (pre-tool-use, post-tool-use, session-start)
 - 🎯 AZENT methodology integration (SPEC → @TAG → TDD philosophy)
 - 📊 Real-time document synchronization system
@@ -229,4 +229,4 @@ moai restore .moai_backup_20241215_143022
 
 ---
 
-**MoAI-ADK v0.1.15** - Making AI-driven development accessible to everyone! 🎉
+**MoAI-ADK v0.1.16** - Making AI-driven development accessible to everyone! 🎉

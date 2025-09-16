@@ -99,6 +99,15 @@ git branch -d feature/completed         # 로컬 브랜치 삭제
 git push origin --delete feature/old    # 리모트 브랜치 삭제
 ```
 
+## 🛡️ 브랜치 보호 규칙(권장)
+
+- 보호 대상: `main`(또는 `master`), `release/*` 브랜치
+- 필수 검사: CI 테스트 통과(빌드/린트/테스트), 리뷰 1+ 승인, 상태 체크 필수화
+- 강제 푸시 차단: force push/삭제 금지, 병합 전략은 팀 표준(스쿼시/리베이스) 준수
+- 코드 오너(Code Owners): 핵심 경로에 코드오너 지정으로 승인 필수화
+
+GitHub 설정 경로: Settings → Branches → Branch protection rules
+
 ## 🔄 원격 저장소 작업
 
 ### 동기화
@@ -114,6 +123,11 @@ git push -u origin feature/new-branch   # 새 브랜치 푸시 + 업스트림 �
 git push --force-with-lease origin main # 안전한 강제 푸시
 ```
 
+### 강제 푸시 정책
+
+- 기본 금지. 불가피할 경우에만 `--force-with-lease` 사용하고 사전 공지 필수
+- 보호 브랜치에는 허용하지 않음
+
 ### 리모트 관리
 ```bash
 # 리모트 확인
@@ -127,6 +141,25 @@ git remote set-url origin https://new-url.git
 git fetch upstream
 git merge upstream/main
 ```
+
+## 🔏 커밋 서명(Signing) 설정(GPG/SSH)
+
+### SSH 서명(간편)
+```bash
+git config --global gpg.format ssh
+git config --global user.signingkey "$(ssh-add -L | head -1)"
+git config --global commit.gpgsign true
+```
+
+### GPG 서명(전통)
+```bash
+gpg --full-generate-key
+gpg --list-secret-keys --keyid-format=long
+git config --global user.signingkey <KEYID>
+git config --global commit.gpgsign true
+```
+
+> 리포지토리 “Verified” 배지를 위해 GitHub 계정에 공개 키 등록 필요
 
 ## 🔀 병합과 리베이스
 
@@ -220,6 +253,43 @@ git diff --stat main..feature/branch    # 변경 파일 요약
 git show commit_hash                    # 커밋 상세 정보
 git show --stat commit_hash             # 커밋 파일 변경 통계
 ```
+
+## 🪝 pre-commit 훅(추천)
+
+로컬에서 빠른 검사로 PR 실패를 예방합니다.
+
+### 예시(.pre-commit-config.yaml)
+```yaml
+repos:
+  - repo: https://github.com/psf/black
+    rev: 24.8.0
+    hooks:
+      - id: black
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.6.8
+    hooks:
+      - id: ruff
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0
+    hooks:
+      - id: prettier
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v9.11.1
+    hooks:
+      - id: eslint
+```
+
+```bash
+pipx install pre-commit || pip install pre-commit
+pre-commit install
+```
+
+## 🧾 Pull Request 템플릿 요건(요약)
+
+- @TAG 연결: @REQ/@TASK/@TEST 필수 명시
+- 테스트: 단위/통합/E2E 체크, 커버리지 리포트 첨부(≥80%)
+- 문서: README/변경된 문서 업데이트, API 변경 시 스펙 반영
+- 체크리스트: 코딩 표준 준수, 보안 점검, 성능 영향 검토
 
 ## 🛠️ 유용한 Git 설정
 

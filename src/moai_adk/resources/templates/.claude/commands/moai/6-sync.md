@@ -1,12 +1,13 @@
 ---
-description: Living Document 동기화 - 코드↔문서 실시간 동기화와 14-Core TAG 인덱싱
+description: Living Document 동기화 - 코드↔문서 실시간 동기화와 16-Core TAG 인덱싱
 argument-hint: [auto|force|status] [target-path]
 allowed-tools: Read, Write, Edit, MultiEdit, Bash, Task
 ---
 
 # 🔄 MoAI-ADK Living Document 동기화
 
-코드↔문서 실시간 동기화 메커니즘을 통해 완벽한 일치성을 유지하며, 14-Core @TAG 시스템으로 완전한 추적성을 보장하는 핵심 명령어입니다. 모든 변경사항은 자동으로 감지되고 양방향으로 동기화됩니다.
+코드↔문서 실시간 동기화 메커니즘을 통해 완벽한 일치성을 유지하며, 16-Core @TAG 시스템으로 완전한 추적성을 보장하는 핵심 명령어입니다. 모든 변경사항은 자동으로 감지되고 양방향으로 동기화됩니다.
+
 
 ## 자연어 체이닝 오케스트레이션
 

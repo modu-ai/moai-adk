@@ -1,10 +1,10 @@
-# MoAI-ADK 14-Core @TAG 시스템
+# MoAI-ADK 16-Core @TAG 시스템
 
-## 🏷️ 14-Core TAG 체계
+## 🏷️ 16-Core TAG 체계
 
-MoAI-ADK의 14-Core @TAG 시스템은 모든 요구사항과 구현을 완전하게 추적할 수 있는 체계를 제공합니다.
+MoAI-ADK의 16-Core @TAG 시스템은 모든 요구사항과 구현을 완전하게 추적할 수 있는 체계를 제공합니다.
 
-### 14-Core 태그 카테고리
+### 16-Core 태그 카테고리
 
 #### SPEC (명세 관련)
 - **@REQ**: 요구사항 (Requirements)
@@ -15,7 +15,7 @@ MoAI-ADK의 14-Core @TAG 시스템은 모든 요구사항과 구현을 완전하
 - **@VISION**: 제품 비전 (Product Vision)
 - **@STRUCT**: 구조 설계 (Structure Design)
 - **@TECH**: 기술 선택 (Technology Choices)
-- **@STACK**: 기술 스택 (Technology Stack)
+- **@ADR**: 아키텍처 결정 기록 (Architecture Decision Records)
 
 #### Implementation (구현)
 - **@FEATURE**: 기능 구현 (Feature Implementation)
@@ -49,7 +49,7 @@ MoAI-ADK의 14-Core @TAG 시스템은 모든 요구사항과 구현을 완전하
 
 ### Steering Chain (방향성 추적성)
 ```
-@VISION → @STRUCT → @TECH → @STACK
+@VISION → @STRUCT → @TECH → @ADR
 ```
 
 **예시**:
@@ -60,7 +60,7 @@ MoAI-ADK의 14-Core @TAG 시스템은 모든 요구사항과 구현을 완전하
 ↓
 @TECH:CONTAINER-001 "Docker & Kubernetes 선택"
 ↓
-@STACK:DEVOPS-001 "AWS EKS + GitLab CI/CD"
+@ADR:DEVOPS-001 "AWS EKS + GitLab CI/CD"
 ```
 
 ### Quality Chain (품질 추적성)
@@ -124,7 +124,7 @@ found_tags = re.findall(tag_pattern, content)
 
 # 규칙 위반 시 차단
 if not validation_result['valid']:
-    print(f"⚠️ 14-Core @TAG 규칙 위반: {validation_result['error']}")
+    print(f"⚠️ 16-Core @TAG 규칙 위반: {validation_result['error']}")
     sys.exit(2)  # 차단
 ```
 
@@ -242,4 +242,4 @@ python .moai/scripts/validate_tags.py --quality-report
 @DEBT:PAYMENT-LEGACY-001 "레거시 결제 시스템 제거"
 ```
 
-14-Core @TAG 시스템은 **완전한 추적성**과 **자동화된 품질 관리**를 통해 개발 과정의 투명성을 보장합니다.
+16-Core @TAG 시스템은 **완전한 추적성**과 **자동화된 품질 관리**를 통해 개발 과정의 투명성을 보장합니다.

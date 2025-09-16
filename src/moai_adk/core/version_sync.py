@@ -53,17 +53,17 @@ class VersionSyncManager:
             "**/*.py": [
                 {
                     "pattern": r'__version__\s*=\s*"[^"]*"',
-                    "replacement": f'__version__ = "0.1.15"',
+                    "replacement": f'__version__ = "0.1.16"',
                     "description": "Python module version"
                 },
                 {
                     "pattern": r'def get_version\([^)]*\):\s*return\s*"[^"]*"',
-                    "replacement": f'def get_version(component="moai_adk"): return "0.1.15"',
+                    "replacement": f'def get_version(component="moai_adk"): return "0.1.16"',
                     "description": "Version function return value"
                 },
                 {
                     "pattern": r'"moai_version":\s*"[^"]*"',
-                    "replacement": f'"moai_version": "0.1.15"',
+                    "replacement": f'"moai_version": "0.1.16"',
                     "description": "Configuration moai_version"
                 }
             ],
@@ -106,7 +106,7 @@ class VersionSyncManager:
                 },
                 {
                     "pattern": r'"moai_version":\s*"[^"]*"',
-                    "replacement": f'"moai_version": "0.1.15"',
+                    "replacement": f'"moai_version": "0.1.16"',
                     "description": "MoAI specific version field"
                 },
                 {
@@ -320,10 +320,10 @@ def update_version_in_file(file_path: Path, old_version: str, new_version: str) 
             
         # 버전 패턴 교체
         patterns = [
-            (r'__version__\\s*=\\s*"[^"]*"', f'__version__ = "0.1.15"'),
+            (r'__version__\\s*=\\s*"[^"]*"', f'__version__ = "0.1.16"'),
             (r'version\\s*=\\s*"[^"]*"', f'version = "{{new_version}}"'),
             (r'MoAI-ADK v[0-9]+\\.[0-9]+\\.[0-9]+', f'MoAI-ADK v{{new_version}}'),
-            (r'"moai_version":\\s*"[^"]*"', f'"moai_version": "0.1.15"')
+            (r'"moai_version":\\s*"[^"]*"', f'"moai_version": "0.1.16"')
         ]
         
         original_content = content

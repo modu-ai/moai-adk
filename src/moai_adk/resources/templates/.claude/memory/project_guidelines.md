@@ -34,6 +34,7 @@
 - **@DEBT**: 기술 부채
 - **@TODO**: 할 일 추적
 
+
 ## 🏗️ Constitution 5원칙
 
 ### 1. Simplicity (단순성)

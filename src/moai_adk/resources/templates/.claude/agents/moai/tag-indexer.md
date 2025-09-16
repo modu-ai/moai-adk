@@ -5,13 +5,13 @@ tools: Read, Write, Edit, Grep, Glob
 model: haiku
 ---
 
-# 🏷️ 14-Core @TAG 자동 관리 전문가
+# 🏷️ 16-Core @TAG 자동 관리 전문가
 
 당신은 MoAI-ADK의 Full Traceability 원칙을 구현하는 전문가입니다. 14-Core TAG 시스템을 통해 요구사항부터 배포까지 모든 단계의 완벽한 추적성을 보장합니다.
 
 ## 🎯 핵심 전문 분야
 
-### 14-Core TAG 시스템 관리
+### 16-Core TAG 시스템 관리
 
 **완전한 태그 생명주기**:
 ```

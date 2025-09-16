@@ -4,7 +4,7 @@
 
 [![Version](https://img.shields.io/badge/version-0.1.16-blue)](https://github.com/modu-ai/moai-adk/releases)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)](https://docs.anthropic.com/claude-code)
 
 ## 🗿 개요
@@ -16,7 +16,7 @@ MoAI-ADK는 Claude Code의 2025년 최신 기능을 활용하여 **SPECIFY → P
 - **Spec-First**: 명세 없이는 코드 없음
 - **TDD-First**: 테스트 없이는 구현 없음
 - **Living Document**: 문서와 코드는 항상 동기화
-- **Full Traceability**: 14-Core TAG 시스템으로 완전 추적
+- **Full Traceability**: 16-Core TAG 시스템으로 완전 추적
 
 ## 🚀 빠른 시작
 
@@ -86,7 +86,7 @@ MoAI-ADK/                       # 프로젝트 루트
 │   └── settings.json         # 권한 및 Hook 설정
 ├── .moai/                     # MoAI 프레임워크 설정
 │   ├── config.json           # MoAI 설정
-│   ├── indexes/              # 14-Core TAG 인덱스
+│   ├── indexes/              # 16-Core TAG 인덱스
 │   └── memory/               # Constitution 메모리
 ├── .github/                   # GitHub CI/CD 워크플로우
 ├── pyproject.toml            # 패키지 설정
@@ -94,12 +94,13 @@ MoAI-ADK/                       # 프로젝트 루트
 └── README.md                 # 이 파일
 ```
 
-## 🏷️ 14-Core TAG 시스템
+## 🏷️ 16-Core TAG 시스템
 
 완전한 추적성을 보장하는 태그 시스템:
 
 ### SPEC 카테고리 (문서 추적 - 필수)
 - **@REQ**: 요구사항 정의
+- **@SPEC**: 명세 문서(요약/식별자)
 - **@DESIGN**: 설계 문서
 - **@TASK**: 구현 작업
 
@@ -107,7 +108,7 @@ MoAI-ADK/                       # 프로젝트 루트
 - **@VISION**: 프로젝트 비전
 - **@STRUCT**: 구조 설계
 - **@TECH**: 기술 선택
-- **@STACK**: 기술 스택
+- **@ADR**: 아키텍처 결정 기록
 
 ### IMPLEMENTATION 카테고리 (코드 추적 - 필수)
 - **@FEATURE**: 기능 개발

@@ -48,10 +48,10 @@ if 'constitution.md' in file_path:
 
 ### 3. tag_validator.py - PreToolUse Hook
 
-**기능**: 14-Core @TAG 시스템 품질 검증
+**기능**: 16-Core @TAG 시스템 품질 검증
 
 ```python
-# 14-Core 태그 체계 검증
+# 16-Core 태그 체계 검증
 valid_tags = {
     'SPEC': ['REQ', 'DESIGN', 'TASK'],
     'Steering': ['VISION', 'STRUCT', 'TECH', 'STACK'],
@@ -172,7 +172,7 @@ def analyze_project_state():
 - **Observability**: 로깅 및 모니터링 강제
 - **Versioning**: 버전 관리 규칙 준수
 
-### 14-Core TAG 무결성
+### 16-Core TAG 무결성
 - **실시간 검증**: 태그 생성 시점에 규칙 확인
 - **자동 수정**: 링크 깨짐 자동 복구
 - **품질 점수**: 태그 품질 정량 평가

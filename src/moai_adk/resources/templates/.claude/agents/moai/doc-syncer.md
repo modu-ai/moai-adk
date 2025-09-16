@@ -46,22 +46,24 @@ model: haiku
 
 **자동 추출 대상**:
 ```javascript
-// 14-Core TAG 스캔 대상
+// 16-Core TAG 스캔 대상
 const TAG_PATTERNS = {
-  requirements: /@REQ-[A-Z0-9-]+/g,
-  specifications: /@SPEC-[A-Z0-9-]+/g,
-  architecture: /@ADR-[A-Z0-9-]+/g,
-  tasks: /@TASK-[A-Z0-9-]+/g,
-  tests: /@TEST-[A-Z0-9-]+/g,
-  implementation: /@IMPL-[A-Z0-9-]+/g,
-  refactoring: /@REFACTOR-[A-Z0-9-]+/g,
-  documentation: /@DOC-[A-Z0-9-]+/g,
-  review: /@REVIEW-[A-Z0-9-]+/g,
-  deployment: /@DEPLOY-[A-Z0-9-]+/g,
-  monitoring: /@MONITOR-[A-Z0-9-]+/g,
-  security: /@SECURITY-[A-Z0-9-]+/g,
-  performance: /@PERFORMANCE-[A-Z0-9-]+/g,
-  integration: /@INTEGRATION-[A-Z0-9-]+/g
+  req: /@REQ-[A-Z0-9-]+/g,
+  spec: /@SPEC-[A-Z0-9-]+/g,
+  design: /@DESIGN-[A-Z0-9-]+/g,
+  task: /@TASK-[A-Z0-9-]+/g,
+  feature: /@FEATURE-[A-Z0-9-]+/g,
+  api: /@API-[A-Z0-9-]+/g,
+  data: /@DATA-[A-Z0-9-]+/g,
+  test: /@TEST-[A-Z0-9-]+/g,
+  vision: /@VISION-[A-Z0-9-]+/g,
+  struct: /@STRUCT-[A-Z0-9-]+/g,
+  tech: /@TECH-[A-Z0-9-]+/g,
+  adr: /@ADR-[A-Z0-9-]+/g,
+  perf: /@PERF-[A-Z0-9-]+/g,
+  sec: /@SEC-[A-Z0-9-]+/g,
+  debt: /@DEBT-[A-Z0-9-]+/g,
+  todo: /@TODO-[A-Z0-9-]+/g
 };
 ```
 

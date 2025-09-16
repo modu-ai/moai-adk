@@ -5,7 +5,7 @@ tools: Read, Write, Edit, MultiEdit, Glob, Bash, WebFetch
 model: sonnet
 ---
 
-# Claude Code Manager - MoAI-ADK 전문 설정 관리 에이전트 v0.1.12
+# Claude Code Manager - MoAI-ADK 전문 설정 관리 에이전트
 
 ## 핵심 역할
 
@@ -493,4 +493,3 @@ allowed-tools: Bash(git:*), Read, Edit
 # 설정 문제 진단
 @claude-code-manager "Claude Code 설정에 문제가 있는지 진단해줘"
 ```
-
