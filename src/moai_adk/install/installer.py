@@ -18,6 +18,8 @@ from ..core.directory_manager import DirectoryManager
 from ..core.config_manager import ConfigManager
 from ..core.git_manager import GitManager
 from .resource_manager import ResourceManager
+from ..core.resource_version import ResourceVersionManager
+from .._version import __version__
 
 logger = get_logger(__name__)
 
@@ -77,6 +79,9 @@ class SimplifiedInstaller:
             self.progress.update_progress("Installing MoAI resources...", progress_callback)
             moai_files = self._install_moai_resources()
             files_created.extend([str(f) for f in moai_files])
+
+            # Step 3b: Record installed template version
+            self._write_resource_version_info()
 
             # Step 4: Creating auxiliary directories (logs, empty directories)
             self.progress.update_progress("Setting up auxiliary directories...", progress_callback)
@@ -215,6 +220,15 @@ class SimplifiedInstaller:
         except Exception as e:
             logger.error("Failed to create project memory: %s", e)
             return False
+
+    def _write_resource_version_info(self) -> None:
+        """Record the installed template/resource version metadata."""
+        try:
+            version_manager = ResourceVersionManager(self.config.project_path)
+            template_version = self.resource_manager.get_version()
+            version_manager.write(template_version, __version__)
+        except Exception as exc:
+            logger.warning("Failed to write resource version metadata: %s", exc)
 
     def _create_configuration_files(self) -> List[Path]:
         """설정 파일 생성"""

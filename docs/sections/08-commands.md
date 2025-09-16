@@ -204,3 +204,22 @@ moai status --pipeline
 ```
 
 명령어 시스템은 **직관적인 워크플로우**와 **자동화된 품질 보장**을 통해 개발 생산성을 극대화합니다.
+
+## moai update - 리소스/패키지 업데이트
+
+MoAI-ADK CLI는 프로젝트 리소스 버전을 추적하고 자동 업데이트를 지원합니다.
+
+```bash
+# 업데이트 필요 여부만 확인
+moai update --check
+
+# 템플릿/Hook/UI 리소스 갱신 (기본값: 백업 생성 후 덮어쓰기)
+moai update --resources-only
+
+# 패키지 업그레이드 안내 포함 (pip 수동 설치 필요)
+moai update
+```
+
+- `.moai/version.json`에 현재 템플릿 버전이 기록되며 `moai status`에서 확인할 수 있습니다.
+- `--check`는 설치된 템플릿 버전과 패키지 제공 버전을 비교해 업데이트 필요 여부를 알려줍니다.
+- 업데이트 실행 시 자동 백업(.moai_backup_*)을 생성하므로 필요하면 복원하거나 변경 사항을 비교할 수 있습니다.

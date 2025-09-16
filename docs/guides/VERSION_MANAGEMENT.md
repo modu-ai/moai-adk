@@ -22,7 +22,7 @@ MoAI-ADK는 **완전 자동화된 버전 관리 시스템**을 제공합니다. 
 ### 1. 현재 버전 확인
 ```bash
 make version
-# 출력: 🗿 MoAI-ADK v0.1.16
+# 출력: 🗿 MoAI-ADK v0.1.17
 ```
 
 ### 2. 버전 업데이트 (권장)
@@ -95,15 +95,15 @@ make version-verify
 from src._version import __version__, get_version, get_version_format
 
 # 기본 버전
-print(__version__)  # "0.1.16"
+print(__version__)  # "0.1.17"
 
 # 컴포넌트별 버전
-print(get_version("core"))  # "0.1.16"
-print(get_version("hooks")) # "0.1.16"
+print(get_version("core"))  # "0.1.17"
+print(get_version("hooks")) # "0.1.17"
 
 # 포맷된 버전 문자열
-print(get_version_format("banner"))  # "🗿 MoAI-ADK v0.1.16"
-print(get_version_format("short"))   # "v0.1.16"
+print(get_version_format("banner"))  # "🗿 MoAI-ADK v0.1.17"
+print(get_version_format("short"))   # "v0.1.17"
 ```
 
 ### 커스텀 버전 패턴 추가
@@ -221,4 +221,4 @@ bump version to v0.2.0"
 
 ---
 
-**🗿 MoAI-ADK v0.1.16** - 완전 자동화된 버전 관리로 개발에만 집중하세요!
+**🗿 MoAI-ADK v0.1.17** - 완전 자동화된 버전 관리로 개발에만 집중하세요!

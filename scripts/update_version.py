@@ -3,9 +3,9 @@
 MoAI-ADK 자동 버전 업데이트 스크립트
 
 사용법:
-    python scripts/update_version.py 0.1.16
+    python scripts/update_version.py 0.1.17
     python scripts/update_version.py 0.2.0 --verify
-    python scripts/update_version.py 0.1.16 --dry-run
+    python scripts/update_version.py 0.1.17 --dry-run
 
 기능:
     - _version.py 파일의 버전 업데이트
@@ -172,14 +172,14 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 예제:
-  python scripts/update_version.py 0.1.16
+  python scripts/update_version.py 0.1.17
   python scripts/update_version.py 0.2.0 --verify
-  python scripts/update_version.py 0.1.16 --dry-run
-  python scripts/update_version.py 0.1.16 --no-git
+  python scripts/update_version.py 0.1.17 --dry-run
+  python scripts/update_version.py 0.1.17 --no-git
         """
     )
 
-    parser.add_argument("version", help="새 버전 (예: 0.1.16)")
+    parser.add_argument("version", help="새 버전 (예: 0.1.17)")
     parser.add_argument("--dry-run", action="store_true",
                        help="실제 변경하지 않고 시뮬레이션만 실행")
     parser.add_argument("--verify", action="store_true",
@@ -191,7 +191,7 @@ def main():
 
     # 버전 형식 검증
     if not validate_version_format(args.version):
-        print("❌ 오류: 버전은 MAJOR.MINOR.PATCH 형식이어야 합니다 (예: 0.1.16)")
+        print("❌ 오류: 버전은 MAJOR.MINOR.PATCH 형식이어야 합니다 (예: 0.1.17)")
         sys.exit(1)
 
     print(f"🗿 MoAI-ADK 버전 업데이트 시작: v{args.version}")

@@ -17,6 +17,8 @@ from colorama import Fore, Style
 from .._version import __version__, get_version_format
 from ..config import Config, RuntimeConfig
 from ..install.installer import SimplifiedInstaller
+from ..install.resource_manager import ResourceManager
+from ..core.resource_version import ResourceVersionManager
 from ..utils.logger import get_logger
 from ..install.post_install import auto_install_on_first_run
 from ..core.version_sync import VersionSyncManager
@@ -347,6 +349,16 @@ def status(verbose: bool, project_path: Optional[str]) -> None:
     click.echo(f"   Memory File: {'✅' if status_info['memory_file'] else '❌'}")
     click.echo(f"   Git Repository: {'✅' if status_info['git_repository'] else '❌'}")
 
+    versions = status_info.get('versions')
+    if versions:
+        click.echo(f"\n🧭 Versions:")
+        click.echo(f"   Package: v{versions.get('package', 'unknown')}")
+        click.echo(f"   Templates: v{versions.get('resources', 'unknown')}")
+        if versions.get('available_resources') and versions.get('available_resources') != versions.get('resources'):
+            click.echo(f"   Available template update: v{versions['available_resources']}")
+        if versions.get('outdated'):
+            click.echo(f"{Fore.YELLOW}   ⚠️  Templates are outdated. Run 'moai update' to refresh.{Style.RESET_ALL}")
+
     if verbose and status_info['file_counts']:
         click.echo(f"\n📁 File Counts:")
         for component, count in status_info['file_counts'].items():
@@ -394,19 +406,31 @@ def status(verbose: bool, project_path: Optional[str]) -> None:
 def update(check: bool, no_backup: bool, verbose: bool, package_only: bool, resources_only: bool) -> None:
     """Update MoAI-ADK to the latest version."""
     current_version = __version__
+    project_path = Path.cwd()
+
+    resource_manager = ResourceManager()
+    version_manager = ResourceVersionManager(project_path)
+    version_info = version_manager.read()
+    current_resource_version = version_info.get('template_version') or "unknown"
+    available_resource_version = resource_manager.get_version()
 
     if check:
         click.echo(f"{Fore.CYAN}🔍 Checking for updates...{Style.RESET_ALL}")
         click.echo(f"Current version: v{current_version}")
-        # Here we would implement version checking logic
-        click.echo(f"{Fore.GREEN}✅ You are running the latest version{Style.RESET_ALL}")
+        click.echo(f"Installed template version: {current_resource_version}")
+        click.echo(f"Available template version: {available_resource_version}")
+
+        if not (project_path / ".moai").exists():
+            click.echo(f"{Fore.YELLOW}⚠️  This directory does not appear to be a MoAI-ADK project{Style.RESET_ALL}")
+        elif current_resource_version != available_resource_version:
+            click.echo(f"{Fore.YELLOW}⚠️  Templates are outdated. Run 'moai update' to refresh.{Style.RESET_ALL}")
+        else:
+            click.echo(f"{Fore.GREEN}✅ Project resources are up to date{Style.RESET_ALL}")
         return
 
     if package_only and resources_only:
         click.echo(f"{Fore.RED}❌ Cannot use --package-only and --resources-only together{Style.RESET_ALL}")
         sys.exit(1)
-
-    project_path = Path.cwd()
 
     # Check if this is a MoAI-ADK project
     if not (project_path / ".moai").exists():
@@ -426,12 +450,11 @@ def update(check: bool, no_backup: bool, verbose: bool, package_only: bool, reso
         if not package_only:
             # Update resources
             click.echo(f"{Fore.CYAN}🔄 Updating project resources...{Style.RESET_ALL}")
-
-            # Here we would implement resource update logic
-            # For now, just simulate the process
-            click.echo("   Updating .moai/ configuration...")
-            click.echo("   Updating .claude/ settings...")
-            click.echo("   Updating CLAUDE.md memory file...")
+            resource_manager.copy_claude_resources(project_path, overwrite=True)
+            resource_manager.copy_moai_resources(project_path, overwrite=True)
+            resource_manager.copy_project_memory(project_path, overwrite=True)
+            version_manager.write(available_resource_version, __version__)
+            click.echo(f"   Templates updated to v{available_resource_version}")
 
         if not resources_only:
             # Update package
@@ -448,7 +471,8 @@ def update(check: bool, no_backup: bool, verbose: bool, package_only: bool, reso
                     click.echo(f"   {pattern}: {len(files)} files")
 
         click.echo(f"\n{Fore.GREEN}✅ Update completed successfully{Style.RESET_ALL}")
-        click.echo(f"Version: v{current_version}")
+        click.echo(f"Package version: v{current_version}")
+        click.echo(f"Template version: v{available_resource_version}")
 
     except Exception as e:
         click.echo(f"{Fore.RED}❌ Update failed: {e}{Style.RESET_ALL}")

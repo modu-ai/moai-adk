@@ -197,10 +197,10 @@ moai_adk 패키지/
 ### 동적 파일 생성
 
 ```python
-$MOAI_VERSION      # 메인 버전 (0.1.16)
-$VERSION_FULL      # 전체 제목 (MoAI-ADK v0.1.16)
-$VERSION_SHORT     # 짧은 형식 (v0.1.16)
-$VERSION_BANNER    # 배너용 (🗿 MoAI-ADK v0.1.16)
+$MOAI_VERSION      # 메인 버전 (0.1.17)
+$VERSION_FULL      # 전체 제목 (MoAI-ADK v0.1.17)
+$VERSION_SHORT     # 짧은 형식 (v0.1.17)
+$VERSION_BANNER    # 배너용 (🗿 MoAI-ADK v0.1.17)
 $LAST_UPDATED      # 현재 날짜
 ```
 

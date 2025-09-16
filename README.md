@@ -1,8 +1,8 @@
-# MoAI-ADK (MoAI Agentic Development Kit) v0.1.16
+# MoAI-ADK (MoAI Agentic Development Kit) v0.1.17
 
 **Claude Code 표준 기반 Spec-First TDD 완전 자동화 개발 시스템**
 
-[![Version](https://img.shields.io/badge/version-0.1.16-blue)](https://github.com/modu-ai/moai-adk/releases)
+[![Version](https://img.shields.io/badge/version-0.1.17-blue)](https://github.com/modu-ai/moai-adk/releases)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)](https://docs.anthropic.com/claude-code)
@@ -210,4 +210,4 @@ MoAI-ADK에 기여해주셔서 감사합니다!
 
 **🗿 "명세가 없으면 코드도 없다. 테스트가 없으면 구현도 없다."**
 
-**MoAI-ADK v0.1.16** | **Made with ❤️ for Claude Code Community**
+**MoAI-ADK v0.1.17** | **Made with ❤️ for Claude Code Community**

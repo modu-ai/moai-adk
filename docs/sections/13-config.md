@@ -5,6 +5,9 @@
 MoAI-ADK는 두 개의 주요 설정 파일을 사용합니다:
 - `.claude/settings.json`: Claude Code 통합 설정
 - `.moai/config.json`: MoAI 시스템 설정
+- `.moai/version.json`: 설치된 템플릿/패키지 버전 메타데이터
+
+`moai update --check` 또는 `moai status` 명령은 `version.json`을 읽어 템플릿 버전이 최신인지 확인합니다. 업데이트가 적용되면 파일이 자동으로 갱신됩니다.
 
 ## .claude/settings.json
 
@@ -44,7 +47,7 @@ MoAI-ADK는 두 개의 주요 설정 파일을 사용합니다:
   },
   "env": {
     "MOAI_PROJECT": "true",
-    "MOAI_VERSION": "0.1.16"
+    "MOAI_VERSION": "0.1.17"
   },
   "enableAllProjectMcpServers": true,
   "cleanupPeriodDays": 30,
@@ -112,7 +115,7 @@ MoAI-ADK는 두 개의 주요 설정 파일을 사용합니다:
     "framework": "nextjs"
   },
   "moai": {
-    "version": "0.1.16",
+    "version": "0.1.17",
     "constitution_version": "1.0",
     "pipeline_stage": "INIT"
   },
@@ -177,7 +180,7 @@ MoAI-ADK는 두 개의 주요 설정 파일을 사용합니다:
 ```bash
 # MoAI 프로젝트 식별
 export MOAI_PROJECT=true
-export MOAI_VERSION=0.1.16
+export MOAI_VERSION=0.1.17
 
 # 성능 설정
 export MOAI_MAX_PARALLEL_TASKS=5
@@ -193,7 +196,7 @@ export MOAI_LOG_LEVEL=INFO
 {
   "env": {
     "MOAI_PROJECT": "true",
-    "MOAI_VERSION": "0.1.16",
+    "MOAI_VERSION": "0.1.17",
     "CONSTITUTION_MODE": "strict",
     "TAG_VALIDATION": "enabled"
   }

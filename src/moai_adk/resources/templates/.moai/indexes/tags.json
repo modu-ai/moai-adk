@@ -1,15 +1,15 @@
 {
-  "version": "0.1.15",
+  "version": "16-core",
   "last_updated": null,
   "total_tags": 0,
   "tag_categories": {
     "SPEC": {
       "description": "문서 추적 태그",
-      "tags": ["REQ", "DESIGN", "TASK"]
+      "tags": ["REQ", "SPEC", "DESIGN", "TASK"]
     },
     "STEERING": {
       "description": "원칙 추적 태그", 
-      "tags": ["VISION", "STRUCT", "TECH"]
+      "tags": ["VISION", "STRUCT", "TECH", "ADR"]
     },
     "IMPLEMENTATION": {
       "description": "코드 추적 태그",
@@ -27,6 +27,14 @@
       "source_files": ["spec.md", "requirements.md"],
       "pattern": "@REQ:[A-Z0-9-]+",
       "color": "#2563EB",
+      "category": "SPEC"
+    },
+    "SPEC": {
+      "full_name": "Specification Capsule",
+      "description": "SPEC 메타 정보",
+      "source_files": ["spec.md"],
+      "pattern": "@SPEC:[A-Z0-9-]+",
+      "color": "#3B82F6",
       "category": "SPEC"
     },
     "DESIGN": {
@@ -67,6 +75,14 @@
       "source_files": ["tech.md"],
       "pattern": "@TECH:[A-Z0-9-]+",
       "color": "#0891B2",
+      "category": "STEERING"
+    },
+    "ADR": {
+      "full_name": "Architecture Decision Record",
+      "description": "ADR 문서 추적",
+      "source_files": ["adr-*.md", "plan.md"],
+      "pattern": "@ADR:[A-Z0-9-]+",
+      "color": "#2563EB",
       "category": "STEERING"
     },
     "FEATURE": {
@@ -152,7 +168,7 @@
   },
   "validation_rules": {
     "required_tags_per_file_type": {
-      "spec.md": ["REQ", "DESIGN"],
+      "spec.md": ["REQ", "SPEC", "DESIGN"],
       "tasks.md": ["TASK", "REQ"],
       "*.test.ts": ["TEST"],
       "controllers/*.ts": ["API", "FEATURE"],

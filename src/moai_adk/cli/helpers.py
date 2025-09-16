@@ -13,6 +13,8 @@ from typing import Optional
 
 from ..utils.logger import get_logger
 from .._version import __version__, get_version_format
+from ..install.resource_manager import ResourceManager
+from ..core.resource_version import ResourceVersionManager
 from ..core.validator import validate_python_version
 
 logger = get_logger(__name__)
@@ -251,5 +253,26 @@ def format_project_status(project_path: Path, config_data: Optional[dict] = None
     # Add configuration data if provided
     if config_data:
         status["config"] = config_data
+
+    try:
+        resource_manager = ResourceManager()
+        version_manager = ResourceVersionManager(project_path)
+        version_info = version_manager.read()
+        template_version = version_info.get('template_version') or "unknown"
+        available_template_version = resource_manager.get_version()
+
+        status["versions"] = {
+            "package": __version__,
+            "resources": template_version,
+            "available_resources": available_template_version,
+            "last_updated": version_info.get('last_updated'),
+            "outdated": (
+                template_version != "unknown"
+                and available_template_version not in (None, "unknown")
+                and template_version != available_template_version
+            ),
+        }
+    except Exception as exc:
+        logger.warning("Failed to read resource version info: %s", exc)
 
     return status

@@ -1,4 +1,4 @@
-# MoAI-ADK (MoAI Agentic Development Kit) v0.1.16
+# MoAI-ADK (MoAI Agentic Development Kit) v0.1.17
 
 **Claude Code 최신 표준 기반 Spec-First TDD 완전 자동화 개발 시스템**
 
@@ -221,6 +221,6 @@ claude --model opusplan
 
 **마지막 업데이트**: 2025-09-16
 **다음 검토 예정**: 2025-10-16
-**MoAI-ADK 버전**: v0.1.16
+**MoAI-ADK 버전**: v0.1.17
 
 **🗿 "명세가 없으면 코드도 없다. 테스트가 없으면 구현도 없다."**

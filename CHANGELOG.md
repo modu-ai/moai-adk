@@ -5,6 +5,21 @@ All notable changes to MoAI-ADK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.17] - 2025-09-17
+
+### 🚀 Highlights
+- **자동 업데이트 시스템 고도화**: `.moai/version.json`으로 템플릿 버전을 기록하고 `moai update --check`에서 즉시 비교합니다.
+- **moai update 개선**: 리소스만 덮어쓰거나 패키지와 함께 갱신 가능하며, 실행 전에 자동 백업을 생성합니다.
+- **상태 보고 강화**: `moai status`가 패키지/템플릿 버전을 함께 표시하고, 구버전이면 경고합니다.
+- **16-Core 태그/모델 반영**: 기본 템플릿과 설정이 최신 16-Core 체계와 모델 매핑을 사용합니다.
+
+### ✅ 변경 사항
+- 업데이트 시 `.moai/version.json` 자동 생성 및 최신 버전 기록
+- `ResourceVersionManager` 추가로 프로젝트 리소스 버전 관리
+- `ConfigManager`/템플릿에서 16-Core 태그(ADR, SPEC 포함)와 모델 매핑 업데이트
+- 문서(`commands`, `installation`, `config`)에 업데이트 절차 및 버전 추적 안내 추가
+- `python -m build` 테스트로 패키지 배포 검증 완료
+
 ## [0.1.11] - 2025-09-15 (CRITICAL HOTFIX)
 
 ### 🚨 Critical Bug Fixes
@@ -229,4 +244,4 @@ moai restore .moai_backup_20241215_143022
 
 ---
 
-**MoAI-ADK v0.1.16** - Making AI-driven development accessible to everyone! 🎉
+**MoAI-ADK v0.1.17** - Making AI-driven development accessible to everyone! 🎉

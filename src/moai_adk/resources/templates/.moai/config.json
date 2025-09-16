@@ -1,5 +1,5 @@
 {
-  "moai_version": "0.1.15",
+  "moai_version": "0.1.17",
   "project_type": "spec_first_tdd",
   "created_at": "2025-09-12T01:52:00Z",
   "last_updated": "2025-09-12T01:52:00Z",
@@ -44,18 +44,18 @@
   
   "tag_system": {
     "enabled": true,
-    "version": "0.1.15",
+    "version": "16-core",
     "autoIndexing": true,
     "validateNaming": true,
     "enforceTraceability": true,
     "categories": {
       "SPEC": {
-        "tags": ["REQ", "DESIGN", "TASK"],
+        "tags": ["REQ", "SPEC", "DESIGN", "TASK"],
         "required": true,
         "description": "문서 추적 태그"
       },
       "STEERING": {
-        "tags": ["VISION", "STRUCT", "TECH", "STACK"], 
+        "tags": ["VISION", "STRUCT", "TECH", "ADR"],
         "required": true,
         "description": "원칙 추적 태그"
       },
@@ -182,8 +182,8 @@
     "max_concurrent_agents": 4,
     "agent_memory_limit": "200MB",
     "model_selection": {
-      "opus": ["steering-architect", "plan-architect", "code-generator"],
-      "sonnet": ["claude-code-manager", "spec-manager", "task-decomposer", "test-automator"],
+      "opus": ["steering-architect", "plan-architect"],
+      "sonnet": ["claude-code-manager", "spec-manager", "task-decomposer", "test-automator", "code-generator", "integration-manager", "deployment-specialist"],
       "haiku": ["tag-indexer", "doc-syncer"]
     }
   },
@@ -274,7 +274,7 @@
     "MOAI_VERSION": {
       "description": "MoAI-ADK version",
       "required": true,
-      "default": "0.1.9"
+      "default": "0.1.17"
     },
     "CLAUDE_MODEL": {
       "description": "Default Claude model for agents",

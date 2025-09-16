@@ -27,7 +27,7 @@ class SessionNotifier:
         """프로젝트 전체 상태 분석"""
         status = {
             "project_name": self.project_root.name,
-            "moai_version": "0.1.16",
+            "moai_version": "0.1.17",
             "initialized": self.is_moai_project(),
             "constitution_status": self.check_constitution_status(),
             "pipeline_stage": self.get_current_pipeline_stage(),

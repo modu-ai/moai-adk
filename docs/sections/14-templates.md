@@ -208,7 +208,7 @@ spec_content = engine.generate_spec_template(
 
 # 동적 변수 주입
 variables = {
-    '$MOAI_VERSION': '0.1.16',
+    '$MOAI_VERSION': '0.1.17',
     '$PROJECT_NAME': 'My Project',
     '$SPEC_ID': '001',
     '$SPEC_TITLE': 'User Authentication'

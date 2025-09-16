@@ -41,16 +41,21 @@ class ConfigManager:
         Returns:
             bool: True if settings file was created successfully
         """
+        if settings_path.exists() and not getattr(config, 'force_overwrite', False):
+            # keep existing settings (from templates)
+            return True
+
         settings = {
             "hooks": {
                 "PreToolUse": [
                     {
-                        "matcher": "Write|Edit|MultiEdit",
+                        "matcher": "Edit|MultiEdit|Write|Bash",
                         "hooks": [
                             {
                                 "type": "command",
-                                "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/constitution_guard.py",
-                                "description": "Constitution 5 principles validation"
+                                "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_write_guard.py",
+                                "timeout": 60,
+                                "description": "Sensitive path protection & risk guard"
                             }
                         ]
                     },
@@ -63,10 +68,38 @@ class ConfigManager:
                                 "description": "Dangerous commands and policy blocking"
                             }
                         ]
+                    },
+                    {
+                        "matcher": "Edit|MultiEdit|Write",
+                        "hooks": [
+                            {
+                                "type": "command",
+                                "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/constitution_guard.py",
+                                "description": "Constitution 5 principles validation"
+                            },
+                            {
+                                "type": "command",
+                                "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag_validator.py",
+                                "description": "16-Core @TAG validation"
+                            }
+                        ]
+                    }
+                ],
+                "PostToolUse": [
+                    {
+                        "matcher": "Edit|MultiEdit|Write",
+                        "hooks": [
+                            {
+                                "type": "command",
+                                "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_stage_guard.py",
+                                "description": "Stage validation & doc sync"
+                            }
+                        ]
                     }
                 ],
                 "SessionStart": [
                     {
+                        "matcher": "*",
                         "hooks": [
                             {
                                 "type": "command",
@@ -78,54 +111,32 @@ class ConfigManager:
                 ]
             },
             "permissions": {
+                "defaultMode": "ask",
                 "allow": [
-                    "Bash(npm run :*)",
-                    "Bash(yarn :*)",
-                    "Bash(bun :*)",
-                    "Bash(pip :*)",
-                    "Bash(python :*)",
-                    "Bash(python3 :*)",
-                    "Bash(git :*)",
-                    "Bash(pytest :*)",
-                    "Bash(coverage :*)",
-                    "Read(**/*.md)",
-                    "Read(**/*.json)",
-                    "Read(**/*.py)",
-                    "Read(**/*.toml)",
-                    "Read(**/*.yml)",
-                    "Read(**/*.yaml)",
-                    "Write(**/*.md)",
-                    "Write(**/*.json)",
-                    "Write(**/*.py)",
-                    "Edit(**/*.ts)",
-                    "Edit(**/*.js)",
-                    "Edit(**/*.py)",
-                    "Edit(**/*.tsx)",
-                    "Edit(**/*.jsx)",
-                    "Edit(**/*.md)",
-                    "Edit(**/*.json)",
-                    "Glob",
+                    "Read(**)",
                     "Grep",
+                    "Glob",
                     "Task",
-                    "WebFetch",
+                    "Bash(*)",
                 ]
-            },
-            "env": {
-                "CLAUDE_CODE_PROJECT_NAME": config.name,
-                "MOAI_ADK_VERSION": __version__,
-                "MOAI_ADK_TEMPLATE": config.template,
-                "MOAI_ADK_RUNTIME": config.runtime.name,
-                "MOAI_ADK_ROOT": ".",
-                "PYTHONPATH": ".",
             },
         }
 
         try:
             self._write_json_file(settings_path, settings)
             return True
+        except SecurityError:
+            logger.error("Security validation failed for config file: %s", settings_path)
+            raise
         except Exception as e:
             logger.error("Failed to write Claude settings file: %s", e)
             return False
+
+    def create_claude_settings_file(self, project_path: Path, config: Config) -> Path:
+        """Backward-compatible helper to create settings file under project root."""
+        settings_path = project_path / ".claude" / "settings.json"
+        self.create_claude_settings(settings_path, config)
+        return settings_path
 
     def create_moai_config(self, config_path: Path, config: Config) -> bool:
         """
@@ -138,6 +149,9 @@ class ConfigManager:
         Returns:
             bool: True if config file was created successfully
         """
+        if config_path.exists() and not getattr(config, 'force_overwrite', False):
+            return True
+
         moai_config = {
             "version": get_version("moai_adk"),
             "created": datetime.now().isoformat(),
@@ -163,10 +177,13 @@ class ConfigManager:
                 "versioning": {"format": "MAJOR.MINOR.BUILD", "enforce": True},
             },
             "tags": {
-                "core_14": [
-                    "REQ", "DESIGN", "TASK", "VISION", "STRUCT", "TECH",
-                    "FEATURE", "API", "TEST", "DATA", "PERF", "SEC", "DEBT", "TODO",
-                ],
+                "version": "16-core",
+                "categories": {
+                    "spec": ["REQ", "SPEC", "DESIGN", "TASK"],
+                    "steering": ["VISION", "STRUCT", "TECH", "ADR"],
+                    "implementation": ["FEATURE", "API", "TEST", "DATA"],
+                    "quality": ["PERF", "SEC", "DEBT", "TODO"],
+                },
                 "validation": {"strict_mode": True, "auto_index": True},
             },
             "pipeline": {
@@ -179,12 +196,12 @@ class ConfigManager:
                 },
             },
             "agents": {
-                "count": 10,
+                "count": 11,
                 "enabled": [
                     "claude-code-manager", "steering-architect", "spec-manager",
                     "plan-architect", "task-decomposer", "code-generator",
-                    "doc-syncer", "quality-auditor", "integration-manager",
-                    "deployment-specialist", "tag-indexer",
+                    "test-automator", "tag-indexer", "doc-syncer",
+                    "quality-auditor", "integration-manager", "deployment-specialist",
                 ],
             },
         }
@@ -192,9 +209,18 @@ class ConfigManager:
         try:
             self._write_json_file(config_path, moai_config)
             return True
+        except SecurityError:
+            logger.error("Security validation failed for config file: %s", config_path)
+            raise
         except Exception as e:
             logger.error("Failed to write MoAI config file: %s", e)
             return False
+
+    def create_moai_config_file(self, project_path: Path, config: Config) -> Path:
+        """Backward-compatible helper to create config file under project root."""
+        config_path = project_path / ".moai" / "config.json"
+        self.create_moai_config(config_path, config)
+        return config_path
 
     def create_package_json(self, project_path: Path, config: Config) -> Path:
         """
@@ -282,13 +308,13 @@ class ConfigManager:
         # 2. traceability.json - 4 chains definition
         traceability_data = {
             "metadata": {
-                "version": "14-core",
+                "version": "16-core",
                 "generated_at": datetime.now().isoformat(),
                 "total_links": 0,
             },
             "chains": {
                 "primary": ["REQ", "DESIGN", "TASK", "TEST"],
-                "steering": ["VISION", "STRUCT", "TECH", "STACK"],
+                "steering": ["VISION", "STRUCT", "TECH", "ADR"],
                 "implementation": ["FEATURE", "API", "DATA"],
                 "quality": ["PERF", "SEC", "DEBT", "TODO"],
             },

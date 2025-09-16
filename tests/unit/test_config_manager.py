@@ -77,16 +77,14 @@ class TestConfigManager:
         # Check required sections
         assert "hooks" in settings_data
         assert "permissions" in settings_data
-        assert "env" in settings_data
 
         # Check hooks configuration
-        assert "PreToolUse" in settings_data["hooks"]
+        pre_entries = settings_data["hooks"].get("PreToolUse", [])
+        all_commands = [hook.get("command", "") for entry in pre_entries for hook in entry.get("hooks", [])]
+        assert any(cmd.endswith("pre_write_guard.py") for cmd in all_commands)
+        assert any(cmd.endswith("constitution_guard.py") for cmd in all_commands)
         assert "SessionStart" in settings_data["hooks"]
-
-        # Check environment variables
-        env_vars = settings_data["env"]
-        assert env_vars["CLAUDE_CODE_PROJECT_NAME"] == sample_config.name
-        assert env_vars["MOAI_ADK_RUNTIME"] == sample_config.runtime.name
+        assert settings_data["hooks"]["SessionStart"][0]["hooks"][0]["command"].endswith("session_start_notice.py")
 
     def test_create_claude_settings_file_security_failure(self, config_manager, temp_dir, sample_config):
         """Test Claude settings file creation when security validation fails."""
@@ -136,12 +134,13 @@ class TestConfigManager:
         assert constitution["testing"]["tdd_required"] is True
         assert constitution["testing"]["coverage_target"] == 0.8
 
-        # Check 14-core TAG system
+        # Check 16-core TAG system structure
         tags = config_data["tags"]
-        assert len(tags["core_14"]) == 14
-        assert "REQ" in tags["core_14"]
-        assert "DESIGN" in tags["core_14"]
-        assert "TEST" in tags["core_14"]
+        assert tags["version"] == "16-core"
+        categories = tags["categories"]
+        assert set(categories["spec"]) == {"REQ", "SPEC", "DESIGN", "TASK"}
+        assert set(categories["steering"]) == {"VISION", "STRUCT", "TECH", "ADR"}
+        assert "implementation" in categories and "quality" in categories
 
     def test_create_moai_config_file_security_failure(self, config_manager, temp_dir, sample_config):
         """Test MoAI config file creation when security validation fails."""
@@ -245,9 +244,9 @@ class TestConfigManager:
         with open(tags_file, "r", encoding="utf-8") as f:
             tags_data = json.load(f)
 
-        assert tags_data["metadata"]["version"] == "14-core"
-        assert "SPEC" in tags_data["categories"]
-        assert "REQ" in tags_data["categories"]["SPEC"]
+        assert tags_data["metadata"]["version"] == "16-core"
+        assert set(tags_data["categories"]["SPEC"].keys()) == {"REQ", "SPEC", "DESIGN", "TASK"}
+        assert set(tags_data["categories"]["Steering"].keys()) == {"VISION", "STRUCT", "TECH", "ADR"}
 
         # Validate traceability.json
         with open(traceability_file, "r", encoding="utf-8") as f:
@@ -255,6 +254,7 @@ class TestConfigManager:
 
         assert "primary" in traceability_data["chains"]
         assert traceability_data["chains"]["primary"] == ["REQ", "DESIGN", "TASK", "TEST"]
+        assert traceability_data["chains"]["steering"] == ["VISION", "STRUCT", "TECH", "ADR"]
 
         # Validate state.json
         with open(state_file, "r", encoding="utf-8") as f:
@@ -494,11 +494,9 @@ class TestConfigManager:
             moai_data = json.load(f)
 
         # Project name should be consistent
-        assert claude_data["env"]["CLAUDE_CODE_PROJECT_NAME"] == sample_config.name
         assert moai_data["project"]["name"] == sample_config.name
 
         # Runtime should be consistent
-        assert claude_data["env"]["MOAI_ADK_RUNTIME"] == sample_config.runtime.name
         assert moai_data["project"]["runtime"] == sample_config.runtime.name
 
     def test_json_formatting_and_encoding(self, config_manager, temp_dir):

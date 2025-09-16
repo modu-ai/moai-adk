@@ -7,56 +7,21 @@
 - 설치기/리소스 관리자: `templates.mode=package`일 때 `.moai/_templates/` 복사 생략 지원
 - 문서 업데이트: 설정(13-config), 템플릿(14-templates), 아키텍처(04-architecture), 설치(05-installation)
 
-## v0.1.16 (2025-09-16) - 핵심 버그 수정 및 안정성 대폭 향상
+## v0.1.17 (2025-09-17) - 자동 업데이트 & 16-Core 정비
 
-### 🐛 핵심 버그 수정 (5개 Critical Issues 해결)
+### 🔄 moai update / status 고도화
+- `.moai/version.json`에서 템플릿 버전을 추적하고 `moai update --check`로 최신 여부를 즉시 확인
+- `moai update` 실행 시 `.moai_backup_*` 디렉터리에 자동 백업 후 리소스를 안전하게 덮어쓰기
+- `moai status`가 패키지·템플릿 버전을 함께 출력하며, 구버전일 경우 경고 표시
 
-**1. Config 초기화 오류 완전 해결**
-- **문제**: `moai init`가 `Config.__init__` TypeError로 즉시 실행 중단
-- **원인**: `project_path` 파라미터와 `path` 필드 불일치, `RuntimeConfig` 필수 인수 누락
-- **해결**: `Config.__init__`에 하위 호환성 로직 추가, `RuntimeConfig("python")` 수정
-- **결과**: `moai init` 명령어 100% 정상 동작
+### 🏷️ 16-Core @TAG 및 모델 매핑 업데이트
+- `.moai/config.json`, `tags.json` 등 템플릿을 16-Core 구조(@SPEC, @ADR 포함)로 통일
+- 기본 Hook/문서가 최신 모델 운용 가이드(opusplan/sonnet/haiku)를 반영
 
-**2. ResourceManager 누락 메서드 구현**
-- **문제**: installer.py가 존재하지 않는 메서드 호출로 설치 과정 중단
-- **원인**: `copy_github_resources()`, `copy_project_memory()`, `validate_project_resources()` 미구현
-- **해결**: 3개 핵심 메서드 완전 구현 (GitHub 워크플로우, CLAUDE.md 생성, 리소스 검증)
-- **결과**: 프로젝트 초기화 과정 완전 자동화
-
-**3. 불완전한 리소스 번들 완성**
-- **문제**: 실제 templates 디렉토리에 CLAUDE.md와 scripts만 존재
-- **원인**: `.claude/`, `.moai/`, `.github/` 템플릿 디렉토리 부재
-- **해결**: 완전한 템플릿 구조 생성 (settings.json, hooks, agents, workflows)
-- **결과**: 모든 MoAI-ADK 리소스 정상 배포
-
-**4. VersionSyncManager 하드코딩 제거**
-- **문제**: 버전 동기화 도구가 "0.1.13" 하드코딩으로 새 버전 업데이트 불가
-- **원인**: 25개 파일 패턴에서 고정 버전 문자열 사용
-- **해결**: 모든 패턴을 `{self.current_version}` 동적 참조로 변환
-- **결과**: 자동 버전 동기화 시스템 완전 자동화
-
-**5. Python 버전 정책 통일**
-- **문제**: 빌드 설정과 런타임 검증이 서로 다른 Python 최소 버전을 참조
-- **원인**: 패키징 메타데이터와 런타임 검증 로직 간 버전 차이
-- **해결**: 통합 요구사항을 >=3.11로 상향하고 문서/코드를 일괄 반영
-- **결과**: Python 3.11-3.13 완전 호환성 확보
-
-### 🧪 포괄적 테스트 검증
-
-**패키지 동작 검증 (7/7 통과)**:
-- ✅ 패키지 설치 (`pip install -e .`)
-- ✅ CLI 명령어 (`moai --version`, `moai status`)
-- ✅ 프로젝트 초기화 (`moai init`)
-- ✅ ResourceManager 메서드 동작
-- ✅ VersionSyncManager 동적 버전 시스템
-- ✅ Python 버전 호환성 (3.11-3.13)
-- ✅ 종속성 호환성 (핵심 라이브러리 로딩)
-
-**Python 언어 기능 호환성**:
-- ✅ Structural pattern matching (`match-case`) - Python 3.11+
-- ✅ Exception Groups 및 `except*` 구문 - Python 3.11+
-- ✅ `typing.Self`, `LiteralString` 등 타입 시스템 강화 - Python 3.11+
-- ✅ `asyncio.TaskGroup`, `tomllib` 등 표준 라이브러리 최신 기능 지원
+### 🧰 개발자 경험 개선
+- `ResourceVersionManager` 도입으로 프로젝트별 템플릿 버전을 기록
+- 문서(`installation`, `commands`, `config`)에 업데이트 절차와 버전 확인 방법 안내 추가
+- `python -m build`로 패키지 빌드 검증 자동화
 
 ### 🏗️ 아키텍처 개선
 
@@ -101,7 +66,7 @@ def __init__(self, name: str, **kwargs):
 
 ### 🔧 신뢰성 보장
 
-이번 v0.1.16은 **완전히 테스트된 안정 버전**입니다:
+이번 v0.1.17은 **완전히 테스트된 안정 버전**입니다:
 - 모든 핵심 기능 동작 검증 완료
 - Python 3.11-3.13 교차 호환성 확인
 - 실제 프로젝트 환경에서 End-to-End 테스트

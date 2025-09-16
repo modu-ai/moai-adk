@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MoAI-ADK Tag Validator PreToolUse Hook v0.1.16
+MoAI-ADK Tag Validator PreToolUse Hook v0.1.17
 16-Core @TAG 시스템 품질 검증 및 규칙 강제
 
 이 Hook은 모든 파일 편집 시 @TAG 시스템의 품질을 자동으로 검증합니다.
