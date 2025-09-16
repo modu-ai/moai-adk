@@ -45,6 +45,7 @@ MoAI-ADK는 각 개발 단계에 특화된 11개의 전문 에이전트를 제�
 - SPEC 문서 생성 및 관리
 - [NEEDS CLARIFICATION] 마커 시스템
 - 요구사항 추적성 보장
+ - 설명만 입력 시 의미 보존형 영어 케밥케이스 슬러그 자동 생성(예: "실시간 알림 시스템" → `user-notification`), 충돌 시 접미사 부여
 
 ### 4. plan-architect
 **역할**: Constitution Check 및 계획 수립
