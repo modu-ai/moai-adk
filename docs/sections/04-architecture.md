@@ -49,7 +49,7 @@ MoAI-ADK는 Claude Code 표준을 완전히 준수하면서도 체계적인 문�
 │   ├── logs/                      # 세션 로그
 │   └── settings.json              # 팀 공유 설정
 ├── .moai/                         # MoAI 문서 시스템
-│   ├── _templates/                # 🆕 v0.1.13: 동적 템플릿 시스템
+│   ├── _templates/                # 🆕 v0.1.13: 동적 템플릿 시스템 (templates.mode=package일 때 미복사 가능)
 │   │   ├── specs/                 # SPEC 템플릿
 │   │   │   └── spec.template.md   # EARS 형식 명세서 템플릿
 │   │   ├── steering/              # Steering 문서 템플릿
@@ -159,7 +159,7 @@ moai_adk 패키지/
         │   ├── commands/    # 6개 슬래시 명령어
         │   └── hooks/       # 프로젝트 훅들
         ├── .moai/           # MoAI 설정 템플릿
-        │   ├── _templates/  # 문서 템플릿들
+        │   ├── _templates/  # 문서 템플릿들 (templates.mode=package일 때는 복사 생략)
         │   └── config.json  # 기본 설정
         └── CLAUDE.md        # 프로젝트 메모리
 
@@ -195,11 +195,10 @@ moai_adk 패키지/
 ### 동적 파일 생성
 
 ```python
-# TemplateEngine 자동 변수 주입
-$MOAI_VERSION      # 메인 버전 (0.1.14)
-$VERSION_FULL      # 전체 제목 (MoAI-ADK v0.1.15)
-$VERSION_SHORT     # 짧은 형식 (v0.1.14)
-$VERSION_BANNER    # 배너용 (🗿 MoAI-ADK v0.1.15)
+$MOAI_VERSION      # 메인 버전 (0.1.16)
+$VERSION_FULL      # 전체 제목 (MoAI-ADK v0.1.16)
+$VERSION_SHORT     # 짧은 형식 (v0.1.16)
+$VERSION_BANNER    # 배너용 (🗿 MoAI-ADK v0.1.16)
 $LAST_UPDATED      # 현재 날짜
 ```
 
@@ -214,6 +213,7 @@ $LAST_UPDATED      # 현재 날짜
 
 ### 동적 생성 시스템
 
+- **폴백 탐색**: 프로젝트 `.moai/_templates` → 패키지 `moai_adk.resources/templates/.moai/_templates`
 - **필요시 생성**: 더 이상 샘플 파일 사전 생성하지 않음
 - **변수 치환**: Python string.Template 기반 안전한 처리
 - **다중 확장자 지원**: .template.md, .template.json 등

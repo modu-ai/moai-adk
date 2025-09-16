@@ -208,7 +208,7 @@ spec_content = engine.generate_spec_template(
 
 # 동적 변수 주입
 variables = {
-    '$MOAI_VERSION': '0.1.14',
+    '$MOAI_VERSION': '0.1.16',
     '$PROJECT_NAME': 'My Project',
     '$SPEC_ID': '001',
     '$SPEC_TITLE': 'User Authentication'
@@ -245,3 +245,28 @@ moai template register my-template
 ```
 
 템플릿 시스템은 **일관된 문서 구조**와 **동적 콘텐츠 생성**을 통해 효율적인 개발 문서화를 지원합니다.
+
+## 템플릿 탐색 순서 및 폴백 (vNext)
+
+- TemplateEngine 탐색 순서:
+  1) 프로젝트 로컬: `.moai/_templates/`
+  2) 패키지 내장: `moai_adk.resources/templates/.moai/_templates`
+
+- 설치 모드와 동작:
+  - `templates.mode = copy`(기본): 템플릿이 프로젝트로 복사됩니다.
+  - `templates.mode = package`: 템플릿 복사를 생략하고, 없으면 패키지 템플릿으로 자동 폴백합니다.
+
+- 오버라이드 원칙:
+- 동일 경로/파일명일 때 로컬 템플릿이 항상 우선합니다.
+- 팀 공용 템플릿은 최소화하고 필요한 파일만 `.moai/_templates/`에 추가하세요.
+
+예시
+```bash
+# 패키지 폴백 사용(로컬 템플릿 없음)
+# → 패키지 템플릿이 적용됨
+
+# 프로젝트 오버라이드 추가
+mkdir -p .moai/_templates/specs
+printf "# LOCAL: $SPEC_NAME ($SPEC_ID)\n" > .moai/_templates/specs/spec.template.md
+# → 동일 명령 실행 시 로컬 템플릿이 우선 적용
+```

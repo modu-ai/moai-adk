@@ -67,3 +67,8 @@
 - 실패나 경고를 무시하지 않는다.
 - 근거 없는 최적화나 추상화를 도입하지 않는다.
 - 광범위한 예외를 남용하지 않는다.
+
+## 변경 커밋 기록 (요약)
+
+- feat(template-engine): add package fallback for templates and tests
+- feat(templates-mode): add 'templates_mode' config and skip copying .moai/_templates when mode=package; update config output; add tests
