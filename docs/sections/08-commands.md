@@ -38,7 +38,11 @@ MoAI-ADK는 4단계 파이프라인을 지원하는 6개의 연번순 슬래시 
 
 ```bash
 # 새 명세 작성
+# 1) 슬러그 + 설명 (기존)
 /moai:2-spec user-auth "JWT 기반 사용자 인증 시스템"
+
+# 2) 설명만 입력 (신규) → 슬러그 자동 생성
+/moai:2-spec "실시간 알림 시스템"   # ⇒ Slug: user-notification
 
 # 기존 명세 수정
 /moai:2-spec SPEC-001 --update
@@ -48,6 +52,11 @@ MoAI-ADK는 4단계 파이프라인을 지원하는 6개의 연번순 슬래시 
 - SPEC-XXX 디렉토리
 - spec.md (EARS 형식 명세)
 - [NEEDS CLARIFICATION] 마커
+
+**자동 슬러그 생성 규칙**
+- 설명만 입력 시 영어 케밥케이스 슬러그 생성(2~4단어, 소문자-하이픈).
+- 예: "실시간 알림 시스템" → `user-notification` (문맥상 `realtime-notification`도 허용).
+- 충돌 시 `-2`, `-3` 접미사로 회피. 생성된 슬러그는 출력 상단에 보고됩니다.
 
 ### /moai:3-plan - Constitution Check
 **기능**: 5원칙 준수 검증 및 계획 수립

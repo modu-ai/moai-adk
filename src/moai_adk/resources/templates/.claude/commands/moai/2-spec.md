@@ -1,6 +1,6 @@
 ---
 description: EARS 형식 명세 작성 - 비즈니스 요구사항을 엔지니어링 관점에서 구조화된 명세로 변환
-argument-hint: <feature-name> [description] [--clarification-only]
+argument-hint: <feature-name|"description-only"> [description] [--clarification-only]
 allowed-tools: Read, Write, Edit, MultiEdit, Task
 ---
 
@@ -12,27 +12,25 @@ MoAI-ADK 파이프라인의 최초 진입점으로, 비즈니스 요구사항을
 
 ```mermaid
 flowchart TD
-    A[사용자 설명 파싱] --> B{설명 존재?}
+    A[사용자 입력 파싱] --> B{설명 존재?}
     B -->|비어있음| C[ERROR: No feature description]
-    B -->|존재| D[핵심 개념 추출]
+    B -->|존재| D[슬러그 결정: 제공 or 자동 생성]
+    D --> E[핵심 개념 추출]
+    E --> F[actors, actions, data, constraints]
+    F --> G[불명확한 부분 마킹]
+    G --> H[[NEEDS CLARIFICATION: 구체적 질문]]
+    H --> I[User Stories 작성]
+    I --> J[US-XXX 형식]
+    J --> K[EARS 형식 요구사항 생성]
+    K --> L[WHEN/IF/WHILE/WHERE/UBIQUITOUS]
+    L --> M[수락 기준 (Given-When-Then)]
+    M --> N[Review Checklist 실행]
     
-    D --> E[actors, actions, data, constraints]
-    E --> F[불명확한 부분 마킹]
-    F --> G[[NEEDS CLARIFICATION: 구체적 질문]]
+    N --> O{[NEEDS CLARIFICATION] 존재?}
+    O -->|존재| P[WARN: 명확화 필요]
+    O -->|없음| Q[명세 완성]
     
-    G --> H[User Stories 작성]
-    H --> I[US-XXX 형식]
-    I --> J[EARS 형식 요구사항 생성]
-    
-    J --> K[WHEN/IF/WHILE/WHERE/UBIQUITOUS]
-    K --> L[수락 기준 (Given-When-Then)]
-    L --> M[Review Checklist 실행]
-    
-    M --> N{[NEEDS CLARIFICATION] 존재?}
-    N -->|존재| O[WARN: 명확화 필요]
-    N -->|없음| P[명세 완성]
-    
-    P --> Q[컨텍스트 초기화 권장]
+    Q --> R[컨텍스트 초기화 권장]
 ```
 
 ## 🤖 자연어 체이닝 오케스트레이션
@@ -257,6 +255,34 @@ Then 시스템은 해당 계정을 15분간 잠그고
 - 현재 단계에 집중된 최적 성능
 - 메모리 효율성 향상
 - 더 정확한 결과 생성
+```
+
+## 입력 형식과 자동 슬러그 생성
+
+### 허용 입력 형식
+
+```bash
+# 1) 슬러그 + 설명 (기존)
+/moai:2-spec user-auth "JWT 기반 사용자 인증 시스템"
+
+# 2) 설명만 입력 (신규) → 슬러그 자동 생성
+/moai:2-spec "실시간 알림 시스템"
+```
+
+### 자동 슬러그 생성 규칙
+- 설명만 입력된 경우, 의미를 보존하는 영어 케밥케이스 슬러그를 생성한다.
+- 2~4개 핵심 단어를 선택하고 소문자-하이픈(`-`)으로 연결한다.
+- 예: "실시간 알림 시스템" → `user-notification` (또는 `realtime-notification` 문맥에 따라 선택)
+- 충돌 방지: 동일 슬러그가 존재하면 `-2`, `-3` 접미사를 증가시킨다.
+- 생성된 슬러그는 출력 상단에 명확히 보고한다. 예: `Slug: user-notification`
+
+### 출력 요건(요약)
+- 선택/생성된 슬러그, 생성된 SPEC-ID, 문서 경로를 첫 블록에 요약한다.
+- 예:
+```markdown
+Slug: user-notification
+SPEC-ID: SPEC-001
+Path: .moai/specs/SPEC-001/
 ```
 
 ## 작업 타입별 처리
