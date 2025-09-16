@@ -1,7 +1,7 @@
 # MoAI-ADK Documentation Index
 
 > **AI Navigation Guide**: 빠른 문서 검색을 위한 체계적 인덱스
-> **Last Updated**: 2025-09-16 | **Package Version**: v0.1.17
+> **Last Updated**: 2025-09-17 | **Package Version**: v0.1.17
 
 ---
 
