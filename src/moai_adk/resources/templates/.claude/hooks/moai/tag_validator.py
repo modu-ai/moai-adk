@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-MoAI-ADK Tag Validator PreToolUse Hook v0.1.12
-14-Core @TAG 시스템 품질 검증 및 규칙 강제
+MoAI-ADK Tag Validator PreToolUse Hook v0.1.16
+16-Core @TAG 시스템 품질 검증 및 규칙 강제
 
 이 Hook은 모든 파일 편집 시 @TAG 시스템의 품질을 자동으로 검증합니다.
-- 14-Core 태그 체계 준수 검증
+- 16-Core 태그 체계 준수 검증
 - 태그 네이밍 규칙 및 일관성 검사
 - 품질 점수 계산 및 개선 제안
 """
@@ -28,7 +28,7 @@ except ImportError:
         pass
 
 class MoAITagValidator:
-    """MoAI-ADK 14-Core @TAG 시스템 검증기"""
+    """MoAI-ADK 16-Core @TAG 시스템 검증기"""
     
     def __init__(self, project_root: Path):
         self.project_root = project_root
@@ -36,13 +36,13 @@ class MoAITagValidator:
         self.config_path = project_root / ".moai" / "config.json"
         self.tags_index_path = project_root / ".moai" / "indexes" / "tags.json"
         
-        # 14-Core 태그 체계 정의
+        # 16-Core 태그 체계 정의
         self.tag_categories = {
-            'Primary': ['REQ', 'DESIGN', 'TASK', 'TEST'],
-            'Steering': ['VISION', 'STRUCT', 'TECH', 'STACK'], 
-            'Implementation': ['FEATURE', 'API', 'DATA'],
+            'Spec': ['REQ', 'SPEC', 'DESIGN', 'TASK'],
+            'Steering': ['VISION', 'STRUCT', 'TECH', 'ADR'],
+            'Implementation': ['FEATURE', 'API', 'TEST', 'DATA'],
             'Quality': ['PERF', 'SEC', 'DEBT', 'TODO'],
-            'Legacy': ['SPEC', 'ADR', 'US', 'FR', 'NFR', 'BUG', 'REVIEW']
+            'Legacy': ['US', 'FR', 'NFR', 'BUG', 'REVIEW']
         }
         
         # 모든 유효한 태그 타입
@@ -174,7 +174,7 @@ class MoAITagValidator:
         if tag_type not in self.valid_tag_types:
             return {
                 'valid': False,
-                'error': f"'{tag_type}' is not a valid 14-Core tag type",
+                'error': f"'{tag_type}' is not a valid 16-Core tag type",
                 'suggestion': self.suggest_similar_tag(tag_type)
             }
         
@@ -219,10 +219,12 @@ class MoAITagValidator:
         consistency_rules = {
             'SPEC': ['.moai/specs/', 'spec.md'],
             'REQ': ['.moai/specs/', 'spec.md', 'requirements.md'],
+            'DESIGN': ['plan.md', 'research.md', 'data-model.md', 'contracts/'],
             'TASK': ['.moai/specs/', 'tasks.md'],
             'TEST': ['test/', 'tests/', '__test__', '.test.'],
             'API': ['api/', 'routes/', 'endpoints/'],
-            'DATA': ['models/', 'schema/', 'database/']
+            'DATA': ['models/', 'schema/', 'database/'],
+            'ADR': ['.moai/memory/decisions', 'ADR']
         }
         
         if tag_type in consistency_rules:
@@ -253,10 +255,14 @@ class MoAITagValidator:
         """태그 타입별 네이밍 예시 제공"""
         examples = {
             'REQ': 'REQ:FUNC-001, REQ:PERF-002',
+            'SPEC': 'SPEC:AUTH-OVERVIEW, SPEC:CART-SCOPE',
+            'DESIGN': 'DESIGN:AUTH-ARCH, DESIGN:PAYMENT-SEQ',
+            'TASK': 'TASK:AUTH-SERVICE-001, TASK:CART-UI-002',
             'API': 'API:GET-USERS, API:POST-LOGIN',  
             'TEST': 'TEST:UNIT-AUTH, TEST:E2E-CHECKOUT',
             'PERF': 'PERF:API-500MS, PERF:DB-FAST',
             'SEC': 'SEC:XSS-HIGH, SEC:SQL-MED',
+            'ADR': 'ADR:ARCH-DECISION-001',
             'BUG': 'BUG:CRITICAL-001, BUG:HIGH-002'
         }
         
@@ -349,11 +355,11 @@ def main():
         result = validator.validate_content(content, file_path)
         
         if not result['valid']:
-            print("🏷️  14-Core @TAG 규칙 위반 감지:", file=sys.stderr)
+            print("🏷️  16-Core @TAG 규칙 위반 감지:", file=sys.stderr)
             print(f"❌ {result['error']}", file=sys.stderr)
             print(f"💡 제안: {result['suggestion']}", file=sys.stderr)
             print("", file=sys.stderr)
-            print("📖 14-Core TAG 가이드: .moai/templates/ 참조", file=sys.stderr)
+            print("📖 16-Core TAG 가이드: .moai/templates/ 참조", file=sys.stderr)
             sys.exit(2)  # Hook 차단
         
         # 품질 피드백

@@ -42,7 +42,9 @@ MoAI-ADK는 Claude Code 표준을 완전히 준수하면서도 체계적인 문�
 │   │   └── test_hook.py          # Hook 시스템 테스트 스크립트 (v0.1.12 신규)
 │   ├── memory/                    # Claude Code 메모리 파일
 │   │   ├── project_guidelines.md    # 프로젝트 가이드라인
-│   │   ├── coding_standards.md      # 코딩 및 아키텍처 기준
+│   │   ├── coding_standards.md      # Cross-Language 코어 규칙 + 언어별 @imports
+│   │   │   ├── python.md            # 언어별 프로파일 (예: Python)
+│   │   │   └── ...                  # typescript/go/java-kotlin/... 세부 규칙
 │   │   ├── team_conventions.md      # 팀 협업 규칙
 │   │   ├── bash_commands.md         # Bash 명령어 레퍼런스
 │   │   └── git_workflow.md          # Git 워크플로우 가이드

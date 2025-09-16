@@ -12,7 +12,7 @@ MoAI-ADK의 Hook 시스템은 Claude Code의 표준 Hook 인터페이스를 활�
 | **PostToolUse**      | 도구 실행 후      | 자동 검수, 커밋 지침, 세션 안내 | 0: 성공          |
 | **SessionStart**     | 세션 시작         | Gate 상태 확인, 미완료 알림     | 0: 성공          |
 
-## 5개 핵심 Hook 스크립트
+## 6개 핵심 Hook 스크립트
 
 ### 1. policy_block.py - PreToolUse Hook
 
@@ -53,8 +53,8 @@ if 'constitution.md' in file_path:
 ```python
 # 16-Core 태그 체계 검증
 valid_tags = {
-    'SPEC': ['REQ', 'DESIGN', 'TASK'],
-    'Steering': ['VISION', 'STRUCT', 'TECH', 'STACK'],
+    'SPEC': ['REQ', 'SPEC', 'DESIGN', 'TASK'],
+    'Steering': ['VISION', 'STRUCT', 'TECH', 'ADR'],
     'Implementation': ['FEATURE', 'API', 'TEST', 'DATA'],
     'Quality': ['PERF', 'SEC', 'DEBT', 'TODO']
 }
@@ -63,7 +63,29 @@ valid_tags = {
 tag_pattern = r'@([A-Z]+)[-:]([A-Z0-9-]+)'
 ```
 
-### 4. post_stage_guard.py - PostToolUse Hook
+### 4. pre_write_guard.py - PreToolUse Hook
+
+**기능**: 과도한 파일 생성·위험 명령 차단 및 안전 가드
+
+```python
+# 민감 경로 차단
+if '.env' in path.lower() or '.git/' in path.lower():
+    print("민감 경로 수정 차단")
+    sys.exit(2)
+
+# 신규 파일 개수 제한
+state['new_files'] += 1
+if state['new_files'] > 5:
+    print("신규 파일은 응답당 5개 이하만 허용")
+    sys.exit(2)
+
+# `grep` 대신 `rg` 권장, 위험한 `rm -rf` 바리케이드
+if 'rm -rf /' in command or re.search(r'(^|\\s)grep(\\s|$)', command):
+    print('위험 명령 또는 grep 사용 시도 차단')
+    sys.exit(2)
+```
+
+### 5. post_stage_guard.py - PostToolUse Hook
 
 **기능**: 단계 완료 후 자동 검수 및 안내
 
@@ -80,7 +102,7 @@ if tool_name in ['Write', 'Edit', 'MultiEdit']:
     suggest_next_step()
 ```
 
-### 5. session_start_notice.py - SessionStart Hook
+### 6. session_start_notice.py - SessionStart Hook
 
 **기능**: 세션 시작 시 프로젝트 상태 알림
 
@@ -107,14 +129,18 @@ def analyze_project_state():
 
 ```json
 {
+  "permissions": {
+    "defaultMode": "ask",
+    "allow": ["Read(**)", "Grep", "Glob", "Task", "Bash(*)"]
+  },
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash|WebFetch",
+        "matcher": "Edit|MultiEdit|Write|Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .claude/hooks/moai/policy_block.py"
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_write_guard.py"
           }
         ]
       },
@@ -128,6 +154,15 @@ def analyze_project_state():
           {
             "type": "command",
             "command": "python3 .claude/hooks/moai/tag_validator.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|WebFetch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/moai/policy_block.py"
           }
         ]
       }
@@ -157,6 +192,8 @@ def analyze_project_state():
   }
 }
 ```
+
+> 기본 템플릿은 `pre_write_guard.py`만 활성화된 최소 구성으로 제공되며, 필요에 따라 위와 같이 `policy_block.py`, `constitution_guard.py`, `tag_validator.py` 등을 추가 연결할 수 있습니다.
 
 ## Hook 시스템의 이점
 

@@ -8,6 +8,7 @@ MoAI-ADK의 16-Core @TAG 시스템은 모든 요구사항과 구현을 완전하
 
 #### SPEC (명세 관련)
 - **@REQ**: 요구사항 (Requirements)
+- **@SPEC**: 명세 식별자/요약 (Specification Capsule)
 - **@DESIGN**: 설계 문서 (Design Documents)
 - **@TASK**: 작업 항목 (Task Items)
 

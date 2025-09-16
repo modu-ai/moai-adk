@@ -27,7 +27,7 @@ class SessionNotifier:
         """프로젝트 전체 상태 분석"""
         status = {
             "project_name": self.project_root.name,
-            "moai_version": "0.1.15",
+            "moai_version": "0.1.16",
             "initialized": self.is_moai_project(),
             "constitution_status": self.check_constitution_status(),
             "pipeline_stage": self.get_current_pipeline_stage(),
@@ -236,7 +236,7 @@ class SessionNotifier:
   3. 대화형 설정: /moai:project init
 
 💡 MoAI-ADK는 Spec-First TDD 개발을 지원합니다.
-   Constitution 5원칙과 14-Core TAG 시스템으로 품질을 보장합니다.
+   Constitution 5원칙과 16-Core TAG 시스템으로 품질을 보장합니다.
 """
     
     def generate_status_notice(self, status: Dict[str, Any]) -> str:

@@ -11,6 +11,18 @@ flowchart LR
     C --> D[IMPLEMENT]
 ```
 
+## 모델 사용 가이드
+
+| 단계 | 권장 모델 | 비고 |
+|------|-----------|------|
+| SPECIFY (`/moai:2-spec`) | `sonnet` | 균형 잡힌 명세 작성에 최적화 |
+| PLAN (`/moai:3-plan`) | `opusplan` (plan 모드에서 Opus) | 복잡한 설계·검증 작업에 Opus 활용 후 실행 단계 자동 Sonnet 전환 |
+| TASKS (`/moai:4-tasks`) | `sonnet` | TDD 작업 분해 및 의존성 계산에 적합 |
+| IMPLEMENT (`/moai:5-dev`) | `sonnet` | 테스트 주도 구현/리팩터 기본 모델 |
+| SYNC (`/moai:6-sync`) | `haiku` | 문서/인덱싱 동기화 등 속도 우선 작업 |
+
+> 💡 모델/운영 가이드 세부 내용은 프로젝트 루트 `CLAUDE.md`의 “모델 사용 가이드(opusplan)” 섹션을 참고하세요.
+
 ## 단계별 상세
 
 ### 1. SPECIFY - 명세 작성

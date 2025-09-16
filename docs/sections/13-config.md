@@ -11,23 +11,40 @@ MoAI-ADK는 두 개의 주요 설정 파일을 사용합니다:
 ### 기본 구조
 ```json
 {
-  "defaultMode": "default",
-  "env": {
-    "MOAI_PROJECT": "true",
-    "MOAI_VERSION": "0.1.16"
+  "permissions": {
+    "defaultMode": "ask",
+    "allow": ["Read(**)", "Grep", "Glob", "Task", "Bash(*)"],
+    "deny": []
   },
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash|WebFetch",
+        "matcher": "Edit|MultiEdit|Write|Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .claude/hooks/moai/policy_block.py"
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_write_guard.py",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c 'import json,sys;d=json.load(sys.stdin);fp=(d.get(\"tool_input\") or {}).get(\"file_path\",\"\");print(f\"PostToolUse: updated {fp}\")'",
+            "timeout": 30
           }
         ]
       }
     ]
+  },
+  "env": {
+    "MOAI_PROJECT": "true",
+    "MOAI_VERSION": "0.1.16"
   },
   "enableAllProjectMcpServers": true,
   "cleanupPeriodDays": 30,
@@ -41,16 +58,22 @@ MoAI-ADK는 두 개의 주요 설정 파일을 사용합니다:
   "hooks": {
     "PreToolUse": [
       {
+        "matcher": "Edit|MultiEdit|Write|Bash",
+        "hooks": [
+          { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_write_guard.py" }
+        ]
+      },
+      {
         "matcher": "Edit|MultiEdit|Write",
         "hooks": [
-          {
-            "type": "command",
-            "command": "python3 .claude/hooks/moai/constitution_guard.py"
-          },
-          {
-            "type": "command",
-            "command": "python3 .claude/hooks/moai/tag_validator.py"
-          }
+          { "type": "command", "command": "python3 .claude/hooks/moai/constitution_guard.py" },
+          { "type": "command", "command": "python3 .claude/hooks/moai/tag_validator.py" }
+        ]
+      },
+      {
+        "matcher": "Bash|WebFetch",
+        "hooks": [
+          { "type": "command", "command": "python3 .claude/hooks/moai/policy_block.py" }
         ]
       }
     ],
@@ -58,10 +81,7 @@ MoAI-ADK는 두 개의 주요 설정 파일을 사용합니다:
       {
         "matcher": "Edit|MultiEdit|Write",
         "hooks": [
-          {
-            "type": "command",
-            "command": "python3 .claude/hooks/moai/post_stage_guard.py"
-          }
+          { "type": "command", "command": "python3 .claude/hooks/moai/post_stage_guard.py" }
         ]
       }
     ],
@@ -69,16 +89,15 @@ MoAI-ADK는 두 개의 주요 설정 파일을 사용합니다:
       {
         "matcher": "*",
         "hooks": [
-          {
-            "type": "command",
-            "command": "python3 .claude/hooks/moai/session_start_notice.py"
-          }
+          { "type": "command", "command": "python3 .claude/hooks/moai/session_start_notice.py" }
         ]
       }
     ]
   }
 }
 ```
+
+> `pre_write_guard.py`는 기본적으로 과도한 파일 생성, 민감 경로 수정, `rm -rf`와 `grep` 등 위험 Bash 명령을 사전에 차단합니다. 필요에 따라 Constitution/Policy/Tag Hook을 추가 연결해 품질 게이트를 강화할 수 있습니다.
 
 ## .moai/config.json
 

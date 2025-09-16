@@ -15,6 +15,19 @@ MoAI-ADK는 4단계 파이프라인을 지원하는 6개의 연번순 슬래시 
 | **5** | `/moai:5-dev` | code-generator + test-automator | 자동 구현 | IMPLEMENT |
 | **6** | `/moai:6-sync` | doc-syncer + tag-indexer | 문서 동기화 | 동기화 |
 
+## 모델 사용 가이드
+
+| 명령어 | 권장 모델 | 비고 |
+|--------|-----------|------|
+| `/moai:1-project` | `sonnet` | 프로젝트 설정 및 기본 문서화 |
+| `/moai:2-spec` | `sonnet` | 명세 작성/정제 |
+| `/moai:3-plan` | `opusplan` (plan 모드) | 복잡한 설계·검증 전용 (계획 후 실행은 Sonnet) |
+| `/moai:4-tasks` | `sonnet` | TDD 작업 분해 |
+| `/moai:5-dev` | `sonnet` | Red-Green-Refactor 구현 |
+| `/moai:6-sync` | `haiku` | 문서/인덱싱 동기화 속도 최적 |
+
+> `CLAUDE.md`의 “모델 사용 가이드(opusplan)” 섹션에서 세부 운영 수칙을 확인하세요.
+
 ## 명령어 상세
 
 ### /moai:1-project - 프로젝트 설정

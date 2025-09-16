@@ -192,8 +192,8 @@ def handle_pre_tool_use():
         tool_input = data.get('tool_input', {})
         
         # 프로젝트 루트 찾기
-        current_dir = Path.cwd()
-        project_root = current_dir
+        project_root = Path(os.environ.get('CLAUDE_PROJECT_DIR', Path.cwd()))
+        current_dir = project_root
         
         # .moai 디렉토리를 찾을 때까지 상위로 올라가기
         while not (project_root / '.moai').exists() and project_root.parent != project_root:
@@ -207,7 +207,11 @@ def handle_pre_tool_use():
         
         # Bash 명령어 검사
         if tool_name == 'Bash':
-            command = tool_input.get('command', '')
+            raw_command = tool_input.get('command', '')
+            if isinstance(raw_command, list):
+                command = " ".join(str(part) for part in raw_command)
+            else:
+                command = str(raw_command)
             is_safe, reason = blocker.check_dangerous_bash_command(command)
             
             if not is_safe:
