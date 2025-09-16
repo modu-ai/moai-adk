@@ -1,0 +1,78 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/constitution_guard.py",
+            "description": "Constitution 5 principles validation"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|WebFetch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/policy_block.py",
+            "description": "Dangerous commands and policy blocking"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start_notice.py",
+            "description": "MoAI-ADK session initialization and project status display"
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(npm run :*)",
+      "Bash(yarn :*)",
+      "Bash(bun :*)",
+      "Bash(pip :*)",
+      "Bash(python :*)",
+      "Bash(python3 :*)",
+      "Bash(git :*)",
+      "Bash(pytest :*)",
+      "Bash(coverage :*)",
+      "Read(**/*.md)",
+      "Read(**/*.json)",
+      "Read(**/*.py)",
+      "Read(**/*.toml)",
+      "Read(**/*.yml)",
+      "Read(**/*.yaml)",
+      "Write(**/*.md)",
+      "Write(**/*.json)",
+      "Write(**/*.py)",
+      "Edit(**/*.ts)",
+      "Edit(**/*.js)",
+      "Edit(**/*.py)",
+      "Edit(**/*.tsx)",
+      "Edit(**/*.jsx)",
+      "Edit(**/*.md)",
+      "Edit(**/*.json)",
+      "Glob",
+      "Grep",
+      "Task",
+      "WebFetch"
+    ]
+  },
+  "env": {
+    "CLAUDE_CODE_PROJECT_NAME": "MoAI-ADK",
+    "MOAI_ADK_VERSION": "0.1.16",
+    "MOAI_ADK_TEMPLATE": "standard",
+    "MOAI_ADK_RUNTIME": "python",
+    "MOAI_ADK_ROOT": ".",
+    "PYTHONPATH": "."
+  }
+}

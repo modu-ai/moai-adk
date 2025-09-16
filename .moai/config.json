@@ -1,0 +1,98 @@
+{
+  "version": "0.1.16",
+  "created": "2025-09-16T21:39:41.864556",
+  "project": {
+    "name": "MoAI-ADK",
+    "type": "web",
+    "template": "standard",
+    "runtime": "python",
+    "tech_stack": []
+  },
+  "constitution": {
+    "simplicity": {
+      "max_projects": 3,
+      "enforce": true
+    },
+    "architecture": {
+      "library_first": true,
+      "enforce": true
+    },
+    "testing": {
+      "tdd_required": true,
+      "coverage_target": 0.8,
+      "enforce": true
+    },
+    "observability": {
+      "structured_logging": true,
+      "enforce": true
+    },
+    "versioning": {
+      "format": "MAJOR.MINOR.BUILD",
+      "enforce": true
+    }
+  },
+  "tags": {
+    "core_14": [
+      "REQ",
+      "DESIGN",
+      "TASK",
+      "VISION",
+      "STRUCT",
+      "TECH",
+      "FEATURE",
+      "API",
+      "TEST",
+      "DATA",
+      "PERF",
+      "SEC",
+      "DEBT",
+      "TODO"
+    ],
+    "validation": {
+      "strict_mode": true,
+      "auto_index": true
+    }
+  },
+  "pipeline": {
+    "stages": [
+      "SPECIFY",
+      "PLAN",
+      "TASKS",
+      "IMPLEMENT"
+    ],
+    "gates": {
+      "SPECIFY": [
+        "ears_complete",
+        "clarification_resolved"
+      ],
+      "PLAN": [
+        "constitution_check",
+        "adr_generated"
+      ],
+      "TASKS": [
+        "tdd_order",
+        "dependency_graph"
+      ],
+      "IMPLEMENT": [
+        "red_green_refactor",
+        "coverage_target"
+      ]
+    }
+  },
+  "agents": {
+    "count": 10,
+    "enabled": [
+      "claude-code-manager",
+      "steering-architect",
+      "spec-manager",
+      "plan-architect",
+      "task-decomposer",
+      "code-generator",
+      "doc-syncer",
+      "quality-auditor",
+      "integration-manager",
+      "deployment-specialist",
+      "tag-indexer"
+    ]
+  }
+}

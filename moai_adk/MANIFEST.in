@@ -1,0 +1,23 @@
+# Include all resource files and directories
+include src/moai_adk/resources/VERSION
+recursive-include src/moai_adk/resources *
+recursive-include src/moai_adk/resources/templates *
+recursive-include src/moai_adk/resources/templates/.claude *
+recursive-include src/moai_adk/resources/templates/.moai *
+recursive-include src/moai_adk/resources/templates/.github *
+
+# Include documentation
+include README.md
+include LICENSE
+include CLAUDE.md
+
+# Include configuration files
+include pyproject.toml
+
+# Exclude compiled Python files
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude *.pyd
+global-exclude __pycache__
+global-exclude *.so
+global-exclude .DS_Store

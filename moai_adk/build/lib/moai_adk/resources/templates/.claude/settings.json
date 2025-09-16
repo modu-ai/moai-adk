@@ -1,0 +1,120 @@
+{
+  "permissions": {
+    "defaultMode": "default",
+    "allow": [
+      "Read(*)",
+      "Write(.moai/**)",
+      "Write(src/**)",
+      "Write(docs/**)",
+      "Write(README.md)",
+      "Write(package.json)",
+      "MultiEdit(.moai/**)",
+      "MultiEdit(src/**)",
+      "MultiEdit(docs/**)",
+      "Bash(npm:*)",
+      "Bash(yarn:*)",
+      "Bash(pnpm:*)",
+      "Bash(bun:*)",
+      "Bash(git:*)",
+      "Bash(node:*)",
+      "Bash(npx:*)",
+      "Bash(ls:*)",
+      "Bash(pwd:*)",
+      "Bash(cd:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "WebFetch(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "Task(*)"
+    ],
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Bash(sudo:*)",
+      "Bash(chmod 777:*)",
+      "Bash(chown:*)",
+      "Bash(dd:*)",
+      "Bash(mkfs:*)",
+      "Bash(format:*)",
+      "Write(.env*)",
+      "Write(.claude/settings.json)"
+    ],
+    "ask": [
+      "Write(*.config.*)",
+      "Bash(git push:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(npm publish:*)",
+      "Bash(yarn publish:*)"
+    ]
+  },
+  "env": {
+    "NODE_ENV": "development",
+    "CLAUDE_PROJECT_DIR": "${PWD}",
+    "MOAI_CONFIG_PATH": "${PWD}/.moai/config.json",
+    "MOAI_HOOK_RUNTIME": "python3",
+    "MOAI_ADK_VERSION": "${MOAI_VERSION:-0.1.12}",
+    "MOAI_WORKFLOW_VERSION": "2.0",
+    "MOAI_HOOKS_DIR": "${CLAUDE_PROJECT_DIR}/.claude/hooks/moai"
+  },
+  "cleanupPeriodDays": 30,
+  "includeCoAuthoredBy": true,
+  "enableAllProjectMcpServers": true,
+  "statusLine": {
+    "type": "command",
+    "command": "npx -y ccusage statusline",
+    "padding": 0
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$MOAI_HOOK_RUNTIME $CLAUDE_PROJECT_DIR/.claude/hooks/moai/constitution_guard.py",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "$MOAI_HOOK_RUNTIME $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag_validator.py",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|WebFetch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$MOAI_HOOK_RUNTIME $CLAUDE_PROJECT_DIR/.claude/hooks/moai/policy_block.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$MOAI_HOOK_RUNTIME $CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_stage_guard.py",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$MOAI_HOOK_RUNTIME $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start_notice.py",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}
