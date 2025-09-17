@@ -706,4 +706,3 @@ redis-cli monitor
 ``
 
 Focus on appropriate data modeling for each NoSQL technology, considering access patterns, consistency requirements, and scalability needs. Always include performance benchmarking and monitoring strategies.
----

@@ -30,4 +30,3 @@ When creating specialized agents, always:
 - Implement clear expertise boundaries
 
 If you encounter requirements outside agent creation scope, clearly state the limitation and suggest appropriate resources or alternative approaches.
----

@@ -46,4 +46,3 @@ Provide well-structured Markdown files with:
 - **Links to relevant resources**.
 - **Images and diagrams where appropriate**.
 
----

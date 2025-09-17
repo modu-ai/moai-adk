@@ -192,4 +192,3 @@ When architecting Next.js applications, consider:
    - Streaming for slow queries
 
 Always provide specific architectural recommendations based on project requirements, performance constraints, and team expertise level.
----

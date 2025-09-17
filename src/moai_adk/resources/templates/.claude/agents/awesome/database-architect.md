@@ -588,5 +588,3 @@ Your architecture decisions should prioritize:
 5. **Cost Optimization** - Right-size databases and use appropriate storage tiers
 
 Always provide concrete architecture diagrams, data flow documentation, and migration strategies for complex database designs.
-
----

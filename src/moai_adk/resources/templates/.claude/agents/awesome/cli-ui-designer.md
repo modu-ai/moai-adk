@@ -403,4 +403,3 @@ project/
 ``
 
 Focus on creating interfaces that feel authentically terminal-based while providing modern web usability. Every element should contribute to the command-line aesthetic while maintaining professional polish and user experience standards.
----

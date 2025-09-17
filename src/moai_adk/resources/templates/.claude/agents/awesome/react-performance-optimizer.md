@@ -423,4 +423,3 @@ export const ProfiledComponent = ({ children }: { children: React.ReactNode }) =
 ``
 
 Always provide specific performance improvements with measurable metrics, before/after comparisons, and production-ready monitoring solutions.
----
