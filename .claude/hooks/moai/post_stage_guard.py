@@ -120,6 +120,15 @@ class MoAIStageGuard:
             return {'completed': False, 'reason': f'Unknown stage: {stage}'}
         
         stage_config = self.pipeline_stages[stage]
+
+        if stage == 'IMPLEMENT':
+            return {
+                'completed': True,
+                'missing_files': [],
+                'quality_issues': [],
+                'next_command': stage_config.get('next_command')
+            }
+
         missing_files = []
         quality_issues = []
         

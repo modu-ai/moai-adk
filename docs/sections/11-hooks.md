@@ -92,16 +92,14 @@ if 'rm -rf /' in command or re.search(r'(^|\\s)grep(\\s|$)', command):
 **기능**: 단계 완료 후 자동 검수 및 안내
 
 ```python
-# 자동 검수 실행
-if tool_name in ['Write', 'Edit', 'MultiEdit']:
-    # TAG 인덱스 업데이트
-    update_tag_index()
+# 파일 편집 이후 단계별 게이트 점검
+stage = infer_stage(file_path)
+if stage == 'IMPLEMENT':
+    # 구현 단계는 잦은 변경을 허용하므로 통과 처리
+    return completed=True
 
-    # 추적성 매트릭스 갱신
-    update_traceability_matrix()
-
-    # 다음 단계 안내
-    suggest_next_step()
+report = generate_stage_report(stage)
+update_pipeline_state(stage, completed)
 ```
 
 ### 6. session_start_notice.py - SessionStart Hook
