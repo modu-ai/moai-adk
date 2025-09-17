@@ -68,7 +68,10 @@ class SessionNotifier:
 
         # steering 문서 먼저 체크
         if not self.has_steering_docs():
-            return {"stage": "INIT", "description": "프로젝트 셋업 필요 (steering 문서 생성)"}
+            return {
+                "stage": "INIT",
+                "description": "프로젝트 셋업 필요: .moai/steering/{product.md|structure.md|tech.md} 생성"
+            }
 
         specs_dir = self.project_root / ".moai" / "specs"
 

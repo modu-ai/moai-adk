@@ -15,6 +15,11 @@ Claude Code 공식 문서 기반 완전 자동화 Spec-First TDD 개발 시스�
 ### `/moai:1-project` — 하나의 명령, 100% 대화형
 프로젝트 상태를 자동 진단한 뒤, 최소 질문과 추천 답변으로 Steering 문서를 생성/갱신하고 SPEC 시드를 만듭니다. 별도의 모드/플래그는 없습니다.
 
+### Steering 표준 파일명
+- 표준: `.moai/steering/product.md`, `.moai/steering/structure.md`, `.moai/steering/tech.md`
+- 호환: `vision.md`, `architecture.md`, `techstack.md`도 감지되며, 표준 명칭으로 점진 마이그레이션을 권장합니다.
+- 본 마법사와 세션 훅은 양쪽 명칭을 모두 지원하며, 신규 생성은 표준 명칭으로 작성합니다.
+
 ## 상태 진단 기반 여정
 
 시작 시 다음 순서로 대화형으로 진행됩니다:
