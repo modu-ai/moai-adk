@@ -1,0 +1,187 @@
+{
+  "version": "16-core",
+  "last_updated": null,
+  "total_tags": 0,
+  "tag_categories": {
+    "SPEC": {
+      "description": "문서 추적 태그",
+      "tags": ["REQ", "SPEC", "DESIGN", "TASK"]
+    },
+    "STEERING": {
+      "description": "원칙 추적 태그", 
+      "tags": ["VISION", "STRUCT", "TECH", "ADR"]
+    },
+    "IMPLEMENTATION": {
+      "description": "코드 추적 태그",
+      "tags": ["FEATURE", "API", "TEST", "DATA"]
+    },
+    "QUALITY": {
+      "description": "품질 추적 태그",
+      "tags": ["PERF", "SEC", "DEBT", "TODO"]
+    }
+  },
+  "tag_definitions": {
+    "REQ": {
+      "full_name": "Requirements",
+      "description": "요구사항 추적",
+      "source_files": ["spec.md", "requirements.md"],
+      "pattern": "@REQ:[A-Z0-9-]+",
+      "color": "#2563EB",
+      "category": "SPEC"
+    },
+    "SPEC": {
+      "full_name": "Specification Capsule",
+      "description": "SPEC 메타 정보",
+      "source_files": ["spec.md"],
+      "pattern": "@SPEC:[A-Z0-9-]+",
+      "color": "#3B82F6",
+      "category": "SPEC"
+    },
+    "DESIGN": {
+      "full_name": "Design Decision",
+      "description": "설계 결정 추적",
+      "source_files": ["design.md", "adr-*.md"],
+      "pattern": "@DESIGN:[A-Z0-9-]+",
+      "color": "#7C3AED",
+      "category": "SPEC"
+    },
+    "TASK": {
+      "full_name": "Task",
+      "description": "구현 태스크 추적",
+      "source_files": ["tasks.md"],
+      "pattern": "@TASK:T[0-9]+",
+      "color": "#DC2626",
+      "category": "SPEC"
+    },
+    "VISION": {
+      "full_name": "Product Vision",
+      "description": "제품 비전 연결",
+      "source_files": ["product.md"],
+      "pattern": "@VISION:[A-Z0-9-]+",
+      "color": "#059669",
+      "category": "STEERING"
+    },
+    "STRUCT": {
+      "full_name": "Structure Principle",
+      "description": "구조 원칙 연결",
+      "source_files": ["structure.md"],
+      "pattern": "@STRUCT:[A-Z0-9-]+",
+      "color": "#D97706",
+      "category": "STEERING"
+    },
+    "TECH": {
+      "full_name": "Technology Decision",
+      "description": "기술 결정 연결",
+      "source_files": ["tech.md"],
+      "pattern": "@TECH:[A-Z0-9-]+",
+      "color": "#0891B2",
+      "category": "STEERING"
+    },
+    "ADR": {
+      "full_name": "Architecture Decision Record",
+      "description": "ADR 문서 추적",
+      "source_files": ["adr-*.md", "plan.md"],
+      "pattern": "@ADR:[A-Z0-9-]+",
+      "color": "#2563EB",
+      "category": "STEERING"
+    },
+    "FEATURE": {
+      "full_name": "Feature",
+      "description": "기능 구현 단위",
+      "source_files": ["*.ts", "*.tsx", "*.js", "*.jsx", "*.py"],
+      "pattern": "@FEATURE:[A-Z0-9-]+",
+      "color": "#16A34A",
+      "category": "IMPLEMENTATION"
+    },
+    "API": {
+      "full_name": "API Endpoint",
+      "description": "API 엔드포인트",
+      "source_files": ["controllers/*.ts", "routes/*.ts", "api/*.ts"],
+      "pattern": "@API:(GET|POST|PUT|DELETE|PATCH)\\s+[/\\w-]+",
+      "color": "#EA580C",
+      "category": "IMPLEMENTATION"
+    },
+    "TEST": {
+      "full_name": "Test Case",
+      "description": "테스트 케이스",
+      "source_files": ["*.test.ts", "*.spec.ts", "*.test.js"],
+      "pattern": "@TEST:[A-Z0-9-]+",
+      "color": "#BE185D",
+      "category": "IMPLEMENTATION"
+    },
+    "DATA": {
+      "full_name": "Data Model",
+      "description": "데이터 모델",
+      "source_files": ["models/*.ts", "schemas/*.ts", "types/*.ts"],
+      "pattern": "@DATA:[A-Z0-9-]+",
+      "color": "#9333EA",
+      "category": "IMPLEMENTATION"
+    },
+    "PERF": {
+      "full_name": "Performance",
+      "description": "성능 최적화",
+      "source_files": ["*.ts", "*.js", "*.py"],
+      "pattern": "@PERF:[A-Z0-9-]+",
+      "color": "#0D9488",
+      "category": "QUALITY"
+    },
+    "SEC": {
+      "full_name": "Security",
+      "description": "보안 고려사항",
+      "source_files": ["*.ts", "*.js", "*.py"],
+      "pattern": "@SEC:[A-Z0-9-]+",
+      "color": "#B91C1C",
+      "category": "QUALITY"
+    },
+    "DEBT": {
+      "full_name": "Technical Debt",
+      "description": "기술 부채",
+      "source_files": ["*.ts", "*.js", "*.py", "*.md"],
+      "pattern": "@DEBT:[A-Z0-9-]+",
+      "color": "#A3A3A3",
+      "category": "QUALITY"
+    },
+    "TODO": {
+      "full_name": "Todo Item",
+      "description": "추가 작업 필요",
+      "source_files": ["*.ts", "*.js", "*.py", "*.md"],
+      "pattern": "@TODO:[A-Z0-9-]+",
+      "color": "#F59E0B",
+      "category": "QUALITY"
+    }
+  },
+  "tags": {},
+  "statistics": {
+    "by_category": {
+      "SPEC": 0,
+      "STEERING": 0,
+      "IMPLEMENTATION": 0,
+      "QUALITY": 0
+    },
+    "by_file_type": {},
+    "orphaned_tags": [],
+    "coverage_metrics": {
+      "total_files_scanned": 0,
+      "files_with_tags": 0,
+      "tag_coverage_percentage": 0
+    }
+  },
+  "validation_rules": {
+    "required_tags_per_file_type": {
+      "spec.md": ["REQ", "SPEC", "DESIGN"],
+      "tasks.md": ["TASK", "REQ"],
+      "*.test.ts": ["TEST"],
+      "controllers/*.ts": ["API", "FEATURE"],
+      "models/*.ts": ["DATA"]
+    },
+    "forbidden_combinations": [
+      ["DEBT", "PERF"],
+      ["TODO", "FEATURE"]
+    ],
+    "mandatory_relationships": {
+      "REQ": ["FEATURE", "TEST"],
+      "FEATURE": ["API", "DATA"],
+      "API": ["TEST"]
+    }
+  }
+}

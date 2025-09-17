@@ -1,0 +1,181 @@
+{
+  "metadata": {
+    "version": "$MOAI_VERSION",
+    "project_name": "$PROJECT_NAME",
+    "created_at": "$CREATED_AT",
+    "last_updated": "$CREATED_AT",
+    "moai_adk_version": "$MOAI_VERSION"
+  },
+  "project_state": {
+    "current_phase": "$CURRENT_PHASE",
+    "available_phases": ["INIT", "SPECIFY", "PLAN", "TASKS", "IMPLEMENT", "SYNC"],
+    "completion_percentage": $COMPLETION_RATE,
+    "last_command": null,
+    "last_command_timestamp": null
+  },
+  "pipeline_status": {
+    "specify": {
+      "status": "NOT_STARTED",
+      "specs_count": $TOTAL_SPECS,
+      "clarification_items": 0,
+      "completion_rate": 0.0,
+      "last_spec": null
+    },
+    "plan": {
+      "status": "NOT_STARTED",
+      "plans_count": 0,
+      "constitution_violations": 0,
+      "adr_count": 0,
+      "last_plan": null
+    },
+    "tasks": {
+      "status": "NOT_STARTED",
+      "tasks_count": $TOTAL_TASKS,
+      "parallel_tasks": 0,
+      "tdd_compliance": 0.0,
+      "last_tasks": null
+    },
+    "implement": {
+      "status": "NOT_STARTED",
+      "implementations_count": 0,
+      "test_coverage": 0.0,
+      "red_green_refactor_cycles": 0,
+      "last_implementation": null
+    }
+  },
+  "constitution_compliance": {
+    "simplicity": {
+      "status": "UNKNOWN",
+      "project_count": 0,
+      "max_allowed": 3,
+      "violations": []
+    },
+    "architecture": {
+      "status": "UNKNOWN",
+      "library_count": 0,
+      "non_library_components": [],
+      "violations": []
+    },
+    "testing": {
+      "status": "UNKNOWN",
+      "tdd_enforcement": false,
+      "coverage_target": 0.8,
+      "current_coverage": 0.0,
+      "violations": []
+    },
+    "observability": {
+      "status": "UNKNOWN",
+      "structured_logging": false,
+      "monitoring_components": 0,
+      "violations": []
+    },
+    "versioning": {
+      "status": "UNKNOWN",
+      "scheme": "MAJOR.MINOR.BUILD",
+      "current_version": "$VERSION",
+      "violations": []
+    }
+  },
+  "tag_system": {
+    "total_tags": 0,
+    "by_category": {
+      "SPEC": 0,
+      "STEERING": 0,
+      "IMPLEMENTATION": 0,
+      "QUALITY": 0
+    },
+    "traceability_coverage": 0.0,
+    "orphaned_tags": 0,
+    "last_index_update": null
+  },
+  "active_sessions": {
+    "current_context_size": 0,
+    "max_context_size": 200000,
+    "context_utilization": 0.0,
+    "session_start": null,
+    "last_activity": null
+  },
+  "hooks_status": {
+    "pre_tool_use": {
+      "enabled": true,
+      "hooks_count": 3,
+      "last_execution": null,
+      "failures": 0
+    },
+    "post_tool_use": {
+      "enabled": true,
+      "hooks_count": 2,
+      "last_execution": null,
+      "failures": 0
+    },
+    "session_start": {
+      "enabled": true,
+      "hooks_count": 1,
+      "last_execution": null,
+      "failures": 0
+    }
+  },
+  "file_system": {
+    "moai_structure_complete": true,
+    "claude_structure_complete": true,
+    "templates_available": false,
+    "hooks_installed": true,
+    "agents_available": true
+  },
+  "environment_variables": {
+    "MOAI_PROJECT": {
+      "set": true,
+      "value": "$PROJECT_NAME",
+      "last_updated": "$CREATED_AT"
+    },
+    "MOAI_VERSION": {
+      "set": true,
+      "value": "$MOAI_VERSION",
+      "last_updated": "$CREATED_AT"
+    },
+    "CLAUDE_MODEL": {
+      "set": false,
+      "value": null,
+      "last_updated": null
+    }
+  },
+  "claude_code_features": {
+    "ask_permission_mode": {
+      "enabled": false,
+      "last_used": null
+    },
+    "session_end_events": {
+      "enabled": false,
+      "handlers_count": 0
+    },
+    "mcp_servers": {
+      "connected": 0,
+      "total_configured": 3,
+      "token_usage": 0,
+      "last_token_refresh": null
+    }
+  },
+  "agents_status": {
+    "claude_code_manager": {
+      "available": true,
+      "last_execution": null,
+      "execution_count": 0
+    },
+    "total_executions": 0,
+    "most_used_agent": null,
+    "average_execution_time": 0
+  },
+  "dogfooding_mode": {
+    "enabled": false,
+    "self_reference_count": 0,
+    "meta_programming_active": false,
+    "last_self_update": null
+  },
+  "warnings": [],
+  "errors": [],
+  "suggestions": [
+    "프로젝트 초기화를 위해 /moai:project init을 실행하세요",
+    "Constitution 원칙을 설정하여 품질을 보장하세요",
+    "4단계 파이프라인을 통해 체계적인 개발을 진행하세요"
+  ]
+}
