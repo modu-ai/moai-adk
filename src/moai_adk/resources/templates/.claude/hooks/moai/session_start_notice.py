@@ -217,9 +217,10 @@ class SessionNotifier:
         if not steering_dir.exists():
             return False
 
-        # vision.md, architecture.md, techstack.md 중 하나라도 있으면 True
-        steering_files = ["vision.md", "architecture.md", "techstack.md"]
-        return any((steering_dir / f).exists() for f in steering_files)
+        # 이행기 지원: 표준(product/structure/tech)과 구명칭(vision/architecture/techstack) 모두 허용
+        modern = ["product.md", "structure.md", "tech.md"]
+        legacy = ["vision.md", "architecture.md", "techstack.md"]
+        return any((steering_dir / f).exists() for f in modern + legacy)
 
     def get_moai_version(self) -> str:
         """MoAI 버전 동적 조회"""
