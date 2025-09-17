@@ -40,14 +40,11 @@ MoAI-ADK는 Claude Code 표준을 완전히 준수하면서도 체계적인 문�
 │   │   ├── post_stage_guard.py   # PostToolUse: 단계 검수 (✅ JSON 처리)
 │   │   ├── session_start_notice.py # SessionStart: 상태 알림 (✅ JSON 처리)
 │   │   └── test_hook.py          # Hook 시스템 테스트 스크립트 (v0.1.12 신규)
-│   ├── memory/                    # Claude Code 메모리 파일
-│   │   ├── project_guidelines.md    # 프로젝트 가이드라인
-│   │   ├── coding_standards.md      # Cross-Language 코어 규칙 + 언어별 @imports
-│   │   │   ├── python.md            # 언어별 프로파일 (예: Python)
-│   │   │   └── ...                  # typescript/go/java-kotlin/... 세부 규칙
-│   │   ├── team_conventions.md      # 팀 협업 규칙
-│   │   ├── bash_commands.md         # Bash 명령어 레퍼런스
-│   │   └── git_workflow.md          # Git 워크플로우 가이드
+│   ├── memory/                    # Claude Code 메모리(참조용 문서)
+│   │   ├── project_guidelines.md    # 운영 원칙 및 에이전트 지침 요약
+│   │   ├── coding_standards/        # 언어·프레임워크별 코딩 규칙(@imports)
+│   │   ├── shared_checklists.md     # PR/테스트/보안 공통 체크리스트
+│   │   └── …                        # Git/팀 규약, TDD, 보안 등 세부 지침
 │   ├── logs/                      # 세션 로그
 │   └── settings.json              # 팀 공유 설정
 ├── .moai/                         # MoAI 문서 시스템
@@ -58,7 +55,10 @@ MoAI-ADK는 Claude Code 표준을 완전히 준수하면서도 체계적인 문�
 │   │   │   ├── product.template.md    # 제품 비전과 전략 템플릿
 │   │   │   ├── structure.template.md  # 아키텍처 설계 템플릿
 │   │   │   └── tech.template.md       # 기술 스택 선정 템플릿
-│   │   ├── memory/                # Constitution 템플릿
+│   │   ├── memory/                # 프로젝트 메모리 템플릿
+│   │   │   ├── common.template.md       # 공통 운영 메모
+│   │   │   ├── backend-*.template.md    # 백엔드 스택별 메모(예: backend-python)
+│   │   │   ├── frontend-*.template.md   # 프론트엔드 스택별 메모(예: frontend-react)
 │   │   │   └── constitution.template.md # 프로젝트별 헌법 템플릿
 │   │   └── indexes/               # 상태 추적 템플릿
 │   │       └── state.template.json    # 프로젝트 상태 템플릿
@@ -211,6 +211,9 @@ $LAST_UPDATED      # 현재 날짜
 - **steering/product.template.md**: 제품 비전과 전략 템플릿
 - **steering/structure.template.md**: 아키텍처 설계 템플릿
 - **steering/tech.template.md**: 기술 스택 선정 템플릿
+- **memory/common.template.md**: 공통 운영 메모 템플릿
+- **memory/backend-*.template.md**: 백엔드 스택별 메모 템플릿(예: backend-python)
+- **memory/frontend-*.template.md**: 프론트엔드 스택별 메모 템플릿(예: frontend-react)
 - **memory/constitution.template.md**: 프로젝트별 헌법 템플릿
 - **indexes/state.template.json**: 상태 추적 템플릿
 
@@ -218,6 +221,7 @@ $LAST_UPDATED      # 현재 날짜
 
 - **폴백 탐색**: 프로젝트 `.moai/_templates` → 패키지 `moai_adk.resources/templates/.moai/_templates`
 - **필요시 생성**: 더 이상 샘플 파일 사전 생성하지 않음
+- **기술 스택 기반 메모리 생성**: `/moai:1-project`에서 선택한 스택에 따라 `.moai/memory/common.md` 및 `<layer>-<tech>.md` 문서가 자동 생성됨
 - **변수 치환**: Python string.Template 기반 안전한 처리
 - **다중 확장자 지원**: .template.md, .template.json 등
 - **전용 생성 메서드**: SPEC, Steering, Constitution별 특화
