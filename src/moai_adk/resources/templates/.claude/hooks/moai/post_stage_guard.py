@@ -129,6 +129,12 @@ class MoAIStageGuard:
                 dir_path = self.project_root / required_file
                 if not dir_path.exists() or not any(dir_path.iterdir()):
                     missing_files.append(required_file)
+            elif required_file.startswith('*.'):  # 확장자 패턴
+                # 확장자별 파일 존재 여부 확인
+                extension = required_file[2:]  # '*.py' -> 'py'
+                found_files = list(self.project_root.rglob(f'*.{extension}'))
+                if not found_files:
+                    missing_files.append(required_file)
             else:  # 개별 파일 (SPEC 디렉토리에서 찾기)
                 found = False
                 for spec_dir in self.specs_dir.glob('SPEC-*'):

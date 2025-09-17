@@ -1,14 +1,14 @@
 """Version information for MoAI-ADK."""
 
 # Main version information
-__version__ = "0.1.22"
+__version__ = "0.1.24"
 
 # Essential version information only
 VERSIONS = {
-    "moai_adk": "0.1.22",
+    "moai_adk": "0.1.24",
     "min_python": (3, 11),
-    "core": "0.1.22",
-    "templates": "0.1.22",
+    "core": "0.1.24",
+    "templates": "0.1.24",
     "hooks": "0.1.4",
     "agents": "0.1.5",
     "commands": "0.1.4",
