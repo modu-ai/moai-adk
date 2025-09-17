@@ -180,14 +180,14 @@ flowchart LR
 
 ### 진행률 모니터링
 ```bash
-# 전체 파이프라인 상태
-moai status --pipeline
+# 현재 프로젝트 상태(요약)
+moai status
 
-# 특정 SPEC 상태
-moai status SPEC-001
+# 상세 상태(버전/파일 카운트 등)
+moai status -v
 
-# 상세 진행률
-moai status --verbose
+# 다른 경로의 프로젝트 상태 확인
+moai status -p /path/to/project
 ```
 
 파이프라인은 **체계적인 개발 프로세스**와 **자동화된 품질 보장**을 통해 안정적인 소프트웨어 개발을 지원합니다.

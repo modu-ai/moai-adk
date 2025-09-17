@@ -193,14 +193,14 @@ MoAI-ADK는 4단계 파이프라인을 지원하는 6개의 연번순 슬래시 
 
 ### 상태 확인
 ```bash
-# 현재 상태 확인
+# 현재 프로젝트 상태(요약)
 moai status
 
-# 특정 SPEC 상태
-moai status SPEC-001
+# 상세 상태(버전/파일 카운트 등)
+moai status -v
 
-# 전체 파이프라인 상태
-moai status --pipeline
+# 특정 경로의 프로젝트 상태
+moai status -p /path/to/project
 ```
 
 명령어 시스템은 **직관적인 워크플로우**와 **자동화된 품질 보장**을 통해 개발 생산성을 극대화합니다.

@@ -1,7 +1,7 @@
 # MoAI-ADK 시스템 개요
 
 > Claude Code 2025 최신 표준 기반 완전 자동화 Spec-First TDD 개발 시스템
-> Python 패키지 기반 - 완전 자동화 버전 관리 시스템 및 통합 구조 관리 - v0.1.17 최신 버전
+> Python 패키지 기반 - 완전 자동화 버전 관리 시스템 및 통합 구조 관리 - v0.1.21 최신 버전
 
 ## 🎯 목표와 범위
 
@@ -29,15 +29,15 @@
 
 ## 시스템 특징
 
-### 🤖 완전 자동화 (v0.1.17)
-- **버전 관리**: 24개 파일 하드코딩 버전 일괄 동기화
-- **사용자 업데이트**: `moai update` 한 번으로 패키지 + 리소스 자동 업그레이드
-- **개발자 생산성**: `moai update-version` 명령어로 95% 시간 절약
-- **안전장치**: 드라이 런, 백업, 검증 시스템으로 무사고 업데이트
+### 🤖 완전 자동화 (v0.1.21)
+- **버전 관리**: 문서/설정의 버전 문자열 동기화(VersionSyncManager 내부 도구)
+- **사용자 업데이트**: `moai update`로 템플릿 리소스 갱신 및 자동 백업
+- **개발자 도구**: `python -m moai_adk.core.version_sync --dry-run/--verify` 지원
+- **안전장치**: 드라이 런, 자동 백업, 검증 시스템으로 무사고 업데이트
 
-### 🏗️ 중앙 집중식 아키텍처 (v0.1.13)
-- **전역 리소스 관리**: ~/.claude/moai/ 통합 구조로 96% 공간 절약
-- **심볼릭 링크 시스템**: 10배 빠른 설치, N-프로젝트 효율성
+### 🏗️ 중앙 집중식 아키텍처 (v0.1.13+)
+- **패키지 내장 리소스**: importlib.resources 기반 "복사" 방식(심볼릭 링크 미의존)으로 안정성 향상
+- **전역 리소스 관리**: ~/.claude/moai/ 통합 구조
 - **완전한 메모리 시스템**: Claude/MoAI 메모리 파일, Constitution, ADR 템플릿
 - **지능형 Git 시스템**: 자동 설치, 저장소 보존, 운영체제별 최적화
 - **자동 업데이트 추적**: `.moai/version.json`으로 템플릿 버전을 관리하고 `moai update --check`에서 즉시 확인
@@ -48,7 +48,7 @@
 3. **TASKS**: TDD 태스크 분해
 4. **IMPLEMENT**: Red-Green-Refactor 구현
 
-### 🤖 32개 전문 에이전트 시스템
+### 🤖 58개 전문 에이전트 시스템
 
 #### MoAI 워크플로우 에이전트 (11개)
 - **steering-architect**: Steering 문서 생성
@@ -63,12 +63,15 @@
 - **deployment-specialist**: 배포 전략 및 자동화
 - **claude-code-manager**: MoAI-Claude 통합 전문가
 
-#### 범용 개발 에이전트 (21개)
-- **UI/UX**: ui-ux-designer, frontend-developer, mobile-developer
-- **백엔드**: backend-architect, database-architect, sql-pro, nosql-specialist
-- **언어별**: python-pro, javascript-pro, typescript-pro, php-pro, golang-pro, rust-pro, shell-scripting-pro
-- **품질**: test-engineer, code-reviewer, debugger, error-detective
-- **문서화**: documentation-expert, api-documenter, prompt-engineer
+#### 범용 개발 에이전트 (47개, 카테고리별)
+- **Frontend & UI/UX**: ui-ux-designer, frontend-developer, html-css-pro, nextjs-architecture-expert, react-performance, react-performance-optimizer, cli-ui-designer, tailwind-css-pro, vuejs-pro, svelte-pro
+- **Mobile**: mobile-developer, swift-pro, objective-c-pro, dart-pro
+- **Backend & Data**: backend-architect, database-architect, sql-pro, nosql-specialist, java-pro, kotlin-pro, ruby-pro, php-pro, golang-pro, scala-pro
+- **Programming Languages**: python-pro, javascript-pro, typescript-pro, c-pro, c-sharp-pro, cpp-pro, rust-pro, shell-scripting-pro
+- **Configuration & DevOps**: yaml-pro, json-pro, xml-pro, dockerfile-pro
+- **Documentation & AI**: documentation-expert, markdown-pro, api-documenter, prompt-engineer, changelog-generator
+- **Quality & Review**: test-engineer, code-reviewer, debugger, error-detective, fact-checker
+- **General**: agent-expert
 
 ### 🏷️ 16-Core @TAG 추적성 시스템
 - **Primary**: @REQ → @DESIGN → @TASK → @TEST
@@ -86,7 +89,7 @@
 - **개발자 시간 절약**: 30-60분 → 2-3분 (95% 감소)
 - **사용자 편의성**: 복잡한 pip 명령어 → 한 번의 moai update
 - **디스크 사용량**: 800KB/프로젝트 → 30KB/프로젝트 (96% 절약)
-- **설치 속도**: 파일 복사 → 심볼릭 링크 (10배 개선)
+- **설치 방식**: 플랫폼 무관한 안정적인 파일 복사 방식
 
 ### 정성적 개선
 - **개발자 경험**: 반복 작업 제거로 핵심 개발에 집중

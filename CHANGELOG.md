@@ -5,6 +5,30 @@ All notable changes to MoAI-ADK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.22] - 2025-09-17
+
+### 🚀 Major Hook System Modernization
+- **✨ Awesome Hooks JSON Standardization**: Complete JSON output standardization for Claude Code compatibility
+  - All 5 awesome hooks now output structured JSON results: `{"status": "success|warning|error", "message": "...", "timestamp": "...", "data": {...}}`
+  - Enhanced `auto_git_commit.py` with Hook data reading and detailed commit information
+  - Improved `backup_before_edit.py` with backup capacity limits (10MB), cleanup (max 5 backups), and status reporting
+  - Upgraded `test_runner.py` with timeout settings (120s), execution time measurement, and comprehensive test result data
+  - Enhanced `security_scanner.py` with severity standardization (high/medium/low), risk scoring (0-100), and multi-scanner integration
+  - Modernized `auto_formatter.py` with extended language support (12 languages), diff information, and formatting result tracking
+
+### 🛡️ Enhanced Hook Infrastructure
+- **📊 Structured Data Output**: All hooks now provide detailed execution metrics and structured results
+- **⏱️ Performance Monitoring**: Added execution time tracking and timeout management across all hooks
+- **🔧 Error Handling**: Improved error handling that never blocks Claude Code workflows (always return 0)
+- **📝 Hook Data Integration**: Added stdin hook data reading for context-aware processing
+- **🔍 Extended Language Support**: Added support for 30+ programming languages across formatters and security scanners
+
+### 🎯 Quality & Reliability Improvements
+- **📈 Risk Assessment**: Security scanner now includes automated risk scoring and severity breakdown
+- **💾 Resource Management**: File size limits and backup capacity controls to prevent disk issues
+- **🧪 Test Integration**: Enhanced test runner with multi-language framework detection and detailed result reporting
+- **🔐 Security Enhancements**: Comprehensive vulnerability scanning with multiple scanner integration (Semgrep, Bandit, GitLeaks)
+
 ## [0.1.21] - 2025-09-17
 
 ### 🔧 Bug Fixes & Improvements

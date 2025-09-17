@@ -7,6 +7,29 @@
 - 설치기/리소스 관리자: `templates.mode=package`일 때 `.moai/_templates/` 복사 생략 지원
 - 문서 업데이트: 설정(13-config), 템플릿(14-templates), 아키텍처(04-architecture), 설치(05-installation)
 - 메모리 템플릿: 공통/스택별 프로젝트 메모리 템플릿 자동 생성 및 기술 스택 기반 복사 지원
+- 에이전트 시스템: Tailwind/Vue/Svelte 등 47개 awesome 에이전트를 카테고리화하고 신규 전문가 지침 추가
+
+## v0.1.21 (2025-09-17) - Hook 안정성 & 버전 동기화
+
+### 🔧 Bug Fixes & Improvements
+- 🏷️ Hook 환경변수 처리 개선: awesome 훅 전반의 "No file path provided" 오류 해결
+  - `auto_formatter.py`: `CLAUDE_TOOL_FILE_PATH` 미설정 시에도 안전 종료(0)하도록 방어적 처리
+  - 모든 템플릿 훅에 방어 로직 적용, MultiEdit 시 불필요한 에러 방지
+- 📝 버전 동기화: v0.1.21로 버전 일괄 갱신
+  - `src/moai_adk/resources/VERSION`, `pyproject.toml`, `src/moai_adk/_version.py` 정합성 확보
+  - Git 히스토리에서 설치 버전과 문서 표기 버전 불일치 문제 정정
+- 🛡️ Hook 안전성 강화: 훅 실패로 워크플로우가 중단되지 않도록 개선
+  - 환경 의존 오류 시도 모두 0(성공) 코드로 패스스루
+  - 위험 명령 차단/grep→ripgrep 권고는 유지(`pre_write_guard.py`)
+
+### ✅ Template Updates
+- 🔄 Hook 템플릿 동기화: 배포본과 템플릿의 훅 스크립트를 동일 동작으로 정렬
+- 🧪 훅 검증: 11개 훅 파일 실행 경로/에러 핸들링 재검증
+
+### 🔍 Quality Assurance
+- ✅ 훅 카테고리(awesome, moai) 전반 정상 동작 확인
+- 🔒 SecurityManager 동작 확인 및 임포트 폴백 경로 점검
+- 🎯 개발 워크플로우 중단 방지 로직 강화
 
 ## v0.1.17 (2025-09-17) - 자동 업데이트 & 16-Core 정비
 
@@ -146,7 +169,7 @@ python build_hooks.py --sync-only  # 수동 동기화만
     └── output-styles/    # 출력 스타일
 
 프로젝트/
-├── .claude/             # 심볼릭 링크만
+├── .claude/             # 패키지에서 복사된 Claude Code 자산
 └── .moai/               # 프로젝트별 파일만
 ```
 
@@ -234,7 +257,7 @@ python build_hooks.py --sync-only  # 수동 동기화만
 ```bash
 # 종합 상태 확인
 moai status              # 간단한 상태
-moai status -v           # 상세 상태 (심볼릭 링크 포함)
+moai status -v           # 상세 상태
 
 # 통합 업데이트 시스템 (v0.1.14 개선)
 moai update              # 완전 자동 업데이트 (패키지 + 리소스)
@@ -242,13 +265,13 @@ moai update --check      # 업데이트 가능 여부 확인
 moai update --package-only     # 패키지만 업그레이드
 moai update --resources-only   # 글로벌 리소스만 업데이트
 
-# 개발자용 버전 관리 자동화 (v0.1.14 신규)
-moai update-version 0.1.14     # 전체 버전 동기화
-moai update-version 0.1.14 --dry-run  # 안전한 사전 테스트
-moai update-version 0.1.14 --verify   # 검증 포함
+# 개발자용 버전 관리 자동화 (내부 도구)
+python -m moai_adk.core.version_sync --dry-run   # 실제 변경 없이 점검
+python -m moai_adk.core.version_sync --verify    # 동기화 검증만
+python -m moai_adk.core.version_sync --create-script  # 업데이트 스크립트 생성(선택)
 
 # Windows 호환 설치
-moai init project --force-copy  # 심볼릭 링크 대신 파일 복사
+moai init project --force-copy  # 강제 복사 모드 (Windows 권장)
 ```
 
 ## v0.1.12 (2025-09-16) - Claude Code 2025 표준 완전 준수 및 Hook 시스템 안정화

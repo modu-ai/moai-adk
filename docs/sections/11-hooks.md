@@ -4,6 +4,11 @@
 
 MoAI-ADK의 Hook 시스템은 Claude Code의 표준 Hook 인터페이스를 활용하여 개발 과정의 품질을 자동으로 보장합니다.
 
+### v0.1.21 안정성 개선
+- 환경 변수 미설정 시 훅이 실패하지 않도록 방어 로직 강화(`auto_formatter.py` 등 awesome 훅)
+- 훅 실행 실패로 워크플로우가 중단되지 않도록 기본 동작을 성공(0)으로 처리
+- `pre_write_guard.py`의 위험 명령 차단 및 grep→ripgrep 권고는 기존 정책대로 유지
+
 ## Hook 이벤트 정의
 
 | Hook Event           | Trigger           | 주요 역할                       | Exit Code        |

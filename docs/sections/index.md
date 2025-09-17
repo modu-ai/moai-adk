@@ -1,7 +1,7 @@
 # MoAI-ADK Documentation Index
 
 > **AI Navigation Guide**: 빠른 문서 검색을 위한 체계적 인덱스
-> **Last Updated**: 2025-09-17 | **Package Version**: v0.1.17
+> **Last Updated**: 2025-09-17 | **Package Version**: v0.1.21
 
 ---
 
@@ -18,8 +18,8 @@
 **난이도**: 🟢 Basic
 
 ### [02-changelog.md](02-changelog.md) - 변경 이력
-**핵심 내용**: 버전별 변경사항, v0.1.17 패키지 구조 개선, 자동화 기능 개선
-**키워드**: `changelog`, `version`, `updates`, `v0.1.17`, `package-restructure`
+**핵심 내용**: 버전별 변경사항, v0.1.21 Hook 안정성/버전 동기화, v0.1.17 패키지 구조 개선
+**키워드**: `changelog`, `version`, `updates`, `v0.1.21`, `hooks`, `v0.1.17`, `package-restructure`
 **난이도**: 🟢 Basic
 
 ---
@@ -70,7 +70,7 @@
 ## 🤖 Advanced Features
 
 ### [10-agents.md](10-agents.md) - Agent 시스템
-**핵심 내용**: 32개 전문 에이전트 (11개 MoAI + 21개 awesome), 병렬 실행, 모델 선택, 에이전트 협업
+**핵심 내용**: 58개 전문 에이전트 (11개 MoAI + 47개 awesome), 카테고리별 구조, 병렬 실행, 모델 선택, 에이전트 협업
 **키워드**: `agents`, `parallel`, `models`, `specialization`, `automation`, `awesome`
 **난이도**: 🔴 Advanced
 

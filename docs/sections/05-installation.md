@@ -1,7 +1,7 @@
 # MoAI-ADK 설치 및 초기화
 
 > **완전 자동화된 설치 시스템** - pip 기반 PyPI 패키지 설치
-> **Last Updated**: 2025-09-16 | **Package Version**: v0.1.17
+> **Last Updated**: 2025-09-17 | **Package Version**: v0.1.21
 > **Difficulty**: 🟢 Basic
 
 ## 🚀 설치 과정 개요
@@ -34,9 +34,9 @@ moai --version
 - **Python**: 3.11 이상 (3.11-3.13 완전 호환성 검증 완료)
 - **운영체제**: Windows, macOS, Linux
 - **디스크 공간**: 50MB (전역 리소스)
-- **권한**: 일반 사용자 권한 (Windows에서 심볼릭 링크 사용 시 관리자 권한 권장)
+- **권한**: 일반 사용자 권한 (심볼릭 링크 불필요)
 
-### ✅ v0.1.17 안정성 보장
+### ✅ v0.1.21 안정성 보장
 
 **완전히 테스트된 안정 버전**:
 - 🧪 **7가지 핵심 기능** 완전 동작 검증
@@ -64,91 +64,47 @@ cd existing-project
 moai init .
 ```
 
-## 📋 17단계 초기화 프로세스
+## 📋 초기화 프로세스(요약)
 
-초기화 과정에서 다음 17단계가 자동으로 실행됩니다:
+SimplifiedInstaller 기준 실제 초기화 단계는 아래와 같습니다.
 
-### 1. 디렉토리 구조 생성
-- `.claude/` 및 `.moai/` 디렉토리 구조 생성
-- 필요한 하위 디렉토리 자동 구성
+1) 프로젝트 디렉토리 준비
+- 현재 디렉토리 또는 지정 경로에 프로젝트 폴더 생성/재사용
+- `--force`가 아닌 한 기존 파일은 보존 (`.git/`는 항상 보존)
 
-### 2. 기존 코드 자동 스캔
-- `pyproject.toml`, `setup.py`, `requirements.txt` 분석
-- 프로젝트 언어 및 프레임워크 자동 감지
+2) Claude 리소스 설치 (.claude/)
+- 패키지 내장 리소스를 복사하여 에이전트/명령/훅/메모리/스타일 배치
 
-### 3. 스캔 결과 프리필
-- `/moai:1-project init` 마법사에 자동 반영
-- 감지된 정보로 질문 사전 답변
+3) MoAI 리소스 설치 (.moai/)
+- 문서/스크립트/인덱스/템플릿 복사
+- `templates.mode=package`인 경우 `_templates/` 복사 생략(생성 시 패키지 템플릿 폴백)
 
-### 4. AI 에이전트 시스템 설치
-- 32개 전문 에이전트 설치 (11개 moai + 21개 awesome)
-- 에이전트별 역할과 도구 설정
+4) 템플릿 버전 기록
+- `.moai/version.json`에 템플릿/패키지 버전과 `last_updated` 기록
 
-### 5. 슬래시 명령어 설치
-- 6개 MoAI 명령어 설치 (`.claude/commands/moai/`)
-- 연번순 명령어 체계 구성
+5) 보조 디렉토리 구성
+- `.claude/logs`, `.moai/steering`, `.moai/specs`, `.moai/reports` 등 빈 디렉토리 생성
 
-### 6. MoAI Hook 스크립트 구성
-- 11개 핵심 Hook 설치 (6개 moai + 5개 awesome)
-- `settings.json`으로 Hook 설정 통합
+6) GitHub 워크플로우 (옵션)
+- `include_github=true`일 때 `.github/workflows/` 복사
 
-### 7. 문서 템플릿 시스템 설치
-- SPEC, PLAN, TASKS 템플릿 설치
-- 동적 템플릿 엔진 구성
-- 템플릿 설치 모드 적용: `.moai/config.json`의 `templates.mode`가 `package`인 경우 `.moai/_templates/` 복사를 생략하고, 생성 시 패키지 템플릿으로 폴백
+7) 프로젝트 메모리 생성
+- `CLAUDE.md` 설치 및 기술 스택 기반 메모리 템플릿 렌더링(`.moai/memory/*.md`)
 
-### 8. 메모리 시스템 설치
-- 프로젝트 가이드라인, Constitution, ADR 템플릿 설치
-- 공통/스택별 메모리 템플릿(.moai/_templates/memory/) 준비
-- Claude Code 메모리 파일 구성
+8) 설정 파일 생성
+- `.claude/settings.json`, `.moai/config.json` 생성 및 검증
 
-### 9. GitHub CI/CD 워크플로우 설치
-- Constitution 자동 검증 파이프라인 설치
-- 다중 언어 지원 구성
+9) Git 초기화 (옵션)
+- 저장소 초기화, `.gitignore` 생성
 
-### 10. 검증 스크립트 설치
-- 9개 품질 검증 도구 설치 (`.moai/scripts/`)
-- 통합 테스트 실행 스크립트 구성
-
-### 11. 16-Core TAG 시스템 초기화
-- 추적성 매트릭스 및 인덱스 생성
-- TAG 무결성 검사 시스템 구성
-
-### 12. Claude Code 설정 최적화
-- MoAI 통합 설정 적용
-- Hook 시스템 활성화
-
-### 13. Constitution 5원칙 구성
-- 품질 보장 시스템 활성화
-- 자동 검증 게이트 설정
-
-### 14. Steering 문서 생성
-- 프로젝트 방향성 문서 템플릿 준비
-- 동적 생성 시스템 구성
-
-### 15. 프로젝트 메모리 생성
-- `CLAUDE.md` 시스템 구성
-- 공통 메모리(`common.md`)와 선택한 기술 스택용 문서(예: `backend-python.md`, `frontend-react.md`) 자동 생성
-
-### 16. 자동 버전 관리 시스템 설치 (v0.1.17)
-- `scripts/update_version.py`: 독립실행형 버전 관리 스크립트
-- `TemplateEngine`: 자동 버전 변수 주입 시스템
-- `CLI update-version`: 개발자용 버전 동기화 명령어
-- 24개 파일 패턴 매칭 규칙 적용
-
-### 17. MoAI Output Styles 설치
-- 5개 맞춤형 스타일 설치:
-  - `expert.md`: 간결하고 효율적인 전문가 모드
-  - `beginner.md`: 상세한 설명과 단계별 안내
-  - `study.md`: 깊이 있는 원리와 심화 학습
-  - `mentor.md`: 1:1 멘토링과 페어 프로그래밍
-  - `audit.md`: 코드 품질 지속적 검증 개선
+10) 설치 검증 및 다음 단계 안내
+- 필수 리소스 존재 검증, 가이드 출력
 
 ## 🌟 패키지 내장 리소스 시스템 (v0.1.13)
 
 ### 패키지 내장 리소스 분석
 
-MoAI-ADK v0.1.17부터 패키지 내장 리소스 시스템을 사용합니다:
+MoAI-ADK v0.1.17+부터 패키지 내장 리소스 시스템을 사용합니다:
 
 ```python
 # 패키지 내장 리소스 접근
@@ -158,10 +114,12 @@ self.templates_root = self.resources_root / 'templates'
 
 # 각 프로젝트로 복사되는 리소스 (기본)
 .claude/agents/moai/      # 11개 MoAI 에이전트 파일
-.claude/agents/awesome/   # 21개 범용 에이전트 파일
+.claude/agents/awesome/   # 47개 범용 에이전트 파일(backend/frontend/mobile 등 카테고리별 서브 디렉토리)
 .claude/commands/moai/    # 6개 슬래시 명령어
 .moai/_templates/         # 문서 템플릿들 (templates.mode=package일 때는 복사 생략)
 ```
+
+- `agents/awesome/`는 `frontend/`, `mobile/`, `backend/`, `languages/`, `config/`, `docs/`, `quality/`, `general/`로 그룹화되어 관리됩니다.
 
 ### 파일 복사 아키텍처
 
@@ -175,8 +133,8 @@ self.templates_root = self.resources_root / 'templates'
 # 표준 설치 (모든 플랫폼)
 moai init project
 
-# 권한 확인
-moai status -v  # 상세 상태 확인 (심볼릭 링크 포함)
+# 상태 확인
+moai status -v  # 상세 상태 확인
 ```
 
 ## 🛠️ 설치 후 확인
@@ -187,7 +145,7 @@ moai status -v  # 상세 상태 확인 (심볼릭 링크 포함)
 # 간단한 상태 확인
 moai status
 
-# 상세 상태 확인 (심볼릭 링크 포함)
+# 상세 상태 확인
 moai status -v
 ```
 
@@ -221,19 +179,20 @@ moai update --resources-only   # 글로벌 리소스만 업데이트
 
 ### 개발자용 버전 관리
 
+내부 도구로 제공되는 VersionSyncManager를 통해 문서/설정의 버전 문자열을 점검/동기화할 수 있습니다.
+
 ```bash
-# 전체 버전 동기화
-moai update-version <version>
+# 드라이런(실제 변경 없음)
+python -m moai_adk.core.version_sync --dry-run
 
-# 안전한 사전 테스트
-moai update-version <version> --dry-run
+# 동기화 검증만
+python -m moai_adk.core.version_sync --verify
 
-# 검증 포함
-moai update-version <version> --verify
-
-# Git 커밋 제외
-moai update-version <version> --no-git
+# 버전 업데이트 스크립트 생성(선택)
+python -m moai_adk.core.version_sync --create-script
 ```
+
+일반 사용자는 `moai update`만으로 충분합니다. VersionSyncManager는 패키지 개발/문서 유지보수 목적의 고급 도구입니다.
 
 ## 🚨 문제 해결
 
