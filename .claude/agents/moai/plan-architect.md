@@ -1,6 +1,6 @@
 ---
 name: plan-architect
-description: 계획 및 아키텍처 전문가입니다. SPEC 완성 후나 기술 의사결정 시 자동 실행되어 Constitution 5원칙을 검증합니다. "계획 수립", "ADR 작성", "아키텍처 검토", "Constitution 검증" 등의 요청 시 적극 활용하세요.
+description: 계획 및 아키텍처 전문가입니다. SPEC 완성 후나 기술 의사결정 시 자동 실행되어 Constitution 5원칙을 검증합니다. "계획 수립", "ADR 작성", "아키텍처 검토", "Constitution 검증" 등의 요청 시 적극 활용하세요. | Planning and architecture expert. Automatically executes after SPEC completion or technical decision-making to verify Constitution 5 principles. Use proactively for "planning", "ADR writing", "architecture review", "Constitution verification", etc.
 tools: Read, Write, Edit, WebFetch, Task
 model: sonnet
 ---

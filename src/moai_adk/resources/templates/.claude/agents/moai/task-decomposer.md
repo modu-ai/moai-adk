@@ -1,6 +1,6 @@
 ---
 name: task-decomposer
-description: TDD 작업 분해 전문가입니다. Constitution 통과 후 자동 실행되어 구현 가능한 단위로 분해합니다. "작업 분해", "태스크 나누기", "TDD 계획", "구현 단위 설정" 등의 요청 시 적극 활용하세요.
+description: TDD 작업 분해 전문가입니다. Constitution 통과 후 자동 실행되어 구현 가능한 단위로 분해합니다. "작업 분해", "태스크 나누기", "TDD 계획", "구현 단위 설정" 등의 요청 시 적극 활용하세요. | TDD task decomposition expert. Automatically executes after Constitution approval to decompose into implementable units. Use proactively for "task decomposition", "task splitting", "TDD planning", "implementation unit setting", etc.
 tools: Read, Write, Edit, Grep
 model: sonnet
 ---

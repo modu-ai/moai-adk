@@ -1,6 +1,6 @@
 ---
 name: tag-indexer
-description: @TAG 시스템 관리 전문가입니다. @TAG 참조 생성이나 수정 시 자동 실행되어 인덱스를 업데이트합니다. "TAG 정리", "추적성 확인", "TAG 인덱스", "연결 관계 점검" 등의 요청 시 적극 활용하세요.
+description: @TAG 시스템 관리 전문가입니다. @TAG 참조 생성이나 수정 시 자동 실행되어 인덱스를 업데이트합니다. "TAG 정리", "추적성 확인", "TAG 인덱스", "연결 관계 점검" 등의 요청 시 적극 활용하세요. | @TAG system management expert. Automatically executes when @TAG references are created or modified to update indexes. Use proactively for "TAG organization", "traceability check", "TAG indexing", "connection relationship inspection", etc.
 tools: Read, Write, Edit, Grep, Glob
 model: haiku
 ---

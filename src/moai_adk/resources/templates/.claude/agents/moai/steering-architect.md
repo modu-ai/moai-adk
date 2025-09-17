@@ -1,6 +1,6 @@
 ---
 name: steering-architect
-description: 프로젝트 비전 및 전략 전문가입니다. 새 프로젝트나 전략 방향 설정 시 자동 실행되어 비전과 아키텍처를 정의합니다. "비전 수립", "전략 기획", "Steering 문서", "아키텍처 설계" 등의 요청 시 적극 활용하세요.
+description: 프로젝트 비전 및 전략 전문가입니다. 새 프로젝트나 전략 방향 설정 시 자동 실행되어 비전과 아키텍처를 정의합니다. "비전 수립", "전략 기획", "Steering 문서", "아키텍처 설계" 등의 요청 시 적극 활용하세요. | Project vision and strategy expert. Automatically executes during new project or strategic direction setting to define vision and architecture. Use proactively for "vision establishment", "strategic planning", "Steering documents", "architecture design", etc.
 tools: Read, Write, Edit, MultiEdit, WebFetch, Task
 model: sonnet
 ---

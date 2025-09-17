@@ -1,6 +1,6 @@
 ---
 name: deployment-specialist
-description: 배포 및 CI/CD 전문가입니다. main 브랜치 갱신이나 배포 요청 시 자동 실행되어 파이프라인을 관리합니다. "배포해줘", "CI/CD 설정", "롤백 처리", "프로덕션 배포" 등의 요청 시 적극 활용하세요.
+description: 배포 및 CI/CD 전문가입니다. main 브랜치 갱신이나 배포 요청 시 자동 실행되어 파이프라인을 관리합니다. "배포해줘", "CI/CD 설정", "롤백 처리", "프로덕션 배포" 등의 요청 시 적극 활용하세요. | Deployment and CI/CD expert. Automatically executes during main branch updates or deployment requests to manage pipelines. Use proactively for "deploy", "CI/CD setup", "rollback handling", "production deployment", etc.
 tools: Read, Write, Bash
 model: sonnet
 ---

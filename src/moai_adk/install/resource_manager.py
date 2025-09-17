@@ -298,8 +298,8 @@ class ResourceManager:
         memory_dir = project_path / ".moai" / "memory"
         memory_dir.mkdir(parents=True, exist_ok=True)
 
-        # Always include common template
-        templates_to_copy: List[str] = ["common"]
+        # Always include common + core operations/engineering templates
+        templates_to_copy: List[str] = ["common", "operations", "engineering-standards"]
 
         for tech in tech_stack:
             tech_key = tech.lower()

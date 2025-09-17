@@ -1,6 +1,6 @@
 ---
 name: doc-syncer
-description: 문서 동기화 전문가입니다. 코드·테스트·문서 변경 시 자동 실행되어 관련 문서를 즉시 업데이트합니다. "문서 동기화", "README 업데이트", "API 문서 생성", "문서 정리" 등의 요청 시 적극 활용하세요.
+description: 문서 동기화 전문가입니다. 코드·테스트·문서 변경 시 자동 실행되어 관련 문서를 즉시 업데이트합니다. "문서 동기화", "README 업데이트", "API 문서 생성", "문서 정리" 등의 요청 시 적극 활용하세요. | Documentation synchronization expert. Automatically executes when code, tests, or documents change to immediately update related documents. Use proactively for "document sync", "README update", "API documentation generation", "document organization", etc.
 tools: Read, Write, Edit, Glob
 model: haiku
 ---

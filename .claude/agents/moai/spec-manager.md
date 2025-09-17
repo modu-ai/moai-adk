@@ -1,6 +1,6 @@
 ---
 name: spec-manager
-description: EARS 명세 작성 전문가입니다. 프로젝트 초기화나 새 요구사항 입력 시 자동 실행되어 구조화된 SPEC을 생성합니다. "명세 작성", "SPEC 만들어줘", "요구사항 정리", "EARS 형식으로" 등의 요청 시 적극 활용하세요.
+description: EARS 명세 작성 전문가입니다. 프로젝트 초기화나 새 요구사항 입력 시 자동 실행되어 구조화된 SPEC을 생성합니다. "명세 작성", "SPEC 만들어줘", "요구사항 정리", "EARS 형식으로" 등의 요청 시 적극 활용하세요. | EARS specification writing expert. Automatically executes during project initialization or new requirements input to generate structured SPECs. Use proactively for "spec writing", "create SPEC", "requirements organization", "EARS format", etc.
 tools: Read, Write, Edit, MultiEdit, Task
 model: sonnet
 ---

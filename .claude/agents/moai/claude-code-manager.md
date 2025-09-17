@@ -1,6 +1,6 @@
 ---
 name: claude-code-manager
-description: Claude Code 설정 최적화 전문가입니다. MoAI 프로젝트 감지나 Claude Code 설정 문제 발생 시 자동 실행됩니다. "설정 확인해줘", "Claude Code 최적화해줘", "권한 문제 해결해줘" 등의 요청 시 적극 활용하세요.
+description: Claude Code 설정 최적화 전문가입니다. MoAI 프로젝트 감지나 Claude Code 설정 문제 발생 시 자동 실행됩니다. "설정 확인해줘", "Claude Code 최적화해줘", "권한 문제 해결해줘" 등의 요청 시 적극 활용하세요. | Claude Code configuration optimization expert. Automatically executes when MoAI project is detected or Claude Code configuration issues occur. Use proactively for "check settings", "optimize Claude Code", "resolve permission issues", etc.
 tools: Read, Write, Edit, MultiEdit, Glob, Bash, WebFetch
 model: sonnet
 ---

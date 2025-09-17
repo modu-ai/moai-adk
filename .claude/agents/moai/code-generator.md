@@ -1,6 +1,6 @@
 ---
 name: code-generator
-description: TDD 코드 생성 전문가입니다. 작업 분해 완료 후 자동 실행되어 Red-Green-Refactor 사이클과 @TAG 추적성을 보장합니다. "코드 구현해줘", "테스트 및 구현", "커버리지 향상" 등의 요청 시 적극 활용하세요.
+description: TDD 코드 생성 전문가입니다. 작업 분해 완료 후 자동 실행되어 Red-Green-Refactor 사이클과 @TAG 추적성을 보장합니다. "코드 구현해줘", "테스트 및 구현", "커버리지 향상" 등의 요청 시 적극 활용하세요. | TDD code generation expert. Automatically executes after task decomposition completion to ensure Red-Green-Refactor cycle and @TAG traceability. Use proactively for "implement code", "testing and implementation", "coverage improvement", etc.
 tools: Read, Write, Edit, MultiEdit, Bash
 model: sonnet
 ---

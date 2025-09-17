@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "project_name": null,
-    "created_at": null,
-    "last_updated": null
+    "project_name": "MoAI-ADK",
+    "created_at": "2025-01-20",
+    "last_updated": "2025-01-20"
   },
   "project_state": {
     "current_phase": "INIT",
@@ -21,7 +21,7 @@
   "pipeline_status": {
     "specify": {
       "status": "NOT_STARTED",
-      "specs_count": 0,
+      "specs_count": 3,
       "clarification_items": 0,
       "completion_rate": 0.0,
       "last_spec": null
@@ -77,15 +77,15 @@
     "versioning": {
       "status": "UNKNOWN",
       "scheme": "MAJOR.MINOR.BUILD",
-      "current_version": "0.0.0",
+      "current_version": "0.1.24",
       "violations": []
     }
   },
   "tag_system": {
-    "total_tags": 0,
+    "total_tags": 6,
     "by_category": {
-      "SPEC": 0,
-      "STEERING": 0,
+      "SPEC": 3,
+      "STEERING": 3,
       "IMPLEMENTATION": 0,
       "QUALITY": 0
     },
@@ -121,8 +121,8 @@
     }
   },
   "file_system": {
-    "moai_structure_complete": false,
-    "claude_structure_complete": false,
+    "moai_structure_complete": true,
+    "claude_structure_complete": true,
     "templates_available": false,
     "hooks_installed": false,
     "agents_available": false
@@ -135,7 +135,7 @@
     },
     "MOAI_VERSION": {
       "set": true,
-      "value": "0.1.9",
+      "value": "0.1.24",
       "last_updated": null
     },
     "CLAUDE_MODEL": {
@@ -187,22 +187,22 @@
   "pipeline": {
     "SPECIFY": {
       "completed": false,
-      "last_update": "2025-09-18T00:14:35.971844",
+      "last_update": "2025-09-18T05:27:23.193711",
       "version": "0.1.9"
     },
     "PLAN": {
-      "completed": false,
-      "last_update": "2025-09-18T00:14:42.269883",
+      "completed": true,
+      "last_update": "2025-09-18T05:27:53.703714",
       "version": "0.1.9"
     },
     "TASKS": {
       "completed": false,
-      "last_update": "2025-09-18T00:14:52.079951",
+      "last_update": "2025-09-18T05:28:35.868452",
       "version": "0.1.9"
     },
     "IMPLEMENT": {
       "completed": true,
-      "last_update": "2025-09-18T02:23:53.363589",
+      "last_update": "2025-09-18T05:22:25.733950",
       "version": "0.1.9"
     }
   }

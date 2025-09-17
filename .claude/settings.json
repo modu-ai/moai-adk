@@ -84,6 +84,17 @@
             "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/policy_block.py"
           }
         ]
+      },
+      {
+        "matcher": "Task|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/context_selector.py",
+            "timeout": 5,
+            "description": "Recommend Top-K context files"
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -148,5 +159,28 @@
         ]
       }
     ]
+  },
+  "mcpServers": {
+    "memory": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-memory"],
+      "settings": {
+        "maxTokens": 20000,
+        "apiVersion": "beta"
+      }
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-filesystem"],
+      "env": {
+        "ALLOWED_DIRECTORIES": "${CLAUDE_PROJECT_DIR}",
+        "MAX_MCP_OUTPUT_TOKENS": "20000"
+      }
+    }
+  },
+  "environmentVariables": {
+    "MAX_MCP_OUTPUT_TOKENS": "20000",
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "8192",
+    "MOAI_PROJECT": "true"
   }
 }

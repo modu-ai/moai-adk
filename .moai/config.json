@@ -1,7 +1,7 @@
 {
   "project": {
     "name": "MoAI-ADK",
-    "version": "0.2.0",
+    "version": "0.1.24",
     "description": "한국 개발자를 위한 에이전틱 코딩 혁명",
     "language": "ko",
     "created": "2025-01-20",
@@ -60,22 +60,22 @@
         "tag": "@REQ:AGENT-PERF-001"
       },
       {
-        "name": "Hook 시스템 확장",
-        "description": "더 많은 자동화 시점 추가",
-        "priority": 3,
-        "tag": "@REQ:HOOK-EXPAND-001"
-      },
-      {
         "name": "문서 자동 생성 강화",
         "description": "Living Document 시스템 고도화",
-        "priority": 4,
+        "priority": 3,
         "tag": "@REQ:DOC-AUTO-001"
       },
       {
         "name": "Git 기반 롤백 시스템",
         "description": "파일 변경마다 자동 커밋 체크포인트",
-        "priority": 5,
+        "priority": 4,
         "tag": "@REQ:GIT-AUTO-001"
+      },
+      {
+        "name": "온라인 웹문서 생성",
+        "description": "MoAI-ADK 프로젝트 문서 자동 웹사이트 구축",
+        "priority": 5,
+        "tag": "@REQ:DOC-AUTO-002"
       }
     ]
   },

@@ -336,17 +336,6 @@ class SessionNotifier:
         elif pipeline["stage"] == "IMPLEMENT":
             message_parts.append("   > /moai:5-dev T001  # Red-Green-Refactor 구현")
         
-        # 주요 명령어 체계
-        message_parts.extend([
-            "",
-            "주요 명령어:",
-            "   1. /moai:1-project  # 프로젝트 셋업 (비전/아키텍처/기술스택)",
-            "   2. /moai:2-spec     # 요구사항 작성 (무엇을 만들지)",
-            "   3. /moai:3-plan     # 개발 계획 수립 (어떻게 만들지)",
-            "   4. /moai:4-tasks    # 작업 분해 (구현 단위로 나누기)",
-            "   5. /moai:5-dev      # 코드 구현 (테스트→코드→리팩토링)",
-            "   6. /moai:6-sync     # 문서 업데이트 (코드↔문서 동기화)"
-        ])
         
         return "\n".join(message_parts)
 

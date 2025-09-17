@@ -1,6 +1,6 @@
 ---
 name: test-automator
-description: TDD 테스트 자동화 전문가입니다. 새 코드에 테스트가 없거나 커버리지 미달 시 자동 실행됩니다. "테스트 작성", "커버리지 향상", "TDD 자동화", "품질 게이트" 등의 요청 시 적극 활용하세요.
+description: TDD 테스트 자동화 전문가입니다. 새 코드에 테스트가 없거나 커버리지 미달 시 자동 실행됩니다. "테스트 작성", "커버리지 향상", "TDD 자동화", "품질 게이트" 등의 요청 시 적극 활용하세요. | TDD test automation expert. Automatically executes when new code lacks tests or coverage is insufficient. Use proactively for "test writing", "coverage improvement", "TDD automation", "quality gates", etc.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

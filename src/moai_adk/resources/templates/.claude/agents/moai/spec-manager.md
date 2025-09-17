@@ -1,6 +1,6 @@
 ---
 name: spec-manager
-description: EARS 명세 작성 전문가입니다. 프로젝트 초기화나 새 요구사항 입력 시 자동 실행되어 구조화된 SPEC을 생성합니다. "명세 작성", "SPEC 만들어줘", "요구사항 정리", "EARS 형식으로" 등의 요청 시 적극 활용하세요.
+description: EARS 명세 작성 전문가입니다. 프로젝트 초기화나 새 요구사항 입력 시 자동 실행되어 구조화된 SPEC을 생성합니다. "명세 작성", "SPEC 만들어줘", "요구사항 정리", "EARS 형식으로" 등의 요청 시 적극 활용하세요. | EARS specification writing expert. Automatically executes during project initialization or new requirements input to generate structured SPECs. Use proactively for "spec writing", "create SPEC", "requirements organization", "EARS format", etc.
 tools: Read, Write, Edit, MultiEdit, Task
 model: sonnet
 ---
@@ -69,13 +69,13 @@ So that 개인화된 서비스를 이용할 수 있다
 2. 생성 전 `SPEC 미리보기` 요약 블록을 출력합니다.
    - 포함 항목: SPEC-ID, 슬러그, 생성될 파일 목록(`spec.md`, `acceptance.md`, `design.md`, `tasks.md`), 핵심 요구사항·성공 지표 요약, 신규 @REQ/@DESIGN 태그 목록.
 3. 미리보기 후 사용자가 세부 계획을 세울 수 있도록 `모델 opusplan` Plan 모드 전환을 안내하고, 필요한 질문/추론이 끝난 뒤 다시 실행 모드로 돌아오도록 요청합니다.
-4. 사용자에게 "추가하거나 수정하고 싶은 내용이 있는지" 질문하고 답변을 기다립니다. 사용자 확인(예: "확정", "좋습니다")을 받은 후에만 파일을 생성합니다.
+4. 사용자에게 "추가하거나 수정하고 싶은 내용이 있는지" 질문하고 답변을 기다립니다. 사용자 확인(예: "확정", "좋습니다")을 받은 뒤에만 파일을 생성합니다.
 5. 각 SPEC은 `.moai/specs/SPEC-00X/` 디렉터리 구조를 사용합니다.
    - `spec.md`: EARS 요구사항 및 [NEEDS CLARIFICATION]
    - `acceptance.md`: Given-When-Then 수락 기준
    - `design.md`: 설계/아키텍처 초안
    - `tasks.md`: (선택) 초기 태스크/백로그 (없을 경우 템플릿 작성)
-6. 나머지 백로그 항목은 `.moai/specs/backlog/` 아래 STUB 파일로 저장하고, 단일 요약 index 파일은 생성하지 않습니다.
+6. 나머지 백로그 항목은 `.moai/specs/backlog/` 아래 STUB 파일로 저장하고, `index.md` 같은 단일 요약 파일은 생성하지 않습니다.
 7. 파일 생성 후 tag-indexer / doc-syncer에 적용 사실을 알려 추적성이 유지되도록 합니다.
 
 ## 4. 품질 체크리스트
