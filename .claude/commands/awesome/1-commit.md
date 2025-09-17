@@ -7,6 +7,8 @@ model: sonnet
 
 # Smart Git Commit
 
+모든 커밋 메시지는 한국어로 작성한다.
+
 Create well-formatted commit: $ARGUMENTS
 
 ## Current Repository State
@@ -124,6 +126,7 @@ When analyzing the diff, consider splitting commits based on these criteria:
 ## Examples
 
 Good commit messages:
+
 - ✨ feat: add user authentication system
 - 🐛 fix: resolve memory leak in rendering process
 - 📝 docs: update API documentation with new endpoints
@@ -142,6 +145,7 @@ Good commit messages:
 - ♿️ feat: improve form accessibility for screen readers
 
 Example of splitting commits:
+
 - First commit: ✨ feat: add new solc version type definitions
 - Second commit: 📝 docs: update documentation for new solc versions
 - Third commit: 🔧 chore: update package.json dependencies

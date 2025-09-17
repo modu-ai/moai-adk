@@ -114,18 +114,40 @@ class SessionNotifier:
     def count_specs(self) -> Dict[str, int]:
         """SPEC 개수 통계"""
         specs_dir = self.project_root / ".moai" / "specs"
-        
+
         if not specs_dir.exists():
             return {"total": 0, "complete": 0, "incomplete": 0}
-        
-        spec_dirs = [d for d in specs_dir.iterdir() if d.is_dir()]
+
+        # 실제 SPEC 디렉토리만 필터링 (템플릿, 샘플 제외)
+        spec_dirs = [
+            d for d in specs_dir.iterdir()
+            if (d.is_dir()
+                and not d.name.startswith("_")  # _templates 제외
+                and not d.name.endswith("-sample")  # 샘플 파일 제외
+                and d.name.startswith("SPEC-")  # SPEC- 패턴만 포함
+            )
+        ]
+
         total = len(spec_dirs)
         complete = 0
-        
+
         for spec_dir in spec_dirs:
-            if (spec_dir / "spec.md").exists() and (spec_dir / "acceptance.md").exists():
-                complete += 1
-        
+            # spec.md와 acceptance.md가 모두 있고 완성된 경우
+            spec_file = spec_dir / "spec.md"
+            acceptance_file = spec_dir / "acceptance.md"
+
+            if spec_file.exists() and acceptance_file.exists():
+                try:
+                    # spec.md 내용 확인 (빈 파일이 아닌지)
+                    with open(spec_file, 'r', encoding='utf-8') as f:
+                        spec_content = f.read().strip()
+
+                    # [NEEDS CLARIFICATION] 마커가 없고 실제 내용이 있는 경우만 완료로 처리
+                    if spec_content and '[NEEDS CLARIFICATION' not in spec_content and len(spec_content) > 100:
+                        complete += 1
+                except:
+                    pass
+
         return {
             "total": total,
             "complete": complete,
@@ -136,23 +158,43 @@ class SessionNotifier:
         """미완료 SPEC 목록"""
         specs_dir = self.project_root / ".moai" / "specs"
         incomplete = []
-        
+
         if not specs_dir.exists():
             return incomplete
-        
-        for spec_dir in specs_dir.iterdir():
-            if spec_dir.is_dir():
-                spec_file = spec_dir / "spec.md"
-                if spec_file.exists():
-                    # [NEEDS CLARIFICATION] 마커 체크
-                    try:
-                        with open(spec_file, 'r', encoding='utf-8') as f:
-                            content = f.read()
-                            if '[NEEDS CLARIFICATION' in content:
-                                incomplete.append(spec_dir.name)
-                    except:
-                        pass
-        
+
+        # 실제 SPEC 디렉토리만 필터링
+        spec_dirs = [
+            d for d in specs_dir.iterdir()
+            if (d.is_dir()
+                and not d.name.startswith("_")  # _templates 제외
+                and not d.name.endswith("-sample")  # 샘플 파일 제외
+                and d.name.startswith("SPEC-")  # SPEC- 패턴만 포함
+            )
+        ]
+
+        for spec_dir in spec_dirs:
+            spec_file = spec_dir / "spec.md"
+            acceptance_file = spec_dir / "acceptance.md"
+
+            # 파일이 없거나 미완료인 경우
+            is_incomplete = False
+
+            if not spec_file.exists() or not acceptance_file.exists():
+                is_incomplete = True
+            else:
+                try:
+                    with open(spec_file, 'r', encoding='utf-8') as f:
+                        content = f.read().strip()
+
+                    # [NEEDS CLARIFICATION] 마커가 있거나 내용이 부족한 경우
+                    if '[NEEDS CLARIFICATION' in content or len(content) < 100:
+                        is_incomplete = True
+                except:
+                    is_incomplete = True
+
+            if is_incomplete:
+                incomplete.append(spec_dir.name)
+
         return incomplete
     
     def get_active_tasks(self) -> Dict[str, Any]:
@@ -190,8 +232,140 @@ class SessionNotifier:
                     return state.get("last_activity")
             except:
                 pass
-        
+
         return None
+
+    def get_last_commit_info(self) -> Optional[Dict[str, str]]:
+        """최근 커밋 정보 조회"""
+        try:
+            import subprocess
+
+            # Git 저장소인지 확인
+            result = subprocess.run(
+                ["git", "rev-parse", "--git-dir"],
+                cwd=self.project_root,
+                capture_output=True,
+                text=True
+            )
+            if result.returncode != 0:
+                return None
+
+            # 최근 커밋 정보 가져오기
+            result = subprocess.run(
+                ["git", "log", "-1", "--pretty=format:%H|%s|%an|%ad", "--date=relative"],
+                cwd=self.project_root,
+                capture_output=True,
+                text=True
+            )
+
+            if result.returncode == 0 and result.stdout.strip():
+                parts = result.stdout.strip().split("|")
+                if len(parts) >= 4:
+                    return {
+                        "hash": parts[0],
+                        "message": parts[1],
+                        "author": parts[2],
+                        "date": parts[3]
+                    }
+
+        except Exception:
+            pass
+
+        return None
+
+    def get_working_directory_status(self) -> Dict[str, Any]:
+        """작업 디렉토리 상태 분석"""
+        try:
+            import subprocess
+
+            # Git 상태 확인
+            result = subprocess.run(
+                ["git", "status", "--porcelain"],
+                cwd=self.project_root,
+                capture_output=True,
+                text=True
+            )
+
+            if result.returncode == 0:
+                lines = result.stdout.strip().split('\n') if result.stdout.strip() else []
+
+                status = {
+                    "clean": len(lines) == 0,
+                    "modified": 0,
+                    "added": 0,
+                    "deleted": 0,
+                    "untracked": 0
+                }
+
+                for line in lines:
+                    if line.startswith(' M'):
+                        status["modified"] += 1
+                    elif line.startswith('A '):
+                        status["added"] += 1
+                    elif line.startswith(' D'):
+                        status["deleted"] += 1
+                    elif line.startswith('??'):
+                        status["untracked"] += 1
+
+                return status
+
+        except Exception:
+            pass
+
+        return {"clean": True, "modified": 0, "added": 0, "deleted": 0, "untracked": 0}
+
+    def get_smart_recommendations(self, pipeline: Dict[str, Any], git_status: Dict[str, Any],
+                                specs: Dict[str, int], tasks: Dict[str, Any],
+                                incomplete: List[str]) -> List[str]:
+        """상황에 맞는 스마트 추천 생성"""
+        recommendations = []
+
+        # 1. Git 상태 기반 추천
+        if not git_status["clean"]:
+            recommendations.append("git add . && git commit -m 'WIP: 진행 중인 작업 임시 저장'  # 변경사항 커밋")
+
+        # 2. 파이프라인 단계별 기본 추천
+        if pipeline["stage"] == "INIT":
+            if not self.has_steering_docs():
+                recommendations.append("/moai:1-project init  # 프로젝트 초기화 및 steering 문서 생성")
+            else:
+                recommendations.append("/moai:2-spec '첫 번째 기능 요구사항'  # 첫 SPEC 작성")
+
+        elif pipeline["stage"] == "SPECIFY":
+            if incomplete:
+                recommendations.append(f"/moai:2-spec {incomplete[0]}  # 미완료 SPEC 완성")
+            else:
+                recommendations.append("/moai:2-spec '새로운 기능 요구사항'  # 새 SPEC 작성")
+
+        elif pipeline["stage"] == "PLAN":
+            spec_id = pipeline.get("spec_id", "SPEC-001")
+            recommendations.append(f"/moai:3-plan {spec_id}  # Constitution 검증 및 계획 수립")
+
+        elif pipeline["stage"] == "TASKS":
+            spec_id = pipeline.get("spec_id", "SPEC-001")
+            recommendations.append(f"/moai:4-tasks {spec_id}  # TDD 작업 분해")
+
+        elif pipeline["stage"] == "IMPLEMENT":
+            if tasks["pending"] > 0:
+                recommendations.append("/moai:5-dev T001  # 다음 작업 구현 (Red-Green-Refactor)")
+            else:
+                recommendations.append("/moai:6-sync  # 문서 동기화 및 TAG 정리")
+
+        # 3. 상황별 추가 추천
+        if specs["incomplete"] > 0:
+            recommendations.append(f"# 📝 {specs['incomplete']}개의 미완료 SPEC이 있습니다")
+
+        if tasks["in_progress"] > 1:
+            recommendations.append("# ⚠️ 동시에 진행 중인 작업이 여러 개입니다. 집중하세요!")
+
+        # 4. 품질 개선 추천
+        specs_dir = self.project_root / ".moai" / "specs"
+        if specs_dir.exists():
+            spec_dirs = list(specs_dir.glob("SPEC-*/"))
+            if len(spec_dirs) >= 3:
+                recommendations.append("python .moai/scripts/check-traceability.py  # TAG 추적성 검증")
+
+        return recommendations[:3]  # 최대 3개까지만 추천
     
     def analyze_tag_health(self) -> Dict[str, Any]:
         """TAG 시스템 건강도 분석"""
@@ -316,25 +490,35 @@ class SessionNotifier:
                 message_parts.append(f"🏷️  TAG 건강도: {tag_health['health_score']}% (개선 권장)")
             else:
                 message_parts.append(f"🏷️  TAG 건강도: {tag_health['health_score']}% ✅")
-        
-        # 다음 단계 제안
-        message_parts.extend(["", "💡 다음 단계:"])
-        
-        if pipeline["stage"] == "INIT":
-            message_parts.append("   > /moai:1-project init  # 프로젝트 초기화")
-        elif pipeline["stage"] == "SPECIFY":
-            if self.has_steering_docs():
-                message_parts.append("   > /moai:2-spec '기능 설명'  # 첫 SPEC 작성")
-            else:
-                message_parts.append("   > /moai:1-project init  # steering 문서 생성 필요")
-        elif pipeline["stage"] == "PLAN":
-            spec_id = pipeline.get("spec_id", "SPEC-001")
-            message_parts.append(f"   > /moai:3-plan {spec_id}  # Constitution Check")
-        elif pipeline["stage"] == "TASKS":
-            spec_id = pipeline.get("spec_id", "SPEC-001") 
-            message_parts.append(f"   > /moai:4-tasks {spec_id}  # TDD 작업 분해")
-        elif pipeline["stage"] == "IMPLEMENT":
-            message_parts.append("   > /moai:5-dev T001  # Red-Green-Refactor 구현")
+
+        # 작업 디렉토리 상태
+        git_status = self.get_working_directory_status()
+        if not git_status["clean"]:
+            status_parts = []
+            if git_status["modified"] > 0:
+                status_parts.append(f"수정 {git_status['modified']}개")
+            if git_status["added"] > 0:
+                status_parts.append(f"추가 {git_status['added']}개")
+            if git_status["deleted"] > 0:
+                status_parts.append(f"삭제 {git_status['deleted']}개")
+            if git_status["untracked"] > 0:
+                status_parts.append(f"미추적 {git_status['untracked']}개")
+
+            if status_parts:
+                message_parts.append(f"📝 작업 상태: {', '.join(status_parts)}")
+
+        # 마지막 활동 정보
+        last_commit = self.get_last_commit_info()
+        if last_commit:
+            message_parts.append(f"📅 마지막 커밋: {last_commit['hash'][:8]} - {last_commit['message']}")
+            message_parts.append(f"   {last_commit['date']} ({last_commit['author']})")
+
+        # 다음 단계 추천
+        message_parts.extend(["", "💡 다음 단계 추천:"])
+
+        recommendations = self.get_smart_recommendations(pipeline, git_status, specs, tasks, incomplete)
+        for rec in recommendations:
+            message_parts.append(f"   > {rec}")
         
         
         return "\n".join(message_parts)
