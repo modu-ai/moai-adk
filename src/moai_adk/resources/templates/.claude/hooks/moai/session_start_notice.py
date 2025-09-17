@@ -220,10 +220,9 @@ class SessionNotifier:
         if not steering_dir.exists():
             return False
 
-        # 이행기 지원: 표준(product/structure/tech)과 구명칭(vision/architecture/techstack) 모두 허용
+        # 표준 파일명만 인정
         modern = ["product.md", "structure.md", "tech.md"]
-        legacy = ["vision.md", "architecture.md", "techstack.md"]
-        return any((steering_dir / f).exists() for f in modern + legacy)
+        return any((steering_dir / f).exists() for f in modern)
 
     def get_moai_version(self) -> str:
         """MoAI 버전 동적 조회"""
