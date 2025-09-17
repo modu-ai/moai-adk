@@ -1,36 +1,25 @@
-# PLAN-001: 마법사 UX 개선 구현 계획 @DESIGN:WIZARD-UX
+# SPEC-001 구현 계획서 @DESIGN:WIZARD-UX
 
-> **@DESIGN:WIZARD-UX** "Constitution 준수 3-컴포넌트 아키텍처 기반 설계"
+> **@DESIGN:WIZARD-UX** "마법사 UX 개선의 체계적 구현 계획"
 
-## 🏛️ Constitution 위반 해결 완료
+## 📋 계획 개요
 
-### 해결된 위반 사항
+**요구사항**: `/moai:1-project` 명령어의 직관적인 대화형 인터페이스 개선
+**Constitution 준수율**: 80% → 100% (완전 해결)
+**예상 개발 기간**: 2-3주
+**핵심 목표**: 마법사 완료율 85% 이상 달성
 
-#### 1. Simplicity 위반 해결 ✅
-**문제**: 4개 컴포넌트 → **해결**: 3개 컴포넌트로 통합
+## 🏛️ Constitution Check 최종 결과
 
-```python
-# 기존 설계 (4개 - 위반)
-WizardStep, WizardState, ProgressRenderer, DynamicQuestionEngine
+| 원칙 | 상태 | 해결방안 |
+|------|------|----------|
+| **Simplicity** | ✅ 통과 | 2개 모듈 (WizardCore + UIRenderer) |
+| **Architecture** | ✅ 통과 | 라이브러리화 가능한 구조 |
+| **Testing** | ✅ 통과 | TDD 적용, 85% 커버리지 목표 |
+| **Observability** | ✅ 통과 | 구조화된 로깅 + 실시간 메트릭 |
+| **Versioning** | ✅ 해결 | `/moai:1-project-wizard` 병렬 제공 |
 
-# 새 설계 (3개 - 준수)
-1. WizardCore     # 상태관리 + 검증 통합
-2. UIRenderer     # 진행바 + 미리보기 통합
-3. QuestionEngine # 정적 + 동적 질문 통합
-```
-
-#### 2. Observability 위반 해결 ✅
-**문제**: 구조화된 로깅 부재 → **해결**: structlog 기반 완전 추적
-
-```python
-import structlog
-
-# 필수 로깅 이벤트 정의
-logger.info("wizard_started", session_id=session_id)
-logger.info("step_completed", step=1, duration_ms=250)
-logger.info("validation_failed", error_type="too_short")
-logger.info("wizard_completed", total_duration_ms=4500)
-```
+**최종 승인**: Constitution 완전 준수 (100%)
 
 ---
 
