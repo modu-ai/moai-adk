@@ -1,6 +1,6 @@
 ---
 name: backend-architect
-description: Backend system architecture and API design specialist. Use PROACTIVELY for RESTful APIs, microservice boundaries, database schemas, scalability planning, and performance optimization.
+description: 백엔드 시스템 아키텍처 전문가입니다. RESTful API와 마이크로서비스 설계를 담당합니다. "API 설계", "마이크로서비스 경계 정의", "데이터베이스 스키마 설계", "확장성 계획" 등의 요청 시 적극 활용하세요.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

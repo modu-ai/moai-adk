@@ -1,6 +1,6 @@
 ---
 name: golang-pro
-description: Write idiomatic Go code with goroutines, channels, and interfaces. Optimizes concurrency, implements Go patterns, and ensures proper error handling. Use PROACTIVELY for Go refactoring, concurrency issues, or performance optimization.
+description: Go 코드 작성 전문가입니다. 고루틴, 채널, 인터페이스를 활용한 동시성 프로그래밍과 Go 패턴 구현을 전문으로 합니다. "Go 리팩토링", "동시성 최적화", "고루틴 성능", "채널 패턴" 등의 요청 시 적극 활용하세요.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

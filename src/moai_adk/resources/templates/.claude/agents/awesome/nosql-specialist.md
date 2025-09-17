@@ -1,6 +1,6 @@
 ---
 name: nosql-specialist
-description: NoSQL database specialist for MongoDB, Redis, Cassandra, and document/key-value stores. Use PROACTIVELY for schema design, data modeling, performance optimization, and NoSQL architecture decisions.
+description: NoSQL 데이터베이스 전문가입니다. MongoDB, Redis, Cassandra 등 문서/키-값 저장소를 담당합니다. "NoSQL 스키마 설계", "데이터 모델링", "성능 최적화", "NoSQL 아키텍처" 등의 요청 시 적극 활용하세요.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

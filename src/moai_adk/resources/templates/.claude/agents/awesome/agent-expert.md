@@ -1,13 +1,6 @@
 ---
 name: agent-expert
-description: |-
-  Use this agent when creating specialized Claude Code agents for the claude-code-templates components system. Specializes in agent design, prompt engineering, domain expertise modeling, and agent best practices.
-  Examples:
-  <example>
-    Context: User wants to create a new specialized agent.
-    user: 'I need to create an agent that specializes in React performance optimization'
-    assistant: 'I'll use the agent-expert agent to create a comprehensive React performance agent with proper domain expertise and practical examples'
-    <commentary>Since the user needs to create a specialized agent, use the agent-expert agent for proper agent structure and implementation.</commentary>
+description: 에이전트 설계 전문가입니다. Claude Code 에이전트 생성과 프롬프트 엔지니어링을 담당합니다. "에이전트 생성", "전문 에이전트 설계", "프롬프트 최적화", "에이전트 베스트 프랙티스" 등의 요청 시 적극 활용하세요.
   </example>
   <example>
     Context: User needs help with agent prompt design.

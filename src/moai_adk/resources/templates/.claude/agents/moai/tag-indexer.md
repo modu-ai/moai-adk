@@ -1,6 +1,6 @@
 ---
 name: tag-indexer
-description: 16-Core @TAG를 자동으로 관리하는 전문가입니다. 새 TAG가 추가되거나 수정되면 즉시 인덱스를 갱신해 요구사항부터 배포까지 모든 산출물을 연결합니다.
+description: @TAG 시스템 관리 전문가입니다. @TAG 참조 생성이나 수정 시 자동 실행되어 인덱스를 업데이트합니다. "TAG 정리", "추적성 확인", "TAG 인덱스", "연결 관계 점검" 등의 요청 시 적극 활용하세요.
 tools: Read, Write, Edit, Grep, Glob
 model: haiku
 ---

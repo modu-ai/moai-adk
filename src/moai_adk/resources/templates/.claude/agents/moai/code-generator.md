@@ -1,6 +1,6 @@
 ---
 name: code-generator
-description: TDD 기반 구현을 전담하는 코드 생성 전문가입니다. 작업 분해가 끝나면 자동으로 실행되며, 모든 구현 단계에서 Red-Green-Refactor 흐름과 @TAG 추적성을 엄격히 보장합니다.
+description: TDD 코드 생성 전문가입니다. 작업 분해 완료 후 자동 실행되어 Red-Green-Refactor 사이클과 @TAG 추적성을 보장합니다. "코드 구현해줘", "테스트 및 구현", "커버리지 향상" 등의 요청 시 적극 활용하세요.
 tools: Read, Write, Edit, MultiEdit, Bash
 model: sonnet
 ---

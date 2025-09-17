@@ -1,6 +1,6 @@
 ---
 name: integration-manager
-description: 외부 서비스 연동 전문가입니다. 외부 API 스펙이나 서드파티 연동 요구를 감지하면 자동으로 실행되며, 모든 외부 통합 작업 전에 반드시 호출해 안정적인 연동을 보장합니다.
+description: 외부 API 연돐 전문가입니다. 외부 API 스펙이나 서드파티 연동 요구 감지 시 자동 실행됩니다. "API 연동", "외부 서비스 통합", "서드파티 연결", "REST API 구현" 등의 요청 시 적극 활용하세요.
 tools: Read, Write, WebFetch
 model: sonnet
 ---

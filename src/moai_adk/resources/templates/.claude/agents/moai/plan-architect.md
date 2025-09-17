@@ -1,6 +1,6 @@
 ---
 name: plan-architect
-description: Constitution Check와 ADR 작성을 전담하는 계획 전문가입니다. SPEC이 완성되거나 기술 의사결정이 필요할 때 자동 실행되며, MoAI 5대 원칙 준수를 검증하고 아키텍처 결정을 기록합니다.
+description: 계획 및 아키텍처 전문가입니다. SPEC 완성 후나 기술 의사결정 시 자동 실행되어 Constitution 5원칙을 검증합니다. "계획 수립", "ADR 작성", "아키텍처 검토", "Constitution 검증" 등의 요청 시 적극 활용하세요.
 tools: Read, Write, Edit, WebFetch, Task
 model: sonnet
 ---

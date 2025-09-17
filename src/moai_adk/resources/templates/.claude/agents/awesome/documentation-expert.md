@@ -1,6 +1,6 @@
 ---
 name: documentation-expert
-description: Use this agent to create, improve, and maintain project documentation. Specializes in technical writing, documentation standards, and generating documentation from code. Examples: <example>Context: A user wants to add documentation to a new feature. user: 'Please help me document this new API endpoint.' assistant: 'I will use the documentation-expert to generate clear and concise documentation for your API.' <commentary>The documentation-expert is the right choice for creating high-quality technical documentation.</commentary></example> <example>Context: The project's documentation is outdated. user: 'Can you help me update our README file?' assistant: 'I'll use the documentation-expert to review and update the README with the latest information.' <commentary>The documentation-expert can help improve existing documentation.</commentary></example>
+description: 문서 작성 전문가입니다. 기술 문서 작성과 문서 표준을 담당합니다. "문서 작성", "README 개선", "API 문서화", "기술 문서 개선" 등의 요청 시 적극 활용하세요.
 color: cyan
 ---
 

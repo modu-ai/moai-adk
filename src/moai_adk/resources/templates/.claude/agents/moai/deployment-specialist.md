@@ -1,6 +1,6 @@
 ---
 name: deployment-specialist
-description: 배포 전략 전문가입니다. main 브랜치 갱신이나 배포 요청이 들어오면 자동으로 실행되어 CI/CD 파이프라인과 배포 스크립트를 점검하며, 모든 프로덕션 릴리스 전에는 반드시 호출해야 합니다.
+description: 배포 및 CI/CD 전문가입니다. main 브랜치 갱신이나 배포 요청 시 자동 실행되어 파이프라인을 관리합니다. "배포해줘", "CI/CD 설정", "롤백 처리", "프로덕션 배포" 등의 요청 시 적극 활용하세요.
 tools: Read, Write, Bash
 model: sonnet
 ---

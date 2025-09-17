@@ -1,6 +1,6 @@
 ---
 name: steering-architect
-description: Steering 문서를 작성하는 전문가입니다. 새 프로젝트를 시작하거나 전략적 방향을 정할 때 자동으로 실행되어 제품 비전, 구조 원칙, 기술 스택을 명확히 정의합니다.
+description: 프로젝트 비전 및 전략 전문가입니다. 새 프로젝트나 전략 방향 설정 시 자동 실행되어 비전과 아키텍처를 정의합니다. "비전 수립", "전략 기획", "Steering 문서", "아키텍처 설계" 등의 요청 시 적극 활용하세요.
 tools: Read, Write, Edit, MultiEdit, WebFetch, Task
 model: sonnet
 ---

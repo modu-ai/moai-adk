@@ -1,6 +1,6 @@
 ---
 name: c-sharp-pro
-description: Write idiomatic C# code with modern language features, async patterns, and LINQ. Masters .NET ecosystem, Entity Framework Core, and ASP.NET Core. Use PROACTIVELY for C# optimization, refactoring, or complex .NET solutions.
+description: C# 및 .NET 생태계 전문가입니다. 현대적 언어 기능, async 패턴, LINQ를 활용하고 Entity Framework Core, ASP.NET Core를 마스터합니다. "C# 최적화", "닷넷 리팩토링", "엔터프라이즈 솔루션", "마이크로서비스" 등의 요청 시 적극 활용하세요.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

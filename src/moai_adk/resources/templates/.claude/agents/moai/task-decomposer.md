@@ -1,6 +1,6 @@
 ---
 name: task-decomposer
-description: Constitution 검증이 끝난 SPEC을 기반으로 TDD 작업을 세분화하는 전문가입니다. 구현 가능한 단위로 태스크를 나누고 병렬 실행 가능한 작업에 [P] 표시를 붙여 개발 효율을 높입니다.
+description: TDD 작업 분해 전문가입니다. Constitution 통과 후 자동 실행되어 구현 가능한 단위로 분해합니다. "작업 분해", "태스크 나누기", "TDD 계획", "구현 단위 설정" 등의 요청 시 적극 활용하세요.
 tools: Read, Write, Edit, Grep
 model: sonnet
 ---

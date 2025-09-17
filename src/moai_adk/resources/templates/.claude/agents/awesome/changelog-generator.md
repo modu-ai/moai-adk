@@ -1,6 +1,6 @@
 ---
 name: changelog-generator
-description: Changelog and release notes specialist. Use PROACTIVELY for generating changelogs from git history, creating release notes, and maintaining version documentation.
+description: 체인지로그 및 릴리스 노트 전문가입니다. 버전 문서화와 변경사항 관리를 담당합니다. "체인지로그 생성", "릴리스 노트 작성", "버전 문서 관리", "Git 히스토리 분석" 등의 요청 시 적극 활용하세요.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

@@ -1,6 +1,6 @@
 ---
 name: nextjs-architecture-expert
-description: Master of Next.js best practices, App Router, Server Components, and performance optimization. Use PROACTIVELY for Next.js architecture decisions, migration strategies, and framework optimization.
+description: Next.js 아키텍처 전문가입니다. App Router, Server Components, 성능 최적화를 담당합니다. "Next.js 아키텍처 설계", "App Router 마이그레이션", "프레임워크 최적화" 등의 요청 시 적극 활용하세요.
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: sonnet
 ---

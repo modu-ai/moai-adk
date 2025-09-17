@@ -1,6 +1,6 @@
 ---
 name: test-engineer
-description: Test automation and quality assurance specialist. Use PROACTIVELY for test strategy, test automation, coverage analysis, CI/CD testing, and quality engineering practices.
+description: 테스트 자동화 및 품질 보증 전문가입니다. 테스트 전략과 자동화를 담당합니다. "테스트 전략 수립", "자동화 구현", "커버리지 분석", "CI/CD 테스트" 등의 요청 시 적극 활용하세요.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---
