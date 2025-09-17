@@ -3,7 +3,7 @@
 MoAI-ADK Session Start Notice Hook - v0.1.12
 세션 시작 시 프로젝트 상태 알림 및 컨텍스트 정보 제공
 
-SessionStart Hook으로 현재 MoAI 프로젝트 상태를 분석하고
+SessionStart Hook으로 현재 MoAI 프로젝트 상태를 분석하고 
 개발자에게 유용한 정보를 제공합니다.
 """
 
@@ -65,10 +65,15 @@ class SessionNotifier:
     
     def get_current_pipeline_stage(self) -> Dict[str, Any]:
         """현재 파이프라인 단계 분석"""
+
+        # steering 문서 먼저 체크
+        if not self.has_steering_docs():
+            return {"stage": "INIT", "description": "프로젝트 셋업 필요 (steering 문서 생성)"}
+
         specs_dir = self.project_root / ".moai" / "specs"
-        
+
         if not specs_dir.exists():
-            return {"stage": "INIT", "description": "프로젝트 초기화 필요"}
+            return {"stage": "SPECIFY", "description": "첫 번째 요구사항 작성 필요"}
 
         # 템플릿 디렉토리와 샘플 파일들 제외하고 실제 SPEC만 검사
         spec_dirs = [
@@ -79,9 +84,9 @@ class SessionNotifier:
                 and d.name.startswith("SPEC-")  # SPEC- 패턴만 포함
             )
         ]
-        
+
         if not spec_dirs:
-            return {"stage": "SPECIFY", "description": "첫 번째 SPEC 생성 필요"}
+            return {"stage": "SPECIFY", "description": "첫 번째 요구사항 작성 필요"}
         
         # 가장 최근 SPEC 디렉토리 분석
         latest_spec = max(spec_dirs, key=lambda d: d.stat().st_mtime)
@@ -319,18 +324,21 @@ class SessionNotifier:
             spec_id = pipeline.get("spec_id", "SPEC-001")
             message_parts.append(f"   > /moai:3-plan {spec_id}  # Constitution Check")
         elif pipeline["stage"] == "TASKS":
-            spec_id = pipeline.get("spec_id", "SPEC-001")
+            spec_id = pipeline.get("spec_id", "SPEC-001") 
             message_parts.append(f"   > /moai:4-tasks {spec_id}  # TDD 작업 분해")
         elif pipeline["stage"] == "IMPLEMENT":
             message_parts.append("   > /moai:5-dev T001  # Red-Green-Refactor 구현")
         
-        # 유용한 명령어
+        # 주요 명령어 체계
         message_parts.extend([
             "",
-            "🛠️  유용한 명령어:",
-            "   > /moai:sync  # 문서 동기화",
-            "   > python scripts/validate_stage.py  # 품질 검증",
-            "   > python scripts/repair_tags.py  # TAG 자동 복구"
+            "🤖 주요 명령어:",
+            "   1️⃣ /moai:1-project  # 프로젝트 셋업 (비전/아키텍처/기술스택)",
+            "   2️⃣ /moai:2-spec     # 요구사항 작성 (무엇을 만들지)",
+            "   3️⃣ /moai:3-plan     # 개발 계획 수립 (어떻게 만들지)",
+            "   4️⃣ /moai:4-tasks    # 작업 분해 (구현 단위로 나누기)",
+            "   5️⃣ /moai:5-dev      # 코드 구현 (테스트→코드→리팩토링)",
+            "   6️⃣ /moai:6-sync     # 문서 업데이트 (코드↔문서 동기화)"
         ])
         
         return "\n".join(message_parts)
