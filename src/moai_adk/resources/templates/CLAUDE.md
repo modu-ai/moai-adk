@@ -47,25 +47,26 @@ MoAI-ADK는 4단계 파이프라인(SPECIFY → PLAN → TASKS → IMPLEMENT)을
 프로젝트 문서는 아래 카테고리로 구성되어 있으며, 전체 지도는 @.claude/memory/README.md 에서 확인합니다.
 
 ### 프로세스 & 핵심 원칙
-@.claude/memory/three_phase_process.md  
-@.claude/memory/project_guidelines.md  
-@.claude/memory/software_principles.md
+- @.claude/memory/three_phase_process.md — 응답 구조(탐색→계획→구현) 표준
+- @.claude/memory/project_guidelines.md — Small & Safe 루프, 에이전트 운영 원칙
+- @.claude/memory/software_principles.md — Refactoring/Clean Code/TDD/API 패턴 요약
 
 ### 개발 표준
-@.claude/memory/coding_standards.md  
-@.claude/memory/tdd_guidelines.md  
-@.claude/memory/security_rules.md
+- @.claude/memory/coding_standards.md — 언어/프레임워크별 코딩 규칙 링크
+- @.claude/memory/tdd_guidelines.md — Red→Green→Refactor 사이클 지침
+- @.claude/memory/security_rules.md — ISMS-P 기반 보안/개인정보 규칙
 
 ### 협업 & Git
-@.claude/memory/team_conventions.md  
-@.claude/memory/git_workflow.md  
-@.claude/memory/git_commit_rules.md  
-@.claude/memory/shared_checklists.md
+- @.claude/memory/team_conventions.md — 회의/PR/문서화 규약
+- @.claude/memory/git_workflow.md — 브랜치 전략·리베이스·pre-commit 흐름
+- @.claude/memory/git_commit_rules.md — Conventional Commit 규칙
+- @.claude/memory/shared_checklists.md — PR/테스트/보안 공통 체크리스트
 
 ### 도구 & 운영
-@.claude/memory/bash_commands.md
-@.claude/memory/README.md  
-@.moai/memory/common.md
+- @.claude/memory/bash_commands.md — 쉘 안전 수칙과 권장 도구
+- @.claude/memory/README.md — 메모리 계층/임포트/템플릿 가이드
+- @.moai/memory/common.md — 프로젝트 공통 운영 메모(자동 생성)
+- @.moai/memory/<layer>-<tech>.md — 선택한 기술 스택별 메모(예: backend-python.md)
 
 ### Constitution & 거버넌스
 

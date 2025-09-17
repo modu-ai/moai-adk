@@ -8,6 +8,8 @@ allowed-tools: Read, Write, Edit, MultiEdit, WebFetch, Task
 
 Claude Code 공식 문서 기반 완전 자동화 Spec-First TDD 개발 시스템의 핵심 설정을 대화형으로 수집하여 완전한 개발 환경을 구축합니다.
 
+> 초기화가 완료되면 `.moai/memory/`에 공통 메모와 선택한 기술 스택별 문서가 자동 생성됩니다. 언어/프레임워크별 체크리스트는 이 문서들을 참조하세요.
+
 ## 실행 모드
 
 ### `/moai:1-project init` - 프로젝트 초기 설정

@@ -8,6 +8,8 @@ allowed-tools: Read, Write, Edit, MultiEdit, Task
 
 MoAI-ADK 파이프라인의 최초 진입점으로, 비즈니스 요구사항을 엔지니어링 관점에서 인간이 읽기 쉬우면서도 컴퓨터가 처리하기 적합한 EARS(Easy Approach to Requirements Syntax) 형식으로 변환합니다. 불명확한 부분은 [NEEDS CLARIFICATION] 마커로 표시하여 구현 전에 소통 비용을 최소화합니다.
 
+> 참고: 프로젝트 메모리(`.moai/memory/common.md`, `.moai/memory/<layer>-<tech>.md`)는 명세 작성 전 기본 원칙과 기술 스택별 체크리스트를 제공합니다.
+
 ## 실행 플로우
 
 ```mermaid

@@ -8,6 +8,8 @@ allowed-tools: Read, Write, Edit, Grep, Task
 
 수립된 계획을 실제 구현 가능한 작업 단위로 분해하는 핵심 단계로, TDD(Test-Driven Development) 방법론에 엄격히 따라 테스트가 먼저 작성되도록 작업 순서를 결정합니다. [P] 마커를 통해 병렬 실행 가능한 작업을 식별하고, 의존성 그래프를 최적화하여 개발 속도를 극대화합니다.
 
+> 참고: `.moai/memory/common.md` 와 스택별 메모는 작업 분해 시 고려해야 할 언어/프레임워크별 테스트·품질 기준을 제공합니다.
+
 ## 🎯 실행 플로우
 
 ```mermaid

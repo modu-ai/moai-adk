@@ -8,6 +8,8 @@ allowed-tools: Read, Write, Edit, WebFetch, Task
 
 완성된 EARS 명세를 바탕으로 기술적 설계와 아키텍처 결정을 수행하는 체계적 계획 수립 단계입니다. MoAI-ADK의 Constitution Check를 통해 프로젝트의 복잡도와 적절성을 평가하고, 5가지 핵심 원칙에 따라 지속 가능성과 유지보수성을 미리 보장합니다.
 
+> 참고: `.moai/memory/common.md` 및 스택별 메모는 계획 수립 시 필요한 언어/프레임워크 지침과 보안·테스트 체크리스트를 제공합니다.
+
 ## 🎯 실행 플로우
 
 ```mermaid

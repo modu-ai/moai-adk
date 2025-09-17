@@ -8,6 +8,8 @@ allowed-tools: Read, Write, Edit, MultiEdit, Bash, Task
 
 MoAI-ADK 파이프라인의 최종 단계로, 단위 작업을 Red-Green-Refactor TDD 사이클에 따라 완전 자동으로 구현하는 강력한 도구입니다. 먼저 실패하는 테스트를 작성하여 RED 단계를 수행하고, 테스트를 통과시키는 최소한의 구현으로 GREEN 단계를 진행한 후, 코드 품질을 개선하는 REFACTOR 단계를 완료합니다.
 
+> 참고: `.moai/memory/common.md` 와 스택별 메모는 구현 단계에서 필요한 lint/test/pre-commit 구성을 요약합니다.
+
 ## 자연어 체이닝 오케스트레이션
 
 ## 🎯 실행 플로우
