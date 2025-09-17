@@ -321,15 +321,17 @@ Path: .moai/specs/SPEC-001/
 - 상세한 작업 단위 분해
 - 의존성과 일정 계획
 
-#### `all` - 전체 SPEC 문서 작성
+#### `all` - 전체 SPEC 문서 작성(백로그 승격)
 
 ```bash
-> /moai:2-spec all "소셜 미디어 플랫폼 개발"
+> /moai:2-spec all "백로그 승격"
 ```
 
-- requirements.md, design.md, tasks.md 모두 생성
-- 통합적이고 일관된 명세 작성
-- 전체 프로젝트 스코프 정의
+- 1-project 단계에서 생성된 STUB 백로그를 스캔하여 선택한 항목을 FULL(EARS+US+AC)로 승격
+- 필터/선택: 우선순위(P0/P1/P2), 도메인, @REQ 카테고리로 선택적 승격
+- 상한: 기본 최대 20개 FULL(대규모는 배치로 나누어 품질 저하 방지)
+- 결과물: 선택 항목에 대해 requirements.md, design.md, tasks.md 생성
+- 게이트: [NEEDS CLARIFICATION] 비율과 EARS/AC 분포 기준을 충족해야 확정 가능
 
 ### $ARGUMENTS 나머지 인자: 상세 내용
 

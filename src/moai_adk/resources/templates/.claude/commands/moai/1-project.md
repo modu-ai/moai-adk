@@ -27,7 +27,7 @@ Claude Code 공식 문서 기반 완전 자동화 Spec-First TDD 개발 시스�
 2) 최소 질문+추천: Q1~Q4(아래)에서 추천 답변 1~3개와 “모르겠어요” 제공, 수치·단위 검증 자동화
 3) 리스크 트리거: 규제/PII/결제/보안/성능/AI 키워드 감지 시 필요한 최소 추가 질문만 수행
 4) Steering 프리셋: product/structure/tech 초안(추천/보수/경량) 미리보기→선택→확정
-5) SPEC 시드: Top-3 기능으로 SPEC-001~003 생성, [NEEDS CLARIFICATION] 자동 마킹
+5) SPEC 시드/백로그: Top-3 기능은 SPEC-001~003을 FULL(EARS+US+AC)로 생성하고, 나머지 기능들은 STUB(제목/요약/초기 @REQ, [NEEDS CLARIFICATION])로 백로그에 생성
 6) 최종 답변 요약: 모든 답변·선택 사항을 요약 출력 → 수정/확정 선택
 7) 적용 요약: 생성·수정 파일 요약(diff 개요) 확인 후 적용/취소. 중단 시 다음 실행에서 자동 재개
 
@@ -190,7 +190,8 @@ Steering 프리셋: <선택한 옵션>
 - `.moai/steering/tech.md` - 기술 스택과 결정사항
 - `.moai/config.json` - MoAI 설정 및 Constitution 규칙
 - `.moai/indexes/tags.json` - 16-Core TAG 시스템 초기화
-- `.moai/specs/SPEC-001~003/` - 초기 명세 문서
+- `.moai/specs/SPEC-001~003/` - 초기 명세 문서(Top-3 FULL)
+- `.moai/specs/SPEC-00X~/` - 백로그 STUB(제목/요약/초기 @REQ, [NEEDS CLARIFICATION])
 - `CLAUDE.md` - 프로젝트 메모리 자동 구성
 - `.claude/agents/moai/` - 10개 전문 에이전트 활성화
 
