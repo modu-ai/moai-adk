@@ -188,6 +188,16 @@ def prefill_answers(scanned_info):
 - CI/CD 파이프라인 (.github/workflows/)
 - 개발 도구 설정 (.eslintrc, .prettierrc 등)
 
+### SPEC 디렉터리 생성
+- Top-3 기능 → 각각 `SPEC-00X/` 디렉터리 생성: `spec.md`, `acceptance.md`, `design.md`, `tasks.md`
+- 백로그 기능 → `.moai/specs/backlog/`에 STUB(제목/요약/초기 @REQ, [NEEDS CLARIFICATION]) 저장
+
+### 최종 확인 & Plan 모드 활용
+1. 모든 질문이 끝나면 마법사가 `최종 요약`을 보여준다.
+2. 사용자는 `모델 opusplan` 명령으로 Plan 모드로 전환해 세부 질문/추론을 정리한다.
+3. 필요한 조정이 끝나면 실행 모드(예: `모델 sonnet`)로 돌아와 “추가 수정 사항 없음”을 확인한다.
+4. 사용자 확정(예: “확정”, “좋습니다”)을 받은 뒤에만 문서를 생성한다.
+
 ## 레거시 Steering 파일명 마이그레이션
 
 이전 버전에서 생성된 `.moai/steering/vision.md`, `architecture.md`, `techstack.md`는 더 이상 감지되지 않습니다.

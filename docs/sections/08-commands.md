@@ -43,8 +43,14 @@ MoAI-ADK는 4단계 파이프라인을 지원하는 6개의 연번순 슬래시 
 
 **생성 결과**:
 - Steering 문서 (product.md, structure.md, tech.md)
-- 프로젝트별 디렉토리 구조
+- Top-3 SPEC 디렉터리(`SPEC-00X/spec.md`, `acceptance.md`, `design.md`, `tasks.md`)
+- 백로그 STUB(`.moai/specs/backlog/`)
 - 언어/프레임워크별 맞춤 설정
+
+**확정 절차**:
+1. 최종 요약을 확인하고 `모델 opusplan`으로 Plan 모드에서 세부 계획을 정리합니다.
+2. 필요한 질문/추론을 마친 후 실행 모드(예: `모델 sonnet`)로 돌아옵니다.
+3. “추가 수정 사항 없음”을 확인한 뒤 `확정` 응답을 제공하면 마법사가 문서를 생성합니다.
 
 ### /moai:2-spec - EARS 형식 명세 작성
 **기능**: 요구사항을 EARS 형식 명세로 변환
@@ -62,9 +68,13 @@ MoAI-ADK는 4단계 파이프라인을 지원하는 6개의 연번순 슬래시 
 ```
 
 **생성 결과**:
-- SPEC-XXX 디렉토리
-- spec.md (EARS 형식 명세)
+- `SPEC-00X/` 디렉터리 (`spec.md`, `acceptance.md`, `design.md`, `tasks.md`)
 - [NEEDS CLARIFICATION] 마커
+- `.moai/specs/backlog/` 보관 STUB (필요 시 `/moai:2-spec all "백로그 승격"`으로 승격)
+
+**사용 흐름**:
+1. 생성 전 `SPEC 미리보기`를 확인하고 Plan 모드(`모델 opusplan`)에서 보완할 내용을 검토합니다.
+2. 사용자 확정(“확정”, “좋습니다”) 이후에만 문서가 생성됩니다.
 
 **자동 슬러그 생성 규칙**
 - 설명만 입력 시 영어 케밥케이스 슬러그 생성(2~4단어, 소문자-하이픈).

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- 1-project 마법사: Top-3 기능 생성 시 SPEC-00X 디렉터리( `spec.md` / `acceptance.md` / `design.md` / `tasks.md`)를 즉시 생성하고, 나머지 기능은 `.moai/specs/backlog/`에 STUB로 저장하도록 변경
+- 최종 확인 단계에서 Plan 모드(`모델 opusplan`) 전환 → 계획 검토 → 실행 모드 복귀 흐름을 안내, 사용자 확정 후에만 문서를 생성하도록 조정
+- spec-manager: 생성 전 미리보기 출력 + Plan 모드 활용 안내 + 사용자 확정 대화 추가, 단일 index.md 생성 제거
+- Hooks: IMPLEMENT 단계 게이트 경고 스킵(`post_stage_guard`), 신규 파일/콘텐츠 제한 제거(`pre_write_guard`), TAG 오류 안내를 프로젝트 메모리 가이드로 연결
 - TemplateEngine: 프로젝트 `.moai/_templates` 부재 시 패키지 내장 템플릿으로 폴백 추가
 - 설정: `.moai/config.json`에 `templates.mode` 도입 (`copy`|`package`, 기본 `copy`)
 - 설치기/리소스 관리자: `templates.mode=package`일 때 `.moai/_templates/` 복사 생략 지원
