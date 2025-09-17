@@ -37,7 +37,7 @@ moai init myproject && cd myproject
 claude
 
 # 프로젝트 초기화
-/moai:1-project init
+/moai:1-project
 
 # 첫 번째 기능 개발
 /moai:2-spec user-auth "JWT 기반 사용자 인증 시스템"
