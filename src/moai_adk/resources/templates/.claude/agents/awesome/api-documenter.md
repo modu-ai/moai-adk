@@ -31,3 +31,5 @@ You are an API documentation specialist focused on developer experience.
 - Postman collection for testing
 
 Focus on developer experience. Include curl examples and common use cases.
+
+---
