@@ -27,7 +27,7 @@ class SessionNotifier:
         """프로젝트 전체 상태 분석"""
         status = {
             "project_name": self.project_root.name,
-            "moai_version": "0.1.17",
+            "moai_version": self.get_moai_version(),
             "initialized": self.is_moai_project(),
             "constitution_status": self.check_constitution_status(),
             "pipeline_stage": self.get_current_pipeline_stage(),
@@ -216,6 +216,18 @@ class SessionNotifier:
         steering_files = ["vision.md", "architecture.md", "techstack.md"]
         return any((steering_dir / f).exists() for f in steering_files)
 
+    def get_moai_version(self) -> str:
+        """MoAI 버전 동적 조회"""
+        version_path = self.project_root / ".moai" / "version.json"
+        try:
+            if version_path.exists():
+                with open(version_path, 'r', encoding='utf-8') as f:
+                    version_data = json.load(f)
+                    return version_data.get("package_version", "unknown")
+        except:
+            pass
+        return "unknown"
+
     def get_file_mtime(self, file_path: Path) -> Optional[str]:
         """파일 수정 시간"""
         try:
@@ -305,12 +317,12 @@ class SessionNotifier:
                 message_parts.append("   > /moai:1-project init  # steering 문서 생성 필요")
         elif pipeline["stage"] == "PLAN":
             spec_id = pipeline.get("spec_id", "SPEC-001")
-            message_parts.append(f"   > /moai:plan {spec_id}  # Constitution Check")
+            message_parts.append(f"   > /moai:3-plan {spec_id}  # Constitution Check")
         elif pipeline["stage"] == "TASKS":
             spec_id = pipeline.get("spec_id", "SPEC-001") 
-            message_parts.append(f"   > /moai:tasks {spec_id}  # TDD 작업 분해")
+            message_parts.append(f"   > /moai:4-tasks {spec_id}  # TDD 작업 분해")
         elif pipeline["stage"] == "IMPLEMENT":
-            message_parts.append("   > /moai:dev T001  # Red-Green-Refactor 구현")
+            message_parts.append("   > /moai:5-dev T001  # Red-Green-Refactor 구현")
         
         # 유용한 명령어
         message_parts.extend([
