@@ -33,6 +33,17 @@ SENSITIVE_PATTERNS = [
 ]
 
 
+SAFE_WRITE_PREFIXES_DEFAULT = [
+    ".moai/steering/",
+    ".moai/specs/",
+    ".moai/memory/",
+    ".moai/indexes/",
+    ".claude/agents/",
+    ".claude/commands/",
+    ".claude/hooks/",
+]
+
+
 def load_stdin() -> Dict[str, Any]:
     try:
         return json.load(sys.stdin)
@@ -187,12 +198,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-SAFE_WRITE_PREFIXES_DEFAULT = [
-    ".moai/steering/",
-    ".moai/specs/",
-    ".moai/memory/",
-    ".moai/indexes/",
-    ".claude/agents/",
-    ".claude/commands/",
-    ".claude/hooks/",
-]
