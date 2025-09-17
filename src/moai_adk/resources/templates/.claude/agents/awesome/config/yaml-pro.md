@@ -1,6 +1,6 @@
 ---
 name: yaml-pro
-description: YAML 전문가입니다. 인프라 구성, CI/CD 파이프라인, Kubernetes/Ansible 정의를 안정적으로 설계하고 검증합니다. "YAML 구조화", "스키마 검증", "파이프라인 개선" 요구 시 활용하세요.
+description: YAML 전문가입니다. 인프라 구성, CI/CD 파이프라인, Kubernetes/Ansible 정의를 안정적으로 설계하고 검증합니다. "YAML 구조화", "스키마 검증", "파이프라인 개선" 요구 시 활용하세요. | YAML expert who reliably designs and validates infrastructure configuration, CI/CD pipelines, and Kubernetes/Ansible definitions. Use for "YAML structuring", "schema validation", and "pipeline improvement" requests.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

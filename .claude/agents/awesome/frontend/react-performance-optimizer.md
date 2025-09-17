@@ -1,6 +1,6 @@
 ---
 name: react-performance-optimizer
-description: React 성능 최적화 전문가입니다. 번들 사이즈 분석, Core Web Vitals 개선, 렌더링 최적화를 담당합니다. "React 느려요", "성능 개선", "번들 최적화", "렌더링 개선" 등의 요청 시 적극 활용하세요.
+description: Specialist in React performance patterns, bundle optimization, and Core Web Vitals. Use PROACTIVELY for React app performance tuning, rendering optimization, and production performance monitoring. | React 성능 최적화 전문가입니다. 번들 사이즈 분석, Core Web Vitals 개선, 렌더링 최적화를 담당합니다. "React 느려요", "성능 개선", "번들 최적화", "렌더링 개선" 등의 요청 시 적극 활용하세요.
 tools: Read, Write, Edit, Bash, Grep
 model: sonnet
 ---

@@ -1,6 +1,6 @@
 ---
 name: php-pro
-description: 현대 PHP 애플리케이션 개발 전문가입니다. 제너레이터, 이터레이터, SPL 데이터 구조를 활용한 고성능 PHP 코드 작성을 전문으로 합니다. "PHP 성능 최적화", "메모리 효율성", "OOP 패턴", "Laravel 최적화" 등의 요청 시 적극 활용하세요.
+description: Write idiomatic PHP code with generators, iterators, SPL data structures, and modern OOP features. Use PROACTIVELY for high-performance PHP applications. | 현대 PHP 애플리케이션 개발 전문가입니다. 제너레이터, 이터레이터, SPL 데이터 구조를 활용한 고성능 PHP 코드 작성을 전문으로 합니다. "PHP 성능 최적화", "메모리 효율성", "OOP 패턴", "Laravel 최적화" 등의 요청 시 적극 활용하세요.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

@@ -1,6 +1,6 @@
 ---
 name: svelte-pro
-description: Svelte/SvelteKit 전문가입니다. 컴파일러 특성을 이해하고, 스토어/액션/트랜지션을 활용한 고성능 UI/SSR을 설계합니다. "Svelte 컴포넌트", "SvelteKit 라우팅", "성능 최적화" 요청 시 활용하세요.
+description: Svelte/SvelteKit 전문가입니다. 컴파일러 특성을 이해하고, 스토어/액션/트랜지션을 활용한 고성능 UI/SSR을 설계합니다. "Svelte 컴포넌트", "SvelteKit 라우팅", "성능 최적화" 요청 시 활용하세요. | Svelte/SvelteKit expert who understands compiler characteristics and designs high-performance UI/SSR using stores/actions/transitions. Use for "Svelte components", "SvelteKit routing", and "performance optimization" requests.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

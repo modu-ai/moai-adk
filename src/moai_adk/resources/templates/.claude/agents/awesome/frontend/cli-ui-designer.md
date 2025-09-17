@@ -1,6 +1,6 @@
 ---
 name: cli-ui-designer
-description: CLI 인터페이스 디자인 전문가입니다. 터미널 스타일의 현대적 웹 인터페이스를 제작합니다. "CLI 미학 디자인", "터미널 테마 제작", "커맨드라인 UX 패턴" 등의 요청 시 적극 활용하세요.
+description: CLI interface design specialist. Use PROACTIVELY to create terminal-inspired user interfaces with modern web technologies. Expert in CLI aesthetics, terminal themes, and command-line UX patterns. | CLI 인터페이스 디자인 전문가. 모던 웹 기술로 터미널 스타일 사용자 인터페이스 제작을 전문으로 합니다. CLI 미학, 터미널 테마, 명령줄 UX 패턴에 적극 활용하세요.
 tools: Read, Write, Edit, MultiEdit, Glob, Grep
 model: sonnet
 ---

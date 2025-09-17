@@ -1,6 +1,6 @@
 ---
 name: typescript-pro
-description: TypeScript 전문가입니다. 고급 타입 시스템, 엄격한 타이핑, 제네릭 제약, 조건부 타입을 다루며 타입 추론을 활용합니다. "TypeScript 최적화", "복잡한 타입", "JS에서 TS 마이그레이션", "타입 배리어" 등의 요청 시 적극 활용하세요.
+description: Write idiomatic TypeScript with advanced type system features, strict typing, and modern patterns. Masters generic constraints, conditional types, and type inference. Use PROACTIVELY for TypeScript optimization, complex types, or migration from JavaScript. | TypeScript 전문가입니다. 고급 타입 시스템, 엄격한 타이핑, 제네릭 제약, 조건부 타입을 다루며 타입 추론을 활용합니다. "TypeScript 최적화", "복잡한 타입", "JS에서 TS 마이그레이션", "타입 배리어" 등의 요청 시 적극 활용하세요.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

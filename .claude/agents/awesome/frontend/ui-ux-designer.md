@@ -1,6 +1,6 @@
 ---
 name: ui-ux-designer
-description: UI/UX 디자인 전문가입니다. 사용자 중심 디자인과 인터페이스 시스템을 담당합니다. "사용자 조사", "와이어프레임 제작", "디자인 시스템 구축", "접근성 개선" 등의 요청 시 적극 활용하세요.
+description: UI/UX design specialist for user-centered design and interface systems. Use PROACTIVELY for user research, wireframes, design systems, prototyping, accessibility standards, and user experience optimization. | 사용자 중심 설계 및 인터페이스 시스템을 위한 UI/UX 디자인 전문가. 사용자 연구, 와이어프레임, 디자인 시스템, 프로토타이핑, 접근성 표준, 사용자 경험 최적화에 적극 활용하세요.
 tools: Read, Write, Edit
 model: sonnet
 ---

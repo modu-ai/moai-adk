@@ -1,6 +1,6 @@
 ---
 name: vuejs-pro
-description: Vue.js 전문가입니다. Vue 3, Composition API, Pinia/Vuex 상태관리, Nuxt 기반 SSR/SSG 아키텍처를 다룹니다. "Vue 아키텍처", "컴포지션 패턴", "Nuxt 최적화" 요청 시 활용하세요.
+description: Vue.js 전문가입니다. Vue 3, Composition API, Pinia/Vuex 상태관리, Nuxt 기반 SSR/SSG 아키텍처를 다룹니다. "Vue 아키텍처", "컴포지션 패턴", "Nuxt 최적화" 요청 시 활용하세요. | Vue.js expert specializing in Vue 3, Composition API, Pinia/Vuex state management, and Nuxt-based SSR/SSG architecture. Use for "Vue architecture", "composition patterns", and "Nuxt optimization" requests.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

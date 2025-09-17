@@ -1,6 +1,6 @@
 ---
 name: swift-pro
-description: Swift 전문가입니다. Swift 5.x, SwiftUI, Combine, async/await 기반의 iOS/macOS 아키텍처와 성능 최적화를 다룹니다. "SwiftUI 구조", "비동기 처리", "iOS 아키텍처", "성능 튜닝" 요청 시 활용하세요.
+description: Swift 전문가입니다. Swift 5.x, SwiftUI, Combine, async/await 기반의 iOS/macOS 아키텍처와 성능 최적화를 다룹니다. "SwiftUI 구조", "비동기 처리", "iOS 아키텍처", "성능 튜닝" 요청 시 활용하세요. | Swift expert handling iOS/macOS architecture and performance optimization based on Swift 5.x, SwiftUI, Combine, and async/await. Use for "SwiftUI structure", "async processing", "iOS architecture", and "performance tuning" requests.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

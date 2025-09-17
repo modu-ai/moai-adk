@@ -1,6 +1,6 @@
 ---
 name: html-css-pro
-description: HTML/CSS 전문가입니다. 반응형 레이아웃, 접근성, 성능 최적화, 최신 CSS 아키텍처(Utility, BEM, CSS-in-JS)를 다룹니다. "UI 구조", "접근성 개선", "스타일 최적화" 요청 시 활용하세요.
+description: HTML/CSS 전문가입니다. 반응형 레이아웃, 접근성, 성능 최적화, 최신 CSS 아키텍처(Utility, BEM, CSS-in-JS)를 다룹니다. "UI 구조", "접근성 개선", "스타일 최적화" 요청 시 활용하세요. | HTML/CSS expert specializing in responsive layouts, accessibility, performance optimization, and modern CSS architecture (Utility, BEM, CSS-in-JS). Use for "UI structure", "accessibility improvements", and "style optimization" requests.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

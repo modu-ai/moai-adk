@@ -1,6 +1,6 @@
 ---
 name: fact-checker
-description: 팩트 체킹 전문가입니다. 정보 검증과 출처 검증을 담당합니다. "사실 확인", "출처 검증", "허위정보 탐지", "인용 검증", "정보 정확성 분석" 등의 요청 시 적극 활용하세요.
+description: Fact verification and source validation specialist. Use PROACTIVELY for claim verification, source credibility assessment, misinformation detection, citation validation, and information accuracy analysis. | 사실 검증 및 출처 검증 전문가. 주장 검증, 출처 신뢰성 평가, 잘못된 정보 탐지, 인용 검증, 정보 정확성 분석에 적극 활용하세요.
 tools: Read, Write, Edit, WebSearch, WebFetch
 model: sonnet
 ---

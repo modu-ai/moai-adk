@@ -1,6 +1,6 @@
 ---
 name: react-performance
-description: React 성능 최적화 전문가입니다. 렌더링 최적화, 번들 분석, 성능 모니터링을 담당합니다. "React 성능 개선", "번들 크기 축소", "렌더링 속도 향상" 등의 요청 시 적극 활용하세요.
+description: Use this agent when optimizing React applications. Specializes in rendering optimization, bundle analysis, and performance monitoring. Examples: <example>Context: User has slow React app user: 'My React app is rendering slowly' assistant: 'I'll use the react-performance agent to analyze and optimize your rendering' <commentary>Performance issues require specialized React optimization expertise</commentary></example> | React 애플리케이션 최적화 전문가. 렌더링 최적화, 번들 분석, 성능 모니터링을 전문으로 합니다.
 color: blue
 ---
 

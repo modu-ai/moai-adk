@@ -1,6 +1,6 @@
 ---
 name: dockerfile-pro
-description: Dockerfile 및 컨테이너 이미지 전문가입니다. 다중 스테이지 빌드, 이미지 경량화, 보안 스캐닝, SBOM 생성까지 책임집니다. "Docker 최적화", "빌드 캐시", "이미지 보안" 요청 시 활용하세요.
+description: Dockerfile 및 컨테이너 이미지 전문가입니다. 다중 스테이지 빌드, 이미지 경량화, 보안 스캐닝, SBOM 생성까지 책임집니다. "Docker 최적화", "빌드 캐시", "이미지 보안" 요청 시 활용하세요. | Dockerfile and container image expert responsible for multi-stage builds, image optimization, security scanning, and SBOM generation. Use for "Docker optimization", "build cache", and "image security" requests.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

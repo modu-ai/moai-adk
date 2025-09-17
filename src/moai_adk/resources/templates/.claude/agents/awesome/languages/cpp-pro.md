@@ -1,6 +1,6 @@
 ---
 name: cpp-pro
-description: 현대 C++ 프로그래밍 전문가입니다. RAII, 스마트 포인터, STL 알고리즘을 활용하고 템플릿, 이동 의미론, 성능 최적화를 전문으로 합니다. "C++ 리팩토링", "메모리 안전성", "템플릿 프로그래밍", "성능 최적화" 등의 요청 시 적극 활용하세요.
+description: Write idiomatic C++ code with modern features, RAII, smart pointers, and STL algorithms. Handles templates, move semantics, and performance optimization. Use PROACTIVELY for C++ refactoring, memory safety, or complex C++ patterns. | C++ 전문가입니다. 현대적 기능, RAII, 스마트 포인터, STL 알고리즘을 활용한 관용적 C++ 코드를 작성합니다. 템플릿, 이동 시맨틱, 성능 최적화를 다룹니다. "C++ 리팩터링", "메모리 안전성", "복잡한 C++ 패턴" 등의 요청 시 적극 활용하세요.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

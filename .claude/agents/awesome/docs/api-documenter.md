@@ -1,6 +1,6 @@
 ---
 name: api-documenter
-description: API 문서화 전문가입니다. OpenAPI/Swagger 명세 작성과 SDK 생성을 담당합니다. "API 문서 작성", "OpenAPI 명세", "SDK 생성", "개발자 문서" 등의 요청 시 적극 활용하세요.
+description: Create OpenAPI/Swagger specs, generate SDKs, and write developer documentation. Handles versioning, examples, and interactive docs. Use PROACTIVELY for API documentation or client library generation. | OpenAPI/Swagger 명세 작성, SDK 생성, 개발자 문서 작성 전문가. 버전 관리, 예제, 인터랙티브 문서를 처리합니다. API 문서화나 클라이언트 라이브러리 생성에 적극 활용하세요.
 tools: Read, Write, Edit, Bash
 model: haiku
 ---

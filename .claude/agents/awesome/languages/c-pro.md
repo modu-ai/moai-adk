@@ -1,6 +1,6 @@
 ---
 name: c-pro
-description: C 언어 시스템 프로그래밍 전문가입니다. 메모리 관리, 포인터 연산, 시스템 콜을 활용한 고성능 코드 작성을 전문으로 합니다. "C 메모리 최적화", "임베디드 시스템", "커널 모듈", "시스템 호출" 등의 요청 시 적극 활용하세요.
+description: Write efficient C code with proper memory management, pointer arithmetic, and system calls. Handles embedded systems, kernel modules, and performance-critical code. Use PROACTIVELY for C optimization, memory issues, or system programming. | C 언어 시스템 프로그래밍 전문가입니다. 메모리 관리, 포인터 연산, 시스템 콜을 활용한 고성능 코드 작성을 전문으로 합니다. "C 메모리 최적화", "임베디드 시스템", "커널 모듈", "시스템 호출" 등의 요청 시 적극 활용하세요.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

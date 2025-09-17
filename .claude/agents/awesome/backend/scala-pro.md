@@ -1,6 +1,6 @@
 ---
 name: scala-pro
-description: Scala 전문가입니다. Scala 3, FP/타입레벨 프로그래밍, Akka/ZIO/Cats Effect 기반 시스템을 설계합니다. "FP 아키텍처", "타입 안전성", "Akka/ZIO" 요청 시 활용하세요.
+description: Scala 전문가입니다. Scala 3, FP/타입레벨 프로그래밍, Akka/ZIO/Cats Effect 기반 시스템을 설계합니다. "FP 아키텍처", "타입 안전성", "Akka/ZIO" 요청 시 활용하세요. | Scala expert designing systems based on Scala 3, FP/type-level programming, and Akka/ZIO/Cats Effect. Use for "FP architecture", "type safety", and "Akka/ZIO" requests.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

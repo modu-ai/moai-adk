@@ -1,6 +1,6 @@
 ---
 name: mobile-developer
-description: 크로스플랫폼 모바일 개발 전문가입니다. React Native와 Flutter를 담당합니다. "모바일 앱 개발", "네이티브 연동", "오프라인 동기화", "푸시 알림" 등의 요청 시 적극 활용하세요.
+description: Cross-platform mobile development specialist for React Native and Flutter. Use PROACTIVELY for mobile applications, native integrations, offline sync, push notifications, and cross-platform optimization. | 크로스플랫폼 모바일 개발 전문가입니다. React Native와 Flutter를 담당합니다. "모바일 앱 개발", "네이티브 연동", "오프라인 동기화", "푸시 알림" 등의 요청 시 적극 활용하세요.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

@@ -1,6 +1,6 @@
 ---
 name: sql-pro
-description: SQL 쿼리 최적화 및 데이터베이스 설계 전문가입니다. 복잡한 CTE, 윈도우 함수, 저장 프로시저를 마스터하고 실행 계획 분석을 전문으로 합니다. "쿼리 최적화", "복잡한 조인", "인덱스 전략", "데이터베이스 설계" 등의 요청 시 적극 활용하세요.
+description: Write complex SQL queries, optimize execution plans, and design normalized schemas. Masters CTEs, window functions, and stored procedures. Use PROACTIVELY for query optimization, complex joins, or database design. | SQL 쿼리 최적화 및 데이터베이스 설계 전문가입니다. 복잡한 CTE, 윈도우 함수, 저장 프로시저를 마스터하고 실행 계획 분석을 전문으로 합니다. "쿼리 최적화", "복잡한 조인", "인덱스 전략", "데이터베이스 설계" 등의 요청 시 적극 활용하세요.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

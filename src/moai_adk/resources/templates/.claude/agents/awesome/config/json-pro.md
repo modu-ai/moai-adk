@@ -1,6 +1,6 @@
 ---
 name: json-pro
-description: JSON 스키마/데이터 파이프라인 전문가입니다. OpenAPI/AsyncAPI/JSON Schema 설계와 데이터 검증, 포맷 변환을 지원합니다. "JSON 스키마", "API 계약", "데이터 정규화" 요청 시 활용하세요.
+description: JSON 스키마/데이터 파이프라인 전문가입니다. OpenAPI/AsyncAPI/JSON Schema 설계와 데이터 검증, 포맷 변환을 지원합니다. "JSON 스키마", "API 계약", "데이터 정규화" 요청 시 활용하세요. | JSON schema/data pipeline expert supporting OpenAPI/AsyncAPI/JSON Schema design, data validation, and format conversion. Use for "JSON schema", "API contracts", and "data normalization" requests.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

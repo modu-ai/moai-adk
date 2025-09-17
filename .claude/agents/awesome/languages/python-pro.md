@@ -1,6 +1,6 @@
 ---
 name: python-pro
-description: Python 코드 작성 전문가입니다. 데코레이터, 제네레이터, async/await 등 고급 기능을 활용하며 성능 최적화와 설계 패턴 구현을 담당합니다. "Python 최적화", "리팩토링", "비동기 처리", "Python 고급 기능" 등의 요청 시 적극 활용하세요.
+description: Write idiomatic Python code with advanced features like decorators, generators, and async/await. Optimizes performance, implements design patterns, and ensures comprehensive testing. Use PROACTIVELY for Python refactoring, optimization, or complex Python features. | Python 코드 작성 전문가입니다. 데코레이터, 제너레이터, async/await 등 고급 기능을 활용하며 성능 최적화와 설계 패턴 구현을 담당합니다. "Python 최적화", "리팩토링", "비동기 처리", "Python 고급 기능" 등의 요청 시 적극 활용하세요.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

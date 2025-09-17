@@ -1,6 +1,6 @@
 ---
 name: shell-scripting-pro
-description: 셸 스크립팅 전문가입니다. 견고한 오류 처리와 POSIX 준수 자동화 패턴을 구현합니다. "셸 스크립트 작성", "자동화 스크립트", "배포 스크립트", "시스템 관리 자동화" 등의 요청 시 적극 활용하세요.
+description: Write robust shell scripts with proper error handling, POSIX compliance, and automation patterns. Masters bash/zsh features, process management, and system integration. Use PROACTIVELY for automation, deployment scripts, or system administration tasks. | 견고한 오류 처리, POSIX 호환성, 자동화 패턴을 갖춘 셸 스크립트 작성. bash/zsh 기능, 프로세스 관리, 시스템 통합을 마스터. 자동화, 배포 스크립트, 시스템 관리 작업에 적극 활용하세요.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

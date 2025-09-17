@@ -1,6 +1,6 @@
 ---
 name: error-detective
-description: 로그 분석 및 오류 패턴 탐지 전문가입니다. 로그 분석과 프로덕션 오류 조사를 담당합니다. "로그 분석", "오류 패턴 탐지", "프로덕션 문제 조사", "시스템 이상 탐지" 등의 요청 시 적극 활용하세요.
+description: Log analysis and error pattern detection specialist. Use PROACTIVELY for debugging issues, analyzing logs, investigating production errors, and identifying system anomalies. | 로그 분석 및 오류 패턴 탐지 전문가. 디버깅 이슈, 로그 분석, 프로덕션 오류 조사, 시스템 이상 식별에 적극 활용하세요.
 tools: Read, Write, Edit, Bash, Grep
 model: sonnet
 ---

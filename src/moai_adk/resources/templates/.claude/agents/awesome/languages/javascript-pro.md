@@ -1,6 +1,6 @@
 ---
 name: javascript-pro
-description: JavaScript 전문가입니다. ES6+, 비동기 패턴, Node.js API를 다루며 Promise, 이벤트 루프, 브라우저/Node 호환성을 처리합니다. "JavaScript 최적화", "비동기 디버깅", "JS 패턴 개선", "Node.js 개발" 등의 요청 시 적극 활용하세요.
+description: Master modern JavaScript with ES6+, async patterns, and Node.js APIs. Handles promises, event loops, and browser/Node compatibility. Use PROACTIVELY for JavaScript optimization, async debugging, or complex JS patterns. | JavaScript 전문가입니다. ES6+, 비동기 패턴, Node.js API를 다루며 Promise, 이벤트 루프, 브라우저/Node 호환성을 처리합니다. "JavaScript 최적화", "비동기 디버깅", "JS 패턴 개선", "Node.js 개발" 등의 요청 시 적극 활용하세요.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

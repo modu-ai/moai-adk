@@ -1,6 +1,6 @@
 ---
 name: markdown-pro
-description: Markdown 및 기술 문서화 전문가입니다. 구조화된 가이드, 다국어 문서, Static Site Generator(SSG) 파이프라인을 최적화합니다. "문서 템플릿", "Docs-as-Code", "스타일 가이드" 요청 시 활용하세요.
+description: Markdown 및 기술 문서화 전문가입니다. 구조화된 가이드, 다국어 문서, Static Site Generator(SSG) 파이프라인을 최적화합니다. "문서 템플릿", "Docs-as-Code", "스타일 가이드" 요청 시 활용하세요. | Markdown and technical documentation expert optimizing structured guides, multilingual documentation, and Static Site Generator (SSG) pipelines. Use for "document templates", "Docs-as-Code", and "style guide" requests.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

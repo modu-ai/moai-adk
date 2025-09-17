@@ -1,6 +1,6 @@
 ---
 name: dart-pro
-description: Dart 및 Flutter 전문가입니다. Null-safety 기반 아키텍처, Isolate/스트림 처리, Flutter 위젯 성능 최적화를 다룹니다. "Flutter 상태관리", "Dart 비동기", "성능 튜닝" 요청 시 활용하세요.
+description: Dart 및 Flutter 전문가입니다. Null-safety 기반 아키텍처, Isolate/스트림 처리, Flutter 위젯 성능 최적화를 다룹니다. "Flutter 상태관리", "Dart 비동기", "성능 튜닝" 요청 시 활용하세요. | Dart and Flutter expert handling null-safety based architecture, Isolate/stream processing, and Flutter widget performance optimization. Use for "Flutter state management", "Dart async", and "performance tuning" requests.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

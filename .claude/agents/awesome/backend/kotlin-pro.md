@@ -1,6 +1,6 @@
 ---
 name: kotlin-pro
-description: Kotlin 전문가입니다. Kotlin/JVM, Kotlin Multiplatform, 코루틴 기반 비동기 처리, Spring/Ktor 설계를 지원합니다. "코틀린 아키텍처", "코루틴 구조", "KMP" 요청 시 활용하세요.
+description: Kotlin 전문가입니다. Kotlin/JVM, Kotlin Multiplatform, 코루틴 기반 비동기 처리, Spring/Ktor 설계를 지원합니다. "코틀린 아키텍처", "코루틴 구조", "KMP" 요청 시 활용하세요. | Kotlin expert supporting Kotlin/JVM, Kotlin Multiplatform, coroutine-based async processing, and Spring/Ktor design. Use for "Kotlin architecture", "coroutine structure", and "KMP" requests.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

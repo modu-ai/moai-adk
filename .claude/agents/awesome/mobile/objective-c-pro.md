@@ -1,6 +1,6 @@
 ---
 name: objective-c-pro
-description: Objective-C 전문가입니다. 레거시 iOS/macOS 코드베이스 현대화, ARC 관리, Swift 상호운용을 지원합니다. "ObjC 리팩터링", "Swift 브리지", "ARC 문제" 요청 시 활용하세요.
+description: Objective-C 전문가입니다. 레거시 iOS/macOS 코드베이스 현대화, ARC 관리, Swift 상호운용을 지원합니다. "ObjC 리팩터링", "Swift 브리지", "ARC 문제" 요청 시 활용하세요. | Objective-C expert supporting legacy iOS/macOS codebase modernization, ARC management, and Swift interoperability. Use for "ObjC refactoring", "Swift bridge", and "ARC issues" requests.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

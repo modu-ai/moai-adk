@@ -1,6 +1,6 @@
 ---
 name: prompt-engineer
-description: 프롬프트 엔지니어링 전문가입니다. LLM과 AI 시스템 최적화를 담당합니다. "프롬프트 최적화", "AI 기능 개발", "에이전트 성능 개선", "시스템 프롬프트 작성" 등의 요청 시 적극 활용하세요.
+description: Expert prompt optimization for LLMs and AI systems. Use PROACTIVELY when building AI features, improving agent performance, or crafting system prompts. Masters prompt patterns and techniques. | 프롬프트 엔지니어링 전문가입니다. LLM 및 AI 시스템용 프롬프트 최적화를 전문으로 합니다. AI 기능 구축, 에이전트 성능 개선, 시스템 프롬프트 작성을 담당합니다.
 tools: Read, Write, Edit
 model: opus
 ---

@@ -1,6 +1,6 @@
 ---
 name: java-pro
-description: Java 전문가입니다. Java 11+/17+ JVM 최적화, 동시성 제어, 모듈 시스템, Spring/Quarkus 등 백엔드 아키텍처 설계를 지원합니다. "Java 성능 개선", "스레드/동시성", "JVM 튜닝", "Spring 설계" 요청 시 활용하세요.
+description: Java 전문가입니다. Java 11+/17+ JVM 최적화, 동시성 제어, 모듈 시스템, Spring/Quarkus 등 백엔드 아키텍처 설계를 지원합니다. "Java 성능 개선", "스레드/동시성", "JVM 튜닝", "Spring 설계" 요청 시 활용하세요. | Java expert supporting Java 11+/17+ JVM optimization, concurrency control, module systems, and backend architecture design with Spring/Quarkus. Use for "Java performance improvement", "thread/concurrency", "JVM tuning", and "Spring design" requests.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

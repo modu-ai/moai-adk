@@ -1,6 +1,6 @@
 ---
 name: frontend-developer
-description: 프론트엔드 개발 전문가입니다. React 애플리케이션과 반응형 디자인을 담당합니다. "UI 컴포넌트 작성", "상태 관리 구현", "성능 최적화", "접근성 개선" 등의 요청 시 적극 활용하세요.
+description: Frontend development specialist for React applications and responsive design. Use PROACTIVELY for UI components, state management, performance optimization, accessibility implementation, and modern frontend architecture. | 프론트엔드 개발 전문가입니다. React 애플리케이션과 반응형 디자인을 담당합니다. "UI 컴포넌트 작성", "상태 관리 구현", "성능 최적화", "접근성 개선" 등의 요청 시 적극 활용하세요.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

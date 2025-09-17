@@ -1,6 +1,6 @@
 ---
 name: rust-pro
-description: Rust 프로그래밍 전문가입니다. 소유권 패턴, 라이프타임, 트레잇 구현을 마스터하고 안전한 동시성 처리와 제로 코스트 추상화를 전문으로 합니다. "Rust 메모리 안전성", "성능 최적화", "시스템 프로그래밍", "async/await" 등의 요청 시 적극 활용하세요.
+description: Write idiomatic Rust with ownership patterns, lifetimes, and trait implementations. Masters async/await, safe concurrency, and zero-cost abstractions. Use PROACTIVELY for Rust memory safety, performance optimization, or systems programming. | Rust 전문가입니다. 소유권 패턴, 라이프타임, 트레이트 구현을 다루며 async/await, 안전한 동시성, 제로 코스트 추상화를 마스터합니다. "Rust 메모리 안전성", "성능 최적화", "시스템 프로그래밍" 등의 요청 시 적극 활용하세요.
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---
