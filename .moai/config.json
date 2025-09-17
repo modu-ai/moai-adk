@@ -1,119 +1,129 @@
 {
-  "version": "0.1.18",
-  "created": "2025-09-17T17:02:08.923682",
   "project": {
     "name": "MoAI-ADK",
-    "type": "agentic-dev-kit",
-    "template": "standard",
-    "runtime": "python",
-    "tech_stack": [
-      "ruff",
-      "pre-commit",
-      "typer",
-      "tox",
-      "pytest"
-    ]
-  },
-  "templates": {
-    "mode": "copy"
+    "version": "0.2.0",
+    "description": "한국 개발자를 위한 에이전틱 코딩 혁명",
+    "language": "ko",
+    "created": "2025-01-20",
+    "last_updated": "2025-01-20"
   },
   "constitution": {
-    "simplicity": {
-      "max_projects": 3,
-      "enforce": true
-    },
-    "architecture": {
-      "library_first": true,
-      "enforce": true
-    },
-    "testing": {
-      "tdd_required": true,
-      "coverage_target": 0.8,
-      "enforce": true
-    },
-    "observability": {
-      "structured_logging": true,
-      "enforce": true
-    },
-    "versioning": {
-      "format": "MAJOR.MINOR.BUILD",
-      "enforce": true
+    "version": "1.0",
+    "principles": {
+      "simplicity": {
+        "enabled": true,
+        "max_projects": 3,
+        "max_module_loc": 300,
+        "description": "프로젝트 복잡도 ≤ 3개, 모듈 ≤ 300 LOC"
+      },
+      "architecture": {
+        "enabled": true,
+        "library_first": true,
+        "plugin_system": true,
+        "description": "모든 기능은 라이브러리로, 플러그인 구조"
+      },
+      "testing": {
+        "enabled": true,
+        "tdd_enforced": true,
+        "min_coverage": 85,
+        "red_green_refactor": true,
+        "description": "TDD 강제, 커버리지 85% 이상"
+      },
+      "observability": {
+        "enabled": true,
+        "structured_logging": true,
+        "tag_traceability": true,
+        "metrics_collection": true,
+        "description": "구조화 로깅, TAG 추적, 메트릭 수집"
+      },
+      "versioning": {
+        "enabled": true,
+        "semantic_versioning": true,
+        "auto_tagging": true,
+        "backward_compatibility": true,
+        "description": "시맨틱 버전, 자동 태깅, 하위 호환성"
+      }
     }
   },
-  "tags": {
+  "features": {
+    "priority": [
+      {
+        "name": "마법사 UX 개선",
+        "description": "더 직관적인 대화형 인터페이스",
+        "priority": 1,
+        "tag": "@REQ:WIZARD-UX-001"
+      },
+      {
+        "name": "에이전트 성능 최적화",
+        "description": "지침, 자동 트리거 호출 개선",
+        "priority": 2,
+        "tag": "@REQ:AGENT-PERF-001"
+      },
+      {
+        "name": "Hook 시스템 확장",
+        "description": "더 많은 자동화 시점 추가",
+        "priority": 3,
+        "tag": "@REQ:HOOK-EXPAND-001"
+      },
+      {
+        "name": "문서 자동 생성 강화",
+        "description": "Living Document 시스템 고도화",
+        "priority": 4,
+        "tag": "@REQ:DOC-AUTO-001"
+      },
+      {
+        "name": "Git 기반 롤백 시스템",
+        "description": "파일 변경마다 자동 커밋 체크포인트",
+        "priority": 5,
+        "tag": "@REQ:GIT-AUTO-001"
+      }
+    ]
+  },
+  "tech_stack": {
+    "language": {
+      "python": ">=3.11",
+      "target_version": "3.12+"
+    },
+    "core_dependencies": {
+      "click": ">=8.1.0",
+      "colorama": ">=0.4.6",
+      "toml": ">=0.10.0"
+    },
+    "dev_tools": {
+      "current": {
+        "pytest": ">=7.0",
+        "black": ">=22.0",
+        "flake8": ">=5.0"
+      },
+      "upgrade_to": {
+        "pytest": ">=8.0",
+        "ruff": ">=0.1.0",
+        "pre-commit": ">=3.0",
+        "tox": ">=4.0"
+      }
+    }
+  },
+  "quality_gates": {
+    "test_coverage": 85,
+    "type_coverage": 90,
+    "complexity_max": 10,
+    "build_time_reduction": 50,
+    "memory_reduction": 30,
+    "error_rate_target": 5
+  },
+  "tag_system": {
     "version": "16-core",
     "categories": {
-      "spec": [
-        "REQ",
-        "SPEC",
-        "DESIGN",
-        "TASK"
-      ],
-      "steering": [
-        "VISION",
-        "STRUCT",
-        "TECH",
-        "ADR"
-      ],
-      "implementation": [
-        "FEATURE",
-        "API",
-        "TEST",
-        "DATA"
-      ],
-      "quality": [
-        "PERF",
-        "SEC",
-        "DEBT",
-        "TODO"
-      ]
+      "SPEC": ["REQ", "DESIGN", "TASK"],
+      "STEERING": ["VISION", "STRUCT", "TECH", "ADR"],
+      "IMPLEMENTATION": ["FEATURE", "API", "TEST", "DATA"],
+      "QUALITY": ["PERF", "SEC", "DEBT", "TODO"]
     },
-    "validation": {
-      "strict_mode": true,
-      "auto_index": true
-    }
-  },
-  "pipeline": {
-    "stages": [
-      "SPECIFY",
-      "PLAN",
-      "TASKS",
-      "IMPLEMENT"
-    ],
-    "gates": {
-      "SPECIFY": [
-        "ears_complete",
-        "clarification_resolved"
-      ],
-      "PLAN": [
-        "constitution_check",
-        "adr_generated"
-      ],
-      "TASKS": [
-        "tdd_order",
-        "dependency_graph"
-      ],
-      "IMPLEMENT": [
-        "red_green_refactor",
-        "coverage_target"
-      ]
-    }
-  },
-  "agents": {
-    "count": 11,
-    "enabled": [
-      "claude-code-manager",
-      "steering-architect",
-      "spec-manager",
-      "plan-architect",
-      "task-decomposer",
-      "code-generator",
-      "test-automator",
-      "tag-indexer",
-      "doc-syncer",
-      "quality-auditor",
-      "integration-manager",
-      "deployment-specialist"
+    "naming_convention": "{CATEGORY}:{TOPIC}-{ID}",
+    "examples": [
+      "@REQ:WIZARD-UX-001",
+      "@DESIGN:ADAPTIVE-FLOW",
+      "@FEATURE:GIT-MANAGER"
     ]
   }
 }
