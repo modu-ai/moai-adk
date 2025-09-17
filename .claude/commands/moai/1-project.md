@@ -1,6 +1,6 @@
 ---
 description: 단일 명령 대화형 프로젝트 초기화 (Steering→SPEC→PLAN→TASKS→DEV→SYNC)
-argument-hint: [project-name]
+argument-hint: [프로젝트이름]
 allowed-tools: Read, Write, Edit, MultiEdit, WebFetch, Task
 ---
 
@@ -12,9 +12,16 @@ Claude Code 공식 문서 기반 완전 자동화 Spec-First TDD 개발 시스�
 
 ## 시작 방법
 
-### `/moai:1-project` — 하나의 명령, 100% 대화형
+### 명령어 형태
+```bash
+/moai:1-project [프로젝트이름]
+```
 
-프로젝트 상태를 자동 진단한 뒤, 최소 질문과 추천 답변으로 Steering 문서를 생성/갱신하고 SPEC 시드를 만듭니다. 별도의 모드/플래그는 없습니다.
+**사용 예시:**
+- `/moai:1-project` - 현재 디렉토리명으로 프로젝트 초기화
+- `/moai:1-project my-awesome-app` - 지정한 이름으로 프로젝트 초기화
+
+프로젝트 상태를 자동 진단한 뒤, 최소 질문과 추천 답변으로 Steering 문서를 생성/갱신하고 SPEC 시드를 만듭니다.
 
 ### Steering 표준 파일명
 - `.moai/steering/product.md` 
@@ -29,7 +36,7 @@ Claude Code 공식 문서 기반 완전 자동화 Spec-First TDD 개발 시스�
 2) 최소 질문+추천: Q1~Q4(아래)에서 추천 답변 1~3개와 “모르겠어요” 제공, 수치·단위 검증 자동화
 3) 리스크 트리거: 규제/PII/결제/보안/성능/AI 키워드 감지 시 필요한 최소 추가 질문만 수행
 4) Steering 프리셋: product/structure/tech 초안(추천/보수/경량) 미리보기→선택→확정
-5) SPEC 디렉터리 구성: Top-3 기능은 `SPEC-00X/` 디렉터리를 생성하여 `spec.md`, `acceptance.md`, `design.md`, `tasks.md` 기본 문서를 작성하고, 나머지 기능은 `.moai/specs/backlog/` 아래 STUB(제목/요약/초기 @REQ, [NEEDS CLARIFICATION])로 보관
+5) SPEC 디렉터리 구성: Top-3 기능은 `SPEC-00X/` 디렉터리를 생성하여 **내용에 따라 필요한 파일만** 선택적으로 작성하고, 나머지 기능은 `.moai/specs/backlog/` 아래 STUB(제목/요약/초기 @REQ, [NEEDS CLARIFICATION])로 보관
 6) 최종 답변 요약: 모든 답변·선택 사항을 요약 출력 → 수정/확정 선택
 7) 적용 요약: 생성·수정 파일 요약(diff 개요) 확인 후 적용/취소. 중단 시 다음 실행에서 자동 재개
 
@@ -150,7 +157,7 @@ Top-3 기능: 1) <f1> 2) <f2> 3) <f3>
 기술 스택: FE <...> / BE <...> / DB <...> / Infra <...>
 리스크/규제: <감지된 항목 및 기본값 요약>
 Steering 프리셋: <선택한 옵션>
-생성 예정 SPEC: Top-3 FULL → SPEC-001/002/003 (`spec.md`, `acceptance.md`, `design.md`, `tasks.md`) / 백로그 STUB → <수량>
+생성 예정 SPEC: Top-3 FULL → SPEC-001/002/003 (필요한 파일만: spec.md + acceptance.md + 선택적 design.md/data-model.md/contracts/) / 백로그 STUB → <수량>
 ```
 
 확정 전 반드시 사용자에게 누락·수정 사항이 없는지 묻고 `확정` 응답을 받은 뒤 문서를 생성합니다.
@@ -169,6 +176,28 @@ Steering 프리셋: <선택한 옵션>
 - 적용/취소 선택, 실패 시 롤백 안내
 - 진행 상태는 `.moai/indexes/state.json`에 저장되며, 다음 실행에서 자동 재개됩니다.
 
+## SPEC 파일 생성 규칙
+
+각 SPEC-XXX 디렉터리에는 **내용에 따라 필요한 파일만** 생성:
+
+**기본 필수 파일:**
+- spec.md (EARS 형식 명세)
+- acceptance.md (수락 기준)
+
+**조건부 선택 파일:**
+- design.md (복잡한 설계가 필요한 경우)
+- data-model.md (데이터 구조가 중요한 경우)
+- contracts/ (API 설계가 필요한 경우)
+- research.md (기술 조사가 필요한 경우)
+
+**생성 기준:**
+- UX/UI 개선: spec.md + acceptance.md (design.md 선택적)
+- API 개발: spec.md + acceptance.md + contracts/
+- 데이터 처리: spec.md + acceptance.md + data-model.md
+- 기술 연구: spec.md + acceptance.md + research.md
+
+억지로 모든 파일을 생성하지 말고, 실제 필요에 따라 선택적으로 생성하세요.
+
 ## 마법사 완료 후 자동 실행
 
 1. **Top-3 기능 Seed SPEC 자동 생성**
@@ -176,6 +205,7 @@ Steering 프리셋: <선택한 옵션>
    - [NEEDS CLARIFICATION] 마커 자동 삽입
    - 전체 맥락을 SPEC 생성에 자동 반영
    - 완전한 EARS/GWT/NFR/수락기준 자동 완성
+   - **위 생성 규칙에 따라 필요한 파일만 선택적 생성**
 
 2. **Constitution Check 자동 실행**
    - Simplicity: 프로젝트 ≤3개 원칙 검증
@@ -236,14 +266,21 @@ Q12. 참고하고 싶은 서비스나 웹사이트가 있나요? (URL 입력, �
 
 - 프로젝트 식별자로 사용되며, 문서에 반영됩니다.
 - 참조 URL 등 기타 입력은 대화형 질문에서 수집합니다.
+- 기존 프로젝트인지 신규 프로젝트인지 자동으로 판단합니다.
 
 ## 사용 예시
 
-### 시작 예시
+### 기본 사용법
 
 ```bash
+# 현재 디렉토리명으로 프로젝트 초기화
 > /moai:1-project
+
+# 프로젝트명을 지정한 초기화
 > /moai:1-project my-awesome-app
+
+# 한국어 프로젝트명도 가능
+> /moai:1-project 내-멋진-앱
 ```
 
 ## 에러 처리 및 검증
@@ -304,11 +341,17 @@ React + Vue를 동시에 선택하셨습니다.
   - Constitution Check: 5개 원칙 자동 검증
 
 다음 단계 (4단계 파이프라인):
-  1. SPECIFY: /moai:2-spec [feature-name] "상세 명세 작성"
-  2. PLAN: /moai:3-plan [spec-id] "Constitution Check 및 계획"
-  3. TASKS: /moai:4-tasks [plan-id] "TDD 작업 분해"
-  4. IMPLEMENT: /moai:5-dev [task-id] "Red-Green-Refactor 구현"
+  1. SPECIFY: /moai:2-spec all "전체 SPEC 일괄 검토 및 완성"
+     - all 옵션: 모든 SPEC 스캔, 상태 분석, 우선순위 정렬, 일괄 처리
+     - 개별 처리: /moai:2-spec SPEC-001 (특정 SPEC만 작업)
+  2. PLAN: /moai:3-plan SPEC-001 "Constitution Check 및 계획"
+  3. TASKS: /moai:4-tasks PLAN-001 "TDD 작업 분해"
+  4. IMPLEMENT: /moai:5-dev T001 "Red-Green-Refactor 구현"
   5. SYNC: /moai:6-sync auto "Living Document 동기화"
+
+**권장 순서:**
+> /moai:2-spec all     # 전체 SPEC 현황 파악 및 일괄 정리
+> /moai:3-plan SPEC-001 # 완성된 SPEC으로 계획 수립
 
 **Pro Tips:**
 - 언제든지 /moai:1-project setting으로 설정을 수정할 수 있습니다

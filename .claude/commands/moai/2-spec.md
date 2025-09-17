@@ -1,6 +1,6 @@
 ---
-description: 요구사항 명세 작성
-argument-hint: <feature-name|"description-only"> [description] [--clarification-only]
+description: EARS 형식 명세 작성 - 비즈니스 요구사항을 엔지니어링 관점에서 구조화된 명세로 변환
+argument-hint: <SPEC-ID|"feature-description"|"all"> [additional-details...]
 allowed-tools: Read, Write, Edit, MultiEdit, Task
 ---
 
@@ -287,49 +287,115 @@ SPEC-ID: SPEC-001
 Path: .moai/specs/SPEC-001/
 ```
 
-## 작업 타입별 처리
+## 사용법 및 작업 처리
 
-### $ARGUMENTS 첫 번째 인자: 작업 타입
+### 기본 사용법
 
-#### `req` - 요구사항만 작성
-
-```bash
-> /moai:2-spec req "사용자 인증 기능"
-```
-
-- requirements.md 집중 작성
-- 사용자 스토리와 수용 기준 상세화
-- EARS 형식 완벽 적용
-
-#### `design` - 설계 문서만 작성
+#### 1. 새 기능 SPEC 생성
 
 ```bash
-> /moai:2-spec design "마이크로서비스 아키텍처"
+# 기능 설명만 제공
+/moai:2-spec "JWT 기반 사용자 인증 시스템"
+
+# 상세 기능 명세
+/moai:2-spec "실시간 채팅 시스템 - WebSocket 기반, 파일 첨부 지원, 읽음 표시 기능"
+
+# 성능 요구사항 포함
+/moai:2-spec "API 응답시간 500ms 이하, 동시접속 10,000명 지원하는 사용자 관리 시스템"
 ```
 
-- design.md 집중 작성
-- 시스템 아키텍처 다이어그램 포함
-- 기술적 의사결정 근거 명시
-
-#### `tasks` - 작업 분해만 수행
+#### 2. 기존 SPEC 수정/보완
 
 ```bash
-> /moai:2-spec tasks "프로젝트 전체 태스크 분해"
+# SPEC-ID로 기존 명세 수정
+/moai:2-spec SPEC-001 "추가 보안 요구사항 반영"
+
+# 특정 SPEC 재생성
+/moai:2-spec SPEC-003
 ```
 
-- tasks.md 집중 작성
-- 상세한 작업 단위 분해
-- 의존성과 일정 계획
-
-#### `all` - 전체 SPEC 문서 작성
+#### 3. 전체 프로젝트 SPEC 병렬 생성
 
 ```bash
-> /moai:2-spec all "소셜 미디어 플랫폼 개발"
+# Steering 문서 기반 모든 SPEC 자동 생성
+/moai:2-spec all
+
+# 특정 우선순위만 생성
+/moai:2-spec all "P0,P1만 생성"
+
+# 특정 도메인만 생성
+/moai:2-spec all "auth,payment 도메인만"
 ```
 
-- requirements.md, design.md, tasks.md 모두 생성
-- 통합적이고 일관된 명세 작성
-- 전체 프로젝트 스코프 정의
+### `all` 옵션 - 병렬 SPEC 생성
+
+#### 기능 개요
+- `.moai/steering/` 문서들을 분석하여 프로젝트 전체 기능을 파악
+- 각 핵심 기능별로 SPEC을 병렬로 자동 생성 (**최대 10개 동시 실행**)
+- **spec-manager 에이전트**가 의존성 없는 작업을 병렬 분산 처리
+- 우선순위 및 도메인별 필터링 지원
+
+#### 실행 과정
+
+```mermaid
+flowchart TD
+    A[/moai:2-spec all 실행] --> B[Steering 문서 분석]
+    B --> C[product.md에서 핵심 기능 추출]
+    C --> D[structure.md에서 모듈 구조 파악]
+    D --> E[tech.md에서 기술 제약사항 확인]
+
+    E --> F{필터링 옵션 확인}
+    F -->|우선순위 필터| G[P0/P1/P2 기준 선별]
+    F -->|도메인 필터| H[auth/payment/notification 등 선별]
+    F -->|전체 생성| I[모든 기능 대상]
+
+    G --> J[병렬 SPEC 생성 계획]
+    H --> J
+    I --> J
+
+    J --> K[각 기능별 spec-manager 에이전트 호출]
+    K --> L[병렬 실행: SPEC-001, SPEC-002, SPEC-003...]
+    L --> M[품질 게이트 검증]
+    M --> N[생성 완료 보고]
+```
+
+#### 생성 결과
+
+```bash
+**병렬 SPEC 생성 완료**:
+
+생성된 SPEC 목록:
+├── SPEC-001: 사용자 인증 시스템 (P0, auth)
+├── SPEC-002: 결제 처리 시스템 (P0, payment)
+├── SPEC-003: 실시간 알림 시스템 (P1, notification)
+├── SPEC-004: 관리자 대시보드 (P1, admin)
+└── SPEC-005: 모니터링 시스템 (P2, ops)
+
+총 처리 시간: 3분 12초
+병렬 처리 효과: 단일 처리 대비 70% 시간 단축 (최대 10개 동시 실행)
+전문 에이전트 활용: spec-manager 에이전트가 독립적으로 각 SPEC 처리
+
+다음 단계:
+> /moai:3-plan SPEC-001  # 우선순위 순으로 계획 수립
+> /moai:3-plan SPEC-002
+```
+
+#### 고급 옵션
+
+```bash
+# 우선순위별 생성
+/moai:2-spec all "P0만"        # 핵심 기능만
+/moai:2-spec all "P0,P1"       # 핵심+중요 기능
+/moai:2-spec all "P2 제외"     # 부가 기능 제외
+
+# 도메인별 생성
+/moai:2-spec all "auth"        # 인증 도메인만
+/moai:2-spec all "auth,payment" # 인증+결제 도메인
+
+# 개수 제한
+/moai:2-spec all "최대 10개"   # 최대 10개 SPEC만 생성
+/moai:2-spec all "상위 5개"    # 우선순위 상위 5개만
+```
 
 ### $ARGUMENTS 나머지 인자: 상세 내용
 
@@ -428,7 +494,7 @@ WHERE 모바일 환경에서,
 
 Steering 문서는 SPEC 작성의 필수 전제조건입니다.
 먼저 다음 명령으로 프로젝트를 초기화해주세요:
-> /moai:1-project init
+> /moai:1-project
 
 Steering 문서 경로: .moai/steering/
 ```
