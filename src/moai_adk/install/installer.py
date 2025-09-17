@@ -307,7 +307,7 @@ class SimplifiedInstaller:
             f"   cd {self.config.project_path}",
             "",
             "2. Initialize project setup:",
-            "   /moai:1-project init",
+            "   /moai:1-project",
             "",
             "3. Create your first feature:",
             "   /moai:2-spec <feature-name> \"Feature description\"",

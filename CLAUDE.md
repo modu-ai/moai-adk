@@ -50,7 +50,7 @@ MoAI-ADK는 4단계 파이프라인(SPECIFY → PLAN → TASKS → IMPLEMENT)을
 ### 1. 프로젝트 초기화
 
 ```bash
-/moai:1-project init
+/moai:1-project
 ```
 
 대화형 마법사가 프로젝트를 완전 설정합니다.

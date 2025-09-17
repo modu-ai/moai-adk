@@ -428,7 +428,7 @@ WHERE 모바일 환경에서,
 
 Steering 문서는 SPEC 작성의 필수 전제조건입니다.
 먼저 다음 명령으로 프로젝트를 초기화해주세요:
-> /moai:1-project init
+> /moai:1-project
 
 Steering 문서 경로: .moai/steering/
 ```
