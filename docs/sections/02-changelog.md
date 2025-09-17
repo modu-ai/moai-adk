@@ -6,6 +6,7 @@
 - 설정: `.moai/config.json`에 `templates.mode` 도입 (`copy`|`package`, 기본 `copy`)
 - 설치기/리소스 관리자: `templates.mode=package`일 때 `.moai/_templates/` 복사 생략 지원
 - 문서 업데이트: 설정(13-config), 템플릿(14-templates), 아키텍처(04-architecture), 설치(05-installation)
+- 메모리 템플릿: 공통/스택별 프로젝트 메모리 템플릿 자동 생성 및 기술 스택 기반 복사 지원
 
 ## v0.1.17 (2025-09-17) - 자동 업데이트 & 16-Core 정비
 
@@ -345,7 +346,7 @@ moai init project --force-copy  # 심볼릭 링크 대신 파일 복사
 
 ### 메모리 시스템 완전 구현
 - **Claude 메모리 파일**: project_guidelines.md, coding_standards.md, team_conventions.md, bash_commands.md, git_workflow.md
-- **MoAI Constitution 시스템**: constitution.md (5대 원칙 상세), constitution_update_checklist.md (15단계)
+- **MoAI Constitution 시스템**: constitution.md (5대 원칙 상세)
 - **ADR 시스템**: decisions/ADR-001-sample.md 아키텍처 결정 기록 템플릿
 - **자동 설치**: installer.py에서 메모리 파일 자동 복사 및 디렉토리 구성
 - **실용성 강화**: Bash 명령어와 Git 워크플로우 별도 파일로 모듈화

@@ -34,6 +34,12 @@ TDD 자동화 프로세스
     └── 모든 테스트 통과 보장
 ```
 
+## 📚 마스터 원칙 체크(참조)
+- TDD 원칙: 테스트가 설계를 이끈다(테스트 우선, 한 번에 한 가지 변경)
+- Refactor 규칙: 모든 테스트가 그린일 때만 구조 개선
+- Clean Code: 테스트 자체도 가독성·의도 드러남·중복 최소화
+- 자세한 내용: @.claude/memory/software_principles.md
+
 ### 기술 스택별 테스트 자동화
 
 #### Frontend (React/TypeScript) 테스트 생성

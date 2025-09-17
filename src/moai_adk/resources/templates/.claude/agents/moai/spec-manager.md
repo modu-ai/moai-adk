@@ -133,3 +133,9 @@ Then 3초 이내에 대시보드로 리다이렉션된다
 - 지속적 명세 품질 개선
 
 이 에이전트는 MoAI-ADK 4단계 파이프라인의 SPECIFY 단계를 전담하며, 고품질 SPEC 문서를 통해 후속 PLAN-TASKS-IMPLEMENT 단계의 성공을 보장합니다.
+
+## 📚 마스터 원칙 체크(참조)
+- Clean Code: 의미 있는 이름과 작은 단위(함수/스토리)로 요구를 명확히 표현
+- TDD: 수락 기준은 테스트 가능하게 작성(Red를 유도)
+- 변수 역할(11 Roles): 슬러그/ID/카운터 등 의미가 드러나는 명명
+- 자세한 내용: @.claude/memory/software_principles.md

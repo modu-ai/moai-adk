@@ -1,10 +1,17 @@
-# MoAI-ADK (MoAI Agentic Development Kit) v0.1.17
+# MoAI-ADK (MoAI Agentic Development Kit)
 
 **Claude Code 최신 표준 기반 Spec-First TDD 완전 자동화 개발 시스템**
 
 ## 🗿 시스템 개요
 
-MoAI-ADK는 Claude Code의 2025년 최신 기능(Claude 4.1 Opus 모델, "ask" 권한 defaultMode, MCP 서버 통합, Hook stdin JSON 처리)을 활용하여 4단계 파이프라인(SPECIFY → PLAN → TASKS → IMPLEMENT)을 통한 완전 자동화 개발 환경을 제공합니다.
+MoAI-ADK는 4단계 파이프라인(SPECIFY → PLAN → TASKS → IMPLEMENT)을 통한 완전 자동화 개발 환경을 제공합니다.
+
+### 메모리 계층 & 임포트 규칙(요약)
+- 계층: 조직 정책 → 프로젝트 메모리(이 파일 및 @.claude/memory/*) → 사용자 메모리(`~/.claude/CLAUDE.md`)
+- 임포트: `@path` 문법(상대/절대/`~/`), 최대 5-hop, 코드 블록/스팬 내 제외
+- 개인 선호는 저장소 외부(사용자 메모리)로 관리하고, 이 저장소엔 팀 공유 지침만 포함
+
+자세한 안내: @.claude/memory/README.md
 
 ### 핵심 철학
 
@@ -13,18 +20,52 @@ MoAI-ADK는 Claude Code의 2025년 최신 기능(Claude 4.1 Opus 모델, "ask" �
 - **Living Document**: 문서와 코드는 항상 동기화
 - **Full Traceability**: Core @TAG 시스템으로 완전 추적
 
+## 🔁 작업 루프 & 운영 원칙(중요)
+
+- 대화/문서/커밋 언어: 한국어 고정
+- 작업 루프: 문제 정의 → 작고 안전한 변경 → 변경 리뷰 → 리팩터링(반복)
+- 변경 전 전체 맥락 파악: 관련 파일은 처음부터 끝까지 읽고, 정의·참조·호출·테스트·문서·설정을 전역 검색으로 확인
+- 작게 나누기: 변경/커밋/PR의 범위를 최소화하고, 영향도는 1–3줄로 요약
+- 가정 기록: Issue/PR/ADR에 가정·제약·의사결정 근거를 남김
+- 대안 비교: 최소 2가지 대안을 장단점/위험 1줄씩 비교 후 가장 단순한 해법 선택
+- 비밀/보안: 시크릿을 코드/로그/문서에 남기지 않음. 모든 입력 검증·정규화·인코딩, 파라미터화된 접근, 최소 권한 원칙
+
+### 코딩 규칙(요약)
+- 파일 ≤ 300 LOC, 함수 ≤ 50 LOC, 매개변수 ≤ 5, 순환 복잡도 ≤ 10(초과 시 분리)
+- 입력 → 처리 → 반환 구조, 가드절 우선, 부수효과(I/O·네트워크·전역)는 경계층으로 격리
+- 예외는 구체 타입만 처리, 구조화 로깅(민감정보 금지)과 요청/상관관계 ID 전파
+- 시간대/DST 고려(저장 UTC, 표시 로캘), 상수는 심볼화(하드코딩 금지)
+
+### 테스트/보안/클린 코드
+- 새 코드엔 새 테스트, 버그 수정엔 회귀 테스트(먼저 실패하도록 작성)
+- 테스트는 결정적·독립적, 외부 시스템은 가짜/계약 테스트로 대체, E2E 최소 성공/실패 각 1개
+- 동시성/락/재시도 위험(중복/데드락 등) 선제 평가 및 테스트
+- 안티패턴 금지: 전체 문맥 무시 수정, 비밀 노출, 경고 무시, 근거 없는 최적화/추상화, 광범위 예외
+
 ## 📚 프로젝트 메모리 (Import Files)
 
-### 개발 가이드라인
+프로젝트 문서는 아래 카테고리로 구성되어 있으며, 전체 지도는 @.claude/memory/README.md 에서 확인합니다.
 
-@.claude/memory/project_guidelines.md
+### 프로세스 & 핵심 원칙
+@.claude/memory/three_phase_process.md  
+@.claude/memory/project_guidelines.md  
+@.claude/memory/software_principles.md
+
+### 개발 표준
 @.claude/memory/coding_standards.md  
-@.claude/memory/team_conventions.md
+@.claude/memory/tdd_guidelines.md  
+@.claude/memory/security_rules.md
 
-### 명령어 레퍼런스
+### 협업 & Git
+@.claude/memory/team_conventions.md  
+@.claude/memory/git_workflow.md  
+@.claude/memory/git_commit_rules.md  
+@.claude/memory/shared_checklists.md
 
+### 도구 & 운영
 @.claude/memory/bash_commands.md
-@.claude/memory/git_workflow.md
+@.claude/memory/README.md  
+@.moai/memory/common.md
 
 ### Constitution & 거버넌스
 
@@ -44,7 +85,7 @@ MoAI-ADK는 Claude Code의 2025년 최신 기능(Claude 4.1 Opus 모델, "ask" �
 
 ```bash
 # 전체 파이프라인 자동 실행
-/moai:2-spec user-auth "JWT 기반 사용자 인증 시스템"
+/moai:2-spec "JWT 기반 사용자 인증 시스템"
 /moai:3-plan SPEC-001
 /moai:4-tasks PLAN-001
 /moai:5-dev T001
@@ -73,38 +114,20 @@ bash .moai/scripts/run-tests.sh
 
 ## 🤖 에이전트 모델 표준
 
-### 모델명 규칙
-
-MoAI-ADK의 모든 에이전트는 **짧은 모델명만** 사용합니다:
-
-- **opus**: 복잡한 추론과 설계 작업
-  - steering-architect, plan-architect, code-generator
-- **sonnet**: 균형잡힌 범용 작업
-  - spec-manager, task-decomposer, test-automator, claude-code-manager
-- **haiku**: 빠른 처리 작업
-  - doc-syncer, tag-indexer
-
-**⚠️ 중요**: 전체 모델명(예: `claude-3-5-sonnet-20241022`) 사용 금지
-**✅ 올바른 형식**: `model: sonnet`
-**❌ 잘못된 형식**: `model: claude-3-5-sonnet-20241022`
-
 ### 모델 사용 가이드 (opusplan 권장)
 
-- 계획/설계/리뷰/ADR/Constitution: plan 모드에서 `opusplan` 권장
-  - plan 단계에서 `opus`로 추론 후 실행 단계는 자동 `sonnet` 전환
+- 계획/설계/리뷰/ADR/Constitution:`opusplan` 모델을 선택 후 plan 단계에서 `opus`로 추론 > 실행 단계는 자동 `sonnet` 전환
 - 구현/리팩터/디버깅/테스트: 기본 `sonnet`
 - 문서 동기화/인덱싱/대량 갱신: `haiku`
 - 명령/에이전트는 기본적으로 `sonnet`을 상속하며, 속도 중심 태스크만 `haiku`를 명시합니다.
 
 예시:
-
 ```bash
 # 설계/계획은 opusplan, 구현은 sonnet
 claude --model opusplan
-> /think plan
+# ⏸ plan mode on (shift+tab to cycle) 선택 이후 계획 수립
+# 계획 수립 이후 자동 ⏵⏵ accept edits on (shift+tab to cycle) 전환 
 > /moai:3-plan SPEC-001
-/model sonnet
-> /moai:5-dev T001
 ```
 
 ## 🏷️ 핵심 TAG 활용
@@ -134,12 +157,11 @@ claude --model opusplan
 4. **Observability**: 구조화된 로깅 필수
 5. **Versioning**: MAJOR.MINOR.BUILD 체계
 
-### Hook 시스템 자동 검증 (v0.1.12 개선)
+### Hook 시스템 자동 검증
 
-- **PreToolUse**: Constitution 검증, 보안 검사 (stdin JSON 처리로 개선)
+- **PreToolUse**: Constitution 검증, 보안 검사
 - **PostToolUse**: TAG 동기화, 문서 업데이트
 - **SessionStart**: 프로젝트 상태 알림
-- **MCP 통합**: memory, filesystem 서버 자동 연결
 
 ### Hallucination 저감 3원칙
 
@@ -219,8 +241,6 @@ claude --model opusplan
 
 ---
 
-**마지막 업데이트**: 2025-09-16
-**다음 검토 예정**: 2025-10-16
-**MoAI-ADK 버전**: v0.1.17
+> 버전과 최신 상태는 `moai status` 또는 `.moai/version.json`에서 확인하세요.
 
 **🗿 "명세가 없으면 코드도 없다. 테스트가 없으면 구현도 없다."**

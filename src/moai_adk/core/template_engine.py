@@ -136,11 +136,22 @@ class TemplateEngine:
         target_path: Path
     ) -> bool:
         """Create Steering document from template."""
-        enhanced_context = {
+        # 기본 컨텍스트 보강: 날짜/설명 값이 없을 경우 안전한 기본값 채움
+        base_context = {
             'PROJECT_NAME': project_name,
             'STEERING_TYPE': steering_type.upper(),
             **context,
-            **self._enhance_context_with_version(context)
+        }
+        if 'CREATED_AT' not in base_context:
+            base_context['CREATED_AT'] = datetime.now().isoformat()
+        if 'CREATED_DATE' not in base_context:
+            base_context['CREATED_DATE'] = datetime.now().strftime('%Y-%m-%d')
+        if 'PROJECT_DESCRIPTION' not in base_context:
+            base_context['PROJECT_DESCRIPTION'] = ''
+
+        enhanced_context = {
+            **base_context,
+            **self._enhance_context_with_version(base_context),
         }
         return self.create_from_template(f'steering/{steering_type}', target_path, enhanced_context)
 

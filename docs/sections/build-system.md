@@ -187,10 +187,10 @@ src/moai_adk/
 ### 버전 패턴 자동 교체
 ```bash
 # 자동으로 교체되는 패턴들
-__version__ = "0.1.17"                    # Python 변수
-version = "0.1.17"                        # 설정 파일
-MoAI-ADK v0.1.17                         # 문서
-"moai_version": "0.1.17"                 # JSON 설정
+__version__ = "<version>"                    # Python 변수
+version = "<version>"                        # 설정 파일
+MoAI-ADK v<version>                         # 문서
+"moai_version": "<version>"                 # JSON 설정
 ```
 
 ## 🎯 개발자 워크플로우
@@ -214,7 +214,7 @@ MoAI-ADK v0.1.17                         # 문서
 ### 실제 개발 시나리오
 ```bash
 # 1. 코드 수정 완료 후 버전 변경
-echo '__version__ = "0.1.17"' > src/moai_adk/_version.py
+echo '__version__ = "<version>"' > src/moai_adk/_version.py
 
 # 2. 빌드 (자동으로 모든 파일 동기화)
 make build

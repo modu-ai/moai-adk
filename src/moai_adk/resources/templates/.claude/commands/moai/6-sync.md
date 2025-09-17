@@ -382,3 +382,6 @@ auto 모드가 향후 충분하므로 force 모드는 주요 리팩토링 시에
 ```
 
 이 명령어를 통해 코드와 문서가 항상 완벽하게 동기화된 상태를 유지하며, 프로젝트의 일관성과 추적성을 보장합니다.
+## 🔁 응답 구조(필수)
+항상 3단계 구조로 응답: 1) Phase 1 Results  2) Phase 2 Plan  3) Phase 3 Implementation.  
+동기화는 보안/커밋 규칙을 준수: @.claude/memory/security_rules.md, @.claude/memory/git_commit_rules.md

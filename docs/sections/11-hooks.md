@@ -38,12 +38,9 @@ if '.moai/steering/' in file_path:
 **기능**: Constitution 5원칙 보호 및 검증
 
 ```python
-# Constitution 변경 체크리스트 확인
-if 'constitution.md' in file_path:
-    checklist_path = Path('.moai/memory/constitution_update_checklist.md')
-    if not checklist_path.exists():
-        print("⚠️ Constitution 변경은 체크리스트가 필요합니다")
-        sys.exit(2)  # 차단
+# Constitution 검증은 .moai/config.json 기반으로 수행됩니다.
+# 체크리스트 파일 의존성은 제거되었습니다.
+# 예) tdd_required, min_coverage 등 설정을 읽어 검증합니다.
 ```
 
 ### 3. tag_validator.py - PreToolUse Hook

@@ -7,11 +7,32 @@ MoAI-ADK Resource Manager
 
 import shutil
 from pathlib import Path
-from typing import Optional, List, Callable
+from string import Template as StrTemplate
+from typing import Optional, List, Callable, Dict
 from importlib import resources
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+MEMORY_STACK_TEMPLATE_MAP: Dict[str, List[str]] = {
+    "python": ["backend-python"],
+    "fastapi": ["backend-python", "backend-fastapi"],
+    "django": ["backend-python"],
+    "flask": ["backend-python"],
+    "java": ["backend-spring"],
+    "spring": ["backend-spring"],
+    "spring boot": ["backend-spring"],
+    "springboot": ["backend-spring"],
+    "spring-boot": ["backend-spring"],
+    "react": ["frontend-react"],
+    "nextjs": ["frontend-react", "frontend-next"],
+    "vue": ["frontend-vue"],
+    "nuxt": ["frontend-vue"],
+    "angular": ["frontend-angular"],
+    "typescript": ["frontend-react"],
+    "javascript": ["frontend-react"],
+}
 
 
 class ResourceManager:
@@ -225,6 +246,84 @@ class ResourceManager:
             return self.copy_template("CLAUDE.md", target_path, overwrite)
         except Exception as e:
             logger.error(f"Failed to copy project memory: {e}")
+            return False
+
+    def copy_memory_templates(
+        self,
+        project_path: Path,
+        tech_stack: List[str],
+        context: Dict[str, str],
+        overwrite: bool = False
+    ) -> List[Path]:
+        """Copy stack-specific memory templates into the project."""
+
+        copied_files: List[Path] = []
+        memory_dir = project_path / ".moai" / "memory"
+        memory_dir.mkdir(parents=True, exist_ok=True)
+
+        # Always include common template
+        templates_to_copy: List[str] = ["common"]
+
+        for tech in tech_stack:
+            tech_key = tech.lower()
+            matches = MEMORY_STACK_TEMPLATE_MAP.get(tech_key)
+            if matches:
+                templates_to_copy.extend(matches)
+            else:
+                logger.debug("No memory template mapping for tech stack item: %s", tech)
+
+        # Remove duplicates while preserving order
+        seen: set[str] = set()
+        unique_templates: List[str] = []
+        for template_name in templates_to_copy:
+            if template_name not in seen:
+                seen.add(template_name)
+                unique_templates.append(template_name)
+
+        for template_name in unique_templates:
+            template_rel_path = f".moai/_templates/memory/{template_name}.template.md"
+            target_path = memory_dir / f"{template_name}.md"
+
+            if not self._render_template_with_context(
+                template_rel_path,
+                target_path,
+                context,
+                overwrite
+            ):
+                logger.warning("Failed to render memory template: %s", template_name)
+            else:
+                copied_files.append(target_path)
+
+        return copied_files
+
+    def _render_template_with_context(
+        self,
+        template_name: str,
+        target_path: Path,
+        context: Dict[str, str],
+        overwrite: bool = False
+    ) -> bool:
+        """Render a text template with context variables to a target file."""
+
+        try:
+            content = self.get_template_content(template_name)
+            if content is None:
+                logger.warning("Template content not found: %s", template_name)
+                return False
+
+            if target_path.exists() and not overwrite:
+                logger.info("Memory file already exists, skipping: %s", target_path)
+                return True
+
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+
+            rendered = StrTemplate(content).safe_substitute(context)
+            target_path.write_text(rendered, encoding="utf-8")
+            logger.info("Rendered memory template %s -> %s", template_name, target_path)
+            return True
+
+        except Exception as exc:
+            logger.error("Failed to render template %s: %s", template_name, exc)
             return False
 
     def validate_project_resources(self, project_path: Path) -> bool:

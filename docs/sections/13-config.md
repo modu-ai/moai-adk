@@ -47,7 +47,7 @@ MoAI-ADK는 두 개의 주요 설정 파일을 사용합니다:
   },
   "env": {
     "MOAI_PROJECT": "true",
-    "MOAI_VERSION": "0.1.17"
+    "MOAI_VERSION": "vX.Y.Z"
   },
   "enableAllProjectMcpServers": true,
   "cleanupPeriodDays": 30,
@@ -115,7 +115,7 @@ MoAI-ADK는 두 개의 주요 설정 파일을 사용합니다:
     "framework": "nextjs"
   },
   "moai": {
-    "version": "0.1.17",
+    "version": "vX.Y.Z",
     "constitution_version": "1.0",
     "pipeline_stage": "INIT"
   },
@@ -180,7 +180,7 @@ MoAI-ADK는 두 개의 주요 설정 파일을 사용합니다:
 ```bash
 # MoAI 프로젝트 식별
 export MOAI_PROJECT=true
-export MOAI_VERSION=0.1.17
+export MOAI_VERSION=vX.Y.Z
 
 # 성능 설정
 export MOAI_MAX_PARALLEL_TASKS=5
@@ -196,7 +196,7 @@ export MOAI_LOG_LEVEL=INFO
 {
   "env": {
     "MOAI_PROJECT": "true",
-    "MOAI_VERSION": "0.1.17",
+    "MOAI_VERSION": "vX.Y.Z",
     "CONSTITUTION_MODE": "strict",
     "TAG_VALIDATION": "enabled"
   }

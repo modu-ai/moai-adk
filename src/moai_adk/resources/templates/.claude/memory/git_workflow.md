@@ -286,10 +286,8 @@ pre-commit install
 
 ## 🧾 Pull Request 템플릿 요건(요약)
 
-- @TAG 연결: @REQ/@TASK/@TEST 필수 명시
-- 테스트: 단위/통합/E2E 체크, 커버리지 리포트 첨부(≥80%)
-- 문서: README/변경된 문서 업데이트, API 변경 시 스펙 반영
-- 체크리스트: 코딩 표준 준수, 보안 점검, 성능 영향 검토
+- 공통 체크리스트는 @.claude/memory/shared_checklists.md를 참고하여 PR 본문/템플릿에 포함
+- 태그 매핑(@REQ/@TASK/@TEST), 테스트/커버리지 리포트, 문서/보안 영향, 가정/대안 비교 항목을 반드시 확인
 
 ## 🛠️ 유용한 Git 설정
 
@@ -404,5 +402,4 @@ git push origin main --tags
 
 **참고**: 이 워크플로우는 MoAI Constitution의 Versioning 원칙(`@.moai/memory/constitution.md` Article V)과 16-Core TAG 시스템(`@.claude/memory/project_guidelines.md`)을 따릅니다.
 
-**마지막 업데이트**: 2025-09-12  
-**버전**: v0.1.12
+> 변경은 ‘작고 안전하게(Small & Safe)’. 필요시 후속 PR로 단계적 진행.

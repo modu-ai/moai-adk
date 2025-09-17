@@ -320,3 +320,6 @@ Red-Green-Refactor 순서를 준수해주세요.
 ```
 
 이 명령어를 통해 개발자는 구현 세부사항에 신경 쓰지 않고도 고품질의 코드를 자동으로 얻을 수 있습니다.
+## 🔁 응답 구조(필수)
+응답은 3단계 구조로 정리: 1) Phase 1 Results  2) Phase 2 Plan  3) Phase 3 Implementation.  
+구현은 TDD/보안/커밋 규칙을 준수: @.claude/memory/tdd_guidelines.md, @.claude/memory/security_rules.md, @.claude/memory/git_commit_rules.md

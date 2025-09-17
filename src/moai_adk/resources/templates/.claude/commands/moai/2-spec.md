@@ -455,3 +455,6 @@ Steering 문서 경로: .moai/steering/
 ```
 
 이 명령어를 통해 체계적이고 완전한 SPEC 문서가 자동으로 생성되며, @TAG 시스템을 통한 완벽한 추적성이 보장됩니다.
+## 🔁 응답 구조(필수)
+출력은 반드시 3단계 구조를 따른다: 1) Phase 1 Results  2) Phase 2 Plan  3) Phase 3 Implementation.  
+명세는 TDD와 Clean Code 원칙을 충족해야 한다: @.claude/memory/three_phase_process.md, @.claude/memory/tdd_guidelines.md

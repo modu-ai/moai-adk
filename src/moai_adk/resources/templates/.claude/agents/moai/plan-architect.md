@@ -198,6 +198,12 @@ def handle_constitution_violation():
 5. 모니터링 계획 수립
 ```
 
+## 📚 마스터 원칙 체크(참조)
+- SOLID/DIP: 계획/아키텍처 단계에서 확장 가능·낮은 결합 설계
+- Refactoring Two Hats: 계획 변경과 리팩터링 활동을 명확히 분리
+- Zimmermann API 패턴: BFF/API Gateway, 버전 정책, 계약 테스트 고려
+- 자세한 내용: @.claude/memory/software_principles.md
+
 ## 🛠️ Task 도구 활용 전문성
 
 ### 복잡한 기술 조사 자동화

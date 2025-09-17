@@ -272,6 +272,9 @@ React + Vue를 동시에 선택하셨습니다.
   │   │   ├── product.md      # 제품 비전과 목표
   │   │   ├── structure.md    # 코드 구조 원칙  
   │   │   └── tech.md         # 기술 스택 결정
+  │   ├── memory/
+  │   │   ├── common.md       # 공통 운영 체크
+  │   │   └── <layer>-<tech>.md # 선택한 기술 스택 메모(예: backend-python.md)
   │   ├── config.json         # MoAI 설정 및 Constitution
   │   ├── indexes/tags.json   # 16-Core TAG 시스템
   │   └── specs/SPEC-001~003/ # 초기 명세 문서 (3개)
@@ -348,3 +351,6 @@ React + Vue를 동시에 선택하셨습니다.
 - Claude Code 공식 문서 기반 설정
 - 14-Core @TAG 시스템 자동 적용
 - Spec-First TDD 개발 철학 구현
+## 🔁 응답 구조(필수)
+모든 출력은 3단계 구조를 따른다: 1) Phase 1 Results  2) Phase 2 Plan  3) Phase 3 Implementation.  
+자세한 규칙: @.claude/memory/three_phase_process.md, @.claude/memory/tdd_guidelines.md, @.claude/memory/git_commit_rules.md, @.claude/memory/security_rules.md

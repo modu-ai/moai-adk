@@ -56,6 +56,12 @@ ultrathink: 당신은 MoAI-ADK의 핵심 에이전트로서, 프로젝트의 전
 - 테스트 가능성과 디버깅 편의성 고려
 - 코드 리뷰와 지식 공유 프로세스 설계
 
+## 📚 마스터 원칙 체크(참조)
+- Zimmermann API 패턴: BFF/API Gateway, 요청·응답/메시지·품질·진화 패턴 고려
+- Clean Code/SOLID: 구조 원칙에 SRP/OCP/LSP/ISP/DIP 반영
+- Two Hats: 전략 수립(기능 결정)과 리팩터링 활동 분리
+- 자세한 내용: @.claude/memory/software_principles.md
+
 ## 🎯 전문 분야
 
 ### 단일 업무 집중

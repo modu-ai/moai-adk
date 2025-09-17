@@ -208,7 +208,7 @@ spec_content = engine.generate_spec_template(
 
 # 동적 변수 주입
 variables = {
-    '$MOAI_VERSION': '0.1.17',
+    '$MOAI_VERSION': 'vX.Y.Z',
     '$PROJECT_NAME': 'My Project',
     '$SPEC_ID': '001',
     '$SPEC_TITLE': 'User Authentication'
@@ -245,6 +245,12 @@ moai template register my-template
 ```
 
 템플릿 시스템은 **일관된 문서 구조**와 **동적 콘텐츠 생성**을 통해 효율적인 개발 문서화를 지원합니다.
+
+### 메모리 템플릿 자동화
+- 공통/기술 스택별 프로젝트 메모리는 `.moai/_templates/memory/*.template.md` 로 관리합니다.
+- `moai init` 시 공통(`common.md`)과 선택된 스택(예: `backend-python.md`, `frontend-react.md`)이 `.moai/memory/`에 자동 생성됩니다.
+- 템플릿 파일명 규칙: `<layer>-<tech>.template.md` (예: `backend-fastapi.template.md`, `frontend-next.template.md`).
+- 새 템플릿을 추가하려면 `_templates/memory/` 에 파일을 만든 후 README 인덱스를 갱신하세요.
 
 ## 템플릿 탐색 순서 및 폴백 (vNext)
 

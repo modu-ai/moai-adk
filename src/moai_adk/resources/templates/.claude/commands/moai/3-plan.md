@@ -323,3 +323,6 @@ SPEC을 완성한 후 다시 실행해주세요.
 - **Claude Code 표준**: 공식 문서 기반 설계 방법론
 - **Spec-First**: 명세 기반 체계적 계획 수립
 - **TDD-Ready**: 테스트 우선 개발을 위한 사전 준비
+## 🔁 응답 구조(필수)
+응답은 3단계 구조로 구성: 1) Phase 1 Results  2) Phase 2 Plan  3) Phase 3 Implementation.  
+계획 수립은 SOLID/DIP·Zimmermann 패턴·보안 규칙을 준수: @.claude/memory/three_phase_process.md, @.claude/memory/security_rules.md

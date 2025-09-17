@@ -351,3 +351,6 @@ T004 → T008 → T012 → T004
 - **Dependency Optimization**: 의존성 그래프 기반 최적 실행 순서
 - **Parallel Execution**: 파일 기반 병렬 작업 식별
 - **Quality Gates**: 각 단계별 자동 검증 체크포인트
+## 🔁 응답 구조(필수)
+항상 3단계 구조로 응답: 1) Phase 1 Results  2) Phase 2 Plan  3) Phase 3 Implementation.  
+작업 분해는 TDD/Clean Code 원칙을 포함: @.claude/memory/three_phase_process.md, @.claude/memory/tdd_guidelines.md

@@ -103,11 +103,11 @@ class Config:
         
         # Validate tech stack
         valid_tech = {
-            "nextjs", "react", "vue", "angular", "svelte",
+            "nextjs", "react", "vue", "nuxt", "angular", "svelte",
             "typescript", "javascript", "python",
             "tailwind", "scss", "css",
             "node", "deno", "bun",
-            "express", "fastapi", "django", "flask",
+            "express", "fastapi", "django", "flask", "spring", "springboot", "spring-boot",
             "postgresql", "mysql", "sqlite", "mongodb",
             "redis", "docker", "kubernetes",
             "rust", "go", "java"

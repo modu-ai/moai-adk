@@ -133,6 +133,7 @@ moai update
 
 ### 중요 파일 경로
 - **프로젝트 메모리**: `CLAUDE.md`
+- **자동 생성 메모리**: `.moai/memory/common.md`, `.moai/memory/<layer>-<tech>.md`
 - **Constitution**: `.moai/memory/constitution.md`
 - **설정**: `.claude/settings.json`, `.moai/config.json`
 - **Hook 스크립트**: `.claude/hooks/moai/`

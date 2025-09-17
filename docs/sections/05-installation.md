@@ -99,6 +99,7 @@ moai init .
 
 ### 8. 메모리 시스템 설치
 - 프로젝트 가이드라인, Constitution, ADR 템플릿 설치
+- 공통/스택별 메모리 템플릿(.moai/_templates/memory/) 준비
 - Claude Code 메모리 파일 구성
 
 ### 9. GitHub CI/CD 워크플로우 설치
@@ -127,7 +128,7 @@ moai init .
 
 ### 15. 프로젝트 메모리 생성
 - `CLAUDE.md` 시스템 구성
-- 프로젝트별 메모리 설정
+- 공통 메모리(`common.md`)와 선택한 기술 스택용 문서(예: `backend-python.md`, `frontend-react.md`) 자동 생성
 
 ### 16. 자동 버전 관리 시스템 설치 (v0.1.17)
 - `scripts/update_version.py`: 독립실행형 버전 관리 스크립트
@@ -201,7 +202,7 @@ python .moai/scripts/validate_tags.py
 python .moai/scripts/check-traceability.py
 ```
 
-## 🔄 업데이트 시스템 (v0.1.17)
+## 🔄 업데이트 시스템 (예: vX.Y.Z)
 
 ### 사용자용 업데이트
 
@@ -221,16 +222,16 @@ moai update --resources-only   # 글로벌 리소스만 업데이트
 
 ```bash
 # 전체 버전 동기화
-moai update-version 0.1.17
+moai update-version <version>
 
 # 안전한 사전 테스트
-moai update-version 0.1.17 --dry-run
+moai update-version <version> --dry-run
 
 # 검증 포함
-moai update-version 0.1.17 --verify
+moai update-version <version> --verify
 
 # Git 커밋 제외
-moai update-version 0.1.17 --no-git
+moai update-version <version> --no-git
 ```
 
 ## 🚨 문제 해결

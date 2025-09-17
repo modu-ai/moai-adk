@@ -68,8 +68,10 @@ MoAI-ADK는 Claude Code 표준을 완전히 준수하면서도 체계적인 문�
 │   │   # ├── structure.md           # /moai:1-project에서 생성
 │   │   # └── tech.md                # /moai:1-project에서 생성
 │   ├── memory/                    # 거버넌스 문서
+│   │   ├── common.md              # 공통 운영 메모(자동 생성)
+│   │   ├── backend-*.md           # 백엔드 스택별 메모(예: backend-python.md)
+│   │   ├── frontend-*.md          # 프론트엔드 스택별 메모(예: frontend-react.md)
 │   │   ├── constitution.md        # 프로젝트 헌법
-│   │   ├── constitution_update_checklist.md
 │   │   └── decisions/             # 아키텍처 결정 기록
 │   │       └── ADR-*.md
 │   ├── specs/                     # SPEC 문서 (동적 생성)
@@ -127,7 +129,8 @@ MoAI-ADK는 설치와 프로젝트 초기화를 두 단계로 명확히 분리�
 
 **설치 범위**: MoAI-ADK 핵심 시스템만 설치
 - `.claude/` 전체 시스템 (agents, commands, hooks, memory, output-styles)
-- `.moai/` 기본 구조 (templates, memory, config.json, scripts/)
+- `.moai/` 기본 구조 (templates, memory, scripts/)  
+  (설정 파일 `.moai/config.json`은 설치 시 생성)
 - `.github/` CI/CD 시스템 (workflows, PR 템플릿)
 - `CLAUDE.md` 프로젝트 메모리 파일
 - Git 저장소 초기화 (필요시 Git 자동 설치 제안)
@@ -161,8 +164,7 @@ moai_adk 패키지/
         │   ├── commands/    # 6개 슬래시 명령어
         │   └── hooks/       # 프로젝트 훅들
         ├── .moai/           # MoAI 설정 템플릿
-        │   ├── _templates/  # 문서 템플릿들 (templates.mode=package일 때는 복사 생략)
-        │   └── config.json  # 기본 설정
+        │   └── _templates/  # 문서 템플릿들 (templates.mode=package일 때는 복사 생략)
         └── CLAUDE.md        # 프로젝트 메모리
 
 ↓ importlib.resources + shutil.copytree ↓
@@ -174,7 +176,6 @@ moai_adk 패키지/
 │   └── hooks/moai/
 └── .moai/               # 완전히 복사된 파일들
     ├── _templates/
-    ├── config.json
     └── memory/
 ```
 
@@ -197,7 +198,7 @@ moai_adk 패키지/
 ### 동적 파일 생성
 
 ```python
-$MOAI_VERSION      # 메인 버전 (0.1.17)
+$MOAI_VERSION      # 메인 버전 (예: vX.Y.Z)
 $VERSION_FULL      # 전체 제목 (MoAI-ADK v0.1.17)
 $VERSION_SHORT     # 짧은 형식 (v0.1.17)
 $VERSION_BANNER    # 배너용 (🗿 MoAI-ADK v0.1.17)

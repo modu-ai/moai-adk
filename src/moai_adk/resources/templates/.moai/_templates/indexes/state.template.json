@@ -1,10 +1,10 @@
 {
   "metadata": {
-    "version": "0.1.15",
+    "version": "$MOAI_VERSION",
     "project_name": "$PROJECT_NAME",
     "created_at": "$CREATED_AT",
     "last_updated": "$CREATED_AT",
-    "moai_adk_version": "0.1.15"
+    "moai_adk_version": "$MOAI_VERSION"
   },
   "project_state": {
     "current_phase": "$CURRENT_PHASE",

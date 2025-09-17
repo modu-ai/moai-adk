@@ -213,10 +213,27 @@ class SimplifiedInstaller:
     def _install_project_memory(self) -> bool:
         """프로젝트 메모리 파일 생성"""
         try:
-            return self.resource_manager.copy_project_memory(
+            result = self.resource_manager.copy_project_memory(
                 self.config.project_path,
                 overwrite=self.config.force_overwrite
             )
+            context = self.config.get_template_context()
+            joined_stack = ", ".join(self.config.tech_stack) if self.config.tech_stack else "미지정"
+            memory_context = {
+                **{k.upper(): str(v) for k, v in context.items()},
+                "PROJECT_NAME": self.config.name,
+                "TECH_STACK": joined_stack,
+                "TECH_STACK_LIST": joined_stack,
+            }
+
+            self.resource_manager.copy_memory_templates(
+                self.config.project_path,
+                self.config.tech_stack,
+                memory_context,
+                overwrite=self.config.force_overwrite,
+            )
+
+            return result
         except Exception as e:
             logger.error("Failed to create project memory: %s", e)
             return False
