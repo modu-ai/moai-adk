@@ -2,7 +2,7 @@
 
 ## 🧙‍♂️ 대화형 마법사 개요
 
-`/moai:1-project init` 명령어는 10단계 Q&A 시스템을 통해 프로젝트를 완전히 설정합니다.
+`/moai:1-project` 명령어는 10단계 Q&A 시스템을 통해 프로젝트를 완전히 설정합니다.
 
 ## 10단계 맥락 자산 구축 시스템
 
@@ -190,22 +190,7 @@ def prefill_answers(scanned_info):
 
 ## 마법사 재실행
 
-### 설정 변경
-```bash
-# 특정 설정만 변경
-/moai:1-project setting --tech-stack
-
-# 전체 재설정
-/moai:1-project setting --reset
-```
-
-### 점진적 업데이트
-```bash
-# 새 기능 추가 시
-/moai:1-project setting --add-feature database
-
-# 팀 규모 변경 시
-/moai:1-project setting --team-size large
-```
+### 설정 변경/점진적 업데이트
+설정/수정/추가는 이제 별도 서브커맨드 없이 `/moai:1-project`에서 대화형으로 처리합니다.
 
 대화형 마법사는 **맞춤형 프로젝트 설정**과 **자동화된 구조 생성**을 통해 완벽한 개발 환경을 제공합니다.

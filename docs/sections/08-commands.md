@@ -35,10 +35,10 @@ MoAI-ADK는 4단계 파이프라인을 지원하는 6개의 연번순 슬래시 
 
 ```bash
 # 프로젝트 초기화
-/moai:1-project init
+/moai:1-project
 
 # 설정 변경
-/moai:1-project setting
+※ 설정/수정은 별도 서브커맨드 없이 `/moai:1-project`에서 대화형으로 처리합니다.
 ```
 
 **생성 결과**:
@@ -147,7 +147,7 @@ MoAI-ADK는 4단계 파이프라인을 지원하는 6개의 연번순 슬래시 
 ### 표준 개발 플로우
 ```bash
 # 1. 프로젝트 설정 (최초 1회)
-/moai:1-project init
+/moai:1-project
 
 # 2-6. 기능 개발 사이클 (반복)
 /moai:2-spec payment "Stripe 결제 시스템"

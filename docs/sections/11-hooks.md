@@ -38,7 +38,7 @@ dangerous_commands = [
 
 # Steering 문서 보호
 if '.moai/steering/' in file_path:
-    print("🔒 Steering 문서는 /moai:1-project setting으로 수정하세요")
+    print("🔒 Steering 문서는 /moai:1-project로 수정하세요")
     sys.exit(2)  # 차단
 ```
 

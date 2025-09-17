@@ -157,7 +157,7 @@ MoAI-ADK는 설치와 프로젝트 초기화를 두 단계로 명확히 분리�
 - Git 저장소 초기화 (필요시 Git 자동 설치 제안)
 - 포괄적 `.gitignore` 파일 생성
 
-### `/moai:1-project init` - 프로젝트별 구조 생성
+### `/moai:1-project` - 프로젝트별 구조 생성
 
 **생성 범위**: steering 문서 기반 동적 구조 생성
 - Steering 문서 생성 (product.md, structure.md, tech.md)
