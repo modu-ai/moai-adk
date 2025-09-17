@@ -1,5 +1,5 @@
 ---
-description: EARS 형식 명세 작성 - 비즈니스 요구사항을 엔지니어링 관점에서 구조화된 명세로 변환
+description: 요구사항 명세 작성
 argument-hint: <feature-name|"description-only"> [description] [--clarification-only]
 allowed-tools: Read, Write, Edit, MultiEdit, Task
 ---

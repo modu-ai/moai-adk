@@ -1,5 +1,5 @@
 ---
-description: Living Document 동기화 - 코드↔문서 실시간 동기화와 16-Core TAG 인덱싱
+description: 문서 동기화
 argument-hint: [auto|force|status] [target-path]
 allowed-tools: Read, Write, Edit, MultiEdit, Bash, Task
 ---

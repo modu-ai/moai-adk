@@ -1,5 +1,5 @@
 ---
-description: 대화형 프로젝트 설정 마법사 - 10단계 맥락 자산 구축을 통한 완전한 개발 환경 초기화
+description: 프로젝트 초기화
 argument-hint: [init|setting|update] [--wizard|--fast] [project-name]
 allowed-tools: Read, Write, Edit, MultiEdit, WebFetch, Task
 ---

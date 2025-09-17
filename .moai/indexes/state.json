@@ -185,9 +185,19 @@
     "claude-code-manager \uc5d0\uc774\uc804\ud2b8\ub97c \ud65c\uc6a9\ud558\uc5ec Claude Code \ucd5c\uc801\ud654\ub97c \uc218\ud589\ud558\uc138\uc694"
   ],
   "pipeline": {
-    "IMPLEMENT": {
+    "SPECIFY": {
       "completed": false,
-      "last_update": "2025-09-18T00:10:00.653453",
+      "last_update": "2025-09-18T00:14:35.971844",
+      "version": "0.1.9"
+    },
+    "PLAN": {
+      "completed": false,
+      "last_update": "2025-09-18T00:14:42.269883",
+      "version": "0.1.9"
+    },
+    "TASKS": {
+      "completed": false,
+      "last_update": "2025-09-18T00:14:52.079951",
       "version": "0.1.9"
     }
   }

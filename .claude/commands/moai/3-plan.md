@@ -1,5 +1,5 @@
 ---
-description: Constitution Check 및 기술 계획 수립 - 완성된 EARS 명세를 바탕으로 체계적 설계와 아키텍처 결정
+description: 개발 계획 수립
 argument-hint: <spec-id> [--phase=0|1|2] [--force-check]
 allowed-tools: Read, Write, Edit, WebFetch, Task
 ---

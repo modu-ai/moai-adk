@@ -1,5 +1,5 @@
 ---
-description: TDD 사이클로 자동 구현 - 단위 작업을 Red-Green-Refactor TDD 사이클에 따라 완전 자동 구현
+description: 코드 구현
 argument-hint: [task-id] [--coverage-target=80] [--force-tdd]
 allowed-tools: Read, Write, Edit, MultiEdit, Bash, Task
 ---

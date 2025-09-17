@@ -1,5 +1,5 @@
 ---
-description: TDD 기반 작업 분해 - 수립된 계획을 실제 구현 가능한 작업 단위로 분해하고 의존성 최적화
+description: 작업 분해
 argument-hint: <plan-id> [--parallel-only] [--sequential-only] [--dry-run]
 allowed-tools: Read, Write, Edit, Grep, Task
 ---
