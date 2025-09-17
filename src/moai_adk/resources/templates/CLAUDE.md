@@ -20,57 +20,30 @@ MoAI-ADK는 4단계 파이프라인(SPECIFY → PLAN → TASKS → IMPLEMENT)을
 - **Living Document**: 문서와 코드는 항상 동기화
 - **Full Traceability**: Core @TAG 시스템으로 완전 추적
 
-## 🔁 작업 루프 & 운영 원칙(중요)
+## 🔁 작업 루프 & 핵심 원칙
 
-- 대화/문서/커밋 언어: 한국어 고정
-- 작업 루프: 문제 정의 → 작고 안전한 변경 → 변경 리뷰 → 리팩터링(반복)
-- 변경 전 전체 맥락 파악: 관련 파일은 처음부터 끝까지 읽고, 정의·참조·호출·테스트·문서·설정을 전역 검색으로 확인
-- 작게 나누기: 변경/커밋/PR의 범위를 최소화하고, 영향도는 1–3줄로 요약
-- 가정 기록: Issue/PR/ADR에 가정·제약·의사결정 근거를 남김
-- 대안 비교: 최소 2가지 대안을 장단점/위험 1줄씩 비교 후 가장 단순한 해법 선택
-- 비밀/보안: 시크릿을 코드/로그/문서에 남기지 않음. 모든 입력 검증·정규화·인코딩, 파라미터화된 접근, 최소 권한 원칙
+- 모든 커뮤니케이션은 한국어, 작업 루프는 “문제 정의 → Small & Safe 변경 → 리뷰 → 리팩터링”을 반복합니다.
+- 변경 전 전체 맥락(정의·참조·호출·테스트·문서)을 전역 검색으로 확인하고, 영향도는 1–3줄로 정리합니다.
+- Issue/PR/ADR에는 가정과 최소 두 가지 대안(장단점/위험)을 기록합니다.
+- 시크릿·민감정보는 절대 저장소에 남기지 않으며 입력 검증·파라미터화·최소 권한 원칙을 기본으로 합니다.
+- 세부 규칙은 @.claude/memory/project_guidelines.md (운영)과 @.claude/memory/shared_checklists.md (PR/테스트/보안)을 참조하세요.
 
-### 코딩 규칙(요약)
-- 파일 ≤ 300 LOC, 함수 ≤ 50 LOC, 매개변수 ≤ 5, 순환 복잡도 ≤ 10(초과 시 분리)
-- 입력 → 처리 → 반환 구조, 가드절 우선, 부수효과(I/O·네트워크·전역)는 경계층으로 격리
-- 예외는 구체 타입만 처리, 구조화 로깅(민감정보 금지)과 요청/상관관계 ID 전파
-- 시간대/DST 고려(저장 UTC, 표시 로캘), 상수는 심볼화(하드코딩 금지)
-
-### 테스트/보안/클린 코드
-- 새 코드엔 새 테스트, 버그 수정엔 회귀 테스트(먼저 실패하도록 작성)
-- 테스트는 결정적·독립적, 외부 시스템은 가짜/계약 테스트로 대체, E2E 최소 성공/실패 각 1개
-- 동시성/락/재시도 위험(중복/데드락 등) 선제 평가 및 테스트
-- 안티패턴 금지: 전체 문맥 무시 수정, 비밀 노출, 경고 무시, 근거 없는 최적화/추상화, 광범위 예외
+### 코딩 · 테스트 · 보안 요약
+- 기본 코딩 기준은 @.claude/memory/coding_standards.md, 언어/프레임워크별 세부 문서는 해당 @imports에서 확인합니다.
+- TDD는 Red → Green → Refactor 사이클(@.claude/memory/tdd_guidelines.md)로 수행하고 커버리지는 80% 이상 유지합니다.
+- 보안/개인정보는 ISMS-P 규칙(@.claude/memory/security_rules.md)을 준수합니다.
 
 ## 📚 프로젝트 메모리 (Import Files)
 
 프로젝트 문서는 아래 카테고리로 구성되어 있으며, 전체 지도는 @.claude/memory/README.md 에서 확인합니다.
 
-### 프로세스 & 핵심 원칙
-- @.claude/memory/three_phase_process.md — 응답 구조(탐색→계획→구현) 표준
-- @.claude/memory/project_guidelines.md — Small & Safe 루프, 에이전트 운영 원칙
-- @.claude/memory/software_principles.md — Refactoring/Clean Code/TDD/API 패턴 요약
-
-### 개발 표준
-- @.claude/memory/coding_standards.md — 언어/프레임워크별 코딩 규칙 링크
-- @.claude/memory/tdd_guidelines.md — Red→Green→Refactor 사이클 지침
-- @.claude/memory/security_rules.md — ISMS-P 기반 보안/개인정보 규칙
-
-### 협업 & Git
-- @.claude/memory/team_conventions.md — 회의/PR/문서화 규약
-- @.claude/memory/git_workflow.md — 브랜치 전략·리베이스·pre-commit 흐름
-- @.claude/memory/git_commit_rules.md — Conventional Commit 규칙
-- @.claude/memory/shared_checklists.md — PR/테스트/보안 공통 체크리스트
-
-### 도구 & 운영
-- @.claude/memory/bash_commands.md — 쉘 안전 수칙과 권장 도구
-- @.claude/memory/README.md — 메모리 계층/임포트/템플릿 가이드
-- @.moai/memory/common.md — 프로젝트 공통 운영 메모(자동 생성)
-- @.moai/memory/<layer>-<tech>.md — 선택한 기술 스택별 메모(예: backend-python.md)
-
-### Constitution & 거버넌스
-
-@.moai/memory/constitution.md
+| 카테고리 | 주요 문서 |
+| --- | --- |
+| 프로세스/운영 | @.claude/memory/three_phase_process.md, @.claude/memory/project_guidelines.md, @.claude/memory/software_principles.md |
+| 개발 표준 | @.claude/memory/coding_standards.md, @.claude/memory/tdd_guidelines.md, @.claude/memory/security_rules.md |
+| 협업 & Git | @.claude/memory/team_conventions.md, @.claude/memory/git_workflow.md, @.claude/memory/git_commit_rules.md, @.claude/memory/shared_checklists.md |
+| 도구 & 운영 | @.claude/memory/bash_commands.md, @.claude/memory/README.md, `.moai/memory/common.md`, `.moai/memory/<layer>-<tech>.md` |
+| 거버넌스 | @.moai/memory/constitution.md |
 
 ## 🚀 빠른 시작
 
@@ -180,24 +153,22 @@ claude --model opusplan
 
 ```
 프로젝트/
-├── .claude/                    # Claude Code 표준
+├── .claude/                    # Claude Code 표준 자산
 │   ├── commands/moai/          # MoAI 슬래시 명령어 (연번순)
-│   ├── agents/moai/           # MoAI 전문 에이전트 (claude-code-manager 포함)
-│   ├── hooks/moai/            # Python Hook Scripts
-│   ├── memory/               # Import 메모리 파일들
-│   │   ├── project_guidelines.md
-│   │   ├── coding_standards.md
-│   │   ├── team_conventions.md
-│   │   ├── bash_commands.md
-│   │   └── git_workflow.md
-│   └── settings.json         # 권한 및 Hook 설정
-├── .moai/                     # MoAI 문서 시스템
-│   ├── steering/             # 프로젝트 방향성
-│   ├── specs/               # SPEC 문서
-│   ├── memory/              # Constitution & 거버넌스
-│   ├── scripts/             # 검증 스크립트
-│   └── config.json          # MoAI 설정
-└── CLAUDE.md                # 프로젝트 메모리 (이 파일)
+│   ├── agents/moai/            # 11개 전문 에이전트
+│   ├── hooks/moai/             # Python Hook Scripts
+│   ├── memory/                 # 공유 메모리(링크만 유지)
+│   └── settings.json           # 권한 및 Hook 설정
+├── .moai/                      # MoAI 문서 시스템
+│   ├── steering/               # 프로젝트 방향성 문서
+│   ├── specs/                  # SPEC 문서(동적 생성)
+│   ├── memory/                 # 프로젝트 메모리(automatic)
+│   │   ├── common.md           # 공통 운영 체크
+│   │   ├── backend-*.md        # 백엔드 스택별 메모
+│   │   └── frontend-*.md       # 프론트엔드 스택별 메모
+│   ├── scripts/                # 검증 스크립트
+│   └── config.json             # MoAI 설정
+└── CLAUDE.md                   # 프로젝트 메모리 허브 (이 파일)
 ```
 
 ## 💡 Pro Tips
