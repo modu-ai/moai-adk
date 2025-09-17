@@ -3,7 +3,7 @@
     "version": "16-core",
     "created": "2025-01-20",
     "last_updated": "2025-01-20",
-    "total_tags": 6,
+    "total_tags": 7,
     "categories": 4
   },
   "categories": {
@@ -89,17 +89,28 @@
       "created": "2025-01-20",
       "status": "active",
       "priority": 5
+    },
+    "@REQ:CODE-TAG-002": {
+      "category": "SPEC",
+      "topic": "CODE-TAG",
+      "id": "002",
+      "description": "src/moai_adk 코드베이스 전체에 16-Core TAG 시스템 적용 및 자동 관리",
+      "file": ".moai/specs/SPEC-002/spec.md",
+      "line": 3,
+      "created": "2025-09-18",
+      "status": "active",
+      "priority": 2
     }
   },
   "statistics": {
     "by_category": {
-      "SPEC": 3,
+      "SPEC": 4,
       "STEERING": 3,
       "IMPLEMENTATION": 0,
       "QUALITY": 0
     },
     "by_status": {
-      "active": 6,
+      "active": 7,
       "draft": 0,
       "deprecated": 0
     }
