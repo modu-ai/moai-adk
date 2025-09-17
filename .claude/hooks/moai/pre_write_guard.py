@@ -2,13 +2,12 @@
 """
 PreToolUse guard for file safety and anti-hallucination controls.
 
-Blocks risky writes/edits and enforces simple creation/count/size limits:
-- Sensitive path protection (.env, .git/, keys, secrets)
-- New file count per session <= 5 (approximate)
-- Content size per write <= 200 KiB
-- Bash safety: block dangerous rm -rf, encourage rg over grep
+Blocks risky writes/edits by:
+- Protecting sensitive paths (.env, .git/, keys, secrets, id_rsa 등)
+- Guarding dangerous Bash commands (rm -rf, grep → rg 전환)
 
-This script expects Claude Code hook JSON on stdin.
+New file/내용 크기 제한은 제거되었습니다. (대량 생성 허용)
+이 스크립트는 Claude Code Hook JSON을 stdin으로 받습니다.
 """
 import json
 import os
@@ -16,13 +15,6 @@ import re
 import sys
 from pathlib import Path
 from typing import Any, Dict, List
-
-
-DEFAULT_MAX_NEW_FILES = 5
-DEFAULT_SAFE_MAX_NEW_FILES = 50
-MAX_CONTENT_BYTES = 200 * 1024
-STATE_DIRNAME = ".claude/.hook_state"
-
 
 SENSITIVE_PATTERNS = [
     ".env",
@@ -33,166 +25,68 @@ SENSITIVE_PATTERNS = [
 ]
 
 
-SAFE_WRITE_PREFIXES_DEFAULT = [
-    ".moai/steering/",
-    ".moai/specs/",
-    ".moai/memory/",
-    ".moai/indexes/",
-    ".claude/agents/",
-    ".claude/commands/",
-    ".claude/hooks/",
-]
-
-
 def load_stdin() -> Dict[str, Any]:
     try:
         return json.load(sys.stdin)
-    except json.JSONDecodeError as e:
-        print(f"Hook error: invalid JSON: {e}", file=sys.stderr)
+    except json.JSONDecodeError as exc:
+        print(f"Hook error: invalid JSON: {exc}", file=sys.stderr)
         sys.exit(1)
 
 
-def ensure_state_file(project_dir: Path, session_id: str) -> Path:
-    state_dir = project_dir / STATE_DIRNAME
-    state_dir.mkdir(parents=True, exist_ok=True)
-    return state_dir / f"session_{session_id}.json"
+def is_sensitive_path(path: str) -> bool:
+    lowered = path.lower()
+    return any(pattern in lowered for pattern in SENSITIVE_PATTERNS)
 
 
-def read_state(path: Path) -> Dict[str, Any]:
-    if not path.exists():
-        return {"new_files": 0}
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return {"new_files": 0}
-
-
-def write_state(path: Path, data: Dict[str, Any]) -> None:
-    try:
-        path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-    except Exception as e:
-        print(f"Hook warn: failed to persist state: {e}", file=sys.stderr)
-
-
-def is_sensitive_path(p: str) -> bool:
-    lp = p.lower()
-    return any(sp in lp for sp in SENSITIVE_PATTERNS)
-
-
-def block(msg: str) -> None:
-    print(msg, file=sys.stderr)
+def block(message: str) -> None:
+    print(message, file=sys.stderr)
     sys.exit(2)
 
 
-def handle_file_tools(data: Dict[str, Any]) -> None:
-    tool_name = data.get("tool_name", "")
-    tool_input = data.get("tool_input", {}) or {}
-    session_id = data.get("session_id", "session")
-    project_dir_str = data.get("cwd") or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
-    project_dir = Path(project_dir_str)
+def handle_file_tools(payload: Dict[str, Any]) -> None:
+    tool_name = payload.get("tool_name", "")
+    tool_input = payload.get("tool_input", {}) or {}
 
-    state_path = ensure_state_file(project_dir, session_id)
-    state = read_state(state_path)
-
-    # Load configuration overrides (from .moai/config.json or env)
-    def load_limits() -> Dict[str, Any]:
-        cfg_path = project_dir / ".moai" / "config.json"
-        max_new = int(os.environ.get("MOAI_MAX_NEW_FILES_PER_SESSION", "0") or 0) or None
-        safe_max_new = int(os.environ.get("MOAI_SAFE_MAX_NEW_FILES_PER_SESSION", "0") or 0) or None
-        safe_prefixes = None
-        try:
-            if cfg_path.exists():
-                import json as _json
-                cfg = _json.loads(cfg_path.read_text(encoding="utf-8"))
-                hooks = (cfg or {}).get("hooks", {})
-                limits = hooks.get("limits", {})
-                if max_new is None:
-                    max_new = int(limits.get("max_new_files_per_session", 0) or 0) or None
-                if safe_max_new is None:
-                    safe_max_new = int(limits.get("safe_max_new_files_per_session", 0) or 0) or None
-                sp = limits.get("safe_write_prefixes")
-                if isinstance(sp, list) and sp:
-                    safe_prefixes = [str(x) for x in sp]
-        except Exception:
-            pass
-
-        return {
-            "max": max_new if max_new is not None else DEFAULT_MAX_NEW_FILES,
-            "safe_max": safe_max_new if safe_max_new is not None else DEFAULT_SAFE_MAX_NEW_FILES,
-            "safe_prefixes": safe_prefixes or SAFE_WRITE_PREFIXES_DEFAULT,
-        }
-
-    limits = load_limits()
-
-    def check_one(file_path: str, content: str) -> None:
+    def check_one(file_path: str) -> None:
         if not file_path:
             return
         if is_sensitive_path(file_path):
             block(f"Blocked sensitive path: {file_path}")
-        if content is not None and isinstance(content, str):
-            if len(content.encode("utf-8")) > MAX_CONTENT_BYTES:
-                block(f"Content too large (> {MAX_CONTENT_BYTES} bytes): {file_path}")
-        # new file detection
-        abs_path = (project_dir / file_path).resolve()
-        if not abs_path.exists() and tool_name in {"Write", "Edit"}:
-            state["new_files"] = int(state.get("new_files", 0)) + 1
-            # resolve relative POSIX path for prefix checks
-            try:
-                rel = abs_path.relative_to(project_dir)
-                rel_str = rel.as_posix() + ("/" if abs_path.is_dir() else "")
-            except Exception:
-                rel_str = file_path
 
-            # choose limit based on safe write prefixes
-            in_safe_dir = any(rel_str.startswith(prefix) for prefix in limits["safe_prefixes"]) or any(
-                ("/" + rel_str).startswith(prefix) for prefix in limits["safe_prefixes"]
-            )
-            max_allowed = limits["safe_max"] if in_safe_dir else limits["max"]
-            if state["new_files"] > max_allowed:
-                block(
-                    f"New file creation limit exceeded (>{max_allowed}) for session. "
-                    f"Path '{rel_str}' not allowed beyond current limit. "
-                    f"Consider batching, or increase limits via .moai/config.json hooks.limits.*"
-                )
-
-    # MultiEdit might include multiple files
     if tool_name == "MultiEdit" and isinstance(tool_input, dict) and "files" in tool_input:
         files: List[Dict[str, Any]] = tool_input.get("files") or []
         for entry in files:
-            check_one(str(entry.get("file_path", "")), entry.get("content", ""))
+            check_one(str(entry.get("file_path", "")))
     else:
-        check_one(str(tool_input.get("file_path", "")), tool_input.get("content", ""))
+        check_one(str(tool_input.get("file_path", "")))
 
-    # persist state
-    write_state(state_path, state)
-    # allow
     sys.exit(0)
 
 
-def handle_bash(data: Dict[str, Any]) -> None:
-    tool_input = data.get("tool_input", {}) or {}
-    cmd = tool_input.get("command", [])
-    s = " ".join(cmd) if isinstance(cmd, list) else str(cmd)
+def handle_bash(payload: Dict[str, Any]) -> None:
+    tool_input = payload.get("tool_input", {}) or {}
+    command = tool_input.get("command", [])
+    command_str = " ".join(command) if isinstance(command, list) else str(command)
 
-    if re.search(r"\brm\s+-rf\s+(/|\.|\*|\$)", s):
+    if re.search(r"\brm\s+-rf\s+(/|\.|\*|\$)", command_str):
         block("Refuse dangerous rm -rf. Specify explicit safe target.")
-    if re.search(r"(^|\s)grep(\s|$)", s) and not re.search(r"(^|\s)rg(\s|$)", s):
+    if re.search(r"(^|\s)grep(\s|$)", command_str) and not re.search(r"(^|\s)rg(\s|$)", command_str):
         block("Use rg (ripgrep) instead of grep for speed/consistency.")
 
-    # allow
     sys.exit(0)
 
 
 def main() -> None:
     data = load_stdin()
-    event = data.get("hook_event_name", "")
-    if event != "PreToolUse":
+    if data.get("hook_event_name") != "PreToolUse":
         sys.exit(0)
+
     tool_name = data.get("tool_name", "")
     if tool_name in {"Write", "Edit", "MultiEdit"}:
         handle_file_tools(data)
     if tool_name == "Bash":
         handle_bash(data)
+
     sys.exit(0)
 
 

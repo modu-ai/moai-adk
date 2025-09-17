@@ -362,7 +362,7 @@ def main():
             print(f"- 오류: {result['error']}", file=sys.stderr)
             if 'suggestion' in result and result['suggestion']:
                 print(f"- 제안: {result['suggestion']}", file=sys.stderr)
-            print("- 참고: docs/sections/12-tag-system.md (태그 규칙/예시)", file=sys.stderr)
+            print("- 참고: @.claude/memory/project_guidelines.md (16-Core TAG 가이드)", file=sys.stderr)
             sys.exit(2)  # Hook 차단
         
         # 품질 피드백

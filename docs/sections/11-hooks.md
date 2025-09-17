@@ -71,7 +71,7 @@ tag_pattern = r'@([A-Z]+)[-:]([A-Z0-9-]+)'
 
 ### 4. pre_write_guard.py - PreToolUse Hook
 
-**기능**: 과도한 파일 생성·위험 명령 차단 및 안전 가드(설정 가능)
+**기능**: 민감 경로 및 위험 명령 가드
 
 ```python
 # 민감 경로 차단
@@ -79,21 +79,7 @@ if '.env' in path.lower() or '.git/' in path.lower():
     print("민감 경로 수정 차단")
     sys.exit(2)
 
-# 신규 파일 개수 제한 (기본 20, 안전 경로는 50)
-limits = config['hooks']['limits']
-max_new = limits.get('max_new_files_per_session', 20)
-safe_max = limits.get('safe_max_new_files_per_session', 50)
-safe_prefixes = limits.get('safe_write_prefixes', [])
-
-state['new_files'] += 1
-rel = to_rel_path(file_path)
-if rel.startswith(tuple(safe_prefixes)):
-    allowed = safe_max
-else:
-    allowed = max_new
-if state['new_files'] > allowed:
-    print(f"New file creation limit exceeded (>{allowed}). Increase via .moai/config.json hooks.limits.*")
-    sys.exit(2)
+# 신규 파일 개수 제한 제거 (민감 경로만 차단)
 
 # `grep` 대신 `rg` 권장, 위험한 `rm -rf` 바리케이드
 if 'rm -rf /' in command or re.search(r'(^|\\s)grep(\\s|$)', command):

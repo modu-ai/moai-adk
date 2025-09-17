@@ -176,21 +176,6 @@ class ConfigManager:
                     "observability": {"structured_logging": True, "enforce": True},
                     "versioning": {"format": "MAJOR.MINOR.BUILD", "enforce": True},
                 },
-                "hooks": {
-                    "limits": {
-                        "max_new_files_per_session": 20,
-                        "safe_max_new_files_per_session": 50,
-                        "safe_write_prefixes": [
-                            ".moai/steering/",
-                            ".moai/specs/",
-                            ".moai/memory/",
-                            ".moai/indexes/",
-                            ".claude/agents/",
-                            ".claude/commands/",
-                            ".claude/hooks/",
-                        ],
-                    }
-                },
                 "tags": {
                     "version": "16-core",
                     "categories": {
