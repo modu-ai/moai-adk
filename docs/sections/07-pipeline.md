@@ -34,10 +34,13 @@ flowchart LR
 - 비기능 요구사항 (Non-Functional Requirements)
 - [NEEDS CLARIFICATION] 마커로 불명확한 부분 식별
 
-**결과물**:
-- SPEC-XXX/spec.md
-- @REQ 태그 생성
-- 사용자 스토리 정의
+**결과물** (2025년 1월 업데이트):
+- **SPEC-XXX/ 디렉터리**: 내용별 맞춤 파일 생성
+  - 기본 필수: `spec.md` (EARS 형식), `acceptance.md` (수락 기준)
+  - 조건부 선택: `design.md`, `data-model.md`, `contracts/`, `research.md`
+- **@REQ 태그 생성**: 16-Core TAG 시스템 연동
+- **[NEEDS CLARIFICATION] 마커**: 불완전한 요구사항 자동 표시
+- **백로그 관리**: `.moai/specs/backlog/` STUB 보관
 
 ### 2. PLAN - 계획 수립
 **명령어**: `/moai:3-plan`

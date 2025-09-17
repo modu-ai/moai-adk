@@ -79,6 +79,39 @@ MoAI-ADK의 품질 거버넌스는 Constitution 5원칙을 기반으로 합니�
 🏷️ 태그 생성 안내
 ```
 
+## 🎯 최신 Constitution Check 사례 (2025년 1월)
+
+### SPEC-001: 마법사 UX 개선 Constitution 승인
+**Claude Code 명령어 개선 아키텍처가 Constitution 5원칙을 완벽히 통과**했습니다.
+
+#### 검증 결과
+1. **✅ Simplicity**: 3개 컴포넌트 설계 (≤10 제한 준수)
+   - WizardController (마법사 제어)
+   - OutputRenderer (마크다운 출력)
+   - AgentOrchestrator (Task 도구 연동)
+
+2. **✅ Architecture**: 기존 MoAI 에이전트 시스템 완벽 활용
+   - steering-architect, spec-manager, tag-indexer 연동
+   - 의존성 역전 원칙 준수
+
+3. **✅ Testing**: TDD 강제 시스템 유지
+   - Red-Green-Refactor 사이클 보장
+   - 커버리지 목표 85% 설정
+
+4. **✅ Observability**: 마법사 사용 로깅 및 상태 추적 강화
+   - `.moai/indexes/state.json` 진행 상황 관리
+   - 구조화된 로깅 추가
+
+5. **✅ Versioning**: MoAI-ADK 표준 버전 체계 준수
+   - 시맨틱 버저닝 적용
+   - ADR-001 문서 생성
+
+#### 승인 결과
+- **상태**: ✅ **승인됨 - 즉시 적용**
+- **승인일**: 2025-01-20
+- **유효기간**: 1년 (2026-01-20까지)
+- **다음 검토**: 2025-04-20
+
 ## Constitution Check 프로세스
 
 ### 자동 검증 플로우

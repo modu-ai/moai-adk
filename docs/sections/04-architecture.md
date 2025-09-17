@@ -8,7 +8,7 @@ MoAI-ADK는 Claude Code 표준을 완전히 준수하면서도 체계적인 문�
 프로젝트/
 ├── .claude/                       # Claude Code 표준 디렉토리
 │   ├── commands/moai/             # 커스텀 슬래시 명령어 (연번순)
-│   │   ├── 1-project.md           # /moai:1-project (대화형 마법사)
+│   │   ├── 1-project.md           # /moai:1-project [프로젝트이름] (대화형 마법사)
 │   │   ├── 2-spec.md              # /moai:2-spec (EARS 명세)
 │   │   ├── 3-plan.md              # /moai:3-plan (Constitution Check)
 │   │   ├── 4-tasks.md             # /moai:4-tasks (TDD 태스크)
@@ -62,8 +62,8 @@ MoAI-ADK는 Claude Code 표준을 완전히 준수하면서도 체계적인 문�
 │   │       ├── test_runner.py       # PostToolUse: 자동 테스트 실행
 │   │       └── security_scanner.py  # PostToolUse: 보안 취약점 스캔
 │   ├── memory/                    # Claude Code 메모리(참조용 문서)
-│   │   ├── project_guidelines.md    # 운영 원칙 및 에이전트 지침 요약
-│   │   ├── coding_standards/        # 언어·프레임워크별 코딩 규칙(@imports)
+│   │   ├── project_guidelines.md    # 운영 원칙 요약 (전문은 .moai/memory/operations.md)
+│   │   ├── coding_standards.md      # 코딩 규칙 요약 (전문은 .moai/memory/engineering-standards.md)
 │   │   ├── shared_checklists.md     # PR/테스트/보안 공통 체크리스트
 │   │   └── …                        # Git/팀 규약, TDD, 보안 등 세부 지침
 │   ├── logs/                      # 세션 로그
@@ -149,6 +149,7 @@ MoAI-ADK는 설치와 프로젝트 초기화를 두 단계로 명확히 분리�
 ### `moai init` - MoAI-ADK 기본 시스템 설치
 
 **설치 범위**: MoAI-ADK 핵심 시스템만 설치
+
 - `.claude/` 전체 시스템 (agents, commands, hooks, memory, output-styles)
 - `.moai/` 기본 구조 (templates, memory, scripts/)  
   (설정 파일 `.moai/config.json`은 설치 시 생성)
@@ -157,9 +158,10 @@ MoAI-ADK는 설치와 프로젝트 초기화를 두 단계로 명확히 분리�
 - Git 저장소 초기화 (필요시 Git 자동 설치 제안)
 - 포괄적 `.gitignore` 파일 생성
 
-### `/moai:1-project` - 프로젝트별 구조 생성
+### `/moai:1-project [프로젝트이름]` - 프로젝트별 구조 생성
 
 **생성 범위**: steering 문서 기반 동적 구조 생성
+
 - Steering 문서 생성 (product.md, structure.md, tech.md)
 - 프로젝트별 디렉토리: `docs/`, `src/`, `tests/`
 - 언어/프레임워크별 맞춤 구조
@@ -167,6 +169,7 @@ MoAI-ADK는 설치와 프로젝트 초기화를 두 단계로 명확히 분리�
 - 초기 SPEC 문서 생성
 
 **장점**:
+
 - 🎯 **명확한 분리**: 시스템 설치 vs 프로젝트 구성
 - 🚀 **빠른 설치**: 기본 시스템만 우선 설치
 - 🔧 **맞춤 구성**: 프로젝트 특성에 따른 동적 구조
@@ -242,8 +245,8 @@ $LAST_UPDATED      # 현재 날짜
 - **steering/structure.template.md**: 아키텍처 설계 템플릿
 - **steering/tech.template.md**: 기술 스택 선정 템플릿
 - **memory/common.template.md**: 공통 운영 메모 템플릿
-- **memory/backend-*.template.md**: 백엔드 스택별 메모 템플릿(예: backend-python)
-- **memory/frontend-*.template.md**: 프론트엔드 스택별 메모 템플릿(예: frontend-react)
+- **memory/backend-\*.template.md**: 백엔드 스택별 메모 템플릿(예: backend-python)
+- **memory/frontend-\*.template.md**: 프론트엔드 스택별 메모 템플릿(예: frontend-react)
 - **memory/constitution.template.md**: 프로젝트별 헌법 템플릿
 - **indexes/state.template.json**: 상태 추적 템플릿
 
@@ -255,6 +258,66 @@ $LAST_UPDATED      # 현재 날짜
 - **변수 치환**: Python string.Template 기반 안전한 처리
 - **다중 확장자 지원**: .template.md, .template.json 등
 - **전용 생성 메서드**: SPEC, Steering, Constitution별 특화
+
+## 🎯 Claude Code 명령어 개선 아키텍처
+
+### SPEC-001: 마법사 UX 개선 결정사항
+
+MoAI-ADK의 `/moai:1-project` 명령어 UX 개선을 위한 **Constitution 승인 아키텍처 결정**이 완료되었습니다.
+
+#### 3-컴포넌트 설계 원칙
+
+**ADR-001 기반 Claude Code 명령어 개선 아키텍처**:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                  /moai:1-project 명령어                    │
+├─────────────────────────────────────────────────────────────┤
+│ 1. WizardController (마법사 제어)                           │
+│    - 상태 진단: 기존 프로젝트 구조 감지                     │
+│    - 질문 관리: 10단계 + 동적 분기 처리                     │
+│    - 입력 검증: 단계별 답변 유효성 확인                     │
+│    - 상태 저장: .moai/indexes/state.json 진행 상황 관리     │
+├─────────────────────────────────────────────────────────────┤
+│ 2. OutputRenderer (마크다운 출력)                           │
+│    - 진행 표시: ASCII 진행바와 단계별 상태                  │
+│    - 질문 포맷팅: 구조화된 텍스트와 예시 제공               │
+│    - 설정 요약: 단계별 답변 요약 및 확인 화면               │
+│    - 에러 메시지: 친화적이고 구체적인 오류 안내             │
+├─────────────────────────────────────────────────────────────┤
+│ 3. AgentOrchestrator (Task 도구 연동)                       │
+│    - steering-architect: Steering 문서 생성                │
+│    - spec-manager: Top-3 SPEC 시드 생성                    │
+│    - tag-indexer: 16-Core TAG 시스템 구축                  │
+│    - claude-code-manager: MoAI 환경 최적화                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### Constitution Check 통과 결과
+
+**5원칙 완벽 준수 확인**:
+
+1. **✅ Simplicity**: 3개 컴포넌트 설계 (제한 준수)
+2. **✅ Architecture**: 기존 MoAI 에이전트 시스템 완벽 활용
+3. **✅ Testing**: TDD 강제 시스템 유지
+4. **✅ Observability**: 마법사 사용 로깅 및 상태 추적 강화
+5. **✅ Versioning**: MoAI-ADK 표준 버전 체계 준수
+
+#### 개선 목표 달성
+
+- **사용자 완료율**: 현재 대비 20% 향상 목표 (85% 이상)
+- **평균 완료 시간**: 5분 이하
+- **에러율**: 입력 검증 실패 15% 이하
+- **재시작률**: 중간 포기 후 재개 10% 이하
+
+### SPEC 파일 생성 최적화
+
+\*\*최신 SPEC 파일 생성 규칙
+
+- **기본 필수**: `spec.md` (EARS 형식), `acceptance.md` (수락 기준)
+- **조건부 선택**: 내용에 따라 `design.md`, `data-model.md`, `contracts/`, `research.md` 선택적 생성
+- **백로그 관리**: `.moai/specs/backlog/` STUB → `SPEC-00X/` 승격 시스템
+- **마커 시스템**: [NEEDS CLARIFICATION] 자동 표시 및 해소 지원
 
 ## 🔄 데이터 흐름 아키텍처
 

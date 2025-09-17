@@ -26,10 +26,10 @@ MoAI-ADK는 4단계 파이프라인(SPECIFY → PLAN → TASKS → IMPLEMENT)을
 - 변경 전 전체 맥락(정의·참조·호출·테스트·문서)을 전역 검색으로 확인하고, 영향도는 1–3줄로 정리합니다.
 - Issue/PR/ADR에는 가정과 최소 두 가지 대안(장단점/위험)을 기록합니다.
 - 시크릿·민감정보는 절대 저장소에 남기지 않으며 입력 검증·파라미터화·최소 권한 원칙을 기본으로 합니다.
-- 세부 규칙은 @.claude/memory/project_guidelines.md (운영)과 @.claude/memory/shared_checklists.md (PR/테스트/보안)을 참조하세요.
+- 세부 규칙은 @.moai/memory/operations.md (운영)과 @.claude/memory/shared_checklists.md (PR/테스트/보안)을 참조하세요.
 
 ### 코딩 · 테스트 · 보안 요약
-- 기본 코딩 기준은 @.claude/memory/coding_standards.md, 언어/프레임워크별 세부 문서는 해당 @imports에서 확인합니다.
+- 기본 코딩 기준은 @.moai/memory/engineering-standards.md, 언어/프레임워크별 세부 문서는 해당 @imports에서 확인합니다.
 - TDD는 Red → Green → Refactor 사이클(@.claude/memory/tdd_guidelines.md)로 수행하고 커버리지는 80% 이상 유지합니다.
 - 보안/개인정보는 ISMS-P 규칙(@.claude/memory/security_rules.md)을 준수합니다.
 
@@ -44,10 +44,10 @@ MoAI-ADK는 4단계 파이프라인(SPECIFY → PLAN → TASKS → IMPLEMENT)을
 
 | 카테고리 | 주요 문서 |
 | --- | --- |
-| 프로세스/운영 | @.claude/memory/three_phase_process.md, @.claude/memory/project_guidelines.md, @.claude/memory/software_principles.md |
-| 개발 표준 | @.claude/memory/coding_standards.md, @.claude/memory/tdd_guidelines.md, @.claude/memory/security_rules.md |
-| 협업 & Git | @.claude/memory/team_conventions.md, @.claude/memory/git_workflow.md, @.claude/memory/git_commit_rules.md, @.claude/memory/shared_checklists.md |
-| 도구 & 운영 | @.claude/memory/bash_commands.md, @.claude/memory/README.md, `.moai/memory/common.md`, `.moai/memory/<layer>-<tech>.md` |
+| 프로세스/운영 | @.claude/memory/three_phase_process.md, @.moai/memory/operations.md, @.claude/memory/software_principles.md |
+| 개발 표준 | @.moai/memory/engineering-standards.md, @.claude/memory/tdd_guidelines.md, @.claude/memory/security_rules.md |
+| 협업 & Git | @.moai/memory/operations.md, @.claude/memory/git_commit_rules.md, @.claude/memory/shared_checklists.md |
+| 도구 & 운영 | @.moai/memory/operations.md, @.claude/memory/README.md, `.moai/memory/common.md`, `.moai/memory/<layer>-<tech>.md` |
 | 거버넌스 | @.moai/memory/constitution.md |
 
 ## 🚀 빠른 시작
@@ -63,8 +63,13 @@ MoAI-ADK는 4단계 파이프라인(SPECIFY → PLAN → TASKS → IMPLEMENT)을
 ### 2. 첫 번째 기능 개발 (자동화)
 
 ```bash
-# 전체 파이프라인 자동 실행
+# 단일 기능 명세 작성
 /moai:2-spec "JWT 기반 사용자 인증 시스템"
+
+# 전체 프로젝트 SPEC 병렬 생성 (권장)
+/moai:2-spec all
+
+# 이후 단계별 진행
 /moai:3-plan SPEC-001
 /moai:4-tasks PLAN-001
 /moai:5-dev T001
@@ -154,6 +159,49 @@ claude --model opusplan
 - 대량 생성/재생성은 `/moai:6-sync force` 또는 명시적 플래그 사용 시에만 수행한다.
 - 민감 경로(`.env`, `.git/`, `keys`, `secrets`) 수정/생성 금지.
 
+### 템플릿-로컬 동기화 지침
+
+**중요**: 템플릿 파일 변경 시 반드시 로컬과 관련 문서를 함께 업데이트해야 합니다.
+
+#### 필수 동기화 파일들
+```
+# 명령어 변경 시
+src/moai_adk/resources/templates/.claude/commands/moai/*.md  # 템플릿 원본
+→ .claude/commands/moai/*.md                                # 로컬 명령어 파일
+→ docs/sections/08-commands.md                              # 명령어 문서
+
+# 에이전트 변경 시
+src/moai_adk/resources/templates/.claude/agents/moai/*.md   # 템플릿 원본
+→ .claude/agents/moai/*.md                                  # 로컬 에이전트 파일
+→ docs/sections/10-agents.md                                # 에이전트 문서
+
+# 메모리 변경 시
+src/moai_adk/resources/templates/.claude/memory/*.md        # 템플릿 원본
+→ .claude/memory/*.md                                       # 로컬 메모리 파일
+→ docs/sections/README.md                                   # 메모리 인덱스
+```
+
+#### 동기화 절차
+1. **템플릿 파일** 수정 (원본)
+2. **로컬 파일** 동일하게 수정 (`.claude/` 경로)
+3. **관련 문서** 업데이트 (`docs/sections/` 경로)
+4. **CLAUDE.md 메인 허브** 필요시 반영
+
+#### 예시: `/moai:2-spec` 명령어 수정
+```bash
+# 1. 템플릿 수정
+src/moai_adk/resources/templates/.claude/commands/moai/2-spec.md
+
+# 2. 로컬 동기화
+.claude/commands/moai/2-spec.md
+
+# 3. 문서 업데이트
+docs/sections/08-commands.md (명령어 사용법)
+CLAUDE.md (빠른 시작 가이드)
+```
+
+> **Why?**: 사용자가 템플릿 설치 전/후 모두 동일한 경험을 얻고, 문서 불일치로 인한 혼란을 방지합니다.
+
 ## 📂 프로젝트 구조
 
 ```
@@ -212,9 +260,9 @@ claude --model opusplan
 
 ### 실전 예제
 
-- 프로젝트 가이드라인: `@.claude/memory/project_guidelines.md`
-- Bash 명령어 모음: `@.claude/memory/bash_commands.md`
-- Git 워크플로우: `@.claude/memory/git_workflow.md`
+- 프로젝트 가이드라인: `@.moai/memory/operations.md`
+- Bash 명령어 모음: `@.moai/memory/operations.md`
+- Git 워크플로우: `@.moai/memory/operations.md`
 
 ---
 
