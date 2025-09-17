@@ -206,6 +206,16 @@ class SessionNotifier:
         except:
             return {"status": "error", "total_tags": 0}
     
+    def has_steering_docs(self) -> bool:
+        """steering 문서 존재 여부 확인"""
+        steering_dir = self.project_root / ".moai" / "steering"
+        if not steering_dir.exists():
+            return False
+
+        # vision.md, architecture.md, techstack.md 중 하나라도 있으면 True
+        steering_files = ["vision.md", "architecture.md", "techstack.md"]
+        return any((steering_dir / f).exists() for f in steering_files)
+
     def get_file_mtime(self, file_path: Path) -> Optional[str]:
         """파일 수정 시간"""
         try:
@@ -233,7 +243,7 @@ class SessionNotifier:
 📋 초기화 방법:
   1. 새 프로젝트: moai init project-name
   2. 기존 프로젝트: moai init .
-  3. 대화형 설정: /moai:project init
+  3. 대화형 설정: /moai:1-project init
 
 💡 MoAI-ADK는 Spec-First TDD 개발을 지원합니다.
    Constitution 5원칙과 16-Core TAG 시스템으로 품질을 보장합니다.
@@ -287,9 +297,12 @@ class SessionNotifier:
         message_parts.extend(["", "💡 다음 단계:"])
         
         if pipeline["stage"] == "INIT":
-            message_parts.append("   > /moai:project init  # 프로젝트 초기화")
+            message_parts.append("   > /moai:1-project init  # 프로젝트 초기화")
         elif pipeline["stage"] == "SPECIFY":
-            message_parts.append("   > /moai:spec feature-name '기능 설명'  # 첫 SPEC 작성")
+            if self.has_steering_docs():
+                message_parts.append("   > /moai:2-spec '기능 설명'  # 첫 SPEC 작성")
+            else:
+                message_parts.append("   > /moai:1-project init  # steering 문서 생성 필요")
         elif pipeline["stage"] == "PLAN":
             spec_id = pipeline.get("spec_id", "SPEC-001")
             message_parts.append(f"   > /moai:plan {spec_id}  # Constitution Check")
