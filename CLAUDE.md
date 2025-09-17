@@ -37,6 +37,11 @@ MoAI-ADK는 4단계 파이프라인(SPECIFY → PLAN → TASKS → IMPLEMENT)을
 
 프로젝트 문서는 아래 카테고리로 구성되어 있으며, 전체 지도는 @.claude/memory/README.md 에서 확인합니다.
 
+### 📍 Steering 문서 (프로젝트 방향성)
+- 제품 비전: @.moai/steering/product.md
+- 구조 설계: @.moai/steering/structure.md
+- 기술 스택: @.moai/steering/tech.md
+
 | 카테고리 | 주요 문서 |
 | --- | --- |
 | 프로세스/운영 | @.claude/memory/three_phase_process.md, @.claude/memory/project_guidelines.md, @.claude/memory/software_principles.md |

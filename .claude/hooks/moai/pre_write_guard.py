@@ -18,7 +18,8 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 
-MAX_NEW_FILES_PER_SESSION = 5
+DEFAULT_MAX_NEW_FILES = 5
+DEFAULT_SAFE_MAX_NEW_FILES = 50
 MAX_CONTENT_BYTES = 200 * 1024
 STATE_DIRNAME = ".claude/.hook_state"
 
@@ -82,6 +83,36 @@ def handle_file_tools(data: Dict[str, Any]) -> None:
     state_path = ensure_state_file(project_dir, session_id)
     state = read_state(state_path)
 
+    # Load configuration overrides (from .moai/config.json or env)
+    def load_limits() -> Dict[str, Any]:
+        cfg_path = project_dir / ".moai" / "config.json"
+        max_new = int(os.environ.get("MOAI_MAX_NEW_FILES_PER_SESSION", "0") or 0) or None
+        safe_max_new = int(os.environ.get("MOAI_SAFE_MAX_NEW_FILES_PER_SESSION", "0") or 0) or None
+        safe_prefixes = None
+        try:
+            if cfg_path.exists():
+                import json as _json
+                cfg = _json.loads(cfg_path.read_text(encoding="utf-8"))
+                hooks = (cfg or {}).get("hooks", {})
+                limits = hooks.get("limits", {})
+                if max_new is None:
+                    max_new = int(limits.get("max_new_files_per_session", 0) or 0) or None
+                if safe_max_new is None:
+                    safe_max_new = int(limits.get("safe_max_new_files_per_session", 0) or 0) or None
+                sp = limits.get("safe_write_prefixes")
+                if isinstance(sp, list) and sp:
+                    safe_prefixes = [str(x) for x in sp]
+        except Exception:
+            pass
+
+        return {
+            "max": max_new if max_new is not None else DEFAULT_MAX_NEW_FILES,
+            "safe_max": safe_max_new if safe_max_new is not None else DEFAULT_SAFE_MAX_NEW_FILES,
+            "safe_prefixes": safe_prefixes or SAFE_WRITE_PREFIXES_DEFAULT,
+        }
+
+    limits = load_limits()
+
     def check_one(file_path: str, content: str) -> None:
         if not file_path:
             return
@@ -94,10 +125,23 @@ def handle_file_tools(data: Dict[str, Any]) -> None:
         abs_path = (project_dir / file_path).resolve()
         if not abs_path.exists() and tool_name in {"Write", "Edit"}:
             state["new_files"] = int(state.get("new_files", 0)) + 1
-            if state["new_files"] > MAX_NEW_FILES_PER_SESSION:
+            # resolve relative POSIX path for prefix checks
+            try:
+                rel = abs_path.relative_to(project_dir)
+                rel_str = rel.as_posix() + ("/" if abs_path.is_dir() else "")
+            except Exception:
+                rel_str = file_path
+
+            # choose limit based on safe write prefixes
+            in_safe_dir = any(rel_str.startswith(prefix) for prefix in limits["safe_prefixes"]) or any(
+                ("/" + rel_str).startswith(prefix) for prefix in limits["safe_prefixes"]
+            )
+            max_allowed = limits["safe_max"] if in_safe_dir else limits["max"]
+            if state["new_files"] > max_allowed:
                 block(
-                    f"New file creation limit exceeded (>{MAX_NEW_FILES_PER_SESSION}). "
-                    f"Use /moai:6-sync force or batch your changes."
+                    f"New file creation limit exceeded (>{max_allowed}) for session. "
+                    f"Path '{rel_str}' not allowed beyond current limit. "
+                    f"Consider batching, or increase limits via .moai/config.json hooks.limits.*"
                 )
 
     # MultiEdit might include multiple files
@@ -143,4 +187,13 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+SAFE_WRITE_PREFIXES_DEFAULT = [
+    ".moai/steering/",
+    ".moai/specs/",
+    ".moai/memory/",
+    ".moai/indexes/",
+    ".claude/agents/",
+    ".claude/commands/",
+    ".claude/hooks/",
+]
 

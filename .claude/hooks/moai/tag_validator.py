@@ -52,7 +52,8 @@ class MoAITagValidator:
             
         # 태그별 네이밍 규칙
         self.naming_rules = {
-            'REQ': r'^(FUNC|PERF|SEC|UI|BIZ)-\d{3}$',       # REQ:FUNC-001
+            # REQ:[CATEGORY]-[DESCRIPTION]-[NNN] → REQ:USER-LOGIN-001
+            'REQ': r'^[A-Z]+-[A-Z0-9-]+-\d{3}$',
             'API': r'^(GET|POST|PUT|DELETE|PATCH)-.+$',      # API:GET-USERS
             'TEST': r'^(UNIT|INT|E2E|LOAD)-.+$',             # TEST:UNIT-LOGIN
             'PERF': r'^[A-Z]+-(\d{3}MS|FAST|SLOW)$',         # PERF:API-500MS
@@ -254,7 +255,7 @@ class MoAITagValidator:
     def get_naming_example(self, tag_type: str) -> str:
         """태그 타입별 네이밍 예시 제공"""
         examples = {
-            'REQ': 'REQ:FUNC-001, REQ:PERF-002',
+            'REQ': 'REQ:USER-LOGIN-001, REQ:PERF-RESPONSE-001',
             'SPEC': 'SPEC:AUTH-OVERVIEW, SPEC:CART-SCOPE',
             'DESIGN': 'DESIGN:AUTH-ARCH, DESIGN:PAYMENT-SEQ',
             'TASK': 'TASK:AUTH-SERVICE-001, TASK:CART-UI-002',
@@ -355,11 +356,13 @@ def main():
         result = validator.validate_content(content, file_path)
         
         if not result['valid']:
-            print("🏷️  16-Core @TAG 규칙 위반 감지:", file=sys.stderr)
-            print(f"❌ {result['error']}", file=sys.stderr)
-            print(f"💡 제안: {result['suggestion']}", file=sys.stderr)
-            print("", file=sys.stderr)
-            print("📖 16-Core TAG 가이드: .moai/templates/ 참조", file=sys.stderr)
+            print("\n🏷️  16-Core @TAG 검증 실패", file=sys.stderr)
+            if file_path:
+                print(f"- 파일: {file_path}", file=sys.stderr)
+            print(f"- 오류: {result['error']}", file=sys.stderr)
+            if 'suggestion' in result and result['suggestion']:
+                print(f"- 제안: {result['suggestion']}", file=sys.stderr)
+            print("- 참고: docs/sections/12-tag-system.md (태그 규칙/예시)", file=sys.stderr)
             sys.exit(2)  # Hook 차단
         
         # 품질 피드백

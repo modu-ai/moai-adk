@@ -3,10 +3,16 @@
   "created": "2025-09-17T17:02:08.923682",
   "project": {
     "name": "MoAI-ADK",
-    "type": "web",
+    "type": "agentic-dev-kit",
     "template": "standard",
     "runtime": "python",
-    "tech_stack": []
+    "tech_stack": [
+      "ruff",
+      "pre-commit",
+      "typer",
+      "tox",
+      "pytest"
+    ]
   },
   "templates": {
     "mode": "copy"

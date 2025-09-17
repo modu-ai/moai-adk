@@ -152,35 +152,50 @@ class ConfigManager:
         if config_path.exists() and not getattr(config, 'force_overwrite', False):
             return True
 
-        moai_config = {
-            "version": get_version("moai_adk"),
-            "created": datetime.now().isoformat(),
-            "project": {
-                "name": config.name,
-                "type": config.project_type,
-                "template": config.template,
-                "runtime": config.runtime.name,
-                "tech_stack": config.tech_stack,
-            },
-            "templates": {
-                "mode": getattr(config, 'templates_mode', 'copy')
-            },
-            "constitution": {
-                "simplicity": {"max_projects": 3, "enforce": True},
-                "architecture": {"library_first": True, "enforce": True},
-                "testing": {
-                    "tdd_required": True,
-                    "coverage_target": 0.8,
-                    "enforce": True,
+            moai_config = {
+                "version": get_version("moai_adk"),
+                "created": datetime.now().isoformat(),
+                "project": {
+                    "name": config.name,
+                    "type": config.project_type,
+                    "template": config.template,
+                    "runtime": config.runtime.name,
+                    "tech_stack": config.tech_stack,
                 },
-                "observability": {"structured_logging": True, "enforce": True},
-                "versioning": {"format": "MAJOR.MINOR.BUILD", "enforce": True},
-            },
-            "tags": {
-                "version": "16-core",
-                "categories": {
-                    "spec": ["REQ", "SPEC", "DESIGN", "TASK"],
-                    "steering": ["VISION", "STRUCT", "TECH", "ADR"],
+                "templates": {
+                    "mode": getattr(config, 'templates_mode', 'copy')
+                },
+                "constitution": {
+                    "simplicity": {"max_projects": 3, "enforce": True},
+                    "architecture": {"library_first": True, "enforce": True},
+                    "testing": {
+                        "tdd_required": True,
+                        "coverage_target": 0.8,
+                        "enforce": True,
+                    },
+                    "observability": {"structured_logging": True, "enforce": True},
+                    "versioning": {"format": "MAJOR.MINOR.BUILD", "enforce": True},
+                },
+                "hooks": {
+                    "limits": {
+                        "max_new_files_per_session": 20,
+                        "safe_max_new_files_per_session": 50,
+                        "safe_write_prefixes": [
+                            ".moai/steering/",
+                            ".moai/specs/",
+                            ".moai/memory/",
+                            ".moai/indexes/",
+                            ".claude/agents/",
+                            ".claude/commands/",
+                            ".claude/hooks/",
+                        ],
+                    }
+                },
+                "tags": {
+                    "version": "16-core",
+                    "categories": {
+                        "spec": ["REQ", "SPEC", "DESIGN", "TASK"],
+                        "steering": ["VISION", "STRUCT", "TECH", "ADR"],
                     "implementation": ["FEATURE", "API", "TEST", "DATA"],
                     "quality": ["PERF", "SEC", "DEBT", "TODO"],
                 },
