@@ -1,0 +1,746 @@
+# @API:POST-GIT "Git hooks 및 버전 제어 연동 API"
+openapi: 3.0.3
+info:
+  title: Git Integration API
+  description: Git hooks and version control integration for 16-Core TAG system
+  version: 1.0.0
+  contact:
+    name: MoAI-ADK Team
+    url: https://github.com/goos/MoAI-ADK
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local development server
+
+paths:
+  /git/hooks/install:
+    post:
+      summary: Install Git hooks for TAG validation
+      description: Installs pre-commit and post-commit hooks for TAG management
+      operationId: installHooks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HookInstallRequest'
+      responses:
+        '200':
+          description: Git hooks installed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HookInstallResponse'
+
+  /git/hooks/validate:
+    post:
+      summary: Validate TAGs in commit
+      description: Pre-commit validation of TAGs in staged files
+      operationId: validateCommit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommitValidationRequest'
+      responses:
+        '200':
+          description: Validation completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommitValidationResponse'
+        '422':
+          description: Validation failed - commit blocked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationFailureResponse'
+
+  /git/history/analyze:
+    get:
+      summary: Analyze TAG changes in Git history
+      description: Analyzes TAG evolution across Git commits
+      operationId: analyzeHistory
+      parameters:
+        - name: from_commit
+          in: query
+          description: Starting commit hash
+          schema:
+            type: string
+        - name: to_commit
+          in: query
+          description: Ending commit hash (default: HEAD)
+          schema:
+            type: string
+            default: HEAD
+        - name: file_path
+          in: query
+          description: Filter by specific file path
+          schema:
+            type: string
+        - name: tag_pattern
+          in: query
+          description: Filter by TAG pattern
+          schema:
+            type: string
+      responses:
+        '200':
+          description: History analysis completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HistoryAnalysisResponse'
+
+  /git/checkpoint/create:
+    post:
+      summary: Create TAG checkpoint
+      description: Creates a checkpoint of current TAG state
+      operationId: createCheckpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckpointRequest'
+      responses:
+        '200':
+          description: Checkpoint created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckpointResponse'
+
+  /git/checkpoint/restore:
+    post:
+      summary: Restore from TAG checkpoint
+      description: Restores TAG state from a previous checkpoint
+      operationId: restoreCheckpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestoreRequest'
+      responses:
+        '200':
+          description: Restore completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestoreResponse'
+
+  /git/diff/tags:
+    get:
+      summary: Get TAG differences between commits
+      description: Shows TAG changes between two Git commits
+      operationId: getTagDiff
+      parameters:
+        - name: base_commit
+          in: query
+          required: true
+          description: Base commit for comparison
+          schema:
+            type: string
+        - name: target_commit
+          in: query
+          description: Target commit (default: HEAD)
+          schema:
+            type: string
+            default: HEAD
+        - name: format
+          in: query
+          description: Output format
+          schema:
+            type: string
+            enum: [json, unified, side_by_side]
+            default: json
+      responses:
+        '200':
+          description: TAG diff retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagDiffResponse'
+
+  /git/blame/tags:
+    get:
+      summary: Get TAG blame information
+      description: Shows who last modified each TAG and when
+      operationId: getTagBlame
+      parameters:
+        - name: file_path
+          in: query
+          required: true
+          description: File path to analyze
+          schema:
+            type: string
+        - name: tag
+          in: query
+          description: Specific TAG to blame
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Blame information retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagBlameResponse'
+
+components:
+  schemas:
+    HookInstallRequest:
+      type: object
+      properties:
+        repository_path:
+          type: string
+          description: Path to Git repository
+          default: "."
+        hook_types:
+          type: array
+          items:
+            type: string
+            enum: [pre_commit, post_commit, pre_push, post_merge]
+          default: [pre_commit, post_commit]
+        validation_level:
+          type: string
+          enum: [strict, moderate, lenient]
+          default: moderate
+        auto_fix:
+          type: boolean
+          default: false
+          description: Enable automatic TAG fixes
+        backup_existing:
+          type: boolean
+          default: true
+          description: Backup existing hooks
+
+    HookInstallResponse:
+      type: object
+      properties:
+        installation_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [success, partial, failed]
+        installed_hooks:
+          type: array
+          items:
+            $ref: '#/components/schemas/InstalledHook'
+        backup_location:
+          type: string
+        configuration:
+          $ref: '#/components/schemas/HookConfiguration'
+
+    InstalledHook:
+      type: object
+      properties:
+        hook_type:
+          type: string
+        file_path:
+          type: string
+        status:
+          type: string
+          enum: [installed, updated, skipped, failed]
+        executable:
+          type: boolean
+        size_bytes:
+          type: integer
+
+    HookConfiguration:
+      type: object
+      properties:
+        validation_rules:
+          type: array
+          items:
+            type: string
+        auto_fix_enabled:
+          type: boolean
+        notification_settings:
+          type: object
+        timeout_seconds:
+          type: integer
+
+    CommitValidationRequest:
+      type: object
+      required:
+        - staged_files
+      properties:
+        staged_files:
+          type: array
+          items:
+            type: string
+          description: List of staged file paths
+        commit_message:
+          type: string
+          description: Proposed commit message
+        author:
+          type: object
+          properties:
+            name:
+              type: string
+            email:
+              type: string
+        bypass_validation:
+          type: boolean
+          default: false
+          description: Skip validation (requires privileges)
+
+    CommitValidationResponse:
+      type: object
+      properties:
+        validation_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [passed, failed, warning]
+        allow_commit:
+          type: boolean
+        files_validated:
+          type: integer
+        validation_results:
+          type: array
+          items:
+            $ref: '#/components/schemas/FileValidationResult'
+        summary:
+          $ref: '#/components/schemas/ValidationSummary'
+        performance_metrics:
+          $ref: '#/components/schemas/ValidationPerformance'
+
+    FileValidationResult:
+      type: object
+      properties:
+        file_path:
+          type: string
+        status:
+          type: string
+          enum: [valid, invalid, warning, skipped]
+        tag_changes:
+          $ref: '#/components/schemas/TagChanges'
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationIssue'
+        auto_fixes_applied:
+          type: array
+          items:
+            type: string
+
+    TagChanges:
+      type: object
+      properties:
+        added_tags:
+          type: array
+          items:
+            type: string
+        removed_tags:
+          type: array
+          items:
+            type: string
+        modified_tags:
+          type: array
+          items:
+            type: object
+            properties:
+              old_tag:
+                type: string
+              new_tag:
+                type: string
+
+    ValidationIssue:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [format_error, duplicate, orphan, broken_reference, naming_violation]
+        severity:
+          type: string
+          enum: [error, warning, info]
+        message:
+          type: string
+        line_number:
+          type: integer
+        suggested_fix:
+          type: string
+        auto_fixable:
+          type: boolean
+
+    ValidationSummary:
+      type: object
+      properties:
+        total_tags_checked:
+          type: integer
+        errors_found:
+          type: integer
+        warnings_found:
+          type: integer
+        auto_fixes_applied:
+          type: integer
+        recommendation:
+          type: string
+          enum: [proceed, fix_errors, review_warnings]
+
+    ValidationPerformance:
+      type: object
+      properties:
+        validation_time_ms:
+          type: integer
+        files_per_second:
+          type: number
+        memory_usage_mb:
+          type: number
+
+    ValidationFailureResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        blocking_issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationIssue'
+        suggested_actions:
+          type: array
+          items:
+            type: string
+        bypass_command:
+          type: string
+          description: Command to bypass validation if allowed
+
+    HistoryAnalysisResponse:
+      type: object
+      properties:
+        analysis_id:
+          type: string
+          format: uuid
+        commit_range:
+          type: object
+          properties:
+            from_commit:
+              type: string
+            to_commit:
+              type: string
+            total_commits:
+              type: integer
+        tag_evolution:
+          type: array
+          items:
+            $ref: '#/components/schemas/TagEvolution'
+        statistics:
+          $ref: '#/components/schemas/HistoryStats'
+        trends:
+          $ref: '#/components/schemas/TagTrends'
+
+    TagEvolution:
+      type: object
+      properties:
+        tag:
+          type: string
+        lifecycle:
+          type: array
+          items:
+            $ref: '#/components/schemas/TagLifecycleEvent'
+        current_status:
+          type: string
+          enum: [active, deprecated, removed]
+        stability_score:
+          type: number
+          description: How stable the TAG has been (0-1)
+
+    TagLifecycleEvent:
+      type: object
+      properties:
+        commit_hash:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        event_type:
+          type: string
+          enum: [created, modified, moved, deprecated, removed]
+        file_path:
+          type: string
+        author:
+          type: string
+        message:
+          type: string
+
+    HistoryStats:
+      type: object
+      properties:
+        total_tag_changes:
+          type: integer
+        most_active_files:
+          type: array
+          items:
+            type: object
+            properties:
+              file_path:
+                type: string
+              change_count:
+                type: integer
+        most_active_authors:
+          type: array
+          items:
+            type: object
+            properties:
+              author:
+                type: string
+              change_count:
+                type: integer
+        change_frequency:
+          type: object
+          properties:
+            per_day:
+              type: number
+            per_week:
+              type: number
+            per_month:
+              type: number
+
+    TagTrends:
+      type: object
+      properties:
+        growing_categories:
+          type: array
+          items:
+            type: string
+        declining_categories:
+          type: array
+          items:
+            type: string
+        hotspot_files:
+          type: array
+          items:
+            type: string
+        stability_indicators:
+          type: object
+          properties:
+            churn_rate:
+              type: number
+            consistency_score:
+              type: number
+
+    CheckpointRequest:
+      type: object
+      properties:
+        checkpoint_name:
+          type: string
+          description: Human-readable checkpoint name
+        description:
+          type: string
+          description: Checkpoint description
+        include_metadata:
+          type: boolean
+          default: true
+        create_git_tag:
+          type: boolean
+          default: false
+          description: Create Git tag for checkpoint
+
+    CheckpointResponse:
+      type: object
+      properties:
+        checkpoint_id:
+          type: string
+          format: uuid
+        commit_hash:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        tag_snapshot:
+          type: object
+          description: Complete TAG state at checkpoint
+        metadata:
+          type: object
+        git_tag:
+          type: string
+          description: Git tag if created
+
+    RestoreRequest:
+      type: object
+      required:
+        - checkpoint_id
+      properties:
+        checkpoint_id:
+          type: string
+          format: uuid
+        dry_run:
+          type: boolean
+          default: true
+        create_backup:
+          type: boolean
+          default: true
+        restore_strategy:
+          type: string
+          enum: [complete, selective, merge]
+          default: complete
+        selected_files:
+          type: array
+          items:
+            type: string
+          description: Files to restore (for selective strategy)
+
+    RestoreResponse:
+      type: object
+      properties:
+        restore_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [completed, failed, partial]
+        restored_files:
+          type: integer
+        skipped_files:
+          type: integer
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/RestoreConflict'
+        backup_location:
+          type: string
+
+    RestoreConflict:
+      type: object
+      properties:
+        file_path:
+          type: string
+        conflict_type:
+          type: string
+          enum: [newer_version, local_changes, permission_error]
+        resolution:
+          type: string
+          enum: [skip, overwrite, merge]
+
+    TagDiffResponse:
+      type: object
+      properties:
+        comparison:
+          type: object
+          properties:
+            base_commit:
+              type: string
+            target_commit:
+              type: string
+        summary:
+          type: object
+          properties:
+            added_tags:
+              type: integer
+            removed_tags:
+              type: integer
+            modified_tags:
+              type: integer
+        changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/TagChange'
+        file_changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/FileTagChange'
+
+    TagChange:
+      type: object
+      properties:
+        change_type:
+          type: string
+          enum: [added, removed, modified]
+        tag:
+          type: string
+        old_value:
+          type: string
+        new_value:
+          type: string
+        file_path:
+          type: string
+        line_number:
+          type: integer
+
+    FileTagChange:
+      type: object
+      properties:
+        file_path:
+          type: string
+        change_summary:
+          type: object
+          properties:
+            added:
+              type: integer
+            removed:
+              type: integer
+            modified:
+              type: integer
+        changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/TagChange'
+
+    TagBlameResponse:
+      type: object
+      properties:
+        file_path:
+          type: string
+        blame_info:
+          type: array
+          items:
+            $ref: '#/components/schemas/TagBlameInfo'
+
+    TagBlameInfo:
+      type: object
+      properties:
+        tag:
+          type: string
+        line_number:
+          type: integer
+        commit_hash:
+          type: string
+        author:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        commit_message:
+          type: string
+        line_content:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+            timestamp:
+              type: string
+              format: date-time
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+security:
+  - ApiKeyAuth: []
+
+tags:
+  - name: hooks
+    description: Git hook management and installation
+  - name: validation
+    description: Commit-time TAG validation
+  - name: history
+    description: Git history analysis and TAG evolution
+  - name: checkpoints
+    description: TAG state checkpointing and restoration

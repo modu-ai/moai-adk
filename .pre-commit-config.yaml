@@ -1,0 +1,37 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.8
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: version-consistency
+        name: 🔍 버전 일관성 검사
+        entry: python scripts/check_version_consistency.py
+        language: system
+        files: ^(pyproject\.toml|src/moai_adk/_version\.py|\.moai/version\.json)$
+        pass_filenames: false
+        description: "모든 파일의 버전이 일치하는지 확인합니다"
+
+      - id: prevent-version-manual-edit
+        name: ⚠️  수동 버전 수정 경고
+        entry: bash -c 'echo "⚠️ 버전 파일이 수정되었습니다. scripts/bump_version.py 사용을 권장합니다!" && exit 0'
+        language: system
+        files: ^(pyproject\.toml|src/moai_adk/_version\.py|\.moai/version\.json)$
+        pass_filenames: false
+        description: "버전 파일 수동 수정 시 경고 메시지를 표시합니다"
+        stages: [manual]

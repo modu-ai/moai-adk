@@ -1,0 +1,508 @@
+# 마법사 단계별 인터페이스 계약 @TASK:WIZARD-STEPS
+
+## 10단계 질문 체계 상세 인터페이스
+
+### Step 1: 문제 정의 (Problem Definition)
+```yaml
+step_1_problem_definition:
+  question_id: "Q1_PROBLEM"
+  category: "basic"
+  title: "핵심 해결 문제"
+  text: "이 프로젝트가 해결하려는 핵심 문제는 무엇인가요?"
+  description: "구체적인 대상, 원인, 빈도를 포함해주세요"
+
+  validation_rules:
+    min_length: 30
+    max_length: 300
+    required_elements:
+      - target_users: "누구의 문제인가?"
+      - pain_point: "어떤 어려움인가?"
+      - frequency: "얼마나 자주 발생하는가?"
+
+  examples:
+    - "개발자들이 코드 리뷰 시 일관성 없는 품질로 인해 매번 같은 문제를 반복 지적하는 문제"
+    - "마케팅 팀이 주간 보고서 작성에 매주 4시간씩 소요되어 핵심 업무에 집중하지 못하는 문제"
+    - "고객 서비스팀이 FAQ 검색에 평균 3분씩 걸려 응답 시간이 지연되는 문제"
+
+  error_messages:
+    too_short: "문제 설명이 너무 짧습니다. 대상, 원인, 빈도를 포함해 최소 30자 이상 작성해주세요."
+    too_vague: "구체적인 문제 상황을 설명해주세요. 예시를 참고하여 더 명확하게 작성해주세요."
+    missing_context: "누구의 문제인지, 언제 발생하는지 구체적으로 명시해주세요."
+```
+
+### Step 2: 목표 사용자 (Target Users)
+```yaml
+step_2_target_users:
+  question_id: "Q2_USERS"
+  category: "basic"
+  title: "목표 사용자 그룹"
+  text: "이 서비스를 주로 사용할 사용자는 누구인가요?"
+  description: "역할별로 복수 선택이 가능합니다"
+
+  answer_type: "multiple_choice"
+  choices:
+    - "주니어 개발자 (경력 1-3년)"
+    - "시니어 개발자 (경력 4년+)"
+    - "팀 리더/관리자"
+    - "프로덕트 매니저"
+    - "디자이너"
+    - "마케팅 담당자"
+    - "고객 서비스팀"
+    - "데이터 분석가"
+    - "일반 사용자/고객"
+    - "기타 (직접 입력)"
+
+  validation_rules:
+    min_selections: 1
+    max_selections: 5
+    require_rationale: true
+
+  follow_up_questions:
+    - text: "선택한 사용자 그룹의 주요 특징은 무엇인가요?"
+      condition: "any_selection"
+    - text: "각 그룹의 기술 숙련도는 어느 정도인가요?"
+      condition: "multiple_selections"
+
+  dynamic_triggers:
+    developer_focused:
+      condition: "contains(선택, ['주니어 개발자', '시니어 개발자'])"
+      additional_questions:
+        - "주로 사용하는 프로그래밍 언어는?"
+        - "개발 팀 규모는?"
+```
+
+### Step 3: 성공 지표 (Success Metrics)
+```yaml
+step_3_success_metrics:
+  question_id: "Q3_METRICS"
+  category: "basic"
+  title: "6개월 후 성공 지표"
+  text: "6개월 후 달성하고 싶은 구체적이고 측정 가능한 목표는?"
+  description: "정량적 KPI를 포함해주세요"
+
+  validation_rules:
+    must_include_numbers: true
+    measurable_criteria:
+      - performance_metrics: ["응답시간", "처리량", "가용성"]
+      - quality_metrics: ["에러율", "만족도", "완료율"]
+      - business_metrics: ["사용자 수", "매출", "비용 절감"]
+
+  examples:
+    - "p95 응답시간 300ms 이하, 에러율 1% 미만, 테스트 커버리지 85% 이상"
+    - "월간 활성 사용자 1,000명, 사용자 만족도 4.5/5.0, 작업 시간 50% 단축"
+    - "시스템 가용성 99.9%, 데이터 처리량 1TB/day, 운영 비용 30% 절감"
+
+  keyword_detection:
+    performance_keywords: ["속도", "응답시간", "처리량", "TPS", "latency"]
+    quality_keywords: ["에러", "품질", "만족도", "커버리지", "안정성"]
+    business_keywords: ["사용자", "매출", "비용", "효율", "생산성"]
+```
+
+### Step 4: 핵심 기능 (Core Features)
+```yaml
+step_4_core_features:
+  question_id: "Q4_FEATURES"
+  category: "basic"
+  title: "핵심 기능 Top-3"
+  text: "가장 중요한 3가지 기능을 우선순위 순으로 선택해주세요"
+  description: "1순위가 가장 중요하고, 3순위까지만 선택합니다"
+
+  answer_type: "priority_ranking"
+  max_selections: 3
+  require_ranking: true
+
+  feature_categories:
+    data_processing:
+      - "데이터 수집 및 저장"
+      - "실시간 데이터 분석"
+      - "데이터 시각화"
+      - "리포트 생성"
+
+    user_management:
+      - "사용자 등록/로그인"
+      - "권한 관리"
+      - "프로필 관리"
+      - "팀 협업"
+
+    communication:
+      - "알림 시스템"
+      - "메시지/채팅"
+      - "이메일 통합"
+      - "외부 API 연동"
+
+    automation:
+      - "워크플로우 자동화"
+      - "일정 관리"
+      - "작업 추적"
+      - "품질 관리"
+
+  dynamic_spec_generation:
+    enabled: true
+    spec_prefix: "SPEC"
+    naming_pattern: "SPEC-{sequence:03d}"
+    auto_generate_acceptance_criteria: true
+```
+
+### Step 5: 화면 구성 (UI Structure)
+```yaml
+step_5_ui_structure:
+  question_id: "Q5_UI"
+  category: "basic"
+  title: "주요 페이지/화면 구조"
+  text: "사용자가 주로 사용할 화면들을 선택해주세요"
+
+  screen_types:
+    navigation:
+      - "대시보드 (메인 화면)"
+      - "사이드바 네비게이션"
+      - "상단 메뉴바"
+      - "브레드크럼"
+
+    content:
+      - "목록/테이블 화면"
+      - "상세보기 화면"
+      - "편집/입력 폼"
+      - "검색/필터 화면"
+
+    interaction:
+      - "모달 다이얼로그"
+      - "드롭다운 메뉴"
+      - "탭 네비게이션"
+      - "위저드/단계별 폼"
+
+    feedback:
+      - "알림/토스트"
+      - "진행 상태 표시"
+      - "에러 메시지"
+      - "로딩 화면"
+
+  responsive_requirements:
+    desktop: true
+    tablet: "optional"
+    mobile: "detect_from_users"
+```
+
+### Step 6: UI/UX 스타일 (Design System)
+```yaml
+step_6_design_system:
+  question_id: "Q6_DESIGN"
+  category: "basic"
+  title: "UI/UX 스타일 및 컴포넌트"
+  text: "원하는 디자인 스타일과 주요 컴포넌트를 선택해주세요"
+
+  design_styles:
+    - "미니멀/심플"
+    - "모던/세련됨"
+    - "전문적/비즈니스"
+    - "친근한/캐주얼"
+    - "기술적/개발자 친화적"
+
+  color_schemes:
+    - "밝은 테마 (Light Mode)"
+    - "어두운 테마 (Dark Mode)"
+    - "시스템 설정 따름"
+    - "브랜드 컬러 기반"
+
+  component_preferences:
+    forms:
+      - "일반 입력 필드"
+      - "드롭다운 선택"
+      - "체크박스/라디오"
+      - "날짜/시간 선택기"
+
+    display:
+      - "카드 레이아웃"
+      - "테이블/그리드"
+      - "리스트 뷰"
+      - "차트/그래프"
+
+    navigation:
+      - "버튼 그룹"
+      - "페이지네이션"
+      - "검색 바"
+      - "필터 패널"
+```
+
+### Step 7: 기능 트리 (Feature Tree)
+```yaml
+step_7_feature_tree:
+  question_id: "Q7_TREE"
+  category: "dynamic"
+  title: "3레벨 기능 계층 구조"
+  text: "선택한 핵심 기능들을 세부 기능으로 분해해주세요"
+
+  structure_template:
+    level_1_domain: "기능 도메인 (예: 사용자 관리)"
+    level_2_feature: "주요 기능 (예: 로그인 시스템)"
+    level_3_task: "세부 작업 (예: 이메일 인증)"
+
+  auto_tag_generation:
+    level_1: "@REQ:{DOMAIN}"
+    level_2: "@FEATURE:{FUNCTION}"
+    level_3: "@TASK:{TASK}"
+
+  validation_rules:
+    max_domains: 5
+    max_features_per_domain: 8
+    max_tasks_per_feature: 12
+    naming_convention: "명사_동사 형태 권장"
+
+  examples:
+    user_management:
+      authentication:
+        - "이메일 회원가입"
+        - "소셜 로그인 연동"
+        - "비밀번호 재설정"
+      authorization:
+        - "역할 기반 권한"
+        - "리소스 접근 제어"
+        - "API 키 관리"
+```
+
+### Step 8: 기술 스택 (Technology Stack)
+```yaml
+step_8_tech_stack:
+  question_id: "Q8_TECH"
+  category: "dynamic"
+  title: "기술 스택 선택"
+  text: "프로젝트에 사용할 기술 스택을 선택해주세요"
+
+  frontend_options:
+    framework:
+      - "React + TypeScript"
+      - "Vue.js + TypeScript"
+      - "Svelte/SvelteKit"
+      - "Next.js (React 기반)"
+      - "Nuxt.js (Vue 기반)"
+      - "Vanilla JavaScript"
+
+    styling:
+      - "Tailwind CSS"
+      - "Material-UI (MUI)"
+      - "Chakra UI"
+      - "Styled Components"
+      - "CSS Modules"
+      - "SCSS/Sass"
+
+  backend_options:
+    language:
+      - "Python (FastAPI/Django)"
+      - "Node.js (Express/NestJS)"
+      - "Java (Spring Boot)"
+      - "Go (Gin/Fiber)"
+      - "C# (.NET)"
+      - "Rust (Actix/Axum)"
+
+    database:
+      - "PostgreSQL"
+      - "MySQL/MariaDB"
+      - "MongoDB"
+      - "Redis (캐시/세션)"
+      - "SQLite (개발/테스트)"
+      - "Elasticsearch"
+
+  infrastructure:
+    deployment:
+      - "Docker + Docker Compose"
+      - "Kubernetes"
+      - "AWS (EC2/ECS/Lambda)"
+      - "Google Cloud Platform"
+      - "Azure"
+      - "Vercel/Netlify"
+
+    monitoring:
+      - "Prometheus + Grafana"
+      - "ELK Stack (로깅)"
+      - "Sentry (에러 추적)"
+      - "Health Checks"
+
+  keyword_triggers:
+    ai_ml_detected:
+      additional_options:
+        - "Python ML Stack (scikit-learn/pandas)"
+        - "TensorFlow/PyTorch"
+        - "OpenAI API 연동"
+        - "Vector Database (Pinecone/Weaviate)"
+
+    performance_critical:
+      additional_options:
+        - "Redis 캐싱"
+        - "CDN (CloudFlare/AWS CloudFront)"
+        - "Load Balancer"
+        - "Database Indexing 최적화"
+```
+
+### Step 9: 팀 숙련도 (Team Proficiency)
+```yaml
+step_9_team_proficiency:
+  question_id: "Q9_TEAM"
+  category: "basic"
+  title: "팀 기술 숙련도"
+  text: "팀의 기술 숙련도와 학습 의향을 알려주세요"
+
+  proficiency_levels:
+    beginner: "초급 (학습 필요)"
+    intermediate: "중급 (실무 가능)"
+    advanced: "고급 (전문 지식)"
+    expert: "전문가 (다른 사람 지도 가능)"
+
+  assessment_areas:
+    frontend:
+      - "HTML/CSS/JavaScript"
+      - "React/Vue/Angular"
+      - "TypeScript"
+      - "반응형 디자인"
+
+    backend:
+      - "서버 개발 (API 설계)"
+      - "데이터베이스 설계"
+      - "보안 (인증/인가)"
+      - "성능 최적화"
+
+    devops:
+      - "Git/GitHub"
+      - "CI/CD 파이프라인"
+      - "Docker/컨테이너"
+      - "클라우드 서비스"
+
+    general:
+      - "테스트 작성"
+      - "코드 리뷰"
+      - "문서화"
+      - "프로젝트 관리"
+
+  learning_preference:
+    learning_time_budget: "주당 학습 가능 시간"
+    complexity_tolerance: "새로운 기술 도입 의향"
+    documentation_preference: "문서/튜토리얼 선호도"
+
+  recommendation_engine:
+    conservative: "팀 숙련도 기반 안전한 스택"
+    balanced: "일부 새로운 기술 포함"
+    progressive: "최신 기술 적극 도입"
+```
+
+### Step 10: 품질 목표 (Quality Targets)
+```yaml
+step_10_quality_targets:
+  question_id: "Q10_QUALITY"
+  category: "basic"
+  title: "품질 목표 및 비기능 요구사항"
+  text: "프로젝트의 품질 기준과 목표를 설정해주세요"
+
+  test_coverage:
+    unit_tests: "단위 테스트 커버리지 (%)"
+    integration_tests: "통합 테스트 커버리지 (%)"
+    e2e_tests: "E2E 테스트 커버리지 (%)"
+    target_minimum: 80
+    target_recommended: 90
+
+  performance_targets:
+    response_time:
+      p50: "평균 응답시간 (ms)"
+      p95: "95퍼센타일 응답시간 (ms)"
+      p99: "99퍼센타일 응답시간 (ms)"
+
+    throughput:
+      requests_per_second: "초당 요청 처리량"
+      concurrent_users: "동시 접속자 수"
+
+    resource_usage:
+      memory_limit: "메모리 사용 한계 (MB)"
+      cpu_limit: "CPU 사용률 한계 (%)"
+
+  reliability_targets:
+    availability: "서비스 가용성 (%)"
+    error_rate: "에러율 (%)"
+    mean_time_to_recovery: "평균 복구 시간 (분)"
+
+  security_requirements:
+    authentication: "인증 방식"
+    authorization: "권한 관리"
+    data_encryption: "데이터 암호화"
+    audit_logging: "감사 로깅"
+
+  compliance:
+    data_protection: "개인정보보호법 준수"
+    accessibility: "웹 접근성 (WCAG 2.1)"
+    internationalization: "다국어 지원"
+```
+
+## 동적 질문 생성 규칙
+
+### AI/ML 키워드 감지
+```yaml
+ai_ml_trigger:
+  keywords: ["AI", "ML", "머신러닝", "인공지능", "분석", "예측", "추천"]
+  confidence_threshold: 0.7
+
+  additional_questions:
+    Q8_1_model_type:
+      text: "사용할 AI/ML 모델 타입은?"
+      choices: ["LLM (GPT/Claude)", "CNN (이미지)", "RNN (시계열)", "전통적 ML", "규칙 기반"]
+
+    Q8_2_data_scale:
+      text: "예상 데이터 크기는?"
+      choices: ["< 1GB", "1-10GB", "10-100GB", "> 100GB"]
+
+    Q8_3_inference_env:
+      text: "AI 모델 실행 환경은?"
+      choices: ["로컬 처리", "클라우드 API", "하이브리드", "엣지 컴퓨팅"]
+```
+
+### 보안 키워드 감지
+```yaml
+security_trigger:
+  keywords: ["보안", "개인정보", "PII", "인증", "암호화", "컴플라이언스"]
+  confidence_threshold: 0.6
+
+  additional_questions:
+    Q8_1_data_sensitivity:
+      text: "처리할 데이터의 민감도는?"
+      choices: ["공개 정보", "내부 정보", "개인정보", "기밀 정보"]
+
+    Q8_2_compliance:
+      text: "준수해야 할 규정은?"
+      choices: ["개인정보보호법", "GDPR", "HIPAA", "PCI DSS", "해당없음"]
+
+    Q8_3_retention:
+      text: "데이터 보관 및 삭제 정책은?"
+      choices: ["7일", "30일", "1년", "영구보관", "별도정책"]
+```
+
+### 성능 키워드 감지
+```yaml
+performance_trigger:
+  keywords: ["실시간", "고성능", "대용량", "확장성", "속도", "빠른"]
+  confidence_threshold: 0.8
+
+  additional_questions:
+    Q8_1_scale_target:
+      text: "예상 사용자 규모는?"
+      choices: ["< 100명", "100-1,000명", "1,000-10,000명", "> 10,000명"]
+
+    Q8_2_peak_load:
+      text: "피크 시간 부하 배수는?"
+      choices: ["평상시와 동일", "2-3배", "5-10배", "> 10배"]
+
+    Q8_3_sla_requirement:
+      text: "서비스 수준 목표 (SLA)는?"
+      choices: ["99% (3.65일 중단/년)", "99.9% (8.76시간/년)", "99.99% (52.6분/년)", "99.999% (5.26분/년)"]
+```
+
+---
+
+## 🔗 연관 태그 시스템
+
+**@TASK:WIZARD-STEPS**와 연결된 주요 태그들:
+- **@REQ:WIZARD-UX-001** → 요구사항 추적
+- **@DATA:WIZARD-UX** → 데이터 모델 연결
+- **@DESIGN:WIZARD-UX** → UI/UX 설계 연결
+- **@TEST:STEP-VALIDATION** → 단계별 검증 테스트
+- **@PERF:STEP-TIMING** → 단계별 성능 측정
+
+---
+
+> **@TASK:WIZARD-STEPS**를 통해 10단계 마법사의 모든 인터페이스가 체계적으로 관리됩니다.
+>
+> **동적 질문 생성과 키워드 감지로 사용자 맞춤형 경험을 제공합니다.**
