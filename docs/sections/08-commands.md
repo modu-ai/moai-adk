@@ -2,18 +2,19 @@
 
 ## 🎯 7개 슬래시 명령어 개요
 
-MoAI-ADK는 4단계 파이프라인을 지원하는 6개의 연번순 슬래시 명령어와 1개의 유틸리티 명령어를 제공합니다.
+MoAI-ADK는 4단계 파이프라인을 지원하는 6개의 연번순 슬래시 명령어와 1개의 모니터링 명령어를 제공합니다.
 
 ### 주요 명령어 체계
 
-| 순서  | 명령어            | 담당 에이전트                   | 기능                | 단계      |
-| ----- | ----------------- | ------------------------------- | ------------------- | --------- |
-| **1** | `/moai:1-project` | steering-architect              | 프로젝트 설정       | 초기화    |
-| **2** | `/moai:2-spec`    | spec-manager                    | EARS 형식 명세 작성 | SPECIFY   |
-| **3** | `/moai:3-plan`    | plan-architect                  | Constitution Check  | PLAN      |
-| **4** | `/moai:4-tasks`   | task-decomposer                 | TDD 작업 분해       | TASKS     |
-| **5** | `/moai:5-dev`     | code-generator + test-automator | 자동 구현           | IMPLEMENT |
-| **6** | `/moai:6-sync`    | doc-syncer + tag-indexer        | 문서 동기화         | 동기화    |
+| 순서  | 명령어              | 담당 에이전트                   | 기능                | 단계      |
+| ----- | ------------------- | ------------------------------- | ------------------- | --------- |
+| **1** | `/moai:1-project`   | steering-architect              | 프로젝트 설정       | 초기화    |
+| **2** | `/moai:2-spec`      | spec-manager                    | EARS 형식 명세 작성 | SPECIFY   |
+| **3** | `/moai:3-plan`      | plan-architect                  | Constitution Check  | PLAN      |
+| **4** | `/moai:4-tasks`     | task-decomposer                 | TDD 작업 분해       | TASKS     |
+| **5** | `/moai:5-dev`       | code-generator + test-automator | 자동 구현           | IMPLEMENT |
+| **6** | `/moai:6-sync`      | doc-syncer + tag-indexer        | 문서 동기화         | 동기화    |
+| **7** | `/moai:7-dashboard` | render_dashboard.py             | 진행 상황 모니터링   | 모니터링  |
 
 ### 유틸리티 명령어
 
@@ -30,8 +31,9 @@ MoAI-ADK는 4단계 파이프라인을 지원하는 6개의 연번순 슬래시 
 | `/moai:2-spec`    | `sonnet`               | 명세 작성/정제 (`all` 옵션: 최대 10개 병렬)          |
 | `/moai:3-plan`    | `opusplan` (plan 모드) | 복잡한 설계·검증 전용 (`all` 옵션: 최대 10개 병렬)   |
 | `/moai:4-tasks`   | `sonnet`               | TDD 작업 분해 (`all` 옵션: 최대 10개 병렬)           |
-| `/moai:5-dev`     | `sonnet`               | Red-Green-Refactor 구현 (`all` 옵션: 최대 10개 병렬) |
-| `/moai:6-sync`    | `haiku`                | 문서/인덱싱 동기화 속도 최적                         |
+| `/moai:5-dev`       | `sonnet`               | Red-Green-Refactor 구현 (`all` 옵션: 최대 10개 병렬) |
+| `/moai:6-sync`      | `haiku`                | 문서/인덱싱 동기화 속도 최적                         |
+| `/moai:7-dashboard` | `sonnet`               | 프로젝트 상태 모니터링 (읽기 전용)                   |
 
 > `CLAUDE.md`의 “모델 사용 가이드(opusplan)” 섹션에서 세부 운영 수칙을 확인하세요.
 
@@ -159,9 +161,15 @@ claude --model opusplan
 
 **생성 결과**:
 
-- plan.md (구현 계획)
-- ADR 문서 (아키텍처 결정)
-- 품질 게이트 통과 인증
+- **필수 파일**:
+  - plan.md (구현 계획)
+  - research.md (기술 조사)
+  - ADR 문서 (아키텍처 결정)
+  - 품질 게이트 통과 인증
+- **선택적 파일** (SPEC 성격에 따라):
+  - contracts/ (API 중심 프로젝트)
+  - data-model.md (데이터베이스 중심 프로젝트)
+  - 아키텍처 설계서 (UI/UX 개선 프로젝트)
 
 **`all` 옵션 - 병렬 PLAN 생성** :
 
@@ -252,10 +260,32 @@ claude --model opusplan
 
 # 특정 파일 동기화
 /moai:6-sync src/auth.py
-
-# TAG 인덱스 갱신
-/moai:6-sync --tags-only
 ```
+
+### /moai:7-dashboard - 진행 상황 모니터링
+
+**기능**: 프로젝트 상태를 시각적으로 모니터링
+
+```bash
+# 기본 대시보드 표시
+/moai:7-dashboard
+
+# 상세 정보 포함
+/moai:7-dashboard --detail
+
+# HTML/Markdown으로 내보내기
+/moai:7-dashboard --export
+/moai:7-dashboard --export reports/dashboard.html
+```
+
+**대시보드 구성요소**:
+
+- **파이프라인 진행률**: SPECIFY → PLAN → TASKS → IMPLEMENT → SYNC 단계별 진행도
+- **SPEC 현황**: 각 SPEC의 상태, 진행률, 완료도 테이블
+- **TAG 시스템**: 16-Core TAG 카테고리별 수량과 건강도
+- **Constitution 준수**: 5원칙별 준수 현황과 위반 사항
+- **Git 상태**: 현재 브랜치, 최근 커밋, 변경사항
+- **추천 액션**: 다음 단계 제안과 주의사항
 
 **동기화 범위**:
 

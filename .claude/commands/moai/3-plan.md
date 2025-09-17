@@ -52,7 +52,7 @@ flowchart TD
     J -->|실패| K[🔴 위반 정당화 또는 수정]
     J -->|성공| L[📚 Phase 0: research.md]
     
-    L --> M[📋 Phase 1: contracts/, data-model.md]
+    L --> M[📋 Phase 1: 필요시 아키텍처 문서]
     M --> N[🛑 Phase 2 설명 (tasks.md 생성 안함)]
     N --> O[✅ /moai:4-tasks 명령 대기]
 ```
@@ -65,7 +65,7 @@ flowchart TD
 
 **기술 조사 단계**: Constitution Check 통과 시 Task tool을 사용하여 research-analyst 에이전트를 호출하여 WebFetch 기반 최신 기술 동향 조사와 아키텍처 패턴 분석을 수행합니다.
 
-**설계 단계**: Task tool을 사용하여 architecture-designer 에이전트를 호출하여 contracts/ 디렉토리 생성, API 계약 정의, data-model.md 작성을 통한 체계적 아키텍처 설계를 수행합니다.
+**설계 단계**: Task tool을 사용하여 architecture-designer 에이전트를 호출하여 SPEC 성격에 따라 필요한 아키텍처 문서(contracts/, data-model.md 등)를 선택적으로 생성하고 체계적 설계를 수행합니다.
 
 ## 🏛️ Constitution Check - 5개 핵심 원칙
 
@@ -202,18 +202,28 @@ Constitution Check 통과 후 기술 조사를 수행합니다:
 - 운영 환경 요구사항
 ```
 
-## 📋 Phase 1: Contracts & Data Model
+## 📋 Phase 1: 필요시 아키텍처 설계
 
+SPEC의 성격에 따라 선택적으로 생성합니다:
+
+### 생성 기준
+- **API 중심 프로젝트**: contracts/ 디렉토리 생성
+- **데이터 중심 프로젝트**: data-model.md 생성
+- **UI/UX 개선**: 아키텍처 설계서만 작성
+- **최적화/리팩토링**: 기술 조사서만 작성
+
+### 선택적 산출물
+
+#### 1. contracts/ (API가 있는 경우만)
 ```markdown
-# contracts/ 디렉토리 자동 생성
-
 ## API 계약 정의
 - /api/users/: OpenAPI 3.0 스펙
 - /api/auth/: 인증/권한 계약
 - /api/[domain]/: 도메인별 API 계약
+```
 
-## data-model.md 생성
-
+#### 2. data-model.md (데이터베이스가 있는 경우만)
+```markdown
 ### 엔티티 설계
 - User: 사용자 모델
 - [Domain]: 비즈니스 도메인 모델
@@ -375,10 +385,10 @@ Constitution Check 결과:
 
 📁 생성된 파일:
   ├── .moai/specs/SPEC-001/
-  │   ├── plan.md           # 구현 계획서
-  │   ├── research.md       # 기술 조사 결과
-  │   ├── data-model.md     # 데이터 모델 설계
-  │   └── contracts/        # API 계약 정의
+  │   ├── plan.md           # 구현 계획서 (필수)
+  │   ├── research.md       # 기술 조사 결과 (필수)
+  │   ├── data-model.md     # 데이터 모델 설계 (선택적)
+  │   └── contracts/        # API 계약 정의 (선택적)
   │       ├── users.yaml    # 사용자 API
   │       └── auth.yaml     # 인증 API
   └── .moai/memory/decisions/
