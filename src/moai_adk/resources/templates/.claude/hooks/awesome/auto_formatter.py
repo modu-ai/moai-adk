@@ -64,8 +64,8 @@ def main():
     file_path = os.environ.get('CLAUDE_TOOL_FILE_PATH')
 
     if not file_path:
-        print("No file path provided", file=sys.stderr)
-        return 1
+        # Skip silently if no file path provided (e.g., MultiEdit operations)
+        return 0
 
     if not os.path.exists(file_path):
         print(f"File not found: {file_path}", file=sys.stderr)

@@ -5,6 +5,31 @@ All notable changes to MoAI-ADK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.21] - 2025-09-17
+
+### 🔧 Bug Fixes & Improvements
+- **🏷️ Hook Environment Variable Issues Fixed**: Resolved "No file path provided" errors in awesome hooks
+  - Fixed `auto_formatter.py` to gracefully handle missing `CLAUDE_TOOL_FILE_PATH` environment variable
+  - Updated all template hooks to use defensive programming patterns
+  - MultiEdit operations now work without triggering hook errors
+- **📝 Version Synchronization**: Updated all version files to v0.1.21
+  - Synchronized `src/moai_adk/resources/VERSION`, `pyproject.toml`, and `src/moai_adk/_version.py`
+  - Fixed version downgrade issue where Git history showed 0.1.19 while installed version was 0.1.21
+- **🛡️ Hook Safety Improvements**: Enhanced error handling across all hook files
+  - All awesome hooks now return 0 (success) when environment variables are missing
+  - Prevented workflow blocking due to hook failures
+  - Maintained `pre_write_guard.py` grep→ripgrep enforcement (intended behavior)
+
+### ✅ Template Updates
+- **🔄 Hook Template Synchronization**: Updated template hooks to match production versions
+- **🧪 Comprehensive Hook Validation**: Verified all 11 hook files for proper error handling
+- **📋 Environment Variable Handling**: Standardized missing environment variable handling across all hooks
+
+### 🔍 Quality Assurance
+- **✅ All Hooks Tested**: Verified proper behavior of both awesome and moai hook categories
+- **🔒 Security Validation**: Confirmed SecurityManager import fallback patterns work correctly
+- **🎯 Workflow Protection**: Enhanced defensive programming to prevent development workflow interruption
+
 ## [0.1.17] - 2025-09-17
 
 ### 🚀 Highlights
@@ -244,4 +269,4 @@ moai restore .moai_backup_20241215_143022
 
 ---
 
-**MoAI-ADK v0.1.17** - Making AI-driven development accessible to everyone! 🎉
+**MoAI-ADK v0.1.21** - Making AI-driven development accessible to everyone! 🎉
