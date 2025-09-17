@@ -12,7 +12,11 @@ MoAI-ADK의 Hook 시스템은 Claude Code의 표준 Hook 인터페이스를 활�
 | **PostToolUse**      | 도구 실행 후      | 자동 검수, 커밋 지침, 세션 안내 | 0: 성공          |
 | **SessionStart**     | 세션 시작         | Gate 상태 확인, 미완료 알림     | 0: 성공          |
 
-## 6개 핵심 Hook 스크립트
+## 11개 핵심 Hook 스크립트
+
+### MoAI 워크플로우 Hook (moai/ 폴더)
+
+6개의 MoAI-ADK 전용 워크플로우 Hook입니다.
 
 ### 1. policy_block.py - PreToolUse Hook
 
@@ -127,8 +131,8 @@ def analyze_project_state():
 ```json
 {
   "permissions": {
-    "defaultMode": "default",
-    "allow": ["Read(**)", "Grep", "Glob", "Task", "Bash"]
+    "defaultMode": "ask",
+    "allow": ["Read(**)", "Grep", "Glob", "Task", "Bash(*)"]
   },
   "hooks": {
     "PreToolUse": [
@@ -137,7 +141,8 @@ def analyze_project_state():
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_write_guard.py"
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_write_guard.py",
+            "timeout": 60
           }
         ]
       },
@@ -146,11 +151,21 @@ def analyze_project_state():
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .claude/hooks/moai/constitution_guard.py"
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/constitution_guard.py"
           },
           {
             "type": "command",
-            "command": "python3 .claude/hooks/moai/tag_validator.py"
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag_validator.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/awesome/backup_before_edit.py",
+            "description": "Backup files before editing"
           }
         ]
       },
@@ -159,18 +174,58 @@ def analyze_project_state():
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .claude/hooks/moai/policy_block.py"
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/policy_block.py"
           }
         ]
       }
     ],
     "PostToolUse": [
       {
+        "matcher": "Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/awesome/auto_formatter.py",
+            "description": "Smart code formatter"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/awesome/auto_git_commit.py",
+            "description": "Intelligent auto-commit"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/awesome/test_runner.py",
+            "description": "Run tests after code changes"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/awesome/security_scanner.py",
+            "description": "Security vulnerability scanner"
+          }
+        ]
+      },
+      {
         "matcher": "Edit|MultiEdit|Write",
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .claude/hooks/moai/post_stage_guard.py"
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_stage_guard.py"
           }
         ]
       }
@@ -181,7 +236,7 @@ def analyze_project_state():
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .claude/hooks/moai/session_start_notice.py"
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start_notice.py"
           }
         ]
       }
@@ -234,5 +289,110 @@ echo '{"tool_name": "Write", "tool_input": {"file_path": "test.md", "content": "
 ### JSON 처리 오류 (v0.1.12 수정)
 - **기존**: `sys.argv` 사용으로 인한 파싱 오류
 - **개선**: `stdin` JSON 처리로 Claude Code 표준 완전 준수
+
+### Awesome Hook 컬렉션 (awesome/ 폴더)
+
+개발 생산성을 향상시키는 5개의 범용 Hook입니다.
+
+#### 7. auto_formatter.py - PostToolUse Hook
+
+**기능**: 파일 타입별 자동 코드 포매팅
+
+```python
+# 지원 포매터
+formatters = {
+    ('.js', '.ts', '.jsx', '.tsx'): ['npx', 'prettier', '--write'],
+    ('.py',): ['black'],
+    ('.go',): ['gofmt', '-w'],
+    ('.rs',): ['rustfmt'],
+    ('.php',): ['php-cs-fixer', 'fix']
+}
+```
+
+#### 8. auto_git_commit.py - PostToolUse Hook
+
+**기능**: 지능적 자동 Git 커밋
+
+```python
+# 파일 타입별 커밋 메시지
+if ext == '.md':
+    return f"📝 Update documentation: {filename}"
+elif 'test' in filename:
+    return f"🧪 Update tests: {filename}"
+else:
+    return f"{emoji} Update {filename} ({size}: {changed_lines} lines)"
+```
+
+#### 9. backup_before_edit.py - PreToolUse Hook
+
+**기능**: 편집 전 자동 백업
+
+```python
+# 타임스탬프 백업
+timestamp = int(time.time())
+backup_path = f"{file_path}.backup.{timestamp}"
+shutil.copy2(file_path, backup_path)
+
+# 자동 정리 (최근 5개만 유지)
+cleanup_old_backups(file_path, keep_count=5)
+```
+
+#### 10. test_runner.py - PostToolUse Hook
+
+**기능**: 코드 변경 후 자동 테스트 실행
+
+```python
+# 프로젝트 타입별 테스트 명령
+test_commands = {
+    'js/ts': ['npm test', 'yarn test', 'jest'],
+    'python': ['pytest', 'python -m pytest'],
+    'ruby': ['bundle exec rspec', 'rspec'],
+    'go': ['go test ./...', 'go test .']
+}
+```
+
+#### 11. security_scanner.py - PostToolUse Hook
+
+**기능**: 보안 취약점 자동 스캔
+
+```python
+# 보안 스캐너 통합
+scanners = [
+    ('Hardcoded Secrets', scan_hardcoded_secrets),
+    ('Dangerous Functions', scan_dangerous_functions),
+    ('Semgrep', scan_with_semgrep),
+    ('Bandit', scan_with_bandit),
+    ('GitLeaks', scan_with_gitleaks)
+]
+```
+
+## 확장된 Hook 실행 순서
+
+### 파일 편집 시 전체 Hook 체인
+
+```mermaid
+flowchart TD
+    A[PreToolUse Hooks] --> B[Edit 작업 실행]
+    B --> C[PostToolUse Hooks]
+
+    A --> A1[pre_write_guard.py]
+    A1 --> A2[constitution_guard.py]
+    A2 --> A3[tag_validator.py]
+    A3 --> A4[backup_before_edit.py]
+
+    C --> C1[auto_formatter.py]
+    C1 --> C2[auto_git_commit.py]
+    C2 --> C3[test_runner.py]
+    C3 --> C4[security_scanner.py]
+    C4 --> C5[post_stage_guard.py]
+```
+
+### Hook 타이밍 최적화
+
+- **백업**: 편집 전 (PreToolUse)
+- **포매팅**: 편집 후 즉시 (PostToolUse 첫 번째)
+- **커밋**: 포매팅 후 (PostToolUse)
+- **테스트**: 커밋 후 (PostToolUse)
+- **보안 스캔**: 테스트와 병렬 (PostToolUse)
 
 Hook 시스템은 개발자가 의식하지 않아도 자동으로 품질을 보장하는 **투명한 품질 게이트**입니다.

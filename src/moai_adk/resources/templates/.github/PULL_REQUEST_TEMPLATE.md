@@ -7,7 +7,7 @@
 ### 🎯 관련 이슈/SPEC
 - 관련 Issue: #XXX  
 - 관련 SPEC: `@REQ:XXX-YYY` 또는 `@FEATURE:XXX-YYY`
-- TAG 연결: @TAG1, @TAG2 (14-Core TAG 시스템)
+- TAG 연결: @TAG1, @TAG2 (16-Core TAG 시스템)
 
 ### 📝 주요 변경 내용
 - [ ] 새로운 기능 추가
@@ -119,7 +119,7 @@
 2. **Staging 환경**: 
 3. **Production 환경**: 
 
-## 🏷️ 14-Core TAG 시스템
+## 🏷️ 16-Core TAG 시스템
 
 이 PR과 연관된 태그들:
 - **@REQ**: <!-- 요구사항 태그 -->

@@ -81,7 +81,7 @@ moai init .
 - 감지된 정보로 질문 사전 답변
 
 ### 4. AI 에이전트 시스템 설치
-- 11개 전문 에이전트 설치 (`.claude/agents/moai/`)
+- 32개 전문 에이전트 설치 (11개 moai + 21개 awesome)
 - 에이전트별 역할과 도구 설정
 
 ### 5. 슬래시 명령어 설치
@@ -89,7 +89,7 @@ moai init .
 - 연번순 명령어 체계 구성
 
 ### 6. MoAI Hook 스크립트 구성
-- 5개 핵심 Hook 설치
+- 11개 핵심 Hook 설치 (6개 moai + 5개 awesome)
 - `settings.json`으로 Hook 설정 통합
 
 ### 7. 문서 템플릿 시스템 설치
@@ -157,7 +157,8 @@ self.resources_root = resources.files('moai_adk.resources')
 self.templates_root = self.resources_root / 'templates'
 
 # 각 프로젝트로 복사되는 리소스 (기본)
-.claude/agents/moai/      # 11개 에이전트 파일
+.claude/agents/moai/      # 11개 MoAI 에이전트 파일
+.claude/agents/awesome/   # 21개 범용 에이전트 파일
 .claude/commands/moai/    # 6개 슬래시 명령어
 .moai/_templates/         # 문서 템플릿들 (templates.mode=package일 때는 복사 생략)
 ```

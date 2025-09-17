@@ -47,9 +47,9 @@ jobs:
             exit 1
           fi
 
-  # Tag System: 14-Core TAG 무결성 검증
+  # Tag System: 16-Core TAG 무결성 검증
   tag-validation:
-    name: 🏷️ 14-Core TAG 시스템 검증
+    name: 🏷️ 16-Core TAG 시스템 검증
     runs-on: ubuntu-latest
     needs: constitution-check
     steps:

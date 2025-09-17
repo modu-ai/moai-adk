@@ -48,7 +48,9 @@
 3. **TASKS**: TDD 태스크 분해
 4. **IMPLEMENT**: Red-Green-Refactor 구현
 
-### 🤖 11개 전문 에이전트 시스템
+### 🤖 32개 전문 에이전트 시스템
+
+#### MoAI 워크플로우 에이전트 (11개)
 - **steering-architect**: Steering 문서 생성
 - **spec-manager**: SPEC 문서 관리
 - **plan-architect**: 계획 수립 및 ADR 관리
@@ -60,6 +62,13 @@
 - **integration-manager**: 외부 서비스 연동
 - **deployment-specialist**: 배포 전략 및 자동화
 - **claude-code-manager**: MoAI-Claude 통합 전문가
+
+#### 범용 개발 에이전트 (21개)
+- **UI/UX**: ui-ux-designer, frontend-developer, mobile-developer
+- **백엔드**: backend-architect, database-architect, sql-pro, nosql-specialist
+- **언어별**: python-pro, javascript-pro, typescript-pro, php-pro, golang-pro, rust-pro, shell-scripting-pro
+- **품질**: test-engineer, code-reviewer, debugger, error-detective
+- **문서화**: documentation-expert, api-documenter, prompt-engineer
 
 ### 🏷️ 16-Core @TAG 추적성 시스템
 - **Primary**: @REQ → @DESIGN → @TASK → @TEST

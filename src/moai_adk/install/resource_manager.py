@@ -151,6 +151,18 @@ class ResourceManager:
                     shutil.copy2(source_path, target_path)
 
             logger.info(f"Successfully copied {template_name} to {target_path}")
+
+            # 후처리: .claude/hooks/moai/*.py 실행 권한 보장
+            try:
+                if target_path.is_dir():
+                    # template_name이 '.claude'이거나 타겟 경로가 .claude 루트인 경우에만 후처리
+                    if template_name.endswith('.claude') or target_path.name == '.claude':
+                        self._ensure_hook_permissions(target_path)
+                else:
+                    # 개별 파일 복사 케이스: .claude 내 파일인 경우 상위에서 처리
+                    pass
+            except Exception as perm_exc:
+                logger.warning(f"Failed to set hook permissions under {target_path}: {perm_exc}")
             return True
 
         except Exception as e:
@@ -175,9 +187,34 @@ class ResourceManager:
         for resource in claude_resources:
             target_path = project_path / resource
             if self.copy_template(resource, target_path, overwrite):
+                # 실행 권한 보장 (이중 안전장치)
+                try:
+                    self._ensure_hook_permissions(target_path)
+                except Exception as e:
+                    logger.warning(f"Hook permission ensure skipped: {e}")
                 copied_files.append(target_path)
 
         return copied_files
+
+    def _ensure_hook_permissions(self, claude_root: Path) -> None:
+        """Ensure executable permissions for hook python files.
+
+        대상: {claude_root}/hooks/moai/*.py
+        Windows에서는 무시(권한 비트 미사용)되지만 호출 자체는 안전합니다.
+        """
+        try:
+            hooks_dir = claude_root / 'hooks' / 'moai'
+            if not hooks_dir.exists() or not hooks_dir.is_dir():
+                return
+            for py_file in hooks_dir.glob('*.py'):
+                try:
+                    # 0o755: 소유자 실행/읽기/쓰기, 그룹/기타 실행/읽기
+                    py_file.chmod(0o755)
+                    logger.debug("Set executable permission: %s", py_file)
+                except Exception as file_exc:
+                    logger.warning("Failed to chmod +x %s: %s", py_file, file_exc)
+        except Exception as exc:
+            logger.warning("Failed to ensure hook permissions under %s: %s", claude_root, exc)
 
     def copy_moai_resources(self, project_path: Path,
                            overwrite: bool = False,

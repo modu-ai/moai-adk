@@ -8,7 +8,7 @@
       "implementation": 0.0,
       "quality": 0.0
     },
-    "description": "MoAI-ADK 14-Core TAG 시스템 추적성 매트릭스"
+    "description": "MoAI-ADK 16-Core TAG 시스템 추적성 매트릭스"
   },
   "chains": {
     "primary": {

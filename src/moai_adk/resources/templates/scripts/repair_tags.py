@@ -383,7 +383,7 @@ class TagRepairer:
             traceability_data = json.loads(traceability_path.read_text())
         else:
             traceability_data = {
-                'metadata': {'version': '14-core', 'total_links': 0},
+                'metadata': {'version': '16-Core', 'total_links': 0},
                 'chains': self.traceability_chains,
                 'links': []
             }

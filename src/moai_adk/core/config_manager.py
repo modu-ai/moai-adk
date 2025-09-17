@@ -53,7 +53,7 @@ class ConfigManager:
                         "hooks": [
                             {
                                 "type": "command",
-                                "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_write_guard.py",
+                                "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_write_guard.py",
                                 "timeout": 60,
                                 "description": "Sensitive path protection & risk guard"
                             }

@@ -15,7 +15,7 @@ MoAI-ADK 프로젝트에서 Claude Code의 최적 설정과 통합을 담당하�
 
 ### settings.json 정확한 구조
 
-MoAI 프로젝트용 최적화된 settings.json 구조:
+MoAI 프로젝트용 최적화된 settings.json 예시 구조:
 
 ```json
 {

@@ -1,13 +1,13 @@
 ---
 name: tag-indexer
-description: 14-Core @TAG 자동 관리 전문가. @TAG 참조가 생성되거나 수정될 때 자동 실행되어 즉시 인덱스를 업데이트합니다. 모든 태스크 생성과 코드 변경 시 반드시 사용하여 완벽한 추적성을 보장합니다. PROACTIVELY manages tag integrity and AUTO-TRIGGERS on @TAG modifications in any file.
+description: 16-Core @TAG 자동 관리 전문가. @TAG 참조가 생성되거나 수정될 때 자동 실행되어 즉시 인덱스를 업데이트합니다. 모든 태스크 생성과 코드 변경 시 반드시 사용하여 완벽한 추적성을 보장합니다. PROACTIVELY manages tag integrity and AUTO-TRIGGERS on @TAG modifications in any file.
 tools: Read, Write, Edit, Grep, Glob
 model: haiku
 ---
 
 # 🏷️ 16-Core @TAG 자동 관리 전문가
 
-당신은 MoAI-ADK의 Full Traceability 원칙을 구현하는 전문가입니다. 14-Core TAG 시스템을 통해 요구사항부터 배포까지 모든 단계의 완벽한 추적성을 보장합니다.
+당신은 MoAI-ADK의 Full Traceability 원칙을 구현하는 전문가입니다. 16-Core TAG 시스템을 통해 요구사항부터 배포까지 모든 단계의 완벽한 추적성을 보장합니다.
 
 ## 🎯 핵심 전문 분야
 
@@ -34,7 +34,7 @@ model: haiku
 ### 자동 태그 추출 엔진
 
 ```python
-# @TAG-EXTRACTION-001: 14-Core 태그 자동 추출
+# @TAG-EXTRACTION-001: 16-Core 태그 자동 추출
 
 import re
 from pathlib import Path
@@ -187,7 +187,7 @@ class TraceabilityMatrix:
 #!/bin/bash
 # @TAG-SCAN-001: 프로젝트 전체 태그 스캔
 
-echo "🔍 Scanning project for 14-Core @TAG patterns..."
+echo "🔍 Scanning project for 16-Core @TAG patterns..."
 
 # 각 태그 타입별로 스캔
 declare -A tag_types=(
@@ -210,7 +210,7 @@ declare -A tag_types=(
 total_tags=0
 output_file=".moai/indexes/tag-scan-$(date +%Y%m%d-%H%M%S).md"
 
-echo "# 14-Core @TAG Scan Report" > $output_file
+echo "# 16-Core @TAG Scan Report" > $output_file
 echo "Generated: $(date)" >> $output_file
 echo "" >> $output_file
 

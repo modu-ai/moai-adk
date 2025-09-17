@@ -351,7 +351,7 @@ React + Vue를 동시에 선택하셨습니다.
 이 마법사는 다음 원칙을 따릅니다:
 - MoAI Constitution 5개 원칙 준수 (Simplicity, Architecture, Testing, Observability, Versioning)
 - Claude Code 공식 문서 기반 설정
-- 14-Core @TAG 시스템 자동 적용
+- 16-Core @TAG 시스템 자동 적용
 - Spec-First TDD 개발 철학 구현
 ## 🔁 응답 구조(필수)
 모든 출력은 3단계 구조를 따른다: 1) Phase 1 Results  2) Phase 2 Plan  3) Phase 3 Implementation.  

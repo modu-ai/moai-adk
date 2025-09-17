@@ -68,7 +68,7 @@ class LoginService {
 
 ### @TAG 시스템 완전 적용
 
-#### 14-Core TAG 매핑
+#### 16-Core TAG 매핑
 ```typescript
 // @REQ-USER-001: 사용자 등록 요구사항
 // @SPEC-USER-001: EARS 형식 명세

@@ -70,18 +70,18 @@
 ## 🤖 Advanced Features
 
 ### [10-agents.md](10-agents.md) - Agent 시스템
-**핵심 내용**: 11개 전문 에이전트, 병렬 실행, 모델 선택, 에이전트 협업
-**키워드**: `agents`, `parallel`, `models`, `specialization`, `automation`
+**핵심 내용**: 32개 전문 에이전트 (11개 MoAI + 21개 awesome), 병렬 실행, 모델 선택, 에이전트 협업
+**키워드**: `agents`, `parallel`, `models`, `specialization`, `automation`, `awesome`
 **난이도**: 🔴 Advanced
 
 ### [11-hooks.md](11-hooks.md) - Hook 시스템
-**핵심 내용**: pre/post 자동 검증, Python Hook, Constitution 검증, 보안 차단
-**키워드**: `hooks`, `validation`, `python`, `security`, `pre-post`
+**핵심 내용**: 11개 Hook (6개 MoAI + 5개 awesome), pre/post 자동 검증, Python Hook, Constitution 검증, 보안 차단
+**키워드**: `hooks`, `validation`, `python`, `security`, `pre-post`, `awesome`
 **난이도**: 🔴 Advanced
 
 ### [12-tag-system.md](12-tag-system.md) - TAG 추적성 시스템
 **핵심 내용**: 16-Core @TAG, 추적성 체인, 자동 인덱싱, 무결성 검사
-**키워드**: `tags`, `traceability`, `14-core`, `indexing`, `integrity`
+**키워드**: `tags`, `traceability`, `16-Core`, `indexing`, `integrity`
 **난이도**: 🔴 Advanced
 
 ### [09-output-styles.md](09-output-styles.md) - 출력 스타일

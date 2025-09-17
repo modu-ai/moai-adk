@@ -420,7 +420,7 @@ class TestBuildSystemIntegration(unittest.TestCase):
             "moai_version": "0.1.17",
             "project_type": "spec_first_tdd",
             "constitution": {"maxProjects": 3, "enforceTDD": True},
-            "tag_system": {"enabled": True, "version": "14-core"},
+            "tag_system": {"enabled": True, "version": "16-Core"},
             "quality_gates": {"coverageTarget": 0.8},
             "agents": {"core_agents": ["spec-manager", "plan-architect"]}
         }

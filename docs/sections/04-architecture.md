@@ -20,26 +20,58 @@ MoAI-ADK는 Claude Code 표준을 완전히 준수하면서도 체계적인 문�
 │   │   ├── study.md               # 깊이 있는 원리와 심화 학습
 │   │   ├── mentor.md              # 1:1 멘토링과 페어 프로그래밍
 │   │   └── audit.md               # 코드 품질 지속적 검증 개선
-│   ├── agents/moai/               # 11개 전문 에이전트
-│   │   ├── claude-code-manager.md # MoAI-Claude 통합 전문가 (v0.1.12 완성)
-│   │   ├── steering-architect.md  # Steering 문서 생성 전문가
-│   │   ├── spec-manager.md        # SPEC 문서 관리 전문가
-│   │   ├── plan-architect.md      # 계획 수립 및 ADR 관리 전문가
-│   │   ├── task-decomposer.md     # 작업 분해 전문가
-│   │   ├── code-generator.md      # TDD 기반 코드 생성 전문가
-│   │   ├── test-automator.md      # TDD 자동화 전문가 (v0.1.9 신규)
-│   │   ├── doc-syncer.md          # Living Document 동기화 전문가
-│   │   ├── tag-indexer.md         # 16-Core @TAG 시스템 관리
-│   │   ├── integration-manager.md # 외부 서비스 연동 관리
-│   │   └── deployment-specialist.md # 배포 전략 및 자동화
-│   ├── hooks/moai/               # MoAI Hook 스크립트 (Python)
-│   │   │                          # v0.1.12: stdin JSON 처리로 안정화
-│   │   ├── policy_block.py       # PreToolUse: 정책 차단 (✅ JSON 처리)
-│   │   ├── constitution_guard.py # PreToolUse: Constitution 보호 (🔧 v0.1.12 수정)
-│   │   ├── tag_validator.py      # PreToolUse: 16-Core 태그 검증 (✅ JSON 처리)
-│   │   ├── post_stage_guard.py   # PostToolUse: 단계 검수 (✅ JSON 처리)
-│   │   ├── session_start_notice.py # SessionStart: 상태 알림 (✅ JSON 처리)
-│   │   └── test_hook.py          # Hook 시스템 테스트 스크립트 (v0.1.12 신규)
+│   ├── agents/                     # 32개 전문 에이전트
+│   │   ├── moai/                   # 11개 MoAI 워크플로우 에이전트
+│   │   │   ├── claude-code-manager.md # MoAI-Claude 통합 전문가 (v0.1.12 완성)
+│   │   │   ├── steering-architect.md  # Steering 문서 생성 전문가
+│   │   │   ├── spec-manager.md        # SPEC 문서 관리 전문가
+│   │   │   ├── plan-architect.md      # 계획 수립 및 ADR 관리 전문가
+│   │   │   ├── task-decomposer.md     # 작업 분해 전문가
+│   │   │   ├── code-generator.md      # TDD 기반 코드 생성 전문가
+│   │   │   ├── test-automator.md      # TDD 자동화 전문가 (v0.1.9 신규)
+│   │   │   ├── doc-syncer.md          # Living Document 동기화 전문가
+│   │   │   ├── tag-indexer.md         # 16-Core @TAG 시스템 관리
+│   │   │   ├── integration-manager.md # 외부 서비스 연동 관리
+│   │   │   └── deployment-specialist.md # 배포 전략 및 자동화
+│   │   ├── awesome/                 # 21개 범용 개발 에이전트
+│   │   │   ├── ui-ux-designer.md    # UI/UX 설계 전문가
+│   │   │   ├── frontend-developer.md # React/반응형 전문가
+│   │   │   ├── python-pro.md        # Python 고급 전문가
+│   │   │   ├── javascript-pro.md    # JavaScript ES6+ 전문가
+│   │   │   ├── typescript-pro.md    # TypeScript 타입 시스템 전문가
+│   │   │   ├── golang-pro.md        # Go 동시성 전문가
+│   │   │   ├── rust-pro.md          # Rust 메모리 안전성 전문가
+│   │   │   ├── php-pro.md           # PHP 현대 개발 전문가
+│   │   │   ├── shell-scripting-pro.md # 셸 스크립트 자동화 전문가
+│   │   │   ├── sql-pro.md           # SQL 쿼리 최적화 전문가
+│   │   │   ├── nosql-specialist.md  # NoSQL 데이터베이스 전문가
+│   │   │   ├── backend-architect.md # 백엔드 아키텍처 전문가
+│   │   │   ├── database-architect.md # 데이터베이스 설계 전문가
+│   │   │   ├── mobile-developer.md  # 모바일 크로스플랫폼 전문가
+│   │   │   ├── test-engineer.md     # 테스트 자동화 전문가
+│   │   │   ├── code-reviewer.md     # 코드 품질 리뷰 전문가
+│   │   │   ├── debugger.md          # 디버깅/에러 분석 전문가
+│   │   │   ├── error-detective.md   # 로그 분석/패턴 탐지 전문가
+│   │   │   ├── documentation-expert.md # 기술 문서 작성 전문가
+│   │   │   ├── api-documenter.md    # API 문서화 전문가
+│   │   │   ├── prompt-engineer.md   # LLM 프롬프트 최적화 전문가
+│   │   │   └── SUB-AGENTS.md        # 전체 에이전트 가이드
+│   ├── hooks/                     # 11개 Hook 스크립트 (Python)
+│   │   ├── moai/                   # 6개 MoAI 워크플로우 Hook
+│   │   │   │                      # v0.1.12: stdin JSON 처리로 안정화
+│   │   │   ├── policy_block.py       # PreToolUse: 정책 차단 (✅ JSON 처리)
+│   │   │   ├── constitution_guard.py # PreToolUse: Constitution 보호 (🔧 v0.1.12 수정)
+│   │   │   ├── tag_validator.py      # PreToolUse: 16-Core 태그 검증 (✅ JSON 처리)
+│   │   │   ├── pre_write_guard.py    # PreToolUse: 파일 생성 가드
+│   │   │   ├── post_stage_guard.py   # PostToolUse: 단계 검수 (✅ JSON 처리)
+│   │   │   ├── session_start_notice.py # SessionStart: 상태 알림 (✅ JSON 처리)
+│   │   │   └── test_hook.py          # Hook 시스템 테스트 스크립트 (v0.1.12 신규)
+│   │   └── awesome/                 # 5개 범용 생산성 Hook
+│   │       ├── auto_formatter.py    # PostToolUse: 스마트 코드 포맷팅
+│   │       ├── auto_git_commit.py   # PostToolUse: 지능적 자동 커밋
+│   │       ├── backup_before_edit.py # PreToolUse: 편집 전 백업
+│   │       ├── test_runner.py       # PostToolUse: 자동 테스트 실행
+│   │       └── security_scanner.py  # PostToolUse: 보안 취약점 스캔
 │   ├── memory/                    # Claude Code 메모리(참조용 문서)
 │   │   ├── project_guidelines.md    # 운영 원칙 및 에이전트 지침 요약
 │   │   ├── coding_standards/        # 언어·프레임워크별 코딩 규칙(@imports)
@@ -160,7 +192,8 @@ moai_adk 패키지/
 └── resources/
     └── templates/
         ├── .claude/         # Claude Code 설정 템플릿
-        │   ├── agents/moai/ # 11개 에이전트 파일
+        │   ├── agents/moai/ # 11개 MoAI 에이전트 파일
+        │   ├── agents/awesome/ # 21개 범용 에이전트 파일
         │   ├── commands/    # 6개 슬래시 명령어
         │   └── hooks/       # 프로젝트 훅들
         ├── .moai/           # MoAI 설정 템플릿
