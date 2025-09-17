@@ -333,6 +333,26 @@ Path: .moai/specs/SPEC-001/
 - 결과물: 선택 항목에 대해 requirements.md, design.md, tasks.md 생성
 - 게이트: [NEEDS CLARIFICATION] 비율과 EARS/AC 분포 기준을 충족해야 확정 가능
 
+##### 대량 승격 인터랙션 예시
+```markdown
+1) 승격 대상을 고르세요 (체크):
+   [x] P0 차단 기능
+   [x] P1 핵심 기능
+   [ ] P2 일반 기능
+
+2) 도메인/태그 필터:
+   도메인: auth, billing
+   @REQ: SEC, PERF
+
+3) 상한 선택: 20개 (권장)
+
+4) 품질 게이트 미리보기:
+   - [NEEDS CLARIFICATION] 비율 예상: 12% (통과)
+   - EARS 분포 예상: WHEN 42%, IF 24%, WHILE 14%, WHERE 12%, UBIQ 8% (통과)
+
+5) 생성 요약 확인 → 확정
+```
+
 ### $ARGUMENTS 나머지 인자: 상세 내용
 
 두 번째 인자부터는 작업의 구체적인 내용이나 요구사항을 기술합니다.

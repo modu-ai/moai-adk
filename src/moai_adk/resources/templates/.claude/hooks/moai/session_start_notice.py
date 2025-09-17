@@ -68,10 +68,14 @@ class SessionNotifier:
 
         # steering 문서 먼저 체크
         if not self.has_steering_docs():
-            return {
-                "stage": "INIT",
-                "description": "프로젝트 셋업 필요: .moai/steering/{product.md|structure.md|tech.md} 생성"
-            }
+            # 레거시 파일명 존재 여부 감지(표준으로 카운트하지는 않음)
+            legacy = ["vision.md", "architecture.md", "techstack.md"]
+            steering_dir = self.project_root / ".moai" / "steering"
+            legacy_found = any((steering_dir / f).exists() for f in legacy)
+            desc = "프로젝트 셋업 필요: .moai/steering/{product.md|structure.md|tech.md} 생성"
+            if legacy_found:
+                desc += " (레거시 파일명 감지됨 → scripts/migrate_steering_filenames.py --apply 로 마이그레이션)"
+            return {"stage": "INIT", "description": desc}
 
         specs_dir = self.project_root / ".moai" / "specs"
 

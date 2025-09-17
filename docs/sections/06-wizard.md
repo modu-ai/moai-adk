@@ -188,6 +188,19 @@ def prefill_answers(scanned_info):
 - CI/CD 파이프라인 (.github/workflows/)
 - 개발 도구 설정 (.eslintrc, .prettierrc 등)
 
+## 레거시 Steering 파일명 마이그레이션
+
+이전 버전에서 생성된 `.moai/steering/vision.md`, `architecture.md`, `techstack.md`는 더 이상 감지되지 않습니다.
+표준 파일명(`product.md`, `structure.md`, `tech.md`)으로 마이그레이션하세요.
+
+```bash
+# 드라이런(계획만 출력)
+python scripts/migrate_steering_filenames.py
+
+# 실제 적용(기존 타겟이 있을 경우 백업 후 덮어쓰기)
+python scripts/migrate_steering_filenames.py --apply --force
+```
+
 ## 마법사 재실행
 
 ### 설정 변경/점진적 업데이트
