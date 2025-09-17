@@ -156,15 +156,6 @@ claude --model opusplan
 ├── .claude/                    # Claude Code 표준 자산
 │   ├── commands/moai/          # MoAI 슬래시 명령어 (연번순)
 │   ├── agents/moai/            # 11개 전문 에이전트
-│   ├── agents/awesome/         # 47개 범용 에이전트 (frontend/backend/mobile 등 카테고리)
-│   │   ├── frontend/
-│   │   ├── backend/
-│   │   ├── mobile/
-│   │   ├── languages/
-│   │   ├── config/
-│   │   ├── docs/
-│   │   ├── quality/
-│   │   └── general/
 │   ├── hooks/moai/             # Python Hook Scripts
 │   ├── memory/                 # 공유 메모리(링크만 유지)
 │   └── settings.json           # 권한 및 Hook 설정
@@ -225,71 +216,3 @@ claude --model opusplan
 > 버전과 최신 상태는 `moai status` 또는 `.moai/version.json`에서 확인하세요.
 
 **🗿 "명세가 없으면 코드도 없다. 테스트가 없으면 구현도 없다."**
-
----
-
-## 🖥️ moai CLI 개요(신규/업데이트)
-
-- `moai` 명령으로 프로젝트 설치/점검/업데이트를 수행합니다. 주요 명령어와 옵션은 아래와 같습니다.
-
-### 설치/초기화
-- `moai init [PATH] [--interactive|-i] [--backup|-b] [--force|-f] [--force-copy] [--quiet|-q]`
-  - `--interactive`: 대화형 마법사 실행(권장)
-  - `--backup`: 설치 전 `.moai_backup_YYYYMMDD_HHMMSS/` 자동 백업 생성
-  - `--force`: 기존 파일을 강제로 덮어쓰기(위험). `.git/`은 자동 보존됨
-  - `--force-copy`: 심볼릭 링크 대신 강제 복사 모드(Windows 권장)
-  - `--quiet`: 최소 출력 모드
-
-예시:
-```bash
-# 현재 디렉토리에 안전하게 설치(백업 권장)
-moai init . --backup
-
-# 대화형 설치 + 백업
-moai init . --interactive --backup
-```
-
-### 상태 점검
-- `moai status [--verbose|-v] [--project-path|-p PATH]`
-  - 패키지 버전과 템플릿 버전(.moai/version.json), Git/구성 상태를 요약 출력
-  - `--verbose` 시 파일 개수 등 상세 정보 표시, 템플릿이 구버전이면 경고
-
-### 시스템 점검(Doctor)
-- `moai doctor [--list-backups|-l]`
-  - 환경/프로젝트 기본 상태 점검, 존재하는 백업 목록 표시(옵션)
-
-### 백업 복원
-- `moai restore <BACKUP_DIR> [--dry-run]`
-  - `.moai_backup_*` 디렉토리에서 `.moai/`, `.claude/`, `CLAUDE.md`를 복원
-  - `--dry-run`: 실제 변경 없이 복원 대상만 미리보기
-
-### 업데이트(패키지/템플릿)
-- `moai update [--check] [--no-backup] [--verbose|-v] [--package-only] [--resources-only]`
-  - `--check`: 업데이트 필요 여부만 확인(설치 안 함)
-  - 기본 동작: 템플릿(.claude/, .moai/, CLAUDE.md) 갱신 + 버전 메타(`.moai/version.json`) 기록
-  - `--package-only`: Python 패키지(별도 `pip install --upgrade moai-adk` 안내)만
-  - `--resources-only`: 프로젝트 리소스만 갱신
-  - `--no-backup`: 업데이트 전 자동 백업 생략(비권장)
-
-업데이트 확인/실행 예시:
-```bash
-# 업데이트 필요 여부만 확인
-moai update --check
-
-# 자동 백업 후 리소스 갱신(권장)
-moai update
-```
-
-### 버전/템플릿 동기화
-- 설치/업데이트 시 `.moai/version.json`에 템플릿/패키지 버전을 기록하여 추적합니다.
-- `moai status`는 현재 템플릿과 사용 가능한 템플릿 버전을 비교해 구버전이면 경고합니다.
-
-### 안전장치 요약
-- 현재 디렉토리 설치 시 기본적으로 기존 파일을 보존하고 필요한 디렉토리만 생성합니다.
-- `--force`를 사용해야 기존 파일 삭제가 진행되며, 이 경우에도 `.git/` 디렉토리는 자동 보존 후 복원합니다.
-- 리소스는 패키지에 내장되어 심볼릭 링크 없이 “복사” 방식으로 설치됩니다(플랫폼 호환성 향상).
-
-### 고급 설정(참고)
-- `.moai/config.json`의 `templates.mode`로 템플릿 배치 방식을 제어할 수 있습니다.
-  - `copy`(기본): 프로젝트에 템플릿을 복사
-  - `package`: 패키지 내 템플릿만 참조(프로젝트로 복사하지 않음)
