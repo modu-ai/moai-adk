@@ -193,7 +193,7 @@ Some commands may benefit from specific models:
 {
     "model": "sonnet",
     "permissions": {
-        "allow": ["Read(**)", "Write(**)", "Bash(*)"]
+        "allow": ["Read(**)", "Write(**)", "Bash"]
     }
 }
 ```
@@ -217,7 +217,7 @@ Some commands may benefit from specific models:
     "model": "claude-3-opus-20240229",
     "permissions": {
         "allow": ["Read(**/src/**)", "Write(**/src/**)"],
-        "deny": ["Bash(*)"]
+        "deny": ["Bash(rm -rf *)"]
     },
     "env": {
         "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-3-opus-20240229",

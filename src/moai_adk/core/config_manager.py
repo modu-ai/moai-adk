@@ -111,13 +111,13 @@ class ConfigManager:
                 ]
             },
             "permissions": {
-                "defaultMode": "ask",
+                "defaultMode": "default",
                 "allow": [
                     "Read(**)",
                     "Grep",
                     "Glob",
                     "Task",
-                    "Bash(*)",
+                    "Bash",
                 ]
             },
         }

@@ -127,8 +127,8 @@ def analyze_project_state():
 ```json
 {
   "permissions": {
-    "defaultMode": "ask",
-    "allow": ["Read(**)", "Grep", "Glob", "Task", "Bash(*)"]
+    "defaultMode": "default",
+    "allow": ["Read(**)", "Grep", "Glob", "Task", "Bash"]
   },
   "hooks": {
     "PreToolUse": [

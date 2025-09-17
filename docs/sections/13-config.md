@@ -15,8 +15,8 @@ MoAI-ADK는 두 개의 주요 설정 파일을 사용합니다:
 ```json
 {
   "permissions": {
-    "defaultMode": "ask",
-    "allow": ["Read(**)", "Grep", "Glob", "Task", "Bash(*)"],
+    "defaultMode": "default",
+    "allow": ["Read(**)", "Grep", "Glob", "Task", "Bash"],
     "deny": []
   },
   "hooks": {
@@ -54,6 +54,9 @@ MoAI-ADK는 두 개의 주요 설정 파일을 사용합니다:
   "includeCoAuthoredBy": true
 }
 ```
+
+> **defaultMode 유효 값**: `default`, `acceptEdits`, `plan`, `bypassPermissions`.  
+> **명령 패턴**: `Bash`(모든 Bash 허용), `Bash(npm:*)`(특정 명령), `Read(**)` 등.
 
 ### Hook 설정
 ```json
