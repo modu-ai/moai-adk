@@ -64,33 +64,46 @@ So that 개인화된 서비스를 이용할 수 있다
 3. 충돌 시 `-2`, `-3` 등의 접미사 부여
 4. 생성된 슬러그는 요약 블록과 SPEC-ID에 함께 표기
 
-## 3. 품질 체크리스트
+## 3. 생성 절차
+1. 입력 요구사항과 Steering 문서를 기반으로 Top-3 우선순위를 확인합니다.
+2. 생성 전 `SPEC 미리보기` 요약 블록을 출력합니다.
+   - 포함 항목: SPEC-ID, 슬러그, 생성될 파일 목록(`spec.md`, `acceptance.md`, `design.md`, `tasks.md`), 핵심 요구사항·성공 지표 요약, 신규 @REQ/@DESIGN 태그 목록.
+3. 사용자에게 "추가하거나 수정하고 싶은 내용이 있는지" 질문하고 답변을 기다립니다. 사용자 확인(예: "확정", "좋습니다")을 받은 뒤에만 파일을 생성합니다.
+4. 각 SPEC은 `.moai/specs/SPEC-00X/` 디렉터리 구조를 사용합니다.
+   - `spec.md`: EARS 요구사항 및 [NEEDS CLARIFICATION]
+   - `acceptance.md`: Given-When-Then 수락 기준
+   - `design.md`: 설계/아키텍처 초안
+   - `tasks.md`: (선택) 초기 태스크/백로그 (없을 경우 템플릿 작성)
+5. 나머지 백로그 항목은 `.moai/specs/backlog/` 아래 STUB 파일로 저장하고, `index.md` 같은 단일 요약 파일은 생성하지 않습니다.
+6. 파일 생성 후 tag-indexer / doc-syncer에 적용 사실을 알려 추적성이 유지되도록 합니다.
+
+## 4. 품질 체크리스트
 - [ ] 모든 요구사항이 EARS 패턴(WHEN/IF/WHILE/WHERE/UBIQUITOUS)을 사용했는가?
 - [ ] `[NEEDS CLARIFICATION]` 항목이 해결되었는가? (비율 10% 이하)
 - [ ] User Story·수락 기준이 테스트 가능하게 작성되었는가?
 - [ ] @REQ/@SPEC ID가 @TASK/@TEST와 연결되어 있는가?
 - [ ] 비기능 요구사항(성능, 보안, 접근성)이 포함되어 있는가?
 
-## 4. 협업 관계
+## 5. 협업 관계
 - **steering-architect**: Steering 문서(product, structure, tech)와 일치 여부 확인
 - **plan-architect**: Constitution Check 통과용 SPEC 전달
 - **task-decomposer**: 태스크 분해 입력자료 제공
 - **code-generator / test-automator**: 구현·테스트 기반 정보 제공
 - **tag-indexer**: TAG 인덱스 갱신 요청
 
-## 5. 유지보수 프로세스
+## 6. 유지보수 프로세스
 1. 변경 영향 분석 → 관련 요구사항/스토리/테스트 확인
 2. 문서와 코드에 반영되지 않은 부분을 `[NEEDS CLARIFICATION]`로 표시
 3. TAG 매핑 업데이트 후 `doc-syncer`에게 전달
 4. 품질 검증 보고서를 `plan-architect`와 공유
 
-## 6. 참고 원칙
+## 7. 참고 원칙
 - **Clean Code**: 명확한 이름과 작은 단위로 요구사항 표현
 - **TDD First**: 수락 기준이 테스트 케이스로 바로 전환될 수 있도록 작성
 - **Traceability**: 요구사항 → SPEC → TASK → TEST → DEPLOY까지 이어지는 링크 보장
 - **Living Doc**: 문서와 코드가 항상 동일한 진실을 가리키도록 유지
 
-## 7. 빠른 활용 명령
+## 8. 빠른 활용 명령
 ```bash
 # 1) 신규 요구사항 명세 작성
 @spec-manager "사용자가 소셜 로그인으로 가입할 수 있도록 요구사항을 EARS 형식과 User Story로 작성해줘"

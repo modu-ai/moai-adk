@@ -27,7 +27,7 @@ Claude Code 공식 문서 기반 완전 자동화 Spec-First TDD 개발 시스�
 2) 최소 질문+추천: Q1~Q4(아래)에서 추천 답변 1~3개와 “모르겠어요” 제공, 수치·단위 검증 자동화
 3) 리스크 트리거: 규제/PII/결제/보안/성능/AI 키워드 감지 시 필요한 최소 추가 질문만 수행
 4) Steering 프리셋: product/structure/tech 초안(추천/보수/경량) 미리보기→선택→확정
-5) SPEC 시드/백로그: Top-3 기능은 SPEC-001~003을 FULL(EARS+US+AC)로 생성하고, 나머지 기능들은 STUB(제목/요약/초기 @REQ, [NEEDS CLARIFICATION])로 백로그에 생성
+5) SPEC 디렉터리 구성: Top-3 기능은 `SPEC-00X/` 디렉터리를 생성하여 `spec.md`, `acceptance.md`, `design.md`, `tasks.md` 기본 문서를 작성하고, 나머지 기능은 `.moai/specs/backlog/` 아래 STUB(제목/요약/초기 @REQ, [NEEDS CLARIFICATION])로 보관
 6) 최종 답변 요약: 모든 답변·선택 사항을 요약 출력 → 수정/확정 선택
 7) 적용 요약: 생성·수정 파일 요약(diff 개요) 확인 후 적용/취소. 중단 시 다음 실행에서 자동 재개
 
@@ -148,7 +148,10 @@ Top-3 기능: 1) <f1> 2) <f2> 3) <f3>
 기술 스택: FE <...> / BE <...> / DB <...> / Infra <...>
 리스크/규제: <감지된 항목 및 기본값 요약>
 Steering 프리셋: <선택한 옵션>
+생성 예정 SPEC: Top-3 FULL → SPEC-001/002/003 (`spec.md`, `acceptance.md`, `design.md`, `tasks.md`) / 백로그 STUB → <수량>
 ```
+
+확정 전 반드시 사용자에게 누락·수정 사항이 없는지 묻고 `확정` 응답을 받은 뒤 문서를 생성합니다.
 
 확정 시 다음 단계 안내를 함께 표시합니다:
 - 다음 단계: `/moai:2-spec`으로 SPEC 시드 확인 및 [NEEDS CLARIFICATION] 해소
