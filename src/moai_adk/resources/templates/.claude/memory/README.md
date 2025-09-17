@@ -1,6 +1,6 @@
 # 메모리 시스템 인덱스(요약)
 
-이 폴더는 프로젝트 메모리의 "목차"만 보관함. 세부 지침·체크리스트는 `.moai/memory/`에 위치하며, 필요할 때마다 `@.moai/memory/...` 경로로 임포트해 사용함.
+이 폴더는 프로젝트 메모리의 "목차"만 보관함. 세부 지침·체크리스트는 모두 `.moai/memory/`에 위치하며, 필요할 때마다 `@.moai/memory/...` 경로로 임포트해 사용함.
 
 ## 우선순위 계층
 - 조직 정책 → 프로젝트 메모리(`CLAUDE.md`, `.moai/memory/*`) → 개인 메모리(`~/.claude/CLAUDE.md`)
@@ -23,6 +23,6 @@
 ## 운영 팁
 1. 새 문서를 추가할 때는 `.moai/memory/`에 작성 후 이 README에 링크만 추가함.
 2. 오래된 내용은 `.moai/memory/decisions/` 기록과 함께 정리함.
-3. `.claude/hooks/moai/context_selector.py`가 Top‑K 추천(3~5개)을 출력하므로, 콘솔 안내를 참고해 필요한 문서를 임포트함.
+3. `.claude/hooks/moai/context_selector.py`가 Top‑K 추천(3~5개)을 출력하므로, 콘솔 안내를 참고해 필요한 문서를 임포트.
 
 세부 규칙은 `@.moai/memory/constitution.md`와 기술 스택별 문서를 기준으로 유지·갱신함.

@@ -68,14 +68,7 @@ class SessionNotifier:
 
         # steering 문서 먼저 체크
         if not self.has_steering_docs():
-            # 레거시 파일명 존재 여부 감지(표준으로 카운트하지는 않음)
-            legacy = ["vision.md", "architecture.md", "techstack.md"]
-            steering_dir = self.project_root / ".moai" / "steering"
-            legacy_found = any((steering_dir / f).exists() for f in legacy)
-            desc = "프로젝트 셋업 필요: .moai/steering/{product.md|structure.md|tech.md} 생성"
-            if legacy_found:
-                desc += " (레거시 파일명 감지됨 → scripts/migrate_steering_filenames.py --apply 로 마이그레이션)"
-            return {"stage": "INIT", "description": desc}
+            return {"stage": "INIT", "description": "프로젝트 셋업 필요 (steering 문서 생성)"}
 
         specs_dir = self.project_root / ".moai" / "specs"
 
@@ -94,22 +87,73 @@ class SessionNotifier:
 
         if not spec_dirs:
             return {"stage": "SPECIFY", "description": "첫 번째 요구사항 작성 필요"}
-        
-        # 가장 최근 SPEC 디렉토리 분석
-        latest_spec = max(spec_dirs, key=lambda d: d.stat().st_mtime)
-        
-        has_spec = (latest_spec / "spec.md").exists()
-        has_plan = (latest_spec / "plan.md").exists()
-        has_tasks = (latest_spec / "tasks.md").exists()
-        
+
+        # 모든 SPEC의 상태 분석
+        specs_analysis = []
+        for spec_dir in spec_dirs:
+            spec_file = spec_dir / "spec.md"
+            plan_file = spec_dir / "plan.md"
+            tasks_file = spec_dir / "tasks.md"
+
+            status = "empty"
+            needs_clarification = False
+
+            if spec_file.exists():
+                try:
+                    with open(spec_file, 'r', encoding='utf-8') as f:
+                        content = f.read().strip()
+
+                    if '[NEEDS CLARIFICATION' in content:
+                        needs_clarification = True
+                        status = "needs_clarification"
+                    elif len(content) > 500:
+                        if tasks_file.exists():
+                            status = "has_tasks"
+                        elif plan_file.exists():
+                            status = "has_plan"
+                        else:
+                            status = "spec_complete"
+                    else:
+                        status = "spec_incomplete"
+                except:
+                    status = "error"
+
+            specs_analysis.append({
+                "name": spec_dir.name,
+                "status": status,
+                "needs_clarification": needs_clarification,
+                "mtime": spec_dir.stat().st_mtime
+            })
+
+        # 우선순위: 명확화 필요 > 미완료 SPEC > 완료된 SPEC 중 다음 단계
+        clarification_needed = [s for s in specs_analysis if s["needs_clarification"]]
+        if clarification_needed:
+            spec = clarification_needed[0]
+            return {"stage": "SPECIFY", "description": f"명확화 필요: {spec['name']}", "spec_id": spec['name']}
+
+        incomplete_specs = [s for s in specs_analysis if s["status"] in ["empty", "spec_incomplete"]]
+        if incomplete_specs:
+            spec = incomplete_specs[0]
+            return {"stage": "SPECIFY", "description": f"SPEC 작성 미완료: {spec['name']}", "spec_id": spec['name']}
+
+        # 다음 단계가 필요한 SPEC 찾기
+        spec_complete = [s for s in specs_analysis if s["status"] == "spec_complete"]
+        if spec_complete:
+            spec = max(spec_complete, key=lambda s: s["mtime"])
+            return {"stage": "PLAN", "description": f"계획 수립 필요: {spec['name']}", "spec_id": spec['name']}
+
+        has_plan = [s for s in specs_analysis if s["status"] == "has_plan"]
+        if has_plan:
+            spec = max(has_plan, key=lambda s: s["mtime"])
+            return {"stage": "TASKS", "description": f"작업 분해 필요: {spec['name']}", "spec_id": spec['name']}
+
+        has_tasks = [s for s in specs_analysis if s["status"] == "has_tasks"]
         if has_tasks:
-            return {"stage": "IMPLEMENT", "description": f"구현 진행 중: {latest_spec.name}", "spec_id": latest_spec.name}
-        elif has_plan:
-            return {"stage": "TASKS", "description": f"작업 분해 필요: {latest_spec.name}", "spec_id": latest_spec.name}
-        elif has_spec:
-            return {"stage": "PLAN", "description": f"계획 수립 필요: {latest_spec.name}", "spec_id": latest_spec.name}
-        else:
-            return {"stage": "SPECIFY", "description": f"SPEC 작성 미완료: {latest_spec.name}", "spec_id": latest_spec.name}
+            spec = max(has_tasks, key=lambda s: s["mtime"])
+            return {"stage": "IMPLEMENT", "description": f"구현 진행 중: {spec['name']}", "spec_id": spec['name']}
+
+        # 모든 SPEC이 완료된 경우
+        return {"stage": "SYNC", "description": "문서 동기화 및 품질 검증 필요"}
     
     def count_specs(self) -> Dict[str, int]:
         """SPEC 개수 통계"""
@@ -132,18 +176,17 @@ class SessionNotifier:
         complete = 0
 
         for spec_dir in spec_dirs:
-            # spec.md와 acceptance.md가 모두 있고 완성된 경우
+            # spec.md 파일 존재 여부와 내용 확인
             spec_file = spec_dir / "spec.md"
-            acceptance_file = spec_dir / "acceptance.md"
 
-            if spec_file.exists() and acceptance_file.exists():
+            if spec_file.exists():
                 try:
                     # spec.md 내용 확인 (빈 파일이 아닌지)
                     with open(spec_file, 'r', encoding='utf-8') as f:
                         spec_content = f.read().strip()
 
                     # [NEEDS CLARIFICATION] 마커가 없고 실제 내용이 있는 경우만 완료로 처리
-                    if spec_content and '[NEEDS CLARIFICATION' not in spec_content and len(spec_content) > 100:
+                    if spec_content and '[NEEDS CLARIFICATION' not in spec_content and len(spec_content) > 500:
                         complete += 1
                 except:
                     pass
@@ -174,12 +217,11 @@ class SessionNotifier:
 
         for spec_dir in spec_dirs:
             spec_file = spec_dir / "spec.md"
-            acceptance_file = spec_dir / "acceptance.md"
 
             # 파일이 없거나 미완료인 경우
             is_incomplete = False
 
-            if not spec_file.exists() or not acceptance_file.exists():
+            if not spec_file.exists():
                 is_incomplete = True
             else:
                 try:
@@ -187,7 +229,7 @@ class SessionNotifier:
                         content = f.read().strip()
 
                     # [NEEDS CLARIFICATION] 마커가 있거나 내용이 부족한 경우
-                    if '[NEEDS CLARIFICATION' in content or len(content) < 100:
+                    if '[NEEDS CLARIFICATION' in content or len(content) < 500:
                         is_incomplete = True
                 except:
                     is_incomplete = True
@@ -222,7 +264,36 @@ class SessionNotifier:
         
         tasks_info["pending"] = tasks_info["total"] - tasks_info["completed"] - tasks_info["in_progress"]
         return tasks_info
-    
+
+    def get_next_pending_task(self) -> Optional[str]:
+        """대기 중인 다음 작업 ID 찾기"""
+        specs_dir = self.project_root / ".moai" / "specs"
+
+        if not specs_dir.exists():
+            return None
+
+        for spec_dir in specs_dir.iterdir():
+            if spec_dir.is_dir() and spec_dir.name.startswith("SPEC-"):
+                tasks_file = spec_dir / "tasks.md"
+                if tasks_file.exists():
+                    try:
+                        with open(tasks_file, 'r', encoding='utf-8') as f:
+                            content = f.read()
+
+                        # 간단한 작업 ID 추출 (T001, T002 등)
+                        import re
+                        pending_tasks = re.findall(r'(T\d{3})', content)
+                        completed_tasks = re.findall(r'(T\d{3}).*✅', content)
+
+                        # 완료되지 않은 첫 번째 작업 찾기
+                        for task_id in pending_tasks:
+                            if task_id not in completed_tasks:
+                                return task_id
+                    except:
+                        pass
+
+        return None
+
     def get_last_activity(self) -> Optional[str]:
         """최근 활동 시간"""
         if self.state_path.exists():
@@ -320,11 +391,24 @@ class SessionNotifier:
         """상황에 맞는 스마트 추천 생성"""
         recommendations = []
 
-        # 1. Git 상태 기반 추천
-        if not git_status["clean"]:
-            recommendations.append("git add . && git commit -m 'WIP: 진행 중인 작업 임시 저장'  # 변경사항 커밋")
+        # 시간 기반 컨텍스트 확인
+        hour = datetime.now().hour
+        is_work_hours = 9 <= hour <= 18
 
-        # 2. 파이프라인 단계별 기본 추천
+        # 최근 활동 분석
+        last_commit = self.get_last_commit_info()
+        recent_activity = last_commit and "minutes" in (last_commit.get("date", "") or "")
+
+        # 1. 우선순위 알림 (긴급한 것부터)
+        # Git 상태가 더러우면 먼저 정리
+        if not git_status["clean"]:
+            total_changes = git_status["modified"] + git_status["added"] + git_status["deleted"] + git_status["untracked"]
+            if total_changes > 10:
+                recommendations.append("git add . && git commit -m 'WIP: 대량 변경사항 임시 저장'  # ⚠️ 많은 변경사항 커밋 권장")
+            else:
+                recommendations.append("git add . && git commit -m 'WIP: 진행 중인 작업 임시 저장'  # 변경사항 커밋")
+
+        # 2. 파이프라인 단계별 상황 인식 추천
         if pipeline["stage"] == "INIT":
             if not self.has_steering_docs():
                 recommendations.append("/moai:1-project init  # 프로젝트 초기화 및 steering 문서 생성")
@@ -332,38 +416,90 @@ class SessionNotifier:
                 recommendations.append("/moai:2-spec '첫 번째 기능 요구사항'  # 첫 SPEC 작성")
 
         elif pipeline["stage"] == "SPECIFY":
-            if incomplete:
-                recommendations.append(f"/moai:2-spec {incomplete[0]}  # 미완료 SPEC 완성")
+            spec_id = pipeline.get("spec_id")
+            if spec_id and "명확화 필요" in pipeline["description"]:
+                # 명확화 필요한 SPEC 우선 처리
+                recommendations.append(f"/moai:2-spec {spec_id}  # 🔍 명확화 마커 해결 (우선순위 높음)")
+            elif spec_id:
+                recommendations.append(f"/moai:2-spec {spec_id}  # SPEC 작성 완료")
             else:
-                recommendations.append("/moai:2-spec '새로운 기능 요구사항'  # 새 SPEC 작성")
+                # 병렬 처리 제안
+                if specs["total"] > 0:
+                    recommendations.append("/moai:2-spec all  # 🚀 모든 SPEC 병렬 생성 (권장)")
+                else:
+                    recommendations.append("/moai:2-spec '새로운 기능 요구사항'  # 첫 SPEC 작성")
 
         elif pipeline["stage"] == "PLAN":
             spec_id = pipeline.get("spec_id", "SPEC-001")
+            # Constitution 검증 필요성 강조
             recommendations.append(f"/moai:3-plan {spec_id}  # Constitution 검증 및 계획 수립")
+
+            # 계획 단계에서 추가 도움
+            if not recent_activity and not is_work_hours:
+                recommendations.append("# 💡 계획 단계는 충분한 시간을 가지고 진행하세요")
 
         elif pipeline["stage"] == "TASKS":
             spec_id = pipeline.get("spec_id", "SPEC-001")
             recommendations.append(f"/moai:4-tasks {spec_id}  # TDD 작업 분해")
 
+            # 작업 분해 후 즉시 구현 제안
+            if specs["complete"] > 0:
+                recommendations.append("# 다음: 작업 완료 후 /moai:5-dev로 구현 시작")
+
         elif pipeline["stage"] == "IMPLEMENT":
             if tasks["pending"] > 0:
-                recommendations.append("/moai:5-dev T001  # 다음 작업 구현 (Red-Green-Refactor)")
-            else:
-                recommendations.append("/moai:6-sync  # 문서 동기화 및 TAG 정리")
+                # 첫 번째 대기 중인 작업 찾기
+                next_task = self.get_next_pending_task()
+                if next_task:
+                    recommendations.append(f"/moai:5-dev {next_task}  # 다음 작업 구현 (Red-Green-Refactor)")
+                else:
+                    recommendations.append("/moai:5-dev T001  # 다음 작업 구현 (Red-Green-Refactor)")
 
-        # 3. 상황별 추가 추천
-        if specs["incomplete"] > 0:
+                # 집중도 향상 제안
+                if tasks["in_progress"] > 1:
+                    recommendations.append("# ⚠️ 한 번에 하나의 작업에 집중하세요!")
+            else:
+                recommendations.append("/moai:6-sync  # 모든 작업 완료! 문서 동기화")
+
+        elif pipeline["stage"] == "SYNC":
+            recommendations.append("/moai:6-sync  # 문서 동기화 및 TAG 정리")
+
+            # 추적성 검증 우선순위
+            tag_health = self.analyze_tag_health()
+            if tag_health.get("health_score", 100) < 80:
+                recommendations.append("python .moai/scripts/check-traceability.py --repair  # TAG 추적성 복구")
+            else:
+                recommendations.append("python .moai/scripts/check-traceability.py  # TAG 추적성 검증")
+
+        # 3. 상황별 지능형 추천
+        # 미완료 작업이 많으면 집중 권고
+        if specs["incomplete"] > 2:
+            recommendations.append(f"# 📝 {specs['incomplete']}개의 미완료 SPEC - 우선순위를 정하고 집중하세요")
+        elif specs["incomplete"] > 0:
             recommendations.append(f"# 📝 {specs['incomplete']}개의 미완료 SPEC이 있습니다")
 
-        if tasks["in_progress"] > 1:
-            recommendations.append("# ⚠️ 동시에 진행 중인 작업이 여러 개입니다. 집중하세요!")
+        # 작업시간 외 권고사항
+        if not is_work_hours and recent_activity:
+            recommendations.append("# 🌙 늦은 시간 작업 중 - 충분한 휴식을 취하세요")
 
-        # 4. 품질 개선 추천
+        # 4. 품질 및 성능 개선 추천
         specs_dir = self.project_root / ".moai" / "specs"
         if specs_dir.exists():
             spec_dirs = list(specs_dir.glob("SPEC-*/"))
-            if len(spec_dirs) >= 3:
+
+            # 프로젝트 규모에 따른 추천
+            if len(spec_dirs) >= 5:
+                recommendations.append("# 🎯 대규모 프로젝트 - 정기적인 TAG 검증 권장")
+            elif len(spec_dirs) >= 3:
                 recommendations.append("python .moai/scripts/check-traceability.py  # TAG 추적성 검증")
+
+        # 5. 개발 효율성 팁
+        if len(recommendations) < 3:
+            # 개발 팁 추가
+            if pipeline["stage"] == "IMPLEMENT":
+                recommendations.append("# 💡 TDD: Red → Green → Refactor 사이클을 지키세요")
+            elif pipeline["stage"] == "PLAN":
+                recommendations.append("# 💡 Constitution 5원칙을 염두에 두고 계획하세요")
 
         return recommendations[:3]  # 최대 3개까지만 추천
     
@@ -398,9 +534,9 @@ class SessionNotifier:
         if not steering_dir.exists():
             return False
 
-        # 표준 파일명만 인정
-        modern = ["product.md", "structure.md", "tech.md"]
-        return any((steering_dir / f).exists() for f in modern)
+        # 실제 파일명에 맞춰 수정: product.md, structure.md, tech.md
+        steering_files = ["product.md", "structure.md", "tech.md"]
+        return any((steering_dir / f).exists() for f in steering_files)
 
     def get_moai_version(self) -> str:
         """MoAI 버전 동적 조회"""
@@ -463,10 +599,11 @@ class SessionNotifier:
         # 파이프라인 상태
         stage_emoji = {
             "INIT": "🚀",
-            "SPECIFY": "📝", 
+            "SPECIFY": "📝",
             "PLAN": "📋",
             "TASKS": "⚡",
-            "IMPLEMENT": "🔧"
+            "IMPLEMENT": "🔧",
+            "SYNC": "🔄"
         }
         
         current_emoji = stage_emoji.get(pipeline["stage"], "📍")
@@ -490,7 +627,7 @@ class SessionNotifier:
                 message_parts.append(f"🏷️  TAG 건강도: {tag_health['health_score']}% (개선 권장)")
             else:
                 message_parts.append(f"🏷️  TAG 건강도: {tag_health['health_score']}% ✅")
-
+        
         # 작업 디렉토리 상태
         git_status = self.get_working_directory_status()
         if not git_status["clean"]:

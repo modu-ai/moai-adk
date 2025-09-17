@@ -1,5 +1,5 @@
 ---
-description: Living Document 동기화 - 코드↔문서 실시간 동기화와 16-Core TAG 인덱싱
+description: 문서 동기화
 argument-hint: [auto|force|status] [target-path]
 allowed-tools: Read, Write, Edit, MultiEdit, Bash, Task
 ---
@@ -354,7 +354,7 @@ auto 모드가 향후 충분하므로 force 모드는 주요 리팩토링 시에
 
 해결 방법:
 먼저 프로젝트를 초기화해주세요:
-> /moai:1-project
+> /moai:1-project init
 ```
 
 ### 태그 인덱스 손상
