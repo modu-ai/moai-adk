@@ -95,6 +95,7 @@ bash .moai/scripts/run-tests.sh
 | **4** | `/moai:4-tasks`   | task-decomposer                 | TDD 작업 분해       |
 | **5** | `/moai:5-dev`     | code-generator + test-automator | 자동 구현           |
 | **6** | `/moai:6-sync`    | doc-syncer + tag-indexer        | 문서 동기화         |
+| **7** | `/moai:7-dashboard` | render_dashboard.py            | 진행 상황 모니터링   |
 
 ## 🤖 에이전트 모델 표준
 

@@ -3,7 +3,9 @@
     "allow": [
       "mcp__sequential-thinking__sequentialthinking",
       "Bash(tree:*)",
-      "Bash(moai:*)"
+      "Bash(moai:*)",
+      "Bash(rm:*)",
+      "Bash(rmdir:*)"
     ],
     "deny": [],
     "ask": []

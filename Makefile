@@ -98,28 +98,39 @@ version:
 	@python3 -c "import sys; sys.path.insert(0, 'src'); from _version import get_version_format; print(get_version_format('banner'))"
 	@python3 --version
 
-# 버전 관리 명령어들
-version-sync:
-	@echo "🔄 Synchronizing version across all files..."
-	@python3 -m moai_adk.core.version_sync
+# 새로운 버전 관리 시스템
+version-check:
+	@echo "🔍 버전 일관성 검사 중..."
+	@python3 scripts/check_version_consistency.py
 
-version-sync-dry:
-	@echo "🔍 Dry run: checking version synchronization..."
-	@python3 -m moai_adk.core.version_sync --dry-run
+version-bump-patch:
+	@echo "📦 패치 버전 업데이트 중..."
+	@python3 scripts/bump_version.py patch
 
-version-verify:
-	@echo "🔍 Verifying version consistency..."
-	@python3 -m moai_adk.core.version_sync --verify
+version-bump-minor:
+	@echo "📦 마이너 버전 업데이트 중..."
+	@python3 scripts/bump_version.py minor
 
-version-update:
-	@echo "📝 Usage: make version-set VERSION=0.2.0"
-	@echo "This will update _version.py and sync all files"
+version-bump-major:
+	@echo "📦 메이저 버전 업데이트 중..."
+	@python3 scripts/bump_version.py major
 
-# version-set target temporarily disabled due to complex Python script
-# Use scripts/update_version.py directly for version updates
-version-set:
-	@echo "⚠️  version-set target needs fixing"
-	@echo "Use: python scripts/update_version.py --version VERSION"
+# 자동 설치 포함 버전 업데이트
+version-bump-patch-auto: version-bump-patch
+	@echo "🔄 개발 모드 재설치 중..."
+	@pip install -e .
+
+version-bump-minor-auto: version-bump-minor
+	@echo "🔄 개발 모드 재설치 중..."
+	@pip install -e .
+
+version-bump-major-auto: version-bump-major
+	@echo "🔄 개발 모드 재설치 중..."
+	@pip install -e .
+
+# 레거시 호환성
+version-sync: version-check
+version-verify: version-check
 
 # 도움말
 help:
@@ -141,11 +152,12 @@ help:
 	@echo "  install-auto  - Automatic installation"
 	@echo ""
 	@echo "Version Management:"
-	@echo "  version          - Show current version info"
-	@echo "  version-sync     - Sync version across all project files"
-	@echo "  version-sync-dry - Dry run version sync (preview only)"
-	@echo "  version-verify   - Verify version consistency"
-	@echo "  version-set      - Update version (Usage: make version-set VERSION=0.2.0)"
+	@echo "  version              - Show current version info"
+	@echo "  version-check        - Check version consistency"
+	@echo "  version-bump-patch   - Bump patch version (0.1.24 → 0.1.25)"
+	@echo "  version-bump-minor   - Bump minor version (0.1.24 → 0.2.0)"
+	@echo "  version-bump-major   - Bump major version (0.1.24 → 1.0.0)"
+	@echo "  version-bump-*-auto  - Bump version + auto reinstall"
 	@echo ""
 	@echo "Utility:"
 	@echo "  help          - Show this help"
