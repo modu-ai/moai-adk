@@ -8,8 +8,7 @@ Package Optimizer - 패키지 크기 최적화 핵심 모듈
 import os
 import time
 import logging
-from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 
 
 class PackageOptimizer:
@@ -54,7 +53,7 @@ class PackageOptimizer:
         """
         total_size = 0
         try:
-            for root, dirs, files in os.walk(self.target_directory):
+            for root, _, files in os.walk(self.target_directory):
                 for file in files:
                     file_path = os.path.join(root, file)
                     try:
@@ -75,16 +74,16 @@ class PackageOptimizer:
         Returns:
             중복 파일과 큰 파일 목록이 포함된 딕셔너리
         """
-        targets = {
+        targets: Dict[str, List[str]] = {
             "duplicates": [],
             "large_files": []
         }
 
-        file_content_map = {}
+        file_content_map: Dict[str, str] = {}
         large_file_threshold = 1000  # 1KB 이상을 큰 파일로 간주
 
         try:
-            for root, dirs, files in os.walk(self.target_directory):
+            for root, _, files in os.walk(self.target_directory):
                 for file in files:
                     file_path = os.path.join(root, file)
                     try:
@@ -95,25 +94,31 @@ class PackageOptimizer:
 
                         # 내용 기반 중복 검사
                         try:
-                            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                            with open(file_path, 'r', encoding='utf-8',
+                                    errors='ignore') as f:
                                 content = f.read()[:100]  # 첫 100자만 비교
 
                             if content in file_content_map:
-                                if file_content_map[content] not in targets["duplicates"]:
-                                    targets["duplicates"].append(file_content_map[content])
+                                if (file_content_map[content] not in
+                                        targets["duplicates"]):
+                                    targets["duplicates"].append(
+                                        file_content_map[content])
                                 if file_path not in targets["duplicates"]:
                                     targets["duplicates"].append(file_path)
                             else:
                                 file_content_map[content] = file_path
                         except (UnicodeDecodeError, OSError):
                             # 바이너리 파일이나 읽기 불가능한 파일은 크기로만 비교
-                            if file_size in file_content_map:
-                                if file_content_map[file_size] not in targets["duplicates"]:
-                                    targets["duplicates"].append(file_content_map[file_size])
+                            size_key = str(file_size)
+                            if size_key in file_content_map:
+                                if (file_content_map[size_key] not in
+                                        targets["duplicates"]):
+                                    targets["duplicates"].append(
+                                        file_content_map[size_key])
                                 if file_path not in targets["duplicates"]:
                                     targets["duplicates"].append(file_path)
                             else:
-                                file_content_map[file_size] = file_path
+                                file_content_map[size_key] = file_path
 
                     except (OSError, FileNotFoundError):
                         continue
@@ -160,17 +165,20 @@ class PackageOptimizer:
                         duplicates_removed += 1
                     except (OSError, PermissionError) as e:
                         # 에러 기록하지만 계속 진행
-                        errors.append(f"Failed to remove {file_path}: {str(e)}")
+                        errors.append(
+                            f"Failed to remove {file_path}: {str(e)}")
                         continue
 
-            files_processed = len(targets["duplicates"]) + len(targets["large_files"])
+            files_processed = (len(targets["duplicates"]) +
+                             len(targets["large_files"]))
 
             # 최종 크기 측정
             final_size = self.calculate_directory_size()
 
             # 감소율 계산
             if initial_size > 0:
-                reduction_percentage = ((initial_size - final_size) / initial_size) * 100
+                reduction_percentage = (
+                    ((initial_size - final_size) / initial_size) * 100)
             else:
                 reduction_percentage = 0.0
 

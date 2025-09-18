@@ -31,7 +31,7 @@ MoAI-ADK 0.2.1은 **GitFlow 완전 투명성**을 통해 한국 개발자들이 
 | 구분 | 0.2.0 (Before) | 0.2.1 (After) | 개선 내용 |
 |------|---------------|---------------|---------|
 | **Git 투명성** | 수동 Git 명령어 필요 | **완전 투명한 GitFlow** | 사용자가 Git을 몰라도 됨 |
-| **명령어 체계** | `/moai:spec`, `/moai:build`, `/moai:sync` | **`/moai:1-spec`, `/moai:2-build`, `/moai:3-sync`** | 직관적 순서 체계 |
+| **명령어 체계** | `moai-spec`, `moai-build`, `moai-sync` | **`/moai:1-spec`, `/moai:2-build`, `/moai:3-sync`** | 직관적 순서 체계 + 표준 슬래시 명령어 |
 | **브랜치 관리** | 수동 브랜치 생성/관리 | **자동 feature 브랜치 (`feature/SPEC-XXX-{name}`)** | 100% 자동화 |
 | **PR 워크플로우** | 수동 PR 작성/관리 | **Draft PR 자동 생성 → Ready for Review** | 완전 자동화 |
 | **커밋 시스템** | 수동 커밋 메시지 작성 | **5단계 의미있는 자동 커밋** | 추적성 완벽 보장 |
@@ -87,7 +87,7 @@ graph LR
 graph TD
     A["/moai:1-spec"] --> A1[🌿 feature 브랜치 자동 생성]
     A1 --> A2[📝 EARS 명세 작성]
-    A2 --> A3[📝 4단계 자동 커밋<br/>SPEC → Stories → Acceptance → Complete]
+    A2 --> A3[📝 2단계 자동 커밋<br/>SPEC 작성 → 명세 완성]
     A3 --> A4[🔄 Draft PR 자동 생성]
 
     A4 --> B["/moai:2-build"]
@@ -139,16 +139,14 @@ You are an EARS specification expert with complete GitFlow automation capabiliti
 ## Core Workflow
 1. 🌿 Create feature branch automatically (feature/SPEC-XXX-{name})
 2. 📝 Generate EARS format specifications with 16-Core @TAG
-3. 📖 Write User Stories and GWT scenarios
-4. ✅ Define comprehensive acceptance criteria
-5. 🔄 Create Draft PR with structured description
-6. 📝 Make 4 meaningful commits during spec creation
+3. 🔄 Create Draft PR with structured description
+4. 📝 Make 2 meaningful commits during spec creation
 ```
 
 **책임 영역:**
 - **브랜치 관리**: `feature/SPEC-XXX-{name}` 패턴 자동 생성
 - **명세 작성**: EARS 형식 + 16-Core @TAG 시스템 통합
-- **4단계 커밋**: SPEC → Stories → Acceptance → Complete
+- **2단계 커밋**: SPEC 작성 → 명세 완성
 - **PR 생성**: GitHub CLI 기반 Draft PR 자동 생성
 - **사전 검증**: Constitution 5원칙 미리 확인
 
@@ -221,7 +219,7 @@ You are a documentation synchronization and PR management expert.
 # 1단계: 통합 명세 작성 완료
 📝 SPEC-001: JWT 인증 시스템 통합 명세 작성 완료
 
-# 2단계: 명세 완성 및 프로젝트 구조
+# 2단계: 명세 완성 및 Draft PR 생성
 🎯 SPEC-001: 명세 완성 및 Draft PR 생성
 ```
 
@@ -382,7 +380,7 @@ claude
    ✅ tests/auth/ 디렉토리 생성
    ✅ 기본 파일들 생성 (16-Core @TAG 포함)
 
-📝 2차 커밋: "🎯 SPEC-001: 명세 완성 및 프로젝트 구조 생성"
+📝 2차 커밋: "🎯 SPEC-001: 명세 완성 및 Draft PR 생성"
 
 🔄 Draft PR 자동 생성 중...
    ✅ GitHub PR 생성
@@ -619,7 +617,7 @@ moai migrate --from=0.2.0 --to=0.2.1 --enable-gitflow
 
 | 항목 | 0.2.0 | 0.2.1 | 자동 변환 |
 |------|-------|-------|-----------|
-| **명령어** | `/moai:spec`, `/moai:build`, `/moai:sync` | `/moai:1-spec`, `/moai:2-build`, `/moai:3-sync` | ✅ |
+| **명령어** | `moai-spec`, `moai-build`, `moai-sync` | `/moai:1-spec`, `/moai:2-build`, `/moai:3-sync` | ✅ |
 | **Git 통합** | 수동 Git 관리 | 완전 투명한 GitFlow | ✅ |
 | **브랜치 전략** | 수동 브랜치 생성 | 자동 feature 브랜치 | ✅ |
 | **커밋 시스템** | 수동 커밋 메시지 | 5단계 자동 커밋 | ✅ |
@@ -631,9 +629,9 @@ moai migrate --from=0.2.0 --to=0.2.1 --enable-gitflow
 ```bash
 # 수동 Git 관리 필요
 git checkout -b feature/jwt-auth
-/moai:spec "JWT 인증 시스템"      # 2분
+moai-spec "JWT 인증 시스템"      # 2분
 # 수동 커밋...
-/moai:build                      # 3분
+moai-build                       # 3분
 # 수동 커밋...
 # 수동 PR 생성...
 # 총 시간: ~8분 + 수동 작업
@@ -851,7 +849,7 @@ status                  # 동기화 상태 확인
 1. feature/SPEC-XXX-기능명 브랜치 생성
 2. EARS 형식 명세 작성
 3. 프로젝트 구조 생성
-4. 4단계 의미있는 커밋
+4. 2단계 의미있는 커밋
 5. Draft PR 자동 생성
 
 # 결과:
@@ -1222,28 +1220,38 @@ MoAI-ADK 0.2.1은 **GitFlow 완전 투명성**을 통한 **개발 방식의 근�
 ---
 
 **문서 버전**: 0.2.1
-**마지막 업데이트**: 2025-01-18
+**마지막 업데이트**: 2025-01-19
 **작성자**: MoAI-ADK Development Team
-#### 언어 자동 감지 Hook (SessionStart)
+### 언어 중립성 구현
 
-MoAI-ADK는 세션 시작 시 프로젝트의 사용 언어를 자동 감지해 테스트/린터/포매터 힌트를 제공합니다.
+MoAI-ADK 0.2.1은 모든 언어에서 일관되게 작동하도록 **언어 중립적** 설계를 채택했습니다.
 
-- 위치: `.claude/hooks/moai/language_detector.py`
-- 매핑: `.moai/config/language_mappings.json` (언어별 test/format/lint 도구 정의)
-- 스크립트: `.moai/scripts/detect_language.py` (독립 실행 시 JSON으로 감지 결과 출력)
+#### 지원 언어 및 도구 자동 감지
 
-예시 출력:
-```
-🌐 감지된 언어: python, javascript, typescript
-🔧 권장 도구:
-- python: test=pytest, lint=ruff, format=black
-- javascript: test=npm test, lint=eslint, format=prettier
-- typescript: test=npm test, lint=eslint, format=prettier
-💡 필요 시 /moai:2-build 단계에서 해당 도구를 사용해 TDD를 실행하세요.
-```
+- **Python**: pytest, ruff, black
+- **JavaScript/TypeScript**: npm test, eslint, prettier
+- **Go**: go test, gofmt
+- **Rust**: cargo test, rustfmt
+- **Java**: gradle/maven test
+- **.NET**: dotnet test
 
-수동 감지 실행:
+#### Bash 실행 문법 표준화
+
+모든 명령어에서 `!` 접두사를 사용하여 실제 실행을 보장합니다:
+
 ```bash
-python .moai/scripts/detect_language.py
-# 출력 예: ["python", "javascript", "typescript"]
+# 표준화된 실행 방식
+!`git status`                    # Git 상태 확인
+!`python -m pytest tests/`      # Python 테스트 실행
+!`npm test`                      # JavaScript 테스트 실행
+!`go test ./...`                 # Go 테스트 실행
+!`cargo test`                    # Rust 테스트 실행
 ```
+
+#### 최적화된 파일 크기
+
+모든 에이전트 파일을 80줄 이하로 단축하여 Claude Code 표준을 준수:
+
+- **spec-builder.md**: 252→69줄 (73% 단축)
+- **code-builder.md**: 478→95줄 (80% 단축)
+- **doc-syncer.md**: 193→79줄 (59% 단축)

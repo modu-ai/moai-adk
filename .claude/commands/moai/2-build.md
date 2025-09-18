@@ -1,49 +1,50 @@
 ---
+name: moai:2-build
 description: TDD 기반 완전 구현 - Constitution Check부터 Red-Green-Refactor까지 통합 실행
 argument-hint: <SPEC-ID>|all
-allowed-tools: Read, Write, Edit, MultiEdit, Bash, Task, WebFetch
+allowed-tools: Read, Write, Edit, MultiEdit, Bash(git:*), Bash(python3:*), Bash(pytest:*), Bash(npm:*), Bash(go:*), Bash(cargo:*), Bash(mvn:*), Bash(dotnet:*), Task, WebFetch, Grep, Glob
 ---
 
-# MoAI-ADK  TDD 구현 (GitFlow 통합)
+# MoAI-ADK 2단계: TDD 구현 (GitFlow 통합)
 
-!@ code-builder 에이전트가 Constitution Check부터 Red-Green-Refactor까지 완전 자동화합니다.
+code-builder 에이전트가 Constitution Check부터 Red-Green-Refactor까지 완전 자동화합니다.
 
 ## 🔀 TDD GitFlow 자동화 실행 코드 (완전 투명)
 
 ```bash
-# 1. Constitution 5원칙 검증
-python .moai/scripts/check_constitution.py --strict
+# 1. Constitution 5원칙 검증 (프로젝트 도구 자동 감지)
+# Constitution 체크리스트 기반 검증
 
 # 2. TDD Red-Green-Refactor 3단계 자동 커밋
 # RED 단계: 실패하는 테스트 작성
-git add tests/
-git commit -m "🔴 ${SPEC_ID}: 실패하는 테스트 작성 완료 (RED)
+!`git add tests/`
+!`git commit -m "🔴 ${SPEC_ID}: 실패하는 테스트 작성 완료 (RED)
 
 - ${TEST_COUNT}개 테스트 케이스 작성
 - Given-When-Then 구조 준수
-- 의도적 실패 확인 완료"
+- 의도적 실패 확인 완료"`
 
 # GREEN 단계: 최소 구현으로 테스트 통과
-git add src/
-git commit -m "🟢 ${SPEC_ID}: 최소 구현으로 테스트 통과 (GREEN)
+!`git add src/`
+!`git commit -m "🟢 ${SPEC_ID}: 최소 구현으로 테스트 통과 (GREEN)
 
 - 모든 테스트 통과 확인
 - 최소 요구사항 충족
-- 커버리지 ${COVERAGE_PERCENT}% 달성"
+- 커버리지 ${COVERAGE_PERCENT}% 달성"`
 
 # REFACTOR 단계: 코드 품질 개선
-git add -A
-git commit -m "🔄 ${SPEC_ID}: 코드 품질 개선 및 리팩터링 완료
+!`git add -A`
+!`git commit -m "🔄 ${SPEC_ID}: 코드 품질 개선 및 리팩터링 완료
 
 - Constitution 5원칙 준수
 - 코드 중복 제거 및 최적화
-- 문서화 및 타입 힌트 추가"
+- 문서화 및 타입 힌트 추가"`
 
 # 3. GitHub Actions CI/CD 자동 트리거
-git push origin $(git branch --show-current)
+!`git push origin $(git branch --show-current)`
 
 # 4. PR 상태 업데이트 (구현 진행률)
-gh pr edit --add-label "implementation-complete" --add-label "ready-for-review-pending"
+!`gh pr edit --add-label "implementation-complete" --add-label "ready-for-review-pending"`
 ```
 
 SPEC을 바탕으로 Constitution Check → 기술 설계 → 작업 분해 → TDD 구현까지 완전 자동화하는 MoAI-ADK의 핵심 명령어입니다.
@@ -118,51 +119,43 @@ flowchart TD
 ## 🔴🟢🔄 TDD 사이클 자동화
 
 ### RED 단계: 실패하는 테스트 작성
-```python
-# 예시: 사용자 인증 테스트
-def test_user_authentication():
-    # Given
-    user = User(email="test@example.com", password="password123")
+```
+언어별 테스트 구조 (자동 감지):
+- 테스트 파일명: test_[feature] 또는 [feature]_test
+- 테스트 함수/메서드: test_should_[behavior]
+- 패턴: Given-When-Then 구조
 
-    # When
-    token = authenticate_user(user.email, user.password)
-
-    # Then
-    assert token is not None
-    assert is_valid_jwt_token(token)
-    # 이 테스트는 처음에 실패해야 함 (RED)
+필수 테스트 케이스:
+1. Happy Path: 정상 동작 확인
+2. Edge Cases: 경계 조건 처리
+3. Error Cases: 예외 상황 처리
 ```
 
 ### GREEN 단계: 최소 구현
-```python
-def authenticate_user(email: str, password: str) -> str:
-    # 테스트를 통과시키는 최소 구현
-    if email and password:
-        return generate_jwt_token(email)
-    return None
+```
+구현 원칙:
+- 테스트 통과를 위한 최소 코드만 작성
+- 최적화나 추가 기능 없음
+- 크기 제한 준수: 함수 ≤50줄, 매개변수 ≤5개
 ```
 
 ### REFACTOR 단계: 품질 개선
-```python
-def authenticate_user(email: str, password: str) -> Optional[str]:
-    """사용자 인증 및 JWT 토큰 생성"""
-    if not _validate_email(email) or not _validate_password(password):
-        raise AuthenticationError("Invalid credentials")
-
-    user = UserRepository.find_by_email(email)
-    if user and user.verify_password(password):
-        return JWTTokenGenerator.generate(user.id)
-
-    return None
+```
+개선 체크리스트:
+- 코드 중복 제거
+- 의도를 드러내는 이름 사용
+- 단일 책임 원칙 적용
+- 오류 처리 강화
+- 성능 최적화
 ```
 
 ## 📊 커버리지 및 품질 검증
 
-### 자동 검증 항목
+### 자동 검증 항목 (언어별 도구 자동 감지)
 - **테스트 커버리지**: 최소 85% (기본값)
-- **타입 커버리지**: mypy/typescript strict 모드
-- **린팅 통과**: ruff/eslint 규칙 준수
-- **보안 검사**: bandit/semgrep 취약점 스캔
+- **타입 커버리지**: 프로젝트 타입 체커 사용
+- **린팅 통과**: 프로젝트 린터 규칙 준수
+- **보안 검사**: 언어별 보안 도구 실행
 
 ### 품질 게이트 실패 시
 ```bash
@@ -279,4 +272,3 @@ Green 단계 재구현 필요
 2. **Phase 2 Plan**: TDD 구현 계획
 3. **Phase 3 Implementation**: 실제 구현 및 검증
 
-이 명령어는 MoAI-ADK 0.2.0의 핵심으로, 완전 자동화된 TDD 구현을 제공합니다.

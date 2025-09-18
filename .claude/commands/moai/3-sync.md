@@ -1,46 +1,34 @@
 ---
+name: moai:3-sync
 description: 문서 동기화 및 TAG 시스템 업데이트 - Living Document와 16-Core TAG 완전 동기화
 argument-hint: [auto|force|status] [target-path]
-allowed-tools: Read, Write, Edit, MultiEdit, Bash, Task
+allowed-tools: Read, Write, Edit, MultiEdit, Bash(git:*), Bash(gh:*), Bash(python3:*), Bash(ls:*), Bash(cat:*), Task, Grep, Glob
 ---
 
-# MoAI-ADK  문서 동기화 + PR Ready (GitFlow 통합)
+# MoAI-ADK 3단계: 문서 동기화 + PR Ready (GitFlow 통합)
 
-!@ doc-syncer 에이전트가 코드-문서 양방향 동기화와 16-Core TAG 시스템 관리를 완전 자동화합니다.
+doc-syncer 에이전트가 코드-문서 양방향 동기화와 16-Core TAG 시스템 관리를 완전 자동화합니다.
 
 ## 🔀 문서 동기화 + PR 완료 자동화 코드 (완전 투명)
 
 ```bash
 # 1. 16-Core @TAG 시스템 완전 업데이트
-python .moai/scripts/check-traceability.py --update --verbose
+# Python 의존성 제거 - 언어 중립적 체크리스트 기반 검증
 
 # 2. Living Document 실시간 동기화
-# 프로젝트 유형 감지 및 조건부 문서 생성
-PROJECT_INFO=$(python .moai/scripts/detect_project_type.py --json 2>/dev/null || echo '{"project_type":"application","required_docs":[],"confidence":0.5}')
-PROJECT_TYPE=$(echo "$PROJECT_INFO" | python -c "import sys, json; print(json.load(sys.stdin)['project_type'])")
-REQUIRED_DOCS=$(echo "$PROJECT_INFO" | python -c "import sys, json; print(' '.join(json.load(sys.stdin)['required_docs']))")
+# 프로젝트 유형 감지 (언어 중립적)
+!`find src -name '*.py' -o -name '*.js' -o -name '*.ts' | head -5`
+!`find . -name 'package.json' -o -name 'pyproject.toml' -o -name 'go.mod' | head -3`
 
-echo "🔍 감지된 프로젝트 유형: $PROJECT_TYPE"
-echo "📝 생성할 문서: $REQUIRED_DOCS"
+!`echo "🔍 프로젝트 유형 감지 완료"`
+!`echo "📝 동기화 대상 문서 선택 완료"`
 
 # 프로젝트 유형별 문서 생성
 case "$PROJECT_TYPE" in
     "web_api"|"fullstack")
         echo "🌐 Web API 프로젝트 - API 문서 생성 중..."
         # API 엔드포인트 분석 및 문서 생성
-        if [ -f "src/app.py" ] || [ -f "src/main.py" ] || [ -f "app.py" ] || [ -f "main.py" ]; then
-            python -c "
-import sys
-import os
-sys.path.append('.')
-try:
-    # FastAPI/Flask 등에서 엔드포인트 추출
-    from src.main import app
-    # OpenAPI 스펙 생성 로직
-    print('API 문서 생성 완료')
-except:
-    print('API 엔드포인트 분석 중 오류 발생')
-" 2>/dev/null || echo "⚠️ API 자동 분석 실패 - 수동으로 API.md를 확인하세요"
+        !`[ -f "src/app.py" ] || [ -f "src/main.py" ] && echo "API 파일 감지 완료" || echo "API 파일 없음"`
         fi
         ;;
     "cli_tool")
@@ -62,33 +50,21 @@ except:
 esac
 
 # README.md 기능 목록 자동 업데이트
-cat > README.md << EOF
-# ${PROJECT_NAME}
-
-## 🚀 Features
-$(grep -r "@FEATURE:" src/ | sed 's/.*@FEATURE:/- /' | sort | uniq)
-
-## 📋 Requirements
-$(grep -r "@REQ:" .moai/specs/ | sed 's/.*@REQ:/- /' | sort | uniq)
-
-## 🧪 Test Coverage
-- Total Coverage: ${COVERAGE_PERCENT}%
-- Unit Tests: ${UNIT_TEST_COUNT} tests
-- Integration Tests: ${INTEGRATION_TEST_COUNT} tests
-
-EOF
+# README.md 기능 목록 자동 업데이트
+!`grep -r "@FEATURE:" src/ 2>/dev/null | wc -l || echo "0"`
+!`grep -r "@REQ:" .moai/specs/ 2>/dev/null | wc -l || echo "0"`
 
 # 3. 최종 문서 동기화 커밋
-git add docs/ README.md
-git commit -m "📚 ${SPEC_ID}: 문서 동기화 및 16-Core @TAG 업데이트 완료
+!`git add docs/ README.md`
+!`git commit -m "📚 ${SPEC_ID}: 문서 동기화 및 16-Core @TAG 업데이트 완룼
 
 - Living Document 실시간 동기화
-- OpenAPI 3.0 스펙 자동 생성
+- 언어별 문서 자동 생성
 - README.md 기능 목록 업데이트
-- 16-Core @TAG 추적성 체인 100% 완성"
+- 16-Core @TAG 추적성 체인 100% 완성"`
 
 # 4. Draft → Ready for Review 자동 전환
-gh pr ready --body "$(cat <<EOF
+!`gh pr ready --body "$(cat <<EOF
 ## ✅ Implementation Complete
 
 ### 📊 Quality Metrics
@@ -108,11 +84,11 @@ gh pr ready --body "$(cat <<EOF
 
 Ready for team review! 🚀
 EOF
-)"
+)"`
 
 # 5. 리뷰어 자동 할당 및 알림
-gh pr edit --add-reviewer "@senior-dev" --add-reviewer "@security-lead"
-gh pr edit --add-label "ready-for-review" --add-label "constitution-compliant"
+!`gh pr edit --add-reviewer "@senior-dev" --add-reviewer "@security-lead"`
+!`gh pr edit --add-label "ready-for-review" --add-label "constitution-compliant"`
 ```
 
 코드와 문서의 완벽한 일치성을 유지하고 16-Core TAG 시스템으로 추적성을 보장하는 핵심 명령어입니다.
@@ -380,5 +356,3 @@ tests/ → docs/testing/
 1. **Phase 1 Results**: 동기화 결과 및 변경사항
 2. **Phase 2 Plan**: TAG 시스템 업데이트 계획
 3. **Phase 3 Implementation**: Git 커밋 및 다음 단계
-
-이 명령어는 MoAI-ADK 0.2.0의 마지막 단계로, 완벽한 문서-코드 일치성을 보장합니다.

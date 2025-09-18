@@ -1,12 +1,13 @@
 ---
+name: moai:1-spec
 description: EARS 형식 명세 작성 - 비즈니스 요구사항을 구조화된 명세로 변환
 argument-hint: <feature-description>|<SPEC-ID>|--project [additional-details...]
-allowed-tools: Read, Write, Edit, MultiEdit, Bash, Task
+allowed-tools: Read, Write, Edit, MultiEdit, Bash(git:*), Bash(gh:*), Bash(ls:*), Bash(mkdir:*), Bash(python3:*), Task, Grep, Glob
 ---
 
-# MoAI-ADK  SPEC 작성 (GitFlow 통합)
+# MoAI-ADK 1단계: SPEC 작성 (GitFlow 통합)
 
-!@ spec-builder 에이전트를 활용해 비즈니스 요구사항을 EARS 형식의 엔지니어링 명세로 변환하고 GitFlow 워크플로우를 자동 통합합니다.
+spec-builder 에이전트를 활용해 비즈니스 요구사항을 EARS 형식의 엔지니어링 명세로 변환하고 GitFlow 워크플로우를 자동 통합합니다.
 
 ## 🔀 GitFlow 자동화 실행 코드 (완전 투명)
 
@@ -263,20 +264,20 @@ Then 3초 이내에 JWT 토큰을 생성하고
 
 ## 🔄 완료 후 다음 단계
 
-###  GitFlow 통합 워크플로우
+### GitFlow 통합 워크플로우
 ```bash
-✅ SPEC 작성 + GitFlow 완료!
+✅ 1단계 SPEC 작성 + GitFlow 완료!
 
 🔀 Git 작업 (자동 완료):
 ├── feature/SPEC-001-user-auth 브랜치 생성
-├── 4단계 커밋 완료 (SPEC → Stories → 수락기준 → 최종)
+├── 2단계 커밋 완료 (SPEC 통합 명세 → 명세 완성)
 └── Draft PR #123 생성: "SPEC-001: 사용자 인증 시스템"
 
 📁 생성된 파일:
 └── .moai/specs/SPEC-001/
     └── spec.md (EARS 요구사항 + User Stories + 수락 기준 통합)
 
-🎯 다음 단계 (2단계 파이프라인):
+🎯 다음 단계 (MoAI-ADK 0.2.1 파이프라인):
 > /moai:2-build SPEC-001  # TDD 구현 (자동 PR 업데이트)
 > /moai:3-sync           # 문서 동기화 + PR Ready
 ```
@@ -307,5 +308,3 @@ Then 3초 이내에 JWT 토큰을 생성하고
 1. **Phase 1 Results**: SPEC 생성 결과
 2. **Phase 2 Plan**: 다음 단계 계획
 3. **Phase 3 Implementation**: 구체적 실행 안내
-
-이 명령어는 MoAI-ADK 0.2.0의 핵심으로, 단순화된 인터페이스로 강력한 SPEC 작성을 제공합니다.

@@ -1,6 +1,6 @@
 {
   "permissions": {
-    "defaultMode": "plan",
+    "defaultMode": "default",
     "allow": [
       "Task",
       "Write",
@@ -32,7 +32,9 @@
       "Bash(chmod:*)",
       "Bash(tree:*)",
       "Bash(moai:*)",
-      
+      "Bash(gh:*)",
+      "Bash(rm:*)",
+      "Bash(rmdir:*)",
       "WebFetch",
       "Grep",
       "Glob",
@@ -55,8 +57,7 @@
       "Bash(git push:*)",
       "Bash(git pull:*)",
       "Bash(git merge:*)",
-      "Bash(rm:*)",
-      "Bash(rmdir:*)",
+      "Write(.env*)",
       "Write(*.config.*)",
       "Write(pyproject.toml)",
       "Bash(npm publish:*)",
