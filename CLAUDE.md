@@ -4,7 +4,7 @@
 
 ## 🗿 시스템 개요
 
-MoAI-ADK는 4단계 파이프라인(SPECIFY → PLAN → TASKS → IMPLEMENT)을 통한 완전 자동화 개발 환경을 제공합니다.
+MoAI-ADK는 3단계 파이프라인(SPECIFY → BUILD → SYNC)을 통한 완전 자동화 개발 환경을 제공합니다.
 
 ### 메모리 계층 & 임포트 규칙(요약)
 - 계층: 조직 정책 → 프로젝트 메모리(이 파일 및 @.claude/memory/*) → 사용자 메모리(`~/.claude/CLAUDE.md`)
@@ -63,16 +63,10 @@ MoAI-ADK는 4단계 파이프라인(SPECIFY → PLAN → TASKS → IMPLEMENT)을
 ### 2. 첫 번째 기능 개발 (자동화)
 
 ```bash
-# 단일 기능 명세 작성
-/moai:2-spec "JWT 기반 사용자 인증 시스템"
-
-# 전체 프로젝트 SPEC 병렬 생성 (권장)
-/moai:2-spec all
-
-# 이후 단계별 진행
-/moai:3-plan SPEC-001
-/moai:4-tasks PLAN-001
-/moai:5-dev T001
+# 3단계 완전 자동화 파이프라인
+/moai:1-spec "JWT 기반 사용자 인증 시스템"
+/moai:2-build SPEC-001
+/moai:3-sync
 ```
 
 ### 3. 품질 검증
@@ -90,12 +84,9 @@ bash .moai/scripts/run-tests.sh
 | 순서  | 명령어            | 담당 에이전트                   | 기능                |
 | ----- | ----------------- | ------------------------------- | ------------------- |
 | **1** | `/moai:1-project` | steering-architect              | 프로젝트 설정       |
-| **2** | `/moai:2-spec`    | spec-manager                    | EARS 형식 명세 작성 |
-| **3** | `/moai:3-plan`    | plan-architect                  | Constitution Check  |
-| **4** | `/moai:4-tasks`   | task-decomposer                 | TDD 작업 분해       |
-| **5** | `/moai:5-dev`     | code-generator + test-automator | 자동 구현           |
-| **6** | `/moai:6-sync`    | doc-syncer + tag-indexer        | 문서 동기화         |
-| **7** | `/moai:7-dashboard` | render_dashboard.py            | 진행 상황 모니터링   |
+| **2** | `/moai:1-spec`    | spec-builder                    | EARS 형식 명세 작성 |
+| **3** | `/moai:2-build`   | code-builder                    | TDD 기반 완전 구현  |
+| **4** | `/moai:3-sync`    | doc-syncer                      | 문서 동기화         |
 
 ## 🤖 에이전트 모델 표준
 
