@@ -60,7 +60,7 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit\\(.+\\.(py|js|ts|jsx|tsx|go|java|c|cpp|rs|php|rb|kt|scala|cs|swift|dart)\\)|MultiEdit\\(.+\\.(py|js|ts|jsx|tsx|go|java|c|cpp|rs|php|rb|kt|scala|cs|swift|dart)\\)|Write\\(.+\\.(py|js|ts|jsx|tsx|go|java|c|cpp|rs|php|rb|kt|scala|cs|swift|dart)\\)",
+        "matcher": "Edit\\(.+\\.(py|js|ts|jsx|tsx|go|java|c|cpp|rs|php|rb|kt|scala|cs|swift|dart|html|css|scss|sass|less)\\)|MultiEdit\\(.+\\.(py|js|ts|jsx|tsx|go|java|c|cpp|rs|php|rb|kt|scala|cs|swift|dart|html|css|scss|sass|less)\\)|Write\\(.+\\.(py|js|ts|jsx|tsx|go|java|c|cpp|rs|php|rb|kt|scala|cs|swift|dart|html|css|scss|sass|less)\\)",
         "hooks": [
           {
             "type": "command",
