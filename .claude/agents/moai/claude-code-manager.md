@@ -14,140 +14,125 @@ model: sonnet
 - MoAI 프로젝트에서 Claude Code 설정을 수정할 때는 반드시 이 에이전트를 먼저 호출합니다.
 
 ## 2. settings.json 핵심 구조
-아래 예시는 MoAI-ADK 기본 정책을 반영한 추천 값입니다. 실제 값은 프로젝트 정책에 맞춰 조정합니다.
+아래는 MoAI-ADK 0.2.1의 실제 settings.json 설정입니다. GitFlow 투명성과 ultrathin 철학을 반영한 최적화된 구성입니다.
 
 ```json
 {
   "permissions": {
-    "defaultMode": "ask",
+    "defaultMode": "default",
     "allow": [
+      "Task",
+      "Write",
       "Read",
-      "Read:.moai/**",
+      "Edit",
+      "MultiEdit",
+      "Bash(git:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(python3:*)",
+      "Bash(pytest:*)",
+      "Bash(poetry:*)",
+      "Bash(ruff:*)",
+      "Bash(mypy:*)",
+      "Bash(chmod:*)",
+      "Bash(tree:*)",
+      "Bash(moai:*)",
+      "Bash(rm:*)",
+      "Bash(rmdir:*)",
+      "WebFetch",
       "Grep",
       "Glob",
-      "Task",
-      "Bash(moai:*)",
-      "Bash(git:*)",
-      "Bash(python3:*)",
-      "Bash(pytest:*)"
+      "NotebookEdit",
+      "TodoWrite",
+      "WebSearch",
+      "BashOutput",
+      "KillShell",
+      "ExitPlanMode"
     ],
     "deny": [
-      "Write:.moai/steering/**",
-      "Edit:.moai/memory/constitution.md",
-      "Bash(rm:*)",
       "Bash(sudo:*)",
-      "Bash(chmod 777:*)",
-      "WebFetch(file://*)"
+      "Edit(.env*)",
+      "Read(.env*)",
+      "Write(.env*)"
     ],
     "ask": [
-      "Write:.moai/specs/**",
-      "Write:.moai/memory/**",
-      "Edit:**/*.py",
-      "Edit",
-      "Write",
-      "MultiEdit",
-      "Bash",
-      "WebFetch",
-      "mcp__*"
-    ],
-    "additionalDirectories": []
+      "Bash(pip install:*)",
+      "Bash(npm install:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git merge:*)",
+      "Write(.env*)",
+      "Write(*.config.*)",
+      "Write(pyproject.toml)",
+      "Bash(npm publish:*)",
+      "Bash(poetry publish:*)",
+      "Bash(docker:*)",
+      "Bash(kubectl:*)",
+      "Bash(systemctl:*)",
+      "Bash(service:*)"
+    ]
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit\\(.+\\.(py|js|ts|jsx|tsx|go|java|c|cpp|rs|php|rb|kt|scala|cs|swift|dart|html|css|scss|sass|less)\\)|MultiEdit\\(.+\\.(py|js|ts|jsx|tsx|go|java|c|cpp|rs|php|rb|kt|scala|cs|swift|dart|html|css|scss|sass|less)\\)|Write\\(.+\\.(py|js|ts|jsx|tsx|go|java|c|cpp|rs|php|rb|kt|scala|cs|swift|dart|html|css|scss|sass|less)\\)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag_validator.py"
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start_notice.py",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/constitution_guard.py",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "Write:.moai/specs/**|Edit:.moai/specs/**",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/policy_block.py",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag_validator.py",
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Write:.moai/specs/**|Edit:.moai/specs/**",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_stage_guard.py",
-            "timeout": 10
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start_notice.py"
           }
         ]
       }
     ]
-  },
-  "mcpServers": {
-    "memory": {
-      "command": "npx",
-      "args": ["@modelcontextprotocol/server-memory"],
-      "settings": {
-        "maxTokens": 50000,
-        "apiVersion": "beta"
-      }
-    },
-    "filesystem": {
-      "command": "npx",
-      "args": ["@modelcontextprotocol/server-filesystem"],
-      "env": {
-        "ALLOWED_DIRECTORIES": "${CLAUDE_PROJECT_DIR}",
-        "MAX_MCP_OUTPUT_TOKENS": "50000"
-      }
-    }
-  },
-  "environmentVariables": {
-    "MAX_MCP_OUTPUT_TOKENS": "50000",
-    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "8192",
-    "MOAI_PROJECT": "true"
   }
 }
 ```
 
 ### 권한 정책 해설
-- `defaultMode: ask` → 과감한 쓰기 작업은 항상 사용자에게 확인을 요청합니다.
-- `allow` → 읽기/검색/테스트 실행 등 안전한 명령을 즉시 허용합니다.
-- `deny` → 프로젝트를 파괴할 가능성이 있는 명령(예: `rm`, `sudo`)을 차단합니다.
-- `ask` → 명세, 메모리, `.py` 파일 편집은 항상 사용자 의사를 확인합니다.
 
-### MoAI 디렉터리 보호 우선순위
+#### MoAI-ADK 0.2.1 최적화된 설정
+- `defaultMode: default` → Claude Code 기본 동작으로 균형잡힌 보안과 생산성
+- `allow` → GitFlow 자동화에 필요한 핵심 도구들 즉시 허용
+- `deny` → 시스템 파괴 및 보안 위험 명령 차단 (sudo, .env 파일)
+- `ask` → 패키지 설치, Git 원격 조작, 인프라 명령만 확인 요청
+
+#### 핵심 허용 도구 분석
 ```yaml
-최상위 보호: .moai/steering/**, .moai/memory/constitution.md (읽기 전용)
-중간 보호: .moai/specs/**, .moai/memory/** (ask 모드)
-자유 접근: .claude/**, 프로젝트 소스 디렉터리 (허용 목록 기반)
+개발 도구:    Task, Write, Read, Edit, MultiEdit
+Git 자동화:   Bash(git:*) - GitFlow 투명성 지원
+파일 조작:    Bash(mkdir:*), Bash(cp:*), Bash(mv:*)
+검색/탐색:    Bash(ls:*), Bash(find:*), Grep, Glob
+Python 개발:  Bash(python3:*), Bash(pytest:*), Bash(poetry:*)
+코드 품질:    Bash(ruff:*), Bash(mypy:*)
+MoAI 도구:    Bash(moai:*) - 3단계 파이프라인 지원
+정리 작업:    Bash(rm:*), Bash(rmdir:*) - 안전한 파일 삭제
 ```
+
+#### 보안 차단 정책
+```yaml
+시스템 위험:  Bash(sudo:*) - 관리자 권한 차단
+환경 변수:    .env 파일 읽기/쓰기/편집 완전 차단
+```
+
+#### Hook 설정 특징
+- **TAG 검증**: 프로그램 코드 파일만 대상 (문서 제외)
+- **세션 알림**: MoAI 프로젝트 상태 자동 표시
+- **간소화**: Constitution guard, policy block 등 복잡한 Hook 제거
 
 ## 3. Hook 구성 지침
 - **SessionStart**: 프로젝트 진입 시 안내 메시지 및 상태 점검.
