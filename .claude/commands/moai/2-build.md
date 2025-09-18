@@ -55,12 +55,12 @@ SPEC을 바탕으로 Constitution Check → 기술 설계 → 작업 분해 → 
 # 단일 SPEC 완전 구현
 /moai:2-build SPEC-001
 
-# 모든 SPEC 병렬 구현
-/moai:2-build all
+# 특정 SPEC 구현
+/moai:2-build SPEC-001
 
 ```
 
-## 🔄 통합 실행 흐름
+## 🔄 순차 실행 흐름
 
 ```mermaid
 flowchart TD
@@ -71,7 +71,11 @@ flowchart TD
     E --> F[🟢 GREEN: 최소 구현]
     F --> G[🔄 REFACTOR: 품질 개선]
     G --> H[📊 커버리지 검증]
-    H --> I[✅ 완료: /moai:3-sync 대기]
+    H --> I[✅ SPEC 완료]
+    I --> J{다음 SPEC 있음?}
+    J -->|Yes| K[다음 SPEC으로 이동]
+    J -->|No| L[전체 완료: /moai:3-sync]
+    K --> A
 ```
 
 ## 🤖 code-builder 에이전트 완전 자동화
@@ -222,18 +226,22 @@ tests/
 > git add . && git commit -m "feat: implement SPEC-001"
 ```
 
-### 병렬 구현 결과 (all 옵션)
+### 순차 구현 가이드
 ```bash
-🚀 모든 SPEC 구현 완료!
+📋 SPEC 구현 순서:
 
-구현 결과:
-├── ✅ SPEC-001: 사용자 인증 (87% 커버리지)
-├── ✅ SPEC-002: 게시글 관리 (89% 커버리지)
-├── ✅ SPEC-003: 댓글 시스템 (91% 커버리지)
-└── ⚠️  SPEC-004: 결제 시스템 (외부 API 미확인)
+1단계: 핵심 기능 (P0)
+├── ✅ SPEC-001: 사용자 인증 구현 완료 (87% 커버리지)
+├── ⏳ SPEC-002: 게시글 관리 (다음 단계)
+└── ⏳ SPEC-003: 댓글 시스템 (대기 중)
 
-총 처리 시간: 12분 30초
-평균 커버리지: 89%
+2단계: 부가 기능 (P1)
+└── ⏳ SPEC-004: 관리자 대시보드 (1단계 완료 후)
+
+📝 권장 순서:
+> /moai:2-build SPEC-001  # 첫 번째
+> /moai:2-build SPEC-002  # 두 번째
+> /moai:2-build SPEC-003  # 세 번째
 ```
 
 ## ⚠️ 에러 처리

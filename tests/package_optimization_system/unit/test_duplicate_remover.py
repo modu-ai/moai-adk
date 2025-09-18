@@ -243,10 +243,11 @@ class TestDuplicateRemover:
         """
         # Arrange
         content = "Duplicate content"
-        (Path(self.temp_dir) / "accessible.txt").write_text(content)
+        (Path(self.temp_dir) / "file1.txt").write_text(content)
+        (Path(self.temp_dir) / "file2.txt").write_text(content)
 
         # 권한 에러 시뮬레이션
-        with patch('pathlib.Path.unlink', side_effect=PermissionError("Permission denied")):
+        with patch('os.remove', side_effect=PermissionError("Permission denied")):
             # Act
             result = self.remover.remove_duplicates()
 

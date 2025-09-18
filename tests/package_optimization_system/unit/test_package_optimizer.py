@@ -181,7 +181,13 @@ class TestPackageOptimizer:
         @TEST:UNIT-OPT-001
         """
         # Arrange
-        with patch('builtins.open', side_effect=PermissionError("Permission denied")):
+        # 중복 파일들 생성
+        content = "duplicate content"
+        (Path(self.temp_dir) / "file1.txt").write_text(content)
+        (Path(self.temp_dir) / "file2.txt").write_text(content)
+
+        # os.remove에서 권한 에러 시뮬레이션
+        with patch('os.remove', side_effect=PermissionError("Permission denied")):
             # Act
             result = self.optimizer.optimize()
 

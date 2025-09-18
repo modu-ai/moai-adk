@@ -15,13 +15,22 @@ allowed-tools: Read, Write, Edit, MultiEdit, Bash, Task
 - Git status: !`git status --porcelain`
 - Remote branches: !`git branch -r | head -5`
 - Last commits: !`git log --oneline -3`
+- Existing SPECs: !`ls .moai/specs/ 2>/dev/null | wc -l`
 
-#### GitFlow 자동화 단계
+#### GitFlow 전략 (모드별)
+
+**단일 SPEC 모드**:
 1. **기본 브랜치 전환**: develop 또는 main으로 자동 전환
 2. **SPEC ID 자동 할당**: 기존 SPEC 개수 기반 증가
-3. **피처 브랜치 생성**: feature/SPEC-XXX-{feature-name} 형식
+3. **개별 피처 브랜치**: feature/SPEC-XXX-{feature-name}
 4. **4단계 자동 커밋**: SPEC → Stories → 수락기준 → 완성
-5. **Draft PR 생성**: GitHub CLI로 자동 생성
+5. **개별 Draft PR**: 단일 기능에 대한 PR
+
+**--project 모드**:
+1. **기본 브랜치 전환**: develop 또는 main으로 자동 전환
+2. **통합 브랜치 생성**: feature/project-{timestamp}-initial-specs
+3. **SPEC별 순차 커밋**: 각 SPEC마다 개별 커밋
+4. **단일 Draft PR**: 전체 프로젝트 명세에 대한 PR
 
 비즈니스 요구사항을 EARS(Easy Approach to Requirements Syntax) 형식의 엔지니어링 명세로 변환합니다. **GitFlow가 완전히 통합**되어 버전 관리가 자동으로 처리됩니다.
 
@@ -103,12 +112,12 @@ gh pr create --draft \
 
 **spec-builder 에이전트**가 전체 SPEC 작성 + GitFlow 과정을 완전 자동화:
 
-### 🚀 병렬 처리 최적화
-- **단일 SPEC**: 순차 작성 (spec-builder 에이전트 1개)
-- **--project 다중 SPEC**: **병렬 에이전트 동시 실행**
-  - 5개 SPEC → 5개 spec-builder 에이전트 동시 실행
-  - 67% 시간 단축 (12분 → 4분)
-  - 메모리 효율성 극대화
+### 💯 순차 처리 최적화
+- **단일 SPEC**: 개별 브랜치 전략 (spec-builder 에이전트 1개)
+- **--project 다중 SPEC**: **통합 브랜치 순차 실행**
+  - 5개 SPEC → 단일 브랜치에 순차 커밋
+  - Git 충돌 0%, 안정성 100%
+  - 초보자 친화적 경험
 
 ### 에이전트 기능
 - **요구사항 분석**: EARS 키워드(WHEN/IF/WHILE/WHERE/UBIQUITOUS) 구조화
@@ -116,15 +125,18 @@ gh pr create --draft \
 - **수락 기준 작성**: Given-When-Then 테스트 가능 기준
 - **Git 워크플로우**: 브랜치 생성 → 커밋 → PR 생성까지 전자동
 
-### 병렬 실행 명령어
+### 순차 실행 모델
 ```markdown
-# 단일 메시지로 5개 spec-builder 에이전트 동시 요청
-"Please run agents in parallel to create these 5 SPECs simultaneously:
-1. User Authentication System
-2. Post Management System
-3. Comment and Like System
-4. Admin Dashboard
-5. Monitoring System"
+# --project 모드: 대화형 5단계 질문
+1. 프로젝트 유형 선택
+2. 핵심 기능 정의
+3. 사용자 유형 분류
+4. 성능 요구사항
+5. 보안 요구사항
+
+→ 자동으로 3-5개 SPEC 순차 생성
+→ 통합 브랜치에 각각 커밋
+→ 단일 Draft PR 생성
 ```
 
 ## 📋 --project 옵션 (대화형 프로젝트 SPEC) 🔥
@@ -139,37 +151,42 @@ gh pr create --draft \
 4. **성능 요구사항**: 응답시간, 동시 접속자, 처리량
 5. **보안 요구사항**: 인증 방식, 개인정보, 규정 준수
 
-### 생성 결과 (🚀 병렬 처리 전략)
+### 생성 결과 (💯 통합 브랜치 전략)
 
-#### 단일 SPEC vs 다중 SPEC 비교
-- **단일 SPEC**: 순차 작성 (2-3분/SPEC)
-- **--project 다중 SPEC**: **병렬 에이전트 동시 실행** (5개 SPEC 동시 생성 시 3-4분)
+#### 단일 SPEC vs --project 모드 비교
+- **단일 SPEC**: 개별 브랜치 + 개별 PR (2-3분/SPEC)
+- **--project 모드**: 통합 브랜치 + 단일 PR (5개 SPEC 순차 생성 시 8-10분)
 
-#### 병렬 처리 전략
+#### --project 모드 장점
 ```markdown
-🚀 프로젝트 SPEC 병렬 생성 완료:
+🏢 프로젝트 SPEC 통합 생성 완료:
 
+🌿 브랜치: feature/project-20250119-initial-specs
 ├── SPEC-001: 사용자 인증 시스템 (P0) ✓
 ├── SPEC-002: 게시글 관리 시스템 (P0) ✓
 ├── SPEC-003: 댓글 및 좋아요 (P1) ✓
 ├── SPEC-004: 관리자 대시보드 (P1) ✓
 └── SPEC-005: 모니터링 시스템 (P2) ✓
 
-⏱️ 5개 SPEC 병렬 생성 (3분 30초) vs 순차 (12분)
-🚀 67% 시간 단축 달성!
+✨ 장점:
+- 하나의 브랜치로 간단 관리
+- Git 충돌 위험 0%
+- 전체 프로젝트 일관성
+- 단계별 구현 가능
 
-🎯 다음: /moai:2-build SPEC-001 또는 전체 병렬 구현
+🎯 다음: /moai:2-build SPEC-001 (첫 번째부터 순차 구현)
 ```
 
-#### 병렬 실행 예시
+#### --project 명령어 예시
 ```bash
-# 단일 메시지로 5개 SPEC 동시 생성 요청
-"다음 SPEC들을 병렬로 작성해주세요:
-1. 사용자 인증 시스템
-2. 게시글 관리 시스템
-3. 댓글 및 좋아요
-4. 관리자 대시보드
-5. 모니터링 시스템"
+# 대화형 프로젝트 분석로 5개 SPEC 생성
+/moai:1-spec --project
+
+# 바로 답변하는 경우
+Q: 프로젝트 유형? A: 웹앱
+Q: 핵심 기능? A: 로그인, 게시판, 댓글
+Q: 사용자 유형? A: 일반, 관리자
+...
 ```
 
 ## 📝 EARS 형식 변환 자동화

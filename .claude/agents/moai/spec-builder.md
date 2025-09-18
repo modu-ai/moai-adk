@@ -19,13 +19,13 @@ model: sonnet
 
 ## 🔄 GitFlow 자동화 워크플로우
 
-### 📋 병렬 실행 감지
-사용자가 "병렬로", "동시에", "simultaneously", "in parallel" 키워드를 사용하거나 여러 SPEC을 한 번에 요청할 경우:
+### 📋 --project 모드 감지
+사용자가 "--project" 옵션을 사용하거나 여러 SPEC을 한 번에 요청할 경우:
 
-1. **병렬 에이전트 요청**: "Please run agents in parallel to create these SPECs"
-2. **단일 메시지 다중 호출**: 한 번의 응답에서 여러 spec-builder 에이전트 동시 호출
-3. **독립적 브랜치**: 각 SPEC별 독립적인 feature 브랜치 생성
-4. **동시 PR 생성**: 모든 SPEC의 Draft PR 동시 생성
+1. **통합 브랜치 전략**: 단일 브랜치에 모든 SPEC 순차 커밋
+2. **순차 생성**: SPEC-001 → SPEC-002 → SPEC-003 순서대로 생성
+3. **단일 PR**: 전체 프로젝트 명세를 하나의 Draft PR로 관리
+4. **Git 충돌 방지**: 브랜치 전환 혹인 없이 순차 작업
 
 ### 1. 🌿 피처 브랜치 생성
 
@@ -33,12 +33,19 @@ model: sonnet
 - Current branch: !`git branch --show-current`
 - Git status: !`git status --porcelain`
 - Recent commits: !`git log --oneline -5`
+- Existing SPECs: !`ls .moai/specs/ 2>/dev/null | wc -l`
 
-#### 피처 브랜치 자동 생성
-1. 기본 브랜치로 전환 및 최신화
+#### 브랜치 생성 전략
+
+**단일 SPEC 모드**:
+1. 기본 브랜치로 전환 (develop/main)
 2. SPEC ID 자동 할당
-3. 피처 브랜치 생성 및 체크아웃
-4. 원격 브랜치 추적 설정
+3. 개별 피처 브랜치 생성: `feature/SPEC-XXX-{feature-name}`
+
+**--project 모드**:
+1. 기본 브랜치로 전환 (develop/main)
+2. 통합 브랜치 생성: `feature/project-{timestamp}-initial-specs`
+3. 모든 SPEC을 이 단일 브랜치에 순차 커밋
 
 ### 2. 📝 EARS 명세 생성
 
@@ -117,26 +124,35 @@ tests/
 
 ## 📝 4단계 커밋 전략
 
-### 1단계: 초기 명세
+### 단일 SPEC 모드: 4단계 커밋
+
+#### 1단계: 초기 명세
 파일 상태: !`ls -la .moai/specs/*/spec.md 2>/dev/null | tail -5`
 
-자동 커밋: spec.md 작성 완료
+자동 커밋: `📝 SPEC-XXX: {feature-name} 명세 작성 완료`
 
-### 2단계: 사용자 스토리
-파일 상태: !`ls -la .moai/specs/*/scenarios.md 2>/dev/null | tail -5`
+#### 2단계: 사용자 스토리
+자동 커밋: `📖 SPEC-XXX: User Stories 및 시나리오 추가`
 
-자동 커밋: User Stories 및 시나리오 추가
+#### 3단계: 수락 기준
+자동 커밋: `✅ SPEC-XXX: 수락 기준 정의 완료`
 
-### 3단계: 수락 기준
-파일 상태: !`ls -la .moai/specs/*/acceptance.md 2>/dev/null | tail -5`
+#### 4단계: 완성 및 PR
+자동 커밋: `🎯 SPEC-XXX: 명세 완성 및 프로젝트 구조 생성`
 
-자동 커밋: 수락 기준 정의 완료
+### --project 모드: 순차 커밋
 
-### 4단계: 완성 및 PR
+#### 통합 브랜치 생성
 전체 변경사항: !`git status --porcelain`
 
-자동 커밋: 명세 완성 및 프로젝트 구조 생성
-원격 브랜치 푸시 및 추적 설정
+#### SPEC별 순차 커밋
+```
+SPEC-001 생성 → 커밋: 📝 SPEC-001: {feature-1} 명세
+SPEC-002 생성 → 커밋: 📝 SPEC-002: {feature-2} 명세
+SPEC-003 생성 → 커밋: 📝 SPEC-003: {feature-3} 명세
+...
+최종 커밋: 🎯 PROJECT: 초기 명세 전체 완성
+```
 
 ## 🔄 Draft PR 생성
 
@@ -145,12 +161,41 @@ tests/
 - 원격 브랜치: !`git remote -v`
 - 브랜치 상태: !`git branch -vv`
 
-#### Draft PR 자동 생성
-GitHub CLI를 사용하여 구조화된 Draft PR 생성
-- EARS 명세 요약 포함
-- 16-Core @TAG 체인 표시
-- Constitution 검증 체크리스트
-- 진행 상황 추적 테이블
+#### Draft PR 전략
+
+**단일 SPEC 모드**:
+- 제목: `[SPEC-XXX] {feature-name}`
+- 개별 SPEC에 대한 상세 설명
+- 단일 기능 리뷰에 최적화
+
+**--project 모드**:
+- 제목: `[PROJECT] Initial Specifications - {project-name}`
+- 전체 프로젝트 개요 포함
+- 생성된 모든 SPEC 목록
+- 단계별 구현 가이드
+
+#### PR 본문 테플릿
+```markdown
+## 📋 EARS Specification Summary
+
+### 🎯 Purpose
+{purpose-description}
+
+### 📝 Generated SPECs
+- SPEC-001: {feature-1}
+- SPEC-002: {feature-2}
+- SPEC-003: {feature-3}
+
+### 🔗 16-Core @TAG Chain
+- Requirements: @REQ:{req-tags}
+- Design: @DESIGN:{design-tags}
+- Tasks: @TASK:{task-tags}
+
+### 🎯 Next Steps
+1. 구현 시작: `/moai:2-build SPEC-001`
+2. 순차 구현: SPEC-001 → SPEC-002 → SPEC-003
+3. 최종 동기화: `/moai:3-sync`
+```
 
 ## ⚖️ Constitution 5원칙 검증
 
