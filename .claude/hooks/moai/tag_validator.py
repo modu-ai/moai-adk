@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-MoAI-ADK Tag Validator PreToolUse Hook v0.1.17
+MoAI-ADK Tag Validator PreToolUse Hook v0.1.18
 16-Core @TAG 시스템 품질 검증 및 규칙 강제
 
-이 Hook은 모든 파일 편집 시 @TAG 시스템의 품질을 자동으로 검증합니다.
+이 Hook은 프로그램 코드 파일 편집 시 @TAG 시스템의 품질을 자동으로 검증합니다.
+- 프로그램 코드 파일만 체크 (문서 파일 제외)
 - 16-Core 태그 체계 준수 검증
 - 태그 네이밍 규칙 및 일관성 검사
 - 품질 점수 계산 및 개선 제안
@@ -347,7 +348,17 @@ def main():
         # 편집 내용 추출
         content = tool_input.get('content', '') or tool_input.get('new_string', '')
         file_path = tool_input.get('file_path', '')
-        
+
+        # 프로그램 코드 파일만 체크 (문서 파일 제외)
+        code_extensions = {'.py', '.js', '.ts', '.jsx', '.tsx', '.go', '.java',
+                          '.c', '.cpp', '.rs', '.php', '.rb', '.kt', '.scala',
+                          '.cs', '.swift', '.dart', '.h', '.hpp'}
+
+        if file_path:
+            file_ext = Path(file_path).suffix.lower()
+            if file_ext not in code_extensions:
+                sys.exit(0)  # 코드 파일이 아니면 통과
+
         if not content or '@' not in content:
             sys.exit(0)  # 태그가 없으면 통과
         
