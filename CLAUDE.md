@@ -118,13 +118,15 @@
 
 ## 메모리 전략
 
-- **팀 규칙**: @.claude/memory/team_conventions.md
-- **프로젝트 가이드**: @.claude/memory/project_guidelines.md
-- **Constitution**: @.moai/memory/constitution.md
+MoAI-ADK는 **Constitution 5원칙**을 핵심 메모리로 사용합니다:
 
-원칙:
-- 핵심 지침만 메모리에 저장
+- **Constitution**: @.moai/memory/constitution.md - 5원칙 + 16-Core TAG 시스템
+- **프로젝트 가이드**: @CLAUDE.md - 워크플로우 + 에이전트 시스템
+
+**원칙**:
+
+- Constitution 5원칙이 모든 개발 규칙을 정의
+- CLAUDE.md가 실행 가이드 역할
+- 핵심 지침만 메모리에 저장 (단순성 원칙)
 - 세부사항은 문서 링크로 참조
 - 민감정보 저장 금지
-- 주기적 최신화
-- 과도한 추상적인 AI 표현
