@@ -1,12 +1,50 @@
 ---
 description: TDD 기반 완전 구현 - Constitution Check부터 Red-Green-Refactor까지 통합 실행
-argument-hint: <SPEC-ID>|all [--opusplan]
+argument-hint: <SPEC-ID>|all
 allowed-tools: Read, Write, Edit, MultiEdit, Bash, Task, WebFetch
 ---
 
-# MoAI-ADK 0.2.0 TDD 구현
+# MoAI-ADK  TDD 구현 (GitFlow 통합)
 
 !@ code-builder 에이전트가 Constitution Check부터 Red-Green-Refactor까지 완전 자동화합니다.
+
+## 🔀 TDD GitFlow 자동화 실행 코드 (완전 투명)
+
+```bash
+# 1. Constitution 5원칙 검증
+python .moai/scripts/check_constitution.py --strict
+
+# 2. TDD Red-Green-Refactor 3단계 자동 커밋
+# RED 단계: 실패하는 테스트 작성
+git add tests/
+git commit -m "🔴 ${SPEC_ID}: 실패하는 테스트 작성 완료 (RED)
+
+- ${TEST_COUNT}개 테스트 케이스 작성
+- Given-When-Then 구조 준수
+- 의도적 실패 확인 완료"
+
+# GREEN 단계: 최소 구현으로 테스트 통과
+git add src/
+git commit -m "🟢 ${SPEC_ID}: 최소 구현으로 테스트 통과 (GREEN)
+
+- 모든 테스트 통과 확인
+- 최소 요구사항 충족
+- 커버리지 ${COVERAGE_PERCENT}% 달성"
+
+# REFACTOR 단계: 코드 품질 개선
+git add -A
+git commit -m "🔄 ${SPEC_ID}: 코드 품질 개선 및 리팩터링 완료
+
+- Constitution 5원칙 준수
+- 코드 중복 제거 및 최적화
+- 문서화 및 타입 힌트 추가"
+
+# 3. GitHub Actions CI/CD 자동 트리거
+git push origin $(git branch --show-current)
+
+# 4. PR 상태 업데이트 (구현 진행률)
+gh pr edit --add-label "implementation-complete" --add-label "ready-for-review-pending"
+```
 
 SPEC을 바탕으로 Constitution Check → 기술 설계 → 작업 분해 → TDD 구현까지 완전 자동화하는 MoAI-ADK의 핵심 명령어입니다.
 

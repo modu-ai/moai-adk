@@ -5,7 +5,10 @@
       "Bash(tree:*)",
       "Bash(moai:*)",
       "Bash(rm:*)",
-      "Bash(rmdir:*)"
+      "Bash(rmdir:*)",
+      "Bash(SPEC_ID=\"SPEC-003\")",
+      "Bash(FEATURE_NAME=\"package-optimization\")",
+      "Bash(echo \"Creating branch: $BRANCH_NAME\")"
     ],
     "deny": [],
     "ask": []

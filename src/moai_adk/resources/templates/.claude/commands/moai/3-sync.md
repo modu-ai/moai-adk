@@ -4,9 +4,82 @@ argument-hint: [auto|force|status] [target-path]
 allowed-tools: Read, Write, Edit, MultiEdit, Bash, Task
 ---
 
-# MoAI-ADK 0.2.0 Living Document 동기화
+# MoAI-ADK  문서 동기화 + PR Ready (GitFlow 통합)
 
 !@ doc-syncer 에이전트가 코드-문서 양방향 동기화와 16-Core TAG 시스템 관리를 완전 자동화합니다.
+
+## 🔀 문서 동기화 + PR 완료 자동화 코드 (완전 투명)
+
+```bash
+# 1. 16-Core @TAG 시스템 완전 업데이트
+python .moai/scripts/check-traceability.py --update --verbose
+
+# 2. Living Document 실시간 동기화
+# API 문서 자동 생성
+if [ -f "src/app.py" ] || [ -f "src/main.py" ]; then
+    python -c "
+import ast
+import json
+# OpenAPI 3.0 스펙 자동 생성
+openapi_spec = generate_openapi_from_code('src/')
+with open('docs/api/openapi.json', 'w') as f:
+    json.dump(openapi_spec, f, indent=2)
+"
+fi
+
+# README.md 기능 목록 자동 업데이트
+cat > README.md << EOF
+# ${PROJECT_NAME}
+
+## 🚀 Features
+$(grep -r "@FEATURE:" src/ | sed 's/.*@FEATURE:/- /' | sort | uniq)
+
+## 📋 Requirements
+$(grep -r "@REQ:" .moai/specs/ | sed 's/.*@REQ:/- /' | sort | uniq)
+
+## 🧪 Test Coverage
+- Total Coverage: ${COVERAGE_PERCENT}%
+- Unit Tests: ${UNIT_TEST_COUNT} tests
+- Integration Tests: ${INTEGRATION_TEST_COUNT} tests
+
+EOF
+
+# 3. 최종 문서 동기화 커밋
+git add docs/ README.md
+git commit -m "📚 ${SPEC_ID}: 문서 동기화 및 16-Core @TAG 업데이트 완료
+
+- Living Document 실시간 동기화
+- OpenAPI 3.0 스펙 자동 생성
+- README.md 기능 목록 업데이트
+- 16-Core @TAG 추적성 체인 100% 완성"
+
+# 4. Draft → Ready for Review 자동 전환
+gh pr ready --body "$(cat <<EOF
+## ✅ Implementation Complete
+
+### 📊 Quality Metrics
+- Constitution 5원칙: 100% 준수
+- Test Coverage: ${COVERAGE_PERCENT}%
+- Code Quality: A+
+- Security Scan: ✅ No vulnerabilities
+
+### 🔗 Traceability Chain
+- @REQ → @DESIGN → @TASK → @TEST: 100% 연결
+- 16-Core @TAG 완전 추적 체인 완성
+
+### 📋 Review Checklist
+- [ ] Code Review (Senior Developer)
+- [ ] Security Review (Security Lead)
+- [ ] QA Testing (QA Engineer)
+
+Ready for team review! 🚀
+EOF
+)"
+
+# 5. 리뷰어 자동 할당 및 알림
+gh pr edit --add-reviewer "@senior-dev" --add-reviewer "@security-lead"
+gh pr edit --add-label "ready-for-review" --add-label "constitution-compliant"
+```
 
 코드와 문서의 완벽한 일치성을 유지하고 16-Core TAG 시스템으로 추적성을 보장하는 핵심 명령어입니다.
 

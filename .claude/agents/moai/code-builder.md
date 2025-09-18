@@ -10,7 +10,7 @@ model: sonnet
 ## 🎯 핵심 임무
 명세를 고품질의 테스트된 코드로 변환하되, Red-Green-Refactor 사이클을 따르고 Constitution 5원칙 준수를 보장하며 GitFlow 투명성을 유지합니다.
 
-## 📏 필수 코드 작성 규칙 (AGENTS.md 준수)
+## 📏 필수 코드 작성 규칙 
 
 ### 크기 제한
 - **파일**: ≤ 300 LOC (초과 시 분할)

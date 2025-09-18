@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-MoAI-ADK Tag Validator PreToolUse Hook v0.1.17
+MoAI-ADK Tag Validator PreToolUse Hook v0.1.19
 16-Core @TAG 시스템 품질 검증 및 규칙 강제
 
-이 Hook은 모든 파일 편집 시 @TAG 시스템의 품질을 자동으로 검증합니다.
+이 Hook은 프로그램 코드 파일 편집 시 @TAG 시스템의 품질을 자동으로 검증합니다.
+- 프로그램 코드 파일만 체크 (문서 파일 제외)
 - 16-Core 태그 체계 준수 검증
 - 태그 네이밍 규칙 및 일관성 검사
 - 품질 점수 계산 및 개선 제안
@@ -18,38 +19,43 @@ from datetime import datetime
 from typing import Dict, List, Tuple, Optional, Any
 
 # Import security manager for safe operations
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent / 'moai_adk'))
 try:
-    from security import SecurityManager, SecurityError
-except ImportError:
+    # Ensure project src is on sys.path
+    project_root = Path(__file__).resolve().parents[3]
+    src_path = project_root / 'src'
+    if str(src_path) not in sys.path:
+        sys.path.insert(0, str(src_path))
+
+    from moai_adk.core.security import SecurityManager, SecurityError
+except Exception:
     # Fallback if security module not available
     SecurityManager = None
     class SecurityError(Exception):
         pass
 
+
 class MoAITagValidator:
     """MoAI-ADK 16-Core @TAG 시스템 검증기"""
-    
+
     def __init__(self, project_root: Path):
         self.project_root = project_root
         self.security_manager = SecurityManager() if SecurityManager else None
         self.config_path = project_root / ".moai" / "config.json"
         self.tags_index_path = project_root / ".moai" / "indexes" / "tags.json"
-        
-        # 16-Core 태그 체계 정의
+
+        # 16-Core 태그 체계 정의 (프로젝트 설정과 일치)
         self.tag_categories = {
-            'Spec': ['REQ', 'SPEC', 'DESIGN', 'TASK'],
-            'Steering': ['VISION', 'STRUCT', 'TECH', 'ADR'],
-            'Implementation': ['FEATURE', 'API', 'TEST', 'DATA'],
-            'Quality': ['PERF', 'SEC', 'DEBT', 'TODO'],
-            'Legacy': ['US', 'FR', 'NFR', 'BUG', 'REVIEW']
+            'SPEC': ['REQ', 'DESIGN', 'TASK'],
+            'STEERING': ['VISION', 'STRUCT', 'TECH', 'ADR'],
+            'IMPLEMENTATION': ['FEATURE', 'API', 'TEST', 'DATA'],
+            'QUALITY': ['PERF', 'SEC', 'DEBT', 'TODO']
         }
         
         # 모든 유효한 태그 타입
         self.valid_tag_types = []
         for category_tags in self.tag_categories.values():
             self.valid_tag_types.extend(category_tags)
-            
+
         # 태그별 네이밍 규칙
         self.naming_rules = {
             # REQ:[CATEGORY]-[DESCRIPTION]-[NNN] → REQ:USER-LOGIN-001
@@ -57,11 +63,11 @@ class MoAITagValidator:
             'API': r'^(GET|POST|PUT|DELETE|PATCH)-.+$',      # API:GET-USERS
             'TEST': r'^(UNIT|INT|E2E|LOAD)-.+$',             # TEST:UNIT-LOGIN
             'PERF': r'^[A-Z]+-(\d{3}MS|FAST|SLOW)$',         # PERF:API-500MS
-            'SEC': r'^[A-Z]+-(HIGH|MED|LOW)$',               # SEC:XSS-HIGH
-            'BUG': r'^(CRITICAL|HIGH|MED|LOW)-\d{3}$',       # BUG:CRITICAL-001
+            'SEC': r'^[A-Z]+-(HIGH|MED|LOW)$'                # SEC:XSS-HIGH
         }
 
-    def safe_regex_search(self, pattern: str, text: str, max_length: int = 10000) -> List[Tuple[str, str]]:
+    def safe_regex_search(self, pattern: str, text: str,
+                          max_length: int = 10000) -> List[Tuple[str, str]]:
         """
         Safe regex search to prevent ReDoS attacks.
 
@@ -77,7 +83,8 @@ class MoAITagValidator:
         if len(text) > max_length:
             if self.security_manager:
                 # Log potential attack attempt
-                print(f"Warning: Text too long for regex processing ({len(text)} > {max_length})", file=sys.stderr)
+                print(f"Warning: Text too long for regex processing "
+                      f"({len(text)} > {max_length})", file=sys.stderr)
             text = text[:max_length]
 
         try:
@@ -102,15 +109,20 @@ class MoAITagValidator:
         try:
             path_obj = Path(file_path)
 
-            # Check file size (max 1MB for tag validation)
-            if not self.security_manager.validate_file_size(path_obj, 1):
-                print(f"Warning: File too large for tag validation: {file_path}", file=sys.stderr)
-                return False
+            # File size check (max ~1MB) - fallback if SecurityManager lacks helper
+            try:
+                size_mb = path_obj.stat().st_size / (1024 * 1024)
+                if size_mb > 1:
+                    print(f"Warning: File too large for tag validation: {file_path}", file=sys.stderr)
+                    return False
+            except Exception:
+                pass
 
-            # Check if path is within project boundaries
-            if not self.security_manager.validate_path_safety_enhanced(path_obj, self.project_root):
-                print(f"Warning: File outside project scope: {file_path}", file=sys.stderr)
-                return False
+            # Path safety within project root
+            if hasattr(self.security_manager, 'validate_path_safety'):
+                if not self.security_manager.validate_path_safety(path_obj, self.project_root):
+                    print(f"Warning: File outside project scope: {file_path}", file=sys.stderr)
+                    return False
 
             return True
         except Exception as e:
@@ -344,7 +356,18 @@ def main():
         # 편집 내용 추출
         content = tool_input.get('content', '') or tool_input.get('new_string', '')
         file_path = tool_input.get('file_path', '')
-        
+
+        # 프로그램 코드 파일만 체크 (문서 파일 제외)
+        code_extensions = {'.py', '.js', '.ts', '.jsx', '.tsx', '.go', '.java',
+                          '.c', '.cpp', '.rs', '.php', '.rb', '.kt', '.scala',
+                          '.cs', '.swift', '.dart', '.h', '.hpp', '.html', '.css',
+                          '.scss', '.sass', '.less'}
+
+        if file_path:
+            file_ext = Path(file_path).suffix.lower()
+            if file_ext not in code_extensions:
+                sys.exit(0)  # 코드 파일이 아니면 통과
+
         if not content or '@' not in content:
             sys.exit(0)  # 태그가 없으면 통과
         

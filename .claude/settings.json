@@ -1,6 +1,6 @@
 {
   "permissions": {
-    "defaultMode": "ask",
+    "defaultMode": "plan",
     "allow": [
       "Task",
       "Write",

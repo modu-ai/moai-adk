@@ -71,15 +71,22 @@ git checkout -b "${BRANCH_NAME}"
 - 통합 지점
 - 테스트 조건
 
-### 5. 🎯 프로젝트 구조 생성
+### 5. 🎯 통합 SPEC 파일 생성
 
-@TAG 주석과 함께 초기 프로젝트 구조 생성:
+`.claude/commands/moai/1-spec.md`에 정의된 표준 템플릿을 사용하여 통합 spec.md 파일을 생성:
+
+**템플릿 위치**: `.claude/commands/moai/1-spec.md`의 "📝 SPEC 템플릿" 섹션
+
+**파일 구조**:
 ```
 .moai/specs/SPEC-XXX/
-├── spec.md              # EARS 명세
-├── scenarios.md         # 사용자 스토리 및 GWT
-├── acceptance.md        # 수락 기준
-└── architecture.md      # 설계 결정
+└── spec.md              # 통합 명세 문서
+                         # ├─ EARS 형식 요구사항
+                         # ├─ 사용자 스토리
+                         # ├─ 수락 기준
+                         # ├─ 우선순위 매트릭스
+                         # ├─ 성공 지표
+                         # └─ 리스크 및 의존성
 
 src/
 ├── [feature_name]/
@@ -94,6 +101,13 @@ tests/
     ├── test_services.py # @TEST:UNIT-SERVICE-001
     └── test_routes.py   # @TEST:E2E-API-001
 ```
+
+**변수 치환**:
+- `[SPEC_NAME]` → 기능명
+- `SPEC-XXX` → 자동 생성된 SPEC ID
+- `YYYY-MM-DD` → 현재 날짜
+- `[사용자 역할]`, `[원하는 기능]`, `[달성하고자 하는 목표]` → 구체적 내용
+- `[트리거 조건]`, `[예상 동작]` → EARS 형식 요구사항
 
 ## 📝 4단계 커밋 전략
 

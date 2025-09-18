@@ -4,7 +4,7 @@
 **상태**: $STATUS
 **우선순위**: $PRIORITY
 **작성일**: $CREATED_DATE
-**작성자**: MoAI-ADK spec-builder
+**작성자**: MoAI-ADK spec-manager
 
 ## 개요
 
@@ -97,7 +97,7 @@ $SPEC_DESCRIPTION
 - [ ] QA Lead: [승인/조건부승인/반려]
 
 ### 다음 단계
-**명세 완료 후**: /moai:2-build
+**명확화 완료 후**: /moai:plan $SPEC_ID
 
 ---
 
@@ -105,12 +105,8 @@ $SPEC_DESCRIPTION
 **@DESIGN:ARCH** - 아키텍처 설계 필요
 **@TEST:ACC** - 인수 테스트 시나리오 정의 필요
 
-**MoAI-ADK  GitFlow 워크플로우**:
-1. `/moai:1-spec` - 이 명세 작성 (spec-builder 에이전트)
-2. `/moai:2-build` - TDD 구현 (code-builder 에이전트)
-3. `/moai:3-sync` - 문서 동기화 및 PR Ready (doc-syncer 에이전트)
-
 **작성 규칙**:
-- EARS 형식 요구사항
-- Constitution 5원칙 준수
-- 16-Core @TAG 시스템 활용
+- 모든 요구사항은 EARS 형식으로 작성
+- 각 사용자 스토리마다 명확한 수락 기준 정의
+- 기능적/비기능적 요구사항 구분
+- 우선순위와 복잡도 기반 개발 순서 결정

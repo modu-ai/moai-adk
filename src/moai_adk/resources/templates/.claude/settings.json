@@ -1,6 +1,6 @@
 {
   "permissions": {
-    "defaultMode": "default",
+    "defaultMode": "plan",
     "allow": [
       "Task",
       "Write",
@@ -10,11 +10,29 @@
       "Bash(git:*)",
       "Bash(mkdir:*)",
       "Bash(cp:*)",
+      "Bash(mv:*)",
       "Bash(ls:*)",
-      "Bash(cat:*)",
-      "Bash(echo:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
       "Bash(python3:*)",
+      "Bash(pytest:*)",
+      "Bash(poetry:*)",
+      "Bash(ruff:*)",
+      "Bash(mypy:*)",
+      "Bash(npm:*)",
+      "Bash(pnpm:*)",
+      "Bash(yarn:*)",
+      "Bash(go:*)",
+      "Bash(cargo:*)",
+      "Bash(gradle:*)",
+      "Bash(mvn:*)",
+      "Bash(dotnet:*)",
+      "Bash(cmake:*)",
+      "Bash(make:*)",
       "Bash(chmod:*)",
+      "Bash(tree:*)",
+      "Bash(moai:*)",
+      
       "WebFetch",
       "Grep",
       "Glob",
@@ -22,7 +40,8 @@
       "TodoWrite",
       "WebSearch",
       "BashOutput",
-      "KillBash"
+      "KillShell",
+      "ExitPlanMode"
     ],
     "deny": [
       "Bash(sudo:*)",
@@ -31,108 +50,31 @@
       "Write(.env*)"
     ],
     "ask": [
-      "Bash(npm install:*)",
       "Bash(pip install:*)",
+      "Bash(npm install:*)",
       "Bash(git push:*)",
       "Bash(git pull:*)",
+      "Bash(git merge:*)",
+      "Bash(rm:*)",
+      "Bash(rmdir:*)",
       "Write(*.config.*)",
+      "Write(pyproject.toml)",
       "Bash(npm publish:*)",
+      "Bash(poetry publish:*)",
       "Bash(docker:*)",
-      "Bash(kubectl:*)"
+      "Bash(kubectl:*)",
+      "Bash(systemctl:*)",
+      "Bash(service:*)"
     ]
   },
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit|MultiEdit|Write|Bash",
+        "matcher": "Edit\\(.+\\.(py|js|ts|jsx|tsx|go|java|c|cpp|rs|php|rb|kt|scala|cs|swift|dart|html|css|scss|sass|less)\\)|MultiEdit\\(.+\\.(py|js|ts|jsx|tsx|go|java|c|cpp|rs|php|rb|kt|scala|cs|swift|dart|html|css|scss|sass|less)\\)|Write\\(.+\\.(py|js|ts|jsx|tsx|go|java|c|cpp|rs|php|rb|kt|scala|cs|swift|dart|html|css|scss|sass|less)\\)",
         "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_write_guard.py",
-            "timeout": 60
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|MultiEdit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/constitution_guard.py"
-          },
           {
             "type": "command",
             "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag_validator.py"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/awesome/backup_before_edit.py",
-            "description": "Backup files before editing"
-          }
-        ]
-      },
-      {
-        "matcher": "Bash|WebFetch",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/policy_block.py"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Edit|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/awesome/auto_formatter.py",
-            "description": "Smart code formatter"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/awesome/auto_git_commit.py",
-            "description": "Intelligent auto-commit"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/awesome/test_runner.py",
-            "description": "Run tests after code changes"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/awesome/security_scanner.py",
-            "description": "Security vulnerability scanner"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|MultiEdit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_stage_guard.py"
           }
         ]
       }
@@ -144,6 +86,15 @@
           {
             "type": "command",
             "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start_notice.py"
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/language_detector.py"
           }
         ]
       }

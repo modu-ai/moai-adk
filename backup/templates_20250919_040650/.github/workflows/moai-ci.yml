@@ -1,0 +1,331 @@
+name: MoAI-ADK CI/CD Pipeline
+
+# MoAI Constitution 5원칙을 자동으로 검증하는 CI/CD 파이프라인
+# Simplicity, Architecture, Testing, Observability, Versioning 준수
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch: # 수동 실행 허용
+
+env:
+  # MoAI Constitution 환경 변수
+  MOAI_CONSTITUTION_CHECK: true
+  MOAI_MIN_COVERAGE: 80
+  MOAI_MAX_PROJECTS: 3
+
+jobs:
+  # Constitution Check: Simplicity 원칙 검증
+  constitution-check:
+    name: 🏛️ Constitution 5원칙 검증
+    runs-on: ubuntu-latest
+    steps:
+      - name: 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Python 환경 설정
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: MoAI 검증 스크립트 실행
+        run: |
+          if [ -f ".moai/scripts/check_constitution.py" ]; then
+            python .moai/scripts/check_constitution.py
+          else
+            echo "⚠️ Constitution 검증 스크립트를 찾을 수 없습니다."
+          fi
+
+      - name: claude-code-manager 에이전트 검증
+        run: |
+          if [ -f ".claude/agents/moai/claude-code-manager.md" ]; then
+            echo "✅ claude-code-manager 에이전트 확인됨"
+          else
+            echo "❌ claude-code-manager 에이전트가 없습니다"
+            exit 1
+          fi
+
+  # Tag System: 16-Core TAG 무결성 검증
+  tag-validation:
+    name: 🏷️ 16-Core TAG 시스템 검증
+    runs-on: ubuntu-latest
+    needs: constitution-check
+    steps:
+      - name: 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Python 환경 설정
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: TAG 무결성 검사
+        run: |
+          if [ -f ".moai/scripts/validate_tags.py" ]; then
+            python .moai/scripts/validate_tags.py
+          else
+            echo "⚠️ TAG 검증 스크립트를 찾을 수 없습니다."
+          fi
+
+      - name: MCP 서버 설정 검증
+        run: |
+          if [ -f ".moai/config.json" ]; then
+            # MCP 서버 설정 존재 확인
+            if grep -q "mcp_servers" .moai/config.json; then
+              echo "✅ MCP 서버 설정 확인됨"
+            else
+              echo "⚠️ MCP 서버 설정이 없습니다"
+            fi
+            # 환경변수 설정 확인
+            if grep -q "environment_variables" .moai/config.json; then
+              echo "✅ 환경변수 설정 확인됨"
+            else
+              echo "⚠️ 환경변수 설정이 없습니다"
+            fi
+          else
+            echo "❌ MoAI config.json 파일이 없습니다"
+            exit 1
+          fi
+
+  # Language-specific jobs (동적으로 감지)
+  detect-project-type:
+    name: 📋 프로젝트 타입 감지
+    runs-on: ubuntu-latest
+    outputs:
+      has_python: ${{ steps.detect.outputs.has_python }}
+      has_node: ${{ steps.detect.outputs.has_node }}
+      has_rust: ${{ steps.detect.outputs.has_rust }}
+      has_go: ${{ steps.detect.outputs.has_go }}
+    steps:
+      - name: 체크아웃
+        uses: actions/checkout@v4
+      
+      - name: 프로젝트 타입 감지
+        id: detect
+        run: |
+          echo "has_python=$([[ -f 'pyproject.toml' || -f 'requirements.txt' || -f 'setup.py' ]] && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+          echo "has_node=$([[ -f 'package.json' ]] && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+          echo "has_rust=$([[ -f 'Cargo.toml' ]] && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+          echo "has_go=$([[ -f 'go.mod' ]] && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+
+  # Python 프로젝트 테스트
+  python-tests:
+    name: 🐍 Python 테스트 (TDD 원칙)
+    runs-on: ubuntu-latest
+    needs: [detect-project-type, tag-validation]
+    if: needs.detect-project-type.outputs.has_python == 'true'
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11']
+    steps:
+      - name: 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Python ${{ matrix.python-version }} 설정
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: 의존성 설치
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f "requirements.txt" ]; then
+            pip install -r requirements.txt
+          fi
+          if [ -f "pyproject.toml" ]; then
+            pip install -e .[dev]
+          fi
+          # 테스트 도구 설치
+          pip install pytest pytest-cov black ruff mypy
+
+      - name: 코드 포맷팅 검사 (Black)
+        run: |
+          if command -v black &> /dev/null; then
+            black --check .
+          fi
+
+      - name: 린터 검사 (Ruff)
+        run: |
+          if command -v ruff &> /dev/null; then
+            ruff check .
+          fi
+
+      - name: 타입 체킹 (MyPy)
+        run: |
+          if command -v mypy &> /dev/null && [ -f "pyproject.toml" ]; then
+            mypy .
+          fi
+
+      - name: 테스트 실행 및 커버리지 (Constitution: 80% 이상)
+        run: |
+          if command -v pytest &> /dev/null; then
+            pytest --cov=. --cov-report=xml --cov-fail-under=${{ env.MOAI_MIN_COVERAGE }}
+          else
+            echo "⚠️ pytest를 찾을 수 없습니다. 기본 테스트 실행..."
+            python -m unittest discover
+          fi
+
+      - name: 커버리지 업로드
+        uses: codecov/codecov-action@v3
+        if: matrix.python-version == '3.9'
+        with:
+          file: ./coverage.xml
+
+  # Node.js 프로젝트 테스트
+  node-tests:
+    name: 📦 Node.js 테스트 (TDD 원칙)
+    runs-on: ubuntu-latest
+    needs: [detect-project-type, tag-validation]
+    if: needs.detect-project-type.outputs.has_node == 'true'
+    strategy:
+      matrix:
+        node-version: ['18', '20', 'latest']
+    steps:
+      - name: 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Node.js ${{ matrix.node-version }} 설정
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: 의존성 설치
+        run: npm ci
+
+      - name: 린터 검사 (ESLint)
+        run: |
+          if npm list eslint --depth=0 &> /dev/null; then
+            npm run lint
+          fi
+
+      - name: 타입 체킹 (TypeScript)
+        run: |
+          if npm list typescript --depth=0 &> /dev/null; then
+            npm run type-check || npx tsc --noEmit
+          fi
+
+      - name: 테스트 실행 및 커버리지
+        run: |
+          npm test
+          if npm list jest --depth=0 &> /dev/null; then
+            npm run test:coverage
+          fi
+
+  # 보안 검사
+  security-scan:
+    name: 🔒 보안 스캔 (Constitution: Observability)
+    runs-on: ubuntu-latest
+    needs: tag-validation
+    steps:
+      - name: 체크아웃
+        uses: actions/checkout@v4
+
+      - name: 시크릿 스캔
+        run: |
+          if [ -f ".moai/scripts/check-secrets.py" ]; then
+            python .moai/scripts/check-secrets.py
+          else
+            echo "⚠️ 시크릿 스캔 스크립트를 찾을 수 없습니다."
+          fi
+
+      - name: 라이선스 검사
+        run: |
+          if [ -f ".moai/scripts/check-licenses.py" ]; then
+            python .moai/scripts/check-licenses.py
+          else
+            echo "⚠️ 라이선스 검사 스크립트를 찾을 수 없습니다."
+          fi
+
+      - name: 취약점 스캔 (Node.js)
+        if: needs.detect-project-type.outputs.has_node == 'true'
+        run: |
+          if [ -f "package.json" ]; then
+            npm audit --audit-level moderate
+          fi
+
+      - name: 취약점 스캔 (Python)
+        if: needs.detect-project-type.outputs.has_python == 'true'
+        run: |
+          pip install safety
+          safety check
+
+  # 빌드 및 배포 준비
+  build-and-package:
+    name: 🚀 빌드 및 패키징
+    runs-on: ubuntu-latest
+    needs: [python-tests, node-tests, security-scan]
+    if: always() && (needs.python-tests.result == 'success' || needs.python-tests.result == 'skipped') && (needs.node-tests.result == 'success' || needs.node-tests.result == 'skipped') && needs.security-scan.result == 'success'
+    steps:
+      - name: 체크아웃
+        uses: actions/checkout@v4
+
+      - name: 프로젝트 빌드
+        run: |
+          if [ -f "pyproject.toml" ]; then
+            pip install build
+            python -m build
+          elif [ -f "package.json" ]; then
+            npm ci
+            npm run build
+          fi
+
+      - name: 빌드 아티팩트 업로드
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-artifacts
+          path: |
+            dist/
+            build/
+            *.tgz
+            *.whl
+
+  # 통합 리포트
+  integration-report:
+    name: 📊 MoAI 통합 리포트
+    runs-on: ubuntu-latest
+    needs: [constitution-check, tag-validation, python-tests, node-tests, security-scan, build-and-package]
+    if: always()
+    steps:
+      - name: 체크아웃
+        uses: actions/checkout@v4
+
+      - name: MoAI 통합 리포트 생성
+        run: |
+          echo "# 🏛️ MoAI Constitution 검증 리포트" > moai-report.md
+          echo "" >> moai-report.md
+          echo "## 📋 검증 결과" >> moai-report.md
+          echo "- Constitution Check: ${{ needs.constitution-check.result }}" >> moai-report.md
+          echo "- TAG 시스템: ${{ needs.tag-validation.result }}" >> moai-report.md
+          echo "- Python 테스트: ${{ needs.python-tests.result }}" >> moai-report.md
+          echo "- Node.js 테스트: ${{ needs.node-tests.result }}" >> moai-report.md
+          echo "- 보안 스캔: ${{ needs.security-scan.result }}" >> moai-report.md
+          echo "- 빌드: ${{ needs.build-and-package.result }}" >> moai-report.md
+          echo "" >> moai-report.md
+          echo "## 🎯 Constitution 5원칙 준수 현황" >> moai-report.md
+          echo "1. ✅ Simplicity: 프로젝트 복잡도 제한" >> moai-report.md
+          echo "2. ✅ Architecture: 표준 라이브러리 우선 사용" >> moai-report.md
+          echo "3. ✅ Testing: TDD 및 ${{ env.MOAI_MIN_COVERAGE }}% 커버리지" >> moai-report.md
+          echo "4. ✅ Observability: 구조화된 로깅 및 메트릭" >> moai-report.md
+          echo "5. ✅ Versioning: MAJOR.MINOR.PATCH 시맨틱 버전" >> moai-report.md
+
+      - name: 리포트 업로드
+        uses: actions/upload-artifact@v3
+        with:
+          name: moai-report
+          path: moai-report.md
+
+# 알림 설정 (실패시 슬랙/이메일 알림)
+  notification:
+    name: 📢 알림 발송
+    runs-on: ubuntu-latest
+    needs: [integration-report]
+    if: failure()
+    steps:
+      - name: 실패 알림
+        run: |
+          echo "🚨 MoAI-ADK CI/CD 파이프라인에서 오류가 발생했습니다."
+          echo "Constitution 5원칙 중 하나 이상이 위반되었을 가능성이 있습니다."
+          # 여기에 슬랙이나 이메일 알림 로직 추가
