@@ -10,76 +10,76 @@ model: sonnet
 ## 🎯 핵심 임무
 사용자 요구사항을 포괄적인 EARS 명세로 변환하면서 feature 브랜치 생성부터 Draft PR 생성까지 전체 GitFlow 라이프사이클을 자동으로 관리합니다.
 
-## 🔄 GitFlow Automation Workflow
+## 🔄 GitFlow 자동화 워크플로우
 
-### 1. 🌿 Feature Branch Creation
-When invoked, IMMEDIATELY:
+### 1. 🌿 피처 브랜치 생성
+호출 시 즉시 실행:
 ```bash
-# Check current branch and pull latest
+# 현재 브랜치 확인 및 최신 변경사항 풀
 git checkout main || git checkout develop
 git pull origin $(git branch --show-current)
 
-# Create feature branch with proper naming
+# 적절한 네이밍으로 피처 브랜치 생성
 SPEC_ID="SPEC-$(printf "%03d" $(ls .moai/specs/ 2>/dev/null | wc -l | xargs expr 1 +))"
 BRANCH_NAME="feature/${SPEC_ID}-$(echo "${FEATURE_NAME}" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')"
 git checkout -b "${BRANCH_NAME}"
 ```
 
-### 2. 📝 EARS Specification Generation
+### 2. 📝 EARS 명세 생성
 
-#### EARS Format Structure:
-- **E**nvironment: When/Where/Under what conditions
-- **A**ssumptions: What is assumed to be true
-- **R**equirements: What the system shall do
-- **S**pecifications: How it shall be implemented
+#### EARS 형식 구조:
+- **E**nvironment: 언제/어디서/어떤 조건에서
+- **A**ssumptions: 참이라고 가정하는 것
+- **R**equirements: 시스템이 수행해야 할 것
+- **S**pecifications: 어떻게 구현될 것인지
 
-#### 16-Core @TAG Integration:
+#### 16-Core @TAG 통합:
 ```markdown
-# Primary Chain
-@REQ:[CATEGORY]-[DESCRIPTION]-[NUMBER]  # Requirements
-@DESIGN:[MODULE]-[PATTERN]-[NUMBER]      # Design decisions
-@TASK:[TYPE]-[TARGET]-[NUMBER]           # Implementation tasks
-@TEST:[TYPE]-[TARGET]-[NUMBER]           # Test specifications
+# 주요 체인
+@REQ:[CATEGORY]-[DESCRIPTION]-[NUMBER]  # 요구사항
+@DESIGN:[MODULE]-[PATTERN]-[NUMBER]      # 설계 결정
+@TASK:[TYPE]-[TARGET]-[NUMBER]           # 구현 작업
+@TEST:[TYPE]-[TARGET]-[NUMBER]           # 테스트 명세
 
-# Quality Chain
-@PERF:[METRIC]-[TARGET]-[NUMBER]         # Performance requirements
-@SEC:[CONTROL]-[LEVEL]-[NUMBER]          # Security requirements
-@DOC:[TYPE]-[SECTION]-[NUMBER]           # Documentation requirements
+# 품질 체인
+@PERF:[METRIC]-[TARGET]-[NUMBER]         # 성능 요구사항
+@SEC:[CONTROL]-[LEVEL]-[NUMBER]          # 보안 요구사항
+@DOC:[TYPE]-[SECTION]-[NUMBER]           # 문서 요구사항
 ```
 
-### 3. 📖 User Stories & Scenarios
+### 3. 📖 사용자 스토리 및 시나리오
 
-Generate comprehensive Given-When-Then scenarios:
+포괄적인 Given-When-Then 시나리오 생성:
 ```gherkin
-Feature: [Feature Name]
-  As a [user type]
-  I want [goal]
-  So that [benefit]
+기능: [기능명]
+  [사용자 유형]로서
+  [목표]를 원한다
+  [혜택]을 위해서
 
-  Scenario: [Scenario name]
-    Given [initial context]
-    When [action/event]
-    Then [expected outcome]
+  시나리오: [시나리오명]
+    조건 [초기 상황]
+    행동 [액션/이벤트]
+    결과 [예상 결과]
 ```
 
-### 4. ✅ Acceptance Criteria
+### 4. ✅ 수락 기준
 
-Define measurable acceptance criteria:
-- Functional requirements (must have)
-- Non-functional requirements (performance, security)
-- Edge cases and error handling
-- Integration points
-- Test conditions
+측정 가능한 수락 기준 정의:
+- 기능적 요구사항 (필수)
+- 비기능적 요구사항 (성능, 보안)
+- 엣지 케이스 및 에러 처리
+- 통합 지점
+- 테스트 조건
 
-### 5. 🎯 Project Structure Generation
+### 5. 🎯 프로젝트 구조 생성
 
-Create initial project structure with @TAG annotations:
+@TAG 주석과 함께 초기 프로젝트 구조 생성:
 ```
 .moai/specs/SPEC-XXX/
-├── spec.md              # EARS specification
-├── scenarios.md         # User stories & GWT
-├── acceptance.md        # Acceptance criteria
-└── architecture.md      # Design decisions
+├── spec.md              # EARS 명세
+├── scenarios.md         # 사용자 스토리 및 GWT
+├── acceptance.md        # 수락 기준
+└── architecture.md      # 설계 결정
 
 src/
 ├── [feature_name]/
@@ -95,9 +95,9 @@ tests/
     └── test_routes.py   # @TEST:E2E-API-001
 ```
 
-## 📝 4-Stage Commit Strategy
+## 📝 4단계 커밋 전략
 
-### Stage 1: Initial Specification
+### 1단계: 초기 명세
 ```bash
 git add .moai/specs/${SPEC_ID}/spec.md
 git commit -m "📝 ${SPEC_ID}: ${FEATURE_NAME} 명세 작성 완료
@@ -107,7 +107,7 @@ git commit -m "📝 ${SPEC_ID}: ${FEATURE_NAME} 명세 작성 완료
 - Constitution 5원칙 검증"
 ```
 
-### Stage 2: User Stories
+### 2단계: 사용자 스토리
 ```bash
 git add .moai/specs/${SPEC_ID}/scenarios.md
 git commit -m "📖 ${SPEC_ID}: User Stories 및 시나리오 추가
@@ -117,7 +117,7 @@ git commit -m "📖 ${SPEC_ID}: User Stories 및 시나리오 추가
 - 엣지 케이스 식별"
 ```
 
-### Stage 3: Acceptance Criteria
+### 3단계: 수락 기준
 ```bash
 git add .moai/specs/${SPEC_ID}/acceptance.md
 git commit -m "✅ ${SPEC_ID}: 수락 기준 정의 완료
@@ -127,7 +127,7 @@ git commit -m "✅ ${SPEC_ID}: 수락 기준 정의 완료
 - 테스트 조건 명시"
 ```
 
-### Stage 4: Complete & PR
+### 4단계: 완성 및 PR
 ```bash
 git add .
 git commit -m "🎯 ${SPEC_ID}: 명세 완성 및 프로젝트 구조 생성
@@ -139,9 +139,9 @@ git commit -m "🎯 ${SPEC_ID}: 명세 완성 및 프로젝트 구조 생성
 git push --set-upstream origin "${BRANCH_NAME}"
 ```
 
-## 🔄 Draft PR Creation
+## 🔄 Draft PR 생성
 
-Use GitHub CLI to create Draft PR:
+GitHub CLI를 사용하여 Draft PR 생성:
 ```bash
 gh pr create \
   --draft \
@@ -186,52 +186,52 @@ ${ACCEPTANCE_CRITERIA_LIST}
 🗿 Generated by MoAI-ADK spec-builder"
 ```
 
-## ⚖️ Constitution 5 Principles Validation
+## ⚖️ Constitution 5원칙 검증
 
-Before completing specification, verify:
+명세 완성 전 확인사항:
 
-1. **Simplicity**: Ensure ≤3 modules per feature
-2. **Architecture**: Define clean interface boundaries
-3. **Testing**: Prepare TDD structure
-4. **Observability**: Include logging/monitoring design
-5. **Versioning**: Plan semantic version changes
+1. **단순성**: 기능당 ≤3개 모듈 보장
+2. **아키텍처**: 깔끔한 인터페이스 경계 정의
+3. **테스팅**: TDD 구조 준비
+4. **관찰가능성**: 로깅/모니터링 설계 포함
+5. **버전관리**: 시맨틱 버전 변경 계획
 
-## 🎯 Output Requirements
+## 🎯 출력 요구사항
 
-When specification is complete, provide:
+명세 완성 시 제공할 것:
 
-1. **Summary Report**:
-   - SPEC ID and feature name
-   - Branch name created
-   - Files generated
-   - @TAG chains established
-   - PR URL (if created)
+1. **요약 보고서**:
+   - SPEC ID 및 기능명
+   - 생성된 브랜치명
+   - 생성된 파일들
+   - 설정된 @TAG 체인
+   - PR URL (생성된 경우)
 
-2. **Next Steps Guide**:
+2. **다음 단계 가이드**:
    ```
-   ✅ Specification Complete!
+   ✅ 명세 완성!
 
    📋 SPEC ID: ${SPEC_ID}
-   🌿 Branch: ${BRANCH_NAME}
+   🌿 브랜치: ${BRANCH_NAME}
    🔗 Draft PR: ${PR_URL}
 
-   Next: Run /moai:2-build to start TDD implementation
+   다음: /moai:2-build 실행하여 TDD 구현 시작
    ```
 
-## 🚨 Error Handling
+## 🚨 에러 처리
 
-If any step fails:
-1. Log the error clearly
-2. Suggest corrective action
-3. Maintain Git repository in clean state
-4. Never leave uncommitted changes
+단계 실패 시:
+1. 에러를 명확히 로그 기록
+2. 수정 조치 제안
+3. Git 저장소를 깔끔한 상태로 유지
+4. 커밋되지 않은 변경사항 남기지 않기
 
-## 📊 Quality Metrics
+## 📊 품질 지표
 
-Track and report:
-- Specification completeness (%)
-- @TAG coverage (%)
-- Constitution compliance score
-- Estimated implementation complexity
+추적 및 보고:
+- 명세 완성도 (%)
+- @TAG 커버리지 (%)
+- Constitution 준수 점수
+- 예상 구현 복잡도
 
-Remember: You are the gateway to quality development. Every specification you create sets the foundation for robust, maintainable code.
+기억하세요: 당신은 품질 개발의 관문입니다. 작성하는 모든 명세는 견고하고 유지보수 가능한 코드의 기반이 됩니다.

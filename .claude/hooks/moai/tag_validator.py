@@ -27,15 +27,16 @@ except ImportError:
     class SecurityError(Exception):
         pass
 
+
 class MoAITagValidator:
     """MoAI-ADK 16-Core @TAG 시스템 검증기"""
-    
+
     def __init__(self, project_root: Path):
         self.project_root = project_root
         self.security_manager = SecurityManager() if SecurityManager else None
         self.config_path = project_root / ".moai" / "config.json"
         self.tags_index_path = project_root / ".moai" / "indexes" / "tags.json"
-        
+
         # 16-Core 태그 체계 정의
         self.tag_categories = {
             'Spec': ['REQ', 'SPEC', 'DESIGN', 'TASK'],
@@ -49,7 +50,7 @@ class MoAITagValidator:
         self.valid_tag_types = []
         for category_tags in self.tag_categories.values():
             self.valid_tag_types.extend(category_tags)
-            
+
         # 태그별 네이밍 규칙
         self.naming_rules = {
             # REQ:[CATEGORY]-[DESCRIPTION]-[NNN] → REQ:USER-LOGIN-001
@@ -61,7 +62,8 @@ class MoAITagValidator:
             'BUG': r'^(CRITICAL|HIGH|MED|LOW)-\d{3}$',       # BUG:CRITICAL-001
         }
 
-    def safe_regex_search(self, pattern: str, text: str, max_length: int = 10000) -> List[Tuple[str, str]]:
+    def safe_regex_search(self, pattern: str, text: str,
+                          max_length: int = 10000) -> List[Tuple[str, str]]:
         """
         Safe regex search to prevent ReDoS attacks.
 
@@ -77,7 +79,8 @@ class MoAITagValidator:
         if len(text) > max_length:
             if self.security_manager:
                 # Log potential attack attempt
-                print(f"Warning: Text too long for regex processing ({len(text)} > {max_length})", file=sys.stderr)
+                print(f"Warning: Text too long for regex processing "
+                      f"({len(text)} > {max_length})", file=sys.stderr)
             text = text[:max_length]
 
         try:

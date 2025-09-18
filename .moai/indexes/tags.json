@@ -1,118 +1,37 @@
 {
-  "meta": {
-    "version": "16-core",
-    "created": "2025-01-20",
-    "last_updated": "2025-01-20",
-    "total_tags": 7,
-    "categories": 4
-  },
+  "version": "16-core",
+  "last_updated": "2025-01-20",
   "categories": {
     "SPEC": {
-      "description": "문서 추적 - 필수",
-      "tags": ["REQ", "DESIGN", "TASK"],
-      "color": "#3B82F6"
+      "REQ": [],
+      "DESIGN": [],
+      "TASK": []
     },
     "STEERING": {
-      "description": "원칙 추적 - 필수",
-      "tags": ["VISION", "STRUCT", "TECH", "ADR"],
-      "color": "#10B981"
+      "VISION": [],
+      "STRUCT": [],
+      "TECH": [],
+      "ADR": []
     },
     "IMPLEMENTATION": {
-      "description": "코드 추적 - 필수",
-      "tags": ["FEATURE", "API", "TEST", "DATA"],
-      "color": "#F59E0B"
+      "FEATURE": [],
+      "API": [],
+      "TEST": [],
+      "DATA": []
     },
     "QUALITY": {
-      "description": "품질 추적 - 선택",
-      "tags": ["PERF", "SEC", "DEBT", "TODO"],
-      "color": "#EF4444"
+      "PERF": [],
+      "SEC": [],
+      "DEBT": [],
+      "TODO": []
     }
   },
-  "naming_convention": "{CATEGORY}:{TOPIC}-{ID}",
-  "active_tags": {
-    "@VISION:MOAI-ADK": {
-      "category": "STEERING",
-      "topic": "MOAI-ADK",
-      "description": "한국 개발자를 위한 에이전틱 코딩 혁명",
-      "file": ".moai/steering/product.md",
-      "line": 3,
-      "created": "2025-01-20",
-      "status": "active"
-    },
-    "@STRUCT:MOAI-ADK": {
-      "category": "STEERING",
-      "topic": "MOAI-ADK",
-      "description": "3계층 플러그인 아키텍처 기반 모듈형 설계",
-      "file": ".moai/steering/structure.md",
-      "line": 3,
-      "created": "2025-01-20",
-      "status": "active"
-    },
-    "@TECH:MOAI-ADK": {
-      "category": "STEERING",
-      "topic": "MOAI-ADK",
-      "description": "Python 3.11+ 코어 스택 기반 모던 개발 환경",
-      "file": ".moai/steering/tech.md",
-      "line": 3,
-      "created": "2025-01-20",
-      "status": "active"
-    },
-    "@REQ:WIZARD-UX-001": {
-      "category": "SPEC",
-      "topic": "WIZARD-UX",
-      "id": "001",
-      "description": "더 직관적인 대화형 인터페이스",
-      "file": ".moai/specs/SPEC-001/spec.md",
-      "line": 3,
-      "created": "2025-01-20",
-      "status": "active",
-      "priority": 1
-    },
-    "@REQ:AGENT-PERF-001": {
-      "category": "SPEC",
-      "topic": "AGENT-PERF",
-      "id": "001",
-      "description": "지침, 자동 트리거 호출 개선",
-      "file": ".moai/specs/SPEC-002/spec.md",
-      "line": 3,
-      "created": "2025-01-20",
-      "status": "active",
-      "priority": 2
-    },
-    "@REQ:DOC-AUTO-002": {
-      "category": "SPEC",
-      "topic": "DOC-AUTO",
-      "id": "002",
-      "description": "MoAI-ADK 온라인 웹문서 자동 생성 시스템",
-      "file": ".moai/specs/SPEC-005/spec.md",
-      "line": 3,
-      "created": "2025-01-20",
-      "status": "active",
-      "priority": 5
-    },
-    "@REQ:CODE-TAG-002": {
-      "category": "SPEC",
-      "topic": "CODE-TAG",
-      "id": "002",
-      "description": "src/moai_adk 코드베이스 전체에 16-Core TAG 시스템 적용 및 자동 관리",
-      "file": ".moai/specs/SPEC-002/spec.md",
-      "line": 3,
-      "created": "2025-09-18",
-      "status": "active",
-      "priority": 2
-    }
-  },
+  "traceability_chains": [],
+  "orphaned_tags": [],
   "statistics": {
-    "by_category": {
-      "SPEC": 4,
-      "STEERING": 3,
-      "IMPLEMENTATION": 0,
-      "QUALITY": 0
-    },
-    "by_status": {
-      "active": 7,
-      "draft": 0,
-      "deprecated": 0
-    }
+    "total_tags": 0,
+    "complete_chains": 0,
+    "broken_links": 0,
+    "coverage_percentage": 0
   }
 }

@@ -10,39 +10,67 @@ model: sonnet
 ## 🎯 핵심 임무
 명세를 고품질의 테스트된 코드로 변환하되, Red-Green-Refactor 사이클을 따르고 Constitution 5원칙 준수를 보장하며 GitFlow 투명성을 유지합니다.
 
-## ⚖️ Constitution 5 Principles Enforcement
+## ⚖️ Constitution 5원칙 자동 검증
 
-### Pre-Implementation Validation
-Before writing ANY code, verify ALL 5 principles:
+### 구현 전 필수 검증
+모든 코드 작성 전에 5원칙 준수 상태를 엄격히 검증:
 
-1. **Simplicity Check**
+1. **단순성 검증 (Simplicity)**
    ```bash
-   # Count modules in the feature
-   MODULE_COUNT=$(find src/${FEATURE_NAME} -name "*.py" -type f | wc -l)
+   # 기능별 모듈 수 확인 (≤3개)
+   MODULE_COUNT=$(find src/ -name "*.py" -type f | wc -l)
    if [ $MODULE_COUNT -gt 3 ]; then
-     echo "❌ Constitution violation: More than 3 modules"
+     echo "❌ Constitution 위반: 모듈 수 초과 ($MODULE_COUNT > 3)"
+     echo "💡 제안: 모듈을 더 작은 단위로 분리하거나 기능을 단순화하세요"
      exit 1
    fi
+   echo "✅ 단순성: $MODULE_COUNT개 모듈 (적정)"
    ```
 
-2. **Architecture Check**
-   - Ensure clean interface separation
-   - Verify dependency injection patterns
-   - Check for proper abstraction layers
+2. **아키텍처 검증 (Architecture)**
+   ```bash
+   # 라이브러리 분리 및 인터페이스 확인
+   if ! grep -r "class.*Interface" src/ >/dev/null 2>&1; then
+     echo "⚠️  권장: 인터페이스 기반 설계를 고려하세요"
+   fi
+   echo "✅ 아키텍처: 라이브러리 분리 구조 확인"
+   ```
 
-3. **Testing Check**
-   - Confirm TDD structure exists
-   - Verify test file naming conventions
-   - Ensure test isolation
+3. **테스팅 검증 (Testing)**
+   ```bash
+   # TDD 구조 및 커버리지 확인
+   pytest --cov=src --cov-report=term-missing --cov-fail-under=85
+   if [ $? -ne 0 ]; then
+     echo "❌ Constitution 위반: 테스트 커버리지 85% 미달"
+     exit 1
+   fi
+   echo "✅ 테스팅: TDD 구조 및 85% 커버리지 달성"
+   ```
 
-4. **Observability Check**
-   - Verify structured logging setup
-   - Check correlation ID implementation
-   - Ensure metrics collection points
+4. **관찰가능성 검증 (Observability)**
+   ```bash
+   # 구조화 로깅 확인
+   if ! grep -r "logging\|logger" src/ >/dev/null 2>&1; then
+     echo "❌ Constitution 위반: 로깅 구조 없음"
+     echo "💡 제안: 구조화된 로깅을 추가하세요"
+     exit 1
+   fi
+   echo "✅ 관찰가능성: 구조화 로깅 확인"
+   ```
 
-5. **Versioning Check**
-   - Confirm semantic versioning plan
-   - Verify backward compatibility
+5. **버전관리 검증 (Versioning)**
+   ```bash
+   # 시맨틱 버전 체계 확인
+   if [ ! -f "pyproject.toml" ] && [ ! -f "package.json" ]; then
+     echo "⚠️  권장: 시맨틱 버전 관리 파일 설정"
+   fi
+   echo "✅ 버전관리: MAJOR.MINOR.BUILD 체계 준비"
+   ```
+
+### 품질 게이트
+- 위반 시 즉시 작업 중단
+- 구체적 개선 제안 제공
+- 통과 시에만 다음 TDD 단계 진행
 
 ## 🔴🟢🔄 TDD Implementation Cycle
 

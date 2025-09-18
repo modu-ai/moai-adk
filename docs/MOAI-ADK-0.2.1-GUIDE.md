@@ -15,7 +15,8 @@
 5. [🔄 Migration Guide](#-migration-guide)
 6. [🛠️ Developer Guide](#️-developer-guide)
 7. [📚 API Reference](#-api-reference)
-8. [⚡ Performance Improvements](#-performance-improvements)
+8. [🎨 Output Styles](#-output-styles)
+9. [⚡ Performance Improvements](#-performance-improvements)
 
 ---
 
@@ -117,9 +118,11 @@ graph TD
 - ✅ **GitHub Actions 자동 설정**: CI/CD 파이프라인 즉시 활성화
 - ✅ **16-Core @TAG 완전 추적**: 요구사항부터 테스트까지 체인 보장
 
-### 3개 핵심 GitFlow 통합 에이전트
+### 3개 핵심 GitFlow 통합 에이전트 (극단적 단순화)
 
-> **📁 실제 구현 위치**: `.claude/agents/moai/` 폴더의 Markdown 지침 파일
+> **📁 실제 구현 위치**: `.claude/agents/moai/` 폴더 (3개만 유지)
+
+MoAI-ADK 0.2.1은 **극단적 단순화**를 통해 보조 에이전트 5개를 제거하고 핵심 3개만 유지합니다.
 
 #### 1. spec-builder (명세 + GitFlow 자동화)
 
@@ -263,13 +266,13 @@ You are a documentation synchronization and PR management expert.
 - GitHub 계정 (GitFlow 기능용)
 ```
 
-#### 2. MoAI-ADK 0.2.1 설치
+#### 2. MoAI-ADK 설치
 ```bash
 # 방법 1: pip 설치 (권장)
 pip install moai-adk
 
 # 방법 2: 소스 설치
-git clone https://github.com/MoAI-ADK/MoAI-ADK.git
+git clone https://github.com/modu-ai/moai-adk.git
 cd MoAI-ADK
 pip install -e .
 
@@ -415,7 +418,7 @@ claude
    ✅ Versioning: 버전 관리 ✓
 
 🎉 명세 작성 완료! (소요 시간: 2분)
-🔗 Draft PR: https://github.com/user/repo/pull/123
+🔗 Draft PR: https://github.com/modu-ai/moai-adk/pull/123
 ```
 
 **생성된 파일들 (16-Core @TAG 완전 통합):**
@@ -547,7 +550,7 @@ project/
    ✅ 보안 스캔: 취약점 없음
 
 🎉 동기화 완료! (소요 시간: 1분)
-🔗 Ready for Review: https://github.com/user/repo/pull/123
+🔗 Ready for Review: https://github.com/modu-ai/moai-adk/pull/123
 ```
 
 ### 고급 GitFlow 패턴
@@ -777,43 +780,31 @@ EOF
 gh pr ready
 ```
 
-#### Constitution 5원칙 GitFlow 통합
+#### Constitution 5원칙 에이전트 통합
 
-```python
-# src/moai_adk/utils/constitution.py (GitFlow 통합 버전)
-class ConstitutionChecker:
-    """헌법 5원칙 GitFlow 통합 검증"""
+**code-builder 에이전트가 내부적으로 Constitution 검증 수행:**
 
-    def validate_for_commit(self, stage: str, project: Project) -> ValidationResult:
-        """커밋 단계별 Constitution 검증"""
+1. **명세 단계 검증 (완화된 기준)**
+   - Simplicity: 프로젝트 구조 설계 확인
+   - Architecture: 인터페이스 설계 검토
+   - Testing: TDD 구조 준비 상태
+   - Observability: 로깅 설계 계획
+   - Versioning: 버전 관리 전략
 
-        if stage == 'spec':
-            return self._validate_spec_stage(project)
-        elif stage in ['red', 'green', 'refactor']:
-            return self._validate_implementation_stage(project)
-        elif stage == 'sync':
-            return self._validate_final_stage(project)
+2. **구현 단계 검증 (엄격한 기준)**
+   ```bash
+   # code-builder 에이전트가 자동 실행
+   - 모듈 수: ≤3개 확인 (find src/ -name "*.py" | wc -l)
+   - 테스트 커버리지: ≥85% (pytest --cov)
+   - 인터페이스: 라이브러리 분리 검증
+   - 로깅: 구조화 로깅 확인
+   - 버전: MAJOR.MINOR.BUILD 체계
+   ```
 
-    def _validate_spec_stage(self, project: Project) -> ValidationResult:
-        """명세 단계 검증 (완화된 기준)"""
-        return ValidationResult(
-            simplicity=True,  # 구조만 확인
-            architecture=self._check_interface_design(project),
-            testing=True,     # TDD 준비만 확인
-            observability=True,  # 로깅 설계만 확인
-            versioning=True   # 버전 계획만 확인
-        )
-
-    def _validate_implementation_stage(self, project: Project) -> ValidationResult:
-        """구현 단계 검증 (엄격한 기준)"""
-        return ValidationResult(
-            simplicity=self._check_module_count(project) <= 3,
-            architecture=self._check_clean_interfaces(project),
-            testing=project.test_coverage >= 0.85,
-            observability=self._check_structured_logging(project),
-            versioning=self._check_semantic_versioning(project)
-        )
-```
+3. **품질 게이트**
+   - 검증 실패 시 작업 중단
+   - 개선 제안 및 가이드 제공
+   - 통과 시 다음 단계 진행
 
 ---
 
@@ -823,114 +814,265 @@ class ConstitutionChecker:
 ```bash
 /moai:1-spec <description> [OPTIONS]
 
-# GitFlow 옵션:
---branch-prefix PREFIX  # 브랜치 접두사 설정 (기본: feature)
---auto-pr               # Draft PR 자동 생성 (기본: true)
---assign-reviewers      # 리뷰어 자동 할당 (기본: false)
---parallel              # 병렬 처리 활성화
+# 사용 가능한 옵션:
+--project               # 대화형 프로젝트 분석 모드
 
 # 예시:
 /moai:1-spec "JWT 인증 시스템 구현"
-/moai:1-spec "결제 API" --branch-prefix=payment --assign-reviewers
-/moai:1-spec "알림 시스템" --parallel --auto-pr
+/moai:1-spec --project  # 대화형 전체 프로젝트 분석
+/moai:1-spec SPEC-001 "추가 보안 요구사항"  # 기존 SPEC 수정
 ```
 
 #### `/moai:2-build` (TDD + GitFlow)
 ```bash
-/moai:2-build [OPTIONS]
+/moai:2-build [SPEC-ID]
 
-# GitFlow 옵션:
---auto-commit           # 단계별 자동 커밋 (기본: true)
---trigger-ci            # CI/CD 파이프라인 트리거 (기본: true)
---update-pr             # PR 진행 상황 업데이트 (기본: true)
---quality-gate          # 품질 게이트 검증 (기본: true)
+# 인수:
+<SPEC-ID>               # 특정 SPEC 구현 (기본: 현재 브랜치의 SPEC)
+all                     # 모든 SPEC 병렬 구현
 
 # 예시:
-/moai:2-build
-/moai:2-build --quality-gate --trigger-ci
-/moai:2-build --auto-commit=false  # 수동 커밋 모드
+/moai:2-build           # 현재 SPEC 구현
+/moai:2-build SPEC-001  # 특정 SPEC 구현
+/moai:2-build all       # 모든 SPEC 구현
 ```
 
 #### `/moai:3-sync` (문서 + PR Ready)
 ```bash
-/moai:3-sync [OPTIONS]
+/moai:3-sync [MODE] [target-path]
 
-# GitFlow 옵션:
---ready-for-review      # Draft → Ready 전환 (기본: true)
---assign-reviewers      # 리뷰어 자동 할당 (기본: true)
---notify-team           # 팀 알림 발송 (기본: false)
---create-milestone      # 마일스톤 설정 (기본: false)
+# 실행 모드:
+auto                    # 증분 동기화 (기본값)
+force                   # 완전 재동기화
+status                  # 동기화 상태 확인
 
 # 예시:
-/moai:3-sync
-/moai:3-sync --notify-team --create-milestone
-/moai:3-sync --ready-for-review=false  # Draft 상태 유지
+/moai:3-sync            # 자동 증분 동기화
+/moai:3-sync force      # 전체 강제 동기화
+/moai:3-sync status     # 상태 확인
 ```
 
-### GitFlow 에이전트 API
+### GitFlow 에이전트 사용법
 
-#### spec-builder (GitFlow 통합)
-```python
-# 직접 호출
+#### spec-builder (명세 + GitFlow 자동화)
+```bash
+# Claude Code에서 에이전트 호출
 @spec-builder "사용자 인증 시스템 구현"
 
-# GitFlow 파라미터:
-branch_strategy: str    # 브랜치 전략 (feature/hotfix/release)
-auto_pr: bool          # 자동 PR 생성 여부
-commit_stages: list    # 커밋 단계 설정
-reviewers: list        # 리뷰어 목록
+# 자동 실행 과정:
+1. feature/SPEC-XXX-기능명 브랜치 생성
+2. EARS 형식 명세 작성
+3. 프로젝트 구조 생성
+4. 4단계 의미있는 커밋
+5. Draft PR 자동 생성
 
-# 반환 (GitFlow 정보 포함):
-{
-    "spec": "EARS 형식 명세",
-    "structure": "프로젝트 구조",
-    "gitflow": {
-        "branch": "feature/SPEC-001-user-auth",
-        "commits": ["📝 SPEC-001: ...", "📖 SPEC-001: ...", ...],
-        "pr_url": "https://github.com/user/repo/pull/123",
-        "pr_status": "draft"
-    },
-    "validation": "Constitution 검증 결과"
-}
+# 결과:
+# ✅ 브랜치: feature/SPEC-001-user-auth
+# ✅ 명세: .moai/specs/SPEC-001/
+# ✅ PR: https://github.com/user/repo/pull/123 (Draft)
 ```
 
-### GitHub Actions 워크플로우 템플릿
+#### code-builder (TDD + Constitution)
+```bash
+# Claude Code에서 에이전트 호출
+@code-builder SPEC-001
 
-#### Constitution 검증 파이프라인
-```yaml
-# .github/workflows/constitution.yml (자동 생성)
-name: Constitution Validation
-on:
-  push:
-    branches: [ 'feature/**' ]
-  pull_request:
+# 자동 실행 과정:
+1. Constitution 5원칙 검증
+2. 🔴 RED: 실패 테스트 작성 + 커밋
+3. 🟢 GREEN: 최소 구현 + 커밋
+4. 🔄 REFACTOR: 품질 개선 + 커밋
+5. 커버리지 확인 (≥85%)
 
-jobs:
-  validate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      - name: Install MoAI-ADK
-        run: pip install moai-adk
-
-      - name: Validate Constitution
-        run: moai validate --constitution --strict
-
-      - name: Generate Report
-        run: moai report --format=json --output=constitution-report.json
-
-      - name: Update PR Status
-        if: github.event_name == 'pull_request'
-        run: |
-          gh pr comment ${{ github.event.number }} --body-file constitution-report.json
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+# 결과:
+# ✅ TDD 사이클 완료
+# ✅ Constitution 준수
+# ✅ PR 진행 상황 업데이트
 ```
+
+#### doc-syncer (문서 + PR 완료)
+```bash
+# Claude Code에서 에이전트 호출
+@doc-syncer
+
+# 자동 실행 과정:
+1. 16-Core @TAG 시스템 업데이트
+2. Living Document 동기화
+3. Draft → Ready for Review 전환
+4. 리뷰어 자동 할당
+
+# 결과:
+# ✅ 문서 동기화 완료
+# ✅ PR Ready for Review
+# ✅ 리뷰어 할당 완료
+```
+
+### 에이전트 기반 품질 검증
+
+#### Constitution 검증 프로세스
+```bash
+# code-builder 에이전트가 자동 실행
+1. 프로젝트 구조 분석
+   - find src/ -name "*.py" | wc -l  # 모듈 수 확인
+   - 복잡도 측정 및 3개 이하 확인
+
+2. 테스트 커버리지 검증
+   - pytest --cov --cov-report=term-missing
+   - 85% 이상 확인
+
+3. 아키텍처 검증
+   - 라이브러리 분리 확인
+   - 인터페이스 의존성 검증
+
+4. 품질 메트릭
+   - 로깅 구조 확인
+   - 버전 관리 체계 검증
+
+# 실패 시 자동 중단 및 개선 가이드 제공
+```
+
+#### 실시간 품질 모니터링
+- 에이전트가 작업 중 지속적으로 Constitution 준수 확인
+- 위반 사항 발견 시 즉시 피드백 및 수정 제안
+- GitHub Actions 없이도 완전한 품질 보장
+
+---
+
+## 🎨 Output Styles
+
+### Claude Code 출력 스타일 설정
+
+MoAI-ADK는 다양한 사용자 수준과 상황에 맞춘 **5가지 출력 스타일**을 제공합니다. 이 스타일들은 Claude Code의 output-styles 기능을 활용하여 개발자의 경험 수준과 선호도에 맞는 최적화된 응답을 제공합니다.
+
+#### 사용 가능한 스타일
+
+| 스타일 | 대상 사용자 | 특징 | 사용 시기 |
+|--------|-------------|------|-----------|
+| **expert** | 숙련된 전문가 | 간결한 설명, 코드 중심 (80:20 비율) | 빠른 개발, 핵심만 필요할 때 |
+| **mentor** | 중급자/팀 리더 | 교육적 접근, 상세한 설명과 가이드 | 팀 교육, 베스트 프랙티스 공유 |
+| **study** | 학습자 | 단계별 설명, 개념 정리 중심 | 새 기술 학습, 깊이 있는 이해 |
+| **beginner** | 초보자 | 친절한 설명, 기초부터 차근차근 | 처음 접하는 기술, 입문 단계 |
+| **audit** | 검토자/관리자 | 모든 변경사항 상세 기록 | 코드 리뷰, 변경사항 추적 |
+
+#### 스타일별 상세 특징
+
+#### 1. expert (전문가 모드)
+
+```markdown
+# MoAI Expert Style
+- 최소한의 설명, 코드와 명령어 중심
+- 전문성 가정 (EARS, Constitution, TAG 등 자유 사용)
+- 직접적 해결책, 기초 설명 생략
+- 한 줄 답변 선호, 최종 결과 중심
+```
+
+#### 2. mentor (멘토링 모드)
+
+```markdown
+# MoAI Mentor Style
+- 교육적 접근, 왜(Why)와 어떻게(How) 설명
+- 베스트 프랙티스와 안티패턴 제시
+- 대안 솔루션 비교 분석
+- 장기적 관점에서의 권장사항
+```
+
+#### 3. study (학습 모드)
+
+```markdown
+# MoAI Study Style
+- 단계별 상세 설명, 개념 정리
+- 배경 지식과 이론적 기반 제공
+- 예제와 실습을 통한 이해 증진
+- 관련 리소스와 추가 학습 자료 제공
+```
+
+#### 4. beginner (초보자 모드)
+
+```markdown
+# MoAI Beginner Style
+- 친절하고 인내심 있는 설명
+- 전문용어 사용 시 설명 추가
+- 실수하기 쉬운 부분 미리 안내
+- 격려와 동기부여 메시지 포함
+```
+
+#### 5. audit (감사 모드)
+
+```markdown
+# MoAI Audit Style
+- 모든 변경사항과 결정 과정 상세 기록
+- 규정 준수와 품질 기준 확인
+- 위험 요소와 완화 방안 명시
+- 추적 가능한 문서화 중심
+```
+
+#### 스타일 변경 방법
+
+Claude Code에서 출력 스타일을 변경하는 방법:
+
+1. **설정 파일 수정**:
+
+   ```bash
+   # .claude/settings.json에서 설정
+   {
+     "outputStyle": "expert"  // 또는 mentor, study, beginner, audit
+   }
+   ```
+
+2. **대화 중 전환**:
+
+   ```bash
+   # Claude Code 대화창에서
+   /style expert     # 전문가 모드로 전환
+   /style mentor     # 멘토링 모드로 전환
+   /style study      # 학습 모드로 전환
+   ```
+
+3. **프로젝트별 기본 설정**:
+
+   ```bash
+   # 프로젝트 루트의 .claude/settings.json
+   {
+     "defaultOutputStyle": "expert",
+     "contextAware": true
+   }
+   ```
+
+#### MoAI-ADK 특화 기능
+
+각 스타일은 MoAI-ADK의 핵심 기능과 완전 통합되어 있습니다:
+
+- **Constitution 5원칙**: 스타일에 관계없이 항상 검증
+- **16-Core TAG 시스템**: 출력에 자동으로 TAG 정보 포함
+- **GitFlow 통합**: 스타일별로 Git 명령어 설명 수준 조절
+- **Hook 시스템**: 스타일에 따라 Hook 결과 표시 방식 변경
+
+#### 실사용 예시
+
+**expert 스타일 응답 예시**:
+
+```text
+✅ SPEC-001 완료 (EARS 15개, 수락기준 45개)
+⚡ Constitution Check: 5/5 원칙 준수
+🔧 다음: /moai:2-build SPEC-001
+```
+
+**beginner 스타일 응답 예시**:
+
+```text
+🎉 훌륭해요! SPEC-001 명세 작성이 완료되었습니다!
+
+📋 완성된 내용:
+- EARS 형식 요구사항: 15개 작성됨
+- 수락 기준: 45개 시나리오 준비
+- Constitution 5원칙: 모두 통과! ✅
+
+🎯 다음 단계: 이제 /moai:2-build SPEC-001 명령어로
+실제 코드 구현을 시작해보세요. TDD 방식으로
+안전하게 개발할 수 있도록 도와드릴게요!
+```
+
+이러한 유연한 출력 스타일 시스템을 통해 MoAI-ADK는 모든 수준의 개발자에게 최적화된 경험을 제공합니다.
 
 ---
 
@@ -960,90 +1102,69 @@ jobs:
 
 ### GitFlow 자동화 최적화 기법
 
-#### 1. 지능형 브랜치 관리
-```python
-# 브랜치 생성 최적화
-class SmartBranchManager:
-    def __init__(self):
-        self.branch_cache = {}  # 브랜치 상태 캐싱
-        self.naming_ai = BranchNamingAI()  # AI 기반 브랜치명 생성
+#### 1. 지능형 브랜치 관리 (gh CLI 기반)
+```bash
+# spec-builder 에이전트가 자동 실행
+# 기능명을 기반으로 최적 브랜치명 생성
+FEATURE_NAME="JWT 인증 시스템"
+BRANCH_NAME="feature/SPEC-$(printf "%03d" $(($(ls .moai/specs/ | wc -l) + 1)))-$(echo "$FEATURE_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')"
 
-    @cached_property
-    def optimal_branch_name(self, spec_content: str) -> str:
-        """AI 기반 최적 브랜치명 생성"""
-        if spec_content in self.branch_cache:
-            return self.branch_cache[spec_content]
-
-        # AI로 의미있는 브랜치명 생성 (0.1초)
-        name = self.naming_ai.generate_name(spec_content)
-        self.branch_cache[spec_content] = name
-        return name
+# 브랜치 생성 및 원격 연결
+git checkout -b "$BRANCH_NAME"
+git push --set-upstream origin "$BRANCH_NAME"
 ```
 
-#### 2. 병렬 Git 작업 처리
-```python
-# 병렬 GitFlow 작업
-async def parallel_gitflow_operations():
-    """여러 GitFlow 작업을 병렬로 처리"""
+#### 2. 병렬 GitFlow 작업 처리 (Claude Code 도구 활용)
+```bash
+# 에이전트가 여러 작업을 효율적으로 처리
+# Bash 도구로 병렬 실행
 
-    tasks = [
-        create_branch_async(),      # 브랜치 생성
-        setup_pr_template_async(),  # PR 템플릿 준비
-        trigger_ci_setup_async(),   # CI 설정 준비
-        assign_reviewers_async()    # 리뷰어 분석
-    ]
+# 1. 브랜치 생성과 동시에 PR 템플릿 준비
+git checkout -b feature/SPEC-XXX-name &
+echo "PR 템플릿 준비 중..." > pr_template.md &
+wait
 
-    # 모든 작업을 병렬로 실행 (총 2초 → 0.5초)
-    results = await asyncio.gather(*tasks)
-    return combine_results(results)
+# 2. 커밋과 동시에 문서 업데이트
+git commit -m "📝 SPEC-001: 명세 작성 완료" &
+echo "문서 동기화 중..." &
+wait
+
+# 3. gh CLI로 PR 생성
+gh pr create --draft --title "[SPEC-001] 기능명" --body-file pr_template.md
 ```
 
-#### 3. 스마트 커밋 메시지 생성
-```python
-class IntelligentCommitGenerator:
-    """컨텍스트 기반 지능형 커밋 메시지"""
+#### 3. 스마트 커밋 메시지 생성 (7단계 템플릿)
+```bash
+# code-builder 에이전트가 단계별 커밋 메시지 생성
 
-    def generate_contextual_message(self, stage: str, changes: GitDiff) -> str:
-        """변경 사항 분석 기반 커밋 메시지"""
+# SPEC 단계 (4단계)
+git commit -m "📝 SPEC-${ID}: ${FEATURE_NAME} 명세 작성 완료"
+git commit -m "📖 SPEC-${ID}: User Stories 및 시나리오 추가"
+git commit -m "✅ SPEC-${ID}: 수락 기준 정의 완료"
+git commit -m "🎯 SPEC-${ID}: 명세 완성 및 프로젝트 구조 생성"
 
-        # 변경 사항 분석 (0.1초)
-        impact = self.analyze_impact(changes)
-        scope = self.detect_scope(changes.files)
-
-        # 템플릿 선택 및 커스터마이징
-        template = self.TEMPLATES[stage]
-
-        return template.format(
-            impact=impact,
-            scope=scope,
-            file_count=len(changes.files),
-            line_count=changes.lines_changed
-        )
+# BUILD 단계 (3단계)
+git commit -m "🔴 SPEC-${ID}: 실패하는 테스트 작성 완료 (RED)"
+git commit -m "🟢 SPEC-${ID}: 최소 구현으로 테스트 통과 (GREEN)"
+git commit -m "🔄 SPEC-${ID}: 코드 품질 개선 및 리팩터링 완료"
 ```
 
-### 실시간 성능 모니터링
+#### 4. 자동 PR 관리 (gh CLI 최적화)
+```bash
+# 단계별 PR 상태 관리
+# Draft → Ready → Merge
 
-#### GitFlow 성능 대시보드
-```python
-class GitFlowPerformanceMonitor:
-    """GitFlow 작업 성능 실시간 모니터링"""
+# 1. Draft PR 생성 (spec-builder)
+gh pr create --draft --title "[SPEC-001] 기능명"
 
-    def track_operation(self, operation: str):
-        """GitFlow 작업 성능 추적"""
-        with self.performance_tracker(operation) as tracker:
-            yield tracker
+# 2. 구현 완료 시 Ready 전환 (doc-syncer)
+gh pr ready
 
-    def generate_performance_report(self) -> dict:
-        """성능 리포트 생성"""
-        return {
-            "branch_creation": f"{self.metrics['branch']:.2f}s",
-            "commit_generation": f"{self.metrics['commit']:.2f}s",
-            "pr_management": f"{self.metrics['pr']:.2f}s",
-            "ci_integration": f"{self.metrics['ci']:.2f}s",
-            "total_gitflow_overhead": f"{sum(self.metrics.values()):.2f}s",
-            "user_git_commands_saved": len(self.saved_commands),
-            "error_prevention_count": self.prevented_errors
-        }
+# 3. 리뷰어 자동 할당
+gh pr edit --add-reviewer @senior-dev --add-reviewer @security-lead
+
+# 4. 상태 확인
+gh pr status
 ```
 
 ---
@@ -1069,6 +1190,28 @@ MoAI-ADK 0.2.1은 **GitFlow 완전 투명성**을 통한 **개발 방식의 근�
 3. **🔒 실수 방지**: 자동화로 Git 실수와 충돌 상황 완전 차단
 4. **👥 팀 협업 강화**: 일관된 브랜치 전략과 PR 관리로 팀 효율성 극대화
 5. **📈 품질 보장**: Constitution 5원칙과 TDD가 GitFlow에 완전 통합
+
+### 🎯 극단적 단순화 (0.2.1 핵심 변화)
+
+**파일 구조 단순화:**
+```
+.claude/agents/moai/
+├── spec-builder.md     # GitFlow 명세 전문가
+├── code-builder.md     # TDD GitFlow 전문가
+└── doc-syncer.md       # 문서 GitFlow 전문가
+
+.moai/
+├── memory/constitution.md        # Constitution 5원칙만
+├── scripts/check_constitution.py # Constitution 검증
+├── scripts/check-traceability.py # TAG 추적성 검증
+└── indexes/tags.json            # 16-Core TAG 인덱스
+```
+
+**결과:**
+- **22개 파일 → 12개 파일** (45% 감소)
+- 보조 에이전트 5개 제거 (plan-architect, task-decomposer 등)
+- 메모리 파일 4개 → 1개 (constitution.md로 통합)
+- 복잡한 Hook 스크립트들 제거
 
 ### 다음 단계
 
