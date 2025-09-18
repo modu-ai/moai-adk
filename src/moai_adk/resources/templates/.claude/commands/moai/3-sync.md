@@ -89,8 +89,11 @@ gh pr edit --add-label "ready-for-review" --add-label "constitution-compliant"
 # 자동 증분 동기화 (기본값)
 /moai:3-sync
 
-# 완전 재동기화 (전체 프로젝트)
+# 전체 프로젝트 동기화
 /moai:3-sync force
+
+# 통합 브랜치 동기화 (--project 모드 후)
+/moai:3-sync project
 
 # 동기화 상태 확인
 /moai:3-sync status
@@ -112,11 +115,11 @@ gh pr edit --add-label "ready-for-review" --add-label "constitution-compliant"
 ⚡ 최적화된 처리: 델타만 동기화
 ```
 
-### Force 모드 - 완전 재동기화
+### Force 모드 - 전체 재동기화
 전체 프로젝트를 다시 스캔하고 모든 문서를 재생성합니다.
 
 ```
-🔄 완전 재동기화 실행 중...
+🔄 전체 재동기화 실행 중...
 
 📂 전체 프로젝트 스캔:
 ├── 소스 파일: 45개 분석
@@ -125,6 +128,23 @@ gh pr edit --add-label "ready-for-review" --add-label "constitution-compliant"
 └── 총 130개 파일 처리
 
 🏗️ 전체 TAG 인덱스 재구축
+```
+
+### Project 모드 - 통합 브랜치 동기화
+--project로 생성된 통합 브랜치의 전체 SPEC을 동기화합니다.
+
+```
+🏢 통합 브랜치 동기화 실행 중...
+
+📋 통합 SPEC 스캔:
+├── SPEC-001: 사용자 인증 시스템
+├── SPEC-002: 게시글 관리 시스템
+├── SPEC-003: 댓글 및 좋아요
+├── SPEC-004: 관리자 대시보드
+└── SPEC-005: 모니터링 시스템
+
+🔗 전체 프로젝트 일관성 검증
+📝 통합 README 및 API 문서 업데이트
 ```
 
 ## 🤖 doc-syncer 에이전트 자동화
@@ -238,6 +258,9 @@ tests/ → docs/testing/
 
 # 문서 파일만
 /moai:3-sync auto docs/
+
+# 통합 브랜치 대상 (전체 프로젝트)
+/moai:3-sync project
 ```
 
 ### 동기화 상태 확인
@@ -253,19 +276,32 @@ tests/ → docs/testing/
 
 ## 🔄 완료 후 다음 단계
 
-### Git 커밋 권장
+### 단일 SPEC 모드 - Git 커밋
 ```bash
 ✅ 동기화 완료!
 
 🎯 권장 다음 단계:
 > git add .
-> git commit -m "docs: sync living documents and TAG system"
+> git commit -m "docs: sync SPEC-XXX implementation and documentation"
 
 📝 변경된 파일:
 ├── README.md (기능 설명 업데이트)
-├── docs/api/ (3개 API 문서 갱신)
-├── .moai/indexes/tags.json (TAG 인덱스 업데이트)
-└── CLAUDE.md (프로젝트 상태 반영)
+├── docs/api/ (API 문서 갱신)
+└── .moai/indexes/tags.json (TAG 인덱스 업데이트)
+```
+
+### --project 모드 - 통합 PR Ready
+```bash
+🏢 통합 브랜치 동기화 완료!
+
+🎯 PR 전환 단계:
+> gh pr ready  # Draft → Ready for Review
+
+📋 전체 프로젝트 동기화:
+├── README.md (전체 기능 목록)
+├── docs/architecture.md (시스템 전체 설계)
+├── docs/api/ (통합 API 문서)
+└── .moai/indexes/ (전체 TAG 인덱스)
 ```
 
 ### 다음 개발 사이클
@@ -273,12 +309,13 @@ tests/ → docs/testing/
 🔄 개발 사이클 완료!
 
 전체 MoAI-ADK 워크플로우:
-✅ /moai:1-spec → SPEC 작성
-✅ /moai:2-build → TDD 구현
-✅ /moai:3-sync → 문서 동기화
+✅ /moai:1-spec (또는 --project) → SPEC 작성
+✅ /moai:2-build SPEC-XXX → 순차 TDD 구현
+✅ /moai:3-sync (또는 project) → 문서 동기화
 
 🎉 다음 기능 개발 준비 완료
-> /moai:1-spec "다음 기능 설명"
+> /moai:1-spec "다음 기능 설명"  # 단일
+> /moai:1-spec --project  # 전체 프로젝트
 ```
 
 ## ⚠️ 에러 처리

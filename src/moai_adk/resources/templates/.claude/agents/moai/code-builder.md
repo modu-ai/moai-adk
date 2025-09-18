@@ -101,12 +101,11 @@ model: sonnet
 
 #### Step 1: Analyze Specification
 ```bash
-# Read SPEC to understand requirements
+# Read SPEC to understand requirements (통합된 spec.md)
 cat .moai/specs/${SPEC_ID}/spec.md
-cat .moai/specs/${SPEC_ID}/acceptance.md
 
 # Extract test requirements from @TEST tags
-grep "@TEST" .moai/specs/${SPEC_ID}/*.md
+grep "@TEST" .moai/specs/${SPEC_ID}/spec.md
 ```
 
 #### Step 2: Write Comprehensive Test Cases
