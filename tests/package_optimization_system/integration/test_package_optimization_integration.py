@@ -109,8 +109,8 @@ class TestPackageOptimizationIntegration:
         optimization_result = optimizer.optimize()
         tracker.record_event("optimization_completed", optimization_result)
 
-        # 최종 메트릭 수집
-        final_metrics = tracker.record_baseline_metrics()
+        # 최종 메트릭 수집 (베이스라인 변경 없이)
+        final_metrics = tracker._get_current_metrics()
         final_size = final_metrics["total_size_bytes"]
         final_file_count = final_metrics["file_count"]
 
@@ -222,6 +222,12 @@ class TestPackageOptimizationIntegration:
                 commands_dir = Path(self.package_dir) / "commands"
                 return [f.name for f in commands_dir.glob("*.md")]
 
+        # 핵심 에이전트 파일들 추가 생성 (API 호환성을 위해)
+        agents_dir = Path(self.temp_dir) / "agents"
+        core_agents = ["spec-builder.md", "code-builder.md", "doc-syncer.md", "claude-code-manager.md"]
+        for core_agent in core_agents:
+            (agents_dir / core_agent).write_text("# Core Agent\nEssential functionality")
+
         client = MockApiClient(self.temp_dir)
 
         # 최적화 전 API 호출
@@ -296,7 +302,7 @@ class TestPackageOptimizationIntegration:
         tracker = MetricsTracker(self.temp_dir)
 
         # 의도적으로 실패 시나리오 생성
-        with patch('pathlib.Path.unlink', side_effect=PermissionError("Access denied")):
+        with patch('os.remove', side_effect=PermissionError("Access denied")):
             # Act
             result = optimizer.optimize()
 

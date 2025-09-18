@@ -36,12 +36,12 @@ class MetricsTracker:
         # 로깅 설정
         self.logger = logging.getLogger(__name__)
 
-    def record_baseline_metrics(self) -> Dict[str, Any]:
+    def _get_current_metrics(self) -> Dict[str, Any]:
         """
-        베이스라인 메트릭 기록
+        현재 메트릭 측정 (베이스라인 변경 없이)
 
         Returns:
-            베이스라인 메트릭 딕셔너리
+            현재 메트릭 딕셔너리
         """
         try:
             total_size = 0
@@ -58,30 +58,40 @@ class MetricsTracker:
                     except (OSError, FileNotFoundError):
                         continue
 
-            baseline = {
+            return {
                 "total_size_bytes": total_size,
                 "file_count": file_count,
                 "directory_count": directory_count,
                 "timestamp": datetime.now().isoformat()
             }
 
-            self.baseline_metrics = baseline
-            return baseline
-
         except Exception as e:
-            error_msg = f"Failed to record baseline metrics: {str(e)}"
             return {
                 "total_size_bytes": 0,
                 "file_count": 0,
                 "directory_count": 0,
                 "timestamp": datetime.now().isoformat(),
-                "errors": [error_msg]
+                "error": str(e)
             }
+
+    def record_baseline_metrics(self) -> Dict[str, Any]:
+        """
+        베이스라인 메트릭 기록
+
+        Returns:
+            베이스라인 메트릭 딕셔너리
+        """
+        baseline = self._get_current_metrics()
+        self.baseline_metrics = baseline
+        return baseline
 
     def start_optimization_tracking(self):
         """최적화 추적 시작"""
         self.start_time = time.time()
         self.events = []
+        # 최적화 시작 시점의 베이스라인 저장
+        if not self.baseline_metrics:
+            self.baseline_metrics = self.record_baseline_metrics()
         self.record_event("optimization_started", {"timestamp": datetime.now().isoformat()})
 
     def record_event(self, event_type: str, event_data: Dict[str, Any]):
@@ -162,8 +172,8 @@ class MetricsTracker:
             return {"error": "No baseline metrics available"}
 
         try:
-            # 현재 상태 측정
-            current = self.record_baseline_metrics()
+            # 현재 상태 측정 (베이스라인 변경 없이)
+            current = self._get_current_metrics()
 
             # 감소율 계산
             size_reduction = 0

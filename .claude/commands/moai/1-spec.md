@@ -240,9 +240,7 @@ Then 3초 이내에 JWT 토큰을 생성하고
 
 ```
 .moai/specs/SPEC-XXX/
-├── spec.md           # EARS 형식 요구사항
-├── user-stories.md   # User Stories (US-XXX)
-└── acceptance.md     # Given-When-Then 수락 기준
+└── spec.md           # EARS 요구사항 + User Stories + 수락 기준 통합
 ```
 
 ## ✅ 품질 검증 자동화
@@ -276,9 +274,7 @@ Then 3초 이내에 JWT 토큰을 생성하고
 
 📁 생성된 파일:
 └── .moai/specs/SPEC-001/
-    ├── spec.md (EARS 요구사항 12개)
-    ├── user-stories.md (US-001~005)
-    └── acceptance.md (15개 시나리오)
+    └── spec.md (EARS 요구사항 + User Stories + 수락 기준 통합)
 
 🎯 다음 단계 (2단계 파이프라인):
 > /moai:2-build SPEC-001  # TDD 구현 (자동 PR 업데이트)

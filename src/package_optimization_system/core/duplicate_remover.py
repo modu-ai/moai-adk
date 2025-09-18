@@ -27,6 +27,17 @@ class DuplicateRemover:
         self.hash_algorithm = "sha256"
         self.exclude_extensions = []  # 제외할 파일 확장자 목록
 
+        # 핵심 파일 보존 목록 (SPEC-003 요구사항)
+        self.core_files = {
+            "spec-builder.md",
+            "code-builder.md",
+            "doc-syncer.md",
+            "claude-code-manager.md",
+            "1-spec.md",
+            "2-build.md",
+            "3-sync.md"
+        }
+
         # 로깅 설정
         self.logger = logging.getLogger(__name__)
 
@@ -109,7 +120,13 @@ class DuplicateRemover:
         Returns:
             보존할 파일 경로
         """
-        # 가장 짧은 경로의 파일을 선택
+        # 핵심 파일이 있으면 그것을 우선 보존
+        for file_path in file_list:
+            file_name = os.path.basename(file_path)
+            if file_name in self.core_files:
+                return file_path
+
+        # 핵심 파일이 없으면 가장 짧은 경로의 파일을 선택
         return min(file_list, key=lambda x: len(x))
 
     def remove_duplicates(self) -> Dict[str, Any]:

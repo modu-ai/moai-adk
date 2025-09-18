@@ -103,10 +103,8 @@ model: sonnet
 #### @TAG 주석과 함께 초기 프로젝트 구조 생성
 ```
 .moai/specs/SPEC-XXX/
-├── spec.md              # EARS 명세
-├── scenarios.md         # 사용자 스토리 및 GWT
-├── acceptance.md        # 수락 기준
-└── architecture.md      # 설계 결정
+├── spec.md              # EARS 명세 (User Stories, 수락 기준 통합)
+└── architecture.md      # 설계 결정 (필요시)
 
 src/
 ├── [feature_name]/

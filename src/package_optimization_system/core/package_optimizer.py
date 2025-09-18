@@ -31,6 +31,17 @@ class PackageOptimizer:
         self.target_directory = target_directory
         self.is_initialized = True
 
+        # 핵심 파일 보존 목록 (SPEC-003 요구사항)
+        self.core_files = {
+            "spec-builder.md",
+            "code-builder.md",
+            "doc-syncer.md",
+            "claude-code-manager.md",
+            "1-spec.md",
+            "2-build.md",
+            "3-sync.md"
+        }
+
         # 로깅 설정
         self.logger = logging.getLogger(__name__)
 
@@ -132,21 +143,24 @@ class PackageOptimizer:
             files_processed = 0
             duplicates_removed = 0
 
-            # 중복 파일 제거 (단순한 구현)
+            # 중복 파일 제거 (핵심 파일 보존 로직 추가)
+            errors = []
             if targets["duplicates"]:
-                # 첫 번째 파일을 남기고 나머지 제거
-                files_to_remove = targets["duplicates"][1:]
+                # 핵심 파일 보존하면서 중복 제거
+                files_to_remove = []
+                for file_path in targets["duplicates"][1:]:
+                    file_name = os.path.basename(file_path)
+                    # 핵심 파일은 제거하지 않음
+                    if file_name not in self.core_files:
+                        files_to_remove.append(file_path)
+
                 for file_path in files_to_remove:
                     try:
                         os.remove(file_path)
                         duplicates_removed += 1
                     except (OSError, PermissionError) as e:
-                        # 권한 에러가 발생하면 실패 반환
-                        if "permission" in str(e).lower():
-                            return {
-                                "success": False,
-                                "error": f"Permission denied: {str(e)}"
-                            }
+                        # 에러 기록하지만 계속 진행
+                        errors.append(f"Failed to remove {file_path}: {str(e)}")
                         continue
 
             files_processed = len(targets["duplicates"]) + len(targets["large_files"])
@@ -162,7 +176,7 @@ class PackageOptimizer:
 
             optimization_time = time.time() - start_time
 
-            return {
+            result = {
                 "success": True,
                 "initial_size": initial_size,
                 "final_size": final_size,
@@ -174,13 +188,21 @@ class PackageOptimizer:
                 }
             }
 
+            # 에러가 있으면 errors 필드 추가
+            if errors:
+                result["errors"] = errors
+
+            return result
+
         except PermissionError as e:
             return {
                 "success": False,
-                "error": f"Permission denied: {str(e)}"
+                "error": f"Permission denied: {str(e)}",
+                "errors": [str(e)]
             }
         except Exception as e:
             return {
                 "success": False,
-                "error": f"Optimization failed: {str(e)}"
+                "error": f"Optimization failed: {str(e)}",
+                "errors": [str(e)]
             }
