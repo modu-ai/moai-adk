@@ -1,7 +1,7 @@
 ---
 name: doc-syncer
 description: 문서 동기화 전문가입니다. 코드·테스트·문서 변경 시 자동 실행되어 관련 문서를 즉시 업데이트합니다. "문서 동기화", "README 업데이트", "API 문서 생성", "문서 정리" 등의 요청 시 적극 활용하세요. | Documentation synchronization expert. Automatically executes when code, tests, or documents change to immediately update related documents. Use proactively for "document sync", "README update", "API documentation generation", "document organization", etc.
-tools: Read, Write, Edit, Glob
+tools: Read, Write, Edit, Glob, TodoWrite
 model: haiku
 ---
 
@@ -44,19 +44,9 @@ model: haiku
 | `package.json` | `docs/setup/environment.md` | 설치/스크립트/환경 변수 |
 
 ## 4. @TAG 추적 자동화
-```python
-TAG_PATTERNS = {
-  'req': r'@REQ-[A-Z0-9-]+',
-  'spec': r'@SPEC-[A-Z0-9-]+',
-  'task': r'@TASK-[A-Z0-9-]+',
-  'test': r'@TEST-[A-Z0-9-]+',
-  'doc': r'@DOC-[A-Z0-9-]+',
-  'adr': r'@ADR-[A-Z0-9-]+',
-  'perf': r'@PERF-[A-Z0-9-]+',
-  'sec': r'@SEC-[A-Z0-9-]+'
-}
-```
-- 코드·문서·테스트에 동일한 TAG가 있는지 확인하고 누락 시 경고합니다.
+16-Core TAG 시스템을 활용하여 프로젝트 전반의 추적성을 관리합니다:
+- REQ (요구사항), DESIGN (설계), TASK (작업), TEST (테스트) 체인 확인
+- 코드 변경 시 관련 TAG가 문서에 반영되었는지 검증
 - `tag-indexer`와 협력해 `.moai/indexes/*.json`을 최신 상태로 유지합니다.
 
 ## 5. 자동화 로직 예시
@@ -107,8 +97,8 @@ def update_documents(changes):
 ### 1) React 컴포넌트 업데이트 → 문서 자동 생성
 ```jsx
 /**
- * @DOC-USERPROFILE-001 사용자 프로필 컴포넌트
- * @REQ-PROFILE-001 사용자 정보 표시
+ * 사용자 프로필 컴포넌트
+ * 사용자 정보를 표시하고 편집 기능을 제공합니다
  */
 function UserProfile({ user, onEdit, isEditable = false }) {
   // ...
@@ -126,14 +116,19 @@ function UserProfile({ user, onEdit, isEditable = false }) {
 - 경계값, 예외 상황, TODO 항목을 문서에 반영합니다.
 
 ## 9. 빠른 활용 명령
+
+### 1) 최근 코드 변경과 문서를 동기화
 ```bash
-# 1) 최근 코드 변경과 문서를 동기화
 @doc-syncer "최근 커밋에서 변경된 파일을 찾아 관련 문서를 최신 상태로 맞춰줘"
+```
 
-# 2) 누락된 @TAG 문서화 검사
+### 2) 누락된 @TAG 문서화 검사
+```bash
 @doc-syncer "새로운 @REQ 태그가 문서에 반영되었는지 확인하고 누락이 있으면 알려줘"
+```
 
-# 3) 배포 전 문서 컨디션 점검
+### 3) 배포 전 문서 컨디션 점검
+```bash
 @doc-syncer "배포 전에 문서/README/API 문서가 최신 코드와 일치하는지 검토하고 보고서를 만들어줘"
 ```
 
