@@ -105,7 +105,7 @@ $SPEC_DESCRIPTION
 **@DESIGN:ARCH** - 아키텍처 설계 필요
 **@TEST:ACC** - 인수 테스트 시나리오 정의 필요
 
-**MoAI-ADK 0.2.1 GitFlow 워크플로우**:
+**MoAI-ADK  GitFlow 워크플로우**:
 1. `/moai:1-spec` - 이 명세 작성 (spec-builder 에이전트)
 2. `/moai:2-build` - TDD 구현 (code-builder 에이전트)
 3. `/moai:3-sync` - 문서 동기화 및 PR Ready (doc-syncer 에이전트)

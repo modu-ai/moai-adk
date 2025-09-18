@@ -14,7 +14,7 @@ model: sonnet
 - MoAI 프로젝트에서 Claude Code 설정을 수정할 때는 반드시 이 에이전트를 먼저 호출합니다.
 
 ## 2. settings.json 핵심 구조
-아래는 MoAI-ADK 0.2.1의 실제 settings.json 설정입니다. GitFlow 투명성과 ultrathin 철학을 반영한 최적화된 구성입니다.
+아래는 MoAI-ADK 테크 트리의 실제 settings.json 설정입니다. GitFlow 투명성과 ultrathin 철학을 반영한 최적화된 구성입니다.
 
 ```json
 {
@@ -105,7 +105,7 @@ model: sonnet
 
 ### 권한 정책 해설
 
-#### MoAI-ADK 0.2.1 최적화된 설정
+#### MoAI-ADK 최적화된 설정
 - `defaultMode: default` → Claude Code 기본 동작으로 균형잡힌 보안과 생산성
 - `allow` → GitFlow 자동화에 필요한 핵심 도구들 즉시 허용
 - `deny` → 시스템 파괴 및 보안 위험 명령 차단 (sudo, .env 파일)
@@ -309,7 +309,7 @@ if __name__ == "__main__":
 
 ### MoAI 3개 핵심 에이전트 구조
 
-MoAI-ADK 0.2.1은 3개 핵심 에이전트로 GitFlow 완전 자동화를 구현합니다.
+MoAI-ADK 테크 트리은 3개 핵심 에이전트로 GitFlow 완전 자동화를 구현합니다.
 
 #### spec-builder.md 템플릿
 ```markdown
@@ -420,7 +420,7 @@ model: sonnet
 
 ### MoAI-ADK 3단계 명령어
 
-MoAI-ADK 0.2.1의 핵심인 spec→build→sync 파이프라인을 지원하는 커스텀 명령어입니다.
+MoAI-ADK의 핵심인 spec→build→sync 파이프라인을 지원하는 커스텀 명령어입니다.
 
 #### /moai:1-spec
 ```markdown
@@ -527,9 +527,7 @@ CLAUDE.md는 프로젝트별 컨텍스트와 개발 가이드를 제공하는 �
 
 #### 기본 구조
 ```markdown
-# MoAI-ADK 0.2.1 (MoAI Agentic Development Kit)
-
-**GitFlow 완전 투명성 기반 Spec-First TDD 완전 자동화 개발 시스템**
+# MoAI-ADK (Modu-AI's Agentic Development Kit)
 
 ## 🚀 빠른 시작
 
@@ -589,120 +587,3 @@ CLAUDE.md는 프로젝트별 컨텍스트와 개발 가이드를 제공하는 �
 - 테스트 커버리지 85% 이상
 - TAG 추적성 100%
 ```
-
-## 12. MCP 서버 고급 설정
-
-### 표준 MCP 서버
-
-#### Memory 서버
-```json
-{
-  "mcpServers": {
-    "memory": {
-      "command": "npx",
-      "args": ["@modelcontextprotocol/server-memory"],
-      "settings": {
-        "maxTokens": 50000,
-        "apiVersion": "beta"
-      }
-    }
-  }
-}
-```
-
-#### Filesystem 서버
-```json
-{
-  "filesystem": {
-    "command": "npx",
-    "args": ["@modelcontextprotocol/server-filesystem"],
-    "env": {
-      "ALLOWED_DIRECTORIES": "${CLAUDE_PROJECT_DIR},.moai,.claude",
-      "MAX_MCP_OUTPUT_TOKENS": "50000"
-    }
-  }
-}
-```
-
-### MoAI-ADK 특화 MCP 서버
-
-#### Sequential Thinking
-```json
-{
-  "sequential-thinking": {
-    "command": "node",
-    "args": ["/path/to/mcp-sequential-thinking/dist/index.js"],
-    "settings": {
-      "maxThoughts": 10,
-      "allowRevision": true
-    }
-  }
-}
-```
-
-#### Context7 (문서 검색)
-```json
-{
-  "context7": {
-    "command": "context7-mcp",
-    "env": {
-      "CONTEXT7_API_KEY": "${CONTEXT7_API_KEY}"
-    },
-    "settings": {
-      "maxTokens": 10000
-    }
-  }
-}
-```
-
-### 토큰 관리 최적화
-
-#### 환경 변수 설정
-```json
-{
-  "environmentVariables": {
-    "MAX_MCP_OUTPUT_TOKENS": "50000",
-    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "8192",
-    "MOAI_PROJECT": "true",
-    "MOAI_CONSTITUTION_CHECK": "true",
-    "MOAI_TAG_VALIDATION": "true"
-  }
-}
-```
-
-#### 서버별 제한 설정
-```json
-{
-  "mcpServers": {
-    "memory": {
-      "settings": {
-        "maxTokens": 50000,
-        "rateLimitRpm": 60
-      }
-    },
-    "filesystem": {
-      "env": {
-        "MAX_FILE_SIZE": "1048576",
-        "MAX_FILES_PER_REQUEST": "10"
-      }
-    }
-  }
-}
-```
-
-### MCP 서버 진단
-```bash
-# 서버 목록 확인
-claude mcp list
-
-# 개별 서버 테스트
-claude mcp test memory
-claude mcp test filesystem
-
-# 연결 상태 확인
-claude mcp status
-```
-
----
-
-이 에이전트는 MoAI-ADK v0.2.1 기준 템플릿과 정책을 반영하며, 사용자와 한국어로 대화하면서 Claude Code 설정을 안전하게 유지하도록 지원합니다.

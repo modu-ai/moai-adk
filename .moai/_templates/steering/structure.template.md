@@ -197,7 +197,7 @@ Presentation → Application → Domain ← Infrastructure
 - @DESIGN:SECURITY → 보안 설계
 - @DESIGN:PERFORMANCE → 성능 설계
 
-**MoAI-ADK 0.2.1 Constitution 검토**:
+**MoAI-ADK  Constitution 검토**:
 - [ ] **단순성**: 3개 이하 주요 컴포넌트 원칙 준수
 - [ ] **아키텍처**: 모든 기능이 라이브러리로 분리 가능
 - [ ] **테스트**: TDD 기반 아키텍처 설계

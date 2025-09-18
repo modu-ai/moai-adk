@@ -103,6 +103,13 @@
       }
     }
   },
+  "languages": {
+    "language_neutral": true,
+    "supported": [
+      "python", "javascript", "typescript", "go", "rust", "java", "csharp", "cpp"
+    ],
+    "auto_detect": true
+  },
   "quality_gates": {
     "test_coverage": 85,
     "type_coverage": 90,

@@ -266,6 +266,8 @@ You are a documentation synchronization and PR management expert.
 - GitHub 계정 (GitFlow 기능용)
 ```
 
+> 참고: 기본 CI 런타임은 Python 3.12를 사용합니다.
+
 #### 2. MoAI-ADK 설치
 ```bash
 # 방법 1: pip 설치 (권장)
@@ -806,6 +808,22 @@ gh pr ready
    - 개선 제안 및 가이드 제공
    - 통과 시 다음 단계 진행
 
+#### 로컬 검증 실행 명령 (권장)
+```bash
+# Constitution 5원칙 검증
+# 기본(완화) 기준: 현실적인 임계값으로 오탐 최소화
+python .moai/scripts/check_constitution.py
+
+# 엄격 기준: 이전 방식의 강한 제약(파일 수/계층 등)
+python .moai/scripts/check_constitution.py --strict
+
+# TAG 추적성 검증 및 인덱스 갱신(체인 자동 구성 + @LINK 병합)
+python .moai/scripts/check-traceability.py --update --verbose
+
+# 명시적 링크 표기 예시(@LINK:FROM->TO)
+# 예: @LINK:REQ:USER-AUTH-001->DESIGN:JWT-TOKEN-001
+```
+
 ---
 
 ## 📚 API Reference
@@ -1238,3 +1256,26 @@ MoAI-ADK 0.2.1은 **GitFlow 완전 투명성**을 통한 **개발 방식의 근�
 **문서 버전**: 0.2.1
 **마지막 업데이트**: 2025-01-18
 **작성자**: MoAI-ADK Development Team
+#### 언어 자동 감지 Hook (SessionStart)
+
+MoAI-ADK는 세션 시작 시 프로젝트의 사용 언어를 자동 감지해 테스트/린터/포매터 힌트를 제공합니다.
+
+- 위치: `.claude/hooks/moai/language_detector.py`
+- 매핑: `.moai/config/language_mappings.json` (언어별 test/format/lint 도구 정의)
+- 스크립트: `.moai/scripts/detect_language.py` (독립 실행 시 JSON으로 감지 결과 출력)
+
+예시 출력:
+```
+🌐 감지된 언어: python, javascript, typescript
+🔧 권장 도구:
+- python: test=pytest, lint=ruff, format=black
+- javascript: test=npm test, lint=eslint, format=prettier
+- typescript: test=npm test, lint=eslint, format=prettier
+💡 필요 시 /moai:2-build 단계에서 해당 도구를 사용해 TDD를 실행하세요.
+```
+
+수동 감지 실행:
+```bash
+python .moai/scripts/detect_language.py
+# 출력 예: ["python", "javascript", "typescript"]
+```

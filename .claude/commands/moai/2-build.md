@@ -4,7 +4,7 @@ argument-hint: <SPEC-ID>|all
 allowed-tools: Read, Write, Edit, MultiEdit, Bash, Task, WebFetch
 ---
 
-# MoAI-ADK 0.2.1 TDD 구현 (GitFlow 통합)
+# MoAI-ADK  TDD 구현 (GitFlow 통합)
 
 !@ code-builder 에이전트가 Constitution Check부터 Red-Green-Refactor까지 완전 자동화합니다.
 

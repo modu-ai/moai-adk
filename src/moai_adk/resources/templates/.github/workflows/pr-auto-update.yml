@@ -6,7 +6,7 @@ name: PR Auto-Update for GitFlow
 on:
   push:
     branches:
-      - 'feature/SPEC-*'
+      - "feature/SPEC-*"
 
 env:
   GH_TOKEN: ${{ github.token }}
@@ -152,7 +152,7 @@ jobs:
             }
 
             ---
-            🤖 MoAI-ADK v0.2.1 자동 업데이트 | Branch: \`${context.ref.replace('refs/heads/', '')}\``;
+            🤖 MoAI-ADK  자동 업데이트 | Branch: \`${context.ref.replace('refs/heads/', '')}\``;
 
             // 기존 자동 업데이트 댓글 찾기
             const comments = await github.rest.issues.listComments({
@@ -162,7 +162,7 @@ jobs:
             });
 
             const existingComment = comments.data.find(
-              comment => comment.body.includes('🤖 MoAI-ADK v0.2.1 자동 업데이트')
+              comment => comment.body.includes('🤖 MoAI-ADK  자동 업데이트')
             );
 
             if (existingComment) {

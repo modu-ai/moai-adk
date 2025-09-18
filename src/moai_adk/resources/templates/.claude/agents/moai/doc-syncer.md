@@ -9,7 +9,7 @@ model: haiku
 
 ## 역할 및 책임
 
-MoAI-ADK 0.2.1의 문서 동기화 및 TAG 관리 전담 에이전트로, GitFlow 통합과 함께 다음을 완전 자동화합니다:
+MoAI-ADK 의 문서 동기화 및 TAG 관리 전담 에이전트로, GitFlow 통합과 함께 다음을 완전 자동화합니다:
 
 ### 1. Living Document 양방향 동기화
 - **코드 → 문서**: API 변경 시 문서 자동 갱신

@@ -114,7 +114,7 @@ $PROJECT_NAME는 $PROJECT_DESCRIPTION을 통해 **[핵심 가치]**를 제공하
 **@STRATEGY:MARKET** - 시장 진입 전략 수립 완료
 **@PERSONA:USER** - 사용자 페르소나 정의 완료
 
-**MoAI-ADK 0.2.1 Constitution 체크**:
+**MoAI-ADK  Constitution 체크**:
 - [ ] Constitution 5원칙 준수 (단순성/아키텍처/테스트/관찰가능성/버전관리)
 - [ ] GitFlow 투명성 활용 (Git을 몰라도 되는 개발)
 - [ ] 3단계 파이프라인 적용 (spec → build → sync)

@@ -1,10 +1,10 @@
-# MoAI-ADK 0.2.1 GitFlow 통합 가이드
+# MoAI-ADK  GitFlow 통합 가이드
 
 > **사용자는 Git 명령어를 전혀 알 필요가 없습니다. 모든 것이 자동으로 처리됩니다.**
 
 ## 🗿 개요
 
-MoAI-ADK 0.2.1은 GitFlow를 완전히 통합하여 버전 관리가 완전히 투명하게 처리됩니다. 사용자는 MoAI 명령어만 실행하면 Git 작업이 자동으로 수행됩니다.
+MoAI-ADK 은 GitFlow를 완전히 통합하여 버전 관리가 완전히 투명하게 처리됩니다. 사용자는 MoAI 명령어만 실행하면 Git 작업이 자동으로 수행됩니다.
 
 ## 🔄 자동화된 GitFlow 워크플로우
 
@@ -34,7 +34,7 @@ gitGraph
 
     checkout main
     merge develop
-    commit id: "Release v0.2.1"
+    commit id: "Release "
 ```
 
 ## 📋 단계별 자동화
@@ -173,7 +173,7 @@ main (프로덕션)
 | 브랜치 유형 | 패턴 | 예시 |
 |-------------|------|------|
 | Feature | `feature/SPEC-XXX-{name}` | `feature/SPEC-001-user-auth` |
-| Release | `release/v{version}` | `release/v0.2.1` |
+| Release | `release/v{version}` | `release/` |
 | Hotfix | `hotfix/v{version}` | `hotfix/v0.2.2` |
 
 ### 자동 브랜치 관리
@@ -244,7 +244,7 @@ JWT 기반 사용자 인증 시스템
 - TDD 구현 진행
 
 ---
-🤖 MoAI-ADK v0.2.1 자동 업데이트
+🤖 MoAI-ADK  자동 업데이트
 ```
 
 ### 라벨 자동 관리
@@ -394,4 +394,4 @@ git checkout develop && git merge hotfix/v0.2.2
 
 > **🗿 "Git을 몰라도 됩니다. MoAI가 모든 것을 처리합니다."**
 >
-> **MoAI-ADK 0.2.1로 완전 자동화된 GitFlow 경험을 누려보세요!**
+> **MoAI-ADK 로 완전 자동화된 GitFlow 경험을 누려보세요!**

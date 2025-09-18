@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MoAI-ADK GitFlow 자동화 헬퍼 모듈 v0.2.1
+MoAI-ADK GitFlow 자동화 헬퍼 모듈 
 
 이 모듈은 Python에서 GitFlow 작업을 편리하게 수행할 수 있는
 헬퍼 함수들을 제공합니다.
@@ -266,7 +266,7 @@ class GitFlowAutomator:
 - [ ] TDD 구현 대기
 
 ---
-🤖 MoAI-ADK v0.2.1에서 자동 생성됨"""
+🤖 MoAI-ADK 에서 자동 생성됨"""
 
         try:
             result = self.run_command([
@@ -299,7 +299,7 @@ class GitFlowAutomator:
 진행률: {progress}% 완료
 
 ---
-🤖 MoAI-ADK v0.2.1 자동 업데이트 ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})"""
+🤖 MoAI-ADK  자동 업데이트 ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})"""
 
         try:
             self.run_command(['gh', 'pr', 'comment', '--body', comment])

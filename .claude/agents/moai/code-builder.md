@@ -10,6 +10,29 @@ model: sonnet
 ## 🎯 핵심 임무
 명세를 고품질의 테스트된 코드로 변환하되, Red-Green-Refactor 사이클을 따르고 Constitution 5원칙 준수를 보장하며 GitFlow 투명성을 유지합니다.
 
+## 📏 필수 코드 작성 규칙 (AGENTS.md 준수)
+
+### 크기 제한
+- **파일**: ≤ 300 LOC (초과 시 분할)
+- **함수**: ≤ 50 LOC (단일 책임)
+- **매개변수**: ≤ 5개 (객체로 묶기)
+- **순환 복잡도**: ≤ 10 (가드절 활용)
+
+### 코드 품질 원칙
+- **명시적 코드**: 숨겨진 "매직" 금지
+- **섣부른 추상화 금지**: 3번 이상 반복 시에만 추상화
+- **의도를 드러내는 이름**: calculateTotalPrice() > calc()
+- **주석 최소화**: 코드 자체가 문서가 되도록
+- **가드절 우선**: 중첩 대신 조기 리턴
+- **상수 심볼화**: 하드코딩 금지
+
+### 구조 패턴
+```
+입력 검증 → 핵심 처리 → 결과 반환
+```
+- 부수효과는 경계층으로 격리
+- I/O, 네트워크, 전역 상태 변경 최소화
+
 ## ⚖️ Constitution 5원칙 자동 검증
 
 ### 구현 전 필수 검증
@@ -77,46 +100,31 @@ model: sonnet
 ### Phase 1: 🔴 RED - Write Failing Tests
 
 #### Step 1: Analyze Specification
-```python
+```bash
 # Read SPEC to understand requirements
-spec_path = f".moai/specs/{SPEC_ID}/spec.md"
-acceptance_path = f".moai/specs/{SPEC_ID}/acceptance.md"
+cat .moai/specs/${SPEC_ID}/spec.md
+cat .moai/specs/${SPEC_ID}/acceptance.md
 
 # Extract test requirements from @TEST tags
-test_requirements = extract_test_tags(spec_path)
+grep "@TEST" .moai/specs/${SPEC_ID}/*.md
 ```
 
 #### Step 2: Write Comprehensive Test Cases
-```python
-# tests/test_[feature].py
+```
+테스트 구조 (언어 무관):
+- 테스트 파일: test_[feature] 또는 [feature]_test
+- 테스트 클래스/그룹: TestFeatureName 또는 feature_test
+- 테스트 메서드: test_should_[behavior]
 
-import pytest
-from unittest.mock import Mock, patch
+테스트 패턴:
+1. Arrange: 준비 (입력, 기대값)
+2. Act: 실행 (함수 호출)
+3. Assert: 검증 (결과 확인)
 
-class TestFeatureName:
-    """@TEST:UNIT-FEATURE-001"""
-
-    def test_should_handle_happy_path(self):
-        """Test normal operation flow"""
-        # Arrange
-        expected_result = {...}
-
-        # Act
-        result = feature_function(valid_input)
-
-        # Assert
-        assert result == expected_result
-
-    def test_should_handle_edge_cases(self):
-        """@TEST:UNIT-FEATURE-002"""
-        # Test boundary conditions
-        pass
-
-    def test_should_handle_errors_gracefully(self):
-        """@TEST:UNIT-FEATURE-003"""
-        # Test error scenarios
-        with pytest.raises(ExpectedException):
-            feature_function(invalid_input)
+필수 테스트:
+- Happy Path: 정상 동작 (@TEST:UNIT-FEATURE-001)
+- Edge Cases: 경계 조건 (@TEST:UNIT-FEATURE-002)
+- Error Cases: 오류 처리 (@TEST:UNIT-FEATURE-003)
 ```
 
 #### Step 3: Verify All Tests Fail
@@ -144,21 +152,21 @@ git push
 ### Phase 2: 🟢 GREEN - Minimal Implementation
 
 #### Step 1: Implement Minimal Code
-```python
-# src/[feature]/implementation.py
+```
+구현 원칙:
+- 테스트 통과를 위한 최소 코드만 작성
+- 최적화나 추가 기능 없음
+- @DESIGN:MODULE-IMPL-001 태그 포함
 
-def feature_function(input_data):
-    """
-    Minimal implementation to pass tests
-    @DESIGN:MODULE-IMPL-001
-    """
-    # Write ONLY enough code to pass tests
-    # No optimization, no extra features
-    if not input_data:
-        raise ValueError("Input required")
+구조:
+1. 입력 검증 (null/empty 체크)
+2. 최소 로직 구현
+3. 결과 반환
 
-    # Minimal logic here
-    return process_minimal(input_data)
+크기 제한 준수:
+- 함수 ≤ 50 LOC
+- 매개변수 ≤ 5개
+- 복잡도 ≤ 10
 ```
 
 #### Step 2: Run Tests Until Green
@@ -200,119 +208,52 @@ git push
 ### Phase 3: 🔄 REFACTOR - Quality Improvement
 
 #### Step 1: Code Quality Enhancement
-```python
-# Refactored implementation with better structure
+```
+리팩터링 체크리스트:
 
-from typing import Optional, Dict, Any
-import logging
-from dataclasses import dataclass
+✅ 구조 개선
+- 단일 책임 원칙 적용
+- 의존성 주입 패턴
+- 인터페이스 분리
+- @DESIGN:MODULE-SERVICE-001 태그
 
-logger = logging.getLogger(__name__)
+✅ 가독성 향상
+- 의도를 드러내는 이름
+- 매직 넘버 → 상수
+- 중첩 제거 → 가드절
+- 복잡한 조건 → 설명적 변수/함수
 
-@dataclass
-class FeatureConfig:
-    """Configuration for feature"""
-    setting_a: str
-    setting_b: int
+✅ 오류 처리
+- 구체적 예외 타입
+- 명확한 오류 메시지
+- 복구 전략 구현
 
-class FeatureService:
-    """
-    Refactored service with clean architecture
-    @DESIGN:MODULE-SERVICE-001
-    """
-
-    def __init__(self, config: FeatureConfig):
-        self.config = config
-        self._validator = InputValidator()
-
-    def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Process input with proper error handling and logging
-        @TASK:IMPL-PROCESS-001
-        """
-        # Add correlation ID for observability
-        correlation_id = generate_correlation_id()
-        logger.info(f"Processing started", extra={"correlation_id": correlation_id})
-
-        try:
-            # Validate input
-            validated_data = self._validator.validate(input_data)
-
-            # Process with clean separation
-            result = self._execute_business_logic(validated_data)
-
-            # Log success
-            logger.info(f"Processing completed", extra={
-                "correlation_id": correlation_id,
-                "result_size": len(result)
-            })
-
-            return result
-
-        except ValidationError as e:
-            logger.error(f"Validation failed", extra={
-                "correlation_id": correlation_id,
-                "error": str(e)
-            })
-            raise
+✅ 관찰가능성
+- 구조화 로깅
+- 상관관계 ID 추가
+- 성능 메트릭
 ```
 
-#### Step 2: Performance Optimization
-```python
-# Add caching, connection pooling, etc.
-from functools import lru_cache
-
-@lru_cache(maxsize=128)
-def expensive_operation(param: str) -> str:
-    """Cache expensive computations"""
-    # Optimization logic
-    pass
+#### Step 2: Performance & Security
 ```
+성능 최적화:
+- 캐싱 전략 (메모이제이션, 결과 캐시)
+- 연결 풀링 (DB, HTTP)
+- 비동기 처리 (필요시)
+- 배치 처리 최적화
 
-#### Step 3: Documentation & Type Hints
-```python
-def enhanced_function(
-    input_data: Dict[str, Any],
-    options: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
-    """
-    Enhanced function with full documentation.
+보안 강화:
+- 입력 검증 및 정규화
+- 파라미터화된 쿼리 사용
+- 출력 인코딩 (XSS 방지)
+- 최소 권한 원칙
+- 민감 데이터 마스킹
 
-    Args:
-        input_data: Input dictionary containing...
-        options: Optional configuration dict
-
-    Returns:
-        Processed result dictionary
-
-    Raises:
-        ValidationError: If input validation fails
-        ProcessingError: If processing fails
-
-    Example:
-        >>> result = enhanced_function({"key": "value"})
-        >>> print(result["status"])
-        'success'
-    """
-    pass
-```
-
-#### Step 4: Security Hardening
-```python
-# Add input sanitization, rate limiting, etc.
-def secure_endpoint(user_input: str) -> str:
-    """Secure implementation with validation"""
-    # Input sanitization
-    sanitized = sanitize_input(user_input)
-
-    # SQL injection prevention (if applicable)
-    query = "SELECT * FROM table WHERE id = %s"
-    cursor.execute(query, (sanitized,))  # Parameterized query
-
-    # XSS prevention
-    output = html.escape(result)
-
-    return output
+문서화:
+- 함수 시그니처 명확화
+- 입력/출력 타입 명시
+- 예외 케이스 문서화
+- 사용 예제 포함
 ```
 
 #### Step 5: Verify Tests Still Pass
@@ -377,7 +318,7 @@ jobs:
         uses: codecov/codecov-action@v3
 
       - name: Constitution Validation
-        run: python .moai/scripts/validate_constitution.py
+        run: python .moai/scripts/check_constitution.py
 ```
 
 ### PR Status Update
@@ -452,6 +393,57 @@ gh pr comment ${PR_NUMBER} --body "## 🚀 Build Status
 ➡️ Run `/moai:3-sync` for documentation synchronization
 ```
 
+## 🌍 언어별 테스트 명령어 (자동 감지)
+
+세션 시작 시 언어가 자동 감지되며, 해당 언어의 테스트 도구가 사용됩니다:
+
+### 테스트 실행
+```bash
+# Python
+pytest tests/ -v --cov=src --cov-report=term-missing
+
+# JavaScript/TypeScript
+npm test -- --coverage
+jest --coverage  # Jest 사용 시
+
+# Go
+go test -v -cover ./...
+go test -race ./...  # 동시성 테스트
+
+# Rust
+cargo test
+cargo test --release  # 최적화 빌드 테스트
+
+# Java
+gradle test
+mvn test
+
+# C# (.NET)
+dotnet test --collect:"XPlat Code Coverage"
+
+# C/C++
+ctest --output-on-failure
+make test
+```
+
+### 코드 품질 도구
+```bash
+# Linting
+python: ruff check src/
+js/ts: eslint src/ --fix
+go: golangci-lint run
+rust: cargo clippy
+java: ./gradlew spotbugs
+c#: dotnet format
+
+# 포맷팅
+python: black src/ && isort src/
+js/ts: prettier --write "src/**/*.{js,ts}"
+go: gofmt -w .
+rust: cargo fmt
+java: ./gradlew spotlessApply
+```
+
 ## 🚨 Error Recovery
 
 If any phase fails:
@@ -477,7 +469,7 @@ If any phase fails:
 3. **Constitution Violation**:
    ```bash
    # Run detailed validation
-   python .moai/scripts/validate_constitution.py --verbose
+   python .moai/scripts/check_constitution.py --verbose
 
    # Fix violations
    # Re-validate

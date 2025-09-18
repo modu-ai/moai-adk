@@ -1,157 +1,263 @@
 #!/usr/bin/env python3
 """
-TAG 추적성 검증 스크립트
-16-Core TAG 시스템의 무결성과 추적성 체인을 검증합니다.
+TAG 추적성 검증 스크립트 (향상판)
+16-Core TAG 시스템의 무결성과 추적성 체인을 검증/갱신합니다.
+
+기능:
+- 프로젝트에서 TAG 스캔(@CAT:ID)
+- SPEC 디렉터리 단위로 추적성 체인(REQ→DESIGN→TASK→TEST, VISION→STRUCT→TECH→ADR) 자동 구성(--update)
+- 인덱스 기반 검증(없으면 휴리스틱 체인으로 검증)
 """
 
 import json
-import os
 import re
 import sys
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Tuple, Set
+
+
+PRIMARY_CHAIN = [("REQ", "DESIGN"), ("DESIGN", "TASK"), ("TASK", "TEST")]
+STEERING_CHAIN = [("VISION", "STRUCT"), ("STRUCT", "TECH"), ("TECH", "ADR")]
+ALL_CHAINS = PRIMARY_CHAIN + STEERING_CHAIN
+
 
 class TraceabilityChecker:
     def __init__(self, project_root: str = "."):
         self.project_root = Path(project_root)
         self.tags_index_path = self.project_root / ".moai" / "indexes" / "tags.json"
-        self.tags: Dict[str, List[str]] = {}
+        self.index: Dict = {}
         self.broken_links: List[Tuple[str, str]] = []
         self.orphaned_tags: List[str] = []
 
-    def load_tags_index(self):
-        """TAG 인덱스 파일 로드"""
-        if not self.tags_index_path.exists():
-            print(f"❌ TAG 인덱스 파일을 찾을 수 없습니다: {self.tags_index_path}")
-            return False
+    def load_or_init_index(self) -> None:
+        if self.tags_index_path.exists():
+            with open(self.tags_index_path, "r", encoding="utf-8") as f:
+                try:
+                    self.index = json.load(f)
+                except Exception:
+                    self.index = {}
+        if not self.index:
+            self.index = {
+                "version": "16-core",
+                "categories": {
+                    "SPEC": {"REQ": [], "DESIGN": [], "TASK": []},
+                    "STEERING": {"VISION": [], "STRUCT": [], "TECH": [], "ADR": []},
+                    "IMPLEMENTATION": {"FEATURE": [], "API": [], "TEST": [], "DATA": []},
+                    "QUALITY": {"PERF": [], "SEC": [], "DEBT": [], "TODO": []},
+                },
+                "traceability_chains": [],
+                "orphaned_tags": [],
+                "statistics": {
+                    "total_tags": 0,
+                    "complete_chains": 0,
+                    "broken_links": 0,
+                    "coverage_percentage": 0,
+                },
+            }
 
-        with open(self.tags_index_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            self.tags = data.get('categories', {})
-        return True
+    def save_index(self) -> None:
+        self.tags_index_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.tags_index_path, "w", encoding="utf-8") as f:
+            json.dump(self.index, f, indent=2, ensure_ascii=False)
 
     def scan_files_for_tags(self) -> Dict[str, List[str]]:
-        """프로젝트 파일에서 TAG 스캔"""
-        tag_pattern = r'@([A-Z]+):([A-Z0-9-]+)'
-        found_tags = {}
+        tag_pattern = r"@([A-Z]+):([A-Z0-9-]+)"
+        found: Dict[str, List[str]] = {}
+        exts = [".md", ".py", ".js", ".ts", ".yaml", ".yml", ".json"]
 
-        # 스캔할 파일 확장자
-        extensions = ['.md', '.py', '.js', '.ts', '.yaml', '.yml', '.json']
-
-        for ext in extensions:
-            for file_path in self.project_root.rglob(f'*{ext}'):
-                # .git, node_modules 등 제외
-                if any(part.startswith('.') and part not in ['.claude', '.moai']
-                       for part in file_path.parts):
+        for ext in exts:
+            for file_path in self.project_root.rglob(f"*{ext}"):
+                # 숨김 디렉토리 제외(.git 등) 단, .claude, .moai는 허용
+                if any(part.startswith(".") and part not in [".claude", ".moai"] for part in file_path.parts):
                     continue
-
                 try:
-                    with open(file_path, 'r', encoding='utf-8') as f:
-                        content = f.read()
-                        matches = re.findall(tag_pattern, content)
+                    content = file_path.read_text(encoding="utf-8")
+                except Exception:
+                    continue
+                for cat, tid in re.findall(tag_pattern, content):
+                    tag = f"{cat}:{tid}"
+                    found.setdefault(tag, []).append(str(file_path))
+        return found
 
-                        for category, tag_id in matches:
-                            tag_full = f"{category}:{tag_id}"
-                            if tag_full not in found_tags:
-                                found_tags[tag_full] = []
-                            found_tags[tag_full].append(str(file_path))
+    def scan_files_for_links(self) -> List[Dict[str, str]]:
+        """@LINK:CAT:ID->CAT:ID 형식의 명시적 링크 스캔"""
+        link_pattern = r"@LINK:([A-Z]+:[A-Z0-9-]+)->([A-Z]+:[A-Z0-9-]+)"
+        links: List[Dict[str, str]] = []
+        exts = [".md", ".py", ".js", ".ts", ".yaml", ".yml", ".json"]
+        for ext in exts:
+            for file_path in self.project_root.rglob(f"*{ext}"):
+                if any(part.startswith(".") and part not in [".claude", ".moai"] for part in file_path.parts):
+                    continue
+                try:
+                    content = file_path.read_text(encoding="utf-8")
+                except Exception:
+                    continue
+                for frm, to in re.findall(link_pattern, content):
+                    links.append({"from": frm, "to": to})
+        return links
 
-                except Exception as e:
-                    print(f"⚠️ 파일 읽기 실패: {file_path} - {e}")
+    def group_by_spec(self, found: Dict[str, List[str]]) -> Dict[str, Set[str]]:
+        """SPEC 디렉터리별 태그 묶기: key=SPEC-xxx, value=tags(set)."""
+        groups: Dict[str, Set[str]] = {}
+        for tag, paths in found.items():
+            for p in paths:
+                path = Path(p)
+                parts = list(path.parts)
+                if ".moai" in parts and "specs" in parts:
+                    try:
+                        spec_idx = parts.index("specs")
+                        spec_name = parts[spec_idx + 1]
+                        if spec_name.startswith("SPEC-"):
+                            groups.setdefault(spec_name, set()).add(tag)
+                    except Exception:
+                        continue
+        return groups
 
-        return found_tags
+    def build_chains_from_groups(self, groups: Dict[str, Set[str]]) -> List[Dict[str, str]]:
+        chains: List[Dict[str, str]] = []
+        for _spec, tags in groups.items():
+            by_cat: Dict[str, List[str]] = {}
+            for t in tags:
+                cat = t.split(":", 1)[0]
+                by_cat.setdefault(cat, []).append(t)
+            # Primary
+            for a, b in PRIMARY_CHAIN:
+                for t_from in by_cat.get(a, []):
+                    for t_to in by_cat.get(b, []):
+                        chains.append({"from": t_from, "to": t_to})
+            # Steering
+            for a, b in STEERING_CHAIN:
+                for t_from in by_cat.get(a, []):
+                    for t_to in by_cat.get(b, []):
+                        chains.append({"from": t_from, "to": t_to})
+        return chains
 
-    def verify_traceability_chains(self, found_tags: Dict[str, List[str]]):
-        """추적성 체인 검증"""
-        # Primary Chain: REQ → DESIGN → TASK → TEST
-        primary_chains = [
-            ("REQ", "DESIGN"),
-            ("DESIGN", "TASK"),
-            ("TASK", "TEST")
-        ]
+    def verify(self, found: Dict[str, List[str]], chains: List[Dict[str, str]]):
+        # 빠른 조회 셋
+        found_set = set(found.keys())
+        sources = {c["from"] for c in chains}
+        targets = {c["to"] for c in chains}
 
-        # Steering Chain: VISION → STRUCT → TECH → ADR
-        steering_chains = [
-            ("VISION", "STRUCT"),
-            ("STRUCT", "TECH"),
-            ("TECH", "ADR")
-        ]
+        # 체인이 없는 경우 휴리스틱: 같은 SPEC 내 카테고리 존재 여부만 검증
+        if not chains:
+            groups = self.group_by_spec(found)
+            for _spec, tags in groups.items():
+                tagset = set(tags)
+                for a, b in ALL_CHAINS:
+                    a_tags = {t for t in tagset if t.startswith(f"{a}:")}
+                    b_tags = {t for t in tagset if t.startswith(f"{b}:")}
+                    if a_tags and not b_tags:
+                        for t in a_tags:
+                            self.broken_links.append((t, f"{b}:<missing>"))
+            # orphan 판단(체인이 없으면 판단 불가) 생략
+            return
 
-        all_chains = primary_chains + steering_chains
+        # 체인 기반 검증
+        linked_from = set()
+        linked_to = set()
+        for c in chains:
+            f = c.get("from")
+            t = c.get("to")
+            if f in found_set and t in found_set:
+                linked_from.add(f)
+                linked_to.add(t)
+            else:
+                # 양끝이 모두 있어야 유효 체인, 없으면 끊어진 링크로 보고
+                self.broken_links.append((f if f in found_set else f+"(?)", t if t in found_set else t+"(?)"))
 
-        for from_cat, to_cat in all_chains:
-            from_tags = [tag for tag in found_tags.keys() if tag.startswith(f"{from_cat}:")]
+        # 고아 태그: 발견됐지만 어떤 체인에도 포함되지 않은 태그
+        for tag in found_set:
+            if tag not in linked_from and tag not in linked_to:
+                self.orphaned_tags.append(tag)
 
-            for from_tag in from_tags:
-                # 해당 태그와 연결된 하위 태그 찾기
-                base_id = from_tag.split(':')[1]
-                expected_to_tag = f"{to_cat}:{base_id}"
+    def update_index(self, found: Dict[str, List[str]], chains: List[Dict[str, str]]):
+        # 카테고리 별 목록 업데이트(중복 제거)
+        cats = {
+            "REQ": "SPEC", "DESIGN": "SPEC", "TASK": "SPEC",
+            "VISION": "STEERING", "STRUCT": "STEERING", "TECH": "STEERING", "ADR": "STEERING",
+            "FEATURE": "IMPLEMENTATION", "API": "IMPLEMENTATION", "TEST": "IMPLEMENTATION", "DATA": "IMPLEMENTATION",
+            "PERF": "QUALITY", "SEC": "QUALITY", "DEBT": "QUALITY", "TODO": "QUALITY",
+        }
+        for tag in found.keys():
+            cat = tag.split(":", 1)[0]
+            grp = cats.get(cat)
+            if grp and grp in self.index.get("categories", {}):
+                arr = self.index["categories"][grp].setdefault(cat, [])
+                if tag not in arr:
+                    arr.append(tag)
+        self.index["traceability_chains"] = chains
+        self.index["orphaned_tags"] = self.orphaned_tags
+        self.index["statistics"] = {
+            "total_tags": len(found),
+            "complete_chains": len(chains) - len(self.broken_links),
+            "broken_links": len(self.broken_links),
+            "coverage_percentage": 0,
+        }
 
-                if expected_to_tag not in found_tags:
-                    self.broken_links.append((from_tag, expected_to_tag))
-
-    def find_orphaned_tags(self, found_tags: Dict[str, List[str]]):
-        """고아 TAG 찾기 (참조되지 않는 TAG)"""
-        # 간단한 구현: 파일에서만 존재하고 다른 곳에서 참조되지 않는 TAG
-        for tag in found_tags.keys():
-            # 실제로는 더 복잡한 로직 필요
-            if len(found_tags[tag]) == 1:
-                # 단일 파일에서만 발견된 TAG는 고아일 가능성
-                pass
-
-    def generate_report(self, found_tags: Dict[str, List[str]], verbose: bool = False):
-        """검증 결과 보고서 생성"""
-        total_tags = len(found_tags)
-        broken_count = len(self.broken_links)
-        orphaned_count = len(self.orphaned_tags)
-
+    def report(self, found: Dict[str, List[str]], verbose: bool) -> int:
         print("🏷️ TAG 추적성 검증 보고서")
         print("=" * 50)
-        print(f"📊 총 TAG 수: {total_tags}")
-        print(f"🔗 끊어진 링크: {broken_count}")
-        print(f"👻 고아 TAG: {orphaned_count}")
-
-        if broken_count == 0 and orphaned_count == 0:
+        print(f"📊 총 TAG 수: {len(found)}")
+        print(f"🔗 끊어진 링크: {len(self.broken_links)}")
+        print(f"👻 고아 TAG: {len(self.orphaned_tags)}")
+        if len(self.broken_links) == 0 and len(self.orphaned_tags) == 0:
             print("✅ 모든 TAG 추적성 체인이 정상입니다!")
-            return 0
-
-        if broken_count > 0:
-            print("\n🔴 끊어진 추적성 체인:")
-            for from_tag, to_tag in self.broken_links:
-                print(f"  {from_tag} → {to_tag} (누락)")
-
-        if orphaned_count > 0:
-            print("\n👻 고아 TAG 목록:")
-            for tag in self.orphaned_tags:
-                print(f"  {tag}")
-
+        else:
+            if self.broken_links:
+                print("\n🔴 끊어진 추적성 체인:")
+                for f, t in self.broken_links:
+                    print(f"  {f} → {t} (누락)")
+            if self.orphaned_tags:
+                print("\n👻 고아 TAG 목록:")
+                for tag in self.orphaned_tags:
+                    print(f"  {tag}")
         if verbose:
             print("\n📂 TAG별 파일 위치:")
-            for tag, files in sorted(found_tags.items()):
+            for tag, files in sorted(found.items()):
                 print(f"  {tag}:")
-                for file_path in files:
-                    print(f"    - {file_path}")
+                for fp in files:
+                    print(f"    - {fp}")
+        return 1 if (self.broken_links or self.orphaned_tags) else 0
 
-        return 1 if broken_count > 0 or orphaned_count > 0 else 0
 
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="TAG 추적성 검증")
     parser.add_argument("--verbose", "-v", action="store_true", help="상세 출력")
     parser.add_argument("--project-root", "-p", default=".", help="프로젝트 루트 경로")
+    parser.add_argument("--update", action="store_true", help="인덱스를 추적성 체인으로 갱신")
 
     args = parser.parse_args()
 
     checker = TraceabilityChecker(args.project_root)
+    checker.load_or_init_index()
 
-    if not checker.load_tags_index():
-        return 1
+    found = checker.scan_files_for_tags()
 
-    found_tags = checker.scan_files_for_tags()
-    checker.verify_traceability_chains(found_tags)
-    checker.find_orphaned_tags(found_tags)
+    # 인덱스에 체인이 있으면 우선 사용, 없으면 SPEC 그룹 휴리스틱으로 생성
+    chains = checker.index.get("traceability_chains") or []
+    if not chains:
+        groups = checker.group_by_spec(found)
+        chains = checker.build_chains_from_groups(groups)
+    # 명시적 @LINK 체인 추가(중복 제거)
+    explicit = checker.scan_files_for_links()
+    all_chains = {(c["from"], c["to"]) for c in chains}
+    for link in explicit:
+        key = (link["from"], link["to"])
+        if key not in all_chains:
+            chains.append(link)
+            all_chains.add(key)
 
-    return checker.generate_report(found_tags, args.verbose)
+    # 검증
+    checker.verify(found, chains)
+
+    # 요청 시 인덱스 갱신
+    if args.update:
+        checker.update_index(found, chains)
+        checker.save_index()
+
+    return checker.report(found, args.verbose)
+
 
 if __name__ == "__main__":
     sys.exit(main())

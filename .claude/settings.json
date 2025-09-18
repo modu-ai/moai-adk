@@ -1,6 +1,6 @@
 {
   "permissions": {
-    "defaultMode": "default",
+    "defaultMode": "ask",
     "allow": [
       "Task",
       "Write",
@@ -19,11 +19,20 @@
       "Bash(poetry:*)",
       "Bash(ruff:*)",
       "Bash(mypy:*)",
+      "Bash(npm:*)",
+      "Bash(pnpm:*)",
+      "Bash(yarn:*)",
+      "Bash(go:*)",
+      "Bash(cargo:*)",
+      "Bash(gradle:*)",
+      "Bash(mvn:*)",
+      "Bash(dotnet:*)",
+      "Bash(cmake:*)",
+      "Bash(make:*)",
       "Bash(chmod:*)",
       "Bash(tree:*)",
       "Bash(moai:*)",
-      "Bash(rm:*)",
-      "Bash(rmdir:*)",
+      
       "WebFetch",
       "Grep",
       "Glob",
@@ -46,7 +55,8 @@
       "Bash(git push:*)",
       "Bash(git pull:*)",
       "Bash(git merge:*)",
-      "Write(.env*)",
+      "Bash(rm:*)",
+      "Bash(rmdir:*)",
       "Write(*.config.*)",
       "Write(pyproject.toml)",
       "Bash(npm publish:*)",
@@ -76,6 +86,15 @@
           {
             "type": "command",
             "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start_notice.py"
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/language_detector.py"
           }
         ]
       }

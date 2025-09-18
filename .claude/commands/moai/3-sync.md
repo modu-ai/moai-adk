@@ -4,7 +4,7 @@ argument-hint: [auto|force|status] [target-path]
 allowed-tools: Read, Write, Edit, MultiEdit, Bash, Task
 ---
 
-# MoAI-ADK 0.2.1 문서 동기화 + PR Ready (GitFlow 통합)
+# MoAI-ADK  문서 동기화 + PR Ready (GitFlow 통합)
 
 !@ doc-syncer 에이전트가 코드-문서 양방향 동기화와 16-Core TAG 시스템 관리를 완전 자동화합니다.
 

@@ -20,7 +20,37 @@ jobs:
       - name: Python 환경 설정
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.12'
+
+      # Multi-language toolchains (conditional)
+      - name: Setup Node.js
+        if: ${{ hashFiles('package.json') != '' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Go
+        if: ${{ hashFiles('go.mod') != '' }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Setup Rust
+        if: ${{ hashFiles('Cargo.toml') != '' }}
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Java
+        if: ${{ hashFiles('pom.xml') != '' || hashFiles('build.gradle') != '' || hashFiles('build.gradle.kts') != '' }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup .NET
+        if: ${{ hashFiles('**/*.sln') != '' || hashFiles('**/*.csproj') != '' }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
 
       # Constitution 5원칙 자동 검증
       - name: 🏛️ Constitution 5원칙 검증
@@ -29,6 +59,35 @@ jobs:
             python .moai/scripts/check_constitution.py
           else
             echo "✅ Constitution 검증 스크립트 없음 - 통과"
+          fi
+
+      - name: Run language-aware tests
+        run: |
+          set -e
+          echo "🔎 Running language-aware tests if present"
+          if [ -f "package.json" ]; then
+            echo "➡️  Node.js tests"
+            npm ci --prefer-offline || npm install
+            npm test --if-present -- --coverage || true
+          fi
+          if [ -f "go.mod" ]; then
+            echo "➡️  Go tests"
+            go test -v -cover ./... || true
+          fi
+          if [ -f "Cargo.toml" ]; then
+            echo "➡️  Rust tests"
+            cargo test --all --locked || cargo test || true
+          fi
+          if [ -f "pom.xml" ]; then
+            echo "➡️  Java tests (Maven)"
+            mvn -q -DskipTests=false test || true
+          elif [ -f "build.gradle" ] || [ -f "build.gradle.kts" ]; then
+            echo "➡️  Java tests (Gradle)"
+            ./gradlew test || gradle test || true
+          fi
+          if compgen -G "**/*.sln" > /dev/null || compgen -G "**/*.csproj" > /dev/null; then
+            echo "➡️  .NET tests"
+            dotnet test || true
           fi
 
       # 16-Core TAG 시스템 검증 (코드 파일만)

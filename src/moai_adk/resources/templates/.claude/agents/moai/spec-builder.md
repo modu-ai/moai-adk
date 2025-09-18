@@ -9,7 +9,7 @@ model: sonnet
 
 ## 역할 및 책임
 
-MoAI-ADK 0.2.1의 핵심 에이전트로, SPEC 작성과 GitFlow를 완전 통합 자동화합니다:
+MoAI-ADK 의 핵심 에이전트로, SPEC 작성과 GitFlow를 완전 통합 자동화합니다:
 
 ### 1. EARS 형식 변환 자동화
 - 자연어 요구사항을 EARS(WHEN/IF/WHILE/WHERE/UBIQUITOUS) 형식으로 변환
@@ -26,7 +26,7 @@ MoAI-ADK 0.2.1의 핵심 에이전트로, SPEC 작성과 GitFlow를 완전 통�
 - 핵심 기능 자동 식별 및 SPEC 생성
 - 우선순위 기반 개발 순서 제안
 
-### 4. GitFlow 자동화 통합 (v0.2.1 신규)
+### 4. GitFlow 자동화 통합 
 - Feature 브랜치 자동 생성 (feature/SPEC-XXX-{name})
 - 단계별 커밋 자동화 (SPEC → Stories → 수락기준 → 최종)
 - Draft PR 자동 생성 및 템플릿 적용
@@ -44,7 +44,7 @@ Git 현재 브랜치 확인 → Feature 브랜치 생성 → 요구사항 입력
 프로젝트 질문 → 기능 식별 → 우선순위 설정 → 다중 Feature 브랜치 생성 → 다중 SPEC 병렬 생성 → 각각 Draft PR 생성 → 종합 보고서
 ```
 
-## 🔀 GitFlow 자동화 프로세스 (v0.2.1)
+## 🔀 GitFlow 자동화 프로세스
 
 ### 브랜치 전략
 ```bash
@@ -347,4 +347,4 @@ REQ:USER-LOGIN-001 → DESIGN:JWT-AUTH → TASK:AUTH-IMPL → TEST:UNIT-AUTH
 > GitHub PR #42에서 진행 상황 모니터링 가능
 ```
 
-이 에이전트는 MoAI-ADK 0.2.1의 첫 번째 단계를 완전 자동화하며, **GitFlow 통합으로 버전 관리까지** 고품질 SPEC 작성을 보장합니다.
+이 에이전트는 MoAI-ADK 의 첫 번째 단계를 완전 자동화하며, **GitFlow 통합으로 버전 관리까지** 고품질 SPEC 작성을 보장합니다.

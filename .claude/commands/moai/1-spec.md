@@ -1,10 +1,10 @@
 ---
 description: EARS 형식 명세 작성 - 비즈니스 요구사항을 구조화된 명세로 변환
 argument-hint: <feature-description>|<SPEC-ID>|--project [additional-details...]
-allowed-tools: Read, Write, Edit, MultiEdit, Task
+allowed-tools: Read, Write, Edit, MultiEdit, Bash, Task
 ---
 
-# MoAI-ADK 0.2.1 SPEC 작성 (GitFlow 통합)
+# MoAI-ADK  SPEC 작성 (GitFlow 통합)
 
 !@ spec-builder 에이전트를 활용해 비즈니스 요구사항을 EARS 형식의 엔지니어링 명세로 변환하고 GitFlow 워크플로우를 자동 통합합니다.
 
@@ -93,7 +93,7 @@ flowchart TD
     K2 --> L[완료: /moai:2-build로 이동]
 ```
 
-## 🔀 GitFlow 자동 통합 (v0.2.1 신규)
+## 🔀 GitFlow 자동 통합 
 
 ### 완전 투명한 버전 관리
 사용자는 Git 명령어를 전혀 알 필요 없이 모든 버전 관리가 자동 처리됩니다.
@@ -243,7 +243,7 @@ Then 3초 이내에 JWT 토큰을 생성하고
 
 ## 🔄 완료 후 다음 단계
 
-### 0.2.1 GitFlow 통합 워크플로우
+###  GitFlow 통합 워크플로우
 ```bash
 ✅ SPEC 작성 + GitFlow 완료!
 

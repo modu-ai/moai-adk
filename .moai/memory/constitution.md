@@ -2,7 +2,7 @@
 
 > **🗿 "명세가 없으면 코드도 없다. 테스트가 없으면 구현도 없다."**
 
-MoAI-ADK 0.2.1의 모든 개발 활동은 이 5원칙을 준수해야 합니다.
+MoAI-ADK 의 모든 개발 활동은 이 5원칙을 준수해야 합니다.
 
 ## 🏛️ Constitution 5원칙
 
@@ -76,7 +76,7 @@ MoAI-ADK 0.2.1의 모든 개발 활동은 이 5원칙을 준수해야 합니다.
 - 7단계 자동 커밋 시스템 준수
 - Draft PR → Ready for Review 자동 전환
 
-## 🎯 MoAI-ADK 0.2.1 특화 원칙
+## 🎯 MoAI-ADK  특화 원칙
 
 ### GitFlow 완전 투명성
 - 개발자는 Git 명령어를 몰라도 된다
@@ -139,7 +139,7 @@ python3 .moai/scripts/check-traceability.py
 
 > **🗿 "Git을 몰라도 프로가 된다. 복잡함이 투명해진다."**
 >
-> **MoAI-ADK 0.2.1로 Constitution 5원칙을 자동으로 준수하세요!**
+> **MoAI-ADK 로 Constitution 5원칙을 자동으로 준수하세요!**
 
 **버전**: 0.2.1
 **마지막 업데이트**: 2025-01-19

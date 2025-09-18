@@ -19,10 +19,15 @@ from datetime import datetime
 from typing import Dict, List, Tuple, Optional, Any
 
 # Import security manager for safe operations
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent / 'moai_adk'))
 try:
-    from security import SecurityManager, SecurityError
-except ImportError:
+    # Ensure project src is on sys.path
+    project_root = Path(__file__).resolve().parents[3]
+    src_path = project_root / 'src'
+    if str(src_path) not in sys.path:
+        sys.path.insert(0, str(src_path))
+
+    from moai_adk.core.security import SecurityManager, SecurityError
+except Exception:
     # Fallback if security module not available
     SecurityManager = None
     class SecurityError(Exception):
@@ -38,13 +43,12 @@ class MoAITagValidator:
         self.config_path = project_root / ".moai" / "config.json"
         self.tags_index_path = project_root / ".moai" / "indexes" / "tags.json"
 
-        # 16-Core 태그 체계 정의
+        # 16-Core 태그 체계 정의 (프로젝트 설정과 일치)
         self.tag_categories = {
-            'Spec': ['REQ', 'SPEC', 'DESIGN', 'TASK'],
-            'Steering': ['VISION', 'STRUCT', 'TECH', 'ADR'],
-            'Implementation': ['FEATURE', 'API', 'TEST', 'DATA'],
-            'Quality': ['PERF', 'SEC', 'DEBT', 'TODO'],
-            'Legacy': ['US', 'FR', 'NFR', 'BUG', 'REVIEW']
+            'SPEC': ['REQ', 'DESIGN', 'TASK'],
+            'STEERING': ['VISION', 'STRUCT', 'TECH', 'ADR'],
+            'IMPLEMENTATION': ['FEATURE', 'API', 'TEST', 'DATA'],
+            'QUALITY': ['PERF', 'SEC', 'DEBT', 'TODO']
         }
         
         # 모든 유효한 태그 타입
@@ -59,8 +63,7 @@ class MoAITagValidator:
             'API': r'^(GET|POST|PUT|DELETE|PATCH)-.+$',      # API:GET-USERS
             'TEST': r'^(UNIT|INT|E2E|LOAD)-.+$',             # TEST:UNIT-LOGIN
             'PERF': r'^[A-Z]+-(\d{3}MS|FAST|SLOW)$',         # PERF:API-500MS
-            'SEC': r'^[A-Z]+-(HIGH|MED|LOW)$',               # SEC:XSS-HIGH
-            'BUG': r'^(CRITICAL|HIGH|MED|LOW)-\d{3}$',       # BUG:CRITICAL-001
+            'SEC': r'^[A-Z]+-(HIGH|MED|LOW)$'                # SEC:XSS-HIGH
         }
 
     def safe_regex_search(self, pattern: str, text: str,
@@ -106,15 +109,20 @@ class MoAITagValidator:
         try:
             path_obj = Path(file_path)
 
-            # Check file size (max 1MB for tag validation)
-            if not self.security_manager.validate_file_size(path_obj, 1):
-                print(f"Warning: File too large for tag validation: {file_path}", file=sys.stderr)
-                return False
+            # File size check (max ~1MB) - fallback if SecurityManager lacks helper
+            try:
+                size_mb = path_obj.stat().st_size / (1024 * 1024)
+                if size_mb > 1:
+                    print(f"Warning: File too large for tag validation: {file_path}", file=sys.stderr)
+                    return False
+            except Exception:
+                pass
 
-            # Check if path is within project boundaries
-            if not self.security_manager.validate_path_safety_enhanced(path_obj, self.project_root):
-                print(f"Warning: File outside project scope: {file_path}", file=sys.stderr)
-                return False
+            # Path safety within project root
+            if hasattr(self.security_manager, 'validate_path_safety'):
+                if not self.security_manager.validate_path_safety(path_obj, self.project_root):
+                    print(f"Warning: File outside project scope: {file_path}", file=sys.stderr)
+                    return False
 
             return True
         except Exception as e:

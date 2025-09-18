@@ -411,28 +411,28 @@ class SessionNotifier:
         # 2. 파이프라인 단계별 상황 인식 추천
         if pipeline["stage"] == "INIT":
             if not self.has_steering_docs():
-                recommendations.append("/moai:1-project init  # 프로젝트 초기화 및 steering 문서 생성")
+                recommendations.append("moai init .  # 프로젝트 초기화 및 기본 설정")
             else:
-                recommendations.append("/moai:2-spec '첫 번째 기능 요구사항'  # 첫 SPEC 작성")
+                recommendations.append("/moai:1-spec '첫 번째 기능 요구사항'  # 첫 SPEC 작성")
 
         elif pipeline["stage"] == "SPECIFY":
             spec_id = pipeline.get("spec_id")
             if spec_id and "명확화 필요" in pipeline["description"]:
                 # 명확화 필요한 SPEC 우선 처리
-                recommendations.append(f"/moai:2-spec {spec_id}  # 🔍 명확화 마커 해결 (우선순위 높음)")
+                recommendations.append(f"/moai:1-spec {spec_id}  # 🔍 명확화 마커 해결 (우선순위 높음)")
             elif spec_id:
-                recommendations.append(f"/moai:2-spec {spec_id}  # SPEC 작성 완료")
+                recommendations.append(f"/moai:1-spec {spec_id}  # SPEC 작성 완료")
             else:
                 # 병렬 처리 제안
                 if specs["total"] > 0:
-                    recommendations.append("/moai:2-spec all  # 🚀 모든 SPEC 병렬 생성 (권장)")
+                    recommendations.append("/moai:1-spec --project  # 🚀 프로젝트 전반 SPEC 대화형 생성")
                 else:
-                    recommendations.append("/moai:2-spec '새로운 기능 요구사항'  # 첫 SPEC 작성")
+                    recommendations.append("/moai:1-spec '새로운 기능 요구사항'  # 첫 SPEC 작성")
 
         elif pipeline["stage"] == "PLAN":
             spec_id = pipeline.get("spec_id", "SPEC-001")
             # Constitution 검증 필요성 강조
-            recommendations.append(f"/moai:3-plan {spec_id}  # Constitution 검증 및 계획 수립")
+            recommendations.append(f"/moai:2-build {spec_id}  # Constitution 검증 및 TDD 구현 시작")
 
             # 계획 단계에서 추가 도움
             if not recent_activity and not is_work_hours:
@@ -440,29 +440,29 @@ class SessionNotifier:
 
         elif pipeline["stage"] == "TASKS":
             spec_id = pipeline.get("spec_id", "SPEC-001")
-            recommendations.append(f"/moai:4-tasks {spec_id}  # TDD 작업 분해")
+            recommendations.append(f"/moai:2-build {spec_id}  # TDD 작업 분해 및 구현")
 
             # 작업 분해 후 즉시 구현 제안
             if specs["complete"] > 0:
-                recommendations.append("# 다음: 작업 완료 후 /moai:5-dev로 구현 시작")
+                recommendations.append("# 다음: SPEC 완료 후 /moai:2-build로 구현 시작")
 
         elif pipeline["stage"] == "IMPLEMENT":
             if tasks["pending"] > 0:
                 # 첫 번째 대기 중인 작업 찾기
                 next_task = self.get_next_pending_task()
                 if next_task:
-                    recommendations.append(f"/moai:5-dev {next_task}  # 다음 작업 구현 (Red-Green-Refactor)")
+                    recommendations.append(f"/moai:2-build  # 다음 작업 구현 (Red-Green-Refactor)")
                 else:
-                    recommendations.append("/moai:5-dev T001  # 다음 작업 구현 (Red-Green-Refactor)")
+                    recommendations.append("/moai:2-build  # 다음 작업 구현 (Red-Green-Refactor)")
 
                 # 집중도 향상 제안
                 if tasks["in_progress"] > 1:
                     recommendations.append("# ⚠️ 한 번에 하나의 작업에 집중하세요!")
             else:
-                recommendations.append("/moai:6-sync  # 모든 작업 완료! 문서 동기화")
+                recommendations.append("/moai:3-sync  # 모든 작업 완료! 문서 동기화")
 
         elif pipeline["stage"] == "SYNC":
-            recommendations.append("/moai:6-sync  # 문서 동기화 및 TAG 정리")
+            recommendations.append("/moai:3-sync  # 문서 동기화 및 TAG 정리")
 
             # 추적성 검증 우선순위
             tag_health = self.analyze_tag_health()
@@ -577,7 +577,7 @@ class SessionNotifier:
 📋 초기화 방법:
   1. 새 프로젝트: moai init project-name
   2. 기존 프로젝트: moai init .
-  3. 대화형 설정: /moai:1-project init
+  3. 대화형 설정: /moai:1-spec "첫 번째 기능 요구사항"
 
 💡 MoAI-ADK는 Spec-First TDD 개발을 지원합니다.
    Constitution 5원칙과 16-Core TAG 시스템으로 품질을 보장합니다.

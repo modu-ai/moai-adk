@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # =============================================================================
-# MoAI-ADK GitFlow 자동화 스크립트 v0.2.1
+# MoAI-ADK GitFlow 자동화 스크립트 
 # =============================================================================
 # 사용법:
 #   ./gitflow-automation.sh spec SPEC-001 "user authentication"
@@ -289,7 +289,7 @@ $description
 - [ ] TDD 구현 대기
 
 ---
-🤖 MoAI-ADK v0.2.1에서 자동 생성됨
+🤖 MoAI-ADK 에서 자동 생성됨
 EOF
 
     # Draft PR 생성
@@ -326,7 +326,7 @@ $description
 진행률: $(get_progress_percentage $spec_id)% 완료
 
 ---
-🤖 MoAI-ADK v0.2.1 자동 업데이트"
+🤖 MoAI-ADK  자동 업데이트"
 
     gh pr comment --body "$comment" 2>/dev/null || log_warning "PR 댓글 추가 실패"
 }
