@@ -126,38 +126,6 @@ Integrated Documentation Sync는 코드 변경 시 관련 문서를 자동으로
 - 오픈소스 기여자 접근성 향상
 - 프로젝트 온보딩 시간 50% 단축
 
-## 16-Core @TAG 체인
-
-### Requirements 체인
-- **@REQ:DOC-SYNC-001**: 자동 문서 동기화 핵심 요구사항
-- **@REQ:API-GEN-002**: API 문서 자동 생성 요구사항
-- **@REQ:CONSISTENCY-003**: 문서 일관성 검증 요구사항
-- **@REQ:I18N-004**: 다국어 지원 요구사항
-
-### Design 체인
-- **@DESIGN:PLUGIN-ARCH-001**: 플러그인 기반 문서 생성 엔진
-- **@DESIGN:PARSER-001**: 다양한 주석 형식 파서 설계
-- **@DESIGN:VALIDATOR-001**: 문서-코드 일관성 검증 엔진
-- **@DESIGN:I18N-ENGINE-001**: 다국어 번역 엔진 설계
-
-### Task 체인
-- **@TASK:SYNC-IMPL-001**: 문서 동기화 엔진 구현
-- **@TASK:API-PARSER-002**: API 주석 파서 구현
-- **@TASK:VALIDATOR-IMPL-003**: 일관성 검증 로직 구현
-- **@TASK:I18N-IMPL-004**: 번역 서비스 통합
-
-### Test 체인
-- **@TEST:UNIT-SYNC-001**: 동기화 엔진 단위 테스트
-- **@TEST:INTEGRATION-API-002**: API 문서 생성 통합 테스트
-- **@TEST:E2E-WORKFLOW-003**: 전체 워크플로우 E2E 테스트
-- **@TEST:PERF-LOAD-004**: 대용량 프로젝트 성능 테스트
-
-### Quality 체인
-- **@PERF:SYNC-30SEC-001**: 30초 이내 동기화 완료
-- **@SEC:CONTENT-SAFE-001**: 문서 내용 보안 검증
-- **@DEBT:LEGACY-DOC-001**: 레거시 문서 마이그레이션
-- **@TODO:REALTIME-DASH-001**: 실시간 대시보드 추후 구현
-
 ## 리스크 및 의존성
 
 ### 주요 리스크
@@ -167,37 +135,10 @@ Integrated Documentation Sync는 코드 변경 시 관련 문서를 자동으로
 - **R-004**: Git hooks 충돌 가능성 - 영향도: Low
 
 ### 외부 의존성
-- **Google Translate API**: 다국어 번역 서비스
-- **Tree-sitter**: 다양한 언어 파싱
-- **GitPython**: Git 작업 자동화
-- **Jinja2**: 문서 템플릿 엔진
-
-## Constitution 5원칙 검증
-
-### Article I: Simplicity
-- 문서 동기화, API 생성, 일관성 검증 3개 핵심 모듈로 구성
-- 단일 명령어 /moai:3-sync로 전체 기능 실행
-- 복잡한 설정 없이 즉시 사용 가능
-
-### Article II: Architecture
-- 플러그인 기반 확장 가능한 아키텍처
-- Parser, Generator, Validator 계층 분리
-- 의존성 역전 원칙 적용
-
-### Article III: Testing
-- TDD 기반 개발로 테스트 커버리지 90% 이상
-- 단위, 통합, E2E 테스트 완전 커버
-- 성능 테스트 포함
-
-### Article IV: Observability
-- 문서 동기화 상태 구조화 로깅
-- 일관성 점수 메트릭 수집
-- 실시간 대시보드 제공
-
-### Article V: Versioning
-- 문서 버전과 코드 버전 자동 동기화
-- 시맨틱 버전 기반 문서 관리
-- 변경 이력 완전 추적
+- Google Translate API: 다국어 번역 서비스
+- Tree-sitter: 다양한 언어 파싱
+- GitPython: Git 작업 자동화
+- Jinja2: 문서 템플릿 엔진
 
 ## 검토 및 승인
 
@@ -211,9 +152,9 @@ Integrated Documentation Sync는 코드 변경 시 관련 문서를 자동으로
 
 ---
 
-**@REQ:DOC-CORE-001** - SPEC-006 핵심 요구사항: 문서 자동 동기화
-**@DESIGN:PLUGIN-ARCH-001** - 플러그인 기반 아키텍처 설계 필요
-**@TEST:E2E-WORKFLOW-001** - 전체 워크플로우 E2E 테스트 시나리오 정의 필요
+**@REQ:DOC-CORE** - SPEC-006 핵심 요구사항
+**@DESIGN:ARCH** - 아키텍처 설계 필요
+**@TEST:ACC** - 인수 테스트 시나리오 정의 필요
 
 **MoAI-ADK GitFlow 워크플로우**:
 1. `/moai:1-spec` - 이 명세 작성 (spec-builder 에이전트)

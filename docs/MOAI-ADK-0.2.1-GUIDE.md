@@ -34,17 +34,15 @@ MoAI-ADK 0.2.1은 **GitFlow 완전 투명성**을 통해 한국 개발자들이 
 | **명령어 체계** | `/moai:spec`, `/moai:build`, `/moai:sync` | **`/moai:1-spec`, `/moai:2-build`, `/moai:3-sync`** | 직관적 순서 체계 |
 | **브랜치 관리** | 수동 브랜치 생성/관리 | **자동 feature 브랜치 (`feature/SPEC-XXX-{name}`)** | 100% 자동화 |
 | **PR 워크플로우** | 수동 PR 작성/관리 | **Draft PR 자동 생성 → Ready for Review** | 완전 자동화 |
-| **커밋 시스템** | 수동 커밋 메시지 작성 | **7단계 의미있는 자동 커밋** | 추적성 완벽 보장 |
+| **커밋 시스템** | 수동 커밋 메시지 작성 | **5단계 의미있는 자동 커밋** | 추적성 완벽 보장 |
 | **CI/CD 통합** | 별도 설정 필요 | **GitHub Actions 자동 설정 및 트리거** | 즉시 통합 |
 | **16-Core @TAG** | 기본 TAG 시스템 | **완전 추적성 체인 (@REQ → @DESIGN → @TASK → @TEST)** | 추적성 강화 |
 
 #### 🎯 0.2.1의 혁신 포인트
 
 1. **완전 투명한 GitFlow**: 개발자는 Git 명령어나 브랜치 전략을 알 필요가 없음
-2. **7단계 자동 커밋 시스템**:
-   - SPEC 단계: `📝 SPEC-XXX: 명세 작성 완료`
-   - Stories 단계: `📖 SPEC-XXX: User Stories 추가`
-   - Acceptance 단계: `✅ SPEC-XXX: 수락 기준 정의`
+2. **5단계 자동 커밋 시스템**:
+   - SPEC 단계: `📝 SPEC-XXX: 통합 명세 작성 완료`
    - Complete 단계: `🎯 SPEC-XXX: 명세 완성`
    - RED 단계: `🔴 SPEC-XXX: 테스트 작성 (RED)`
    - GREEN 단계: `🟢 SPEC-XXX: 구현 완료 (GREEN)`
@@ -113,7 +111,7 @@ graph TD
 **혁신 사항:**
 - ✅ **완전 투명한 GitFlow**: 사용자는 Git을 전혀 몰라도 됨
 - ✅ **자동 브랜치 전략**: `feature/SPEC-XXX-{name}` 패턴 자동 적용
-- ✅ **7단계 의미있는 커밋**: 모든 단계별 자동 커밋으로 완벽한 히스토리
+- ✅ **5단계 의미있는 커밋**: 모든 단계별 자동 커밋으로 완벽한 히스토리
 - ✅ **자동 PR 라이프사이클**: Draft 생성 → 진행 추적 → Ready 전환
 - ✅ **GitHub Actions 자동 설정**: CI/CD 파이프라인 즉시 활성화
 - ✅ **16-Core @TAG 완전 추적**: 요구사항부터 테스트까지 체인 보장
@@ -216,32 +214,26 @@ You are a documentation synchronization and PR management expert.
 - **PR 완료**: Draft → Ready for Review 자동 전환
 - **팀 협업**: 리뷰어 할당 및 알림 시스템
 
-### 7단계 자동 커밋 시스템
+### 5단계 자동 커밋 시스템
 
-#### SPEC 단계 (4단계 커밋)
+#### SPEC 단계 (2단계 커밋)
 ```bash
-# 1단계: 명세 작성 완료
-📝 SPEC-001: JWT 인증 시스템 명세 작성 완료
+# 1단계: 통합 명세 작성 완료
+📝 SPEC-001: JWT 인증 시스템 통합 명세 작성 완료
 
-# 2단계: User Stories 추가
-📖 SPEC-001: User Stories 및 시나리오 추가
-
-# 3단계: 수락 기준 정의
-✅ SPEC-001: 수락 기준 정의 완료
-
-# 4단계: 명세 완성
+# 2단계: 명세 완성 및 프로젝트 구조
 🎯 SPEC-001: 명세 완성 및 Draft PR 생성
 ```
 
 #### BUILD 단계 (3단계 커밋)
 ```bash
-# 5단계: 테스트 작성 (RED)
+# 3단계: 테스트 작성 (RED)
 🔴 SPEC-001: 실패하는 테스트 작성 완료 (RED)
 
-# 6단계: 구현 완료 (GREEN)
+# 4단계: 구현 완료 (GREEN)
 🟢 SPEC-001: 최소 구현으로 테스트 통과 (GREEN)
 
-# 7단계: 리팩터링 (REFACTOR)
+# 5단계: 리팩터링 (REFACTOR)
 🔄 SPEC-001: 코드 품질 개선 및 리팩터링 완료
 ```
 
@@ -383,28 +375,14 @@ claude
    ✅ 작업 분해 (@TASK:AUTH-IMPL-001)
    ✅ 테스트 계획 (@TEST:UNIT-AUTH-001)
 
-📝 1차 커밋: "📝 SPEC-001: JWT 인증 시스템 명세 작성 완료"
-
-📖 User Stories 생성 중...
-   ✅ Given-When-Then 시나리오 작성
-   ✅ 사용자 여정 정의
-   ✅ 경계 조건 식별
-
-📝 2차 커밋: "📖 SPEC-001: User Stories 및 시나리오 추가"
-
-✅ 수락 기준 정의 중...
-   ✅ 기능적 수락 기준
-   ✅ 비기능적 수락 기준 (성능, 보안)
-   ✅ 테스트 조건
-
-📝 3차 커밋: "✅ SPEC-001: 수락 기준 정의 완료"
+📝 1차 커밋: "📝 SPEC-001: JWT 인증 시스템 통합 명세 작성 완료"
 
 🏗️  프로젝트 구조 생성 중...
    ✅ src/auth/ 디렉토리 생성
    ✅ tests/auth/ 디렉토리 생성
    ✅ 기본 파일들 생성 (16-Core @TAG 포함)
 
-📝 4차 커밋: "🎯 SPEC-001: 명세 완성 및 프로젝트 구조 생성"
+📝 2차 커밋: "🎯 SPEC-001: 명세 완성 및 프로젝트 구조 생성"
 
 🔄 Draft PR 자동 생성 중...
    ✅ GitHub PR 생성
@@ -427,9 +405,7 @@ claude
 ```
 project/
 ├── .moai/specs/SPEC-001/
-│   ├── spec.md              # EARS 형식 명세 (@REQ, @DESIGN)
-│   ├── scenarios.md         # GWT 시나리오 (@TASK)
-│   └── acceptance.md        # 수락 기준 (@TEST)
+│   └── spec.md              # 통합 명세 문서 (EARS, User Stories, 수락 기준 포함)
 ├── src/auth/
 │   ├── __init__.py
 │   ├── models.py           # @DESIGN:USER-MODEL-001
@@ -465,7 +441,7 @@ project/
    ✅ test_unauthorized_access() 작성
    ❌ 모든 테스트 의도적 실패 확인
 
-📝 5차 커밋: "🔴 SPEC-001: 실패하는 테스트 작성 완료 (RED)"
+📝 3차 커밋: "🔴 SPEC-001: 실패하는 테스트 작성 완료 (RED)"
 
 🟢 GREEN Phase: 최소 구현으로 테스트 통과...
    ✅ JWT 토큰 생성 로직 구현
@@ -474,7 +450,7 @@ project/
    ✅ 예외 처리 로직 구현
    ✅ 모든 테스트 통과 확인
 
-📝 6차 커밋: "🟢 SPEC-001: 최소 구현으로 테스트 통과 (GREEN)"
+📝 4차 커밋: "🟢 SPEC-001: 최소 구현으로 테스트 통과 (GREEN)"
 
 🔄 REFACTOR Phase: 코드 품질 개선...
    ✅ 중복 코드 제거
@@ -483,7 +459,7 @@ project/
    ✅ 문서화 문자열 추가
    ✅ 보안 강화 (입력 검증, 암호화)
 
-📝 7차 커밋: "🔄 SPEC-001: 코드 품질 개선 및 리팩터링 완료"
+📝 5차 커밋: "🔄 SPEC-001: 코드 품질 개선 및 리팩터링 완료"
 
 📊 커버리지 보고서:
    ✅ 전체: 94% (목표: 85% 이상)
@@ -633,7 +609,7 @@ moai migrate --from=0.2.0 --to=0.2.1 --enable-gitflow
 # 🌿 Git 저장소 상태 확인...
 # 📦 0.2.0 아티팩트 백업...
 # 🔄 0.2.1 GitFlow 구조로 변환...
-# 📝 기존 커밋을 7단계 형식으로 재구성...
+# 📝 기존 커밋을 5단계 형식으로 재구성...
 # 🔗 GitHub 저장소 연결 설정...
 # ✅ Claude Code 환경 재설정...
 # 🎉 GitFlow 통합 마이그레이션 완료!
@@ -646,7 +622,7 @@ moai migrate --from=0.2.0 --to=0.2.1 --enable-gitflow
 | **명령어** | `/moai:spec`, `/moai:build`, `/moai:sync` | `/moai:1-spec`, `/moai:2-build`, `/moai:3-sync` | ✅ |
 | **Git 통합** | 수동 Git 관리 | 완전 투명한 GitFlow | ✅ |
 | **브랜치 전략** | 수동 브랜치 생성 | 자동 feature 브랜치 | ✅ |
-| **커밋 시스템** | 수동 커밋 메시지 | 7단계 자동 커밋 | ✅ |
+| **커밋 시스템** | 수동 커밋 메시지 | 5단계 자동 커밋 | ✅ |
 | **PR 워크플로우** | 수동 PR 생성/관리 | 완전 자동화 | ✅ |
 
 #### 새로운 GitFlow 워크플로우 적응
@@ -714,18 +690,12 @@ git checkout -b "${BRANCH_NAME}"
 git push --set-upstream origin "${BRANCH_NAME}"
 ```
 
-**2. 7단계 자동 커밋 시스템:**
+**2. 5단계 자동 커밋 시스템:**
 
 ```bash
 # SPEC 단계 (spec-builder가 자동 실행)
 git add .moai/specs/${SPEC_ID}/spec.md
-git commit -m "📝 ${SPEC_ID}: ${FEATURE_NAME} 명세 작성 완료"
-
-git add .moai/specs/${SPEC_ID}/scenarios.md
-git commit -m "📖 ${SPEC_ID}: User Stories 및 시나리오 추가"
-
-git add .moai/specs/${SPEC_ID}/acceptance.md
-git commit -m "✅ ${SPEC_ID}: 수락 기준 정의 완료"
+git commit -m "📝 ${SPEC_ID}: ${FEATURE_NAME} 통합 명세 작성 완료"
 
 git add .
 git commit -m "🎯 ${SPEC_ID}: 명세 완성 및 프로젝트 구조 생성"
@@ -1151,14 +1121,12 @@ wait
 gh pr create --draft --title "[SPEC-001] 기능명" --body-file pr_template.md
 ```
 
-#### 3. 스마트 커밋 메시지 생성 (7단계 템플릿)
+#### 3. 스마트 커밋 메시지 생성 (5단계 템플릿)
 ```bash
 # code-builder 에이전트가 단계별 커밋 메시지 생성
 
-# SPEC 단계 (4단계)
-git commit -m "📝 SPEC-${ID}: ${FEATURE_NAME} 명세 작성 완료"
-git commit -m "📖 SPEC-${ID}: User Stories 및 시나리오 추가"
-git commit -m "✅ SPEC-${ID}: 수락 기준 정의 완료"
+# SPEC 단계 (2단계)
+git commit -m "📝 SPEC-${ID}: ${FEATURE_NAME} 통합 명세 작성 완료"
 git commit -m "🎯 SPEC-${ID}: 명세 완성 및 프로젝트 구조 생성"
 
 # BUILD 단계 (3단계)
@@ -1198,7 +1166,7 @@ MoAI-ADK 0.2.1은 **GitFlow 완전 투명성**을 통한 **개발 방식의 근�
 - **67% 시간 단축**: Git 작업 12분 → 완전 자동화 0분
 - **100% Git 투명성**: 개발자가 Git 명령어를 전혀 몰라도 됨
 - **완전 자동화된 협업**: 브랜치, 커밋, PR, 리뷰어 할당까지 자동
-- **7단계 자동 커밋**: 의미있는 개발 히스토리 자동 생성
+- **5단계 자동 커밋**: 의미있는 개발 히스토리 자동 생성
 - **16-Core @TAG**: 완벽한 추적성으로 프로젝트 전체 맥락 파악
 
 ### GitFlow 투명성의 핵심 가치
