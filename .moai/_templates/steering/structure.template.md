@@ -1,12 +1,13 @@
-# 구조 설계서: $PROJECT_NAME
+# 구조 및 기술 설계서: $PROJECT_NAME
 
 **@STRUCT:ARCH** - $PROJECT_NAME 아키텍처 구조
+**@TECH:STACK** - $PROJECT_NAME 기술 스택
 **작성일**: $CREATED_DATE
 **버전**: $VERSION
 
-## 전체 아키텍처 개요
+## MoAI-ADK Constitution 5원칙 준수 아키텍처
 
-$PROJECT_NAME는 다음과 같은 계층형 아키텍처를 기반으로 설계되었습니다.
+$PROJECT_NAME는 Constitution 5원칙을 준수하는 단순하고 확장 가능한 아키텍처로 설계됩니다.
 
 ```
 $PROJECT_NAME/
@@ -119,43 +120,51 @@ Presentation → Application → Domain ← Infrastructure
 - 로그 집계 및 분석
 - 실시간 알람 시스템
 
-## 배포 아키텍처
+## GitFlow 통합 배포 전략
 
-### 개발 환경
-- Local Development
-- Docker Compose
-- Hot Reload 지원
+### 3단계 배포 파이프라인
+| 환경 | 트리거 | 배포 방식 | 검증 단계 |
+|------|--------|-----------|----------|
+| **Development** | `/moai:2-build` | Docker Compose | TDD + Constitution |
+| **Staging** | Draft → Ready PR | K8s Preview | E2E + 성능 테스트 |
+| **Production** | main 브랜치 머지 | Blue-Green | 카나리 + 모니터링 |
 
-### 스테이징 환경
-- Production 유사 환경
-- CI/CD 파이프라인
-- 자동 테스트 실행
+### GitFlow 자동화 통합
+- **feature 브랜치**: spec-builder 자동 생성
+- **PR 기반 배포**: code-builder TDD 완료 시
+- **main 보호**: doc-syncer 문서 동기화 완료 후만 머지
 
-### 프로덕션 환경
-- 고가용성 구성
-- Auto Scaling
-- Disaster Recovery
+## 기술 스택 및 선정 근거
 
-## 기술 스택 상세
+### 핵심 기술 결정 원칙
+- **Constitution 5원칙 기반** 기술 선택
+- **GitFlow 투명성** 지원 도구 우선
+- **자동화 가능성** 및 **유지보수성** 고려
 
-### 백엔드
-- **언어**: [선택된 언어]
-- **프레임워크**: [선택된 프레임워크]
-- **데이터베이스**: [선택된 데이터베이스]
-- **캐시**: Redis
-- **메시지 큐**: [선택된 메시지 큐]
+### Backend Stack
+| 기술 영역 | 선택 기술 | 선정 근거 |
+|----------|-----------|----------|
+| **Language** | $BACKEND_LANG | [Constitution 원칙 기반 선정] |
+| **Framework** | $BACKEND_FRAMEWORK | [단순성 + 아키텍처 품질] |
+| **Database** | $DATABASE | [관찰가능성 + 확장성] |
+| **Cache** | Redis | [성능 + 운영 단순성] |
+| **Queue** | $MESSAGE_QUEUE | [비동기 처리 + 모니터링] |
 
-### 프론트엔드
-- **언어**: TypeScript
-- **프레임워크**: [선택된 프론트엔드 프레임워크]
-- **상태관리**: [선택된 상태관리 도구]
-- **UI 라이브러리**: [선택된 UI 라이브러리]
+### Frontend Stack
+| 기술 영역 | 선택 기술 | 선정 근거 |
+|----------|-----------|----------|
+| **Language** | TypeScript | [타입 안전성 + 개발자 경험] |
+| **Framework** | $FRONTEND_FRAMEWORK | [컴포넌트 재사용성] |
+| **State Management** | $STATE_MANAGER | [예측 가능한 상태 관리] |
+| **UI Library** | $UI_LIBRARY | [디자인 시스템 일관성] |
 
-### 인프라
-- **클라우드**: [선택된 클라우드 제공자]
-- **컨테이너**: Docker + Kubernetes
-- **CI/CD**: GitHub Actions
-- **모니터링**: Prometheus + Grafana
+### Infrastructure & DevOps
+| 기술 영역 | 선택 기술 | 선정 근거 |
+|----------|-----------|----------|
+| **Cloud** | $CLOUD_PROVIDER | [GitFlow 자동화 지원] |
+| **Container** | Docker + K8s | [배포 일관성 + 스케일링] |
+| **CI/CD** | GitHub Actions | [코드와 파이프라인 통합] |
+| **Monitoring** | $MONITORING_STACK | [관찰가능성 완전 구현] |
 
 ## 품질 속성 달성 전략
 
@@ -183,12 +192,19 @@ Presentation → Application → Domain ← Infrastructure
 
 **@TAG 연결**
 - @VISION:CORE → 핵심 비전 구현
-- @TECH:STACK → 기술 스택 선정
+- @STRUCT:ARCH → 아키텍처 구조 정의
+- @TECH:STACK → 기술 스택 선정 및 근거
 - @DESIGN:SECURITY → 보안 설계
 - @DESIGN:PERFORMANCE → 성능 설계
 
-**검토 사항**:
-- [ ] 아키텍처가 비즈니스 요구사항을 충족하는가?
-- [ ] 확장성과 유지보수성이 고려되었는가?
-- [ ] 보안 및 성능 요구사항이 반영되었는가?
-- [ ] 팀의 기술 역량에 적합한가?
+**MoAI-ADK 0.2.1 Constitution 검토**:
+- [ ] **단순성**: 3개 이하 주요 컴포넌트 원칙 준수
+- [ ] **아키텍처**: 모든 기능이 라이브러리로 분리 가능
+- [ ] **테스트**: TDD 기반 아키텍처 설계
+- [ ] **관찰가능성**: 구조화된 로깅 및 모니터링 계획
+- [ ] **버전관리**: GitFlow 투명성 지원 구조
+
+**GitFlow 워크플로우 준비**:
+- [ ] `/moai:1-spec` - 이 구조 문서 작성 완료
+- [ ] `/moai:2-build` - TDD 기반 구현 준비
+- [ ] `/moai:3-sync` - 문서 동기화 및 PR 자동화
