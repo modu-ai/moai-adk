@@ -1,6 +1,6 @@
 name: MoAI-ADK GitFlow 자동화
 
-# MoAI-ADK 0.2.1 3단계 파이프라인: spec → build → sync
+# MoAI-ADK  3단계 파이프라인: spec → build → sync
 # GitFlow 완전 투명성 - 개발자가 Git을 몰라도 되는 자동화
 
 on:
