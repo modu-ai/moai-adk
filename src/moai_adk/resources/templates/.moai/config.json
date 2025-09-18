@@ -1,11 +1,11 @@
 {
   "project": {
-    "name": "MoAI-ADK",
-    "version": "0.2.1",
-    "description": "한국 개발자를 위한 에이전틱 코딩 혁명",
-    "language": "ko",
-    "created": "2025-01-20",
-    "last_updated": "2025-01-20"
+    "name": "{{PROJECT_NAME}}",
+    "version": "0.1.0",
+    "description": "{{PROJECT_DESCRIPTION}}",
+    "language": "{{LANGUAGE}}",
+    "created": "{{CREATED_DATE}}",
+    "last_updated": "{{LAST_UPDATED}}"
   },
   "constitution": {
     "version": "1.0",
@@ -46,61 +46,17 @@
     }
   },
   "features": {
-    "priority": [
-      {
-        "name": "마법사 UX 개선",
-        "description": "더 직관적인 대화형 인터페이스",
-        "priority": 1,
-        "tag": "@REQ:WIZARD-UX-001"
-      },
-      {
-        "name": "에이전트 성능 최적화",
-        "description": "지침, 자동 트리거 호출 개선",
-        "priority": 2,
-        "tag": "@REQ:AGENT-PERF-001"
-      },
-      {
-        "name": "문서 자동 생성 강화",
-        "description": "Living Document 시스템 고도화",
-        "priority": 3,
-        "tag": "@REQ:DOC-AUTO-001"
-      },
-      {
-        "name": "Git 기반 롤백 시스템",
-        "description": "파일 변경마다 자동 커밋 체크포인트",
-        "priority": 4,
-        "tag": "@REQ:GIT-AUTO-001"
-      },
-      {
-        "name": "온라인 웹문서 생성",
-        "description": "MoAI-ADK 프로젝트 문서 자동 웹사이트 구축",
-        "priority": 5,
-        "tag": "@REQ:DOC-AUTO-002"
-      }
-    ]
+    "priority": []
   },
   "tech_stack": {
     "language": {
-      "python": ">=3.11",
-      "target_version": "3.12+"
+      "{{DETECTED_LANGUAGE}}": "{{DETECTED_VERSION}}",
+      "target_version": "{{TARGET_VERSION}}"
     },
-    "core_dependencies": {
-      "click": ">=8.1.0",
-      "colorama": ">=0.4.6",
-      "toml": ">=0.10.0"
-    },
+    "core_dependencies": {},
     "dev_tools": {
-      "current": {
-        "pytest": ">=7.0",
-        "black": ">=22.0",
-        "flake8": ">=5.0"
-      },
-      "upgrade_to": {
-        "pytest": ">=8.0",
-        "ruff": ">=0.1.0",
-        "pre-commit": ">=3.0",
-        "tox": ">=4.0"
-      }
+      "current": {},
+      "upgrade_to": {}
     }
   },
   "languages": {
@@ -128,9 +84,9 @@
     },
     "naming_convention": "{CATEGORY}:{TOPIC}-{ID}",
     "examples": [
-      "@REQ:WIZARD-UX-001",
-      "@DESIGN:ADAPTIVE-FLOW",
-      "@FEATURE:GIT-MANAGER"
+      "@REQ:USER-AUTH-001",
+      "@DESIGN:API-GATEWAY",
+      "@FEATURE:LOGIN-SYSTEM"
     ]
   }
 }

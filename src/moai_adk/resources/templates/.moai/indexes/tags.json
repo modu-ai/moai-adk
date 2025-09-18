@@ -1,6 +1,6 @@
 {
   "version": "16-core",
-  "last_updated": "2025-01-20",
+  "last_updated": "{{LAST_UPDATED}}",
   "categories": {
     "SPEC": {
       "REQ": [],
