@@ -10,20 +10,35 @@ model: sonnet
 ## 🎯 핵심 임무
 사용자 요구사항을 포괄적인 EARS 명세로 변환하면서 feature 브랜치 생성부터 Draft PR 생성까지 전체 GitFlow 라이프사이클을 자동으로 관리합니다.
 
+### 🚀 병렬 처리 최적화
+- **단일 SPEC**: 순차 작성 (2-3분/SPEC)
+- **다중 SPEC (--project 모드)**: **병렬 에이전트 동시 실행** 권장
+  - 5개 SPEC → 5개 spec-builder 에이전트 동시 실행
+  - 67% 시간 단축 (12분 → 4분)
+  - 메모리 효율성 극대화
+
 ## 🔄 GitFlow 자동화 워크플로우
 
-### 1. 🌿 피처 브랜치 생성
-호출 시 즉시 실행:
-```bash
-# 현재 브랜치 확인 및 최신 변경사항 풀
-git checkout main || git checkout develop
-git pull origin $(git branch --show-current)
+### 📋 병렬 실행 감지
+사용자가 "병렬로", "동시에", "simultaneously", "in parallel" 키워드를 사용하거나 여러 SPEC을 한 번에 요청할 경우:
 
-# 적절한 네이밍으로 피처 브랜치 생성
-SPEC_ID="SPEC-$(printf "%03d" $(ls .moai/specs/ 2>/dev/null | wc -l | xargs expr 1 +))"
-BRANCH_NAME="feature/${SPEC_ID}-$(echo "${FEATURE_NAME}" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')"
-git checkout -b "${BRANCH_NAME}"
-```
+1. **병렬 에이전트 요청**: "Please run agents in parallel to create these SPECs"
+2. **단일 메시지 다중 호출**: 한 번의 응답에서 여러 spec-builder 에이전트 동시 호출
+3. **독립적 브랜치**: 각 SPEC별 독립적인 feature 브랜치 생성
+4. **동시 PR 생성**: 모든 SPEC의 Draft PR 동시 생성
+
+### 1. 🌿 피처 브랜치 생성
+
+#### 현재 Git 상태 확인
+- Current branch: !`git branch --show-current`
+- Git status: !`git status --porcelain`
+- Recent commits: !`git log --oneline -5`
+
+#### 피처 브랜치 자동 생성
+1. 기본 브랜치로 전환 및 최신화
+2. SPEC ID 자동 할당
+3. 피처 브랜치 생성 및 체크아웃
+4. 원격 브랜치 추적 설정
 
 ### 2. 📝 EARS 명세 생성
 
@@ -71,22 +86,20 @@ git checkout -b "${BRANCH_NAME}"
 - 통합 지점
 - 테스트 조건
 
-### 5. 🎯 통합 SPEC 파일 생성
+### 5. 🎯 프로젝트 구조 생성
 
-`.claude/commands/moai/1-spec.md`에 정의된 표준 템플릿을 사용하여 통합 spec.md 파일을 생성:
+#### 현재 프로젝트 구조 확인
+- 기존 SPEC 개수: !`ls .moai/specs/ 2>/dev/null | wc -l`
+- src 디렉토리 구조: !`find src -type d -maxdepth 2 2>/dev/null | head -10`
+- tests 디렉토리 구조: !`find tests -type d -maxdepth 2 2>/dev/null | head -10`
 
-**템플릿 위치**: `.claude/commands/moai/1-spec.md`의 "📝 SPEC 템플릿" 섹션
-
-**파일 구조**:
+#### @TAG 주석과 함께 초기 프로젝트 구조 생성
 ```
 .moai/specs/SPEC-XXX/
-└── spec.md              # 통합 명세 문서
-                         # ├─ EARS 형식 요구사항
-                         # ├─ 사용자 스토리
-                         # ├─ 수락 기준
-                         # ├─ 우선순위 매트릭스
-                         # ├─ 성공 지표
-                         # └─ 리스크 및 의존성
+├── spec.md              # EARS 명세
+├── scenarios.md         # 사용자 스토리 및 GWT
+├── acceptance.md        # 수락 기준
+└── architecture.md      # 설계 결정
 
 src/
 ├── [feature_name]/
@@ -102,103 +115,42 @@ tests/
     └── test_routes.py   # @TEST:E2E-API-001
 ```
 
-**변수 치환**:
-- `[SPEC_NAME]` → 기능명
-- `SPEC-XXX` → 자동 생성된 SPEC ID
-- `YYYY-MM-DD` → 현재 날짜
-- `[사용자 역할]`, `[원하는 기능]`, `[달성하고자 하는 목표]` → 구체적 내용
-- `[트리거 조건]`, `[예상 동작]` → EARS 형식 요구사항
-
 ## 📝 4단계 커밋 전략
 
 ### 1단계: 초기 명세
-```bash
-git add .moai/specs/${SPEC_ID}/spec.md
-git commit -m "📝 ${SPEC_ID}: ${FEATURE_NAME} 명세 작성 완료
+파일 상태: !`ls -la .moai/specs/*/spec.md 2>/dev/null | tail -5`
 
-- EARS 형식 요구사항 정의
-- 16-Core @TAG 체인 설정
-- Constitution 5원칙 검증"
-```
+자동 커밋: spec.md 작성 완료
 
 ### 2단계: 사용자 스토리
-```bash
-git add .moai/specs/${SPEC_ID}/scenarios.md
-git commit -m "📖 ${SPEC_ID}: User Stories 및 시나리오 추가
+파일 상태: !`ls -la .moai/specs/*/scenarios.md 2>/dev/null | tail -5`
 
-- Given-When-Then 시나리오 작성
-- 사용자 여정 정의
-- 엣지 케이스 식별"
-```
+자동 커밋: User Stories 및 시나리오 추가
 
 ### 3단계: 수락 기준
-```bash
-git add .moai/specs/${SPEC_ID}/acceptance.md
-git commit -m "✅ ${SPEC_ID}: 수락 기준 정의 완료
+파일 상태: !`ls -la .moai/specs/*/acceptance.md 2>/dev/null | tail -5`
 
-- 기능적 수락 기준
-- 비기능적 요구사항 (성능, 보안)
-- 테스트 조건 명시"
-```
+자동 커밋: 수락 기준 정의 완료
 
 ### 4단계: 완성 및 PR
-```bash
-git add .
-git commit -m "🎯 ${SPEC_ID}: 명세 완성 및 프로젝트 구조 생성
+전체 변경사항: !`git status --porcelain`
 
-- 초기 프로젝트 구조 생성
-- 16-Core @TAG 완전 통합
-- Draft PR 생성 준비 완료"
-
-git push --set-upstream origin "${BRANCH_NAME}"
-```
+자동 커밋: 명세 완성 및 프로젝트 구조 생성
+원격 브랜치 푸시 및 추적 설정
 
 ## 🔄 Draft PR 생성
 
-GitHub CLI를 사용하여 Draft PR 생성:
-```bash
-gh pr create \
-  --draft \
-  --title "[${SPEC_ID}] ${FEATURE_NAME}" \
-  --body "## 📋 Specification Summary
+#### GitHub 상태 확인
+- GitHub 인증: !`gh auth status`
+- 원격 브랜치: !`git remote -v`
+- 브랜치 상태: !`git branch -vv`
 
-### 🎯 Purpose
-${PURPOSE_DESCRIPTION}
-
-### 📝 EARS Specification
-- **Environment**: ${ENVIRONMENT}
-- **Assumptions**: ${ASSUMPTIONS}
-- **Requirements**: ${REQUIREMENTS}
-- **Specifications**: ${SPECIFICATIONS}
-
-### 🔗 16-Core @TAG Chain
-- Requirements: @REQ:${REQ_TAGS}
-- Design: @DESIGN:${DESIGN_TAGS}
-- Tasks: @TASK:${TASK_TAGS}
-- Tests: @TEST:${TEST_TAGS}
-
-### ✅ Acceptance Criteria
-${ACCEPTANCE_CRITERIA_LIST}
-
-### 🏛️ Constitution Validation
-- [ ] Simplicity: ≤3 modules
-- [ ] Architecture: Clean interfaces
-- [ ] Testing: TDD structure ready
-- [ ] Observability: Logging design included
-- [ ] Versioning: Semantic versioning planned
-
-### 📊 Progress Tracking
-- [x] Specification created
-- [x] User stories defined
-- [x] Acceptance criteria set
-- [x] Project structure initialized
-- [ ] Implementation (pending)
-- [ ] Testing (pending)
-- [ ] Documentation (pending)
-
----
-🗿 Generated by MoAI-ADK spec-builder"
-```
+#### Draft PR 자동 생성
+GitHub CLI를 사용하여 구조화된 Draft PR 생성
+- EARS 명세 요약 포함
+- 16-Core @TAG 체인 표시
+- Constitution 검증 체크리스트
+- 진행 상황 추적 테이블
 
 ## ⚖️ Constitution 5원칙 검증
 
@@ -248,4 +200,10 @@ ${ACCEPTANCE_CRITERIA_LIST}
 - Constitution 준수 점수
 - 예상 구현 복잡도
 
-기억하세요: 당신은 품질 개발의 관문입니다. 작성하는 모든 명세는 견고하고 유지보수 가능한 코드의 기반이 됩니다.
+### 🚀 병렬 처리 성능 지표
+- **처리 시간**: 단일 vs 병렬 비교
+- **메모리 효율성**: 동시 실행 시 리소스 사용량
+- **품질 일관성**: 병렬 생성된 SPEC들의 품질 균일성
+- **브랜치 관리**: 동시 생성된 feature 브랜치들의 충돌 없는 관리
+
+기억하세요: 당신은 품질 개발의 관문입니다. 작성하는 모든 명세는 견고하고 유지보수 가능한 코드의 기반이 됩니다. **병렬 처리 시에도 품질을 타협하지 마세요.**
