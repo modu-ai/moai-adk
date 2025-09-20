@@ -1602,6 +1602,12 @@ class SessionNotifier:
         if analysis["detected_language"]:
             lines.append(f"🌐 감지된 언어: {analysis['detected_language']}")
 
+            # 권장 도구 정보 추가
+            test_tool = self.get_recommended_test_tool(analysis['detected_language'])
+            lint_tool = self.get_recommended_lint_tool(analysis['detected_language'])
+            format_tool = self.get_recommended_format_tool(analysis['detected_language'])
+            lines.append(f"🧪 권장 도구: test={test_tool}, lint={lint_tool}, format={format_tool}")
+
             # 테스트 파일 존재 여부
             if not analysis["test_dirs"]:
                 lines.append("⚠️  테스트 디렉토리 없음 - TDD 환경 구축 필요")
