@@ -1,17 +1,17 @@
 ---
-description: 문서 동기화 및 TAG 시스템 업데이트 - Living Document와 16-Core TAG 완전 동기화
+description: 문서 동기화 및 TAG 시스템 업데이트 - Living Document와 16-Core TAG 동기화 지원
 argument-hint: [auto|force|status] [target-path]
 allowed-tools: Read, Write, Edit, MultiEdit, Bash, Task
 ---
 
 # MoAI-ADK  문서 동기화 + PR Ready (GitFlow 통합)
 
-!@ doc-syncer 에이전트가 코드-문서 양방향 동기화와 16-Core TAG 시스템 관리를 완전 자동화합니다.
+!@ doc-syncer 에이전트가 코드-문서 양방향 동기화와 16-Core TAG 시스템 관리를 자동화하도록 시도합니다(환경 의존).
 
 ## 🔀 문서 동기화 + PR 완료 자동화 코드 (완전 투명)
 
 ```bash
-# 1. 16-Core @TAG 시스템 완전 업데이트
+# 1. 16-Core @TAG 시스템 업데이트(시도)
 python .moai/scripts/check-traceability.py --update --verbose
 
 # 2. Living Document 실시간 동기화
@@ -44,6 +44,19 @@ $(grep -r "@REQ:" .moai/specs/ | sed 's/.*@REQ:/- /' | sort | uniq)
 
 EOF
 
+### Git index.lock 안전 점검
+if [ -f .git/index.lock ]; then
+  echo "🔒 git index.lock detected"
+  if pgrep -fl "git (commit|rebase|merge)" >/dev/null 2>&1; then
+    echo "❌ 다른 git 작업이 진행 중입니다. 해당 작업을 종료한 후 다시 실행하세요."
+    exit 1
+  else
+    echo "ℹ️ lock 파일이 남아있습니다. 안전을 위해 종료합니다."
+    echo "   수동으로 '.git/index.lock' 삭제 후 재실행하거나 병행 실행을 중단하세요."
+    exit 1
+  fi
+fi
+
 # 3. 최종 문서 동기화 커밋
 git add docs/ README.md
 git commit -m "📚 ${SPEC_ID}: 문서 동기화 및 16-Core @TAG 업데이트 완료
@@ -51,21 +64,21 @@ git commit -m "📚 ${SPEC_ID}: 문서 동기화 및 16-Core @TAG 업데이트 �
 - Living Document 실시간 동기화
 - OpenAPI 3.0 스펙 자동 생성
 - README.md 기능 목록 업데이트
-- 16-Core @TAG 추적성 체인 100% 완성"
+- 16-Core @TAG 추적성 체인 점검/업데이트"
 
 # 4. Draft → Ready for Review 자동 전환
 gh pr ready --body "$(cat <<EOF
 ## ✅ Implementation Complete
 
 ### 📊 Quality Metrics
-- Constitution 5원칙: 100% 준수
+- Constitution 5원칙: 체크 결과 보고
 - Test Coverage: ${COVERAGE_PERCENT}%
 - Code Quality: A+
 - Security Scan: ✅ No vulnerabilities
 
 ### 🔗 Traceability Chain
-- @REQ → @DESIGN → @TASK → @TEST: 100% 연결
-- 16-Core @TAG 완전 추적 체인 완성
+- @REQ → @DESIGN → @TASK → @TEST: 연결 확인
+- 16-Core @TAG 추적 체인 점검 완료
 
 ### 📋 Review Checklist
 - [ ] Code Review (Senior Developer)
@@ -81,7 +94,7 @@ gh pr edit --add-reviewer "@senior-dev" --add-reviewer "@security-lead"
 gh pr edit --add-label "ready-for-review" --add-label "constitution-compliant"
 ```
 
-코드와 문서의 완벽한 일치성을 유지하고 16-Core TAG 시스템으로 추적성을 보장하는 핵심 명령어입니다.
+코드와 문서의 일치성 향상을 목표로 하고 16-Core TAG 시스템으로 추적성을 강화하는 핵심 명령어입니다.
 
 ## 🔄 빠른 시작
 
@@ -172,7 +185,7 @@ gh pr edit --add-label "ready-for-review" --add-label "constitution-compliant"
 
 🔍 Quality Chain (품질 추적):
 ├── PERF → SEC → DOCS → TAG
-└── 추적성 매트릭스 100% 유지
+└── 추적성 매트릭스 유지 목표(지표 보고)
 ```
 
 ### 자동 검증 및 복구
@@ -217,11 +230,11 @@ tests/ → docs/testing/
 ├── 업데이트된 파일: 8개
 ├── 생성된 문서: 3개
 ├── 수정된 TAG: 12개
-└── 추적성 검증: 100% 통과
+└── 추적성 검증: 통과(검증 결과 보고)
 
 🏷️ TAG 시스템 상태:
-├── Primary Chain: 완전 연결
-├── Quality Chain: 완전 연결
+├── Primary Chain: 연결 확인
+├── Quality Chain: 연결 확인
 ├── 고아 TAG: 0개
 └── 끊어진 링크: 0개
 ```
@@ -319,6 +332,21 @@ tests/ → docs/testing/
 ```
 
 ## ⚠️ 에러 처리
+
+### Git index.lock 감지
+```bash
+fatal: Unable to create '.git/index.lock': File exists.
+
+원인:
+- 이전 git 명령 비정상 종료 또는 병렬 실행으로 lock 파일이 남아있음
+
+해결 절차(안전 순서):
+1) 활성 Git 작업 확인: pgrep -fl "git (commit|rebase|merge)"
+   - 있으면 해당 작업을 종료/완료 후 다시 실행
+2) 활성 작업이 없으면 lock 파일 제거: rm -f .git/index.lock
+3) 상태 점검: git status
+4) 동기화 재실행: /moai:3-sync
+```
 
 ### 파일 충돌 감지
 ```bash

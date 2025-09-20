@@ -90,7 +90,11 @@
 - **Go**: go test, gofmt
 - **Rust**: cargo test, rustfmt
 - **Java**: gradle/maven test
+- **Kotlin**: junit, detekt, ktlint
 - **.NET**: dotnet test
+- **Swift**: XCTest, swift-format, SwiftLint
+- **Dart/Flutter**: flutter test, flutter analyze, dart format
+- **React Native**: jest, detox, eslint
 
 감지 스크립트: `.claude/hooks/moai/language_detector.py` (감지 실패 시 수동 선택 안내)
 

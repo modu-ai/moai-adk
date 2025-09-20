@@ -6,7 +6,7 @@ allowed-tools: Read, Write, Edit, MultiEdit, Bash, Task
 
 # MoAI-ADK  SPEC 작성 (GitFlow 통합)
 
-!@ spec-builder 에이전트를 활용해 비즈니스 요구사항을 EARS 형식의 엔지니어링 명세로 변환하고 GitFlow 워크플로우를 자동 통합합니다.
+!@ spec-builder 에이전트를 활용해 비즈니스 요구사항을 EARS 형식의 엔지니어링 명세로 변환하고 GitFlow 연동을 지원합니다(환경 의존).
 
 ## 🔀 GitFlow 자동화 실행 코드 (완전 투명)
 
@@ -16,6 +16,19 @@ allowed-tools: Read, Write, Edit, MultiEdit, Bash, Task
 - Remote branches: !`git branch -r | head -5`
 - Last commits: !`git log --oneline -3`
 - Existing SPECs: !`ls .moai/specs/ 2>/dev/null | wc -l`
+
+#### Git index.lock 안전 점검
+!`if [ -f .git/index.lock ]; then \
+  echo "🔒 git index.lock detected"; \
+  if pgrep -fl "git (commit|rebase|merge)" >/dev/null 2>&1; then \
+    echo "❌ 다른 git 작업이 진행 중입니다. 해당 작업을 종료한 후 다시 실행하세요."; \
+    exit 1; \
+  else \
+    echo "ℹ️ lock 파일이 남아있습니다. 안전을 위해 종료합니다."; \
+    echo "   수동으로 '.git/index.lock' 삭제 후 재실행하거나 병행 실행을 중단하세요."; \
+    exit 1; \
+  fi; \
+fi`
 
 #### GitFlow 전략 (모드별)
 
@@ -32,7 +45,7 @@ allowed-tools: Read, Write, Edit, MultiEdit, Bash, Task
 3. **SPEC별 순차 커밋**: 각 SPEC마다 개별 커밋
 4. **단일 Draft PR**: 전체 프로젝트 명세에 대한 PR
 
-비즈니스 요구사항을 EARS(Easy Approach to Requirements Syntax) 형식의 엔지니어링 명세로 변환합니다. **GitFlow가 완전히 통합**되어 버전 관리가 자동으로 처리됩니다.
+비즈니스 요구사항을 EARS(Easy Approach to Requirements Syntax) 형식의 엔지니어링 명세로 변환합니다. GitFlow 연동은 환경에 따라 자동화를 시도하며, 실패 시 수동 절차를 안내합니다.
 
 ## 🚀 빠른 시작
 
@@ -71,8 +84,8 @@ flowchart TD
 
 ## 🔀 GitFlow 자동 통합 
 
-### 완전 투명한 버전 관리
-사용자는 Git 명령어를 전혀 알 필요 없이 모든 버전 관리가 자동 처리됩니다.
+### 투명한 버전 관리(지원)
+Git 작업을 보조하며 자동화를 시도합니다(gh/권한/CI 설정 등 환경 의존). 실패하면 수동 명령을 안내합니다.
 
 #### 1. Feature 브랜치 자동 생성
 ```bash
@@ -108,15 +121,15 @@ gh pr create --draft \
 - **develop**: 통합 브랜치 (자동 머지 대상)
 - **main**: 릴리스 브랜치 (수동 머지)
 
-## 🤖 spec-builder 에이전트 자동화
+## 🤖 spec-builder 에이전트 자동화(지원)
 
-**spec-builder 에이전트**가 전체 SPEC 작성 + GitFlow 과정을 완전 자동화:
+**spec-builder 에이전트**가 SPEC 작성 + GitFlow 과정을 자동화하도록 시도합니다(환경 의존).
 
 ### 💯 순차 처리 최적화
 - **단일 SPEC**: 개별 브랜치 전략 (spec-builder 에이전트 1개)
 - **--project 다중 SPEC**: **통합 브랜치 순차 실행**
   - 5개 SPEC → 단일 브랜치에 순차 커밋
-  - Git 충돌 0%, 안정성 100%
+  - Git 충돌 위험 최소화 목표
   - 초보자 친화적 경험
 
 ### 에이전트 기능
@@ -243,34 +256,34 @@ Then 3초 이내에 JWT 토큰을 생성하고
 └── spec.md           # EARS 요구사항 + User Stories + 수락 기준 통합
 ```
 
-## ✅ 품질 검증 자동화
+## ✅ 품질 검증(자동화 시도)
 
 ### 검증 기준
 - 모든 User Story에 수락 기준 존재 (최소 3개)
 - EARS 요구사항의 테스트 가능성 확인
 - [NEEDS CLARIFICATION] 마커 10% 이하
-- @REQ 태그를 통한 추적성 보장
+- @REQ 태그를 통한 추적성 향상(검증 스크립트 기준)
 
 ### 검증 결과
 ```markdown
-📊 SPEC 품질 지표:
+📊 SPEC 품질 지표(예시):
 - User Stories: 12개 생성
 - EARS 요구사항: 35개
 - 수락 기준: 36개 시나리오
 - 명확성 점수: 94%
-- 추적성 매트릭스: 100% 완료
+- 추적성 매트릭스: 완료(검증 스크립트 기준)
 ```
 
 ## 🔄 완료 후 다음 단계
 
-###  GitFlow 통합 워크플로우
+###  GitFlow 통합 워크플로우(지원)
 ```bash
 ✅ SPEC 작성 + GitFlow 완료!
 
-🔀 Git 작업 (자동 완료):
+🔀 Git 작업 (자동 시도):
 ├── feature/SPEC-001-user-auth 브랜치 생성
 ├── 4단계 커밋 완료 (SPEC → Stories → 수락기준 → 최종)
-└── Draft PR #123 생성: "SPEC-001: 사용자 인증 시스템"
+└── Draft PR #123 생성(환경 의존): "SPEC-001: 사용자 인증 시스템"
 
 📁 생성된 파일:
 └── .moai/specs/SPEC-001/
@@ -309,3 +322,18 @@ Then 3초 이내에 JWT 토큰을 생성하고
 3. **Phase 3 Implementation**: 구체적 실행 안내
 
 이 명령어는 MoAI-ADK 0.2.0의 핵심으로, 단순화된 인터페이스로 강력한 SPEC 작성을 제공합니다.
+
+### Git index.lock 감지 (문제 해결)
+```bash
+fatal: Unable to create '.git/index.lock': File exists.
+
+원인:
+- 이전 git 명령 비정상 종료 또는 병렬 실행으로 lock 파일이 남아있음
+
+해결 절차(안전 순서):
+1) 활성 Git 작업 확인: pgrep -fl "git (commit|rebase|merge)"
+   - 있으면 해당 작업을 종료/완료 후 다시 실행
+2) 활성 작업이 없으면 lock 파일 제거: rm -f .git/index.lock
+3) 상태 점검: git status
+4) 재실행: /moai:1-spec
+```

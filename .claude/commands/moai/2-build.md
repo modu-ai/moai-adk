@@ -1,13 +1,13 @@
 ---
 name: moai:2-build
-description: TDD 기반 완전 구현 - Constitution Check부터 Red-Green-Refactor까지 통합 실행
+description: TDD 기반 구현 - Constitution Check부터 Red-Green-Refactor까지 통합 실행(지원)
 argument-hint: <SPEC-ID>|all
 allowed-tools: Read, Write, Edit, MultiEdit, Bash(git:*), Bash(python3:*), Bash(pytest:*), Bash(npm:*), Bash(go:*), Bash(cargo:*), Bash(mvn:*), Bash(dotnet:*), Task, WebFetch, Grep, Glob
 ---
 
 # MoAI-ADK 2단계: TDD 구현 (GitFlow 통합)
 
-code-builder 에이전트가 Constitution Check부터 Red-Green-Refactor까지 완전 자동화합니다.
+code-builder 에이전트가 Constitution Check부터 Red-Green-Refactor까지 자동화를 시도합니다(환경 의존).
 
 ## 🔀 TDD GitFlow 자동화 실행 코드 (완전 투명)
 
@@ -15,7 +15,19 @@ code-builder 에이전트가 Constitution Check부터 Red-Green-Refactor까지 �
 # 1. Constitution 5원칙 검증 (프로젝트 도구 자동 감지)
 # Constitution 체크리스트 기반 검증
 
-# 2. TDD Red-Green-Refactor 3단계 자동 커밋
+# 2. TDD Red-Green-Refactor 3단계 커밋 패턴(권장)
+# Git index.lock 안전 점검
+!`if [ -f .git/index.lock ]; then \
+  echo "🔒 git index.lock detected"; \
+  if pgrep -fl "git (commit|rebase|merge)" >/dev/null 2>&1; then \
+    echo "❌ 다른 git 작업이 진행 중입니다. 해당 작업을 종료한 후 다시 실행하세요."; \
+    exit 1; \
+  else \
+    echo "ℹ️ lock 파일이 남아있습니다. 안전을 위해 종료합니다."; \
+    echo "   수동으로 '.git/index.lock' 삭제 후 재실행하거나 병행 실행을 중단하세요."; \
+    exit 1; \
+  fi; \
+fi`
 # RED 단계: 실패하는 테스트 작성
 !`git add tests/`
 !`git commit -m "🔴 ${SPEC_ID}: 실패하는 테스트 작성 완료 (RED)
@@ -47,7 +59,7 @@ code-builder 에이전트가 Constitution Check부터 Red-Green-Refactor까지 �
 !`gh pr edit --add-label "implementation-complete" --add-label "ready-for-review-pending"`
 ```
 
-SPEC을 바탕으로 Constitution Check → 기술 설계 → 작업 분해 → TDD 구현까지 완전 자동화하는 MoAI-ADK의 핵심 명령어입니다.
+SPEC을 바탕으로 Constitution Check → 기술 설계 → 작업 분해 → TDD 구현까지 자동화를 지원하는 MoAI-ADK의 핵심 명령어입니다.
 
 
 ## 🚀 빠른 시작
@@ -79,14 +91,14 @@ flowchart TD
     K --> A
 ```
 
-## 🤖 code-builder 에이전트 완전 자동화
+## 🤖 code-builder 에이전트 자동화(지원)
 
-**code-builder 에이전트**가 전체 구현 과정을 완전 자동화:
+**code-builder 에이전트**가 전체 구현 과정을 자동화하도록 시도합니다(환경 의존):
 
 ### 1단계: Constitution 검증
 - **Simplicity**: 프로젝트 복잡도 ≤ 3개 확인
 - **Architecture**: 모든 기능 라이브러리화 검증
-- **Testing**: TDD 강제 및 85% 커버리지 확보
+- **Testing**: TDD 권장 및 커버리지 목표(예: 80~85%)
 - **Observability**: 구조화 로깅 필수
 - **Versioning**: MAJOR.MINOR.BUILD 체계
 
@@ -95,20 +107,20 @@ flowchart TD
 - **아키텍처 설계**: 필요시 data-model.md, contracts/ 생성
 - **의존성 분석**: 외부 라이브러리 및 API 검토
 
-### 3단계: TDD 구현
+### 3단계: TDD 구현(권장)
 - **작업 분해**: 구현 가능한 단위로 태스크 분할
 - **Red-Green-Refactor**: 엄격한 TDD 사이클 준수
 - **품질 검증**: 린팅, 타입 체킹, 커버리지 확인
 
-## 🏛️ Constitution Check (5원칙 자동 검증)
+## 🏛️ Constitution Check (5원칙 검증 지원)
 
-### 필수 통과 기준
+### 기본 목표 기준(예시)
 ```markdown
-✅ Simplicity: 독립 모듈 ≤ 3개
-✅ Architecture: 100% 라이브러리화
-✅ Testing: 85% 커버리지 + TDD
-✅ Observability: 구조화 로깅 구현
-✅ Versioning: 시맨틱 버전 관리
+✅ Simplicity: 독립 모듈 ≤ 3개(목표)
+✅ Architecture: 라이브러리화 지향
+✅ Testing: 커버리지 목표(예: 80~85%) + TDD 권장
+✅ Observability: 구조화 로깅 구현 권장
+✅ Versioning: 시맨틱 버전 관리 권장
 ```
 
 ### 위반 시 자동 해결
@@ -149,10 +161,10 @@ flowchart TD
 - 성능 최적화
 ```
 
-## 📊 커버리지 및 품질 검증
+## 📊 커버리지 및 품질 검증(지원)
 
 ### 자동 검증 항목 (언어별 도구 자동 감지)
-- **테스트 커버리지**: 최소 85% (기본값)
+- **테스트 커버리지**: 목표 80~85%(프로젝트 설정)
 - **타입 커버리지**: 프로젝트 타입 체커 사용
 - **린팅 통과**: 프로젝트 린터 규칙 준수
 - **보안 검사**: 언어별 보안 도구 실행
@@ -201,13 +213,13 @@ tests/
 
 ### 성공적인 구현 완료
 ```bash
-🎉 TDD 구현 완료!
+🎉 TDD 구현 완료(예시)!
 
 📊 최종 품질 지표:
 - 테스트 커버리지: 87%
 - 구현 파일: 12개
 - 테스트 파일: 18개
-- Constitution: 100% 준수
+- Constitution: 준수 여부 보고(체크 결과 기준)
 
 📝 생성된 파일:
 ├── src/ (12개 구현 파일)
@@ -239,6 +251,20 @@ tests/
 
 ## ⚠️ 에러 처리
 
+### Git index.lock 감지
+```bash
+fatal: Unable to create '.git/index.lock': File exists.
+
+원인:
+- 이전 git 명령 비정상 종료 또는 병렬 실행으로 lock 파일이 남아있음
+
+해결 절차(안전 순서):
+1) 활성 Git 작업 확인: pgrep -fl "git (commit|rebase|merge)"
+   - 있으면 해당 작업을 종료/완료 후 다시 실행
+2) 활성 작업이 없으면 lock 파일 제거: rm -f .git/index.lock
+3) 상태 점검: git status
+4) 재실행: /moai:2-build
+```
 ### SPEC 문서 누락
 ```bash
 ❌ SPEC-001을 찾을 수 없습니다.
@@ -271,4 +297,3 @@ Green 단계 재구현 필요
 1. **Phase 1 Results**: Constitution & 설계 결과
 2. **Phase 2 Plan**: TDD 구현 계획
 3. **Phase 3 Implementation**: 실제 구현 및 검증
-
