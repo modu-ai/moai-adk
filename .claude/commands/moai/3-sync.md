@@ -2,7 +2,7 @@
 name: moai:3-sync
 description: 문서 동기화 및 TAG 시스템 업데이트 - Living Document와 16-Core TAG 동기화 지원
 argument-hint: [auto|force|status] [target-path]
-allowed-tools: Read, Write, Edit, MultiEdit, Bash(git:*), Bash(gh:*), Bash(python3:*), Bash(ls:*), Bash(cat:*), Task, Grep, Glob
+allowed-tools: Read, Write, Edit, MultiEdit, Bash(git:*), Bash(gh:*), Bash(python3:*), Bash(ls:*), Bash(cat:*), Bash(pgrep:*), Bash(rm:*), Task, Grep, Glob
 ---
 
 # MoAI-ADK 3단계: 문서 동기화 + PR Ready (GitFlow 통합)
@@ -54,40 +54,51 @@ esac
 !`grep -r "@REQ:" .moai/specs/ 2>/dev/null | wc -l || echo "0"`
 
 
-# 3. 통합 Git 작업 (Lock 파일 체크 + 커밋)
-!`# Git 작업 통합 실행
-if [ -f .git/index.lock ]; then
-  echo "🔒 git index.lock 감지됨"
-  if pgrep -fl "git (commit|rebase|merge)" >/dev/null 2>&1; then
+# 3. 통합 Git 작업 (안전한 Lock 체크 + SPEC-ID 추출 + 커밋)
+!`
+# SPEC-ID 추출 (브랜치명 기반)
+SPEC_ID=$(git branch --show-current | sed 's/feature\/\(SPEC-[0-9]*\).*/\1/' || echo "SPEC-UNKNOWN")
+echo "🏷️ SPEC-ID: $SPEC_ID"
+
+# Git 프로세스 및 Lock 파일 안전 체크
+if pgrep -fl "git (commit|rebase|merge)" >/dev/null 2>&1; then
     echo "❌ 다른 git 작업이 진행 중입니다. 해당 작업을 종료한 후 다시 실행하세요."
     exit 1
-  else
+fi
+
+# Lock 파일 제거 (필요 시)
+if [ -f .git/index.lock ]; then
     echo "🔓 Lock 파일 제거 중..."
     rm -f .git/index.lock
-  fi
+    sleep 1  # 파일 시스템 동기화 대기
+else
+    echo "🔓 Lock 파일 없음 - 정상"
 fi
 
-# 문서 동기화 커밋
 echo "📚 문서 동기화 시작..."
+
+# 문서 파일 우선 스테이징
 git add docs/ README.md 2>/dev/null || true
 
-# 문서만으로 스테이징이 비어있으면, 동기화에 수반되는 경로를 추가 스테이징
+# 확장 스테이징 (변경사항이 있는 경우)
 if git diff --cached --quiet; then
-  echo "ℹ️ 문서 경로에서 스테이징된 변경이 없습니다. 확장 스테이징 시도..."
-  git add .claude/ .moai/ src/moai_adk/install/ src/moai_adk/resources/templates/ 2>/dev/null || true
+    echo "ℹ️ 문서 경로에서 스테이징된 변경이 없습니다. 확장 스테이징 시도..."
+    git add .claude/ .moai/ src/moai_adk/install/ src/moai_adk/resources/templates/ 2>/dev/null || true
 fi
 
-# 최종 확인 후 커밋
+# 커밋 실행 (변경사항 확인 후)
 if git diff --cached --quiet; then
-  echo "ℹ️ 커밋할 변경사항이 없습니다."
+    echo "ℹ️ 커밋할 변경사항이 없습니다."
 else
-  git commit -m "📚 ${SPEC_ID}: 문서 동기화 및 16-Core @TAG 업데이트 완료
+    git commit -m "📚 $SPEC_ID: 문서 동기화 및 16-Core @TAG 업데이트 완료
 
 - Living Document 실시간 동기화
 - 언어별 문서 자동 생성
 - README.md 기능 목록 업데이트
-- 16-Core @TAG 추적성 체인 점검/업데이트" && echo "✅ 문서 동기화 커밋 완료"
-fi`
+- 16-Core @TAG 추적성 체인 점검/업데이트"
+    echo "✅ 문서 동기화 커밋 완료"
+fi
+`
 
 # 4. Draft → Ready for Review 전환 지원 (gh CLI 필요)
 !`gh pr ready --body "$(cat <<EOF
@@ -185,7 +196,7 @@ EOF
 
 ## 🤖 doc-syncer 에이전트 자동화
 
-**doc-syncer 에이전트**가 양방향 동기화를 완전 자동화:
+**doc-syncer 에이전트**가 양방향 동기화를 자동화:
 
 ### 코드 → 문서 동기화
 - **API 문서**: 코드 변경 시 OpenAPI 스펙 자동 갱신
