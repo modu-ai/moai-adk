@@ -3,7 +3,7 @@ name: moai:3-sync
 description: MoAI-ADK SYNC 단계 - Living Document 동기화, 16-Core TAG 시스템 업데이트, PR Ready 전환. TDD 구현 완료 후 사용.
 argument-hint: [auto|force|status|project] [target-path]
 allowed-tools: Read, Write, Edit, MultiEdit, Bash(git:*), Bash(gh:*), Bash(python3:*), Bash(ls:*), Bash(find:*), Bash(grep:*), Bash(cat:*), Bash(pgrep:*), Bash(rm:*), Bash(sleep:*), Task, Grep, Glob, TodoWrite
-model: claude-3-5-sonnet-20241022
+model: sonnet
 ---
 
 # MoAI-ADK SYNC 단계: 문서 동기화 + PR Ready
@@ -46,8 +46,8 @@ model: claude-3-5-sonnet-20241022
 !`git branch --show-current | sed 's/feature/\(SPEC-[0-9]*\).*/\1/' || echo "SPEC-UNKNOWN"`
 
 **프로젝트 유형 감지**
-!`find . -maxdepth 2 -name "*.py" -o -name "*.js" -o -name "*.ts" -o -name "*.go" -o -name "*.java" | head -5`
-!`find . -maxdepth 1 -name "package.json" -o -name "pyproject.toml" -o -name "go.mod" -o -name "pom.xml" | head -3`
+!`find . -maxdepth 2 -name "*.py" -o -name "*.js" -o -name "*.ts" -o -name "*.go" -o -name "*.java" -o -name "*.kt" -o -name "*.cs" -o -name "*.swift" -o -name "*.dart" -o -name "*.rs" | head -8`
+!`find . -maxdepth 1 -name "package.json" -o -name "pyproject.toml" -o -name "go.mod" -o -name "pom.xml" -o -name "Cargo.toml" -o -name "*.csproj" -o -name "*.sln" -o -name "Package.swift" -o -name "pubspec.yaml" | head -5`
 
 ## doc-syncer 서브에이전트 호출
 
