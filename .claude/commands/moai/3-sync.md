@@ -69,7 +69,15 @@ fi
 
 # 문서 동기화 커밋
 echo "📚 문서 동기화 시작..."
-git add docs/ README.md 2>/dev/null || echo "ℹ️ docs/ 또는 README.md 추가 실패 (파일이 없거나 변경사항 없음)"
+git add docs/ README.md 2>/dev/null || true
+
+# 문서만으로 스테이징이 비어있으면, 동기화에 수반되는 경로를 추가 스테이징
+if git diff --cached --quiet; then
+  echo "ℹ️ 문서 경로에서 스테이징된 변경이 없습니다. 확장 스테이징 시도..."
+  git add .claude/ .moai/ src/moai_adk/install/ src/moai_adk/resources/templates/ 2>/dev/null || true
+fi
+
+# 최종 확인 후 커밋
 if git diff --cached --quiet; then
   echo "ℹ️ 커밋할 변경사항이 없습니다."
 else

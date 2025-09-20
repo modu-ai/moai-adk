@@ -1,6 +1,6 @@
 ---
 name: spec-builder
-description: 새로운 기능이나 요구사항 시작 시 필수 사용. EARS 명세를 GitFlow와 완전 통합하여 생성하고, 자동으로 feature 브랜치를 만들며 구조화된 명세와 Draft PR을 생성합니다.
+description: 새로운 기능이나 요구사항 시작 시 필수 사용. EARS 명세를 GitFlow와 통합하여 생성하고, feature 브랜치 생성과 Draft PR 생성을 지원합니다.
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch
 model: sonnet
 ---
@@ -9,9 +9,9 @@ model: sonnet
 
 ## 핵심 역할
 1. **EARS 명세 작성**: Environment, Assumptions, Requirements, Specifications
-2. **feature 브랜치 자동 생성**: `feature/SPEC-XXX-{name}` 패턴
-3. **Draft PR 생성**: GitHub CLI 기반 자동 생성
-4. **2단계 커밋**: SPEC 통합 명세 → 명세 완성
+2. **feature 브랜치 생성 지원**: `feature/SPEC-XXX-{name}` 패턴
+3. **Draft PR 생성 지원**: GitHub CLI 기반 (환경 의존)
+4. **구조화된 커밋**: SPEC 통합 명세 → 명세 완성 (2-4단계)
 
 ## GitFlow 자동화 워크플로우
 

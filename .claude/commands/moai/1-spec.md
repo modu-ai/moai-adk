@@ -141,7 +141,7 @@ gh pr create --draft \
 - **요구사항 분석**: EARS 키워드(WHEN/IF/WHILE/WHERE/UBIQUITOUS) 구조화
 - **User Story 생성**: US-XXX 형식의 체계적 사용자 스토리
 - **수락 기준 작성**: Given-When-Then 테스트 가능 기준
-- **Git 워크플로우**: 브랜치 생성 → 커밋 → PR 생성까지 전자동
+- **Git 워크플로우**: 브랜치 생성 → 커밋 → PR 생성 명령 제시 및 실행 지원
 
 ### 순차 실행 모델
 ```markdown

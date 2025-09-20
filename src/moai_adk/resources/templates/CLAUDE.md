@@ -43,11 +43,11 @@
 
 ## 핵심 에이전트
 
-| 에이전트 | 역할 | 자동화 기능 |
+| 에이전트 | 역할 | 지원 기능 |
 |----------|------|------------|
-| **spec-builder** | EARS 명세 작성 | 브랜치/PR 생성을 지원(환경 의존) |
+| **spec-builder** | EARS 명세 작성 | 브랜치/PR 생성 지원 (환경 의존) |
 | **code-builder** | TDD 구현 | Red-Green-Refactor 커밋 패턴 권장 |
-| **doc-syncer** | 문서 동기화 | PR 상태 전환/라벨링 지원(환경 의존) |
+| **doc-syncer** | 문서 동기화 | PR 상태 전환/라벨링 지원 (환경 의존) |
 
 ## TDD 커밋 단계(권장 패턴)
 
@@ -74,13 +74,13 @@
 - **IMPLEMENTATION**: FEATURE, API, TEST, DATA
 - **QUALITY**: PERF, SEC, DEBT, TODO
 
-## Constitution 5원칙(목표/원칙)
+## Constitution 5원칙 (목표/권장)
 
-1. **Simplicity**: 프로젝트 복잡도 ≤ 3
-2. **Architecture**: 라이브러리 기반 설계
-3. **Testing**: TDD 필수
-4. **Observability**: 구조화 로깅
-5. **Versioning**: 시맨틱 버전
+1. **Simplicity**: 프로젝트 복잡도 ≤ 3개 목표
+2. **Architecture**: 라이브러리 기반 설계 권장
+3. **Testing**: TDD 권장, 커버리지 목표
+4. **Observability**: 구조화 로깅 권장
+5. **Versioning**: 시맨틱 버전 권장
 
 ## 언어 자동 감지(시도)
 

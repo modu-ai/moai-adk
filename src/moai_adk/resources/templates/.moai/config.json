@@ -24,10 +24,12 @@
       },
       "testing": {
         "enabled": true,
-        "tdd_enforced": true,
+        "tdd_enforced": false,
         "min_coverage": 85,
+        "coverage_strict": false,
         "red_green_refactor": true,
-        "description": "TDD 강제, 커버리지 85% 이상"
+        "allow_exceptions": true,
+        "description": "TDD 권장, 커버리지 85% 목표"
       },
       "observability": {
         "enabled": true,
@@ -68,11 +70,16 @@
   },
   "quality_gates": {
     "test_coverage": 85,
+    "coverage_enforced": false,
     "type_coverage": 90,
     "complexity_max": 10,
+    "strict_mode": false,
+    "hotfix_exceptions": true,
+    "small_change_threshold": 10,
     "build_time_reduction": 50,
     "memory_reduction": 30,
-    "error_rate_target": 5
+    "error_rate_target": 5,
+    "description": "품질 목표 - 엄격 모드가 아니면 권장사항"
   },
   "tag_system": {
     "version": "16-core",

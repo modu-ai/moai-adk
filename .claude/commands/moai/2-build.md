@@ -7,13 +7,13 @@ allowed-tools: Read, Write, Edit, MultiEdit, Bash(git:*), Bash(python3:*), Bash(
 
 # MoAI-ADK 2단계: TDD 구현 (GitFlow 통합)
 
-code-builder 에이전트가 Constitution Check부터 Red-Green-Refactor까지 자동화를 시도합니다(환경 의존).
+code-builder 에이전트가 Constitution Check부터 Red-Green-Refactor까지 체계적으로 지원합니다. 환경에 따라 가능한 범위에서 자동화를 시도합니다.
 
-## 🔀 TDD GitFlow 자동화 실행 코드 (완전 투명)
+## 🔀 TDD GitFlow 워크플로우 지원 (환경 의존)
 
 ```bash
 # 1. Constitution 5원칙 검증 (프로젝트 도구 자동 감지)
-# Constitution 체크리스트 기반 검증
+# Constitution 체크리스트 기반 검증 권장
 
 # 2. TDD Red-Green-Refactor 3단계 커밋 패턴(권장)
 # Git index.lock 안전 점검
@@ -91,16 +91,16 @@ flowchart TD
     K --> A
 ```
 
-## 🤖 code-builder 에이전트 자동화(지원)
+## 🤖 code-builder 에이전트 지원
 
-**code-builder 에이전트**가 전체 구현 과정을 자동화하도록 시도합니다(환경 의존):
+**code-builder 에이전트**가 전체 구현 과정을 체계적으로 지원합니다. 환경에 따라 가능한 범위에서 자동화를 시도합니다:
 
-### 1단계: Constitution 검증
-- **Simplicity**: 프로젝트 복잡도 ≤ 3개 확인
-- **Architecture**: 모든 기능 라이브러리화 검증
+### 1단계: Constitution 검증 (권장)
+- **Simplicity**: 프로젝트 복잡도 ≤ 3개 목표
+- **Architecture**: 기능 라이브러리화 권장
 - **Testing**: TDD 권장 및 커버리지 목표(예: 80~85%)
-- **Observability**: 구조화 로깅 필수
-- **Versioning**: MAJOR.MINOR.BUILD 체계
+- **Observability**: 구조화 로깅 권장
+- **Versioning**: MAJOR.MINOR.BUILD 체계 권장
 
 ### 2단계: 기술 설계
 - **기술 스택 조사**: 최신 동향 및 베스트 프랙티스

@@ -161,7 +161,7 @@ def doctor(list_backups: bool) -> None:
 @click.option("--template", "-t", default="standard", help="Template to use (standard, minimal, advanced)")
 @click.option("--interactive", "-i", is_flag=True, help="Run interactive setup wizard")
 @click.option("--backup", "-b", is_flag=True, help="Create backup before installation (recommended)")
-@click.option("--force", "-f", is_flag=True, help="Force overwrite existing files (DANGEROUS - will delete all files)")
+@click.option("--force", "-f", is_flag=True, help="Force overwrite existing files (주의: 기존 파일을 덮어씁니다)")
 @click.option("--force-copy", is_flag=True, help="Force file copying instead of symlinks (recommended for Windows without admin rights)")
 @click.option("--quiet", "-q", is_flag=True, help="Quiet mode - minimal output")
 def init(project_path: str, template: str, interactive: bool, backup: bool, force: bool, force_copy: bool, quiet: bool) -> None:

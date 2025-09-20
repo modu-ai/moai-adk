@@ -174,13 +174,16 @@ class SimplifiedInstaller:
     def _install_claude_resources(self) -> List[Path]:
         """Claude Code 리소스 설치"""
         try:
-            return self.resource_manager.copy_claude_resources(
+            result = self.resource_manager.copy_claude_resources(
                 self.config.project_path,
                 overwrite=self.config.force_overwrite
             )
+            if not result:
+                raise RuntimeError("No Claude resources were copied - installation may have failed")
+            return result
         except Exception as e:
             logger.error("Failed to install Claude resources: %s", e)
-            return []
+            raise  # 예외를 상위로 전파하여 설치 실패를 명확히 알림
 
     def _install_moai_resources(self) -> List[Path]:
         """MoAI 리소스 설치"""
@@ -190,14 +193,17 @@ class SimplifiedInstaller:
             if hasattr(self.config, 'templates_mode') and str(getattr(self.config, 'templates_mode') or '').lower() == 'package':
                 exclude_templates = True
 
-            return self.resource_manager.copy_moai_resources(
+            result = self.resource_manager.copy_moai_resources(
                 self.config.project_path,
                 overwrite=self.config.force_overwrite,
                 exclude_templates=exclude_templates,
             )
+            if not result:
+                raise RuntimeError("No MoAI resources were copied - installation may have failed")
+            return result
         except Exception as e:
             logger.error("Failed to install MoAI resources: %s", e)
-            return []
+            raise  # 예외를 상위로 전파
 
     def _install_github_workflows(self) -> List[Path]:
         """GitHub 워크플로우 설치"""

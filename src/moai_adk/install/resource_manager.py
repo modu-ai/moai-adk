@@ -106,6 +106,12 @@ class ResourceManager:
             bool: 복사 성공 여부
         """
         try:
+            # 경로 안전성 검증
+            if not self._validate_safe_path(target_path):
+                raise ValueError(f"Unsafe target path detected: {target_path}")
+
+            # 절대 경로로 변환
+            target_path = target_path.resolve()
             template_path = self.get_template_path(template_name)
 
             # 대상 경로가 이미 존재하는 경우
@@ -167,6 +173,37 @@ class ResourceManager:
 
         except Exception as e:
             logger.error(f"Failed to copy template {template_name}: {e}")
+            return False
+
+    def _validate_safe_path(self, target_path: Path) -> bool:
+        """
+        경로 안전성 검증
+
+        Args:
+            target_path: 검증할 경로
+
+        Returns:
+            bool: 안전한 경로 여부
+        """
+        try:
+            resolved_path = target_path.resolve()
+
+            # 경로 순회 공격 방지 (.., 심볼릭 링크 등)
+            if ".." in str(resolved_path):
+                logger.warning(f"Path traversal detected in: {target_path}")
+                return False
+
+            # 시스템 중요 디렉토리 보호
+            dangerous_paths = ["/etc", "/usr/bin", "/usr/sbin", "/var", "/boot", "/sys", "/proc"]
+            for dangerous in dangerous_paths:
+                if str(resolved_path).startswith(dangerous):
+                    logger.warning(f"Attempt to write to dangerous system path: {target_path}")
+                    return False
+
+            return True
+
+        except Exception as e:
+            logger.warning(f"Path validation failed for {target_path}: {e}")
             return False
 
     def copy_claude_resources(self, project_path: Path,

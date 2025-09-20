@@ -81,13 +81,28 @@ def main(force: bool, quiet: bool) -> None:
 
 def auto_install_on_first_run() -> bool:
     """
-    Check if resources are available (they are embedded in package).
+    Check if resources are available (실제 리소스 존재 여부 검증).
 
     Returns:
-        bool: Always True since resources are embedded
+        bool: 리소스가 실제로 사용 가능한지 여부
     """
     try:
-        # Resources are embedded in package - always available
+        # 실제 리소스 존재 여부 검증
+        from importlib import resources
+        from ..install.resource_manager import ResourceManager
+
+        # 패키지 리소스 접근 가능 여부 확인
+        resource_manager = ResourceManager()
+        templates = resource_manager.list_templates()
+
+        # 핵심 템플릿들이 존재하는지 확인
+        required_templates = ['.claude', '.moai', 'CLAUDE.md']
+        for template in required_templates:
+            if template not in templates:
+                logger.error(f"Required template missing: {template}")
+                return False
+
+        logger.debug(f"Resource check passed. Found {len(templates)} templates.")
         return True
 
     except Exception as error:
