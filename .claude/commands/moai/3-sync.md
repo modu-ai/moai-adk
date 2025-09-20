@@ -43,7 +43,7 @@ model: sonnet
 !`git log --oneline -3`
 
 **SPEC-ID 추출**
-!`git branch --show-current | sed 's/feature/\(SPEC-[0-9]*\).*/\1/' || echo "SPEC-UNKNOWN"`
+!`git branch --show-current | sed 's/feature\/\(SPEC-[0-9]*\).*/\1/' || echo "SPEC-UNKNOWN"`
 
 **프로젝트 유형 감지**
 !`find . -maxdepth 2 -name "*.py" -o -name "*.js" -o -name "*.ts" -o -name "*.go" -o -name "*.java" -o -name "*.kt" -o -name "*.cs" -o -name "*.swift" -o -name "*.dart" -o -name "*.rs" | head -8`
@@ -96,7 +96,7 @@ TAG 시스템의 완전성을 보장합니다:
 Git 프로세스 충돌 방지 및 안전한 커밋을 수행합니다:
 
 **Git 안전성 검사**
-!`pgrep -fl "git (commit|rebase|merge)" >/dev/null 2>&1 && echo "CONFLICT" || echo "SAFE"`
+!`pgrep -fl "git" | grep -E "(commit|rebase|merge)" >/dev/null 2>&1 && echo "CONFLICT" || echo "SAFE"`
 
 **Lock 파일 정리**
 !`[ -f .git/index.lock ] && rm -f .git/index.lock && echo "Lock removed" || echo "No lock"`
