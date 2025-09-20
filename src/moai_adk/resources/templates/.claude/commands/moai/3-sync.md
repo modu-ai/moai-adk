@@ -115,7 +115,7 @@ Git 프로세스 충돌 방지 및 안전한 커밋을 수행합니다:
 if git diff --cached --quiet; then
     echo "ℹ️ 커밋할 변경사항이 없습니다."
 else
-    SPEC_ID=$(git branch --show-current | sed 's/feature/\(SPEC-[0-9]*\).*/\1/' || echo "SPEC-UNKNOWN")
+    SPEC_ID=$(git branch --show-current | sed 's/feature\/\(SPEC-[0-9]*\).*/\1/' || echo "SPEC-UNKNOWN")
     git commit -m "📚 $SPEC_ID: 문서 동기화 및 16-Core @TAG 업데이트 완료
 
 - Living Document 실시간 동기화
@@ -206,6 +206,7 @@ gh pr edit --add-label "ready-for-review" --add-label "constitution-compliant"
 
 ## 다음 단계 안내
 
+
 ### 개발 사이클 완료
 ```
 🔄 MoAI-ADK 3단계 워크플로우 완성:
@@ -229,7 +230,6 @@ gh pr edit --add-label "ready-for-review" --add-label "constitution-compliant"
 
 🎯 PR 전환 지원 완료
 ```
-
 ## 제약사항 및 가정
 
 **환경 의존성:**
