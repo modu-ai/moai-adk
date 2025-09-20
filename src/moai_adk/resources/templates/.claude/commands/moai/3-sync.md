@@ -57,14 +57,32 @@ if [ -f .git/index.lock ]; then
   fi
 fi
 
-# 3. 최종 문서 동기화 커밋
-git add docs/ README.md
-git commit -m "📚 ${SPEC_ID}: 문서 동기화 및 16-Core @TAG 업데이트 완료
+# 3. 통합 Git 작업 (Lock 파일 체크 + 커밋)
+# Git 작업 통합 실행
+if [ -f .git/index.lock ]; then
+  echo "🔒 git index.lock 감지됨"
+  if pgrep -fl "git (commit|rebase|merge)" >/dev/null 2>&1; then
+    echo "❌ 다른 git 작업이 진행 중입니다. 해당 작업을 종료한 후 다시 실행하세요."
+    exit 1
+  else
+    echo "🔓 Lock 파일 제거 중..."
+    rm -f .git/index.lock
+  fi
+fi
+
+# 문서 동기화 커밋
+echo "📚 문서 동기화 시작..."
+git add docs/ README.md 2>/dev/null || echo "ℹ️ docs/ 또는 README.md 추가 실패 (파일이 없거나 변경사항 없음)"
+if git diff --cached --quiet; then
+  echo "ℹ️ 커밋할 변경사항이 없습니다."
+else
+  git commit -m "📚 ${SPEC_ID}: 문서 동기화 및 16-Core @TAG 업데이트 완료
 
 - Living Document 실시간 동기화
-- OpenAPI 3.0 스펙 자동 생성
+- 언어별 문서 자동 생성
 - README.md 기능 목록 업데이트
-- 16-Core @TAG 추적성 체인 점검/업데이트"
+- 16-Core @TAG 추적성 체인 점검/업데이트" && echo "✅ 문서 동기화 커밋 완료"
+fi
 
 # 4. Draft → Ready for Review 자동 전환
 gh pr ready --body "$(cat <<EOF
