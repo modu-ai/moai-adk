@@ -56,7 +56,7 @@ esac
 
 # 3. 최종 문서 동기화 커밋
 !`git add docs/ README.md`
-!`git commit -m "📚 ${SPEC_ID}: 문서 동기화 및 16-Core @TAG 업데이트 완룼
+!`git commit -m "📚 ${SPEC_ID}: 문서 동기화 및 16-Core @TAG 업데이트 완료
 
 - Living Document 실시간 동기화
 - 언어별 문서 자동 생성
