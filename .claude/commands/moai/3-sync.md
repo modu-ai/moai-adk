@@ -365,42 +365,6 @@ tests/ → docs/testing/
 > /moai:1-spec --project  # 전체 프로젝트
 ```
 
-## ⚠️ 에러 처리
-
-### Git index.lock 감지
-```bash
-fatal: Unable to create '.git/index.lock': File exists.
-
-원인:
-- 이전 git 명령 비정상 종료 또는 병렬 실행으로 lock 파일이 남아있음
-
-해결 절차(안전 순서):
-1) 활성 Git 작업 확인: pgrep -fl "git (commit|rebase|merge)"
-   - 있으면 해당 작업을 종료/완료 후 다시 실행
-2) 활성 작업이 없으면 lock 파일 제거: rm -f .git/index.lock
-3) 상태 점검: git status
-4) 동기화 재실행: /moai:3-sync
-```
-
-### 파일 충돌 감지
-```bash
-🔴 파일 충돌 감지:
-- README.md: 수동 편집과 자동 생성 충돌
-
-해결 옵션:
-1. 수동 편집 유지 [기본값]
-2. 자동 생성으로 덮어쓰기
-3. 대화형 병합 모드
-```
-
-### TAG 시스템 오류
-```bash
-❌ TAG 시스템 오류:
-- 인덱스 파일 손상: .moai/indexes/tags.json
-
-자동 복구 중...
-✅ 백업에서 복구 완료
-```
 
 ## 🔁 응답 구조
 
