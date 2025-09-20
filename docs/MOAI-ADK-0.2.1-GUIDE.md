@@ -500,8 +500,14 @@ project/
 
 #### 3. 문서 동기화 + PR Ready + 리뷰어 할당
 ```bash
-# Claude Code에서 실행 (보통 자동 실행됨)
+# Claude Code에서 실행 (기본 자동 동기화)
 /moai:3-sync
+
+# 모드별 실행 예시
+/moai:3-sync auto       # 증분 동기화 (기본값)
+/moai:3-sync force      # 전체 강제 동기화
+/moai:3-sync status     # 동기화 상태 확인
+/moai:3-sync project    # 통합 프로젝트 동기화
 ```
 
 **동기화 과정 (완전 투명):**
@@ -658,7 +664,7 @@ moai update --from=0.1.25 --to=0.2.1 --optimize
 # 설치: 192KB 다운로드, 4개 핵심 에이전트만
 /moai:1-spec "JWT 인증 시스템"   # 1분 (50% 빨라짐)
 /moai:2-build                   # 2분 (70% 메모리 절약)
-/moai:3-sync                    # 30초 (최적화된 처리)
+/moai:3-sync                    # 30초 (최적화된 처리, project 모드 지원)
 # 총 시간: 3.5분 (42% 단축)
 ```
 
@@ -847,11 +853,14 @@ all                     # 모든 SPEC 병렬 구현
 auto                    # 증분 동기화 (기본값)
 force                   # 완전 재동기화
 status                  # 동기화 상태 확인
+project                 # 통합 프로젝트 동기화
 
 # 예시:
 /moai:3-sync            # 자동 증분 동기화
 /moai:3-sync force      # 전체 강제 동기화
 /moai:3-sync status     # 상태 확인
+/moai:3-sync project    # 통합 프로젝트 동기화
+/moai:3-sync auto src/auth/  # 특정 경로 동기화
 ```
 
 ### GitFlow 에이전트 사용법
