@@ -15,7 +15,11 @@
       "Bash(python -m pytest tests/package_optimization_system/unit/test_duplicate_remover.py -v)",
       "Bash(python -m pytest tests/package_optimization_system/unit/test_duplicate_remover.py::TestDuplicateRemover::test_should_handle_permission_errors_gracefully -v)",
       "Bash(python -m pytest tests/package_optimization_system/unit/test_metrics_tracker.py -v)",
-      "Bash(python -m pytest tests/package_optimization_system/integration/ -v)"
+      "Bash(python -m pytest tests/package_optimization_system/integration/ -v)",
+      "Bash(for agent in claude-code-manager code-builder doc-syncer spec-builder)",
+      "Bash(diff:*)",
+      "Bash(done)",
+      "Bash(for style in audit beginner expert mentor study)"
     ],
     "deny": [],
     "ask": []
