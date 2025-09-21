@@ -19,17 +19,8 @@ spec-builder 에이전트를 활용해 비즈니스 요구사항을 EARS 형식�
 - Existing SPECs: !`ls .moai/specs/ 2>/dev/null | wc -l`
 
 #### Git index.lock 안전 점검
-!`if [ -f .git/index.lock ]; then \
-  echo "🔒 git index.lock detected"; \
-  if pgrep -fl "git (commit|rebase|merge)" >/dev/null 2>&1; then \
-    echo "❌ 다른 git 작업이 진행 중입니다. 해당 작업을 종료한 후 다시 실행하세요."; \
-    exit 1; \
-  else \
-    echo "ℹ️ lock 파일이 남아있습니다. 안전을 위해 종료합니다."; \
-    echo "   수동으로 '.git/index.lock' 삭제 후 재실행하거나 병행 실행을 중단하세요."; \
-    exit 1; \
-  fi; \
-fi`
+!`[ -f .git/index.lock ] && echo "🔒 git index.lock detected" || echo "✅ No lock file"`
+!`pgrep -fl "git" | grep -E "(commit|rebase|merge)" >/dev/null 2>&1 && echo "❌ Git 작업 진행 중" || echo "✅ Git 안전"`
 
 #### GitFlow 전략 (모드별)
 

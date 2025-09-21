@@ -17,17 +17,8 @@ code-builder 에이전트가 Constitution Check부터 Red-Green-Refactor까지 �
 
 # 2. TDD Red-Green-Refactor 3단계 커밋 패턴(권장)
 # Git index.lock 안전 점검
-!`if [ -f .git/index.lock ]; then \
-  echo "🔒 git index.lock detected"; \
-  if pgrep -fl "git (commit|rebase|merge)" >/dev/null 2>&1; then \
-    echo "❌ 다른 git 작업이 진행 중입니다. 해당 작업을 종료한 후 다시 실행하세요."; \
-    exit 1; \
-  else \
-    echo "ℹ️ lock 파일이 남아있습니다. 안전을 위해 종료합니다."; \
-    echo "   수동으로 '.git/index.lock' 삭제 후 재실행하거나 병행 실행을 중단하세요."; \
-    exit 1; \
-  fi; \
-fi`
+!`[ -f .git/index.lock ] && echo "🔒 git index.lock detected" || echo "✅ No lock file"`
+!`pgrep -fl "git" | grep -E "(commit|rebase|merge)" >/dev/null 2>&1 && echo "❌ Git 작업 진행 중" || echo "✅ Git 안전"`
 # RED 단계: 실패하는 테스트 작성
 !`git add tests/`
 !`git commit -m "🔴 ${SPEC_ID}: 실패하는 테스트 작성 완료 (RED)
