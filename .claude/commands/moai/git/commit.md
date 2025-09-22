@@ -1,6 +1,6 @@
 ---
 name: moai:git:commit
-description: Constitution 5원칙 기반 자동 커밋 메시지 생성
+description: 📝 스마트 커밋
 argument-hint: [MESSAGE] - 커밋 메시지 또는 --auto, --spec, --red, --green, --refactor 옵션
 allowed-tools: Bash(git:*), Bash(python3:*), Read, Write, Glob, Grep
 model: haiku

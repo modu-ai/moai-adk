@@ -27,7 +27,7 @@ def detect_project_languages(root: Path) -> List[str]:
                         data = json.load(f)
                         if "react-native" in data.get("dependencies", {}) or "react-native" in data.get("devDependencies", {}):
                             langs.append("react-native")
-            except:
+            except Exception:
                 # Fallback: ios/android 디렉토리 존재하면 React Native로 추정
                 langs.append("react-native")
     if (root / "go.mod").exists() or list(root.rglob("*.go")):
@@ -62,4 +62,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

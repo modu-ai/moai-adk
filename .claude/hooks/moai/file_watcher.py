@@ -6,14 +6,12 @@ Monitors file changes and triggers checkpoint creation when needed.
 Uses efficient file system events to minimize resource usage.
 """
 
-import json
 import os
 import sys
 import time
 import threading
 from pathlib import Path
-from typing import Set, Dict, Optional
-from datetime import datetime
+from typing import Set, Optional
 
 try:
     from watchdog.observers import Observer
@@ -112,7 +110,7 @@ class MoAIFileWatcher(FileSystemEventHandler):
             if success:
                 print(f"📝 Checkpoint triggered by file changes: {message}")
             else:
-                print(f"⚠️ Checkpoint creation failed")
+                print("⚠️ Checkpoint creation failed")
 
         except Exception as e:
             print(f"❌ Error triggering checkpoint: {e}")
@@ -127,8 +125,9 @@ class AutoCheckpointWatcher:
     def __init__(self, project_root: Path):
         self.project_root = project_root
 
-        # Import checkpoint manager
-        sys.path.insert(0, str(project_root / ".moai" / "hooks"))
+        # Import checkpoint manager from this hooks module directory
+        hooks_dir = Path(__file__).resolve().parent
+        sys.path.insert(0, str(hooks_dir))
         from auto_checkpoint import AutoCheckpointManager
 
         self.checkpoint_manager = AutoCheckpointManager(project_root)

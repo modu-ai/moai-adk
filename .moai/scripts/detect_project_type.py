@@ -6,11 +6,10 @@
 @TASK:DOC-CONDITIONAL-001 - 조건부 문서 생성 로직
 """
 
-import os
 import json
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 
 class ProjectTypeDetector:
@@ -152,7 +151,7 @@ class ProjectTypeDetector:
                     return "react"
                 elif "vue" in deps:
                     return "vue"
-            except:
+            except Exception:
                 pass
 
         return None
@@ -160,24 +159,42 @@ class ProjectTypeDetector:
     def _find_api_files(self) -> List[str]:
         """API 관련 파일 찾기"""
         api_files = []
-        patterns = ["**/api/**/*.py", "**/routes/**/*.py", "**/controllers/**/*.py",
-                   "**/api/**/*.js", "**/routes/**/*.js", "**/controllers/**/*.js",
-                   "**/api/**/*.ts", "**/routes/**/*.ts", "**/controllers/**/*.ts"]
+        patterns = [
+            "**/api/**/*.py",
+            "**/routes/**/*.py",
+            "**/controllers/**/*.py",
+            "**/api/**/*.js",
+            "**/routes/**/*.js",
+            "**/controllers/**/*.js",
+            "**/api/**/*.ts",
+            "**/routes/**/*.ts",
+            "**/controllers/**/*.ts",
+        ]
 
         for pattern in patterns:
-            api_files.extend([str(f.relative_to(self.project_path))
-                            for f in self.project_path.rglob(pattern)])
+            api_files.extend([
+                str(f.relative_to(self.project_path))
+                for f in self.project_path.rglob(pattern)
+            ])
         return api_files
 
     def _find_cli_files(self) -> List[str]:
         """CLI 관련 파일 찾기"""
         cli_files = []
-        patterns = ["**/cli/**/*.py", "**/commands/**/*.py", "**/cli.py",
-                   "**/cli/**/*.js", "**/commands/**/*.js", "**/cli.js"]
+        patterns = [
+            "**/cli/**/*.py",
+            "**/commands/**/*.py",
+            "**/cli.py",
+            "**/cli/**/*.js",
+            "**/commands/**/*.js",
+            "**/cli.js",
+        ]
 
         for pattern in patterns:
-            cli_files.extend([str(f.relative_to(self.project_path))
-                            for f in self.project_path.rglob(pattern)])
+            cli_files.extend([
+                str(f.relative_to(self.project_path))
+                for f in self.project_path.rglob(pattern)
+            ])
         return cli_files
 
     def _find_lib_files(self) -> List[str]:
@@ -186,8 +203,10 @@ class ProjectTypeDetector:
         patterns = ["src/**/*.py", "lib/**/*.py", "src/**/*.js", "lib/**/*.js"]
 
         for pattern in patterns:
-            lib_files.extend([str(f.relative_to(self.project_path))
-                            for f in self.project_path.rglob(pattern)])
+            lib_files.extend([
+                str(f.relative_to(self.project_path))
+                for f in self.project_path.rglob(pattern)
+            ])
         return lib_files[:10]  # 최대 10개만
 
     def _check_api_patterns(self) -> bool:
@@ -202,7 +221,7 @@ class ProjectTypeDetector:
                 ]
                 if any(pattern in content for pattern in api_patterns):
                     return True
-            except:
+            except Exception:
                 continue
 
         # JavaScript/TypeScript API 패턴
@@ -215,7 +234,7 @@ class ProjectTypeDetector:
                 ]
                 if any(pattern in content for pattern in api_patterns):
                     return True
-            except:
+            except Exception:
                 continue
 
         return False
@@ -231,7 +250,7 @@ class ProjectTypeDetector:
                 ]
                 if any(pattern in content for pattern in cli_patterns):
                     return True
-            except:
+            except Exception:
                 continue
         return False
 

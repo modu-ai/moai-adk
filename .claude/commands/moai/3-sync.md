@@ -1,6 +1,6 @@
 ---
 name: moai:3-sync
-description: Living Document 동기화 및 PR Ready 전환 - 16-Core TAG 시스템 업데이트
+description: 📚 문서 동기화
 argument-hint: [MODE] [TARGET-PATH] - MODE: auto(기본)|force|status|project, TARGET-PATH: 동기화 대상 경로
 allowed-tools: Read, Write, Edit, MultiEdit, Bash(git:*), Bash(gh:*), Bash(python3:*), Bash(ls:*), Bash(find:*), Bash(grep:*), Bash(cat:*), Bash(pgrep:*), Bash(rm:*), Bash(sleep:*), Task, Grep, Glob, TodoWrite
 model: sonnet

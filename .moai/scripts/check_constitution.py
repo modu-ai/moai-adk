@@ -9,11 +9,10 @@ MoAI-ADK의 Constitution 5원칙 준수 여부를 자동 검증합니다.
 """
 
 import json
-import os
-import subprocess
 import sys
 from pathlib import Path
 from typing import Dict, List, Tuple
+
 
 class ConstitutionChecker:
     def __init__(self, project_root: str = ".", strict: bool = False):
@@ -34,7 +33,7 @@ class ConstitutionChecker:
     def check_simplicity(self, config: Dict) -> bool:
         """Simplicity 원칙 검증 (프로젝트 복잡도 ≤ 3개)
 
-        - strict: src 내 *.py 파일(\_\_init__ 제외) 총량으로 판단(기존 방식)
+        - strict: src 내 *.py 파일(__init__ 제외) 총량으로 판단(기존 방식)
         - relaxed: src 바로 하위의 유의미한 상위 모듈(디렉터리) 개수로 판단
         """
         max_projects = config.get('constitution', {}).get('principles', {}).get('simplicity', {}).get('max_projects', 3)
@@ -142,7 +141,7 @@ class ConstitutionChecker:
         """Observability 원칙 검증 (구조화 로깅) - 언어 중립"""
         root = self.project_root
         patterns = [
-            ("*.py", ["import logging", "logger"]) ,
+            ("*.py", ["import logging", "logger"]),
             ("*.js", ["winston", "pino", "logger"]),
             ("*.ts", ["winston", "pino", "logger"]),
             ("*.go", ["\nlog.", "zap.", "zerolog."]),
@@ -150,7 +149,7 @@ class ConstitutionChecker:
             ("*.java", ["org.slf4j", "java.util.logging", "log4j", "Logger "]),
             ("*.cs", ["Microsoft.Extensions.Logging", "ILogger<", "ILogger "]),
             ("*.cpp", ["spdlog", "glog", "BOOST_LOG"]),
-            ("*.c", ["syslog", "glog"]) ,
+            ("*.c", ["syslog", "glog"]),
         ]
         for glob, needles in patterns:
             for fp in root.rglob(f"**/{glob}"):
@@ -239,6 +238,7 @@ class ConstitutionChecker:
 
         return 1 if len(self.violations) > 0 else 0
 
+
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Constitution 5원칙 검증")
@@ -251,6 +251,7 @@ def main():
     passed, total = checker.run_verification()
 
     return checker.generate_report(passed, total)
+
 
 if __name__ == "__main__":
     sys.exit(main())

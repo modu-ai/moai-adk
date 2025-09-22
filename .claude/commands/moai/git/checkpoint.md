@@ -1,6 +1,6 @@
 ---
 name: moai:git:checkpoint
-description: 자동 체크포인트 생성 - 개인 모드에서 작업 진행 상황을 안전하게 백업
+description: 💾 자동 체크포인트
 argument-hint: [MESSAGE] - 체크포인트 메시지 (예: "리팩토링 시작") 또는 --list, --status, --cleanup 옵션
 allowed-tools: Bash(git:*), Bash(python3:*), Read, Write, Glob, Grep
 model: haiku

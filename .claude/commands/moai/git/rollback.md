@@ -1,6 +1,6 @@
 ---
 name: moai:git:rollback
-description: 체크포인트 기반 안전한 롤백 - 이전 상태로 되돌리기
+description: ⏪ 안전한 롤백
 argument-hint: [CHECKPOINT-ID] - 체크포인트 ID 또는 --list, --last, --time="30분전" 옵션
 allowed-tools: Bash(git:*), Bash(python3:*), Read, Write, Glob, Grep
 model: haiku
@@ -8,9 +8,9 @@ model: haiku
 
 # MoAI-ADK 롤백 시스템
 
-Safely rollback to previous checkpoints in personal mode.
+개인 모드에서 이전 체크포인트로 안전하게 롤백합니다.
 
-## Current Environment Check
+## 현재 환경 확인
 
 - Current branch: !`git branch --show-current`
 - Working directory status: !`git status --porcelain`
@@ -25,34 +25,34 @@ else:
     print('0 checkpoints available')
 " 2>/dev/null || echo "No metadata file"`
 
-## Task
+## 작업
 
-Rollback to checkpoint: "$ARGUMENTS"
+MoAI 롤백 스크립트를 실행하여 안전한 체크포인트 기반 롤백을 수행합니다.
 
-### If --list provided:
-- List all available checkpoints with details
-- Show: checkpoint ID, timestamp, branch, message, files changed
+스크립트 실행: !`python3 .moai/scripts/rollback.py $ARGUMENTS`
 
-### If --last provided:
-- Rollback to the most recent checkpoint
-- Confirm before executing rollback
+### 사용 가능한 옵션:
 
-### If --time provided (e.g., --time="30분전"):
-- Find checkpoint closest to specified time
-- Show confirmation before rollback
+- `--list`: 사용 가능한 체크포인트 목록 표시
+- `--last`: 가장 최근 체크포인트로 롤백
+- `--time "30분 전"`: 시간 기반 롤백
+- `checkpoint_id`: 특정 체크포인트로 롤백
+- `--force`: 강제 롤백 (변경사항 무시)
 
-### If checkpoint ID provided:
-- Rollback to specific checkpoint
-- Validate checkpoint exists before rollback
+### 예시:
+```bash
+# 체크포인트 목록 보기
+!`python3 .moai/scripts/rollback.py --list`
 
-## Rollback Process:
+# 마지막 체크포인트로 롤백
+!`python3 .moai/scripts/rollback.py --last`
 
-1. **Validate personal mode**: Only allow rollback in personal mode
-2. **Create safety checkpoint**: Backup current state before rollback
-3. **Verify checkpoint exists**: Check .moai/checkpoints/metadata.json
-4. **Restore from checkpoint**: !`git reset --hard [checkpoint-commit]`
-5. **Update working directory**: Ensure clean state after rollback
-6. **Log rollback action**: Record rollback in metadata
+# 특정 체크포인트로 롤백
+!`python3 .moai/scripts/rollback.py checkpoint_20250120_153000`
+
+# 시간 기반 롤백
+!`python3 .moai/scripts/rollback.py --time "10분 전"`
+```
 
 ## 🎯 핵심 기능
 

@@ -1,6 +1,6 @@
 ---
 name: moai:2-build
-description: TDD 기반 구현 - Constitution Check부터 Red-Green-Refactor까지 통합 실행
+description: 🔨 TDD 구현
 argument-hint: [SPEC-ID] - 구현할 SPEC ID (예: SPEC-001) 또는 'all'로 모든 SPEC 구현
 allowed-tools: Read, Write, Edit, MultiEdit, Bash(git:*), Bash(python3:*), Bash(pytest:*), Bash(npm:*), Bash(go:*), Bash(cargo:*), Bash(mvn:*), Bash(dotnet:*), Task, WebFetch, Grep, Glob, TodoWrite
 model: sonnet

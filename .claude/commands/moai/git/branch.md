@@ -1,6 +1,6 @@
 ---
 name: moai:git:branch
-description: 스마트 브랜치 관리 - 모드별 최적화된 브랜치 전략
+description: 🌿 스마트 브랜치 관리
 argument-hint: [ACTION] - create, switch, list, clean, --status, --personal, --team 중 하나
 allowed-tools: Bash(git:*), Bash(python3:*), Read, Write, Glob, Grep
 model: haiku

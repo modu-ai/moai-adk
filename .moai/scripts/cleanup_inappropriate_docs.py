@@ -8,7 +8,6 @@
 @TASK:DOC-CONDITIONAL-002 - 부적절한 문서 자동 정리
 """
 
-import os
 import sys
 from pathlib import Path
 from detect_project_type import ProjectTypeDetector

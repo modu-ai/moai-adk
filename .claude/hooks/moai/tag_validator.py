@@ -15,8 +15,7 @@ import sys
 import re
 import os
 from pathlib import Path
-from datetime import datetime
-from typing import Dict, List, Tuple, Optional, Any
+from typing import Dict, List, Tuple, Any
 
 # Import security manager for safe operations
 try:
@@ -30,6 +29,7 @@ try:
 except Exception:
     # Fallback if security module not available
     SecurityManager = None
+
     class SecurityError(Exception):
         pass
 

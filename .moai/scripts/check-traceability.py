@@ -135,8 +135,7 @@ class TraceabilityChecker:
     def verify(self, found: Dict[str, List[str]], chains: List[Dict[str, str]]):
         # 빠른 조회 셋
         found_set = set(found.keys())
-        sources = {c["from"] for c in chains}
-        targets = {c["to"] for c in chains}
+        # sources/targets 집합은 현재 보고서 출력에 사용하지 않으므로 제거
 
         # 체인이 없는 경우 휴리스틱: 같은 SPEC 내 카테고리 존재 여부만 검증
         if not chains:

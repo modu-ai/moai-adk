@@ -1,0 +1,6 @@
+[flake8]
+max-line-length = 160
+extend-ignore = E203, W503, W605
+per-file-ignores =
+  .claude/hooks/moai/session_start_notice.py: E501, E722, W291, W293, E124, E128, E302, E305, F401, F541, F841
+  .claude/hooks/moai/tag_validator.py: W291, W293, E128, E302, E305
