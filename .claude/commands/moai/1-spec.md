@@ -22,27 +22,35 @@ spec-builder 에이전트를 활용해 비즈니스 요구사항을 EARS 형식 
 /moai:1-spec SPEC-001 "추가 보안 요구사항"
 ```
 
-## GitFlow 워크플로우 (자동화)
+## 모드별 Git 워크플로우 (자동화)
 
 ### 현재 상태 확인
 - Current branch: !`git branch --show-current`
 - Git status: !`git status --porcelain`
+- Project mode: !`python3 -c "import json; config=json.load(open('.moai/config.json')); print(config['project']['mode'])" 2>/dev/null || echo "unknown"`
 - Existing SPECs: !`ls .moai/specs/ 2>/dev/null | wc -l`
 
-### 브랜치 전략
+### 모드별 브랜치 전략
 
-**단일 SPEC 모드**:
-1. develop/main 브랜치로 전환
+**개인 모드 (Personal Mode)**:
+1. 자동 체크포인트 생성 (`/git:checkpoint "SPEC 작업 시작"`)
+2. 간소화된 브랜치: `feature/{description}` (`/git:branch --personal`)
+3. 파일 변경 시 자동 체크포인트 (file_watcher.py)
+4. SPEC 완료시 수동 체크포인트 (`/git:checkpoint "SPEC 완료"`)
+5. 필요시 롤백 지원 (`/git:rollback --checkpoint`)
+
+**팀 모드 (Team Mode)**:
+1. develop/main 브랜치로 전환 (`/git:sync --prepare`)
 2. SPEC-XXX ID 자동 할당
-3. feature/SPEC-XXX-{name} 브랜치 생성
-4. 4단계 구조화 커밋
+3. feature/SPEC-XXX-{name} 브랜치 생성 (`/git:branch --team`)
+4. 4단계 구조화 커밋 (`/git:commit --spec`)
 5. Draft PR 자동 생성 (gh CLI)
 
-**--project 모드**:
+**--project 모드 (공통)**:
 1. 통합 브랜치 생성: feature/project-{timestamp}
 2. 5단계 대화형 질문으로 다중 SPEC 생성
 3. 각 SPEC별 순차 커밋
-4. 단일 통합 PR 생성
+4. 모드에 따른 PR/병합 전략
 
 ## EARS 명세 구조
 
@@ -138,20 +146,39 @@ Then 3초 이내에 JWT 토큰을 생성하고
 
 ## 완료 후 다음 단계
 
+### 개인 모드 결과
+```bash
+✅ 1단계 SPEC 작성 완료!
+
+💾 Git 작업 (자동 처리):
+├── 체크포인트 생성: "SPEC 작업 시작"
+├── feature/{description} 브랜치 생성
+├── SPEC 완료시 자동 커밋
+└── 파일 변경 감지 → 자동 체크포인트
+
+📁 생성된 파일:
+└── .moai/specs/feature-{name}/spec.md
+
+🎯 다음 단계:
+> /moai:2-build    # TDD 구현 (체크포인트 자동)
+> /moai:3-sync     # 문서 정리
+```
+
+### 팀 모드 결과
 ```bash
 ✅ 1단계 SPEC 작성 + GitFlow 완료!
 
-🔀 Git 작업 (자동 시도):
-├── feature/SPEC-001-user-auth 브랜치 생성
-├── 4단계 커밋 완료
-└── Draft PR #123 생성: "SPEC-001: 사용자 인증 시스템"
+🔀 Git 작업 (자동 처리):
+├── feature/SPEC-XXX-{name} 브랜치 생성
+├── 4단계 구조화 커밋 완료
+└── Draft PR #123 생성: "SPEC-XXX: {description}"
 
 📁 생성된 파일:
-└── .moai/specs/SPEC-001/spec.md
+└── .moai/specs/SPEC-XXX/spec.md
 
 🎯 다음 단계:
-> /moai:2-build SPEC-001  # TDD 구현
-> /moai:3-sync           # 문서 동기화
+> /moai:2-build SPEC-XXX  # TDD 구현
+> /moai:3-sync            # 문서 동기화 + PR Ready
 ```
 
 ## 에러 처리

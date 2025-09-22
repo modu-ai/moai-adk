@@ -12,12 +12,16 @@ model: sonnet
 
 ## 모드별 실행 방식
 
+### 현재 모드 확인
+- Project mode: !`python3 -c "import json; config=json.load(open('.moai/config.json')); print(config['project']['mode'])" 2>/dev/null || echo "unknown"`
+- Auto checkpoint: !`python3 -c "import json; config=json.load(open('.moai/config.json')); print('✅ Enabled' if config.get('git_strategy', {}).get('personal', {}).get('auto_checkpoint') else '❌ Disabled')" 2>/dev/null || echo "unknown"`
+
 ### 인수 처리
 - **$1 (모드)**: `$1` → `auto`(기본값)|`force`|`status`|`project`
 - **$2 (경로)**: `$2` → 동기화 대상 경로 (선택사항)
 
 ```bash
-# 기본 자동 동기화
+# 기본 자동 동기화 (모드별 최적화)
 /moai:3-sync
 
 # 전체 강제 동기화
@@ -31,6 +35,37 @@ model: sonnet
 
 # 특정 경로 동기화
 /moai:3-sync auto src/auth/
+```
+
+### 🧪 개인 모드 (Personal Mode) - 체크포인트 기반 동기화
+```bash
+# 1. 문서 동기화 전 체크포인트 생성
+/git:checkpoint "3-sync 시작: 문서 동기화 작업"
+
+# 2. 간소화된 동기화 (빠른 개발 우선)
+# - README.md 업데이트
+# - API 문서 간소 업데이트
+# - TAG 검증 (필수만)
+
+# 3. 동기화 완료 체크포인트
+/git:checkpoint "3-sync 완료: 문서 동기화"
+
+# 4. 개인 모드 완료 (PR 생략 가능)
+echo "📝 개인 모드 동기화 완료 - 다음 작업 준비됨"
+```
+
+### 🏢 팀 모드 (Team Mode) - 완전한 문서화 및 PR Ready
+```bash
+# 1. 완전한 Living Document 동기화
+# - 모든 API 문서 업데이트
+# - 아키텍처 문서 동기화
+# - 16-Core TAG 완전 검증
+
+# 2. PR Ready 전환
+gh pr ready --body "문서 동기화 완료"
+
+# 3. 팀 리뷰 준비
+gh pr edit --add-label "ready-for-review" --add-label "documentation-updated"
 ```
 
 ## 환경 정보 수집

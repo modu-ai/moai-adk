@@ -164,9 +164,23 @@ def doctor(list_backups: bool) -> None:
 @click.option("--force", "-f", is_flag=True, help="Force overwrite existing files (주의: 기존 파일을 덮어씁니다)")
 @click.option("--force-copy", is_flag=True, help="Force file copying instead of symlinks (recommended for Windows without admin rights)")
 @click.option("--quiet", "-q", is_flag=True, help="Quiet mode - minimal output")
-def init(project_path: str, template: str, interactive: bool, backup: bool, force: bool, force_copy: bool, quiet: bool) -> None:
+@click.option("--personal", is_flag=True, help="Initialize in personal mode (default) - simplified workflow for individual development")
+@click.option("--team", is_flag=True, help="Initialize in team mode - full GitFlow with collaboration features")
+def init(project_path: str, template: str, interactive: bool, backup: bool, force: bool, force_copy: bool, quiet: bool, personal: bool, team: bool) -> None:
     """Initialize a new MoAI-ADK project."""
     project_dir = Path(project_path).resolve()
+
+    # Determine project mode
+    if team and personal:
+        click.echo(f"{Fore.RED}❌ Cannot specify both --personal and --team modes{Style.RESET_ALL}")
+        sys.exit(1)
+
+    # Default to personal mode if no mode specified
+    project_mode = "team" if team else "personal"
+
+    if not quiet:
+        mode_icon = "🏢" if project_mode == "team" else "👤"
+        click.echo(f"{Fore.CYAN}{mode_icon} Initializing in {project_mode} mode{Style.RESET_ALL}")
 
     # Interactive mode
     if interactive:
@@ -256,6 +270,10 @@ def init(project_path: str, template: str, interactive: bool, backup: bool, forc
             click.echo(f"\n{Fore.CYAN}Creating MoAI-ADK project in {project_dir.name}...{Style.RESET_ALL}")
 
         result = installer.install(progress_callback)
+
+        # Create mode-specific configuration
+        if result.success:
+            create_mode_configuration(project_dir, project_mode, quiet)
 
         if result.success:
             if quiet:
@@ -479,6 +497,89 @@ def update(check: bool, no_backup: bool, verbose: bool, package_only: bool, reso
         if not no_backup:
             click.echo("You can restore from the backup if needed")
         sys.exit(1)
+
+
+def create_mode_configuration(project_dir: Path, project_mode: str, quiet: bool = False) -> None:
+    """Create mode-specific configuration for MoAI-ADK project."""
+    import json
+    from datetime import datetime
+
+    # Create .moai directory if it doesn't exist
+    moai_dir = project_dir / ".moai"
+    moai_dir.mkdir(exist_ok=True)
+
+    # Create mode-specific configuration
+    config = {
+        "project": {
+            "name": project_dir.name,
+            "mode": project_mode,
+            "version": "0.2.1",
+            "created": datetime.now().isoformat(),
+            "constitution_version": "2.1"
+        },
+        "git_strategy": {
+            "personal": {
+                "auto_checkpoint": True,
+                "checkpoint_interval": 300,  # 5 minutes
+                "simplified_commits": True,
+                "auto_push": False,
+                "backup_before_sync": True,
+                "conflict_strategy": "local_priority",
+                "max_checkpoints": 50,
+                "cleanup_days": 7
+            },
+            "team": {
+                "auto_checkpoint": False,
+                "structured_commits": True,
+                "required_reviews": True,
+                "auto_pr": True,
+                "auto_sync": True,
+                "sync_interval": 1800,  # 30 minutes
+                "conflict_strategy": "remote_priority",
+                "gitflow_strict": True
+            }
+        },
+        "workflow": {
+            "spec_auto_commit": True,
+            "build_tdd_commits": True,
+            "sync_living_docs": True,
+            "constitution_check": True,
+            "tag_tracking": True
+        },
+        "features": {
+            "checkpoint_system": project_mode == "personal",
+            "auto_rollback": project_mode == "personal",
+            "smart_sync": True,
+            "branch_management": True,
+            "commit_automation": True
+        }
+    }
+
+    # Save configuration
+    config_file = moai_dir / "config.json"
+    with open(config_file, 'w', encoding='utf-8') as f:
+        json.dump(config, f, indent=2, ensure_ascii=False)
+
+    if not quiet:
+        mode_desc = {
+            "personal": "개인 개발 최적화 (체크포인트, 간소화된 워크플로우)",
+            "team": "팀 협업 최적화 (GitFlow, 구조화된 커밋, PR 자동화)"
+        }
+        click.echo(f"  {Fore.GREEN}✓{Style.RESET_ALL} {project_mode.title()} mode configured: {mode_desc[project_mode]}")
+
+    # Create checkpoints directory for personal mode
+    if project_mode == "personal":
+        checkpoints_dir = moai_dir / "checkpoints"
+        checkpoints_dir.mkdir(exist_ok=True)
+
+        # Initialize checkpoint metadata
+        metadata = {"checkpoints": []}
+        metadata_file = checkpoints_dir / "metadata.json"
+        with open(metadata_file, 'w', encoding='utf-8') as f:
+            json.dump(metadata, f, indent=2)
+
+        if not quiet:
+            click.echo(f"  {Fore.GREEN}✓{Style.RESET_ALL} Checkpoint system initialized")
 
 
 # Add all commands to the CLI group

@@ -5,20 +5,54 @@ argument-hint: <SPEC-ID>|all
 allowed-tools: Read, Write, Edit, MultiEdit, Bash(git:*), Bash(python3:*), Bash(pytest:*), Bash(npm:*), Bash(go:*), Bash(cargo:*), Bash(mvn:*), Bash(dotnet:*), Task, WebFetch, Grep, Glob
 ---
 
-# MoAI-ADK 2단계: TDD 구현 (GitFlow 통합)
+# MoAI-ADK 2단계: TDD 구현 (모드별 Git 통합)
 
-code-builder 에이전트가 Constitution Check부터 Red-Green-Refactor까지 체계적으로 지원합니다. 환경에 따라 가능한 범위에서 자동화를 시도합니다.
+code-builder와 git-manager 에이전트가 협력하여 Constitution Check부터 Red-Green-Refactor까지 체계적으로 지원합니다.
 
-## 🔀 TDD GitFlow 워크플로우 지원 (환경 의존)
+## 📊 현재 모드 확인
+- Project mode: !`python3 -c "import json; config=json.load(open('.moai/config.json')); print(config['project']['mode'])" 2>/dev/null || echo "unknown"`
+- Auto checkpoint: !`python3 -c "import json; config=json.load(open('.moai/config.json')); print('✅ Enabled' if config.get('git_strategy', {}).get('personal', {}).get('auto_checkpoint') else '❌ Disabled')" 2>/dev/null || echo "unknown"`
 
+## 🔀 모드별 TDD 워크플로우
+
+### 🧪 개인 모드 (Personal Mode) - 자동 체크포인트 기반
 ```bash
-# 1. Constitution 5원칙 검증 (프로젝트 도구 자동 감지)
-# Constitution 체크리스트 기반 검증 권장
+# 1. Constitution 5원칙 검증 + 자동 체크포인트 설정
+!`python3 -c "import json; config=json.load(open('.moai/config.json')); print('🔄 Auto-checkpoint:', '✅ Enabled' if config.get('git_strategy', {}).get('personal', {}).get('auto_checkpoint') else '❌ Disabled')"`
 
-# 2. TDD Red-Green-Refactor 3단계 커밋 패턴(권장)
+# 2. TDD 사이클 - 파일 변경 시 자동 체크포인트 생성
+# Git 안전성 확인
+!`[ -f .git/index.lock ] && echo "🔒 git index.lock detected - /git:checkpoint --fix" || echo "✅ Git ready"`
+
+# RED 단계: 실패 테스트 작성 (자동 체크포인트)
+# 파일 변경 감지 → 자동 체크포인트 → 계속 작업
+!`echo "🔴 RED: 실패하는 테스트 작성 중..."`
+# 작업 완료 후 수동 체크포인트 (중요 마일스톤)
+!`/git:checkpoint "RED 단계 완료: ${SPEC_ID} 테스트 작성"`
+
+# GREEN 단계: 최소 구현 (자동 체크포인트)
+!`echo "🟢 GREEN: 최소 구현으로 테스트 통과 중..."`
+!`/git:checkpoint "GREEN 단계 완료: ${SPEC_ID} 최소 구현"`
+
+# REFACTOR 단계: 품질 개선 (자동 체크포인트)
+!`echo "🔄 REFACTOR: 코드 품질 개선 중..."`
+!`/git:checkpoint "REFACTOR 완료: ${SPEC_ID} 품질 개선"`
+
+# 완료 후 최종 정리 커밋
+!`/git:commit --spec "${SPEC_ID}" --message "TDD 구현 완료"`
+```
+
+### 🏢 팀 모드 (Team Mode) - GitFlow 표준 워크플로우
+```bash
+# 1. Constitution 5원칙 검증 + 브랜치 상태 확인
+!`git status --porcelain | wc -l | xargs -I {} echo "📝 변경사항: {} 개"`
+!`git branch --show-current | xargs -I {} echo "🌿 현재 브랜치: {}"`
+
+# 2. 표준 GitFlow TDD 3단계 커밋
 # Git index.lock 안전 점검
 !`[ -f .git/index.lock ] && echo "🔒 git index.lock detected" || echo "✅ No lock file"`
 !`pgrep -fl "git" | grep -E "(commit|rebase|merge)" >/dev/null 2>&1 && echo "❌ Git 작업 진행 중" || echo "✅ Git 안전"`
+
 # RED 단계: 실패하는 테스트 작성
 !`git add tests/`
 !`git commit -m "🔴 ${SPEC_ID}: 실패하는 테스트 작성 완료 (RED)
