@@ -1,29 +1,25 @@
 ---
 name: moai:git:rollback
-description: ⏪ 안전한 롤백
-argument-hint: [CHECKPOINT-ID] - 체크포인트 ID 또는 --list, --last, --time="30분전" 옵션
+description: 안전한 체크포인트 기반 롤백 시스템
+argument-hint: [체크포인트-ID] - 체크포인트 ID 또는 --list, --last, --time="30분전" 옵션
 allowed-tools: Bash(git:*), Bash(python3:*), Read, Write, Glob, Grep
 model: haiku
 ---
 
 # MoAI-ADK 롤백 시스템
 
+**롤백 대상**: $ARGUMENTS
+
 개인 모드에서 이전 체크포인트로 안전하게 롤백합니다.
 
-## 현재 환경 확인
+## 현재 상태 확인
 
-- Current branch: !`git branch --show-current`
-- Working directory status: !`git status --porcelain`
-- Project mode: !`python3 -c "import json; config=json.load(open('.moai/config.json')); print(config['project']['mode'])" 2>/dev/null || echo "unknown"`
-- Available checkpoints: !`python3 -c "
-import json, os
-if os.path.exists('.moai/checkpoints/metadata.json'):
-    with open('.moai/checkpoints/metadata.json') as f:
-        data = json.load(f)
-        print(f'{len(data.get(\"checkpoints\", []))} checkpoints available')
-else:
-    print('0 checkpoints available')
-" 2>/dev/null || echo "No metadata file"`
+체크포인트 상태를 확인합니다:
+
+!`git branch --show-current`
+!`git status --porcelain`
+!`python3 -c "import json; config=json.load(open('.moai/config.json')); print(config['project']['mode'])" 2>/dev/null || echo "unknown"`
+!`python3 -c "import json, os; print(f'{len(json.load(open(\".moai/checkpoints/metadata.json\")).get(\"checkpoints\", []))} checkpoints available' if os.path.exists('.moai/checkpoints/metadata.json') else '0 checkpoints available')" 2>/dev/null || echo "No metadata file"`
 
 ## 작업
 
@@ -40,6 +36,7 @@ MoAI 롤백 스크립트를 실행하여 안전한 체크포인트 기반 롤백
 - `--force`: 강제 롤백 (변경사항 무시)
 
 ### 예시:
+
 ```bash
 # 체크포인트 목록 보기
 !`python3 .moai/scripts/rollback.py --list`
@@ -57,6 +54,7 @@ MoAI 롤백 스크립트를 실행하여 안전한 체크포인트 기반 롤백
 ## 🎯 핵심 기능
 
 ### 다양한 롤백 방식
+
 - **체크포인트 ID**: 특정 체크포인트로 정확한 복구
 - **시간 기반**: "10분 전", "1시간 전" 등 자연어 지원
 - **상대적 위치**: 마지막, 이전, N번째 체크포인트
@@ -87,6 +85,7 @@ MoAI 롤백 스크립트를 실행하여 안전한 체크포인트 기반 롤백
 ## 📋 실행 과정
 
 ### 1. 체크포인트 목록 조회 (--list)
+
 ```bash
 # 메타데이터 읽기
 METADATA_FILE=".moai/checkpoints/metadata.json"
@@ -100,6 +99,7 @@ echo "checkpoint_20250120_140000   14:00 (2시간 전)  초기 프로젝트 설�
 ```
 
 ### 2. 안전성 확인
+
 ```bash
 # 현재 작업 상태 확인
 if git status --porcelain | grep -q .; then
@@ -112,6 +112,7 @@ fi
 ```
 
 ### 3. 롤백 실행
+
 ```bash
 # 체크포인트 정보 확인
 CHECKPOINT_COMMIT=$(git rev-parse "refs/heads/${CHECKPOINT_ID}")
@@ -132,6 +133,7 @@ git clean -fd
 ## 🔧 고급 롤백 기능
 
 ### 시간 기반 롤백
+
 ```bash
 # 시간 파싱 함수
 parse_time_expression() {
@@ -153,6 +155,7 @@ parse_time_expression() {
 ```
 
 ### 스마트 매칭
+
 ```bash
 # 가장 가까운 체크포인트 찾기
 find_closest_checkpoint() {
@@ -178,16 +181,19 @@ find_closest_checkpoint() {
 ## 📊 롤백 종류별 특징
 
 ### 1. 소프트 롤백 (기본값)
+
 - **변경사항 보존**: 작업 디렉토리 파일 유지
 - **스테이징 초기화**: git add된 내용 해제
 - **안전한 복구**: 실수 시 쉽게 되돌리기 가능
 
 ### 2. 하드 롤백 (--hard)
+
 - **완전 초기화**: 모든 변경사항 삭제
 - **정확한 복구**: 체크포인트 시점과 동일한 상태
 - **위험성 경고**: 삭제된 내용 복구 불가
 
 ### 3. 혼합 롤백 (--mixed)
+
 - **선택적 복구**: 특정 파일만 롤백
 - **부분 적용**: 일부 변경사항만 되돌리기
 - **세밀한 제어**: 고급 사용자용
@@ -195,6 +201,7 @@ find_closest_checkpoint() {
 ## 🎯 모드별 롤백 전략
 
 ### 개인 모드 (Personal Mode)
+
 ```bash
 # 자유로운 실험 지원
 - 빈번한 체크포인트 활용
@@ -207,6 +214,7 @@ find_closest_checkpoint() {
 ```
 
 ### 팀 모드 (Team Mode)
+
 ```bash
 # 신중한 롤백 처리
 - 팀원에게 롤백 사실 알림
@@ -221,6 +229,7 @@ find_closest_checkpoint() {
 ## 🚨 안전장치 및 검증
 
 ### 롤백 전 검증
+
 ```bash
 # 브랜치 상태 확인
 check_branch_safety() {
@@ -238,6 +247,7 @@ validate_checkpoint() {
 ```
 
 ### 롤백 후 검증
+
 ```bash
 # 롤백 성공 확인
 verify_rollback() {
@@ -250,6 +260,7 @@ verify_rollback() {
 ## 📈 통계 및 모니터링
 
 ### 롤백 히스토리
+
 ```json
 {
   "rollback_history": [
@@ -266,6 +277,7 @@ verify_rollback() {
 ```
 
 ### 롤백 패턴 분석
+
 - 자주 롤백되는 파일/영역 식별
 - 실험 성공률 통계
 - 개발 패턴 개선 제안
@@ -273,6 +285,7 @@ verify_rollback() {
 ## 💡 사용 패턴 및 팁
 
 ### 일반적인 롤백 시나리오
+
 ```bash
 # 실험 실패 후 롤백
 /git:rollback --last
@@ -293,6 +306,7 @@ verify_rollback() {
 ```
 
 ### Constitution 5원칙 준수
+
 1. **Simplicity**: 한 명령어로 모든 롤백 처리
 2. **Architecture**: git-manager와 체계적 연동
 3. **Testing**: 안전한 실험 환경 제공

@@ -1,13 +1,18 @@
 ---
 name: moai:1-spec
-description: 📝 명세 작성
-argument-hint: <feature-description>|<SPEC-ID>|--project [additional-details...]
+description: EARS 명세 작성 및 feature 브랜치 생성
+argument-hint: [기능설명|SPEC-ID|--project] [추가세부사항...]
 allowed-tools: Read, Write, Edit, MultiEdit, Bash(git:*), Bash(gh:*), Bash(ls:*), Bash(mkdir:*), Bash(python3:*), Task, Grep, Glob
+model: sonnet
 ---
 
 # MoAI-ADK 1단계: SPEC 작성
 
-spec-builder 에이전트를 활용해 비즈니스 요구사항을 EARS 형식 명세로 변환하고, GitFlow 자동화를 지원합니다.
+spec-builder 에이전트가 비즈니스 요구사항을 EARS 형식 명세로 변환하고, 자동 GitFlow 워크플로우를 지원합니다.
+
+**요구사항**: $ARGUMENTS
+
+다음 순서로 SPEC 단계를 완료하세요:
 
 ## 빠른 시작
 
@@ -25,14 +30,18 @@ spec-builder 에이전트를 활용해 비즈니스 요구사항을 EARS 형식 
 ## 모드별 Git 워크플로우 (자동화)
 
 ### 현재 상태 확인
-- Current branch: !`git branch --show-current`
-- Git status: !`git status --porcelain`
-- Project mode: !`python3 -c "import json; config=json.load(open('.moai/config.json')); print(config['project']['mode'])" 2>/dev/null || echo "unknown"`
-- Existing SPECs: !`ls .moai/specs/ 2>/dev/null | wc -l`
+
+현재 프로젝트 상태를 확인합니다:
+
+!`git branch --show-current`
+!`git status --porcelain`
+!`python3 -c "import json; config=json.load(open('.moai/config.json')); print(config['project']['mode'])" 2>/dev/null || echo "unknown"`
+!`ls .moai/specs/ 2>/dev/null | wc -l`
 
 ### 모드별 브랜치 전략
 
 **개인 모드 (Personal Mode)**:
+
 1. 자동 체크포인트 생성 (`/git:checkpoint "SPEC 작업 시작"`)
 2. 간소화된 브랜치: `feature/{description}` (`/git:branch --personal`)
 3. 파일 변경 시 자동 체크포인트 (file_watcher.py)
@@ -40,6 +49,7 @@ spec-builder 에이전트를 활용해 비즈니스 요구사항을 EARS 형식 
 5. 필요시 롤백 지원 (`/git:rollback --checkpoint`)
 
 **팀 모드 (Team Mode)**:
+
 1. develop/main 브랜치로 전환 (`/git:sync --prepare`)
 2. SPEC-XXX ID 자동 할당
 3. feature/SPEC-XXX-{name} 브랜치 생성 (`/git:branch --team`)
@@ -47,6 +57,7 @@ spec-builder 에이전트를 활용해 비즈니스 요구사항을 EARS 형식 
 5. Draft PR 자동 생성 (gh CLI)
 
 **--project 모드 (공통)**:
+
 1. 통합 브랜치 생성: feature/project-{timestamp}
 2. 5단계 대화형 질문으로 다중 SPEC 생성
 3. 각 SPEC별 순차 커밋
@@ -55,6 +66,7 @@ spec-builder 에이전트를 활용해 비즈니스 요구사항을 EARS 형식 
 ## EARS 명세 구조
 
 ### 핵심 키워드 활용
+
 - **WHEN**: 조건 발생 시 → 명확한 트리거 정의
 - **IF**: 특정 상태 → 조건부 동작 정의
 - **WHILE**: 진행 중 → 지속적 처리 정의
@@ -62,9 +74,11 @@ spec-builder 에이전트를 활용해 비즈니스 요구사항을 EARS 형식 
 - **UBIQUITOUS**: 항상 → 전역 규칙 정의
 
 ### 변환 예시
+
 **Before**: "사용자가 로그인할 수 있어야 한다"
 
 **After**:
+
 ```markdown
 WHEN 사용자가 올바른 이메일과 패스워드를 입력하면,
 시스템은 3초 이내에 JWT 토큰을 생성하고 대시보드로 리디렉션해야 한다.
@@ -73,6 +87,7 @@ WHEN 사용자가 올바른 이메일과 패스워드를 입력하면,
 ## 프로젝트 모드 (--project)
 
 ### 대화형 5단계 질문
+
 1. **프로젝트 유형**: 웹앱, API, 모바일앱, 데스크톱앱
 2. **핵심 기능**: 사용자 관리, 결제, 알림, 콘텐츠 관리
 3. **사용자 유형**: 일반 사용자, 관리자, 게스트
@@ -80,6 +95,7 @@ WHEN 사용자가 올바른 이메일과 패스워드를 입력하면,
 5. **보안 요구사항**: 인증 방식, 개인정보, 규정 준수
 
 ### 생성 결과
+
 ```markdown
 🏢 프로젝트 SPEC 통합 생성 완료:
 
@@ -96,6 +112,7 @@ WHEN 사용자가 올바른 이메일과 패스워드를 입력하면,
 ## User Stories & 수락 기준
 
 ### US-XXX 형식 템플릿
+
 ```markdown
 US-001: 사용자 로그인
 As a 일반 사용자
@@ -103,6 +120,7 @@ I want to 이메일과 패스워드로 로그인
 So that 개인화된 서비스를 이용할 수 있다
 
 수락 기준:
+
 - 올바른 이메일 형식 검증
 - 패스워드 최소 8자리 이상
 - 3회 실패 시 계정 임시 잠금
@@ -110,13 +128,14 @@ So that 개인화된 서비스를 이용할 수 있다
 ```
 
 ### Given-When-Then 시나리오
+
 ```markdown
 **Scenario: 성공적인 로그인**
 Given 등록된 사용자 "user@example.com"이 존재하고
 When 올바른 이메일과 패스워드를 입력하고 "로그인"을 클릭하면
 Then 3초 이내에 JWT 토큰을 생성하고
-  And 대시보드로 리디렉션하며
-  And "환영합니다, [사용자명]님" 메시지를 표시한다
+And 대시보드로 리디렉션하며
+And "환영합니다, [사용자명]님" 메시지를 표시한다
 ```
 
 ## 4단계 커밋 패턴
@@ -129,14 +148,17 @@ Then 3초 이내에 JWT 토큰을 생성하고
 ## 품질 검증
 
 ### 검증 기준
+
 - 모든 User Story에 수락 기준 존재 (최소 3개)
 - EARS 요구사항의 테스트 가능성 확인
 - [NEEDS CLARIFICATION] 마커 10% 이하
 - @REQ 태그를 통한 추적성 완성
 
 ### 검증 결과 예시
+
 ```markdown
 📊 SPEC 품질 지표:
+
 - User Stories: 12개 생성
 - EARS 요구사항: 35개
 - 수락 기준: 36개 시나리오
@@ -147,6 +169,7 @@ Then 3초 이내에 JWT 토큰을 생성하고
 ## 완료 후 다음 단계
 
 ### 개인 모드 결과
+
 ```bash
 ✅ 1단계 SPEC 작성 완료!
 
@@ -165,6 +188,7 @@ Then 3초 이내에 JWT 토큰을 생성하고
 ```
 
 ### 팀 모드 결과
+
 ```bash
 ✅ 1단계 SPEC 작성 + GitFlow 완료!
 
@@ -184,12 +208,14 @@ Then 3초 이내에 JWT 토큰을 생성하고
 ## 에러 처리
 
 ### Git index.lock 감지
+
 ```bash
 원인: 이전 git 명령 비정상 종료
 해결: rm -f .git/index.lock 후 재실행
 ```
 
 ### 불완전한 입력
+
 ```bash
 ⚠️ 더 구체적인 요구사항 필요
 예: /moai:1-spec "JWT 인증 - 소셜 로그인, 토큰 갱신, 권한 관리"

@@ -1,6 +1,41 @@
 {
+  "hooks": {
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/check_style.py",
+            "timeout": 60,
+            "type": "command"
+          }
+        ],
+        "matcher": "Edit|MultiEdit|Write"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag_validator.py",
+            "type": "command"
+          }
+        ],
+        "matcher": "Edit\\(.+\\.(py|js|ts|jsx|tsx|go|java|c|cpp|rs|php|rb|kt|scala|cs|swift|dart|html|css|scss|sass|less)\\)|MultiEdit\\(.+\\.(py|js|ts|jsx|tsx|go|java|c|cpp|rs|php|rb|kt|scala|cs|swift|dart|html|css|scss|sass|less)\\)|Write\\(.+\\.(py|js|ts|jsx|tsx|go|java|c|cpp|rs|php|rb|kt|scala|cs|swift|dart|html|css|scss|sass|less)\\)"
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start_notice.py",
+            "type": "command"
+          }
+        ],
+        "matcher": "*"
+      }
+    ]
+  },
   "permissions": {
-    "defaultMode": "default",
     "allow": [
       "Task",
       "Write",
@@ -34,6 +69,14 @@
       "Bash(moai:*)",
       "Bash(rm:*)",
       "Bash(rmdir:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git status:*)",
+      "Bash(git branch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git stash:*)",
       "WebFetch",
       "Grep",
       "Glob",
@@ -43,12 +86,6 @@
       "BashOutput",
       "KillShell",
       "ExitPlanMode"
-    ],
-    "deny": [
-      "Bash(sudo:*)",
-      "Edit(.env*)",
-      "Read(.env*)",
-      "Write(.env*)"
     ],
     "ask": [
       "Bash(pip install:*)",
@@ -68,42 +105,13 @@
       "Bash(kubectl:*)",
       "Bash(systemctl:*)",
       "Bash(service:*)"
-    ]
-  },
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Edit\\(.+\\.(py|js|ts|jsx|tsx|go|java|c|cpp|rs|php|rb|kt|scala|cs|swift|dart|html|css|scss|sass|less)\\)|MultiEdit\\(.+\\.(py|js|ts|jsx|tsx|go|java|c|cpp|rs|php|rb|kt|scala|cs|swift|dart|html|css|scss|sass|less)\\)|Write\\(.+\\.(py|js|ts|jsx|tsx|go|java|c|cpp|rs|php|rb|kt|scala|cs|swift|dart|html|css|scss|sass|less)\\)",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag_validator.py"
-          }
-        ]
-      }
     ],
-    "PostToolUse": [
-      {
-        "matcher": "Edit|MultiEdit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/check_style.py",
-            "timeout": 60
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start_notice.py"
-          }
-        ]
-      }
+    "defaultMode": "default",
+    "deny": [
+      "Bash(sudo:*)",
+      "Edit(.env*)",
+      "Read(.env*)",
+      "Write(.env*)"
     ]
   }
 }

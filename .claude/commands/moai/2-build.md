@@ -1,6 +1,6 @@
 ---
 name: moai:2-build
-description: 🔨 TDD 구현
+description: TDD 기반 기능 구현 (Red-Green-Refactor)
 argument-hint: [SPEC-ID] - 구현할 SPEC ID (예: SPEC-001) 또는 'all'로 모든 SPEC 구현
 allowed-tools: Read, Write, Edit, MultiEdit, Bash(git:*), Bash(python3:*), Bash(pytest:*), Bash(npm:*), Bash(go:*), Bash(cargo:*), Bash(mvn:*), Bash(dotnet:*), Task, WebFetch, Grep, Glob, TodoWrite
 model: sonnet
@@ -8,15 +8,23 @@ model: sonnet
 
 # MoAI-ADK 2단계: TDD 구현 (모드별 Git 통합)
 
-code-builder와 git-manager 에이전트가 협력하여 Constitution Check부터 Red-Green-Refactor까지 체계적으로 지원합니다.
+**TDD 구현 대상**: $ARGUMENTS
 
-## 📊 현재 모드 확인
-- Project mode: !`python3 -c "import json; config=json.load(open('.moai/config.json')); print(config['project']['mode'])" 2>/dev/null || echo "unknown"`
-- Auto checkpoint: !`python3 -c "import json; config=json.load(open('.moai/config.json')); print('✅ Enabled' if config.get('git_strategy', {}).get('personal', {}).get('auto_checkpoint') else '❌ Disabled')" 2>/dev/null || echo "unknown"`
+code-builder 에이전트가 Constitution 5원칙 검증부터 Red-Green-Refactor 사이클까지 체계적으로 지원합니다.
+
+## 현재 상태 확인
+
+현재 프로젝트 상태를 확인합니다:
+
+!`python3 -c "import json; config=json.load(open('.moai/config.json')); print(config['project']['mode'])" 2>/dev/null || echo "unknown"`
+!`python3 -c "import json; config=json.load(open('.moai/config.json')); print('✅ Enabled' if config.get('git_strategy', {}).get('personal', {}).get('auto_checkpoint') else '❌ Disabled')" 2>/dev/null || echo "unknown"`
+!`git branch --show-current`
+!`git status --porcelain | wc -l`
 
 ## 🔀 모드별 TDD 워크플로우
 
 ### 🧪 개인 모드 (Personal Mode) - 자동 체크포인트 기반
+
 ```bash
 # 1. Constitution 5원칙 검증 + 자동 체크포인트 설정
 !`python3 -c "import json; config=json.load(open('.moai/config.json')); print('🔄 Auto-checkpoint:', '✅ Enabled' if config.get('git_strategy', {}).get('personal', {}).get('auto_checkpoint') else '❌ Disabled')"`
@@ -44,6 +52,7 @@ code-builder와 git-manager 에이전트가 협력하여 Constitution Check부�
 ```
 
 ### 🏢 팀 모드 (Team Mode) - GitFlow 표준 워크플로우
+
 ```bash
 # 1. Constitution 5원칙 검증 + 브랜치 상태 확인
 !`git status --porcelain | wc -l | xargs -I {} echo "📝 변경사항: {} 개"`
@@ -87,7 +96,6 @@ code-builder와 git-manager 에이전트가 협력하여 Constitution Check부�
 
 SPEC을 바탕으로 Constitution Check → 기술 설계 → 작업 분해 → TDD 구현까지 자동화를 지원하는 MoAI-ADK의 핵심 명령어입니다.
 
-
 ## 🚀 빠른 시작
 
 ```bash
@@ -122,6 +130,7 @@ flowchart TD
 **code-builder 에이전트**가 전체 구현 과정을 체계적으로 지원합니다. 환경에 따라 가능한 범위에서 자동화를 시도합니다:
 
 ### 1단계: Constitution 검증 (권장)
+
 - **Simplicity**: 프로젝트 복잡도 ≤ 3개 목표
 - **Architecture**: 기능 라이브러리화 권장
 - **Testing**: TDD 권장 및 커버리지 목표(예: 80~85%)
@@ -129,11 +138,13 @@ flowchart TD
 - **Versioning**: MAJOR.MINOR.BUILD 체계 권장
 
 ### 2단계: 기술 설계
+
 - **기술 스택 조사**: 최신 동향 및 베스트 프랙티스
 - **아키텍처 설계**: 필요시 data-model.md, contracts/ 생성
 - **의존성 분석**: 외부 라이브러리 및 API 검토
 
 ### 3단계: TDD 구현(권장)
+
 - **작업 분해**: 구현 가능한 단위로 태스크 분할
 - **Red-Green-Refactor**: 엄격한 TDD 사이클 준수
 - **품질 검증**: 린팅, 타입 체킹, 커버리지 확인
@@ -141,6 +152,7 @@ flowchart TD
 ## 🏛️ Constitution Check (5원칙 검증 지원)
 
 ### 기본 목표 기준(예시)
+
 ```markdown
 ✅ Simplicity: 독립 모듈 ≤ 3개(목표)
 ✅ Architecture: 라이브러리화 지향
@@ -150,6 +162,7 @@ flowchart TD
 ```
 
 ### 위반 시 자동 해결
+
 - 복잡도 초과 → 모듈 통합 제안
 - 라이브러리화 미흡 → 구조 리팩터링
 - 테스트 부족 → 추가 테스트 자동 생성
@@ -157,6 +170,7 @@ flowchart TD
 ## 🔴🟢🔄 TDD 사이클 자동화
 
 ### RED 단계: 실패하는 테스트 작성
+
 ```
 언어별 테스트 구조 (자동 감지):
 - 테스트 파일명: test_[feature] 또는 [feature]_test
@@ -170,6 +184,7 @@ flowchart TD
 ```
 
 ### GREEN 단계: 최소 구현
+
 ```
 구현 원칙:
 - 테스트 통과를 위한 최소 코드만 작성
@@ -178,6 +193,7 @@ flowchart TD
 ```
 
 ### REFACTOR 단계: 품질 개선
+
 ```
 개선 체크리스트:
 - 코드 중복 제거
@@ -190,12 +206,14 @@ flowchart TD
 ## 📊 커버리지 및 품질 검증(지원)
 
 ### 자동 검증 항목 (언어별 도구 자동 감지)
+
 - **테스트 커버리지**: 목표 80~85%(프로젝트 설정)
 - **타입 커버리지**: 프로젝트 타입 체커 사용
 - **린팅 통과**: 프로젝트 린터 규칙 준수
 - **보안 검사**: 언어별 보안 도구 실행
 
 ### 품질 게이트 실패 시
+
 ```bash
 🔴 품질 게이트 실패:
 - 커버리지 78% < 85% (목표)
@@ -211,6 +229,7 @@ flowchart TD
 ## 📁 생성 파일 구조
 
 ### 설계 단계 산출물
+
 ```
 .moai/specs/SPEC-XXX/
 ├── plan.md              # Constitution Check 결과
@@ -222,6 +241,7 @@ flowchart TD
 ```
 
 ### 구현 단계 산출물
+
 ```
 src/
 ├── models/              # 데이터 모델
@@ -238,6 +258,7 @@ tests/
 ## 🔄 완료 후 다음 단계
 
 ### 성공적인 구현 완료
+
 ```bash
 🎉 TDD 구현 완료(예시)!
 
@@ -258,6 +279,7 @@ tests/
 ```
 
 ### 순차 구현 가이드
+
 ```bash
 📋 SPEC 구현 순서:
 
@@ -278,6 +300,7 @@ tests/
 ## ⚠️ 에러 처리
 
 ### Git index.lock 감지
+
 ```bash
 fatal: Unable to create '.git/index.lock': File exists.
 
@@ -291,13 +314,16 @@ fatal: Unable to create '.git/index.lock': File exists.
 3) 상태 점검: git status
 4) 재실행: /moai:2-build
 ```
+
 ### SPEC 문서 누락
+
 ```bash
 ❌ SPEC-001을 찾을 수 없습니다.
 먼저: /moai:1-spec "기능 설명" 실행
 ```
 
 ### Constitution 위반
+
 ```bash
 🔴 Constitution 위반 감지:
 - Simplicity: 4개 모듈 (임계값: 3개)
@@ -309,6 +335,7 @@ fatal: Unable to create '.git/index.lock': File exists.
 ```
 
 ### TDD 사이클 실패
+
 ```bash
 ⚠️ 테스트가 통과하지 않습니다.
 - test_user_authentication: FAILED
@@ -320,6 +347,7 @@ Green 단계 재구현 필요
 ## 🔁 응답 구조
 
 출력은 반드시 3단계 구조를 따릅니다:
+
 1. **Phase 1 Results**: Constitution & 설계 결과
 2. **Phase 2 Plan**: TDD 구현 계획
 3. **Phase 3 Implementation**: 실제 구현 및 검증

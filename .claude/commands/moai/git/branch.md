@@ -1,6 +1,6 @@
 ---
 name: moai:git:branch
-description: 🌿 스마트 브랜치 관리
+description: 스마트 브랜치 관리 시스템 (모드별 최적화)
 argument-hint: [ACTION] - create, switch, list, clean, --status, --personal, --team 중 하나
 allowed-tools: Bash(git:*), Bash(python3:*), Read, Write, Glob, Grep
 model: haiku
@@ -8,57 +8,69 @@ model: haiku
 
 # MoAI-ADK 브랜치 관리 시스템
 
-Smart branch management with mode-specific optimization strategies.
+**브랜치 작업**: $ARGUMENTS
 
-## Current Environment Check
+모드별 최적화 전략으로 스마트한 브랜치 관리를 수행합니다.
 
-- Current branch: !`git branch --show-current`
-- Local branches: !`git branch -l | wc -l`
-- Remote branches: !`git branch -r | wc -l`
-- Project mode: !`python3 -c "import json; config=json.load(open('.moai/config.json')); print(config['project']['mode'])" 2>/dev/null || echo "unknown"`
-- Recent commits: !`git log --oneline -3`
+## 현재 상태 확인
 
-## Task
+브랜치 상태를 확인합니다:
 
-Execute branch action: "$ARGUMENTS"
+!`git branch --show-current`
+!`git branch -l | wc -l`
+!`git branch -r | wc -l`
+!`python3 -c "import json; config=json.load(open('.moai/config.json')); print(config['project']['mode'])" 2>/dev/null || echo "unknown"`
+!`git log --oneline -3`
 
-### Branch Actions:
+## 브랜치 작업 실행
 
-#### If "create" provided:
-- Create new branch based on current mode
-- Personal mode: feature/[description] format
-- Team mode: feature/SPEC-XXX-[description] format
+요청된 브랜치 작업을 수행합니다: "$ARGUMENTS"
 
-#### If "switch" provided:
-- Switch to specified branch safely
-- Stash changes if needed
-- Update working directory
+### 브랜치 작업 종류:
 
-#### If "list" provided:
-- Show all branches with status
-- Highlight current branch
-- Show last commit for each branch
+**"create" 제공 시**:
 
-#### If "clean" provided:
-- Clean up merged branches
-- Remove stale remote tracking branches
-- Preserve important branches
+- 현재 모드에 따른 새 브랜치 생성
+- 개인 모드: feature/[설명] 형식
+- 팀 모드: feature/SPEC-XXX-[설명] 형식
 
-#### If "--status" provided:
-- Show detailed branch status
-- Display: current branch, commits ahead/behind, working tree status
+**"switch" 제공 시**:
 
-#### If "--personal" provided:
-- Configure branch strategy for personal mode
-- Set simplified branch naming
+- 지정된 브랜치로 안전하게 전환
+- 필요시 변경사항 stash 처리
+- 작업 디렉토리 업데이트
 
-#### If "--team" provided:
-- Configure branch strategy for team mode
-- Set GitFlow-compatible branch naming
+**"list" 제공 시**:
+
+- 모든 브랜치와 상태 표시
+- 현재 브랜치 강조
+- 각 브랜치의 마지막 커밋 표시
+
+**"clean" 제공 시**:
+
+- 병합된 브랜치 정리
+- 오래된 원격 추적 브랜치 제거
+- 중요한 브랜치 보존
+
+**"--status" 제공 시**:
+
+- 상세한 브랜치 상태 표시
+- 표시: 현재 브랜치, 앞서거나 뒤램어진 커밋 수, 작업 트리 상태
+
+**"--personal" 제공 시**:
+
+- 개인 모드용 브랜치 전략 설정
+- 단순화된 브랜치 명명 설정
+
+**"--team" 제공 시**:
+
+- 팀 모드용 브랜치 전략 설정
+- GitFlow 호환 브랜치 명명 설정
 
 ## 🎯 핵심 기능
 
 ### 모드별 브랜치 전략
+
 - **개인 모드**: 간소화된 브랜치, 실험 지향
 - **팀 모드**: 구조화된 GitFlow, 협업 최적화
 - **자동 명명**: 작업 내용 기반 브랜치명 생성
@@ -88,6 +100,7 @@ Execute branch action: "$ARGUMENTS"
 ### 개인 모드 (Personal Mode)
 
 #### 브랜치 구조
+
 ```
 main
 ├── experiment/jwt-auth-2025-01-20    # 실험용 브랜치
@@ -96,6 +109,7 @@ main
 ```
 
 #### 명명 규칙
+
 ```bash
 # 자동 생성 패턴
 - feature/{description}               # 일반 기능
@@ -111,6 +125,7 @@ main
 ```
 
 #### 특징
+
 - **자유로운 실험**: experiment/ 브랜치로 안전한 실험
 - **간단한 병합**: main 브랜치로 직접 병합
 - **자동 정리**: 오래된 실험 브랜치 자동 삭제
@@ -119,6 +134,7 @@ main
 ### 팀 모드 (Team Mode)
 
 #### 브랜치 구조 (GitFlow)
+
 ```
 main                                 # 프로덕션 코드
 ├── develop                          # 개발 통합 브랜치
@@ -130,6 +146,7 @@ main                                 # 프로덕션 코드
 ```
 
 #### 명명 규칙 (MoAI 표준)
+
 ```bash
 # SPEC 기반 브랜치
 - feature/SPEC-{XXX}-{description}   # 명세 기반 기능
@@ -145,6 +162,7 @@ main                                 # 프로덕션 코드
 ## 🔧 자동 브랜치 생성
 
 ### MoAI 워크플로우 연동
+
 ```bash
 # /moai:1-spec과 연동된 자동 브랜치 생성
 auto_create_branch() {
@@ -170,6 +188,7 @@ auto_create_branch() {
 ```
 
 ### 스마트 브랜치명 생성
+
 ```bash
 generate_smart_branch_name() {
     local description="$1"
@@ -199,6 +218,7 @@ generate_smart_branch_name() {
 ## 📊 브랜치 상태 관리
 
 ### 브랜치 목록 표시
+
 ```bash
 show_branch_list() {
     echo "🌳 브랜치 목록"
@@ -226,6 +246,7 @@ show_branch_list() {
 ```
 
 ### 브랜치 메타데이터 관리
+
 ```json
 // .moai/branches/metadata.json
 {
@@ -249,6 +270,7 @@ show_branch_list() {
 ## 🧹 자동 브랜치 정리
 
 ### 정리 기준
+
 ```bash
 # 개인 모드 정리 정책
 personal_cleanup_policy() {
@@ -268,6 +290,7 @@ team_cleanup_policy() {
 ```
 
 ### 안전한 브랜치 삭제
+
 ```bash
 safe_branch_cleanup() {
     echo "🧹 브랜치 정리 시작"
@@ -293,6 +316,7 @@ safe_branch_cleanup() {
 ## 🔄 브랜치 전환 최적화
 
 ### 스마트 전환
+
 ```bash
 smart_branch_switch() {
     local target_branch="$1"
@@ -329,6 +353,7 @@ smart_branch_switch() {
 ## 📈 브랜치 통계 및 분석
 
 ### 브랜치 활동 분석
+
 ```json
 {
   "branch_statistics": {
@@ -358,6 +383,7 @@ smart_branch_switch() {
 ## 💡 사용 시나리오
 
 ### 개인 개발 패턴
+
 ```bash
 # 새 기능 시작
 /git:branch --auto "사용자 대시보드"
@@ -373,6 +399,7 @@ smart_branch_switch() {
 ```
 
 ### 팀 개발 패턴
+
 ```bash
 # SPEC 기반 브랜치 생성 (자동)
 /moai:1-spec "JWT 인증 시스템"

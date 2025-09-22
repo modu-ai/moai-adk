@@ -1,22 +1,30 @@
 ---
 name: moai:3-sync
-description: 📚 문서 동기화
-argument-hint: [MODE] [TARGET-PATH] - MODE: auto(기본)|force|status|project, TARGET-PATH: 동기화 대상 경로
+description: Living Document 동기화 및 PR Ready 전환
+argument-hint: [모드] [대상경로] - 모드: auto(기본)|force|status|project, 대상경로: 동기화 대상 경로
 allowed-tools: Read, Write, Edit, MultiEdit, Bash(git:*), Bash(gh:*), Bash(python3:*), Bash(ls:*), Bash(find:*), Bash(grep:*), Bash(cat:*), Bash(pgrep:*), Bash(rm:*), Bash(sleep:*), Task, Grep, Glob, TodoWrite
 model: sonnet
 ---
 
 # MoAI-ADK SYNC 단계: 문서 동기화 + PR Ready
 
-**doc-syncer** 서브에이전트를 활용하여 TDD 구현 완료 후 Living Document 동기화, 16-Core TAG 시스템 업데이트, Draft→Ready PR 전환을 수행합니다.
+**동기화 대상**: $1 (모드), $2 (경로)
+
+doc-syncer 에이전트가 TDD 구현 완료 후 Living Document 동기화, 16-Core TAG 시스템 업데이트, Draft→Ready PR 전환을 수행합니다.
 
 ## 모드별 실행 방식
 
-### 현재 모드 확인
-- Project mode: !`python3 -c "import json; config=json.load(open('.moai/config.json')); print(config['project']['mode'])" 2>/dev/null || echo "unknown"`
-- Auto checkpoint: !`python3 -c "import json; config=json.load(open('.moai/config.json')); print('✅ Enabled' if config.get('git_strategy', {}).get('personal', {}).get('auto_checkpoint') else '❌ Disabled')" 2>/dev/null || echo "unknown"`
+### 현재 상태 확인
+
+현재 프로젝트 상태를 확인합니다:
+
+!`python3 -c "import json; config=json.load(open('.moai/config.json')); print(config['project']['mode'])" 2>/dev/null || echo "unknown"`
+!`python3 -c "import json; config=json.load(open('.moai/config.json')); print('✅ Enabled' if config.get('git_strategy', {}).get('personal', {}).get('auto_checkpoint') else '❌ Disabled')" 2>/dev/null || echo "unknown"`
+!`git branch --show-current`
+!`git status --porcelain | wc -l`
 
 ### 인수 처리
+
 - **$1 (모드)**: `$1` → `auto`(기본값)|`force`|`status`|`project`
 - **$2 (경로)**: `$2` → 동기화 대상 경로 (선택사항)
 
@@ -38,6 +46,7 @@ model: sonnet
 ```
 
 ### 🧪 개인 모드 (Personal Mode) - 체크포인트 기반 동기화
+
 ```bash
 # 1. 문서 동기화 전 체크포인트 생성
 /git:checkpoint "3-sync 시작: 문서 동기화 작업"
@@ -55,6 +64,7 @@ echo "📝 개인 모드 동기화 완료 - 다음 작업 준비됨"
 ```
 
 ### 🏢 팀 모드 (Team Mode) - 완전한 문서화 및 PR Ready
+
 ```bash
 # 1. 완전한 Living Document 동기화
 # - 모든 API 문서 업데이트
@@ -93,6 +103,7 @@ doc-syncer 서브에이전트를 활용하여 체계적인 문서 동기화를 �
 doc-syncer 에이전트로 현재 프로젝트 상태를 분석하고 16-Core TAG 시스템의 무결성을 검증해주세요.
 
 **분석 요청사항:**
+
 - 모드: $1 (기본값: auto)
 - 대상 경로: $2
 - 현재 SPEC-ID 기반 문서 연결 확인
@@ -104,12 +115,14 @@ doc-syncer 에이전트로 현재 프로젝트 상태를 분석하고 16-Core TA
 코드 변경사항을 기반으로 문서를 자동 동기화합니다:
 
 **코드 → 문서 동기화:**
+
 - API 문서 자동 갱신 (Web API 프로젝트)
 - CLI 명령어 문서 업데이트 (CLI Tool 프로젝트)
 - 컴포넌트 문서 갱신 (Frontend 프로젝트)
 - 라이브러리 API 레퍼런스 업데이트 (Library 프로젝트)
 
 **문서 → 코드 동기화:**
+
 - SPEC 변경사항 코드 반영
 - TODO 항목 코드 주석 동기화
 - TAG 추적성 링크 업데이트
@@ -119,10 +132,12 @@ doc-syncer 에이전트로 현재 프로젝트 상태를 분석하고 16-Core TA
 TAG 시스템의 완전성을 보장합니다:
 
 **Primary Chain 검증:**
+
 - @REQ → @DESIGN → @TASK → @TEST 연결 확인
 - @FEATURE → @API → @UI → @DATA 추적성 검증
 
 **Quality Chain 관리:**
+
 - @PERF → @SEC → @DOCS → @TAG 품질 체인 점검
 - 고아 TAG 정리 및 중복 TAG 해결
 
@@ -137,6 +152,7 @@ Git 프로세스 충돌 방지 및 안전한 커밋을 수행합니다:
 !`[ -f .git/index.lock ] && rm -f .git/index.lock && echo "Lock removed" || echo "No lock"`
 
 **변경사항 스테이징 전략**
+
 1. 문서 파일 우선 스테이징: `docs/`, `README.md`, `*.md`
 2. MoAI 시스템 파일: `.moai/`, `.claude/`
 3. 템플릿 파일: `src/moai_adk/resources/templates/`
@@ -146,12 +162,14 @@ Git 프로세스 충돌 방지 및 안전한 커밋을 수행합니다:
 변경사항이 있을 때만 커밋을 수행합니다:
 
 !`
+
 # 스테이징된 변경사항 확인
+
 if git diff --cached --quiet; then
-    echo "ℹ️ 커밋할 변경사항이 없습니다."
+echo "ℹ️ 커밋할 변경사항이 없습니다."
 else
-    SPEC_ID=$(git branch --show-current | sed 's/feature\/\(SPEC-[0-9]*\).*/\1/' || echo "SPEC-UNKNOWN")
-    git commit -m "📚 $SPEC_ID: 문서 동기화 및 16-Core @TAG 업데이트 완료
+SPEC_ID=$(git branch --show-current | sed 's/feature\/\(SPEC-[0-9]_\)._/\1/' || echo "SPEC-UNKNOWN")
+git commit -m "📚 $SPEC_ID: 문서 동기화 및 16-Core @TAG 업데이트 완료
 
 - Living Document 실시간 동기화
 - 프로젝트 유형별 문서 자동 생성/업데이트
@@ -162,7 +180,7 @@ else
 🤖 Generated with [Claude Code](https://claude.ai/code)
 
 Co-Authored-By: Claude <noreply@anthropic.com>"
-    echo "✅ 문서 동기화 커밋 완료"
+echo "✅ 문서 동기화 커밋 완료"
 fi
 `
 
@@ -171,6 +189,7 @@ fi
 gh CLI가 사용 가능한 경우 PR 상태 전환과 리뷰어 할당을 수행합니다:
 
 **PR Ready 전환**
+
 ```bash
 gh pr ready --body "$(cat <<'EOF'
 ## ✅ Implementation Complete
@@ -198,6 +217,7 @@ EOF
 ```
 
 **리뷰어 할당 (선택사항)**
+
 ```bash
 # 환경에 따라 적절한 리뷰어 할당
 gh pr edit --add-label "ready-for-review" --add-label "constitution-compliant"
@@ -208,6 +228,7 @@ gh pr edit --add-label "ready-for-review" --add-label "constitution-compliant"
 동기화 결과를 구조화된 형식으로 보고합니다:
 
 ### 성공적인 동기화
+
 ```
 ✅ Living Document 동기화 완료!
 
@@ -225,6 +246,7 @@ gh pr edit --add-label "ready-for-review" --add-label "constitution-compliant"
 ```
 
 ### 부분 동기화 (문제 감지)
+
 ```
 ⚠️ 부분 동기화 완료 (문제 발견)
 
@@ -241,8 +263,8 @@ gh pr edit --add-label "ready-for-review" --add-label "constitution-compliant"
 
 ## 다음 단계 안내
 
-
 ### 개발 사이클 완료
+
 ```
 🔄 MoAI-ADK 3단계 워크플로우 완성:
 ✅ /moai:1-spec → EARS 명세 작성
@@ -254,6 +276,7 @@ gh pr edit --add-label "ready-for-review" --add-label "constitution-compliant"
 ```
 
 ### 통합 프로젝트 모드
+
 ```
 🏢 통합 브랜치 동기화 완료!
 
@@ -265,19 +288,23 @@ gh pr edit --add-label "ready-for-review" --add-label "constitution-compliant"
 
 🎯 PR 전환 지원 완료
 ```
+
 ## 제약사항 및 가정
 
 **환경 의존성:**
+
 - Git 저장소 필수
 - gh CLI (GitHub 통합 시 필요)
 - Python3 (TAG 검증 스크립트)
 
 **전제 조건:**
+
 - MoAI-ADK 프로젝트 구조 (.moai/, .claude/)
 - TDD 구현 완료 상태
 - Constitution 5원칙 준수
 
 **제한 사항:**
+
 - TAG 검증은 파일 존재 기반 체크
 - PR 자동 전환은 gh CLI 환경에서만 동작
 - 커버리지 수치는 별도 측정 필요

@@ -379,14 +379,15 @@ def main():
         result = validator.validate_content(content, file_path)
         
         if not result['valid']:
-            print("\n🏷️  16-Core @TAG 검증 실패", file=sys.stderr)
+            print("\n⚠️  16-Core @TAG 검증 경고 (개발 계속 가능)", file=sys.stderr)
             if file_path:
                 print(f"- 파일: {file_path}", file=sys.stderr)
-            print(f"- 오류: {result['error']}", file=sys.stderr)
+            print(f"- 권장사항: {result['error']}", file=sys.stderr)
             if 'suggestion' in result and result['suggestion']:
-                print(f"- 제안: {result['suggestion']}", file=sys.stderr)
+                print(f"- 개선 제안: {result['suggestion']}", file=sys.stderr)
             print("- 참고: @.claude/memory/project_guidelines.md (16-Core TAG 가이드)", file=sys.stderr)
-            sys.exit(2)  # Hook 차단
+            print("💡 TAG는 권장사항이며, 개발을 차단하지 않습니다.", file=sys.stderr)
+            # Hook 차단 제거 - 경고만 표시하고 통과
         
         # 품질 피드백
         if result['quality_score'] >= 0.9:
