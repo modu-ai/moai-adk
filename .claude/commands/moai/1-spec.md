@@ -1,6 +1,6 @@
 ---
 name: moai:1-spec
-description: EARS 형식 명세 작성 - 비즈니스 요구사항을 구조화된 명세로 변환
+description: 📝 명세 작성
 argument-hint: <feature-description>|<SPEC-ID>|--project [additional-details...]
 allowed-tools: Read, Write, Edit, MultiEdit, Bash(git:*), Bash(gh:*), Bash(ls:*), Bash(mkdir:*), Bash(python3:*), Task, Grep, Glob
 ---

@@ -1,6 +1,6 @@
 ---
 name: git:rollback
-description: 체크포인트 기반 안전한 롤백 - 이전 상태로 되돌리기
+description: ⬅️ 안전한 롤백
 argument-hint: [checkpoint-id|--list|--last|--time]
 allowed-tools: Bash(git:*), Read, Write, Glob, Grep
 ---

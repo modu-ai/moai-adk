@@ -1,6 +1,6 @@
 ---
 name: moai:3-sync
-description: MoAI-ADK SYNC 단계 - Living Document 동기화, 16-Core TAG 시스템 업데이트, PR Ready 전환. TDD 구현 완료 후 사용.
+description: 📚 문서 동기화
 argument-hint: [auto|force|status|project] [target-path]
 allowed-tools: Read, Write, Edit, MultiEdit, Bash(git:*), Bash(gh:*), Bash(python3:*), Bash(ls:*), Bash(find:*), Bash(grep:*), Bash(cat:*), Bash(pgrep:*), Bash(rm:*), Bash(sleep:*), Task, Grep, Glob, TodoWrite
 model: sonnet

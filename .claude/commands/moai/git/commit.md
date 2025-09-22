@@ -1,6 +1,6 @@
 ---
 name: git:commit
-description: 스마트 커밋 시스템 - Constitution 5원칙 기반 자동 커밋 메시지 생성
+description: 💾 스마트 커밋
 argument-hint: [message|--auto|--spec|--build|--sync]
 allowed-tools: Bash(git:*), Read, Write, Glob, Grep
 ---

@@ -1,6 +1,6 @@
 ---
 name: git:checkpoint
-description: 자동 체크포인트 생성 - 개인 모드에서 작업 진행 상황을 안전하게 백업
+description: 🔄 자동 백업
 argument-hint: [message]
 allowed-tools: Bash(git:*), Read, Write, Glob, Grep
 ---

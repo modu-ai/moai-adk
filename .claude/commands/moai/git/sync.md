@@ -1,6 +1,6 @@
 ---
 name: git:sync
-description: 원격 저장소 동기화 - 모드별 최적화된 동기화 전략
+description: 🔄 원격 동기화
 argument-hint: [--push|--pull|--both|--force]
 allowed-tools: Bash(git:*), Read, Write, Glob, Grep
 ---

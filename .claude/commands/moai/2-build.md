@@ -1,6 +1,6 @@
 ---
 name: moai:2-build
-description: TDD 기반 구현 - Constitution Check부터 Red-Green-Refactor까지 통합 실행(지원)
+description: 🔨 코드 구현
 argument-hint: <SPEC-ID>|all
 allowed-tools: Read, Write, Edit, MultiEdit, Bash(git:*), Bash(python3:*), Bash(pytest:*), Bash(npm:*), Bash(go:*), Bash(cargo:*), Bash(mvn:*), Bash(dotnet:*), Task, WebFetch, Grep, Glob
 ---

@@ -1,6 +1,6 @@
 ---
 name: git:branch
-description: 스마트 브랜치 관리 - 모드별 최적화된 브랜치 전략
+description: 🌿 브랜치 관리
 argument-hint: [create|switch|list|clean|--auto]
 allowed-tools: Bash(git:*), Read, Write, Glob, Grep
 ---
