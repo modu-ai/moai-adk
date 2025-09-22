@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 """
-File Watcher for MoAI-ADK Auto-Checkpoint System
+File Watcher for MoAI-ADK Auto-Checkpoint System v0.1.0
 
 Monitors file changes and triggers checkpoint creation when needed.
 Uses efficient file system events to minimize resource usage.
+
+@REQ:FILE-WATCHER-001
+@FEATURE:FILE-MONITORING-001
+@API:FILESYSTEM-EVENTS-001
+@DESIGN:WATCHDOG-INTEGRATION-001
+@TECH:EVENT-DRIVEN-CHECKPOINT-001
 """
 
 import os
@@ -22,7 +28,11 @@ except ImportError:
 
 
 class MoAIFileWatcher(FileSystemEventHandler):
-    """File system event handler for MoAI-ADK projects."""
+    """File system event handler for MoAI-ADK projects.
+
+    @FEATURE:FILE-MONITORING-001
+    @API:FS-EVENT-HANDLER-001
+    """
 
     def __init__(self, checkpoint_manager):
         super().__init__()

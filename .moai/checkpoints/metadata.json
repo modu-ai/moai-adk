@@ -5,10 +5,11 @@
       "timestamp": "2025-09-22T17:32:13.230676",
       "branch": "develop",
       "commit": "2309e8fa4c895365a118d88201b6bcfd091836ea",
-      "type": "auto",
+      "kind": "legacy",
       "message": "Auto-generated checkpoint",
       "files_changed": 13,
       "mode": "personal"
     }
-  ]
+  ],
+  "rollback_history": []
 }

@@ -39,3 +39,5 @@ logs/
 # Temporary files
 *.tmp
 *.temp
+.moai/checkpoints/snapshots/
+.moai/checkpoints/tmp/

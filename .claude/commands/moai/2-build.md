@@ -21,6 +21,12 @@ code-builder 에이전트가 Constitution 5원칙 검증부터 Red-Green-Refacto
 !`git branch --show-current`
 !`git status --porcelain | wc -l`
 
+## 변수 자동 추출
+
+!`export SPEC_ID=$(git branch --show-current | grep -oE 'SPEC-[0-9]+' || echo "SPEC-NEW"); echo "SPEC_ID: $SPEC_ID"`
+!`export TEST_COUNT=$(find tests -name "*.py" 2>/dev/null | wc -l || echo "0"); echo "TEST_COUNT: $TEST_COUNT"`
+!`export COVERAGE_PERCENT=$(pytest --cov-report term 2>/dev/null | grep TOTAL | awk '{print $4}' || echo "0%"); echo "COVERAGE_PERCENT: $COVERAGE_PERCENT"`
+
 ## 🔀 모드별 TDD 워크플로우
 
 ### 🧪 개인 모드 (Personal Mode) - 자동 체크포인트 기반
@@ -37,18 +43,18 @@ code-builder 에이전트가 Constitution 5원칙 검증부터 Red-Green-Refacto
 # 파일 변경 감지 → 자동 체크포인트 → 계속 작업
 !`echo "🔴 RED: 실패하는 테스트 작성 중..."`
 # 작업 완료 후 수동 체크포인트 (중요 마일스톤)
-!`/git:checkpoint "RED 단계 완료: ${SPEC_ID} 테스트 작성"`
+!`/moai:git:checkpoint "RED 단계 완료: ${SPEC_ID} 테스트 작성"`
 
 # GREEN 단계: 최소 구현 (자동 체크포인트)
 !`echo "🟢 GREEN: 최소 구현으로 테스트 통과 중..."`
-!`/git:checkpoint "GREEN 단계 완료: ${SPEC_ID} 최소 구현"`
+!`/moai:git:checkpoint "GREEN 단계 완료: ${SPEC_ID} 최소 구현"`
 
 # REFACTOR 단계: 품질 개선 (자동 체크포인트)
 !`echo "🔄 REFACTOR: 코드 품질 개선 중..."`
-!`/git:checkpoint "REFACTOR 완료: ${SPEC_ID} 품질 개선"`
+!`/moai:git:checkpoint "REFACTOR 완료: ${SPEC_ID} 품질 개선"`
 
 # 완료 후 최종 정리 커밋
-!`/git:commit --spec "${SPEC_ID}" --message "TDD 구현 완료"`
+!`/moai:git:commit --spec "${SPEC_ID}" --message "TDD 구현 완료"`
 ```
 
 ### 🏢 팀 모드 (Team Mode) - GitFlow 표준 워크플로우
@@ -126,6 +132,8 @@ flowchart TD
 ```
 
 ## 🤖 code-builder 에이전트 지원
+
+code-builder 에이전트를 활용하여 TDD 구현을 체계적으로 진행합니다. 이 에이전트는 Constitution 5원칙 검증부터 Red-Green-Refactor 사이클까지 모든 과정을 지원합니다.
 
 **code-builder 에이전트**가 전체 구현 과정을 체계적으로 지원합니다. 환경에 따라 가능한 범위에서 자동화를 시도합니다:
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MoAI-ADK Tag Validator PreToolUse Hook v0.1.19
+MoAI-ADK Tag Validator PreToolUse Hook v0.1.0
 16-Core @TAG 시스템 품질 검증 및 규칙 강제
 
 이 Hook은 프로그램 코드 파일 편집 시 @TAG 시스템의 품질을 자동으로 검증합니다.
@@ -8,6 +8,12 @@ MoAI-ADK Tag Validator PreToolUse Hook v0.1.19
 - 16-Core 태그 체계 준수 검증
 - 태그 네이밍 규칙 및 일관성 검사
 - 품질 점수 계산 및 개선 제안
+
+@REQ:HOOK-TAG-VALIDATION-001
+@FEATURE:TAG-QUALITY-001
+@API:HOOK-INTERFACE-001
+@DESIGN:16-CORE-VALIDATION-001
+@TECH:PRETOOLUSE-HOOK-001
 """
 
 import json
@@ -35,7 +41,11 @@ except Exception:
 
 
 class MoAITagValidator:
-    """MoAI-ADK 16-Core @TAG 시스템 검증기"""
+    """MoAI-ADK 16-Core @TAG 시스템 검증기
+
+    @FEATURE:TAG-VALIDATION-SYSTEM-001
+    @API:TAG-VALIDATOR-INTERFACE-001
+    """
 
     def __init__(self, project_root: Path):
         self.project_root = project_root
@@ -130,7 +140,10 @@ class MoAITagValidator:
             return False
 
     def validate_content(self, content: str, file_path: str) -> Dict[str, Any]:
-        """파일 내용의 @TAG 검증"""
+        """파일 내용의 @TAG 검증
+
+        @FEATURE:CONTENT-VALIDATION-001 @API:TAG-VALIDATE-001
+        """
 
         # Validate file safety first
         if not self.safe_file_validation(file_path):
@@ -181,7 +194,10 @@ class MoAITagValidator:
         }
     
     def validate_single_tag(self, tag_type: str, tag_id: str, file_path: str) -> Dict[str, Any]:
-        """단일 태그 검증"""
+        """단일 태그 검증
+
+        @API:TAG-VALIDATION-001 @DESIGN:SINGLE-TAG-CHECK-001
+        """
         
         # 1. 유효한 태그 타입 검증
         if tag_type not in self.valid_tag_types:
@@ -212,7 +228,10 @@ class MoAITagValidator:
         }
     
     def is_valid_tag_id(self, tag_id: str, tag_type: str) -> bool:
-        """태그 ID 형식 유효성 검사"""
+        """태그 ID 형식 유효성 검사
+
+        @API:TAG-ID-VALIDATION-001 @DESIGN:NAMING-RULES-001
+        """
         
         # 기본 형식: 대문자, 숫자, 하이픈, 언더스코어 허용
         basic_pattern = r'^[A-Z0-9-_]+$'
@@ -340,7 +359,11 @@ class MoAITagValidator:
         return previous_row[-1]
 
 def main():
-    """Hook 진입점"""
+    """Hook 진입점
+
+    @API:HOOK-MAIN-ENTRY-001
+    @TECH:CLAUDE-CODE-HOOK-001
+    """
     
     try:
         # Claude Code Hook 데이터 읽기
@@ -379,15 +402,14 @@ def main():
         result = validator.validate_content(content, file_path)
         
         if not result['valid']:
-            print("\n⚠️  16-Core @TAG 검증 경고 (개발 계속 가능)", file=sys.stderr)
+            print("\n❌ 16-Core @TAG 규칙 위반으로 작업을 중단합니다.", file=sys.stderr)
             if file_path:
                 print(f"- 파일: {file_path}", file=sys.stderr)
-            print(f"- 권장사항: {result['error']}", file=sys.stderr)
-            if 'suggestion' in result and result['suggestion']:
+            print(f"- 문제: {result['error']}", file=sys.stderr)
+            if result.get('suggestion'):
                 print(f"- 개선 제안: {result['suggestion']}", file=sys.stderr)
             print("- 참고: @.claude/memory/project_guidelines.md (16-Core TAG 가이드)", file=sys.stderr)
-            print("💡 TAG는 권장사항이며, 개발을 차단하지 않습니다.", file=sys.stderr)
-            # Hook 차단 제거 - 경고만 표시하고 통과
+            sys.exit(2)
         
         # 품질 피드백
         if result['quality_score'] >= 0.9:
@@ -402,7 +424,7 @@ def main():
         
     except Exception as error:
         print(f"🔧 Tag validator error: {error}", file=sys.stderr)
-        sys.exit(0)  # 오류 시에도 통과 (검증 실패로 개발 차단 방지)
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

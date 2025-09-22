@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 """
-MoAI-ADK Session Start Notice Hook - v0.1.12
+MoAI-ADK Session Start Notice Hook - v0.1.0
 세션 시작 시 프로젝트 상태 알림 및 컨텍스트 정보 제공
 
-SessionStart Hook으로 현재 MoAI 프로젝트 상태를 분석하고 
+SessionStart Hook으로 현재 MoAI 프로젝트 상태를 분석하고
 개발자에게 유용한 정보를 제공합니다.
+
+@REQ:HOOK-SESSION-START-001
+@FEATURE:SESSION-NOTICE-001
+@API:HOOK-INTERFACE-001
+@DESIGN:PROJECT-STATUS-001
+@TECH:SESSIONSTART-HOOK-001
 """
 
 import json
@@ -15,7 +21,11 @@ from typing import Dict, List, Any, Optional
 from datetime import datetime
 
 class SessionNotifier:
-    """MoAI-ADK 세션 시작 알림 시스템"""
+    """MoAI-ADK 세션 시작 알림 시스템
+
+    @FEATURE:SESSION-NOTICE-001
+    @API:SESSION-NOTIFIER-001
+    """
     
     def __init__(self, project_root: Path):
         self.project_root = project_root
@@ -24,7 +34,10 @@ class SessionNotifier:
         self.tags_path = project_root / ".moai" / "indexes" / "tags.json"
     
     def get_project_status(self) -> Dict[str, Any]:
-        """프로젝트 전체 상태 분석"""
+        """프로젝트 전체 상태 분석
+
+        @FEATURE:PROJECT-STATUS-001 @DATA:STATUS-ANALYSIS-001
+        """
         status = {
             "project_name": self.project_root.name,
             "moai_version": self.get_moai_version(),

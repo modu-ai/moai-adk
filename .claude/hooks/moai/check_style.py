@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Claude Code PostToolUse 훅: 파일별 린트/포맷 실행기
+Claude Code PostToolUse 훅: 파일별 린트/포맷 실행기 v0.1.0
 
 입력: stdin JSON (docs/cc-docs/hooks.md의 PostToolUse 입력 스키마)
 동작: Write/Edit/MultiEdit로 생성/수정된 파일 경로를 감지하여
@@ -21,6 +21,12 @@ Claude Code PostToolUse 훅: 파일별 린트/포맷 실행기
 - C/C++: clang-format -i
 
 확장: 기타 언어는 명령어 존재 시만 실행 (예: php -l, rubocop 등)
+
+@REQ:HOOK-STYLE-CHECK-001
+@FEATURE:CODE-FORMATTING-001
+@API:POSTTOOLUSE-HOOK-001
+@DESIGN:LANGUAGE-SPECIFIC-TOOLS-001
+@TECH:MULTI-LANG-SUPPORT-001
 """
 
 from __future__ import annotations

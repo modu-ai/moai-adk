@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 """
-MoAI-ADK Agent System Validation Script
+MoAI-ADK Agent System Validation Script v0.1.0
 설계 문서와 실제 구현 간의 일관성을 자동으로 검증하는 도구
+
+@REQ:AGENT-VALIDATION-001
+@FEATURE:SYSTEM-VALIDATION-001
+@API:VALIDATION-INTERFACE-001
+@DESIGN:CONSISTENCY-CHECK-001
+@TECH:DOCSTRING-ANALYSIS-001
 """
 
 import os
@@ -14,7 +20,11 @@ import yaml
 
 
 class AgentSystemValidator:
-    """MoAI-ADK 에이전트 시스템 검증기"""
+    """MoAI-ADK 에이전트 시스템 검증기
+
+    @FEATURE:SYSTEM-VALIDATION-001
+    @API:VALIDATOR-INTERFACE-001
+    """
 
     def __init__(self, project_root: str = None):
         self.project_root = Path(project_root or os.getcwd()).resolve()

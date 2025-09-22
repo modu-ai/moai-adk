@@ -49,7 +49,7 @@ doc-syncer 에이전트가 TDD 구현 완료 후 Living Document 동기화, 16-C
 
 ```bash
 # 1. 문서 동기화 전 체크포인트 생성
-/git:checkpoint "3-sync 시작: 문서 동기화 작업"
+/moai:git:checkpoint "3-sync 시작: 문서 동기화 작업"
 
 # 2. 간소화된 동기화 (빠른 개발 우선)
 # - README.md 업데이트
@@ -57,7 +57,7 @@ doc-syncer 에이전트가 TDD 구현 완료 후 Living Document 동기화, 16-C
 # - TAG 검증 (필수만)
 
 # 3. 동기화 완료 체크포인트
-/git:checkpoint "3-sync 완료: 문서 동기화"
+/moai:git:checkpoint "3-sync 완료: 문서 동기화"
 
 # 4. 개인 모드 완료 (PR 생략 가능)
 echo "📝 개인 모드 동기화 완료 - 다음 작업 준비됨"
@@ -127,6 +127,10 @@ doc-syncer 에이전트로 현재 프로젝트 상태를 분석하고 16-Core TA
 - TODO 항목 코드 주석 동기화
 - TAG 추적성 링크 업데이트
 
+### TAG 추적성 자동 업데이트
+
+!`python3 .moai/scripts/check-traceability.py --update`
+
 ### Phase 3: 16-Core TAG 시스템 업데이트
 
 TAG 시스템의 완전성을 보장합니다:
@@ -168,7 +172,7 @@ Git 프로세스 충돌 방지 및 안전한 커밋을 수행합니다:
 if git diff --cached --quiet; then
 echo "ℹ️ 커밋할 변경사항이 없습니다."
 else
-SPEC_ID=$(git branch --show-current | sed 's/feature\/\(SPEC-[0-9]_\)._/\1/' || echo "SPEC-UNKNOWN")
+SPEC*ID=$(git branch --show-current | sed 's/feature\/\(SPEC-[0-9]*\).\_/\1/' || echo "SPEC-UNKNOWN")
 git commit -m "📚 $SPEC_ID: 문서 동기화 및 16-Core @TAG 업데이트 완료
 
 - Living Document 실시간 동기화

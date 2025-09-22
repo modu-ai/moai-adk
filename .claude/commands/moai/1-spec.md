@@ -12,6 +12,15 @@ spec-builder 에이전트가 비즈니스 요구사항을 EARS 형식 명세로 
 
 **요구사항**: $ARGUMENTS
 
+## spec-builder 에이전트 활용
+
+spec-builder 에이전트를 사용하여 EARS 형식의 명세를 작성합니다. 에이전트가 자동으로 다음을 수행합니다:
+
+- 비즈니스 요구사항을 EARS 형식으로 변환
+- User Stories 및 수락 기준 생성
+- 16-Core @TAG 시스템으로 추적성 확보
+- GitFlow에 맞는 브랜치 생성 지원
+
 다음 순서로 SPEC 단계를 완료하세요:
 
 ## 빠른 시작
@@ -38,22 +47,26 @@ spec-builder 에이전트가 비즈니스 요구사항을 EARS 형식 명세로 
 !`python3 -c "import json; config=json.load(open('.moai/config.json')); print(config['project']['mode'])" 2>/dev/null || echo "unknown"`
 !`ls .moai/specs/ 2>/dev/null | wc -l`
 
+### 변수 자동 추출
+
+!`export SPEC_ID=$(git branch --show-current | grep -oE 'SPEC-[0-9]+' || echo "SPEC-NEW"); echo "SPEC_ID: $SPEC_ID"`
+
 ### 모드별 브랜치 전략
 
 **개인 모드 (Personal Mode)**:
 
-1. 자동 체크포인트 생성 (`/git:checkpoint "SPEC 작업 시작"`)
-2. 간소화된 브랜치: `feature/{description}` (`/git:branch --personal`)
+1. 자동 체크포인트 생성 (`/moai:git:checkpoint "SPEC 작업 시작"`)
+2. 간소화된 브랜치: `feature/{description}` (`/moai:git:branch --personal`)
 3. 파일 변경 시 자동 체크포인트 (file_watcher.py)
-4. SPEC 완료시 수동 체크포인트 (`/git:checkpoint "SPEC 완료"`)
-5. 필요시 롤백 지원 (`/git:rollback --checkpoint`)
+4. SPEC 완료시 수동 체크포인트 (`/moai:git:checkpoint "SPEC 완료"`)
+5. 필요시 롤백 지원 (`/moai:git:rollback --checkpoint`)
 
 **팀 모드 (Team Mode)**:
 
-1. develop/main 브랜치로 전환 (`/git:sync --prepare`)
+1. develop/main 브랜치로 전환 (`/moai:git:sync --prepare`)
 2. SPEC-XXX ID 자동 할당
-3. feature/SPEC-XXX-{name} 브랜치 생성 (`/git:branch --team`)
-4. 4단계 구조화 커밋 (`/git:commit --spec`)
+3. feature/SPEC-XXX-{name} 브랜치 생성 (`/moai:git:branch --team`)
+4. 4단계 구조화 커밋 (`/moai:git:commit --spec`)
 5. Draft PR 자동 생성 (gh CLI)
 
 **--project 모드 (공통)**:

@@ -1,7 +1,8 @@
 {
-  "template_version": "0.1.26",
-  "package_version": "0.1.26",
-  "last_updated": "2025-09-18T05:51:00.000000Z"
+  "_meta": {
+    "@DATA:VERSION-INFO-001": "@TECH:SEMANTIC-VERSIONING-001"
+  },
+  "last_updated": "2025-01-14T12:00:00.000000Z",
+  "package_version": "0.1.0",
+  "template_version": "0.1.0"
 }
-
-

@@ -1,31 +1,35 @@
 {
-  "project": {
-    "mode": "personal",
-    "name": "MoAI-ADK",
-    "description": "MoAI Agentic Development Kit"
+  "_meta": {
+    "@DATA:CONFIG-STRUCTURE-001": "@TECH:JSON-CONFIG-001",
+    "@REQ:PROJECT-CONFIG-001": "@DESIGN:MOAI-CONFIG-001"
+  },
+  "constitution": {
+    "enforce_tdd": true,
+    "require_tags": true,
+    "simplicity_threshold": 3,
+    "test_coverage_target": 85
   },
   "git_strategy": {
     "personal": {
       "auto_checkpoint": true,
-      "checkpoint_interval": 300,
-      "max_checkpoints": 50,
-      "cleanup_days": 7,
+      "auto_commit": true,
       "branch_prefix": "feature/",
-      "auto_commit": true
+      "checkpoint_interval": 300,
+      "cleanup_days": 7,
+      "max_checkpoints": 50
     },
     "team": {
-      "use_gitflow": true,
-      "main_branch": "main",
-      "develop_branch": "develop",
-      "feature_prefix": "feature/SPEC-",
       "auto_pr": true,
-      "draft_pr": true
+      "develop_branch": "develop",
+      "draft_pr": true,
+      "feature_prefix": "feature/SPEC-",
+      "main_branch": "main",
+      "use_gitflow": true
     }
   },
-  "constitution": {
-    "simplicity_threshold": 3,
-    "test_coverage_target": 85,
-    "enforce_tdd": true,
-    "require_tags": true
+  "project": {
+    "description": "MoAI Agentic Development Kit",
+    "mode": "personal",
+    "name": "MoAI-ADK"
   }
 }
