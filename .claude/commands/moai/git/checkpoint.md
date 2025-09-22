@@ -1,33 +1,51 @@
 ---
-name: git:checkpoint
-description: 🔄 자동 백업
-argument-hint: [message]
-allowed-tools: Bash(git:*), Read, Write, Glob, Grep
+name: moai:git:checkpoint
+description: 자동 체크포인트 생성 - 개인 모드에서 작업 진행 상황을 안전하게 백업
+argument-hint: [MESSAGE] - 체크포인트 메시지 (예: "리팩토링 시작") 또는 --list, --status, --cleanup 옵션
+allowed-tools: Bash(git:*), Bash(python3:*), Read, Write, Glob, Grep
+model: haiku
 ---
 
-# Git 자동 체크포인트
+# MoAI-ADK 체크포인트 시스템
 
-개인 모드에서 작업 진행 상황을 자동으로 백업하여 언제든 안전하게 복구할 수 있도록 합니다.
+Create automatic checkpoints to safely backup your work in personal mode.
 
-## 🎯 핵심 기능
+## Current Environment Check
 
-### 자동 체크포인트 생성
-- 현재 작업 상태를 WIP(Work In Progress) 커밋으로 저장
-- 타임스탬프 기반 체크포인트 ID 생성
-- 로컬 백업 브랜치 자동 생성
+- Current branch: !`git branch --show-current`
+- Working directory status: !`git status --porcelain`
+- Project mode: !`python3 -c "import json; config=json.load(open('.moai/config.json')); print(config['project']['mode'])" 2>/dev/null || echo "unknown"`
+- Existing checkpoints: !`ls .moai/checkpoints/ 2>/dev/null | wc -l || echo "0"`
 
-### 사용법
+## Task
 
-```bash
-# 기본 체크포인트 생성
-/git:checkpoint
+Create a checkpoint with the message: "$ARGUMENTS"
 
-# 메시지와 함께 체크포인트 생성
-/git:checkpoint "JWT 인증 로직 작업 중"
+### If no arguments provided:
+- Generate automatic checkpoint with timestamp
+- Use format: "Auto-checkpoint: YYYY-MM-DD HH:MM:SS"
 
-# 명세 완료 시 자동 체크포인트
-/git:checkpoint "SPEC-001 명세 작성 완료"
-```
+### If --list provided:
+- Show all available checkpoints from .moai/checkpoints/metadata.json
+- Display: ID, timestamp, branch, message, files changed
+
+### If --status provided:
+- Show checkpoint system status
+- Display: mode, auto-checkpoint setting, last checkpoint time
+
+### If --cleanup provided:
+- Clean up checkpoints older than 7 days
+- Preserve important tagged checkpoints
+
+## Checkpoint Creation Process:
+
+1. **Check personal mode**: Only create checkpoints in personal mode
+2. **Validate git status**: Ensure clean working state for checkpoint
+3. **Generate checkpoint ID**: Format: checkpoint_YYYYMMDD_HHMMSS
+4. **Stage all changes**: !`git add -A`
+5. **Create WIP commit**: !`git commit -m "🔄 Auto-checkpoint: [timestamp] - $ARGUMENTS"`
+6. **Create backup branch**: !`git branch checkpoint_[timestamp] HEAD`
+7. **Save metadata**: Update .moai/checkpoints/metadata.json
 
 ## 📋 실행 과정
 

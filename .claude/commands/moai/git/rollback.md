@@ -1,13 +1,58 @@
 ---
-name: git:rollback
-description: ⬅️ 안전한 롤백
-argument-hint: [checkpoint-id|--list|--last|--time]
-allowed-tools: Bash(git:*), Read, Write, Glob, Grep
+name: moai:git:rollback
+description: 체크포인트 기반 안전한 롤백 - 이전 상태로 되돌리기
+argument-hint: [CHECKPOINT-ID] - 체크포인트 ID 또는 --list, --last, --time="30분전" 옵션
+allowed-tools: Bash(git:*), Bash(python3:*), Read, Write, Glob, Grep
+model: haiku
 ---
 
-# Git 롤백 시스템
+# MoAI-ADK 롤백 시스템
 
-체크포인트 기반으로 안전하게 이전 상태로 되돌리는 시스템입니다.
+Safely rollback to previous checkpoints in personal mode.
+
+## Current Environment Check
+
+- Current branch: !`git branch --show-current`
+- Working directory status: !`git status --porcelain`
+- Project mode: !`python3 -c "import json; config=json.load(open('.moai/config.json')); print(config['project']['mode'])" 2>/dev/null || echo "unknown"`
+- Available checkpoints: !`python3 -c "
+import json, os
+if os.path.exists('.moai/checkpoints/metadata.json'):
+    with open('.moai/checkpoints/metadata.json') as f:
+        data = json.load(f)
+        print(f'{len(data.get(\"checkpoints\", []))} checkpoints available')
+else:
+    print('0 checkpoints available')
+" 2>/dev/null || echo "No metadata file"`
+
+## Task
+
+Rollback to checkpoint: "$ARGUMENTS"
+
+### If --list provided:
+- List all available checkpoints with details
+- Show: checkpoint ID, timestamp, branch, message, files changed
+
+### If --last provided:
+- Rollback to the most recent checkpoint
+- Confirm before executing rollback
+
+### If --time provided (e.g., --time="30분전"):
+- Find checkpoint closest to specified time
+- Show confirmation before rollback
+
+### If checkpoint ID provided:
+- Rollback to specific checkpoint
+- Validate checkpoint exists before rollback
+
+## Rollback Process:
+
+1. **Validate personal mode**: Only allow rollback in personal mode
+2. **Create safety checkpoint**: Backup current state before rollback
+3. **Verify checkpoint exists**: Check .moai/checkpoints/metadata.json
+4. **Restore from checkpoint**: !`git reset --hard [checkpoint-commit]`
+5. **Update working directory**: Ensure clean state after rollback
+6. **Log rollback action**: Record rollback in metadata
 
 ## 🎯 핵심 기능
 

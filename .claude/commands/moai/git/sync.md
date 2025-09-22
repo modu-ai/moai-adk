@@ -1,13 +1,68 @@
 ---
-name: git:sync
-description: 🔄 원격 동기화
-argument-hint: [--push|--pull|--both|--force]
-allowed-tools: Bash(git:*), Read, Write, Glob, Grep
+name: moai:git:sync
+description: 원격 저장소 동기화 - 모드별 최적화된 동기화 전략
+argument-hint: [ACTION] - push, pull, both, status, --auto, --safe 중 하나
+allowed-tools: Bash(git:*), Bash(python3:*), Read, Write, Glob, Grep
+model: haiku
 ---
 
-# Git 동기화 시스템
+# MoAI-ADK 동기화 시스템
 
-개인/팀 모드에 최적화된 원격 저장소 동기화를 제공합니다.
+Mode-optimized remote repository synchronization strategies.
+
+## Current Environment Check
+
+- Current branch: !`git branch --show-current`
+- Remote status: !`git status -b --porcelain | head -1`
+- Uncommitted changes: !`git status --porcelain | wc -l`
+- Commits ahead: !`git rev-list --count @{u}..HEAD 2>/dev/null || echo "0"`
+- Commits behind: !`git rev-list --count HEAD..@{u} 2>/dev/null || echo "0"`
+- Project mode: !`python3 -c "import json; config=json.load(open('.moai/config.json')); print(config['project']['mode'])" 2>/dev/null || echo "unknown"`
+
+## Task
+
+Execute synchronization: "$ARGUMENTS"
+
+### Sync Actions:
+
+#### If "push" provided:
+- Push current branch to remote
+- Handle upstream branch setup if needed
+- Show push results and any conflicts
+
+#### If "pull" provided:
+- Pull latest changes from remote
+- Handle merge conflicts if they occur
+- Update local branch with remote changes
+
+#### If "both" provided:
+- First pull latest changes
+- Then push local commits
+- Handle any merge conflicts in between
+
+#### If "status" provided:
+- Show detailed synchronization status
+- Display commits ahead/behind
+- Show any uncommitted changes
+
+#### If "--auto" provided:
+- Automatically determine sync strategy based on mode
+- Personal mode: minimal syncing
+- Team mode: full GitFlow sync
+
+#### If "--safe" provided:
+- Create checkpoint before syncing
+- Allow rollback if sync fails
+- Preserve local changes during conflicts
+
+## Sync Process:
+
+1. **Check remote connection**: !`git remote -v`
+2. **Fetch latest refs**: !`git fetch origin`
+3. **Analyze differences**: Compare local and remote
+4. **Execute sync strategy**: Based on mode and arguments
+5. **Handle conflicts**: Provide resolution guidance if needed
+6. **Update tracking**: Log sync operation
 
 ## 🎯 핵심 기능
 

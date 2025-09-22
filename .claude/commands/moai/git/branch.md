@@ -1,13 +1,60 @@
 ---
-name: git:branch
-description: 🌿 브랜치 관리
-argument-hint: [create|switch|list|clean|--auto]
-allowed-tools: Bash(git:*), Read, Write, Glob, Grep
+name: moai:git:branch
+description: 스마트 브랜치 관리 - 모드별 최적화된 브랜치 전략
+argument-hint: [ACTION] - create, switch, list, clean, --status, --personal, --team 중 하나
+allowed-tools: Bash(git:*), Bash(python3:*), Read, Write, Glob, Grep
+model: haiku
 ---
 
-# Git 브랜치 관리 시스템
+# MoAI-ADK 브랜치 관리 시스템
 
-개인/팀 모드에 최적화된 브랜치 생성, 전환, 관리를 자동화합니다.
+Smart branch management with mode-specific optimization strategies.
+
+## Current Environment Check
+
+- Current branch: !`git branch --show-current`
+- Local branches: !`git branch -l | wc -l`
+- Remote branches: !`git branch -r | wc -l`
+- Project mode: !`python3 -c "import json; config=json.load(open('.moai/config.json')); print(config['project']['mode'])" 2>/dev/null || echo "unknown"`
+- Recent commits: !`git log --oneline -3`
+
+## Task
+
+Execute branch action: "$ARGUMENTS"
+
+### Branch Actions:
+
+#### If "create" provided:
+- Create new branch based on current mode
+- Personal mode: feature/[description] format
+- Team mode: feature/SPEC-XXX-[description] format
+
+#### If "switch" provided:
+- Switch to specified branch safely
+- Stash changes if needed
+- Update working directory
+
+#### If "list" provided:
+- Show all branches with status
+- Highlight current branch
+- Show last commit for each branch
+
+#### If "clean" provided:
+- Clean up merged branches
+- Remove stale remote tracking branches
+- Preserve important branches
+
+#### If "--status" provided:
+- Show detailed branch status
+- Display: current branch, commits ahead/behind, working tree status
+
+#### If "--personal" provided:
+- Configure branch strategy for personal mode
+- Set simplified branch naming
+
+#### If "--team" provided:
+- Configure branch strategy for team mode
+- Set GitFlow-compatible branch naming
 
 ## 🎯 핵심 기능
 

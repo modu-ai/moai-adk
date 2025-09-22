@@ -1,13 +1,66 @@
 ---
-name: git:commit
-description: 💾 스마트 커밋
-argument-hint: [message|--auto|--spec|--build|--sync]
-allowed-tools: Bash(git:*), Read, Write, Glob, Grep
+name: moai:git:commit
+description: Constitution 5원칙 기반 자동 커밋 메시지 생성
+argument-hint: [MESSAGE] - 커밋 메시지 또는 --auto, --spec, --red, --green, --refactor 옵션
+allowed-tools: Bash(git:*), Bash(python3:*), Read, Write, Glob, Grep
+model: haiku
 ---
 
-# Git 스마트 커밋 시스템
+# MoAI-ADK 스마트 커밋 시스템
 
-Constitution 5원칙을 준수하고 16-Core @TAG 시스템과 연동된 자동 커밋 메시지 생성을 제공합니다.
+Generate Constitution-compliant commit messages with 16-Core @TAG integration.
+
+## Current Environment Check
+
+- Current branch: !`git branch --show-current`
+- Staged changes: !`git diff --cached --name-only | wc -l`
+- Unstaged changes: !`git diff --name-only | wc -l`
+- Project mode: !`python3 -c "import json; config=json.load(open('.moai/config.json')); print(config['project']['mode'])" 2>/dev/null || echo "unknown"`
+- Last commit: !`git log --oneline -1`
+
+## Task
+
+Create commit with message: "$ARGUMENTS"
+
+### Commit Actions:
+
+#### If custom message provided:
+- Use provided message as-is
+- Add Constitution compliance footer
+- Include 16-Core @TAG references if found
+
+#### If "--auto" provided:
+- Generate automatic commit message based on changes
+- Analyze staged files and create meaningful message
+- Include appropriate emoji and @TAG references
+
+#### If "--spec" provided:
+- Create SPEC-related commit message
+- Format: "📝 SPEC-XXX: [description]"
+- Include EARS requirement references
+
+#### If "--red" provided:
+- Create TDD RED phase commit
+- Format: "🔴 SPEC-XXX: 실패하는 테스트 작성 완료 (RED)"
+- Include test file changes
+
+#### If "--green" provided:
+- Create TDD GREEN phase commit
+- Format: "🟢 SPEC-XXX: 최소 구현으로 테스트 통과 (GREEN)"
+- Include implementation details
+
+#### If "--refactor" provided:
+- Create TDD REFACTOR phase commit
+- Format: "🔄 SPEC-XXX: 코드 품질 개선 및 리팩터링 완료"
+- Include Constitution compliance notes
+
+## Commit Process:
+
+1. **Stage changes**: !`git add -A` (if needed)
+2. **Generate message**: Based on argument and file changes
+3. **Add Constitution footer**: Include compliance statement
+4. **Create commit**: !`git commit -m "[generated-message]"`
+5. **Update metadata**: Log commit in project tracking
 
 ## 🎯 핵심 기능
 
