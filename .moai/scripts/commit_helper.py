@@ -72,7 +72,7 @@ class CommitHelper:
         @DESIGN:COMMIT-MESSAGE-001
         @TECH:CLAUDE-CODE-STD-001
         """
-        if user_input == "--auto":
+        if user_input == "--auto" or not user_input:
             commit_msg = self.generate_auto_message()
             detail = "자동 생성된 커밋 메시지"
         elif user_input.startswith("--checkpoint"):
@@ -80,7 +80,7 @@ class CommitHelper:
             commit_msg = f"🔄 체크포인트: {checkpoint_msg}" if checkpoint_msg else "🔄 자동 체크포인트"
             detail = f"체크포인트 생성: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         else:
-            commit_msg = user_input if user_input else "📝 업데이트"
+            commit_msg = user_input
             detail = "사용자 지정 커밋 메시지"
 
         # Constitution 준수 footer 추가
@@ -125,9 +125,13 @@ Co-Authored-By: Claude <noreply@anthropic.com>"""
         @API:COMMIT-INTERFACE-001
         @DESIGN:COMMIT-WORKFLOW-001
         """
-        user_input = " ".join(args) if args else "--auto"
+        user_input = " ".join(args).strip() if args else ""
 
-        print(f"📝 커밋 처리: {user_input}")
+        # 빈 인수일 때는 자동 메시지 생성 모드로 설정
+        if not user_input:
+            print("📝 커밋 처리: 자동 메시지 생성 모드")
+        else:
+            print(f"📝 커밋 처리: {user_input}")
 
         # 변경사항 확인
         changed_files = self.get_changed_files()
