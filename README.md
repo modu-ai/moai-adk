@@ -2,7 +2,7 @@
 
 **Claude Code 표준 기반 Spec-First TDD 완전 자동화 개발 시스템**
 
-[![Version](https://img.shields.io/badge/version-0.1.26-blue)](https://github.com/modu-ai/moai-adk/releases)
+[![Version](https://img.shields.io/badge/version-0.2.1-blue)](https://github.com/modu-ai/moai-adk/releases)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)](https://docs.anthropic.com/claude-code)
@@ -53,13 +53,14 @@ claude
 **획기적인 패키지 최적화로 개발 경험 혁신:**
 
 - **📦 패키지 크기**: 948KB → 192KB (**80% 감소**)
-- **🗂️ 에이전트 파일**: 60개 → 4개 (**93% 감소**)
+- **🗂️ 에이전트 파일**: 60개 → 6개 (**90% 감소**)
 - **⚡ 명령어 파일**: 13개 → 3개 (**77% 감소**)
 - **🚀 설치 시간**: **50% 이상 단축**
 - **💾 메모리 사용량**: **70% 이상 감소**
 
-핵심 에이전트만 유지하여 단순성과 성능을 동시 확보:
-- `spec-builder.md`, `code-builder.md`, `doc-syncer.md`, `claude-code-manager.md`
+6개 에이전트로 완전한 개발 생태계 구성:
+- **MoAI 핵심 3개**: `spec-builder.md`, `code-builder.md`, `doc-syncer.md`
+- **Awesome 전문 3개**: `claude-code-manager.md`, `codex.md`, `gemini.md`
 
 ### 3단계 자동화 파이프라인 (간소화)
 
@@ -67,12 +68,17 @@ claude
 2. **BUILD**: TDD 구현 + 7단계 자동 커밋
 3. **SYNC**: 문서 동기화 + PR Ready
 
-### 핵심 AI 에이전트 (최적화됨)
+### 6개 에이전트 생태계
 
+**MoAI 핵심 3개 (순수 개발 워크플로우):**
 - **spec-builder**: EARS 명세 작성 + GitFlow 시작
 - **code-builder**: TDD 구현 + 자동 커밋
 - **doc-syncer**: 문서 동기화 + PR 완료
-- **claude-code-manager**: 전체 프로세스 관리
+
+**Awesome 전문 3개 (고급 기능):**
+- **claude-code-manager**: Claude Code 설정 관리 + 프로젝트 최적화
+- **codex**: 고급 코드 생성 + 시스템 설계
+- **gemini**: 다중 모드 분석 + 품질 검증
 
 ### Constitution 5원칙 자동 검증
 
@@ -260,14 +266,14 @@ MoAI-ADK에 기여해주셔서 감사합니다!
 | 지표 | 이전 | 현재 | 개선율 |
 |------|------|------|---------|
 | 패키지 크기 | 948KB | 192KB | **80% 감소** |
-| 에이전트 파일 | 60개 | 4개 | **93% 감소** |
+| 에이전트 파일 | 60개 | 6개 | **90% 감소** |
 | 명령어 파일 | 13개 | 3개 | **77% 감소** |
 | 설치 시간 | 100% | 50% | **50% 단축** |
 | 메모리 사용량 | 100% | 30% | **70% 절약** |
 
 ### 최적화 전략
 
-1. **핵심 에이전트 통합**: 60개 → 4개 핵심 에이전트로 집중
+1. **핵심 에이전트 통합**: 60개 → 6개 에이전트로 집중 (MoAI 핵심 3개 + Awesome 전문 3개)
 2. **명령어 간소화**: 13개 → 3개 파이프라인 명령어로 단순화
 3. **구조 평면화**: _templates 폴더 제거로 중복 구조 해결
 4. **Constitution 5원칙 준수**: 단순성 원칙에 따른 모듈 수 제한

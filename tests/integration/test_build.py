@@ -67,7 +67,7 @@ class TestMoAIBuilder(unittest.TestCase):
         moai_dir = self.src_dir / '.moai'
         moai_dir.mkdir()
         moai_config = {
-            "moai_version": "0.1.17",
+            "moai_version": "0.2.1",
             "constitution": {"maxProjects": 3}
         }
         with open(moai_dir / 'config.json', 'w') as f:
@@ -417,7 +417,7 @@ class TestBuildSystemIntegration(unittest.TestCase):
         
         # MoAI 설정
         moai_config = {
-            "moai_version": "0.1.17",
+            "moai_version": "0.2.1",
             "project_type": "spec_first_tdd",
             "constitution": {"maxProjects": 3, "enforceTDD": True},
             "tag_system": {"enabled": True, "version": "16-Core"},

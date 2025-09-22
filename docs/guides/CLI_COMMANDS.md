@@ -166,7 +166,7 @@ ls -la dist/
 # 3. 배포
 git add -A
 git commit -m "feat: new feature implementation"
-git tag v0.1.17
+git tag v0.2.1
 git push origin main --tags
 python -m twine upload dist/*
 ```
@@ -212,7 +212,7 @@ make build-clean
 
 - name: Create Git tag
   run: |
-    VERSION=$(python -c "from src.moai_adk._version import __version__; print(__version__)")
+    VERSION=$(python -c "from moai_adk._version import __version__; print(__version__)")
     git tag v$VERSION
     git push origin v$VERSION
 ```
@@ -231,7 +231,7 @@ make build-clean
 python -m twine upload dist/*
 
 # Git 태그 및 푸시
-VERSION=$(python -c "from src.moai_adk._version import __version__; print(__version__)")
+VERSION=$(python -c "from moai_adk._version import __version__; print(__version__)")
 git add -A
 git commit -m "build: release v$VERSION"
 git tag v$VERSION
@@ -279,8 +279,8 @@ moai init --force-copy  # 대안 사용
 
 ---
 
-**마지막 업데이트**: 2025-09-16
-**MoAI-ADK 버전**: v0.1.17
+**마지막 업데이트**: 2025-09-22
+**MoAI-ADK 버전**: v0.2.1
 **CLI 버전**: v2.0.0
 
 **🎯 "올바른 명령어로 효율적인 워크플로우를 경험하세요!"**

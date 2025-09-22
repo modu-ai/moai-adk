@@ -10,6 +10,7 @@
 
 1. [🚀 Executive Summary](#-executive-summary)
 2. [🏗️ Architecture Overview](#️-architecture-overview)
+   - [AI 전문 에이전트](#ai-전문-에이전트)
 3. [📦 Installation Guide](#-installation-guide)
 4. [🎯 Usage Guide](#-usage-guide)
 5. [🔄 Migration Guide](#-migration-guide)
@@ -36,7 +37,7 @@ MoAI-ADK 0.2.1은 **GitFlow 완전 투명성**을 통해 한국 개발자들이 
 | **설치 시간** | 100% | **50%** | 50% 단축 |
 | **메모리 사용량** | 100% | **30%** | 70% 절약 |
 | **구조 단순화** | 복잡한 템플릿 구조 | **평면화된 구조** | Constitution 단순성 원칙 준수 |
-| **핵심 에이전트** | 산재된 기능들 | **4개 핵심 에이전트로 통합** | spec-builder, code-builder, doc-syncer, claude-code-manager |
+| **핵심 에이전트** | 산재된 기능들 | **5개 에이전트 체계** | 4개 MoAI 핵심 + 2개 AI 전문 에이전트 |
 
 #### 🎯 0.2.1의 혁신 포인트 (SPEC-003)
 
@@ -44,11 +45,9 @@ MoAI-ADK 0.2.1은 **GitFlow 완전 투명성**을 통해 한국 개발자들이 
 2. **7단계 자동 커밋 시스템**:
    - SPEC 단계 (4단계): 명세 작성 → User Stories → 수락 기준 → 명세 완성
    - BUILD 단계 (3단계): RED → GREEN → REFACTOR
-3. **4개 핵심 에이전트 통합**:
-   - spec-builder: EARS 명세 + GitFlow
-   - code-builder: TDD + Constitution 검증
-   - doc-syncer: 문서 동기화 + PR 관리
-   - claude-code-manager: 전체 프로세스 관리
+3. **5개 에이전트 생태계 구축**:
+   - **MoAI 핵심 4개**: spec-builder, code-builder, doc-syncer, cc-manager
+   - **AI 전문 2개**: gpt-codex (고급 코드 생성), gemini (다중 모드 분석)
 4. **3단계 간소화 파이프라인**: /moai:1-spec → /moai:2-build → /moai:3-sync
 5. **Constitution 5원칙 자동 검증**: 단순성 원칙 준수로 모듈 ≤ 3개
 6. **성능 혁신**: 설치 50% 단축, 메모리 70% 절약
@@ -213,15 +212,6 @@ You are a documentation synchronization and PR management expert.
 - **PR 완료**: Draft → Ready for Review 자동 전환
 - **팀 협업**: 리뷰어 할당 및 알림 시스템
 
-#### 4. claude-code-manager (전체 프로세스 관리)
-
-**파일**: `.claude/agents/moai/claude-code-manager.md`
-
-**책임 영역:**
-- **MoAI 프로젝트 감지**: MoAI-ADK 환경 자동 인식
-- **Claude Code 최적화**: 설정 자동 최적화
-- **권한 문제 해결**: 접근 권한 자동 관리
-- **전체 워크플로우 관리**: 3단계 파이프라인 조율
 
 ### 7단계 자동 커밋 시스템
 
@@ -251,6 +241,84 @@ You are a documentation synchronization and PR management expert.
 # 7단계: 리팩터링 (REFACTOR)
 🔄 SPEC-001: 코드 품질 개선 및 리팩터링 완료
 ```
+
+### AI 전문 에이전트
+
+#### 고급 AI 기능 통합
+
+MoAI-ADK 0.2.1에서는 **4개 핵심 MoAI 에이전트** 외에도 **2개의 AI 전문 에이전트**를 추가로 제공합니다:
+
+**파일 위치**: `.claude/agents/awesome/`
+
+#### 1. gpt-codex (고급 코드 생성 전문가)
+
+**파일**: `.claude/agents/awesome/gpt-codex.md`
+
+```markdown
+---
+name: gpt-codex
+description: GPT-Codex 최고 추론 모드 기반 코드 생성 전문가. 복잡한 알고리즘과 시스템 설계에 PROACTIVELY 사용.
+tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob
+model: sonnet
+---
+```
+
+**전문 영역:**
+- **고급 알고리즘 설계**: 복잡한 로직과 최적화된 알고리즘
+- **시스템 아키텍처**: 확장 가능한 설계 패턴
+- **성능 최적화**: 메모리와 CPU 효율성 극대화
+- **코드 품질**: Clean Code 원칙과 SOLID 원칙 준수
+
+**사용 시나리오:**
+```bash
+# Claude Code에서 사용
+@gpt-codex "Implement advanced sorting algorithm with O(n log n) complexity"
+@gpt-codex "Design scalable microservice architecture"
+@gpt-codex "Optimize database query performance"
+```
+
+#### 2. gemini (다중 모드 분석 전문가)
+
+**파일**: `.claude/agents/awesome/gemini.md`
+
+```markdown
+---
+name: gemini
+description: Gemini 다중 모드 분석 전문가. 코드 리뷰, 품질 분석, 보안 검증에 PROACTIVELY 사용.
+tools: Read, Grep, Glob, Bash
+model: sonnet
+---
+```
+
+**전문 영역:**
+- **코드 리뷰**: 구조적/논리적 결함 탐지
+- **품질 분석**: 메트릭 기반 품질 평가
+- **보안 검증**: 취약점과 보안 이슈 감지
+- **성능 분석**: 병목점과 최적화 포인트 식별
+
+**사용 시나리오:**
+```bash
+# Claude Code에서 사용
+@gemini "Comprehensive code review before merge"
+@gemini "Scan for security vulnerabilities"
+@gemini "Verify Constitution 5 principles compliance"
+@gemini "Identify performance bottlenecks"
+```
+
+#### Sub-Agent 워크플로우 통합
+
+**3단계 파이프라인과의 연동:**
+- **SPEC 단계**: spec-builder → @gpt-codex (필요시 고급 설계)
+- **BUILD 단계**: code-builder → @gemini (품질 검증)
+- **SYNC 단계**: doc-syncer → @gemini (최종 분석)
+
+**Constitution 5원칙 준수:**
+모든 AI 전문 에이전트는 MoAI-ADK의 핵심 원칙을 자동으로 준수합니다:
+- Simplicity: 복잡도 ≤ 3 모듈 제한
+- Architecture: 라이브러리 분리 원칙
+- Testing: TDD 필수, 커버리지 ≥85%
+- Observability: 구조화 로깅 의무화
+- Versioning: 시맨틱 버저닝 준수
 
 ---
 
@@ -916,6 +984,43 @@ project                 # 통합 프로젝트 동기화
 # ✅ 문서 동기화 완료
 # ✅ PR Ready for Review
 # ✅ 리뷰어 할당 완료
+```
+
+### AI 전문 에이전트 사용법
+
+#### gpt-codex (고급 코드 생성)
+```bash
+# Claude Code에서 에이전트 호출
+@gpt-codex "Implement advanced sorting algorithm with O(n log n) complexity"
+
+# 자동 실행 과정:
+1. 고급 알고리즘 분석 및 설계
+2. 최적화된 코드 생성
+3. Constitution 5원칙 준수 확인
+4. 성능 테스트 케이스 생성
+
+# 결과:
+# ✅ 고품질 알고리즘 구현
+# ✅ 최적화된 성능
+# ✅ 완전한 테스트 커버리지
+```
+
+#### gemini (다중 모드 분석)
+```bash
+# Claude Code에서 에이전트 호출
+@gemini "Comprehensive code review before merge"
+
+# 자동 실행 과정:
+1. 코드 구조 및 품질 분석
+2. 보안 취약점 스캔
+3. 성능 병목점 식별
+4. Constitution 5원칙 검증
+
+# 결과:
+# ✅ 코드 품질 리포트 생성
+# ✅ 보안 이슈 탐지 및 수정 제안
+# ✅ 성능 최적화 권장사항
+# ✅ Constitution 준수 확인
 ```
 
 ### 에이전트 기반 품질 검증

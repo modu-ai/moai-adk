@@ -1,7 +1,6 @@
 {
   "permissions": {
     "allow": [
-      "mcp__sequential-thinking__sequentialthinking",
       "Bash(tree:*)",
       "Bash(moai:*)",
       "Bash(rm:*)",
@@ -24,5 +23,5 @@
     "deny": [],
     "ask": []
   },
-  "outputStyle": "MoAI Expert"
+  "outputStyle": "MoAI Audit"
 }

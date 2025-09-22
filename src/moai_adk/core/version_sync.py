@@ -48,26 +48,16 @@ class VersionSyncManager:
                     "description": "Python package version"
                 }
             ],
-            
-            # Python source files
+
+            # Python source files (explicit __version__ only)
             "**/*.py": [
                 {
                     "pattern": r'__version__\s*=\s*"[^"]*"',
-                    "replacement": f'__version__ = "0.1.17"',
+                    "replacement": f'__version__ = "{self.current_version}"',
                     "description": "Python module version"
-                },
-                {
-                    "pattern": r'def get_version\([^)]*\):\s*return\s*"[^"]*"',
-                    "replacement": f'def get_version(component="moai_adk"): return "0.1.17"',
-                    "description": "Version function return value"
-                },
-                {
-                    "pattern": r'"moai_version":\s*"[^"]*"',
-                    "replacement": f'"moai_version": "0.1.17"',
-                    "description": "Configuration moai_version"
                 }
             ],
-            
+
             # Markdown documents
             "**/*.md": [
                 {
@@ -96,7 +86,7 @@ class VersionSyncManager:
                     "description": "Korean version footer"
                 }
             ],
-            
+
             # JSON configuration files
             "**/*.json": [
                 {
@@ -106,7 +96,7 @@ class VersionSyncManager:
                 },
                 {
                     "pattern": r'"moai_version":\s*"[^"]*"',
-                    "replacement": f'"moai_version": "0.1.17"',
+                    "replacement": f'"moai_version": "{self.current_version}"',
                     "description": "MoAI specific version field"
                 },
                 {
@@ -115,21 +105,16 @@ class VersionSyncManager:
                     "description": "MoAI ADK version field"
                 }
             ],
-            
+
             # GitHub Actions workflows
             "**/*.yml": [
-                {
-                    "pattern": r'v[0-9]+\.[0-9]+\.[0-9]+',
-                    "replacement": f'v{self.current_version}',
-                    "description": "YAML version tags"
-                },
                 {
                     "pattern": r'MoAI-ADK v[0-9]+\.[0-9]+\.[0-9]+',
                     "replacement": f'MoAI-ADK v{self.current_version}',
                     "description": "MoAI-ADK version in YAML"
                 }
             ],
-            
+
             # Makefile
             "Makefile": [
                 {
@@ -138,7 +123,7 @@ class VersionSyncManager:
                     "description": "Makefile version display"
                 }
             ],
-            
+
             # CHANGELOG
             "CHANGELOG.md": [
                 {
@@ -305,7 +290,7 @@ class VersionSyncManager:
         script_content = f'''#!/usr/bin/env python3
 """
 MoAI-ADK 버전 업데이트 자동화 스크립트
-사용법: python scripts/update_version.py 0.2.0
+사용법: python scripts/update_version.py <new_version>
 """
 
 import sys
@@ -320,15 +305,20 @@ def update_version_in_file(file_path: Path, old_version: str, new_version: str) 
             
         # 버전 패턴 교체
         patterns = [
-            (r'__version__\\s*=\\s*"[^"]*"', f'__version__ = "0.1.17"'),
-            (r'version\\s*=\\s*"[^"]*"', f'version = "{{new_version}}"'),
-            (r'MoAI-ADK v[0-9]+\\.[0-9]+\\.[0-9]+', f'MoAI-ADK v{{new_version}}'),
-            (r'"moai_version":\\s*"[^"]*"', f'"moai_version": "0.1.17"')
+            (r'__version__\\s*=\\s*"[^"]*"', '"__VERSION_PLACEHOLDER__"'),
+            (r'version\\s*=\\s*"[^"]*"', 'version = "{new_version}"'),
+            (r'MoAI-ADK v[0-9]+\\.[0-9]+\\.[0-9]+', 'MoAI-ADK v{new_version}'),
+            (r'"moai_version":\\s*"[^"]*"', '"moai_version": "{new_version}"')
         ]
         
         original_content = content
         for pattern, replacement in patterns:
-            content = re.sub(pattern, replacement.format(new_version=new_version), content)
+            rep = replacement
+            if replacement == '"__VERSION_PLACEHOLDER__"':
+                rep = f'__version__ = "{new_version}"'
+            else:
+                rep = replacement.format(new_version=new_version)
+            content = re.sub(pattern, rep, content)
             
         if content != original_content:
             with open(file_path, 'w', encoding='utf-8') as f:
@@ -356,10 +346,10 @@ def main() -> None:
     print(f"🗿 MoAI-ADK 버전 업데이트: v{{new_version}}")
     
     # 버전 동기화 실행
-    from src.version_sync import VersionSyncManager
+    from moai_adk.core.version_sync import VersionSyncManager
     
     # _version.py 먼저 업데이트
-    version_file = Path("src/_version.py")
+    version_file = Path("src/moai_adk/_version.py")
     update_version_in_file(version_file, None, new_version)
     
     # 전체 프로젝트 동기화

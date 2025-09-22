@@ -46,53 +46,81 @@ class ConfigManager:
             return True
 
         settings = {
+            "permissions": {
+                "defaultMode": "plan",
+                "allow": [
+                    "Task",
+                    "Write",
+                    "Read",
+                    "Edit",
+                    "MultiEdit",
+                    "Bash(git:*)",
+                    "Bash(mkdir:*)",
+                    "Bash(cp:*)",
+                    "Bash(mv:*)",
+                    "Bash(ls:*)",
+                    "Bash(find:*)",
+                    "Bash(grep:*)",
+                    "Bash(python3:*)",
+                    "Bash(pytest:*)",
+                    "Bash(poetry:*)",
+                    "Bash(ruff:*)",
+                    "Bash(mypy:*)",
+                    "Bash(npm:*)",
+                    "Bash(pnpm:*)",
+                    "Bash(yarn:*)",
+                    "Bash(go:*)",
+                    "Bash(cargo:*)",
+                    "Bash(gradle:*)",
+                    "Bash(mvn:*)",
+                    "Bash(dotnet:*)",
+                    "Bash(cmake:*)",
+                    "Bash(make:*)",
+                    "Bash(chmod:*)",
+                    "Bash(tree:*)",
+                    "Bash(moai:*)",
+                    "WebFetch",
+                    "Grep",
+                    "Glob",
+                    "NotebookEdit",
+                    "TodoWrite",
+                    "WebSearch",
+                    "BashOutput",
+                    "KillShell",
+                    "ExitPlanMode"
+                ],
+                "deny": [
+                    "Bash(sudo:*)",
+                    "Edit(.env*)",
+                    "Read(.env*)",
+                    "Write(.env*)"
+                ],
+                "ask": [
+                    "Bash(pip install:*)",
+                    "Bash(npm install:*)",
+                    "Bash(git push:*)",
+                    "Bash(git pull:*)",
+                    "Bash(git merge:*)",
+                    "Bash(rm:*)",
+                    "Bash(rmdir:*)",
+                    "Write(*.config.*)",
+                    "Write(pyproject.toml)",
+                    "Bash(npm publish:*)",
+                    "Bash(poetry publish:*)",
+                    "Bash(docker:*)",
+                    "Bash(kubectl:*)",
+                    "Bash(systemctl:*)",
+                    "Bash(service:*)"
+                ]
+            },
             "hooks": {
                 "PreToolUse": [
                     {
-                        "matcher": "Edit|MultiEdit|Write|Bash",
+                        "matcher": "Edit\\(.+\\.(py|js|ts|jsx|tsx|go|java|c|cpp|rs|php|rb|kt|scala|cs|swift|dart|html|css|scss|sass|less)\\)|MultiEdit\\(.+\\.(py|js|ts|jsx|tsx|go|java|c|cpp|rs|php|rb|kt|scala|cs|swift|dart|html|css|scss|sass|less)\\)|Write\\(.+\\.(py|js|ts|jsx|tsx|go|java|c|cpp|rs|php|rb|kt|scala|cs|swift|dart|html|css|scss|sass|less)\\)",
                         "hooks": [
                             {
                                 "type": "command",
-                                "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_write_guard.py",
-                                "timeout": 60,
-                                "description": "Sensitive path protection & risk guard"
-                            }
-                        ]
-                    },
-                    {
-                        "matcher": "Bash|WebFetch",
-                        "hooks": [
-                            {
-                                "type": "command",
-                                "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/policy_block.py",
-                                "description": "Dangerous commands and policy blocking"
-                            }
-                        ]
-                    },
-                    {
-                        "matcher": "Edit|MultiEdit|Write",
-                        "hooks": [
-                            {
-                                "type": "command",
-                                "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/constitution_guard.py",
-                                "description": "Constitution 5 principles validation"
-                            },
-                            {
-                                "type": "command",
-                                "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag_validator.py",
-                                "description": "16-Core @TAG validation"
-                            }
-                        ]
-                    }
-                ],
-                "PostToolUse": [
-                    {
-                        "matcher": "Edit|MultiEdit|Write",
-                        "hooks": [
-                            {
-                                "type": "command",
-                                "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_stage_guard.py",
-                                "description": "Stage validation & doc sync"
+                                "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag_validator.py"
                             }
                         ]
                     }
@@ -103,23 +131,21 @@ class ConfigManager:
                         "hooks": [
                             {
                                 "type": "command",
-                                "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start_notice.py",
-                                "description": "MoAI-ADK session initialization and project status display"
+                                "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start_notice.py"
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": "*",
+                        "hooks": [
+                            {
+                                "type": "command",
+                                "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/language_detector.py"
                             }
                         ]
                     }
                 ]
-            },
-            "permissions": {
-                "defaultMode": "default",
-                "allow": [
-                    "Read(**)",
-                    "Grep",
-                    "Glob",
-                    "Task",
-                    "Bash",
-                ]
-            },
+            }
         }
 
         try:
@@ -152,35 +178,35 @@ class ConfigManager:
         if config_path.exists() and not getattr(config, 'force_overwrite', False):
             return True
 
-            moai_config = {
-                "version": get_version("moai_adk"),
-                "created": datetime.now().isoformat(),
-                "project": {
-                    "name": config.name,
-                    "type": config.project_type,
-                    "template": config.template,
-                    "runtime": config.runtime.name,
-                    "tech_stack": config.tech_stack,
+        moai_config = {
+            "version": get_version("moai_adk"),
+            "created": datetime.now().isoformat(),
+            "project": {
+                "name": config.name,
+                "type": config.project_type,
+                "template": config.template,
+                "runtime": config.runtime.name,
+                "tech_stack": config.tech_stack,
+            },
+            "templates": {
+                "mode": getattr(config, 'templates_mode', 'copy')
+            },
+            "constitution": {
+                "simplicity": {"max_projects": 3, "enforce": True},
+                "architecture": {"library_first": True, "enforce": True},
+                "testing": {
+                    "tdd_required": True,
+                    "coverage_target": 0.8,
+                    "enforce": True,
                 },
-                "templates": {
-                    "mode": getattr(config, 'templates_mode', 'copy')
-                },
-                "constitution": {
-                    "simplicity": {"max_projects": 3, "enforce": True},
-                    "architecture": {"library_first": True, "enforce": True},
-                    "testing": {
-                        "tdd_required": True,
-                        "coverage_target": 0.8,
-                        "enforce": True,
-                    },
-                    "observability": {"structured_logging": True, "enforce": True},
-                    "versioning": {"format": "MAJOR.MINOR.BUILD", "enforce": True},
-                },
-                "tags": {
-                    "version": "16-core",
-                    "categories": {
-                        "spec": ["REQ", "SPEC", "DESIGN", "TASK"],
-                        "steering": ["VISION", "STRUCT", "TECH", "ADR"],
+                "observability": {"structured_logging": True, "enforce": True},
+                "versioning": {"format": "MAJOR.MINOR.BUILD", "enforce": True},
+            },
+            "tags": {
+                "version": "16-core",
+                "categories": {
+                    "spec": ["REQ", "SPEC", "DESIGN", "TASK"],
+                    "steering": ["VISION", "STRUCT", "TECH", "ADR"],
                     "implementation": ["FEATURE", "API", "TEST", "DATA"],
                     "quality": ["PERF", "SEC", "DEBT", "TODO"],
                 },

@@ -78,13 +78,15 @@ class TestConfigManager:
         assert "hooks" in settings_data
         assert "permissions" in settings_data
 
-        # Check hooks configuration
+        # Check hooks configuration (minimal: tag_validator + session_start hooks)
         pre_entries = settings_data["hooks"].get("PreToolUse", [])
         all_commands = [hook.get("command", "") for entry in pre_entries for hook in entry.get("hooks", [])]
-        assert any(cmd.endswith("pre_write_guard.py") for cmd in all_commands)
-        assert any(cmd.endswith("constitution_guard.py") for cmd in all_commands)
+        assert any(cmd.endswith("tag_validator.py") for cmd in all_commands)
         assert "SessionStart" in settings_data["hooks"]
-        assert settings_data["hooks"]["SessionStart"][0]["hooks"][0]["command"].endswith("session_start_notice.py")
+        session_start = settings_data["hooks"]["SessionStart"]
+        ss_cmds = [hook.get("command", "") for entry in session_start for hook in entry.get("hooks", [])]
+        assert any(cmd.endswith("session_start_notice.py") for cmd in ss_cmds)
+        assert any(cmd.endswith("language_detector.py") for cmd in ss_cmds)
 
     def test_create_claude_settings_file_security_failure(self, config_manager, temp_dir, sample_config):
         """Test Claude settings file creation when security validation fails."""

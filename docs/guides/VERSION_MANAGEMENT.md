@@ -5,7 +5,7 @@ MoAI-ADK는 **완전 자동화된 버전 관리 시스템**을 제공합니다. 
 ## 🎯 핵심 개념
 
 ### 중앙집중식 버전 관리
-- **단일 소스**: `src/_version.py` 파일이 모든 버전 정보의 원천
+- **단일 소스**: `src/moai_adk/_version.py` 파일이 모든 버전 정보의 원천
 - **자동 동기화**: 버전 변경 시 관련된 80여개 파일이 자동으로 업데이트
 - **일관성 보장**: 버전 불일치 방지 및 실시간 검증
 
@@ -22,7 +22,7 @@ MoAI-ADK는 **완전 자동화된 버전 관리 시스템**을 제공합니다. 
 ### 1. 현재 버전 확인
 ```bash
 make version
-# 출력: 🗿 MoAI-ADK v0.1.17
+# 출력: 🗿 MoAI-ADK v0.2.1
 ```
 
 ### 2. 버전 업데이트 (권장)
@@ -51,7 +51,7 @@ make version-verify
 ## 🔄 자동화 워크플로우
 
 ### GitHub Actions 자동 동기화
-`src/_version.py` 파일이 변경되면 자동으로:
+`src/moai_adk/_version.py` 파일이 변경되면 자동으로:
 
 1. **변경 감지**: _version.py 파일 수정 감지
 2. **전체 동기화**: 모든 관련 파일 업데이트
@@ -70,7 +70,7 @@ make version-verify
 
 ### Python 패키지
 - `pyproject.toml` - 패키지 메타데이터 버전
-- `src/_version.py` - 중앙 버전 저장소
+- `src/moai_adk/_version.py` - 중앙 버전 저장소
 - `src/*.py` - 모든 Python 소스 파일
 
 ### 설정 파일
@@ -92,22 +92,22 @@ make version-verify
 
 ### 버전 정보 프로그래밍 방식 접근
 ```python
-from src._version import __version__, get_version, get_version_format
+from moai_adk._version import __version__, get_version, get_version_format
 
 # 기본 버전
-print(__version__)  # "0.1.17"
+print(__version__)  # "0.2.1"
 
 # 컴포넌트별 버전
-print(get_version("core"))  # "0.1.17"
-print(get_version("hooks")) # "0.1.17"
+print(get_version("core"))   # "0.2.1"
+print(get_version("hooks"))  # "0.2.1"
 
 # 포맷된 버전 문자열
-print(get_version_format("banner"))  # "🗿 MoAI-ADK v0.1.17"
-print(get_version_format("short"))   # "v0.1.17"
+print(get_version_format("banner"))  # "🗿 MoAI-ADK v0.2.1"
+print(get_version_format("short"))   # "v0.2.1"
 ```
 
 ### 커스텀 버전 패턴 추가
-`src/version_sync.py`의 `_load_version_patterns()` 메서드에서 새 패턴 추가:
+`src/moai_adk/core/version_sync.py`의 `_load_version_patterns()` 메서드에서 새 패턴 추가:
 
 ```python
 "**/*.py": [
@@ -121,15 +121,15 @@ print(get_version_format("short"))   # "v0.1.17"
 
 ## ⚡ 빠른 시작
 
-### 개발 중 버전 업데이트
+### 개발 중 버전 업데이트 (예시)
 ```bash
-# 1. 패치 버전 업데이트 (0.1.4 → 0.1.5)
-make version-set VERSION=0.1.5
+# 1. 패치 버전 업데이트 (0.2.1 → 0.2.2)
+make version-set VERSION=0.2.2
 
-# 2. 마이너 버전 업데이트 (0.1.5 → 0.2.0) 
-make version-set VERSION=0.2.0
+# 2. 마이너 버전 업데이트 (0.2.2 → 0.3.0) 
+make version-set VERSION=0.3.0
 
-# 3. 메이저 버전 업데이트 (0.2.0 → 1.0.0)
+# 3. 메이저 버전 업데이트 (0.3.0 → 1.0.0)
 make version-set VERSION=1.0.0
 
 # 4. Git에 반영
@@ -174,7 +174,7 @@ make version-verify
 make version-sync-dry
 
 # 2. _version.py 직접 확인
-cat src/_version.py | grep __version__
+cat src/moai_adk/_version.py | grep __version__
 
 # 3. 수동 동기화 후 푸시
 make version-sync
@@ -182,7 +182,7 @@ git add -A && git commit -m "fix: version sync" && git push
 ```
 
 ### 새 파일에 버전 추가 시
-새로운 템플릿이나 설정 파일을 추가할 때는 `src/version_sync.py`의 패턴 정의에 추가하세요:
+새로운 템플릿이나 설정 파일을 추가할 때는 `src/moai_adk/core/version_sync.py`의 패턴 정의에 추가하세요:
 
 ```python
 # 새 파일 타입 추가 예시
@@ -221,4 +221,4 @@ bump version to v0.2.0"
 
 ---
 
-**🗿 MoAI-ADK v0.1.17** - 완전 자동화된 버전 관리로 개발에만 집중하세요!
+**🗿 MoAI-ADK v0.2.1** - 완전 자동화된 버전 관리로 개발에만 집중하세요!

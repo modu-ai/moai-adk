@@ -1,10 +1,14 @@
-# Include all resource files and directories
+# Include only minimized resource set for 0.2.1
 include src/moai_adk/resources/VERSION
-recursive-include src/moai_adk/resources *
-recursive-include src/moai_adk/resources/templates *
-recursive-include src/moai_adk/resources/templates/.claude *
+include src/moai_adk/resources/templates/CLAUDE.md
+include src/moai_adk/resources/templates/.claude/settings.json
+recursive-include src/moai_adk/resources/templates/.claude/agents/moai *.md
+recursive-include src/moai_adk/resources/templates/.claude/commands/moai *.md
+recursive-include src/moai_adk/resources/templates/.claude/hooks/moai *.py
+recursive-include src/moai_adk/resources/templates/.claude/memory *
 recursive-include src/moai_adk/resources/templates/.moai *
-recursive-include src/moai_adk/resources/templates/.github *
+recursive-include src/moai_adk/resources/templates/.github/workflows *.yml
+recursive-include src/moai_adk/resources/templates/scripts *
 
 # Include documentation
 include README.md

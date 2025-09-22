@@ -17,8 +17,8 @@ except ImportError:
     try:
         from moai_adk._version import __version__, get_version
     except ImportError:
-        __version__ = "0.1.17"
-        def get_version(component="moai_adk"): return "0.1.17"
+        __version__ = "0.2.1"
+        def get_version(component="moai_adk"): return "0.2.1"
 
 
 # Color constants for gradient effect
