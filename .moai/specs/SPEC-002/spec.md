@@ -10,13 +10,13 @@ MoAI-ADK는 Spec-First TDD 개발을 Claude Code 환경에서 지원하는 핵�
 
 - **현재 상태**: 테스트 커버리지 측정 시스템 부재로 품질 상태 불투명
 - **핵심 문제**: TDD Red-Green-Refactor 사이클의 수동 처리로 인한 비효율성
-- **비즈니스 영향**: Constitution 위반 감지 지연으로 인한 코드 품질 저하
+- **비즈니스 영향**: 개발 가이드 위반 감지 지연으로 인한 코드 품질 저하
 
 ### 목표
 
 1. 테스트 커버리지 85% 이상 달성 및 지속 유지
 2. TDD 사이클 자동화를 통한 개발 효율성 향상
-3. Constitution 위반 0건 달성을 위한 실시간 품질 게이트 구현
+3. 개발 가이드 위반 0건 달성을 위한 실시간 품질 게이트 구현
 
 ## @DESIGN:QUALITY-SYSTEM-002 환경 및 가정사항
 
@@ -60,10 +60,10 @@ MoAI-ADK는 Spec-First TDD 개발을 Claude Code 환경에서 지원하는 핵�
 - REFACTOR 단계: 리팩토링 완료 감지 및 자동 커밋
 - 각 단계별 커밋 메시지 자동 생성 (Convention 준수)
 
-### R3. Constitution 위반 자동 감지 메커니즘
+### R3. 개발 가이드 위반 자동 감지 메커니즘
 
 **WHEN** 코드 작성 또는 수정이 발생할 때,
-**THE SYSTEM SHALL** 실시간으로 Constitution 규칙 위반을 감지하고 경고해야 함
+**THE SYSTEM SHALL** 실시간으로 개발 가이드 규칙 위반을 감지하고 경고해야 함
 
 **상세 요구사항:**
 
@@ -106,11 +106,11 @@ MoAI-ADK는 Spec-First TDD 개발을 Claude Code 환경에서 지원하는 핵�
 **When** 리팩토링이 완료되면
 **Then** "REFACTOR: [영역] - 코드 품질 개선" 형식의 자동 커밋이 생성되어야 함
 
-### AC3. Constitution 위반 감지
+### AC3. 개발 가이드 위반 감지
 
 **Given** 함수가 50 LOC를 초과하여 작성될 때
 **When** 코드 저장 시점에
-**Then** Constitution 위반 경고가 표시되고 리팩토링 제안이 제공되어야 함
+**Then** 개발 가이드 위반 경고가 표시되고 리팩토링 제안이 제공되어야 함
 
 **Given** 파일이 300 LOC를 초과할 때
 **When** 파일 저장 시점에
@@ -132,7 +132,7 @@ MoAI-ADK는 Spec-First TDD 개발을 Claude Code 환경에서 지원하는 핵�
 
 - 테스트 커버리지 측정 및 리포팅 시스템
 - TDD 사이클 자동화 도구
-- Constitution 규칙 검증 엔진
+- 개발 가이드 규칙 검증 엔진
 - 품질 게이트 자동화 스크립트
 - Claude Code 훅 연동
 
@@ -160,7 +160,7 @@ MoAI-ADK는 Spec-First TDD 개발을 Claude Code 환경에서 지원하는 핵�
 ### 성능 고려사항
 
 - 커버리지 측정 시 테스트 실행 시간 최적화
-- 대용량 프로젝트에서의 Constitution 검사 성능
+- 대용량 프로젝트에서의 개발 가이드 검사 성능
 - pre-commit 훅 실행 시간 최소화
 
 ## 추적성
@@ -169,12 +169,12 @@ MoAI-ADK는 Spec-First TDD 개발을 Claude Code 환경에서 지원하는 핵�
 
 - @DEBT:TEST-COVERAGE-001: 커버리지 상태 불명 해결
 - @VISION:STRATEGY-001: TRUST 5원칙 기반 품질 자동 검증
-- @REQ:SUCCESS-001: Constitution 위반 0건 달성
+- @REQ:SUCCESS-001: 개발 가이드 위반 0건 달성
 
 ### 구현 우선순위
 
 1. 커버리지 측정 시스템 (High)
-2. Constitution 위반 감지 (High)
+2. 개발 가이드 위반 감지 (High)
 3. TDD 사이클 자동화 (Medium)
 4. 품질 게이트 자동화 (Medium)
 
