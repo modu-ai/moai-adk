@@ -175,11 +175,13 @@ class FileManager:
 
         # Core hook files
         core_hooks = [
+            "pre_write_guard.py",
             "policy_block.py",
-            "constitution_guard.py",
             "tag_validator.py",
-            "post_stage_guard.py",
+            "steering_guard.py",
+            "run_tests_and_report.py",
             "session_start_notice.py",
+            "language_detector.py",
         ]
 
         for hook_name in core_hooks:

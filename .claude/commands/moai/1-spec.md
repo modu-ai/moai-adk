@@ -1,237 +1,72 @@
 ---
 name: moai:1-spec
-description: EARS 명세 작성 및 feature 브랜치 생성
-argument-hint: [기능설명|SPEC-ID|--project] [추가세부사항...]
-allowed-tools: Read, Write, Edit, MultiEdit, Bash(git:*), Bash(gh:*), Bash(ls:*), Bash(mkdir:*), Bash(python3:*), Task, Grep, Glob
+description: 프로젝트 문서 기반 SPEC 자동 제안/생성. 개인/팀 모드별 산출물 생성(로컬 파일 또는 GitHub Issue).
+argument-hint: ["제목1" "제목2" ...] | [SPEC-ID "수정내용"]
+allowed-tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 model: sonnet
 ---
 
-# MoAI-ADK 1단계: SPEC 작성
+# /moai:1-spec — SPEC 자동 제안/생성
 
-spec-builder 에이전트가 비즈니스 요구사항을 EARS 형식 명세로 변환하고, 자동 GitFlow 워크플로우를 지원합니다.
+## 기능
+- `.moai/project/{product,structure,tech}.md`를 분석해 구현 후보를 제안하고 사용자 승인 후 SPEC을 생성합니다.
+- **Personal 모드**: `.moai/specs/SPEC-XXX/` 디렉터리와 템플릿 문서를 만듭니다.
+- **Team 모드**: GitHub Issue(또는 Discussion)를 생성하고 브랜치 템플릿과 연결합니다.
 
-**요구사항**: $ARGUMENTS
+## 에이전트 협업 구조
+- **1단계**: `spec-builder` 에이전트가 프로젝트 문서 분석 및 SPEC 문서 작성을 전담합니다.
+- **2단계**: `git-manager` 에이전트가 브랜치 생성, GitHub Issue/PR 생성을 전담합니다.
+- **단일 책임 원칙**: spec-builder는 SPEC 작성만, git-manager는 Git/GitHub 작업만 수행합니다.
+- **순차 실행**: spec-builder → git-manager 순서로 실행하여 명확한 의존성을 유지합니다.
+- **에이전트 간 호출 금지**: 각 에이전트는 다른 에이전트를 직접 호출하지 않고, 커맨드 레벨에서만 순차 실행합니다.
 
-## spec-builder 에이전트 활용
-
-spec-builder 에이전트를 사용하여 EARS 형식의 명세를 작성합니다. 에이전트가 자동으로 다음을 수행합니다:
-
-- 비즈니스 요구사항을 EARS 형식으로 변환
-- User Stories 및 수락 기준 생성
-- 16-Core @TAG 시스템으로 추적성 확보
-- GitFlow에 맞는 브랜치 생성 지원
-
-다음 순서로 SPEC 단계를 완료하세요:
-
-## 빠른 시작
-
+## 사용법
 ```bash
-# 단일 기능 SPEC 작성
-/moai:1-spec "JWT 기반 사용자 인증 시스템"
-
-# 프로젝트 전체 SPEC 대화형 생성
-/moai:1-spec --project
-
-# 기존 SPEC 수정
-/moai:1-spec SPEC-001 "추가 보안 요구사항"
+/moai:1-spec                      # 프로젝트 문서 기반 자동 제안 (권장)
+/moai:1-spec "JWT 인증 시스템"       # 단일 SPEC 수동 생성
+/moai:1-spec SPEC-001 "보안 보강"   # 기존 SPEC 보완
 ```
 
-## 모드별 Git 워크플로우 (자동화)
+입력하지 않으면 Q&A 결과를 기반으로 우선순위 3~5건을 제안하며, 승인한 항목만 실제 SPEC으로 확정됩니다.
 
-### 현재 상태 확인
+## 모드별 처리 요약
+| 모드 | 산출물 | 추가 작업 |
+| --- | --- | --- |
+| Personal | `.moai/specs/SPEC-XXX/spec.md`, `plan.md`, `acceptance.md` 등 템플릿 | 필요 시 `/moai:git:checkpoint`로 작업 시작 체크포인트 |
+| Team | GitHub Issue(`[SPEC-XXX] 제목`), Draft PR(옵션) | `gh` CLI 로그인 유지, 라벨/담당자 지정 안내 |
 
-현재 프로젝트 상태를 확인합니다:
+## 입력 옵션
+- **자동 제안**: `/moai:1-spec` → 프로젝트 문서 핵심 bullet을 기반으로 후보 리스트 작성
+- **수동 생성**: 제목을 인수로 전달 → 1건만 생성, Acceptance 템플릿은 회신 후 보완
+- **보완 모드**: `SPEC-ID "메모"` 형식으로 전달 → 기존 SPEC 문서/Issue를 업데이트
 
-!`git branch --show-current`
-!`git status --porcelain`
-!`python3 -c "import json; config=json.load(open('.moai/config.json')); print(config['project']['mode'])" 2>/dev/null || echo "unknown"`
-!`ls .moai/specs/ 2>/dev/null | wc -l`
+## 브레인스토밍(선택)
+- `.moai/config.json.brainstorming.enabled` 가 `true` 이고 `providers` 배열이 비어 있지 않은 경우 다음 단계를 추가합니다.
+  1. `codex` 가 포함되어 있으면 `codex-bridge` 에이전트를 호출하여 `codex exec --model gpt-5-codex "..."` 형태의 headless 분석을 실행하고 대안 아이디어를 수집합니다. (예: `Task: use codex-bridge to run "codex exec --model gpt-5-codex \"Summarize design risks\""`)
+  2. `gemini` 가 포함되어 있으면 `gemini-bridge` 에이전트를 호출하여 `gemini -m gemini-2.5-pro -p "..." --output-format json` 명령을 실행하고 구조화된 제안을 수집합니다. (예: `Task: use gemini-bridge to run "gemini -m gemini-2.5-pro -p 'List alternative solution paths' --output-format json"`)
+  3. `claude` 는 기본 분석 경로로 유지하며, 외부 응답과 비교해 Self-Consistency/ToT/Meta-Prompting 절차로 최적안을 선정합니다.
+- 외부 브레인스토밍을 사용하지 않는 경우(기본값)에는 Claude Code만 활용합니다.
 
-### 변수 자동 추출
+## 워크플로우 실행 순서
 
-!`export SPEC_ID=$(git branch --show-current | grep -oE 'SPEC-[0-9]+' || echo "SPEC-NEW"); echo "SPEC_ID: $SPEC_ID"`
+당신은 다음 순서로 에이전트들을 **순차 호출**해야 합니다:
 
-### 모드별 브랜치 전략
+### 1단계: SPEC 문서 작성
+먼저 `spec-builder` 에이전트를 호출하여 프로젝트 문서 분석 및 SPEC 작성을 완료합니다.
 
-**개인 모드 (Personal Mode)**:
+### 2단계: Git 작업 처리
+`spec-builder` 완료 후, `git-manager` 에이전트를 호출하여 다음 작업을 수행합니다:
+- **브랜치 생성**: 모드별 전략(Personal/Team) 적용
+- **GitHub Issue 생성**: Team 모드에서 SPEC Issue 생성
+- **초기 커밋**: SPEC 문서 커밋 및 태그 생성
 
-1. 자동 체크포인트 생성 (`/moai:git:checkpoint "SPEC 작업 시작"`)
-2. 간소화된 브랜치: `feature/{description}` (`/moai:git:branch --personal`)
-3. 파일 변경 시 자동 체크포인트 (file_watcher.py)
-4. SPEC 완료시 수동 체크포인트 (`/moai:git:checkpoint "SPEC 완료"`)
-5. 필요시 롤백 지원 (`/moai:git:rollback --checkpoint`)
+**중요**: 각 에이전트는 독립적으로 실행되며, 에이전트 간 직접 호출은 금지됩니다.
 
-**팀 모드 (Team Mode)**:
+## 작성 팁
+- product/structure/tech 문서에 없는 정보는 새로 질문해 보완합니다.
+- Acceptance Criteria는 Given/When/Then 3단으로 최소 2개 이상 작성하도록 유도합니다.
+- Constitution 제1조 완화로 인해 모듈 수가 권장치(기본 3)를 초과하는 경우, 근거를 SPEC `context` 섹션에 함께 기록하세요.
 
-1. develop/main 브랜치로 전환 (`/moai:git:sync --prepare`)
-2. SPEC-XXX ID 자동 할당
-3. feature/SPEC-XXX-{name} 브랜치 생성 (`/moai:git:branch --team`)
-4. 4단계 구조화 커밋 (`/moai:git:commit --spec`)
-5. Draft PR 자동 생성 (gh CLI)
-
-**--project 모드 (공통)**:
-
-1. 통합 브랜치 생성: feature/project-{timestamp}
-2. 5단계 대화형 질문으로 다중 SPEC 생성
-3. 각 SPEC별 순차 커밋
-4. 모드에 따른 PR/병합 전략
-
-## EARS 명세 구조
-
-### 핵심 키워드 활용
-
-- **WHEN**: 조건 발생 시 → 명확한 트리거 정의
-- **IF**: 특정 상태 → 조건부 동작 정의
-- **WHILE**: 진행 중 → 지속적 처리 정의
-- **WHERE**: 특정 환경 → 컨텍스트별 동작
-- **UBIQUITOUS**: 항상 → 전역 규칙 정의
-
-### 변환 예시
-
-**Before**: "사용자가 로그인할 수 있어야 한다"
-
-**After**:
-
-```markdown
-WHEN 사용자가 올바른 이메일과 패스워드를 입력하면,
-시스템은 3초 이내에 JWT 토큰을 생성하고 대시보드로 리디렉션해야 한다.
-```
-
-## 프로젝트 모드 (--project)
-
-### 대화형 5단계 질문
-
-1. **프로젝트 유형**: 웹앱, API, 모바일앱, 데스크톱앱
-2. **핵심 기능**: 사용자 관리, 결제, 알림, 콘텐츠 관리
-3. **사용자 유형**: 일반 사용자, 관리자, 게스트
-4. **성능 요구사항**: 응답시간, 동시 접속자, 처리량
-5. **보안 요구사항**: 인증 방식, 개인정보, 규정 준수
-
-### 생성 결과
-
-```markdown
-🏢 프로젝트 SPEC 통합 생성 완료:
-
-🌿 브랜치: feature/project-20250119-initial-specs
-├── SPEC-001: 사용자 인증 시스템 (P0) ✓
-├── SPEC-002: 게시글 관리 시스템 (P0) ✓
-├── SPEC-003: 댓글 및 좋아요 (P1) ✓
-├── SPEC-004: 관리자 대시보드 (P1) ✓
-└── SPEC-005: 모니터링 시스템 (P2) ✓
-
-🎯 다음: /moai:2-build SPEC-001
-```
-
-## User Stories & 수락 기준
-
-### US-XXX 형식 템플릿
-
-```markdown
-US-001: 사용자 로그인
-As a 일반 사용자
-I want to 이메일과 패스워드로 로그인
-So that 개인화된 서비스를 이용할 수 있다
-
-수락 기준:
-
-- 올바른 이메일 형식 검증
-- 패스워드 최소 8자리 이상
-- 3회 실패 시 계정 임시 잠금
-- 성공 시 대시보드 리다이렉트
-```
-
-### Given-When-Then 시나리오
-
-```markdown
-**Scenario: 성공적인 로그인**
-Given 등록된 사용자 "user@example.com"이 존재하고
-When 올바른 이메일과 패스워드를 입력하고 "로그인"을 클릭하면
-Then 3초 이내에 JWT 토큰을 생성하고
-And 대시보드로 리디렉션하며
-And "환영합니다, [사용자명]님" 메시지를 표시한다
-```
-
-## 4단계 커밋 패턴
-
-1. **SPEC 초안**: `📝 SPEC-001: 초기 요구사항 명세 작성`
-2. **User Stories**: `📖 SPEC-001: User Stories 및 시나리오 추가`
-3. **수락 기준**: `✅ SPEC-001: 수락 기준 및 테스트 시나리오 정의`
-4. **최종 완성**: `🎯 SPEC-001: 명세 완성 및 프로젝트 구조 생성`
-
-## 품질 검증
-
-### 검증 기준
-
-- 모든 User Story에 수락 기준 존재 (최소 3개)
-- EARS 요구사항의 테스트 가능성 확인
-- [NEEDS CLARIFICATION] 마커 10% 이하
-- @REQ 태그를 통한 추적성 완성
-
-### 검증 결과 예시
-
-```markdown
-📊 SPEC 품질 지표:
-
-- User Stories: 12개 생성
-- EARS 요구사항: 35개
-- 수락 기준: 36개 시나리오
-- 명확성 점수: 94%
-- 추적성 매트릭스: 완료
-```
-
-## 완료 후 다음 단계
-
-### 개인 모드 결과
-
-```bash
-✅ 1단계 SPEC 작성 완료!
-
-💾 Git 작업 (자동 처리):
-├── 체크포인트 생성: "SPEC 작업 시작"
-├── feature/{description} 브랜치 생성
-├── SPEC 완료시 자동 커밋
-└── 파일 변경 감지 → 자동 체크포인트
-
-📁 생성된 파일:
-└── .moai/specs/feature-{name}/spec.md
-
-🎯 다음 단계:
-> /moai:2-build    # TDD 구현 (체크포인트 자동)
-> /moai:3-sync     # 문서 정리
-```
-
-### 팀 모드 결과
-
-```bash
-✅ 1단계 SPEC 작성 + GitFlow 완료!
-
-🔀 Git 작업 (자동 처리):
-├── feature/SPEC-XXX-{name} 브랜치 생성
-├── 4단계 구조화 커밋 완료
-└── Draft PR #123 생성: "SPEC-XXX: {description}"
-
-📁 생성된 파일:
-└── .moai/specs/SPEC-XXX/spec.md
-
-🎯 다음 단계:
-> /moai:2-build SPEC-XXX  # TDD 구현
-> /moai:3-sync            # 문서 동기화 + PR Ready
-```
-
-## 에러 처리
-
-### Git index.lock 감지
-
-```bash
-원인: 이전 git 명령 비정상 종료
-해결: rm -f .git/index.lock 후 재실행
-```
-
-### 불완전한 입력
-
-```bash
-⚠️ 더 구체적인 요구사항 필요
-예: /moai:1-spec "JWT 인증 - 소셜 로그인, 토큰 갱신, 권한 관리"
-```
-
-모든 SPEC 작성은 Constitution 5원칙을 준수하며, 16-Core TAG 시스템으로 완전한 추적성을 보장합니다.
+## 다음 단계
+- `/moai:2-build SPEC-XXX`로 TDD 구현 시작
+- 팀 모드: Issue 생성 직후 `/moai:git:branch --team SPEC-XXX`로 브랜치 준비

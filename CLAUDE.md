@@ -9,11 +9,14 @@
 - **Living Document 지향**: 코드·문서 동기화를 절차로 지원
 - **Traceability 강화**: 16-Core @TAG로 추적성 향상(보장 아님)
 
-## 3단계 개발 워크플로우
+## 4단계 개발 워크플로우
 
 ```bash
-# 1. 명세 작성 (+옵션: 브랜치/PR 생성 지원)
-/moai:1-spec "JWT 기반 사용자 인증"
+# 0. 프로젝트 문서 초기화 (product/structure/tech)
+/moai:0-project
+
+# 1. 명세 작성 (auto: 프로젝트 문서 기반 제안)
+/moai:1-spec
 
 # 2. TDD 구현(RED→GREEN→REFACTOR 권장 패턴)
 /moai:2-build
@@ -35,10 +38,12 @@
 
 ### Awesome 전문 2개 (고급 기능 에이전트)
 
-| 에이전트 | 역할 | 전문 영역 |
+| 에이전트 | 역할 | 사용 CLI |
 |----------|------|-----------|
-| **gpt-codex** | 고급 코드 생성 | 복잡한 알고리즘/시스템 설계 |
-| **gemini** | 다중 모드 분석 | 코드 리뷰/보안 검증/품질 분석 |
+| **codex-bridge** | Codex CLI headless 호출, 브레인스토밍/디버깅 아이디어 수집 | `codex exec --model gpt-5-codex` |
+| **gemini-bridge** | Gemini CLI headless 호출, 구조화된 분석/리뷰 결과 수집 | `gemini -m gemini-2.5-pro -p ... --output-format json` |
+
+`brainstorming.enabled = true` 에서만 브리지 에이전트가 호출되며, CLI 설치·로그인은 사용자 동의 하에 진행합니다.
 
 ## TDD 커밋 단계(권장 패턴)
 
@@ -61,7 +66,7 @@
 
 **카테고리별 태그**
 - **SPEC**: REQ, DESIGN, TASK
-- **STEERING**: VISION, STRUCT, TECH, ADR
+- **PROJECT**: VISION, STRUCT, TECH, ADR
 - **IMPLEMENTATION**: FEATURE, API, TEST, DATA
 - **QUALITY**: PERF, SEC, DEBT, TODO
 
@@ -96,15 +101,15 @@
 ├── .claude/               # Claude Code 설정
 │   ├── commands/moai/     # 커스텀 명령어
 │   ├── agents/            # 에이전트 정의
-│   │   ├── moai/          # MoAI 핵심 4개 (워크플로우)
-│   │   └── awesome/        # Awesome 전문 2개 (고급 기능)
+│   │   └── moai/          # MoAI 핵심 에이전트
 │   ├── hooks/moai/        # 자동화 훅
 │   ├── memory/            # 공유 메모리
 │   └── settings.json      # 권한 설정
 ├── .moai/                 # MoAI 시스템
+│   ├── project/           # 프로젝트 기본 문서 (product/structure/tech)
 │   ├── specs/             # SPEC 문서
-│   ├── memory/            # Constitution
-│   ├── scripts/           # 검증 스크립트
+│   ├── memory/            # Constitution & 메모리 템플릿
+│   ├── scripts/           # 검증/자동화 스크립트
 │   └── config.json        # 설정
 └── CLAUDE.md              # 이 파일
 ```

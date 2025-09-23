@@ -99,9 +99,7 @@ class BranchManager:
         safe_description = safe_description.lower()
 
         if mode == "team":
-            # 팀 모드: SPEC ID 연동
-            # TODO: 실제 SPEC ID 추출 로직 구현
-            spec_id = "SPEC-001"  # 임시값
+            spec_id = self._resolve_spec_id(description)
             return f"{action_type}/{spec_id}-{safe_description}"
         else:
             # 개인 모드: 간단한 형식
@@ -110,6 +108,46 @@ class BranchManager:
                 return f"experiment/{date_str}-{safe_description}"
             else:
                 return f"{action_type}/{safe_description}"
+
+    def _resolve_spec_id(self, description: str) -> str:
+        """팀 모드 브랜치용 SPEC ID 결정"""
+
+        # 1) 설명 또는 현재 브랜치에서 SPEC ID 추출 시도
+        for candidate in [description, self.get_current_branch()]:
+            if not candidate:
+                continue
+            match = re.search(r"SPEC-(\d{3})", candidate, flags=re.IGNORECASE)
+            if match:
+                return f"SPEC-{match.group(1).upper()}"
+
+        # 2) 기존 SPEC 디렉터리에서 다음 번호 계산
+        specs_dir = self.project_root / ".moai" / "specs"
+        max_id = 0
+        if specs_dir.exists():
+            for path in specs_dir.iterdir():
+                if not path.is_dir():
+                    continue
+                match = re.match(r"SPEC-(\d{3})", path.name, flags=re.IGNORECASE)
+                if match:
+                    max_id = max(max_id, int(match.group(1)))
+
+        # 3) 존재하는 브랜치 이름에서도 최대값 갱신
+        try:
+            result = subprocess.run(
+                ["git", "for-each-ref", "--format=%(refname:short)", "refs/heads/feature/SPEC-"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            for line in result.stdout.splitlines():
+                match = re.search(r"SPEC-(\d{3})", line)
+                if match:
+                    max_id = max(max_id, int(match.group(1)))
+        except subprocess.CalledProcessError:
+            pass
+
+        next_id = max_id + 1
+        return f"SPEC-{next_id:03d}"
 
     def create_branch(self, description: str):
         """새 브랜치 생성

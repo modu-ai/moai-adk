@@ -255,11 +255,13 @@ class TestFileManager:
         hook_dir.mkdir(parents=True)
 
         hook_files = [
+            "pre_write_guard.py",
             "policy_block.py",
-            "constitution_guard.py",
             "tag_validator.py",
-            "post_stage_guard.py",
+            "steering_guard.py",
+            "run_tests_and_report.py",
             "session_start_notice.py",
+            "language_detector.py",
         ]
 
         for hook_file in hook_files:
@@ -272,7 +274,7 @@ class TestFileManager:
 
         result = file_manager.copy_hook_scripts(target_dir)
 
-        assert len(result) == 5
+        assert len(result) == 7
         for hook_file in hook_files:
             target_file = target_dir / hook_file
             assert target_file.exists()

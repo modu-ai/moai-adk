@@ -1,117 +1,107 @@
 {
-  "hooks": {
-    "PostToolUse": [
-      {
-        "hooks": [
-          {
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/check_style.py",
-            "timeout": 60,
-            "type": "command"
-          }
-        ],
-        "matcher": "Edit|MultiEdit|Write"
-      }
+ "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+        "Task",
+        "Read",
+        "Write",
+        "Edit",
+        "MultiEdit",
+        "NotebookEdit",
+        "Grep",
+        "Glob",
+        "TodoWrite",
+        "WebFetch",
+        "Bash(git status:*)",
+        "Bash(git add:*)",
+        "Bash(git diff:*)",
+        "Bash(git commit:*)",
+        "Bash(python3:*)",
+        "Bash(pytest:*)",
+        "Bash(gh pr create:*)",
+        "Bash(gh pr view:*)"
     ],
+    "ask": [
+        "WebFetch(*)",              // 외부 페치 전 승인
+        "Bash(git push:*)",
+        "Bash(gh pr merge:*)"
+    ],
+    "deny": [
+        "Read(./.env)",
+        "Read(./.env.*)",
+        "Read(./secrets/**)",
+        "WebFetch(http://169.254.169.254/**)", // 메타데이터 차단    
+        "Bash(* rm -rf */*)",
+        "Bash(chmod -R 777 *)"
+    ]
+  },
+  "hooks": {
     "PreToolUse": [
       {
+        "matcher": "Edit|Write|MultiEdit",
         "hooks": [
           {
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag_validator.py",
-            "type": "command"
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_write_guard.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag_validator.py"
           }
-        ],
-        "matcher": "Edit\\(.+\\.(py|js|ts|jsx|tsx|go|java|c|cpp|rs|php|rb|kt|scala|cs|swift|dart|html|css|scss|sass|less)\\)|MultiEdit\\(.+\\.(py|js|ts|jsx|tsx|go|java|c|cpp|rs|php|rb|kt|scala|cs|swift|dart|html|css|scss|sass|less)\\)|Write\\(.+\\.(py|js|ts|jsx|tsx|go|java|c|cpp|rs|php|rb|kt|scala|cs|swift|dart|html|css|scss|sass|less)\\)"
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/policy_block.py"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/check_style.py"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/steering_guard.py"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/run_tests_and_report.py"
+          }
+        ]
       }
     ],
     "SessionStart": [
       {
         "hooks": [
           {
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start_notice.py",
-            "type": "command"
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start_notice.py"
           }
-        ],
-        "matcher": "*"
+        ]
       }
     ]
   },
-  "permissions": {
-    "allow": [
-      "Task",
-      "Write",
-      "Read",
-      "Edit",
-      "MultiEdit",
-      "Bash(git:*)",
-      "Bash(mkdir:*)",
-      "Bash(cp:*)",
-      "Bash(mv:*)",
-      "Bash(ls:*)",
-      "Bash(find:*)",
-      "Bash(grep:*)",
-      "Bash(python3:*)",
-      "Bash(pytest:*)",
-      "Bash(poetry:*)",
-      "Bash(ruff:*)",
-      "Bash(mypy:*)",
-      "Bash(npm:*)",
-      "Bash(pnpm:*)",
-      "Bash(yarn:*)",
-      "Bash(go:*)",
-      "Bash(cargo:*)",
-      "Bash(gradle:*)",
-      "Bash(mvn:*)",
-      "Bash(dotnet:*)",
-      "Bash(cmake:*)",
-      "Bash(make:*)",
-      "Bash(chmod:*)",
-      "Bash(tree:*)",
-      "Bash(moai:*)",
-      "Bash(rm:*)",
-      "Bash(rmdir:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(git status:*)",
-      "Bash(git branch:*)",
-      "Bash(git checkout:*)",
-      "Bash(git log:*)",
-      "Bash(git diff:*)",
-      "Bash(git stash:*)",
-      "WebFetch",
-      "Grep",
-      "Glob",
-      "NotebookEdit",
-      "TodoWrite",
-      "WebSearch",
-      "BashOutput",
-      "KillShell",
-      "ExitPlanMode"
-    ],
-    "ask": [
-      "Bash(pip install:*)",
-      "Bash(npm install:*)",
-      "Bash(git push:*)",
-      "Bash(git pull:*)",
-      "Bash(git merge:*)",
-      "Bash(gh:pr:*)",
-      "Bash(gh:release:*)",
-      "Bash(gh:repo:*)",
-      "Write(.env*)",
-      "Write(*.config.*)",
-      "Write(pyproject.toml)",
-      "Bash(npm publish:*)",
-      "Bash(poetry publish:*)",
-      "Bash(docker:*)",
-      "Bash(kubectl:*)",
-      "Bash(systemctl:*)",
-      "Bash(service:*)"
-    ],
-    "defaultMode": "default",
-    "deny": [
-      "Bash(sudo:*)",
-      "Edit(.env*)",
-      "Read(.env*)",
-      "Write(.env*)"
-    ]
-  }
+  "outputStyle": "Explanatory",
+  "includeCoAuthoredBy": false
 }

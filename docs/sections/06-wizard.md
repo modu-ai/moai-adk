@@ -1,219 +1,80 @@
 # MoAI-ADK 대화형 마법사
 
-## 🧙‍♂️ 대화형 마법사 개요
+## 🧙‍♂️ 개요
+- `/moai:0-project [프로젝트이름]` 명령은 프로젝트 문서(product/structure/tech)를 대화형으로 갱신하고 CLAUDE 메모리에 반영합니다.
+- 명령 실행 시 레포지토리 상태를 스캔해 **신규(그린필드)** 또는 **기존(레거시 도입)** 흐름을 제안하며, 최종 선택은 사용자 확인에 따릅니다.
+- `.moai/project` 경로는 Guard가 자동 승인하므로 전용 명령 외 수동 편집은 제한됩니다.
+- 이미 생성된 프로젝트 설정을 수정하려면 `/moai:0-project update` 로 마법사를 다시 실행하세요. CLI로 직접 조정이 필요할 때만 `moai config --mode ...` 명령을 사용합니다.
 
-`/moai:1-project [프로젝트이름]` 명령어는 10단계 Q&A 시스템을 통해 프로젝트를 완전히 설정합니다.
+## 🔍 프로젝트 유형 감지 로직
+- `moai init project-name` 으로 만들어진 비어 있는 디렉터리는 기본적으로 **신규 프로젝트** 후보로 분류합니다.
+- `moai init .` 또는 기존 코드가 들어 있는 폴더는 다음 요소를 점검해 **레거시 도입** 후보로 제안합니다.
+  - `src/`, `app/`, `packages/` 등 소스 디렉터리 존재 여부와 파일 수
+  - 테스트/CI 설정(`tests/`, `.github/workflows/`, `pytest.ini`, `package.json scripts` 등)
+  - README, CHANGELOG, ADR, 기존 `.moai/project/*.md` 존재 여부
+  - Git 히스토리(커밋 수, 기본 브랜치, 원격 URL 등)
+- 감지 결과를 공유한 뒤 사용자에게 “신규 설계로 진행” 또는 “기존 코드 분석 후 갱신” 중 하나를 선택하도록 요청합니다. 혼합 시나리오는 사용자 의도를 우선합니다.
+- Codex/Gemini CLI 설치 여부도 이 단계에서 확인하고, 외부 브레인스토밍 사용 여부를 물어 `.moai/config.json.brainstorming` 값을 업데이트합니다.
 
-## 10단계 맥락 자산 구축 시스템
+## 🌱 신규 프로젝트(그린필드) 인터뷰 트리
+### Product Discovery
+| 단계 | 핵심 질문 | 선택 분기 | 후속 결정 |
+| --- | --- | --- | --- |
+| A1 | 제품이 약속하는 핵심 가치는 무엇인가요? | 생산성 ∙ 품질 ∙ 학습 ∙ 커뮤니티 | 선택한 가치에 맞는 KPI 후보를 미리 정리합니다. |
+| A2 | 주요 사용자는 누구인가요? | 개인 개발자 ∙ 팀/조직 ∙ 플랫폼 운영자 ∙ 교육 기관 | 사용자군별 “즉시 얻고 싶은 결과”를 1문장씩 기록합니다. |
+| A3 | 해결하려는 최우선 문제는 무엇인가요? | 워크플로 혼란 ∙ 품질 격차 ∙ 협업 지연 ∙ 규정 준수 | 각 문제에 대한 실패 사례를 수집해 SPEC 우선순위와 연결합니다. |
+| A4 | MoAI-ADK가 제공할 차별점은 무엇인가요? | 자동화 심도 ∙ 문서 동기화 ∙ 추적성 ∙ 거버넌스 | 대표 시나리오를 product.md에 포함합니다. |
+| A5 | 첫 번째 성공 지표는 무엇인가요? | 채택률 ∙ 반복 속도 ∙ 품질 ∙ 생태계 기여 | 측정 주기와 베이스라인을 기입합니다. |
 
-### 1. 프로젝트 기본 정보
-```
-Q: 프로젝트 이름을 입력하세요
-A: [사용자 입력]
+### Structure Blueprint
+| 단계 | 질문 | 선택 분기 | 후속 결정 |
+| --- | --- | --- | --- |
+| S1 | 시스템을 몇 개 모듈로 나눌까요? | 핵심 3모듈 (Planning/Development/Integration) ∙ 도메인 확장 ∙ 마이크로서비스 ∙ 단일 핵심 | 선택 사유와 예외 규칙을 structure.md에 작성합니다. |
+| S2 | 각 모듈의 책임은 무엇인가요? | 명세/요구 ∙ 구현/TDD ∙ 문서/PR ∙ 데이터/분석 | 입력→처리→출력 흐름을 표로 정리합니다. |
+| S3 | 외부 연동 대상은 무엇인가요? | Claude Code ∙ Git/GitHub ∙ GitLab/CVS ∙ CI/CD ∙ 패키지 레지스트리 ∙ 모니터링 | 인증 방식과 장애 대응 절차를 기록합니다. |
+| S4 | 추적성을 어떻게 유지하나요? | TAG 체계 ∙ Issue 템플릿 ∙ 계약 테스트 ∙ 감사 로그 | 유지 주기와 책임자를 명시합니다. |
 
-Q: 프로젝트 설명을 간단히 입력하세요
-A: [사용자 입력]
-```
+### Tech Stack Mapping
+| 단계 | 질문 | 선택 분기 | 후속 결정 |
+| --- | --- | --- | --- |
+| T1 | 어떤 언어/런타임을 사용할까요? | Python ≥3.11 ∙ Node.js ≥18 ∙ JVM (Java/Kotlin) ∙ .NET ∙ Go ∙ Rust ∙ Swift/Kotlin Mobile ∙ C/C++ 임베디드 | 선택한 언어와 모듈 매핑을 tech.md에 표로 기록합니다. |
+| T2 | 핵심 프레임워크/라이브러리는 무엇인가요? | Web(Next/React/Vue/Angular) ∙ Backend(FastAPI/Spring/Nest/Express) ∙ Data(PyTorch/TensorFlow/Spark) ∙ Mobile(Compose/SwiftUI/Flutter) ∙ DevOps(Terraform/Pulumi) | 빌드·테스트 명령, CI 요구사항을 정리합니다. |
+| T3 | 품질 게이트는 어떻게 구성하나요? | 테스트 커버리지 목표 ∙ 정적 분석(ruff/eslint/detekt 등) ∙ 포매터 ∙ 계약/E2E 테스트 ∙ 카나리 배포 | 실패 시 대응 규칙과 책임자를 명시합니다. |
+| T4 | 보안·운영 정책은 무엇인가요? | 비밀 관리 ∙ 접근 제어 ∙ 로깅/관측 ∙ 감사 대응 | 데이터 분류와 보존 기간을 tech.md에 기록합니다. |
+| T5 | 배포 채널은 어디인가요? | 클라우드(IaaS/PaaS) ∙ 온프레미스 ∙ 모바일 스토어 ∙ 에지/임베디드 ∙ 패키지 레지스트리 | 채널별 릴리스·롤백 전략을 정의합니다. |
 
-### 2. 기술 스택 선택
-```
-Q: 주 프로그래밍 언어를 선택하세요
-   1) TypeScript/JavaScript
-   2) Python
-   3) Rust
-   4) Go
-   5) 기타
-A: [1-5 선택]
-```
+> 신규 프로젝트는 백지 상태이므로 선택지가 많습니다. 분기가 늘어나면 “선택 분기” 필드에 표시하고, 문서에도 동일 순서로 반영합니다. 다중 스택을 선택했다면 환경 변수, 테스트 스위트, 운영 책임자를 명확히 기록합니다.
 
-### 3. 프레임워크 선택
-```
-Q: 사용할 프레임워크를 선택하세요
-   [언어별 동적 옵션 표시]
-   TypeScript: Next.js, React, Vue.js, Express
-   Python: Django, FastAPI, Flask
-A: [동적 선택]
-```
+## 🔁 기존 프로젝트(레거시 도입) 인터뷰 트리
+### Legacy Snapshot & Alignment
+| 단계 | 핵심 질문 | 체크 포인트 | 후속 결정 |
+| --- | --- | --- | --- |
+| L1 | 현재 코드 구조는 어떻게 되어 있나요? | 주요 디렉터리/패키지, 언어별 비중, 진입점 | structure.md에 기존 모듈 구조를 기록하고, 리팩터링 후보는 @DEBT로 표시합니다. |
+| L2 | 빌드·테스트 파이프라인은 어떤 상태인가요? | CI 구성, 스크립트, 커버리지·린트 결과 | tech.md 품질 섹션에 현재 지표와 목표 차이를 @DEBT 또는 @TODO 항목으로 정리합니다. |
+| L3 | 유지해야 할 제약이나 기술 부채는 무엇인가요? | 구버전 프레임워크, 의존성 잠금, 배포 제한 | product.md 또는 structure.md에 “Legacy Constraints” 블록을 추가하고, 해결 계획은 @TASK로 분리합니다. |
+| L4 | 외부 시스템 통합 상황은 어떤가요? | 인증 방식, 사용 중인 API/Queue/DB, 변경 불가 시스템 | structure.md Integration 섹션에 현재 연결 방식과 위험도를 정리합니다. |
+| L5 | MoAI-ADK 전환 시 가장 시급한 작업은 무엇인가요? | 명세 부재, 테스트 부족, 배포 자동화 공백 | 각 문서 끝에 “Initial Migration Plan”을 작성하고 `/moai:1-spec` 후보 SPEC과 연결합니다. |
 
-### 4. 프로젝트 유형
-```
-Q: 프로젝트 유형을 선택하세요
-   1) 웹 애플리케이션
-   2) API 서버
-   3) 데스크톱 앱
-   4) 모바일 앱
-   5) 라이브러리/패키지
-A: [1-5 선택]
-```
+> 기존 프로젝트에서는 기존 문서를 덮어쓰지 말고, 부족한 정보는 추가 섹션이나 TODO로 보완합니다. 자동 분석이 필요하면 `.moai/scripts/project_initializer.py --analyze` 명령을 참고하되, 결과는 사용자와 함께 검증합니다.
 
-### 5. 데이터베이스 선택
-```
-Q: 데이터베이스를 선택하세요
-   1) PostgreSQL
-   2) MySQL
-   3) MongoDB
-   4) SQLite
-   5) 사용 안함
-A: [1-5 선택]
-```
+## 🤖 자동 분석 & 프리필 지침
+- 레포지토리 스캔 결과를 요약할 때는 언어/프레임워크/빌드 스크립트/테스트 현황/CI 파일을 빠짐없이 정리합니다.
+- 자동 분석 도구는 참고용일 뿐, 최종 문서는 사용자 확인 후 작성합니다.
+- 스캔 데이터는 product/structure/tech 문서의 “현재 상태(Current State)” 섹션에 먼저 기록하고, 이어서 “향후 계획(Next Steps)”을 명시합니다.
 
-### 6. 배포 환경
-```
-Q: 배포 환경을 선택하세요
-   1) AWS
-   2) Google Cloud
-   3) Azure
-   4) Vercel
-   5) 온프레미스
-A: [1-5 선택]
-```
+## 📄 산출물 정리
+- **product.md**: 미션, 사용자, 문제, 차별점, 성공 지표. 레거시 모드에서는 기존 비전·비즈니스 목표를 요약하고, 발견한 공백은 @DEBT/@TODO/@TASK로 정리합니다.
+- **structure.md**: 모듈 구조, 책임, 외부 연동, 추적성 전략. 레거시 모드에서는 현행 구조와 변경 계획을 나란히 기록합니다.
+- **tech.md**: 언어/플랫폼, 프레임워크, 품질·보안 정책, 배포 전략. 레거시 모드에서는 현황과 목표 격차를 병기합니다.
+- 세 문서 모두 @REQ, @DESIGN, @TASK, @DEBT, @TODO 등을 활용해 추적성을 확보합니다.
 
-### 7. 팀 규모
-```
-Q: 팀 규모를 선택하세요
-   1) 개인 프로젝트
-   2) 소규모 팀 (2-5명)
-   3) 중규모 팀 (6-15명)
-   4) 대규모 팀 (16명+)
-A: [1-4 선택]
-```
+## 🛠️ 레거시 파일 마이그레이션
+- 이전 버전에서 `.moai/steering/` 폴더를 사용했다면 `/moai:0-project` 실행 전에 표준 파일명(`product.md`, `structure.md`, `tech.md`)으로 옮겨야 합니다.
+- `scripts/migrate_steering_filenames.py` 유틸리티를 활용해 드라이런 → 실제 적용 순으로 수행하고, 마이그레이션 결과를 사용자에게 공유합니다.
 
-### 8. 개발 방법론
-```
-Q: 개발 방법론을 선택하세요
-   1) Agile/Scrum
-   2) Kanban
-   3) Waterfall
-   4) 자유 형식
-A: [1-4 선택]
-```
+## 🔄 재실행 & 유지 관리
+- 환경 설정 변경이나 조직 정책 업데이트가 필요하면 언제든 `/moai:0-project update`를 실행해 마법사를 다시 진행하고, 필요한 경우에만 CLI 명령(`moai config ...`)으로 세부 값을 조정합니다.
+- 문서 갱신 후에는 `/moai:1-spec`으로 명세 백로그를 최신 상태로 맞추고, `/moai:3-sync`로 문서/PR을 동기화합니다.
+- 레거시 프로젝트는 초기 전환 후에도 정기적으로 `/moai:0-project`를 실행해 “현재 상태 vs 목표 상태”를 업데이트하는 것이 좋습니다.
 
-### 9. 품질 요구사항
-```
-Q: 품질 요구사항을 선택하세요 (복수 선택)
-   1) 높은 테스트 커버리지 (90%+)
-   2) 엄격한 코드 품질 (linting)
-   3) 자동화된 보안 검사
-   4) 성능 모니터링
-A: [1-4 복수 선택]
-```
-
-### 10. 특별 요구사항
-```
-Q: 특별한 요구사항이 있다면 입력하세요
-A: [자유 입력]
-```
-
-## 동적 분기 로직
-
-### 언어별 분기
-```python
-if language == "typescript":
-    frameworks = ["Next.js", "React", "Vue.js", "Express", "Nest.js"]
-elif language == "python":
-    frameworks = ["Django", "FastAPI", "Flask", "Streamlit"]
-elif language == "rust":
-    frameworks = ["Actix Web", "Rocket", "Warp", "Axum"]
-```
-
-### 프로젝트 유형별 분기
-```python
-if project_type == "web_app":
-    questions.extend(frontend_questions)
-elif project_type == "api_server":
-    questions.extend(api_questions)
-elif project_type == "library":
-    questions.extend(library_questions)
-```
-
-## 자동 스캔 및 프리필
-
-### 기존 코드 스캔
-```python
-def scan_existing_project():
-    """기존 프로젝트 파일 스캔"""
-    scanned_info = {}
-
-    # package.json 스캔
-    if Path("package.json").exists():
-        scanned_info["language"] = "typescript"
-        scanned_info["dependencies"] = scan_package_json()
-
-    # pyproject.toml 스캔
-    if Path("pyproject.toml").exists():
-        scanned_info["language"] = "python"
-        scanned_info["dependencies"] = scan_pyproject_toml()
-
-    # Git 정보 스캔
-    if Path(".git").exists():
-        scanned_info["git_remote"] = get_git_remote()
-
-    return scanned_info
-```
-
-### 자동 프리필
-```python
-def prefill_answers(scanned_info):
-    """스캔 결과로 답변 사전 입력"""
-    prefilled = {}
-
-    if "language" in scanned_info:
-        prefilled["language"] = scanned_info["language"]
-
-    if "next" in scanned_info.get("dependencies", []):
-        prefilled["framework"] = "Next.js"
-
-    return prefilled
-```
-
-## 생성 결과
-
-### Steering 문서 생성
-- **product.md**: 제품 비전과 전략
-- **structure.md**: 아키텍처 설계
-- **tech.md**: 기술 스택 선정
-
-### 프로젝트 구조 생성
-```
-프로젝트/
-├── docs/           # 문서 디렉토리
-├── src/            # 소스 코드
-├── tests/          # 테스트 디렉토리
-├── .env.example    # 환경 변수 템플릿
-└── README.md       # 프로젝트 소개
-```
-
-### 설정 파일 생성
-- 언어별 설정 파일 (tsconfig.json, pyproject.toml 등)
-- CI/CD 파이프라인 (.github/workflows/)
-- 개발 도구 설정 (.eslintrc, .prettierrc 등)
-
-### SPEC 디렉터리 생성
-- Top-3 기능 → 각각 `SPEC-00X/` 디렉터리 생성: `spec.md`, `acceptance.md`, `design.md`, `tasks.md`
-- 백로그 기능 → `.moai/specs/backlog/`에 STUB(제목/요약/초기 @REQ, [NEEDS CLARIFICATION]) 저장
-
-### 최종 확인 & Plan 모드 활용
-1. 모든 질문이 끝나면 마법사가 `최종 요약`을 보여준다.
-2. 사용자는 `모델 opusplan` 명령으로 Plan 모드로 전환해 세부 질문/추론을 정리한다.
-3. 필요한 조정이 끝나면 실행 모드(예: `모델 sonnet`)로 돌아와 “추가 수정 사항 없음”을 확인한다.
-4. 사용자 확정(예: “확정”, “좋습니다”)을 받은 뒤에만 문서를 생성한다.
-
-## 레거시 Steering 파일명 마이그레이션
-
-이전 버전에서 생성된 `.moai/steering/vision.md`, `architecture.md`, `techstack.md`는 더 이상 감지되지 않습니다.
-표준 파일명(`product.md`, `structure.md`, `tech.md`)으로 마이그레이션하세요.
-
-```bash
-# 드라이런(계획만 출력)
-python scripts/migrate_steering_filenames.py
-
-# 실제 적용(기존 타겟이 있을 경우 백업 후 덮어쓰기)
-python scripts/migrate_steering_filenames.py --apply --force
-```
-
-## 마법사 재실행
-
-### 설정 변경/점진적 업데이트
-설정/수정/추가는 이제 별도 서브커맨드 없이 `/moai:1-project`에서 대화형으로 처리합니다.
-
-대화형 마법사는 **맞춤형 프로젝트 설정**과 **자동화된 구조 생성**을 통해 완벽한 개발 환경을 제공합니다.
+대화형 마법사는 프로젝트 유형에 맞는 질문으로 시작부터 정렬된 컨텍스트를 구축하고, MoAI-ADK 워크플로우(`/moai:0-project → /moai:3-sync`)가 자연스럽게 이어지도록 설계되어 있습니다.

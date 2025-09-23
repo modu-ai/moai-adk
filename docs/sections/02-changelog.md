@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- 체크포인트 관리자/롤백 스크립트를 Annotated Tag 기반으로 재구성하고 회귀 테스트를 추가
+- README를 0.2.2 워크플로우/Annotated Tag 안내에 맞게 갱신하고 과장된 지표를 현실화
 - 1-project 마법사: Top-3 기능 생성 시 SPEC-00X 디렉터리( `spec.md` / `acceptance.md` / `design.md` / `tasks.md`)를 즉시 생성하고, 나머지 기능은 `.moai/specs/backlog/`에 STUB로 저장하도록 변경
 - 최종 확인 단계에서 Plan 모드(`모델 opusplan`) 전환 → 계획 검토 → 실행 모드 복귀 흐름을 안내, 사용자 확정 후에만 문서를 생성하도록 조정
 - spec-manager: 생성 전 미리보기 출력 + Plan 모드 활용 안내 + 사용자 확정 대화 추가, 단일 index.md 생성 제거
@@ -11,12 +13,52 @@
 - 설치기/리소스 관리자: `templates.mode=package`일 때 `.moai/_templates/` 복사 생략 지원
 - 문서 업데이트: 설정(13-config), 템플릿(14-templates), 아키텍처(04-architecture), 설치(05-installation)
 - 메모리 템플릿: 공통/스택별 프로젝트 메모리 템플릿 자동 생성 및 기술 스택 기반 복사 지원
-- 에이전트 시스템: Tailwind/Vue/Svelte 등 47개 awesome 에이전트를 카테고리화하고 신규 전문가 지침 추가
+- 에이전트 시스템: project-manager 에이전트 추가, Codex/Gemini headless 브리지 에이전트 도입, brainstorming 설정(`.moai/config.json.brainstorming`) 지원
+- 기존 `awesome/` 범용 에이전트 템플릿 삭제, 필요 시 사용자 정의 에이전트만 추가하도록 정리
+
+## v0.2.2 (2025-09-23) - 개인/팀 모드 통합 & Git 완전 자동화
+
+### 핵심 변화
+- 개인/팀 모드 자동 감지 및 전환 지원(`moai init --personal|--team`, 필요 시 `/moai:0-project update`로 재조정)
+- Git 명령어 시스템 신설: `/moai:git:checkpoint|rollback|branch|commit|sync`
+- 체크포인트(Annotated Tag/브랜치) 기반의 자동 백업·안전 롤백
+- 모드별 브랜치 전략(개인: `feature/{desc}` / 팀: `feature/SPEC-XXX-{slug}`)
+- 팀 모드 7단계 커밋(RED→GREEN→REFACTOR)과 PR 라이프사이클 자동화(옵션)
+- `/moai:0-project` → `/moai:3-sync` 신규 4단계 워크플로우 정립(auto 제안·문서/PR 동기화)
+
+### 명령어 추가
+```bash
+/moai:git:checkpoint    # 자동/수동 체크포인트 생성
+/moai:git:rollback      # 체크포인트 기반 롤백
+/moai:git:branch        # 모드별 브랜치 전략
+/moai:git:commit        # Constitution 기반 커밋(RED/GREEN/REFACTOR 등)
+/moai:git:sync          # 원격 동기화 및 충돌 보조
+```
+
+### 동작 안내(제약/주의)
+- 팀 모드 브랜치 생성 시 설명/현재 브랜치에서 SPEC ID 추론, 미존재 시 신규 ID 순차 할당. 생성된 이름을 반드시 검토 권장
+- `/moai:git:commit` 옵션: `--auto`, `--checkpoint`, `--spec`, `--red`, `--green`, `--refactor`, `--constitution` 지원. 테스트 통과 여부는 수동 확인 필요
+- `/moai:3-sync`는 TAG 인덱스와 `docs/status/sync-report.md`를 갱신하고 `docs/sections/index.md` 갱신일자 반영. README/PR 정리는 체크리스트 기반 수동 진행
+- 자동 체크포인트 감시자: `python .moai/scripts/checkpoint_watcher.py start` (watchdog 필요). 생성 태그: `moai_cp/YYYYMMDD_HHMMSS`
+- 16-Core @TAG 추적성 인덱스 갱신: `python .moai/scripts/check-traceability.py --update` 수동 실행
+- GitHub PR 자동화는 Anthropic GitHub App 설치 및 시크릿 설정 후 사용 권장(설정 전에는 `gh pr` 수동)
+
+### 마이그레이션
+- 다중 SPEC 일괄 생성의 구 방식(`--project`)은 `/moai:0-project` + `/moai:1-spec` auto 플로우로 대체
+- 개인 모드에서는 체크포인트 감시자 사용을 권장(파일 변경 시 즉시 백업 + 5분 주기)
+- 팀 모드에서는 GitHub CLI/Actions, Anthropic GitHub App 설정 점검 후 `/moai:git:*` 명령과 연계
+
+### 문서/구성 업데이트
+- 설치 가이드(05-installation): 0.2.2 버전, 모드별 초기화/전환, 선택 의존성(watchdog/gh)
+- 아키텍처(04-architecture): 개인/팀 모드 통합 다이어그램, git-manager 포함 구조
+- 명령어(08-commands): `/moai:git:*` 추가, 0–3 단계 워크플로우 최신화
+- 설정(13-config): `templates.mode`(`copy|package`), `git_strategy`(personal/team) & `project.mode` 반영
+- 에이전트(10-agents): project-manager, codex-bridge, gemini-bridge 추가 및 에이전트 협업 구조 업데이트
 
 ## v0.1.21 (2025-09-17) - Hook 안정성 & 버전 동기화
 
 ### 🔧 Bug Fixes & Improvements
-- 🏷️ Hook 환경변수 처리 개선: awesome 훅 전반의 "No file path provided" 오류 해결
+- 🏷️ Hook 환경변수 처리 개선: 추가 훅 전반의 "No file path provided" 오류 해결
   - `auto_formatter.py`: `CLAUDE_TOOL_FILE_PATH` 미설정 시에도 안전 종료(0)하도록 방어적 처리
   - 모든 템플릿 훅에 방어 로직 적용, MultiEdit 시 불필요한 에러 방지
 - 📝 버전 동기화: v0.1.21로 버전 일괄 갱신
@@ -31,7 +73,7 @@
 - 🧪 훅 검증: 11개 훅 파일 실행 경로/에러 핸들링 재검증
 
 ### 🔍 Quality Assurance
-- ✅ 훅 카테고리(awesome, moai) 전반 정상 동작 확인
+- ✅ 기존 훅 카테고리 전반 정상 동작 확인
 - 🔒 SecurityManager 동작 확인 및 임포트 폴백 경로 점검
 - 🎯 개발 워크플로우 중단 방지 로직 강화
 
@@ -205,7 +247,7 @@ python build_hooks.py --sync-only  # 수동 동기화만
   - `indexes/state.template.json` - 상태 추적 템플릿
 - **문제 파일 완전 제거**:
   - `.moai/specs/SPEC-001-sample/` 디렉토리 삭제
-  - `.moai/steering/` 내 모든 샘플 파일 삭제
+  - `.moai/project/` 내 샘플 템플릿 정리 (product/structure/tech 기본 제공)
 
 ### 🔧 핵심 컴포넌트 리팩토링
 
@@ -287,7 +329,7 @@ moai init project --force-copy  # 강제 복사 모드 (Windows 권장)
 - **모든 Hook 검증**: policy_block.py, tag_validator.py, post_stage_guard.py 등 stdin JSON 처리 확인
 
 ### Claude Code 2025 표준 완전 준수
-- **settings.json 표준화**: defaultMode "ask" → "default", environmentVariables → env, description 필드 제거
+- **settings.json 표준화**: defaultMode "ask" → "acceptEdits", environmentVariables → env, description 필드 제거
 - **MCP 통합**: enableAllProjectMcpServers: true 추가로 MCP 서버 자동 연결
 - **정리 설정**: cleanupPeriodDays: 30, includeCoAuthoredBy: true 추가
 - **오류 수정**: 모든 비표준 설정 제거로 검증 오류 해결

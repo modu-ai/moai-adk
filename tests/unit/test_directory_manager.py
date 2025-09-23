@@ -185,7 +185,7 @@ class TestDirectoryManager:
             ".claude/output-styles",
             ".moai",
             ".moai/templates",
-            ".moai/steering",
+            ".moai/project",
             ".moai/memory",
             ".moai/memory/decisions",
             ".moai/specs",

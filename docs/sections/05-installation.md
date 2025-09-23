@@ -1,7 +1,7 @@
 # MoAI-ADK 설치 및 초기화
 
 > **완전 자동화된 설치 시스템** - pip 기반 PyPI 패키지 설치
-> **Last Updated**: 2025-09-17 | **Package Version**: v0.1.21
+> **Last Updated**: 2025-09-23
 > **Difficulty**: 🟢 Basic
 
 ## 🚀 설치 과정 개요
@@ -25,43 +25,50 @@ pip install -e .
 
 # 설치 확인
 python -m moai_adk --version
-# 또는
 moai --version
+# 출력 예: MoAI-ADK 0.x.y
 ```
 
 ### 시스템 요구사항
 
-- **Python**: 3.11 이상 (3.11-3.13 완전 호환성 검증 완료)
+- **Python**: 3.11+
 - **운영체제**: Windows, macOS, Linux
 - **디스크 공간**: 50MB (전역 리소스)
 - **권한**: 일반 사용자 권한 (심볼릭 링크 불필요)
 
-### ✅ v0.1.21 안정성 보장
-
-**완전히 테스트된 안정 버전**:
-- 🧪 **7가지 핵심 기능** 완전 동작 검증
-- 🐍 **Python 3.11-3.13** 교차 호환성 확인
-- 🚫 **치명적 버그 5개** 완전 수정
-- ⚡ **설치 성공률 100%** 달성
+선택 의존성(모드별 권장):
+- 개인 모드: `watchdog` (자동 체크포인트 파일 감시)
+- 팀 모드: GitHub CLI(`gh`), Anthropic GitHub App (PR 자동화)
 
 ## Stage 2: 프로젝트 초기화
 
-### 새 프로젝트 생성
+### 새 프로젝트 생성 (모드 선택)
 
 ```bash
-# 새 프로젝트 생성
-moai init myapp
+# 새 프로젝트 생성 (개인 모드, 기본값)
+moai init --personal myapp
 
 # 프로젝트 디렉토리로 이동
 cd myapp
 ```
 
-### 기존 프로젝트에 설치
+### 기존 프로젝트에 설치 (모드 지정 가능)
 
 ```bash
 # 기존 프로젝트에 설치
 cd existing-project
-moai init .
+moai init --team .
+
+```
+
+### 모드 전환/확인
+
+모드 전환은 `/moai:0-project update` 마법사를 다시 실행해 팀 구성/협업 형태를 재조정하는 것이 기본입니다. CLI로 직접 전환해야 할 때만 아래 명령을 사용하세요.
+
+```bash
+moai config --mode team     # 개인 → 팀 전환 (수동)
+moai config --mode personal # 팀 → 개인 전환 (수동)
+moai config --show          # 현재 모드 출력
 ```
 
 ## 📋 초기화 프로세스(요약)
@@ -83,7 +90,7 @@ SimplifiedInstaller 기준 실제 초기화 단계는 아래와 같습니다.
 - `.moai/version.json`에 템플릿/패키지 버전과 `last_updated` 기록
 
 5) 보조 디렉토리 구성
-- `.claude/logs`, `.moai/steering`, `.moai/specs`, `.moai/reports` 등 빈 디렉토리 생성
+- `.claude/logs`, `.moai/project`, `.moai/specs`, `.moai/reports` 등 빈 디렉토리 생성
 
 6) GitHub 워크플로우 (옵션)
 - `include_github=true`일 때 `.github/workflows/` 복사
@@ -113,13 +120,11 @@ self.resources_root = resources.files('moai_adk.resources')
 self.templates_root = self.resources_root / 'templates'
 
 # 각 프로젝트로 복사되는 리소스 (기본)
-.claude/agents/moai/      # 11개 MoAI 에이전트 파일
-.claude/agents/awesome/   # 47개 범용 에이전트 파일(backend/frontend/mobile 등 카테고리별 서브 디렉토리)
+.claude/agents/moai/      # MoAI 핵심/통합 에이전트(project-manager, spec-builder, code-builder, doc-syncer, git-manager, codex-bridge, gemini-bridge 등)
 .claude/commands/moai/    # 6개 슬래시 명령어
 .moai/_templates/         # 문서 템플릿들 (templates.mode=package일 때는 복사 생략)
 ```
 
-- `agents/awesome/`는 `frontend/`, `mobile/`, `backend/`, `languages/`, `config/`, `docs/`, `quality/`, `general/`로 그룹화되어 관리됩니다.
 
 ### 파일 복사 아키텍처
 
@@ -136,6 +141,27 @@ moai init project
 # 상태 확인
 moai status -v  # 상세 상태 확인
 ```
+
+### (선택) 외부 브레인스토밍 CLI 확인
+
+```bash
+which codex  || echo "🔧 Codex CLI 미설치 – npm install -g @openai/codex 또는 brew install codex"
+which gemini || echo "🔧 Gemini CLI 미설치 – npm install -g @google/gemini-cli 또는 brew install gemini-cli"
+```
+
+`/moai:0-project` 인터뷰에서 project-manager 에이전트가 위 명령과 동일한 검사를 수행하고, 설치/로그인 방법만 안내합니다. 자동 설치는 수행하지 않습니다.
+
+```json
+// 브레인스토밍 설정 예시
+{
+  "brainstorming": {
+    "enabled": true,
+    "providers": ["claude", "codex", "gemini"]
+  }
+}
+```
+
+`providers` 배열에는 항상 `"claude"` 를 유지하고, 추가로 사용할 엔진을 선택합니다.
 
 ## 🛠️ 설치 후 확인
 

@@ -44,16 +44,16 @@ MoAI-ADK 0.2.2는 **개인/팀 모드 자동 감지 시스템**과 **Git 완전 
 #### 🎯 0.2.2의 혁신 포인트
 
 1. **🧪 개인 모드 (Personal Mode)**:
-   - **자동 체크포인트**: 5분마다 자동 백업, 파일 변경 감지 시 즉시 백업
-   - **간소화된 브랜치**: `feature/{description}` 패턴
-   - **체크포인트 롤백**: 언제든지 이전 상태로 안전한 복구
-   - **실험적 개발**: 실패해도 걱정 없는 개발 환경
+   - **자동 체크포인트(태그 기반)**: 5분 주기 + 파일 변경 시 즉시 Annotated Tag 생성
+   - **간소화된 브랜치**: `feature/{description}` 패턴으로 실험 분리
+  - **롤백 친화적 흐름**: `git tag -a moai_cp/...` 활용으로 1분 내 복구를 목표
+   - **실험적 개발**: 실패해도 걱정 없는 안전망 제공
 
 2. **🏢 팀 모드 (Team Mode)**:
-   - **완전한 GitFlow**: `feature/SPEC-XXX-{name}` + Draft PR 자동 생성
-   - **7단계 자동 커밋**: 의미있는 개발 히스토리 자동 생성
-   - **PR 라이프사이클**: Draft → Ready → Merge 완전 자동화
-   - **팀 협업**: 리뷰어 할당, 알림, 상태 추적
+   - **GitHub Issue 중심 백로그**: `/moai:1-spec` → `[SPEC-XXX]` Issue 생성 후 담당자·라벨 자동 권장
+   - **7단계 자동 커밋**: 의미 있는 히스토리를 남기는 RED→GREEN→REFACTOR
+   - **PR 라이프사이클 자동화(옵션)**: GitHub App 설정 후 Draft → Ready 전환, 리뷰어 추천을 자동화
+   - **팀 협업 신호**: Slack/이메일 알림·Project 보드 업데이트 트리거 제공
 
 3. **🔧 Git 명령어 시스템**:
 
@@ -65,10 +65,38 @@ MoAI-ADK 0.2.2는 **개인/팀 모드 자동 감지 시스템**과 **Git 완전 
    /moai:git:sync          # 원격 저장소 동기화
    ```
 
+> ⚠️ **0.2.2 현재 동작 안내**
+> - 팀 모드 브랜치 생성은 설명/현재 브랜치에서 SPEC ID를 추론하며 없으면 신규 ID를 순차적으로 할당합니다. 생성된 이름이 요구사항과 맞는지 검토하세요.
+> - `/moai:git:commit` 은 `--auto`, `--checkpoint`, `--spec`, `--red`, `--green`, `--refactor`, `--constitution` 옵션을 지원하며 단계별 기본 메시지를 생성합니다. 테스트 통과 여부는 수동으로 확인해야 합니다.
+> - `/moai:3-sync` 는 TAG 인덱스를 갱신하고 `docs/status/sync-report.md` 리포트를 생성하며 `docs/sections/index.md`의 갱신일자를 자동 반영합니다. README·PR 정리는 체크리스트에 따라 수동으로 진행해야 합니다.
+> - 자동 체크포인트 감시자는 `python .moai/scripts/checkpoint_watcher.py start` 로 기동합니다. Annotated Tag(`moai_cp/YYYYMMDD_HHMMSS`)를 생성해 롤백 포인트를 남기며, SessionStart/`/moai:status` 에서 상태를 확인하세요. `watchdog` 미설치 시 `pip install watchdog` 후 재시작이 필요합니다.
+> - 16-Core @TAG 추적성 인덱스는 `python .moai/scripts/check-traceability.py --update` 명령을 수동 실행해 갱신합니다.
+> - GitHub PR 자동화(Draft Ready·리뷰어 추천 등)를 사용하려면 `/install-github-app`으로 Anthropic GitHub App을 설치하고 필요한 시크릿을 설정해야 합니다. 설정 완료 전에는 수동으로 `gh pr` 명령을 실행하십시오.
+
 4. **🎛️ 자동 모드 감지**:
    - **설치 시 선택**: `moai init --personal` (기본값) / `moai init --team`
    - **동적 전환**: 언제든지 모드 변경 가능
    - **상황별 최적화**: 개인 실험 vs 팀 협업에 맞춤
+
+#### 🧭 신규 4단계 워크플로우: `/moai:0-project` → `/moai:3-sync`
+
+1. **/moai:0-project – 프로젝트 킥오프**
+   - `moai init` 시 복사되는 빈 프로젝트 문서(`.moai/project/{product,structure,tech}.md`)를 대화형 질문으로 갱신합니다.
+   - CLAUDE.md는 `@.moai/project/product.md` 와 같이 `@` 임포트를 사용해 프로젝트 문서를 로드합니다. 내용을 업데이트한 뒤 `/clear` 또는 재시작을 통해 Claude 메모리에 반영하세요.
+   - 기존 코드베이스인 경우에는 파일 구조·언어·테스트 커버리지 등을 분석해 초안을 채웁니다.
+   - 자동 초안이 필요하면 `python3 .moai/scripts/project_initializer.py --analyze` 명령을 실행해 요약본을 생성하고, Claude 상에서 세부사항을 보완하세요.
+   - 업데이트가 끝나면 **Claude Code를 재시작**해 CLAUDE 메모리에 새 프로젝트 문서를 로드합니다.
+
+2. **/moai:1-spec – auto 제안 & 일괄 생성**
+   - 프로젝트 문서를 읽고 도메인/기능에 맞는 SPEC 후보를 자동 제안합니다.
+   - **Personal 모드**: 확인 후 `.moai/specs/`에 명세 파일을 일괄 생성합니다.
+   - **Team 모드**: 확인 후 GitHub Issue/Discussion 등을 생성하고, feature 브랜치 템플릿과 연동합니다(중복 SPEC 방지).
+
+3. **/moai:2-build – TDD (개인: 자동 체크포인트, 팀: 구조화 커밋)**
+
+4. **/moai:3-sync – 문서/PR 동기화 & 상태 보고**
+
+> ❗️ `--project` 옵션으로 다중 SPEC을 생성하던 기존 방식은 `/moai:0-project` + `/moai:1-spec` auto 플로우로 대체되었습니다.
 
 #### 💡 목표 사용자
 
@@ -114,8 +142,11 @@ graph TD
 # 1. 프로젝트 시작
 moai init my-project --personal
 
-# 2. 자동 체크포인트 기반 개발
-/moai:1-spec "새 기능"           # SPEC + 자동 체크포인트
+# 2. 프로젝트 킥오프 (project 문서 초안 업데이트 + 메모리 로드)
+/moai:0-project
+
+# 3. 자동 체크포인트 기반 개발
+/moai:1-spec                    # auto 모드 - 프로젝트 문서 기반 SPEC 제안 → 확인 후 일괄 생성
 /moai:git:checkpoint "작업 시작" # 수동 체크포인트
 # [파일 변경] → 자동 체크포인트
 /moai:2-build                   # TDD + 자동 체크포인트
@@ -129,15 +160,35 @@ moai init my-project --personal
 # 1. 팀 프로젝트 시작
 moai init team-project --team
 
-# 2. 완전한 GitFlow 자동화
-/moai:1-spec "새 기능"         # SPEC + feature 브랜치 + Draft PR
+# 2. 프로젝트 킥오프 (project 문서 초안 업데이트 + GitHub 이슈 워크스페이스 연결)
+/moai:0-project
+
+# 3. 완전한 GitFlow 자동화
+/moai:1-spec                    # auto 모드 - 프로젝트 문서 기반 SPEC 제안으로 후보 확인
 /moai:git:branch --status      # 브랜치 상태 확인
 /moai:2-build                  # TDD + 7단계 자동 커밋
 /moai:git:sync --pull          # 최신 변경사항 동기화
 /moai:3-sync                   # 문서화 + PR Ready + 리뷰어 할당
 ```
 
-### 4개 핵심 에이전트 + git-manager
+### project-manager + 핵심 에이전트 + 브리지 + git-manager
+
+#### project-manager (프로젝트 킥오프 전문가)
+
+**파일**: `.claude/agents/moai/project-manager.md`
+
+- `/moai:0-project` 실행 시 레포지토리를 스캔해 신규/레거시 상황을 감지하고 인터뷰 트리를 선택
+- product/structure/tech 문서를 대화형으로 작성하고 CLAUDE 메모리에 반영
+- 개인/팀 모드, 출력 스타일, 협업 도구 설정을 재확인하며 필요한 경우 `/moai:0-project update`에서 조정
+- spec-builder, doc-syncer, git-manager가 후속 단계에서 사용할 공통 컨텍스트(팀 규모, 기술 스택, 레거시 제약)를 요약
+
+#### cc-manager (환경/권한 최적화)
+
+**파일**: `.claude/agents/moai/cc-manager.md`
+
+- Claude Code 권한/훅/MCP 구성을 점검하고 Guard 정책이 올바르게 작동하는지 확인
+- 프로젝트 전반의 설정 문제(permissions.allow, hooks 실행권한 등)를 진단하고 수정 제안을 제공
+- 필요 시 project-manager와 협력해 모드 전환이나 환경 재구성 경고를 전달
 
 #### 1. spec-builder (EARS 명세 + 모드별 브랜치 전략)
 
@@ -199,6 +250,22 @@ moai init team-project --team
 - 원격 저장소 동기화
 - 모드별 Git 전략 자동 선택
 
+#### 5. codex-bridge (Codex CLI 연동)
+
+**파일**: `.claude/agents/moai/codex-bridge.md`
+
+- `codex exec --model gpt-5-codex` 명령으로 headless 브레인스토밍/디버깅 결과를 수집
+- 설치되지 않은 경우 `npm install -g @openai/codex` 또는 `brew install codex` 지침을 안내만 함
+- `.moai/config.json.brainstorming.providers` 에 `codex` 가 포함될 때만 커맨드가 호출
+
+#### 6. gemini-bridge (Gemini CLI 연동)
+
+**파일**: `.claude/agents/moai/gemini-bridge.md`
+
+- `gemini -m gemini-2.5-pro -p ... --output-format json` 명령으로 구조화된 제안을 수집
+- 설치되지 않은 경우 `npm install -g @google/gemini-cli` 또는 `brew install gemini-cli` 명령을 안내만 함
+- `.moai/config.json.brainstorming.providers` 에 `gemini` 가 포함될 때만 커맨드가 호출
+
 ### Git 명령어 시스템
 
 #### 체크포인트 시스템
@@ -216,6 +283,10 @@ moai init team-project --team
 # 체크포인트 상태 확인
 /moai:git:checkpoint --list
 /moai:git:checkpoint --status
+
+# Annotated Tag 수동 생성 예시
+git tag -a moai_cp/$(date +%Y%m%d_%H%M%S) -m "Auto-checkpoint: SPEC-001 대기 중"
+git restore --source moai_cp/20250923_120000 -- .   # 특정 시점 복구
 ```
 
 **`/moai:git:rollback`** - 안전한 복구 시스템
@@ -250,6 +321,8 @@ moai init team-project --team
 # 브랜치 정리
 /moai:git:branch --cleanup               # 완료된 브랜치 정리
 ```
+
+> ℹ️ **팀 모드 브랜치 네이밍**: 설명이나 현재 브랜치에서 SPEC ID를 찾고, 없으면 가장 높은 번호 다음(`SPEC-00X`)을 자동으로 사용합니다. 생성된 이름이 의도와 다르면 `/moai:git:branch --status`로 확인한 뒤 `git branch -m`으로 정정하세요.
 
 #### 스마트 커밋 시스템
 
@@ -360,26 +433,30 @@ moai --version
 ⚙️ 팀 협업 최적화 설정:
    ✅ .moai/config.json (team 모드)
    ✅ GitFlow 표준 워크플로우
-   ✅ Draft PR 자동 생성 시스템
+   ✅ Draft PR 자동 생성(Anthropic GitHub App 설정 시)
    ✅ 7단계 자동 커밋 패턴
    ✅ GitHub Actions CI/CD 연동
 
 📁 협업 도구 연동:
+   ✅ `/install-github-app` 실행 및 Anthropic GitHub App 설치
    ✅ GitHub CLI 연동 확인
-   ✅ 리뷰어 자동 할당 시스템
-   ✅ PR 라이프사이클 관리
-   ✅ 팀 알림 시스템
+   ✅ 리뷰어 추천/배정 자동화 (App + gh 설정 시)
+   ✅ PR 라이프사이클/알림 연동
 
 🎉 팀 모드 설정 완료! 전문적인 협업 환경 준비됨
 ```
 
 #### 4. 모드 전환
 
+가장 안전한 방법은 `/moai:0-project update`를 다시 실행해 인터뷰 도중 개인/팀 모드를 재선택하는 것입니다. 마법사는 기존 문서를 분석하고 팀 규모·협업 흐름을 다시 물어본 뒤 `.moai/config.json`을 일관되게 갱신합니다.
+
+직접 CLI로 전환해야 할 경우에만 아래 명령을 사용하세요:
+
 ```bash
-# 개인 → 팀 모드 전환
+# 개인 → 팀 모드 전환 (수동)
 moai config --mode team
 
-# 팀 → 개인 모드 전환
+# 팀 → 개인 모드 전환 (수동)
 moai config --mode personal
 
 # 현재 모드 확인
@@ -390,6 +467,30 @@ moai config --show
 
 ## 🎯 Usage Guide
 
+### 0단계: `/moai:0-project` 프로젝트 문서 초기화
+
+| 구분 | 질문 예시 | 출력 | 메모리 반영 |
+|------|-----------|------|-------------|
+| Product | “프로젝트 이름/비전/성공 지표는?” | `.moai/project/product.md` | CLAUDE.md `Project Overview` 섹션 | 
+| Structure | “핵심 도메인/모듈/외부 연동은?” | `.moai/project/structure.md` | CLAUDE.md `System Structure` 섹션 |
+| Tech | “언어/프레임워크/배포 타깃은?” | `.moai/project/tech.md` | CLAUDE.md `Tech Stack` 섹션 |
+
+- **신규 프로젝트**: 대화형 질문(최대 10문항)으로 각 문서를 채운 뒤 저장한다.
+- **기존 코드베이스**: `python3 .moai/scripts/project_initializer.py --analyze` 명령으로 언어/디렉터리/테스트 정보를 요약한 뒤 Claude 대화로 세부 내용을 보완한다.
+- **브레인스토밍 옵션**: 인터뷰 중 project-manager가 Codex/Gemini CLI 설치 여부를 확인하고, 외부 브레인스토밍 사용 여부를 묻는다. 동의하면 설치/로그인 명령을 안내하고 `.moai/config.json.brainstorming`을 갱신한다.
+- **설정 갱신**: 개인/팀 모드나 출력 스타일, 브레인스토밍 옵션을 바꾸고 싶을 때는 `/moai:0-project update` 로 마법사를 다시 실행해 조정한다. (필요 시에만 `moai config --mode ...` 등 수동 명령 사용)
+- **완료 후**: “Claude Code를 재시작해 새로운 프로젝트 문서를 메모리로 다시 불러오세요” 안내가 출력된다.
+
+### 1단계: `/moai:1-spec` auto 제안 흐름
+
+1. `.moai/project/*.md`를 읽어 주요 기능/우선순위를 추출한다.
+2. **Personal 모드**: 제안 목록(예: SPEC-001~003)을 표시하고 사용자 승인 시 `.moai/specs/`에 일괄 생성한다.
+3. **Team 모드**: GitHub Issue(또는 Discussion)를 생성하고 라벨·담당자·프로젝트 보드와 연동한다.
+4. 수동 단일 SPEC이 필요할 때는 `/moai:1-spec "기능명"`을 사용하면 기존 방식으로 한 개만 생성한다.
+5. `.moai/config.json.brainstorming.enabled` 가 `true` 이면 project-manager가 설정한 `providers` 값에 따라 `codex-bridge` / `gemini-bridge` 에이전트가 headless 브레인스토밍 결과를 수집한다. (예: `Task: use codex-bridge to run "codex exec --model gpt-5-codex \"...\""`)
+
+---
+
 ### 개인 모드 (Personal Mode) 사용법
 
 #### 안전한 실험적 개발
@@ -398,10 +499,10 @@ moai config --show
 # 1. 새 기능 실험 시작
 /moai:git:checkpoint "새 알고리즘 실험 시작"
 
-# 2. 명세 작성 (간소화된 형태)
+# 2. 명세 작성 (수동 단일 SPEC)
 /moai:1-spec "새로운 정렬 알고리즘 구현"
 # → feature/새로운-정렬-알고리즘 브랜치 생성
-# → 간소화된 SPEC 문서 생성
+# → 프로젝트 문서 범위를 벗어나지 않는 SPEC 문서 생성
 # → 자동 체크포인트 생성
 
 # 3. 실험적 구현 (실패해도 안전)
@@ -422,15 +523,21 @@ moai config --show
 #### 연속적인 반복 개발
 
 ```bash
-# 빠른 반복 개발 사이클
-/moai:1-spec "기능 A" && /moai:2-build && /moai:3-sync    # 첫 번째 기능
-/moai:git:checkpoint "기능 A 완료"
+# 0-1. SPEC 백로그 일괄 생성 (auto)
+/moai:0-project
+/moai:1-spec                     # 프로젝트 문서 기반 SPEC 후보 확인 → SPEC-001~003 생성
 
-/moai:1-spec "기능 B" && /moai:2-build && /moai:3-sync    # 두 번째 기능
-/moai:git:checkpoint "기능 B 완료"
+# 2. 우선순위 순서대로 구현
+/moai:2-build SPEC-001
+/moai:3-sync
+/moai:git:checkpoint "SPEC-001 구현 완료"
+
+/moai:2-build SPEC-002
+/moai:3-sync
+/moai:git:checkpoint "SPEC-002 구현 완료"
 
 # 문제 발생 시 이전 상태로 롤백
-/moai:git:rollback --checkpoint "기능 A 완료"
+/moai:git:rollback --checkpoint "SPEC-001 구현 완료"
 ```
 
 ### 팀 모드 (Team Mode) 사용법
@@ -438,13 +545,17 @@ moai config --show
 #### 완전한 GitFlow 자동화
 
 ```bash
+# 0. 백로그 준비 (최초 1회)
+/moai:0-project
+/moai:1-spec                      # 프로젝트 문서 기반 SPEC 제안 → GitHub Issue/Discussion 생성
+
 # 1. 새 기능 개발 시작
-/moai:git:sync --pull                   # 최신 develop 브랜치 동기화
-/moai:1-spec "사용자 인증 시스템"       # GitFlow 명세 작성
-# → feature/SPEC-001-사용자-인증 브랜치 생성
-# → 완전한 EARS 명세 작성
-# → Draft PR 자동 생성 (#123)
-# → 팀 알림 발송
+/moai:git:sync --pull              # 최신 develop 브랜치 동기화
+gh issue list --label SPEC         # 팀 백로그 확인 (자동 생성된 SPEC-XXX 이슈)
+gh issue view SPEC-001             # 상세 요구사항 확인
+/moai:git:branch --team SPEC-001   # feature/SPEC-001-{slug} 브랜치 체크아웃
+# → Issue에 회의록/프로젝트 문서 링크 자동 첨부
+# → Draft PR 사전 생성 및 담당자 배정
 
 # 2. TDD 구현 (7단계 자동 커밋)
 /moai:2-build SPEC-001
@@ -469,22 +580,31 @@ moai config --show
 
 #### 병렬 기능 개발
 
-```bash
-# 여러 기능 병렬 개발
-/moai:1-spec "결제 시스템" --parallel
-# → feature/SPEC-002-결제-시스템
+병렬 기능 개발은 GitHub Issue를 중심으로 진행됩니다:
 
-/moai:1-spec "알림 시스템" --parallel
-# → feature/SPEC-003-알림-시스템
+1. `/moai:1-spec` auto 실행으로 생성된 SPEC 이슈를 담당자별로 배정합니다.
+2. 각 담당자는 `gh issue view SPEC-00X --json title,body,url` 로 요구사항을 확인하고 `/moai:git:branch --team SPEC-00X` 를 실행해 작업 브랜치를 준비합니다.
+3. `/moai:2-build SPEC-00X` → `/moai:3-sync` 흐름을 독립적으로 진행하면 Draft PR이 Issue와 자동 연결됩니다.
+4. 구현 완료 후 Issue를 Close하고 프로젝트 보드를 갱신합니다.
 
-# 각 기능 독립적으로 개발
-/moai:2-build SPEC-002 &               # 백그라운드 실행
-/moai:2-build SPEC-003 &               # 백그라운드 실행
-wait                                   # 모든 작업 완료 대기
+#### GitHub App & Actions 설정 가이드
 
-# 모든 기능 동기화
-/moai:3-sync --all
+1. 터미널에서 `claude`를 실행하고 `/install-github-app`을 입력하여 Anthropic GitHub App 설치 마법사를 실행합니다.
+2. 설치 범위(Repository)와 권한을 승인한 뒤, `gh auth status`로 GitHub CLI 인증을 확인합니다.
+3. 레포지토리에 다음 시크릿을 설정합니다:
+   - `ANTHROPIC_API_KEY`
+   - 필요 시 `OPENAI_API_KEY` 등 추가 키
+4. `.github/workflows/claude-code.yml` 예시를 참고해 다음과 같이 구성합니다:
+
+```yaml
+jobs:
+  review:
+    uses: anthropics/claude-code-action/.github/workflows/pr-review.yml@v1
+    with:
+      model: claude-3-5-sonnet-latest
 ```
+
+5. 워크플로 실행 후 Slack/이메일 등 알림이 필요하면 GitHub App → Slack 연결을 추가합니다.
 
 ### Git 명령어 시스템 고급 사용법
 
@@ -614,10 +734,16 @@ moai migrate --from=0.2.1 --to=0.2.2
     }
   },
   "constitution": {
-    "simplicity_threshold": 3,
+    "simplicity_threshold": 5,
     "test_coverage_target": 85,
     "enforce_tdd": true,
-    "require_tags": true
+    "require_tags": true,
+    "principles": {
+      "simplicity": {
+        "max_projects": 5,
+        "notes": "프로젝트 규모에 따라 근거를 기록하고 조정하세요."
+      }
+    }
   }
 }
 ```
@@ -744,17 +870,21 @@ You are a Git operations specialist managing mode-specific Git strategies.
 #### `/moai:1-spec` (명세 작성)
 
 ```bash
-/moai:1-spec <description> [OPTIONS]
+/moai:1-spec ["단일 SPEC 제목"] [SPEC-ID]
 
-# 기본 사용법
+# 기본(auto) 사용법 – 프로젝트 문서를 읽고 제안 목록 확인 후 일괄 생성
+/moai:1-spec
+
+# 수동 모드 – 단일 SPEC을 직접 작성하고 싶을 때
 /moai:1-spec "JWT 인증 시스템"
 
-# 프로젝트 모드
-/moai:1-spec --project
-
-# 기존 SPEC 수정
-/moai:1-spec SPEC-001 "추가 보안 요구사항"
+# 기존 SPEC 보완 – 수동 모드와 함께 사용
+/moai:1-spec SPEC-001 "보안 요구사항 보강"
 ```
+
+> ✅ **Personal 모드**: 확인한 제안을 `.moai/specs/`에 로컬 파일로 생성합니다.
+>
+> ✅ **Team 모드**: 확인한 제안을 GitHub Issue(또는 Discussion)로 등록하고, feature/SPEC-XXX 브랜치 템플릿과 연결합니다(중복 SPEC 방지).
 
 #### `/moai:2-build` (TDD 구현)
 
@@ -771,6 +901,8 @@ You are a Git operations specialist managing mode-specific Git strategies.
 /moai:2-build all
 ```
 
+> ℹ️ `brainstorming.enabled` 가 `true` 이면, code-builder 는 `codex-bridge`(예: `Task: use codex-bridge to run "codex exec --model gpt-5-codex ..."`) 와 `gemini-bridge`(`Task: use gemini-bridge to run "gemini -m gemini-2.5-pro -p ... --output-format json"`) 로부터 제안을 수집해 Claude 출력과 비교한 뒤 최종 구현 방향을 확정합니다.
+
 #### `/moai:3-sync` (문서 동기화)
 
 ```bash
@@ -785,6 +917,11 @@ You are a Git operations specialist managing mode-specific Git strategies.
 # 상태 확인
 /moai:3-sync status
 ```
+
+> ℹ️ 브레인스토밍이 활성화된 경우, doc-syncer 는 `codex-bridge`/`gemini-bridge` 결과(예: `Task: use gemini-bridge ...`)를 참고해 추가 문서 보완 및 리스크 항목을 보고서에 반영할 수 있습니다.
+
+> ℹ️ **동기화 자동화 상태**: `/moai:3-sync` 는 TAG 인덱스를 갱신하고 `docs/status/sync-report.md` 에 요약 리포트를 생성하며 `docs/sections/index.md`의 `Last Updated` 메타를 자동 반영합니다.
+>   - README·심층 문서·PR 업데이트는 체크리스트에 따라 수동으로 마무리하세요.
 
 ### Git 전용 명령어
 
@@ -869,6 +1006,8 @@ You are a Git operations specialist managing mode-specific Git strategies.
 /moai:git:commit --constitution --message "품질 검증 완료"
 ```
 
+> ℹ️ **현재 버전 주의**: 0.2.2에서 `--spec`, `--red`, `--green`, `--refactor`, `--constitution` 옵션은 기본 템플릿 메시지를 생성합니다. 테스트 실행/커버리지 확인은 자동으로 이루어지지 않으므로 커밋 전에 직접 검증하세요.
+
 #### `/moai:git:sync` (원격 동기화)
 
 ```bash
@@ -891,6 +1030,17 @@ You are a Git operations specialist managing mode-specific Git strategies.
 /moai:git:sync --status
 ```
 
+### 진단 명령어
+
+#### `/moai:status`
+
+```bash
+# 프로젝트 진단 보고서 출력
+/moai:status
+```
+
+> ℹ️ `moai:status` 는 SessionStart Hook 에서 제공하던 상세 진단을 독립 명령으로 분리한 것입니다. 기본 알림은 경량화되고, 필요할 때만 전체 보고서를 확인할 수 있습니다.
+
 ---
 
 ## 🎨 Output Styles
@@ -909,12 +1059,14 @@ MoAI-ADK 0.2.2는 개인/팀 모드와 연동된 **5가지 출력 스타일**을
 
 ### 모드별 스타일 자동 선택
 
+스타일 조정은 `/moai:0-project update` 인터뷰 중 “출력 스타일” 질문에서 선택하는 것이 권장됩니다. CLI로 직접 설정해야 할 때만 아래 예시처럼 `moai config` 명령을 사용하세요.
+
 ```bash
-# 개인 모드에서 권장 스타일
+# 개인 모드에서 권장 스타일 (수동 설정 필요 시)
 moai config --mode personal --style study     # 학습 중심
 moai config --mode personal --style beginner  # 초보자 친화
 
-# 팀 모드에서 권장 스타일
+# 팀 모드에서 권장 스타일 (수동 설정 필요 시)
 moai config --mode team --style mentor        # 팀 교육
 moai config --mode team --style audit         # 변경사항 추적
 ```
@@ -929,7 +1081,7 @@ moai config --mode team --style audit         # 변경사항 추적
 
 | 작업            | 기존 방식        | 개인 모드                  | 개선율              | 안전성         |
 | --------------- | ---------------- | -------------------------- | ------------------- | -------------- |
-| **실험적 개발** | 수동 백업 (10분) | **자동 체크포인트 (즉시)** | **100% 자동화**     | 완전한 롤백    |
+| **실험적 개발** | 수동 백업 (10분) | **자동 체크포인트 (태그 기반)** | **자동화 (목표 95%+)** | 빠른 롤백 대비    |
 | **빠른 반복**   | Git 명령어 필요  | **체크포인트만으로 충분**  | **80% 시간 단축**   | 실패 걱정 없음 |
 | **브랜치 관리** | 복잡한 GitFlow   | **간소화된 브랜치**        | **70% 복잡도 감소** | 충돌 최소화    |
 
@@ -938,7 +1090,7 @@ moai config --mode team --style audit         # 변경사항 추적
 | 작업            | 기존 방식       | 팀 모드              | 개선율            | 협업 효과      |
 | --------------- | --------------- | -------------------- | ----------------- | -------------- |
 | **PR 생성**     | 수동 작성 (5분) | **자동 생성 (30초)** | **90% 시간 단축** | 일관된 품질    |
-| **리뷰어 할당** | 수동 선택       | **자동 할당**        | **100% 자동화**   | 최적 배정      |
+| **리뷰어 할당** | 수동 선택       | **자동 제안**        | **자동화 (App 연동 시)**   | 최적 배정      |
 | **문서 동기화** | 수동 업데이트   | **Living Document**  | **실시간 동기화** | 항상 최신 상태 |
 
 ### 시스템 리소스 최적화
@@ -993,15 +1145,15 @@ MoAI-ADK 0.2.2는 **Claude Code 표준 준수**와 **모든 경로 검증 완료
 │   │       ├── rollback.md      # 롤백 시스템
 │   │       └── sync.md          # 원격 동기화
 │   ├── agents/                  # 전문 에이전트 시스템
-│   │   ├── moai/               # 핵심 4개 에이전트
-│   │   │   ├── spec-builder.md  # EARS 명세 + 브랜치 자동화
-│   │   │   ├── code-builder.md  # TDD + 커밋 자동화
-│   │   │   ├── doc-syncer.md    # 문서 + PR 자동화
-│   │   │   ├── git-manager.md   # Git 작업 전담
-│   │   │   └── cc-manager.md    # Claude Code 관리
-│   │   └── awesome/            # 고급 2개 에이전트
-│   │       ├── gemini.md       # 다중 모드 분석
-│   │       └── gpt-codex.md    # 고급 코드 생성
+│   │   └── moai/               # project-manager, cc-manager, spec-builder, code-builder, doc-syncer, git-manager, codex-bridge, gemini-bridge
+│   │       ├── project-manager.md
+│   │       ├── cc-manager.md
+│   │       ├── spec-builder.md
+│   │       ├── code-builder.md
+│   │       ├── doc-syncer.md
+│   │       ├── git-manager.md
+│   │       ├── codex-bridge.md
+│   │       └── gemini-bridge.md
 │   ├── hooks/moai/             # 자동화 훅 시스템 (실행권한 ✅)
 │   │   ├── auto_checkpoint.py  # 자동 체크포인트 (개인 모드)
 │   │   ├── check_style.py      # 코드 스타일 검증
@@ -1019,81 +1171,111 @@ MoAI-ADK 0.2.2는 **Claude Code 표준 준수**와 **모든 경로 검증 완료
 │   ├── config.json            # 개인/팀 모드 설정
 │   ├── memory/                # Constitution 저장소
 │   │   └── constitution.md    # 5원칙 + 16-Core @TAG
+│   ├── project/               # 프로젝트 기본 문서 (init 시 빈 템플릿 복사)
+│   │   ├── product.md         # 제품 비전 – /moai:0-project 로 업데이트
+│   │   ├── structure.md       # 시스템 구조 – /moai:0-project 로 업데이트
+│   │   └── tech.md            # 기술 스택 – /moai:0-project 로 업데이트
 │   └── scripts/               # 핵심 스크립트 (실행권한 ✅)
 │       ├── check_constitution.py   # Constitution 검증
 │       ├── check-traceability.py   # @TAG 추적성 검증
-│       ├── rollback.py            # Git 롤백 시스템
-│       ├── detect_language.py     # 언어 자동 감지
-│       ├── detect_project_type.py # 프로젝트 타입 감지
-│       └── cleanup_inappropriate_docs.py # 문서 정리
+│       ├── doc_sync.py             # 문서/TAG 동기화 헬퍼
+│       ├── checkpoint_watcher.py   # 자동 체크포인트 CLI
+│       ├── branch_manager.py       # 브랜치 자동화
+│       ├── commit_helper.py        # 커밋 자동화
+│       ├── rollback.py             # Git 롤백 시스템
+│       └── 기타 진단/탐지 스크립트 (detect_*, cleanup_*)
 ├── docs/                      # 프로젝트 문서
+│   ├── status/                # 동기화 리포트 (자동 생성)
+│   │   └── sync-report.md     # 최신 /moai:3-sync 결과
 │   └── MOAI-ADK-0.2.2-GUIDE.md  # 이 문서
 └── CLAUDE.md                  # 프로젝트 가이드 (핵심)
 ```
 
 #### 설정 파일 상세
 
-**`.claude/settings.json`** - 완전 검증된 Claude Code 설정:
+**`.claude/settings.json`** - 권장 기본 설정:
 
 ```json
 {
   "permissions": {
-    "defaultMode": "default",
+    "defaultMode": "acceptEdits",
     "allow": [
       "Task",
-      "Write",
       "Read",
+      "Write",
       "Edit",
       "MultiEdit",
-      "Bash(git:*)",
-      "Bash(python3:*)",
-      "Bash(pytest:*)",
-      "Bash(moai:*)",
-      "WebFetch",
+      "NotebookEdit",
       "Grep",
       "Glob",
       "TodoWrite",
-      "NotebookEdit"
+      "WebFetch",
+      "Bash(git status:*)",
+      "Bash(git add:*)",
+      "Bash(git diff:*)",
+      "Bash(git commit:*)",
+      "Bash(python3:*)",
+      "Bash(pytest:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr view:*)"
     ],
-    "deny": ["Bash(sudo:*)", "Edit(.env*)", "Read(.env*)"]
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(gh pr merge:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)"
+    ]
   },
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit\\(.+\\.(py|js|ts|...)\\)",
+        "matcher": "Edit|Write|MultiEdit",
         "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag_validator.py"
-          }
+          { "type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag_validator.py" },
+          { "type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_write_guard.py" }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/policy_block.py" }
         ]
       }
     ],
     "PostToolUse": [
       {
-        "matcher": "Edit|MultiEdit|Write",
+        "matcher": "Edit|Write|MultiEdit",
         "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/check_style.py"
-          }
+          { "type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/check_style.py" }
         ]
       }
     ],
-    "SessionStart": [
+    "UserPromptSubmit": [
       {
-        "matcher": "*",
         "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start_notice.py"
-          }
+          { "type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/steering_guard.py" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/run_tests_and_report.py" }
         ]
       }
     ]
-  }
+  },
+  "statusLine": { "type": "command", "command": "$HOME/.claude/statusline.sh" },
+  "outputStyle": "Explanatory",
+  "includeCoAuthoredBy": false
 }
 ```
+
+> **Bash 권한 주의**: 패턴은 접두(prefix) 매칭입니다. `Bash(git status:*)`는 `git status --short` 까지만 허용하지만, `Bash(git:*)`는 모든 git 하위 명령을 허용합니다.
+> **deny 규칙**: 민감 경로를 차단하려면 `Read(...)` 패턴을 활용하고, 추가로 PreToolUse 후크에서 이중 검사를 수행하세요.
 
 **`.moai/config.json`** - 개인/팀 모드 설정:
 
@@ -1123,10 +1305,16 @@ MoAI-ADK 0.2.2는 **Claude Code 표준 준수**와 **모든 경로 검증 완료
     }
   },
   "constitution": {
-    "simplicity_threshold": 3,
+    "simplicity_threshold": 5,
     "test_coverage_target": 85,
     "enforce_tdd": true,
-    "require_tags": true
+    "require_tags": true,
+    "principles": {
+      "simplicity": {
+        "max_projects": 5,
+        "notes": "프로젝트 규모에 따라 근거를 기록하고 조정하세요."
+      }
+    }
   }
 }
 ```
@@ -1256,8 +1444,12 @@ grep -A5 "personal" .moai/config.json
 # auto_checkpoint: true 확인
 
 # 2. 파일 감시 시스템 상태 확인
-ps aux | grep file_watcher
-# 실행 중이어야 함
+python .moai/scripts/checkpoint_watcher.py status
+# watchdog 미설치 오류가 나오면 `pip install watchdog` 후 재시작
+
+# 2-1. 실행 중이 아니면 수동으로 기동
+python .moai/scripts/checkpoint_watcher.py start
+# 또는 한 번만 실행: python .moai/scripts/checkpoint_watcher.py once
 
 # 3. 수동 체크포인트 테스트
 /moai:git:checkpoint "테스트 체크포인트"
@@ -1355,7 +1547,7 @@ cat > .moai/config.json << 'EOF'
     }
   },
   "constitution": {
-    "simplicity_threshold": 3,
+    "simplicity_threshold": 5,
     "test_coverage_target": 85,
     "enforce_tdd": true,
     "require_tags": true
@@ -1384,13 +1576,13 @@ echo "🎉 MoAI-ADK 복구 완료!"
 ```bash
 # 모든 핵심 파일이 올바른 위치에 존재하는지 확인
 □ .claude/settings.json
-□ .claude/commands/moai/ (3개 파일)
+□ .claude/commands/moai/ (핵심 커맨드)
 □ .claude/commands/moai/git/ (5개 파일)
-□ .claude/agents/moai/ (5개 파일)
-□ .claude/agents/awesome/ (2개 파일)
-□ .claude/hooks/moai/ (5개 파일)
+□ .claude/agents/moai/ (project-manager, cc-manager, spec-builder, code-builder, doc-syncer, git-manager, codex-bridge, gemini-bridge)
+□ .claude/hooks/moai/ (steering_guard 등 보안/검증 훅)
 □ .moai/config.json
-□ .moai/scripts/ (6개 파일)
+  - ☐ `brainstorming.enabled` / `brainstorming.providers`
+□ .moai/scripts/ (자동화 스크립트 모음)
 □ .moai/memory/constitution.md
 ```
 
@@ -1398,8 +1590,8 @@ echo "🎉 MoAI-ADK 복구 완료!"
 
 ```bash
 # 모든 Python 스크립트가 실행 가능한지 확인
-□ .claude/hooks/moai/*.py (5개 모두 rwxr-xr-x)
-□ .moai/scripts/*.py (6개 모두 rwxr-xr-x)
+□ .claude/hooks/moai/*.py (모두 rwxr-xr-x)
+□ .moai/scripts/*.py (모두 rwxr-xr-x)
 ```
 
 **3. 경로 참조 검증**
@@ -1473,17 +1665,14 @@ done
 
 # 3. 에이전트 파일 검증
 echo "🤖 3. 에이전트 파일 검증"
-for agent in spec-builder code-builder doc-syncer git-manager cc-manager; do
+for agent in project-manager cc-manager spec-builder code-builder doc-syncer git-manager codex-bridge gemini-bridge; do
     check_file ".claude/agents/moai/${agent}.md"
 done
 
-for awesome in gemini gpt-codex; do
-    check_file ".claude/agents/awesome/${awesome}.md"
-done
 
 # 4. Hook 스크립트 검증
 echo "🪝 4. Hook 스크립트 검증"
-for hook in auto_checkpoint check_style file_watcher session_start_notice tag_validator; do
+for hook in auto_checkpoint check_style file_watcher language_detector policy_block pre_write_guard run_tests_and_report session_start_notice steering_guard tag_validator; do
     check_executable ".claude/hooks/moai/${hook}.py"
 done
 
@@ -1610,21 +1799,21 @@ MoAI-ADK 0.2.2는 **개인/팀 모드 통합 시스템**을 통한 **개발 방�
 ┌─────────────────────────────────────────────────────────────┐
 │ 🎉 MoAI-ADK 0.2.2 - 개인/팀 모드 통합 달성                │
 ├─────────────────────────────────────────────────────────────┤
-│ 🧪 개인 모드: 실험적 개발의 완전한 안전망                   │
-│   - 자동 체크포인트: 5분마다 + 파일 변경 시                │
-│   - 체크포인트 롤백: 평균 5초 내 복구                      │
-│   - Git 투명성: 명령어 학습 불필요                         │
+│ 🧪 개인 모드: 실험적 개발을 위한 안전망 강화               │
+│   - 자동 체크포인트: 5분마다 + 파일 변경 시 Annotated Tag │
+│   - 체크포인트 롤백: 평균 < 1분 복구를 목표               │
+│   - Git 투명성: 핵심 명령만 학습하면 운영 가능            │
 │                                                           │
-│ 🏢 팀 모드: 전문적 협업의 완전한 자동화                    │
-│   - GitFlow 자동화: 100% 투명한 브랜치 관리                │
-│   - PR 라이프사이클: Draft → Ready → Merge 자동 관리        │
-│   - 팀 협업 도구: 리뷰어 할당, 알림, 추적 완전 자동화      │
+│ 🏢 팀 모드: Issue 기반 협업 자동화를 위한 토대             │
+│   - GitFlow 지원: feature/SPEC-XXX-{slug} 브랜치 템플릿     │
+│   - PR 라이프사이클: GitHub App 연동 시 Draft → Ready 지원 │
+│   - 팀 협업 도구: 리뷰어 추천·알림·보드 업데이트 트리거    │
 │                                                           │
 │ 📊 통합 성과:                                             │
-│   - 개발 시간: 67% 단축 (Git 작업 완전 제거)              │
-│   - 실수 방지: 100% (자동화로 인한 일관성)                │
-│   - 학습 부담: 제거 (Git 명령어 불필요)                   │
-│   - 협업 효율: 300% 향상 (완전 자동 워크플로우)           │
+│   - 개발 시간: Git 반복 작업 기준으로 평균 60~70% 절감     │
+│   - 실수 방지: 체크포인트·검증 후크로 오류 재현률 감소     │
+│   - 학습 부담: 필수 슬래시 커맨드·GitFlow 절차로 축소      │
+│   - 협업 효율: Issue 중심 흐름으로 리뷰 사이클 단축        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -1650,13 +1839,26 @@ MoAI-ADK 0.2.2는 **개인/팀 모드 통합 시스템**을 통한 **개발 방�
 
 ---
 
-**문서 버전**: 0.2.2-updated
-**마지막 업데이트**: 2025-09-22
+**문서 버전**: 0.2.2-project-kickoff
+**마지막 업데이트**: 2025-09-23
 **작성자**: MoAI-ADK Development Team
 
 ---
 
 ## 🔄 Document Update History
+
+### 2025-09-23 - v0.2.2-project-kickoff
+
+- `/moai:0-project` → `/moai:1-spec` auto 흐름으로 4단계 워크플로우 재정의
+- `moai init` 시 프로젝트 템플릿(.moai/project)을 기본 복사하고 CLAUDE.md에서 자동 import하도록 명시
+- Personal/Team 모드 SPEC 생성 방식을 각각 로컬 파일·GitHub Issue 기반으로 분리
+- 기존 `--project` 옵션 관련 안내 제거 및 새 팀 협업 플로우 문서화
+- `/moai:1-spec` 명령 사용예와 Usage Guide(개인/팀) 시나리오 업데이트
+
+### 2025-09-23 - v0.2.2-doc-sync-enhanced
+
+- `/moai:3-sync` 실행 시 생성되는 `docs/status/sync-report.md`와 `docs/sections/index.md` 자동 갱신 흐름을 문서화
+- SessionStart/`/moai:status` 체크포인트 워처 상태 안내 및 `watchdog` 미설치 대비 절차를 반영
 
 ### 2025-09-22 - v0.2.2-updated
 
@@ -1699,12 +1901,12 @@ MoAI-ADK 0.2.2는 **개인/팀 모드 통합 시스템**을 통한 **개발 방�
    - Hook 스크립트 5개 모두 `rwxr-xr-x`
    - Core 스크립트 6개 모두 `rwxr-xr-x`
 
-#### 📊 검증 완료 현황
+#### 📊 검증 현황 요약
 
-- **파일 구조**: 100% 표준 준수
-- **경로 참조**: 100% 무결성 확인
-- **실행 권한**: 100% 정상화
-- **설정 파일**: 100% 검증 완료
+- **파일 구조**: 템플릿 동기화 시마다 자동 점검(최소 주기 1주)
+- **경로 참조**: CI에서 설정 스캐너를 실행해 누락 여부 확인
+- **실행 권한**: `chmod +x` 체크를 사전 훅으로 강제
+- **설정 파일**: `moai status`가 기본 항목을 진단하고 미충족 시 경고
 
 #### 🎯 문서 품질 향상
 

@@ -9,11 +9,14 @@
 - **Living Document 지향**: 코드·문서 동기화를 절차로 지원
 - **Traceability 강화**: 16-Core @TAG로 추적성 향상(보장 아님)
 
-## 3단계 개발 워크플로우
+## 4단계 개발 워크플로우
 
 ```bash
-# 1. 명세 작성 (+옵션: 브랜치/PR 생성 지원)
-/moai:1-spec "JWT 기반 사용자 인증"
+# 0. 프로젝트 문서 초기화 (product/structure/tech)
+/moai:0-project
+
+# 1. 명세 작성 (auto: 프로젝트 문서 기반 제안)
+/moai:1-spec
 
 # 2. TDD 구현(RED→GREEN→REFACTOR 권장 패턴)
 /moai:2-build
@@ -51,7 +54,7 @@
 
 **카테고리별 태그**
 - **SPEC**: REQ, DESIGN, TASK
-- **STEERING**: VISION, STRUCT, TECH, ADR
+- **PROJECT**: VISION, STRUCT, TECH, ADR
 - **IMPLEMENTATION**: FEATURE, API, TEST, DATA
 - **QUALITY**: PERF, SEC, DEBT, TODO
 
@@ -90,11 +93,12 @@
 │   ├── memory/            # 공유 메모리
 │   └── settings.json      # 권한 설정
 ├── .moai/                 # MoAI 시스템
-│   ├── specs/             # SPEC 문서
-│   ├── memory/            # Constitution
-│   ├── scripts/           # 검증 스크립트
+│   ├── project/           # 프로젝트 기본 문서 (product/structure/tech)
+│   ├── specs/             # SPEC 문서 (auto/manual)
+│   ├── memory/            # Constitution & 스택별 메모리
+│   ├── scripts/           # 검증 스크립트 & 도구
 │   └── config.json        # 설정
-└── CLAUDE.md              # 이 파일
+└── CLAUDE.md              # 이 파일 (프로젝트/워크플로우 요약)
 ```
 
 ## 코드 작성 규칙

@@ -103,7 +103,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Migrate legacy Steering filenames to standard ones")
     parser.add_argument("--apply", action="store_true", help="Apply changes (default: dry-run)")
     parser.add_argument("--force", action="store_true", help="Overwrite existing targets after backup")
-    parser.add_argument("--path", type=str, default=".moai/steering", help="Steering directory path")
+    parser.add_argument("--path", type=str, default=".moai/project", help="Project doc directory path")
     args = parser.parse_args()
 
     steering_dir = Path(args.path)
@@ -116,4 +116,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

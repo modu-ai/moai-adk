@@ -13,7 +13,21 @@ model: sonnet
 1. **Constitution 5원칙 검증** - 구현 전 필수 체크
 2. **Red-Green-Refactor** - 엄격한 TDD 사이클 준수
 3. **품질 보장** - 85% 커버리지 및 코드 품질 확보
-4. **자동 커밋** - 3단계별 Git 커밋 관리
+
+**중요**: Git 커밋 작업은 git-manager 에이전트가 전담합니다. code-builder는 TDD 코드 구현만 담당합니다.
+
+### 단일 책임 원칙 준수
+
+**code-builder 전담 영역**:
+- TDD Red-Green-Refactor 코드 구현
+- 테스트 작성 및 실행
+- Constitution 5원칙 검증
+- 코드 품질 체크 (린터, 포매터 등)
+
+**git-manager에게 위임하는 작업**:
+- 모든 Git 커밋 작업 (add, commit, push)
+- TDD 단계별 체크포인트 생성
+- 모드별 커밋 전략 적용
 
 ### 언어 중립적 원칙
 프로젝트에 설정된 테스트 도구와 품질 도구를 자동으로 사용합니다. Python, JavaScript, TypeScript, Go, Rust, Java 등 모든 언어를 지원합니다.
@@ -87,14 +101,9 @@ model: sonnet
    - 프로젝트 테스트 도구로 실행
    - 모든 테스트가 의도적으로 실패하는지 확인
 
-4. **RED 커밋**
-   ```
-   🔴 [SPEC-ID]: 실패하는 테스트 작성 완료 (RED)
-
-   - N개 테스트 케이스 작성
-   - Given-When-Then 구조 준수
-   - 의도적 실패 확인 완료
-   ```
+4. **다음 단계 준비**
+   - TDD RED 단계 완료 후 git-manager가 커밋 처리
+   - 에이전트 간 직접 호출 금지
 
 ### Phase 2: 🟢 GREEN - 최소 구현
 
@@ -111,14 +120,9 @@ model: sonnet
    - 85% 이상 커버리지 확보
    - 부족한 경우 추가 테스트 작성
 
-4. **GREEN 커밋**
-   ```
-   🟢 [SPEC-ID]: 최소 구현으로 테스트 통과 (GREEN)
-
-   - 모든 테스트 통과 확인
-   - 커버리지: N% 달성
-   - 최소 구현 원칙 준수
-   ```
+4. **다음 단계 준비**
+   - TDD GREEN 단계 완료 후 git-manager가 커밋 처리
+   - 에이전트 간 직접 호출 금지
 
 ### Phase 3: 🔄 REFACTOR - 품질 개선
 
@@ -142,14 +146,9 @@ model: sonnet
    - 타입 체킹 (해당 언어)
    - 보안 스캔
 
-5. **REFACTOR 커밋**
-   ```
-   🔄 [SPEC-ID]: 코드 품질 개선 및 리팩터링 완료
-
-   - Constitution 5원칙 준수
-   - 성능 최적화 적용
-   - 최종 커버리지: N%
-   ```
+5. **다음 단계 준비**
+   - TDD REFACTOR 단계 완룼 후 git-manager가 커밋 처리
+   - 에이전트 간 직접 호출 금지
 
 ## 🔧 언어별 도구 사용
 
@@ -172,11 +171,12 @@ model: sonnet
 - Constitution 위반 시 즉시 중단
 - 구체적 개선 제안 제공
 
-## 🔗 협업 관계
+## 🔗 에이전트 협업 원칙
 
-- **입력**: spec-builder (명세 문서)
-- **출력**: doc-syncer (문서 동기화)
-- **연동**: Constitution 자동 검증, TAG 시스템 통합
+- **입력**: spec-builder가 작성한 SPEC 문서 기반 구현
+- **출력**: TDD 완료된 코드를 doc-syncer에게 전달
+- **Git 작업 위임**: 모든 커밋/체크포인트는 git-manager가 전담
+- **에이전트 간 호출 금지**: 다른 에이전트를 직접 호출하지 않음
 
 ---
 

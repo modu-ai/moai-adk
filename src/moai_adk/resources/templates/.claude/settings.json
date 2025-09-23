@@ -1,103 +1,108 @@
 {
   "permissions": {
-    "defaultMode": "plan",
+    "defaultMode": "acceptEdits",
     "allow": [
       "Task",
-      "Write",
       "Read",
+      "Write",
       "Edit",
       "MultiEdit",
-      "Bash(git:*)",
-      "Bash(mkdir:*)",
-      "Bash(cp:*)",
-      "Bash(mv:*)",
-      "Bash(ls:*)",
-      "Bash(find:*)",
-      "Bash(grep:*)",
-      "Bash(python3:*)",
-      "Bash(pytest:*)",
-      "Bash(poetry:*)",
-      "Bash(ruff:*)",
-      "Bash(mypy:*)",
-      "Bash(npm:*)",
-      "Bash(pnpm:*)",
-      "Bash(yarn:*)",
-      "Bash(go:*)",
-      "Bash(cargo:*)",
-      "Bash(gradle:*)",
-      "Bash(mvn:*)",
-      "Bash(dotnet:*)",
-      "Bash(cmake:*)",
-      "Bash(make:*)",
-      "Bash(chmod:*)",
-      "Bash(tree:*)",
-      "Bash(moai:*)",
-      
-      "WebFetch",
+      "NotebookEdit",
       "Grep",
       "Glob",
-      "NotebookEdit",
       "TodoWrite",
-      "WebSearch",
-      "BashOutput",
-      "KillShell",
-      "ExitPlanMode"
-    ],
-    "deny": [
-      "Bash(sudo:*)",
-      "Edit(.env*)",
-      "Read(.env*)",
-      "Write(.env*)"
+      "WebFetch",
+      "Bash(git status:*)",
+      "Bash(git add:*)",
+      "Bash(git diff:*)",
+      "Bash(git commit:*)",
+      "Bash(python3:*)",
+      "Bash(pytest:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr view:*)"
     ],
     "ask": [
-      "Bash(pip install:*)",
-      "Bash(npm install:*)",
       "Bash(git push:*)",
-      "Bash(git pull:*)",
       "Bash(git merge:*)",
-      "Bash(rm:*)",
-      "Bash(rmdir:*)",
-      "Write(*.config.*)",
-      "Write(pyproject.toml)",
-      "Bash(npm publish:*)",
-      "Bash(poetry publish:*)",
-      "Bash(docker:*)",
-      "Bash(kubectl:*)",
-      "Bash(systemctl:*)",
-      "Bash(service:*)"
+      "Bash(gh pr merge:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)"
     ]
   },
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit\\(.+\\.(py|js|ts|jsx|tsx|go|java|c|cpp|rs|php|rb|kt|scala|cs|swift|dart|html|css|scss|sass|less)\\)|MultiEdit\\(.+\\.(py|js|ts|jsx|tsx|go|java|c|cpp|rs|php|rb|kt|scala|cs|swift|dart|html|css|scss|sass|less)\\)|Write\\(.+\\.(py|js|ts|jsx|tsx|go|java|c|cpp|rs|php|rb|kt|scala|cs|swift|dart|html|css|scss|sass|less)\\)",
+        "matcher": "Edit|Write|MultiEdit",
         "hooks": [
           {
             "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_write_guard.py"
+          },
+          {
+            "type": "command",
             "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag_validator.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/policy_block.py"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/check_style.py"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/steering_guard.py"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/run_tests_and_report.py"
           }
         ]
       }
     ],
     "SessionStart": [
       {
-        "matcher": "*",
         "hooks": [
           {
             "type": "command",
             "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start_notice.py"
           }
         ]
-      },
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/language_detector.py"
-          }
-        ]
       }
     ]
-  }
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "$HOME/.claude/statusline.sh"
+  },
+  "outputStyle": "Explanatory",
+  "includeCoAuthoredBy": false
 }

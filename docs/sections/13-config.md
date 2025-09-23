@@ -15,32 +15,32 @@ MoAI-ADK는 두 개의 주요 설정 파일을 사용합니다:
 ```json
 {
   "permissions": {
-    "defaultMode": "default",
-    "allow": ["Read(**)", "Grep", "Glob", "Task", "Bash"],
-    "deny": []
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Task","Read","Write","Edit","MultiEdit","NotebookEdit",
+      "Grep","Glob","TodoWrite","WebFetch",
+      "Bash(git status:*)","Bash(git add:*)","Bash(git diff:*)",
+      "Bash(git commit:*)","Bash(python3:*)","Bash(pytest:*)",
+      "Bash(gh pr create:*)","Bash(gh pr view:*)"
+    ],
+    "ask": ["Bash(git push:*)","Bash(gh pr merge:*)"],
+    "deny": ["Read(./.env)","Read(./.env.*)","Read(./secrets/**)"]
   },
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit|MultiEdit|Write|Bash",
+        "matcher": "Edit|Write|MultiEdit",
         "hooks": [
-          {
-            "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_write_guard.py",
-            "timeout": 60
-          }
+          {"type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag_validator.py"},
+          {"type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_write_guard.py"}
         ]
       }
     ],
     "PostToolUse": [
       {
-        "matcher": "Write|Edit",
+        "matcher": "Edit|Write|MultiEdit",
         "hooks": [
-          {
-            "type": "command",
-            "command": "python3 -c 'import json,sys;d=json.load(sys.stdin);fp=(d.get(\"tool_input\") or {}).get(\"file_path\",\"\");print(f\"PostToolUse: updated {fp}\")'",
-            "timeout": 30
-          }
+          {"type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/check_style.py"}
         ]
       }
     ]
@@ -49,111 +49,39 @@ MoAI-ADK는 두 개의 주요 설정 파일을 사용합니다:
     "MOAI_PROJECT": "true",
     "MOAI_VERSION": "vX.Y.Z"
   },
-  "enableAllProjectMcpServers": true,
-  "cleanupPeriodDays": 30,
-  "includeCoAuthoredBy": true
+  "statusLine": {"type": "command", "command": "$HOME/.claude/statusline.sh"},
+  "outputStyle": "Explanatory",
+  "includeCoAuthoredBy": false
 }
 ```
 
-> **defaultMode 유효 값**: `default`, `acceptEdits`, `plan`, `bypassPermissions`.  
-> **명령 패턴**: `Bash`(모든 Bash 허용), `Bash(npm:*)`(특정 명령), `Read(**)` 등.
+> **기본 권장 모드**: `acceptEdits` – Claude가 제안한 편집은 바로 적용, 나머지는 승인 요청.  
+> **Bash 패턴 주의**: 접두(prefix) 매칭이므로 `Bash(git status:*)` 처럼 구체적으로 허용 범위를 지정하세요.
 
-### Hook 설정 (전체 구성)
+### Hook 설정 (권장 최소 구성)
 ```json
 {
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit|MultiEdit|Write|Bash",
+        "matcher": "Edit|Write|MultiEdit",
         "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_write_guard.py",
-            "timeout": 60
-          }
+          { "type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag_validator.py" },
+          { "type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_write_guard.py" }
         ]
       },
       {
-        "matcher": "Edit|MultiEdit|Write",
+        "matcher": "Bash",
         "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/constitution_guard.py"
-          },
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag_validator.py"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/awesome/backup_before_edit.py",
-            "description": "Backup files before editing"
-          }
-        ]
-      },
-      {
-        "matcher": "Bash|WebFetch",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/policy_block.py"
-          }
+          { "type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/policy_block.py" }
         ]
       }
     ],
     "PostToolUse": [
       {
-        "matcher": "Edit|MultiEdit",
+        "matcher": "Edit|Write|MultiEdit",
         "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/awesome/auto_formatter.py",
-            "description": "Smart code formatter"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/awesome/auto_git_commit.py",
-            "description": "Intelligent auto-commit"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/awesome/test_runner.py",
-            "description": "Run tests after code changes"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/awesome/security_scanner.py",
-            "description": "Security vulnerability scanner"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|MultiEdit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_stage_guard.py"
-          }
+          { "type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/check_style.py" }
         ]
       }
     ],
@@ -161,10 +89,7 @@ MoAI-ADK는 두 개의 주요 설정 파일을 사용합니다:
       {
         "matcher": "*",
         "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start_notice.py"
-          }
+          { "type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start_notice.py" }
         ]
       }
     ]
@@ -172,35 +97,62 @@ MoAI-ADK는 두 개의 주요 설정 파일을 사용합니다:
 }
 ```
 
-### Hook 폴더 구조
+### Hook 폴더 구조 (실제 배치)
 ```
-.claude/hooks/
-├── moai/              # MoAI 워크플로우 전용 Hook (6개)
-│   ├── pre_write_guard.py
-│   ├── constitution_guard.py
-│   ├── tag_validator.py
-│   ├── policy_block.py
-│   ├── post_stage_guard.py
-│   └── session_start_notice.py
-└── awesome/           # 범용 개발 생산성 Hook (5개)
-    ├── auto_formatter.py
-    ├── auto_git_commit.py
-    ├── backup_before_edit.py
-    ├── test_runner.py
-    └── security_scanner.py
-```
+.claude/hooks/moai/
+├── auto_checkpoint.py
+├── check_style.py
+├── file_watcher.py
+├── policy_block.py
+├── pre_write_guard.py
+├── session_start_notice.py
+└── tag_validator.py
 ```
 
 > **기본 템플릿**은 `pre_write_guard.py`만 활성화된 최소 구성으로 제공됩니다.
-> **완전 구성**에서는 MoAI 워크플로우 Hook(6개) + Awesome Hook(5개) = 총 11개 Hook이 활성화됩니다.
->
-> **Hook 체인 특징**:
-> - **안전성**: 백업 → 검증 → 실행 → 포매팅 → 커밋 → 테스트 → 보안 스캔
-> - **자동화**: 개발자 개입 없이 품질 보장
-> - **투명성**: 백그라운드에서 실행되어 워크플로우 방해 없음
+> 필요 시 프로젝트별로 훅을 추가해 확장할 수 있습니다.
 
 ## .moai/config.json
 
+개인/팀 모드와 Git 전략을 제어합니다.
+
+```json
+{
+  "project": {
+    "mode": "personal",
+    "name": "my-project",
+    "description": "개인 실험"
+  },
+  "git_strategy": {
+    "personal": {
+      "auto_checkpoint": true,
+      "checkpoint_interval": 300,
+      "max_checkpoints": 50,
+      "branch_prefix": "feature/"
+    },
+    "team": {
+      "use_gitflow": true,
+      "main_branch": "main",
+      "develop_branch": "develop",
+      "feature_prefix": "feature/SPEC-",
+      "auto_pr": true,
+      "draft_pr": true
+    }
+  },
+  "constitution": {
+    "simplicity_threshold": 5,
+    "test_coverage_target": 85,
+    "enforce_tdd": true,
+    "require_tags": true,
+    "principles": {
+      "simplicity": {
+        "max_projects": 5,
+        "notes": "기본 권장값. 프로젝트 규모에 따라 근거와 함께 조정하세요."
+      }
+    }
+  }
+}
+```
 ### 기본 설정
 ```json
 {
@@ -385,7 +337,25 @@ moai config reset
 2. 글로벌 `~/.moai/global_config.json`
 3. 시스템 기본값
 
-설정 파일은 **프로젝트 특성에 맞는 맞춤형 개발 환경**을 제공합니다.
+설정 파일은 **프로젝트 특성에 맞는 맞춤형 개발 환경**을 제공합니다. 개인/팀 모드나 출력 스타일처럼 프로젝트 컨텍스트에 의존적인 항목은 먼저 `/moai:0-project update` 마법사를 통해 조정하고, 세밀한 값이 필요할 때만 `moai config` CLI로 직접 수정하는 것을 권장합니다.
+
+## 외부 브레인스토밍 설정
+
+`project-manager` 에이전트는 `/moai:0-project` 인터뷰 중 다음 필드를 사용해 외부 AI 활용 여부를 결정합니다.
+
+```json
+{
+  "brainstorming": {
+    "enabled": false,
+    "providers": []
+  }
+}
+```
+
+- `enabled`: `true` 로 설정하면 커맨드들이 Codex/Gemini 브리지 에이전트를 호출합니다.
+- `providers`: 사용할 엔진을 배열로 지정 (`claude`, `codex`, `gemini`). 최소 하나의 항목으로 `"claude"` 를 유지하고 필요에 따라 외부 엔진을 추가합니다.
+- 설정은 project-manager가 사용자 동의를 받은 뒤 갱신하며, 다른 커맨드는 값만 읽습니다.
+- CLI 자동 설치나 로그인은 수행하지 않으며, 필요한 경우 사용자에게 공식 명령을 안내하는 것에 그칩니다.
 
 ## 템플릿 모드 설정 (vNext)
 

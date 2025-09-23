@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-MoAI 체크포인트 관리자 v0.2.0
-개인 모드 전용 안전한 실험 환경 제공 – Git 히스토리를 오염하지 않는 스냅샷 방식
+MoAI 체크포인트 관리자 v0.3.0
+개인 모드 전용 안전한 실험 환경 제공 – Annotated Tag 기반 스냅샷 방식
 
 @REQ:GIT-CHECKPOINT-001
 @FEATURE:CHECKPOINT-SYSTEM-001
 @API:CHECKPOINT-INTERFACE-001
-@DESIGN:CHECKPOINT-WORKFLOW-002
+@DESIGN:CHECKPOINT-WORKFLOW-003
 @TECH:PERSONAL-MODE-001
 """
 
@@ -26,9 +26,12 @@ from typing import Any, Dict, List, Optional, cast
 class CheckpointManager:
     """체크포인트 관리자.
 
-    Git stash 를 활용해 작업 히스토리를 오염시키지 않는 스냅샷을 생성하고
+    Annotated Tag(`moai_cp/*`)를 활용해 작업 히스토리를 보존하면서
     메타데이터(.moai/checkpoints/metadata.json)를 유지한다.
+    git stash는 임시 스냅샷 생성 시점에서만 사용하며 즉시 Tag로 승격한다.
     """
+
+    TAG_PREFIX = "moai_cp/"
 
     def __init__(self) -> None:
         self.project_root = Path(__file__).resolve().parents[2]
@@ -82,7 +85,7 @@ class CheckpointManager:
             json.dump(data, fh, ensure_ascii=False, indent=2)
 
     # ------------------------------------------------------------------
-    # Stash utilities
+    # Stash utilities (임시 스냅샷 생성 용도)
     # ------------------------------------------------------------------
     def _list_stash_entries(self) -> List[Dict[str, str]]:
         result = self._run_git([
@@ -128,6 +131,9 @@ class CheckpointManager:
                     return 0
         return 0
 
+    # ------------------------------------------------------------------
+    # Filesystem fallback utilities
+    # ------------------------------------------------------------------
     def _should_skip_path(self, path: Path) -> bool:
         try:
             relative = path.relative_to(self.project_root)
@@ -139,7 +145,6 @@ class CheckpointManager:
         if parts[0] == ".git":
             return True
         if len(parts) >= 2 and parts[0] == ".moai" and parts[1] == "checkpoints":
-            # 스냅샷/임시 디렉터리는 제외
             if len(parts) >= 3 and parts[2] in {"snapshots", "tmp"}:
                 return True
         return False
@@ -148,7 +153,6 @@ class CheckpointManager:
         snapshots_dir = self.checkpoints_dir / "snapshots"
         snapshots_dir.mkdir(parents=True, exist_ok=True)
         archive_path = snapshots_dir / f"{checkpoint_id}.tar.gz"
-
         try:
             with tarfile.open(archive_path, "w:gz") as tar:
                 for path in self.project_root.rglob("*"):
@@ -163,6 +167,9 @@ class CheckpointManager:
     # ------------------------------------------------------------------
     # Core behaviour
     # ------------------------------------------------------------------
+    def _current_time(self) -> datetime:
+        return datetime.now()
+
     def check_personal_mode(self, *, quiet: bool = False) -> bool:
         mode = self.load_config().get("project", {}).get("mode", "personal")
         if mode != "personal":
@@ -179,8 +186,53 @@ class CheckpointManager:
         status = self._git_output(["git", "status", "--porcelain"])
         return bool(status)
 
+    def _tag_exists(self, tag_name: str) -> bool:
+        result = self._run_git(["git", "tag", "-l", tag_name], check=False)
+        return tag_name in result.stdout.splitlines()
+
+    def _create_tag(self, tag_name: str, commit: str, message: str) -> bool:
+        result = self._run_git([
+            "git",
+            "tag",
+            "-a",
+            tag_name,
+            commit,
+            "-m",
+            message,
+        ], check=False)
+        return result.returncode == 0
+
+    def _delete_tag(self, tag_name: str) -> None:
+        if tag_name:
+            self._run_git(["git", "tag", "-d", tag_name], check=False)
+
     def generate_checkpoint_id(self) -> str:
-        return f"checkpoint_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        base = self._current_time().strftime("%Y%m%d_%H%M%S")
+        candidate = f"{self.TAG_PREFIX}{base}"
+        suffix = 1
+        while self._tag_exists(candidate):
+            candidate = f"{self.TAG_PREFIX}{base}_{suffix:02d}"
+            suffix += 1
+        return candidate
+
+    def _delete_checkpoint_resource(self, entry: Dict[str, Any]) -> None:
+        kind = entry.get("kind", "tag")
+        if kind == "tag":
+            tag_name = entry.get("tag") or entry.get("id")
+            if tag_name:
+                self._delete_tag(str(tag_name))
+        elif kind == "filesystem":
+            snapshot_rel = entry.get("snapshot")
+            if snapshot_rel:
+                (self.project_root / str(snapshot_rel)).unlink(missing_ok=True)
+        elif kind == "stash":
+            commit = entry.get("stash_commit")
+            if commit:
+                self._drop_stash_entry(str(commit))
+        elif kind == "legacy":
+            branch = entry.get("branch")
+            if branch:
+                self._run_git(["git", "branch", "-D", branch], check=False)
 
     def _record_checkpoint(self, entry: Dict[str, Any]) -> None:
         metadata = self._load_metadata()
@@ -188,21 +240,11 @@ class CheckpointManager:
 
         config = self.load_config()
         max_entries = config.get("git_strategy", {}).get("personal", {}).get("max_checkpoints", 50)
-        # 정렬(오래된 것 먼저) 후 제한 개수만 유지
         metadata["checkpoints"].sort(key=lambda cp: cp.get("timestamp", ""))
         extras = max(0, len(metadata["checkpoints"]) - max_entries)
         for _ in range(extras):
             removed = metadata["checkpoints"].pop(0)
-            if removed.get("kind", "stash") == "stash" and removed.get("stash_commit"):
-                self._drop_stash_entry(removed["stash_commit"])
-            elif removed.get("kind") == "filesystem" and removed.get("snapshot"):
-                snapshot_path = self.project_root / removed["snapshot"]
-                snapshot_path.unlink(missing_ok=True)
-            elif removed.get("kind") == "legacy" and removed.get("commit"):
-                # legacy branch 기반 체크포인트 지원
-                branch = removed.get("branch")
-                if branch:
-                    self._run_git(["git", "branch", "-D", branch], check=False)
+            self._delete_checkpoint_resource(removed)
         self._save_metadata(metadata)
 
     def list_checkpoints(self) -> None:
@@ -211,21 +253,20 @@ class CheckpointManager:
         if not checkpoints:
             print("📋 체크포인트가 없습니다.")
             return
-
         print("📋 사용 가능한 체크포인트 (최신 10개):")
         for entry in checkpoints[:10]:
             timestamp = entry.get("timestamp", "-")
             message = entry.get("message", "")
             origin = entry.get("source", "manual")
             files = entry.get("files_changed", 0)
-            kind = entry.get("kind", "stash")
+            kind = entry.get("kind", "tag")
             print(f"  📍 {entry.get('id', 'unknown')} | {timestamp} | {origin}/{kind} | 파일 {files}개 | {message}")
 
     def show_status(self) -> None:
-        config = self.load_config()
-        mode = config.get("project", {}).get("mode", "personal")
         metadata = self._load_metadata()
         checkpoints = metadata.get("checkpoints", [])
+        config = self.load_config()
+        mode = config.get("project", {}).get("mode", "personal")
 
         print("=== 체크포인트 시스템 상태 ===")
         print(f"🎯 모드: {mode}")
@@ -243,7 +284,7 @@ class CheckpointManager:
             print("정리할 체크포인트가 없습니다.")
             return
 
-        current = datetime.now()
+        current = self._current_time()
         remaining: List[Dict[str, Any]] = []
         removed = 0
         for entry in checkpoints:
@@ -251,23 +292,141 @@ class CheckpointManager:
                 timestamp = datetime.fromisoformat(entry.get("timestamp", ""))
             except ValueError:
                 timestamp = None
-
             if timestamp and (current - timestamp) > timedelta(days=7):
-                if entry.get("kind", "stash") == "stash" and entry.get("stash_commit"):
-                    self._drop_stash_entry(entry["stash_commit"])
-                elif entry.get("kind") == "filesystem" and entry.get("snapshot"):
-                    snapshot_path = self.project_root / entry["snapshot"]
-                    snapshot_path.unlink(missing_ok=True)
+                self._delete_checkpoint_resource(entry)
                 removed += 1
             else:
                 remaining.append(entry)
-
         metadata["checkpoints"] = remaining
         self._save_metadata(metadata)
         if removed:
             print(f"✅ {removed}개 체크포인트 정리 완료")
         else:
             print("정리할 오래된 체크포인트가 없습니다.")
+
+    # ------------------------------------------------------------------
+    # Internal storage helpers
+    # ------------------------------------------------------------------
+    def _capture_stash_entry(
+        self,
+        checkpoint_id: str,
+        clean_message: str,
+        *,
+        quiet: bool,
+    ) -> tuple[str, Optional[Dict[str, str]]]:
+        label = f"{checkpoint_id} :: {clean_message}"
+        result = self._run_git([
+            "git",
+            "stash",
+            "push",
+            "--include-untracked",
+            "-m",
+            label,
+        ], check=False)
+        if "No local changes" in result.stdout:
+            if not quiet:
+                print("ℹ️ 변경사항이 없어 체크포인트를 건너뜁니다.")
+            return "skip", None
+        if result.returncode != 0:
+            if not quiet:
+                error = result.stderr.strip() or "git stash push 실패"
+                print(f"⚠️ Git 스냅샷 생성 실패({error}) – 파일 시스템 스냅샷으로 전환합니다.")
+            return "error", None
+        entry = self._find_stash_by_marker(checkpoint_id)
+        if not entry:
+            if not quiet:
+                print("❌ 생성된 스냅샷을 찾을 수 없습니다. 최신 stash를 복구합니다.")
+            self._run_git(["git", "stash", "pop"], check=False)
+            return "missing", None
+        return "success", entry
+
+    def _store_filesystem_checkpoint(
+        self,
+        checkpoint_id: str,
+        clean_message: str,
+        *,
+        source: str,
+        branch: str,
+        base_commit: str,
+        quiet: bool,
+    ) -> bool:
+        snapshot_rel = self._create_filesystem_snapshot(checkpoint_id)
+        if not snapshot_rel:
+            if not quiet:
+                print("❌ 체크포인트 생성 실패: 파일 시스템 스냅샷 생성 불가")
+            return False
+        metadata_entry = {
+            "id": checkpoint_id,
+            "timestamp": self._current_time().isoformat(),
+            "message": clean_message,
+            "source": source,
+            "kind": "filesystem",
+            "snapshot": snapshot_rel,
+            "files_changed": 0,
+            "mode": "personal",
+            "branch": branch,
+            "base_commit": base_commit,
+        }
+        self._record_checkpoint(metadata_entry)
+        if not quiet:
+            print("=== 체크포인트 생성 결과 ===")
+            print(f"🆔 ID: {checkpoint_id}")
+            print(f"💾 스냅샷: {snapshot_rel}")
+        return True
+
+    def _store_tag_checkpoint(
+        self,
+        checkpoint_id: str,
+        clean_message: str,
+        stash_entry: Dict[str, str],
+        *,
+        source: str,
+        branch: str,
+        base_commit: str,
+        quiet: bool,
+    ) -> bool:
+        commit_hash = stash_entry["commit"]
+        files_changed = self._files_changed_for_stash(stash_entry["ref"])
+        if not self._create_tag(checkpoint_id, commit_hash, clean_message):
+            if not quiet:
+                print("⚠️ Tag 생성에 실패하여 파일 시스템 스냅샷으로 대체합니다.")
+            self._run_git(["git", "stash", "apply", stash_entry["ref"]], check=False)
+            self._drop_stash_entry(commit_hash)
+            return self._store_filesystem_checkpoint(
+                checkpoint_id,
+                clean_message,
+                source=source,
+                branch=branch,
+                base_commit=base_commit,
+                quiet=quiet,
+            )
+        apply_result = self._run_git(["git", "stash", "apply", stash_entry["ref"]], check=False)
+        if apply_result.returncode != 0:
+            if not quiet:
+                print(f"❌ 작업 복구 실패: {apply_result.stderr.strip()}")
+            self._delete_tag(checkpoint_id)
+            self._drop_stash_entry(commit_hash)
+            return False
+        self._run_git(["git", "stash", "drop", stash_entry["ref"]], check=False)
+        metadata_entry = {
+            "id": checkpoint_id,
+            "timestamp": self._current_time().isoformat(),
+            "message": clean_message,
+            "source": source,
+            "kind": "tag",
+            "tag": checkpoint_id,
+            "stash_commit": commit_hash,
+            "files_changed": files_changed,
+            "mode": "personal",
+            "branch": branch,
+            "base_commit": base_commit,
+        }
+        self._record_checkpoint(metadata_entry)
+        if not quiet:
+            print("=== 체크포인트 생성 결과 ===")
+            print(f"🆔 ID(Tag): {checkpoint_id}")
+            print(f"🗂️ 변경 파일: {files_changed}개")
+        return True
 
     # ------------------------------------------------------------------
     # Public API
@@ -281,106 +440,47 @@ class CheckpointManager:
             return False
 
         checkpoint_id = self.generate_checkpoint_id()
-        clean_message = message.strip() or f"Snapshot {datetime.now():%Y-%m-%d %H:%M:%S}"
-        stash_label = f"{checkpoint_id} :: {clean_message}"
+        clean_message = message.strip() or f"Snapshot {self._current_time():%Y-%m-%d %H:%M:%S}"
+        current_branch = self._git_output(["git", "branch", "--show-current"]) or "unknown"
+        base_commit = self._git_output(["git", "rev-parse", "HEAD"]) or ""
 
         if not quiet:
             print(f"💾 체크포인트 생성: {clean_message}")
 
-        current_branch = self._git_output(["git", "branch", "--show-current"]) or "unknown"
-        base_commit = self._git_output(["git", "rev-parse", "HEAD"]) or ""
+        status, stash_entry = self._capture_stash_entry(
+            checkpoint_id,
+            clean_message,
+            quiet=quiet,
+        )
 
-        # 1) git stash push 로 스냅샷 생성
-        result = self._run_git([
-            "git",
-            "stash",
-            "push",
-            "--include-untracked",
-            "-m",
-            stash_label,
-        ], check=False)
-
-        if "No local changes" in result.stdout:
-            if not quiet:
-                print("ℹ️ 변경사항이 없어 체크포인트를 건너뜁니다.")
+        if status == "skip":
+            return False
+        if status == "error":
+            return self._store_filesystem_checkpoint(
+                checkpoint_id,
+                clean_message,
+                source=source,
+                branch=current_branch,
+                base_commit=base_commit,
+                quiet=quiet,
+            )
+        if status != "success" or not stash_entry:
             return False
 
-        if result.returncode != 0:
-            if not quiet:
-                error = result.stderr.strip() or "git stash push 실패"
-                print(f"⚠️ Git 스냅샷 생성 실패({error}) – 파일 시스템 스냅샷으로 전환합니다.")
-
-            snapshot_rel = self._create_filesystem_snapshot(checkpoint_id)
-            if not snapshot_rel:
-                if not quiet:
-                    print("❌ 체크포인트 생성 실패: 파일 시스템 스냅샷 생성 불가")
-                return False
-
-            metadata_entry = {
-                "id": checkpoint_id,
-                "timestamp": datetime.now().isoformat(),
-                "message": clean_message,
-                "source": source,
-                "kind": "filesystem",
-                "snapshot": snapshot_rel,
-                "files_changed": 0,
-                "mode": "personal",
-                "branch": current_branch,
-                "base_commit": base_commit,
-            }
-            self._record_checkpoint(metadata_entry)
-
-            if not quiet:
-                print("=== 체크포인트 생성 결과 ===")
-                print(f"🆔 ID: {checkpoint_id}")
-                print(f"💾 스냅샷: {snapshot_rel}")
-
-            return True
-
-        entry = self._find_stash_by_marker(checkpoint_id)
-        if not entry:
-            if not quiet:
-                print("❌ 생성된 스냅샷을 찾을 수 없습니다.")
-            return False
-
-        # 2) 사용자의 작업 상태 복구
-        apply_result = self._run_git(["git", "stash", "apply", entry["ref"]], check=False)
-        if apply_result.returncode != 0:
-            # 복구 실패 시 사용자 혼란을 막기 위해 스냅샷을 제거
-            self._drop_stash_entry(entry["commit"])
-            if not quiet:
-                print(f"❌ 작업 복구 실패: {apply_result.stderr.strip()}")
-            return False
-
-        files_changed = self._files_changed_for_stash(entry["ref"])
-
-        metadata_entry = {
-            "id": checkpoint_id,
-            "timestamp": datetime.now().isoformat(),
-            "message": clean_message,
-            "source": source,
-            "kind": "stash",
-            "stash_commit": entry["commit"],
-            "files_changed": files_changed,
-            "mode": "personal",
-            "branch": current_branch,
-            "base_commit": base_commit,
-        }
-        self._record_checkpoint(metadata_entry)
-
-        if not quiet:
-            print("=== 체크포인트 생성 결과 ===")
-            print(f"🆔 ID: {checkpoint_id}")
-            print(f"📦 Stash: {entry['ref']} ({entry['commit']})")
-            print(f"🗂️ 변경 파일: {files_changed}개")
-
-        return True
+        return self._store_tag_checkpoint(
+            checkpoint_id,
+            clean_message,
+            stash_entry,
+            source=source,
+            branch=current_branch,
+            base_commit=base_commit,
+            quiet=quiet,
+        )
 
     def run(self, args: List[str]) -> None:
         if not args:
             self.create_checkpoint()
             return
-
         action = args[0]
         if action == "--list":
             self.list_checkpoints()

@@ -10,10 +10,12 @@ MoAI 커밋 도우미 v0.1.0
 @TECH:CLAUDE-CODE-STD-001
 """
 
-import sys
+import re
+import shlex
 import subprocess
-from pathlib import Path
+import sys
 from datetime import datetime
+from pathlib import Path
 
 class CommitHelper:
     """커밋 도우미
@@ -72,13 +74,11 @@ class CommitHelper:
         @DESIGN:COMMIT-MESSAGE-001
         @TECH:CLAUDE-CODE-STD-001
         """
-        if user_input == "--auto" or not user_input:
+        if not user_input or user_input == "--auto":
             commit_msg = self.generate_auto_message()
             detail = "자동 생성된 커밋 메시지"
-        elif user_input.startswith("--checkpoint"):
-            checkpoint_msg = user_input.replace("--checkpoint", "").strip()
-            commit_msg = f"🔄 체크포인트: {checkpoint_msg}" if checkpoint_msg else "🔄 자동 체크포인트"
-            detail = f"체크포인트 생성: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        elif user_input.startswith("--"):
+            commit_msg, detail = self._handle_flag_command(user_input)
         else:
             commit_msg = user_input
             detail = "사용자 지정 커밋 메시지"
@@ -144,6 +144,82 @@ Co-Authored-By: Claude <noreply@anthropic.com>"""
 
         # 커밋 실행
         self.execute_commit(commit_message)
+
+    def _handle_flag_command(self, user_input: str) -> tuple[str, str]:
+        tokens = shlex.split(user_input)
+        if not tokens:
+            return self.generate_auto_message(), "자동 생성된 커밋 메시지"
+
+        flag, *args = tokens
+
+        if flag == "--checkpoint":
+            checkpoint_msg = " ".join(args).strip()
+            commit_msg = f"🔄 체크포인트: {checkpoint_msg}" if checkpoint_msg else "🔄 자동 체크포인트"
+            detail = f"체크포인트 생성: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            return commit_msg, detail
+
+        if flag == "--spec":
+            spec_id, message_tokens = self._parse_spec_args(args)
+            description = " ".join(message_tokens).strip() or "SPEC 문서 갱신"
+            commit_msg = f"📝 {spec_id}: {description}"
+            return commit_msg, "SPEC 커밋"
+
+        tdd_map = {
+            "--red": ("🔴", "실패 테스트 작성", "TDD RED 단계"),
+            "--green": ("🟢", "최소 구현", "TDD GREEN 단계"),
+            "--refactor": ("🔄", "코드 품질 개선", "TDD REFACTOR 단계"),
+        }
+        if flag in tdd_map:
+            emoji, default_desc, detail_prefix = tdd_map[flag]
+            description = " ".join(args).strip() or default_desc
+            spec_id = self._current_spec_id()
+            commit_msg = f"{emoji} {spec_id}: {description}"
+            return commit_msg, f"{detail_prefix} 커밋"
+
+        if flag == "--constitution":
+            description = " ".join(args).strip() or "품질 검증 완료"
+            commit_msg = f"🧭 Constitution 체크: {description}"
+            return commit_msg, "Constitution 점검 커밋"
+
+        # 알 수 없는 플래그는 일반 메시지로 처리
+        return user_input, "사용자 지정 커밋 메시지"
+
+    def _parse_spec_args(self, args: list[str]) -> tuple[str, list[str]]:
+        if not args:
+            return self._current_spec_id(), []
+
+        first = args[0].upper()
+        if first.startswith("SPEC-") and len(first) == 7:
+            return first, args[1:]
+
+        return self._current_spec_id(), args
+
+    def _current_spec_id(self) -> str:
+        """현재 브랜치나 SPEC 디렉터리에서 SPEC ID 추출"""
+        try:
+            branch = subprocess.run(
+                ["git", "branch", "--show-current"],
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout.strip()
+            match = re.search(r"SPEC-(\d{3})", branch or "", flags=re.IGNORECASE)
+            if match:
+                return f"SPEC-{match.group(1)}"
+        except subprocess.CalledProcessError:
+            pass
+
+        specs_dir = self.project_root / ".moai" / "specs"
+        if specs_dir.exists():
+            existing = [
+                int(match.group(1))
+                for path in specs_dir.iterdir()
+                if (match := re.match(r"SPEC-(\d{3})", path.name, flags=re.IGNORECASE))
+            ]
+            if existing:
+                return f"SPEC-{max(existing):03d}"
+
+        return "SPEC-001"
 
 def main():
     """진입점

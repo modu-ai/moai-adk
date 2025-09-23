@@ -7,33 +7,28 @@ MoAI-ADK는 Claude Code 표준을 완전히 준수하면서도 체계적인 문�
 ```
 프로젝트/
 ├── .claude/                       # Claude Code 표준 디렉토리
-│   ├── commands/moai/             # 커스텀 슬래시 명령어 (연번순)
-│   │   ├── 1-project.md           # /moai:1-project [프로젝트이름] (대화형 마법사)
-│   │   ├── 2-spec.md              # /moai:2-spec (EARS 명세)
-│   │   ├── 3-plan.md              # /moai:3-plan (Constitution Check)
-│   │   ├── 4-tasks.md             # /moai:4-tasks (TDD 태스크)
-│   │   ├── 5-dev.md               # /moai:5-dev (구현)
-│   │   └── 6-sync.md              # /moai:6-sync (동기화)
+│   ├── commands/moai/             # 커스텀 슬래시 명령어 (0→3 + git)
+│   │   ├── 0-project.md           # /moai:0-project (프로젝트 문서 갱신)
+│   │   ├── 1-spec.md              # /moai:1-spec (auto 제안/생성)
+│   │   ├── 2-build.md             # /moai:2-build (TDD 구현)
+│   │   ├── 3-sync.md              # /moai:3-sync (문서/PR 동기화)
+│   │   └── git/                   # /moai:git:* (checkpoint/rollback/branch/commit/sync)
 │   ├── output-styles/             # MoAI 맞춤형 출력 스타일 (5개)
 │   │   ├── expert.md              # 간결하고 효율적인 전문가 모드
 │   │   ├── beginner.md            # 상세한 설명과 단계별 안내
 │   │   ├── study.md               # 깊이 있는 원리와 심화 학습
 │   │   ├── mentor.md              # 1:1 멘토링과 페어 프로그래밍
 │   │   └── audit.md               # 코드 품질 지속적 검증 개선
-│   ├── agents/                     # 58개 전문 에이전트
-│   │   ├── moai/                   # 11개 MoAI 워크플로우 에이전트
-│   │   │   ├── claude-code-manager.md # MoAI-Claude 통합 전문가 (v0.1.12 완성)
-│   │   │   ├── steering-architect.md  # Steering 문서 생성 전문가
-│   │   │   ├── spec-manager.md        # SPEC 문서 관리 전문가
-│   │   │   ├── plan-architect.md      # 계획 수립 및 ADR 관리 전문가
-│   │   │   ├── task-decomposer.md     # 작업 분해 전문가
-│   │   │   ├── code-generator.md      # TDD 기반 코드 생성 전문가
-│   │   │   ├── test-automator.md      # TDD 자동화 전문가 (v0.1.9 신규)
-│   │   │   ├── doc-syncer.md          # Living Document 동기화 전문가
-│   │   │   ├── tag-indexer.md         # 16-Core @TAG 시스템 관리
-│   │   │   ├── integration-manager.md # 외부 서비스 연동 관리
-│   │   │   └── deployment-specialist.md # 배포 전략 및 자동화
-│   │   ├── awesome/                 # 47개 범용 개발 에이전트 (카테고리)
+│   ├── agents/                     # 전문 에이전트
+│   │   ├── moai/                   # 핵심 워크플로우 에이전트
+│   │   │   ├── cc-manager.md       # Claude Code 관리
+│   │   │   ├── spec-builder.md     # EARS 명세 + 브랜치 전략
+│   │   │   ├── code-builder.md     # TDD 구현(모드별 커밋)
+│   │   │   ├── doc-syncer.md       # 문서/PR 동기화
+│   │   │   ├── git-manager.md      # Git 작업 전담
+│   │   │   ├── integration-manager.md # 외부 서비스 연동
+│   │   │   └── deployment-specialist.md # 배포 자동화
+│   │   ├── moai/                    # project-manager, spec-builder, code-builder, doc-syncer, git-manager, cc-manager, codex-bridge, gemini-bridge
 │   │   │   ├── frontend/
 │   │   │   │   ├── html-css-pro.md
 │   │   │   │   ├── tailwind-css-pro.md
@@ -45,22 +40,15 @@ MoAI-ADK는 Claude Code 표준을 완전히 준수하면서도 체계적인 문�
 │   │   │   ├── docs/
 │   │   │   ├── quality/
 │   │   │   └── general/agent-expert.md
-│   ├── hooks/                     # 11개 Hook 스크립트 (Python)
-│   │   ├── moai/                   # 6개 MoAI 워크플로우 Hook
-│   │   │   │                      # v0.1.12: stdin JSON 처리로 안정화
-│   │   │   ├── policy_block.py       # PreToolUse: 정책 차단 (✅ JSON 처리)
-│   │   │   ├── constitution_guard.py # PreToolUse: Constitution 보호 (🔧 v0.1.12 수정)
-│   │   │   ├── tag_validator.py      # PreToolUse: 16-Core 태그 검증 (✅ JSON 처리)
-│   │   │   ├── pre_write_guard.py    # PreToolUse: 파일 생성 가드
-│   │   │   ├── post_stage_guard.py   # PostToolUse: 단계 검수 (✅ JSON 처리)
-│   │   │   ├── session_start_notice.py # SessionStart: 상태 알림 (✅ JSON 처리)
-│   │   │   └── test_hook.py          # Hook 시스템 테스트 스크립트 (v0.1.12 신규)
-│   │   └── awesome/                 # 5개 범용 생산성 Hook
-│   │       ├── auto_formatter.py    # PostToolUse: 스마트 코드 포맷팅
-│   │       ├── auto_git_commit.py   # PostToolUse: 지능적 자동 커밋
-│   │       ├── backup_before_edit.py # PreToolUse: 편집 전 백업
-│   │       ├── test_runner.py       # PostToolUse: 자동 테스트 실행
-│   │       └── security_scanner.py  # PostToolUse: 보안 취약점 스캔
+│   ├── hooks/                     # Hook 스크립트 (Python)
+│   │   └── moai/                  # MoAI 전용 Hook
+│   │       ├── policy_block.py       # PreToolUse: 정책 차단
+│   │       ├── tag_validator.py      # PreToolUse: 16-Core 태그 검증
+│   │       ├── pre_write_guard.py    # PreToolUse: 편집 전 가드
+│   │       ├── check_style.py        # PostToolUse: 스타일 검증
+│   │       ├── session_start_notice.py # SessionStart: 상태 알림
+│   │       ├── auto_checkpoint.py     # 개인: 자동 체크포인트
+│   │       └── file_watcher.py        # 개인: 파일 변경 감시
 │   ├── memory/                    # Claude Code 메모리(참조용 문서)
 │   │   ├── project_guidelines.md    # 운영 원칙 요약 (전문은 .moai/memory/operations.md)
 │   │   ├── coding_standards.md      # 코딩 규칙 요약 (전문은 .moai/memory/engineering-standards.md)
@@ -158,15 +146,13 @@ MoAI-ADK는 설치와 프로젝트 초기화를 두 단계로 명확히 분리�
 - Git 저장소 초기화 (필요시 Git 자동 설치 제안)
 - 포괄적 `.gitignore` 파일 생성
 
-### `/moai:1-project [프로젝트이름]` - 프로젝트별 구조 생성
+### `/moai:0-project [프로젝트이름]` - 프로젝트 문서 초기화/갱신
 
 **생성 범위**: steering 문서 기반 동적 구조 생성
 
-- Steering 문서 생성 (product.md, structure.md, tech.md)
-- 프로젝트별 디렉토리: `docs/`, `src/`, `tests/`
-- 언어/프레임워크별 맞춤 구조
-- 프로젝트 타입별 설정 파일
-- 초기 SPEC 문서 생성
+- Steering 문서 생성/갱신 (product.md, structure.md, tech.md)
+- CLAUDE 메모리 반영(@ 임포트)
+- 이후 `/moai:1-spec`에서 SPEC 생성(개인: 로컬 / 팀: GitHub Issue)
 
 **장점**:
 
@@ -185,7 +171,7 @@ moai_adk 패키지/
     └── templates/
         ├── .claude/         # Claude Code 설정 템플릿
         │   ├── agents/moai/ # 11개 MoAI 에이전트 파일
-        │   ├── agents/awesome/ # 47개 범용 에이전트 파일 (카테고리 분류)
+        │   ├── agents/moai/   # MoAI 핵심 및 브리지 에이전트
         │   │   ├── backend/
         │   │   ├── frontend/
         │   │   ├── mobile/

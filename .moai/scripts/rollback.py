@@ -152,6 +152,38 @@ class MoAIRollback:
             print(f"❌ 스냅샷 복원 실패: {exc}")
             return False
 
+    def _apply_tag_checkpoint(self, checkpoint: Dict[str, Any], from_commit: Optional[str]) -> bool:
+        tag_name = str(checkpoint.get("tag") or checkpoint.get("id") or "")
+        if not tag_name:
+            print("❌ 체크포인트에 Tag 정보가 없습니다.")
+            return False
+
+        base_commit = checkpoint.get("base_commit")
+        if base_commit:
+            reset_ok, _, reset_err = self._run_git_command(f"git reset --hard {base_commit}")
+            if not reset_ok:
+                print(f"⚠️ 기준 커밋으로 이동 실패: {reset_err}")
+        self._run_git_command("git clean -fd")
+
+        restore_ok, _, restore_err = self._run_git_command(
+            f"git restore --source {tag_name} --staged --worktree -- ."
+        )
+        if not restore_ok:
+            print(f"❌ Tag 스냅샷 적용 실패: {restore_err}")
+            return False
+
+        meta = self._load_metadata()
+        entries = meta.setdefault("checkpoints", [])
+        if all(cp.get("id") != checkpoint.get("id") for cp in entries):
+            entries.append(checkpoint)
+            self._save_metadata(meta)
+
+        self._log_rollback(checkpoint.get("id", tag_name), checkpoint, from_commit=from_commit)
+        print(f"✅ 체크포인트 {checkpoint.get('id', tag_name)}로 롤백 완료")
+        print(f"📅 복원된 시점: {checkpoint.get('timestamp', 'unknown')}")
+        print(f"💬 메시지: {checkpoint.get('message', '')}")
+        return True
+
     def _get_project_mode(self) -> str:
         """프로젝트 모드 확인
 
@@ -346,6 +378,9 @@ class MoAIRollback:
             print(f"📅 복원된 시점: {target_cp.get('timestamp', 'unknown')}")
             print(f"💬 메시지: {target_cp.get('message', '')}")
             return True
+
+        if target_cp.get("kind") == "tag" or target_cp.get("tag"):
+            return self._apply_tag_checkpoint(target_cp, before_commit)
 
         # 최신 스냅샷(stash 기반) 처리
         stash_commit = target_cp.get("stash_commit")

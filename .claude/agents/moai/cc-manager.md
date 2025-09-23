@@ -13,29 +13,30 @@ model: sonnet
 3. **설정 문제 진단** 및 해결책 제시
 4. **Constitution 5원칙** 기반 설정 최적화
 
-## 권한 설정 (최적화된 구성)
+## 권한 설정 (0.2.2 권장 구성)
 
 ### Allow (자동 허용)
 ```json
 "allow": [
-  "Task", "Read", "Write", "Edit", "MultiEdit",
-  "Bash(git:*)", "Bash(python3:*)", "Bash(moai:*)",
-  "WebFetch", "Grep", "Glob", "TodoWrite"
+  "Task","Read","Write","Edit","MultiEdit","NotebookEdit",
+  "Grep","Glob","TodoWrite","WebFetch",
+  "Bash(git status:*)","Bash(git add:*)","Bash(git diff:*)","Bash(git commit:*)",
+  "Bash(python3:*)","Bash(pytest:*)",
+  "Bash(gh pr create:*)","Bash(gh pr view:*)"
 ]
 ```
 
 ### Ask (사용자 확인)
 ```json
 "ask": [
-  "Bash(pip install:*)", "Bash(npm install:*)",
-  "Bash(git push:*)", "Write(*.config.*)"
+  "Bash(git push:*)","Bash(git merge:*)","Bash(gh pr merge:*)"
 ]
 ```
 
 ### Deny (차단)
 ```json
 "deny": [
-  "Bash(sudo:*)", "Edit(.env*)", "Read(.env*)"
+  "Bash(sudo:*)","Read(./.env)","Read(./.env.*)","Read(./secrets/**)"
 ]
 ```
 
@@ -52,15 +53,23 @@ model: sonnet
 }]
 ```
 
-### PreToolUse Hook (TAG 검증)
+### PreToolUse Hook (TAG/가드)
 ```json
-"PreToolUse": [{
-  "matcher": "Edit\\(.+\\.(py|js|ts|...)\\)",
-  "hooks": [{
-    "type": "command",
-    "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag_validator.py"
-  }]
-}]
+"PreToolUse": [
+  {
+    "matcher": "Edit|Write|MultiEdit",
+    "hooks": [
+      { "type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag_validator.py" },
+      { "type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_write_guard.py" }
+    ]
+  },
+  {
+    "matcher": "Bash",
+    "hooks": [
+      { "type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/policy_block.py" }
+    ]
+  }
+]
 ```
     ]
   }
@@ -78,13 +87,10 @@ model: sonnet
 #### 핵심 허용 도구 분석
 ```yaml
 개발 도구:    Task, Write, Read, Edit, MultiEdit
-Git 자동화:   Bash(git:*) - GitFlow 투명성 지원
-파일 조작:    Bash(mkdir:*), Bash(cp:*), Bash(mv:*)
-검색/탐색:    Bash(ls:*), Bash(find:*), Grep, Glob
-Python 개발:  Bash(python3:*), Bash(pytest:*), Bash(poetry:*)
-코드 품질:    Bash(ruff:*), Bash(mypy:*)
-MoAI 도구:    Bash(moai:*) - 3단계 파이프라인 지원
-정리 작업:    Bash(rm:*), Bash(rmdir:*) - 안전한 파일 삭제
+Git 자동화:   Bash(git status/add/diff/commit:*)
+검색/탐색:    Grep, Glob
+Python 개발:  Bash(python3:*), Bash(pytest:*)
+PR 작업:      Bash(gh pr create/view:*)
 ```
 
 #### 보안 차단 정책
@@ -94,9 +100,9 @@ MoAI 도구:    Bash(moai:*) - 3단계 파이프라인 지원
 ```
 
 #### Hook 설정 특징
-- **TAG 검증**: 프로그램 코드 파일만 대상 (문서 제외)
-- **세션 알림**: MoAI 프로젝트 상태 자동 표시
-- **간소화**: Constitution guard, policy block 등 복잡한 Hook 제거
+- **TAG/가드**: Edit/Write/MultiEdit 전체에 TAG 검증 + 사전 가드 적용
+- **세션 알림**: MoAI 프로젝트 상태 자동 표시(SessionStart)
+- **경량 구성**: constitution_guard는 선택(기본은 tag_validator + pre_write_guard + policy_block + check_style)
 
 ## 3. Hook 구성 지침
 - **SessionStart**: 프로젝트 진입 시 안내 메시지 및 상태 점검.
@@ -112,9 +118,7 @@ MoAI 도구:    Bash(moai:*) - 3단계 파이프라인 지원
    - `chmod +x .claude/hooks/moai/*.py`로 실행 권한 확인.
    - `matcher` 패턴 오탈자(대/소문자) 확인.
 2. **MCP 연결 실패 시**
-   - `claude mcp list`로 서버 목록 확인.
-   - 환경 변수 `MAX_MCP_OUTPUT_TOKENS` 설정 여부 확인.
-   - `claude mcp test memory`로 개별 서버 점검.
+   - (선택) MCP를 사용하는 경우에만 점검. 기본 템플릿은 MCP를 필수로 요구하지 않습니다.
 3. **권한 오류 발생 시**
    - `claude config get permissions.defaultMode`로 기본 모드 확인.
    - `permissions.allow/ask/deny` 항목이 의도대로 작성되었는지 검토.

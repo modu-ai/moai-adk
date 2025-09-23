@@ -1,7 +1,7 @@
 # MoAI-ADK Documentation Index
 
 > **AI Navigation Guide**: 빠른 문서 검색을 위한 체계적 인덱스
-> **Last Updated**: 2025-09-17 | **Package Version**: v0.1.21
+> **Last Updated**: 2025-09-23
 
 ---
 
@@ -46,13 +46,13 @@
 ## 🛠️ Development Workflow
 
 ### [07-pipeline.md](07-pipeline.md) - 4단계 파이프라인
-**핵심 내용**: SPECIFY→PLAN→TASKS→IMPLEMENT 워크플로우, 병렬 처리, 상태 관리
-**키워드**: `pipeline`, `workflow`, `specify`, `plan`, `tasks`, `implement`
+**핵심 내용**: `/moai:0-project` → `/moai:3-sync` 신규 워크플로우, 개인/팀 모드별 흐름, 체크포인트/PR 연동
+**키워드**: `pipeline`, `0-project`, `1-spec`, `2-build`, `3-sync`, `personal`, `team`
 **난이도**: 🟡 Intermediate
 
 ### [08-commands.md](08-commands.md) - CLI 명령어 시스템
-**핵심 내용**: moai 명령어 레퍼런스, 슬래시 명령어, 자동화 스크립트
-**키워드**: `commands`, `cli`, `moai`, `slash-commands`, `automation`
+**핵심 내용**: `/moai:0-project~3-sync` + Git 전용 명령어 5종(`/moai:git:*`), 모드별 동작
+**키워드**: `commands`, `git`, `checkpoint`, `rollback`, `branch`, `commit`, `sync`
 **난이도**: 🟢 Basic
 
 ### [06-wizard.md](06-wizard.md) - 대화형 마법사
@@ -70,13 +70,13 @@
 ## 🤖 Advanced Features
 
 ### [10-agents.md](10-agents.md) - Agent 시스템
-**핵심 내용**: 58개 전문 에이전트 (11개 MoAI + 47개 awesome), 카테고리별 구조, 병렬 실행, 모델 선택, 에이전트 협업
-**키워드**: `agents`, `parallel`, `models`, `specialization`, `automation`, `awesome`
+**핵심 내용**: project-manager, spec-builder, code-builder, doc-syncer, git-manager, cc-manager, codex-bridge, gemini-bridge 등 협업 구조와 브레인스토밍 설정
+**키워드**: `agents`, `brainstorming`, `codex`, `gemini`, `parallel`
 **난이도**: 🔴 Advanced
 
 ### [11-hooks.md](11-hooks.md) - Hook 시스템
-**핵심 내용**: 11개 Hook (6개 MoAI + 5개 awesome), pre/post 자동 검증, Python Hook, Constitution 검증, 보안 차단
-**키워드**: `hooks`, `validation`, `python`, `security`, `pre-post`, `awesome`
+**핵심 내용**: Session/PreToolUse/PostToolUse 훅 구성, steering_guard 등 보안 훅, Python 기반 자동 검증 흐름
+**키워드**: `hooks`, `validation`, `security`, `pre-post`
 **난이도**: 🔴 Advanced
 
 ### [12-tag-system.md](12-tag-system.md) - TAG 추적성 시스템
@@ -114,29 +114,34 @@
 
 ### 자주 사용하는 명령어
 ```bash
-# 프로젝트 초기화
-moai init
+# 설치 및 초기화
+pip install moai-adk
+moai init --personal   # 또는 --team
 
-# 파이프라인 실행
-/moai:2-spec "기능명" "설명"
-/moai:3-plan SPEC-001
-/moai:4-tasks PLAN-001
-/moai:5-dev T001
+# 4단계 워크플로우
+/moai:0-project        # 프로젝트 문서 갱신 + 메모리 반영
+/moai:1-spec           # auto 제안(개인: 로컬 생성 / 팀: GitHub Issue)
+/moai:2-build          # TDD (개인: 체크포인트 / 팀: 7단계 커밋)
+/moai:3-sync           # 문서/PR 동기화 + 상태 보고
 
-# 상태 확인
+# Git 전용 명령어(5종)
+/moai:git:checkpoint   # 자동/수동 체크포인트
+/moai:git:rollback     # 체크포인트 롤백
+/moai:git:branch       # 모드별 브랜치 전략
+/moai:git:commit       # Constitution 기반 커밋
+/moai:git:sync         # 원격 동기화
+
+# 상태/검증
 moai status
-moai doctor
-
-# 업데이트
-moai update
+python .moai/scripts/check-traceability.py --update
 ```
 
 ### 중요 파일 경로
 - **프로젝트 메모리**: `CLAUDE.md`
-- **자동 생성 메모리**: `.moai/memory/common.md`, `.moai/memory/<layer>-<tech>.md`
 - **Constitution**: `.moai/memory/constitution.md`
 - **설정**: `.claude/settings.json`, `.moai/config.json`
-- **Hook 스크립트**: `.claude/hooks/moai/`
+- **Git 스크립트**: `.moai/scripts/branch_manager.py`, `commit_helper.py`, `rollback.py`
+- **Hook 스크립트**: `.claude/hooks/moai/` (auto_checkpoint, file_watcher 등)
 
 ### 문제 해결
 - **Hook 실행 실패** → 권한 확인: `chmod +x .claude/hooks/moai/*.py`

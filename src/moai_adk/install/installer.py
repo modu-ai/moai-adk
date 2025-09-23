@@ -147,7 +147,7 @@ class SimplifiedInstaller:
             self.config.project_path / ".claude" / "logs",
 
             # Only create empty directories that ResourceManager doesn't populate
-            self.config.project_path / ".moai" / "steering",
+            self.config.project_path / ".moai" / "project",
             self.config.project_path / ".moai" / "specs",
             self.config.project_path / ".moai" / "reports",
         ]

@@ -352,7 +352,7 @@ class TestBuildSystemIntegration(unittest.TestCase):
             "permissions": {"allow": ["Read(*)", "Write(.moai/**)"]},
             "environment": {"CLAUDE_PROJECT_DIR": "${PWD}"},
             "hooks": {"PreToolUse": [], "PostToolUse": []},
-            "memory": {"project_memory_files": [".moai/steering/product.md"]}
+            "memory": {"project_memory_files": [".moai/project/product.md"]}
         }
         with open(claude_dir / 'settings.json', 'w') as f:
             json.dump(settings, f, indent=2)

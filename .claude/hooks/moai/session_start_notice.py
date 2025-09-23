@@ -16,6 +16,7 @@ SessionStart Hook으로 현재 MoAI 프로젝트 상태를 분석하고
 import json
 import sys
 import os
+import subprocess
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 from datetime import datetime
@@ -530,6 +531,42 @@ class SessionNotifier:
             pass
 
         return {"clean": True, "modified": 0, "added": 0, "deleted": 0, "untracked": 0}
+
+    def get_checkpoint_watcher_status(self) -> Dict[str, Any]:
+        """자동 체크포인트 워처 상태 조회"""
+        script = self.project_root / ".moai" / "scripts" / "checkpoint_watcher.py"
+        if not script.exists():
+            return {"available": False, "status": "missing"}
+
+        try:
+            result = subprocess.run(
+                [sys.executable or "python3", str(script), "status"],
+                cwd=self.project_root,
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+        except Exception as exc:
+            return {"available": True, "status": "error", "message": str(exc)}
+
+        output = (result.stdout or "").strip()
+        errors = (result.stderr or "").strip()
+        if result.returncode != 0:
+            message = errors.splitlines()[0] if errors else (output or f"exit code {result.returncode}")
+            lowered_err = errors.lower()
+            if "filesystemeventhandler" in lowered_err or "watchdog" in lowered_err:
+                message = "watchdog 모듈 미설치로 상태 확인 실패"
+            return {"available": True, "status": "error", "message": message}
+
+        lowered = output.lower()
+        if "running" in lowered or "✅" in output:
+            state = "running"
+        elif "not running" in lowered or "❌" in output:
+            state = "stopped"
+        else:
+            state = "unknown"
+        message = output if output else (errors or "")
+        return {"available": True, "status": state, "message": message}
 
     def get_smart_recommendations(self, pipeline: Dict[str, Any], git_status: Dict[str, Any],
                                 specs: Dict[str, int], tasks: Dict[str, Any],
@@ -1579,12 +1616,61 @@ class SessionNotifier:
 
     def generate_notice(self) -> str:
         """세션 시작 알림 메시지 생성"""
-        status = self.get_project_status()
+        if os.environ.get("MOAI_SESSION_NOTICE_VERBOSE") == "1":
+            status = self.get_project_status()
+            if not status["initialized"]:
+                return self.generate_simple_init_notice()
+            return self.generate_simple_status_notice(status)
 
-        if not status["initialized"]:
-            return self.generate_simple_init_notice()
+        return self.generate_quick_notice()
 
-        return self.generate_simple_status_notice(status)
+    def generate_quick_notice(self) -> str:
+        """가벼운 요약만 제공하는 빠른 알림"""
+        lines = [f"🗿 MoAI-ADK 프로젝트: {self.project_root.name}"]
+
+        branch = self.get_current_git_branch()
+        if branch:
+            lines.append(f"🌿 현재 브랜치: {branch}")
+
+        specs = self.count_specs()
+        if specs["total"]:
+            lines.append(
+                f"📝 SPEC 진행률: {specs['complete']}/{specs['total']} (미완료 {specs['incomplete']}개)"
+            )
+
+        incomplete_specs = self.get_incomplete_specs()
+        if incomplete_specs:
+            lines.append(
+                "⚠️  명확화 필요: " + ", ".join(incomplete_specs[:2]) + ("..." if len(incomplete_specs) > 2 else "")
+            )
+
+        git_status = self.get_working_directory_status()
+        if not git_status["clean"]:
+            total_changes = sum(
+                git_status[k] for k in ["modified", "added", "deleted", "untracked"]
+            )
+            lines.append(f"📝 변경사항: {total_changes}개 파일")
+
+        watcher = self.get_checkpoint_watcher_status()
+        if watcher.get("available"):
+            status = watcher.get("status")
+            message = watcher.get("message") or "상태를 판별할 수 없습니다"
+            if status == "running":
+                lines.append("✅ 자동 체크포인트 워처 실행 중")
+            elif status == "stopped":
+                lines.append(
+                    "⚠️ 자동 체크포인트 워처 미기동 → `python .moai/scripts/checkpoint_watcher.py start` 실행 권장"
+                )
+            elif status == "error":
+                lines.append(f"⚠️ 워처 오류: {message}")
+            else:
+                lines.append(f"ℹ️ 워처 상태 확인 필요: {message}")
+        else:
+            lines.append("ℹ️ 자동 체크포인트 워처 스크립트를 찾을 수 없습니다.")
+
+        lines.append("💡 상세 상태는 `MOAI_SESSION_NOTICE_VERBOSE=1` 환경변수 설정 후 재시작하거나 `/moai:status` 명령으로 확인하세요.")
+
+        return "\n".join(lines)
 
     def generate_simple_init_notice(self) -> str:
         """간단한 프로젝트 초기화 안내 메시지 - 동적 정보 포함"""
@@ -1609,6 +1695,19 @@ class SessionNotifier:
                 lines.append(f"📝 ⚠️  변경사항: {total_changes}개 파일 (커밋 권장)")
             else:
                 lines.append(f"📝 변경사항: {total_changes}개 파일")
+
+        watcher = self.get_checkpoint_watcher_status()
+        if watcher.get("available"):
+            status = watcher.get("status")
+            message = watcher.get("message") or "상태를 판별할 수 없습니다"
+            if status == "running":
+                lines.append("✅ 자동 체크포인트 워처 실행 중")
+            elif status == "stopped":
+                lines.append("⚠️ 자동 체크포인트 워처 미기동 → `python .moai/scripts/checkpoint_watcher.py start`")
+            elif status == "error":
+                lines.append(f"⚠️ 워처 오류: {message}")
+            else:
+                lines.append(f"ℹ️ 워처 상태 확인 필요: {message}")
 
         # 언어 감지 및 도구 정보
         analysis = self.analyze_existing_project()
@@ -1659,6 +1758,19 @@ class SessionNotifier:
                 lines.append(f"📝 ⚠️  변경사항: {total_changes}개 파일 (커밋 권장)")
             else:
                 lines.append(f"📝 변경사항: {total_changes}개 파일")
+
+        watcher = self.get_checkpoint_watcher_status()
+        if watcher.get("available"):
+            status = watcher.get("status")
+            message = watcher.get("message") or "상태를 판별할 수 없습니다"
+            if status == "running":
+                lines.append("✅ 자동 체크포인트 워처 실행 중")
+            elif status == "stopped":
+                lines.append("⚠️ 자동 체크포인트 워처가 꺼져 있습니다 → `python .moai/scripts/checkpoint_watcher.py start`")
+            elif status == "error":
+                lines.append(f"⚠️ 워처 오류: {message}")
+            else:
+                lines.append(f"ℹ️ 워처 상태 확인 필요: {message}")
 
         # 현재 작업 상태 및 다음 액션 제안
         pipeline = status["pipeline_stage"]
@@ -1956,23 +2068,7 @@ def handle_session_start():
     """SessionStart Hook 메인 핸들러"""
     try:
         # 현재 디렉토리에서 시작해서 프로젝트 루트 찾기
-        current_dir = Path.cwd()
-        project_root = current_dir
-        
-        # .claude 또는 .moai 디렉토리를 찾을 때까지 상위로 올라가기
-        max_depth = 10
-        depth = 0
-        
-        while depth < max_depth:
-            if (project_root / '.claude').exists() or (project_root / '.moai').exists():
-                break
-            
-            parent = project_root.parent
-            if parent == project_root:  # 루트 디렉토리에 도달
-                break
-                
-            project_root = parent
-            depth += 1
+        project_root = _locate_project_root(Path.cwd())
         
         # MoAI 관련 디렉토리가 있는지 확인
         has_claude = (project_root / '.claude').exists()
@@ -1994,5 +2090,32 @@ def handle_session_start():
         # 에러가 발생해도 세션을 방해하지 않음
         print(f"🗿 MoAI-ADK 상태 확인 중 오류가 발생했습니다: {e}", file=sys.stderr)
 
+def _locate_project_root(start: Path) -> Path:
+    project_root = start
+    depth = 0
+    while depth < 10:
+        if (project_root / '.claude').exists() or (project_root / '.moai').exists():
+            break
+        parent = project_root.parent
+        if parent == project_root:
+            break
+        project_root = parent
+        depth += 1
+    return project_root
+
+
+def _run_diagnostics() -> None:
+    project_root = _locate_project_root(Path.cwd())
+    notifier = SessionNotifier(project_root)
+    status = notifier.get_project_status()
+    if not status["initialized"]:
+        print(notifier.generate_simple_init_notice())
+    else:
+        print(notifier.generate_simple_status_notice(status))
+
+
 if __name__ == "__main__":
-    handle_session_start()
+    if len(sys.argv) > 1 and sys.argv[1] == "--diagnostics":
+        _run_diagnostics()
+    else:
+        handle_session_start()

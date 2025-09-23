@@ -2,26 +2,52 @@
 name: moai:3-sync
 description: Living Document 동기화 및 PR Ready 전환
 argument-hint: [모드] [대상경로] - 모드: auto(기본)|force|status|project, 대상경로: 동기화 대상 경로
-allowed-tools: Read, Write, Edit, MultiEdit, Bash(git:*), Bash(gh:*), Bash(python3:*), Bash(ls:*), Bash(find:*), Bash(grep:*), Bash(cat:*), Bash(pgrep:*), Bash(rm:*), Bash(sleep:*), Task, Grep, Glob, TodoWrite
+allowed-tools: Read, Write, Edit, MultiEdit, Bash(git status:*), Bash(git add:*), Bash(git diff:*), Bash(git commit:*), Bash(gh:*), Bash(python3:*), Task, Grep, Glob, TodoWrite
 model: sonnet
 ---
 
-# MoAI-ADK SYNC 단계: 문서 동기화 + PR Ready
+# MoAI-ADK 3단계: 문서 동기화(+선택적 PR Ready)
 
-**동기화 대상**: $1 (모드), $2 (경로)
+doc-syncer 에이전트가 Living Document 동기화와 16-Core @TAG 업데이트를 수행합니다. 팀 모드에서만 PR Ready 전환을 선택적으로 실행합니다.
 
-doc-syncer 에이전트가 TDD 구현 완료 후 Living Document 동기화, 16-Core TAG 시스템 업데이트, Draft→Ready PR 전환을 수행합니다.
+## 에이전트 협업 구조
+- **1단계**: `doc-syncer` 에이전트가 Living Document 동기화 및 16-Core TAG 관리를 전담합니다.
+- **2단계**: `git-manager` 에이전트가 모든 Git 커밋, PR 상태 전환, 동기화를 전담합니다.
+- **단일 책임 원칙**: doc-syncer는 문서 작업만, git-manager는 Git 작업만 수행합니다.
+- **순차 실행**: doc-syncer → git-manager 순서로 실행하여 명확한 의존성을 유지합니다.
+- **에이전트 간 호출 금지**: 각 에이전트는 다른 에이전트를 직접 호출하지 않고, 커멘드 레벨에서만 순차 실행합니다.
+
+## 브레인스토밍 리포트 (선택)
+- `.moai/config.json.brainstorming.enabled` 가 `true` 인 경우, 동기화 완료 후 외부 AI 결과를 간단히 정리합니다.
+- 필요 시 `codex-bridge` 또는 `gemini-bridge` 를 호출해 후속 작업 아이디어(문서 보완, 리스크 분석)를 수집하고, 문서/PR 요약에 반영합니다. (예: `Task: use gemini-bridge to run "gemini -m gemini-2.5-pro -p 'List documentation gaps' --output-format json"`)
+- 설정이 비활성화되어 있으면 Claude Code만 사용합니다.
+
+## 동기화 산출물 (0.2.2)
+- `docs/status/sync-report.md` 생성/갱신
+- `docs/sections/index.md`의 Last Updated 자동 반영
+- TAG 인덱스 업데이트: `python3 .moai/scripts/check-traceability.py --update`
 
 ## 모드별 실행 방식
 
-### 현재 상태 확인
+## 워크플로우 실행 순서
 
-현재 프로젝트 상태를 확인합니다:
+당신은 다음 순서로 에이전트들을 **순차 호출**해야 합니다:
 
-!`python3 -c "import json; config=json.load(open('.moai/config.json')); print(config['project']['mode'])" 2>/dev/null || echo "unknown"`
-!`python3 -c "import json; config=json.load(open('.moai/config.json')); print('✅ Enabled' if config.get('git_strategy', {}).get('personal', {}).get('auto_checkpoint') else '❌ Disabled')" 2>/dev/null || echo "unknown"`
-!`git branch --show-current`
-!`git status --porcelain | wc -l`
+### 1단계: 문서 동기화
+먼저 `doc-syncer` 에이전트를 호출하여 다음 작업을 완료합니다:
+- Living Document 동기화
+- 16-Core TAG 시스템 검증 및 업데이트
+- 문서-코드 일치성 체크
+- TAG 추적성 매트릭스 갱신
+
+### 2단계: Git 작업 처리
+`doc-syncer` 완료 후, `git-manager` 에이전트를 호출하여 다음 작업을 수행합니다:
+- 문서 변경사항 커밋
+- 모드별 동기화 전략 적용
+- Team 모드에서 PR Ready 전환
+- 리뷰어 자동 할당 (gh CLI 사용)
+
+**중요**: 각 에이전트는 독립적으로 실행되며, 에이전트 간 직접 호출은 금지됩니다.
 
 ### 인수 처리
 
@@ -45,209 +71,48 @@ doc-syncer 에이전트가 TDD 구현 완료 후 Living Document 동기화, 16-C
 /moai:3-sync auto src/auth/
 ```
 
-### 🧪 개인 모드 (Personal Mode) - 체크포인트 기반 동기화
+### 에이전트 역할 분리
 
-```bash
-# 1. 문서 동기화 전 체크포인트 생성
-/moai:git:checkpoint "3-sync 시작: 문서 동기화 작업"
+#### doc-syncer 전담 영역
+- Living Document 동기화 (코드 ↔ 문서)
+- 16-Core TAG 시스템 검증 및 업데이트
+- API 문서 자동 생성/갱신
+- README 및 아키텍처 문서 동기화
+- 문서-코드 일치성 검증
 
-# 2. 간소화된 동기화 (빠른 개발 우선)
-# - README.md 업데이트
-# - API 문서 간소 업데이트
-# - TAG 검증 (필수만)
+#### git-manager 전담 영역
+- 모든 Git 커밋 작업 (add, commit, push)
+- 모드별 동기화 전략 적용
+- PR 상태 전환 (Draft → Ready)
+- 리뷰어 자동 할당 및 라벨링
+- GitHub CLI 연동 및 원격 동기화
 
-# 3. 동기화 완료 체크포인트
-/moai:git:checkpoint "3-sync 완료: 문서 동기화"
+### 🧪 개인 모드 (Personal)
+- 동기화 전/후 체크포인트 권장: `/moai:git:checkpoint "3-sync 시작"` → 동기화 → `/moai:git:checkpoint "3-sync 완료"`
+- README·심층 문서·PR 본문 정리는 체크리스트에 따라 수동 마무리
 
-# 4. 개인 모드 완료 (PR 생략 가능)
-echo "📝 개인 모드 동기화 완료 - 다음 작업 준비됨"
-```
+### 🏢 팀 모드 (Team)
+- Living Document 완전 동기화 + 16-Core TAG 검증/보정
+- gh CLI가 설정된 경우에 한해 PR Ready 전환과 라벨링을 선택적으로 실행
 
-### 🏢 팀 모드 (Team Mode) - 완전한 문서화 및 PR Ready
+**중요**: 모든 Git 작업(커밋, 동기화, PR 관리)은 git-manager 에이전트가 전담하므로, 이 커멘드에서는 Git 작업을 직접 실행하지 않습니다.
 
-```bash
-# 1. 완전한 Living Document 동기화
-# - 모든 API 문서 업데이트
-# - 아키텍처 문서 동기화
-# - 16-Core TAG 완전 검증
+## 동기화 상세(요약)
+1) 프로젝트 분석 및 TAG 검증 → 끊어진/중복/고아 TAG 점검
+2) 코드 ↔ 문서 동기화 → API/README/아키텍처 문서 갱신, SPEC ↔ 코드 TODO 동기화
+3) TAG 인덱스 업데이트 → `python3 .moai/scripts/check-traceability.py --update`
 
-# 2. PR Ready 전환
-gh pr ready --body "문서 동기화 완료"
-
-# 3. 팀 리뷰 준비
-gh pr edit --add-label "ready-for-review" --add-label "documentation-updated"
-```
-
-## 환경 정보 수집
-
-현재 프로젝트 상태와 Git 환경을 확인합니다:
-
-**Git 상태 확인**
-!`git branch --show-current`
-!`git status --porcelain`
-!`git log --oneline -3`
-
-**SPEC-ID 추출**
-!`git branch --show-current | sed 's/feature\/\(SPEC-[0-9]*\).*/\1/' || echo "SPEC-UNKNOWN"`
-
-**프로젝트 유형 감지**
-!`find . -maxdepth 2 -name "*.py" -o -name "*.js" -o -name "*.ts" -o -name "*.go" -o -name "*.java" -o -name "*.kt" -o -name "*.cs" -o -name "*.swift" -o -name "*.dart" -o -name "*.rs" | head -8`
-!`find . -maxdepth 1 -name "package.json" -o -name "pyproject.toml" -o -name "go.mod" -o -name "pom.xml" -o -name "Cargo.toml" -o -name "*.csproj" -o -name "*.sln" -o -name "Package.swift" -o -name "pubspec.yaml" | head -5`
-
-## doc-syncer 서브에이전트 호출
-
-doc-syncer 서브에이전트를 활용하여 체계적인 문서 동기화를 수행합니다:
-
-### Phase 1: 프로젝트 분석 및 TAG 검증
-
-doc-syncer 에이전트로 현재 프로젝트 상태를 분석하고 16-Core TAG 시스템의 무결성을 검증해주세요.
-
-**분석 요청사항:**
-
-- 모드: $1 (기본값: auto)
-- 대상 경로: $2
-- 현재 SPEC-ID 기반 문서 연결 확인
-- 끊어진 TAG 링크 감지
-- 프로젝트 유형별 문서 요구사항 분석
-
-### Phase 2: Living Document 동기화
-
-코드 변경사항을 기반으로 문서를 자동 동기화합니다:
-
-**코드 → 문서 동기화:**
-
-- API 문서 자동 갱신 (Web API 프로젝트)
-- CLI 명령어 문서 업데이트 (CLI Tool 프로젝트)
-- 컴포넌트 문서 갱신 (Frontend 프로젝트)
-- 라이브러리 API 레퍼런스 업데이트 (Library 프로젝트)
-
-**문서 → 코드 동기화:**
-
-- SPEC 변경사항 코드 반영
-- TODO 항목 코드 주석 동기화
-- TAG 추적성 링크 업데이트
-
-### TAG 추적성 자동 업데이트
-
-!`python3 .moai/scripts/check-traceability.py --update`
-
-### Phase 3: 16-Core TAG 시스템 업데이트
-
-TAG 시스템의 완전성을 보장합니다:
-
-**Primary Chain 검증:**
-
-- @REQ → @DESIGN → @TASK → @TEST 연결 확인
-- @FEATURE → @API → @UI → @DATA 추적성 검증
-
-**Quality Chain 관리:**
-
-- @PERF → @SEC → @DOCS → @TAG 품질 체인 점검
-- 고아 TAG 정리 및 중복 TAG 해결
-
-## Git 작업 안전성 보장
-
-Git 프로세스 충돌 방지 및 안전한 커밋을 수행합니다:
-
-**Git 안전성 검사**
-!`pgrep -fl "git" | grep -E "(commit|rebase|merge)" >/dev/null 2>&1 && echo "CONFLICT" || echo "SAFE"`
-
-**Lock 파일 정리**
-!`[ -f .git/index.lock ] && rm -f .git/index.lock && echo "Lock removed" || echo "No lock"`
-
-**변경사항 스테이징 전략**
-
-1. 문서 파일 우선 스테이징: `docs/`, `README.md`, `*.md`
-2. MoAI 시스템 파일: `.moai/`, `.claude/`
-3. 템플릿 파일: `src/moai_adk/resources/templates/`
-
-## 조건부 커밋 실행
-
-변경사항이 있을 때만 커밋을 수행합니다:
-
-!`
-
-# 스테이징된 변경사항 확인
-
-if git diff --cached --quiet; then
-echo "ℹ️ 커밋할 변경사항이 없습니다."
-else
-SPEC*ID=$(git branch --show-current | sed 's/feature\/\(SPEC-[0-9]*\).\_/\1/' || echo "SPEC-UNKNOWN")
-git commit -m "📚 $SPEC_ID: 문서 동기화 및 16-Core @TAG 업데이트 완료
-
-- Living Document 실시간 동기화
-- 프로젝트 유형별 문서 자동 생성/업데이트
-- README.md 기능 목록 갱신
-- 16-Core @TAG 추적성 체인 검증/수정
-- 코드-문서 일치성 향상
-
-🤖 Generated with [Claude Code](https://claude.ai/code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
-echo "✅ 문서 동기화 커밋 완료"
-fi
-`
-
-## GitHub 통합 (환경 의존적)
-
-gh CLI가 사용 가능한 경우 PR 상태 전환과 리뷰어 할당을 수행합니다:
-
-**PR Ready 전환**
-
-```bash
-gh pr ready --body "$(cat <<'EOF'
-## ✅ Implementation Complete
-
-### 📊 Quality Metrics
-- Constitution 5원칙: 체크 완료
-- Test Coverage: 목표 달성 확인
-- Code Quality: 품질 검증 완료
-- Security Scan: 보안 검토 권장
-
-### 🔗 Traceability Chain
-- @REQ → @DESIGN → @TASK → @TEST: 연결 확인
-- 16-Core @TAG 추적 체인 검증 완료
-
-### 📋 Review Checklist
-- [ ] Code Review (Senior Developer)
-- [ ] Security Review (Security Lead)
-- [ ] QA Testing (QA Engineer)
-
-Ready for team review! 🚀
-
-🤖 Generated with [Claude Code](https://claude.ai/code)
-EOF
-)"
-```
-
-**리뷰어 할당 (선택사항)**
-
-```bash
-# 환경에 따라 적절한 리뷰어 할당
-gh pr edit --add-label "ready-for-review" --add-label "constitution-compliant"
-```
+## 다음 단계
+- 문서 동기화 완료 후 전체 MoAI-ADK 워크플로우 완성
+- 모든 Git 작업은 git-manager 에이전트가 전담하여 일관성 보장
+- 에이전트 간 직접 호출 없이 커멘드 레벨 오케스트레이션만 사용
 
 ## 결과 보고
 
 동기화 결과를 구조화된 형식으로 보고합니다:
 
-### 성공적인 동기화
-
-```
-✅ Living Document 동기화 완료!
-
-📊 처리 결과:
-├── 업데이트된 파일: X개 (실제 수치 보고)
-├── 생성된 문서: X개
-├── 수정된 TAG: X개
-└── 추적성 검증: 통과 (검증 결과 기반)
-
-🏷️ TAG 시스템 상태:
-├── Primary Chain: 연결 확인
-├── Quality Chain: 연결 확인
-├── 고아 TAG: X개 (실제 수치)
-└── 끊어진 링크: X개 (수정 완료)
-```
+### 성공적인 동기화(요약 예시)
+✅ 문서 동기화 완료 — 업데이트 N, 생성 M, TAG 수정 K, 검증 통과
 
 ### 부분 동기화 (문제 감지)
 

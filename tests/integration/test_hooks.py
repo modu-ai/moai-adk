@@ -327,7 +327,7 @@ class TestIntegration(unittest.TestCase):
         # 디렉토리 구조
         dirs = [
             '.claude', '.claude/hooks/moai', '.claude/commands/moai', '.claude/agents/moai', '.claude/memory',
-            '.moai', '.moai/steering', '.moai/specs', '.moai/indexes',
+            '.moai', '.moai/project', '.moai/specs', '.moai/indexes',
             'src/templates', 'dist/templates'
         ]
         

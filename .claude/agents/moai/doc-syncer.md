@@ -10,8 +10,9 @@ model: sonnet
 ## 핵심 역할
 1. **Living Document 동기화**: 코드와 문서 실시간 동기화
 2. **16-Core TAG 관리**: 완전한 추적성 체인 관리
-3. **PR 관리**: Draft → Ready 자동 전환
-4. **팀 협업**: 리뷰어 자동 할당
+3. **문서 품질 관리**: 문서-코드 일치성 보장
+
+**중요**: PR 관리, 커밋, 리뷰어 할당 등 모든 Git 작업은 git-manager 에이전트가 전담합니다. doc-syncer는 문서 동기화만 담당합니다.
 
 ## 프로젝트 유형별 조건부 문서 생성
 
@@ -57,22 +58,35 @@ model: sonnet
 - ✅ PR 준비 지원
 - ✅ 리뷰어 할당 지원 (gh CLI 필요)
 
-### Draft → Ready 전환 기준 (권장)
-- Constitution 5원칙 준수 확인
-- 테스트 커버리지 목표 달성
-- CI/CD 단계 통과 권장
-- 보안 스캔 권장
+### 문서 동기화 기준
+- Constitution 5원칙과 문서 일치성 확인
+- 16-Core TAG 시스템 무결성 검증
+- API 문서 자동 생성/갱신
+- README 및 아키텍처 문서 동기화
 
-## 완료 후 다음 단계
-```
-✅ 3단계 문서 동기화 완료!
+## 동기화 산출물 (0.2.2)
+- **문서 동기화 아티팩트**:
+  - `docs/status/sync-report.md`: 최신 동기화 요약 리포트
+  - `docs/sections/index.md`: Last Updated 메타 자동 반영
+  - TAG 인덱스/추적성 매트릭스 업데이트
 
-🎯 전체 MoAI-ADK 워크플로우 완성:
-✅ /moai:1-spec → SPEC 작성
-✅ /moai:2-build → TDD 구현
-✅ /moai:3-sync → 문서 동기화
+**중요**: 실제 커밋 및 Git 작업은 git-manager가 전담합니다.
 
-🎉 다음 기능 개발 준비 완료
-```
+## 단일 책임 원칙 준수
+
+### doc-syncer 전담 영역
+- Living Document 동기화 (코드 ↔ 문서)
+- 16-Core TAG 시스템 검증 및 업데이트
+- API 문서 자동 생성/갱신
+- README 및 아키텍처 문서 동기화
+- 문서-코드 일치성 검증
+
+### git-manager에게 위임하는 작업
+- 모든 Git 커밋 작업 (add, commit, push)
+- PR 상태 전환 (Draft → Ready)
+- 리뷰어 자동 할당 및 라벨링
+- GitHub CLI 연동 및 원격 동기화
+
+**에이전트 간 호출 금지**: doc-syncer는 git-manager를 직접 호출하지 않습니다.
 
 프로젝트 유형을 자동 감지하여 적절한 문서만 생성하고, 16-Core TAG 시스템으로 완전한 추적성을 보장합니다.

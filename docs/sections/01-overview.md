@@ -1,7 +1,7 @@
 # MoAI-ADK 시스템 개요
 
-> Claude Code 2025 최신 표준 기반 완전 자동화 Spec-First TDD 개발 시스템
-> Python 패키지 기반 - 완전 자동화 버전 관리 시스템 및 통합 구조 관리 - v0.1.21 최신 버전
+> Claude Code 2025 표준 기반 Spec-First TDD 개발 시스템
+> 개인/팀 모드 통합 + Git 완전 자동화
 
 ## 🎯 목표와 범위
 
@@ -29,11 +29,12 @@
 
 ## 시스템 특징
 
-### 🤖 완전 자동화 (v0.1.21)
-- **버전 관리**: 문서/설정의 버전 문자열 동기화(VersionSyncManager 내부 도구)
-- **사용자 업데이트**: `moai update`로 템플릿 리소스 갱신 및 자동 백업
-- **개발자 도구**: `python -m moai_adk.core.version_sync --dry-run/--verify` 지원
-- **안전장치**: 드라이 런, 자동 백업, 검증 시스템으로 무사고 업데이트
+### 🤖 개인/팀 모드 통합 + Git 자동화
+- **모드 자동 선택**: `moai init --personal|--team`, 필요 시 `/moai:0-project update`로 재조정 (CLI 전환은 보조 용도)
+- **체크포인트 시스템(개인)**: 파일 변경 감지 + 5분 주기 Annotated Tag 백업 → 안전한 롤백
+- **브랜치 전략(팀)**: `feature/SPEC-XXX-{slug}` + Draft PR → Ready 자동화(옵션)
+- **스마트 커밋**: RED→GREEN→REFACTOR 7단계 커밋 패턴, Constitution 기반 메시지
+- **Git 전용 명령어 5종**: `/moai:git:checkpoint|rollback|branch|commit|sync`
 
 ### 🏗️ 중앙 집중식 아키텍처 (v0.1.13+)
 - **패키지 내장 리소스**: importlib.resources 기반 "복사" 방식(심볼릭 링크 미의존)으로 안정성 향상
@@ -42,36 +43,21 @@
 - **지능형 Git 시스템**: 자동 설치, 저장소 보존, 운영체제별 최적화
 - **자동 업데이트 추적**: `.moai/version.json`으로 템플릿 버전을 관리하고 `moai update --check`에서 즉시 확인
 
-### 🔄 4단계 파이프라인 워크플로우
-1. **SPECIFY**: EARS 형식 명세 작성
-2. **PLAN**: Constitution Check 및 계획 수립
-3. **TASKS**: TDD 태스크 분해
-4. **IMPLEMENT**: Red-Green-Refactor 구현
+### 🔄 신규 4단계 워크플로우 (/moai:0-project → /moai:3-sync)
+1. **/moai:0-project**: 프로젝트 문서(product/structure/tech) 갱신 + CLAUDE 메모리 반영
+2. **/moai:1-spec**: 프로젝트 문서 기반 SPEC auto 제안 (개인: 로컬 생성 / 팀: GitHub Issue)
+3. **/moai:2-build**: TDD 구현 (개인: 자동 체크포인트 / 팀: 7단계 커밋)
+4. **/moai:3-sync**: 문서 동기화 + PR 상태 전환 + TAG 인덱스 갱신
 
-### 🤖 58개 전문 에이전트 시스템
-
-#### MoAI 워크플로우 에이전트 (11개)
-- **steering-architect**: Steering 문서 생성
-- **spec-manager**: SPEC 문서 관리
-- **plan-architect**: 계획 수립 및 ADR 관리
-- **task-decomposer**: 작업 분해
-- **code-generator**: TDD 기반 코드 생성
-- **test-automator**: TDD 자동화
-- **doc-syncer**: Living Document 동기화
-- **tag-indexer**: 16-Core @TAG 시스템 관리
-- **integration-manager**: 외부 서비스 연동
-- **deployment-specialist**: 배포 전략 및 자동화
-- **claude-code-manager**: MoAI-Claude 통합 전문가
-
-#### 범용 개발 에이전트 (47개, 카테고리별)
-- **Frontend & UI/UX**: ui-ux-designer, frontend-developer, html-css-pro, nextjs-architecture-expert, react-performance, react-performance-optimizer, cli-ui-designer, tailwind-css-pro, vuejs-pro, svelte-pro
-- **Mobile**: mobile-developer, swift-pro, objective-c-pro, dart-pro
-- **Backend & Data**: backend-architect, database-architect, sql-pro, nosql-specialist, java-pro, kotlin-pro, ruby-pro, php-pro, golang-pro, scala-pro
-- **Programming Languages**: python-pro, javascript-pro, typescript-pro, c-pro, c-sharp-pro, cpp-pro, rust-pro, shell-scripting-pro
-- **Configuration & DevOps**: yaml-pro, json-pro, xml-pro, dockerfile-pro
-- **Documentation & AI**: documentation-expert, markdown-pro, api-documenter, prompt-engineer, changelog-generator
-- **Quality & Review**: test-engineer, code-reviewer, debugger, error-detective, fact-checker
-- **General**: agent-expert
+### 🤖 핵심 에이전트 & 브리지
+- **project-manager**: `/moai:0-project` 인터뷰, 설정/브레인스토밍 옵션 관리
+- **cc-manager**: Claude Code 권한/훅/환경 최적화
+- **spec-builder**: SPEC 자동 제안/생성
+- **code-builder**: TDD RED→GREEN→REFACTOR 실행
+- **doc-syncer**: 문서/PR 동기화 및 TAG 인덱스 관리
+- **git-manager**: 체크포인트, 브랜치, 커밋, 동기화 전담
+- **codex-bridge** · **gemini-bridge**: 선택적으로 Codex/Gemini CLI를 headless 방식으로 호출해 브레인스토밍/디버깅 아이디어를 수집
+- `.moai/config.json.brainstorming` 설정으로 외부 브레인스토밍 사용 여부와 제공자를 관리합니다.
 
 ### 🏷️ 16-Core @TAG 추적성 시스템
 - **Primary**: @REQ → @DESIGN → @TASK → @TEST
@@ -80,7 +66,7 @@
 
 ### 🛡️ 품질 보증 시스템
 - **Constitution 5원칙**: Simplicity, Architecture, Testing, Observability, Versioning
-- **Hook 시스템**: PreToolUse, PostToolUse, SessionStart 자동 검증
+- **Hook 시스템**: PreToolUse, PostToolUse, SessionStart 자동 검증 + 파일감시 체크포인트(개인)
 - **CI/CD 통합**: GitHub Actions 자동 파이프라인
 
 ## 주요 성과 지표
@@ -107,7 +93,3 @@ MoAI-ADK는 단순히 개발 도구가 아닌, **AI 시대의 새로운 개발 �
 - **완전 추적**: 모든 요구사항과 구현의 연결고리 보장
 
 이를 통해 개발자는 창의적이고 핵심적인 작업에 집중할 수 있으며, 팀은 일관된 품질의 소프트웨어를 빠르게 개발할 수 있습니다.
-
----
-
-*Based on Claude Code Official Documentation v2025, with enterprise-grade development environment and intelligent automation*

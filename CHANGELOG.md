@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.26] - 2025-01-19
 
-### 🚀 SPEC-003 Package Optimization 완료
+### 🚀 (Archived) SPEC-003 Package Optimization 완료
 
 **획기적인 패키지 최적화로 개발 경험 혁신:**
 
@@ -48,7 +48,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 메모리 사용량 | 100% | 30% | **70% 절약** |
 
 #### 🏷️ 16-Core TAG 추적성 완성
-- **100% SPEC-003 커버리지**: 요구사항-설계-작업-테스트 완전 추적
 - **94.7% 전체 TAG 커버리지**: 18개 TAG, 9개 완전 체인
 - **0개 고아 TAG**: 끊어진 링크 없음
 - **실시간 추적성 인덱스**: `.moai/indexes/tags.json` 자동 업데이트
@@ -63,7 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🚀 Major Hook System Modernization
 - **✨ Awesome Hooks JSON Standardization**: Complete JSON output standardization for Claude Code compatibility
-  - All 5 awesome hooks now output structured JSON results: `{"status": "success|warning|error", "message": "...", "timestamp": "...", "data": {...}}`
+  - Hook 출력 형식을 JSON 구조(`{"status": ..., "message": ..., "timestamp": ..., "data": {...}}`)로 통일
   - Enhanced `auto_git_commit.py` with Hook data reading and detailed commit information
   - Improved `backup_before_edit.py` with backup capacity limits (10MB), cleanup (max 5 backups), and status reporting
   - Upgraded `test_runner.py` with timeout settings (120s), execution time measurement, and comprehensive test result data
@@ -86,7 +85,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.21] - 2025-09-17
 
 ### 🔧 Bug Fixes & Improvements
-- **🏷️ Hook Environment Variable Issues Fixed**: Resolved "No file path provided" errors in awesome hooks
+- **🏷️ Hook Environment Variable Issues Fixed**: Resolved "No file path provided" errors in additional hooks
   - Fixed `auto_formatter.py` to gracefully handle missing `CLAUDE_TOOL_FILE_PATH` environment variable
   - Updated all template hooks to use defensive programming patterns
   - MultiEdit operations now work without triggering hook errors
@@ -94,7 +93,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Synchronized `src/moai_adk/resources/VERSION`, `pyproject.toml`, and `src/moai_adk/_version.py`
   - Fixed version downgrade issue where Git history showed 0.1.19 while installed version was 0.1.21
 - **🛡️ Hook Safety Improvements**: Enhanced error handling across all hook files
-  - All awesome hooks now return 0 (success) when environment variables are missing
+  - 모든 보조 훅이 환경변수 누락 시에도 0(성공)으로 안전 종료
   - Prevented workflow blocking due to hook failures
   - Maintained `pre_write_guard.py` grep→ripgrep enforcement (intended behavior)
 
@@ -104,7 +103,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **📋 Environment Variable Handling**: Standardized missing environment variable handling across all hooks
 
 ### 🔍 Quality Assurance
-- **✅ All Hooks Tested**: Verified proper behavior of both awesome and moai hook categories
+- **✅ All Hooks Tested**: Verified proper behavior of 모든 hook 카테고리
 - **🔒 Security Validation**: Confirmed SecurityManager import fallback patterns work correctly
 - **🎯 Workflow Protection**: Enhanced defensive programming to prevent development workflow interruption
 

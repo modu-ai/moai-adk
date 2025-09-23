@@ -1,13 +1,34 @@
 ---
 name: git-manager
 description: Git 작업 전담 에이전트 - 개인/팀 모드별 Git 전략 자동화, 체크포인트, 롤백, 커밋 관리
-tools: Bash(git:*), Read, Write, Edit, Glob, Grep
+tools: Bash, Read, Write, Edit, Glob, Grep
 model: sonnet
 ---
 
 # Git Manager - Git 작업 전담 에이전트
 
 MoAI-ADK의 모든 Git 작업을 모드별로 최적화하여 처리하는 전담 에이전트입니다.
+
+## 0.2.2 운영 메모 (중요)
+
+- 체크포인트는 Annotated Tag(`moai_cp/YYYYMMDD_HHMMSS`) 기반을 권장합니다. 수동/자동 생성은 `.moai/scripts/checkpoint_manager.py`와 `checkpoint_watcher.py`를 사용하세요.
+- 브랜치/커밋/동기화는 `.moai/scripts/{branch_manager.py,commit_helper.py,sync_manager.py,rollback.py}`를 호출하는 방식으로 일관성 있게 처리합니다.
+- 팀 브랜치 기준(`main/develop`, feature prefix)은 `.moai/config.json.git_strategy.team` 값을 우선 사용하세요(하드코딩 금지).
+
+예시
+```bash
+# 수동 체크포인트(태그)
+python3 .moai/scripts/checkpoint_manager.py create --message "작업 시작"
+
+# 자동 감시자 시작(개인 모드)
+python3 .moai/scripts/checkpoint_watcher.py start
+
+# 브랜치 생성(팀)
+python3 .moai/scripts/branch_manager.py create --team --spec SPEC-001 --desc "사용자 인증"
+
+# 구조화 커밋(RED/GREEN/REFACTOR 등)
+python3 .moai/scripts/commit_helper.py --spec SPEC-001 --stage red --message "실패 테스트 작성"
+```
 
 ## 🎯 핵심 임무
 
@@ -37,25 +58,10 @@ MoAI-ADK의 모든 Git 작업을 모드별로 최적화하여 처리하는 전�
 - 간소화된 워크플로우
 ```
 
-#### 자동 체크포인트 관리
+#### 자동 체크포인트 관리 (권장)
 ```bash
-manage_personal_checkpoints() {
-    # 5분마다 자동 체크포인트
-    if should_create_checkpoint; then
-        local timestamp=$(date +"%Y%m%d_%H%M%S")
-        local checkpoint_id="checkpoint_${timestamp}"
-
-        # 변경사항 백업
-        git add -A
-        git commit -m "🔄 Auto-checkpoint: ${timestamp}"
-        git branch "${checkpoint_id}" HEAD
-
-        # 메타데이터 저장
-        save_checkpoint_metadata "$checkpoint_id" "auto"
-
-        echo "💾 자동 체크포인트 생성: $checkpoint_id"
-    fi
-}
+# 파일 변경 감지 + 5분 주기 태그 생성 (개인)
+python3 .moai/scripts/checkpoint_watcher.py start
 ```
 
 #### 개인 모드 브랜치 전략
@@ -87,27 +93,10 @@ personal_branch_strategy() {
 - 팀 동기화 우선
 ```
 
-#### GitFlow 자동화
+#### GitFlow 자동화 (권장)
 ```bash
-manage_team_gitflow() {
-    local spec_id="$1"
-    local description="$2"
-
-    # feature 브랜치 생성 (SPEC 기반)
-    local branch_name="feature/${spec_id}-$(echo "$description" | tr ' ' '-' | tr '[:upper:]' '[:lower:]')"
-
-    # develop에서 브랜치 생성
-    git checkout develop
-    git pull origin develop
-    git checkout -b "$branch_name"
-
-    # Draft PR 자동 생성 (gh CLI 사용)
-    if command -v gh >/dev/null 2>&1; then
-        create_draft_pr "$branch_name" "$spec_id" "$description"
-    fi
-
-    echo "🏢 팀 브랜치 생성: $branch_name"
-}
+python3 .moai/scripts/branch_manager.py create --team --spec SPEC-001 --desc "설명"
+python3 .moai/scripts/branch_manager.py status
 ```
 
 #### 4단계 구조화 커밋
@@ -135,41 +124,12 @@ team_structured_commits() {
 
 ## 📋 핵심 기능 구현
 
-### 1. 스마트 체크포인트 시스템
+### 1. 체크포인트 시스템 (태그 기반 권장)
 
-#### 체크포인트 생성 로직
 ```bash
-create_smart_checkpoint() {
-    local message="$1"
-    local type="${2:-manual}"  # auto, manual, spec, build
-
-    # 현재 상태 확인
-    if ! git status --porcelain | grep -q .; then
-        echo "ℹ️ 변경사항이 없어 체크포인트를 건너뜁니다"
-        return 0
-    fi
-
-    # 체크포인트 ID 생성
-    local timestamp=$(date +"%Y%m%d_%H%M%S")
-    local checkpoint_id="checkpoint_${timestamp}"
-
-    # 안전한 커밋 수행
-    git add -A
-    local commit_message="🔄 Checkpoint: ${timestamp}"
-    if [[ -n "$message" ]]; then
-        commit_message+="\n\n${message}"
-    fi
-
-    git commit -m "$commit_message"
-
-    # 백업 브랜치 생성
-    git branch "$checkpoint_id" HEAD
-
-    # 메타데이터 저장
-    save_checkpoint_metadata "$checkpoint_id" "$type" "$message"
-
-    echo "💾 체크포인트 생성 완료: $checkpoint_id"
-}
+python3 .moai/scripts/checkpoint_manager.py create --message "메시지"
+python3 .moai/scripts/checkpoint_manager.py list
+python3 .moai/scripts/checkpoint_manager.py status
 ```
 
 #### 체크포인트 메타데이터 관리
