@@ -2077,6 +2077,18 @@ MoAI-ADK 0.2.2는 **개인/팀 모드 통합 시스템**을 통한 **개발 방�
 - 기존 `--project` 옵션 관련 안내 제거 및 새 팀 협업 플로우 문서화
 - `/moai:1-spec` 명령 사용예와 Usage Guide(개인/팀) 시나리오 업데이트
 
+### 2025-09-24 - v0.2.2-watcher-fix
+
+**Major Fix: 워처 상태 표시 문제 완전 해결** @DEBT:WATCHER-STATUS-001
+
+- **문제**: "ℹ️ 워처 상태 확인 필요: 상태를 판별할 수 없습니다" 오류 메시지
+- **원인**: checkpoint_watcher.py 삭제 후 session_start_notice.py의 상태 해석 로직 미업데이트
+- **해결**:
+  - subprocess 호출에 UTF-8 인코딩 명시로 한글 텍스트 처리 개선
+  - "moai_cp/" 패턴 인식 추가로 체크포인트 감지 강화
+  - 모든 워처 상태 표시 위치에 "available" 상태 처리 완성
+- **결과**: 세션 시작 시 "✅ 통합 체크포인트 시스템 사용 가능" 정상 표시
+
 ### 2025-09-23 - v0.2.2-doc-sync-enhanced
 
 - `/moai:3-sync` 실행 시 생성되는 `docs/status/sync-report.md`와 `docs/sections/index.md` 자동 갱신 흐름을 문서화
