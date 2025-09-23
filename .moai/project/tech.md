@@ -817,7 +817,7 @@ class SecurityScannerAgent(AgentPlugin):
 
 - 주 언어: Python 3.11+ (Claude Code 네이티브)
 - 프레임워크: Click (CLI), Pydantic (데이터 검증), structlog (로깅)
-- 테스트: pytest 기반 (현재 커버리지 < 85%)
+- 테스트: pytest 기반 (커버리지 목표 미달성)
 - 패키지 관리: pip + setuptools (모던 pyproject.toml 부분 적용)
 
 ### 기술 부채 및 개선 계획
@@ -826,33 +826,33 @@ class SecurityScannerAgent(AgentPlugin):
 
 - @DEBT:DEPENDENCY-001: 의존성 관리 현대화 필요 (poetry/pipenv 고려)
 - @DEBT:ASYNC-001: 비동기 처리 최적화 부족 (asyncio 활용 미흡)
-- @DEBT:TYPING-001: 타입 힌트 커버리지 < 95%
+- @DEBT:TYPING-001: 타입 힌트 커버리지 부족
 - @DEBT:PERFORMANCE-001: 에이전트 간 통신 최적화 필요
 - @DEBT:SECURITY-001: 시크릿 관리 체계 표준화 필요
 
 **우선순위 기술 개선 계획**:
 
 - @TODO:MODERN-PYTHON-001: pyproject.toml 완전 전환 및 ruff 통합
-- @TODO:ASYNC-OPTIMIZATION-001: 에이전트 병렬 실행 최적화 (10개 → 20개)
-- @TODO:TYPE-SAFETY-001: mypy strict 모드 적용 및 95% 타입 커버리지
+- @TODO:ASYNC-OPTIMIZATION-001: 에이전트 병렬 실행 최적화
+- @TODO:TYPE-SAFETY-001: mypy strict 모드 적용 및 타입 커버리지 향상
 - @TODO:MONITORING-001: 구조화된 로깅 및 메트릭 수집 강화
 - @TODO:SECURITY-HARDENING-001: Secrets Manager 통합 및 보안 스캔 자동화
 
 ### Initial Migration Plan
 
-**Phase 1 (즉시 필요)**:
+**우선순위 높음**:
 
 - @TASK:PYPROJECT-001: pyproject.toml 완전 전환
 - @TASK:RUFF-INTEGRATION-001: ruff로 통합 린팅 환경 구축
-- @TASK:TEST-COVERAGE-001: pytest 커버리지 85% 달성
+- @TASK:TEST-COVERAGE-001: pytest 커버리지 목표 달성
 
-**Phase 2 (1개월 내)**:
+**우선순위 중간**:
 
 - @TASK:ASYNC-REFACTOR-001: 비동기 처리 최적화
 - @TASK:TYPE-ANNOTATIONS-001: 전체 코드베이스 타입 힌트 추가
 - @TASK:CI-CD-001: GitHub Actions 파이프라인 고도화
 
-**Phase 3 (3개월 내)**:
+**우선순위 낮음**:
 
 - @TASK:PERFORMANCE-001: 성능 벤치마킹 및 최적화
 - @TASK:SECURITY-001: 보안 강화 및 감사 체계 구축
