@@ -1,395 +1,297 @@
 #!/usr/bin/env python3
 """
-MoAI 브랜치 관리자 v0.1.0
-모드별 최적화된 스마트 브랜치 관리 시스템
+MoAI 브랜치 관리자 v0.2.0 (통합 시스템 기반)
+모드별 최적화된 스마트 브랜치 관리 시스템 – 통합 Git 워크플로우 사용
 
 @REQ:GIT-BRANCH-001
 @FEATURE:BRANCH-MANAGEMENT-001
-@API:BRANCH-INTERFACE-001
-@DESIGN:MODE-BASED-WORKFLOW-001
+@API:GET-BRANCH
+@DESIGN:MODE-BASED-WORKFLOW-002
 @TECH:GITFLOW-INTEGRATION-001
 """
 
 import sys
+import argparse
 import json
-import subprocess
-import re
 from pathlib import Path
-from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+# 새로운 통합 시스템 import
+sys.path.append(str(Path(__file__).parent / "utils"))
+from git_workflow import GitWorkflow, GitWorkflowError
+from project_helper import ProjectHelper
+
 
 class BranchManager:
-    """브랜치 관리자
-
-    @FEATURE:BRANCH-MANAGEMENT-001
-    @API:BRANCH-INTERFACE-001
-    """
+    """브랜치 관리자 (통합 시스템 래퍼)"""
 
     def __init__(self):
         self.project_root = Path(__file__).resolve().parents[2]
-        self.config_path = self.project_root / ".moai" / "config.json"
+        self.git_workflow = GitWorkflow(self.project_root)
+        self.config = ProjectHelper.load_config(self.project_root)
+        self.mode = self.config.get("mode", "personal")
 
-    def load_config(self) -> dict:
-        """프로젝트 설정 로드
-
-        @DATA:CONFIG-LOAD-001
-        @API:CONFIG-ACCESS-001
-        """
+    def create_feature_branch(self, feature_name: str, from_branch: Optional[str] = None) -> Dict[str, Any]:
+        """기능 브랜치 생성"""
         try:
-            with open(self.config_path, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception:
-            return {"project": {"mode": "personal"}}
+            branch_name = self.git_workflow.create_feature_branch(feature_name, from_branch)
+            return {
+                "success": True,
+                "branch_name": branch_name,
+                "mode": self.mode,
+                "base_branch": from_branch or self.git_workflow._get_default_branch()
+            }
+        except GitWorkflowError as e:
+            return {"success": False, "error": str(e)}
 
-    def get_current_branch(self) -> str:
-        """현재 브랜치 이름 가져오기
-
-        @API:GIT-BRANCH-STATUS-001
-        @DATA:BRANCH-INFO-001
-        """
+    def create_hotfix_branch(self, fix_name: str) -> Dict[str, Any]:
+        """핫픽스 브랜치 생성"""
         try:
-            result = subprocess.run(
-                ["git", "branch", "--show-current"],
-                capture_output=True, text=True, check=True
-            )
-            return result.stdout.strip()
-        except Exception:
-            return "unknown"
+            branch_name = self.git_workflow.create_hotfix_branch(fix_name)
+            return {
+                "success": True,
+                "branch_name": branch_name,
+                "mode": self.mode,
+                "type": "hotfix"
+            }
+        except GitWorkflowError as e:
+            return {"success": False, "error": str(e)}
 
-    def list_branches(self):
-        """브랜치 목록 표시
-
-        @API:BRANCH-LIST-001
-        @DATA:BRANCH-DISPLAY-001
-        """
-        print("=== 브랜치 목록 ===")
-
+    def get_branch_status(self) -> Dict[str, Any]:
+        """브랜치 상태 조회"""
         try:
-            # 로컬 브랜치
-            result = subprocess.run(["git", "branch"], capture_output=True, text=True, check=True)
-            print("📋 로컬 브랜치:")
-            for line in result.stdout.split('\n'):
-                if line.strip():
-                    current_marker = "👉 " if line.startswith('*') else "   "
-                    branch_name = line.strip().replace('*', '').strip()
-                    print(f"{current_marker}{branch_name}")
+            status = self.git_workflow.get_branch_status()
+            status["manager_mode"] = self.mode
+            return status
+        except Exception as e:
+            return {"error": str(e)}
 
-            # 원격 브랜치
-            result = subprocess.run(["git", "branch", "-r"], capture_output=True, text=True)
-            if result.stdout.strip():
-                print("\n🌐 원격 브랜치:")
-                for line in result.stdout.split('\n')[:5]:  # 상위 5개만 표시
-                    if line.strip() and not 'HEAD' in line:
-                        print(f"   {line.strip()}")
+    def switch_branch(self, branch_name: str) -> Dict[str, Any]:
+        """브랜치 전환"""
+        try:
+            # 변경사항이 있으면 체크포인트 생성 (개인 모드)
+            if self.mode == "personal" and self.git_workflow.git.has_uncommitted_changes():
+                self.git_workflow.checkpoint_system.create_checkpoint(
+                    f"Pre-switch to {branch_name}", is_auto=True
+                )
 
-        except subprocess.CalledProcessError:
-            print("❌ 브랜치 목록을 가져올 수 없습니다.")
+            self.git_workflow.git.switch_branch(branch_name)
+            return {
+                "success": True,
+                "current_branch": branch_name,
+                "mode": self.mode
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
-    def generate_branch_name(self, description: str, action_type: str = "feature") -> str:
-        """모드별 브랜치명 생성
+    def list_branches(self) -> Dict[str, Any]:
+        """브랜치 목록 조회"""
+        try:
+            local_branches = self.git_workflow.git.get_local_branches()
+            current_branch = self.git_workflow.git.get_current_branch()
 
-        @DESIGN:BRANCH-NAMING-001
-        @FEATURE:NAME-GENERATION-001
-        """
-        config = self.load_config()
-        mode = config.get("project", {}).get("mode", "personal")
+            branches_info = []
+            for branch in local_branches:
+                is_current = branch == current_branch
+                branch_info = {
+                    "name": branch,
+                    "is_current": is_current,
+                    "type": self._classify_branch(branch)
+                }
+                branches_info.append(branch_info)
 
-        # 설명을 브랜치명에 적합하게 변환
-        safe_description = re.sub(r'[^a-zA-Z0-9가-힣\s-]', '', description)
-        safe_description = re.sub(r'\s+', '-', safe_description.strip())
-        safe_description = safe_description.lower()
+            return {
+                "success": True,
+                "branches": branches_info,
+                "current_branch": current_branch,
+                "total_count": len(local_branches)
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
-        if mode == "team":
-            spec_id = self._resolve_spec_id(description)
-            return f"{action_type}/{spec_id}-{safe_description}"
+    def delete_branch(self, branch_name: str, force: bool = False) -> Dict[str, Any]:
+        """브랜치 삭제"""
+        try:
+            current_branch = self.git_workflow.git.get_current_branch()
+            if branch_name == current_branch:
+                return {"success": False, "error": "현재 브랜치는 삭제할 수 없습니다"}
+
+            self.git_workflow.git.delete_branch(branch_name, force)
+            return {
+                "success": True,
+                "deleted_branch": branch_name,
+                "force": force
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def cleanup_merged_branches(self, dry_run: bool = True) -> Dict[str, Any]:
+        """병합된 브랜치 정리"""
+        try:
+            merged_branches = self.git_workflow.cleanup_merged_branches(dry_run)
+            return {
+                "success": True,
+                "merged_branches": merged_branches,
+                "dry_run": dry_run,
+                "count": len(merged_branches)
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def sync_branch(self, push: bool = True) -> Dict[str, Any]:
+        """브랜치 동기화"""
+        try:
+            success = self.git_workflow.sync_with_remote(push)
+            current_branch = self.git_workflow.git.get_current_branch()
+
+            return {
+                "success": success,
+                "branch": current_branch,
+                "push": push,
+                "mode": self.mode
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def _classify_branch(self, branch_name: str) -> str:
+        """브랜치 유형 분류"""
+        if branch_name.startswith("feature/"):
+            return "feature"
+        elif branch_name.startswith("hotfix/"):
+            return "hotfix"
+        elif branch_name.startswith("release/"):
+            return "release"
+        elif branch_name in ["main", "master", "develop", "dev"]:
+            return "main"
         else:
-            # 개인 모드: 간단한 형식
-            if action_type == "experiment":
-                date_str = datetime.now().strftime("%m%d")
-                return f"experiment/{date_str}-{safe_description}"
-            else:
-                return f"{action_type}/{safe_description}"
+            return "other"
 
-    def _resolve_spec_id(self, description: str) -> str:
-        """팀 모드 브랜치용 SPEC ID 결정"""
-
-        # 1) 설명 또는 현재 브랜치에서 SPEC ID 추출 시도
-        for candidate in [description, self.get_current_branch()]:
-            if not candidate:
-                continue
-            match = re.search(r"SPEC-(\d{3})", candidate, flags=re.IGNORECASE)
-            if match:
-                return f"SPEC-{match.group(1).upper()}"
-
-        # 2) 기존 SPEC 디렉터리에서 다음 번호 계산
-        specs_dir = self.project_root / ".moai" / "specs"
-        max_id = 0
-        if specs_dir.exists():
-            for path in specs_dir.iterdir():
-                if not path.is_dir():
-                    continue
-                match = re.match(r"SPEC-(\d{3})", path.name, flags=re.IGNORECASE)
-                if match:
-                    max_id = max(max_id, int(match.group(1)))
-
-        # 3) 존재하는 브랜치 이름에서도 최대값 갱신
-        try:
-            result = subprocess.run(
-                ["git", "for-each-ref", "--format=%(refname:short)", "refs/heads/feature/SPEC-"],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            for line in result.stdout.splitlines():
-                match = re.search(r"SPEC-(\d{3})", line)
-                if match:
-                    max_id = max(max_id, int(match.group(1)))
-        except subprocess.CalledProcessError:
-            pass
-
-        next_id = max_id + 1
-        return f"SPEC-{next_id:03d}"
-
-    def create_branch(self, description: str):
-        """새 브랜치 생성
-
-        @FEATURE:BRANCH-CREATE-001
-        @API:GIT-CHECKOUT-001
-        """
-        if not description:
-            print("❌ 브랜치 설명이 필요합니다.")
-            print("사용법: /moai:git:branch create \"새로운 기능\"")
-            return
-
-        config = self.load_config()
-        mode = config.get("project", {}).get("mode", "personal")
-
-        # 브랜치명 생성
-        branch_name = self.generate_branch_name(description)
-
-        print(f"🌿 새 브랜치 생성 (모드: {mode})")
-        print(f"📝 설명: {description}")
-        print(f"🏷️ 브랜치명: {branch_name}")
-
-        try:
-            # 변경사항 확인
-            result = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
-            if result.stdout.strip():
-                print("⚠️ 변경사항이 있습니다. 스테이징 후 진행합니다.")
-                subprocess.run(["git", "add", "-A"], check=True)
-
-            # 브랜치 생성 및 전환
-            subprocess.run(["git", "checkout", "-b", branch_name], check=True)
-            print(f"✅ 브랜치 '{branch_name}' 생성 및 전환 완료")
-
-            # 팀 모드에서 원격 연결 설정
-            if mode == "team":
-                try:
-                    subprocess.run(["git", "push", "-u", "origin", branch_name],
-                                 capture_output=True, check=True)
-                    print("🌐 원격 브랜치 연결 완료")
-                except subprocess.CalledProcessError:
-                    print("⚠️ 원격 브랜치 연결 실패 (나중에 push 필요)")
-
-        except subprocess.CalledProcessError as e:
-            print(f"❌ 브랜치 생성 실패: {e}")
-
-    def switch_branch(self, branch_name: str):
-        """브랜치 전환
-
-        @API:BRANCH-SWITCH-001
-        @FEATURE:STASH-MANAGEMENT-001
-        """
-        if not branch_name:
-            print("❌ 전환할 브랜치명이 필요합니다.")
-            return
-
-        print(f"🔄 브랜치 전환: {branch_name}")
-
-        try:
-            # 변경사항 확인
-            result = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
-            if result.stdout.strip():
-                print("💾 변경사항을 stash에 저장합니다.")
-                subprocess.run(["git", "stash", "push", "-m", f"auto-stash-before-switch-{datetime.now().strftime('%H%M%S')}"], check=True)
-
-            # 브랜치 전환
-            subprocess.run(["git", "checkout", branch_name], check=True)
-            print(f"✅ '{branch_name}' 브랜치로 전환 완료")
-
-            # stash 복원 여부 확인
-            result = subprocess.run(["git", "stash", "list"], capture_output=True, text=True)
-            if result.stdout.strip():
-                recent_stash = result.stdout.split('\n')[0]
-                if "auto-stash-before-switch" in recent_stash:
-                    user_input = input("💾 이전 변경사항을 복원하시겠습니까? (y/N): ")
-                    if user_input.lower() == 'y':
-                        subprocess.run(["git", "stash", "pop"], check=True)
-                        print("✅ 변경사항 복원 완료")
-
-        except subprocess.CalledProcessError as e:
-            print(f"❌ 브랜치 전환 실패: {e}")
-
-    def delete_branch(self, branch_name: str):
-        """브랜치 삭제
-
-        @API:BRANCH-DELETE-001
-        @FEATURE:BRANCH-CLEANUP-001
-        """
-        if not branch_name:
-            print("❌ 삭제할 브랜치명이 필요합니다.")
-            return
-
-        current_branch = self.get_current_branch()
-        if branch_name == current_branch:
-            print("❌ 현재 브랜치는 삭제할 수 없습니다. 다른 브랜치로 전환 후 시도하세요.")
-            return
-
-        print(f"🗑️ 브랜치 삭제: {branch_name}")
-
-        try:
-            # 로컬 브랜치 삭제
-            subprocess.run(["git", "branch", "-d", branch_name], check=True)
-            print(f"✅ 로컬 브랜치 '{branch_name}' 삭제 완료")
-
-            # 원격 브랜치 삭제 (선택적)
-            try:
-                subprocess.run(["git", "push", "origin", "--delete", branch_name],
-                             capture_output=True, check=True)
-                print("🌐 원격 브랜치도 삭제 완료")
-            except subprocess.CalledProcessError:
-                print("⚠️ 원격 브랜치 삭제 실패 (존재하지 않거나 권한 없음)")
-
-        except subprocess.CalledProcessError as e:
-            print(f"❌ 브랜치 삭제 실패: {e}")
-            print("💡 강제 삭제가 필요하면 'git branch -D {branch_name}' 사용")
-
-    def clean_branches(self):
-        """정리 작업
-
-        @FEATURE:AUTO-CLEANUP-001
-        @DESIGN:BRANCH-LIFECYCLE-001
-        """
-        print("🧹 브랜치 정리 작업")
-
-        config = self.load_config()
-        mode = config.get("project", {}).get("mode", "personal")
-
-        try:
-            # 병합된 브랜치 찾기
-            result = subprocess.run(
-                ["git", "branch", "--merged", "HEAD"],
-                capture_output=True, text=True, check=True
-            )
-
-            merged_branches = []
-            current_branch = self.get_current_branch()
-
-            for line in result.stdout.split('\n'):
-                branch_name = line.strip().replace('*', '').strip()
-                if (branch_name and
-                    branch_name != current_branch and
-                    branch_name not in ['main', 'master', 'develop'] and
-                    not branch_name.startswith('checkpoint_')):
-                    merged_branches.append(branch_name)
-
-            if merged_branches:
-                print("병합된 브랜치들:")
-                for branch in merged_branches:
-                    print(f"  🔗 {branch}")
-
-                if mode == "personal":
-                    # 개인 모드: 자동 정리
-                    for branch in merged_branches:
-                        subprocess.run(["git", "branch", "-d", branch], check=True)
-                        print(f"🗑️ 삭제: {branch}")
-                    print(f"✅ {len(merged_branches)}개 브랜치 정리 완료")
-                else:
-                    # 팀 모드: 확인 후 정리
-                    user_input = input(f"{len(merged_branches)}개 브랜치를 삭제하시겠습니까? (y/N): ")
-                    if user_input.lower() == 'y':
-                        for branch in merged_branches:
-                            subprocess.run(["git", "branch", "-d", branch], check=True)
-                            print(f"🗑️ 삭제: {branch}")
-                        print(f"✅ {len(merged_branches)}개 브랜치 정리 완료")
-            else:
-                print("정리할 브랜치가 없습니다.")
-
-        except subprocess.CalledProcessError as e:
-            print(f"❌ 브랜치 정리 실패: {e}")
-
-    def show_status(self):
-        """브랜치 시스템 상태
-
-        @API:STATUS-DISPLAY-001
-        @DATA:BRANCH-STATS-001
-        """
-        print("=== 브랜치 시스템 상태 ===")
-
-        config = self.load_config()
-        mode = config.get("project", {}).get("mode", "personal")
-        current_branch = self.get_current_branch()
-
-        print(f"🎯 모드: {mode}")
-        print(f"📍 현재 브랜치: {current_branch}")
-
-        # 브랜치 통계
-        try:
-            local_result = subprocess.run(["git", "branch"], capture_output=True, text=True)
-            local_count = len([line for line in local_result.stdout.split('\n') if line.strip()])
-
-            remote_result = subprocess.run(["git", "branch", "-r"], capture_output=True, text=True)
-            remote_count = len([line for line in remote_result.stdout.split('\n') if line.strip() and 'HEAD' not in line])
-
-            print(f"📋 로컬 브랜치: {local_count}개")
-            print(f"🌐 원격 브랜치: {remote_count}개")
-
-            # 체크포인트 브랜치
-            checkpoint_result = subprocess.run(["git", "branch", "--list", "checkpoint_*"], capture_output=True, text=True)
-            checkpoint_count = len([line for line in checkpoint_result.stdout.split('\n') if line.strip()])
-            print(f"💾 체크포인트: {checkpoint_count}개")
-
-        except Exception:
-            print("브랜치 통계를 가져올 수 없습니다.")
-
-    def run(self, args: list):
-        """메인 실행 함수
-
-        @API:BRANCH-CLI-001
-        @DESIGN:COMMAND-DISPATCH-001
-        """
-        if not args:
-            self.list_branches()
-            return
-
-        action = args[0]
-
-        if action == "list":
-            self.list_branches()
-        elif action == "create" and len(args) > 1:
-            description = " ".join(args[1:])
-            self.create_branch(description)
-        elif action == "switch" and len(args) > 1:
-            branch_name = args[1]
-            self.switch_branch(branch_name)
-        elif action == "delete" and len(args) > 1:
-            branch_name = args[1]
-            self.delete_branch(branch_name)
-        elif action == "clean":
-            self.clean_branches()
-        elif action == "--status":
-            self.show_status()
-        else:
-            print("❌ 알 수 없는 명령어입니다.")
-            print("사용법: python3 branch_manager.py [list|create|switch|delete|clean|--status] [옵션]")
 
 def main():
-    """진입점
+    """CLI 엔트리포인트"""
+    parser = argparse.ArgumentParser(description="MoAI 브랜치 관리 시스템")
 
-    @API:MAIN-ENTRY-001
-    @TECH:CLI-INTERFACE-001
-    """
+    subparsers = parser.add_subparsers(dest="command", help="사용 가능한 명령어")
+
+    # create 명령어
+    create_parser = subparsers.add_parser("create", help="브랜치 생성")
+    create_parser.add_argument("type", choices=["feature", "hotfix"], help="브랜치 유형")
+    create_parser.add_argument("name", help="브랜치/기능 이름")
+    create_parser.add_argument("--from", dest="from_branch", help="기준 브랜치")
+
+    # list 명령어
+    subparsers.add_parser("list", help="브랜치 목록 조회")
+
+    # switch 명령어
+    switch_parser = subparsers.add_parser("switch", help="브랜치 전환")
+    switch_parser.add_argument("branch", help="전환할 브랜치명")
+
+    # delete 명령어
+    delete_parser = subparsers.add_parser("delete", help="브랜치 삭제")
+    delete_parser.add_argument("branch", help="삭제할 브랜치명")
+    delete_parser.add_argument("--force", "-f", action="store_true", help="강제 삭제")
+
+    # status 명령어
+    subparsers.add_parser("status", help="브랜치 상태 조회")
+
+    # cleanup 명령어
+    cleanup_parser = subparsers.add_parser("cleanup", help="병합된 브랜치 정리")
+    cleanup_parser.add_argument("--execute", action="store_true", help="실제 삭제 실행")
+
+    # sync 명령어
+    sync_parser = subparsers.add_parser("sync", help="브랜치 동기화")
+    sync_parser.add_argument("--no-push", action="store_true", help="푸시 건너뛰기")
+
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        return
+
     manager = BranchManager()
-    manager.run(sys.argv[1:])
+
+    try:
+        if args.command == "create":
+            if args.type == "feature":
+                result = manager.create_feature_branch(args.name, args.from_branch)
+            elif args.type == "hotfix":
+                result = manager.create_hotfix_branch(args.name)
+
+            if result["success"]:
+                print(f"✅ {args.type} 브랜치 생성 완료: {result['branch_name']}")
+                print(f"   모드: {result['mode']}")
+            else:
+                print(f"❌ 브랜치 생성 실패: {result['error']}")
+
+        elif args.command == "list":
+            result = manager.list_branches()
+            if result["success"]:
+                print(f"\n브랜치 목록 ({result['total_count']}개):")
+                print("-" * 60)
+                for branch in result["branches"]:
+                    marker = "* " if branch["is_current"] else "  "
+                    type_marker = f"[{branch['type']}]" if branch['type'] != 'other' else ""
+                    print(f"{marker}{branch['name']} {type_marker}")
+                print(f"\n현재 브랜치: {result['current_branch']}")
+            else:
+                print(f"❌ 브랜치 목록 조회 실패: {result['error']}")
+
+        elif args.command == "switch":
+            result = manager.switch_branch(args.branch)
+            if result["success"]:
+                print(f"✅ 브랜치 전환 완료: {result['current_branch']}")
+                print(f"   모드: {result['mode']}")
+            else:
+                print(f"❌ 브랜치 전환 실패: {result['error']}")
+
+        elif args.command == "delete":
+            result = manager.delete_branch(args.branch, args.force)
+            if result["success"]:
+                force_marker = " (강제)" if result["force"] else ""
+                print(f"✅ 브랜치 삭제 완료: {result['deleted_branch']}{force_marker}")
+            else:
+                print(f"❌ 브랜치 삭제 실패: {result['error']}")
+
+        elif args.command == "status":
+            result = manager.get_branch_status()
+            if "error" not in result:
+                print(f"📋 브랜치 상태:")
+                print(f"   현재 브랜치: {result['current_branch']}")
+                print(f"   관리 모드: {result['manager_mode']}")
+                print(f"   변경사항: {'있음' if result['has_uncommitted_changes'] else '없음'}")
+                print(f"   원격 저장소: {'연결됨' if result['has_remote'] else '없음'}")
+                print(f"   작업 트리: {'깨끗함' if result['clean_working_tree'] else '수정됨'}")
+            else:
+                print(f"❌ 상태 조회 실패: {result['error']}")
+
+        elif args.command == "cleanup":
+            dry_run = not args.execute
+            result = manager.cleanup_merged_branches(dry_run)
+            if result["success"]:
+                if result["count"] > 0:
+                    print(f"{'🔍 발견된' if dry_run else '✅ 정리된'} 병합 브랜치 ({result['count']}개):")
+                    for branch in result["merged_branches"]:
+                        print(f"  - {branch}")
+                    if dry_run:
+                        print("\n실제 삭제하려면 --execute 옵션을 사용하세요")
+                else:
+                    print("🎉 정리할 병합 브랜치가 없습니다")
+            else:
+                print(f"❌ 브랜치 정리 실패: {result['error']}")
+
+        elif args.command == "sync":
+            push = not args.no_push
+            result = manager.sync_branch(push)
+            if result["success"]:
+                sync_type = "푸시 포함 동기화" if push else "풀만 실행"
+                print(f"✅ {sync_type} 완료: {result['branch']}")
+                print(f"   모드: {result['mode']}")
+            else:
+                print(f"❌ 동기화 실패: {result['error']}")
+
+    except Exception as e:
+        print(f"❌ 오류 발생: {e}")
+
 
 if __name__ == "__main__":
     main()

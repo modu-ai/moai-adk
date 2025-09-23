@@ -532,15 +532,16 @@ class SessionNotifier:
 
         return {"clean": True, "modified": 0, "added": 0, "deleted": 0, "untracked": 0}
 
-    def get_checkpoint_watcher_status(self) -> Dict[str, Any]:
-        """자동 체크포인트 워처 상태 조회"""
-        script = self.project_root / ".moai" / "scripts" / "checkpoint_watcher.py"
-        if not script.exists():
+    def get_checkpoint_system_status(self) -> Dict[str, Any]:
+        """통합 체크포인트 시스템 상태 조회"""
+        checkpoint_manager = self.project_root / ".moai" / "scripts" / "checkpoint_manager.py"
+        if not checkpoint_manager.exists():
             return {"available": False, "status": "missing"}
 
         try:
+            # 최근 체크포인트 조회로 시스템 상태 확인
             result = subprocess.run(
-                [sys.executable or "python3", str(script), "status"],
+                [sys.executable or "python3", str(checkpoint_manager), "list", "1"],
                 cwd=self.project_root,
                 capture_output=True,
                 text=True,
@@ -549,24 +550,20 @@ class SessionNotifier:
         except Exception as exc:
             return {"available": True, "status": "error", "message": str(exc)}
 
-        output = (result.stdout or "").strip()
-        errors = (result.stderr or "").strip()
         if result.returncode != 0:
-            message = errors.splitlines()[0] if errors else (output or f"exit code {result.returncode}")
-            lowered_err = errors.lower()
-            if "filesystemeventhandler" in lowered_err or "watchdog" in lowered_err:
-                message = "watchdog 모듈 미설치로 상태 확인 실패"
-            return {"available": True, "status": "error", "message": message}
+            errors = (result.stderr or "").strip()
+            return {
+                "available": True,
+                "status": "error",
+                "message": f"Exit {result.returncode}: {errors}",
+            }
 
-        lowered = output.lower()
-        if "running" in lowered or "✅" in output:
-            state = "running"
-        elif "not running" in lowered or "❌" in output:
-            state = "stopped"
+        # 체크포인트 목록을 확인할 수 있으면 시스템이 정상 작동
+        output = (result.stdout or "").strip()
+        if "체크포인트 목록" in output or "Checkpoint" in output:
+            return {"available": True, "status": "available"}
         else:
-            state = "unknown"
-        message = output if output else (errors or "")
-        return {"available": True, "status": state, "message": message}
+            return {"available": True, "status": "ready"}
 
     def get_smart_recommendations(self, pipeline: Dict[str, Any], git_status: Dict[str, Any],
                                 specs: Dict[str, int], tasks: Dict[str, Any],
@@ -1657,15 +1654,15 @@ class SessionNotifier:
             )
             lines.append(f"📝 변경사항: {total_changes}개 파일")
 
-        watcher = self.get_checkpoint_watcher_status()
+        watcher = self.get_checkpoint_system_status()
         if watcher.get("available"):
             status = watcher.get("status")
             message = watcher.get("message") or "상태를 판별할 수 없습니다"
             if status == "running":
-                lines.append("✅ 자동 체크포인트 워처 실행 중")
+                lines.append("✅ 통합 체크포인트 시스템 사용 가능")
             elif status == "stopped":
                 lines.append(
-                    "⚠️ 자동 체크포인트 워처 미기동 → `python .moai/scripts/checkpoint_watcher.py start` 실행 권장"
+                    "⚠️ 체크포인트 시스템 오류 → `python .moai/scripts/checkpoint_manager.py list` 로 상태 확인"
                 )
             elif status == "error":
                 if "watchdog" in message:
@@ -1675,7 +1672,7 @@ class SessionNotifier:
             else:
                 lines.append(f"ℹ️ 워처 상태 확인 필요: {message}")
         else:
-            lines.append("ℹ️ 자동 체크포인트 워처 스크립트를 찾을 수 없습니다.")
+            lines.append("ℹ️ 통합 체크포인트 시스템을 찾을 수 없습니다.")
 
 
         return "\n".join(lines)
@@ -1704,14 +1701,14 @@ class SessionNotifier:
             else:
                 lines.append(f"📝 변경사항: {total_changes}개 파일")
 
-        watcher = self.get_checkpoint_watcher_status()
+        watcher = self.get_checkpoint_system_status()
         if watcher.get("available"):
             status = watcher.get("status")
             message = watcher.get("message") or "상태를 판별할 수 없습니다"
             if status == "running":
-                lines.append("✅ 자동 체크포인트 워처 실행 중")
+                lines.append("✅ 통합 체크포인트 시스템 사용 가능")
             elif status == "stopped":
-                lines.append("⚠️ 자동 체크포인트 워처 미기동 → `python .moai/scripts/checkpoint_watcher.py start`")
+                lines.append("⚠️ 체크포인트 시스템 오류 → `python .moai/scripts/checkpoint_manager.py list` 로 상태 확인")
             elif status == "error":
                 lines.append(f"⚠️ 워처 오류: {message}")
             else:
@@ -1767,14 +1764,14 @@ class SessionNotifier:
             else:
                 lines.append(f"📝 변경사항: {total_changes}개 파일")
 
-        watcher = self.get_checkpoint_watcher_status()
+        watcher = self.get_checkpoint_system_status()
         if watcher.get("available"):
             status = watcher.get("status")
             message = watcher.get("message") or "상태를 판별할 수 없습니다"
             if status == "running":
-                lines.append("✅ 자동 체크포인트 워처 실행 중")
+                lines.append("✅ 통합 체크포인트 시스템 사용 가능")
             elif status == "stopped":
-                lines.append("⚠️ 자동 체크포인트 워처가 꺼져 있습니다 → `python .moai/scripts/checkpoint_watcher.py start`")
+                lines.append("⚠️ 체크포인트 시스템이 꺼져 있습니다 → `python .moai/scripts/checkpoint_manager.py list` 로 상태 확인")
             elif status == "error":
                 lines.append(f"⚠️ 워처 오류: {message}")
             else:
