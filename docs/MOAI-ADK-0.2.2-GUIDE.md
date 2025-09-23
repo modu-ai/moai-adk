@@ -37,7 +37,7 @@ MoAI-ADK 0.2.2는 **개인/팀 모드 자동 감지 시스템**과 **Git 완전 
 | **Git 통합**          | 기본 자동화     | **완전한 Git 투명성**      | Git 명령어 완전 불필요      |
 | **체크포인트 시스템** | 없음            | **자동 백업/롤백**         | 실험적 개발 안전 보장       |
 | **브랜치 전략**       | 고정된 GitFlow  | **모드별 최적 전략**       | 개인/팀 상황별 맞춤화       |
-| **Git 명령어**        | 없음            | **5개 Git 전용 명령어**    | /moai:git:\* 체계           |
+| **Git 관리**          | 수동 Git 작업   | **완전 자동화된 Git 통합** | git-manager 에이전트 기반   |
 | **설정 복잡도**       | 수동 설정       | **원클릭 모드 선택**       | moai init --personal/--team |
 | **롤백 기능**         | Git 수동        | **체크포인트 기반 롤백**   | 시점별 안전한 복구          |
 
@@ -55,23 +55,29 @@ MoAI-ADK 0.2.2는 **개인/팀 모드 자동 감지 시스템**과 **Git 완전 
    - **PR 라이프사이클 자동화(옵션)**: GitHub App 설정 후 Draft → Ready 전환, 리뷰어 추천을 자동화
    - **팀 협업 신호**: Slack/이메일 알림·Project 보드 업데이트 트리거 제공
 
-3. **🔧 Git 명령어 시스템**:
+3. **🔧 완전 자동화된 Git 관리**:
 
+   **워크플로우 통합 Git 처리** (99% 케이스):
    ```bash
-   /moai:git:checkpoint    # 자동 체크포인트 생성
-   /moai:git:rollback      # 체크포인트 기반 롤백
-   /moai:git:branch        # 스마트 브랜치 관리
-   /moai:git:commit        # Constitution 기반 커밋
-   /moai:git:sync          # 원격 저장소 동기화
+   /moai:1-spec      # spec-builder + git-manager (브랜치 생성, 커밋)
+   /moai:2-build     # code-builder + git-manager (TDD 커밋)
+   /moai:3-sync      # doc-syncer + git-manager (문서 동기화, PR 관리)
    ```
 
-> ⚠️ **0.2.2 현재 동작 안내**
-> - 팀 모드 브랜치 생성은 설명/현재 브랜치에서 SPEC ID를 추론하며 없으면 신규 ID를 순차적으로 할당합니다. 생성된 이름이 요구사항과 맞는지 검토하세요.
-> - `/moai:git:commit` 은 `--auto`, `--checkpoint`, `--spec`, `--red`, `--green`, `--refactor`, `--constitution` 옵션을 지원하며 단계별 기본 메시지를 생성합니다. 테스트 통과 여부는 수동으로 확인해야 합니다.
-> - `/moai:3-sync` 는 TAG 인덱스를 갱신하고 `docs/status/sync-report.md` 리포트를 생성하며 `docs/sections/index.md`의 갱신일자를 자동 반영합니다. README·PR 정리는 체크리스트에 따라 수동으로 진행해야 합니다.
-> - 자동 체크포인트 감시자는 `python .moai/scripts/checkpoint_watcher.py start` 로 기동합니다. Annotated Tag(`moai_cp/YYYYMMDD_HHMMSS`)를 생성해 롤백 포인트를 남기며, SessionStart/`/moai:status` 에서 상태를 확인하세요. `watchdog` 미설치 시 `pip install watchdog` 후 재시작이 필요합니다.
-> - 16-Core @TAG 추적성 인덱스는 `python .moai/scripts/check-traceability.py --update` 명령을 수동 실행해 갱신합니다.
-> - GitHub PR 자동화(Draft Ready·리뷰어 추천 등)를 사용하려면 `/install-github-app`으로 Anthropic GitHub App을 설치하고 필요한 시크릿을 설정해야 합니다. 설정 완료 전에는 수동으로 `gh pr` 명령을 실행하십시오.
+   **직접 Git 작업** (1% 특수 케이스):
+   ```bash
+   @agent-git-manager "체크포인트 생성"
+   @agent-git-manager "브랜치 생성: feature/new-feature"
+   @agent-git-manager "개인 모드 롤백"
+   ```
+
+> ⚠️ **0.2.2 Git 관리 시스템 안내**
+> - **완전 자동화**: 모든 워크플로우에서 Git 작업이 자동으로 처리됩니다
+> - **브랜치 전략**: git-manager가 모드별로 최적화된 브랜치를 자동 생성
+> - **체크포인트**: 각 작업 단계마다 자동으로 안전한 복구 지점 생성
+> - **커밋 메시지**: Constitution 5원칙 기반으로 구조화된 커밋 메시지 자동 생성
+> - **PR 관리**: 팀 모드에서 GitHub Issue → Draft PR → Ready 전환까지 자동화
+> - **직접 호출**: 특수한 경우에만 `@agent-git-manager` 직접 호출 사용
 
 4. **🎛️ 자동 모드 감지**:
    - **설치 시 선택**: `moai init --personal` (기본값) / `moai init --team`
@@ -134,7 +140,7 @@ graph TD
     style D fill:#f3e5f5
 ```
 
-### Git 명령어 시스템 아키텍처
+### Git 관리 시스템 아키텍처
 
 #### 개인 모드 (Personal Mode) 워크플로우
 
@@ -145,13 +151,14 @@ moai init my-project --personal
 # 2. 프로젝트 킥오프 (project 문서 초안 업데이트 + 메모리 로드)
 /moai:0-project
 
-# 3. 자동 체크포인트 기반 개발
-/moai:1-spec                    # auto 모드 - 프로젝트 문서 기반 SPEC 제안 → 확인 후 일괄 생성
-/moai:git:checkpoint "작업 시작" # 수동 체크포인트
-# [파일 변경] → 자동 체크포인트
-/moai:2-build                   # TDD + 자동 체크포인트
-# [필요시] /moai:git:rollback --list # 체크포인트 확인 및 롤백
-/moai:3-sync                    # 문서화 + 체크포인트
+# 3. 완전 자동화된 개발 워크플로우
+/moai:1-spec                    # spec-builder + git-manager (자동 브랜치/커밋)
+/moai:2-build                   # code-builder + git-manager (TDD + 자동 체크포인트)
+/moai:3-sync                    # doc-syncer + git-manager (문서화 + 최종 커밋)
+
+# 특수한 경우에만 직접 호출
+@agent-git-manager "체크포인트 생성"
+@agent-git-manager "이전 상태로 롤백"
 ```
 
 #### 팀 모드 (Team Mode) 워크플로우
@@ -164,11 +171,13 @@ moai init team-project --team
 /moai:0-project
 
 # 3. 완전한 GitFlow 자동화
-/moai:1-spec                    # auto 모드 - 프로젝트 문서 기반 SPEC 제안으로 후보 확인
-/moai:git:branch --status      # 브랜치 상태 확인
-/moai:2-build                  # TDD + 7단계 자동 커밋
-/moai:git:sync --pull          # 최신 변경사항 동기화
-/moai:3-sync                   # 문서화 + PR Ready + 리뷰어 할당
+/moai:1-spec                    # spec-builder + git-manager (GitHub Issue + 브랜치 생성)
+/moai:2-build                   # code-builder + git-manager (TDD + 7단계 자동 커밋)
+/moai:3-sync                    # doc-syncer + git-manager (문서화 + PR Ready + 리뷰어 할당)
+
+# 필요시 git-manager 직접 호출
+@agent-git-manager "브랜치 상태 확인"
+@agent-git-manager "최신 변경사항 동기화"
 ```
 
 ### project-manager + 핵심 에이전트 + 브리지 + git-manager
@@ -291,80 +300,71 @@ moai init team-project --team
 - **에이전트 위임**: 진단만 수행하고 실제 수정은 전담 에이전트에게 위임
 - **단일 책임**: debug-helper는 문제 식별에만 집중, 수정 작업은 code-builder/git-manager 등이 담당
 
-### Git 명령어 시스템
+### Git 관리 시스템
 
-#### 체크포인트 시스템
+#### 완전 자동화된 Git 워크플로우
 
-**`/moai:git:checkpoint`** - 자동 백업 시스템
-
-```bash
-# 자동 체크포인트 (개인 모드에서 5분마다)
-/moai:git:checkpoint                    # 현재 상태 백업
-
-# 수동 체크포인트 (중요 작업 전후)
-/moai:git:checkpoint "새 기능 구현 시작"
-/moai:git:checkpoint "리팩토링 완료"
-
-# 체크포인트 상태 확인
-/moai:git:checkpoint --list
-/moai:git:checkpoint --status
-
-# Annotated Tag 수동 생성 예시
-git tag -a moai_cp/$(date +%Y%m%d_%H%M%S) -m "Auto-checkpoint: SPEC-001 대기 중"
-git restore --source moai_cp/20250923_120000 -- .   # 특정 시점 복구
-```
-
-**`/moai:git:rollback`** - 안전한 복구 시스템
+**워크플로우 기반 Git 처리** (권장 - 99% 케이스):
 
 ```bash
-# 체크포인트 목록 확인
-/moai:git:rollback --list
+# 명세 작성 단계
+/moai:1-spec                # spec-builder + git-manager
+                           # → 브랜치 생성, SPEC 커밋 자동 처리
 
-# 특정 체크포인트로 롤백
-/moai:git:rollback --checkpoint checkpoint_20250922_173213
+# TDD 구현 단계
+/moai:2-build              # code-builder + git-manager
+                           # → RED/GREEN/REFACTOR 커밋 자동 처리
+                           # → 단계별 체크포인트 자동 생성
 
-# 시간 기반 롤백
-/moai:git:rollback --time "30분전"
-/moai:git:rollback --time "2시간전"
-
-# 마지막 체크포인트로 롤백
-/moai:git:rollback --last
+# 문서 동기화 단계
+/moai:3-sync               # doc-syncer + git-manager
+                           # → 문서 동기화, PR 관리 자동 처리
 ```
 
-#### 브랜치 관리 시스템
-
-**`/moai:git:branch`** - 모드별 브랜치 전략
+**직접 Git 작업** (특수 케이스 - 1%):
 
 ```bash
-# 현재 브랜치 상태 확인
-/moai:git:branch --status
+# 체크포인트 관련
+@agent-git-manager "체크포인트 생성"
+@agent-git-manager "체크포인트 목록 확인"
+@agent-git-manager "이전 상태로 롤백"
 
-# 모드별 브랜치 생성
-/moai:git:branch --personal "새-기능"     # → feature/새-기능
-/moai:git:branch --team "사용자-인증"     # → feature/SPEC-001-사용자-인증
+# 브랜치 관련
+@agent-git-manager "브랜치 상태 확인"
+@agent-git-manager "브랜치 생성: feature/custom-feature"
+@agent-git-manager "브랜치 정리"
 
-# 브랜치 정리
-/moai:git:branch --cleanup               # 완료된 브랜치 정리
+# 동기화 관련
+@agent-git-manager "원격 저장소 동기화"
+@agent-git-manager "충돌 해결"
 ```
 
-> ℹ️ **팀 모드 브랜치 네이밍**: 설명이나 현재 브랜치에서 SPEC ID를 찾고, 없으면 가장 높은 번호 다음(`SPEC-00X`)을 자동으로 사용합니다. 생성된 이름이 의도와 다르면 `/moai:git:branch --status`로 확인한 뒤 `git branch -m`으로 정정하세요.
+#### Git 작업 원칙
 
-#### 스마트 커밋 시스템
+**🎯 Git 작업 우선순위**:
 
-**`/moai:git:commit`** - Constitution 기반 커밋
+1. **99% 케이스**: 워크플로우 명령어 사용 (완전 자동 처리)
+2. **1% 특수 케이스**: @agent-git-manager 직접 호출
+3. **긴급상황**: 표준 git 명령어 사용
 
-```bash
-# 모드별 자동 커밋
-/moai:git:commit --auto                  # 현재 모드에 맞는 커밋
+**✅ 자동으로 처리되는 Git 작업**:
+- 브랜치 생성 및 전환 (모드별 최적화)
+- 체크포인트 생성 및 관리 (안전한 복구 지점)
+- 커밋 메시지 생성 (Constitution 5원칙 기반)
+- PR 생성 및 상태 관리 (팀 모드)
+- 원격 저장소 동기화
 
-# Constitution 기반 커밋 메시지 생성
-/moai:git:commit --spec "SPEC-001" --message "TDD 구현 완료"
+#### git-manager 에이전트 특징
 
-# 단계별 커밋 (팀 모드)
-/moai:git:commit --red "실패 테스트 작성"
-/moai:git:commit --green "최소 구현 완료"
-/moai:git:commit --refactor "품질 개선"
-```
+**🤖 완전 자동화된 Git 관리**:
+
+- **모드별 최적화**: 개인/팀 모드에 따른 차별화된 Git 전략
+- **Constitution 준수**: 모든 Git 작업이 5원칙을 자동으로 준수
+- **16-Core @TAG**: TAG 시스템과 완전 연동된 커밋 관리
+- **체크포인트 시스템**: 자동 백업 및 복구 (Annotated Tag 기반)
+- **롤백 관리**: 안전한 이전 상태 복원
+- **동기화 전략**: 모드별 원격 저장소 동기화
+- **브랜치 관리**: 스마트 브랜치 생성 및 정리
 
 #### 동기화 시스템
 
@@ -502,7 +502,7 @@ moai config --show
 
 - **신규 프로젝트**: 대화형 질문(최대 10문항)으로 각 문서를 채운 뒤 저장한다.
 - **기존 코드베이스**: `python3 .moai/scripts/project_initializer.py --analyze` 명령으로 언어/디렉터리/테스트 정보를 요약한 뒤 Claude 대화로 세부 내용을 보완한다.
-- **브레인스토밍 옵션**: 인터뷰 중 project-manager가 Codex/Gemini CLI 설치 여부를 확인하고, 외부 브레인스토밍 사용 여부를 묻는다. 동의하면 설치/로그인 명령을 안내하고 `.moai/config.json.brainstorming`을 갱신한다.
+- **브레인스토밍 옵션**: 인터뷰 중 project-manager가 Codex/Gemini CLI 설치 여부를 확인하고, 외부 브레인스토밍 사용 여부를 묻는다. 동의하면 설치/로그인 명령을 안내하고 `.moai/config.json`의 `brainstorming.enabled: true`, `brainstorming.providers: ["codex", "gemini"]`으로 갱신한다. (Claude는 기본 사용이므로 제외)
 - **설정 갱신**: 개인/팀 모드나 출력 스타일, 브레인스토밍 옵션을 바꾸고 싶을 때는 `/moai:0-project update` 로 마법사를 다시 실행해 조정한다. (필요 시에만 `moai config --mode ...` 등 수동 명령 사용)
 - **완료 후**: “Claude Code를 재시작해 새로운 프로젝트 문서를 메모리로 다시 불러오세요” 안내가 출력된다.
 
@@ -1910,6 +1910,15 @@ MoAI-ADK 0.2.2는 **개인/팀 모드 통합 시스템**을 통한 **개발 방�
   - 자동 코드베이스 분석: 구조 스캔 + 기술 스택 감지
   - Gemini 연동 심화 분석: 브레인스토밍 설정 시 구조적 분석 수행
   - 스마트 인터뷰: 질문 수 70% 감소, 처리 시간 15-20분 → 5-8분
+- **에이전트 지침 순수화**: 모든 에이전트 정의 파일을 순수한 행동 지침으로 개선
+  - 코드 블록 완전 제거: bash, Python, JSON 예제 등 실행 가능한 코드 제거
+  - 지침 형태 통일: "~를 수행합니다", "~를 확인합니다" 형태로 일관성 확보
+  - 구현과 지침 분리: 에이전트는 "무엇을 해야 하는지"에만 집중
+  - 유지보수성 향상: 코드 없는 명확한 지침으로 수정 용이
+- **Git 명령어 체계 전면 개선**: 중복 제거 및 자동화 강화
+  - Git 명령어 디렉토리 제거: /moai:git:* 명령어 5개 제거
+  - 워크플로우 통합: 모든 Git 작업을 git-manager 에이전트로 통일
+  - 자동화 수준 향상: 99% 자동 처리, 1% 특수 케이스만 직접 호출
 - **`/moai:debug` 명령어 추가**: 통합 디버깅 명령어 체계 확립
 
 ### 2025-09-23 - v0.2.2-project-kickoff
