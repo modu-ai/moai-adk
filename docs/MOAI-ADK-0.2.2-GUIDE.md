@@ -1569,7 +1569,32 @@ grep -r "rollback.py" .claude/commands/moai/git/
 chmod +x .moai/scripts/rollback.py
 ```
 
-#### 3. 모드 전환 문제
+#### 3. 워처 상태 확인 문제 (v0.2.2+ 해결됨)
+
+**문제**: 세션 시작 시 "ℹ️ 워처 상태 확인 필요: 상태를 판별할 수 없습니다" 표시
+
+**원인**:
+
+- checkpoint_watcher.py 삭제 후 세션 시작 훅의 상태 해석 로직 미업데이트
+- UTF-8 인코딩 문제로 한글 텍스트 패턴 인식 실패
+
+**해결방법** (v0.2.2+에서 자동 해결):
+
+```bash
+# 1. 체크포인트 시스템 직접 테스트
+python .moai/scripts/checkpoint_manager.py list 1
+# 정상 출력: "체크포인트 목록 (1개):"
+
+# 2. 세션 재시작 후 확인
+# 정상: "✅ 통합 체크포인트 시스템 사용 가능"
+
+# 3. 수동 패치 (이미 적용됨)
+# - session_start_notice.py에서 UTF-8 인코딩 명시
+# - "moai_cp/" 패턴 인식 추가
+# - "available" 상태 처리 완성
+```
+
+#### 4. 모드 전환 문제
 
 **문제**: 개인/팀 모드가 제대로 전환되지 않음
 
