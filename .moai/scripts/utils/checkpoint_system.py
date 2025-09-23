@@ -9,7 +9,6 @@ MoAI-ADK 통합 체크포인트 시스템
 """
 
 import json
-import os
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Any
@@ -18,7 +17,7 @@ import logging
 from constants import (
     CHECKPOINT_TAG_PREFIX, MAX_CHECKPOINTS, CHECKPOINT_MESSAGE_MAX_LENGTH,
     AUTO_CHECKPOINT_INTERVAL_MINUTES, BACKUP_RETENTION_DAYS,
-    ERROR_MESSAGES, SUCCESS_MESSAGES
+    ERROR_MESSAGES
 )
 from git_helper import GitHelper, GitCommandError
 from project_helper import ProjectHelper
@@ -55,14 +54,28 @@ class CheckpointInfo:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "CheckpointInfo":
-        return cls(
-            tag=data["tag"],
-            commit_hash=data["commit_hash"],
-            message=data["message"],
-            created_at=data["created_at"],
-            file_count=data.get("file_count", 0),
-            is_auto=data.get("is_auto", False)
-        )
+        # 새 형식
+        if "tag" in data:
+            return cls(
+                tag=data["tag"],
+                commit_hash=data["commit_hash"],
+                message=data["message"],
+                created_at=data["created_at"],
+                file_count=data.get("file_count", 0),
+                is_auto=data.get("is_auto", False)
+            )
+        # 구 형식 호환성
+        elif "id" in data:
+            return cls(
+                tag=f"moai_cp/{data['id'].replace('checkpoint_', '')}",
+                commit_hash=data["commit"],
+                message=data.get("message", "Legacy checkpoint"),
+                created_at=data["timestamp"],
+                file_count=data.get("files_changed", 0),
+                is_auto=data.get("kind") == "auto"
+            )
+        else:
+            raise ValueError(f"Invalid checkpoint data format: {data}")
 
 
 class CheckpointSystem:
@@ -120,7 +133,16 @@ class CheckpointSystem:
         """체크포인트 목록 조회"""
         try:
             metadata = self._load_checkpoint_metadata()
-            checkpoints = [CheckpointInfo.from_dict(cp) for cp in metadata.get("checkpoints", [])]
+            checkpoints = []
+
+            for cp in metadata.get("checkpoints", []):
+                try:
+                    checkpoint = CheckpointInfo.from_dict(cp)
+                    checkpoints.append(checkpoint)
+                except Exception as e:
+                    logger.warning(f"체크포인트 정보 파싱 실패: {e}, data: {cp}")
+                    continue
+
             checkpoints.sort(key=lambda x: x.created_at, reverse=True)
 
             if limit:
@@ -268,19 +290,25 @@ class CheckpointSystem:
                 self.delete_checkpoint(checkpoint.tag)
 
 
-def create_checkpoint(message: str, project_root: Optional[Path] = None, is_auto: bool = False) -> CheckpointInfo:
+def create_checkpoint(
+    message: str, project_root: Optional[Path] = None, is_auto: bool = False
+) -> CheckpointInfo:
     """체크포인트 생성 편의 함수"""
     system = CheckpointSystem(project_root)
     return system.create_checkpoint(message, is_auto)
 
 
-def rollback_to_checkpoint(tag_or_index: str, project_root: Optional[Path] = None) -> CheckpointInfo:
+def rollback_to_checkpoint(
+    tag_or_index: str, project_root: Optional[Path] = None
+) -> CheckpointInfo:
     """체크포인트 롤백 편의 함수"""
     system = CheckpointSystem(project_root)
     return system.rollback_to_checkpoint(tag_or_index)
 
 
-def list_checkpoints(limit: Optional[int] = None, project_root: Optional[Path] = None) -> List[CheckpointInfo]:
+def list_checkpoints(
+    limit: Optional[int] = None, project_root: Optional[Path] = None
+) -> List[CheckpointInfo]:
     """체크포인트 목록 조회 편의 함수"""
     system = CheckpointSystem(project_root)
     return system.list_checkpoints(limit)

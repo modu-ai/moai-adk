@@ -12,7 +12,6 @@ from .git_helper import GitHelper
 from .project_helper import ProjectHelper
 from .checkpoint_system import CheckpointSystem
 from .git_workflow import GitWorkflow
-from .constants import *
 
 __all__ = [
     'GitHelper',

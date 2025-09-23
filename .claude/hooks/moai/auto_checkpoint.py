@@ -21,11 +21,43 @@ from pathlib import Path
 from typing import Dict
 
 # 프로젝트 스크립트 접근 경로 추가
-ROOT_DIR = Path(__file__).resolve().parents[2]
+ROOT_DIR = Path(__file__).resolve().parents[3]  # .claude/hooks/moai에서 3단계 위로
 SCRIPTS_DIR = ROOT_DIR / ".moai" / "scripts"
-sys.path.insert(0, str(SCRIPTS_DIR))
+UTILS_DIR = SCRIPTS_DIR / "utils"
 
-from checkpoint_manager import CheckpointManager  # noqa: E402
+# utils 디렉터리를 sys.path에 추가
+if str(UTILS_DIR) not in sys.path:
+    sys.path.insert(0, str(UTILS_DIR))
+
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+# 직접 파일 import 시도
+try:
+    import importlib.util
+
+    # checkpoint_system 모듈 로드 시도
+    checkpoint_system_path = UTILS_DIR / "checkpoint_system.py"
+    if checkpoint_system_path.exists():
+        spec = importlib.util.spec_from_file_location("checkpoint_system", checkpoint_system_path)
+        checkpoint_system_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(checkpoint_system_module)
+        CheckpointSystem = checkpoint_system_module.CheckpointSystem
+        CheckpointError = checkpoint_system_module.CheckpointError
+    else:
+        # 폴백: checkpoint_manager 사용
+        checkpoint_manager_path = SCRIPTS_DIR / "checkpoint_manager.py"
+        spec = importlib.util.spec_from_file_location("checkpoint_manager", checkpoint_manager_path)
+        checkpoint_manager_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(checkpoint_manager_module)
+        CheckpointSystem = checkpoint_manager_module.CheckpointManager
+        CheckpointError = Exception
+
+except Exception as e:
+    print(f"⚠️ 모듈 로드 실패: {e}")
+    # 최종 폴백
+    CheckpointSystem = None
+    CheckpointError = Exception
 
 
 class AutoCheckpointManager:
@@ -38,7 +70,10 @@ class AutoCheckpointManager:
         self.checkpoints_dir = self.moai_dir / "checkpoints"
         self.last_checkpoint_file = self.checkpoints_dir / ".last_checkpoint"
         self.checkpoints_dir.mkdir(parents=True, exist_ok=True)
-        self.manager = CheckpointManager()
+        if CheckpointSystem is not None:
+            self.checkpoint_system = CheckpointSystem(project_root)
+        else:
+            self.checkpoint_system = None
         tmp_dir = self.checkpoints_dir / "tmp"
         tmp_dir.mkdir(parents=True, exist_ok=True)
         self.git_env = os.environ.copy()
@@ -118,14 +153,32 @@ class AutoCheckpointManager:
         self.last_checkpoint_file.write_text(str(time.time()))
 
     def create_checkpoint(self) -> bool:
-        success = self.manager.create_checkpoint("Auto checkpoint", source="auto", quiet=True)
-        if success:
+        try:
+            if self.checkpoint_system is None:
+                print("❌ 체크포인트 시스템을 사용할 수 없습니다")
+                return False
+
+            # CheckpointSystem (새로운 통합 시스템) 사용
+            if hasattr(self.checkpoint_system, 'create_checkpoint'):
+                if 'checkpoint_system' in str(type(self.checkpoint_system)).lower():
+                    # 새로운 CheckpointSystem
+                    checkpoint = self.checkpoint_system.create_checkpoint("Auto checkpoint", is_auto=True)
+                else:
+                    # 기존 CheckpointManager
+                    result = self.checkpoint_system.create_checkpoint("Auto checkpoint", is_auto=True)
+                    if not result.get("success", False):
+                        raise Exception(result.get("error", "Unknown error"))
+
             self.update_last_checkpoint_time()
             print("💾 자동 체크포인트 생성 완료")
-        return success
+            return True
+        except Exception as e:
+            print(f"❌ 자동 체크포인트 생성 실패: {e}")
+            return False
 
     def cleanup_old_checkpoints(self) -> None:
-        self.manager.cleanup_old_checkpoints()
+        # CheckpointSystem에서는 자동으로 cleanup이 수행됩니다
+        pass
 
     def run_once(self) -> bool:
         if self.should_create_checkpoint():

@@ -115,7 +115,7 @@ class MoAIFileWatcher(FileSystemEventHandler):
                 message = f"Modified {file_count} files"
 
             # Create checkpoint
-            success = self.checkpoint_manager.create_checkpoint(message)
+            success = self.checkpoint_manager.create_checkpoint()
 
             if success:
                 print(f"📝 Checkpoint triggered by file changes: {message}")

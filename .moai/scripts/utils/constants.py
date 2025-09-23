@@ -9,7 +9,6 @@ MoAI-ADK 스크립트 공통 상수 정의
 """
 
 from pathlib import Path
-from typing import Dict, List
 
 # 디렉터리 경로 상수
 MOAI_DIR_NAME = ".moai"
@@ -202,17 +201,21 @@ ENV_VARS = {
     "TMPDIR": "TMPDIR"
 }
 
+
 def get_moai_dir(project_root: Path) -> Path:
     """MoAI 디렉터리 경로 반환"""
     return project_root / MOAI_DIR_NAME
+
 
 def get_claude_dir(project_root: Path) -> Path:
     """Claude 디렉터리 경로 반환"""
     return project_root / CLAUDE_DIR_NAME
 
+
 def get_scripts_dir(project_root: Path) -> Path:
     """스크립트 디렉터리 경로 반환"""
     return get_moai_dir(project_root) / SCRIPTS_DIR_NAME
+
 
 def get_checkpoints_dir(project_root: Path) -> Path:
     """체크포인트 디렉터리 경로 반환"""

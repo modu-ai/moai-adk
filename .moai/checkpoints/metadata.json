@@ -9,6 +9,14 @@
       "message": "Auto-generated checkpoint",
       "files_changed": 13,
       "mode": "personal"
+    },
+    {
+      "tag": "moai_cp/20250923_185102",
+      "commit_hash": "2ca43c46ceb47d33e622f9d45a21beb72de44200",
+      "message": "Commit: 🔧 Fix checkpoint watcher references and import pat",
+      "created_at": "2025-09-23T18:51:02.330129+00:00",
+      "file_count": 228,
+      "is_auto": true
     }
   ],
   "rollback_history": []

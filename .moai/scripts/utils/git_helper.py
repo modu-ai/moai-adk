@@ -11,12 +11,12 @@ MoAI-ADK Git 관련 헬퍼 유틸리티
 import subprocess
 import os
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional
 import logging
 import re
 
 from constants import (
-    GIT_COMMAND_TIMEOUT, DEFAULT_BRANCH_NAME,
+    GIT_COMMAND_TIMEOUT,
     ERROR_MESSAGES, REGEX_PATTERNS
 )
 
@@ -39,7 +39,9 @@ class GitHelper:
         self.project_root = project_root or Path.cwd()
         self.git_env = os.environ.copy()
 
-    def run_command(self, cmd: List[str], check: bool = True, timeout: Optional[int] = None) -> subprocess.CompletedProcess:
+    def run_command(
+        self, cmd: List[str], check: bool = True, timeout: Optional[int] = None
+    ) -> subprocess.CompletedProcess:
         """Git 명령어 실행"""
         if timeout is None:
             timeout = GIT_COMMAND_TIMEOUT
@@ -136,7 +138,10 @@ class GitHelper:
             cmd.append(tag_name)
         self.run_command(cmd)
 
-    def push(self, remote: str = "origin", branch: Optional[str] = None, set_upstream: bool = False) -> None:
+    def push(
+        self, remote: str = "origin", branch: Optional[str] = None,
+        set_upstream: bool = False
+    ) -> None:
         """푸시"""
         if branch is None:
             branch = self.get_current_branch()

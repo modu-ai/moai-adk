@@ -9,14 +9,13 @@ MoAI-ADK 통합 Git 워크플로우 시스템
 """
 
 import re
-from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 import logging
 
 from constants import (
-    PERSONAL_MODE, TEAM_MODE, FEATURE_BRANCH_PREFIX, BUGFIX_BRANCH_PREFIX,
-    HOTFIX_BRANCH_PREFIX, DEFAULT_BRANCH_NAME, ERROR_MESSAGES
+    PERSONAL_MODE, TEAM_MODE, FEATURE_BRANCH_PREFIX,
+    HOTFIX_BRANCH_PREFIX, DEFAULT_BRANCH_NAME
 )
 from git_helper import GitHelper, GitCommandError
 from project_helper import ProjectHelper
