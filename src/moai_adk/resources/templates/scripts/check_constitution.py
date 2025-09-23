@@ -406,9 +406,9 @@ class TrustPrinciplesChecker:
         }
 
     def run_full_check(self) -> Dict[str, Any]:
-        """전체 Constitution 검증 실행"""
+        """전체 개발 가이드 검증 실행"""
         
-        print("🏛️ Constitution 5원칙 검증 시작...")
+        print("🏛️ 개발 가이드 5원칙 검증 시작...")
         
         # 각 원칙별 검증
         self.results['simplicity'] = self.check_simplicity_principle()
@@ -453,7 +453,7 @@ class TrustPrinciplesChecker:
         """검증 결과 리포트 생성"""
         
         report_lines = [
-            "🏛️ MoAI-ADK Constitution 5원칙 검증 결과",
+            "🏛️ MoAI-ADK 개발 가이드 5원칙 검증 결과",
             "=" * 50,
             f"검증 일시: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             f"프로젝트: {self.project_root.name}",
@@ -501,7 +501,7 @@ class TrustPrinciplesChecker:
         ])
         
         if self.results['overall']['score'] < 75:
-            report_lines.append("- 전체적인 Constitution 준수도 개선 필요")
+            report_lines.append("- 전체적인 개발 가이드 준수도 개선 필요")
         
         if not self.results['testing']['passed']:
             report_lines.append("- TDD 도입 및 테스트 커버리지 향상 우선 수행")
@@ -521,7 +521,7 @@ class TrustPrinciplesChecker:
 def main():
     """스크립트 진입점"""
     
-    parser = argparse.ArgumentParser(description="Constitution 5원칙 준수 검증")
+    parser = argparse.ArgumentParser(description="개발 가이드 5원칙 준수 검증")
     parser.add_argument("--fix", action="store_true", help="자동 수정 실행")
     parser.add_argument("--verbose", "-v", action="store_true", help="상세 출력")
     parser.add_argument("--report", help="리포트 출력 파일 경로")
@@ -539,8 +539,8 @@ def main():
         print(f"❌ 프로젝트 디렉토리가 존재하지 않음: {project_root}")
         sys.exit(1)
     
-    # Constitution 검증 실행
-    checker = ConstitutionChecker(project_root, verbose=args.verbose)
+    # 개발 가이드 검증 실행
+    checker = 개발 가이드Checker(project_root, verbose=args.verbose)
     results = checker.run_full_check()
     
     # 결과 출력
@@ -553,7 +553,7 @@ def main():
     
     # 종료 코드 설정
     if results['overall']['passed']:
-        print("\n🎉 모든 Constitution 원칙을 준수합니다!")
+        print("\n🎉 모든 개발 가이드 원칙을 준수합니다!")
         sys.exit(0)
     else:
         print(f"\n⚠️  {results['overall']['total_issues']}개 이슈 해결 필요")

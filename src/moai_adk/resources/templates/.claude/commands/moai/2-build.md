@@ -1,19 +1,19 @@
 ---
 name: moai:2-build
-description: TDD 기반 구현 - Constitution Check부터 Red-Green-Refactor까지 통합 실행(지원)
+description: TDD 기반 구현 - 개발 가이드 Check부터 Red-Green-Refactor까지 통합 실행(지원)
 argument-hint: <SPEC-ID>|all
 allowed-tools: Read, Write, Edit, MultiEdit, Bash(git:*), Bash(python3:*), Bash(pytest:*), Bash(npm:*), Bash(go:*), Bash(cargo:*), Bash(mvn:*), Bash(dotnet:*), Task, WebFetch, Grep, Glob
 ---
 
 # MoAI-ADK 2단계: TDD 구현 (GitFlow 통합)
 
-code-builder 에이전트가 Constitution Check부터 Red-Green-Refactor까지 체계적으로 지원합니다. 환경에 따라 가능한 범위에서 자동화를 시도합니다.
+code-builder 에이전트가 개발 가이드 Check부터 Red-Green-Refactor까지 체계적으로 지원합니다. 환경에 따라 가능한 범위에서 자동화를 시도합니다.
 
 ## 🔀 TDD GitFlow 워크플로우 지원 (환경 의존)
 
 ```bash
-# 1. Constitution 5원칙 검증 (프로젝트 도구 자동 감지)
-# Constitution 체크리스트 기반 검증 권장
+# 1. 개발 가이드 5원칙 검증 (프로젝트 도구 자동 감지)
+# 개발 가이드 체크리스트 기반 검증 권장
 
 # 2. TDD Red-Green-Refactor 3단계 커밋 패턴(권장)
 # Git index.lock 안전 점검
@@ -39,7 +39,7 @@ code-builder 에이전트가 Constitution Check부터 Red-Green-Refactor까지 �
 !`git add -A`
 !`git commit -m "🔄 ${SPEC_ID}: 코드 품질 개선 및 리팩터링 완료
 
-- Constitution 5원칙 준수
+- 개발 가이드 5원칙 준수
 - 코드 중복 제거 및 최적화
 - 문서화 및 타입 힌트 추가"`
 
@@ -50,7 +50,7 @@ code-builder 에이전트가 Constitution Check부터 Red-Green-Refactor까지 �
 !`gh pr edit --add-label "implementation-complete" --add-label "ready-for-review-pending"`
 ```
 
-SPEC을 바탕으로 Constitution Check → 기술 설계 → 작업 분해 → TDD 구현까지 자동화를 지원하는 MoAI-ADK의 핵심 명령어입니다.
+SPEC을 바탕으로 개발 가이드 Check → 기술 설계 → 작업 분해 → TDD 구현까지 자동화를 지원하는 MoAI-ADK의 핵심 명령어입니다.
 
 
 ## 🚀 빠른 시작
@@ -68,7 +68,7 @@ SPEC을 바탕으로 Constitution Check → 기술 설계 → 작업 분해 → 
 
 ```mermaid
 flowchart TD
-    A[SPEC 문서 로드] --> B[🏛️ Constitution Check]
+    A[SPEC 문서 로드] --> B[🏛️ 개발 가이드 Check]
     B --> C[📚 기술 조사 & 설계]
     C --> D[🧩 TDD 작업 분해]
     D --> E[🔴 RED: 실패 테스트 작성]
@@ -86,7 +86,7 @@ flowchart TD
 
 **code-builder 에이전트**가 전체 구현 과정을 체계적으로 지원합니다. 환경에 따라 가능한 범위에서 자동화를 시도합니다:
 
-### 1단계: Constitution 검증 (권장)
+### 1단계: 개발 가이드 검증 (권장)
 - **Simplicity**: 프로젝트 복잡도 ≤ 3개 목표
 - **Architecture**: 기능 라이브러리화 권장
 - **Testing**: TDD 권장 및 커버리지 목표(예: 80~85%)
@@ -103,7 +103,7 @@ flowchart TD
 - **Red-Green-Refactor**: 엄격한 TDD 사이클 준수
 - **품질 검증**: 린팅, 타입 체킹, 커버리지 확인
 
-## 🏛️ Constitution Check (5원칙 검증 지원)
+## 🏛️ 개발 가이드 Check (5원칙 검증 지원)
 
 ### 기본 목표 기준(예시)
 ```markdown
@@ -178,7 +178,7 @@ flowchart TD
 ### 설계 단계 산출물
 ```
 .moai/specs/SPEC-XXX/
-├── plan.md              # Constitution Check 결과
+├── plan.md              # 개발 가이드 Check 결과
 ├── research.md          # 기술 조사 결과
 ├── data-model.md        # 데이터 모델 설계
 └── contracts/           # API 계약서
@@ -210,7 +210,7 @@ tests/
 - 테스트 커버리지: 87%
 - 구현 파일: 12개
 - 테스트 파일: 18개
-- Constitution: 준수 여부 보고(체크 결과 기준)
+- 개발 가이드: 준수 여부 보고(체크 결과 기준)
 
 📝 생성된 파일:
 ├── src/ (12개 구현 파일)
@@ -262,9 +262,9 @@ fatal: Unable to create '.git/index.lock': File exists.
 먼저: /moai:1-spec "기능 설명" 실행
 ```
 
-### Constitution 위반
+### 개발 가이드 위반
 ```bash
-🔴 Constitution 위반 감지:
+🔴 개발 가이드 위반 감지:
 - Simplicity: 4개 모듈 (임계값: 3개)
 
 해결 방안:
@@ -285,6 +285,6 @@ Green 단계 재구현 필요
 ## 🔁 응답 구조
 
 출력은 반드시 3단계 구조를 따릅니다:
-1. **Phase 1 Results**: Constitution & 설계 결과
+1. **Phase 1 Results**: 개발 가이드 & 설계 결과
 2. **Phase 2 Plan**: TDD 구현 계획
 3. **Phase 3 Implementation**: 실제 구현 및 검증

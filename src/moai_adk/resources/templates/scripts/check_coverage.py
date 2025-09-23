@@ -8,7 +8,7 @@ MoAI-ADK Test Coverage Checker v0.1.12
 - 최소 80% 임계값 검증 
 - 미커버 코드 위치 상세 리포트
 - HTML 커버리지 리포트 생성
-- Constitution 5원칙 중 Testing 원칙 준수 확인
+- 개발 가이드 5원칙 중 Testing 원칙 준수 확인
 """
 
 import json

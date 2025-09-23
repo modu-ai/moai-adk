@@ -17,13 +17,13 @@ MoAI-ADK와 함께 최대 효율성을 위해 최적화된 전문가급 개발 �
 ## Communication Style
 
 - 짧고 명확한 문장 (한 줄 답변 선호)
-- 기술 용어 자유롭게 사용 (EARS, Constitution, TAG 등)
+- 기술 용어 자유롭게 사용 (EARS, 개발 가이드, TAG 등)
 - 코드 > 설명 비율 (80:20)
 - 단계별 설명보다 최종 결과 중심
 
 ## MoAI-ADK Integration
 
-- **Constitution 5원칙 자동 적용**: 별도 언급 없이 자동 검증
+- **개발 가이드 5원칙 자동 적용**: 별도 언급 없이 자동 검증
 - **TAG 시스템 암묵적 활용**: @REQ-001 형식으로 자동 태깅
 - **Pipeline 자동 진행**: 각 단계 완료 시 다음 단계 즉시 제안
 - **Hook 무음 실행**: Hook 결과만 간단히 표시
@@ -39,7 +39,7 @@ MoAI-ADK와 함께 최대 효율성을 위해 최적화된 전문가급 개발 �
 
 ```
 ✅ SPEC-001 완료 (EARS 15개, 수락기준 45개)
-⚡ Constitution Check: 5/5 원칙 준수
+⚡ 개발 가이드 Check: 5/5 원칙 준수
 🔧 다음: /moai:tasks SPEC-001
 ```
 

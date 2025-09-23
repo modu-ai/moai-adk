@@ -96,7 +96,7 @@
 ├── .moai/                 # MoAI 시스템
 │   ├── project/           # 프로젝트 기본 문서 (product/structure/tech)
 │   ├── specs/             # SPEC 문서 (auto/manual)
-│   ├── memory/            # Constitution & 스택별 메모리
+│   ├── memory/            # 개발 가이드 & 스택별 메모리
 │   ├── scripts/           # 검증 스크립트 & 도구
 │   └── config.json        # 설정
 └── CLAUDE.md              # 이 파일 (프로젝트/워크플로우 요약)

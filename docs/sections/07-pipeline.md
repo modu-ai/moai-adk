@@ -106,13 +106,13 @@ flowchart LR
 
 ### Gate 2: SPEC → BUILD
 **검증 항목**:
-- Constitution 5원칙 준수
+- 개발 가이드 5원칙 준수
 - 아키텍처 결정의 타당성
 - 기술적 위험 요소 대응 계획
 
 **통과 조건**:
 ```bash
-✅ Constitution Check 통과
+✅ 개발 가이드 Check 통과
 ✅ ADR 문서 작성 완료
 ✅ @DESIGN 태그 체계 완성
 ```

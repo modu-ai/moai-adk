@@ -31,7 +31,7 @@
 /moai:git:checkpoint    # 자동/수동 체크포인트 생성
 /moai:git:rollback      # 체크포인트 기반 롤백
 /moai:git:branch        # 모드별 브랜치 전략
-/moai:git:commit        # Constitution 기반 커밋(RED/GREEN/REFACTOR 등)
+/moai:git:commit        # 개발 가이드 기반 커밋(RED/GREEN/REFACTOR 등)
 /moai:git:sync          # 원격 동기화 및 충돌 보조
 ```
 
@@ -234,7 +234,7 @@ python build_hooks.py --sync-only  # 수동 동기화만
 - **template_engine.py 생성**: 완전히 새로운 동적 파일 생성 엔진
 - **변수 치환 시스템**: Python string.Template 기반 안전한 변수 치환
 - **다중 확장자 지원**: .template.md, .template.json 등 유연한 템플릿 형식
-- **전용 생성 메서드**: SPEC, Steering, Constitution별 특화된 생성 로직
+- **전용 생성 메서드**: SPEC, Steering, 개발 가이드별 특화된 생성 로직
 
 ### 템플릿 구조 완전 재설계
 - **새 디렉토리**: `.moai/_templates/` 템플릿 전용 저장소 생성
@@ -361,7 +361,7 @@ moai init project --force-copy  # 강제 복사 모드 (Windows 권장)
 ### claude-code-manager 에이전트 정식 도입
 - **MoAI-Claude 통합 전문가**: Claude Code 최적 설정 관리 전문 에이전트
 - **권한 체계 최적화**: MoAI 디렉토리 보호와 Claude 워크플로우 완벽 조화
-- **Hook 시스템 통합**: Constitution 5원칙과 Claude Code Hook 시스템 완전 통합
+- **Hook 시스템 통합**: 개발 가이드 5원칙과 Claude Code Hook 시스템 완전 통합
 
 ### Claude Code 서브에이전트 표준 완전 준수
 - **자동 트리거 패턴**: 모든 에이전트에 "AUTO-TRIGGERS when..." 조건 추가
@@ -383,14 +383,14 @@ moai init project --force-copy  # 강제 복사 모드 (Windows 권장)
 
 ## v0.1.8 (2025-09-12) - Hook 시스템 단순화 버전
 
-### Hook 시스템 단순화 (Simplicity Constitution 준수)
+### Hook 시스템 단순화 (Simplicity 개발 가이드 준수)
 - **hooks.json 제거**: 중복된 설정 파일 제거로 관리 복잡성 감소
 - **settings.json 통합**: 모든 Hook 설정을 Claude Code 표준 형식으로 일원화
 - **timeout 설정 추가**: PreToolUse, PostToolUse, SessionStart Hook에 적절한 시간 제한 설정
 - **installer.py 단순화**: hooks.json 복사 로직 제거, Hook 스크립트만 설치하도록 개선
 - **문서 업데이트**: MoAI-ADK-Design-Final.md에서 hooks.json 관련 내용 제거/수정
 
-### Constitution 5원칙 준수
+### 개발 가이드 5원칙 준수
 - **단순성 (Simplicity)**: 2개 파일 → 1개 파일로 단순화
 - **아키텍처 (Architecture)**: Claude Code 표준 구조 완전 준수
 - **기존 기능 보존**: Hook 실행 기능은 그대로 유지
@@ -415,14 +415,14 @@ moai init project --force-copy  # 강제 복사 모드 (Windows 권장)
 
 ### 메모리 시스템 완전 구현
 - **Claude 메모리 파일**: project_guidelines.md, coding_standards.md, team_conventions.md, bash_commands.md, git_workflow.md
-- **MoAI Constitution 시스템**: development-guide.md (5대 원칙 상세)
+- **MoAI 개발 가이드 시스템**: development-guide.md (5대 원칙 상세)
 - **ADR 시스템**: decisions/ADR-001-sample.md 아키텍처 결정 기록 템플릿
 - **자동 설치**: installer.py에서 메모리 파일 자동 복사 및 디렉토리 구성
 - **실용성 강화**: Bash 명령어와 Git 워크플로우 별도 파일로 모듈화
 
 ### GitHub CI/CD 시스템 구축
-- **moai-ci.yml**: Constitution 5원칙 자동 검증 파이프라인 (언어별 자동 감지)
-- **PR 템플릿**: MoAI Constitution 기반 Pull Request 검토 템플릿
+- **moai-ci.yml**: 개발 가이드 5원칙 자동 검증 파이프라인 (언어별 자동 감지)
+- **PR 템플릿**: MoAI 개발 가이드 기반 Pull Request 검토 템플릿
 - **다중 언어 지원**: Python, Node.js, Rust, Go 프로젝트 자동 감지
 - **보안 스캔**: 시크릿, 라이선스, 취약점 자동 검사
 
@@ -467,14 +467,14 @@ moai init project --force-copy  # 강제 복사 모드 (Windows 권장)
 ### 핵심 기능 구현
 - **Output Styles 시스템**: 7개 맞춤형 스타일 (expert, beginner, learning, spec-first, constitution, workshop, audit)
 - **진행률 표시 개선**: 컬러 진행바와 이모지로 가시성 향상
-- **검증 시스템 강화**: Constitution 5원칙 자동 검증 구현
+- **검증 시스템 강화**: 개발 가이드 5원칙 자동 검증 구현
 - **프로젝트 자동 감지**: 기존 프로젝트 스캔 및 분석 기능
 - **실시간 상태 모니터링**: 16-Core TAG 건강도 및 4단계 파이프라인 추적
 
 ### 품질 개선사항
 - **위험 명령어 차단**: rm -rf, fork bomb 등 보안 정책 강화
 - **Steering 문서 보호**: 무단 수정 방지 메커니즘
-- **Constitution 변경 체크리스트**: 품질 거버넌스 자동화
+- **개발 가이드 변경 체크리스트**: 품질 거버넌스 자동화
 - **전체 완성도**: 75% → 95% 향상
 
 ## v0.1.0 (초기 설계)
@@ -484,7 +484,7 @@ moai init project --force-copy  # 강제 복사 모드 (Windows 권장)
 - **대화형 마법사**: Q&A 기반 동적 분기 로직 구현
 - **4단계 파이프라인**: SPECIFY → PLAN → TASKS → IMPLEMENT
 - **EARS 형식 명세**: [NEEDS CLARIFICATION] 마커 시스템
-- **Constitution Check**: 품질 게이트 자동화
+- **개발 가이드 Check**: 품질 게이트 자동화
 - **@TAG 추적성**: REQ → SPEC → ADR → TASK → TEST 완전 연결
 - **TDD 강제**: Red-Green-Refactor 사이클 의무화
 - **Python 패키지**: pip 기반 설치 및 관리

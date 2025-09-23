@@ -71,7 +71,7 @@ def main() -> None:
             sys.exit(2)
 
     # Provide lightweight steering context back to Claude.
-    print('Steering Guard: Constitution과 TAG 규칙을 준수하며 작업을 진행합니다.', flush=True)
+    print('Steering Guard: 개발 가이드과 TAG 규칙을 준수하며 작업을 진행합니다.', flush=True)
     sys.exit(0)
 
 

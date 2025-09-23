@@ -53,7 +53,7 @@ class SessionNotifier:
         return all((self.project_root / dir_path).exists() for dir_path in required_dirs)
     
     def check_constitution_status(self) -> Dict[str, Any]:
-        """Constitution 상태 확인"""
+        """개발 가이드 상태 확인"""
         constitution_path = self.project_root / "docs" / "development-guide.md"
         checklist_path = self.project_root / ".moai" / "memory" / "constitution_update_checklist.md"
         
@@ -431,8 +431,8 @@ class SessionNotifier:
 
         elif pipeline["stage"] == "PLAN":
             spec_id = pipeline.get("spec_id", "SPEC-001")
-            # Constitution 검증 필요성 강조
-            recommendations.append(f"/moai:2-build {spec_id}  # Constitution 검증 및 TDD 구현 시작")
+            # 개발 가이드 검증 필요성 강조
+            recommendations.append(f"/moai:2-build {spec_id}  # 개발 가이드 검증 및 TDD 구현 시작")
 
             # 계획 단계에서 추가 도움
             if not recent_activity and not is_work_hours:
@@ -499,7 +499,7 @@ class SessionNotifier:
             if pipeline["stage"] == "IMPLEMENT":
                 recommendations.append("# 💡 TDD: Red → Green → Refactor 사이클을 지키세요")
             elif pipeline["stage"] == "PLAN":
-                recommendations.append("# 💡 Constitution 5원칙을 염두에 두고 계획하세요")
+                recommendations.append("# 💡 개발 가이드 5원칙을 염두에 두고 계획하세요")
 
         return recommendations[:3]  # 최대 3개까지만 추천
     
@@ -580,7 +580,7 @@ class SessionNotifier:
   3. 대화형 설정: /moai:1-spec "첫 번째 기능 요구사항"
 
 💡 MoAI-ADK는 Spec-First TDD 개발을 지원합니다.
-   Constitution 5원칙과 16-Core TAG 시스템으로 품질을 보장합니다.
+   개발 가이드 5원칙과 16-Core TAG 시스템으로 품질을 보장합니다.
 """
     
     def generate_status_notice(self, status: Dict[str, Any]) -> str:

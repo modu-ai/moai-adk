@@ -141,7 +141,7 @@ gh pr ready --body "$(cat <<'EOF'
 ## ✅ Implementation Complete
 
 ### 📊 Quality Metrics
-- Constitution 5원칙: 체크 완료
+- 개발 가이드 5원칙: 체크 완료
 - Test Coverage: 목표 달성 확인
 - Code Quality: 품질 검증 완료
 - Security Scan: 보안 검토 권장
@@ -240,7 +240,7 @@ gh pr edit --add-label "ready-for-review" --add-label "constitution-compliant"
 **전제 조건:**
 - MoAI-ADK 프로젝트 구조 (.moai/, .claude/)
 - TDD 구현 완료 상태
-- Constitution 5원칙 준수
+- 개발 가이드 5원칙 준수
 
 **제한 사항:**
 - TAG 검증은 파일 존재 기반 체크

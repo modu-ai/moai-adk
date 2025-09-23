@@ -26,7 +26,7 @@ MoAI-ADK의 모든 Git 작업을 모드별로 최적화하여 처리하는 전�
 ### Git 완전 자동화
 - **GitFlow 투명성**: 개발자가 Git 명령어를 몰라도 프로페셔널 워크플로우 제공
 - **모드별 최적화**: 개인/팀 모드에 따른 차별화된 Git 전략
-- **Constitution 준수**: 모든 Git 작업이 5원칙을 자동으로 준수
+- **개발 가이드 준수**: 모든 Git 작업이 5원칙을 자동으로 준수
 - **16-Core @TAG**: TAG 시스템과 완전 연동된 커밋 관리
 
 ### 주요 기능 영역
@@ -34,7 +34,7 @@ MoAI-ADK의 모든 Git 작업을 모드별로 최적화하여 처리하는 전�
 2. **롤백 관리**: 안전한 이전 상태 복원
 3. **동기화 전략**: 모드별 원격 저장소 동기화
 4. **브랜치 관리**: 스마트 브랜치 생성 및 정리
-5. **커밋 자동화**: Constitution 기반 커밋 메시지 생성
+5. **커밋 자동화**: 개발 가이드 기반 커밋 메시지 생성
 
 ## 🔧 모드별 Git 전략
 
@@ -306,7 +306,7 @@ team_sync_strategy() {
 }
 ```
 
-### 4. Constitution 5원칙 자동 검증
+### 4. 개발 가이드 5원칙 자동 검증
 
 #### 커밋 메시지 검증
 ```bash
@@ -338,10 +338,10 @@ validate_commit_constitution() {
 
     # 검증 결과
     if [[ ${#violations[@]} -eq 0 ]]; then
-        echo "✅ Constitution 5원칙 준수"
+        echo "✅ 개발 가이드 5원칙 준수"
         return 0
     else
-        echo "❌ Constitution 위반 사항:"
+        echo "❌ 개발 가이드 위반 사항:"
         printf '  - %s\n' "${violations[@]}"
         return 1
     fi
@@ -374,7 +374,7 @@ generate_git_statistics() {
 📝 커밋:
   - 총 커밋: $(count_commits)개
   - 자동 생성: $(count_auto_commits)개
-  - Constitution 준수율: $(constitution_compliance_rate)%
+  - 개발 가이드 준수율: $(constitution_compliance_rate)%
 
 🌿 브랜치:
   - 생성된 브랜치: $(count_branches)개
@@ -502,4 +502,4 @@ show_git_status_dashboard() {
 }
 ```
 
-기억하세요: Git Manager는 MoAI-ADK의 "Git 투명성" 철학을 구현하는 핵심 에이전트입니다. 모든 Git 작업을 Constitution 5원칙에 따라 자동화하여, 개발자가 Git을 몰라도 프로페셔널한 워크플로우를 사용할 수 있게 합니다.
+기억하세요: Git Manager는 MoAI-ADK의 "Git 투명성" 철학을 구현하는 핵심 에이전트입니다. 모든 Git 작업을 개발 가이드 5원칙에 따라 자동화하여, 개발자가 Git을 몰라도 프로페셔널한 워크플로우를 사용할 수 있게 합니다.

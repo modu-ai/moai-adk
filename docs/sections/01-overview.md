@@ -16,7 +16,7 @@
 
 - **신규 프로젝트**: 그린필드 개발
 - **기존 프로젝트**: 브라운필드 개선/리팩토링
-- **팀 프로젝트**: Constitution 기반 거버넌스
+- **팀 프로젝트**: 개발 가이드 기반 거버넌스
 - **개인 프로젝트**: 간소화 모드 지원
 
 ## 🏛️ 핵심 원칙
@@ -33,13 +33,13 @@
 - **모드 자동 선택**: `moai init --personal|--team`, 필요 시 `/moai:0-project update`로 재조정 (CLI 전환은 보조 용도)
 - **체크포인트 시스템(개인)**: 파일 변경 감지 + 5분 주기 Annotated Tag 백업 → 안전한 롤백
 - **브랜치 전략(팀)**: `feature/SPEC-XXX-{slug}` + Draft PR → Ready 자동화(옵션)
-- **스마트 커밋**: RED→GREEN→REFACTOR 7단계 커밋 패턴, Constitution 기반 메시지
+- **스마트 커밋**: RED→GREEN→REFACTOR 7단계 커밋 패턴, 개발 가이드 기반 메시지
 - **Git 전용 명령어 5종**: `/moai:git:checkpoint|rollback|branch|commit|sync`
 
 ### 🏗️ 중앙 집중식 아키텍처 (v0.1.13+)
 - **패키지 내장 리소스**: importlib.resources 기반 "복사" 방식(심볼릭 링크 미의존)으로 안정성 향상
 - **전역 리소스 관리**: ~/.claude/moai/ 통합 구조
-- **완전한 메모리 시스템**: Claude/MoAI 메모리 파일, Constitution, ADR 템플릿
+- **완전한 메모리 시스템**: Claude/MoAI 메모리 파일, 개발 가이드, ADR 템플릿
 - **지능형 Git 시스템**: 자동 설치, 저장소 보존, 운영체제별 최적화
 - **자동 업데이트 추적**: `.moai/version.json`으로 템플릿 버전을 관리하고 `moai update --check`에서 즉시 확인
 
@@ -65,7 +65,7 @@
 - **Quality**: @PERF → @SEC → @DEBT → @TODO
 
 ### 🛡️ 품질 보증 시스템
-- **Constitution 5원칙**: Simplicity, Architecture, Testing, Observability, Versioning
+- **개발 가이드 5원칙**: Simplicity, Architecture, Testing, Observability, Versioning
 - **Hook 시스템**: PreToolUse, PostToolUse, SessionStart 자동 검증 + 파일감시 체크포인트(개인)
 - **CI/CD 통합**: GitHub Actions 자동 파이프라인
 

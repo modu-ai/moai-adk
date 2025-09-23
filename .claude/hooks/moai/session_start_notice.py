@@ -200,7 +200,7 @@ class SessionNotifier:
         return suggestions[:3]  # 최대 3개 제안
     
     def check_constitution_status(self) -> Dict[str, Any]:
-        """Constitution 상태 확인"""
+        """개발 가이드 상태 확인"""
         constitution_path = self.project_root / "docs" / "development-guide.md"
         checklist_path = self.project_root / ".moai" / "memory" / "constitution_update_checklist.md"
         
@@ -612,8 +612,8 @@ class SessionNotifier:
 
         elif pipeline["stage"] == "PLAN":
             spec_id = pipeline.get("spec_id", "SPEC-001")
-            # Constitution 검증 필요성 강조
-            recommendations.append(f"/moai:2-build {spec_id}  # Constitution 검증 및 TDD 구현 시작")
+            # 개발 가이드 검증 필요성 강조
+            recommendations.append(f"/moai:2-build {spec_id}  # 개발 가이드 검증 및 TDD 구현 시작")
 
             # 계획 단계에서 추가 도움
             if not recent_activity and not is_work_hours:
@@ -680,7 +680,7 @@ class SessionNotifier:
             if pipeline["stage"] == "IMPLEMENT":
                 recommendations.append("# 💡 TDD: Red → Green → Refactor 사이클을 지키세요")
             elif pipeline["stage"] == "PLAN":
-                recommendations.append("# 💡 Constitution 5원칙을 염두에 두고 계획하세요")
+                recommendations.append("# 💡 개발 가이드 5원칙을 염두에 두고 계획하세요")
 
         return recommendations[:3]  # 최대 3개까지만 추천
 
@@ -1144,7 +1144,7 @@ class SessionNotifier:
         return None
 
     def check_constitution_violations(self) -> List[Dict[str, str]]:
-        """Constitution 5원칙 위반 사항 실시간 검증"""
+        """개발 가이드 5원칙 위반 사항 실시간 검증"""
         violations = []
 
         try:
@@ -1818,11 +1818,11 @@ class SessionNotifier:
         if failed_tests:
             lines.append(f"🔴 테스트 실패 감지: {len(failed_tests)}개 파일")
 
-        # Constitution 위반 간단 체크
+        # 개발 가이드 위반 간단 체크
         violations = self.check_constitution_violations()
         critical_violations = [v for v in violations if v["severity"] in ["critical", "high"]]
         if critical_violations:
-            lines.append(f"⚠️  Constitution 위반: {len(critical_violations)}개 (수정 필요)")
+            lines.append(f"⚠️  개발 가이드 위반: {len(critical_violations)}개 (수정 필요)")
 
         return "\n".join(lines) if lines else "🗿 MoAI-ADK 프로젝트 준비 완료"
 
@@ -1896,7 +1896,7 @@ class SessionNotifier:
                 "🎯 복잡한 프로젝트가 감지되었습니다:",
                 "  1. moai init . --complex  # 점진적 리팩토링 모드",
                 "  2. /moai:1-spec '기존 코드 리팩토링 및 모듈 분리'",
-                "  3. Constitution 5원칙 단계별 적용"
+                "  3. 개발 가이드 5원칙 단계별 적용"
             ])
         elif strategy == "tdd_ready":
             lines.extend([
@@ -1942,7 +1942,7 @@ class SessionNotifier:
             "",
             "🗿 MoAI-ADK 특징:",
             "   • Spec-First TDD 자동화 (Git을 몰라도 프로급 워크플로우)",
-            "   • Constitution 5원칙으로 품질 보장",
+            "   • 개발 가이드 5원칙으로 품질 보장",
             "   • 16-Core TAG 시스템으로 완전 추적성"
         ])
 
@@ -2040,20 +2040,20 @@ class SessionNotifier:
         elif hour >= 18:
             message_parts.append("   🌙 Evening Review: 코드 리뷰와 문서 정리 시간")
 
-        # Constitution 원칙 리마인더
+        # 개발 가이드 원칙 리마인더
         if pipeline["stage"] == "IMPLEMENT":
-            message_parts.append("   🏛️ Constitution: TDD Red-Green-Refactor 사이클 준수")
+            message_parts.append("   🏛️ 개발 가이드: TDD Red-Green-Refactor 사이클 준수")
         elif pipeline["stage"] == "SPECIFY":
-            message_parts.append("   🏛️ Constitution: 단순성 원칙 - 모듈 수 ≤ 3개 유지")
+            message_parts.append("   🏛️ 개발 가이드: 단순성 원칙 - 모듈 수 ≤ 3개 유지")
 
-        # Constitution 위반 사항 실시간 체크
+        # 개발 가이드 위반 사항 실시간 체크
         violations = self.check_constitution_violations()
         if violations:
             critical_violations = [v for v in violations if v["severity"] == "critical"]
             high_violations = [v for v in violations if v["severity"] == "high"]
 
             if critical_violations or high_violations:
-                message_parts.extend(["", "⚠️ Constitution 위반 감지:"])
+                message_parts.extend(["", "⚠️ 개발 가이드 위반 감지:"])
 
                 for violation in (critical_violations + high_violations)[:3]:  # 최대 3개만
                     severity_emoji = {"critical": "🚨", "high": "🔥", "medium": "⚠️", "low": "💡"}[violation["severity"]]

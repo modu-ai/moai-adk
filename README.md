@@ -102,6 +102,13 @@ flowchart LR
 - **S** - **Secured** (안전하게): 로그를 남기고 검증하라
 - **T** - **Trackable** (추적 가능): 버전과 태그로 히스토리를 관리하라
 
+**✨ 새로운 품질 개선 시스템 (SPEC-002 완료)**
+
+- **GuidelineChecker**: Python 코드 TRUST 원칙 자동 검증 엔진
+- **실시간 품질 게이트**: 함수 길이, 파일 크기, 매개변수, 복잡도 자동 검사
+- **TDD 지원**: Red-Green-Refactor 사이클 자동화
+- **성능 최적화**: AST 캐싱, 병렬 처리, 66.7% 캐시 히트율 달성
+
 검증 도구: `python .moai/scripts/check_constitution.py`, `python .moai/scripts/check-traceability.py --update`
 
 ---
@@ -124,6 +131,10 @@ flowchart LR
 ```
 MoAI-ADK/
 ├── src/moai_adk/                # Python 패키지
+│   ├── core/quality/            # ✨ 새로운 품질 개선 시스템 (SPEC-002)
+│   │   └── guideline_checker.py # TRUST 원칙 자동 검증 엔진
+│   ├── cli/, install/           # CLI & 설치 시스템
+│   └── utils/                   # 공통 유틸리티
 ├── docs/                        # 공식 문서 (sections/, status/)
 ├── .claude/                     # Claude Code 설정/에이전트/명령어
 ├── .moai/                       # MoAI 설정, 스크립트, 메모리, TAG 인덱스

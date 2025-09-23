@@ -107,7 +107,7 @@ class TestConfigLoader(unittest.TestCase):
         self.assertIn('tag_system', config)
     
     def test_constitution_config_access(self):
-        """Constitution 설정 접근 테스트"""
+        """개발 가이드 설정 접근 테스트"""
         loader = MoAIConfigLoader(str(self.test_dir))
         constitution = loader.get_constitution_config()
         
@@ -162,8 +162,8 @@ class TestConfigLoader(unittest.TestCase):
         self.assertEqual(config, {})
 
 
-class TestConstitutionGuard(unittest.TestCase):
-    """Constitution Guard 테스트"""
+class Test개발 가이드Guard(unittest.TestCase):
+    """개발 가이드 Guard 테스트"""
     
     def setUp(self):
         """테스트 환경 설정"""
@@ -171,7 +171,7 @@ class TestConstitutionGuard(unittest.TestCase):
         self.moai_dir = self.test_dir / '.moai'
         self.moai_dir.mkdir()
         
-        # 테스트용 Constitution 설정
+        # 테스트용 개발 가이드 설정
         self.constitution_config = {
             "constitution": {
                 "maxProjects": 3,
@@ -197,19 +197,19 @@ class TestConstitutionGuard(unittest.TestCase):
         (self.test_dir / 'frontend' / 'package.json').parent.mkdir()
         (self.test_dir / 'frontend' / 'package.json').touch()
         
-        # ConstitutionGuard import 시도
+        # 개발 가이드Guard import 시도
         try:
             sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src', 'templates', '.claude', 'hooks', 'moai'))
-            from constitution_guard import ConstitutionGuard
+            from constitution_guard import 개발 가이드Guard
             
-            guard = ConstitutionGuard(self.test_dir)
+            guard = 개발 가이드Guard(self.test_dir)
             result, message = guard.check_simplicity()
             
             # 2개 프로젝트이므로 통과해야 함
             self.assertTrue(result)
             self.assertIn("2", message)
         except ImportError:
-            self.skipTest("ConstitutionGuard not available")
+            self.skipTest("개발 가이드Guard not available")
     
     def test_simplicity_check_violation(self):
         """Simplicity 원칙 위반 테스트"""
@@ -222,9 +222,9 @@ class TestConstitutionGuard(unittest.TestCase):
         
         try:
             sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src', 'templates', '.claude', 'hooks', 'moai'))
-            from constitution_guard import ConstitutionGuard
+            from constitution_guard import 개발 가이드Guard
             
-            guard = ConstitutionGuard(self.test_dir)
+            guard = 개발 가이드Guard(self.test_dir)
             result, message = guard.check_simplicity()
             
             # 4개 프로젝트이므로 실패해야 함
@@ -232,7 +232,7 @@ class TestConstitutionGuard(unittest.TestCase):
             self.assertIn("4", message)
             self.assertIn("3", message)  # 최대 허용 개수
         except ImportError:
-            self.skipTest("ConstitutionGuard not available")
+            self.skipTest("개발 가이드Guard not available")
 
 
 class TestBuildSystem(unittest.TestCase):
@@ -364,7 +364,7 @@ class TestIntegration(unittest.TestCase):
             self.assertTrue(len(loader.claude_config) > 0)
             self.assertTrue(len(loader.moai_config) > 0)
             
-            # Constitution 설정 확인
+            # 개발 가이드 설정 확인
             constitution = loader.get_constitution_config()
             self.assertEqual(constitution.get('maxProjects'), 3)
             
@@ -384,7 +384,7 @@ def run_hook_tests():
     # 테스트 케이스 추가
     test_classes = [
         TestConfigLoader,
-        TestConstitutionGuard,
+        Test개발 가이드Guard,
         TestBuildSystem,
         TestIntegration
     ]

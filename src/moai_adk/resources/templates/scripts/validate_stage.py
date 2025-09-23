@@ -67,18 +67,18 @@ class StageValidator:
             'warnings': []
         }
         
-        # Constitution Check 확인
+        # 개발 가이드 Check 확인
         plan_files = list(self.moai_path.glob('specs/*/plan.md'))
         for plan_file in plan_files:
             if plan_file.exists():
                 content = plan_file.read_text()
                 
-                # Constitution Check 항목
-                if 'Constitution Check' not in content:
-                    results['errors'].append(f"{plan_file}: Constitution Check 누락")
+                # 개발 가이드 Check 항목
+                if '개발 가이드 Check' not in content:
+                    results['errors'].append(f"{plan_file}: 개발 가이드 Check 누락")
                     results['passed'] = False
                 else:
-                    results['checks'].append(f"{plan_file}: Constitution Check 확인")
+                    results['checks'].append(f"{plan_file}: 개발 가이드 Check 확인")
                 
                 # research.md 존재 확인
                 research_path = plan_file.parent / 'research.md'

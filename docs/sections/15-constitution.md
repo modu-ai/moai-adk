@@ -1,8 +1,8 @@
-# MoAI-ADK Constitution 거버넌스
+# MoAI-ADK 개발 가이드 거버넌스
 
-## 🚦 Constitution 5원칙
+## 🚦 개발 가이드 5원칙
 
-MoAI-ADK의 품질 거버넌스는 Constitution 5원칙을 기반으로 합니다.
+MoAI-ADK의 품질 거버넌스는 개발 가이드 5원칙을 기반으로 합니다.
 
 ### 1. Simplicity First
 **원칙**: 프로젝트 복잡도를 최소화
@@ -79,10 +79,10 @@ MoAI-ADK의 품질 거버넌스는 Constitution 5원칙을 기반으로 합니�
 🏷️ 태그 생성 안내
 ```
 
-## 🎯 최신 Constitution Check 사례 (2025년 1월)
+## 🎯 최신 개발 가이드 Check 사례 (2025년 1월)
 
-### SPEC-001: 마법사 UX 개선 Constitution 승인
-**Claude Code 명령어 개선 아키텍처가 Constitution 5원칙을 완벽히 통과**했습니다.
+### SPEC-001: 마법사 UX 개선 개발 가이드 승인
+**Claude Code 명령어 개선 아키텍처가 개발 가이드 5원칙을 완벽히 통과**했습니다.
 
 #### 검증 결과
 1. **✅ Simplicity**: 3개 컴포넌트 설계 (≤10 제한 준수)
@@ -112,7 +112,7 @@ MoAI-ADK의 품질 거버넌스는 Constitution 5원칙을 기반으로 합니�
 - **유효기간**: 1년 (2026-01-20까지)
 - **다음 검토**: 2025-04-20
 
-## Constitution Check 프로세스
+## 개발 가이드 Check 프로세스
 
 ### 자동 검증 플로우
 ```mermaid
@@ -137,7 +137,7 @@ flowchart TD
 
 ## Amendment Process (수정 프로세스)
 
-### Constitution 변경 절차
+### 개발 가이드 변경 절차
 1. **변경 제안**: ADR 문서 작성
 2. **영향 분석**: 기존 코드에 미치는 영향 평가
 3. **팀 승인**: 팀원 과반수 동의
@@ -210,4 +210,4 @@ flowchart TD
 }
 ```
 
-Constitution 거버넌스는 **자동화된 품질 보장**과 **팀 협업 최적화**를 통해 지속 가능한 개발 문화를 구축합니다.
+개발 가이드 거버넌스는 **자동화된 품질 보장**과 **팀 협업 최적화**를 통해 지속 가능한 개발 문화를 구축합니다.

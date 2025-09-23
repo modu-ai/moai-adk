@@ -20,21 +20,21 @@ MoAI-ADK는 4단계 워크플로우 명령어, Git 전용 명령어 5종, 그리
 | `/moai:git:checkpoint` | 자동/수동 체크포인트 생성(개인) |
 | `/moai:git:rollback`   | 체크포인트 기반 안전 롤백 |
 | `/moai:git:branch`     | 모드별 브랜치 전략(개인/팀) |
-| `/moai:git:commit`     | Constitution 기반 커밋(RED/GREEN/REFACTOR 등) |
+| `/moai:git:commit`     | 개발 가이드 기반 커밋(RED/GREEN/REFACTOR 등) |
 | `/moai:git:sync`       | 원격 저장소 동기화 및 충돌 보조 |
 
 ### 디버깅 명령어
 
 | 명령어         | 기능 설명 |
 |----------------|----------|
-| `/moai:debug`  | 일반 오류 디버깅 + Constitution 위반 검사 |
+| `/moai:debug`  | 일반 오류 디버깅 + 개발 가이드 위반 검사 |
 
 ## 모델 사용 가이드
 
 | 명령어            | 권장 모델 | 비고 |
 |-------------------|----------|------|
 | `/moai:0-project` | sonnet   | 프로젝트 문서 갱신 + CLAUDE 메모리 로드 |
-| `/moai:debug`     | sonnet   | 오류 분석 + Constitution 검사 |
+| `/moai:debug`     | sonnet   | 오류 분석 + 개발 가이드 검사 |
 | `/moai:1-spec`    | sonnet   | auto 제안 후 생성(개인: 로컬, 팀: GitHub Issue) |
 | `/moai:2-build`   | sonnet   | TDD (개인: 체크포인트, 팀: 7단계 커밋) |
 | `/moai:3-sync`    | haiku    | 문서/PR 동기화 + TAG 인덱스 갱신 |
@@ -109,7 +109,7 @@ MoAI-ADK는 4단계 워크플로우 명령어, Git 전용 명령어 5종, 그리
 /moai:debug "fatal: refusing to merge unrelated histories"
 /moai:debug "PermissionError: [Errno 13] Permission denied"
 
-# Constitution 위반 검사
+# 개발 가이드 위반 검사
 /moai:debug --constitution-check
 ```
 
@@ -136,9 +136,9 @@ MoAI-ADK는 4단계 워크플로우 명령어, Git 전용 명령어 5종, 그리
 → 예상 명령: /moai:2-build (코드 수정)
 ```
 
-#### 출력 예시: Constitution 검사
+#### 출력 예시: 개발 가이드 검사
 ```markdown
-🏛️ Constitution 검사 결과
+🏛️ 개발 가이드 검사 결과
 ━━━━━━━━━━━━━━━━━━━━━
 📊 전체 준수율: 85%
 

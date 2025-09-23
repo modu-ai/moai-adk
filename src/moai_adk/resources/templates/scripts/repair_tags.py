@@ -365,7 +365,7 @@ class TagRepairer:
 - [ ] @TAG 매핑 완료
 
 ### 품질 게이트
-- [ ] Constitution Check 통과
+- [ ] 개발 가이드 Check 통과
 - [ ] 성능 기준 충족
 - [ ] 보안 검증 완료
 

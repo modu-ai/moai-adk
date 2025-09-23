@@ -279,7 +279,7 @@ moai init team-project --team
 **파일**: `.claude/agents/moai/debug-helper.md`
 
 - **일반 오류 디버깅**: 코드/Git/설정 오류 분석 및 해결책 제시
-- **Constitution 위반 검사**: 5원칙 준수도 체계적 검증
+- **개발 가이드 위반 검사**: 5원칙 준수도 체계적 검증
 - **구조화된 진단**: 문제 분석 → 영향도 평가 → 해결 방안 → 후속 작업 권장
 - **에이전트 위임**: 진단만 수행하고 실제 수정은 전담 에이전트에게 위임
 - **단일 책임**: debug-helper는 문제 식별에만 집중, 수정 작업은 code-builder/git-manager 등이 담당
@@ -344,7 +344,7 @@ moai init team-project --team
 **🤖 완전 자동화된 Git 관리**:
 
 - **모드별 최적화**: 개인/팀 모드에 따른 차별화된 Git 전략
-- **Constitution 준수**: 모든 Git 작업이 5원칙을 자동으로 준수
+- **개발 가이드 준수**: 모든 Git 작업이 5원칙을 자동으로 준수
 - **16-Core @TAG**: TAG 시스템과 완전 연동된 커밋 관리
 - **체크포인트 시스템**: 자동 백업 및 복구 (Annotated Tag 기반)
 - **롤백 관리**: 안전한 이전 상태 복원
@@ -865,7 +865,7 @@ You are a Git operations specialist managing mode-specific Git strategies.
 - /moai:git:checkpoint: Backup current state
 - /moai:git:rollback: Restore to previous checkpoint
 - /moai:git:branch: Smart branch management
-- /moai:git:commit: Constitution-based commits
+- /moai:git:commit: 개발 가이드-based commits
 - /moai:git:sync: Remote repository synchronization
 ```
 
@@ -890,7 +890,7 @@ You are a Git operations specialist managing mode-specific Git strategies.
 **기능:**
 
 - **일반 오류 분석**: 코드/Git/설정 오류의 원인 분석 및 해결책 제시
-- **Constitution 검사**: 5원칙(Simplicity/Architecture/Testing/Observability/Versioning) 준수도 체계 검증
+- **개발 가이드 검사**: 5원칙(Simplicity/Architecture/Testing/Observability/Versioning) 준수도 체계 검증
 - **구조화된 진단**: 문제 식별 → 영향도 평가 → 해결 방안 → 후속 에이전트 추천
 - **에이전트 위임**: debug-helper는 진단만 수행, 실제 수정은 전담 에이전트(code-builder/git-manager 등)에게 위임
 
@@ -898,7 +898,7 @@ You are a Git operations specialist managing mode-specific Git strategies.
 
 - 문제 위치, 원인 분석, 해결 방안을 구조화된 형태로 제시
 - 적절한 후속 명령어(`/moai:2-build`, `/moai:3-sync` 등) 추천
-- Constitution 검사 시 원칙별 준수율과 개선 우선순위 제공
+- 개발 가이드 검사 시 원칙별 준수율과 개선 우선순위 제공
 
 #### `/moai:1-spec` (명세 작성)
 
@@ -1034,7 +1034,7 @@ You are a Git operations specialist managing mode-specific Git strategies.
 /moai:git:commit --green "최소 구현"
 /moai:git:commit --refactor "코드 개선"
 
-# Constitution 검증 포함 커밋
+# 개발 가이드 검증 포함 커밋
 /moai:git:commit --constitution --message "품질 검증 완료"
 ```
 
@@ -1283,7 +1283,7 @@ MoAI-ADK 0.2.2는 **Claude Code 표준 준수**와 **모든 경로 검증 완료
 │       └── personal.md         # 개인 개발자용
 ├── .moai/                      # MoAI 시스템 코어
 │   ├── config.json            # 개인/팀 모드 설정
-│   ├── memory/                # Constitution 저장소
+│   ├── memory/                # 개발 가이드 저장소
 │   │   └── development-guide.md    # 5원칙 + 16-Core @TAG
 │   ├── project/               # 프로젝트 기본 문서 (init 시 빈 템플릿 복사)
 │   │   ├── product.md         # 제품 비전 – /moai:0-project 로 업데이트
@@ -1297,7 +1297,7 @@ MoAI-ADK 0.2.2는 **Claude Code 표준 준수**와 **모든 경로 검증 완료
 │       │   ├── git_helper.py  # Git 명령어 추상화
 │       │   ├── checkpoint_system.py # 통합 체크포인트 시스템
 │       │   └── git_workflow.py # 통합 Git 워크플로우
-│       ├── check_constitution.py   # Constitution 검증
+│       ├── check_constitution.py   # 개발 가이드 검증
 │       ├── check-traceability.py   # @TAG 추적성 검증
 │       ├── doc_sync.py             # 문서/TAG 동기화 헬퍼
 │       ├── checkpoint_manager.py   # ♻️ 체크포인트 관리 (통합 시스템 기반)
@@ -1615,7 +1615,7 @@ python .moai/scripts/checkpoint_manager.py list 1
 /moai:git:checkpoint --list
 ```
 
-#### 5. Constitution 검증 오류
+#### 5. 개발 가이드 검증 오류
 
 **문제**: TRUST 원칙 검증이 실행되지 않음
 
@@ -1633,7 +1633,7 @@ python3 .moai/scripts/check_constitution.py
 # 3. 실행 권한 부여 (필요시)
 chmod +x .moai/scripts/check_constitution.py
 
-# 4. Constitution 설정 확인
+# 4. 개발 가이드 설정 확인
 cat .moai/config.json | grep -A5 "constitution"
 ```
 
@@ -1715,7 +1715,7 @@ echo "✅ 기본 설정 복구 완료"
 fi
 
 # 3. 시스템 검증
-python3 .moai/scripts/check_constitution.py --version >/dev/null 2>&1 && echo "✅ Constitution 검증 정상" || echo "⚠️ Constitution 검증 문제"
+python3 .moai/scripts/check_constitution.py --version >/dev/null 2>&1 && echo "✅ 개발 가이드 검증 정상" || echo "⚠️ 개발 가이드 검증 문제"
 
 echo "🎉 MoAI-ADK 복구 완료!"
 ```
@@ -1909,9 +1909,9 @@ echo "⚡ MoAI-ADK 성능 벤치마크 테스트"
 echo "🪝 Hook 실행 속도 테스트"
 time python3 .claude/hooks/moai/check_style.py --test 2>/dev/null || echo "check_style.py 실행 완료"
 
-# 2. Constitution 검증 속도 테스트
-echo "📜 Constitution 검증 속도 테스트"
-time python3 .moai/scripts/check_constitution.py 2>/dev/null || echo "Constitution 검증 완료"
+# 2. 개발 가이드 검증 속도 테스트
+echo "📜 개발 가이드 검증 속도 테스트"
+time python3 .moai/scripts/check_constitution.py 2>/dev/null || echo "개발 가이드 검증 완료"
 
 # 3. 체크포인트 생성 속도 테스트 (개인 모드)
 echo "🔄 체크포인트 시스템 테스트"
@@ -2025,7 +2025,7 @@ MoAI-ADK 0.2.2는 **개인/팀 모드 통합 시스템**을 통한 **개발 방�
 
 - **debug-helper 에이전트 추가**: 통합 디버깅 시스템 도입
   - 일반 오류 디버깅: 코드/Git/설정 오류 분석 및 해결책 제시
-  - Constitution 위반 검사: 5원칙 준수도 체계적 검증
+  - 개발 가이드 위반 검사: 5원칙 준수도 체계적 검증
   - 구조화된 진단 출력: 문제→영향도→해결방안→후속작업 순서
 - **project-manager 자동화 강화**: 레거시 프로젝트 분석 시스템 구현
   - 자동 코드베이스 분석: 구조 스캔 + 기술 스택 감지
@@ -2083,7 +2083,7 @@ MoAI-ADK 0.2.2는 **개인/팀 모드 통합 시스템**을 통한 **개발 방�
    - Git 명령어 스크립트 오류 해결
    - 모드 전환 문제 해결
    - 체크포인트 시스템 오류 해결
-   - Constitution 검증 오류 해결
+   - 개발 가이드 검증 오류 해결
    - 시스템 진단 명령어 제공
    - 빠른 복구 스크립트 제공
 

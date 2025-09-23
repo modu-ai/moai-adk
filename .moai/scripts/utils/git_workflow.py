@@ -67,7 +67,7 @@ class GitWorkflow:
             raise GitWorkflowError(f"브랜치 생성 실패: {e}")
 
     def create_constitution_commit(self, message: str, files: Optional[List[str]] = None) -> str:
-        """Constitution 기반 커밋 생성"""
+        """개발 가이드 기반 커밋 생성"""
         try:
             if not message.strip():
                 raise GitWorkflowError("커밋 메시지가 비어있습니다.")
@@ -85,7 +85,7 @@ class GitWorkflow:
                     f"Commit: {message[:50]}", is_auto=True
                 )
 
-            logger.info(f"Constitution 커밋 생성 완료: {commit_hash[:8]}")
+            logger.info(f"개발 가이드 커밋 생성 완료: {commit_hash[:8]}")
             return commit_hash
 
         except GitCommandError as e:
@@ -208,7 +208,7 @@ class GitWorkflow:
         return re.match(r"^[a-zA-Z0-9._/-]+$", name) is not None
 
     def _format_commit_message(self, message: str) -> str:
-        """Constitution 기반 커밋 메시지 포맷팅"""
+        """개발 가이드 기반 커밋 메시지 포맷팅"""
         if not message.strip():
             return message
 
@@ -237,7 +237,7 @@ def create_feature_branch(feature_name: str, project_root: Optional[Path] = None
 
 
 def create_constitution_commit(message: str, project_root: Optional[Path] = None) -> str:
-    """Constitution 커밋 생성 편의 함수"""
+    """개발 가이드 커밋 생성 편의 함수"""
     workflow = GitWorkflow(project_root)
     return workflow.create_constitution_commit(message)
 
