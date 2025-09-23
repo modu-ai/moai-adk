@@ -545,6 +545,7 @@ class SessionNotifier:
                 cwd=self.project_root,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
                 timeout=5,
             )
         except Exception as exc:
@@ -560,10 +561,10 @@ class SessionNotifier:
 
         # 체크포인트 목록을 확인할 수 있으면 시스템이 정상 작동
         output = (result.stdout or "").strip()
-        if "체크포인트 목록" in output or "Checkpoint" in output:
+        if "체크포인트 목록" in output or "Checkpoint" in output or "moai_cp/" in output:
             return {"available": True, "status": "available"}
         else:
-            return {"available": True, "status": "ready"}
+            return {"available": True, "status": "ready", "message": f"상태를 판별할 수 없습니다"}
 
     def get_smart_recommendations(self, pipeline: Dict[str, Any], git_status: Dict[str, Any],
                                 specs: Dict[str, int], tasks: Dict[str, Any],
@@ -1658,7 +1659,9 @@ class SessionNotifier:
         if watcher.get("available"):
             status = watcher.get("status")
             message = watcher.get("message") or "상태를 판별할 수 없습니다"
-            if status == "running":
+            if status == "available":
+                lines.append("✅ 통합 체크포인트 시스템 사용 가능")
+            elif status == "running":
                 lines.append("✅ 통합 체크포인트 시스템 사용 가능")
             elif status == "stopped":
                 lines.append(
@@ -1705,7 +1708,9 @@ class SessionNotifier:
         if watcher.get("available"):
             status = watcher.get("status")
             message = watcher.get("message") or "상태를 판별할 수 없습니다"
-            if status == "running":
+            if status == "available":
+                lines.append("✅ 통합 체크포인트 시스템 사용 가능")
+            elif status == "running":
                 lines.append("✅ 통합 체크포인트 시스템 사용 가능")
             elif status == "stopped":
                 lines.append("⚠️ 체크포인트 시스템 오류 → `python .moai/scripts/checkpoint_manager.py list` 로 상태 확인")
@@ -1768,7 +1773,9 @@ class SessionNotifier:
         if watcher.get("available"):
             status = watcher.get("status")
             message = watcher.get("message") or "상태를 판별할 수 없습니다"
-            if status == "running":
+            if status == "available":
+                lines.append("✅ 통합 체크포인트 시스템 사용 가능")
+            elif status == "running":
                 lines.append("✅ 통합 체크포인트 시스템 사용 가능")
             elif status == "stopped":
                 lines.append("⚠️ 체크포인트 시스템이 꺼져 있습니다 → `python .moai/scripts/checkpoint_manager.py list` 로 상태 확인")
