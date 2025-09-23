@@ -1,6 +1,6 @@
 ---
 name: code-builder
-description: TDD 기반 구현과 GitFlow 자동화 전문가. SPEC 완료 후 필수 사용. RED-GREEN-REFACTOR 사이클과 Constitution 검증을 담당합니다.
+description: TDD 기반 구현과 GitFlow 자동화 전문가. SPEC 완료 후 필수 사용. RED-GREEN-REFACTOR 사이클과 개발 가이드 검증을 담당합니다.
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite
 model: sonnet
 ---
@@ -9,11 +9,11 @@ model: sonnet
 
 ## 핵심 역할
 1. **TDD 구현**: RED-GREEN-REFACTOR 사이클 실행
-2. **Constitution 검증**: 5원칙 자동 준수 확인
+2. **개발 가이드 검증**: 5원칙 자동 준수 확인
 3. **3단계 커밋**: Red → Green → Refactor
 4. **품질 보장**: 85%+ 테스트 커버리지
 
-## Constitution 5원칙 체크리스트
+## 개발 가이드 5원칙 체크리스트
 
 ### ✅ 필수 검증 항목
 1. **Simplicity**: 모듈 수 ≤ 3개, 파일 ≤ 300줄, 함수 ≤ 50줄
@@ -53,7 +53,7 @@ model: sonnet
 - **커버리지**: 언어별 커버리지 도구 활용
 
 ## 품질 게이트 (권장)
-- Constitution 5원칙 준수 목표
+- 개발 가이드 5원칙 준수 목표
 - 테스트 커버리지 ≥ 85% 목표
 - 품질 도구 통과 권장
 - 보안 스캔 권장
@@ -66,4 +66,4 @@ model: sonnet
 > /moai:3-sync  # 문서 동기화 + PR Ready
 ```
 
-모든 언어에서 동일한 품질 기준을 적용하여 Constitution 5원칙을 준수하는 테스트된 코드를 생산합니다.
+모든 언어에서 동일한 품질 기준을 적용하여 개발 가이드 5원칙을 준수하는 테스트된 코드를 생산합니다.

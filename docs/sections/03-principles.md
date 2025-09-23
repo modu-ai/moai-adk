@@ -65,12 +65,12 @@ Red-Green-Refactor 사이클을 엄격히 준수합니다.
 
 ### 원칙
 - 명세에 정의된 기능만 구현
-- Constitution Check를 통한 복잡도 제한
+- 개발 가이드 Check를 통한 복잡도 제한
 - 단순성(Simplicity) 우선 사고
 
 ### 적용
 ```bash
-/moai:3-plan SPEC-001  # Constitution Check 수행
+/moai:3-plan SPEC-001  # 개발 가이드 Check 수행
 ```
 
 ## 원칙 적용을 위한 자동화 시스템
@@ -81,7 +81,7 @@ Red-Green-Refactor 사이클을 엄격히 준수합니다.
 - **SessionStart**: 프로젝트 상태 알림
 
 ### 품질 게이트
-- **Constitution Check**: 5원칙 준수 검증
+- **개발 가이드 Check**: 5원칙 준수 검증
 - **추적성 검증**: @TAG 체인 완성도 확인
 - **테스트 커버리지**: 80% 임계값 강제
 

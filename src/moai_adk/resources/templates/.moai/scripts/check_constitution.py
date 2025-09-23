@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Constitution 5원칙 검증 스크립트 (strict/relaxed 지원)
-MoAI-ADK의 Constitution 5원칙 준수 여부를 자동 검증합니다.
+개발 가이드 5원칙 검증 스크립트 (strict/relaxed 지원)
+MoAI-ADK의 개발 가이드 5원칙 준수 여부를 자동 검증합니다.
 
 동작 모드:
 - 기본(완화): 현실적 기준으로 오탐을 줄임
@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-class ConstitutionChecker:
+class 개발 가이드Checker:
     def __init__(self, project_root: str = ".", strict: bool = False):
         self.project_root = Path(project_root)
         self.config_path = self.project_root / ".moai" / "config.json"
@@ -205,7 +205,7 @@ class ConstitutionChecker:
         passed = 0
         total = len(checks)
 
-        print("🏛️ Constitution 5원칙 검증")
+        print("🏛️ 개발 가이드 5원칙 검증")
         print("=" * 50)
 
         for principle, check_func in checks:
@@ -226,7 +226,7 @@ class ConstitutionChecker:
         print(f"\n📊 검증 결과: {passed}/{total} 통과")
 
         if len(self.violations) == 0:
-            print("🎉 모든 Constitution 원칙을 준수합니다!")
+            print("🎉 모든 개발 가이드 원칙을 준수합니다!")
             return 0
 
         print("\n🔴 위반 사항 및 권장 조치:")
@@ -235,19 +235,19 @@ class ConstitutionChecker:
             print(f"  ❌ 문제: {violation}")
             print(f"  💡 권장: {recommendation}")
 
-        print(f"\n⚖️ Constitution 준수율: {(passed/total)*100:.1f}%")
+        print(f"\n⚖️ 개발 가이드 준수율: {(passed/total)*100:.1f}%")
 
         return 1 if len(self.violations) > 0 else 0
 
 def main():
     import argparse
-    parser = argparse.ArgumentParser(description="Constitution 5원칙 검증")
+    parser = argparse.ArgumentParser(description="개발 가이드 5원칙 검증")
     parser.add_argument("--project-root", "-p", default=".", help="프로젝트 루트 경로")
     parser.add_argument("--strict", action="store_true", help="엄격 모드(기존 기준)")
 
     args = parser.parse_args()
 
-    checker = ConstitutionChecker(args.project_root, strict=args.strict)
+    checker = 개발 가이드Checker(args.project_root, strict=args.strict)
     passed, total = checker.run_verification()
 
     return checker.generate_report(passed, total)

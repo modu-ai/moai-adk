@@ -405,7 +405,7 @@ make build
 - **[패키지 구조](package-structure.md)**: cli/, core/, install/ 상세 설명
 - **[버전 관리](02-changelog.md)**: v0.1.17 변경사항
 - **[설치 가이드](05-installation.md)**: 개발 환경 설정
-- **[Constitution](15-development-guide.md)**: 품질 게이트 및 검증
+- **[개발 가이드](15-development-guide.md)**: 품질 게이트 및 검증
 
 ---
 

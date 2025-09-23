@@ -26,7 +26,7 @@ allowed-tools: Read, Write, Edit, MultiEdit, Grep, Glob, Bash, TodoWrite
 /moai:4-debug "fatal: refusing to merge unrelated histories"
 /moai:4-debug "PermissionError: [Errno 13] Permission denied"
 
-# Constitution 검사
+# 개발 가이드 검사
 /moai:4-debug --constitution-check
 ```
 
@@ -34,7 +34,7 @@ allowed-tools: Read, Write, Edit, MultiEdit, Grep, Glob, Bash, TodoWrite
 
 **오류 디버깅**: 오류 메시지 분석 → 원인 파악 → 해결책 제시 → 담당 에이전트 추천
 
-**Constitution 검사**: 5원칙 스캔 → 위반 사항 목록 → 우선순위 결정 → 개선 방안 제시
+**개발 가이드 검사**: 5원칙 스캔 → 위반 사항 목록 → 우선순위 결정 → 개선 방안 제시
 
 ## 출력 포맷
 
@@ -48,10 +48,10 @@ allowed-tools: Read, Write, Edit, MultiEdit, Grep, Glob, Bash, TodoWrite
 🎯 다음: /moai:2-build
 ```
 
-### Constitution 검사 결과
+### 개발 가이드 검사 결과
 
 ```
-🏛️ Constitution 검사
+🏛️ 개발 가이드 검사
 📊 준수율: 85%
 ❌ 위반: 파일 크기, 테스트 커버리지
 🎯 다음: /moai:2-build (테스트 추가)

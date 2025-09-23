@@ -69,7 +69,7 @@ interface User {
 - Benefits: [advantages]
 - Risks: [potential issues]
 
-## Constitution Check
+## 개발 가이드 Check
 
 ### Simplicity ✅
 - Components: [count] ≤ 10

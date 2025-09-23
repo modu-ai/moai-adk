@@ -249,7 +249,7 @@ def validate_moai_structure(project_path: Path) -> Dict[str, bool]:
 
 def validate_trust_principles_compliance(project_path: Path) -> Dict[str, Dict]:
     """
-    Validate project compliance with MoAI Constitution 5 principles.
+    Validate project compliance with MoAI 개발 가이드 5 principles.
     
     Args:
         project_path: Path to the project
@@ -474,10 +474,10 @@ def run_full_validation(project_path: Path, verbose: bool = False) -> Dict[str, 
         structure_score = sum(structure.values()) / len(structure) * 100
         print(f"  • MoAI 구조 완성도: {structure_score:.1f}%")
         
-        # Constitution compliance
+        # 개발 가이드 compliance
         constitution = results["trust_principles_compliance"]
         compliant_count = sum(1 for p in constitution.values() if p["compliant"])
-        print(f"  • Constitution 준수: {compliant_count}/5 원칙")
+        print(f"  • 개발 가이드 준수: {compliant_count}/5 원칙")
         
         # Overall health
         if structure_score >= 80 and compliant_count >= 4:

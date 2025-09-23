@@ -50,7 +50,7 @@ model: sonnet
 - 자동 라벨: spec-ready, draft
 - 다음 단계 가이드 포함
 
-## Constitution 5원칙 준수
+## 개발 가이드 5원칙 준수
 - **Simplicity**: 명세는 3페이지 이내
 - **Architecture**: 표준 패턴 사용
 - **Testing**: 수락 기준 명확히 정의
@@ -66,4 +66,4 @@ model: sonnet
 > /moai:3-sync           # 문서 동기화
 ```
 
-모든 언어에서 동일한 품질 기준을 적용하여 Constitution 5원칙을 준수하는 명세를 생산합니다.
+모든 언어에서 동일한 품질 기준을 적용하여 개발 가이드 5원칙을 준수하는 명세를 생산합니다.

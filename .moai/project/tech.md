@@ -110,7 +110,7 @@ make release      # 프로덕션 배포 준비
 | 스크립트                | 기능                   | 실행 주기      | 책임자      |
 | ----------------------- | ---------------------- | -------------- | ----------- |
 | `check_secrets.py`      | 비밀정보 검사          | pre-commit     | 개발자      |
-| `check_constitution.py` | Constitution 위반 검사 | 세션 시작      | MoAI 시스템 |
+| `check_constitution.py` | 개발 가이드 위반 검사 | 세션 시작      | MoAI 시스템 |
 | `check_licenses.py`     | 라이선스 호환성        | 종속성 변경 시 | 관리자      |
 
 ## @TECH:DEPLOY-001 배포 채널 & 전략

@@ -18,11 +18,20 @@
       "@TODO:MODERN-PYTHON-001",
       "@TODO:ASYNC-OPTIMIZATION-001"
     ],
+    "@DEBT:TEST-COVERAGE-001": [
+      "@REQ:QUALITY-002"
+    ],
     "@DESIGN:PATTERN-001": [
       "@STRUCT:MODULES-001"
     ],
+    "@DESIGN:QUALITY-SYSTEM-002": [
+      "@TASK:IMPLEMENT-002"
+    ],
     "@REQ:PROBLEM-001": [
       "@DESIGN:SOLUTION-001"
+    ],
+    "@REQ:QUALITY-002": [
+      "@DESIGN:QUALITY-SYSTEM-002"
     ],
     "@REQ:USER-001": [
       "@REQ:PERSONA-001",
@@ -32,6 +41,9 @@
     ],
     "@STRUCT:PHILOSOPHY-001": [
       "@DESIGN:PATTERN-001"
+    ],
+    "@TASK:IMPLEMENT-002": [
+      "@TEST:ACCEPTANCE-002"
     ],
     "@TECH:OVERVIEW-001": [
       "@TECH:STACK-PYTHON-001",
@@ -46,11 +58,11 @@
   },
   "stats": {
     "circular": 0,
-    "completed": 22,
+    "completed": 26,
     "in_progress": 12,
     "orphaned": 0,
-    "pending": 8,
-    "total_tags": 42
+    "pending": 6,
+    "total_tags": 46
   },
   "tags": {
     "IMPLEMENTATION": {
@@ -220,11 +232,13 @@
         "title": "기술 부채 분석"
       },
       "@DEBT:TEST-COVERAGE-001": {
-        "connections": [],
+        "connections": [
+          "@REQ:QUALITY-002"
+        ],
         "file": ".moai/project/product.md",
         "line": 194,
-        "status": "pending",
-        "title": "테스트 커버리지 85% 미달성"
+        "status": "completed",
+        "title": "테스트 커버리지 85% 미달성 (SPEC-002로 해결완료)"
       },
       "@TODO:ASYNC-OPTIMIZATION-001": {
         "connections": [],
@@ -305,6 +319,15 @@
       }
     },
     "SPEC": {
+      "@DESIGN:QUALITY-SYSTEM-002": {
+        "connections": [
+          "@TASK:IMPLEMENT-002"
+        ],
+        "file": ".moai/specs/SPEC-002/spec.md",
+        "line": 21,
+        "status": "completed",
+        "title": "품질 시스템 설계 및 환경 정의"
+      },
       "@REQ:PERSONA-001": {
         "connections": [],
         "file": ".moai/project/product.md",
@@ -349,6 +372,15 @@
         "status": "completed",
         "title": "워크플로우 혼란 문제"
       },
+      "@REQ:QUALITY-002": {
+        "connections": [
+          "@DESIGN:QUALITY-SYSTEM-002"
+        ],
+        "file": ".moai/specs/SPEC-002/spec.md",
+        "line": 3,
+        "status": "completed",
+        "title": "Python 코드 품질 개선 시스템 요구사항"
+      },
       "@REQ:USER-001": {
         "connections": [
           "@REQ:PERSONA-001",
@@ -360,6 +392,22 @@
         "line": 26,
         "status": "completed",
         "title": "주요 사용자 정의"
+      },
+      "@TASK:IMPLEMENT-002": {
+        "connections": [
+          "@TEST:ACCEPTANCE-002"
+        ],
+        "file": ".moai/specs/SPEC-002/spec.md",
+        "line": 37,
+        "status": "completed",
+        "title": "품질 개선 시스템 구현 태스크"
+      },
+      "@TEST:ACCEPTANCE-002": {
+        "connections": [],
+        "file": ".moai/specs/SPEC-002/spec.md",
+        "line": 87,
+        "status": "completed",
+        "title": "품질 시스템 수락 기준 및 테스트"
       },
       "@VISION:MISSION-001": {
         "connections": [

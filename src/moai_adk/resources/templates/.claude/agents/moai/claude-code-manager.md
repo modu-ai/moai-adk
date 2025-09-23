@@ -10,7 +10,7 @@ model: sonnet
 ## 1. 역할 개요
 
 - MoAI-ADK 구조(.moai, .claude)를 감지해 Claude Code가 올바르게 동작하도록 설정합니다.
-- 헛된 추측 없이 공식 문서와 MoAI 헌법(Constitution)을 기준으로 설정을 설명합니다.
+- 헛된 추측 없이 공식 문서와 MoAI 헌법(개발 가이드)을 기준으로 설정을 설명합니다.
 - 권한/훅/MCP 서버 구성을 한글로 검토해 사용자 지시에 맞춰 수정안을 제시합니다.
 - MoAI 프로젝트에서 Claude Code 설정을 수정할 때는 반드시 이 에이전트를 먼저 호출합니다.
 
@@ -133,7 +133,7 @@ MoAI 도구: Bash(moai:*) - 3단계 파이프라인 지원
 
 - **TAG 검증**: 프로그램 코드 파일만 대상 (문서 제외)
 - **세션 알림**: MoAI 프로젝트 상태 자동 표시
-- **간소화**: Constitution guard, policy block 등 복잡한 Hook 제거
+- **간소화**: 개발 가이드 guard, policy block 등 복잡한 Hook 제거
 
 ## 3. Hook 구성 지침
 
@@ -162,7 +162,7 @@ MoAI 도구: Bash(moai:*) - 3단계 파이프라인 지원
 ### 프로젝트 초기화
 
 - [ ] `.moai/` 구조 감지 및 `MOAI_PROJECT=true` 설정
-- [ ] Constitution Hook 설치 및 동작 테스트
+- [ ] 개발 가이드 Hook 설치 및 동작 테스트
 - [ ] TAG 검증(`tag_validator.py`) 연결
 - [ ] 권한 정책이 요구사항과 일치하는지 검증
 - [ ] CLAUDE.md, Sub-Agent 템플릿 갱신
@@ -170,7 +170,7 @@ MoAI 도구: Bash(moai:*) - 3단계 파이프라인 지원
 ### 운영 중 모니터링
 
 - [ ] Hook 평균 실행 시간 500ms 이하 유지
-- [ ] Constitution Guard에서 위반 사항이 즉시 탐지되는지 확인
+- [ ] 개발 가이드 Guard에서 위반 사항이 즉시 탐지되는지 확인
 - [ ] TAG 인덱스 무결성(`.moai/indexes/*.json`) 점검
 - [ ] MCP 토큰 사용량 추적 및 상한 조정
 - [ ] 세션 정리 주기(`cleanupPeriodDays`)와 비용 모니터링
@@ -188,7 +188,7 @@ MoAI 도구: Bash(moai:*) - 3단계 파이프라인 지원
 @claude-code-manager "이 프로젝트의 Claude Code 설정을 MoAI 표준에 맞춰 검토하고 수정안을 제안해줘"
 
 # 2) Hook 설치 및 점검
-@claude-code-manager "Constitution Guard와 TAG Validator가 올바르게 동작하는지 확인해줘"
+@claude-code-manager "개발 가이드 Guard와 TAG Validator가 올바르게 동작하는지 확인해줘"
 
 # 3) 권한 문제 해결
 @claude-code-manager "현재 permissions 설정으로 인해 편집이 차단되는 파일이 있는지 진단해줘"
@@ -202,8 +202,8 @@ Claude Code는 9가지 Hook 이벤트를 지원하며, MoAI-ADK는 이를 활용
 
 | 이벤트             | 트리거 시점        | MoAI 활용 예제                             |
 | ------------------ | ------------------ | ------------------------------------------ |
-| `SessionStart`     | 세션 시작 시       | MoAI 프로젝트 상태 표시, Constitution 체크 |
-| `PreToolUse`       | 도구 실행 전       | Constitution 검증, TAG 규칙 검사           |
+| `SessionStart`     | 세션 시작 시       | MoAI 프로젝트 상태 표시, 개발 가이드 체크 |
+| `PreToolUse`       | 도구 실행 전       | 개발 가이드 검증, TAG 규칙 검사           |
 | `PostToolUse`      | 도구 실행 후       | TAG 인덱스 업데이트, 문서 동기화           |
 | `UserPromptSubmit` | 사용자 입력 후     | 명령어 전처리, 컨텍스트 선택               |
 | `Notification`     | 권한 요청 시       | 커스텀 알림 시스템                         |
@@ -239,12 +239,12 @@ if __name__ == "__main__":
     main()
 ```
 
-#### Constitution Guard Hook (constitution_guard.py)
+#### 개발 가이드 Guard Hook (constitution_guard.py)
 
 ```python
 #!/usr/bin/env python3
 """
-MoAI Constitution 5원칙 검증
+MoAI 개발 가이드 5원칙 검증
 도구 실행 전 자동 검증
 """
 import json
@@ -271,7 +271,7 @@ def main():
     )
 
     if violations:
-        print("\n🏛️ Constitution 위반 감지:", file=sys.stderr)
+        print("\n🏛️ 개발 가이드 위반 감지:", file=sys.stderr)
         for violation in violations:
             print(f"- {violation}", file=sys.stderr)
         sys.exit(2)  # Hook 차단
@@ -348,7 +348,7 @@ model: sonnet
 4. 4단계 자동 커밋
 5. Draft PR 생성
 
-## Constitution 준수
+## 개발 가이드 준수
 
 - Simplicity: 명세는 3페이지 이내
 - Architecture: 표준 패턴 사용
@@ -362,7 +362,7 @@ model: sonnet
 ```markdown
 ---
 name: code-builder
-description: TDD 기반 구현과 GitFlow 자동화 전문가. SPEC 완료 후 필수 사용. RED-GREEN-REFACTOR 사이클과 Constitution 검증을 담당합니다.
+description: TDD 기반 구현과 GitFlow 자동화 전문가. SPEC 완료 후 필수 사용. RED-GREEN-REFACTOR 사이클과 개발 가이드 검증을 담당합니다.
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite
 model: sonnet
 ---
@@ -372,7 +372,7 @@ model: sonnet
 ## 역할
 
 1. **TDD 구현**: RED-GREEN-REFACTOR 사이클 실행
-2. **Constitution 검증**: 5원칙 자동 준수 확인
+2. **개발 가이드 검증**: 5원칙 자동 준수 확인
 3. **3단계 커밋**: Red → Green → Refactor
 4. **품질 보장**: 85%+ 테스트 커버리지
 
@@ -386,7 +386,7 @@ model: sonnet
 
 - 모든 테스트 통과
 - 커버리지 85% 이상
-- Constitution 5원칙 준수
+- 개발 가이드 5원칙 준수
 - 16-Core TAG 완전 연결
 ```
 
@@ -473,7 +473,7 @@ description: SPEC 단계 - EARS 명세 작성 및 feature 브랜치 생성
    - 🎯 SPEC-XXX: 명세 완성 및 프로젝트 구조 생성
 5. **Draft PR 생성**: GitHub CLI로 자동 생성
 
-Constitution 5원칙을 반드시 준수하세요.
+개발 가이드 5원칙을 반드시 준수하세요.
 ```
 
 #### /moai:2-build
@@ -500,7 +500,7 @@ description: BUILD 단계 - TDD 기반 구현
 
 - 모든 테스트 통과
 - 커버리지 85% 이상
-- Constitution 5원칙 준수
+- 개발 가이드 5원칙 준수
 ```
 
 #### /moai:3-sync
@@ -575,7 +575,7 @@ CLAUDE.md는 프로젝트별 컨텍스트와 개발 가이드를 제공하는 �
 ```
 ````
 
-## 🏛️ Constitution 5원칙
+## 🏛️ 개발 가이드 5원칙
 
 1. **Simplicity**: 프로젝트 복잡도 ≤ 3개
 2. **Architecture**: 모든 기능은 라이브러리로
@@ -619,7 +619,7 @@ CLAUDE.md는 프로젝트별 컨텍스트와 개발 가이드를 제공하는 �
 - PR: Draft → Ready 패턴
 
 ## 리뷰 규칙
-- Constitution 5원칙 준수 확인
+- 개발 가이드 5원칙 준수 확인
 - 테스트 커버리지 85% 이상
 - TAG 추적성 100%
 ````

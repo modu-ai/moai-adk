@@ -4,7 +4,7 @@
 # 모든 테스트와 검증을 자동화하여 실행합니다:
 # - Python 단위 테스트 (pytest)
 # - 통합 테스트 및 E2E 테스트
-# - Constitution 5원칙 검증
+# - 개발 가이드 5원칙 검증
 # - 16-Core TAG 시스템 검증
 # - 라이선스 및 보안 검사
 # - 코드 커버리지 측정
@@ -266,9 +266,9 @@ run_integration_tests() {
     echo
 }
 
-# Constitution 검증
+# 개발 가이드 검증
 run_constitution_check() {
-    log_header "Constitution 5원칙 검증"
+    log_header "개발 가이드 5원칙 검증"
     
     local constitution_script="$SCRIPT_DIR/check_constitution.py"
     if [[ -f "$constitution_script" ]]; then
@@ -281,13 +281,13 @@ run_constitution_check() {
         fi
         
         if python3 "$constitution_script" "${args[@]}"; then
-            log_success "Constitution 5원칙 준수"
+            log_success "개발 가이드 5원칙 준수"
         else
-            log_error "Constitution 위반 사항 발견"
+            log_error "개발 가이드 위반 사항 발견"
             return 1
         fi
     else
-        log_warning "Constitution 검증 스크립트 없음"
+        log_warning "개발 가이드 검증 스크립트 없음"
     fi
     
     echo
@@ -407,11 +407,11 @@ run_fast_tests() {
     show_progress $current $total_tests "환경 검증"
     verify_environment >/dev/null 2>&1
     
-    # Constitution 검사
+    # 개발 가이드 검사
     ((current++))
-    show_progress $current $total_tests "Constitution 검증"
+    show_progress $current $total_tests "개발 가이드 검증"
     if ! run_constitution_check >/dev/null 2>&1; then
-        log_error "Constitution 검증 실패"
+        log_error "개발 가이드 검증 실패"
         return 1
     fi
     

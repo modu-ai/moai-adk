@@ -1,10 +1,10 @@
-# MoAI-ADK Constitution 5원칙
+# MoAI-ADK 개발 가이드 5원칙
 
 > **🗿 "명세가 없으면 코드도 없다. 테스트가 없으면 구현도 없다."**
 
 MoAI-ADK 의 모든 개발 활동은 이 5원칙을 준수해야 합니다.
 
-## 🏛️ Constitution 5원칙
+## 🏛️ 개발 가이드 5원칙
 
 ### Article I: Simplicity (단순성의 원칙)
 
@@ -96,7 +96,7 @@ MoAI-ADK 의 모든 개발 활동은 이 5원칙을 준수해야 합니다.
 - Quality: @PERF:API-500MS, @SEC:XSS-HIGH
 
 ### 품질 게이트
-- Constitution 5원칙 자동 검증
+- 개발 가이드 5원칙 자동 검증
 - 테스트 커버리지 85% 이상
 - 모든 CI/CD 단계 통과 필수
 - 보안 스캔 통과 필수
@@ -125,7 +125,7 @@ python3 .moai/scripts/check-traceability.py
 
 ### 정량적 지표
 - 테스트 커버리지: ≥85%
-- Constitution 준수율: 100%
+- 개발 가이드 준수율: 100%
 - 개발 시간 단축: 67% (GitFlow 자동화)
 - Git 실수 감소: 100% (자동화로 제거)
 

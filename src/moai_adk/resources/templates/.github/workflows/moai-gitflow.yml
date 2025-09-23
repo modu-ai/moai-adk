@@ -52,13 +52,13 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      # Constitution 5원칙 자동 검증
-      - name: 🏛️ Constitution 5원칙 검증
+      # 개발 가이드 5원칙 자동 검증
+      - name: 🏛️ 개발 가이드 5원칙 검증
         run: |
           if [ -f ".moai/scripts/check_constitution.py" ]; then
             python .moai/scripts/check_constitution.py
           else
-            echo "✅ Constitution 검증 스크립트 없음 - 통과"
+            echo "✅ 개발 가이드 검증 스크립트 없음 - 통과"
           fi
 
       - name: Run language-aware tests
@@ -108,7 +108,7 @@ jobs:
         run: |
           echo "📝 Draft PR: TDD 구현 단계"
           echo "- code-builder 에이전트가 RED-GREEN-REFACTOR"
-          echo "- Constitution 5원칙 준수 검증"
+          echo "- 개발 가이드 5원칙 준수 검증"
 
       - name: 📚 SYNC 단계 (Ready PR)
         if: github.event.pull_request.draft == false && github.event.action == 'ready_for_review'

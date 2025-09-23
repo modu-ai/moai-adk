@@ -373,7 +373,7 @@ class ConfigManager:
 
     def setup_steering_config(self, project_path: Path) -> Path:
         """
-        Setup MoAI steering configuration with Constitution 5 principles.
+        Setup MoAI steering configuration with 개발 가이드 5 principles.
 
         Args:
             project_path: Project root path

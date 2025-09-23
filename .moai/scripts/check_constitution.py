@@ -204,7 +204,7 @@ class TrustPrinciplesChecker:
         passed = 0
         total = len(checks)
 
-        print("🏛️ Constitution 5원칙 검증")
+        print("🏛️ 개발 가이드 5원칙 검증")
         print("=" * 50)
 
         for principle, check_func in checks:
@@ -225,7 +225,7 @@ class TrustPrinciplesChecker:
         print(f"\n📊 검증 결과: {passed}/{total} 통과")
 
         if len(self.violations) == 0:
-            print("🎉 모든 Constitution 원칙을 준수합니다!")
+            print("🎉 모든 개발 가이드 원칙을 준수합니다!")
             return 0
 
         print("\n🔴 위반 사항 및 권장 조치:")
@@ -234,14 +234,14 @@ class TrustPrinciplesChecker:
             print(f"  ❌ 문제: {violation}")
             print(f"  💡 권장: {recommendation}")
 
-        print(f"\n⚖️ Constitution 준수율: {(passed/total)*100:.1f}%")
+        print(f"\n⚖️ 개발 가이드 준수율: {(passed/total)*100:.1f}%")
 
         return 1 if len(self.violations) > 0 else 0
 
 
 def main():
     import argparse
-    parser = argparse.ArgumentParser(description="Constitution 5원칙 검증")
+    parser = argparse.ArgumentParser(description="개발 가이드 5원칙 검증")
     parser.add_argument("--project-root", "-p", default=".", help="프로젝트 루트 경로")
     parser.add_argument("--strict", action="store_true", help="엄격 모드(기존 기준)")
 

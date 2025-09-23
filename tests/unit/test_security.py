@@ -215,7 +215,7 @@ class TestHookSecurity(unittest.TestCase):
         hook_file = Path(__file__).parent.parent / "src" / "moai_adk" / "resources" / "templates" / ".claude" / "hooks" / "moai" / "constitution_guard.py"
 
         if not hook_file.exists():
-            self.skipTest("Constitution guard hook not found")
+            self.skipTest("개발 가이드 guard hook not found")
 
         with open(hook_file, 'r') as f:
             content = f.read()

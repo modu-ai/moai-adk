@@ -161,7 +161,7 @@ class TemplateEngine:
         project_type: str,
         target_path: Path
     ) -> bool:
-        """Create Constitution document from template."""
+        """Create 개발 가이드 document from template."""
         context = {
             'PROJECT_NAME': project_name,
             'PROJECT_TYPE': project_type.upper(),
@@ -241,7 +241,7 @@ class TemplateEngine:
             'VERSION_SHORT': VERSION_FORMATS.get('short', f'v{__version__}'),
             'VERSION_BANNER': VERSION_FORMATS.get('banner', f'🗿 MoAI-ADK v{__version__}'),
 
-            # Constitution and pipeline versions
+            # 개발 가이드 and pipeline versions
             'CONSTITUTION_VERSION': VERSIONS.get('constitution', '1.0'),
             'PIPELINE_VERSION': VERSIONS.get('pipeline', '1.0.0'),
 

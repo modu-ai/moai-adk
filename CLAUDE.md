@@ -36,14 +36,14 @@
 | **code-builder** | TDD 구현         | Red-Green-Refactor 커밋 패턴 권장   |
 | **doc-syncer**   | 문서 동기화      | PR 상태 전환/라벨링 지원(환경 의존) |
 | **cc-manager**   | Claude Code 관리 | 설정 최적화/권한 문제 해결          |
-| **debug-helper** | 오류 진단        | 일반 오류 분석 + Constitution 검사  |
+| **debug-helper** | 오류 진단        | 일반 오류 분석 + 개발 가이드 검사  |
 
 ## 디버깅 시스템
 
 ### `/moai:debug` 명령어
 
 - **일반 오류 디버깅**: `/moai:debug "오류내용"`
-- **Constitution 위반 검사**: `/moai:debug --constitution-check`
+- **개발 가이드 위반 검사**: `/moai:debug --constitution-check`
 - **진단 전문**: debug-helper 에이전트가 문제 분석과 해결책 제시
 - **위임 원칙**: 실제 수정은 해당 전담 에이전트(code-builder, git-manager 등)에게 위임
 
@@ -141,7 +141,7 @@
 ├── .moai/                 # MoAI 시스템
 │   ├── project/           # 프로젝트 기본 문서 (product/structure/tech)
 │   ├── specs/             # SPEC 문서
-│   ├── memory/            # Constitution & 메모리 템플릿
+│   ├── memory/            # 개발 가이드 & 메모리 템플릿
 │   ├── scripts/           # 검증/자동화 스크립트
 │   └── config.json        # 설정
 └── CLAUDE.md              # 이 파일

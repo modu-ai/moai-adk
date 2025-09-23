@@ -120,7 +120,7 @@ MoAI 프로젝트 감지 시 세션 시작 알림을 표시하는 훅을 설정�
 ### 프로젝트 초기화
 
 - [ ] `.moai/` 구조 감지 및 `MOAI_PROJECT=true` 설정
-- [ ] Constitution Hook 설치 및 동작 테스트
+- [ ] 개발 가이드 Hook 설치 및 동작 테스트
 - [ ] TAG 검증(`tag_validator.py`) 연결
 - [ ] 권한 정책이 요구사항과 일치하는지 검증
 - [ ] CLAUDE.md, Sub-Agent 템플릿 갱신
@@ -128,7 +128,7 @@ MoAI 프로젝트 감지 시 세션 시작 알림을 표시하는 훅을 설정�
 ### 운영 중 모니터링
 
 - [ ] Hook 평균 실행 시간 500ms 이하 유지
-- [ ] Constitution Guard에서 위반 사항이 즉시 탐지되는지 확인
+- [ ] 개발 가이드 Guard에서 위반 사항이 즉시 탐지되는지 확인
 - [ ] TAG 인덱스 무결성(`.moai/indexes/*.json`) 점검
 - [ ] MCP 토큰 사용량 추적 및 상한 조정
 - [ ] 세션 정리 주기(`cleanupPeriodDays`)와 비용 모니터링
@@ -149,7 +149,7 @@ MoAI 프로젝트 감지 시 세션 시작 알림을 표시하는 훅을 설정�
 
 **Hook 설치 및 점검:**
 
-- Constitution Guard와 TAG Validator 동작 상태 확인
+- 개발 가이드 Guard와 TAG Validator 동작 상태 확인
 
 **권한 문제 해결:**
 
@@ -163,8 +163,8 @@ Claude Code는 9가지 Hook 이벤트를 지원하며, MoAI-ADK는 이를 활용
 
 | 이벤트             | 트리거 시점        | MoAI 활용 예제                             |
 | ------------------ | ------------------ | ------------------------------------------ |
-| `SessionStart`     | 세션 시작 시       | MoAI 프로젝트 상태 표시, Constitution 체크 |
-| `PreToolUse`       | 도구 실행 전       | Constitution 검증, TAG 규칙 검사           |
+| `SessionStart`     | 세션 시작 시       | MoAI 프로젝트 상태 표시, 개발 가이드 체크 |
+| `PreToolUse`       | 도구 실행 전       | 개발 가이드 검증, TAG 규칙 검사           |
 | `PostToolUse`      | 도구 실행 후       | TAG 인덱스 업데이트, 문서 동기화           |
 | `UserPromptSubmit` | 사용자 입력 후     | 명령어 전처리, 컨텍스트 선택               |
 | `Notification`     | 권한 요청 시       | 커스텀 알림 시스템                         |
@@ -254,7 +254,7 @@ TDD 기반 구현과 GitFlow 자동화를 담당하는 에이전트 정의:
 **주요 역할:**
 
 1. TDD 구현 (RED-GREEN-REFACTOR 사이클 실행)
-2. Constitution 검증 (5원칙 자동 준수 확인)
+2. 개발 가이드 검증 (5원칙 자동 준수 확인)
 3. 3단계 커밋 (Red → Green → Refactor)
 4. 품질 보장 (85% 이상 테스트 커버리지)
 

@@ -58,7 +58,7 @@ model: sonnet
 - ✅ 리뷰어 할당 지원 (gh CLI 필요)
 
 ### Draft → Ready 전환 기준 (권장)
-- Constitution 5원칙 준수 확인
+- 개발 가이드 5원칙 준수 확인
 - 테스트 커버리지 목표 달성
 - CI/CD 단계 통과 권장
 - 보안 스캔 권장
