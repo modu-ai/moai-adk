@@ -415,7 +415,7 @@ moai init project --force-copy  # 강제 복사 모드 (Windows 권장)
 
 ### 메모리 시스템 완전 구현
 - **Claude 메모리 파일**: project_guidelines.md, coding_standards.md, team_conventions.md, bash_commands.md, git_workflow.md
-- **MoAI Constitution 시스템**: constitution.md (5대 원칙 상세)
+- **MoAI Constitution 시스템**: development-guide.md (5대 원칙 상세)
 - **ADR 시스템**: decisions/ADR-001-sample.md 아키텍처 결정 기록 템플릿
 - **자동 설치**: installer.py에서 메모리 파일 자동 복사 및 디렉토리 구성
 - **실용성 강화**: Bash 명령어와 Git 워크플로우 별도 파일로 모듈화
@@ -447,7 +447,7 @@ moai init project --force-copy  # 강제 복사 모드 (Windows 권장)
 
 ### Output Styles 시스템 재구성
 - **7개 → 5개 스타일**: 중복 제거 및 효율성 향상
-- **삭제된 스타일**: learning.md, spec-first.md, constitution.md, workshop.md (Hook과 명령어로 대체)
+- **삭제된 스타일**: learning.md, spec-first.md, development-guide.md, workshop.md (Hook과 명령어로 대체)
 - **신규 스타일**: study.md (깊이 있는 학습), mentor.md (1:1 멘토링)
 - **유지 스타일**: expert.md, beginner.md, audit.md
 

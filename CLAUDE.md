@@ -111,13 +111,13 @@
 - **IMPLEMENTATION**: FEATURE, API, TEST, DATA
 - **QUALITY**: PERF, SEC, DEBT, TODO
 
-## Constitution 5원칙(목표/원칙)
+## TRUST 5원칙 (개발 가이드)
 
-1. **Simplicity**: 프로젝트 복잡도 ≤ 3
-2. **Architecture**: 라이브러리 기반 설계
-3. **Testing**: TDD 필수
-4. **Observability**: 구조화 로깅
-5. **Versioning**: 시맨틱 버전
+**T** - **Test First** (테스트 우선): 코드 전에 테스트를 작성하라
+**R** - **Readable** (읽기 쉽게): 미래의 나를 위해 명확하게 작성하라
+**U** - **Unified** (통합 설계): 계층을 나누고 책임을 분리하라
+**S** - **Secured** (안전하게): 로그를 남기고 검증하라
+**T** - **Trackable** (추적 가능): 버전과 태그로 히스토리를 관리하라
 
 ## 언어 자동 감지(시도)
 
@@ -214,15 +214,15 @@ find . -name "*.py" -exec grep "pattern" {} \;
 
 ## 메모리 전략
 
-MoAI-ADK는 **Constitution 5원칙**을 핵심 메모리로 사용합니다:
+MoAI-ADK는 **TRUST 5원칙**을 핵심 메모리로 사용합니다:
 
-- **Constitution**: @.moai/memory/constitution.md - 5원칙 + 16-Core TAG 시스템
+- **MoAI 개발 가이드**: @.moai/memory/development-guide.md - TRUST 원칙 + 16-Core TAG 시스템
 - **프로젝트 가이드**: @CLAUDE.md - 워크플로우 + 에이전트 시스템
 
 **원칙**:
 
-- Constitution 5원칙이 모든 개발 규칙을 정의
+- TRUST 5원칙이 모든 개발 규칙을 정의
 - CLAUDE.md가 실행 가이드 역할
-- 핵심 지침만 메모리에 저장 (단순성 원칙)
+- 핵심 지침만 메모리에 저장 (읽기 쉬운 원칙)
 - 세부사항은 문서 링크로 참조
 - 민감정보 저장 금지

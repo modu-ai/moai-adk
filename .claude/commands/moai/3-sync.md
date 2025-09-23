@@ -182,7 +182,7 @@ doc-syncer 에이전트가 Living Document 동기화와 16-Core @TAG 업데이�
 
 - MoAI-ADK 프로젝트 구조 (.moai/, .claude/)
 - TDD 구현 완료 상태
-- Constitution 5원칙 준수
+- TRUST 5원칙 준수
 
 **제한 사항:**
 

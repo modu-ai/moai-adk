@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Constitution 5원칙 검증 스크립트 (strict/relaxed 지원)
-MoAI-ADK의 Constitution 5원칙 준수 여부를 자동 검증합니다.
+TRUST 원칙 검증 스크립트 (strict/relaxed 지원)
+MoAI-ADK의 TRUST 5원칙 준수 여부를 자동 검증합니다.
 
 동작 모드:
 - 기본(완화): 현실적 기준으로 오탐을 줄임
@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 
-class ConstitutionChecker:
+class TrustPrinciplesChecker:
     def __init__(self, project_root: str = ".", strict: bool = False):
         self.project_root = Path(project_root)
         self.config_path = self.project_root / ".moai" / "config.json"

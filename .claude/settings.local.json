@@ -18,7 +18,8 @@
       "Bash(for agent in claude-code-manager code-builder doc-syncer spec-builder)",
       "Bash(diff:*)",
       "Bash(done)",
-      "Bash(for style in audit beginner expert mentor study)"
+      "Bash(for style in audit beginner expert mentor study)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

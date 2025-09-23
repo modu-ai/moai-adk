@@ -1,7 +1,7 @@
 ---
 name: moai:4-debug
-description: 오류 디버깅 + Constitution 위반 검사
-argument-hint: "오류내용" | --constitution-check
+description: 오류 디버깅 + TRUST 원칙 검사
+argument-hint: "오류내용" | --trust-check
 allowed-tools: Read, Write, Edit, MultiEdit, Grep, Glob, Bash, TodoWrite
 ---
 
@@ -10,7 +10,7 @@ allowed-tools: Read, Write, Edit, MultiEdit, Grep, Glob, Bash, TodoWrite
 ## 기능
 
 1. **오류 디버깅**: 코드/Git/설정 오류 분석
-2. **Constitution 검사**: 5원칙 준수도 검증
+2. **TRUST 원칙 검사**: TRUST 5원칙 준수도 검증
 
 ## 작동 방식
 

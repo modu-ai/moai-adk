@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **획기적인 패키지 최적화로 개발 경험 혁신:**
 
 #### 📦 패키지 최적화 성과
+
 - **패키지 크기**: 948KB → 192KB (**80% 감소**)
 - **에이전트 파일**: 60개 → 4개 (**93% 감소**)
 - **명령어 파일**: 13개 → 3개 (**77% 감소**)
@@ -19,48 +20,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **메모리 사용량**: **70% 이상 감소**
 
 #### 🏗️ 아키텍처 최적화
+
 - **핵심 에이전트 통합**: 60개 → 4개 핵심 에이전트로 집중
   - `spec-builder.md`, `code-builder.md`, `doc-syncer.md`, `claude-code-manager.md`
 - **명령어 간소화**: 13개 → 3개 파이프라인 명령어로 단순화
   - `/moai:1-spec`, `/moai:2-build`, `/moai:3-sync`
 - **구조 평면화**: `_templates` 폴더 제거로 중복 구조 해결
-- **Constitution 5원칙 준수**: 단순성 원칙에 따른 모듈 수 제한
+- **TRUST 5원칙 준수**: 읽기 쉬움 원칙에 따른 모듈 수 제한
 
 #### 🎯 새로운 TAG 시스템 구현
+
 - **@DESIGN:PKG-ARCH-001**: 클린 아키텍처 기반 패키지 최적화 설계
 - **@REQ:OPT-CORE-001**: 패키지 크기 80% 감소 요구사항 달성
 - **@TASK:CLEANUP-IMPL-001**: 중복 파일 제거 및 구조 최적화 구현
 - **@TEST:UNIT-OPT-001**: PackageOptimizer 클래스 단위 테스트 완료
 
 #### 🔧 기술적 개선사항
+
 - **PackageOptimizer 클래스 추가**: 패키지 크기 최적화 핵심 모듈
 - **언어 중립성 구현**: 프로젝트 유형별 조건부 문서 생성
 - **Claude Code 표준 준수**: 최신 Claude Code 기능 활용
 - **TDD 완전 구현**: Red-Green-Refactor 사이클 준수
 
 #### 📊 성과 지표
-| 지표 | 이전 | 현재 | 개선율 |
-|------|------|------|---------|
-| 패키지 크기 | 948KB | 192KB | **80% 감소** |
-| 에이전트 파일 | 60개 | 4개 | **93% 감소** |
-| 명령어 파일 | 13개 | 3개 | **77% 감소** |
-| 설치 시간 | 100% | 50% | **50% 단축** |
-| 메모리 사용량 | 100% | 30% | **70% 절약** |
+
+| 지표          | 이전  | 현재  | 개선율       |
+| ------------- | ----- | ----- | ------------ |
+| 패키지 크기   | 948KB | 192KB | **80% 감소** |
+| 에이전트 파일 | 60개  | 4개   | **93% 감소** |
+| 명령어 파일   | 13개  | 3개   | **77% 감소** |
+| 설치 시간     | 100%  | 50%   | **50% 단축** |
+| 메모리 사용량 | 100%  | 30%   | **70% 절약** |
 
 #### 🏷️ 16-Core TAG 추적성 완성
+
 - **94.7% 전체 TAG 커버리지**: 18개 TAG, 9개 완전 체인
 - **0개 고아 TAG**: 끊어진 링크 없음
 - **실시간 추적성 인덱스**: `.moai/indexes/tags.json` 자동 업데이트
 
 #### 💡 혁신적 변화
+
 이 최적화로 MoAI-ADK는 **더 빠르고, 더 가볍고, 더 간단해졌습니다.**
-- Constitution 5원칙의 "단순성" 원칙 완전 구현
+
+- TRUST 5원칙의 "읽기 쉬움" 원칙 완전 구현
 - Claude Code 표준 기반 완전 자동화 개발 환경 제공
 - Living Document 원칙으로 문서와 코드 완전 동기화
 
 ## [0.1.22] - 2025-09-17
 
 ### 🚀 Major Hook System Modernization
+
 - **✨ Awesome Hooks JSON Standardization**: Complete JSON output standardization for Claude Code compatibility
   - Hook 출력 형식을 JSON 구조(`{"status": ..., "message": ..., "timestamp": ..., "data": {...}}`)로 통일
   - Enhanced `auto_git_commit.py` with Hook data reading and detailed commit information
@@ -70,6 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Modernized `auto_formatter.py` with extended language support (12 languages), diff information, and formatting result tracking
 
 ### 🛡️ Enhanced Hook Infrastructure
+
 - **📊 Structured Data Output**: All hooks now provide detailed execution metrics and structured results
 - **⏱️ Performance Monitoring**: Added execution time tracking and timeout management across all hooks
 - **🔧 Error Handling**: Improved error handling that never blocks Claude Code workflows (always return 0)
@@ -77,6 +87,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **🔍 Extended Language Support**: Added support for 30+ programming languages across formatters and security scanners
 
 ### 🎯 Quality & Reliability Improvements
+
 - **📈 Risk Assessment**: Security scanner now includes automated risk scoring and severity breakdown
 - **💾 Resource Management**: File size limits and backup capacity controls to prevent disk issues
 - **🧪 Test Integration**: Enhanced test runner with multi-language framework detection and detailed result reporting
@@ -85,6 +96,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.21] - 2025-09-17
 
 ### 🔧 Bug Fixes & Improvements
+
 - **🏷️ Hook Environment Variable Issues Fixed**: Resolved "No file path provided" errors in additional hooks
   - Fixed `auto_formatter.py` to gracefully handle missing `CLAUDE_TOOL_FILE_PATH` environment variable
   - Updated all template hooks to use defensive programming patterns
@@ -98,11 +110,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Maintained `pre_write_guard.py` grep→ripgrep enforcement (intended behavior)
 
 ### ✅ Template Updates
+
 - **🔄 Hook Template Synchronization**: Updated template hooks to match production versions
 - **🧪 Comprehensive Hook Validation**: Verified all 11 hook files for proper error handling
 - **📋 Environment Variable Handling**: Standardized missing environment variable handling across all hooks
 
 ### 🔍 Quality Assurance
+
 - **✅ All Hooks Tested**: Verified proper behavior of 모든 hook 카테고리
 - **🔒 Security Validation**: Confirmed SecurityManager import fallback patterns work correctly
 - **🎯 Workflow Protection**: Enhanced defensive programming to prevent development workflow interruption
@@ -110,12 +124,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.17] - 2025-09-17
 
 ### 🚀 Highlights
+
 - **자동 업데이트 시스템 고도화**: `.moai/version.json`으로 템플릿 버전을 기록하고 `moai update --check`에서 즉시 비교합니다.
 - **moai update 개선**: 리소스만 덮어쓰거나 패키지와 함께 갱신 가능하며, 실행 전에 자동 백업을 생성합니다.
 - **상태 보고 강화**: `moai status`가 패키지/템플릿 버전을 함께 표시하고, 구버전이면 경고합니다.
 - **16-Core 태그/모델 반영**: 기본 템플릿과 설정이 최신 16-Core 체계와 모델 매핑을 사용합니다.
 
 ### ✅ 변경 사항
+
 - 업데이트 시 `.moai/version.json` 자동 생성 및 최신 버전 기록
 - `ResourceVersionManager` 추가로 프로젝트 리소스 버전 관리
 - `ConfigManager`/템플릿에서 16-Core 태그(ADR, SPEC 포함)와 모델 매핑 업데이트
@@ -125,6 +141,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.11] - 2025-09-15 (CRITICAL HOTFIX)
 
 ### 🚨 Critical Bug Fixes
+
 - **🛡️ CRITICAL: Fixed file deletion bug in `moai init .`**
   - `installer.py`: Modified `_create_project_directory()` to preserve existing files when initializing in current directory
   - **Issue**: `shutil.rmtree()` was unconditionally deleting ALL files in current directory
@@ -132,20 +149,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Impact**: Prevents catastrophic data loss for users running `moai init .`
 
 ### ✅ Enhanced Safety Features
+
 - **🔒 Added --force option with strong warnings**: Users must explicitly use `--force` to overwrite files
 - **⚠️ Pre-installation warnings**: Clear messages about which files will be preserved
 - **🛡️ Current directory protection**: Enhanced safety for current directory initialization
 - **📋 File preservation confirmation**: User prompt showing exactly which files will be kept
 
 ### 🔧 Technical Improvements
+
 - **config.py**: Added `force_overwrite` configuration flag
 - **cli.py**: Enhanced init command with safety warnings and file preservation messages
 - **installer.py**: Implemented intelligent directory handling based on context
 
 ### ⚡ Breaking Changes
+
 - **NONE**: This hotfix is fully backward compatible while adding safety
 
 ### 🧪 Verified Fixes
+
 - ✅ Current directory files are preserved during `moai init .`
 - ✅ MoAI-ADK directories (.claude/, .moai/) are properly created
 - ✅ Warning messages clearly inform users about file preservation
@@ -154,6 +175,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.10] - 2025-09-15
 
 ### 🚀 Enhanced Python Support & Documentation
+
 - **🐍 Python 3.11+ Requirement**: Upgraded minimum Python version from 3.9 to 3.11+
 - **🆕 Modern Python Features**: Enhanced templates to leverage Python 3.11+ features (match-case, exception groups, etc.)
 - **📚 Comprehensive Memory System**: Improved documentation files in `.claude/memory/` and `.moai/memory/`
@@ -162,11 +184,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **🤝 Enhanced Team Conventions**: Improved collaboration protocols and workflows
 
 ### 📖 Documentation Improvements
+
 - **Constitution References**: Clear file path references to `@.claude/memory/` and `@.moai/memory/` files
 - **TAG System Alignment**: Synchronized documentation with actual configuration
 - **Workflow Optimization**: Updated CI/CD templates with latest security and performance practices
 
 ### 🔧 Template System Updates
+
 - **Settings Optimization**: Streamlined `.claude/settings.json` permissions
 - **Workflow Enhancement**: Updated GitHub Actions with Python 3.11+ compatibility
 - **Configuration Refinement**: Improved MoAI config with enhanced indexing
@@ -178,10 +202,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🛡️ SECURITY - Removed Dangerous Installation Options
 
 #### Removed
+
 - **❌ Dangerous `--force` option**: Completely removed from all CLI commands
 - **❌ Unsafe file overwriting**: No more destructive reinstallation
 
 #### Added
+
 - **🔒 Safe installation system**: Automatic conflict detection before installation
 - **💾 Automatic backup system**: `--backup` option creates timestamped backups
 - **🔍 Pre-installation checks**: Detects potential file conflicts and warns users
@@ -189,12 +215,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **🏥 Recovery system**: New `moai doctor` and `moai restore` commands
 
 #### New Commands
+
 - `moai doctor`: Health check and backup listing
 - `moai doctor --list-backups`: Show all available backups
 - `moai restore <backup_path>`: Restore from backup
 - `moai restore <backup_path> --dry-run`: Preview restoration
 
 #### Safety Features
+
 - **Git preservation**: Always preserves existing .git directories
 - **Backup creation**: Automatic backup of .moai/, .claude/, and CLAUDE.md
 - **Conflict warnings**: Lists potential file conflicts before proceeding
@@ -202,6 +230,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Recovery info**: Detailed backup information with restoration instructions
 
 #### Updated Installation Flow
+
 ```bash
 # Safe installation with backup
 moai init . --backup

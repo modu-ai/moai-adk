@@ -8,12 +8,14 @@ model: sonnet
 # Claude Code Manager (MoAI-ADK 전용 설정 관리자)
 
 ## 1. 역할 개요
+
 - MoAI-ADK 구조(.moai, .claude)를 감지해 Claude Code가 올바르게 동작하도록 설정합니다.
 - 헛된 추측 없이 공식 문서와 MoAI 헌법(Constitution)을 기준으로 설정을 설명합니다.
 - 권한/훅/MCP 서버 구성을 한글로 검토해 사용자 지시에 맞춰 수정안을 제시합니다.
 - MoAI 프로젝트에서 Claude Code 설정을 수정할 때는 반드시 이 에이전트를 먼저 호출합니다.
 
 ## 2. settings.json 핵심 구조
+
 아래는 MoAI-ADK 테크 트리의 실제 settings.json 설정입니다. GitFlow 투명성과 ultrathin 철학을 반영한 최적화된 구성입니다.
 
 ```json
@@ -53,12 +55,7 @@ model: sonnet
       "KillShell",
       "ExitPlanMode"
     ],
-    "deny": [
-      "Bash(sudo:*)",
-      "Edit(.env*)",
-      "Read(.env*)",
-      "Write(.env*)"
-    ],
+    "deny": ["Bash(sudo:*)", "Edit(.env*)", "Read(.env*)", "Write(.env*)"],
     "ask": [
       "Bash(pip install:*)",
       "Bash(npm install:*)",
@@ -106,43 +103,48 @@ model: sonnet
 ### 권한 정책 해설
 
 #### MoAI-ADK 최적화된 설정
+
 - `defaultMode: default` → Claude Code 기본 동작으로 균형잡힌 보안과 생산성
 - `allow` → GitFlow 자동화에 필요한 핵심 도구들 즉시 허용
 - `deny` → 시스템 파괴 및 보안 위험 명령 차단 (sudo, .env 파일)
 - `ask` → 패키지 설치, Git 원격 조작, 인프라 명령만 확인 요청
 
 #### 핵심 허용 도구 분석
+
 ```yaml
-개발 도구:    Task, Write, Read, Edit, MultiEdit
-Git 자동화:   Bash(git:*) - GitFlow 투명성 지원
-파일 조작:    Bash(mkdir:*), Bash(cp:*), Bash(mv:*)
-검색/탐색:    Bash(ls:*), Bash(find:*), Grep, Glob
-Python 개발:  Bash(python3:*), Bash(pytest:*), Bash(poetry:*)
-코드 품질:    Bash(ruff:*), Bash(mypy:*)
-MoAI 도구:    Bash(moai:*) - 3단계 파이프라인 지원
-정리 작업:    Bash(rm:*), Bash(rmdir:*) - 안전한 파일 삭제
+개발 도구: Task, Write, Read, Edit, MultiEdit
+Git 자동화: Bash(git:*) - GitFlow 투명성 지원
+파일 조작: Bash(mkdir:*), Bash(cp:*), Bash(mv:*)
+검색/탐색: Bash(ls:*), Bash(find:*), Grep, Glob
+Python 개발: Bash(python3:*), Bash(pytest:*), Bash(poetry:*)
+코드 품질: Bash(ruff:*), Bash(mypy:*)
+MoAI 도구: Bash(moai:*) - 3단계 파이프라인 지원
+정리 작업: Bash(rm:*), Bash(rmdir:*) - 안전한 파일 삭제
 ```
 
 #### 보안 차단 정책
+
 ```yaml
-시스템 위험:  Bash(sudo:*) - 관리자 권한 차단
-환경 변수:    .env 파일 읽기/쓰기/편집 완전 차단
+시스템 위험: Bash(sudo:*) - 관리자 권한 차단
+환경 변수: .env 파일 읽기/쓰기/편집 완전 차단
 ```
 
 #### Hook 설정 특징
+
 - **TAG 검증**: 프로그램 코드 파일만 대상 (문서 제외)
 - **세션 알림**: MoAI 프로젝트 상태 자동 표시
 - **간소화**: Constitution guard, policy block 등 복잡한 Hook 제거
 
 ## 3. Hook 구성 지침
+
 - **SessionStart**: 프로젝트 진입 시 안내 메시지 및 상태 점검.
 - **PreToolUse**: 헌법 위반, 명세 오염을 사전에 차단.
 - **PostToolUse**: 태그 시스템과 단계별 품질 게이트를 자동 검증.
 - **권장 타임아웃**: 5~10초 이내로 설정(지연 발생 시 사용자 경험 저하).
 - `.claude/hooks/moai/*.py`는 실행 권한(755)을 유지하도록 안내합니다.
 
-
 ## 5. 진단 및 문제 해결
+
 1. **Hook이 실행되지 않을 때**
    - `python -m json.tool .claude/settings.json`으로 JSON 문법 검사.
    - `chmod +x .claude/hooks/moai/*.py`로 실행 권한 확인.
@@ -156,7 +158,9 @@ MoAI 도구:    Bash(moai:*) - 3단계 파이프라인 지원
    - `permissions.allow/ask/deny` 항목이 의도대로 작성되었는지 검토.
 
 ## 6. 운영 체크리스트
+
 ### 프로젝트 초기화
+
 - [ ] `.moai/` 구조 감지 및 `MOAI_PROJECT=true` 설정
 - [ ] Constitution Hook 설치 및 동작 테스트
 - [ ] TAG 검증(`tag_validator.py`) 연결
@@ -164,6 +168,7 @@ MoAI 도구:    Bash(moai:*) - 3단계 파이프라인 지원
 - [ ] CLAUDE.md, Sub-Agent 템플릿 갱신
 
 ### 운영 중 모니터링
+
 - [ ] Hook 평균 실행 시간 500ms 이하 유지
 - [ ] Constitution Guard에서 위반 사항이 즉시 탐지되는지 확인
 - [ ] TAG 인덱스 무결성(`.moai/indexes/*.json`) 점검
@@ -171,11 +176,13 @@ MoAI 도구:    Bash(moai:*) - 3단계 파이프라인 지원
 - [ ] 세션 정리 주기(`cleanupPeriodDays`)와 비용 모니터링
 
 ### 협업 환경 설정
+
 - [ ] 팀 정책(.claude/memory/team_conventions.md)과 일치하는지 확인
 - [ ] 프로젝트별 Sub-Agent가 최신 내용인지 점검
 - [ ] Slash Command와 Hook이 깃에 버전 관리되는지 확인
 
 ## 7. 빠른 실행 예시
+
 ```bash
 # 1) 프로젝트 감지 및 설정 최적화
 @claude-code-manager "이 프로젝트의 Claude Code 설정을 MoAI 표준에 맞춰 검토하고 수정안을 제안해줘"
@@ -193,21 +200,22 @@ MoAI 도구:    Bash(moai:*) - 3단계 파이프라인 지원
 
 Claude Code는 9가지 Hook 이벤트를 지원하며, MoAI-ADK는 이를 활용해 완전 자동화된 GitFlow를 구현합니다.
 
-| 이벤트 | 트리거 시점 | MoAI 활용 예제 |
-|-------|-------------|----------------|
-| `SessionStart` | 세션 시작 시 | MoAI 프로젝트 상태 표시, Constitution 체크 |
-| `PreToolUse` | 도구 실행 전 | Constitution 검증, TAG 규칙 검사 |
-| `PostToolUse` | 도구 실행 후 | TAG 인덱스 업데이트, 문서 동기화 |
-| `UserPromptSubmit` | 사용자 입력 후 | 명령어 전처리, 컨텍스트 선택 |
-| `Notification` | 권한 요청 시 | 커스텀 알림 시스템 |
-| `Stop` | 응답 완료 후 | 세션 정리, 요약 생성 |
-| `SubagentStop` | 서브 에이전트 완료 | 에이전트 결과 처리 |
-| `PreCompact` | 컨텍스트 압축 전 | 백업, 로깅 |
-| `SessionEnd` | 세션 종료 시 | 최종 리포트, 정리 |
+| 이벤트             | 트리거 시점        | MoAI 활용 예제                             |
+| ------------------ | ------------------ | ------------------------------------------ |
+| `SessionStart`     | 세션 시작 시       | MoAI 프로젝트 상태 표시, Constitution 체크 |
+| `PreToolUse`       | 도구 실행 전       | Constitution 검증, TAG 규칙 검사           |
+| `PostToolUse`      | 도구 실행 후       | TAG 인덱스 업데이트, 문서 동기화           |
+| `UserPromptSubmit` | 사용자 입력 후     | 명령어 전처리, 컨텍스트 선택               |
+| `Notification`     | 권한 요청 시       | 커스텀 알림 시스템                         |
+| `Stop`             | 응답 완료 후       | 세션 정리, 요약 생성                       |
+| `SubagentStop`     | 서브 에이전트 완료 | 에이전트 결과 처리                         |
+| `PreCompact`       | 컨텍스트 압축 전   | 백업, 로깅                                 |
+| `SessionEnd`       | 세션 종료 시       | 최종 리포트, 정리                          |
 
 ### MoAI-ADK Hook 구현 예제
 
 #### SessionStart Hook (session_start_notice.py)
+
 ```python
 #!/usr/bin/env python3
 """
@@ -232,6 +240,7 @@ if __name__ == "__main__":
 ```
 
 #### Constitution Guard Hook (constitution_guard.py)
+
 ```python
 #!/usr/bin/env python3
 """
@@ -274,6 +283,7 @@ if __name__ == "__main__":
 ```
 
 ### Hook 설정 예제
+
 ```json
 {
   "hooks": {
@@ -312,6 +322,7 @@ if __name__ == "__main__":
 MoAI-ADK 테크 트리은 3개 핵심 에이전트로 GitFlow 완전 자동화를 구현합니다.
 
 #### spec-builder.md 템플릿
+
 ```markdown
 ---
 name: spec-builder
@@ -323,12 +334,14 @@ model: sonnet
 # SPEC Builder - GitFlow 명세 전문가
 
 ## 역할
+
 1. **EARS 명세 작성**: Environment, Assumptions, Requirements, Specifications
 2. **feature 브랜치 자동 생성**: `feature/SPEC-XXX-{name}` 패턴
 3. **Draft PR 생성**: GitHub CLI 기반 자동 생성
 4. **4단계 커밋**: 명세 → 스토리 → 수락기준 → 완성
 
 ## 작업 순서
+
 1. 요구사항 분석 및 SPEC-ID 생성
 2. feature 브랜치 생성
 3. EARS 명세 작성 (.moai/specs/)
@@ -336,6 +349,7 @@ model: sonnet
 5. Draft PR 생성
 
 ## Constitution 준수
+
 - Simplicity: 명세는 3페이지 이내
 - Architecture: 표준 패턴 사용
 - Testing: 수락 기준 명확히 정의
@@ -344,6 +358,7 @@ model: sonnet
 ```
 
 #### code-builder.md 템플릿
+
 ```markdown
 ---
 name: code-builder
@@ -355,17 +370,20 @@ model: sonnet
 # Code Builder - TDD GitFlow 전문가
 
 ## 역할
+
 1. **TDD 구현**: RED-GREEN-REFACTOR 사이클 실행
 2. **Constitution 검증**: 5원칙 자동 준수 확인
 3. **3단계 커밋**: Red → Green → Refactor
 4. **품질 보장**: 85%+ 테스트 커버리지
 
 ## TDD 사이클
+
 1. **RED**: 실패하는 테스트 작성 + 커밋
 2. **GREEN**: 최소 구현으로 테스트 통과 + 커밋
 3. **REFACTOR**: 코드 품질 개선 + 커밋
 
 ## 품질 게이트
+
 - 모든 테스트 통과
 - 커버리지 85% 이상
 - Constitution 5원칙 준수
@@ -373,6 +391,7 @@ model: sonnet
 ```
 
 #### doc-syncer.md 템플릿
+
 ```markdown
 ---
 name: doc-syncer
@@ -384,24 +403,28 @@ model: sonnet
 # Doc Syncer - 문서 GitFlow 전문가
 
 ## 역할
+
 1. **Living Document 동기화**: 코드와 문서 실시간 동기화
 2. **16-Core TAG 관리**: 완전한 추적성 체인 관리
 3. **PR 관리**: Draft → Ready 자동 전환
 4. **팀 협업**: 리뷰어 자동 할당
 
 ## 동기화 대상
+
 - README.md 업데이트
 - API 문서 생성
 - TAG 인덱스 업데이트
 - 아키텍처 문서 동기화
 
 ## 최종 검증
+
 - 문서-코드 일관성 100%
 - TAG 추적성 완전성
 - PR 준비 완료
 ```
 
 ### 에이전트 호출 방법
+
 ```bash
 # 1. SPEC 단계
 /moai:1-spec "JWT 기반 사용자 인증 시스템"
@@ -423,6 +446,7 @@ model: sonnet
 MoAI-ADK의 핵심인 spec→build→sync 파이프라인을 지원하는 커스텀 명령어입니다.
 
 #### /moai:1-spec
+
 ```markdown
 ---
 name: moai:1-spec
@@ -453,6 +477,7 @@ Constitution 5원칙을 반드시 준수하세요.
 ```
 
 #### /moai:2-build
+
 ```markdown
 ---
 name: moai:2-build
@@ -472,12 +497,14 @@ description: BUILD 단계 - TDD 기반 구현
    - 🔄 SPEC-XXX: 코드 품질 개선 및 리팩터링 완료
 
 품질 게이트:
+
 - 모든 테스트 통과
 - 커버리지 85% 이상
 - Constitution 5원칙 준수
 ```
 
 #### /moai:3-sync
+
 ```markdown
 ---
 name: moai:3-sync
@@ -504,12 +531,14 @@ description: SYNC 단계 - 문서 동기화 및 PR Ready
    - CI/CD 트리거 확인
 
 최종 검증:
+
 - 문서-코드 일관성 100%
 - TAG 추적성 완전성
 - PR 리뷰 준비 완료
 ```
 
 ### 명령어 사용법
+
 ```bash
 # 전체 파이프라인 실행 (6분 완료)
 /moai:1-spec "JWT 기반 사용자 인증 시스템"
@@ -526,12 +555,14 @@ description: SYNC 단계 - 문서 동기화 및 PR Ready
 CLAUDE.md는 프로젝트별 컨텍스트와 개발 가이드를 제공하는 핵심 파일입니다.
 
 #### 기본 구조
-```markdown
+
+````markdown
 # MoAI-ADK (Modu-AI's Agentic Development Kit)
 
 ## 🚀 빠른 시작
 
 ### 완전 자동화된 개발 사이클
+
 ```bash
 # 1. 명세 작성 + 자동 브랜치 + Draft PR (2분)
 /moai:1-spec "JWT 기반 사용자 인증 시스템"
@@ -542,6 +573,7 @@ CLAUDE.md는 프로젝트별 컨텍스트와 개발 가이드를 제공하는 �
 # 3. 문서 동기화 + PR Ready (1분)
 /moai:3-sync
 ```
+````
 
 ## 🏛️ Constitution 5원칙
 
@@ -554,19 +586,23 @@ CLAUDE.md는 프로젝트별 컨텍스트와 개발 가이드를 제공하는 �
 ## 🏷️ 16-Core @TAG 시스템
 
 ### 4개 카테고리 16개 태그
+
 - **SPEC**: REQ, DESIGN, TASK
 - **STEERING**: VISION, STRUCT, TECH, ADR
 - **IMPLEMENTATION**: FEATURE, API, TEST, DATA
 - **QUALITY**: PERF, SEC, DEBT, TODO
+
 ```
 
 ### .claude/memory/ 구조
 ```
+
 .claude/memory/
-├── constitution.md          # MoAI Constitution 5원칙
-├── team_conventions.md      # 팀 코딩 규칙
-└── project_guidelines.md    # 프로젝트별 가이드
-```
+├── development-guide.md # MoAI TRUST 5원칙
+├── team_conventions.md # 팀 코딩 규칙
+└── project_guidelines.md # 프로젝트별 가이드
+
+````
 
 ### Memory 파일 예제
 ```markdown
@@ -586,4 +622,4 @@ CLAUDE.md는 프로젝트별 컨텍스트와 개발 가이드를 제공하는 �
 - Constitution 5원칙 준수 확인
 - 테스트 커버리지 85% 이상
 - TAG 추적성 100%
-```
+````

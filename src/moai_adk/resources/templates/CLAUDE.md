@@ -3,6 +3,7 @@
 **Spec-First TDD 개발 가이드**
 
 ## 핵심 철학
+
 - **Spec-First**: 명세 없이는 코드 없음
 - **TDD-First**: 테스트 없이는 구현 없음
 - **GitFlow 지원**: Git 작업을 가이드/스크립트로 보조
@@ -27,24 +28,22 @@
 
 ## 핵심 에이전트
 
-| 에이전트 | 역할 | 자동화 기능 |
-|----------|------|------------|
-| **spec-builder** | EARS 명세 작성 | 브랜치/PR 생성을 지원(환경 의존) |
-| **code-builder** | TDD 구현 | Red-Green-Refactor 커밋 패턴 권장 |
-| **doc-syncer** | 문서 동기화 | PR 상태 전환/라벨링 지원(환경 의존) |
+| 에이전트         | 역할           | 자동화 기능                         |
+| ---------------- | -------------- | ----------------------------------- |
+| **spec-builder** | EARS 명세 작성 | 브랜치/PR 생성을 지원(환경 의존)    |
+| **code-builder** | TDD 구현       | Red-Green-Refactor 커밋 패턴 권장   |
+| **doc-syncer**   | 문서 동기화    | PR 상태 전환/라벨링 지원(환경 의존) |
 
 ## TDD 커밋 단계(권장 패턴)
 
 **SPEC 단계(예시 4단계)**
+
 1. 명세 작성
 2. User Stories 추가
 3. 수락 기준 정의
 4. 명세 완성
 
-**BUILD 단계(예시 3단계)**
-5. RED: 실패 테스트 작성
-6. GREEN: 최소 구현
-7. REFACTOR: 품질 개선
+**BUILD 단계(예시 3단계)** 5. RED: 실패 테스트 작성 6. GREEN: 최소 구현 7. REFACTOR: 품질 개선
 
 ## 16-Core @TAG 시스템(추적성 강화 용도)
 
@@ -53,22 +52,24 @@
 ```
 
 **카테고리별 태그**
+
 - **SPEC**: REQ, DESIGN, TASK
 - **PROJECT**: VISION, STRUCT, TECH, ADR
 - **IMPLEMENTATION**: FEATURE, API, TEST, DATA
 - **QUALITY**: PERF, SEC, DEBT, TODO
 
-## Constitution 5원칙(목표/원칙)
+## TRUST 5원칙 (개발 가이드)
 
-1. **Simplicity**: 프로젝트 복잡도 ≤ 3
-2. **Architecture**: 라이브러리 기반 설계
-3. **Testing**: TDD 필수
-4. **Observability**: 구조화 로깅
-5. **Versioning**: 시맨틱 버전
+**T** - **Test First** (테스트 우선): 코드 전에 테스트를 작성하라
+**R** - **Readable** (읽기 쉽게): 미래의 나를 위해 명확하게 작성하라
+**U** - **Unified** (통합 설계): 계층을 나누고 책임을 분리하라
+**S** - **Secured** (안전하게): 로그를 남기고 검증하라
+**T** - **Trackable** (추적 가능): 버전과 태그로 히스토리를 관리하라
 
 ## 언어 자동 감지(시도)
 
 세션 시작 시 자동 감지되는 언어별 권장 도구:
+
 - **Python**: pytest, ruff, black
 - **JavaScript/TypeScript**: npm test, eslint, prettier
 - **Go**: go test, gofmt
@@ -104,12 +105,14 @@
 ## 코드 작성 규칙
 
 **크기 제한**
+
 - 파일 ≤ 300 LOC
 - 함수 ≤ 50 LOC
 - 매개변수 ≤ 5
 - 복잡도 ≤ 10
 
 **품질 원칙**
+
 - 명시적 코드 작성
 - 섣부른 추상화 금지
 - 의도를 드러내는 이름
@@ -119,6 +122,7 @@
 - 입력 검증
 
 **테스트 규칙**
+
 - 새 코드 = 새 테스트
 - 버그 수정 = 회귀 테스트
 - 테스트는 독립적, 결정적
@@ -126,18 +130,17 @@
 
 추가: 커버리지 목표는 프로젝트 설정에 따르며(예: 80~85%), 실제 수치는 측정 결과로만 보고한다.
 
-
 ## 메모리 전략
 
-MoAI-ADK는 **Constitution 5원칙**을 핵심 메모리로 사용합니다:
+MoAI-ADK는 **TRUST 5원칙**을 핵심 메모리로 사용합니다:
 
-- **Constitution**: @.moai/memory/constitution.md - 5원칙 + 16-Core TAG 시스템
+- **MoAI 개발 가이드**: @.moai/memory/development-guide.md - TRUST 원칙 + 16-Core TAG 시스템
 - **프로젝트 가이드**: @CLAUDE.md - 워크플로우 + 에이전트 시스템
 
 **원칙**:
 
-- Constitution 5원칙이 모든 개발 규칙을 정의
+- TRUST 5원칙이 모든 개발 규칙을 정의
 - CLAUDE.md가 실행 가이드 역할
-- 핵심 지침만 메모리에 저장 (단순성 원칙)
+- 핵심 지침만 메모리에 저장 (읽기 쉽은 원칙)
 - 세부사항은 문서 링크로 참조
 - 민감정보 저장 금지

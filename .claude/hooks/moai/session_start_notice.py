@@ -201,7 +201,7 @@ class SessionNotifier:
     
     def check_constitution_status(self) -> Dict[str, Any]:
         """Constitution 상태 확인"""
-        constitution_path = self.project_root / ".moai" / "memory" / "constitution.md"
+        constitution_path = self.project_root / "docs" / "development-guide.md"
         checklist_path = self.project_root / ".moai" / "memory" / "constitution_update_checklist.md"
         
         return {

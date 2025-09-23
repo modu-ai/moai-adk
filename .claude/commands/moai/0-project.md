@@ -34,8 +34,9 @@ allowed-tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
    - `moai init .` 처럼 기존 코드가 존재하면 소스/테스트/설정 파일 수, Git 히스토리, README/CHANGELOG 유무를 요약해 “레거시 도입” 후보로 제안합니다.
    - 감지 결과를 사용자에게 설명하고, 실제로 "새 프로젝트 설계를 시작할 것인지" vs "기존 코드 분석 후 갱신할 것인지" 확인합니다. 혼합 시나리오(예: 일부 모듈만 유지)면 사용자 결정을 우선합니다.
 
-- `which codex` / `codex --version` 등으로 Codex CLI 설치 여부를 확인하고, 미설치 시 `npm install -g @openai/codex` 또는 `brew install codex` 를 안내합니다(자동 설치 금지).
-- `which gemini` / `gemini --version` 등으로 Gemini CLI 설치 여부를 확인하고, 미설치 시 `npm install -g @google/gemini-cli` 또는 `brew install gemini-cli` 를 안내합니다(자동 설치 금지).
+- `which codex` / `codex --version` 등으로 Codex CLI 설치 여부를 확인하고, 미설치 시 공식 설치 가이드를 안내합니다(자동 설치 금지).
+- `which gemini` / `gemini --version` 등으로 Gemini CLI 설치 여부를 확인하고, 버전별 호환성을 체크합니다.
+- CLI 버전에 따른 모델 지원 상황(`gemini-2.5-pro`, `gemini-2.5-flash`)과 옵션 호환성을 확인합니다.
 - 외부 브레인스토밍에 활용할지 사용자에게 묻고, 원치 않으면 현재 설정을 유지합니다.
 - 브레인스토밍을 사용하기로 하면 `.moai/config.json` 의 `brainstorming.enabled` 값을 `true` 로, `providers` 배열에 항상 `claude` 를 포함한 뒤 필요에 따라 `codex`, `gemini` 를 추가합니다.
 

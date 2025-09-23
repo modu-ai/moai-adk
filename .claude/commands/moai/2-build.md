@@ -9,7 +9,7 @@ allowed-tools: Read, Write, Edit, MultiEdit, Bash(python3:*), Bash(pytest:*), Ta
 
 **TDD 구현 대상**: $ARGUMENTS
 
-code-builder 에이전트가 SPEC을 기반으로 Red-Green-Refactor 사이클과 Constitution 검증을 지원합니다.
+code-builder 에이전트가 SPEC을 기반으로 Red-Green-Refactor 사이클과 TRUST 원칙 검증을 지원합니다.
 
 ## 에이전트 협업 구조
 
@@ -54,7 +54,7 @@ code-builder 에이전트가 SPEC을 기반으로 Red-Green-Refactor 사이클�
 | RED      | 실패 테스트 작성       | 체크포인트 + RED 커밋      |
 | GREEN    | 최소 구현, 테스트 통과 | 체크포인트 + GREEN 커밋    |
 | REFACTOR | 품질 개선, 린터 실행   | 체크포인트 + REFACTOR 커밋 |
-| 마무리   | Constitution 검증      | 최종 동기화 및 커밋        |
+| 마무리   | TRUST 원칙 검증        | 최종 동기화 및 커밋        |
 
 ## TDD 단계별 가이드
 
@@ -70,7 +70,7 @@ code-builder 에이전트가 SPEC을 기반으로 Red-Green-Refactor 사이클�
 
 - TDD Red-Green-Refactor 코드 구현
 - 테스트 작성 및 실행
-- Constitution 5원칙 검증
+- TRUST 5원칙 검증
 - 코드 품질 체크
 - 언어별 린터/포매터 실행
 

@@ -105,13 +105,13 @@ def validate_project_structure(project_path: Path) -> Dict[str, bool]:
     # Check for essential hook files
     if moai_hooks_dir.exists():
         results["session_start_hook"] = (moai_hooks_dir / "session_start_notice.py").exists()
-        results["constitution_guard_hook"] = (moai_hooks_dir / "constitution_guard.py").exists()
+        results["trust_principles_guard_hook"] = (moai_hooks_dir / "constitution_guard.py").exists()
         results["policy_block_hook"] = (moai_hooks_dir / "policy_block.py").exists()
         results["tag_validator_hook"] = (moai_hooks_dir / "tag_validator.py").exists()
         results["post_stage_guard_hook"] = (moai_hooks_dir / "post_stage_guard.py").exists()
     else:
         results["session_start_hook"] = False
-        results["constitution_guard_hook"] = False
+        results["trust_principles_guard_hook"] = False
         results["policy_block_hook"] = False
         results["tag_validator_hook"] = False
         results["post_stage_guard_hook"] = False
@@ -213,7 +213,7 @@ def validate_moai_structure(project_path: Path) -> Dict[str, bool]:
         
         # Essential MoAI files
         results["moai_config"] = (moai_dir / "config.json").exists()
-        results["constitution"] = (moai_dir / "memory" / "constitution.md").exists()
+        results["constitution"] = (moai_dir / "memory" / "development-guide.md").exists()
         
         # Steering documents
         steering_dir = moai_dir / "steering"
@@ -247,7 +247,7 @@ def validate_moai_structure(project_path: Path) -> Dict[str, bool]:
     return results
 
 
-def validate_constitution_compliance(project_path: Path) -> Dict[str, Dict]:
+def validate_trust_principles_compliance(project_path: Path) -> Dict[str, Dict]:
     """
     Validate project compliance with MoAI Constitution 5 principles.
     
@@ -463,7 +463,7 @@ def run_full_validation(project_path: Path, verbose: bool = False) -> Dict[str, 
         "environment": validate_environment() if verbose else True,
         "project_readiness": validate_project_readiness(project_path),
         "moai_structure": validate_moai_structure(project_path),
-        "constitution_compliance": validate_constitution_compliance(project_path)
+        "trust_principles_compliance": validate_trust_principles_compliance(project_path)
     }
     
     if verbose:
@@ -475,7 +475,7 @@ def run_full_validation(project_path: Path, verbose: bool = False) -> Dict[str, 
         print(f"  • MoAI 구조 완성도: {structure_score:.1f}%")
         
         # Constitution compliance
-        constitution = results["constitution_compliance"]
+        constitution = results["trust_principles_compliance"]
         compliant_count = sum(1 for p in constitution.values() if p["compliant"])
         print(f"  • Constitution 준수: {compliant_count}/5 원칙")
         

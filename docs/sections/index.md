@@ -103,7 +103,7 @@
 **키워드**: `templates`, `dynamic`, `template-engine`, `spec`, `steering`
 **난이도**: 🔴 Advanced
 
-### [15-constitution.md](15-constitution.md) - Constitution 거버넌스
+### [15-development-guide.md](15-development-guide.md) - Constitution 거버넌스
 **핵심 내용**: 프로젝트 거버넌스, Constitution 업데이트, 체크리스트, 품질 게이트
 **키워드**: `constitution`, `governance`, `quality-gate`, `checklist`
 **난이도**: 🔴 Advanced
@@ -138,7 +138,7 @@ python .moai/scripts/check-traceability.py --update
 
 ### 중요 파일 경로
 - **프로젝트 메모리**: `CLAUDE.md`
-- **Constitution**: `.moai/memory/constitution.md`
+- **Constitution**: `.moai/memory/development-guide.md`
 - **설정**: `.claude/settings.json`, `.moai/config.json`
 - **Git 스크립트**: `.moai/scripts/branch_manager.py`, `commit_helper.py`, `rollback.py`
 - **Hook 스크립트**: `.claude/hooks/moai/` (auto_checkpoint, file_watcher 등)

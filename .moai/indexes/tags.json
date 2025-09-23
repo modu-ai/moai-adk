@@ -5368,7 +5368,7 @@
       "CLAUDE.md",
       "docs/sections/12-tag-system.md",
       "src/moai_adk/resources/templates/.moai/config.json",
-      "src/moai_adk/resources/templates/.moai/memory/constitution.md",
+      ".moai/memory/development-guide.md",
       "src/moai_adk/resources/templates/CLAUDE.md"
     ],
     "DESIGN:JWT-001": [
@@ -5384,21 +5384,21 @@
       "src/moai_adk/resources/templates/CLAUDE.md"
     ],
     "DESIGN:TOKEN-SYSTEM-001": [
-      "src/moai_adk/resources/templates/.moai/memory/constitution.md"
+      ".moai/memory/development-guide.md"
     ],
     "TASK:AUTH-IMPL-001": [
-      "src/moai_adk/resources/templates/.moai/memory/constitution.md"
+      ".moai/memory/development-guide.md"
     ],
     "TEST:UNIT-AUTH-001": [
       "backup/templates_20250919_040650/.claude/agents/moai/doc-syncer.md",
       "docs/sections/12-tag-system.md",
-      "src/moai_adk/resources/templates/.moai/memory/constitution.md"
+      ".moai/memory/development-guide.md"
     ],
     "PERF:API-500MS": [
-      "src/moai_adk/resources/templates/.moai/memory/constitution.md"
+      ".moai/memory/development-guide.md"
     ],
     "SEC:XSS-HIGH": [
-      "src/moai_adk/resources/templates/.moai/memory/constitution.md"
+      ".moai/memory/development-guide.md"
     ],
     "REQ:USER-AUTH": [
       "backup/templates_20250919_040650/CLAUDE.md"

@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-MoAI-ADK Constitution 5원칙 검증 스크립트 v0.1.12
+MoAI-ADK TRUST 5원칙 검증 스크립트 v0.2.0
 
-Constitution 5원칙 준수 여부를 자동으로 검증합니다:
-1. Simplicity: 동시 활성 프로젝트 ≤ 3개
-2. Architecture: 모든 기능은 라이브러리로 구현
-3. Testing: TDD RED-GREEN-REFACTOR 강제
-4. Observability: 구조화된 로깅 시스템 필수
-5. Versioning: MAJOR.MINOR.BUILD 체계 준수
+TRUST 5원칙 준수 여부를 자동으로 검증합니다:
+T. Test First: 코드 전에 테스트를 작성
+R. Readable: 읽기 쉬운 코드 (복잡도 ≤ 5)
+U. Unified: 통합 설계와 계층 분리
+S. Secured: 안전한 로깅과 입력 검증
+T. Trackable: 추적 가능한 버전과 태그 관리
 
 사용법:
-    python scripts/check_constitution.py [--fix] [--verbose]
+    python scripts/check_trust_principles.py [--fix] [--verbose]
     
 옵션:
     --fix         자동 수정 가능한 위반사항 수정
@@ -28,19 +28,19 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
 import argparse
 
-class ConstitutionChecker:
-    """Constitution 5원칙 준수 여부 검증 클래스"""
+class TrustPrinciplesChecker:
+    """TRUST 5원칙 준수 여부 검증 클래스"""
     
     def __init__(self, project_root: Path, verbose: bool = False):
         self.project_root = project_root
         self.verbose = verbose
         self.moai_dir = project_root / ".moai"
         self.results = {
-            'simplicity': {'passed': False, 'score': 0, 'issues': []},
-            'architecture': {'passed': False, 'score': 0, 'issues': []},
-            'testing': {'passed': False, 'score': 0, 'issues': []},
-            'observability': {'passed': False, 'score': 0, 'issues': []},
-            'versioning': {'passed': False, 'score': 0, 'issues': []},
+            'test_first': {'passed': False, 'score': 0, 'issues': []},
+            'readable': {'passed': False, 'score': 0, 'issues': []},
+            'unified': {'passed': False, 'score': 0, 'issues': []},
+            'secured': {'passed': False, 'score': 0, 'issues': []},
+            'trackable': {'passed': False, 'score': 0, 'issues': []},
             'overall': {'passed': False, 'score': 0, 'compliance_level': ''}
         }
         

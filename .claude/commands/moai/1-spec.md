@@ -74,7 +74,7 @@ allowed-tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 
 - product/structure/tech 문서에 없는 정보는 새로 질문해 보완합니다.
 - Acceptance Criteria는 Given/When/Then 3단으로 최소 2개 이상 작성하도록 유도합니다.
-- Constitution 제1조 완화로 인해 모듈 수가 권장치(기본 3)를 초과하는 경우, 근거를 SPEC `context` 섹션에 함께 기록하세요.
+- TRUST 원칙 중 Readable(읽기 쉬움) 기준 완화로 인해 모듈 수가 권장치(기본 5)를 초과하는 경우, 근거를 SPEC `context` 섹션에 함께 기록하세요.
 
 ## 다음 단계
 

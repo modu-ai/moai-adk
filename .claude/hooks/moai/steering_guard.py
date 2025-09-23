@@ -35,7 +35,7 @@ def _show_session_notice() -> None:
 
     # 알림 표시
     print("🚀 MoAI-ADK 프로젝트가 감지되었습니다!", file=sys.stderr)
-    print("📖 개발 가이드: CLAUDE.md | 헌법: .moai/memory/constitution.md", file=sys.stderr)
+    print("📖 개발 가이드: CLAUDE.md | TRUST 원칙: .moai/memory/development-guide.md", file=sys.stderr)
     print("⚡ 워크플로우: /moai:1-spec → /moai:2-build → /moai:3-sync", file=sys.stderr)
     print("🔧 디버깅: /moai:4-debug | 설정 관리: @agent-cc-manager", file=sys.stderr)
     print("", file=sys.stderr)

@@ -281,7 +281,7 @@ moai init team-project --team
 
 - **System/Role**: 시니어 엔지니어 에이전트로 headless 모드 운영
 - **Method**: Meta‑Prompting, Tree of Thoughts, Self‑Consistency 방법론 적용
-- **CLI 통합**: `codex exec --model gpt-5-codex` 명령으로 구조화된 분석 수행
+- **CLI 통합**: `codex exec -m gpt-5-codex` 명령으로 구조화된 분석 수행 (자동화: `--full-auto` 플래그)
 - **Output**: 표준 출력에 Summary/Actions/Tests/Risks 섹션 헤더 명시
 - **설치 안내**: `npm install -g @openai/codex` 또는 `brew install codex` (자동 설치 금지)
 - **활성화 조건**: `.moai/config.json.brainstorming.providers` 에 `codex` 포함 시에만 호출
@@ -292,8 +292,9 @@ moai init team-project --team
 
 - **System/Role**: 시니어 엔지니어 에이전트로 headless 모드 운영
 - **Method**: Meta‑Prompting, Tree of Thoughts, Self‑Consistency 방법론 적용
-- **CLI 통합**: `gemini -m gemini-2.5-pro -p ... --output-format json` 명령 실행
+- **CLI 통합**: `gemini -m gemini-2.5-pro -p ... --output-format json` 명령 실행 (Fallback: `gemini-2.5-flash`)
 - **Output**: JSON 스키마 `{summary, actions[], tests[], risks[]}` 형태로 구조화
+- **버전 호환성**: CLI 버전별 자동 감지 및 적절한 모델/옵션 선택, 에러 시 자동 fallback
 - **설치 안내**: `npm install -g @google/gemini-cli` 또는 `brew install gemini-cli` (자동 설치 금지)
 - **활성화 조건**: `.moai/config.json.brainstorming.providers` 에 `gemini` 포함 시에만 호출
 
@@ -520,7 +521,7 @@ moai config --show
 2. **Personal 모드**: 제안 목록(예: SPEC-001~003)을 표시하고 사용자 승인 시 `.moai/specs/`에 일괄 생성한다.
 3. **Team 모드**: GitHub Issue(또는 Discussion)를 생성하고 라벨·담당자·프로젝트 보드와 연동한다.
 4. 수동 단일 SPEC이 필요할 때는 `/moai:1-spec "기능명"`을 사용하면 기존 방식으로 한 개만 생성한다.
-5. `.moai/config.json.brainstorming.enabled` 가 `true` 이면 project-manager가 설정한 `providers` 값에 따라 `codex-bridge` / `gemini-bridge` 에이전트가 headless 브레인스토밍 결과를 수집한다. (예: `Task: use codex-bridge to run "codex exec --model gpt-5-codex \"...\""`)
+5. `.moai/config.json.brainstorming.enabled` 가 `true` 이면 project-manager가 설정한 `providers` 값에 따라 `codex-bridge` / `gemini-bridge` 에이전트가 headless 브레인스토밍 결과를 수집한다. (예: `Task: use codex-bridge to run "codex exec -m gpt-5-codex \"...\""`)
 
 ---
 
@@ -959,7 +960,7 @@ You are a Git operations specialist managing mode-specific Git strategies.
 /moai:2-build all
 ```
 
-> ℹ️ `brainstorming.enabled` 가 `true` 이면, code-builder 는 `codex-bridge`(예: `Task: use codex-bridge to run "codex exec --model gpt-5-codex ..."`) 와 `gemini-bridge`(`Task: use gemini-bridge to run "gemini -m gemini-2.5-pro -p ... --output-format json"`) 로부터 제안을 수집해 Claude 출력과 비교한 뒤 최종 구현 방향을 확정합니다.
+> ℹ️ `brainstorming.enabled` 가 `true` 이면, code-builder 는 `codex-bridge`(예: `Task: use codex-bridge to run "codex exec -m gpt-5-codex ..."`) 와 `gemini-bridge`(`Task: use gemini-bridge to run "gemini -m gemini-2.5-pro -p ... --output-format json"`) 로부터 제안을 수집해 Claude 출력과 비교한 뒤 최종 구현 방향을 확정합니다.
 
 #### `/moai:3-sync` (문서 동기화)
 
@@ -1229,7 +1230,7 @@ MoAI-ADK 0.2.2는 **Claude Code 표준 준수**와 **모든 경로 검증 완료
 ├── .moai/                      # MoAI 시스템 코어
 │   ├── config.json            # 개인/팀 모드 설정
 │   ├── memory/                # Constitution 저장소
-│   │   └── constitution.md    # 5원칙 + 16-Core @TAG
+│   │   └── development-guide.md    # 5원칙 + 16-Core @TAG
 │   ├── project/               # 프로젝트 기본 문서 (init 시 빈 템플릿 복사)
 │   │   ├── product.md         # 제품 비전 – /moai:0-project 로 업데이트
 │   │   ├── structure.md       # 시스템 구조 – /moai:0-project 로 업데이트
@@ -1653,7 +1654,7 @@ echo "🎉 MoAI-ADK 복구 완료!"
 □ .moai/config.json
   - ☐ `brainstorming.enabled` / `brainstorming.providers`
 □ .moai/scripts/ (자동화 스크립트 모음)
-□ .moai/memory/constitution.md
+□ .moai/memory/development-guide.md
 ```
 
 **2. 실행 권한 검증**
@@ -1721,7 +1722,7 @@ check_executable() {
 echo "📁 1. 핵심 파일 존재 검증"
 check_file ".claude/settings.json"
 check_file ".moai/config.json"
-check_file ".moai/memory/constitution.md"
+check_file ".moai/memory/development-guide.md"
 check_file "CLAUDE.md"
 
 # 2. 명령어 파일 검증
@@ -1911,12 +1912,20 @@ MoAI-ADK 0.2.2는 **개인/팀 모드 통합 시스템**을 통한 **개발 방�
 ---
 
 **문서 버전**: 0.2.2-project-kickoff
-**마지막 업데이트**: 2025-09-23
+**마지막 업데이트**: 2025-09-24
 **작성자**: MoAI-ADK Development Team
 
 ---
 
 ## 🔄 Document Update History
+
+### 2025-09-24 - v0.2.2-cli-optimization-enhanced
+
+- **브리지 에이전트 CLI 최적화**: 공식 문서 규격 완전 준수 및 안정성 대폭 향상
+  - **Codex CLI**: `gpt-5-codex` 모델 확정, `--model` → `-m` 플래그 표준화, `--full-auto` 자동화 모드 추가
+  - **Gemini CLI**: `gemini-2.5-pro` 기본 + `gemini-2.5-flash` 지능형 fallback, 버전 호환성 로직 구현
+  - **에러 처리**: CLI 버전 차이 자동 대응, 실패 시 fallback 전략 및 상세 진단 정보 제공
+  - **0-project.md**: CLI 설치/버전 체크 로직 강화, 모델 지원 상황 확인 추가
 
 ### 2025-09-24 - v0.2.2-debug-system-enhanced
 
@@ -1924,10 +1933,11 @@ MoAI-ADK 0.2.2는 **개인/팀 모드 통합 시스템**을 통한 **개발 방�
   - 일반 오류 디버깅: 코드/Git/설정 오류 분석 및 해결책 제시
   - Constitution 위반 검사: 5원칙 준수도 체계적 검증
   - 구조화된 진단 출력: 문제→영향도→해결방안→후속작업 순서
-- **브리지 에이전트 템플릿 개선**: Meta‑Prompting/Tree of Thoughts/Self‑Consistency 방법론 적용
-  - codex-bridge: 표준 출력 기반 구조화된 결과 제공
-  - gemini-bridge: JSON 스키마 기반 구조화된 결과 제공
-  - System/Role 정의 및 headless 모드 최적화
+- **브리지 에이전트 CLI 최적화**: 공식 문서 규격 완전 준수 및 버전 호환성 강화
+  - **codex-bridge**: `gpt-5-codex` 모델 확정, `-m` 플래그 표준화, `--full-auto` 자동화 모드 추가
+  - **gemini-bridge**: `gemini-2.5-pro` 기본 + `gemini-2.5-flash` fallback, 버전별 호환성 로직 구현
+  - **에러 처리**: CLI 버전 차이 대응, 실패 시 자동 fallback 및 상세 진단 정보 제공
+  - Meta‑Prompting/Tree of Thoughts/Self‑Consistency 방법론 적용, headless 모드 최적화
 - **project-manager 자동화 강화**: 레거시 프로젝트 분석 시스템 구현
   - 자동 코드베이스 분석: 구조 스캔 + 기술 스택 감지
   - Gemini 연동 심화 분석: 브레인스토밍 설정 시 구조적 분석 수행
