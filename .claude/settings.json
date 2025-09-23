@@ -22,7 +22,6 @@
         "Bash(gh pr view:*)"
     ],
     "ask": [
-        "WebFetch(*)",              // 외부 페치 전 승인
         "Bash(git push:*)",
         "Bash(gh pr merge:*)"
     ],
