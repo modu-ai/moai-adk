@@ -97,16 +97,21 @@ class CheckpointSystem:
             if len(message) > CHECKPOINT_MESSAGE_MAX_LENGTH:
                 message = message[:CHECKPOINT_MESSAGE_MAX_LENGTH - 3] + "..."
 
-            if not self.git.has_uncommitted_changes():
-                logger.info("변경사항이 없어 빈 체크포인트를 생성합니다.")
+            has_changes = self.git.has_uncommitted_changes()
+            if not has_changes:
+                logger.info("변경사항이 없어 현재 HEAD에 태그만 생성합니다.")
 
-            self.git.stage_all_changes()
+            if has_changes:
+                self.git.stage_all_changes()
 
             timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
             tag_name = f"{CHECKPOINT_TAG_PREFIX}{timestamp}"
 
             commit_message = f"📍 {'Auto-' if is_auto else ''}Checkpoint: {message}"
-            commit_hash = self.git.commit(commit_message, allow_empty=True)
+            if has_changes:
+                commit_hash = self.git.commit(commit_message, allow_empty=False)
+            else:
+                commit_hash = self.git.run_command(["git", "rev-parse", "HEAD"]).stdout.strip()
             self.git.create_tag(tag_name, commit_message)
 
             checkpoint = CheckpointInfo(
@@ -288,6 +293,14 @@ class CheckpointSystem:
             created_date = datetime.fromisoformat(checkpoint.created_at)
             if created_date < cutoff_date and checkpoint.is_auto:
                 self.delete_checkpoint(checkpoint.tag)
+
+    def get_checkpoint_info(self, tag_or_index: str) -> Optional[CheckpointInfo]:
+        """태그 또는 인덱스로 체크포인트 정보 조회"""
+        try:
+            return self._find_checkpoint(tag_or_index)
+        except Exception as exc:
+            logger.error(f"체크포인트 조회 실패: {exc}")
+            return None
 
 
 def create_checkpoint(

@@ -3,14 +3,6 @@
     "@DATA:CONFIG-STRUCTURE-001": "@TECH:JSON-CONFIG-001",
     "@REQ:PROJECT-CONFIG-001": "@DESIGN:MOAI-CONFIG-001"
   },
-  "brainstorming": {
-    "enabled": true,
-    "providers": [
-      "claude",
-      "codex",
-      "gemini"
-    ]
-  },
   "constitution": {
     "enforce_tdd": true,
     "principles": {

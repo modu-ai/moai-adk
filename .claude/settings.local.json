@@ -1,28 +1,11 @@
 {
+  "outputStyle": "MoAI Mentor",
   "permissions": {
     "allow": [
-      "Bash(tree:*)",
-      "Bash(moai:*)",
-      "Bash(rm:*)",
-      "Bash(rmdir:*)",
-      "Bash(SPEC_ID=\"SPEC-003\")",
-      "Bash(FEATURE_NAME=\"package-optimization\")",
-      "Bash(echo \"Creating branch: $BRANCH_NAME\")",
-      "Bash(python -m pytest tests/package_optimization_system/ -v)",
-      "Bash(python -m pytest tests/package_optimization_system/unit/test_package_optimizer.py -v)",
-      "Bash(python -m pytest tests/package_optimization_system/unit/test_package_optimizer.py::TestPackageOptimizer::test_should_fail_gracefully_on_permission_error -v)",
-      "Bash(python -m pytest tests/package_optimization_system/unit/test_duplicate_remover.py -v)",
-      "Bash(python -m pytest tests/package_optimization_system/unit/test_duplicate_remover.py::TestDuplicateRemover::test_should_handle_permission_errors_gracefully -v)",
-      "Bash(python -m pytest tests/package_optimization_system/unit/test_metrics_tracker.py -v)",
-      "Bash(python -m pytest tests/package_optimization_system/integration/ -v)",
-      "Bash(for agent in claude-code-manager code-builder doc-syncer spec-builder)",
-      "Bash(diff:*)",
-      "Bash(done)",
-      "Bash(for style in audit beginner expert mentor study)",
-      "Bash(grep:*)"
+      "Bash(gemini:*)",
+      "Bash(codex:*)"
     ],
-    "deny": [],
-    "ask": []
-  },
-  "outputStyle": "MoAI Mentor"
+    "ask": [],
+    "deny": []
+  }
 }

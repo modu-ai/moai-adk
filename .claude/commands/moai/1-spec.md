@@ -44,13 +44,23 @@ allowed-tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 - **수동 생성**: 제목을 인수로 전달 → 1건만 생성, Acceptance 템플릿은 회신 후 보완
 - **보완 모드**: `SPEC-ID "메모"` 형식으로 전달 → 기존 SPEC 문서/Issue를 업데이트
 
-## 브레인스토밍(선택)
+## 브레인스토밍(선택) - 커맨드 레벨 오케스트레이션
 
-- `.moai/config.json.brainstorming.enabled` 가 `true` 이고 `providers` 배열이 비어 있지 않은 경우 다음 단계를 추가합니다.
-  1. `codex` 가 포함되어 있으면 `codex-bridge` 에이전트를 호출하여 `codex exec --model gpt-5-codex "..."` 형태의 headless 분석을 실행하고 대안 아이디어를 수집합니다. (예: `Task: use codex-bridge to run "codex exec --model gpt-5-codex \"Summarize design risks\""`)
-  2. `gemini` 가 포함되어 있으면 `gemini-bridge` 에이전트를 호출하여 `gemini -m gemini-2.5-pro -p "..." --output-format json` 명령을 실행하고 구조화된 제안을 수집합니다. (예: `Task: use gemini-bridge to run "gemini -m gemini-2.5-pro -p 'List alternative solution paths' --output-format json"`)
-  3. `claude` 는 기본 분석 경로로 유지하며, 외부 응답과 비교해 Self-Consistency/ToT/Meta-Prompting 절차로 최적안을 선정합니다.
-- 외부 브레인스토밍을 사용하지 않는 경우(기본값)에는 Claude Code만 활용합니다.
+- `.moai/config.json.brainstorming.enabled` 가 `true` 이고 `providers` 배열이 비어 있지 않은 경우 다음과 같이 `/moai:1-spec` 커맨드에서 오케스트레이션합니다:
+
+### 에이전트 호출 시퀀스
+
+1. **spec-builder 에이전트**: 기본 SPEC 생성
+2. **브레인스토밍 단계** (병렬 실행):
+   ```
+   Task: codex-bridge (설계 리스크 분석)
+   Task: gemini-bridge (대안 솔루션 경로 분석)
+   Task: codex-bridge (기술적 제약 검토)
+   (최대 10개 병렬 처리)
+   ```
+3. **spec-builder 재호출**: 브레인스토밍 결과 통합하여 최종 SPEC 완성
+
+- 외부 브레인스토밍을 사용하지 않는 경우(기본값)에는 spec-builder만 단일 실행합니다.
 
 ## 워크플로우 실행 순서
 

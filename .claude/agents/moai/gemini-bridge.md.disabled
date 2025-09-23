@@ -41,14 +41,14 @@ Work safely in the given repository context and produce concise, actionable outp
 
    ```bash
    # Primary: gemini-2.5-pro
-   gemini -m gemini-2.5-pro -p "$PROMPT" --output-format json
+   echo "$PROMPT" | gemini -m gemini-2.5-pro
 
    # Fallback: gemini-2.5-flash (성능 제한 시)
-   gemini -m gemini-2.5-flash -p "$PROMPT" --output-format json
+   echo "$PROMPT" | gemini -m gemini-2.5-flash
    ```
 
 6. **에러 처리**: 명령 실패 시 fallback 모델로 재시도하고, 최종 실패 시 상세한 에러 정보를 제공합니다.
-7. **결과 분석**: JSON 응답을 파싱하여 구조화된 형태로 요약합니다.
+7. **결과 분석**: 텍스트 응답을 파싱하여 구조화된 형태로 요약합니다.
 
 ## Deliverables (strict)
 
@@ -56,7 +56,7 @@ Work safely in the given repository context and produce concise, actionable outp
 - Actions: 적용 커밋/파일/함수 단위의 변경 요약(불릿)
 - Tests: 신규/수정 테스트 명세 또는 실행 결과 요약
 - Risks: 남은 리스크/추가 조사 항목
-- Output format: JSON 스키마: {summary, actions[], tests[], risks[]}
+- Output format: 구조화된 텍스트 형태: {summary, actions[], tests[], risks[]}
 - Avoid: 장황한 사유 노출, 비밀키 출력, 무관한 파일 편집
 
 ## ⚠️ 주의 사항
@@ -70,5 +70,5 @@ Work safely in the given repository context and produce concise, actionable outp
 
 - **모델 호환성**: `gemini-2.5-pro` 실패 시 `gemini-2.5-flash`로 자동 fallback
 - **명령 실패**: CLI 버전 불일치나 인증 문제 시 상세한 진단 정보 제공
-- **JSON 파싱 오류**: 응답 형식 오류 시 원시 텍스트 출력으로 대체
+- **응답 파싱 오류**: 응답 구조화 오류 시 원시 텍스트 출력으로 대체
 - **타임아웃 처리**: 긴 요청의 경우 적절한 타임아웃 설정 및 사용자 알림

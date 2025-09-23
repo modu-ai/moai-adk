@@ -81,25 +81,52 @@
       "Bash(pytest:*)",
       "Bash(ruff:*)",
       "Bash(black:*)",
+      "Bash(mypy:*)",
+      "Bash(bandit:*)",
+      "Bash(coverage:*)",
+      "Bash(pip:*)",
+      "Bash(poetry:*)",
+      "Bash(uv:*)",
       "Bash(npm:*)",
       "Bash(node:*)",
       "Bash(pnpm:*)",
       "Bash(moai:*)",
       "Bash(gh pr create:*)",
-      "Bash(gh pr view:*)"
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh repo view:*)",
+      "Bash(find:*)",
+      "Bash(mkdir:*)",
+      "Bash(touch:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(tree:*)",
+      "Bash(diff:*)",
+      "Bash(wc:*)",
+      "Bash(sort:*)",
+      "Bash(uniq:*)"
     ],
     "ask": [
       "Bash(git push:*)",
-      "Bash(gh pr merge:*)"
+      "Bash(git merge:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(pip install:*)",
+      "Bash(poetry add:*)",
+      "Bash(npm install:*)",
+      "Bash(rm:*)"
     ],
-    "defaultMode": "acceptEdits",
+    "defaultMode": "default",
     "deny": [
       "Read(./.env)",
       "Read(./.env.*)",
       "Read(./secrets/**)",
+      "Read(~/.ssh/**)",
       "Bash(sudo:*)",
       "Bash(rm -rf :*)",
-      "Bash(chmod -R 777 :*)"
+      "Bash(chmod -R 777 :*)",
+      "Bash(dd:*)",
+      "Bash(mkfs:*)",
+      "Bash(fdisk:*)"
     ]
   }
 }

@@ -38,15 +38,6 @@
 | **cc-manager**   | Claude Code 관리 | 설정 최적화/권한 문제 해결          |
 | **debug-helper** | 오류 진단        | 일반 오류 분석 + Constitution 검사  |
 
-### Awesome 전문 2개 (고급 기능 에이전트)
-
-| 에이전트          | 역할                                                       | 사용 CLI                                               |
-| ----------------- | ---------------------------------------------------------- | ------------------------------------------------------ |
-| **codex-bridge**  | Codex CLI headless 호출, 브레인스토밍/디버깅 아이디어 수집 | `codex exec --model gpt-5-codex`                       |
-| **gemini-bridge** | Gemini CLI headless 호출, 구조화된 분석/리뷰 결과 수집     | `gemini -m gemini-2.5-pro -p ... --output-format json` |
-
-`brainstorming.enabled = true` 에서만 브리지 에이전트가 호출되며, CLI 설치·로그인은 사용자 동의 하에 진행합니다.
-
 ## 디버깅 시스템
 
 ### `/moai:debug` 명령어
@@ -214,15 +205,21 @@ find . -name "*.py" -exec grep "pattern" {} \;
 
 ## 메모리 전략
 
-MoAI-ADK는 **TRUST 5원칙**을 핵심 메모리로 사용합니다:
+MoAI-ADK는 **TRUST 5원칙**과 **프로젝트 컨텍스트**를 핵심 메모리로 사용합니다:
+
+### 필수 메모리 파일들 (항상 로딩)
 
 - **MoAI 개발 가이드**: @.moai/memory/development-guide.md - TRUST 원칙 + 16-Core TAG 시스템
-- **프로젝트 가이드**: @CLAUDE.md - 워크플로우 + 에이전트 시스템
+- **프로젝트 컨텍스트**: moai/project/ 디렉토리 전체
+  - @.moai/project/product.md - 제품 정의 및 비즈니스 요구사항
+  - @.moai/project/structure.md - 아키텍처 및 구조 설계
+  - @.moai/project/tech.md - 기술 스택 및 개발 환경
 
-**원칙**:
+### 메모리 운영 원칙
 
 - TRUST 5원칙이 모든 개발 규칙을 정의
 - CLAUDE.md가 실행 가이드 역할
+- .moai/project/ 파일들이 프로젝트 컨텍스트 제공
 - 핵심 지침만 메모리에 저장 (읽기 쉬운 원칙)
 - 세부사항은 문서 링크로 참조
 - 민감정보 저장 금지

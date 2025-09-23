@@ -197,22 +197,10 @@ def write_sync_report(project_root: Path, report: str) -> Path:
 
 
 def update_doc_index_metadata(project_root: Path) -> None:
-    # 문서 인덱스 자동 업데이트 비활성화 - 수동 관리로 변경
-    # 사용자 매뉴얼(docs/sections/index.md)은 수동으로 관리
+    """문서 인덱스는 현재 수동으로 관리한다."""
+    # 동기화 헬퍼는 더 이상 docs/sections/index.md 를 자동 수정하지 않는다.
+    # (수동 유지보수 시 혼란을 방지하기 위해 의도적으로 비워둡니다.)
     return
-    today = datetime.now().date().isoformat()
-    updated = []
-    replaced = False
-    for line in lines:
-        if line.startswith("> **Last Updated**:"):
-            parts = line.split("|", 1)
-            suffix = f" | {parts[1].strip()}" if len(parts) > 1 else ""
-            updated.append(f"> **Last Updated**: {today}{suffix}")
-            replaced = True
-        else:
-            updated.append(line)
-    if replaced:
-        index_path.write_text("\n".join(updated) + "\n", encoding="utf-8")
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="MoAI 문서/태그 동기화 헬퍼")

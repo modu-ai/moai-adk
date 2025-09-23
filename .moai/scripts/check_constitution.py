@@ -247,7 +247,7 @@ def main():
 
     args = parser.parse_args()
 
-    checker = ConstitutionChecker(args.project_root, strict=args.strict)
+    checker = TrustPrinciplesChecker(args.project_root, strict=args.strict)
     passed, total = checker.run_verification()
 
     return checker.generate_report(passed, total)

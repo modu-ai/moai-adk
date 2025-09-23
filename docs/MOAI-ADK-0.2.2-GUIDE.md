@@ -281,7 +281,7 @@ moai init team-project --team
 
 - **System/Role**: 시니어 엔지니어 에이전트로 headless 모드 운영
 - **Method**: Meta‑Prompting, Tree of Thoughts, Self‑Consistency 방법론 적용
-- **CLI 통합**: `codex exec -m gpt-5-codex` 명령으로 구조화된 분석 수행 (자동화: `--full-auto` 플래그)
+- **CLI 통합**: Codex CLI를 통한 구조화된 분석 수행
 - **Output**: 표준 출력에 Summary/Actions/Tests/Risks 섹션 헤더 명시
 - **설치 안내**: `npm install -g @openai/codex` 또는 `brew install codex` (자동 설치 금지)
 - **활성화 조건**: `.moai/config.json.brainstorming.providers` 에 `codex` 포함 시에만 호출
@@ -960,7 +960,7 @@ You are a Git operations specialist managing mode-specific Git strategies.
 /moai:2-build all
 ```
 
-> ℹ️ `brainstorming.enabled` 가 `true` 이면, code-builder 는 `codex-bridge`(예: `Task: use codex-bridge to run "codex exec -m gpt-5-codex ..."`) 와 `gemini-bridge`(`Task: use gemini-bridge to run "gemini -m gemini-2.5-pro -p ... --output-format json"`) 로부터 제안을 수집해 Claude 출력과 비교한 뒤 최종 구현 방향을 확정합니다.
+> ℹ️ `brainstorming.enabled` 가 `true` 이면, `/moai:2-build` 커맨드에서 code-builder와 브리지 에이전트들을 오케스트레이션하여 Claude 출력과 비교한 뒤 최종 구현 방향을 확정합니다.
 
 #### `/moai:3-sync` (문서 동기화)
 
@@ -1258,7 +1258,7 @@ class GitWorkflow:
 # 🗑️ 정리된 파일들 (v0.2.2+)
 ❌ cleanup_inappropriate_docs.py  # 미사용 스크립트 제거
 ❌ detect_language.py             # 미사용 스크립트 제거
-❌ checkpoint_watcher.py          # 중복 기능 제거 (checkpoint_system.py로 통합)
+❌ checkpoint_watcher.py          # 통합 체크포인트 시스템으로 통합 (checkpoint_system.py)
 ```
 
 이를 통해 **더 깔끔하고 유지보수하기 쉬운 코드베이스**를 구축했습니다.
@@ -1605,13 +1605,13 @@ cat .moai/config.json
 grep -A5 "personal" .moai/config.json
 # auto_checkpoint: true 확인
 
-# 2. 파일 감시 시스템 상태 확인
-python .moai/scripts/checkpoint_watcher.py status
-# watchdog 미설치 오류가 나오면 `pip install watchdog` 후 재시작
+# 2. 통합 체크포인트 시스템 상태 확인
+python .moai/scripts/checkpoint_manager.py list 1
+# 출력에 "체크포인트 목록"이 나오면 정상 작동
 
-# 2-1. 실행 중이 아니면 수동으로 기동
-python .moai/scripts/checkpoint_watcher.py start
-# 또는 한 번만 실행: python .moai/scripts/checkpoint_watcher.py once
+# 2-1. 세션 시작 시 워처 상태 확인
+# ✅ 통합 체크포인트 시스템 사용 가능  ← 정상
+# ℹ️ 워처 상태 확인 필요             ← 문제 있음 (이제 해결됨)
 
 # 3. 수동 체크포인트 테스트
 /moai:git:checkpoint "테스트 체크포인트"

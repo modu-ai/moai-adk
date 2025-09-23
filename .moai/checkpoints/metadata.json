@@ -17,6 +17,14 @@
       "created_at": "2025-09-23T18:51:02.330129+00:00",
       "file_count": 228,
       "is_auto": true
+    },
+    {
+      "tag": "moai_cp/20250923_185753",
+      "commit_hash": "997db1d850e85e643fd1602fc2e713a7e91857f1",
+      "message": "Auto checkpoint",
+      "created_at": "2025-09-23T18:57:53.737848+00:00",
+      "file_count": 228,
+      "is_auto": true
     }
   ],
   "rollback_history": []

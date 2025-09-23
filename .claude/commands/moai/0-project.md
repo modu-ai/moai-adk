@@ -9,36 +9,46 @@ allowed-tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 
 ## 기능
 
-- `.moai/project/{product,structure,tech}.md`를 대화형 Q&A로 생성·갱신합니다.
+- `.moai/project/{product,structure,tech}.md`를 **간결하고 실용적인 템플릿**으로 생성·갱신합니다.
 - 완료 후 CLAUDE.md의 `@.moai/project/*` 임포트를 통해 메모리에 자동 반영됩니다.
 
 ## 사용법
 
-- Claude Code 콘솔에서 moai:0-project 명령을 실행해 프로젝트 킥오프 인터뷰를 시작합니다.
+```bash
+/moai:0-project                    # 프로젝트 문서 생성
+/moai:0-project update            # 기존 설정 재조정
+```
+
+### 권한 및 설정
+
 - `.moai/project` 경로는 Guard가 승인하므로 별도의 스크립트 실행이나 권한 토큰이 필요하지 않습니다.
-- 프로젝트 이름을 명시하려면 moai:0-project 뒤에 원하는 이름을 덧붙입니다. 지정하지 않으면 현재 디렉터리명 또는 `.moai/config.json` 의 기존 이름을 유지합니다.
-- 설정을 다시 조정하고 싶다면 `/moai:0-project update`로 재실행하여 인터뷰를 다시 진행합니다. 이 과정에서 개인/팀 모드, 출력 스타일, 외부 브레인스토밍 옵션도 함께 확인·수정할 수 있습니다.
+- 프로젝트 이름을 명시하려면 moai:0-project 뒤에 원하는 이름을 덧붙입니다.
+- 개인/팀 모드, 출력 스타일을 함께 확인·수정할 수 있습니다.
 
-## 에이전트 협업 구조
+## 에이전트 오케스트레이션 구조
 
-- **1단계**: `project-manager` 에이전트가 프로젝트 유형 감지, 인터뷰 진행, 문서/설정 갱신을 전담합니다.
-- **2단계**: `cc-manager` 에이전트가 Guard/훅/권한 상태를 진단하고 Claude Code 환경 최적화를 수행합니다.
-- **단일 책임 원칙**: 각 에이전트는 고유 업무만 수행하며, Git 작업은 별도 명령어에서 `git-manager`가 전담합니다.
-- **순차 실행**: project-manager → cc-manager 순서로 실행하여 의존성 문제를 방지합니다.
-- **외부 브레인스토밍(선택)**: 설정이 활성화된 경우, 후속 커맨드에서 `codex-bridge`/`gemini-bridge` 에이전트가 호출됩니다.
+**⚡ 중요 원칙**: 모든 에이전트 호출은 `/moai:0-project` 커맨드 레벨에서 오케스트레이션됩니다.
+
+### 기본 실행 시퀀스
+
+1. **프로젝트 분석 단계**: `Task: project-manager`
+   - 프로젝트 유형 감지, 기본 인터뷰 진행
+   - 기본적인 product/structure/tech 문서 초안 생성
+
+2. **환경 최적화**: `Task: cc-manager`
+   - Claude Code 환경 점검 및 최적화
+
+### 병렬 처리 최적화
+
+- **문서 생성**: product/structure/tech 독립 작성 가능
+- **태그 처리**: 필요한 TAG 시스템 적용을 병렬로 수행
 
 ## 진행 순서
 
-0. **프로젝트 유형 감지 & 외부 AI 확인**
-   - `moai init project-name` 으로 생성된 신규 폴더라면 대부분 비어 있으므로 자동으로 “신규(그린필드)” 후보로 분류합니다.
-   - `moai init .` 처럼 기존 코드가 존재하면 소스/테스트/설정 파일 수, Git 히스토리, README/CHANGELOG 유무를 요약해 “레거시 도입” 후보로 제안합니다.
-   - 감지 결과를 사용자에게 설명하고, 실제로 "새 프로젝트 설계를 시작할 것인지" vs "기존 코드 분석 후 갱신할 것인지" 확인합니다. 혼합 시나리오(예: 일부 모듈만 유지)면 사용자 결정을 우선합니다.
-
-- `which codex` / `codex --version` 등으로 Codex CLI 설치 여부를 확인하고, 미설치 시 공식 설치 가이드를 안내합니다(자동 설치 금지).
-- `which gemini` / `gemini --version` 등으로 Gemini CLI 설치 여부를 확인하고, 버전별 호환성을 체크합니다.
-- CLI 버전에 따른 모델 지원 상황(`gemini-2.5-pro`, `gemini-2.5-flash`)과 옵션 호환성을 확인합니다.
-- 외부 브레인스토밍에 활용할지 사용자에게 묻고, 원치 않으면 현재 설정을 유지합니다.
-- 브레인스토밍을 사용하기로 하면 `.moai/config.json` 의 `brainstorming.enabled` 값을 `true` 로, `providers` 배열에 항상 `claude` 를 포함한 뒤 필요에 따라 `codex`, `gemini` 를 추가합니다.
+0. **프로젝트 유형 감지**
+   - `moai init project-name` 으로 생성된 신규 폴더라면 대부분 비어 있으므로 자동으로 "신규(그린필드)" 후보로 분류합니다.
+   - `moai init .` 처럼 기존 코드가 존재하면 소스/테스트/설정 파일 수, Git 히스토리, README/CHANGELOG 유무를 요약해 "레거시 도입" 후보로 제안합니다.
+   - 감지 결과를 사용자에게 설명하고, 실제로 "새 프로젝트 설계를 시작할 것인지" vs "기존 코드 분석 후 갱신할 것인지" 확인합니다.
 
 1. **상태 스냅샷 공유** – `.moai/project/*.md`, README, CLAUDE.md, 소스 디렉터리 구조와 모든 파일을 읽어 현재 문서·코드·테스트가 어떤 상태인지 요약합니다.
 2. **프로젝트 유형별 인터뷰 진행** – 확인된 유형(신규/레거시)에 따라 적절한 질문 트리를 선택하고 대화를 이끕니다.
@@ -101,9 +111,32 @@ allowed-tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 - `.moai/project/structure.md`
 - `.moai/project/tech.md`
 
+### 🏷️ TAG 시스템 적용 규칙
+
+**섹션별 @TAG 자동 생성**:
+
+- 미션/비전 → @VISION:MISSION-XXX, @VISION:STRATEGY-XXX
+- 사용자 정의 → @REQ:USER-XXX, @REQ:PERSONA-XXX
+- 문제 분석 → @REQ:PROBLEM-XXX, @DESIGN:SOLUTION-XXX
+- 아키텍처 → @STRUCT:ARCHITECTURE-XXX, @DESIGN:PATTERN-XXX
+- 기술 스택 → @TECH:STACK-XXX, @TECH:FRAMEWORK-XXX
+
+**레거시 프로젝트 태그**:
+
+- 기술 부채 → @DEBT:REFACTOR-XXX, @DEBT:TEST-XXX, @DEBT:MIGRATION-XXX
+- 해결 계획 → @TASK:MIGRATION-XXX, @TODO:SPEC-BACKLOG-XXX
+- 품질 개선 → @TODO:TEST-COVERAGE-XXX, @TODO:DOCS-SYNC-XXX
+
+### 📋 문서별 생성 전략
+
 - **신규 프로젝트**: mission/target/problem/strategy를 기반으로 한 완전한 설계 초안을 작성하고, 미정 항목은 @TODO로 표시합니다.
-- **레거시 프로젝트**: 기존 자산 요약 → 발견된 공백을 @DEBT/@TODO 로 표현 → 전환 계획을 @TASK/@DEBT 순으로 구조화합니다. 기존 문서와 충돌하는 경우 “Legacy Context” 섹션을 남겨 추후 비교가 가능하도록 합니다.
-- `.moai/project` 경로는 MoAI Guard가 자동 허용하므로 별도 토큰이나 스크립트가 필요하지 않습니다. 설정을 다시 조정하려면 `/moai:0-project update`로 인터뷰를 다시 진행하세요.
+- **레거시 프로젝트**: 기존 자산 요약 → 발견된 공백을 @DEBT/@TODO 로 표현 → 전환 계획을 @TASK/@DEBT 순으로 구조화합니다. 기존 문서와 충돌하는 경우 "Legacy Context" 섹션을 남겨 추후 비교가 가능하도록 합니다.
+- **하이브리드 프로젝트**: 신규 기능과 레거시 유지 영역을 명확히 구분하여 각각 다른 전략 적용
+
+### 참고사항
+
+- `.moai/project` 경로는 MoAI Guard가 자동 허용하므로 별도 토큰이나 스크립트가 필요하지 않습니다.
+- 설정을 다시 조정하려면 `/moai:0-project update`로 인터뷰를 다시 진행하세요.
 
 ## 다음 단계
 

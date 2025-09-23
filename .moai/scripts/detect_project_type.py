@@ -225,7 +225,7 @@ class ProjectTypeDetector:
                 continue
 
         # JavaScript/TypeScript API 패턴
-        for js_file in self.project_path.rglob("*.{js,ts}"):
+        for js_file in list(self.project_path.rglob("*.js")) + list(self.project_path.rglob("*.ts")):
             try:
                 content = js_file.read_text(encoding='utf-8', errors='ignore')
                 api_patterns = [

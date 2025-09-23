@@ -50,19 +50,19 @@ class SyncManager:
             # 현재 브랜치
             current_branch = subprocess.run(
                 ["git", "branch", "--show-current"],
-                capture_output=True, text=True, check=True
+                capture_output=True, text=True, check=True, cwd=self.project_root
             ).stdout.strip()
 
             print(f"📍 현재 브랜치: {current_branch}")
 
             # 원격 상태 업데이트
-            subprocess.run(["git", "fetch"], capture_output=True, check=True)
+            subprocess.run(["git", "fetch"], capture_output=True, check=True, cwd=self.project_root)
 
             # Push 필요한 커밋
             try:
                 ahead_result = subprocess.run(
                     ["git", "log", f"origin/{current_branch}..HEAD", "--oneline"],
-                    capture_output=True, text=True
+                    capture_output=True, text=True, cwd=self.project_root
                 )
                 ahead_count = len(ahead_result.stdout.strip().split('\n')) if ahead_result.stdout.strip() else 0
                 print(f"📤 Push 필요: {ahead_count}개 커밋")
@@ -73,7 +73,7 @@ class SyncManager:
             try:
                 behind_result = subprocess.run(
                     ["git", "log", f"HEAD..origin/{current_branch}", "--oneline"],
-                    capture_output=True, text=True
+                    capture_output=True, text=True, cwd=self.project_root
                 )
                 behind_count = len(behind_result.stdout.strip().split('\n')) if behind_result.stdout.strip() else 0
                 print(f"📥 Pull 필요: {behind_count}개 커밋")
@@ -97,17 +97,17 @@ class SyncManager:
         try:
             current_branch = subprocess.run(
                 ["git", "branch", "--show-current"],
-                capture_output=True, text=True, check=True
+                capture_output=True, text=True, check=True, cwd=self.project_root
             ).stdout.strip()
 
             if mode == "team":
                 # 팀 모드: 안전한 push
-                subprocess.run(["git", "push", "origin", current_branch], check=True)
+                subprocess.run(["git", "push", "origin", current_branch], check=True, cwd=self.project_root)
                 print("✅ 팀 모드 Push 완료")
             else:
                 # 개인 모드: 선택적 push
                 print("🎯 개인 모드: 백업이 필요한 경우만 Push")
-                subprocess.run(["git", "push", "origin", current_branch], check=True)
+                subprocess.run(["git", "push", "origin", current_branch], check=True, cwd=self.project_root)
                 print("✅ 개인 모드 Push 완료")
 
         except subprocess.CalledProcessError as e:
@@ -123,21 +123,21 @@ class SyncManager:
 
         try:
             # 변경사항이 있으면 stash
-            status_result = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
+            status_result = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, cwd=self.project_root)
             if status_result.stdout.strip():
                 print("💾 현재 변경사항을 stash에 저장")
-                subprocess.run(["git", "stash", "push", "-m", "auto-stash-before-pull"], check=True)
+                subprocess.run(["git", "stash", "push", "-m", "auto-stash-before-pull"], check=True, cwd=self.project_root)
                 need_stash_pop = True
             else:
                 need_stash_pop = False
 
             # Pull 실행
-            subprocess.run(["git", "pull"], check=True)
+            subprocess.run(["git", "pull"], check=True, cwd=self.project_root)
             print("✅ Pull 완료")
 
             # stash 복원
             if need_stash_pop:
-                subprocess.run(["git", "stash", "pop"], check=True)
+                subprocess.run(["git", "stash", "pop"], check=True, cwd=self.project_root)
                 print("✅ 변경사항 복원 완료")
 
         except subprocess.CalledProcessError as e:
