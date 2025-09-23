@@ -1,6 +1,6 @@
 # MoAI-ADK (Modu-AI's Agentic Development Kit)
 
-**Claude Code + Spec-First TDD 기반 완전 자동화 개발 프레임워크**
+**Claude Code + Spec-First TDD 기반 간결한 개발 프레임워크**
 
 [![Version](https://img.shields.io/github/v/release/modu-ai/moai-adk?label=release)](https://github.com/modu-ai/moai-adk/releases)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -62,12 +62,12 @@ flowchart LR
     C --> D[/moai:3-sync]
 ```
 
-| 단계 | 명령어            | 담당 에이전트   | 산출물                                                                        |
-| ---- | ----------------- | --------------- | ----------------------------------------------------------------------------- |
-| 0    | `/moai:0-project` | project-manager | `.moai/project/{product,structure,tech}.md`, CLAUDE 메모리, 브레인스토밍 설정 |
-| 1    | `/moai:1-spec`    | spec-builder    | Personal: 로컬 SPEC, Team: GitHub Issue + 브랜치 템플릿                       |
-| 2    | `/moai:2-build`   | code-builder    | TDD 구현, 체크포인트 or 7단계 커밋                                            |
-| 3    | `/moai:3-sync`    | doc-syncer      | Living Document 동기화, TAG 인덱스, PR Ready                                  |
+| 단계 | 명령어            | 담당 에이전트   | 산출물                                                     |
+| ---- | ----------------- | --------------- | ---------------------------------------------------------- |
+| 0    | `/moai:0-project` | project-manager | `.moai/project/{product,structure,tech}.md`, CLAUDE 메모리 |
+| 1    | `/moai:1-spec`    | spec-builder    | Personal: 로컬 SPEC, Team: GitHub Issue + 브랜치 템플릿    |
+| 2    | `/moai:2-build`   | code-builder    | TDD 구현, 체크포인트 or 7단계 커밋                         |
+| 3    | `/moai:3-sync`    | doc-syncer      | Living Document 동기화, TAG 인덱스, PR Ready               |
 
 보조 명령어: `/moai:git:checkpoint`, `/moai:git:rollback`, `/moai:git:branch`, `/moai:git:commit`, `/moai:git:sync`.
 
@@ -75,34 +75,14 @@ flowchart LR
 
 ## 🤖 핵심 에이전트 생태계
 
-| 에이전트            | 역할                                                  |
-| ------------------- | ----------------------------------------------------- |
-| **project-manager** | `/moai:0-project` 인터뷰, 설정/브레인스토밍 옵션 관리 |
-| **cc-manager**      | Claude Code 권한/훅/환경 최적화                       |
-| **spec-builder**    | 프로젝트 문서 기반 SPEC 자동 제안/작성                |
-| **code-builder**    | TDD RED→GREEN→REFACTOR 실행                           |
-| **doc-syncer**      | 문서/TAG/PR 동기화 및 보고                            |
-| **git-manager**     | 체크포인트/브랜치/커밋/동기화 전담                    |
-| **codex-bridge\***  | Codex CLI headless 실행(선택)                         |
-| **gemini-bridge\*** | Gemini CLI headless 실행(선택)                        |
-
-\* `.moai/config.json.brainstorming` 설정이 활성화되고 해당 CLI가 설치된 경우에만 사용됩니다.
-
-### 선택적 외부 브레인스토밍
-
-- `/moai:0-project` 인터뷰에서 project-manager가 Codex/Gemini CLI 설치 여부를 확인합니다.
-- 사용자가 원하면 설치/로그인 명령을 안내하고 `.moai/config.json.brainstorming` 에 `providers` 값을 기록합니다. 기본적으로 `"claude"` 를 유지한 뒤 필요에 따라 `"codex"`, `"gemini"` 를 추가합니다.
-- `/moai:1-spec`, `/moai:2-build`, `/moai:3-sync` 는 설정에 따라 `codex-bridge`, `gemini-bridge` 결과와 Claude 제안을 비교해 최적안을 도출합니다.
-- 설정을 사용하지 않거나 CLI가 설치되지 않은 경우에는 Claude Code만 사용합니다.
-
-```json
-{
-  "brainstorming": {
-    "enabled": true,
-    "providers": ["claude", "codex", "gemini"]
-  }
-}
-```
+| 에이전트            | 역할                                         |
+| ------------------- | -------------------------------------------- |
+| **project-manager** | `/moai:0-project` 인터뷰, 프로젝트 문서 생성 |
+| **cc-manager**      | Claude Code 권한/훅/환경 최적화              |
+| **spec-builder**    | 프로젝트 문서 기반 SPEC 자동 제안/작성       |
+| **code-builder**    | TDD RED→GREEN→REFACTOR 실행                  |
+| **doc-syncer**      | 문서/TAG/PR 동기화 및 보고                   |
+| **git-manager**     | 체크포인트/브랜치/커밋/동기화 전담           |
 
 필요 시 사용자 정의 에이전트를 `.claude/agents/` 아래 추가해 특정 도메인 업무를 확장할 수 있습니다.
 
