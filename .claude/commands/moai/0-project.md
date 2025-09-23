@@ -25,23 +25,23 @@ allowed-tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 - 프로젝트 이름을 명시하려면 moai:0-project 뒤에 원하는 이름을 덧붙입니다.
 - 개인/팀 모드, 출력 스타일을 함께 확인·수정할 수 있습니다.
 
-## 에이전트 오케스트레이션 구조
+## 실행 원칙
 
-**⚡ 중요 원칙**: 모든 에이전트 호출은 `/moai:0-project` 커맨드 레벨에서 오케스트레이션됩니다.
+**⚡ 핵심**: `/moai:0-project`는 project-manager 에이전트를 호출하여 프로젝트 문서를 생성합니다.
 
-### 기본 실행 시퀀스
+### 기본 동작
 
-1. **프로젝트 분석 단계**: `Task: project-manager`
-   - 프로젝트 유형 감지, 기본 인터뷰 진행
-   - 기본적인 product/structure/tech 문서 초안 생성
+1. **project-manager 에이전트 호출**: `Task: project-manager`로 프로젝트 분석 및 문서 작성 수행
+2. **파일 존재 확인**: `.moai/project/*.md` 파일 존재 여부 체크
+3. **신규/레거시 판단**: 기존 파일과 코드베이스 상태로 프로젝트 유형 결정
+4. **사용자 인터뷰**: 부족한 정보만 질문하여 효율적으로 진행
+5. **문서 생성/갱신**: product/structure/tech.md 생성 또는 업데이트
 
-2. **환경 최적화**: `Task: cc-manager`
-   - Claude Code 환경 점검 및 최적화
+### 금지 사항
 
-### 병렬 처리 최적화
-
-- **문서 생성**: product/structure/tech 독립 작성 가능
-- **태그 처리**: 필요한 TAG 시스템 적용을 병렬로 수행
+- ❌ `.claude/memory/` 디렉토리에 파일 생성
+- ❌ `.claude/commands/moai/*.json` 파일 생성
+- ❌ 기존 문서 불필요한 덮어쓰기
 
 ## 진행 순서
 

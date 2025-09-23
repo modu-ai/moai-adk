@@ -33,9 +33,44 @@
       "use_gitflow": true
     }
   },
+  "pipeline": {
+    "available_commands": [
+      "/moai:0-project",
+      "/moai:1-spec",
+      "/moai:2-build",
+      "/moai:3-sync",
+      "/moai:4-debug"
+    ],
+    "current_stage": "initialized"
+  },
   "project": {
+    "created_at": "2024-09-24T05:10:00Z",
     "description": "MoAI Agentic Development Kit",
+    "initialized": true,
     "mode": "personal",
-    "name": "MoAI-ADK"
+    "name": "MoAI-ADK",
+    "version": "0.2.2"
+  },
+  "tags": {
+    "auto_sync": true,
+    "categories": [
+      "REQ",
+      "DESIGN",
+      "TASK",
+      "TEST",
+      "VISION",
+      "STRUCT",
+      "TECH",
+      "ADR",
+      "FEATURE",
+      "API",
+      "UI",
+      "DATA",
+      "PERF",
+      "SEC",
+      "DOCS",
+      "TAG"
+    ],
+    "index_path": ".moai/indexes/tags.json"
   }
 }
