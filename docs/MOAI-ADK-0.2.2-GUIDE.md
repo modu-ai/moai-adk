@@ -1835,7 +1835,7 @@ done
 
 # 4. Hook 스크립트 검증
 echo "🪝 4. Hook 스크립트 검증"
-for hook in auto_checkpoint check_style file_watcher language_detector policy_block pre_write_guard run_tests_and_report session_start_notice steering_guard tag_validator; do
+for hook in auto_checkpoint check_style file_watcher policy_block pre_write_guard run_tests_and_report session_start_notice steering_guard tag_validator; do
     check_executable ".claude/hooks/moai/${hook}.py"
 done
 
