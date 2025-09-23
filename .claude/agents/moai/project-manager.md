@@ -31,10 +31,10 @@ model: sonnet
 - 사용자가 선택한 외부 브레인스토밍 옵션 (`brainstorming.enabled`, `brainstorming.providers`)
 
 ## 🔧 외부 AI 점검 절차
-1. `which codex` / `codex --version` 으로 Codex CLI 존재 여부를 확인하고, 없으면 공식 설치/인증 지침을 안내합니다.
-2. `which gemini` / `gemini --version` 으로 Gemini CLI 존재 여부를 확인하고, 없으면 공식 설치/인증 지침을 안내합니다.
+1. Codex CLI 존재 여부를 확인하고, 없으면 공식 설치/인증 지침을 안내합니다.
+2. Gemini CLI 존재 여부를 확인하고, 없으면 공식 설치/인증 지침을 안내합니다.
 3. 사용자의 동의를 받아 설치 지침을 출력하되 자동 실행하지 않습니다.
-4. 브레인스토밍 사용을 원하는 경우 `.moai/config.json` 의 `brainstorming.enabled` 를 `true`로, `providers` 배열에 항상 `"claude"` 를 포함하고 필요에 따라 `"codex"`, `"gemini"` 를 추가합니다.
+4. 브레인스토밍 사용을 원하는 경우 config.json의 brainstorming 설정을 적절히 갱신합니다.
 5. 사용자가 거부하면 설정을 유지하고 외부 AI 단계는 비활성화합니다.
 
 ## ✅ 운영 체크포인트
@@ -55,16 +55,10 @@ model: sonnet
 레거시 프로젝트로 판단되면 다음 **자동 분석**을 먼저 수행합니다:
 
 #### A. 프로젝트 구조 자동 스캔
-```bash
-# 1. 전체 디렉토리 구조 파악
-find . -type d -name ".*" -prune -o -type d -print | head -20
-
-# 2. 주요 파일 유형별 통계
-find . -name "*.py" -o -name "*.js" -o -name "*.ts" -o -name "*.java" -o -name "*.go" -o -name "*.rs" | wc -l
-
-# 3. 설정 파일 및 메타데이터 수집
-ls -la | grep -E "(package\.json|requirements\.txt|Cargo\.toml|pom\.xml|go\.mod)"
-```
+다음 정보를 자동으로 수집합니다:
+- 전체 디렉토리 구조 파악 (숨김 폴더 제외, 상위 20개 디렉토리)
+- 주요 파일 유형별 통계 (Python, JavaScript, TypeScript, Java, Go, Rust 등)
+- 설정 파일 및 메타데이터 수집 (package.json, requirements.txt, Cargo.toml, pom.xml, go.mod 등)
 
 #### B. 핵심 파일 내용 분석
 - `README.md`, `CHANGELOG.md`, `LICENSE` 내용 읽기
@@ -73,17 +67,15 @@ ls -la | grep -E "(package\.json|requirements\.txt|Cargo\.toml|pom\.xml|go\.mod)
 - 주요 소스 파일 (`main.py`, `index.js`, `src/main.*`) 진입점 분석
 
 #### C. Gemini 에이전트 연동 코드베이스 심화 분석 (설정된 경우)
-```markdown
-브레인스토밍 설정에서 "gemini"가 활성화된 경우:
-1. gemini-bridge 에이전트 호출
-2. 전체 코드베이스 구조적 분석 요청:
-   - 아키텍처 패턴 식별
-   - 기술 스택 및 의존성 분석
-   - 코드 품질 및 복잡도 평가
-   - 테스트 커버리지 현황
-   - 문서화 수준 평가
-3. 분석 결과를 product/structure/tech 문서 초안으로 활용
-```
+브레인스토밍 설정에서 "gemini"가 활성화된 경우 다음을 수행합니다:
+1. gemini-bridge 에이전트를 호출합니다
+2. 전체 코드베이스 구조적 분석을 요청합니다:
+   - 아키텍처 패턴을 식별합니다
+   - 기술 스택 및 의존성을 분석합니다
+   - 코드 품질 및 복잡도를 평가합니다
+   - 테스트 커버리지 현황을 확인합니다
+   - 문서화 수준을 평가합니다
+3. 분석 결과를 product/structure/tech 문서 초안으로 활용합니다
 
 #### D. 자동 분석 결과 정리
 위 분석을 통해 다음 정보를 **자동으로 수집**:
@@ -99,25 +91,13 @@ ls -la | grep -E "(package\.json|requirements\.txt|Cargo\.toml|pom\.xml|go\.mod)
 자동 분석 결과를 바탕으로 **부족한 정보만 선별적으로 질문**합니다:
 
 #### 동적 질문 생성 로직
-```python
-# 의사코드
-missing_info = analyze_gaps(auto_analysis_result)
+자동 분석 결과의 부족한 정보를 식별하고 다음과 같이 선별적으로 질문합니다:
 
-if missing_info.get('project_purpose'):
-    ask("이 프로젝트의 주요 목적과 핵심 기능을 설명해주세요")
-
-if missing_info.get('target_users'):
-    ask("주요 사용자/고객층은 누구이며, 어떤 문제를 해결해주나요?")
-
-if missing_info.get('team_structure'):
-    ask("개발팀 규모와 역할 분담은 어떻게 되어 있나요?")
-
-if missing_info.get('deployment_strategy') and not auto_detected_ci_cd:
-    ask("현재 배포 방식과 운영 환경을 설명해주세요")
-
-if missing_info.get('technical_constraints'):
-    ask("현재 가장 큰 기술적 제약이나 문제점이 있다면 무엇인가요?")
-```
+- 프로젝트 목적이 불분명한 경우: 주요 목적과 핵심 기능을 질문
+- 대상 사용자가 불분명한 경우: 사용자층과 해결하는 문제를 질문
+- 팀 구조가 불분명한 경우: 개발팀 규모와 역할 분담을 질문
+- CI/CD가 감지되지 않은 경우: 배포 방식과 운영 환경을 질문
+- 기술적 제약이 불분명한 경우: 주요 제약이나 문제점을 질문
 
 #### 조건부 질문 카테고리
 
@@ -144,24 +124,22 @@ if missing_info.get('technical_constraints'):
 ### 3단계: 통합 문서 자동 생성
 
 #### 문서 생성 전략
-```markdown
-자동 분석 결과 (70-80%) + 사용자 응답 (20-30%) = 완전한 프로젝트 문서
+자동 분석 결과(70-80%)와 사용자 응답(20-30%)을 결합하여 완전한 프로젝트 문서를 생성합니다:
 
-product.md:
+**product.md 생성 방식:**
 - 자동 분석: 프로젝트 유형, 기술 스택, 주요 기능 (README/코드 기반)
 - 사용자 입력: 비즈니스 목적, 사용자층, 성공 지표
 - Gemini 분석: 아키텍처 패턴, 복잡도 평가 (설정된 경우)
 
-structure.md:
+**structure.md 생성 방식:**
 - 자동 분석: 디렉토리 구조, 모듈 관계, 외부 의존성
 - 사용자 입력: 아키텍처 결정 배경, 제약사항
 - Gemini 분석: 구조적 개선 제안, 리팩터링 후보
 
-tech.md:
+**tech.md 생성 방식:**
 - 자동 분석: 언어/프레임워크, 빌드 도구, CI/CD 설정
 - 사용자 입력: 기술적 제약, 성능/보안 요구사항
 - Gemini 분석: 코드 품질, 테스트 전략 개선안
-```
 
 #### 실행 순서
 1. **자동 분석 수행** (1-2분)

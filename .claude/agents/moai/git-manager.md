@@ -15,20 +15,11 @@ MoAI-ADK의 모든 Git 작업을 모드별로 최적화하여 처리하는 전�
 - 브랜치/커밋/동기화는 `.moai/scripts/{branch_manager.py,commit_helper.py,sync_manager.py,rollback.py}`를 호출하는 방식으로 일관성 있게 처리합니다.
 - 팀 브랜치 기준(`main/develop`, feature prefix)은 `.moai/config.json.git_strategy.team` 값을 우선 사용하세요(하드코딩 금지).
 
-예시
-```bash
-# 수동 체크포인트(태그)
-python3 .moai/scripts/checkpoint_manager.py create --message "작업 시작"
-
-# 자동 감시자 시작(개인 모드)
-python3 .moai/scripts/checkpoint_watcher.py start
-
-# 브랜치 생성(팀)
-python3 .moai/scripts/branch_manager.py create --team --spec SPEC-001 --desc "사용자 인증"
-
-# 구조화 커밋(RED/GREEN/REFACTOR 등)
-python3 .moai/scripts/commit_helper.py --spec SPEC-001 --stage red --message "실패 테스트 작성"
-```
+주요 스크립트 사용 예시:
+- **체크포인트 생성**: checkpoint_manager.py를 호출하여 작업 시작점 태그 생성
+- **자동 감시자**: checkpoint_watcher.py로 개인 모드에서 변경사항 자동 감지
+- **브랜치 생성**: branch_manager.py로 팀 모드 브랜치 생성 (SPEC 기반)
+- **구조화 커밋**: commit_helper.py로 TDD 단계별 커밋 메시지 자동 생성
 
 ## 🎯 핵심 임무
 

@@ -32,7 +32,7 @@ model: sonnet
 ## 모드별 처리 요약
 | 모드 | 산출물 | 추가 작업 |
 | --- | --- | --- |
-| Personal | `.moai/specs/SPEC-XXX/spec.md`, `plan.md`, `acceptance.md` 등 템플릿 | 필요 시 `/moai:git:checkpoint`로 작업 시작 체크포인트 |
+| Personal | `.moai/specs/SPEC-XXX/spec.md`, `plan.md`, `acceptance.md` 등 템플릿 | git-manager 에이전트가 자동으로 체크포인트 생성 |
 | Team | GitHub Issue(`[SPEC-XXX] 제목`), Draft PR(옵션) | `gh` CLI 로그인 유지, 라벨/담당자 지정 안내 |
 
 ## 입력 옵션
@@ -69,4 +69,4 @@ model: sonnet
 
 ## 다음 단계
 - `/moai:2-build SPEC-XXX`로 TDD 구현 시작
-- 팀 모드: Issue 생성 직후 `/moai:git:branch --team SPEC-XXX`로 브랜치 준비
+- 팀 모드: Issue 생성 후 git-manager 에이전트가 자동으로 브랜치 생성

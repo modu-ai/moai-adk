@@ -85,17 +85,15 @@ model: sonnet
    - 테스트 케이스 설계
 
 2. **테스트 작성**
-   ```
-   테스트 구조 (언어 무관):
-   - 파일명: test_[feature] 또는 [feature]_test
-   - 클래스/그룹: TestFeatureName
-   - 메서드: test_should_[behavior]
+   테스트 구조 규칙 (언어 무관):
+   - 파일명: test_[feature] 또는 [feature]_test 패턴 사용
+   - 클래스/그룹: TestFeatureName 형태로 명명
+   - 메서드: test_should_[behavior] 형태로 작성
 
-   필수 테스트:
-   - Happy Path: 정상 동작
-   - Edge Cases: 경계 조건
-   - Error Cases: 오류 처리
-   ```
+   필수 테스트 케이스:
+   - Happy Path: 정상 동작 시나리오
+   - Edge Cases: 경계 조건 처리
+   - Error Cases: 오류 상황 처리
 
 3. **실패 확인**
    - 프로젝트 테스트 도구로 실행

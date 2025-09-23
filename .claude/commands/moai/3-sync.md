@@ -88,7 +88,7 @@ doc-syncer 에이전트가 Living Document 동기화와 16-Core @TAG 업데이�
 - GitHub CLI 연동 및 원격 동기화
 
 ### 🧪 개인 모드 (Personal)
-- 동기화 전/후 체크포인트 권장: `/moai:git:checkpoint "3-sync 시작"` → 동기화 → `/moai:git:checkpoint "3-sync 완료"`
+- git-manager 에이전트가 동기화 전/후 자동으로 체크포인트 생성
 - README·심층 문서·PR 본문 정리는 체크리스트에 따라 수동 마무리
 
 ### 🏢 팀 모드 (Team)

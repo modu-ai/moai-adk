@@ -27,7 +27,7 @@
 
 ## 핵심 에이전트
 
-### MoAI 핵심 4개 (워크플로우 에이전트)
+### MoAI 핵심 5개 (워크플로우 에이전트)
 
 | 에이전트 | 역할 | 자동화 기능 |
 |----------|------|------------|
@@ -35,6 +35,7 @@
 | **code-builder** | TDD 구현 | Red-Green-Refactor 커밋 패턴 권장 |
 | **doc-syncer** | 문서 동기화 | PR 상태 전환/라벨링 지원(환경 의존) |
 | **cc-manager** | Claude Code 관리 | 설정 최적화/권한 문제 해결 |
+| **debug-helper** | 오류 진단 | 일반 오류 분석 + Constitution 검사 |
 
 ### Awesome 전문 2개 (고급 기능 에이전트)
 
@@ -44,6 +45,39 @@
 | **gemini-bridge** | Gemini CLI headless 호출, 구조화된 분석/리뷰 결과 수집 | `gemini -m gemini-2.5-pro -p ... --output-format json` |
 
 `brainstorming.enabled = true` 에서만 브리지 에이전트가 호출되며, CLI 설치·로그인은 사용자 동의 하에 진행합니다.
+
+## 디버깅 시스템
+
+### `/moai:debug` 명령어
+- **일반 오류 디버깅**: `/moai:debug "오류내용"`
+- **Constitution 위반 검사**: `/moai:debug --constitution-check`
+- **진단 전문**: debug-helper 에이전트가 문제 분석과 해결책 제시
+- **위임 원칙**: 실제 수정은 해당 전담 에이전트(code-builder, git-manager 등)에게 위임
+
+## Git 작업 관리
+
+### 자동 Git 처리 (권장)
+모든 워크플로우 명령어에서 Git 작업이 자동으로 처리됩니다:
+- `/moai:1-spec`: spec-builder + git-manager (브랜치 생성, 커밋)
+- `/moai:2-build`: code-builder + git-manager (RED/GREEN/REFACTOR 커밋)
+- `/moai:3-sync`: doc-syncer + git-manager (문서 동기화, PR 관리)
+
+### 직접 Git 작업이 필요한 경우
+**방법 1: git-manager 에이전트 직접 호출**
+```
+@agent-git-manager "체크포인트 생성"
+@agent-git-manager "브랜치 생성: feature/new-feature"
+@agent-git-manager "개인 모드 롤백"
+```
+
+**방법 2: 표준 Git 명령어 사용**
+- 긴급상황이나 특수한 Git 작업이 필요한 경우만 사용
+- 일반적인 워크플로우에서는 권장하지 않음
+
+### Git 작업 원칙
+- **99% 케이스**: 워크플로우 명령어 사용 (자동 처리)
+- **1% 특수 케이스**: @agent-git-manager 직접 호출
+- **긴급상황**: 표준 git 명령어
 
 ## TDD 커밋 단계(권장 패턴)
 
