@@ -21,8 +21,8 @@ asterisk(*) 표시된 에이전트는 `.moai/config.json.brainstorming` 설정�
 
 ### project-manager
 - `/moai:0-project` 실행 시 신규/레거시 감지, product/structure/tech 인터뷰 진행
-- Codex/Gemini CLI 설치 여부를 확인하고 사용자의 동의가 있으면 설치/로그인 방법을 안내
-- 외부 브레인스토밍 사용 여부를 결정하고 `.moai/config.json.brainstorming`(`enabled`, `providers`) 값을 업데이트
+- Codex/Gemini CLI 설치 여부를 확인하고 사용자의 동의가 있으면 설치/로그인 방법만 안내 (자동 실행 금지)
+- 외부 브레인스토밍 사용 여부를 결정하고 `.moai/config.json.brainstorming`(`enabled`, `providers`) 값을 업데이트하며 `providers`에는 항상 "claude"를 포함
 
 ### cc-manager
 - Guard/훅 권한을 점검하고 Claude Code 환경을 최적화
@@ -34,7 +34,7 @@ asterisk(*) 표시된 에이전트는 `.moai/config.json.brainstorming` 설정�
 
 ### code-builder
 - TDD 사이클을 강제하며 단계별 체크포인트/커밋 전략을 수행
-- 외부 브레인스토밍이 활성화된 경우 codex-bridge/gemini-bridge 출력과 Claude 제안을 비교하여 최적안을 선택
+- 외부 브레인스토밍이 활성화된 경우 codex-bridge/gemini-bridge 출력과 Claude 제안을 비교하여 최적안을 선택 (예: `Task: use codex-bridge to run "codex exec --model gpt-5-codex 'List refactor risks'"`)
 
 ### doc-syncer
 - 코드 ↔ 문서 일관성을 유지하고 16-Core @TAG를 업데이트
@@ -47,12 +47,14 @@ asterisk(*) 표시된 에이전트는 `.moai/config.json.brainstorming` 설정�
 ### codex-bridge (선택)
 - `codex exec --model gpt-5-codex "..."` 형태의 headless 호출을 담당
 - 프로젝트 컨텍스트를 요약하고 결과를 구조화하여 Claude 세션에 보고
-- 설치되지 않은 경우 `npm install -g @openai/codex` 또는 `brew install codex` 명령을 안내만 함
+- 사용 예: `Task: use codex-bridge to run "codex exec --model gpt-5-codex 'Summarize design risks'"`
+- 설치되지 않은 경우 `npm install -g @openai/codex` 또는 `brew install codex` 명령을 안내만 함 (자동 설치 금지)
 
 ### gemini-bridge (선택)
 - `gemini -m gemini-2.5-pro -p "..." --output-format json` 호출을 담당
 - JSON 출력으로 구조화된 브레인스토밍/리뷰 결과를 제공
-- 설치되지 않은 경우 `npm install -g @google/gemini-cli` 또는 `brew install gemini-cli` 명령을 안내만 함
+- 사용 예: `Task: use gemini-bridge to run "gemini -m gemini-2.5-pro -p 'List alternative solution paths' --output-format json"`
+- 설치되지 않은 경우 `npm install -g @google/gemini-cli` 또는 `brew install gemini-cli` 명령을 안내만 함 (자동 설치 금지)
 
 ## ⚙️ 브레인스토밍 설정(.moai/config.json)
 
@@ -66,7 +68,7 @@ asterisk(*) 표시된 에이전트는 `.moai/config.json.brainstorming` 설정�
 ```
 
 - `enabled`: `true` 인 경우 외부 AI 브레인스토밍을 활성화
-- `providers`: 사용할 엔진을 배열로 지정 (`claude`, `codex`, `gemini` 중 선택)
+- `providers`: 사용할 엔진을 배열로 지정하며 항상 "claude"를 포함하고 필요에 따라 `codex`, `gemini`를 추가
 - project-manager가 `/moai:0-project` 인터뷰 중에 사용 여부를 묻고 값을 갱신
 - 다른 커맨드는 이 설정을 읽어 외부 브리지 에이전트를 호출할지 판단합니다.
 

@@ -39,7 +39,7 @@
     "name": "MoAI-ADK"
   },
   "brainstorming": {
-    "enabled": false,
-    "providers": []
+    "enabled": true,
+    "providers": ["claude", "codex", "gemini"]
   }
 }
