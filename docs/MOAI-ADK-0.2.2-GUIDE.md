@@ -46,8 +46,9 @@ MoAI-ADK 0.2.2는 **개인/팀 모드 자동 감지 시스템**과 **Git 완전 
 1. **🧪 개인 모드 (Personal Mode)**:
    - **자동 체크포인트(태그 기반)**: 5분 주기 + 파일 변경 시 즉시 Annotated Tag 생성
    - **간소화된 브랜치**: `feature/{description}` 패턴으로 실험 분리
-  - **롤백 친화적 흐름**: `git tag -a moai_cp/...` 활용으로 1분 내 복구를 목표
-   - **실험적 개발**: 실패해도 걱정 없는 안전망 제공
+
+- **롤백 친화적 흐름**: `git tag -a moai_cp/...` 활용으로 1분 내 복구를 목표
+- **실험적 개발**: 실패해도 걱정 없는 안전망 제공
 
 2. **🏢 팀 모드 (Team Mode)**:
    - **GitHub Issue 중심 백로그**: `/moai:1-spec` → `[SPEC-XXX]` Issue 생성 후 담당자·라벨 자동 권장
@@ -58,6 +59,7 @@ MoAI-ADK 0.2.2는 **개인/팀 모드 자동 감지 시스템**과 **Git 완전 
 3. **🔧 완전 자동화된 Git 관리**:
 
    **워크플로우 통합 Git 처리** (99% 케이스):
+
    ```bash
    /moai:1-spec      # spec-builder + git-manager (브랜치 생성, 커밋)
    /moai:2-build     # code-builder + git-manager (TDD 커밋)
@@ -65,6 +67,7 @@ MoAI-ADK 0.2.2는 **개인/팀 모드 자동 감지 시스템**과 **Git 완전 
    ```
 
    **직접 Git 작업** (1% 특수 케이스):
+
    ```bash
    @agent-git-manager "체크포인트 생성"
    @agent-git-manager "브랜치 생성: feature/new-feature"
@@ -72,6 +75,7 @@ MoAI-ADK 0.2.2는 **개인/팀 모드 자동 감지 시스템**과 **Git 완전 
    ```
 
 > ⚠️ **0.2.2 Git 관리 시스템 안내**
+>
 > - **완전 자동화**: 모든 워크플로우에서 Git 작업이 자동으로 처리됩니다
 > - **브랜치 전략**: git-manager가 모드별로 최적화된 브랜치를 자동 생성
 > - **체크포인트**: 각 작업 단계마다 자동으로 안전한 복구 지점 생성
@@ -187,16 +191,19 @@ moai init team-project --team
 **파일**: `.claude/agents/moai/project-manager.md`
 
 **핵심 기능:**
+
 - `/moai:0-project` 실행 시 레포지토리를 스캔해 신규/레거시 상황을 감지하고 인터뷰 트리를 선택
 - product/structure/tech 문서를 대화형으로 작성하고 CLAUDE 메모리에 반영
 
 **레거시 프로젝트 자동 분석 시스템:**
+
 1. **자동 코드베이스 분석**: 프로젝트 구조 스캔, 핵심 파일 내용 분석, 기술 스택 자동 감지
 2. **Gemini 연동 심화 분석**: 브레인스토밍 설정 시 gemini-bridge를 통한 구조적 분석 수행
 3. **스마트 인터뷰**: 자동 분석으로 파악된 정보는 제외하고 부족한 정보만 선별적 질문
 4. **통합 문서 생성**: 자동 분석(70-80%) + 사용자 응답(20-30%) = 완전한 프로젝트 문서
 
 **처리 시간**: 기존 15-20분 → 5-8분으로 단축 (질문 수 70% 감소)
+
 - 개인/팀 모드, 출력 스타일, 협업 도구 설정을 재확인하며 필요한 경우 `/moai:0-project update`에서 조정
 - spec-builder, doc-syncer, git-manager가 후속 단계에서 사용할 공통 컨텍스트(팀 규모, 기술 스택, 레거시 제약)를 요약
 
@@ -348,6 +355,7 @@ moai init team-project --team
 3. **긴급상황**: 표준 git 명령어 사용
 
 **✅ 자동으로 처리되는 Git 작업**:
+
 - 브랜치 생성 및 전환 (모드별 최적화)
 - 체크포인트 생성 및 관리 (안전한 복구 지점)
 - 커밋 메시지 생성 (Constitution 5원칙 기반)
@@ -494,11 +502,11 @@ moai config --show
 
 ### 0단계: `/moai:0-project` 프로젝트 문서 초기화
 
-| 구분 | 질문 예시 | 출력 | 메모리 반영 |
-|------|-----------|------|-------------|
-| Product | “프로젝트 이름/비전/성공 지표는?” | `.moai/project/product.md` | CLAUDE.md `Project Overview` 섹션 | 
-| Structure | “핵심 도메인/모듈/외부 연동은?” | `.moai/project/structure.md` | CLAUDE.md `System Structure` 섹션 |
-| Tech | “언어/프레임워크/배포 타깃은?” | `.moai/project/tech.md` | CLAUDE.md `Tech Stack` 섹션 |
+| 구분      | 질문 예시                         | 출력                         | 메모리 반영                       |
+| --------- | --------------------------------- | ---------------------------- | --------------------------------- |
+| Product   | “프로젝트 이름/비전/성공 지표는?” | `.moai/project/product.md`   | CLAUDE.md `Project Overview` 섹션 |
+| Structure | “핵심 도메인/모듈/외부 연동은?”   | `.moai/project/structure.md` | CLAUDE.md `System Structure` 섹션 |
+| Tech      | “언어/프레임워크/배포 타깃은?”    | `.moai/project/tech.md`      | CLAUDE.md `Tech Stack` 섹션       |
 
 - **신규 프로젝트**: 대화형 질문(최대 10문항)으로 각 문서를 채운 뒤 저장한다.
 - **기존 코드베이스**: `python3 .moai/scripts/project_initializer.py --analyze` 명령으로 언어/디렉터리/테스트 정보를 요약한 뒤 Claude 대화로 세부 내용을 보완한다.
@@ -905,12 +913,14 @@ You are a Git operations specialist managing mode-specific Git strategies.
 ```
 
 **기능:**
+
 - **일반 오류 분석**: 코드/Git/설정 오류의 원인 분석 및 해결책 제시
 - **Constitution 검사**: 5원칙(Simplicity/Architecture/Testing/Observability/Versioning) 준수도 체계 검증
 - **구조화된 진단**: 문제 식별 → 영향도 평가 → 해결 방안 → 후속 에이전트 추천
 - **에이전트 위임**: debug-helper는 진단만 수행, 실제 수정은 전담 에이전트(code-builder/git-manager 등)에게 위임
 
 **출력 형식:**
+
 - 문제 위치, 원인 분석, 해결 방안을 구조화된 형태로 제시
 - 적절한 후속 명령어(`/moai:2-build`, `/moai:3-sync` 등) 추천
 - Constitution 검사 시 원칙별 준수율과 개선 우선순위 제공
@@ -969,7 +979,8 @@ You are a Git operations specialist managing mode-specific Git strategies.
 > ℹ️ 브레인스토밍이 활성화된 경우, doc-syncer 는 `codex-bridge`/`gemini-bridge` 결과(예: `Task: use gemini-bridge ...`)를 참고해 추가 문서 보완 및 리스크 항목을 보고서에 반영할 수 있습니다.
 
 > ℹ️ **동기화 자동화 상태**: `/moai:3-sync` 는 TAG 인덱스를 갱신하고 `docs/status/sync-report.md` 에 요약 리포트를 생성하며 `docs/sections/index.md`의 `Last Updated` 메타를 자동 반영합니다.
->   - README·심층 문서·PR 업데이트는 체크리스트에 따라 수동으로 마무리하세요.
+>
+> - README·심층 문서·PR 업데이트는 체크리스트에 따라 수동으로 마무리하세요.
 
 ### Git 전용 명령어
 
@@ -1127,19 +1138,19 @@ moai config --mode team --style audit         # 변경사항 추적
 
 #### 개인 모드 성능 지표
 
-| 작업            | 기존 방식        | 개인 모드                  | 개선율              | 안전성         |
-| --------------- | ---------------- | -------------------------- | ------------------- | -------------- |
-| **실험적 개발** | 수동 백업 (10분) | **자동 체크포인트 (태그 기반)** | **자동화 (목표 95%+)** | 빠른 롤백 대비    |
-| **빠른 반복**   | Git 명령어 필요  | **체크포인트만으로 충분**  | **80% 시간 단축**   | 실패 걱정 없음 |
-| **브랜치 관리** | 복잡한 GitFlow   | **간소화된 브랜치**        | **70% 복잡도 감소** | 충돌 최소화    |
+| 작업            | 기존 방식        | 개인 모드                       | 개선율                 | 안전성         |
+| --------------- | ---------------- | ------------------------------- | ---------------------- | -------------- |
+| **실험적 개발** | 수동 백업 (10분) | **자동 체크포인트 (태그 기반)** | **자동화 (목표 95%+)** | 빠른 롤백 대비 |
+| **빠른 반복**   | Git 명령어 필요  | **체크포인트만으로 충분**       | **80% 시간 단축**      | 실패 걱정 없음 |
+| **브랜치 관리** | 복잡한 GitFlow   | **간소화된 브랜치**             | **70% 복잡도 감소**    | 충돌 최소화    |
 
 #### 팀 모드 성능 지표
 
-| 작업            | 기존 방식       | 팀 모드              | 개선율            | 협업 효과      |
-| --------------- | --------------- | -------------------- | ----------------- | -------------- |
-| **PR 생성**     | 수동 작성 (5분) | **자동 생성 (30초)** | **90% 시간 단축** | 일관된 품질    |
-| **리뷰어 할당** | 수동 선택       | **자동 제안**        | **자동화 (App 연동 시)**   | 최적 배정      |
-| **문서 동기화** | 수동 업데이트   | **Living Document**  | **실시간 동기화** | 항상 최신 상태 |
+| 작업            | 기존 방식       | 팀 모드              | 개선율                   | 협업 효과      |
+| --------------- | --------------- | -------------------- | ------------------------ | -------------- |
+| **PR 생성**     | 수동 작성 (5분) | **자동 생성 (30초)** | **90% 시간 단축**        | 일관된 품질    |
+| **리뷰어 할당** | 수동 선택       | **자동 제안**        | **자동화 (App 연동 시)** | 최적 배정      |
+| **문서 동기화** | 수동 업데이트   | **Living Document**  | **실시간 동기화**        | 항상 최신 상태 |
 
 ### 시스템 리소스 최적화
 
@@ -1267,29 +1278,31 @@ MoAI-ADK 0.2.2는 **Claude Code 표준 준수**와 **모든 경로 검증 완료
       "Bash(gh pr create:*)",
       "Bash(gh pr view:*)"
     ],
-    "ask": [
-      "Bash(git push:*)",
-      "Bash(gh pr merge:*)"
-    ],
-    "deny": [
-      "Read(./.env)",
-      "Read(./.env.*)",
-      "Read(./secrets/**)"
-    ]
+    "ask": ["Bash(git push:*)", "Bash(gh pr merge:*)"],
+    "deny": ["Read(./.env)", "Read(./.env.*)", "Read(./secrets/**)"]
   },
   "hooks": {
     "PreToolUse": [
       {
         "matcher": "Edit|Write|MultiEdit",
         "hooks": [
-          { "type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag_validator.py" },
-          { "type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_write_guard.py" }
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag_validator.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_write_guard.py"
+          }
         ]
       },
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/policy_block.py" }
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/policy_block.py"
+          }
         ]
       }
     ],
@@ -1297,21 +1310,30 @@ MoAI-ADK 0.2.2는 **Claude Code 표준 준수**와 **모든 경로 검증 완료
       {
         "matcher": "Edit|Write|MultiEdit",
         "hooks": [
-          { "type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/check_style.py" }
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/check_style.py"
+          }
         ]
       }
     ],
     "UserPromptSubmit": [
       {
         "hooks": [
-          { "type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/steering_guard.py" }
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/steering_guard.py"
+          }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/run_tests_and_report.py" }
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/run_tests_and_report.py"
+          }
         ]
       }
     ]
@@ -1916,7 +1938,7 @@ MoAI-ADK 0.2.2는 **개인/팀 모드 통합 시스템**을 통한 **개발 방�
   - 구현과 지침 분리: 에이전트는 "무엇을 해야 하는지"에만 집중
   - 유지보수성 향상: 코드 없는 명확한 지침으로 수정 용이
 - **Git 명령어 체계 전면 개선**: 중복 제거 및 자동화 강화
-  - Git 명령어 디렉토리 제거: /moai:git:* 명령어 5개 제거
+  - Git 명령어 디렉토리 제거: /moai:git:\* 명령어 5개 제거
   - 워크플로우 통합: 모든 Git 작업을 git-manager 에이전트로 통일
   - 자동화 수준 향상: 99% 자동 처리, 1% 특수 케이스만 직접 호출
 - **`/moai:debug` 명령어 추가**: 통합 디버깅 명령어 체계 확립
@@ -1975,6 +1997,12 @@ MoAI-ADK 0.2.2는 **개인/팀 모드 통합 시스템**을 통한 **개발 방�
    - Hook 스크립트 5개 모두 `rwxr-xr-x`
    - Core 스크립트 6개 모두 `rwxr-xr-x`
 
+4. **Hook 시스템 최적화 (0.2.2 신규)**:
+   - Stop Hook 비활성화: 불필요한 테스트 실행 제거로 개발 속도 향상
+   - 보호 경로 정책 완화: `.moai/project/` 완전 허용, `.moai/memory/` 읽기 허용
+   - 명령어 정책 개선: grep/find 차단 해제, rg 권장으로 정책 변경
+   - SecurityManager API 보완: 누락된 메서드 추가로 테스트 호환성 개선
+
 #### 📊 검증 현황 요약
 
 - **파일 구조**: 템플릿 동기화 시마다 자동 점검(최소 주기 1주)
@@ -1990,3 +2018,45 @@ MoAI-ADK 0.2.2는 **개인/팀 모드 통합 시스템**을 통한 **개발 방�
 - **단계별 트러블슈팅** 가이드
 
 이 업데이트로 MoAI-ADK 0.2.2는 **완전히 검증되고 안정적인** 상태가 되었습니다.
+
+---
+
+## 📋 검색 명령어 권장사항
+
+### ⚡ 성능 최적화된 검색 도구
+
+**🔍 권장 검색 도구**
+
+- **파일 내용 검색**: `rg` (ripgrep) 권장 - 빠르고 .gitignore 자동 준수
+- **파일 이름 검색**: `rg --files -g "패턴"` 권장
+- **정규식 검색**: `rg "정규식패턴"` - grep보다 2-3배 빠름
+
+**🛠️ 사용 가능한 기존 명령어**
+
+- `grep`, `find` 명령어도 여전히 사용 가능
+- 단, 성능과 편의성 측면에서 `rg` 사용을 권장
+- MoAI-ADK Hook 정책에서 더 이상 차단하지 않음
+
+### 📊 성능 비교 (예시)
+
+| 검색 도구 | 대용량 프로젝트 (1M+ 파일) | .gitignore 준수 | 정규식 지원 | 권장도      |
+| --------- | -------------------------- | --------------- | ----------- | ----------- |
+| **rg**    | ⚡ 2-5초                   | ✅ 자동         | ✅ 고급     | 🟢 권장     |
+| grep      | 🐌 10-30초                 | ❌ 수동 설정    | ✅ 기본     | 🟡 사용가능 |
+| find      | 🐌 5-15초                  | ❌ 수동 설정    | ❌ 없음     | 🟡 사용가능 |
+
+### 🎯 실용적 사용 예시
+
+```bash
+# 파일 내용에서 함수 검색 (권장)
+rg "def.*setup" --type py
+
+# 특정 파일 이름 검색 (권장)
+rg --files -g "*test*.py"
+
+# 기존 방식도 여전히 사용 가능
+grep -r "function" src/
+find . -name "*.js" -type f
+```
+
+이 가이드라인을 따르면 개발 효율성과 검색 성능을 크게 향상시킬 수 있습니다.

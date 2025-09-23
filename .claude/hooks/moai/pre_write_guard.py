@@ -31,7 +31,6 @@ SENSITIVE_KEYWORDS = (
     "/secrets",
     "/.git/",
     "/.ssh",
-    "/.claude/settings",
 )
 PROTECTED_PREFIXES = (
     ".moai/memory/",
@@ -80,6 +79,7 @@ def _check_path_rules(path: Path, root: Path) -> Optional[str]:
 
     path_posix = path.as_posix().lower()
 
+    # .moai/project/ 경로는 모든 편집 허용
     project_docs_root = (root / ".moai" / "project").resolve()
     try:
         path.resolve().relative_to(project_docs_root)

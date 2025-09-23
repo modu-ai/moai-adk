@@ -3,17 +3,25 @@
     "@DATA:CONFIG-STRUCTURE-001": "@TECH:JSON-CONFIG-001",
     "@REQ:PROJECT-CONFIG-001": "@DESIGN:MOAI-CONFIG-001"
   },
+  "brainstorming": {
+    "enabled": true,
+    "providers": [
+      "claude",
+      "codex",
+      "gemini"
+    ]
+  },
   "constitution": {
     "enforce_tdd": true,
-    "require_tags": true,
-    "simplicity_threshold": 5,
-    "test_coverage_target": 85,
     "principles": {
       "simplicity": {
         "max_projects": 5,
         "notes": "기본 권장값. 프로젝트 규모에 따라 .moai/config.json 또는 SPEC/ADR로 근거와 함께 조정하세요."
       }
-    }
+    },
+    "require_tags": true,
+    "simplicity_threshold": 5,
+    "test_coverage_target": 85
   },
   "git_strategy": {
     "personal": {
@@ -37,9 +45,5 @@
     "description": "MoAI Agentic Development Kit",
     "mode": "personal",
     "name": "MoAI-ADK"
-  },
-  "brainstorming": {
-    "enabled": true,
-    "providers": ["codex", "gemini"]
   }
 }

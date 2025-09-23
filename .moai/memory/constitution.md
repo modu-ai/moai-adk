@@ -76,7 +76,7 @@
 
 ## Article VIII — Traceability & TAG
 1. 16-Core @TAG 체인을 유지한다: Primary(@REQ→@DESIGN→@TASK→@TEST), Steering, Implementation, Quality.
-2. `.moai/indexes/tags.json`과 `docs/status/sync-report.md`를 최신 상태로 유지한다.
+2. `.moai/indexes/tags.json`과 `.moai/reports/sync-report.md`를 최신 상태로 유지한다.
 3. HEADLESS 분석(`gemini -p`)과 구현(`codex exec`) 결과 보고 시 사용한 TAG와 체인 상태를 명시한다.
 
 ---

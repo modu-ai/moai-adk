@@ -29,6 +29,7 @@ dependencies = [
     "colorama>=0.4.6",
     "click>=8.0.0",
     "toml>=0.10.0",
+    "watchdog>=3.0.0",
 ]
 
 [project.optional-dependencies]

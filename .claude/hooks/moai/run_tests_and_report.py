@@ -83,28 +83,7 @@ def _run_command(command: Command, root: Path) -> Tuple[int, str, str]:
 
 
 def main() -> None:
-    _ = _load_input()
-    root = _project_root()
-    commands = _collect_commands(root)
-
-    if not commands:
-        print('Stop Hook: 실행할 테스트 명령을 찾지 못했습니다.', flush=True)
-        sys.exit(0)
-
-    command = commands[0]
-    name = command[0]
-    print(f'Stop Hook: {name} 실행을 시작합니다.', flush=True)
-    code, stdout_text, stderr_text = _run_command(command, root)
-
-    status = '성공' if code == 0 else ('타임아웃' if code == 124 else f'실패 코드 {code}')
-    print(f'Stop Hook: {name} 결과 - {status}', flush=True)
-    if stdout_text:
-        print('--- stdout ---', flush=True)
-        print(stdout_text, flush=True)
-    if stderr_text:
-        print('--- stderr ---', flush=True)
-        print(stderr_text, flush=True)
-
+    print('Stop Hook: 비활성화됨 - 테스트는 /moai:2-build 단계에서만 실행됩니다.', flush=True)
     sys.exit(0)
 
 

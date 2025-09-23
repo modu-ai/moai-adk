@@ -184,3 +184,95 @@ class SecurityManager:
             sanitized = 'unnamed_file'
 
         return sanitized
+
+    def safe_subprocess_run(self, command, *args, **kwargs):
+        """
+        Safe subprocess execution with basic validation.
+
+        Args:
+            command: Command to execute
+            *args: Additional arguments
+            **kwargs: Additional keyword arguments
+
+        Returns:
+            subprocess result
+        """
+        import subprocess
+
+        # Basic safety checks
+        if isinstance(command, str):
+            # Check for dangerous patterns
+            dangerous_patterns = ['rm -rf /', 'dd if=/dev/zero', ':(){:|:&};:']
+            for pattern in dangerous_patterns:
+                if pattern in command.lower():
+                    raise SecurityError(f"Dangerous command pattern detected: {pattern}")
+
+        return subprocess.run(command, *args, **kwargs)
+
+    def sanitize_command_args(self, args):
+        """
+        Sanitize command arguments for safe execution.
+
+        Args:
+            args: Command arguments to sanitize
+
+        Returns:
+            Sanitized arguments
+        """
+        if isinstance(args, str):
+            return args.strip()
+        elif isinstance(args, list):
+            return [str(arg).strip() for arg in args]
+        else:
+            return args
+
+    def validate_path_safety_enhanced(self, path: Path, base_path: Path, allow_creation: bool = False) -> bool:
+        """
+        Enhanced path validation with additional checks.
+
+        Args:
+            path: Path to validate
+            base_path: Base path that should contain the target
+            allow_creation: Whether to allow path creation
+
+        Returns:
+            bool: True if path is safe to use
+        """
+        # Use existing validation logic
+        if not self.validate_path_safety(path, base_path):
+            return False
+
+        # Additional checks for creation
+        if allow_creation and not path.exists():
+            return self.validate_file_creation(path, base_path)
+
+        return True
+
+    def validate_file_size(self, file_path: Path, max_size_mb: int = 100) -> bool:
+        """
+        Validate file size to prevent resource exhaustion.
+
+        Args:
+            file_path: Path to file
+            max_size_mb: Maximum allowed size in megabytes
+
+        Returns:
+            bool: True if file size is acceptable
+        """
+        try:
+            if not file_path.exists():
+                return True  # Non-existent files are safe
+
+            file_size = file_path.stat().st_size
+            max_size_bytes = max_size_mb * 1024 * 1024
+
+            if file_size > max_size_bytes:
+                logger.warning("File size exceeds limit: %s (%d bytes > %d bytes)",
+                             file_path, file_size, max_size_bytes)
+                return False
+
+            return True
+
+        except Exception as e:
+            logger.error("File size validation failed: %s", e)
+            return False

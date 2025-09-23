@@ -131,7 +131,7 @@ flowchart LR
 | **Implementation** | `@FEATURE → @API → @UI → @DATA` |
 | **Quality** | `@PERF → @SEC → @DOCS → @TAG` |
 
-`/moai:3-sync`는 `docs/status/sync-report.md`와 `.moai/indexes/tags.json`을 갱신하여 추적성을 유지합니다.
+`/moai:3-sync`는 `.moai/reports/sync-report.md`와 `.moai/indexes/tags.json`을 갱신하여 추적성을 유지합니다.
 
 ---
 

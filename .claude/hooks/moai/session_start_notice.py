@@ -1630,7 +1630,13 @@ class SessionNotifier:
 
         branch = self.get_current_git_branch()
         if branch:
-            lines.append(f"🌿 현재 브랜치: {branch}")
+            # 마지막 커밋 정보 추가
+            last_commit = self.get_last_commit_info()
+            if last_commit:
+                commit_msg = last_commit['message'][:40] + ("..." if len(last_commit['message']) > 40 else "")
+                lines.append(f"🌿 현재 브랜치: {branch} ({last_commit['hash'][:7]} {commit_msg})")
+            else:
+                lines.append(f"🌿 현재 브랜치: {branch}")
 
         specs = self.count_specs()
         if specs["total"]:
@@ -1641,7 +1647,7 @@ class SessionNotifier:
         incomplete_specs = self.get_incomplete_specs()
         if incomplete_specs:
             lines.append(
-                "⚠️  명확화 필요: " + ", ".join(incomplete_specs[:2]) + ("..." if len(incomplete_specs) > 2 else "")
+                "📋 미완료 SPEC: " + ", ".join(incomplete_specs[:2]) + ("..." if len(incomplete_specs) > 2 else "")
             )
 
         git_status = self.get_working_directory_status()
@@ -1662,13 +1668,15 @@ class SessionNotifier:
                     "⚠️ 자동 체크포인트 워처 미기동 → `python .moai/scripts/checkpoint_watcher.py start` 실행 권장"
                 )
             elif status == "error":
-                lines.append(f"⚠️ 워처 오류: {message}")
+                if "watchdog" in message:
+                    lines.append("⚠️ 파일 워처 비활성화 → 설치: `pip install moai-adk`")
+                else:
+                    lines.append(f"⚠️ 워처 오류: {message}")
             else:
                 lines.append(f"ℹ️ 워처 상태 확인 필요: {message}")
         else:
             lines.append("ℹ️ 자동 체크포인트 워처 스크립트를 찾을 수 없습니다.")
 
-        lines.append("💡 상세 상태는 `MOAI_SESSION_NOTICE_VERBOSE=1` 환경변수 설정 후 재시작하거나 `/moai:status` 명령으로 확인하세요.")
 
         return "\n".join(lines)
 
@@ -2081,14 +2089,14 @@ def handle_session_start():
         notifier = SessionNotifier(project_root)
         notice = notifier.generate_notice()
         
-        # 표준 출력으로 알림 출력 (Claude Code에서 사용자에게 표시됨)
+        # stdout으로 출력 (사용자가 볼 수 있도록)
         print(notice)
         
     except KeyboardInterrupt:
         pass
     except Exception as e:
         # 에러가 발생해도 세션을 방해하지 않음
-        print(f"🗿 MoAI-ADK 상태 확인 중 오류가 발생했습니다: {e}", file=sys.stderr)
+        print(f"🗿 MoAI-ADK 상태 확인 중 오류가 발생했습니다: {e}")
 
 def _locate_project_root(start: Path) -> Path:
     project_root = start

@@ -189,7 +189,7 @@ def render_sync_report(
 
 
 def write_sync_report(project_root: Path, report: str) -> Path:
-    report_dir = project_root / "docs" / "status"
+    report_dir = project_root / ".moai" / "reports"
     report_dir.mkdir(parents=True, exist_ok=True)
     report_path = report_dir / "sync-report.md"
     report_path.write_text(report, encoding="utf-8")
@@ -197,10 +197,9 @@ def write_sync_report(project_root: Path, report: str) -> Path:
 
 
 def update_doc_index_metadata(project_root: Path) -> None:
-    index_path = project_root / "docs" / "sections" / "index.md"
-    if not index_path.exists():
-        return
-    lines = index_path.read_text(encoding="utf-8").splitlines()
+    # 문서 인덱스 자동 업데이트 비활성화 - 수동 관리로 변경
+    # 사용자 매뉴얼(docs/sections/index.md)은 수동으로 관리
+    return
     today = datetime.now().date().isoformat()
     updated = []
     replaced = False

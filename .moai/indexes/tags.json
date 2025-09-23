@@ -1,39 +1,6092 @@
 {
   "version": "16-core",
-  "last_updated": null,
+  "last_updated": "2025-09-24",
   "categories": {
     "SPEC": {
-      "REQ": [],
-      "DESIGN": [],
-      "TASK": []
+      "REQ": [
+        "REQ:OPT-CORE-001",
+        "REQ:USER-AUTH-001",
+        "REQ:USER-AUTH",
+        "REQ:BUS",
+        "REQ:USER-MANAGEMENT",
+        "REQ:AUTHENTICATION",
+        "REQ:API-ENDPOINTS",
+        "REQ:USER-001",
+        "REQ:USER-002",
+        "REQ:BUS-001",
+        "REQ:SEC-001",
+        "REQ:PERF-001",
+        "REQ:UX-001",
+        "REQ:USER-MGMT-001",
+        "REQ:PASSWORD-RESET-001",
+        "REQ:USER-LOGIN-001",
+        "REQ:CORE",
+        "REQ:PERF-RESPONSE-001",
+        "REQ:PAYMENT-STRIPE-001",
+        "REQ:AGENT-VALIDATION-001",
+        "REQ:HOOK-STYLE-CHECK-001",
+        "REQ:HOOK-SESSION-START-001",
+        "REQ:AUTO-CHECKPOINT-001",
+        "REQ:HOOK-TAG-VALIDATION-001",
+        "REQ:FILE-WATCHER-001",
+        "REQ:GIT-COMMIT-001",
+        "REQ:GIT-SYNC-001",
+        "REQ:GIT-ROLLBACK-001",
+        "REQ:GIT-BRANCH-001",
+        "REQ:GIT-CHECKPOINT-001",
+        "REQ:PROJECT-CONFIG-001"
+      ],
+      "DESIGN": [
+        "DESIGN:PKG-ARCH-001",
+        "DESIGN:JWT-001",
+        "DESIGN:TOKEN-SYSTEM-001",
+        "DESIGN:JWT-AUTH",
+        "DESIGN:JWT-AUTH-001",
+        "DESIGN:PASSWORD-RESET-001",
+        "DESIGN:ARCH",
+        "DESIGN:SECURITY",
+        "DESIGN:PERFORMANCE",
+        "DESIGN:PAYMENT-API-001",
+        "DESIGN:CONSISTENCY-CHECK-001",
+        "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001",
+        "DESIGN:PROJECT-STATUS-001",
+        "DESIGN:PERSONAL-MODE-ONLY-001",
+        "DESIGN:16-CORE-VALIDATION-001",
+        "DESIGN:SINGLE-TAG-CHECK-001",
+        "DESIGN:NAMING-RULES-001",
+        "DESIGN:WATCHDOG-INTEGRATION-001",
+        "DESIGN:COMMIT-WORKFLOW-001",
+        "DESIGN:MESSAGE-PATTERN-001",
+        "DESIGN:COMMIT-MESSAGE-001",
+        "DESIGN:DOC-CLEANUP-001",
+        "DESIGN:MODE-BASED-SYNC-001",
+        "DESIGN:PUSH-STRATEGY-001",
+        "DESIGN:PULL-STRATEGY-001",
+        "DESIGN:COMMAND-DISPATCH-001",
+        "DESIGN:CHECKPOINT-ROLLBACK-002",
+        "DESIGN:MODE-VALIDATION-001",
+        "DESIGN:TIME-PARSING-001",
+        "DESIGN:SAFETY-CHECK-001",
+        "DESIGN:AUTO-BACKUP-001",
+        "DESIGN:AUDIT-TRAIL-001",
+        "DESIGN:ARG-PARSING-001",
+        "DESIGN:MODE-BASED-WORKFLOW-001",
+        "DESIGN:BRANCH-NAMING-001",
+        "DESIGN:BRANCH-LIFECYCLE-001",
+        "DESIGN:PROJECT-TYPE-001",
+        "DESIGN:CHECKPOINT-WORKFLOW-003",
+        "DESIGN:MOAI-CONFIG-001",
+        "DESIGN:API-GATEWAY"
+      ],
+      "TASK": [
+        "TASK:CLEANUP-IMPL-001",
+        "TASK:API-001",
+        "TASK:AUTH-IMPL-001",
+        "TASK:AUTH-API",
+        "TASK:T001",
+        "TASK:T001-T099",
+        "TASK:T100-T199",
+        "TASK:T200-T299",
+        "TASK:AUTH-API-001",
+        "TASK:RESET-001",
+        "TASK:AUTH-UI-001",
+        "TASK:STRIPE-SDK-001",
+        "TASK:PAYMENT-DB-001",
+        "TASK:DOC-CONDITIONAL-002",
+        "TASK:DOC-CONDITIONAL-001",
+        "TASK:T"
+      ]
     },
     "STEERING": {
-      "VISION": [],
-      "STRUCT": [],
-      "TECH": [],
-      "ADR": []
+      "VISION": [
+        "VISION:CORE",
+        "VISION:PLATFORM-001"
+      ],
+      "STRUCT": [
+        "STRUCT:ARCH",
+        "STRUCT:MICROSERVICE-001"
+      ],
+      "TECH": [
+        "TECH:STACK",
+        "TECH:CONTAINER-001",
+        "TECH:DOCSTRING-ANALYSIS-001",
+        "TECH:MULTI-LANG-SUPPORT-001",
+        "TECH:SESSIONSTART-HOOK-001",
+        "TECH:TIME-BASED-CHECKPOINT-002",
+        "TECH:PRETOOLUSE-HOOK-001",
+        "TECH:CLAUDE-CODE-HOOK-001",
+        "TECH:EVENT-DRIVEN-CHECKPOINT-001",
+        "TECH:CLAUDE-CODE-STD-001",
+        "TECH:SUBPROCESS-001",
+        "TECH:CLI-INTERFACE-001",
+        "TECH:PUSH-PULL-STRATEGY-001",
+        "TECH:PERSONAL-MODE-ONLY-001",
+        "TECH:PATH-RESOLUTION-001",
+        "TECH:SUBPROCESS-EXEC-001",
+        "TECH:TIME-PARSING-001",
+        "TECH:GITFLOW-INTEGRATION-001",
+        "TECH:PERSONAL-MODE-001",
+        "TECH:SEMANTIC-VERSIONING-001",
+        "TECH:JSON-CONFIG-001"
+      ],
+      "ADR": [
+        "ADR:DEVOPS-001"
+      ]
     },
     "IMPLEMENTATION": {
-      "FEATURE": [],
-      "API": [],
-      "TEST": [],
-      "DATA": []
+      "FEATURE": [
+        "FEATURE:USER-MGMT",
+        "FEATURE:UI-LOGIN-001",
+        "FEATURE:LEGACY-CODE-001",
+        "FEATURE:SYSTEM-VALIDATION-001",
+        "FEATURE:CODE-FORMATTING-001",
+        "FEATURE:SESSION-NOTICE-001",
+        "FEATURE:PROJECT-STATUS-001",
+        "FEATURE:AUTO-BACKUP-001",
+        "FEATURE:TAG-QUALITY-001",
+        "FEATURE:TAG-VALIDATION-SYSTEM-001",
+        "FEATURE:CONTENT-VALIDATION-001",
+        "FEATURE:FILE-MONITORING-001",
+        "FEATURE:AUTO-COMMIT-001",
+        "FEATURE:AUTO-MESSAGE-001",
+        "FEATURE:REMOTE-SYNC-001",
+        "FEATURE:AUTO-SYNC-001",
+        "FEATURE:ROLLBACK-SYSTEM-001",
+        "FEATURE:TIME-SEARCH-001",
+        "FEATURE:ROLLBACK-EXEC-001",
+        "FEATURE:SAFETY-CHECKPOINT-001",
+        "FEATURE:BRANCH-MANAGEMENT-001",
+        "FEATURE:NAME-GENERATION-001",
+        "FEATURE:BRANCH-CREATE-001",
+        "FEATURE:STASH-MANAGEMENT-001",
+        "FEATURE:BRANCH-CLEANUP-001",
+        "FEATURE:AUTO-CLEANUP-001",
+        "FEATURE:CHECKPOINT-SYSTEM-001",
+        "FEATURE:LOGIN-SYSTEM"
+      ],
+      "API": [
+        "API:POST-USERS-CREATE",
+        "API:CREATE-USER-001",
+        "API:POST-USERS-V1",
+        "API:POST-USERS-V2",
+        "API:POST-AUTH-LOGIN",
+        "API:GET-USERS-LIST",
+        "API:VALIDATION-INTERFACE-001",
+        "API:VALIDATOR-INTERFACE-001",
+        "API:POSTTOOLUSE-HOOK-001",
+        "API:HOOK-INTERFACE-001",
+        "API:SESSION-NOTIFIER-001",
+        "API:CHECKPOINT-AUTOMATION-001",
+        "API:TAG-VALIDATOR-INTERFACE-001",
+        "API:TAG-VALIDATE-001",
+        "API:TAG-VALIDATION-001",
+        "API:TAG-ID-VALIDATION-001",
+        "API:HOOK-MAIN-ENTRY-001",
+        "API:FILESYSTEM-EVENTS-001",
+        "API:FS-EVENT-HANDLER-001",
+        "API:COMMIT-INTERFACE-001",
+        "API:GIT-STATUS-001",
+        "API:GIT-COMMIT-001",
+        "API:MAIN-ENTRY-001",
+        "API:SYNC-INTERFACE-001",
+        "API:CONFIG-ACCESS-001",
+        "API:SYNC-STATUS-001",
+        "API:GIT-PUSH-001",
+        "API:GIT-PULL-001",
+        "API:SYNC-CLI-001",
+        "API:ROLLBACK-INTERFACE-001",
+        "API:FILE-ACCESS-001",
+        "API:FILE-WRITE-001",
+        "API:GIT-COMMAND-001",
+        "API:CHECKPOINT-LIST-001",
+        "API:GIT-RESET-001",
+        "API:BRANCH-INTERFACE-001",
+        "API:GIT-BRANCH-STATUS-001",
+        "API:BRANCH-LIST-001",
+        "API:GIT-CHECKOUT-001",
+        "API:BRANCH-SWITCH-001",
+        "API:BRANCH-DELETE-001",
+        "API:STATUS-DISPLAY-001",
+        "API:BRANCH-CLI-001",
+        "API:CHECKPOINT-INTERFACE-001"
+      ],
+      "TEST": [
+        "TEST:UNIT-OPT-001",
+        "TEST:UNIT-001",
+        "TEST:UNIT-AUTH-001",
+        "TEST:AUTH-001",
+        "TEST:USER-MODEL",
+        "TEST:USER-SERVICE",
+        "TEST:ACC",
+        "TEST:AUTH-LOGIN-001",
+        "TEST:UNIT-LOGIN-001",
+        "TEST:E2E-CHECKOUT-001",
+        "TEST:AUTH-SECURITY-001",
+        "TEST:PAYMENT-SUCCESS-001",
+        "TEST:PAYMENT-FAILURE-001",
+        "TEST:UNIT-",
+        "TEST:INT-",
+        "TEST:E2E-",
+        "TEST:UNIT-SYNC-001",
+        "TEST:INTEGRATION-API-002",
+        "TEST:E2E-WORKFLOW-003",
+        "TEST:PERF-LOAD-004"
+      ],
+      "DATA": [
+        "DATA:STATUS-ANALYSIS-001",
+        "DATA:FILE-LIST-001",
+        "DATA:CONFIG-LOAD-001",
+        "DATA:REMOTE-STATUS-001",
+        "DATA:PROJECT-ROOT-001",
+        "DATA:METADATA-LOAD-001",
+        "DATA:METADATA-SAVE-001",
+        "DATA:CONFIG-ACCESS-001",
+        "DATA:DISPLAY-FORMATTING-001",
+        "DATA:TIME-CALCULATION-001",
+        "DATA:ROLLBACK-LOG-001",
+        "DATA:BRANCH-INFO-001",
+        "DATA:BRANCH-DISPLAY-001",
+        "DATA:BRANCH-STATS-001",
+        "DATA:VERSION-INFO-001",
+        "DATA:CONFIG-STRUCTURE-001"
+      ]
     },
     "QUALITY": {
-      "PERF": [],
-      "SEC": [],
-      "DEBT": [],
+      "PERF": [
+        "PERF:API-500MS",
+        "PERF:PAYMENT-RESPONSE-001"
+      ],
+      "SEC": [
+        "SEC:XSS-HIGH",
+        "SEC:PAYMENT-ENCRYPTION-001"
+      ],
+      "DEBT": [
+        "DEBT:PAYMENT-LEGACY-001"
+      ],
       "TODO": []
     }
   },
-  "traceability_chains": [],
-  "orphaned_tags": [],
+  "traceability_chains": [
+    {
+      "from": "CAT:ID",
+      "to": "CAT:ID"
+    },
+    {
+      "from": "DESIGN:16-CORE-VALIDATION-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:16-CORE-VALIDATION-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:16-CORE-VALIDATION-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:16-CORE-VALIDATION-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:16-CORE-VALIDATION-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:16-CORE-VALIDATION-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:16-CORE-VALIDATION-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:16-CORE-VALIDATION-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:16-CORE-VALIDATION-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:API-GATEWAY",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:ARG-PARSING-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:ARG-PARSING-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:ARG-PARSING-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:ARG-PARSING-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:ARG-PARSING-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:ARG-PARSING-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:ARG-PARSING-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:ARG-PARSING-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:ARG-PARSING-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:AUDIT-TRAIL-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:AUDIT-TRAIL-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:AUDIT-TRAIL-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:AUDIT-TRAIL-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:AUDIT-TRAIL-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:AUDIT-TRAIL-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:AUDIT-TRAIL-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:AUDIT-TRAIL-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:AUDIT-TRAIL-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:AUTO-BACKUP-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:AUTO-BACKUP-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:AUTO-BACKUP-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:AUTO-BACKUP-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:AUTO-BACKUP-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:AUTO-BACKUP-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:AUTO-BACKUP-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:AUTO-BACKUP-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:AUTO-BACKUP-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:BRANCH-LIFECYCLE-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:BRANCH-LIFECYCLE-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:BRANCH-LIFECYCLE-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:BRANCH-LIFECYCLE-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:BRANCH-LIFECYCLE-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:BRANCH-LIFECYCLE-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:BRANCH-LIFECYCLE-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:BRANCH-LIFECYCLE-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:BRANCH-LIFECYCLE-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:BRANCH-NAMING-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:BRANCH-NAMING-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:BRANCH-NAMING-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:BRANCH-NAMING-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:BRANCH-NAMING-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:BRANCH-NAMING-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:BRANCH-NAMING-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:BRANCH-NAMING-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:BRANCH-NAMING-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:CHECKPOINT-ROLLBACK-002",
+      "to": "TASK:DOC-CONDITIONAL-002"
+    },
+    {
+      "from": "DESIGN:COMMAND-DISPATCH-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:COMMAND-DISPATCH-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:COMMAND-DISPATCH-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:COMMAND-DISPATCH-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:COMMAND-DISPATCH-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:COMMAND-DISPATCH-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:COMMAND-DISPATCH-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:COMMAND-DISPATCH-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:COMMAND-DISPATCH-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:COMMIT-MESSAGE-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:COMMIT-MESSAGE-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:COMMIT-MESSAGE-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:COMMIT-MESSAGE-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:COMMIT-MESSAGE-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:COMMIT-MESSAGE-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:COMMIT-MESSAGE-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:COMMIT-MESSAGE-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:COMMIT-MESSAGE-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:COMMIT-WORKFLOW-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:COMMIT-WORKFLOW-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:COMMIT-WORKFLOW-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:COMMIT-WORKFLOW-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:COMMIT-WORKFLOW-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:COMMIT-WORKFLOW-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:COMMIT-WORKFLOW-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:COMMIT-WORKFLOW-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:COMMIT-WORKFLOW-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:CONSISTENCY-CHECK-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:CONSISTENCY-CHECK-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:CONSISTENCY-CHECK-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:CONSISTENCY-CHECK-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:CONSISTENCY-CHECK-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:CONSISTENCY-CHECK-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:CONSISTENCY-CHECK-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:CONSISTENCY-CHECK-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:CONSISTENCY-CHECK-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:DOC-CLEANUP-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:DOC-CLEANUP-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:DOC-CLEANUP-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:DOC-CLEANUP-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:DOC-CLEANUP-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:DOC-CLEANUP-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:DOC-CLEANUP-001",
+      "to": "TASK:DOC-CONDITIONAL-002"
+    },
+    {
+      "from": "DESIGN:DOC-CLEANUP-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:DOC-CLEANUP-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:DOC-CLEANUP-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:JWT-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:JWT-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:JWT-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:JWT-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:JWT-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:JWT-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:JWT-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:JWT-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:JWT-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:JWT-AUTH-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:JWT-AUTH-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:JWT-AUTH-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:JWT-AUTH-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:JWT-AUTH-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:JWT-AUTH-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:JWT-AUTH-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:JWT-AUTH-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:JWT-AUTH-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:MESSAGE-PATTERN-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:MESSAGE-PATTERN-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:MESSAGE-PATTERN-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:MESSAGE-PATTERN-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:MESSAGE-PATTERN-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:MESSAGE-PATTERN-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:MESSAGE-PATTERN-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:MESSAGE-PATTERN-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:MESSAGE-PATTERN-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:MOAI-CONFIG-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:MOAI-CONFIG-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:MOAI-CONFIG-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:MOAI-CONFIG-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:MOAI-CONFIG-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:MOAI-CONFIG-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:MOAI-CONFIG-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:MOAI-CONFIG-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:MOAI-CONFIG-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:MODE-BASED-SYNC-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:MODE-BASED-SYNC-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:MODE-BASED-SYNC-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:MODE-BASED-SYNC-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:MODE-BASED-SYNC-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:MODE-BASED-SYNC-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:MODE-BASED-SYNC-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:MODE-BASED-SYNC-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:MODE-BASED-SYNC-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:MODE-BASED-WORKFLOW-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:MODE-BASED-WORKFLOW-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:MODE-BASED-WORKFLOW-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:MODE-BASED-WORKFLOW-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:MODE-BASED-WORKFLOW-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:MODE-BASED-WORKFLOW-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:MODE-BASED-WORKFLOW-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:MODE-BASED-WORKFLOW-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:MODE-BASED-WORKFLOW-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:MODE-VALIDATION-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:MODE-VALIDATION-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:MODE-VALIDATION-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:MODE-VALIDATION-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:MODE-VALIDATION-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:MODE-VALIDATION-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:MODE-VALIDATION-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:MODE-VALIDATION-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:MODE-VALIDATION-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:NAMING-RULES-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:NAMING-RULES-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:NAMING-RULES-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:NAMING-RULES-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:NAMING-RULES-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:NAMING-RULES-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:NAMING-RULES-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:NAMING-RULES-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:NAMING-RULES-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:PASSWORD-RESET-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:PASSWORD-RESET-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:PASSWORD-RESET-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:PASSWORD-RESET-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:PASSWORD-RESET-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:PASSWORD-RESET-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:PASSWORD-RESET-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:PASSWORD-RESET-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:PASSWORD-RESET-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:PAYMENT-API-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:PAYMENT-API-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:PAYMENT-API-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:PAYMENT-API-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:PAYMENT-API-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:PAYMENT-API-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:PAYMENT-API-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:PAYMENT-API-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:PAYMENT-API-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:PERSONAL-MODE-ONLY-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:PERSONAL-MODE-ONLY-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:PERSONAL-MODE-ONLY-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:PERSONAL-MODE-ONLY-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:PERSONAL-MODE-ONLY-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:PERSONAL-MODE-ONLY-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:PERSONAL-MODE-ONLY-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:PERSONAL-MODE-ONLY-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:PERSONAL-MODE-ONLY-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:PKG-ARCH-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:PKG-ARCH-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:PKG-ARCH-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:PKG-ARCH-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:PKG-ARCH-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:PKG-ARCH-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:PKG-ARCH-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:PKG-ARCH-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:PKG-ARCH-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:PROJECT-STATUS-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:PROJECT-STATUS-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:PROJECT-STATUS-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:PROJECT-STATUS-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:PROJECT-STATUS-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:PROJECT-STATUS-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:PROJECT-STATUS-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:PROJECT-STATUS-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:PROJECT-STATUS-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:PROJECT-TYPE-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:PROJECT-TYPE-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:PROJECT-TYPE-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:PROJECT-TYPE-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:PROJECT-TYPE-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:PROJECT-TYPE-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:PROJECT-TYPE-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:PROJECT-TYPE-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:PROJECT-TYPE-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:PULL-STRATEGY-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:PULL-STRATEGY-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:PULL-STRATEGY-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:PULL-STRATEGY-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:PULL-STRATEGY-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:PULL-STRATEGY-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:PULL-STRATEGY-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:PULL-STRATEGY-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:PULL-STRATEGY-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:PUSH-STRATEGY-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:PUSH-STRATEGY-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:PUSH-STRATEGY-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:PUSH-STRATEGY-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:PUSH-STRATEGY-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:PUSH-STRATEGY-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:PUSH-STRATEGY-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:PUSH-STRATEGY-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:PUSH-STRATEGY-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:SAFETY-CHECK-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:SAFETY-CHECK-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:SAFETY-CHECK-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:SAFETY-CHECK-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:SAFETY-CHECK-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:SAFETY-CHECK-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:SAFETY-CHECK-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:SAFETY-CHECK-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:SAFETY-CHECK-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:SINGLE-TAG-CHECK-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:SINGLE-TAG-CHECK-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:SINGLE-TAG-CHECK-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:SINGLE-TAG-CHECK-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:SINGLE-TAG-CHECK-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:SINGLE-TAG-CHECK-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:SINGLE-TAG-CHECK-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:SINGLE-TAG-CHECK-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:SINGLE-TAG-CHECK-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:TIME-PARSING-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:TIME-PARSING-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:TIME-PARSING-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:TIME-PARSING-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:TIME-PARSING-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:TIME-PARSING-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:TIME-PARSING-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:TIME-PARSING-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:TIME-PARSING-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:TOKEN-SYSTEM-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:TOKEN-SYSTEM-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:TOKEN-SYSTEM-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:TOKEN-SYSTEM-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:TOKEN-SYSTEM-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:TOKEN-SYSTEM-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:TOKEN-SYSTEM-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:TOKEN-SYSTEM-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:TOKEN-SYSTEM-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "DESIGN:WATCHDOG-INTEGRATION-001",
+      "to": "TASK:API-001"
+    },
+    {
+      "from": "DESIGN:WATCHDOG-INTEGRATION-001",
+      "to": "TASK:AUTH-API-001"
+    },
+    {
+      "from": "DESIGN:WATCHDOG-INTEGRATION-001",
+      "to": "TASK:AUTH-IMPL-001"
+    },
+    {
+      "from": "DESIGN:WATCHDOG-INTEGRATION-001",
+      "to": "TASK:AUTH-UI-001"
+    },
+    {
+      "from": "DESIGN:WATCHDOG-INTEGRATION-001",
+      "to": "TASK:CLEANUP-IMPL-001"
+    },
+    {
+      "from": "DESIGN:WATCHDOG-INTEGRATION-001",
+      "to": "TASK:DOC-CONDITIONAL-001"
+    },
+    {
+      "from": "DESIGN:WATCHDOG-INTEGRATION-001",
+      "to": "TASK:PAYMENT-DB-001"
+    },
+    {
+      "from": "DESIGN:WATCHDOG-INTEGRATION-001",
+      "to": "TASK:RESET-001"
+    },
+    {
+      "from": "DESIGN:WATCHDOG-INTEGRATION-001",
+      "to": "TASK:STRIPE-SDK-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:16-CORE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:ARG-PARSING-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:AUDIT-TRAIL-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:AUTO-BACKUP-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:BRANCH-LIFECYCLE-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:BRANCH-NAMING-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:COMMAND-DISPATCH-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:COMMIT-MESSAGE-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:COMMIT-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:CONSISTENCY-CHECK-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:DOC-CLEANUP-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:JWT-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:JWT-AUTH-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:MESSAGE-PATTERN-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:MOAI-CONFIG-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:MODE-BASED-SYNC-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:MODE-BASED-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:MODE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:NAMING-RULES-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:PASSWORD-RESET-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:PAYMENT-API-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:PERSONAL-MODE-ONLY-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:PKG-ARCH-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:PROJECT-STATUS-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:PROJECT-TYPE-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:PULL-STRATEGY-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:PUSH-STRATEGY-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:SAFETY-CHECK-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:SINGLE-TAG-CHECK-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:TIME-PARSING-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:TOKEN-SYSTEM-001"
+    },
+    {
+      "from": "REQ:AGENT-VALIDATION-001",
+      "to": "DESIGN:WATCHDOG-INTEGRATION-001"
+    },
+    {
+      "from": "REQ:API-ENDPOINTS",
+      "to": "DESIGN:API-GATEWAY"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:16-CORE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:ARG-PARSING-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:AUDIT-TRAIL-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:AUTO-BACKUP-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:BRANCH-LIFECYCLE-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:BRANCH-NAMING-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:COMMAND-DISPATCH-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:COMMIT-MESSAGE-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:COMMIT-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:CONSISTENCY-CHECK-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:DOC-CLEANUP-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:JWT-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:JWT-AUTH-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:MESSAGE-PATTERN-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:MOAI-CONFIG-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:MODE-BASED-SYNC-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:MODE-BASED-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:MODE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:NAMING-RULES-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:PASSWORD-RESET-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:PAYMENT-API-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:PERSONAL-MODE-ONLY-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:PKG-ARCH-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:PROJECT-STATUS-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:PROJECT-TYPE-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:PULL-STRATEGY-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:PUSH-STRATEGY-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:SAFETY-CHECK-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:SINGLE-TAG-CHECK-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:TIME-PARSING-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:TOKEN-SYSTEM-001"
+    },
+    {
+      "from": "REQ:AUTO-CHECKPOINT-001",
+      "to": "DESIGN:WATCHDOG-INTEGRATION-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:16-CORE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:ARG-PARSING-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:AUDIT-TRAIL-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:AUTO-BACKUP-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:BRANCH-LIFECYCLE-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:BRANCH-NAMING-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:COMMAND-DISPATCH-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:COMMIT-MESSAGE-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:COMMIT-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:CONSISTENCY-CHECK-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:DOC-CLEANUP-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:JWT-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:JWT-AUTH-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:MESSAGE-PATTERN-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:MOAI-CONFIG-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:MODE-BASED-SYNC-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:MODE-BASED-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:MODE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:NAMING-RULES-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:PASSWORD-RESET-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:PAYMENT-API-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:PERSONAL-MODE-ONLY-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:PKG-ARCH-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:PROJECT-STATUS-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:PROJECT-TYPE-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:PULL-STRATEGY-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:PUSH-STRATEGY-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:SAFETY-CHECK-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:SINGLE-TAG-CHECK-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:TIME-PARSING-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:TOKEN-SYSTEM-001"
+    },
+    {
+      "from": "REQ:BUS-001",
+      "to": "DESIGN:WATCHDOG-INTEGRATION-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:16-CORE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:ARG-PARSING-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:AUDIT-TRAIL-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:AUTO-BACKUP-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:BRANCH-LIFECYCLE-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:BRANCH-NAMING-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:COMMAND-DISPATCH-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:COMMIT-MESSAGE-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:COMMIT-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:CONSISTENCY-CHECK-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:DOC-CLEANUP-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:JWT-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:JWT-AUTH-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:MESSAGE-PATTERN-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:MOAI-CONFIG-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:MODE-BASED-SYNC-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:MODE-BASED-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:MODE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:NAMING-RULES-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:PASSWORD-RESET-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:PAYMENT-API-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:PERSONAL-MODE-ONLY-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:PKG-ARCH-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:PROJECT-STATUS-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:PROJECT-TYPE-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:PULL-STRATEGY-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:PUSH-STRATEGY-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:SAFETY-CHECK-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:SINGLE-TAG-CHECK-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:TIME-PARSING-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:TOKEN-SYSTEM-001"
+    },
+    {
+      "from": "REQ:FILE-WATCHER-001",
+      "to": "DESIGN:WATCHDOG-INTEGRATION-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:16-CORE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:ARG-PARSING-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:AUDIT-TRAIL-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:AUTO-BACKUP-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:BRANCH-LIFECYCLE-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:BRANCH-NAMING-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:COMMAND-DISPATCH-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:COMMIT-MESSAGE-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:COMMIT-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:CONSISTENCY-CHECK-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:DOC-CLEANUP-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:JWT-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:JWT-AUTH-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:MESSAGE-PATTERN-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:MOAI-CONFIG-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:MODE-BASED-SYNC-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:MODE-BASED-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:MODE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:NAMING-RULES-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:PASSWORD-RESET-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:PAYMENT-API-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:PERSONAL-MODE-ONLY-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:PKG-ARCH-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:PROJECT-STATUS-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:PROJECT-TYPE-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:PULL-STRATEGY-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:PUSH-STRATEGY-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:SAFETY-CHECK-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:SINGLE-TAG-CHECK-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:TIME-PARSING-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:TOKEN-SYSTEM-001"
+    },
+    {
+      "from": "REQ:GIT-BRANCH-001",
+      "to": "DESIGN:WATCHDOG-INTEGRATION-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:16-CORE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:ARG-PARSING-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:AUDIT-TRAIL-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:AUTO-BACKUP-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:BRANCH-LIFECYCLE-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:BRANCH-NAMING-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:COMMAND-DISPATCH-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:COMMIT-MESSAGE-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:COMMIT-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:CONSISTENCY-CHECK-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:DOC-CLEANUP-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:JWT-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:JWT-AUTH-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:MESSAGE-PATTERN-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:MOAI-CONFIG-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:MODE-BASED-SYNC-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:MODE-BASED-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:MODE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:NAMING-RULES-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:PASSWORD-RESET-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:PAYMENT-API-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:PERSONAL-MODE-ONLY-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:PKG-ARCH-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:PROJECT-STATUS-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:PROJECT-TYPE-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:PULL-STRATEGY-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:PUSH-STRATEGY-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:SAFETY-CHECK-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:SINGLE-TAG-CHECK-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:TIME-PARSING-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:TOKEN-SYSTEM-001"
+    },
+    {
+      "from": "REQ:GIT-CHECKPOINT-001",
+      "to": "DESIGN:WATCHDOG-INTEGRATION-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:16-CORE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:ARG-PARSING-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:AUDIT-TRAIL-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:AUTO-BACKUP-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:BRANCH-LIFECYCLE-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:BRANCH-NAMING-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:COMMAND-DISPATCH-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:COMMIT-MESSAGE-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:COMMIT-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:CONSISTENCY-CHECK-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:DOC-CLEANUP-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:JWT-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:JWT-AUTH-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:MESSAGE-PATTERN-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:MOAI-CONFIG-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:MODE-BASED-SYNC-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:MODE-BASED-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:MODE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:NAMING-RULES-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:PASSWORD-RESET-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:PAYMENT-API-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:PERSONAL-MODE-ONLY-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:PKG-ARCH-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:PROJECT-STATUS-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:PROJECT-TYPE-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:PULL-STRATEGY-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:PUSH-STRATEGY-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:SAFETY-CHECK-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:SINGLE-TAG-CHECK-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:TIME-PARSING-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:TOKEN-SYSTEM-001"
+    },
+    {
+      "from": "REQ:GIT-COMMIT-001",
+      "to": "DESIGN:WATCHDOG-INTEGRATION-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:16-CORE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:ARG-PARSING-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:AUDIT-TRAIL-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:AUTO-BACKUP-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:BRANCH-LIFECYCLE-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:BRANCH-NAMING-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:COMMAND-DISPATCH-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:COMMIT-MESSAGE-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:COMMIT-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:CONSISTENCY-CHECK-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:DOC-CLEANUP-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:JWT-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:JWT-AUTH-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:MESSAGE-PATTERN-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:MOAI-CONFIG-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:MODE-BASED-SYNC-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:MODE-BASED-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:MODE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:NAMING-RULES-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:PASSWORD-RESET-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:PAYMENT-API-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:PERSONAL-MODE-ONLY-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:PKG-ARCH-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:PROJECT-STATUS-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:PROJECT-TYPE-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:PULL-STRATEGY-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:PUSH-STRATEGY-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:SAFETY-CHECK-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:SINGLE-TAG-CHECK-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:TIME-PARSING-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:TOKEN-SYSTEM-001"
+    },
+    {
+      "from": "REQ:GIT-ROLLBACK-001",
+      "to": "DESIGN:WATCHDOG-INTEGRATION-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:16-CORE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:ARG-PARSING-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:AUDIT-TRAIL-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:AUTO-BACKUP-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:BRANCH-LIFECYCLE-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:BRANCH-NAMING-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:COMMAND-DISPATCH-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:COMMIT-MESSAGE-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:COMMIT-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:CONSISTENCY-CHECK-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:DOC-CLEANUP-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:JWT-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:JWT-AUTH-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:MESSAGE-PATTERN-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:MOAI-CONFIG-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:MODE-BASED-SYNC-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:MODE-BASED-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:MODE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:NAMING-RULES-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:PASSWORD-RESET-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:PAYMENT-API-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:PERSONAL-MODE-ONLY-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:PKG-ARCH-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:PROJECT-STATUS-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:PROJECT-TYPE-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:PULL-STRATEGY-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:PUSH-STRATEGY-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:SAFETY-CHECK-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:SINGLE-TAG-CHECK-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:TIME-PARSING-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:TOKEN-SYSTEM-001"
+    },
+    {
+      "from": "REQ:GIT-SYNC-001",
+      "to": "DESIGN:WATCHDOG-INTEGRATION-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:16-CORE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:ARG-PARSING-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:AUDIT-TRAIL-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:AUTO-BACKUP-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:BRANCH-LIFECYCLE-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:BRANCH-NAMING-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:COMMAND-DISPATCH-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:COMMIT-MESSAGE-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:COMMIT-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:CONSISTENCY-CHECK-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:DOC-CLEANUP-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:JWT-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:JWT-AUTH-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:MESSAGE-PATTERN-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:MOAI-CONFIG-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:MODE-BASED-SYNC-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:MODE-BASED-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:MODE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:NAMING-RULES-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:PASSWORD-RESET-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:PAYMENT-API-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:PERSONAL-MODE-ONLY-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:PKG-ARCH-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:PROJECT-STATUS-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:PROJECT-TYPE-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:PULL-STRATEGY-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:PUSH-STRATEGY-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:SAFETY-CHECK-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:SINGLE-TAG-CHECK-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:TIME-PARSING-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:TOKEN-SYSTEM-001"
+    },
+    {
+      "from": "REQ:HOOK-SESSION-START-001",
+      "to": "DESIGN:WATCHDOG-INTEGRATION-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:16-CORE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:ARG-PARSING-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:AUDIT-TRAIL-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:AUTO-BACKUP-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:BRANCH-LIFECYCLE-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:BRANCH-NAMING-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:COMMAND-DISPATCH-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:COMMIT-MESSAGE-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:COMMIT-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:CONSISTENCY-CHECK-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:DOC-CLEANUP-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:JWT-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:JWT-AUTH-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:MESSAGE-PATTERN-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:MOAI-CONFIG-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:MODE-BASED-SYNC-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:MODE-BASED-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:MODE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:NAMING-RULES-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:PASSWORD-RESET-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:PAYMENT-API-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:PERSONAL-MODE-ONLY-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:PKG-ARCH-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:PROJECT-STATUS-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:PROJECT-TYPE-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:PULL-STRATEGY-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:PUSH-STRATEGY-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:SAFETY-CHECK-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:SINGLE-TAG-CHECK-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:TIME-PARSING-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:TOKEN-SYSTEM-001"
+    },
+    {
+      "from": "REQ:HOOK-STYLE-CHECK-001",
+      "to": "DESIGN:WATCHDOG-INTEGRATION-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:16-CORE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:ARG-PARSING-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:AUDIT-TRAIL-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:AUTO-BACKUP-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:BRANCH-LIFECYCLE-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:BRANCH-NAMING-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:COMMAND-DISPATCH-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:COMMIT-MESSAGE-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:COMMIT-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:CONSISTENCY-CHECK-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:DOC-CLEANUP-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:JWT-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:JWT-AUTH-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:MESSAGE-PATTERN-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:MOAI-CONFIG-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:MODE-BASED-SYNC-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:MODE-BASED-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:MODE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:NAMING-RULES-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:PASSWORD-RESET-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:PAYMENT-API-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:PERSONAL-MODE-ONLY-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:PKG-ARCH-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:PROJECT-STATUS-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:PROJECT-TYPE-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:PULL-STRATEGY-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:PUSH-STRATEGY-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:SAFETY-CHECK-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:SINGLE-TAG-CHECK-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:TIME-PARSING-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:TOKEN-SYSTEM-001"
+    },
+    {
+      "from": "REQ:HOOK-TAG-VALIDATION-001",
+      "to": "DESIGN:WATCHDOG-INTEGRATION-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:16-CORE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:ARG-PARSING-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:AUDIT-TRAIL-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:AUTO-BACKUP-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:BRANCH-LIFECYCLE-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:BRANCH-NAMING-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:COMMAND-DISPATCH-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:COMMIT-MESSAGE-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:COMMIT-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:CONSISTENCY-CHECK-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:DOC-CLEANUP-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:JWT-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:JWT-AUTH-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:MESSAGE-PATTERN-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:MOAI-CONFIG-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:MODE-BASED-SYNC-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:MODE-BASED-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:MODE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:NAMING-RULES-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:PASSWORD-RESET-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:PAYMENT-API-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:PERSONAL-MODE-ONLY-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:PKG-ARCH-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:PROJECT-STATUS-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:PROJECT-TYPE-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:PULL-STRATEGY-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:PUSH-STRATEGY-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:SAFETY-CHECK-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:SINGLE-TAG-CHECK-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:TIME-PARSING-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:TOKEN-SYSTEM-001"
+    },
+    {
+      "from": "REQ:OPT-CORE-001",
+      "to": "DESIGN:WATCHDOG-INTEGRATION-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:16-CORE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:ARG-PARSING-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:AUDIT-TRAIL-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:AUTO-BACKUP-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:BRANCH-LIFECYCLE-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:BRANCH-NAMING-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:COMMAND-DISPATCH-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:COMMIT-MESSAGE-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:COMMIT-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:CONSISTENCY-CHECK-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:DOC-CLEANUP-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:JWT-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:JWT-AUTH-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:MESSAGE-PATTERN-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:MOAI-CONFIG-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:MODE-BASED-SYNC-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:MODE-BASED-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:MODE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:NAMING-RULES-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:PASSWORD-RESET-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:PAYMENT-API-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:PERSONAL-MODE-ONLY-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:PKG-ARCH-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:PROJECT-STATUS-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:PROJECT-TYPE-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:PULL-STRATEGY-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:PUSH-STRATEGY-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:SAFETY-CHECK-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:SINGLE-TAG-CHECK-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:TIME-PARSING-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:TOKEN-SYSTEM-001"
+    },
+    {
+      "from": "REQ:PASSWORD-RESET-001",
+      "to": "DESIGN:WATCHDOG-INTEGRATION-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:16-CORE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:ARG-PARSING-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:AUDIT-TRAIL-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:AUTO-BACKUP-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:BRANCH-LIFECYCLE-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:BRANCH-NAMING-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:COMMAND-DISPATCH-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:COMMIT-MESSAGE-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:COMMIT-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:CONSISTENCY-CHECK-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:DOC-CLEANUP-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:JWT-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:JWT-AUTH-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:MESSAGE-PATTERN-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:MOAI-CONFIG-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:MODE-BASED-SYNC-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:MODE-BASED-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:MODE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:NAMING-RULES-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:PASSWORD-RESET-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:PAYMENT-API-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:PERSONAL-MODE-ONLY-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:PKG-ARCH-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:PROJECT-STATUS-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:PROJECT-TYPE-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:PULL-STRATEGY-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:PUSH-STRATEGY-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:SAFETY-CHECK-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:SINGLE-TAG-CHECK-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:TIME-PARSING-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:TOKEN-SYSTEM-001"
+    },
+    {
+      "from": "REQ:PAYMENT-STRIPE-001",
+      "to": "DESIGN:WATCHDOG-INTEGRATION-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:16-CORE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:ARG-PARSING-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:AUDIT-TRAIL-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:AUTO-BACKUP-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:BRANCH-LIFECYCLE-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:BRANCH-NAMING-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:COMMAND-DISPATCH-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:COMMIT-MESSAGE-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:COMMIT-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:CONSISTENCY-CHECK-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:DOC-CLEANUP-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:JWT-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:JWT-AUTH-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:MESSAGE-PATTERN-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:MOAI-CONFIG-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:MODE-BASED-SYNC-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:MODE-BASED-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:MODE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:NAMING-RULES-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:PASSWORD-RESET-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:PAYMENT-API-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:PERSONAL-MODE-ONLY-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:PKG-ARCH-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:PROJECT-STATUS-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:PROJECT-TYPE-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:PULL-STRATEGY-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:PUSH-STRATEGY-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:SAFETY-CHECK-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:SINGLE-TAG-CHECK-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:TIME-PARSING-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:TOKEN-SYSTEM-001"
+    },
+    {
+      "from": "REQ:PERF-001",
+      "to": "DESIGN:WATCHDOG-INTEGRATION-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:16-CORE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:ARG-PARSING-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:AUDIT-TRAIL-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:AUTO-BACKUP-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:BRANCH-LIFECYCLE-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:BRANCH-NAMING-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:COMMAND-DISPATCH-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:COMMIT-MESSAGE-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:COMMIT-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:CONSISTENCY-CHECK-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:DOC-CLEANUP-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:JWT-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:JWT-AUTH-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:MESSAGE-PATTERN-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:MOAI-CONFIG-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:MODE-BASED-SYNC-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:MODE-BASED-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:MODE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:NAMING-RULES-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:PASSWORD-RESET-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:PAYMENT-API-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:PERSONAL-MODE-ONLY-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:PKG-ARCH-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:PROJECT-STATUS-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:PROJECT-TYPE-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:PULL-STRATEGY-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:PUSH-STRATEGY-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:SAFETY-CHECK-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:SINGLE-TAG-CHECK-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:TIME-PARSING-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:TOKEN-SYSTEM-001"
+    },
+    {
+      "from": "REQ:PERF-RESPONSE-001",
+      "to": "DESIGN:WATCHDOG-INTEGRATION-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:16-CORE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:ARG-PARSING-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:AUDIT-TRAIL-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:AUTO-BACKUP-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:BRANCH-LIFECYCLE-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:BRANCH-NAMING-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:COMMAND-DISPATCH-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:COMMIT-MESSAGE-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:COMMIT-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:CONSISTENCY-CHECK-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:DOC-CLEANUP-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:JWT-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:JWT-AUTH-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:MESSAGE-PATTERN-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:MOAI-CONFIG-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:MODE-BASED-SYNC-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:MODE-BASED-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:MODE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:NAMING-RULES-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:PASSWORD-RESET-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:PAYMENT-API-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:PERSONAL-MODE-ONLY-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:PKG-ARCH-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:PROJECT-STATUS-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:PROJECT-TYPE-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:PULL-STRATEGY-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:PUSH-STRATEGY-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:SAFETY-CHECK-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:SINGLE-TAG-CHECK-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:TIME-PARSING-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:TOKEN-SYSTEM-001"
+    },
+    {
+      "from": "REQ:PROJECT-CONFIG-001",
+      "to": "DESIGN:WATCHDOG-INTEGRATION-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:16-CORE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:ARG-PARSING-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:AUDIT-TRAIL-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:AUTO-BACKUP-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:BRANCH-LIFECYCLE-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:BRANCH-NAMING-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:COMMAND-DISPATCH-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:COMMIT-MESSAGE-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:COMMIT-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:CONSISTENCY-CHECK-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:DOC-CLEANUP-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:JWT-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:JWT-AUTH-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:MESSAGE-PATTERN-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:MOAI-CONFIG-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:MODE-BASED-SYNC-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:MODE-BASED-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:MODE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:NAMING-RULES-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:PASSWORD-RESET-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:PAYMENT-API-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:PERSONAL-MODE-ONLY-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:PKG-ARCH-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:PROJECT-STATUS-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:PROJECT-TYPE-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:PULL-STRATEGY-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:PUSH-STRATEGY-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:SAFETY-CHECK-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:SINGLE-TAG-CHECK-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:TIME-PARSING-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:TOKEN-SYSTEM-001"
+    },
+    {
+      "from": "REQ:SEC-001",
+      "to": "DESIGN:WATCHDOG-INTEGRATION-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:16-CORE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:ARG-PARSING-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:AUDIT-TRAIL-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:AUTO-BACKUP-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:BRANCH-LIFECYCLE-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:BRANCH-NAMING-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:COMMAND-DISPATCH-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:COMMIT-MESSAGE-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:COMMIT-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:CONSISTENCY-CHECK-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:DOC-CLEANUP-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:JWT-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:JWT-AUTH-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:MESSAGE-PATTERN-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:MOAI-CONFIG-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:MODE-BASED-SYNC-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:MODE-BASED-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:MODE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:NAMING-RULES-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:PASSWORD-RESET-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:PAYMENT-API-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:PERSONAL-MODE-ONLY-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:PKG-ARCH-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:PROJECT-STATUS-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:PROJECT-TYPE-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:PULL-STRATEGY-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:PUSH-STRATEGY-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:SAFETY-CHECK-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:SINGLE-TAG-CHECK-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:TIME-PARSING-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:TOKEN-SYSTEM-001"
+    },
+    {
+      "from": "REQ:USER-001",
+      "to": "DESIGN:WATCHDOG-INTEGRATION-001"
+    },
+    {
+      "from": "REQ:USER-002",
+      "to": "DESIGN:CHECKPOINT-ROLLBACK-002"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:16-CORE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:ARG-PARSING-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:AUDIT-TRAIL-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:AUTO-BACKUP-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:BRANCH-LIFECYCLE-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:BRANCH-NAMING-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:COMMAND-DISPATCH-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:COMMIT-MESSAGE-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:COMMIT-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:CONSISTENCY-CHECK-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:DOC-CLEANUP-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:JWT-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:JWT-AUTH-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:MESSAGE-PATTERN-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:MOAI-CONFIG-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:MODE-BASED-SYNC-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:MODE-BASED-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:MODE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:NAMING-RULES-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:PASSWORD-RESET-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:PAYMENT-API-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:PERSONAL-MODE-ONLY-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:PKG-ARCH-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:PROJECT-STATUS-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:PROJECT-TYPE-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:PULL-STRATEGY-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:PUSH-STRATEGY-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:SAFETY-CHECK-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:SINGLE-TAG-CHECK-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:TIME-PARSING-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:TOKEN-SYSTEM-001"
+    },
+    {
+      "from": "REQ:USER-AUTH-001",
+      "to": "DESIGN:WATCHDOG-INTEGRATION-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:16-CORE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:ARG-PARSING-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:AUDIT-TRAIL-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:AUTO-BACKUP-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:BRANCH-LIFECYCLE-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:BRANCH-NAMING-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:COMMAND-DISPATCH-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:COMMIT-MESSAGE-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:COMMIT-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:CONSISTENCY-CHECK-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:DOC-CLEANUP-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:JWT-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:JWT-AUTH-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:MESSAGE-PATTERN-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:MOAI-CONFIG-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:MODE-BASED-SYNC-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:MODE-BASED-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:MODE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:NAMING-RULES-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:PASSWORD-RESET-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:PAYMENT-API-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:PERSONAL-MODE-ONLY-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:PKG-ARCH-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:PROJECT-STATUS-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:PROJECT-TYPE-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:PULL-STRATEGY-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:PUSH-STRATEGY-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:SAFETY-CHECK-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:SINGLE-TAG-CHECK-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:TIME-PARSING-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:TOKEN-SYSTEM-001"
+    },
+    {
+      "from": "REQ:USER-LOGIN-001",
+      "to": "DESIGN:WATCHDOG-INTEGRATION-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:16-CORE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:ARG-PARSING-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:AUDIT-TRAIL-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:AUTO-BACKUP-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:BRANCH-LIFECYCLE-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:BRANCH-NAMING-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:COMMAND-DISPATCH-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:COMMIT-MESSAGE-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:COMMIT-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:CONSISTENCY-CHECK-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:DOC-CLEANUP-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:JWT-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:JWT-AUTH-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:MESSAGE-PATTERN-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:MOAI-CONFIG-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:MODE-BASED-SYNC-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:MODE-BASED-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:MODE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:NAMING-RULES-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:PASSWORD-RESET-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:PAYMENT-API-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:PERSONAL-MODE-ONLY-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:PKG-ARCH-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:PROJECT-STATUS-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:PROJECT-TYPE-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:PULL-STRATEGY-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:PUSH-STRATEGY-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:SAFETY-CHECK-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:SINGLE-TAG-CHECK-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:TIME-PARSING-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:TOKEN-SYSTEM-001"
+    },
+    {
+      "from": "REQ:USER-MGMT-001",
+      "to": "DESIGN:WATCHDOG-INTEGRATION-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:16-CORE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:ARG-PARSING-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:AUDIT-TRAIL-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:AUTO-BACKUP-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:BRANCH-LIFECYCLE-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:BRANCH-NAMING-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:COMMAND-DISPATCH-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:COMMIT-MESSAGE-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:COMMIT-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:CONSISTENCY-CHECK-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:DOC-CLEANUP-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:JWT-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:JWT-AUTH-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:MESSAGE-PATTERN-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:MOAI-CONFIG-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:MODE-BASED-SYNC-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:MODE-BASED-WORKFLOW-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:MODE-VALIDATION-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:NAMING-RULES-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:PASSWORD-RESET-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:PAYMENT-API-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:PERSONAL-MODE-ONLY-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:PKG-ARCH-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:PROJECT-STATUS-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:PROJECT-TYPE-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:PULL-STRATEGY-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:PUSH-STRATEGY-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:SAFETY-CHECK-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:SINGLE-TAG-CHECK-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:TIME-PARSING-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:TOKEN-SYSTEM-001"
+    },
+    {
+      "from": "REQ:UX-001",
+      "to": "DESIGN:WATCHDOG-INTEGRATION-001"
+    },
+    {
+      "from": "STRUCT:MICROSERVICE-001",
+      "to": "TECH:CLAUDE-CODE-HOOK-001"
+    },
+    {
+      "from": "STRUCT:MICROSERVICE-001",
+      "to": "TECH:CLAUDE-CODE-STD-001"
+    },
+    {
+      "from": "STRUCT:MICROSERVICE-001",
+      "to": "TECH:CLI-INTERFACE-001"
+    },
+    {
+      "from": "STRUCT:MICROSERVICE-001",
+      "to": "TECH:CONTAINER-001"
+    },
+    {
+      "from": "STRUCT:MICROSERVICE-001",
+      "to": "TECH:DOCSTRING-ANALYSIS-001"
+    },
+    {
+      "from": "STRUCT:MICROSERVICE-001",
+      "to": "TECH:EVENT-DRIVEN-CHECKPOINT-001"
+    },
+    {
+      "from": "STRUCT:MICROSERVICE-001",
+      "to": "TECH:GITFLOW-INTEGRATION-001"
+    },
+    {
+      "from": "STRUCT:MICROSERVICE-001",
+      "to": "TECH:JSON-CONFIG-001"
+    },
+    {
+      "from": "STRUCT:MICROSERVICE-001",
+      "to": "TECH:MULTI-LANG-SUPPORT-001"
+    },
+    {
+      "from": "STRUCT:MICROSERVICE-001",
+      "to": "TECH:PATH-RESOLUTION-001"
+    },
+    {
+      "from": "STRUCT:MICROSERVICE-001",
+      "to": "TECH:PERSONAL-MODE-001"
+    },
+    {
+      "from": "STRUCT:MICROSERVICE-001",
+      "to": "TECH:PERSONAL-MODE-ONLY-001"
+    },
+    {
+      "from": "STRUCT:MICROSERVICE-001",
+      "to": "TECH:PRETOOLUSE-HOOK-001"
+    },
+    {
+      "from": "STRUCT:MICROSERVICE-001",
+      "to": "TECH:PUSH-PULL-STRATEGY-001"
+    },
+    {
+      "from": "STRUCT:MICROSERVICE-001",
+      "to": "TECH:SEMANTIC-VERSIONING-001"
+    },
+    {
+      "from": "STRUCT:MICROSERVICE-001",
+      "to": "TECH:SESSIONSTART-HOOK-001"
+    },
+    {
+      "from": "STRUCT:MICROSERVICE-001",
+      "to": "TECH:SUBPROCESS-001"
+    },
+    {
+      "from": "STRUCT:MICROSERVICE-001",
+      "to": "TECH:SUBPROCESS-EXEC-001"
+    },
+    {
+      "from": "STRUCT:MICROSERVICE-001",
+      "to": "TECH:TIME-PARSING-001"
+    },
+    {
+      "from": "TASK:API-001",
+      "to": "TEST:AUTH-001"
+    },
+    {
+      "from": "TASK:API-001",
+      "to": "TEST:AUTH-LOGIN-001"
+    },
+    {
+      "from": "TASK:API-001",
+      "to": "TEST:AUTH-SECURITY-001"
+    },
+    {
+      "from": "TASK:API-001",
+      "to": "TEST:E2E-CHECKOUT-001"
+    },
+    {
+      "from": "TASK:API-001",
+      "to": "TEST:PAYMENT-FAILURE-001"
+    },
+    {
+      "from": "TASK:API-001",
+      "to": "TEST:PAYMENT-SUCCESS-001"
+    },
+    {
+      "from": "TASK:API-001",
+      "to": "TEST:UNIT-001"
+    },
+    {
+      "from": "TASK:API-001",
+      "to": "TEST:UNIT-AUTH-001"
+    },
+    {
+      "from": "TASK:API-001",
+      "to": "TEST:UNIT-LOGIN-001"
+    },
+    {
+      "from": "TASK:API-001",
+      "to": "TEST:UNIT-OPT-001"
+    },
+    {
+      "from": "TASK:API-001",
+      "to": "TEST:UNIT-SYNC-001"
+    },
+    {
+      "from": "TASK:AUTH-API",
+      "to": "TEST:AUTH-001"
+    },
+    {
+      "from": "TASK:AUTH-API",
+      "to": "TEST:AUTH-LOGIN-001"
+    },
+    {
+      "from": "TASK:AUTH-API",
+      "to": "TEST:AUTH-SECURITY-001"
+    },
+    {
+      "from": "TASK:AUTH-API-001",
+      "to": "TEST:AUTH-001"
+    },
+    {
+      "from": "TASK:AUTH-API-001",
+      "to": "TEST:AUTH-LOGIN-001"
+    },
+    {
+      "from": "TASK:AUTH-API-001",
+      "to": "TEST:AUTH-SECURITY-001"
+    },
+    {
+      "from": "TASK:AUTH-API-001",
+      "to": "TEST:E2E-CHECKOUT-001"
+    },
+    {
+      "from": "TASK:AUTH-API-001",
+      "to": "TEST:PAYMENT-FAILURE-001"
+    },
+    {
+      "from": "TASK:AUTH-API-001",
+      "to": "TEST:PAYMENT-SUCCESS-001"
+    },
+    {
+      "from": "TASK:AUTH-API-001",
+      "to": "TEST:UNIT-001"
+    },
+    {
+      "from": "TASK:AUTH-API-001",
+      "to": "TEST:UNIT-AUTH-001"
+    },
+    {
+      "from": "TASK:AUTH-API-001",
+      "to": "TEST:UNIT-LOGIN-001"
+    },
+    {
+      "from": "TASK:AUTH-API-001",
+      "to": "TEST:UNIT-OPT-001"
+    },
+    {
+      "from": "TASK:AUTH-API-001",
+      "to": "TEST:UNIT-SYNC-001"
+    },
+    {
+      "from": "TASK:AUTH-IMPL-001",
+      "to": "TEST:AUTH-001"
+    },
+    {
+      "from": "TASK:AUTH-IMPL-001",
+      "to": "TEST:AUTH-LOGIN-001"
+    },
+    {
+      "from": "TASK:AUTH-IMPL-001",
+      "to": "TEST:AUTH-SECURITY-001"
+    },
+    {
+      "from": "TASK:AUTH-IMPL-001",
+      "to": "TEST:E2E-CHECKOUT-001"
+    },
+    {
+      "from": "TASK:AUTH-IMPL-001",
+      "to": "TEST:PAYMENT-FAILURE-001"
+    },
+    {
+      "from": "TASK:AUTH-IMPL-001",
+      "to": "TEST:PAYMENT-SUCCESS-001"
+    },
+    {
+      "from": "TASK:AUTH-IMPL-001",
+      "to": "TEST:UNIT-001"
+    },
+    {
+      "from": "TASK:AUTH-IMPL-001",
+      "to": "TEST:UNIT-AUTH-001"
+    },
+    {
+      "from": "TASK:AUTH-IMPL-001",
+      "to": "TEST:UNIT-LOGIN-001"
+    },
+    {
+      "from": "TASK:AUTH-IMPL-001",
+      "to": "TEST:UNIT-OPT-001"
+    },
+    {
+      "from": "TASK:AUTH-IMPL-001",
+      "to": "TEST:UNIT-SYNC-001"
+    },
+    {
+      "from": "TASK:AUTH-UI-001",
+      "to": "TEST:AUTH-001"
+    },
+    {
+      "from": "TASK:AUTH-UI-001",
+      "to": "TEST:AUTH-LOGIN-001"
+    },
+    {
+      "from": "TASK:AUTH-UI-001",
+      "to": "TEST:AUTH-SECURITY-001"
+    },
+    {
+      "from": "TASK:AUTH-UI-001",
+      "to": "TEST:E2E-CHECKOUT-001"
+    },
+    {
+      "from": "TASK:AUTH-UI-001",
+      "to": "TEST:PAYMENT-FAILURE-001"
+    },
+    {
+      "from": "TASK:AUTH-UI-001",
+      "to": "TEST:PAYMENT-SUCCESS-001"
+    },
+    {
+      "from": "TASK:AUTH-UI-001",
+      "to": "TEST:UNIT-001"
+    },
+    {
+      "from": "TASK:AUTH-UI-001",
+      "to": "TEST:UNIT-AUTH-001"
+    },
+    {
+      "from": "TASK:AUTH-UI-001",
+      "to": "TEST:UNIT-LOGIN-001"
+    },
+    {
+      "from": "TASK:AUTH-UI-001",
+      "to": "TEST:UNIT-OPT-001"
+    },
+    {
+      "from": "TASK:AUTH-UI-001",
+      "to": "TEST:UNIT-SYNC-001"
+    },
+    {
+      "from": "TASK:CLEANUP-IMPL-001",
+      "to": "TEST:AUTH-001"
+    },
+    {
+      "from": "TASK:CLEANUP-IMPL-001",
+      "to": "TEST:AUTH-LOGIN-001"
+    },
+    {
+      "from": "TASK:CLEANUP-IMPL-001",
+      "to": "TEST:AUTH-SECURITY-001"
+    },
+    {
+      "from": "TASK:CLEANUP-IMPL-001",
+      "to": "TEST:E2E-CHECKOUT-001"
+    },
+    {
+      "from": "TASK:CLEANUP-IMPL-001",
+      "to": "TEST:PAYMENT-FAILURE-001"
+    },
+    {
+      "from": "TASK:CLEANUP-IMPL-001",
+      "to": "TEST:PAYMENT-SUCCESS-001"
+    },
+    {
+      "from": "TASK:CLEANUP-IMPL-001",
+      "to": "TEST:UNIT-001"
+    },
+    {
+      "from": "TASK:CLEANUP-IMPL-001",
+      "to": "TEST:UNIT-AUTH-001"
+    },
+    {
+      "from": "TASK:CLEANUP-IMPL-001",
+      "to": "TEST:UNIT-LOGIN-001"
+    },
+    {
+      "from": "TASK:CLEANUP-IMPL-001",
+      "to": "TEST:UNIT-OPT-001"
+    },
+    {
+      "from": "TASK:CLEANUP-IMPL-001",
+      "to": "TEST:UNIT-SYNC-001"
+    },
+    {
+      "from": "TASK:DOC-CONDITIONAL-001",
+      "to": "TEST:AUTH-001"
+    },
+    {
+      "from": "TASK:DOC-CONDITIONAL-001",
+      "to": "TEST:AUTH-LOGIN-001"
+    },
+    {
+      "from": "TASK:DOC-CONDITIONAL-001",
+      "to": "TEST:AUTH-SECURITY-001"
+    },
+    {
+      "from": "TASK:DOC-CONDITIONAL-001",
+      "to": "TEST:E2E-CHECKOUT-001"
+    },
+    {
+      "from": "TASK:DOC-CONDITIONAL-001",
+      "to": "TEST:PAYMENT-FAILURE-001"
+    },
+    {
+      "from": "TASK:DOC-CONDITIONAL-001",
+      "to": "TEST:PAYMENT-SUCCESS-001"
+    },
+    {
+      "from": "TASK:DOC-CONDITIONAL-001",
+      "to": "TEST:UNIT-001"
+    },
+    {
+      "from": "TASK:DOC-CONDITIONAL-001",
+      "to": "TEST:UNIT-AUTH-001"
+    },
+    {
+      "from": "TASK:DOC-CONDITIONAL-001",
+      "to": "TEST:UNIT-LOGIN-001"
+    },
+    {
+      "from": "TASK:DOC-CONDITIONAL-001",
+      "to": "TEST:UNIT-OPT-001"
+    },
+    {
+      "from": "TASK:DOC-CONDITIONAL-001",
+      "to": "TEST:UNIT-SYNC-001"
+    },
+    {
+      "from": "TASK:DOC-CONDITIONAL-002",
+      "to": "TEST:INTEGRATION-API-002"
+    },
+    {
+      "from": "TASK:PAYMENT-DB-001",
+      "to": "TEST:AUTH-001"
+    },
+    {
+      "from": "TASK:PAYMENT-DB-001",
+      "to": "TEST:AUTH-LOGIN-001"
+    },
+    {
+      "from": "TASK:PAYMENT-DB-001",
+      "to": "TEST:AUTH-SECURITY-001"
+    },
+    {
+      "from": "TASK:PAYMENT-DB-001",
+      "to": "TEST:E2E-CHECKOUT-001"
+    },
+    {
+      "from": "TASK:PAYMENT-DB-001",
+      "to": "TEST:PAYMENT-FAILURE-001"
+    },
+    {
+      "from": "TASK:PAYMENT-DB-001",
+      "to": "TEST:PAYMENT-SUCCESS-001"
+    },
+    {
+      "from": "TASK:PAYMENT-DB-001",
+      "to": "TEST:UNIT-001"
+    },
+    {
+      "from": "TASK:PAYMENT-DB-001",
+      "to": "TEST:UNIT-AUTH-001"
+    },
+    {
+      "from": "TASK:PAYMENT-DB-001",
+      "to": "TEST:UNIT-LOGIN-001"
+    },
+    {
+      "from": "TASK:PAYMENT-DB-001",
+      "to": "TEST:UNIT-OPT-001"
+    },
+    {
+      "from": "TASK:PAYMENT-DB-001",
+      "to": "TEST:UNIT-SYNC-001"
+    },
+    {
+      "from": "TASK:RESET-001",
+      "to": "TEST:AUTH-001"
+    },
+    {
+      "from": "TASK:RESET-001",
+      "to": "TEST:AUTH-LOGIN-001"
+    },
+    {
+      "from": "TASK:RESET-001",
+      "to": "TEST:AUTH-SECURITY-001"
+    },
+    {
+      "from": "TASK:RESET-001",
+      "to": "TEST:E2E-CHECKOUT-001"
+    },
+    {
+      "from": "TASK:RESET-001",
+      "to": "TEST:PAYMENT-FAILURE-001"
+    },
+    {
+      "from": "TASK:RESET-001",
+      "to": "TEST:PAYMENT-SUCCESS-001"
+    },
+    {
+      "from": "TASK:RESET-001",
+      "to": "TEST:UNIT-001"
+    },
+    {
+      "from": "TASK:RESET-001",
+      "to": "TEST:UNIT-AUTH-001"
+    },
+    {
+      "from": "TASK:RESET-001",
+      "to": "TEST:UNIT-LOGIN-001"
+    },
+    {
+      "from": "TASK:RESET-001",
+      "to": "TEST:UNIT-OPT-001"
+    },
+    {
+      "from": "TASK:RESET-001",
+      "to": "TEST:UNIT-SYNC-001"
+    },
+    {
+      "from": "TASK:STRIPE-SDK-001",
+      "to": "TEST:AUTH-001"
+    },
+    {
+      "from": "TASK:STRIPE-SDK-001",
+      "to": "TEST:AUTH-LOGIN-001"
+    },
+    {
+      "from": "TASK:STRIPE-SDK-001",
+      "to": "TEST:AUTH-SECURITY-001"
+    },
+    {
+      "from": "TASK:STRIPE-SDK-001",
+      "to": "TEST:E2E-CHECKOUT-001"
+    },
+    {
+      "from": "TASK:STRIPE-SDK-001",
+      "to": "TEST:PAYMENT-FAILURE-001"
+    },
+    {
+      "from": "TASK:STRIPE-SDK-001",
+      "to": "TEST:PAYMENT-SUCCESS-001"
+    },
+    {
+      "from": "TASK:STRIPE-SDK-001",
+      "to": "TEST:UNIT-001"
+    },
+    {
+      "from": "TASK:STRIPE-SDK-001",
+      "to": "TEST:UNIT-AUTH-001"
+    },
+    {
+      "from": "TASK:STRIPE-SDK-001",
+      "to": "TEST:UNIT-LOGIN-001"
+    },
+    {
+      "from": "TASK:STRIPE-SDK-001",
+      "to": "TEST:UNIT-OPT-001"
+    },
+    {
+      "from": "TASK:STRIPE-SDK-001",
+      "to": "TEST:UNIT-SYNC-001"
+    },
+    {
+      "from": "TECH:CLAUDE-CODE-HOOK-001",
+      "to": "ADR:DEVOPS-001"
+    },
+    {
+      "from": "TECH:CLAUDE-CODE-STD-001",
+      "to": "ADR:DEVOPS-001"
+    },
+    {
+      "from": "TECH:CLI-INTERFACE-001",
+      "to": "ADR:DEVOPS-001"
+    },
+    {
+      "from": "TECH:CONTAINER-001",
+      "to": "ADR:DEVOPS-001"
+    },
+    {
+      "from": "TECH:DOCSTRING-ANALYSIS-001",
+      "to": "ADR:DEVOPS-001"
+    },
+    {
+      "from": "TECH:EVENT-DRIVEN-CHECKPOINT-001",
+      "to": "ADR:DEVOPS-001"
+    },
+    {
+      "from": "TECH:GITFLOW-INTEGRATION-001",
+      "to": "ADR:DEVOPS-001"
+    },
+    {
+      "from": "TECH:JSON-CONFIG-001",
+      "to": "ADR:DEVOPS-001"
+    },
+    {
+      "from": "TECH:MULTI-LANG-SUPPORT-001",
+      "to": "ADR:DEVOPS-001"
+    },
+    {
+      "from": "TECH:PATH-RESOLUTION-001",
+      "to": "ADR:DEVOPS-001"
+    },
+    {
+      "from": "TECH:PERSONAL-MODE-001",
+      "to": "ADR:DEVOPS-001"
+    },
+    {
+      "from": "TECH:PERSONAL-MODE-ONLY-001",
+      "to": "ADR:DEVOPS-001"
+    },
+    {
+      "from": "TECH:PRETOOLUSE-HOOK-001",
+      "to": "ADR:DEVOPS-001"
+    },
+    {
+      "from": "TECH:PUSH-PULL-STRATEGY-001",
+      "to": "ADR:DEVOPS-001"
+    },
+    {
+      "from": "TECH:SEMANTIC-VERSIONING-001",
+      "to": "ADR:DEVOPS-001"
+    },
+    {
+      "from": "TECH:SESSIONSTART-HOOK-001",
+      "to": "ADR:DEVOPS-001"
+    },
+    {
+      "from": "TECH:SUBPROCESS-001",
+      "to": "ADR:DEVOPS-001"
+    },
+    {
+      "from": "TECH:SUBPROCESS-EXEC-001",
+      "to": "ADR:DEVOPS-001"
+    },
+    {
+      "from": "TECH:TIME-PARSING-001",
+      "to": "ADR:DEVOPS-001"
+    },
+    {
+      "from": "VISION:PLATFORM-001",
+      "to": "STRUCT:MICROSERVICE-001"
+    }
+  ],
+  "orphaned_tags": [
+    "API:BRANCH-CLI-001",
+    "API:BRANCH-DELETE-001",
+    "API:BRANCH-INTERFACE-001",
+    "API:BRANCH-LIST-001",
+    "API:BRANCH-SWITCH-001",
+    "API:CHECKPOINT-AUTOMATION-001",
+    "API:CHECKPOINT-INTERFACE-001",
+    "API:CHECKPOINT-LIST-001",
+    "API:COMMIT-INTERFACE-001",
+    "API:CONFIG-ACCESS-001",
+    "API:CREATE-USER-001",
+    "API:FILE-ACCESS-001",
+    "API:FILE-WRITE-001",
+    "API:FILESYSTEM-EVENTS-001",
+    "API:FS-EVENT-HANDLER-001",
+    "API:GET-USERS-LIST",
+    "API:GIT-BRANCH-STATUS-001",
+    "API:GIT-CHECKOUT-001",
+    "API:GIT-COMMAND-001",
+    "API:GIT-COMMIT-001",
+    "API:GIT-PULL-001",
+    "API:GIT-PUSH-001",
+    "API:GIT-RESET-001",
+    "API:GIT-STATUS-001",
+    "API:HOOK-INTERFACE-001",
+    "API:HOOK-MAIN-ENTRY-001",
+    "API:MAIN-ENTRY-001",
+    "API:POST-AUTH-LOGIN",
+    "API:POST-USERS-CREATE",
+    "API:POST-USERS-V1",
+    "API:POST-USERS-V2",
+    "API:POSTTOOLUSE-HOOK-001",
+    "API:ROLLBACK-INTERFACE-001",
+    "API:SESSION-NOTIFIER-001",
+    "API:STATUS-DISPLAY-001",
+    "API:SYNC-CLI-001",
+    "API:SYNC-INTERFACE-001",
+    "API:SYNC-STATUS-001",
+    "API:TAG-ID-VALIDATION-001",
+    "API:TAG-VALIDATE-001",
+    "API:TAG-VALIDATION-001",
+    "API:TAG-VALIDATOR-INTERFACE-001",
+    "API:VALIDATION-INTERFACE-001",
+    "API:VALIDATOR-INTERFACE-001",
+    "DATA:BRANCH-DISPLAY-001",
+    "DATA:BRANCH-INFO-001",
+    "DATA:BRANCH-STATS-001",
+    "DATA:CONFIG-ACCESS-001",
+    "DATA:CONFIG-LOAD-001",
+    "DATA:CONFIG-STRUCTURE-001",
+    "DATA:DISPLAY-FORMATTING-001",
+    "DATA:FILE-LIST-001",
+    "DATA:METADATA-LOAD-001",
+    "DATA:METADATA-SAVE-001",
+    "DATA:PROJECT-ROOT-001",
+    "DATA:REMOTE-STATUS-001",
+    "DATA:ROLLBACK-LOG-001",
+    "DATA:STATUS-ANALYSIS-001",
+    "DATA:TIME-CALCULATION-001",
+    "DATA:VERSION-INFO-001",
+    "DEBT:PAYMENT-LEGACY-001",
+    "DESIGN:ARCH",
+    "DESIGN:CHECKPOINT-WORKFLOW-003",
+    "DESIGN:JWT-AUTH",
+    "DESIGN:PERFORMANCE",
+    "DESIGN:SECURITY",
+    "FEATURE:AUTO-BACKUP-001",
+    "FEATURE:AUTO-CLEANUP-001",
+    "FEATURE:AUTO-COMMIT-001",
+    "FEATURE:AUTO-MESSAGE-001",
+    "FEATURE:AUTO-SYNC-001",
+    "FEATURE:BRANCH-CLEANUP-001",
+    "FEATURE:BRANCH-CREATE-001",
+    "FEATURE:BRANCH-MANAGEMENT-001",
+    "FEATURE:CHECKPOINT-SYSTEM-001",
+    "FEATURE:CODE-FORMATTING-001",
+    "FEATURE:CONTENT-VALIDATION-001",
+    "FEATURE:FILE-MONITORING-001",
+    "FEATURE:LEGACY-CODE-001",
+    "FEATURE:LOGIN-SYSTEM",
+    "FEATURE:NAME-GENERATION-001",
+    "FEATURE:PROJECT-STATUS-001",
+    "FEATURE:REMOTE-SYNC-001",
+    "FEATURE:ROLLBACK-EXEC-001",
+    "FEATURE:ROLLBACK-SYSTEM-001",
+    "FEATURE:SAFETY-CHECKPOINT-001",
+    "FEATURE:SESSION-NOTICE-001",
+    "FEATURE:STASH-MANAGEMENT-001",
+    "FEATURE:SYSTEM-VALIDATION-001",
+    "FEATURE:TAG-QUALITY-001",
+    "FEATURE:TAG-VALIDATION-SYSTEM-001",
+    "FEATURE:TIME-SEARCH-001",
+    "FEATURE:UI-LOGIN-001",
+    "FEATURE:USER-MGMT",
+    "LINK:CAT",
+    "MODEL:USER",
+    "PERF:API-500MS",
+    "PERF:PAYMENT-RESPONSE-001",
+    "PERSONA:USER",
+    "REQ:AUTHENTICATION",
+    "REQ:BUS",
+    "REQ:CORE",
+    "REQ:USER-AUTH",
+    "REQ:USER-MANAGEMENT",
+    "SEC:PAYMENT-ENCRYPTION-001",
+    "SEC:XSS-HIGH",
+    "STACK:FULL",
+    "STRATEGY:MARKET",
+    "STRUCT:ARCH",
+    "TASK:T",
+    "TASK:T001",
+    "TASK:T001-T099",
+    "TASK:T100-T199",
+    "TASK:T200-T299",
+    "TECH:STACK",
+    "TECH:TIME-BASED-CHECKPOINT-002",
+    "TEST:ACC",
+    "TEST:E2E-",
+    "TEST:E2E-WORKFLOW-003",
+    "TEST:INT-",
+    "TEST:PERF-LOAD-004",
+    "TEST:UNIT-",
+    "TEST:USER-MODEL",
+    "TEST:USER-SERVICE",
+    "TYPE:ID",
+    "VISION:CORE"
+  ],
   "statistics": {
-    "total_tags": 0,
-    "complete_chains": 0,
+    "total_tags": 233,
+    "complete_chains": 1237,
     "broken_links": 0,
-    "coverage_percentage": 0
+    "coverage_percentage": 45.9
   },
   "spec_coverage": {},
-  "locations": {}
+  "locations": {
+    "DESIGN:PKG-ARCH-001": [
+      "CHANGELOG.md"
+    ],
+    "REQ:OPT-CORE-001": [
+      "CHANGELOG.md"
+    ],
+    "TASK:CLEANUP-IMPL-001": [
+      "CHANGELOG.md"
+    ],
+    "TEST:UNIT-OPT-001": [
+      "CHANGELOG.md"
+    ],
+    "REQ:USER-AUTH-001": [
+      "CLAUDE.md",
+      "docs/sections/12-tag-system.md",
+      "src/moai_adk/resources/templates/.moai/config.json",
+      "src/moai_adk/resources/templates/.moai/memory/constitution.md",
+      "src/moai_adk/resources/templates/CLAUDE.md"
+    ],
+    "DESIGN:JWT-001": [
+      "CLAUDE.md",
+      "src/moai_adk/resources/templates/CLAUDE.md"
+    ],
+    "TASK:API-001": [
+      "CLAUDE.md",
+      "src/moai_adk/resources/templates/CLAUDE.md"
+    ],
+    "TEST:UNIT-001": [
+      "CLAUDE.md",
+      "src/moai_adk/resources/templates/CLAUDE.md"
+    ],
+    "DESIGN:TOKEN-SYSTEM-001": [
+      "src/moai_adk/resources/templates/.moai/memory/constitution.md"
+    ],
+    "TASK:AUTH-IMPL-001": [
+      "src/moai_adk/resources/templates/.moai/memory/constitution.md"
+    ],
+    "TEST:UNIT-AUTH-001": [
+      "backup/templates_20250919_040650/.claude/agents/moai/doc-syncer.md",
+      "docs/sections/12-tag-system.md",
+      "src/moai_adk/resources/templates/.moai/memory/constitution.md"
+    ],
+    "PERF:API-500MS": [
+      "src/moai_adk/resources/templates/.moai/memory/constitution.md"
+    ],
+    "SEC:XSS-HIGH": [
+      "src/moai_adk/resources/templates/.moai/memory/constitution.md"
+    ],
+    "REQ:USER-AUTH": [
+      "backup/templates_20250919_040650/CLAUDE.md"
+    ],
+    "DESIGN:JWT-AUTH": [
+      "backup/templates_20250919_040650/CLAUDE.md"
+    ],
+    "TASK:AUTH-API": [
+      "backup/templates_20250919_040650/CLAUDE.md"
+    ],
+    "TEST:AUTH-001": [
+      "backup/templates_20250919_040650/CLAUDE.md"
+    ],
+    "TASK:T001": [
+      "backup/templates_20250919_040650/.claude/commands/moai/5-dev.md"
+    ],
+    "TEST:USER-MODEL": [
+      "backup/templates_20250919_040650/.claude/commands/moai/4-tasks.md",
+      "backup/templates_20250919_040650/.claude/commands/moai/5-dev.md"
+    ],
+    "FEATURE:USER-MGMT": [
+      "backup/templates_20250919_040650/.claude/commands/moai/5-dev.md"
+    ],
+    "REQ:BUS": [
+      "backup/templates_20250919_040650/.claude/commands/moai/1-project.md"
+    ],
+    "TASK:T001-T099": [
+      "backup/templates_20250919_040650/.claude/commands/moai/4-tasks.md"
+    ],
+    "REQ:USER-MANAGEMENT": [
+      "backup/templates_20250919_040650/.claude/commands/moai/4-tasks.md"
+    ],
+    "TASK:T100-T199": [
+      "backup/templates_20250919_040650/.claude/commands/moai/4-tasks.md"
+    ],
+    "REQ:AUTHENTICATION": [
+      "backup/templates_20250919_040650/.claude/commands/moai/4-tasks.md"
+    ],
+    "TASK:T200-T299": [
+      "backup/templates_20250919_040650/.claude/commands/moai/4-tasks.md"
+    ],
+    "REQ:API-ENDPOINTS": [
+      "backup/templates_20250919_040650/.claude/commands/moai/4-tasks.md"
+    ],
+    "REQ:USER-001": [
+      "backup/templates_20250919_040650/.claude/commands/moai/4-tasks.md"
+    ],
+    "MODEL:USER": [
+      "backup/templates_20250919_040650/.claude/commands/moai/4-tasks.md"
+    ],
+    "TEST:USER-SERVICE": [
+      "backup/templates_20250919_040650/.claude/commands/moai/4-tasks.md"
+    ],
+    "REQ:USER-002": [
+      "backup/templates_20250919_040650/.claude/commands/moai/4-tasks.md"
+    ],
+    "REQ:BUS-001": [
+      "backup/templates_20250919_040650/.claude/commands/moai/2-spec.md"
+    ],
+    "REQ:SEC-001": [
+      "backup/templates_20250919_040650/.claude/commands/moai/2-spec.md"
+    ],
+    "REQ:PERF-001": [
+      "backup/templates_20250919_040650/.claude/commands/moai/2-spec.md"
+    ],
+    "REQ:UX-001": [
+      "backup/templates_20250919_040650/.claude/commands/moai/2-spec.md"
+    ],
+    "API:POST-USERS-CREATE": [
+      "backup/templates_20250919_040650/.claude/agents/moai/doc-syncer.md"
+    ],
+    "REQ:USER-MGMT-001": [
+      "backup/templates_20250919_040650/.claude/agents/moai/doc-syncer.md"
+    ],
+    "FEATURE:UI-LOGIN-001": [
+      "backup/templates_20250919_040650/.claude/agents/moai/doc-syncer.md"
+    ],
+    "REQ:PASSWORD-RESET-001": [
+      "backup/templates_20250919_040650/.claude/agents/moai/doc-syncer.md"
+    ],
+    "REQ:USER-LOGIN-001": [
+      "backup/templates_20250919_040650/.claude/agents/moai/doc-syncer.md",
+      "docs/sections/12-tag-system.md"
+    ],
+    "DESIGN:JWT-AUTH-001": [
+      "backup/templates_20250919_040650/.claude/agents/moai/doc-syncer.md",
+      "docs/sections/12-tag-system.md"
+    ],
+    "TASK:AUTH-API-001": [
+      "backup/templates_20250919_040650/.claude/agents/moai/doc-syncer.md",
+      "docs/sections/12-tag-system.md"
+    ],
+    "TASK:RESET-001": [
+      "backup/templates_20250919_040650/.claude/agents/moai/doc-syncer.md"
+    ],
+    "DESIGN:PASSWORD-RESET-001": [
+      "backup/templates_20250919_040650/.claude/agents/moai/doc-syncer.md"
+    ],
+    "FEATURE:LEGACY-CODE-001": [
+      "backup/templates_20250919_040650/.claude/agents/moai/doc-syncer.md"
+    ],
+    "API:CREATE-USER-001": [
+      "backup/templates_20250919_040650/.claude/agents/moai/doc-syncer.md"
+    ],
+    "API:POST-USERS-V1": [
+      "backup/templates_20250919_040650/.claude/agents/moai/doc-syncer.md"
+    ],
+    "API:POST-USERS-V2": [
+      "backup/templates_20250919_040650/.claude/agents/moai/doc-syncer.md"
+    ],
+    "REQ:CORE": [
+      "backup/templates_20250919_040650/.moai/_templates/specs/spec.template.md"
+    ],
+    "DESIGN:ARCH": [
+      "backup/templates_20250919_040650/.moai/_templates/specs/spec.template.md"
+    ],
+    "TEST:ACC": [
+      "backup/templates_20250919_040650/.moai/_templates/specs/spec.template.md"
+    ],
+    "STRUCT:ARCH": [
+      "backup/templates_20250919_040650/.moai/_templates/steering/structure.template.md",
+      "backup/templates_20250919_040650/.moai/_templates/steering/tech.template.md"
+    ],
+    "VISION:CORE": [
+      "backup/templates_20250919_040650/.moai/_templates/steering/product.template.md",
+      "backup/templates_20250919_040650/.moai/_templates/steering/structure.template.md"
+    ],
+    "TECH:STACK": [
+      "backup/templates_20250919_040650/.moai/_templates/steering/structure.template.md",
+      "backup/templates_20250919_040650/.moai/_templates/steering/tech.template.md"
+    ],
+    "DESIGN:SECURITY": [
+      "backup/templates_20250919_040650/.moai/_templates/steering/structure.template.md",
+      "backup/templates_20250919_040650/.moai/_templates/steering/tech.template.md"
+    ],
+    "DESIGN:PERFORMANCE": [
+      "backup/templates_20250919_040650/.moai/_templates/steering/structure.template.md",
+      "backup/templates_20250919_040650/.moai/_templates/steering/tech.template.md"
+    ],
+    "STACK:FULL": [
+      "backup/templates_20250919_040650/.moai/_templates/steering/tech.template.md"
+    ],
+    "STRATEGY:MARKET": [
+      "backup/templates_20250919_040650/.moai/_templates/steering/product.template.md"
+    ],
+    "PERSONA:USER": [
+      "backup/templates_20250919_040650/.moai/_templates/steering/product.template.md"
+    ],
+    "TEST:AUTH-LOGIN-001": [
+      "docs/sections/12-tag-system.md"
+    ],
+    "VISION:PLATFORM-001": [
+      "docs/sections/12-tag-system.md"
+    ],
+    "STRUCT:MICROSERVICE-001": [
+      "docs/sections/12-tag-system.md"
+    ],
+    "TECH:CONTAINER-001": [
+      "docs/sections/12-tag-system.md"
+    ],
+    "ADR:DEVOPS-001": [
+      "docs/sections/12-tag-system.md"
+    ],
+    "API:POST-AUTH-LOGIN": [
+      "docs/sections/12-tag-system.md"
+    ],
+    "REQ:PERF-RESPONSE-001": [
+      "docs/sections/12-tag-system.md"
+    ],
+    "API:GET-USERS-LIST": [
+      "docs/sections/12-tag-system.md"
+    ],
+    "TEST:UNIT-LOGIN-001": [
+      "docs/sections/12-tag-system.md"
+    ],
+    "TEST:E2E-CHECKOUT-001": [
+      "docs/sections/12-tag-system.md"
+    ],
+    "TASK:AUTH-UI-001": [
+      "docs/sections/12-tag-system.md"
+    ],
+    "TEST:AUTH-SECURITY-001": [
+      "docs/sections/12-tag-system.md"
+    ],
+    "REQ:PAYMENT-STRIPE-001": [
+      "docs/sections/12-tag-system.md"
+    ],
+    "DESIGN:PAYMENT-API-001": [
+      "docs/sections/12-tag-system.md"
+    ],
+    "TASK:STRIPE-SDK-001": [
+      "docs/sections/12-tag-system.md"
+    ],
+    "TASK:PAYMENT-DB-001": [
+      "docs/sections/12-tag-system.md"
+    ],
+    "TEST:PAYMENT-SUCCESS-001": [
+      "docs/sections/12-tag-system.md"
+    ],
+    "TEST:PAYMENT-FAILURE-001": [
+      "docs/sections/12-tag-system.md"
+    ],
+    "PERF:PAYMENT-RESPONSE-001": [
+      "docs/sections/12-tag-system.md"
+    ],
+    "SEC:PAYMENT-ENCRYPTION-001": [
+      "docs/sections/12-tag-system.md"
+    ],
+    "DEBT:PAYMENT-LEGACY-001": [
+      "docs/sections/12-tag-system.md"
+    ],
+    "REQ:AGENT-VALIDATION-001": [
+      "scripts/validate_agents.py"
+    ],
+    "FEATURE:SYSTEM-VALIDATION-001": [
+      "scripts/validate_agents.py"
+    ],
+    "API:VALIDATION-INTERFACE-001": [
+      "scripts/validate_agents.py"
+    ],
+    "DESIGN:CONSISTENCY-CHECK-001": [
+      "scripts/validate_agents.py"
+    ],
+    "TECH:DOCSTRING-ANALYSIS-001": [
+      "scripts/validate_agents.py"
+    ],
+    "API:VALIDATOR-INTERFACE-001": [
+      "scripts/validate_agents.py"
+    ],
+    "TEST:UNIT-": [
+      "backup/templates_20250919_040650/scripts/repair_tags.py",
+      "src/moai_adk/resources/templates/scripts/repair_tags.py"
+    ],
+    "TEST:INT-": [
+      "backup/templates_20250919_040650/scripts/repair_tags.py",
+      "src/moai_adk/resources/templates/scripts/repair_tags.py"
+    ],
+    "TEST:E2E-": [
+      "backup/templates_20250919_040650/scripts/repair_tags.py",
+      "src/moai_adk/resources/templates/scripts/repair_tags.py"
+    ],
+    "TYPE:ID": [
+      ".claude/hooks/moai/tag_validator.py",
+      "backup/templates_20250919_040650/.claude/hooks/moai/tag_validator.py",
+      "backup/templates_20250919_040650/scripts/check-traceability.py",
+      "src/moai_adk/resources/templates/.claude/hooks/moai/tag_validator.py",
+      "src/moai_adk/resources/templates/scripts/check_traceability.py"
+    ],
+    "CAT:ID": [
+      ".moai/scripts/check-traceability.py",
+      "src/moai_adk/resources/templates/.moai/scripts/check-traceability.py"
+    ],
+    "LINK:CAT": [
+      ".moai/scripts/check-traceability.py",
+      "src/moai_adk/resources/templates/.moai/scripts/check-traceability.py"
+    ],
+    "REQ:HOOK-STYLE-CHECK-001": [
+      ".claude/hooks/moai/check_style.py"
+    ],
+    "FEATURE:CODE-FORMATTING-001": [
+      ".claude/hooks/moai/check_style.py"
+    ],
+    "API:POSTTOOLUSE-HOOK-001": [
+      ".claude/hooks/moai/check_style.py"
+    ],
+    "DESIGN:LANGUAGE-SPECIFIC-TOOLS-001": [
+      ".claude/hooks/moai/check_style.py"
+    ],
+    "TECH:MULTI-LANG-SUPPORT-001": [
+      ".claude/hooks/moai/check_style.py"
+    ],
+    "REQ:HOOK-SESSION-START-001": [
+      ".claude/hooks/moai/session_start_notice.py"
+    ],
+    "FEATURE:SESSION-NOTICE-001": [
+      ".claude/hooks/moai/session_start_notice.py"
+    ],
+    "API:HOOK-INTERFACE-001": [
+      ".claude/hooks/moai/session_start_notice.py",
+      ".claude/hooks/moai/tag_validator.py"
+    ],
+    "DESIGN:PROJECT-STATUS-001": [
+      ".claude/hooks/moai/session_start_notice.py"
+    ],
+    "TECH:SESSIONSTART-HOOK-001": [
+      ".claude/hooks/moai/session_start_notice.py"
+    ],
+    "API:SESSION-NOTIFIER-001": [
+      ".claude/hooks/moai/session_start_notice.py"
+    ],
+    "FEATURE:PROJECT-STATUS-001": [
+      ".claude/hooks/moai/session_start_notice.py"
+    ],
+    "DATA:STATUS-ANALYSIS-001": [
+      ".claude/hooks/moai/session_start_notice.py"
+    ],
+    "REQ:AUTO-CHECKPOINT-001": [
+      ".claude/hooks/moai/auto_checkpoint.py"
+    ],
+    "FEATURE:AUTO-BACKUP-001": [
+      ".claude/hooks/moai/auto_checkpoint.py"
+    ],
+    "API:CHECKPOINT-AUTOMATION-001": [
+      ".claude/hooks/moai/auto_checkpoint.py"
+    ],
+    "DESIGN:PERSONAL-MODE-ONLY-001": [
+      ".claude/hooks/moai/auto_checkpoint.py"
+    ],
+    "TECH:TIME-BASED-CHECKPOINT-002": [
+      ".claude/hooks/moai/auto_checkpoint.py"
+    ],
+    "REQ:HOOK-TAG-VALIDATION-001": [
+      ".claude/hooks/moai/tag_validator.py"
+    ],
+    "FEATURE:TAG-QUALITY-001": [
+      ".claude/hooks/moai/tag_validator.py"
+    ],
+    "DESIGN:16-CORE-VALIDATION-001": [
+      ".claude/hooks/moai/tag_validator.py"
+    ],
+    "TECH:PRETOOLUSE-HOOK-001": [
+      ".claude/hooks/moai/tag_validator.py"
+    ],
+    "FEATURE:TAG-VALIDATION-SYSTEM-001": [
+      ".claude/hooks/moai/tag_validator.py"
+    ],
+    "API:TAG-VALIDATOR-INTERFACE-001": [
+      ".claude/hooks/moai/tag_validator.py"
+    ],
+    "FEATURE:CONTENT-VALIDATION-001": [
+      ".claude/hooks/moai/tag_validator.py"
+    ],
+    "API:TAG-VALIDATE-001": [
+      ".claude/hooks/moai/tag_validator.py"
+    ],
+    "API:TAG-VALIDATION-001": [
+      ".claude/hooks/moai/tag_validator.py"
+    ],
+    "DESIGN:SINGLE-TAG-CHECK-001": [
+      ".claude/hooks/moai/tag_validator.py"
+    ],
+    "API:TAG-ID-VALIDATION-001": [
+      ".claude/hooks/moai/tag_validator.py"
+    ],
+    "DESIGN:NAMING-RULES-001": [
+      ".claude/hooks/moai/tag_validator.py"
+    ],
+    "API:HOOK-MAIN-ENTRY-001": [
+      ".claude/hooks/moai/tag_validator.py"
+    ],
+    "TECH:CLAUDE-CODE-HOOK-001": [
+      ".claude/hooks/moai/tag_validator.py"
+    ],
+    "REQ:FILE-WATCHER-001": [
+      ".claude/hooks/moai/file_watcher.py"
+    ],
+    "FEATURE:FILE-MONITORING-001": [
+      ".claude/hooks/moai/file_watcher.py"
+    ],
+    "API:FILESYSTEM-EVENTS-001": [
+      ".claude/hooks/moai/file_watcher.py"
+    ],
+    "DESIGN:WATCHDOG-INTEGRATION-001": [
+      ".claude/hooks/moai/file_watcher.py"
+    ],
+    "TECH:EVENT-DRIVEN-CHECKPOINT-001": [
+      ".claude/hooks/moai/file_watcher.py"
+    ],
+    "API:FS-EVENT-HANDLER-001": [
+      ".claude/hooks/moai/file_watcher.py"
+    ],
+    "TEST:UNIT-SYNC-001": [
+      "tests/integrated_documentation_sync/__init__.py"
+    ],
+    "TEST:INTEGRATION-API-002": [
+      "tests/integrated_documentation_sync/__init__.py"
+    ],
+    "TEST:E2E-WORKFLOW-003": [
+      "tests/integrated_documentation_sync/__init__.py"
+    ],
+    "TEST:PERF-LOAD-004": [
+      "tests/integrated_documentation_sync/__init__.py"
+    ],
+    "REQ:GIT-COMMIT-001": [
+      ".moai/scripts/commit_helper.py"
+    ],
+    "FEATURE:AUTO-COMMIT-001": [
+      ".moai/scripts/commit_helper.py"
+    ],
+    "API:COMMIT-INTERFACE-001": [
+      ".moai/scripts/commit_helper.py"
+    ],
+    "DESIGN:COMMIT-WORKFLOW-001": [
+      ".moai/scripts/commit_helper.py"
+    ],
+    "TECH:CLAUDE-CODE-STD-001": [
+      ".moai/scripts/commit_helper.py"
+    ],
+    "API:GIT-STATUS-001": [
+      ".moai/scripts/commit_helper.py"
+    ],
+    "DATA:FILE-LIST-001": [
+      ".moai/scripts/commit_helper.py"
+    ],
+    "FEATURE:AUTO-MESSAGE-001": [
+      ".moai/scripts/commit_helper.py"
+    ],
+    "DESIGN:MESSAGE-PATTERN-001": [
+      ".moai/scripts/commit_helper.py"
+    ],
+    "DESIGN:COMMIT-MESSAGE-001": [
+      ".moai/scripts/commit_helper.py"
+    ],
+    "API:GIT-COMMIT-001": [
+      ".moai/scripts/commit_helper.py"
+    ],
+    "TECH:SUBPROCESS-001": [
+      ".moai/scripts/commit_helper.py"
+    ],
+    "API:MAIN-ENTRY-001": [
+      ".moai/scripts/branch_manager.py",
+      ".moai/scripts/commit_helper.py",
+      ".moai/scripts/rollback.py",
+      ".moai/scripts/sync_manager.py"
+    ],
+    "TECH:CLI-INTERFACE-001": [
+      ".moai/scripts/branch_manager.py",
+      ".moai/scripts/commit_helper.py",
+      ".moai/scripts/rollback.py",
+      ".moai/scripts/sync_manager.py"
+    ],
+    "DESIGN:DOC-CLEANUP-001": [
+      ".moai/scripts/cleanup_inappropriate_docs.py"
+    ],
+    "TASK:DOC-CONDITIONAL-002": [
+      ".moai/scripts/cleanup_inappropriate_docs.py"
+    ],
+    "REQ:GIT-SYNC-001": [
+      ".moai/scripts/sync_manager.py"
+    ],
+    "FEATURE:REMOTE-SYNC-001": [
+      ".moai/scripts/sync_manager.py"
+    ],
+    "API:SYNC-INTERFACE-001": [
+      ".moai/scripts/sync_manager.py"
+    ],
+    "DESIGN:MODE-BASED-SYNC-001": [
+      ".moai/scripts/sync_manager.py"
+    ],
+    "TECH:PUSH-PULL-STRATEGY-001": [
+      ".moai/scripts/sync_manager.py"
+    ],
+    "DATA:CONFIG-LOAD-001": [
+      ".moai/scripts/branch_manager.py",
+      ".moai/scripts/sync_manager.py"
+    ],
+    "API:CONFIG-ACCESS-001": [
+      ".moai/scripts/branch_manager.py",
+      ".moai/scripts/sync_manager.py"
+    ],
+    "API:SYNC-STATUS-001": [
+      ".moai/scripts/sync_manager.py"
+    ],
+    "DATA:REMOTE-STATUS-001": [
+      ".moai/scripts/sync_manager.py"
+    ],
+    "API:GIT-PUSH-001": [
+      ".moai/scripts/sync_manager.py"
+    ],
+    "DESIGN:PUSH-STRATEGY-001": [
+      ".moai/scripts/sync_manager.py"
+    ],
+    "API:GIT-PULL-001": [
+      ".moai/scripts/sync_manager.py"
+    ],
+    "DESIGN:PULL-STRATEGY-001": [
+      ".moai/scripts/sync_manager.py"
+    ],
+    "FEATURE:AUTO-SYNC-001": [
+      ".moai/scripts/sync_manager.py"
+    ],
+    "API:SYNC-CLI-001": [
+      ".moai/scripts/sync_manager.py"
+    ],
+    "DESIGN:COMMAND-DISPATCH-001": [
+      ".moai/scripts/branch_manager.py",
+      ".moai/scripts/sync_manager.py"
+    ],
+    "REQ:GIT-ROLLBACK-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "FEATURE:ROLLBACK-SYSTEM-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "API:ROLLBACK-INTERFACE-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "DESIGN:CHECKPOINT-ROLLBACK-002": [
+      ".moai/scripts/rollback.py"
+    ],
+    "TECH:PERSONAL-MODE-ONLY-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "DATA:PROJECT-ROOT-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "TECH:PATH-RESOLUTION-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "DATA:METADATA-LOAD-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "API:FILE-ACCESS-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "DATA:METADATA-SAVE-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "API:FILE-WRITE-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "API:GIT-COMMAND-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "TECH:SUBPROCESS-EXEC-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "DATA:CONFIG-ACCESS-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "DESIGN:MODE-VALIDATION-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "API:CHECKPOINT-LIST-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "DATA:DISPLAY-FORMATTING-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "FEATURE:TIME-SEARCH-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "DESIGN:TIME-PARSING-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "TECH:TIME-PARSING-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "DATA:TIME-CALCULATION-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "FEATURE:ROLLBACK-EXEC-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "API:GIT-RESET-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "DESIGN:SAFETY-CHECK-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "FEATURE:SAFETY-CHECKPOINT-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "DESIGN:AUTO-BACKUP-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "DATA:ROLLBACK-LOG-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "DESIGN:AUDIT-TRAIL-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "DESIGN:ARG-PARSING-001": [
+      ".moai/scripts/rollback.py"
+    ],
+    "REQ:GIT-BRANCH-001": [
+      ".moai/scripts/branch_manager.py"
+    ],
+    "FEATURE:BRANCH-MANAGEMENT-001": [
+      ".moai/scripts/branch_manager.py"
+    ],
+    "API:BRANCH-INTERFACE-001": [
+      ".moai/scripts/branch_manager.py"
+    ],
+    "DESIGN:MODE-BASED-WORKFLOW-001": [
+      ".moai/scripts/branch_manager.py"
+    ],
+    "TECH:GITFLOW-INTEGRATION-001": [
+      ".moai/scripts/branch_manager.py"
+    ],
+    "API:GIT-BRANCH-STATUS-001": [
+      ".moai/scripts/branch_manager.py"
+    ],
+    "DATA:BRANCH-INFO-001": [
+      ".moai/scripts/branch_manager.py"
+    ],
+    "API:BRANCH-LIST-001": [
+      ".moai/scripts/branch_manager.py"
+    ],
+    "DATA:BRANCH-DISPLAY-001": [
+      ".moai/scripts/branch_manager.py"
+    ],
+    "DESIGN:BRANCH-NAMING-001": [
+      ".moai/scripts/branch_manager.py"
+    ],
+    "FEATURE:NAME-GENERATION-001": [
+      ".moai/scripts/branch_manager.py"
+    ],
+    "FEATURE:BRANCH-CREATE-001": [
+      ".moai/scripts/branch_manager.py"
+    ],
+    "API:GIT-CHECKOUT-001": [
+      ".moai/scripts/branch_manager.py"
+    ],
+    "API:BRANCH-SWITCH-001": [
+      ".moai/scripts/branch_manager.py"
+    ],
+    "FEATURE:STASH-MANAGEMENT-001": [
+      ".moai/scripts/branch_manager.py"
+    ],
+    "API:BRANCH-DELETE-001": [
+      ".moai/scripts/branch_manager.py"
+    ],
+    "FEATURE:BRANCH-CLEANUP-001": [
+      ".moai/scripts/branch_manager.py"
+    ],
+    "FEATURE:AUTO-CLEANUP-001": [
+      ".moai/scripts/branch_manager.py"
+    ],
+    "DESIGN:BRANCH-LIFECYCLE-001": [
+      ".moai/scripts/branch_manager.py"
+    ],
+    "API:STATUS-DISPLAY-001": [
+      ".moai/scripts/branch_manager.py"
+    ],
+    "DATA:BRANCH-STATS-001": [
+      ".moai/scripts/branch_manager.py"
+    ],
+    "API:BRANCH-CLI-001": [
+      ".moai/scripts/branch_manager.py"
+    ],
+    "DESIGN:PROJECT-TYPE-001": [
+      ".moai/scripts/detect_project_type.py"
+    ],
+    "TASK:DOC-CONDITIONAL-001": [
+      ".moai/scripts/detect_project_type.py"
+    ],
+    "REQ:GIT-CHECKPOINT-001": [
+      ".moai/scripts/checkpoint_manager.py"
+    ],
+    "FEATURE:CHECKPOINT-SYSTEM-001": [
+      ".moai/scripts/checkpoint_manager.py"
+    ],
+    "API:CHECKPOINT-INTERFACE-001": [
+      ".moai/scripts/checkpoint_manager.py"
+    ],
+    "DESIGN:CHECKPOINT-WORKFLOW-003": [
+      ".moai/scripts/checkpoint_manager.py"
+    ],
+    "TECH:PERSONAL-MODE-001": [
+      ".moai/scripts/checkpoint_manager.py"
+    ],
+    "DATA:VERSION-INFO-001": [
+      ".moai/version.json"
+    ],
+    "TECH:SEMANTIC-VERSIONING-001": [
+      ".moai/version.json"
+    ],
+    "DATA:CONFIG-STRUCTURE-001": [
+      ".moai/config.json"
+    ],
+    "TECH:JSON-CONFIG-001": [
+      ".moai/config.json"
+    ],
+    "REQ:PROJECT-CONFIG-001": [
+      ".moai/config.json"
+    ],
+    "DESIGN:MOAI-CONFIG-001": [
+      ".moai/config.json"
+    ],
+    "DESIGN:API-GATEWAY": [
+      "src/moai_adk/resources/templates/.moai/config.json"
+    ],
+    "FEATURE:LOGIN-SYSTEM": [
+      "src/moai_adk/resources/templates/.moai/config.json"
+    ],
+    "TASK:T": [
+      "backup/templates_20250919_040650/.moai/indexes/tags.json"
+    ]
+  }
 }
