@@ -40,6 +40,6 @@
   },
   "brainstorming": {
     "enabled": true,
-    "providers": ["claude", "codex", "gemini"]
+    "providers": ["codex", "gemini"]
   }
 }
