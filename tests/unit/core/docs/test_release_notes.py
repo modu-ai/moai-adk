@@ -139,15 +139,15 @@ class TestReleaseNotesGeneration:
 
         # Mock historical reports
         reports = [
-            ("sync-report-2024-09-20.md", "v0.2.0"),
-            ("sync-report-2024-09-22.md", "v0.2.1"),
-            ("sync-report.md", "v0.2.2")
+            ("sync-report-2024-09-20.md", "v0.2.0", "2024-09-20"),
+            ("sync-report-2024-09-22.md", "v0.2.1", "2024-09-22"),
+            ("sync-report.md", "v0.2.2", "2024-09-25")
         ]
 
-        for filename, version in reports:
+        for filename, version, date in reports:
             report_file = moai_dir / filename
             report_file.write_text(f"""
-# Sync Report
+# Sync Report - {date}
 ## Version Info
 - Current: {version}
 ## Changes Summary
