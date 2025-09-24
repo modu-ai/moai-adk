@@ -453,7 +453,7 @@ class TagRepairer:
                     self.create_design_from_template(item)
                 elif item['action'] == 'create_tasks':
                     self.create_tasks_from_design(item)
-                # TODO: create_test 액션 구현
+                # @TODO:CREATE-TEST-001 create_test 액션 구현 필요
                     
             except Exception as e:
                 print(f"❌ 오류: {item['file']} - {e}")
