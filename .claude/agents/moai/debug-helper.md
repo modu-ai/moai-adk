@@ -1,6 +1,6 @@
 ---
 name: debug-helper
-description: Use PROACTIVELY for error analysis and development guide violation detection. Provides structured diagnosis and solution recommendations.
+description: 일반 오류 분석 및 개발 가이드 위반 검사 전문가. 구조화된 진단과 해결책 제시를 담당합니다.
 tools: Read, Grep, Glob, Bash, TodoWrite
 model: sonnet
 ---

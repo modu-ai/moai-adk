@@ -1,160 +1,251 @@
-# SPEC-004: Claude Hooks 최적화 및 불필요한 것들 제거
+# SPEC-004: Windows/macOS/Linux 환경별 최적화
 
-## @SPEC:HOOKS-CLEANUP-001
+## @REQ:PLATFORM-004 프로젝트 컨텍스트
 
-### Environment (환경 및 가정사항)
+### 배경
 
-**현재 환경**
+MoAI-ADK는 크로스 플랫폼 지원을 통해 다양한 개발 환경에서 일관된 사용자 경험을 제공해야 합니다. 현재 @TASK:CROSS-PLATFORM-001의 핵심 부분인 Windows/macOS/Linux 환경별 호환성 문제를 우선적으로 해결해야 하며, 배포 채널 확장은 별도로 처리합니다.
 
-- `.claude/hooks/moai/` 디렉토리에 10개 hook 파일 존재
-- 총 코드량: 3,853줄
-- 주요 문제: session_start_notice.py (2,133줄, 전체의 55%)
-- Claude Code hooks 시스템 기반 동작
+### 문제 정의
 
-**가정사항**
+- **현재 상태**: 플랫폼별 경로 처리, 권한 설정, 설치 과정에서 불일치 발생
+- **핵심 문제**: Windows `\` vs Unix `/` 경로 구분자, 권한 설정 방식의 차이
+- **비즈니스 영향**: 사용자 설치 실패 및 크로스 플랫폼 개발팀의 협업 저해
 
-- Claude Code hooks API는 변경되지 않음
-- 기존 hook 실행 순서와 이벤트 트리거 유지
-- Python 3.11+ 환경에서 동작
-- TRUST 5원칙 준수 (특히 R-Readable: 파일당 300줄 이하)
+### 목표
 
-### Assumptions (전제 조건)
+1. 플랫폼별 경로 처리 표준화를 통한 완전한 호환성 달성
+2. 환경별 권한 설정 자동화로 설치 과정 단순화
+3. 크로스 플랫폼 자동 테스트를 통한 품질 보장
 
-**기능 분류 기준**
+## @DESIGN:PLATFORM-SYSTEM-004 환경 및 가정사항
 
-1. **핵심 기능**: 세션 운영에 필수적인 기능
-2. **보조 기능**: 편의성 향상 기능
-3. **중복 기능**: 다른 모듈과 역할 겹침
-4. **불필요 기능**: 사용 빈도 낮거나 외부 도구로 대체 가능
+### Environment (환경)
 
-**성능 목표**
+- **지원 플랫폼**: Windows 10/11, macOS 10.15+, Linux (Ubuntu 20.04+)
+- **Python 버전**: 3.11, 3.12, 3.13 (일관된 지원)
+- **패키지 관리**: pip, pipx (모든 플랫폼 공통)
+- **권한**: 관리자 권한 없이 사용자 레벨 설치 지원
 
-- 세션 시작 시간 50% 단축
-- 전체 코드량 74% 감소 (3,853줄 → ~1,000줄)
-- 메모리 사용량 최적화
+### Assumptions (가정사항)
 
-### Requirements (기능 요구사항)
+- 사용자는 Python과 pip가 이미 설치되어 있음
+- 기본적인 터미널/명령 프롬프트 사용 가능
+- Git이 설치되어 있음 (MoAI 워크플로우 사용 시)
+- 인터넷 연결이 가능함 (패키지 다운로드 및 업데이트 시)
 
-#### @REQ:HOOKS-CORE-001 핵심 Hook 유지
+## @TASK:IMPLEMENT-004 요구사항 명세
 
-- **session_start_notice.py**: 세션 상태 알림 (2,133줄 → ~200줄)
-- **pre_write_guard.py**: 파일 쓰기 전 보안 검사 (131줄 → 유지)
-- **policy_block.py**: 위험 명령 차단 (95줄 → 유지)
-- **language_detector.py**: 프로젝트 언어 감지 (108줄 → 유지)
-- **steering_guard.py**: 프롬프트 검사 (79줄 → 유지)
-- **run_tests_and_report.py**: 테스트 실행 (91줄 → 유지)
+### R1. 플랫폼별 경로 처리 표준화
 
-#### @REQ:HOOKS-CLEANUP-001 불필요한 Hook 제거
+**WHEN** 파일 경로가 처리되거나 생성될 때,
+**THE SYSTEM SHALL** 자동으로 해당 플랫폼에 적합한 경로 형식을 적용해야 함
 
-- **tag_validator.py**: TAG 검증 (430줄) → 제거 (사용 빈도 낮음)
-- **check_style.py**: 코드 스타일 검사 (241줄) → 제거 (CI/CD로 이전)
+**상세 요구사항:**
 
-#### @REQ:HOOKS-MERGE-001 중복 기능 통합
+- Windows: 백슬래시(`\`) 구분자 자동 적용
+- Unix 계열 (macOS, Linux): 슬래시(`/`) 구분자 자동 적용
+- 상대/절대 경로 변환 시 플랫폼 호환성 보장
+- 파일명 길이 제한 및 특수문자 처리 (플랫폼별 차이 고려)
 
-- **auto_checkpoint.py** + **file_watcher.py** → **checkpoint_manager.py** (통합)
-  - auto_checkpoint.py (222줄) + file_watcher.py (323줄) → ~150줄
+### R2. 환경별 권한 설정 자동화
 
-#### @REQ:HOOKS-OPTIMIZE-001 성능 최적화
+**WHEN** MoAI-ADK가 설치되거나 파일을 생성할 때,
+**THE SYSTEM SHALL** 플랫폼에 적합한 권한을 자동으로 설정해야 함
 
-- 불필요한 import 제거
-- 중복 로직 함수화
-- 조건부 실행으로 불필요한 연산 제거
-- 메모리 효율적인 데이터 구조 사용
+**상세 요구사항:**
 
-### Specifications (상세 명세)
+- Windows: ACL (Access Control List) 기반 권한 설정
+- macOS/Linux: chmod 기반 실행 권한 자동 부여
+- 사용자 홈 디렉토리 내 설치 시 권한 최적화
+- 관리자 권한 없이 정상 작동 보장
 
-#### @DESIGN:SESSION-START-001 session_start_notice.py 리팩토링
+### R3. 플랫폼별 설치 스크립트 최적화
 
-**현재 문제점**
+**WHEN** 사용자가 MoAI-ADK를 설치할 때,
+**THE SYSTEM SHALL** 해당 플랫폼에 최적화된 설치 과정을 제공해야 함
 
-- 2,133줄의 비대한 코드
-- 중복된 설정 검사 로직
-- 불필요한 세부 출력
+**상세 요구사항:**
 
-**리팩토링 전략**
+- Windows: PowerShell 스크립트 지원
+- macOS: bash/zsh 스크립트 지원
+- Linux: 주요 배포판별 패키지 관리자 고려
+- 환경 변수 설정 자동화 (PATH, PYTHONPATH 등)
+
+### R4. 크로스 플랫폼 호환성 자동 테스트
+
+**WHEN** 코드 변경이나 릴리스가 준비될 때,
+**THE SYSTEM SHALL** 모든 지원 플랫폼에서 자동으로 호환성을 검증해야 함
+
+**상세 요구사항:**
+
+- GitHub Actions 기반 멀티 플랫폼 CI/CD
+- 각 플랫폼별 핵심 기능 E2E 테스트
+- 성능 벤치마크 플랫폼별 측정
+- 플랫폼별 패키지 무결성 검증
+
+## @TEST:ACCEPTANCE-004 Acceptance Criteria
+
+### AC1. 경로 처리 호환성
+
+**Given** Windows 환경에서 파일 경로를 생성할 때
+**When** MoAI-ADK가 `.moai/` 또는 `.claude/` 디렉토리를 생성하면
+**Then** 모든 경로가 백슬래시(`\`) 구분자를 사용하고 Windows 파일명 규칙을 준수해야 함
+
+**Given** macOS 또는 Linux 환경에서 파일 경로를 생성할 때
+**When** 동일한 작업을 수행하면
+**Then** 모든 경로가 슬래시(`/`) 구분자를 사용하고 Unix 파일명 규칙을 준수해야 함
+
+### AC2. 권한 설정 자동화
+
+**Given** Windows 환경에서 MoAI-ADK를 설치할 때
+**When** 스크립트 파일이 생성되면
+**Then** 관리자 권한 없이도 해당 스크립트가 실행 가능해야 함
+
+**Given** macOS 또는 Linux 환경에서 설치할 때
+**When** 실행 파일이나 스크립트가 생성되면
+**Then** 자동으로 적절한 실행 권한 (755)이 설정되어야 함
+
+### AC3. 플랫폼별 설치 최적화
+
+**Given** 각 플랫폼에서 설치를 진행할 때
+**When** `pip install moai-adk` 명령을 실행하면
+**Then** 해당 플랫폼에 최적화된 설치 과정이 진행되고, 환경 변수가 자동으로 설정되어야 함
+
+**Given** 설치 완료 후 각 플랫폼에서
+**When** `/moai:0-project` 명령을 실행하면
+**Then** 모든 플랫폼에서 일관된 결과와 사용자 경험을 제공해야 함
+
+### AC4. 자동 호환성 테스트
+
+**Given** 코드 변경이 GitHub에 푸시될 때
+**When** CI/CD 파이프라인이 실행되면
+**Then** Windows, macOS, Linux 모든 환경에서 테스트가 통과해야 함
+
+**Given** 플랫폼별 테스트 중 하나라도 실패할 때
+**When** 테스트 결과를 확인하면
+**Then** 구체적인 플랫폼별 오류 정보와 수정 방법이 제공되어야 함
+
+## 범위 및 모듈
+
+### In Scope
+
+- Windows/macOS/Linux 경로 처리 표준화
+- 플랫폼별 권한 설정 자동화
+- 설치 스크립트 플랫폼별 최적화
+- 멀티 플랫폼 CI/CD 파이프라인 구축
+- 핵심 기능의 크로스 플랫폼 호환성 검증
+
+### Out of Scope
+
+- 다른 패키지 관리자 지원 (conda, brew 등은 별도 SPEC)
+- 아키텍처별 최적화 (x86, ARM64는 기본 지원만)
+- 플랫폼별 UI/UX 커스터마이징
+- 레거시 OS 버전 지원 (지정된 최소 버전 이하)
+
+## 기술 노트
+
+### 구현 기술
+
+- **경로 처리**: Python `pathlib.Path` + `os.path` 하이브리드
+- **권한 설정**: Windows `pywin32`, Unix `os.chmod`
+- **설치 자동화**: setuptools hooks + platform detection
+- **테스팅**: tox + GitHub Actions matrix builds
+
+### 의존성
+
+- **Windows**: colorama (콘솔 색상), pywin32 (선택적)
+- **macOS/Linux**: 표준 라이브러리만 사용
+- **공통**: pathlib, os, platform (Python 표준 라이브러리)
+
+### 플랫폼별 고려사항
+
+#### Windows 특수 사항
+
+- 긴 경로명 지원 (260자 제한 우회)
+- 예약된 파일명 처리 (CON, PRN, AUX 등)
+- 대소문자 구분하지 않는 파일시스템 고려
+
+#### macOS 특수 사항
+
+- Gatekeeper 보안 정책 준수
+- SIP (System Integrity Protection) 고려
+- 번들 앱 구조와의 호환성
+
+#### Linux 특수 사항
+
+- 다양한 배포판별 차이 최소화
+- 패키지 관리자 다양성 고려
+- 컨테이너 환경에서의 동작 보장
+
+### 성능 고려사항
+
+- 플랫폼 감지 오버헤드 최소화 (한 번만 실행)
+- 파일 작업 시 버퍼링 최적화
+- 권한 설정 배치 처리로 성능 개선
+
+## 추적성
+
+### 연결된 요구사항
+
+- @TASK:CROSS-PLATFORM-001: 크로스 플랫폼 완성 계획의 핵심 부분
+- @TECH:STACK-001: 멀티 플랫폼 지원 현황 개선
+- @REQ:USER-001: 개인 개발자의 즉시 사용 가능한 환경 제공
+
+### 구현 우선순위
+
+1. 경로 처리 표준화 (High) - 기본 동작에 필수
+2. 권한 설정 자동화 (High) - 설치 성공률에 직결
+3. CI/CD 멀티 플랫폼 테스트 (Medium) - 품질 보장
+4. 설치 스크립트 최적화 (Medium) - 사용자 경험 개선
+
+### 테스트 전략
+
+- 단위 테스트: 각 플랫폼별 경로/권한 처리 함수 테스트
+- 통합 테스트: 크로스 플랫폼 설치 시나리오 테스트
+- E2E 테스트: 실제 각 플랫폼에서 전체 워크플로우 검증
+
+## 플랫폼별 구현 예시
+
+### 경로 처리 유틸리티
 
 ```python
-# Before (2,133줄)
-# 복잡한 설정 검사, 상세한 출력, 중복 로직
+import os
+import platform
+from pathlib import Path
 
-# After (~200줄)
-class SessionNotifier:
-    def __init__(self):
-        self.config = load_minimal_config()
+def get_platform_path(relative_path: str) -> Path:
+    """플랫폼에 적합한 경로 객체 반환"""
+    if platform.system() == "Windows":
+        # Windows 특수 처리
+        return Path(relative_path).resolve()
+    else:
+        # Unix 계열 처리
+        return Path(relative_path).expanduser().resolve()
 
-    def notify_session_start(self):
-        """핵심 세션 정보만 출력"""
-        self._show_project_status()
-        self._show_recent_activity()
-        self._show_next_actions()
-
-    def _show_project_status(self):
-        """프로젝트 상태 요약"""
-        pass
-
-    def _show_recent_activity(self):
-        """최근 활동 요약"""
-        pass
-
-    def _show_next_actions(self):
-        """다음 액션 제안"""
-        pass
+def ensure_executable(file_path: Path) -> None:
+    """플랫폼별 실행 권한 설정"""
+    if platform.system() != "Windows":
+        os.chmod(file_path, 0o755)
 ```
 
-#### @DESIGN:CHECKPOINT-MANAGER-001 checkpoint_manager.py 통합 설계
-
-**통합 대상**
-
-- auto_checkpoint.py (222줄): 자동 체크포인트 생성
-- file_watcher.py (323줄): 파일 변경 감지
-
-**통합 후 구조**
+### 설치 스크립트 감지
 
 ```python
-# checkpoint_manager.py (~150줄)
-class CheckpointManager:
-    def __init__(self):
-        self.watcher = FileWatcher()  # 경량화된 파일 감지
-        self.auto_save = AutoSave()   # 간소화된 체크포인트
+def get_install_commands() -> dict:
+    """플랫폼별 설치 명령어 반환"""
+    system = platform.system().lower()
 
-    def start_monitoring(self):
-        """파일 변경 감지 및 자동 체크포인트"""
-        pass
+    if system == "windows":
+        return {
+            "shell": "powershell",
+            "pip": "python -m pip",
+            "path_sep": ";"
+        }
+    else:
+        return {
+            "shell": "bash",
+            "pip": "pip3",
+            "path_sep": ":"
+        }
 ```
-
-#### @TASK:CLEANUP-SEQUENCE-001 제거 순서
-
-1. **1단계**: tag_validator.py, check_style.py 제거
-2. **2단계**: session_start_notice.py 리팩토링
-3. **3단계**: auto_checkpoint.py + file_watcher.py 통합
-4. **4단계**: 전체 성능 검증
-
-#### @TASK:MIGRATION-SAFETY-001 안전한 마이그레이션
-
-**백업 전략**
-
-```bash
-# 기존 hooks 백업
-cp -r .claude/hooks/moai .claude/hooks/moai.backup.$(date +%Y%m%d)
-```
-
-**단계별 테스트**
-
-- 각 단계마다 기능 동작 확인
-- 롤백 시나리오 준비
-- 세션 시작 시간 측정
-
-### Traceability (추적성 태그)
-
-- **연결**: @REQ:HOOKS-CORE-001 → @DESIGN:SESSION-START-001 → @TASK:CLEANUP-SEQUENCE-001
-- **품질**: @PERF:SESSION-START-001 (세션 시작 시간 50% 단축)
-- **보안**: @SEC:HOOKS-SAFETY-001 (기능 유지하면서 최적화)
-- **문서**: @DOCS:HOOKS-GUIDE-001 (리팩토링된 hook 사용 가이드)
-
----
-
-**관련 문서**
-
-- @.moai/project/tech.md: 기술 스택 및 품질 정책
-- @.moai/memory/development-guide.md: TRUST 5원칙 및 코딩 규칙
-- @CLAUDE.md: MoAI-ADK 전체 워크플로우 컨텍스트

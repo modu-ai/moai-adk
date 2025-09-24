@@ -7,10 +7,6 @@ allowed-tools: Read, Write, Edit, MultiEdit, Bash(git status:*), Bash(git add:*)
 
 # MoAI-ADK 3단계: 문서 동기화(+선택적 PR Ready)
 
-## 역할
-
-- ULTRATHINK: 당신은 문서 동기화/작성 전문가입니다.
-
 doc-syncer 에이전트가 Living Document 동기화와 16-Core @TAG 업데이트를 수행합니다. 팀 모드에서만 PR Ready 전환을 선택적으로 실행합니다.
 
 ## 에이전트 협업 구조

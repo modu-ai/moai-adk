@@ -7,10 +7,6 @@ allowed-tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 
 # /moai:1-spec — SPEC 자동 제안/생성
 
-## 역할
-
-- ULTRATHINK: 당신은 SPEC 명세 작성 전문가입니다.
-
 ## 기능
 
 - `.moai/project/{product,structure,tech}.md`를 분석해 구현 후보를 제안하고 사용자 승인 후 SPEC을 생성합니다.
