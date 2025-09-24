@@ -1,12 +1,12 @@
 """
-MoAI-ADK Core Exceptions
+@FEATURE:EXCEPTIONS-001 MoAI-ADK Core Exceptions
 
 Git 잠금 및 전략 관련 예외 클래스들
 """
 
 
 class GitLockedException(Exception):
-    """Git 작업 잠금 예외
+    """@TASK:GIT-LOCKED-001 Git 작업 잠금 예외
 
     다른 Git 작업이 진행 중일 때 발생하는 예외
     """

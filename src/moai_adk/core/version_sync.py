@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MoAI-ADK Automated Version Synchronization System
+@FEATURE:VERSION-SYNC-001 MoAI-ADK Automated Version Synchronization System
 Automated version synchronization system for MoAI-ADK project files
 """
 
@@ -12,7 +12,7 @@ from .._version import __version__, VERSIONS, VERSION_FORMATS
 
 
 class VersionSyncManager:
-    """Version synchronization manager class"""
+    """@TASK:VERSION-SYNC-MANAGER-001 Version synchronization manager class"""
     
     def __init__(self, project_root: Optional[str] = None):
         """

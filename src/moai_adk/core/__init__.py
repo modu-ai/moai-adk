@@ -1,5 +1,5 @@
 """
-Core functionality modules for MoAI-ADK.
+@FEATURE:CORE-001 Core functionality modules for MoAI-ADK
 
 This package contains the fundamental components:
 - security: Security validation and safe operations

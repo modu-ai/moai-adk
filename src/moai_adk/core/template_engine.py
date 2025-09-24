@@ -1,5 +1,5 @@
 """
-Template engine for dynamic file generation in MoAI-ADK.
+@FEATURE:TEMPLATE-001 Template engine for dynamic file generation in MoAI-ADK
 
 This module provides a simple template system for generating project files
 from templates with variable substitution.
@@ -20,7 +20,7 @@ logger = get_logger(__name__)
 
 class TemplateEngine:
     """
-    Simple template engine for MoAI-ADK project file generation.
+    @TASK:TEMPLATE-ENGINE-001 Simple template engine for MoAI-ADK project file generation
 
     Handles dynamic creation of project files from templates with
     variable substitution and context management.

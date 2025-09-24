@@ -1,5 +1,5 @@
 """
-🗿 MoAI-ADK Validation Utilities
+@FEATURE:VALIDATOR-001 🗿 MoAI-ADK Validation Utilities
 
 Provides validation functions for environment, configuration, and project setup.
 """
@@ -16,11 +16,11 @@ from colorama import Fore, Style
 
 def validate_python_version(min_version: Tuple[int, int] = (3, 8)) -> bool:
     """
-    Validate Python version meets minimum requirements.
-    
+    @TASK:VALIDATE-PYTHON-001 Validate Python version meets minimum requirements
+
     Args:
         min_version: Minimum required Python version as tuple
-        
+
     Returns:
         True if version is valid, False otherwise
     """

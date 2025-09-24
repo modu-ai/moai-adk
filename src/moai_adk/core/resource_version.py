@@ -1,4 +1,4 @@
-"""Resource version tracking utilities for MoAI-ADK projects."""
+"""@FEATURE:RESOURCE-VERSION-001 Resource version tracking utilities for MoAI-ADK projects."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional
 
 
 class ResourceVersionManager:
-    """Read and write MoAI resource/template version metadata."""
+    """@TASK:RESOURCE-VERSION-MANAGER-001 Read and write MoAI resource/template version metadata."""
 
     VERSION_RELATIVE_PATH = Path('.moai') / 'version.json'
 

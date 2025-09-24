@@ -1,5 +1,5 @@
 """
-Git repository management utilities for MoAI-ADK.
+@FEATURE:GIT-001 Git repository management utilities for MoAI-ADK
 
 Handles Git repository initialization, validation, and operations
 with security validation and error handling.
@@ -20,7 +20,7 @@ logger = get_logger(__name__)
 
 
 class GitManager:
-    """Manages Git operations for MoAI-ADK installation."""
+    """@TASK:GIT-MANAGER-001 Manages Git operations for MoAI-ADK installation."""
 
     def __init__(self, project_dir: Path = None, config=None, security_manager: SecurityManager = None, file_manager: FileManager = None):
         """

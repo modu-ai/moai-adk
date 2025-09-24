@@ -1,5 +1,5 @@
 """
-System utilities and environment checks for MoAI-ADK.
+@FEATURE:SYSTEM-001 System utilities and environment checks for MoAI-ADK
 
 Handles Node.js/npm detection, ccusage availability checks,
 and other system-level validations.
@@ -14,7 +14,7 @@ logger = get_logger(__name__)
 
 
 class SystemManager:
-    """Manages system-level checks and validations."""
+    """@TASK:SYSTEM-MANAGER-001 Manages system-level checks and validations."""
 
     def __init__(self):
         """Initialize system manager."""

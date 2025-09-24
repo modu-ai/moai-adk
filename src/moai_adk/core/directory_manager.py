@@ -1,5 +1,5 @@
 """
-Directory management utilities for MoAI-ADK.
+@FEATURE:DIRECTORY-001 Directory management utilities for MoAI-ADK
 
 Handles directory creation, structure setup, and safe directory operations
 with security validation and proper error handling.
@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 
 
 class DirectoryManager:
-    """Manages directory operations for MoAI-ADK installation."""
+    """@TASK:DIRECTORY-MANAGER-001 Manages directory operations for MoAI-ADK installation."""
 
     def __init__(self, security_manager: SecurityManager = None):
         """

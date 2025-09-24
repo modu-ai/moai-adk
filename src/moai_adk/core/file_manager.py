@@ -1,5 +1,5 @@
 """
-File management utilities for MoAI-ADK.
+@FEATURE:FILE-001 File management utilities for MoAI-ADK
 
 Handles file copying, template rendering, and file system operations
 with security validation and error handling.
@@ -17,7 +17,7 @@ logger = get_logger(__name__)
 
 
 class FileManager:
-    """Manages file operations for MoAI-ADK installation."""
+    """@TASK:FILE-MANAGER-001 Manages file operations for MoAI-ADK installation."""
 
     def __init__(self, template_dir: Path, security_manager: SecurityManager = None):
         """

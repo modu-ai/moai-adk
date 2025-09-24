@@ -1,5 +1,5 @@
 """
-Security utilities for MoAI-ADK.
+@FEATURE:SECURITY-001 Security utilities for MoAI-ADK
 
 Provides basic path validation and safe operations for a local development tool.
 """
@@ -19,7 +19,7 @@ class SecurityError(Exception):
 
 
 class SecurityManager:
-    """Manages basic security operations for local development environment."""
+    """@TASK:SECURITY-MANAGER-001 Manages basic security operations for local development environment."""
 
     def __init__(self):
         self.critical_paths = self._get_critical_paths()

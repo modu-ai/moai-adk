@@ -1,5 +1,5 @@
 """
-Configuration management utilities for MoAI-ADK.
+@FEATURE:CONFIG-001 Configuration management utilities for MoAI-ADK
 
 Handles creation and management of various configuration files including
 Claude Code settings, MoAI config, package.json, and other project configs.
@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 
 
 class ConfigManager:
-    """Manages configuration files for MoAI-ADK installation."""
+    """@TASK:CONFIG-MANAGER-001 Manages configuration files for MoAI-ADK installation."""
 
     def __init__(self, project_dir: Path = None, security_manager: SecurityManager = None):
         """
@@ -36,7 +36,7 @@ class ConfigManager:
 
     def create_claude_settings(self, settings_path: Path, config: Config) -> bool:
         """
-        Create Claude Code settings.json file.
+        @TASK:CONFIG-CLAUDE-001 Create Claude Code settings.json file
 
         Args:
             settings_path: Full path to settings.json file
@@ -170,7 +170,7 @@ class ConfigManager:
 
     def create_moai_config(self, config_path: Path, config: Config) -> bool:
         """
-        Create .moai/config.json configuration file.
+        @TASK:CONFIG-MOAI-001 Create .moai/config.json configuration file
 
         Args:
             config_path: Full path to config.json file
