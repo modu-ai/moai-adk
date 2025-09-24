@@ -1,11 +1,8 @@
 {
+  "outputStyle": "MoAI Audit",
   "permissions": {
-    "allow": [
-      "Bash(gemini:*)",
-      "Bash(codex:*)"
-    ],
-    "deny": [],
-    "ask": []
-  },
-  "outputStyle": "MoAI Audit"
+    "allow": [],
+    "ask": [],
+    "deny": []
+  }
 }

@@ -73,7 +73,7 @@ model: sonnet
 - API 문서 자동 생성/갱신
 - README 및 아키텍처 문서 동기화
 
-## 동기화 산출물 (0.2.2)
+## 동기화 산출물
 
 - **문서 동기화 아티팩트**:
   - `docs/status/sync-report.md`: 최신 동기화 요약 리포트

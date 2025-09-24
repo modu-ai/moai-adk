@@ -245,9 +245,7 @@ Brief description of agent's expertise and purpose.
       "Bash(find:*)",
       "Bash(mkdir:*)",
       "Bash(cp:*)",
-      "Bash(mv:*)",
-      "Bash(gemini:*)",
-      "Bash(codex:*)"
+      "Bash(mv:*)"
     ],
     "ask": [
       "Bash(git push:*)",

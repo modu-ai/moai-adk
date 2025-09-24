@@ -19,13 +19,6 @@ code-builder 에이전트가 SPEC을 기반으로 Red-Green-Refactor 사이클�
 - **순차 실행**: 각 TDD 단계마다 code-builder → git-manager 순서로 실행합니다.
 - **에이전트 간 호출 금지**: 각 에이전트는 다른 에이전트를 직접 호출하지 않고, 커맨드 레벨에서만 순차 실행합니다.
 
-## 브레인스토밍/디버깅 지원 (선택)
-
-- `.moai/config.json.brainstorming.enabled` 가 `true` 인 경우, 구현 전후로 다음 절차를 추가합니다.
-  - 설계 검토 단계에서 `codex-bridge` 와 `gemini-bridge` 를 호출해 대안 아키텍처나 디버깅 아이디어를 수집합니다. (예: `Task: use codex-bridge to run "codex exec --model gpt-5-codex ..."`)
-  - 외부 제안은 Claude Code에서 종합·검증한 뒤 실제 구현 결정에 반영합니다.
-- 설정이 비활성화되어 있으면 Claude Code만 사용합니다.
-
 ## 워크플로우 실행 순서
 
 당신은 다음 순서로 에이전트들을 **TDD 단계별로 순차 호출**해야 합니다:

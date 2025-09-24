@@ -107,9 +107,7 @@
       "Bash(diff:*)",
       "Bash(wc:*)",
       "Bash(sort:*)",
-      "Bash(uniq:*)",
-      "Bash(gemini:*)",
-      "Bash(codex:*)"
+      "Bash(uniq:*)"
     ],
     "ask": [
       "Bash(git push:*)",

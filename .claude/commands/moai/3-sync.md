@@ -17,25 +17,7 @@ doc-syncer 에이전트가 Living Document 동기화와 16-Core @TAG 업데이�
 - **순차 실행**: doc-syncer → git-manager 순서로 실행하여 명확한 의존성을 유지합니다.
 - **에이전트 간 호출 금지**: 각 에이전트는 다른 에이전트를 직접 호출하지 않고, 커멘드 레벨에서만 순차 실행합니다.
 
-## 브레인스토밍 리포트 (선택) - 커맨드 레벨 오케스트레이션
-
-- `.moai/config.json.brainstorming.enabled` 가 `true` 인 경우, `/moai:3-sync` 커맨드에서 다음과 같이 오케스트레이션합니다:
-
-### 에이전트 호출 시퀀스
-
-1. **doc-syncer 에이전트**: 기본 동기화 수행
-2. **브레인스토밍 단계** (병렬 실행):
-   ```
-   Task: codex-bridge (문서 개선점 분석)
-   Task: gemini-bridge (문서 일관성 검토)
-   Task: codex-bridge (리스크 분석)
-   (최대 10개 병렬 처리)
-   ```
-3. **doc-syncer 재호출**: 브레인스토밍 결과를 요약에 반영
-
-- 설정이 비활성화되어 있으면 doc-syncer만 단일 실행합니다.
-
-## 동기화 산출물 (0.2.2)
+## 동기화 산출물
 
 - `.moai/reports/sync-report.md` 생성/갱신
 - TAG 인덱스 업데이트: `python3 .moai/scripts/check-traceability.py --update`
