@@ -1,4 +1,4 @@
-"""Version information for MoAI-ADK."""
+"""@FEATURE:VERSION-001 Version information for MoAI-ADK."""
 
 # Main version information
 __version__ = "0.1.0"

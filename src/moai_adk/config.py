@@ -1,7 +1,7 @@
 """
-Configuration management for MoAI-ADK projects.
+@FEATURE:CONFIG-001 Configuration management for MoAI-ADK projects.
 
-Handles project configuration, runtime settings, and validation.
+@TASK:CONFIG-MAIN-001 Handles project configuration, runtime settings, and validation.
 """
 
 from dataclasses import dataclass, field
@@ -12,7 +12,7 @@ from typing import Dict, List
 
 @dataclass
 class RuntimeConfig:
-    """Runtime configuration for the project."""
+    """@TASK:RUNTIME-CONFIG-001 Runtime configuration for the project."""
     name: str
     performance: int = 4
     
@@ -30,7 +30,7 @@ class RuntimeConfig:
 
 @dataclass
 class Config:
-    """Main configuration for MoAI-ADK projects."""
+    """@TASK:CONFIG-MAIN-001 Main configuration for MoAI-ADK projects."""
     name: str
     template: str = "standard"
     runtime: RuntimeConfig = field(default_factory=lambda: RuntimeConfig("python"))
@@ -48,7 +48,7 @@ class Config:
     templates_mode: str = "copy"  # 'copy' (default) or 'package' (no _templates copy)
 
     def __init__(self, name: str, **kwargs):
-        """Initialize Config with backward compatibility for project_path parameter."""
+        """@TASK:CONFIG-INIT-001 Initialize Config with backward compatibility for project_path parameter."""
         # Handle backward compatibility: project_path -> path
         if 'project_path' in kwargs and 'path' not in kwargs:
             kwargs['path'] = kwargs.pop('project_path')
