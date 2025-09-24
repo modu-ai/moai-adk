@@ -33,10 +33,10 @@ MoAI-ADK Architecture
 
 ### 2. Core Engine (`src/moai_adk/core/`)
 
-- **책임**: 핵심 비즈니스 로직, 파일/Git 관리
-- **입력**: 설정 데이터, 템플릿 경로
-- **처리**: 파일 생성/수정, Git 작업, 보안 검증
-- **출력**: 프로젝트 구조, 설정 파일
+- **책임**: 핵심 비즈니스 로직, 파일/Git 관리, 문서 생성
+- **입력**: 설정 데이터, 템플릿 경로, 소스 코드
+- **처리**: 파일 생성/수정, Git 작업, 보안 검증, 문서 자동화
+- **출력**: 프로젝트 구조, 설정 파일, 온라인 문서
 
 | 모듈                   | 역할               | 주요 기능                       |
 | ---------------------- | ------------------ | ------------------------------- |
@@ -45,6 +45,19 @@ MoAI-ADK Architecture
 | `config_manager.py`    | 설정 관리          | Personal/Team 모드 전환         |
 | `file_manager.py`      | 파일 작업          | 템플릿 복사, 권한 설정          |
 | `security.py`          | 보안 검증          | 민감정보 검사, 권한 확인        |
+
+#### 2.1. Documentation System (`src/moai_adk/core/docs/`) - SPEC-010 추가
+
+- **책임**: 온라인 문서 사이트 자동 생성 및 관리
+- **입력**: Python 소스코드, sync-report, mkdocs 설정
+- **처리**: API 문서 생성, 릴리스 노트 변환, 문서 빌드
+- **출력**: 완전 자동화된 MkDocs 기반 온라인 문서
+
+| 모듈                          | 역할                    | 주요 기능                              |
+| ----------------------------- | ----------------------- | -------------------------------------- |
+| `documentation_builder.py`   | MkDocs 빌드 관리        | 사이트 구조 초기화, 빌드 검증          |
+| `api_generator.py`           | API 문서 자동 생성      | 소스코드 → API 문서, 네비게이션 생성   |
+| `release_notes_converter.py` | 릴리스 노트 변환        | sync-report → 릴리스 노트 자동 변환    |
 
 ### 3. Install System (`src/moai_adk/install/`)
 
@@ -115,7 +128,10 @@ MoAI-ADK Architecture
 ```
 src/moai_adk/
 ├── cli/           # 완성된 CLI 인터페이스 (7개 모듈)
-├── core/          # 핵심 엔진 (11개 모듈)
+├── core/          # 핵심 엔진 (14개 모듈) - SPEC-010 추가
+│   ├── docs/      # 🆕 온라인 문서 시스템 (3개 모듈)
+│   ├── quality/   # 품질 개선 시스템
+│   └── (기타)     # 기존 모듈들
 ├── install/       # 설치 시스템 (5개 모듈)
 ├── utils/         # 공통 유틸리티 (3개 모듈)
 └── resources/     # 템플릿/스크립트 (9개 템플릿)
@@ -144,6 +160,11 @@ src/moai_adk/
 3. **테스트 아키텍처 완성** (@DEBT:TEST-ARCHITECTURE-001)
    - 각 계층별 테스트 전략 수립
    - 통합 테스트 및 E2E 테스트 보강
+
+4. **문서 시스템 통합 최적화** (@TASK:DOCS-INTEGRATION-001) - SPEC-010 완료 후
+   - MkDocs 빌드 성능 최적화
+   - API 문서 생성 속도 개선
+   - 릴리스 노트 변환 로직 고도화
 
 ## @TODO:MIGRATION-002 Initial Migration Tasks
 

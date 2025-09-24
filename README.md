@@ -2,7 +2,7 @@
 
 **🏆 Claude Code 환경에서 가장 완전한 Spec-First TDD 개발 프레임워크**
 
-**🎯 0.1.9 Latest Update: SPEC-009 SQLite TAG 시스템 혁신 - 83배 성능 향상 달성**
+**🎯 0.2.0 Latest Update: SPEC-010 온라인 문서 사이트 제작 - 완전 자동화된 Living Document 시스템**
 
 [![Version](https://img.shields.io/github/v/release/modu-ai/moai-adk?label=release)](https://github.com/modu-ai/moai-adk/releases)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -13,27 +13,34 @@
 
 ---
 
-## 🎉 **0.1.9 혁신적 성과 하이라이트**
+## 🎉 **0.2.0 혁신적 성과 하이라이트**
 
-### 🚀 **SPEC-009 SQLite TAG 시스템 혁신**
+### 📖 **SPEC-010 온라인 문서 사이트 제작**
 
-- **극적인 성능 향상**: TAG 검색 성능 **83배 가속** (150ms → 1.8ms)
-- **SQLite 기반 TAG DB**: JSON 파일 기반에서 관계형 데이터베이스로 완전 전환
-- **고급 검색 API**: 복합 쿼리, 트랜잭션 안전성, 실시간 인덱싱
-- **완전한 추적성**: 16-Core TAG 시스템과 SQLite의 완벽한 결합
+- **전문적인 문서 사이트**: MkDocs Material 기반 완전 자동화된 온라인 문서
+- **Living Document 원칙**: 코드 변경 시 문서 자동 동기화 및 GitHub Pages 배포
+- **API 문서 자동화**: Python 소스코드에서 완전 자동 생성되는 API 레퍼런스
+- **Release Notes 통합**: sync-report 구조를 활용한 체계적인 릴리스 노트
 
-### 🏗️ **아키텍처 혁신**
+### 🏗️ **문서 시스템 아키텍처**
 
-- **자동 마이그레이션 시스템**: 기존 JSON 기반 → SQLite 무중단 전환
-- **백워드 호환성**: 기존 API 100% 호환 유지
-- **확장 가능한 스키마**: 미래 TAG 카테고리 확장 대비 설계
-- **트랜잭션 안전성**: ACID 보장으로 데이터 무결성 완벽 보장
+- **MkDocs + Material 테마**: 반응형 디자인, 다크/라이트 테마, 검색 기능
+- **자동 생성 스크립트**: 소스코드 → API 문서, sync-report → Release Notes
+- **CI/CD 완전 자동화**: GitHub Actions를 통한 무중단 배포
+- **추적성 통합**: 16-Core TAG 시스템과 문서의 완벽한 연동
 
 ### 💎 **개발 경험 혁신**
 
-- **즉시 체감 가능한 속도**: 대용량 프로젝트에서도 실시간 TAG 검색
-- **강력한 분석 도구**: 복합 조건 검색, 통계 분석, 추적성 보고서
-- **완전 자동화**: 설치 즉시 SPEC-009 혜택 자동 적용
+- **체계적인 문서 구조**: Getting Started, User Guide, API Reference, Development, Examples
+- **실시간 문서 동기화**: 코드 변경 즉시 문서 사이트 자동 갱신
+- **커뮤니티 친화적**: 기여 방법, 예제, 개발 가이드 완전 통합
+- **SEO 최적화**: 구조화된 메타데이터, 사이트맵, 검색 엔진 친화적 설계
+
+### 🔄 **이전 버전과의 연계**
+
+- **SPEC-009 SQLite 기반**: 83배 성능 향상의 TAG 시스템을 문서에 활용
+- **기존 문서 활용**: README.md, CHANGELOG.md를 온라인 사이트에 완전 통합
+- **백워드 호환성**: 기존 워크플로우는 그대로 유지하면서 문서만 자동화
 
 ---
 
@@ -159,11 +166,25 @@ flowchart LR
 ```
 MoAI-ADK/
 ├── src/moai_adk/                # Python 패키지
-│   ├── core/quality/            # ✨ 새로운 품질 개선 시스템 (SPEC-002)
-│   │   └── guideline_checker.py # TRUST 원칙 자동 검증 엔진
+│   ├── core/
+│   │   ├── docs/                # 📖 새로운 온라인 문서 시스템 (SPEC-010)
+│   │   │   ├── documentation_builder.py  # MkDocs 빌드 관리
+│   │   │   ├── api_generator.py          # API 문서 자동 생성
+│   │   │   └── release_notes_converter.py # sync-report → Release Notes
+│   │   └── quality/             # ✨ 품질 개선 시스템 (SPEC-002)
+│   │       └── guideline_checker.py # TRUST 원칙 자동 검증 엔진
 │   ├── cli/, install/           # CLI & 설치 시스템
 │   └── utils/                   # 공통 유틸리티
-├── docs/                        # 공식 문서 (sections/, status/)
+├── docs/                        # 📖 온라인 문서 사이트 (MkDocs 기반)
+│   ├── getting-started/         # 시작 가이드
+│   ├── guide/                   # 사용자 가이드
+│   ├── development/            # 개발자 가이드
+│   ├── examples/               # 예제
+│   ├── reference/              # API 문서 (자동 생성)
+│   ├── releases/               # 릴리스 노트 (자동 생성)
+│   └── gen_ref_pages.py        # 자동 생성 스크립트
+├── mkdocs.yml                   # 📖 MkDocs 설정
+├── .github/workflows/docs.yml   # 📖 문서 자동 배포
 ├── .claude/                     # Claude Code 설정/에이전트/명령어
 ├── .moai/                       # MoAI 설정, 스크립트, 메모리, TAG 인덱스
 ├── scripts/, tests/             # 유틸리티 스크립트 및 테스트
@@ -197,6 +218,16 @@ make build                  # 패키지 빌드
 
 ## 📚 문서 & 참고 자료
 
+### 📖 온라인 문서 사이트 (SPEC-010 완료)
+- **[MoAI-ADK Documentation](https://moai-adk.github.io)** - 완전 자동화된 온라인 문서
+- **Getting Started**: 설치부터 첫 프로젝트까지 단계별 가이드
+- **User Guide**: 4단계 워크플로우 상세 설명
+- **API Reference**: 소스코드에서 자동 생성되는 완전한 API 문서
+- **Development**: 기여 방법 및 아키텍처 가이드
+- **Examples**: 실제 사용 예제 및 템플릿
+- **Release Notes**: sync-report 기반 자동 생성 릴리스 노트
+
+### 📄 로컬 문서
 - [종합 개발 가이드](docs/MOAI-ADK-GUIDE.md)
 - [Documentation Index](docs/sections/index.md)
 - [Troubleshooting Guide](docs/MOAI-ADK-GUIDE.md#️-troubleshooting-guide)
