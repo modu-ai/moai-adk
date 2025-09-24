@@ -1,8 +1,9 @@
 ---
 name: moai:4-debug
 description: 오류 디버깅 + TRUST 원칙 검사
-argument-hint: "오류내용" | --trust-check
+argument-hint: "[오류내용] | --trust-check"
 allowed-tools: Read, Write, Edit, MultiEdit, Grep, Glob, Bash, TodoWrite
+model: sonnet
 ---
 
 # /moai:4-debug — 통합 디버깅

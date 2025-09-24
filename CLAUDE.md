@@ -26,7 +26,18 @@
 /moai:3-sync
 ```
 
-## 핵심 에이전트
+## cc-manager 중앙 관제탑
+
+**Claude Code 표준화의 핵심**: cc-manager는 MoAI-ADK의 모든 Claude Code 관련 작업을 중앙에서 관제합니다.
+
+### 🎯 중앙 관제탑 역할
+
+- **모든 파일 생성/수정의 중심**: 커맨드/에이전트 파일의 표준화된 생성과 검증
+- **표준 검증 자동화**: 실시간으로 Claude Code 표준 준수 여부 확인 및 수정 제안
+- **설정 최적화 관리**: permissions, hooks, tools 등의 최적 구성 제공
+- **완전한 지침 통합**: 외부 문서 참조 없이 모든 필요한 표준을 cc-manager.md에 포함
+
+### 핵심 에이전트
 
 ### MoAI 핵심 5개 (워크플로우 에이전트)
 
@@ -36,7 +47,7 @@
 | **code-builder** | TDD 구현         | Red-Green-Refactor 커밋 패턴 권장   |
 | **doc-syncer**   | 문서 동기화      | PR 상태 전환/라벨링 지원(환경 의존) |
 | **cc-manager**   | Claude Code 관리 | 설정 최적화/권한 문제 해결          |
-| **debug-helper** | 오류 진단        | 일반 오류 분석 + 개발 가이드 검사  |
+| **debug-helper** | 오류 진단        | 일반 오류 분석 + 개발 가이드 검사   |
 
 ## 디버깅 시스템
 

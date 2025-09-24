@@ -1,8 +1,9 @@
 ---
 name: moai:3-sync
 description: 문서 동기화 + PR Ready 전환
-argument-hint: [모드] [대상경로] - 모드: auto(기본)|force|status|project, 대상경로: 동기화 대상 경로
+argument-hint: "모드 대상경로 - 모드: auto(기본)|force|status|project, 대상경로: 동기화 대상 경로"
 allowed-tools: Read, Write, Edit, MultiEdit, Bash(git status:*), Bash(git add:*), Bash(git diff:*), Bash(git commit:*), Bash(gh:*), Bash(python3:*), Task, Grep, Glob, TodoWrite
+model: sonnet
 ---
 
 # MoAI-ADK 3단계: 문서 동기화(+선택적 PR Ready)

@@ -1,8 +1,9 @@
 ---
 name: moai:0-project
 description: 프로젝트 킥오프. product/structure/tech 문서 생성
-argument-hint: [PROJECT_NAME]
+argument-hint: "PROJECT_NAME"
 allowed-tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
+model: sonnet
 ---
 
 # /moai:0-project — 프로젝트 문서 초기화/갱신

@@ -1,6 +1,6 @@
 ---
 name: spec-builder
-description: 프로젝트 문서(.moai/project/*) 기반으로 SPEC 제안과 GitFlow 연동을 관리합니다. Personal 모드는 로컬 SPEC 파일, Team 모드는 GitHub Issue를 생성합니다.
+description: Use PROACTIVELY for SPEC proposal and GitFlow integration based on project documents. Personal mode creates local SPEC files, Team mode creates GitHub Issues.
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch
 model: sonnet
 ---

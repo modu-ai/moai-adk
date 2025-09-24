@@ -1,8 +1,9 @@
 ---
 name: moai:1-spec
 description: EARS 명세 작성 + 브랜치/PR 생성
-argument-hint: ["제목1" "제목2" ...] | [SPEC-ID "수정내용"]
+argument-hint: "제목1 제목2 ... | SPEC-ID 수정내용"
 allowed-tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
+model: sonnet
 ---
 
 # /moai:1-spec — SPEC 자동 제안/생성

@@ -1,8 +1,9 @@
 ---
 name: moai:2-build
 description: TDD 구현 (Red-Green-Refactor)
-argument-hint: [SPEC-ID] - 구현할 SPEC ID (예: SPEC-001) 또는 'all'로 모든 SPEC 구현
+argument-hint: "SPEC-ID - 구현할 SPEC ID (예: SPEC-001) 또는 all로 모든 SPEC 구현"
 allowed-tools: Read, Write, Edit, MultiEdit, Bash(python3:*), Bash(pytest:*), Task, WebFetch, Grep, Glob, TodoWrite
+model: sonnet
 ---
 
 # MoAI-ADK 2단계: TDD 구현 (모드별 Git 통합)

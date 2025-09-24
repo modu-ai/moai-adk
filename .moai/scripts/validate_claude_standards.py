@@ -157,6 +157,107 @@ def validate_proactive_pattern(description: str) -> bool:
     return 'Use PROACTIVELY for' in description
 
 
+def generate_violation_report(errors_found: List[str]) -> str:
+    """
+    표준 위반 사항에 대한 종합 보고서 생성
+
+    Args:
+        errors_found: 발견된 오류 목록
+
+    Returns:
+        포맷된 보고서 문자열
+    """
+    if not errors_found:
+        return "🎉 모든 파일이 Claude Code 표준을 준수합니다!"
+
+    report = ["🚨 Claude Code 표준 위반 사항 보고서", "=" * 50]
+
+    # 파일별로 오류 그룹화
+    file_errors = {}
+    for error in errors_found:
+        if ": " in error:
+            file_name, error_msg = error.split(": ", 1)
+            if file_name not in file_errors:
+                file_errors[file_name] = []
+            file_errors[file_name].append(error_msg)
+        else:
+            if "기타" not in file_errors:
+                file_errors["기타"] = []
+            file_errors["기타"].append(error)
+
+    for file_name, file_error_list in file_errors.items():
+        report.append(f"\n📁 파일: {file_name}")
+        report.append("-" * 30)
+        for i, error in enumerate(file_error_list, 1):
+            report.append(f"  {i}. {error}")
+
+    report.append(f"\n📊 요약:")
+    report.append(f"  - 위반 파일 수: {len(file_errors)}")
+    report.append(f"  - 총 위반 사항: {len(errors_found)}")
+
+    return "\n".join(report)
+
+
+def suggest_fixes(errors_found: List[str]) -> List[str]:
+    """
+    발견된 오류에 대한 수정 제안 생성
+
+    Args:
+        errors_found: 발견된 오류 목록
+
+    Returns:
+        수정 제안 목록
+    """
+    suggestions = []
+
+    for error in errors_found:
+        if "YAML frontmatter missing" in error:
+            suggestions.append(
+                "✅ YAML frontmatter 추가:\n"
+                "   파일 시작에 다음 구조를 추가하세요:\n"
+                "   ---\n"
+                "   name: your-file-name\n"
+                "   description: Clear description\n"
+                "   ---"
+            )
+        elif "Missing required field" in error:
+            field_match = error.split("'")
+            if len(field_match) >= 2:
+                field_name = field_match[1]
+                suggestions.append(
+                    f"✅ 필수 필드 '{field_name}' 추가:\n"
+                    f"   YAML frontmatter에 '{field_name}: <값>' 추가"
+                )
+        elif "Use PROACTIVELY for" in error:
+            suggestions.append(
+                "✅ 프로액티브 패턴 수정:\n"
+                "   description을 다음과 같이 시작하도록 수정:\n"
+                "   'Use PROACTIVELY for [구체적인 트리거 조건]'"
+            )
+        elif "argument-hint" in error:
+            suggestions.append(
+                "✅ argument-hint 형식 수정:\n"
+                "   문자열 또는 배열 형태로 수정:\n"
+                "   argument-hint: '[param1] [param2]' 또는\n"
+                "   argument-hint: ['param1', 'param2']"
+            )
+        elif "tools" in error or "allowed-tools" in error:
+            suggestions.append(
+                "✅ 도구 권한 수정:\n"
+                "   최소 권한 원칙에 따라 필요한 도구만 나열:\n"
+                "   tools: 'Read, Write, Edit' 또는\n"
+                "   tools: ['Read', 'Write', 'Edit']"
+            )
+
+    # 중복 제거
+    unique_suggestions = list(set(suggestions))
+
+    if not unique_suggestions:
+        unique_suggestions.append("❓ 구체적인 수정 제안을 생성할 수 없습니다. cc-manager 문서를 참조하세요.")
+
+    return unique_suggestions
+
+
 def main():
     """메인 실행 함수"""
     if len(sys.argv) < 2:
