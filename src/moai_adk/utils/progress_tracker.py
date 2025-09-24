@@ -1,8 +1,12 @@
 """
-Progress tracking and display utilities for MoAI-ADK installation.
+@FEATURE:PROGRESS-TRACKER-001 Progress tracking and display utilities for MoAI-ADK installation
+@TASK:UI-PROGRESS-001 Provides clean, professional progress display with color coding and customizable progress callbacks for different UI contexts
 
-Provides clean, professional progress display with color coding and
-customizable progress callbacks for different UI contexts.
+This module handles:
+- Real-time progress visualization with progress bars
+- Multi-stage progress tracking for complex operations
+- Color-coded status indicators
+- Customizable progress callbacks for different UI contexts
 """
 
 from typing import Any
@@ -11,7 +15,11 @@ from colorama import Fore, Style
 
 
 class ProgressTracker:
-    """Handles progress tracking and display for installation processes."""
+    """
+    @TASK:PROGRESS-MAIN-001 Handles progress tracking and display for installation processes
+
+    Provides clean, color-coded progress visualization for MoAI-ADK operations.
+    """
 
     def __init__(self, total_steps: int = 18):
         """
@@ -29,7 +37,7 @@ class ProgressTracker:
         callback: Callable[[str, int, int], None] | None = None
     ) -> None:
         """
-        Update installation progress with clean, professional display.
+        @TASK:PROGRESS-UPDATE-001 Update installation progress with clean, professional display
 
         Args:
             step: Description of current step
@@ -137,7 +145,11 @@ class ProgressTracker:
 
 
 class MultiStageProgressTracker:
-    """Progress tracker that handles multiple stages with different step counts."""
+    """
+    @TASK:MULTI-STAGE-PROGRESS-001 Progress tracker that handles multiple stages with different step counts
+
+    Manages complex operations that span multiple phases with independent step counts.
+    """
 
     def __init__(self):
         self.stages = {}

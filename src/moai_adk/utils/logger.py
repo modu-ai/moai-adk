@@ -1,7 +1,12 @@
 """
-🗿 MoAI-ADK Logging Utilities
+@FEATURE:LOGGER-UTILITIES-001 🗿 MoAI-ADK Logging Utilities
+@TASK:STRUCTURED-LOGGING-001 Provides structured logging functionality for MoAI-ADK operations
 
-Provides structured logging functionality for MoAI-ADK operations.
+This module provides:
+- Configured logger instances with color formatting
+- Project-specific logging setup
+- Silent mode support for automated operations
+- Structured logging for debugging and audit trails
 """
 
 import sys
@@ -13,12 +18,12 @@ from colorama import Fore, Style
 
 def get_logger(name: str = "moai-adk", level: str = "WARNING") -> logging.Logger:
     """
-    Get a configured logger instance.
-    
+    @TASK:GET-LOGGER-001 Get a configured logger instance
+
     Args:
         name: Logger name
         level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-        
+
     Returns:
         Configured logger instance
     """
@@ -42,12 +47,12 @@ def get_logger(name: str = "moai-adk", level: str = "WARNING") -> logging.Logger
 
 def setup_project_logging(project_path: Path, silent: bool = False) -> logging.Logger:
     """
-    Setup project-specific logging.
-    
+    @TASK:PROJECT-LOGGING-001 Setup project-specific logging
+
     Args:
         project_path: Path to the project
         silent: Whether to enable silent mode
-        
+
     Returns:
         Project logger instance
     """

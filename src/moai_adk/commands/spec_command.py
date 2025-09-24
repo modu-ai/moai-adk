@@ -1,7 +1,6 @@
 """
-SPEC Command Implementation
-
-/moai:1-spec 명령어의 브랜치 스킵 옵션을 포함한 구현
+@FEATURE:SPEC-COMMAND-001 SPEC Command Implementation
+@REQ:SPEC-CREATION-001 /moai:1-spec 명령어의 브랜치 스킵 옵션을 포함한 구현
 
 @API:POST-SPEC - SPEC 생성 API 인터페이스
 @PERF:CMD-FAST - 명령어 실행 최적화
@@ -20,7 +19,8 @@ logger = logging.getLogger(__name__)
 
 
 class SpecCommand:
-    """개선된 SPEC 명령어 - 브랜치 스킵 옵션 및 사용자 경험 향상
+    """
+    @TASK:SPEC-MAIN-001 개선된 SPEC 명령어 - 브랜치 스킵 옵션 및 사용자 경험 향상
 
     TRUST 원칙 적용:
     - T: 테스트 가능한 구조 설계
@@ -92,7 +92,8 @@ class SpecCommand:
         return 'personal'
 
     def execute(self, spec_name: str, description: str, skip_branch: Optional[bool] = None):
-        """SPEC 명령어 실행
+        """
+        @TASK:SPEC-EXECUTE-001 SPEC 명령어 실행
 
         Args:
             spec_name: 명세 이름
@@ -207,7 +208,8 @@ class SpecCommand:
         return normalized
 
     def _create_spec_file(self, spec_name: str, description: str):
-        """SPEC 파일 생성
+        """
+        @TASK:SPEC-FILE-CREATE-001 SPEC 파일 생성
 
         Args:
             spec_name: 명세 이름
@@ -310,7 +312,8 @@ class SpecCommand:
         return should_create
 
     def _execute_git_workflow(self, spec_name: str):
-        """Git 워크플로우 실행
+        """
+        @TASK:SPEC-GIT-WORKFLOW-001 Git 워크플로우 실행
 
         Args:
             spec_name: 명세 이름 (브랜치명에 사용)

@@ -1,7 +1,6 @@
 """
-BUILD Command Implementation
-
-/moai:2-build 명령어의 Git 잠금 확인 로직 구현
+@FEATURE:BUILD-COMMAND-001 BUILD Command Implementation
+@REQ:TDD-AUTOMATION-001 /moai:2-build 명령어의 Git 잠금 확인 로직 구현
 
 @API:POST-BUILD - BUILD 실행 API 인터페이스
 @PERF:TDD-FAST - TDD 프로세스 실행 최적화
@@ -20,7 +19,8 @@ logger = logging.getLogger(__name__)
 
 
 class BuildCommand:
-    """개선된 BUILD 명령어 - Git 잠금 확인 및 TDD 프로세스 최적화
+    """
+    @TASK:BUILD-MAIN-001 개선된 BUILD 명령어 - Git 잠금 확인 및 TDD 프로세스 최적화
 
     TRUST 원칙 적용:
     - T: TDD 사이클 엄격 준수
@@ -51,7 +51,8 @@ class BuildCommand:
         logger.debug(f"BuildCommand 초기화: {self.project_dir}")
 
     def execute(self, spec_name: str, wait_for_lock: bool = True):
-        """BUILD 명령어 실행
+        """
+        @TASK:BUILD-EXECUTE-001 BUILD 명령어 실행
 
         Args:
             spec_name: 빌드할 명세 이름
@@ -121,7 +122,8 @@ class BuildCommand:
         return normalized
 
     def _execute_tdd_process(self, spec_name: str):
-        """TDD 프로세스 실행 (RED-GREEN-REFACTOR)
+        """
+        @TASK:TDD-PROCESS-001 TDD 프로세스 실행 (RED-GREEN-REFACTOR)
 
         성능 최적화된 TDD 사이클 (@PERF:TDD-FAST)
 
@@ -147,7 +149,8 @@ class BuildCommand:
             raise
 
     def _execute_red_phase(self, spec_name: str):
-        """RED Phase: 실패하는 테스트 작성
+        """
+        @TASK:TDD-RED-001 RED Phase: 실패하는 테스트 작성
 
         Args:
             spec_name: 명세 이름
@@ -157,7 +160,8 @@ class BuildCommand:
         logger.info(f"🔴 RED Phase 완료: {spec_name}")
 
     def _execute_green_phase(self, spec_name: str):
-        """GREEN Phase: 최소 구현
+        """
+        @TASK:TDD-GREEN-001 GREEN Phase: 최소 구현
 
         Args:
             spec_name: 명세 이름
@@ -167,7 +171,8 @@ class BuildCommand:
         logger.info(f"🟢 GREEN Phase 완료: {spec_name}")
 
     def _execute_refactor_phase(self, spec_name: str):
-        """REFACTOR Phase: 코드 리팩터링
+        """
+        @TASK:TDD-REFACTOR-001 REFACTOR Phase: 코드 리팩터링
 
         Args:
             spec_name: 명세 이름
