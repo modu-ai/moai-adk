@@ -41,6 +41,14 @@
       "created_at": "2025-09-24T03:58:11.530642+00:00",
       "file_count": 262,
       "is_auto": false
+    },
+    {
+      "tag": "moai_cp/20250924_042246",
+      "commit_hash": "2be6e69e90bbd97c0a01a02a8b6c39d3ee2fcb24",
+      "message": "--message",
+      "created_at": "2025-09-24T04:22:46.354456+00:00",
+      "file_count": 269,
+      "is_auto": false
     }
   ],
   "rollback_history": []
