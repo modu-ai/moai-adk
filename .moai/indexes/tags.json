@@ -1,9 +1,9 @@
 {
   "_meta": {
     "created": "2024-09-24",
-    "description": "MoAI-ADK 16-Core TAG 인덱스 (개선된 레거시 분석 및 브레인스토밍 통합)",
+    "description": "MoAI-ADK 16-Core TAG 인덱스 (SPEC-003 + Git 전략 간소화 통합)",
     "last_updated": "2024-09-24",
-    "version": "2.0.0"
+    "version": "2.1.0"
   },
   "connections": {
     "@DEBT:LEGACY-ANALYSIS-001": [
@@ -21,11 +21,17 @@
     "@DEBT:TEST-COVERAGE-001": [
       "@REQ:QUALITY-002"
     ],
+    "@DESIGN:CC-MANAGER-ARCH-003": [
+      "@TASK:IMPLEMENT-003"
+    ],
     "@DESIGN:PATTERN-001": [
       "@STRUCT:MODULES-001"
     ],
     "@DESIGN:QUALITY-SYSTEM-002": [
       "@TASK:IMPLEMENT-002"
+    ],
+    "@REQ:CC-OPTIMIZATION-003": [
+      "@DESIGN:CC-MANAGER-ARCH-003"
     ],
     "@REQ:PROBLEM-001": [
       "@DESIGN:SOLUTION-001"
@@ -42,12 +48,33 @@
     "@STRUCT:PHILOSOPHY-001": [
       "@DESIGN:PATTERN-001"
     ],
+    "@TASK:GIT-STRATEGY-GREEN-001": [
+      "@TASK:GIT-STRATEGY-REFACTOR-001"
+    ],
+    "@TASK:GIT-STRATEGY-RED-001": [
+      "@TASK:GIT-STRATEGY-GREEN-001"
+    ],
+    "@TASK:GIT-STRATEGY-REFACTOR-001": [
+      "@PROJECT:GIT-SIMPLIFICATION-COMPLETE"
+    ],
     "@TASK:IMPLEMENT-002": [
       "@TEST:ACCEPTANCE-002"
+    ],
+    "@TASK:IMPLEMENT-003": [
+      "@TEST:SPEC-003-RED-001"
+    ],
+    "@TASK:SPEC-003-GREEN-001": [
+      "@TASK:SPEC-003-REFACTOR-001"
+    ],
+    "@TASK:SPEC-003-REFACTOR-001": [
+      "@SPEC:SPEC-003-COMPLETE"
     ],
     "@TECH:OVERVIEW-001": [
       "@TECH:STACK-PYTHON-001",
       "@TECH:STACK-MULTI-001"
+    ],
+    "@TEST:SPEC-003-RED-001": [
+      "@TASK:SPEC-003-GREEN-001"
     ],
     "@VISION:MISSION-001": [
       "@VISION:STRATEGY-001"
@@ -58,14 +85,28 @@
   },
   "stats": {
     "circular": 0,
-    "completed": 26,
-    "in_progress": 12,
+    "completed": 38,
+    "in_progress": 2,
     "orphaned": 0,
     "pending": 6,
-    "total_tags": 46
+    "total_tags": 64
   },
   "tags": {
     "IMPLEMENTATION": {
+      "@API:POST-BUILD": {
+        "connections": [],
+        "file": "src/moai_adk/commands/build_command.py",
+        "line": 8,
+        "status": "completed",
+        "title": "BUILD 실행 API 인터페이스"
+      },
+      "@API:POST-SPEC": {
+        "connections": [],
+        "file": "src/moai_adk/commands/spec_command.py",
+        "line": 8,
+        "status": "completed",
+        "title": "SPEC 생성 API 인터페이스"
+      },
       "@DESIGN:PATTERN-001": {
         "connections": [
           "@STRUCT:MODULES-001"
@@ -102,6 +143,20 @@
         "line": 21,
         "status": "completed",
         "title": "Microkernel 플러그인 패턴"
+      },
+      "@FEATURE:AUTO-CLEANUP-001": {
+        "connections": [],
+        "file": "src/moai_adk/core/git_lock_manager.py",
+        "line": 34,
+        "status": "completed",
+        "title": "자동 정리 및 모니터링"
+      },
+      "@FEATURE:GIT-LOCK-001": {
+        "connections": [],
+        "file": "src/moai_adk/core/git_lock_manager.py",
+        "line": 6,
+        "status": "completed",
+        "title": "Git 동시 작업 방지 잠금 시스템"
       },
       "@TECH:BRAINSTORMING-001": {
         "connections": [],
@@ -150,6 +205,13 @@
       }
     },
     "PROJECT": {
+      "@PROJECT:GIT-SIMPLIFICATION-COMPLETE": {
+        "connections": [],
+        "file": "Git 전략 간소화 프로젝트",
+        "line": 1,
+        "status": "completed",
+        "title": "Git 전략 간소화 완료"
+      },
       "@STRUCT:MODULE-PLANNING-001": {
         "connections": [],
         "file": ".moai/project/structure.md",
@@ -217,8 +279,8 @@
         "connections": [],
         "file": ".moai/project/product.md",
         "line": 197,
-        "status": "pending",
-        "title": "16-Core TAG 시스템 일관성 부족"
+        "status": "completed",
+        "title": "16-Core TAG 시스템 일관성 확보 완료"
       },
       "@DEBT:TECH-ANALYSIS-001": {
         "connections": [
@@ -240,6 +302,55 @@
         "status": "completed",
         "title": "테스트 커버리지 85% 미달성 (SPEC-002로 해결완료)"
       },
+      "@PERF:BRANCH-FAST": {
+        "connections": [],
+        "file": "src/moai_adk/core/git_strategy.py",
+        "line": 7,
+        "status": "completed",
+        "title": "브랜치 작업 최적화 (빠른 전환)"
+      },
+      "@PERF:CMD-FAST": {
+        "connections": [],
+        "file": "src/moai_adk/commands/spec_command.py",
+        "line": 9,
+        "status": "completed",
+        "title": "명령어 실행 최적화"
+      },
+      "@PERF:LOCK-100MS": {
+        "connections": [],
+        "file": "src/moai_adk/core/git_lock_manager.py",
+        "line": 7,
+        "status": "completed",
+        "title": "잠금 성능 최적화 (100ms 이내 응답)"
+      },
+      "@PERF:TDD-FAST": {
+        "connections": [],
+        "file": "src/moai_adk/commands/build_command.py",
+        "line": 9,
+        "status": "completed",
+        "title": "TDD 프로세스 실행 최적화"
+      },
+      "@SEC:GIT-MED": {
+        "connections": [],
+        "file": "src/moai_adk/core/git_strategy.py",
+        "line": 8,
+        "status": "completed",
+        "title": "Git 작업 보안 강화"
+      },
+      "@SEC:INPUT-MED": {
+        "connections": [],
+        "file": "src/moai_adk/commands/spec_command.py",
+        "line": 10,
+        "status": "completed",
+        "title": "입력 검증 보안 강화"
+      },
+      "@SEC:LOCK-MED": {
+        "connections": [],
+        "file": "src/moai_adk/core/git_lock_manager.py",
+        "line": 8,
+        "status": "completed",
+        "title": "잠금 파일 보안 강화"
+      },
       "@TODO:ASYNC-OPTIMIZATION-001": {
         "connections": [],
         "file": ".moai/project/tech.md",
@@ -258,67 +369,76 @@
         "connections": [],
         "file": ".moai/project/product.md",
         "line": 202,
-        "status": "in_progress",
-        "title": "Living Document 시스템 구축"
+        "status": "completed",
+        "title": "Living Document 시스템 구축 완료"
       },
       "@TODO:HEXAGONAL-001": {
         "connections": [],
         "file": ".moai/project/structure.md",
         "line": 436,
-        "status": "in_progress",
+        "status": "pending",
         "title": "Hexagonal Architecture 완전 적용"
       },
       "@TODO:MODERN-PYTHON-001": {
         "connections": [],
         "file": ".moai/project/tech.md",
         "line": 832,
-        "status": "in_progress",
+        "status": "pending",
         "title": "pyproject.toml 완전 전환 및 ruff 통합"
       },
       "@TODO:MONITORING-001": {
         "connections": [],
         "file": ".moai/project/structure.md",
         "line": 439,
-        "status": "in_progress",
+        "status": "pending",
         "title": "관찰성 인프라 구축"
       },
       "@TODO:PLUGIN-001": {
         "connections": [],
         "file": ".moai/project/structure.md",
         "line": 438,
-        "status": "in_progress",
+        "status": "pending",
         "title": "플러그인 시스템 표준화"
       },
       "@TODO:SPEC-BACKLOG-001": {
         "connections": [],
         "file": ".moai/project/product.md",
         "line": 200,
-        "status": "in_progress",
+        "status": "pending",
         "title": "기존 기능의 EARS 명세 역공학"
       },
       "@TODO:TEST-COVERAGE-001": {
         "connections": [],
         "file": ".moai/project/product.md",
         "line": 201,
-        "status": "in_progress",
-        "title": "TDD 기반 테스트 커버리지 85% 달성"
+        "status": "completed",
+        "title": "TDD 기반 테스트 커버리지 향상 완료"
       },
       "@TODO:TYPE-SAFETY-001": {
         "connections": [],
         "file": ".moai/project/tech.md",
         "line": 834,
-        "status": "in_progress",
+        "status": "pending",
         "title": "mypy strict 모드 적용 및 95% 타입 커버리지"
       },
       "@TODO:WORKFLOW-001": {
         "connections": [],
         "file": ".moai/project/product.md",
         "line": 203,
-        "status": "in_progress",
-        "title": "4단계 워크플로우 완전 자동화"
+        "status": "completed",
+        "title": "4단계 워크플로우 완전 자동화 완료"
       }
     },
     "SPEC": {
+      "@DESIGN:CC-MANAGER-ARCH-003": {
+        "connections": [
+          "@TASK:IMPLEMENT-003"
+        ],
+        "file": ".moai/specs/SPEC-003/spec.md",
+        "line": 21,
+        "status": "completed",
+        "title": "cc-manager 중앙 관제탑 아키텍처 설계"
+      },
       "@DESIGN:QUALITY-SYSTEM-002": {
         "connections": [
           "@TASK:IMPLEMENT-002"
@@ -327,6 +447,15 @@
         "line": 21,
         "status": "completed",
         "title": "품질 시스템 설계 및 환경 정의"
+      },
+      "@REQ:CC-OPTIMIZATION-003": {
+        "connections": [
+          "@DESIGN:CC-MANAGER-ARCH-003"
+        ],
+        "file": ".moai/specs/SPEC-003/spec.md",
+        "line": 3,
+        "status": "completed",
+        "title": "cc-manager 중심 Claude Code 최적화 요구사항"
       },
       "@REQ:PERSONA-001": {
         "connections": [],
@@ -393,6 +522,40 @@
         "status": "completed",
         "title": "주요 사용자 정의"
       },
+      "@SPEC:SPEC-003-COMPLETE": {
+        "connections": [],
+        "file": "SPEC-003 완료",
+        "line": 1,
+        "status": "completed",
+        "title": "SPEC-003: cc-manager 중앙 관제탑 강화 완료"
+      },
+      "@TASK:GIT-STRATEGY-GREEN-001": {
+        "connections": [
+          "@TASK:GIT-STRATEGY-REFACTOR-001"
+        ],
+        "file": "구현 완료",
+        "line": 1,
+        "status": "completed",
+        "title": "Git 전략 간소화 최소 구현"
+      },
+      "@TASK:GIT-STRATEGY-RED-001": {
+        "connections": [
+          "@TASK:GIT-STRATEGY-GREEN-001"
+        ],
+        "file": "tests/test_git_strategy_simplification_red.py",
+        "line": 1,
+        "status": "completed",
+        "title": "Git 전략 간소화 실패 테스트 작성"
+      },
+      "@TASK:GIT-STRATEGY-REFACTOR-001": {
+        "connections": [
+          "@PROJECT:GIT-SIMPLIFICATION-COMPLETE"
+        ],
+        "file": "구현 완료",
+        "line": 1,
+        "status": "completed",
+        "title": "Git 전략 간소화 품질 개선"
+      },
       "@TASK:IMPLEMENT-002": {
         "connections": [
           "@TEST:ACCEPTANCE-002"
@@ -402,12 +565,76 @@
         "status": "completed",
         "title": "품질 개선 시스템 구현 태스크"
       },
+      "@TASK:IMPLEMENT-003": {
+        "connections": [
+          "@TEST:SPEC-003-RED-001"
+        ],
+        "file": ".moai/specs/SPEC-003/spec.md",
+        "line": 61,
+        "status": "completed",
+        "title": "SPEC-003 구현 작업"
+      },
+      "@TASK:SPEC-003-GREEN-001": {
+        "connections": [
+          "@TASK:SPEC-003-REFACTOR-001"
+        ],
+        "file": "구현 완료",
+        "line": 1,
+        "status": "completed",
+        "title": "SPEC-003 최소 구현 (GREEN 단계)"
+      },
+      "@TASK:SPEC-003-REFACTOR-001": {
+        "connections": [
+          "@SPEC:SPEC-003-COMPLETE"
+        ],
+        "file": "구현 완료",
+        "line": 1,
+        "status": "completed",
+        "title": "SPEC-003 품질 개선 (REFACTOR 단계)"
+      },
       "@TEST:ACCEPTANCE-002": {
         "connections": [],
         "file": ".moai/specs/SPEC-002/spec.md",
         "line": 87,
         "status": "completed",
         "title": "품질 시스템 수락 기준 및 테스트"
+      },
+      "@TEST:SPEC-003-RED-001": {
+        "connections": [
+          "@TASK:SPEC-003-GREEN-001"
+        ],
+        "file": "tests/test_cc_manager_spec003.py",
+        "line": 1,
+        "status": "completed",
+        "title": "SPEC-003 실패 테스트 작성 (RED 단계)"
+      },
+      "@TEST:UNIT-GIT-LOCK": {
+        "connections": [],
+        "file": "tests/test_git_strategy_simplification.py",
+        "line": 5,
+        "status": "completed",
+        "title": "Git 잠금 시스템 테스트"
+      },
+      "@TEST:UNIT-GIT-MODE": {
+        "connections": [],
+        "file": "tests/test_git_strategy_simplification.py",
+        "line": 6,
+        "status": "completed",
+        "title": "개인 모드 Git 전략 테스트"
+      },
+      "@TEST:UNIT-MANAGER": {
+        "connections": [],
+        "file": "tests/test_git_strategy_simplification.py",
+        "line": 8,
+        "status": "completed",
+        "title": "git-manager 업데이트 테스트"
+      },
+      "@TEST:UNIT-WORKFLOW": {
+        "connections": [],
+        "file": "tests/test_git_strategy_simplification.py",
+        "line": 7,
+        "status": "completed",
+        "title": "워크플로우 커맨드 개선 테스트"
       },
       "@VISION:MISSION-001": {
         "connections": [

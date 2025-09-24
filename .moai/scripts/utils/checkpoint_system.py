@@ -24,6 +24,49 @@ from project_helper import ProjectHelper
 
 logger = logging.getLogger(__name__)
 
+# 한국 시간대 (KST) 상수 정의 - UTC+9
+KST = timezone(timedelta(hours=9))
+
+# 시간 관련 상수
+CHECKPOINT_TIME_TOLERANCE_SECONDS = 60  # 시간 비교 허용 오차
+
+
+def get_kst_now() -> datetime:
+    """
+    한국 시간(KST) 기준 현재 시간 반환
+
+    Returns:
+        datetime: KST 시간대가 적용된 현재 시간
+
+    Note:
+        기존 UTC 기반 체크포인트와의 호환성을 위해
+        항상 시간대 정보를 포함하여 반환합니다.
+    """
+    return datetime.now(KST)
+
+
+def convert_utc_to_kst(utc_datetime: datetime) -> datetime:
+    """
+    UTC 시간을 KST 시간으로 변환
+
+    Args:
+        utc_datetime: UTC 시간대의 datetime 객체
+
+    Returns:
+        datetime: KST로 변환된 datetime 객체
+
+    Raises:
+        ValueError: 입력값이 datetime 객체가 아닌 경우
+    """
+    if not isinstance(utc_datetime, datetime):
+        raise ValueError("입력값은 datetime 객체여야 합니다")
+
+    if utc_datetime.tzinfo is None:
+        # timezone 정보가 없으면 UTC로 간주
+        utc_datetime = utc_datetime.replace(tzinfo=timezone.utc)
+
+    return utc_datetime.astimezone(KST)
+
 
 class CheckpointError(Exception):
     """체크포인트 관련 오류"""
@@ -89,50 +132,137 @@ class CheckpointSystem:
         self.checkpoints_dir.mkdir(parents=True, exist_ok=True)
 
     def create_checkpoint(self, message: str, is_auto: bool = False) -> CheckpointInfo:
-        """체크포인트 생성"""
+        """
+        체크포인트 생성
+
+        Args:
+            message: 체크포인트 메시지
+            is_auto: 자동 체크포인트 여부
+
+        Returns:
+            CheckpointInfo: 생성된 체크포인트 정보
+
+        Raises:
+            CheckpointError: 체크포인트 생성 실패 시
+        """
+        # 입력 검증 강화
+        if not isinstance(message, str):
+            raise CheckpointError("메시지는 문자열이어야 합니다")
+
+        if not message.strip():
+            raise CheckpointError("메시지가 비어있습니다")
+
+        # 가드절 적용
+        if not self.git.is_git_repo():
+            raise CheckpointError(ERROR_MESSAGES["not_git_repo"])
+
         try:
-            if not self.git.is_git_repo():
-                raise CheckpointError(ERROR_MESSAGES["not_git_repo"])
+            # 메시지 길이 제한 적용
+            sanitized_message = self._sanitize_checkpoint_message(message)
 
-            if len(message) > CHECKPOINT_MESSAGE_MAX_LENGTH:
-                message = message[:CHECKPOINT_MESSAGE_MAX_LENGTH - 3] + "..."
-
+            # 변경사항 확인 및 처리
             has_changes = self.git.has_uncommitted_changes()
             if not has_changes:
                 logger.info("변경사항이 없어 현재 HEAD에 태그만 생성합니다.")
 
+            # 변경사항이 있는 경우에만 staging
             if has_changes:
-                self.git.stage_all_changes()
+                self._stage_changes_safely()
 
-            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+            # KST 기준 타임스탬프 생성
+            kst_now = get_kst_now()
+            timestamp = kst_now.strftime("%Y%m%d_%H%M%S")
             tag_name = f"{CHECKPOINT_TAG_PREFIX}{timestamp}"
 
-            commit_message = f"📍 {'Auto-' if is_auto else ''}Checkpoint: {message}"
-            if has_changes:
-                commit_hash = self.git.commit(commit_message, allow_empty=False)
-            else:
-                commit_hash = self.git.run_command(["git", "rev-parse", "HEAD"]).stdout.strip()
-            self.git.create_tag(tag_name, commit_message)
+            # 중복 태그 방지
+            existing_tags = self._get_existing_tags()
+            if tag_name in existing_tags:
+                # 초 단위 추가로 중복 방지
+                timestamp = kst_now.strftime("%Y%m%d_%H%M%S_%f")[:17]  # 마이크로초 3자리
+                tag_name = f"{CHECKPOINT_TAG_PREFIX}{timestamp}"
 
+            # Git 작업 수행
+            commit_message = f"📍 {'Auto-' if is_auto else ''}Checkpoint: {sanitized_message}"
+            commit_hash = self._create_commit_and_tag(
+                has_changes, commit_message, tag_name
+            )
+
+            # 체크포인트 정보 생성
             checkpoint = CheckpointInfo(
                 tag=tag_name,
                 commit_hash=commit_hash,
-                message=message,
-                created_at=datetime.now(timezone.utc).isoformat(),
+                message=sanitized_message,
+                created_at=kst_now.isoformat(),
                 file_count=self._count_tracked_files(),
                 is_auto=is_auto
             )
 
+            # 메타데이터 저장 및 정리
             self._save_checkpoint_metadata(checkpoint)
             self._cleanup_old_checkpoints()
 
-            logger.info(f"체크포인트 생성 완료: {tag_name}")
+            logger.info(f"체크포인트 생성 완료: {tag_name} (KST: {kst_now.strftime('%Y-%m-%d %H:%M:%S')})")
             return checkpoint
 
         except GitCommandError as e:
+            logger.error(f"Git 명령 실행 실패: {e}")
             raise CheckpointError(f"Git 명령 실행 실패: {e}")
+        except CheckpointError:
+            # CheckpointError는 그대로 전파
+            raise
         except Exception as e:
+            logger.error(f"체크포인트 생성 중 예상치 못한 오류: {e}")
             raise CheckpointError(f"체크포인트 생성 실패: {e}")
+
+    def _sanitize_checkpoint_message(self, message: str) -> str:
+        """체크포인트 메시지 정제 및 검증"""
+        # 앞뒤 공백 제거
+        message = message.strip()
+
+        # 길이 제한 적용
+        if len(message) > CHECKPOINT_MESSAGE_MAX_LENGTH:
+            message = message[:CHECKPOINT_MESSAGE_MAX_LENGTH - 3] + "..."
+
+        # 개행 문자 제거 (Git 태그 메시지에서 문제가 될 수 있음)
+        message = message.replace('\n', ' ').replace('\r', ' ')
+
+        # 연속된 공백 정리
+        import re
+        message = re.sub(r'\s+', ' ', message)
+
+        return message
+
+    def _stage_changes_safely(self) -> None:
+        """안전한 변경사항 staging"""
+        try:
+            self.git.stage_all_changes()
+        except GitCommandError as e:
+            logger.error(f"변경사항 staging 실패: {e}")
+            raise CheckpointError(f"변경사항을 staging할 수 없습니다: {e}")
+
+    def _get_existing_tags(self) -> set:
+        """기존 태그 목록 조회"""
+        try:
+            result = self.git.run_command(["git", "tag", "-l", f"{CHECKPOINT_TAG_PREFIX}*"])
+            return set(result.stdout.strip().split('\n')) if result.stdout.strip() else set()
+        except GitCommandError:
+            logger.warning("기존 태그 목록 조회 실패, 빈 세트 반환")
+            return set()
+
+    def _create_commit_and_tag(self, has_changes: bool, commit_message: str, tag_name: str) -> str:
+        """커밋 및 태그 생성"""
+        try:
+            if has_changes:
+                commit_hash = self.git.commit(commit_message, allow_empty=False)
+            else:
+                commit_hash = self.git.run_command(["git", "rev-parse", "HEAD"]).stdout.strip()
+
+            self.git.create_tag(tag_name, commit_message)
+            return commit_hash
+
+        except GitCommandError as e:
+            logger.error(f"커밋 또는 태그 생성 실패: {e}")
+            raise CheckpointError(f"Git 작업 실패: {e}")
 
     def list_checkpoints(self, limit: Optional[int] = None) -> List[CheckpointInfo]:
         """체크포인트 목록 조회"""
@@ -204,21 +334,49 @@ class CheckpointSystem:
             return False
 
     def should_create_auto_checkpoint(self) -> bool:
-        """자동 체크포인트 생성 조건 확인"""
+        """
+        자동 체크포인트 생성 조건 확인
+
+        Returns:
+            bool: 자동 체크포인트 생성이 필요한 경우 True
+
+        Note:
+            KST 기준으로 시간 간격을 계산합니다.
+        """
         try:
             checkpoints = self.list_checkpoints(limit=1)
             if not checkpoints:
+                logger.debug("기존 체크포인트가 없어 자동 체크포인트 생성 조건 충족")
                 return True
 
             last_checkpoint = checkpoints[0]
             last_time = datetime.fromisoformat(last_checkpoint.created_at)
-            now = datetime.now(timezone.utc)
+            now = get_kst_now()
 
-            time_diff = (now - last_time).total_seconds() / 60
-            return time_diff >= AUTO_CHECKPOINT_INTERVAL_MINUTES
+            # 시간대가 다를 수 있으므로 KST로 통일하여 비교
+            if last_time.tzinfo is None:
+                # 레거시 데이터: UTC로 간주하고 KST로 변환
+                last_time = last_time.replace(tzinfo=timezone.utc).astimezone(KST)
+            elif last_time.tzinfo != KST:
+                # 다른 시간대인 경우 KST로 변환
+                last_time = last_time.astimezone(KST)
+
+            time_diff_minutes = (now - last_time).total_seconds() / 60
+            needed = time_diff_minutes >= AUTO_CHECKPOINT_INTERVAL_MINUTES
+
+            logger.debug(
+                f"자동 체크포인트 조건 확인: "
+                f"마지막={last_time.strftime('%Y-%m-%d %H:%M:%S')}, "
+                f"현재={now.strftime('%Y-%m-%d %H:%M:%S')}, "
+                f"차이={time_diff_minutes:.1f}분, "
+                f"필요={needed}"
+            )
+
+            return needed
 
         except Exception as e:
             logger.error(f"자동 체크포인트 조건 확인 실패: {e}")
+            # 안전을 위해 False 반환 (무한 체크포인트 생성 방지)
             return False
 
     def _find_checkpoint(self, tag_or_index: str) -> Optional[CheckpointInfo]:
@@ -288,7 +446,7 @@ class CheckpointSystem:
             for checkpoint in old_checkpoints:
                 self.delete_checkpoint(checkpoint.tag)
 
-        cutoff_date = datetime.now(timezone.utc) - timedelta(days=BACKUP_RETENTION_DAYS)
+        cutoff_date = get_kst_now() - timedelta(days=BACKUP_RETENTION_DAYS)
         for checkpoint in checkpoints:
             created_date = datetime.fromisoformat(checkpoint.created_at)
             if created_date < cutoff_date and checkpoint.is_auto:
