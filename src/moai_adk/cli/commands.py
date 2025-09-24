@@ -39,7 +39,7 @@ logger = get_logger(__name__)
 @click.option("-h", "--help", "help_flag", is_flag=True, help="display help for command")
 @click.pass_context
 def cli(ctx: click.Context, version: bool, help_flag: bool) -> None:
-    """@FEATURE:CLI-001 MoAI-ADK: Agentic Development Kit for Claude Code"""
+    """@FEATURE:CLI-001 Modu-AI's Agentic Development Kit"""
     if version:
         print(f"MoAI-ADK v{__version__}")
         ctx.exit()
@@ -562,8 +562,8 @@ def create_mode_configuration(project_dir: Path, project_mode: str, quiet: bool 
 
     if not quiet:
         mode_desc = {
-            "personal": "개인 개발 최적화 (체크포인트, 간소화된 워크플로우)",
-            "team": "팀 협업 최적화 (GitFlow, 구조화된 커밋, PR 자동화)"
+            "personal": "Personal development optimized (checkpoints, simplified workflow)",
+            "team": "Team collaboration optimized (GitFlow, structured commits, PR automation)"
         }
         click.echo(f"  {Fore.GREEN}✓{Style.RESET_ALL} {project_mode.title()} mode configured: {mode_desc[project_mode]}")
 

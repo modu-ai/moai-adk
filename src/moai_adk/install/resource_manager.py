@@ -262,6 +262,7 @@ class ResourceManager:
         Args:
             project_path: 프로젝트 경로
             overwrite: 기존 파일 덮어쓰기 여부
+            exclude_templates: 템플릿 디렉토리 제외 여부
 
         Returns:
             List[Path]: 복사된 파일 경로들
@@ -269,8 +270,13 @@ class ResourceManager:
         copied_files = []
         moai_resources = ['.moai']
 
+        # @TASK:TEMPLATE-VERIFY-001 Clean template validation
+        logger.info("Starting MoAI resources installation...")
+
         for resource in moai_resources:
             target_path = project_path / resource
+            logger.info(f"Installing {resource} to {target_path}")
+
             if self.copy_template(
                 resource,
                 target_path,
@@ -278,7 +284,12 @@ class ResourceManager:
                 exclude_subdirs=['_templates'] if exclude_templates else None,
             ):
                 copied_files.append(target_path)
+                self._validate_clean_installation(target_path)
+                logger.info(f"Successfully installed {resource}")
+            else:
+                logger.error(f"Failed to install {resource}")
 
+        logger.info(f"MoAI resources installation completed. {len(copied_files)} resources installed.")
         return copied_files
 
     def copy_github_resources(self, project_path: Path,
@@ -335,8 +346,8 @@ class ResourceManager:
         memory_dir = project_path / ".moai" / "memory"
         memory_dir.mkdir(parents=True, exist_ok=True)
 
-        # Always include common + core operations/engineering templates
-        templates_to_copy: List[str] = ["common", "operations", "engineering-standards"]
+        # Only copy templates that actually exist in the package
+        templates_to_copy: List[str] = ["development-guide"]
 
         for tech in tech_stack:
             tech_key = tech.lower()
@@ -354,8 +365,11 @@ class ResourceManager:
                 seen.add(template_name)
                 unique_templates.append(template_name)
 
+        failed_templates = []
+
         for template_name in unique_templates:
-            template_rel_path = f".moai/_templates/memory/{template_name}.template.md"
+            # Use actual package file structure
+            template_rel_path = f".moai/memory/{template_name}.md"
             target_path = memory_dir / f"{template_name}.md"
 
             if not self._render_template_with_context(
@@ -364,11 +378,21 @@ class ResourceManager:
                 context,
                 overwrite
             ):
-                logger.warning("Failed to render memory template: %s", template_name)
+                logger.error("Failed to render memory template: %s", template_name)
+                failed_templates.append(template_name)
             else:
                 copied_files.append(target_path)
 
+        # Report any template failures to user
+        if failed_templates:
+            logger.warning(
+                "Failed to copy %d memory templates: %s",
+                len(failed_templates),
+                ", ".join(failed_templates)
+            )
+
         return copied_files
+
 
     def _render_template_with_context(
         self,
@@ -382,7 +406,11 @@ class ResourceManager:
         try:
             content = self.get_template_content(template_name)
             if content is None:
-                logger.warning("Template content not found: %s", template_name)
+                logger.error(
+                    "Template file not found: %s. Expected location: %s",
+                    template_name,
+                    f"src/moai_adk/resources/templates/{template_name}"
+                )
                 return False
 
             if target_path.exists() and not overwrite:
@@ -441,3 +469,45 @@ class ResourceManager:
 
         logger.info("All required resources are present")
         return True
+
+    def _validate_clean_installation(self, target_path: Path) -> bool:
+        """
+        @TASK:TEMPLATE-VERIFY-001 설치된 리소스가 깨끗한 초기 상태인지 검증
+
+        Args:
+            target_path: 검증할 대상 경로
+
+        Returns:
+            bool: 깨끗한 설치 여부
+        """
+        try:
+            # 1. specs 디렉토리가 비어있거나 .gitkeep만 있는지 확인
+            specs_dir = target_path / 'specs'
+            if specs_dir.exists():
+                spec_files = [f for f in specs_dir.iterdir() if f.name != '.gitkeep']
+                if spec_files:
+                    logger.warning(f"Found unexpected spec files in clean installation: {[f.name for f in spec_files]}")
+                    return False
+
+            # 2. tags.json이 초기 구조인지 확인 (약 50줄 미만)
+            tags_file = target_path / 'indexes' / 'tags.json'
+            if tags_file.exists():
+                line_count = sum(1 for _ in open(tags_file))
+                if line_count > 50:
+                    logger.warning(f"tags.json seems to contain development data: {line_count} lines (expected < 50)")
+                    return False
+
+            # 3. reports 디렉토리가 비어있거나 .gitkeep만 있는지 확인
+            reports_dir = target_path / 'reports'
+            if reports_dir.exists():
+                report_files = [f for f in reports_dir.iterdir() if f.name != '.gitkeep']
+                if report_files:
+                    logger.warning(f"Found unexpected report files in clean installation: {[f.name for f in report_files]}")
+                    return False
+
+            logger.debug(f"Clean installation validated successfully: {target_path}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to validate clean installation at {target_path}: {e}")
+            return False

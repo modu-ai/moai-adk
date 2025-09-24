@@ -9,7 +9,7 @@ hooks, and collaborative agent systems.
 from ._version import __version__
 __author__ = "MoAI Team"
 __email__ = "contact@moai-adk.dev"
-__description__ = "Agentic Development Toolkit for Claude Code Integration"
+__description__ = "Modu-AI's Agentic Development Kit for streamlined development workflow"
 
 # Core imports
 from .config import Config

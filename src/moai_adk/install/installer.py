@@ -8,6 +8,7 @@
 from pathlib import Path
 from typing import List, Optional
 from collections.abc import Callable
+from importlib import resources
 
 from ..utils.logger import get_logger
 from ..config import Config
@@ -17,6 +18,7 @@ from ..core.security import SecurityManager
 from ..core.directory_manager import DirectoryManager
 from ..core.config_manager import ConfigManager
 from ..core.git_manager import GitManager
+from ..core.file_manager import FileManager
 from .resource_manager import ResourceManager
 from ..core.resource_version import ResourceVersionManager
 from .._version import __version__
@@ -46,8 +48,17 @@ class SimplifiedInstaller:
         self.security_manager = SecurityManager()
         self.directory_manager = DirectoryManager(self.security_manager)
         self.config_manager = ConfigManager()
-        self.git_manager = GitManager()
         self.resource_manager = ResourceManager()
+
+        # Initialize FileManager with templates from ResourceManager
+        with resources.as_file(self.resource_manager.templates_root) as templates_path:
+            self.file_manager = FileManager(templates_path, self.security_manager)
+
+        self.git_manager = GitManager(
+            project_dir=config.project_path,
+            security_manager=self.security_manager,
+            file_manager=self.file_manager
+        )
 
         logger.info("SimplifiedInstaller initialized for: %s", config.project_path)
 

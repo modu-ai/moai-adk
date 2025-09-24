@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "Bash(chmod:*)",
+      "Read(//private/tmp/test-project-fixes/todo-app-test/**)",
+      "Bash(test:*)",
+      "Read(//private/tmp/template-sync-test/clean-project/**)",
+      "Read(//private/tmp/simple-template-test/minimal-project/**)"
     ],
     "deny": [],
     "ask": []

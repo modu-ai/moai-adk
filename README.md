@@ -2,7 +2,7 @@
 
 **🏆 Claude Code 환경에서 가장 완전한 Spec-First TDD 개발 프레임워크**
 
-**🎯 0.2.3 Major Update: SPEC-006 16-Core TAG 추적성 시스템 완성**
+**🎯 0.1.8 Latest Update: 패키지 설치 품질 개선 및 템플릿 정리 완성**
 
 [![Version](https://img.shields.io/github/v/release/modu-ai/moai-adk?label=release)](https://github.com/modu-ai/moai-adk/releases)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -13,26 +13,27 @@
 
 ---
 
-## 🎉 **0.2.3 혁신 하이라이트**
+## 🎉 **0.1.8 핵심 개선사항**
 
-### 🔍 **16-Core TAG 추적성 시스템 완성** (SPEC-006)
+### 🔧 **패키지 설치 품질 향상**
 
-- **완전한 TAG 체인 추적**: TagParser, TagValidator, TagIndexManager, TagReportGenerator
-- **실시간 인덱스 관리**: 파일 감시 기반 자동 TAG 동기화
-- **무결성 검증**: Primary Chain 검증, 고아 TAG 탐지, 순환 참조 방지
-- **종합 리포트 생성**: JSON/Markdown 포맷 지원, 추적성 매트릭스 제공
+- **깨끗한 템플릿 검증**: `_validate_clean_installation()` 메서드로 초기 상태 보장
+- **개발 데이터 완전 제거**: SPEC-002~008 개발 파일, tags.json 4747→11줄 정리
+- **설치 검증 강화**: specs/reports 디렉토리 초기화 상태 확인
+- **안전한 리소스 관리**: 템플릿 무결성 자동 검증 시스템
 
-### 🏗️ **cc-manager 중앙 관제탑** (SPEC-003 완성)
+### 🏗️ **ResourceManager 핵심 개선**
 
-- **Claude Code 표준화 완전 자동화**: 12개 파일 100% 표준 준수
-- **템플릿 지침 완전 통합**: 외부 참조 없는 완전한 가이드 시스템
-- **validate_claude_standards.py**: 자동화된 검증 도구 구현
+- **템플릿 검증 시스템**: 설치된 리소스의 깨끗한 초기 상태 검증
+- **구조 무결성 보장**: .gitkeep 파일 기반 디렉토리 구조 유지
+- **설치 품질 모니터링**: 실시간 설치 상태 로깅 및 검증
+- **안전한 권한 관리**: Hook 파일 실행 권한 자동 보장
 
-### 💎 **완전한 개발 추적성 달성**
+### 💎 **설치 경험 혁신**
 
-- **16-Core TAG 시스템**: 69개 TAG, 40개 완료, 91% 커버리지
-- **Living Document 동기화**: 코드-문서-TAG 실시간 일치성 보장
-- **TDD 성과**: 31개 테스트 중 30개 통과, 91% 테스트 커버리지
+- **완전한 초기화**: 개발 흔적 없는 깨끗한 프로젝트 시작
+- **신뢰할 수 있는 설치**: 템플릿 무결성 100% 보장
+- **즉시 사용 가능**: 설치 후 바로 워크플로우 실행 가능
 
 ---
 

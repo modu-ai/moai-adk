@@ -49,11 +49,12 @@ class GitLockManager:
         elif isinstance(project_dir, Path):
             project_dir = project_dir.resolve()
         else:
-            raise ValueError(f"project_dir은 Path 또는 str이어야 합니다: {type(project_dir)}")
+            raise ValueError(f"project_dir must be a Path or str type: {type(project_dir)}")
 
-        # 경로 검증
+        # Directory validation - allow non-existent directories during initialization
         if not project_dir.exists():
-            raise ValueError(f"프로젝트 디렉토리가 존재하지 않습니다: {project_dir}")
+            logger.warning(f"Project directory will be created during installation: {project_dir}")
+            # Directory will be created by installer - defer validation
 
         self.project_dir = project_dir
         self.lock_dir = project_dir / lock_dir

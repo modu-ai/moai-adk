@@ -110,7 +110,7 @@ def create_banner(version: str = None, show_usage: bool = False) -> str:
     banner_lines.append("")
 
     # Add description line with Claude brand color
-    description = "MoAI-ADK: Agentic Development Toolkit for Claude Code 🚀"
+    description = "Modu-AI's Agentic Development Kit 🚀"
     if supports_color():
         banner_lines.append(f"{Colors.CLAUDE_BRAND}{description}{Colors.RESET}")
     else:

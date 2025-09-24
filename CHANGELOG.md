@@ -5,6 +5,60 @@ All notable changes to MoAI-ADK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.8] - 2025-09-25
+
+### 🔧 **패키지 설치 품질 개선 및 템플릿 정리**
+
+**깨끗한 초기 상태 보장으로 신뢰할 수 있는 설치 경험 제공**
+
+#### ✨ ResourceManager 핵심 개선
+
+**템플릿 검증 시스템 구현:**
+
+- **`_validate_clean_installation()` 메서드 추가**: 설치된 리소스의 깨끗한 초기 상태 자동 검증
+- **개발 데이터 완전 제거**: SPEC-002~008 개발 파일, tags.json 4747→11줄로 정리
+- **구조 무결성 보장**: .gitkeep 파일 기반으로 디렉토리 구조 유지
+- **실시간 검증 로깅**: 설치 과정에서 상태 검증 및 문제점 자동 탐지
+
+#### 🎯 설치 품질 향상
+
+**완전한 초기화 시스템:**
+
+- **specs 디렉토리**: 빈 상태 또는 .gitkeep만 존재하는지 확인
+- **reports 디렉토리**: 개발 리포트 파일 완전 제거 검증
+- **tags.json 최적화**: 50줄 미만 초기 구조로 정리 (기존 4747줄→11줄)
+- **무결성 보장**: 예상치 못한 개발 파일 존재 시 경고 및 정리
+
+#### 🏷️ 16-Core TAG 업데이트
+
+**새로운 TAG 체인:**
+
+- `@TASK:TEMPLATE-VERIFY-001`: Clean template validation 구현
+- `@FEATURE:RESOURCE-001`: ResourceManager 개선사항 추적
+- `@TEST:TEMPLATE-CLEAN-001`: 템플릿 정리 검증 테스트
+- 기존 TAG 시스템과 완전 호환성 유지
+
+#### 💎 사용자 경험 혁신
+
+**즉시 사용 가능한 프로젝트:**
+
+- **개발 흔적 제거**: 이전 개발 과정의 임시 파일 완전 정리
+- **신뢰할 수 있는 설치**: 템플릿 무결성 100% 보장
+- **일관된 초기 상태**: 모든 프로젝트에서 동일한 깨끗한 시작점 제공
+- **자동 권한 설정**: Hook 파일 실행 권한 자동 보장 (이중 안전장치)
+
+#### 🔍 기술적 개선사항
+
+- **안전한 경로 검증**: `_validate_safe_path()` 메서드로 보안 강화
+- **향상된 로깅**: 설치 과정의 각 단계별 상세 로그 제공
+- **예외 처리 강화**: 설치 실패 시 명확한 오류 메시지 및 복구 가이드
+- **크로스 플랫폼 호환성**: Windows/macOS/Linux 환경에서 일관된 동작
+
+이 업데이트로 MoAI-ADK는 **진정한 production-ready 패키지**로 진화했습니다:
+- 설치 후 즉시 사용 가능한 깨끗한 프로젝트 환경
+- 개발자가 신뢰할 수 있는 일관된 초기 상태
+- TRUST 5원칙 기반의 품질 검증 시스템
+
 ## [0.2.4] - 2025-09-24
 
 ### 🚀 MoAI-ADK 0.2.4 - SPEC-007 Hook System Optimization 완료

@@ -40,10 +40,10 @@ class SpecCommand:
         """
         # 입력 검증 (@SEC:INPUT-MED)
         if not isinstance(project_dir, Path):
-            raise ValueError(f"project_dir은 Path 객체여야 합니다: {type(project_dir)}")
+            raise ValueError(f"project_dir must be a Path object: {type(project_dir)}")
 
         if not project_dir.exists():
-            raise ValueError(f"프로젝트 디렉토리가 존재하지 않습니다: {project_dir}")
+            raise ValueError(f"Project directory does not exist: {project_dir}")
 
         self.project_dir = project_dir.resolve()
         self.config = config

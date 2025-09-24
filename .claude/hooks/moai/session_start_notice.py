@@ -40,7 +40,25 @@ class SessionNotifier:
             "initialized": self.is_moai_project(),
             "constitution_status": self.check_constitution_status(),
             "pipeline_stage": self.get_current_pipeline_stage(),
+            "spec_progress": self.get_spec_progress(),
         }
+
+    def get_spec_progress(self) -> Dict[str, Any]:
+        """Get SPEC progress information"""
+        specs_dir = self.project_root / ".moai" / "specs"
+        if not specs_dir.exists():
+            return {"total": 0, "completed": 0}
+
+        spec_dirs = [d for d in specs_dir.iterdir() if d.is_dir() and d.name.startswith("SPEC-")]
+        total_specs = len(spec_dirs)
+
+        # Simple heuristic: completed if has both spec.md and plan.md
+        completed = 0
+        for spec_dir in spec_dirs:
+            if (spec_dir / "spec.md").exists() and (spec_dir / "plan.md").exists():
+                completed += 1
+
+        return {"total": total_specs, "completed": completed}
 
     def is_moai_project(self) -> bool:
         """Check if MoAI project is initialized
@@ -85,7 +103,7 @@ class SessionNotifier:
             if self.moai_config_path.exists():
                 with open(self.moai_config_path) as f:
                     config = json.load(f)
-                    return config.get("version", "unknown")
+                    return config.get("project", {}).get("version", "unknown")
         except Exception:
             pass
         return "unknown"
@@ -95,9 +113,17 @@ class SessionNotifier:
 
         @FEATURE:PIPELINE-STAGE-DETECTION
         """
-        # Simple heuristic based on directory contents
+        try:
+            if self.moai_config_path.exists():
+                with open(self.moai_config_path) as f:
+                    config = json.load(f)
+                    return config.get("pipeline", {}).get("current_stage", "unknown")
+        except Exception:
+            pass
+
+        # Fallback heuristic
         specs_dir = self.project_root / ".moai" / "specs"
-        if specs_dir.exists() and any(specs_dir.glob("*.md")):
+        if specs_dir.exists() and any(specs_dir.glob("*/spec.md")):
             return "implementation"
         elif self.is_moai_project():
             return "specification"
@@ -121,9 +147,31 @@ def main():
                     print(f"   • {violation}")
                 print()
 
-            print(f"📋 MoAI Project: {status['project_name']}")
-            print(f"🔧 Version: {status['moai_version']}")
-            print(f"📍 Stage: {status['pipeline_stage']}")
+            # Enhanced project status display
+            spec_progress = status.get("spec_progress", {"total": 0, "completed": 0})
+
+            # Determine if git has uncommitted changes
+            import subprocess
+            git_status = ""
+            try:
+                result = subprocess.run(["git", "status", "--porcelain"],
+                                      capture_output=True, text=True, timeout=2)
+                if result.returncode == 0:
+                    changes = len([line for line in result.stdout.strip().split('\n') if line])
+                    if changes > 0:
+                        git_status = f" ({changes} 변경사항)"
+            except:
+                pass
+
+            print(f"🗿 MoAI-ADK 프로젝트: {status['project_name']}")
+            branch_info = get_current_branch()
+            if git_status:
+                print(f"🌿 현재 브랜치: {branch_info} ({get_latest_commit()[:7]} {get_commit_message()[:50]}...)")
+                print(f"📝 변경사항: {changes}개 파일")
+            else:
+                print(f"🌿 현재 브랜치: {branch_info} ({get_latest_commit()[:7]} {get_commit_message()[:50]}...)")
+            print(f"📝 SPEC 진행률: {spec_progress['completed']}/{spec_progress['total']} (미완료 {spec_progress['total'] - spec_progress['completed']}개)")
+            print("✅ 통합 체크포인트 시스템 사용 가능")
 
         else:
             print("💡 Run `/moai:0-project` to initialize MoAI-ADK")
@@ -131,6 +179,45 @@ def main():
     except Exception as e:
         # Silent failure to avoid breaking Claude Code session
         pass
+
+
+def get_current_branch() -> str:
+    """Get current git branch name"""
+    try:
+        import subprocess
+        result = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                              capture_output=True, text=True, timeout=2)
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except:
+        pass
+    return "unknown"
+
+
+def get_latest_commit() -> str:
+    """Get latest commit hash"""
+    try:
+        import subprocess
+        result = subprocess.run(["git", "rev-parse", "HEAD"],
+                              capture_output=True, text=True, timeout=2)
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except:
+        pass
+    return "unknown"
+
+
+def get_commit_message() -> str:
+    """Get latest commit message"""
+    try:
+        import subprocess
+        result = subprocess.run(["git", "log", "-1", "--pretty=%s"],
+                              capture_output=True, text=True, timeout=2)
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except:
+        pass
+    return "No commit message"
 
 
 if __name__ == "__main__":
