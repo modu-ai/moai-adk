@@ -353,19 +353,14 @@ moai init team-project --team
 
 #### 동기화 시스템
 
-**`/moai:git:sync`** - 원격 저장소 동기화
+원격 저장소 동기화도 git-manager가 자동으로 처리합니다. 수동 점검이 필요하면 다음과 같이 요청할 수 있습니다.
 
-```bash
-# 모드별 동기화
-/moai:git:sync --auto                    # 현재 모드에 맞는 동기화
-
-# 원격 동기화
-/moai:git:sync --pull                    # 최신 변경사항 가져오기
-/moai:git:sync --push                    # 변경사항 업로드
-
-# 충돌 해결 지원
-/moai:git:sync --resolve                 # 충돌 자동 해결 시도
+```text
+@agent-git-manager "원격 저장소와 최신 동기화 상태인지 확인"
+@agent-git-manager "충돌 해결 절차 안내"
 ```
+
+CLI에서 직접 확인하려면 `python .moai/scripts/sync_manager.py status` 를 실행하세요.
 
 ---
 
@@ -425,12 +420,10 @@ moai --version
    ✅ 간소화된 브랜치 전략
    ✅ 체크포인트 롤백 시스템
 
-📁 Git 명령어 시스템:
-   ✅ /moai:git:checkpoint (자동 백업)
-   ✅ /moai:git:rollback (안전 복구)
-   ✅ /moai:git:branch (브랜치 관리)
-   ✅ /moai:git:commit (스마트 커밋)
-   ✅ /moai:git:sync (동기화)
+🤖 Git 관리:
+   ✅ git-manager 에이전트 자동 체크포인트
+   ✅ 브랜치/커밋/롤백 자동화
+   ✅ 필요 시 `@agent-git-manager` 로 수동 지시 가능
 
 🎉 개인 모드 설정 완료! 안전한 실험적 개발 환경 준비됨
 ```
@@ -501,99 +494,60 @@ moai config --show
 
 ### 개인 모드 (Personal Mode) 사용법
 
-#### 안전한 실험적 개발
+#### 안전한 실험적 개발 흐름
 
-```bash
-# 1. 새 기능 실험 시작
-/moai:git:checkpoint "새 알고리즘 실험 시작"
+1. **프로젝트 문서 정리** – `/moai:0-project` 로 product/structure/tech 문서를 최신 상태로 맞춥니다.
+2. **SPEC 작성** – `/moai:1-spec` 에서 필요한 기능을 선택해 `.moai/specs/`에 생성합니다.
+3. **TDD 구현** – `/moai:2-build` 가 RED → GREEN → REFACTOR를 자동으로 수행하며, git-manager가 각 단계에서 체크포인트와 커밋을 남깁니다.
+4. **문서 동기화** – `/moai:3-sync` 로 Living Document와 TAG 추적성을 갱신합니다.
 
-# 2. 명세 작성 (수동 단일 SPEC)
-/moai:1-spec "새로운 정렬 알고리즘 구현"
-# → feature/새로운-정렬-알고리즘 브랜치 생성
-# → 프로젝트 문서 범위를 벗어나지 않는 SPEC 문서 생성
-# → 자동 체크포인트 생성
+> 체크포인트와 브랜치 관리, 커밋 메시지 작성, 롤백 지점 생성은 **git-manager 에이전트가 자동으로 처리**합니다. 실패한 실험도 안전하게 롤백되므로 Git 명령을 직접 실행할 필요가 없습니다.
 
-# 3. 실험적 구현 (실패해도 안전)
-/moai:2-build
-# → TDD 각 단계마다 자동 체크포인트
-# → 실패 시 즉시 롤백 가능
-# → 성공 시 체크포인트 보존
+#### 수동 개입이 필요할 때
 
-# 4. 실패한 실험 롤백
-/moai:git:rollback --list              # 체크포인트 목록 확인
-/moai:git:rollback --checkpoint checkpoint_20250922_173213
+특별한 실험이나 복구가 필요하면 Claude 대화창에서 다음과 같이 git-manager 에이전트를 직접 호출합니다.
 
-# 5. 성공한 실험 정리
-/moai:3-sync                           # 간소한 문서화
-/moai:git:checkpoint "실험 완료"       # 최종 백업
+```text
+@agent-git-manager "체크포인트 생성: 새로운 실험 시작"
+@agent-git-manager "체크포인트 목록 확인"
+@agent-git-manager "최근 체크포인트로 롤백"
 ```
 
-#### 연속적인 반복 개발
+커맨드라인이 필요한 경우에는 통합 스크립트를 사용할 수 있습니다.
 
 ```bash
-# 0-1. SPEC 백로그 일괄 생성 (auto)
-/moai:0-project
-/moai:1-spec                     # 프로젝트 문서 기반 SPEC 후보 확인 → SPEC-001~003 생성
+# 최근 체크포인트 5개 확인
+python .moai/scripts/checkpoint_manager.py list 5
 
-# 2. 우선순위 순서대로 구현
-/moai:2-build SPEC-001
-/moai:3-sync
-/moai:git:checkpoint "SPEC-001 구현 완료"
+# 수동 체크포인트 생성
+python .moai/scripts/checkpoint_manager.py create "실험 종료"
 
-/moai:2-build SPEC-002
-/moai:3-sync
-/moai:git:checkpoint "SPEC-002 구현 완료"
-
-# 문제 발생 시 이전 상태로 롤백
-/moai:git:rollback --checkpoint "SPEC-001 구현 완료"
+# 지정 태그로 롤백
+python .moai/scripts/checkpoint_manager.py rollback moai_cp/20240924-153015
 ```
 
 ### 팀 모드 (Team Mode) 사용법
 
 #### 완전한 GitFlow 자동화
 
-```bash
-# 0. 백로그 준비 (최초 1회)
-/moai:0-project
-/moai:1-spec                      # 프로젝트 문서 기반 SPEC 제안 → GitHub Issue/Discussion 생성
+1. **백로그 준비** – `/moai:0-project` 로 프로젝트 컨텍스트를 정리한 뒤 `/moai:1-spec` 을 실행하면, 확인한 SPEC이 GitHub Issue 또는 Discussion 으로 등록되고 대응되는 feature 브랜치가 생성됩니다.
+2. **기능 개발** – 담당자는 생성된 Issue에서 브랜치 정보를 확인하고 `/moai:2-build SPEC-XXX` 를 실행하여 RED/GREEN/REFACTOR 커밋과 체크포인트를 자동으로 생성합니다.
+3. **문서 & PR 동기화** – `/moai:3-sync` 는 Living Document 를 갱신하고 Draft PR 을 Ready for Review 로 승격하며 리뷰어 지정까지 수행합니다.
 
-# 1. 새 기능 개발 시작
-/moai:git:sync --pull              # 최신 develop 브랜치 동기화
-gh issue list --label SPEC         # 팀 백로그 확인 (자동 생성된 SPEC-XXX 이슈)
-gh issue view SPEC-001             # 상세 요구사항 확인
-/moai:git:branch --team SPEC-001   # feature/SPEC-001-{slug} 브랜치 체크아웃
-# → Issue에 회의록/프로젝트 문서 링크 자동 첨부
-# → Draft PR 사전 생성 및 담당자 배정
+> 팀 모드에서도 git-manager가 브랜치 관리, 커밋 시그니처, 체크포인트 생성, PR 상태 전환을 자동으로 처리합니다. 수동으로 Git 명령을 실행할 필요가 없으며, 필요시 `@agent-git-manager` 에게 지시하면 됩니다.
 
-# 2. TDD 구현 (7단계 자동 커밋)
-/moai:2-build SPEC-001
-# → 🔴 RED: "SPEC-001: 실패하는 테스트 작성 완료"
-# → 🟢 GREEN: "SPEC-001: 최소 구현으로 테스트 통과"
-# → 🔄 REFACTOR: "SPEC-001: 코드 품질 개선 완료"
-# → TRUST 원칙 검증
-# → GitHub Actions CI 자동 트리거
+#### 병렬 작업 시 팁
 
-# 3. 문서 동기화 및 PR Ready
-/moai:3-sync
-# → Living Document 완전 동기화
-# → 16-Core @TAG 시스템 업데이트
-# → Draft → Ready for Review 전환
-# → 리뷰어 자동 할당 (@senior-dev, @security-lead)
-# → 팀 슬랙 알림
-
-# 4. 협업 도구 활용
-/moai:git:branch --status              # 브랜치 상태 확인
-/moai:git:sync --status                # PR 상태 확인
-```
-
-#### 병렬 기능 개발
-
-병렬 기능 개발은 GitHub Issue를 중심으로 진행됩니다:
-
-1. `/moai:1-spec` auto 실행으로 생성된 SPEC 이슈를 담당자별로 배정합니다.
-2. 각 담당자는 `gh issue view SPEC-00X --json title,body,url` 로 요구사항을 확인하고 `/moai:git:branch --team SPEC-00X` 를 실행해 작업 브랜치를 준비합니다.
-3. `/moai:2-build SPEC-00X` → `/moai:3-sync` 흐름을 독립적으로 진행하면 Draft PR이 Issue와 자동 연결됩니다.
-4. 구현 완료 후 Issue를 Close하고 프로젝트 보드를 갱신합니다.
+- GitHub CLI 로 Issue 상세를 확인하고 담당자를 조정합니다.
+  ```bash
+  gh issue list --label SPEC
+  gh issue view SPEC-001 --web
+  ```
+- 브랜치나 PR 상태가 궁금하면 에이전트에게 직접 요청합니다.
+  ```text
+  @agent-git-manager "feature/SPEC-001-user-auth 브랜치 상태 요약"
+  @agent-git-manager "현재 PR 동기화 방법 안내"
+  ```
 
 #### GitHub App & Actions 설정 가이드
 
@@ -614,60 +568,23 @@ jobs:
 
 5. 워크플로 실행 후 Slack/이메일 등 알림이 필요하면 GitHub App → Slack 연결을 추가합니다.
 
-### Git 명령어 시스템 고급 사용법
+### Git 관리 가이드
 
-#### 체크포인트 관리 전략
+모든 Git 작업은 기본적으로 git-manager 에이전트가 자동화합니다. 사용자는 `/moai:0-project` → `/moai:3-sync` 워크플로우만 실행하면 되며, 브랜치 생성·체크포인트·커밋·PR 준비가 자동으로 수행됩니다.
 
-```bash
-# 주요 작업 단위별 체크포인트
-/moai:git:checkpoint "프로젝트 시작"
-/moai:git:checkpoint "아키텍처 설계 완료"
-/moai:git:checkpoint "핵심 로직 구현 완료"
-/moai:git:checkpoint "테스트 작성 완료"
-/moai:git:checkpoint "리팩터링 완료"
+필요 시 다음과 같이 git-manager 에이전트나 보조 스크립트를 활용해 수동 진단이 가능합니다.
 
-# 체크포인트 정리 (오래된 것 자동 삭제)
-/moai:git:checkpoint --cleanup
-
-# 체크포인트 백업 (중요한 마일스톤)
-/moai:git:checkpoint --backup "v1.0.0-rc"
+```text
+@agent-git-manager "체크포인트 진행 상황 요약"
+@agent-git-manager "현재 브랜치 동기화 절차 안내"
 ```
 
-#### 브랜치 관리 최적화
-
 ```bash
-# 브랜치 상태 모니터링
-/moai:git:branch --status --verbose
-# 출력:
-# 🌿 현재: feature/SPEC-001-user-auth
-# 📊 커밋: 7개 (RED: 1, GREEN: 1, REFACTOR: 1)
-# 📈 진행률: 85% (테스트 커버리지: 94%)
-# 🔄 동기화: 최신 상태
+# 브랜치 상태 진단
+python .moai/scripts/branch_manager.py status
 
-# 브랜치 정리 (완료된 기능들)
-/moai:git:branch --cleanup --merged
-
-# 브랜치 전략 변경
-/moai:git:branch --strategy personal   # 개인 모드 브랜치로 변경
-/moai:git:branch --strategy team       # 팀 모드 브랜치로 변경
-```
-
-#### 동기화 및 충돌 해결
-
-```bash
-# 스마트 동기화
-/moai:git:sync --auto --resolve
-# → 원격 변경사항 자동 병합
-# → 충돌 발생 시 자동 해결 시도
-# → 해결 불가 시 가이드 제공
-
-# 안전한 동기화 (충돌 시 백업)
-/moai:git:sync --safe
-# → 동기화 전 자동 체크포인트 생성
-# → 충돌 발생 시 롤백 가능한 상태 유지
-
-# 상태 확인
-/moai:git:sync --status
+# 원격 동기화 점검
+python .moai/scripts/sync_manager.py status
 ```
 
 ---
@@ -691,7 +608,7 @@ moai migrate --from=0.2.1 --to=0.2.2
 # 마이그레이션 과정:
 # 🔍 기존 프로젝트 분석...
 # 🎛️ 개인/팀 모드 자동 감지 및 설정...
-# 📁 Git 명령어 시스템 설치...
+# 🤖 git-manager 에이전트 구성...
 # ⚙️ 체크포인트 시스템 활성화...
 # 🎉 0.2.2 마이그레이션 완료!
 ```
@@ -701,7 +618,7 @@ moai migrate --from=0.2.1 --to=0.2.2
 | 항목            | Before | After               | 자동 변환      |
 | --------------- | ------ | ------------------- | -------------- |
 | **모드 시스템** | 없음   | 개인/팀 모드        | ✅ 자동 감지   |
-| **Git 명령어**  | 없음   | 8개 Git 전용 명령어 | ✅ 자동 설치   |
+| **Git 자동화**  | 수동 Git 작업   | git-manager 에이전트 기반 자동화 | ✅ 자동 구성   |
 | **체크포인트**  | 없음   | 자동 백업/롤백      | ✅ 자동 활성화 |
 | **설정 구조**   | 단순   | 모드별 최적화       | ✅ 자동 생성   |
 
@@ -830,7 +747,7 @@ class MoAIFileWatcher(FileSystemEventHandler):
             self.changed_files.clear()
 ```
 
-#### Git 명령어 시스템 구현
+#### git-manager 기반 Git 자동화
 
 **git-manager 에이전트** (`.claude/agents/moai/git-manager.md`):
 
@@ -862,11 +779,9 @@ You are a Git operations specialist managing mode-specific Git strategies.
 
 ### Git Command Implementation
 
-- /moai:git:checkpoint: Backup current state
-- /moai:git:rollback: Restore to previous checkpoint
-- /moai:git:branch: Smart branch management
-- /moai:git:commit: 개발 가이드-based commits
-- /moai:git:sync: Remote repository synchronization
+- 워크플로우 명령(`/moai:0-project`~`/moai:3-sync`)과 연동된 자동 Git 작업
+- 수동 요청 시 `@agent-git-manager` 지시를 해석하여 브랜치/체크포인트/동기화를 실행
+- 내부 스크립트(`.moai/scripts/*`)를 호출해 진단·복구 기능 제공
 ```
 
 ---
@@ -955,113 +870,24 @@ You are a Git operations specialist managing mode-specific Git strategies.
 >
 > - README·심층 문서·PR 업데이트는 체크리스트에 따라 수동으로 마무리하세요.
 
-### Git 전용 명령어
+### git-manager 에이전트 활용
 
-#### `/moai:git:checkpoint` (체크포인트 시스템)
+Git 관련 보조 명령은 별도의 `/moai:git:*` 커맨드로 제공되지 않습니다. git-manager 에이전트가 워크플로우 전반의 브랜치/체크포인트/PR 작업을 자동으로 처리하며, 필요한 경우 직접 지시를 내려 세부 작업을 실행할 수 있습니다.
 
-```bash
-# 자동 체크포인트 생성
-/moai:git:checkpoint
-
-# 메시지와 함께 체크포인트
-/moai:git:checkpoint "중요 작업 완료"
-
-# 체크포인트 목록 확인
-/moai:git:checkpoint --list
-
-# 체크포인트 상태 확인
-/moai:git:checkpoint --status
-
-# 오래된 체크포인트 정리
-/moai:git:checkpoint --cleanup
+```text
+@agent-git-manager "체크포인트 현황 공유"
+@agent-git-manager "feature/SPEC-002-data-sync 브랜치 정리"
 ```
 
-#### `/moai:git:rollback` (롤백 시스템)
+CLI 진단이 필요하면 다음 스크립트를 사용할 수 있습니다.
 
 ```bash
-# 체크포인트 목록 보기
-/moai:git:rollback --list
-
-# 특정 체크포인트로 롤백
-/moai:git:rollback --checkpoint checkpoint_20250922_173213
-
-# 시간 기반 롤백
-/moai:git:rollback --time "1시간전"
-/moai:git:rollback --time "30분전"
-
-# 마지막 체크포인트로 롤백
-/moai:git:rollback --last
-
-# 안전한 롤백 (백업 후 롤백)
-/moai:git:rollback --safe --checkpoint checkpoint_id
+python .moai/scripts/checkpoint_manager.py list 5
+python .moai/scripts/branch_manager.py status
+python .moai/scripts/sync_manager.py status
 ```
 
-#### `/moai:git:branch` (브랜치 관리)
-
-```bash
-# 브랜치 상태 확인
-/moai:git:branch --status
-
-# 상세 정보 포함 상태
-/moai:git:branch --status --verbose
-
-# 모드별 브랜치 생성
-/moai:git:branch --personal "새-기능"
-/moai:git:branch --team "사용자-인증"
-
-# 완료된 브랜치 정리
-/moai:git:branch --cleanup
-
-# 병합된 브랜치만 정리
-/moai:git:branch --cleanup --merged
-
-# 브랜치 전략 변경
-/moai:git:branch --strategy personal
-/moai:git:branch --strategy team
-```
-
-#### `/moai:git:commit` (스마트 커밋)
-
-```bash
-# 현재 모드에 맞는 자동 커밋
-/moai:git:commit --auto
-
-# SPEC 기반 커밋 (팀 모드)
-/moai:git:commit --spec "SPEC-001" --message "기능 구현 완료"
-
-# TDD 단계별 커밋
-/moai:git:commit --red "실패 테스트 작성"
-/moai:git:commit --green "최소 구현"
-/moai:git:commit --refactor "코드 개선"
-
-# 개발 가이드 검증 포함 커밋
-/moai:git:commit --constitution --message "품질 검증 완료"
-```
-
-> ℹ️ **현재 버전 주의**: 0.2.2에서 `--spec`, `--red`, `--green`, `--refactor`, `--constitution` 옵션은 기본 템플릿 메시지를 생성합니다. 테스트 실행/커버리지 확인은 자동으로 이루어지지 않으므로 커밋 전에 직접 검증하세요.
-
-#### `/moai:git:sync` (원격 동기화)
-
-```bash
-# 현재 모드에 맞는 자동 동기화
-/moai:git:sync --auto
-
-# 최신 변경사항 가져오기
-/moai:git:sync --pull
-
-# 변경사항 업로드
-/moai:git:sync --push
-
-# 충돌 자동 해결 시도
-/moai:git:sync --resolve
-
-# 안전한 동기화 (백업 후 동기화)
-/moai:git:sync --safe
-
-# 동기화 상태 확인
-/moai:git:sync --status
-```
-
+---
 ### 진단 명령어
 
 #### `/moai:status`
@@ -1251,15 +1077,11 @@ MoAI-ADK 0.2.2는 **Claude Code 표준 준수**와 **모든 경로 검증 완료
 │   ├── settings.json             # ✅ 모든 경로 정상 작동
 │   ├── settings.local.json       # 추가 권한 설정
 │   ├── commands/moai/            # MoAI 명령어 시스템
+│   │   ├── 0-project.md         # 프로젝트 킥오프
 │   │   ├── 1-spec.md            # 명세 작성 명령어
 │   │   ├── 2-build.md           # TDD 구현 명령어
 │   │   ├── 3-sync.md            # 문서 동기화 명령어
-│   │   └── git/                 # Git 전용 명령어 (5개)
-│   │       ├── branch.md        # 브랜치 관리
-│   │       ├── checkpoint.md    # 체크포인트 생성
-│   │       ├── commit.md        # 스마트 커밋
-│   │       ├── rollback.md      # 롤백 시스템
-│   │       └── sync.md          # 원격 동기화
+│   │   └── 4-debug.md           # 통합 디버깅 명령어
 │   ├── agents/                  # 전문 에이전트 시스템
 │   │   └── moai/               # project-manager, cc-manager, spec-builder, code-builder, doc-syncer, git-manager
 │   │       ├── project-manager.md
@@ -1269,11 +1091,17 @@ MoAI-ADK 0.2.2는 **Claude Code 표준 준수**와 **모든 경로 검증 완료
 │   │       ├── doc-syncer.md
 │   │       └── git-manager.md
 │   ├── hooks/moai/             # 자동화 훅 시스템 (실행권한 ✅)
-│   │   ├── auto_checkpoint.py  # 자동 체크포인트 (개인 모드)
-│   │   ├── check_style.py      # 코드 스타일 검증
-│   │   ├── file_watcher.py     # 파일 변경 감지
+│   │   ├── auto_checkpoint.py      # 자동 체크포인트 (개인 모드)
+│   │   ├── check_style.py          # 코드 스타일 검증
+│   │   ├── file_watcher.py         # 파일 변경 감지
+│   │   ├── language_detector.py    # 언어 자동 감지
+│   │   ├── policy_block.py         # 금지 명령 차단
+│   │   ├── pre_write_guard.py      # 파일 작성 가드
+│   │   ├── run_tests_and_report.py # 테스트 실행/리포트(옵션)
 │   │   ├── session_start_notice.py # 세션 시작 알림
-│   │   └── tag_validator.py    # @TAG 시스템 검증
+│   │   ├── steering_guard.py       # 사용자 입력 가드
+│   │   └── tag_validator.py        # @TAG 시스템 검증
+│   │   # (참고) auto_checkpoint/file_watcher/language_detector/run_tests_and_report 는 기본 settings.json 에서는 연결되어 있지 않으며, 선택 기능/향후 통합을 위해 제공됨
 │   └── output-styles/          # 6가지 출력 스타일
 │       ├── expert.md           # 숙련자용
 │       ├── mentor.md           # 팀 리더용
@@ -1314,12 +1142,69 @@ MoAI-ADK 0.2.2는 **Claude Code 표준 준수**와 **모든 경로 검증 완료
 
 #### 설정 파일 상세
 
-**`.claude/settings.json`** - 권장 기본 설정:
+**`.claude/settings.json`** - 기본 구성(0.2.2 현재 레포지토리와 동일):
 
 ```json
 {
+  "hooks": {
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/check_style.py",
+            "type": "command"
+          }
+        ],
+        "matcher": "Edit|Write|MultiEdit"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_write_guard.py",
+            "type": "command"
+          },
+          {
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag_validator.py",
+            "type": "command"
+          }
+        ],
+        "matcher": "Edit|Write|MultiEdit"
+      },
+      {
+        "hooks": [
+          {
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/policy_block.py",
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start_notice.py",
+            "type": "command"
+          }
+        ],
+        "matcher": "*"
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/steering_guard.py",
+            "type": "command"
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
-    "defaultMode": "acceptEdits",
     "allow": [
       "Task",
       "Read",
@@ -1331,83 +1216,71 @@ MoAI-ADK 0.2.2는 **Claude Code 표준 준수**와 **모든 경로 검증 완료
       "Glob",
       "TodoWrite",
       "WebFetch",
-      "Bash(git status:*)",
-      "Bash(git add:*)",
-      "Bash(git diff:*)",
-      "Bash(git commit:*)",
+      "Bash(git:*)",
+      "Bash(rg:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(echo:*)",
+      "Bash(which:*)",
+      "Bash(make:*)",
+      "Bash(python:*)",
       "Bash(python3:*)",
       "Bash(pytest:*)",
+      "Bash(ruff:*)",
+      "Bash(black:*)",
+      "Bash(mypy:*)",
+      "Bash(bandit:*)",
+      "Bash(coverage:*)",
+      "Bash(pip:*)",
+      "Bash(poetry:*)",
+      "Bash(uv:*)",
+      "Bash(npm:*)",
+      "Bash(node:*)",
+      "Bash(pnpm:*)",
+      "Bash(moai:*)",
       "Bash(gh pr create:*)",
-      "Bash(gh pr view:*)"
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh repo view:*)",
+      "Bash(find:*)",
+      "Bash(mkdir:*)",
+      "Bash(touch:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(tree:*)",
+      "Bash(diff:*)",
+      "Bash(wc:*)",
+      "Bash(sort:*)",
+      "Bash(uniq:*)"
     ],
-    "ask": ["Bash(git push:*)", "Bash(gh pr merge:*)"],
-    "deny": ["Read(./.env)", "Read(./.env.*)", "Read(./secrets/**)"]
-  },
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag_validator.py"
-          },
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_write_guard.py"
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/policy_block.py"
-          }
-        ]
-      }
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(git merge:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(pip install:*)",
+      "Bash(poetry add:*)",
+      "Bash(npm install:*)",
+      "Bash(rm:*)"
     ],
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/check_style.py"
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/steering_guard.py"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/run_tests_and_report.py"
-          }
-        ]
-      }
+    "defaultMode": "default",
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)",
+      "Read(~/.ssh/**)",
+      "Bash(sudo:*)",
+      "Bash(rm -rf :*)",
+      "Bash(chmod -R 777 :*)",
+      "Bash(dd:*)",
+      "Bash(mkfs:*)",
+      "Bash(fdisk:*)"
     ]
-  },
-  "statusLine": { "type": "command", "command": "$HOME/.claude/statusline.sh" },
-  "outputStyle": "Explanatory",
-  "includeCoAuthoredBy": false
+  }
 }
 ```
 
-> **Bash 권한 주의**: 패턴은 접두(prefix) 매칭입니다. `Bash(git status:*)`는 `git status --short` 까지만 허용하지만, `Bash(git:*)`는 모든 git 하위 명령을 허용합니다.
-> **deny 규칙**: 민감 경로를 차단하려면 `Read(...)` 패턴을 활용하고, 추가로 PreToolUse 후크에서 이중 검사를 수행하세요.
+> **Bash 권한 주의**: `Bash(git:*)`처럼 광범위한 패턴은 하위 명령 전체를 허용하므로, 필요할 때만 추가하고 Guard 훅(policies, steering_guard 등)으로 2차 방어선을 유지하세요.
+> **민감 경로 차단**: `deny` 목록은 `.env`, `secrets/` 등 민감 정보를 1차로 차단하며, PreToolUse 훅이 추가 검증을 수행합니다.
 
 **`.moai/config.json`** - 개인/팀 모드 설정:
 
@@ -1462,31 +1335,39 @@ MoAI-ADK 0.2.2는 **Claude Code 표준 준수**와 **모든 경로 검증 완료
 
 2. **Script 파일 위치 정리**:
    - `rollback.py`: `.claude/scripts/moai/git/` → `.moai/scripts/`
-   - `rollback.md`의 모든 경로 참조 수정 완료
+   - `git-manager.md`의 모든 경로 참조 수정 완료
 
 3. **실행 권한 정리**:
    - 모든 Python 스크립트에 실행 권한 부여 (`chmod +x`)
-   - Hook 스크립트 5개 모두 실행 가능 상태
-   - Core 스크립트 6개 모두 실행 가능 상태
+   - Hook 스크립트 10개 모두 실행 가능 상태
+   - Core 스크립트 9개 모두 실행 가능 상태
 
 #### 🔍 경로 무결성 검증
 
 ```bash
 # 모든 스크립트 실행 권한 확인
 $ ls -la .claude/hooks/moai/*.py
--rwxr-xr-x  auto_checkpoint.py     # ✅ 실행 가능
--rwxr-xr-x  check_style.py         # ✅ 실행 가능 (경로 수정됨)
--rwxr-xr-x  file_watcher.py        # ✅ 실행 가능
--rwxr-xr-x  session_start_notice.py # ✅ 실행 가능
--rwxr-xr-x  tag_validator.py       # ✅ 실행 가능
+-rwxr-xr-x  auto_checkpoint.py       # ✅ 실행 가능
+-rwxr-xr-x  check_style.py           # ✅ 실행 가능
+-rwxr-xr-x  file_watcher.py          # ✅ 실행 가능
+-rwxr-xr-x  language_detector.py     # ✅ 실행 가능
+-rwxr-xr-x  policy_block.py          # ✅ 실행 가능
+-rwxr-xr-x  pre_write_guard.py       # ✅ 실행 가능
+-rwxr-xr-x  run_tests_and_report.py  # ✅ 실행 가능
+-rwxr-xr-x  session_start_notice.py  # ✅ 실행 가능
+-rwxr-xr-x  steering_guard.py        # ✅ 실행 가능
+-rwxr-xr-x  tag_validator.py         # ✅ 실행 가능
 
 $ ls -la .moai/scripts/*.py
--rwxr-xr-x  check_constitution.py  # ✅ 실행 가능
--rwxr-xr-x  check-traceability.py  # ✅ 실행 가능
--rwxr-xr-x  rollback.py            # ✅ 실행 가능 (위치 이동됨)
--rwxr-xr-x  detect_language.py     # ✅ 실행 가능
--rwxr-xr-x  detect_project_type.py # ✅ 실행 가능
--rwxr-xr-x  cleanup_inappropriate_docs.py # ✅ 실행 가능
+-rwxr-xr-x  branch_manager.py       # ✅ 실행 가능
+-rwxr-xr-x  check-traceability.py   # ✅ 실행 가능
+-rwxr-xr-x  check_constitution.py   # ✅ 실행 가능
+-rwxr-xr-x  checkpoint_manager.py   # ✅ 실행 가능
+-rwxr-xr-x  commit_helper.py        # ✅ 실행 가능
+-rwxr-xr-x  detect_project_type.py  # ✅ 실행 가능
+-rwxr-xr-x  doc_sync.py             # ✅ 실행 가능
+-rwxr-xr-x  rollback.py             # ✅ 실행 가능
+-rwxr-xr-x  sync_manager.py         # ✅ 실행 가능
 
 # 경로 참조 무결성 확인
 $ grep -r "\.claude/scripts\|\.moai/hooks" .claude
@@ -1519,11 +1400,11 @@ grep -n "check_style.py" .claude/settings.json
 # 올바른 경로: .claude/hooks/moai/check_style.py
 ```
 
-#### 2. Git 명령어 스크립트 오류
+#### 2. git-manager 스크립트 호출 오류
 
-**문제**: `/moai:git:rollback` 명령어에서 스크립트를 찾을 수 없음
+**문제**: git-manager 에이전트가 체크포인트/롤백 등의 명령을 실행하지 못함
 
-**원인**: `rollback.py` 스크립트 위치 변경 후 명령어 파일 미업데이트
+**원인**: `.moai/scripts/rollback.py` 등 내부 스크립트 실행 권한 또는 경로가 잘못되었을 가능성
 
 **해결방법**:
 
@@ -1531,12 +1412,11 @@ grep -n "check_style.py" .claude/settings.json
 # 1. 스크립트 위치 확인
 ls -la .moai/scripts/rollback.py
 
-# 2. 명령어 파일 경로 확인
-grep -r "rollback.py" .claude/commands/moai/git/
-# 올바른 경로: .moai/scripts/rollback.py
+# 2. 실행 권한 설정
+chmod +x .moai/scripts/*.py
 
-# 3. 실행 권한 확인
-chmod +x .moai/scripts/rollback.py
+# 3. 통합 체크포인트 시스템 테스트
+python .moai/scripts/checkpoint_manager.py list 1
 ```
 
 #### 3. 워처 상태 확인 문제 (v0.2.2+ 해결됨)
@@ -1609,10 +1489,10 @@ python .moai/scripts/checkpoint_manager.py list 1
 # ℹ️ 워처 상태 확인 필요             ← 문제 있음 (이제 해결됨)
 
 # 3. 수동 체크포인트 테스트
-/moai:git:checkpoint "테스트 체크포인트"
+python .moai/scripts/checkpoint_manager.py create "테스트 체크포인트"
 
 # 4. 체크포인트 목록 확인
-/moai:git:checkpoint --list
+python .moai/scripts/checkpoint_manager.py list 5
 ```
 
 #### 5. 개발 가이드 검증 오류
@@ -1734,7 +1614,6 @@ echo "🎉 MoAI-ADK 복구 완료!"
 # 모든 핵심 파일이 올바른 위치에 존재하는지 확인
 □ .claude/settings.json
 □ .claude/commands/moai/ (핵심 커맨드)
-□ .claude/commands/moai/git/ (5개 파일)
 □ .claude/agents/moai/ (project-manager, cc-manager, spec-builder, code-builder, doc-syncer, git-manager)
 □ .claude/hooks/moai/ (steering_guard 등 보안/검증 훅)
 □ .moai/config.json
@@ -1755,7 +1634,7 @@ echo "🎉 MoAI-ADK 복구 완료!"
 ```bash
 # 모든 경로 참조가 올바른지 확인
 □ settings.json의 hook 경로들
-□ rollback.md의 스크립트 경로들
+□ git-manager.md 의 스크립트 경로들
 □ 오래된 경로 참조 완전 제거
 ```
 
@@ -1767,8 +1646,8 @@ echo "🎉 MoAI-ADK 복구 완료!"
 □ /moai:1-spec 명령어 실행
 □ /moai:2-build 명령어 실행
 □ /moai:3-sync 명령어 실행
-□ /moai:git:checkpoint 명령어 실행
-□ /moai:git:rollback --list 명령어 실행
+□ @agent-git-manager "체크포인트 현황 공유" 호출
+□ python .moai/scripts/checkpoint_manager.py list 1 실행
 ```
 
 #### 🧪 고급 검증 스크립트
@@ -1812,12 +1691,8 @@ check_file "CLAUDE.md"
 
 # 2. 명령어 파일 검증
 echo "📋 2. 명령어 파일 검증"
-for cmd in 1-spec 2-build 3-sync; do
+for cmd in 0-project 1-spec 2-build 3-sync 4-debug; do
     check_file ".claude/commands/moai/${cmd}.md"
-done
-
-for git_cmd in branch checkpoint commit rollback sync; do
-    check_file ".claude/commands/moai/git/${git_cmd}.md"
 done
 
 # 3. 에이전트 파일 검증
@@ -1829,13 +1704,13 @@ done
 
 # 4. Hook 스크립트 검증
 echo "🪝 4. Hook 스크립트 검증"
-for hook in auto_checkpoint check_style file_watcher policy_block pre_write_guard run_tests_and_report session_start_notice steering_guard tag_validator; do
+for hook in auto_checkpoint check_style file_watcher language_detector policy_block pre_write_guard run_tests_and_report session_start_notice steering_guard tag_validator; do
     check_executable ".claude/hooks/moai/${hook}.py"
 done
 
 # 5. Core 스크립트 검증
 echo "⚙️ 5. Core 스크립트 검증"
-for script in check_constitution check-traceability rollback detect_language detect_project_type cleanup_inappropriate_docs; do
+for script in branch_manager check-traceability check_constitution checkpoint_manager commit_helper detect_project_type doc_sync rollback sync_manager; do
     check_executable ".moai/scripts/${script}.py"
 done
 
@@ -1849,11 +1724,11 @@ else
     ((FAIL++))
 fi
 
-if grep -q ".moai/scripts/rollback.py" .claude/commands/moai/git/rollback.md; then
-    echo "✅ rollback.md 경로 정상"
+if grep -q ".moai/scripts/rollback.py" .claude/agents/moai/git-manager.md; then
+    echo "✅ git-manager.md 경로 정상"
     ((PASS++))
 else
-    echo "❌ rollback.md 경로 오류"
+    echo "❌ git-manager.md 경로 오류"
     ((FAIL++))
 fi
 
@@ -1916,7 +1791,7 @@ time python3 .moai/scripts/check_constitution.py 2>/dev/null || echo "개발 가
 # 3. 체크포인트 생성 속도 테스트 (개인 모드)
 echo "🔄 체크포인트 시스템 테스트"
 if [[ $(grep -o '"mode": "[^"]*"' .moai/config.json | cut -d'"' -f4) == "personal" ]]; then
-    time /moai:git:checkpoint "벤치마크 테스트" 2>/dev/null || echo "체크포인트 생성 완료"
+    time python .moai/scripts/checkpoint_manager.py create "벤치마크 테스트" 2>/dev/null || echo "체크포인트 생성 완료"
 fi
 
 # 4. 메모리 사용량 확인
@@ -2101,7 +1976,7 @@ MoAI-ADK 0.2.2는 **개인/팀 모드 통합 시스템**을 통한 **개발 방�
 
 2. **Script 파일 위치 정리**:
    - `rollback.py`: `.claude/scripts/moai/git/` → `.moai/scripts/`
-   - `rollback.md` 모든 경로 참조 수정
+   - `git-manager.md` 모든 경로 참조 수정
 
 3. **실행 권한 표준화**:
    - 모든 Python 스크립트 실행 권한 부여
