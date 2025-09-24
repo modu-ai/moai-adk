@@ -33,7 +33,7 @@ flowchart LR
 **결과물**:
 - `.moai/project/{product,structure,tech}.md` 갱신
 - CLAUDE.md `@` 임포트 섹션 반영
-- 외부 브레인스토밍 사용 시 `.moai/config.json.brainstorming` 업데이트
+
 
 ### 2. SPEC - auto 제안/생성
 **명령어**: `/moai:1-spec`
@@ -46,9 +46,6 @@ flowchart LR
 **결과물**:
 - SPEC-XXX 디렉터리와 핵심 문서(spec.md, acceptance.md 등)
 - 또는 GitHub Issue(팀)
-
-**외부 브레인스토밍(선택)**:
-- `.moai/config.json.brainstorming.enabled` 가 `true` 이면 codex-bridge/gemini-bridge 에이전트에서 headless 분석 결과를 수집해 다양한 설계안을 비교합니다. (예: `Task: use codex-bridge to run "codex exec --model gpt-5-codex ..."`)
 
 **보조 역할**:
 - git-manager가 브랜치 네이밍/PR 초안 연계를 검토하고, 병렬 승인이 필요한 경우 충돌 가능성을 경고합니다.
@@ -65,8 +62,6 @@ flowchart LR
 - 소스/테스트 코드
 - 체크포인트 또는 구조화 커밋 히스토리
 
-**외부 브레인스토밍(선택)**:
-- 구현 전후로 codex-bridge/gemini-bridge 출력과 Claude 제안을 Self-Consistency 방식으로 비교해 최적안을 선택합니다.
 
 **보조 역할**:
 - git-manager가 스테이징/커밋 전략을 보조하고, doc-syncer가 3-sync를 위한 변경 요약을 수집합니다.
@@ -83,8 +78,6 @@ flowchart LR
 - 최신화된 문서/PR 상태
 - `docs/sections/index.md` 갱신일 반영
 
-**외부 브레인스토밍(선택)**:
-- 문서 보완 아이디어나 리스크 분석이 필요하면 codex-bridge/gemini-bridge 결과를 동기화 리포트에 반영할 수 있습니다.
 
 **보조 역할**:
 - git-manager가 커밋/PR 상태를 점검하고, 필요한 경우 gh CLI를 통한 Ready 전환을 실행합니다.

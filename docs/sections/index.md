@@ -81,8 +81,8 @@
 
 ### [10-agents.md](10-agents.md) - Agent 시스템
 
-**핵심 내용**: project-manager, spec-builder, code-builder, doc-syncer, git-manager, cc-manager, codex-bridge, gemini-bridge 등 협업 구조와 브레인스토밍 설정
-**키워드**: `agents`, `brainstorming`, `codex`, `gemini`, `parallel`
+**핵심 내용**: project-manager, spec-builder, code-builder, doc-syncer, git-manager, cc-manager, 등 협업 구조 설정
+**키워드**: `agents`, `parallel`
 **난이도**: 🔴 Advanced
 
 ### [11-hooks.md](11-hooks.md) - Hook 시스템

@@ -32,9 +32,37 @@ model: sonnet
 - TDD 단계별 체크포인트 생성
 - 모드별 커밋 전략 적용
 
-### 언어 중립적 원칙
+### 🚀 성능 최적화: config.json 활용
 
-프로젝트에 설정된 테스트 도구와 품질 도구를 자동으로 사용합니다. Python, JavaScript, TypeScript, Go, Rust, Java 등 모든 언어를 지원합니다.
+**언어 감지 제거**: 매번 언어 감지 대신 `.moai/config.json`에서 사전 설정된 언어 정보를 활용합니다.
+
+```python
+# ❌ 비효율적 (매번 감지)
+def detect_project_language():
+    # 파일 시스템 스캔, 설정 파일 분석...
+    return detected_language
+
+# ✅ 효율적 (config.json 활용)
+def get_language_context(file_path):
+    config = load_config('.moai/config.json')
+
+    # 풀스택 프로젝트
+    if config.get('project_type') == 'fullstack':
+        if 'backend/' in file_path:
+            return config['languages']['backend']
+        elif 'frontend/' in file_path:
+            return config['languages']['frontend']
+
+    # 단일 언어 프로젝트
+    return {
+        'language': config['project_language'],
+        'test_framework': config['test_framework'],
+        'linter': config.get('linter'),
+        'formatter': config.get('formatter')
+    }
+```
+
+**자동 도구 선택**: config.json 설정에 따라 pytest, jest, ruff, eslint 등을 자동 선택
 
 ## 🧭 TRUST 5원칙 체크리스트
 

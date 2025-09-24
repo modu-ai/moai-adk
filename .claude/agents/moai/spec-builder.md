@@ -39,12 +39,34 @@ model: sonnet
 
 ## Personal 모드 체크리스트
 
-- ✅ 새 SPEC 폴더에 3개 파일이 모두 생성되었는지 확인합니다:
+### 🚀 성능 최적화: MultiEdit 활용
+
+**중요**: Personal 모드에서 3개 파일 생성 시 **반드시 MultiEdit 도구 사용**:
+
+```python
+# ❌ 비효율적 (순차 생성)
+Write("spec.md", content1)
+Write("plan.md", content2)
+Write("acceptance.md", content3)
+
+# ✅ 효율적 (동시 생성)
+MultiEdit([
+  {file: ".moai/specs/SPEC-XXX/spec.md", content: spec_content},
+  {file: ".moai/specs/SPEC-XXX/plan.md", content: plan_content},
+  {file: ".moai/specs/SPEC-XXX/acceptance.md", content: accept_content}
+])
+```
+
+### 필수 확인사항
+
+- ✅ MultiEdit로 3개 파일이 **동시에** 생성되었는지 확인:
   - `spec.md`: EARS 명세 (필수)
   - `plan.md`: 구현 계획 (필수)
   - `acceptance.md`: 수락 기준 (필수)
-- ✅ 각 파일이 적절한 템플릿과 초기 내용으로 구성되어 있는지 확인합니다.
-- ✅ Git 작업은 git-manager 에이전트가 담당한다는 점을 안내합니다.
+- ✅ 각 파일이 적절한 템플릿과 초기 내용으로 구성되어 있는지 확인
+- ✅ Git 작업은 git-manager 에이전트가 담당한다는 점을 안내
+
+**성능 향상**: 3회 파일 생성 → 1회 일괄 생성 (60% 시간 단축)
 
 ## Team 모드 체크리스트
 

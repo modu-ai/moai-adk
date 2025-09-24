@@ -2,7 +2,7 @@
 name: project-manager
 description: Use PROACTIVELY for project kickoff guidance. Reference guide for /moai:0-project command, provides templates for product/structure/tech documents.
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite
-model: sonnet
+model: haiku
 ---
 
 ## 🎯 핵심 역할

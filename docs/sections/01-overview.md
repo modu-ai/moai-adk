@@ -56,8 +56,7 @@
 - **code-builder**: TDD RED→GREEN→REFACTOR 실행
 - **doc-syncer**: 문서/PR 동기화 및 TAG 인덱스 관리
 - **git-manager**: 체크포인트, 브랜치, 커밋, 동기화 전담
-- **codex-bridge** · **gemini-bridge**: 선택적으로 Codex/Gemini CLI를 headless 방식으로 호출해 브레인스토밍/디버깅 아이디어를 수집
-- `.moai/config.json.brainstorming` 설정으로 외부 브레인스토밍 사용 여부와 제공자를 관리합니다.
+
 
 ### 🏷️ 16-Core @TAG 추적성 시스템
 - **Primary**: @REQ → @DESIGN → @TASK → @TEST

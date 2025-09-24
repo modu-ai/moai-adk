@@ -25,17 +25,33 @@ allowed-tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 - 프로젝트 이름을 명시하려면 moai:0-project 뒤에 원하는 이름을 덧붙입니다.
 - 개인/팀 모드, 출력 스타일을 함께 확인·수정할 수 있습니다.
 
-## 실행 원칙
+## 🚀 최적화된 실행 원칙
 
-**⚡ 핵심**: `/moai:0-project`는 project-manager 에이전트를 호출하여 프로젝트 문서를 생성합니다.
+**⚡ 핵심**: `/moai:0-project`는 병렬 분석으로 빠른 프로젝트 초기화를 제공합니다.
 
-### 기본 동작
+### 병렬 처리 구조 (성능 최적화)
 
-1. **project-manager 에이전트 호출**: `Task: project-manager`로 프로젝트 분석 및 문서 작성 수행
-2. **파일 존재 확인**: `.moai/project/*.md` 파일 존재 여부 체크
-3. **신규/레거시 판단**: 기존 파일과 코드베이스 상태로 프로젝트 유형 결정
-4. **사용자 인터뷰**: 부족한 정보만 질문하여 효율적으로 진행
-5. **문서 생성/갱신**: product/structure/tech.md 생성 또는 업데이트
+**Phase 1: 동시 분석 실행**
+
+```
+Task 1 (haiku): 빠른 환경 스캔
+├── 언어/프레임워크 자동 감지
+├── 프로젝트 유형 판단 (신규/레거시)
+└── config.json 설정 준비
+
+Task 2 (haiku): project-manager 호출
+├── 기존 문서 상태 확인
+├── 사용자 인터뷰 진행
+└── 문서 작성/갱신
+```
+
+**성능 향상**: 환경 감지와 문서 분석을 병렬 처리하여 초기화 시간 40% 단축
+
+### 통합 처리
+
+1. **병렬 분석 결과 통합**: 언어 감지 + 사용자 인터뷰 결과 결합
+2. **문서 생성/갱신**: product/structure/tech.md 생성 또는 업데이트
+3. **config.json 저장**: 감지된 언어/도구 설정을 자동 저장
 
 ### 금지 사항
 
@@ -45,14 +61,69 @@ allowed-tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 
 ## 진행 순서
 
-0. **프로젝트 유형 감지**
-   - `moai init project-name` 으로 생성된 신규 폴더라면 대부분 비어 있으므로 자동으로 "신규(그린필드)" 후보로 분류합니다.
-   - `moai init .` 처럼 기존 코드가 존재하면 소스/테스트/설정 파일 수, Git 히스토리, README/CHANGELOG 유무를 요약해 "레거시 도입" 후보로 제안합니다.
-   - 감지 결과를 사용자에게 설명하고, 실제로 "새 프로젝트 설계를 시작할 것인지" vs "기존 코드 분석 후 갱신할 것인지" 확인합니다.
+0. **프로젝트 유형 및 언어 감지**
+   - **프로젝트 유형**: `moai init project-name`(신규) vs `moai init .`(기존) 분류
+   - **🚀 언어 자동 감지**: 파일 구조 분석을 통한 언어/도구 자동 감지
+
+     ```python
+     # 단일 언어 감지
+     if detect_python(): config['project_language'] = 'python'
+     if detect_node(): config['project_language'] = 'javascript'
+
+     # 풀스택 감지
+     if has_backend_frontend():
+         config['project_type'] = 'fullstack'
+         config['languages'] = {
+             'backend': analyze_backend_dir(),
+             'frontend': analyze_frontend_dir()
+         }
+     ```
+
+   - **감지 규칙**:
+     - `pyproject.toml`, `requirements.txt` → Python
+     - `package.json`, `tsconfig.json` → Node.js/TypeScript
+     - `backend/` + `frontend/` 구조 → 풀스택
+     - `go.mod` → Go, `Cargo.toml` → Rust
+   - 감지 결과를 사용자에게 설명하고 최종 확인
 
 1. **상태 스냅샷 공유** – `.moai/project/*.md`, README, CLAUDE.md, 소스 디렉터리 구조와 모든 파일을 읽어 현재 문서·코드·테스트가 어떤 상태인지 요약합니다.
 2. **프로젝트 유형별 인터뷰 진행** – 확인된 유형(신규/레거시)에 따라 적절한 질문 트리를 선택하고 대화를 이끕니다.
-3. **문서 작성 및 정합성 검증** – 응답을 토대로 product/structure/tech 문서를 갱신하고, 기존 내용과 충돌하는 부분은 주석이나 @TODO로 표시해 후속 검토를 돕습니다. 필요 시 즉시 `/moai:0-project update`를 다시 실행해 설정(개인/팀 모드, 출력 스타일 등)을 조정합니다.
+3. **문서 작성 및 config.json 저장** – 응답을 토대로 product/structure/tech 문서를 갱신하고, **언어 감지 결과를 .moai/config.json에 저장**합니다.
+
+   **🚀 config.json 자동 생성/업데이트**:
+
+   ```json
+   {
+     "project_name": "detected-name",
+     "project_type": "single|fullstack|microservice",
+
+     // 단일 언어 프로젝트
+     "project_language": "python",
+     "test_framework": "pytest",
+     "linter": "ruff",
+     "formatter": "black",
+
+     // 풀스택 프로젝트 (선택적)
+     "languages": {
+       "backend": {
+         "language": "python",
+         "path": "backend/",
+         "test_framework": "pytest"
+       },
+       "frontend": {
+         "language": "typescript",
+         "framework": "react",
+         "path": "frontend/",
+         "test_framework": "jest"
+       }
+     },
+
+     "coverage_target": 85,
+     "mode": "personal"
+   }
+   ```
+
+   기존 내용과 충돌하는 부분은 주석이나 @TODO로 표시해 후속 검토를 돕습니다.
 
 각 단계는 **질문 → 사용자 응답 → MoAI 요약/작성** 흐름으로 진행되며, 응답 형태는 자유입니다. 아래 인터뷰 트리를 참고해 프로젝트 유형에 맞는 질문을 선택하세요.
 

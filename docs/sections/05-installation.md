@@ -120,7 +120,7 @@ self.resources_root = resources.files('moai_adk.resources')
 self.templates_root = self.resources_root / 'templates'
 
 # 각 프로젝트로 복사되는 리소스 (기본)
-.claude/agents/moai/      # MoAI 핵심/통합 에이전트(project-manager, spec-builder, code-builder, doc-syncer, git-manager, codex-bridge, gemini-bridge 등)
+.claude/agents/moai/      # MoAI 핵심/통합 에이전트(project-manager, spec-builder, code-builder, doc-syncer, git-manager 등)
 .claude/commands/moai/    # 6개 슬래시 명령어
 .moai/_templates/         # 문서 템플릿들 (templates.mode=package일 때는 복사 생략)
 ```
@@ -142,26 +142,9 @@ moai init project
 moai status -v  # 상세 상태 확인
 ```
 
-### (선택) 외부 브레인스토밍 CLI 확인
-
-```bash
-which codex  || echo "🔧 Codex CLI 미설치 – npm install -g @openai/codex 또는 brew install codex"
-which gemini || echo "🔧 Gemini CLI 미설치 – npm install -g @google/gemini-cli 또는 brew install gemini-cli"
-```
-
 `/moai:0-project` 인터뷰에서 project-manager 에이전트가 위 명령과 동일한 검사를 수행하고, 설치/로그인 방법만 안내합니다. 자동 설치는 수행하지 않습니다.
 
-```json
-// 브레인스토밍 설정 예시
-{
-  "brainstorming": {
-    "enabled": true,
-    "providers": ["claude", "codex", "gemini"]
-  }
-}
-```
 
-`providers` 배열에는 항상 `"claude"` 를 유지하고, 추가로 사용할 엔진을 선택합니다.
 
 ## 🛠️ 설치 후 확인
 

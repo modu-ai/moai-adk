@@ -8,7 +8,6 @@ This development guide is the unified guardrail for all agents and developers wo
 
 ## 0. Scope · Base Loop
 
-- Applies to: `/moai:0-project → /moai:3-sync`, `/moai:git:*`, and any work performed via Headless CLI (`codex exec`, `gemini -p`).
 - Base action loop: **Problem Definition → Small & Safe Change → Change Review → Refactor → Docs/TAG Sync**.
 - All changes must follow AGENTS rules, the 16-Core TAG system, the Waiver process, structured logging, and security policies.
 
@@ -79,7 +78,7 @@ This development guide is the unified guardrail for all agents and developers wo
 
 1. Maintain the 16-Core @TAG chain: Primary (@REQ → @DESIGN → @TASK → @TEST), Steering, Implementation, Quality.
 2. Keep `.moai/indexes/tags.json` and `.moai/reports/sync-report.md` up to date.
-3. When reporting headless analysis (`gemini -p`) or implementation (`codex exec`), state the TAGs used and chain status.
+
 
 ---
 
@@ -119,8 +118,7 @@ This development guide is the unified guardrail for all agents and developers wo
    - Follow the TDD cycle; run tests/linters
 3. **Wrap-up**
    - Run `/moai:3-sync` → update TAG index and docs
-   - Record logs and a summary for analysis/implementation commands (`codex exec`, `gemini -p`)
-   - Leave TODO/refactor items and request review
+   - Record logs and a summary for analysis/implementation commands 
 
 ---
 

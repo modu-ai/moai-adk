@@ -13,7 +13,7 @@
 - 설치기/리소스 관리자: `templates.mode=package`일 때 `.moai/_templates/` 복사 생략 지원
 - 문서 업데이트: 설정(13-config), 템플릿(14-templates), 아키텍처(04-architecture), 설치(05-installation)
 - 메모리 템플릿: 공통/스택별 프로젝트 메모리 템플릿 자동 생성 및 기술 스택 기반 복사 지원
-- 에이전트 시스템: project-manager 에이전트 추가, Codex/Gemini headless 브리지 에이전트 도입, brainstorming 설정(`.moai/config.json.brainstorming`) 지원
+- 에이전트 시스템: project-manager 에이전트 추가
 - 기존 `awesome/` 범용 에이전트 템플릿 삭제, 필요 시 사용자 정의 에이전트만 추가하도록 정리
 
 ## v0.2.2 (2025-09-23) - 개인/팀 모드 통합 & Git 완전 자동화

@@ -28,7 +28,7 @@ MoAI-ADK는 Claude Code 표준을 완전히 준수하면서도 체계적인 문�
 │   │   │   ├── git-manager.md      # Git 작업 전담
 │   │   │   ├── integration-manager.md # 외부 서비스 연동
 │   │   │   └── deployment-specialist.md # 배포 자동화
-│   │   ├── moai/                    # project-manager, spec-builder, code-builder, doc-syncer, git-manager, cc-manager, codex-bridge, gemini-bridge
+│   │   ├── moai/                    # project-manager, spec-builder, code-builder, doc-syncer, git-manager, cc-manager
 │   │   │   ├── frontend/
 │   │   │   │   ├── html-css-pro.md
 │   │   │   │   ├── tailwind-css-pro.md

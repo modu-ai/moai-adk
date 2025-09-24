@@ -44,17 +44,39 @@ allowed-tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 - **수동 생성**: 제목을 인수로 전달 → 1건만 생성, Acceptance 템플릿은 회신 후 보완
 - **보완 모드**: `SPEC-ID "메모"` 형식으로 전달 → 기존 SPEC 문서/Issue를 업데이트
 
-## 워크플로우 실행 순서
+## 🚀 최적화된 워크플로우 실행 순서
 
-당신은 다음 순서로 에이전트들을 **순차 호출**해야 합니다:
+당신은 다음 순서로 에이전트들을 호출해야 합니다:
 
-### 1단계: SPEC 문서 작성
+### Phase 1: 병렬 프로젝트 분석 (성능 최적화)
 
-먼저 `spec-builder` 에이전트를 호출하여 프로젝트 문서 분석 및 SPEC 작성을 완료합니다.
+**동시에 수행**:
 
-### 2단계: Git 작업 처리
+```
+Task 1 (haiku): 프로젝트 구조 스캔
+├── 언어/프레임워크 감지
+├── 기존 SPEC 목록 수집
+└── 우선순위 백로그 초안
 
-`spec-builder` 완료 후, `git-manager` 에이전트를 호출하여 다음 작업을 수행합니다:
+Task 2 (sonnet): 심화 문서 분석
+├── product.md 요구사항 추출
+├── structure.md 아키텍처 분석
+└── tech.md 기술적 제약사항
+```
+
+**성능 향상**: 기본 스캔과 심화 분석을 병렬 처리하여 대기 시간 최소화
+
+### Phase 2: SPEC 문서 통합 작성
+
+`spec-builder` 에이전트(sonnet)가 병렬 분석 결과를 통합하여:
+
+- 프로젝트 문서 기반 기능 후보 제안
+- 사용자 승인 후 SPEC 문서 작성 (MultiEdit 활용)
+- 3개 파일 동시 생성 (spec.md, plan.md, acceptance.md)
+
+### Phase 3: Git 작업 처리
+
+`git-manager` 에이전트(haiku)가 최종 처리:
 
 - **브랜치 생성**: 모드별 전략(Personal/Team) 적용
 - **GitHub Issue 생성**: Team 모드에서 SPEC Issue 생성
