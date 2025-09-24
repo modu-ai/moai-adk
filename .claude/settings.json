@@ -1,25 +1,11 @@
 {
   "hooks": {
-    "PostToolUse": [
-      {
-        "hooks": [
-          {
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/check_style.py",
-            "type": "command"
-          }
-        ],
-        "matcher": "Edit|Write|MultiEdit"
-      }
-    ],
+    "PostToolUse": [],
     "PreToolUse": [
       {
         "hooks": [
           {
             "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_write_guard.py",
-            "type": "command"
-          },
-          {
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag_validator.py",
             "type": "command"
           }
         ],
