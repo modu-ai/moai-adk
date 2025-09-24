@@ -1,7 +1,7 @@
 """
-Interactive setup wizard for MoAI-ADK projects.
+@FEATURE:WIZARD-001 Interactive setup wizard for MoAI-ADK projects.
 
-Handles user input collection through a step-by-step wizard interface.
+@TASK:WIZARD-UI-001 Handles user input collection through a step-by-step wizard interface.
 """
 
 import sys
@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 
 
 class InteractiveWizard:
-    """Interactive setup wizard for MoAI-ADK projects."""
+    """@TASK:WIZARD-MAIN-001 Interactive setup wizard for MoAI-ADK projects."""
     
     def __init__(self):
         self.answers = {}

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-CLI Helper Functions for MoAI-ADK
+@FEATURE:CLI-HELPERS-001 CLI Helper Functions for MoAI-ADK
 
-Contains utility functions used by the CLI commands including backup,
+@TASK:CLI-UTILS-001 Contains utility functions used by the CLI commands including backup,
 conflict detection, environment validation, and project analysis.
 """
 
@@ -21,7 +21,7 @@ logger = get_logger(__name__)
 
 
 def create_installation_backup(project_path: Path) -> bool:
-    """Create a backup of existing MoAI-ADK installation.
+    """@TASK:BACKUP-001 Create a backup of existing MoAI-ADK installation.
 
     Args:
         project_path: Path to the project directory
