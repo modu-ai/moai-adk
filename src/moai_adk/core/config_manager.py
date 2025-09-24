@@ -21,14 +21,18 @@ logger = get_logger(__name__)
 class ConfigManager:
     """Manages configuration files for MoAI-ADK installation."""
 
-    def __init__(self, security_manager: SecurityManager = None):
+    def __init__(self, project_dir: Path = None, security_manager: SecurityManager = None):
         """
         Initialize configuration manager.
 
         Args:
+            project_dir: 프로젝트 디렉토리 (새로운 기능을 위해 추가)
             security_manager: Security manager instance for validation
         """
+        self.project_dir = project_dir or Path.cwd()
         self.security_manager = security_manager or SecurityManager()
+        self._mode = "personal"  # 기본값
+        self._options = {}  # 옵션 저장소
 
     def create_claude_settings(self, settings_path: Path, config: Config) -> bool:
         """
@@ -516,3 +520,45 @@ class ConfigManager:
         except Exception as e:
             logger.error("Failed to backup config file %s: %s", file_path, e)
             raise
+
+    def set_mode(self, mode: str):
+        """개인/팀 모드 설정
+
+        Args:
+            mode: 설정할 모드 ("personal" 또는 "team")
+        """
+        if mode not in ["personal", "team"]:
+            raise ValueError(f"지원하지 않는 모드입니다: {mode}. 지원되는 모드: ['personal', 'team']")
+
+        self._mode = mode
+        logger.debug("Git mode set to: %s", mode)
+
+    def get_mode(self) -> str:
+        """현재 모드 반환
+
+        Returns:
+            현재 설정된 모드 ("personal" 또는 "team")
+        """
+        return self._mode
+
+    def set_option(self, key: str, value: Any):
+        """옵션 설정
+
+        Args:
+            key: 옵션 키
+            value: 옵션 값
+        """
+        self._options[key] = value
+        logger.debug("Set option %s = %s", key, value)
+
+    def get_option(self, key: str, default: Any = None) -> Any:
+        """옵션 값 반환
+
+        Args:
+            key: 옵션 키
+            default: 기본값
+
+        Returns:
+            옵션 값 또는 기본값
+        """
+        return self._options.get(key, default)
