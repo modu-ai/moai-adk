@@ -495,3 +495,107 @@ class TestTagIndexAdapter:
 
         # 정리
         test_file.unlink()
+
+    def test_should_fail_search_by_category_method_missing(self):
+        """
+        🔴 RED: search_by_category 메서드가 아직 구현되지 않아 실패해야 함
+
+        Given: TagIndexAdapter 인스턴스
+        When: search_by_category 메서드를 호출할 때
+        Then: AttributeError 또는 NotImplementedError가 발생해야 함
+        """
+        # GIVEN: 초기화된 어댑터
+        self.adapter.initialize()
+
+        # WHEN & THEN: 메서드가 존재하지 않거나 구현되지 않음
+        with pytest.raises((AttributeError, NotImplementedError)):
+            self.adapter.search_by_category("REQ")
+
+    def test_should_fail_get_traceability_chain_method_missing(self):
+        """
+        🔴 RED: get_traceability_chain 메서드가 아직 구현되지 않아 실패해야 함
+
+        Given: TagIndexAdapter 인스턴스
+        When: get_traceability_chain 메서드를 호출할 때
+        Then: AttributeError 또는 NotImplementedError가 발생해야 함
+        """
+        # GIVEN: 초기화된 어댑터
+        self.adapter.initialize()
+
+        # WHEN & THEN: 메서드가 존재하지 않거나 구현되지 않음
+        with pytest.raises((AttributeError, NotImplementedError)):
+            self.adapter.get_traceability_chain("REQ:USER-AUTH-001")
+
+    def test_should_search_by_category_return_correct_format(self):
+        """
+        🔴 RED: search_by_category가 JSON API 형식으로 결과를 반환해야 함 (실패 예상)
+
+        Given: REQ 카테고리의 TAG들이 있는 SQLite 데이터베이스
+        When: search_by_category("REQ")를 호출할 때
+        Then: JSON API 형식의 태그 목록을 반환해야 함
+        """
+        # GIVEN: REQ 카테고리 TAG들을 포함한 테스트 데이터
+        test_index = {
+            "metadata": {"created_at": "2024-01-01T00:00:00", "version": "1.0", "total_tags": 2},
+            "categories": {
+                "PRIMARY": {
+                    "REQ": {
+                        "REQ:USER-AUTH-001": {"description": "사용자 인증", "file": "auth.py"},
+                        "REQ:USER-PROFILE-001": {"description": "사용자 프로필", "file": "profile.py"}
+                    }
+                }
+            },
+            "chains": [],
+            "files": {}
+        }
+
+        self.adapter.initialize()
+        self.adapter.save_index(test_index)
+
+        # WHEN & THEN: 메서드가 아직 구현되지 않아 실패
+        with pytest.raises((AttributeError, NotImplementedError)):
+            results = self.adapter.search_by_category("REQ")
+
+            # 이 부분은 구현 후에 통과해야 할 검증
+            assert isinstance(results, list)
+            assert len(results) == 2
+            assert all("category" in tag for tag in results)
+            assert all("identifier" in tag for tag in results)
+            assert all("description" in tag for tag in results)
+
+    def test_should_get_traceability_chain_build_forward_chain(self):
+        """
+        🔴 RED: get_traceability_chain이 순방향 체인을 빌드해야 함 (실패 예상)
+
+        Given: REQ → DESIGN → TASK → TEST 체인 구조
+        When: get_traceability_chain("REQ:USER-AUTH-001", direction="forward")를 호출할 때
+        Then: 완전한 순방향 추적성 체인을 반환해야 함
+        """
+        # GIVEN: 체인 구조의 테스트 데이터 (아직 참조 관계는 구현되지 않음)
+        test_index = {
+            "metadata": {"created_at": "2024-01-01T00:00:00", "version": "1.0", "total_tags": 4},
+            "categories": {
+                "PRIMARY": {
+                    "REQ": {"REQ:USER-AUTH-001": {"description": "사용자 인증", "file": "spec.md"}},
+                    "DESIGN": {"DESIGN:JWT-001": {"description": "JWT 토큰 설계", "file": "design.md"}},
+                    "TASK": {"TASK:API-001": {"description": "API 구현", "file": "api.py"}},
+                    "TEST": {"TEST:UNIT-001": {"description": "단위 테스트", "file": "test_api.py"}}
+                }
+            },
+            "chains": [],
+            "files": {}
+        }
+
+        self.adapter.initialize()
+        self.adapter.save_index(test_index)
+
+        # WHEN & THEN: 메서드가 아직 구현되지 않아 실패
+        with pytest.raises((AttributeError, NotImplementedError)):
+            chain = self.adapter.get_traceability_chain("REQ:USER-AUTH-001", direction="forward")
+
+            # 이 부분은 구현 후에 통과해야 할 검증
+            assert isinstance(chain, dict)
+            assert "nodes" in chain
+            assert "edges" in chain
+            assert len(chain["nodes"]) >= 1  # 최소 시작 노드
+            assert chain["nodes"][0]["identifier"] == "REQ:USER-AUTH-001"
