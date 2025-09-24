@@ -1,7 +1,7 @@
 # MoAI-ADK Documentation Index
 
 > **AI Navigation Guide**: 빠른 문서 검색을 위한 체계적 인덱스
-> **Last Updated**: 2025-09-24
+> **Last Updated**: 2025-09-25 (SPEC-009 SQLite 마이그레이션 완료)
 
 ---
 

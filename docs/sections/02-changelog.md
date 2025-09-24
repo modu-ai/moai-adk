@@ -3,7 +3,7 @@
 ## Unreleased
 
 - 체크포인트 관리자/롤백 스크립트를 Annotated Tag 기반으로 재구성하고 회귀 테스트를 추가
-- README를 0.2.2 워크플로우/Annotated Tag 안내에 맞게 갱신하고 과장된 지표를 현실화
+- README를 0.1.9 워크플로우/Annotated Tag 안내에 맞게 갱신하고 과장된 지표를 현실화
 - 1-project 마법사: Top-3 기능 생성 시 SPEC-00X 디렉터리( `spec.md` / `acceptance.md` / `design.md` / `tasks.md`)를 즉시 생성하고, 나머지 기능은 `.moai/specs/backlog/`에 STUB로 저장하도록 변경
 - 최종 확인 단계에서 Plan 모드(`모델 opusplan`) 전환 → 계획 검토 → 실행 모드 복귀 흐름을 안내, 사용자 확정 후에만 문서를 생성하도록 조정
 - spec-manager: 생성 전 미리보기 출력 + Plan 모드 활용 안내 + 사용자 확정 대화 추가, 단일 index.md 생성 제거
@@ -16,7 +16,7 @@
 - 에이전트 시스템: project-manager 에이전트 추가
 - 기존 `awesome/` 범용 에이전트 템플릿 삭제, 필요 시 사용자 정의 에이전트만 추가하도록 정리
 
-## v0.2.2 (2025-09-23) - 개인/팀 모드 통합 & Git 완전 자동화
+## v0.1.9 (2025-09-23) - 개인/팀 모드 통합 & Git 완전 자동화
 
 ### 핵심 변화
 - 개인/팀 모드 자동 감지 및 전환 지원(`moai init --personal|--team`, 필요 시 `/moai:0-project update`로 재조정)
@@ -49,7 +49,7 @@
 - 팀 모드에서는 GitHub CLI/Actions, Anthropic GitHub App 설정 점검 후 `/moai:git:*` 명령과 연계
 
 ### 문서/구성 업데이트
-- 설치 가이드(05-installation): 0.2.2 버전, 모드별 초기화/전환, 선택 의존성(watchdog/gh)
+- 설치 가이드(05-installation): 0.1.9 버전, 모드별 초기화/전환, 선택 의존성(watchdog/gh)
 - 아키텍처(04-architecture): 개인/팀 모드 통합 다이어그램, git-manager 포함 구조
 - 명령어(08-commands): `/moai:git:*` 추가, 0–3 단계 워크플로우 최신화
 - 설정(13-config): `templates.mode`(`copy|package`), `git_strategy`(personal/team) & `project.mode` 반영

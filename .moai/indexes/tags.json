@@ -1,14 +1,15 @@
 {
   "version": "0.1.9",
-  "updated": "2025-09-24T19:14:30.319589",
+  "updated": "2025-09-25T00:00:00.000000",
   "statistics": {
-    "total_tags": 441,
+    "total_tags": 456,
     "categories": {
-      "Primary": 276,
+      "Primary": 283,
       "Steering": 37,
-      "Implementation": 72,
-      "Quality": 50,
-      "Legacy": 0
+      "Implementation": 80,
+      "Quality": 52,
+      "Legacy": 0,
+      "SPEC-009_Added": 15
     }
   },
   "index": {
@@ -4742,6 +4743,139 @@
         "file": ".moai/specs/SPEC-006/acceptance.md",
         "line": 20,
         "context": "**Given** 소스 코드에 새로운 TAG `@FEATURE:LOGIN-001`이 추가될 때"
+      }
+    ],
+    "SPEC:SPEC-009-STARTED": [
+      {
+        "file": ".moai/specs/SPEC-009/spec.md",
+        "line": 3,
+        "context": "**@SPEC:SPEC-009-STARTED** ← 시작점"
+      },
+      {
+        "file": ".moai/specs/SPEC-009/spec.md",
+        "line": 222,
+        "context": "@SPEC:SPEC-009-STARTED"
+      }
+    ],
+    "FEATURE:SPEC-009-TAG-DATABASE-001": [
+      {
+        "file": "src/moai_adk/core/tag_system/database.py",
+        "line": 2,
+        "context": "@FEATURE:SPEC-009-TAG-DATABASE-001 - SQLite 기반 TAG 데이터베이스 관리자"
+      }
+    ],
+    "FEATURE:SPEC-009-TAG-ADAPTER-001": [
+      {
+        "file": "src/moai_adk/core/tag_system/adapter.py",
+        "line": 2,
+        "context": "@FEATURE:SPEC-009-TAG-ADAPTER-001 - SQLite 백엔드와 JSON API 호환성 어댑터"
+      }
+    ],
+    "FEATURE:SPEC-009-TAG-MIGRATION-001": [
+      {
+        "file": "src/moai_adk/core/tag_system/migration.py",
+        "line": 2,
+        "context": "@FEATURE:SPEC-009-TAG-MIGRATION-001 - TAG 마이그레이션 도구"
+      }
+    ],
+    "FEATURE:SPEC-009-TAG-PERFORMANCE-001": [
+      {
+        "file": "src/moai_adk/core/tag_system/benchmark.py",
+        "line": 2,
+        "context": "@FEATURE:SPEC-009-TAG-PERFORMANCE-001 - TAG 성능 벤치마크 도구"
+      }
+    ],
+    "TEST:SPEC-009-TAG-DATABASE-001": [
+      {
+        "file": "tests/unit/core/tag_system/test_tag_database.py",
+        "line": 2,
+        "context": "@TEST:SPEC-009-TAG-DATABASE-001 - TAG SQLite 데이터베이스 관리자 실패 테스트"
+      }
+    ],
+    "TEST:SPEC-009-TAG-ADAPTER-001": [
+      {
+        "file": "tests/unit/core/tag_system/test_tag_adapter.py",
+        "line": 2,
+        "context": "@TEST:SPEC-009-TAG-ADAPTER-001 - TAG JSON API 호환성 어댑터 실패 테스트"
+      }
+    ],
+    "TEST:SPEC-009-TAG-MIGRATION-001": [
+      {
+        "file": "tests/unit/core/tag_system/test_tag_migration.py",
+        "line": 2,
+        "context": "@TEST:SPEC-009-TAG-MIGRATION-001 - TAG 마이그레이션 도구 실패 테스트"
+      }
+    ],
+    "TEST:SPEC-009-TAG-PERFORMANCE-001": [
+      {
+        "file": "tests/unit/core/tag_system/test_tag_performance.py",
+        "line": 2,
+        "context": "@TEST:SPEC-009-TAG-PERFORMANCE-001 - TAG 시스템 성능 벤치마크 실패 테스트"
+      }
+    ],
+    "REFACTOR:SPEC-009-TRUST-PRINCIPLES-CLEAN": [
+      {
+        "file": ".git/COMMIT_EDITMSG",
+        "line": 31,
+        "context": "@REFACTOR:SPEC-009-TRUST-PRINCIPLES-CLEAN"
+      }
+    ],
+    "DOCS:SPEC-009-DOCUMENTATION-SYNC": [
+      {
+        "file": ".git/COMMIT_EDITMSG",
+        "line": 32,
+        "context": "@DOCS:SPEC-009-DOCUMENTATION-SYNC"
+      }
+    ],
+    "REQ:TAG-PERFORMANCE-001": [
+      {
+        "file": ".moai/specs/SPEC-009/spec.md",
+        "line": 4,
+        "context": "**@REQ:TAG-PERFORMANCE-001** ← 성능 요구사항"
+      },
+      {
+        "file": ".moai/specs/SPEC-009/spec.md",
+        "line": 223,
+        "context": "├── @REQ:TAG-PERFORMANCE-001"
+      }
+    ],
+    "DESIGN:SQLITE-MIGRATION-001": [
+      {
+        "file": ".moai/specs/SPEC-009/spec.md",
+        "line": 5,
+        "context": "**@DESIGN:SQLITE-MIGRATION-001** ← 설계 결정"
+      },
+      {
+        "file": ".moai/specs/SPEC-009/spec.md",
+        "line": 224,
+        "context": "│   ├── @DESIGN:SQLITE-MIGRATION-001"
+      },
+      {
+        "file": "docs/concepts/moai-workflow-concept.md",
+        "line": 630,
+        "context": "✅ @REQ:DATA-SYNC-001 → @DESIGN:SQLITE-MIGRATION-001 → @TASK:DATABASE-SCHEMA-001 → @TEST:PERFORMANCE-BENCHMARK-001"
+      }
+    ],
+    "TASK:DATABASE-SCHEMA-001": [
+      {
+        "file": ".moai/specs/SPEC-009/spec.md",
+        "line": 6,
+        "context": "**@TASK:DATABASE-SCHEMA-001** ← 구현 태스크"
+      },
+      {
+        "file": ".moai/specs/SPEC-009/spec.md",
+        "line": 225,
+        "context": "│   ├── @TASK:DATABASE-SCHEMA-001"
+      },
+      {
+        "file": ".moai/specs/SPEC-009/plan.md",
+        "line": 23,
+        "context": "### @TASK:DATABASE-SCHEMA-001 SQLite 스키마 설계"
+      },
+      {
+        "file": "docs/concepts/moai-workflow-concept.md",
+        "line": 630,
+        "context": "✅ @REQ:DATA-SYNC-001 → @DESIGN:SQLITE-MIGRATION-001 → @TASK:DATABASE-SCHEMA-001 → @TEST:PERFORMANCE-BENCHMARK-001"
       }
     ]
   }

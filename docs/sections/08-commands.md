@@ -169,4 +169,4 @@ MoAI-ADK는 4단계 워크플로우 명령어, Git 전용 명령어 5종, 그리
 
 - `/moai:3-sync`는 TAG 인덱스를 갱신하고 `docs/status/sync-report.md`를 생성하며 `docs/sections/index.md` 갱신일을 반영합니다.
 - GitHub PR 자동화는 Anthropic GitHub App 설치 및 시크릿 설정 후 권장됩니다.
-- 상세 워크플로우와 제약 사항은 `docs/MOAI-ADK-0.2.2-GUIDE.md`를 참고하세요.
+- 상세 워크플로우와 제약 사항은 `docs/MOAI-ADK-GUIDE.md`를 참고하세요.
