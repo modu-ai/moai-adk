@@ -1,7 +1,7 @@
 """
-Installation result data structure for MoAI-ADK.
+@FEATURE:INSTALL-RESULT-001 Installation result data structure for MoAI-ADK.
 
-Contains the result of project installation operations with success status,
+@TASK:RESULT-001 Contains the result of project installation operations with success status,
 created files, and next steps for the user.
 """
 
@@ -14,7 +14,7 @@ from ..config import Config
 
 @dataclass
 class InstallationResult:
-    """Result of project installation with comprehensive status information."""
+    """@TASK:RESULT-DATA-001 Result of project installation with comprehensive status information."""
 
     success: bool
     project_path: str

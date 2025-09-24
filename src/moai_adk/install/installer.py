@@ -1,8 +1,8 @@
 """
-Simplified MoAI-ADK Project Installer
+@FEATURE:INSTALLER-001 Simplified MoAI-ADK Project Installer
 
-Simplified installation system using embedded package resources instead of symbolic links.
-Ensures perfect compatibility with Claude Code by directly copying all resources through ResourceManager.
+@TASK:INSTALL-001 Simplified installation system using embedded package resources instead of symbolic links.
+@TASK:INSTALL-002 Ensures perfect compatibility with Claude Code by directly copying all resources through ResourceManager.
 """
 
 from pathlib import Path
@@ -26,7 +26,7 @@ logger = get_logger(__name__)
 
 class SimplifiedInstaller:
     """
-    Simplified MoAI-ADK project installation manager
+    @TASK:INSTALLER-MAIN-001 Simplified MoAI-ADK project installation manager
 
     Installation system that directly copies embedded package resources
     instead of symbolic links for stable operation across all platforms.

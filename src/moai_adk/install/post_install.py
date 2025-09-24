@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-🗿 MoAI-ADK Post-Installation Script
+@FEATURE:POST-INSTALL-001 🗿 MoAI-ADK Post-Installation Script
 
-Provides post-installation functionality for MoAI-ADK.
-Since pyproject.toml doesn't support post-install hooks directly,
+@TASK:POST-INSTALL-001 Provides post-installation functionality for MoAI-ADK.
+@TASK:POST-INSTALL-002 Since pyproject.toml doesn't support post-install hooks directly,
 this script serves as an alternative for setting up global resources.
 
 Usage:

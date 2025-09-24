@@ -1,8 +1,8 @@
 """
-MoAI-ADK Resource Manager
+@FEATURE:RESOURCE-001 MoAI-ADK Resource Manager
 
-패키지 내장 리소스를 관리하는 모듈입니다.
-심볼릭 링크 대신 패키지에서 직접 리소스를 복사하여 관리합니다.
+@TASK:RESOURCE-001 패키지 내장 리소스를 관리하는 모듈입니다.
+@TASK:RESOURCE-002 심볼릭 링크 대신 패키지에서 직접 리소스를 복사하여 관리합니다.
 """
 
 import shutil
