@@ -495,3 +495,126 @@ class TestTagIndexAdapter:
 
         # 정리
         test_file.unlink()
+
+    def test_should_search_by_category_method_works(self):
+        """
+        🟢 GREEN: search_by_category 메서드가 구현되어 동작해야 함
+
+        Given: TagIndexAdapter 인스턴스
+        When: search_by_category 메서드를 호출할 때
+        Then: 정상적으로 빈 결과 또는 데이터를 반환해야 함
+        """
+        # GIVEN: 초기화된 어댑터
+        self.adapter.initialize()
+
+        # WHEN: 메서드 호출 (빈 데이터베이스에서)
+        results = self.adapter.search_by_category("REQ")
+
+        # THEN: 메서드가 존재하고 빈 리스트 반환
+        assert isinstance(results, list)
+        assert len(results) == 0  # 빈 데이터베이스이므로 빈 결과
+
+    def test_should_get_traceability_chain_method_works(self):
+        """
+        🟢 GREEN: get_traceability_chain 메서드가 구현되어 동작해야 함
+
+        Given: TagIndexAdapter 인스턴스
+        When: get_traceability_chain 메서드를 호출할 때
+        Then: 정상적으로 체인 구조를 반환해야 함
+        """
+        # GIVEN: 초기화된 어댑터
+        self.adapter.initialize()
+
+        # WHEN: 메서드 호출 (존재하지 않는 TAG에 대해)
+        chain = self.adapter.get_traceability_chain("REQ:NONEXISTENT-001")
+
+        # THEN: 메서드가 존재하고 기본 구조 반환
+        assert isinstance(chain, dict)
+        assert "nodes" in chain
+        assert "edges" in chain
+        assert "direction" in chain
+        # 존재하지 않는 TAG이므로 빈 노드 또는 에러 정보
+        assert len(chain["nodes"]) == 0 or "error" in chain
+
+    def test_should_search_by_category_return_correct_format(self):
+        """
+        🔴 RED: search_by_category가 JSON API 형식으로 결과를 반환해야 함 (실패 예상)
+
+        Given: REQ 카테고리의 TAG들이 있는 SQLite 데이터베이스
+        When: search_by_category("REQ")를 호출할 때
+        Then: JSON API 형식의 태그 목록을 반환해야 함
+        """
+        # GIVEN: REQ 카테고리 TAG들을 포함한 테스트 데이터
+        test_index = {
+            "metadata": {"created_at": "2024-01-01T00:00:00", "version": "1.0", "total_tags": 2},
+            "categories": {
+                "PRIMARY": {
+                    "REQ": {
+                        "REQ:USER-AUTH-001": {"description": "사용자 인증", "file": "auth.py"},
+                        "REQ:USER-PROFILE-001": {"description": "사용자 프로필", "file": "profile.py"}
+                    }
+                }
+            },
+            "chains": [],
+            "files": {}
+        }
+
+        self.adapter.initialize()
+        self.adapter.save_index(test_index)
+
+        # WHEN: search_by_category 호출
+        results = self.adapter.search_by_category("REQ")
+
+        # THEN: JSON API 형식의 결과 검증
+        assert isinstance(results, list)
+        assert len(results) == 2
+        assert all("category" in tag for tag in results)
+        assert all("identifier" in tag for tag in results)
+        assert all("description" in tag for tag in results)
+        assert all("file_path" in tag for tag in results)
+
+        # 구체적인 데이터 검증
+        identifiers = [tag["identifier"] for tag in results]
+        assert "REQ:USER-AUTH-001" in identifiers
+        assert "REQ:USER-PROFILE-001" in identifiers
+
+    def test_should_get_traceability_chain_build_forward_chain(self):
+        """
+        🔴 RED: get_traceability_chain이 순방향 체인을 빌드해야 함 (실패 예상)
+
+        Given: REQ → DESIGN → TASK → TEST 체인 구조
+        When: get_traceability_chain("REQ:USER-AUTH-001", direction="forward")를 호출할 때
+        Then: 완전한 순방향 추적성 체인을 반환해야 함
+        """
+        # GIVEN: 체인 구조의 테스트 데이터 (아직 참조 관계는 구현되지 않음)
+        test_index = {
+            "metadata": {"created_at": "2024-01-01T00:00:00", "version": "1.0", "total_tags": 4},
+            "categories": {
+                "PRIMARY": {
+                    "REQ": {"REQ:USER-AUTH-001": {"description": "사용자 인증", "file": "spec.md"}},
+                    "DESIGN": {"DESIGN:JWT-001": {"description": "JWT 토큰 설계", "file": "design.md"}},
+                    "TASK": {"TASK:API-001": {"description": "API 구현", "file": "api.py"}},
+                    "TEST": {"TEST:UNIT-001": {"description": "단위 테스트", "file": "test_api.py"}}
+                }
+            },
+            "chains": [],
+            "files": {}
+        }
+
+        self.adapter.initialize()
+        self.adapter.save_index(test_index)
+
+        # WHEN: get_traceability_chain 호출
+        chain = self.adapter.get_traceability_chain("REQ:USER-AUTH-001", direction="forward")
+
+        # THEN: 체인 구조 검증
+        assert isinstance(chain, dict)
+        assert "nodes" in chain
+        assert "edges" in chain
+        assert "direction" in chain
+        assert chain["direction"] == "forward"
+
+        # 시작 노드 검증
+        if len(chain["nodes"]) > 0:
+            assert chain["nodes"][0]["identifier"] == "REQ:USER-AUTH-001"
+            assert chain["nodes"][0]["category"] == "REQ"

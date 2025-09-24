@@ -66,6 +66,19 @@ class TagIndexAdapter:
         self.parser = TagParser()
         self._lock = threading.Lock()
 
+        # 구조화된 로거 설정 (TRUST 원칙: Secured/Trackable)
+        import logging
+        self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        if not self._logger.handlers:
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter(
+                '{"timestamp": "%(asctime)s", "level": "%(levelname)s", '
+                '"component": "%(name)s", "message": "%(message)s"}'
+            )
+            handler.setFormatter(formatter)
+            self._logger.addHandler(handler)
+            self._logger.setLevel(logging.INFO)
+
         # 기존 API 호환을 위한 콜백
         self.on_file_changed: Optional[Callable[[IndexUpdateEvent], None]] = None
 
@@ -330,6 +343,286 @@ class TagIndexAdapter:
             return "QUALITY"
         else:
             return "PRIMARY"  # 기본값
+
+    def search_by_category(self, category: str, **filters) -> List[Dict[str, Any]]:
+        """
+        카테고리별 TAG 검색 (JSON API 호환)
+
+        TRUST 원칙 적용:
+        - Test First: 실패 테스트로 시작하여 최소 구현
+        - Readable: 명확한 매개변수와 반환값 문서화
+        - Unified: 기존 JSON API와 완전 호환
+        - Secured: 입력 검증과 구조화 로깅
+        - Trackable: 성능 메트릭 수집
+
+        Args:
+            category: TAG 카테고리 (REQ, DESIGN, TASK, TEST 등)
+                     빈 문자열이나 None은 빈 결과 반환
+            **filters: 추가 필터 (향후 확장용)
+                     file_pattern: 파일 경로 패턴 필터
+                     description_pattern: 설명 텍스트 필터
+
+        Returns:
+            JSON API 형식의 TAG 목록:
+            [
+                {
+                    "category": "REQ",
+                    "identifier": "USER-AUTH-001",
+                    "description": "사용자 인증 요구사항",
+                    "file_path": "specs/auth.md",
+                    "line_number": 25
+                }
+            ]
+
+        Raises:
+            ValueError: 유효하지 않은 카테고리 이름
+        """
+        import time
+        start_time = time.time()
+
+        # 입력 검증 (TRUST 원칙: Secured)
+        if not category or not isinstance(category, str):
+            return []
+
+        category = category.strip().upper()
+        if not category:
+            return []
+        try:
+            if self._sqlite_available:
+                # SQLite 백엔드에서 검색
+                raw_tags = self._database.search_tags_by_category(category)
+
+                # JSON API 형식으로 변환
+                results = []
+                for tag in raw_tags:
+                    results.append({
+                        "category": tag["category"],
+                        "identifier": tag["identifier"],
+                        "description": tag["description"] or "",
+                        "file_path": tag["file_path"],
+                        "line_number": tag.get("line_number", 0)
+                    })
+
+                # 성능 로깅 (TRUST 원칙: Trackable)
+                duration_ms = (time.time() - start_time) * 1000
+                self._logger.info(
+                    '{"operation": "search_by_category", "category": "%s", '
+                    '"backend": "sqlite", "result_count": %d, '
+                    '"duration_ms": %.2f, "success": true}',
+                    category, len(results), duration_ms
+                )
+
+                return results
+            elif self._json_manager:
+                # JSON fallback - 기존 인덱스에서 필터링
+                index_data = self._json_manager.load_index()
+                results = []
+
+                # 모든 그룹에서 해당 카테고리 검색
+                for group_name, group_data in index_data.get("categories", {}).items():
+                    if category in group_data:
+                        for identifier, tag_info in group_data[category].items():
+                            results.append({
+                                "category": category,
+                                "identifier": identifier,
+                                "description": tag_info.get("description", ""),
+                                "file_path": tag_info.get("file", ""),
+                                "line_number": 0  # JSON에서는 줄 번호 정보 없음
+                            })
+
+                # 성능 로깅
+                duration_ms = (time.time() - start_time) * 1000
+                self._logger.info(
+                    '{"operation": "search_by_category", "category": "%s", '
+                    '"backend": "json", "result_count": %d, '
+                    '"duration_ms": %.2f, "success": true}',
+                    category, len(results), duration_ms
+                )
+
+                return results
+            else:
+                # 백엔드 없음 - 빈 결과 반환
+                self._logger.warning(
+                    '{"operation": "search_by_category", "category": "%s", '
+                    '"backend": "none", "result_count": 0, '
+                    '"duration_ms": 0, "success": false, '
+                    '"error": "No backend available"}',
+                    category
+                )
+                return []
+
+        except Exception as e:
+            # 오류 로깅 (TRUST 원칙: Secured)
+            duration_ms = (time.time() - start_time) * 1000
+            self._logger.error(
+                '{"operation": "search_by_category", "category": "%s", '
+                '"duration_ms": %.2f, "success": false, '
+                '"error": "%s"}',
+                category, duration_ms, str(e).replace('"', '\\"')
+            )
+            # 오류 발생 시 빈 결과 반환 (안전한 실패)
+            return []
+
+    def get_traceability_chain(self, tag_identifier: str,
+                             direction: str = "forward",
+                             max_depth: int = 10) -> Dict[str, Any]:
+        """
+        TAG 추적성 체인 구축 (16-Core TAG 시스템 지원)
+
+        TRUST 원칙 적용:
+        - Test First: 실패 테스트 기반 구현
+        - Readable: 명확한 체인 구조와 예제
+        - Unified: 표준 그래프 구조 사용
+        - Secured: 순환 참조 방지와 깊이 제한
+        - Trackable: 체인 구축 성능 모니터링
+
+        Args:
+            tag_identifier: TAG 식별자
+                          형식: "CATEGORY:IDENTIFIER" (예: "REQ:USER-AUTH-001")
+                          또는 "IDENTIFIER" (카테고리 자동 추론)
+            direction: 참조 방향
+                      "forward": 순방향 (REQ → DESIGN → TASK → TEST)
+                      "backward": 역방향 (TEST → TASK → DESIGN → REQ)
+                      "both": 양방향 (전체 연결 그래프)
+            max_depth: 최대 탐색 깊이 (1-50, 기본값 10)
+                      순환 참조 방지와 성능 보장
+
+        Returns:
+            추적성 체인 그래프 구조:
+            {
+                "nodes": [
+                    {
+                        "id": 123,
+                        "identifier": "REQ:USER-AUTH-001",
+                        "category": "REQ",
+                        "description": "사용자 인증 요구사항",
+                        "file_path": "specs/auth.md"
+                    }
+                ],
+                "edges": [
+                    {
+                        "source": 123,
+                        "target": 456,
+                        "type": "chain",
+                        "direction": "forward"
+                    }
+                ],
+                "direction": "forward",
+                "max_depth": 10,
+                "truncated": false,
+                "metadata": {
+                    "total_nodes": 4,
+                    "total_edges": 3,
+                    "chain_depth": 4
+                }
+            }
+
+        Raises:
+            ValueError: 잘못된 매개변수 값
+            ApiCompatibilityError: 백엔드 연결 실패
+        """
+        import time
+        start_time = time.time()
+
+        # 입력 검증 (TRUST 원칙: Secured)
+        if not tag_identifier or not isinstance(tag_identifier, str):
+            raise ValueError("tag_identifier must be a non-empty string")
+
+        if direction not in ["forward", "backward", "both"]:
+            raise ValueError("direction must be 'forward', 'backward', or 'both'")
+
+        if not isinstance(max_depth, int) or max_depth < 1 or max_depth > 50:
+            raise ValueError("max_depth must be an integer between 1 and 50")
+
+        tag_identifier = tag_identifier.strip()
+        try:
+            if not self._sqlite_available:
+                # SQLite 없으면 기본 구조만 반환 (JSON에는 참조 정보 없음)
+                duration_ms = (time.time() - start_time) * 1000
+                self._logger.warning(
+                    '{"operation": "get_traceability_chain", '
+                    '"tag_identifier": "%s", "backend": "none", '
+                    '"duration_ms": %.2f, "success": false, '
+                    '"error": "SQLite backend required for traceability"}',
+                    tag_identifier, duration_ms
+                )
+                return {
+                    "nodes": [{"identifier": tag_identifier, "category": "UNKNOWN", "description": ""}],
+                    "edges": [],
+                    "direction": direction,
+                    "max_depth": max_depth,
+                    "truncated": False,
+                    "error": "SQLite backend required for traceability"
+                }
+
+            # 시작 TAG 찾기 (TRUST 원칙: Readable)
+            category, identifier = tag_identifier.split(":", 1) if ":" in tag_identifier else ("", tag_identifier)
+            start_tags = self._database.search_tags_by_identifier(identifier)
+
+            if not start_tags:
+                duration_ms = (time.time() - start_time) * 1000
+                self._logger.info(
+                    '{"operation": "get_traceability_chain", '
+                    '"tag_identifier": "%s", "duration_ms": %.2f, '
+                    '"success": false, "error": "Tag not found"}',
+                    tag_identifier, duration_ms
+                )
+                return {
+                    "nodes": [],
+                    "edges": [],
+                    "direction": direction,
+                    "max_depth": max_depth,
+                    "error": f"Tag not found: {tag_identifier}",
+                    "metadata": {"total_nodes": 0, "total_edges": 0, "chain_depth": 0}
+                }
+
+            start_tag = start_tags[0]  # 첫 번째 매치 사용
+
+            # 체인 구축 (현재는 단일 노드만 - 참조 시스템이 완전하지 않음)
+            # 향후 SPEC-010에서 완전한 참조 체인 구현 예정
+            nodes = [{
+                "id": start_tag["id"],
+                "identifier": f"{start_tag['category']}:{start_tag['identifier']}",
+                "category": start_tag["category"],
+                "description": start_tag["description"] or "",
+                "file_path": start_tag["file_path"]
+            }]
+
+            edges = []  # 추후 참조 관계 구현 시 추가
+
+            # 성능 로깅 (TRUST 원칙: Trackable)
+            duration_ms = (time.time() - start_time) * 1000
+            self._logger.info(
+                '{"operation": "get_traceability_chain", '
+                '"tag_identifier": "%s", "direction": "%s", '
+                '"max_depth": %d, "result_nodes": %d, '
+                '"duration_ms": %.2f, "success": true}',
+                tag_identifier, direction, max_depth, len(nodes), duration_ms
+            )
+
+            return {
+                "nodes": nodes,
+                "edges": edges,
+                "direction": direction,
+                "max_depth": max_depth,
+                "truncated": False,
+                "metadata": {
+                    "total_nodes": len(nodes),
+                    "total_edges": len(edges),
+                    "chain_depth": 1  # 현재는 단일 노드만
+                }
+            }
+
+        except Exception as e:
+            # 오류 로깅 (TRUST 원칙: Secured)
+            duration_ms = (time.time() - start_time) * 1000
+            self._logger.error(
+                '{"operation": "get_traceability_chain", '
+                '"tag_identifier": "%s", "duration_ms": %.2f, '
+                '"success": false, "error": "%s"}',
+                tag_identifier, duration_ms, str(e).replace('"', '\\"')
+            )
+            raise ApiCompatibilityError(f"Failed to build traceability chain: {e}")
 
     def close(self):
         """리소스 정리"""
