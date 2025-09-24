@@ -1,8 +1,10 @@
 {
-  "outputStyle": "MoAI Audit",
   "permissions": {
-    "allow": [],
-    "ask": [],
-    "deny": []
-  }
+    "allow": [
+      "Bash(awk:*)"
+    ],
+    "deny": [],
+    "ask": []
+  },
+  "outputStyle": "MoAI Audit"
 }
