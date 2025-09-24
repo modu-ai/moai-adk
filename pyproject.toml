@@ -33,6 +33,7 @@ dependencies = [
     "jsonschema>=4.0.0",
     "gitpython>=3.1.0",
     "jinja2>=3.0.0",
+    "pyyaml>=6.0.0",
 ]
 
 [project.optional-dependencies]
@@ -47,6 +48,11 @@ dev = [
     "isort>=5.10",
     "mypy>=1.0",
     "flake8>=5.0",
+]
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.0.0",
+    "pyyaml>=6.0.0",
 ]
 
 [project.urls]

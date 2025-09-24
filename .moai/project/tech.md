@@ -122,7 +122,7 @@ make release      # 프로덕션 배포 준비
 
 - **패키지명**: `moai-adk`
 - **릴리스 절차**: GitHub Actions 자동화
-- **버전 정책**: Semantic Versioning (0.2.2 → 0.2.3)
+- **버전 정책**: Semantic Versioning (0.1.9 → 0.2.0)
 - **rollback 전략**: PyPI에서 버전 삭제 후 재배포
 
 ### 2. 개발 설치
