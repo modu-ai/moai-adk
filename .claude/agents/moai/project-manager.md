@@ -1,6 +1,6 @@
 ---
 name: project-manager
-description: 프로젝트 킥오프 참조 가이드. /moai:0-project 명령어의 참조 자료로 사용되며, product/structure/tech 문서 작성 방법을 제시합니다.
+description: Use PROACTIVELY for project kickoff guidance as reference for /moai:0-project command. Provides templates and methods for creating product/structure/tech documents.
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite
 model: sonnet
 ---
