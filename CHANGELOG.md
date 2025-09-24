@@ -5,6 +5,40 @@ All notable changes to MoAI-ADK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2025-09-24
+
+### 🎉 MoAI-ADK 0.2.3 - 16-Core TAG 추적성 시스템 완성
+
+**SPEC-006 완전 구현으로 코드-문서-TAG 삼위일체 추적성 달성**
+
+#### 🔍 SPEC-006: 16-Core TAG 추적성 시스템 완성 (91% 테스트 커버리지)
+
+**완전한 TAG 체인 추적 및 실시간 동기화 시스템:**
+
+- **TagParser**: 16개 카테고리 TAG 완전 파싱, 정규식 기반 고성능 스캔
+- **TagValidator**: Primary Chain 검증, 고아 TAG 탐지, 순환 참조 방지
+- **TagIndexManager**: 실시간 파일 감시 기반 TAG 인덱스 자동 관리
+- **TagReportGenerator**: JSON/Markdown 포맷 지원, 추적성 매트릭스 제공
+- **무결성 검사**: 완전한 TAG 체인 무결성 보장, 자동 복구 제안
+
+#### 💎 완전한 개발 추적성 달성
+
+**코드-문서-TAG 삼위일체 동기화:**
+
+- **69개 TAG 관리**: 40개 완료, 91% 추적성 커버리지
+- **Living Document 동기화**: 실시간 코드 변경과 문서 일치성 보장
+- **TDD 성과 추적**: 31개 테스트 중 30개 통과, 품질 지표 완전 추적
+- **16-Core TAG 체계**: SPEC → PROJECT → IMPLEMENTATION → QUALITY 완전 분류
+
+#### 🚀 새로운 의존성 추가
+
+**향상된 TAG 시스템 지원:**
+
+- **watchdog>=3.0.0**: 실시간 파일 시스템 감시
+- **jsonschema>=4.0.0**: TAG 인덱스 스키마 검증
+- **gitpython>=3.1.0**: Git 히스토리 TAG 추적
+- **jinja2>=3.0.0**: 동적 리포트 템플릿 생성
+
 ## [0.2.2] - 2025-09-24
 
 ### 🎉 MoAI-ADK 0.2.2 - 두 개의 메이저 프로젝트 통합 완료

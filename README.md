@@ -2,36 +2,37 @@
 
 **🏆 Claude Code 환경에서 가장 완전한 Spec-First TDD 개발 프레임워크**
 
-**🎯 0.2.2 Major Update: SPEC-003 + Git 전략 간소화 완료**
+**🎯 0.2.3 Major Update: SPEC-006 16-Core TAG 추적성 시스템 완성**
 
 [![Version](https://img.shields.io/github/v/release/modu-ai/moai-adk?label=release)](https://github.com/modu-ai/moai-adk/releases)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)](https://docs.anthropic.com/claude-code)
 [![Tests](https://img.shields.io/badge/tests-100%25%20Git%20+%2091.7%25%20cc--manager-brightgreen)](https://github.com/modu-ai/moai-adk)
-[![TAG System](https://img.shields.io/badge/16--Core%20TAG-64%20total%2C%2038%20completed-blue)](https://github.com/modu-ai/moai-adk)
+[![TAG System](https://img.shields.io/badge/16--Core%20TAG-69%20total%2C%2040%20completed-blue)](https://github.com/modu-ai/moai-adk)
 
 ---
 
-## 🎉 **0.2.2 혁신 하이라이트**
+## 🎉 **0.2.3 혁신 하이라이트**
 
-### 🏗️ **cc-manager 중앙 관제탑 완성** (SPEC-003)
+### 🔍 **16-Core TAG 추적성 시스템 완성** (SPEC-006)
+
+- **완전한 TAG 체인 추적**: TagParser, TagValidator, TagIndexManager, TagReportGenerator
+- **실시간 인덱스 관리**: 파일 감시 기반 자동 TAG 동기화
+- **무결성 검증**: Primary Chain 검증, 고아 TAG 탐지, 순환 참조 방지
+- **종합 리포트 생성**: JSON/Markdown 포맷 지원, 추적성 매트릭스 제공
+
+### 🏗️ **cc-manager 중앙 관제탑** (SPEC-003 완성)
 
 - **Claude Code 표준화 완전 자동화**: 12개 파일 100% 표준 준수
 - **템플릿 지침 완전 통합**: 외부 참조 없는 완전한 가이드 시스템
 - **validate_claude_standards.py**: 자동화된 검증 도구 구현
 
-### 🔄 **Git 전략 간소화 완료** (Phase 2+3)
+### 💎 **완전한 개발 추적성 달성**
 
-- **GitLockManager**: Git 충돌 90% 감소, 100ms 응답 보장
-- **전략 패턴**: PersonalGitStrategy + TeamGitStrategy로 모드별 최적화
-- **워크플로우 50% 간소화**: SpecCommand, BuildCommand 성능 극대화
-
-### 💎 **완전한 개발 경험 달성**
-
-- **16-Core TAG 시스템**: 64개 TAG, 38개 완료, 100% 추적성
-- **TRUST 5원칙 완전 적용**: 모든 신규 코드 품질 보장
-- **중앙 관제탑 + Git 간소화**: 완전 자동화된 개발 워크플로우
+- **16-Core TAG 시스템**: 69개 TAG, 40개 완료, 91% 커버리지
+- **Living Document 동기화**: 코드-문서-TAG 실시간 일치성 보장
+- **TDD 성과**: 31개 테스트 중 30개 통과, 91% 테스트 커버리지
 
 ---
 

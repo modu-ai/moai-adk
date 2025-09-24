@@ -1,9 +1,9 @@
 {
   "_meta": {
     "created": "2024-09-24",
-    "description": "MoAI-ADK 16-Core TAG 인덱스 (SPEC-003 + Git 전략 간소화 통합)",
+    "description": "MoAI-ADK 16-Core TAG 인덱스 (SPEC-006 16-Core TAG 추적성 시스템 포함)",
     "last_updated": "2024-09-24",
-    "version": "2.1.0"
+    "version": "2.2.0"
   },
   "connections": {
     "@DEBT:LEGACY-ANALYSIS-001": [
@@ -63,6 +63,9 @@
     "@TASK:IMPLEMENT-003": [
       "@TEST:SPEC-003-RED-001"
     ],
+    "@TASK:IMPLEMENT-006": [
+      "@TEST:ACCEPTANCE-006"
+    ],
     "@TASK:SPEC-003-GREEN-001": [
       "@TASK:SPEC-003-REFACTOR-001"
     ],
@@ -72,6 +75,9 @@
     "@TECH:OVERVIEW-001": [
       "@TECH:STACK-PYTHON-001",
       "@TECH:STACK-MULTI-001"
+    ],
+    "@TEST:ACCEPTANCE-006": [
+      "@FEATURE:TAG-SYSTEM-006"
     ],
     "@TEST:SPEC-003-RED-001": [
       "@TASK:SPEC-003-GREEN-001"
@@ -85,11 +91,11 @@
   },
   "stats": {
     "circular": 0,
-    "completed": 38,
+    "completed": 40,
     "in_progress": 2,
     "orphaned": 0,
     "pending": 6,
-    "total_tags": 64
+    "total_tags": 69
   },
   "tags": {
     "IMPLEMENTATION": {
@@ -157,6 +163,41 @@
         "line": 6,
         "status": "completed",
         "title": "Git 동시 작업 방지 잠금 시스템"
+      },
+      "@FEATURE:INDEX-MANAGER-001": {
+        "connections": [],
+        "file": "src/moai_adk/core/tag_system/index_manager.py",
+        "line": 2,
+        "status": "completed",
+        "title": "실시간 TAG 인덱스 관리"
+      },
+      "@FEATURE:REPORT-GENERATOR-001": {
+        "connections": [],
+        "file": "src/moai_adk/core/tag_system/report_generator.py",
+        "line": 2,
+        "status": "completed",
+        "title": "TAG 추적성 리포트 생성"
+      },
+      "@FEATURE:TAG-PARSER-001": {
+        "connections": [],
+        "file": "src/moai_adk/core/tag_system/parser.py",
+        "line": 2,
+        "status": "completed",
+        "title": "TAG 파싱 엔진"
+      },
+      "@FEATURE:TAG-SYSTEM-006": {
+        "connections": [],
+        "file": "src/moai_adk/core/tag_system/__init__.py",
+        "line": 4,
+        "status": "completed",
+        "title": "16-Core TAG 추적성 시스템 완성"
+      },
+      "@FEATURE:TAG-VALIDATOR-001": {
+        "connections": [],
+        "file": "src/moai_adk/core/tag_system/validator.py",
+        "line": 2,
+        "status": "completed",
+        "title": "Primary Chain 검증 로직"
       },
       "@TECH:BRAINSTORMING-001": {
         "connections": [],
