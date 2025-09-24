@@ -5,6 +5,38 @@ All notable changes to MoAI-ADK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.9] - 2025-09-25
+
+### 📚 **문서 동기화 및 버전 표준화**
+
+**Living Document 원칙 완성 및 전체 문서 일치성 보장**
+
+#### ✨ 문서 시스템 개선
+
+**버전 동기화:**
+
+- **가이드 문서 표준화**: `MOAI-ADK-0.2.2-GUIDE.md` → `MOAI-ADK-GUIDE.md` (버전 제거)
+- **전체 문서 버전 일치**: README.md, CHANGELOG.md, pyproject.toml 모든 버전 0.1.9로 통합
+- **기능 중심 문서화**: 실제 구현된 기능에 맞춘 문서 내용 업데이트
+
+#### 🔄 Living Document 자동화
+
+**doc-syncer 에이전트 기반:**
+
+- **실시간 동기화**: 코드 변경사항과 문서 자동 연동
+- **TAG 추적성**: 16-Core TAG 시스템으로 완전한 변경사항 추적
+- **일관성 보장**: 모든 문서에서 버전 및 기능 설명 통일
+
+#### 🎯 사용자 경험 개선
+
+**명확한 정보 제공:**
+
+- **현재 기능 중심**: 0.1.9에 실제 구현된 기능만 문서화
+- **설치 가이드 정확성**: 올바른 버전 명령어와 예상 결과 제시
+- **문서 접근성**: 파일명에서 버전 제거로 일관된 문서 경로 제공
+
+---
+
 ## [0.1.8] - 2025-09-25
 
 ### 🔧 **패키지 설치 품질 개선 및 템플릿 정리**

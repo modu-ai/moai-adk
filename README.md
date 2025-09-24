@@ -2,7 +2,7 @@
 
 **🏆 Claude Code 환경에서 가장 완전한 Spec-First TDD 개발 프레임워크**
 
-**🎯 0.1.8 Latest Update: 패키지 설치 품질 개선 및 템플릿 정리 완성**
+**🎯 0.1.9 Latest Update: 패키지 설치 품질 개선 및 문서 동기화 완성**
 
 [![Version](https://img.shields.io/github/v/release/modu-ai/moai-adk?label=release)](https://github.com/modu-ai/moai-adk/releases)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -13,7 +13,7 @@
 
 ---
 
-## 🎉 **0.1.8 핵심 개선사항**
+## 🎉 **0.1.9 핵심 개선사항**
 
 ### 🔧 **패키지 설치 품질 향상**
 
