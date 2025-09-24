@@ -768,7 +768,6 @@ moai-adk config --mode team --github-token $GITHUB_TOKEN
 ### @FEATURE:ADVANCED-USAGE-001 고급 활용 시나리오
 
 #### 다중 프로젝트 관리
-
 ```bash
 # 프로젝트별 워크스페이스 관리
 moai-adk workspace create "mobile-app"
@@ -777,7 +776,6 @@ moai-adk workspace list
 ```
 
 #### 사용자 정의 에이전트 생성
-
 ```markdown
 # .claude/agents/myteam/custom-reviewer.md
 ## Custom Code Reviewer Agent
@@ -792,7 +790,6 @@ moai-adk workspace list
 ```
 
 #### 프로젝트별 훅 설정
-
 ```python
 # .claude/hooks/myproject/pre_commit_quality.py
 def quality_gate_check(files):

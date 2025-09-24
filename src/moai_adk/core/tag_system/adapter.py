@@ -331,6 +331,113 @@ class TagIndexAdapter:
         else:
             return "PRIMARY"  # 기본값
 
+    def search_by_category(self, category: str, **filters) -> List[Dict[str, Any]]:
+        """
+        카테고리별 TAG 검색 (JSON API 호환)
+
+        Args:
+            category: TAG 카테고리 (REQ, DESIGN, etc.)
+            **filters: 추가 필터 (향후 확장용)
+
+        Returns:
+            JSON API 형식의 TAG 목록
+        """
+        if self._sqlite_available:
+            # SQLite 백엔드에서 검색
+            raw_tags = self._database.search_tags_by_category(category)
+
+            # JSON API 형식으로 변환
+            results = []
+            for tag in raw_tags:
+                results.append({
+                    "category": tag["category"],
+                    "identifier": tag["identifier"],
+                    "description": tag["description"] or "",
+                    "file_path": tag["file_path"],
+                    "line_number": tag.get("line_number", 0)
+                })
+
+            return results
+        elif self._json_manager:
+            # JSON fallback - 기존 인덱스에서 필터링
+            index_data = self._json_manager.load_index()
+            results = []
+
+            # 모든 그룹에서 해당 카테고리 검색
+            for group_name, group_data in index_data.get("categories", {}).items():
+                if category in group_data:
+                    for identifier, tag_info in group_data[category].items():
+                        results.append({
+                            "category": category,
+                            "identifier": identifier,
+                            "description": tag_info.get("description", ""),
+                            "file_path": tag_info.get("file", ""),
+                            "line_number": 0  # JSON에서는 줄 번호 정보 없음
+                        })
+
+            return results
+        else:
+            # 백엔드 없음 - 빈 결과 반환
+            return []
+
+    def get_traceability_chain(self, tag_identifier: str,
+                             direction: str = "forward",
+                             max_depth: int = 10) -> Dict[str, Any]:
+        """
+        TAG 추적성 체인 구축
+
+        Args:
+            tag_identifier: TAG 식별자 (예: "REQ:USER-AUTH-001")
+            direction: 방향 ("forward", "backward", "both")
+            max_depth: 최대 깊이 (순환 참조 방지)
+
+        Returns:
+            노드와 엣지 정보가 포함된 체인 구조
+        """
+        if not self._sqlite_available:
+            # SQLite 없으면 기본 구조만 반환 (JSON에는 참조 정보 없음)
+            return {
+                "nodes": [{"identifier": tag_identifier, "category": "UNKNOWN", "description": ""}],
+                "edges": [],
+                "direction": direction,
+                "max_depth": max_depth,
+                "truncated": False
+            }
+
+        # 시작 TAG 찾기
+        category, identifier = tag_identifier.split(":", 1) if ":" in tag_identifier else ("", tag_identifier)
+        start_tags = self._database.search_tags_by_identifier(identifier)
+
+        if not start_tags:
+            return {
+                "nodes": [],
+                "edges": [],
+                "direction": direction,
+                "max_depth": max_depth,
+                "error": f"Tag not found: {tag_identifier}"
+            }
+
+        start_tag = start_tags[0]  # 첫 번째 매치 사용
+
+        # 체인 구축 (현재는 단일 노드만 - 참조 시스템이 완전하지 않음)
+        nodes = [{
+            "id": start_tag["id"],
+            "identifier": f"{start_tag['category']}:{start_tag['identifier']}",
+            "category": start_tag["category"],
+            "description": start_tag["description"] or "",
+            "file_path": start_tag["file_path"]
+        }]
+
+        edges = []  # 추후 참조 관계 구현 시 추가
+
+        return {
+            "nodes": nodes,
+            "edges": edges,
+            "direction": direction,
+            "max_depth": max_depth,
+            "truncated": False
+        }
+
     def close(self):
         """리소스 정리"""
         if self._database:
