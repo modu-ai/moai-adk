@@ -136,9 +136,11 @@ class ReleaseNotesConverter:
 
         return version_info
 
-    def categorize_changes(self) -> Dict[str, List[Dict[str, str]]]:
+    def categorize_changes(self, report_data: Optional[Dict[str, Any]] = None) -> Dict[str, List[Dict[str, str]]]:
         """@TASK:RELEASE-NOTES-004 Categorize changes by TAG type"""
-        report_data = self.parse_sync_report()
+        if report_data is None:
+            report_data = self.parse_sync_report()
+
         categories = {
             "FEATURE": [],
             "TEST": [],
@@ -164,6 +166,8 @@ class ReleaseNotesConverter:
                     categories[category].append(change)
                 else:
                     categories["OTHER"].append(change)
+            else:
+                categories["OTHER"].append(change)
 
         return categories
 
