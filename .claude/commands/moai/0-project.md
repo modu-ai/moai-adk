@@ -9,7 +9,7 @@ allowed-tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 
 ## 기능
 
-- `.moai/project/{product,structure,tech}.md`를 **간결하고 실용적인 템플릿**으로 생성·갱신합니다.
+- ULTRATHINK: `.moai/project/{product,structure,tech}.md`를 **간결하고 실용적인 템플릿**으로 생성·갱신합니다.
 - 완료 후 CLAUDE.md의 `@.moai/project/*` 임포트를 통해 메모리에 자동 반영됩니다.
 
 ## 사용법

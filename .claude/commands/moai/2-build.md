@@ -9,7 +9,7 @@ allowed-tools: Read, Write, Edit, MultiEdit, Bash(python3:*), Bash(pytest:*), Ta
 
 **TDD 구현 대상**: $ARGUMENTS
 
-code-builder 에이전트가 SPEC을 기반으로 Red-Green-Refactor 사이클과 TRUST 원칙 검증을 지원합니다.
+- ULTRATHINK: code-builder 에이전트가 SPEC을 기반으로 Red-Green-Refactor 사이클과 TRUST 원칙 검증을 지원합니다.
 
 ## 🚀 최적화된 에이전트 협업 구조
 

@@ -7,6 +7,8 @@ allowed-tools: Read, Write, Edit, MultiEdit, Grep, Glob, Bash, TodoWrite
 
 # /moai:4-debug — 통합 디버깅
 
+- ULTRATHINK: debug-helper 에이전트가 오류 디버깅 + TRUST 원칙 검사를 실행합니다.
+
 ## 기능
 
 1. **오류 디버깅**: 코드/Git/설정 오류 분석
