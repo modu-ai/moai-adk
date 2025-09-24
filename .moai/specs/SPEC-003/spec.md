@@ -1,247 +1,231 @@
-# SPEC-003: 서브에이전트 가이드라인 표준화
+# SPEC-003: cc-manager 중심 Claude Code 최적화
 
-## @REQ:AGENT-003 프로젝트 컨텍스트
+## @REQ:CC-OPTIMIZATION-003 프로젝트 컨텍스트
 
 ### 배경
 
-MoAI-ADK는 Claude Code 생태계 확장자(3차 사용자)를 지원하여 사용자 정의 에이전트/명령어를 통한 도메인별 워크플로우 구축을 목표로 합니다. 현재 @TASK:AGENT-GUIDE-001에서 "에이전트별 입력/출력 스키마 정의" 문제와 7개 핵심 에이전트 중 2개 비활성화 문제를 해결해야 합니다.
+MoAI-ADK는 Claude Code 환경에서 완전한 Agentic Development Kit를 제공합니다. 현재 Claude Code 공식 문서 표준과 MoAI-ADK 구조 간의 불일치로 인해 에이전트/커맨드 파일의 표준화가 필요한 상황입니다.
 
 ### 문제 정의
 
-- **현재 상태**: 에이전트 간 일관성 없는 인터페이스로 인한 통합 복잡성
-- **핵심 문제**: 사용자 정의 에이전트 개발 시 표준 가이드라인 부재
-- **비즈니스 영향**: 에이전트 생태계 확장 저해 및 개발자 경험 저하
+- **현재 상태**: Claude Code 공식 구조와 불일치하는 YAML frontmatter
+- **핵심 문제**: cc-manager가 단순 설정 관리자 역할에 국한됨
+- **비즈니스 영향**: 표준 미준수로 인한 확장성과 유지보수성 저하
 
 ### 목표
 
-1. 에이전트별 표준 입력/출력 스키마 정의 및 적용
-2. 에이전트 간 안전한 호출 규칙 및 오케스트레이션 체계 구축
-3. 3차 사용자의 사용자 정의 에이전트 개발 지원 강화
+1. **cc-manager를 Claude Code 표준화의 중앙 관제탑으로 강화**
+2. **커맨드/에이전트 템플릿을 cc-manager 내부 지침으로 통합**
+3. **Claude Code 공식 문서 100% 준수하는 표준 구조 적용**
 
-## @DESIGN:AGENT-SYSTEM-003 환경 및 가정사항
+## @DESIGN:CC-MANAGER-ARCH-003 아키텍처 설계
 
-### Environment (환경)
+### 새로운 cc-manager 역할
 
-- **시스템**: Claude Code 환경 (.claude/ 디렉토리 기반)
-- **에이전트**: 기존 7개 핵심 에이전트 (spec-builder, code-builder, doc-syncer 등)
-- **통합**: JSON 기반 에이전트 간 통신
-- **확장**: Markdown 기반 에이전트 정의 시스템
+```
+cc-manager (중앙 관제탑)
+├── 📐 내부 템플릿 지침
+│   ├── 커맨드 표준 구조
+│   └── 에이전트 표준 구조
+├── 🔍 표준화 검증 로직
+├── ⚙️ 설정 파일 최적화
+├── 📝 파일 생성/수정 관리
+└── 🎯 다른 에이전트 지도/감독
+```
 
-### Assumptions (가정사항)
+### Claude Code 공식 표준 준수
 
-- Claude Code의 에이전트 시스템 API가 안정적임
-- 기존 에이전트들의 기본 기능은 유지됨
-- 개발자가 Markdown과 JSON 형식을 이해하고 있음
-- .claude/agents/moai/ 디렉토리 구조가 유지됨
+**커맨드 표준 구조**:
+
+```yaml
+---
+name: command-name
+description: Clear one-line description
+argument-hint: [param1] [param2]
+allowed-tools: Tool1, Tool2, Bash(cmd:*)
+model: sonnet
+---
+```
+
+**에이전트 표준 구조**:
+
+```yaml
+---
+name: agent-name
+description: Use PROACTIVELY for [specific task]
+tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep
+model: sonnet
+---
+```
 
 ## @TASK:IMPLEMENT-003 요구사항 명세
 
-### R1. 에이전트별 표준 입력/출력 스키마 정의
+### R1. cc-manager 강화
 
-**WHEN** 새로운 에이전트가 개발되거나 기존 에이전트가 수정될 때,
-**THE SYSTEM SHALL** 표준화된 입력/출력 스키마를 준수하도록 검증해야 함
-
-**상세 요구사항:**
-
-- 모든 에이전트의 입력 파라미터 JSON 스키마 정의
-- 에이전트 출력 형식 표준화 (성공/실패/부분성공)
-- 에러 처리 및 로깅 형식 통일
-- 에이전트 메타데이터 (버전, 종속성, 권한) 정의
-
-### R2. 에이전트 간 호출 규칙 및 오케스트레이션
-
-**WHEN** 에이전트가 다른 에이전트를 호출해야 할 때,
-**THE SYSTEM SHALL** 정의된 호출 규칙을 따르고 순환 참조를 방지해야 함
+**WHEN** Claude Code 파일 생성/수정이 필요할 때,
+**THE SYSTEM SHALL** cc-manager가 표준 템플릿을 적용하여 일관된 구조를 제공해야 함
 
 **상세 요구사항:**
 
-- 에이전트 간 호출 그래프 정의 및 검증
-- 순환 참조 및 무한 루프 방지 메커니즘
-- 에이전트 실행 컨텍스트 관리 (상태, 세션, 권한)
-- 에이전트 실행 타임아웃 및 리소스 제한
+- cc-manager.md에 커맨드/에이전트 템플릿 지침 내장
+- **Claude Code 공식 문서 핵심 내용 완전 통합** (외부 참조 불필요)
+- 표준 YAML frontmatter 구조 강제
+- 자동 검증 로직 포함
+- 파일 생성/수정 시 표준 준수 확인
+- **중구난방 지침으로 인한 오류 방지를 위한 완전한 가이드 제공**
 
-### R3. 사용자 정의 에이전트 개발 지원
+### R2. 기존 파일 표준화
 
-**WHEN** 3차 사용자가 새로운 에이전트를 개발할 때,
-**THE SYSTEM SHALL** 완전한 개발 가이드라인과 템플릿을 제공해야 함
-
-**상세 요구사항:**
-
-- 에이전트 개발 템플릿 (.md 파일 형식)
-- Step-by-step 개발 가이드 문서
-- 에이전트 테스팅 프레임워크 및 도구
-- 예제 에이전트 (단순/중간/복잡한 3가지 수준)
-
-### R4. 에이전트 품질 검증 도구
-
-**WHEN** 에이전트가 시스템에 등록되거나 업데이트될 때,
-**THE SYSTEM SHALL** 자동으로 품질 및 호환성을 검증해야 함
+**WHEN** 기존 .claude/commands/moai/_.md와 .claude/agents/moai/_.md 파일을 업데이트할 때,
+**THE SYSTEM SHALL** Claude Code 공식 구조에 맞게 변경해야 함
 
 **상세 요구사항:**
 
-- 에이전트 스키마 유효성 검사
-- 에이전트 실행 안전성 검증 (샌드박스 테스트)
-- 기존 시스템과의 호환성 검사
-- 성능 및 리소스 사용량 프로파일링
+- 5개 커맨드 파일 YAML frontmatter 표준화
+- 7개 에이전트 파일 YAML frontmatter 표준화
+- 프로액티브 트리거 조건 명확화
+- 도구 권한 최소화 원칙 적용
+
+### R3. 핵심 파일 최적화
+
+**WHEN** CLAUDE.md, development-guide.md, settings.json 파일을 개선할 때,
+**THE SYSTEM SHALL** cc-manager 중심 워크플로우를 반영해야 함
+
+**상세 요구사항:**
+
+- CLAUDE.md에서 cc-manager 역할 강조
+- development-guide.md에 Claude Code 표준 추가
+- settings.json 권한 최적화 (WebSearch, BashOutput 등 추가)
+- 불필요한 중복 제거
+
+### R4. 검증 도구 개발
+
+**WHEN** 표준 준수를 확인해야 할 때,
+**THE SYSTEM SHALL** 자동화된 검증 도구를 제공해야 함
+
+**상세 요구사항:**
+
+- validate_claude_standards.py 스크립트 개발
+- YAML frontmatter 유효성 검사
+- 필수 필드 존재 확인
+- 통합 테스트 프레임워크
 
 ## @TEST:ACCEPTANCE-003 Acceptance Criteria
 
-### AC1. 표준 스키마 준수
+### AC1. cc-manager 템플릿 지침 내장
 
-**Given** 새로운 에이전트를 개발할 때
-**When** 표준 템플릿을 사용하여 에이전트를 작성하면
-**Then** 모든 입력/출력이 정의된 JSON 스키마를 준수해야 하고, 스키마 검증이 통과해야 함
+**Given** cc-manager.md 파일이 존재할 때
+**When** 파일을 열어 내용을 확인하면
+**Then** 커맨드와 에이전트 표준 템플릿 지침이 포함되어 있어야 하고, 파일 생성/수정 가이드라인이 명시되어야 함
 
-### AC2. 안전한 에이전트 간 호출
+### AC2. Claude Code 표준 준수
 
-**Given** 에이전트 A가 에이전트 B를 호출할 때
-**When** 정의된 호출 규칙에 따라 호출하면
-**Then** 순환 참조 없이 안전하게 실행되고, 호출 컨텍스트가 올바르게 전달되어야 함
+**Given** .claude/commands/moai/\*.md 파일들이 존재할 때
+**When** YAML frontmatter를 검사하면
+**Then** name, description, argument-hint, allowed-tools, model 필드가 모두 존재해야 함
 
-**Given** 에이전트 호출 그래프에서 순환 참조가 감지될 때
-**When** 시스템 검증을 실행하면
-**Then** 순환 참조 경고가 표시되고 수정 방법이 제안되어야 함
+**Given** .claude/agents/moai/\*.md 파일들이 존재할 때
+**When** YAML frontmatter를 검사하면
+**Then** name, description, tools, model 필드가 모두 존재하고, "Use PROACTIVELY" 패턴이 description에 포함되어야 함
 
-### AC3. 사용자 정의 에이전트 개발 지원
+### AC3. 검증 도구 동작
 
-**Given** 3차 사용자가 새로운 도메인별 에이전트를 개발할 때
-**When** 제공된 템플릿과 가이드를 따라 개발하면
-**Then** 기존 MoAI 시스템과 완전히 호환되고, 4단계 워크플로우에 통합 가능해야 함
+**Given** validate_claude_standards.py 스크립트가 존재할 때
+**When** 스크립트를 실행하면
+**Then** 모든 Claude Code 파일의 표준 준수 여부를 확인하고 문제점을 리포트해야 함
 
-**Given** 에이전트 개발 가이드를 따를 때
-**When** 예제 에이전트를 참조하면
-**Then** 단순/중간/복잡한 수준별로 적절한 참조 예제가 제공되어야 함
+### AC4. 통합 워크플로우
 
-### AC4. 에이전트 품질 검증
-
-**Given** 새로운 에이전트가 시스템에 등록될 때
-**When** 자동 품질 검증을 실행하면
-**Then** 스키마, 안전성, 호환성, 성능 검사가 모두 통과해야 함
-
-**Given** 에이전트 검증 중 문제가 발견될 때
-**When** 검증 리포트를 확인하면
-**Then** 구체적인 문제점과 수정 방법이 명시되어야 함
+**Given** cc-manager 에이전트를 호출할 때
+**When** 새로운 커맨드나 에이전트 파일 생성을 요청하면
+**Then** 표준 템플릿에 따라 올바른 구조로 파일이 생성되어야 함
 
 ## 범위 및 모듈
 
 ### In Scope
 
-- 7개 기존 에이전트의 스키마 표준화
-- 에이전트 간 호출 규칙 정의 및 구현
-- 사용자 정의 에이전트 개발 템플릿 및 가이드
-- 에이전트 검증 도구 및 테스팅 프레임워크
-- 에이전트 호출 그래프 관리 시스템
+- cc-manager.md 강화 (템플릿 지침 내장)
+- 5개 커맨드 파일 표준화 (.claude/commands/moai/)
+- 7개 에이전트 파일 표준화 (.claude/agents/moai/)
+- 핵심 문서 최적화 (CLAUDE.md, development-guide.md, settings.json)
+- 검증 도구 개발 (.moai/scripts/validate_claude_standards.py)
 
 ### Out of Scope
 
 - Claude Code 내부 API 수정 (외부 제어 불가)
-- 에이전트 실행 성능 최적화 (별도 SPEC에서 처리)
-- 다른 AI 플랫폼과의 호환성 (Claude Code 전용)
-- 에이전트 버전 관리 시스템 (초기 버전에서 제외)
+- 새로운 에이전트 개발 (기존 7개만 최적화)
+- Python 모듈 구조 변경 (Claude Code 파일만 대상)
+- 다른 AI 플랫폼 호환성 (Claude Code 전용)
 
 ## 기술 노트
 
 ### 구현 기술
 
-- **스키마 정의**: JSON Schema + OpenAPI 3.0 스타일
-- **에이전트 정의**: Markdown + YAML frontmatter
-- **검증 도구**: Python JSON 스키마 검증 라이브러리
-- **테스팅**: pytest 기반 에이전트 테스트 프레임워크
+- **파일 형식**: Markdown + YAML frontmatter
+- **검증 도구**: Python 스크립트 (YAML 파싱)
+- **테스팅**: pytest 기반 통합 테스트
+- **문서화**: Claude Code 공식 문서 준수
 
 ### 의존성
 
-- 기존 .claude/agents/moai/ 디렉토리 구조
+- 기존 .claude/ 디렉토리 구조
 - Claude Code 에이전트 실행 환경
-- JSON 처리 라이브러리 (Python 표준 라이브러리)
+- YAML 처리 라이브러리 (PyYAML)
+- 기존 MoAI-ADK 워크플로우
 
-### 아키텍처 고려사항
+### 아키텍처 원칙
 
-- 에이전트 간 느슨한 결합 (loose coupling) 유지
-- 에이전트 실행 격리 (각 에이전트는 독립적 실행)
-- 확장 가능한 스키마 설계 (미래 요구사항 대응)
+- **단일 진실의 원천**: cc-manager가 모든 표준의 중심
+- **점진적 마이그레이션**: 기존 파일을 단계적으로 최적화
+- **실용적 접근**: 과도한 추상화 없이 실제 사용 패턴 기반
+- **표준 강제**: cc-manager가 자동으로 표준 준수 검증
 
 ### 보안 고려사항
 
-- 에이전트 실행 권한 제한 및 검증
-- 사용자 입력 검증 및 살균 (sanitization)
-- 에이전트 간 데이터 전달 시 민감정보 보호
+- 최소 권한 원칙: 에이전트별 필요 도구만 허용
+- 입력 검증: 사용자 제공 템플릿 파라미터 검증
+- 파일 접근 제한: 민감한 파일(.env, secrets) 접근 차단
+- 권한 설정 최적화: settings.json 보안 강화
 
 ## 추적성
 
 ### 연결된 요구사항
 
-- @TASK:AGENT-GUIDE-001: 에이전트별 입력/출력 스키마 정의
-- @REQ:USER-001: 3차 사용자(생태계 확장자) 지원
-- @STRUCT:ARCHITECTURE-001: Claude Extensions 계층 표준화
+- @TASK:AGENT-GUIDE-001: 에이전트별 입력/출력 스키마 정의 → cc-manager 템플릿으로 해결
+- @REQ:USER-001: 3차 사용자(생태계 확장자) 지원 → 표준 템플릿 제공
+- @STRUCT:ARCHITECTURE-001: Claude Extensions 계층 표준화 → Claude Code 공식 구조 적용
 
 ### 구현 우선순위
 
-1. 기존 에이전트 스키마 정의 (High)
-2. 에이전트 간 호출 규칙 구현 (High)
-3. 사용자 정의 에이전트 템플릿 (Medium)
-4. 에이전트 검증 도구 (Medium)
+1. **cc-manager 강화** (High) - 중앙 관제탑 역할 확립
+2. **기존 파일 표준화** (High) - Claude Code 공식 구조 적용
+3. **검증 도구 개발** (Medium) - 자동화된 품질 관리
+4. **핵심 문서 최적화** (Medium) - 워크플로우 통합
 
 ### 테스트 전략
 
-- 단위 테스트: 각 에이전트별 스키마 검증 테스트
-- 통합 테스트: 에이전트 간 호출 시나리오 테스트
-- E2E 테스트: 사용자 정의 에이전트 개발 전체 시나리오
+- **단위 테스트**: 각 표준화 규칙별 검증 테스트
+- **통합 테스트**: cc-manager를 통한 파일 생성/수정 테스트
+- **E2E 테스트**: 전체 워크플로우 실행 테스트
 
-## 에이전트 표준 스키마 예시
+## 성공 지표
 
-### 입력 스키마 템플릿
+### 정량적 지표
 
-```json
-{
-  "type": "object",
-  "properties": {
-    "command": {
-      "type": "string",
-      "description": "에이전트 실행 명령"
-    },
-    "parameters": {
-      "type": "object",
-      "description": "에이전트별 파라미터"
-    },
-    "context": {
-      "type": "object",
-      "properties": {
-        "session_id": { "type": "string" },
-        "user_id": { "type": "string" },
-        "permissions": { "type": "array" }
-      }
-    }
-  },
-  "required": ["command", "context"]
-}
-```
+- Claude Code 표준 준수율: 100% (모든 커맨드/에이전트 파일)
+- 자동 검증 성공률: ≥95% (validate_claude_standards.py)
+- 파일 생성 시 표준 적용률: 100% (cc-manager 통해 생성 시)
 
-### 출력 스키마 템플릿
+### 정성적 지표
 
-```json
-{
-  "type": "object",
-  "properties": {
-    "status": {
-      "type": "string",
-      "enum": ["success", "failure", "partial_success"]
-    },
-    "data": {
-      "type": "object",
-      "description": "에이전트 실행 결과"
-    },
-    "errors": {
-      "type": "array",
-      "items": { "type": "string" }
-    },
-    "metadata": {
-      "type": "object",
-      "properties": {
-        "execution_time": { "type": "number" },
-        "resources_used": { "type": "object" }
-      }
-    }
-  },
-  "required": ["status"]
-}
-```
+- cc-manager 중심 워크플로우 확립
+- 표준 템플릿 기반 일관된 파일 구조
+- Claude Code 공식 문서와의 완전한 호환성
+- 유지보수성 및 확장성 향상
+
+## 다음 단계
+
+1. **TDD 구현**: Red-Green-Refactor 사이클로 구현
+2. **점진적 마이그레이션**: cc-manager 강화 → 파일 표준화 → 검증 도구
+3. **품질 검증**: 모든 변경사항에 대한 테스트 커버리지 확보
+4. **문서 동기화**: /moai:3-sync로 Living Document 업데이트
