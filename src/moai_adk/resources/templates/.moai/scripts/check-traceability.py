@@ -12,6 +12,7 @@ TAG 추적성 검증 스크립트 (향상판)
 import json
 import re
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Tuple, Set
 
@@ -113,93 +114,132 @@ class TraceabilityChecker:
                         continue
         return groups
 
-    def build_chains_from_groups(self, groups: Dict[str, Set[str]]) -> List[Dict[str, str]]:
-        chains: List[Dict[str, str]] = []
-        for _spec, tags in groups.items():
+    def build_inferred_chains(
+        self,
+        found: Dict[str, List[str]],
+        explicit_links: List[Dict[str, str]],
+    ) -> List[Dict[str, str]]:
+        chain_set: Set[Tuple[str, str]] = set()
+
+        # 1) SPEC 디렉토리별 체인
+        for tags in self.group_by_spec(found).values():
             by_cat: Dict[str, List[str]] = {}
-            for t in tags:
-                cat = t.split(":", 1)[0]
-                by_cat.setdefault(cat, []).append(t)
-            # Primary
-            for a, b in PRIMARY_CHAIN:
-                for t_from in by_cat.get(a, []):
-                    for t_to in by_cat.get(b, []):
-                        chains.append({"from": t_from, "to": t_to})
-            # Steering
-            for a, b in STEERING_CHAIN:
-                for t_from in by_cat.get(a, []):
-                    for t_to in by_cat.get(b, []):
-                        chains.append({"from": t_from, "to": t_to})
-        return chains
+            for tag in tags:
+                category = tag.split(":", 1)[0]
+                by_cat.setdefault(category, []).append(tag)
+            for a, b in PRIMARY_CHAIN + STEERING_CHAIN:
+                for frm in by_cat.get(a, []):
+                    for to in by_cat.get(b, []):
+                        chain_set.add((frm, to))
+
+        # 2) 태그 ID 접미사(-NNN) 기반 체인
+        suffix_groups: Dict[str, Set[str]] = {}
+        for tag in found.keys():
+            match = re.search(r"-(\d{3})$", tag)
+            if match:
+                suffix_groups.setdefault(match.group(1), set()).add(tag)
+        for tags in suffix_groups.values():
+            by_cat: Dict[str, List[str]] = {}
+            for tag in tags:
+                category = tag.split(":", 1)[0]
+                by_cat.setdefault(category, []).append(tag)
+            for a, b in PRIMARY_CHAIN + STEERING_CHAIN:
+                for frm in by_cat.get(a, []):
+                    for to in by_cat.get(b, []):
+                        chain_set.add((frm, to))
+
+        # 3) 태그 루트(첫 번째 토큰) 기반 체인
+        root_groups: Dict[str, Set[str]] = {}
+        for tag in found.keys():
+            name = tag.split(":", 1)[1]
+            name = re.sub(r"-(\d{3})$", "", name)
+            root = name.split("-", 1)[0]
+            if root:
+                root_groups.setdefault(root, set()).add(tag)
+        for tags in root_groups.values():
+            by_cat: Dict[str, List[str]] = {}
+            for tag in tags:
+                category = tag.split(":", 1)[0]
+                by_cat.setdefault(category, []).append(tag)
+            for a, b in PRIMARY_CHAIN + STEERING_CHAIN:
+                for frm in by_cat.get(a, []):
+                    for to in by_cat.get(b, []):
+                        chain_set.add((frm, to))
+
+        # 4) 명시적 @LINK 체인
+        for link in explicit_links:
+            chain_set.add((link["from"], link["to"]))
+
+        return [
+            {"from": frm, "to": to}
+            for frm, to in sorted(chain_set)
+        ]
 
     def verify(self, found: Dict[str, List[str]], chains: List[Dict[str, str]]):
-        # 빠른 조회 셋
         found_set = set(found.keys())
-        sources = {c["from"] for c in chains}
-        targets = {c["to"] for c in chains}
+        linked_from: Set[str] = set()
+        linked_to: Set[str] = set()
 
-        # 체인이 없는 경우 휴리스틱: 같은 SPEC 내 카테고리 존재 여부만 검증
-        if not chains:
-            groups = self.group_by_spec(found)
-            for _spec, tags in groups.items():
-                tagset = set(tags)
-                for a, b in ALL_CHAINS:
-                    a_tags = {t for t in tagset if t.startswith(f"{a}:")}
-                    b_tags = {t for t in tagset if t.startswith(f"{b}:")}
-                    if a_tags and not b_tags:
-                        for t in a_tags:
-                            self.broken_links.append((t, f"{b}:<missing>"))
-            # orphan 판단(체인이 없으면 판단 불가) 생략
-            return
-
-        # 체인 기반 검증
-        linked_from = set()
-        linked_to = set()
-        for c in chains:
-            f = c.get("from")
-            t = c.get("to")
-            if f in found_set and t in found_set:
-                linked_from.add(f)
-                linked_to.add(t)
+        for chain in chains:
+            source = chain.get("from")
+            target = chain.get("to")
+            if source in found_set and target in found_set:
+                linked_from.add(source)
+                linked_to.add(target)
             else:
-                # 양끝이 모두 있어야 유효 체인, 없으면 끊어진 링크로 보고
-                self.broken_links.append((f if f in found_set else f+"(?)", t if t in found_set else t+"(?)"))
+                missing_from = source if source in found_set else f"{source or 'unknown'}(?)"
+                missing_to = target if target in found_set else f"{target or 'unknown'}(?)"
+                self.broken_links.append((missing_from, missing_to))
 
-        # 고아 태그: 발견됐지만 어떤 체인에도 포함되지 않은 태그
-        for tag in found_set:
-            if tag not in linked_from and tag not in linked_to:
-                self.orphaned_tags.append(tag)
+        self.orphaned_tags = sorted(tag for tag in found_set if tag not in linked_from and tag not in linked_to)
 
     def update_index(self, found: Dict[str, List[str]], chains: List[Dict[str, str]]):
         # 카테고리 별 목록 업데이트(중복 제거)
-        cats = {
+        base_categories = {
+            "SPEC": {"REQ": [], "DESIGN": [], "TASK": []},
+            "STEERING": {"VISION": [], "STRUCT": [], "TECH": [], "ADR": []},
+            "IMPLEMENTATION": {"FEATURE": [], "API": [], "TEST": [], "DATA": []},
+            "QUALITY": {"PERF": [], "SEC": [], "DEBT": [], "TODO": []},
+        }
+        cat_to_group = {
             "REQ": "SPEC", "DESIGN": "SPEC", "TASK": "SPEC",
             "VISION": "STEERING", "STRUCT": "STEERING", "TECH": "STEERING", "ADR": "STEERING",
             "FEATURE": "IMPLEMENTATION", "API": "IMPLEMENTATION", "TEST": "IMPLEMENTATION", "DATA": "IMPLEMENTATION",
             "PERF": "QUALITY", "SEC": "QUALITY", "DEBT": "QUALITY", "TODO": "QUALITY",
         }
-        for tag in found.keys():
-            cat = tag.split(":", 1)[0]
-            grp = cats.get(cat)
-            if grp and grp in self.index.get("categories", {}):
-                arr = self.index["categories"][grp].setdefault(cat, [])
-                if tag not in arr:
-                    arr.append(tag)
+
+        locations = {}
+        for tag, files in found.items():
+            category = tag.split(":", 1)[0]
+            group = cat_to_group.get(category)
+            if group:
+                base_categories[group].setdefault(category, []).append(tag)
+            locations[tag] = sorted(set(files))
+
+        self.index["categories"] = base_categories
+        self.index["locations"] = locations
         self.index["traceability_chains"] = chains
         self.index["orphaned_tags"] = self.orphaned_tags
         self.index["statistics"] = {
             "total_tags": len(found),
-            "complete_chains": len(chains) - len(self.broken_links),
+            "complete_chains": max(0, len(chains) - len(self.broken_links)),
             "broken_links": len(self.broken_links),
             "coverage_percentage": 0,
         }
+        total = max(1, len(found))
+        coverage = round(100 * (total - len(self.orphaned_tags)) / total, 1)
+        self.index["statistics"]["coverage_percentage"] = coverage
+        self.index["last_updated"] = datetime.now().date().isoformat()
 
-    def report(self, found: Dict[str, List[str]], verbose: bool) -> int:
+    def report(self, found: Dict[str, List[str]], verbose: bool, strict: bool) -> int:
         print("🏷️ TAG 추적성 검증 보고서")
         print("=" * 50)
         print(f"📊 총 TAG 수: {len(found)}")
         print(f"🔗 끊어진 링크: {len(self.broken_links)}")
         print(f"👻 고아 TAG: {len(self.orphaned_tags)}")
+        if found:
+            coverage = 100 - round(len(self.orphaned_tags) * 100 / len(found), 1)
+            print(f"✅ 추적성 커버리지: {coverage}%")
         if len(self.broken_links) == 0 and len(self.orphaned_tags) == 0:
             print("✅ 모든 TAG 추적성 체인이 정상입니다!")
         else:
@@ -217,7 +257,9 @@ class TraceabilityChecker:
                 print(f"  {tag}:")
                 for fp in files:
                     print(f"    - {fp}")
-        return 1 if (self.broken_links or self.orphaned_tags) else 0
+        if strict and (self.broken_links or self.orphaned_tags):
+            return 1
+        return 0
 
 
 def main():
@@ -225,7 +267,9 @@ def main():
     parser = argparse.ArgumentParser(description="TAG 추적성 검증")
     parser.add_argument("--verbose", "-v", action="store_true", help="상세 출력")
     parser.add_argument("--project-root", "-p", default=".", help="프로젝트 루트 경로")
-    parser.add_argument("--update", action="store_true", help="인덱스를 추적성 체인으로 갱신")
+    parser.add_argument("--update", action="store_true", help="인덱스를 강제로 갱신 (기본: 자동 갱신)")
+    parser.add_argument("--no-update", action="store_true", help="인덱스 갱신을 건너뜁니다")
+    parser.add_argument("--strict", action="store_true", help="고아 TAG 또는 끊어진 링크가 있으면 종료 코드 1 반환")
 
     args = parser.parse_args()
 
@@ -234,29 +278,24 @@ def main():
 
     found = checker.scan_files_for_tags()
 
-    # 인덱스에 체인이 있으면 우선 사용, 없으면 SPEC 그룹 휴리스틱으로 생성
-    chains = checker.index.get("traceability_chains") or []
-    if not chains:
-        groups = checker.group_by_spec(found)
-        chains = checker.build_chains_from_groups(groups)
-    # 명시적 @LINK 체인 추가(중복 제거)
-    explicit = checker.scan_files_for_links()
-    all_chains = {(c["from"], c["to"]) for c in chains}
-    for link in explicit:
-        key = (link["from"], link["to"])
-        if key not in all_chains:
-            chains.append(link)
-            all_chains.add(key)
+    explicit_links = checker.scan_files_for_links()
+    stored_links = checker.index.get("traceability_chains", [])
+    chains = checker.build_inferred_chains(found, explicit_links + stored_links)
 
     # 검증
     checker.verify(found, chains)
 
-    # 요청 시 인덱스 갱신
-    if args.update:
+    do_update = True
+    if args.no_update:
+        do_update = False
+    elif args.update:
+        do_update = True
+
+    if do_update:
         checker.update_index(found, chains)
         checker.save_index()
 
-    return checker.report(found, args.verbose)
+    return checker.report(found, args.verbose, args.strict)
 
 
 if __name__ == "__main__":

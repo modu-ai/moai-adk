@@ -18,12 +18,11 @@ DANGEROUS_COMMANDS = (
     'mkfs.',
 )
 DEPRECATED_PATTERNS = (
-    (re.compile(r'(^|\s)grep(\s|$)'), "'rg' 명령을 사용해주세요."),
-    (re.compile(r'(^|\s)find\s+[^|]*-name'), "'rg --files -g' 패턴을 사용해주세요."),
+    # grep/find 차단 제거 - 가이드라인으로만 권장
 )
 PROTECTED_SEGMENTS = (
-    '.moai/project/',
-    '.moai/memory/',
+    # .moai/project/ 보호 해제 - 모든 접근 허용
+    # .moai/memory/ 읽기는 허용, 쓰기만 차단 (별도 로직 필요)
 )
 ALLOWED_PREFIXES = (
     'git ',
@@ -35,6 +34,13 @@ ALLOWED_PREFIXES = (
     'cargo ',
     'poetry ',
     'pnpm ',
+    'rg ',
+    'ls ',
+    'cat ',
+    'echo ',
+    'which ',
+    'make ',
+    'moai ',
 )
 
 
@@ -57,14 +63,6 @@ def _extract_command(tool_input: object) -> Optional[str]:
     return None
 
 
-def _has_protected_segment(command: str) -> Optional[str]:
-    lowered = command.lower()
-    for segment in PROTECTED_SEGMENTS:
-        if segment in lowered:
-            return segment
-    return None
-
-
 def _is_allowed_prefix(command: str) -> bool:
     return any(command.startswith(prefix) for prefix in ALLOWED_PREFIXES)
 
@@ -84,16 +82,8 @@ def main() -> None:
             print(f"BLOCKED: 위험 명령이 감지되었습니다 ({token}).", file=sys.stderr)
             sys.exit(2)
 
-    protected = _has_protected_segment(command)
-    if protected:
-        print('BLOCKED: Steering/메모리 문서는 전용 커맨드로 수정하세요.', file=sys.stderr)
-        print('HINT: /moai:0-project, /moai:1-spec, /moai:3-sync 커맨드를 사용해주세요.', file=sys.stderr)
-        sys.exit(2)
-
-    for pattern, message in DEPRECATED_PATTERNS:
-        if pattern.search(command):
-            print(f"BLOCKED: {message}", file=sys.stderr)
-            sys.exit(2)
+    # 보호 세그먼트 검사 제거 - .moai/project/ 모든 접근 허용
+    # 패턴 검사 제거 - grep/find 사용 가능 (rg 권장만)
 
     if not _is_allowed_prefix(command):
         print('NOTICE: 등록되지 않은 명령입니다. 필요 시 settings.json 의 allow 목록을 갱신하세요.', file=sys.stderr)

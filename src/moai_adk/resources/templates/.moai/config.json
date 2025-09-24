@@ -1,99 +1,76 @@
 {
-  "project": {
-    "name": "{{PROJECT_NAME}}",
-    "version": "0.1.0",
-    "description": "{{PROJECT_DESCRIPTION}}",
-    "language": "{{LANGUAGE}}",
-    "created": "{{CREATED_DATE}}",
-    "last_updated": "{{LAST_UPDATED}}"
+  "_meta": {
+    "@DATA:CONFIG-STRUCTURE-001": "@TECH:JSON-CONFIG-001",
+    "@REQ:PROJECT-CONFIG-001": "@DESIGN:MOAI-CONFIG-001"
   },
   "constitution": {
-    "version": "1.0",
+    "enforce_tdd": true,
     "principles": {
       "simplicity": {
-        "enabled": true,
-        "max_projects": 3,
-        "max_module_loc": 300,
-        "description": "프로젝트 복잡도 ≤ 3개, 모듈 ≤ 300 LOC"
-      },
-      "architecture": {
-        "enabled": true,
-        "library_first": true,
-        "plugin_system": true,
-        "description": "모든 기능은 라이브러리로, 플러그인 구조"
-      },
-      "testing": {
-        "enabled": true,
-        "tdd_enforced": false,
-        "min_coverage": 85,
-        "coverage_strict": false,
-        "red_green_refactor": true,
-        "allow_exceptions": true,
-        "description": "TDD 권장, 커버리지 85% 목표"
-      },
-      "observability": {
-        "enabled": true,
-        "structured_logging": true,
-        "tag_traceability": true,
-        "metrics_collection": true,
-        "description": "구조화 로깅, TAG 추적, 메트릭 수집"
-      },
-      "versioning": {
-        "enabled": true,
-        "semantic_versioning": true,
-        "auto_tagging": true,
-        "backward_compatibility": true,
-        "description": "시맨틱 버전, 자동 태깅, 하위 호환성"
+        "max_projects": 5,
+        "notes": "기본 권장값. 프로젝트 규모에 따라 .moai/config.json 또는 SPEC/ADR로 근거와 함께 조정하세요."
       }
-    }
-  },
-  "features": {
-    "priority": []
-  },
-  "tech_stack": {
-    "language": {
-      "{{DETECTED_LANGUAGE}}": "{{DETECTED_VERSION}}",
-      "target_version": "{{TARGET_VERSION}}"
     },
-    "core_dependencies": {},
-    "dev_tools": {
-      "current": {},
-      "upgrade_to": {}
+    "require_tags": true,
+    "simplicity_threshold": 5,
+    "test_coverage_target": 85
+  },
+  "git_strategy": {
+    "personal": {
+      "auto_checkpoint": true,
+      "auto_commit": true,
+      "branch_prefix": "feature/",
+      "checkpoint_interval": 300,
+      "cleanup_days": 7,
+      "max_checkpoints": 50
+    },
+    "team": {
+      "auto_pr": true,
+      "develop_branch": "develop",
+      "draft_pr": true,
+      "feature_prefix": "feature/SPEC-",
+      "main_branch": "main",
+      "use_gitflow": true
     }
   },
-  "languages": {
-    "language_neutral": true,
-    "supported": [
-      "python", "javascript", "typescript", "go", "rust", "java", "csharp", "cpp"
+  "pipeline": {
+    "available_commands": [
+      "/moai:0-project",
+      "/moai:1-spec",
+      "/moai:2-build",
+      "/moai:3-sync",
+      "/moai:4-debug"
     ],
-    "auto_detect": true
+    "current_stage": "initialized"
   },
-  "quality_gates": {
-    "test_coverage": 85,
-    "coverage_enforced": false,
-    "type_coverage": 90,
-    "complexity_max": 10,
-    "strict_mode": false,
-    "hotfix_exceptions": true,
-    "small_change_threshold": 10,
-    "build_time_reduction": 50,
-    "memory_reduction": 30,
-    "error_rate_target": 5,
-    "description": "품질 목표 - 엄격 모드가 아니면 권장사항"
+  "project": {
+    "created_at": "2024-09-24T05:10:00Z",
+    "description": "MoAI Agentic Development Kit",
+    "initialized": true,
+    "mode": "personal",
+    "name": "MoAI-ADK",
+    "version": "0.2.2"
   },
-  "tag_system": {
-    "version": "16-core",
-    "categories": {
-      "SPEC": ["REQ", "DESIGN", "TASK"],
-      "STEERING": ["VISION", "STRUCT", "TECH", "ADR"],
-      "IMPLEMENTATION": ["FEATURE", "API", "TEST", "DATA"],
-      "QUALITY": ["PERF", "SEC", "DEBT", "TODO"]
-    },
-    "naming_convention": "{CATEGORY}:{TOPIC}-{ID}",
-    "examples": [
-      "@REQ:USER-AUTH-001",
-      "@DESIGN:API-GATEWAY",
-      "@FEATURE:LOGIN-SYSTEM"
-    ]
+  "tags": {
+    "auto_sync": true,
+    "categories": [
+      "REQ",
+      "DESIGN",
+      "TASK",
+      "TEST",
+      "VISION",
+      "STRUCT",
+      "TECH",
+      "ADR",
+      "FEATURE",
+      "API",
+      "UI",
+      "DATA",
+      "PERF",
+      "SEC",
+      "DOCS",
+      "TAG"
+    ],
+    "index_path": ".moai/indexes/tags.json"
   }
 }

@@ -26,13 +26,68 @@
 /moai:3-sync
 ```
 
-## 핵심 에이전트
+## cc-manager 중앙 관제탑
 
-| 에이전트         | 역할           | 자동화 기능                         |
-| ---------------- | -------------- | ----------------------------------- |
-| **spec-builder** | EARS 명세 작성 | 브랜치/PR 생성을 지원(환경 의존)    |
-| **code-builder** | TDD 구현       | Red-Green-Refactor 커밋 패턴 권장   |
-| **doc-syncer**   | 문서 동기화    | PR 상태 전환/라벨링 지원(환경 의존) |
+**Claude Code 표준화의 핵심**: cc-manager는 MoAI-ADK의 모든 Claude Code 관련 작업을 중앙에서 관제합니다.
+
+### 🎯 중앙 관제탑 역할
+
+- **모든 파일 생성/수정의 중심**: 커맨드/에이전트 파일의 표준화된 생성과 검증
+- **표준 검증 자동화**: 실시간으로 Claude Code 표준 준수 여부 확인 및 수정 제안
+- **설정 최적화 관리**: permissions, hooks, tools 등의 최적 구성 제공
+- **완전한 지침 통합**: 외부 문서 참조 없이 모든 필요한 표준을 cc-manager.md에 포함
+
+### 핵심 에이전트
+
+### MoAI 핵심 5개 (워크플로우 에이전트)
+
+| 에이전트         | 역할             | 자동화 기능                         |
+| ---------------- | ---------------- | ----------------------------------- |
+| **spec-builder** | EARS 명세 작성   | 브랜치/PR 생성을 지원(환경 의존)    |
+| **code-builder** | TDD 구현         | Red-Green-Refactor 커밋 패턴 권장   |
+| **doc-syncer**   | 문서 동기화      | PR 상태 전환/라벨링 지원(환경 의존) |
+| **cc-manager**   | Claude Code 관리 | 설정 최적화/권한 문제 해결          |
+| **debug-helper** | 오류 진단        | 일반 오류 분석 + 개발 가이드 검사   |
+
+## 디버깅 시스템
+
+### `/moai:debug` 명령어
+
+- **일반 오류 디버깅**: `/moai:debug "오류내용"`
+- **개발 가이드 위반 검사**: `/moai:debug --constitution-check`
+- **진단 전문**: debug-helper 에이전트가 문제 분석과 해결책 제시
+- **위임 원칙**: 실제 수정은 해당 전담 에이전트(code-builder, git-manager 등)에게 위임
+
+## Git 작업 관리
+
+### 자동 Git 처리 (권장)
+
+모든 워크플로우 명령어에서 Git 작업이 자동으로 처리됩니다:
+
+- `/moai:1-spec`: spec-builder + git-manager (브랜치 생성, 커밋)
+- `/moai:2-build`: code-builder + git-manager (RED/GREEN/REFACTOR 커밋)
+- `/moai:3-sync`: doc-syncer + git-manager (문서 동기화, PR 관리)
+
+### 직접 Git 작업이 필요한 경우
+
+**방법 1: git-manager 에이전트 직접 호출**
+
+```
+@agent-git-manager "체크포인트 생성"
+@agent-git-manager "브랜치 생성: feature/new-feature"
+@agent-git-manager "개인 모드 롤백"
+```
+
+**방법 2: 표준 Git 명령어 사용**
+
+- 긴급상황이나 특수한 Git 작업이 필요한 경우만 사용
+- 일반적인 워크플로우에서는 권장하지 않음
+
+### Git 작업 원칙
+
+- **99% 케이스**: 워크플로우 명령어 사용 (자동 처리)
+- **1% 특수 케이스**: @agent-git-manager 직접 호출
+- **긴급상황**: 표준 git 명령어
 
 ## TDD 커밋 단계(권장 패턴)
 
@@ -89,17 +144,18 @@
 프로젝트/
 ├── .claude/               # Claude Code 설정
 │   ├── commands/moai/     # 커스텀 명령어
-│   ├── agents/moai/       # 에이전트 정의
+│   ├── agents/            # 에이전트 정의
+│   │   └── moai/          # MoAI 핵심 에이전트
 │   ├── hooks/moai/        # 자동화 훅
 │   ├── memory/            # 공유 메모리
 │   └── settings.json      # 권한 설정
 ├── .moai/                 # MoAI 시스템
 │   ├── project/           # 프로젝트 기본 문서 (product/structure/tech)
-│   ├── specs/             # SPEC 문서 (auto/manual)
-│   ├── memory/            # 개발 가이드 & 스택별 메모리
-│   ├── scripts/           # 검증 스크립트 & 도구
+│   ├── specs/             # SPEC 문서
+│   ├── memory/            # 개발 가이드 & 메모리 템플릿
+│   ├── scripts/           # 검증/자동화 스크립트
 │   └── config.json        # 설정
-└── CLAUDE.md              # 이 파일 (프로젝트/워크플로우 요약)
+└── CLAUDE.md              # 이 파일
 ```
 
 ## 코드 작성 규칙
@@ -130,17 +186,51 @@
 
 추가: 커버리지 목표는 프로젝트 설정에 따르며(예: 80~85%), 실제 수치는 측정 결과로만 보고한다.
 
+## 검색 명령어 권장사항
+
+MoAI-ADK에서는 효율적인 코드 검색을 위해 다음 가이드라인을 권장합니다:
+
+**권장 검색 도구**
+
+- **파일 내용 검색**: `rg` (ripgrep) 권장 - 빠르고 .gitignore 자동 준수
+- **파일 이름 검색**: `rg --files -g "패턴"` 권장
+- **정확한 패턴 매칭**: `rg -F "정확한문자열"` (고정 문자열 검색)
+
+**사용 가능한 기존 명령어**
+
+- `grep`, `find` 명령어도 여전히 사용 가능
+- 단, 성능과 편의성 측면에서 `rg` 사용을 권장
+- 복잡한 검색의 경우 Grep 도구 활용
+
+**예시**
+
+```bash
+# 권장: ripgrep 사용
+rg "function_name" --type py
+rg --files -g "*.md" | rg "TODO"
+
+# 사용 가능: 기존 명령어
+grep -r "pattern" src/
+find . -name "*.py" -exec grep "pattern" {} \;
+```
+
 ## 메모리 전략
 
-MoAI-ADK는 **TRUST 5원칙**을 핵심 메모리로 사용합니다:
+MoAI-ADK는 **TRUST 5원칙**과 **프로젝트 컨텍스트**를 핵심 메모리로 사용합니다:
+
+### 필수 메모리 파일들 (항상 로딩)
 
 - **MoAI 개발 가이드**: @.moai/memory/development-guide.md - TRUST 원칙 + 16-Core TAG 시스템
-- **프로젝트 가이드**: @CLAUDE.md - 워크플로우 + 에이전트 시스템
+- **프로젝트 컨텍스트**: moai/project/ 디렉토리 전체
+  - @.moai/project/product.md - 제품 정의 및 비즈니스 요구사항
+  - @.moai/project/structure.md - 아키텍처 및 구조 설계
+  - @.moai/project/tech.md - 기술 스택 및 개발 환경
 
-**원칙**:
+### 메모리 운영 원칙
 
 - TRUST 5원칙이 모든 개발 규칙을 정의
 - CLAUDE.md가 실행 가이드 역할
-- 핵심 지침만 메모리에 저장 (읽기 쉽은 원칙)
+- .moai/project/ 파일들이 프로젝트 컨텍스트 제공
+- 핵심 지침만 메모리에 저장 (읽기 쉬운 원칙)
 - 세부사항은 문서 링크로 참조
 - 민감정보 저장 금지

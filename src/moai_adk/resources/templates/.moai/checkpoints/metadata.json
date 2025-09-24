@@ -1,0 +1,87 @@
+{
+  "checkpoints": [
+    {
+      "id": "checkpoint_20250922_173213",
+      "timestamp": "2025-09-22T17:32:13.230676",
+      "branch": "develop",
+      "commit": "2309e8fa4c895365a118d88201b6bcfd091836ea",
+      "kind": "legacy",
+      "message": "Auto-generated checkpoint",
+      "files_changed": 13,
+      "mode": "personal"
+    },
+    {
+      "tag": "moai_cp/20250923_185102",
+      "commit_hash": "2ca43c46ceb47d33e622f9d45a21beb72de44200",
+      "message": "Commit: 🔧 Fix checkpoint watcher references and import pat",
+      "created_at": "2025-09-23T18:51:02.330129+00:00",
+      "file_count": 228,
+      "is_auto": true
+    },
+    {
+      "tag": "moai_cp/20250923_185753",
+      "commit_hash": "997db1d850e85e643fd1602fc2e713a7e91857f1",
+      "message": "Auto checkpoint",
+      "created_at": "2025-09-23T18:57:53.737848+00:00",
+      "file_count": 228,
+      "is_auto": true
+    },
+    {
+      "tag": "moai_cp/20250923_215110",
+      "commit_hash": "9d061b8dd1a067b3b917664a904876e4f65a70d8",
+      "message": "--message",
+      "created_at": "2025-09-23T21:51:10.585426+00:00",
+      "file_count": 261,
+      "is_auto": false
+    },
+    {
+      "tag": "moai_cp/20250924_035811",
+      "commit_hash": "c2554c20e2cfd7829688979f94ef1bb2b3338d10",
+      "message": "SPEC-003 RED 단계 완료",
+      "created_at": "2025-09-24T03:58:11.530642+00:00",
+      "file_count": 262,
+      "is_auto": false
+    },
+    {
+      "tag": "moai_cp/20250924_042246",
+      "commit_hash": "2be6e69e90bbd97c0a01a02a8b6c39d3ee2fcb24",
+      "message": "--message",
+      "created_at": "2025-09-24T04:22:46.354456+00:00",
+      "file_count": 269,
+      "is_auto": false
+    },
+    {
+      "tag": "moai_cp/20250924_045507",
+      "commit_hash": "8ea4bb5871cc13c966d49bba7df93eeca741b38e",
+      "message": "--message",
+      "created_at": "2025-09-24T04:55:07.341359+00:00",
+      "file_count": 267,
+      "is_auto": false
+    },
+    {
+      "tag": "moai_cp/20250924_051047",
+      "commit_hash": "de992cef31ff028ba6878bd195f73c017b09d1fd",
+      "message": "--message",
+      "created_at": "2025-09-24T05:10:47.943210+00:00",
+      "file_count": 274,
+      "is_auto": false
+    },
+    {
+      "tag": "moai_cp/20250924_052914",
+      "commit_hash": "a093c9ecdb9cc7aefecfed7c85b8dc9e77a0a426",
+      "message": "--message",
+      "created_at": "2025-09-24T05:29:14.597924+00:00",
+      "file_count": 274,
+      "is_auto": false
+    },
+    {
+      "tag": "moai_cp/20250924_144702",
+      "commit_hash": "b518080ec5b65666c20c9890eb9a0e77c51106aa",
+      "message": "--message",
+      "created_at": "2025-09-24T14:47:02.684535+09:00",
+      "file_count": 274,
+      "is_auto": false
+    }
+  ],
+  "rollback_history": []
+}

@@ -1,5 +1,8 @@
 {
-  "template_version": "{{TEMPLATE_VERSION}}",
-  "package_version": "{{PACKAGE_VERSION}}",
-  "last_updated": "{{LAST_UPDATED}}"
+  "_meta": {
+    "@DATA:VERSION-INFO-001": "@TECH:SEMANTIC-VERSIONING-001"
+  },
+  "last_updated": "2025-01-14T12:00:00.000000Z",
+  "package_version": "0.1.0",
+  "template_version": "0.1.0"
 }
