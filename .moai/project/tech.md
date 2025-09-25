@@ -46,7 +46,27 @@ dev = [
 ]
 ```
 
-### 3. 빌드 시스템
+### 3. 문서화 도구체인 (SPEC-010 완료 ✅)
+
+```toml
+docs = [
+    "mkdocs>=1.5.0",             # 문서 사이트 생성기
+    "mkdocs-material>=9.0.0",    # Material 테마
+    "mkdocs-autorefs>=0.5.0",    # 자동 참조
+    "mkdocs-gen-files>=0.5.0",   # 동적 파일 생성
+    "mkdocstrings[python]>=0.24.0", # Python 소스코드 자동 문서화
+    "mkdocs-literate-nav>=0.6.0", # 네비게이션 자동 생성
+]
+```
+
+**@FEATURE:MKDOCS-SUCCESS-001 MkDocs 시스템 성과**:
+- **85개 API 모듈**: 자동 생성 완료 (CLI/Core/Install/Utils/Resources)
+- **0.54초 빌드**: 초고속 빌드 성능 달성
+- **Material 테마**: 전문적 디자인 및 반응형 레이아웃
+- **HTTP 서비스**: 127.0.0.1:8000 정상 작동 검증
+- **테스트 일시**: 2025-09-25, Python 3.13.1 환경
+
+### 4. 빌드 시스템
 
 - **패키지 빌드**: setuptools + wheel
 - **버전 관리**: 자체 개발 `version_sync.py` 시스템

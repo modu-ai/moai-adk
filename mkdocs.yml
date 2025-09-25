@@ -1,23 +1,9 @@
-site_name: MoAI-ADK Documentation
-site_description: MoAI Agentic Development Kit Documentation
-site_url: https://docs.moai-adk.dev
-repo_url: https://github.com/modu-ai/moai-adk
-theme:
-  name: material
-  features:
-  - navigation.tabs
-  - navigation.sections
-  - navigation.expand
-  - navigation.top
-  - search.highlight
-  - search.share
-  palette:
-  - scheme: default
-    primary: blue
-    accent: blue
-    toggle:
-      icon: material/brightness-7
-      name: Switch to dark mode
+markdown_extensions:
+- admonition
+- codehilite
+- pymdownx.superfences
+- pymdownx.tabbed
+- toc
 nav:
 - Home: index.md
 - Getting Started:
@@ -28,11 +14,26 @@ nav:
   - Contributing: development/contributing.md
 - Examples:
   - Basic Usage: examples/basic.md
-markdown_extensions:
-- admonition
-- codehilite
-- pymdownx.superfences
-- pymdownx.tabbed
-- toc
+- API Reference: api/index.md
 plugins:
 - search
+repo_url: https://github.com/modu-ai/moai-adk
+site_description: MoAI Agentic Development Kit Documentation
+site_name: MoAI-ADK Documentation
+site_url: https://docs.moai-adk.dev
+theme:
+  features:
+  - navigation.tabs
+  - navigation.sections
+  - navigation.expand
+  - navigation.top
+  - search.highlight
+  - search.share
+  name: material
+  palette:
+  - accent: blue
+    primary: blue
+    scheme: default
+    toggle:
+      icon: material/brightness-7
+      name: Switch to dark mode
