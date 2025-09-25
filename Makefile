@@ -203,10 +203,36 @@ setup: permissions deps validate
 	@$(MAKE) build
 	@echo "✅ Development environment ready"
 
+# 크로스플랫폼 테스트
+test-cross-platform:
+	@echo "🌍 Running cross-platform compatibility test..."
+	@python3 scripts/cross_platform_test.py
+
+# 크로스플랫폼 패키지 검증
+test-package:
+	@echo "📦 Testing installed package functionality..."
+	@moai --version
+	@moai --help > /dev/null
+	@moai doctor > /dev/null
+	@echo "✅ Package tests passed"
+
+# 통합 도구 테스트
+test-tools:
+	@echo "🔧 Testing unified Python tools..."
+	@python3 scripts/version_manager.py status
+	@python3 scripts/test_runner.py --help > /dev/null
+	@python3 scripts/build.py --help > /dev/null
+	@echo "✅ Tool tests passed"
+
+# 전체 호환성 검증
+test-full-compatibility: test-package test-tools test-cross-platform
+	@echo "🎯 Full compatibility verification completed"
+
 # 프로덕션 배포 준비
 release: setup
 	@echo "🚀 Preparing for release..."
 	@$(MAKE) build-clean
 	@$(MAKE) test
 	@$(MAKE) validate
+	@$(MAKE) test-full-compatibility
 	@echo "✅ Ready for release"

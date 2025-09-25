@@ -71,6 +71,18 @@
       "DOCS",
       "TAG"
     ],
-    "index_path": ".moai/indexes/tags.json"
+    "index_path": ".moai/indexes/tags.json",
+    "backend": {
+      "type": "json",
+      "sqlite": {
+        "enabled": false,
+        "database_path": ".moai/indexes/tags.db",
+        "migration": {
+          "auto_migrate": false,
+          "backup_before_migration": true,
+          "performance_threshold": 1000
+        }
+      }
+    }
   }
 }

@@ -8,7 +8,8 @@
       "Read(//private/tmp/template-sync-test/clean-project/**)",
       "Read(//private/tmp/simple-template-test/minimal-project/**)",
       "Bash(mkdocs serve:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(docker:*)"
     ],
     "deny": [],
     "ask": [],

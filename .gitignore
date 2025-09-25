@@ -39,4 +39,12 @@ logs/
 .moai/checkpoints/snapshots/
 .moai/checkpoints/tmp/
 
+# SQLite test databases (auto-generated during tests)
+*.db
+*.db-shm
+*.db-wal
+migration_test.db*
+test_tags.db*
+**/indexes/*.db*
+
 my-docs/
