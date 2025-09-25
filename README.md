@@ -16,14 +16,27 @@
 
 ## 🚀 **0.1.9+ Complete Modernization Achievements**
 
-### ⚡ **Modern Toolchain Integration (10-100x Performance)**
+### ⚡ **Language-Neutral Development Framework**
 
-- **uv v0.8.22**: Package management **10-100x faster** than pip
-- **ruff v0.13.1**: Linting + formatting **100x faster** than flake8+black
-- **Performance Benchmarks**: 269 issues checked in 0.77s, formatting in 0.019s
-- **Parallel Execution**: make -j4 support for multi-core development
-- **mypy v1.18.2**: Enhanced type checking with modern configuration
-- **bandit v1.8.6**: Security scanning with zero-config setup
+MoAI-ADK는 **모든 프로그래밍 언어**를 지원하는 Claude Code 통합 개발 프레임워크입니다.
+프로젝트의 기술 스택을 자동 감지하고 각 언어별 최적의 도구를 제공합니다.
+
+**지원 언어 및 자동 도구 매핑**:
+- 🐍 **Python**: uv (10-100x faster) + ruff (100x faster) + pytest
+- 📜 **JavaScript/TypeScript**: pnpm + biome + vitest
+- 🦫 **Go**: go mod + golangci-lint + go test
+- 🦀 **Rust**: cargo + clippy + cargo test
+- ☕ **Java/Kotlin**: gradle + ktlint + junit
+- 🔷 **.NET**: dotnet + analyzers + xunit
+- 🎯 **Swift**: swift-format + SwiftLint + XCTest
+- 🎯 **Dart/Flutter**: dart format + flutter analyze + flutter test
+
+### 🛠️ **Auto-Detection & Optimization**
+
+- **Project Type Detection**: 파일 구조 분석으로 언어/프레임워크 자동 감지
+- **Optimal Toolchain**: 각 언어별 가장 빠르고 현대적인 도구 자동 설정
+- **Performance Benchmarks**: 269 issues in 0.77s, formatting in 0.019s (Python 기준)
+- **Cross-Platform**: Windows/macOS/Linux 완전 지원
 
 ### 🛠️ **TRUST Principles Compliance (87.6% Issue Reduction)**
 
@@ -77,27 +90,49 @@ MoAI-ADK는 Claude Code 환경에서 **/moai:0-project → /moai:3-sync** 4단�
 
 ## ⚙️ 설치 & 초기화
 
+### 🚀 Any Language, Optimal Setup
+
 ```bash
-# 패키지 설치
-pip install moai-adk
+# MoAI-ADK 설치 (Python required for CLI)
+pip install moai-adk         # 기존 pip 사용자
+uv pip install moai-adk      # 현대적 uv 사용자 (권장)
 
-# 새 프로젝트 (기본: personal)
-moai init my-personal-project
+# 새 프로젝트 초기화
+moai init my-project
+cd my-project
 
-# 팀 프로젝트
-mkdir team-project && cd team-project
-moai init --team
-
-# 모드 전환 / 확인
-moai config --mode team      # personal → team
-moai config --mode personal  # team → personal
-moai config --show
+# Claude Code에서 자동 설정 (Magic happens here! ✨)
+# /moai:0-project 실행 시:
+# → 프로젝트 언어/프레임워크 자동 감지
+# → 최적 도구체인 자동 설정
+# → 언어별 품질 게이트 자동 적용
 ```
 
-선택 의존성
+### 📋 사용 예시
 
-- 개인: `pip install watchdog` (자동 체크포인트 감시)
-- 팀: GitHub CLI(`gh`), Anthropic GitHub App (PR 자동화)
+```bash
+# Python 프로젝트
+moai init fastapi-project
+# → Python 감지 → uv + ruff + pytest 설정
+
+# TypeScript 프로젝트
+moai init next-app
+# → TypeScript 감지 → pnpm + biome + vitest 설정
+
+# Go 프로젝트
+moai init gin-api
+# → Go 감지 → go mod + golangci-lint 설정
+
+# 풀스택 프로젝트
+moai init fullstack-app
+# → backend/ (Python) + frontend/ (React) 자동 감지
+```
+
+### 🔧 선택적 도구
+
+- **Python**: `uv` 설치로 10-100배 빠른 패키지 관리
+- **Node.js**: `pnpm` 설치로 빠른 의존성 관리
+- **팀 협업**: GitHub CLI (`gh`) + Claude Code GitHub App
 
 ---
 
@@ -207,25 +242,58 @@ MoAI-ADK/
 
 ---
 
-## 🔧 개발 & 테스트 워크플로우
+## 🔧 개발 & 기여 워크플로우
+
+### 🛠️ MoAI-ADK 개발 참여
 
 ```bash
-# 개발 모드 설치
+# 개발 환경 구성
 git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk
-pip install -e .
 
-# 품질 도구
-ython -m pytest             # 테스트 실행
-make lint && make test      # 린트 + 테스트
-make build                  # 패키지 빌드
+# Python 개발 환경 (uv 권장)
+uv pip install -e .         # uv 사용자
+pip install -e .             # 기존 pip 사용자
+
+# 현대적 Python 도구 사용
+python scripts/build.py              # 통합 빌드 시스템
+python scripts/test_runner.py        # 크로스플랫폼 테스트 실행
+python scripts/version_manager.py status  # 버전 상태 확인
+
+# Makefile 단축 명령어 (내부적으로 Python 도구 사용)
+make build                   # Python 빌드 시스템 실행
+make test                    # Python 테스트 러너 실행
+make version-check           # 통합 버전 관리 시스템
 ```
 
-권장 자동화
+### 🌍 다국어 프로젝트에서 사용하기
 
+MoAI-ADK는 Python으로 작성되었지만, **모든 언어 프로젝트**에서 사용할 수 있습니다:
+
+```bash
+# 어떤 언어든 상관없이
+moai init my-awesome-project
+cd my-awesome-project
+
+# /moai:0-project 실행하면
+# → 자동으로 언어 감지 및 도구 설정
+# → Go면 go.mod, TypeScript면 tsconfig.json 등을 감지
+# → 해당 언어의 최적 도구체인 자동 구성
+```
+
+### 🔄 통합 개발 도구
+
+**새로운 크로스플랫폼 Python 도구**:
+- `python scripts/build.py` → 통합 빌드 자동화 (build.sh 대체)
+- `python scripts/test_runner.py` → 종합 테스트 실행 (run-tests.sh 대체)
+- `python scripts/version_manager.py` → 통합 버전 관리 시스템
+
+**MoAI 자동화 스크립트**:
+- `python .moai/scripts/detect_project_type.py` → 언어/프레임워크 자동 감지
 - `python .moai/scripts/doc_sync.py` → 최신 문서/상태 리포트 생성
-- `python .moai/scripts/checkpoint_watcher.py start` → 개인 모드 자동 체크포인트
 - `moai update --check` → 템플릿/스크립트 최신 상태 확인
+
+> **📢 Shell 스크립트 제거**: 크로스플랫폼 지원을 위해 모든 shell 스크립트를 Python으로 대체했습니다.
 
 ---
 
@@ -244,9 +312,10 @@ make build                  # 패키지 빌드
 
 **🎯 테스트 성과**: MkDocs Material 전문 사이트, HTTP 200 OK 정상 서비스, 25,842 bytes 홈페이지 생성
 
-### 📄 로컬 문서
+### 📄 로컬 문서 & 예제
 - [종합 개발 가이드](docs/MOAI-ADK-GUIDE.md)
-- [Documentation Index](docs/sections/index.md)
+- [SPEC 작성 예제](examples/specs/README.md) - EARS 형식 학습용
+- [언어별 설정 가이드](docs/languages/) - Python, JS/TS, Go, Rust 등
 - [Troubleshooting Guide](docs/MOAI-ADK-GUIDE.md#️-troubleshooting-guide)
 - [System Verification](docs/MOAI-ADK-GUIDE.md#-system-verification)
 
@@ -270,6 +339,21 @@ make build                  # 패키지 빌드
 
 ---
 
+---
+
 **🗿 "명세가 없으면 코드도 없다. 테스트가 없으면 구현도 없다."**
 
-**MoAI-ADK** | **Made with ❤️ for Claude Code Community**
+**MoAI-ADK** | **Universal Claude Code Development Framework for All Languages**
+
+---
+
+### 🌟 차별화 포인트
+
+- 🌍 **언어 중립**: Python부터 Rust까지 모든 언어 지원
+- ⚡ **최적 도구**: 각 언어별 가장 빠른 현대적 도구 자동 선택
+- 🤖 **Claude Code 완전 통합**: 전용 에이전트와 워크플로우 제공
+- 📊 **16-Core TAG 추적**: 요구사항부터 구현까지 완전한 추적성
+- 🔄 **Living Document**: 코드와 문서 자동 동기화
+- 🎯 **Spec-First TDD**: 체계적인 개발 프로세스 자동화
+
+**Made with ❤️ for Global Developers using Claude Code**

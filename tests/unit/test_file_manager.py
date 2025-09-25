@@ -318,7 +318,7 @@ class TestFileManager:
             "validate_stage.py",
             "check-secrets.py",
             "check-licenses.py",
-            "run-tests.sh",
+            # Note: run-tests.sh removed - use Python test_runner.py instead
         ]
 
         for script_file in script_files:
@@ -458,7 +458,7 @@ class TestFileManager:
         # Create template files
         (claude_dir / "hooks" / "moai" / "policy_block.py").write_text("# Policy hook")
         (claude_dir / "output-styles" / "expert.md").write_text("# Expert style for $project")
-        (file_manager.template_dir / "scripts" / "run-tests.sh").write_text("#!/bin/bash\necho Testing")
+        # Note: run-tests.sh removed - Python test_runner.py used instead
 
         # Mock security validation to return True
         file_manager.security_manager.validate_file_creation.return_value = True

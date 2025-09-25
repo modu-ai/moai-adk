@@ -231,7 +231,7 @@ class FileManager:
             "validate_tags.py",
             "check_constitution.py",
             "repair_tags.py",
-            "run-tests.sh",
+            # Note: run-tests.sh removed - use Python test_runner.py instead
         ]
 
         for script_name in verification_scripts:

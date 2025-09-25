@@ -6,27 +6,19 @@
 # 기본 타겟
 all: build
 
-# 빌드 (변경된 파일만 동기화)
+# 빌드 (새로운 Python 빌드 시스템)
 build:
-	@echo "🔨 Building MoAI-ADK..."
-	@echo "🔄 Auto-syncing versions..."
-	@python3 -m moai_adk.core.version_sync --verify
-	@python3 -m build
+	@echo "🔨 Building MoAI-ADK with unified build system..."
+	@python3 scripts/build.py
 
-# 강제 빌드 (모든 파일 동기화)
-build-force:
-	@echo "🔨 Force building MoAI-ADK..."
-	@echo "🔄 Force syncing all versions..."
-	@python3 -m moai_adk.core.version_sync
-	@python3 -m build
+# 강제 빌드 (버전 동기화 포함)
+build-force: version-sync build
 
 # 클린 빌드
 build-clean:
 	@echo "🧹 Clean building MoAI-ADK..."
 	@rm -rf dist/ build/ *.egg-info/
-	@echo "🔄 Clean sync all versions..."
-	@python3 -m moai_adk.core.version_sync
-	@python3 -m build
+	@python3 scripts/build.py
 
 # 빌드 상태 확인
 status:
@@ -60,7 +52,7 @@ install-auto:
 # 테스트 (전체 시스템)
 test:
 	@echo "🧪 Running comprehensive test suite..."
-	@./scripts/run-tests.sh
+	@python3 scripts/test_runner.py
 
 # Hook 시스템 테스트
 test-hooks:
@@ -81,39 +73,49 @@ test-quick:
 # 상세 테스트 (verbose)
 test-verbose:
 	@echo "🔍 Running verbose tests..."
-	@./scripts/run-tests.sh --verbose
+	@python3 scripts/test_runner.py --verbose
 
 # Coverage 테스트
 test-coverage:
 	@echo "📊 Running tests with coverage..."
-	@./scripts/run-tests.sh --coverage
+	@python3 scripts/test_runner.py --coverage
 
 # CI 테스트 (JUnit 포함)
 test-ci:
 	@echo "🤖 Running CI tests..."
-	@./scripts/run-tests.sh --junit --coverage
+	@python3 scripts/test_runner.py --junit --coverage
 
 # 버전 정보
 version:
 	@python3 -c "import sys; sys.path.insert(0, 'src'); from _version import get_version_format; print(get_version_format('banner'))"
 	@python3 --version
 
-# 새로운 버전 관리 시스템
+# 통합 버전 관리 시스템
 version-check:
 	@echo "🔍 버전 일관성 검사 중..."
-	@python3 scripts/check_version_consistency.py
+	@python3 scripts/version_manager.py check
 
 version-bump-patch:
 	@echo "📦 패치 버전 업데이트 중..."
-	@python3 scripts/bump_version.py patch
+	@python3 scripts/version_manager.py bump patch
 
 version-bump-minor:
 	@echo "📦 마이너 버전 업데이트 중..."
-	@python3 scripts/bump_version.py minor
+	@python3 scripts/version_manager.py bump minor
 
 version-bump-major:
 	@echo "📦 메이저 버전 업데이트 중..."
-	@python3 scripts/bump_version.py major
+	@python3 scripts/version_manager.py bump major
+
+# 버전 상태 확인
+version-status:
+	@echo "📊 버전 상태 확인 중..."
+	@python3 scripts/version_manager.py status
+
+# 버전 동기화
+version-sync:
+	@echo "🔄 버전 동기화 중..."
+	@python3 scripts/version_manager.py sync
 
 # 자동 설치 포함 버전 업데이트
 version-bump-patch-auto: version-bump-patch
@@ -128,32 +130,40 @@ version-bump-major-auto: version-bump-major
 	@echo "🔄 개발 모드 재설치 중..."
 	@pip install -e .
 
-# 레거시 호환성
-version-sync: version-check
-version-verify: version-check
+# 레거시 호환성 (제거됨 - 통합 시스템 사용)
+# version-sync, version-verify는 위에 새로운 구현으로 정의됨
 
 # 도움말
 help:
 	@echo "🗿 MoAI-ADK Build System Commands:"
 	@echo ""
-	@echo "Build Commands:"
-	@echo "  build         - Build (sync changed files only)"
-	@echo "  build-force   - Force build (sync all files)"  
+	@echo "Build Commands (Modern Python Tools):"
+	@echo "  build         - Build with unified Python build system"
+	@echo "  build-force   - Force build with version sync"
 	@echo "  build-clean   - Clean build (remove dist first)"
 	@echo "  status        - Check build status"
 	@echo "  clean         - Clean dist directory"
 	@echo ""
+	@echo "Testing (Cross-Platform Python):"
+	@echo "  test          - Comprehensive test suite (Python)"
+	@echo "  test-verbose  - Verbose test output"
+	@echo "  test-coverage - Tests with coverage report"
+	@echo "  test-ci       - CI tests (JUnit + coverage)"
+	@echo "  test-hooks    - Hook system tests"
+	@echo "  test-build    - Build system tests"
+	@echo ""
 	@echo "Development:"
 	@echo "  dev           - Development mode (watch for changes)"
-	@echo "  test          - Test Hook system"
 	@echo ""
 	@echo "Installation:"
 	@echo "  install       - Interactive installation"
 	@echo "  install-auto  - Automatic installation"
 	@echo ""
-	@echo "Version Management:"
+	@echo "Version Management (Unified System):"
 	@echo "  version              - Show current version info"
+	@echo "  version-status       - Show detailed version status"
 	@echo "  version-check        - Check version consistency"
+	@echo "  version-sync         - Synchronize all version files"
 	@echo "  version-bump-patch   - Bump patch version (0.1.9 → 0.1.10)"
 	@echo "  version-bump-minor   - Bump minor version (0.1.9 → 0.2.0)"
 	@echo "  version-bump-major   - Bump major version (0.1.9 → 1.0.0)"
