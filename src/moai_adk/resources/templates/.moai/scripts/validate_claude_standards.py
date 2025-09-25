@@ -4,6 +4,7 @@ Claude Code 표준 검증 도구
 MoAI-ADK cc-manager를 위한 표준 준수 검증 스크립트
 """
 
+import click
 import sys
 import os
 import json
@@ -261,14 +262,14 @@ def suggest_fixes(errors_found: List[str]) -> List[str]:
 def main():
     """메인 실행 함수"""
     if len(sys.argv) < 2:
-        print("Usage: python validate_claude_standards.py <path>")
-        print("  <path> can be a file or directory")
+        click.echo("Usage: python validate_claude_standards.py <path>")
+        click.echo("  <path> can be a file or directory")
         sys.exit(1)
 
     path = Path(sys.argv[1])
 
     if not path.exists():
-        print(f"Error: Path {path} does not exist")
+        click.echo(f"Error: Path {path} does not exist")
         sys.exit(1)
 
     total_files = 0
@@ -301,31 +302,31 @@ def main():
             is_valid, errors = validate_agent_structure(file_path)
             file_type = "Agent"
         else:
-            print(f"Skipping {relative_path} (not in commands or agents directory)")
+            click.echo(f"Skipping {relative_path} (not in commands or agents directory)")
             total_files -= 1
             continue
 
         if is_valid:
             valid_files += 1
-            print(f"✅ {file_type}: {relative_path}")
+            click.echo(f"✅ {file_type}: {relative_path}")
         else:
-            print(f"❌ {file_type}: {relative_path}")
+            click.echo(f"❌ {file_type}: {relative_path}")
             for error in errors:
-                print(f"   - {error}")
+                click.echo(f"   - {error}")
             errors_found.extend([f"{relative_path}: {error}" for error in errors])
 
-    print(f"\n📊 Validation Summary:")
-    print(f"   Total files checked: {total_files}")
-    print(f"   Valid files: {valid_files}")
-    print(f"   Files with errors: {total_files - valid_files}")
+    click.echo(f"\n📊 Validation Summary:")
+    click.echo(f"   Total files checked: {total_files}")
+    click.echo(f"   Valid files: {valid_files}")
+    click.echo(f"   Files with errors: {total_files - valid_files}")
 
     if errors_found:
-        print(f"\n🚨 Errors found:")
+        click.echo(f"\n🚨 Errors found:")
         for error in errors_found:
-            print(f"   - {error}")
+            click.echo(f"   - {error}")
         sys.exit(1)
     else:
-        print(f"\n🎉 All files pass validation!")
+        click.echo(f"\n🎉 All files pass validation!")
         sys.exit(0)
 
 

@@ -16,6 +16,8 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import click
+
 # 새로운 통합 시스템 import
 utils_path = str(Path(__file__).parent / "utils")
 if utils_path not in sys.path:
@@ -320,59 +322,59 @@ def main():
         if args.command == "status":
             result = helper.get_changed_files()
             if result["success"]:
-                print(f"\n변경된 파일 ({result['count']}개):")
-                print("-" * 60)
+                click.echo(f"\n변경된 파일 ({result['count']}개):")
+                click.echo("-" * 60)
                 for file in result["files"]:
                     status_symbol = {"added": "+", "modified": "M", "deleted": "-", "renamed": "R"}.get(file["type"], "?")
-                    print(f"  {status_symbol} {file['filename']} ({file['type']})")
+                    click.echo(f"  {status_symbol} {file['filename']} ({file['type']})")
 
                 if not result["has_changes"]:
-                    print("  변경사항이 없습니다")
+                    click.echo("  변경사항이 없습니다")
             else:
-                print(f"❌ 상태 조회 실패: {result['error']}")
+                click.echo(f"❌ 상태 조회 실패: {result['error']}")
 
         elif args.command == "commit":
             result = helper.create_constitution_commit(args.message, args.files)
             if result["success"]:
-                print(f"✅ 커밋 생성 완료: {result['commit_hash'][:8]}")
-                print(f"   메시지: {result['message']}")
-                print(f"   모드: {result['mode']}")
+                click.echo(f"✅ 커밋 생성 완료: {result['commit_hash'][:8]}")
+                click.echo(f"   메시지: {result['message']}")
+                click.echo(f"   모드: {result['mode']}")
                 if "validation" in result:
-                    print(f"   검증: {result['validation']['reason']}")
+                    click.echo(f"   검증: {result['validation']['reason']}")
             else:
-                print(f"❌ 커밋 실패: {result['error']}")
+                click.echo(f"❌ 커밋 실패: {result['error']}")
 
         elif args.command == "smart":
             result = helper.create_smart_commit(args.message, args.files)
             if result["success"]:
-                print(f"✅ 스마트 커밋 완료: {result['commit_hash'][:8]}")
-                print(f"   메시지: {result['message']}")
-                print(f"   변경 파일: {result['files_changed']}개")
-                print(f"   모드: {result['mode']}")
+                click.echo(f"✅ 스마트 커밋 완료: {result['commit_hash'][:8]}")
+                click.echo(f"   메시지: {result['message']}")
+                click.echo(f"   변경 파일: {result['files_changed']}개")
+                click.echo(f"   모드: {result['mode']}")
             else:
-                print(f"❌ 스마트 커밋 실패: {result['error']}")
+                click.echo(f"❌ 스마트 커밋 실패: {result['error']}")
 
         elif args.command == "suggest":
             result = helper.suggest_commit_message(args.context)
             if result["success"]:
-                print(f"\n커밋 메시지 제안 (변경 파일: {result['files_changed']}개):")
-                print("-" * 60)
+                click.echo(f"\n커밋 메시지 제안 (변경 파일: {result['files_changed']}개):")
+                click.echo("-" * 60)
                 for i, suggestion in enumerate(result["suggestions"], 1):
                     confidence_bar = "★" * int(suggestion["confidence"] * 5)
-                    print(f"{i}. {suggestion['message']}")
-                    print(f"   유형: {suggestion['type']}, 신뢰도: {confidence_bar} ({suggestion['confidence']:.1f})")
-                    print()
+                    click.echo(f"{i}. {suggestion['message']}")
+                    click.echo(f"   유형: {suggestion['type']}, 신뢰도: {confidence_bar} ({suggestion['confidence']:.1f})")
+                    click.echo()
 
-                print("변경사항 요약:")
+                click.echo("변경사항 요약:")
                 summary = result["change_summary"]
                 for change_type, count in summary.items():
                     if count > 0:
-                        print(f"  {change_type}: {count}개")
+                        click.echo(f"  {change_type}: {count}개")
             else:
-                print(f"❌ 제안 실패: {result['error']}")
+                click.echo(f"❌ 제안 실패: {result['error']}")
 
     except Exception as e:
-        print(f"❌ 오류 발생: {e}")
+        click.echo(f"❌ 오류 발생: {e}")
 
 
 if __name__ == "__main__":

@@ -10,6 +10,8 @@ import os
 import sys
 from typing import List, Tuple
 
+import click
+
 # Version management integration
 try:
     from .._version import __version__, get_version
@@ -17,8 +19,8 @@ except ImportError:
     try:
         from moai_adk._version import __version__, get_version
     except ImportError:
-        __version__ = "0.1.0"
-        def get_version(component="moai_adk"): return "0.1.0"
+        __version__ = "0.1.9"
+        def get_version(component="moai_adk"): return "0.1.9"
 
 
 # Color constants for gradient effect
@@ -153,7 +155,7 @@ def create_banner(version: str = None, show_usage: bool = False) -> str:
 
 def print_banner(version: str = None) -> None:
     """Print the MoAI-ADK banner to stdout."""
-    print(create_banner(version))
+    click.echo(create_banner(version))
 
 
 if __name__ == "__main__":

@@ -255,7 +255,8 @@ class ResourceManager:
 
     def copy_moai_resources(self, project_path: Path,
                            overwrite: bool = False,
-                           exclude_templates: bool = False) -> List[Path]:
+                           exclude_templates: bool = False,
+                           project_context: Optional[Dict[str, str]] = None) -> List[Path]:
         """
         MoAI 관련 리소스를 프로젝트에 복사
 
@@ -263,6 +264,7 @@ class ResourceManager:
             project_path: 프로젝트 경로
             overwrite: 기존 파일 덮어쓰기 여부
             exclude_templates: 템플릿 디렉토리 제외 여부
+            project_context: 템플릿 변수 치환용 컨텍스트
 
         Returns:
             List[Path]: 복사된 파일 경로들
@@ -288,6 +290,10 @@ class ResourceManager:
                 logger.info(f"Successfully installed {resource}")
             else:
                 logger.error(f"Failed to install {resource}")
+
+        # 템플릿 변수 치환 수행
+        if project_context and copied_files:
+            self._apply_project_context(copied_files, project_context)
 
         logger.info(f"MoAI resources installation completed. {len(copied_files)} resources installed.")
         return copied_files
@@ -511,3 +517,53 @@ class ResourceManager:
         except Exception as e:
             logger.error(f"Failed to validate clean installation at {target_path}: {e}")
             return False
+
+    def _apply_project_context(self, copied_paths: List[Path], project_context: Dict[str, str]) -> None:
+        """
+        복사된 파일들에 프로젝트 컨텍스트 변수를 치환합니다.
+
+        Args:
+            copied_paths: 복사된 파일 경로들
+            project_context: 치환할 변수들 (예: PROJECT_NAME, PROJECT_DESCRIPTION 등)
+        """
+        try:
+            template_files = [
+                'config.json',
+                'project/product.md',
+                'project/structure.md',
+                'project/tech.md'
+            ]
+
+            for base_path in copied_paths:
+                if not base_path.is_dir():
+                    continue
+
+                for template_file in template_files:
+                    file_path = base_path / template_file
+                    if file_path.exists() and file_path.is_file():
+                        self._substitute_template_variables(file_path, project_context)
+
+        except Exception as e:
+            logger.warning(f"Failed to apply project context: {e}")
+
+    def _substitute_template_variables(self, file_path: Path, context: Dict[str, str]) -> None:
+        """
+        단일 파일의 템플릿 변수를 치환합니다.
+
+        Args:
+            file_path: 치환할 파일 경로
+            context: 치환 변수들
+        """
+        try:
+            content = file_path.read_text(encoding='utf-8')
+
+            # 더 안전한 템플릿 치환을 위해 정확한 패턴만 치환
+            for key, value in context.items():
+                pattern = "{{" + key + "}}"
+                content = content.replace(pattern, value)
+
+            file_path.write_text(content, encoding='utf-8')
+            logger.debug(f"Template variables substituted in {file_path}")
+
+        except Exception as e:
+            logger.warning(f"Failed to substitute template variables in {file_path}: {e}")

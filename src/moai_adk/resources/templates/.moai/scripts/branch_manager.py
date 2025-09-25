@@ -16,6 +16,8 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import click
+
 # 새로운 통합 시스템 import
 sys.path.append(str(Path(__file__).parent / "utils"))
 from git_workflow import GitWorkflow, GitWorkflowError
@@ -218,79 +220,79 @@ def main():
                 result = manager.create_hotfix_branch(args.name)
 
             if result["success"]:
-                print(f"✅ {args.type} 브랜치 생성 완료: {result['branch_name']}")
-                print(f"   모드: {result['mode']}")
+                click.echo(f"✅ {args.type} 브랜치 생성 완료: {result['branch_name']}")
+                click.echo(f"   모드: {result['mode']}")
             else:
-                print(f"❌ 브랜치 생성 실패: {result['error']}")
+                click.echo(f"❌ 브랜치 생성 실패: {result['error']}")
 
         elif args.command == "list":
             result = manager.list_branches()
             if result["success"]:
-                print(f"\n브랜치 목록 ({result['total_count']}개):")
-                print("-" * 60)
+                click.echo(f"\n브랜치 목록 ({result['total_count']}개):")
+                click.echo("-" * 60)
                 for branch in result["branches"]:
                     marker = "* " if branch["is_current"] else "  "
                     type_marker = f"[{branch['type']}]" if branch['type'] != 'other' else ""
-                    print(f"{marker}{branch['name']} {type_marker}")
-                print(f"\n현재 브랜치: {result['current_branch']}")
+                    click.echo(f"{marker}{branch['name']} {type_marker}")
+                click.echo(f"\n현재 브랜치: {result['current_branch']}")
             else:
-                print(f"❌ 브랜치 목록 조회 실패: {result['error']}")
+                click.echo(f"❌ 브랜치 목록 조회 실패: {result['error']}")
 
         elif args.command == "switch":
             result = manager.switch_branch(args.branch)
             if result["success"]:
-                print(f"✅ 브랜치 전환 완료: {result['current_branch']}")
-                print(f"   모드: {result['mode']}")
+                click.echo(f"✅ 브랜치 전환 완료: {result['current_branch']}")
+                click.echo(f"   모드: {result['mode']}")
             else:
-                print(f"❌ 브랜치 전환 실패: {result['error']}")
+                click.echo(f"❌ 브랜치 전환 실패: {result['error']}")
 
         elif args.command == "delete":
             result = manager.delete_branch(args.branch, args.force)
             if result["success"]:
                 force_marker = " (강제)" if result["force"] else ""
-                print(f"✅ 브랜치 삭제 완료: {result['deleted_branch']}{force_marker}")
+                click.echo(f"✅ 브랜치 삭제 완료: {result['deleted_branch']}{force_marker}")
             else:
-                print(f"❌ 브랜치 삭제 실패: {result['error']}")
+                click.echo(f"❌ 브랜치 삭제 실패: {result['error']}")
 
         elif args.command == "status":
             result = manager.get_branch_status()
             if "error" not in result:
-                print(f"📋 브랜치 상태:")
-                print(f"   현재 브랜치: {result['current_branch']}")
-                print(f"   관리 모드: {result['manager_mode']}")
-                print(f"   변경사항: {'있음' if result['has_uncommitted_changes'] else '없음'}")
-                print(f"   원격 저장소: {'연결됨' if result['has_remote'] else '없음'}")
-                print(f"   작업 트리: {'깨끗함' if result['clean_working_tree'] else '수정됨'}")
+                click.echo(f"📋 브랜치 상태:")
+                click.echo(f"   현재 브랜치: {result['current_branch']}")
+                click.echo(f"   관리 모드: {result['manager_mode']}")
+                click.echo(f"   변경사항: {'있음' if result['has_uncommitted_changes'] else '없음'}")
+                click.echo(f"   원격 저장소: {'연결됨' if result['has_remote'] else '없음'}")
+                click.echo(f"   작업 트리: {'깨끗함' if result['clean_working_tree'] else '수정됨'}")
             else:
-                print(f"❌ 상태 조회 실패: {result['error']}")
+                click.echo(f"❌ 상태 조회 실패: {result['error']}")
 
         elif args.command == "cleanup":
             dry_run = not args.execute
             result = manager.cleanup_merged_branches(dry_run)
             if result["success"]:
                 if result["count"] > 0:
-                    print(f"{'🔍 발견된' if dry_run else '✅ 정리된'} 병합 브랜치 ({result['count']}개):")
+                    click.echo(f"{'🔍 발견된' if dry_run else '✅ 정리된'} 병합 브랜치 ({result['count']}개):")
                     for branch in result["merged_branches"]:
-                        print(f"  - {branch}")
+                        click.echo(f"  - {branch}")
                     if dry_run:
-                        print("\n실제 삭제하려면 --execute 옵션을 사용하세요")
+                        click.echo("\n실제 삭제하려면 --execute 옵션을 사용하세요")
                 else:
-                    print("🎉 정리할 병합 브랜치가 없습니다")
+                    click.echo("🎉 정리할 병합 브랜치가 없습니다")
             else:
-                print(f"❌ 브랜치 정리 실패: {result['error']}")
+                click.echo(f"❌ 브랜치 정리 실패: {result['error']}")
 
         elif args.command == "sync":
             push = not args.no_push
             result = manager.sync_branch(push)
             if result["success"]:
                 sync_type = "푸시 포함 동기화" if push else "풀만 실행"
-                print(f"✅ {sync_type} 완료: {result['branch']}")
-                print(f"   모드: {result['mode']}")
+                click.echo(f"✅ {sync_type} 완료: {result['branch']}")
+                click.echo(f"   모드: {result['mode']}")
             else:
-                print(f"❌ 동기화 실패: {result['error']}")
+                click.echo(f"❌ 동기화 실패: {result['error']}")
 
     except Exception as e:
-        print(f"❌ 오류 발생: {e}")
+        click.echo(f"❌ 오류 발생: {e}")
 
 
 if __name__ == "__main__":

@@ -9,9 +9,15 @@ import sys
 import subprocess
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+
+import click
 from colorama import Fore, Style
 
+from ..utils.logger import get_logger
+
 # Note: global_installer removed in favor of package-based resources
+
+logger = get_logger(__name__)
 
 
 def validate_python_version(min_version: Tuple[int, int] = (3, 8)) -> bool:
@@ -26,7 +32,8 @@ def validate_python_version(min_version: Tuple[int, int] = (3, 8)) -> bool:
     """
     current = sys.version_info[:2]
     if current < min_version:
-        print(f"{Fore.RED}❌ Python {min_version[0]}.{min_version[1]}+ required, "
+        logger.error(f"Python {min_version[0]}.{min_version[1]}+ required, got {version.major}.{version.minor}")
+        click.echo(f"{Fore.RED}❌ Python {min_version[0]}.{min_version[1]}+ required, "
               f"found {current[0]}.{current[1]}{Style.RESET_ALL}")
         return False
     return True
@@ -49,10 +56,12 @@ def validate_claude_code() -> bool:
         if result.returncode == 0:
             return True
         else:
-            print(f"{Fore.YELLOW}⚠️  Claude Code not found or not properly configured{Style.RESET_ALL}")
+            logger.warning("Claude Code not found or not properly configured")
+            click.echo(f"{Fore.YELLOW}⚠️  Claude Code not found or not properly configured{Style.RESET_ALL}")
             return False
     except (subprocess.TimeoutExpired, FileNotFoundError):
-        print(f"{Fore.YELLOW}⚠️  Claude Code not found in PATH{Style.RESET_ALL}")
+        logger.warning("Claude Code not found in PATH")
+        click.echo(f"{Fore.YELLOW}⚠️  Claude Code not found in PATH{Style.RESET_ALL}")
         return False
 
 
@@ -128,26 +137,31 @@ def validate_environment() -> bool:
     """
     all_valid = True
 
-    print(f"{Fore.BLUE}🔍 Validating environment...{Style.RESET_ALL}")
+    logger.info("Starting environment validation")
+    click.echo(f"{Fore.BLUE}🔍 Validating environment...{Style.RESET_ALL}")
 
     # Python version
     if not validate_python_version():
         all_valid = False
     else:
         version = sys.version_info
-        print(f"{Fore.GREEN}✅ Python {version.major}.{version.minor}.{version.micro}{Style.RESET_ALL}")
+        logger.info(f"Python version validated: {version.major}.{version.minor}.{version.micro}")
+        click.echo(f"{Fore.GREEN}✅ Python {version.major}.{version.minor}.{version.micro}{Style.RESET_ALL}")
 
     # Global resources validation
     if not validate_global_resources():
         all_valid = False
     else:
-        print(f"{Fore.GREEN}✅ MoAI-ADK global resources available{Style.RESET_ALL}")
+        logger.info("MoAI-ADK global resources validated")
+        click.echo(f"{Fore.GREEN}✅ MoAI-ADK global resources available{Style.RESET_ALL}")
 
     # Claude Code availability
     if not validate_claude_code():
-        print(f"{Fore.YELLOW}⚠️  Claude Code validation skipped (not required for installation){Style.RESET_ALL}")
+        logger.info("Claude Code validation skipped (not required for installation)")
+        click.echo(f"{Fore.YELLOW}⚠️  Claude Code validation skipped (not required for installation){Style.RESET_ALL}")
     else:
-        print(f"{Fore.GREEN}✅ Claude Code available{Style.RESET_ALL}")
+        logger.info("Claude Code available")
+        click.echo(f"{Fore.GREEN}✅ Claude Code available{Style.RESET_ALL}")
 
     return all_valid
 
@@ -163,21 +177,25 @@ def validate_project_readiness(project_path: Path) -> bool:
         True if project is ready, False otherwise
     """
     if not project_path.exists():
-        print(f"{Fore.RED}❌ Project path does not exist: {project_path}{Style.RESET_ALL}")
+        logger.error(f"Project path does not exist: {project_path}")
+        click.echo(f"{Fore.RED}❌ Project path does not exist: {project_path}{Style.RESET_ALL}")
         return False
     
     if not project_path.is_dir():
-        print(f"{Fore.RED}❌ Project path is not a directory: {project_path}{Style.RESET_ALL}")
+        logger.error(f"Project path is not a directory: {project_path}")
+        click.echo(f"{Fore.RED}❌ Project path is not a directory: {project_path}{Style.RESET_ALL}")
         return False
     
     # Check if it's already a MoAI-ADK project
     claude_dir = project_path / ".claude"
     if claude_dir.exists():
-        print(f"{Fore.YELLOW}⚠️  Claude Code configuration already exists{Style.RESET_ALL}")
-        
+        logger.warning("Claude Code configuration already exists")
+        click.echo(f"{Fore.YELLOW}⚠️  Claude Code configuration already exists{Style.RESET_ALL}")
+
         structure = validate_project_structure(project_path)
         if structure["moai_hooks"]:
-            print(f"{Fore.YELLOW}⚠️  MoAI-ADK already initialized in this project{Style.RESET_ALL}")
+            logger.warning("MoAI-ADK already initialized in this project")
+            click.echo(f"{Fore.YELLOW}⚠️  MoAI-ADK already initialized in this project{Style.RESET_ALL}")
             return False
     
     return True
@@ -456,8 +474,9 @@ def run_full_validation(project_path: Path, verbose: bool = False) -> Dict[str, 
         Complete validation results
     """
     if verbose:
-        print(f"\n{Fore.CYAN}🗿 MoAI-ADK 프로젝트 검증 시작{Style.RESET_ALL}")
-        print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        logger.info("MoAI-ADK 프로젝트 검증 시작")
+        click.echo(f"\n{Fore.CYAN}🗿 MoAI-ADK 프로젝트 검증 시작{Style.RESET_ALL}")
+        click.echo("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
     
     results = {
         "environment": validate_environment() if verbose else True,
@@ -467,25 +486,29 @@ def run_full_validation(project_path: Path, verbose: bool = False) -> Dict[str, 
     }
     
     if verbose:
-        print(f"\n{Fore.BLUE}📊 검증 결과 요약:{Style.RESET_ALL}")
-        
+        logger.info("검증 결과 요약 출력")
+        click.echo(f"\n{Fore.BLUE}📊 검증 결과 요약:{Style.RESET_ALL}")
+
         # Structure results
         structure = results["moai_structure"]
         structure_score = sum(structure.values()) / len(structure) * 100
-        print(f"  • MoAI 구조 완성도: {structure_score:.1f}%")
-        
+        click.echo(f"  • MoAI 구조 완성도: {structure_score:.1f}%")
+
         # 개발 가이드 compliance
         constitution = results["trust_principles_compliance"]
         compliant_count = sum(1 for p in constitution.values() if p["compliant"])
-        print(f"  • 개발 가이드 준수: {compliant_count}/5 원칙")
-        
+        click.echo(f"  • 개발 가이드 준수: {compliant_count}/5 원칙")
+
         # Overall health
         if structure_score >= 80 and compliant_count >= 4:
-            print(f"{Fore.GREEN}  ✅ 전체 상태: 우수{Style.RESET_ALL}")
+            logger.info(f"전체 상태: 우수 (구조: {structure_score:.1f}%, 준수: {compliant_count}/5)")
+            click.echo(f"{Fore.GREEN}  ✅ 전체 상태: 우수{Style.RESET_ALL}")
         elif structure_score >= 60 and compliant_count >= 3:
-            print(f"{Fore.YELLOW}  ⚠️  전체 상태: 양호 (개선 권장){Style.RESET_ALL}")
+            logger.warning(f"전체 상태: 양호 (구조: {structure_score:.1f}%, 준수: {compliant_count}/5) - 개선 권장")
+            click.echo(f"{Fore.YELLOW}  ⚠️  전체 상태: 양호 (개선 권장){Style.RESET_ALL}")
         else:
-            print(f"{Fore.RED}  ❌ 전체 상태: 문제 (수정 필요){Style.RESET_ALL}")
+            logger.error(f"전체 상태: 문제 (구조: {structure_score:.1f}%, 준수: {compliant_count}/5) - 수정 필요")
+            click.echo(f"{Fore.RED}  ❌ 전체 상태: 문제 (수정 필요){Style.RESET_ALL}")
 
     return results
 
@@ -498,12 +521,15 @@ def validate_global_resources() -> bool:
         bool: True if global resources are available, False otherwise
     """
     try:
-        print(f"{Fore.BLUE}🔍 Checking MoAI-ADK global resources...{Style.RESET_ALL}")
+        logger.info("Checking MoAI-ADK global resources")
+        click.echo(f"{Fore.BLUE}🔍 Checking MoAI-ADK global resources...{Style.RESET_ALL}")
 
         # Note: Resources are now embedded in package - no separate installation needed
-        print(f"{Fore.GREEN}✅ Resources are embedded in the package{Style.RESET_ALL}")
+        logger.info("Resources are embedded in the package")
+        click.echo(f"{Fore.GREEN}✅ Resources are embedded in the package{Style.RESET_ALL}")
         return True
 
     except Exception as error:
-        print(f"{Fore.RED}❌ Error checking global resources: {error}{Style.RESET_ALL}")
+        logger.error(f"Error checking global resources: {error}")
+        click.echo(f"{Fore.RED}❌ Error checking global resources: {error}{Style.RESET_ALL}")
         return False

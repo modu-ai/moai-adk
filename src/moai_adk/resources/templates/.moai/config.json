@@ -44,12 +44,12 @@
     "current_stage": "initialized"
   },
   "project": {
-    "created_at": "2024-09-24T05:10:00Z",
-    "description": "MoAI Agentic Development Kit",
+    "created_at": "{{CREATION_TIMESTAMP}}",
+    "description": "{{PROJECT_DESCRIPTION}}",
     "initialized": true,
     "mode": "personal",
-    "name": "MoAI-ADK",
-    "version": "0.1.9"
+    "name": "{{PROJECT_NAME}}",
+    "version": "{{PROJECT_VERSION}}"
   },
   "tags": {
     "auto_sync": true,

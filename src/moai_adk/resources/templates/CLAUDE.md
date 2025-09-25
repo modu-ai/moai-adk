@@ -1,4 +1,4 @@
-# MoAI-ADK (MoAI Agentic Development Kit)
+# [PROJECT_NAME] - MoAI Agentic Development Kit
 
 **Spec-First TDD 개발 가이드**
 

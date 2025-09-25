@@ -8,6 +8,7 @@ MoAI-ADK의 TRUST 5원칙 준수 여부를 자동 검증합니다.
 - --strict: 기존 엄격 기준 유지(파일 수/커버리지 비율 기반 등)
 """
 
+import click
 import json
 import sys
 from pathlib import Path
@@ -24,7 +25,7 @@ class TrustPrinciplesChecker:
     def load_config(self) -> Dict:
         """프로젝트 설정 로드"""
         if not self.config_path.exists():
-            print(f"❌ 설정 파일을 찾을 수 없습니다: {self.config_path}")
+            click.echo(f"❌ 설정 파일을 찾을 수 없습니다: {self.config_path}")
             return {}
 
         with open(self.config_path, 'r', encoding='utf-8') as f:
@@ -204,37 +205,37 @@ class TrustPrinciplesChecker:
         passed = 0
         total = len(checks)
 
-        print("🏛️ 개발 가이드 5원칙 검증")
-        print("=" * 50)
+        click.echo("🏛️ 개발 가이드 5원칙 검증")
+        click.echo("=" * 50)
 
         for principle, check_func in checks:
             try:
                 result = check_func()
                 if result:
-                    print(f"✅ {principle}: 통과")
+                    click.echo(f"✅ {principle}: 통과")
                     passed += 1
                 else:
-                    print(f"❌ {principle}: 위반")
+                    click.echo(f"❌ {principle}: 위반")
             except Exception as e:
-                print(f"⚠️ {principle}: 검증 실패 - {e}")
+                click.echo(f"⚠️ {principle}: 검증 실패 - {e}")
 
         return passed, total
 
     def generate_report(self, passed: int, total: int) -> int:
         """검증 결과 보고서 생성"""
-        print(f"\n📊 검증 결과: {passed}/{total} 통과")
+        click.echo(f"\n📊 검증 결과: {passed}/{total} 통과")
 
         if len(self.violations) == 0:
-            print("🎉 모든 개발 가이드 원칙을 준수합니다!")
+            click.echo("🎉 모든 개발 가이드 원칙을 준수합니다!")
             return 0
 
-        print("\n🔴 위반 사항 및 권장 조치:")
+        click.echo("\n🔴 위반 사항 및 권장 조치:")
         for principle, violation, recommendation in self.violations:
-            print(f"\n[{principle}]")
-            print(f"  ❌ 문제: {violation}")
-            print(f"  💡 권장: {recommendation}")
+            click.echo(f"\n[{principle}]")
+            click.echo(f"  ❌ 문제: {violation}")
+            click.echo(f"  💡 권장: {recommendation}")
 
-        print(f"\n⚖️ 개발 가이드 준수율: {(passed/total)*100:.1f}%")
+        click.echo(f"\n⚖️ 개발 가이드 준수율: {(passed/total)*100:.1f}%")
 
         return 1 if len(self.violations) > 0 else 0
 

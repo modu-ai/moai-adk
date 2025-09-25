@@ -6,9 +6,15 @@ Automated version synchronization system for MoAI-ADK project files
 
 import re
 import json
+import sys
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
+
+import click
 from .._version import __version__, VERSIONS, VERSION_FORMATS
+from ..utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class VersionSyncManager:
@@ -146,8 +152,9 @@ class VersionSyncManager:
         """
         results = {}
         
-        print(f"🗿 MoAI-ADK 버전 동기화 시작: v{self.current_version}")
-        print(f"프로젝트 루트: {self.project_root}")
+        logger.info(f"MoAI-ADK 버전 동기화 시작: v{self.current_version}, 루트: {self.project_root}")
+        click.echo(f"🗿 MoAI-ADK 버전 동기화 시작: v{self.current_version}")
+        click.echo(f"프로젝트 루트: {self.project_root}")
         
         for pattern, replacements in self.version_patterns.items():
             files_changed = self._sync_pattern(pattern, replacements, dry_run)
@@ -155,9 +162,11 @@ class VersionSyncManager:
                 results[pattern] = files_changed
                 
         if dry_run:
-            print("\\n✅ 드라이 런 완료 - 실제 파일은 변경되지 않았습니다")
+            logger.info("드라이 런 완료 - 실제 파일은 변경되지 않음")
+            click.echo("\\n✅ 드라이 런 완료 - 실제 파일은 변경되지 않았습니다")
         else:
-            print("\\n✅ 버전 동기화 완료")
+            logger.info("버전 동기화 완료")
+            click.echo("\\n✅ 버전 동기화 완료")
             
         return results
     
@@ -181,10 +190,12 @@ class VersionSyncManager:
                 changed = self._sync_file(file_path, replacements, dry_run)
                 if changed:
                     changed_files.append(str(file_path.relative_to(self.project_root)))
-                    print(f"  ✓ {file_path.relative_to(self.project_root)}")
+                    logger.info(f"Updated: {file_path.relative_to(self.project_root)}")
+                    click.echo(f"  ✓ {file_path.relative_to(self.project_root)}")
                     
             except Exception as e:
-                print(f"  ❌ {file_path.relative_to(self.project_root)}: {e}")
+                logger.error(f"Update failed: {file_path.relative_to(self.project_root)}: {e}")
+                click.echo(f"  ❌ {file_path.relative_to(self.project_root)}: {e}")
                 
         return changed_files
     
@@ -233,7 +244,8 @@ class VersionSyncManager:
     
     def verify_sync(self) -> Dict[str, List[str]]:
         """버전 동기화 검증 - 남은 불일치 확인"""
-        print(f"\\n🔍 버전 동기화 검증 중...")
+        logger.info("버전 동기화 검증 시작")
+        click.echo(f"\\n🔍 버전 동기화 검증 중...")
         
         inconsistent_files = {}
         target_patterns = [
@@ -248,13 +260,15 @@ class VersionSyncManager:
                 inconsistent_files[pattern] = mismatches
                 
         if inconsistent_files:
-            print("⚠️  다음 파일에서 버전 불일치가 발견되었습니다:")
+            logger.warning(f"버전 불일치 발견: {len(inconsistent_files)} 개 패턴")
+            click.echo("⚠️  다음 파일에서 버전 불일치가 발견되었습니다:")
             for pattern, files in inconsistent_files.items():
-                print(f"  패턴: {pattern}")
+                click.echo(f"  패턴: {pattern}")
                 for file_info in files:
-                    print(f"    {file_info}")
+                    click.echo(f"    {file_info}")
         else:
-            print("✅ 모든 버전 정보가 일치합니다")
+            logger.info("모든 버전 정보가 일치")
+            click.echo("✅ 모든 버전 정보가 일치합니다")
             
         return inconsistent_files
     
@@ -326,21 +340,24 @@ def update_version_in_file(file_path: Path, old_version: str, new_version: str) 
             return True
             
     except Exception as e:
-        print(f"Error updating {{file_path}}: {{e}}")
+        logger.error(f"Error updating {file_path}: {e}")
+        click.echo(f"Error updating {file_path}: {e}")
         
     return False
 
 def main() -> None:
     if len(sys.argv) != 2:
-        print("Usage: python scripts/update_version.py <new_version>")
-        print("Example: python scripts/update_version.py 0.2.0")
+        logger.error("Invalid command line arguments")
+        click.echo("Usage: python scripts/update_version.py <new_version>")
+        click.echo("Example: python scripts/update_version.py 0.2.0")
         sys.exit(1)
         
     new_version = sys.argv[1]
     
     # 버전 형식 검증
     if not re.match(r'^[0-9]+\\.[0-9]+\\.[0-9]+$', new_version):
-        print("Error: Version must be in format X.Y.Z")
+        logger.error(f"Invalid version format: {new_version}")
+        click.echo("Error: Version must be in format X.Y.Z")
         sys.exit(1)
         
     print(f"🗿 MoAI-ADK 버전 업데이트: v{{new_version}}")

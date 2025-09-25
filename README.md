@@ -2,7 +2,7 @@
 
 **🏆 Claude Code 환경에서 가장 완전한 Spec-First TDD 개발 프레임워크**
 
-**🎯 0.2.0 Latest Update: SPEC-010 온라인 문서 사이트 테스트 완료 ✅ - 85개 API 모듈 자동 생성 성공**
+**🎯 0.1.9 Latest Update: SPEC-010 온라인 문서 사이트 테스트 완료 ✅ - 85개 API 모듈 자동 생성 성공**
 
 [![Version](https://img.shields.io/github/v/release/modu-ai/moai-adk?label=release)](https://github.com/modu-ai/moai-adk/releases)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -13,7 +13,7 @@
 
 ---
 
-## 🎉 **0.2.0 혁신적 성과 하이라이트**
+## 🎉 **0.1.9 혁신적 성과 하이라이트**
 
 ### 📖 **SPEC-010 온라인 문서 사이트 테스트 완료 ✅**
 

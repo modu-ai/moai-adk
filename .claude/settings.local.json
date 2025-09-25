@@ -6,10 +6,15 @@
       "Read(//private/tmp/test-project-fixes/todo-app-test/**)",
       "Bash(test:*)",
       "Read(//private/tmp/template-sync-test/clean-project/**)",
-      "Read(//private/tmp/simple-template-test/minimal-project/**)"
+      "Read(//private/tmp/simple-template-test/minimal-project/**)",
+      "Bash(mkdocs serve:*)",
+      "Bash(xargs:*)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "additionalDirectories": [
+      "/Users/goos/MoAI/test/todo-app/"
+    ]
   },
-  "outputStyle": "MoAI Audit"
+  "outputStyle": "MoAI Study"
 }

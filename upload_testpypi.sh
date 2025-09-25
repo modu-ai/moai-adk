@@ -18,7 +18,7 @@ fi
 API_TOKEN=$1
 
 echo "🚀 testPyPI 업로드 시작..."
-echo "📦 패키지: MoAI-ADK v0.1.8"
+echo "📦 패키지: MoAI-ADK v0.1.9"
 
 # 환경변수 설정
 export TWINE_USERNAME=__token__
@@ -27,13 +27,13 @@ export TWINE_REPOSITORY=testpypi
 
 # 업로드 실행
 echo "📤 업로드 중..."
-twine upload dist/moai_adk-0.1.8*
+twine upload dist/moai_adk-0.1.9*
 
 if [ $? -eq 0 ]; then
     echo "✅ 업로드 성공!"
     echo ""
     echo "🧪 설치 테스트:"
-    echo "pip install -i https://test.pypi.org/simple/ moai-adk==0.1.8"
+    echo "pip install -i https://test.pypi.org/simple/ moai-adk==0.1.9"
     echo ""
     echo "🔍 기능 검증:"
     echo "moai --version"

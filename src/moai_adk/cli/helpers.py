@@ -187,9 +187,9 @@ def print_banner(show_usage: bool = False) -> None:
     print_ascii_banner()
 
     if show_usage:
-        print(f"\n{get_version_format('full')}")
-        print("Usage: moai [COMMAND] [OPTIONS]")
-        print("Run 'moai help' for more information.")
+        click.echo(f"\n{get_version_format('full')}")
+        click.echo("Usage: moai [COMMAND] [OPTIONS]")
+        click.echo("Run 'moai help' for more information.")
 
 
 def validate_environment() -> bool:

@@ -375,6 +375,140 @@ class TagRepairer:
         tasks_path.write_text(template, encoding='utf-8')
         print(f"✅ 생성: {tasks_path}")
 
+    def create_test_from_task(self, item: Dict[str, any]):
+        """TASK로부터 TEST 문서 생성"""
+        test_path = self.project_root / item['file']
+        test_path.parent.mkdir(parents=True, exist_ok=True)
+
+        test_id = item['source'][1:].split(':', 1)[1]
+
+        template = f"""# TEST-{test_id}: 테스트 계획 문서
+
+> **기반 태스크**: {item['source']}
+> **생성일**: {datetime.now().strftime('%Y-%m-%d')}
+> **상태**: DRAFT
+
+## 🧪 테스트 개요
+
+### 기반 태스크 분석
+{item['source']}에 대한 포괄적 테스트 전략을 수립합니다.
+
+### 테스트 범위
+- [ ] 단위 테스트 (Unit Tests)
+- [ ] 통합 테스트 (Integration Tests)
+- [ ] E2E 테스트 (End-to-End Tests)
+- [ ] 성능 테스트 (Performance Tests)
+
+## 🔍 단위 테스트
+
+### 테스트 케이스
+```python
+def test_{test_id.lower()}_success():
+    \"\"\"성공 시나리오 테스트\"\"\"
+    # Arrange
+    # Act
+    # Assert
+    pass
+
+def test_{test_id.lower()}_failure():
+    \"\"\"실패 시나리오 테스트\"\"\"
+    # Arrange
+    # Act
+    # Assert
+    pass
+
+def test_{test_id.lower()}_edge_cases():
+    \"\"\"경계값 테스트\"\"\"
+    # Arrange
+    # Act
+    # Assert
+    pass
+```
+
+### 커버리지 목표
+- [ ] 라인 커버리지 ≥ 85%
+- [ ] 브랜치 커버리지 ≥ 80%
+- [ ] 함수 커버리지 = 100%
+
+## 🔗 통합 테스트
+
+### 통합 시나리오
+- [ ] @TEST:INT-{test_id}-001: 컴포넌트 간 연동
+- [ ] @TEST:INT-{test_id}-002: 데이터베이스 연동
+- [ ] @TEST:INT-{test_id}-003: 외부 API 연동
+
+### Mock/Stub 전략
+```python
+@pytest.fixture
+def mock_{test_id.lower()}_service():
+    \"\"\"서비스 모킹\"\"\"
+    return MagicMock()
+
+@pytest.fixture
+def test_data():
+    \"\"\"테스트 데이터 픽스처\"\"\"
+    return {{"key": "value"}}
+```
+
+## 🌐 E2E 테스트
+
+### 사용자 시나리오
+- [ ] @TEST:E2E-{test_id}-001: 메인 플로우 테스트
+- [ ] @TEST:E2E-{test_id}-002: 오류 처리 테스트
+- [ ] @TEST:E2E-{test_id}-003: 권한 검증 테스트
+
+### 테스트 환경
+```yaml
+test_environment:
+  database: sqlite:///:memory:
+  redis: mock
+  external_apis: stubbed
+```
+
+## ⚡ 성능 테스트
+
+### 성능 기준
+- [ ] @PERF:{test_id}: 응답시간 < 2초
+- [ ] @PERF:{test_id}: 동시사용자 100명 지원
+- [ ] @PERF:{test_id}: 메모리 사용량 < 100MB
+
+### 부하 테스트
+```python
+def test_performance_{test_id.lower()}():
+    \"\"\"성능 기준 검증\"\"\"
+    start_time = time.time()
+    # 실행 코드
+    end_time = time.time()
+    assert end_time - start_time < 2.0
+```
+
+## 🛡️ 보안 테스트
+
+### 보안 체크리스트
+- [ ] @SEC:{test_id}: 입력값 검증
+- [ ] @SEC:{test_id}: SQL 인젝션 방어
+- [ ] @SEC:{test_id}: XSS 방어
+- [ ] @SEC:{test_id}: 권한 검증
+
+## 📋 테스트 실행 계획
+
+### TDD 사이클
+1. **RED**: 실패하는 테스트 작성
+2. **GREEN**: 최소한의 구현으로 테스트 통과
+3. **REFACTOR**: 코드 품질 개선
+
+### CI/CD 통합
+```bash
+# 테스트 실행 명령어
+pytest tests/test_{test_id.lower()}.py -v --cov
+```
+
+---
+*자동 생성됨: MoAI-ADK repair_tags.py*
+"""
+        test_path.write_text(template, encoding='utf-8')
+        print(f"✅ 생성: {test_path}")
+
     def update_traceability_index(self):
         """traceability.json 갱신"""
         traceability_path = self.indexes_path / 'traceability.json'
@@ -453,7 +587,8 @@ class TagRepairer:
                     self.create_design_from_template(item)
                 elif item['action'] == 'create_tasks':
                     self.create_tasks_from_design(item)
-                # @TODO:CREATE-TEST-001 create_test 액션 구현 필요
+                elif item['action'] == 'create_test':
+                    self.create_test_from_task(item)
                     
             except Exception as e:
                 print(f"❌ 오류: {item['file']} - {e}")

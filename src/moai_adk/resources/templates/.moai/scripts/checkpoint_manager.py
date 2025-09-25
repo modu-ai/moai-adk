@@ -16,6 +16,8 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import click
+
 # 새로운 통합 시스템 import
 sys.path.append(str(Path(__file__).parent / "utils"))
 from checkpoint_system import CheckpointSystem, CheckpointInfo, CheckpointError
@@ -106,13 +108,13 @@ def main():
     manager = CheckpointManager()
 
     if len(sys.argv) < 2:
-        print("사용법: python checkpoint_manager.py <command> [args]")
-        print("명령어:")
-        print("  create <message>     - 체크포인트 생성")
-        print("  list [limit]         - 체크포인트 목록")
-        print("  rollback <tag>       - 체크포인트로 롤백")
-        print("  delete <tag>         - 체크포인트 삭제")
-        print("  info <tag>           - 체크포인트 정보")
+        click.echo("사용법: python checkpoint_manager.py <command> [args]")
+        click.echo("명령어:")
+        click.echo("  create <message>     - 체크포인트 생성")
+        click.echo("  list [limit]         - 체크포인트 목록")
+        click.echo("  rollback <tag>       - 체크포인트로 롤백")
+        click.echo("  delete <tag>         - 체크포인트 삭제")
+        click.echo("  info <tag>           - 체크포인트 정보")
         return
 
     command = sys.argv[1]
@@ -121,45 +123,45 @@ def main():
         if command == "create":
             message = sys.argv[2] if len(sys.argv) > 2 else "Manual checkpoint"
             result = manager.create_checkpoint(message)
-            print(f"체크포인트 생성: {result}")
+            click.echo(f"체크포인트 생성: {result}")
 
         elif command == "list":
             limit = int(sys.argv[2]) if len(sys.argv) > 2 else None
             checkpoints = manager.list_checkpoints(limit)
-            print(f"체크포인트 목록 ({len(checkpoints)}개):")
+            click.echo(f"체크포인트 목록 ({len(checkpoints)}개):")
             for i, cp in enumerate(checkpoints):
                 if "error" not in cp:
-                    print(f"  {i}: {cp['tag']} - {cp['message']}")
+                    click.echo(f"  {i}: {cp['tag']} - {cp['message']}")
 
         elif command == "rollback":
             if len(sys.argv) < 3:
-                print("오류: 롤백할 체크포인트를 지정하세요")
+                click.echo("오류: 롤백할 체크포인트를 지정하세요")
                 return
             tag = sys.argv[2]
             result = manager.rollback_to_checkpoint(tag)
-            print(f"롤백 결과: {result}")
+            click.echo(f"롤백 결과: {result}")
 
         elif command == "delete":
             if len(sys.argv) < 3:
-                print("오류: 삭제할 체크포인트를 지정하세요")
+                click.echo("오류: 삭제할 체크포인트를 지정하세요")
                 return
             tag = sys.argv[2]
             result = manager.delete_checkpoint(tag)
-            print(f"삭제 결과: {result}")
+            click.echo(f"삭제 결과: {result}")
 
         elif command == "info":
             if len(sys.argv) < 3:
-                print("오류: 조회할 체크포인트를 지정하세요")
+                click.echo("오류: 조회할 체크포인트를 지정하세요")
                 return
             tag = sys.argv[2]
             info = manager.get_checkpoint_info(tag)
-            print(f"체크포인트 정보: {info}")
+            click.echo(f"체크포인트 정보: {info}")
 
         else:
-            print(f"알 수 없는 명령어: {command}")
+            click.echo(f"알 수 없는 명령어: {command}")
 
     except Exception as e:
-        print(f"오류 발생: {e}")
+        click.echo(f"오류 발생: {e}")
 
 
 if __name__ == "__main__":

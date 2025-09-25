@@ -6,6 +6,7 @@
 @TASK:DOC-CONDITIONAL-001 - 조건부 문서 생성 로직
 """
 
+import click
 import json
 import sys
 from pathlib import Path
@@ -319,14 +320,14 @@ def main():
     result = detector.detect_project_type()
 
     if "--json" in sys.argv:
-        print(json.dumps(result, indent=2))
+        click.echo(json.dumps(result, indent=2))
     else:
-        print(f"프로젝트 유형: {result['project_type']}")
-        print(f"신뢰도: {result['confidence']:.1%}")
-        print(f"언어: {result['features']['language']}")
+        click.echo(f"프로젝트 유형: {result['project_type']}")
+        click.echo(f"신뢰도: {result['confidence']:.1%}")
+        click.echo(f"언어: {result['features']['language']}")
         if result['features']['framework']:
-            print(f"프레임워크: {result['features']['framework']}")
-        print(f"필요한 문서: {', '.join(result['required_docs'])}")
+            click.echo(f"프레임워크: {result['features']['framework']}")
+        click.echo(f"필요한 문서: {', '.join(result['required_docs'])}")
 
 
 if __name__ == "__main__":

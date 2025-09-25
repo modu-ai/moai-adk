@@ -9,6 +9,7 @@ TAG 추적성 검증 스크립트 (향상판)
 - 인덱스 기반 검증(없으면 휴리스틱 체인으로 검증)
 """
 
+import click
 import json
 import re
 import sys
@@ -232,31 +233,31 @@ class TraceabilityChecker:
         self.index["last_updated"] = datetime.now().date().isoformat()
 
     def report(self, found: Dict[str, List[str]], verbose: bool, strict: bool) -> int:
-        print("🏷️ TAG 추적성 검증 보고서")
-        print("=" * 50)
-        print(f"📊 총 TAG 수: {len(found)}")
-        print(f"🔗 끊어진 링크: {len(self.broken_links)}")
-        print(f"👻 고아 TAG: {len(self.orphaned_tags)}")
+        click.echo("🏷️ TAG 추적성 검증 보고서")
+        click.echo("=" * 50)
+        click.echo(f"📊 총 TAG 수: {len(found)}")
+        click.echo(f"🔗 끊어진 링크: {len(self.broken_links)}")
+        click.echo(f"👻 고아 TAG: {len(self.orphaned_tags)}")
         if found:
             coverage = 100 - round(len(self.orphaned_tags) * 100 / len(found), 1)
-            print(f"✅ 추적성 커버리지: {coverage}%")
+            click.echo(f"✅ 추적성 커버리지: {coverage}%")
         if len(self.broken_links) == 0 and len(self.orphaned_tags) == 0:
-            print("✅ 모든 TAG 추적성 체인이 정상입니다!")
+            click.echo("✅ 모든 TAG 추적성 체인이 정상입니다!")
         else:
             if self.broken_links:
-                print("\n🔴 끊어진 추적성 체인:")
+                click.echo("\n🔴 끊어진 추적성 체인:")
                 for f, t in self.broken_links:
-                    print(f"  {f} → {t} (누락)")
+                    click.echo(f"  {f} → {t} (누락)")
             if self.orphaned_tags:
-                print("\n👻 고아 TAG 목록:")
+                click.echo("\n👻 고아 TAG 목록:")
                 for tag in self.orphaned_tags:
-                    print(f"  {tag}")
+                    click.echo(f"  {tag}")
         if verbose:
-            print("\n📂 TAG별 파일 위치:")
+            click.echo("\n📂 TAG별 파일 위치:")
             for tag, files in sorted(found.items()):
-                print(f"  {tag}:")
+                click.echo(f"  {tag}:")
                 for fp in files:
-                    print(f"    - {fp}")
+                    click.echo(f"    - {fp}")
         if strict and (self.broken_links or self.orphaned_tags):
             return 1
         return 0

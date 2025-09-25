@@ -28,7 +28,13 @@ from .helpers import (
     analyze_existing_project,
     print_banner,
     validate_environment,
-    format_project_status
+)
+from .init_helpers import (
+    validate_initialization,
+    handle_interactive_mode,
+    setup_project_directory,
+    finalize_installation,
+    create_mode_configuration
 )
 
 logger = get_logger(__name__)
@@ -41,12 +47,12 @@ logger = get_logger(__name__)
 def cli(ctx: click.Context, version: bool, help_flag: bool) -> None:
     """@FEATURE:CLI-001 Modu-AI's Agentic Development Kit"""
     if version:
-        print(f"MoAI-ADK v{__version__}")
+        click.echo(f"MoAI-ADK v{__version__}")
         ctx.exit()
 
     if help_flag or ctx.invoked_subcommand is None:
         print_banner(show_usage=True)
-        print(click.get_current_context().get_help())
+        click.echo(click.get_current_context().get_help())
 
 
 @cli.command()
@@ -168,147 +174,26 @@ def doctor(list_backups: bool) -> None:
 @click.option("--team", is_flag=True, help="Initialize in team mode - full GitFlow with collaboration features")
 def init(project_path: str, template: str, interactive: bool, backup: bool, force: bool, force_copy: bool, quiet: bool, personal: bool, team: bool) -> None:
     """@TASK:INIT-001 Initialize a new MoAI-ADK project."""
-    project_dir = Path(project_path).resolve()
-
-    # Determine project mode
-    if team and personal:
-        click.echo(f"{Fore.RED}❌ Cannot specify both --personal and --team modes{Style.RESET_ALL}")
-        sys.exit(1)
-
-    # Default to personal mode if no mode specified
-    project_mode = "team" if team else "personal"
-
-    if not quiet:
-        mode_icon = "🏢" if project_mode == "team" else "👤"
-        click.echo(f"{Fore.CYAN}{mode_icon} Initializing in {project_mode} mode{Style.RESET_ALL}")
-
-    # Interactive mode
-    if interactive:
-        from .wizard import InteractiveWizard
-        wizard = InteractiveWizard()
-        try:
-            result = wizard.run(project_dir)
-            if result.success:
-                click.echo(f"{Fore.GREEN}🎉 Interactive setup completed!{Style.RESET_ALL}")
-                for step in result.next_steps:
-                    click.echo(f"   {step}")
-            else:
-                click.echo(f"{Fore.RED}❌ Interactive setup failed{Style.RESET_ALL}")
-                for error in result.errors:
-                    click.echo(f"   {error}")
-            return
-        except KeyboardInterrupt:
-            click.echo(f"\n{Fore.YELLOW}⚠️  Setup cancelled{Style.RESET_ALL}")
-            return
-        except Exception as e:
-            click.echo(f"{Fore.RED}❌ Interactive setup error: {e}{Style.RESET_ALL}")
-            return
-
-    # Set logging level based on quiet mode
-    if quiet:
-        import logging
-        # Silence all moai_adk loggers
-        logging.getLogger("moai_adk").setLevel(logging.CRITICAL)
-        for logger_name in logging.Logger.manager.loggerDict:
-            if logger_name.startswith("moai_adk"):
-                logging.getLogger(logger_name).setLevel(logging.CRITICAL)
-
-    # Validate environment
-    if not validate_environment():
-        if not quiet:
-            click.echo(f"{Fore.RED}❌ Environment validation failed{Style.RESET_ALL}")
-        sys.exit(1)
-
-    # Check for conflicts
-    conflicts = detect_potential_conflicts(project_dir)
-    if conflicts and not force:
-        if not quiet:
-            click.echo(f"{Fore.YELLOW}⚠️  Potential conflicts detected:{Style.RESET_ALL}")
-            for conflict in conflicts:
-                click.echo(f"   - {conflict}")
-
-        if backup:
-            if not quiet:
-                click.echo(f"\n{Fore.CYAN}📦 Creating backup...{Style.RESET_ALL}")
-            if create_installation_backup(project_dir):
-                if not quiet:
-                    click.echo(f"{Fore.GREEN}✅ Backup created{Style.RESET_ALL}")
-            else:
-                if not quiet:
-                    click.echo(f"{Fore.RED}❌ Backup failed{Style.RESET_ALL}")
-                sys.exit(1)
-        else:
-            if not quiet:
-                click.echo(f"\n💡 Use --backup to create a backup first, or --force to overwrite")
-            sys.exit(1)
-
-    # Project analysis
-    analysis = analyze_existing_project(project_dir)
-    if analysis["project_type"] != "unknown" and not quiet:
-        click.echo(f"{Fore.CYAN}📋 Detected {analysis['project_type']} project{Style.RESET_ALL}")
-
-    # Create configuration
-    config = Config(
-        project_path=str(project_dir),
-        name=project_dir.name,
-        template=template,
-        runtime=RuntimeConfig("python"),
-        force_overwrite=force
+    from .init_helpers import (
+        validate_initialization,
+        handle_interactive_mode,
+        setup_project_directory,
+        finalize_installation
     )
 
-    # Run installation
-    installer = SimplifiedInstaller(config)
+    # Step 1: Validate initialization parameters
+    project_dir, project_mode = validate_initialization(project_path, personal, team, quiet)
 
-    def progress_callback(message: str, current: int, total: int):
-        if not quiet:
-            # Clean progress output without colors/emojis
-            click.echo(f"  {message}")
+    # Step 2: Handle interactive mode if requested
+    if handle_interactive_mode(project_dir, interactive):
+        return
 
-    try:
-        # Show header
-        if not quiet:
-            click.echo(f"\n{Fore.CYAN}Creating MoAI-ADK project in {project_dir.name}...{Style.RESET_ALL}")
+    # Step 3: Setup project directory structure
+    if not setup_project_directory(project_dir, project_mode, backup, force, force_copy, quiet):
+        return
 
-        result = installer.install(progress_callback)
-
-        # Create mode-specific configuration
-        if result.success:
-            create_mode_configuration(project_dir, project_mode, quiet)
-
-        if result.success:
-            if quiet:
-                # Minimal output for quiet mode
-                click.echo(f"✓ MoAI-ADK project created: {result.project_path}")
-            else:
-                click.echo(f"\n{Fore.GREEN}✓{Style.RESET_ALL} MoAI-ADK initialized successfully!")
-                click.echo(f"  Project: {result.project_path}")
-                click.echo(f"  Files created: {len(result.files_created)}")
-
-                # Show next steps
-                click.echo(f"\n{Fore.CYAN}Next Steps:{Style.RESET_ALL}")
-                for step in result.next_steps:
-                    if step.strip():  # Skip empty lines
-                        if step.startswith(("1.", "2.", "3.", "4.")):
-                            click.echo(f"  {step}")
-                        elif step.startswith("   "):
-                            click.echo(f"    {step.strip()}")
-                        else:
-                            click.echo(f"  {step}")
-
-        else:
-            if quiet:
-                click.echo(f"✗ Installation failed: {'; '.join(result.errors)}")
-            else:
-                click.echo(f"\n{Fore.RED}✗{Style.RESET_ALL} Installation failed")
-                for error in result.errors:
-                    click.echo(f"  {error}")
-            sys.exit(1)
-
-    except KeyboardInterrupt:
-        click.echo(f"\n{Fore.YELLOW}⚠️  Installation cancelled{Style.RESET_ALL}")
-    except Exception as e:
-        click.echo(f"{Fore.RED}❌ Installation error: {e}{Style.RESET_ALL}")
-        sys.exit(1)
+    # Step 4: Finalize installation
+    finalize_installation(project_dir, project_mode, force_copy, quiet)
 
 
 @cli.command()
@@ -513,7 +398,7 @@ def create_mode_configuration(project_dir: Path, project_mode: str, quiet: bool 
         "project": {
             "name": project_dir.name,
             "mode": project_mode,
-            "version": "0.1.0",
+            "version": "0.1.9",
             "created": datetime.now().isoformat(),
             "constitution_version": "2.1"
         },

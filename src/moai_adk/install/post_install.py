@@ -35,7 +35,8 @@ def print_post_install_banner():
 
 Setting up global resources for optimal MoAI-ADK experience...
 """
-    print(banner)
+    logger.info("MoAI-ADK post-installation banner displayed")
+    click.echo(banner)
 
 
 
@@ -55,7 +56,7 @@ def main(force: bool, quiet: bool) -> None:
     """
     MoAI-ADK post-installation setup.
 
-    Note: As of v0.1.13+, resources are embedded in the package.
+    Note: As of v0.1.9+, resources are embedded in the package.
     No separate installation needed.
     """
     try:
@@ -64,18 +65,21 @@ def main(force: bool, quiet: bool) -> None:
 
         # Resources are now embedded in package
         if not quiet:
-            print(f"{Fore.GREEN}✅ MoAI-ADK resources are embedded in the package.{Style.RESET_ALL}")
-            print(f"   No separate installation needed!")
-            print(f"   Use {Fore.WHITE}moai init{Style.RESET_ALL} to set up new projects.")
+            logger.info("MoAI-ADK resources available in package")
+            click.echo(f"{Fore.GREEN}✅ MoAI-ADK resources are embedded in the package.{Style.RESET_ALL}")
+            click.echo(f"   No separate installation needed!")
+            click.echo(f"   Use {Fore.WHITE}moai init{Style.RESET_ALL} to set up new projects.")
 
     except KeyboardInterrupt:
         if not quiet:
-            print(f"\n{Fore.YELLOW}⚠️  Installation cancelled by user.{Style.RESET_ALL}")
+            logger.warning("Installation cancelled by user")
+            click.echo(f"\n{Fore.YELLOW}⚠️  Installation cancelled by user.{Style.RESET_ALL}")
         sys.exit(1)
     except Exception as error:
         logger.error("Post-installation failed: %s", error)
         if not quiet:
-            print(f"{Fore.RED}❌ Error: {error}{Style.RESET_ALL}")
+            logger.error(f"Post-installation error: {error}")
+            click.echo(f"{Fore.RED}❌ Error: {error}{Style.RESET_ALL}")
         sys.exit(1)
 
 

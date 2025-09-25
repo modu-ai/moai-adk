@@ -13,6 +13,8 @@ from typing import Any
 from collections.abc import Callable
 from colorama import Fore, Style
 
+import click
+
 
 class ProgressTracker:
     """
@@ -61,7 +63,7 @@ class ProgressTracker:
 
         # Clean, aligned output format with step counter
         step_indicator = f"({self.current_step:2d}/{self.total_steps})"
-        print(
+        click.echo(
             f"\r{color}[{progress_bar}] {percentage:3d}% "
             f"{Style.RESET_ALL}{step_indicator} {step}",
             end="",
@@ -70,7 +72,7 @@ class ProgressTracker:
 
         # Add newline when complete to prevent overlap
         if self.current_step == self.total_steps:
-            print()  # Final newline for clean completion
+            click.echo()  # Final newline for clean completion
 
     def _get_progress_color(self, percentage: int) -> str:
         """Get color based on progress percentage."""
@@ -133,15 +135,15 @@ class ProgressTracker:
 
     def display_completion_message(self, message: str = "Installation completed successfully!") -> None:
         """Display completion message with formatting."""
-        print(f"\n{Fore.GREEN}✅ {message}{Style.RESET_ALL}")
+        click.echo(f"\n{Fore.GREEN}✅ {message}{Style.RESET_ALL}")
 
     def display_error_message(self, message: str) -> None:
         """Display error message with formatting."""
-        print(f"\n{Fore.RED}❌ {message}{Style.RESET_ALL}")
+        click.echo(f"\n{Fore.RED}❌ {message}{Style.RESET_ALL}")
 
     def display_warning_message(self, message: str) -> None:
         """Display warning message with formatting."""
-        print(f"\n{Fore.YELLOW}⚠️ {message}{Style.RESET_ALL}")
+        click.echo(f"\n{Fore.YELLOW}⚠️ {message}{Style.RESET_ALL}")
 
 
 class MultiStageProgressTracker:
@@ -175,14 +177,14 @@ class MultiStageProgressTracker:
         tracker = self.stages[stage_name]['tracker']
         tracker.reset()
 
-        print(f"\n{Fore.CYAN}🚀 Starting stage: {stage_name}{Style.RESET_ALL}")
+        click.echo(f"\n{Fore.CYAN}🚀 Starting stage: {stage_name}{Style.RESET_ALL}")
         return tracker
 
     def complete_stage(self, stage_name: str) -> None:
         """Mark a stage as completed."""
         if stage_name in self.stages:
             self.stages[stage_name]['completed'] = True
-            print(f"\n{Fore.GREEN}✅ Stage completed: {stage_name}{Style.RESET_ALL}")
+            click.echo(f"\n{Fore.GREEN}✅ Stage completed: {stage_name}{Style.RESET_ALL}")
 
     def get_overall_progress(self) -> dict:
         """Get overall progress across all stages."""

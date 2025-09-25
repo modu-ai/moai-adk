@@ -15,6 +15,8 @@ import argparse
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import click
+
 # 새로운 통합 시스템 import
 sys.path.append(str(Path(__file__).parent / "utils"))
 from checkpoint_system import CheckpointSystem, CheckpointInfo, CheckpointError
@@ -41,11 +43,11 @@ class MoAIRollback:
                 return {"success": False, "error": f"체크포인트를 찾을 수 없습니다: {tag_or_index}"}
 
             if not confirm:
-                print(f"롤백할 체크포인트:")
-                print(f"  태그: {checkpoint.tag}")
-                print(f"  메시지: {checkpoint.message}")
-                print(f"  생성일: {checkpoint.created_at}")
-                print(f"  커밋: {checkpoint.commit_hash}")
+                click.echo(f"롤백할 체크포인트:")
+                click.echo(f"  태그: {checkpoint.tag}")
+                click.echo(f"  메시지: {checkpoint.message}")
+                click.echo(f"  생성일: {checkpoint.created_at}")
+                click.echo(f"  커밋: {checkpoint.commit_hash}")
 
                 response = input("\n정말 롤백하시겠습니까? (y/N): ")
                 if response.lower() != 'y':
@@ -71,15 +73,15 @@ class MoAIRollback:
         if not checkpoints:
             return {"success": False, "error": "사용 가능한 체크포인트가 없습니다"}
 
-        print("\n사용 가능한 체크포인트:")
-        print("-" * 80)
+        click.echo("\n사용 가능한 체크포인트:")
+        click.echo("-" * 80)
         for i, cp in enumerate(checkpoints):
             auto_marker = "(자동)" if cp.is_auto else "(수동)"
-            print(f"{i:2d}: {cp.tag} {auto_marker}")
-            print(f"     메시지: {cp.message}")
-            print(f"     생성일: {cp.created_at}")
-            print(f"     커밋: {cp.commit_hash[:8]}")
-            print()
+            click.echo(f"{i:2d}: {cp.tag} {auto_marker}")
+            click.echo(f"     메시지: {cp.message}")
+            click.echo(f"     생성일: {cp.created_at}")
+            click.echo(f"     커밋: {cp.commit_hash[:8]}")
+            click.echo()
 
         try:
             choice = input("롤백할 체크포인트 번호를 입력하세요 (취소: q): ")
@@ -152,44 +154,44 @@ def main():
     try:
         if args.command == "list":
             checkpoints = rollback_system.list_available_checkpoints(args.limit)
-            print(f"\n체크포인트 목록 ({len(checkpoints)}개):")
-            print("-" * 80)
+            click.echo(f"\n체크포인트 목록 ({len(checkpoints)}개):")
+            click.echo("-" * 80)
             for i, cp in enumerate(checkpoints):
                 auto_marker = "(자동)" if cp.is_auto else "(수동)"
-                print(f"{i:2d}: {cp.tag} {auto_marker}")
-                print(f"     메시지: {cp.message}")
-                print(f"     생성일: {cp.created_at}")
-                print()
+                click.echo(f"{i:2d}: {cp.tag} {auto_marker}")
+                click.echo(f"     메시지: {cp.message}")
+                click.echo(f"     생성일: {cp.created_at}")
+                click.echo()
 
         elif args.command == "rollback":
             result = rollback_system.rollback_to_checkpoint(args.target, args.yes)
             if result["success"]:
-                print(f"✅ 롤백 완료: {result['tag']}")
-                print(f"   메시지: {result['message']}")
-                print(f"   커밋: {result['commit_hash'][:8]}")
+                click.echo(f"✅ 롤백 완료: {result['tag']}")
+                click.echo(f"   메시지: {result['message']}")
+                click.echo(f"   커밋: {result['commit_hash'][:8]}")
             else:
-                print(f"❌ 롤백 실패: {result['error']}")
+                click.echo(f"❌ 롤백 실패: {result['error']}")
 
         elif args.command == "interactive":
             result = rollback_system.rollback_interactive()
             if result["success"]:
-                print(f"✅ 롤백 완료: {result['tag']}")
+                click.echo(f"✅ 롤백 완료: {result['tag']}")
             else:
-                print(f"❌ 롤백 실패: {result['error']}")
+                click.echo(f"❌ 롤백 실패: {result['error']}")
 
         elif args.command == "preview":
             result = rollback_system.show_rollback_preview(args.target)
             if result["success"]:
-                print("📋 롤백 미리보기:")
-                print(f"   대상: {result['target_checkpoint']['tag']}")
-                print(f"   메시지: {result['target_checkpoint']['message']}")
-                print(f"   생성일: {result['target_checkpoint']['created_at']}")
-                print(f"   안전성: {'안전' if result['rollback_safe'] else '주의 필요'}")
+                click.echo("📋 롤백 미리보기:")
+                click.echo(f"   대상: {result['target_checkpoint']['tag']}")
+                click.echo(f"   메시지: {result['target_checkpoint']['message']}")
+                click.echo(f"   생성일: {result['target_checkpoint']['created_at']}")
+                click.echo(f"   안전성: {'안전' if result['rollback_safe'] else '주의 필요'}")
             else:
-                print(f"❌ 미리보기 실패: {result['error']}")
+                click.echo(f"❌ 미리보기 실패: {result['error']}")
 
     except Exception as e:
-        print(f"❌ 오류 발생: {e}")
+        click.echo(f"❌ 오류 발생: {e}")
 
 
 if __name__ == "__main__":

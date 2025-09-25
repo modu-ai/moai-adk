@@ -8,6 +8,7 @@ and prints follow-up instructions for manual actions that remain.
 from __future__ import annotations
 
 import argparse
+import click
 import os
 import subprocess
 import sys
@@ -28,7 +29,7 @@ def run(cmd: list[str], cwd: Path) -> tuple[int, str, str]:
 def update_tag_index(project_root: Path) -> dict[str, object]:
     script = project_root / ".moai" / "scripts" / "check-traceability.py"
     if not script.exists():
-        print("⚠️  TAG 추적성 스크립트를 찾을 수 없습니다. (.moai/scripts/check-traceability.py)")
+        click.echo("⚠️  TAG 추적성 스크립트를 찾을 수 없습니다. (.moai/scripts/check-traceability.py)")
         return {"success": False, "stdout": "", "stderr": "missing"}
 
     code, out, err = run(
@@ -36,22 +37,22 @@ def update_tag_index(project_root: Path) -> dict[str, object]:
         project_root,
     )
     if code == 0:
-        print("✅ TAG 추적성 인덱스를 갱신했습니다.")
+        click.echo("✅ TAG 추적성 인덱스를 갱신했습니다.")
         if out:
-            print(out)
+            click.echo(out)
     else:
-        print("⚠️  TAG 인덱스 갱신 중 문제가 발생했습니다.")
+        click.echo("⚠️  TAG 인덱스 갱신 중 문제가 발생했습니다.")
         if err:
-            print(err)
+            click.echo(err)
     return {"success": code == 0, "stdout": out, "stderr": err}
 
 
 def show_git_hint(project_root: Path) -> None:
     code, out, _ = run(["git", "status", "--short"], project_root)
     if code == 0 and out:
-        print("📂 변경된 파일:")
-        print(out)
-        print(
+        click.echo("📂 변경된 파일:")
+        click.echo(out)
+        click.echo(
             "💡 필요 시 `git add README.md docs/ .moai/indexes/tags.json` 후 커밋하세요."
         )
 
@@ -210,10 +211,10 @@ def main() -> None:
 
     project_root = Path(os.environ.get("CLAUDE_PROJECT_DIR", Path.cwd()))
 
-    print("🔄 MoAI 문서/태그 동기화를 실행합니다.")
-    print(f"  - 모드: {args.mode}")
+    click.echo("🔄 MoAI 문서/태그 동기화를 실행합니다.")
+    click.echo(f"  - 모드: {args.mode}")
     if args.target:
-        print(f"  - 대상: {args.target}")
+        click.echo(f"  - 대상: {args.target}")
 
     tag_result = update_tag_index(project_root)
     spec_summary = collect_spec_status(project_root)
@@ -223,11 +224,11 @@ def main() -> None:
     update_doc_index_metadata(project_root)
     show_git_hint(project_root)
 
-    print("📋 나머지 단계:")
-    print("  1. 문서/README를 수동으로 업데이트합니다.")
-    print("  2. 필요 시 API/아키텍처 문서를 갱신합니다.")
-    print("  3. GitHub PR 상태를 확인하고 라벨/리뷰어를 조정합니다.")
-    print(f"📝 동기화 리포트: {report_path.relative_to(project_root)}")
+    click.echo("📋 나머지 단계:")
+    click.echo("  1. 문서/README를 수동으로 업데이트합니다.")
+    click.echo("  2. 필요 시 API/아키텍처 문서를 갱신합니다.")
+    click.echo("  3. GitHub PR 상태를 확인하고 라벨/리뷰어를 조정합니다.")
+    click.echo(f"📝 동기화 리포트: {report_path.relative_to(project_root)}")
 
 
 if __name__ == "__main__":
