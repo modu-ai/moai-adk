@@ -41,7 +41,7 @@ logger = get_logger(__name__)
 @click.option("-h", "--help", "help_flag", is_flag=True, help="display help for command")
 @click.pass_context
 def cli(ctx: click.Context, version: bool, help_flag: bool) -> None:
-    """@FEATURE:CLI-001 Modu-AI's Agentic Development Kit"""
+    """Modu-AI's Agentic Development Kit"""
     if version:
         click.echo(f"MoAI-ADK v{__version__}")
         ctx.exit()
@@ -55,7 +55,7 @@ def cli(ctx: click.Context, version: bool, help_flag: bool) -> None:
 @click.argument("backup_path", type=click.Path(exists=True))
 @click.option("--dry-run", is_flag=True, help="Show what would be restored without making changes")
 def restore(backup_path: str, dry_run: bool) -> None:
-    """@TASK:RESTORE-001 Restore MoAI-ADK from a backup directory."""
+    """Restore MoAI-ADK from a backup directory."""
     backup_dir = Path(backup_path)
 
     if not backup_dir.is_dir():
@@ -112,7 +112,7 @@ def restore(backup_path: str, dry_run: bool) -> None:
 @cli.command()
 @click.option("--list-backups", "-l", is_flag=True, help="List available backups")
 def doctor(list_backups: bool) -> None:
-    """@TASK:HEALTH-001 Diagnose common issues and check system health."""
+    """Diagnose common issues and check system health."""
     click.echo(f"{Fore.CYAN}🔍 MoAI-ADK Health Check{Style.RESET_ALL}")
 
     if list_backups:
@@ -169,7 +169,7 @@ def doctor(list_backups: bool) -> None:
 @click.option("--personal", is_flag=True, help="Initialize in personal mode (default) - simplified workflow for individual development")
 @click.option("--team", is_flag=True, help="Initialize in team mode - full GitFlow with collaboration features")
 def init(project_path: str, template: str, interactive: bool, backup: bool, force: bool, force_copy: bool, quiet: bool, personal: bool, team: bool) -> None:
-    """@TASK:INIT-001 Initialize a new MoAI-ADK project."""
+    """Initialize a new MoAI-ADK project."""
 
     # Step 1: Validate initialization parameters
     project_dir, project_mode = validate_initialization(project_path, personal, team, quiet)
@@ -189,7 +189,7 @@ def init(project_path: str, template: str, interactive: bool, backup: bool, forc
 @cli.command()
 @click.argument("command", required=False)
 def help(command: str | None) -> None:
-    """@TASK:HELP-001 Show help for MoAI-ADK commands."""
+    """Show help for MoAI-ADK commands."""
     if command:
         # Show help for specific command
         try:
@@ -225,7 +225,7 @@ def help(command: str | None) -> None:
     help="Path to project directory (default: current directory)"
 )
 def status(verbose: bool, project_path: str | None) -> None:
-    """@TASK:STATUS-001 Show MoAI-ADK project status."""
+    """Show MoAI-ADK project status."""
     target_path = Path(project_path) if project_path else Path.cwd()
 
     click.echo(f"{Fore.CYAN}📊 MoAI-ADK Project Status{Style.RESET_ALL}")
@@ -297,7 +297,7 @@ def status(verbose: bool, project_path: str | None) -> None:
     help="Update only project resources"
 )
 def update(check: bool, no_backup: bool, verbose: bool, package_only: bool, resources_only: bool) -> None:
-    """@TASK:UPDATE-001 Update MoAI-ADK to the latest version."""
+    """Update MoAI-ADK to the latest version."""
     current_version = __version__
     project_path = Path.cwd()
 
@@ -382,7 +382,7 @@ def update(check: bool, no_backup: bool, verbose: bool, package_only: bool, reso
 
 
 def create_mode_configuration(project_dir: Path, project_mode: str, quiet: bool = False) -> None:
-    """@TASK:CONFIG-001 Create mode-specific configuration for MoAI-ADK project."""
+    """Create mode-specific configuration for MoAI-ADK project."""
     import json
     from datetime import datetime
 

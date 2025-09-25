@@ -15,7 +15,8 @@
       "Bash(twine upload:*)",
       "Read(//private/tmp/claude/test_non_moai/**)",
       "Read(//private/tmp/claude/test-moai-sqlite/**)",
-      "Read(//private/tmp/claude/test-moai-0117/**)"
+      "Read(//private/tmp/claude/test-moai-0117/**)",
+      "Read(//private/tmp/claude/test-v0118/**)"
     ],
     "deny": [],
     "ask": [],
