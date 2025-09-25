@@ -73,15 +73,18 @@
     ],
     "index_path": ".moai/indexes/tags.json",
     "backend": {
-      "type": "json",
+      "type": "sqlite",
       "sqlite": {
-        "enabled": false,
+        "enabled": true,
         "database_path": ".moai/indexes/tags.db",
         "migration": {
-          "auto_migrate": false,
+          "auto_migrate": true,
           "backup_before_migration": true,
           "performance_threshold": 1000
-        }
+        },
+        "activated_at": "2025-09-26T02:30:44Z",
+        "migrated_tags": 411,
+        "migration_time": "0.042s"
       }
     }
   }

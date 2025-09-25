@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "moai-adk"
-version = "0.1.9"
+version = "0.1.14"
 description = "🗿 MoAI-ADK: Modu-AI Agentic Development Toolkit for Claude Code Integration"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -84,6 +84,7 @@ exclude = ["tests*", "docs*", "__pycache__*", "legacy*"]
     "resources/templates/.claude/agents/moai/*.md",
     "resources/templates/.claude/commands/moai/*.md",
     "resources/templates/.claude/hooks/moai/*.py",
+    "resources/templates/.claude/output-styles/*.md",
     "resources/templates/.claude/memory/**/*",
     "resources/templates/.moai/**/*",
     "resources/templates/.github/workflows/*.yml",

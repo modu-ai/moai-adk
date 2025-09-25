@@ -251,7 +251,7 @@ class MigrationValidator:
                 <tr><td>Migrated Tags</td><td>{result.migrated_tags_count}</td></tr>
                 <tr><td>Migrated References</td><td>{result.migrated_references_count}</td></tr>
                 <tr><td>Validation Errors</td><td>{len(result.validation_errors)}</td></tr>
-                <tr><td>Processing Time</td><td>{result.performance_metrics.get('total_duration', 0):.2f}s if result.performance_metrics else 'N/A'}</td></tr>
+                <tr><td>Processing Time</td><td>{result.performance_metrics.get('total_duration', 0):.2f if result.performance_metrics else 0:.2f}s</td></tr>
             </table>
         </body>
         </html>

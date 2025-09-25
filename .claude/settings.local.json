@@ -9,7 +9,8 @@
       "Read(//private/tmp/simple-template-test/minimal-project/**)",
       "Bash(mkdocs serve:*)",
       "Bash(xargs:*)",
-      "Bash(docker:*)"
+      "Bash(docker:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": [],
