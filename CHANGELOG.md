@@ -5,7 +5,30 @@ All notable changes to MoAI-ADK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.16] - 2025-09-26
+## [0.1.18] - 2025-09-26
+
+### 🚀 **CLI UX 개선 및 완전한 시스템 동기화**
+
+**MoAI-ADK v0.1.18은 사용자 경험을 우선시한 CLI 개선과 시스템 전반의 완전한 동기화를 달성했습니다**
+
+#### 🎯 핵심 개선사항
+- **CLI UX 혁신**: 사용자 친화적 명령어 도움말로 완전 개선
+- **완전한 버전 동기화**: 모든 구성 요소의 v0.1.18 통일
+- **SQLite 전환 완료**: 모든 시스템이 SQLite 백엔드로 완전 통합
+- **Living Document 정확성**: 실제 통계 기반 문서화 완성
+
+#### 🔧 사용자 경험 개선
+- **@TASK 태그 제거**: CLI help 출력에서 내부 TAG 완전 제거
+- **깔끔한 명령어 설명**: 모든 명령어에 사용자 친화적 설명 적용
+- **개발자 추적성 유지**: 코드 주석에서 TAG 시스템 보존
+
+#### 🔄 시스템 동기화 완료
+- **VERSION 파일**: 0.1.17 → 0.1.18 업데이트
+- **config_project.py**: 하드코딩된 0.1.9 → 0.1.18 수정
+- **constants.py**: SQLite 백엔드 완전 전환 (tags.db)
+- **문서 정확성**: README.md TAG 커버리지 실제 통계 반영
+
+## [0.1.17] - 2025-09-26
 
 ### 🔄 **SQLite 전환 완료: TAG 시스템 완전 통합**
 

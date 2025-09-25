@@ -61,7 +61,7 @@ class ProjectConfigManager:
     def _create_moai_config_data(self, config: Config) -> dict[str, Any]:
         """Create MoAI configuration data structure"""
         moai_config = {
-            "version": "0.1.9",
+            "version": "0.1.18",
             "created": datetime.now().isoformat(),
             "constitution_version": "2.1",
             "project": {
