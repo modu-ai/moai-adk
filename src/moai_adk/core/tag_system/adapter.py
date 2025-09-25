@@ -5,22 +5,22 @@ GREEN 단계: 기존 JSON API와 100% 호환되는 SQLite 어댑터 구현
 @DESIGN:REFACTORED-ADAPTER-001 Rebuilt from 631 LOC to modular architecture (< 200 LOC)
 """
 
-from pathlib import Path
-from typing import Dict, List, Any, Optional, Callable
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
-from .database import TagDatabaseManager, DatabaseError
 from .adapter_core import AdapterCore, ApiCompatibilityError
-from .adapter_search import AdapterSearch
 from .adapter_integration import AdapterIntegration
+from .adapter_search import AdapterSearch
+from .database import TagDatabaseManager
 
 
 @dataclass
 class AdapterConfiguration:
     """어댑터 설정"""
     backend_type: str
-    database_path: Optional[Path]
-    json_fallback_path: Optional[Path]
+    database_path: Path | None
+    json_fallback_path: Path | None
     performance_monitoring: bool = True
 
 
@@ -35,8 +35,8 @@ class TagIndexAdapter:
     @DESIGN:REFACTORED-ORCHESTRATOR-001 Now coordinates specialized modules
     """
 
-    def __init__(self, database_path: Path, json_fallback_path: Optional[Path] = None,
-                 performance_monitor: Optional[Any] = None):
+    def __init__(self, database_path: Path, json_fallback_path: Path | None = None,
+                 performance_monitor: Any | None = None):
         """어댑터 초기화"""
         self.database_path = Path(database_path)
         self.json_fallback_path = Path(json_fallback_path) if json_fallback_path else None
@@ -71,24 +71,24 @@ class TagIndexAdapter:
         """인덱스 초기화 (호환성용)"""
         return self.core.initialize_index()
 
-    def load_index(self) -> Dict[str, Any]:
+    def load_index(self) -> dict[str, Any]:
         """인덱스 로드 (기존 JSON API 호환)"""
         return self.core.load_index()
 
-    def save_index(self, index_data: Dict[str, Any]) -> None:
+    def save_index(self, index_data: dict[str, Any]) -> None:
         """인덱스 저장 (기존 JSON API 호환)"""
         return self.core.save_index(index_data)
 
-    def validate_index_schema(self, index_data: Dict[str, Any]) -> bool:
+    def validate_index_schema(self, index_data: dict[str, Any]) -> bool:
         """인덱스 스키마 검증"""
         return self.core.validate_index_schema(index_data)
 
-    def get_configuration_info(self) -> Dict[str, Any]:
+    def get_configuration_info(self) -> dict[str, Any]:
         """설정 정보 반환"""
         return self.core.get_configuration_info()
 
     # Search 기능 델리게이트
-    def search_by_category(self, category: str, **filters) -> List[Dict[str, Any]]:
+    def search_by_category(self, category: str, **filters) -> list[dict[str, Any]]:
         """카테고리별 검색 (고급 필터링 포함)"""
         if not self.backend_available:
             raise ApiCompatibilityError("SQLite 백엔드를 사용할 수 없습니다")
@@ -98,7 +98,7 @@ class TagIndexAdapter:
                               direction: str = 'both',
                               max_depth: int = 5,
                               include_details: bool = True,
-                              category_filter: Optional[List[str]] = None) -> Dict[str, Any]:
+                              category_filter: list[str] | None = None) -> dict[str, Any]:
         """추적성 체인 분석 (고도화된 버전)"""
         if not self.backend_available:
             return {

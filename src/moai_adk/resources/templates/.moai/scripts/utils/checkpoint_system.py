@@ -9,17 +9,20 @@ MoAI-ADK 통합 체크포인트 시스템
 """
 
 import json
-from datetime import datetime, timezone, timedelta
-from pathlib import Path
-from typing import Dict, List, Optional, Any
 import logging
+from datetime import UTC, datetime, timedelta, timezone
+from pathlib import Path
+from typing import Any
 
 from constants import (
-    CHECKPOINT_TAG_PREFIX, MAX_CHECKPOINTS, CHECKPOINT_MESSAGE_MAX_LENGTH,
-    AUTO_CHECKPOINT_INTERVAL_MINUTES, BACKUP_RETENTION_DAYS,
-    ERROR_MESSAGES
+    AUTO_CHECKPOINT_INTERVAL_MINUTES,
+    BACKUP_RETENTION_DAYS,
+    CHECKPOINT_MESSAGE_MAX_LENGTH,
+    CHECKPOINT_TAG_PREFIX,
+    ERROR_MESSAGES,
+    MAX_CHECKPOINTS,
 )
-from git_helper import GitHelper, GitCommandError
+from git_helper import GitCommandError, GitHelper
 from project_helper import ProjectHelper
 
 logger = logging.getLogger(__name__)
@@ -63,14 +66,13 @@ def convert_utc_to_kst(utc_datetime: datetime) -> datetime:
 
     if utc_datetime.tzinfo is None:
         # timezone 정보가 없으면 UTC로 간주
-        utc_datetime = utc_datetime.replace(tzinfo=timezone.utc)
+        utc_datetime = utc_datetime.replace(tzinfo=UTC)
 
     return utc_datetime.astimezone(KST)
 
 
 class CheckpointError(Exception):
     """체크포인트 관련 오류"""
-    pass
 
 
 class CheckpointInfo:
@@ -85,7 +87,7 @@ class CheckpointInfo:
         self.file_count = file_count
         self.is_auto = is_auto
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "tag": self.tag,
             "commit_hash": self.commit_hash,
@@ -96,7 +98,7 @@ class CheckpointInfo:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "CheckpointInfo":
+    def from_dict(cls, data: dict[str, Any]) -> "CheckpointInfo":
         # 새 형식
         if "tag" in data:
             return cls(
@@ -124,7 +126,7 @@ class CheckpointInfo:
 class CheckpointSystem:
     """통합 체크포인트 관리 시스템"""
 
-    def __init__(self, project_root: Optional[Path] = None):
+    def __init__(self, project_root: Path | None = None):
         self.project_root = project_root or ProjectHelper.find_project_root()
         self.git = GitHelper(self.project_root)
         self.checkpoints_dir = self.project_root / ".moai" / "checkpoints"
@@ -264,7 +266,7 @@ class CheckpointSystem:
             logger.error(f"커밋 또는 태그 생성 실패: {e}")
             raise CheckpointError(f"Git 작업 실패: {e}")
 
-    def list_checkpoints(self, limit: Optional[int] = None) -> List[CheckpointInfo]:
+    def list_checkpoints(self, limit: int | None = None) -> list[CheckpointInfo]:
         """체크포인트 목록 조회"""
         try:
             metadata = self._load_checkpoint_metadata()
@@ -356,7 +358,7 @@ class CheckpointSystem:
             # 시간대가 다를 수 있으므로 KST로 통일하여 비교
             if last_time.tzinfo is None:
                 # 레거시 데이터: UTC로 간주하고 KST로 변환
-                last_time = last_time.replace(tzinfo=timezone.utc).astimezone(KST)
+                last_time = last_time.replace(tzinfo=UTC).astimezone(KST)
             elif last_time.tzinfo != KST:
                 # 다른 시간대인 경우 KST로 변환
                 last_time = last_time.astimezone(KST)
@@ -379,7 +381,7 @@ class CheckpointSystem:
             # 안전을 위해 False 반환 (무한 체크포인트 생성 방지)
             return False
 
-    def _find_checkpoint(self, tag_or_index: str) -> Optional[CheckpointInfo]:
+    def _find_checkpoint(self, tag_or_index: str) -> CheckpointInfo | None:
         """태그 또는 인덱스로 체크포인트 찾기"""
         checkpoints = self.list_checkpoints()
 
@@ -402,13 +404,13 @@ class CheckpointSystem:
         except GitCommandError:
             return 0
 
-    def _load_checkpoint_metadata(self) -> Dict[str, Any]:
+    def _load_checkpoint_metadata(self) -> dict[str, Any]:
         """체크포인트 메타데이터 로드"""
         if not self.metadata_file.exists():
             return {"checkpoints": [], "version": "1.0"}
 
         try:
-            with open(self.metadata_file, 'r', encoding='utf-8') as f:
+            with open(self.metadata_file, encoding='utf-8') as f:
                 return json.load(f)
         except (json.JSONDecodeError, Exception) as e:
             logger.error(f"메타데이터 로드 실패: {e}")
@@ -452,7 +454,7 @@ class CheckpointSystem:
             if created_date < cutoff_date and checkpoint.is_auto:
                 self.delete_checkpoint(checkpoint.tag)
 
-    def get_checkpoint_info(self, tag_or_index: str) -> Optional[CheckpointInfo]:
+    def get_checkpoint_info(self, tag_or_index: str) -> CheckpointInfo | None:
         """태그 또는 인덱스로 체크포인트 정보 조회"""
         try:
             return self._find_checkpoint(tag_or_index)
@@ -462,7 +464,7 @@ class CheckpointSystem:
 
 
 def create_checkpoint(
-    message: str, project_root: Optional[Path] = None, is_auto: bool = False
+    message: str, project_root: Path | None = None, is_auto: bool = False
 ) -> CheckpointInfo:
     """체크포인트 생성 편의 함수"""
     system = CheckpointSystem(project_root)
@@ -470,7 +472,7 @@ def create_checkpoint(
 
 
 def rollback_to_checkpoint(
-    tag_or_index: str, project_root: Optional[Path] = None
+    tag_or_index: str, project_root: Path | None = None
 ) -> CheckpointInfo:
     """체크포인트 롤백 편의 함수"""
     system = CheckpointSystem(project_root)
@@ -478,8 +480,8 @@ def rollback_to_checkpoint(
 
 
 def list_checkpoints(
-    limit: Optional[int] = None, project_root: Optional[Path] = None
-) -> List[CheckpointInfo]:
+    limit: int | None = None, project_root: Path | None = None
+) -> list[CheckpointInfo]:
     """체크포인트 목록 조회 편의 함수"""
     system = CheckpointSystem(project_root)
     return system.list_checkpoints(limit)

@@ -6,7 +6,6 @@ Provides basic path validation and safe operations for a local development tool.
 
 import os
 from pathlib import Path
-from typing import Set
 
 from ..utils.logger import get_logger
 
@@ -15,7 +14,6 @@ logger = get_logger(__name__)
 
 class SecurityError(Exception):
     """Security-related exception."""
-    pass
 
 
 class SecurityManager:
@@ -24,7 +22,7 @@ class SecurityManager:
     def __init__(self):
         self.critical_paths = self._get_critical_paths()
 
-    def _get_critical_paths(self) -> Set[Path]:
+    def _get_critical_paths(self) -> set[Path]:
         """Get system critical paths that should never be deleted."""
         critical_paths = {Path.home(), Path("/")}
 

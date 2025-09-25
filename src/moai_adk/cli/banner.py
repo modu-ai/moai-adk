@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """
-@FEATURE:BANNER-001 🗿 MoAI-ADK Banner Module
+@FEATURE:BANNER-001 MoAI-ADK Banner Module
 
-@TASK:BANNER-002 Claude Code 스타일의 3D 블록 효과와 Box Drawing 유니코드를 활용한
-현대적인 ASCII 아트 배너 모듈
+@REQ:CLI-BANNER-001 → @DESIGN:BANNER-ARCHITECTURE-001 → @TASK:BANNER-002 → @TEST:BANNER-DISPLAY-001
+
+@DESIGN:BANNER-ARCHITECTURE-001 Modern ASCII art design with 3D effects
+@TASK:BANNER-002 Claude Code style 3D block effects and Box Drawing Unicode
+modern ASCII art banner module
 """
 
 import os
 import sys
-from typing import List, Tuple
 
 import click
 
@@ -73,7 +75,7 @@ def apply_claude_brand_color(line: str) -> str:
     return "".join(colored) + Colors.RESET
 
 
-def get_moai_logo() -> List[str]:
+def get_moai_logo() -> list[str]:
     """Modern MoAI logo using Box Drawing characters with 3D block effect."""
     return [
         "███╗   ███╗          █████╗ ██╗",
@@ -89,7 +91,7 @@ def create_banner(version: str = None, show_usage: bool = False) -> str:
     """Create the complete MoAI banner with two-tone color scheme."""
     if version is None:
         version = get_version("moai_adk")
-    
+
     moai_lines = get_moai_logo()
 
     banner_lines = []

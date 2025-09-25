@@ -7,7 +7,6 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
 
 
 @dataclass
@@ -15,7 +14,7 @@ class RuntimeConfig:
     """@TASK:RUNTIME-CONFIG-001 Runtime configuration for the project."""
     name: str
     performance: int = 4
-    
+
     def __post_init__(self) -> None:
         """Validate runtime configuration."""
         match self.name:
@@ -34,7 +33,7 @@ class Config:
     name: str
     template: str = "standard"
     runtime: RuntimeConfig = field(default_factory=lambda: RuntimeConfig("python"))
-    tech_stack: List[str] = field(default_factory=list)
+    tech_stack: list[str] = field(default_factory=list)
     path: str = ""
     backup_enabled: bool = False
     skip_install: bool = False
@@ -70,11 +69,11 @@ class Config:
         self.force_copy = kwargs.get('force_copy', False)
         self.include_github = kwargs.get('include_github', True)
         self.initialize_git = kwargs.get('initialize_git', True)
-        self.created_at = kwargs.get('created_at', None)
+        self.created_at = kwargs.get('created_at')
         self.templates_mode = kwargs.get('templates_mode', 'copy')
 
         self.__post_init__()
-    
+
     def __post_init__(self) -> None:
         """Initialize computed fields."""
         if not self.path:
@@ -84,23 +83,23 @@ class Config:
             self.created_at = datetime.now()
 
         self._validate()
-    
+
     def _validate(self) -> None:
         """Validate configuration parameters."""
         if not self.name:
             raise ValueError("Project name is required")
-        
+
         # Allow alphanumeric, hyphens, underscores, and dots
         if not self.name.replace("-", "").replace("_", "").replace(".", "").isalnum():
             raise ValueError(f"❌ Project name '{self.name}' contains invalid characters. Use only letters, numbers, dots (.), hyphens (-), and underscores (_)")
-        
+
         if self.template not in ["minimal", "standard", "enterprise"]:
             raise ValueError(f"Unsupported template: {self.template}")
-        
+
         # templates_mode validation
         if str(self.templates_mode).lower() not in ["copy", "package"]:
             raise ValueError("templates_mode must be 'copy' or 'package'")
-        
+
         # Validate tech stack
         valid_tech = {
             "nextjs", "react", "vue", "nuxt", "angular", "svelte",
@@ -112,16 +111,16 @@ class Config:
             "redis", "docker", "kubernetes",
             "rust", "go", "java"
         }
-        
+
         for tech in self.tech_stack:
             if tech.lower() not in valid_tech:
                 raise ValueError(f"Unsupported technology: {tech}")
-    
+
     @property
     def project_path(self) -> Path:
         """Get project path as Path object."""
         return Path(self.path)
-    
+
     @property
     def project_type(self) -> str:
         """Determine project type based on tech stack."""
@@ -136,11 +135,11 @@ class Config:
             return "python"
         else:
             return "web"  # Default
-    
-    def get_template_context(self) -> Dict[str, str | int | List[str]]:
+
+    def get_template_context(self) -> dict[str, str | int | list[str]]:
         """Get template rendering context."""
         tech_stack_str = ", ".join(self.tech_stack) if self.tech_stack else f"{self.runtime.name}, {self.template}"
-        
+
         return {
             "project_name": self.name,
             "project_type": self.project_type,
@@ -153,8 +152,8 @@ class Config:
             "created_year": self.created_at.year if self.created_at else datetime.now().year,
             "version": "1.0",
         }
-    
-    def to_dict(self) -> Dict:
+
+    def to_dict(self) -> dict:
         """Convert config to dictionary."""
         return {
             "name": self.name,

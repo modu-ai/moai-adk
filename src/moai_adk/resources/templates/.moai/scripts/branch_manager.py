@@ -10,11 +10,10 @@ MoAI 브랜치 관리자 v0.2.0 (통합 시스템 기반)
 @TECH:GITFLOW-INTEGRATION-001
 """
 
-import sys
 import argparse
-import json
+import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import click
 
@@ -33,7 +32,7 @@ class BranchManager:
         self.config = ProjectHelper.load_config(self.project_root)
         self.mode = self.config.get("mode", "personal")
 
-    def create_feature_branch(self, feature_name: str, from_branch: Optional[str] = None) -> Dict[str, Any]:
+    def create_feature_branch(self, feature_name: str, from_branch: str | None = None) -> dict[str, Any]:
         """기능 브랜치 생성"""
         try:
             branch_name = self.git_workflow.create_feature_branch(feature_name, from_branch)
@@ -46,7 +45,7 @@ class BranchManager:
         except GitWorkflowError as e:
             return {"success": False, "error": str(e)}
 
-    def create_hotfix_branch(self, fix_name: str) -> Dict[str, Any]:
+    def create_hotfix_branch(self, fix_name: str) -> dict[str, Any]:
         """핫픽스 브랜치 생성"""
         try:
             branch_name = self.git_workflow.create_hotfix_branch(fix_name)
@@ -59,7 +58,7 @@ class BranchManager:
         except GitWorkflowError as e:
             return {"success": False, "error": str(e)}
 
-    def get_branch_status(self) -> Dict[str, Any]:
+    def get_branch_status(self) -> dict[str, Any]:
         """브랜치 상태 조회"""
         try:
             status = self.git_workflow.get_branch_status()
@@ -68,7 +67,7 @@ class BranchManager:
         except Exception as e:
             return {"error": str(e)}
 
-    def switch_branch(self, branch_name: str) -> Dict[str, Any]:
+    def switch_branch(self, branch_name: str) -> dict[str, Any]:
         """브랜치 전환"""
         try:
             # 변경사항이 있으면 체크포인트 생성 (개인 모드)
@@ -86,7 +85,7 @@ class BranchManager:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def list_branches(self) -> Dict[str, Any]:
+    def list_branches(self) -> dict[str, Any]:
         """브랜치 목록 조회"""
         try:
             local_branches = self.git_workflow.git.get_local_branches()
@@ -111,7 +110,7 @@ class BranchManager:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def delete_branch(self, branch_name: str, force: bool = False) -> Dict[str, Any]:
+    def delete_branch(self, branch_name: str, force: bool = False) -> dict[str, Any]:
         """브랜치 삭제"""
         try:
             current_branch = self.git_workflow.git.get_current_branch()
@@ -127,7 +126,7 @@ class BranchManager:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def cleanup_merged_branches(self, dry_run: bool = True) -> Dict[str, Any]:
+    def cleanup_merged_branches(self, dry_run: bool = True) -> dict[str, Any]:
         """병합된 브랜치 정리"""
         try:
             merged_branches = self.git_workflow.cleanup_merged_branches(dry_run)
@@ -140,7 +139,7 @@ class BranchManager:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def sync_branch(self, push: bool = True) -> Dict[str, Any]:
+    def sync_branch(self, push: bool = True) -> dict[str, Any]:
         """브랜치 동기화"""
         try:
             success = self.git_workflow.sync_with_remote(push)
@@ -257,7 +256,7 @@ def main():
         elif args.command == "status":
             result = manager.get_branch_status()
             if "error" not in result:
-                click.echo(f"📋 브랜치 상태:")
+                click.echo("📋 브랜치 상태:")
                 click.echo(f"   현재 브랜치: {result['current_branch']}")
                 click.echo(f"   관리 모드: {result['manager_mode']}")
                 click.echo(f"   변경사항: {'있음' if result['has_uncommitted_changes'] else '없음'}")

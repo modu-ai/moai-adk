@@ -5,15 +5,14 @@ Handles directory creation, structure setup, and safe directory operations
 with security validation and proper error handling.
 """
 
-import tempfile
 import os
 import shutil
+import tempfile
 from pathlib import Path
-from typing import List
 
-from ..utils.logger import get_logger
-from .security import SecurityManager, SecurityError
 from ..config import Config
+from ..utils.logger import get_logger
+from .security import SecurityError, SecurityManager
 
 logger = get_logger(__name__)
 
@@ -95,7 +94,7 @@ class DirectoryManager:
             git_backup.parent.rmdir()  # Clean up temp directory
             logger.info("Restored .git directory")
 
-    def create_directory_structure(self, base_path: Path) -> List[Path]:
+    def create_directory_structure(self, base_path: Path) -> list[Path]:
         """
         Create the complete MoAI-ADK directory structure.
 
@@ -233,7 +232,7 @@ class DirectoryManager:
                 'error': str(e)
             }
 
-    def clean_directory(self, directory: Path, preserve_patterns: List[str] = None) -> bool:
+    def clean_directory(self, directory: Path, preserve_patterns: list[str] = None) -> bool:
         """
         Clean directory contents while preserving specified patterns.
 

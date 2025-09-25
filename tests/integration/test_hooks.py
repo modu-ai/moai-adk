@@ -162,11 +162,11 @@ class TestConfigLoader(unittest.TestCase):
         self.assertEqual(config, {})
 
 
-class Test개발 가이드Guard(unittest.TestCase):
-    """개발 가이드 Guard 테스트"""
-    
+class TestDevelopmentGuideGuard(unittest.TestCase):
+    """Development Guide Guard Test"""
+
     def setUp(self):
-        """테스트 환경 설정"""
+        """Test environment setup"""
         self.test_dir = Path(tempfile.mkdtemp())
         self.moai_dir = self.test_dir / '.moai'
         self.moai_dir.mkdir()

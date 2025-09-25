@@ -8,15 +8,14 @@ Orchestrates validation across multiple specialized modules.
 
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Any
 
-from .constants import GuidelineLimits
-from .config import GuidelineConfig
-from .exceptions import GuidelineError
-from .analyzers import CodeAnalyzer
-from .validators import GuidelineValidator
-from .reporters import ViolationReporter
 from ...utils.logger import get_logger
+from .analyzers import CodeAnalyzer
+from .config import GuidelineConfig
+from .constants import GuidelineLimits
+from .reporters import ViolationReporter
+from .validators import GuidelineValidator
 
 logger = get_logger(__name__)
 
@@ -30,9 +29,9 @@ class GuidelineChecker:
 
     def __init__(self,
                  project_path: Path,
-                 limits: Optional[GuidelineLimits] = None,
-                 config: Optional[GuidelineConfig] = None,
-                 config_file: Optional[Path] = None):
+                 limits: GuidelineLimits | None = None,
+                 config: GuidelineConfig | None = None,
+                 config_file: Path | None = None):
         """
         Initialize guideline checker.
 
@@ -66,7 +65,7 @@ class GuidelineChecker:
 
         logger.info(f"Initialized GuidelineChecker for {project_path}")
 
-    def scan_project(self, parallel: bool = True, max_workers: Optional[int] = None) -> Dict[str, List[Dict[str, Any]]]:
+    def scan_project(self, parallel: bool = True, max_workers: int | None = None) -> dict[str, list[dict[str, Any]]]:
         """
         Scan entire project for guideline violations.
 
@@ -90,7 +89,7 @@ class GuidelineChecker:
         else:
             return self._scan_files_sequential(python_files)
 
-    def _scan_files_sequential(self, python_files: List[Path]) -> Dict[str, List[Dict[str, Any]]]:
+    def _scan_files_sequential(self, python_files: list[Path]) -> dict[str, list[dict[str, Any]]]:
         """Scan files sequentially."""
         all_violations = {
             'file_size': [],
@@ -106,7 +105,7 @@ class GuidelineChecker:
 
         return all_violations
 
-    def _scan_files_parallel(self, python_files: List[Path], max_workers: Optional[int]) -> Dict[str, List[Dict[str, Any]]]:
+    def _scan_files_parallel(self, python_files: list[Path], max_workers: int | None) -> dict[str, list[dict[str, Any]]]:
         """Scan files in parallel."""
         all_violations = {
             'file_size': [],
@@ -127,7 +126,7 @@ class GuidelineChecker:
 
         return all_violations
 
-    def _scan_file_chunk(self, file_chunk: List[Path]) -> Dict[str, List[Dict[str, Any]]]:
+    def _scan_file_chunk(self, file_chunk: list[Path]) -> dict[str, list[dict[str, Any]]]:
         """Scan a chunk of files."""
         chunk_violations = {
             'file_size': [],
@@ -143,7 +142,7 @@ class GuidelineChecker:
 
         return chunk_violations
 
-    def _scan_single_file(self, file_path: Path) -> Dict[str, List[Dict[str, Any]]]:
+    def _scan_single_file(self, file_path: Path) -> dict[str, list[dict[str, Any]]]:
         """Scan a single file for all violation types."""
         violations = {
             'file_size': [],
@@ -183,7 +182,7 @@ class GuidelineChecker:
 
         return violations
 
-    def generate_violation_report(self, parallel: bool = True) -> Dict[str, Any]:
+    def generate_violation_report(self, parallel: bool = True) -> dict[str, Any]:
         """
         Generate comprehensive violation report.
 
@@ -213,7 +212,7 @@ class GuidelineChecker:
             else:
                 logger.warning(f"Unknown config key: {key}")
 
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> dict[str, Any]:
         """Get cache performance statistics."""
         total_requests = self._cache_stats["hits"] + self._cache_stats["misses"]
         hit_rate = self._cache_stats["hits"] / total_requests if total_requests > 0 else 0

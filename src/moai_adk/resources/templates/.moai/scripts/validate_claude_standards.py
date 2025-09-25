@@ -4,16 +4,15 @@ Claude Code 표준 검증 도구
 MoAI-ADK cc-manager를 위한 표준 준수 검증 스크립트
 """
 
-import click
 import sys
-import os
-import json
-import yaml
 from pathlib import Path
-from typing import Dict, List, Any, Tuple
+from typing import Any
+
+import click
+import yaml
 
 
-def validate_yaml_frontmatter(content: str) -> Tuple[bool, Dict[str, Any], str]:
+def validate_yaml_frontmatter(content: str) -> tuple[bool, dict[str, Any], str]:
     """
     YAML frontmatter 유효성 검사
 
@@ -36,10 +35,10 @@ def validate_yaml_frontmatter(content: str) -> Tuple[bool, Dict[str, Any], str]:
             return False, {}, "YAML frontmatter must be a dictionary"
         return True, yaml_data, ""
     except yaml.YAMLError as e:
-        return False, {}, f"YAML parsing error: {str(e)}"
+        return False, {}, f"YAML parsing error: {e!s}"
 
 
-def check_required_fields(yaml_data: Dict[str, Any], required_fields: List[str]) -> List[str]:
+def check_required_fields(yaml_data: dict[str, Any], required_fields: list[str]) -> list[str]:
     """
     필수 필드 존재 확인
 
@@ -53,7 +52,7 @@ def check_required_fields(yaml_data: Dict[str, Any], required_fields: List[str])
     return missing_fields
 
 
-def validate_command_structure(file_path: Path) -> Tuple[bool, List[str]]:
+def validate_command_structure(file_path: Path) -> tuple[bool, list[str]]:
     """
     커맨드 파일 구조 검증
 
@@ -65,7 +64,7 @@ def validate_command_structure(file_path: Path) -> Tuple[bool, List[str]]:
     try:
         content = file_path.read_text(encoding='utf-8')
     except Exception as e:
-        return False, [f"Failed to read file: {str(e)}"]
+        return False, [f"Failed to read file: {e!s}"]
 
     # Validate YAML frontmatter
     is_valid, yaml_data, error_msg = validate_yaml_frontmatter(content)
@@ -101,7 +100,7 @@ def validate_command_structure(file_path: Path) -> Tuple[bool, List[str]]:
     return len(errors) == 0, errors
 
 
-def validate_agent_structure(file_path: Path) -> Tuple[bool, List[str]]:
+def validate_agent_structure(file_path: Path) -> tuple[bool, list[str]]:
     """
     에이전트 파일 구조 검증
 
@@ -113,7 +112,7 @@ def validate_agent_structure(file_path: Path) -> Tuple[bool, List[str]]:
     try:
         content = file_path.read_text(encoding='utf-8')
     except Exception as e:
-        return False, [f"Failed to read file: {str(e)}"]
+        return False, [f"Failed to read file: {e!s}"]
 
     # Validate YAML frontmatter
     is_valid, yaml_data, error_msg = validate_yaml_frontmatter(content)
@@ -158,7 +157,7 @@ def validate_proactive_pattern(description: str) -> bool:
     return 'Use PROACTIVELY for' in description
 
 
-def generate_violation_report(errors_found: List[str]) -> str:
+def generate_violation_report(errors_found: list[str]) -> str:
     """
     표준 위반 사항에 대한 종합 보고서 생성
 
@@ -192,14 +191,14 @@ def generate_violation_report(errors_found: List[str]) -> str:
         for i, error in enumerate(file_error_list, 1):
             report.append(f"  {i}. {error}")
 
-    report.append(f"\n📊 요약:")
+    report.append("\n📊 요약:")
     report.append(f"  - 위반 파일 수: {len(file_errors)}")
     report.append(f"  - 총 위반 사항: {len(errors_found)}")
 
     return "\n".join(report)
 
 
-def suggest_fixes(errors_found: List[str]) -> List[str]:
+def suggest_fixes(errors_found: list[str]) -> list[str]:
     """
     발견된 오류에 대한 수정 제안 생성
 
@@ -315,18 +314,18 @@ def main():
                 click.echo(f"   - {error}")
             errors_found.extend([f"{relative_path}: {error}" for error in errors])
 
-    click.echo(f"\n📊 Validation Summary:")
+    click.echo("\n📊 Validation Summary:")
     click.echo(f"   Total files checked: {total_files}")
     click.echo(f"   Valid files: {valid_files}")
     click.echo(f"   Files with errors: {total_files - valid_files}")
 
     if errors_found:
-        click.echo(f"\n🚨 Errors found:")
+        click.echo("\n🚨 Errors found:")
         for error in errors_found:
             click.echo(f"   - {error}")
         sys.exit(1)
     else:
-        click.echo(f"\n🎉 All files pass validation!")
+        click.echo("\n🎉 All files pass validation!")
         sys.exit(0)
 
 

@@ -7,11 +7,11 @@ Code validation functions for guideline checking.
 
 import ast
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Any
 
-from .constants import GuidelineLimits
-from .analyzers import CodeAnalyzer
 from ...utils.logger import get_logger
+from .analyzers import CodeAnalyzer
+from .constants import GuidelineLimits
 
 logger = get_logger(__name__)
 
@@ -24,7 +24,7 @@ class GuidelineValidator:
         self.limits = limits
         self.analyzer = CodeAnalyzer(limits)
 
-    def check_function_length(self, file_path: Path) -> List[Dict[str, Any]]:
+    def check_function_length(self, file_path: Path) -> list[dict[str, Any]]:
         """
         Check if functions exceed maximum line limit.
 
@@ -60,7 +60,7 @@ class GuidelineValidator:
 
         return violations
 
-    def check_file_size(self, file_path: Path) -> Dict[str, Any]:
+    def check_file_size(self, file_path: Path) -> dict[str, Any]:
         """
         Check if file exceeds maximum line limit.
 
@@ -85,7 +85,7 @@ class GuidelineValidator:
 
         return violation
 
-    def check_parameter_count(self, file_path: Path) -> List[Dict[str, Any]]:
+    def check_parameter_count(self, file_path: Path) -> list[dict[str, Any]]:
         """
         Check if functions have too many parameters.
 
@@ -130,7 +130,7 @@ class GuidelineValidator:
 
         return violations
 
-    def check_complexity(self, file_path: Path) -> List[Dict[str, Any]]:
+    def check_complexity(self, file_path: Path) -> list[dict[str, Any]]:
         """
         Check if functions exceed maximum complexity.
 

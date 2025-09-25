@@ -1,28 +1,35 @@
 """
 @FEATURE:CORE-001 Core functionality modules for MoAI-ADK
 
+@REQ:CORE-MODULES-001 → @DESIGN:CORE-ARCHITECTURE-001 → @TASK:CORE-INTEGRATION-001 → @TEST:CORE-MODULES-001
+
+@DESIGN:CORE-ARCHITECTURE-001 Modular core system with clean separation of concerns
+@TASK:CORE-INTEGRATION-001 Integration layer for all core components
+
 This package contains the fundamental components:
-- security: Security validation and safe operations
-- config_manager: Configuration management
-- directory_manager: Directory operations
-- file_manager: File operations
-- git_manager: Git integration
-- system_manager: System utilities
-- template_engine: Template processing
-- validator: Validation utilities
-- version_sync: Version synchronization
+- @TASK:SECURITY-001 Security validation and safe operations
+- @TASK:CONFIG-MGMT-001 Configuration management
+- @TASK:DIR-MGMT-001 Directory operations
+- @TASK:FILE-MGMT-001 File operations
+- @TASK:GIT-INTEGRATION-001 Git integration
+- @TASK:SYSTEM-UTILS-001 System utilities
+- @TASK:TEMPLATE-ENGINE-001 Template processing
+- @TASK:VALIDATION-001 Validation utilities
+- @TASK:VERSION-SYNC-001 Version synchronization
 """
 
-from .security import SecurityManager, SecurityError
 from .config_manager import ConfigManager
+from .security import SecurityError, SecurityManager
 from .template_engine import TemplateEngine
-from .validator import validate_python_version, validate_claude_code
+from .validator import validate_claude_code, validate_python_version
 from .version_sync import VersionSyncManager
 
 __all__ = [
-    'SecurityManager', 'SecurityError',
     'ConfigManager',
+    'SecurityError',
+    'SecurityManager',
     'TemplateEngine',
-    'validate_python_version', 'validate_claude_code',
-    'VersionSyncManager'
+    'VersionSyncManager',
+    'validate_claude_code',
+    'validate_python_version'
 ]

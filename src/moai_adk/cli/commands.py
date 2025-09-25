@@ -6,35 +6,30 @@ Contains all Click command definitions for the MoAI-ADK CLI including
 init, restore, doctor, status, update, and help commands.
 """
 
-import sys
 import shutil
+import sys
 from pathlib import Path
-from typing import Optional
 
 import click
 from colorama import Fore, Style
 
-from .._version import __version__, get_version_format
-from ..config import Config, RuntimeConfig
-from ..install.installer import SimplifiedInstaller
-from ..install.resource_manager import ResourceManager
+from .._version import __version__
 from ..core.resource_version import ResourceVersionManager
-from ..utils.logger import get_logger
-from ..install.post_install import auto_install_on_first_run
 from ..core.version_sync import VersionSyncManager
+from ..install.post_install import auto_install_on_first_run
+from ..install.resource_manager import ResourceManager
+from ..utils.logger import get_logger
 from .helpers import (
     create_installation_backup,
-    detect_potential_conflicts,
-    analyze_existing_project,
     print_banner,
     validate_environment,
 )
 from .init_helpers import (
-    validate_initialization,
+    create_mode_configuration,
+    finalize_installation,
     handle_interactive_mode,
     setup_project_directory,
-    finalize_installation,
-    create_mode_configuration
+    validate_initialization,
 )
 
 logger = get_logger(__name__)
@@ -152,8 +147,8 @@ def doctor(list_backups: bool) -> None:
     click.echo(f"  Memory file: {'✅' if memory_exists else '❌'}")
 
     if not any([moai_exists, claude_exists, memory_exists]):
-        click.echo(f"\n💡 This doesn't appear to be a MoAI-ADK project.")
-        click.echo(f"   Run 'moai init' to initialize.")
+        click.echo("\n💡 This doesn't appear to be a MoAI-ADK project.")
+        click.echo("   Run 'moai init' to initialize.")
 
     # Resource validation
     if auto_install_on_first_run():
@@ -174,12 +169,6 @@ def doctor(list_backups: bool) -> None:
 @click.option("--team", is_flag=True, help="Initialize in team mode - full GitFlow with collaboration features")
 def init(project_path: str, template: str, interactive: bool, backup: bool, force: bool, force_copy: bool, quiet: bool, personal: bool, team: bool) -> None:
     """@TASK:INIT-001 Initialize a new MoAI-ADK project."""
-    from .init_helpers import (
-        validate_initialization,
-        handle_interactive_mode,
-        setup_project_directory,
-        finalize_installation
-    )
 
     # Step 1: Validate initialization parameters
     project_dir, project_mode = validate_initialization(project_path, personal, team, quiet)
@@ -198,7 +187,7 @@ def init(project_path: str, template: str, interactive: bool, backup: bool, forc
 
 @cli.command()
 @click.argument("command", required=False)
-def help(command: Optional[str]) -> None:
+def help(command: str | None) -> None:
     """@TASK:HELP-001 Show help for MoAI-ADK commands."""
     if command:
         # Show help for specific command
@@ -234,7 +223,7 @@ def help(command: Optional[str]) -> None:
     type=click.Path(exists=True),
     help="Path to project directory (default: current directory)"
 )
-def status(verbose: bool, project_path: Optional[str]) -> None:
+def status(verbose: bool, project_path: str | None) -> None:
     """@TASK:STATUS-001 Show MoAI-ADK project status."""
     target_path = Path(project_path) if project_path else Path.cwd()
 
@@ -246,7 +235,7 @@ def status(verbose: bool, project_path: Optional[str]) -> None:
     click.echo(f"   Type: {status_info['project_type']}")
 
     # Core status
-    click.echo(f"\n🗿 MoAI-ADK Components:")
+    click.echo("\n🗿 MoAI-ADK Components:")
     click.echo(f"   MoAI System: {'✅' if status_info['moai_initialized'] else '❌'}")
     click.echo(f"   Claude Integration: {'✅' if status_info['claude_initialized'] else '❌'}")
     click.echo(f"   Memory File: {'✅' if status_info['memory_file'] else '❌'}")
@@ -254,7 +243,7 @@ def status(verbose: bool, project_path: Optional[str]) -> None:
 
     versions = status_info.get('versions')
     if versions:
-        click.echo(f"\n🧭 Versions:")
+        click.echo("\n🧭 Versions:")
         click.echo(f"   Package: v{versions.get('package', 'unknown')}")
         click.echo(f"   Templates: v{versions.get('resources', 'unknown')}")
         if versions.get('available_resources') and versions.get('available_resources') != versions.get('resources'):
@@ -263,7 +252,7 @@ def status(verbose: bool, project_path: Optional[str]) -> None:
             click.echo(f"{Fore.YELLOW}   ⚠️  Templates are outdated. Run 'moai update' to refresh.{Style.RESET_ALL}")
 
     if verbose and status_info['file_counts']:
-        click.echo(f"\n📁 File Counts:")
+        click.echo("\n📁 File Counts:")
         for component, count in status_info['file_counts'].items():
             click.echo(f"   {component}: {count} files")
 
@@ -275,7 +264,7 @@ def status(verbose: bool, project_path: Optional[str]) -> None:
         recommendations.append("Initialize Git repository: git init")
 
     if recommendations:
-        click.echo(f"\n💡 Recommendations:")
+        click.echo("\n💡 Recommendations:")
         for rec in recommendations:
             click.echo(f"   - {rec}")
 

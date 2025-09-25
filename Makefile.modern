@@ -1,0 +1,185 @@
+# @FEATURE:MODERN-MAKEFILE-001 MoAI-ADK Modern Development Makefile
+# @REQ:FAST-TOOLCHAIN-001 → @DESIGN:UV-INTEGRATION-001 → @TASK:MAKEFILE-MODERN-001 → @TEST:PERFORMANCE-001
+#
+# @DESIGN:UV-INTEGRATION-001 Ultra-fast development workflow with uv + ruff
+# @TASK:MAKEFILE-MODERN-001 Modern Makefile with performance optimizations
+
+.PHONY: help install dev clean lint format typecheck security test coverage quality all-checks
+.DEFAULT_GOAL := help
+
+# @TASK:UV-PATH-001 Ensure uv is in PATH
+UV := uv
+RUFF := ruff
+MYPY := mypy
+BANDIT := bandit
+
+# Colors for output
+CYAN = \033[0;36m
+GREEN = \033[0;32m
+YELLOW = \033[0;33m
+RED = \033[0;31m
+RESET = \033[0m
+
+help: ## Show this help message
+	@echo "$(CYAN)🗿 MoAI-ADK Modern Development Makefile$(RESET)"
+	@echo "$(CYAN)=====================================$(RESET)"
+	@echo ""
+	@echo "$(YELLOW)📦 Package Management (uv - Ultra Fast!)$(RESET)"
+	@echo "  install     Install dependencies with uv"
+	@echo "  dev         Install development dependencies"
+	@echo "  sync        Sync dependencies and lock file"
+	@echo ""
+	@echo "$(YELLOW)🔍 Code Quality (Rust-powered tools)$(RESET)"
+	@echo "  lint        Run ruff linting (super fast)"
+	@echo "  lint-fix    Run ruff with auto-fix"
+	@echo "  format      Format code with ruff formatter"
+	@echo "  format-check Check code formatting"
+	@echo "  typecheck   Run mypy type checking"
+	@echo "  security    Run bandit security scan"
+	@echo ""
+	@echo "$(YELLOW)🧪 Testing$(RESET)"
+	@echo "  test        Run pytest tests"
+	@echo "  test-fast   Run tests with minimal output"
+	@echo "  coverage    Run tests with coverage report"
+	@echo "  test-watch  Run tests in watch mode"
+	@echo ""
+	@echo "$(YELLOW)🚀 Combined Operations$(RESET)"
+	@echo "  quality     Run all quality checks (parallel)"
+	@echo "  all-checks  Run quality + tests with coverage"
+	@echo "  ci          Full CI pipeline simulation"
+	@echo ""
+	@echo "$(YELLOW)🧹 Maintenance$(RESET)"
+	@echo "  clean       Clean build artifacts and caches"
+	@echo "  pre-commit  Install pre-commit hooks"
+	@echo "  benchmark   Performance benchmark"
+
+# @TASK:INSTALL-001 Package management with uv
+install: ## Install dependencies with uv (ultra-fast)
+	@echo "$(CYAN)📦 Installing dependencies with uv...$(RESET)"
+	@$(UV) pip install -e .
+
+dev: ## Install development dependencies
+	@echo "$(CYAN)📦 Installing dev dependencies with uv...$(RESET)"
+	@$(UV) pip install -e ".[dev]"
+	@$(UV) tool install --upgrade ruff mypy bandit pre-commit
+
+sync: ## Sync dependencies and create lock file
+	@echo "$(CYAN)🔄 Syncing dependencies...$(RESET)"
+	@$(UV) pip compile pyproject.toml -o requirements.lock
+
+# @TASK:QUALITY-PARALLEL-001 Quality checks with parallel execution
+lint: ## Run ruff linting (Rust-powered, super fast)
+	@echo "$(CYAN)🔍 Running ruff linting...$(RESET)"
+	@$(RUFF) check src/moai_adk
+
+lint-fix: ## Run ruff with auto-fix
+	@echo "$(CYAN)🔧 Running ruff with auto-fix...$(RESET)"
+	@$(RUFF) check src/moai_adk --fix
+
+format: ## Format code with ruff formatter
+	@echo "$(CYAN)💅 Formatting code with ruff...$(RESET)"
+	@$(RUFF) format src/moai_adk
+
+format-check: ## Check code formatting
+	@echo "$(CYAN)💅 Checking code formatting...$(RESET)"
+	@$(RUFF) format src/moai_adk --check
+
+typecheck: ## Run mypy type checking
+	@echo "$(CYAN)🔍 Running mypy type checking...$(RESET)"
+	@$(MYPY) src/moai_adk
+
+security: ## Run bandit security scan
+	@echo "$(CYAN)🔒 Running security scan with bandit...$(RESET)"
+	@$(BANDIT) -r src/moai_adk -f json -o security-report.json || true
+	@$(BANDIT) -r src/moai_adk
+
+# @TASK:TESTING-001 Testing with coverage
+test: ## Run pytest tests
+	@echo "$(CYAN)🧪 Running tests...$(RESET)"
+	@python -m pytest tests/ -v
+
+test-fast: ## Run tests with minimal output
+	@echo "$(CYAN)🧪 Running fast tests...$(RESET)"
+	@python -m pytest tests/ -q --tb=no
+
+coverage: ## Run tests with coverage report
+	@echo "$(CYAN)🧪 Running tests with coverage...$(RESET)"
+	@python -m pytest --cov=moai_adk --cov-report=html --cov-report=term tests/
+	@echo "$(GREEN)📊 Coverage report generated: htmlcov/index.html$(RESET)"
+
+test-watch: ## Run tests in watch mode (requires pytest-watch)
+	@echo "$(CYAN)👁️  Running tests in watch mode...$(RESET)"
+	@python -m pytest tests/ --watch
+
+# @TASK:COMBINED-OPERATIONS-001 Parallel quality checks
+quality: ## Run all quality checks in parallel
+	@echo "$(CYAN)🚀 Running quality checks in parallel...$(RESET)"
+	@$(MAKE) -j4 lint format-check typecheck security
+
+all-checks: ## Run quality checks + tests with coverage
+	@echo "$(CYAN)🎯 Running comprehensive checks...$(RESET)"
+	@$(MAKE) quality
+	@$(MAKE) coverage
+
+ci: ## Full CI pipeline simulation
+	@echo "$(CYAN)🔄 Simulating full CI pipeline...$(RESET)"
+	@$(MAKE) clean
+	@$(MAKE) install
+	@$(MAKE) all-checks
+	@echo "$(GREEN)✅ CI pipeline completed successfully!$(RESET)"
+
+# @TASK:MAINTENANCE-001 Maintenance tasks
+clean: ## Clean build artifacts and caches
+	@echo "$(CYAN)🧹 Cleaning build artifacts...$(RESET)"
+	@rm -rf build/ dist/ *.egg-info/
+	@rm -rf .pytest_cache/ .mypy_cache/ .ruff_cache/
+	@rm -rf htmlcov/ .coverage coverage.xml
+	@rm -rf security-report.json
+	@find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+	@find . -type f -name "*.pyc" -delete 2>/dev/null || true
+	@echo "$(GREEN)✨ Clean complete!$(RESET)"
+
+pre-commit: ## Install pre-commit hooks
+	@echo "$(CYAN)🪝 Installing pre-commit hooks...$(RESET)"
+	@pre-commit install
+	@pre-commit install --hook-type commit-msg
+
+benchmark: ## Performance benchmark comparison
+	@echo "$(CYAN)⏱️  Running performance benchmark...$(RESET)"
+	@echo "$(YELLOW)📊 UV vs PIP comparison:$(RESET)"
+	@echo "  uv install: ~10-100x faster than pip"
+	@echo "  ruff check: ~10-100x faster than flake8+isort"
+	@echo "  ruff format: ~10x faster than black"
+	@echo ""
+	@echo "$(CYAN)🔥 Running actual speed test...$(RESET)"
+	@time $(RUFF) check src/moai_adk --statistics
+	@echo ""
+	@time $(RUFF) format src/moai_adk --check
+
+# @TASK:BUILD-001 Build and distribution
+build: ## Build distribution packages
+	@echo "$(CYAN)📦 Building packages...$(RESET)"
+	@$(UV) build
+
+release: ## Prepare for release
+	@echo "$(CYAN)🚀 Preparing release...$(RESET)"
+	@$(MAKE) clean
+	@$(MAKE) all-checks
+	@$(MAKE) build
+	@echo "$(GREEN)🎉 Release ready!$(RESET)"
+
+# @TASK:INFO-001 Project information
+info: ## Show project and tool information
+	@echo "$(CYAN)🗿 MoAI-ADK Project Information$(RESET)"
+	@echo "$(CYAN)==============================$(RESET)"
+	@echo "Python: $(shell python --version)"
+	@echo "uv: $(shell $(UV) --version 2>/dev/null || echo 'Not installed')"
+	@echo "ruff: $(shell $(RUFF) --version 2>/dev/null || echo 'Not installed')"
+	@echo "mypy: $(shell $(MYPY) --version 2>/dev/null || echo 'Not installed')"
+	@echo "bandit: $(shell $(BANDIT) --version 2>/dev/null || echo 'Not installed')"
+	@echo ""
+	@echo "$(YELLOW)🚀 Performance Benefits:$(RESET)"
+	@echo "  • uv: 10-100x faster than pip"
+	@echo "  • ruff: 10-100x faster than flake8+black+isort"
+	@echo "  • Parallel execution: Quality checks run concurrently"
+	@echo "  • Rust-powered: Maximum performance"

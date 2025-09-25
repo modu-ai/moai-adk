@@ -7,17 +7,16 @@ GREEN 단계: JSON ↔ SQLite 양방향 변환 및 데이터 무결성 보장
 
 import json
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Callable
-from concurrent.futures import ThreadPoolExecutor
 
-from .database import TagDatabaseManager, DatabaseError
-from .adapter import TagIndexAdapter
-from .migration_models import (
-    MigrationError, DataValidationError, ValidationError, MigrationProgress,
-    ConflictResolution, MigrationResult, BackupInfo, BackupManager
-)
+from .database import TagDatabaseManager
 from .migration_engine import MigrationEngine
+from .migration_models import (
+    BackupManager,
+    MigrationProgress,
+    MigrationResult,
+)
 from .migration_validator import MigrationValidator
 
 
@@ -32,7 +31,7 @@ class TagMigrationTool:
     @DESIGN:REFACTORED-ORCHESTRATOR-001 Now coordinates specialized modules
     """
 
-    def __init__(self, database_path: Path, json_path: Path, backup_directory: Optional[Path] = None):
+    def __init__(self, database_path: Path, json_path: Path, backup_directory: Path | None = None):
         self.database_path = database_path
         self.json_path = json_path
 
@@ -50,7 +49,7 @@ class TagMigrationTool:
     def migrate_json_to_sqlite(self,
                               validate_data: bool = False,
                               strict_mode: bool = False,
-                              progress_callback: Optional[Callable[[MigrationProgress], None]] = None,
+                              progress_callback: Callable[[MigrationProgress], None] | None = None,
                               batch_size: int = 1000,
                               mode: str = 'full',
                               preserve_existing: bool = False,
@@ -59,7 +58,7 @@ class TagMigrationTool:
                               auto_rollback: bool = False,
                               detailed_reporting: bool = False,
                               generate_report: bool = False,
-                              plugins: Optional[List] = None,
+                              plugins: list | None = None,
                               strict_validation: bool = False) -> MigrationResult:
         """JSON에서 SQLite로 마이그레이션 (오케스트레이터)"""
 
@@ -81,7 +80,7 @@ class TagMigrationTool:
                 result.errors.append("JSON 파일이 존재하지 않습니다")
                 return result
 
-            with open(self.json_path, 'r', encoding='utf-8') as f:
+            with open(self.json_path, encoding='utf-8') as f:
                 json_data = json.load(f)
 
             # 데이터 검증

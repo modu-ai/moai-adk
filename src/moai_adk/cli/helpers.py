@@ -6,16 +6,15 @@
 conflict detection, environment validation, and project analysis.
 """
 
-import shutil
 import datetime
+import shutil
 from pathlib import Path
-from typing import Optional
 
-from ..utils.logger import get_logger
 from .._version import __version__, get_version_format
-from ..install.resource_manager import ResourceManager
 from ..core.resource_version import ResourceVersionManager
 from ..core.validator import validate_python_version
+from ..install.resource_manager import ResourceManager
+from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -213,7 +212,7 @@ def validate_environment() -> bool:
         return False
 
 
-def format_project_status(project_path: Path, config_data: Optional[dict] = None) -> dict:
+def format_project_status(project_path: Path, config_data: dict | None = None) -> dict:
     """Format project status information for display.
 
     Args:

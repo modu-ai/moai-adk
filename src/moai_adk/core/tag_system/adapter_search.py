@@ -5,8 +5,7 @@ Advanced search and traceability features for tag adapter.
 @DESIGN:SEPARATED-SEARCH-001 Extracted from oversized adapter.py (631 LOC)
 """
 
-from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Any
 
 from .database import TagDatabaseManager
 
@@ -31,7 +30,7 @@ class AdapterSearch:
         else:
             return "Other"
 
-    def search_by_category(self, category: str, **filters) -> List[Dict[str, Any]]:
+    def search_by_category(self, category: str, **filters) -> list[dict[str, Any]]:
         """카테고리별 검색 (고급 필터링 포함)"""
         try:
             # 기본 카테고리 검색
@@ -108,7 +107,7 @@ class AdapterSearch:
                               direction: str = 'both',
                               max_depth: int = 5,
                               include_details: bool = True,
-                              category_filter: Optional[List[str]] = None) -> Dict[str, Any]:
+                              category_filter: list[str] | None = None) -> dict[str, Any]:
         """추적성 체인 분석 (고도화된 버전)"""
         try:
             # TAG 식별자에서 카테고리와 ID 분리
@@ -184,8 +183,8 @@ class AdapterSearch:
             }
 
     def _build_reference_chain(self, tag_id: int, direction: str, max_depth: int,
-                              visited: set, include_details: bool, category_filter: Optional[List[str]],
-                              current_depth: int = 0) -> List[Dict[str, Any]]:
+                              visited: set, include_details: bool, category_filter: list[str] | None,
+                              current_depth: int = 0) -> list[dict[str, Any]]:
         """참조 체인 구축"""
         if current_depth >= max_depth:
             return []
@@ -243,7 +242,7 @@ class AdapterSearch:
 
         return chain
 
-    def _count_chain_nodes(self, chain: List[Dict[str, Any]]) -> int:
+    def _count_chain_nodes(self, chain: list[dict[str, Any]]) -> int:
         """체인의 총 노드 수 계산"""
         count = len(chain)
         for node in chain:
@@ -251,14 +250,14 @@ class AdapterSearch:
                 count += self._count_chain_nodes(node['children'])
         return count
 
-    def _collect_categories_from_chain(self, chain: List[Dict[str, Any]], categories: set):
+    def _collect_categories_from_chain(self, chain: list[dict[str, Any]], categories: set):
         """체인에서 모든 카테고리 수집"""
         for node in chain:
             categories.add(node.get('category', ''))
             if 'children' in node:
                 self._collect_categories_from_chain(node['children'], categories)
 
-    def _get_chain_depth(self, chain: List[Dict[str, Any]]) -> int:
+    def _get_chain_depth(self, chain: list[dict[str, Any]]) -> int:
         """체인의 최대 깊이 계산"""
         if not chain:
             return 0

@@ -11,9 +11,9 @@ Git Strategy Classes
 import logging
 import subprocess
 from abc import ABC, abstractmethod
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Dict, Generator, Optional
 
 from .git_lock_manager import GitLockManager
 
@@ -129,7 +129,7 @@ class GitStrategyBase(ABC):
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
             return False
 
-    def get_repository_status(self) -> Dict:
+    def get_repository_status(self) -> dict:
         """저장소 상태 정보 반환
 
         Returns:
@@ -171,7 +171,6 @@ class GitStrategyBase(ABC):
         Yields:
             None
         """
-        pass
 
     def validate_feature_name(self, feature_name: str) -> str:
         """기능명 검증 및 정규화
@@ -202,7 +201,7 @@ class GitStrategyBase(ABC):
 
         return normalized
 
-    def log_git_operation(self, operation: str, details: Dict):
+    def log_git_operation(self, operation: str, details: dict):
         """Git 작업 로깅
 
         Args:
@@ -285,8 +284,8 @@ class TeamGitStrategy(GitStrategyBase):
 
     def __init__(self, project_dir: Path, config=None):
         super().__init__(project_dir, config)
-        self._current_branch: Optional[str] = None
-        self._feature_branch: Optional[str] = None
+        self._current_branch: str | None = None
+        self._feature_branch: str | None = None
 
     def _get_base_branch(self) -> str:
         """베이스 브랜치 확인
@@ -518,7 +517,7 @@ class TeamGitStrategy(GitStrategyBase):
                     "stayed_on_feature": True
                 })
 
-    def get_feature_branch_info(self) -> Dict:
+    def get_feature_branch_info(self) -> dict:
         """현재 feature 브랜치 정보 반환
 
         Returns:

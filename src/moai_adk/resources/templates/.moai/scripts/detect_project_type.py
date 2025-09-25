@@ -6,11 +6,11 @@
 @TASK:DOC-CONDITIONAL-001 - 조건부 문서 생성 로직
 """
 
-import click
 import json
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+
+import click
 
 
 class ProjectTypeDetector:
@@ -19,7 +19,7 @@ class ProjectTypeDetector:
     def __init__(self, project_path: str = "."):
         self.project_path = Path(project_path).resolve()
 
-    def detect_project_type(self) -> Dict[str, any]:
+    def detect_project_type(self) -> dict[str, any]:
         """
         프로젝트 유형을 감지하고 필요한 문서 목록을 반환
 
@@ -37,7 +37,7 @@ class ProjectTypeDetector:
             "confidence": self._calculate_confidence(features, project_type)
         }
 
-    def _analyze_project_features(self) -> Dict[str, any]:
+    def _analyze_project_features(self) -> dict[str, any]:
         """프로젝트의 특징을 분석"""
         features = {
             "has_web_api": self._has_web_api(),
@@ -123,7 +123,7 @@ class ProjectTypeDetector:
                     return lang
         return "unknown"
 
-    def _detect_framework(self) -> Optional[str]:
+    def _detect_framework(self) -> str | None:
         """프레임워크 감지"""
         # Python 프레임워크
         if (self.project_path / "requirements.txt").exists():
@@ -157,7 +157,7 @@ class ProjectTypeDetector:
 
         return None
 
-    def _find_api_files(self) -> List[str]:
+    def _find_api_files(self) -> list[str]:
         """API 관련 파일 찾기"""
         api_files = []
         patterns = [
@@ -179,7 +179,7 @@ class ProjectTypeDetector:
             ])
         return api_files
 
-    def _find_cli_files(self) -> List[str]:
+    def _find_cli_files(self) -> list[str]:
         """CLI 관련 파일 찾기"""
         cli_files = []
         patterns = [
@@ -198,7 +198,7 @@ class ProjectTypeDetector:
             ])
         return cli_files
 
-    def _find_lib_files(self) -> List[str]:
+    def _find_lib_files(self) -> list[str]:
         """라이브러리 관련 파일 찾기"""
         lib_files = []
         patterns = ["src/**/*.py", "lib/**/*.py", "src/**/*.js", "lib/**/*.js"]
@@ -255,7 +255,7 @@ class ProjectTypeDetector:
                 continue
         return False
 
-    def _classify_project_type(self, features: Dict) -> str:
+    def _classify_project_type(self, features: dict) -> str:
         """특징을 바탕으로 프로젝트 유형 분류"""
         # 우선순위 기반 분류
         if features["has_web_api"] and features["has_frontend"]:
@@ -271,7 +271,7 @@ class ProjectTypeDetector:
         else:
             return "application"
 
-    def _get_required_docs(self, project_type: str, features: Dict) -> List[str]:
+    def _get_required_docs(self, project_type: str, features: dict) -> list[str]:
         """프로젝트 유형별 필요한 문서 목록"""
         doc_mapping = {
             "web_api": ["API.md", "endpoints.md", "authentication.md"],
@@ -292,7 +292,7 @@ class ProjectTypeDetector:
 
         return list(set(base_docs))  # 중복 제거
 
-    def _calculate_confidence(self, features: Dict, project_type: str) -> float:
+    def _calculate_confidence(self, features: dict, project_type: str) -> float:
         """분류 결과의 신뢰도 계산"""
         confidence_factors = {
             "web_api": features["has_web_api"] and len(features["api_files"]) > 0,

@@ -8,7 +8,7 @@ with security validation and error handling.
 import shutil
 from pathlib import Path
 from string import Template
-from typing import List, Dict, Any
+from typing import Any
 
 from ..utils.logger import get_logger
 from .security import SecurityManager
@@ -36,7 +36,7 @@ class FileManager:
         target_dir: Path,
         pattern: str,
         preserve_permissions: bool = False
-    ) -> List[Path]:
+    ) -> list[Path]:
         """
         Copy template files matching pattern with security validation.
 
@@ -82,7 +82,7 @@ class FileManager:
 
         return created_files
 
-    def render_template_file(self, template_path: Path, context: Dict[str, Any]) -> str:
+    def render_template_file(self, template_path: Path, context: dict[str, Any]) -> str:
         """
         Render a template file with context variables.
 
@@ -94,7 +94,7 @@ class FileManager:
             str: Rendered template content
         """
         try:
-            with open(template_path, "r", encoding="utf-8") as f:
+            with open(template_path, encoding="utf-8") as f:
                 template_content = f.read()
 
             template = Template(template_content)
@@ -111,7 +111,7 @@ class FileManager:
         self,
         source_path: Path,
         target_path: Path,
-        context: Dict[str, Any],
+        context: dict[str, Any],
         create_dirs: bool = True
     ) -> bool:
         """
@@ -157,7 +157,7 @@ class FileManager:
             logger.error("Error copying and rendering template: %s", e)
             return False
 
-    def copy_hook_scripts(self, target_dir: Path) -> List[Path]:
+    def copy_hook_scripts(self, target_dir: Path) -> list[Path]:
         """
         Copy MoAI Hook scripts to target directory.
 
@@ -205,7 +205,7 @@ class FileManager:
 
         return hook_files
 
-    def copy_verification_scripts(self, target_dir: Path) -> List[Path]:
+    def copy_verification_scripts(self, target_dir: Path) -> list[Path]:
         """
         Copy MoAI verification scripts to target directory.
 
@@ -256,8 +256,8 @@ class FileManager:
     def install_output_styles(
         self,
         target_dir: Path,
-        context: Dict[str, Any]
-    ) -> List[Path]:
+        context: dict[str, Any]
+    ) -> list[Path]:
         """
         Install MoAI-ADK output styles with template rendering.
 

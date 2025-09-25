@@ -5,9 +5,8 @@
 """
 
 import re
-from enum import Enum
 from dataclasses import dataclass
-from typing import List, Dict, Any, Optional, Tuple
+from enum import Enum
 
 
 class TagCategory(Enum):
@@ -23,8 +22,8 @@ class TagMatch:
     """TAG 매칭 결과"""
     category: str
     identifier: str
-    description: Optional[str] = None
-    references: Optional[List[str]] = None
+    description: str | None = None
+    references: list[str] | None = None
 
     def __post_init__(self):
         if self.references is None:
@@ -41,7 +40,7 @@ class TagPosition:
 @dataclass
 class TagChain:
     """TAG 체인"""
-    links: List[TagMatch]
+    links: list[TagMatch]
 
 
 @dataclass
@@ -49,7 +48,7 @@ class DuplicateTagInfo:
     """중복 TAG 정보"""
     category: str
     identifier: str
-    positions: List[TagPosition]
+    positions: list[TagPosition]
 
 
 class TagParser:
@@ -87,11 +86,11 @@ class TagParser:
         self._chain_pattern = re.compile(self.CHAIN_PATTERN)
         self._individual_tag_pattern = re.compile(self.INDIVIDUAL_TAG_PATTERN)
 
-    def get_tag_categories(self) -> Dict[TagCategory, List[str]]:
+    def get_tag_categories(self) -> dict[TagCategory, list[str]]:
         """16-Core TAG 카테고리 반환"""
         return self._tag_categories.copy()
 
-    def extract_tags(self, content: str) -> List[TagMatch]:
+    def extract_tags(self, content: str) -> list[TagMatch]:
         """
         텍스트에서 TAG 추출
 
@@ -118,7 +117,7 @@ class TagParser:
 
         return tags
 
-    def parse_tag_chains(self, content: str) -> List[TagChain]:
+    def parse_tag_chains(self, content: str) -> list[TagChain]:
         """
         TAG 체인 파싱
 
@@ -167,7 +166,7 @@ class TagParser:
         category = match.group(1)
         return self._is_valid_tag_category(category)
 
-    def extract_tags_with_positions(self, content: str) -> List[Tuple[TagMatch, TagPosition]]:
+    def extract_tags_with_positions(self, content: str) -> list[tuple[TagMatch, TagPosition]]:
         """
         위치 정보와 함께 TAG 추출
 
@@ -197,7 +196,7 @@ class TagParser:
 
         return results
 
-    def find_duplicate_tags(self, content: str) -> List[DuplicateTagInfo]:
+    def find_duplicate_tags(self, content: str) -> list[DuplicateTagInfo]:
         """
         중복 TAG 검색
 

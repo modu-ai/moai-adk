@@ -8,12 +8,13 @@ and prints follow-up instructions for manual actions that remain.
 from __future__ import annotations
 
 import argparse
-import click
 import os
 import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
+
+import click
 
 
 def run(cmd: list[str], cwd: Path) -> tuple[int, str, str]:

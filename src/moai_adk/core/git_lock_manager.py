@@ -12,9 +12,9 @@ import json
 import logging
 import os
 import time
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Dict, Generator, Optional
 
 from .exceptions import GitLockedException
 
@@ -34,7 +34,7 @@ class GitLockManager:
     - 자동 정리 및 모니터링 (@FEATURE:AUTO-CLEANUP-001)
     """
 
-    def __init__(self, project_dir: Optional[Path] = None, lock_dir: str = ".moai/locks"):
+    def __init__(self, project_dir: Path | None = None, lock_dir: str = ".moai/locks"):
         """Initialize GitLockManager
 
         Args:
@@ -61,7 +61,7 @@ class GitLockManager:
         self.lock_file = self.lock_dir / "git.lock"
 
         # 성능 최적화를 위한 캐시
-        self._lock_info_cache: Optional[Dict] = None
+        self._lock_info_cache: dict | None = None
         self._last_check_time = 0.0
 
         logger.debug(f"GitLockManager 초기화: {self.project_dir}, 잠금파일: {self.lock_file}")
@@ -81,7 +81,7 @@ class GitLockManager:
             logger.error(f"잠금 디렉토리 생성 실패: {self.lock_dir}, 오류: {e}")
             raise GitLockedException(f"잠금 디렉토리 생성 실패: {e}")
 
-    def _get_lock_info(self) -> Optional[Dict]:
+    def _get_lock_info(self) -> dict | None:
         """잠금 파일 정보 획득
 
         캐시된 정보를 사용하여 성능 최적화 (@PERF:LOCK-100MS)
@@ -117,7 +117,7 @@ class GitLockManager:
             logger.warning(f"잠금 파일 읽기 실패: {e}")
             return None
 
-    def _parse_legacy_lock_format(self, content: str) -> Dict:
+    def _parse_legacy_lock_format(self, content: str) -> dict:
         """레거시 잠금 파일 형식 파싱
 
         Args:
@@ -157,7 +157,7 @@ class GitLockManager:
         except (OSError, ProcessLookupError):
             return False
 
-    def _is_lock_valid(self, lock_info: Dict) -> bool:
+    def _is_lock_valid(self, lock_info: dict) -> bool:
         """잠금 파일 유효성 검사
 
         Args:
@@ -254,7 +254,7 @@ class GitLockManager:
             logger.warning(f"잠금 파일 삭제 중 오류 (무시됨): {e}")
             # 파일이 이미 삭제되었거나 다른 프로세스에서 삭제한 경우 무시
 
-    def _create_lock_info(self) -> Dict:
+    def _create_lock_info(self) -> dict:
         """잠금 정보 생성
 
         Returns:
@@ -370,7 +370,7 @@ class GitLockManager:
         logger.debug(f"직접 잠금 획득 완료: PID={lock_info['pid']}")
         return True
 
-    def get_lock_status(self) -> Dict:
+    def get_lock_status(self) -> dict:
         """잠금 상태 정보 반환
 
         모니터링 및 디버깅을 위한 상세 정보 제공

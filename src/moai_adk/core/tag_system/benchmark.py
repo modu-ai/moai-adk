@@ -5,11 +5,8 @@ GREEN 단계: 10x 성능 개선 및 50% 메모리 절약 검증
 """
 
 import time
-import threading
-from pathlib import Path
-from typing import Dict, List, Any, Optional, Callable
 from dataclasses import dataclass
-from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 
 @dataclass
@@ -26,7 +23,7 @@ class BenchmarkResult:
     """벤치마크 결과"""
     overall_improvement_ratio: float
     all_scenarios_meet_target: bool
-    scenario_results: Dict[str, Dict[str, float]]
+    scenario_results: dict[str, dict[str, float]]
 
 
 @dataclass
@@ -42,7 +39,7 @@ class ScalabilityResult:
     """확장성 분석 결과"""
     complexity_order: str
     growth_rate: float
-    performance_data: List[tuple]
+    performance_data: list[tuple]
 
 
 @dataclass
@@ -61,8 +58,8 @@ class MonitoringReport:
     total_queries: int
     avg_query_time_ms: float
     error_count: int
-    alerts: List[Alert]
-    query_time_percentiles: Dict[str, float]
+    alerts: list[Alert]
+    query_time_percentiles: dict[str, float]
     resource_usage: 'ResourceUsage'
 
 
@@ -76,9 +73,9 @@ class ResourceUsage:
 @dataclass
 class PerformanceComparison:
     """성능 비교 결과"""
-    json_performance: Dict[str, float]
-    sqlite_performance: Dict[str, float]
-    improvement_ratios: Dict[str, float]
+    json_performance: dict[str, float]
+    sqlite_performance: dict[str, float]
+    improvement_ratios: dict[str, float]
 
 
 @dataclass
@@ -108,7 +105,7 @@ class MemoryProfiler:
 class PerformanceMonitor:
     """실시간 성능 모니터"""
 
-    def __init__(self, alert_thresholds: Dict[str, float]):
+    def __init__(self, alert_thresholds: dict[str, float]):
         self.alert_thresholds = alert_thresholds
         self._queries = []
         self._alerts = []
@@ -163,7 +160,7 @@ class PerformanceMonitor:
             resource_usage=ResourceUsage(peak_memory_mb=50, avg_cpu_percent=25)  # 임시값
         )
 
-    def _percentile(self, sorted_list: List[float], percentile: int) -> float:
+    def _percentile(self, sorted_list: list[float], percentile: int) -> float:
         """퍼센타일 계산"""
         if not sorted_list:
             return 0.0
@@ -201,8 +198,8 @@ class TagPerformanceBenchmark:
         self.database_path = Path(database_path)
         self.json_path = Path(json_path)
 
-    def create_performance_report(self, json_results: Dict[str, float],
-                                 sqlite_results: Dict[str, float]) -> BenchmarkResult:
+    def create_performance_report(self, json_results: dict[str, float],
+                                 sqlite_results: dict[str, float]) -> BenchmarkResult:
         """성능 비교 리포트 생성"""
         scenario_results = {}
         improvement_ratios = []
@@ -228,6 +225,6 @@ class TagPerformanceBenchmark:
             scenario_results=scenario_results
         )
 
-    def create_real_time_monitor(self, alert_thresholds: Dict[str, float]) -> PerformanceMonitor:
+    def create_real_time_monitor(self, alert_thresholds: dict[str, float]) -> PerformanceMonitor:
         """실시간 성능 모니터 생성"""
         return PerformanceMonitor(alert_thresholds)

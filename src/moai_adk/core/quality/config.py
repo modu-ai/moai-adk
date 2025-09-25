@@ -6,9 +6,9 @@ Configuration management for guideline checking.
 """
 
 import json
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Dict, Optional, Any
+from typing import Any
 
 # Optional YAML support (graceful degradation if not available)
 try:
@@ -18,8 +18,8 @@ except ImportError:
     YAML_AVAILABLE = False
     yaml = None
 
-from .constants import GuidelineLimits
 from ...utils.logger import get_logger
+from .constants import GuidelineLimits
 
 logger = get_logger(__name__)
 
@@ -29,11 +29,11 @@ logger = get_logger(__name__)
 class GuidelineConfig:
     """Configuration for guideline checking with YAML/JSON support."""
     limits: GuidelineLimits
-    file_patterns: Dict[str, Any]
-    enabled_checks: Dict[str, bool]
+    file_patterns: dict[str, Any]
+    enabled_checks: dict[str, bool]
     output_format: str = "json"
     parallel_processing: bool = True
-    max_workers: Optional[int] = None
+    max_workers: int | None = None
 
     @classmethod
     def from_file(cls, config_path: Path) -> 'GuidelineConfig':
@@ -52,7 +52,7 @@ class GuidelineConfig:
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
         try:
-            with open(config_path, 'r', encoding='utf-8') as file:
+            with open(config_path, encoding='utf-8') as file:
                 if config_path.suffix in ['.yaml', '.yml']:
                     if not YAML_AVAILABLE:
                         raise ImportError("PyYAML is required for YAML configuration files. "

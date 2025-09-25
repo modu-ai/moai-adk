@@ -5,17 +5,18 @@ watchdog 기반 파일 감지 및 인덱스 실시간 갱신
 """
 
 import json
-import threading
 import logging
-from datetime import datetime
-from pathlib import Path
-from typing import Dict, Any, Optional, Callable
+import threading
+from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
+from pathlib import Path
+from typing import Any
 
 import jsonschema
+from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler, FileSystemEvent
 
 from .parser import TagParser
 
@@ -66,12 +67,12 @@ class TagIndexManager:
         self.index_file = Path(index_file)
         self.parser = TagParser()
 
-        self._observer: Optional[Observer] = None
+        self._observer: Observer | None = None
         self._lock = threading.Lock()
         self._status = WatcherStatus.STOPPED
 
         # 콜백 함수
-        self.on_file_changed: Optional[Callable[[IndexUpdateEvent], None]] = None
+        self.on_file_changed: Callable[[IndexUpdateEvent], None] | None = None
 
         # 구조화된 로거 설정
         self._logger = logging.getLogger(__name__)
@@ -190,15 +191,15 @@ class TagIndexManager:
         except Exception as e:
             self._logger.error(f"Error processing file change {file_path}: {e}", exc_info=True)
 
-    def load_index(self) -> Dict[str, Any]:
+    def load_index(self) -> dict[str, Any]:
         """인덱스 로드"""
         if not self.index_file.exists():
             self.initialize_index()
 
-        with open(self.index_file, 'r', encoding='utf-8') as f:
+        with open(self.index_file, encoding='utf-8') as f:
             return json.load(f)
 
-    def save_index(self, index_data: Dict[str, Any]) -> None:
+    def save_index(self, index_data: dict[str, Any]) -> None:
         """인덱스 저장"""
         # 메타데이터 업데이트
         index_data["metadata"]["updated_at"] = datetime.now().isoformat()
@@ -206,7 +207,7 @@ class TagIndexManager:
         with open(self.index_file, 'w', encoding='utf-8') as f:
             json.dump(index_data, f, indent=2, ensure_ascii=False)
 
-    def validate_index_schema(self, index_data: Dict[str, Any]) -> bool:
+    def validate_index_schema(self, index_data: dict[str, Any]) -> bool:
         """인덱스 스키마 검증"""
         try:
             jsonschema.validate(index_data, self._index_schema)
@@ -288,7 +289,7 @@ class TagIndexManager:
 
         self.save_index(index_data)
 
-    def _remove_file_tags_from_categories(self, file_path: str, index_data: Dict[str, Any]) -> None:
+    def _remove_file_tags_from_categories(self, file_path: str, index_data: dict[str, Any]) -> None:
         """카테고리에서 특정 파일의 TAG 제거"""
         for group in index_data["categories"].values():
             for category_data in group.values():

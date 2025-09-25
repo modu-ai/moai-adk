@@ -8,17 +8,14 @@ following TRUST 5 principles for test-driven development.
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from ...utils.logger import get_logger
-from ..security import SecurityManager
 
 logger = get_logger(__name__)
 
 
 class TDDError(Exception):
     """TDD-related exception."""
-    pass
 
 
 class TDDManager:

@@ -9,16 +9,19 @@ MoAI-ADK 프로젝트 관련 헬퍼 유틸리티
 """
 
 import json
-import os
-import sys
-from pathlib import Path
-from typing import Dict, Optional, Any, List
 import logging
+from pathlib import Path
+from typing import Any
 
 from constants import (
-    MOAI_DIR_NAME, CONFIG_FILE_NAME, CLAUDE_MEMORY_FILE_NAME,
-    DEVELOPMENT_GUIDE_FILE_NAME, MEMORY_DIR_NAME, VALID_MODES,
-    ERROR_MESSAGES, PERSONAL_MODE, TEAM_MODE
+    CLAUDE_MEMORY_FILE_NAME,
+    CONFIG_FILE_NAME,
+    DEVELOPMENT_GUIDE_FILE_NAME,
+    ERROR_MESSAGES,
+    MEMORY_DIR_NAME,
+    MOAI_DIR_NAME,
+    PERSONAL_MODE,
+    VALID_MODES,
 )
 
 logger = logging.getLogger(__name__)
@@ -28,7 +31,7 @@ class ProjectHelper:
     """프로젝트 관련 헬퍼 클래스"""
 
     @staticmethod
-    def find_project_root(start_path: Optional[Path] = None) -> Path:
+    def find_project_root(start_path: Path | None = None) -> Path:
         """
         프로젝트 루트 디렉터리를 찾습니다.
 
@@ -73,7 +76,7 @@ class ProjectHelper:
         raise FileNotFoundError(f"프로젝트 루트를 찾을 수 없습니다. 시작 경로: {start_path}")
 
     @staticmethod
-    def load_config(project_root: Optional[Path] = None) -> Dict[str, Any]:
+    def load_config(project_root: Path | None = None) -> dict[str, Any]:
         """
         MoAI 설정 파일을 로드합니다.
 
@@ -97,7 +100,7 @@ class ProjectHelper:
             return ProjectHelper._get_default_config()
 
         try:
-            with open(config_path, 'r', encoding='utf-8') as f:
+            with open(config_path, encoding='utf-8') as f:
                 config = json.load(f)
 
             # 기본값과 병합
@@ -114,7 +117,7 @@ class ProjectHelper:
             raise
 
     @staticmethod
-    def save_config(config: Dict[str, Any], project_root: Optional[Path] = None) -> None:
+    def save_config(config: dict[str, Any], project_root: Path | None = None) -> None:
         """
         MoAI 설정 파일을 저장합니다.
 
@@ -137,7 +140,7 @@ class ProjectHelper:
             raise
 
     @staticmethod
-    def get_project_mode(project_root: Optional[Path] = None) -> str:
+    def get_project_mode(project_root: Path | None = None) -> str:
         """
         현재 프로젝트 모드를 반환합니다.
 
@@ -151,7 +154,7 @@ class ProjectHelper:
         return config.get("mode", PERSONAL_MODE)
 
     @staticmethod
-    def set_project_mode(mode: str, project_root: Optional[Path] = None) -> None:
+    def set_project_mode(mode: str, project_root: Path | None = None) -> None:
         """
         프로젝트 모드를 설정합니다.
 
@@ -171,7 +174,7 @@ class ProjectHelper:
         logger.info(f"프로젝트 모드 변경: {mode}")
 
     @staticmethod
-    def is_moai_project(project_root: Optional[Path] = None) -> bool:
+    def is_moai_project(project_root: Path | None = None) -> bool:
         """
         MoAI 프로젝트인지 확인합니다.
 
@@ -191,7 +194,7 @@ class ProjectHelper:
         return moai_dir.exists() and moai_dir.is_dir()
 
     @staticmethod
-    def get_project_info(project_root: Optional[Path] = None) -> Dict[str, Any]:
+    def get_project_info(project_root: Path | None = None) -> dict[str, Any]:
         """
         프로젝트 정보를 반환합니다.
 
@@ -219,7 +222,7 @@ class ProjectHelper:
         return info
 
     @staticmethod
-    def get_development_guide_path(project_root: Optional[Path] = None) -> Path:
+    def get_development_guide_path(project_root: Path | None = None) -> Path:
         """
         개발 가이드 파일 경로를 반환합니다.
 
@@ -235,7 +238,7 @@ class ProjectHelper:
         return project_root / MOAI_DIR_NAME / MEMORY_DIR_NAME / DEVELOPMENT_GUIDE_FILE_NAME
 
     @staticmethod
-    def get_claude_memory_path(project_root: Optional[Path] = None) -> Path:
+    def get_claude_memory_path(project_root: Path | None = None) -> Path:
         """
         Claude 메모리 파일 경로를 반환합니다.
 
@@ -251,7 +254,7 @@ class ProjectHelper:
         return project_root / CLAUDE_MEMORY_FILE_NAME
 
     @staticmethod
-    def list_specs(project_root: Optional[Path] = None) -> List[Dict[str, Any]]:
+    def list_specs(project_root: Path | None = None) -> list[dict[str, Any]]:
         """
         SPEC 목록을 반환합니다.
 
@@ -283,7 +286,7 @@ class ProjectHelper:
         return sorted(specs, key=lambda x: x["id"])
 
     @staticmethod
-    def _get_default_config() -> Dict[str, Any]:
+    def _get_default_config() -> dict[str, Any]:
         """기본 설정 반환"""
         return {
             "mode": PERSONAL_MODE,
@@ -303,7 +306,7 @@ class ProjectHelper:
         }
 
     @staticmethod
-    def _merge_configs(default: Dict[str, Any], user: Dict[str, Any]) -> Dict[str, Any]:
+    def _merge_configs(default: dict[str, Any], user: dict[str, Any]) -> dict[str, Any]:
         """설정 병합"""
         merged = default.copy()
 

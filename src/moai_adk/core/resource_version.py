@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
 
 
 class ResourceVersionManager:
@@ -17,7 +16,7 @@ class ResourceVersionManager:
         self.project_path = Path(project_path)
         self.version_path = self.project_path / self.VERSION_RELATIVE_PATH
 
-    def read(self) -> Dict[str, Optional[str]]:
+    def read(self) -> dict[str, str | None]:
         """Return version metadata if available, otherwise defaults."""
         if not self.version_path.exists():
             return {
@@ -27,7 +26,7 @@ class ResourceVersionManager:
             }
 
         try:
-            with open(self.version_path, 'r', encoding='utf-8') as fp:
+            with open(self.version_path, encoding='utf-8') as fp:
                 data = json.load(fp)
         except (json.JSONDecodeError, OSError):
             return {
@@ -42,7 +41,7 @@ class ResourceVersionManager:
             'last_updated': data.get('last_updated'),
         }
 
-    def write(self, template_version: str, package_version: str) -> Dict[str, str]:
+    def write(self, template_version: str, package_version: str) -> dict[str, str]:
         """Persist version metadata for the project."""
         data = {
             'template_version': template_version,

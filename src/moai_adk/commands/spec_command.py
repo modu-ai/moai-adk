@@ -1,33 +1,35 @@
 """
 @FEATURE:SPEC-COMMAND-001 SPEC Command Implementation
-@REQ:SPEC-CREATION-001 /moai:1-spec 명령어의 브랜치 스킵 옵션을 포함한 구현
+@REQ:SPEC-CREATION-001 → @DESIGN:SPEC-ARCHITECTURE-001 → @TASK:SPEC-MAIN-001 → @TEST:SPEC-EXECUTION-001
 
-@API:POST-SPEC - SPEC 생성 API 인터페이스
-@PERF:CMD-FAST - 명령어 실행 최적화
-@SEC:INPUT-MED - 입력 검증 보안 강화
+@REQ:SPEC-CREATION-001 /moai:1-spec command implementation including branch skip options
+@DESIGN:SPEC-ARCHITECTURE-001 Git strategy pattern integration
+
+@API:POST-SPEC SPEC creation API interface
+@PERF:CMD-FAST Command execution optimization
+@SEC:INPUT-MED Input validation security enhancement
 """
 
 import logging
 from pathlib import Path
-from typing import Dict, Optional
 
-from ..core.git_strategy import GitStrategyBase, PersonalGitStrategy, TeamGitStrategy
 from ..core.exceptions import GitLockedException
+from ..core.git_strategy import GitStrategyBase, PersonalGitStrategy, TeamGitStrategy
 
-# 로깅 설정 (@TASK:LOG-001)
+# Logging setup (@TASK:LOG-001)
 logger = logging.getLogger(__name__)
 
 
 class SpecCommand:
     """
-    @TASK:SPEC-MAIN-001 개선된 SPEC 명령어 - 브랜치 스킵 옵션 및 사용자 경험 향상
+    @TASK:SPEC-MAIN-001 Enhanced SPEC command - branch skip options and user experience improvement
 
-    TRUST 원칙 적용:
-    - T: 테스트 가능한 구조 설계
-    - R: 명확한 사용자 피드백
-    - U: Git 전략 패턴 활용
-    - S: 입력 검증 및 에러 처리
-    - T: 상세한 실행 추적
+    TRUST principles applied:
+    - T: Testable structure design
+    - R: Clear user feedback
+    - U: Git strategy pattern utilization
+    - S: Input validation and error handling
+    - T: Detailed execution tracking
     """
 
     def __init__(self, project_dir: Path, config=None, skip_branch: bool = False):
@@ -50,7 +52,7 @@ class SpecCommand:
         self.skip_branch = skip_branch
 
         # Git 전략 초기화
-        self._git_strategy: Optional[GitStrategyBase] = None
+        self._git_strategy: GitStrategyBase | None = None
 
         logger.debug(f"SpecCommand 초기화: {self.project_dir}, skip_branch={skip_branch}")
 
@@ -91,7 +93,7 @@ class SpecCommand:
 
         return 'personal'
 
-    def execute(self, spec_name: str, description: str, skip_branch: Optional[bool] = None):
+    def execute(self, spec_name: str, description: str, skip_branch: bool | None = None):
         """
         @TASK:SPEC-EXECUTE-001 SPEC 명령어 실행
 
@@ -351,7 +353,7 @@ class SpecCommand:
         """실행 오류 로깅"""
         logger.error(f"SPEC 명령어 실행 실패: {spec_name}, 오류: {error}")
 
-    def get_command_status(self) -> Dict:
+    def get_command_status(self) -> dict:
         """명령어 상태 정보 반환
 
         Returns:

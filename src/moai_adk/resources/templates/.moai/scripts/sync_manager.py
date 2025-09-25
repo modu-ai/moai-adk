@@ -10,12 +10,13 @@ MoAI 동기화 관리자 v0.1.0
 @TECH:PUSH-PULL-STRATEGY-001
 """
 
-import sys
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import click
+
 
 class SyncManager:
     """동기화 관리자
@@ -35,7 +36,7 @@ class SyncManager:
         @API:CONFIG-ACCESS-001
         """
         try:
-            with open(self.config_path, 'r', encoding='utf-8') as f:
+            with open(self.config_path, encoding='utf-8') as f:
                 return json.load(f)
         except Exception:
             return {"project": {"mode": "personal"}}

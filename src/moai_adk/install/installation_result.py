@@ -6,7 +6,6 @@ created files, and next steps for the user.
 """
 
 from dataclasses import dataclass
-from typing import List
 from pathlib import Path
 
 from ..config import Config
@@ -18,11 +17,11 @@ class InstallationResult:
 
     success: bool
     project_path: str
-    files_created: List[str]
-    next_steps: List[str]
+    files_created: list[str]
+    next_steps: list[str]
     config: Config
-    errors: List[str] | None = None
-    warnings: List[str] | None = None
+    errors: list[str] | None = None
+    warnings: list[str] | None = None
     git_initialized: bool = False
     backup_created: str | None = None
 
@@ -104,8 +103,8 @@ class InstallationResult:
         cls,
         project_path: str,
         config: Config,
-        files_created: List[str] = None,
-        next_steps: List[str] = None,
+        files_created: list[str] = None,
+        next_steps: list[str] = None,
         git_initialized: bool = False,
         backup_created: str | None = None
     ) -> 'InstallationResult':
@@ -126,7 +125,7 @@ class InstallationResult:
         project_path: str,
         config: Config,
         error: str,
-        files_created: List[str] = None
+        files_created: list[str] = None
     ) -> 'InstallationResult':
         """Create a failed installation result."""
         return cls(

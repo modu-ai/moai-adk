@@ -7,14 +7,13 @@ MoAI-ADK Language Detector Hook
 """
 
 from __future__ import annotations
+
 import json
-import sys
 from pathlib import Path
-from typing import List, Dict
 
 
-def detect_project_languages(root: Path) -> List[str]:
-    langs: List[str] = []
+def detect_project_languages(root: Path) -> list[str]:
+    langs: list[str] = []
     if (root / "pyproject.toml").exists() or list(root.rglob("*.py")):
         langs.append("python")
     if (root / "package.json").exists() or list(root.rglob("*.{js,jsx,ts,tsx}")):
@@ -36,7 +35,7 @@ def detect_project_languages(root: Path) -> List[str]:
     return list(dict.fromkeys(langs))  # de-duplicate preserving order
 
 
-def load_mappings(root: Path) -> Dict:
+def load_mappings(root: Path) -> dict:
     default = {
         "test_runners": {
             "python": "pytest",

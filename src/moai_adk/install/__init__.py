@@ -1,25 +1,30 @@
 """
-Installation and setup modules for MoAI-ADK.
+@FEATURE:INSTALL-001 Installation and setup modules for MoAI-ADK
+
+@REQ:INSTALL-SYSTEM-001 → @DESIGN:INSTALL-ARCHITECTURE-001 → @TASK:INSTALL-INTEGRATION-001 → @TEST:INSTALL-PROCESS-001
+
+@DESIGN:INSTALL-ARCHITECTURE-001 Modular installation system with clean separation
+@TASK:INSTALL-INTEGRATION-001 Installation process orchestration
 
 This package contains installation and resource management:
-- installer: Main installation logic
-- resource_manager: Resource and template management
-- installation_result: Installation result data structures
-- post_install: Post-installation setup and hooks
+- @TASK:INSTALLER-MAIN-001 Main installation logic
+- @TASK:RESOURCE-MGMT-001 Resource and template management
+- @TASK:INSTALL-RESULT-001 Installation result data structures
+- @TASK:POST-INSTALL-001 Post-installation setup and hooks
 """
 
-from .installer import SimplifiedInstaller
-from .resource_manager import ResourceManager
 from .installation_result import InstallationResult
+from .installer import SimplifiedInstaller
 from .post_install import main as post_install_main
+from .resource_manager import ResourceManager
 
 # Backward compatibility alias
 Installer = SimplifiedInstaller
 
 __all__ = [
-    'SimplifiedInstaller',
+    'InstallationResult',
     'Installer',  # Backward compatibility
     'ResourceManager',
-    'InstallationResult',
+    'SimplifiedInstaller',
     'post_install_main'
 ]

@@ -6,31 +6,26 @@ Split from oversized init() function (143 LOC) for TRUST principle compliance.
 @DESIGN:FUNCTION-SPLIT-001 Extracted from init() to meet 50 LOC limit
 """
 
-import sys
 import logging
+import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Tuple, Optional
 
 import click
 from colorama import Fore, Style
 
-from ..config import Config, RuntimeConfig
 from ..install.installer import SimplifiedInstaller
-from ..install.resource_manager import ResourceManager
-from ..core.resource_version import ResourceVersionManager
 from ..utils.logger import get_logger
 from .helpers import (
     create_installation_backup,
     detect_potential_conflicts,
-    analyze_existing_project,
     validate_environment,
 )
 
 logger = get_logger(__name__)
 
 
-def validate_initialization(project_path: str, personal: bool, team: bool, quiet: bool) -> Tuple[Path, str]:
+def validate_initialization(project_path: str, personal: bool, team: bool, quiet: bool) -> tuple[Path, str]:
     """
     Validate initialization parameters and determine project mode.
 
@@ -248,7 +243,7 @@ def create_mode_configuration(project_dir: Path, project_mode: str, quiet: bool 
                     "auto_commit": project_mode == "personal",
                     "auto_pr": project_mode == "team",
                     "develop_branch": "develop" if project_mode == "team" else "main",
-                    "feature_prefix": f"feature/SPEC-" if project_mode == "team" else "feature/",
+                    "feature_prefix": "feature/SPEC-" if project_mode == "team" else "feature/",
                     "use_gitflow": project_mode == "team"
                 }
             },

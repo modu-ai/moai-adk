@@ -4,13 +4,13 @@
 Jinja2 템플릿 기반 Markdown/HTML 리포트 생성
 """
 
+from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import List, Dict, Any, Optional
-from datetime import datetime
-from dataclasses import dataclass
+from typing import Any
 
-from jinja2 import Environment, FileSystemLoader, DictLoader
+from jinja2 import DictLoader, Environment, FileSystemLoader
 
 from .parser import TagMatch
 
@@ -27,9 +27,9 @@ class TraceabilityReport:
     """추적성 리포트 데이터"""
     title: str
     generated_at: datetime
-    tags: List[TagMatch]
-    matrix: Dict[str, Any]
-    coverage: Dict[str, float]
+    tags: list[TagMatch]
+    matrix: dict[str, Any]
+    coverage: dict[str, float]
 
 
 class TagReportGenerator:
@@ -50,7 +50,7 @@ class TagReportGenerator:
         "QUALITY": ["PERF", "SEC", "DOCS", "TAG"]
     }
 
-    def __init__(self, output_dir: Path, template_dir: Optional[Path] = None):
+    def __init__(self, output_dir: Path, template_dir: Path | None = None):
         """
         리포트 생성기 초기화
 
@@ -67,7 +67,7 @@ class TagReportGenerator:
         else:
             self._setup_default_templates()
 
-    def generate_chain_matrix(self, tags: List[TagMatch]) -> Dict[str, Any]:
+    def generate_chain_matrix(self, tags: list[TagMatch]) -> dict[str, Any]:
         """
         TAG 체인 매트릭스 생성
 
@@ -94,7 +94,7 @@ class TagReportGenerator:
 
         return matrix
 
-    def analyze_missing_connections(self, tags: List[TagMatch]) -> Dict[str, Any]:
+    def analyze_missing_connections(self, tags: list[TagMatch]) -> dict[str, Any]:
         """
         누락된 연결 분석
 
@@ -132,10 +132,10 @@ class TagReportGenerator:
         }
 
     def generate_report(self,
-                       tags: List[TagMatch],
+                       tags: list[TagMatch],
                        format: ReportFormat,
                        title: str = "TAG 추적성 리포트",
-                       template_name: Optional[str] = None) -> str:
+                       template_name: str | None = None) -> str:
         """
         리포트 생성
 
@@ -170,7 +170,7 @@ class TagReportGenerator:
 
         return template.render(**context)
 
-    def calculate_implementation_coverage(self, tags: List[TagMatch]) -> Dict[str, Any]:
+    def calculate_implementation_coverage(self, tags: list[TagMatch]) -> dict[str, Any]:
         """
         구현 완료율 계산
 
@@ -182,7 +182,7 @@ class TagReportGenerator:
         """
         # Primary Chain 분석
         primary_categories = ["REQ", "DESIGN", "TASK", "TEST"]
-        category_counts = {cat: 0 for cat in primary_categories}
+        category_counts = dict.fromkeys(primary_categories, 0)
 
         for tag in tags:
             if tag.category in category_counts:
@@ -211,7 +211,7 @@ class TagReportGenerator:
         }
 
     def export_to_file(self,
-                      tags: List[TagMatch],
+                      tags: list[TagMatch],
                       output_path: Path,
                       format: ReportFormat) -> None:
         """
@@ -227,7 +227,7 @@ class TagReportGenerator:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(content, encoding='utf-8')
 
-    def generate_summary_statistics(self, tags: List[TagMatch]) -> Dict[str, Any]:
+    def generate_summary_statistics(self, tags: list[TagMatch]) -> dict[str, Any]:
         """
         요약 통계 생성
 

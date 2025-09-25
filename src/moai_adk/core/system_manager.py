@@ -6,9 +6,10 @@ and other system-level validations.
 """
 
 import subprocess
-from typing import Dict, Any
+from typing import Any
 
 import click
+
 from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -19,7 +20,6 @@ class SystemManager:
 
     def __init__(self):
         """Initialize system manager."""
-        pass
 
     def check_nodejs_and_npm(self) -> bool:
         """
@@ -133,7 +133,7 @@ class SystemManager:
             click.echo(f"⚠️  ccusage 테스트 중 오류: {e}")
             return False
 
-    def get_system_info(self) -> Dict[str, Any]:
+    def get_system_info(self) -> dict[str, Any]:
         """
         Get comprehensive system information.
 
@@ -168,7 +168,7 @@ class SystemManager:
 
         return system_info
 
-    def _get_nodejs_info(self) -> Dict[str, Any]:
+    def _get_nodejs_info(self) -> dict[str, Any]:
         """Get Node.js environment information."""
         nodejs_info = {
             'node_available': self._check_command_exists('node'),
@@ -221,7 +221,7 @@ class SystemManager:
         except Exception:
             return False
 
-    def _get_package_managers_info(self) -> Dict[str, bool]:
+    def _get_package_managers_info(self) -> dict[str, bool]:
         """Get information about available package managers."""
         return {
             'pip': self._check_command_exists('pip'),
@@ -250,7 +250,7 @@ class SystemManager:
         current_version = (sys.version_info.major, sys.version_info.minor)
         return current_version >= min_version
 
-    def detect_project_type(self, project_path) -> Dict[str, Any]:
+    def detect_project_type(self, project_path) -> dict[str, Any]:
         """
         Detect project type based on existing files.
 
@@ -297,12 +297,12 @@ class SystemManager:
 
         return detected
 
-    def _analyze_package_json(self, package_json_path) -> Dict[str, Any]:
+    def _analyze_package_json(self, package_json_path) -> dict[str, Any]:
         """Analyze package.json for frameworks and dependencies."""
         import json
 
         try:
-            with open(package_json_path, 'r', encoding='utf-8') as f:
+            with open(package_json_path, encoding='utf-8') as f:
                 package_data = json.load(f)
 
             frameworks = []

@@ -9,10 +9,10 @@ This module provides:
 - Structured logging for debugging and audit trails
 """
 
-import sys
 import logging
+import sys
 from pathlib import Path
-from typing import Optional
+
 from colorama import Fore, Style
 
 
@@ -28,7 +28,7 @@ def get_logger(name: str = "moai-adk", level: str = "WARNING") -> logging.Logger
         Configured logger instance
     """
     logger = logging.getLogger(name)
-    
+
     if not logger.handlers:
         handler = logging.StreamHandler(sys.stdout)
         formatter = logging.Formatter(
@@ -41,7 +41,7 @@ def get_logger(name: str = "moai-adk", level: str = "WARNING") -> logging.Logger
         logger.addHandler(handler)
         logger.setLevel(getattr(logging, level.upper()))
         logger.propagate = False
-    
+
     return logger
 
 
@@ -57,10 +57,10 @@ def setup_project_logging(project_path: Path, silent: bool = False) -> logging.L
         Project logger instance
     """
     logger = get_logger(f"moai-adk.{project_path.name}")
-    
+
     if silent:
         logger.setLevel(logging.ERROR)
     else:
         logger.setLevel(logging.INFO)
-        
+
     return logger

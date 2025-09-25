@@ -7,9 +7,10 @@ Supports both direct execution and module execution (python -m moai_adk.cli).
 """
 
 import sys
+
+from ..utils.logger import get_logger
 from .commands import cli
 from .helpers import validate_environment
-from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
 

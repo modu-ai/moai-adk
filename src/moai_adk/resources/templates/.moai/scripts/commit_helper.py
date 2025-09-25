@@ -10,11 +10,11 @@ MoAI 커밋 도우미 v0.2.0 (통합 시스템 기반)
 @TECH:CLAUDE-CODE-STD-001
 """
 
-import sys
 import argparse
 import re
+import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import click
 
@@ -36,7 +36,7 @@ class CommitHelper:
         self.config = ProjectHelper.load_config(self.project_root)
         self.mode = self.config.get("mode", "personal")
 
-    def get_changed_files(self) -> Dict[str, Any]:
+    def get_changed_files(self) -> dict[str, Any]:
         """변경된 파일 목록 조회"""
         try:
             result = self.git_workflow.git.run_command(["git", "status", "--porcelain"])
@@ -61,7 +61,7 @@ class CommitHelper:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def create_smart_commit(self, message: Optional[str] = None, files: Optional[List[str]] = None) -> Dict[str, Any]:
+    def create_smart_commit(self, message: str | None = None, files: list[str] | None = None) -> dict[str, Any]:
         """스마트 커밋 생성"""
         try:
             # 변경사항 확인
@@ -89,7 +89,7 @@ class CommitHelper:
         except GitWorkflowError as e:
             return {"success": False, "error": str(e)}
 
-    def create_constitution_commit(self, message: str, files: Optional[List[str]] = None) -> Dict[str, Any]:
+    def create_constitution_commit(self, message: str, files: list[str] | None = None) -> dict[str, Any]:
         """TRUST 원칙 기반 커밋 생성"""
         try:
             # 메시지 검증
@@ -110,7 +110,7 @@ class CommitHelper:
         except GitWorkflowError as e:
             return {"success": False, "error": str(e)}
 
-    def suggest_commit_message(self, context: Optional[str] = None) -> Dict[str, Any]:
+    def suggest_commit_message(self, context: str | None = None) -> dict[str, Any]:
         """커밋 메시지 제안"""
         try:
             changes = self.get_changed_files()
@@ -167,7 +167,7 @@ class CommitHelper:
         else:
             return "unknown"
 
-    def _generate_smart_message(self, files: List[Dict[str, Any]]) -> str:
+    def _generate_smart_message(self, files: list[dict[str, Any]]) -> str:
         """스마트 커밋 메시지 생성"""
         if not files:
             return "🔧 Minor updates"
@@ -210,7 +210,7 @@ class CommitHelper:
             else:
                 return f"♻️ Refactor multiple files ({total} files)"
 
-    def _generate_context_message(self, context: str, files: List[Dict[str, Any]]) -> str:
+    def _generate_context_message(self, context: str, files: list[dict[str, Any]]) -> str:
         """컨텍스트 기반 메시지 생성"""
         context_lower = context.lower()
 
@@ -227,7 +227,7 @@ class CommitHelper:
         else:
             return f"🔧 {context}"
 
-    def _generate_template_suggestions(self, files: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _generate_template_suggestions(self, files: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """템플릿 기반 제안 생성"""
         templates = [
             {"type": "feature", "message": "✨ feat: ", "confidence": 0.6},
@@ -239,7 +239,7 @@ class CommitHelper:
         ]
         return templates
 
-    def _calculate_confidence(self, files: List[Dict[str, Any]]) -> float:
+    def _calculate_confidence(self, files: list[dict[str, Any]]) -> float:
         """제안 신뢰도 계산"""
         if not files:
             return 0.0
@@ -256,7 +256,7 @@ class CommitHelper:
         # 혼합 변경 시 중간 신뢰도
         return 0.6
 
-    def _summarize_changes(self, files: List[Dict[str, Any]]) -> Dict[str, int]:
+    def _summarize_changes(self, files: list[dict[str, Any]]) -> dict[str, int]:
         """변경사항 요약"""
         summary = {"added": 0, "modified": 0, "deleted": 0, "renamed": 0}
         for file in files:
@@ -265,7 +265,7 @@ class CommitHelper:
                 summary[file_type] += 1
         return summary
 
-    def _validate_commit_message(self, message: str) -> Dict[str, Any]:
+    def _validate_commit_message(self, message: str) -> dict[str, Any]:
         """커밋 메시지 검증"""
         if not message or not message.strip():
             return {"valid": False, "reason": "메시지가 비어있습니다"}

@@ -1,43 +1,45 @@
 """
 @FEATURE:BUILD-COMMAND-001 BUILD Command Implementation
-@REQ:TDD-AUTOMATION-001 /moai:2-build 명령어의 Git 잠금 확인 로직 구현
+@REQ:TDD-AUTOMATION-001 → @DESIGN:BUILD-ARCHITECTURE-001 → @TASK:BUILD-MAIN-001 → @TEST:BUILD-EXECUTION-001
 
-@API:POST-BUILD - BUILD 실행 API 인터페이스
-@PERF:TDD-FAST - TDD 프로세스 실행 최적화
-@SEC:LOCK-MED - Git 잠금 보안 강화
+@REQ:TDD-AUTOMATION-001 /moai:2-build command Git lock verification logic implementation
+@DESIGN:BUILD-ARCHITECTURE-001 Git lock system integration design
+
+@API:POST-BUILD BUILD execution API interface
+@PERF:TDD-FAST TDD process execution optimization
+@SEC:LOCK-MED Git lock security enhancement
 """
 
 import logging
 from pathlib import Path
-from typing import Dict
 
-from ..core.git_lock_manager import GitLockManager
 from ..core.exceptions import GitLockedException
+from ..core.git_lock_manager import GitLockManager
 
-# 로깅 설정 (@TASK:LOG-001)
+# Logging setup (@TASK:LOG-001)
 logger = logging.getLogger(__name__)
 
 
 class BuildCommand:
     """
-    @TASK:BUILD-MAIN-001 개선된 BUILD 명령어 - Git 잠금 확인 및 TDD 프로세스 최적화
+    @TASK:BUILD-MAIN-001 Enhanced BUILD command - Git lock verification and TDD process optimization
 
-    TRUST 원칙 적용:
-    - T: TDD 사이클 엄격 준수
-    - R: 명확한 빌드 단계 피드백
-    - U: 잠금 시스템 통합 설계
-    - S: 안전한 동시 작업 방지
-    - T: 상세한 빌드 과정 추적
+    TRUST principles applied:
+    - T: Strict adherence to TDD cycles
+    - R: Clear build stage feedback
+    - U: Integrated lock system design
+    - S: Safe prevention of concurrent work
+    - T: Detailed build process tracking
     """
 
     def __init__(self, project_dir: Path, config=None):
         """Initialize BuildCommand
 
         Args:
-            project_dir: 프로젝트 디렉토리
-            config: 설정 관리자 인스턴스
+            project_dir: Project directory
+            config: Configuration manager instance
         """
-        # 입력 검증 (@SEC:LOCK-MED)
+        # Input validation (@SEC:LOCK-MED)
         if not isinstance(project_dir, Path):
             raise ValueError(f"project_dir must be a Path object: {type(project_dir)}")
 
@@ -225,7 +227,7 @@ class BuildCommand:
         """실행 오류 로깅"""
         logger.error(f"BUILD 명령어 실행 실패: {spec_name}, 오류: {error_message}")
 
-    def get_build_status(self) -> Dict:
+    def get_build_status(self) -> dict:
         """빌드 상태 정보 반환
 
         Returns:

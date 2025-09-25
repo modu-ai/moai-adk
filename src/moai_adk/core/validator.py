@@ -4,11 +4,9 @@
 Provides validation functions for environment, configuration, and project setup.
 """
 
-import os
-import sys
 import subprocess
+import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 import click
 from colorama import Fore, Style
@@ -20,7 +18,7 @@ from ..utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-def validate_python_version(min_version: Tuple[int, int] = (3, 8)) -> bool:
+def validate_python_version(min_version: tuple[int, int] = (3, 8)) -> bool:
     """
     @TASK:VALIDATE-PYTHON-001 Validate Python version meets minimum requirements
 
@@ -48,9 +46,9 @@ def validate_claude_code() -> bool:
     """
     try:
         result = subprocess.run(
-            ["claude", "--version"], 
-            capture_output=True, 
-            text=True, 
+            ["claude", "--version"],
+            capture_output=True,
+            text=True,
             timeout=10
         )
         if result.returncode == 0:
@@ -83,7 +81,7 @@ def validate_git_repository(path: Path) -> bool:
     return False
 
 
-def validate_project_structure(project_path: Path) -> Dict[str, bool]:
+def validate_project_structure(project_path: Path) -> dict[str, bool]:
     """
     Validate MoAI-ADK project structure.
     
@@ -94,23 +92,23 @@ def validate_project_structure(project_path: Path) -> Dict[str, bool]:
         Dictionary of validation results
     """
     results = {}
-    
+
     # Check for .claude directory
     claude_dir = project_path / ".claude"
     results["claude_config"] = claude_dir.exists()
-    
+
     # Check for settings.json
     settings_file = claude_dir / "settings.json"
     results["settings_file"] = settings_file.exists()
-    
+
     # Check for hooks directory
     hooks_dir = claude_dir / "hooks"
     results["hooks_directory"] = hooks_dir.exists()
-    
+
     # Check for moai hooks
     moai_hooks_dir = hooks_dir / "moai"
     results["moai_hooks"] = moai_hooks_dir.exists()
-    
+
     # Check for essential hook files
     if moai_hooks_dir.exists():
         results["session_start_hook"] = (moai_hooks_dir / "session_start_notice.py").exists()
@@ -124,7 +122,7 @@ def validate_project_structure(project_path: Path) -> Dict[str, bool]:
         results["policy_block_hook"] = False
         results["tag_validator_hook"] = False
         results["post_stage_guard_hook"] = False
-    
+
     return results
 
 
@@ -180,12 +178,12 @@ def validate_project_readiness(project_path: Path) -> bool:
         logger.error(f"Project path does not exist: {project_path}")
         click.echo(f"{Fore.RED}❌ Project path does not exist: {project_path}{Style.RESET_ALL}")
         return False
-    
+
     if not project_path.is_dir():
         logger.error(f"Project path is not a directory: {project_path}")
         click.echo(f"{Fore.RED}❌ Project path is not a directory: {project_path}{Style.RESET_ALL}")
         return False
-    
+
     # Check if it's already a MoAI-ADK project
     claude_dir = project_path / ".claude"
     if claude_dir.exists():
@@ -197,11 +195,11 @@ def validate_project_readiness(project_path: Path) -> bool:
             logger.warning("MoAI-ADK already initialized in this project")
             click.echo(f"{Fore.YELLOW}⚠️  MoAI-ADK already initialized in this project{Style.RESET_ALL}")
             return False
-    
+
     return True
 
 
-def validate_moai_structure(project_path: Path) -> Dict[str, bool]:
+def validate_moai_structure(project_path: Path) -> dict[str, bool]:
     """
     Validate complete MoAI-ADK project structure.
     
@@ -212,15 +210,15 @@ def validate_moai_structure(project_path: Path) -> Dict[str, bool]:
         Dictionary of validation results for MoAI components
     """
     results = {}
-    
+
     # Basic structure validation from existing function
     basic_results = validate_project_structure(project_path)
     results.update(basic_results)
-    
+
     # MoAI-specific structure validation
     moai_dir = project_path / ".moai"
     results["moai_directory"] = moai_dir.exists()
-    
+
     if moai_dir.exists():
         # Essential MoAI directories
         results["moai_steering"] = (moai_dir / "steering").exists()
@@ -228,11 +226,11 @@ def validate_moai_structure(project_path: Path) -> Dict[str, bool]:
         results["moai_memory"] = (moai_dir / "memory").exists()
         results["moai_templates"] = (moai_dir / "templates").exists()
         results["moai_indexes"] = (moai_dir / "indexes").exists()
-        
+
         # Essential MoAI files
         results["moai_config"] = (moai_dir / "config.json").exists()
         results["constitution"] = (moai_dir / "memory" / "development-guide.md").exists()
-        
+
         # Steering documents
         steering_dir = moai_dir / "steering"
         if steering_dir.exists():
@@ -243,7 +241,7 @@ def validate_moai_structure(project_path: Path) -> Dict[str, bool]:
             results["product_md"] = False
             results["structure_md"] = False
             results["tech_md"] = False
-        
+
         # TAG system
         indexes_dir = moai_dir / "indexes"
         if indexes_dir.exists():
@@ -256,16 +254,16 @@ def validate_moai_structure(project_path: Path) -> Dict[str, bool]:
             results["state_index"] = False
     else:
         # All MoAI components are missing
-        for key in ["moai_steering", "moai_specs", "moai_memory", "moai_templates", 
-                   "moai_indexes", "moai_config", "constitution", "product_md", 
-                   "structure_md", "tech_md", "tags_index", "traceability_index", 
+        for key in ["moai_steering", "moai_specs", "moai_memory", "moai_templates",
+                   "moai_indexes", "moai_config", "constitution", "product_md",
+                   "structure_md", "tech_md", "tags_index", "traceability_index",
                    "state_index"]:
             results[key] = False
-    
+
     return results
 
 
-def validate_trust_principles_compliance(project_path: Path) -> Dict[str, Dict]:
+def validate_trust_principles_compliance(project_path: Path) -> dict[str, dict]:
     """
     Validate project compliance with MoAI 개발 가이드 5 principles.
     
@@ -282,7 +280,7 @@ def validate_trust_principles_compliance(project_path: Path) -> Dict[str, Dict]:
         "observability": {"compliant": True, "details": [], "score": 0},
         "versioning": {"compliant": True, "details": [], "score": 0}
     }
-    
+
     # 1. Simplicity - check project complexity
     complexity_score = _calculate_project_complexity(project_path)
     results["simplicity"]["score"] = complexity_score
@@ -291,12 +289,12 @@ def validate_trust_principles_compliance(project_path: Path) -> Dict[str, Dict]:
         results["simplicity"]["details"].append(f"Project complexity {complexity_score} exceeds maximum of 3")
     else:
         results["simplicity"]["details"].append(f"Project complexity {complexity_score} within limits")
-    
+
     # 2. Architecture - check for modular structure
     modular_score = _check_architectural_modularity(project_path)
     results["architecture"]["score"] = modular_score
     results["architecture"]["details"].append(f"Modularity score: {modular_score}/100")
-    
+
     # 3. Testing - check for test files and coverage setup
     testing_score = _check_testing_setup(project_path)
     results["testing"]["score"] = testing_score
@@ -305,12 +303,12 @@ def validate_trust_principles_compliance(project_path: Path) -> Dict[str, Dict]:
         results["testing"]["details"].append("Insufficient testing infrastructure")
     else:
         results["testing"]["details"].append("Testing infrastructure present")
-    
+
     # 4. Observability - check for logging and monitoring
     observability_score = _check_observability_setup(project_path)
     results["observability"]["score"] = observability_score
     results["observability"]["details"].append(f"Observability score: {observability_score}/100")
-    
+
     # 5. Versioning - check for proper versioning
     versioning_score = _check_versioning_setup(project_path)
     results["versioning"]["score"] = versioning_score
@@ -319,14 +317,14 @@ def validate_trust_principles_compliance(project_path: Path) -> Dict[str, Dict]:
         results["versioning"]["details"].append("Versioning not properly configured")
     else:
         results["versioning"]["details"].append("Proper versioning detected")
-    
+
     return results
 
 
 def _calculate_project_complexity(project_path: Path) -> int:
     """Calculate project complexity score (1-10)."""
     complexity = 0
-    
+
     # Count different project types
     if (project_path / "package.json").exists():
         complexity += 1
@@ -338,87 +336,87 @@ def _calculate_project_complexity(project_path: Path) -> int:
         complexity += 1
     if (project_path / "pom.xml").exists():
         complexity += 1
-    
+
     # Count services (Dockerfiles)
     dockerfiles = list(project_path.rglob("Dockerfile"))
     complexity += len(dockerfiles)
-    
+
     # Count microservices indicators
     if (project_path / "docker-compose.yml").exists():
         complexity += 1
-    
+
     return min(complexity, 10)  # Cap at 10
 
 
 def _check_architectural_modularity(project_path: Path) -> int:
     """Check architectural modularity (0-100)."""
     score = 50  # Base score
-    
+
     # Check for src/ or lib/ directories (good modularity)
     if (project_path / "src").exists() or (project_path / "lib").exists():
         score += 20
-    
-    # Check for services/ or packages/ directories  
+
+    # Check for services/ or packages/ directories
     if (project_path / "services").exists() or (project_path / "packages").exists():
         score += 15
-    
+
     # Check for utils/ or shared/ directories
     if (project_path / "utils").exists() or (project_path / "shared").exists():
         score += 10
-    
+
     # Penalty for monolithic indicators
     if len(list(project_path.rglob("*.py"))) > 100 and not (project_path / "src").exists():
         score -= 20
-    
+
     return min(max(score, 0), 100)
 
 
 def _check_testing_setup(project_path: Path) -> int:
     """Check testing infrastructure (0-100)."""
     score = 0
-    
+
     # Check for test directories
     test_dirs = ["test", "tests", "__tests__", "spec"]
     for test_dir in test_dirs:
         if (project_path / test_dir).exists():
             score += 30
             break
-    
+
     # Check for test configuration files
     test_configs = ["pytest.ini", "jest.config.js", "vitest.config.ts", "phpunit.xml"]
     for config in test_configs:
         if (project_path / config).exists():
             score += 20
             break
-    
+
     # Check for test files
     test_files = list(project_path.rglob("*test*"))
     test_files.extend(list(project_path.rglob("*spec*")))
     if test_files:
         score += 30
-    
+
     # Check for coverage configuration
     coverage_configs = [".coveragerc", "coverage.xml", "nyc.config.js"]
     for config in coverage_configs:
         if (project_path / config).exists():
             score += 20
             break
-    
+
     return min(score, 100)
 
 
 def _check_observability_setup(project_path: Path) -> int:
     """Check observability setup (0-100)."""
     score = 30  # Base score for basic project
-    
+
     # Check for logging configuration
     if any((project_path / f).exists() for f in ["logging.conf", "log4j.properties", "winston.config.js"]):
         score += 25
-    
+
     # Check for environment configuration
     if (project_path / ".env").exists() or (project_path / ".env.example").exists():
         score += 20
-    
+
     # Check for monitoring/metrics
     if any(path.exists() for path in [
         project_path / "prometheus.yml",
@@ -426,43 +424,43 @@ def _check_observability_setup(project_path: Path) -> int:
         project_path / "metrics"
     ]):
         score += 25
-    
+
     return min(score, 100)
 
 
 def _check_versioning_setup(project_path: Path) -> int:
     """Check versioning setup (0-100)."""
     score = 0
-    
+
     # Check for version files
     version_indicators = [
         "package.json",
-        "pyproject.toml", 
+        "pyproject.toml",
         "Cargo.toml",
         "VERSION",
         "_version.py"
     ]
-    
+
     for indicator in version_indicators:
         if (project_path / indicator).exists():
             score += 40
             break
-    
+
     # Check for git
     if validate_git_repository(project_path):
         score += 30
-    
+
     # Check for release workflow
     github_dir = project_path / ".github" / "workflows"
     if github_dir.exists():
         release_files = list(github_dir.glob("*release*")) + list(github_dir.glob("*version*"))
         if release_files:
             score += 30
-    
+
     return min(score, 100)
 
 
-def run_full_validation(project_path: Path, verbose: bool = False) -> Dict[str, any]:
+def run_full_validation(project_path: Path, verbose: bool = False) -> dict[str, any]:
     """
     Run complete MoAI-ADK validation suite.
     
@@ -477,14 +475,14 @@ def run_full_validation(project_path: Path, verbose: bool = False) -> Dict[str, 
         logger.info("MoAI-ADK 프로젝트 검증 시작")
         click.echo(f"\n{Fore.CYAN}🗿 MoAI-ADK 프로젝트 검증 시작{Style.RESET_ALL}")
         click.echo("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    
+
     results = {
         "environment": validate_environment() if verbose else True,
         "project_readiness": validate_project_readiness(project_path),
         "moai_structure": validate_moai_structure(project_path),
         "trust_principles_compliance": validate_trust_principles_compliance(project_path)
     }
-    
+
     if verbose:
         logger.info("검증 결과 요약 출력")
         click.echo(f"\n{Fore.BLUE}📊 검증 결과 요약:{Style.RESET_ALL}")

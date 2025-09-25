@@ -5,23 +5,22 @@
 @TASK:INSTALL-002 Ensures perfect compatibility with Claude Code by directly copying all resources through ResourceManager.
 """
 
-from pathlib import Path
-from typing import List, Optional
 from collections.abc import Callable
 from importlib import resources
+from pathlib import Path
 
-from ..utils.logger import get_logger
-from ..config import Config
-from .installation_result import InstallationResult
-from ..utils.progress_tracker import ProgressTracker
-from ..core.security import SecurityManager
-from ..core.directory_manager import DirectoryManager
-from ..core.config_manager import ConfigManager
-from ..core.git_manager import GitManager
-from ..core.file_manager import FileManager
-from .resource_manager import ResourceManager
-from ..core.resource_version import ResourceVersionManager
 from .._version import __version__
+from ..config import Config
+from ..core.config_manager import ConfigManager
+from ..core.directory_manager import DirectoryManager
+from ..core.file_manager import FileManager
+from ..core.git_manager import GitManager
+from ..core.resource_version import ResourceVersionManager
+from ..core.security import SecurityManager
+from ..utils.logger import get_logger
+from ..utils.progress_tracker import ProgressTracker
+from .installation_result import InstallationResult
+from .resource_manager import ResourceManager
 
 logger = get_logger(__name__)
 
@@ -62,7 +61,7 @@ class SimplifiedInstaller:
 
         logger.info("SimplifiedInstaller initialized for: %s", config.project_path)
 
-    def install(self, progress_callback: Optional[Callable[[str, int, int], None]] = None) -> InstallationResult:
+    def install(self, progress_callback: Callable[[str, int, int], None] | None = None) -> InstallationResult:
         """
         Execute MoAI-ADK project installation
 
@@ -72,8 +71,8 @@ class SimplifiedInstaller:
         Returns:
             InstallationResult: Installation result
         """
-        files_created: List[str] = []
-        errors: List[str] = []
+        files_created: list[str] = []
+        errors: list[str] = []
 
         try:
             # Step 1: Creating project directory
@@ -151,7 +150,7 @@ class SimplifiedInstaller:
                 config=self.config
             )
 
-    def _create_basic_structure(self) -> List[Path]:
+    def _create_basic_structure(self) -> list[Path]:
         """Create only auxiliary directories that won't be populated by ResourceManager"""
         directories = [
             # Only create logs directory - ResourceManager will handle .claude/ with content
@@ -182,7 +181,7 @@ class SimplifiedInstaller:
 
         return created_dirs
 
-    def _install_claude_resources(self) -> List[Path]:
+    def _install_claude_resources(self) -> list[Path]:
         """Claude Code 리소스 설치"""
         try:
             result = self.resource_manager.copy_claude_resources(
@@ -196,12 +195,12 @@ class SimplifiedInstaller:
             logger.error("Failed to install Claude resources: %s", e)
             raise  # 예외를 상위로 전파하여 설치 실패를 명확히 알림
 
-    def _install_moai_resources(self) -> List[Path]:
+    def _install_moai_resources(self) -> list[Path]:
         """MoAI 리소스 설치"""
         try:
             # templates_mode: 'copy' | 'package'
             exclude_templates = False
-            if hasattr(self.config, 'templates_mode') and str(getattr(self.config, 'templates_mode') or '').lower() == 'package':
+            if hasattr(self.config, 'templates_mode') and str(self.config.templates_mode or '').lower() == 'package':
                 exclude_templates = True
 
             result = self.resource_manager.copy_moai_resources(
@@ -216,7 +215,7 @@ class SimplifiedInstaller:
             logger.error("Failed to install MoAI resources: %s", e)
             raise  # 예외를 상위로 전파
 
-    def _install_github_workflows(self) -> List[Path]:
+    def _install_github_workflows(self) -> list[Path]:
         """GitHub 워크플로우 설치"""
         try:
             return self.resource_manager.copy_github_resources(
@@ -264,7 +263,7 @@ class SimplifiedInstaller:
         except Exception as exc:
             logger.warning("Failed to write resource version metadata: %s", exc)
 
-    def _create_configuration_files(self) -> List[Path]:
+    def _create_configuration_files(self) -> list[Path]:
         """설정 파일 생성"""
         config_files = []
 
@@ -286,7 +285,7 @@ class SimplifiedInstaller:
             logger.error("Failed to create configuration files: %s", e)
             return []
 
-    def _initialize_git_repository(self) -> List[Path]:
+    def _initialize_git_repository(self) -> list[Path]:
         """Git 저장소 초기화"""
         git_files = []
 
@@ -314,7 +313,7 @@ class SimplifiedInstaller:
             logger.error("Installation verification failed: %s", e)
             return False
 
-    def _generate_next_steps(self) -> List[str]:
+    def _generate_next_steps(self) -> list[str]:
         """Generate next steps guidance"""
         next_steps = [
             "Project successfully initialized!",

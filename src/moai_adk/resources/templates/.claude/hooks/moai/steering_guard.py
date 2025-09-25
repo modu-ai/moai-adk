@@ -4,11 +4,10 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
-import os
 from pathlib import Path
-from typing import Dict
 
 BANNED_PATTERNS = (
     (re.compile(r'(?i)ignore (the )?(claude|constitution|steering|instructions)'), '헌법/지침 무시는 허용되지 않습니다.'),
@@ -47,7 +46,7 @@ def _show_session_notice() -> None:
     except:
         pass  # 임시 파일 생성 실패는 무시
 
-def _load_input() -> Dict[str, object]:
+def _load_input() -> dict[str, object]:
     try:
         return json.load(sys.stdin)
     except json.JSONDecodeError as exc:

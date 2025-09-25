@@ -9,9 +9,8 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import List, Optional, Tuple
 
-Command = Tuple[str, List[str]]
+Command = tuple[str, list[str]]
 TIMEOUT_SECONDS = 300
 
 
@@ -31,33 +30,33 @@ def _command_exists(executable: str) -> bool:
     return shutil.which(executable) is not None
 
 
-def _detect_pytest(root: Path) -> Optional[Command]:
+def _detect_pytest(root: Path) -> Command | None:
     tests_dir = root / 'tests'
     if tests_dir.exists() and _command_exists('pytest'):
         return ('pytest', [sys.executable or 'python3', '-m', 'pytest', '-q'])
     return None
 
 
-def _detect_npm(root: Path) -> Optional[Command]:
+def _detect_npm(root: Path) -> Command | None:
     if (root / 'package.json').exists() and _command_exists('npm'):
         return ('npm test', ['npm', 'test', '--', '--watch=false'])
     return None
 
 
-def _detect_go(root: Path) -> Optional[Command]:
+def _detect_go(root: Path) -> Command | None:
     if (root / 'go.mod').exists() and _command_exists('go'):
         return ('go test', ['go', 'test', './...'])
     return None
 
 
-def _detect_cargo(root: Path) -> Optional[Command]:
+def _detect_cargo(root: Path) -> Command | None:
     if (root / 'Cargo.toml').exists() and _command_exists('cargo'):
         return ('cargo test', ['cargo', 'test', '--quiet'])
     return None
 
 
-def _collect_commands(root: Path) -> List[Command]:
-    commands: List[Command] = []
+def _collect_commands(root: Path) -> list[Command]:
+    commands: list[Command] = []
     for detector in (_detect_pytest, _detect_npm, _detect_go, _detect_cargo):
         match = detector(root)
         if match:
@@ -65,7 +64,7 @@ def _collect_commands(root: Path) -> List[Command]:
     return commands
 
 
-def _run_command(command: Command, root: Path) -> Tuple[int, str, str]:
+def _run_command(command: Command, root: Path) -> tuple[int, str, str]:
     name, argv = command
     try:
         proc = subprocess.run(

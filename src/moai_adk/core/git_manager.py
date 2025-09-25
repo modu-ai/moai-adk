@@ -5,17 +5,17 @@ Handles Git repository initialization, validation, and operations
 with security validation and error handling.
 """
 
-import subprocess
 import platform
+import subprocess
 from pathlib import Path
-from typing import Tuple
 
 import click
+
 from ..utils.logger import get_logger
-from .security import SecurityManager
 from .file_manager import FileManager
 from .git_lock_manager import GitLockManager
 from .git_strategy import PersonalGitStrategy, TeamGitStrategy
+from .security import SecurityManager
 
 logger = get_logger(__name__)
 
@@ -276,7 +276,7 @@ class GitManager:
                 return True
             else:
                 logger.error(f"Git 설치 중 오류 발생: {result.stderr}")
-                click.echo(f"❌ Git 설치 중 오류 발생:")
+                click.echo("❌ Git 설치 중 오류 발생:")
                 click.echo(f"   {result.stderr}")
                 return False
 

@@ -5,15 +5,14 @@ This module provides a simple template system for generating project files
 from templates with variable substitution.
 """
 
-import json
 from datetime import datetime
+from importlib import resources
 from pathlib import Path
 from string import Template
-from typing import Any, Dict, Optional
-from importlib import resources
+from typing import Any
 
+from .._version import VERSION_FORMATS, VERSIONS, __version__, get_version
 from ..utils.logger import get_logger
-from .._version import get_version, __version__, VERSIONS, VERSION_FORMATS
 
 logger = get_logger(__name__)
 
@@ -51,7 +50,7 @@ class TemplateEngine:
         self,
         template_name: str,
         target_path: Path,
-        context: Dict[str, Any],
+        context: dict[str, Any],
         create_dirs: bool = True
     ) -> bool:
         """
@@ -68,8 +67,8 @@ class TemplateEngine:
         """
         try:
             # Locate template file (project → package fallback)
-            template_path: Optional[Path] = None
-            template_content: Optional[str] = None
+            template_path: Path | None = None
+            template_content: str | None = None
 
             for extension in ['.template.md', '.template.json', '.template']:
                 # 1) Project-local template
@@ -132,7 +131,7 @@ class TemplateEngine:
         self,
         steering_type: str,
         project_name: str,
-        context: Dict[str, Any],
+        context: dict[str, Any],
         target_path: Path
     ) -> bool:
         """Create Steering document from template."""
@@ -197,7 +196,7 @@ class TemplateEngine:
 
         return any(template_indicators)
 
-    def _render_template(self, template_content: str, context: Dict[str, Any]) -> str:
+    def _render_template(self, template_content: str, context: dict[str, Any]) -> str:
         """
         Render template content with context variables including version info.
 
@@ -218,7 +217,7 @@ class TemplateEngine:
             logger.error("Template rendering failed: %s", e)
             return template_content
 
-    def _enhance_context_with_version(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    def _enhance_context_with_version(self, context: dict[str, Any]) -> dict[str, Any]:
         """
         Enhance context with automatic version information.
 
@@ -257,7 +256,7 @@ class TemplateEngine:
 
         return enhanced
 
-    def _create_spec_context(self, spec_id: str, spec_name: str, description: str) -> Dict[str, Any]:
+    def _create_spec_context(self, spec_id: str, spec_name: str, description: str) -> dict[str, Any]:
         """Create context for SPEC template rendering."""
         return {
             'SPEC_ID': spec_id,

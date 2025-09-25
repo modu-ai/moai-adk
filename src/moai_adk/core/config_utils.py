@@ -9,7 +9,7 @@ import json
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
 
 from ..utils.logger import get_logger
 from .security import SecurityManager
@@ -24,7 +24,7 @@ class ConfigUtils:
         """유틸리티 관리자 초기화"""
         self.security_manager = security_manager or SecurityManager()
 
-    def write_json_file(self, file_path: Path, data: Dict[str, Any]) -> Path:
+    def write_json_file(self, file_path: Path, data: dict[str, Any]) -> Path:
         """
         Write JSON data to file with error handling and logging.
 
@@ -58,7 +58,7 @@ class ConfigUtils:
             logger.error(error_msg)
             raise RuntimeError(error_msg)
 
-        except IOError as e:
+        except OSError as e:
             error_msg = f"File I/O error for {file_path}: {e}"
             logger.error(error_msg)
             raise RuntimeError(error_msg)
@@ -93,7 +93,7 @@ class ConfigUtils:
                 # Don't return False here - allow non-JSON config files
 
             # Try to parse JSON content
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding='utf-8') as f:
                 config_data = json.load(f)
 
             # Basic structure validation
@@ -125,7 +125,7 @@ class ConfigUtils:
             logger.error(f"Error validating config file {file_path}: {e}")
             return False
 
-    def _validate_claude_settings_structure(self, data: Dict[str, Any]) -> bool:
+    def _validate_claude_settings_structure(self, data: dict[str, Any]) -> bool:
         """Claude settings 구조 검증"""
         required_keys = ['defaultMode', 'permissions']
         for key in required_keys:
@@ -140,7 +140,7 @@ class ConfigUtils:
 
         return True
 
-    def _validate_moai_config_structure(self, data: Dict[str, Any]) -> bool:
+    def _validate_moai_config_structure(self, data: dict[str, Any]) -> bool:
         """MoAI config 구조 검증"""
         required_keys = ['version', 'project']
         for key in required_keys:
@@ -157,7 +157,7 @@ class ConfigUtils:
 
         return True
 
-    def _validate_package_json_structure(self, data: Dict[str, Any]) -> bool:
+    def _validate_package_json_structure(self, data: dict[str, Any]) -> bool:
         """package.json 구조 검증"""
         required_keys = ['name', 'version']
         for key in required_keys:
@@ -231,15 +231,15 @@ class ConfigUtils:
             return False
 
     def merge_config_files(self, base_config_path: Path, overlay_config_path: Path,
-                          output_path: Path = None) -> Dict[str, Any]:
+                          output_path: Path = None) -> dict[str, Any]:
         """두 설정 파일 병합"""
         try:
             # Load base configuration
-            with open(base_config_path, 'r', encoding='utf-8') as f:
+            with open(base_config_path, encoding='utf-8') as f:
                 base_config = json.load(f)
 
             # Load overlay configuration
-            with open(overlay_config_path, 'r', encoding='utf-8') as f:
+            with open(overlay_config_path, encoding='utf-8') as f:
                 overlay_config = json.load(f)
 
             # Deep merge configurations
@@ -256,7 +256,7 @@ class ConfigUtils:
             logger.error(f"Failed to merge config files: {e}")
             raise RuntimeError(f"Config merge failed: {e}")
 
-    def _deep_merge_dicts(self, base: Dict[str, Any], overlay: Dict[str, Any]) -> Dict[str, Any]:
+    def _deep_merge_dicts(self, base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
         """딕셔너리 깊은 병합"""
         merged = base.copy()
 
@@ -268,7 +268,7 @@ class ConfigUtils:
 
         return merged
 
-    def get_config_summary(self, config_path: Path) -> Dict[str, Any]:
+    def get_config_summary(self, config_path: Path) -> dict[str, Any]:
         """설정 파일 요약 정보"""
         try:
             if not config_path.exists():
@@ -285,7 +285,7 @@ class ConfigUtils:
             # Add content summary if it's a JSON file
             if config_path.suffix.lower() == '.json':
                 try:
-                    with open(config_path, 'r', encoding='utf-8') as f:
+                    with open(config_path, encoding='utf-8') as f:
                         data = json.load(f)
                     summary["keys"] = list(data.keys()) if isinstance(data, dict) else []
                 except:
@@ -296,7 +296,7 @@ class ConfigUtils:
         except Exception as e:
             return {"status": "error", "error": str(e)}
 
-    def cleanup_old_backups(self, config_dir: Path, max_age_days: int = 30) -> List[Path]:
+    def cleanup_old_backups(self, config_dir: Path, max_age_days: int = 30) -> list[Path]:
         """오래된 백업 파일 정리"""
         deleted_files = []
 

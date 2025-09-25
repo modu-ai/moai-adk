@@ -5,11 +5,10 @@ Report generation utilities for guideline checking.
 @DESIGN:SEPARATED-REPORTERS-001 Extracted from oversized guideline_checker.py (761 LOC)
 """
 
-from pathlib import Path
-from typing import Dict, List, Any
+from typing import Any
 
-from .constants import GuidelineLimits
 from ...utils.logger import get_logger
+from .constants import GuidelineLimits
 
 logger = get_logger(__name__)
 
@@ -21,7 +20,7 @@ class ViolationReporter:
         """Initialize reporter with guideline limits."""
         self.limits = limits
 
-    def generate_violation_report(self, violations: Dict[str, List[Dict[str, Any]]]) -> Dict[str, Any]:
+    def generate_violation_report(self, violations: dict[str, list[dict[str, Any]]]) -> dict[str, Any]:
         """
         Generate comprehensive violation report.
 
@@ -60,7 +59,7 @@ class ViolationReporter:
 
         return report
 
-    def _count_scanned_files(self, violations: Dict[str, List[Dict[str, Any]]]) -> int:
+    def _count_scanned_files(self, violations: dict[str, list[dict[str, Any]]]) -> int:
         """Count total number of files scanned."""
         files = set()
         for violation_list in violations.values():
@@ -69,11 +68,11 @@ class ViolationReporter:
                     files.add(violation['file_path'])
         return len(files)
 
-    def _count_total_violations(self, violations: Dict[str, List[Dict[str, Any]]]) -> int:
+    def _count_total_violations(self, violations: dict[str, list[dict[str, Any]]]) -> int:
         """Count total number of violations."""
         return sum(len(v_list) for v_list in violations.values())
 
-    def _count_files_with_violations(self, violations: Dict[str, List[Dict[str, Any]]]) -> int:
+    def _count_files_with_violations(self, violations: dict[str, list[dict[str, Any]]]) -> int:
         """Count files that have at least one violation."""
         files_with_violations = set()
         for violation_list in violations.values():
@@ -83,7 +82,7 @@ class ViolationReporter:
                         files_with_violations.add(violation['file_path'])
         return len(files_with_violations)
 
-    def _calculate_compliance_rate(self, total_files: int, violations: Dict[str, List[Dict[str, Any]]]) -> float:
+    def _calculate_compliance_rate(self, total_files: int, violations: dict[str, list[dict[str, Any]]]) -> float:
         """Calculate compliance rate as percentage."""
         if total_files == 0:
             return 100.0
@@ -92,7 +91,7 @@ class ViolationReporter:
         compliant_files = total_files - files_with_violations
         return round((compliant_files / total_files) * 100, 2)
 
-    def _get_severity_breakdown(self, violations: Dict[str, List[Dict[str, Any]]]) -> Dict[str, int]:
+    def _get_severity_breakdown(self, violations: dict[str, list[dict[str, Any]]]) -> dict[str, int]:
         """Get breakdown by severity level."""
         severity_count = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0}
 
@@ -104,7 +103,7 @@ class ViolationReporter:
 
         return severity_count
 
-    def _get_worst_violations(self, violations: Dict[str, List[Dict[str, Any]]]) -> Dict[str, Any]:
+    def _get_worst_violations(self, violations: dict[str, list[dict[str, Any]]]) -> dict[str, Any]:
         """Get the worst violations for each type."""
         worst = {}
 
@@ -142,7 +141,7 @@ class ViolationReporter:
 
         return worst
 
-    def _generate_recommendations(self, violations: Dict[str, List[Dict[str, Any]]]) -> List[str]:
+    def _generate_recommendations(self, violations: dict[str, list[dict[str, Any]]]) -> list[str]:
         """Generate actionable recommendations based on violations."""
         recommendations = []
 

@@ -8,30 +8,30 @@ MoAI-ADK의 TRUST 5원칙 준수 여부를 자동 검증합니다.
 - --strict: 기존 엄격 기준 유지(파일 수/커버리지 비율 기반 등)
 """
 
-import click
 import json
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple
+
+import click
 
 
 class TrustPrinciplesChecker:
     def __init__(self, project_root: str = ".", strict: bool = False):
         self.project_root = Path(project_root)
         self.config_path = self.project_root / ".moai" / "config.json"
-        self.violations: List[Tuple[str, str, str]] = []  # (원칙, 위반내용, 권장사항)
+        self.violations: list[tuple[str, str, str]] = []  # (원칙, 위반내용, 권장사항)
         self.strict = strict
 
-    def load_config(self) -> Dict:
+    def load_config(self) -> dict:
         """프로젝트 설정 로드"""
         if not self.config_path.exists():
             click.echo(f"❌ 설정 파일을 찾을 수 없습니다: {self.config_path}")
             return {}
 
-        with open(self.config_path, 'r', encoding='utf-8') as f:
+        with open(self.config_path, encoding='utf-8') as f:
             return json.load(f)
 
-    def check_simplicity(self, config: Dict) -> bool:
+    def check_simplicity(self, config: dict) -> bool:
         """Simplicity 원칙 검증 (프로젝트 복잡도 ≤ 3개)
 
         - strict: src 내 *.py 파일(__init__ 제외) 총량으로 판단(기존 방식)
@@ -123,7 +123,7 @@ class TrustPrinciplesChecker:
         tests_found += 1 if any("Tests" in str(p) for p in root.rglob("**/*.csproj")) else 0
         # C/C++ (CTest or tests dir with c/cpp)
         tests_found += 1 if (root / "CTestTestfile.cmake").exists() else 0
-        tests_found += 1 if ((root / "tests").exists() and list((root / "tests").rglob("*.c")) or list((root / "tests").rglob("*.cpp"))) else 0
+        tests_found += 1 if (((root / "tests").exists() and list((root / "tests").rglob("*.c"))) or list((root / "tests").rglob("*.cpp"))) else 0
 
         if self.strict:
             return tests_found > 0  # 엄격 모드에서는 언어별 비율 검증은 도구 단계에 위임
@@ -190,7 +190,7 @@ class TrustPrinciplesChecker:
         ))
         return False
 
-    def run_verification(self) -> Tuple[int, int]:
+    def run_verification(self) -> tuple[int, int]:
         """전체 검증 실행"""
         config = self.load_config()
 

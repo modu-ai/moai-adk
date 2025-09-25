@@ -5,13 +5,12 @@ Extracts docstrings and creates structured markdown documentation.
 
 @REQ:API-GEN-001 → @TASK:API-GEN-001
 """
-import os
 import ast
-import yaml
 import logging
 from pathlib import Path
-from typing import Dict, Any, List, Optional, NamedTuple
+from typing import Any, NamedTuple
 
+import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +36,7 @@ class ApiGenerator:
         self.source_dir = self.project_root / source_dir
         self.docs_dir = self.project_root / "docs"
 
-    def scan_modules(self) -> List[ModuleInfo]:
+    def scan_modules(self) -> list[ModuleInfo]:
         """@TASK:API-GEN-002 Scan and find Python modules"""
         modules = []
 
@@ -77,7 +76,7 @@ class ApiGenerator:
 
         return modules
 
-    def parse_module_docs(self, module_path: str) -> Dict[str, Any]:
+    def parse_module_docs(self, module_path: str) -> dict[str, Any]:
         """@TASK:API-GEN-003 Parse docstrings from a module"""
         doc_info = {
             "module_doc": "",
@@ -104,7 +103,7 @@ class ApiGenerator:
                 return doc_info
 
             # Parse the Python AST
-            with open(module_file, 'r', encoding='utf-8') as f:
+            with open(module_file, encoding='utf-8') as f:
                 tree = ast.parse(f.read())
 
             # Extract module docstring
@@ -131,7 +130,7 @@ class ApiGenerator:
 
         return doc_info
 
-    def generate_nav_structure(self) -> Dict[str, Any]:
+    def generate_nav_structure(self) -> dict[str, Any]:
         """@TASK:API-GEN-004 Generate navigation structure for API docs"""
         modules = self.scan_modules()
         nav_structure = {}
@@ -171,7 +170,7 @@ class ApiGenerator:
             md_file.parent.mkdir(parents=True, exist_ok=True)
             md_file.write_text(md_content)
 
-    def _generate_module_markdown(self, module_name: str, doc_info: Dict[str, Any]) -> str:
+    def _generate_module_markdown(self, module_name: str, doc_info: dict[str, Any]) -> str:
         """Generate markdown content for a module"""
         lines = []
 
@@ -199,7 +198,7 @@ class ApiGenerator:
 
                 # Function signature
                 args_str = ", ".join(func_info["args"])
-                lines.append(f"```python")
+                lines.append("```python")
                 lines.append(f"{func_name}({args_str})")
                 lines.append("```")
                 lines.append("")
@@ -227,7 +226,7 @@ class ApiGenerator:
             return
 
         try:
-            with open(config_path, 'r') as f:
+            with open(config_path) as f:
                 config = yaml.safe_load(f)
 
             # Add API Reference section

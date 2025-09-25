@@ -8,7 +8,6 @@ to ensure quality and consistency.
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from ...utils.logger import get_logger
 
@@ -17,7 +16,6 @@ logger = get_logger(__name__)
 
 class ConstitutionError(Exception):
     """Constitution compliance exception."""
-    pass
 
 
 class ConstitutionChecker:

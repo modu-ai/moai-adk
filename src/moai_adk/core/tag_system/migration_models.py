@@ -7,20 +7,18 @@ Migration data models and backup management.
 
 import json
 import shutil
-from pathlib import Path
-from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
+from typing import Any
 
 
 class MigrationError(Exception):
     """마이그레이션 관련 오류"""
-    pass
 
 
 class DataValidationError(Exception):
     """데이터 검증 오류"""
-    pass
 
 
 @dataclass
@@ -28,7 +26,7 @@ class ValidationError:
     """검증 오류 정보"""
     error_type: str
     message: str
-    location: Optional[str] = None
+    location: str | None = None
 
 
 @dataclass
@@ -52,10 +50,10 @@ class ConflictResolution:
     """충돌 해결 정보"""
     tag_identifier: str
     conflict_type: str
-    existing_data: Dict[str, Any]
-    new_data: Dict[str, Any]
-    resolution_options: List[str]
-    chosen_resolution: Optional[str] = None
+    existing_data: dict[str, Any]
+    new_data: dict[str, Any]
+    resolution_options: list[str]
+    chosen_resolution: str | None = None
 
 
 @dataclass
@@ -65,19 +63,19 @@ class MigrationResult:
     migrated_tags_count: int = 0
     migrated_references_count: int = 0
     preserved_tags_count: int = 0
-    validation_errors: List[ValidationError] = None
+    validation_errors: list[ValidationError] = None
     conflicts_detected: int = 0
-    conflict_resolutions: List[ConflictResolution] = None
+    conflict_resolutions: list[ConflictResolution] = None
     backup_created: bool = False
     rollback_performed: bool = False
-    category_statistics: Optional[Dict[str, Dict[str, int]]] = None
-    file_statistics: Optional[Dict[str, int]] = None
-    reference_chain_analysis: Optional[Dict[str, Any]] = None
-    performance_metrics: Optional[Dict[str, float]] = None
-    report_file: Optional[Path] = None
+    category_statistics: dict[str, dict[str, int]] | None = None
+    file_statistics: dict[str, int] | None = None
+    reference_chain_analysis: dict[str, Any] | None = None
+    performance_metrics: dict[str, float] | None = None
+    report_file: Path | None = None
     plugin_processed_count: int = 0
     validation_failed_count: int = 0
-    errors: List[str] = None
+    errors: list[str] = None
 
     def __post_init__(self):
         if self.validation_errors is None:

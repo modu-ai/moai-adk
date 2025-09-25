@@ -5,17 +5,17 @@
 @TASK:RESOURCE-002 심볼릭 링크 대신 패키지에서 직접 리소스를 복사하여 관리합니다.
 """
 
+import logging
 import shutil
+from collections.abc import Callable
+from importlib import resources
 from pathlib import Path
 from string import Template as StrTemplate
-from typing import Optional, List, Callable, Dict
-from importlib import resources
-import logging
 
 logger = logging.getLogger(__name__)
 
 
-MEMORY_STACK_TEMPLATE_MAP: Dict[str, List[str]] = {
+MEMORY_STACK_TEMPLATE_MAP: dict[str, list[str]] = {
     "python": ["backend-python"],
     "fastapi": ["backend-python", "backend-fastapi"],
     "django": ["backend-python"],
@@ -71,7 +71,7 @@ class ResourceManager:
         """템플릿 경로 반환 (읽기 전용)"""
         return self.templates_root / template_name
 
-    def get_template_content(self, template_name: str) -> Optional[str]:
+    def get_template_content(self, template_name: str) -> str | None:
         """
         템플릿 내용 반환
 
@@ -93,7 +93,7 @@ class ResourceManager:
 
     def copy_template(self, template_name: str, target_path: Path,
                      overwrite: bool = False,
-                     exclude_subdirs: Optional[List[str]] = None) -> bool:
+                     exclude_subdirs: list[str] | None = None) -> bool:
         """
         템플릿을 대상 경로로 복사
 
@@ -142,7 +142,7 @@ class ResourceManager:
                             return dst
                         return shutil.copy2(src, dst, **kwargs)
 
-                    ignore: Optional[Callable] = None
+                    ignore: Callable | None = None
                     if exclude_subdirs:
                         ignore = shutil.ignore_patterns(*exclude_subdirs)
 
@@ -207,7 +207,7 @@ class ResourceManager:
             return False
 
     def copy_claude_resources(self, project_path: Path,
-                             overwrite: bool = False) -> List[Path]:
+                             overwrite: bool = False) -> list[Path]:
         """
         Claude Code 관련 리소스를 프로젝트에 복사
 
@@ -256,7 +256,7 @@ class ResourceManager:
     def copy_moai_resources(self, project_path: Path,
                            overwrite: bool = False,
                            exclude_templates: bool = False,
-                           project_context: Optional[Dict[str, str]] = None) -> List[Path]:
+                           project_context: dict[str, str] | None = None) -> list[Path]:
         """
         MoAI 관련 리소스를 프로젝트에 복사
 
@@ -299,7 +299,7 @@ class ResourceManager:
         return copied_files
 
     def copy_github_resources(self, project_path: Path,
-                             overwrite: bool = False) -> List[Path]:
+                             overwrite: bool = False) -> list[Path]:
         """
         GitHub 워크플로우 리소스를 프로젝트에 복사
 
@@ -342,18 +342,18 @@ class ResourceManager:
     def copy_memory_templates(
         self,
         project_path: Path,
-        tech_stack: List[str],
-        context: Dict[str, str],
+        tech_stack: list[str],
+        context: dict[str, str],
         overwrite: bool = False
-    ) -> List[Path]:
+    ) -> list[Path]:
         """Copy stack-specific memory templates into the project."""
 
-        copied_files: List[Path] = []
+        copied_files: list[Path] = []
         memory_dir = project_path / ".moai" / "memory"
         memory_dir.mkdir(parents=True, exist_ok=True)
 
         # Only copy templates that actually exist in the package
-        templates_to_copy: List[str] = ["development-guide"]
+        templates_to_copy: list[str] = ["development-guide"]
 
         for tech in tech_stack:
             tech_key = tech.lower()
@@ -365,7 +365,7 @@ class ResourceManager:
 
         # Remove duplicates while preserving order
         seen: set[str] = set()
-        unique_templates: List[str] = []
+        unique_templates: list[str] = []
         for template_name in templates_to_copy:
             if template_name not in seen:
                 seen.add(template_name)
@@ -404,7 +404,7 @@ class ResourceManager:
         self,
         template_name: str,
         target_path: Path,
-        context: Dict[str, str],
+        context: dict[str, str],
         overwrite: bool = False
     ) -> bool:
         """Render a text template with context variables to a target file."""
@@ -446,7 +446,7 @@ class ResourceManager:
         """
         return self.validate_required_resources(project_path)
 
-    def list_templates(self) -> List[str]:
+    def list_templates(self) -> list[str]:
         """사용 가능한 템플릿 목록 반환"""
         templates = []
         try:
@@ -518,7 +518,7 @@ class ResourceManager:
             logger.error(f"Failed to validate clean installation at {target_path}: {e}")
             return False
 
-    def _apply_project_context(self, copied_paths: List[Path], project_context: Dict[str, str]) -> None:
+    def _apply_project_context(self, copied_paths: list[Path], project_context: dict[str, str]) -> None:
         """
         복사된 파일들에 프로젝트 컨텍스트 변수를 치환합니다.
 
@@ -546,7 +546,7 @@ class ResourceManager:
         except Exception as e:
             logger.warning(f"Failed to apply project context: {e}")
 
-    def _substitute_template_variables(self, file_path: Path, context: Dict[str, str]) -> None:
+    def _substitute_template_variables(self, file_path: Path, context: dict[str, str]) -> None:
         """
         단일 파일의 템플릿 변수를 치환합니다.
 

@@ -4,10 +4,7 @@
 from __future__ import annotations
 
 import json
-import re
 import sys
-from pathlib import Path
-from typing import Dict, Optional
 
 DANGEROUS_COMMANDS = (
     'rm -rf /',
@@ -44,7 +41,7 @@ ALLOWED_PREFIXES = (
 )
 
 
-def _load_input() -> Dict[str, object]:
+def _load_input() -> dict[str, object]:
     try:
         return json.load(sys.stdin)
     except json.JSONDecodeError as exc:
@@ -52,7 +49,7 @@ def _load_input() -> Dict[str, object]:
         sys.exit(1)
 
 
-def _extract_command(tool_input: object) -> Optional[str]:
+def _extract_command(tool_input: object) -> str | None:
     if not isinstance(tool_input, dict):
         return None
     raw = tool_input.get('command') or tool_input.get('cmd')

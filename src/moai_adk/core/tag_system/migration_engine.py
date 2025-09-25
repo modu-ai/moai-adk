@@ -7,12 +7,13 @@ Core migration engine for JSON ↔ SQLite conversion.
 
 import json
 import time
-from pathlib import Path
-from typing import Dict, List, Any, Optional, Callable
+from collections.abc import Callable
 from datetime import datetime
+from pathlib import Path
+from typing import Any
 
-from .database import TagDatabaseManager, DatabaseError
-from .migration_models import MigrationResult, MigrationProgress, BackupManager
+from .database import TagDatabaseManager
+from .migration_models import BackupManager, MigrationProgress, MigrationResult
 
 
 class MigrationEngine:
@@ -23,11 +24,11 @@ class MigrationEngine:
         self.json_path = json_path
         self.backup_manager = backup_manager
 
-    def migrate_json_to_sqlite_core(self, json_data: Dict[str, Any],
+    def migrate_json_to_sqlite_core(self, json_data: dict[str, Any],
                                    db_manager: TagDatabaseManager,
                                    mode: str = 'full',
                                    batch_size: int = 1000,
-                                   progress_callback: Optional[Callable] = None) -> MigrationResult:
+                                   progress_callback: Callable | None = None) -> MigrationResult:
         """JSON에서 SQLite로 핵심 마이그레이션"""
         result = MigrationResult(success=False)
 
@@ -69,8 +70,8 @@ class MigrationEngine:
 
         return result
 
-    def _convert_sqlite_to_original_json_format(self, all_tags: List[Dict[str, Any]],
-                                               db_manager: TagDatabaseManager) -> Dict[str, Any]:
+    def _convert_sqlite_to_original_json_format(self, all_tags: list[dict[str, Any]],
+                                               db_manager: TagDatabaseManager) -> dict[str, Any]:
         """SQLite 데이터를 원본 JSON 형식으로 변환"""
         # 기본 구조 생성
         json_data = {
@@ -133,8 +134,8 @@ class MigrationEngine:
         else:
             return "Primary"
 
-    def _full_migration(self, db_manager: TagDatabaseManager, json_data: Dict[str, Any],
-                       result: MigrationResult, progress_callback: Optional[Callable],
+    def _full_migration(self, db_manager: TagDatabaseManager, json_data: dict[str, Any],
+                       result: MigrationResult, progress_callback: Callable | None,
                        batch_size: int) -> MigrationResult:
         """전체 마이그레이션"""
         index_data = json_data.get("index", {})
@@ -211,8 +212,8 @@ class MigrationEngine:
 
         return result
 
-    def _incremental_migration(self, db_manager: TagDatabaseManager, json_data: Dict[str, Any],
-                              result: MigrationResult, progress_callback: Optional[Callable]) -> MigrationResult:
+    def _incremental_migration(self, db_manager: TagDatabaseManager, json_data: dict[str, Any],
+                              result: MigrationResult, progress_callback: Callable | None) -> MigrationResult:
         """증분 마이그레이션"""
         existing_tags = {f"{tag['category']}:{tag['identifier']}" for tag in db_manager.get_all_tags()}
         index_data = json_data.get("index", {})

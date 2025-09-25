@@ -5,13 +5,11 @@ Follows TRUST 5 principles for maintainable documentation automation.
 
 @REQ:DOCS-SITE-001 → @TASK:DOC-BUILDER-001
 """
-import os
-import json
-import yaml
 import logging
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Any
 
+import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -162,7 +160,7 @@ MoAI-ADK follows a 4-stage development pipeline:
             if not self.mkdocs_config.exists():
                 return False
 
-            with open(self.mkdocs_config, 'r') as f:
+            with open(self.mkdocs_config) as f:
                 config = yaml.safe_load(f)
 
             # Basic validation
@@ -195,11 +193,11 @@ MoAI-ADK follows a 4-stage development pipeline:
             logger.error(f"Documentation build failed: {e}")
             return False
 
-    def get_build_status(self) -> Dict[str, Any]:
+    def get_build_status(self) -> dict[str, Any]:
         """Get current build status information"""
         return self._build_status
 
-    def validate_links(self) -> Dict[str, List[str]]:
+    def validate_links(self) -> dict[str, list[str]]:
         """@TASK:DOC-BUILDER-005 Validate internal links"""
         missing_links = []
         valid_links = []
@@ -224,7 +222,7 @@ MoAI-ADK follows a 4-stage development pipeline:
 
         return {"missing": missing_links, "valid": valid_links}
 
-    def check_completeness(self) -> Dict[str, Any]:
+    def check_completeness(self) -> dict[str, Any]:
         """@TASK:DOC-BUILDER-006 Check documentation completeness"""
         required_sections = [
             "getting-started/installation.md",

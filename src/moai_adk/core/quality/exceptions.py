@@ -8,4 +8,3 @@ Exceptions for guideline checking system.
 
 class GuidelineError(Exception):
     """Guideline compliance violation exception."""
-    pass

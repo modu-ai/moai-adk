@@ -5,12 +5,11 @@ Supports version-based organization and changelog generation.
 
 @REQ:RELEASE-NOTES-001 → @TASK:RELEASE-NOTES-001
 """
-import re
 import logging
-from pathlib import Path
-from typing import Dict, Any, List, Optional
+import re
 from datetime import datetime
-
+from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +27,7 @@ class ReleaseNotesConverter:
         self.reports_dir = self.project_root / ".moai" / "reports"
         self.sync_report_path = self.reports_dir / "sync-report.md"
 
-    def parse_sync_report(self) -> Optional[Dict[str, Any]]:
+    def parse_sync_report(self) -> dict[str, Any] | None:
         """@TASK:RELEASE-NOTES-002 Parse sync-report.md file"""
         if not self.sync_report_path.exists():
             return None
@@ -111,7 +110,7 @@ class ReleaseNotesConverter:
             logger.error(f"Failed to parse sync report: {e}")
             return None
 
-    def extract_version_info(self) -> Dict[str, str]:
+    def extract_version_info(self) -> dict[str, str]:
         """@TASK:RELEASE-NOTES-003 Extract version information"""
         version_info = {"current": "", "previous": ""}
 
@@ -136,7 +135,7 @@ class ReleaseNotesConverter:
 
         return version_info
 
-    def categorize_changes(self, report_data: Optional[Dict[str, Any]] = None) -> Dict[str, List[Dict[str, str]]]:
+    def categorize_changes(self, report_data: dict[str, Any] | None = None) -> dict[str, list[dict[str, str]]]:
         """@TASK:RELEASE-NOTES-004 Categorize changes by TAG type"""
         if report_data is None:
             report_data = self.parse_sync_report()
@@ -221,7 +220,7 @@ class ReleaseNotesConverter:
 
         return "\n".join(lines)
 
-    def get_version_timeline(self) -> List[Dict[str, Any]]:
+    def get_version_timeline(self) -> list[dict[str, Any]]:
         """@TASK:RELEASE-NOTES-006 Get sorted version timeline"""
         versions = []
 

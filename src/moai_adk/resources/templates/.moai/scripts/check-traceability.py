@@ -9,14 +9,13 @@ TAG 추적성 검증 스크립트 (향상판)
 - 인덱스 기반 검증(없으면 휴리스틱 체인으로 검증)
 """
 
-import click
 import json
 import re
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Tuple, Set
 
+import click
 
 PRIMARY_CHAIN = [("REQ", "DESIGN"), ("DESIGN", "TASK"), ("TASK", "TEST")]
 STEERING_CHAIN = [("VISION", "STRUCT"), ("STRUCT", "TECH"), ("TECH", "ADR")]
@@ -27,13 +26,13 @@ class TraceabilityChecker:
     def __init__(self, project_root: str = "."):
         self.project_root = Path(project_root)
         self.tags_index_path = self.project_root / ".moai" / "indexes" / "tags.json"
-        self.index: Dict = {}
-        self.broken_links: List[Tuple[str, str]] = []
-        self.orphaned_tags: List[str] = []
+        self.index: dict = {}
+        self.broken_links: list[tuple[str, str]] = []
+        self.orphaned_tags: list[str] = []
 
     def load_or_init_index(self) -> None:
         if self.tags_index_path.exists():
-            with open(self.tags_index_path, "r", encoding="utf-8") as f:
+            with open(self.tags_index_path, encoding="utf-8") as f:
                 try:
                     self.index = json.load(f)
                 except Exception:
@@ -62,9 +61,9 @@ class TraceabilityChecker:
         with open(self.tags_index_path, "w", encoding="utf-8") as f:
             json.dump(self.index, f, indent=2, ensure_ascii=False)
 
-    def scan_files_for_tags(self) -> Dict[str, List[str]]:
+    def scan_files_for_tags(self) -> dict[str, list[str]]:
         tag_pattern = r"@([A-Z]+):([A-Z0-9-]+)"
-        found: Dict[str, List[str]] = {}
+        found: dict[str, list[str]] = {}
         exts = [".md", ".py", ".js", ".ts", ".yaml", ".yml", ".json"]
 
         for ext in exts:
@@ -81,10 +80,10 @@ class TraceabilityChecker:
                     found.setdefault(tag, []).append(str(file_path))
         return found
 
-    def scan_files_for_links(self) -> List[Dict[str, str]]:
+    def scan_files_for_links(self) -> list[dict[str, str]]:
         """@LINK:CAT:ID->CAT:ID 형식의 명시적 링크 스캔"""
         link_pattern = r"@LINK:([A-Z]+:[A-Z0-9-]+)->([A-Z]+:[A-Z0-9-]+)"
-        links: List[Dict[str, str]] = []
+        links: list[dict[str, str]] = []
         exts = [".md", ".py", ".js", ".ts", ".yaml", ".yml", ".json"]
         for ext in exts:
             for file_path in self.project_root.rglob(f"*{ext}"):
@@ -98,9 +97,9 @@ class TraceabilityChecker:
                     links.append({"from": frm, "to": to})
         return links
 
-    def group_by_spec(self, found: Dict[str, List[str]]) -> Dict[str, Set[str]]:
+    def group_by_spec(self, found: dict[str, list[str]]) -> dict[str, set[str]]:
         """SPEC 디렉터리별 태그 묶기: key=SPEC-xxx, value=tags(set)."""
-        groups: Dict[str, Set[str]] = {}
+        groups: dict[str, set[str]] = {}
         for tag, paths in found.items():
             for p in paths:
                 path = Path(p)
@@ -117,14 +116,14 @@ class TraceabilityChecker:
 
     def build_inferred_chains(
         self,
-        found: Dict[str, List[str]],
-        explicit_links: List[Dict[str, str]],
-    ) -> List[Dict[str, str]]:
-        chain_set: Set[Tuple[str, str]] = set()
+        found: dict[str, list[str]],
+        explicit_links: list[dict[str, str]],
+    ) -> list[dict[str, str]]:
+        chain_set: set[tuple[str, str]] = set()
 
         # 1) SPEC 디렉토리별 체인
         for tags in self.group_by_spec(found).values():
-            by_cat: Dict[str, List[str]] = {}
+            by_cat: dict[str, list[str]] = {}
             for tag in tags:
                 category = tag.split(":", 1)[0]
                 by_cat.setdefault(category, []).append(tag)
@@ -134,13 +133,13 @@ class TraceabilityChecker:
                         chain_set.add((frm, to))
 
         # 2) 태그 ID 접미사(-NNN) 기반 체인
-        suffix_groups: Dict[str, Set[str]] = {}
-        for tag in found.keys():
+        suffix_groups: dict[str, set[str]] = {}
+        for tag in found:
             match = re.search(r"-(\d{3})$", tag)
             if match:
                 suffix_groups.setdefault(match.group(1), set()).add(tag)
         for tags in suffix_groups.values():
-            by_cat: Dict[str, List[str]] = {}
+            by_cat: dict[str, list[str]] = {}
             for tag in tags:
                 category = tag.split(":", 1)[0]
                 by_cat.setdefault(category, []).append(tag)
@@ -150,15 +149,15 @@ class TraceabilityChecker:
                         chain_set.add((frm, to))
 
         # 3) 태그 루트(첫 번째 토큰) 기반 체인
-        root_groups: Dict[str, Set[str]] = {}
-        for tag in found.keys():
+        root_groups: dict[str, set[str]] = {}
+        for tag in found:
             name = tag.split(":", 1)[1]
             name = re.sub(r"-(\d{3})$", "", name)
             root = name.split("-", 1)[0]
             if root:
                 root_groups.setdefault(root, set()).add(tag)
         for tags in root_groups.values():
-            by_cat: Dict[str, List[str]] = {}
+            by_cat: dict[str, list[str]] = {}
             for tag in tags:
                 category = tag.split(":", 1)[0]
                 by_cat.setdefault(category, []).append(tag)
@@ -176,10 +175,10 @@ class TraceabilityChecker:
             for frm, to in sorted(chain_set)
         ]
 
-    def verify(self, found: Dict[str, List[str]], chains: List[Dict[str, str]]):
+    def verify(self, found: dict[str, list[str]], chains: list[dict[str, str]]):
         found_set = set(found.keys())
-        linked_from: Set[str] = set()
-        linked_to: Set[str] = set()
+        linked_from: set[str] = set()
+        linked_to: set[str] = set()
 
         for chain in chains:
             source = chain.get("from")
@@ -194,7 +193,7 @@ class TraceabilityChecker:
 
         self.orphaned_tags = sorted(tag for tag in found_set if tag not in linked_from and tag not in linked_to)
 
-    def update_index(self, found: Dict[str, List[str]], chains: List[Dict[str, str]]):
+    def update_index(self, found: dict[str, list[str]], chains: list[dict[str, str]]):
         # 카테고리 별 목록 업데이트(중복 제거)
         base_categories = {
             "SPEC": {"REQ": [], "DESIGN": [], "TASK": []},
@@ -232,7 +231,7 @@ class TraceabilityChecker:
         self.index["statistics"]["coverage_percentage"] = coverage
         self.index["last_updated"] = datetime.now().date().isoformat()
 
-    def report(self, found: Dict[str, List[str]], verbose: bool, strict: bool) -> int:
+    def report(self, found: dict[str, list[str]], verbose: bool, strict: bool) -> int:
         click.echo("🏷️ TAG 추적성 검증 보고서")
         click.echo("=" * 50)
         click.echo(f"📊 총 TAG 수: {len(found)}")

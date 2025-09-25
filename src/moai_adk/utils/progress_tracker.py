@@ -9,11 +9,10 @@ This module handles:
 - Customizable progress callbacks for different UI contexts
 """
 
-from typing import Any
 from collections.abc import Callable
-from colorama import Fore, Style
 
 import click
+from colorama import Fore, Style
 
 
 class ProgressTracker:

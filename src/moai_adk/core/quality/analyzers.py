@@ -7,10 +7,9 @@ Code analysis utilities for guideline checking.
 
 import ast
 from pathlib import Path
-from typing import Dict, List, Optional, Any
 
-from .constants import GuidelineLimits, ProjectPatterns, COMPLEXITY_NODES
 from ...utils.logger import get_logger
+from .constants import COMPLEXITY_NODES, GuidelineLimits, ProjectPatterns
 
 logger = get_logger(__name__)
 
@@ -22,7 +21,7 @@ class CodeAnalyzer:
         """Initialize analyzer with guideline limits."""
         self.limits = limits
 
-    def parse_python_file(self, file_path: Path) -> Optional[ast.AST]:
+    def parse_python_file(self, file_path: Path) -> ast.AST | None:
         """
         Parse Python file into AST.
 
@@ -33,7 +32,7 @@ class CodeAnalyzer:
             AST tree or None if parsing failed
         """
         try:
-            with open(file_path, 'r', encoding='utf-8') as file:
+            with open(file_path, encoding='utf-8') as file:
                 content = file.read()
 
             # Check if file is empty or contains only whitespace
@@ -64,7 +63,7 @@ class CodeAnalyzer:
             Number of significant lines
         """
         try:
-            with open(file_path, 'r', encoding='utf-8') as file:
+            with open(file_path, encoding='utf-8') as file:
                 lines = file.readlines()
 
             significant_lines = 0
@@ -98,7 +97,7 @@ class CodeAnalyzer:
 
         return complexity
 
-    def discover_python_files(self, project_path: Path) -> List[Path]:
+    def discover_python_files(self, project_path: Path) -> list[Path]:
         """
         Discover all Python files in project.
 

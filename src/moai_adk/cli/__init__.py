@@ -1,23 +1,28 @@
 """
-CLI interface modules for MoAI-ADK.
+@FEATURE:CLI-001 CLI interface modules for MoAI-ADK
+
+@REQ:CLI-INTERFACE-001 → @DESIGN:CLI-ARCHITECTURE-001 → @TASK:CLI-INTEGRATION-001 → @TEST:CLI-COMMANDS-001
+
+@DESIGN:CLI-ARCHITECTURE-001 Clean CLI architecture with command separation
+@TASK:CLI-INTEGRATION-001 Command-line interface integration layer
 
 This package contains command-line interface components:
-- commands: CLI command implementations
-- helpers: CLI utility functions
-- banner: Banner display functionality
-- wizard: Interactive setup wizard
+- @TASK:CLI-COMMANDS-001 CLI command implementations
+- @TASK:CLI-HELPERS-001 CLI utility functions
+- @TASK:CLI-BANNER-001 Banner display functionality
+- @TASK:CLI-WIZARD-001 Interactive setup wizard
 """
 
+from .__main__ import main
 from .commands import cli
 from .wizard import InteractiveWizard
-from .__main__ import main
 
 # For backward compatibility
 CLICommands = cli
 
 __all__ = [
-    'cli',
     'CLICommands',  # Backward compatibility
     'InteractiveWizard',
+    'cli',
     'main'
 ]

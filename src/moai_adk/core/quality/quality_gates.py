@@ -8,7 +8,6 @@ automated quality gate enforcement for continuous integration.
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from ...utils.logger import get_logger
 
@@ -17,7 +16,6 @@ logger = get_logger(__name__)
 
 class QualityGateError(Exception):
     """Quality gate exception."""
-    pass
 
 
 class QualityGates:

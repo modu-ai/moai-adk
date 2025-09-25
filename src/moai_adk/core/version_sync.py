@@ -5,13 +5,11 @@ Automated version synchronization system for MoAI-ADK project files
 """
 
 import re
-import json
-import sys
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
 
 import click
-from .._version import __version__, VERSIONS, VERSION_FORMATS
+
+from .._version import __version__
 from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -19,8 +17,8 @@ logger = get_logger(__name__)
 
 class VersionSyncManager:
     """@TASK:VERSION-SYNC-MANAGER-001 Version synchronization manager class"""
-    
-    def __init__(self, project_root: Optional[str] = None):
+
+    def __init__(self, project_root: str | None = None):
         """
         Initialize version sync manager
         
@@ -31,19 +29,19 @@ class VersionSyncManager:
         self.current_version = __version__
         self.version_patterns = self._load_version_patterns()
         self.sync_log = []
-        
+
     def _find_project_root(self) -> Path:
         """Find project root directory containing pyproject.toml"""
         current = Path(__file__).parent
-        
+
         while current != current.parent:
             if (current / "pyproject.toml").exists():
                 return current
             current = current.parent
-            
+
         raise FileNotFoundError("pyproject.toml을 찾을 수 없습니다")
-        
-    def _load_version_patterns(self) -> Dict[str, List[Dict]]:
+
+    def _load_version_patterns(self) -> dict[str, list[dict]]:
         """Define version patterns - file-specific replacement rules"""
         return {
             # Python package configuration
@@ -139,8 +137,8 @@ class VersionSyncManager:
                 }
             ]
         }
-    
-    def sync_all_versions(self, dry_run: bool = False) -> Dict[str, List[str]]:
+
+    def sync_all_versions(self, dry_run: bool = False) -> dict[str, list[str]]:
         """
         전체 프로젝트의 버전 정보 동기화
         
@@ -151,29 +149,29 @@ class VersionSyncManager:
             Dict[파일패턴, 변경된파일리스트]
         """
         results = {}
-        
+
         logger.info(f"MoAI-ADK 버전 동기화 시작: v{self.current_version}, 루트: {self.project_root}")
         click.echo(f"🗿 MoAI-ADK 버전 동기화 시작: v{self.current_version}")
         click.echo(f"프로젝트 루트: {self.project_root}")
-        
+
         for pattern, replacements in self.version_patterns.items():
             files_changed = self._sync_pattern(pattern, replacements, dry_run)
             if files_changed:
                 results[pattern] = files_changed
-                
+
         if dry_run:
             logger.info("드라이 런 완료 - 실제 파일은 변경되지 않음")
             click.echo("\\n✅ 드라이 런 완료 - 실제 파일은 변경되지 않았습니다")
         else:
             logger.info("버전 동기화 완료")
             click.echo("\\n✅ 버전 동기화 완료")
-            
+
         return results
-    
-    def _sync_pattern(self, file_pattern: str, replacements: List[Dict], dry_run: bool) -> List[str]:
+
+    def _sync_pattern(self, file_pattern: str, replacements: list[dict], dry_run: bool) -> list[str]:
         """특정 파일 패턴에 대해 버전 동기화 수행"""
         changed_files = []
-        
+
         if file_pattern.startswith("**"):
             # glob 패턴으로 파일 검색
             files = list(self.project_root.glob(file_pattern))
@@ -181,24 +179,24 @@ class VersionSyncManager:
             # 단일 파일
             files = [self.project_root / file_pattern]
             files = [f for f in files if f.exists()]
-        
+
         for file_path in files:
             if self._should_skip_file(file_path):
                 continue
-                
+
             try:
                 changed = self._sync_file(file_path, replacements, dry_run)
                 if changed:
                     changed_files.append(str(file_path.relative_to(self.project_root)))
                     logger.info(f"Updated: {file_path.relative_to(self.project_root)}")
                     click.echo(f"  ✓ {file_path.relative_to(self.project_root)}")
-                    
+
             except Exception as e:
                 logger.error(f"Update failed: {file_path.relative_to(self.project_root)}: {e}")
                 click.echo(f"  ❌ {file_path.relative_to(self.project_root)}: {e}")
-                
+
         return changed_files
-    
+
     def _should_skip_file(self, file_path: Path) -> bool:
         """파일 스킵 조건 확인"""
         skip_patterns = [
@@ -212,53 +210,53 @@ class VersionSyncManager:
             "build/",
             ".mypy_cache/"
         ]
-        
+
         file_str = str(file_path)
         return any(pattern in file_str for pattern in skip_patterns)
-    
-    def _sync_file(self, file_path: Path, replacements: List[Dict], dry_run: bool) -> bool:
+
+    def _sync_file(self, file_path: Path, replacements: list[dict], dry_run: bool) -> bool:
         """단일 파일의 버전 동기화"""
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding='utf-8') as f:
                 content = f.read()
         except UnicodeDecodeError:
             # 바이너리 파일은 스킵
             return False
-            
+
         original_content = content
         changes_made = False
-        
+
         for replacement_rule in replacements:
             pattern = replacement_rule["pattern"]
             replacement = replacement_rule["replacement"]
-            
+
             if re.search(pattern, content):
                 content = re.sub(pattern, replacement, content)
                 changes_made = True
-                
+
         if changes_made and not dry_run:
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(content)
-                
+
         return changes_made
-    
-    def verify_sync(self) -> Dict[str, List[str]]:
+
+    def verify_sync(self) -> dict[str, list[str]]:
         """버전 동기화 검증 - 남은 불일치 확인"""
         logger.info("버전 동기화 검증 시작")
-        click.echo(f"\\n🔍 버전 동기화 검증 중...")
-        
+        click.echo("\\n🔍 버전 동기화 검증 중...")
+
         inconsistent_files = {}
         target_patterns = [
             (r'v[0-9]+\.[0-9]+\.[0-9]+', f"v{self.current_version}"),
             (r'version.*[0-9]+\.[0-9]+\.[0-9]+', f"version {self.current_version}"),
             (r'MoAI-ADK v[0-9]+\.[0-9]+\.[0-9]+', f"MoAI-ADK v{self.current_version}")
         ]
-        
+
         for pattern, expected in target_patterns:
             mismatches = self._find_version_mismatches(pattern, expected)
             if mismatches:
                 inconsistent_files[pattern] = mismatches
-                
+
         if inconsistent_files:
             logger.warning(f"버전 불일치 발견: {len(inconsistent_files)} 개 패턴")
             click.echo("⚠️  다음 파일에서 버전 불일치가 발견되었습니다:")
@@ -269,38 +267,38 @@ class VersionSyncManager:
         else:
             logger.info("모든 버전 정보가 일치")
             click.echo("✅ 모든 버전 정보가 일치합니다")
-            
+
         return inconsistent_files
-    
-    def _find_version_mismatches(self, pattern: str, expected: str) -> List[str]:
+
+    def _find_version_mismatches(self, pattern: str, expected: str) -> list[str]:
         """버전 불일치 파일 찾기"""
         mismatches = []
-        
+
         for file_path in self.project_root.glob("**/*"):
             if not file_path.is_file() or self._should_skip_file(file_path):
                 continue
-                
+
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, encoding='utf-8') as f:
                     content = f.read()
-                    
+
                 matches = re.findall(pattern, content, re.IGNORECASE)
                 unexpected_matches = [m for m in matches if m != expected.split()[-1]]
-                
+
                 if unexpected_matches:
                     rel_path = file_path.relative_to(self.project_root)
                     mismatches.append(f"{rel_path}: {unexpected_matches}")
-                    
+
             except (UnicodeDecodeError, OSError):
                 continue
-                
+
         return mismatches
-    
+
     def create_version_update_script(self) -> str:
         """버전 업데이트용 스크립트 생성"""
         script_path = self.project_root / "scripts" / "update_version.py"
         script_path.parent.mkdir(exist_ok=True)
-        
+
         script_content = f'''#!/usr/bin/env python3
 """
 MoAI-ADK 버전 업데이트 자동화 스크립트
@@ -383,10 +381,10 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 '''
-        
+
         with open(script_path, 'w', encoding='utf-8') as f:
             f.write(script_content)
-            
+
         print(f"✅ 버전 업데이트 스크립트 생성: {script_path}")
         return str(script_path)
 
@@ -394,19 +392,19 @@ if __name__ == "__main__":
 def main() -> None:
     """CLI entry point"""
     import argparse
-    
+
     parser = argparse.ArgumentParser(description="MoAI-ADK 버전 동기화 도구")
-    parser.add_argument("--dry-run", action="store_true", 
+    parser.add_argument("--dry-run", action="store_true",
                        help="실제 변경하지 않고 시뮬레이션만 실행")
     parser.add_argument("--verify", action="store_true",
                        help="버전 동기화 검증만 실행")
     parser.add_argument("--create-script", action="store_true",
                        help="버전 업데이트 스크립트 생성")
-    
+
     args = parser.parse_args()
-    
+
     manager = VersionSyncManager()
-    
+
     if args.verify:
         manager.verify_sync()
     elif args.create_script:

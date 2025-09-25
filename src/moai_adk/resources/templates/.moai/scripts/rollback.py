@@ -10,17 +10,16 @@ MoAI-ADK Git Rollback Script v0.3.0 (통합 시스템 기반)
 @TECH:PERSONAL-MODE-ONLY-001
 """
 
-import sys
 import argparse
+import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import click
 
 # 새로운 통합 시스템 import
 sys.path.append(str(Path(__file__).parent / "utils"))
-from checkpoint_system import CheckpointSystem, CheckpointInfo, CheckpointError
-from project_helper import ProjectHelper
+from checkpoint_system import CheckpointError, CheckpointInfo, CheckpointSystem
 
 
 class MoAIRollback:
@@ -30,11 +29,11 @@ class MoAIRollback:
         self.project_root = Path(__file__).resolve().parents[2]
         self.checkpoint_system = CheckpointSystem(self.project_root)
 
-    def list_available_checkpoints(self, limit: int = 10) -> List[CheckpointInfo]:
+    def list_available_checkpoints(self, limit: int = 10) -> list[CheckpointInfo]:
         """사용 가능한 체크포인트 목록 조회"""
         return self.checkpoint_system.list_checkpoints(limit)
 
-    def rollback_to_checkpoint(self, tag_or_index: str, confirm: bool = False) -> Dict[str, Any]:
+    def rollback_to_checkpoint(self, tag_or_index: str, confirm: bool = False) -> dict[str, Any]:
         """체크포인트로 롤백"""
         try:
             # 확인 절차
@@ -43,7 +42,7 @@ class MoAIRollback:
                 return {"success": False, "error": f"체크포인트를 찾을 수 없습니다: {tag_or_index}"}
 
             if not confirm:
-                click.echo(f"롤백할 체크포인트:")
+                click.echo("롤백할 체크포인트:")
                 click.echo(f"  태그: {checkpoint.tag}")
                 click.echo(f"  메시지: {checkpoint.message}")
                 click.echo(f"  생성일: {checkpoint.created_at}")
@@ -66,7 +65,7 @@ class MoAIRollback:
         except CheckpointError as e:
             return {"success": False, "error": str(e)}
 
-    def rollback_interactive(self) -> Dict[str, Any]:
+    def rollback_interactive(self) -> dict[str, Any]:
         """대화형 롤백"""
         checkpoints = self.list_available_checkpoints()
 
@@ -97,7 +96,7 @@ class MoAIRollback:
         except ValueError:
             return {"success": False, "error": "올바른 번호를 입력하세요"}
 
-    def show_rollback_preview(self, tag_or_index: str) -> Dict[str, Any]:
+    def show_rollback_preview(self, tag_or_index: str) -> dict[str, Any]:
         """롤백 미리보기"""
         try:
             checkpoint = self.checkpoint_system.get_checkpoint_info(tag_or_index)

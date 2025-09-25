@@ -8,17 +8,17 @@ Integration features: file watching, migration, and configuration.
 import json
 import threading
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Any
 
-from .database import TagDatabaseManager, DatabaseError
-from .parser import TagParser
+from .database import TagDatabaseManager
 from .index_manager import IndexUpdateEvent, TagIndexManager
+from .parser import TagParser
 
 
 class AdapterIntegration:
     """통합 기능 (파일 감시, 마이그레이션 등)"""
 
-    def __init__(self, db_manager: TagDatabaseManager, json_fallback_path: Optional[Path] = None):
+    def __init__(self, db_manager: TagDatabaseManager, json_fallback_path: Path | None = None):
         """통합 모듈 초기화"""
         self.db_manager = db_manager
         self.json_fallback_path = json_fallback_path
@@ -51,7 +51,7 @@ class AdapterIntegration:
         """파일 변경 처리 (호환성용 인터페이스)"""
         try:
             self._process_file_change_sqlite(file_path, event_type)
-        except Exception as e:
+        except Exception:
             # 파일 감시 오류는 로깅만 하고 계속 진행
             pass
 
@@ -86,7 +86,7 @@ class AdapterIntegration:
     def migrate_from_json(self, json_path: Path) -> None:
         """JSON에서 SQLite로 마이그레이션"""
         try:
-            with open(json_path, 'r', encoding='utf-8') as f:
+            with open(json_path, encoding='utf-8') as f:
                 json_data = json.load(f)
 
             # 기존 데이터 클리어
@@ -185,7 +185,7 @@ class AdapterIntegration:
         except Exception as e:
             raise Exception(f"JSON 내보내기 실패: {e}")
 
-    def setup_file_watching(self, project_root: Path, patterns: Optional[List[str]] = None) -> None:
+    def setup_file_watching(self, project_root: Path, patterns: list[str] | None = None) -> None:
         """파일 감시 설정"""
         try:
             # 기본 패턴 설정
@@ -214,7 +214,7 @@ class AdapterIntegration:
             # 개별 파일 처리 실패는 무시하고 계속 진행
             pass
 
-    def get_sync_status(self) -> Dict[str, Any]:
+    def get_sync_status(self) -> dict[str, Any]:
         """동기화 상태 정보"""
         try:
             all_tags = self.db_manager.get_all_tags()

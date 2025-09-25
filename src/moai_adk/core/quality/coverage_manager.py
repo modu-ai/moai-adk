@@ -7,19 +7,16 @@ following TRUST 5 principles for quality assurance.
 @FEATURE:QUALITY-COVERAGE Coverage management and validation system
 """
 
-import subprocess
 from pathlib import Path
-from typing import Dict, List, Optional, Union
 
 from ...utils.logger import get_logger
-from ..security import SecurityManager, SecurityError
+from ..security import SecurityManager
 
 logger = get_logger(__name__)
 
 
 class CoverageError(Exception):
     """Coverage-related exception."""
-    pass
 
 
 class CoverageManager:
@@ -79,7 +76,7 @@ class CoverageManager:
             raise CoverageError(f"Coverage {coverage_percentage}% is below threshold {self.minimum_threshold}%")
         return True
 
-    def generate_report(self) -> Dict[str, Union[float, List[str]]]:
+    def generate_report(self) -> dict[str, float | list[str]]:
         """
         Generate comprehensive coverage report.
 
@@ -94,7 +91,7 @@ class CoverageManager:
             "uncovered_files": []
         }
 
-    def get_uncovered_lines(self) -> Dict[str, List[int]]:
+    def get_uncovered_lines(self) -> dict[str, list[int]]:
         """
         Get uncovered lines by file.
 
@@ -104,7 +101,7 @@ class CoverageManager:
         # GREEN phase: 최소 구현 - 빈 딕셔너리 반환
         return {}
 
-    def run_pytest_coverage(self) -> Dict[str, float]:
+    def run_pytest_coverage(self) -> dict[str, float]:
         """
         Run pytest with coverage and return results.
 
@@ -118,7 +115,7 @@ class CoverageManager:
             "branch_coverage": self.minimum_threshold
         }
 
-    def set_exclude_patterns(self, patterns: List[str]) -> None:
+    def set_exclude_patterns(self, patterns: list[str]) -> None:
         """
         Set file patterns to exclude from coverage.
 

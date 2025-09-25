@@ -5,7 +5,7 @@
 """
 
 from dataclasses import dataclass
-from typing import List, Dict, Set, Optional, Any
+
 from .parser import TagMatch
 
 
@@ -14,7 +14,7 @@ class ChainValidationResult:
     """Chain 검증 결과"""
     is_valid: bool
     completeness_score: float
-    missing_links: List[str]
+    missing_links: list[str]
     chain_type: str
 
 
@@ -22,7 +22,7 @@ class ChainValidationResult:
 class ValidationError:
     """검증 오류 정보"""
     message: str
-    tag: Optional[TagMatch] = None
+    tag: TagMatch | None = None
 
 
 @dataclass
@@ -67,7 +67,7 @@ class TagValidator:
             "QUALITY": self._quality_chain
         }
 
-    def validate_primary_chain(self, tags: List[TagMatch]) -> ChainValidationResult:
+    def validate_primary_chain(self, tags: list[TagMatch]) -> ChainValidationResult:
         """
         Primary Chain 검증
 
@@ -90,7 +90,7 @@ class TagValidator:
             chain_type="PRIMARY"
         )
 
-    def detect_circular_references(self, tags: List[TagMatch]) -> List[List[TagMatch]]:
+    def detect_circular_references(self, tags: list[TagMatch]) -> list[list[TagMatch]]:
         """
         순환 참조 검사
 
@@ -115,7 +115,7 @@ class TagValidator:
         visited = set()
         recursion_stack = set()
 
-        def dfs(tag_key: str, path: List[TagMatch]) -> None:
+        def dfs(tag_key: str, path: list[TagMatch]) -> None:
             if tag_key in recursion_stack:
                 # 순환 참조 발견
                 cycle_start = path.index(tag_map[tag_key])
@@ -145,7 +145,7 @@ class TagValidator:
 
         return circular_refs
 
-    def find_orphaned_tags(self, tags: List[TagMatch]) -> List[TagMatch]:
+    def find_orphaned_tags(self, tags: list[TagMatch]) -> list[TagMatch]:
         """
         고아 TAG 검색
 
@@ -174,7 +174,7 @@ class TagValidator:
 
         return orphaned_tags
 
-    def check_naming_consistency(self, tags: List[TagMatch]) -> List[ConsistencyViolation]:
+    def check_naming_consistency(self, tags: list[TagMatch]) -> list[ConsistencyViolation]:
         """
         명명 일관성 검사
 
@@ -199,7 +199,7 @@ class TagValidator:
 
         return violations
 
-    def calculate_tag_coverage(self, tags: List[TagMatch]) -> Dict[str, float]:
+    def calculate_tag_coverage(self, tags: list[TagMatch]) -> dict[str, float]:
         """
         TAG 커버리지 계산
 
@@ -222,7 +222,7 @@ class TagValidator:
 
         return coverage
 
-    def validate_reference_integrity(self, tags: List[TagMatch]) -> List[BrokenReference]:
+    def validate_reference_integrity(self, tags: list[TagMatch]) -> list[BrokenReference]:
         """
         참조 무결성 검사
 

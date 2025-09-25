@@ -8,11 +8,11 @@ Project configuration management (MoAI, package.json, etc.).
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any
 
-from ..utils.logger import get_logger
+from .._version import get_version
 from ..config import Config
-from .._version import __version__, get_version
+from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -58,7 +58,7 @@ class ProjectConfigManager:
             logger.error(f"Failed to create MoAI config: {e}")
             return False
 
-    def _create_moai_config_data(self, config: Config) -> Dict[str, Any]:
+    def _create_moai_config_data(self, config: Config) -> dict[str, Any]:
         """Create MoAI configuration data structure"""
         moai_config = {
             "version": "0.1.9",
@@ -190,7 +190,7 @@ class ProjectConfigManager:
             logger.error(f"Failed to create package.json: {e}")
             return None
 
-    def create_initial_indexes(self, project_path: Path, config: Config) -> List[Path]:
+    def create_initial_indexes(self, project_path: Path, config: Config) -> list[Path]:
         """Create initial index files for TAG system"""
         created_files = []
 

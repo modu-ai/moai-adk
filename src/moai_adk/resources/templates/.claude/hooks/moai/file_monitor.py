@@ -9,15 +9,12 @@ Combines file watching and auto checkpoint functionality.
 """
 
 import os
-import sys
 import time
-import threading
 from pathlib import Path
-from typing import Set, Optional, Dict, Any
 
 try:
-    from watchdog.observers import Observer
     from watchdog.events import FileSystemEventHandler
+    from watchdog.observers import Observer
     WATCHDOG_AVAILABLE = True
 except ImportError:
     WATCHDOG_AVAILABLE = False
@@ -37,7 +34,7 @@ class FileMonitor:
         self.project_root = project_root
         self.observer = None
         self.is_running = False
-        self.changed_files: Set[str] = set()
+        self.changed_files: set[str] = set()
         self.last_checkpoint_time = 0
         self.checkpoint_interval = 300  # 5 minutes
 

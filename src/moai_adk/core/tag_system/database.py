@@ -4,24 +4,21 @@
 GREEN 단계: 테스트를 통과시키는 최소 구현
 """
 
-import sqlite3
-import time
-import threading
 import logging
-from pathlib import Path
-from typing import Dict, List, Any, Optional, Union, ContextManager
+import sqlite3
+import threading
+import time
 from dataclasses import dataclass
-from datetime import datetime
+from pathlib import Path
+from typing import Any, ContextManager
 
 
 class DatabaseError(Exception):
     """데이터베이스 관련 오류"""
-    pass
 
 
 class TransactionError(Exception):
     """트랜잭션 관련 오류"""
-    pass
 
 
 @dataclass
@@ -30,9 +27,9 @@ class TagSearchResult:
     id: int
     category: str
     identifier: str
-    description: Optional[str]
+    description: str | None
     file_path: str
-    line_number: Optional[int]
+    line_number: int | None
     created_at: str
     updated_at: str
 
@@ -85,7 +82,7 @@ class TagDatabase:
         conn = self.connection.get_connection()
         return conn.execute(query, params)
 
-    def executemany(self, query: str, params_list: List[tuple]) -> sqlite3.Cursor:
+    def executemany(self, query: str, params_list: list[tuple]) -> sqlite3.Cursor:
         """배치 쿼리 실행"""
         conn = self.connection.get_connection()
         return conn.executemany(query, params_list)
@@ -208,7 +205,7 @@ class TagDatabaseManager:
         """
         self._database.execute(trigger_sql)
 
-    def get_schema(self) -> Dict[str, Dict[str, str]]:
+    def get_schema(self) -> dict[str, dict[str, str]]:
         """스키마 정보 반환"""
         schema = {}
 
@@ -235,12 +232,12 @@ class TagDatabaseManager:
 
         return schema
 
-    def get_indexes(self) -> List[str]:
+    def get_indexes(self) -> list[str]:
         """인덱스 목록 반환"""
         return list(self.INDEX_SQL.keys())
 
-    def insert_tag(self, category: str, identifier: str, description: Optional[str] = None,
-                   file_path: str = "", line_number: Optional[int] = None) -> int:
+    def insert_tag(self, category: str, identifier: str, description: str | None = None,
+                   file_path: str = "", line_number: int | None = None) -> int:
         """TAG 삽입 (성능 모니터링 포함)"""
         start_time = time.time()
 
@@ -280,11 +277,11 @@ class TagDatabaseManager:
             self._logger.error(
                 f'{{"operation": "insert_tag", "category": "{category}", '
                 f'"identifier": "{identifier}", "duration_ms": {duration:.2f}, '
-                f'"success": false, "error": "{str(e)}"}}'
+                f'"success": false, "error": "{e!s}"}}'
             )
             raise
 
-    def get_tag_by_id(self, tag_id: int) -> Optional[Dict[str, Any]]:
+    def get_tag_by_id(self, tag_id: int) -> dict[str, Any] | None:
         """ID로 TAG 조회"""
         sql = "SELECT * FROM tags WHERE id = ?"
         cursor = self._database.execute(sql, (tag_id,))
@@ -294,35 +291,35 @@ class TagDatabaseManager:
             return dict(row)
         return None
 
-    def search_tags_by_category(self, category: str) -> List[Dict[str, Any]]:
+    def search_tags_by_category(self, category: str) -> list[dict[str, Any]]:
         """카테고리별 TAG 검색"""
         sql = "SELECT * FROM tags WHERE category = ? ORDER BY identifier"
         cursor = self._database.execute(sql, (category,))
 
         return [dict(row) for row in cursor.fetchall()]
 
-    def search_tags_by_identifier(self, identifier: str) -> List[Dict[str, Any]]:
+    def search_tags_by_identifier(self, identifier: str) -> list[dict[str, Any]]:
         """식별자로 TAG 검색"""
         sql = "SELECT * FROM tags WHERE identifier = ?"
         cursor = self._database.execute(sql, (identifier,))
 
         return [dict(row) for row in cursor.fetchall()]
 
-    def search_tags_by_file(self, file_path: str) -> List[Dict[str, Any]]:
+    def search_tags_by_file(self, file_path: str) -> list[dict[str, Any]]:
         """파일 경로로 TAG 검색"""
         sql = "SELECT * FROM tags WHERE file_path = ? ORDER BY line_number"
         cursor = self._database.execute(sql, (file_path,))
 
         return [dict(row) for row in cursor.fetchall()]
 
-    def search_tags_by_pattern(self, pattern: str) -> List[Dict[str, Any]]:
+    def search_tags_by_pattern(self, pattern: str) -> list[dict[str, Any]]:
         """패턴으로 TAG 검색"""
         sql = "SELECT * FROM tags WHERE identifier LIKE ? ORDER BY identifier"
         cursor = self._database.execute(sql, (f"%{pattern}%",))
 
         return [dict(row) for row in cursor.fetchall()]
 
-    def search_tags_by_line_range(self, start_line: int, end_line: int) -> List[Dict[str, Any]]:
+    def search_tags_by_line_range(self, start_line: int, end_line: int) -> list[dict[str, Any]]:
         """줄 번호 범위로 TAG 검색"""
         sql = """
         SELECT * FROM tags
@@ -346,7 +343,7 @@ class TagDatabaseManager:
 
         return cursor.lastrowid
 
-    def get_references_by_source(self, source_tag_id: int) -> List[Dict[str, Any]]:
+    def get_references_by_source(self, source_tag_id: int) -> list[dict[str, Any]]:
         """소스 TAG의 참조 관계 조회"""
         sql = "SELECT * FROM tag_references WHERE source_tag_id = ?"
         cursor = self._database.execute(sql, (source_tag_id,))
@@ -383,7 +380,7 @@ class TagDatabaseManager:
 
         return cursor.rowcount
 
-    def get_all_tags(self) -> List[Dict[str, Any]]:
+    def get_all_tags(self) -> list[dict[str, Any]]:
         """모든 TAG 조회"""
         sql = "SELECT * FROM tags ORDER BY category, identifier"
         cursor = self._database.execute(sql)
@@ -394,9 +391,9 @@ class TagDatabaseManager:
         """트랜잭션 컨텍스트 매니저"""
         return TransactionManager(self._database)
 
-    def complex_search(self, category: Optional[str] = None,
-                      file_pattern: Optional[str] = None,
-                      line_range: Optional[tuple] = None) -> List[Dict[str, Any]]:
+    def complex_search(self, category: str | None = None,
+                      file_pattern: str | None = None,
+                      line_range: tuple | None = None) -> list[dict[str, Any]]:
         """복합 검색"""
         conditions = []
         params = []
@@ -419,7 +416,7 @@ class TagDatabaseManager:
         cursor = self._database.execute(sql, tuple(params))
         return [dict(row) for row in cursor.fetchall()]
 
-    def search_tags_by_file_pattern(self, pattern: str) -> List[Dict[str, Any]]:
+    def search_tags_by_file_pattern(self, pattern: str) -> list[dict[str, Any]]:
         """파일 패턴으로 검색"""
         sql = "SELECT * FROM tags WHERE file_path LIKE ? ORDER BY file_path, line_number"
         cursor = self._database.execute(sql, (pattern.replace('*', '%'),))
@@ -429,7 +426,7 @@ class TagDatabaseManager:
         """Prepared statement 매니저"""
         return PreparedInsertManager(self._database)
 
-    def bulk_insert_tags(self, tags_data: List[Dict[str, Any]]) -> int:
+    def bulk_insert_tags(self, tags_data: list[dict[str, Any]]) -> int:
         """대량 TAG 삽입"""
         sql = """
         INSERT INTO tags (category, identifier, description, file_path, line_number)
@@ -451,7 +448,7 @@ class TagDatabaseManager:
 
         return cursor.rowcount
 
-    def get_tag_metadata(self, tag_id: int) -> Dict[str, Any]:
+    def get_tag_metadata(self, tag_id: int) -> dict[str, Any]:
         """TAG 메타데이터 조회 (확장용)"""
         # 현재는 기본 구현, 향후 별도 메타데이터 테이블 추가 가능
         tag = self.get_tag_by_id(tag_id)
@@ -509,7 +506,7 @@ class PreparedInsertManager:
             self.database.commit()
 
     def execute(self, category: str, identifier: str, description: str = "",
-                file_path: str = "", line_number: Optional[int] = None):
+                file_path: str = "", line_number: int | None = None):
         """배치용 데이터 추가"""
         self._prepared_data.append((
             category, identifier, description, file_path, line_number

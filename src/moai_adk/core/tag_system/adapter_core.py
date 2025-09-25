@@ -6,22 +6,21 @@ Core adapter functionality for SQLite backend and JSON API compatibility.
 """
 
 import json
-from pathlib import Path
-from typing import Dict, List, Any, Optional
 from datetime import datetime
+from pathlib import Path
+from typing import Any
 
-from .database import TagDatabaseManager, DatabaseError
+from .database import DatabaseError, TagDatabaseManager
 
 
 class ApiCompatibilityError(Exception):
     """API 호환성 관련 오류"""
-    pass
 
 
 class AdapterCore:
     """핵심 어댑터 기능"""
 
-    def __init__(self, database_path: Path, json_fallback_path: Optional[Path] = None):
+    def __init__(self, database_path: Path, json_fallback_path: Path | None = None):
         """어댑터 코어 초기화"""
         self.database_path = Path(database_path)
         self.json_fallback_path = Path(json_fallback_path) if json_fallback_path else None
@@ -48,7 +47,7 @@ class AdapterCore:
         """인덱스 초기화 (호환성용)"""
         self.initialize()
 
-    def load_index(self) -> Dict[str, Any]:
+    def load_index(self) -> dict[str, Any]:
         """인덱스 로드 (기존 JSON API 호환)"""
         if self.backend_available:
             return self._load_from_sqlite()
@@ -57,7 +56,7 @@ class AdapterCore:
         else:
             return self._create_empty_index()
 
-    def _load_from_sqlite(self) -> Dict[str, Any]:
+    def _load_from_sqlite(self) -> dict[str, Any]:
         """SQLite에서 인덱스 로드"""
         try:
             all_tags = self.db_manager.get_all_tags()
@@ -113,22 +112,22 @@ class AdapterCore:
         except Exception as e:
             raise ApiCompatibilityError(f"SQLite 인덱스 로드 실패: {e}")
 
-    def _load_from_json_fallback(self) -> Dict[str, Any]:
+    def _load_from_json_fallback(self) -> dict[str, Any]:
         """JSON fallback에서 로드"""
         try:
-            with open(self.json_fallback_path, 'r', encoding='utf-8') as f:
+            with open(self.json_fallback_path, encoding='utf-8') as f:
                 return json.load(f)
         except Exception as e:
             raise ApiCompatibilityError(f"JSON fallback 로드 실패: {e}")
 
-    def save_index(self, index_data: Dict[str, Any]) -> None:
+    def save_index(self, index_data: dict[str, Any]) -> None:
         """인덱스 저장 (기존 JSON API 호환)"""
         if self.backend_available:
             self._save_to_sqlite(index_data)
         else:
             raise ApiCompatibilityError("SQLite 백엔드를 사용할 수 없습니다")
 
-    def _save_to_sqlite(self, index_data: Dict[str, Any]) -> None:
+    def _save_to_sqlite(self, index_data: dict[str, Any]) -> None:
         """SQLite에 인덱스 저장"""
         try:
             # 기존 데이터 클리어 (전체 교체)
@@ -167,12 +166,12 @@ class AdapterCore:
         except Exception as e:
             raise ApiCompatibilityError(f"SQLite 인덱스 저장 실패: {e}")
 
-    def validate_index_schema(self, index_data: Dict[str, Any]) -> bool:
+    def validate_index_schema(self, index_data: dict[str, Any]) -> bool:
         """인덱스 스키마 검증"""
         required_fields = ['version', 'index']
         return all(field in index_data for field in required_fields)
 
-    def _create_empty_index(self) -> Dict[str, Any]:
+    def _create_empty_index(self) -> dict[str, Any]:
         """빈 인덱스 생성"""
         return {
             "version": "2.0.0",
@@ -186,7 +185,7 @@ class AdapterCore:
             "references": {}
         }
 
-    def get_configuration_info(self) -> Dict[str, Any]:
+    def get_configuration_info(self) -> dict[str, Any]:
         """설정 정보 반환"""
         return {
             "backend_type": "sqlite",

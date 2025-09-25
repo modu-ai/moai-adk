@@ -12,14 +12,14 @@ Usage:
 """
 
 import sys
-from pathlib import Path
 
 import click
 from colorama import Fore, Style, init
 
+from .._version import __version__
+
 # Note: global_installer removed in favor of package-based resources
 from ..utils.logger import get_logger
-from .._version import __version__
 
 # Initialize colorama for cross-platform colored output
 init(autoreset=True)
@@ -67,7 +67,7 @@ def main(force: bool, quiet: bool) -> None:
         if not quiet:
             logger.info("MoAI-ADK resources available in package")
             click.echo(f"{Fore.GREEN}✅ MoAI-ADK resources are embedded in the package.{Style.RESET_ALL}")
-            click.echo(f"   No separate installation needed!")
+            click.echo("   No separate installation needed!")
             click.echo(f"   Use {Fore.WHITE}moai init{Style.RESET_ALL} to set up new projects.")
 
     except KeyboardInterrupt:
@@ -92,7 +92,6 @@ def auto_install_on_first_run() -> bool:
     """
     try:
         # 실제 리소스 존재 여부 검증
-        from importlib import resources
         from ..install.resource_manager import ResourceManager
 
         # 패키지 리소스 접근 가능 여부 확인

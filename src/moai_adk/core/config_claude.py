@@ -7,10 +7,10 @@ Claude Code configuration management.
 
 import json
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
 
-from ..utils.logger import get_logger
 from ..config import Config
+from ..utils.logger import get_logger
 from .security import SecurityManager
 
 logger = get_logger(__name__)
@@ -60,7 +60,7 @@ class ClaudeConfigManager:
             logger.error(f"Failed to create Claude settings: {e}")
             return False
 
-    def _create_claude_settings_data(self, config: Config) -> Dict[str, Any]:
+    def _create_claude_settings_data(self, config: Config) -> dict[str, Any]:
         """Create Claude settings data structure"""
         settings = {
             "defaultMode": "acceptEdits",
@@ -143,7 +143,7 @@ class ClaudeConfigManager:
                 logger.warning(f"Claude settings file not found: {settings_path}")
                 return False
 
-            with open(settings_path, 'r', encoding='utf-8') as f:
+            with open(settings_path, encoding='utf-8') as f:
                 settings_data = json.load(f)
 
             # 필수 키 검증
@@ -174,14 +174,14 @@ class ClaudeConfigManager:
             logger.error(f"Error validating Claude settings: {e}")
             return False
 
-    def update_claude_permissions(self, settings_path: Path, new_permissions: Dict[str, str]) -> bool:
+    def update_claude_permissions(self, settings_path: Path, new_permissions: dict[str, str]) -> bool:
         """Claude 권한 설정 업데이트"""
         try:
             if not settings_path.exists():
                 logger.error(f"Claude settings file not found: {settings_path}")
                 return False
 
-            with open(settings_path, 'r', encoding='utf-8') as f:
+            with open(settings_path, encoding='utf-8') as f:
                 settings_data = json.load(f)
 
             # 권한 업데이트
@@ -209,13 +209,13 @@ class ClaudeConfigManager:
             logger.error(f"Error updating Claude permissions: {e}")
             return False
 
-    def get_claude_permissions(self, settings_path: Path) -> Dict[str, str]:
+    def get_claude_permissions(self, settings_path: Path) -> dict[str, str]:
         """Claude 권한 설정 조회"""
         try:
             if not settings_path.exists():
                 return {}
 
-            with open(settings_path, 'r', encoding='utf-8') as f:
+            with open(settings_path, encoding='utf-8') as f:
                 settings_data = json.load(f)
 
             permissions = settings_data.get("permissions", {})

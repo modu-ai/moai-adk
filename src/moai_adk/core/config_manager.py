@@ -7,14 +7,14 @@ Claude Code settings, MoAI config, package.json, and other project configs.
 """
 
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any
 
-from ..utils.logger import get_logger
 from ..config import Config
-from .security import SecurityManager
+from ..utils.logger import get_logger
 from .config_claude import ClaudeConfigManager
 from .config_project import ProjectConfigManager
 from .config_utils import ConfigUtils
+from .security import SecurityManager
 
 logger = get_logger(__name__)
 
@@ -27,18 +27,18 @@ class ConfigManager:
         Initialize configuration manager orchestrator.
 
         Args:
-            project_dir: 프로젝트 디렉토리 (새로운 기능을 위해 추가)
+            project_dir: Project directory (added for new functionality)
             security_manager: Security manager instance for validation
         """
         self.project_dir = project_dir or Path.cwd()
         self.security_manager = security_manager or SecurityManager()
 
-        # 전용 모듈들 초기화
+        # Initialize specialized modules
         self.claude_config = ClaudeConfigManager(self.security_manager)
         self.project_config = ProjectConfigManager(project_dir)
         self.config_utils = ConfigUtils(self.security_manager)
 
-    # Claude Config 델리게이트 메서드들
+    # Claude Config delegate methods
     def create_claude_settings(self, settings_path: Path, config: Config) -> bool:
         """@TASK:CONFIG-CLAUDE-001 Create Claude Code settings.json file"""
         return self.claude_config.create_claude_settings(settings_path, config)
@@ -47,7 +47,7 @@ class ConfigManager:
         """Create Claude settings file and return its path"""
         return self.claude_config.create_claude_settings_file(project_path, config)
 
-    # Project Config 델리게이트 메서드들
+    # Project Config delegate methods
     def create_moai_config(self, config_path: Path, config: Config) -> bool:
         """@TASK:CONFIG-MOAI-001 Create .moai/config.json file"""
         return self.project_config.create_moai_config(config_path, config)
@@ -60,7 +60,7 @@ class ConfigManager:
         """Create package.json if applicable"""
         return self.project_config.create_package_json(project_path, config)
 
-    def create_initial_indexes(self, project_path: Path, config: Config) -> List[Path]:
+    def create_initial_indexes(self, project_path: Path, config: Config) -> list[Path]:
         """Create initial index files for TAG system"""
         return self.project_config.create_initial_indexes(project_path, config)
 
@@ -84,8 +84,8 @@ class ConfigManager:
         """Get configuration option"""
         return self.project_config.get_option(key, default)
 
-    # Utils 델리게이트 메서드들
-    def _write_json_file(self, file_path: Path, data: Dict[str, Any]) -> Path:
+    # Utils delegate methods
+    def _write_json_file(self, file_path: Path, data: dict[str, Any]) -> Path:
         """Write JSON data to file with error handling and logging"""
         return self.config_utils.write_json_file(file_path, data)
 
@@ -97,8 +97,8 @@ class ConfigManager:
         """Create backup of configuration file"""
         return self.config_utils.backup_config_file(file_path)
 
-    # 추가 편의 메서드들
-    def setup_full_project_config(self, project_path: Path, config: Config) -> Dict[str, Path]:
+    # Additional convenience methods
+    def setup_full_project_config(self, project_path: Path, config: Config) -> dict[str, Path]:
         """Complete project configuration setup"""
         created_files = {}
 
@@ -135,8 +135,8 @@ class ConfigManager:
             logger.error(f"Error during full project configuration: {e}")
             raise RuntimeError(f"Project configuration failed: {e}")
 
-    def get_project_config_status(self, project_path: Path) -> Dict[str, Any]:
-        """프로젝트 설정 상태 확인"""
+    def get_project_config_status(self, project_path: Path) -> dict[str, Any]:
+        """Check project configuration status"""
         status = {}
 
         # Check Claude settings

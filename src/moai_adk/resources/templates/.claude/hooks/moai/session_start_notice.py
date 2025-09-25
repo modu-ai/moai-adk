@@ -11,7 +11,7 @@ Minimal session start notification with core functionality preserved.
 import json
 import os
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any
 
 
 class SessionNotifier:
@@ -28,7 +28,7 @@ class SessionNotifier:
         self.project_root = project_root
         self.moai_config_path = project_root / ".moai" / "config.json"
 
-    def get_project_status(self) -> Dict[str, Any]:
+    def get_project_status(self) -> dict[str, Any]:
         """Get essential project status information
 
         @FEATURE:PROJECT-STATUS-OPT
@@ -43,7 +43,7 @@ class SessionNotifier:
             "spec_progress": self.get_spec_progress(),
         }
 
-    def get_spec_progress(self) -> Dict[str, Any]:
+    def get_spec_progress(self) -> dict[str, Any]:
         """Get SPEC progress information"""
         specs_dir = self.project_root / ".moai" / "specs"
         if not specs_dir.exists():
@@ -72,7 +72,7 @@ class SessionNotifier:
         ]
         return all((self.project_root / path).exists() for path in required_paths)
 
-    def check_constitution_status(self) -> Optional[Dict[str, Any]]:
+    def check_constitution_status(self) -> dict[str, Any] | None:
         """Check development guide violations
 
         @FEATURE:DEV-GUIDE-VIOLATIONS
@@ -176,7 +176,7 @@ def main():
         else:
             print("💡 Run `/moai:0-project` to initialize MoAI-ADK")
 
-    except Exception as e:
+    except Exception:
         # Silent failure to avoid breaking Claude Code session
         pass
 

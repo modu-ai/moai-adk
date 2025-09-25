@@ -11,16 +11,21 @@ This package contains quality assurance components:
 @FEATURE:QUALITY-001 Quality management system
 """
 
-from .coverage_manager import CoverageManager, CoverageError
-from .guideline_checker import GuidelineChecker, GuidelineError
-from .tdd_manager import TDDManager, TDDError
 from .constitution_checker import ConstitutionChecker, ConstitutionError
-from .quality_gates import QualityGates, QualityGateError
+from .coverage_manager import CoverageError, CoverageManager
+from .guideline_checker import GuidelineChecker, GuidelineError
+from .quality_gates import QualityGateError, QualityGates
+from .tdd_manager import TDDError, TDDManager
 
 __all__ = [
-    'CoverageManager', 'CoverageError',
-    'GuidelineChecker', 'GuidelineError',
-    'TDDManager', 'TDDError',
-    'ConstitutionChecker', 'ConstitutionError',
-    'QualityGates', 'QualityGateError'
+    'ConstitutionChecker',
+    'ConstitutionError',
+    'CoverageError',
+    'CoverageManager',
+    'GuidelineChecker',
+    'GuidelineError',
+    'QualityGateError',
+    'QualityGates',
+    'TDDError',
+    'TDDManager'
 ]
