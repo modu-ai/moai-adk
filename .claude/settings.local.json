@@ -10,7 +10,12 @@
       "Bash(mkdocs serve:*)",
       "Bash(xargs:*)",
       "Bash(docker:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(twine check:*)",
+      "Bash(twine upload:*)",
+      "Read(//private/tmp/claude/test_non_moai/**)",
+      "Read(//private/tmp/claude/test-moai-sqlite/**)",
+      "Read(//private/tmp/claude/test-moai-0117/**)"
     ],
     "deny": [],
     "ask": [],

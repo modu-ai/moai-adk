@@ -55,7 +55,7 @@ MoAI-ADK는 Claude Code 환경에서 **Spec-First TDD 개발**을 누구나 쉽�
 ### 핵심 4계층 구조 + Claude Extensions
 
 ```
-MoAI-ADK v0.1.9+ Architecture
+MoAI-ADK v0.1.17+ Architecture
 ├── CLI Layer          # 사용자 인터페이스 (7개 모듈)
 ├── Core Engine        # 핵심 비즈니스 로직 (20+ 분할된 모듈)
 ├── Install System     # 설치/배포 관리 (5개 모듈)
@@ -137,7 +137,7 @@ click.echo("📝 문서 템플릿을 복사합니다...")
 **3. CLI Modules (click.echo 표준 패턴)**
 ```python
 # CLI 명령어 출력
-click.echo("MoAI-ADK v0.1.9", color="green")
+click.echo("MoAI-ADK v0.1.17", color="green")
 click.echo("사용법: moai-adk init [OPTIONS]")
 ```
 
@@ -527,6 +527,6 @@ from moai_adk.core.config_project import ProjectConfigManager  # 전문화
 
 ---
 
-**MoAI-ADK v0.1.9+: TRUST 원칙을 준수한 현대적 코드베이스로의 완전한 전환 완료**
+**MoAI-ADK v0.1.17+: TRUST 원칙을 준수한 현대적 코드베이스로의 완전한 전환 완료**
 
 *이 가이드는 리팩토링된 새로운 모듈 구조와 개발 표준을 반영합니다.*

@@ -26,7 +26,7 @@ ALL_CHAINS = PRIMARY_CHAIN + STEERING_CHAIN
 class TraceabilityChecker:
     def __init__(self, project_root: str = "."):
         self.project_root = Path(project_root)
-        self.tags_index_path = self.project_root / ".moai" / "indexes" / "tags.json"
+        self.tags_index_path = self.project_root / ".moai" / "indexes" / "tags.db"
         self.index: dict = {}
         self.broken_links: list[tuple[str, str]] = []
         self.orphaned_tags: list[str] = []

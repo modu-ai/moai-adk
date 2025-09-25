@@ -66,7 +66,7 @@
 ### IT-001: CLI 기능 검증
 **Given**: 패키지가 설치되었을 때
 **When**: `moai --version`을 실행하면
-**Then**: "MoAI-ADK v0.1.0"이 출력된다
+**Then**: "MoAI-ADK v0.1.17"이 출력된다
 
 ### IT-002: 템플릿 설치 검증
 **Given**: 새 프로젝트 디렉토리에서

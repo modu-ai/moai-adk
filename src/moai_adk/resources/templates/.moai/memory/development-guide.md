@@ -77,7 +77,7 @@ This development guide is the unified guardrail for all agents and developers wo
 ## Article III — 16-Core @TAG System (Traceability)
 
 1. Maintain the 16-Core @TAG chain: Primary (@REQ → @DESIGN → @TASK → @TEST), Steering, Implementation, Quality.
-2. Keep `.moai/indexes/tags.json` and `.moai/reports/sync-report.md` up to date.
+2. Keep `.moai/indexes/tags.db` and `.moai/reports/sync-report.md` up to date.
 
 
 ---

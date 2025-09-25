@@ -245,7 +245,7 @@ def validate_moai_structure(project_path: Path) -> dict[str, bool]:
         # TAG system
         indexes_dir = moai_dir / "indexes"
         if indexes_dir.exists():
-            results["tags_index"] = (indexes_dir / "tags.json").exists()
+            results["tags_index"] = (indexes_dir / "tags.db").exists()
             results["traceability_index"] = (indexes_dir / "traceability.json").exists()
             results["state_index"] = (indexes_dir / "state.json").exists()
         else:

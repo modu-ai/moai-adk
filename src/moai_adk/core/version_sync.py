@@ -57,7 +57,7 @@ class VersionSyncManager:
             "**/*.py": [
                 {
                     "pattern": r'__version__\s*=\s*"[^"]*"',
-                    "replacement": f'__version__ = "{self.current_version}"',
+                    "replacement": f'__version__ = "0.1.17"',
                     "description": "Python module version"
                 }
             ],
@@ -327,7 +327,7 @@ def update_version_in_file(file_path: Path, old_version: str, new_version: str) 
         for pattern, replacement in patterns:
             rep = replacement
             if replacement == '"__VERSION_PLACEHOLDER__"':
-                rep = f'__version__ = "{new_version}"'
+                rep = f'__version__ = "0.1.17"'
             else:
                 rep = replacement.format(new_version=new_version)
             content = re.sub(pattern, rep, content)

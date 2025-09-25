@@ -1,9 +1,9 @@
-# MoAI-ADK 0.1.9 종합 동기화 리포트
+# MoAI-ADK 0.1.14 종합 동기화 리포트
 
 > **생성일**: 2025-09-26
 > **동기화 범위**: SPEC-011 "@TAG 추적성 체계 강화" TDD 구현 완료
 > **처리 에이전트**: doc-syncer
-> **릴리스**: v0.1.9 TAG Traceability Enhancement
+> **릴리스**: v0.1.14 TAG Traceability Enhancement
 
 ---
 

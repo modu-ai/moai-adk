@@ -59,7 +59,7 @@ def update_version_file(new_version: str, dry_run: bool = False) -> bool:
 
         # 버전 패턴들 업데이트
         patterns = [
-            (r'__version__\s*=\s*"[^"]*"', f'__version__ = "{new_version}"'),
+            (r'__version__\s*=\s*"[^"]*"', f'__version__ = "0.1.17"'),
             (r'"moai_adk":\s*"[^"]*"', f'"moai_adk": "{new_version}"'),
             (r'"core":\s*"[^"]*"', f'"core": "{new_version}"'),
             (r'"templates":\s*"[^"]*"', f'"templates": "{new_version}"'),

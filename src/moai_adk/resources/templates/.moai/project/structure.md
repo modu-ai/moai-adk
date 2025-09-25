@@ -67,7 +67,7 @@
 
 ### TAG 인덱스 관리
 
-- **자동 생성**: `/moai:3-sync` 실행 시 `.moai/indexes/tags.json` 갱신
+- **자동 생성**: `/moai:3-sync` 실행 시 `.moai/indexes/tags.db` 갱신
 - **추적 범위**: [추적할 범위 정의]
 - **유지 주기**: 매 동기화 사이클
 

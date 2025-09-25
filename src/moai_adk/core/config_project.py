@@ -198,30 +198,70 @@ class ProjectConfigManager:
             indexes_dir = project_path / ".moai" / "indexes"
             indexes_dir.mkdir(parents=True, exist_ok=True)
 
-            # tags.json
-            tags_index_path = indexes_dir / "tags.json"
+            # tags.db (SQLite database)
+            tags_index_path = indexes_dir / "tags.db"
             if not tags_index_path.exists():
-                initial_tags_data = {
-                    "version": "1.0.0",
-                    "updated": datetime.now().isoformat(),
-                    "statistics": {
-                        "total_tags": 0,
-                        "categories": {
-                            "Primary": 0,
-                            "Steering": 0,
-                            "Implementation": 0,
-                            "Quality": 0
-                        }
-                    },
-                    "index": {},
-                    "references": {}
-                }
+                import sqlite3
 
-                with open(tags_index_path, 'w', encoding='utf-8') as f:
-                    json.dump(initial_tags_data, f, indent=2)
+                try:
+                    # SQLite 데이터베이스 초기화
+                    conn = sqlite3.connect(tags_index_path)
+                    cursor = conn.cursor()
 
-                created_files.append(tags_index_path)
-                logger.info(f"Created tags index at {tags_index_path}")
+                    # 기본 테이블 생성
+                    cursor.execute('''
+                        CREATE TABLE tags (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            category TEXT NOT NULL,
+                            identifier TEXT NOT NULL,
+                            file_path TEXT NOT NULL,
+                            line_number INTEGER NOT NULL,
+                            context TEXT,
+                            created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    ''')
+
+                    cursor.execute('''
+                        CREATE TABLE statistics (
+                            key TEXT PRIMARY KEY,
+                            value TEXT NOT NULL,
+                            updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    ''')
+
+                    cursor.execute('''
+                        CREATE TABLE tag_references (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            source_tag_id INTEGER NOT NULL,
+                            target_tag_id INTEGER NOT NULL,
+                            reference_type TEXT DEFAULT 'chain',
+                            created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            FOREIGN KEY (source_tag_id) REFERENCES tags (id),
+                            FOREIGN KEY (target_tag_id) REFERENCES tags (id)
+                        )
+                    ''')
+
+                    # 초기 통계 데이터
+                    cursor.execute("INSERT INTO statistics (key, value) VALUES ('version', '1.0.0')")
+                    cursor.execute("INSERT INTO statistics (key, value) VALUES ('total_tags', '0')")
+                    cursor.execute("INSERT INTO statistics (key, value) VALUES ('updated', ?)",(datetime.now().isoformat(),))
+
+                    # 인덱스 생성
+                    cursor.execute('CREATE INDEX idx_tags_category ON tags(category)')
+                    cursor.execute('CREATE INDEX idx_tags_identifier ON tags(identifier)')
+                    cursor.execute('CREATE INDEX idx_tags_file ON tags(file_path)')
+
+                    conn.commit()
+                    conn.close()
+
+                    created_files.append(tags_index_path)
+                    logger.info(f"Created SQLite tags database at {tags_index_path}")
+
+                except Exception as e:
+                    logger.error(f"Failed to create SQLite database: {e}")
+                    # 실패 시 빈 파일이라도 생성하여 구조는 유지
+                    tags_index_path.touch()
 
             # reports/sync-report.md
             reports_dir = project_path / ".moai" / "reports"

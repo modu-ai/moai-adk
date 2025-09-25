@@ -192,7 +192,7 @@ class VersionManager:
             content = version_py_path.read_text(encoding='utf-8')
             new_content = re.sub(
                 r'__version__ = ["\'][^"\']+["\']',
-                f'__version__ = "{new_version}"',
+                f'__version__ = "0.1.17"',
                 content
             )
             version_py_path.write_text(new_content, encoding='utf-8')

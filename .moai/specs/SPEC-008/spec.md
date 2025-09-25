@@ -1,4 +1,4 @@
-# SPEC-008: MoAI-ADK v0.1.0 Production Release
+# SPEC-008: MoAI-ADK v0.1.17 Production Release
 
 ## @REQ:RELEASE-001 배경
 

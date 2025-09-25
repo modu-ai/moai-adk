@@ -31,7 +31,7 @@ which moai
 
 **예상 출력:**
 ```
-MoAI-ADK v0.1.9
+MoAI-ADK v0.1.17
 /path/to/your/venv/bin/moai
 ```
 

@@ -89,10 +89,10 @@ class VersionBumper:
         file_path = self.project_root / "src/moai_adk/_version.py"
         content = file_path.read_text(encoding='utf-8')
 
-        # __version__ = "0.1.24" 업데이트
+        # __version__ = "0.1.17" 업데이트
         content = re.sub(
             r'__version__\s*=\s*"[^"]+"',
-            f'__version__ = "{new_version}"',
+            f'__version__ = "0.1.17"',
             content
         )
 

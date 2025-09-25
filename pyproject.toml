@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "moai-adk"
-version = "0.1.14"
+version = "0.1.17"
 description = "🗿 MoAI-ADK: Modu-AI Agentic Development Toolkit for Claude Code Integration"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -121,7 +121,7 @@ ensure_newline_before_comments = true
 
 [tool.ruff]
 # @TASK:RUFF-CONFIG-001 Ruff linter configuration for global code quality
-target-version = "py311"
+target-version = "0.1.17"
 line-length = 88
 exclude = [
     ".bzr",
@@ -183,7 +183,7 @@ known-first-party = ["moai_adk"]
 known-third-party = ["click", "colorama", "pytest", "pydantic"]
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "0.1.17"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true

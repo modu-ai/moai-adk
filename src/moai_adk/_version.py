@@ -1,17 +1,17 @@
 """@FEATURE:VERSION-001 Version information for MoAI-ADK."""
 
 # Main version information
-__version__ = "0.1.14"
+__version__ = "0.1.17"
 
 # Essential version information only
 VERSIONS = {
-    "moai_adk": "0.1.14",
+    "moai_adk": "0.1.18",
     "min_python": (3, 11),
-    "core": "0.1.14",
-    "templates": "0.1.14",
-    "hooks": "0.1.14",
-    "agents": "0.1.14",
-    "commands": "0.1.14",
+    "core": "0.1.18",
+    "templates": "0.1.18",
+    "hooks": "0.1.17",
+    "agents": "0.1.17",
+    "commands": "0.1.17",
     "tag_system": "16-core",
     "tag_format": "16-core",
     "constitution": "1.0",

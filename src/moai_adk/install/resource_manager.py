@@ -495,12 +495,12 @@ class ResourceManager:
                     logger.warning(f"Found unexpected spec files in clean installation: {[f.name for f in spec_files]}")
                     return False
 
-            # 2. tags.json이 초기 구조인지 확인 (약 50줄 미만)
-            tags_file = target_path / 'indexes' / 'tags.json'
+            # 2. tags.db가 초기 구조인지 확인 (작은 크기)
+            tags_file = target_path / 'indexes' / 'tags.db'
             if tags_file.exists():
-                line_count = sum(1 for _ in open(tags_file))
-                if line_count > 50:
-                    logger.warning(f"tags.json seems to contain development data: {line_count} lines (expected < 50)")
+                file_size = tags_file.stat().st_size
+                if file_size > 50000:  # 50KB 이상이면 개발 데이터로 간주
+                    logger.warning(f"tags.db seems to contain development data: {file_size} bytes (expected < 50KB)")
                     return False
 
             # 3. reports 디렉토리가 비어있거나 .gitkeep만 있는지 확인

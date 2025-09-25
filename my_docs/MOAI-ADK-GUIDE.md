@@ -2,7 +2,7 @@
 
 > **🗿 "명세가 없으면 코드도 없다. 테스트가 없으면 구현도 없다."**
 >
-> **MoAI-ADK v0.1.9: SQLite TAG 시스템과 고급 검색 API 완성 - 14.8배 성능 혁신**
+> **MoAI-ADK v0.1.17: SQLite TAG 시스템과 고급 검색 API 완성 - 14.8배 성능 혁신**
 
 ---
 
@@ -27,7 +27,7 @@
 
 ### 16-Core TAG 추적성과 Living Document 동기화
 
-MoAI-ADK v0.1.9는 **SPEC-009 SQLite TAG 시스템 혁신**을 완성하여, **83배 성능 향상**과 함께 완전한 개발 추적성과 Living Document 경험을 제공합니다.
+MoAI-ADK v0.1.17는 **SPEC-009 SQLite TAG 시스템 혁신**을 완성하여, **83배 성능 향상**과 함께 완전한 개발 추적성과 Living Document 경험을 제공합니다.
 
 **v0.1.9+ 추가: TRUST 원칙 준수 완료**
 최근 대규모 코드베이스 현대화 작업을 통해 **TRUST 5원칙 완전 준수**와 **271개 print() 문 표준화**, **74% 코드 감소**를 달성하여 프로덕션 준비 완료된 깨끗한 패키지로 업그레이드되었습니다.
@@ -1438,7 +1438,7 @@ python .moai/scripts/sync_manager.py status
 
 ### 🏷️ TAG 시스템 API (SPEC-009)
 
-MoAI-ADK v0.1.9의 혁신적인 SQLite 기반 TAG 시스템 API를 소개합니다.
+MoAI-ADK v0.1.17의 혁신적인 SQLite 기반 TAG 시스템 API를 소개합니다.
 
 #### TagIndexAdapter - 고성능 TAG 관리
 

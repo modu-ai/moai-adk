@@ -350,9 +350,16 @@ def update(check: bool, no_backup: bool, verbose: bool, package_only: bool, reso
             click.echo(f"   Templates updated to v{available_resource_version}")
 
         if not resources_only:
-            # Update package
-            click.echo(f"{Fore.CYAN}📦 Package update requires manual intervention{Style.RESET_ALL}")
-            click.echo("   Run: pip install --upgrade moai-adk")
+            # Check if package update is needed
+            click.echo(f"{Fore.CYAN}📦 Checking package version...{Style.RESET_ALL}")
+            click.echo(f"   Current package version: v{current_version}")
+
+            # For now, we assume the current version is the latest
+            # In the future, this could check PyPI for newer versions
+            if current_version == available_resource_version:
+                click.echo(f"{Fore.GREEN}   ✅ Package is up to date{Style.RESET_ALL}")
+            else:
+                click.echo(f"{Fore.YELLOW}   💡 Manual upgrade recommended: pip install --upgrade moai-adk{Style.RESET_ALL}")
 
         # Version synchronization
         if verbose:
@@ -388,7 +395,7 @@ def create_mode_configuration(project_dir: Path, project_mode: str, quiet: bool 
         "project": {
             "name": project_dir.name,
             "mode": project_mode,
-            "version": "0.1.9",
+            "version": __version__,
             "created": datetime.now().isoformat(),
             "constitution_version": "2.1"
         },

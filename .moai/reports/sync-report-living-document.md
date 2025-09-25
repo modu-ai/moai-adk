@@ -1,6 +1,6 @@
 # MoAI-ADK Living Document 동기화 보고서
 
-## 🗿 MoAI-ADK v0.1.9 Living Document 동기화 완료
+## 🗿 MoAI-ADK v0.1.17 Living Document 동기화 완료
 
 **@DOCS:SYNC-REPORT-001 ← 2025-09-25 동기화 완료 리포트**
 
@@ -170,7 +170,7 @@
 
 **🗿 "명세가 없으면 코드도 없다. 문서가 없으면 추적도 없다."**
 
-**MoAI-ADK v0.1.9 Living Document 동기화 완료** | **Made with ❤️ by doc-syncer**
+**MoAI-ADK v0.1.17 Living Document 동기화 완료** | **Made with ❤️ by doc-syncer**
 
 ---
 
