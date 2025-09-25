@@ -11,9 +11,6 @@ __pycache__/
 *.pyo
 
 # Backups
-*_backup/
-.moai_backup_*/
-moai_adk_backup_*/
 
 # Virtual environment
 venv/
@@ -41,3 +38,5 @@ logs/
 *.temp
 .moai/checkpoints/snapshots/
 .moai/checkpoints/tmp/
+
+my-docs/
