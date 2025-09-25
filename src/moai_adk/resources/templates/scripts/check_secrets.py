@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# @SEC:SECRETS-CHECK-011
 """
 MoAI-ADK Secrets Scanner
 소스 코드에서 시크릿 정보 탐지 및 보안 검사

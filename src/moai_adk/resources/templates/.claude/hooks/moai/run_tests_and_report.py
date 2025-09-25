@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# @TASK:TEST-REPORT-011
 """Stop hook that runs lightweight tests and reports the outcome."""
 
 from __future__ import annotations

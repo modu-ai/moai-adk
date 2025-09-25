@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# @TASK:CLAUDE-STANDARDS-011
 """
 Claude Code 표준 검증 도구
 MoAI-ADK cc-manager를 위한 표준 준수 검증 스크립트

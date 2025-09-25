@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# @TASK:CONSTITUTION-CHECK-011
 """
 TRUST 원칙 검증 스크립트 (strict/relaxed 지원)
 MoAI-ADK의 TRUST 5원칙 준수 여부를 자동 검증합니다.

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# @TASK:CONSTITUTION-CHECK-011
 """
 MoAI-ADK TRUST 5원칙 검증 스크립트 v0.2.0
 

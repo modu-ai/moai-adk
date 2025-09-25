@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# @TASK:LICENSE-CHECK-011
 """
 MoAI-ADK License Compliance Checker v0.1.12
 프로젝트 의존성 라이선스 검사 및 호환성 검증

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# @SEC:STEERING-GUARD-011
 """UserPromptSubmit guard enforcing steering safety rules with session notifications."""
 
 from __future__ import annotations

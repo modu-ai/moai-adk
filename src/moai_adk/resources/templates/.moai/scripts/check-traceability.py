@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# @TASK:TRACEABILITY-CHECK-011
 """
 TAG 추적성 검증 스크립트 (향상판)
 16-Core TAG 시스템의 무결성과 추적성 체인을 검증/갱신합니다.

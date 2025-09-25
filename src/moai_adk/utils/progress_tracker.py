@@ -65,8 +65,7 @@ class ProgressTracker:
         click.echo(
             f"\r{color}[{progress_bar}] {percentage:3d}% "
             f"{Style.RESET_ALL}{step_indicator} {step}",
-            end="",
-            flush=True
+            nl=False
         )
 
         # Add newline when complete to prevent overlap

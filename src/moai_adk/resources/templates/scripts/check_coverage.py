@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# @TASK:COVERAGE-CHECK-011
 """
 MoAI-ADK Test Coverage Checker v0.1.12  
 테스트 커버리지 측정 및 임계값 검증

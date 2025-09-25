@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# @FEATURE:CLI-ENTRY-011
 """
 🗿 MoAI-ADK CLI Main Entry Point
 

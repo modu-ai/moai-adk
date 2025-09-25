@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# @TASK:DOC-SYNC-011
 """Minimal document/tag sync helper for /moai:3-sync.
 
 Performs lightweight automated steps (currently TAG index refresh)

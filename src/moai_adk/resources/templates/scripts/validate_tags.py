@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# @TASK:TAG-VALIDATE-011
 """
 MoAI-ADK Tag System Validator v0.1.12
 16-Core @TAG 무결성 검사 및 추적성 매트릭스 검증

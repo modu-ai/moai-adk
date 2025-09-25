@@ -10,6 +10,8 @@ import datetime
 import shutil
 from pathlib import Path
 
+import click
+
 from .._version import __version__, get_version_format
 from ..core.resource_version import ResourceVersionManager
 from ..core.validator import validate_python_version

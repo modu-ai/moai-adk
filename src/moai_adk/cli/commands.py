@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# @REQ:CLI-COMMANDS-011
 """
 CLI Commands for MoAI-ADK
 

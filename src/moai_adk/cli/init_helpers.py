@@ -14,6 +14,7 @@ from pathlib import Path
 import click
 from colorama import Fore, Style
 
+from ..config import Config
 from ..install.installer import SimplifiedInstaller
 from ..utils.logger import get_logger
 from .helpers import (
@@ -181,11 +182,20 @@ def finalize_installation(
                     logging.getLogger(logger_name).setLevel(logging.CRITICAL)
 
         # Run installation
-        installer = SimplifiedInstaller(
-            project_dir=project_dir,
-            force_copy=force_copy,
-            quiet=quiet
-        )
+        # @FEATURE:CONFIG-BASED-INIT-001 Create Config object for SimplifiedInstaller
+        try:
+            config = Config(
+                name=project_dir.name,
+                path=str(project_dir),
+                force_copy=force_copy,
+                silent=quiet  # Map quiet parameter to silent attribute
+            )
+            installer = SimplifiedInstaller(config)
+        except Exception as e:
+            if not quiet:
+                click.echo(f"{Fore.RED}❌ Configuration error: {e}{Style.RESET_ALL}")
+            logger.error(f"Failed to create installation config: {e}")
+            sys.exit(1)
 
         result = installer.install()
 

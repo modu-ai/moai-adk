@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# @TASK:TRACEABILITY-CHECK-011
 """
 MoAI-ADK Traceability Checker
 16-Core TAG 시스템의 추적성 검증

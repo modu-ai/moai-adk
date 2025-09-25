@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# @TASK:STAGE-VALIDATE-011
 """
 MoAI-ADK Stage Validator
 4단계 파이프라인의 각 Gate 검수 자동화

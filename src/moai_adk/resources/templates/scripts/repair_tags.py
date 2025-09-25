@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# @TASK:TAG-REPAIR-011
 """
 MoAI-ADK TAG 자동 리페어 시스템
 단절된 링크 탐지, 자동 제안, traceability.json 보정
