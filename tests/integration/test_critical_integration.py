@@ -15,7 +15,7 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 # Add project root to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 try:
     from moai_adk.core.security import SecurityManager, SecurityError
@@ -31,7 +31,7 @@ class TestSecurityValidatorIntegration(unittest.TestCase):
     def setUp(self):
         """Set up integration test environment"""
         self.test_dir = Path(tempfile.mkdtemp())
-        self.security = SecurityManager() if 'SecurityManager' in globals() else None
+        self.security = SecurityManager() if "SecurityManager" in globals() else None
 
     def tearDown(self):
         """Clean up test environment"""
@@ -54,16 +54,16 @@ class TestSecurityValidatorIntegration(unittest.TestCase):
         # Create settings with dangerous path
         dangerous_settings = {
             "permissions": {"allow": ["Read(../../../etc/passwd)"]},
-            "environment": {"PATH": "/dangerous/path"}
+            "environment": {"PATH": "/dangerous/path"},
         }
 
         settings_file = claude_dir / "settings.json"
-        with open(settings_file, 'w') as f:
+        with open(settings_file, "w") as f:
             json.dump(dangerous_settings, f)
 
         # Validator should handle this safely
         try:
-            if 'validate_project_structure' in globals():
+            if "validate_project_structure" in globals():
                 result = validate_project_structure(project_dir)
                 self.assertIsInstance(result, dict)
         except Exception as e:
@@ -71,21 +71,26 @@ class TestSecurityValidatorIntegration(unittest.TestCase):
 
     def test_environment_validation_security(self):
         """Test environment validation with security controls"""
-        if 'validate_environment' not in globals():
+        if "validate_environment" not in globals():
             self.skipTest("validate_environment not available")
 
         # Mock dangerous environment
-        with patch.dict(os.environ, {
-            'PATH': '/dangerous/path:/usr/bin',
-            'CLAUDE_PROJECT_DIR': '../../../etc',
-            'SHELL': '/bin/dangerous_shell'
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "PATH": "/dangerous/path:/usr/bin",
+                "CLAUDE_PROJECT_DIR": "../../../etc",
+                "SHELL": "/bin/dangerous_shell",
+            },
+        ):
             # Should complete without security errors
             try:
                 result = validate_environment()
                 self.assertIsInstance(result, bool)
             except SecurityError:
-                self.fail("Environment validation should handle dangerous env vars safely")
+                self.fail(
+                    "Environment validation should handle dangerous env vars safely"
+                )
 
     def test_subprocess_integration(self):
         """Test that validators use secure subprocess calls"""
@@ -93,23 +98,21 @@ class TestSecurityValidatorIntegration(unittest.TestCase):
             self.skipTest("SecurityManager not available")
 
         # Mock subprocess.run to track calls
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout="test output")
 
             # Test secure subprocess call
             try:
                 result = self.security.safe_subprocess_run(
-                    ["echo", "test"],
-                    cwd=self.test_dir,
-                    timeout=5
+                    ["echo", "test"], cwd=self.test_dir, timeout=5
                 )
                 self.assertEqual(result.returncode, 0)
 
                 # Verify subprocess was called with security parameters
                 mock_run.assert_called_once()
                 call_args = mock_run.call_args
-                self.assertIn('timeout', call_args.kwargs)
-                self.assertEqual(call_args.kwargs['timeout'], 5)
+                self.assertIn("timeout", call_args.kwargs)
+                self.assertEqual(call_args.kwargs["timeout"], 5)
 
             except SecurityError as e:
                 self.fail(f"Secure subprocess call failed: {e}")
@@ -129,7 +132,7 @@ class TestConfigSecurityIntegration(unittest.TestCase):
 
     def test_config_path_validation(self):
         """Test that config validates paths securely"""
-        if 'Config' not in globals():
+        if "Config" not in globals():
             self.skipTest("Config class not available")
 
         # Test dangerous project paths
@@ -137,17 +140,14 @@ class TestConfigSecurityIntegration(unittest.TestCase):
             "../../../etc/passwd",
             "/etc/shadow",
             "../../.ssh/id_rsa",
-            "/root/.bashrc"
+            "/root/.bashrc",
         ]
 
         for dangerous_path in dangerous_paths:
             with self.subTest(path=dangerous_path):
                 try:
                     # Config should either reject or sanitize dangerous paths
-                    config = Config(
-                        name="test_project",
-                        path=dangerous_path
-                    )
+                    config = Config(name="test_project", path=dangerous_path)
 
                     # If it accepts the path, it should be sanitized
                     project_path = config.project_path
@@ -163,7 +163,7 @@ class TestConfigSecurityIntegration(unittest.TestCase):
 
     def test_config_name_sanitization(self):
         """Test that project names are properly sanitized"""
-        if 'Config' not in globals():
+        if "Config" not in globals():
             self.skipTest("Config class not available")
 
         dangerous_names = [
@@ -172,7 +172,7 @@ class TestConfigSecurityIntegration(unittest.TestCase):
             "project`whoami`",
             "project$(rm -rf /)",
             "project && rm -rf /",
-            "project | cat /etc/passwd"
+            "project | cat /etc/passwd",
         ]
 
         for dangerous_name in dangerous_names:
@@ -182,7 +182,7 @@ class TestConfigSecurityIntegration(unittest.TestCase):
 
     def test_runtime_config_validation(self):
         """Test runtime config security validation"""
-        if 'RuntimeConfig' not in globals():
+        if "RuntimeConfig" not in globals():
             self.skipTest("RuntimeConfig class not available")
 
         # Test dangerous runtime names
@@ -190,7 +190,7 @@ class TestConfigSecurityIntegration(unittest.TestCase):
             "node; rm -rf /",
             "../../../bin/sh",
             "/etc/passwd",
-            "runtime`malicious`"
+            "runtime`malicious`",
         ]
 
         for dangerous_runtime in dangerous_runtimes:
@@ -231,7 +231,7 @@ status:
 """
 
         makefile_path = self.test_dir / "Makefile"
-        with open(makefile_path, 'w') as f:
+        with open(makefile_path, "w") as f:
             f.write(makefile_content)
 
         # Test executing safe targets
@@ -246,7 +246,7 @@ status:
                         cwd=self.test_dir,
                         capture_output=True,
                         text=True,
-                        timeout=10
+                        timeout=10,
                     )
                     # Command should complete (may fail due to missing dependencies)
                     self.assertIsNotNone(result.returncode)
@@ -257,18 +257,24 @@ status:
     def test_template_file_security(self):
         """Test that template files don't contain security vulnerabilities"""
         # Look for template files in the project
-        template_dir = Path(__file__).parent.parent / "src" / "moai_adk" / "resources" / "templates"
+        template_dir = (
+            Path(__file__).parent.parent
+            / "src"
+            / "moai_adk"
+            / "resources"
+            / "templates"
+        )
 
         if not template_dir.exists():
             self.skipTest("Template directory not found")
 
         dangerous_patterns = [
-            r'eval\s*\(',  # eval() calls
-            r'exec\s*\(',  # exec() calls
-            r'__import__\s*\(',  # dynamic imports
+            r"eval\s*\(",  # eval() calls
+            r"exec\s*\(",  # exec() calls
+            r"__import__\s*\(",  # dynamic imports
             r'open\s*\(\s*["\'][^"\']*\.\./.*["\']',  # path traversal in file opens
-            r'subprocess\.',  # subprocess without security
-            r'os\.system\s*\(',  # os.system calls
+            r"subprocess\.",  # subprocess without security
+            r"os\.system\s*\(",  # os.system calls
         ]
 
         import re
@@ -276,7 +282,7 @@ status:
         for template_file in template_dir.rglob("*.py"):
             with self.subTest(file=template_file.name):
                 try:
-                    with open(template_file, 'r', encoding='utf-8') as f:
+                    with open(template_file, "r", encoding="utf-8") as f:
                         content = f.read()
 
                     for pattern in dangerous_patterns:
@@ -286,7 +292,9 @@ status:
                             if "SecurityManager" in content or "# SECURITY:" in content:
                                 continue  # Allowed in security-aware code
 
-                            self.fail(f"Potential security issue in {template_file}: {pattern}")
+                            self.fail(
+                                f"Potential security issue in {template_file}: {pattern}"
+                            )
 
                 except Exception as e:
                     self.fail(f"Failed to scan template file {template_file}: {e}")
@@ -315,7 +323,7 @@ class TestHookIntegrationSecurity(unittest.TestCase):
             "session_start_notice.py",
             "constitution_guard.py",
             "tag_validator.py",
-            "policy_block.py"
+            "policy_block.py",
         ]
 
         for hook_name in test_hooks:
@@ -345,11 +353,11 @@ def main():
 if __name__ == "__main__":
     main()
 """
-            with open(hook_file, 'w') as f:
+            with open(hook_file, "w") as f:
                 f.write(hook_content)
 
             # Set executable permissions
-            if os.name != 'nt':
+            if os.name != "nt":
                 hook_file.chmod(0o755)
 
         # Test hook execution with malicious input
@@ -371,7 +379,7 @@ if __name__ == "__main__":
                             capture_output=True,
                             text=True,
                             timeout=5,
-                            cwd=self.test_dir
+                            cwd=self.test_dir,
                         )
 
                         # Hook should either block or handle safely
@@ -394,7 +402,7 @@ def run_critical_integration_tests():
         TestSecurityValidatorIntegration,
         TestConfigSecurityIntegration,
         TestBuildSecurityIntegration,
-        TestHookIntegrationSecurity
+        TestHookIntegrationSecurity,
     ]
 
     for test_class in test_classes:
@@ -429,6 +437,6 @@ def run_critical_integration_tests():
     return integration_critical
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     success = run_critical_integration_tests()
     sys.exit(0 if success else 1)

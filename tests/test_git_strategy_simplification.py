@@ -190,9 +190,7 @@ class TestWorkflowCommandImprovement:
 
         # When: /moai:1-spec을 실행할 때
         spec_command.execute(
-            spec_name="test-spec",
-            description="테스트 명세",
-            skip_branch=True
+            spec_name="test-spec", description="테스트 명세", skip_branch=True
         )
 
         # Then: SPEC 파일이 생성되었는지 확인

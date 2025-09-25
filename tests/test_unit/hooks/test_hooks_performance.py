@@ -52,10 +52,11 @@ class TestHooksPerformance:
             pytest.skip("session_start_notice.py not found")
 
         # Mock environment to avoid actual file operations
-        with patch('session_start_notice.Path.exists', return_value=True), \
-             patch('session_start_notice.Path.is_file', return_value=True), \
-             patch('builtins.open', MagicMock()):
-
+        with (
+            patch("session_start_notice.Path.exists", return_value=True),
+            patch("session_start_notice.Path.is_file", return_value=True),
+            patch("builtins.open", MagicMock()),
+        ):
             start_time = time.time()
 
             # Simulate session start processing
@@ -71,7 +72,9 @@ class TestHooksPerformance:
 
             # Performance target: ≤ 2.5 seconds
             # This should FAIL with current implementation
-            assert execution_time <= 2.5, f"Session start too slow: {execution_time:.2f}s > 2.5s target"
+            assert execution_time <= 2.5, (
+                f"Session start too slow: {execution_time:.2f}s > 2.5s target"
+            )
 
     def test_memory_usage_optimization(self):
         """Test memory usage reduction target (30% improvement)
@@ -85,7 +88,8 @@ class TestHooksPerformance:
         # Import and use the heavy session_start_notice
         try:
             import session_start_notice
-            with patch('session_start_notice.Path.exists', return_value=True):
+
+            with patch("session_start_notice.Path.exists", return_value=True):
                 notifier = session_start_notice.SessionNotifier(self.project_root)
                 # This loads a lot of unnecessary code
         except ImportError:
@@ -96,7 +100,9 @@ class TestHooksPerformance:
 
         # Target: ≤ 10MB memory increase for hook operations
         # Current implementation likely uses more
-        assert memory_increase <= 10.0, f"Memory usage too high: {memory_increase:.2f}MB > 10MB target"
+        assert memory_increase <= 10.0, (
+            f"Memory usage too high: {memory_increase:.2f}MB > 10MB target"
+        )
 
     def test_file_io_operations_count(self):
         """Test file I/O operations reduction (50% target)
@@ -127,13 +133,15 @@ class TestHooksPerformance:
             file_operations_count += 1
             return []
 
-        with patch('builtins.open', side_effect=counting_open), \
-             patch.object(Path, 'exists', side_effect=counting_exists), \
-             patch.object(Path, 'is_file', side_effect=counting_is_file), \
-             patch.object(Path, 'iterdir', side_effect=counting_iterdir):
-
+        with (
+            patch("builtins.open", side_effect=counting_open),
+            patch.object(Path, "exists", side_effect=counting_exists),
+            patch.object(Path, "is_file", side_effect=counting_is_file),
+            patch.object(Path, "iterdir", side_effect=counting_iterdir),
+        ):
             try:
                 import session_start_notice
+
                 notifier = session_start_notice.SessionNotifier(self.project_root)
                 notifier.get_project_status()
             except Exception:
@@ -142,7 +150,9 @@ class TestHooksPerformance:
 
         # Target: ≤ 10 file I/O operations for session start
         # Current implementation likely does much more
-        assert file_operations_count <= 10, f"Too many file I/O operations: {file_operations_count} > 10 target"
+        assert file_operations_count <= 10, (
+            f"Too many file I/O operations: {file_operations_count} > 10 target"
+        )
 
     def test_total_code_size_target(self):
         """Test total hook files code size ≤ 1,000 lines
@@ -154,13 +164,21 @@ class TestHooksPerformance:
 
         # Count lines in all hook files
         for py_file in self.hooks_dir.glob("*.py"):
-            with open(py_file, 'r', encoding='utf-8') as f:
-                lines = len([line for line in f if line.strip() and not line.strip().startswith('#')])
+            with open(py_file, "r", encoding="utf-8") as f:
+                lines = len(
+                    [
+                        line
+                        for line in f
+                        if line.strip() and not line.strip().startswith("#")
+                    ]
+                )
                 total_lines += lines
 
         # Target: ~1,000 lines total (74% reduction from 3,853)
         # This should FAIL with current implementation
-        assert total_lines <= 1000, f"Too much code: {total_lines} lines > 1000 lines target"
+        assert total_lines <= 1000, (
+            f"Too much code: {total_lines} lines > 1000 lines target"
+        )
 
     def test_session_start_notice_size_target(self):
         """Test session_start_notice.py file size ≤ 200 lines
@@ -172,12 +190,20 @@ class TestHooksPerformance:
         if not session_file.exists():
             pytest.skip("session_start_notice.py not found")
 
-        with open(session_file, 'r', encoding='utf-8') as f:
-            lines = len([line for line in f if line.strip() and not line.strip().startswith('#')])
+        with open(session_file, "r", encoding="utf-8") as f:
+            lines = len(
+                [
+                    line
+                    for line in f
+                    if line.strip() and not line.strip().startswith("#")
+                ]
+            )
 
         # Target: ≤ 200 lines (reduced from 2,133 lines)
         # This should FAIL with current implementation
-        assert lines <= 200, f"session_start_notice.py too large: {lines} lines > 200 lines target"
+        assert lines <= 200, (
+            f"session_start_notice.py too large: {lines} lines > 200 lines target"
+        )
 
     def test_file_monitor_integration_target(self):
         """Test unified file_monitor.py size ≤ 150 lines
@@ -189,14 +215,24 @@ class TestHooksPerformance:
         file_monitor_path = self.hooks_dir / "file_monitor.py"
 
         if file_monitor_path.exists():
-            with open(file_monitor_path, 'r', encoding='utf-8') as f:
-                lines = len([line for line in f if line.strip() and not line.strip().startswith('#')])
+            with open(file_monitor_path, "r", encoding="utf-8") as f:
+                lines = len(
+                    [
+                        line
+                        for line in f
+                        if line.strip() and not line.strip().startswith("#")
+                    ]
+                )
 
             # Target: ≤ 150 lines (merged from 545 lines total)
-            assert lines <= 150, f"file_monitor.py too large: {lines} lines > 150 lines target"
+            assert lines <= 150, (
+                f"file_monitor.py too large: {lines} lines > 150 lines target"
+            )
         else:
             # Should fail because integration not done yet
-            assert False, "file_monitor.py integration not completed - separate files still exist"
+            assert False, (
+                "file_monitor.py integration not completed - separate files still exist"
+            )
 
     def test_removed_unnecessary_hooks(self):
         """Test that unnecessary hook files are removed
@@ -205,13 +241,15 @@ class TestHooksPerformance:
         This test should FAIL initially (RED phase)
         """
         unnecessary_files = [
-            "tag_validator.py",     # 430 lines - move to CI/CD
-            "check_style.py"        # 241 lines - replace with native linters
+            "tag_validator.py",  # 430 lines - move to CI/CD
+            "check_style.py",  # 241 lines - replace with native linters
         ]
 
         for filename in unnecessary_files:
             file_path = self.hooks_dir / filename
-            assert not file_path.exists(), f"Unnecessary file still exists: {filename} should be removed"
+            assert not file_path.exists(), (
+                f"Unnecessary file still exists: {filename} should be removed"
+            )
 
     def test_optimized_pre_write_guard_size(self):
         """Test pre_write_guard.py optimization ≤ 50 lines
@@ -223,11 +261,19 @@ class TestHooksPerformance:
         if not guard_file.exists():
             pytest.skip("pre_write_guard.py not found")
 
-        with open(guard_file, 'r', encoding='utf-8') as f:
-            lines = len([line for line in f if line.strip() and not line.strip().startswith('#')])
+        with open(guard_file, "r", encoding="utf-8") as f:
+            lines = len(
+                [
+                    line
+                    for line in f
+                    if line.strip() and not line.strip().startswith("#")
+                ]
+            )
 
         # Target: ≤ 50 lines (reduced from 131 lines)
-        assert lines <= 50, f"pre_write_guard.py too large: {lines} lines > 50 lines target"
+        assert lines <= 50, (
+            f"pre_write_guard.py too large: {lines} lines > 50 lines target"
+        )
 
 
 if __name__ == "__main__":

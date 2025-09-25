@@ -18,14 +18,14 @@ from .quality_gates import QualityGateError, QualityGates
 from .tdd_manager import TDDError, TDDManager
 
 __all__ = [
-    'ConstitutionChecker',
-    'ConstitutionError',
-    'CoverageError',
-    'CoverageManager',
-    'GuidelineChecker',
-    'GuidelineError',
-    'QualityGateError',
-    'QualityGates',
-    'TDDError',
-    'TDDManager'
+    "ConstitutionChecker",
+    "ConstitutionError",
+    "CoverageError",
+    "CoverageManager",
+    "GuidelineChecker",
+    "GuidelineError",
+    "QualityGateError",
+    "QualityGates",
+    "TDDError",
+    "TDDManager",
 ]

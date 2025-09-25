@@ -5,6 +5,7 @@ Extracts docstrings and creates structured markdown documentation.
 
 @REQ:API-GEN-001 → @TASK:API-GEN-001
 """
+
 import ast
 import logging
 from pathlib import Path
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 class ModuleInfo(NamedTuple):
     """Information about a Python module"""
+
     name: str
     path: Path
     package: str
@@ -68,21 +70,13 @@ class ApiGenerator:
 
             package = module_parts[0] if module_parts else ""
 
-            modules.append(ModuleInfo(
-                name=module_name,
-                path=py_file,
-                package=package
-            ))
+            modules.append(ModuleInfo(name=module_name, path=py_file, package=package))
 
         return modules
 
     def parse_module_docs(self, module_path: str) -> dict[str, Any]:
         """@TASK:API-GEN-003 Parse docstrings from a module"""
-        doc_info = {
-            "module_doc": "",
-            "functions": {},
-            "classes": {}
-        }
+        doc_info = {"module_doc": "", "functions": {}, "classes": {}}
 
         try:
             # Convert module path to actual file path
@@ -103,13 +97,16 @@ class ApiGenerator:
                 return doc_info
 
             # Parse the Python AST
-            with open(module_file, encoding='utf-8') as f:
+            with open(module_file, encoding="utf-8") as f:
                 tree = ast.parse(f.read())
 
             # Extract module docstring
-            if (tree.body and isinstance(tree.body[0], ast.Expr)
+            if (
+                tree.body
+                and isinstance(tree.body[0], ast.Expr)
                 and isinstance(tree.body[0].value, ast.Constant)
-                and isinstance(tree.body[0].value.value, str)):
+                and isinstance(tree.body[0].value.value, str)
+            ):
                 doc_info["module_doc"] = tree.body[0].value.value.strip()
 
             # Extract functions and classes
@@ -117,12 +114,12 @@ class ApiGenerator:
                 if isinstance(node, ast.FunctionDef):
                     doc_info["functions"][node.name] = {
                         "docstring": ast.get_docstring(node) or "",
-                        "args": [arg.arg for arg in node.args.args]
+                        "args": [arg.arg for arg in node.args.args],
                     }
                 elif isinstance(node, ast.ClassDef):
                     doc_info["classes"][node.name] = {
                         "docstring": ast.get_docstring(node) or "",
-                        "methods": []
+                        "methods": [],
                     }
 
         except Exception as e:
@@ -170,7 +167,9 @@ class ApiGenerator:
             md_file.parent.mkdir(parents=True, exist_ok=True)
             md_file.write_text(md_content)
 
-    def _generate_module_markdown(self, module_name: str, doc_info: dict[str, Any]) -> str:
+    def _generate_module_markdown(
+        self, module_name: str, doc_info: dict[str, Any]
+    ) -> str:
         """Generate markdown content for a module"""
         lines = []
 
@@ -234,8 +233,7 @@ class ApiGenerator:
 
             # Check if API Reference already exists
             api_exists = any(
-                isinstance(item, dict) and "API Reference" in item
-                for item in nav
+                isinstance(item, dict) and "API Reference" in item for item in nav
             )
 
             if not api_exists:
@@ -243,7 +241,7 @@ class ApiGenerator:
                 nav.append(api_nav)
                 config["nav"] = nav
 
-                with open(config_path, 'w') as f:
+                with open(config_path, "w") as f:
                     yaml.dump(config, f, default_flow_style=False)
 
         except Exception as e:
@@ -254,7 +252,9 @@ class ApiGenerator:
         modules = self.scan_modules()
 
         lines = ["# API Reference", ""]
-        lines.append("This section contains the complete API documentation for MoAI-ADK.")
+        lines.append(
+            "This section contains the complete API documentation for MoAI-ADK."
+        )
         lines.append("")
 
         if modules:

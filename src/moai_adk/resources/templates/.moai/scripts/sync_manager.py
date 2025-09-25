@@ -36,7 +36,7 @@ class SyncManager:
         @API:CONFIG-ACCESS-001
         """
         try:
-            with open(self.config_path, encoding='utf-8') as f:
+            with open(self.config_path, encoding="utf-8") as f:
                 return json.load(f)
         except Exception:
             return {"project": {"mode": "personal"}}
@@ -53,21 +53,32 @@ class SyncManager:
             # 현재 브랜치
             current_branch = subprocess.run(
                 ["git", "branch", "--show-current"],
-                capture_output=True, text=True, check=True, cwd=self.project_root
+                capture_output=True,
+                text=True,
+                check=True,
+                cwd=self.project_root,
             ).stdout.strip()
 
             click.echo(f"📍 현재 브랜치: {current_branch}")
 
             # 원격 상태 업데이트
-            subprocess.run(["git", "fetch"], capture_output=True, check=True, cwd=self.project_root)
+            subprocess.run(
+                ["git", "fetch"], capture_output=True, check=True, cwd=self.project_root
+            )
 
             # Push 필요한 커밋
             try:
                 ahead_result = subprocess.run(
                     ["git", "log", f"origin/{current_branch}..HEAD", "--oneline"],
-                    capture_output=True, text=True, cwd=self.project_root
+                    capture_output=True,
+                    text=True,
+                    cwd=self.project_root,
                 )
-                ahead_count = len(ahead_result.stdout.strip().split('\n')) if ahead_result.stdout.strip() else 0
+                ahead_count = (
+                    len(ahead_result.stdout.strip().split("\n"))
+                    if ahead_result.stdout.strip()
+                    else 0
+                )
                 click.echo(f"📤 Push 필요: {ahead_count}개 커밋")
             except:
                 click.echo("📤 Push 필요: 확인 불가 (원격 브랜치 없음)")
@@ -76,9 +87,15 @@ class SyncManager:
             try:
                 behind_result = subprocess.run(
                     ["git", "log", f"HEAD..origin/{current_branch}", "--oneline"],
-                    capture_output=True, text=True, cwd=self.project_root
+                    capture_output=True,
+                    text=True,
+                    cwd=self.project_root,
                 )
-                behind_count = len(behind_result.stdout.strip().split('\n')) if behind_result.stdout.strip() else 0
+                behind_count = (
+                    len(behind_result.stdout.strip().split("\n"))
+                    if behind_result.stdout.strip()
+                    else 0
+                )
                 click.echo(f"📥 Pull 필요: {behind_count}개 커밋")
             except:
                 click.echo("📥 Pull 필요: 확인 불가 (원격 브랜치 없음)")
@@ -100,17 +117,28 @@ class SyncManager:
         try:
             current_branch = subprocess.run(
                 ["git", "branch", "--show-current"],
-                capture_output=True, text=True, check=True, cwd=self.project_root
+                capture_output=True,
+                text=True,
+                check=True,
+                cwd=self.project_root,
             ).stdout.strip()
 
             if mode == "team":
                 # 팀 모드: 안전한 push
-                subprocess.run(["git", "push", "origin", current_branch], check=True, cwd=self.project_root)
+                subprocess.run(
+                    ["git", "push", "origin", current_branch],
+                    check=True,
+                    cwd=self.project_root,
+                )
                 click.echo("✅ 팀 모드 Push 완료")
             else:
                 # 개인 모드: 선택적 push
                 click.echo("🎯 개인 모드: 백업이 필요한 경우만 Push")
-                subprocess.run(["git", "push", "origin", current_branch], check=True, cwd=self.project_root)
+                subprocess.run(
+                    ["git", "push", "origin", current_branch],
+                    check=True,
+                    cwd=self.project_root,
+                )
                 click.echo("✅ 개인 모드 Push 완료")
 
         except subprocess.CalledProcessError as e:
@@ -126,10 +154,19 @@ class SyncManager:
 
         try:
             # 변경사항이 있으면 stash
-            status_result = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, cwd=self.project_root)
+            status_result = subprocess.run(
+                ["git", "status", "--porcelain"],
+                capture_output=True,
+                text=True,
+                cwd=self.project_root,
+            )
             if status_result.stdout.strip():
                 click.echo("💾 현재 변경사항을 stash에 저장")
-                subprocess.run(["git", "stash", "push", "-m", "auto-stash-before-pull"], check=True, cwd=self.project_root)
+                subprocess.run(
+                    ["git", "stash", "push", "-m", "auto-stash-before-pull"],
+                    check=True,
+                    cwd=self.project_root,
+                )
                 need_stash_pop = True
             else:
                 need_stash_pop = False
@@ -140,7 +177,9 @@ class SyncManager:
 
             # stash 복원
             if need_stash_pop:
-                subprocess.run(["git", "stash", "pop"], check=True, cwd=self.project_root)
+                subprocess.run(
+                    ["git", "stash", "pop"], check=True, cwd=self.project_root
+                )
                 click.echo("✅ 변경사항 복원 완료")
 
         except subprocess.CalledProcessError as e:
@@ -197,13 +236,16 @@ class SyncManager:
             self.get_sync_status()
             click.echo("\n🔒 안전 모드: 위 상태를 확인 후 동기화를 진행하시겠습니까?")
             user_input = input("계속하려면 'y' 입력: ")
-            if user_input.lower() == 'y':
+            if user_input.lower() == "y":
                 self.auto_sync()
             else:
                 click.echo("동기화 취소됨")
         else:
             click.echo("❌ 알 수 없는 동기화 명령어")
-            click.echo("사용법: python3 sync_manager.py [--status|push|pull|--auto|--safe]")
+            click.echo(
+                "사용법: python3 sync_manager.py [--status|push|pull|--auto|--safe]"
+            )
+
 
 def main():
     """진입점
@@ -213,6 +255,7 @@ def main():
     """
     manager = SyncManager()
     manager.run(sys.argv[1:])
+
 
 if __name__ == "__main__":
     main()

@@ -41,13 +41,17 @@ class InteractiveWizard:
         self._collect_quality_standards()
 
         # Step 8-10: 고급 설정 (선택사항)
-        if click.confirm(f"\n{Fore.YELLOW}고급 설정을 진행하시겠습니까? (보안, 운영, 리스크 관리){Style.RESET_ALL}"):
+        if click.confirm(
+            f"\n{Fore.YELLOW}고급 설정을 진행하시겠습니까? (보안, 운영, 리스크 관리){Style.RESET_ALL}"
+        ):
             self._collect_advanced_settings()
 
         # 설정 요약 및 확인
         self._show_summary()
 
-        if click.confirm(f"\n{Fore.GREEN}이 설정으로 프로젝트를 초기화하시겠습니까?{Style.RESET_ALL}"):
+        if click.confirm(
+            f"\n{Fore.GREEN}이 설정으로 프로젝트를 초기화하시겠습니까?{Style.RESET_ALL}"
+        ):
             return self.answers
         else:
             click.echo(f"{Fore.YELLOW}초기화가 취소되었습니다.{Style.RESET_ALL}")
@@ -60,37 +64,53 @@ class InteractiveWizard:
 
         # Q1: 핵심 문제
         while True:
-            problem = click.prompt(f"{Fore.WHITE}Q1. 이 프로젝트가 해결하려는 핵심 문제는 무엇인가요?{Style.RESET_ALL}")
+            problem = click.prompt(
+                f"{Fore.WHITE}Q1. 이 프로젝트가 해결하려는 핵심 문제는 무엇인가요?{Style.RESET_ALL}"
+            )
             if len(problem) >= 20:
                 break
-            click.echo(f"{Fore.YELLOW}⚠️  더 구체적으로 설명해주세요 (최소 20자). 대상, 원인, 빈도를 포함하여 작성해주세요.{Style.RESET_ALL}")
+            click.echo(
+                f"{Fore.YELLOW}⚠️  더 구체적으로 설명해주세요 (최소 20자). 대상, 원인, 빈도를 포함하여 작성해주세요.{Style.RESET_ALL}"
+            )
 
         self.answers["core_problem"] = problem
 
         # Q2: 목표 사용자
         users = click.prompt(
             f"{Fore.WHITE}Q2. 목표 사용자는 누구인가요?{Style.RESET_ALL}",
-            type=click.Choice(["개발자", "일반 사용자", "관리자", "B2B 고객", "API 사용자", "기타"], case_sensitive=False)
+            type=click.Choice(
+                ["개발자", "일반 사용자", "관리자", "B2B 고객", "API 사용자", "기타"],
+                case_sensitive=False,
+            ),
         )
         self.answers["target_users"] = users
 
         # Q3: 6개월 목표
         while True:
-            goal = click.prompt(f"{Fore.WHITE}Q3. 6개월 후 달성하고 싶은 구체적인 목표는?{Style.RESET_ALL}")
-            if any(metric in goal.lower() for metric in ["mau", "사용자", "응답시간", "오류율", "%", "개", "명"]):
+            goal = click.prompt(
+                f"{Fore.WHITE}Q3. 6개월 후 달성하고 싶은 구체적인 목표는?{Style.RESET_ALL}"
+            )
+            if any(
+                metric in goal.lower()
+                for metric in ["mau", "사용자", "응답시간", "오류율", "%", "개", "명"]
+            ):
                 break
-            click.echo(f"{Fore.YELLOW}⚠️  측정 가능한 KPI를 포함해주세요 (예: MAU 1000명, 응답시간 500ms 이하){Style.RESET_ALL}")
+            click.echo(
+                f"{Fore.YELLOW}⚠️  측정 가능한 KPI를 포함해주세요 (예: MAU 1000명, 응답시간 500ms 이하){Style.RESET_ALL}"
+            )
 
         self.answers["goal"] = goal
 
         # Q4: 핵심 기능 3가지
-        click.echo(f"\n{Fore.WHITE}Q4. 핵심 기능 3가지를 우선순위대로 입력해주세요:{Style.RESET_ALL}")
+        click.echo(
+            f"\n{Fore.WHITE}Q4. 핵심 기능 3가지를 우선순위대로 입력해주세요:{Style.RESET_ALL}"
+        )
         features = []
         for i in range(3):
-            feature = click.prompt(f"  {i+1}순위 기능")
+            feature = click.prompt(f"  {i + 1}순위 기능")
             features.append(feature)
 
-            if i < 2 and not click.confirm(f"    {i+2}순위 기능을 추가하시겠습니까?"):
+            if i < 2 and not click.confirm(f"    {i + 2}순위 기능을 추가하시겠습니까?"):
                 break
 
         self.answers["core_features"] = features
@@ -110,7 +130,7 @@ class InteractiveWizard:
             "모바일": ["React Native", "Flutter", "SwiftUI", "Kotlin"],
             "백엔드": ["FastAPI", "Django", "Flask", "Express", "Spring Boot"],
             "데이터베이스": ["PostgreSQL", "MySQL", "MongoDB", "Redis", "SQLite"],
-            "인프라": ["Docker", "Kubernetes", "AWS", "GCP", "Azure"]
+            "인프라": ["Docker", "Kubernetes", "AWS", "GCP", "Azure"],
         }
 
         selected_tech = []
@@ -122,7 +142,7 @@ class InteractiveWizard:
             choices = click.prompt(
                 "선택 (번호 입력, 여러 개는 쉼표로 구분, 건너뛰려면 엔터)",
                 default="",
-                show_default=False
+                show_default=False,
             )
 
             if choices:
@@ -140,7 +160,7 @@ class InteractiveWizard:
         # Q6: 팀 숙련도
         skill_level = click.prompt(
             f"{Fore.WHITE}Q6. 팀의 기술 숙련도는?{Style.RESET_ALL}",
-            type=click.Choice(["초급", "중급", "고급"], case_sensitive=False)
+            type=click.Choice(["초급", "중급", "고급"], case_sensitive=False),
         )
         self.answers["skill_level"] = skill_level
 
@@ -155,11 +175,13 @@ class InteractiveWizard:
         coverage = click.prompt(
             f"{Fore.WHITE}Q7. 테스트 커버리지 목표는? (%){Style.RESET_ALL}",
             type=click.IntRange(60, 100),
-            default=80
+            default=80,
         )
         self.answers["test_coverage"] = coverage
 
-        performance = click.prompt(f"{Fore.WHITE}API 응답시간 목표는? (ms){Style.RESET_ALL}", default="500")
+        performance = click.prompt(
+            f"{Fore.WHITE}API 응답시간 목표는? (ms){Style.RESET_ALL}", default="500"
+        )
         self.answers["performance_target"] = performance
 
         click.echo(f"{Fore.GREEN}✅ 품질 기준 설정 완료{Style.RESET_ALL}")
@@ -183,10 +205,14 @@ class InteractiveWizard:
         self.answers["security_features"] = security_features
 
         # 운영 설정
-        monitoring = click.confirm(f"{Fore.WHITE}모니터링 및 로깅 설정이 필요한가요?{Style.RESET_ALL}")
+        monitoring = click.confirm(
+            f"{Fore.WHITE}모니터링 및 로깅 설정이 필요한가요?{Style.RESET_ALL}"
+        )
         self.answers["monitoring"] = monitoring
 
-        ci_cd = click.confirm(f"{Fore.WHITE}CI/CD 파이프라인 설정이 필요한가요?{Style.RESET_ALL}")
+        ci_cd = click.confirm(
+            f"{Fore.WHITE}CI/CD 파이프라인 설정이 필요한가요?{Style.RESET_ALL}"
+        )
         self.answers["ci_cd"] = ci_cd
 
         click.echo(f"{Fore.GREEN}✅ 고급 설정 완료{Style.RESET_ALL}")
@@ -209,7 +235,7 @@ class InteractiveWizard:
         click.echo(f"  • 테스트 커버리지: {self.answers.get('test_coverage', 80)}%")
         click.echo(f"  • 성능 목표: {self.answers.get('performance_target', '500')}ms")
 
-        if self.answers.get('security_features'):
+        if self.answers.get("security_features"):
             click.echo(f"\n{Fore.WHITE}보안 기능:{Style.RESET_ALL}")
-            for feature in self.answers.get('security_features', []):
+            for feature in self.answers.get("security_features", []):
                 click.echo(f"  • {feature}")

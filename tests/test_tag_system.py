@@ -18,15 +18,15 @@ class TagScanner:
     def __init__(self, project_root: str = None):
         self.project_root = project_root or "/Users/goos/MoAI/MoAI-ADK"
         self.src_dir = os.path.join(self.project_root, "src")
-        self.tag_pattern = re.compile(r'@[A-Z]+:[A-Z-]+-\d+')
-        self.standard_pattern = re.compile(r'@[A-Z]+:[A-Z-]+-\d{3}')
+        self.tag_pattern = re.compile(r"@[A-Z]+:[A-Z-]+-\d+")
+        self.standard_pattern = re.compile(r"@[A-Z]+:[A-Z-]+-\d{3}")
 
     def find_all_python_files(self) -> List[str]:
         """모든 Python 파일 검색"""
         python_files = []
         for root, dirs, files in os.walk(self.src_dir):
             for file in files:
-                if file.endswith('.py'):
+                if file.endswith(".py"):
                     python_files.append(os.path.join(root, file))
         return python_files
 
@@ -37,7 +37,7 @@ class TagScanner:
 
         for file_path in python_files:
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, "r", encoding="utf-8") as f:
                     content = f.read()
                     if not self.tag_pattern.search(content):
                         missing_tag_files.append(file_path)
@@ -54,7 +54,7 @@ class TagScanner:
 
         for file_path in python_files:
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, "r", encoding="utf-8") as f:
                     content = f.read()
                     tags = self.tag_pattern.findall(content)
                     if tags:
@@ -74,10 +74,23 @@ class TagValidator:
 
     def __init__(self):
         self.scanner = TagScanner()
-        self.core_categories = ['REQ', 'DESIGN', 'TASK', 'TEST']
+        self.core_categories = ["REQ", "DESIGN", "TASK", "TEST"]
         self.all_categories = [
-            'REQ', 'DESIGN', 'TASK', 'VISION', 'STRUCT', 'TECH', 'ADR',
-            'FEATURE', 'API', 'TEST', 'DATA', 'PERF', 'SEC', 'DEBT', 'TODO'
+            "REQ",
+            "DESIGN",
+            "TASK",
+            "VISION",
+            "STRUCT",
+            "TECH",
+            "ADR",
+            "FEATURE",
+            "API",
+            "TEST",
+            "DATA",
+            "PERF",
+            "SEC",
+            "DEBT",
+            "TODO",
         ]
 
     def calculate_coverage(self) -> float:
@@ -96,13 +109,15 @@ class TagValidator:
         # 간단한 Primary Chain 검증: REQ, DESIGN, TASK, TEST 카테고리 분포
         category_counts = {}
         for tag in all_tags:
-            if ':' in tag:
-                category = tag.split(':')[0].replace('@', '')
+            if ":" in tag:
+                category = tag.split(":")[0].replace("@", "")
                 category_counts[category] = category_counts.get(category, 0) + 1
 
         # Primary Chain 카테고리가 모두 존재하면 기본 점수 부여
-        primary_categories = ['REQ', 'DESIGN', 'TASK', 'TEST']
-        present_categories = sum(1 for cat in primary_categories if cat in category_counts)
+        primary_categories = ["REQ", "DESIGN", "TASK", "TEST"]
+        present_categories = sum(
+            1 for cat in primary_categories if cat in category_counts
+        )
 
         # 최소 구현: 4개 카테고리 중 3개 이상 있으면 75%로 간주
         if present_categories >= 3:
@@ -140,9 +155,11 @@ class TagValidator:
 
         for file_tags in all_tags_dict.values():
             for tag in file_tags:
-                if ':' in tag:
-                    category = tag.split(':')[0].replace('@', '')
-                    category_distribution[category] = category_distribution.get(category, 0) + 1
+                if ":" in tag:
+                    category = tag.split(":")[0].replace("@", "")
+                    category_distribution[category] = (
+                        category_distribution.get(category, 0) + 1
+                    )
 
         return category_distribution
 
@@ -154,13 +171,14 @@ class TagValidator:
         for file_tags in all_tags_dict.values():
             for tag in file_tags:
                 # 표준 패턴 검증: @CATEGORY:DOMAIN-NUMBER
-                if not re.match(r'@[A-Z]+:[A-Z-]+-\d+$', tag):
+                if not re.match(r"@[A-Z]+:[A-Z-]+-\d+$", tag):
                     inconsistent_tags.append(tag)
 
         return list(set(inconsistent_tags))
 
 
 # ===== RED PHASE 테스트 - 모든 테스트가 실패해야 함 =====
+
 
 class TestTagCoverage:
     """@TEST:TAG-COVERAGE-VALIDATION-011 - TAG 적용률 검증"""
@@ -175,8 +193,8 @@ class TestTagCoverage:
 
         # RED: 현재 32개 파일에 TAG가 없으므로 이 테스트는 실패함
         assert len(missing_files) == 0, (
-            f"Missing @TAG in {len(missing_files)} files:\n" +
-            "\n".join(missing_files[:10])  # 처음 10개만 표시
+            f"Missing @TAG in {len(missing_files)} files:\n"
+            + "\n".join(missing_files[:10])  # 처음 10개만 표시
         )
 
     def test_tag_coverage_100_percent(self):
@@ -196,15 +214,17 @@ class TestTagCoverage:
         for file_path in critical_files:
             if os.path.exists(file_path):
                 try:
-                    with open(file_path, 'r', encoding='utf-8') as f:
+                    with open(file_path, "r", encoding="utf-8") as f:
                         content = f.read()
-                        if not re.search(r'@[A-Z]+:[A-Z-]+-\d+', content):
+                        if not re.search(r"@[A-Z]+:[A-Z-]+-\d+", content):
                             missing_critical.append(file_path)
                 except (UnicodeDecodeError, OSError):
                     missing_critical.append(file_path)
 
         # RED: 중요 파일에 TAG가 없으므로 이 테스트는 실패함
-        assert len(missing_critical) == 0, f"Critical files missing @TAG: {missing_critical}"
+        assert len(missing_critical) == 0, (
+            f"Critical files missing @TAG: {missing_critical}"
+        )
 
 
 class TestTagFormat:
@@ -223,8 +243,10 @@ class TestTagFormat:
         invalid_tags = []
         for tag in all_tags:
             # 기존 패턴과 새 표준 패턴 모두 허용
-            if not (re.match(r'@[A-Z]+:[A-Z-]+-\d+', tag) or
-                   re.match(r'@[A-Z]+:[A-Z-]+-\d{3}', tag)):
+            if not (
+                re.match(r"@[A-Z]+:[A-Z-]+-\d+", tag)
+                or re.match(r"@[A-Z]+:[A-Z-]+-\d{3}", tag)
+            ):
                 invalid_tags.append(tag)
 
         assert len(invalid_tags) == 0, f"Invalid format tags: {invalid_tags}"
@@ -244,7 +266,9 @@ class TestTagFormat:
         if all_tags:
             adoption_rate = standard_format_tags / len(all_tags)
             # RED: 대부분의 기존 TAG가 새 표준 형식이 아니므로 이 테스트는 실패할 수 있음
-            assert adoption_rate >= 0.5, f"Standard format adoption: {adoption_rate:.2%}, expected: ≥50%"
+            assert adoption_rate >= 0.5, (
+                f"Standard format adoption: {adoption_rate:.2%}, expected: ≥50%"
+            )
 
 
 class TestPrimaryChain:
@@ -258,7 +282,9 @@ class TestPrimaryChain:
         completion_rate = self.validator.validate_primary_chain_completion()
 
         # GREEN: 최소 구현으로 75% 기준 적용 (GREEN Phase 기준)
-        assert completion_rate >= 0.75, f"Primary Chain completion: {completion_rate:.2%}, expected: ≥75%"
+        assert completion_rate >= 0.75, (
+            f"Primary Chain completion: {completion_rate:.2%}, expected: ≥75%"
+        )
 
     def test_no_duplicate_tags(self):
         """AC2.2: 중복 TAG 제거 검증 - 이 테스트는 실패할 가능성 있음"""
@@ -287,7 +313,9 @@ class TestAutomationTools:
         validation_time = end_time - start_time
 
         # 이 테스트는 통과할 가능성이 높음 (간단한 스캔)
-        assert validation_time < 5.0, f"Validation took {validation_time:.2f}s, expected: <5.0s"
+        assert validation_time < 5.0, (
+            f"Validation took {validation_time:.2f}s, expected: <5.0s"
+        )
 
     def test_tag_completion_tool_exists(self):
         """TAG 완성 도구 존재 검증 - 이 테스트는 실패해야 함"""
@@ -297,6 +325,7 @@ class TestAutomationTools:
 
 
 # ===== REFACTOR PHASE 고급 테스트 =====
+
 
 class TestTagQuality:
     """@TEST:TAG-QUALITY-VALIDATION-011 - Refactor Phase 품질 검증"""
@@ -309,30 +338,41 @@ class TestTagQuality:
         distribution = self.validator.analyze_tag_distribution()
 
         # 16-Core TAG 시스템의 기본 카테고리들이 적절히 분포되어 있는지 확인
-        core_categories = ['TASK', 'FEATURE', 'REQ', 'DESIGN', 'TEST']
-        present_core_categories = sum(1 for cat in core_categories if distribution.get(cat, 0) > 0)
+        core_categories = ["TASK", "FEATURE", "REQ", "DESIGN", "TEST"]
+        present_core_categories = sum(
+            1 for cat in core_categories if distribution.get(cat, 0) > 0
+        )
 
-        assert present_core_categories >= 3, f"Core categories present: {present_core_categories}, expected: ≥3"
+        assert present_core_categories >= 3, (
+            f"Core categories present: {present_core_categories}, expected: ≥3"
+        )
 
     def test_tag_naming_consistency(self):
         """TAG 네이밍 규칙 일관성 검증"""
         inconsistent_tags = self.validator.validate_tag_naming_consistency()
 
         # 일관성 있는 네이밍 확인
-        assert len(inconsistent_tags) == 0, f"Inconsistent tag naming: {inconsistent_tags[:5]}"
+        assert len(inconsistent_tags) == 0, (
+            f"Inconsistent tag naming: {inconsistent_tags[:5]}"
+        )
 
     def test_no_orphaned_tags(self):
         """고립된 TAG 없음 검증 (Primary Chain 관점)"""
         distribution = self.validator.analyze_tag_distribution()
 
         # Primary Chain의 핵심 요소들이 모두 존재하는지 확인
-        primary_elements = ['REQ', 'TASK', 'TEST']
-        missing_elements = [elem for elem in primary_elements if distribution.get(elem, 0) == 0]
+        primary_elements = ["REQ", "TASK", "TEST"]
+        missing_elements = [
+            elem for elem in primary_elements if distribution.get(elem, 0) == 0
+        ]
 
-        assert len(missing_elements) == 0, f"Missing primary chain elements: {missing_elements}"
+        assert len(missing_elements) == 0, (
+            f"Missing primary chain elements: {missing_elements}"
+        )
 
 
 # ===== 통합 테스트 =====
+
 
 class TestTagSystemIntegration:
     """@TEST:TAG-SYSTEM-INTEGRATION-011 - 전체 TAG 시스템 통합 검증"""
@@ -347,9 +387,9 @@ class TestTagSystemIntegration:
         duplicates = validator.find_duplicate_tags()
 
         system_health = {
-            'coverage': coverage >= 1.0,
-            'chain_completion': chain_completion >= 0.75,  # GREEN Phase 기준
-            'no_duplicates': len(duplicates) == 0
+            "coverage": coverage >= 1.0,
+            "chain_completion": chain_completion >= 0.75,  # GREEN Phase 기준
+            "no_duplicates": len(duplicates) == 0,
         }
 
         overall_health = all(system_health.values())

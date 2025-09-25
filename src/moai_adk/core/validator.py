@@ -30,9 +30,13 @@ def validate_python_version(min_version: tuple[int, int] = (3, 8)) -> bool:
     """
     current = sys.version_info[:2]
     if current < min_version:
-        logger.error(f"Python {min_version[0]}.{min_version[1]}+ required, got {version.major}.{version.minor}")
-        click.echo(f"{Fore.RED}❌ Python {min_version[0]}.{min_version[1]}+ required, "
-              f"found {current[0]}.{current[1]}{Style.RESET_ALL}")
+        logger.error(
+            f"Python {min_version[0]}.{min_version[1]}+ required, got {version.major}.{version.minor}"
+        )
+        click.echo(
+            f"{Fore.RED}❌ Python {min_version[0]}.{min_version[1]}+ required, "
+            f"found {current[0]}.{current[1]}{Style.RESET_ALL}"
+        )
         return False
     return True
 
@@ -40,22 +44,21 @@ def validate_python_version(min_version: tuple[int, int] = (3, 8)) -> bool:
 def validate_claude_code() -> bool:
     """
     Validate that Claude Code is available and properly configured.
-    
+
     Returns:
         True if Claude Code is available, False otherwise
     """
     try:
         result = subprocess.run(
-            ["claude", "--version"],
-            capture_output=True,
-            text=True,
-            timeout=10
+            ["claude", "--version"], capture_output=True, text=True, timeout=10
         )
         if result.returncode == 0:
             return True
         else:
             logger.warning("Claude Code not found or not properly configured")
-            click.echo(f"{Fore.YELLOW}⚠️  Claude Code not found or not properly configured{Style.RESET_ALL}")
+            click.echo(
+                f"{Fore.YELLOW}⚠️  Claude Code not found or not properly configured{Style.RESET_ALL}"
+            )
             return False
     except (subprocess.TimeoutExpired, FileNotFoundError):
         logger.warning("Claude Code not found in PATH")
@@ -66,10 +69,10 @@ def validate_claude_code() -> bool:
 def validate_git_repository(path: Path) -> bool:
     """
     Validate that the path is within a git repository.
-    
+
     Args:
         path: Path to validate
-        
+
     Returns:
         True if valid git repository, False otherwise
     """
@@ -84,10 +87,10 @@ def validate_git_repository(path: Path) -> bool:
 def validate_project_structure(project_path: Path) -> dict[str, bool]:
     """
     Validate MoAI-ADK project structure.
-    
+
     Args:
         project_path: Path to the project
-        
+
     Returns:
         Dictionary of validation results
     """
@@ -111,11 +114,17 @@ def validate_project_structure(project_path: Path) -> dict[str, bool]:
 
     # Check for essential hook files
     if moai_hooks_dir.exists():
-        results["session_start_hook"] = (moai_hooks_dir / "session_start_notice.py").exists()
-        results["trust_principles_guard_hook"] = (moai_hooks_dir / "constitution_guard.py").exists()
+        results["session_start_hook"] = (
+            moai_hooks_dir / "session_start_notice.py"
+        ).exists()
+        results["trust_principles_guard_hook"] = (
+            moai_hooks_dir / "constitution_guard.py"
+        ).exists()
         results["policy_block_hook"] = (moai_hooks_dir / "policy_block.py").exists()
         results["tag_validator_hook"] = (moai_hooks_dir / "tag_validator.py").exists()
-        results["post_stage_guard_hook"] = (moai_hooks_dir / "post_stage_guard.py").exists()
+        results["post_stage_guard_hook"] = (
+            moai_hooks_dir / "post_stage_guard.py"
+        ).exists()
     else:
         results["session_start_hook"] = False
         results["trust_principles_guard_hook"] = False
@@ -143,20 +152,28 @@ def validate_environment() -> bool:
         all_valid = False
     else:
         version = sys.version_info
-        logger.info(f"Python version validated: {version.major}.{version.minor}.{version.micro}")
-        click.echo(f"{Fore.GREEN}✅ Python {version.major}.{version.minor}.{version.micro}{Style.RESET_ALL}")
+        logger.info(
+            f"Python version validated: {version.major}.{version.minor}.{version.micro}"
+        )
+        click.echo(
+            f"{Fore.GREEN}✅ Python {version.major}.{version.minor}.{version.micro}{Style.RESET_ALL}"
+        )
 
     # Global resources validation
     if not validate_global_resources():
         all_valid = False
     else:
         logger.info("MoAI-ADK global resources validated")
-        click.echo(f"{Fore.GREEN}✅ MoAI-ADK global resources available{Style.RESET_ALL}")
+        click.echo(
+            f"{Fore.GREEN}✅ MoAI-ADK global resources available{Style.RESET_ALL}"
+        )
 
     # Claude Code availability
     if not validate_claude_code():
         logger.info("Claude Code validation skipped (not required for installation)")
-        click.echo(f"{Fore.YELLOW}⚠️  Claude Code validation skipped (not required for installation){Style.RESET_ALL}")
+        click.echo(
+            f"{Fore.YELLOW}⚠️  Claude Code validation skipped (not required for installation){Style.RESET_ALL}"
+        )
     else:
         logger.info("Claude Code available")
         click.echo(f"{Fore.GREEN}✅ Claude Code available{Style.RESET_ALL}")
@@ -167,33 +184,41 @@ def validate_environment() -> bool:
 def validate_project_readiness(project_path: Path) -> bool:
     """
     Validate project is ready for MoAI-ADK integration.
-    
+
     Args:
         project_path: Path to the project
-        
+
     Returns:
         True if project is ready, False otherwise
     """
     if not project_path.exists():
         logger.error(f"Project path does not exist: {project_path}")
-        click.echo(f"{Fore.RED}❌ Project path does not exist: {project_path}{Style.RESET_ALL}")
+        click.echo(
+            f"{Fore.RED}❌ Project path does not exist: {project_path}{Style.RESET_ALL}"
+        )
         return False
 
     if not project_path.is_dir():
         logger.error(f"Project path is not a directory: {project_path}")
-        click.echo(f"{Fore.RED}❌ Project path is not a directory: {project_path}{Style.RESET_ALL}")
+        click.echo(
+            f"{Fore.RED}❌ Project path is not a directory: {project_path}{Style.RESET_ALL}"
+        )
         return False
 
     # Check if it's already a MoAI-ADK project
     claude_dir = project_path / ".claude"
     if claude_dir.exists():
         logger.warning("Claude Code configuration already exists")
-        click.echo(f"{Fore.YELLOW}⚠️  Claude Code configuration already exists{Style.RESET_ALL}")
+        click.echo(
+            f"{Fore.YELLOW}⚠️  Claude Code configuration already exists{Style.RESET_ALL}"
+        )
 
         structure = validate_project_structure(project_path)
         if structure["moai_hooks"]:
             logger.warning("MoAI-ADK already initialized in this project")
-            click.echo(f"{Fore.YELLOW}⚠️  MoAI-ADK already initialized in this project{Style.RESET_ALL}")
+            click.echo(
+                f"{Fore.YELLOW}⚠️  MoAI-ADK already initialized in this project{Style.RESET_ALL}"
+            )
             return False
 
     return True
@@ -202,10 +227,10 @@ def validate_project_readiness(project_path: Path) -> bool:
 def validate_moai_structure(project_path: Path) -> dict[str, bool]:
     """
     Validate complete MoAI-ADK project structure.
-    
+
     Args:
         project_path: Path to the project
-        
+
     Returns:
         Dictionary of validation results for MoAI components
     """
@@ -229,7 +254,9 @@ def validate_moai_structure(project_path: Path) -> dict[str, bool]:
 
         # Essential MoAI files
         results["moai_config"] = (moai_dir / "config.json").exists()
-        results["constitution"] = (moai_dir / "memory" / "development-guide.md").exists()
+        results["constitution"] = (
+            moai_dir / "memory" / "development-guide.md"
+        ).exists()
 
         # Steering documents
         steering_dir = moai_dir / "steering"
@@ -254,10 +281,21 @@ def validate_moai_structure(project_path: Path) -> dict[str, bool]:
             results["state_index"] = False
     else:
         # All MoAI components are missing
-        for key in ["moai_steering", "moai_specs", "moai_memory", "moai_templates",
-                   "moai_indexes", "moai_config", "constitution", "product_md",
-                   "structure_md", "tech_md", "tags_index", "traceability_index",
-                   "state_index"]:
+        for key in [
+            "moai_steering",
+            "moai_specs",
+            "moai_memory",
+            "moai_templates",
+            "moai_indexes",
+            "moai_config",
+            "constitution",
+            "product_md",
+            "structure_md",
+            "tech_md",
+            "tags_index",
+            "traceability_index",
+            "state_index",
+        ]:
             results[key] = False
 
     return results
@@ -266,10 +304,10 @@ def validate_moai_structure(project_path: Path) -> dict[str, bool]:
 def validate_trust_principles_compliance(project_path: Path) -> dict[str, dict]:
     """
     Validate project compliance with MoAI 개발 가이드 5 principles.
-    
+
     Args:
         project_path: Path to the project
-        
+
     Returns:
         Dictionary with compliance results for each principle
     """
@@ -278,7 +316,7 @@ def validate_trust_principles_compliance(project_path: Path) -> dict[str, dict]:
         "architecture": {"compliant": True, "details": [], "score": 0},
         "testing": {"compliant": True, "details": [], "score": 0},
         "observability": {"compliant": True, "details": [], "score": 0},
-        "versioning": {"compliant": True, "details": [], "score": 0}
+        "versioning": {"compliant": True, "details": [], "score": 0},
     }
 
     # 1. Simplicity - check project complexity
@@ -286,9 +324,13 @@ def validate_trust_principles_compliance(project_path: Path) -> dict[str, dict]:
     results["simplicity"]["score"] = complexity_score
     if complexity_score > 3:
         results["simplicity"]["compliant"] = False
-        results["simplicity"]["details"].append(f"Project complexity {complexity_score} exceeds maximum of 3")
+        results["simplicity"]["details"].append(
+            f"Project complexity {complexity_score} exceeds maximum of 3"
+        )
     else:
-        results["simplicity"]["details"].append(f"Project complexity {complexity_score} within limits")
+        results["simplicity"]["details"].append(
+            f"Project complexity {complexity_score} within limits"
+        )
 
     # 2. Architecture - check for modular structure
     modular_score = _check_architectural_modularity(project_path)
@@ -307,7 +349,9 @@ def validate_trust_principles_compliance(project_path: Path) -> dict[str, dict]:
     # 4. Observability - check for logging and monitoring
     observability_score = _check_observability_setup(project_path)
     results["observability"]["score"] = observability_score
-    results["observability"]["details"].append(f"Observability score: {observability_score}/100")
+    results["observability"]["details"].append(
+        f"Observability score: {observability_score}/100"
+    )
 
     # 5. Versioning - check for proper versioning
     versioning_score = _check_versioning_setup(project_path)
@@ -365,7 +409,10 @@ def _check_architectural_modularity(project_path: Path) -> int:
         score += 10
 
     # Penalty for monolithic indicators
-    if len(list(project_path.rglob("*.py"))) > 100 and not (project_path / "src").exists():
+    if (
+        len(list(project_path.rglob("*.py"))) > 100
+        and not (project_path / "src").exists()
+    ):
         score -= 20
 
     return min(max(score, 0), 100)
@@ -410,7 +457,10 @@ def _check_observability_setup(project_path: Path) -> int:
     score = 30  # Base score for basic project
 
     # Check for logging configuration
-    if any((project_path / f).exists() for f in ["logging.conf", "log4j.properties", "winston.config.js"]):
+    if any(
+        (project_path / f).exists()
+        for f in ["logging.conf", "log4j.properties", "winston.config.js"]
+    ):
         score += 25
 
     # Check for environment configuration
@@ -418,11 +468,14 @@ def _check_observability_setup(project_path: Path) -> int:
         score += 20
 
     # Check for monitoring/metrics
-    if any(path.exists() for path in [
-        project_path / "prometheus.yml",
-        project_path / "grafana",
-        project_path / "metrics"
-    ]):
+    if any(
+        path.exists()
+        for path in [
+            project_path / "prometheus.yml",
+            project_path / "grafana",
+            project_path / "metrics",
+        ]
+    ):
         score += 25
 
     return min(score, 100)
@@ -438,7 +491,7 @@ def _check_versioning_setup(project_path: Path) -> int:
         "pyproject.toml",
         "Cargo.toml",
         "VERSION",
-        "_version.py"
+        "_version.py",
     ]
 
     for indicator in version_indicators:
@@ -453,7 +506,9 @@ def _check_versioning_setup(project_path: Path) -> int:
     # Check for release workflow
     github_dir = project_path / ".github" / "workflows"
     if github_dir.exists():
-        release_files = list(github_dir.glob("*release*")) + list(github_dir.glob("*version*"))
+        release_files = list(github_dir.glob("*release*")) + list(
+            github_dir.glob("*version*")
+        )
         if release_files:
             score += 30
 
@@ -463,11 +518,11 @@ def _check_versioning_setup(project_path: Path) -> int:
 def run_full_validation(project_path: Path, verbose: bool = False) -> dict[str, any]:
     """
     Run complete MoAI-ADK validation suite.
-    
+
     Args:
         project_path: Path to validate
         verbose: Whether to print detailed results
-        
+
     Returns:
         Complete validation results
     """
@@ -480,7 +535,9 @@ def run_full_validation(project_path: Path, verbose: bool = False) -> dict[str, 
         "environment": validate_environment() if verbose else True,
         "project_readiness": validate_project_readiness(project_path),
         "moai_structure": validate_moai_structure(project_path),
-        "trust_principles_compliance": validate_trust_principles_compliance(project_path)
+        "trust_principles_compliance": validate_trust_principles_compliance(
+            project_path
+        ),
     }
 
     if verbose:
@@ -499,13 +556,21 @@ def run_full_validation(project_path: Path, verbose: bool = False) -> dict[str, 
 
         # Overall health
         if structure_score >= 80 and compliant_count >= 4:
-            logger.info(f"전체 상태: 우수 (구조: {structure_score:.1f}%, 준수: {compliant_count}/5)")
+            logger.info(
+                f"전체 상태: 우수 (구조: {structure_score:.1f}%, 준수: {compliant_count}/5)"
+            )
             click.echo(f"{Fore.GREEN}  ✅ 전체 상태: 우수{Style.RESET_ALL}")
         elif structure_score >= 60 and compliant_count >= 3:
-            logger.warning(f"전체 상태: 양호 (구조: {structure_score:.1f}%, 준수: {compliant_count}/5) - 개선 권장")
-            click.echo(f"{Fore.YELLOW}  ⚠️  전체 상태: 양호 (개선 권장){Style.RESET_ALL}")
+            logger.warning(
+                f"전체 상태: 양호 (구조: {structure_score:.1f}%, 준수: {compliant_count}/5) - 개선 권장"
+            )
+            click.echo(
+                f"{Fore.YELLOW}  ⚠️  전체 상태: 양호 (개선 권장){Style.RESET_ALL}"
+            )
         else:
-            logger.error(f"전체 상태: 문제 (구조: {structure_score:.1f}%, 준수: {compliant_count}/5) - 수정 필요")
+            logger.error(
+                f"전체 상태: 문제 (구조: {structure_score:.1f}%, 준수: {compliant_count}/5) - 수정 필요"
+            )
             click.echo(f"{Fore.RED}  ❌ 전체 상태: 문제 (수정 필요){Style.RESET_ALL}")
 
     return results
@@ -520,14 +585,20 @@ def validate_global_resources() -> bool:
     """
     try:
         logger.info("Checking MoAI-ADK global resources")
-        click.echo(f"{Fore.BLUE}🔍 Checking MoAI-ADK global resources...{Style.RESET_ALL}")
+        click.echo(
+            f"{Fore.BLUE}🔍 Checking MoAI-ADK global resources...{Style.RESET_ALL}"
+        )
 
         # Note: Resources are now embedded in package - no separate installation needed
         logger.info("Resources are embedded in the package")
-        click.echo(f"{Fore.GREEN}✅ Resources are embedded in the package{Style.RESET_ALL}")
+        click.echo(
+            f"{Fore.GREEN}✅ Resources are embedded in the package{Style.RESET_ALL}"
+        )
         return True
 
     except Exception as error:
         logger.error(f"Error checking global resources: {error}")
-        click.echo(f"{Fore.RED}❌ Error checking global resources: {error}{Style.RESET_ALL}")
+        click.echo(
+            f"{Fore.RED}❌ Error checking global resources: {error}{Style.RESET_ALL}"
+        )
         return False

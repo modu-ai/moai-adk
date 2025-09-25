@@ -5,6 +5,7 @@ Verifies MkDocs build, HTML generation, and link integrity.
 
 @REQ:DOCS-INTEGRATION-001 → @TASK:INTEGRATION-TEST-001
 """
+
 import pytest
 import subprocess
 from pathlib import Path
@@ -28,7 +29,7 @@ class TestDocumentationIntegration:
         # Create mock source structure
         src_dir = tmp_path / "src" / "moai_adk"
         src_dir.mkdir(parents=True)
-        (src_dir / "__init__.py").write_text("\"\"\"MoAI ADK\"\"\"")
+        (src_dir / "__init__.py").write_text('"""MoAI ADK"""')
 
         # Initialize and build site
         builder.initialize_site()
@@ -42,7 +43,7 @@ class TestDocumentationIntegration:
         release_gen.generate_release_notes(str(docs_dir))
 
         # Mock MkDocs build success
-        with patch('mkdocs.commands.build.build') as mock_build:
+        with patch("mkdocs.commands.build.build") as mock_build:
             mock_build.return_value = True
 
             result = builder.build_docs()
@@ -58,7 +59,7 @@ class TestDocumentationIntegration:
         site_dir = tmp_path / "site"
 
         # Mock the HTML generation process
-        with patch('mkdocs.commands.build.build') as mock_build:
+        with patch("mkdocs.commands.build.build") as mock_build:
             # Simulate HTML file creation
             site_dir.mkdir()
             (site_dir / "index.html").write_text("<html><body>Test</body></html>")
@@ -102,8 +103,8 @@ class TestDocumentationIntegration:
         builder.initialize_site()
 
         # Mock build failure
-        with patch('mkdocs.commands.build.build') as mock_build:
-            mock_build.side_effect = subprocess.CalledProcessError(1, 'mkdocs')
+        with patch("mkdocs.commands.build.build") as mock_build:
+            mock_build.side_effect = subprocess.CalledProcessError(1, "mkdocs")
 
             result = builder.build_docs()
 
@@ -175,7 +176,7 @@ class CoreManager:
         assert (docs_dir / "index.md").exists()
 
         # Mock successful build
-        with patch('mkdocs.commands.build.build') as mock_build:
+        with patch("mkdocs.commands.build.build") as mock_build:
             mock_build.return_value = True
             result = builder.build_docs()
             assert result is True
@@ -186,7 +187,7 @@ class CoreManager:
         builder.initialize_site()
 
         # Initial build
-        with patch('mkdocs.commands.build.build') as mock_build:
+        with patch("mkdocs.commands.build.build") as mock_build:
             mock_build.return_value = True
 
             first_result = builder.build_docs()

@@ -94,7 +94,9 @@ def detect_potential_conflicts(project_path: Path) -> list[str]:
     if (project_path / ".claude").exists():
         claude_files = list((project_path / ".claude").rglob("*"))
         if claude_files:
-            conflicts.append(f"Existing .claude directory with {len(claude_files)} files")
+            conflicts.append(
+                f"Existing .claude directory with {len(claude_files)} files"
+            )
 
     # Check for existing CLAUDE.md
     if (project_path / "CLAUDE.md").exists():
@@ -124,7 +126,7 @@ def analyze_existing_project(project_path: Path) -> dict:
         "project_type": "unknown",
         "existing_tools": [],
         "recommendations": [],
-        "compatibility": "unknown"
+        "compatibility": "unknown",
     }
 
     try:
@@ -159,13 +161,19 @@ def analyze_existing_project(project_path: Path) -> dict:
 
         # Generate recommendations
         if analysis["project_type"] == "unknown":
-            analysis["recommendations"].append("Consider initializing as a standard project type")
+            analysis["recommendations"].append(
+                "Consider initializing as a standard project type"
+            )
 
         if "git" not in analysis["existing_tools"]:
-            analysis["recommendations"].append("Initialize Git repository for version control")
+            analysis["recommendations"].append(
+                "Initialize Git repository for version control"
+            )
 
         if ai_tools:
-            analysis["recommendations"].append(f"Existing AI tools detected: {', '.join(ai_tools)}. MoAI-ADK can work alongside them.")
+            analysis["recommendations"].append(
+                f"Existing AI tools detected: {', '.join(ai_tools)}. MoAI-ADK can work alongside them."
+            )
 
         # Determine compatibility
         if analysis["project_type"] in ["nodejs", "python", "rust"]:
@@ -185,6 +193,7 @@ def analyze_existing_project(project_path: Path) -> dict:
 def print_banner(show_usage: bool = False) -> None:
     """Print MoAI-ADK banner with optional usage information."""
     from .banner import print_banner as print_ascii_banner
+
     print_ascii_banner()
 
     if show_usage:
@@ -231,7 +240,7 @@ def format_project_status(project_path: Path, config_data: dict | None = None) -
         "memory_file": (project_path / "CLAUDE.md").exists(),
         "git_repository": (project_path / ".git").exists(),
         "project_type": "unknown",
-        "file_counts": {}
+        "file_counts": {},
     }
 
     # Count files in key directories
@@ -259,14 +268,14 @@ def format_project_status(project_path: Path, config_data: dict | None = None) -
         resource_manager = ResourceManager()
         version_manager = ResourceVersionManager(project_path)
         version_info = version_manager.read()
-        template_version = version_info.get('template_version') or "unknown"
+        template_version = version_info.get("template_version") or "unknown"
         available_template_version = resource_manager.get_version()
 
         status["versions"] = {
             "package": __version__,
             "resources": template_version,
             "available_resources": available_template_version,
-            "last_updated": version_info.get('last_updated'),
+            "last_updated": version_info.get("last_updated"),
             "outdated": (
                 template_version != "unknown"
                 and available_template_version not in (None, "unknown")

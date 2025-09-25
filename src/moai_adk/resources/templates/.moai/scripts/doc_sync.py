@@ -31,7 +31,9 @@ def run(cmd: list[str], cwd: Path) -> tuple[int, str, str]:
 def update_tag_index(project_root: Path) -> dict[str, object]:
     script = project_root / ".moai" / "scripts" / "check-traceability.py"
     if not script.exists():
-        click.echo("⚠️  TAG 추적성 스크립트를 찾을 수 없습니다. (.moai/scripts/check-traceability.py)")
+        click.echo(
+            "⚠️  TAG 추적성 스크립트를 찾을 수 없습니다. (.moai/scripts/check-traceability.py)"
+        )
         return {"success": False, "stdout": "", "stderr": "missing"}
 
     code, out, err = run(
@@ -110,7 +112,11 @@ def collect_spec_status(project_root: Path) -> dict[str, object]:
         return summary
 
     for spec_dir in sorted(specs_root.iterdir()):
-        if not spec_dir.is_dir() or spec_dir.name.startswith("_") or not spec_dir.name.startswith("SPEC-"):
+        if (
+            not spec_dir.is_dir()
+            or spec_dir.name.startswith("_")
+            or not spec_dir.name.startswith("SPEC-")
+        ):
             continue
         data = _spec_status(spec_dir)
         summary["items"].append(data)
@@ -121,7 +127,11 @@ def collect_spec_status(project_root: Path) -> dict[str, object]:
 
 def _render_tag_section(tag_result: dict[str, object]) -> list[str]:
     lines = ["## TAG Traceability"]
-    lines.append("- Status: ✅ Updated" if tag_result.get("success") else "- Status: ⚠️ Failed (see stderr)")
+    lines.append(
+        "- Status: ✅ Updated"
+        if tag_result.get("success")
+        else "- Status: ⚠️ Failed (see stderr)"
+    )
     if tag_result.get("stdout"):
         lines.append("- Output:")
         lines.append("  ```")
@@ -205,9 +215,12 @@ def update_doc_index_metadata(project_root: Path) -> None:
     # (수동 유지보수 시 혼란을 방지하기 위해 의도적으로 비워둡니다.)
     return
 
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="MoAI 문서/태그 동기화 헬퍼")
-    parser.add_argument("mode", nargs="?", default="auto", help="auto|force|status|project 등")
+    parser.add_argument(
+        "mode", nargs="?", default="auto", help="auto|force|status|project 등"
+    )
     parser.add_argument("target", nargs="?", help="동기화 대상 경로 (선택)")
     args = parser.parse_args()
 

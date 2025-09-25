@@ -15,7 +15,7 @@ from pathlib import Path
 from unittest.mock import patch, mock_open
 
 # Add project root to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 try:
     from moai_adk.core.security import SecurityManager, SecurityError
@@ -50,21 +50,24 @@ class TestSecurityManagerFixed(unittest.TestCase):
             "../../../etc/passwd",
             "../../.ssh/id_rsa",
             "safe/../../../etc/passwd",
-            ".././../etc/passwd"
+            ".././../etc/passwd",
         ]
 
         # Windows-specific attacks only test on Windows
-        if os.name == 'nt':
-            traversal_attempts.extend([
-                "..\\..\\..\\windows\\system32",
-                "C:\\Windows\\System32"
-            ])
+        if os.name == "nt":
+            traversal_attempts.extend(
+                ["..\\..\\..\\windows\\system32", "C:\\Windows\\System32"]
+            )
 
         for malicious_path in traversal_attempts:
             with self.subTest(path=malicious_path):
                 test_path = self.test_dir / malicious_path
-                result = self.security.validate_path_safety_enhanced(test_path, self.test_dir)
-                self.assertFalse(result, f"Path traversal not blocked: {malicious_path}")
+                result = self.security.validate_path_safety_enhanced(
+                    test_path, self.test_dir
+                )
+                self.assertFalse(
+                    result, f"Path traversal not blocked: {malicious_path}"
+                )
 
     def test_command_injection_prevention_fixed(self):
         """FIXED: Test prevention of command injection via subprocess args"""
@@ -75,7 +78,7 @@ class TestSecurityManagerFixed(unittest.TestCase):
             "$(whoami)",
             "`rm -rf /`",
             "| cat /etc/passwd",
-            "> /etc/passwd"
+            "> /etc/passwd",
         ]
 
         for dangerous_arg in dangerous_individual_args:
@@ -92,9 +95,7 @@ class TestSecurityManagerFixed(unittest.TestCase):
 
         try:
             result = self.security.safe_subprocess_run(
-                ["echo", "test"],
-                cwd=safe_work_dir,
-                timeout=5
+                ["echo", "test"], cwd=safe_work_dir, timeout=5
             )
             self.assertEqual(result.returncode, 0)
             self.assertIn("test", result.stdout)
@@ -106,7 +107,7 @@ class TestSecurityManagerFixed(unittest.TestCase):
             self.security.safe_subprocess_run(
                 ["ls"],
                 cwd="/etc",  # Should be blocked
-                timeout=5
+                timeout=5,
             )
 
     def test_working_directory_validation_fixed(self):
@@ -120,20 +121,18 @@ class TestSecurityManagerFixed(unittest.TestCase):
         # Subdirectory of test dir should be allowed
         sub_dir = self.test_dir / "subdir"
         sub_dir.mkdir()
-        self.assertTrue(
-            self.security.validate_subprocess_path(sub_dir, self.test_dir)
-        )
+        self.assertTrue(self.security.validate_subprocess_path(sub_dir, self.test_dir))
 
         # System directories should be blocked
         system_dirs = [Path("/etc"), Path("/root"), Path("/sys")]
-        if os.name == 'nt':
+        if os.name == "nt":
             system_dirs.extend([Path("C:\\Windows"), Path("C:\\Program Files")])
 
         for sys_dir in system_dirs:
             with self.subTest(path=sys_dir):
                 self.assertFalse(
                     self.security.validate_subprocess_path(sys_dir, self.test_dir),
-                    f"System directory not blocked: {sys_dir}"
+                    f"System directory not blocked: {sys_dir}",
                 )
 
 
@@ -156,7 +155,9 @@ class TestHookSecurityFixed(unittest.TestCase):
         malicious_inputs = [
             '{"tool_name": "Write", "tool_input": {"path": "../../../etc/passwd"}}',
             '{"tool_name": "Bash", "tool_input": {"command": "rm -rf /"}}',
-            '{"tool_name": "Write", "tool_input": {"content": "' + "A" * 1000 + '"}}',  # Large but not excessive
+            '{"tool_name": "Write", "tool_input": {"content": "'
+            + "A" * 1000
+            + '"}}',  # Large but not excessive
         ]
 
         for malicious_json in malicious_inputs:
@@ -166,13 +167,13 @@ class TestHookSecurityFixed(unittest.TestCase):
                     data = json.loads(malicious_json)
 
                     # Tool name should be reasonable length
-                    tool_name = data.get('tool_name', '')
+                    tool_name = data.get("tool_name", "")
                     self.assertLess(len(tool_name), 1000, "Tool name too long")
 
                     # Tool input should be validated
-                    tool_input = data.get('tool_input', {})
-                    if 'path' in tool_input:
-                        path = tool_input['path']
+                    tool_input = data.get("tool_input", {})
+                    if "path" in tool_input:
+                        path = tool_input["path"]
                         # Should detect path traversal attempts
                         self.assertTrue(isinstance(path, str))
 
@@ -186,7 +187,7 @@ class TestHookSecurityFixed(unittest.TestCase):
     def test_json_bomb_prevention(self):
         """Test prevention of JSON bomb attacks"""
         # Create a deeply nested JSON structure
-        json_bomb = '{"a":' * 1000 + '1' + '}' * 1000
+        json_bomb = '{"a":' * 1000 + "1" + "}" * 1000
 
         # Should not crash or consume excessive memory
         try:
@@ -298,7 +299,7 @@ def run_fixed_security_tests():
     test_classes = [
         TestSecurityManagerFixed,
         TestHookSecurityFixed,
-        TestSecurityIntegrationFixed
+        TestSecurityIntegrationFixed,
     ]
 
     for test_class in test_classes:
@@ -333,6 +334,6 @@ def run_fixed_security_tests():
     return security_critical
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     success = run_fixed_security_tests()
     sys.exit(0 if success else 1)

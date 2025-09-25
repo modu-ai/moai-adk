@@ -15,6 +15,8 @@ from datetime import datetime
 from moai_adk.core.config_manager import ConfigManager
 from moai_adk.core.security import SecurityManager, SecurityError
 from moai_adk.config import Config, RuntimeConfig
+
+
 class TestConfigManager:
     """Test cases for ConfigManager class."""
 
@@ -42,7 +44,7 @@ class TestConfigManager:
             template="standard",
             runtime=RuntimeConfig("python"),
             path=str(temp_dir / "test_project"),
-            tech_stack=["python"]
+            tech_stack=["python"],
         )
 
     def test_init_with_security_manager(self, security_manager):
@@ -55,7 +57,9 @@ class TestConfigManager:
         manager = ConfigManager()
         assert isinstance(manager.security_manager, SecurityManager)
 
-    def test_create_claude_settings_file_success(self, config_manager, temp_dir, sample_config):
+    def test_create_claude_settings_file_success(
+        self, config_manager, temp_dir, sample_config
+    ):
         """Test successful creation of Claude Code settings file."""
         # Mock security validation to return True
         config_manager.security_manager.validate_file_creation.return_value = True
@@ -80,15 +84,25 @@ class TestConfigManager:
 
         # Check hooks configuration (minimal: tag_validator + session_start hooks)
         pre_entries = settings_data["hooks"].get("PreToolUse", [])
-        all_commands = [hook.get("command", "") for entry in pre_entries for hook in entry.get("hooks", [])]
+        all_commands = [
+            hook.get("command", "")
+            for entry in pre_entries
+            for hook in entry.get("hooks", [])
+        ]
         assert any(cmd.endswith("tag_validator.py") for cmd in all_commands)
         assert "SessionStart" in settings_data["hooks"]
         session_start = settings_data["hooks"]["SessionStart"]
-        ss_cmds = [hook.get("command", "") for entry in session_start for hook in entry.get("hooks", [])]
+        ss_cmds = [
+            hook.get("command", "")
+            for entry in session_start
+            for hook in entry.get("hooks", [])
+        ]
         assert any(cmd.endswith("session_start_notice.py") for cmd in ss_cmds)
         assert any(cmd.endswith("language_detector.py") for cmd in ss_cmds)
 
-    def test_create_claude_settings_file_security_failure(self, config_manager, temp_dir, sample_config):
+    def test_create_claude_settings_file_security_failure(
+        self, config_manager, temp_dir, sample_config
+    ):
         """Test Claude settings file creation when security validation fails."""
         # Mock security validation to return False
         config_manager.security_manager.validate_file_creation.return_value = False
@@ -98,7 +112,9 @@ class TestConfigManager:
                 sample_config.project_path, sample_config
             )
 
-    def test_create_moai_config_file_success(self, config_manager, temp_dir, sample_config):
+    def test_create_moai_config_file_success(
+        self, config_manager, temp_dir, sample_config
+    ):
         """Test successful creation of MoAI config file."""
         # Mock security validation to return True
         config_manager.security_manager.validate_file_creation.return_value = True
@@ -144,7 +160,9 @@ class TestConfigManager:
         assert set(categories["steering"]) == {"VISION", "STRUCT", "TECH", "ADR"}
         assert "implementation" in categories and "quality" in categories
 
-    def test_create_moai_config_file_security_failure(self, config_manager, temp_dir, sample_config):
+    def test_create_moai_config_file_security_failure(
+        self, config_manager, temp_dir, sample_config
+    ):
         """Test MoAI config file creation when security validation fails."""
         # Mock security validation to return False
         config_manager.security_manager.validate_file_creation.return_value = False
@@ -198,7 +216,7 @@ class TestConfigManager:
             template_type="web",
             runtime="node",
             project_path=temp_dir / "nextjs_project",
-            tech_stack=["nextjs", "react"]
+            tech_stack=["nextjs", "react"],
         )
 
         # Create project directory
@@ -219,7 +237,9 @@ class TestConfigManager:
         assert scripts["start"] == "next start"
         assert scripts["lint"] == "next lint"
 
-    def test_create_initial_indexes_success(self, config_manager, temp_dir, sample_config):
+    def test_create_initial_indexes_success(
+        self, config_manager, temp_dir, sample_config
+    ):
         """Test successful creation of initial index files."""
         # Mock security validation to return True
         config_manager.security_manager.validate_file_creation.return_value = True
@@ -235,7 +255,9 @@ class TestConfigManager:
 
         # Check files exist
         tags_file = sample_config.project_path / ".moai" / "indexes" / "tags.json"
-        traceability_file = sample_config.project_path / ".moai" / "indexes" / "traceability.json"
+        traceability_file = (
+            sample_config.project_path / ".moai" / "indexes" / "traceability.json"
+        )
         state_file = sample_config.project_path / ".moai" / "indexes" / "state.json"
 
         assert tags_file.exists()
@@ -247,16 +269,36 @@ class TestConfigManager:
             tags_data = json.load(f)
 
         assert tags_data["metadata"]["version"] == "16-core"
-        assert set(tags_data["categories"]["SPEC"].keys()) == {"REQ", "SPEC", "DESIGN", "TASK"}
-        assert set(tags_data["categories"]["Steering"].keys()) == {"VISION", "STRUCT", "TECH", "ADR"}
+        assert set(tags_data["categories"]["SPEC"].keys()) == {
+            "REQ",
+            "SPEC",
+            "DESIGN",
+            "TASK",
+        }
+        assert set(tags_data["categories"]["Steering"].keys()) == {
+            "VISION",
+            "STRUCT",
+            "TECH",
+            "ADR",
+        }
 
         # Validate traceability.json
         with open(traceability_file, "r", encoding="utf-8") as f:
             traceability_data = json.load(f)
 
         assert "primary" in traceability_data["chains"]
-        assert traceability_data["chains"]["primary"] == ["REQ", "DESIGN", "TASK", "TEST"]
-        assert traceability_data["chains"]["steering"] == ["VISION", "STRUCT", "TECH", "ADR"]
+        assert traceability_data["chains"]["primary"] == [
+            "REQ",
+            "DESIGN",
+            "TASK",
+            "TEST",
+        ]
+        assert traceability_data["chains"]["steering"] == [
+            "VISION",
+            "STRUCT",
+            "TECH",
+            "ADR",
+        ]
 
         # Validate state.json
         with open(state_file, "r", encoding="utf-8") as f:
@@ -265,7 +307,9 @@ class TestConfigManager:
         assert state_data["project_name"] == sample_config.name
         assert state_data["current_stage"] == "INIT"
 
-    def test_create_initial_indexes_security_failure(self, config_manager, temp_dir, sample_config):
+    def test_create_initial_indexes_security_failure(
+        self, config_manager, temp_dir, sample_config
+    ):
         """Test initial indexes creation when security validation fails."""
         # Mock security validation to return False
         config_manager.security_manager.validate_file_creation.return_value = False
@@ -351,7 +395,7 @@ class TestConfigManager:
         assert nested_path.exists()
         assert nested_path.parent.exists()
 
-    @patch('builtins.open', side_effect=IOError("Permission denied"))
+    @patch("builtins.open", side_effect=IOError("Permission denied"))
     def test_write_json_file_io_error(self, mock_open, config_manager, temp_dir):
         """Test JSON file writing with IO error."""
         # Mock security validation to return True
@@ -392,7 +436,7 @@ class TestConfigManager:
         result = config_manager.validate_config_file(nonexistent_file)
         assert result is False
 
-    @patch('builtins.open', side_effect=IOError("Permission denied"))
+    @patch("builtins.open", side_effect=IOError("Permission denied"))
     def test_validate_config_file_io_error(self, mock_open, config_manager, temp_dir):
         """Test validation with IO error."""
         config_file = temp_dir / "config.json"
@@ -423,7 +467,7 @@ class TestConfigManager:
 
         assert backup_data == original_data
 
-    @patch('shutil.copy2', side_effect=IOError("Disk full"))
+    @patch("shutil.copy2", side_effect=IOError("Disk full"))
     def test_backup_config_file_io_error(self, mock_copy, config_manager, temp_dir):
         """Test config file backup with IO error."""
         original_file = temp_dir / "config.json"
@@ -432,7 +476,9 @@ class TestConfigManager:
         with pytest.raises(IOError):
             config_manager.backup_config_file(original_file)
 
-    def test_integration_full_config_setup(self, config_manager, temp_dir, sample_config):
+    def test_integration_full_config_setup(
+        self, config_manager, temp_dir, sample_config
+    ):
         """Test complete configuration setup workflow."""
         # Mock security validation to return True
         config_manager.security_manager.validate_file_creation.return_value = True
@@ -511,7 +557,7 @@ class TestConfigManager:
             "project": "테스트 프로젝트",
             "description": "Unicode characters: 한글, 日本語, Emoji 🚀",
             "numbers": [1, 2, 3],
-            "nested": {"key": "value"}
+            "nested": {"key": "value"},
         }
 
         file_path = temp_dir / "unicode_test.json"
@@ -527,7 +573,9 @@ class TestConfigManager:
         assert "\n" in content  # Should have newlines from indentation
         assert "  " in content  # Should have indentation spaces
 
-    def test_config_timestamps_and_metadata(self, config_manager, temp_dir, sample_config):
+    def test_config_timestamps_and_metadata(
+        self, config_manager, temp_dir, sample_config
+    ):
         """Test that configuration files contain proper timestamps and metadata."""
         # Mock security validation to return True
         config_manager.security_manager.validate_file_creation.return_value = True
@@ -562,5 +610,7 @@ class TestConfigManager:
                 index_data = json.load(f)
 
             if "metadata" in index_data and "generated_at" in index_data["metadata"]:
-                generated_time = datetime.fromisoformat(index_data["metadata"]["generated_at"])
+                generated_time = datetime.fromisoformat(
+                    index_data["metadata"]["generated_at"]
+                )
                 assert before_time <= generated_time <= after_time

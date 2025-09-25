@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 class GitCommandError(Exception):
     """Git 명령어 실행 오류"""
+
     def __init__(self, command: list[str], returncode: int, stderr: str):
         self.command = command
         self.returncode = returncode
@@ -44,8 +45,13 @@ class GitHelper:
 
         try:
             result = subprocess.run(
-                cmd, capture_output=True, text=True, check=False,
-                timeout=timeout, cwd=self.project_root, env=self.git_env
+                cmd,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=timeout,
+                cwd=self.project_root,
+                env=self.git_env,
             )
 
             if check and result.returncode != 0:
@@ -135,8 +141,10 @@ class GitHelper:
         self.run_command(cmd)
 
     def push(
-        self, remote: str = "origin", branch: str | None = None,
-        set_upstream: bool = False
+        self,
+        remote: str = "origin",
+        branch: str | None = None,
+        set_upstream: bool = False,
     ) -> None:
         """푸시"""
         if branch is None:
@@ -159,9 +167,9 @@ class GitHelper:
 
     def get_commit_info(self, commit: str = "HEAD") -> dict[str, str]:
         """커밋 정보 반환"""
-        result = self.run_command([
-            "git", "show", "--format=%H|%an|%ad|%s", "--no-patch", commit
-        ])
+        result = self.run_command(
+            ["git", "show", "--format=%H|%an|%ad|%s", "--no-patch", commit]
+        )
 
         parts = result.stdout.strip().split("|", 3)
         if len(parts) >= 4:
@@ -169,7 +177,7 @@ class GitHelper:
                 "hash": parts[0],
                 "author": parts[1],
                 "date": parts[2],
-                "message": parts[3]
+                "message": parts[3],
             }
         return {}
 

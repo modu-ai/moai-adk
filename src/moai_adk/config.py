@@ -12,6 +12,7 @@ from pathlib import Path
 @dataclass
 class RuntimeConfig:
     """@TASK:RUNTIME-CONFIG-001 Runtime configuration for the project."""
+
     name: str
     performance: int = 4
 
@@ -30,6 +31,7 @@ class RuntimeConfig:
 @dataclass
 class Config:
     """@TASK:CONFIG-MAIN-001 Main configuration for MoAI-ADK projects."""
+
     name: str
     template: str = "standard"
     runtime: RuntimeConfig = field(default_factory=lambda: RuntimeConfig("python"))
@@ -49,28 +51,28 @@ class Config:
     def __init__(self, name: str, **kwargs):
         """@TASK:CONFIG-INIT-001 Initialize Config with backward compatibility for project_path parameter."""
         # Handle backward compatibility: project_path -> path
-        if 'project_path' in kwargs and 'path' not in kwargs:
-            kwargs['path'] = kwargs.pop('project_path')
-        elif 'project_path' in kwargs:
+        if "project_path" in kwargs and "path" not in kwargs:
+            kwargs["path"] = kwargs.pop("project_path")
+        elif "project_path" in kwargs:
             # Both provided, remove project_path
-            kwargs.pop('project_path')
+            kwargs.pop("project_path")
 
         # Set defaults
         self.name = name
-        self.template = kwargs.get('template', 'standard')
-        self.runtime = kwargs.get('runtime', RuntimeConfig("python"))
-        self.tech_stack = kwargs.get('tech_stack', [])
-        self.path = kwargs.get('path', "")
-        self.backup_enabled = kwargs.get('backup_enabled', False)
-        self.skip_install = kwargs.get('skip_install', False)
-        self.silent = kwargs.get('silent', False)
-        self.is_existing_project = kwargs.get('is_existing_project', False)
-        self.force_overwrite = kwargs.get('force_overwrite', False)
-        self.force_copy = kwargs.get('force_copy', False)
-        self.include_github = kwargs.get('include_github', True)
-        self.initialize_git = kwargs.get('initialize_git', True)
-        self.created_at = kwargs.get('created_at')
-        self.templates_mode = kwargs.get('templates_mode', 'copy')
+        self.template = kwargs.get("template", "standard")
+        self.runtime = kwargs.get("runtime", RuntimeConfig("python"))
+        self.tech_stack = kwargs.get("tech_stack", [])
+        self.path = kwargs.get("path", "")
+        self.backup_enabled = kwargs.get("backup_enabled", False)
+        self.skip_install = kwargs.get("skip_install", False)
+        self.silent = kwargs.get("silent", False)
+        self.is_existing_project = kwargs.get("is_existing_project", False)
+        self.force_overwrite = kwargs.get("force_overwrite", False)
+        self.force_copy = kwargs.get("force_copy", False)
+        self.include_github = kwargs.get("include_github", True)
+        self.initialize_git = kwargs.get("initialize_git", True)
+        self.created_at = kwargs.get("created_at")
+        self.templates_mode = kwargs.get("templates_mode", "copy")
 
         self.__post_init__()
 
@@ -91,7 +93,9 @@ class Config:
 
         # Allow alphanumeric, hyphens, underscores, and dots
         if not self.name.replace("-", "").replace("_", "").replace(".", "").isalnum():
-            raise ValueError(f"❌ Project name '{self.name}' contains invalid characters. Use only letters, numbers, dots (.), hyphens (-), and underscores (_)")
+            raise ValueError(
+                f"❌ Project name '{self.name}' contains invalid characters. Use only letters, numbers, dots (.), hyphens (-), and underscores (_)"
+            )
 
         if self.template not in ["minimal", "standard", "enterprise"]:
             raise ValueError(f"Unsupported template: {self.template}")
@@ -102,14 +106,38 @@ class Config:
 
         # Validate tech stack
         valid_tech = {
-            "nextjs", "react", "vue", "nuxt", "angular", "svelte",
-            "typescript", "javascript", "python",
-            "tailwind", "scss", "css",
-            "node", "deno", "bun",
-            "express", "fastapi", "django", "flask", "spring", "springboot", "spring-boot",
-            "postgresql", "mysql", "sqlite", "mongodb",
-            "redis", "docker", "kubernetes",
-            "rust", "go", "java"
+            "nextjs",
+            "react",
+            "vue",
+            "nuxt",
+            "angular",
+            "svelte",
+            "typescript",
+            "javascript",
+            "python",
+            "tailwind",
+            "scss",
+            "css",
+            "node",
+            "deno",
+            "bun",
+            "express",
+            "fastapi",
+            "django",
+            "flask",
+            "spring",
+            "springboot",
+            "spring-boot",
+            "postgresql",
+            "mysql",
+            "sqlite",
+            "mongodb",
+            "redis",
+            "docker",
+            "kubernetes",
+            "rust",
+            "go",
+            "java",
         }
 
         for tech in self.tech_stack:
@@ -138,7 +166,11 @@ class Config:
 
     def get_template_context(self) -> dict[str, str | int | list[str]]:
         """Get template rendering context."""
-        tech_stack_str = ", ".join(self.tech_stack) if self.tech_stack else f"{self.runtime.name}, {self.template}"
+        tech_stack_str = (
+            ", ".join(self.tech_stack)
+            if self.tech_stack
+            else f"{self.runtime.name}, {self.template}"
+        )
 
         return {
             "project_name": self.name,
@@ -148,8 +180,12 @@ class Config:
             "runtime_performance": self.runtime.performance,
             "tech_stack": tech_stack_str,
             "tech_stack_list": self.tech_stack,
-            "created_date": f"{self.created_at.year}. {self.created_at.month}. {self.created_at.day}." if self.created_at else "",
-            "created_year": self.created_at.year if self.created_at else datetime.now().year,
+            "created_date": f"{self.created_at.year}. {self.created_at.month}. {self.created_at.day}."
+            if self.created_at
+            else "",
+            "created_year": self.created_at.year
+            if self.created_at
+            else datetime.now().year,
             "version": "1.0",
         }
 

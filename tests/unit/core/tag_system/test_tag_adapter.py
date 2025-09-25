@@ -15,7 +15,7 @@ from unittest.mock import Mock, patch, MagicMock
 from moai_adk.core.tag_system.adapter import (
     TagIndexAdapter,
     ApiCompatibilityError,
-    AdapterConfiguration
+    AdapterConfiguration,
 )
 from moai_adk.core.tag_system.database import TagDatabaseManager
 
@@ -25,13 +25,12 @@ class TestTagIndexAdapter:
 
     def setup_method(self):
         """각 테스트 전 초기화"""
-        self.temp_db = Path(tempfile.mktemp(suffix='.db'))
-        self.temp_json = Path(tempfile.mktemp(suffix='.json'))
+        self.temp_db = Path(tempfile.mktemp(suffix=".db"))
+        self.temp_json = Path(tempfile.mktemp(suffix=".json"))
 
         # 어댑터 초기화 (SQLite 백엔드 사용)
         self.adapter = TagIndexAdapter(
-            database_path=self.temp_db,
-            json_fallback_path=self.temp_json
+            database_path=self.temp_db, json_fallback_path=self.temp_json
         )
 
     def teardown_method(self):
@@ -53,13 +52,13 @@ class TestTagIndexAdapter:
 
         # 기존 API와 동일한 메서드 존재 확인
         expected_methods = [
-            'load_index',
-            'save_index',
-            'initialize_index',
-            'validate_index_schema',
-            'process_file_change',
-            'start_watching',
-            'stop_watching'
+            "load_index",
+            "save_index",
+            "initialize_index",
+            "validate_index_schema",
+            "process_file_change",
+            "start_watching",
+            "stop_watching",
         ]
 
         # WHEN: 어댑터 메서드 존재 확인
@@ -70,9 +69,7 @@ class TestTagIndexAdapter:
         index_data = self.adapter.load_index()
 
         # 기존 JSON 구조와 정확히 일치해야 함
-        expected_structure_keys = [
-            "metadata", "categories", "chains", "files"
-        ]
+        expected_structure_keys = ["metadata", "categories", "chains", "files"]
         for key in expected_structure_keys:
             assert key in index_data, f"Missing key: {key}"
 
@@ -96,7 +93,7 @@ class TestTagIndexAdapter:
         """
         # GIVEN: 어댑터 초기화 및 테스트 파일
         self.adapter.initialize()
-        test_file = Path(tempfile.mktemp(suffix='.md'))
+        test_file = Path(tempfile.mktemp(suffix=".md"))
         test_content = """
         # 요구사항 문서
 
@@ -156,7 +153,7 @@ class TestTagIndexAdapter:
         self.adapter.on_file_changed = callback_handler
 
         # WHEN: 파일 변경 이벤트 발생
-        test_file = Path(tempfile.mktemp(suffix='.md'))
+        test_file = Path(tempfile.mktemp(suffix=".md"))
         test_file.write_text("@REQ:CALLBACK-TEST-001 콜백 테스트")
 
         self.adapter.process_file_change(test_file, "created")
@@ -166,9 +163,9 @@ class TestTagIndexAdapter:
 
         event = received_events[0]
         # 기존 IndexUpdateEvent와 동일한 구조
-        assert hasattr(event, 'event_type')
-        assert hasattr(event, 'file_path')
-        assert hasattr(event, 'timestamp')
+        assert hasattr(event, "event_type")
+        assert hasattr(event, "file_path")
+        assert hasattr(event, "timestamp")
 
         assert event.event_type == "created"
         assert event.file_path == test_file
@@ -188,23 +185,23 @@ class TestTagIndexAdapter:
                 "created_at": "2024-01-01T00:00:00Z",
                 "updated_at": "2024-01-01T00:00:00Z",
                 "version": "1.0",
-                "total_tags": 0
+                "total_tags": 0,
             },
             "categories": {
                 "PRIMARY": {},
                 "STEERING": {},
                 "IMPLEMENTATION": {},
-                "QUALITY": {}
+                "QUALITY": {},
             },
             "chains": [],
-            "files": {}
+            "files": {},
         }
 
         invalid_schema = {
             "metadata": {
                 "version": "1.0"  # 필수 필드 누락
             },
-            "categories": "invalid_type"  # 잘못된 타입
+            "categories": "invalid_type",  # 잘못된 타입
         }
 
         # WHEN & THEN: 스키마 검증이 기존과 동일해야 함
@@ -218,11 +215,11 @@ class TestTagIndexAdapter:
         Then: 기존 JSON 파일 기반 동작과 완전히 동일해야 함
         """
         # GIVEN: SQLite 사용 불가능 시뮬레이션
-        with patch.object(self.adapter, '_sqlite_available', False):
+        with patch.object(self.adapter, "_sqlite_available", False):
             self.adapter.initialize()
 
             # WHEN: JSON fallback 모드로 동작
-            test_file = Path(tempfile.mktemp(suffix='.md'))
+            test_file = Path(tempfile.mktemp(suffix=".md"))
             test_file.write_text("@REQ:FALLBACK-001 fallback 모드 테스트")
 
             self.adapter.process_file_change(test_file, "created")
@@ -254,7 +251,7 @@ class TestTagIndexAdapter:
         self.adapter.initialize()
 
         # WHEN: 감시 상태 확인 (기존 API와 동일)
-        assert hasattr(self.adapter, 'is_watching')
+        assert hasattr(self.adapter, "is_watching")
         assert self.adapter.is_watching is False
 
         # 감시 시작
@@ -279,11 +276,11 @@ class TestTagIndexAdapter:
         # 1000개 TAG가 포함된 파일 생성
         large_content = []
         for i in range(1000):
-            category = ['REQ', 'DESIGN', 'TASK', 'TEST'][i % 4]
+            category = ["REQ", "DESIGN", "TASK", "TEST"][i % 4]
             large_content.append(f"@{category}:PERF-TEST-{i:04d} 성능 테스트 TAG {i}")
 
-        test_file = Path(tempfile.mktemp(suffix='.md'))
-        test_file.write_text('\n'.join(large_content))
+        test_file = Path(tempfile.mktemp(suffix=".md"))
+        test_file.write_text("\n".join(large_content))
 
         # WHEN: 대용량 파일 처리 성능 측정
         start_time = time.time()
@@ -318,22 +315,22 @@ class TestTagIndexAdapter:
                 "created_at": "2024-01-01T00:00:00Z",
                 "updated_at": "2024-01-01T00:00:00Z",
                 "version": "1.0",
-                "total_tags": 2
+                "total_tags": 2,
             },
             "categories": {
                 "PRIMARY": {
                     "REQ": {
                         "USER-MIGRATION-001": {
                             "description": "마이그레이션 테스트",
-                            "file": "/test/migration.md"
+                            "file": "/test/migration.md",
                         }
                     },
                     "DESIGN": {
                         "ARCH-MIGRATION-001": {
                             "description": "아키텍처 마이그레이션",
-                            "file": "/test/migration.md"
+                            "file": "/test/migration.md",
                         }
-                    }
+                    },
                 }
             },
             "chains": [],
@@ -342,18 +339,18 @@ class TestTagIndexAdapter:
                     {
                         "category": "REQ",
                         "identifier": "USER-MIGRATION-001",
-                        "description": "마이그레이션 테스트"
+                        "description": "마이그레이션 테스트",
                     },
                     {
                         "category": "DESIGN",
                         "identifier": "ARCH-MIGRATION-001",
-                        "description": "아키텍처 마이그레이션"
-                    }
+                        "description": "아키텍처 마이그레이션",
+                    },
                 ]
-            }
+            },
         }
 
-        with open(self.temp_json, 'w', encoding='utf-8') as f:
+        with open(self.temp_json, "w", encoding="utf-8") as f:
             json.dump(json_data, f, indent=2, ensure_ascii=False)
 
         # WHEN: JSON에서 SQLite로 마이그레이션
@@ -368,15 +365,20 @@ class TestTagIndexAdapter:
         assert "ARCH-MIGRATION-001" in migrated_data["categories"]["PRIMARY"]["DESIGN"]
 
         # 역방향 마이그레이션 테스트
-        export_json = Path(tempfile.mktemp(suffix='.json'))
+        export_json = Path(tempfile.mktemp(suffix=".json"))
         self.adapter.export_to_json(export_json)
 
-        with open(export_json, 'r', encoding='utf-8') as f:
+        with open(export_json, "r", encoding="utf-8") as f:
             exported_data = json.load(f)
 
         # 원본 데이터와 동일해야 함
         assert exported_data["metadata"]["total_tags"] == 2
-        assert exported_data["categories"]["PRIMARY"]["REQ"]["USER-MIGRATION-001"]["description"] == "마이그레이션 테스트"
+        assert (
+            exported_data["categories"]["PRIMARY"]["REQ"]["USER-MIGRATION-001"][
+                "description"
+            ]
+            == "마이그레이션 테스트"
+        )
 
         # 정리
         export_json.unlink()
@@ -399,8 +401,10 @@ class TestTagIndexAdapter:
             try:
                 # 각 스레드에서 파일 생성 및 처리
                 for i in range(50):
-                    test_file = Path(tempfile.mktemp(suffix='.md'))
-                    test_file.write_text(f"@REQ:CONCURRENT-{thread_id:02d}-{i:02d} 동시 접근 테스트")
+                    test_file = Path(tempfile.mktemp(suffix=".md"))
+                    test_file.write_text(
+                        f"@REQ:CONCURRENT-{thread_id:02d}-{i:02d} 동시 접근 테스트"
+                    )
 
                     # 기존 API와 동일한 방식으로 호출
                     self.adapter.process_file_change(test_file, "created")
@@ -440,27 +444,27 @@ class TestTagIndexAdapter:
         # GIVEN: 어댑터 초기화 및 데이터 준비
         self.adapter.initialize()
 
-        test_file = Path(tempfile.mktemp(suffix='.md'))
+        test_file = Path(tempfile.mktemp(suffix=".md"))
         test_file.write_text("@REQ:DEBUG-001 디버깅 테스트")
         self.adapter.process_file_change(test_file, "created")
 
         # WHEN: 내부 상태 조회 (기존 API 메서드들)
         # 프로퍼티 기반 상태 확인
-        assert hasattr(self.adapter, 'is_watching')
+        assert hasattr(self.adapter, "is_watching")
 
         # 설정 정보 조회 (새로운 디버깅 기능)
         config_info = self.adapter.get_configuration_info()
 
         # THEN: 유용한 디버깅 정보 제공
-        assert 'backend_type' in config_info  # 'sqlite' 또는 'json'
-        assert 'database_path' in config_info
-        assert 'performance_stats' in config_info
+        assert "backend_type" in config_info  # 'sqlite' 또는 'json'
+        assert "database_path" in config_info
+        assert "performance_stats" in config_info
 
         # 성능 통계 확인
-        perf_stats = config_info['performance_stats']
-        assert 'total_tags' in perf_stats
-        assert 'query_count' in perf_stats
-        assert 'avg_query_time' in perf_stats
+        perf_stats = config_info["performance_stats"]
+        assert "total_tags" in perf_stats
+        assert "query_count" in perf_stats
+        assert "avg_query_time" in perf_stats
 
         # 정리
         test_file.unlink()
@@ -475,11 +479,11 @@ class TestTagIndexAdapter:
         self.adapter.initialize()
 
         # WHEN: 데이터베이스 손상 시뮬레이션
-        with patch.object(self.adapter, '_database') as mock_db:
+        with patch.object(self.adapter, "_database") as mock_db:
             mock_db.insert_tag.side_effect = Exception("Database connection lost")
 
             # 오류 발생 시에도 JSON fallback으로 동작해야 함
-            test_file = Path(tempfile.mktemp(suffix='.md'))
+            test_file = Path(tempfile.mktemp(suffix=".md"))
             test_file.write_text("@REQ:ERROR-HANDLING-001 오류 처리 테스트")
 
             # 예외 발생하지 않고 fallback으로 처리
@@ -546,17 +550,27 @@ class TestTagIndexAdapter:
         """
         # GIVEN: REQ 카테고리 TAG들을 포함한 테스트 데이터
         test_index = {
-            "metadata": {"created_at": "2024-01-01T00:00:00", "version": "1.0", "total_tags": 2},
+            "metadata": {
+                "created_at": "2024-01-01T00:00:00",
+                "version": "1.0",
+                "total_tags": 2,
+            },
             "categories": {
                 "PRIMARY": {
                     "REQ": {
-                        "REQ:USER-AUTH-001": {"description": "사용자 인증", "file": "auth.py"},
-                        "REQ:USER-PROFILE-001": {"description": "사용자 프로필", "file": "profile.py"}
+                        "REQ:USER-AUTH-001": {
+                            "description": "사용자 인증",
+                            "file": "auth.py",
+                        },
+                        "REQ:USER-PROFILE-001": {
+                            "description": "사용자 프로필",
+                            "file": "profile.py",
+                        },
                     }
                 }
             },
             "chains": [],
-            "files": {}
+            "files": {},
         }
 
         self.adapter.initialize()
@@ -588,24 +602,47 @@ class TestTagIndexAdapter:
         """
         # GIVEN: 체인 구조의 테스트 데이터 (아직 참조 관계는 구현되지 않음)
         test_index = {
-            "metadata": {"created_at": "2024-01-01T00:00:00", "version": "1.0", "total_tags": 4},
+            "metadata": {
+                "created_at": "2024-01-01T00:00:00",
+                "version": "1.0",
+                "total_tags": 4,
+            },
             "categories": {
                 "PRIMARY": {
-                    "REQ": {"REQ:USER-AUTH-001": {"description": "사용자 인증", "file": "spec.md"}},
-                    "DESIGN": {"DESIGN:JWT-001": {"description": "JWT 토큰 설계", "file": "design.md"}},
-                    "TASK": {"TASK:API-001": {"description": "API 구현", "file": "api.py"}},
-                    "TEST": {"TEST:UNIT-001": {"description": "단위 테스트", "file": "test_api.py"}}
+                    "REQ": {
+                        "REQ:USER-AUTH-001": {
+                            "description": "사용자 인증",
+                            "file": "spec.md",
+                        }
+                    },
+                    "DESIGN": {
+                        "DESIGN:JWT-001": {
+                            "description": "JWT 토큰 설계",
+                            "file": "design.md",
+                        }
+                    },
+                    "TASK": {
+                        "TASK:API-001": {"description": "API 구현", "file": "api.py"}
+                    },
+                    "TEST": {
+                        "TEST:UNIT-001": {
+                            "description": "단위 테스트",
+                            "file": "test_api.py",
+                        }
+                    },
                 }
             },
             "chains": [],
-            "files": {}
+            "files": {},
         }
 
         self.adapter.initialize()
         self.adapter.save_index(test_index)
 
         # WHEN: get_traceability_chain 호출
-        chain = self.adapter.get_traceability_chain("REQ:USER-AUTH-001", direction="forward")
+        chain = self.adapter.get_traceability_chain(
+            "REQ:USER-AUTH-001", direction="forward"
+        )
 
         # THEN: 체인 구조 검증
         assert isinstance(chain, dict)

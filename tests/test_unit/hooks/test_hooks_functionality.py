@@ -47,13 +47,15 @@ class TestSessionStartFunctionality:
             pytest.skip("session_start_notice.py not found")
 
         # Mock .moai directory exists
-        with patch.object(Path, 'exists') as mock_exists:
+        with patch.object(Path, "exists") as mock_exists:
             mock_exists.return_value = True
             notifier = session_start_notice.SessionNotifier(self.project_root)
 
             # Should detect MoAI project
             status = notifier.is_moai_project()
-            assert isinstance(status, bool), "Should return boolean for MoAI project status"
+            assert isinstance(status, bool), (
+                "Should return boolean for MoAI project status"
+            )
 
     def test_should_check_development_guide_violations(self):
         """Test development guide violation detection
@@ -66,7 +68,7 @@ class TestSessionStartFunctionality:
         except ImportError:
             pytest.skip("session_start_notice.py not found")
 
-        with patch.object(Path, 'exists', return_value=True):
+        with patch.object(Path, "exists", return_value=True):
             notifier = session_start_notice.SessionNotifier(self.project_root)
 
             # Should check constitution status
@@ -84,7 +86,7 @@ class TestSessionStartFunctionality:
         except ImportError:
             pytest.skip("session_start_notice.py not found")
 
-        with patch.object(Path, 'exists', return_value=False):
+        with patch.object(Path, "exists", return_value=False):
             notifier = session_start_notice.SessionNotifier(self.project_root)
 
             # Should detect missing configurations
@@ -115,16 +117,23 @@ class TestFileMonitorFunctionality:
         # This test will fail initially as integration not done
         try:
             import file_monitor
+
             # After integration, should have unified file monitoring
             monitor = file_monitor.FileMonitor(self.project_root)
 
             # Should have file change detection capability
-            assert hasattr(monitor, 'watch_files'), "Should have file watching capability"
-            assert hasattr(monitor, 'on_file_changed'), "Should have file change handler"
+            assert hasattr(monitor, "watch_files"), (
+                "Should have file watching capability"
+            )
+            assert hasattr(monitor, "on_file_changed"), (
+                "Should have file change handler"
+            )
 
         except ImportError:
             # Expected to fail before integration
-            assert False, "file_monitor.py integration not completed - should exist after merge"
+            assert False, (
+                "file_monitor.py integration not completed - should exist after merge"
+            )
 
     def test_should_create_auto_checkpoints(self):
         """Test auto checkpoint creation functionality
@@ -135,15 +144,22 @@ class TestFileMonitorFunctionality:
         # This test will fail initially as integration not done
         try:
             import file_monitor
+
             monitor = file_monitor.FileMonitor(self.project_root)
 
             # Should have checkpoint creation capability
-            assert hasattr(monitor, 'create_checkpoint'), "Should have checkpoint creation"
-            assert hasattr(monitor, 'should_create_checkpoint'), "Should have checkpoint logic"
+            assert hasattr(monitor, "create_checkpoint"), (
+                "Should have checkpoint creation"
+            )
+            assert hasattr(monitor, "should_create_checkpoint"), (
+                "Should have checkpoint logic"
+            )
 
         except ImportError:
             # Expected to fail before integration
-            assert False, "file_monitor.py integration not completed - should include checkpoint functionality"
+            assert False, (
+                "file_monitor.py integration not completed - should include checkpoint functionality"
+            )
 
     def test_should_preserve_file_watcher_functionality(self):
         """Test that current file_watcher.py functionality is preserved
@@ -154,8 +170,11 @@ class TestFileMonitorFunctionality:
         # Document current file_watcher functionality
         try:
             import file_watcher
+
             # This exists now but should be merged into file_monitor
-            assert hasattr(file_watcher, 'MoAIFileWatcher'), "Current file watcher class exists"
+            assert hasattr(file_watcher, "MoAIFileWatcher"), (
+                "Current file watcher class exists"
+            )
         except ImportError:
             pytest.skip("file_watcher.py not found")
 
@@ -168,8 +187,11 @@ class TestFileMonitorFunctionality:
         # Document current auto_checkpoint functionality
         try:
             import auto_checkpoint
+
             # This exists now but should be merged into file_monitor
-            assert hasattr(auto_checkpoint, 'create_checkpoint'), "Current checkpoint function exists"
+            assert hasattr(auto_checkpoint, "create_checkpoint"), (
+                "Current checkpoint function exists"
+            )
         except ImportError:
             pytest.skip("auto_checkpoint.py not found")
 
@@ -202,11 +224,13 @@ class TestPreWriteGuardFunctionality:
         sensitive_content = "API_KEY=sk-1234567890abcdef"
 
         # Should detect secrets in content
-        with patch('builtins.open', mock_open(read_data=sensitive_content)):
+        with patch("builtins.open", mock_open(read_data=sensitive_content)):
             # Function signature may vary, test existence
-            assert hasattr(pre_write_guard, 'check_secrets') or \
-                   hasattr(pre_write_guard, 'has_secrets') or \
-                   'secret' in dir(pre_write_guard), "Should have secret detection capability"
+            assert (
+                hasattr(pre_write_guard, "check_secrets")
+                or hasattr(pre_write_guard, "has_secrets")
+                or "secret" in dir(pre_write_guard)
+            ), "Should have secret detection capability"
 
     def test_should_block_dangerous_file_paths(self):
         """Test dangerous file path blocking
@@ -219,16 +243,14 @@ class TestPreWriteGuardFunctionality:
         except ImportError:
             pytest.skip("pre_write_guard.py not found")
 
-        dangerous_paths = [
-            "/etc/passwd",
-            "~/.ssh/id_rsa",
-            ".env"
-        ]
+        dangerous_paths = ["/etc/passwd", "~/.ssh/id_rsa", ".env"]
 
         # Should have path validation
-        assert hasattr(pre_write_guard, 'is_safe_path') or \
-               hasattr(pre_write_guard, 'validate_path') or \
-               'path' in dir(pre_write_guard), "Should have path validation capability"
+        assert (
+            hasattr(pre_write_guard, "is_safe_path")
+            or hasattr(pre_write_guard, "validate_path")
+            or "path" in dir(pre_write_guard)
+        ), "Should have path validation capability"
 
 
 class TestRemovedHooksFunctionality:
@@ -273,7 +295,9 @@ class TestRemovedHooksFunctionality:
             assert True, "check_style.py correctly removed"
         else:
             # Should fail in RED phase - file still exists
-            assert False, "check_style.py should be removed and replaced with native linters"
+            assert False, (
+                "check_style.py should be removed and replaced with native linters"
+            )
 
 
 if __name__ == "__main__":

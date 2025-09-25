@@ -24,6 +24,7 @@ class TransactionError(Exception):
 @dataclass
 class TagSearchResult:
     """TAG 검색 결과"""
+
     id: int
     category: str
     identifier: str
@@ -50,11 +51,11 @@ class DatabaseConnection:
 
     def get_connection(self) -> sqlite3.Connection:
         """스레드별 독립적인 연결 반환"""
-        if not hasattr(self._local, 'connection') or self._local.connection is None:
+        if not hasattr(self._local, "connection") or self._local.connection is None:
             self._local.connection = sqlite3.connect(
                 str(self.db_path),
                 check_same_thread=False,
-                timeout=30.0  # 30초 타임아웃
+                timeout=30.0,  # 30초 타임아웃
             )
             self._local.connection.row_factory = sqlite3.Row
             # WAL 모드로 동시성 개선
@@ -66,7 +67,7 @@ class DatabaseConnection:
 
     def close(self):
         """현재 스레드의 연결 종료"""
-        if hasattr(self._local, 'connection') and self._local.connection:
+        if hasattr(self._local, "connection") and self._local.connection:
             self._local.connection.close()
             self._local.connection = None
 
@@ -105,7 +106,7 @@ class TagDatabaseManager:
 
     # SPEC-009 스키마 정의
     SCHEMA_SQL = {
-        'tags': """
+        "tags": """
         CREATE TABLE IF NOT EXISTS tags (
             id INTEGER PRIMARY KEY,
             category TEXT NOT NULL,
@@ -117,8 +118,7 @@ class TagDatabaseManager:
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """,
-
-        'tag_references': """
+        "tag_references": """
         CREATE TABLE IF NOT EXISTS tag_references (
             id INTEGER PRIMARY KEY,
             source_tag_id INTEGER NOT NULL,
@@ -128,30 +128,27 @@ class TagDatabaseManager:
             FOREIGN KEY (source_tag_id) REFERENCES tags(id) ON DELETE CASCADE,
             FOREIGN KEY (target_tag_id) REFERENCES tags(id) ON DELETE CASCADE
         )
-        """
+        """,
     }
 
     # 인덱스 정의
     INDEX_SQL = {
-        'idx_tags_category_identifier': """
+        "idx_tags_category_identifier": """
         CREATE INDEX IF NOT EXISTS idx_tags_category_identifier
         ON tags(category, identifier)
         """,
-
-        'idx_tags_file_path': """
+        "idx_tags_file_path": """
         CREATE INDEX IF NOT EXISTS idx_tags_file_path
         ON tags(file_path)
         """,
-
-        'idx_tag_references_source': """
+        "idx_tag_references_source": """
         CREATE INDEX IF NOT EXISTS idx_tag_references_source
         ON tag_references(source_tag_id)
         """,
-
-        'idx_tag_references_target': """
+        "idx_tag_references_target": """
         CREATE INDEX IF NOT EXISTS idx_tag_references_target
         ON tag_references(target_tag_id)
-        """
+        """,
     }
 
     def __init__(self, db_path: Path):
@@ -210,24 +207,24 @@ class TagDatabaseManager:
         schema = {}
 
         # tags 테이블 스키마
-        schema['tags'] = {
-            'id': 'INTEGER PRIMARY KEY',
-            'category': 'TEXT NOT NULL',
-            'identifier': 'TEXT NOT NULL',
-            'description': 'TEXT',
-            'file_path': 'TEXT NOT NULL',
-            'line_number': 'INTEGER',
-            'created_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-            'updated_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+        schema["tags"] = {
+            "id": "INTEGER PRIMARY KEY",
+            "category": "TEXT NOT NULL",
+            "identifier": "TEXT NOT NULL",
+            "description": "TEXT",
+            "file_path": "TEXT NOT NULL",
+            "line_number": "INTEGER",
+            "created_at": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+            "updated_at": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
         }
 
         # tag_references 테이블 스키마
-        schema['tag_references'] = {
-            'id': 'INTEGER PRIMARY KEY',
-            'source_tag_id': 'INTEGER NOT NULL',
-            'target_tag_id': 'INTEGER NOT NULL',
-            'reference_type': 'TEXT DEFAULT "chain"',
-            'created_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+        schema["tag_references"] = {
+            "id": "INTEGER PRIMARY KEY",
+            "source_tag_id": "INTEGER NOT NULL",
+            "target_tag_id": "INTEGER NOT NULL",
+            "reference_type": 'TEXT DEFAULT "chain"',
+            "created_at": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
         }
 
         return schema
@@ -236,15 +233,37 @@ class TagDatabaseManager:
         """인덱스 목록 반환"""
         return list(self.INDEX_SQL.keys())
 
-    def insert_tag(self, category: str, identifier: str, description: str | None = None,
-                   file_path: str = "", line_number: int | None = None) -> int:
+    def insert_tag(
+        self,
+        category: str,
+        identifier: str,
+        description: str | None = None,
+        file_path: str = "",
+        line_number: int | None = None,
+    ) -> int:
         """TAG 삽입 (성능 모니터링 포함)"""
         start_time = time.time()
 
         # 입력 검증 (TRUST 원칙: Secured)
-        if category not in ['REQ', 'DESIGN', 'TASK', 'TEST', 'VISION', 'STRUCT',
-                           'TECH', 'ADR', 'FEATURE', 'API', 'UI', 'DATA',
-                           'PERF', 'SEC', 'DOCS', 'TAG', 'CUSTOM']:
+        if category not in [
+            "REQ",
+            "DESIGN",
+            "TASK",
+            "TEST",
+            "VISION",
+            "STRUCT",
+            "TECH",
+            "ADR",
+            "FEATURE",
+            "API",
+            "UI",
+            "DATA",
+            "PERF",
+            "SEC",
+            "DOCS",
+            "TAG",
+            "CUSTOM",
+        ]:
             raise ValueError(f"Invalid category: {category}")
 
         if not identifier:
@@ -256,9 +275,9 @@ class TagDatabaseManager:
             VALUES (?, ?, ?, ?, ?)
             """
 
-            cursor = self._database.execute(sql, (
-                category, identifier, description or "", file_path, line_number
-            ))
+            cursor = self._database.execute(
+                sql, (category, identifier, description or "", file_path, line_number)
+            )
             self._database.commit()
 
             tag_id = cursor.lastrowid
@@ -319,7 +338,9 @@ class TagDatabaseManager:
 
         return [dict(row) for row in cursor.fetchall()]
 
-    def search_tags_by_line_range(self, start_line: int, end_line: int) -> list[dict[str, Any]]:
+    def search_tags_by_line_range(
+        self, start_line: int, end_line: int
+    ) -> list[dict[str, Any]]:
         """줄 번호 범위로 TAG 검색"""
         sql = """
         SELECT * FROM tags
@@ -330,15 +351,18 @@ class TagDatabaseManager:
 
         return [dict(row) for row in cursor.fetchall()]
 
-    def create_reference(self, source_tag_id: int, target_tag_id: int,
-                        reference_type: str = "chain") -> int:
+    def create_reference(
+        self, source_tag_id: int, target_tag_id: int, reference_type: str = "chain"
+    ) -> int:
         """TAG 참조 관계 생성"""
         sql = """
         INSERT INTO tag_references (source_tag_id, target_tag_id, reference_type)
         VALUES (?, ?, ?)
         """
 
-        cursor = self._database.execute(sql, (source_tag_id, target_tag_id, reference_type))
+        cursor = self._database.execute(
+            sql, (source_tag_id, target_tag_id, reference_type)
+        )
         self._database.commit()
 
         return cursor.lastrowid
@@ -352,7 +376,7 @@ class TagDatabaseManager:
 
     def update_tag(self, tag_id: int, **kwargs) -> int:
         """TAG 업데이트"""
-        allowed_fields = ['description', 'file_path', 'line_number']
+        allowed_fields = ["description", "file_path", "line_number"]
         updates = []
         values = []
 
@@ -391,9 +415,12 @@ class TagDatabaseManager:
         """트랜잭션 컨텍스트 매니저"""
         return TransactionManager(self._database)
 
-    def complex_search(self, category: str | None = None,
-                      file_pattern: str | None = None,
-                      line_range: tuple | None = None) -> list[dict[str, Any]]:
+    def complex_search(
+        self,
+        category: str | None = None,
+        file_pattern: str | None = None,
+        line_range: tuple | None = None,
+    ) -> list[dict[str, Any]]:
         """복합 검색"""
         conditions = []
         params = []
@@ -404,7 +431,7 @@ class TagDatabaseManager:
 
         if file_pattern:
             conditions.append("file_path LIKE ?")
-            params.append(file_pattern.replace('*', '%'))
+            params.append(file_pattern.replace("*", "%"))
 
         if line_range:
             conditions.append("line_number BETWEEN ? AND ?")
@@ -418,11 +445,13 @@ class TagDatabaseManager:
 
     def search_tags_by_file_pattern(self, pattern: str) -> list[dict[str, Any]]:
         """파일 패턴으로 검색"""
-        sql = "SELECT * FROM tags WHERE file_path LIKE ? ORDER BY file_path, line_number"
-        cursor = self._database.execute(sql, (pattern.replace('*', '%'),))
+        sql = (
+            "SELECT * FROM tags WHERE file_path LIKE ? ORDER BY file_path, line_number"
+        )
+        cursor = self._database.execute(sql, (pattern.replace("*", "%"),))
         return [dict(row) for row in cursor.fetchall()]
 
-    def prepared_insert(self) -> 'PreparedInsertManager':
+    def prepared_insert(self) -> "PreparedInsertManager":
         """Prepared statement 매니저"""
         return PreparedInsertManager(self._database)
 
@@ -435,13 +464,15 @@ class TagDatabaseManager:
 
         params_list = []
         for tag_data in tags_data:
-            params_list.append((
-                tag_data['category'],
-                tag_data['identifier'],
-                tag_data.get('description', ''),
-                tag_data.get('file_path', ''),
-                tag_data.get('line_number')
-            ))
+            params_list.append(
+                (
+                    tag_data["category"],
+                    tag_data["identifier"],
+                    tag_data.get("description", ""),
+                    tag_data.get("file_path", ""),
+                    tag_data.get("line_number"),
+                )
+            )
 
         cursor = self._database.executemany(sql, params_list)
         self._database.commit()
@@ -454,8 +485,8 @@ class TagDatabaseManager:
         tag = self.get_tag_by_id(tag_id)
         if tag:
             return {
-                'processed': False,  # 기본값
-                'processor': None
+                "processed": False,  # 기본값
+                "processor": None,
             }
         return {}
 
@@ -505,9 +536,15 @@ class PreparedInsertManager:
             self.database.executemany(sql, self._prepared_data)
             self.database.commit()
 
-    def execute(self, category: str, identifier: str, description: str = "",
-                file_path: str = "", line_number: int | None = None):
+    def execute(
+        self,
+        category: str,
+        identifier: str,
+        description: str = "",
+        file_path: str = "",
+        line_number: int | None = None,
+    ):
         """배치용 데이터 추가"""
-        self._prepared_data.append((
-            category, identifier, description, file_path, line_number
-        ))
+        self._prepared_data.append(
+            (category, identifier, description, file_path, line_number)
+        )

@@ -54,7 +54,9 @@ class SpecCommand:
         # Git 전략 초기화
         self._git_strategy: GitStrategyBase | None = None
 
-        logger.debug(f"SpecCommand 초기화: {self.project_dir}, skip_branch={skip_branch}")
+        logger.debug(
+            f"SpecCommand 초기화: {self.project_dir}, skip_branch={skip_branch}"
+        )
 
     def _get_git_strategy(self) -> GitStrategyBase:
         """Git 전략 획득
@@ -70,7 +72,9 @@ class SpecCommand:
             else:
                 self._git_strategy = PersonalGitStrategy(self.project_dir, self.config)
 
-            logger.debug(f"Git 전략 설정: {mode} -> {self._git_strategy.__class__.__name__}")
+            logger.debug(
+                f"Git 전략 설정: {mode} -> {self._git_strategy.__class__.__name__}"
+            )
 
         return self._git_strategy
 
@@ -83,17 +87,19 @@ class SpecCommand:
         if self.config:
             try:
                 # ConfigManager 객체인 경우
-                if hasattr(self.config, 'get_mode'):
+                if hasattr(self.config, "get_mode"):
                     return self.config.get_mode()
                 # 딕셔너리인 경우
                 elif isinstance(self.config, dict):
-                    return self.config.get('mode', 'personal')
+                    return self.config.get("mode", "personal")
             except (AttributeError, KeyError):
                 pass
 
-        return 'personal'
+        return "personal"
 
-    def execute(self, spec_name: str, description: str, skip_branch: bool | None = None):
+    def execute(
+        self, spec_name: str, description: str, skip_branch: bool | None = None
+    ):
         """
         @TASK:SPEC-EXECUTE-001 SPEC 명령어 실행
 
@@ -132,7 +138,9 @@ class SpecCommand:
             self._log_execution_error(validated_spec_name, e)
             raise
 
-    def execute_with_mode(self, mode: str, spec_name: str = "test-spec", description: str = "테스트 명세"):
+    def execute_with_mode(
+        self, mode: str, spec_name: str = "test-spec", description: str = "테스트 명세"
+    ):
         """모드별 실행 전략
 
         Args:
@@ -179,9 +187,11 @@ class SpecCommand:
             raise ValueError("명세 이름이 너무 깁니다 (최대 50자)")
 
         # 안전하지 않은 문자 확인
-        unsafe_chars = ['/', '\\', '<', '>', ':', '"', '|', '?', '*']
+        unsafe_chars = ["/", "\\", "<", ">", ":", '"', "|", "?", "*"]
         if any(char in normalized for char in unsafe_chars):
-            raise ValueError(f"명세 이름에 안전하지 않은 문자가 포함되어 있습니다: {spec_name}")
+            raise ValueError(
+                f"명세 이름에 안전하지 않은 문자가 포함되어 있습니다: {spec_name}"
+            )
 
         return normalized
 
@@ -233,7 +243,7 @@ class SpecCommand:
             spec_content = self._generate_spec_content(spec_name, description)
 
             # 파일 작성
-            spec_file.write_text(spec_content, encoding='utf-8')
+            spec_file.write_text(spec_content, encoding="utf-8")
 
             logger.info(f"SPEC 파일 생성 완료: {spec_file}")
 
@@ -297,6 +307,7 @@ class SpecCommand:
             포맷된 현재 시간
         """
         import datetime
+
         return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     def _should_create_branch(self) -> bool:
@@ -337,13 +348,18 @@ class SpecCommand:
 
     def _log_execution_start(self, spec_name: str, description: str):
         """실행 시작 로깅"""
-        logger.info("SPEC 명령어 실행 시작", extra={
-            "command": "spec",
-            "spec_name": spec_name,
-            "description": description[:50] + "..." if len(description) > 50 else description,
-            "mode": self._get_current_mode(),
-            "skip_branch": self.skip_branch
-        })
+        logger.info(
+            "SPEC 명령어 실행 시작",
+            extra={
+                "command": "spec",
+                "spec_name": spec_name,
+                "description": description[:50] + "..."
+                if len(description) > 50
+                else description,
+                "mode": self._get_current_mode(),
+                "skip_branch": self.skip_branch,
+            },
+        )
 
     def _log_execution_success(self, spec_name: str):
         """실행 성공 로깅"""
@@ -367,5 +383,5 @@ class SpecCommand:
             "skip_branch": self.skip_branch,
             "git_strategy": git_strategy.__class__.__name__,
             "repository_status": git_strategy.get_repository_status(),
-            "specs_dir_exists": (self.project_dir / ".moai" / "specs").exists()
+            "specs_dir_exists": (self.project_dir / ".moai" / "specs").exists(),
         }

@@ -25,14 +25,15 @@ def sqlite_migration():
 
 
 @sqlite_migration.command()
-@click.option('--config-path', '-c',
-              type=click.Path(exists=True, path_type=Path),
-              default='.moai/config.json',
-              help='MoAI 설정 파일 경로')
-@click.option('--dry-run', '-n', is_flag=True,
-              help='실제 변경 없이 시뮬레이션만 실행')
-@click.option('--force', '-f', is_flag=True,
-              help='백업 없이 강제 마이그레이션')
+@click.option(
+    "--config-path",
+    "-c",
+    type=click.Path(exists=True, path_type=Path),
+    default=".moai/config.json",
+    help="MoAI 설정 파일 경로",
+)
+@click.option("--dry-run", "-n", is_flag=True, help="실제 변경 없이 시뮬레이션만 실행")
+@click.option("--force", "-f", is_flag=True, help="백업 없이 강제 마이그레이션")
 def migrate(config_path: Path, dry_run: bool, force: bool):
     """JSON에서 SQLite로 TAG 인덱스 마이그레이션"""
 
@@ -42,12 +43,16 @@ def migrate(config_path: Path, dry_run: bool, force: bool):
     try:
         # 설정 로드
         config = load_moai_config(config_path)
-        tags_config = config.get('tags', {})
-        backend_config = tags_config.get('backend', {})
+        tags_config = config.get("tags", {})
+        backend_config = tags_config.get("backend", {})
 
         # 경로 설정
-        json_path = Path(tags_config.get('index_path', '.moai/indexes/tags.json'))
-        sqlite_path = Path(backend_config.get('sqlite', {}).get('database_path', '.moai/indexes/tags.db'))
+        json_path = Path(tags_config.get("index_path", ".moai/indexes/tags.json"))
+        sqlite_path = Path(
+            backend_config.get("sqlite", {}).get(
+                "database_path", ".moai/indexes/tags.db"
+            )
+        )
 
         if not json_path.exists():
             click.echo(f"❌ JSON 인덱스 파일을 찾을 수 없습니다: {json_path}")
@@ -55,7 +60,9 @@ def migrate(config_path: Path, dry_run: bool, force: bool):
 
         # 파일 크기 확인
         json_size = json_path.stat().st_size
-        click.echo(f"📊 JSON 파일 크기: {json_size:,} bytes ({json_size / 1024 / 1024:.2f} MB)")
+        click.echo(
+            f"📊 JSON 파일 크기: {json_size:,} bytes ({json_size / 1024 / 1024:.2f} MB)"
+        )
 
         if dry_run:
             click.echo("🔍 DRY-RUN 모드: 실제 변경 없이 시뮬레이션")
@@ -63,7 +70,9 @@ def migrate(config_path: Path, dry_run: bool, force: bool):
             return
 
         # 백업 생성
-        if not force and backend_config.get('sqlite', {}).get('migration', {}).get('backup_before_migration', True):
+        if not force and backend_config.get("sqlite", {}).get("migration", {}).get(
+            "backup_before_migration", True
+        ):
             backup_path = create_backup(json_path)
             click.echo(f"💾 백업 생성: {backup_path}")
 
@@ -74,18 +83,20 @@ def migrate(config_path: Path, dry_run: bool, force: bool):
         migration_tool = TagMigrationTool(
             database_path=sqlite_path,
             json_path=json_path,
-            backup_directory=json_path.parent / "backups"
+            backup_directory=json_path.parent / "backups",
         )
 
         def progress_callback(progress):
             """진행률 콜백"""
-            click.echo(f"📈 진행률: {progress.percentage:.1f}% ({progress.processed}/{progress.total})")
+            click.echo(
+                f"📈 진행률: {progress.percentage:.1f}% ({progress.processed}/{progress.total})"
+            )
 
         result = migration_tool.migrate_json_to_sqlite(
             validate_data=True,
             create_backup=not force,
             progress_callback=progress_callback,
-            detailed_reporting=True
+            detailed_reporting=True,
         )
 
         end_time = time.perf_counter()
@@ -116,10 +127,13 @@ def migrate(config_path: Path, dry_run: bool, force: bool):
 
 
 @sqlite_migration.command()
-@click.option('--config-path', '-c',
-              type=click.Path(exists=True, path_type=Path),
-              default='.moai/config.json',
-              help='MoAI 설정 파일 경로')
+@click.option(
+    "--config-path",
+    "-c",
+    type=click.Path(exists=True, path_type=Path),
+    default=".moai/config.json",
+    help="MoAI 설정 파일 경로",
+)
 def rollback(config_path: Path):
     """SQLite에서 JSON으로 롤백"""
 
@@ -128,11 +142,15 @@ def rollback(config_path: Path):
 
     try:
         config = load_moai_config(config_path)
-        tags_config = config.get('tags', {})
-        backend_config = tags_config.get('backend', {})
+        tags_config = config.get("tags", {})
+        backend_config = tags_config.get("backend", {})
 
-        json_path = Path(tags_config.get('index_path', '.moai/indexes/tags.json'))
-        sqlite_path = Path(backend_config.get('sqlite', {}).get('database_path', '.moai/indexes/tags.db'))
+        json_path = Path(tags_config.get("index_path", ".moai/indexes/tags.json"))
+        sqlite_path = Path(
+            backend_config.get("sqlite", {}).get(
+                "database_path", ".moai/indexes/tags.db"
+            )
+        )
 
         if not sqlite_path.exists():
             click.echo(f"❌ SQLite 데이터베이스를 찾을 수 없습니다: {sqlite_path}")
@@ -142,8 +160,7 @@ def rollback(config_path: Path):
         start_time = time.perf_counter()
 
         migration_tool = TagMigrationTool(
-            database_path=sqlite_path,
-            json_path=json_path
+            database_path=sqlite_path, json_path=json_path
         )
 
         result = migration_tool.migrate_sqlite_to_json()
@@ -170,12 +187,14 @@ def rollback(config_path: Path):
 
 
 @sqlite_migration.command()
-@click.option('--config-path', '-c',
-              type=click.Path(exists=True, path_type=Path),
-              default='.moai/config.json',
-              help='MoAI 설정 파일 경로')
-@click.option('--iterations', '-i', default=10,
-              help='성능 테스트 반복 횟수')
+@click.option(
+    "--config-path",
+    "-c",
+    type=click.Path(exists=True, path_type=Path),
+    default=".moai/config.json",
+    help="MoAI 설정 파일 경로",
+)
+@click.option("--iterations", "-i", default=10, help="성능 테스트 반복 횟수")
 def benchmark(config_path: Path, iterations: int):
     """JSON vs SQLite 성능 벤치마크"""
 
@@ -184,9 +203,9 @@ def benchmark(config_path: Path, iterations: int):
 
     try:
         config = load_moai_config(config_path)
-        tags_config = config.get('tags', {})
+        tags_config = config.get("tags", {})
 
-        json_path = Path(tags_config.get('index_path', '.moai/indexes/tags.json'))
+        json_path = Path(tags_config.get("index_path", ".moai/indexes/tags.json"))
 
         if not json_path.exists():
             click.echo(f"❌ JSON 인덱스 파일을 찾을 수 없습니다: {json_path}")
@@ -199,8 +218,7 @@ def benchmark(config_path: Path, iterations: int):
 
         # 마이그레이션 (벤치마크용)
         migration_tool = TagMigrationTool(
-            database_path=temp_sqlite,
-            json_path=json_path
+            database_path=temp_sqlite, json_path=json_path
         )
 
         migration_result = migration_tool.migrate_json_to_sqlite()
@@ -213,7 +231,7 @@ def benchmark(config_path: Path, iterations: int):
         sqlite_times = []
 
         # JSON 성능 측정
-        with open(json_path, 'r') as f:
+        with open(json_path, "r") as f:
             json_data = json.load(f)
 
         for i in range(iterations):
@@ -267,7 +285,7 @@ def benchmark(config_path: Path, iterations: int):
 
 def load_moai_config(config_path: Path) -> dict:
     """MoAI 설정 로드"""
-    with open(config_path, 'r') as f:
+    with open(config_path, "r") as f:
         return json.load(f)
 
 
@@ -278,16 +296,17 @@ def create_backup(json_path: Path) -> Path:
     backup_path.parent.mkdir(exist_ok=True)
 
     import shutil
+
     shutil.copy2(json_path, backup_path)
     return backup_path
 
 
 def estimate_migration_performance(json_path: Path):
     """마이그레이션 성능 추정"""
-    with open(json_path, 'r') as f:
+    with open(json_path, "r") as f:
         data = json.load(f)
 
-    total_tags = data.get('statistics', {}).get('total_tags', 0)
+    total_tags = data.get("statistics", {}).get("total_tags", 0)
     estimated_time = total_tags * 0.01  # 가정: TAG당 10ms
 
     click.echo(f"📊 예상 마이그레이션 시간: {estimated_time:.1f}초")
@@ -308,13 +327,13 @@ def show_performance_comparison(json_path: Path, sqlite_path: Path):
 
 def enable_sqlite_backend(config_path: Path):
     """SQLite 백엔드 활성화"""
-    with open(config_path, 'r') as f:
+    with open(config_path, "r") as f:
         config = json.load(f)
 
-    config['tags']['backend']['type'] = 'sqlite'
-    config['tags']['backend']['sqlite']['enabled'] = True
+    config["tags"]["backend"]["type"] = "sqlite"
+    config["tags"]["backend"]["sqlite"]["enabled"] = True
 
-    with open(config_path, 'w') as f:
+    with open(config_path, "w") as f:
         json.dump(config, f, indent=2, ensure_ascii=False)
 
     click.echo("✅ SQLite 백엔드 활성화됨")
@@ -322,13 +341,13 @@ def enable_sqlite_backend(config_path: Path):
 
 def disable_sqlite_backend(config_path: Path):
     """SQLite 백엔드 비활성화"""
-    with open(config_path, 'r') as f:
+    with open(config_path, "r") as f:
         config = json.load(f)
 
-    config['tags']['backend']['type'] = 'json'
-    config['tags']['backend']['sqlite']['enabled'] = False
+    config["tags"]["backend"]["type"] = "json"
+    config["tags"]["backend"]["sqlite"]["enabled"] = False
 
-    with open(config_path, 'w') as f:
+    with open(config_path, "w") as f:
         json.dump(config, f, indent=2, ensure_ascii=False)
 
     click.echo("✅ JSON 백엔드로 복원됨")
@@ -337,16 +356,16 @@ def disable_sqlite_backend(config_path: Path):
 def search_in_json(json_data: dict) -> list:
     """JSON에서 샘플 검색"""
     # 샘플 TAG 검색 시뮬레이션
-    index = json_data.get('index', {})
-    return [key for key in index.keys() if 'REQ' in key][:10]
+    index = json_data.get("index", {})
+    return [key for key in index.keys() if "REQ" in key][:10]
 
 
 def search_in_sqlite(db_manager) -> list:
     """SQLite에서 샘플 검색"""
     # 동일한 검색을 SQLite로 수행
     try:
-        results = db_manager.search_by_category('REQ', limit=10)
-        return [r['tag_key'] for r in results]
+        results = db_manager.search_by_category("REQ", limit=10)
+        return [r["tag_key"] for r in results]
     except:
         return []  # 에러 시 빈 결과
 
@@ -354,6 +373,7 @@ def search_in_sqlite(db_manager) -> list:
 def estimate_json_memory(json_data: dict) -> int:
     """JSON 메모리 사용량 추정"""
     import sys
+
     return sys.getsizeof(str(json_data))
 
 
@@ -362,5 +382,5 @@ def estimate_sqlite_memory(sqlite_path: Path) -> int:
     return sqlite_path.stat().st_size
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sqlite_migration()

@@ -11,13 +11,16 @@ from pathlib import Path
 from typing import Dict, List, Set, Tuple
 from dataclasses import dataclass
 
+
 @dataclass
 class ImportMigration:
     """Represents a single import migration rule."""
+
     old_import: str
     new_import: str
     affected_files: List[str]
     complexity_score: int  # 1-5, where 5 is most complex
+
 
 class TestMigrationAnalyzer:
     """Analyzes and automates test file migration for package restructuring."""
@@ -41,7 +44,7 @@ class TestMigrationAnalyzer:
             "moai_adk.installation_result": "moai_adk.utils.installation_result",
             "moai_adk.validator": "moai_adk.core.validation.validator",
             "moai_adk.template_engine": "moai_adk.core.template_engine",
-            "moai_adk.version_sync": "moai_adk.core.version_sync"
+            "moai_adk.version_sync": "moai_adk.core.version_sync",
         }
 
     def analyze_test_files(self) -> Dict[str, List[ImportMigration]]:
@@ -52,7 +55,9 @@ class TestMigrationAnalyzer:
             if test_file.name.startswith("test_"):
                 file_migrations = self._analyze_single_test_file(test_file)
                 if file_migrations:
-                    migrations[str(test_file.relative_to(self.project_root))] = file_migrations
+                    migrations[str(test_file.relative_to(self.project_root))] = (
+                        file_migrations
+                    )
 
         return migrations
 
@@ -61,7 +66,7 @@ class TestMigrationAnalyzer:
         migrations = []
 
         try:
-            with open(test_file, 'r') as f:
+            with open(test_file, "r") as f:
                 content = f.read()
 
             tree = ast.parse(content)
@@ -87,7 +92,7 @@ class TestMigrationAnalyzer:
                     old_import=f"from {module} import {', '.join(alias.name for alias in node.names)}",
                     new_import=f"from {self.migration_rules[module]} import {', '.join(alias.name for alias in node.names)}",
                     affected_files=[str(test_file.relative_to(self.project_root))],
-                    complexity_score=complexity
+                    complexity_score=complexity,
                 )
 
         elif isinstance(node, ast.Import):
@@ -98,7 +103,7 @@ class TestMigrationAnalyzer:
                         old_import=f"import {alias.name}",
                         new_import=f"import {self.migration_rules[alias.name]}",
                         affected_files=[str(test_file.relative_to(self.project_root))],
-                        complexity_score=complexity
+                        complexity_score=complexity,
                     )
 
         return None
@@ -118,12 +123,17 @@ class TestMigrationAnalyzer:
         if isinstance(node, ast.ImportFrom) and node.names:
             if len(node.names) > 3:
                 base_score += 1
-            if any(alias.name in ["SecurityManager", "ConfigManager"] for alias in node.names):
+            if any(
+                alias.name in ["SecurityManager", "ConfigManager"]
+                for alias in node.names
+            ):
                 base_score += 1  # These are complex interfaces
 
         return min(base_score, 5)
 
-    def generate_migration_script(self, migrations: Dict[str, List[ImportMigration]]) -> str:
+    def generate_migration_script(
+        self, migrations: Dict[str, List[ImportMigration]]
+    ) -> str:
         """Generate automated migration script."""
         script = '''#!/usr/bin/env python3
 """
@@ -165,7 +175,7 @@ class TestFileMigrator:
                 content = re.sub(pattern1, replacement1, content)
 
                 # Handle 'import X' pattern
-                pattern2 = rf"import {re.escape(old_module)}(?=\s|$)"
+                pattern2 = rf"import {re.escape(old_module)}(?=\\s|$)"
                 replacement2 = f"import {new_module}"
                 content = re.sub(pattern2, replacement2, content)
 
@@ -236,13 +246,13 @@ if __name__ == "__main__":
     # Summary
     successful = sum(1 for r in results.values() if r)
     total = len(results)
-    print(f"\\n📊 Migration Summary:")
+    print(f"\n📊 Migration Summary:")
     print(f"   Files processed: {total}")
     print(f"   Files migrated: {successful}")
     print(f"   Files unchanged: {total - successful}")
 
     # Validation
-    print("\\n🔍 Validating imports...")
+    print("\n🔍 Validating imports...")
     errors = migrator.validate_imports()
 
     if errors:
@@ -289,7 +299,7 @@ def setup_test_structure(project_root: Path):
         # Create __init__.py files
         init_file = full_path / "__init__.py"
         if not init_file.exists():
-            init_file.write_text('"""Test package."""\\n')
+            init_file.write_text('"""Test package."""\n')
 
         print(f"✅ Created: {full_path}")
 
@@ -379,7 +389,7 @@ filterwarnings =
     pytest_ini_file.write_text(pytest_ini_content)
     print(f"✅ Created: {pytest_ini_file}")
 
-    print("\\n🎉 Test structure setup complete!")
+    print("\n🎉 Test structure setup complete!")
 
 if __name__ == "__main__":
     import sys
@@ -391,6 +401,7 @@ if __name__ == "__main__":
     project_root = Path(sys.argv[1])
     setup_test_structure(project_root)
 '''
+
 
 def main():
     """Main execution function."""
@@ -405,34 +416,41 @@ def main():
     migrations = analyzer.analyze_test_files()
 
     # Generate detailed report
-    print("\\n📋 Migration Analysis Report:")
+    print("\n📋 Migration Analysis Report:")
     print("=" * 60)
 
     total_files = len(migrations)
     total_migrations = sum(len(migs) for migs in migrations.values())
-    high_complexity = sum(1 for migs in migrations.values()
-                         for mig in migs if mig.complexity_score >= 4)
+    high_complexity = sum(
+        1 for migs in migrations.values() for mig in migs if mig.complexity_score >= 4
+    )
 
     print(f"Files requiring migration: {total_files}")
     print(f"Total import migrations: {total_migrations}")
     print(f"High-complexity migrations: {high_complexity}")
 
-    print("\\nDetailed Migration Plan:")
+    print("\nDetailed Migration Plan:")
     print("-" * 40)
 
     for file_path, file_migrations in migrations.items():
-        print(f"\\n📄 {file_path}")
+        print(f"\n📄 {file_path}")
         for mig in file_migrations:
-            complexity_emoji = "🔴" if mig.complexity_score >= 4 else "🟡" if mig.complexity_score >= 2 else "🟢"
+            complexity_emoji = (
+                "🔴"
+                if mig.complexity_score >= 4
+                else "🟡"
+                if mig.complexity_score >= 2
+                else "🟢"
+            )
             print(f"   {complexity_emoji} {mig.old_import}")
             print(f"      → {mig.new_import}")
 
     # Generate migration script
-    print("\\n🛠️  Generating migration script...")
+    print("\n🛠️  Generating migration script...")
     migration_script = analyzer.generate_migration_script(migrations)
 
     script_path = project_root / "migrate_test_imports.py"
-    with open(script_path, 'w') as f:
+    with open(script_path, "w") as f:
         f.write(migration_script)
 
     print(f"✅ Migration script created: {script_path}")
@@ -440,16 +458,17 @@ def main():
     # Generate test structure setup script
     setup_script = analyzer.generate_test_structure_setup()
     setup_script_path = project_root / "setup_test_structure.py"
-    with open(setup_script_path, 'w') as f:
+    with open(setup_script_path, "w") as f:
         f.write(setup_script)
 
     print(f"✅ Test structure setup script created: {setup_script_path}")
 
-    print("\\n🚀 Next Steps:")
+    print("\n🚀 Next Steps:")
     print("1. Run: python setup_test_structure.py <project_root>")
     print("2. Run: python migrate_test_imports.py <project_root>")
     print("3. Execute: make test to validate migration")
     print("4. Review and adjust any failing tests")
+
 
 if __name__ == "__main__":
     main()

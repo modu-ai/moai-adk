@@ -14,6 +14,8 @@ from moai_adk.install.installer import ProjectInstaller
 from moai_adk.config import Config, RuntimeConfig
 
 from moai_adk.install.installation_result import InstallationResult
+
+
 class TestProjectInstaller:
     """Test cases for ProjectInstaller class."""
 
@@ -28,17 +30,16 @@ class TestProjectInstaller:
         """Create a sample Config instance for testing."""
         return Config(
             name="test-project",
-            
             template="standard",
             runtime=RuntimeConfig("python"),
-            path=temp_dir / "test_project"
+            path=temp_dir / "test_project",
         )
 
     @pytest.fixture
     def installer(self, sample_config):
         """Create a ProjectInstaller instance for testing."""
-        with patch.object(ProjectInstaller, '_setup_template_directory'):
-            with patch.object(ProjectInstaller, '_initialize_managers'):
+        with patch.object(ProjectInstaller, "_setup_template_directory"):
+            with patch.object(ProjectInstaller, "_initialize_managers"):
                 installer = ProjectInstaller(sample_config)
                 # Manually set up mocked managers for testing
                 installer.security_manager = MagicMock()
@@ -53,51 +54,57 @@ class TestProjectInstaller:
 
     def test_init_with_config(self, sample_config):
         """Test ProjectInstaller initialization with config."""
-        with patch.object(ProjectInstaller, '_setup_template_directory'):
-            with patch.object(ProjectInstaller, '_initialize_managers'):
+        with patch.object(ProjectInstaller, "_setup_template_directory"):
+            with patch.object(ProjectInstaller, "_initialize_managers"):
                 installer = ProjectInstaller(sample_config)
                 assert installer.config == sample_config
 
     def test_setup_template_directory_with_importlib(self):
         """Test template directory setup using importlib.resources."""
-        with patch('moai_adk.installer.files') as mock_files:
+        with patch("moai_adk.installer.files") as mock_files:
             mock_files.return_value.__truediv__.return_value = Path("/mocked/templates")
 
-            config = Config("test", template="standard", runtime=RuntimeConfig("python"))
-            with patch.object(ProjectInstaller, '_initialize_managers'):
+            config = Config(
+                "test", template="standard", runtime=RuntimeConfig("python")
+            )
+            with patch.object(ProjectInstaller, "_initialize_managers"):
                 installer = ProjectInstaller(config)
 
             assert installer.template_dir == Path("/mocked/templates")
 
     def test_setup_template_directory_fallback(self, sample_config):
         """Test template directory setup with fallback method."""
-        with patch('moai_adk.installer.files', side_effect=Exception("Import failed")):
-            with patch.object(ProjectInstaller, '_initialize_managers'):
+        with patch("moai_adk.installer.files", side_effect=Exception("Import failed")):
+            with patch.object(ProjectInstaller, "_initialize_managers"):
                 installer = ProjectInstaller(sample_config)
 
             # Should fallback to relative path
-            expected_path = Path(__file__).parent.parent.parent / "moai_adk" / "templates"
+            expected_path = (
+                Path(__file__).parent.parent.parent / "moai_adk" / "templates"
+            )
             assert installer.template_dir.name == "templates"
 
     def test_initialize_managers(self, sample_config):
         """Test initialization of all manager components."""
-        with patch.object(ProjectInstaller, '_setup_template_directory'):
+        with patch.object(ProjectInstaller, "_setup_template_directory"):
             installer = ProjectInstaller(sample_config)
 
         # Check that all managers are initialized
-        assert hasattr(installer, 'security_manager')
-        assert hasattr(installer, 'file_manager')
-        assert hasattr(installer, 'directory_manager')
-        assert hasattr(installer, 'config_manager')
-        assert hasattr(installer, 'git_manager')
-        assert hasattr(installer, 'system_manager')
-        assert hasattr(installer, 'progress')
+        assert hasattr(installer, "security_manager")
+        assert hasattr(installer, "file_manager")
+        assert hasattr(installer, "directory_manager")
+        assert hasattr(installer, "config_manager")
+        assert hasattr(installer, "git_manager")
+        assert hasattr(installer, "system_manager")
+        assert hasattr(installer, "progress")
 
     def test_install_success_complete_workflow(self, installer):
         """Test successful complete installation workflow."""
         # Mock all manager methods to return successful results
         installer.directory_manager.create_project_directory.return_value = None
-        installer.directory_manager.create_directory_structure.return_value = [Path("/test/dir")]
+        installer.directory_manager.create_directory_structure.return_value = [
+            Path("/test/dir")
+        ]
 
         # Mock all installation methods
         installer._install_agents = MagicMock(return_value=[Path("/agent1.md")])
@@ -105,18 +112,32 @@ class TestProjectInstaller:
         installer._install_hook_scripts = MagicMock(return_value=[Path("/hook1.py")])
         installer._install_templates = MagicMock(return_value=[Path("/template1.md")])
         installer._install_memory_files = MagicMock(return_value=[Path("/memory1.md")])
-        installer._install_github_files = MagicMock(return_value=[Path("/workflow1.yml")])
-        installer._install_verification_scripts = MagicMock(return_value=[Path("/script1.py")])
-        installer._create_steering_templates = MagicMock(return_value=[Path("/steering1.md")])
+        installer._install_github_files = MagicMock(
+            return_value=[Path("/workflow1.yml")]
+        )
+        installer._install_verification_scripts = MagicMock(
+            return_value=[Path("/script1.py")]
+        )
+        installer._create_steering_templates = MagicMock(
+            return_value=[Path("/steering1.md")]
+        )
         installer._create_claude_md = MagicMock(return_value=Path("/CLAUDE.md"))
         installer._install_output_styles = MagicMock(return_value=[Path("/style1.md")])
         installer._generate_next_steps = MagicMock(return_value=["step1", "step2"])
 
         # Mock config manager methods
-        installer.config_manager.create_initial_indexes.return_value = [Path("/index1.json")]
-        installer.config_manager.create_claude_settings_file.return_value = Path("/settings.json")
-        installer.config_manager.create_moai_config_file.return_value = Path("/moai_config.json")
-        installer.config_manager.create_package_json.return_value = Path("/package.json")
+        installer.config_manager.create_initial_indexes.return_value = [
+            Path("/index1.json")
+        ]
+        installer.config_manager.create_claude_settings_file.return_value = Path(
+            "/settings.json"
+        )
+        installer.config_manager.create_moai_config_file.return_value = Path(
+            "/moai_config.json"
+        )
+        installer.config_manager.create_package_json.return_value = Path(
+            "/package.json"
+        )
 
         # Mock git manager
         installer.git_manager.initialize_git_repository.return_value = (True, True)
@@ -152,10 +173,15 @@ class TestProjectInstaller:
 
         # Mock all installation methods to return empty lists
         for method_name in [
-            '_install_agents', '_install_commands', '_install_hook_scripts',
-            '_install_templates', '_install_memory_files', '_install_github_files',
-            '_install_verification_scripts', '_create_steering_templates',
-            '_install_output_styles'
+            "_install_agents",
+            "_install_commands",
+            "_install_hook_scripts",
+            "_install_templates",
+            "_install_memory_files",
+            "_install_github_files",
+            "_install_verification_scripts",
+            "_create_steering_templates",
+            "_install_output_styles",
         ]:
             setattr(installer, method_name, MagicMock(return_value=[]))
 
@@ -163,8 +189,12 @@ class TestProjectInstaller:
         installer._generate_next_steps = MagicMock(return_value=[])
 
         installer.config_manager.create_initial_indexes.return_value = []
-        installer.config_manager.create_claude_settings_file.return_value = Path("/settings.json")
-        installer.config_manager.create_moai_config_file.return_value = Path("/config.json")
+        installer.config_manager.create_claude_settings_file.return_value = Path(
+            "/settings.json"
+        )
+        installer.config_manager.create_moai_config_file.return_value = Path(
+            "/config.json"
+        )
 
         installer.git_manager.initialize_git_repository.return_value = (True, False)
         installer.system_manager.should_create_package_json.return_value = False
@@ -180,12 +210,17 @@ class TestProjectInstaller:
         # Check that progress callback was passed to update_progress calls
         for call_args in installer.progress.update_progress.call_args_list:
             assert len(call_args[0]) >= 1  # At least step description
-            assert call_args[0][1] == progress_callback or call_args[1].get('callback') == progress_callback
+            assert (
+                call_args[0][1] == progress_callback
+                or call_args[1].get("callback") == progress_callback
+            )
 
     def test_install_exception_handling(self, installer):
         """Test installation exception handling."""
         # Make directory creation fail
-        installer.directory_manager.create_project_directory.side_effect = Exception("Directory creation failed")
+        installer.directory_manager.create_project_directory.side_effect = Exception(
+            "Directory creation failed"
+        )
 
         result = installer.install()
 
@@ -202,10 +237,15 @@ class TestProjectInstaller:
 
         # Mock all installation methods
         for method_name in [
-            '_install_agents', '_install_commands', '_install_hook_scripts',
-            '_install_templates', '_install_memory_files', '_install_github_files',
-            '_install_verification_scripts', '_create_steering_templates',
-            '_install_output_styles'
+            "_install_agents",
+            "_install_commands",
+            "_install_hook_scripts",
+            "_install_templates",
+            "_install_memory_files",
+            "_install_github_files",
+            "_install_verification_scripts",
+            "_create_steering_templates",
+            "_install_output_styles",
         ]:
             setattr(installer, method_name, MagicMock(return_value=[]))
 
@@ -213,8 +253,12 @@ class TestProjectInstaller:
         installer._generate_next_steps = MagicMock(return_value=[])
 
         installer.config_manager.create_initial_indexes.return_value = []
-        installer.config_manager.create_claude_settings_file.return_value = Path("/settings.json")
-        installer.config_manager.create_moai_config_file.return_value = Path("/config.json")
+        installer.config_manager.create_claude_settings_file.return_value = Path(
+            "/settings.json"
+        )
+        installer.config_manager.create_moai_config_file.return_value = Path(
+            "/config.json"
+        )
 
         installer.system_manager.should_create_package_json.return_value = False
         installer.system_manager.check_nodejs_and_npm.return_value = True
@@ -223,7 +267,7 @@ class TestProjectInstaller:
         installer.git_manager.initialize_git_repository.return_value = (True, True)
         installer.config.project_path = Path("/test")
 
-        with patch.object(Path, 'exists', return_value=True):
+        with patch.object(Path, "exists", return_value=True):
             result = installer.install()
             assert result.success is True
 
@@ -245,10 +289,15 @@ class TestProjectInstaller:
 
         # Mock all installation methods
         for method_name in [
-            '_install_agents', '_install_commands', '_install_hook_scripts',
-            '_install_templates', '_install_memory_files', '_install_github_files',
-            '_install_verification_scripts', '_create_steering_templates',
-            '_install_output_styles'
+            "_install_agents",
+            "_install_commands",
+            "_install_hook_scripts",
+            "_install_templates",
+            "_install_memory_files",
+            "_install_github_files",
+            "_install_verification_scripts",
+            "_create_steering_templates",
+            "_install_output_styles",
         ]:
             setattr(installer, method_name, MagicMock(return_value=[]))
 
@@ -256,9 +305,15 @@ class TestProjectInstaller:
         installer._generate_next_steps = MagicMock(return_value=[])
 
         installer.config_manager.create_initial_indexes.return_value = []
-        installer.config_manager.create_claude_settings_file.return_value = Path("/settings.json")
-        installer.config_manager.create_moai_config_file.return_value = Path("/config.json")
-        installer.config_manager.create_package_json.return_value = Path("/package.json")
+        installer.config_manager.create_claude_settings_file.return_value = Path(
+            "/settings.json"
+        )
+        installer.config_manager.create_moai_config_file.return_value = Path(
+            "/config.json"
+        )
+        installer.config_manager.create_package_json.return_value = Path(
+            "/package.json"
+        )
 
         installer.git_manager.initialize_git_repository.return_value = (True, False)
         installer.system_manager.check_nodejs_and_npm.return_value = True
@@ -329,13 +384,17 @@ class TestProjectInstaller:
 
         assert len(result) == 1
         expected_target = Path("/test/project") / ".claude" / "hooks" / "moai"
-        installer.file_manager.copy_hook_scripts.assert_called_once_with(expected_target)
+        installer.file_manager.copy_hook_scripts.assert_called_once_with(
+            expected_target
+        )
 
     def test_install_templates(self, installer):
         """Test template installation method."""
         installer.template_dir = Path("/templates")
         installer.config.project_path = Path("/project")
-        installer.file_manager.copy_template_files.return_value = [Path("/template1.md")]
+        installer.file_manager.copy_template_files.return_value = [
+            Path("/template1.md")
+        ]
 
         result = installer._install_templates()
 
@@ -364,8 +423,8 @@ class TestProjectInstaller:
         # Mock file manager calls
         installer.file_manager.copy_template_files.side_effect = [
             [Path("/claude_memory1.md")],  # claude memory
-            [Path("/moai_memory1.md")],    # moai memory
-            [Path("/decision1.md")]        # decisions
+            [Path("/moai_memory1.md")],  # moai memory
+            [Path("/decision1.md")],  # decisions
         ]
 
         result = installer._install_memory_files()
@@ -388,7 +447,7 @@ class TestProjectInstaller:
         # Mock file manager calls
         installer.file_manager.copy_template_files.side_effect = [
             [Path("/claude_memory1.md")],  # claude memory
-            [Path("/moai_memory1.md")]     # moai memory
+            [Path("/moai_memory1.md")],  # moai memory
         ]
 
         result = installer._install_memory_files()
@@ -410,7 +469,9 @@ class TestProjectInstaller:
         pr_template.write_text("PR template")
 
         # Mock file manager and config
-        installer.file_manager.copy_template_files.return_value = [Path("/workflow1.yml")]
+        installer.file_manager.copy_template_files.return_value = [
+            Path("/workflow1.yml")
+        ]
         installer.file_manager.copy_and_render_template.return_value = True
         installer.config.get_template_context = MagicMock(return_value={})
 
@@ -423,13 +484,17 @@ class TestProjectInstaller:
     def test_install_verification_scripts(self, installer):
         """Test verification scripts installation method."""
         installer.config.project_path = Path("/project")
-        installer.file_manager.copy_verification_scripts.return_value = [Path("/script1.py")]
+        installer.file_manager.copy_verification_scripts.return_value = [
+            Path("/script1.py")
+        ]
 
         result = installer._install_verification_scripts()
 
         assert len(result) == 1
         expected_target = Path("/project") / ".moai" / "scripts"
-        installer.file_manager.copy_verification_scripts.assert_called_once_with(expected_target)
+        installer.file_manager.copy_verification_scripts.assert_called_once_with(
+            expected_target
+        )
 
     def test_create_steering_templates(self, installer, temp_dir):
         """Test steering templates creation method."""
@@ -441,7 +506,9 @@ class TestProjectInstaller:
         steering_dir.mkdir(parents=True)
 
         for template_name in ["product", "structure", "tech"]:
-            (steering_dir / f"{template_name}.template.md").write_text("template content")
+            (steering_dir / f"{template_name}.template.md").write_text(
+                "template content"
+            )
 
         # Mock file manager and config
         installer.file_manager.copy_and_render_template.return_value = True
@@ -527,22 +594,35 @@ class TestProjectInstaller:
 
         # Mock all private installation methods
         installation_methods = [
-            '_install_agents', '_install_commands', '_install_hook_scripts',
-            '_install_templates', '_install_memory_files', '_install_github_files',
-            '_install_verification_scripts', '_create_steering_templates',
-            '_create_claude_md', '_install_output_styles', '_generate_next_steps'
+            "_install_agents",
+            "_install_commands",
+            "_install_hook_scripts",
+            "_install_templates",
+            "_install_memory_files",
+            "_install_github_files",
+            "_install_verification_scripts",
+            "_create_steering_templates",
+            "_create_claude_md",
+            "_install_output_styles",
+            "_generate_next_steps",
         ]
 
         for method_name in installation_methods:
-            if method_name == '_create_claude_md':
-                setattr(installer, method_name, MagicMock(return_value=Path("/test.md")))
+            if method_name == "_create_claude_md":
+                setattr(
+                    installer, method_name, MagicMock(return_value=Path("/test.md"))
+                )
             else:
                 setattr(installer, method_name, MagicMock(return_value=[]))
 
         # Mock config manager
         installer.config_manager.create_initial_indexes.return_value = []
-        installer.config_manager.create_claude_settings_file.return_value = Path("/settings.json")
-        installer.config_manager.create_moai_config_file.return_value = Path("/config.json")
+        installer.config_manager.create_claude_settings_file.return_value = Path(
+            "/settings.json"
+        )
+        installer.config_manager.create_moai_config_file.return_value = Path(
+            "/config.json"
+        )
 
         # Mock other managers
         installer.git_manager.initialize_git_repository.return_value = (True, False)

@@ -20,11 +20,11 @@ def validate_yaml_frontmatter(content: str) -> tuple[bool, dict[str, Any], str]:
     Returns:
         (is_valid, yaml_data, error_message)
     """
-    if not content.startswith('---\n'):
+    if not content.startswith("---\n"):
         return False, {}, "YAML frontmatter missing"
 
     # Extract YAML frontmatter
-    parts = content.split('---\n')
+    parts = content.split("---\n")
     if len(parts) < 3:
         return False, {}, "Invalid YAML frontmatter structure"
 
@@ -39,7 +39,9 @@ def validate_yaml_frontmatter(content: str) -> tuple[bool, dict[str, Any], str]:
         return False, {}, f"YAML parsing error: {e!s}"
 
 
-def check_required_fields(yaml_data: dict[str, Any], required_fields: list[str]) -> list[str]:
+def check_required_fields(
+    yaml_data: dict[str, Any], required_fields: list[str]
+) -> list[str]:
     """
     필수 필드 존재 확인
 
@@ -63,7 +65,7 @@ def validate_command_structure(file_path: Path) -> tuple[bool, list[str]]:
     errors = []
 
     try:
-        content = file_path.read_text(encoding='utf-8')
+        content = file_path.read_text(encoding="utf-8")
     except Exception as e:
         return False, [f"Failed to read file: {e!s}"]
 
@@ -74,28 +76,28 @@ def validate_command_structure(file_path: Path) -> tuple[bool, list[str]]:
         return False, errors
 
     # Check required fields for commands
-    required_fields = ['name', 'description', 'argument-hint', 'allowed-tools', 'model']
+    required_fields = ["name", "description", "argument-hint", "allowed-tools", "model"]
     missing_fields = check_required_fields(yaml_data, required_fields)
 
     for field in missing_fields:
         errors.append(f"Missing required field: {field}")
 
     # Validate specific field formats
-    if 'name' in yaml_data and not isinstance(yaml_data['name'], str):
+    if "name" in yaml_data and not isinstance(yaml_data["name"], str):
         errors.append("'name' field must be a string")
 
-    if 'description' in yaml_data and not isinstance(yaml_data['description'], str):
+    if "description" in yaml_data and not isinstance(yaml_data["description"], str):
         errors.append("'description' field must be a string")
 
-    if 'argument-hint' in yaml_data:
-        if not isinstance(yaml_data['argument-hint'], (str, list)):
+    if "argument-hint" in yaml_data:
+        if not isinstance(yaml_data["argument-hint"], (str, list)):
             errors.append("'argument-hint' field must be a string or list")
 
-    if 'allowed-tools' in yaml_data:
-        if not isinstance(yaml_data['allowed-tools'], (str, list)):
+    if "allowed-tools" in yaml_data:
+        if not isinstance(yaml_data["allowed-tools"], (str, list)):
             errors.append("'allowed-tools' field must be a string or list")
 
-    if 'model' in yaml_data and not isinstance(yaml_data['model'], str):
+    if "model" in yaml_data and not isinstance(yaml_data["model"], str):
         errors.append("'model' field must be a string")
 
     return len(errors) == 0, errors
@@ -111,7 +113,7 @@ def validate_agent_structure(file_path: Path) -> tuple[bool, list[str]]:
     errors = []
 
     try:
-        content = file_path.read_text(encoding='utf-8')
+        content = file_path.read_text(encoding="utf-8")
     except Exception as e:
         return False, [f"Failed to read file: {e!s}"]
 
@@ -122,27 +124,29 @@ def validate_agent_structure(file_path: Path) -> tuple[bool, list[str]]:
         return False, errors
 
     # Check required fields for agents
-    required_fields = ['name', 'description', 'tools', 'model']
+    required_fields = ["name", "description", "tools", "model"]
     missing_fields = check_required_fields(yaml_data, required_fields)
 
     for field in missing_fields:
         errors.append(f"Missing required field: {field}")
 
     # Validate specific field formats
-    if 'name' in yaml_data and not isinstance(yaml_data['name'], str):
+    if "name" in yaml_data and not isinstance(yaml_data["name"], str):
         errors.append("'name' field must be a string")
 
-    if 'description' in yaml_data:
-        if not isinstance(yaml_data['description'], str):
+    if "description" in yaml_data:
+        if not isinstance(yaml_data["description"], str):
             errors.append("'description' field must be a string")
-        elif 'Use PROACTIVELY for' not in yaml_data['description']:
-            errors.append("'description' field must contain 'Use PROACTIVELY for' pattern")
+        elif "Use PROACTIVELY for" not in yaml_data["description"]:
+            errors.append(
+                "'description' field must contain 'Use PROACTIVELY for' pattern"
+            )
 
-    if 'tools' in yaml_data:
-        if not isinstance(yaml_data['tools'], (str, list)):
+    if "tools" in yaml_data:
+        if not isinstance(yaml_data["tools"], (str, list)):
             errors.append("'tools' field must be a string or list")
 
-    if 'model' in yaml_data and not isinstance(yaml_data['model'], str):
+    if "model" in yaml_data and not isinstance(yaml_data["model"], str):
         errors.append("'model' field must be a string")
 
     return len(errors) == 0, errors
@@ -155,7 +159,7 @@ def validate_proactive_pattern(description: str) -> bool:
     Returns:
         True if pattern exists, False otherwise
     """
-    return 'Use PROACTIVELY for' in description
+    return "Use PROACTIVELY for" in description
 
 
 def generate_violation_report(errors_found: list[str]) -> str:
@@ -254,7 +258,9 @@ def suggest_fixes(errors_found: list[str]) -> list[str]:
     unique_suggestions = list(set(suggestions))
 
     if not unique_suggestions:
-        unique_suggestions.append("❓ 구체적인 수정 제안을 생성할 수 없습니다. cc-manager 문서를 참조하세요.")
+        unique_suggestions.append(
+            "❓ 구체적인 수정 제안을 생성할 수 없습니다. cc-manager 문서를 참조하세요."
+        )
 
     return unique_suggestions
 
@@ -281,28 +287,30 @@ def main():
     else:
         # Check all .md files in commands and agents directories
         files_to_check = []
-        commands_dir = path / '.claude' / 'commands'
-        agents_dir = path / '.claude' / 'agents'
+        commands_dir = path / ".claude" / "commands"
+        agents_dir = path / ".claude" / "agents"
 
         if commands_dir.exists():
-            files_to_check.extend(commands_dir.rglob('*.md'))
+            files_to_check.extend(commands_dir.rglob("*.md"))
 
         if agents_dir.exists():
-            files_to_check.extend(agents_dir.rglob('*.md'))
+            files_to_check.extend(agents_dir.rglob("*.md"))
 
     for file_path in files_to_check:
         total_files += 1
         relative_path = file_path.relative_to(path) if path.is_dir() else file_path.name
 
         # Determine if it's a command or agent file
-        if '.claude/commands' in str(file_path) or '/commands/' in str(file_path):
+        if ".claude/commands" in str(file_path) or "/commands/" in str(file_path):
             is_valid, errors = validate_command_structure(file_path)
             file_type = "Command"
-        elif '.claude/agents' in str(file_path) or '/agents/' in str(file_path):
+        elif ".claude/agents" in str(file_path) or "/agents/" in str(file_path):
             is_valid, errors = validate_agent_structure(file_path)
             file_type = "Agent"
         else:
-            click.echo(f"Skipping {relative_path} (not in commands or agents directory)")
+            click.echo(
+                f"Skipping {relative_path} (not in commands or agents directory)"
+            )
             total_files -= 1
             continue
 
@@ -330,5 +338,5 @@ def main():
         sys.exit(0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -40,14 +40,17 @@ class DirectoryManager:
 
         # 현재 디렉토리인지 확인
         is_current_dir = (
-            project_path.resolve() == Path.cwd().resolve() or
-            str(project_path) == "."
+            project_path.resolve() == Path.cwd().resolve() or str(project_path) == "."
         )
 
         if project_path.exists():
             # 현재 디렉토리나 기존 프로젝트는 삭제하지 않음
-            if is_current_dir or (config.is_existing_project and not config.force_overwrite):
-                logger.info("Using existing directory (preserving all files): %s", project_path)
+            if is_current_dir or (
+                config.is_existing_project and not config.force_overwrite
+            ):
+                logger.info(
+                    "Using existing directory (preserving all files): %s", project_path
+                )
                 return
 
             # 새 프로젝트이고 강제 덮어쓰기가 요청된 경우에만 기존 처리
@@ -81,7 +84,9 @@ class DirectoryManager:
             logger.info("Preserving existing .git directory")
 
         # Remove the project directory only when force is explicitly requested
-        logger.warning("Force overwrite enabled - removing existing directory: %s", project_path)
+        logger.warning(
+            "Force overwrite enabled - removing existing directory: %s", project_path
+        )
         if not self.security_manager.safe_rmtree(project_path):
             raise SecurityError(f"Failed to safely delete directory: {project_path}")
 
@@ -113,7 +118,6 @@ class DirectoryManager:
             base_path / ".claude" / "memory",
             base_path / ".claude" / "logs",
             base_path / ".claude" / "output-styles",
-
             # MoAI 문서 시스템
             base_path / ".moai",
             base_path / ".moai" / "templates",
@@ -124,7 +128,6 @@ class DirectoryManager:
             base_path / ".moai" / "indexes",
             base_path / ".moai" / "reports",
             base_path / ".moai" / "scripts",
-
             # GitHub Actions (옵션)
             base_path / ".github" / "workflows",
         ]
@@ -134,7 +137,9 @@ class DirectoryManager:
             try:
                 # Security validation for each directory
                 if not self.security_manager.validate_path_safety(directory, base_path):
-                    logger.error("Security validation failed for directory: %s", directory)
+                    logger.error(
+                        "Security validation failed for directory: %s", directory
+                    )
                     continue
 
                 directory.mkdir(parents=True, exist_ok=True)
@@ -160,7 +165,9 @@ class DirectoryManager:
         """
         try:
             # Security validation if base path provided
-            if base_path and not self.security_manager.validate_path_safety(directory, base_path):
+            if base_path and not self.security_manager.validate_path_safety(
+                directory, base_path
+            ):
                 logger.error("Security validation failed for directory: %s", directory)
                 return False
 
@@ -184,20 +191,20 @@ class DirectoryManager:
         """
         if not directory.exists():
             return {
-                'exists': False,
-                'is_directory': False,
-                'file_count': 0,
-                'subdirectory_count': 0,
-                'total_size': 0
+                "exists": False,
+                "is_directory": False,
+                "file_count": 0,
+                "subdirectory_count": 0,
+                "total_size": 0,
             }
 
         if not directory.is_dir():
             return {
-                'exists': True,
-                'is_directory': False,
-                'file_count': 0,
-                'subdirectory_count': 0,
-                'total_size': directory.stat().st_size if directory.exists() else 0
+                "exists": True,
+                "is_directory": False,
+                "file_count": 0,
+                "subdirectory_count": 0,
+                "total_size": directory.stat().st_size if directory.exists() else 0,
             }
 
         try:
@@ -205,7 +212,7 @@ class DirectoryManager:
             subdirectory_count = 0
             total_size = 0
 
-            for item in directory.rglob('*'):
+            for item in directory.rglob("*"):
                 if item.is_file():
                     file_count += 1
                     total_size += item.stat().st_size
@@ -213,26 +220,28 @@ class DirectoryManager:
                     subdirectory_count += 1
 
             return {
-                'exists': True,
-                'is_directory': True,
-                'file_count': file_count,
-                'subdirectory_count': subdirectory_count,
-                'total_size': total_size,
-                'size_mb': round(total_size / (1024 * 1024), 2)
+                "exists": True,
+                "is_directory": True,
+                "file_count": file_count,
+                "subdirectory_count": subdirectory_count,
+                "total_size": total_size,
+                "size_mb": round(total_size / (1024 * 1024), 2),
             }
 
         except Exception as e:
             logger.error("Error getting directory info for %s: %s", directory, e)
             return {
-                'exists': True,
-                'is_directory': True,
-                'file_count': 0,
-                'subdirectory_count': 0,
-                'total_size': 0,
-                'error': str(e)
+                "exists": True,
+                "is_directory": True,
+                "file_count": 0,
+                "subdirectory_count": 0,
+                "total_size": 0,
+                "error": str(e),
             }
 
-    def clean_directory(self, directory: Path, preserve_patterns: list[str] = None) -> bool:
+    def clean_directory(
+        self, directory: Path, preserve_patterns: list[str] = None
+    ) -> bool:
         """
         Clean directory contents while preserving specified patterns.
 
@@ -278,7 +287,9 @@ class DirectoryManager:
             logger.error("Error cleaning directory %s: %s", directory, e)
             return False
 
-    def create_backup_directory(self, source_path: Path, backup_base: Path = None) -> Path:
+    def create_backup_directory(
+        self, source_path: Path, backup_base: Path = None
+    ) -> Path:
         """
         Create a backup directory with timestamp.
 
@@ -301,7 +312,9 @@ class DirectoryManager:
         try:
             # Security validation
             if not self.security_manager.validate_path_safety(backup_path, backup_base):
-                raise SecurityError(f"Security validation failed for backup path: {backup_path}")
+                raise SecurityError(
+                    f"Security validation failed for backup path: {backup_path}"
+                )
 
             # Create backup
             if source_path.is_file():
@@ -310,7 +323,9 @@ class DirectoryManager:
             elif source_path.is_dir():
                 shutil.copytree(source_path, backup_path, dirs_exist_ok=True)
             else:
-                raise ValueError(f"Source path does not exist or is not a file/directory: {source_path}")
+                raise ValueError(
+                    f"Source path does not exist or is not a file/directory: {source_path}"
+                )
 
             logger.info("Created backup: %s -> %s", source_path, backup_path)
             return backup_path

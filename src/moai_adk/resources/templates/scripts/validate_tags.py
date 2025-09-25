@@ -26,15 +26,18 @@ from typing import Dict, List, Optional, Set, Any
 @dataclass
 class TagReference:
     """태그 참조 정보"""
+
     tag_type: str
     tag_id: str
     file_path: str
     line_number: int
     context: str
 
+
 @dataclass
 class TagHealthReport:
     """태그 건강도 리포트"""
+
     total_tags: int = 0
     valid_tags: int = 0
     invalid_tags: int = 0
@@ -43,6 +46,7 @@ class TagHealthReport:
     quality_score: float = 0.0
     issues: list[str] = field(default_factory=list)
     recommendations: list[str] = field(default_factory=list)
+
 
 class TagValidator:
     """16-Core TAG 시스템 검증기"""
@@ -54,11 +58,11 @@ class TagValidator:
 
         # 16-Core 태그 체계
         self.tag_categories = {
-            'Primary': ['REQ', 'SPEC', 'DESIGN', 'TASK', 'TEST'],
-            'Steering': ['VISION', 'STRUCT', 'TECH', 'ADR'],
-            'Implementation': ['FEATURE', 'API', 'DATA'],
-            'Quality': ['PERF', 'SEC', 'DEBT', 'TODO'],
-            'Legacy': ['US', 'FR', 'NFR', 'BUG', 'REVIEW']
+            "Primary": ["REQ", "SPEC", "DESIGN", "TASK", "TEST"],
+            "Steering": ["VISION", "STRUCT", "TECH", "ADR"],
+            "Implementation": ["FEATURE", "API", "DATA"],
+            "Quality": ["PERF", "SEC", "DEBT", "TODO"],
+            "Legacy": ["US", "FR", "NFR", "BUG", "REVIEW"],
         }
 
         self.valid_tag_types = []
@@ -67,9 +71,9 @@ class TagValidator:
 
         # 추적성 체인 정의
         self.traceability_chains = {
-            'Primary': ['REQ', 'DESIGN', 'TASK', 'TEST'],
-            'Development': ['SPEC', 'ADR', 'TASK', 'API', 'TEST'],
-            'Quality': ['PERF', 'SEC', 'DEBT', 'REVIEW']
+            "Primary": ["REQ", "DESIGN", "TASK", "TEST"],
+            "Development": ["SPEC", "ADR", "TASK", "API", "TEST"],
+            "Quality": ["PERF", "SEC", "DEBT", "REVIEW"],
         }
 
         # 스캔 결과
@@ -84,20 +88,28 @@ class TagValidator:
         found_tags = []
 
         # 스캔할 파일 확장자 (JSON 제외)
-        scan_extensions = ['.md', '.py', '.js', '.ts', '.tsx', '.jsx', '.yml', '.yaml']
+        scan_extensions = [".md", ".py", ".js", ".ts", ".tsx", ".jsx", ".yml", ".yaml"]
 
         # 제외할 디렉토리
-        exclude_dirs = {'node_modules', '__pycache__', '.git', 'dist', 'build', 'venv', '.env'}
+        exclude_dirs = {
+            "node_modules",
+            "__pycache__",
+            ".git",
+            "dist",
+            "build",
+            "venv",
+            ".env",
+        }
 
-        for file_path in self.project_root.rglob('*'):
+        for file_path in self.project_root.rglob("*"):
             if file_path.is_file() and file_path.suffix in scan_extensions:
                 # 제외 디렉토리 확인
                 if any(excluded in file_path.parts for excluded in exclude_dirs):
                     continue
 
                 try:
-                    content = file_path.read_text(encoding='utf-8', errors='ignore')
-                    lines = content.split('\n')
+                    content = file_path.read_text(encoding="utf-8", errors="ignore")
+                    lines = content.split("\n")
 
                     for line_num, line in enumerate(lines, 1):
                         matches = re.finditer(tag_pattern, line)
@@ -115,7 +127,7 @@ class TagValidator:
                                 tag_id=tag_id,
                                 file_path=str(rel_path),
                                 line_number=line_num,
-                                context=line.strip()
+                                context=line.strip(),
                             )
 
                             found_tags.append(tag_ref)
@@ -125,7 +137,9 @@ class TagValidator:
 
         return found_tags
 
-    def build_tag_index(self, tags: list[TagReference]) -> dict[str, list[TagReference]]:
+    def build_tag_index(
+        self, tags: list[TagReference]
+    ) -> dict[str, list[TagReference]]:
         """태그 인덱스 구축"""
         index = {}
 
@@ -142,11 +156,17 @@ class TagValidator:
 
         # 유효한 태그 타입 확인
         if tag.tag_type not in self.valid_tag_types:
-            return False, f"Invalid tag type '{tag.tag_type}' (valid: {', '.join(self.valid_tag_types)})"
+            return (
+                False,
+                f"Invalid tag type '{tag.tag_type}' (valid: {', '.join(self.valid_tag_types)})",
+            )
 
         # 태그 ID 형식 확인
-        if not re.match(r'^[A-Z0-9-_]+$', tag.tag_id):
-            return False, f"Invalid tag ID format '{tag.tag_id}' (use uppercase, numbers, hyphens, underscores only)"
+        if not re.match(r"^[A-Z0-9-_]+$", tag.tag_id):
+            return (
+                False,
+                f"Invalid tag ID format '{tag.tag_id}' (use uppercase, numbers, hyphens, underscores only)",
+            )
 
         # 길이 제한
         if len(tag.tag_id) < 2:
@@ -168,23 +188,27 @@ class TagValidator:
         for tag_key, tag_refs in tag_index.items():
             for tag_ref in tag_refs:
                 # 컨텍스트에서 다른 태그 참조 찾기
-                context_tags = re.findall(r'@([A-Z]+)[-:]([A-Z0-9-_]+)', tag_ref.context)
+                context_tags = re.findall(
+                    r"@([A-Z]+)[-:]([A-Z0-9-_]+)", tag_ref.context
+                )
                 for ref_type, ref_id in context_tags:
                     if f"{ref_type}:{ref_id}" != tag_key:  # 자기 자신 제외
                         referenced_tags.add(f"{ref_type}:{ref_id}")
 
         # 참조되지 않는 태그 찾기 (단, 루트 태그는 제외)
-        root_tag_types = ['REQ', 'SPEC', 'VISION']  # 루트가 될 수 있는 태그
+        root_tag_types = ["REQ", "SPEC", "VISION"]  # 루트가 될 수 있는 태그
 
         for tag_key in tag_index:
-            tag_type = tag_key.split(':')[0]
+            tag_type = tag_key.split(":")[0]
 
             if tag_key not in referenced_tags and tag_type not in root_tag_types:
                 orphan_tags.append(tag_key)
 
         return orphan_tags
 
-    def find_broken_links(self, tag_index: dict[str, list[TagReference]]) -> list[tuple[str, str]]:
+    def find_broken_links(
+        self, tag_index: dict[str, list[TagReference]]
+    ) -> list[tuple[str, str]]:
         """깨진 링크 (존재하지 않는 태그 참조) 찾기"""
 
         broken_links = []
@@ -192,7 +216,9 @@ class TagValidator:
         for tag_key, tag_refs in tag_index.items():
             for tag_ref in tag_refs:
                 # 컨텍스트에서 다른 태그 참조 찾기
-                context_tags = re.findall(r'@([A-Z]+)[-:]([A-Z0-9-_]+)', tag_ref.context)
+                context_tags = re.findall(
+                    r"@([A-Z]+)[-:]([A-Z0-9-_]+)", tag_ref.context
+                )
 
                 for ref_type, ref_id in context_tags:
                     referenced_tag = f"{ref_type}:{ref_id}"
@@ -203,7 +229,9 @@ class TagValidator:
 
         return broken_links
 
-    def validate_traceability_chains(self, tag_index: dict[str, list[TagReference]]) -> list[str]:
+    def validate_traceability_chains(
+        self, tag_index: dict[str, list[TagReference]]
+    ) -> list[str]:
         """추적성 체인 검증"""
 
         chain_violations = []
@@ -213,7 +241,8 @@ class TagValidator:
             chain_tags = {}
             for tag_type in chain_types:
                 chain_tags[tag_type] = [
-                    tag_key for tag_key in tag_index
+                    tag_key
+                    for tag_key in tag_index
                     if tag_key.startswith(f"{tag_type}:")
                 ]
 
@@ -233,11 +262,9 @@ class TagValidator:
 
         return chain_violations
 
-    def calculate_tag_quality_score(self,
-                                  total_tags: int,
-                                  valid_tags: int,
-                                  orphan_tags: int,
-                                  broken_links: int) -> float:
+    def calculate_tag_quality_score(
+        self, total_tags: int, valid_tags: int, orphan_tags: int, broken_links: int
+    ) -> float:
         """태그 품질 점수 계산"""
 
         if total_tags == 0:
@@ -255,7 +282,9 @@ class TagValidator:
         integrity_score = max(0, 1.0 - broken_penalty)
 
         # 가중 평균
-        quality_score = (validity_score * 0.4 + connectivity_score * 0.3 + integrity_score * 0.3)
+        quality_score = (
+            validity_score * 0.4 + connectivity_score * 0.3 + integrity_score * 0.3
+        )
 
         return round(quality_score, 3)
 
@@ -266,28 +295,28 @@ class TagValidator:
         tags_file = self.indexes_dir / "tags.json"  # 임시: JSON 호환성 유지
 
         tags_data = {
-            'version': '0.1.9',
-            'updated': datetime.now().isoformat(),
-            'statistics': {
-                'total_tags': len(tag_index),
-                'categories': {}
-            },
-            'index': {}
+            "version": "0.1.9",
+            "updated": datetime.now().isoformat(),
+            "statistics": {"total_tags": len(tag_index), "categories": {}},
+            "index": {},
         }
 
         # 카테고리별 통계
         for category, tag_types in self.tag_categories.items():
-            count = sum(1 for tag_key in tag_index
-                       if any(tag_key.startswith(f"{t}:") for t in tag_types))
-            tags_data['statistics']['categories'][category] = count
+            count = sum(
+                1
+                for tag_key in tag_index
+                if any(tag_key.startswith(f"{t}:") for t in tag_types)
+            )
+            tags_data["statistics"]["categories"][category] = count
 
         # 인덱스 데이터
         for tag_key, tag_refs in tag_index.items():
-            tags_data['index'][tag_key] = [
+            tags_data["index"][tag_key] = [
                 {
-                    'file': ref.file_path,
-                    'line': ref.line_number,
-                    'context': ref.context[:100]  # 처음 100자만
+                    "file": ref.file_path,
+                    "line": ref.line_number,
+                    "context": ref.context[:100],  # 처음 100자만
                 }
                 for ref in tag_refs
             ]
@@ -298,13 +327,15 @@ class TagValidator:
 
         print(f"📄 Updated tag index: {tags_file}")
 
-    def generate_health_report(self,
-                             total_tags: int,
-                             valid_tags: int,
-                             invalid_tags: int,
-                             orphan_tags: list[str],
-                             broken_links: list[tuple[str, str]],
-                             chain_violations: list[str]) -> TagHealthReport:
+    def generate_health_report(
+        self,
+        total_tags: int,
+        valid_tags: int,
+        invalid_tags: int,
+        orphan_tags: list[str],
+        broken_links: list[tuple[str, str]],
+        chain_violations: list[str],
+    ) -> TagHealthReport:
         """태그 시스템 건강도 리포트 생성"""
 
         quality_score = self.calculate_tag_quality_score(
@@ -317,11 +348,15 @@ class TagValidator:
         # 이슈 수집
         if invalid_tags > 0:
             issues.append(f"{invalid_tags} invalid tag format(s)")
-            recommendations.append("Fix invalid tag formats using 16-Core naming conventions")
+            recommendations.append(
+                "Fix invalid tag formats using 16-Core naming conventions"
+            )
 
         if orphan_tags:
             issues.append(f"{len(orphan_tags)} orphan tag(s) found")
-            recommendations.append("Link orphan tags to parent tags or remove if unused")
+            recommendations.append(
+                "Link orphan tags to parent tags or remove if unused"
+            )
 
         if broken_links:
             issues.append(f"{len(broken_links)} broken link(s)")
@@ -332,7 +367,9 @@ class TagValidator:
             recommendations.append("Complete traceability chains for all requirements")
 
         if quality_score < 0.7:
-            recommendations.append("Improve overall tag quality by addressing issues above")
+            recommendations.append(
+                "Improve overall tag quality by addressing issues above"
+            )
 
         return TagHealthReport(
             total_tags=total_tags,
@@ -342,7 +379,7 @@ class TagValidator:
             broken_links=len(broken_links),
             quality_score=quality_score,
             issues=issues,
-            recommendations=recommendations
+            recommendations=recommendations,
         )
 
     def run_validation(self) -> TagHealthReport:
@@ -370,7 +407,9 @@ class TagValidator:
                 valid_tags += 1
             else:
                 invalid_tags += 1
-                self.violations.append(f"{tag.file_path}:{tag.line_number} - {error_msg}")
+                self.violations.append(
+                    f"{tag.file_path}:{tag.line_number} - {error_msg}"
+                )
 
         # 4. 고아 태그 찾기
         print("  Finding orphan tags...")
@@ -390,13 +429,18 @@ class TagValidator:
 
         # 8. 건강도 리포트 생성
         report = self.generate_health_report(
-            len(self.all_tags), valid_tags, invalid_tags,
-            orphan_tags, broken_links, chain_violations
+            len(self.all_tags),
+            valid_tags,
+            invalid_tags,
+            orphan_tags,
+            broken_links,
+            chain_violations,
         )
 
         print(f"  Tag quality score: {report.quality_score:.1%}")
 
         return report
+
 
 def main():
     """메인 실행 함수"""
@@ -414,9 +458,9 @@ def main():
         report = validator.run_validation()
 
         # 결과 출력
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("🏷️  16-CORE TAG VALIDATION REPORT")
-        print("="*60)
+        print("=" * 60)
 
         print(f"Total Tags: {report.total_tags}")
         print(f"Valid Tags: {report.valid_tags}")
@@ -461,13 +505,15 @@ def main():
 
         # 리포트 저장
         report_data = {
-            'tag_health': report.__dict__,
-            'violations': validator.violations,
-            'scan_info': {
-                'timestamp': datetime.now().isoformat(),
-                'total_files_scanned': len(set(tag.file_path for tag in validator.all_tags)),
-                'version': '0.1.9'
-            }
+            "tag_health": report.__dict__,
+            "violations": validator.violations,
+            "scan_info": {
+                "timestamp": datetime.now().isoformat(),
+                "total_files_scanned": len(
+                    set(tag.file_path for tag in validator.all_tags)
+                ),
+                "version": "0.1.9",
+            },
         }
 
         # SQLite 보고서 저장
@@ -479,8 +525,8 @@ def main():
             cursor = conn.cursor()
 
             # 보고서 테이블 생성
-            cursor.execute('DROP TABLE IF EXISTS validation_report')
-            cursor.execute('''
+            cursor.execute("DROP TABLE IF EXISTS validation_report")
+            cursor.execute("""
                 CREATE TABLE validation_report (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     metric TEXT NOT NULL,
@@ -488,22 +534,32 @@ def main():
                     details TEXT,
                     created TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            ''')
+            """)
 
             # 보고서 데이터 삽입
-            cursor.execute("INSERT INTO validation_report (metric, value, details) VALUES ('timestamp', ?, '')",
-                         (report_data['timestamp'],))
-            cursor.execute("INSERT INTO validation_report (metric, value, details) VALUES ('total_tags', ?, '')",
-                         (str(report_data['summary']['total_tags']),))
-            cursor.execute("INSERT INTO validation_report (metric, value, details) VALUES ('valid_tags', ?, '')",
-                         (str(report_data['summary']['valid_tags']),))
-            cursor.execute("INSERT INTO validation_report (metric, value, details) VALUES ('quality_score', ?, '')",
-                         (str(report_data['summary']['quality_score']),))
+            cursor.execute(
+                "INSERT INTO validation_report (metric, value, details) VALUES ('timestamp', ?, '')",
+                (report_data["timestamp"],),
+            )
+            cursor.execute(
+                "INSERT INTO validation_report (metric, value, details) VALUES ('total_tags', ?, '')",
+                (str(report_data["summary"]["total_tags"]),),
+            )
+            cursor.execute(
+                "INSERT INTO validation_report (metric, value, details) VALUES ('valid_tags', ?, '')",
+                (str(report_data["summary"]["valid_tags"]),),
+            )
+            cursor.execute(
+                "INSERT INTO validation_report (metric, value, details) VALUES ('quality_score', ?, '')",
+                (str(report_data["summary"]["quality_score"]),),
+            )
 
             # 단순화된 보고서로 대체
-            for issue_type, issues in report_data['issues'].items():
-                cursor.execute("INSERT INTO validation_report (metric, value, details) VALUES (?, ?, ?)",
-                             (issue_type, str(len(issues)), str(issues)[:500]))
+            for issue_type, issues in report_data["issues"].items():
+                cursor.execute(
+                    "INSERT INTO validation_report (metric, value, details) VALUES (?, ?, ?)",
+                    (issue_type, str(len(issues)), str(issues)[:500]),
+                )
 
             conn.commit()
             conn.close()
@@ -518,6 +574,7 @@ def main():
     except Exception as error:
         print(f"❌ Tag validation failed: {error}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

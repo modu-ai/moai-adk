@@ -15,6 +15,7 @@ from moai_adk.core.directory_manager import DirectoryManager
 from moai_adk.core.security import SecurityManager, SecurityError
 from moai_adk.config import Config, RuntimeConfig
 
+
 class TestDirectoryManager:
     """Test cases for DirectoryManager class."""
 
@@ -39,10 +40,9 @@ class TestDirectoryManager:
         """Create a sample Config instance for testing."""
         return Config(
             name="test-project",
-            
             template="standard",
             runtime=RuntimeConfig("python"),
-            path=temp_dir / "test_project"
+            path=temp_dir / "test_project",
         )
 
     def test_init_with_security_manager(self, security_manager):
@@ -59,10 +59,9 @@ class TestDirectoryManager:
         """Test creating a new project directory."""
         config = Config(
             name="new-project",
-            
             template="standard",
             runtime=RuntimeConfig("python"),
-            path=temp_dir / "new_project"
+            path=temp_dir / "new_project",
         )
 
         dir_manager.create_project_directory(config)
@@ -74,17 +73,18 @@ class TestDirectoryManager:
         """Test creating project directory when using current directory."""
         config = Config(
             name="current-project",
-            
             template="standard",
             runtime=RuntimeConfig("python"),
-            path=Path(".")
+            path=Path("."),
         )
 
         # Should not fail and should preserve existing structure
         dir_manager.create_project_directory(config)
         # No assertion needed - should not crash
 
-    def test_create_project_directory_existing_no_overwrite(self, dir_manager, temp_dir):
+    def test_create_project_directory_existing_no_overwrite(
+        self, dir_manager, temp_dir
+    ):
         """Test creating project directory when directory exists without overwrite."""
         project_path = temp_dir / "existing_project"
         project_path.mkdir()
@@ -92,12 +92,11 @@ class TestDirectoryManager:
 
         config = Config(
             name="existing-project",
-            
             template="standard",
             runtime=RuntimeConfig("python"),
             path=project_path,
             is_existing_project=True,
-            force_overwrite=False
+            force_overwrite=False,
         )
 
         dir_manager.create_project_directory(config)
@@ -114,11 +113,10 @@ class TestDirectoryManager:
 
         config = Config(
             name="overwrite-project",
-            
             template="standard",
             runtime=RuntimeConfig("python"),
             path=project_path,
-            force_overwrite=True
+            force_overwrite=True,
         )
 
         # Mock security manager to allow safe removal
@@ -192,7 +190,7 @@ class TestDirectoryManager:
             ".moai/indexes",
             ".moai/reports",
             ".moai/scripts",
-            ".github/workflows"
+            ".github/workflows",
         ]
 
         assert len(created_dirs) == len(expected_dirs)
@@ -202,7 +200,9 @@ class TestDirectoryManager:
             assert expected_path.exists()
             assert expected_path.is_dir()
 
-    def test_create_directory_structure_security_validation_fails(self, dir_manager, temp_dir):
+    def test_create_directory_structure_security_validation_fails(
+        self, dir_manager, temp_dir
+    ):
         """Test directory structure creation when security validation fails."""
         # Mock security validation to return False
         dir_manager.security_manager.validate_path_safety.return_value = False
@@ -214,12 +214,15 @@ class TestDirectoryManager:
 
     def test_create_directory_structure_partial_failure(self, dir_manager, temp_dir):
         """Test directory structure creation with partial failures."""
+
         # Mock security validation to fail for some directories
         def mock_validate_path_safety(path, base):
             # Fail validation for .claude directories
             return ".claude" not in str(path)
 
-        dir_manager.security_manager.validate_path_safety.side_effect = mock_validate_path_safety
+        dir_manager.security_manager.validate_path_safety.side_effect = (
+            mock_validate_path_safety
+        )
 
         created_dirs = dir_manager.create_directory_structure(temp_dir)
 
@@ -251,7 +254,9 @@ class TestDirectoryManager:
         assert result is True
         assert existing_dir.exists()
 
-    def test_ensure_directory_exists_security_validation_fails(self, dir_manager, temp_dir):
+    def test_ensure_directory_exists_security_validation_fails(
+        self, dir_manager, temp_dir
+    ):
         """Test ensuring directory exists when security validation fails."""
         new_dir = temp_dir / "blocked_directory"
 
@@ -277,7 +282,9 @@ class TestDirectoryManager:
         new_dir = temp_dir / "permission_error_dir"
 
         # Mock mkdir to raise PermissionError
-        with patch.object(Path, 'mkdir', side_effect=PermissionError("Permission denied")):
+        with patch.object(
+            Path, "mkdir", side_effect=PermissionError("Permission denied")
+        ):
             result = dir_manager.ensure_directory_exists(new_dir)
 
         assert result is False
@@ -290,11 +297,11 @@ class TestDirectoryManager:
         info = dir_manager.get_directory_info(nonexistent_dir)
 
         expected = {
-            'exists': False,
-            'is_directory': False,
-            'file_count': 0,
-            'subdirectory_count': 0,
-            'total_size': 0
+            "exists": False,
+            "is_directory": False,
+            "file_count": 0,
+            "subdirectory_count": 0,
+            "total_size": 0,
         }
         assert info == expected
 
@@ -305,9 +312,9 @@ class TestDirectoryManager:
 
         info = dir_manager.get_directory_info(test_file)
 
-        assert info['exists'] is True
-        assert info['is_directory'] is False
-        assert info['total_size'] > 0
+        assert info["exists"] is True
+        assert info["is_directory"] is False
+        assert info["total_size"] > 0
 
     def test_get_directory_info_empty_directory(self, dir_manager, temp_dir):
         """Test getting info for empty directory."""
@@ -317,12 +324,12 @@ class TestDirectoryManager:
         info = dir_manager.get_directory_info(empty_dir)
 
         expected = {
-            'exists': True,
-            'is_directory': True,
-            'file_count': 0,
-            'subdirectory_count': 0,
-            'total_size': 0,
-            'size_mb': 0.0
+            "exists": True,
+            "is_directory": True,
+            "file_count": 0,
+            "subdirectory_count": 0,
+            "total_size": 0,
+            "size_mb": 0.0,
         }
         assert info == expected
 
@@ -342,12 +349,12 @@ class TestDirectoryManager:
 
         info = dir_manager.get_directory_info(content_dir)
 
-        assert info['exists'] is True
-        assert info['is_directory'] is True
-        assert info['file_count'] == 3
-        assert info['subdirectory_count'] == 1
-        assert info['total_size'] > 0
-        assert info['size_mb'] >= 0.0
+        assert info["exists"] is True
+        assert info["is_directory"] is True
+        assert info["file_count"] == 3
+        assert info["subdirectory_count"] == 1
+        assert info["total_size"] > 0
+        assert info["size_mb"] >= 0.0
 
     def test_get_directory_info_error_handling(self, dir_manager, temp_dir):
         """Test error handling in get_directory_info."""
@@ -355,13 +362,15 @@ class TestDirectoryManager:
         test_dir.mkdir()
 
         # Mock rglob to raise an exception
-        with patch.object(Path, 'rglob', side_effect=PermissionError("Permission denied")):
+        with patch.object(
+            Path, "rglob", side_effect=PermissionError("Permission denied")
+        ):
             info = dir_manager.get_directory_info(test_dir)
 
-        assert info['exists'] is True
-        assert info['is_directory'] is True
-        assert info['file_count'] == 0
-        assert 'error' in info
+        assert info["exists"] is True
+        assert info["is_directory"] is True
+        assert info["file_count"] == 0
+        assert "error" in info
 
     def test_clean_directory_empty(self, dir_manager, temp_dir):
         """Test cleaning an empty directory."""
@@ -513,8 +522,10 @@ class TestDirectoryManager:
         with pytest.raises(ValueError):
             dir_manager.create_backup_directory(nonexistent_source, temp_dir)
 
-    @patch('shutil.copytree', side_effect=IOError("Disk full"))
-    def test_create_backup_directory_io_error(self, mock_copytree, dir_manager, temp_dir):
+    @patch("shutil.copytree", side_effect=IOError("Disk full"))
+    def test_create_backup_directory_io_error(
+        self, mock_copytree, dir_manager, temp_dir
+    ):
         """Test creating backup with IO error."""
         source_dir = temp_dir / "source_dir"
         source_dir.mkdir()
@@ -536,10 +547,9 @@ class TestDirectoryManager:
         # Create project config
         config = Config(
             name="integration-project",
-            
             template="standard",
             runtime=RuntimeConfig("python"),
-            path=project_path
+            path=project_path,
         )
 
         # 1. Create project directory
@@ -552,8 +562,8 @@ class TestDirectoryManager:
 
         # 3. Get directory info
         info = dir_manager.get_directory_info(project_path)
-        assert info['exists'] is True
-        assert info['subdirectory_count'] > 0
+        assert info["exists"] is True
+        assert info["subdirectory_count"] > 0
 
         # 4. Ensure additional directory exists
         additional_dir = project_path / "additional"

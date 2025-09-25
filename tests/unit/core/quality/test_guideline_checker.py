@@ -29,7 +29,8 @@ class TestGuidelineChecker:
         test_file = Path("/fake/project/test_module.py")
 
         # Create a long function (51 lines) for testing
-        long_function_code = """
+        long_function_code = (
+            """
 def long_function():
     # Line 1
     x = 1
@@ -38,11 +39,15 @@ def long_function():
     # Line 5
     x += 1
     # Continue for 51 lines...
-""" + "\n".join([f"    # Line {i}" for i in range(6, 52)]) + "\n    return x"
+"""
+            + "\n".join([f"    # Line {i}" for i in range(6, 52)])
+            + "\n    return x"
+        )
 
         # Mock file parsing to return AST with long function
-        with patch.object(checker, '_parse_python_file') as mock_parse:
+        with patch.object(checker, "_parse_python_file") as mock_parse:
             import ast
+
             mock_parse.return_value = ast.parse(long_function_code)
 
             # When
@@ -68,7 +73,7 @@ def long_function():
         test_file = Path("/fake/project/large_module.py")
 
         # Mock file line counting to return 301 lines
-        with patch.object(checker, '_count_file_lines') as mock_count:
+        with patch.object(checker, "_count_file_lines") as mock_count:
             mock_count.return_value = 301
 
             # When
@@ -97,8 +102,9 @@ def long_function():
         many_params_code = "def func_with_many_params(a, b, c, d, e, f):\n    return a + b + c + d + e + f"
 
         # Mock file parsing
-        with patch.object(checker, '_parse_python_file') as mock_parse:
+        with patch.object(checker, "_parse_python_file") as mock_parse:
             import ast
+
             mock_parse.return_value = ast.parse(many_params_code)
 
             # When
@@ -138,8 +144,9 @@ def long_function():
                                             return x
     return 0"""
 
-        with patch.object(checker, '_parse_python_file') as mock_parse:
+        with patch.object(checker, "_parse_python_file") as mock_parse:
             import ast
+
             mock_parse.return_value = ast.parse(complex_code)
 
             # When
@@ -164,17 +171,20 @@ def long_function():
         checker = GuidelineChecker(project_path)
 
         # Mock Path methods using patch
-        with patch('pathlib.Path.exists') as mock_exists, \
-             patch('pathlib.Path.rglob') as mock_rglob:
+        with (
+            patch("pathlib.Path.exists") as mock_exists,
+            patch("pathlib.Path.rglob") as mock_rglob,
+        ):
             mock_exists.return_value = True
             mock_rglob.return_value = [Path("/fake/project/test.py")]
 
             # Mock all check methods to return empty results
-            with patch.object(checker, 'check_function_length') as mock_func, \
-                 patch.object(checker, 'check_file_size') as mock_file, \
-                 patch.object(checker, 'check_parameter_count') as mock_params, \
-                 patch.object(checker, 'check_complexity') as mock_complex:
-
+            with (
+                patch.object(checker, "check_function_length") as mock_func,
+                patch.object(checker, "check_file_size") as mock_file,
+                patch.object(checker, "check_parameter_count") as mock_params,
+                patch.object(checker, "check_complexity") as mock_complex,
+            ):
                 mock_func.return_value = []
                 mock_file.return_value = {"violation": False}
                 mock_params.return_value = []
@@ -207,10 +217,10 @@ def long_function():
             "function_length": [{"function_name": "test"}],
             "file_size": [{"file_path": "/test.py"}],
             "parameter_count": [],
-            "complexity": []
+            "complexity": [],
         }
 
-        with patch.object(checker, 'scan_project') as mock_scan:
+        with patch.object(checker, "scan_project") as mock_scan:
             mock_scan.return_value = mock_violations
 
             # When
@@ -237,11 +247,12 @@ def long_function():
         test_file = Path("/fake/project/single_file.py")
 
         # Mock all checks to return no violations
-        with patch.object(checker, 'check_function_length') as mock_func, \
-             patch.object(checker, 'check_file_size') as mock_file, \
-             patch.object(checker, 'check_parameter_count') as mock_params, \
-             patch.object(checker, 'check_complexity') as mock_complex:
-
+        with (
+            patch.object(checker, "check_function_length") as mock_func,
+            patch.object(checker, "check_file_size") as mock_file,
+            patch.object(checker, "check_parameter_count") as mock_params,
+            patch.object(checker, "check_complexity") as mock_complex,
+        ):
             mock_func.return_value = []
             mock_file.return_value = {"violation": False}
             mock_params.return_value = []
@@ -294,11 +305,16 @@ def long_function():
         test_file = Path("/fake/project/long_function.py")
 
         # Create a long function for testing
-        long_function_code = """def long_function():
-""" + "\n".join([f"    # Line {i}" for i in range(1, 52)]) + "\n    return True"
+        long_function_code = (
+            """def long_function():
+"""
+            + "\n".join([f"    # Line {i}" for i in range(1, 52)])
+            + "\n    return True"
+        )
 
-        with patch.object(checker, '_parse_python_file') as mock_parse:
+        with patch.object(checker, "_parse_python_file") as mock_parse:
             import ast
+
             mock_parse.return_value = ast.parse(long_function_code)
 
             # When
@@ -327,7 +343,7 @@ def long_function():
         test_file = Path("/fake/project/large_file.py")
 
         # Mock file line counting to return 301 lines
-        with patch.object(checker, '_count_file_lines') as mock_count:
+        with patch.object(checker, "_count_file_lines") as mock_count:
             mock_count.return_value = 301
 
             # When

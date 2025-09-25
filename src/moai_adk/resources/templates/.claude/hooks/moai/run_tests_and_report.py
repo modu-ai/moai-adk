@@ -23,7 +23,7 @@ def _load_input() -> dict:
 
 
 def _project_root() -> Path:
-    env = os.environ.get('CLAUDE_PROJECT_DIR')
+    env = os.environ.get("CLAUDE_PROJECT_DIR")
     return Path(env).resolve() if env else Path.cwd().resolve()
 
 
@@ -32,27 +32,27 @@ def _command_exists(executable: str) -> bool:
 
 
 def _detect_pytest(root: Path) -> Command | None:
-    tests_dir = root / 'tests'
-    if tests_dir.exists() and _command_exists('pytest'):
-        return ('pytest', [sys.executable or 'python3', '-m', 'pytest', '-q'])
+    tests_dir = root / "tests"
+    if tests_dir.exists() and _command_exists("pytest"):
+        return ("pytest", [sys.executable or "python3", "-m", "pytest", "-q"])
     return None
 
 
 def _detect_npm(root: Path) -> Command | None:
-    if (root / 'package.json').exists() and _command_exists('npm'):
-        return ('npm test', ['npm', 'test', '--', '--watch=false'])
+    if (root / "package.json").exists() and _command_exists("npm"):
+        return ("npm test", ["npm", "test", "--", "--watch=false"])
     return None
 
 
 def _detect_go(root: Path) -> Command | None:
-    if (root / 'go.mod').exists() and _command_exists('go'):
-        return ('go test', ['go', 'test', './...'])
+    if (root / "go.mod").exists() and _command_exists("go"):
+        return ("go test", ["go", "test", "./..."])
     return None
 
 
 def _detect_cargo(root: Path) -> Command | None:
-    if (root / 'Cargo.toml').exists() and _command_exists('cargo'):
-        return ('cargo test', ['cargo', 'test', '--quiet'])
+    if (root / "Cargo.toml").exists() and _command_exists("cargo"):
+        return ("cargo test", ["cargo", "test", "--quiet"])
     return None
 
 
@@ -77,15 +77,18 @@ def _run_command(command: Command, root: Path) -> tuple[int, str, str]:
         )
         return proc.returncode, proc.stdout.strip(), proc.stderr.strip()
     except subprocess.TimeoutExpired:
-        return 124, '', f'{name} timed out after {TIMEOUT_SECONDS}s'
+        return 124, "", f"{name} timed out after {TIMEOUT_SECONDS}s"
     except Exception as exc:  # pragma: no cover - defensive
-        return 1, '', f'{name} failed: {exc}'
+        return 1, "", f"{name} failed: {exc}"
 
 
 def main() -> None:
-    print('Stop Hook: 비활성화됨 - 테스트는 /moai:2-build 단계에서만 실행됩니다.', flush=True)
+    print(
+        "Stop Hook: 비활성화됨 - 테스트는 /moai:2-build 단계에서만 실행됩니다.",
+        flush=True,
+    )
     sys.exit(0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

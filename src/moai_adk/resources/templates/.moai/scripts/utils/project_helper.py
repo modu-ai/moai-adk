@@ -57,7 +57,9 @@ class ProjectHelper:
 
             # .git 디렉터리가 있으면서 setup.py나 pyproject.toml이 있으면 프로젝트 루트
             if (current / ".git").exists():
-                if (current / "setup.py").exists() or (current / "pyproject.toml").exists():
+                if (current / "setup.py").exists() or (
+                    current / "pyproject.toml"
+                ).exists():
                     return current
 
             parent = current.parent
@@ -73,7 +75,9 @@ class ProjectHelper:
             if (project_root / MOAI_DIR_NAME).exists():
                 return project_root
 
-        raise FileNotFoundError(f"프로젝트 루트를 찾을 수 없습니다. 시작 경로: {start_path}")
+        raise FileNotFoundError(
+            f"프로젝트 루트를 찾을 수 없습니다. 시작 경로: {start_path}"
+        )
 
     @staticmethod
     def load_config(project_root: Path | None = None) -> dict[str, Any]:
@@ -100,7 +104,7 @@ class ProjectHelper:
             return ProjectHelper._get_default_config()
 
         try:
-            with open(config_path, encoding='utf-8') as f:
+            with open(config_path, encoding="utf-8") as f:
                 config = json.load(f)
 
             # 기본값과 병합
@@ -132,7 +136,7 @@ class ProjectHelper:
         config_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
-            with open(config_path, 'w', encoding='utf-8') as f:
+            with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=2, ensure_ascii=False)
             logger.info(f"설정 파일 저장 완료: {config_path}")
         except Exception as e:
@@ -216,7 +220,7 @@ class ProjectHelper:
             "is_moai_project": ProjectHelper.is_moai_project(project_root),
             "has_git": (project_root / ".git").exists(),
             "has_claude": (project_root / ".claude").exists(),
-            "config": config
+            "config": config,
         }
 
         return info
@@ -235,7 +239,9 @@ class ProjectHelper:
         if project_root is None:
             project_root = ProjectHelper.find_project_root()
 
-        return project_root / MOAI_DIR_NAME / MEMORY_DIR_NAME / DEVELOPMENT_GUIDE_FILE_NAME
+        return (
+            project_root / MOAI_DIR_NAME / MEMORY_DIR_NAME / DEVELOPMENT_GUIDE_FILE_NAME
+        )
 
     @staticmethod
     def get_claude_memory_path(project_root: Path | None = None) -> Path:
@@ -276,12 +282,14 @@ class ProjectHelper:
             if spec_dir.is_dir() and spec_dir.name.startswith("SPEC-"):
                 spec_file = spec_dir / "spec.md"
                 if spec_file.exists():
-                    specs.append({
-                        "id": spec_dir.name,
-                        "path": str(spec_dir),
-                        "spec_file": str(spec_file),
-                        "exists": True
-                    })
+                    specs.append(
+                        {
+                            "id": spec_dir.name,
+                            "path": str(spec_dir),
+                            "spec_file": str(spec_file),
+                            "exists": True,
+                        }
+                    )
 
         return sorted(specs, key=lambda x: x["id"])
 
@@ -290,19 +298,9 @@ class ProjectHelper:
         """기본 설정 반환"""
         return {
             "mode": PERSONAL_MODE,
-            "checkpoint": {
-                "auto_create": True,
-                "max_count": 10,
-                "interval_minutes": 5
-            },
-            "git": {
-                "auto_push": False,
-                "default_branch": "main"
-            },
-            "trust_principles": {
-                "strict_mode": False,
-                "min_coverage": 85
-            }
+            "checkpoint": {"auto_create": True, "max_count": 10, "interval_minutes": 5},
+            "git": {"auto_push": False, "default_branch": "main"},
+            "trust_principles": {"strict_mode": False, "min_coverage": 85},
         }
 
     @staticmethod
@@ -311,7 +309,11 @@ class ProjectHelper:
         merged = default.copy()
 
         for key, value in user.items():
-            if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
+            if (
+                key in merged
+                and isinstance(merged[key], dict)
+                and isinstance(value, dict)
+            ):
                 merged[key] = ProjectHelper._merge_configs(merged[key], value)
             else:
                 merged[key] = value

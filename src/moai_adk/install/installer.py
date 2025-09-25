@@ -56,12 +56,14 @@ class SimplifiedInstaller:
         self.git_manager = GitManager(
             project_dir=config.project_path,
             security_manager=self.security_manager,
-            file_manager=self.file_manager
+            file_manager=self.file_manager,
         )
 
         logger.info("SimplifiedInstaller initialized for: %s", config.project_path)
 
-    def install(self, progress_callback: Callable[[str, int, int], None] | None = None) -> InstallationResult:
+    def install(
+        self, progress_callback: Callable[[str, int, int], None] | None = None
+    ) -> InstallationResult:
         """
         Execute MoAI-ADK project installation
 
@@ -76,17 +78,23 @@ class SimplifiedInstaller:
 
         try:
             # Step 1: Creating project directory
-            self.progress.update_progress("Creating project directory...", progress_callback)
+            self.progress.update_progress(
+                "Creating project directory...", progress_callback
+            )
             self.directory_manager.create_project_directory(self.config)
             files_created.append(str(self.config.project_path))
 
             # Step 2: Installing Claude Code resources (creates .claude/ with content)
-            self.progress.update_progress("Installing Claude Code resources...", progress_callback)
+            self.progress.update_progress(
+                "Installing Claude Code resources...", progress_callback
+            )
             claude_files = self._install_claude_resources()
             files_created.extend([str(f) for f in claude_files])
 
             # Step 3: Installing MoAI resources (creates .moai/ with content)
-            self.progress.update_progress("Installing MoAI resources...", progress_callback)
+            self.progress.update_progress(
+                "Installing MoAI resources...", progress_callback
+            )
             moai_files = self._install_moai_resources()
             files_created.extend([str(f) for f in moai_files])
 
@@ -94,34 +102,55 @@ class SimplifiedInstaller:
             self._write_resource_version_info()
 
             # Step 4: Creating auxiliary directories (logs, empty directories)
-            self.progress.update_progress("Setting up auxiliary directories...", progress_callback)
+            self.progress.update_progress(
+                "Setting up auxiliary directories...", progress_callback
+            )
             directories = self._create_basic_structure()
             files_created.extend([str(d) for d in directories])
 
             # Step 5: Setting up GitHub workflows (optional)
             if self.config.include_github:
-                self.progress.update_progress("Setting up GitHub workflows...", progress_callback)
+                self.progress.update_progress(
+                    "Setting up GitHub workflows...", progress_callback
+                )
                 github_files = self._install_github_workflows()
                 files_created.extend([str(f) for f in github_files])
 
             # Step 6: Creating project memory
-            self.progress.update_progress("Creating project memory...", progress_callback)
+            self.progress.update_progress(
+                "Creating project memory...", progress_callback
+            )
             if self._install_project_memory():
-                files_created.append(str(self.config.project_path / 'CLAUDE.md'))
+                files_created.append(str(self.config.project_path / "CLAUDE.md"))
 
             # Step 7: Generating configuration files
-            self.progress.update_progress("Generating configuration files...", progress_callback)
+            self.progress.update_progress(
+                "Generating configuration files...", progress_callback
+            )
             config_files = self._create_configuration_files()
             files_created.extend([str(f) for f in config_files])
 
+            # Step 7.5: Creating initial indexes (SQLite database)
+            self.progress.update_progress(
+                "Creating initial indexes...", progress_callback
+            )
+            index_files = self.config_manager.create_initial_indexes(
+                self.config.project_path, self.config
+            )
+            files_created.extend([str(f) for f in index_files])
+
             # Step 8: Initializing Git repository (optional)
             if self.config.initialize_git:
-                self.progress.update_progress("Initializing Git repository...", progress_callback)
+                self.progress.update_progress(
+                    "Initializing Git repository...", progress_callback
+                )
                 git_files = self._initialize_git_repository()
                 files_created.extend([str(f) for f in git_files])
 
             # Step 9: Verifying installation
-            self.progress.update_progress("Verifying installation...", progress_callback)
+            self.progress.update_progress(
+                "Verifying installation...", progress_callback
+            )
             if not self._verify_installation():
                 errors.append("Installation verification failed")
 
@@ -133,7 +162,7 @@ class SimplifiedInstaller:
                 files_created=files_created,
                 errors=errors,
                 next_steps=self._generate_next_steps(),
-                config=self.config
+                config=self.config,
             )
 
         except Exception as e:
@@ -147,7 +176,7 @@ class SimplifiedInstaller:
                 files_created=files_created,
                 errors=errors,
                 next_steps=["Fix the errors above and retry installation"],
-                config=self.config
+                config=self.config,
             )
 
     def _create_basic_structure(self) -> list[Path]:
@@ -155,7 +184,6 @@ class SimplifiedInstaller:
         directories = [
             # Only create logs directory - ResourceManager will handle .claude/ with content
             self.config.project_path / ".claude" / "logs",
-
             # Only create empty directories that ResourceManager doesn't populate
             self.config.project_path / ".moai" / "project",
             self.config.project_path / ".moai" / "specs",
@@ -168,8 +196,12 @@ class SimplifiedInstaller:
         created_dirs = []
         for directory in directories:
             try:
-                if not self.security_manager.validate_path_safety(directory, self.config.project_path):
-                    logger.error("Security validation failed for directory: %s", directory)
+                if not self.security_manager.validate_path_safety(
+                    directory, self.config.project_path
+                ):
+                    logger.error(
+                        "Security validation failed for directory: %s", directory
+                    )
                     continue
 
                 directory.mkdir(parents=True, exist_ok=True)
@@ -185,11 +217,12 @@ class SimplifiedInstaller:
         """Claude Code 리소스 설치"""
         try:
             result = self.resource_manager.copy_claude_resources(
-                self.config.project_path,
-                overwrite=self.config.force_overwrite
+                self.config.project_path, overwrite=self.config.force_overwrite
             )
             if not result:
-                raise RuntimeError("No Claude resources were copied - installation may have failed")
+                raise RuntimeError(
+                    "No Claude resources were copied - installation may have failed"
+                )
             return result
         except Exception as e:
             logger.error("Failed to install Claude resources: %s", e)
@@ -200,7 +233,10 @@ class SimplifiedInstaller:
         try:
             # templates_mode: 'copy' | 'package'
             exclude_templates = False
-            if hasattr(self.config, 'templates_mode') and str(self.config.templates_mode or '').lower() == 'package':
+            if (
+                hasattr(self.config, "templates_mode")
+                and str(self.config.templates_mode or "").lower() == "package"
+            ):
                 exclude_templates = True
 
             result = self.resource_manager.copy_moai_resources(
@@ -209,7 +245,9 @@ class SimplifiedInstaller:
                 exclude_templates=exclude_templates,
             )
             if not result:
-                raise RuntimeError("No MoAI resources were copied - installation may have failed")
+                raise RuntimeError(
+                    "No MoAI resources were copied - installation may have failed"
+                )
             return result
         except Exception as e:
             logger.error("Failed to install MoAI resources: %s", e)
@@ -219,8 +257,7 @@ class SimplifiedInstaller:
         """GitHub 워크플로우 설치"""
         try:
             return self.resource_manager.copy_github_resources(
-                self.config.project_path,
-                overwrite=self.config.force_overwrite
+                self.config.project_path, overwrite=self.config.force_overwrite
             )
         except Exception as e:
             logger.error("Failed to install GitHub workflows: %s", e)
@@ -230,11 +267,14 @@ class SimplifiedInstaller:
         """프로젝트 메모리 파일 생성"""
         try:
             result = self.resource_manager.copy_project_memory(
-                self.config.project_path,
-                overwrite=self.config.force_overwrite
+                self.config.project_path, overwrite=self.config.force_overwrite
             )
             context = self.config.get_template_context()
-            joined_stack = ", ".join(self.config.tech_stack) if self.config.tech_stack else "미지정"
+            joined_stack = (
+                ", ".join(self.config.tech_stack)
+                if self.config.tech_stack
+                else "미지정"
+            )
             memory_context = {
                 **{k.upper(): str(v) for k, v in context.items()},
                 "PROJECT_NAME": self.config.name,
@@ -308,7 +348,9 @@ class SimplifiedInstaller:
     def _verify_installation(self) -> bool:
         """설치 검증"""
         try:
-            return self.resource_manager.validate_project_resources(self.config.project_path)
+            return self.resource_manager.validate_project_resources(
+                self.config.project_path
+            )
         except Exception as e:
             logger.error("Installation verification failed: %s", e)
             return False
@@ -326,20 +368,22 @@ class SimplifiedInstaller:
             "   /moai:1-project",
             "",
             "3. Create your first feature:",
-            "   /moai:2-spec <feature-name> \"Feature description\"",
+            '   /moai:2-spec <feature-name> "Feature description"',
             "",
             "4. Get help:",
             "   /moai:help",
         ]
 
         # Claude Code integration guidance
-        if hasattr(self.config, 'claude_version'):
-            next_steps.extend([
-                "",
-                "Claude Code Integration:",
-                "- All MoAI commands are installed as slash commands",
-                "- Start with /moai:1-project to begin",
-            ])
+        if hasattr(self.config, "claude_version"):
+            next_steps.extend(
+                [
+                    "",
+                    "Claude Code Integration:",
+                    "- All MoAI commands are installed as slash commands",
+                    "- Start with /moai:1-project to begin",
+                ]
+            )
 
         return next_steps
 

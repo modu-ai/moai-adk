@@ -26,7 +26,9 @@ from .helpers import (
 logger = get_logger(__name__)
 
 
-def validate_initialization(project_path: str, personal: bool, team: bool, quiet: bool) -> tuple[Path, str]:
+def validate_initialization(
+    project_path: str, personal: bool, team: bool, quiet: bool
+) -> tuple[Path, str]:
     """
     Validate initialization parameters and determine project mode.
 
@@ -46,7 +48,9 @@ def validate_initialization(project_path: str, personal: bool, team: bool, quiet
 
     # Determine project mode
     if team and personal:
-        click.echo(f"{Fore.RED}❌ Cannot specify both --personal and --team modes{Style.RESET_ALL}")
+        click.echo(
+            f"{Fore.RED}❌ Cannot specify both --personal and --team modes{Style.RESET_ALL}"
+        )
         sys.exit(1)
 
     # Default to personal mode if no mode specified
@@ -54,7 +58,9 @@ def validate_initialization(project_path: str, personal: bool, team: bool, quiet
 
     if not quiet:
         mode_icon = "🏢" if project_mode == "team" else "👤"
-        click.echo(f"{Fore.CYAN}{mode_icon} Initializing in {project_mode} mode{Style.RESET_ALL}")
+        click.echo(
+            f"{Fore.CYAN}{mode_icon} Initializing in {project_mode} mode{Style.RESET_ALL}"
+        )
 
     # Validate environment
     if not validate_environment():
@@ -109,7 +115,7 @@ def setup_project_directory(
     backup: bool,
     force: bool,
     force_copy: bool,
-    quiet: bool
+    quiet: bool,
 ) -> bool:
     """
     Setup project directory structure and files.
@@ -130,7 +136,9 @@ def setup_project_directory(
         conflicts = detect_potential_conflicts(project_dir)
         if conflicts and not force:
             if not quiet:
-                click.echo(f"{Fore.YELLOW}⚠️ Potential conflicts detected:{Style.RESET_ALL}")
+                click.echo(
+                    f"{Fore.YELLOW}⚠️ Potential conflicts detected:{Style.RESET_ALL}"
+                )
                 for conflict in conflicts:
                     click.echo(f"   - {conflict}")
                 click.echo("Use --force to override or resolve conflicts first.")
@@ -146,22 +154,23 @@ def setup_project_directory(
         if not project_dir.exists():
             project_dir.mkdir(parents=True, exist_ok=True)
             if not quiet:
-                click.echo(f"{Fore.GREEN}📁 Created project directory: {project_dir}{Style.RESET_ALL}")
+                click.echo(
+                    f"{Fore.GREEN}📁 Created project directory: {project_dir}{Style.RESET_ALL}"
+                )
 
         return True
 
     except Exception as e:
         if not quiet:
-            click.echo(f"{Fore.RED}❌ Error setting up project directory: {e}{Style.RESET_ALL}")
+            click.echo(
+                f"{Fore.RED}❌ Error setting up project directory: {e}{Style.RESET_ALL}"
+            )
         logger.error(f"Project directory setup failed: {e}")
         return False
 
 
 def finalize_installation(
-    project_dir: Path,
-    project_mode: str,
-    force_copy: bool,
-    quiet: bool
+    project_dir: Path, project_mode: str, force_copy: bool, quiet: bool
 ) -> None:
     """
     Finalize installation with installer and provide completion feedback.
@@ -188,7 +197,7 @@ def finalize_installation(
                 name=project_dir.name,
                 path=str(project_dir),
                 force_copy=force_copy,
-                silent=quiet  # Map quiet parameter to silent attribute
+                silent=quiet,  # Map quiet parameter to silent attribute
             )
             installer = SimplifiedInstaller(config)
         except Exception as e:
@@ -204,7 +213,9 @@ def finalize_installation(
             create_mode_configuration(project_dir, project_mode, quiet)
 
             if not quiet:
-                click.echo(f"\n{Fore.GREEN}🎉 MoAI-ADK initialization completed!{Style.RESET_ALL}")
+                click.echo(
+                    f"\n{Fore.GREEN}🎉 MoAI-ADK initialization completed!{Style.RESET_ALL}"
+                )
                 click.echo(f"{Fore.CYAN}📍 Project: {project_dir}{Style.RESET_ALL}")
                 click.echo(f"{Fore.CYAN}⚙️  Mode: {project_mode}{Style.RESET_ALL}")
 
@@ -229,7 +240,9 @@ def finalize_installation(
         sys.exit(1)
 
 
-def create_mode_configuration(project_dir: Path, project_mode: str, quiet: bool = False) -> None:
+def create_mode_configuration(
+    project_dir: Path, project_mode: str, quiet: bool = False
+) -> None:
     """
     Create mode-specific configuration for the project.
 
@@ -246,26 +259,29 @@ def create_mode_configuration(project_dir: Path, project_mode: str, quiet: bool 
                 "mode": project_mode,
                 "version": "0.1.9",
                 "created": datetime.now().isoformat(),
-                "constitution_version": "2.1"
+                "constitution_version": "2.1",
             },
             "git_strategy": {
                 project_mode: {
                     "auto_commit": project_mode == "personal",
                     "auto_pr": project_mode == "team",
                     "develop_branch": "develop" if project_mode == "team" else "main",
-                    "feature_prefix": "feature/SPEC-" if project_mode == "team" else "feature/",
-                    "use_gitflow": project_mode == "team"
+                    "feature_prefix": "feature/SPEC-"
+                    if project_mode == "team"
+                    else "feature/",
+                    "use_gitflow": project_mode == "team",
                 }
             },
             "created_at": datetime.now().isoformat(),
-            "moai_adk_version": "0.1.9"
+            "moai_adk_version": "0.1.9",
         }
 
         config_path = project_dir / ".moai" / "config.json"
         config_path.parent.mkdir(parents=True, exist_ok=True)
 
         import json
-        with open(config_path, 'w') as f:
+
+        with open(config_path, "w") as f:
             json.dump(config, f, indent=2)
 
         if not quiet:
@@ -274,4 +290,6 @@ def create_mode_configuration(project_dir: Path, project_mode: str, quiet: bool 
     except Exception as e:
         logger.error(f"Failed to create mode configuration: {e}")
         if not quiet:
-            click.echo(f"{Fore.YELLOW}⚠️ Warning: Failed to create mode configuration{Style.RESET_ALL}")
+            click.echo(
+                f"{Fore.YELLOW}⚠️ Warning: Failed to create mode configuration{Style.RESET_ALL}"
+            )

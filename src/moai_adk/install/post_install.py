@@ -39,19 +39,11 @@ Setting up global resources for optimal MoAI-ADK experience...
     click.echo(banner)
 
 
-
-
 @click.command()
 @click.option(
-    '--force',
-    is_flag=True,
-    help='Force reinstallation even if already installed'
+    "--force", is_flag=True, help="Force reinstallation even if already installed"
 )
-@click.option(
-    '--quiet',
-    is_flag=True,
-    help='Suppress output messages'
-)
+@click.option("--quiet", is_flag=True, help="Suppress output messages")
 def main(force: bool, quiet: bool) -> None:
     """
     MoAI-ADK post-installation setup.
@@ -66,14 +58,20 @@ def main(force: bool, quiet: bool) -> None:
         # Resources are now embedded in package
         if not quiet:
             logger.info("MoAI-ADK resources available in package")
-            click.echo(f"{Fore.GREEN}✅ MoAI-ADK resources are embedded in the package.{Style.RESET_ALL}")
+            click.echo(
+                f"{Fore.GREEN}✅ MoAI-ADK resources are embedded in the package.{Style.RESET_ALL}"
+            )
             click.echo("   No separate installation needed!")
-            click.echo(f"   Use {Fore.WHITE}moai init{Style.RESET_ALL} to set up new projects.")
+            click.echo(
+                f"   Use {Fore.WHITE}moai init{Style.RESET_ALL} to set up new projects."
+            )
 
     except KeyboardInterrupt:
         if not quiet:
             logger.warning("Installation cancelled by user")
-            click.echo(f"\n{Fore.YELLOW}⚠️  Installation cancelled by user.{Style.RESET_ALL}")
+            click.echo(
+                f"\n{Fore.YELLOW}⚠️  Installation cancelled by user.{Style.RESET_ALL}"
+            )
         sys.exit(1)
     except Exception as error:
         logger.error("Post-installation failed: %s", error)
@@ -99,7 +97,7 @@ def auto_install_on_first_run() -> bool:
         templates = resource_manager.list_templates()
 
         # 핵심 템플릿들이 존재하는지 확인
-        required_templates = ['.claude', '.moai', 'CLAUDE.md']
+        required_templates = [".claude", ".moai", "CLAUDE.md"]
         for template in required_templates:
             if template not in templates:
                 logger.error(f"Required template missing: {template}")

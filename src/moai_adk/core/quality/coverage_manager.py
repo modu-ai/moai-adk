@@ -73,7 +73,9 @@ class CoverageManager:
             bool: True if coverage meets threshold
         """
         if coverage_percentage < self.minimum_threshold:
-            raise CoverageError(f"Coverage {coverage_percentage}% is below threshold {self.minimum_threshold}%")
+            raise CoverageError(
+                f"Coverage {coverage_percentage}% is below threshold {self.minimum_threshold}%"
+            )
         return True
 
     def generate_report(self) -> dict[str, float | list[str]]:
@@ -88,7 +90,7 @@ class CoverageManager:
             "coverage_percentage": self.minimum_threshold,
             "total_lines": 100,
             "covered_lines": int(self.minimum_threshold),
-            "uncovered_files": []
+            "uncovered_files": [],
         }
 
     def get_uncovered_lines(self) -> dict[str, list[int]]:
@@ -112,7 +114,7 @@ class CoverageManager:
         return {
             "total_coverage": self.minimum_threshold,
             "line_coverage": self.minimum_threshold,
-            "branch_coverage": self.minimum_threshold
+            "branch_coverage": self.minimum_threshold,
         }
 
     def set_exclude_patterns(self, patterns: list[str]) -> None:

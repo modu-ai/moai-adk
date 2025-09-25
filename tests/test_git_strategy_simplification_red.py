@@ -8,7 +8,10 @@ Phase 2+3 통합: 간소화된 Git 전략 + 워크플로우 커맨드 개선
 import pytest
 from unittest.mock import Mock, patch
 from moai_adk.core.git_lock_manager import GitLockManager  # 아직 구현되지 않음
-from moai_adk.core.git_strategy import PersonalGitStrategy, TeamGitStrategy  # 아직 구현되지 않음
+from moai_adk.core.git_strategy import (
+    PersonalGitStrategy,
+    TeamGitStrategy,
+)  # 아직 구현되지 않음
 from moai_adk.core.config_manager import ConfigManager
 from moai_adk.core.git_manager import GitManager
 
@@ -107,12 +110,14 @@ class TestWorkflowCommandImprovements:
 
     def test_build_command_lock_check(self):
         """BUILD 명령어 잠금 확인 테스트 - 의도적 실패"""
-        from moai_adk.commands.build_command import BuildCommand  # ImportError 발생 예정
+        from moai_adk.commands.build_command import (
+            BuildCommand,
+        )  # ImportError 발생 예정
 
         build_cmd = BuildCommand()
 
         # Git 잠금이 있는 상태에서 실행
-        with patch('moai_adk.core.git_lock_manager.GitLockManager') as mock_lock:
+        with patch("moai_adk.core.git_lock_manager.GitLockManager") as mock_lock:
             mock_lock.return_value.is_locked.return_value = True
 
             result = build_cmd.execute(phase="RED")
@@ -130,7 +135,9 @@ class TestWorkflowCommandImprovements:
         config_manager.set_mode("personal")  # 메서드 없음, AttributeError 예정
 
         # 커밋 실행
-        result = git_manager.commit_with_lock("test commit")  # 메서드 없음, AttributeError 예정
+        result = git_manager.commit_with_lock(
+            "test commit"
+        )  # 메서드 없음, AttributeError 예정
 
         # 검증 (실패 예정)
         assert result.lock_acquired is True
@@ -145,7 +152,9 @@ class TestWorkflowCommandImprovements:
         config_manager.set_mode("team")  # 메서드 없음, AttributeError 예정
 
         # 커밋 및 동기화 실행
-        result = git_manager.commit_with_lock("team commit")  # 메서드 없음, AttributeError 예정
+        result = git_manager.commit_with_lock(
+            "team commit"
+        )  # 메서드 없음, AttributeError 예정
 
         # 검증 (실패 예정)
         assert result.lock_acquired is True
@@ -156,15 +165,15 @@ class TestWorkflowCommandImprovements:
 # 테스트 실행 시 통계 출력
 def test_red_phase_summary():
     """RED 단계 요약 - 모든 테스트가 실패해야 함"""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Git 전략 간소화 TDD RED 단계 - 실패 테스트 통계")
-    print("="*60)
+    print("=" * 60)
     print("Phase 2: Git 잠금 시스템 - 3개 테스트 (모두 실패 예정)")
     print("Phase 2: 개인/팀 모드 전략 - 2개 테스트 (모두 실패 예정)")
     print("Phase 3: 워크플로우 커맨드 - 4개 테스트 (모두 실패 예정)")
     print("총 9개 테스트 - 모든 테스트 의도적 실패")
     print("예상 효과: Git 충돌 90% 감소, 워크플로우 50% 간소화")
-    print("="*60)
+    print("=" * 60)
 
     # 이 테스트는 성공 (RED 단계 완료 확인용)
     assert True

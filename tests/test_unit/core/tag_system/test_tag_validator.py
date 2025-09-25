@@ -8,7 +8,11 @@ import pytest
 from typing import List, Dict, Any, Set
 from pathlib import Path
 
-from moai_adk.core.tag_system.validator import TagValidator, ChainValidationResult, ValidationError
+from moai_adk.core.tag_system.validator import (
+    TagValidator,
+    ChainValidationResult,
+    ValidationError,
+)
 from moai_adk.core.tag_system.parser import TagMatch
 
 
@@ -27,10 +31,20 @@ class TestTagValidator:
         """
         # GIVEN: 완전한 Primary Chain
         tags = [
-            TagMatch(category="REQ", identifier="USER-AUTH-001", description="사용자 인증"),
-            TagMatch(category="DESIGN", identifier="JWT-DESIGN-001", description="JWT 토큰 설계"),
-            TagMatch(category="TASK", identifier="API-LOGIN-001", description="로그인 API"),
-            TagMatch(category="TEST", identifier="UNIT-AUTH-001", description="인증 테스트")
+            TagMatch(
+                category="REQ", identifier="USER-AUTH-001", description="사용자 인증"
+            ),
+            TagMatch(
+                category="DESIGN",
+                identifier="JWT-DESIGN-001",
+                description="JWT 토큰 설계",
+            ),
+            TagMatch(
+                category="TASK", identifier="API-LOGIN-001", description="로그인 API"
+            ),
+            TagMatch(
+                category="TEST", identifier="UNIT-AUTH-001", description="인증 테스트"
+            ),
         ]
 
         # WHEN: Primary Chain 검증
@@ -50,9 +64,15 @@ class TestTagValidator:
         """
         # GIVEN: DESIGN이 누락된 Primary Chain
         incomplete_tags = [
-            TagMatch(category="REQ", identifier="USER-AUTH-001", description="사용자 인증"),
-            TagMatch(category="TASK", identifier="API-LOGIN-001", description="로그인 API"),
-            TagMatch(category="TEST", identifier="UNIT-AUTH-001", description="인증 테스트")
+            TagMatch(
+                category="REQ", identifier="USER-AUTH-001", description="사용자 인증"
+            ),
+            TagMatch(
+                category="TASK", identifier="API-LOGIN-001", description="로그인 API"
+            ),
+            TagMatch(
+                category="TEST", identifier="UNIT-AUTH-001", description="인증 테스트"
+            ),
         ]
 
         # WHEN: Primary Chain 검증
@@ -72,9 +92,24 @@ class TestTagValidator:
         """
         # GIVEN: 순환 참조가 있는 TAG 체인
         circular_tags = [
-            TagMatch(category="REQ", identifier="USER-A-001", description="A 참조 B", references=["DESIGN:JWT-B-001"]),
-            TagMatch(category="DESIGN", identifier="JWT-B-001", description="B 참조 C", references=["TASK:API-C-001"]),
-            TagMatch(category="TASK", identifier="API-C-001", description="C 참조 A", references=["REQ:USER-A-001"])
+            TagMatch(
+                category="REQ",
+                identifier="USER-A-001",
+                description="A 참조 B",
+                references=["DESIGN:JWT-B-001"],
+            ),
+            TagMatch(
+                category="DESIGN",
+                identifier="JWT-B-001",
+                description="B 참조 C",
+                references=["TASK:API-C-001"],
+            ),
+            TagMatch(
+                category="TASK",
+                identifier="API-C-001",
+                description="C 참조 A",
+                references=["REQ:USER-A-001"],
+            ),
         ]
 
         # WHEN: 순환 참조 검사
@@ -97,14 +132,25 @@ class TestTagValidator:
         # GIVEN: 연결된 TAG와 고아 TAG가 섞인 상황
         mixed_tags = [
             # 연결된 Primary Chain
-            TagMatch(category="REQ", identifier="USER-AUTH-001", references=["DESIGN:JWT-DESIGN-001"]),
-            TagMatch(category="DESIGN", identifier="JWT-DESIGN-001", references=["TASK:API-LOGIN-001"]),
-            TagMatch(category="TASK", identifier="API-LOGIN-001", references=["TEST:UNIT-AUTH-001"]),
+            TagMatch(
+                category="REQ",
+                identifier="USER-AUTH-001",
+                references=["DESIGN:JWT-DESIGN-001"],
+            ),
+            TagMatch(
+                category="DESIGN",
+                identifier="JWT-DESIGN-001",
+                references=["TASK:API-LOGIN-001"],
+            ),
+            TagMatch(
+                category="TASK",
+                identifier="API-LOGIN-001",
+                references=["TEST:UNIT-AUTH-001"],
+            ),
             TagMatch(category="TEST", identifier="UNIT-AUTH-001"),
-
             # 고아 TAG들
             TagMatch(category="REQ", identifier="ORPHAN-REQ-001"),  # 참조 없음
-            TagMatch(category="FEATURE", identifier="ORPHAN-FEATURE-001")  # 참조 없음
+            TagMatch(category="FEATURE", identifier="ORPHAN-FEATURE-001"),  # 참조 없음
         ]
 
         # WHEN: 고아 TAG 검사
@@ -127,11 +173,15 @@ class TestTagValidator:
             TagMatch(category="REQ", identifier="USER-AUTH-001"),  # 올바른 형식
             TagMatch(category="REQ", identifier="user-auth-002"),  # 소문자 (위반)
             TagMatch(category="DESIGN", identifier="JWT-DESIGN-001"),  # 올바른 형식
-            TagMatch(category="DESIGN", identifier="jwt_design_002")  # 언더스코어 (위반)
+            TagMatch(
+                category="DESIGN", identifier="jwt_design_002"
+            ),  # 언더스코어 (위반)
         ]
 
         # WHEN: 명명 일관성 검사
-        consistency_violations = self.validator.check_naming_consistency(inconsistent_tags)
+        consistency_violations = self.validator.check_naming_consistency(
+            inconsistent_tags
+        )
 
         # THEN: 일관성 위반 감지
         assert len(consistency_violations) == 2
@@ -152,10 +202,9 @@ class TestTagValidator:
             TagMatch(category="DESIGN", identifier="ARCH-001"),
             TagMatch(category="TASK", identifier="IMPL-001"),
             TagMatch(category="TEST", identifier="UNIT-001"),
-
             # Implementation: 2개만 존재 (50%)
             TagMatch(category="FEATURE", identifier="LOGIN-001"),
-            TagMatch(category="API", identifier="AUTH-001")
+            TagMatch(category="API", identifier="AUTH-001"),
             # UI, DATA 누락
         ]
 
@@ -176,10 +225,16 @@ class TestTagValidator:
         """
         # GIVEN: 유효한 참조와 깨진 참조가 섞인 상황
         tags_with_refs = [
-            TagMatch(category="REQ", identifier="USER-001", references=["DESIGN:ARCH-001"]),  # 유효
-            TagMatch(category="DESIGN", identifier="ARCH-001", references=["TASK:IMPL-001"]),  # 유효
-            TagMatch(category="TASK", identifier="IMPL-001", references=["TEST:UNIT-999"]),  # 깨진 참조
-            TagMatch(category="TEST", identifier="UNIT-001")  # 실제 존재하는 테스트
+            TagMatch(
+                category="REQ", identifier="USER-001", references=["DESIGN:ARCH-001"]
+            ),  # 유효
+            TagMatch(
+                category="DESIGN", identifier="ARCH-001", references=["TASK:IMPL-001"]
+            ),  # 유효
+            TagMatch(
+                category="TASK", identifier="IMPL-001", references=["TEST:UNIT-999"]
+            ),  # 깨진 참조
+            TagMatch(category="TEST", identifier="UNIT-001"),  # 실제 존재하는 테스트
         ]
 
         # WHEN: 참조 무결성 검사

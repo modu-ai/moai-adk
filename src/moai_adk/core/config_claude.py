@@ -34,7 +34,7 @@ class ClaudeConfigManager:
         Returns:
             bool: True if settings file was created successfully
         """
-        if settings_path.exists() and not getattr(config, 'force_overwrite', False):
+        if settings_path.exists() and not getattr(config, "force_overwrite", False):
             # keep existing settings (from templates)
             return True
 
@@ -50,7 +50,7 @@ class ClaudeConfigManager:
             settings_path.parent.mkdir(parents=True, exist_ok=True)
 
             # Write settings file
-            with open(settings_path, 'w', encoding='utf-8') as f:
+            with open(settings_path, "w", encoding="utf-8") as f:
                 json.dump(settings_data, f, indent=2)
 
             logger.info(f"Created Claude settings at {settings_path}")
@@ -81,46 +81,50 @@ class ClaudeConfigManager:
                     ".env*": "deny",
                     "*.key": "deny",
                     "*.pem": "deny",
-                    "*.p12": "deny"
-                }
-            }
+                    "*.p12": "deny",
+                },
+            },
         }
 
         # Mode-specific adjustments
-        if hasattr(config, 'runtime') and config.runtime:
-            runtime_name = getattr(config.runtime, 'name', 'python')
+        if hasattr(config, "runtime") and config.runtime:
+            runtime_name = getattr(config.runtime, "name", "python")
 
             # Language-specific permissions
-            if runtime_name == 'python':
-                settings["permissions"]["overrides"].update({
-                    "requirements.txt": "ask",
-                    "setup.py": "ask",
-                    "*.py": "acceptEdits"
-                })
-            elif runtime_name == 'javascript' or runtime_name == 'typescript':
-                settings["permissions"]["overrides"].update({
-                    "package.json": "ask",
-                    "package-lock.json": "ask",
-                    "*.js": "acceptEdits",
-                    "*.ts": "acceptEdits",
-                    "*.jsx": "acceptEdits",
-                    "*.tsx": "acceptEdits"
-                })
-            elif runtime_name == 'java':
-                settings["permissions"]["overrides"].update({
-                    "pom.xml": "ask",
-                    "build.gradle": "ask",
-                    "*.java": "acceptEdits"
-                })
+            if runtime_name == "python":
+                settings["permissions"]["overrides"].update(
+                    {
+                        "requirements.txt": "ask",
+                        "setup.py": "ask",
+                        "*.py": "acceptEdits",
+                    }
+                )
+            elif runtime_name == "javascript" or runtime_name == "typescript":
+                settings["permissions"]["overrides"].update(
+                    {
+                        "package.json": "ask",
+                        "package-lock.json": "ask",
+                        "*.js": "acceptEdits",
+                        "*.ts": "acceptEdits",
+                        "*.jsx": "acceptEdits",
+                        "*.tsx": "acceptEdits",
+                    }
+                )
+            elif runtime_name == "java":
+                settings["permissions"]["overrides"].update(
+                    {"pom.xml": "ask", "build.gradle": "ask", "*.java": "acceptEdits"}
+                )
 
         # Project-specific permissions
-        project_name = getattr(config, 'name', 'project')
-        settings["permissions"]["overrides"].update({
-            f"{project_name}/": "acceptEdits",
-            "README.md": "acceptEdits",
-            "CHANGELOG.md": "acceptEdits",
-            "LICENSE": "ask"
-        })
+        project_name = getattr(config, "name", "project")
+        settings["permissions"]["overrides"].update(
+            {
+                f"{project_name}/": "acceptEdits",
+                "README.md": "acceptEdits",
+                "CHANGELOG.md": "acceptEdits",
+                "LICENSE": "ask",
+            }
+        )
 
         return settings
 
@@ -143,7 +147,7 @@ class ClaudeConfigManager:
                 logger.warning(f"Claude settings file not found: {settings_path}")
                 return False
 
-            with open(settings_path, encoding='utf-8') as f:
+            with open(settings_path, encoding="utf-8") as f:
                 settings_data = json.load(f)
 
             # 필수 키 검증
@@ -174,14 +178,16 @@ class ClaudeConfigManager:
             logger.error(f"Error validating Claude settings: {e}")
             return False
 
-    def update_claude_permissions(self, settings_path: Path, new_permissions: dict[str, str]) -> bool:
+    def update_claude_permissions(
+        self, settings_path: Path, new_permissions: dict[str, str]
+    ) -> bool:
         """Claude 권한 설정 업데이트"""
         try:
             if not settings_path.exists():
                 logger.error(f"Claude settings file not found: {settings_path}")
                 return False
 
-            with open(settings_path, encoding='utf-8') as f:
+            with open(settings_path, encoding="utf-8") as f:
                 settings_data = json.load(f)
 
             # 권한 업데이트
@@ -199,7 +205,7 @@ class ClaudeConfigManager:
                 return False
 
             # 파일 저장
-            with open(settings_path, 'w', encoding='utf-8') as f:
+            with open(settings_path, "w", encoding="utf-8") as f:
                 json.dump(settings_data, f, indent=2)
 
             logger.info(f"Updated Claude permissions: {list(new_permissions.keys())}")
@@ -215,7 +221,7 @@ class ClaudeConfigManager:
             if not settings_path.exists():
                 return {}
 
-            with open(settings_path, encoding='utf-8') as f:
+            with open(settings_path, encoding="utf-8") as f:
                 settings_data = json.load(f)
 
             permissions = settings_data.get("permissions", {})

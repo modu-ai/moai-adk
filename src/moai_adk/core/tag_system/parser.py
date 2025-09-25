@@ -11,6 +11,7 @@ from enum import Enum
 
 class TagCategory(Enum):
     """16-Core TAG 카테고리 분류"""
+
     PRIMARY = "PRIMARY"
     STEERING = "STEERING"
     IMPLEMENTATION = "IMPLEMENTATION"
@@ -20,6 +21,7 @@ class TagCategory(Enum):
 @dataclass
 class TagMatch:
     """TAG 매칭 결과"""
+
     category: str
     identifier: str
     description: str | None = None
@@ -33,6 +35,7 @@ class TagMatch:
 @dataclass
 class TagPosition:
     """TAG 위치 정보"""
+
     line_number: int
     column: int = 0
 
@@ -40,12 +43,14 @@ class TagPosition:
 @dataclass
 class TagChain:
     """TAG 체인"""
+
     links: list[TagMatch]
 
 
 @dataclass
 class DuplicateTagInfo:
     """중복 TAG 정보"""
+
     category: str
     identifier: str
     positions: list[TagPosition]
@@ -68,9 +73,9 @@ class TagParser:
     QUALITY_CATEGORIES = ["PERF", "SEC", "DOCS", "TAG"]
 
     # 정규표현식 패턴 상수
-    TAG_PATTERN = r'@([A-Z]+):([A-Z0-9-]+)(?:\s+(.+))?'
-    CHAIN_PATTERN = r'@[A-Z]+:[A-Z0-9-]+(?:\s*→\s*@[A-Z]+:[A-Z0-9-]+)+'
-    INDIVIDUAL_TAG_PATTERN = r'@([A-Z]+):([A-Z0-9-]+)'
+    TAG_PATTERN = r"@([A-Z]+):([A-Z0-9-]+)(?:\s+(.+))?"
+    CHAIN_PATTERN = r"@[A-Z]+:[A-Z0-9-]+(?:\s*→\s*@[A-Z]+:[A-Z0-9-]+)+"
+    INDIVIDUAL_TAG_PATTERN = r"@([A-Z]+):([A-Z0-9-]+)"
 
     def __init__(self):
         """TAG 파서 초기화"""
@@ -78,7 +83,7 @@ class TagParser:
             TagCategory.PRIMARY: self.PRIMARY_CATEGORIES,
             TagCategory.STEERING: self.STEERING_CATEGORIES,
             TagCategory.IMPLEMENTATION: self.IMPLEMENTATION_CATEGORIES,
-            TagCategory.QUALITY: self.QUALITY_CATEGORIES
+            TagCategory.QUALITY: self.QUALITY_CATEGORIES,
         }
 
         # TAG 매칭 정규표현식 컴파일
@@ -109,11 +114,13 @@ class TagParser:
 
             # 16-Core TAG 검증
             if self._is_valid_tag_category(category):
-                tags.append(TagMatch(
-                    category=category,
-                    identifier=identifier,
-                    description=description
-                ))
+                tags.append(
+                    TagMatch(
+                        category=category,
+                        identifier=identifier,
+                        description=description,
+                    )
+                )
 
         return tags
 
@@ -138,11 +145,11 @@ class TagParser:
             links = []
             for category, identifier in individual_tags:
                 if self._is_valid_tag_category(category):
-                    links.append(TagMatch(
-                        category=category,
-                        identifier=identifier,
-                        description=None
-                    ))
+                    links.append(
+                        TagMatch(
+                            category=category, identifier=identifier, description=None
+                        )
+                    )
 
             if links:
                 chains.append(TagChain(links=links))
@@ -166,7 +173,9 @@ class TagParser:
         category = match.group(1)
         return self._is_valid_tag_category(category)
 
-    def extract_tags_with_positions(self, content: str) -> list[tuple[TagMatch, TagPosition]]:
+    def extract_tags_with_positions(
+        self, content: str
+    ) -> list[tuple[TagMatch, TagPosition]]:
         """
         위치 정보와 함께 TAG 추출
 
@@ -177,7 +186,7 @@ class TagParser:
             (TAG, 위치) 튜플 목록
         """
         results = []
-        lines = content.split('\n')
+        lines = content.split("\n")
 
         for line_num, line in enumerate(lines, 1):
             for match in self._tag_pattern.finditer(line):
@@ -189,7 +198,7 @@ class TagParser:
                     tag = TagMatch(
                         category=category,
                         identifier=identifier,
-                        description=description
+                        description=description,
                     )
                     position = TagPosition(line_number=line_num, column=match.start())
                     results.append((tag, position))
@@ -220,12 +229,12 @@ class TagParser:
         duplicates = []
         for key, positions in tag_positions.items():
             if len(positions) > 1:
-                category, identifier = key.split(':', 1)
-                duplicates.append(DuplicateTagInfo(
-                    category=category,
-                    identifier=identifier,
-                    positions=positions
-                ))
+                category, identifier = key.split(":", 1)
+                duplicates.append(
+                    DuplicateTagInfo(
+                        category=category, identifier=identifier, positions=positions
+                    )
+                )
 
         return duplicates
 

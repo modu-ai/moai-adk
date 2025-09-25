@@ -32,15 +32,19 @@ class BranchManager:
         self.config = ProjectHelper.load_config(self.project_root)
         self.mode = self.config.get("mode", "personal")
 
-    def create_feature_branch(self, feature_name: str, from_branch: str | None = None) -> dict[str, Any]:
+    def create_feature_branch(
+        self, feature_name: str, from_branch: str | None = None
+    ) -> dict[str, Any]:
         """기능 브랜치 생성"""
         try:
-            branch_name = self.git_workflow.create_feature_branch(feature_name, from_branch)
+            branch_name = self.git_workflow.create_feature_branch(
+                feature_name, from_branch
+            )
             return {
                 "success": True,
                 "branch_name": branch_name,
                 "mode": self.mode,
-                "base_branch": from_branch or self.git_workflow._get_default_branch()
+                "base_branch": from_branch or self.git_workflow._get_default_branch(),
             }
         except GitWorkflowError as e:
             return {"success": False, "error": str(e)}
@@ -53,7 +57,7 @@ class BranchManager:
                 "success": True,
                 "branch_name": branch_name,
                 "mode": self.mode,
-                "type": "hotfix"
+                "type": "hotfix",
             }
         except GitWorkflowError as e:
             return {"success": False, "error": str(e)}
@@ -71,17 +75,16 @@ class BranchManager:
         """브랜치 전환"""
         try:
             # 변경사항이 있으면 체크포인트 생성 (개인 모드)
-            if self.mode == "personal" and self.git_workflow.git.has_uncommitted_changes():
+            if (
+                self.mode == "personal"
+                and self.git_workflow.git.has_uncommitted_changes()
+            ):
                 self.git_workflow.checkpoint_system.create_checkpoint(
                     f"Pre-switch to {branch_name}", is_auto=True
                 )
 
             self.git_workflow.git.switch_branch(branch_name)
-            return {
-                "success": True,
-                "current_branch": branch_name,
-                "mode": self.mode
-            }
+            return {"success": True, "current_branch": branch_name, "mode": self.mode}
         except Exception as e:
             return {"success": False, "error": str(e)}
 
@@ -97,7 +100,7 @@ class BranchManager:
                 branch_info = {
                     "name": branch,
                     "is_current": is_current,
-                    "type": self._classify_branch(branch)
+                    "type": self._classify_branch(branch),
                 }
                 branches_info.append(branch_info)
 
@@ -105,7 +108,7 @@ class BranchManager:
                 "success": True,
                 "branches": branches_info,
                 "current_branch": current_branch,
-                "total_count": len(local_branches)
+                "total_count": len(local_branches),
             }
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -118,11 +121,7 @@ class BranchManager:
                 return {"success": False, "error": "현재 브랜치는 삭제할 수 없습니다"}
 
             self.git_workflow.git.delete_branch(branch_name, force)
-            return {
-                "success": True,
-                "deleted_branch": branch_name,
-                "force": force
-            }
+            return {"success": True, "deleted_branch": branch_name, "force": force}
         except Exception as e:
             return {"success": False, "error": str(e)}
 
@@ -134,7 +133,7 @@ class BranchManager:
                 "success": True,
                 "merged_branches": merged_branches,
                 "dry_run": dry_run,
-                "count": len(merged_branches)
+                "count": len(merged_branches),
             }
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -149,7 +148,7 @@ class BranchManager:
                 "success": success,
                 "branch": current_branch,
                 "push": push,
-                "mode": self.mode
+                "mode": self.mode,
             }
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -176,7 +175,9 @@ def main():
 
     # create 명령어
     create_parser = subparsers.add_parser("create", help="브랜치 생성")
-    create_parser.add_argument("type", choices=["feature", "hotfix"], help="브랜치 유형")
+    create_parser.add_argument(
+        "type", choices=["feature", "hotfix"], help="브랜치 유형"
+    )
     create_parser.add_argument("name", help="브랜치/기능 이름")
     create_parser.add_argument("--from", dest="from_branch", help="기준 브랜치")
 
@@ -231,7 +232,9 @@ def main():
                 click.echo("-" * 60)
                 for branch in result["branches"]:
                     marker = "* " if branch["is_current"] else "  "
-                    type_marker = f"[{branch['type']}]" if branch['type'] != 'other' else ""
+                    type_marker = (
+                        f"[{branch['type']}]" if branch["type"] != "other" else ""
+                    )
                     click.echo(f"{marker}{branch['name']} {type_marker}")
                 click.echo(f"\n현재 브랜치: {result['current_branch']}")
             else:
@@ -249,7 +252,9 @@ def main():
             result = manager.delete_branch(args.branch, args.force)
             if result["success"]:
                 force_marker = " (강제)" if result["force"] else ""
-                click.echo(f"✅ 브랜치 삭제 완료: {result['deleted_branch']}{force_marker}")
+                click.echo(
+                    f"✅ 브랜치 삭제 완료: {result['deleted_branch']}{force_marker}"
+                )
             else:
                 click.echo(f"❌ 브랜치 삭제 실패: {result['error']}")
 
@@ -259,9 +264,15 @@ def main():
                 click.echo("📋 브랜치 상태:")
                 click.echo(f"   현재 브랜치: {result['current_branch']}")
                 click.echo(f"   관리 모드: {result['manager_mode']}")
-                click.echo(f"   변경사항: {'있음' if result['has_uncommitted_changes'] else '없음'}")
-                click.echo(f"   원격 저장소: {'연결됨' if result['has_remote'] else '없음'}")
-                click.echo(f"   작업 트리: {'깨끗함' if result['clean_working_tree'] else '수정됨'}")
+                click.echo(
+                    f"   변경사항: {'있음' if result['has_uncommitted_changes'] else '없음'}"
+                )
+                click.echo(
+                    f"   원격 저장소: {'연결됨' if result['has_remote'] else '없음'}"
+                )
+                click.echo(
+                    f"   작업 트리: {'깨끗함' if result['clean_working_tree'] else '수정됨'}"
+                )
             else:
                 click.echo(f"❌ 상태 조회 실패: {result['error']}")
 
@@ -270,7 +281,9 @@ def main():
             result = manager.cleanup_merged_branches(dry_run)
             if result["success"]:
                 if result["count"] > 0:
-                    click.echo(f"{'🔍 발견된' if dry_run else '✅ 정리된'} 병합 브랜치 ({result['count']}개):")
+                    click.echo(
+                        f"{'🔍 발견된' if dry_run else '✅ 정리된'} 병합 브랜치 ({result['count']}개):"
+                    )
                     for branch in result["merged_branches"]:
                         click.echo(f"  - {branch}")
                     if dry_run:

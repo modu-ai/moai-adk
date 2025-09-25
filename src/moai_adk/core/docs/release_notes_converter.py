@@ -5,6 +5,7 @@ Supports version-based organization and changelog generation.
 
 @REQ:RELEASE-NOTES-001 → @TASK:RELEASE-NOTES-001
 """
+
 import logging
 import re
 from datetime import datetime
@@ -34,36 +35,32 @@ class ReleaseNotesConverter:
 
         try:
             content = self.sync_report_path.read_text()
-            report_data = {
-                "date": None,
-                "version": None,
-                "changes": []
-            }
+            report_data = {"date": None, "version": None, "changes": []}
 
             # Extract date from title
-            date_match = re.search(r'# Sync Report - (\d{4}-\d{2}-\d{2})', content)
+            date_match = re.search(r"# Sync Report - (\d{4}-\d{2}-\d{2})", content)
             if date_match:
                 report_data["date"] = datetime.strptime(date_match.group(1), "%Y-%m-%d")
 
             # Extract version info
-            version_match = re.search(r'- Current: (v?[\d.]+)', content)
+            version_match = re.search(r"- Current: (v?[\d.]+)", content)
             if version_match:
                 report_data["version"] = version_match.group(1)
 
             # Extract changes - handle order independence
-            if '## Changes Summary' in content:
+            if "## Changes Summary" in content:
                 # Find the Changes Summary section
-                start_idx = content.find('## Changes Summary')
+                start_idx = content.find("## Changes Summary")
                 if start_idx != -1:
                     # Skip to end of the line after "## Changes Summary"
-                    start_content = start_idx + len('## Changes Summary')
-                    newline_after_title = content.find('\n', start_content)
+                    start_content = start_idx + len("## Changes Summary")
+                    newline_after_title = content.find("\n", start_content)
                     if newline_after_title != -1:
                         start_content = newline_after_title + 1
 
                     # Find the next ## section or end of content
                     # Look for the next section beyond the current position
-                    next_section = content.find('\n##', start_content + 1)
+                    next_section = content.find("\n##", start_content + 1)
                     if next_section != -1:
                         changes_text = content[start_content:next_section]
                     else:
@@ -77,32 +74,36 @@ class ReleaseNotesConverter:
 
             if changes_text:
                 # Find all @TAG entries using simpler approach
-                lines = changes_text.split('\n')
+                lines = changes_text.split("\n")
                 current_tag = None
                 current_description = []
 
                 for line in lines:
                     line = line.strip()
-                    if line.startswith('### @'):
+                    if line.startswith("### @"):
                         # Save previous tag if exists
                         if current_tag and current_description:
-                            report_data["changes"].append({
-                                "tag": current_tag,
-                                "description": '\n'.join(current_description)
-                            })
+                            report_data["changes"].append(
+                                {
+                                    "tag": current_tag,
+                                    "description": "\n".join(current_description),
+                                }
+                            )
 
                         # Start new tag
-                        current_tag = line.replace('### ', '')
+                        current_tag = line.replace("### ", "")
                         current_description = []
                     elif line and current_tag:
                         current_description.append(line)
 
                 # Don't forget the last tag
                 if current_tag and current_description:
-                    report_data["changes"].append({
-                        "tag": current_tag,
-                        "description": '\n'.join(current_description)
-                    })
+                    report_data["changes"].append(
+                        {
+                            "tag": current_tag,
+                            "description": "\n".join(current_description),
+                        }
+                    )
 
             return report_data
 
@@ -121,12 +122,12 @@ class ReleaseNotesConverter:
             content = self.sync_report_path.read_text()
 
             # Extract current version
-            current_match = re.search(r'- Current: (v?[\d.]+)', content)
+            current_match = re.search(r"- Current: (v?[\d.]+)", content)
             if current_match:
                 version_info["current"] = current_match.group(1)
 
             # Extract previous version
-            previous_match = re.search(r'- Previous: (v?[\d.]+)', content)
+            previous_match = re.search(r"- Previous: (v?[\d.]+)", content)
             if previous_match:
                 version_info["previous"] = previous_match.group(1)
 
@@ -135,7 +136,9 @@ class ReleaseNotesConverter:
 
         return version_info
 
-    def categorize_changes(self, report_data: dict[str, Any] | None = None) -> dict[str, list[dict[str, str]]]:
+    def categorize_changes(
+        self, report_data: dict[str, Any] | None = None
+    ) -> dict[str, list[dict[str, str]]]:
         """@TASK:RELEASE-NOTES-004 Categorize changes by TAG type"""
         if report_data is None:
             report_data = self.parse_sync_report()
@@ -148,7 +151,7 @@ class ReleaseNotesConverter:
             "API": [],
             "DOCS": [],
             "PERF": [],
-            "OTHER": []
+            "OTHER": [],
         }
 
         if not report_data:
@@ -158,7 +161,7 @@ class ReleaseNotesConverter:
             tag = change["tag"]
 
             # Extract category from tag (e.g., @FEATURE:DOCS-001 -> FEATURE)
-            category_match = re.match(r'@(\w+):?', tag)
+            category_match = re.match(r"@(\w+):?", tag)
             if category_match:
                 category = category_match.group(1)
                 if category in categories:
@@ -197,7 +200,7 @@ class ReleaseNotesConverter:
             "API": "🔌 API",
             "DOCS": "📚 Documentation",
             "PERF": "⚡ Performance",
-            "OTHER": "🔧 Other"
+            "OTHER": "🔧 Other",
         }
 
         for category, label in category_labels.items():
@@ -231,21 +234,21 @@ class ReleaseNotesConverter:
                     content = report_file.read_text()
 
                     # Extract version
-                    version_match = re.search(r'- Current: (v?[\d.]+)', content)
+                    version_match = re.search(r"- Current: (v?[\d.]+)", content)
                     if version_match:
                         version = version_match.group(1)
 
                         # Extract date
-                        date_match = re.search(r'# Sync Report - (\d{4}-\d{2}-\d{2})', content)
+                        date_match = re.search(
+                            r"# Sync Report - (\d{4}-\d{2}-\d{2})", content
+                        )
                         date = None
                         if date_match:
                             date = datetime.strptime(date_match.group(1), "%Y-%m-%d")
 
-                        versions.append({
-                            "version": version,
-                            "date": date,
-                            "file": report_file
-                        })
+                        versions.append(
+                            {"version": version, "date": date, "file": report_file}
+                        )
 
                 except Exception as e:
                     logger.warning(f"Failed to parse {report_file}: {e}")

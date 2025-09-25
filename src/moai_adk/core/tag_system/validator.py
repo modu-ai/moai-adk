@@ -12,6 +12,7 @@ from .parser import TagMatch
 @dataclass
 class ChainValidationResult:
     """Chain 검증 결과"""
+
     is_valid: bool
     completeness_score: float
     missing_links: list[str]
@@ -21,6 +22,7 @@ class ChainValidationResult:
 @dataclass
 class ValidationError:
     """검증 오류 정보"""
+
     message: str
     tag: TagMatch | None = None
 
@@ -28,6 +30,7 @@ class ValidationError:
 @dataclass
 class BrokenReference:
     """깨진 참조 정보"""
+
     source_identifier: str
     broken_reference: str
     reason: str
@@ -36,6 +39,7 @@ class BrokenReference:
 @dataclass
 class ConsistencyViolation:
     """일관성 위반 정보"""
+
     identifier: str
     category: str
     issue_type: str
@@ -64,7 +68,7 @@ class TagValidator:
             "PRIMARY": self._primary_chain,
             "STEERING": self._steering_chain,
             "IMPLEMENTATION": self._implementation_chain,
-            "QUALITY": self._quality_chain
+            "QUALITY": self._quality_chain,
         }
 
     def validate_primary_chain(self, tags: list[TagMatch]) -> ChainValidationResult:
@@ -80,14 +84,16 @@ class TagValidator:
         primary_tags = [tag for tag in tags if tag.category in self._primary_chain]
         found_categories = set(tag.category for tag in primary_tags)
 
-        missing_links = [cat for cat in self._primary_chain if cat not in found_categories]
+        missing_links = [
+            cat for cat in self._primary_chain if cat not in found_categories
+        ]
         completeness_score = len(found_categories) / len(self._primary_chain)
 
         return ChainValidationResult(
             is_valid=len(missing_links) == 0,
             completeness_score=completeness_score,
             missing_links=missing_links,
-            chain_type="PRIMARY"
+            chain_type="PRIMARY",
         )
 
     def detect_circular_references(self, tags: list[TagMatch]) -> list[list[TagMatch]]:
@@ -174,7 +180,9 @@ class TagValidator:
 
         return orphaned_tags
 
-    def check_naming_consistency(self, tags: list[TagMatch]) -> list[ConsistencyViolation]:
+    def check_naming_consistency(
+        self, tags: list[TagMatch]
+    ) -> list[ConsistencyViolation]:
         """
         명명 일관성 검사
 
@@ -189,13 +197,15 @@ class TagValidator:
         for tag in tags:
             # 대문자-하이픈 패턴 검사
             if not self._is_consistent_naming(tag.identifier):
-                violations.append(ConsistencyViolation(
-                    identifier=tag.identifier,
-                    category=tag.category,
-                    issue_type="naming_inconsistency",
-                    expected="UPPERCASE-WITH-HYPHENS",
-                    actual=tag.identifier
-                ))
+                violations.append(
+                    ConsistencyViolation(
+                        identifier=tag.identifier,
+                        category=tag.category,
+                        issue_type="naming_inconsistency",
+                        expected="UPPERCASE-WITH-HYPHENS",
+                        actual=tag.identifier,
+                    )
+                )
 
         return violations
 
@@ -222,7 +232,9 @@ class TagValidator:
 
         return coverage
 
-    def validate_reference_integrity(self, tags: list[TagMatch]) -> list[BrokenReference]:
+    def validate_reference_integrity(
+        self, tags: list[TagMatch]
+    ) -> list[BrokenReference]:
         """
         참조 무결성 검사
 
@@ -245,17 +257,20 @@ class TagValidator:
             if tag.references:
                 for ref in tag.references:
                     if ref not in existing_tags:
-                        broken_refs.append(BrokenReference(
-                            source_identifier=tag.identifier,
-                            broken_reference=ref,
-                            reason="Referenced tag does not exist"
-                        ))
+                        broken_refs.append(
+                            BrokenReference(
+                                source_identifier=tag.identifier,
+                                broken_reference=ref,
+                                reason="Referenced tag does not exist",
+                            )
+                        )
 
         return broken_refs
 
     def _is_consistent_naming(self, identifier: str) -> bool:
         """명명 일관성 검사"""
         import re
+
         # 대문자-하이픈-숫자 패턴 허용
-        pattern = r'^[A-Z][A-Z0-9-]*[A-Z0-9]$'
+        pattern = r"^[A-Z][A-Z0-9-]*[A-Z0-9]$"
         return bool(re.match(pattern, identifier))

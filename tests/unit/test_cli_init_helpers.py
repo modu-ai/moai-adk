@@ -28,7 +28,9 @@ class TestFinalizationWithConfig:
         project_dir.mkdir()
 
         # Mock SimplifiedInstaller to capture how it's instantiated
-        with patch('moai_adk.cli.init_helpers.SimplifiedInstaller') as mock_installer_class:
+        with patch(
+            "moai_adk.cli.init_helpers.SimplifiedInstaller"
+        ) as mock_installer_class:
             # Setup mock installer instance
             mock_installer = Mock()
             mock_result = Mock()
@@ -38,13 +40,15 @@ class TestFinalizationWithConfig:
             mock_installer_class.return_value = mock_installer
 
             # Mock create_mode_configuration to prevent file operations
-            with patch('moai_adk.cli.init_helpers.create_mode_configuration') as mock_create_mode:
+            with patch(
+                "moai_adk.cli.init_helpers.create_mode_configuration"
+            ) as mock_create_mode:
                 # This should work after fix: SimplifiedInstaller should be called with Config object
                 finalize_installation(
                     project_dir=project_dir,
                     project_mode="personal",
                     force_copy=True,
-                    quiet=False
+                    quiet=False,
                 )
 
         # Verify SimplifiedInstaller was called exactly once
@@ -54,10 +58,14 @@ class TestFinalizationWithConfig:
         args, kwargs = mock_installer_class.call_args
 
         # Should be called with Config object as first argument
-        assert len(args) == 1, "SimplifiedInstaller should be called with one positional argument (Config)"
+        assert len(args) == 1, (
+            "SimplifiedInstaller should be called with one positional argument (Config)"
+        )
 
         config_arg = args[0]
-        assert isinstance(config_arg, Config), f"Expected Config object, got {type(config_arg)}"
+        assert isinstance(config_arg, Config), (
+            f"Expected Config object, got {type(config_arg)}"
+        )
 
         # Verify Config object has correct properties
         assert config_arg.name == project_dir.name
@@ -72,7 +80,9 @@ class TestFinalizationWithConfig:
         project_dir = tmp_path / "test-project"
         project_dir.mkdir()
 
-        with patch('moai_adk.cli.init_helpers.SimplifiedInstaller') as mock_installer_class:
+        with patch(
+            "moai_adk.cli.init_helpers.SimplifiedInstaller"
+        ) as mock_installer_class:
             mock_installer = Mock()
             mock_result = Mock()
             mock_result.success = True
@@ -80,13 +90,13 @@ class TestFinalizationWithConfig:
             mock_installer.install.return_value = mock_result
             mock_installer_class.return_value = mock_installer
 
-            with patch('moai_adk.cli.init_helpers.create_mode_configuration'):
+            with patch("moai_adk.cli.init_helpers.create_mode_configuration"):
                 # Test quiet=True maps to silent=True
                 finalize_installation(
                     project_dir=project_dir,
                     project_mode="team",
                     force_copy=False,
-                    quiet=True
+                    quiet=True,
                 )
 
         args, kwargs = mock_installer_class.call_args
@@ -103,7 +113,9 @@ class TestFinalizationWithConfig:
         project_dir = tmp_path / "test-project"
         project_dir.mkdir()
 
-        with patch('moai_adk.cli.init_helpers.SimplifiedInstaller') as mock_installer_class:
+        with patch(
+            "moai_adk.cli.init_helpers.SimplifiedInstaller"
+        ) as mock_installer_class:
             mock_installer = Mock()
             mock_result = Mock()
             mock_result.success = False
@@ -111,14 +123,14 @@ class TestFinalizationWithConfig:
             mock_installer.install.return_value = mock_result
             mock_installer_class.return_value = mock_installer
 
-            with patch('moai_adk.cli.init_helpers.create_mode_configuration'):
+            with patch("moai_adk.cli.init_helpers.create_mode_configuration"):
                 # Should raise SystemExit on failure
                 with pytest.raises(SystemExit):
                     finalize_installation(
                         project_dir=project_dir,
                         project_mode="personal",
                         force_copy=False,
-                        quiet=True  # quiet=True to suppress error output during test
+                        quiet=True,  # quiet=True to suppress error output during test
                     )
 
     def test_config_backwards_compatibility_with_project_path(self):
@@ -142,10 +154,7 @@ class TestConfigParameter:
     def test_config_creation_with_all_parameters(self):
         """Test that Config object can be created with all required parameters."""
         config = Config(
-            name="test-project",
-            path="/tmp/test",
-            force_copy=True,
-            silent=True
+            name="test-project", path="/tmp/test", force_copy=True, silent=True
         )
 
         assert config.name == "test-project"

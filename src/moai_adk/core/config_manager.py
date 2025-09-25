@@ -23,7 +23,9 @@ logger = get_logger(__name__)
 class ConfigManager:
     """@TASK:CONFIG-MANAGER-001 Configuration management orchestrator for MoAI-ADK installation."""
 
-    def __init__(self, project_dir: Path = None, security_manager: SecurityManager = None):
+    def __init__(
+        self, project_dir: Path = None, security_manager: SecurityManager = None
+    ):
         """
         Initialize configuration manager orchestrator.
 
@@ -99,7 +101,9 @@ class ConfigManager:
         return self.config_utils.backup_config_file(file_path)
 
     # Additional convenience methods
-    def setup_full_project_config(self, project_path: Path, config: Config) -> dict[str, Path]:
+    def setup_full_project_config(
+        self, project_path: Path, config: Config
+    ) -> dict[str, Path]:
         """Complete project configuration setup"""
         created_files = {}
 
@@ -107,29 +111,31 @@ class ConfigManager:
             # Claude settings
             claude_settings = self.create_claude_settings_file(project_path, config)
             if claude_settings:
-                created_files['claude_settings'] = claude_settings
+                created_files["claude_settings"] = claude_settings
 
             # MoAI config
             moai_config = self.create_moai_config_file(project_path, config)
             if moai_config:
-                created_files['moai_config'] = moai_config
+                created_files["moai_config"] = moai_config
 
             # Package.json (if applicable)
             package_json = self.create_package_json(project_path, config)
             if package_json:
-                created_files['package_json'] = package_json
+                created_files["package_json"] = package_json
 
             # Initial indexes
             indexes = self.create_initial_indexes(project_path, config)
             if indexes:
-                created_files['indexes'] = indexes
+                created_files["indexes"] = indexes
 
             # Steering config
             steering_config = self.setup_steering_config(project_path)
             if steering_config:
-                created_files['steering_config'] = steering_config
+                created_files["steering_config"] = steering_config
 
-            logger.info(f"Full project configuration completed: {len(created_files)} components")
+            logger.info(
+                f"Full project configuration completed: {len(created_files)} components"
+            )
             return created_files
 
         except Exception as e:
@@ -142,18 +148,20 @@ class ConfigManager:
 
         # Check Claude settings
         claude_settings_path = project_path / ".claude" / "settings.json"
-        status['claude_settings'] = self.config_utils.get_config_summary(claude_settings_path)
+        status["claude_settings"] = self.config_utils.get_config_summary(
+            claude_settings_path
+        )
 
         # Check MoAI config
         moai_config_path = project_path / ".moai" / "config.json"
-        status['moai_config'] = self.config_utils.get_config_summary(moai_config_path)
+        status["moai_config"] = self.config_utils.get_config_summary(moai_config_path)
 
         # Check package.json
         package_json_path = project_path / "package.json"
-        status['package_json'] = self.config_utils.get_config_summary(package_json_path)
+        status["package_json"] = self.config_utils.get_config_summary(package_json_path)
 
         # Check indexes
         tags_index_path = project_path / ".moai" / "indexes" / "tags.db"
-        status['tags_index'] = self.config_utils.get_config_summary(tags_index_path)
+        status["tags_index"] = self.config_utils.get_config_summary(tags_index_path)
 
         return status

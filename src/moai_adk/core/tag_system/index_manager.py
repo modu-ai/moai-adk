@@ -23,6 +23,7 @@ from .parser import TagParser
 
 class WatcherStatus(Enum):
     """파일 감시 상태"""
+
     STOPPED = "stopped"
     RUNNING = "running"
     ERROR = "error"
@@ -31,6 +32,7 @@ class WatcherStatus(Enum):
 @dataclass
 class IndexUpdateEvent:
     """인덱스 업데이트 이벤트"""
+
     event_type: str
     file_path: Path
     timestamp: datetime
@@ -79,7 +81,7 @@ class TagIndexManager:
         if not self._logger.handlers:
             handler = logging.StreamHandler()
             formatter = logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
             )
             handler.setFormatter(formatter)
             self._logger.addHandler(handler)
@@ -97,13 +99,13 @@ class TagIndexManager:
                         "created_at": {"type": "string"},
                         "updated_at": {"type": "string"},
                         "version": {"type": "string"},
-                        "total_tags": {"type": "number"}
-                    }
+                        "total_tags": {"type": "number"},
+                    },
                 },
                 "categories": {"type": "object"},
                 "chains": {"type": "array"},
-                "files": {"type": "object"}
-            }
+                "files": {"type": "object"},
+            },
         }
 
     @property
@@ -120,19 +122,19 @@ class TagIndexManager:
                     "created_at": now,
                     "updated_at": now,
                     "version": "1.0",
-                    "total_tags": 0
+                    "total_tags": 0,
                 },
                 "categories": {
                     "PRIMARY": {},
                     "STEERING": {},
                     "IMPLEMENTATION": {},
-                    "QUALITY": {}
+                    "QUALITY": {},
                 },
                 "chains": [],
-                "files": {}
+                "files": {},
             }
 
-            with open(self.index_file, 'w', encoding='utf-8') as f:
+            with open(self.index_file, "w", encoding="utf-8") as f:
                 json.dump(empty_index, f, indent=2, ensure_ascii=False)
 
     def start_watching(self) -> None:
@@ -142,7 +144,9 @@ class TagIndexManager:
 
         event_handler = _TagFileEventHandler(self)
         self._observer = Observer()
-        self._observer.schedule(event_handler, str(self.watch_directory), recursive=True)
+        self._observer.schedule(
+            event_handler, str(self.watch_directory), recursive=True
+        )
         self._observer.start()
         self._status = WatcherStatus.RUNNING
 
@@ -165,7 +169,9 @@ class TagIndexManager:
         """
         # 입력 검증
         if not file_path or not event_type:
-            self._logger.warning(f"Invalid file change parameters: {file_path}, {event_type}")
+            self._logger.warning(
+                f"Invalid file change parameters: {file_path}, {event_type}"
+            )
             return
 
         self._logger.info(f"Processing file change: {event_type} - {file_path}")
@@ -182,21 +188,25 @@ class TagIndexManager:
                     event = IndexUpdateEvent(
                         event_type=event_type,
                         file_path=file_path,
-                        timestamp=datetime.now()
+                        timestamp=datetime.now(),
                     )
                     self.on_file_changed(event)
 
-                self._logger.debug(f"Successfully processed {event_type} for {file_path}")
+                self._logger.debug(
+                    f"Successfully processed {event_type} for {file_path}"
+                )
 
         except Exception as e:
-            self._logger.error(f"Error processing file change {file_path}: {e}", exc_info=True)
+            self._logger.error(
+                f"Error processing file change {file_path}: {e}", exc_info=True
+            )
 
     def load_index(self) -> dict[str, Any]:
         """인덱스 로드"""
         if not self.index_file.exists():
             self.initialize_index()
 
-        with open(self.index_file, encoding='utf-8') as f:
+        with open(self.index_file, encoding="utf-8") as f:
             return json.load(f)
 
     def save_index(self, index_data: dict[str, Any]) -> None:
@@ -204,7 +214,7 @@ class TagIndexManager:
         # 메타데이터 업데이트
         index_data["metadata"]["updated_at"] = datetime.now().isoformat()
 
-        with open(self.index_file, 'w', encoding='utf-8') as f:
+        with open(self.index_file, "w", encoding="utf-8") as f:
             json.dump(index_data, f, indent=2, ensure_ascii=False)
 
     def validate_index_schema(self, index_data: dict[str, Any]) -> bool:
@@ -221,11 +231,11 @@ class TagIndexManager:
             return
 
         # 텍스트 파일만 처리
-        if file_path.suffix not in ['.md', '.txt', '.py', '.js', '.ts']:
+        if file_path.suffix not in [".md", ".txt", ".py", ".js", ".ts"]:
             return
 
         try:
-            content = file_path.read_text(encoding='utf-8')
+            content = file_path.read_text(encoding="utf-8")
         except (UnicodeDecodeError, PermissionError):
             return
 
@@ -241,7 +251,11 @@ class TagIndexManager:
         # 새 TAG 추가
         if tags:
             index_data["files"][str(file_path)] = [
-                {"category": tag.category, "identifier": tag.identifier, "description": tag.description}
+                {
+                    "category": tag.category,
+                    "identifier": tag.identifier,
+                    "description": tag.description,
+                }
                 for tag in tags
             ]
 
@@ -254,10 +268,9 @@ class TagIndexManager:
                 if tag.category not in index_data["categories"][category_group]:
                     index_data["categories"][category_group][tag.category] = {}
 
-                index_data["categories"][category_group][tag.category][tag.identifier] = {
-                    "description": tag.description or "",
-                    "file": str(file_path)
-                }
+                index_data["categories"][category_group][tag.category][
+                    tag.identifier
+                ] = {"description": tag.description or "", "file": str(file_path)}
         else:
             # TAG가 없으면 파일 제거
             index_data["files"].pop(str(file_path), None)
@@ -289,12 +302,15 @@ class TagIndexManager:
 
         self.save_index(index_data)
 
-    def _remove_file_tags_from_categories(self, file_path: str, index_data: dict[str, Any]) -> None:
+    def _remove_file_tags_from_categories(
+        self, file_path: str, index_data: dict[str, Any]
+    ) -> None:
         """카테고리에서 특정 파일의 TAG 제거"""
         for group in index_data["categories"].values():
             for category_data in group.values():
                 tags_to_remove = [
-                    tag_id for tag_id, tag_info in category_data.items()
+                    tag_id
+                    for tag_id, tag_info in category_data.items()
                     if tag_info.get("file") == file_path
                 ]
                 for tag_id in tags_to_remove:

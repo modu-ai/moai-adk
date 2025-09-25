@@ -30,7 +30,9 @@ class CheckpointManager:
         self.project_root = Path(__file__).resolve().parents[2]
         self.checkpoint_system = CheckpointSystem(self.project_root)
 
-    def create_checkpoint(self, message: str = "Manual checkpoint", is_auto: bool = False) -> dict[str, Any]:
+    def create_checkpoint(
+        self, message: str = "Manual checkpoint", is_auto: bool = False
+    ) -> dict[str, Any]:
         """체크포인트 생성"""
         try:
             checkpoint = self.checkpoint_system.create_checkpoint(message, is_auto)
@@ -40,7 +42,7 @@ class CheckpointManager:
                 "commit_hash": checkpoint.commit_hash,
                 "message": checkpoint.message,
                 "created_at": checkpoint.created_at,
-                "file_count": checkpoint.file_count
+                "file_count": checkpoint.file_count,
             }
         except CheckpointError as e:
             return {"success": False, "error": str(e)}
@@ -61,7 +63,7 @@ class CheckpointManager:
                 "success": True,
                 "tag": checkpoint.tag,
                 "commit_hash": checkpoint.commit_hash,
-                "message": checkpoint.message
+                "message": checkpoint.message,
             }
         except CheckpointError as e:
             return {"success": False, "error": str(e)}
@@ -74,7 +76,9 @@ class CheckpointManager:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def auto_checkpoint_if_needed(self, message: str = "Auto checkpoint") -> dict[str, Any] | None:
+    def auto_checkpoint_if_needed(
+        self, message: str = "Auto checkpoint"
+    ) -> dict[str, Any] | None:
         """필요 시 자동 체크포인트 생성"""
         try:
             if self.checkpoint_system.should_create_auto_checkpoint():
@@ -92,7 +96,9 @@ class CheckpointManager:
             return {"error": str(e)}
 
     # 하위 호환성을 위한 레거시 메서드들
-    def create_auto_checkpoint(self, message: str = "Auto checkpoint") -> dict[str, Any]:
+    def create_auto_checkpoint(
+        self, message: str = "Auto checkpoint"
+    ) -> dict[str, Any]:
         """자동 체크포인트 생성 (레거시 호환)"""
         return self.create_checkpoint(message, is_auto=True)
 

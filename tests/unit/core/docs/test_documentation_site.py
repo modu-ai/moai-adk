@@ -5,6 +5,7 @@ Following TRUST 5 principles for TDD implementation.
 
 @REQ:DOCS-SITE-001 → @TASK:DOCS-TEST-001
 """
+
 import pytest
 import os
 from pathlib import Path
@@ -74,7 +75,7 @@ class TestDocumentationSite:
         builder.initialize_site()
 
         # Mock MkDocs build process by patching at the module level
-        with patch.object(builder, '_build_status', {"success": True, "error": None}):
+        with patch.object(builder, "_build_status", {"success": True, "error": None}):
             result = builder.build_docs()
 
             assert result is True, "Documentation build should succeed"

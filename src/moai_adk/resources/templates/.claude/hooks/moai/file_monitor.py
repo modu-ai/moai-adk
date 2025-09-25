@@ -15,6 +15,7 @@ from pathlib import Path
 try:
     from watchdog.events import FileSystemEventHandler
     from watchdog.observers import Observer
+
     WATCHDOG_AVAILABLE = True
 except ImportError:
     WATCHDOG_AVAILABLE = False
@@ -39,14 +40,10 @@ class FileMonitor:
         self.checkpoint_interval = 300  # 5 minutes
 
         # Essential file patterns to watch
-        self.watch_patterns = {
-            '.py', '.js', '.ts', '.md', '.json', '.yml', '.yaml'
-        }
+        self.watch_patterns = {".py", ".js", ".ts", ".md", ".json", ".yml", ".yaml"}
 
         # Directories to ignore
-        self.ignore_patterns = {
-            '.git', '__pycache__', 'node_modules', '.pytest_cache'
-        }
+        self.ignore_patterns = {".git", "__pycache__", "node_modules", ".pytest_cache"}
 
     def watch_files(self) -> bool:
         """Start file watching
@@ -101,8 +98,10 @@ class FileMonitor:
         current_time = time.time()
 
         # Create checkpoint if enough time has passed and files changed
-        if (current_time - self.last_checkpoint_time > self.checkpoint_interval and
-                self.changed_files):
+        if (
+            current_time - self.last_checkpoint_time > self.checkpoint_interval
+            and self.changed_files
+        ):
             return True
 
         return False

@@ -31,7 +31,9 @@ class TagMigrationTool:
     @DESIGN:REFACTORED-ORCHESTRATOR-001 Now coordinates specialized modules
     """
 
-    def __init__(self, database_path: Path, json_path: Path, backup_directory: Path | None = None):
+    def __init__(
+        self, database_path: Path, json_path: Path, backup_directory: Path | None = None
+    ):
         self.database_path = database_path
         self.json_path = json_path
 
@@ -46,20 +48,22 @@ class TagMigrationTool:
         self.engine = MigrationEngine(database_path, json_path, self.backup_manager)
         self.validator = MigrationValidator(json_path, self.backup_directory)
 
-    def migrate_json_to_sqlite(self,
-                              validate_data: bool = False,
-                              strict_mode: bool = False,
-                              progress_callback: Callable[[MigrationProgress], None] | None = None,
-                              batch_size: int = 1000,
-                              mode: str = 'full',
-                              preserve_existing: bool = False,
-                              conflict_resolution: str = 'keep_existing',
-                              create_backup: bool = False,
-                              auto_rollback: bool = False,
-                              detailed_reporting: bool = False,
-                              generate_report: bool = False,
-                              plugins: list | None = None,
-                              strict_validation: bool = False) -> MigrationResult:
+    def migrate_json_to_sqlite(
+        self,
+        validate_data: bool = False,
+        strict_mode: bool = False,
+        progress_callback: Callable[[MigrationProgress], None] | None = None,
+        batch_size: int = 1000,
+        mode: str = "full",
+        preserve_existing: bool = False,
+        conflict_resolution: str = "keep_existing",
+        create_backup: bool = False,
+        auto_rollback: bool = False,
+        detailed_reporting: bool = False,
+        generate_report: bool = False,
+        plugins: list | None = None,
+        strict_validation: bool = False,
+    ) -> MigrationResult:
         """JSON에서 SQLite로 마이그레이션 (오케스트레이터)"""
 
         start_time = time.time()
@@ -70,8 +74,7 @@ class TagMigrationTool:
             backup_info = None
             if create_backup and self.json_path.exists():
                 backup_info = self.backup_manager.create_backup(
-                    self.json_path,
-                    "마이그레이션 전 자동 백업"
+                    self.json_path, "마이그레이션 전 자동 백업"
                 )
                 result.backup_created = True
 
@@ -80,12 +83,14 @@ class TagMigrationTool:
                 result.errors.append("JSON 파일이 존재하지 않습니다")
                 return result
 
-            with open(self.json_path, encoding='utf-8') as f:
+            with open(self.json_path, encoding="utf-8") as f:
                 json_data = json.load(f)
 
             # 데이터 검증
             if validate_data:
-                validation_result = self.validator.validate_json_data(json_data, strict_mode)
+                validation_result = self.validator.validate_json_data(
+                    json_data, strict_mode
+                )
                 result.validation_errors = validation_result
                 if strict_mode and validation_result:
                     result.errors.append(f"검증 실패: {len(validation_result)}개 오류")
@@ -108,9 +113,7 @@ class TagMigrationTool:
                 result.report_file = self.validator.generate_html_report(result)
 
             # 성능 메트릭 추가
-            result.performance_metrics = {
-                'total_duration': time.time() - start_time
-            }
+            result.performance_metrics = {"total_duration": time.time() - start_time}
 
         except Exception as e:
             result.errors.append(str(e))

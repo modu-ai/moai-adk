@@ -22,7 +22,7 @@ class ProgressTracker:
     Provides clean, color-coded progress visualization for MoAI-ADK operations.
     """
 
-    def __init__(self, total_steps: int = 18):
+    def __init__(self, total_steps: int = 19):
         """
         Initialize progress tracker.
 
@@ -33,9 +33,7 @@ class ProgressTracker:
         self.current_step = 0
 
     def update_progress(
-        self,
-        step: str,
-        callback: Callable[[str, int, int], None] | None = None
+        self, step: str, callback: Callable[[str, int, int], None] | None = None
     ) -> None:
         """
         @TASK:PROGRESS-UPDATE-001 Update installation progress with clean, professional display
@@ -62,10 +60,12 @@ class ProgressTracker:
 
         # Clean, aligned output format with step counter
         step_indicator = f"({self.current_step:2d}/{self.total_steps})"
+
+        # Clear entire line to prevent text overlap, then display progress
         click.echo(
-            f"\r{color}[{progress_bar}] {percentage:3d}% "
+            f"\r\033[K{color}[{progress_bar}] {percentage:3d}% "
             f"{Style.RESET_ALL}{step_indicator} {step}",
-            nl=False
+            nl=False,
         )
 
         # Add newline when complete to prevent overlap
@@ -100,10 +100,10 @@ class ProgressTracker:
         """Get current progress information as dictionary."""
         percentage = min(int((self.current_step / self.total_steps) * 100), 100)
         return {
-            'current_step': self.current_step,
-            'total_steps': self.total_steps,
-            'percentage': percentage,
-            'is_complete': self.current_step >= self.total_steps
+            "current_step": self.current_step,
+            "total_steps": self.total_steps,
+            "percentage": percentage,
+            "is_complete": self.current_step >= self.total_steps,
         }
 
     def is_complete(self) -> bool:
@@ -119,7 +119,7 @@ class ProgressTracker:
         """Add additional steps to the total."""
         self.total_steps += additional_steps
 
-    def create_sub_tracker(self, sub_steps: int) -> 'ProgressTracker':
+    def create_sub_tracker(self, sub_steps: int) -> "ProgressTracker":
         """
         Create a sub-tracker for nested operations.
 
@@ -131,7 +131,9 @@ class ProgressTracker:
         """
         return ProgressTracker(sub_steps)
 
-    def display_completion_message(self, message: str = "Installation completed successfully!") -> None:
+    def display_completion_message(
+        self, message: str = "Installation completed successfully!"
+    ) -> None:
         """Display completion message with formatting."""
         click.echo(f"\n{Fore.GREEN}✅ {message}{Style.RESET_ALL}")
 
@@ -159,9 +161,9 @@ class MultiStageProgressTracker:
     def add_stage(self, stage_name: str, steps: int) -> None:
         """Add a new stage with specified step count."""
         self.stages[stage_name] = {
-            'steps': steps,
-            'tracker': ProgressTracker(steps),
-            'completed': False
+            "steps": steps,
+            "tracker": ProgressTracker(steps),
+            "completed": False,
         }
         if stage_name not in self.stage_order:
             self.stage_order.append(stage_name)
@@ -172,7 +174,7 @@ class MultiStageProgressTracker:
             raise ValueError(f"Stage '{stage_name}' not found")
 
         self.current_stage = stage_name
-        tracker = self.stages[stage_name]['tracker']
+        tracker = self.stages[stage_name]["tracker"]
         tracker.reset()
 
         click.echo(f"\n{Fore.CYAN}🚀 Starting stage: {stage_name}{Style.RESET_ALL}")
@@ -181,24 +183,28 @@ class MultiStageProgressTracker:
     def complete_stage(self, stage_name: str) -> None:
         """Mark a stage as completed."""
         if stage_name in self.stages:
-            self.stages[stage_name]['completed'] = True
-            click.echo(f"\n{Fore.GREEN}✅ Stage completed: {stage_name}{Style.RESET_ALL}")
+            self.stages[stage_name]["completed"] = True
+            click.echo(
+                f"\n{Fore.GREEN}✅ Stage completed: {stage_name}{Style.RESET_ALL}"
+            )
 
     def get_overall_progress(self) -> dict:
         """Get overall progress across all stages."""
-        total_steps = sum(stage['steps'] for stage in self.stages.values())
+        total_steps = sum(stage["steps"] for stage in self.stages.values())
         completed_steps = sum(
-            stage['tracker'].current_step for stage in self.stages.values()
+            stage["tracker"].current_step for stage in self.stages.values()
         )
 
-        percentage = int((completed_steps / total_steps) * 100) if total_steps > 0 else 0
+        percentage = (
+            int((completed_steps / total_steps) * 100) if total_steps > 0 else 0
+        )
 
         return {
-            'completed_steps': completed_steps,
-            'total_steps': total_steps,
-            'percentage': percentage,
-            'current_stage': self.current_stage,
-            'completed_stages': [
-                name for name, stage in self.stages.items() if stage['completed']
-            ]
+            "completed_steps": completed_steps,
+            "total_steps": total_steps,
+            "percentage": percentage,
+            "current_stage": self.current_stage,
+            "completed_stages": [
+                name for name, stage in self.stages.items() if stage["completed"]
+            ],
         }

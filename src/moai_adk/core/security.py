@@ -27,7 +27,7 @@ class SecurityManager:
         critical_paths = {Path.home(), Path("/")}
 
         # Add Windows system paths if on Windows
-        if os.name == 'nt':
+        if os.name == "nt":
             critical_paths.add(Path("C:\\"))
             critical_paths.add(Path("C:\\Windows"))
             critical_paths.add(Path("C:\\Program Files"))
@@ -56,7 +56,11 @@ class SecurityManager:
                 resolved_path.relative_to(resolved_base)
                 return True
             except ValueError:
-                logger.warning("Path outside base directory: %s not in %s", resolved_path, resolved_base)
+                logger.warning(
+                    "Path outside base directory: %s not in %s",
+                    resolved_path,
+                    resolved_base,
+                )
                 return False
 
         except Exception as e:
@@ -78,8 +82,12 @@ class SecurityManager:
 
             # Never delete critical system paths
             if resolved_path in self.critical_paths:
-                logger.error("Attempted to delete critical system path: %s", resolved_path)
-                raise SecurityError(f"Cannot delete critical system path: {resolved_path}")
+                logger.error(
+                    "Attempted to delete critical system path: %s", resolved_path
+                )
+                raise SecurityError(
+                    f"Cannot delete critical system path: {resolved_path}"
+                )
 
             # Additional safety checks
             if resolved_path == Path.home():
@@ -90,7 +98,9 @@ class SecurityManager:
 
             # Check if path exists
             if not resolved_path.exists():
-                logger.debug("Path does not exist, nothing to remove: %s", resolved_path)
+                logger.debug(
+                    "Path does not exist, nothing to remove: %s", resolved_path
+                )
                 return True
 
             if not resolved_path.is_dir():
@@ -99,6 +109,7 @@ class SecurityManager:
 
             # Safe to remove
             import shutil
+
             shutil.rmtree(resolved_path)
             logger.info("Successfully removed directory: %s", resolved_path)
             return True
@@ -172,14 +183,15 @@ class SecurityManager:
         # Remove or replace dangerous characters
         # Keep alphanumeric, dots, hyphens, underscores
         import re
-        sanitized = re.sub(r'[^a-zA-Z0-9._-]', '_', filename)
+
+        sanitized = re.sub(r"[^a-zA-Z0-9._-]", "_", filename)
 
         # Remove leading/trailing dots and spaces
-        sanitized = sanitized.strip('. ')
+        sanitized = sanitized.strip(". ")
 
         # Ensure not empty after sanitization
         if not sanitized:
-            sanitized = 'unnamed_file'
+            sanitized = "unnamed_file"
 
         return sanitized
 
@@ -200,10 +212,12 @@ class SecurityManager:
         # Basic safety checks
         if isinstance(command, str):
             # Check for dangerous patterns
-            dangerous_patterns = ['rm -rf /', 'dd if=/dev/zero', ':(){:|:&};:']
+            dangerous_patterns = ["rm -rf /", "dd if=/dev/zero", ":(){:|:&};:"]
             for pattern in dangerous_patterns:
                 if pattern in command.lower():
-                    raise SecurityError(f"Dangerous command pattern detected: {pattern}")
+                    raise SecurityError(
+                        f"Dangerous command pattern detected: {pattern}"
+                    )
 
         return subprocess.run(command, *args, **kwargs)
 
@@ -224,7 +238,9 @@ class SecurityManager:
         else:
             return args
 
-    def validate_path_safety_enhanced(self, path: Path, base_path: Path, allow_creation: bool = False) -> bool:
+    def validate_path_safety_enhanced(
+        self, path: Path, base_path: Path, allow_creation: bool = False
+    ) -> bool:
         """
         Enhanced path validation with additional checks.
 
@@ -265,8 +281,12 @@ class SecurityManager:
             max_size_bytes = max_size_mb * 1024 * 1024
 
             if file_size > max_size_bytes:
-                logger.warning("File size exceeds limit: %s (%d bytes > %d bytes)",
-                             file_path, file_size, max_size_bytes)
+                logger.warning(
+                    "File size exceeds limit: %s (%d bytes > %d bytes)",
+                    file_path,
+                    file_size,
+                    max_size_bytes,
+                )
                 return False
 
             return True

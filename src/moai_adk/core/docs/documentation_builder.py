@@ -5,6 +5,7 @@ Follows TRUST 5 principles for maintainable documentation automation.
 
 @REQ:DOCS-SITE-001 → @TASK:DOC-BUILDER-001
 """
+
 import logging
 from pathlib import Path
 from typing import Any
@@ -59,7 +60,7 @@ class DocumentationBuilder:
                     "navigation.expand",
                     "navigation.top",
                     "search.highlight",
-                    "search.share"
+                    "search.share",
                 ],
                 "palette": [
                     {
@@ -68,39 +69,33 @@ class DocumentationBuilder:
                         "accent": "blue",
                         "toggle": {
                             "icon": "material/brightness-7",
-                            "name": "Switch to dark mode"
-                        }
+                            "name": "Switch to dark mode",
+                        },
                     }
-                ]
+                ],
             },
             "nav": [
                 {"Home": "index.md"},
-                {"Getting Started": [
-                    {"Installation": "getting-started/installation.md"}
-                ]},
-                {"Guide": [
-                    {"Workflow": "guide/workflow.md"}
-                ]},
-                {"Development": [
-                    {"Contributing": "development/contributing.md"}
-                ]},
-                {"Examples": [
-                    {"Basic Usage": "examples/basic.md"}
-                ]}
+                {
+                    "Getting Started": [
+                        {"Installation": "getting-started/installation.md"}
+                    ]
+                },
+                {"Guide": [{"Workflow": "guide/workflow.md"}]},
+                {"Development": [{"Contributing": "development/contributing.md"}]},
+                {"Examples": [{"Basic Usage": "examples/basic.md"}]},
             ],
             "markdown_extensions": [
                 "admonition",
                 "codehilite",
                 "pymdownx.superfences",
                 "pymdownx.tabbed",
-                "toc"
+                "toc",
             ],
-            "plugins": [
-                "search"
-            ]
+            "plugins": ["search"],
         }
 
-        with open(self.mkdocs_config, 'w') as f:
+        with open(self.mkdocs_config, "w") as f:
             yaml.dump(config, f, default_flow_style=False)
 
     def _create_essential_files(self) -> None:
@@ -140,7 +135,9 @@ Initialize your project:
 moai init
 ```
 """
-        (self.docs_dir / "getting-started" / "installation.md").write_text(install_content)
+        (self.docs_dir / "getting-started" / "installation.md").write_text(
+            install_content
+        )
 
         # Create workflow guide
         workflow_content = """# Workflow
@@ -179,7 +176,10 @@ MoAI-ADK follows a 4-stage development pipeline:
         try:
             # Check if docs directory exists
             if not self.docs_dir.exists():
-                self._build_status = {"success": False, "error": "docs directory not found"}
+                self._build_status = {
+                    "success": False,
+                    "error": "docs directory not found",
+                }
                 logger.error("Documentation build failed: docs directory not found")
                 return False
 
@@ -210,10 +210,11 @@ MoAI-ADK follows a 4-stage development pipeline:
             content = md_file.read_text()
             # Simple link extraction (would be more sophisticated in real implementation)
             import re
-            links = re.findall(r'\[.*?\]\(([^)]+)\)', content)
+
+            links = re.findall(r"\[.*?\]\(([^)]+)\)", content)
 
             for link in links:
-                if not link.startswith(('http', '#')):  # Internal links only
+                if not link.startswith(("http", "#")):  # Internal links only
                     link_path = self.docs_dir / link
                     if link_path.exists():
                         valid_links.append(link)
@@ -228,7 +229,7 @@ MoAI-ADK follows a 4-stage development pipeline:
             "getting-started/installation.md",
             "guide/workflow.md",
             "api/index.md",
-            "release-notes.md"
+            "release-notes.md",
         ]
 
         existing_sections = []
@@ -246,5 +247,5 @@ MoAI-ADK follows a 4-stage development pipeline:
         return {
             "coverage_percent": coverage_percent,
             "existing_sections": existing_sections,
-            "missing_sections": missing_sections
+            "missing_sections": missing_sections,
         }

@@ -52,7 +52,9 @@ class GitStrategyBase(ABC):
         # Git 잠금 관리자 초기화
         self.lock_manager = GitLockManager(project_dir)
 
-        logger.debug(f"GitStrategy 초기화: {self.__class__.__name__}, 프로젝트: {self.project_dir}")
+        logger.debug(
+            f"GitStrategy 초기화: {self.__class__.__name__}, 프로젝트: {self.project_dir}"
+        )
 
     def get_current_branch(self) -> str:
         """현재 브랜치명 반환
@@ -69,7 +71,7 @@ class GitStrategyBase(ABC):
                 capture_output=True,
                 text=True,
                 check=True,
-                timeout=10  # 타임아웃 설정
+                timeout=10,  # 타임아웃 설정
             )
             branch = result.stdout.strip()
 
@@ -81,7 +83,7 @@ class GitStrategyBase(ABC):
                     cwd=self.project_dir,
                     capture_output=True,
                     text=True,
-                    timeout=10
+                    timeout=10,
                 )
                 if result.returncode == 0:
                     branch = f"HEAD@{result.stdout.strip()}"
@@ -108,8 +110,8 @@ class GitStrategyBase(ABC):
         # 팀 모드는 feature 브랜치, 개인 모드는 main
         if isinstance(self, TeamGitStrategy):
             # _current_branch가 있으면 사용, 없으면 feature/unknown
-            current = getattr(self, '_current_branch', None)
-            return current if current else 'feature/unknown'
+            current = getattr(self, "_current_branch", None)
+            return current if current else "feature/unknown"
         return "main"
 
     def is_git_repository(self) -> bool:
@@ -123,10 +125,14 @@ class GitStrategyBase(ABC):
                 ["git", "rev-parse", "--git-dir"],
                 cwd=self.project_dir,
                 capture_output=True,
-                timeout=5
+                timeout=5,
             )
             return result.returncode == 0
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+        except (
+            subprocess.CalledProcessError,
+            subprocess.TimeoutExpired,
+            FileNotFoundError,
+        ):
             return False
 
     def get_repository_status(self) -> dict:
@@ -139,7 +145,7 @@ class GitStrategyBase(ABC):
             "is_git_repo": self.is_git_repository(),
             "current_branch": None,
             "has_changes": False,
-            "is_locked": self.lock_manager.is_locked()
+            "is_locked": self.lock_manager.is_locked(),
         }
 
         if status["is_git_repo"]:
@@ -152,7 +158,7 @@ class GitStrategyBase(ABC):
                     cwd=self.project_dir,
                     capture_output=True,
                     text=True,
-                    timeout=10
+                    timeout=10,
                 )
                 status["has_changes"] = bool(result.stdout.strip())
 
@@ -188,12 +194,14 @@ class GitStrategyBase(ABC):
             raise ValueError("feature_name은 비어있지 않은 문자열이어야 합니다")
 
         # 특수문자 제거 및 정규화
-        normalized = feature_name.strip().replace(' ', '-').lower()
+        normalized = feature_name.strip().replace(" ", "-").lower()
 
         # 안전하지 않은 문자 확인
-        unsafe_chars = ['..', '/', '\\', '~', '^', ':', '[', ']', '*', '?']
+        unsafe_chars = ["..", "/", "\\", "~", "^", ":", "[", "]", "*", "?"]
         if any(char in normalized for char in unsafe_chars):
-            raise ValueError(f"기능명에 안전하지 않은 문자가 포함되어 있습니다: {feature_name}")
+            raise ValueError(
+                f"기능명에 안전하지 않은 문자가 포함되어 있습니다: {feature_name}"
+            )
 
         # 길이 제한 (Git 브랜치명 제한 고려)
         if len(normalized) > 100:
@@ -208,12 +216,15 @@ class GitStrategyBase(ABC):
             operation: 작업명
             details: 작업 세부사항
         """
-        logger.info(f"Git 작업: {operation}", extra={
-            "operation": operation,
-            "strategy": self.__class__.__name__,
-            "project_dir": str(self.project_dir),
-            **details
-        })
+        logger.info(
+            f"Git 작업: {operation}",
+            extra={
+                "operation": operation,
+                "strategy": self.__class__.__name__,
+                "project_dir": str(self.project_dir),
+                **details,
+            },
+        )
 
 
 class PersonalGitStrategy(GitStrategyBase):
@@ -243,11 +254,14 @@ class PersonalGitStrategy(GitStrategyBase):
         # 저장소 상태 확인
         repo_status = self.get_repository_status()
 
-        self.log_git_operation("personal_work_start", {
-            "feature_name": validated_name,
-            "current_branch": repo_status.get("current_branch"),
-            "has_changes": repo_status.get("has_changes")
-        })
+        self.log_git_operation(
+            "personal_work_start",
+            {
+                "feature_name": validated_name,
+                "current_branch": repo_status.get("current_branch"),
+                "has_changes": repo_status.get("has_changes"),
+            },
+        )
 
         # 잠금 획득하여 동시 작업 방지
         with self.lock_manager.acquire_lock():
@@ -259,16 +273,16 @@ class PersonalGitStrategy(GitStrategyBase):
 
             except Exception as e:
                 logger.error(f"개인 모드 작업 중 오류: {e}")
-                self.log_git_operation("personal_work_error", {
-                    "feature_name": validated_name,
-                    "error": str(e)
-                })
+                self.log_git_operation(
+                    "personal_work_error",
+                    {"feature_name": validated_name, "error": str(e)},
+                )
                 raise
 
             finally:
-                self.log_git_operation("personal_work_end", {
-                    "feature_name": validated_name
-                })
+                self.log_git_operation(
+                    "personal_work_end", {"feature_name": validated_name}
+                )
 
 
 class TeamGitStrategy(GitStrategyBase):
@@ -297,7 +311,7 @@ class TeamGitStrategy(GitStrategyBase):
         if self.config:
             try:
                 # ConfigManager 객체인 경우
-                if hasattr(self.config, 'get'):
+                if hasattr(self.config, "get"):
                     base_branch = self.config.get("base_branch")
                     if base_branch:
                         return base_branch
@@ -317,7 +331,7 @@ class TeamGitStrategy(GitStrategyBase):
                 cwd=self.project_dir,
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
             )
 
             if result.returncode == 0:
@@ -336,7 +350,7 @@ class TeamGitStrategy(GitStrategyBase):
                 cwd=self.project_dir,
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
             )
 
             if result.returncode == 0:
@@ -371,7 +385,7 @@ class TeamGitStrategy(GitStrategyBase):
                     cwd=self.project_dir,
                     capture_output=True,
                     check=True,
-                    timeout=30
+                    timeout=30,
                 )
 
                 # 최신 상태로 업데이트 (원격이 있는 경우)
@@ -385,7 +399,7 @@ class TeamGitStrategy(GitStrategyBase):
                     cwd=self.project_dir,
                     capture_output=True,
                     check=True,
-                    timeout=30
+                    timeout=30,
                 )
                 logger.info(f"기존 feature 브랜치로 전환: {feature_branch}")
             else:
@@ -395,7 +409,7 @@ class TeamGitStrategy(GitStrategyBase):
                     cwd=self.project_dir,
                     capture_output=True,
                     check=True,
-                    timeout=30
+                    timeout=30,
                 )
                 logger.info(f"새 feature 브랜치 생성: {feature_branch}")
 
@@ -420,7 +434,7 @@ class TeamGitStrategy(GitStrategyBase):
                 ["git", "show-ref", "--verify", "--quiet", f"refs/heads/{branch_name}"],
                 cwd=self.project_dir,
                 capture_output=True,
-                timeout=10
+                timeout=10,
             )
             return result.returncode == 0
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
@@ -439,7 +453,7 @@ class TeamGitStrategy(GitStrategyBase):
                 cwd=self.project_dir,
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
             )
 
             if result.returncode == 0 and result.stdout.strip():
@@ -448,7 +462,7 @@ class TeamGitStrategy(GitStrategyBase):
                     ["git", "pull", "--ff-only"],
                     cwd=self.project_dir,
                     capture_output=True,
-                    timeout=30
+                    timeout=30,
                 )
                 logger.debug(f"브랜치 업데이트 완료: {branch_name}")
 
@@ -476,11 +490,14 @@ class TeamGitStrategy(GitStrategyBase):
         # 저장소 상태 확인
         repo_status = self.get_repository_status()
 
-        self.log_git_operation("team_work_start", {
-            "feature_name": validated_name,
-            "original_branch": original_branch,
-            "has_changes": repo_status.get("has_changes")
-        })
+        self.log_git_operation(
+            "team_work_start",
+            {
+                "feature_name": validated_name,
+                "original_branch": original_branch,
+                "has_changes": repo_status.get("has_changes"),
+            },
+        )
 
         # 잠금 획득하여 동시 작업 방지
         with self.lock_manager.acquire_lock():
@@ -491,7 +508,9 @@ class TeamGitStrategy(GitStrategyBase):
                 feature_branch = self._create_feature_branch(validated_name)
                 self._feature_branch = feature_branch
 
-                logger.info(f"팀 모드 작업 시작: {validated_name} (브랜치: {feature_branch})")
+                logger.info(
+                    f"팀 모드 작업 시작: {validated_name} (브랜치: {feature_branch})"
+                )
 
                 # 테스트 환경에서 브랜치 시뮬레이션
                 self._current_branch = feature_branch
@@ -501,21 +520,27 @@ class TeamGitStrategy(GitStrategyBase):
 
             except Exception as e:
                 logger.error(f"팀 모드 작업 중 오류: {e}")
-                self.log_git_operation("team_work_error", {
-                    "feature_name": validated_name,
-                    "feature_branch": feature_branch,
-                    "error": str(e)
-                })
+                self.log_git_operation(
+                    "team_work_error",
+                    {
+                        "feature_name": validated_name,
+                        "feature_branch": feature_branch,
+                        "error": str(e),
+                    },
+                )
                 raise
 
             finally:
                 # 작업 완료 후 브랜치 유지 (팀 모드에서는 PR/MR을 위해)
                 # 원래 브랜치로 복귀하지 않음
-                self.log_git_operation("team_work_end", {
-                    "feature_name": validated_name,
-                    "feature_branch": feature_branch,
-                    "stayed_on_feature": True
-                })
+                self.log_git_operation(
+                    "team_work_end",
+                    {
+                        "feature_name": validated_name,
+                        "feature_branch": feature_branch,
+                        "stayed_on_feature": True,
+                    },
+                )
 
     def get_feature_branch_info(self) -> dict:
         """현재 feature 브랜치 정보 반환
@@ -527,5 +552,6 @@ class TeamGitStrategy(GitStrategyBase):
             "current_branch": self._current_branch,
             "feature_branch": self._feature_branch,
             "base_branch": self._get_base_branch(),
-            "is_feature_branch": self._feature_branch and self._current_branch == self._feature_branch
+            "is_feature_branch": self._feature_branch
+            and self._current_branch == self._feature_branch,
         }

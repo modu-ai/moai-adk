@@ -15,7 +15,7 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock, mock_open
 
 # Add project root to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # Import modules to test
 try:
@@ -35,7 +35,7 @@ class TestConfigModuleCritical(unittest.TestCase):
 
     def test_config_validation_edge_cases(self):
         """Test config validation with edge cases"""
-        if 'Config' not in globals():
+        if "Config" not in globals():
             self.skipTest("Config not available")
 
         # Test edge case names
@@ -61,7 +61,7 @@ class TestConfigModuleCritical(unittest.TestCase):
 
     def test_runtime_config_performance_validation(self):
         """Test runtime config performance validation"""
-        if 'RuntimeConfig' not in globals():
+        if "RuntimeConfig" not in globals():
             self.skipTest("RuntimeConfig not available")
 
         # Test performance boundaries
@@ -83,13 +83,13 @@ class TestConfigModuleCritical(unittest.TestCase):
 
     def test_config_template_context_completeness(self):
         """Test that template context contains all required fields"""
-        if 'Config' not in globals():
+        if "Config" not in globals():
             self.skipTest("Config not available")
 
         config = Config(
             name="test_project",
             template="standard",
-            tech_stack=["python", "fastapi", "postgresql"]
+            tech_stack=["python", "fastapi", "postgresql"],
         )
 
         context = config.get_template_context()
@@ -105,7 +105,7 @@ class TestConfigModuleCritical(unittest.TestCase):
             "tech_stack_list",
             "created_date",
             "created_year",
-            "version"
+            "version",
         ]
 
         for field in required_fields:
@@ -128,7 +128,7 @@ class TestConfigManagerCritical(unittest.TestCase):
 
     def test_config_file_handling_edge_cases(self):
         """Test config file handling with various edge cases"""
-        if 'ConfigManager' not in globals():
+        if "ConfigManager" not in globals():
             self.skipTest("ConfigManager not available")
 
         manager = ConfigManager(self.test_dir)
@@ -139,11 +139,11 @@ class TestConfigManagerCritical(unittest.TestCase):
 
         corrupted_configs = [
             '{"incomplete": json',  # Invalid JSON
-            '{"version": "0.1.0", "invalid_unicode": "\uDC00"}',  # Invalid unicode
+            '{"version": "0.1.0", "invalid_unicode": "\udc00"}',  # Invalid unicode
             '{"nested": {"too": {"deep": {"for": {"safety": true}}}}}',  # Too nested
-            '[]',  # Array instead of object
-            'null',  # Null value
-            '{"extremely_long_key_' + 'x' * 1000 + '": "value"}',  # Very long key
+            "[]",  # Array instead of object
+            "null",  # Null value
+            '{"extremely_long_key_' + "x" * 1000 + '": "value"}',  # Very long key
         ]
 
         for corrupted_config in corrupted_configs:
@@ -153,14 +153,16 @@ class TestConfigManagerCritical(unittest.TestCase):
                 try:
                     # Should handle corrupted config gracefully
                     config = manager.load_config()
-                    self.assertIsNotNone(config)  # Should return default or handle error
+                    self.assertIsNotNone(
+                        config
+                    )  # Should return default or handle error
                 except Exception as e:
                     # Should not crash, but may raise specific handled exceptions
                     self.assertIsInstance(e, (ValueError, json.JSONDecodeError))
 
     def test_concurrent_config_access(self):
         """Test config manager under concurrent access"""
-        if 'ConfigManager' not in globals():
+        if "ConfigManager" not in globals():
             self.skipTest("ConfigManager not available")
 
         manager = ConfigManager(self.test_dir)
@@ -174,10 +176,7 @@ class TestConfigManagerCritical(unittest.TestCase):
                 return False
 
         # Multiple save operations
-        configs = [
-            {"version": "0.1.0", "test": f"config_{i}"}
-            for i in range(10)
-        ]
+        configs = [{"version": "0.1.0", "test": f"config_{i}"} for i in range(10)]
 
         # All saves should complete without corruption
         for i, config in enumerate(configs):
@@ -204,13 +203,13 @@ class TestGitManagerCritical(unittest.TestCase):
 
     def test_git_operations_safety(self):
         """Test git operations are safe and don't affect system"""
-        if 'GitManager' not in globals():
+        if "GitManager" not in globals():
             self.skipTest("GitManager not available")
 
         manager = GitManager(self.test_dir)
 
         # Test git operations in isolated environment
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout="test")
 
             # Test init
@@ -219,21 +218,21 @@ class TestGitManagerCritical(unittest.TestCase):
                 # Should have called git init in correct directory
                 mock_run.assert_called()
                 call_args = mock_run.call_args
-                self.assertIn('git', call_args[0][0])
-                self.assertEqual(call_args[1]['cwd'], self.test_dir)
+                self.assertIn("git", call_args[0][0])
+                self.assertEqual(call_args[1]["cwd"], self.test_dir)
             except Exception as e:
                 self.fail(f"Git init failed: {e}")
 
     def test_git_error_handling(self):
         """Test git error handling"""
-        if 'GitManager' not in globals():
+        if "GitManager" not in globals():
             self.skipTest("GitManager not available")
 
         manager = GitManager(self.test_dir)
 
         # Test with git command failure
-        with patch('subprocess.run') as mock_run:
-            mock_run.side_effect = subprocess.CalledProcessError(1, ['git'])
+        with patch("subprocess.run") as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(1, ["git"])
 
             # Should handle git errors gracefully
             try:
@@ -258,7 +257,7 @@ class TestTemplateEngineCritical(unittest.TestCase):
 
     def test_template_injection_prevention(self):
         """Test template engine prevents code injection"""
-        if 'TemplateEngine' not in globals():
+        if "TemplateEngine" not in globals():
             self.skipTest("TemplateEngine not available")
 
         # Create template directory
@@ -282,7 +281,9 @@ class TestTemplateEngineCritical(unittest.TestCase):
 
                 # Should either prevent injection or handle safely
                 try:
-                    result = engine.render_template("malicious.txt", {"config": {"safe": "value"}})
+                    result = engine.render_template(
+                        "malicious.txt", {"config": {"safe": "value"}}
+                    )
                     # If rendering succeeds, should not execute malicious code
                     self.assertNotIn("__import__", result)
                     self.assertNotIn("system", result)
@@ -292,7 +293,7 @@ class TestTemplateEngineCritical(unittest.TestCase):
 
     def test_template_path_safety(self):
         """Test template engine path safety"""
-        if 'TemplateEngine' not in globals():
+        if "TemplateEngine" not in globals():
             self.skipTest("TemplateEngine not available")
 
         template_dir = self.test_dir / "templates"
@@ -305,7 +306,7 @@ class TestTemplateEngineCritical(unittest.TestCase):
             "../../../etc/passwd",
             "../../.ssh/id_rsa",
             "/etc/shadow",
-            "C:\\Windows\\System32\\config\\sam"
+            "C:\\Windows\\System32\\config\\sam",
         ]
 
         for dangerous_path in dangerous_paths:
@@ -328,16 +329,11 @@ class TestInstallerCritical(unittest.TestCase):
 
     def test_installer_path_validation(self):
         """Test installer validates paths safely"""
-        if 'install_project' not in globals():
+        if "install_project" not in globals():
             self.skipTest("install_project not available")
 
         # Test with dangerous paths
-        dangerous_paths = [
-            "/etc/passwd",
-            "../../../root",
-            "/sys/kernel",
-            "/proc/1/mem"
-        ]
+        dangerous_paths = ["/etc/passwd", "../../../root", "/sys/kernel", "/proc/1/mem"]
 
         for dangerous_path in dangerous_paths:
             with self.subTest(path=dangerous_path):
@@ -345,7 +341,7 @@ class TestInstallerCritical(unittest.TestCase):
                 config = {
                     "name": "test_project",
                     "path": dangerous_path,
-                    "template": "minimal"
+                    "template": "minimal",
                 }
 
                 # Should reject dangerous paths
@@ -354,21 +350,21 @@ class TestInstallerCritical(unittest.TestCase):
 
     def test_installer_resource_limits(self):
         """Test installer respects resource limits"""
-        if 'install_project' not in globals():
+        if "install_project" not in globals():
             self.skipTest("install_project not available")
 
         # Create valid config
         config = {
             "name": "test_project",
             "path": str(self.test_dir / "test_project"),
-            "template": "minimal"
+            "template": "minimal",
         }
 
         # Test with timeout
         start_time = time.time()
 
         try:
-            with patch('time.sleep'):  # Prevent actual delays
+            with patch("time.sleep"):  # Prevent actual delays
                 install_project(config)
 
             # Should complete in reasonable time (< 30 seconds)
@@ -395,7 +391,7 @@ class TestVersionSyncCritical(unittest.TestCase):
 
     def test_version_sync_file_safety(self):
         """Test version sync doesn't modify unsafe files"""
-        if 'version_sync' not in globals():
+        if "version_sync" not in globals():
             self.skipTest("version_sync not available")
 
         # Create project structure
@@ -407,7 +403,7 @@ class TestVersionSyncCritical(unittest.TestCase):
         (project_dir / "pyproject.toml").write_text('[tool.poetry]\nversion = "1.0.0"')
 
         # Create dangerous symlinks (on Unix)
-        if os.name != 'nt':
+        if os.name != "nt":
             try:
                 dangerous_link = project_dir / "dangerous_link.json"
                 dangerous_link.symlink_to("/etc/passwd")
@@ -438,7 +434,7 @@ def run_critical_module_tests():
         TestGitManagerCritical,
         TestTemplateEngineCritical,
         TestInstallerCritical,
-        TestVersionSyncCritical
+        TestVersionSyncCritical,
     ]
 
     for test_class in test_classes:
@@ -473,6 +469,6 @@ def run_critical_module_tests():
     return modules_critical
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     success = run_critical_module_tests()
     sys.exit(0 if success else 1)

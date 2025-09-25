@@ -33,13 +33,18 @@ class MoAIRollback:
         """사용 가능한 체크포인트 목록 조회"""
         return self.checkpoint_system.list_checkpoints(limit)
 
-    def rollback_to_checkpoint(self, tag_or_index: str, confirm: bool = False) -> dict[str, Any]:
+    def rollback_to_checkpoint(
+        self, tag_or_index: str, confirm: bool = False
+    ) -> dict[str, Any]:
         """체크포인트로 롤백"""
         try:
             # 확인 절차
             checkpoint = self.checkpoint_system.get_checkpoint_info(tag_or_index)
             if not checkpoint:
-                return {"success": False, "error": f"체크포인트를 찾을 수 없습니다: {tag_or_index}"}
+                return {
+                    "success": False,
+                    "error": f"체크포인트를 찾을 수 없습니다: {tag_or_index}",
+                }
 
             if not confirm:
                 click.echo("롤백할 체크포인트:")
@@ -49,17 +54,19 @@ class MoAIRollback:
                 click.echo(f"  커밋: {checkpoint.commit_hash}")
 
                 response = input("\n정말 롤백하시겠습니까? (y/N): ")
-                if response.lower() != 'y':
+                if response.lower() != "y":
                     return {"success": False, "error": "사용자가 취소했습니다"}
 
             # 롤백 실행
-            result_checkpoint = self.checkpoint_system.rollback_to_checkpoint(tag_or_index)
+            result_checkpoint = self.checkpoint_system.rollback_to_checkpoint(
+                tag_or_index
+            )
 
             return {
                 "success": True,
                 "tag": result_checkpoint.tag,
                 "message": result_checkpoint.message,
-                "commit_hash": result_checkpoint.commit_hash
+                "commit_hash": result_checkpoint.commit_hash,
             }
 
         except CheckpointError as e:
@@ -84,7 +91,7 @@ class MoAIRollback:
 
         try:
             choice = input("롤백할 체크포인트 번호를 입력하세요 (취소: q): ")
-            if choice.lower() == 'q':
+            if choice.lower() == "q":
                 return {"success": False, "error": "사용자가 취소했습니다"}
 
             index = int(choice)
@@ -101,7 +108,10 @@ class MoAIRollback:
         try:
             checkpoint = self.checkpoint_system.get_checkpoint_info(tag_or_index)
             if not checkpoint:
-                return {"success": False, "error": f"체크포인트를 찾을 수 없습니다: {tag_or_index}"}
+                return {
+                    "success": False,
+                    "error": f"체크포인트를 찾을 수 없습니다: {tag_or_index}",
+                }
 
             # 현재 상태와 롤백 대상 비교
             current_checkpoints = self.checkpoint_system.list_checkpoints(1)
@@ -111,7 +121,7 @@ class MoAIRollback:
                 "success": True,
                 "target_checkpoint": checkpoint.to_dict(),
                 "current_checkpoint": current.to_dict() if current else None,
-                "rollback_safe": True  # 체크포인트 시스템은 항상 안전
+                "rollback_safe": True,  # 체크포인트 시스템은 항상 안전
             }
 
             return preview
@@ -128,12 +138,16 @@ def main():
 
     # list 명령어
     list_parser = subparsers.add_parser("list", help="체크포인트 목록 조회")
-    list_parser.add_argument("--limit", type=int, default=10, help="표시할 체크포인트 수")
+    list_parser.add_argument(
+        "--limit", type=int, default=10, help="표시할 체크포인트 수"
+    )
 
     # rollback 명령어
     rollback_parser = subparsers.add_parser("rollback", help="체크포인트로 롤백")
     rollback_parser.add_argument("target", help="롤백할 체크포인트 (태그 또는 인덱스)")
-    rollback_parser.add_argument("--yes", "-y", action="store_true", help="확인 없이 실행")
+    rollback_parser.add_argument(
+        "--yes", "-y", action="store_true", help="확인 없이 실행"
+    )
 
     # interactive 명령어
     subparsers.add_parser("interactive", help="대화형 롤백")
@@ -185,7 +199,9 @@ def main():
                 click.echo(f"   대상: {result['target_checkpoint']['tag']}")
                 click.echo(f"   메시지: {result['target_checkpoint']['message']}")
                 click.echo(f"   생성일: {result['target_checkpoint']['created_at']}")
-                click.echo(f"   안전성: {'안전' if result['rollback_safe'] else '주의 필요'}")
+                click.echo(
+                    f"   안전성: {'안전' if result['rollback_safe'] else '주의 필요'}"
+                )
             else:
                 click.echo(f"❌ 미리보기 실패: {result['error']}")
 

@@ -5,6 +5,7 @@ Includes docstring parsing and navigation structure creation.
 
 @REQ:API-GEN-001 → @TASK:API-TEST-001
 """
+
 import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
@@ -21,8 +22,8 @@ class TestApiGeneration:
         src_dir = tmp_path / "src" / "moai_adk"
         src_dir.mkdir(parents=True)
 
-        (src_dir / "__init__.py").write_text("\"\"\"MoAI ADK package\"\"\"")
-        (src_dir / "core.py").write_text("\"\"\"Core module\"\"\"")
+        (src_dir / "__init__.py").write_text('"""MoAI ADK package"""')
+        (src_dir / "core.py").write_text('"""Core module"""')
 
         generator = ApiGenerator(str(tmp_path), "src")
         modules = generator.scan_modules()
@@ -88,7 +89,7 @@ class TestClass:
         # Setup mock source
         src_dir = tmp_path / "src" / "moai_adk"
         src_dir.mkdir(parents=True)
-        (src_dir / "__init__.py").write_text("\"\"\"Package init\"\"\"")
+        (src_dir / "__init__.py").write_text('"""Package init"""')
 
         docs_dir = tmp_path / "docs"
         docs_dir.mkdir()

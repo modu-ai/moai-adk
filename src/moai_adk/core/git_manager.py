@@ -23,7 +23,13 @@ logger = get_logger(__name__)
 class GitManager:
     """@TASK:GIT-MANAGER-001 Manages Git operations for MoAI-ADK installation."""
 
-    def __init__(self, project_dir: Path = None, config=None, security_manager: SecurityManager = None, file_manager: FileManager = None):
+    def __init__(
+        self,
+        project_dir: Path = None,
+        config=None,
+        security_manager: SecurityManager = None,
+        file_manager: FileManager = None,
+    ):
         """
         Initialize Git manager.
 
@@ -43,7 +49,7 @@ class GitManager:
         self.strategy = None
 
         # 설정에서 모드를 감지하여 전략 설정
-        if config and hasattr(config, 'get_mode'):
+        if config and hasattr(config, "get_mode"):
             mode = config.get_mode()
             self.set_strategy(mode)
 
@@ -69,10 +75,14 @@ class GitManager:
                 if self._offer_git_installation():
                     # Try again after installation
                     if not self._check_git_available():
-                        logger.error("Git still not available after installation attempt")
+                        logger.error(
+                            "Git still not available after installation attempt"
+                        )
                         return False
                 else:
-                    logger.info("Git installation declined - skipping git initialization")
+                    logger.info(
+                        "Git installation declined - skipping git initialization"
+                    )
                     return False
 
             # Initialize git repository
@@ -95,10 +105,7 @@ class GitManager:
         """Check if git is available in the system."""
         try:
             subprocess.run(
-                ["git", "--version"],
-                capture_output=True,
-                text=True,
-                check=True
+                ["git", "--version"], capture_output=True, text=True, check=True
             )
             return True
         except (subprocess.CalledProcessError, FileNotFoundError):
@@ -109,15 +116,16 @@ class GitManager:
         """Initialize git repository with security validation."""
         try:
             # Security validation
-            if not self.security_manager.validate_subprocess_path(project_path, project_path):
-                logger.error("Security: Invalid path for git initialization: %s", project_path)
+            if not self.security_manager.validate_subprocess_path(
+                project_path, project_path
+            ):
+                logger.error(
+                    "Security: Invalid path for git initialization: %s", project_path
+                )
                 return False
 
             result = subprocess.run(
-                ["git", "init"],
-                cwd=project_path,
-                capture_output=True,
-                text=True
+                ["git", "init"], cwd=project_path, capture_output=True, text=True
             )
 
             if result.returncode == 0:
@@ -136,7 +144,9 @@ class GitManager:
         logger.warning("Git is not installed on your system")
         click.echo("\n" + "=" * 60)
         click.echo("🔧 Git is not installed on your system.")
-        click.echo("   Git is required for MoAI-ADK version control and CI/CD features.")
+        click.echo(
+            "   Git is required for MoAI-ADK version control and CI/CD features."
+        )
         click.echo("=" * 60)
 
         # Show installation command based on OS
@@ -149,7 +159,7 @@ class GitManager:
 
         try:
             response = input().strip().lower()
-            if response in ['y', 'yes', '예']:
+            if response in ["y", "yes", "예"]:
                 if install_cmd and os_name != "windows":
                     logger.info(f"Git 자동 설치 시작: {' '.join(install_cmd)}")
                     click.echo(f"🚀 Git 설치 중... (명령어: {' '.join(install_cmd)})")
@@ -157,7 +167,9 @@ class GitManager:
                 else:
                     logger.warning("자동 설치가 지원되지 않는 환경")
                     click.echo("⚠️ 자동 설치가 지원되지 않는 환경입니다.")
-                    click.echo("   위 안내에 따라 수동으로 Git을 설치한 후 다시 실행해주세요.")
+                    click.echo(
+                        "   위 안내에 따라 수동으로 Git을 설치한 후 다시 실행해주세요."
+                    )
                     return False
             else:
                 logger.info("사용자가 Git 설치를 거부")
@@ -183,12 +195,24 @@ class GitManager:
                 logger.info("macOS 환경에서 Git 수동 설치 안내")
                 click.echo("💡 Git 설치 방법:")
                 click.echo("   1. Homebrew 설치 후: brew install git")
-                click.echo("   2. 또는 https://git-scm.com/download/mac 에서 직접 다운로드")
+                click.echo(
+                    "   2. 또는 https://git-scm.com/download/mac 에서 직접 다운로드"
+                )
 
         elif os_name == "linux":
             # Check for different package managers
             if self._check_command_exists("apt"):
-                install_cmd = ["sudo", "apt", "update", "&&", "sudo", "apt", "install", "-y", "git"]
+                install_cmd = [
+                    "sudo",
+                    "apt",
+                    "update",
+                    "&&",
+                    "sudo",
+                    "apt",
+                    "install",
+                    "-y",
+                    "git",
+                ]
                 logger.info("Linux APT 환경에서 Git 설치 가능")
                 click.echo("💡 APT를 사용하여 Git을 설치할 수 있습니다:")
                 click.echo("   sudo apt update && sudo apt install -y git")
@@ -212,7 +236,9 @@ class GitManager:
         elif os_name == "windows":
             logger.info("Windows 환경에서 Git 수동 설치 안내")
             click.echo("💡 Git 설치 방법:")
-            click.echo("   1. https://git-scm.com/download/win 에서 Git for Windows 다운로드")
+            click.echo(
+                "   1. https://git-scm.com/download/win 에서 Git for Windows 다운로드"
+            )
             click.echo("   2. 또는 Chocolatey 사용: choco install git")
             click.echo("   3. 또는 Winget 사용: winget install Git.Git")
 
@@ -222,10 +248,7 @@ class GitManager:
         """Check if a command exists in the system."""
         try:
             subprocess.run(
-                [command, "--version"],
-                capture_output=True,
-                text=True,
-                check=True
+                [command, "--version"], capture_output=True, text=True, check=True
             )
             return True
         except (subprocess.CalledProcessError, FileNotFoundError):
@@ -257,7 +280,7 @@ class GitManager:
                         cmd,
                         capture_output=True,
                         text=True,
-                        timeout=300  # 5 minute timeout
+                        timeout=300,  # 5 minute timeout
                     )
                     # If any command fails, stop execution
                     if result.returncode != 0:
@@ -267,7 +290,7 @@ class GitManager:
                     install_cmd,
                     capture_output=True,
                     text=True,
-                    timeout=300  # 5 minute timeout
+                    timeout=300,  # 5 minute timeout
                 )
 
             if result.returncode == 0:
@@ -301,16 +324,15 @@ class GitManager:
         """
         try:
             if not (project_path / ".git").exists():
-                return {
-                    'is_git_repo': False,
-                    'error': 'Not a git repository'
-                }
+                return {"is_git_repo": False, "error": "Not a git repository"}
 
             # Security validation
-            if not self.security_manager.validate_subprocess_path(project_path, project_path):
+            if not self.security_manager.validate_subprocess_path(
+                project_path, project_path
+            ):
                 return {
-                    'is_git_repo': True,
-                    'error': 'Security validation failed for git status'
+                    "is_git_repo": True,
+                    "error": "Security validation failed for git status",
                 }
 
             # Get git status
@@ -319,11 +341,13 @@ class GitManager:
                 cwd=project_path,
                 capture_output=True,
                 text=True,
-                check=True
+                check=True,
             )
 
             # Parse status output
-            status_lines = result.stdout.strip().split('\n') if result.stdout.strip() else []
+            status_lines = (
+                result.stdout.strip().split("\n") if result.stdout.strip() else []
+            )
 
             modified_files = []
             untracked_files = []
@@ -334,34 +358,28 @@ class GitManager:
                     status_code = line[:2]
                     filename = line[3:]
 
-                    if status_code[0] in ['M', 'A', 'D', 'R', 'C']:
+                    if status_code[0] in ["M", "A", "D", "R", "C"]:
                         staged_files.append(filename)
-                    if status_code[1] in ['M', 'D']:
+                    if status_code[1] in ["M", "D"]:
                         modified_files.append(filename)
-                    if status_code == '??':
+                    if status_code == "??":
                         untracked_files.append(filename)
 
             return {
-                'is_git_repo': True,
-                'is_clean': len(status_lines) == 0,
-                'modified_files': modified_files,
-                'untracked_files': untracked_files,
-                'staged_files': staged_files,
-                'total_changes': len(status_lines)
+                "is_git_repo": True,
+                "is_clean": len(status_lines) == 0,
+                "modified_files": modified_files,
+                "untracked_files": untracked_files,
+                "staged_files": staged_files,
+                "total_changes": len(status_lines),
             }
 
         except subprocess.CalledProcessError as e:
             logger.error("Git status command failed: %s", e.stderr)
-            return {
-                'is_git_repo': True,
-                'error': f'Git command failed: {e.stderr}'
-            }
+            return {"is_git_repo": True, "error": f"Git command failed: {e.stderr}"}
         except Exception as e:
             logger.error("Error checking git status: %s", e)
-            return {
-                'is_git_repo': False,
-                'error': str(e)
-            }
+            return {"is_git_repo": False, "error": str(e)}
 
     def get_git_info(self, project_path: Path) -> dict:
         """
@@ -374,15 +392,15 @@ class GitManager:
             dict: Git repository information
         """
         git_info = {
-            'git_available': self._check_git_available(),
-            'is_git_repo': (project_path / ".git").exists(),
-            'status': {},
-            'remote_info': {},
+            "git_available": self._check_git_available(),
+            "is_git_repo": (project_path / ".git").exists(),
+            "status": {},
+            "remote_info": {},
         }
 
-        if git_info['git_available'] and git_info['is_git_repo']:
-            git_info['status'] = self.check_git_status(project_path)
-            git_info['remote_info'] = self._get_remote_info(project_path)
+        if git_info["git_available"] and git_info["is_git_repo"]:
+            git_info["status"] = self.check_git_status(project_path)
+            git_info["remote_info"] = self._get_remote_info(project_path)
 
         return git_info
 
@@ -390,40 +408,42 @@ class GitManager:
         """Get Git remote information."""
         try:
             # Security validation
-            if not self.security_manager.validate_subprocess_path(project_path, project_path):
-                return {'error': 'Security validation failed'}
+            if not self.security_manager.validate_subprocess_path(
+                project_path, project_path
+            ):
+                return {"error": "Security validation failed"}
 
             result = subprocess.run(
                 ["git", "remote", "-v"],
                 cwd=project_path,
                 capture_output=True,
                 text=True,
-                check=True
+                check=True,
             )
 
             remotes = {}
-            for line in result.stdout.strip().split('\n'):
+            for line in result.stdout.strip().split("\n"):
                 if line:
                     parts = line.split()
                     if len(parts) >= 2:
                         remote_name = parts[0]
                         remote_url = parts[1]
-                        remote_type = parts[2] if len(parts) > 2 else ''
+                        remote_type = parts[2] if len(parts) > 2 else ""
 
                         if remote_name not in remotes:
                             remotes[remote_name] = {}
 
-                        if '(fetch)' in remote_type:
-                            remotes[remote_name]['fetch'] = remote_url
-                        elif '(push)' in remote_type:
-                            remotes[remote_name]['push'] = remote_url
+                        if "(fetch)" in remote_type:
+                            remotes[remote_name]["fetch"] = remote_url
+                        elif "(push)" in remote_type:
+                            remotes[remote_name]["push"] = remote_url
 
-            return {'remotes': remotes}
+            return {"remotes": remotes}
 
         except subprocess.CalledProcessError as e:
-            return {'error': f'Git remote command failed: {e.stderr}'}
+            return {"error": f"Git remote command failed: {e.stderr}"}
         except Exception as e:
-            return {'error': str(e)}
+            return {"error": str(e)}
 
     def create_gitignore(self, gitignore_path: Path) -> bool:
         """
@@ -441,7 +461,9 @@ class GitManager:
             logger.warning("FileManager not available for gitignore creation")
             return False
 
-    def commit_with_lock(self, message: str, files: list = None, mode: str = "personal"):
+    def commit_with_lock(
+        self, message: str, files: list = None, mode: str = "personal"
+    ):
         """잠금 시스템을 사용한 안전한 커밋
 
         Args:
@@ -482,7 +504,7 @@ class GitManager:
         Returns:
             현재 Git 모드 ("personal", "team", 또는 "unknown")
         """
-        if self.config and hasattr(self.config, 'get_mode'):
+        if self.config and hasattr(self.config, "get_mode"):
             return self.config.get_mode()
 
         if self.strategy:

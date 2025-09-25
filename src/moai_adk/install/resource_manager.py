@@ -49,8 +49,8 @@ class ResourceManager:
         """
         try:
             # 패키지 리소스 접근
-            self.resources_root = resources.files('moai_adk.resources')
-            self.templates_root = self.resources_root / 'templates'
+            self.resources_root = resources.files("moai_adk.resources")
+            self.templates_root = self.resources_root / "templates"
             logger.info("ResourceManager initialized")
 
         except Exception as e:
@@ -60,7 +60,7 @@ class ResourceManager:
     def get_version(self) -> str:
         """패키지 버전 반환"""
         try:
-            version_file = self.resources_root / 'VERSION'
+            version_file = self.resources_root / "VERSION"
             with resources.as_file(version_file) as version_path:
                 return version_path.read_text().strip()
         except Exception as e:
@@ -84,16 +84,26 @@ class ResourceManager:
         try:
             template_path = self.get_template_path(template_name)
             with resources.as_file(template_path) as actual_path:
-                if actual_path.is_file() and actual_path.suffix in ['.md', '.json', '.yml', '.yaml', '.txt']:
-                    return actual_path.read_text(encoding='utf-8')
+                if actual_path.is_file() and actual_path.suffix in [
+                    ".md",
+                    ".json",
+                    ".yml",
+                    ".yaml",
+                    ".txt",
+                ]:
+                    return actual_path.read_text(encoding="utf-8")
                 return None
         except Exception as e:
             logger.warning(f"Failed to read template content {template_name}: {e}")
             return None
 
-    def copy_template(self, template_name: str, target_path: Path,
-                     overwrite: bool = False,
-                     exclude_subdirs: list[str] | None = None) -> bool:
+    def copy_template(
+        self,
+        template_name: str,
+        target_path: Path,
+        overwrite: bool = False,
+        exclude_subdirs: list[str] | None = None,
+    ) -> bool:
         """
         템플릿을 대상 경로로 복사
 
@@ -119,14 +129,18 @@ class ResourceManager:
                 if target_path.is_file():
                     # 파일인 경우 기존 로직 유지
                     if not overwrite:
-                        logger.info(f"Target file already exists, skipping: {target_path}")
+                        logger.info(
+                            f"Target file already exists, skipping: {target_path}"
+                        )
                         return True
                     else:
                         logger.info(f"Overwriting existing file: {target_path}")
                         target_path.unlink()
                 else:
                     # 디렉토리인 경우 병합할 수 있도록 처리
-                    logger.info(f"Target directory exists, will merge contents: {target_path}")
+                    logger.info(
+                        f"Target directory exists, will merge contents: {target_path}"
+                    )
 
             # 부모 디렉토리 생성
             target_path.parent.mkdir(parents=True, exist_ok=True)
@@ -162,13 +176,18 @@ class ResourceManager:
             try:
                 if target_path.is_dir():
                     # template_name이 '.claude'이거나 타겟 경로가 .claude 루트인 경우에만 후처리
-                    if template_name.endswith('.claude') or target_path.name == '.claude':
+                    if (
+                        template_name.endswith(".claude")
+                        or target_path.name == ".claude"
+                    ):
                         self._ensure_hook_permissions(target_path)
                 else:
                     # 개별 파일 복사 케이스: .claude 내 파일인 경우 상위에서 처리
                     pass
             except Exception as perm_exc:
-                logger.warning(f"Failed to set hook permissions under {target_path}: {perm_exc}")
+                logger.warning(
+                    f"Failed to set hook permissions under {target_path}: {perm_exc}"
+                )
             return True
 
         except Exception as e:
@@ -194,10 +213,20 @@ class ResourceManager:
                 return False
 
             # 시스템 중요 디렉토리 보호
-            dangerous_paths = ["/etc", "/usr/bin", "/usr/sbin", "/var", "/boot", "/sys", "/proc"]
+            dangerous_paths = [
+                "/etc",
+                "/usr/bin",
+                "/usr/sbin",
+                "/var",
+                "/boot",
+                "/sys",
+                "/proc",
+            ]
             for dangerous in dangerous_paths:
                 if str(resolved_path).startswith(dangerous):
-                    logger.warning(f"Attempt to write to dangerous system path: {target_path}")
+                    logger.warning(
+                        f"Attempt to write to dangerous system path: {target_path}"
+                    )
                     return False
 
             return True
@@ -206,8 +235,9 @@ class ResourceManager:
             logger.warning(f"Path validation failed for {target_path}: {e}")
             return False
 
-    def copy_claude_resources(self, project_path: Path,
-                             overwrite: bool = False) -> list[Path]:
+    def copy_claude_resources(
+        self, project_path: Path, overwrite: bool = False
+    ) -> list[Path]:
         """
         Claude Code 관련 리소스를 프로젝트에 복사
 
@@ -219,7 +249,7 @@ class ResourceManager:
             List[Path]: 복사된 파일 경로들
         """
         copied_files = []
-        claude_resources = ['.claude']
+        claude_resources = [".claude"]
 
         for resource in claude_resources:
             target_path = project_path / resource
@@ -240,10 +270,10 @@ class ResourceManager:
         Windows에서는 무시(권한 비트 미사용)되지만 호출 자체는 안전합니다.
         """
         try:
-            hooks_dir = claude_root / 'hooks' / 'moai'
+            hooks_dir = claude_root / "hooks" / "moai"
             if not hooks_dir.exists() or not hooks_dir.is_dir():
                 return
-            for py_file in hooks_dir.glob('*.py'):
+            for py_file in hooks_dir.glob("*.py"):
                 try:
                     # 0o755: 소유자 실행/읽기/쓰기, 그룹/기타 실행/읽기
                     py_file.chmod(0o755)
@@ -251,12 +281,17 @@ class ResourceManager:
                 except Exception as file_exc:
                     logger.warning("Failed to chmod +x %s: %s", py_file, file_exc)
         except Exception as exc:
-            logger.warning("Failed to ensure hook permissions under %s: %s", claude_root, exc)
+            logger.warning(
+                "Failed to ensure hook permissions under %s: %s", claude_root, exc
+            )
 
-    def copy_moai_resources(self, project_path: Path,
-                           overwrite: bool = False,
-                           exclude_templates: bool = False,
-                           project_context: dict[str, str] | None = None) -> list[Path]:
+    def copy_moai_resources(
+        self,
+        project_path: Path,
+        overwrite: bool = False,
+        exclude_templates: bool = False,
+        project_context: dict[str, str] | None = None,
+    ) -> list[Path]:
         """
         MoAI 관련 리소스를 프로젝트에 복사
 
@@ -270,7 +305,7 @@ class ResourceManager:
             List[Path]: 복사된 파일 경로들
         """
         copied_files = []
-        moai_resources = ['.moai']
+        moai_resources = [".moai"]
 
         # @TASK:TEMPLATE-VERIFY-001 Clean template validation
         logger.info("Starting MoAI resources installation...")
@@ -283,7 +318,7 @@ class ResourceManager:
                 resource,
                 target_path,
                 overwrite,
-                exclude_subdirs=['_templates'] if exclude_templates else None,
+                exclude_subdirs=["_templates"] if exclude_templates else None,
             ):
                 copied_files.append(target_path)
                 self._validate_clean_installation(target_path)
@@ -295,11 +330,14 @@ class ResourceManager:
         if project_context and copied_files:
             self._apply_project_context(copied_files, project_context)
 
-        logger.info(f"MoAI resources installation completed. {len(copied_files)} resources installed.")
+        logger.info(
+            f"MoAI resources installation completed. {len(copied_files)} resources installed."
+        )
         return copied_files
 
-    def copy_github_resources(self, project_path: Path,
-                             overwrite: bool = False) -> list[Path]:
+    def copy_github_resources(
+        self, project_path: Path, overwrite: bool = False
+    ) -> list[Path]:
         """
         GitHub 워크플로우 리소스를 프로젝트에 복사
 
@@ -311,7 +349,7 @@ class ResourceManager:
             List[Path]: 복사된 파일 경로들
         """
         copied_files = []
-        github_resources = ['.github']
+        github_resources = [".github"]
 
         for resource in github_resources:
             target_path = project_path / resource
@@ -320,8 +358,7 @@ class ResourceManager:
 
         return copied_files
 
-    def copy_project_memory(self, project_path: Path,
-                           overwrite: bool = False) -> bool:
+    def copy_project_memory(self, project_path: Path, overwrite: bool = False) -> bool:
         """
         프로젝트 메모리 파일(CLAUDE.md) 생성
 
@@ -344,7 +381,7 @@ class ResourceManager:
         project_path: Path,
         tech_stack: list[str],
         context: dict[str, str],
-        overwrite: bool = False
+        overwrite: bool = False,
     ) -> list[Path]:
         """Copy stack-specific memory templates into the project."""
 
@@ -379,10 +416,7 @@ class ResourceManager:
             target_path = memory_dir / f"{template_name}.md"
 
             if not self._render_template_with_context(
-                template_rel_path,
-                target_path,
-                context,
-                overwrite
+                template_rel_path, target_path, context, overwrite
             ):
                 logger.error("Failed to render memory template: %s", template_name)
                 failed_templates.append(template_name)
@@ -394,18 +428,17 @@ class ResourceManager:
             logger.warning(
                 "Failed to copy %d memory templates: %s",
                 len(failed_templates),
-                ", ".join(failed_templates)
+                ", ".join(failed_templates),
             )
 
         return copied_files
-
 
     def _render_template_with_context(
         self,
         template_name: str,
         target_path: Path,
         context: dict[str, str],
-        overwrite: bool = False
+        overwrite: bool = False,
     ) -> bool:
         """Render a text template with context variables to a target file."""
 
@@ -415,7 +448,7 @@ class ResourceManager:
                 logger.error(
                     "Template file not found: %s. Expected location: %s",
                     template_name,
-                    f"src/moai_adk/resources/templates/{template_name}"
+                    f"src/moai_adk/resources/templates/{template_name}",
                 )
                 return False
 
@@ -452,8 +485,12 @@ class ResourceManager:
         try:
             with resources.as_file(self.templates_root) as templates_path:
                 if templates_path.exists():
-                    templates = [item.name for item in templates_path.iterdir()
-                               if item.is_dir() or item.suffix in ['.md', '.json', '.yml', '.yaml']]
+                    templates = [
+                        item.name
+                        for item in templates_path.iterdir()
+                        if item.is_dir()
+                        or item.suffix in [".md", ".json", ".yml", ".yaml"]
+                    ]
             return sorted(templates)
         except Exception as e:
             logger.warning(f"Failed to list templates: {e}")
@@ -462,15 +499,17 @@ class ResourceManager:
     def validate_required_resources(self, project_path: Path) -> bool:
         """필수 리소스가 모두 있는지 확인"""
         required_paths = [
-            project_path / '.claude',
-            project_path / '.moai',
-            project_path / 'CLAUDE.md'
+            project_path / ".claude",
+            project_path / ".moai",
+            project_path / "CLAUDE.md",
         ]
 
         missing_paths = [path for path in required_paths if not path.exists()]
 
         if missing_paths:
-            logger.warning(f"Missing required resources: {[str(p) for p in missing_paths]}")
+            logger.warning(
+                f"Missing required resources: {[str(p) for p in missing_paths]}"
+            )
             return False
 
         logger.info("All required resources are present")
@@ -488,27 +527,35 @@ class ResourceManager:
         """
         try:
             # 1. specs 디렉토리가 비어있거나 .gitkeep만 있는지 확인
-            specs_dir = target_path / 'specs'
+            specs_dir = target_path / "specs"
             if specs_dir.exists():
-                spec_files = [f for f in specs_dir.iterdir() if f.name != '.gitkeep']
+                spec_files = [f for f in specs_dir.iterdir() if f.name != ".gitkeep"]
                 if spec_files:
-                    logger.warning(f"Found unexpected spec files in clean installation: {[f.name for f in spec_files]}")
+                    logger.warning(
+                        f"Found unexpected spec files in clean installation: {[f.name for f in spec_files]}"
+                    )
                     return False
 
             # 2. tags.db가 초기 구조인지 확인 (작은 크기)
-            tags_file = target_path / 'indexes' / 'tags.db'
+            tags_file = target_path / "indexes" / "tags.db"
             if tags_file.exists():
                 file_size = tags_file.stat().st_size
                 if file_size > 50000:  # 50KB 이상이면 개발 데이터로 간주
-                    logger.warning(f"tags.db seems to contain development data: {file_size} bytes (expected < 50KB)")
+                    logger.warning(
+                        f"tags.db seems to contain development data: {file_size} bytes (expected < 50KB)"
+                    )
                     return False
 
             # 3. reports 디렉토리가 비어있거나 .gitkeep만 있는지 확인
-            reports_dir = target_path / 'reports'
+            reports_dir = target_path / "reports"
             if reports_dir.exists():
-                report_files = [f for f in reports_dir.iterdir() if f.name != '.gitkeep']
+                report_files = [
+                    f for f in reports_dir.iterdir() if f.name != ".gitkeep"
+                ]
                 if report_files:
-                    logger.warning(f"Found unexpected report files in clean installation: {[f.name for f in report_files]}")
+                    logger.warning(
+                        f"Found unexpected report files in clean installation: {[f.name for f in report_files]}"
+                    )
                     return False
 
             logger.debug(f"Clean installation validated successfully: {target_path}")
@@ -518,7 +565,9 @@ class ResourceManager:
             logger.error(f"Failed to validate clean installation at {target_path}: {e}")
             return False
 
-    def _apply_project_context(self, copied_paths: list[Path], project_context: dict[str, str]) -> None:
+    def _apply_project_context(
+        self, copied_paths: list[Path], project_context: dict[str, str]
+    ) -> None:
         """
         복사된 파일들에 프로젝트 컨텍스트 변수를 치환합니다.
 
@@ -528,10 +577,10 @@ class ResourceManager:
         """
         try:
             template_files = [
-                'config.json',
-                'project/product.md',
-                'project/structure.md',
-                'project/tech.md'
+                "config.json",
+                "project/product.md",
+                "project/structure.md",
+                "project/tech.md",
             ]
 
             for base_path in copied_paths:
@@ -546,7 +595,9 @@ class ResourceManager:
         except Exception as e:
             logger.warning(f"Failed to apply project context: {e}")
 
-    def _substitute_template_variables(self, file_path: Path, context: dict[str, str]) -> None:
+    def _substitute_template_variables(
+        self, file_path: Path, context: dict[str, str]
+    ) -> None:
         """
         단일 파일의 템플릿 변수를 치환합니다.
 
@@ -555,15 +606,17 @@ class ResourceManager:
             context: 치환 변수들
         """
         try:
-            content = file_path.read_text(encoding='utf-8')
+            content = file_path.read_text(encoding="utf-8")
 
             # 더 안전한 템플릿 치환을 위해 정확한 패턴만 치환
             for key, value in context.items():
                 pattern = "{{" + key + "}}"
                 content = content.replace(pattern, value)
 
-            file_path.write_text(content, encoding='utf-8')
+            file_path.write_text(content, encoding="utf-8")
             logger.debug(f"Template variables substituted in {file_path}")
 
         except Exception as e:
-            logger.warning(f"Failed to substitute template variables in {file_path}: {e}")
+            logger.warning(
+                f"Failed to substitute template variables in {file_path}: {e}"
+            )

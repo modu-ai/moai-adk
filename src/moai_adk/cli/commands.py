@@ -38,7 +38,9 @@ logger = get_logger(__name__)
 
 @click.group(invoke_without_command=True)
 @click.option("-V", "--version", is_flag=True, help="output the version number")
-@click.option("-h", "--help", "help_flag", is_flag=True, help="display help for command")
+@click.option(
+    "-h", "--help", "help_flag", is_flag=True, help="display help for command"
+)
 @click.pass_context
 def cli(ctx: click.Context, version: bool, help_flag: bool) -> None:
     """Modu-AI's Agentic Development Kit"""
@@ -53,7 +55,9 @@ def cli(ctx: click.Context, version: bool, help_flag: bool) -> None:
 
 @cli.command()
 @click.argument("backup_path", type=click.Path(exists=True))
-@click.option("--dry-run", is_flag=True, help="Show what would be restored without making changes")
+@click.option(
+    "--dry-run", is_flag=True, help="Show what would be restored without making changes"
+)
 def restore(backup_path: str, dry_run: bool) -> None:
     """Restore MoAI-ADK from a backup directory."""
     backup_dir = Path(backup_path)
@@ -64,15 +68,21 @@ def restore(backup_path: str, dry_run: bool) -> None:
 
     # Validate backup directory structure
     required_items = [".moai", ".claude", "CLAUDE.md"]
-    missing_items = [item for item in required_items if not (backup_dir / item).exists()]
+    missing_items = [
+        item for item in required_items if not (backup_dir / item).exists()
+    ]
 
     if missing_items:
-        click.echo(f"{Fore.YELLOW}⚠️  Warning: Backup may be incomplete. Missing: {', '.join(missing_items)}{Style.RESET_ALL}")
+        click.echo(
+            f"{Fore.YELLOW}⚠️  Warning: Backup may be incomplete. Missing: {', '.join(missing_items)}{Style.RESET_ALL}"
+        )
 
     current_dir = Path.cwd()
 
     if dry_run:
-        click.echo(f"{Fore.CYAN}🔍 Dry run - would restore to: {current_dir}{Style.RESET_ALL}")
+        click.echo(
+            f"{Fore.CYAN}🔍 Dry run - would restore to: {current_dir}{Style.RESET_ALL}"
+        )
         for item in required_items:
             source = backup_dir / item
             target = current_dir / item
@@ -160,26 +170,67 @@ def doctor(list_backups: bool) -> None:
 
 @cli.command()
 @click.argument("project_path", type=click.Path(), default=".")
-@click.option("--template", "-t", default="standard", help="Template to use (standard, minimal, advanced)")
+@click.option(
+    "--template",
+    "-t",
+    default="standard",
+    help="Template to use (standard, minimal, advanced)",
+)
 @click.option("--interactive", "-i", is_flag=True, help="Run interactive setup wizard")
-@click.option("--backup", "-b", is_flag=True, help="Create backup before installation (recommended)")
-@click.option("--force", "-f", is_flag=True, help="Force overwrite existing files (주의: 기존 파일을 덮어씁니다)")
-@click.option("--force-copy", is_flag=True, help="Force file copying instead of symlinks (recommended for Windows without admin rights)")
+@click.option(
+    "--backup",
+    "-b",
+    is_flag=True,
+    help="Create backup before installation (recommended)",
+)
+@click.option(
+    "--force",
+    "-f",
+    is_flag=True,
+    help="Force overwrite existing files (주의: 기존 파일을 덮어씁니다)",
+)
+@click.option(
+    "--force-copy",
+    is_flag=True,
+    help="Force file copying instead of symlinks (recommended for Windows without admin rights)",
+)
 @click.option("--quiet", "-q", is_flag=True, help="Quiet mode - minimal output")
-@click.option("--personal", is_flag=True, help="Initialize in personal mode (default) - simplified workflow for individual development")
-@click.option("--team", is_flag=True, help="Initialize in team mode - full GitFlow with collaboration features")
-def init(project_path: str, template: str, interactive: bool, backup: bool, force: bool, force_copy: bool, quiet: bool, personal: bool, team: bool) -> None:
+@click.option(
+    "--personal",
+    is_flag=True,
+    help="Initialize in personal mode (default) - simplified workflow for individual development",
+)
+@click.option(
+    "--team",
+    is_flag=True,
+    help="Initialize in team mode - full GitFlow with collaboration features",
+)
+def init(
+    project_path: str,
+    template: str,
+    interactive: bool,
+    backup: bool,
+    force: bool,
+    force_copy: bool,
+    quiet: bool,
+    personal: bool,
+    team: bool,
+) -> None:
     """Initialize a new MoAI-ADK project."""
 
     # Step 1: Validate initialization parameters
-    project_dir, project_mode = validate_initialization(project_path, personal, team, quiet)
+    project_dir, project_mode = validate_initialization(
+        project_path, personal, team, quiet
+    )
 
     # Step 2: Handle interactive mode if requested
     if handle_interactive_mode(project_dir, interactive):
         return
 
     # Step 3: Setup project directory structure
-    if not setup_project_directory(project_dir, project_mode, backup, force, force_copy, quiet):
+    if not setup_project_directory(
+        project_dir, project_mode, backup, force, force_copy, quiet
+    ):
         return
 
     # Step 4: Finalize installation
@@ -214,15 +265,12 @@ def help(command: str | None) -> None:
 
 
 @cli.command()
+@click.option("--verbose", "-v", is_flag=True, help="Show detailed status information")
 @click.option(
-    "--verbose", "-v",
-    is_flag=True,
-    help="Show detailed status information"
-)
-@click.option(
-    "--project-path", "-p",
+    "--project-path",
+    "-p",
     type=click.Path(exists=True),
-    help="Path to project directory (default: current directory)"
+    help="Path to project directory (default: current directory)",
 )
 def status(verbose: bool, project_path: str | None) -> None:
     """Show MoAI-ADK project status."""
@@ -238,30 +286,38 @@ def status(verbose: bool, project_path: str | None) -> None:
     # Core status
     click.echo("\n🗿 MoAI-ADK Components:")
     click.echo(f"   MoAI System: {'✅' if status_info['moai_initialized'] else '❌'}")
-    click.echo(f"   Claude Integration: {'✅' if status_info['claude_initialized'] else '❌'}")
+    click.echo(
+        f"   Claude Integration: {'✅' if status_info['claude_initialized'] else '❌'}"
+    )
     click.echo(f"   Memory File: {'✅' if status_info['memory_file'] else '❌'}")
     click.echo(f"   Git Repository: {'✅' if status_info['git_repository'] else '❌'}")
 
-    versions = status_info.get('versions')
+    versions = status_info.get("versions")
     if versions:
         click.echo("\n🧭 Versions:")
         click.echo(f"   Package: v{versions.get('package', 'unknown')}")
         click.echo(f"   Templates: v{versions.get('resources', 'unknown')}")
-        if versions.get('available_resources') and versions.get('available_resources') != versions.get('resources'):
-            click.echo(f"   Available template update: v{versions['available_resources']}")
-        if versions.get('outdated'):
-            click.echo(f"{Fore.YELLOW}   ⚠️  Templates are outdated. Run 'moai update' to refresh.{Style.RESET_ALL}")
+        if versions.get("available_resources") and versions.get(
+            "available_resources"
+        ) != versions.get("resources"):
+            click.echo(
+                f"   Available template update: v{versions['available_resources']}"
+            )
+        if versions.get("outdated"):
+            click.echo(
+                f"{Fore.YELLOW}   ⚠️  Templates are outdated. Run 'moai update' to refresh.{Style.RESET_ALL}"
+            )
 
-    if verbose and status_info['file_counts']:
+    if verbose and status_info["file_counts"]:
         click.echo("\n📁 File Counts:")
-        for component, count in status_info['file_counts'].items():
+        for component, count in status_info["file_counts"].items():
             click.echo(f"   {component}: {count} files")
 
     # Recommendations
     recommendations = []
-    if not status_info['moai_initialized']:
+    if not status_info["moai_initialized"]:
         recommendations.append("Run 'moai init' to initialize MoAI-ADK")
-    if not status_info['git_repository']:
+    if not status_info["git_repository"]:
         recommendations.append("Initialize Git repository: git init")
 
     if recommendations:
@@ -272,31 +328,19 @@ def status(verbose: bool, project_path: str | None) -> None:
 
 @cli.command()
 @click.option(
-    "--check", "-c",
-    is_flag=True,
-    help="Check for updates without installing"
+    "--check", "-c", is_flag=True, help="Check for updates without installing"
 )
-@click.option(
-    "--no-backup",
-    is_flag=True,
-    help="Skip backup creation before update"
-)
-@click.option(
-    "--verbose", "-v",
-    is_flag=True,
-    help="Show detailed update information"
-)
-@click.option(
-    "--package-only",
-    is_flag=True,
-    help="Update only the Python package"
-)
-@click.option(
-    "--resources-only",
-    is_flag=True,
-    help="Update only project resources"
-)
-def update(check: bool, no_backup: bool, verbose: bool, package_only: bool, resources_only: bool) -> None:
+@click.option("--no-backup", is_flag=True, help="Skip backup creation before update")
+@click.option("--verbose", "-v", is_flag=True, help="Show detailed update information")
+@click.option("--package-only", is_flag=True, help="Update only the Python package")
+@click.option("--resources-only", is_flag=True, help="Update only project resources")
+def update(
+    check: bool,
+    no_backup: bool,
+    verbose: bool,
+    package_only: bool,
+    resources_only: bool,
+) -> None:
     """Update MoAI-ADK to the latest version."""
     current_version = __version__
     project_path = Path.cwd()
@@ -304,7 +348,7 @@ def update(check: bool, no_backup: bool, verbose: bool, package_only: bool, reso
     resource_manager = ResourceManager()
     version_manager = ResourceVersionManager(project_path)
     version_info = version_manager.read()
-    current_resource_version = version_info.get('template_version') or "unknown"
+    current_resource_version = version_info.get("template_version") or "unknown"
     available_resource_version = resource_manager.get_version()
 
     if check:
@@ -314,20 +358,30 @@ def update(check: bool, no_backup: bool, verbose: bool, package_only: bool, reso
         click.echo(f"Available template version: {available_resource_version}")
 
         if not (project_path / ".moai").exists():
-            click.echo(f"{Fore.YELLOW}⚠️  This directory does not appear to be a MoAI-ADK project{Style.RESET_ALL}")
+            click.echo(
+                f"{Fore.YELLOW}⚠️  This directory does not appear to be a MoAI-ADK project{Style.RESET_ALL}"
+            )
         elif current_resource_version != available_resource_version:
-            click.echo(f"{Fore.YELLOW}⚠️  Templates are outdated. Run 'moai update' to refresh.{Style.RESET_ALL}")
+            click.echo(
+                f"{Fore.YELLOW}⚠️  Templates are outdated. Run 'moai update' to refresh.{Style.RESET_ALL}"
+            )
         else:
-            click.echo(f"{Fore.GREEN}✅ Project resources are up to date{Style.RESET_ALL}")
+            click.echo(
+                f"{Fore.GREEN}✅ Project resources are up to date{Style.RESET_ALL}"
+            )
         return
 
     if package_only and resources_only:
-        click.echo(f"{Fore.RED}❌ Cannot use --package-only and --resources-only together{Style.RESET_ALL}")
+        click.echo(
+            f"{Fore.RED}❌ Cannot use --package-only and --resources-only together{Style.RESET_ALL}"
+        )
         sys.exit(1)
 
     # Check if this is a MoAI-ADK project
     if not (project_path / ".moai").exists():
-        click.echo(f"{Fore.YELLOW}⚠️  This doesn't appear to be a MoAI-ADK project{Style.RESET_ALL}")
+        click.echo(
+            f"{Fore.YELLOW}⚠️  This doesn't appear to be a MoAI-ADK project{Style.RESET_ALL}"
+        )
         click.echo("Run 'moai init' to initialize a new project")
         return
 
@@ -359,12 +413,16 @@ def update(check: bool, no_backup: bool, verbose: bool, package_only: bool, reso
             if current_version == available_resource_version:
                 click.echo(f"{Fore.GREEN}   ✅ Package is up to date{Style.RESET_ALL}")
             else:
-                click.echo(f"{Fore.YELLOW}   💡 Manual upgrade recommended: pip install --upgrade moai-adk{Style.RESET_ALL}")
+                click.echo(
+                    f"{Fore.YELLOW}   💡 Manual upgrade recommended: pip install --upgrade moai-adk{Style.RESET_ALL}"
+                )
 
         # Version synchronization
         if verbose:
             sync_manager = VersionSyncManager(str(project_path))
-            click.echo(f"{Fore.CYAN}🔄 Synchronizing version information...{Style.RESET_ALL}")
+            click.echo(
+                f"{Fore.CYAN}🔄 Synchronizing version information...{Style.RESET_ALL}"
+            )
             results = sync_manager.sync_all_versions(dry_run=True)
             for pattern, files in results.items():
                 if files:
@@ -381,7 +439,9 @@ def update(check: bool, no_backup: bool, verbose: bool, package_only: bool, reso
         sys.exit(1)
 
 
-def create_mode_configuration(project_dir: Path, project_mode: str, quiet: bool = False) -> None:
+def create_mode_configuration(
+    project_dir: Path, project_mode: str, quiet: bool = False
+) -> None:
     """Create mode-specific configuration for MoAI-ADK project."""
     import json
     from datetime import datetime
@@ -397,7 +457,7 @@ def create_mode_configuration(project_dir: Path, project_mode: str, quiet: bool 
             "mode": project_mode,
             "version": __version__,
             "created": datetime.now().isoformat(),
-            "constitution_version": "2.1"
+            "constitution_version": "2.1",
         },
         "git_strategy": {
             "personal": {
@@ -408,7 +468,7 @@ def create_mode_configuration(project_dir: Path, project_mode: str, quiet: bool 
                 "backup_before_sync": True,
                 "conflict_strategy": "local_priority",
                 "max_checkpoints": 50,
-                "cleanup_days": 7
+                "cleanup_days": 7,
             },
             "team": {
                 "auto_checkpoint": False,
@@ -418,36 +478,38 @@ def create_mode_configuration(project_dir: Path, project_mode: str, quiet: bool 
                 "auto_sync": True,
                 "sync_interval": 1800,  # 30 minutes
                 "conflict_strategy": "remote_priority",
-                "gitflow_strict": True
-            }
+                "gitflow_strict": True,
+            },
         },
         "workflow": {
             "spec_auto_commit": True,
             "build_tdd_commits": True,
             "sync_living_docs": True,
             "constitution_check": True,
-            "tag_tracking": True
+            "tag_tracking": True,
         },
         "features": {
             "checkpoint_system": project_mode == "personal",
             "auto_rollback": project_mode == "personal",
             "smart_sync": True,
             "branch_management": True,
-            "commit_automation": True
-        }
+            "commit_automation": True,
+        },
     }
 
     # Save configuration
     config_file = moai_dir / "config.json"
-    with open(config_file, 'w', encoding='utf-8') as f:
+    with open(config_file, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2, ensure_ascii=False)
 
     if not quiet:
         mode_desc = {
             "personal": "Personal development optimized (checkpoints, simplified workflow)",
-            "team": "Team collaboration optimized (GitFlow, structured commits, PR automation)"
+            "team": "Team collaboration optimized (GitFlow, structured commits, PR automation)",
         }
-        click.echo(f"  {Fore.GREEN}✓{Style.RESET_ALL} {project_mode.title()} mode configured: {mode_desc[project_mode]}")
+        click.echo(
+            f"  {Fore.GREEN}✓{Style.RESET_ALL} {project_mode.title()} mode configured: {mode_desc[project_mode]}"
+        )
 
     # Create checkpoints directory for personal mode
     if project_mode == "personal":
@@ -457,11 +519,13 @@ def create_mode_configuration(project_dir: Path, project_mode: str, quiet: bool 
         # Initialize checkpoint metadata
         metadata = {"checkpoints": []}
         metadata_file = checkpoints_dir / "metadata.json"
-        with open(metadata_file, 'w', encoding='utf-8') as f:
+        with open(metadata_file, "w", encoding="utf-8") as f:
             json.dump(metadata, f, indent=2)
 
         if not quiet:
-            click.echo(f"  {Fore.GREEN}✓{Style.RESET_ALL} Checkpoint system initialized")
+            click.echo(
+                f"  {Fore.GREEN}✓{Style.RESET_ALL} Checkpoint system initialized"
+            )
 
 
 # Add all commands to the CLI group

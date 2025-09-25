@@ -49,11 +49,15 @@ class GitLockManager:
         elif isinstance(project_dir, Path):
             project_dir = project_dir.resolve()
         else:
-            raise ValueError(f"project_dir must be a Path or str type: {type(project_dir)}")
+            raise ValueError(
+                f"project_dir must be a Path or str type: {type(project_dir)}"
+            )
 
         # Directory validation - allow non-existent directories during initialization
         if not project_dir.exists():
-            logger.warning(f"Project directory will be created during installation: {project_dir}")
+            logger.warning(
+                f"Project directory will be created during installation: {project_dir}"
+            )
             # Directory will be created by installer - defer validation
 
         self.project_dir = project_dir
@@ -64,7 +68,9 @@ class GitLockManager:
         self._lock_info_cache: dict | None = None
         self._last_check_time = 0.0
 
-        logger.debug(f"GitLockManager 초기화: {self.project_dir}, 잠금파일: {self.lock_file}")
+        logger.debug(
+            f"GitLockManager 초기화: {self.project_dir}, 잠금파일: {self.lock_file}"
+        )
 
     def _ensure_lock_dir(self):
         """잠금 디렉토리가 존재하지 않으면 생성
@@ -75,7 +81,9 @@ class GitLockManager:
             self.lock_dir.mkdir(parents=True, exist_ok=True)
             # 권한 검사
             if not os.access(self.lock_dir, os.W_OK):
-                raise GitLockedException(f"잠금 디렉토리에 쓰기 권한이 없습니다: {self.lock_dir}")
+                raise GitLockedException(
+                    f"잠금 디렉토리에 쓰기 권한이 없습니다: {self.lock_dir}"
+                )
             logger.debug(f"잠금 디렉토리 확보: {self.lock_dir}")
         except OSError as e:
             logger.error(f"잠금 디렉토리 생성 실패: {self.lock_dir}, 오류: {e}")
@@ -94,12 +102,11 @@ class GitLockManager:
 
         current_time = time.time()
         # 캐시가 유효한지 확인 (1초 캐시)
-        if (self._lock_info_cache and
-            current_time - self._last_check_time < 1.0):
+        if self._lock_info_cache and current_time - self._last_check_time < 1.0:
             return self._lock_info_cache
 
         try:
-            with self.lock_file.open('r') as f:
+            with self.lock_file.open("r") as f:
                 content = f.read().strip()
 
             # JSON 형식 시도
@@ -128,14 +135,14 @@ class GitLockManager:
         """
         info = {"pid": None, "timestamp": None, "legacy": True}
 
-        for line in content.split('\n'):
-            if line.startswith('PID:'):
+        for line in content.split("\n"):
+            if line.startswith("PID:"):
                 try:
-                    info["pid"] = int(line.split(':', 1)[1].strip())
+                    info["pid"] = int(line.split(":", 1)[1].strip())
                 except ValueError:
                     pass
-            elif line.startswith('Time:'):
-                info["timestamp"] = line.split(':', 1)[1].strip()
+            elif line.startswith("Time:"):
+                info["timestamp"] = line.split(":", 1)[1].strip()
 
         return info
 
@@ -184,7 +191,9 @@ class GitLockManager:
             try:
                 lock_time = float(timestamp)
                 if time.time() - lock_time > 3600:  # 1시간
-                    logger.warning(f"오래된 잠금 파일: {time.time() - lock_time}초 경과")
+                    logger.warning(
+                        f"오래된 잠금 파일: {time.time() - lock_time}초 경과"
+                    )
                     return False
             except ValueError:
                 pass
@@ -242,9 +251,11 @@ class GitLockManager:
                 lock_info = self._get_lock_info()
                 current_pid = os.getpid()
 
-                if lock_info and lock_info.get('pid') != current_pid:
-                    logger.warning(f"다른 프로세스의 잠금 파일 해제 시도: "
-                                 f"소유자 PID={lock_info.get('pid')}, 현재 PID={current_pid}")
+                if lock_info and lock_info.get("pid") != current_pid:
+                    logger.warning(
+                        f"다른 프로세스의 잠금 파일 해제 시도: "
+                        f"소유자 PID={lock_info.get('pid')}, 현재 PID={current_pid}"
+                    )
 
                 self.lock_file.unlink()
                 self._lock_info_cache = None  # 캐시 무효화
@@ -264,7 +275,7 @@ class GitLockManager:
             "pid": os.getpid(),
             "created_at": time.time(),
             "timestamp": time.ctime(),
-            "version": "2.0"
+            "version": "2.0",
         }
 
     def acquire_lock(self, wait: bool = True, timeout: int = 30):
@@ -292,7 +303,9 @@ class GitLockManager:
         return self._acquire_lock_context(wait, timeout)
 
     @contextmanager
-    def _acquire_lock_context(self, wait: bool = True, timeout: int = 30) -> Generator[None, None, None]:
+    def _acquire_lock_context(
+        self, wait: bool = True, timeout: int = 30
+    ) -> Generator[None, None, None]:
         """실제 잠금 획득 컨텍스트 매니저
 
         성능 최적화된 대기 메커니즘 (@PERF:LOCK-100MS)
@@ -382,16 +395,22 @@ class GitLockManager:
             "is_locked": self.is_locked(),
             "lock_file_exists": self.lock_file.exists(),
             "lock_dir_exists": self.lock_dir.exists(),
-            "lock_dir_writable": self.lock_dir.exists() and os.access(self.lock_dir, os.W_OK)
+            "lock_dir_writable": self.lock_dir.exists()
+            and os.access(self.lock_dir, os.W_OK),
         }
 
         if status["lock_file_exists"]:
             lock_info = self._get_lock_info()
             if lock_info:
-                status.update({
-                    "lock_info": lock_info,
-                    "process_running": self._is_process_running(lock_info.get("pid", 0)),
-                    "lock_age_seconds": time.time() - lock_info.get("created_at", 0)
-                })
+                status.update(
+                    {
+                        "lock_info": lock_info,
+                        "process_running": self._is_process_running(
+                            lock_info.get("pid", 0)
+                        ),
+                        "lock_age_seconds": time.time()
+                        - lock_info.get("created_at", 0),
+                    }
+                )
 
         return status

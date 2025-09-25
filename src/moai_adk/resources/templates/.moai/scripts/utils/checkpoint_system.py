@@ -78,8 +78,15 @@ class CheckpointError(Exception):
 class CheckpointInfo:
     """체크포인트 정보"""
 
-    def __init__(self, tag: str, commit_hash: str, message: str, created_at: str,
-                 file_count: int = 0, is_auto: bool = False):
+    def __init__(
+        self,
+        tag: str,
+        commit_hash: str,
+        message: str,
+        created_at: str,
+        file_count: int = 0,
+        is_auto: bool = False,
+    ):
         self.tag = tag
         self.commit_hash = commit_hash
         self.message = message
@@ -94,7 +101,7 @@ class CheckpointInfo:
             "message": self.message,
             "created_at": self.created_at,
             "file_count": self.file_count,
-            "is_auto": self.is_auto
+            "is_auto": self.is_auto,
         }
 
     @classmethod
@@ -107,7 +114,7 @@ class CheckpointInfo:
                 message=data["message"],
                 created_at=data["created_at"],
                 file_count=data.get("file_count", 0),
-                is_auto=data.get("is_auto", False)
+                is_auto=data.get("is_auto", False),
             )
         # 구 형식 호환성
         elif "id" in data:
@@ -117,7 +124,7 @@ class CheckpointInfo:
                 message=data.get("message", "Legacy checkpoint"),
                 created_at=data["timestamp"],
                 file_count=data.get("files_changed", 0),
-                is_auto=data.get("kind") == "auto"
+                is_auto=data.get("kind") == "auto",
             )
         else:
             raise ValueError(f"Invalid checkpoint data format: {data}")
@@ -180,11 +187,15 @@ class CheckpointSystem:
             existing_tags = self._get_existing_tags()
             if tag_name in existing_tags:
                 # 초 단위 추가로 중복 방지
-                timestamp = kst_now.strftime("%Y%m%d_%H%M%S_%f")[:17]  # 마이크로초 3자리
+                timestamp = kst_now.strftime("%Y%m%d_%H%M%S_%f")[
+                    :17
+                ]  # 마이크로초 3자리
                 tag_name = f"{CHECKPOINT_TAG_PREFIX}{timestamp}"
 
             # Git 작업 수행
-            commit_message = f"📍 {'Auto-' if is_auto else ''}Checkpoint: {sanitized_message}"
+            commit_message = (
+                f"📍 {'Auto-' if is_auto else ''}Checkpoint: {sanitized_message}"
+            )
             commit_hash = self._create_commit_and_tag(
                 has_changes, commit_message, tag_name
             )
@@ -196,14 +207,16 @@ class CheckpointSystem:
                 message=sanitized_message,
                 created_at=kst_now.isoformat(),
                 file_count=self._count_tracked_files(),
-                is_auto=is_auto
+                is_auto=is_auto,
             )
 
             # 메타데이터 저장 및 정리
             self._save_checkpoint_metadata(checkpoint)
             self._cleanup_old_checkpoints()
 
-            logger.info(f"체크포인트 생성 완료: {tag_name} (KST: {kst_now.strftime('%Y-%m-%d %H:%M:%S')})")
+            logger.info(
+                f"체크포인트 생성 완료: {tag_name} (KST: {kst_now.strftime('%Y-%m-%d %H:%M:%S')})"
+            )
             return checkpoint
 
         except GitCommandError as e:
@@ -223,14 +236,15 @@ class CheckpointSystem:
 
         # 길이 제한 적용
         if len(message) > CHECKPOINT_MESSAGE_MAX_LENGTH:
-            message = message[:CHECKPOINT_MESSAGE_MAX_LENGTH - 3] + "..."
+            message = message[: CHECKPOINT_MESSAGE_MAX_LENGTH - 3] + "..."
 
         # 개행 문자 제거 (Git 태그 메시지에서 문제가 될 수 있음)
-        message = message.replace('\n', ' ').replace('\r', ' ')
+        message = message.replace("\n", " ").replace("\r", " ")
 
         # 연속된 공백 정리
         import re
-        message = re.sub(r'\s+', ' ', message)
+
+        message = re.sub(r"\s+", " ", message)
 
         return message
 
@@ -245,19 +259,29 @@ class CheckpointSystem:
     def _get_existing_tags(self) -> set:
         """기존 태그 목록 조회"""
         try:
-            result = self.git.run_command(["git", "tag", "-l", f"{CHECKPOINT_TAG_PREFIX}*"])
-            return set(result.stdout.strip().split('\n')) if result.stdout.strip() else set()
+            result = self.git.run_command(
+                ["git", "tag", "-l", f"{CHECKPOINT_TAG_PREFIX}*"]
+            )
+            return (
+                set(result.stdout.strip().split("\n"))
+                if result.stdout.strip()
+                else set()
+            )
         except GitCommandError:
             logger.warning("기존 태그 목록 조회 실패, 빈 세트 반환")
             return set()
 
-    def _create_commit_and_tag(self, has_changes: bool, commit_message: str, tag_name: str) -> str:
+    def _create_commit_and_tag(
+        self, has_changes: bool, commit_message: str, tag_name: str
+    ) -> str:
         """커밋 및 태그 생성"""
         try:
             if has_changes:
                 commit_hash = self.git.commit(commit_message, allow_empty=False)
             else:
-                commit_hash = self.git.run_command(["git", "rev-parse", "HEAD"]).stdout.strip()
+                commit_hash = self.git.run_command(
+                    ["git", "rev-parse", "HEAD"]
+                ).stdout.strip()
 
             self.git.create_tag(tag_name, commit_message)
             return commit_hash
@@ -410,7 +434,7 @@ class CheckpointSystem:
             return {"checkpoints": [], "version": "1.0"}
 
         try:
-            with open(self.metadata_file, encoding='utf-8') as f:
+            with open(self.metadata_file, encoding="utf-8") as f:
                 return json.load(f)
         except (json.JSONDecodeError, Exception) as e:
             logger.error(f"메타데이터 로드 실패: {e}")
@@ -420,23 +444,21 @@ class CheckpointSystem:
         """체크포인트 메타데이터 저장"""
         metadata = self._load_checkpoint_metadata()
         metadata["checkpoints"] = [
-            cp for cp in metadata["checkpoints"]
-            if cp.get("tag") != checkpoint.tag
+            cp for cp in metadata["checkpoints"] if cp.get("tag") != checkpoint.tag
         ]
         metadata["checkpoints"].append(checkpoint.to_dict())
 
-        with open(self.metadata_file, 'w', encoding='utf-8') as f:
+        with open(self.metadata_file, "w", encoding="utf-8") as f:
             json.dump(metadata, f, indent=2, ensure_ascii=False)
 
     def _remove_checkpoint_metadata(self, tag: str) -> None:
         """체크포인트 메타데이터에서 제거"""
         metadata = self._load_checkpoint_metadata()
         metadata["checkpoints"] = [
-            cp for cp in metadata["checkpoints"]
-            if cp.get("tag") != tag
+            cp for cp in metadata["checkpoints"] if cp.get("tag") != tag
         ]
 
-        with open(self.metadata_file, 'w', encoding='utf-8') as f:
+        with open(self.metadata_file, "w", encoding="utf-8") as f:
             json.dump(metadata, f, indent=2, ensure_ascii=False)
 
     def _cleanup_old_checkpoints(self) -> None:

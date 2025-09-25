@@ -22,9 +22,9 @@ from .resource_manager import ResourceManager
 Installer = SimplifiedInstaller
 
 __all__ = [
-    'InstallationResult',
-    'Installer',  # Backward compatibility
-    'ResourceManager',
-    'SimplifiedInstaller',
-    'post_install_main'
+    "InstallationResult",
+    "Installer",  # Backward compatibility
+    "ResourceManager",
+    "SimplifiedInstaller",
+    "post_install_main",
 ]

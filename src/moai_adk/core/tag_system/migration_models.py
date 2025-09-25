@@ -24,6 +24,7 @@ class DataValidationError(Exception):
 @dataclass
 class ValidationError:
     """검증 오류 정보"""
+
     error_type: str
     message: str
     location: str | None = None
@@ -32,6 +33,7 @@ class ValidationError:
 @dataclass
 class MigrationProgress:
     """마이그레이션 진행률 정보"""
+
     current_stage: str
     completed_items: int
     total_items: int
@@ -48,6 +50,7 @@ class MigrationProgress:
 @dataclass
 class ConflictResolution:
     """충돌 해결 정보"""
+
     tag_identifier: str
     conflict_type: str
     existing_data: dict[str, Any]
@@ -59,6 +62,7 @@ class ConflictResolution:
 @dataclass
 class MigrationResult:
     """마이그레이션 결과"""
+
     success: bool
     migrated_tags_count: int = 0
     migrated_references_count: int = 0
@@ -89,6 +93,7 @@ class MigrationResult:
 @dataclass
 class BackupInfo:
     """백업 정보"""
+
     backup_file: Path
     metadata_file: Path
     created_at: datetime
@@ -118,14 +123,14 @@ class BackupManager:
             "backup_file": str(backup_file),
             "created_at": datetime.now().isoformat(),
             "description": description,
-            "original_file_size": json_path.stat().st_size
+            "original_file_size": json_path.stat().st_size,
         }
 
-        with open(metadata_file, 'w', encoding='utf-8') as f:
+        with open(metadata_file, "w", encoding="utf-8") as f:
             json.dump(metadata, f, indent=2)
 
         return BackupInfo(
             backup_file=backup_file,
             metadata_file=metadata_file,
-            created_at=datetime.now()
+            created_at=datetime.now(),
         )

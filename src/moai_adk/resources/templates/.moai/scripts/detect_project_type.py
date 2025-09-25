@@ -34,7 +34,7 @@ class ProjectTypeDetector:
             "project_type": project_type,
             "features": features,
             "required_docs": required_docs,
-            "confidence": self._calculate_confidence(features, project_type)
+            "confidence": self._calculate_confidence(features, project_type),
         }
 
     def _analyze_project_features(self) -> dict[str, any]:
@@ -48,17 +48,29 @@ class ProjectTypeDetector:
             "framework": self._detect_framework(),
             "api_files": self._find_api_files(),
             "cli_files": self._find_cli_files(),
-            "lib_files": self._find_lib_files()
+            "lib_files": self._find_lib_files(),
         }
         return features
 
     def _has_web_api(self) -> bool:
         """Web API 프로젝트인지 확인"""
         api_indicators = [
-            "src/app.py", "src/main.py", "app.py", "main.py",
-            "src/api", "api", "src/controllers", "controllers",
-            "src/routes", "routes", "src/endpoints", "endpoints",
-            "server.js", "server.ts", "src/server.js", "src/server.ts"
+            "src/app.py",
+            "src/main.py",
+            "app.py",
+            "main.py",
+            "src/api",
+            "api",
+            "src/controllers",
+            "controllers",
+            "src/routes",
+            "routes",
+            "src/endpoints",
+            "endpoints",
+            "server.js",
+            "server.ts",
+            "src/server.js",
+            "src/server.ts",
         ]
 
         for indicator in api_indicators:
@@ -71,8 +83,12 @@ class ProjectTypeDetector:
     def _has_cli(self) -> bool:
         """CLI 도구인지 확인"""
         cli_indicators = [
-            "src/cli", "cli", "src/commands", "commands",
-            "bin/", "scripts/cli"
+            "src/cli",
+            "cli",
+            "src/commands",
+            "commands",
+            "bin/",
+            "scripts/cli",
         ]
 
         for indicator in cli_indicators:
@@ -85,8 +101,12 @@ class ProjectTypeDetector:
     def _has_library(self) -> bool:
         """라이브러리/패키지인지 확인"""
         lib_indicators = [
-            "setup.py", "pyproject.toml", "package.json",
-            "Cargo.toml", "go.mod", "pom.xml"
+            "setup.py",
+            "pyproject.toml",
+            "package.json",
+            "Cargo.toml",
+            "go.mod",
+            "pom.xml",
         ]
 
         for indicator in lib_indicators:
@@ -97,8 +117,14 @@ class ProjectTypeDetector:
     def _has_frontend(self) -> bool:
         """프론트엔드 프로젝트인지 확인"""
         frontend_indicators = [
-            "src/components", "components", "src/pages", "pages",
-            "public/index.html", "index.html", "src/App.js", "src/App.tsx"
+            "src/components",
+            "components",
+            "src/pages",
+            "pages",
+            "public/index.html",
+            "index.html",
+            "src/App.js",
+            "src/App.tsx",
         ]
 
         for indicator in frontend_indicators:
@@ -114,7 +140,7 @@ class ProjectTypeDetector:
             "typescript": ["*.ts", "*.tsx", "tsconfig.json"],
             "go": ["*.go", "go.mod", "go.sum"],
             "rust": ["*.rs", "Cargo.toml", "Cargo.lock"],
-            "java": ["*.java", "pom.xml", "build.gradle"]
+            "java": ["*.java", "pom.xml", "build.gradle"],
         }
 
         for lang, patterns in language_files.items():
@@ -142,7 +168,10 @@ class ProjectTypeDetector:
         if package_json.exists():
             try:
                 data = json.loads(package_json.read_text())
-                deps = {**data.get("dependencies", {}), **data.get("devDependencies", {})}
+                deps = {
+                    **data.get("dependencies", {}),
+                    **data.get("devDependencies", {}),
+                }
 
                 if "express" in deps:
                     return "express"
@@ -173,10 +202,12 @@ class ProjectTypeDetector:
         ]
 
         for pattern in patterns:
-            api_files.extend([
-                str(f.relative_to(self.project_path))
-                for f in self.project_path.rglob(pattern)
-            ])
+            api_files.extend(
+                [
+                    str(f.relative_to(self.project_path))
+                    for f in self.project_path.rglob(pattern)
+                ]
+            )
         return api_files
 
     def _find_cli_files(self) -> list[str]:
@@ -192,10 +223,12 @@ class ProjectTypeDetector:
         ]
 
         for pattern in patterns:
-            cli_files.extend([
-                str(f.relative_to(self.project_path))
-                for f in self.project_path.rglob(pattern)
-            ])
+            cli_files.extend(
+                [
+                    str(f.relative_to(self.project_path))
+                    for f in self.project_path.rglob(pattern)
+                ]
+            )
         return cli_files
 
     def _find_lib_files(self) -> list[str]:
@@ -204,10 +237,12 @@ class ProjectTypeDetector:
         patterns = ["src/**/*.py", "lib/**/*.py", "src/**/*.js", "lib/**/*.js"]
 
         for pattern in patterns:
-            lib_files.extend([
-                str(f.relative_to(self.project_path))
-                for f in self.project_path.rglob(pattern)
-            ])
+            lib_files.extend(
+                [
+                    str(f.relative_to(self.project_path))
+                    for f in self.project_path.rglob(pattern)
+                ]
+            )
         return lib_files[:10]  # 최대 10개만
 
     def _check_api_patterns(self) -> bool:
@@ -215,10 +250,16 @@ class ProjectTypeDetector:
         # Python API 패턴
         for py_file in self.project_path.rglob("*.py"):
             try:
-                content = py_file.read_text(encoding='utf-8', errors='ignore')
+                content = py_file.read_text(encoding="utf-8", errors="ignore")
                 api_patterns = [
-                    "@app.route", "@router.", "FastAPI(", "Flask(__name__)",
-                    "from fastapi", "from flask", "def get_", "def post_"
+                    "@app.route",
+                    "@router.",
+                    "FastAPI(",
+                    "Flask(__name__)",
+                    "from fastapi",
+                    "from flask",
+                    "def get_",
+                    "def post_",
                 ]
                 if any(pattern in content for pattern in api_patterns):
                     return True
@@ -226,12 +267,19 @@ class ProjectTypeDetector:
                 continue
 
         # JavaScript/TypeScript API 패턴
-        for js_file in list(self.project_path.rglob("*.js")) + list(self.project_path.rglob("*.ts")):
+        for js_file in list(self.project_path.rglob("*.js")) + list(
+            self.project_path.rglob("*.ts")
+        ):
             try:
-                content = js_file.read_text(encoding='utf-8', errors='ignore')
+                content = js_file.read_text(encoding="utf-8", errors="ignore")
                 api_patterns = [
-                    "app.get(", "app.post(", "router.get(", "router.post(",
-                    "express()", "fastify()", "app.listen("
+                    "app.get(",
+                    "app.post(",
+                    "router.get(",
+                    "router.post(",
+                    "express()",
+                    "fastify()",
+                    "app.listen(",
                 ]
                 if any(pattern in content for pattern in api_patterns):
                     return True
@@ -244,10 +292,14 @@ class ProjectTypeDetector:
         """코드 내 CLI 패턴 확인"""
         for py_file in self.project_path.rglob("*.py"):
             try:
-                content = py_file.read_text(encoding='utf-8', errors='ignore')
+                content = py_file.read_text(encoding="utf-8", errors="ignore")
                 cli_patterns = [
-                    "@click.command", "@click.group", "argparse.ArgumentParser",
-                    "if __name__ == '__main__':", "sys.argv", "parser.add_argument"
+                    "@click.command",
+                    "@click.group",
+                    "argparse.ArgumentParser",
+                    "if __name__ == '__main__':",
+                    "sys.argv",
+                    "parser.add_argument",
                 ]
                 if any(pattern in content for pattern in cli_patterns):
                     return True
@@ -275,11 +327,16 @@ class ProjectTypeDetector:
         """프로젝트 유형별 필요한 문서 목록"""
         doc_mapping = {
             "web_api": ["API.md", "endpoints.md", "authentication.md"],
-            "fullstack": ["API.md", "endpoints.md", "frontend-guide.md", "deployment.md"],
+            "fullstack": [
+                "API.md",
+                "endpoints.md",
+                "frontend-guide.md",
+                "deployment.md",
+            ],
             "cli_tool": ["CLI_COMMANDS.md", "usage.md", "examples.md"],
             "frontend": ["components.md", "user-guide.md", "styling.md"],
             "library": ["API_REFERENCE.md", "modules.md", "examples.md"],
-            "application": ["features.md", "user-guide.md", "configuration.md"]
+            "application": ["features.md", "user-guide.md", "configuration.md"],
         }
 
         base_docs = doc_mapping.get(project_type, ["README.md"])
@@ -298,7 +355,7 @@ class ProjectTypeDetector:
             "web_api": features["has_web_api"] and len(features["api_files"]) > 0,
             "cli_tool": features["has_cli"] and len(features["cli_files"]) > 0,
             "library": features["has_library"],
-            "frontend": features["has_frontend"]
+            "frontend": features["has_frontend"],
         }
 
         base_confidence = 0.7 if confidence_factors.get(project_type, False) else 0.3
@@ -325,7 +382,7 @@ def main():
         click.echo(f"프로젝트 유형: {result['project_type']}")
         click.echo(f"신뢰도: {result['confidence']:.1%}")
         click.echo(f"언어: {result['features']['language']}")
-        if result['features']['framework']:
+        if result["features"]["framework"]:
             click.echo(f"프레임워크: {result['features']['framework']}")
         click.echo(f"필요한 문서: {', '.join(result['required_docs'])}")
 

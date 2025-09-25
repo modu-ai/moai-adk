@@ -56,7 +56,7 @@ class AdapterIntegration:
     def _process_file_change_sqlite(self, file_path: Path, event_type: str) -> None:
         """SQLite 백엔드를 통한 파일 변경 처리"""
         try:
-            if event_type in ['modified', 'created']:
+            if event_type in ["modified", "created"]:
                 # 파일에서 TAG 파싱
                 if file_path.exists():
                     parsed_tags = self.tag_parser.parse_file(file_path)
@@ -67,14 +67,14 @@ class AdapterIntegration:
                     # 새 TAG 추가
                     for tag_info in parsed_tags:
                         self.db_manager.insert_tag(
-                            category=tag_info['category'],
-                            identifier=tag_info['identifier'],
-                            description=tag_info.get('description', ''),
+                            category=tag_info["category"],
+                            identifier=tag_info["identifier"],
+                            description=tag_info.get("description", ""),
                             file_path=str(file_path),
-                            line_number=tag_info.get('line_number', 1)
+                            line_number=tag_info.get("line_number", 1),
                         )
 
-            elif event_type == 'deleted':
+            elif event_type == "deleted":
                 # 파일 삭제 시 관련 TAG 모두 삭제
                 self.db_manager.delete_tags_by_file(str(file_path))
 
@@ -85,18 +85,29 @@ class AdapterIntegration:
 
     # JSON 내보내기 기능 제거됨 - SQLite 전용 시스템
 
-    def setup_file_watching(self, project_root: Path, patterns: list[str] | None = None) -> None:
+    def setup_file_watching(
+        self, project_root: Path, patterns: list[str] | None = None
+    ) -> None:
         """파일 감시 설정"""
         try:
             # 기본 패턴 설정
             if not patterns:
-                patterns = ['*.py', '*.md', '*.txt', '*.js', '*.ts', '*.java', '*.cpp', '*.h']
+                patterns = [
+                    "*.py",
+                    "*.md",
+                    "*.txt",
+                    "*.js",
+                    "*.ts",
+                    "*.java",
+                    "*.cpp",
+                    "*.h",
+                ]
 
             # IndexManager 초기화
             self.index_manager = TagIndexManager(
                 project_root=project_root,
                 index_file=project_root / ".moai" / "indexes" / "tags.db",
-                file_patterns=patterns
+                file_patterns=patterns,
             )
 
             # 이벤트 핸들러 등록
@@ -122,7 +133,7 @@ class AdapterIntegration:
             # 파일별 TAG 분포
             file_distribution = {}
             for tag in all_tags:
-                file_path = tag.get('file_path', 'unknown')
+                file_path = tag.get("file_path", "unknown")
                 if file_path not in file_distribution:
                     file_distribution[file_path] = 0
                 file_distribution[file_path] += 1
@@ -130,24 +141,21 @@ class AdapterIntegration:
             # 카테고리별 분포
             category_distribution = {}
             for tag in all_tags:
-                category = tag.get('category', 'unknown')
+                category = tag.get("category", "unknown")
                 if category not in category_distribution:
                     category_distribution[category] = 0
                 category_distribution[category] += 1
 
             return {
-                'total_tags': len(all_tags),
-                'file_distribution': file_distribution,
-                'category_distribution': category_distribution,
-                'watching': self._watching,
-                'backend': 'sqlite'
+                "total_tags": len(all_tags),
+                "file_distribution": file_distribution,
+                "category_distribution": category_distribution,
+                "watching": self._watching,
+                "backend": "sqlite",
             }
 
         except Exception as e:
-            return {
-                'error': str(e),
-                'backend': 'sqlite'
-            }
+            return {"error": str(e), "backend": "sqlite"}
 
     def cleanup(self):
         """리소스 정리"""

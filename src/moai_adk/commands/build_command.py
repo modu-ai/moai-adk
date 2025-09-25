@@ -72,12 +72,16 @@ class BuildCommand:
 
         # 잠금 확인
         if not wait_for_lock and self.lock_manager.is_locked():
-            raise GitLockedException("잠금 파일이 감지되었습니다. 다른 Git 작업이 진행 중입니다.")
+            raise GitLockedException(
+                "잠금 파일이 감지되었습니다. 다른 Git 작업이 진행 중입니다."
+            )
 
         # 잠금과 함께 빌드 실행
         self.execute_with_lock_check(validated_spec_name, wait_for_lock)
 
-    def execute_with_lock_check(self, spec_name: str = "test-spec", wait_for_lock: bool = True):
+    def execute_with_lock_check(
+        self, spec_name: str = "test-spec", wait_for_lock: bool = True
+    ):
         """잠금 확인 후 실행
 
         Args:
@@ -212,12 +216,15 @@ class BuildCommand:
 
     def _log_execution_start(self, spec_name: str, wait_for_lock: bool):
         """실행 시작 로깅"""
-        logger.info("BUILD 명령어 실행 시작", extra={
-            "command": "build",
-            "spec_name": spec_name,
-            "wait_for_lock": wait_for_lock,
-            "project_dir": str(self.project_dir)
-        })
+        logger.info(
+            "BUILD 명령어 실행 시작",
+            extra={
+                "command": "build",
+                "spec_name": spec_name,
+                "wait_for_lock": wait_for_lock,
+                "project_dir": str(self.project_dir),
+            },
+        )
 
     def _log_execution_success(self, spec_name: str):
         """실행 성공 로깅"""
@@ -237,5 +244,5 @@ class BuildCommand:
             "project_dir": str(self.project_dir),
             "lock_status": self.lock_manager.get_lock_status(),
             "specs_dir_exists": (self.project_dir / ".moai" / "specs").exists(),
-            "tdd_phases": ["RED", "GREEN", "REFACTOR"]
+            "tdd_phases": ["RED", "GREEN", "REFACTOR"],
         }

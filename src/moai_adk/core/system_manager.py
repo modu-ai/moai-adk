@@ -53,10 +53,7 @@ class SystemManager:
         """Check if a command exists in the system."""
         try:
             subprocess.run(
-                [command, "--version"],
-                capture_output=True,
-                text=True,
-                check=True
+                [command, "--version"], capture_output=True, text=True, check=True
             )
             return True
         except (subprocess.CalledProcessError, FileNotFoundError):
@@ -67,16 +64,10 @@ class SystemManager:
         try:
             # Get Node.js and npm versions
             node_result = subprocess.run(
-                ["node", "--version"],
-                capture_output=True,
-                text=True,
-                check=True
+                ["node", "--version"], capture_output=True, text=True, check=True
             )
             npm_result = subprocess.run(
-                ["npm", "--version"],
-                capture_output=True,
-                text=True,
-                check=True
+                ["npm", "--version"], capture_output=True, text=True, check=True
             )
 
             node_version = node_result.stdout.strip()
@@ -109,13 +100,18 @@ class SystemManager:
                 capture_output=True,
                 text=True,
                 timeout=30,
-                check=False  # Don't fail on non-zero exit
+                check=False,  # Don't fail on non-zero exit
             )
 
-            if ccusage_result.returncode == 0 or "ccusage" in ccusage_result.stdout.lower():
+            if (
+                ccusage_result.returncode == 0
+                or "ccusage" in ccusage_result.stdout.lower()
+            ):
                 logger.info("ccusage 패키지 접근 가능 확인됨")
                 click.echo("✅ ccusage 패키지 접근 가능 확인됨")
-                click.echo("💡 statusLine에서 실시간 Claude Code 사용량 추적이 활성화됩니다.")
+                click.echo(
+                    "💡 statusLine에서 실시간 Claude Code 사용량 추적이 활성화됩니다."
+                )
                 return True
             else:
                 logger.warning("ccusage 패키지 접근 실패")
@@ -144,66 +140,60 @@ class SystemManager:
         import sys
 
         system_info = {
-            'platform': {
-                'system': platform.system(),
-                'release': platform.release(),
-                'machine': platform.machine(),
-                'processor': platform.processor(),
+            "platform": {
+                "system": platform.system(),
+                "release": platform.release(),
+                "machine": platform.machine(),
+                "processor": platform.processor(),
             },
-            'python': {
-                'version': sys.version,
-                'version_info': {
-                    'major': sys.version_info.major,
-                    'minor': sys.version_info.minor,
-                    'micro': sys.version_info.micro,
+            "python": {
+                "version": sys.version,
+                "version_info": {
+                    "major": sys.version_info.major,
+                    "minor": sys.version_info.minor,
+                    "micro": sys.version_info.micro,
                 },
-                'executable': sys.executable,
+                "executable": sys.executable,
             },
-            'nodejs': self._get_nodejs_info(),
-            'git': {'available': self._check_command_exists('git')},
+            "nodejs": self._get_nodejs_info(),
+            "git": {"available": self._check_command_exists("git")},
         }
 
         # Add package managers info
-        system_info['package_managers'] = self._get_package_managers_info()
+        system_info["package_managers"] = self._get_package_managers_info()
 
         return system_info
 
     def _get_nodejs_info(self) -> dict[str, Any]:
         """Get Node.js environment information."""
         nodejs_info = {
-            'node_available': self._check_command_exists('node'),
-            'npm_available': self._check_command_exists('npm'),
-            'yarn_available': self._check_command_exists('yarn'),
-            'pnpm_available': self._check_command_exists('pnpm'),
+            "node_available": self._check_command_exists("node"),
+            "npm_available": self._check_command_exists("npm"),
+            "yarn_available": self._check_command_exists("yarn"),
+            "pnpm_available": self._check_command_exists("pnpm"),
         }
 
-        if nodejs_info['node_available']:
+        if nodejs_info["node_available"]:
             try:
                 result = subprocess.run(
-                    ["node", "--version"],
-                    capture_output=True,
-                    text=True,
-                    check=True
+                    ["node", "--version"], capture_output=True, text=True, check=True
                 )
-                nodejs_info['node_version'] = result.stdout.strip()
+                nodejs_info["node_version"] = result.stdout.strip()
             except Exception as e:
                 logger.error("Failed to get Node.js version: %s", e)
 
-        if nodejs_info['npm_available']:
+        if nodejs_info["npm_available"]:
             try:
                 result = subprocess.run(
-                    ["npm", "--version"],
-                    capture_output=True,
-                    text=True,
-                    check=True
+                    ["npm", "--version"], capture_output=True, text=True, check=True
                 )
-                nodejs_info['npm_version'] = result.stdout.strip()
+                nodejs_info["npm_version"] = result.stdout.strip()
             except Exception as e:
                 logger.error("Failed to get npm version: %s", e)
 
         # Test ccusage if npm available
-        if nodejs_info['npm_available']:
-            nodejs_info['ccusage_available'] = self._quick_ccusage_test()
+        if nodejs_info["npm_available"]:
+            nodejs_info["ccusage_available"] = self._quick_ccusage_test()
 
         return nodejs_info
 
@@ -215,7 +205,7 @@ class SystemManager:
                 capture_output=True,
                 text=True,
                 timeout=10,
-                check=False
+                check=False,
             )
             return result.returncode == 0 or "ccusage" in result.stdout.lower()
         except Exception:
@@ -224,15 +214,15 @@ class SystemManager:
     def _get_package_managers_info(self) -> dict[str, bool]:
         """Get information about available package managers."""
         return {
-            'pip': self._check_command_exists('pip'),
-            'pip3': self._check_command_exists('pip3'),
-            'conda': self._check_command_exists('conda'),
-            'brew': self._check_command_exists('brew'),  # macOS
-            'apt': self._check_command_exists('apt'),    # Ubuntu/Debian
-            'yum': self._check_command_exists('yum'),    # CentOS/RHEL
-            'dnf': self._check_command_exists('dnf'),    # Fedora
-            'choco': self._check_command_exists('choco'), # Windows
-            'winget': self._check_command_exists('winget'), # Windows 10+
+            "pip": self._check_command_exists("pip"),
+            "pip3": self._check_command_exists("pip3"),
+            "conda": self._check_command_exists("conda"),
+            "brew": self._check_command_exists("brew"),  # macOS
+            "apt": self._check_command_exists("apt"),  # Ubuntu/Debian
+            "yum": self._check_command_exists("yum"),  # CentOS/RHEL
+            "dnf": self._check_command_exists("dnf"),  # Fedora
+            "choco": self._check_command_exists("choco"),  # Windows
+            "winget": self._check_command_exists("winget"),  # Windows 10+
         }
 
     def check_python_version(self, min_version: tuple = (3, 8)) -> bool:
@@ -264,36 +254,36 @@ class SystemManager:
 
         project_path = Path(project_path)
         detected = {
-            'type': 'unknown',
-            'language': 'unknown',
-            'frameworks': [],
-            'build_tools': [],
-            'files_found': []
+            "type": "unknown",
+            "language": "unknown",
+            "frameworks": [],
+            "build_tools": [],
+            "files_found": [],
         }
 
         # Check for various project files
         project_files = {
-            'package.json': {'type': 'nodejs', 'language': 'javascript'},
-            'requirements.txt': {'type': 'python', 'language': 'python'},
-            'pyproject.toml': {'type': 'python', 'language': 'python'},
-            'Cargo.toml': {'type': 'rust', 'language': 'rust'},
-            'go.mod': {'type': 'go', 'language': 'go'},
-            'pom.xml': {'type': 'java', 'language': 'java'},
-            'build.gradle': {'type': 'java', 'language': 'java'},
-            'Gemfile': {'type': 'ruby', 'language': 'ruby'},
-            'composer.json': {'type': 'php', 'language': 'php'},
+            "package.json": {"type": "nodejs", "language": "javascript"},
+            "requirements.txt": {"type": "python", "language": "python"},
+            "pyproject.toml": {"type": "python", "language": "python"},
+            "Cargo.toml": {"type": "rust", "language": "rust"},
+            "go.mod": {"type": "go", "language": "go"},
+            "pom.xml": {"type": "java", "language": "java"},
+            "build.gradle": {"type": "java", "language": "java"},
+            "Gemfile": {"type": "ruby", "language": "ruby"},
+            "composer.json": {"type": "php", "language": "php"},
         }
 
         for file_name, info in project_files.items():
             file_path = project_path / file_name
             if file_path.exists():
-                detected['files_found'].append(file_name)
-                detected['type'] = info['type']
-                detected['language'] = info['language']
+                detected["files_found"].append(file_name)
+                detected["type"] = info["type"]
+                detected["language"] = info["language"]
 
         # Detect frameworks and build tools
-        if (project_path / 'package.json').exists():
-            detected.update(self._analyze_package_json(project_path / 'package.json'))
+        if (project_path / "package.json").exists():
+            detected.update(self._analyze_package_json(project_path / "package.json"))
 
         return detected
 
@@ -302,7 +292,7 @@ class SystemManager:
         import json
 
         try:
-            with open(package_json_path, encoding='utf-8') as f:
+            with open(package_json_path, encoding="utf-8") as f:
                 package_data = json.load(f)
 
             frameworks = []
@@ -310,19 +300,19 @@ class SystemManager:
 
             # Check dependencies and devDependencies
             all_deps = {}
-            all_deps.update(package_data.get('dependencies', {}))
-            all_deps.update(package_data.get('devDependencies', {}))
+            all_deps.update(package_data.get("dependencies", {}))
+            all_deps.update(package_data.get("devDependencies", {}))
 
             # Detect frameworks
             framework_indicators = {
-                'react': ['react', '@types/react'],
-                'vue': ['vue', '@vue/cli'],
-                'angular': ['@angular/core', '@angular/cli'],
-                'svelte': ['svelte'],
-                'nextjs': ['next'],
-                'nuxtjs': ['nuxt'],
-                'express': ['express'],
-                'fastify': ['fastify'],
+                "react": ["react", "@types/react"],
+                "vue": ["vue", "@vue/cli"],
+                "angular": ["@angular/core", "@angular/cli"],
+                "svelte": ["svelte"],
+                "nextjs": ["next"],
+                "nuxtjs": ["nuxt"],
+                "express": ["express"],
+                "fastify": ["fastify"],
             }
 
             for framework, indicators in framework_indicators.items():
@@ -331,11 +321,11 @@ class SystemManager:
 
             # Detect build tools
             build_tool_indicators = {
-                'webpack': ['webpack'],
-                'vite': ['vite'],
-                'rollup': ['rollup'],
-                'parcel': ['parcel'],
-                'typescript': ['typescript', '@types/node'],
+                "webpack": ["webpack"],
+                "vite": ["vite"],
+                "rollup": ["rollup"],
+                "parcel": ["parcel"],
+                "typescript": ["typescript", "@types/node"],
             }
 
             for tool, indicators in build_tool_indicators.items():
@@ -343,15 +333,15 @@ class SystemManager:
                     build_tools.append(tool)
 
             return {
-                'frameworks': frameworks,
-                'build_tools': build_tools,
-                'has_scripts': bool(package_data.get('scripts')),
-                'scripts': list(package_data.get('scripts', {}).keys()),
+                "frameworks": frameworks,
+                "build_tools": build_tools,
+                "has_scripts": bool(package_data.get("scripts")),
+                "scripts": list(package_data.get("scripts", {}).keys()),
             }
 
         except Exception as e:
             logger.error("Error analyzing package.json: %s", e)
-            return {'frameworks': [], 'build_tools': []}
+            return {"frameworks": [], "build_tools": []}
 
     def should_create_package_json(self, config) -> bool:
         """

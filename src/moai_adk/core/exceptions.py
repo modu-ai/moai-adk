@@ -25,5 +25,7 @@ class GitModeException(Exception):
     def __init__(self, mode: str, supported_modes: list):
         self.mode = mode
         self.supported_modes = supported_modes
-        message = f"지원하지 않는 Git 모드입니다: {mode}. 지원되는 모드: {supported_modes}"
+        message = (
+            f"지원하지 않는 Git 모드입니다: {mode}. 지원되는 모드: {supported_modes}"
+        )
         super().__init__(message)

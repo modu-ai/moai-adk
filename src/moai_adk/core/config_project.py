@@ -37,7 +37,7 @@ class ProjectConfigManager:
         Returns:
             bool: True if config file was created successfully
         """
-        if config_path.exists() and not getattr(config, 'force_overwrite', False):
+        if config_path.exists() and not getattr(config, "force_overwrite", False):
             # keep existing config
             return True
 
@@ -48,7 +48,7 @@ class ProjectConfigManager:
             config_path.parent.mkdir(parents=True, exist_ok=True)
 
             # Write config file
-            with open(config_path, 'w', encoding='utf-8') as f:
+            with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(config_data, f, indent=2)
 
             logger.info(f"Created MoAI config at {config_path}")
@@ -65,10 +65,10 @@ class ProjectConfigManager:
             "created": datetime.now().isoformat(),
             "constitution_version": "2.1",
             "project": {
-                "name": getattr(config, 'name', 'project'),
-                "path": str(getattr(config, 'project_path', self.project_dir)),
-                "template": getattr(config, 'template', 'standard'),
-                "mode": self._mode
+                "name": getattr(config, "name", "project"),
+                "path": str(getattr(config, "project_path", self.project_dir)),
+                "template": getattr(config, "template", "standard"),
+                "mode": self._mode,
             },
             "git_strategy": {
                 "personal": {
@@ -76,48 +76,48 @@ class ProjectConfigManager:
                     "auto_pr": False,
                     "develop_branch": "main",
                     "feature_prefix": "feature/",
-                    "use_gitflow": False
+                    "use_gitflow": False,
                 },
                 "team": {
                     "auto_commit": False,
                     "auto_pr": True,
                     "develop_branch": "develop",
                     "feature_prefix": "feature/SPEC-",
-                    "use_gitflow": True
-                }
+                    "use_gitflow": True,
+                },
             },
             "workflows": {
                 "moai:0-project": {
                     "enabled": True,
                     "description": "프로젝트 초기화",
-                    "dependencies": []
+                    "dependencies": [],
                 },
                 "moai:1-spec": {
                     "enabled": True,
                     "description": "SPEC 명세 작성",
-                    "dependencies": ["moai:0-project"]
+                    "dependencies": ["moai:0-project"],
                 },
                 "moai:2-build": {
                     "enabled": True,
                     "description": "TDD 구현",
-                    "dependencies": ["moai:1-spec"]
+                    "dependencies": ["moai:1-spec"],
                 },
                 "moai:3-sync": {
                     "enabled": True,
                     "description": "문서 동기화",
-                    "dependencies": ["moai:2-build"]
-                }
+                    "dependencies": ["moai:2-build"],
+                },
             },
             "created_at": datetime.now().isoformat(),
-            "moai_adk_version": get_version()
+            "moai_adk_version": get_version(),
         }
 
         # Runtime-specific configuration
-        if hasattr(config, 'runtime') and config.runtime:
-            runtime_name = getattr(config.runtime, 'name', 'python')
+        if hasattr(config, "runtime") and config.runtime:
+            runtime_name = getattr(config.runtime, "name", "python")
             moai_config["runtime"] = {
                 "language": runtime_name,
-                "version": getattr(config.runtime, 'version', 'latest')
+                "version": getattr(config.runtime, "version", "latest"),
             }
 
         return moai_config
@@ -137,9 +137,9 @@ class ProjectConfigManager:
     def create_package_json(self, project_path: Path, config: Config) -> Path:
         """Create package.json if applicable"""
         # Check if this is a Node.js project
-        if hasattr(config, 'runtime') and config.runtime:
-            runtime_name = getattr(config.runtime, 'name', 'python')
-            if runtime_name not in ['javascript', 'typescript', 'node']:
+        if hasattr(config, "runtime") and config.runtime:
+            runtime_name = getattr(config.runtime, "name", "python")
+            if runtime_name not in ["javascript", "typescript", "node"]:
                 return None
 
         package_path = project_path / "package.json"
@@ -150,7 +150,7 @@ class ProjectConfigManager:
 
         try:
             package_data = {
-                "name": getattr(config, 'name', 'moai-project'),
+                "name": getattr(config, "name", "moai-project"),
                 "version": "0.1.0",
                 "description": f"MoAI-ADK project: {getattr(config, 'name', 'project')}",
                 "private": True,
@@ -159,28 +159,30 @@ class ProjectConfigManager:
                     "build": "npm run compile",
                     "dev": "npm run watch",
                     "lint": "eslint .",
-                    "format": "prettier --write ."
+                    "format": "prettier --write .",
                 },
                 "devDependencies": {
                     "jest": "^29.0.0",
                     "eslint": "^8.0.0",
-                    "prettier": "^3.0.0"
+                    "prettier": "^3.0.0",
                 },
                 "keywords": ["moai-adk", "development"],
                 "author": "MoAI-ADK",
-                "license": "MIT"
+                "license": "MIT",
             }
 
             # TypeScript-specific dependencies
-            if runtime_name == 'typescript':
-                package_data["devDependencies"].update({
-                    "typescript": "^5.0.0",
-                    "@types/node": "^20.0.0",
-                    "@types/jest": "^29.0.0"
-                })
+            if runtime_name == "typescript":
+                package_data["devDependencies"].update(
+                    {
+                        "typescript": "^5.0.0",
+                        "@types/node": "^20.0.0",
+                        "@types/jest": "^29.0.0",
+                    }
+                )
                 package_data["scripts"]["compile"] = "tsc"
 
-            with open(package_path, 'w', encoding='utf-8') as f:
+            with open(package_path, "w", encoding="utf-8") as f:
                 json.dump(package_data, f, indent=2)
 
             logger.info(f"Created package.json at {package_path}")
@@ -209,7 +211,7 @@ class ProjectConfigManager:
                     cursor = conn.cursor()
 
                     # 기본 테이블 생성
-                    cursor.execute('''
+                    cursor.execute("""
                         CREATE TABLE tags (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
                             category TEXT NOT NULL,
@@ -220,17 +222,17 @@ class ProjectConfigManager:
                             created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                             updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                         )
-                    ''')
+                    """)
 
-                    cursor.execute('''
+                    cursor.execute("""
                         CREATE TABLE statistics (
                             key TEXT PRIMARY KEY,
                             value TEXT NOT NULL,
                             updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                         )
-                    ''')
+                    """)
 
-                    cursor.execute('''
+                    cursor.execute("""
                         CREATE TABLE tag_references (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
                             source_tag_id INTEGER NOT NULL,
@@ -240,17 +242,26 @@ class ProjectConfigManager:
                             FOREIGN KEY (source_tag_id) REFERENCES tags (id),
                             FOREIGN KEY (target_tag_id) REFERENCES tags (id)
                         )
-                    ''')
+                    """)
 
                     # 초기 통계 데이터
-                    cursor.execute("INSERT INTO statistics (key, value) VALUES ('version', '1.0.0')")
-                    cursor.execute("INSERT INTO statistics (key, value) VALUES ('total_tags', '0')")
-                    cursor.execute("INSERT INTO statistics (key, value) VALUES ('updated', ?)",(datetime.now().isoformat(),))
+                    cursor.execute(
+                        "INSERT INTO statistics (key, value) VALUES ('version', '1.0.0')"
+                    )
+                    cursor.execute(
+                        "INSERT INTO statistics (key, value) VALUES ('total_tags', '0')"
+                    )
+                    cursor.execute(
+                        "INSERT INTO statistics (key, value) VALUES ('updated', ?)",
+                        (datetime.now().isoformat(),),
+                    )
 
                     # 인덱스 생성
-                    cursor.execute('CREATE INDEX idx_tags_category ON tags(category)')
-                    cursor.execute('CREATE INDEX idx_tags_identifier ON tags(identifier)')
-                    cursor.execute('CREATE INDEX idx_tags_file ON tags(file_path)')
+                    cursor.execute("CREATE INDEX idx_tags_category ON tags(category)")
+                    cursor.execute(
+                        "CREATE INDEX idx_tags_identifier ON tags(identifier)"
+                    )
+                    cursor.execute("CREATE INDEX idx_tags_file ON tags(file_path)")
 
                     conn.commit()
                     conn.close()
@@ -272,8 +283,8 @@ class ProjectConfigManager:
                 initial_report = f"""# MoAI-ADK Sync Report
 
 ## Project Information
-- **Project Name**: {getattr(config, 'name', 'project')}
-- **Created**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+- **Project Name**: {getattr(config, "name", "project")}
+- **Created**: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 - **MoAI Version**: {get_version()}
 
 ## Sync Status
@@ -287,7 +298,7 @@ class ProjectConfigManager:
 3. Execute `/moai:3-sync` to update this report
 """
 
-                with open(sync_report_path, 'w', encoding='utf-8') as f:
+                with open(sync_report_path, "w", encoding="utf-8") as f:
                     f.write(initial_report)
 
                 created_files.append(sync_report_path)
@@ -315,7 +326,7 @@ class ProjectConfigManager:
                 "governance": {
                     "decision_making": "consensus",
                     "review_required": ["SPEC", "ADR"],
-                    "approval_threshold": 1
+                    "approval_threshold": 1,
                 },
                 "policies": {
                     "trust_principles": {
@@ -323,25 +334,25 @@ class ProjectConfigManager:
                         "readable_code": True,
                         "unified_architecture": True,
                         "secured_development": True,
-                        "trackable_changes": True
+                        "trackable_changes": True,
                     },
                     "code_standards": {
                         "max_function_lines": 50,
                         "max_file_lines": 300,
                         "max_parameters": 5,
-                        "max_complexity": 10
-                    }
+                        "max_complexity": 10,
+                    },
                 },
                 "workflows": {
                     "spec_first": True,
                     "tdd_required": True,
-                    "documentation_sync": True
+                    "documentation_sync": True,
                 },
                 "created": datetime.now().isoformat(),
-                "moai_version": get_version()
+                "moai_version": get_version(),
             }
 
-            with open(config_path, 'w', encoding='utf-8') as f:
+            with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(steering_config, f, indent=2)
 
             logger.info(f"Created steering config at {config_path}")

@@ -35,7 +35,7 @@ class FileManager:
         source_dir: Path,
         target_dir: Path,
         pattern: str,
-        preserve_permissions: bool = False
+        preserve_permissions: bool = False,
     ) -> list[Path]:
         """
         Copy template files matching pattern with security validation.
@@ -63,7 +63,9 @@ class FileManager:
 
                 # Security validation
                 target_file = target_dir / source_file.name
-                if not self.security_manager.validate_file_creation(target_file, target_dir):
+                if not self.security_manager.validate_file_creation(
+                    target_file, target_dir
+                ):
                     logger.error("Security validation failed for file: %s", target_file)
                     continue
 
@@ -105,14 +107,14 @@ class FileManager:
             return ""
         except Exception as e:
             logger.error("Error rendering template %s: %s", template_path, e)
-            return template_content if 'template_content' in locals() else ""
+            return template_content if "template_content" in locals() else ""
 
     def copy_and_render_template(
         self,
         source_path: Path,
         target_path: Path,
         context: dict[str, Any],
-        create_dirs: bool = True
+        create_dirs: bool = True,
     ) -> bool:
         """
         Copy and render a single template file.
@@ -190,14 +192,16 @@ class FileManager:
 
             if source_file.exists():
                 # Security validation
-                if not self.security_manager.validate_file_creation(target_file, target_dir):
+                if not self.security_manager.validate_file_creation(
+                    target_file, target_dir
+                ):
                     logger.error("Security validation failed for hook: %s", hook_name)
                     continue
 
                 shutil.copy2(source_file, target_file)
 
                 # Set executable permissions for Python files
-                if hook_name.endswith('.py'):
+                if hook_name.endswith(".py"):
                     target_file.chmod(0o755)
 
                 hook_files.append(target_file)
@@ -240,8 +244,12 @@ class FileManager:
 
             if source_file.exists():
                 # Security validation
-                if not self.security_manager.validate_file_creation(target_file, target_dir):
-                    logger.error("Security validation failed for script: %s", script_name)
+                if not self.security_manager.validate_file_creation(
+                    target_file, target_dir
+                ):
+                    logger.error(
+                        "Security validation failed for script: %s", script_name
+                    )
                     continue
 
                 shutil.copy2(source_file, target_file)
@@ -254,9 +262,7 @@ class FileManager:
         return script_files
 
     def install_output_styles(
-        self,
-        target_dir: Path,
-        context: dict[str, Any]
+        self, target_dir: Path, context: dict[str, Any]
     ) -> list[Path]:
         """
         Install MoAI-ADK output styles with template rendering.
@@ -273,16 +279,18 @@ class FileManager:
         template_styles_dir = self.template_dir / ".claude" / "output-styles"
 
         if not template_styles_dir.exists():
-            logger.warning("Output styles template directory not found: %s", template_styles_dir)
+            logger.warning(
+                "Output styles template directory not found: %s", template_styles_dir
+            )
             return installed_files
 
         # Style files to install
         style_files = [
-            "expert.md",      # 전문가용 - 간결하고 효율적
-            "beginner.md",    # 초보자용 - 상세한 설명
-            "study.md",       # 심화학습용 - 깊이 있는 원리 설명
-            "mentor.md",      # 멘토링용 - 1:1 페어 프로그래밍 시뮬레이션
-            "audit.md",       # 품질 검증용 - 지속적 감사
+            "expert.md",  # 전문가용 - 간결하고 효율적
+            "beginner.md",  # 초보자용 - 상세한 설명
+            "study.md",  # 심화학습용 - 깊이 있는 원리 설명
+            "mentor.md",  # 멘토링용 - 1:1 페어 프로그래밍 시뮬레이션
+            "audit.md",  # 품질 검증용 - 지속적 감사
         ]
 
         for style_file in style_files:
@@ -294,7 +302,9 @@ class FileManager:
             target_file = target_dir / style_file
 
             # Security validation
-            if not self.security_manager.validate_file_creation(target_file, target_dir):
+            if not self.security_manager.validate_file_creation(
+                target_file, target_dir
+            ):
                 logger.error("Security validation failed for style: %s", style_file)
                 continue
 
@@ -394,7 +404,7 @@ vendor/
                 logger.error("Security validation failed for .gitignore")
                 return False
 
-            with open(gitignore_path, 'w', encoding='utf-8') as f:
+            with open(gitignore_path, "w", encoding="utf-8") as f:
                 f.write(gitignore_content)
 
             logger.info("Created .gitignore file: %s", gitignore_path)

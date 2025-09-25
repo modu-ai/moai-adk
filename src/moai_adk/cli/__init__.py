@@ -21,8 +21,8 @@ from .wizard import InteractiveWizard
 CLICommands = cli
 
 __all__ = [
-    'CLICommands',  # Backward compatibility
-    'InteractiveWizard',
-    'cli',
-    'main'
+    "CLICommands",  # Backward compatibility
+    "InteractiveWizard",
+    "cli",
+    "main",
 ]

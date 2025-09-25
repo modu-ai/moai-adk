@@ -10,7 +10,11 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Any
 
-from moai_adk.core.tag_system.report_generator import TagReportGenerator, ReportFormat, TraceabilityReport
+from moai_adk.core.tag_system.report_generator import (
+    TagReportGenerator,
+    ReportFormat,
+    TraceabilityReport,
+)
 from moai_adk.core.tag_system.parser import TagMatch
 from moai_adk.core.tag_system.validator import ChainValidationResult
 
@@ -26,6 +30,7 @@ class TestTagReportGenerator:
     def teardown_method(self):
         """각 테스트 후 정리"""
         import shutil
+
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_should_generate_tag_chain_matrix_report(self):
@@ -36,10 +41,22 @@ class TestTagReportGenerator:
         """
         # GIVEN: Primary Chain 데이터
         chain_data = [
-            TagMatch(category="REQ", identifier="USER-AUTH-001", description="사용자 인증"),
-            TagMatch(category="DESIGN", identifier="JWT-DESIGN-001", description="JWT 토큰 설계"),
-            TagMatch(category="TASK", identifier="API-LOGIN-001", description="로그인 API 구현"),
-            TagMatch(category="TEST", identifier="UNIT-AUTH-001", description="인증 테스트")
+            TagMatch(
+                category="REQ", identifier="USER-AUTH-001", description="사용자 인증"
+            ),
+            TagMatch(
+                category="DESIGN",
+                identifier="JWT-DESIGN-001",
+                description="JWT 토큰 설계",
+            ),
+            TagMatch(
+                category="TASK",
+                identifier="API-LOGIN-001",
+                description="로그인 API 구현",
+            ),
+            TagMatch(
+                category="TEST", identifier="UNIT-AUTH-001", description="인증 테스트"
+            ),
         ]
 
         # WHEN: 체인 매트릭스 리포트 생성
@@ -69,10 +86,22 @@ class TestTagReportGenerator:
         """
         # GIVEN: DESIGN이 누락된 불완전한 체인
         incomplete_chain = [
-            TagMatch(category="REQ", identifier="USER-PAYMENT-001", description="결제 기능 요구사항"),
+            TagMatch(
+                category="REQ",
+                identifier="USER-PAYMENT-001",
+                description="결제 기능 요구사항",
+            ),
             # DESIGN 누락
-            TagMatch(category="TASK", identifier="API-PAYMENT-001", description="결제 API 구현"),
-            TagMatch(category="TEST", identifier="UNIT-PAYMENT-001", description="결제 테스트")
+            TagMatch(
+                category="TASK",
+                identifier="API-PAYMENT-001",
+                description="결제 API 구현",
+            ),
+            TagMatch(
+                category="TEST",
+                identifier="UNIT-PAYMENT-001",
+                description="결제 테스트",
+            ),
         ]
 
         # WHEN: 누락 분석 실행
@@ -82,7 +111,10 @@ class TestTagReportGenerator:
         assert len(missing_report["missing_links"]) == 1
         missing_link = missing_report["missing_links"][0]
         assert missing_link["category"] == "DESIGN"
-        assert missing_link["expected_between"] == ["USER-PAYMENT-001", "API-PAYMENT-001"]
+        assert missing_link["expected_between"] == [
+            "USER-PAYMENT-001",
+            "API-PAYMENT-001",
+        ]
 
     def test_should_generate_markdown_traceability_report(self):
         """
@@ -92,17 +124,29 @@ class TestTagReportGenerator:
         """
         # GIVEN: 완전한 TAG 체인 데이터
         tag_data = [
-            TagMatch(category="REQ", identifier="USER-SEARCH-001", description="검색 기능"),
-            TagMatch(category="DESIGN", identifier="ELASTIC-DESIGN-001", description="Elasticsearch 설계"),
-            TagMatch(category="TASK", identifier="API-SEARCH-001", description="검색 API 구현"),
-            TagMatch(category="TEST", identifier="E2E-SEARCH-001", description="검색 E2E 테스트")
+            TagMatch(
+                category="REQ", identifier="USER-SEARCH-001", description="검색 기능"
+            ),
+            TagMatch(
+                category="DESIGN",
+                identifier="ELASTIC-DESIGN-001",
+                description="Elasticsearch 설계",
+            ),
+            TagMatch(
+                category="TASK",
+                identifier="API-SEARCH-001",
+                description="검색 API 구현",
+            ),
+            TagMatch(
+                category="TEST",
+                identifier="E2E-SEARCH-001",
+                description="검색 E2E 테스트",
+            ),
         ]
 
         # WHEN: Markdown 리포트 생성
         markdown_content = self.generator.generate_report(
-            tags=tag_data,
-            format=ReportFormat.MARKDOWN,
-            title="TAG 추적성 리포트"
+            tags=tag_data, format=ReportFormat.MARKDOWN, title="TAG 추적성 리포트"
         )
 
         # THEN: 올바른 Markdown 구조
@@ -122,15 +166,21 @@ class TestTagReportGenerator:
         """
         # GIVEN: TAG 데이터
         tag_data = [
-            TagMatch(category="REQ", identifier="USER-NOTIFICATION-001", description="알림 기능"),
-            TagMatch(category="DESIGN", identifier="PUSH-DESIGN-001", description="푸시 알림 설계"),
+            TagMatch(
+                category="REQ",
+                identifier="USER-NOTIFICATION-001",
+                description="알림 기능",
+            ),
+            TagMatch(
+                category="DESIGN",
+                identifier="PUSH-DESIGN-001",
+                description="푸시 알림 설계",
+            ),
         ]
 
         # WHEN: HTML 리포트 생성
         html_content = self.generator.generate_report(
-            tags=tag_data,
-            format=ReportFormat.HTML,
-            title="HTML 추적성 리포트"
+            tags=tag_data, format=ReportFormat.HTML, title="HTML 추적성 리포트"
         )
 
         # THEN: 올바른 HTML 구조
@@ -155,14 +205,15 @@ class TestTagReportGenerator:
             TagMatch(category="DESIGN", identifier="AUTH-DESIGN-001"),
             TagMatch(category="TASK", identifier="API-AUTH-001"),
             TagMatch(category="TEST", identifier="UNIT-AUTH-001"),
-
             # 부분 구현된 체인 (50% - TASK, TEST 누락)
             TagMatch(category="REQ", identifier="USER-PROFILE-001"),
             TagMatch(category="DESIGN", identifier="PROFILE-DESIGN-001"),
         ]
 
         # WHEN: 커버리지 계산
-        coverage_report = self.generator.calculate_implementation_coverage(mixed_implementation)
+        coverage_report = self.generator.calculate_implementation_coverage(
+            mixed_implementation
+        )
 
         # THEN: 정확한 커버리지 계산
         assert coverage_report["total_chains"] == 2
@@ -183,15 +234,17 @@ class TestTagReportGenerator:
         """
         # GIVEN: 리포트 콘텐츠
         tag_data = [
-            TagMatch(category="REQ", identifier="USER-EXPORT-001", description="내보내기 기능")
+            TagMatch(
+                category="REQ",
+                identifier="USER-EXPORT-001",
+                description="내보내기 기능",
+            )
         ]
 
         # WHEN: Markdown 파일로 내보내기
         output_file = self.temp_dir / "traceability_report.md"
         self.generator.export_to_file(
-            tags=tag_data,
-            output_path=output_file,
-            format=ReportFormat.MARKDOWN
+            tags=tag_data, output_path=output_file, format=ReportFormat.MARKDOWN
         )
 
         # THEN: 파일이 올바르게 생성됨
@@ -212,14 +265,15 @@ class TestTagReportGenerator:
 
         # WHEN: 빈 데이터로 리포트 생성
         empty_report = self.generator.generate_report(
-            tags=empty_tags,
-            format=ReportFormat.MARKDOWN,
-            title="빈 데이터 리포트"
+            tags=empty_tags, format=ReportFormat.MARKDOWN, title="빈 데이터 리포트"
         )
 
         # THEN: 오류 없이 기본 구조 생성
         assert "# 빈 데이터 리포트" in empty_report
-        assert "TAG가 발견되지 않았습니다" in empty_report or "No tags found" in empty_report
+        assert (
+            "TAG가 발견되지 않았습니다" in empty_report
+            or "No tags found" in empty_report
+        )
 
     def test_should_use_custom_jinja2_templates(self):
         """
@@ -232,7 +286,8 @@ class TestTagReportGenerator:
         custom_template_dir.mkdir()
 
         custom_markdown_template = custom_template_dir / "custom_report.md.j2"
-        custom_markdown_template.write_text("""
+        custom_markdown_template.write_text(
+            """
 # 커스텀 {{ title }}
 
 {% for tag in tags %}
@@ -240,23 +295,25 @@ class TestTagReportGenerator:
 {% endfor %}
 
 Generated on: {{ timestamp }}
-        """.strip())
+        """.strip()
+        )
 
         # WHEN: 커스텀 템플릿으로 리포트 생성
         custom_generator = TagReportGenerator(
-            output_dir=self.temp_dir,
-            template_dir=custom_template_dir
+            output_dir=self.temp_dir, template_dir=custom_template_dir
         )
 
         tag_data = [
-            TagMatch(category="REQ", identifier="USER-CUSTOM-001", description="커스텀 기능")
+            TagMatch(
+                category="REQ", identifier="USER-CUSTOM-001", description="커스텀 기능"
+            )
         ]
 
         custom_report = custom_generator.generate_report(
             tags=tag_data,
             format=ReportFormat.MARKDOWN,
             template_name="custom_report.md.j2",
-            title="TAG 리포트"
+            title="TAG 리포트",
         )
 
         # THEN: 커스텀 템플릿 적용됨
@@ -277,7 +334,7 @@ Generated on: {{ timestamp }}
             TagMatch(category="DESIGN", identifier="ARCH-STATS-001"),
             TagMatch(category="TASK", identifier="IMPL-STATS-001"),
             TagMatch(category="FEATURE", identifier="SYSTEM-STATS-001"),
-            TagMatch(category="PERF", identifier="API-500MS")
+            TagMatch(category="PERF", identifier="API-500MS"),
         ]
 
         # WHEN: 요약 통계 생성

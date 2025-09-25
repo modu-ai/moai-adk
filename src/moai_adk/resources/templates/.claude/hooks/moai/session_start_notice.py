@@ -49,7 +49,9 @@ class SessionNotifier:
         if not specs_dir.exists():
             return {"total": 0, "completed": 0}
 
-        spec_dirs = [d for d in specs_dir.iterdir() if d.is_dir() and d.name.startswith("SPEC-")]
+        spec_dirs = [
+            d for d in specs_dir.iterdir() if d.is_dir() and d.name.startswith("SPEC-")
+        ]
         total_specs = len(spec_dirs)
 
         # Simple heuristic: completed if has both spec.md and plan.md
@@ -82,10 +84,7 @@ class SessionNotifier:
             return {"status": "not_initialized", "violations": []}
 
         # Check for critical missing files
-        critical_files = [
-            ".moai/memory/development-guide.md",
-            "CLAUDE.md"
-        ]
+        critical_files = [".moai/memory/development-guide.md", "CLAUDE.md"]
 
         violations = []
         for file_path in critical_files:
@@ -94,7 +93,7 @@ class SessionNotifier:
 
         return {
             "status": "ok" if not violations else "violations_found",
-            "violations": violations
+            "violations": violations,
         }
 
     def get_moai_version(self) -> str:
@@ -152,12 +151,19 @@ def main():
 
             # Determine if git has uncommitted changes
             import subprocess
+
             git_status = ""
             try:
-                result = subprocess.run(["git", "status", "--porcelain"],
-                                      capture_output=True, text=True, timeout=2)
+                result = subprocess.run(
+                    ["git", "status", "--porcelain"],
+                    capture_output=True,
+                    text=True,
+                    timeout=2,
+                )
                 if result.returncode == 0:
-                    changes = len([line for line in result.stdout.strip().split('\n') if line])
+                    changes = len(
+                        [line for line in result.stdout.strip().split("\n") if line]
+                    )
                     if changes > 0:
                         git_status = f" ({changes} 변경사항)"
             except:
@@ -166,11 +172,17 @@ def main():
             print(f"🗿 MoAI-ADK 프로젝트: {status['project_name']}")
             branch_info = get_current_branch()
             if git_status:
-                print(f"🌿 현재 브랜치: {branch_info} ({get_latest_commit()[:7]} {get_commit_message()[:50]}...)")
+                print(
+                    f"🌿 현재 브랜치: {branch_info} ({get_latest_commit()[:7]} {get_commit_message()[:50]}...)"
+                )
                 print(f"📝 변경사항: {changes}개 파일")
             else:
-                print(f"🌿 현재 브랜치: {branch_info} ({get_latest_commit()[:7]} {get_commit_message()[:50]}...)")
-            print(f"📝 SPEC 진행률: {spec_progress['completed']}/{spec_progress['total']} (미완료 {spec_progress['total'] - spec_progress['completed']}개)")
+                print(
+                    f"🌿 현재 브랜치: {branch_info} ({get_latest_commit()[:7]} {get_commit_message()[:50]}...)"
+                )
+            print(
+                f"📝 SPEC 진행률: {spec_progress['completed']}/{spec_progress['total']} (미완료 {spec_progress['total'] - spec_progress['completed']}개)"
+            )
             print("✅ 통합 체크포인트 시스템 사용 가능")
 
         else:
@@ -185,8 +197,13 @@ def get_current_branch() -> str:
     """Get current git branch name"""
     try:
         import subprocess
-        result = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"],
-                              capture_output=True, text=True, timeout=2)
+
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
         if result.returncode == 0:
             return result.stdout.strip()
     except:
@@ -198,8 +215,10 @@ def get_latest_commit() -> str:
     """Get latest commit hash"""
     try:
         import subprocess
-        result = subprocess.run(["git", "rev-parse", "HEAD"],
-                              capture_output=True, text=True, timeout=2)
+
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"], capture_output=True, text=True, timeout=2
+        )
         if result.returncode == 0:
             return result.stdout.strip()
     except:
@@ -211,8 +230,13 @@ def get_commit_message() -> str:
     """Get latest commit message"""
     try:
         import subprocess
-        result = subprocess.run(["git", "log", "-1", "--pretty=%s"],
-                              capture_output=True, text=True, timeout=2)
+
+        result = subprocess.run(
+            ["git", "log", "-1", "--pretty=%s"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
         if result.returncode == 0:
             return result.stdout.strip()
     except:

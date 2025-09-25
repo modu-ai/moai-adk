@@ -107,7 +107,7 @@ class TestTagParser:
             "@DESIGN:JWT-TOKEN-001",
             "@TASK:API-LOGIN-001",
             "@PERF:API-500MS",
-            "@SEC:XSS-HIGH"
+            "@SEC:XSS-HIGH",
         ]
 
         # WHEN & THEN: 유효성 검사 (모두 통과해야 함)

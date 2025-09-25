@@ -6,7 +6,9 @@ import pytest
 from moai_adk.core.template_engine import TemplateEngine
 
 
-def test_template_engine_uses_package_fallback_when_project_templates_missing(tmp_path: Path):
+def test_template_engine_uses_package_fallback_when_project_templates_missing(
+    tmp_path: Path,
+):
     project_moai = tmp_path / ".moai"
     project_moai.mkdir(parents=True)
     # intentionally do NOT create _templates
@@ -55,4 +57,3 @@ def test_project_override_takes_precedence_over_package(tmp_path: Path):
     content = target.read_text(encoding="utf-8").strip()
     assert content.startswith("# LOCAL TEMPLATE:")
     assert "OVR-001" in content and "Local Override" in content
-

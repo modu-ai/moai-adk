@@ -43,8 +43,10 @@ class TestClaudeCodeApiCompatibility:
         # Test session_start_notice hook interface
         try:
             import session_start_notice
-            assert hasattr(session_start_notice, 'SessionNotifier'), \
+
+            assert hasattr(session_start_notice, "SessionNotifier"), (
                 "Should have SessionNotifier class for Claude Code integration"
+            )
 
             notifier = session_start_notice.SessionNotifier(self.project_root)
             assert notifier is not None, "Should initialize with project_root"
@@ -59,10 +61,12 @@ class TestClaudeCodeApiCompatibility:
         """
         try:
             import pre_write_guard
-            assert callable(getattr(pre_write_guard, 'check_file_safety', None)) or \
-                   callable(getattr(pre_write_guard, 'main', None)) or \
-                   callable(getattr(pre_write_guard, 'validate', None)), \
-                "Should have callable function for Claude Code hook system"
+
+            assert (
+                callable(getattr(pre_write_guard, "check_file_safety", None))
+                or callable(getattr(pre_write_guard, "main", None))
+                or callable(getattr(pre_write_guard, "validate", None))
+            ), "Should have callable function for Claude Code hook system"
         except ImportError:
             pytest.skip("pre_write_guard.py not found")
 
@@ -75,8 +79,10 @@ class TestClaudeCodeApiCompatibility:
         # This will fail initially as integration not done
         try:
             import file_monitor
-            assert hasattr(file_monitor, 'FileMonitor'), \
+
+            assert hasattr(file_monitor, "FileMonitor"), (
                 "Should have FileMonitor class after integration"
+            )
 
             monitor = file_monitor.FileMonitor(self.project_root)
             assert monitor is not None, "Should initialize file monitor"
@@ -100,18 +106,24 @@ class TestAgentCommunicationCompatibility:
         """
         try:
             import session_start_notice
+
             notifier = session_start_notice.SessionNotifier(self.project_root)
 
-            with patch.object(Path, 'exists', return_value=True), \
-                 patch('builtins.open', mock_open(read_data='{}')):
-
+            with (
+                patch.object(Path, "exists", return_value=True),
+                patch("builtins.open", mock_open(read_data="{}")),
+            ):
                 status = notifier.get_project_status()
-                assert isinstance(status, dict), "Should return dictionary for agent consumption"
+                assert isinstance(status, dict), (
+                    "Should return dictionary for agent consumption"
+                )
 
-                expected_keys = ['project_name', 'initialized', 'moai_version']
+                expected_keys = ["project_name", "initialized", "moai_version"]
                 for key in expected_keys:
                     if key not in status:
-                        pytest.skip(f"Agent communication key {key} not found - may be optimized out")
+                        pytest.skip(
+                            f"Agent communication key {key} not found - may be optimized out"
+                        )
         except ImportError:
             pytest.skip("session_start_notice.py not found")
 
@@ -135,14 +147,13 @@ class TestSettingsFileCompatibility:
         """
         mock_settings = {
             "defaultMode": "acceptEdits",
-            "overrides": {
-                ".claude/hooks/moai/pre_write_guard.py": "ask"
-            }
+            "overrides": {".claude/hooks/moai/pre_write_guard.py": "ask"},
         }
 
-        with patch.object(Path, 'exists', return_value=True), \
-             patch('builtins.open', mock_open(read_data=json.dumps(mock_settings))):
-
+        with (
+            patch.object(Path, "exists", return_value=True),
+            patch("builtins.open", mock_open(read_data=json.dumps(mock_settings))),
+        ):
             try:
                 with open(self.settings_file) as f:
                     settings = json.load(f)
@@ -166,16 +177,20 @@ class TestBackwardCompatibility:
         """
         try:
             import session_start_notice
+
             notifier = session_start_notice.SessionNotifier(self.project_root)
 
-            with patch.object(Path, 'exists', return_value=True), \
-                 patch('builtins.open', mock_open(read_data='{}')):
-
+            with (
+                patch.object(Path, "exists", return_value=True),
+                patch("builtins.open", mock_open(read_data="{}")),
+            ):
                 status = notifier.get_project_status()
-                pipeline_info_keys = ['initialized', 'pipeline_stage']
+                pipeline_info_keys = ["initialized", "pipeline_stage"]
                 for key in pipeline_info_keys:
                     if key in status:
-                        assert status[key] is not None, f"Pipeline info {key} should be available"
+                        assert status[key] is not None, (
+                            f"Pipeline info {key} should be available"
+                        )
         except ImportError:
             pytest.skip("session_start_notice.py not found")
 
@@ -187,15 +202,18 @@ class TestBackwardCompatibility:
         """
         try:
             import file_monitor
+
             monitor = file_monitor.FileMonitor(self.project_root)
-            assert hasattr(monitor, 'create_checkpoint') or \
-                   hasattr(monitor, 'git_checkpoint'), \
-                "Should maintain Git checkpoint capability"
+            assert hasattr(monitor, "create_checkpoint") or hasattr(
+                monitor, "git_checkpoint"
+            ), "Should maintain Git checkpoint capability"
         except ImportError:
             try:
                 import auto_checkpoint
-                assert hasattr(auto_checkpoint, 'create_checkpoint'), \
+
+                assert hasattr(auto_checkpoint, "create_checkpoint"), (
                     "Should maintain checkpoint functionality during transition"
+                )
             except ImportError:
                 pytest.skip("Neither file_monitor nor auto_checkpoint found")
 

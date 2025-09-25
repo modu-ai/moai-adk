@@ -41,7 +41,9 @@ class GitWorkflow:
         self.config = ProjectHelper.load_config(self.project_root)
         self.mode = self.config.get("mode", PERSONAL_MODE)
 
-    def create_feature_branch(self, feature_name: str, from_branch: str | None = None) -> str:
+    def create_feature_branch(
+        self, feature_name: str, from_branch: str | None = None
+    ) -> str:
         """기능 브랜치 생성"""
         try:
             if not self._is_valid_branch_name(feature_name):
@@ -68,7 +70,9 @@ class GitWorkflow:
         except GitCommandError as e:
             raise GitWorkflowError(f"브랜치 생성 실패: {e}")
 
-    def create_constitution_commit(self, message: str, files: list[str] | None = None) -> str:
+    def create_constitution_commit(
+        self, message: str, files: list[str] | None = None
+    ) -> str:
         """개발 가이드 기반 커밋 생성"""
         try:
             if not message.strip():
@@ -163,7 +167,7 @@ class GitWorkflow:
                 "has_uncommitted_changes": has_uncommitted,
                 "has_remote": self.git.has_remote(),
                 "mode": self.mode,
-                "clean_working_tree": self.git.is_clean_working_tree()
+                "clean_working_tree": self.git.is_clean_working_tree(),
             }
 
             return status
@@ -175,14 +179,18 @@ class GitWorkflow:
     def cleanup_merged_branches(self, dry_run: bool = True) -> list[str]:
         """병합된 브랜치 정리"""
         try:
-            result = self.git.run_command([
-                "git", "branch", "--merged", self._get_default_branch()
-            ])
+            result = self.git.run_command(
+                ["git", "branch", "--merged", self._get_default_branch()]
+            )
 
             merged_branches = []
             for line in result.stdout.splitlines():
                 branch = line.strip().lstrip("* ")
-                if branch and not branch.startswith("(") and branch != self._get_default_branch():
+                if (
+                    branch
+                    and not branch.startswith("(")
+                    and branch != self._get_default_branch()
+                ):
                     merged_branches.append(branch)
 
             if not dry_run:
@@ -215,7 +223,10 @@ class GitWorkflow:
             return message
 
         formatted = message.strip()
-        if not any(formatted.startswith(prefix) for prefix in ["🔧", "✨", "🐛", "📚", "🧪", "♻️"]):
+        if not any(
+            formatted.startswith(prefix)
+            for prefix in ["🔧", "✨", "🐛", "📚", "🧪", "♻️"]
+        ):
             if "feat" in message.lower() or "feature" in message.lower():
                 formatted = f"✨ {formatted}"
             elif "fix" in message.lower() or "bug" in message.lower():

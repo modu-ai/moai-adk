@@ -46,14 +46,18 @@ class GuidelineValidator:
                     function_lines = node.end_lineno - node.lineno + 1
 
                     if function_lines > self.limits.MAX_FUNCTION_LINES:
-                        violations.append({
-                            'type': 'function_length',
-                            'function_name': node.name,
-                            'line_count': function_lines,
-                            'limit': self.limits.MAX_FUNCTION_LINES,
-                            'line_number': node.lineno,
-                            'severity': 'high' if function_lines > self.limits.MAX_FUNCTION_LINES * 1.5 else 'medium'
-                        })
+                        violations.append(
+                            {
+                                "type": "function_length",
+                                "function_name": node.name,
+                                "line_count": function_lines,
+                                "limit": self.limits.MAX_FUNCTION_LINES,
+                                "line_number": node.lineno,
+                                "severity": "high"
+                                if function_lines > self.limits.MAX_FUNCTION_LINES * 1.5
+                                else "medium",
+                            }
+                        )
 
         except Exception as e:
             logger.error(f"Error checking function length in {file_path}: {e}")
@@ -73,15 +77,17 @@ class GuidelineValidator:
         line_count = self.analyzer.count_file_lines(file_path)
 
         violation = {
-            'type': 'file_size',
-            'file_path': str(file_path),
-            'line_count': line_count,
-            'limit': self.limits.MAX_FILE_LINES,
-            'violation': line_count > self.limits.MAX_FILE_LINES
+            "type": "file_size",
+            "file_path": str(file_path),
+            "line_count": line_count,
+            "limit": self.limits.MAX_FILE_LINES,
+            "violation": line_count > self.limits.MAX_FILE_LINES,
         }
 
-        if violation['violation']:
-            violation['severity'] = 'critical' if line_count > self.limits.MAX_FILE_LINES * 2 else 'high'
+        if violation["violation"]:
+            violation["severity"] = (
+                "critical" if line_count > self.limits.MAX_FILE_LINES * 2 else "high"
+            )
 
         return violation
 
@@ -116,14 +122,18 @@ class GuidelineValidator:
                         param_count += 1
 
                     if param_count > self.limits.MAX_PARAMETERS:
-                        violations.append({
-                            'type': 'parameter_count',
-                            'function_name': node.name,
-                            'parameter_count': param_count,
-                            'limit': self.limits.MAX_PARAMETERS,
-                            'line_number': node.lineno,
-                            'severity': 'high' if param_count > self.limits.MAX_PARAMETERS * 1.5 else 'medium'
-                        })
+                        violations.append(
+                            {
+                                "type": "parameter_count",
+                                "function_name": node.name,
+                                "parameter_count": param_count,
+                                "limit": self.limits.MAX_PARAMETERS,
+                                "line_number": node.lineno,
+                                "severity": "high"
+                                if param_count > self.limits.MAX_PARAMETERS * 1.5
+                                else "medium",
+                            }
+                        )
 
         except Exception as e:
             logger.error(f"Error checking parameter count in {file_path}: {e}")
@@ -152,14 +162,18 @@ class GuidelineValidator:
                     complexity = self.analyzer.calculate_complexity(node)
 
                     if complexity > self.limits.MAX_COMPLEXITY:
-                        violations.append({
-                            'type': 'complexity',
-                            'function_name': node.name,
-                            'complexity': complexity,
-                            'limit': self.limits.MAX_COMPLEXITY,
-                            'line_number': node.lineno,
-                            'severity': 'critical' if complexity > self.limits.MAX_COMPLEXITY * 2 else 'high'
-                        })
+                        violations.append(
+                            {
+                                "type": "complexity",
+                                "function_name": node.name,
+                                "complexity": complexity,
+                                "limit": self.limits.MAX_COMPLEXITY,
+                                "line_number": node.lineno,
+                                "severity": "critical"
+                                if complexity > self.limits.MAX_COMPLEXITY * 2
+                                else "high",
+                            }
+                        )
 
         except Exception as e:
             logger.error(f"Error checking complexity in {file_path}: {e}")
@@ -179,7 +193,7 @@ class GuidelineValidator:
         try:
             # Check file size
             file_check = self.check_file_size(file_path)
-            if file_check['violation']:
+            if file_check["violation"]:
                 return False
 
             # Check function length

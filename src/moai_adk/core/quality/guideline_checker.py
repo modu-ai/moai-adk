@@ -27,11 +27,13 @@ class GuidelineChecker:
     Coordinates analysis, validation, and reporting across specialized modules.
     """
 
-    def __init__(self,
-                 project_path: Path,
-                 limits: GuidelineLimits | None = None,
-                 config: GuidelineConfig | None = None,
-                 config_file: Path | None = None):
+    def __init__(
+        self,
+        project_path: Path,
+        limits: GuidelineLimits | None = None,
+        config: GuidelineConfig | None = None,
+        config_file: Path | None = None,
+    ):
         """
         Initialize guideline checker.
 
@@ -65,7 +67,9 @@ class GuidelineChecker:
 
         logger.info(f"Initialized GuidelineChecker for {project_path}")
 
-    def scan_project(self, parallel: bool = True, max_workers: int | None = None) -> dict[str, list[dict[str, Any]]]:
+    def scan_project(
+        self, parallel: bool = True, max_workers: int | None = None
+    ) -> dict[str, list[dict[str, Any]]]:
         """
         Scan entire project for guideline violations.
 
@@ -89,13 +93,15 @@ class GuidelineChecker:
         else:
             return self._scan_files_sequential(python_files)
 
-    def _scan_files_sequential(self, python_files: list[Path]) -> dict[str, list[dict[str, Any]]]:
+    def _scan_files_sequential(
+        self, python_files: list[Path]
+    ) -> dict[str, list[dict[str, Any]]]:
         """Scan files sequentially."""
         all_violations = {
-            'file_size': [],
-            'function_length': [],
-            'parameter_count': [],
-            'complexity': []
+            "file_size": [],
+            "function_length": [],
+            "parameter_count": [],
+            "complexity": [],
         }
 
         for file_path in python_files:
@@ -105,17 +111,22 @@ class GuidelineChecker:
 
         return all_violations
 
-    def _scan_files_parallel(self, python_files: list[Path], max_workers: int | None) -> dict[str, list[dict[str, Any]]]:
+    def _scan_files_parallel(
+        self, python_files: list[Path], max_workers: int | None
+    ) -> dict[str, list[dict[str, Any]]]:
         """Scan files in parallel."""
         all_violations = {
-            'file_size': [],
-            'function_length': [],
-            'parameter_count': [],
-            'complexity': []
+            "file_size": [],
+            "function_length": [],
+            "parameter_count": [],
+            "complexity": [],
         }
 
         chunk_size = max(1, len(python_files) // (max_workers or 4))
-        file_chunks = [python_files[i:i + chunk_size] for i in range(0, len(python_files), chunk_size)]
+        file_chunks = [
+            python_files[i : i + chunk_size]
+            for i in range(0, len(python_files), chunk_size)
+        ]
 
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
             chunk_results = list(executor.map(self._scan_file_chunk, file_chunks))
@@ -126,13 +137,15 @@ class GuidelineChecker:
 
         return all_violations
 
-    def _scan_file_chunk(self, file_chunk: list[Path]) -> dict[str, list[dict[str, Any]]]:
+    def _scan_file_chunk(
+        self, file_chunk: list[Path]
+    ) -> dict[str, list[dict[str, Any]]]:
         """Scan a chunk of files."""
         chunk_violations = {
-            'file_size': [],
-            'function_length': [],
-            'parameter_count': [],
-            'complexity': []
+            "file_size": [],
+            "function_length": [],
+            "parameter_count": [],
+            "complexity": [],
         }
 
         for file_path in file_chunk:
@@ -145,35 +158,36 @@ class GuidelineChecker:
     def _scan_single_file(self, file_path: Path) -> dict[str, list[dict[str, Any]]]:
         """Scan a single file for all violation types."""
         violations = {
-            'file_size': [],
-            'function_length': [],
-            'parameter_count': [],
-            'complexity': []
+            "file_size": [],
+            "function_length": [],
+            "parameter_count": [],
+            "complexity": [],
         }
 
         try:
             # Check file size
-            if self.config.enabled_checks.get('file_size', True):
+            if self.config.enabled_checks.get("file_size", True):
                 file_violation = self.validator.check_file_size(file_path)
-                if file_violation['violation']:
-                    violations['file_size'].append(file_violation)
+                if file_violation["violation"]:
+                    violations["file_size"].append(file_violation)
 
             # Check function-level violations
-            if any(self.config.enabled_checks.get(check, True)
-                   for check in ['function_length', 'parameter_count', 'complexity']):
-
-                if self.config.enabled_checks.get('function_length', True):
-                    violations['function_length'].extend(
+            if any(
+                self.config.enabled_checks.get(check, True)
+                for check in ["function_length", "parameter_count", "complexity"]
+            ):
+                if self.config.enabled_checks.get("function_length", True):
+                    violations["function_length"].extend(
                         self.validator.check_function_length(file_path)
                     )
 
-                if self.config.enabled_checks.get('parameter_count', True):
-                    violations['parameter_count'].extend(
+                if self.config.enabled_checks.get("parameter_count", True):
+                    violations["parameter_count"].extend(
                         self.validator.check_parameter_count(file_path)
                     )
 
-                if self.config.enabled_checks.get('complexity', True):
-                    violations['complexity'].extend(
+                if self.config.enabled_checks.get("complexity", True):
+                    violations["complexity"].extend(
                         self.validator.check_complexity(file_path)
                     )
 
@@ -215,13 +229,15 @@ class GuidelineChecker:
     def get_cache_stats(self) -> dict[str, Any]:
         """Get cache performance statistics."""
         total_requests = self._cache_stats["hits"] + self._cache_stats["misses"]
-        hit_rate = self._cache_stats["hits"] / total_requests if total_requests > 0 else 0
+        hit_rate = (
+            self._cache_stats["hits"] / total_requests if total_requests > 0 else 0
+        )
 
         return {
             "hits": self._cache_stats["hits"],
             "misses": self._cache_stats["misses"],
             "hit_rate": round(hit_rate * 100, 2),
-            "total_requests": total_requests
+            "total_requests": total_requests,
         }
 
     def clear_cache(self) -> None:

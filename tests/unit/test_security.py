@@ -15,7 +15,7 @@ from pathlib import Path
 from unittest.mock import patch, mock_open
 
 # Add project root to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 try:
     from moai_adk.core.security import SecurityManager, SecurityError
@@ -53,14 +53,18 @@ class TestSecurityManager(unittest.TestCase):
             "../../.ssh/id_rsa",
             "safe/../../../etc/passwd",
             "safe/../../..",
-            ".././../etc/passwd"
+            ".././../etc/passwd",
         ]
 
         for malicious_path in traversal_attempts:
             with self.subTest(path=malicious_path):
                 test_path = self.test_dir / malicious_path
-                result = self.security.validate_path_safety_enhanced(test_path, self.test_dir)
-                self.assertFalse(result, f"Path traversal not blocked: {malicious_path}")
+                result = self.security.validate_path_safety_enhanced(
+                    test_path, self.test_dir
+                )
+                self.assertFalse(
+                    result, f"Path traversal not blocked: {malicious_path}"
+                )
 
     def test_command_injection_prevention(self):
         """CRITICAL: Test prevention of command injection via subprocess args"""
@@ -74,7 +78,7 @@ class TestSecurityManager(unittest.TestCase):
             ["echo", "test > /etc/passwd"],
             ["python", "-c", "import os; os.system('rm -rf /')"],
             ["sh", "-c", "rm -rf /"],
-            ["sudo", "rm", "-rf", "/"]
+            ["sudo", "rm", "-rf", "/"],
         ]
 
         for dangerous_args in injection_attempts:
@@ -90,7 +94,7 @@ class TestSecurityManager(unittest.TestCase):
             ["git", "status"],
             ["npm", "install"],
             ["echo", "hello world"],
-            ["cat", "file.txt"]
+            ["cat", "file.txt"],
         ]
 
         for safe_args in safe_commands:
@@ -126,9 +130,7 @@ class TestSecurityManager(unittest.TestCase):
         # Test safe command
         try:
             result = self.security.safe_subprocess_run(
-                ["echo", "test"],
-                cwd=self.test_dir,
-                timeout=5
+                ["echo", "test"], cwd=self.test_dir, timeout=5
             )
             self.assertEqual(result.returncode, 0)
             self.assertIn("test", result.stdout)
@@ -140,7 +142,7 @@ class TestSecurityManager(unittest.TestCase):
             self.security.safe_subprocess_run(
                 ["ls"],
                 cwd="/etc",  # Should be blocked
-                timeout=5
+                timeout=5,
             )
 
     def test_critical_path_protection(self):
@@ -150,15 +152,13 @@ class TestSecurityManager(unittest.TestCase):
             Path("/"),
             Path("/etc"),
             Path("/usr"),
-            Path("/var")
+            Path("/var"),
         ]
 
-        if os.name == 'nt':
-            critical_paths.extend([
-                Path("C:\\"),
-                Path("C:\\Windows"),
-                Path("C:\\Program Files")
-            ])
+        if os.name == "nt":
+            critical_paths.extend(
+                [Path("C:\\"), Path("C:\\Windows"), Path("C:\\Program Files")]
+            )
 
         for critical_path in critical_paths:
             with self.subTest(path=critical_path):
@@ -175,7 +175,7 @@ class TestSecurityManager(unittest.TestCase):
             "A" * 300,  # Too long
             "",  # Empty
             "   ",  # Whitespace only
-            "file/../other.txt"
+            "file/../other.txt",
         ]
 
         for malicious_name in malicious_names:
@@ -212,12 +212,22 @@ class TestHookSecurity(unittest.TestCase):
     def test_constitution_guard_security_import(self):
         """Test constitution guard properly imports security"""
         # Read actual hook file
-        hook_file = Path(__file__).parent.parent / "src" / "moai_adk" / "resources" / "templates" / ".claude" / "hooks" / "moai" / "constitution_guard.py"
+        hook_file = (
+            Path(__file__).parent.parent
+            / "src"
+            / "moai_adk"
+            / "resources"
+            / "templates"
+            / ".claude"
+            / "hooks"
+            / "moai"
+            / "constitution_guard.py"
+        )
 
         if not hook_file.exists():
             self.skipTest("개발 가이드 guard hook not found")
 
-        with open(hook_file, 'r') as f:
+        with open(hook_file, "r") as f:
             content = f.read()
 
         # Should import SecurityManager
@@ -232,7 +242,9 @@ class TestHookSecurity(unittest.TestCase):
         malicious_inputs = [
             '{"tool_name": "Write", "tool_input": {"path": "../../../etc/passwd"}}',
             '{"tool_name": "Bash", "tool_input": {"command": "rm -rf /"}}',
-            '{"tool_name": "Write", "tool_input": {"content": "' + "A" * 1000000 + '"}}',  # JSON bomb
+            '{"tool_name": "Write", "tool_input": {"content": "'
+            + "A" * 1000000
+            + '"}}',  # JSON bomb
             '{"tool_name": "' + "X" * 100000 + '"}',  # Large key
         ]
 
@@ -243,7 +255,7 @@ class TestHookSecurity(unittest.TestCase):
                     data = json.loads(malicious_json)
 
                     # Tool name should be reasonable length
-                    tool_name = data.get('tool_name', '')
+                    tool_name = data.get("tool_name", "")
                     self.assertLess(len(tool_name), 1000, "Tool name too long")
 
                 except json.JSONDecodeError:
@@ -271,8 +283,8 @@ class TestValidatorSecurity(unittest.TestCase):
             from moai_adk.core.validator import validate_claude_code
 
             # Mock subprocess.run to simulate hanging process
-            with patch('subprocess.run') as mock_run:
-                mock_run.side_effect = subprocess.TimeoutExpired('claude', 10)
+            with patch("subprocess.run") as mock_run:
+                mock_run.side_effect = subprocess.TimeoutExpired("claude", 10)
 
                 # Should handle timeout gracefully
                 result = validate_claude_code()
@@ -287,7 +299,7 @@ class TestValidatorSecurity(unittest.TestCase):
             from moai_adk.core.validator import validate_project_structure
 
             # Create malicious symlink
-            if os.name != 'nt':  # Unix systems
+            if os.name != "nt":  # Unix systems
                 malicious_dir = self.test_dir / "malicious"
                 malicious_dir.mkdir()
 
@@ -327,18 +339,19 @@ class TestBuildSystemSecurity(unittest.TestCase):
         if not makefile_path.exists():
             self.skipTest("Makefile not found")
 
-        with open(makefile_path, 'r') as f:
+        with open(makefile_path, "r") as f:
             content = f.read()
 
         # Check for dangerous patterns
         dangerous_patterns = [
-            r'rm\s+-rf\s+/',  # Dangerous rm commands
-            r'sudo\s+rm',     # Privileged deletion
-            r'\$\(shell\s+rm',  # Shell rm commands
-            r'>/etc/',        # Writing to system directories
+            r"rm\s+-rf\s+/",  # Dangerous rm commands
+            r"sudo\s+rm",  # Privileged deletion
+            r"\$\(shell\s+rm",  # Shell rm commands
+            r">/etc/",  # Writing to system directories
         ]
 
         import re
+
         for pattern in dangerous_patterns:
             with self.subTest(pattern=pattern):
                 matches = re.findall(pattern, content, re.IGNORECASE)
@@ -358,7 +371,7 @@ def run_security_tests():
         TestSecurityManager,
         TestHookSecurity,
         TestValidatorSecurity,
-        TestBuildSystemSecurity
+        TestBuildSystemSecurity,
     ]
 
     for test_class in test_classes:
@@ -393,6 +406,6 @@ def run_security_tests():
     return security_critical
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     success = run_security_tests()
     sys.exit(0 if success else 1)

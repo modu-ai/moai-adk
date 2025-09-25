@@ -23,7 +23,9 @@ class AdapterCore:
     def __init__(self, database_path: Path, json_fallback_path: Path | None = None):
         """어댑터 코어 초기화"""
         self.database_path = Path(database_path)
-        self.json_fallback_path = Path(json_fallback_path) if json_fallback_path else None
+        self.json_fallback_path = (
+            Path(json_fallback_path) if json_fallback_path else None
+        )
 
         # SQLite 백엔드 초기화
         try:
@@ -67,18 +69,15 @@ class AdapterCore:
                 "version": "2.0.0",
                 "backend": "sqlite",
                 "updated": datetime.now().isoformat(),
-                "statistics": {
-                    "total_tags": len(all_tags),
-                    "categories": {}
-                },
+                "statistics": {"total_tags": len(all_tags), "categories": {}},
                 "index": {},
-                "references": {}
+                "references": {},
             }
 
             # 카테고리별 통계 계산
             category_counts = {}
             for tag in all_tags:
-                category = tag['category']
+                category = tag["category"]
                 category_counts[category] = category_counts.get(category, 0) + 1
 
             index_data["statistics"]["categories"] = category_counts
@@ -86,17 +85,19 @@ class AdapterCore:
             # 인덱스 구성
             for tag in all_tags:
                 tag_key = f"{tag['category']}:{tag['identifier']}"
-                index_data["index"][tag_key] = [{
-                    "file": tag['file_path'],
-                    "line": tag.get('line_number', 1),
-                    "context": f"@{tag_key} {tag.get('description', '')}"
-                }]
+                index_data["index"][tag_key] = [
+                    {
+                        "file": tag["file_path"],
+                        "line": tag.get("line_number", 1),
+                        "context": f"@{tag_key} {tag.get('description', '')}",
+                    }
+                ]
 
             # 참조 관계 구성
             reference_map = {}
             for ref in all_references:
-                source_tag = self.db_manager.get_tag_by_id(ref['source_tag_id'])
-                target_tag = self.db_manager.get_tag_by_id(ref['target_tag_id'])
+                source_tag = self.db_manager.get_tag_by_id(ref["source_tag_id"])
+                target_tag = self.db_manager.get_tag_by_id(ref["target_tag_id"])
 
                 if source_tag and target_tag:
                     source_key = f"{source_tag['category']}:{source_tag['identifier']}"
@@ -115,7 +116,7 @@ class AdapterCore:
     def _load_from_json_fallback(self) -> dict[str, Any]:
         """JSON fallback에서 로드"""
         try:
-            with open(self.json_fallback_path, encoding='utf-8') as f:
+            with open(self.json_fallback_path, encoding="utf-8") as f:
                 return json.load(f)
         except Exception as e:
             raise ApiCompatibilityError(f"JSON fallback 로드 실패: {e}")
@@ -147,9 +148,11 @@ class AdapterCore:
                 tag_id = self.db_manager.insert_tag(
                     category=category,
                     identifier=identifier,
-                    description=first_entry.get('context', '').replace(f'@{tag_key}', '').strip(),
-                    file_path=first_entry.get('file', ''),
-                    line_number=first_entry.get('line', 1)
+                    description=first_entry.get("context", "")
+                    .replace(f"@{tag_key}", "")
+                    .strip(),
+                    file_path=first_entry.get("file", ""),
+                    line_number=first_entry.get("line", 1),
                 )
                 tag_id_mapping[tag_key] = tag_id
 
@@ -161,14 +164,16 @@ class AdapterCore:
                     for target_key in target_keys:
                         if target_key in tag_id_mapping:
                             target_id = tag_id_mapping[target_key]
-                            self.db_manager.create_reference(source_id, target_id, 'chain')
+                            self.db_manager.create_reference(
+                                source_id, target_id, "chain"
+                            )
 
         except Exception as e:
             raise ApiCompatibilityError(f"SQLite 인덱스 저장 실패: {e}")
 
     def validate_index_schema(self, index_data: dict[str, Any]) -> bool:
         """인덱스 스키마 검증"""
-        required_fields = ['version', 'index']
+        required_fields = ["version", "index"]
         return all(field in index_data for field in required_fields)
 
     def _create_empty_index(self) -> dict[str, Any]:
@@ -177,12 +182,9 @@ class AdapterCore:
             "version": "2.0.0",
             "backend": "sqlite",
             "updated": datetime.now().isoformat(),
-            "statistics": {
-                "total_tags": 0,
-                "categories": {}
-            },
+            "statistics": {"total_tags": 0, "categories": {}},
             "index": {},
-            "references": {}
+            "references": {},
         }
 
     def get_configuration_info(self) -> dict[str, Any]:
@@ -191,12 +193,14 @@ class AdapterCore:
             "backend_type": "sqlite",
             "database_path": str(self.database_path),
             "backend_available": self.backend_available,
-            "json_fallback_path": str(self.json_fallback_path) if self.json_fallback_path else None
+            "json_fallback_path": str(self.json_fallback_path)
+            if self.json_fallback_path
+            else None,
         }
 
     def close(self):
         """리소스 정리"""
-        if hasattr(self, 'db_manager') and self.db_manager:
+        if hasattr(self, "db_manager") and self.db_manager:
             try:
                 self.db_manager.close()
             except:

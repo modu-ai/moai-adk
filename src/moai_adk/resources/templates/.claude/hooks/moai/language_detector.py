@@ -27,11 +27,24 @@ def detect_project_languages(root: Path) -> list[str]:
         langs.append("go")
     if (root / "Cargo.toml").exists() or list(root.rglob("*.rs")):
         langs.append("rust")
-    if (root / "pom.xml").exists() or (root / "build.gradle").exists() or (root / "build.gradle.kts").exists() or list(root.rglob("*.java")):
+    if (
+        (root / "pom.xml").exists()
+        or (root / "build.gradle").exists()
+        or (root / "build.gradle.kts").exists()
+        or list(root.rglob("*.java"))
+    ):
         langs.append("java")
-    if list(root.rglob("*.sln")) or list(root.rglob("*.csproj")) or list(root.rglob("*.cs")):
+    if (
+        list(root.rglob("*.sln"))
+        or list(root.rglob("*.csproj"))
+        or list(root.rglob("*.cs"))
+    ):
         langs.append("csharp")
-    if list(root.rglob("*.c")) or list(root.rglob("*.cpp")) or (root / "CMakeLists.txt").exists():
+    if (
+        list(root.rglob("*.c"))
+        or list(root.rglob("*.cpp"))
+        or (root / "CMakeLists.txt").exists()
+    ):
         langs.append("cpp")
     return list(dict.fromkeys(langs))  # de-duplicate preserving order
 
@@ -46,7 +59,7 @@ def load_mappings(root: Path) -> dict:
             "rust": "cargo test",
             "java": "gradle test | mvn test",
             "csharp": "dotnet test",
-            "cpp": "ctest | make test"
+            "cpp": "ctest | make test",
         },
         "linters": {
             "python": "ruff",
@@ -56,7 +69,7 @@ def load_mappings(root: Path) -> dict:
             "rust": "cargo clippy",
             "java": "checkstyle",
             "csharp": "dotnet format",
-            "cpp": "clang-tidy"
+            "cpp": "clang-tidy",
         },
         "formatters": {
             "python": "black",
@@ -66,8 +79,8 @@ def load_mappings(root: Path) -> dict:
             "rust": "rustfmt",
             "java": "google-java-format",
             "csharp": "dotnet format",
-            "cpp": "clang-format"
-        }
+            "cpp": "clang-format",
+        },
     }
     mapping_path = root / ".moai" / "config" / "language_mappings.json"
     if mapping_path.exists():
@@ -105,4 +118,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

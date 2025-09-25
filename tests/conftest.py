@@ -45,6 +45,7 @@ def sample_project_dir(temp_dir: Path) -> Path:
 @pytest.fixture
 def mock_config():
     """Mock configuration for testing."""
+
     class MockConfig:
         def __init__(self):
             self.project_name = "test_project"
@@ -55,7 +56,7 @@ def mock_config():
             return {
                 "project_name": self.project_name,
                 "version": self.version,
-                "description": self.description
+                "description": self.description,
             }
 
     return MockConfig()

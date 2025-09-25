@@ -79,23 +79,23 @@ class InstallationResult:
         counts = {}
         for file_path in self.files_created:
             path = Path(file_path)
-            ext = path.suffix.lower() if path.suffix else 'no_extension'
+            ext = path.suffix.lower() if path.suffix else "no_extension"
             counts[ext] = counts.get(ext, 0) + 1
         return counts
 
     def to_dict(self) -> dict:
         """Convert result to dictionary for serialization."""
         return {
-            'success': self.success,
-            'project_path': self.project_path,
-            'files_created': self.files_created,
-            'next_steps': self.next_steps,
-            'errors': self.errors,
-            'warnings': self.warnings,
-            'git_initialized': self.git_initialized,
-            'backup_created': self.backup_created,
-            'file_count': len(self.files_created),
-            'file_types': self.get_file_count_by_type()
+            "success": self.success,
+            "project_path": self.project_path,
+            "files_created": self.files_created,
+            "next_steps": self.next_steps,
+            "errors": self.errors,
+            "warnings": self.warnings,
+            "git_initialized": self.git_initialized,
+            "backup_created": self.backup_created,
+            "file_count": len(self.files_created),
+            "file_types": self.get_file_count_by_type(),
         }
 
     @classmethod
@@ -106,8 +106,8 @@ class InstallationResult:
         files_created: list[str] = None,
         next_steps: list[str] = None,
         git_initialized: bool = False,
-        backup_created: str | None = None
-    ) -> 'InstallationResult':
+        backup_created: str | None = None,
+    ) -> "InstallationResult":
         """Create a successful installation result."""
         return cls(
             success=True,
@@ -116,7 +116,7 @@ class InstallationResult:
             next_steps=next_steps or [],
             config=config,
             git_initialized=git_initialized,
-            backup_created=backup_created
+            backup_created=backup_created,
         )
 
     @classmethod
@@ -125,8 +125,8 @@ class InstallationResult:
         project_path: str,
         config: Config,
         error: str,
-        files_created: list[str] = None
-    ) -> 'InstallationResult':
+        files_created: list[str] = None,
+    ) -> "InstallationResult":
         """Create a failed installation result."""
         return cls(
             success=False,
@@ -134,5 +134,5 @@ class InstallationResult:
             files_created=files_created or [],
             next_steps=[],
             config=config,
-            errors=[error]
+            errors=[error],
         )

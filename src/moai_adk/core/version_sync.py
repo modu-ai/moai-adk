@@ -21,11 +21,13 @@ class VersionSyncManager:
     def __init__(self, project_root: str | None = None):
         """
         Initialize version sync manager
-        
+
         Args:
             project_root: Project root directory. Auto-detected if None
         """
-        self.project_root = Path(project_root) if project_root else self._find_project_root()
+        self.project_root = (
+            Path(project_root) if project_root else self._find_project_root()
+        )
         self.current_version = __version__
         self.version_patterns = self._load_version_patterns()
         self.sync_log = []
@@ -49,108 +51,104 @@ class VersionSyncManager:
                 {
                     "pattern": r'version\s*=\s*"[^"]*"',
                     "replacement": f'version = "{self.current_version}"',
-                    "description": "Python package version"
+                    "description": "Python package version",
                 }
             ],
-
             # Python source files (explicit __version__ only)
             "**/*.py": [
                 {
                     "pattern": r'__version__\s*=\s*"[^"]*"',
                     "replacement": f'__version__ = "0.1.17"',
-                    "description": "Python module version"
+                    "description": "Python module version",
                 }
             ],
-
             # Markdown documents
             "**/*.md": [
                 {
-                    "pattern": r'MoAI-ADK \(MoAI Agentic Development Kit\) v[0-9]+\.[0-9]+\.[0-9]+',
-                    "replacement": f'MoAI-ADK (MoAI Agentic Development Kit) v{self.current_version}',
-                    "description": "MoAI-ADK full title version"
+                    "pattern": r"MoAI-ADK \(MoAI Agentic Development Kit\) v[0-9]+\.[0-9]+\.[0-9]+",
+                    "replacement": f"MoAI-ADK (MoAI Agentic Development Kit) v{self.current_version}",
+                    "description": "MoAI-ADK full title version",
                 },
                 {
-                    "pattern": r'MoAI-ADK v[0-9]+\.[0-9]+\.[0-9]+',
-                    "replacement": f'MoAI-ADK v{self.current_version}',
-                    "description": "MoAI-ADK version in documentation"
+                    "pattern": r"MoAI-ADK v[0-9]+\.[0-9]+\.[0-9]+",
+                    "replacement": f"MoAI-ADK v{self.current_version}",
+                    "description": "MoAI-ADK version in documentation",
                 },
                 {
-                    "pattern": r'version-[0-9]+\.[0-9]+\.[0-9]+-blue',
-                    "replacement": f'version-{self.current_version}-blue',
-                    "description": "Version badge"
+                    "pattern": r"version-[0-9]+\.[0-9]+\.[0-9]+-blue",
+                    "replacement": f"version-{self.current_version}-blue",
+                    "description": "Version badge",
                 },
                 {
-                    "pattern": r'moai-adk-v[0-9]+\.[0-9]+\.[0-9]+',
-                    "replacement": f'moai-adk-v{self.current_version}',
-                    "description": "Release archive naming"
+                    "pattern": r"moai-adk-v[0-9]+\.[0-9]+\.[0-9]+",
+                    "replacement": f"moai-adk-v{self.current_version}",
+                    "description": "Release archive naming",
                 },
                 {
-                    "pattern": r'\*\*MoAI-ADK 버전\*\*: v[0-9]+\.[0-9]+\.[0-9]+',
-                    "replacement": f'**MoAI-ADK 버전**: v{self.current_version}',
-                    "description": "Korean version footer"
-                }
+                    "pattern": r"\*\*MoAI-ADK 버전\*\*: v[0-9]+\.[0-9]+\.[0-9]+",
+                    "replacement": f"**MoAI-ADK 버전**: v{self.current_version}",
+                    "description": "Korean version footer",
+                },
             ],
-
             # JSON configuration files
             "**/*.json": [
                 {
                     "pattern": r'"version":\s*"[^"]*"',
                     "replacement": f'"version": "{self.current_version}"',
-                    "description": "JSON version field"
+                    "description": "JSON version field",
                 },
                 {
                     "pattern": r'"moai_version":\s*"[^"]*"',
                     "replacement": f'"moai_version": "{self.current_version}"',
-                    "description": "MoAI specific version field"
+                    "description": "MoAI specific version field",
                 },
                 {
                     "pattern": r'"moai_adk_version":\s*"[^"]*"',
                     "replacement": f'"moai_adk_version": "{self.current_version}"',
-                    "description": "MoAI ADK version field"
-                }
+                    "description": "MoAI ADK version field",
+                },
             ],
-
             # GitHub Actions workflows
             "**/*.yml": [
                 {
-                    "pattern": r'MoAI-ADK v[0-9]+\.[0-9]+\.[0-9]+',
-                    "replacement": f'MoAI-ADK v{self.current_version}',
-                    "description": "MoAI-ADK version in YAML"
+                    "pattern": r"MoAI-ADK v[0-9]+\.[0-9]+\.[0-9]+",
+                    "replacement": f"MoAI-ADK v{self.current_version}",
+                    "description": "MoAI-ADK version in YAML",
                 }
             ],
-
             # Makefile
             "Makefile": [
                 {
-                    "pattern": r'MoAI-ADK v[0-9]+\.[0-9]+\.[0-9]+',
-                    "replacement": f'MoAI-ADK v{self.current_version}',
-                    "description": "Makefile version display"
+                    "pattern": r"MoAI-ADK v[0-9]+\.[0-9]+\.[0-9]+",
+                    "replacement": f"MoAI-ADK v{self.current_version}",
+                    "description": "Makefile version display",
                 }
             ],
-
             # CHANGELOG
             "CHANGELOG.md": [
                 {
-                    "pattern": r'MoAI-ADK v[0-9]+\.[0-9]+\.[0-9]+',
-                    "replacement": f'MoAI-ADK v{self.current_version}',
-                    "description": "Changelog version references"
+                    "pattern": r"MoAI-ADK v[0-9]+\.[0-9]+\.[0-9]+",
+                    "replacement": f"MoAI-ADK v{self.current_version}",
+                    "description": "Changelog version references",
                 }
-            ]
+            ],
         }
 
     def sync_all_versions(self, dry_run: bool = False) -> dict[str, list[str]]:
         """
         전체 프로젝트의 버전 정보 동기화
-        
+
         Args:
             dry_run: True면 실제 변경하지 않고 시뮬레이션만
-            
+
         Returns:
             Dict[파일패턴, 변경된파일리스트]
         """
         results = {}
 
-        logger.info(f"MoAI-ADK 버전 동기화 시작: v{self.current_version}, 루트: {self.project_root}")
+        logger.info(
+            f"MoAI-ADK 버전 동기화 시작: v{self.current_version}, 루트: {self.project_root}"
+        )
         click.echo(f"🗿 MoAI-ADK 버전 동기화 시작: v{self.current_version}")
         click.echo(f"프로젝트 루트: {self.project_root}")
 
@@ -168,7 +166,9 @@ class VersionSyncManager:
 
         return results
 
-    def _sync_pattern(self, file_pattern: str, replacements: list[dict], dry_run: bool) -> list[str]:
+    def _sync_pattern(
+        self, file_pattern: str, replacements: list[dict], dry_run: bool
+    ) -> list[str]:
         """특정 파일 패턴에 대해 버전 동기화 수행"""
         changed_files = []
 
@@ -192,7 +192,9 @@ class VersionSyncManager:
                     click.echo(f"  ✓ {file_path.relative_to(self.project_root)}")
 
             except Exception as e:
-                logger.error(f"Update failed: {file_path.relative_to(self.project_root)}: {e}")
+                logger.error(
+                    f"Update failed: {file_path.relative_to(self.project_root)}: {e}"
+                )
                 click.echo(f"  ❌ {file_path.relative_to(self.project_root)}: {e}")
 
         return changed_files
@@ -208,16 +210,18 @@ class VersionSyncManager:
             "venv/",
             "dist/",
             "build/",
-            ".mypy_cache/"
+            ".mypy_cache/",
         ]
 
         file_str = str(file_path)
         return any(pattern in file_str for pattern in skip_patterns)
 
-    def _sync_file(self, file_path: Path, replacements: list[dict], dry_run: bool) -> bool:
+    def _sync_file(
+        self, file_path: Path, replacements: list[dict], dry_run: bool
+    ) -> bool:
         """단일 파일의 버전 동기화"""
         try:
-            with open(file_path, encoding='utf-8') as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
         except UnicodeDecodeError:
             # 바이너리 파일은 스킵
@@ -235,7 +239,7 @@ class VersionSyncManager:
                 changes_made = True
 
         if changes_made and not dry_run:
-            with open(file_path, 'w', encoding='utf-8') as f:
+            with open(file_path, "w", encoding="utf-8") as f:
                 f.write(content)
 
         return changes_made
@@ -247,9 +251,9 @@ class VersionSyncManager:
 
         inconsistent_files = {}
         target_patterns = [
-            (r'v[0-9]+\.[0-9]+\.[0-9]+', f"v{self.current_version}"),
-            (r'version.*[0-9]+\.[0-9]+\.[0-9]+', f"version {self.current_version}"),
-            (r'MoAI-ADK v[0-9]+\.[0-9]+\.[0-9]+', f"MoAI-ADK v{self.current_version}")
+            (r"v[0-9]+\.[0-9]+\.[0-9]+", f"v{self.current_version}"),
+            (r"version.*[0-9]+\.[0-9]+\.[0-9]+", f"version {self.current_version}"),
+            (r"MoAI-ADK v[0-9]+\.[0-9]+\.[0-9]+", f"MoAI-ADK v{self.current_version}"),
         ]
 
         for pattern, expected in target_patterns:
@@ -279,7 +283,7 @@ class VersionSyncManager:
                 continue
 
             try:
-                with open(file_path, encoding='utf-8') as f:
+                with open(file_path, encoding="utf-8") as f:
                     content = f.read()
 
                 matches = re.findall(pattern, content, re.IGNORECASE)
@@ -382,7 +386,7 @@ if __name__ == "__main__":
     main()
 '''
 
-        with open(script_path, 'w', encoding='utf-8') as f:
+        with open(script_path, "w", encoding="utf-8") as f:
             f.write(script_content)
 
         print(f"✅ 버전 업데이트 스크립트 생성: {script_path}")
@@ -394,12 +398,13 @@ def main() -> None:
     import argparse
 
     parser = argparse.ArgumentParser(description="MoAI-ADK 버전 동기화 도구")
-    parser.add_argument("--dry-run", action="store_true",
-                       help="실제 변경하지 않고 시뮬레이션만 실행")
-    parser.add_argument("--verify", action="store_true",
-                       help="버전 동기화 검증만 실행")
-    parser.add_argument("--create-script", action="store_true",
-                       help="버전 업데이트 스크립트 생성")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="실제 변경하지 않고 시뮬레이션만 실행"
+    )
+    parser.add_argument("--verify", action="store_true", help="버전 동기화 검증만 실행")
+    parser.add_argument(
+        "--create-script", action="store_true", help="버전 업데이트 스크립트 생성"
+    )
 
     args = parser.parse_args()
 

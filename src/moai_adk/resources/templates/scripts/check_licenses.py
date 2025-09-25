@@ -24,6 +24,7 @@ from typing import Any
 @dataclass
 class LicenseInfo:
     """라이선스 정보 구조"""
+
     name: str
     spdx_id: str | None
     category: str  # permissive, copyleft, proprietary, unknown
@@ -31,15 +32,18 @@ class LicenseInfo:
     restrictions: list[str]
     compatibility: dict[str, bool]  # 다른 라이선스와의 호환성
 
+
 @dataclass
 class PackageLicense:
     """패키지 라이선스 정보"""
+
     package: str
     version: str
     license: str
     license_info: LicenseInfo | None
     source: str  # requirements.txt, package.json, etc.
     status: str  # compliant, non-compliant, needs-review
+
 
 class LicenseChecker:
     """라이선스 호환성 검사기"""
@@ -70,7 +74,7 @@ class LicenseChecker:
                 category="permissive",
                 risk_level="low",
                 restrictions=["include-copyright"],
-                compatibility={"GPL": True, "Apache": True, "BSD": True}
+                compatibility={"GPL": True, "Apache": True, "BSD": True},
             ),
             "Apache-2.0": LicenseInfo(
                 name="Apache License 2.0",
@@ -78,7 +82,7 @@ class LicenseChecker:
                 category="permissive",
                 risk_level="low",
                 restrictions=["include-copyright", "include-license", "state-changes"],
-                compatibility={"GPL": True, "MIT": True, "BSD": True}
+                compatibility={"GPL": True, "MIT": True, "BSD": True},
             ),
             "BSD-3-Clause": LicenseInfo(
                 name="BSD 3-Clause License",
@@ -86,7 +90,7 @@ class LicenseChecker:
                 category="permissive",
                 risk_level="low",
                 restrictions=["include-copyright", "no-endorsement"],
-                compatibility={"GPL": True, "Apache": True, "MIT": True}
+                compatibility={"GPL": True, "Apache": True, "MIT": True},
             ),
             "ISC": LicenseInfo(
                 name="ISC License",
@@ -94,25 +98,33 @@ class LicenseChecker:
                 category="permissive",
                 risk_level="low",
                 restrictions=["include-copyright"],
-                compatibility={"GPL": True, "Apache": True, "MIT": True}
+                compatibility={"GPL": True, "Apache": True, "MIT": True},
             ),
-
             # Copyleft Licenses (Medium to High Risk)
             "GPL-2.0": LicenseInfo(
                 name="GNU General Public License v2.0",
                 spdx_id="GPL-2.0-only",
                 category="copyleft",
                 risk_level="high",
-                restrictions=["disclose-source", "license-compatibility", "same-license"],
-                compatibility={"Apache": False, "MIT": False, "BSD": False}
+                restrictions=[
+                    "disclose-source",
+                    "license-compatibility",
+                    "same-license",
+                ],
+                compatibility={"Apache": False, "MIT": False, "BSD": False},
             ),
             "GPL-3.0": LicenseInfo(
                 name="GNU General Public License v3.0",
                 spdx_id="GPL-3.0-only",
                 category="copyleft",
                 risk_level="high",
-                restrictions=["disclose-source", "license-compatibility", "same-license", "patent-grant"],
-                compatibility={"Apache": True, "MIT": False, "BSD": False}
+                restrictions=[
+                    "disclose-source",
+                    "license-compatibility",
+                    "same-license",
+                    "patent-grant",
+                ],
+                compatibility={"Apache": True, "MIT": False, "BSD": False},
             ),
             "AGPL-3.0": LicenseInfo(
                 name="GNU Affero General Public License v3.0",
@@ -120,7 +132,7 @@ class LicenseChecker:
                 category="copyleft",
                 risk_level="critical",
                 restrictions=["disclose-source", "network-copyleft", "same-license"],
-                compatibility={"GPL": True, "Apache": False, "MIT": False}
+                compatibility={"GPL": True, "Apache": False, "MIT": False},
             ),
             "LGPL-2.1": LicenseInfo(
                 name="GNU Lesser General Public License v2.1",
@@ -128,9 +140,8 @@ class LicenseChecker:
                 category="weak-copyleft",
                 risk_level="medium",
                 restrictions=["disclose-source-modifications", "license-compatibility"],
-                compatibility={"GPL": True, "Apache": True, "MIT": True}
+                compatibility={"GPL": True, "Apache": True, "MIT": True},
             ),
-
             # Proprietary/Commercial
             "UNLICENSED": LicenseInfo(
                 name="Unlicensed/Proprietary",
@@ -138,8 +149,8 @@ class LicenseChecker:
                 category="proprietary",
                 risk_level="critical",
                 restrictions=["commercial-use-restricted", "distribution-restricted"],
-                compatibility={}
-            )
+                compatibility={},
+            ),
         }
 
     def load_license_policy(self) -> dict[str, Any]:
@@ -152,7 +163,7 @@ class LicenseChecker:
             "review_required": ["LGPL-2.1", "MPL-2.0", "CC-BY-4.0"],
             "max_risk_level": "medium",
             "allow_dual_license": True,
-            "require_attribution": True
+            "require_attribution": True,
         }
 
         if policy_file.exists():
@@ -170,28 +181,37 @@ class LicenseChecker:
 
         # pip list로 설치된 패키지 확인
         try:
-            pip_result = subprocess.run([
-                'pip', 'list', '--format=json'
-            ], capture_output=True, text=True, timeout=30)
+            pip_result = subprocess.run(
+                ["pip", "list", "--format=json"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
 
             if pip_result.returncode == 0:
                 packages = json.loads(pip_result.stdout)
 
                 for pkg in packages:
-                    pkg_name = pkg['name']
-                    pkg_version = pkg['version']
+                    pkg_name = pkg["name"]
+                    pkg_version = pkg["version"]
 
                     # 라이선스 정보 가져오기
                     license_info = self.get_package_license(pkg_name)
 
-                    results.append(PackageLicense(
-                        package=pkg_name,
-                        version=pkg_version,
-                        license=license_info.get('license', 'Unknown'),
-                        license_info=self.license_db.get(license_info.get('license')),
-                        source='pip',
-                        status=self.evaluate_license_compliance(license_info.get('license'))
-                    ))
+                    results.append(
+                        PackageLicense(
+                            package=pkg_name,
+                            version=pkg_version,
+                            license=license_info.get("license", "Unknown"),
+                            license_info=self.license_db.get(
+                                license_info.get("license")
+                            ),
+                            source="pip",
+                            status=self.evaluate_license_compliance(
+                                license_info.get("license")
+                            ),
+                        )
+                    )
 
         except Exception as error:
             self.warnings.append(f"Python dependency scan failed: {error}")
@@ -208,28 +228,34 @@ class LicenseChecker:
 
         try:
             # npm ls로 의존성 트리 확인
-            npm_result = subprocess.run([
-                'npm', 'ls', '--json', '--depth=0'
-            ], capture_output=True, text=True, timeout=60, cwd=self.project_root)
+            npm_result = subprocess.run(
+                ["npm", "ls", "--json", "--depth=0"],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                cwd=self.project_root,
+            )
 
             if npm_result.returncode == 0:
                 npm_data = json.loads(npm_result.stdout)
-                dependencies = npm_data.get('dependencies', {})
+                dependencies = npm_data.get("dependencies", {})
 
                 for pkg_name, pkg_info in dependencies.items():
-                    version = pkg_info.get('version', 'unknown')
+                    version = pkg_info.get("version", "unknown")
 
                     # package.json에서 라이선스 정보 확인
                     license_info = self.get_npm_package_license(pkg_name)
 
-                    results.append(PackageLicense(
-                        package=pkg_name,
-                        version=version,
-                        license=license_info,
-                        license_info=self.license_db.get(license_info),
-                        source='npm',
-                        status=self.evaluate_license_compliance(license_info)
-                    ))
+                    results.append(
+                        PackageLicense(
+                            package=pkg_name,
+                            version=version,
+                            license=license_info,
+                            license_info=self.license_db.get(license_info),
+                            source="npm",
+                            status=self.evaluate_license_compliance(license_info),
+                        )
+                    )
 
         except Exception as error:
             self.warnings.append(f"Node.js dependency scan failed: {error}")
@@ -241,73 +267,75 @@ class LicenseChecker:
 
         try:
             # pip show로 패키지 정보 확인
-            show_result = subprocess.run([
-                'pip', 'show', package_name
-            ], capture_output=True, text=True, timeout=10)
+            show_result = subprocess.run(
+                ["pip", "show", package_name],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
 
             if show_result.returncode == 0:
                 output = show_result.stdout
 
                 # License 필드 추출
-                license_match = re.search(r'License: (.+)', output)
+                license_match = re.search(r"License: (.+)", output)
                 if license_match:
                     license_text = license_match.group(1).strip()
 
                     # 라이선스 정규화
                     normalized_license = self.normalize_license_name(license_text)
 
-                    return {
-                        'license': normalized_license,
-                        'raw_license': license_text
-                    }
+                    return {"license": normalized_license, "raw_license": license_text}
 
         except Exception:
             pass
 
-        return {'license': 'Unknown'}
+        return {"license": "Unknown"}
 
     def get_npm_package_license(self, package_name: str) -> str:
         """NPM 패키지의 라이선스 정보 조회"""
 
         try:
             # node_modules에서 package.json 확인
-            pkg_path = self.project_root / "node_modules" / package_name / "package.json"
+            pkg_path = (
+                self.project_root / "node_modules" / package_name / "package.json"
+            )
 
             if pkg_path.exists():
                 pkg_data = json.loads(pkg_path.read_text())
-                license_info = pkg_data.get('license', 'Unknown')
+                license_info = pkg_data.get("license", "Unknown")
 
                 if isinstance(license_info, dict):
-                    license_info = license_info.get('type', 'Unknown')
+                    license_info = license_info.get("type", "Unknown")
 
                 return self.normalize_license_name(str(license_info))
 
         except Exception:
             pass
 
-        return 'Unknown'
+        return "Unknown"
 
     def normalize_license_name(self, license_text: str) -> str:
         """라이선스 이름 정규화"""
 
-        if not license_text or license_text.lower() in ['unknown', 'none', '']:
-            return 'Unknown'
+        if not license_text or license_text.lower() in ["unknown", "none", ""]:
+            return "Unknown"
 
         # 일반적인 라이선스 별칭 처리
         license_aliases = {
-            'MIT': 'MIT',
-            'Apache': 'Apache-2.0',
-            'Apache 2.0': 'Apache-2.0',
-            'Apache-2': 'Apache-2.0',
-            'BSD': 'BSD-3-Clause',
-            'BSD-3': 'BSD-3-Clause',
-            'GPL': 'GPL-3.0',
-            'GPL-2': 'GPL-2.0',
-            'GPL-3': 'GPL-3.0',
-            'LGPL': 'LGPL-2.1',
-            'AGPL': 'AGPL-3.0',
-            'ISC': 'ISC',
-            'UNLICENSED': 'UNLICENSED'
+            "MIT": "MIT",
+            "Apache": "Apache-2.0",
+            "Apache 2.0": "Apache-2.0",
+            "Apache-2": "Apache-2.0",
+            "BSD": "BSD-3-Clause",
+            "BSD-3": "BSD-3-Clause",
+            "GPL": "GPL-3.0",
+            "GPL-2": "GPL-2.0",
+            "GPL-3": "GPL-3.0",
+            "LGPL": "LGPL-2.1",
+            "AGPL": "AGPL-3.0",
+            "ISC": "ISC",
+            "UNLICENSED": "UNLICENSED",
         }
 
         license_upper = license_text.upper()
@@ -320,72 +348,80 @@ class LicenseChecker:
     def evaluate_license_compliance(self, license_name: str) -> str:
         """라이선스 컴플라이언스 평가"""
 
-        if license_name in self.policy['allowed_licenses']:
-            return 'compliant'
-        elif license_name in self.policy['restricted_licenses']:
-            return 'non-compliant'
-        elif license_name in self.policy['review_required'] or license_name == 'Unknown':
-            return 'needs-review'
+        if license_name in self.policy["allowed_licenses"]:
+            return "compliant"
+        elif license_name in self.policy["restricted_licenses"]:
+            return "non-compliant"
+        elif (
+            license_name in self.policy["review_required"] or license_name == "Unknown"
+        ):
+            return "needs-review"
         else:
             # 위험 수준으로 판단
             license_info = self.license_db.get(license_name)
             if license_info:
-                if license_info.risk_level in ['critical', 'high']:
-                    return 'non-compliant'
-                elif license_info.risk_level == 'medium':
-                    return 'needs-review'
+                if license_info.risk_level in ["critical", "high"]:
+                    return "non-compliant"
+                elif license_info.risk_level == "medium":
+                    return "needs-review"
                 else:
-                    return 'compliant'
+                    return "compliant"
 
-            return 'needs-review'
+            return "needs-review"
 
     def generate_report(self, scan_results: list[PackageLicense]) -> dict[str, Any]:
         """라이선스 스캔 리포트 생성"""
 
         # 상태별 분류
-        compliant = [r for r in scan_results if r.status == 'compliant']
-        non_compliant = [r for r in scan_results if r.status == 'non-compliant']
-        needs_review = [r for r in scan_results if r.status == 'needs-review']
+        compliant = [r for r in scan_results if r.status == "compliant"]
+        non_compliant = [r for r in scan_results if r.status == "non-compliant"]
+        needs_review = [r for r in scan_results if r.status == "needs-review"]
 
         # 위험 분석
         critical_violations = []
         high_risk_packages = []
 
         for result in scan_results:
-            if result.license_info and result.license_info.risk_level == 'critical':
+            if result.license_info and result.license_info.risk_level == "critical":
                 critical_violations.append(result)
-            elif result.license_info and result.license_info.risk_level == 'high':
+            elif result.license_info and result.license_info.risk_level == "high":
                 high_risk_packages.append(result)
 
         return {
-            'scan_summary': {
-                'total_packages': len(scan_results),
-                'compliant': len(compliant),
-                'non_compliant': len(non_compliant),
-                'needs_review': len(needs_review),
-                'scan_date': datetime.now().isoformat()
+            "scan_summary": {
+                "total_packages": len(scan_results),
+                "compliant": len(compliant),
+                "non_compliant": len(non_compliant),
+                "needs_review": len(needs_review),
+                "scan_date": datetime.now().isoformat(),
             },
-            'compliance_status': 'PASS' if len(non_compliant) == 0 and len(critical_violations) == 0 else 'FAIL',
-            'critical_violations': [
+            "compliance_status": "PASS"
+            if len(non_compliant) == 0 and len(critical_violations) == 0
+            else "FAIL",
+            "critical_violations": [
                 {
-                    'package': v.package,
-                    'version': v.version,
-                    'license': v.license,
-                    'reason': 'Critical license risk'
-                } for v in critical_violations
+                    "package": v.package,
+                    "version": v.version,
+                    "license": v.license,
+                    "reason": "Critical license risk",
+                }
+                for v in critical_violations
             ],
-            'license_distribution': self.get_license_distribution(scan_results),
-            'recommendations': self.generate_recommendations(scan_results),
-            'detailed_results': [
+            "license_distribution": self.get_license_distribution(scan_results),
+            "recommendations": self.generate_recommendations(scan_results),
+            "detailed_results": [
                 {
-                    'package': r.package,
-                    'version': r.version,
-                    'license': r.license,
-                    'status': r.status,
-                    'source': r.source,
-                    'risk_level': r.license_info.risk_level if r.license_info else 'unknown'
-                } for r in scan_results
-            ]
+                    "package": r.package,
+                    "version": r.version,
+                    "license": r.license,
+                    "status": r.status,
+                    "source": r.source,
+                    "risk_level": r.license_info.risk_level
+                    if r.license_info
+                    else "unknown",
+                }
+                for r in scan_results
+            ],
         }
 
     def get_license_distribution(self, results: list[PackageLicense]) -> dict[str, int]:
@@ -402,17 +438,23 @@ class LicenseChecker:
         """개선 권장사항 생성"""
         recommendations = []
 
-        non_compliant = [r for r in results if r.status == 'non-compliant']
+        non_compliant = [r for r in results if r.status == "non-compliant"]
         if non_compliant:
-            recommendations.append(f"{len(non_compliant)}개의 비호환 라이선스 패키지를 대체하거나 제거하세요")
+            recommendations.append(
+                f"{len(non_compliant)}개의 비호환 라이선스 패키지를 대체하거나 제거하세요"
+            )
 
-        needs_review = [r for r in results if r.status == 'needs-review']
+        needs_review = [r for r in results if r.status == "needs-review"]
         if needs_review:
-            recommendations.append(f"{len(needs_review)}개의 패키지에 대한 라이선스 검토가 필요합니다")
+            recommendations.append(
+                f"{len(needs_review)}개의 패키지에 대한 라이선스 검토가 필요합니다"
+            )
 
-        unknown_licenses = [r for r in results if r.license == 'Unknown']
+        unknown_licenses = [r for r in results if r.license == "Unknown"]
         if unknown_licenses:
-            recommendations.append(f"{len(unknown_licenses)}개의 패키지 라이선스 정보를 확인하세요")
+            recommendations.append(
+                f"{len(unknown_licenses)}개의 패키지 라이선스 정보를 확인하세요"
+            )
 
         if not recommendations:
             recommendations.append("모든 라이선스가 정책에 준수합니다")
@@ -443,6 +485,7 @@ class LicenseChecker:
 
         return report
 
+
 def main():
     """메인 실행 함수"""
 
@@ -459,31 +502,35 @@ def main():
         report = checker.run_scan()
 
         # 결과 출력
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("📋 LICENSE COMPLIANCE REPORT")
-        print("="*60)
+        print("=" * 60)
 
-        summary = report['scan_summary']
+        summary = report["scan_summary"]
         print(f"Total Packages: {summary['total_packages']}")
         print(f"Compliant: {summary['compliant']}")
         print(f"Non-Compliant: {summary['non_compliant']}")
         print(f"Needs Review: {summary['needs_review']}")
-        print(f"Status: {'✅ PASS' if report['compliance_status'] == 'PASS' else '❌ FAIL'}")
+        print(
+            f"Status: {'✅ PASS' if report['compliance_status'] == 'PASS' else '❌ FAIL'}"
+        )
 
         # 위반 사항 출력
-        if report['critical_violations']:
+        if report["critical_violations"]:
             print(f"\n🚨 Critical Violations ({len(report['critical_violations'])}):")
-            for violation in report['critical_violations']:
-                print(f"  • {violation['package']} ({violation['license']}) - {violation['reason']}")
+            for violation in report["critical_violations"]:
+                print(
+                    f"  • {violation['package']} ({violation['license']}) - {violation['reason']}"
+                )
 
         # 라이선스 분포
         print("\n📊 License Distribution:")
-        for license_name, count in sorted(report['license_distribution'].items()):
+        for license_name, count in sorted(report["license_distribution"].items()):
             print(f"  • {license_name}: {count}")
 
         # 권장사항
         print("\n💡 Recommendations:")
-        for rec in report['recommendations']:
+        for rec in report["recommendations"]:
             print(f"  • {rec}")
 
         # 리포트 파일 저장
@@ -494,11 +541,12 @@ def main():
         print(f"\n📄 Detailed report saved to: {report_file}")
 
         # Exit code
-        sys.exit(0 if report['compliance_status'] == 'PASS' else 1)
+        sys.exit(0 if report["compliance_status"] == "PASS" else 1)
 
     except Exception as error:
         print(f"❌ License scan failed: {error}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

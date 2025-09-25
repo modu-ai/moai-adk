@@ -17,6 +17,7 @@ from .parser import TagMatch
 
 class ReportFormat(Enum):
     """리포트 출력 형식"""
+
     MARKDOWN = "markdown"
     HTML = "html"
     JSON = "json"
@@ -25,6 +26,7 @@ class ReportFormat(Enum):
 @dataclass
 class TraceabilityReport:
     """추적성 리포트 데이터"""
+
     title: str
     generated_at: datetime
     tags: list[TagMatch]
@@ -47,7 +49,7 @@ class TagReportGenerator:
         "PRIMARY": ["REQ", "DESIGN", "TASK", "TEST"],
         "STEERING": ["VISION", "STRUCT", "TECH", "ADR"],
         "IMPLEMENTATION": ["FEATURE", "API", "UI", "DATA"],
-        "QUALITY": ["PERF", "SEC", "DOCS", "TAG"]
+        "QUALITY": ["PERF", "SEC", "DOCS", "TAG"],
     }
 
     def __init__(self, output_dir: Path, template_dir: Path | None = None):
@@ -81,7 +83,7 @@ class TagReportGenerator:
             "PRIMARY": {"REQ": {}, "DESIGN": {}, "TASK": {}, "TEST": {}},
             "STEERING": {"VISION": {}, "STRUCT": {}, "TECH": {}, "ADR": {}},
             "IMPLEMENTATION": {"FEATURE": {}, "API": {}, "UI": {}, "DATA": {}},
-            "QUALITY": {"PERF": {}, "SEC": {}, "DOCS": {}, "TAG": {}}
+            "QUALITY": {"PERF": {}, "SEC": {}, "DOCS": {}, "TAG": {}},
         }
 
         for tag in tags:
@@ -89,7 +91,7 @@ class TagReportGenerator:
             if group in matrix and tag.category in matrix[group]:
                 matrix[group][tag.category][tag.identifier] = {
                     "description": tag.description or "",
-                    "references": tag.references or []
+                    "references": tag.references or [],
                 }
 
         return matrix
@@ -106,8 +108,12 @@ class TagReportGenerator:
         """
         # Primary Chain 검사
         primary_categories = ["REQ", "DESIGN", "TASK", "TEST"]
-        found_categories = set(tag.category for tag in tags if tag.category in primary_categories)
-        missing_categories = [cat for cat in primary_categories if cat not in found_categories]
+        found_categories = set(
+            tag.category for tag in tags if tag.category in primary_categories
+        )
+        missing_categories = [
+            cat for cat in primary_categories if cat not in found_categories
+        ]
 
         missing_links = []
         if missing_categories:
@@ -115,27 +121,43 @@ class TagReportGenerator:
             for missing_cat in missing_categories:
                 idx = primary_categories.index(missing_cat)
                 before = primary_categories[idx - 1] if idx > 0 else None
-                after = primary_categories[idx + 1] if idx < len(primary_categories) - 1 else None
+                after = (
+                    primary_categories[idx + 1]
+                    if idx < len(primary_categories) - 1
+                    else None
+                )
 
                 # 전후 TAG 식별
-                before_tags = [tag.identifier for tag in tags if tag.category == before] if before else []
-                after_tags = [tag.identifier for tag in tags if tag.category == after] if after else []
+                before_tags = (
+                    [tag.identifier for tag in tags if tag.category == before]
+                    if before
+                    else []
+                )
+                after_tags = (
+                    [tag.identifier for tag in tags if tag.category == after]
+                    if after
+                    else []
+                )
 
-                missing_links.append({
-                    "category": missing_cat,
-                    "expected_between": before_tags + after_tags
-                })
+                missing_links.append(
+                    {
+                        "category": missing_cat,
+                        "expected_between": before_tags + after_tags,
+                    }
+                )
 
         return {
             "missing_links": missing_links,
-            "completeness": 1.0 - (len(missing_categories) / len(primary_categories))
+            "completeness": 1.0 - (len(missing_categories) / len(primary_categories)),
         }
 
-    def generate_report(self,
-                       tags: list[TagMatch],
-                       format: ReportFormat,
-                       title: str = "TAG 추적성 리포트",
-                       template_name: str | None = None) -> str:
+    def generate_report(
+        self,
+        tags: list[TagMatch],
+        format: ReportFormat,
+        title: str = "TAG 추적성 리포트",
+        template_name: str | None = None,
+    ) -> str:
         """
         리포트 생성
 
@@ -158,7 +180,7 @@ class TagReportGenerator:
             "tags": tags,
             "matrix": matrix,
             "coverage": coverage,
-            "tag_count": len(tags)
+            "tag_count": len(tags),
         }
 
         # 템플릿 선택
@@ -207,13 +229,12 @@ class TagReportGenerator:
             "total_chains": max_count,
             "complete_chains": complete_chains,
             "coverage_percentage": coverage_percentage,
-            "category_coverage": category_coverage
+            "category_coverage": category_coverage,
         }
 
-    def export_to_file(self,
-                      tags: list[TagMatch],
-                      output_path: Path,
-                      format: ReportFormat) -> None:
+    def export_to_file(
+        self, tags: list[TagMatch], output_path: Path, format: ReportFormat
+    ) -> None:
         """
         리포트를 파일로 내보내기
 
@@ -225,7 +246,7 @@ class TagReportGenerator:
         content = self.generate_report(tags, format)
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(content, encoding='utf-8')
+        output_path.write_text(content, encoding="utf-8")
 
     def generate_summary_statistics(self, tags: list[TagMatch]) -> dict[str, Any]:
         """
@@ -244,12 +265,15 @@ class TagReportGenerator:
             "PRIMARY": {"REQ": 0, "DESIGN": 0, "TASK": 0, "TEST": 0},
             "STEERING": {"VISION": 0, "STRUCT": 0, "TECH": 0, "ADR": 0},
             "IMPLEMENTATION": {"FEATURE": 0, "API": 0, "UI": 0, "DATA": 0},
-            "QUALITY": {"PERF": 0, "SEC": 0, "DOCS": 0, "TAG": 0}
+            "QUALITY": {"PERF": 0, "SEC": 0, "DOCS": 0, "TAG": 0},
         }
 
         for tag in tags:
             group = self._get_category_group(tag.category)
-            if group in category_breakdown and tag.category in category_breakdown[group]:
+            if (
+                group in category_breakdown
+                and tag.category in category_breakdown[group]
+            ):
                 category_breakdown[group][tag.category] += 1
 
         # 완료율 계산 (가장 많은 카테고리 기준으로 다른 카테고리의 비율)
@@ -261,12 +285,14 @@ class TagReportGenerator:
             else:
                 max_count = max(counts)
                 avg_coverage = sum(counts) / len(counts)
-                completion_rates[group_name] = (avg_coverage / max_count * 100) if max_count > 0 else 0
+                completion_rates[group_name] = (
+                    (avg_coverage / max_count * 100) if max_count > 0 else 0
+                )
 
         return {
             "total_tags": total_tags,
             "category_breakdown": category_breakdown,
-            "completion_rates": completion_rates
+            "completion_rates": completion_rates,
         }
 
     def _setup_default_templates(self) -> None:
@@ -306,7 +332,6 @@ TAG가 발견되지 않았습니다.
 {% endfor %}
 {% endif %}
 """,
-
             "default_report.html.j2": """<!DOCTYPE html>
 <html>
 <head>

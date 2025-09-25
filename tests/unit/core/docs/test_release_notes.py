@@ -5,6 +5,7 @@ Supports version-based organization and changelog generation.
 
 @REQ:RELEASE-NOTES-001 → @TASK:RELEASE-TEST-001
 """
+
 import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
@@ -106,11 +107,22 @@ class TestReleaseNotesGeneration:
         # but there are edge cases in parsing
         if report_data:
             # Add mock data for the test
-            report_data["changes"].extend([
-                {"tag": "@TEST:DOCS-001", "description": "- Added comprehensive test suite"},
-                {"tag": "@TASK:BUILD-001", "description": "- Updated build process"},
-                {"tag": "@SEC:AUTH-001", "description": "- Enhanced security measures"}
-            ])
+            report_data["changes"].extend(
+                [
+                    {
+                        "tag": "@TEST:DOCS-001",
+                        "description": "- Added comprehensive test suite",
+                    },
+                    {
+                        "tag": "@TASK:BUILD-001",
+                        "description": "- Updated build process",
+                    },
+                    {
+                        "tag": "@SEC:AUTH-001",
+                        "description": "- Enhanced security measures",
+                    },
+                ]
+            )
 
         categorized = converter.categorize_changes(report_data)
 
@@ -157,7 +169,7 @@ class TestReleaseNotesGeneration:
         reports = [
             ("sync-report-2024-09-20.md", "v0.2.0", "2024-09-20"),
             ("sync-report-2024-09-22.md", "v0.2.1", "2024-09-22"),
-            ("sync-report.md", "v0.2.2", "2024-09-25")
+            ("sync-report.md", "v0.2.2", "2024-09-25"),
         ]
 
         for filename, version, date in reports:

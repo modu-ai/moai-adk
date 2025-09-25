@@ -18,6 +18,7 @@ from .database import TagDatabaseManager
 @dataclass
 class AdapterConfiguration:
     """어댑터 설정"""
+
     backend_type: str
     database_path: Path | None
     json_fallback_path: Path | None
@@ -35,11 +36,17 @@ class TagIndexAdapter:
     @DESIGN:REFACTORED-ORCHESTRATOR-001 Now coordinates specialized modules
     """
 
-    def __init__(self, database_path: Path, json_fallback_path: Path | None = None,
-                 performance_monitor: Any | None = None):
+    def __init__(
+        self,
+        database_path: Path,
+        json_fallback_path: Path | None = None,
+        performance_monitor: Any | None = None,
+    ):
         """어댑터 초기화"""
         self.database_path = Path(database_path)
-        self.json_fallback_path = Path(json_fallback_path) if json_fallback_path else None
+        self.json_fallback_path = (
+            Path(json_fallback_path) if json_fallback_path else None
+        )
         self.performance_monitor = performance_monitor
 
         # SQLite 백엔드 초기화
@@ -94,19 +101,24 @@ class TagIndexAdapter:
             raise ApiCompatibilityError("SQLite 백엔드를 사용할 수 없습니다")
         return self.search.search_by_category(category, **filters)
 
-    def get_traceability_chain(self, tag_identifier: str,
-                              direction: str = 'both',
-                              max_depth: int = 5,
-                              include_details: bool = True,
-                              category_filter: list[str] | None = None) -> dict[str, Any]:
+    def get_traceability_chain(
+        self,
+        tag_identifier: str,
+        direction: str = "both",
+        max_depth: int = 5,
+        include_details: bool = True,
+        category_filter: list[str] | None = None,
+    ) -> dict[str, Any]:
         """추적성 체인 분석 (고도화된 버전)"""
         if not self.backend_available:
             return {
-                'start_tag': tag_identifier,
-                'found': False,
-                'error': 'SQLite 백엔드를 사용할 수 없습니다'
+                "start_tag": tag_identifier,
+                "found": False,
+                "error": "SQLite 백엔드를 사용할 수 없습니다",
             }
-        return self.search.get_traceability_chain(tag_identifier, direction, max_depth, include_details, category_filter)
+        return self.search.get_traceability_chain(
+            tag_identifier, direction, max_depth, include_details, category_filter
+        )
 
     # Integration 기능 델리게이트
     def start_watching(self) -> None:

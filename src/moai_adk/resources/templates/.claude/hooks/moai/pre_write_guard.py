@@ -12,6 +12,7 @@ import sys
 SENSITIVE_KEYWORDS = (".env", "/secrets", "/.git/", "/.ssh")
 PROTECTED_PATHS = (".moai/memory/",)
 
+
 def check_file_safety(file_path: str) -> bool:
     """Check if file is safe to edit"""
     if not file_path:
@@ -31,6 +32,7 @@ def check_file_safety(file_path: str) -> bool:
 
     return True
 
+
 def main() -> None:
     """Main entry point for Claude Code hook system"""
     try:
@@ -41,9 +43,11 @@ def main() -> None:
             sys.exit(0)
 
         tool_input = data.get("tool_input", {}) or {}
-        file_path = (tool_input.get("file_path") or
-                    tool_input.get("filePath") or
-                    tool_input.get("path"))
+        file_path = (
+            tool_input.get("file_path")
+            or tool_input.get("filePath")
+            or tool_input.get("path")
+        )
 
         if not check_file_safety(str(file_path) if file_path else ""):
             print("BLOCKED: 민감한 파일은 편집할 수 없습니다.", file=sys.stderr)
@@ -54,6 +58,7 @@ def main() -> None:
     except Exception:
         # Silent failure to avoid breaking Claude Code session
         sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

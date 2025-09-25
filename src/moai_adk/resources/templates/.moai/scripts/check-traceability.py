@@ -44,7 +44,12 @@ class TraceabilityChecker:
                 "categories": {
                     "SPEC": {"REQ": [], "DESIGN": [], "TASK": []},
                     "STEERING": {"VISION": [], "STRUCT": [], "TECH": [], "ADR": []},
-                    "IMPLEMENTATION": {"FEATURE": [], "API": [], "TEST": [], "DATA": []},
+                    "IMPLEMENTATION": {
+                        "FEATURE": [],
+                        "API": [],
+                        "TEST": [],
+                        "DATA": [],
+                    },
                     "QUALITY": {"PERF": [], "SEC": [], "DEBT": [], "TODO": []},
                 },
                 "traceability_chains": [],
@@ -70,7 +75,10 @@ class TraceabilityChecker:
         for ext in exts:
             for file_path in self.project_root.rglob(f"*{ext}"):
                 # 숨김 디렉토리 제외(.git 등) 단, .claude, .moai는 허용
-                if any(part.startswith(".") and part not in [".claude", ".moai"] for part in file_path.parts):
+                if any(
+                    part.startswith(".") and part not in [".claude", ".moai"]
+                    for part in file_path.parts
+                ):
                     continue
                 try:
                     content = file_path.read_text(encoding="utf-8")
@@ -88,7 +96,10 @@ class TraceabilityChecker:
         exts = [".md", ".py", ".js", ".ts", ".yaml", ".yml", ".json"]
         for ext in exts:
             for file_path in self.project_root.rglob(f"*{ext}"):
-                if any(part.startswith(".") and part not in [".claude", ".moai"] for part in file_path.parts):
+                if any(
+                    part.startswith(".") and part not in [".claude", ".moai"]
+                    for part in file_path.parts
+                ):
                     continue
                 try:
                     content = file_path.read_text(encoding="utf-8")
@@ -171,10 +182,7 @@ class TraceabilityChecker:
         for link in explicit_links:
             chain_set.add((link["from"], link["to"]))
 
-        return [
-            {"from": frm, "to": to}
-            for frm, to in sorted(chain_set)
-        ]
+        return [{"from": frm, "to": to} for frm, to in sorted(chain_set)]
 
     def verify(self, found: dict[str, list[str]], chains: list[dict[str, str]]):
         found_set = set(found.keys())
@@ -188,11 +196,17 @@ class TraceabilityChecker:
                 linked_from.add(source)
                 linked_to.add(target)
             else:
-                missing_from = source if source in found_set else f"{source or 'unknown'}(?)"
-                missing_to = target if target in found_set else f"{target or 'unknown'}(?)"
+                missing_from = (
+                    source if source in found_set else f"{source or 'unknown'}(?)"
+                )
+                missing_to = (
+                    target if target in found_set else f"{target or 'unknown'}(?)"
+                )
                 self.broken_links.append((missing_from, missing_to))
 
-        self.orphaned_tags = sorted(tag for tag in found_set if tag not in linked_from and tag not in linked_to)
+        self.orphaned_tags = sorted(
+            tag for tag in found_set if tag not in linked_from and tag not in linked_to
+        )
 
     def update_index(self, found: dict[str, list[str]], chains: list[dict[str, str]]):
         # 카테고리 별 목록 업데이트(중복 제거)
@@ -203,10 +217,21 @@ class TraceabilityChecker:
             "QUALITY": {"PERF": [], "SEC": [], "DEBT": [], "TODO": []},
         }
         cat_to_group = {
-            "REQ": "SPEC", "DESIGN": "SPEC", "TASK": "SPEC",
-            "VISION": "STEERING", "STRUCT": "STEERING", "TECH": "STEERING", "ADR": "STEERING",
-            "FEATURE": "IMPLEMENTATION", "API": "IMPLEMENTATION", "TEST": "IMPLEMENTATION", "DATA": "IMPLEMENTATION",
-            "PERF": "QUALITY", "SEC": "QUALITY", "DEBT": "QUALITY", "TODO": "QUALITY",
+            "REQ": "SPEC",
+            "DESIGN": "SPEC",
+            "TASK": "SPEC",
+            "VISION": "STEERING",
+            "STRUCT": "STEERING",
+            "TECH": "STEERING",
+            "ADR": "STEERING",
+            "FEATURE": "IMPLEMENTATION",
+            "API": "IMPLEMENTATION",
+            "TEST": "IMPLEMENTATION",
+            "DATA": "IMPLEMENTATION",
+            "PERF": "QUALITY",
+            "SEC": "QUALITY",
+            "DEBT": "QUALITY",
+            "TODO": "QUALITY",
         }
 
         locations = {}
@@ -265,12 +290,21 @@ class TraceabilityChecker:
 
 def main():
     import argparse
+
     parser = argparse.ArgumentParser(description="TAG 추적성 검증")
     parser.add_argument("--verbose", "-v", action="store_true", help="상세 출력")
     parser.add_argument("--project-root", "-p", default=".", help="프로젝트 루트 경로")
-    parser.add_argument("--update", action="store_true", help="인덱스를 강제로 갱신 (기본: 자동 갱신)")
-    parser.add_argument("--no-update", action="store_true", help="인덱스 갱신을 건너뜁니다")
-    parser.add_argument("--strict", action="store_true", help="고아 TAG 또는 끊어진 링크가 있으면 종료 코드 1 반환")
+    parser.add_argument(
+        "--update", action="store_true", help="인덱스를 강제로 갱신 (기본: 자동 갱신)"
+    )
+    parser.add_argument(
+        "--no-update", action="store_true", help="인덱스 갱신을 건너뜁니다"
+    )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="고아 TAG 또는 끊어진 링크가 있으면 종료 코드 1 반환",
+    )
 
     args = parser.parse_args()
 

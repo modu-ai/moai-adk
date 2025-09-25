@@ -32,20 +32,26 @@ def test_clean_installation_validation(tmp_path: Path):
     specs_dir = moai_dir / "specs"
     if specs_dir.exists():
         # Should only contain .gitkeep file or be empty
-        spec_files = [f for f in specs_dir.iterdir() if f.name != '.gitkeep']
-        assert len(spec_files) == 0, f"Found unexpected spec files: {[f.name for f in spec_files]}"
+        spec_files = [f for f in specs_dir.iterdir() if f.name != ".gitkeep"]
+        assert len(spec_files) == 0, (
+            f"Found unexpected spec files: {[f.name for f in spec_files]}"
+        )
 
     # Verify tags.json is minimal (< 50 lines)
     tags_file = moai_dir / "indexes" / "tags.json"
     if tags_file.exists():
         line_count = sum(1 for _ in open(tags_file))
-        assert line_count < 50, f"tags.json too large: {line_count} lines (expected < 50)"
+        assert line_count < 50, (
+            f"tags.json too large: {line_count} lines (expected < 50)"
+        )
 
     # Verify reports directory is clean
     reports_dir = moai_dir / "reports"
     if reports_dir.exists():
-        report_files = [f for f in reports_dir.iterdir() if f.name != '.gitkeep']
-        assert len(report_files) == 0, f"Found unexpected report files: {[f.name for f in report_files]}"
+        report_files = [f for f in reports_dir.iterdir() if f.name != ".gitkeep"]
+        assert len(report_files) == 0, (
+            f"Found unexpected report files: {[f.name for f in report_files]}"
+        )
 
 
 def test_validate_clean_installation_method(tmp_path: Path):
@@ -61,4 +67,3 @@ def test_validate_clean_installation_method(tmp_path: Path):
     # Test the validation method directly
     is_clean = rm._validate_clean_installation(moai_dir)
     assert is_clean, "Clean installation validation should pass"
-

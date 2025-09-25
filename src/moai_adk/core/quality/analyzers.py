@@ -32,7 +32,7 @@ class CodeAnalyzer:
             AST tree or None if parsing failed
         """
         try:
-            with open(file_path, encoding='utf-8') as file:
+            with open(file_path, encoding="utf-8") as file:
                 content = file.read()
 
             # Check if file is empty or contains only whitespace
@@ -63,14 +63,14 @@ class CodeAnalyzer:
             Number of significant lines
         """
         try:
-            with open(file_path, encoding='utf-8') as file:
+            with open(file_path, encoding="utf-8") as file:
                 lines = file.readlines()
 
             significant_lines = 0
             for line in lines:
                 stripped = line.strip()
                 # Skip empty lines and comment-only lines
-                if stripped and not stripped.startswith('#'):
+                if stripped and not stripped.startswith("#"):
                     significant_lines += 1
 
             return significant_lines
@@ -110,9 +110,12 @@ class CodeAnalyzer:
         python_files = []
 
         try:
-            for file_path in project_path.rglob('*.py'):
+            for file_path in project_path.rglob("*.py"):
                 # Skip excluded directories
-                if any(excluded in file_path.parts for excluded in ProjectPatterns.EXCLUDED_DIRECTORIES):
+                if any(
+                    excluded in file_path.parts
+                    for excluded in ProjectPatterns.EXCLUDED_DIRECTORIES
+                ):
                     continue
 
                 # Skip minimal init files if configured
@@ -137,7 +140,7 @@ class CodeAnalyzer:
         Returns:
             True if file is minimal (< 10 significant lines)
         """
-        if file_path.name != '__init__.py':
+        if file_path.name != "__init__.py":
             return False
 
         try:

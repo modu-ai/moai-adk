@@ -32,10 +32,10 @@ def get_logger(name: str = "moai-adk", level: str = "WARNING") -> logging.Logger
     if not logger.handlers:
         handler = logging.StreamHandler(sys.stdout)
         formatter = logging.Formatter(
-            f'{Fore.BLUE}%(asctime)s{Style.RESET_ALL} - '
-            f'{Fore.GREEN}%(name)s{Style.RESET_ALL} - '
-            f'%(levelname)s - %(message)s',
-            datefmt='%H:%M:%S'
+            f"{Fore.BLUE}%(asctime)s{Style.RESET_ALL} - "
+            f"{Fore.GREEN}%(name)s{Style.RESET_ALL} - "
+            f"%(levelname)s - %(message)s",
+            datefmt="%H:%M:%S",
         )
         handler.setFormatter(formatter)
         logger.addHandler(handler)

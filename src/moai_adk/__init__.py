@@ -14,7 +14,9 @@ from ._version import __version__
 
 __author__ = "MoAI Team"
 __email__ = "contact@moai-adk.dev"
-__description__ = "Modu-AI's Agentic Development Kit for streamlined development workflow"
+__description__ = (
+    "Modu-AI's Agentic Development Kit for streamlined development workflow"
+)
 
 # Core imports
 from .cli import CLICommands

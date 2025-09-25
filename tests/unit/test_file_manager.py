@@ -12,6 +12,8 @@ from unittest.mock import patch, MagicMock, mock_open, call
 
 from moai_adk.core.file_manager import FileManager
 from moai_adk.core.security import SecurityManager
+
+
 class TestFileManager:
     """Test cases for FileManager class."""
 
@@ -78,7 +80,9 @@ class TestFileManager:
         assert (target_dir / "file2.py").exists()
         assert not (target_dir / "readme.txt").exists()
 
-    def test_copy_template_files_security_validation_fails(self, file_manager, temp_dir):
+    def test_copy_template_files_security_validation_fails(
+        self, file_manager, temp_dir
+    ):
         """Test copy_template_files when security validation fails."""
         # Setup source files
         source_dir = temp_dir / "source"
@@ -169,7 +173,7 @@ class TestFileManager:
 
         assert result == ""
 
-    @patch('builtins.open', side_effect=IOError("Permission denied"))
+    @patch("builtins.open", side_effect=IOError("Permission denied"))
     def test_render_template_file_io_error(self, mock_open, file_manager, temp_dir):
         """Test template rendering with IO error."""
         template_path = temp_dir / "template.txt"
@@ -389,7 +393,9 @@ class TestFileManager:
 
         assert result == []
 
-    def test_install_output_styles_security_validation_fails(self, file_manager, temp_dir):
+    def test_install_output_styles_security_validation_fails(
+        self, file_manager, temp_dir
+    ):
         """Test install_output_styles when security validation fails."""
         # Setup source style files
         styles_dir = file_manager.template_dir / ".claude" / "output-styles"
@@ -435,7 +441,7 @@ class TestFileManager:
         assert result is False
         assert not gitignore_path.exists()
 
-    @patch('builtins.open', side_effect=IOError("Permission denied"))
+    @patch("builtins.open", side_effect=IOError("Permission denied"))
     def test_create_gitignore_io_error(self, mock_open, file_manager, temp_dir):
         """Test create_gitignore with IO error."""
         gitignore_path = temp_dir / ".gitignore"
@@ -457,7 +463,9 @@ class TestFileManager:
 
         # Create template files
         (claude_dir / "hooks" / "moai" / "policy_block.py").write_text("# Policy hook")
-        (claude_dir / "output-styles" / "expert.md").write_text("# Expert style for $project")
+        (claude_dir / "output-styles" / "expert.md").write_text(
+            "# Expert style for $project"
+        )
         # Note: run-tests.sh removed - Python test_runner.py used instead
 
         # Mock security validation to return True
@@ -467,9 +475,15 @@ class TestFileManager:
         context = {"project": "MyProject"}
 
         # Execute workflow
-        hook_files = file_manager.copy_hook_scripts(project_dir / ".claude" / "hooks" / "moai")
-        style_files = file_manager.install_output_styles(project_dir / ".claude" / "output-styles", context)
-        script_files = file_manager.copy_verification_scripts(project_dir / ".moai" / "scripts")
+        hook_files = file_manager.copy_hook_scripts(
+            project_dir / ".claude" / "hooks" / "moai"
+        )
+        style_files = file_manager.install_output_styles(
+            project_dir / ".claude" / "output-styles", context
+        )
+        script_files = file_manager.copy_verification_scripts(
+            project_dir / ".moai" / "scripts"
+        )
         gitignore_created = file_manager.create_gitignore(project_dir / ".gitignore")
 
         # Verify results
@@ -479,7 +493,9 @@ class TestFileManager:
         assert gitignore_created is True
 
         # Verify file contents
-        assert (project_dir / ".claude" / "output-styles" / "expert.md").read_text() == "# Expert style for MyProject"
+        assert (
+            project_dir / ".claude" / "output-styles" / "expert.md"
+        ).read_text() == "# Expert style for MyProject"
         assert (project_dir / ".gitignore").exists()
 
     def test_error_handling_in_copy_template_files(self, file_manager, temp_dir):
@@ -495,7 +511,7 @@ class TestFileManager:
         file_manager.security_manager.validate_file_creation.return_value = True
 
         # Mock shutil.copy2 to raise an exception
-        with patch('shutil.copy2', side_effect=IOError("Disk full")):
+        with patch("shutil.copy2", side_effect=IOError("Disk full")):
             result = file_manager.copy_template_files(source_dir, target_dir, "*.py")
 
             # Should handle the error gracefully and return empty list

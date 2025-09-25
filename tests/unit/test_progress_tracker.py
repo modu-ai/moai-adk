@@ -10,6 +10,8 @@ from unittest.mock import patch, MagicMock, call
 from io import StringIO
 
 from moai_adk.utils.progress_tracker import ProgressTracker, MultiStageProgressTracker
+
+
 class TestProgressTracker:
     """Test cases for ProgressTracker class."""
 
@@ -43,7 +45,7 @@ class TestProgressTracker:
         assert len(callback_calls) == 1
         assert callback_calls[0] == ("Test step", 1, 10)
 
-    @patch('builtins.print')
+    @patch("builtins.print")
     def test_update_progress_without_callback(self, mock_print, tracker):
         """Test update_progress with default display."""
         tracker.update_progress("Test step")
@@ -51,7 +53,7 @@ class TestProgressTracker:
         assert tracker.current_step == 1
         mock_print.assert_called_once()
 
-    @patch('builtins.print')
+    @patch("builtins.print")
     def test_update_progress_multiple_steps(self, mock_print, tracker):
         """Test multiple progress updates."""
         steps = ["Step 1", "Step 2", "Step 3"]
@@ -115,10 +117,10 @@ class TestProgressTracker:
         """Test progress info at initial state."""
         info = tracker.get_progress_info()
         expected = {
-            'current_step': 0,
-            'total_steps': 10,
-            'percentage': 0,
-            'is_complete': False
+            "current_step": 0,
+            "total_steps": 10,
+            "percentage": 0,
+            "is_complete": False,
         }
         assert info == expected
 
@@ -127,10 +129,10 @@ class TestProgressTracker:
         tracker.current_step = 3
         info = tracker.get_progress_info()
         expected = {
-            'current_step': 3,
-            'total_steps': 10,
-            'percentage': 30,
-            'is_complete': False
+            "current_step": 3,
+            "total_steps": 10,
+            "percentage": 30,
+            "is_complete": False,
         }
         assert info == expected
 
@@ -139,10 +141,10 @@ class TestProgressTracker:
         tracker.current_step = 10
         info = tracker.get_progress_info()
         expected = {
-            'current_step': 10,
-            'total_steps': 10,
-            'percentage': 100,
-            'is_complete': True
+            "current_step": 10,
+            "total_steps": 10,
+            "percentage": 100,
+            "is_complete": True,
         }
         assert info == expected
 
@@ -205,7 +207,7 @@ class TestProgressTracker:
         # Should be independent of parent tracker
         assert sub_tracker is not tracker
 
-    @patch('builtins.print')
+    @patch("builtins.print")
     def test_display_completion_message_default(self, mock_print, tracker):
         """Test display completion message with default text."""
         tracker.display_completion_message()
@@ -215,7 +217,7 @@ class TestProgressTracker:
         assert "✅" in args
         assert "Installation completed successfully!" in args
 
-    @patch('builtins.print')
+    @patch("builtins.print")
     def test_display_completion_message_custom(self, mock_print, tracker):
         """Test display completion message with custom text."""
         custom_message = "Custom completion message"
@@ -224,7 +226,7 @@ class TestProgressTracker:
         args = mock_print.call_args[0][0]
         assert custom_message in args
 
-    @patch('builtins.print')
+    @patch("builtins.print")
     def test_display_error_message(self, mock_print, tracker):
         """Test display error message."""
         error_message = "Something went wrong"
@@ -234,7 +236,7 @@ class TestProgressTracker:
         assert "❌" in args
         assert error_message in args
 
-    @patch('builtins.print')
+    @patch("builtins.print")
     def test_display_warning_message(self, mock_print, tracker):
         """Test display warning message."""
         warning_message = "Warning message"
@@ -244,7 +246,7 @@ class TestProgressTracker:
         assert "⚠️" in args
         assert warning_message in args
 
-    @patch('builtins.print')
+    @patch("builtins.print")
     def test_display_default_progress_formatting(self, mock_print, tracker):
         """Test default progress display formatting."""
         tracker.update_progress("Test step")
@@ -252,15 +254,15 @@ class TestProgressTracker:
         mock_print.assert_called_once()
         # Check that print was called with proper formatting arguments
         call_args = mock_print.call_args
-        assert call_args[1]['end'] == ""  # Should not add newline
-        assert call_args[1]['flush'] is True  # Should flush output
+        assert call_args[1]["end"] == ""  # Should not add newline
+        assert call_args[1]["flush"] is True  # Should flush output
 
-    @patch('builtins.print')
+    @patch("builtins.print")
     def test_display_adds_newline_when_complete(self, mock_print, tracker):
         """Test that display adds newline when progress is complete."""
         # Complete all steps except the last one
         for i in range(9):
-            tracker.update_progress(f"Step {i+1}")
+            tracker.update_progress(f"Step {i + 1}")
 
         mock_print.reset_mock()
 
@@ -271,6 +273,8 @@ class TestProgressTracker:
         assert mock_print.call_count == 2
         # First call is the progress display, second is the newline
         assert mock_print.call_args_list[1] == call()
+
+
 class TestMultiStageProgressTracker:
     """Test cases for MultiStageProgressTracker class."""
 
@@ -314,7 +318,7 @@ class TestMultiStageProgressTracker:
         # Should not duplicate in stage_order
         assert multi_tracker.stage_order.count("setup") == 1
 
-    @patch('builtins.print')
+    @patch("builtins.print")
     def test_start_stage_valid(self, mock_print, multi_tracker):
         """Test starting a valid stage."""
         multi_tracker.add_stage("setup", 5)
@@ -331,7 +335,7 @@ class TestMultiStageProgressTracker:
         with pytest.raises(ValueError, match="Stage 'nonexistent' not found"):
             multi_tracker.start_stage("nonexistent")
 
-    @patch('builtins.print')
+    @patch("builtins.print")
     def test_start_stage_resets_tracker(self, mock_print, multi_tracker):
         """Test that starting a stage resets its tracker."""
         multi_tracker.add_stage("setup", 5)
@@ -344,7 +348,7 @@ class TestMultiStageProgressTracker:
 
         assert tracker.current_step == 0
 
-    @patch('builtins.print')
+    @patch("builtins.print")
     def test_complete_stage_valid(self, mock_print, multi_tracker):
         """Test completing a valid stage."""
         multi_tracker.add_stage("setup", 5)
@@ -354,7 +358,7 @@ class TestMultiStageProgressTracker:
         assert multi_tracker.stages["setup"]["completed"] is True
         mock_print.assert_called_once()
 
-    @patch('builtins.print')
+    @patch("builtins.print")
     def test_complete_stage_invalid(self, mock_print, multi_tracker):
         """Test completing a non-existent stage."""
         # Should not raise error, just not do anything
@@ -368,11 +372,11 @@ class TestMultiStageProgressTracker:
         progress = multi_tracker.get_overall_progress()
 
         expected = {
-            'completed_steps': 0,
-            'total_steps': 0,
-            'percentage': 0,
-            'current_stage': None,
-            'completed_stages': []
+            "completed_steps": 0,
+            "total_steps": 0,
+            "percentage": 0,
+            "current_stage": None,
+            "completed_stages": [],
         }
         assert progress == expected
 
@@ -385,11 +389,11 @@ class TestMultiStageProgressTracker:
         progress = multi_tracker.get_overall_progress()
 
         expected = {
-            'completed_steps': 3,
-            'total_steps': 10,
-            'percentage': 30,
-            'current_stage': "setup",
-            'completed_stages': []
+            "completed_steps": 3,
+            "total_steps": 10,
+            "percentage": 30,
+            "current_stage": "setup",
+            "completed_stages": [],
         }
         assert progress == expected
 
@@ -411,11 +415,11 @@ class TestMultiStageProgressTracker:
         progress = multi_tracker.get_overall_progress()
 
         expected = {
-            'completed_steps': 15,  # 10 + 5 + 0
-            'total_steps': 35,      # 10 + 20 + 5
-            'percentage': 42,       # 15/35 * 100 = 42.857... -> 42
-            'current_stage': "install",
-            'completed_stages': ["setup"]
+            "completed_steps": 15,  # 10 + 5 + 0
+            "total_steps": 35,  # 10 + 20 + 5
+            "percentage": 42,  # 15/35 * 100 = 42.857... -> 42
+            "current_stage": "install",
+            "completed_stages": ["setup"],
         }
         assert progress == expected
 
@@ -430,10 +434,10 @@ class TestMultiStageProgressTracker:
 
         progress = multi_tracker.get_overall_progress()
 
-        assert progress['completed_steps'] == 18
-        assert progress['total_steps'] == 18
-        assert progress['percentage'] == 100
-        assert len(progress['completed_stages']) == 3
+        assert progress["completed_steps"] == 18
+        assert progress["total_steps"] == 18
+        assert progress["percentage"] == 100
+        assert len(progress["completed_stages"]) == 3
 
     def test_stage_order_preserved(self, multi_tracker):
         """Test that stage order is preserved when adding stages."""
@@ -451,24 +455,24 @@ class TestMultiStageProgressTracker:
         multi_tracker.add_stage("install", 5)
         multi_tracker.add_stage("cleanup", 2)
 
-        with patch('builtins.print'):
+        with patch("builtins.print"):
             # Start and complete setup stage
             setup_tracker = multi_tracker.start_stage("setup")
             for i in range(3):
-                setup_tracker.update_progress(f"Setup step {i+1}")
+                setup_tracker.update_progress(f"Setup step {i + 1}")
             multi_tracker.complete_stage("setup")
 
             # Start install stage
             install_tracker = multi_tracker.start_stage("install")
             for i in range(2):  # Partial completion
-                install_tracker.update_progress(f"Install step {i+1}")
+                install_tracker.update_progress(f"Install step {i + 1}")
 
         # Check overall progress
         progress = multi_tracker.get_overall_progress()
 
-        assert progress['completed_steps'] == 5  # 3 + 2
-        assert progress['total_steps'] == 10     # 3 + 5 + 2
-        assert progress['percentage'] == 50      # 5/10 * 100
-        assert progress['current_stage'] == "install"
-        assert progress['completed_stages'] == ["setup"]
+        assert progress["completed_steps"] == 5  # 3 + 2
+        assert progress["total_steps"] == 10  # 3 + 5 + 2
+        assert progress["percentage"] == 50  # 5/10 * 100
+        assert progress["current_stage"] == "install"
+        assert progress["completed_stages"] == ["setup"]
         assert len(multi_tracker.stages) == 3

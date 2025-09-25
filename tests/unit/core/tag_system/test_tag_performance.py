@@ -23,7 +23,7 @@ from moai_adk.core.tag_system.benchmark import (
     MemoryProfiler,
     BenchmarkResult,
     PerformanceComparison,
-    LoadTestSuite
+    LoadTestSuite,
 )
 from moai_adk.core.tag_system.database import TagDatabaseManager
 from moai_adk.core.tag_system.adapter import TagIndexAdapter
@@ -40,8 +40,7 @@ class TestTagPerformanceBenchmark:
         self.temp_json = self.temp_dir / "benchmark.json"
 
         self.benchmark = TagPerformanceBenchmark(
-            database_path=self.temp_db,
-            json_path=self.temp_json
+            database_path=self.temp_db, json_path=self.temp_json
         )
 
         # 메모리 프로파일러 초기화
@@ -50,6 +49,7 @@ class TestTagPerformanceBenchmark:
     def teardown_method(self):
         """각 테스트 후 정리"""
         import shutil
+
         if self.temp_dir.exists():
             shutil.rmtree(self.temp_dir, ignore_errors=True)
 
@@ -64,27 +64,30 @@ class TestTagPerformanceBenchmark:
 
         # JSON 백엔드 초기화
         json_manager = TagIndexManager(
-            watch_directory=self.temp_dir,
-            index_file=self.temp_json
+            watch_directory=self.temp_dir, index_file=self.temp_json
         )
         json_manager.initialize_index()
 
         # SQLite 백엔드 초기화
         sqlite_adapter = TagIndexAdapter(
-            database_path=self.temp_db,
-            json_fallback_path=self.temp_json
+            database_path=self.temp_db, json_fallback_path=self.temp_json
         )
         sqlite_adapter.initialize()
 
         # 동일한 데이터로 두 백엔드 초기화
-        self._populate_backends_with_dataset(large_dataset, json_manager, sqlite_adapter)
+        self._populate_backends_with_dataset(
+            large_dataset, json_manager, sqlite_adapter
+        )
 
         # WHEN: 다양한 검색 시나리오 성능 측정
         search_scenarios = [
-            ('category_search', 'REQ'),
-            ('identifier_pattern', 'USER-*'),
-            ('file_path_search', '/spec/*.md'),
-            ('complex_query', {'category': 'REQ', 'file_pattern': '*.md', 'line_range': (1, 100)})
+            ("category_search", "REQ"),
+            ("identifier_pattern", "USER-*"),
+            ("file_path_search", "/spec/*.md"),
+            (
+                "complex_query",
+                {"category": "REQ", "file_pattern": "*.md", "line_range": (1, 100)},
+            ),
         ]
 
         json_results = {}
@@ -92,11 +95,15 @@ class TestTagPerformanceBenchmark:
 
         for scenario_name, search_params in search_scenarios:
             # JSON 검색 성능
-            json_time = self._measure_search_performance(json_manager, scenario_name, search_params)
+            json_time = self._measure_search_performance(
+                json_manager, scenario_name, search_params
+            )
             json_results[scenario_name] = json_time
 
             # SQLite 검색 성능
-            sqlite_time = self._measure_search_performance(sqlite_adapter, scenario_name, search_params)
+            sqlite_time = self._measure_search_performance(
+                sqlite_adapter, scenario_name, search_params
+            )
             sqlite_results[scenario_name] = sqlite_time
 
         # THEN: 10x 성능 개선 검증
@@ -112,7 +119,9 @@ class TestTagPerformanceBenchmark:
             )
 
         # 종합 성능 리포트 생성
-        benchmark_result = self.benchmark.create_performance_report(json_results, sqlite_results)
+        benchmark_result = self.benchmark.create_performance_report(
+            json_results, sqlite_results
+        )
         assert benchmark_result.overall_improvement_ratio >= 10.0
         assert benchmark_result.all_scenarios_meet_target is True
 
@@ -132,8 +141,7 @@ class TestTagPerformanceBenchmark:
         initial_memory = process.memory_info().rss
 
         json_manager = TagIndexManager(
-            watch_directory=self.temp_dir,
-            index_file=self.temp_json
+            watch_directory=self.temp_dir, index_file=self.temp_json
         )
         json_manager.initialize_index()
         self._populate_json_backend(large_dataset, json_manager)
@@ -147,14 +155,14 @@ class TestTagPerformanceBenchmark:
         del json_index
         del json_manager
         import gc
+
         gc.collect()
 
         # SQLite 방식 메모리 측정
         reset_memory = process.memory_info().rss
 
         sqlite_adapter = TagIndexAdapter(
-            database_path=self.temp_db,
-            json_fallback_path=self.temp_json
+            database_path=self.temp_db, json_fallback_path=self.temp_json
         )
         sqlite_adapter.initialize()
         self._populate_sqlite_backend(large_dataset, sqlite_adapter)
@@ -165,7 +173,9 @@ class TestTagPerformanceBenchmark:
         sqlite_memory_usage = sqlite_memory_after_load - reset_memory
 
         # WHEN: 메모리 사용량 비교
-        memory_reduction_ratio = (json_memory_usage - sqlite_memory_usage) / json_memory_usage
+        memory_reduction_ratio = (
+            json_memory_usage - sqlite_memory_usage
+        ) / json_memory_usage
         memory_reduction_percentage = memory_reduction_ratio * 100
 
         # THEN: 50% 이상 메모리 절약 검증
@@ -179,7 +189,7 @@ class TestTagPerformanceBenchmark:
         memory_report = self.memory_profiler.create_comparison_report(
             json_usage=json_memory_usage,
             sqlite_usage=sqlite_memory_usage,
-            dataset_size=dataset_size
+            dataset_size=dataset_size,
         )
 
         assert memory_report.memory_efficiency_improvement >= 50.0
@@ -196,15 +206,13 @@ class TestTagPerformanceBenchmark:
 
         # 백엔드 초기화
         json_manager = TagIndexManager(
-            watch_directory=self.temp_dir,
-            index_file=self.temp_json
+            watch_directory=self.temp_dir, index_file=self.temp_json
         )
         json_manager.initialize_index()
         self._populate_json_backend(concurrent_dataset, json_manager)
 
         sqlite_adapter = TagIndexAdapter(
-            database_path=self.temp_db,
-            json_fallback_path=self.temp_json
+            database_path=self.temp_db, json_fallback_path=self.temp_json
         )
         sqlite_adapter.initialize()
         self._populate_sqlite_backend(concurrent_dataset, sqlite_adapter)
@@ -216,38 +224,51 @@ class TestTagPerformanceBenchmark:
         def json_worker(user_id: int) -> Dict[str, float]:
             start_time = time.time()
             for i in range(queries_per_user):
-                category = ['REQ', 'DESIGN', 'TASK', 'TEST'][i % 4]
+                category = ["REQ", "DESIGN", "TASK", "TEST"][i % 4]
                 # JSON 검색 시뮬레이션
                 index_data = json_manager.load_index()  # 매번 파일 읽기
                 results = [
-                    tag_info for category_group in index_data["categories"].values()
+                    tag_info
+                    for category_group in index_data["categories"].values()
                     for cat_name, cat_tags in category_group.items()
                     if cat_name == category
                     for tag_id, tag_info in cat_tags.items()
                 ]
             total_time = time.time() - start_time
-            return {'user_id': user_id, 'total_time': total_time, 'queries': queries_per_user}
+            return {
+                "user_id": user_id,
+                "total_time": total_time,
+                "queries": queries_per_user,
+            }
 
         def sqlite_worker(user_id: int) -> Dict[str, float]:
             start_time = time.time()
             for i in range(queries_per_user):
-                category = ['REQ', 'DESIGN', 'TASK', 'TEST'][i % 4]
+                category = ["REQ", "DESIGN", "TASK", "TEST"][i % 4]
                 # SQLite 검색 (연결 재사용)
                 results = sqlite_adapter._database.search_tags_by_category(category)
             total_time = time.time() - start_time
-            return {'user_id': user_id, 'total_time': total_time, 'queries': queries_per_user}
+            return {
+                "user_id": user_id,
+                "total_time": total_time,
+                "queries": queries_per_user,
+            }
 
         # 동시 실행 - JSON
         with ThreadPoolExecutor(max_workers=concurrent_users) as executor:
             json_start = time.time()
-            json_futures = [executor.submit(json_worker, i) for i in range(concurrent_users)]
+            json_futures = [
+                executor.submit(json_worker, i) for i in range(concurrent_users)
+            ]
             json_results = [f.result() for f in json_futures]
             json_total_time = time.time() - json_start
 
         # 동시 실행 - SQLite
         with ThreadPoolExecutor(max_workers=concurrent_users) as executor:
             sqlite_start = time.time()
-            sqlite_futures = [executor.submit(sqlite_worker, i) for i in range(concurrent_users)]
+            sqlite_futures = [
+                executor.submit(sqlite_worker, i) for i in range(concurrent_users)
+            ]
             sqlite_results = [f.result() for f in sqlite_futures]
             sqlite_total_time = time.time() - sqlite_start
 
@@ -266,10 +287,11 @@ class TestTagPerformanceBenchmark:
         )
 
         # 사용자별 성능 분산 확인 (SQLite가 더 일관된 성능을 보여야 함)
-        json_times = [r['total_time'] for r in json_results]
-        sqlite_times = [r['total_time'] for r in sqlite_results]
+        json_times = [r["total_time"] for r in json_results]
+        sqlite_times = [r["total_time"] for r in sqlite_results]
 
         import statistics
+
         json_std_dev = statistics.stdev(json_times)
         sqlite_std_dev = statistics.stdev(sqlite_times)
 
@@ -293,8 +315,7 @@ class TestTagPerformanceBenchmark:
             # JSON 성능 측정
             json_temp = self.temp_dir / f"json_{data_size}.json"
             json_manager = TagIndexManager(
-                watch_directory=self.temp_dir,
-                index_file=json_temp
+                watch_directory=self.temp_dir, index_file=json_temp
             )
             json_manager.initialize_index()
             self._populate_json_backend(dataset, json_manager)
@@ -305,8 +326,7 @@ class TestTagPerformanceBenchmark:
             # SQLite 성능 측정
             sqlite_temp = self.temp_dir / f"sqlite_{data_size}.db"
             sqlite_adapter = TagIndexAdapter(
-                database_path=sqlite_temp,
-                json_fallback_path=json_temp
+                database_path=sqlite_temp, json_fallback_path=json_temp
             )
             sqlite_adapter.initialize()
             self._populate_sqlite_backend(dataset, sqlite_adapter)
@@ -320,7 +340,9 @@ class TestTagPerformanceBenchmark:
 
         # THEN: SQLite가 더 나은 확장성 보유
         # 시간 복잡도: JSON은 O(n), SQLite는 O(log n) 목표
-        assert sqlite_scalability.complexity_order < json_scalability.complexity_order, (
+        assert (
+            sqlite_scalability.complexity_order < json_scalability.complexity_order
+        ), (
             f"확장성 비교: JSON {json_scalability.complexity_order}, "
             f"SQLite {sqlite_scalability.complexity_order}"
         )
@@ -361,10 +383,16 @@ class TestTagPerformanceBenchmark:
 
         # WHEN: 다양한 쿼리 성능 비교
         query_scenarios = [
-            ('category_search', lambda db: db.search_tags_by_category('REQ')),
-            ('identifier_search', lambda db: db.search_tags_by_identifier('USER-LOGIN-001')),
-            ('file_path_search', lambda db: db.search_tags_by_file('/spec/requirements.md')),
-            ('line_range_search', lambda db: db.search_tags_by_line_range(1, 100))
+            ("category_search", lambda db: db.search_tags_by_category("REQ")),
+            (
+                "identifier_search",
+                lambda db: db.search_tags_by_identifier("USER-LOGIN-001"),
+            ),
+            (
+                "file_path_search",
+                lambda db: db.search_tags_by_file("/spec/requirements.md"),
+            ),
+            ("line_range_search", lambda db: db.search_tags_by_line_range(1, 100)),
         ]
 
         performance_improvements = {}
@@ -386,7 +414,9 @@ class TestTagPerformanceBenchmark:
             )
 
         # 전체 평균 개선율
-        avg_improvement = sum(performance_improvements.values()) / len(performance_improvements)
+        avg_improvement = sum(performance_improvements.values()) / len(
+            performance_improvements
+        )
         assert avg_improvement >= 10.0, f"평균 인덱스 효과: {avg_improvement:.2f}x"
 
     def test_should_handle_memory_pressure_gracefully(self):
@@ -406,14 +436,14 @@ class TestTagPerformanceBenchmark:
         sqlite_adapter = TagIndexAdapter(
             database_path=self.temp_db,
             json_fallback_path=self.temp_json,
-            memory_limit_mb=memory_limit_mb  # 메모리 제한 설정
+            memory_limit_mb=memory_limit_mb,  # 메모리 제한 설정
         )
         sqlite_adapter.initialize()
 
         # 배치 처리로 메모리 효율성 확보
         batch_size = 1000
         for i in range(0, len(large_dataset), batch_size):
-            batch = large_dataset[i:i+batch_size]
+            batch = large_dataset[i : i + batch_size]
             sqlite_adapter.bulk_insert_tags(batch)
 
             # 메모리 사용량 모니터링
@@ -436,7 +466,7 @@ class TestTagPerformanceBenchmark:
         )
 
         # 기능성 검증 (메모리 효율성이 기능을 해치지 않았는지)
-        search_results = sqlite_adapter._database.search_tags_by_category('REQ')
+        search_results = sqlite_adapter._database.search_tags_by_category("REQ")
         assert len(search_results) > 0, "메모리 최적화가 기능에 영향을 주면 안됨"
 
     def test_should_provide_real_time_performance_monitoring(self):
@@ -448,16 +478,16 @@ class TestTagPerformanceBenchmark:
         # GIVEN: 성능 모니터링 설정
         performance_monitor = self.benchmark.create_real_time_monitor(
             alert_thresholds={
-                'query_time_ms': 100,  # 100ms 초과 시 알림
-                'memory_usage_mb': 50,  # 50MB 초과 시 알림
-                'error_rate_percent': 1  # 1% 초과 시 알림
+                "query_time_ms": 100,  # 100ms 초과 시 알림
+                "memory_usage_mb": 50,  # 50MB 초과 시 알림
+                "error_rate_percent": 1,  # 1% 초과 시 알림
             }
         )
 
         sqlite_adapter = TagIndexAdapter(
             database_path=self.temp_db,
             json_fallback_path=self.temp_json,
-            performance_monitor=performance_monitor
+            performance_monitor=performance_monitor,
         )
         sqlite_adapter.initialize()
 
@@ -466,10 +496,10 @@ class TestTagPerformanceBenchmark:
         self._populate_sqlite_backend(dataset, sqlite_adapter)
 
         # WHEN: 다양한 작업 수행하며 모니터링
-        with performance_monitor.monitoring_session('performance_test'):
+        with performance_monitor.monitoring_session("performance_test"):
             for i in range(100):  # 100회 반복
                 start_time = time.time()
-                category = ['REQ', 'DESIGN', 'TASK', 'TEST'][i % 4]
+                category = ["REQ", "DESIGN", "TASK", "TEST"][i % 4]
                 results = sqlite_adapter._database.search_tags_by_category(category)
 
                 query_time_ms = (time.time() - start_time) * 1000
@@ -492,14 +522,16 @@ class TestTagPerformanceBenchmark:
 
         # 알림 발생 확인 (느린 쿼리 2회)
         alerts = performance_report.alerts
-        slow_query_alerts = [a for a in alerts if a.type == 'SLOW_QUERY']
-        assert len(slow_query_alerts) == 2, f"예상 느린 쿼리 알림: 2개, 실제: {len(slow_query_alerts)}개"
+        slow_query_alerts = [a for a in alerts if a.type == "SLOW_QUERY"]
+        assert len(slow_query_alerts) == 2, (
+            f"예상 느린 쿼리 알림: 2개, 실제: {len(slow_query_alerts)}개"
+        )
 
         # 성능 분포 확인
         percentiles = performance_report.query_time_percentiles
-        assert percentiles['p50'] < 10  # 중앙값 10ms 미만
-        assert percentiles['p95'] < 20  # 95% 20ms 미만
-        assert percentiles['p99'] > 100  # 99% 지연 쿼리 포함
+        assert percentiles["p50"] < 10  # 중앙값 10ms 미만
+        assert percentiles["p95"] < 20  # 95% 20ms 미만
+        assert percentiles["p99"] > 100  # 99% 지연 쿼리 포함
 
         # 리소스 사용량 모니터링
         resource_usage = performance_report.resource_usage
@@ -510,18 +542,32 @@ class TestTagPerformanceBenchmark:
 
     def _create_large_dataset(self, tag_count: int) -> List[Dict[str, Any]]:
         """대용량 TAG 데이터셋 생성"""
-        categories = ['REQ', 'DESIGN', 'TASK', 'TEST', 'VISION', 'STRUCT', 'TECH', 'FEATURE', 'API', 'PERF']
+        categories = [
+            "REQ",
+            "DESIGN",
+            "TASK",
+            "TEST",
+            "VISION",
+            "STRUCT",
+            "TECH",
+            "FEATURE",
+            "API",
+            "PERF",
+        ]
         dataset = []
 
         for i in range(tag_count):
             category = categories[i % len(categories)]
-            dataset.append({
-                'category': category,
-                'identifier': f'PERF-TEST-{i:06d}',
-                'description': f'성능 테스트용 TAG {i} - ' + 'x' * (i % 100),  # 가변 길이 설명
-                'file_path': f'/perf/test/{category.lower()}/file_{i // 100:04d}.md',
-                'line_number': (i % 500) + 1
-            })
+            dataset.append(
+                {
+                    "category": category,
+                    "identifier": f"PERF-TEST-{i:06d}",
+                    "description": f"성능 테스트용 TAG {i} - "
+                    + "x" * (i % 100),  # 가변 길이 설명
+                    "file_path": f"/perf/test/{category.lower()}/file_{i // 100:04d}.md",
+                    "line_number": (i % 500) + 1,
+                }
+            )
 
         return dataset
 
@@ -530,16 +576,16 @@ class TestTagPerformanceBenchmark:
         start_time = time.time()
 
         # 시나리오별 검색 실행
-        if scenario == 'category_search':
+        if scenario == "category_search":
             for _ in range(10):  # 10회 반복
                 results = backend.search_tags_by_category(params)
-        elif scenario == 'identifier_pattern':
+        elif scenario == "identifier_pattern":
             for _ in range(10):
                 results = backend.search_tags_by_pattern(params)
-        elif scenario == 'file_path_search':
+        elif scenario == "file_path_search":
             for _ in range(10):
                 results = backend.search_tags_by_file_pattern(params)
-        elif scenario == 'complex_query':
+        elif scenario == "complex_query":
             for _ in range(10):
                 results = backend.complex_search(**params)
 
@@ -575,13 +621,13 @@ class TestTagPerformanceBenchmark:
         start_time = time.time()
 
         # 다양한 검색 수행
-        categories = ['REQ', 'DESIGN', 'TASK', 'TEST']
+        categories = ["REQ", "DESIGN", "TASK", "TEST"]
         for category in categories:
             results = backend.search_tags_by_category(category)
 
         return time.time() - start_time
 
-    def _analyze_scalability(self, performance_data) -> 'ScalabilityAnalysis':
+    def _analyze_scalability(self, performance_data) -> "ScalabilityAnalysis":
         """확장성 분석"""
         # 성능 데이터에서 시간 복잡도 추정
         sizes = [data[0] for data in performance_data]
@@ -594,19 +640,23 @@ class TestTagPerformanceBenchmark:
         if len(sizes) >= 3:
             growth_rate = (times[-1] / times[0]) / (sizes[-1] / sizes[0])
             if growth_rate > 0.8:  # 거의 선형
-                complexity_order = 'O(n)'
+                complexity_order = "O(n)"
             elif growth_rate < 0.3:  # 로그 또는 상수
-                complexity_order = 'O(log n)'
+                complexity_order = "O(log n)"
             else:
-                complexity_order = 'O(n*log n)'
+                complexity_order = "O(n*log n)"
         else:
-            complexity_order = 'Unknown'
+            complexity_order = "Unknown"
 
-        return type('ScalabilityAnalysis', (), {
-            'complexity_order': complexity_order,
-            'growth_rate': growth_rate if 'growth_rate' in locals() else 0,
-            'performance_data': performance_data
-        })()
+        return type(
+            "ScalabilityAnalysis",
+            (),
+            {
+                "complexity_order": complexity_order,
+                "growth_rate": growth_rate if "growth_rate" in locals() else 0,
+                "performance_data": performance_data,
+            },
+        )()
 
     def _measure_query_time(self, db_manager, query_func) -> float:
         """쿼리 실행 시간 측정"""

@@ -11,7 +11,11 @@ import time
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 
-from moai_adk.core.tag_system.index_manager import TagIndexManager, IndexUpdateEvent, WatcherStatus
+from moai_adk.core.tag_system.index_manager import (
+    TagIndexManager,
+    IndexUpdateEvent,
+    WatcherStatus,
+)
 from moai_adk.core.tag_system.parser import TagMatch
 
 
@@ -23,8 +27,7 @@ class TestTagIndexManager:
         self.temp_dir = Path(tempfile.mkdtemp())
         self.index_file = self.temp_dir / "tags.json"
         self.manager = TagIndexManager(
-            watch_directory=self.temp_dir,
-            index_file=self.index_file
+            watch_directory=self.temp_dir, index_file=self.index_file
         )
 
     def teardown_method(self):
@@ -34,6 +37,7 @@ class TestTagIndexManager:
 
         # 임시 디렉토리 정리
         import shutil
+
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_should_initialize_empty_tag_index_file(self):
@@ -58,16 +62,16 @@ class TestTagIndexManager:
                 "created_at": index_data["metadata"]["created_at"],  # 동적 값
                 "updated_at": index_data["metadata"]["updated_at"],  # 동적 값
                 "version": "1.0",
-                "total_tags": 0
+                "total_tags": 0,
             },
             "categories": {
                 "PRIMARY": {},
                 "STEERING": {},
                 "IMPLEMENTATION": {},
-                "QUALITY": {}
+                "QUALITY": {},
             },
             "chains": [],
-            "files": {}
+            "files": {},
         }
         assert index_data == expected_structure
 
@@ -173,7 +177,7 @@ class TestTagIndexManager:
         files_and_tags = [
             ("doc1.md", "@REQ:USER-AUTH-001 문서1"),
             ("doc2.md", "@REQ:USER-PROFILE-001 문서2"),
-            ("doc3.md", "@DESIGN:ARCH-SYSTEM-001 설계3")
+            ("doc3.md", "@DESIGN:ARCH-SYSTEM-001 설계3"),
         ]
 
         # WHEN: 여러 파일 동시 처리 (순차적으로 시뮬레이션)
@@ -204,16 +208,16 @@ class TestTagIndexManager:
                 "created_at": "2024-01-01T00:00:00Z",
                 "updated_at": "2024-01-01T00:00:00Z",
                 "version": "1.0",
-                "total_tags": 1
+                "total_tags": 1,
             },
             "categories": {
                 "PRIMARY": {"REQ": {"USER-TEST-001": {"description": "테스트"}}},
                 "STEERING": {},
                 "IMPLEMENTATION": {},
-                "QUALITY": {}
+                "QUALITY": {},
             },
             "chains": [],
-            "files": {}
+            "files": {},
         }
 
         # 잘못된 인덱스 데이터
@@ -221,7 +225,7 @@ class TestTagIndexManager:
             "metadata": {
                 "version": "1.0"  # 필수 필드 누락
             },
-            "categories": "invalid_structure"  # 잘못된 타입
+            "categories": "invalid_structure",  # 잘못된 타입
         }
 
         # WHEN & THEN: 스키마 검증
@@ -249,7 +253,7 @@ class TestTagIndexManager:
             "@TASK:UI-IMPL-001",
             "@TEST:UNIT-AUTH-001",
             "@TEST:E2E-LOGIN-001",
-            "@FEATURE:USER-MGMT-001"
+            "@FEATURE:USER-MGMT-001",
         ]
 
         large_content = "\n".join(f"{tag} 설명" for tag in predefined_tags)
@@ -283,7 +287,7 @@ class TestTagIndexManager:
             "@DESIGN:ARCH-CONCURRENT-001",
             "@TASK:IMPL-CONCURRENT-001",
             "@TEST:UNIT-CONCURRENT-001",
-            "@FEATURE:SYSTEM-CONCURRENT-001"
+            "@FEATURE:SYSTEM-CONCURRENT-001",
         ]
 
         for i, tag in enumerate(tag_mapping):

@@ -11,13 +11,14 @@ import subprocess
 from pathlib import Path
 
 # Add project root to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
 
 def run_test_suite(test_name, test_file):
     """Run a specific test suite and return results"""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"🧪 RUNNING: {test_name}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     start_time = time.time()
 
@@ -26,7 +27,7 @@ def run_test_suite(test_name, test_file):
             [sys.executable, str(test_file)],
             capture_output=True,
             text=True,
-            timeout=300  # 5 minute timeout
+            timeout=300,  # 5 minute timeout
         )
 
         duration = time.time() - start_time
@@ -88,9 +89,9 @@ def main():
     total_duration = time.time() - total_start_time
 
     # Generate comprehensive report
-    print(f"\n\n{'='*80}")
+    print(f"\n\n{'=' * 80}")
     print("🗿 MOAI-ADK CRITICAL TESTING REPORT")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
     passed = sum(1 for _, success, _, _, _ in results if success)
     failed = len(results) - passed
@@ -108,7 +109,9 @@ def main():
 
     # Security-specific analysis
     security_tests = [name for name, success, _, _, _ in results if "Security" in name]
-    security_passed = [name for name, success, _, _, _ in results if "Security" in name and success]
+    security_passed = [
+        name for name, success, _, _, _ in results if "Security" in name and success
+    ]
 
     print(f"\n🔒 Security Analysis:")
     if security_tests:
@@ -122,7 +125,9 @@ def main():
         print(f"   ⚠️  No security tests found")
 
     # Critical failures analysis
-    critical_failures = [(name, stderr) for name, success, _, _, stderr in results if not success]
+    critical_failures = [
+        (name, stderr) for name, success, _, _, stderr in results if not success
+    ]
 
     if critical_failures:
         print(f"\n🚨 CRITICAL FAILURES DETECTED:")
@@ -146,15 +151,23 @@ def main():
     print(f"\n🎯 Quality Gates:")
 
     # Gate 1: Security
-    security_gate = all(success for name, success, _, _, _ in results if "Security" in name)
+    security_gate = all(
+        success for name, success, _, _, _ in results if "Security" in name
+    )
     print(f"   🔒 Security Gate: {'✅ PASS' if security_gate else '❌ FAIL'}")
 
     # Gate 2: Core functionality
-    core_gate = all(success for name, success, _, _, _ in results if "Module" in name or "Build" in name)
+    core_gate = all(
+        success
+        for name, success, _, _, _ in results
+        if "Module" in name or "Build" in name
+    )
     print(f"   🔧 Core Functionality Gate: {'✅ PASS' if core_gate else '❌ FAIL'}")
 
     # Gate 3: Integration
-    integration_gate = all(success for name, success, _, _, _ in results if "Integration" in name)
+    integration_gate = all(
+        success for name, success, _, _, _ in results if "Integration" in name
+    )
     print(f"   🔗 Integration Gate: {'✅ PASS' if integration_gate else '❌ FAIL'}")
 
     # Overall assessment
@@ -183,6 +196,6 @@ def main():
     return exit_code
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     exit_code = main()
     sys.exit(exit_code)
