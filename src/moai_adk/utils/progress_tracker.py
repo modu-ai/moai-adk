@@ -51,26 +51,25 @@ class ProgressTracker:
 
     def _display_default_progress(self, step: str) -> None:
         """Display default progress with color coding and progress bar."""
-        # Clean progress display with proper formatting
-        progress_bar = self._create_progress_bar()
-        percentage = min(int((self.current_step / self.total_steps) * 100), 100)
+        # Special handling for completion message - force 100%
+        if "Installation complete!" in step or "complete!" in step.lower():
+            percentage = 100
+            progress_bar = "█" * 25  # Full progress bar
+            step_indicator = f"({self.total_steps:2d}/{self.total_steps})"
+        else:
+            # Normal progress calculation
+            progress_bar = self._create_progress_bar()
+            percentage = min(int((self.current_step / self.total_steps) * 100), 100)
+            step_indicator = f"({self.current_step:2d}/{self.total_steps})"
 
         # Professional color scheme
         color = self._get_progress_color(percentage)
 
-        # Clean, aligned output format with step counter
-        step_indicator = f"({self.current_step:2d}/{self.total_steps})"
-
-        # Clear entire line to prevent text overlap, then display progress
+        # Display progress with each step on a new line for clarity
         click.echo(
-            f"\r\033[K{color}[{progress_bar}] {percentage:3d}% "
-            f"{Style.RESET_ALL}{step_indicator} {step}",
-            nl=False,
+            f"{color}[{progress_bar}] {percentage:3d}% "
+            f"{Style.RESET_ALL}{step_indicator} {step}"
         )
-
-        # Add newline when complete to prevent overlap
-        if self.current_step == self.total_steps:
-            click.echo()  # Final newline for clean completion
 
     def _get_progress_color(self, percentage: int) -> str:
         """Get color based on progress percentage."""

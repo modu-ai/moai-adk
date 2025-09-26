@@ -5,6 +5,35 @@ All notable changes to MoAI-ADK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.25] - 2025-09-26
+
+### 🔧 **Python 3.10 호환성 복원 및 TestPyPI 배포 수정**
+
+**MoAI-ADK v0.1.25는 Python 버전 호환성 문제를 해결하여 더 넓은 사용자층을 지원하는 중요한 수정 릴리스입니다**
+
+#### 🎯 핵심 개선사항
+- **Python 3.10 지원 복원**: requires-python을 >=3.11에서 >=3.10으로 변경하여 더 넓은 호환성 제공
+- **jsonschema 의존성 최적화**: 선택적 의존성으로 변경하여 TestPyPI 설치 문제 해결
+- **TestPyPI 배포 자동화**: 동적 버전 추출 시스템으로 하드코딩된 버전 문제 완전 해결
+- **설치 가이드 개선**: Windows 사용자를 위한 완전한 설치 지침 및 문제 해결 가이드 추가
+
+#### 🔧 기술적 수정사항
+- **pyproject.toml**: requires-python을 ">=3.10"으로 변경
+- **_version.py**: min_python을 (3, 10)으로 업데이트
+- **index_manager.py**: jsonschema import를 optional로 처리하여 graceful fallback 구현
+- **upload_testpypi.sh**: 하드코딩된 버전을 동적 추출로 교체
+
+#### 🚀 사용자 경험 향상
+- **넓은 Python 호환성**: Python 3.10 사용자도 최신 버전 설치 가능
+- **안정적 TestPyPI 설치**: 의존성 백트래킹 문제 완전 해결
+- **명확한 설치 가이드**: README.md에 TestPyPI 설치 섹션 추가
+- **자동화된 버전 관리**: 수동 버전 업데이트 오류 방지
+
+#### 📦 배포 채널 확장
+- **TestPyPI**: 개발 버전 안정적 배포 완료
+- **PyPI**: 향후 stable 릴리스 준비 완료
+- **설치 명령어**: `pip install --no-cache-dir -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple moai-adk`
+
 ## [0.1.19] - 2025-09-26
 
 ### 🔧 **시스템 안정성 및 테스트 품질 개선**

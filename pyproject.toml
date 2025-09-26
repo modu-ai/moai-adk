@@ -5,10 +5,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "moai-adk"
-version = "0.1.19"
+version = "0.1.25"
 description = "🗿 MoAI-ADK: Modu-AI Agentic Development Toolkit for Claude Code Integration"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
     {name = "MoAI Labs", email = "labs@mo.ai.kr"}
@@ -31,7 +31,6 @@ dependencies = [
     "click>=8.0.0",
     "toml>=0.10.0",
     "watchdog>=3.0.0",
-    "jsonschema>=4.0.0",
     "gitpython>=3.1.0",
     "jinja2>=3.0.0",
     "pyyaml>=6.0.0",
@@ -41,6 +40,9 @@ dependencies = [
 test = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
+]
+validation = [
+    "jsonschema>=4.0.0",  # TAG 시스템 스키마 검증용
 ]
 dev = [
     "pytest>=7.0",
@@ -183,7 +185,7 @@ known-first-party = ["moai_adk"]
 known-third-party = ["click", "colorama", "pytest", "pydantic"]
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true

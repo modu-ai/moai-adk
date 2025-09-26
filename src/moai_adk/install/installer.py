@@ -134,10 +134,17 @@ class SimplifiedInstaller:
             self.progress.update_progress(
                 "Creating initial indexes...", progress_callback
             )
-            index_files = self.config_manager.create_initial_indexes(
-                self.config.project_path, self.config
-            )
-            files_created.extend([str(f) for f in index_files])
+            try:
+                index_files = self.config_manager.create_initial_indexes(
+                    self.config.project_path, self.config
+                )
+                files_created.extend([str(f) for f in index_files])
+                logger.info("Successfully created %d index files", len(index_files))
+            except Exception as e:
+                error_msg = f"Failed to create initial indexes: {e}"
+                logger.error(error_msg)
+                errors.append(error_msg)
+                # Index creation is critical for MoAI system - don't fail silently
 
             # Step 8: Initializing Git repository (optional)
             if self.config.initialize_git:

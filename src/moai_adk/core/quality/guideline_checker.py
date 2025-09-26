@@ -20,6 +20,11 @@ from .validators import GuidelineValidator
 logger = get_logger(__name__)
 
 
+class GuidelineError(Exception):
+    """Exception raised for guideline validation errors."""
+    pass
+
+
 class GuidelineChecker:
     """
     Main orchestrator for TRUST 5 principles compliance checking.

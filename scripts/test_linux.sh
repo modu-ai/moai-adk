@@ -4,6 +4,17 @@
 
 set -e  # Exit on any error
 
+# @TASK:VERSION-SYNC-002 Dynamic version extraction from _version.py
+get_current_version() {
+    python3 -c "
+import sys; sys.path.insert(0, 'src')
+from moai_adk._version import __version__
+print(__version__)
+" 2>/dev/null || echo "0.1.22"
+}
+
+CURRENT_VERSION=$(get_current_version)
+
 echo ""
 echo "===================================================================="
 echo "🗿 MoAI-ADK Linux Cross-Platform Compatibility Test"
@@ -32,7 +43,13 @@ python3 -m pip --version
 # Install MoAI-ADK from built package
 echo ""
 echo "Installing MoAI-ADK from local package..."
-python3 -m pip install dist/moai_adk-0.1.9-py3-none-any.whl --upgrade
+if [ -f "dist/moai_adk-${CURRENT_VERSION}-py3-none-any.whl" ]; then
+    python3 -m pip install dist/moai_adk-${CURRENT_VERSION}-py3-none-any.whl --upgrade
+else
+    echo "⚠️ 빌드 파일 moai_adk-${CURRENT_VERSION}-py3-none-any.whl이 없습니다."
+    echo "먼저 빌드를 실행하세요: make build"
+    exit 1
+fi
 
 # Test CLI commands
 echo ""

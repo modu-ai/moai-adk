@@ -2,7 +2,7 @@
 
 [![Version](https://img.shields.io/github/v/release/modu-ai/moai-adk?label=release)](https://github.com/modu-ai/moai-adk/releases)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-integrated-purple)](https://docs.anthropic.com/claude-code)
 [![Toolchain](https://img.shields.io/badge/toolchain-uv%20%2B%20ruff-orange)](https://github.com/astral-sh/uv)
 
@@ -27,8 +27,8 @@ MoAI-ADK는 Claude Code 환경에서 SDD + TDD를 자동화하는 **모두의AI*
 ## ⚡ 빠른 시작
 
 ```bash
-# 1. 설치 (Python 3.11+ 필요)
-uv pip install moai-adk               # 또는 pip install moai-adk
+# 1. 설치 (Python 3.10+ 필요)
+pip install moai-adk                 # 또는 uv pip install moai-adk
 
 # 2. 새 프로젝트 초기화
 moai init awesome-project
@@ -40,6 +40,21 @@ cd awesome-project
 /moai:2-build                       # 테스트 우선 구현 (RED→GREEN→REFACTOR)
 /moai:3-sync                        # 문서·TAG·PR 동기화
 ```
+
+### 🧪 TestPyPI에서 설치 (개발 버전)
+
+```bash
+# 기존 패키지 제거
+pip uninstall -y moai-adk
+
+# TestPyPI에서 최신 버전 설치 (권장)
+pip install --no-cache-dir -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple moai-adk
+
+# 설치 확인
+moai --version
+```
+
+**참고**: TestPyPI는 일부 의존성이 누락될 수 있어 `--extra-index-url https://pypi.org/simple` 옵션을 반드시 포함해야 합니다.
 
 ---
 

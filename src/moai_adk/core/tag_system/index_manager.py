@@ -14,7 +14,11 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-import jsonschema
+try:
+    import jsonschema
+    HAS_JSONSCHEMA = True
+except ImportError:
+    HAS_JSONSCHEMA = False
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
@@ -219,6 +223,11 @@ class TagIndexManager:
 
     def validate_index_schema(self, index_data: dict[str, Any]) -> bool:
         """인덱스 스키마 검증"""
+        if not HAS_JSONSCHEMA:
+            # jsonschema가 없으면 기본 구조만 검증
+            required_keys = {'version', 'generated_at', 'files', 'tags', 'stats'}
+            return all(key in index_data for key in required_keys)
+
         try:
             jsonschema.validate(index_data, self._index_schema)
             return True

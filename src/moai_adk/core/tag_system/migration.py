@@ -20,6 +20,11 @@ from .migration_models import (
 from .migration_validator import MigrationValidator
 
 
+class MigrationError(Exception):
+    """Exception raised for migration errors."""
+    pass
+
+
 class TagMigrationTool:
     """
     TAG 마이그레이션 오케스트레이터
