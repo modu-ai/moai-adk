@@ -234,7 +234,7 @@ def init(
         return
 
     # Step 4: Finalize installation
-    finalize_installation(project_dir, project_mode, force_copy, quiet)
+    finalize_installation(project_dir, project_mode, force_copy, quiet, force, backup)
 
 
 @cli.command()

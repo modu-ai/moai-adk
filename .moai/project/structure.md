@@ -66,11 +66,16 @@ MoAI-ADK Architecture
 - **처리**: 종속성 확인, 리소스 복사, 설정 적용
 - **출력**: 설치 완료 상태, 오류 리포트
 
-| 모듈                  | 역할                | 주요 기능               |
-| --------------------- | ------------------- | ----------------------- |
-| `installer.py`        | 설치 오케스트레이션 | 전체 설치 프로세스 관리 |
-| `resource_manager.py` | 리소스 관리         | 템플릿/스크립트 복사    |
-| `post_install.py`     | 설치 후 작업        | 권한 설정, 환경 검증    |
+| 모듈                     | 역할                     | 주요 기능                           |
+| ------------------------ | ------------------------ | ----------------------------------- |
+| `installer.py`           | 설치 오케스트레이션      | 전체 설치 프로세스 관리             |
+| `resource_manager.py`    | 리소스 관리 (통합)       | 전체 리소스 관리 오케스트레이션     |
+| `template_manager.py`    | 템플릿 관리              | 템플릿 발견, 로딩, 렌더링           |
+| `file_operations.py`     | 파일 작업                | 파일 복사, 디렉토리 작업, 권한 관리 |
+| `resource_validator.py`  | 리소스 검증              | 경로 검증, 보안 검사, 리소스 확인   |
+| `post_install.py`        | 설치 후 작업             | 권한 설정, 환경 검증                |
+| `post_install_hook.py`   | 설치 후 자동화 시스템    | Python 명령어 감지, Claude 설정     |
+| `installation_result.py` | 설치 결과 관리           | 설치 상태 추적, 결과 리포트         |
 
 ### 4. Claude Extensions (`.claude/`)
 
@@ -147,24 +152,36 @@ src/moai_adk/
 └── output-styles/ # 5개 출력 스타일
 ```
 
-### @DEBT:REFACTOR-001 구조 개선 계획
+### @SUCCESS:REFACTOR-001 구조 개선 완료 성과 ✅
 
-1. **모듈 책임 명확화** (@TASK:MODULE-CLEANUP-001)
-   - 각 모듈의 입력→처리→출력 흐름 명시
-   - 순환 의존성 제거 및 계층 구조 정리
+1. **모듈 분해 완료** (@TASK:MODULE-CLEANUP-001) ✅
+   - resource_manager.py (675 LOC) → 4개 전문 모듈로 분해
+   - 각 모듈의 단일 책임 원칙 준수 (TRUST-U)
+   - 입력→처리→출력 흐름 명시화
 
-2. **에이전트 지침 표준화** (@TASK:AGENT-GUIDE-001)
-   - 에이전트별 입력/출력 스키마 정의
-   - 에러 처리 및 fallback 전략 통일
+2. **TRUST 원칙 준수** (@TASK:TRUST-COMPLIANCE-001) ✅
+   - 모든 새 모듈이 50 LOC 이하 단일 책임 구현
+   - 명확한 에러 처리 및 로깅 전략
+   - 보안 검증 로직 분리 (ResourceValidator)
 
-3. **테스트 아키텍처 완성** (@DEBT:TEST-ARCHITECTURE-001)
-   - 각 계층별 테스트 전략 수립
-   - 통합 테스트 및 E2E 테스트 보강
+3. **새로운 기능 추가** (@FEATURE:CROSS-PLATFORM-HOOKS) ✅
+   - post_install_hook.py: Python 명령어 자동 감지 시스템
+   - 크로스 플랫폼 Claude 설정 자동 생성
+   - 환경별 최적화된 훅 명령어 생성
 
-4. **문서 시스템 통합 최적화** (@TASK:DOCS-INTEGRATION-001) - SPEC-010 완료 후
-   - MkDocs 빌드 성능 최적화
-   - API 문서 생성 속도 개선
-   - 릴리스 노트 변환 로직 고도화
+4. **문서 시스템 통합 최적화** (@TASK:DOCS-INTEGRATION-001) - SPEC-010 완료 ✅
+   - MkDocs 빌드 성능 0.54초 달성
+   - API 문서 85개 모듈 자동 생성
+   - 릴리스 노트 변환 로직 고도화 완료
+
+### @TASK:NEW-TAGS-001 새로운 TAG 체인 완성
+
+**리팩토링 및 호환성 개선 TAG 체인:**
+```
+@REQ:TRUST-COMPLIANCE-001 → @DESIGN:MODULE-SPLIT-001 →
+@TASK:TEMPLATE-001, @TASK:FILE-OPS-001, @TASK:VALIDATOR-001 →
+@FEATURE:CROSS-PLATFORM-HOOKS → @TEST:BACKUP-SCENARIOS-001 ✅
+```
 
 ## @TODO:MIGRATION-002 Initial Migration Tasks
 

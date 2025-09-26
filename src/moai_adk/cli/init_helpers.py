@@ -170,7 +170,7 @@ def setup_project_directory(
 
 
 def finalize_installation(
-    project_dir: Path, project_mode: str, force_copy: bool, quiet: bool
+    project_dir: Path, project_mode: str, force_copy: bool, quiet: bool, force: bool = False, backup: bool = False
 ) -> None:
     """
     Finalize installation with installer and provide completion feedback.
@@ -180,6 +180,8 @@ def finalize_installation(
         project_mode: Project mode ("personal" or "team")
         force_copy: Force copy resources flag
         quiet: Quiet mode flag
+        force: Force overwrite existing files flag
+        backup: Create backup before installation flag
     """
     try:
         # Configure logging for quiet mode
@@ -197,6 +199,8 @@ def finalize_installation(
                 name=project_dir.name,
                 path=str(project_dir),
                 force_copy=force_copy,
+                force_overwrite=force,  # @FIX:PARAM-MAPPING-001 Add missing force parameter
+                backup_enabled=backup,  # @FIX:PARAM-MAPPING-001 Add missing backup parameter
                 silent=quiet,  # Map quiet parameter to silent attribute
             )
             installer = SimplifiedInstaller(config)

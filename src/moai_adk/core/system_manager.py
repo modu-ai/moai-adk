@@ -240,6 +240,57 @@ class SystemManager:
         current_version = (sys.version_info.major, sys.version_info.minor)
         return current_version >= min_version
 
+    def detect_python_command(self) -> str:
+        """
+        @TASK:PYTHON-DETECT-001 Detect available Python command for cross-platform hook execution
+
+        Windows environments often don't have python3 command, causing hook execution failures.
+        This method detects the best available Python command to ensure compatibility.
+
+        Priority order: python3 > python > py
+
+        Returns:
+            str: Best available Python command (fallback to 'python' if none found)
+        """
+        python_commands = ["python3", "python", "py"]
+
+        for cmd in python_commands:
+            if self._check_command_exists(cmd):
+                logger.info(f"Detected Python command: {cmd}")
+                return cmd
+
+        # Fallback to 'python' even if not found (most common case)
+        logger.warning("No Python command detected, falling back to 'python'")
+        return "python"
+
+    def get_python_info(self) -> dict[str, Any]:
+        """
+        @TASK:PYTHON-INFO-001 Get comprehensive Python environment information
+
+        Returns:
+            dict: Python environment details including available commands
+        """
+        import sys
+
+        python_info = {
+            "version": sys.version,
+            "version_info": {
+                "major": sys.version_info.major,
+                "minor": sys.version_info.minor,
+                "micro": sys.version_info.micro,
+            },
+            "executable": sys.executable,
+            "detected_command": self.detect_python_command(),
+            "available_commands": [],
+        }
+
+        # Check which Python commands are available
+        for cmd in ["python", "python3", "py"]:
+            if self._check_command_exists(cmd):
+                python_info["available_commands"].append(cmd)
+
+        return python_info
+
     def detect_project_type(self, project_path) -> dict[str, Any]:
         """
         Detect project type based on existing files.

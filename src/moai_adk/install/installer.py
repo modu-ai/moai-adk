@@ -17,6 +17,7 @@ from ..core.file_manager import FileManager
 from ..core.git_manager import GitManager
 from ..core.resource_version import ResourceVersionManager
 from ..core.security import SecurityManager
+from ..core.system_manager import SystemManager
 from ..utils.logger import get_logger
 from ..utils.progress_tracker import ProgressTracker
 from .installation_result import InstallationResult
@@ -45,6 +46,7 @@ class SimplifiedInstaller:
 
         # Initialize core managers
         self.security_manager = SecurityManager()
+        self.system_manager = SystemManager()
         self.directory_manager = DirectoryManager(self.security_manager)
         self.config_manager = ConfigManager()
         self.resource_manager = ResourceManager()
@@ -77,6 +79,18 @@ class SimplifiedInstaller:
         errors: list[str] = []
 
         try:
+            # Step 0: Create backup if enabled
+            if self.config.backup_enabled:
+                self.progress.update_progress(
+                    "Creating backup...", progress_callback
+                )
+                from ..cli.helpers import create_installation_backup
+                backup_success = create_installation_backup(self.config.project_path)
+                if backup_success:
+                    logger.info("Backup created successfully")
+                else:
+                    logger.warning("Failed to create backup, but continuing installation")
+
             # Step 1: Creating project directory
             self.progress.update_progress(
                 "Creating project directory...", progress_callback
@@ -88,15 +102,17 @@ class SimplifiedInstaller:
             self.progress.update_progress(
                 "Installing Claude Code resources...", progress_callback
             )
-            claude_files = self._install_claude_resources()
-            files_created.extend([str(f) for f in claude_files])
+            claude_success = self._install_claude_resources()
+            if claude_success:
+                files_created.append(str(self.config.project_path / ".claude"))
 
             # Step 3: Installing MoAI resources (creates .moai/ with content)
             self.progress.update_progress(
                 "Installing MoAI resources...", progress_callback
             )
-            moai_files = self._install_moai_resources()
-            files_created.extend([str(f) for f in moai_files])
+            moai_success = self._install_moai_resources()
+            if moai_success:
+                files_created.append(str(self.config.project_path / ".moai"))
 
             # Step 3b: Record installed template version
             self._write_resource_version_info()
@@ -106,15 +122,17 @@ class SimplifiedInstaller:
                 "Setting up auxiliary directories...", progress_callback
             )
             directories = self._create_basic_structure()
-            files_created.extend([str(d) for d in directories])
+            if directories:
+                files_created.extend([str(d) for d in directories])
 
             # Step 5: Setting up GitHub workflows (optional)
             if self.config.include_github:
                 self.progress.update_progress(
                     "Setting up GitHub workflows...", progress_callback
                 )
-                github_files = self._install_github_workflows()
-                files_created.extend([str(f) for f in github_files])
+                github_success = self._install_github_workflows()
+                if github_success:
+                    files_created.append(str(self.config.project_path / ".github"))
 
             # Step 6: Creating project memory
             self.progress.update_progress(
@@ -128,7 +146,8 @@ class SimplifiedInstaller:
                 "Generating configuration files...", progress_callback
             )
             config_files = self._create_configuration_files()
-            files_created.extend([str(f) for f in config_files])
+            if config_files:
+                files_created.extend([str(f) for f in config_files])
 
             # Step 7.5: Creating initial indexes (SQLite database)
             self.progress.update_progress(
@@ -152,7 +171,8 @@ class SimplifiedInstaller:
                     "Initializing Git repository...", progress_callback
                 )
                 git_files = self._initialize_git_repository()
-                files_created.extend([str(f) for f in git_files])
+                if git_files:
+                    files_created.extend([str(f) for f in git_files])
 
             # Step 9: Verifying installation
             self.progress.update_progress(
@@ -221,10 +241,20 @@ class SimplifiedInstaller:
         return created_dirs
 
     def _install_claude_resources(self) -> list[Path]:
-        """Claude Code 리소스 설치"""
+        """
+        @TASK:CLAUDE-INSTALL-001 Claude Code 리소스 설치 with Python 명령어 감지
+
+        Windows 호환성을 위해 시스템 Python 명령어를 자동 감지하여 settings.json을 동적 생성
+        """
         try:
+            # 시스템에서 사용 가능한 Python 명령어 감지
+            python_command = self.system_manager.detect_python_command()
+            logger.info(f"Detected Python command for Claude hooks: {python_command}")
+
             result = self.resource_manager.copy_claude_resources(
-                self.config.project_path, overwrite=self.config.force_overwrite
+                self.config.project_path,
+                overwrite=self.config.force_overwrite,
+                python_command=python_command
             )
             if not result:
                 raise RuntimeError(

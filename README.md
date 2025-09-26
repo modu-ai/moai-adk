@@ -41,18 +41,24 @@ cd awesome-project
 /moai:3-sync                        # 문서·TAG·PR 동기화
 ```
 
-### 🧪 TestPyPI에서 설치 (개발 버전)
+### 🧪 TestPyPI에서 설치 (개발 버전 - v0.1.26+ 리팩토링 완료)
 
 ```bash
 # 기존 패키지 제거
 pip uninstall -y moai-adk
 
-# TestPyPI에서 최신 버전 설치 (권장)
+# TestPyPI에서 최신 버전 설치 (Windows/macOS/Linux 모든 환경 지원)
 pip install --no-cache-dir -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple moai-adk
 
 # 설치 확인
-moai --version
+moai --version  # v0.1.26+ 표시 확인
 ```
+
+**✅ v0.1.26+ 개선사항**: TRUST 원칙 준수 모듈 리팩토링 완료
+- **모듈 분해**: resource_manager.py (675 LOC) → 4개 전문 모듈
+- **크로스 플랫폼**: Python 명령어 자동 감지 + Claude 설정 자동화
+- **백업 시스템**: 상세한 백업 정보 및 검증 로직 개선
+- **TRUST 원칙**: 모든 새 모듈이 단일 책임 원칙 준수
 
 **참고**: TestPyPI는 일부 의존성이 누락될 수 있어 `--extra-index-url https://pypi.org/simple` 옵션을 반드시 포함해야 합니다.
 

@@ -5,6 +5,37 @@ All notable changes to MoAI-ADK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.26] - 2025-09-26
+
+### 🚀 **Windows Python 호환성 완전 해결 및 TestPyPI 배포 성공**
+
+**MoAI-ADK v0.1.26은 Windows 환경에서의 Python 명령어 호환성 문제를 완전히 해결하고, TestPyPI 배포를 성공적으로 완료한 안정성 릴리스입니다**
+
+#### 🎯 핵심 개선사항
+- **Python 명령어 자동 감지 시스템**: `python`, `python3`, `py` 명령어 환경별 자동 선택
+- **Windows 호환성 완전 해결**: 크로스 플랫폼 Python 실행 환경 통합 지원
+- **TestPyPI 배포 완료**: 개발 버전 안정적 배포 및 설치 검증 완료
+- **설치 신뢰성 향상**: 플랫폼별 Python 실행 경로 자동 감지 및 fallback 시스템
+
+#### 🔧 기술적 수정사항
+- **Python Command Detection**: 플랫폼별 Python 명령어 우선순위 설정
+  - Windows: `py` → `python` → `python3`
+  - macOS/Linux: `python3` → `python` → `py`
+- **Cross-platform Execution**: subprocess 호출 시 자동 명령어 선택
+- **Fallback System**: 명령어 실패 시 차선책 자동 적용
+- **Environment Validation**: Python 버전 및 실행 권한 사전 검증
+
+#### 🚀 사용자 경험 향상
+- **완벽한 Windows 지원**: Python 설치 방식에 관계없이 안정적 실행
+- **자동 환경 감지**: 사용자 개입 없는 최적 Python 명령어 선택
+- **설치 안정성**: TestPyPI를 통한 배포 검증 완료
+- **오류 방지**: 플랫폼별 Python 실행 환경 차이로 인한 오류 완전 해결
+
+#### 📦 배포 및 설치
+- **TestPyPI 배포 성공**: v0.1.26 개발 버전 안정적 배포 완료
+- **설치 명령어**: `pip install --no-cache-dir -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple moai-adk`
+- **호환성 검증**: Windows 10/11, macOS, Linux 환경에서 설치 및 실행 검증 완료
+
 ## [0.1.25] - 2025-09-26
 
 ### 🔧 **Python 3.10 호환성 복원 및 TestPyPI 배포 수정**

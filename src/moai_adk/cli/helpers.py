@@ -32,40 +32,60 @@ def create_installation_backup(project_path: Path) -> bool:
     """
     try:
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_dir = project_path / f".moai_backup_{timestamp}"
+        # Create backup in parent directory to avoid deletion by force_overwrite
+        backup_dir = project_path.parent / f"{project_path.name}_moai_backup_{timestamp}"
 
         # Create backup directory
         backup_dir.mkdir(exist_ok=True)
 
+        # Track what was backed up for validation
+        backed_up_items = []
+
         # Backup .moai directory
-        if (project_path / ".moai").exists():
-            shutil.copytree(project_path / ".moai", backup_dir / ".moai")
+        moai_dir = project_path / ".moai"
+        if moai_dir.exists():
+            shutil.copytree(moai_dir, backup_dir / ".moai")
+            backed_up_items.append(".moai")
+            logger.info(f".moai directory backed up")
 
         # Backup .claude directory
-        if (project_path / ".claude").exists():
-            shutil.copytree(project_path / ".claude", backup_dir / ".claude")
+        claude_dir = project_path / ".claude"
+        if claude_dir.exists():
+            shutil.copytree(claude_dir, backup_dir / ".claude")
+            backed_up_items.append(".claude")
+            logger.info(f".claude directory backed up")
 
-        # Backup CLAUDE.md if exists
-        if (project_path / "CLAUDE.md").exists():
-            shutil.copy2(project_path / "CLAUDE.md", backup_dir / "CLAUDE.md")
+        # Backup CLAUDE.md if exists - @FIX:BACKUP-CLAUDE-001
+        claude_file = project_path / "CLAUDE.md"
+        if claude_file.exists():
+            backup_claude = backup_dir / "CLAUDE.md"
+            shutil.copy2(claude_file, backup_claude)
+            backed_up_items.append("CLAUDE.md")
+            logger.info(f"CLAUDE.md backed up: {backup_claude}")
 
-        # Create backup info file
+        # Create backup info file with detailed information
         backup_info = backup_dir / "backup_info.txt"
+        backed_up_list = "\n".join(f"- {item}" for item in backed_up_items)
         backup_info.write_text(f"""MoAI-ADK Backup Information
 Created: {datetime.datetime.now().isoformat()}
 Original Path: {project_path.absolute()}
-Backup Contents:
-- .moai/ directory configuration
-- .claude/ directory configuration
-- CLAUDE.md project memory file
+Items Backed Up: {len(backed_up_items)}
+{backed_up_list}
 
 To restore this backup:
-1. Remove current .moai/ and .claude/ directories
-2. Copy contents from this backup directory back to original location
+1. Use 'moai restore {backup_dir}' command (recommended)
+2. Or manually: Copy contents from this backup directory back to original location
 3. Restart Claude Code if running
+
+Backup Validation: Created successfully
 """)
 
-        logger.info(f"Backup created at: {backup_dir}")
+        # Validate backup was created successfully
+        if not backed_up_items:
+            logger.warning("No items were found to backup (empty project)")
+        else:
+            logger.info(f"Backup created successfully at: {backup_dir} ({len(backed_up_items)} items)")
+
         return True
 
     except Exception as e:
