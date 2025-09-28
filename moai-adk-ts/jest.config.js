@@ -1,24 +1,26 @@
-export default {
-  preset: 'ts-jest/presets/default-esm',
+/** @type {import('jest').Config} */
+module.exports = {
+  preset: 'ts-jest',
   testEnvironment: 'node',
-  extensionsToTreatAsEsm: ['.ts'],
-  moduleNameMapping: {
-    '^(\\.{1,2}/.*)\\.js$': '$1',
-  },
-  transform: {
-    '^.+\\.ts$': ['ts-jest', {
-      useESM: true
-    }]
-  },
+  roots: ['<rootDir>/src', '<rootDir>/__tests__'],
   testMatch: [
     '**/__tests__/**/*.ts',
     '**/?(*.)+(spec|test).ts'
   ],
+  transform: {
+    '^.+\\.ts$': 'ts-jest'
+  },
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.d.ts',
     '!src/**/*.test.ts',
     '!src/**/*.spec.ts'
+  ],
+  coverageDirectory: 'coverage',
+  coverageReporters: [
+    'text',
+    'lcov',
+    'html'
   ],
   coverageThreshold: {
     global: {
@@ -27,5 +29,10 @@ export default {
       lines: 80,
       statements: 80
     }
-  }
+  },
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/src/$1'
+  },
+  setupFilesAfterEnv: [],
+  testTimeout: 10000
 };

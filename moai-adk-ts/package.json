@@ -1,86 +1,71 @@
 {
   "name": "moai-adk",
   "version": "0.0.1",
-  "description": "🗿 MoAI-ADK: Modu-AI Agentic Development kit for Claude Code Integration (TypeScript)",
+  "description": "🗿 MoAI-ADK: Modu-AI Agentic Development kit",
   "main": "dist/index.js",
-  "type": "module",
   "bin": {
-    "moai": "./dist/cli/index.js",
-    "moai-adk": "./dist/cli/index.js"
+    "moai": "dist/cli/index.js"
   },
-  "files": [
-    "dist/",
-    "templates/",
-    "README.md",
-    "LICENSE"
-  ],
   "engines": {
     "node": ">=18.0.0"
   },
   "scripts": {
     "build": "tsup",
-    "dev": "tsup --watch",
+    "build:watch": "tsup --watch",
+    "dev": "tsx src/cli/index.ts",
     "test": "jest",
     "test:watch": "jest --watch",
-    "lint": "eslint src/**/*.ts",
-    "format": "prettier --write src/**/*.ts",
-    "prepublishOnly": "npm run build && npm test",
-    "start": "node dist/cli/index.js"
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "type-check": "tsc --noEmit",
+    "clean": "rimraf dist"
   },
-  "keywords": [
-    "moai",
-    "claude-code",
-    "anthropic",
-    "agentic",
-    "development-kit",
-    "tdd",
-    "spec-first",
-    "workflow",
-    "automation",
-    "typescript",
-    "cli"
-  ],
-  "author": "MoAI Labs <labs@mo.ai.kr>",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/modu-ai/moai-adk-ts"
-  },
-  "bugs": {
-    "url": "https://github.com/modu-ai/moai-adk-ts/issues"
-  },
-  "homepage": "https://docs.moai-adk.dev",
   "dependencies": {
-    "commander": "^11.0.0",
-    "chalk": "^5.3.0",
-    "toml": "^3.0.0",
-    "chokidar": "^3.5.0",
-    "simple-git": "^3.19.0",
-    "mustache": "^4.2.0",
-    "js-yaml": "^4.1.0",
-    "better-sqlite3": "^9.0.0",
-    "inquirer": "^9.2.0",
-    "fs-extra": "^11.2.0",
-    "semver": "^7.5.0",
-    "ora": "^7.0.0",
-    "which": "^4.0.0",
-    "node-fetch": "^3.3.0"
+    "commander": "^11.1.0",
+    "semver": "^7.5.4",
+    "chalk": "^4.1.2",
+    "inquirer": "^8.2.6",
+    "execa": "^5.1.1"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "@types/jest": "^29.0.0",
-    "@types/inquirer": "^9.0.0",
-    "@types/mustache": "^4.2.0",
-    "@types/fs-extra": "^11.0.0",
-    "@types/semver": "^7.5.0",
-    "@types/which": "^3.0.0",
+    "@types/semver": "^7.5.4",
+    "@types/inquirer": "^8.2.6",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "eslint": "^8.0.0",
     "jest": "^29.0.0",
-    "prettier": "^3.0.0",
+    "@types/jest": "^29.0.0",
     "ts-jest": "^29.0.0",
-    "tsup": "^7.0.0",
-    "typescript": "^5.0.0"
-  }
+    "tsx": "^4.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0",
+    "prettier": "^3.0.0",
+    "rimraf": "^5.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "moai",
+    "adk",
+    "cli",
+    "development",
+    "typescript",
+    "tdd"
+  ],
+  "author": "MoAI Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/moai-adk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/moai-adk/issues"
+  },
+  "homepage": "https://github.com/your-org/moai-adk#readme"
 }

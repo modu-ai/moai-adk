@@ -1,19 +1,25 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: [
-    'src/cli/index.ts',
-    'src/index.ts'
-  ],
-  format: ['esm'],
-  dts: true,
-  splitting: false,
-  sourcemap: true,
-  clean: true,
+  entry: {
+    'index': 'src/index.ts',
+    'cli/index': 'src/cli/index.ts'
+  },
+  format: ['cjs', 'esm'],
   target: 'node18',
   outDir: 'dist',
-  shims: true,
-  banner: {
-    js: '#!/usr/bin/env node'
-  }
+  sourcemap: true,
+  clean: true,
+  dts: true,
+  splitting: false,
+  bundle: true,
+  minify: false,
+  treeshake: true,
+  external: [
+    'chalk',
+    'commander',
+    'inquirer',
+    'semver',
+    'execa'
+  ]
 });
