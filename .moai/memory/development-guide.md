@@ -2,7 +2,7 @@
 
 > "No SPEC, no code. No tests, no implementation. SPEC-First TDD, Language Agnostic."
 
-This development guide is the unified guardrail for all agents and developers working with the MoAI-ADK universal development toolkit. **MoAI-ADK itself is built with TypeScript**, but **supports all major programming languages** for user projects. It follows the **SPEC-First TDD methodology** with 16-Core @TAG v4.0 distributed traceability (94% optimized). Korean is the default communication language for the project.
+This development guide is the unified guardrail for all agents and developers working with the MoAI-ADK universal development toolkit. **MoAI-ADK itself is built with TypeScript**, but **supports all major programming languages** for user projects. It follows the **SPEC-First TDD methodology** with 16-Core @TAG traceability. Korean is the default communication language for the project.
 
 ---
 
@@ -16,7 +16,7 @@ This development guide is the unified guardrail for all agents and developers wo
 **On-Demand Quality Assurance**:
 - **Debug & Validation** (`@agent-debug-helper`) → 디버깅이 필요할 때 debug 에이전트 호출해서 사용
 
-All changes must follow the 16-Core TAG v4.0 distributed system, SPEC-driven requirements, and language-appropriate TDD practices.
+All changes must follow the 16-Core TAG system, SPEC-driven requirements, and language-appropriate TDD practices.
 
 ---
 
@@ -64,7 +64,7 @@ All changes must follow the 16-Core TAG v4.0 distributed system, SPEC-driven req
    - **Java**: Packages aligned with SPEC architecture
    - **Go**: Packages respecting SPEC interface definitions
    - **Rust**: Crates embodying SPEC module separation
-4. **SPEC-Driven Architecture**: Domain boundaries defined by SPEC, not language conventions. Use 16-Core @TAG v4.0 distributed system for cross-language traceability (487KB, 45ms load).
+4. **SPEC-Driven Architecture**: Domain boundaries defined by SPEC, not language conventions. Use 16-Core @TAG system for cross-language traceability.
 
 ### **S** - **SPEC-Compliant Security**
 
@@ -79,7 +79,7 @@ All changes must follow the 16-Core TAG v4.0 distributed system, SPEC-driven req
 
 ### **T** - **SPEC Traceability**
 
-1. **SPEC-to-Code Traceability**: Every code change must reference SPEC ID and specific requirement via 16-Core @TAG v4.0 distributed system (category-based storage).
+1. **SPEC-to-Code Traceability**: Every code change must reference SPEC ID and specific requirement via 16-Core @TAG system.
 2. **3-Stage Workflow Tracking**:
    - `/moai:1-spec`: SPEC creation with @REQ, @DESIGN, @TASK tags
    - `/moai:2-build`: TDD implementation with @TEST, @FEATURE tags
@@ -105,15 +105,10 @@ All changes must follow the 16-Core TAG v4.0 distributed system, SPEC-driven req
 
 ---
 
-## Article III — 16-Core @TAG System v4.0 (Distributed Traceability)
+## Article III — 16-Core @TAG System (Traceability)
 
 1. Maintain the 16-Core @TAG chain: Primary (@REQ → @DESIGN → @TASK → @TEST), Steering, Implementation, Quality.
-2. **Distributed Storage Structure v4.0**:
-   - **Categories**: `.moai/indexes/categories/*.jsonl` (category-based JSONL files)
-   - **Relations**: `.moai/indexes/relations/chains.jsonl` (chain mappings)
-   - **Cache**: `.moai/indexes/cache/summary.json` (fast access summary)
-   - **Performance**: 487KB total, 45ms load time, 94% size reduction
-3. Keep sync reports updated: `.moai/reports/sync-report.md`
+2. Keep `.moai/indexes/tags.json` and `.moai/reports/sync-report.md` up to date.
 
 
 ---
@@ -195,4 +190,4 @@ All changes must follow the 16-Core TAG v4.0 distributed system, SPEC-driven req
 
 ---
 
-This guide provides SPEC-First TDD standards to execute the MoAI-ADK 3-stage pipeline (`/moai:1-spec` → `/moai:2-build` → `/moai:3-sync`) with universal language support and 16-Core @TAG v4.0 distributed traceability (94% optimized). Use `@agent-debug-helper` when issues arise. All contributors should follow SPEC-driven development with language-appropriate TDD practices.
+This guide provides SPEC-First TDD standards to execute the MoAI-ADK 3-stage pipeline (`/moai:1-spec` → `/moai:2-build` → `/moai:3-sync`) with universal language support and 16-Core @TAG traceability. Use `@agent-debug-helper` when issues arise. All contributors should follow SPEC-driven development with language-appropriate TDD practices.

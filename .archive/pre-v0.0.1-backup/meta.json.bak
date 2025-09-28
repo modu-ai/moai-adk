@@ -1,15 +1,15 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "4.0",
   "type": "distributed_tag_system",
   "generated_at": "2025-09-29T16:00:00Z",
   "migration_from": "monolithic_tags.json_v3.0",
   "total_tags": 3567,
   "total_files": 425,
   "summary": {
-    "description": "Distributed 16-Core TAG System for MoAI-ADK v0.0.1",
+    "description": "Distributed 16-Core TAG System for MoAI-ADK v2.0.0+",
     "coverage": "100% 추적성 - 분산 저장으로 94% 크기 절감",
     "performance": "95% 향상 - 필요한 부분만 로딩",
-    "version": "v0.0.1 초기 개발 단계"
+    "version": "v2.0.0+ 분산 아키텍처 완성"
   },
   "storage_structure": {
     "categories": {

@@ -1,10 +1,5 @@
-{"from": "REQ:CLI-FOUNDATION-012", "to": "DESIGN:CLI-SPLIT-001", "relation": "leads_to", "chain": "primary"}
-{"from": "DESIGN:CLI-SPLIT-001", "to": "TASK:CLI-COMMANDS-001", "relation": "leads_to", "chain": "primary"}
-{"from": "TASK:CLI-COMMANDS-001", "to": "TEST:CLI-EXECUTION-001", "relation": "leads_to", "chain": "primary"}
-{"from": "REQ:BUILD-SYSTEM-012", "to": "DESIGN:SYSTEM-ARCHITECTURE-001", "relation": "leads_to", "chain": "primary"}
-{"from": "DESIGN:SYSTEM-ARCHITECTURE-001", "to": "TASK:PERFORMANCE-OPTIMIZATION-001", "relation": "leads_to", "chain": "primary"}
-{"from": "TASK:PERFORMANCE-OPTIMIZATION-001", "to": "TEST:PERFORMANCE-001", "relation": "leads_to", "chain": "primary"}
-{"from": "REQ:QUALITY-002", "to": "DESIGN:DISTRIBUTED-STORAGE-001", "relation": "leads_to", "chain": "primary"}
-{"from": "DESIGN:DISTRIBUTED-STORAGE-001", "to": "TASK:DISTRIBUTED-STORAGE-001", "relation": "leads_to", "chain": "primary"}
-{"from": "TASK:DISTRIBUTED-STORAGE-001", "to": "TEST:DISTRIBUTED-STORAGE-001", "relation": "leads_to", "chain": "primary"}
-{"from": "DESIGN:TAG-OPTIMIZATION-001", "to": "TASK:CATEGORIES-SPLIT-001", "relation": "leads_to", "chain": "implementation"}
+{"from": "REQ:INIT-001", "to": "DESIGN:INIT-001", "relation": "leads_to", "chain": "primary"}
+{"from": "DESIGN:INIT-001", "to": "TASK:INIT-001", "relation": "leads_to", "chain": "primary"}
+{"from": "TASK:INIT-001", "to": "TEST:INIT-001", "relation": "leads_to", "chain": "primary"}
+{"from": "TEST:INIT-001", "to": "FEATURE:INIT-001", "relation": "leads_to", "chain": "implementation"}
+{"from": "FEATURE:INIT-001", "to": "PERF:INIT-001", "relation": "supports", "chain": "quality"}

@@ -1,10 +1,1 @@
-{"tag": "TASK:CLI-COMMANDS-001", "type": "task", "description": "CLI commands implementation", "created": "2025-09-28"}
-{"tag": "TASK:CLI-EXECUTOR-001", "type": "task", "description": "CLI executor implementation", "created": "2025-09-28"}
-{"tag": "TASK:CLI-OPERATIONS-001", "type": "task", "description": "CLI operations implementation", "created": "2025-09-28"}
-{"tag": "TASK:CLI-UTILS-001", "type": "task", "description": "CLI utilities implementation", "created": "2025-09-28"}
-{"tag": "TASK:MIGRATION-TOOL-001", "type": "task", "description": "Migration tool implementation", "created": "2025-09-28"}
-{"tag": "TASK:DISTRIBUTED-STORAGE-001", "type": "task", "description": "Distributed storage implementation", "created": "2025-09-29"}
-{"tag": "TASK:CATEGORIES-SPLIT-001", "type": "task", "description": "Categories split implementation", "created": "2025-09-29"}
-{"tag": "TASK:JSONL-FORMAT-001", "type": "task", "description": "JSON Lines format implementation", "created": "2025-09-29"}
-{"tag": "TASK:PERFORMANCE-OPTIMIZATION-001", "type": "task", "description": "Performance optimization tasks", "created": "2025-09-29"}
-{"tag": "TASK:CACHE-SYSTEM-001", "type": "task", "description": "Cache system implementation", "created": "2025-09-29"}
+{"tag": "TASK:INIT-001", "type": "task", "description": "v0.0.1 초기 작업", "created": "2025-09-29", "version": "0.0.1"}

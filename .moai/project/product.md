@@ -70,7 +70,7 @@ MoAI-ADK는 Claude Code와 통합되어 SPEC-First TDD 방법론을 지원하는
 ## Legacy Context
 
 ### 기존 자산 요약
-- **Python 기반 MoAI-ADK v0.1.28**: 완전 기능, 70+ 모듈, PyPI 배포 중
+- **Python 기반 MoAI-ADK v0.0.1**: 초기 개발 단계, 기본 모듈
 - **TypeScript 기반 MoAI-ADK v0.0.1**: SPEC-012 완료, 고성능 빌드 시스템
 - **Claude Code 통합**: 7개 에이전트, 5개 명령어, 8개 훅 완성
 - **16-Core @TAG 시스템**: SQLite3 기반 추적성 데이터베이스

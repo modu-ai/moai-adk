@@ -1,5 +1,1 @@
-{"tag": "PERF:FILE-SIZE-REDUCTION-001", "type": "performance", "description": "94% file size reduction", "created": "2025-09-29"}
-{"tag": "PERF:PARSING-SPEED-001", "type": "performance", "description": "95% parsing speed improvement", "created": "2025-09-29"}
-{"tag": "PERF:MEMORY-USAGE-001", "type": "performance", "description": "90% memory usage reduction", "created": "2025-09-29"}
-{"tag": "PERF:LOAD-TIME-001", "type": "performance", "description": "Partial loading capability", "created": "2025-09-29"}
-{"tag": "PERF:CONCURRENT-ACCESS-001", "type": "performance", "description": "Concurrent access optimization", "created": "2025-09-29"}
+{"tag": "PERF:INIT-001", "type": "performance", "description": "v0.0.1 초기 성능", "created": "2025-09-29", "version": "0.0.1"}

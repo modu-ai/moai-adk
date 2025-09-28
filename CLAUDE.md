@@ -8,7 +8,7 @@
 - **TDD-First**: 테스트 없이는 구현 없음
 - **GitFlow 지원**: Git 작업 자동화, Living Document 동기화, 16-Core @TAG 추적성
 
-**TypeScript 기반**: 타입 안전성과 고성능, 분산 TAG 시스템 v4.0 (94% 크기 절감)
+**TypeScript 기반**: 타입 안전성과 고성능, JSON 기반 tags.json 데이터베이스
 
 ## 3단계 핵심 워크플로우
 
@@ -36,7 +36,7 @@
 **Git 자동화**: 모든 워크플로우에서 자동 처리 (99% 케이스)
 **Git 직접**: `@agent-git-manager "명령"` (1% 특수 케이스)
 
-## 16-Core @TAG 시스템 v4.0 (분산)
+## 16-Core @TAG 시스템 (JSON)
 
 ```
 @REQ → @DESIGN → @TASK → @TEST
@@ -44,11 +44,7 @@ SPEC: REQ,DESIGN,TASK | PROJECT: VISION,STRUCT,TECH,ADR
 IMPLEMENTATION: FEATURE,API,TEST,DATA | QUALITY: PERF,SEC,DEBT,TODO
 ```
 
-**분산 TAG 데이터베이스 v4.0**:
-- **카테고리별 저장**: `.moai/indexes/categories/*.jsonl` (JSONL 분산)
-- **관계 매핑**: `.moai/indexes/relations/chains.jsonl` (체인 추적)
-- **캐시 시스템**: `.moai/indexes/cache/summary.json` (고속 검색)
-- **성능 개선**: 94% 크기 절감, 95% 파싱 속도 향상
+**TAG 데이터베이스**: `.moai/indexes/tags.json` (JSON 기반)
 
 ## TRUST 5원칙 (범용 언어 지원)
 

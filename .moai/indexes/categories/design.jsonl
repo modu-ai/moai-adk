@@ -1,10 +1,1 @@
-{"tag": "DESIGN:CLI-SPLIT-001", "type": "design", "description": "CLI module split design", "created": "2025-09-28"}
-{"tag": "DESIGN:MOAI-CONFIG-001", "type": "design", "description": "MoAI configuration design", "created": "2025-09-28"}
-{"tag": "DESIGN:ADAPTER-PATTERN-001", "type": "design", "description": "Adapter pattern design", "created": "2025-09-28"}
-{"tag": "DESIGN:REFACTORED-CONFIG-001", "type": "design", "description": "Refactored configuration design", "created": "2025-09-28"}
-{"tag": "DESIGN:API-GENERATION-001", "type": "design", "description": "API generation design", "created": "2025-09-28"}
-{"tag": "DESIGN:PATTERN-COMPOSITION-001", "type": "design", "description": "Pattern composition design", "created": "2025-09-28"}
-{"tag": "DESIGN:SYSTEM-ARCHITECTURE-001", "type": "design", "description": "System architecture design", "created": "2025-09-28"}
-{"tag": "DESIGN:DISTRIBUTED-STORAGE-001", "type": "design", "description": "Distributed storage design", "created": "2025-09-29"}
-{"tag": "DESIGN:TAG-OPTIMIZATION-001", "type": "design", "description": "TAG system optimization design", "created": "2025-09-29"}
-{"tag": "DESIGN:PERFORMANCE-IMPROVEMENT-001", "type": "design", "description": "Performance improvement design", "created": "2025-09-29"}
+{"tag": "DESIGN:INIT-001", "type": "design", "description": "v0.0.1 초기 설계", "created": "2025-09-29", "version": "0.0.1"}

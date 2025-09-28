@@ -1,10 +1,1 @@
-{"tag": "REQ:QUALITY-002", "type": "requirement", "description": "Quality assurance requirements", "created": "2025-09-28"}
-{"tag": "REQ:OPT-CORE-001", "type": "requirement", "description": "Core optimization requirements", "created": "2025-09-28"}
-{"tag": "REQ:PORTING-001", "type": "requirement", "description": "Porting requirements", "created": "2025-09-28"}
-{"tag": "REQ:AUTO-VERIFY-012", "type": "requirement", "description": "Auto verification requirements", "created": "2025-09-28"}
-{"tag": "REQ:CLI-FOUNDATION-012", "type": "requirement", "description": "CLI foundation requirements", "created": "2025-09-28"}
-{"tag": "REQ:BUILD-SYSTEM-012", "type": "requirement", "description": "Build system requirements", "created": "2025-09-28"}
-{"tag": "REQ:PACKAGE-CONFIG-012", "type": "requirement", "description": "Package configuration requirements", "created": "2025-09-28"}
-{"tag": "REQ:USER-AUTH-001", "type": "requirement", "description": "User authentication requirements", "created": "2025-09-28"}
-{"tag": "REQ:USER-001", "type": "requirement", "description": "User requirements", "created": "2025-09-28"}
-{"tag": "REQ:PROBLEM-001", "type": "requirement", "description": "Problem analysis requirements", "created": "2025-09-28"}
+{"tag": "REQ:INIT-001", "type": "requirement", "description": "v0.0.1 초기화 요구사항", "created": "2025-09-29", "version": "0.0.1"}
