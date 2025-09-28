@@ -48,3 +48,12 @@ test_tags.db*
 **/indexes/*.db*
 
 my-docs/
+
+# TypeScript specific
+node_modules/
+*.tsbuildinfo
+.tscache/
+
+# TypeScript build outputs
+moai-adk-ts/dist/
+moai-adk-ts/coverage/
