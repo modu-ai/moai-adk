@@ -66,6 +66,7 @@ docs = [
 
 [project.scripts]
 moai = "moai_adk.cli:main"
+moai-adk = "moai_adk.cli:main"  # Alias for consistent branding
 moai-install = "moai_adk.install.post_install:main"
 
 [tool.setuptools.packages.find]
@@ -236,6 +237,7 @@ precision = 2
 
 # @TASK:UV-TOOL-001 uv tool management configuration
 [tool.uv]
+python = ">=3.10"
 dev-dependencies = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
@@ -244,6 +246,8 @@ dev-dependencies = [
     "pre-commit>=4.0.0",
     # Keep ruff as dependency for CI/CD compatibility
     "ruff>=0.13.0",
+    # PyInstaller for Windows exe builds
+    "pyinstaller>=6.0.0",
 ]
 
 # @TASK:SCRIPTS-001 Project automation scripts

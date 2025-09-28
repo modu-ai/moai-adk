@@ -1,37 +1,41 @@
 """
-@FEATURE:INSTALLER-001 Simplified MoAI-ADK Project Installer
+@FEATURE:INSTALLER-001 Modularized MoAI-ADK Project Installer
 
-@TASK:INSTALL-001 Simplified installation system using embedded package resources instead of symbolic links.
-@TASK:INSTALL-002 Ensures perfect compatibility with Claude Code by directly copying all resources through ResourceManager.
+@TASK:INSTALL-REFACTOR-001 Refactored installer following TRUST principles with clear separation of concerns.
+@TASK:BACKWARD-COMPATIBILITY-001 Maintains 100% backward compatibility while using modular architecture.
+
+Legacy support: SimplifiedInstaller class delegates to InstallationOrchestrator for actual work.
 """
 
 from collections.abc import Callable
-from importlib import resources
-from pathlib import Path
 
-from .._version import __version__
 from ..config import Config
-from ..core.config_manager import ConfigManager
-from ..core.directory_manager import DirectoryManager
-from ..core.file_manager import FileManager
-from ..core.git_manager import GitManager
-from ..core.resource_version import ResourceVersionManager
-from ..core.security import SecurityManager
-from ..core.system_manager import SystemManager
 from ..utils.logger import get_logger
-from ..utils.progress_tracker import ProgressTracker
+from .installation_orchestrator import InstallationOrchestrator
 from .installation_result import InstallationResult
-from .resource_manager import ResourceManager
 
 logger = get_logger(__name__)
 
 
 class SimplifiedInstaller:
     """
-    @TASK:INSTALLER-MAIN-001 Simplified MoAI-ADK project installation manager
+    @TASK:INSTALLER-LEGACY-001 Legacy installer maintaining backward compatibility
 
-    Installation system that directly copies embedded package resources
-    instead of symbolic links for stable operation across all platforms.
+    This class now delegates all installation work to InstallationOrchestrator
+    while maintaining the exact same public API for backward compatibility.
+
+    Migration to modular architecture:
+    - InstallationOrchestrator: Overall process coordination (≤300 LOC)
+    - ResourceInstaller: Resource installation management (≤300 LOC)
+    - ConfigurationGenerator: Configuration and Git setup (≤300 LOC)
+    - InstallationValidator: Verification and validation (≤300 LOC)
+
+    TRUST Principles Applied:
+    - T: Single responsibility per module
+    - R: Clear, readable delegation pattern
+    - U: Unified architecture with specialized components
+    - S: Security handled by specialized managers
+    - T: Fully traceable installation process
     """
 
     def __init__(self, config: Config):
@@ -42,26 +46,9 @@ class SimplifiedInstaller:
             config: Project configuration
         """
         self.config = config
-        self.progress = ProgressTracker()
+        self.orchestrator = InstallationOrchestrator(config)
 
-        # Initialize core managers
-        self.security_manager = SecurityManager()
-        self.system_manager = SystemManager()
-        self.directory_manager = DirectoryManager(self.security_manager)
-        self.config_manager = ConfigManager()
-        self.resource_manager = ResourceManager()
-
-        # Initialize FileManager with templates from ResourceManager
-        with resources.as_file(self.resource_manager.templates_root) as templates_path:
-            self.file_manager = FileManager(templates_path, self.security_manager)
-
-        self.git_manager = GitManager(
-            project_dir=config.project_path,
-            security_manager=self.security_manager,
-            file_manager=self.file_manager,
-        )
-
-        logger.info("SimplifiedInstaller initialized for: %s", config.project_path)
+        logger.info("SimplifiedInstaller (legacy wrapper) initialized for: %s", config.project_path)
 
     def install(
         self, progress_callback: Callable[[str, int, int], None] | None = None
@@ -69,361 +56,18 @@ class SimplifiedInstaller:
         """
         Execute MoAI-ADK project installation
 
+        This method now delegates to InstallationOrchestrator while maintaining
+        the exact same public API for backward compatibility.
+
         Args:
             progress_callback: Progress callback function
 
         Returns:
             InstallationResult: Installation result
         """
-        files_created: list[str] = []
-        errors: list[str] = []
-
-        try:
-            # Step 0: Create backup if enabled
-            if self.config.backup_enabled:
-                self.progress.update_progress(
-                    "Creating backup...", progress_callback
-                )
-                from ..cli.helpers import create_installation_backup
-                backup_success = create_installation_backup(self.config.project_path)
-                if backup_success:
-                    logger.info("Backup created successfully")
-                else:
-                    logger.warning("Failed to create backup, but continuing installation")
-
-            # Step 1: Creating project directory
-            self.progress.update_progress(
-                "Creating project directory...", progress_callback
-            )
-            self.directory_manager.create_project_directory(self.config)
-            files_created.append(str(self.config.project_path))
-
-            # Step 2: Installing Claude Code resources (creates .claude/ with content)
-            self.progress.update_progress(
-                "Installing Claude Code resources...", progress_callback
-            )
-            claude_success = self._install_claude_resources()
-            if claude_success:
-                files_created.append(str(self.config.project_path / ".claude"))
-
-            # Step 3: Installing MoAI resources (creates .moai/ with content)
-            self.progress.update_progress(
-                "Installing MoAI resources...", progress_callback
-            )
-            moai_success = self._install_moai_resources()
-            if moai_success:
-                files_created.append(str(self.config.project_path / ".moai"))
-
-            # Step 3b: Record installed template version
-            self._write_resource_version_info()
-
-            # Step 4: Creating auxiliary directories (logs, empty directories)
-            self.progress.update_progress(
-                "Setting up auxiliary directories...", progress_callback
-            )
-            directories = self._create_basic_structure()
-            if directories:
-                files_created.extend([str(d) for d in directories])
-
-            # Step 5: Setting up GitHub workflows (optional)
-            if self.config.include_github:
-                self.progress.update_progress(
-                    "Setting up GitHub workflows...", progress_callback
-                )
-                github_success = self._install_github_workflows()
-                if github_success:
-                    files_created.append(str(self.config.project_path / ".github"))
-
-            # Step 6: Creating project memory
-            self.progress.update_progress(
-                "Creating project memory...", progress_callback
-            )
-            if self._install_project_memory():
-                files_created.append(str(self.config.project_path / "CLAUDE.md"))
-
-            # Step 7: Generating configuration files
-            self.progress.update_progress(
-                "Generating configuration files...", progress_callback
-            )
-            config_files = self._create_configuration_files()
-            if config_files:
-                files_created.extend([str(f) for f in config_files])
-
-            # Step 7.5: Creating initial indexes (SQLite database)
-            self.progress.update_progress(
-                "Creating initial indexes...", progress_callback
-            )
-            try:
-                index_files = self.config_manager.create_initial_indexes(
-                    self.config.project_path, self.config
-                )
-                files_created.extend([str(f) for f in index_files])
-                logger.info("Successfully created %d index files", len(index_files))
-            except Exception as e:
-                error_msg = f"Failed to create initial indexes: {e}"
-                logger.error(error_msg)
-                errors.append(error_msg)
-                # Index creation is critical for MoAI system - don't fail silently
-
-            # Step 8: Initializing Git repository (optional)
-            if self.config.initialize_git:
-                self.progress.update_progress(
-                    "Initializing Git repository...", progress_callback
-                )
-                git_files = self._initialize_git_repository()
-                if git_files:
-                    files_created.extend([str(f) for f in git_files])
-
-            # Step 9: Verifying installation
-            self.progress.update_progress(
-                "Verifying installation...", progress_callback
-            )
-            if not self._verify_installation():
-                errors.append("Installation verification failed")
-
-            self.progress.update_progress("Installation complete!", progress_callback)
-
-            return InstallationResult(
-                success=len(errors) == 0,
-                project_path=str(self.config.project_path),
-                files_created=files_created,
-                errors=errors,
-                next_steps=self._generate_next_steps(),
-                config=self.config,
-            )
-
-        except Exception as e:
-            error_msg = f"Installation failed: {e}"
-            logger.error(error_msg)
-            errors.append(error_msg)
-
-            return InstallationResult(
-                success=False,
-                project_path=str(self.config.project_path),
-                files_created=files_created,
-                errors=errors,
-                next_steps=["Fix the errors above and retry installation"],
-                config=self.config,
-            )
-
-    def _create_basic_structure(self) -> list[Path]:
-        """Create only auxiliary directories that won't be populated by ResourceManager"""
-        directories = [
-            # Only create logs directory - ResourceManager will handle .claude/ with content
-            self.config.project_path / ".claude" / "logs",
-            # Only create empty directories that ResourceManager doesn't populate
-            self.config.project_path / ".moai" / "project",
-            self.config.project_path / ".moai" / "specs",
-            self.config.project_path / ".moai" / "reports",
-        ]
-
-        # Note: .claude/ and .moai/ will be created by ResourceManager with content
-        # Note: .moai/memory/ and .moai/indexes/ will be created by ResourceManager
-
-        created_dirs = []
-        for directory in directories:
-            try:
-                if not self.security_manager.validate_path_safety(
-                    directory, self.config.project_path
-                ):
-                    logger.error(
-                        "Security validation failed for directory: %s", directory
-                    )
-                    continue
-
-                directory.mkdir(parents=True, exist_ok=True)
-                created_dirs.append(directory)
-                logger.debug("Created directory: %s", directory)
-
-            except Exception as e:
-                logger.error("Failed to create directory %s: %s", directory, e)
-
-        return created_dirs
-
-    def _install_claude_resources(self) -> list[Path]:
-        """
-        @TASK:CLAUDE-INSTALL-001 Claude Code 리소스 설치 with Python 명령어 감지
-
-        Windows 호환성을 위해 시스템 Python 명령어를 자동 감지하여 settings.json을 동적 생성
-        """
-        try:
-            # 시스템에서 사용 가능한 Python 명령어 감지
-            python_command = self.system_manager.detect_python_command()
-            logger.info(f"Detected Python command for Claude hooks: {python_command}")
-
-            result = self.resource_manager.copy_claude_resources(
-                self.config.project_path,
-                overwrite=self.config.force_overwrite,
-                python_command=python_command
-            )
-            if not result:
-                raise RuntimeError(
-                    "No Claude resources were copied - installation may have failed"
-                )
-            return result
-        except Exception as e:
-            logger.error("Failed to install Claude resources: %s", e)
-            raise  # 예외를 상위로 전파하여 설치 실패를 명확히 알림
-
-    def _install_moai_resources(self) -> list[Path]:
-        """MoAI 리소스 설치"""
-        try:
-            # templates_mode: 'copy' | 'package'
-            exclude_templates = False
-            if (
-                hasattr(self.config, "templates_mode")
-                and str(self.config.templates_mode or "").lower() == "package"
-            ):
-                exclude_templates = True
-
-            result = self.resource_manager.copy_moai_resources(
-                self.config.project_path,
-                overwrite=self.config.force_overwrite,
-                exclude_templates=exclude_templates,
-            )
-            if not result:
-                raise RuntimeError(
-                    "No MoAI resources were copied - installation may have failed"
-                )
-            return result
-        except Exception as e:
-            logger.error("Failed to install MoAI resources: %s", e)
-            raise  # 예외를 상위로 전파
-
-    def _install_github_workflows(self) -> list[Path]:
-        """GitHub 워크플로우 설치"""
-        try:
-            return self.resource_manager.copy_github_resources(
-                self.config.project_path, overwrite=self.config.force_overwrite
-            )
-        except Exception as e:
-            logger.error("Failed to install GitHub workflows: %s", e)
-            return []
-
-    def _install_project_memory(self) -> bool:
-        """프로젝트 메모리 파일 생성"""
-        try:
-            result = self.resource_manager.copy_project_memory(
-                self.config.project_path, overwrite=self.config.force_overwrite
-            )
-            context = self.config.get_template_context()
-            joined_stack = (
-                ", ".join(self.config.tech_stack)
-                if self.config.tech_stack
-                else "미지정"
-            )
-            memory_context = {
-                **{k.upper(): str(v) for k, v in context.items()},
-                "PROJECT_NAME": self.config.name,
-                "TECH_STACK": joined_stack,
-                "TECH_STACK_LIST": joined_stack,
-            }
-
-            self.resource_manager.copy_memory_templates(
-                self.config.project_path,
-                self.config.tech_stack,
-                memory_context,
-                overwrite=self.config.force_overwrite,
-            )
-
-            return result
-        except Exception as e:
-            logger.error("Failed to create project memory: %s", e)
-            return False
-
-    def _write_resource_version_info(self) -> None:
-        """Record the installed template/resource version metadata."""
-        try:
-            version_manager = ResourceVersionManager(self.config.project_path)
-            template_version = self.resource_manager.get_version()
-            version_manager.write(template_version, __version__)
-        except Exception as exc:
-            logger.warning("Failed to write resource version metadata: %s", exc)
-
-    def _create_configuration_files(self) -> list[Path]:
-        """설정 파일 생성"""
-        config_files = []
-
-        try:
-            # Claude Code 설정
-            claude_settings = self.config.project_path / ".claude" / "settings.json"
-            if self.config_manager.create_claude_settings(claude_settings, self.config):
-                config_files.append(claude_settings)
-
-            # MoAI 설정
-            moai_config = self.config.project_path / ".moai" / "config.json"
-            if self.config_manager.create_moai_config(moai_config, self.config):
-                config_files.append(moai_config)
-
-            logger.info("Created %d configuration files", len(config_files))
-            return config_files
-
-        except Exception as e:
-            logger.error("Failed to create configuration files: %s", e)
-            return []
-
-    def _initialize_git_repository(self) -> list[Path]:
-        """Git 저장소 초기화"""
-        git_files = []
-
-        try:
-            if self.git_manager.initialize_repository(self.config.project_path):
-                git_files.append(self.config.project_path / ".git")
-
-                # .gitignore 생성
-                gitignore_path = self.config.project_path / ".gitignore"
-                if self.git_manager.create_gitignore(gitignore_path):
-                    git_files.append(gitignore_path)
-
-            logger.info("Initialized Git repository with %d files", len(git_files))
-            return git_files
-
-        except Exception as e:
-            logger.error("Failed to initialize Git repository: %s", e)
-            return []
-
-    def _verify_installation(self) -> bool:
-        """설치 검증"""
-        try:
-            return self.resource_manager.validate_project_resources(
-                self.config.project_path
-            )
-        except Exception as e:
-            logger.error("Installation verification failed: %s", e)
-            return False
-
-    def _generate_next_steps(self) -> list[str]:
-        """Generate next steps guidance"""
-        next_steps = [
-            "Project successfully initialized!",
-            "",
-            "Next steps:",
-            "1. Navigate to your project:",
-            f"   cd {self.config.project_path}",
-            "",
-            "2. Initialize project setup:",
-            "   /moai:1-project",
-            "",
-            "3. Create your first feature:",
-            '   /moai:2-spec <feature-name> "Feature description"',
-            "",
-            "4. Get help:",
-            "   /moai:help",
-        ]
-
-        # Claude Code integration guidance
-        if hasattr(self.config, "claude_version"):
-            next_steps.extend(
-                [
-                    "",
-                    "Claude Code Integration:",
-                    "- All MoAI commands are installed as slash commands",
-                    "- Start with /moai:1-project to begin",
-                ]
-            )
-
-        return next_steps
+        logger.info("Starting installation using modular architecture")
+        return self.orchestrator.execute_installation(progress_callback)
 
 
-# 하위 호환성을 위한 별칭
+# Backward compatibility alias
 ProjectInstaller = SimplifiedInstaller

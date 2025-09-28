@@ -13,12 +13,17 @@ This package contains command-line interface components:
 - @TASK:CLI-WIZARD-001 Interactive setup wizard
 """
 
-from .__main__ import main
 from .commands import cli
 from .wizard import InteractiveWizard
 
 # For backward compatibility
 CLICommands = cli
+
+# Import main from the correct CLI module
+def main():
+    """Main CLI entry point."""
+    from .commands import cli
+    cli()
 
 __all__ = [
     "CLICommands",  # Backward compatibility

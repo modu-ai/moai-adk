@@ -15,6 +15,8 @@ from pathlib import Path
 
 from ..core.exceptions import GitLockedException
 from ..core.git_strategy import GitStrategyBase, PersonalGitStrategy, TeamGitStrategy
+from .spec_validator import SpecValidator
+from .spec_file_generator import SpecFileGenerator
 
 # Logging setup (@TASK:LOG-001)
 logger = logging.getLogger(__name__)
@@ -53,6 +55,10 @@ class SpecCommand:
 
         # Git 전략 초기화
         self._git_strategy: GitStrategyBase | None = None
+
+        # 검증 및 파일 생성 모듈 초기화
+        self.validator = SpecValidator()
+        self.file_generator = SpecFileGenerator(self.project_dir, self._get_current_mode())
 
         logger.debug(
             f"SpecCommand 초기화: {self.project_dir}, skip_branch={skip_branch}"
@@ -113,8 +119,8 @@ class SpecCommand:
             GitLockedException: Git 작업 충돌
         """
         # 입력 검증
-        validated_spec_name = self._validate_spec_name(spec_name)
-        validated_description = self._validate_description(description)
+        validated_spec_name = self.validator.validate_spec_name(spec_name)
+        validated_description = self.validator.validate_description(description)
 
         # 스킵 옵션 설정
         if skip_branch is not None:
@@ -125,7 +131,7 @@ class SpecCommand:
 
         try:
             # SPEC 파일 생성
-            self._create_spec_file(validated_spec_name, validated_description)
+            self.file_generator.create_spec_file(validated_spec_name, validated_description)
 
             # Git 작업 수행 (필요한 경우)
             if not self.skip_branch and self._should_create_branch():
@@ -164,151 +170,6 @@ class SpecCommand:
             # 기본 실행
             self.execute(spec_name, description)
 
-    def _validate_spec_name(self, spec_name: str) -> str:
-        """명세 이름 검증 및 정규화
-
-        Args:
-            spec_name: 검증할 명세 이름
-
-        Returns:
-            정규화된 명세 이름
-
-        Raises:
-            ValueError: 유효하지 않은 명세 이름
-        """
-        if not spec_name or not isinstance(spec_name, str):
-            raise ValueError("spec_name은 비어있지 않은 문자열이어야 합니다")
-
-        # 정규화
-        normalized = spec_name.strip().upper()
-
-        # 길이 제한
-        if len(normalized) > 50:
-            raise ValueError("명세 이름이 너무 깁니다 (최대 50자)")
-
-        # 안전하지 않은 문자 확인
-        unsafe_chars = ["/", "\\", "<", ">", ":", '"', "|", "?", "*"]
-        if any(char in normalized for char in unsafe_chars):
-            raise ValueError(
-                f"명세 이름에 안전하지 않은 문자가 포함되어 있습니다: {spec_name}"
-            )
-
-        return normalized
-
-    def _validate_description(self, description: str) -> str:
-        """설명 검증 및 정규화
-
-        Args:
-            description: 검증할 설명
-
-        Returns:
-            정규화된 설명
-
-        Raises:
-            ValueError: 유효하지 않은 설명
-        """
-        if not description or not isinstance(description, str):
-            raise ValueError("description은 비어있지 않은 문자열이어야 합니다")
-
-        # 정규화
-        normalized = description.strip()
-
-        # 길이 제한
-        if len(normalized) > 500:
-            raise ValueError("설명이 너무 깁니다 (최대 500자)")
-
-        return normalized
-
-    def _create_spec_file(self, spec_name: str, description: str):
-        """
-        @TASK:SPEC-FILE-CREATE-001 SPEC 파일 생성
-
-        Args:
-            spec_name: 명세 이름
-            description: 명세 설명
-        """
-        try:
-            specs_dir = self.project_dir / ".moai" / "specs"
-            specs_dir.mkdir(parents=True, exist_ok=True)
-
-            spec_file = specs_dir / f"{spec_name}.md"
-
-            # 파일이 이미 존재하면 백업 생성
-            if spec_file.exists():
-                backup_file = specs_dir / f"{spec_name}.md.backup"
-                spec_file.replace(backup_file)
-                logger.info(f"기존 SPEC 파일 백업: {backup_file}")
-
-            # SPEC 내용 생성
-            spec_content = self._generate_spec_content(spec_name, description)
-
-            # 파일 작성
-            spec_file.write_text(spec_content, encoding="utf-8")
-
-            logger.info(f"SPEC 파일 생성 완료: {spec_file}")
-
-        except OSError as e:
-            logger.error(f"SPEC 파일 생성 실패: {e}")
-            raise ValueError(f"SPEC 파일 생성 실패: {e}")
-
-    def _generate_spec_content(self, spec_name: str, description: str) -> str:
-        """SPEC 파일 내용 생성 (간결한 버전)
-
-        Args:
-            spec_name: 명세 이름
-            description: 명세 설명
-
-        Returns:
-            생성된 SPEC 내용
-        """
-        return f"""# {spec_name}
-
-## 개요
-
-{description}
-
-## 요구사항
-
-### 기능 요구사항
-
-- [ ] 핵심 기능 구현
-- [ ] 사용자 인터페이스 개발
-- [ ] 데이터 처리 로직 구현
-
-### 비기능 요구사항
-
-- [ ] 성능: 응답 시간 < 1초
-- [ ] 보안: 입력 검증 및 인증
-- [ ] 안정성: 99% 가용성
-
-## 수락 기준
-
-- [ ] 모든 주요 기능이 정상 동작
-- [ ] 테스트 커버리지 ≥ 85%
-- [ ] 코드 리뷰 완료
-
-## 태그 체계
-
-@REQ:{spec_name}-001 - 주요 요구사항
-@DESIGN:{spec_name}-ARCH-001 - 아키텍처 설계
-@TASK:{spec_name}-IMPL-001 - 구현 작업
-@TEST:{spec_name}-UNIT-001 - 단위 테스트
-
----
-
-생성 일시: {self._get_current_timestamp()}
-모드: {self._get_current_mode()}
-"""
-
-    def _get_current_timestamp(self) -> str:
-        """현재 타임스탬프 반환
-
-        Returns:
-            포맷된 현재 시간
-        """
-        import datetime
-
-        return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     def _should_create_branch(self) -> bool:
         """브랜치 생성 여부 결정

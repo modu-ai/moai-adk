@@ -16,9 +16,11 @@ from datetime import datetime
 # 아직 구현되지 않은 모듈들 - 실패할 예정
 from moai_adk.core.tag_system.migration import (
     TagMigrationTool,
-    MigrationResult,
     MigrationError,
     DataValidationError,
+)
+from moai_adk.core.tag_system.migration_models import (
+    MigrationResult,
     MigrationProgress,
     BackupManager,
 )

@@ -83,6 +83,21 @@ class ResourceManager:
             project_path, overwrite, exclude_templates
         )
 
+    def copy_moai_resources_with_context(
+        self,
+        project_path: Path,
+        context: dict[str, str],
+        overwrite: bool = False,
+        exclude_templates: bool = False,
+    ) -> bool:
+        """Copy .moai directory resources with template substitution."""
+        moai_root = project_path / ".moai"
+        exclude_subdirs = ["_templates"] if exclude_templates else None
+
+        return self.file_operations.copy_template_with_substitution(
+            ".moai", moai_root, context, overwrite, exclude_subdirs
+        )
+
     def copy_github_resources(
         self, project_path: Path, overwrite: bool = False
     ) -> bool:
@@ -92,6 +107,15 @@ class ResourceManager:
     def copy_project_memory(self, project_path: Path, overwrite: bool = False) -> bool:
         """Copy project memory file (CLAUDE.md)."""
         return self.file_operations.copy_project_memory(project_path, overwrite)
+
+    def copy_project_memory_with_context(
+        self, project_path: Path, context: dict[str, str], overwrite: bool = False
+    ) -> bool:
+        """Copy project memory file (CLAUDE.md) with template substitution."""
+        target_path = project_path / "CLAUDE.md"
+        return self.file_operations.copy_template_with_substitution(
+            "CLAUDE.md", target_path, context, overwrite
+        )
 
     def copy_memory_templates(
         self,
@@ -142,15 +166,15 @@ class ResourceManager:
     def substitute_template_variables(
         self, content: str, project_context: dict[str, str]
     ) -> str:
-        """Substitute template variables in content."""
-        return self.template_manager.substitute_template_variables(
+        """Substitute template variables in content using unified method."""
+        return self.template_manager.unified_substitute_template_variables(
             content, project_context
         )
 
     def render_template_with_context(
         self, template_content: str, context: dict[str, str]
     ) -> str:
-        """Render template content with context variables."""
-        return self.template_manager.render_template_with_context(
+        """Render template content with context variables using unified method."""
+        return self.template_manager.unified_substitute_template_variables(
             template_content, context
         )

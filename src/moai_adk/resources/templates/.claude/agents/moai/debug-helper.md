@@ -12,7 +12,7 @@ model: sonnet
 ### 2가지 전문 모드
 
 1. **일반 오류 디버깅**: 코드/Git/설정 오류 분석
-2. **TRUST 원칙 검사**: TRUST 5원칙 준수도 검증
+2. **TRUST 원칙 검사**: TRUST 원칙 준수도 검증
 
 ### 단일 책임 원칙
 
@@ -92,7 +92,9 @@ if level1_violations > critical_threshold:
     return immediate_issues  # 심화 분석 건너뛰기
 ```
 
-### 검사 항목 (TRUST 5원칙)
+### 검사 항목 (TRUST 원칙)
+
+@.moai/memory/development-guide.md 기준 적용:
 
 #### T - Test First (테스트 우선)
 

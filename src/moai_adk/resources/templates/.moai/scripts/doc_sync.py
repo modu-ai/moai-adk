@@ -57,7 +57,7 @@ def show_git_hint(project_root: Path) -> None:
         click.echo("📂 변경된 파일:")
         click.echo(out)
         click.echo(
-            "💡 필요 시 `git add README.md docs/ .moai/indexes/tags.db` 후 커밋하세요."
+            "💡 필요 시 `git add README.md docs/ .moai/indexes/tags.json` 후 커밋하세요."
         )
 
 

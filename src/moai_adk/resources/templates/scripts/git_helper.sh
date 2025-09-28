@@ -1,10 +1,33 @@
 #!/bin/bash
-# Git 헬퍼 함수들
-# MoAI-ADK 명령어에서 공통으로 사용하는 Git 작업
+# Git 헬퍼 함수들 (MoAI-ADK v0.1.9+)
+# @FEATURE:GIT-001 Modularized Git operations support
+#
+# 새로운 모듈 구조:
+# - GitInstallationManager: Git 설치 및 확인
+# - GitStatusManager: 상태 확인 및 원격 정보
+# - GitRepositoryManager: 저장소 초기화
+# - GitLockManager: 잠금 시스템 관리
+
+check_git_availability() {
+    """
+    Git 가용성 확인 (GitInstallationManager 호환)
+    """
+    if ! command -v git &> /dev/null; then
+        echo "❌ Git이 설치되지 않았습니다."
+        echo "💡 Git 설치 안내:"
+        case "$(uname -s)" in
+            Darwin*) echo "   brew install git" ;;
+            Linux*)  echo "   sudo apt install git (Ubuntu/Debian)" ;;
+            *)       echo "   https://git-scm.com/download" ;;
+        esac
+        return 1
+    fi
+    return 0
+}
 
 check_git_lock() {
     """
-    Git index.lock 파일 검사 및 처리
+    Git index.lock 파일 검사 및 처리 (GitLockManager 호환)
     """
     if [ -f .git/index.lock ]; then
         echo "🔒 git index.lock 감지됨"
@@ -23,12 +46,54 @@ check_git_lock() {
     fi
 }
 
+get_git_status() {
+    """
+    Git 상태 확인 (GitStatusManager 호환)
+    """
+    if ! check_git_availability; then
+        return 1
+    fi
+
+    if [ ! -d .git ]; then
+        echo "❌ Git 저장소가 아닙니다."
+        return 1
+    fi
+
+    git status --porcelain
+}
+
+init_git_repository() {
+    """
+    Git 저장소 초기화 (GitRepositoryManager 호환)
+    """
+    if ! check_git_availability; then
+        return 1
+    fi
+
+    if [ -d .git ]; then
+        echo "ℹ️ 이미 Git 저장소입니다."
+        return 0
+    fi
+
+    echo "🚀 Git 저장소 초기화 중..."
+    git init
+    local exit_code=$?
+
+    if [ $exit_code -eq 0 ]; then
+        echo "✅ Git 저장소 초기화 완료"
+    else
+        echo "❌ Git 저장소 초기화 실패"
+        return $exit_code
+    fi
+}
+
 safe_git_commit() {
     """
-    안전한 Git 커밋 (lock 체크 포함)
+    안전한 Git 커밋 (GitLockManager 통합)
     """
     local commit_message="$1"
 
+    check_git_availability || return 1
     check_git_lock
 
     if git diff --cached --quiet; then
@@ -49,11 +114,12 @@ safe_git_commit() {
 
 safe_git_branch() {
     """
-    안전한 브랜치 생성/전환
+    안전한 브랜치 생성/전환 (GitLockManager 통합)
     """
     local branch_name="$1"
     local create_if_missing="${2:-false}"
 
+    check_git_availability || return 1
     check_git_lock
 
     if [ "$create_if_missing" = "true" ]; then
@@ -63,7 +129,10 @@ safe_git_branch() {
     fi
 }
 
-# 함수 export (다른 스크립트에서 사용 가능)
+# 함수 export (모듈화된 Git 관리 지원)
+export -f check_git_availability
 export -f check_git_lock
+export -f get_git_status
+export -f init_git_repository
 export -f safe_git_commit
 export -f safe_git_branch

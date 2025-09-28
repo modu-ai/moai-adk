@@ -1,32 +1,40 @@
 #!/usr/bin/env python3
 """
-MoAI 커밋 도우미 v0.2.0 (통합 시스템 기반)
-자동 메시지 생성 및 TRUST 원칙 준수 커밋 시스템 – 통합 Git 워크플로우 사용
+MoAI 커밋 도우미 v0.3.0 (TRUST 모듈화 시스템)
+자동 메시지 생성 및 TRUST 원칙 준수 커밋 시스템 – 모듈화된 아키텍처
 
 @REQ:GIT-COMMIT-001
 @FEATURE:AUTO-COMMIT-001
 @API:GET-COMMIT
-@DESIGN:COMMIT-WORKFLOW-002
+@DESIGN:COMMIT-WORKFLOW-003
 @TECH:CLAUDE-CODE-STD-001
+@TRUST:UNIFIED
 """
 
-import sys
 import argparse
-import re
+import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-# 새로운 통합 시스템 import
+import click
+
+# Import modular system components
+scripts_path = str(Path(__file__).parent)
 utils_path = str(Path(__file__).parent / "utils")
-if utils_path not in sys.path:
-    sys.path.insert(0, utils_path)
 
+for path in [scripts_path, utils_path]:
+    if path not in sys.path:
+        sys.path.insert(0, path)
+
+from commit_validator import CommitValidator
+from file_analyzer import FileAnalyzer
 from git_workflow import GitWorkflow, GitWorkflowError
+from message_generator import MessageGenerator
 from project_helper import ProjectHelper
 
 
 class CommitHelper:
-    """커밋 도우미 (통합 시스템 래퍼)"""
+    """커밋 도우미 (TRUST 모듈화 시스템)"""
 
     def __init__(self):
         self.project_root = Path(__file__).resolve().parents[2]
@@ -34,8 +42,13 @@ class CommitHelper:
         self.config = ProjectHelper.load_config(self.project_root)
         self.mode = self.config.get("mode", "personal")
 
-    def get_changed_files(self) -> Dict[str, Any]:
-        """변경된 파일 목록 조회"""
+        # Initialize modular components
+        self.validator = CommitValidator()
+        self.analyzer = FileAnalyzer()
+        self.message_generator = MessageGenerator()
+
+    def get_changed_files(self) -> dict[str, Any]:
+        """변경된 파일 목록 조회 (모듈화된 분석 사용)"""
         try:
             result = self.git_workflow.git.run_command(["git", "status", "--porcelain"])
 
@@ -44,35 +57,46 @@ class CommitHelper:
                 if line.strip():
                     status = line[:2]
                     filename = line[3:].strip()
-                    changed_files.append({
-                        "status": status,
-                        "filename": filename,
-                        "type": self._classify_file_change(status)
-                    })
+                    changed_files.append(
+                        {
+                            "status": status,
+                            "filename": filename,
+                            "type": self.analyzer.classify_file_change(status),
+                        }
+                    )
 
             return {
                 "success": True,
                 "files": changed_files,
                 "count": len(changed_files),
-                "has_changes": len(changed_files) > 0
+                "has_changes": len(changed_files) > 0,
+                "analysis": self.analyzer.analyze_file_changes(changed_files),
             }
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def create_smart_commit(self, message: Optional[str] = None, files: Optional[List[str]] = None) -> Dict[str, Any]:
-        """스마트 커밋 생성"""
+    def create_smart_commit(
+        self, message: str | None = None, files: list[str] | None = None
+    ) -> dict[str, Any]:
+        """스마트 커밋 생성 (모듈화된 검증 및 메시지 생성)"""
         try:
-            # 변경사항 확인
+            # 변경사항 확인 및 검증
             changes = self.get_changed_files()
             if not changes["success"]:
                 return changes
 
-            if not changes["has_changes"]:
-                return {"success": False, "error": "커밋할 변경사항이 없습니다"}
+            change_validation = self.validator.validate_change_context(changes)
+            if not change_validation["valid"]:
+                return {"success": False, "error": change_validation["reason"]}
+
+            # 파일 목록 검증
+            file_validation = self.validator.validate_file_list(files)
+            if not file_validation["valid"]:
+                return {"success": False, "error": file_validation["reason"]}
 
             # 메시지가 없으면 자동 생성
             if not message:
-                message = self._generate_smart_message(changes["files"])
+                message = self.message_generator.generate_smart_message(changes["files"])
 
             # 커밋 실행
             commit_hash = self.git_workflow.create_constitution_commit(message, files)
@@ -82,18 +106,29 @@ class CommitHelper:
                 "commit_hash": commit_hash,
                 "message": message,
                 "files_changed": changes["count"],
-                "mode": self.mode
+                "mode": self.mode,
+                "analysis": changes.get("analysis", {}),
             }
         except GitWorkflowError as e:
             return {"success": False, "error": str(e)}
 
-    def create_constitution_commit(self, message: str, files: Optional[List[str]] = None) -> Dict[str, Any]:
-        """TRUST 원칙 기반 커밋 생성"""
+    def create_constitution_commit(
+        self, message: str, files: list[str] | None = None
+    ) -> dict[str, Any]:
+        """TRUST 원칙 기반 커밋 생성 (모듈화된 검증)"""
         try:
             # 메시지 검증
-            validation = self._validate_commit_message(message)
+            validation = self.validator.validate_commit_message(message)
             if not validation["valid"]:
-                return {"success": False, "error": f"메시지 검증 실패: {validation['reason']}"}
+                return {
+                    "success": False,
+                    "error": f"메시지 검증 실패: {validation['reason']}",
+                }
+
+            # 파일 목록 검증
+            file_validation = self.validator.validate_file_list(files)
+            if not file_validation["valid"]:
+                return {"success": False, "error": file_validation["reason"]}
 
             # 커밋 실행
             commit_hash = self.git_workflow.create_constitution_commit(message, files)
@@ -103,186 +138,58 @@ class CommitHelper:
                 "commit_hash": commit_hash,
                 "message": message,
                 "validation": validation,
-                "mode": self.mode
+                "file_validation": file_validation,
+                "mode": self.mode,
             }
         except GitWorkflowError as e:
             return {"success": False, "error": str(e)}
 
-    def suggest_commit_message(self, context: Optional[str] = None) -> Dict[str, Any]:
-        """커밋 메시지 제안"""
+    def suggest_commit_message(self, context: str | None = None) -> dict[str, Any]:
+        """커밋 메시지 제안 (모듈화된 메시지 생성)"""
         try:
             changes = self.get_changed_files()
             if not changes["success"]:
                 return changes
 
-            if not changes["has_changes"]:
-                return {"success": False, "error": "변경사항이 없습니다"}
+            change_validation = self.validator.validate_change_context(changes)
+            if not change_validation["valid"]:
+                return {"success": False, "error": change_validation["reason"]}
 
             suggestions = []
 
             # 파일 변경 기반 제안
-            auto_message = self._generate_smart_message(changes["files"])
-            suggestions.append({
-                "type": "auto",
-                "message": auto_message,
-                "confidence": self._calculate_confidence(changes["files"])
-            })
+            auto_message = self.message_generator.generate_smart_message(changes["files"])
+            suggestions.append(
+                {
+                    "type": "auto",
+                    "message": auto_message,
+                    "confidence": self.message_generator.calculate_confidence(changes["files"]),
+                }
+            )
 
             # 컨텍스트 기반 제안
             if context:
-                context_message = self._generate_context_message(context, changes["files"])
-                suggestions.append({
-                    "type": "context",
-                    "message": context_message,
-                    "confidence": 0.8
-                })
+                context_message = self.message_generator.generate_context_message(
+                    context, changes["files"]
+                )
+                suggestions.append(
+                    {"type": "context", "message": context_message, "confidence": 0.8}
+                )
 
             # 템플릿 기반 제안
-            template_suggestions = self._generate_template_suggestions(changes["files"])
+            template_suggestions = self.message_generator.generate_template_suggestions()
             suggestions.extend(template_suggestions)
 
             return {
                 "success": True,
                 "suggestions": suggestions,
                 "files_changed": changes["count"],
-                "change_summary": self._summarize_changes(changes["files"])
+                "change_summary": changes.get("analysis", {}).get("summary", {}),
+                "analysis": changes.get("analysis", {}),
             }
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def _classify_file_change(self, status: str) -> str:
-        """파일 변경 유형 분류"""
-        if status.startswith("A"):
-            return "added"
-        elif status.startswith("M"):
-            return "modified"
-        elif status.startswith("D"):
-            return "deleted"
-        elif status.startswith("R"):
-            return "renamed"
-        elif status.startswith("C"):
-            return "copied"
-        else:
-            return "unknown"
-
-    def _generate_smart_message(self, files: List[Dict[str, Any]]) -> str:
-        """스마트 커밋 메시지 생성"""
-        if not files:
-            return "🔧 Minor updates"
-
-        # 변경 유형별 분류
-        added = [f for f in files if f["type"] == "added"]
-        modified = [f for f in files if f["type"] == "modified"]
-        deleted = [f for f in files if f["type"] == "deleted"]
-
-        # 파일 확장자별 분류
-        py_files = [f for f in files if f["filename"].endswith(".py")]
-        md_files = [f for f in files if f["filename"].endswith(".md")]
-        json_files = [f for f in files if f["filename"].endswith(".json")]
-
-        # 메시지 생성 로직
-        if len(added) > 0 and len(modified) == 0 and len(deleted) == 0:
-            if len(added) == 1:
-                return f"✨ Add {added[0]['filename']}"
-            else:
-                return f"✨ Add {len(added)} new files"
-
-        elif len(modified) > 0 and len(added) == 0 and len(deleted) == 0:
-            if len(py_files) > len(md_files):
-                return "🔧 Update Python modules"
-            elif len(md_files) > 0:
-                return "📚 Update documentation"
-            elif len(json_files) > 0:
-                return "🔧 Update configuration"
-            else:
-                return "🔧 Update files"
-
-        elif len(deleted) > 0:
-            return f"🗑️ Remove {len(deleted)} files"
-
-        else:
-            # 혼합 변경
-            total = len(files)
-            if total <= 3:
-                return f"🔧 Update {total} files"
-            else:
-                return f"♻️ Refactor multiple files ({total} files)"
-
-    def _generate_context_message(self, context: str, files: List[Dict[str, Any]]) -> str:
-        """컨텍스트 기반 메시지 생성"""
-        context_lower = context.lower()
-
-        if "fix" in context_lower or "bug" in context_lower:
-            return f"🐛 Fix: {context}"
-        elif "feat" in context_lower or "feature" in context_lower:
-            return f"✨ Feature: {context}"
-        elif "test" in context_lower:
-            return f"🧪 Test: {context}"
-        elif "doc" in context_lower:
-            return f"📚 Docs: {context}"
-        elif "refactor" in context_lower:
-            return f"♻️ Refactor: {context}"
-        else:
-            return f"🔧 {context}"
-
-    def _generate_template_suggestions(self, files: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """템플릿 기반 제안 생성"""
-        templates = [
-            {"type": "feature", "message": "✨ feat: ", "confidence": 0.6},
-            {"type": "fix", "message": "🐛 fix: ", "confidence": 0.6},
-            {"type": "docs", "message": "📚 docs: ", "confidence": 0.6},
-            {"type": "refactor", "message": "♻️ refactor: ", "confidence": 0.6},
-            {"type": "test", "message": "🧪 test: ", "confidence": 0.6},
-            {"type": "chore", "message": "🔧 chore: ", "confidence": 0.6}
-        ]
-        return templates
-
-    def _calculate_confidence(self, files: List[Dict[str, Any]]) -> float:
-        """제안 신뢰도 계산"""
-        if not files:
-            return 0.0
-
-        # 단일 파일 변경 시 높은 신뢰도
-        if len(files) == 1:
-            return 0.9
-
-        # 동일 유형 파일들만 변경 시 높은 신뢰도
-        file_types = set(f["filename"].split(".")[-1] for f in files if "." in f["filename"])
-        if len(file_types) == 1:
-            return 0.8
-
-        # 혼합 변경 시 중간 신뢰도
-        return 0.6
-
-    def _summarize_changes(self, files: List[Dict[str, Any]]) -> Dict[str, int]:
-        """변경사항 요약"""
-        summary = {"added": 0, "modified": 0, "deleted": 0, "renamed": 0}
-        for file in files:
-            file_type = file.get("type", "unknown")
-            if file_type in summary:
-                summary[file_type] += 1
-        return summary
-
-    def _validate_commit_message(self, message: str) -> Dict[str, Any]:
-        """커밋 메시지 검증"""
-        if not message or not message.strip():
-            return {"valid": False, "reason": "메시지가 비어있습니다"}
-
-        if len(message) < 10:
-            return {"valid": False, "reason": "메시지가 너무 짧습니다 (최소 10자)"}
-
-        if len(message) > 200:
-            return {"valid": False, "reason": "메시지가 너무 깁니다 (최대 200자)"}
-
-        # 이모지 체크 (선택사항)
-        has_emoji = bool(re.search(r'[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF\U0001F1E0-\U0001F1FF]', message))
-
-        return {
-            "valid": True,
-            "reason": "검증 통과",
-            "has_emoji": has_emoji,
-            "length": len(message)
-        }
 
 
 def main():
@@ -320,59 +227,92 @@ def main():
         if args.command == "status":
             result = helper.get_changed_files()
             if result["success"]:
-                print(f"\n변경된 파일 ({result['count']}개):")
-                print("-" * 60)
+                click.echo(f"\n변경된 파일 ({result['count']}개):")
+                click.echo("-" * 60)
                 for file in result["files"]:
-                    status_symbol = {"added": "+", "modified": "M", "deleted": "-", "renamed": "R"}.get(file["type"], "?")
-                    print(f"  {status_symbol} {file['filename']} ({file['type']})")
+                    status_symbol = {
+                        "added": "+",
+                        "modified": "M",
+                        "deleted": "-",
+                        "renamed": "R",
+                    }.get(file["type"], "?")
+                    click.echo(f"  {status_symbol} {file['filename']} ({file['type']})")
 
                 if not result["has_changes"]:
-                    print("  변경사항이 없습니다")
+                    click.echo("  변경사항이 없습니다")
+
+                # 분석 정보 표시
+                if "analysis" in result and result["analysis"]["total_files"] > 0:
+                    analysis = result["analysis"]
+                    click.echo("\n📊 변경사항 분석:")
+                    click.echo(f"  파일 카테고리: Python({analysis['categories']['python']}) "
+                             f"Docs({analysis['categories']['docs']}) "
+                             f"Config({analysis['categories']['config']}) "
+                             f"Test({analysis['categories']['tests']}) "
+                             f"기타({analysis['categories']['other']})")
+                    if analysis["is_simple_change"]:
+                        click.echo("  🟢 단순 변경 (권장: smart commit)")
+                    else:
+                        click.echo("  🟡 복합 변경 (권장: 수동 메시지 작성)")
             else:
-                print(f"❌ 상태 조회 실패: {result['error']}")
+                click.echo(f"❌ 상태 조회 실패: {result['error']}")
 
         elif args.command == "commit":
             result = helper.create_constitution_commit(args.message, args.files)
             if result["success"]:
-                print(f"✅ 커밋 생성 완료: {result['commit_hash'][:8]}")
-                print(f"   메시지: {result['message']}")
-                print(f"   모드: {result['mode']}")
+                click.echo(f"✅ 커밋 생성 완료: {result['commit_hash'][:8]}")
+                click.echo(f"   메시지: {result['message']}")
+                click.echo(f"   모드: {result['mode']}")
                 if "validation" in result:
-                    print(f"   검증: {result['validation']['reason']}")
+                    click.echo(f"   검증: {result['validation']['reason']}")
             else:
-                print(f"❌ 커밋 실패: {result['error']}")
+                click.echo(f"❌ 커밋 실패: {result['error']}")
 
         elif args.command == "smart":
             result = helper.create_smart_commit(args.message, args.files)
             if result["success"]:
-                print(f"✅ 스마트 커밋 완료: {result['commit_hash'][:8]}")
-                print(f"   메시지: {result['message']}")
-                print(f"   변경 파일: {result['files_changed']}개")
-                print(f"   모드: {result['mode']}")
+                click.echo(f"✅ 스마트 커밋 완료: {result['commit_hash'][:8]}")
+                click.echo(f"   메시지: {result['message']}")
+                click.echo(f"   변경 파일: {result['files_changed']}개")
+                click.echo(f"   모드: {result['mode']}")
             else:
-                print(f"❌ 스마트 커밋 실패: {result['error']}")
+                click.echo(f"❌ 스마트 커밋 실패: {result['error']}")
 
         elif args.command == "suggest":
             result = helper.suggest_commit_message(args.context)
             if result["success"]:
-                print(f"\n커밋 메시지 제안 (변경 파일: {result['files_changed']}개):")
-                print("-" * 60)
+                click.echo(
+                    f"\n커밋 메시지 제안 (변경 파일: {result['files_changed']}개):"
+                )
+                click.echo("-" * 60)
                 for i, suggestion in enumerate(result["suggestions"], 1):
                     confidence_bar = "★" * int(suggestion["confidence"] * 5)
-                    print(f"{i}. {suggestion['message']}")
-                    print(f"   유형: {suggestion['type']}, 신뢰도: {confidence_bar} ({suggestion['confidence']:.1f})")
-                    print()
+                    click.echo(f"{i}. {suggestion['message']}")
+                    click.echo(
+                        f"   유형: {suggestion['type']}, 신뢰도: {confidence_bar} ({suggestion['confidence']:.1f})"
+                    )
+                    click.echo()
 
-                print("변경사항 요약:")
+                click.echo("변경사항 요약:")
                 summary = result["change_summary"]
                 for change_type, count in summary.items():
                     if count > 0:
-                        print(f"  {change_type}: {count}개")
+                        click.echo(f"  {change_type}: {count}개")
+
+                # 분석 정보 추가 표시
+                if "analysis" in result:
+                    analysis = result["analysis"]
+                    click.echo(f"\n📊 추가 분석:")
+                    click.echo(f"  커밋 유형 제안: {helper.analyzer.suggest_commit_type(analysis)}")
+                    if analysis["has_tests"]:
+                        click.echo("  ✅ 테스트 파일 포함")
+                    if analysis["is_documentation_only"]:
+                        click.echo("  📚 문서 전용 변경")
             else:
-                print(f"❌ 제안 실패: {result['error']}")
+                click.echo(f"❌ 제안 실패: {result['error']}")
 
     except Exception as e:
-        print(f"❌ 오류 발생: {e}")
+        click.echo(f"❌ 오류 발생: {e}")
 
 
 if __name__ == "__main__":

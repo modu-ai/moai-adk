@@ -410,13 +410,9 @@ Brief description of agent's expertise and purpose.
 - **독립 실행**: 에이전트 간 직접 호출 금지
 - **명확한 핸드오프**: 작업 완료 시 다음 단계 안내
 
-### TRUST 5원칙 통합
+### TRUST 원칙 통합
 
-- **Test First**: TDD 지원 (code-builder)
-- **Readable**: 명확한 구조와 문서화
-- **Unified**: 표준화된 아키텍처
-- **Secured**: 권한 제한, 검증 강화
-- **Trackable**: 16-Core TAG 시스템 지원
+@.moai/memory/development-guide.md 기준 적용
 
 ## 🚨 자동 검증 및 수정 기능
 

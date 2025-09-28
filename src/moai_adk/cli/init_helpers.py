@@ -17,6 +17,7 @@ from colorama import Fore, Style
 from ..config import Config
 from ..install.installer import SimplifiedInstaller
 from ..utils.logger import get_logger
+from .command_utils import create_mode_configuration
 from .helpers import (
     create_installation_backup,
     detect_potential_conflicts,
@@ -244,56 +245,3 @@ def finalize_installation(
         sys.exit(1)
 
 
-def create_mode_configuration(
-    project_dir: Path, project_mode: str, quiet: bool = False
-) -> None:
-    """
-    Create mode-specific configuration for the project.
-
-    Args:
-        project_dir: Project directory path
-        project_mode: Project mode ("personal" or "team")
-        quiet: Quiet mode flag
-    """
-    try:
-        # Create mode-specific configuration
-        config = {
-            "project": {
-                "name": project_dir.name,
-                "mode": project_mode,
-                "version": "0.1.9",
-                "created": datetime.now().isoformat(),
-                "constitution_version": "2.1",
-            },
-            "git_strategy": {
-                project_mode: {
-                    "auto_commit": project_mode == "personal",
-                    "auto_pr": project_mode == "team",
-                    "develop_branch": "develop" if project_mode == "team" else "main",
-                    "feature_prefix": "feature/SPEC-"
-                    if project_mode == "team"
-                    else "feature/",
-                    "use_gitflow": project_mode == "team",
-                }
-            },
-            "created_at": datetime.now().isoformat(),
-            "moai_adk_version": "0.1.9",
-        }
-
-        config_path = project_dir / ".moai" / "config.json"
-        config_path.parent.mkdir(parents=True, exist_ok=True)
-
-        import json
-
-        with open(config_path, "w") as f:
-            json.dump(config, f, indent=2)
-
-        if not quiet:
-            logger.info(f"Created {project_mode} mode configuration")
-
-    except Exception as e:
-        logger.error(f"Failed to create mode configuration: {e}")
-        if not quiet:
-            click.echo(
-                f"{Fore.YELLOW}⚠️ Warning: Failed to create mode configuration{Style.RESET_ALL}"
-            )

@@ -68,7 +68,7 @@ model: sonnet
 
 ### 문서 동기화 기준
 
-- 개발 가이드 5원칙과 문서 일치성 확인
+- TRUST 원칙(@.moai/memory/development-guide.md)과 문서 일치성 확인
 - 16-Core TAG 시스템 무결성 검증
 - API 문서 자동 생성/갱신
 - README 및 아키텍처 문서 동기화

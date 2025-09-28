@@ -1,4 +1,4 @@
-# [PROJECT_NAME] Structure Design
+# ${PROJECT_NAME} Structure Design
 
 ## @STRUCT:ARCHITECTURE-001 시스템 아키텍처
 
@@ -7,7 +7,7 @@
 [프로젝트의 전체 아키텍처 전략을 설명하세요]
 
 ```
-[PROJECT_NAME] Architecture
+${PROJECT_NAME} Architecture
 ├── [계층 1]          # [계층 1 설명]
 ├── [계층 2]          # [계층 2 설명]
 ├── [계층 3]          # [계층 3 설명]
@@ -67,7 +67,7 @@
 
 ### TAG 인덱스 관리
 
-- **자동 생성**: `/moai:3-sync` 실행 시 `.moai/indexes/tags.db` 갱신
+- **자동 생성**: `/moai:3-sync` 실행 시 `.moai/indexes/tags.json` 갱신
 - **추적 범위**: [추적할 범위 정의]
 - **유지 주기**: 매 동기화 사이클
 

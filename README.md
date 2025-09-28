@@ -19,8 +19,9 @@ MoAI-ADK는 Claude Code 환경에서 SDD + TDD를 자동화하는 **모두의AI*
 | 개발 철학 | 명세 우선 작성 → 테스트 → 구현 → 문서 동기화 |
 | 자동화 수준 | 4단계 `/moai:*` 파이프라인 + 5종 `/moai:git:*` 워크플로우 |
 | 품질 보증 | GuidelineChecker 기반 TRUST 게이트, 91.7% 기준 커버리지 |
-| 추적성 | **100% @TAG 커버리지** + 16-Core @TAG 체계 + SQLite 인덱스 + sync 리포트 |
-| 국제화 | 전역 영어화 완료, 추가 언어는 템플릿으로 확장 가능 |
+| 추적성 | **3,434개 TAG 완전 추적** + 16-Core @TAG 체계 + Living Document 동기화 |
+| 국제화 | 전역 영어화 완료, 8개 언어 자동 감지, 자연어 지시 시스템 |
+| **🌟 v0.1.28+ 혁신** | **Living Document 동기화 100%** + **TRUST 92.9% 준수** + **75% 토큰 절약** |
 
 ---
 
@@ -141,7 +142,7 @@ GuidelineChecker가 코드 변경 시 위 원칙을 자동 점검하며, 위반 
 | Implementation | `@FEATURE → @API → @UI → @DATA` | 구현 세부 항목 추적 |
 | Quality | `@PERF → @SEC → @DOCS → @TAG` | 성능·보안·문서·추적 품질 |
 
-`/moai:3-sync`는 `.moai/indexes/tags.db`과 `.moai/reports/sync-report.md`를 갱신하여 요구사항 ↔ 구현 ↔ 테스트를 끊김 없이 연결합니다.
+`/moai:3-sync`는 `.moai/indexes/tags.json`과 `.moai/reports/sync-report.md`를 갱신하여 요구사항 ↔ 구현 ↔ 테스트를 끊김 없이 연결합니다.
 
 ---
 

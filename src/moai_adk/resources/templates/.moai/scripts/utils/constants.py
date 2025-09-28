@@ -25,7 +25,7 @@ CONFIG_FILE_NAME = "config.json"
 METADATA_FILE_NAME = "metadata.json"
 DEVELOPMENT_GUIDE_FILE_NAME = "development-guide.md"
 CLAUDE_MEMORY_FILE_NAME = "CLAUDE.md"
-TAGS_INDEX_FILE_NAME = "tags.db"
+TAGS_INDEX_FILE_NAME = "tags.json"
 
 # Git 관련 상수
 DEFAULT_BRANCH_NAME = "main"

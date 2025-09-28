@@ -2,19 +2,19 @@
 
 **🏆 Claude Code 환경에서 가장 완전한 Spec-First TDD 개발 프레임워크**
 
-**🎯 v0.1.9+ 코드베이스 현대화 완료: TRUST 원칙 준수 + 차세대 도구체인 도입**
+**🎯 v0.1.28+ 코드베이스 현대화 완료: TRUST 원칙 준수 + 차세대 도구체인 도입**
 
 **⚡ NEW: uv + ruff 기반 초고속 개발 환경 (10-100배 성능 향상)**
 
-**🌍 GLOBAL READY: 완전한 영어 국제화 + 103개 @TAG 추적성 완볼**
+**🌍 GLOBAL READY: 완전한 영어 국제화 + 103개 @TAG 추적성 완료**
 
 ---
 
 ## 🚀 Executive Summary
 
-MoAI-ADK는 Claude Code 환경에서 **Spec-First TDD 개발**을 누구나 쉽게 실행할 수 있도록 하는 완전한 Agentic Development Kit입니다. v0.1.9+에서는 TRUST 5원칙을 철저히 준수하기 위한 대규모 코드베이스 현대화와 함께 **차세대 Python 도구체인**을 도입하여 개발 생산성을 획기적으로 향상시켰습니다.
+MoAI-ADK는 Claude Code 환경에서 **Spec-First TDD 개발**을 누구나 쉽게 실행할 수 있도록 하는 완전한 Agentic Development Kit입니다. v0.1.28+에서는 TRUST 5원칙을 철저히 준수하기 위한 대규모 코드베이스 현대화와 함께 **차세대 Python 도구체인**을 도입하여 개발 생산성을 획기적으로 향상시켰습니다.
 
-### 🏗️ v0.1.9+ 리팩토링 성과 하이라이트
+### 🏗️ v0.1.28+ 리팩토링 성과 하이라이트
 
 #### 1. 📊 TRUST 원칙 준수를 위한 모듈 분할 (70%+ LOC 감소) ✅
 
@@ -55,7 +55,7 @@ MoAI-ADK는 Claude Code 환경에서 **Spec-First TDD 개발**을 누구나 쉽�
 ### 핵심 4계층 구조 + Claude Extensions
 
 ```
-MoAI-ADK v0.1.17+ Architecture
+MoAI-ADK v0.1.28+ Architecture
 ├── CLI Layer          # 사용자 인터페이스 (7개 모듈)
 ├── Core Engine        # 핵심 비즈니스 로직 (20+ 분할된 모듈)
 ├── Install System     # 설치/배포 관리 (5개 모듈)
@@ -137,7 +137,7 @@ click.echo("📝 문서 템플릿을 복사합니다...")
 **3. CLI Modules (click.echo 표준 패턴)**
 ```python
 # CLI 명령어 출력
-click.echo("MoAI-ADK v0.1.17", color="green")
+click.echo("MoAI-ADK v0.1.28", color="green")
 click.echo("사용법: moai-adk init [OPTIONS]")
 ```
 
@@ -149,27 +149,68 @@ click.echo("사용법: moai-adk init [OPTIONS]")
 
 ```
 src/moai_adk/core/
-├── config_manager.py        # 157 LOC (메인 설정 관리)
+├── config_manager.py        # 메인 설정 관리
 ├── config_claude.py         # Claude Code 전용 설정
 ├── config_project.py        # 프로젝트 설정 관리
 ├── config_utils.py          # 설정 유틸리티 함수
+├── directory_manager.py     # 디렉토리 구조 관리
+├── file_manager.py          # 파일 작업 관리
+├── git_manager.py           # Git 작업 자동화
+├── security.py              # 보안 검증
+├── template_engine.py       # 템플릿 엔진
 │
 ├── quality/
-│   ├── guideline_checker.py # 230 LOC (핵심 체커)
+│   ├── guideline_checker.py # 개발 가이드 체커
+│   ├── constitution_checker.py # 헌법 준수 체커
+│   ├── quality_gates.py     # 품질 게이트
+│   ├── tdd_manager.py       # TDD 관리
 │   ├── analyzers.py         # 코드 분석 도구
 │   ├── reporters.py         # 리포트 생성
 │   ├── validators.py        # 검증 도구
 │   ├── exceptions.py        # 예외 처리
 │   ├── constants.py         # 상수 정의
-│   └── coverage_manager.py  # 커버리지 관리
+│   ├── coverage_manager.py  # 커버리지 관리
+│   └── config.py            # 품질 설정
 │
 ├── tag_system/
-│   ├── migration_models.py  # 132 LOC (데이터 모델)
-│   ├── migration_engine.py  # 257 LOC (마이그레이션 엔진)
-│   ├── migration_validator.py # 270 LOC (검증 로직)
-│   ├── adapter_core.py      # 142 LOC (핵심 어댑터)
+│   ├── migration_models.py  # 데이터 모델
+│   ├── migration_engine.py  # 마이그레이션 엔진
+│   ├── migration_validator.py # 검증 로직
+│   ├── adapter_core.py      # 핵심 어댑터
 │   ├── adapter_search.py    # 검색 기능
-│   └── adapter_integration.py # 통합 기능
+│   ├── adapter_integration.py # 통합 기능
+│   ├── adapter.py           # 어댑터 메인
+│   ├── parser.py            # 파싱 도구
+│   ├── validator.py         # 검증 도구
+│   ├── index_manager.py     # 인덱스 관리
+│   ├── report_generator.py  # 리포트 생성
+│   ├── benchmark.py         # 벤치마크
+│   ├── migration.py         # 마이그레이션 메인
+│   └── database/            # 데이터베이스 시스템
+│       ├── models.py        # 데이터 모델
+│       ├── connection.py    # 연결 관리
+│       ├── manager.py       # 매니저
+│       ├── crud_manager.py  # CRUD 작업
+│       └── search_manager.py # 검색 관리
+│
+├── git_strategy/            # Git 전략 시스템
+│   ├── base.py              # 기본 전략
+│   ├── personal_strategy.py # 개인 모드
+│   ├── team_strategy.py     # 팀 모드
+│   └── branch_utils.py      # 브랜치 도구
+│
+├── version_sync/            # 버전 동기화 시스템
+│   ├── version_patterns.py  # 버전 패턴
+│   ├── file_processor.py    # 파일 처리
+│   ├── sync_executor.py     # 동기화 실행
+│   ├── sync_validator.py    # 동기화 검증
+│   └── script_generator.py  # 스크립트 생성
+│
+├── validator/               # 검증 시스템
+│   ├── environment.py       # 환경 검증
+│   ├── project.py           # 프로젝트 검증
+│   ├── structure.py         # 구조 검증
+│   └── compliance.py        # 준수 검증
 │
 └── docs/                    # SPEC-010 완료
     ├── documentation_builder.py
@@ -182,12 +223,14 @@ src/moai_adk/core/
 ```
 src/moai_adk/cli/
 ├── commands.py              # 메인 CLI 엔트리포인트
-├── init_helpers.py          # 8개 init 헬퍼 함수
+├── command_handlers.py      # 명령어 핸들러
+├── maintenance_commands.py  # 유지보수 명령어
+├── init_helpers.py          # init 헬퍼 함수
+├── helpers.py               # CLI 헬퍼 함수
 ├── wizard.py                # 대화형 설치 가이드
 ├── banner.py                # UI/UX 요소
-├── config.py                # CLI 설정
-├── utils.py                 # CLI 유틸리티
-└── validation.py            # CLI 입력 검증
+├── sqlite_migration.py      # SQLite 마이그레이션
+└── __main__.py              # CLI 진입점
 ```
 
 ### 📦 백업 파일 관리
@@ -216,13 +259,13 @@ git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk
 
 # 3. 현대적 도구체인 설치 (10-100x 빠름!)
-make -f Makefile.modern dev     # uv로 모든 도구 설치
-make -f Makefile.modern info    # 설치된 도구 확인
+make dev        # uv로 모든 도구 설치
+make info       # 설치된 도구 확인
 
 # 4. 초고속 품질 검사
-make -f Makefile.modern quality      # 병렬 품질 검사 (1초 미만)
-make -f Makefile.modern all-checks   # 전체 검사 + 테스트
-make -f Makefile.modern benchmark    # 성능 벤치마크
+make quality       # 병렬 품질 검사 (1초 미만)
+make test          # 전체 검사 + 테스트
+make validate      # 설정 파일 검증
 ```
 
 #### 기존 pip 방식 (호환성 유지)
@@ -250,31 +293,31 @@ results = checker.check_project("./")
 # 각각 전문화된 모듈 사용
 from moai_adk.core.config_claude import ClaudeConfigManager
 from moai_adk.core.config_project import ProjectConfigManager
-from moai_adk.core.config_utils import validate_config
+from moai_adk.core.config_utils import ConfigUtility
 
 # Claude 전용 설정
 claude_config = ClaudeConfigManager()
-claude_config.setup_permissions()
+claude_config.setup_claude_environment()
 
 # 프로젝트 설정
 project_config = ProjectConfigManager()
-project_config.init_project_structure()
+project_config.initialize_project_config()
 ```
 
 #### 3. 분할된 Migration System 사용
 
 ```python
 # MVC 패턴으로 분리된 마이그레이션
-from moai_adk.core.tag_system.migration_models import MigrationPlan
-from moai_adk.core.tag_system.migration_engine import MigrationEngine
-from moai_adk.core.tag_system.migration_validator import MigrationValidator
+from moai_adk.core.tag_system.migration_models import TagMigrationPlan
+from moai_adk.core.tag_system.migration_engine import TagMigrationEngine
+from moai_adk.core.tag_system.migration_validator import TagMigrationValidator
 
 # 체계적인 마이그레이션 프로세스
-plan = MigrationPlan(source_path, target_path)
-validator = MigrationValidator()
-if validator.validate_plan(plan):
-    engine = MigrationEngine()
-    engine.execute_migration(plan)
+plan = TagMigrationPlan(source_path=".moai/specs/", target_path=".moai/indexes/")
+validator = TagMigrationValidator()
+if validator.validate_migration_plan(plan):
+    engine = TagMigrationEngine()
+    engine.execute_tag_migration(plan)
 ```
 
 ### 🎯 코딩 표준
@@ -355,28 +398,30 @@ MoAI-ADK는 다음 4단계 워크플로우를 제공합니다:
 
 ### Stage 0: Project Initialization
 ```bash
-/moai:0-project PROJECT_NAME
+/moai:0-project [PROJECT_NAME]
 ```
 - 프로젝트 킥오프
 - product/structure/tech 문서 생성
 
 ### Stage 1: Specification Writing
 ```bash
-/moai:1-spec 제목1 제목2 ... | SPEC-ID 수정내용
+/moai:1-spec "제목1" "제목2" ...  # 새 SPEC 작성
+/moai:1-spec SPEC-ID "수정내용"        # 기존 SPEC 수정
 ```
 - EARS 명세 작성
 - 브랜치/PR 생성 (환경 의존)
 
 ### Stage 2: TDD Implementation
 ```bash
-/moai:2-build SPEC-ID | all
+/moai:2-build SPEC-ID    # 특정 SPEC 구현
+/moai:2-build all        # 모든 SPEC 구현
 ```
 - Red-Green-Refactor 사이클
 - 자동화된 테스트 및 구현
 
 ### Stage 3: Documentation Sync
 ```bash
-/moai:3-sync 모드 대상경로
+/moai:3-sync [tag|doc|pr] [경로]  # 동기화 모드 선택
 ```
 - 문서 동기화
 - PR Ready 전환
@@ -405,10 +450,34 @@ MoAI-ADK는 다음 4단계 워크플로우를 제공합니다:
 
 ```
 .claude/
-├── agents/moai/             # 7개 핵심 에이전트
+├── agents/moai/             # 6개 핵심 에이전트
+│   ├── spec-builder.md      # SPEC 작성 에이전트
+│   ├── code-builder.md      # TDD 구현 에이전트
+│   ├── doc-syncer.md        # 문서 동기화 에이전트
+│   ├── cc-manager.md        # Claude Code 관리
+│   ├── debug-helper.md      # 디버깅 도우미
+│   ├── git-manager.md       # Git 작업 관리
+│   └── project-manager.md   # 프로젝트 관리
 ├── commands/moai/           # 5개 워크플로우 명령어
-├── hooks/moai/              # 8개 이벤트 훅
+│   ├── 0-project.md         # 프로젝트 초기화
+│   ├── 1-spec.md           # SPEC 작성
+│   ├── 2-build.md          # TDD 구현
+│   ├── 3-sync.md           # 문서 동기화
+│   └── 4-debug.md          # 디버깅
+├── hooks/moai/              # 7개 이벤트 훅
+│   ├── session_start_notice.py    # 세션 시작 알림
+│   ├── pre_write_guard.py         # 쓰기 전 가드
+│   ├── policy_block.py            # 정책 차단
+│   ├── steering_guard.py          # 방향성 가드
+│   ├── language_detector.py       # 언어 감지
+│   ├── run_tests_and_report.py    # 테스트 실행 및 리포트
+│   └── file_monitor.py            # 파일 모니터링
 ├── output-styles/           # 5개 출력 스타일
+│   ├── beginner.md          # 초보자용
+│   ├── expert.md            # 전문가용
+│   ├── mentor.md            # 멘토링용
+│   ├── audit.md             # 감사용
+│   └── study.md             # 학습용
 └── settings.json            # 권한 및 보안 설정
 ```
 
@@ -520,13 +589,13 @@ from moai_adk.core.config_project import ProjectConfigManager  # 전문화
 
 ## 📞 Support & Community
 
-- **Documentation**: [Online Docs](http://127.0.0.1:8000/) (SPEC-010)
+- **Documentation**: [GitHub Repository](https://github.com/modu-ai/moai-adk) (SPEC-010)
 - **Issues**: GitHub Issues
 - **Discussions**: GitHub Discussions
 - **Contributing**: CONTRIBUTING.md
 
 ---
 
-**MoAI-ADK v0.1.17+: TRUST 원칙을 준수한 현대적 코드베이스로의 완전한 전환 완료**
+**MoAI-ADK v0.1.28+: TRUST 원칙을 준수한 현대적 코드베이스로의 완전한 전환 완료**
 
 *이 가이드는 리팩토링된 새로운 모듈 구조와 개발 표준을 반영합니다.*

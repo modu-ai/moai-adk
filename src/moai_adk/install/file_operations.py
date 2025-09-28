@@ -1,8 +1,8 @@
 """
-@FEATURE:FILE-OPS-001 File Operations for MoAI-ADK
+@REFACTOR:FILE-OPS-001 File Operations Orchestrator for MoAI-ADK
 
-@TASK:FILE-OPS-001 Handles file copying, directory operations, and permission management
-@DESIGN:MODULE-SPLIT-001 Extracted from resource_manager.py for TRUST principle compliance
+@TASK:FILE-OPS-001 Orchestrates file copying, directory operations, and permission management
+@DESIGN:MODULE-SPLIT-001 Refactored for TRUST principle compliance - delegates to specialized modules
 """
 
 import logging
@@ -11,7 +11,10 @@ from collections.abc import Callable
 from importlib import resources
 from pathlib import Path
 
+from .permission_manager import PermissionManager
+from .resource_copier import ResourceCopier
 from .template_manager import TemplateManager
+from .template_processor import TemplateProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +23,11 @@ class FileOperations:
     """File operations manager for MoAI-ADK resources."""
 
     def __init__(self):
-        """Initialize file operations manager."""
+        """Initialize file operations manager with specialized components."""
         self.template_manager = TemplateManager()
+        self.template_processor = TemplateProcessor()
+        self.permission_manager = PermissionManager()
+        self.resource_copier = ResourceCopier(file_operations_ref=self)
 
     def copy_template(
         self,
@@ -101,7 +107,7 @@ class FileOperations:
                         template_name == ".claude"
                         or target_path.name == ".claude"
                     ):
-                        self._ensure_hook_permissions(target_path)
+                        self.permission_manager.ensure_hook_permissions(target_path)
             except Exception as e:
                 logger.warning(f"Failed to set hook permissions: {e}")
 
@@ -109,6 +115,76 @@ class FileOperations:
 
         except Exception as e:
             logger.error(f"Failed to copy template {template_name}: {e}")
+            return False
+
+    def copy_template_with_substitution(
+        self,
+        template_name: str,
+        target_path: Path,
+        context: dict[str, str] | None = None,
+        overwrite: bool = False,
+        exclude_subdirs: list[str] | None = None,
+    ) -> bool:
+        """
+        Copy template to target path with variable substitution for text files.
+
+        Args:
+            template_name: Template name (.claude, .moai, etc.)
+            target_path: Target copy path
+            context: Context variables for template substitution
+            overwrite: Whether to overwrite existing files
+            exclude_subdirs: Subdirectories to exclude from copy
+
+        Returns:
+            bool: Copy success status
+        """
+        try:
+            # Resolve to absolute path
+            target_path = target_path.resolve()
+            template_path = self.template_manager.get_template_path(template_name)
+
+            if context is None:
+                context = {}
+
+            # Handle existing target path
+            if target_path.exists():
+                if target_path.is_file():
+                    if not overwrite:
+                        logger.info(
+                            f"Target file already exists, skipping: {target_path}"
+                        )
+                        return False
+                    else:
+                        target_path.unlink()
+
+            # Ensure parent directory exists
+            if not target_path.parent.exists():
+                target_path.parent.mkdir(parents=True, exist_ok=True)
+
+            with resources.as_file(template_path) as source_path:
+                if source_path.is_dir():
+                    # Directory copy with per-file template substitution
+                    self.template_processor.copy_directory_with_substitution(
+                        source_path, target_path, context, overwrite, exclude_subdirs
+                    )
+                else:
+                    # Single file copy with template substitution
+                    self.template_processor.copy_file_with_substitution(source_path, target_path, context)
+
+            logger.info(f"Successfully copied {template_name} to {target_path} with substitution")
+
+            # Post-processing: ensure .claude/hooks/moai/*.py execution permissions
+            try:
+                if target_path.is_dir():
+                    if template_name == ".claude" or target_path.name == ".claude":
+                        self.permission_manager.ensure_hook_permissions(target_path)
+            except Exception as e:
+                logger.warning(f"Failed to set hook permissions: {e}")
+
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to copy template {template_name} with substitution: {e}")
             return False
 
     def copy_claude_resources(
@@ -128,22 +204,7 @@ class FileOperations:
         Returns:
             True if successful, False otherwise
         """
-        try:
-            claude_root = project_path / ".claude"
-            success = self.copy_template(".claude", claude_root, overwrite)
-
-            if success:
-                # Customize settings.json with Python command
-                self._customize_settings_json(claude_root, python_command)
-
-                # Ensure hook permissions
-                self._ensure_hook_permissions(claude_root)
-
-            return success
-
-        except Exception as e:
-            logger.error(f"Failed to copy Claude resources: {e}")
-            return False
+        return self.resource_copier.copy_claude_resources(project_path, overwrite, python_command)
 
     def copy_moai_resources(
         self,
@@ -162,15 +223,7 @@ class FileOperations:
         Returns:
             True if successful, False otherwise
         """
-        try:
-            moai_root = project_path / ".moai"
-            exclude_subdirs = ["_templates"] if exclude_templates else None
-
-            return self.copy_template(".moai", moai_root, overwrite, exclude_subdirs)
-
-        except Exception as e:
-            logger.error(f"Failed to copy MoAI resources: {e}")
-            return False
+        return self.resource_copier.copy_moai_resources(project_path, overwrite, exclude_templates)
 
     def copy_github_resources(
         self, project_path: Path, overwrite: bool = False
@@ -185,12 +238,7 @@ class FileOperations:
         Returns:
             True if successful, False otherwise
         """
-        try:
-            github_root = project_path / ".github"
-            return self.copy_template(".github", github_root, overwrite)
-        except Exception as e:
-            logger.error(f"Failed to copy GitHub resources: {e}")
-            return False
+        return self.resource_copier.copy_github_resources(project_path, overwrite)
 
     def copy_project_memory(self, project_path: Path, overwrite: bool = False) -> bool:
         """
@@ -203,12 +251,7 @@ class FileOperations:
         Returns:
             bool: Copy success status
         """
-        try:
-            target_path = project_path / "CLAUDE.md"
-            return self.copy_template("CLAUDE.md", target_path, overwrite)
-        except Exception as e:
-            logger.error(f"Failed to copy project memory: {e}")
-            return False
+        return self.resource_copier.copy_project_memory(project_path, overwrite)
 
     def copy_memory_templates(
         self,
@@ -218,105 +261,38 @@ class FileOperations:
         overwrite: bool = False,
     ) -> list[Path]:
         """Copy stack-specific memory templates into the project."""
-        copied_files: list[Path] = []
-        memory_dir = project_path / ".moai" / "memory"
-        memory_dir.mkdir(parents=True, exist_ok=True)
+        return self.resource_copier.copy_memory_templates(project_path, tech_stack, context, overwrite)
 
-        # Get templates for tech stack
-        templates_to_copy = self.template_manager.get_memory_templates_for_stack(tech_stack)
+    # Deprecated methods - kept for backward compatibility
+    # These delegate to the appropriate specialized modules
 
-        for template in templates_to_copy:
-            try:
-                template_name = f"{template}.md"
-                source_path = self.template_manager.get_template_path(
-                    f".moai/memory/{template_name}"
-                )
-                target_path = memory_dir / template_name
+    def _copy_directory_with_substitution(
+        self,
+        source_dir: Path,
+        target_dir: Path,
+        context: dict[str, str],
+        overwrite: bool,
+        exclude_subdirs: list[str] | None = None,
+    ) -> None:
+        """Legacy method - delegates to TemplateProcessor."""
+        self.template_processor.copy_directory_with_substitution(
+            source_dir, target_dir, context, overwrite, exclude_subdirs
+        )
 
-                # Skip if file exists and overwrite is False
-                if target_path.exists() and not overwrite:
-                    logger.info(f"Memory template exists, skipping: {template_name}")
-                    continue
+    def _copy_file_with_substitution(
+        self, source_file: Path, target_file: Path, context: dict[str, str]
+    ) -> None:
+        """Legacy method - delegates to TemplateProcessor."""
+        self.template_processor.copy_file_with_substitution(source_file, target_file, context)
 
-                # Get template content and render with context
-                template_content = self.template_manager.get_template_content(
-                    f".moai/memory/{template_name}"
-                )
-
-                if template_content:
-                    rendered_content = self.template_manager.render_template_with_context(
-                        template_content, context
-                    )
-                    target_path.write_text(rendered_content, encoding="utf-8")
-                    copied_files.append(target_path)
-                    logger.info(f"Copied memory template: {template_name}")
-
-            except Exception as e:
-                logger.error(f"Failed to copy memory template {template}: {e}")
-                continue
-
-        return copied_files
+    def _should_process_as_template(self, file_path: Path) -> bool:
+        """Legacy method - delegates to TemplateProcessor."""
+        return self.template_processor.should_process_as_template(file_path)
 
     def _customize_settings_json(self, claude_root: Path, python_command: str) -> None:
-        """
-        Customize .claude/settings.json with Python command.
-
-        Args:
-            claude_root: .claude directory path
-            python_command: Python command to use
-        """
-        try:
-            import json
-
-            settings_path = claude_root / "settings.json"
-            if not settings_path.exists():
-                logger.warning(f"settings.json not found: {settings_path}")
-                return
-
-            # Read current settings
-            with open(settings_path) as f:
-                settings = json.load(f)
-
-            # Update Python command in hooks if present
-            if "hooks" in settings:
-                for hook_name, hook_config in settings["hooks"].items():
-                    if isinstance(hook_config, dict) and "command" in hook_config:
-                        # Replace python/python3 with user's preference
-                        command = hook_config["command"]
-                        if command.startswith(("python ", "python3 ")):
-                            hook_config["command"] = command.replace(
-                                command.split()[0], python_command, 1
-                            )
-
-            # Write back
-            with open(settings_path, "w") as f:
-                json.dump(settings, f, indent=2)
-
-            logger.info(f"Customized settings.json with Python command: {python_command}")
-
-        except Exception as e:
-            logger.warning(f"Failed to customize settings.json: {e}")
+        """Legacy method - delegates to PermissionManager."""
+        self.permission_manager.customize_settings_json(claude_root, python_command)
 
     def _ensure_hook_permissions(self, claude_root: Path) -> None:
-        """
-        Ensure .claude/hooks/moai/*.py files have execution permissions.
-
-        Args:
-            claude_root: .claude directory path
-        """
-        try:
-            hooks_dir = claude_root / "hooks" / "moai"
-            if not hooks_dir.exists():
-                return
-
-            python_files = list(hooks_dir.glob("*.py"))
-            for py_file in python_files:
-                # Add execute permission for owner
-                current_permissions = py_file.stat().st_mode
-                py_file.chmod(current_permissions | 0o100)
-
-            if python_files:
-                logger.info(f"Set execution permissions for {len(python_files)} hook files")
-
-        except Exception as e:
-            logger.warning(f"Failed to set hook permissions: {e}")
+        """Legacy method - delegates to PermissionManager."""
+        self.permission_manager.ensure_hook_permissions(claude_root)

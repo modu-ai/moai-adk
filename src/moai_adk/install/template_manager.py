@@ -6,6 +6,7 @@
 """
 
 import logging
+import re
 from importlib import resources
 from pathlib import Path
 from string import Template as StrTemplate
@@ -157,6 +158,54 @@ class TemplateManager:
             logger.error(f"Failed to substitute template variables: {e}")
             return content
 
+    def unified_substitute_template_variables(
+        self, content: str, project_context: dict[str, str]
+    ) -> str:
+        """
+        Substitute template variables supporting multiple formats.
+
+        Supports:
+        - [VAR] format (square brackets)
+        - {{VAR}} format (double curly braces)
+        - ${VAR} format (dollar curly braces)
+        - $VAR format (simple dollar)
+
+        Args:
+            content: Template content with various variable formats
+            project_context: Project context variables
+
+        Returns:
+            Content with all variable formats substituted
+        """
+        try:
+            # Define regex pattern for all supported formats
+            # Capture groups: [VAR], {{VAR}}, ${VAR}, $VAR
+            pattern = r'\[(\w+)\]|\{\{(\w+)\}\}|\$\{(\w+)\}|\$(\w+)(?![a-zA-Z0-9_])'
+
+            def replace_var(match):
+                # Find which group matched and extract variable name
+                var_name = None
+                for group in match.groups():
+                    if group:
+                        var_name = group
+                        break
+
+                if var_name and var_name in project_context:
+                    return str(project_context[var_name])
+                else:
+                    # Return original match if variable not found
+                    return match.group(0)
+
+            # Apply regex substitution
+            result = re.sub(pattern, replace_var, content)
+
+            logger.debug(f"Unified template substitution completed")
+            return result
+
+        except Exception as e:
+            logger.error(f"Failed to substitute template variables (unified): {e}")
+            return content
+
     def apply_project_context(
         self, template_path: Path, context: dict[str, str]
     ) -> bool:
@@ -178,8 +227,8 @@ class TemplateManager:
             # Read original content
             original_content = template_path.read_text(encoding="utf-8")
 
-            # Apply context substitution
-            processed_content = self.substitute_template_variables(
+            # Apply context substitution using unified method
+            processed_content = self.unified_substitute_template_variables(
                 original_content, context
             )
 

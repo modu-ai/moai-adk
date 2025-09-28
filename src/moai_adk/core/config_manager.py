@@ -161,7 +161,7 @@ class ConfigManager:
         status["package_json"] = self.config_utils.get_config_summary(package_json_path)
 
         # Check indexes
-        tags_index_path = project_path / ".moai" / "indexes" / "tags.db"
+        tags_index_path = project_path / ".moai" / "indexes" / "tags.json"
         status["tags_index"] = self.config_utils.get_config_summary(tags_index_path)
 
         return status

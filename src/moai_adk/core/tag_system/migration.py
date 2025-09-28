@@ -25,6 +25,11 @@ class MigrationError(Exception):
     pass
 
 
+class DataValidationError(Exception):
+    """Exception raised for data validation errors."""
+    pass
+
+
 class TagMigrationTool:
     """
     TAG 마이그레이션 오케스트레이터

@@ -44,11 +44,11 @@
     "current_stage": "initialized"
   },
   "project": {
-    "created_at": "{{CREATION_TIMESTAMP}}",
-    "description": "{{PROJECT_DESCRIPTION}}",
+    "created_at": "${CREATION_TIMESTAMP}",
+    "description": "${PROJECT_DESCRIPTION}",
     "initialized": true,
     "mode": "personal",
-    "name": "{{PROJECT_NAME}}",
+    "name": "${PROJECT_NAME}",
     "version": "0.1.17"
   },
   "tags": {
@@ -71,6 +71,6 @@
       "DOCS",
       "TAG"
     ],
-    "index_path": ".moai/indexes/tags.db"
+    "index_path": ".moai/indexes/tags.json"
   }
 }

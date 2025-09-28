@@ -1,10 +1,5 @@
 {
-  "_meta": {
-    "@DATA:VERSION-INFO-001": "@TECH:SEMANTIC-VERSIONING-001"
-  },
-  "last_updated": "2025-01-14T12:00:00.000000Z",
-  "package_version": "0.1.14",
-  "template_version": "0.1.14",
-  "version": "0.1.28",
-  "updated_at": "2025-09-26T16:57:19.255367"
+  "template_version": "0.1.28",
+  "package_version": "0.1.28",
+  "last_updated": "2025-09-28T05:58:10.727987Z"
 }

@@ -8,38 +8,42 @@ MoAI-ADK 통합 Git 워크플로우 시스템
 @DESIGN:UNIFIED-GIT-001
 """
 
+import logging
 import re
 from pathlib import Path
-from typing import Dict, List, Optional, Any
-import logging
+from typing import Any
 
-from constants import (
-    PERSONAL_MODE, TEAM_MODE, FEATURE_BRANCH_PREFIX,
-    HOTFIX_BRANCH_PREFIX, DEFAULT_BRANCH_NAME
-)
-from git_helper import GitHelper, GitCommandError
-from project_helper import ProjectHelper
 from checkpoint_system import CheckpointSystem
+from constants import (
+    DEFAULT_BRANCH_NAME,
+    FEATURE_BRANCH_PREFIX,
+    HOTFIX_BRANCH_PREFIX,
+    PERSONAL_MODE,
+    TEAM_MODE,
+)
+from git_helper import GitCommandError, GitHelper
+from project_helper import ProjectHelper
 
 logger = logging.getLogger(__name__)
 
 
 class GitWorkflowError(Exception):
     """Git 워크플로우 관련 오류"""
-    pass
 
 
 class GitWorkflow:
     """통합 Git 워크플로우 관리"""
 
-    def __init__(self, project_root: Optional[Path] = None):
+    def __init__(self, project_root: Path | None = None):
         self.project_root = project_root or ProjectHelper.find_project_root()
         self.git = GitHelper(self.project_root)
         self.checkpoint_system = CheckpointSystem(self.project_root)
         self.config = ProjectHelper.load_config(self.project_root)
         self.mode = self.config.get("mode", PERSONAL_MODE)
 
-    def create_feature_branch(self, feature_name: str, from_branch: Optional[str] = None) -> str:
+    def create_feature_branch(
+        self, feature_name: str, from_branch: str | None = None
+    ) -> str:
         """기능 브랜치 생성"""
         try:
             if not self._is_valid_branch_name(feature_name):
@@ -66,7 +70,9 @@ class GitWorkflow:
         except GitCommandError as e:
             raise GitWorkflowError(f"브랜치 생성 실패: {e}")
 
-    def create_constitution_commit(self, message: str, files: Optional[List[str]] = None) -> str:
+    def create_constitution_commit(
+        self, message: str, files: list[str] | None = None
+    ) -> str:
         """개발 가이드 기반 커밋 생성"""
         try:
             if not message.strip():
@@ -91,7 +97,7 @@ class GitWorkflow:
         except GitCommandError as e:
             raise GitWorkflowError(f"커밋 생성 실패: {e}")
 
-    def sync_with_remote(self, push: bool = True, branch: Optional[str] = None) -> bool:
+    def sync_with_remote(self, push: bool = True, branch: str | None = None) -> bool:
         """원격 저장소와 동기화"""
         try:
             if not self.git.has_remote():
@@ -148,7 +154,7 @@ class GitWorkflow:
         except GitCommandError as e:
             raise GitWorkflowError(f"핫픽스 브랜치 생성 실패: {e}")
 
-    def get_branch_status(self) -> Dict[str, Any]:
+    def get_branch_status(self) -> dict[str, Any]:
         """브랜치 상태 조회"""
         try:
             current_branch = self.git.get_current_branch()
@@ -161,7 +167,7 @@ class GitWorkflow:
                 "has_uncommitted_changes": has_uncommitted,
                 "has_remote": self.git.has_remote(),
                 "mode": self.mode,
-                "clean_working_tree": self.git.is_clean_working_tree()
+                "clean_working_tree": self.git.is_clean_working_tree(),
             }
 
             return status
@@ -170,17 +176,21 @@ class GitWorkflow:
             logger.error(f"브랜치 상태 조회 실패: {e}")
             return {"error": str(e)}
 
-    def cleanup_merged_branches(self, dry_run: bool = True) -> List[str]:
+    def cleanup_merged_branches(self, dry_run: bool = True) -> list[str]:
         """병합된 브랜치 정리"""
         try:
-            result = self.git.run_command([
-                "git", "branch", "--merged", self._get_default_branch()
-            ])
+            result = self.git.run_command(
+                ["git", "branch", "--merged", self._get_default_branch()]
+            )
 
             merged_branches = []
             for line in result.stdout.splitlines():
                 branch = line.strip().lstrip("* ")
-                if branch and not branch.startswith("(") and branch != self._get_default_branch():
+                if (
+                    branch
+                    and not branch.startswith("(")
+                    and branch != self._get_default_branch()
+                ):
                     merged_branches.append(branch)
 
             if not dry_run:
@@ -213,7 +223,10 @@ class GitWorkflow:
             return message
 
         formatted = message.strip()
-        if not any(formatted.startswith(prefix) for prefix in ["🔧", "✨", "🐛", "📚", "🧪", "♻️"]):
+        if not any(
+            formatted.startswith(prefix)
+            for prefix in ["🔧", "✨", "🐛", "📚", "🧪", "♻️"]
+        ):
             if "feat" in message.lower() or "feature" in message.lower():
                 formatted = f"✨ {formatted}"
             elif "fix" in message.lower() or "bug" in message.lower():
@@ -230,19 +243,19 @@ class GitWorkflow:
         return formatted
 
 
-def create_feature_branch(feature_name: str, project_root: Optional[Path] = None) -> str:
+def create_feature_branch(feature_name: str, project_root: Path | None = None) -> str:
     """기능 브랜치 생성 편의 함수"""
     workflow = GitWorkflow(project_root)
     return workflow.create_feature_branch(feature_name)
 
 
-def create_constitution_commit(message: str, project_root: Optional[Path] = None) -> str:
+def create_constitution_commit(message: str, project_root: Path | None = None) -> str:
     """개발 가이드 커밋 생성 편의 함수"""
     workflow = GitWorkflow(project_root)
     return workflow.create_constitution_commit(message)
 
 
-def sync_with_remote(project_root: Optional[Path] = None, push: bool = True) -> bool:
+def sync_with_remote(project_root: Path | None = None, push: bool = True) -> bool:
     """원격 동기화 편의 함수"""
     workflow = GitWorkflow(project_root)
     return workflow.sync_with_remote(push=push)

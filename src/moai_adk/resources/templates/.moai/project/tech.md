@@ -1,4 +1,4 @@
-# [PROJECT_NAME] Technology Stack
+# ${PROJECT_NAME} Technology Stack
 
 ## @TECH:STACK-001 언어 & 런타임
 

@@ -44,11 +44,11 @@
     "current_stage": "initialized"
   },
   "project": {
-    "created_at": "2024-09-24T05:10:00Z",
-    "description": "MoAI Agentic Development Kit",
+    "created_at": "${CREATION_TIMESTAMP}",
+    "description": "${PROJECT_DESCRIPTION}",
     "initialized": true,
     "mode": "personal",
-    "name": "MoAI-ADK",
+    "name": "${PROJECT_NAME}",
     "version": "0.1.17"
   },
   "tags": {
@@ -71,21 +71,6 @@
       "DOCS",
       "TAG"
     ],
-    "index_path": ".moai/indexes/tags.json",
-    "backend": {
-      "type": "sqlite",
-      "sqlite": {
-        "enabled": true,
-        "database_path": ".moai/indexes/tags.db",
-        "migration": {
-          "auto_migrate": true,
-          "backup_before_migration": true,
-          "performance_threshold": 1000
-        },
-        "activated_at": "2025-09-26T02:30:44Z",
-        "migrated_tags": 411,
-        "migration_time": "0.042s"
-      }
-    }
+    "index_path": ".moai/indexes/tags.json"
   }
 }

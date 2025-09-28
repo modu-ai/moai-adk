@@ -2,27 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(awk:*)",
-      "Bash(chmod:*)",
-      "Read(//private/tmp/test-project-fixes/todo-app-test/**)",
-      "Bash(test:*)",
-      "Read(//private/tmp/template-sync-test/clean-project/**)",
-      "Read(//private/tmp/simple-template-test/minimal-project/**)",
-      "Bash(mkdocs serve:*)",
-      "Bash(xargs:*)",
-      "Bash(docker:*)",
-      "Bash(grep:*)",
-      "Bash(twine check:*)",
-      "Bash(twine upload:*)",
-      "Read(//private/tmp/claude/test_non_moai/**)",
-      "Read(//private/tmp/claude/test-moai-sqlite/**)",
-      "Read(//private/tmp/claude/test-moai-0117/**)",
-      "Read(//private/tmp/claude/test-v0118/**)"
+      "Bash(chmod:*)"
     ],
     "deny": [],
-    "ask": [],
-    "additionalDirectories": [
-      "/Users/goos/MoAI/test/todo-app/"
-    ]
+    "ask": []
   },
-  "outputStyle": "MoAI Audit"
+  "outputStyle": "MoAI Study"
 }

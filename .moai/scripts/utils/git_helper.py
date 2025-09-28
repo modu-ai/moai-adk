@@ -8,24 +8,21 @@ MoAI-ADK Git 관련 헬퍼 유틸리티
 @DESIGN:GIT-WRAPPER-001
 """
 
-import subprocess
-import os
-from pathlib import Path
-from typing import Dict, List, Optional
 import logging
+import os
 import re
+import subprocess
+from pathlib import Path
 
-from constants import (
-    GIT_COMMAND_TIMEOUT,
-    ERROR_MESSAGES, REGEX_PATTERNS
-)
+from constants import ERROR_MESSAGES, GIT_COMMAND_TIMEOUT, REGEX_PATTERNS
 
 logger = logging.getLogger(__name__)
 
 
 class GitCommandError(Exception):
     """Git 명령어 실행 오류"""
-    def __init__(self, command: List[str], returncode: int, stderr: str):
+
+    def __init__(self, command: list[str], returncode: int, stderr: str):
         self.command = command
         self.returncode = returncode
         self.stderr = stderr
@@ -35,12 +32,12 @@ class GitCommandError(Exception):
 class GitHelper:
     """Git 명령어 헬퍼 클래스"""
 
-    def __init__(self, project_root: Optional[Path] = None):
+    def __init__(self, project_root: Path | None = None):
         self.project_root = project_root or Path.cwd()
         self.git_env = os.environ.copy()
 
     def run_command(
-        self, cmd: List[str], check: bool = True, timeout: Optional[int] = None
+        self, cmd: list[str], check: bool = True, timeout: int | None = None
     ) -> subprocess.CompletedProcess:
         """Git 명령어 실행"""
         if timeout is None:
@@ -48,8 +45,13 @@ class GitHelper:
 
         try:
             result = subprocess.run(
-                cmd, capture_output=True, text=True, check=False,
-                timeout=timeout, cwd=self.project_root, env=self.git_env
+                cmd,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=timeout,
+                cwd=self.project_root,
+                env=self.git_env,
             )
 
             if check and result.returncode != 0:
@@ -71,7 +73,7 @@ class GitHelper:
         result = self.run_command(["git", "branch", "--show-current"])
         return result.stdout.strip()
 
-    def get_local_branches(self) -> List[str]:
+    def get_local_branches(self) -> list[str]:
         """로컬 브랜치 목록 반환"""
         result = self.run_command(["git", "branch"])
         branches = []
@@ -115,7 +117,7 @@ class GitHelper:
         flag = "-D" if force else "-d"
         self.run_command(["git", "branch", flag, branch_name])
 
-    def stash_push(self, message: Optional[str] = None) -> str:
+    def stash_push(self, message: str | None = None) -> str:
         """Stash 생성"""
         cmd = ["git", "stash", "push"]
         if message:
@@ -129,7 +131,7 @@ class GitHelper:
         """Stash 복원"""
         self.run_command(["git", "stash", "pop"])
 
-    def create_tag(self, tag_name: str, message: Optional[str] = None) -> None:
+    def create_tag(self, tag_name: str, message: str | None = None) -> None:
         """태그 생성"""
         cmd = ["git", "tag"]
         if message:
@@ -139,8 +141,10 @@ class GitHelper:
         self.run_command(cmd)
 
     def push(
-        self, remote: str = "origin", branch: Optional[str] = None,
-        set_upstream: bool = False
+        self,
+        remote: str = "origin",
+        branch: str | None = None,
+        set_upstream: bool = False,
     ) -> None:
         """푸시"""
         if branch is None:
@@ -161,11 +165,11 @@ class GitHelper:
         """페치"""
         self.run_command(["git", "fetch", remote])
 
-    def get_commit_info(self, commit: str = "HEAD") -> Dict[str, str]:
+    def get_commit_info(self, commit: str = "HEAD") -> dict[str, str]:
         """커밋 정보 반환"""
-        result = self.run_command([
-            "git", "show", "--format=%H|%an|%ad|%s", "--no-patch", commit
-        ])
+        result = self.run_command(
+            ["git", "show", "--format=%H|%an|%ad|%s", "--no-patch", commit]
+        )
 
         parts = result.stdout.strip().split("|", 3)
         if len(parts) >= 4:
@@ -173,7 +177,7 @@ class GitHelper:
                 "hash": parts[0],
                 "author": parts[1],
                 "date": parts[2],
-                "message": parts[3]
+                "message": parts[3],
             }
         return {}
 

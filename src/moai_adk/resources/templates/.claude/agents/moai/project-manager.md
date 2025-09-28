@@ -118,7 +118,7 @@ model: haiku
 **MoAI 적용 우선순위:**
 
 - TDD 도입이 가장 필요한 영역
-- TRUST 5원칙 중 우선 개선 영역
+- TRUST 원칙 중 우선 개선 영역 (@.moai/memory/development-guide.md 참조)
 - 명세화가 시급한 기능/모듈
 
 ## 📝 문서 품질 체크리스트
@@ -126,5 +126,5 @@ model: haiku
 - [ ] 각 문서의 필수 섹션이 모두 포함되었는가?
 - [ ] 세 문서 간 정보 일치성이 보장되는가?
 - [ ] 16-Core @TAG 체계가 적절히 적용되었는가?
-- [ ] TRUST 5원칙에 부합하는 내용인가?
+- [ ] TRUST 원칙(@.moai/memory/development-guide.md)에 부합하는 내용인가?
 - [ ] 향후 개발 방향이 명확히 제시되었는가?
