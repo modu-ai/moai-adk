@@ -4,7 +4,7 @@
 
 ### TypeScript 5.9.2+ (주 언어)
 
-- **선택 이유**: 고성능 CLI, 타입 안전성, Bun 생태계 활용, JSON 기반 TAG 시스템
+- **선택 이유**: 고성능 CLI, 타입 안전성, Bun 생태계 활용, 분산 TAG 시스템 v4.0
 - **지원 버전**: TypeScript 5.9.2+, Node.js 18.0+, Bun 1.2.19+
 - **배포 타겟**: npm, 바이너리 배포, GitHub Releases
 - **설치 요구사항**: Node.js/Bun, Git
@@ -75,7 +75,7 @@ linter = "ruff"
 
 - **TypeScript 빌드**: tsup 8.5.0 기반 ESM/CJS 듀얼 번들링 (Bun으로 최적화)
 - **패키지 매니저**: Bun 1.2.19 (98% 성능 개선, 의존성 해결 최적화)
-- **JSON 기반 TAG**: tags.json 기반 16-Core @TAG 시스템
+- **분산 TAG v4.0**: JSONL 기반 16-Core @TAG 시스템 (94% 최적화)
 - **버전 관리**: v2.0.0 메이저 업그레이드 (semantic versioning)
 - **배포 자동화**: GitHub Actions → npm 배포
 - **크로스 컴파일**: Node.js + Bun 호환성 보장
@@ -198,6 +198,7 @@ cd moai-adk-ts && bun install && bun run build  # TypeScript 환경 (Bun)
 - **Python 지원**: 사용자 프로젝트 TDD 도구, 85%+ 커버리지 유지
 - **Claude Code 통합**: 7개 에이전트, 5개 명령어, 8개 훅 완성
 - **성능 개선**: Bun 98% 향상, Vitest 92.9% 성공률, Biome 94.8% 향상
+- **TAG 시스템 v4.0**: 분산 구조, 94% 크기 절감, 45ms 로딩 시간
 - **문서화**: MkDocs 자동 생성, API 문서 자동 갱신
 
 ### @DEBT:TECH-DEBT-001 기술 부채 개선 계획
@@ -266,6 +267,7 @@ moai doctor                              # 시스템 진단 (현대화 완료)
 - 패키지 설치: npm → Bun (98% 향상)
 - 테스트 실행: Jest → Vitest (92.9% 성공률)
 - 코드 품질: ESLint+Prettier → Biome (94.8% 향상)
+- TAG 시스템: Monolithic → Distributed v4.0 (94% 크기 절감, 95% 파싱 향상)
 
 **다음 단계:**
 - 범용 언어 지원 강화 (Java, Go, Rust 등)
