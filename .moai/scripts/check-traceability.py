@@ -13,10 +13,22 @@ TAG 추적성 검증 스크립트 (향상판)
 import json
 import re
 import sys
+import time
+import logging
+import concurrent.futures
+import resource
 from datetime import datetime
 from pathlib import Path
+from typing import Dict, List, Optional
 
 import click
+
+# Import our performance cache module
+try:
+    from performance_cache import PerformanceCache
+except ImportError:
+    # Fallback if performance_cache is not available
+    PerformanceCache = None
 
 PRIMARY_CHAIN = [("REQ", "DESIGN"), ("DESIGN", "TASK"), ("TASK", "TEST")]
 STEERING_CHAIN = [("VISION", "STRUCT"), ("STRUCT", "TECH"), ("TECH", "ADR")]
@@ -30,6 +42,36 @@ class TraceabilityChecker:
         self.index: dict = {}
         self.broken_links: list[tuple[str, str]] = []
         self.orphaned_tags: list[str] = []
+
+        # Performance enhancements
+        self.thread_count = 4  # Default thread count
+        self.performance_cache = PerformanceCache(self.project_root / ".moai" / "cache") if PerformanceCache else None
+        self.performance_metrics = {
+            'scan_duration': 0.0,
+            'files_processed': 0,
+            'cache_hit_rate': 0.0,
+            'thread_count_used': self.thread_count,
+            'memory_usage_mb': 0.0
+        }
+
+        # Setup logging
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+    def _get_memory_usage_mb(self) -> float:
+        """Get current memory usage in MB (cross-platform)"""
+        try:
+            # Using resource module (Unix-like systems)
+            usage = resource.getrusage(resource.RUSAGE_SELF)
+            # maxrss is in KB on Linux, bytes on macOS
+            max_rss = usage.ru_maxrss
+            if sys.platform == 'darwin':
+                # macOS reports in bytes
+                return max_rss / (1024 * 1024)
+            else:
+                # Linux reports in KB
+                return max_rss / 1024
+        except Exception:
+            return 0.0
 
     def load_or_init_index(self) -> None:
         if self.tags_index_path.exists():
@@ -68,9 +110,11 @@ class TraceabilityChecker:
             json.dump(self.index, f, indent=2, ensure_ascii=False)
 
     def scan_files_for_tags(self) -> dict[str, list[str]]:
+        start_time = time.time()
         tag_pattern = r"@([A-Z]+):([A-Z0-9-]+)"
         found: dict[str, list[str]] = {}
         exts = [".md", ".py", ".js", ".ts", ".yaml", ".yml", ".json"]
+        files_processed = 0
 
         for ext in exts:
             for file_path in self.project_root.rglob(f"*{ext}"):
@@ -81,12 +125,43 @@ class TraceabilityChecker:
                 ):
                     continue
                 try:
-                    content = file_path.read_text(encoding="utf-8")
+                    # Try to get content from cache first
+                    content = None
+                    if self.performance_cache:
+                        content = self.performance_cache.get_cached_content(file_path)
+
+                    if content is None:
+                        # Cache miss - read from file
+                        content = file_path.read_text(encoding="utf-8")
+                        # Cache the content
+                        if self.performance_cache:
+                            self.performance_cache.cache_file_content(file_path, content)
+
+                    files_processed += 1
+
                 except Exception:
                     continue
                 for cat, tid in re.findall(tag_pattern, content):
                     tag = f"{cat}:{tid}"
                     found.setdefault(tag, []).append(str(file_path))
+
+        # Update performance metrics
+        scan_duration = time.time() - start_time
+        self.performance_metrics.update({
+            'scan_duration': scan_duration,
+            'files_processed': files_processed,
+            'memory_usage_mb': self._get_memory_usage_mb()
+        })
+
+        if self.performance_cache:
+            cache_stats = self.performance_cache.get_cache_stats()
+            self.performance_metrics['cache_hit_rate'] = cache_stats['hit_rate_percent']
+
+        # Log performance data
+        logging.info(f"Performance scan metrics (SEQUENTIAL) - Duration: {scan_duration:.3f}s, Files: {files_processed}, "
+                    f"Cache hit rate: {self.performance_metrics['cache_hit_rate']:.1f}%, "
+                    f"Memory: {self.performance_metrics['memory_usage_mb']:.1f}MB")
+
         return found
 
     def scan_files_for_links(self) -> list[dict[str, str]]:
@@ -257,6 +332,163 @@ class TraceabilityChecker:
         self.index["statistics"]["coverage_percentage"] = coverage
         self.index["last_updated"] = datetime.now().date().isoformat()
 
+    def set_thread_count(self, count: int) -> None:
+        """Set the number of threads for parallel processing"""
+        self.thread_count = max(1, min(count, 16))  # Limit between 1 and 16
+        self.performance_metrics['thread_count_used'] = self.thread_count
+
+    def _scan_file_for_tags(self, file_path: Path) -> Dict[str, List[str]]:
+        """Scan a single file for tags. Helper method for parallel processing."""
+        tag_pattern = r"@([A-Z]+):([A-Z0-9-]+)"
+        found: Dict[str, List[str]] = {}
+
+        try:
+            # Try to get content from cache first
+            content = None
+            if self.performance_cache:
+                content = self.performance_cache.get_cached_content(file_path)
+
+            if content is None:
+                # Cache miss - read from file
+                content = file_path.read_text(encoding="utf-8")
+                # Cache the content
+                if self.performance_cache:
+                    self.performance_cache.cache_file_content(file_path, content)
+
+            for cat, tid in re.findall(tag_pattern, content):
+                tag = f"{cat}:{tid}"
+                found.setdefault(tag, []).append(str(file_path))
+
+        except Exception:
+            pass  # Skip files that can't be read
+
+        return found
+
+    def parallel_scan_files_for_tags(self) -> Dict[str, List[str]]:
+        """
+        Parallel version of scan_files_for_tags using thread pool.
+        Should be faster than sequential scanning on multi-core systems.
+        Automatically adjusts thread count based on file count.
+        """
+        start_time = time.time()
+
+        # Collect all files to scan
+        exts = [".md", ".py", ".js", ".ts", ".yaml", ".yml", ".json"]
+        files_to_scan = []
+
+        for ext in exts:
+            for file_path in self.project_root.rglob(f"*{ext}"):
+                # Skip hidden directories except .claude and .moai
+                if any(
+                    part.startswith(".") and part not in [".claude", ".moai"]
+                    for part in file_path.parts
+                ):
+                    continue
+                files_to_scan.append(file_path)
+
+        # Adjust thread count based on file count
+        # For small file counts, use fewer threads to avoid overhead
+        optimal_threads = min(self.thread_count, max(1, len(files_to_scan) // 10))
+
+        # Parallel processing
+        found: Dict[str, List[str]] = {}
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=optimal_threads) as executor:
+            # Submit all file scanning tasks
+            future_to_file = {
+                executor.submit(self._scan_file_for_tags, file_path): file_path
+                for file_path in files_to_scan
+            }
+
+            # Collect results
+            for future in concurrent.futures.as_completed(future_to_file):
+                file_result = future.result()
+                # Merge results
+                for tag, paths in file_result.items():
+                    found.setdefault(tag, []).extend(paths)
+
+        # Update performance metrics
+        scan_duration = time.time() - start_time
+        self.performance_metrics.update({
+            'scan_duration': scan_duration,
+            'files_processed': len(files_to_scan),
+            'memory_usage_mb': self._get_memory_usage_mb()
+        })
+
+        if self.performance_cache:
+            cache_stats = self.performance_cache.get_cache_stats()
+            self.performance_metrics['cache_hit_rate'] = cache_stats['hit_rate_percent']
+
+        # Log performance data
+        logging.info(f"Performance metrics (PARALLEL) - Duration: {scan_duration:.3f}s, Files: {len(files_to_scan)}, "
+                    f"Threads: {optimal_threads}/{self.thread_count}, Cache hit rate: {self.performance_metrics['cache_hit_rate']:.1f}%, "
+                    f"Memory: {self.performance_metrics['memory_usage_mb']:.1f}MB")
+
+        return found
+
+    def get_changed_files_since_last_scan(self) -> List[str]:
+        """Get list of files that have changed since last scan"""
+        if not self.performance_cache:
+            return []  # Return empty list if no cache available
+
+        # Get all potential files
+        exts = [".md", ".py", ".js", ".ts", ".yaml", ".yml", ".json"]
+        all_files = []
+
+        for ext in exts:
+            for file_path in self.project_root.rglob(f"*{ext}"):
+                if any(
+                    part.startswith(".") and part not in [".claude", ".moai"]
+                    for part in file_path.parts
+                ):
+                    continue
+                all_files.append(file_path)
+
+        changed_files = self.performance_cache.get_changed_files_since_last_scan(all_files)
+        return list(changed_files)
+
+    def incremental_scan_files_for_tags(self, changed_files: List[str]) -> Dict[str, List[str]]:
+        """Scan only the changed files for tags"""
+        found: Dict[str, List[str]] = {}
+
+        for file_path_str in changed_files:
+            file_path = Path(file_path_str)
+            if file_path.exists():
+                file_result = self._scan_file_for_tags(file_path)
+                for tag, paths in file_result.items():
+                    found.setdefault(tag, []).extend(paths)
+
+        return found
+
+    def incremental_scan(self) -> Dict[str, List[str]]:
+        """Perform incremental scan of changed files only"""
+        changed_files = self.get_changed_files_since_last_scan()
+        if not changed_files:
+            return {}
+        return self.incremental_scan_files_for_tags(changed_files)
+
+    def save_scan_timestamp(self) -> None:
+        """Save timestamp of current scan for incremental scanning"""
+        if self.performance_cache:
+            # Get all scannable files
+            exts = [".md", ".py", ".js", ".ts", ".yaml", ".yml", ".json"]
+            all_files = []
+
+            for ext in exts:
+                for file_path in self.project_root.rglob(f"*{ext}"):
+                    if any(
+                        part.startswith(".") and part not in [".claude", ".moai"]
+                        for part in file_path.parts
+                    ):
+                        continue
+                    all_files.append(file_path)
+
+            self.performance_cache.save_scan_timestamp(all_files)
+
+    def get_performance_metrics(self) -> Dict[str, float]:
+        """Get current performance metrics"""
+        return self.performance_metrics.copy()
+
     def report(self, found: dict[str, list[str]], verbose: bool, strict: bool) -> int:
         click.echo("🏷️ TAG 추적성 검증 보고서")
         click.echo("=" * 50)
@@ -305,13 +537,32 @@ def main():
         action="store_true",
         help="고아 TAG 또는 끊어진 링크가 있으면 종료 코드 1 반환",
     )
+    parser.add_argument(
+        "--parallel",
+        action="store_true",
+        help="병렬 스캔 사용 (대용량 프로젝트에 권장)",
+    )
+    parser.add_argument(
+        "--threads",
+        type=int,
+        default=4,
+        help="병렬 스캔 시 사용할 스레드 수 (기본: 4)",
+    )
 
     args = parser.parse_args()
 
     checker = TraceabilityChecker(args.project_root)
     checker.load_or_init_index()
 
-    found = checker.scan_files_for_tags()
+    # Set thread count if specified
+    if args.threads:
+        checker.set_thread_count(args.threads)
+
+    # Use parallel or sequential scanning
+    if args.parallel:
+        found = checker.parallel_scan_files_for_tags()
+    else:
+        found = checker.scan_files_for_tags()
 
     explicit_links = checker.scan_files_for_links()
     stored_links = checker.index.get("traceability_chains", [])
