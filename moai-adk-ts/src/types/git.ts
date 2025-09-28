@@ -165,11 +165,7 @@ export interface GitCommandOptions {
 /**
  * .gitignore 템플릿 타입
  */
-export type GitignoreTemplate =
-  | 'node'
-  | 'python'
-  | 'moai'
-  | 'custom';
+export type GitignoreTemplate = 'node' | 'python' | 'moai' | 'custom';
 
 /**
  * Git 로그 엔트리
@@ -184,4 +180,54 @@ export interface GitLogEntry {
   readonly filesChanged: readonly string[];
   readonly insertions: number;
   readonly deletions: number;
+}
+
+/**
+ * Git lock information interface
+ * @tags @DESIGN:GIT-LOCK-001
+ */
+export interface GitLockInfo {
+  pid: number;
+  timestamp: number;
+  operation: string;
+  user: string;
+  hostname?: string;
+  workingDir?: string;
+}
+
+/**
+ * Git lock status interface
+ * @tags @DESIGN:GIT-LOCK-STATUS-001
+ */
+export interface GitLockStatus {
+  isLocked: boolean;
+  lockFileExists: boolean;
+  lockInfo: GitLockInfo | null;
+  processRunning?: boolean;
+  lockAgeSeconds?: number;
+}
+
+/**
+ * Git lock context interface for context manager pattern
+ * @tags @DESIGN:GIT-LOCK-CONTEXT-001
+ */
+export interface GitLockContext {
+  readonly lockInfo: GitLockInfo;
+  readonly acquired: Date;
+  release(): Promise<void>;
+}
+
+/**
+ * Git lock exception class
+ * @tags @DESIGN:GIT-LOCK-EXCEPTION-001
+ */
+export class GitLockedException extends Error {
+  constructor(
+    message: string,
+    public readonly lockInfo?: GitLockInfo,
+    public readonly timeout?: number
+  ) {
+    super(message);
+    this.name = 'GitLockedException';
+  }
 }

@@ -1,3 +1,17 @@
+---
+spec_id: SPEC-005
+status: active
+priority: medium
+dependencies: []
+tags:
+  - claude-code
+  - commands
+  - user-experience
+  - performance
+  - error-handling
+  - workflow
+---
+
 # SPEC-005: Claude Code 커맨드 최적화
 
 ## @REQ:COMMAND-005 프로젝트 컨텍스트

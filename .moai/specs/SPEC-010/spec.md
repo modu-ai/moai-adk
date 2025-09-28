@@ -1,8 +1,19 @@
+---
+spec_id: SPEC-010
+status: completed
+priority: medium
+dependencies: []
+tags:
+  - documentation
+  - mkdocs
+  - automation
+---
+
 # SPEC-010: MoAI-ADK 온라인 문서 사이트 제작
 
-**@SPEC:SPEC-010-COMPLETED** ← 테스트 완료 ✅  
-**@REQ:DOCS-SITE-001** ← 온라인 문서 요구사항  
-**@DESIGN:MKDOCS-MATERIAL-001** ← 설계 결정  
+**@SPEC:SPEC-010-COMPLETED** ← 테스트 완료 ✅
+**@REQ:DOCS-SITE-001** ← 온라인 문서 요구사항
+**@DESIGN:MKDOCS-MATERIAL-001** ← 설계 결정
 **@TASK:DOCS-AUTOMATION-001** ← 구현 태스크
 
 ---

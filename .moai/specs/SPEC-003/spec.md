@@ -1,3 +1,16 @@
+---
+spec_id: SPEC-003
+status: active
+priority: high
+dependencies: []
+tags:
+  - claude-code
+  - cc-manager
+  - standardization
+  - templates
+  - optimization
+---
+
 # SPEC-003: cc-manager 중심 Claude Code 최적화
 
 ## @REQ:CC-OPTIMIZATION-003 프로젝트 컨텍스트

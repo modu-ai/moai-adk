@@ -1,44 +1,75 @@
-# SPEC-012 수락 기준: TypeScript 기반 구축 (Week 1)
+# SPEC-012 수락 기준: Python → TypeScript 완전 포팅 (5주)
 
-> **@TEST:ACCEPTANCE-CRITERIA-012** SPEC-012 수락을 위한 상세 검증 기준
-> **@FEATURE:VALIDATION-SCENARIOS-012** Given-When-Then 형식의 테스트 시나리오
-> **@QUALITY:DEFINITION-OF-DONE-012** Week 1 완료를 위한 정량적 기준
-
----
-
-## 수락 기준 개요
-
-### 기능적 요구사항
-
-| 요구사항 ID | 설명 | 우선순위 | 수락 기준 |
-|------------|------|---------|----------|
-| **AC-012-01** | 시스템 요구사항 자동 검증 | 높음 | Node.js, Git, SQLite3 자동 감지 |
-| **AC-012-02** | CLI 기본 명령어 동작 | 높음 | --version, --help, doctor 동작 |
-| **AC-012-03** | TypeScript 빌드 시스템 | 중간 | tsup 빌드 성공, ESM/CJS 지원 |
-| **AC-012-04** | 테스트 인프라 | 중간 | Jest 테스트 수트 실행 성공 |
-| **AC-012-05** | 크로스 플랫폼 지원 | 낮음 | Windows/macOS/Linux 호환성 |
-
-### 비기능적 요구사항
-
-| 지표 | 예상값 | 수락 기준 | 측정 방법 |
-|------|-------|----------|----------|
-| **성능** | CLI 시작 < 2초 | ≤ 3초 | `time moai --version` |
-| **품질** | 커버리지 ≥ 80% | ≥ 75% | `npm run test:coverage` |
-| **보안** | 에러 0개 | 0개 | ESLint + 보안 감사 |
-| **유지보수** | 타입 커버리지 100% | 100% | TypeScript strict 모드 |
+> **@TEST:COMPLETE-MIGRATION-ACCEPTANCE-012** Python 완전 제거 + TypeScript 단독 실행 검증 기준
+> **@FEATURE:FULL-PORTING-SCENARIOS-012** 완전 전환에 대한 Given-When-Then 시나리오
+> **@QUALITY:MIGRATION-DOD-012** 5주 완전 포팅 완료를 위한 정량적 기준
 
 ---
 
-## Given-When-Then 테스트 시나리오
+## 완전 포팅 수락 기준 개요
 
-### AC-012-01: 시스템 요구사항 자동 검증
+### 포팅 완성도 요구사항 (100% 필수)
 
-#### 시나리오 1.1: Node.js 감지 성공
+| 요구사항 ID | 설명 | 포팅 기준 | 수락 기준 |
+|------------|------|----------|----------|
+| **AC-012-01** | Python 코드 완전 제거 | 0% 잔존 | 모든 .py 파일 삭제 완료 |
+| **AC-012-02** | TypeScript 기능 동등성 | 100% 포팅 | 모든 Python 기능 동일 구현 |
+| **AC-012-03** | CLI 명령어 완전 전환 | pip → npm | `npm install -g moai-adk` 단독 설치 |
+| **AC-012-04** | 훅 시스템 완전 대체 | 7개 훅 전환 | Python 훅 0개, TypeScript 훅 7개 |
+| **AC-012-05** | TAG 시스템 포팅 | SQLite → better-sqlite3 | 데이터 마이그레이션 100% |
+
+### 성능 개선 요구사항 (정량적 목표)
+
+| 지표 | Python 기준 | TypeScript 목표 | 측정 방법 |
+|------|-------------|----------------|----------|
+| **스캔 성능** | 1.1초 | ≤ 0.8초 (27% 개선) | TAG 스캔 벤치마크 |
+| **메모리 효율** | 174MB | ≤ 80MB (54% 절약) | Node.js 프로세스 모니터링 |
+| **설치 시간** | 30-60초 | ≤ 30초 | `time npm install -g moai-adk` |
+| **패키지 크기** | 15MB | ≤ 10MB | npm 패키지 분석 |
+| **설치 성공률** | 95% | ≥ 98% | 다양한 환경 테스트 |
+
+---
+
+## Given-When-Then 완전 포팅 시나리오
+
+### AC-012-01: Python 코드 완전 제거 검증
+
+#### 시나리오 1.1: Python 파일 제거 확인
 ```gherkin
-Given Node.js 18.17.0이 설치되어 있음
-When SystemDetector가 Node.js 요구사항을 검사함
-Then 설치된 것으로 표시되고 버전이 올바르게 추출됨
-And minVersion 18.0.0 요구사항을 만족함
+Given 기존 Python MoAI-ADK 프로젝트가 존재함
+When TypeScript 포팅이 완료됨
+Then 모든 .py 파일이 삭제되었음
+And pip 의존성이 완전히 제거되었음
+And Python 관련 설정 파일이 모두 삭제되었음
+```
+
+**구현 검증**:
+```typescript
+test('should have zero Python files remaining', async () => {
+  const pythonFiles = await glob('**/*.py', { ignore: ['node_modules/**', 'venv/**'] });
+
+  expect(pythonFiles).toHaveLength(0);
+
+  // pip 의존성 확인
+  expect(fs.existsSync('requirements.txt')).toBe(false);
+  expect(fs.existsSync('setup.py')).toBe(false);
+  expect(fs.existsSync('pyproject.toml')).toBe(false);
+
+  // Python 실행 명령어가 없는지 확인
+  const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+  const scripts = Object.values(packageJson.scripts || {}).join(' ');
+  expect(scripts).not.toContain('python');
+  expect(scripts).not.toContain('pip');
+});
+```
+
+#### 시나리오 1.2: TypeScript 단독 실행 확인
+```gherkin
+Given Python 환경이 없는 시스템
+When npm install -g moai-adk를 실행함
+Then 설치가 성공적으로 완료됨
+And 모든 CLI 명령어가 정상 동작함
+And Python 의존성 없이 완전히 동작함
 ```
 
 **구현 검증**:
@@ -466,88 +497,106 @@ And 로그가 올바르게 기록됨
 
 ---
 
-## Definition of Done (DoD) 체크리스트
+## 완전 포팅 Definition of Done (DoD) 체크리스트
 
-### 기능 완성 체크리스트
+### 포팅 완성도 체크리스트 (100% 필수)
 
-#### 시스템 요구사항 자동 검증 모듈
-- [ ] SystemDetector 클래스 구현 완료
-- [ ] Node.js, Git, SQLite3 감지 기능 동작
-- [ ] 버전 비교 로직 정상 동작
-- [ ] 에러 처리 시나리오 커버
-- [ ] 관련 유닛 테스트 모두 통과
-- [ ] TypeScript 타입 안전성 확보
+#### Python 코드 완전 제거
+- [ ] **Python 파일 0% 잔존**: 모든 .py 파일 삭제 완료
+- [ ] **pip 의존성 제거**: requirements.txt, setup.py, pyproject.toml 삭제
+- [ ] **Python 명령어 제거**: package.json scripts에서 python/pip 명령어 완전 제거
+- [ ] **환경 변수 정리**: Python 관련 환경 변수 모두 제거
+- [ ] **CI/CD 수정**: GitHub Actions에서 Python 설치 단계 제거
+- [ ] **문서 업데이트**: README.md에서 Python 설치 안내 완전 제거
 
-#### CLI 기본 명령어
-- [ ] `moai --version` 명령어 동작
-- [ ] `moai --help` 명령어 동작
-- [ ] `moai doctor` 명령어 동작
-- [ ] `moai init` 기본 구조 동작
-- [ ] E2E 테스트 모두 통과
-- [ ] CLI 성능 벤치마크 통과
+#### TypeScript 기능 동등성 (70개+ 모듈)
+- [ ] **CLI 모듈**: Python click → TypeScript commander.js 완전 포팅
+- [ ] **Core 모듈**: Git, TAG, 설치 시스템 완전 포팅
+- [ ] **Install 모듈**: 설치 오케스트레이션 완전 포팅
+- [ ] **훅 시스템**: 7개 Python 훅 → TypeScript 완전 전환
+- [ ] **유틸리티**: 로깅, 보안, 파일 작업 완전 포팅
+- [ ] **기능 검증**: 모든 Python 기능과 100% 동일 동작
 
-#### 빌드 시스템
-- [ ] TypeScript 컴파일 성공
-- [ ] tsup 빌드 구성 완료
-- [ ] ESM/CJS 듀얼 지원 확인
-- [ ] 타입 정의 파일 생성
-- [ ] 소스맵 생성 확인
-- [ ] 빌드 성능 미치 30초 이내
+#### npm 패키지 완전 전환
+- [ ] **단독 설치**: `npm install -g moai-adk`만으로 완전 설치
+- [ ] **Python 의존성 0**: Python 환경 없이 완전 동작
+- [ ] **패키지 최적화**: npm 패키지 크기 ≤ 10MB
+- [ ] **전역 명령어**: `moai` 명령어 전역 접근 가능
+- [ ] **배포 검증**: npm 레지스트리 정식 배포 완료
 
-### 품질 체크리스트
+### 성능 목표 달성 체크리스트
 
-#### 테스트 인프라
-- [ ] Jest 테스트 수트 실행 성공
-- [ ] 커버리지 75% 이상 달성
-- [ ] 유닛 테스트 간 독립성 보장
-- [ ] 테스트 실행 시간 60초 이내
-- [ ] 리그레션 테스트 통과
+#### 스캔 성능 개선 (27% 목표)
+- [ ] **기준 측정**: Python 버전 TAG 스캔 1.1초 확인
+- [ ] **목표 달성**: TypeScript 버전 TAG 스캔 ≤ 0.8초
+- [ ] **벤치마크**: 4,686개 파일 스캔 성능 측정
+- [ ] **최적화**: 비동기 I/O 및 병렬 처리 적용
+- [ ] **검증**: 지속적 성능 모니터링 시스템 구축
 
-#### 코드 품질
-- [ ] ESLint 에러 0개
-- [ ] Prettier 포맷팅 규칙 준수
-- [ ] TypeScript strict 모드 통과
-- [ ] 타입 커버리지 100%
-- [ ] 하드코딩된 값 없이 설정 대상화
+#### 메모리 효율 개선 (54% 목표)
+- [ ] **기준 측정**: Python 버전 메모리 사용량 174MB 확인
+- [ ] **목표 달성**: TypeScript 버전 메모리 사용량 ≤ 80MB
+- [ ] **프로파일링**: V8 힙 사용량 최적화
+- [ ] **누수 방지**: 메모리 누수 감지 및 방지
+- [ ] **지속 모니터링**: 장기간 실행 시 메모리 안정성 확인
 
-#### 문서화
-- [ ] README.md 기본 구조 완료
-- [ ] API 대상 인터페이스 문서화
-- [ ] 사용자 설치 가이드 작성
-- [ ] 테스트 실행 방법 안내
-- [ ] 랜전 메시지 및 오류 코드 정리
+#### 설치 시간 안정화
+- [ ] **Python 대비**: pip 설치 30-60초 → npm 설치 ≤ 30초
+- [ ] **의존성 최적화**: 불필요한 의존성 제거
+- [ ] **캐시 활용**: npm 캐시 최적화
+- [ ] **설치 성공률**: 95% → 98% 개선
 
-### 성능 체크리스트
+### 품질 보장 체크리스트
 
-#### 성능 벤치마크
-- [ ] CLI 시작 시간 < 2초 (평균)
-- [ ] CLI 시작 시간 < 3초 (최대)
-- [ ] 시스템 검사 시간 < 5초
-- [ ] 메모리 사용량 < 100MB
-- [ ] 빌드 시간 < 30초
-- [ ] 테스트 실행 시간 < 60초
+#### 타입 안전성 (100% 필수)
+- [ ] **TypeScript strict**: 100% strict 모드, 타입 오류 0개
+- [ ] **타입 커버리지**: 모든 함수 및 변수 타입 정의
+- [ ] **런타임 검증**: zod 등을 통한 입력 타입 검증
+- [ ] **컴파일 타임**: 모든 잠재적 오류 사전 감지
+- [ ] **IDE 지원**: 완전한 타입 힌트 및 자동완성
 
-#### 리소스 사용량
-- [ ] npm 패키지 크기 < 10MB
-- [ ] 런타임 메모리 사용량 측정
-- [ ] CPU 사용량 모니터링
-- [ ] 디스크 I/O 병목 현상 없음
+#### 테스트 완성도
+- [ ] **기능 동등성**: Python 버전과 100% 동일 결과 테스트
+- [ ] **커버리지**: ≥ 85% 테스트 커버리지 유지
+- [ ] **성능 테스트**: 모든 성능 목표 달성 검증
+- [ ] **호환성 테스트**: 기존 프로젝트 100% 호환
+- [ ] **회귀 테스트**: 기존 기능 보전 확인
 
-### 호환성 체크리스트
+#### 크로스 플랫폼 호환성
+- [ ] **Windows**: PowerShell 환경 완전 지원
+- [ ] **macOS**: Zsh/Bash 환경 완전 지원
+- [ ] **Linux**: 주요 배포판 완전 지원
+- [ ] **Node.js**: 18.x, 20.x 버전 호환성
+- [ ] **CI/CD**: 매트릭스 테스트 모든 환경 통과
 
-#### 크로스 플랫폼
-- [ ] Windows 10+ 호환성 테스트
-- [ ] macOS 11+ 호환성 테스트
-- [ ] Ubuntu 20.04+ 호환성 테스트
-- [ ] Node.js 18.x, 20.x 호환성
-- [ ] CI/CD 파이프라인 매트릭스 테스트
+### 생태계 통합 체크리스트
 
-#### 상호 운용성
-- [ ] Claude Code 환경에서 정상 동작
-- [ ] npm 전역 설치 가능
-- [ ] npx로 임시 실행 가능
-- [ ] 기존 Node.js 프로젝트와 충돌 없음
+#### Claude Code 완전 통합
+- [ ] **훅 시스템**: 7개 TypeScript 훅 Claude Code 완전 통합
+- [ ] **에이전트**: 6개 에이전트 TypeScript 버전 지원
+- [ ] **명령어**: 5개 워크플로우 명령어 TypeScript 구현
+- [ ] **설정**: .claude/ 디렉토리 구조 100% 호환
+- [ ] **권한**: Claude Code 권한 시스템 완전 호환
+
+#### 기존 프로젝트 호환성
+- [ ] **구조 호환**: .moai/ 디렉토리 구조 100% 유지
+- [ ] **설정 호환**: 기존 설정 파일 완전 호환
+- [ ] **데이터 마이그레이션**: TAG 데이터베이스 무손실 이전
+- [ ] **워크플로우**: 기존 Git 워크플로우 완전 보존
+- [ ] **사용자 경험**: Python 버전과 동일한 UX
+
+#### 배포 및 지원
+- [ ] **npm 정식 배포**: moai-adk@1.0.0 공개 릴리스
+- [ ] **Python deprecation**: pip 패키지 폐기 예고 공지
+- [ ] **마이그레이션 가이드**: 상세한 전환 가이드 제공
+- [ ] **사용자 지원**: 기존 사용자 전환 지원 체계
+- [ ] **문서 완성**: API 문서, 사용 가이드 완전 정비
 
 ---
 
-**최종 수락 조건**: 위의 모든 체크리스트 항목이 100% 완료되고, Week 1 마지막 날 전체 통합 테스트가 성공적으로 통과해야 함.
+**5주 완전 포팅 최종 수락 조건**:
+- Python 코드 0% 잔존 (완전 제거)
+- TypeScript 기능 100% 동등성 (모든 Python 기능 구현)
+- 성능 목표 100% 달성 (0.8초, 80MB)
+- 기존 프로젝트 100% 호환성 (무중단 전환)
+- npm 패키지 정식 배포 완료

@@ -1,0 +1,45 @@
+{
+  "quick_stats": {
+    "total_tags": 3567,
+    "total_files": 425,
+    "categories": {
+      "REQ": 142,
+      "DESIGN": 172,
+      "TASK": 325,
+      "TEST": 279,
+      "FEATURE": 185,
+      "API": 100,
+      "DATA": 42,
+      "PERF": 38,
+      "SEC": 25,
+      "DEBT": 30,
+      "TODO": 63,
+      "VISION": 12,
+      "STRUCT": 15,
+      "TECH": 32,
+      "ADR": 6
+    }
+  },
+  "health_status": {
+    "chain_integrity": "98.5%",
+    "orphaned_tags": 12,
+    "broken_links": 3,
+    "duplicate_tags": 0
+  },
+  "recent_activity": {
+    "last_sync": "2025-09-29T15:30:00Z",
+    "tags_added_today": 25,
+    "tags_modified_today": 47,
+    "files_updated_today": 15
+  },
+  "compliance_summary": {
+    "trust_compliance": "92.9%",
+    "coverage_complete": true,
+    "critical_gaps": 0
+  },
+  "performance_info": {
+    "storage_size": "487KB",
+    "reduction_from_legacy": "94.1%",
+    "avg_load_time": "45ms"
+  }
+}

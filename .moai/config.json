@@ -53,6 +53,7 @@
   },
   "tags": {
     "auto_sync": true,
+    "storage_type": "distributed",
     "categories": [
       "REQ",
       "DESIGN",
@@ -71,6 +72,16 @@
       "DOCS",
       "TAG"
     ],
-    "index_path": ".moai/indexes/tags.json"
+    "distributed_storage": {
+      "meta_path": ".moai/indexes/meta.json",
+      "categories_path": ".moai/indexes/categories/",
+      "relations_path": ".moai/indexes/relations/",
+      "cache_path": ".moai/indexes/cache/"
+    },
+    "legacy_support": {
+      "monolithic_path": ".moai/indexes/tags.json",
+      "adapter_enabled": true,
+      "fallback_mode": false
+    }
   }
 }

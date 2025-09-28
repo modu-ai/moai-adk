@@ -4,21 +4,24 @@
  * @tags @TEST:PACKAGE-MANAGER-INSTALLER-001 @REQ:PACKAGE-MANAGER-003
  */
 
-import { describe, test, expect, beforeEach, jest } from '@jest/globals';
+import { describe, test, expect, beforeEach, jest, vi } from 'vitest';
 import '@/__tests__/setup';
 import { PackageManagerInstaller } from '@/core/package-manager/installer';
-import { PackageManagerType, PackageInstallOptions } from '@/types/package-manager';
-import execa from 'execa';
+import {
+  PackageManagerType,
+  type PackageInstallOptions,
+} from '@/types/package-manager';
+import { execa } from 'execa';
 
 // Mock execa
-jest.mock('execa');
-const mockExeca = execa as jest.MockedFunction<typeof execa>;
+vi.mock('execa');
+const mockExeca = execa as vi.MockedFunction<typeof execa>;
 
 describe('PackageManagerInstaller', () => {
   let installer: PackageManagerInstaller;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     installer = new PackageManagerInstaller();
   });
 
@@ -28,13 +31,13 @@ describe('PackageManagerInstaller', () => {
       const packages = ['express', 'lodash'];
       const options: PackageInstallOptions = {
         packageManager: PackageManagerType.NPM,
-        isDevelopment: false
+        isDevelopment: false,
       };
 
       mockExeca.mockResolvedValue({
         stdout: 'added 2 packages',
         stderr: '',
-        exitCode: 0
+        exitCode: 0,
       } as any);
 
       // Act
@@ -47,7 +50,7 @@ describe('PackageManagerInstaller', () => {
         'npm',
         ['install', 'express', 'lodash'],
         expect.objectContaining({
-          cwd: process.cwd()
+          cwd: process.cwd(),
         })
       );
     });
@@ -58,13 +61,13 @@ describe('PackageManagerInstaller', () => {
       const options: PackageInstallOptions = {
         packageManager: PackageManagerType.YARN,
         isDevelopment: true,
-        workingDirectory: '/test/project'
+        workingDirectory: '/test/project',
       };
 
       mockExeca.mockResolvedValue({
         stdout: 'success Saved lockfile.',
         stderr: '',
-        exitCode: 0
+        exitCode: 0,
       } as any);
 
       // Act
@@ -76,7 +79,7 @@ describe('PackageManagerInstaller', () => {
         'yarn',
         ['add', '--dev', '@types/node', 'typescript'],
         expect.objectContaining({
-          cwd: '/test/project'
+          cwd: '/test/project',
         })
       );
     });
@@ -86,13 +89,13 @@ describe('PackageManagerInstaller', () => {
       const packages = ['typescript', '@vue/cli'];
       const options: PackageInstallOptions = {
         packageManager: PackageManagerType.PNPM,
-        isGlobal: true
+        isGlobal: true,
       };
 
       mockExeca.mockResolvedValue({
         stdout: 'Packages: +2',
         stderr: '',
-        exitCode: 0
+        exitCode: 0,
       } as any);
 
       // Act
@@ -111,7 +114,7 @@ describe('PackageManagerInstaller', () => {
       // Arrange
       const packages = ['nonexistent-package'];
       const options: PackageInstallOptions = {
-        packageManager: PackageManagerType.NPM
+        packageManager: PackageManagerType.NPM,
       };
 
       mockExeca.mockRejectedValue(new Error('Package not found'));
@@ -135,13 +138,16 @@ describe('PackageManagerInstaller', () => {
         description: 'A Node.js application',
         author: 'John Doe',
         license: 'MIT',
-        type: 'module' as const
+        type: 'module' as const,
       };
 
       const packageManagerType = PackageManagerType.NPM;
 
       // Act
-      const packageJson = installer.generatePackageJson(projectConfig, packageManagerType);
+      const packageJson = installer.generatePackageJson(
+        projectConfig,
+        packageManagerType
+      );
 
       // Assert
       expect(packageJson.name).toBe('my-node-app');
@@ -159,7 +165,7 @@ describe('PackageManagerInstaller', () => {
         name: 'my-ts-app',
         version: '0.1.0',
         description: 'A TypeScript application',
-        main: 'dist/index.js'
+        main: 'dist/index.js',
       };
 
       const packageManagerType = PackageManagerType.PNPM;
@@ -183,7 +189,7 @@ describe('PackageManagerInstaller', () => {
       // Arrange
       const projectConfig = {
         name: 'my-test-app',
-        version: '1.0.0'
+        version: '1.0.0',
       };
 
       const packageManagerType = PackageManagerType.YARN;
@@ -214,23 +220,26 @@ describe('PackageManagerInstaller', () => {
         name: 'existing-project',
         version: '1.0.0',
         dependencies: {
-          express: '^4.18.0'
-        }
+          express: '^4.18.0',
+        },
       };
 
       const newDependencies = {
         lodash: '^4.17.21',
-        axios: '^1.5.0'
+        axios: '^1.5.0',
       };
 
       // Act
-      const updatedPackageJson = installer.addDependencies(existingPackageJson, newDependencies);
+      const updatedPackageJson = installer.addDependencies(
+        existingPackageJson,
+        newDependencies
+      );
 
       // Assert
       expect(updatedPackageJson.dependencies).toEqual({
         express: '^4.18.0',
         lodash: '^4.17.21',
-        axios: '^1.5.0'
+        axios: '^1.5.0',
       });
     });
 
@@ -240,27 +249,30 @@ describe('PackageManagerInstaller', () => {
         name: 'existing-project',
         version: '1.0.0',
         dependencies: {
-          express: '^4.18.0'
+          express: '^4.18.0',
         },
         devDependencies: {
-          typescript: '^5.0.0'
-        }
+          typescript: '^5.0.0',
+        },
       };
 
       const newDevDependencies = {
         '@types/express': '^4.17.17',
-        jest: '^29.0.0'
+        jest: '^29.0.0',
       };
 
       // Act
-      const updatedPackageJson = installer.addDevDependencies(existingPackageJson, newDevDependencies);
+      const updatedPackageJson = installer.addDevDependencies(
+        existingPackageJson,
+        newDevDependencies
+      );
 
       // Assert
       expect(updatedPackageJson.dependencies?.['express']).toBe('^4.18.0');
       expect(updatedPackageJson.devDependencies).toEqual({
         typescript: '^5.0.0',
         '@types/express': '^4.17.17',
-        jest: '^29.0.0'
+        jest: '^29.0.0',
       });
     });
   });
@@ -274,11 +286,14 @@ describe('PackageManagerInstaller', () => {
       mockExeca.mockResolvedValue({
         stdout: 'success Saved package.json',
         stderr: '',
-        exitCode: 0
+        exitCode: 0,
       } as any);
 
       // Act
-      const result = await installer.initializeProject(projectPath, packageManagerType);
+      const result = await installer.initializeProject(
+        projectPath,
+        packageManagerType
+      );
 
       // Assert
       expect(result.success).toBe(true);
@@ -286,7 +301,7 @@ describe('PackageManagerInstaller', () => {
         'yarn',
         ['init', '-y'],
         expect.objectContaining({
-          cwd: projectPath
+          cwd: projectPath,
         })
       );
     });
@@ -299,7 +314,10 @@ describe('PackageManagerInstaller', () => {
       mockExeca.mockRejectedValue(new Error('Directory not found'));
 
       // Act
-      const result = await installer.initializeProject(projectPath, packageManagerType);
+      const result = await installer.initializeProject(
+        projectPath,
+        packageManagerType
+      );
 
       // Assert
       expect(result.success).toBe(false);

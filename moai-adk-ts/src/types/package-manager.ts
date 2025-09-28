@@ -11,7 +11,7 @@
 export enum PackageManagerType {
   NPM = 'npm',
   YARN = 'yarn',
-  PNPM = 'pnpm'
+  PNPM = 'pnpm',
 }
 
 /**

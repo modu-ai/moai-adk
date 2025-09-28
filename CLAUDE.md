@@ -1,6 +1,6 @@
-# ${PROJECT_NAME} - MoAI Agentic Development Kit
+# ${PROJECT_NAME} - MoAI Agentic Development Kit (TypeScript)
 
-**Spec-First TDD 개발 가이드**
+**TypeScript-First TDD 개발 가이드**
 
 ## 핵심 철학
 
@@ -8,32 +8,35 @@
 - **TDD-First**: 테스트 없이는 구현 없음
 - **GitFlow 지원**: Git 작업 자동화, Living Document 동기화, 16-Core @TAG 추적성
 
-## 4단계 개발 워크플로우
+**TypeScript 기반**: 타입 안전성과 고성능, JSON 기반 tags.json 데이터베이스
+
+## 3단계 핵심 워크플로우
 
 ```bash
-/moai:0-project  # 프로젝트 문서 초기화 (product/structure/tech)
 /moai:1-spec     # 명세 작성 (EARS 방식, 브랜치/PR 생성)
 /moai:2-build    # TDD 구현 (RED→GREEN→REFACTOR)
 /moai:3-sync     # 문서 동기화 (PR 상태 전환)
 ```
+
+**반복 사이클**: 1-spec → 2-build → 3-sync → 1-spec (다음 기능)
 
 ## 핵심 에이전트 (5개)
 
 | 에이전트 | 역할 | 자동화 |
 |---------|------|--------|
 | **spec-builder** | EARS 명세 작성 | 브랜치/PR 생성 |
-| **code-builder** | TDD 구현 | Red-Green-Refactor |
+| **code-builder** | 범용 언어 TDD 구현 | Red-Green-Refactor (Python, TypeScript, Java, Go, Rust 등) |
 | **doc-syncer** | 문서 동기화 | PR 상태 전환/라벨링 |
 | **cc-manager** | Claude Code 관리 | 설정 최적화/권한 |
 | **debug-helper** | 오류 진단 | 개발 가이드 검사 |
 
 ## 디버깅 & Git 관리
 
-**디버깅**: `/moai:debug "오류내용"` 또는 `/moai:debug --trust-check`
+**디버깅**: `@agent-debug-helper "오류내용"` 또는 `@agent-debug-helper --trust-check`
 **Git 자동화**: 모든 워크플로우에서 자동 처리 (99% 케이스)
 **Git 직접**: `@agent-git-manager "명령"` (1% 특수 케이스)
 
-## 16-Core @TAG 시스템
+## 16-Core @TAG 시스템 (JSON)
 
 ```
 @REQ → @DESIGN → @TASK → @TEST
@@ -41,22 +44,31 @@ SPEC: REQ,DESIGN,TASK | PROJECT: VISION,STRUCT,TECH,ADR
 IMPLEMENTATION: FEATURE,API,TEST,DATA | QUALITY: PERF,SEC,DEBT,TODO
 ```
 
-## TRUST 5원칙
+**TAG 데이터베이스**: `.moai/indexes/tags.json` (JSON 기반)
 
-**T**est First, **R**eadable, **U**nified, **S**ecured, **T**rackable
+## TRUST 5원칙 (범용 언어 지원)
+
+**MoAI-ADK 도구**: TypeScript 기반 CLI, **사용자 프로젝트**: 모든 주요 언어 지원
+- **T**est First: 언어별 최적 도구 (Jest, pytest, go test, cargo test, JUnit 등)
+- **R**eadable: 언어별 린터 (ESLint, ruff, golint, clippy 등)
+- **U**nified: 타입 안전성 (TypeScript, Go, Rust, Java) 또는 런타임 검증 (Python, JS)
+- **S**ecured: 언어별 보안 도구 및 정적 분석
+- **T**rackable: JSON 기반 16-Core @TAG 시스템
+
 상세: @.moai/memory/development-guide.md
 
-## 코드 규칙
+## 언어별 코드 규칙
 
-**크기**: 파일≤300 LOC, 함수≤50 LOC, 매개변수≤5, 복잡도≤10
-**품질**: 명시적 코드, 의도 드러내는 이름, 가드절, 구조화 로깅, 입력 검증
-**테스트**: 새 코드=새 테스트, 독립적/결정적, 성공/실패 경로, 커버리지≥80%
+**공통**: 파일≤300 LOC, 함수≤50 LOC, 매개변수≤5, 복잡도≤10
+**품질**: 언어별 최적 도구 자동 선택, 의도 드러내는 이름, 가드절 우선
+**테스트**: 언어별 표준 프레임워크, 독립적/결정적, 커버리지≥85%
 
 ## 메모리 전략
 
 **핵심 메모리**: @.moai/memory/development-guide.md (TRUST+16-Core TAG)
-**프로젝트 컨텍스트**: 
+**프로젝트 컨텍스트**:
 - @.moai/project/product.md
 - @.moai/project/structure.md
 - @.moai/project/tech.md
-**검색 도구**: rg(권장), grep, find 지원
+**TAG 시스템**: TypeScript 기반 JSON 데이터베이스 (범용 언어 프로젝트 지원)
+**검색 도구**: 언어별 최적화된 TAG 검색, rg(권장), grep, find 지원

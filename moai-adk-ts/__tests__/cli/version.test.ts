@@ -4,7 +4,7 @@
  * @tags @TEST:CLI-VERSION-001 @REQ:CLI-FOUNDATION-012
  */
 
-import { describe, test, expect, beforeEach } from '@jest/globals';
+import { describe, test, expect, beforeEach } from 'vitest';
 import { Command } from 'commander';
 
 describe('CLI Version Command', () => {

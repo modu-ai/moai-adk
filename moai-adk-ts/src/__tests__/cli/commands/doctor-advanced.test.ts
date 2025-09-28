@@ -4,7 +4,7 @@
  * @tags @TEST:ADVANCED-DOCTOR-001 @REQ:ADVANCED-DOCTOR-001
  */
 
-import { describe, test, expect, beforeEach, jest } from '@jest/globals';
+import { describe, test, expect, beforeEach, jest, vi } from 'vitest';
 import '@/__tests__/setup';
 import { AdvancedDoctorCommand } from '@/cli/commands/doctor-advanced';
 import { SystemPerformanceAnalyzer } from '@/core/diagnostics/performance-analyzer';
@@ -12,31 +12,34 @@ import { BenchmarkRunner } from '@/core/diagnostics/benchmark-runner';
 import { OptimizationRecommender } from '@/core/diagnostics/optimization-recommender';
 import { EnvironmentAnalyzer } from '@/core/diagnostics/environment-analyzer';
 import { SystemDetector } from '@/core/system-checker/detector';
-import { DiagnosticSeverity, DoctorOptions } from '@/types/diagnostics';
+import { DiagnosticSeverity, type DoctorOptions } from '@/types/diagnostics';
 
 // Mock modules
-jest.mock('@/core/diagnostics/performance-analyzer');
-jest.mock('@/core/diagnostics/benchmark-runner');
-jest.mock('@/core/diagnostics/optimization-recommender');
-jest.mock('@/core/diagnostics/environment-analyzer');
-jest.mock('@/core/system-checker/detector');
+vi.mock('@/core/diagnostics/performance-analyzer');
+vi.mock('@/core/diagnostics/benchmark-runner');
+vi.mock('@/core/diagnostics/optimization-recommender');
+vi.mock('@/core/diagnostics/environment-analyzer');
+vi.mock('@/core/system-checker/detector');
 
 describe('AdvancedDoctorCommand', () => {
   let doctorCommand: AdvancedDoctorCommand;
-  let mockSystemDetector: jest.Mocked<SystemDetector>;
-  let mockPerformanceAnalyzer: jest.Mocked<SystemPerformanceAnalyzer>;
-  let mockBenchmarkRunner: jest.Mocked<BenchmarkRunner>;
-  let mockOptimizationRecommender: jest.Mocked<OptimizationRecommender>;
-  let mockEnvironmentAnalyzer: jest.Mocked<EnvironmentAnalyzer>;
+  let mockSystemDetector: vi.Mocked<SystemDetector>;
+  let mockPerformanceAnalyzer: vi.Mocked<SystemPerformanceAnalyzer>;
+  let mockBenchmarkRunner: vi.Mocked<BenchmarkRunner>;
+  let mockOptimizationRecommender: vi.Mocked<OptimizationRecommender>;
+  let mockEnvironmentAnalyzer: vi.Mocked<EnvironmentAnalyzer>;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
-    mockSystemDetector = new SystemDetector() as jest.Mocked<SystemDetector>;
-    mockPerformanceAnalyzer = new SystemPerformanceAnalyzer() as jest.Mocked<SystemPerformanceAnalyzer>;
-    mockBenchmarkRunner = new BenchmarkRunner() as jest.Mocked<BenchmarkRunner>;
-    mockOptimizationRecommender = new OptimizationRecommender() as jest.Mocked<OptimizationRecommender>;
-    mockEnvironmentAnalyzer = new EnvironmentAnalyzer() as jest.Mocked<EnvironmentAnalyzer>;
+    mockSystemDetector = new SystemDetector() as vi.Mocked<SystemDetector>;
+    mockPerformanceAnalyzer =
+      new SystemPerformanceAnalyzer() as vi.Mocked<SystemPerformanceAnalyzer>;
+    mockBenchmarkRunner = new BenchmarkRunner() as vi.Mocked<BenchmarkRunner>;
+    mockOptimizationRecommender =
+      new OptimizationRecommender() as vi.Mocked<OptimizationRecommender>;
+    mockEnvironmentAnalyzer =
+      new EnvironmentAnalyzer() as vi.Mocked<EnvironmentAnalyzer>;
 
     doctorCommand = new AdvancedDoctorCommand(
       mockSystemDetector,
@@ -54,7 +57,7 @@ describe('AdvancedDoctorCommand', () => {
         includeBenchmarks: true,
         includeRecommendations: true,
         includeEnvironmentAnalysis: true,
-        verbose: true
+        verbose: true,
       };
 
       // Mock system performance metrics
@@ -63,14 +66,14 @@ describe('AdvancedDoctorCommand', () => {
         memoryUsage: {
           used: 8192,
           total: 16384,
-          percentage: 50.0
+          percentage: 50.0,
         },
         diskSpace: {
           used: 256,
           available: 768,
-          percentage: 25.0
+          percentage: 25.0,
         },
-        networkLatency: 15
+        networkLatency: 15,
       });
 
       // Mock benchmark results
@@ -81,15 +84,15 @@ describe('AdvancedDoctorCommand', () => {
           status: 'pass',
           baseline: 150,
           score: 85,
-          recommendations: ['Use SSD for better I/O performance']
+          recommendations: ['Use SSD for better I/O performance'],
         },
         {
           name: 'CPU Performance',
           duration: 89,
           status: 'pass',
           baseline: 100,
-          score: 92
-        }
+          score: 92,
+        },
       ]);
 
       // Mock optimization recommendations
@@ -101,11 +104,8 @@ describe('AdvancedDoctorCommand', () => {
           description: 'Memory usage is above 50%, consider optimization',
           impact: 'medium',
           effort: 'easy',
-          steps: [
-            'Close unnecessary applications',
-            'Consider adding more RAM'
-          ]
-        }
+          steps: ['Close unnecessary applications', 'Consider adding more RAM'],
+        },
       ]);
 
       // Mock environment analysis
@@ -116,8 +116,8 @@ describe('AdvancedDoctorCommand', () => {
           version: '18.17.0',
           configFiles: ['package.json', '.nvmrc'],
           recommendations: [],
-          status: 'optimal'
-        }
+          status: 'optimal',
+        },
       ]);
 
       // Act
@@ -135,7 +135,9 @@ describe('AdvancedDoctorCommand', () => {
       // Verify all analyzers were called
       expect(mockPerformanceAnalyzer.analyzeSystem).toHaveBeenCalled();
       expect(mockBenchmarkRunner.runAllBenchmarks).toHaveBeenCalled();
-      expect(mockOptimizationRecommender.generateRecommendations).toHaveBeenCalled();
+      expect(
+        mockOptimizationRecommender.generateRecommendations
+      ).toHaveBeenCalled();
       expect(mockEnvironmentAnalyzer.analyzeEnvironments).toHaveBeenCalled();
     });
 
@@ -143,14 +145,14 @@ describe('AdvancedDoctorCommand', () => {
       // Arrange
       const options: DoctorOptions = {
         includeBenchmarks: true,
-        includeRecommendations: true
+        includeRecommendations: true,
       };
 
       // Mock good performance metrics
       mockPerformanceAnalyzer.analyzeSystem.mockResolvedValue({
         cpuUsage: 25.0,
         memoryUsage: { used: 4096, total: 16384, percentage: 25.0 },
-        diskSpace: { used: 128, available: 896, percentage: 12.5 }
+        diskSpace: { used: 128, available: 896, percentage: 12.5 },
       });
 
       // Mock excellent benchmark results
@@ -160,8 +162,8 @@ describe('AdvancedDoctorCommand', () => {
           duration: 50,
           status: 'pass',
           baseline: 100,
-          score: 95
-        }
+          score: 95,
+        },
       ]);
 
       // Mock no critical recommendations
@@ -178,14 +180,14 @@ describe('AdvancedDoctorCommand', () => {
     test('should identify critical issues and lower health score', async () => {
       // Arrange
       const options: DoctorOptions = {
-        includeRecommendations: true
+        includeRecommendations: true,
       };
 
       // Mock poor performance metrics
       mockPerformanceAnalyzer.analyzeSystem.mockResolvedValue({
         cpuUsage: 95.0,
         memoryUsage: { used: 15360, total: 16384, percentage: 93.75 },
-        diskSpace: { used: 950, available: 50, percentage: 95.0 }
+        diskSpace: { used: 950, available: 50, percentage: 95.0 },
       });
 
       // Mock critical recommendations
@@ -197,7 +199,7 @@ describe('AdvancedDoctorCommand', () => {
           description: 'System is running out of memory',
           impact: 'critical',
           effort: 'hard',
-          steps: ['Immediate action required']
+          steps: ['Immediate action required'],
         },
         {
           category: 'security',
@@ -206,8 +208,8 @@ describe('AdvancedDoctorCommand', () => {
           description: 'Outdated dependencies detected',
           impact: 'high',
           effort: 'medium',
-          steps: ['Update dependencies']
-        }
+          steps: ['Update dependencies'],
+        },
       ]);
 
       // Act
@@ -232,15 +234,15 @@ describe('AdvancedDoctorCommand', () => {
           status: 'warning',
           baseline: 150,
           score: 75,
-          recommendations: ['Consider using faster storage']
+          recommendations: ['Consider using faster storage'],
         },
         {
           name: 'Network Connectivity',
           duration: 50,
           status: 'pass',
           baseline: 100,
-          score: 90
-        }
+          score: 90,
+        },
       ]);
 
       // Act
@@ -284,7 +286,7 @@ describe('AdvancedDoctorCommand', () => {
           impact: 'medium',
           effort: 'easy',
           steps: ['Close background applications'],
-          resources: ['https://example.com/cpu-optimization']
+          resources: ['https://example.com/cpu-optimization'],
         },
         {
           category: 'security',
@@ -293,8 +295,8 @@ describe('AdvancedDoctorCommand', () => {
           description: 'Critical security patches available',
           impact: 'high',
           effort: 'medium',
-          steps: ['Update system packages', 'Restart services']
-        }
+          steps: ['Update system packages', 'Restart services'],
+        },
       ]);
 
       // Act
@@ -304,7 +306,9 @@ describe('AdvancedDoctorCommand', () => {
       expect(result.recommendations).toHaveLength(2);
       expect(result.recommendations[0]?.category).toBe('performance');
       expect(result.recommendations[1]?.category).toBe('security');
-      expect(result.recommendations[1]?.severity).toBe(DiagnosticSeverity.ERROR);
+      expect(result.recommendations[1]?.severity).toBe(
+        DiagnosticSeverity.ERROR
+      );
     });
 
     test('should prioritize recommendations by severity and impact', async () => {
@@ -319,7 +323,7 @@ describe('AdvancedDoctorCommand', () => {
           description: 'Minor optimization available',
           impact: 'low',
           effort: 'easy',
-          steps: ['Optional step']
+          steps: ['Optional step'],
         },
         {
           category: 'security',
@@ -328,8 +332,8 @@ describe('AdvancedDoctorCommand', () => {
           description: 'Immediate action required',
           impact: 'critical',
           effort: 'hard',
-          steps: ['Emergency patch']
-        }
+          steps: ['Emergency patch'],
+        },
       ]);
 
       // Act
@@ -364,10 +368,10 @@ describe('AdvancedDoctorCommand', () => {
               description: 'Consider updating compiler options',
               impact: 'medium',
               effort: 'easy',
-              steps: ['Update tsconfig.json']
-            }
+              steps: ['Update tsconfig.json'],
+            },
           ],
-          status: 'good'
+          status: 'good',
         },
         {
           name: 'Git',
@@ -375,8 +379,8 @@ describe('AdvancedDoctorCommand', () => {
           version: '2.40.0',
           configFiles: ['.gitconfig', '.gitignore'],
           recommendations: [],
-          status: 'optimal'
-        }
+          status: 'optimal',
+        },
       ]);
 
       // Act
@@ -412,7 +416,7 @@ describe('AdvancedDoctorCommand', () => {
       const options: DoctorOptions = { verbose: true };
 
       // Mock console.log to capture verbose output
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation();
 
       // Act
       await doctorCommand.runAdvanced(options);

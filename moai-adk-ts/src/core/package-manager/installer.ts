@@ -4,11 +4,11 @@
  * @tags @FEATURE:PACKAGE-MANAGER-INSTALLER-001 @REQ:PACKAGE-MANAGER-003
  */
 
-import execa from 'execa';
+import { execa } from 'execa';
 import {
   PackageManagerType,
-  PackageInstallOptions,
-  PackageJsonConfig
+  type PackageInstallOptions,
+  type PackageJsonConfig,
 } from '@/types/package-manager';
 
 /**
@@ -56,28 +56,29 @@ export class PackageManagerInstaller {
       const result = await execa(executable!, args, {
         cwd: options.workingDirectory || process.cwd(),
         timeout: 300000, // 5 minutes timeout
-        reject: false
+        reject: false,
       });
 
       if (result.exitCode === 0) {
         return {
           success: true,
           installedPackages: packages,
-          output: result.stdout
+          output: result.stdout,
         };
       } else {
         return {
           success: false,
           installedPackages: [],
-          error: result.stderr || `Command failed with exit code ${result.exitCode}`,
-          output: result.stdout
+          error:
+            result.stderr || `Command failed with exit code ${result.exitCode}`,
+          output: result.stdout,
         };
       }
     } catch (error) {
       return {
         success: false,
         installedPackages: [],
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }
@@ -103,17 +104,21 @@ export class PackageManagerInstaller {
       description: projectConfig.description || '',
       main: projectConfig.main || 'index.js',
       type: projectConfig.type || 'commonjs',
-      scripts: this.generateScripts(packageManagerType, includeTypeScript, testingFramework),
+      scripts: this.generateScripts(
+        packageManagerType,
+        includeTypeScript,
+        testingFramework
+      ),
       keywords: projectConfig.keywords || [],
       author: projectConfig.author || '',
       license: projectConfig.license || 'MIT',
       engines: {
         node: '>=18.0.0',
-        ...this.getPackageManagerEngine(packageManagerType)
+        ...this.getPackageManagerEngine(packageManagerType),
       },
       files: projectConfig.files || ['dist', 'lib'],
       dependencies: {},
-      devDependencies: {}
+      devDependencies: {},
     };
 
     // Add TypeScript dependencies if requested
@@ -121,7 +126,7 @@ export class PackageManagerInstaller {
       baseConfig.devDependencies = {
         ...baseConfig.devDependencies,
         typescript: '^5.0.0',
-        '@types/node': '^20.0.0'
+        '@types/node': '^20.0.0',
       };
     }
 
@@ -129,14 +134,14 @@ export class PackageManagerInstaller {
     if (testingFramework === 'jest') {
       baseConfig.devDependencies = {
         ...baseConfig.devDependencies,
-        jest: '^29.0.0'
+        jest: '^29.0.0',
       };
 
       if (includeTypeScript) {
         baseConfig.devDependencies = {
           ...baseConfig.devDependencies,
           '@types/jest': '^29.0.0',
-          'ts-jest': '^29.0.0'
+          'ts-jest': '^29.0.0',
         };
       }
     }
@@ -159,8 +164,8 @@ export class PackageManagerInstaller {
       ...existingPackageJson,
       dependencies: {
         ...existingPackageJson.dependencies,
-        ...newDependencies
-      }
+        ...newDependencies,
+      },
     } as PackageJsonConfig;
   }
 
@@ -179,8 +184,8 @@ export class PackageManagerInstaller {
       ...existingPackageJson,
       devDependencies: {
         ...existingPackageJson.devDependencies,
-        ...newDevDependencies
-      }
+        ...newDevDependencies,
+      },
     } as PackageJsonConfig;
   }
 
@@ -202,26 +207,27 @@ export class PackageManagerInstaller {
       const result = await execa(executable!, args, {
         cwd: projectPath,
         timeout: 30000,
-        reject: false
+        reject: false,
       });
 
       if (result.exitCode === 0) {
         return {
           success: true,
           packageJsonPath: `${projectPath}/package.json`,
-          output: result.stdout
+          output: result.stdout,
         };
       } else {
         return {
           success: false,
-          error: result.stderr || `Command failed with exit code ${result.exitCode}`,
-          output: result.stdout
+          error:
+            result.stderr || `Command failed with exit code ${result.exitCode}`,
+          output: result.stdout,
         };
       }
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }
@@ -233,27 +239,33 @@ export class PackageManagerInstaller {
    * @returns Command string
    * @tags @UTIL:BUILD-COMMAND-001
    */
-  private buildInstallCommand(packages: string[], options: PackageInstallOptions): string {
+  private buildInstallCommand(
+    packages: string[],
+    options: PackageInstallOptions
+  ): string {
     const { packageManager, isDevelopment, isGlobal } = options;
 
     switch (packageManager) {
-      case PackageManagerType.NPM:
+      case PackageManagerType.NPM: {
         let npmCmd = 'npm install';
         if (isDevelopment) npmCmd += ' --save-dev';
         if (isGlobal) npmCmd += ' --global';
         return `${npmCmd} ${packages.join(' ')}`;
+      }
 
-      case PackageManagerType.YARN:
+      case PackageManagerType.YARN: {
         let yarnCmd = 'yarn add';
         if (isDevelopment) yarnCmd += ' --dev';
         if (isGlobal) yarnCmd = 'yarn global add';
         return `${yarnCmd} ${packages.join(' ')}`;
+      }
 
-      case PackageManagerType.PNPM:
+      case PackageManagerType.PNPM: {
         let pnpmCmd = 'pnpm add';
         if (isDevelopment) pnpmCmd += ' --save-dev';
         if (isGlobal) pnpmCmd += ' --global';
         return `${pnpmCmd} ${packages.join(' ')}`;
+      }
 
       default:
         throw new Error(`Unsupported package manager: ${packageManager}`);
@@ -273,12 +285,15 @@ export class PackageManagerInstaller {
     includeTypeScript: boolean,
     testingFramework?: string
   ): Record<string, string> {
-    const testCommand = this.getTestCommand(packageManagerType, testingFramework);
+    const testCommand = this.getTestCommand(
+      packageManagerType,
+      testingFramework
+    );
 
     const baseScripts: Record<string, string> = {
       start: 'node index.js',
       build: includeTypeScript ? 'tsc' : 'echo "No build step configured"',
-      test: testCommand
+      test: testCommand,
     };
 
     if (includeTypeScript) {
@@ -320,7 +335,10 @@ export class PackageManagerInstaller {
    * @returns Test command
    * @tags @UTIL:TEST-COMMAND-001
    */
-  private getTestCommand(packageManagerType: PackageManagerType, testingFramework?: string): string {
+  private getTestCommand(
+    packageManagerType: PackageManagerType,
+    testingFramework?: string
+  ): string {
     if (testingFramework === 'jest') {
       return 'jest';
     }
@@ -362,7 +380,9 @@ export class PackageManagerInstaller {
    * @returns Engine requirements
    * @tags @UTIL:ENGINE-REQUIREMENT-001
    */
-  private getPackageManagerEngine(packageManagerType: PackageManagerType): Record<string, string> {
+  private getPackageManagerEngine(
+    packageManagerType: PackageManagerType
+  ): Record<string, string> {
     switch (packageManagerType) {
       case PackageManagerType.NPM:
         return { npm: '>=9.0.0' };

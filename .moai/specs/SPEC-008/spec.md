@@ -1,3 +1,17 @@
+---
+spec_id: SPEC-008
+status: completed
+priority: high
+dependencies: []
+tags:
+  - release
+  - production
+  - packaging
+  - version-management
+  - templates
+  - cleanup
+---
+
 # SPEC-008: MoAI-ADK v0.1.17 Production Release
 
 ## @REQ:RELEASE-001 배경

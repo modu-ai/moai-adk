@@ -10,7 +10,7 @@
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import { logger } from '../../../utils/logger';
-import { type TemplateContext as TemplateContextType } from './utils';
+import type { TemplateContext as TemplateContextType } from './utils';
 import { ResourceOperations } from './resource-operations';
 
 // Re-export for external use
@@ -113,7 +113,10 @@ export class ResourceManager {
     targetPath: string,
     overwrite: boolean = false
   ): Promise<string[]> {
-    return await this.resourceOperations.copyClaudeResources(targetPath, overwrite);
+    return await this.resourceOperations.copyClaudeResources(
+      targetPath,
+      overwrite
+    );
   }
 
   /**
@@ -141,7 +144,11 @@ export class ResourceManager {
     overwrite: boolean = false,
     projectContext?: TemplateContextType
   ): Promise<boolean> {
-    return await this.resourceOperations.copyProjectMemory(projectPath, overwrite, projectContext);
+    return await this.resourceOperations.copyProjectMemory(
+      projectPath,
+      overwrite,
+      projectContext
+    );
   }
 
   /**
@@ -151,7 +158,7 @@ export class ResourceManager {
     const requiredPaths = [
       path.join(projectPath, '.claude'),
       path.join(projectPath, '.moai'),
-      path.join(projectPath, 'CLAUDE.md')
+      path.join(projectPath, 'CLAUDE.md'),
     ];
 
     const missingPaths: string[] = [];

@@ -13,7 +13,7 @@ export {
   templateManager,
   TemplateContext,
   TemplateRenderResult,
-  ITemplateManager
+  ITemplateManager,
 } from './core/installer/managers/template-manager';
 
 // CLI components

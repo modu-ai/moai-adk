@@ -1,8 +1,13 @@
 /**
- * @fileoverview TypeScript FileOperations Manager - fs-extra based file system operations
+ * @API:FILE-OPERATIONS-001 Cross-platform File System Operations
+ * @FEATURE:FS-EXTRA-INTEGRATION-001 fs-extra based file system operations
  *
  * SPEC-012 Week 2 Track C-1: Complete fs-extra porting of Python file operations
  * Provides cross-platform file system operations with security validation.
+ *
+ * @TASK:FILE-OPS-TYPESCRIPT-001 TypeScript 파일 시스템 작업 포팅
+ * @DESIGN:CROSS-PLATFORM-001 Windows/macOS/Linux 크로스 플랫폼 지원
+ * @SEC:PATH-TRAVERSAL-001 디렉토리 순회 공격 방어
  *
  * @author MoAI Team
  * @version 0.0.1
@@ -46,7 +51,11 @@ export interface FileOperationOptions {
 /**
  * Progress callback function type
  */
-export type ProgressCallback = (current: number, total: number, file: string) => void;
+export type ProgressCallback = (
+  current: number,
+  total: number,
+  file: string
+) => void;
 
 /**
  * FileOperations class - Cross-platform file system operations manager
@@ -65,7 +74,6 @@ export type ProgressCallback = (current: number, total: number, file: string) =>
  * - Permission validation and safe defaults
  */
 export class FileOperations {
-
   /**
    * Ensure directory exists with proper permissions
    */
@@ -76,7 +84,11 @@ export class FileOperations {
   /**
    * Copy a single file with overwrite option
    */
-  async copyFile(src: string, dst: string, overwrite: boolean = false): Promise<void> {
+  async copyFile(
+    src: string,
+    dst: string,
+    overwrite: boolean = false
+  ): Promise<void> {
     return FileIO.copyFile(src, dst, overwrite);
   }
 
@@ -118,7 +130,9 @@ export class FileOperations {
 
       return copiedFiles;
     } catch (error) {
-      throw new Error(`Failed to copy directory from '${src}' to '${dst}': ${error}`);
+      throw new Error(
+        `Failed to copy directory from '${src}' to '${dst}': ${error}`
+      );
     }
   }
 
@@ -188,7 +202,6 @@ export class FileOperations {
   sanitizeFileName(fileName: string): string {
     return FileUtils.sanitizeFileName(fileName);
   }
-
 
   /**
    * Get platform-specific path separator

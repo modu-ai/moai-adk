@@ -39,13 +39,23 @@ logs/
 .moai/checkpoints/snapshots/
 .moai/checkpoints/tmp/
 
-# SQLite test databases (auto-generated during tests)
+# SQLite databases (no longer used - migrated to JSON)
 *.db
 *.db-shm
 *.db-wal
 migration_test.db*
 test_tags.db*
 **/indexes/*.db*
+
+# Large TAG index files (use distributed storage instead)
+.moai/indexes/tags.json
+moai-adk-ts/.moai/indexes/tags.json
+
+# Distributed TAG system (keep tracked)
+!.moai/indexes/meta.json
+!.moai/indexes/categories/
+!.moai/indexes/relations/
+!.moai/indexes/cache/summary.json
 
 my-docs/
 

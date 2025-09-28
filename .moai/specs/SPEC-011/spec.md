@@ -1,3 +1,14 @@
+---
+spec_id: SPEC-011
+status: completed
+priority: medium
+dependencies: [SPEC-006]
+tags:
+  - traceability
+  - tag-system
+  - quality
+---
+
 # SPEC-011: @TAG 추적성 체계 강화
 
 ## @REQ:TAG-SYSTEM-011 Environment & Context

@@ -22,7 +22,11 @@ export interface InstallationConfig {
  * Installation progress callback type
  * @tags @DESIGN:PROGRESS-CALLBACK-001
  */
-export type ProgressCallback = (message: string, current: number, total: number) => void;
+export type ProgressCallback = (
+  message: string,
+  current: number,
+  total: number
+) => void;
 
 /**
  * Installation result interface
@@ -72,3 +76,121 @@ export interface SecurityValidationResult {
   readonly issues: readonly string[];
   readonly recommendations: readonly string[];
 }
+
+/**
+ * Post-installation configuration options
+ * @tags @DESIGN:POST-INSTALL-CONFIG-001
+ */
+export interface PostInstallOptions {
+  readonly projectPath: string;
+  readonly setupGlobal: boolean;
+  readonly validateResources: boolean;
+  readonly force: boolean;
+  readonly quiet: boolean;
+}
+
+/**
+ * Post-installation result
+ * @tags @DESIGN:POST-INSTALL-RESULT-001
+ */
+export interface PostInstallResult {
+  readonly success: boolean;
+  readonly isFirstRun: boolean;
+  readonly resourcesValidated: boolean;
+  readonly globalSetupCompleted: boolean;
+  readonly firstRunSetupCompleted: boolean;
+  readonly errors: readonly string[];
+  readonly warnings: readonly string[];
+  readonly duration: number;
+  readonly timestamp: Date;
+}
+
+/**
+ * Resource validation result
+ * @tags @DESIGN:RESOURCE-VALIDATION-001
+ */
+export interface ValidationResult {
+  readonly isValid: boolean;
+  readonly missingTemplates: readonly string[];
+  readonly errors: readonly string[];
+}
+
+/**
+ * Template check result
+ * @tags @DESIGN:TEMPLATE-CHECK-001
+ */
+export interface TemplateCheckResult {
+  readonly allPresent: boolean;
+  readonly missingTemplates: readonly string[];
+  readonly templateCount: number;
+}
+
+/**
+ * Resource integrity result
+ * @tags @DESIGN:INTEGRITY-CHECK-001
+ */
+export interface IntegrityResult {
+  readonly isValid: boolean;
+  readonly corruptedFiles: readonly string[];
+  readonly checksumMismatches: readonly string[];
+}
+
+/**
+ * First run state information
+ * @tags @DESIGN:FIRST-RUN-STATE-001
+ */
+export interface FirstRunState {
+  readonly isFirstRun: boolean;
+  readonly hasMarkerFile: boolean;
+  readonly setupCompleted: boolean;
+}
+
+/**
+ * Technology stack enum for memory template mapping
+ * @tags @DESIGN:TECH-STACK-001
+ */
+export type TechStack =
+  | 'python'
+  | 'fastapi'
+  | 'django'
+  | 'flask'
+  | 'java'
+  | 'spring'
+  | 'spring boot'
+  | 'springboot'
+  | 'spring-boot'
+  | 'react'
+  | 'nextjs'
+  | 'vue'
+  | 'nuxt'
+  | 'angular'
+  | 'typescript'
+  | 'javascript'
+  | 'nodejs'
+  | 'express'
+  | 'nestjs'
+  | 'rust'
+  | 'go'
+  | 'kotlin'
+  | 'scala'
+  | 'cpp'
+  | 'c'
+  | 'csharp'
+  | 'dotnet';
+
+/**
+ * Memory template names enum
+ * @tags @DESIGN:MEMORY-TEMPLATE-001
+ */
+export type MemoryTemplate =
+  | 'development-guide'
+  | 'backend-python'
+  | 'backend-fastapi'
+  | 'backend-spring'
+  | 'backend-express'
+  | 'frontend-react'
+  | 'frontend-next'
+  | 'frontend-vue'
+  | 'frontend-angular'
+  | 'fullstack-patterns'
+  | 'microservice-patterns';

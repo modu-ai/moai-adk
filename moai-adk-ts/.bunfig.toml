@@ -1,0 +1,59 @@
+# Bun Configuration for MoAI-ADK TypeScript
+# High-performance package manager and runtime configuration
+# @PERF:BUN-CONFIG-001 성능 최적화 설정
+
+[install]
+# 패키지 설치 최적화
+cache = true
+registry = "https://registry.npmjs.org/"
+production = false
+auto = "auto"
+# exact = true  # 정확한 버전 매칭
+frozen = false  # package.json 수정 허용
+
+[install.cache]
+# 캐시 최적화
+dir = ".bun/cache"
+disable = false
+
+[run]
+# 스크립트 실행 최적화
+bun = true  # Bun 런타임 우선 사용
+shell = "/bin/bash"  # 기본 쉘 설정
+
+[test]
+# 테스트 프레임워크 설정
+coverage = true
+preload = ["./src/__tests__/setup.ts"]
+timeout = 10000
+
+[build]
+# 빌드 최적화
+sourcemap = "external"
+target = "node"
+splitting = true
+minify = false  # 개발 모드에서는 비활성화
+
+[transpiler]
+# TypeScript 트랜스파일러 최적화
+target = "node18"
+jsxFactory = "React.createElement"
+jsxFragment = "React.Fragment"
+allowJS = true
+define = {}
+
+[macros]
+# 매크로 최적화 (성능 중요한 부분)
+# react-refresh = true
+
+[dev]
+# 개발 서버 최적화
+origin = "http://localhost:3000"
+
+[loader]
+# 파일 로더 설정
+".ts" = "tsx"
+".tsx" = "tsx"
+".js" = "js"
+".mjs" = "js"
+".json" = "json"

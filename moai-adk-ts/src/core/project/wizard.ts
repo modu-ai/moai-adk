@@ -5,7 +5,7 @@
  */
 
 import inquirer from 'inquirer';
-import { ProjectType, ProjectConfig, ProjectFeature } from '@/types/project';
+import { ProjectType, type ProjectConfig, type ProjectFeature } from '@/types/project';
 
 /**
  * Interactive wizard for project configuration
@@ -34,32 +34,44 @@ export class ProjectWizard {
             return 'Invalid project name format';
           }
           return true;
-        }
+        },
       },
       {
         type: 'list',
         name: 'projectType',
         message: 'Project type:',
         choices: [
-          { name: 'Python - Backend/CLI applications', value: ProjectType.PYTHON },
-          { name: 'Node.js - JavaScript/TypeScript applications', value: ProjectType.NODEJS },
-          { name: 'TypeScript - Pure TypeScript projects', value: ProjectType.TYPESCRIPT },
-          { name: 'Frontend - React/Vue/Angular applications', value: ProjectType.FRONTEND },
-          { name: 'Mixed - Full-stack applications', value: ProjectType.MIXED }
-        ]
+          {
+            name: 'Python - Backend/CLI applications',
+            value: ProjectType.PYTHON,
+          },
+          {
+            name: 'Node.js - JavaScript/TypeScript applications',
+            value: ProjectType.NODEJS,
+          },
+          {
+            name: 'TypeScript - Pure TypeScript projects',
+            value: ProjectType.TYPESCRIPT,
+          },
+          {
+            name: 'Frontend - React/Vue/Angular applications',
+            value: ProjectType.FRONTEND,
+          },
+          { name: 'Mixed - Full-stack applications', value: ProjectType.MIXED },
+        ],
       },
       {
         type: 'input',
         name: 'description',
         message: 'Project description (optional):',
-        default: ''
+        default: '',
       },
       {
         type: 'input',
         name: 'author',
         message: 'Author name:',
-        default: 'MoAI Developer'
-      }
+        default: 'MoAI Developer',
+      },
     ]);
 
     // Validate project name format
@@ -75,15 +87,15 @@ export class ProjectWizard {
         name: 'license',
         message: 'License:',
         choices: ['MIT', 'Apache-2.0', 'GPL-3.0', 'BSD-3-Clause', 'Unlicense'],
-        default: 'MIT'
+        default: 'MIT',
       },
       {
         type: 'list',
         name: 'packageManager',
         message: 'Package manager:',
         choices: ['npm', 'yarn', 'pnpm'],
-        default: 'npm'
-      }
+        default: 'npm',
+      },
     ]);
 
     console.log('\nStep 3/5: Project Features\n');
@@ -97,7 +109,7 @@ export class ProjectWizard {
       author: basicAnswers.author,
       license: configAnswers.license,
       packageManager: configAnswers.packageManager,
-      features
+      features,
     };
   }
 
@@ -107,7 +119,9 @@ export class ProjectWizard {
    * @returns Array of selected features
    * @tags @API:WIZARD-FEATURES-001
    */
-  private async collectFeatures(projectType: ProjectType): Promise<ProjectFeature[]> {
+  private async collectFeatures(
+    projectType: ProjectType
+  ): Promise<ProjectFeature[]> {
     const featureChoices = this.getFeatureChoices(projectType);
 
     const featureAnswers = await inquirer.prompt([
@@ -115,14 +129,14 @@ export class ProjectWizard {
         type: 'checkbox',
         name: 'selectedFeatures',
         message: 'Select features to include:',
-        choices: featureChoices
-      }
+        choices: featureChoices,
+      },
     ]);
 
     return featureAnswers.selectedFeatures.map((featureName: string) => ({
       name: featureName,
       enabled: true,
-      config: {}
+      config: {},
     }));
   }
 
@@ -132,12 +146,14 @@ export class ProjectWizard {
    * @returns Available feature choices
    * @tags @API:WIZARD-CHOICES-001
    */
-  private getFeatureChoices(projectType: ProjectType): Array<{ name: string; value: string }> {
+  private getFeatureChoices(
+    projectType: ProjectType
+  ): Array<{ name: string; value: string }> {
     const commonFeatures = [
       { name: 'Testing framework', value: 'testing' },
       { name: 'Linting (code quality)', value: 'linting' },
       { name: 'Documentation generation', value: 'documentation' },
-      { name: 'CI/CD configuration', value: 'ci-cd' }
+      { name: 'CI/CD configuration', value: 'ci-cd' },
     ];
 
     switch (projectType) {
@@ -147,7 +163,7 @@ export class ProjectWizard {
           { name: 'Pytest testing', value: 'pytest' },
           { name: 'Black formatter', value: 'black' },
           { name: 'MyPy type checking', value: 'mypy' },
-          { name: 'FastAPI web framework', value: 'fastapi' }
+          { name: 'FastAPI web framework', value: 'fastapi' },
         ];
 
       case ProjectType.NODEJS:
@@ -157,7 +173,7 @@ export class ProjectWizard {
           { name: 'Jest testing', value: 'jest' },
           { name: 'ESLint linting', value: 'eslint' },
           { name: 'Prettier formatting', value: 'prettier' },
-          { name: 'Express.js framework', value: 'express' }
+          { name: 'Express.js framework', value: 'express' },
         ];
 
       case ProjectType.FRONTEND:
@@ -166,18 +182,21 @@ export class ProjectWizard {
           { name: 'React framework', value: 'react' },
           { name: 'Vue.js framework', value: 'vue' },
           { name: 'Tailwind CSS', value: 'tailwind' },
-          { name: 'Webpack bundling', value: 'webpack' }
+          { name: 'Webpack bundling', value: 'webpack' },
         ];
 
       case ProjectType.MIXED:
         return [
           ...commonFeatures,
           { name: 'Backend: Python + FastAPI', value: 'backend-python' },
-          { name: 'Frontend: TypeScript + React', value: 'frontend-typescript' },
+          {
+            name: 'Frontend: TypeScript + React',
+            value: 'frontend-typescript',
+          },
           { name: 'Docker containerization', value: 'docker' },
           { name: 'Claude integration', value: 'claude-integration' },
           { name: 'Database integration', value: 'database' },
-          { name: 'API documentation', value: 'api-docs' }
+          { name: 'API documentation', value: 'api-docs' },
         ];
 
       default:
@@ -193,11 +212,16 @@ export class ProjectWizard {
    */
   public getProjectTypeDescription(projectType: ProjectType): string {
     const descriptions = {
-      [ProjectType.PYTHON]: 'Python backend applications, CLI tools, and data processing scripts',
-      [ProjectType.NODEJS]: 'Node.js applications with JavaScript or TypeScript',
-      [ProjectType.TYPESCRIPT]: 'Pure TypeScript projects with advanced type safety',
-      [ProjectType.FRONTEND]: 'Frontend web applications using modern frameworks',
-      [ProjectType.MIXED]: 'Full-stack applications with both backend and frontend components'
+      [ProjectType.PYTHON]:
+        'Python backend applications, CLI tools, and data processing scripts',
+      [ProjectType.NODEJS]:
+        'Node.js applications with JavaScript or TypeScript',
+      [ProjectType.TYPESCRIPT]:
+        'Pure TypeScript projects with advanced type safety',
+      [ProjectType.FRONTEND]:
+        'Frontend web applications using modern frameworks',
+      [ProjectType.MIXED]:
+        'Full-stack applications with both backend and frontend components',
     };
 
     return descriptions[projectType] || 'Custom project configuration';

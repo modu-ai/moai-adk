@@ -1,3 +1,17 @@
+---
+spec_id: SPEC-007
+status: active
+priority: medium
+dependencies: []
+tags:
+  - claude-hooks
+  - optimization
+  - refactoring
+  - performance
+  - cleanup
+  - session-startup
+---
+
 # SPEC-007: .claude/hooks 파일 최적화 및 불필요한 것들 제거
 
 ## @REQ:HOOKS-OPTIMIZE-001 Environment (환경 및 가정사항)

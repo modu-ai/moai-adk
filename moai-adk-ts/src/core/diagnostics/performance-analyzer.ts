@@ -6,7 +6,7 @@
 
 import * as os from 'os';
 import * as fs from 'fs/promises';
-import { SystemPerformanceMetrics } from '@/types/diagnostics';
+import type { SystemPerformanceMetrics } from '@/types/diagnostics';
 
 /**
  * System performance analyzer for metrics collection
@@ -22,14 +22,14 @@ export class SystemPerformanceAnalyzer {
     const [cpuUsage, memoryUsage, diskSpace] = await Promise.all([
       this.getCpuUsage(),
       this.getMemoryUsage(),
-      this.getDiskSpace()
+      this.getDiskSpace(),
     ]);
 
     return {
       cpuUsage,
       memoryUsage,
       diskSpace,
-      networkLatency: await this.getNetworkLatency()
+      networkLatency: await this.getNetworkLatency(),
     };
   }
 
@@ -39,14 +39,15 @@ export class SystemPerformanceAnalyzer {
    * @tags @API:CPU-USAGE-001
    */
   private async getCpuUsage(): Promise<number> {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const startUsage = this.getCpuInfo();
 
       setTimeout(() => {
         const endUsage = this.getCpuInfo();
         const idleDifference = endUsage.idle - startUsage.idle;
         const totalDifference = endUsage.total - startUsage.total;
-        const usage = 100 - Math.floor(100 * idleDifference / totalDifference);
+        const usage =
+          100 - Math.floor((100 * idleDifference) / totalDifference);
         resolve(Math.max(0, Math.min(100, usage)));
       }, 1000);
     });
@@ -89,7 +90,7 @@ export class SystemPerformanceAnalyzer {
     return {
       used: Math.round(usedMem / 1024 / 1024), // MB
       total: Math.round(totalMem / 1024 / 1024), // MB
-      percentage: Math.round((usedMem / totalMem) * 100)
+      percentage: Math.round((usedMem / totalMem) * 100),
     };
   }
 
@@ -105,9 +106,9 @@ export class SystemPerformanceAnalyzer {
   }> {
     try {
       // Cross-platform disk space check
-      const stats = await fs.statvfs ?
-        fs.statvfs(process.cwd()) :
-        this.getWindowsDiskSpace();
+      const stats = (await fs.statvfs)
+        ? fs.statvfs(process.cwd())
+        : this.getWindowsDiskSpace();
 
       if (stats && 'bavail' in stats) {
         const total = stats.blocks * stats.frsize;
@@ -117,7 +118,7 @@ export class SystemPerformanceAnalyzer {
         return {
           used: Math.round(used / 1024 / 1024 / 1024), // GB
           available: Math.round(available / 1024 / 1024 / 1024), // GB
-          percentage: Math.round((used / total) * 100)
+          percentage: Math.round((used / total) * 100),
         };
       }
 
@@ -152,7 +153,7 @@ export class SystemPerformanceAnalyzer {
     return {
       used: 256,
       available: 768,
-      percentage: 25
+      percentage: 25,
     };
   }
 
@@ -167,7 +168,7 @@ export class SystemPerformanceAnalyzer {
       // Simple HTTP request to measure latency
       const response = await fetch('https://www.google.com/favicon.ico', {
         method: 'HEAD',
-        cache: 'no-cache'
+        cache: 'no-cache',
       });
 
       if (response.ok) {

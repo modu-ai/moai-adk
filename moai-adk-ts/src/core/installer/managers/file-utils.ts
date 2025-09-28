@@ -1,8 +1,15 @@
 /**
+ * @API:FILE-UTILS-001 Cross-platform File Security Utilities
+ * @FEATURE:PATH-SECURITY-001 경로 보안 및 유틸리티 함수
+ *
  * @fileoverview File Utilities - Cross-platform path and security utilities
  *
  * SPEC-012 Week 2 Track C-1: Security and path utility functions
  * Separated from main FileOperations class to maintain TRUST principle (Under 300 LOC)
+ *
+ * @TASK:PATH-UTILS-SEPARATION-001 경로 유틸리티 클래스 분리
+ * @DESIGN:SECURITY-FIRST-001 보안 우선 설계
+ * @SEC:PATH-TRAVERSAL-001 디렉토리 순회 공격 방어
  *
  * @author MoAI Team
  * @version 0.0.1
@@ -69,14 +76,14 @@ export class FileUtils {
 
     // Replace dangerous characters with safe alternatives
     let sanitized = fileName
-      .replace(/[<>:"|?*]/g, '-')    // Windows reserved chars
+      .replace(/[<>:"|?*]/g, '-') // Windows reserved chars
       // eslint-disable-next-line no-control-regex
       .replace(/[\u0000-\u001F\u0080-\u009F]/g, '') // Control characters (Unicode escape)
       .replace(/[\u{1F600}-\u{1F64F}]/gu, '-') // Emoticons
       .replace(/[\u{1F300}-\u{1F5FF}]/gu, '-') // Symbols
       .replace(/[\u{1F680}-\u{1F6FF}]/gu, '-') // Transport
-      .replace(/[\u{2600}-\u{26FF}]/gu, '-')  // Misc symbols
-      .replace(/[^\w\-_.]/g, '-');   // Non-word chars except safe ones
+      .replace(/[\u{2600}-\u{26FF}]/gu, '-') // Misc symbols
+      .replace(/[^\w\-_.]/g, '-'); // Non-word chars except safe ones
 
     // Remove multiple consecutive dashes
     sanitized = sanitized.replace(/-+/g, '-');

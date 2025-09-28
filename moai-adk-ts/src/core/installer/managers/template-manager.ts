@@ -1,6 +1,13 @@
 /**
+ * @API:TEMPLATE-MANAGER-001 Template Resource Management API
+ * @FEATURE:MUSTACHE-RENDERING-001 Mustache.js 기반 템플릿 렌더링 시스템
+ *
  * TemplateManager - Mustache.js 기반 템플릿 렌더링 시스템
  * Python Jinja2에서 TypeScript Mustache로 전환된 구현
+ *
+ * @TASK:JINJA2-TO-MUSTACHE-001 Python Jinja2 → TypeScript Mustache 포팅
+ * @DESIGN:TEMPLATE-CACHING-001 템플릿 캐싱 아키텍처 설계
+ * @PERF:TEMPLATE-CACHE-001 템플릿 캐싱 최적화
  */
 
 import * as fs from 'fs/promises';
@@ -28,7 +35,10 @@ export interface TemplateRenderResult {
 export interface ITemplateManager {
   loadTemplate(templatePath: string): Promise<string>;
   renderTemplate(template: string, context: TemplateContext): string;
-  renderTemplateFile(templatePath: string, context: TemplateContext): Promise<string>;
+  renderTemplateFile(
+    templatePath: string,
+    context: TemplateContext
+  ): Promise<string>;
   validateTemplate(template: string): boolean;
   clearCache(): void;
 }
@@ -106,7 +116,10 @@ export class TemplateManager implements ITemplateManager {
    * @param context 컨텍스트 데이터
    * @returns 렌더링된 문자열
    */
-  async renderTemplateFile(templatePath: string, context: TemplateContext): Promise<string> {
+  async renderTemplateFile(
+    templatePath: string,
+    context: TemplateContext
+  ): Promise<string> {
     const template = await this.loadTemplate(templatePath);
     return this.renderTemplate(template, context);
   }
@@ -159,7 +172,7 @@ export class TemplateManager implements ITemplateManager {
 
     for (let i = 0; i < template.length; i++) {
       const char = template.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // 32비트 정수로 변환
     }
 

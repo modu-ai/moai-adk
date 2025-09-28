@@ -13,7 +13,7 @@ export enum ProjectType {
   NODEJS = 'nodejs',
   MIXED = 'mixed',
   TYPESCRIPT = 'typescript',
-  FRONTEND = 'frontend'
+  FRONTEND = 'frontend',
 }
 
 /**

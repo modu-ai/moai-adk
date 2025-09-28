@@ -1,6 +1,13 @@
 /**
+ * @DATA:GIT-CONSTANTS-001 Git Configuration Constants
+ * @FEATURE:GIT-DEFAULTS-001 Git 기본 설정 상수
+ *
  * Git Manager Constants
  * SPEC-012 Week 2 Track D: Git System Integration
+ *
+ * @TASK:GIT-CONFIG-SETUP-001 Git 설정 상수 정의
+ * @DESIGN:DEFAULT-VALUES-001 기본값 설계
+ * @STRUCT:GIT-SYSTEM-001 Git 시스템 구조 정의
  *
  * @fileoverview Git naming rules, templates, and constants
  */
@@ -40,13 +47,15 @@ export const GitNamingRules = {
    */
   isValidBranchName: (name: string): boolean => {
     // Git 브랜치명 규칙: 알파벳, 숫자, 하이픈, 슬래시 허용
-    const pattern = /^[a-zA-Z0-9\/\-_.]+$/;
-    return pattern.test(name) &&
-           !name.startsWith('-') &&
-           !name.endsWith('-') &&
-           !name.includes('//') &&
-           !name.includes('..');
-  }
+    const pattern = /^[a-zA-Z0-9/\-_.]+$/;
+    return (
+      pattern.test(name) &&
+      !name.startsWith('-') &&
+      !name.endsWith('-') &&
+      !name.includes('//') &&
+      !name.includes('..')
+    );
+  },
 } as const;
 
 /**
@@ -103,10 +112,10 @@ export const GitCommitTemplates = {
       perf: '⚡',
       build: '👷',
       ci: '💚',
-      revert: '⏪'
+      revert: '⏪',
     };
     return emojiMap[type] || '📝';
-  }
+  },
 } as const;
 
 /**
@@ -284,7 +293,7 @@ venv.bak/
 .mypy_cache/
 .dmypy.json
 dmypy.json
-`
+`,
 } as const;
 
 /**
@@ -304,7 +313,7 @@ export const GitDefaults = {
     'core.autocrlf': process.platform === 'win32' ? 'true' : 'input',
     'core.ignorecase': 'false',
     'pull.rebase': 'false',
-    'push.default': 'current'
+    'push.default': 'current',
   },
 
   /**
@@ -318,7 +327,7 @@ export const GitDefaults = {
     'branch',
     'remote',
     'config',
-    'ls-files'
+    'ls-files',
   ],
 
   /**
@@ -330,8 +339,8 @@ export const GitDefaults = {
     'rebase -i',
     'push --force',
     'branch -D',
-    'remote rm'
-  ]
+    'remote rm',
+  ],
 } as const;
 
 /**
@@ -389,25 +398,53 @@ What actually happens
    * 기본 라벨
    */
   DEFAULT_LABELS: [
-    { name: 'bug', color: 'd73a4a', description: 'Something isn\'t working' },
-    { name: 'enhancement', color: 'a2eeef', description: 'New feature or request' },
-    { name: 'documentation', color: '0075ca', description: 'Improvements or additions to documentation' },
-    { name: 'good first issue', color: '7057ff', description: 'Good for newcomers' },
-    { name: 'help wanted', color: '008672', description: 'Extra attention is needed' },
-    { name: 'invalid', color: 'e4e669', description: 'This doesn\'t seem right' },
-    { name: 'question', color: 'd876e3', description: 'Further information is requested' },
-    { name: 'wontfix', color: 'ffffff', description: 'This will not be worked on' }
-  ]
+    { name: 'bug', color: 'd73a4a', description: "Something isn't working" },
+    {
+      name: 'enhancement',
+      color: 'a2eeef',
+      description: 'New feature or request',
+    },
+    {
+      name: 'documentation',
+      color: '0075ca',
+      description: 'Improvements or additions to documentation',
+    },
+    {
+      name: 'good first issue',
+      color: '7057ff',
+      description: 'Good for newcomers',
+    },
+    {
+      name: 'help wanted',
+      color: '008672',
+      description: 'Extra attention is needed',
+    },
+    {
+      name: 'invalid',
+      color: 'e4e669',
+      description: "This doesn't seem right",
+    },
+    {
+      name: 'question',
+      color: 'd876e3',
+      description: 'Further information is requested',
+    },
+    {
+      name: 'wontfix',
+      color: 'ffffff',
+      description: 'This will not be worked on',
+    },
+  ],
 } as const;
 
 /**
  * Git 타임아웃 설정
  */
 export const GitTimeouts = {
-  CLONE: 300000,     // 5분
-  FETCH: 120000,     // 2분
-  PUSH: 180000,      // 3분
-  COMMIT: 30000,     // 30초
-  STATUS: 10000,     // 10초
-  DEFAULT: 60000     // 1분
+  CLONE: 300000, // 5분
+  FETCH: 120000, // 2분
+  PUSH: 180000, // 3분
+  COMMIT: 30000, // 30초
+  STATUS: 10000, // 10초
+  DEFAULT: 60000, // 1분
 } as const;

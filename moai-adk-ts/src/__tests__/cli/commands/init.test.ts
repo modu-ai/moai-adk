@@ -4,36 +4,40 @@
  * @tags @TEST:CLI-INIT-001 @REQ:CLI-INIT-002
  */
 
-import { describe, test, expect, beforeEach, jest } from '@jest/globals';
+import { describe, test, expect, beforeEach, jest, vi } from 'vitest';
 import '@/__tests__/setup';
 import { InitCommand } from '@/cli/commands/init';
 import { ProjectWizard } from '@/core/project/wizard';
 import { TemplateManager } from '@/core/project/template-manager';
 import { SystemDetector } from '@/core/system-checker/detector';
-import { ProjectType, ProjectConfig } from '@/types/project';
-import { DoctorResult } from '@/cli/commands/doctor';
+import { ProjectType, type ProjectConfig } from '@/types/project';
+import type { DoctorResult } from '@/cli/commands/doctor';
 
 // Mock modules
-jest.mock('@/core/project/wizard');
-jest.mock('@/core/project/template-manager');
-jest.mock('@/core/system-checker/detector');
+vi.mock('@/core/project/wizard');
+vi.mock('@/core/project/template-manager');
+vi.mock('@/core/system-checker/detector');
 
 describe('InitCommand Advanced Features', () => {
   let initCommand: InitCommand;
-  let mockDetector: jest.Mocked<SystemDetector>;
-  let mockWizard: jest.Mocked<ProjectWizard>;
-  let mockTemplateManager: jest.Mocked<TemplateManager>;
+  let mockDetector: vi.Mocked<SystemDetector>;
+  let mockWizard: vi.Mocked<ProjectWizard>;
+  let mockTemplateManager: vi.Mocked<TemplateManager>;
 
   beforeEach(() => {
     // Reset all mocks
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup mock instances
-    mockDetector = new SystemDetector() as jest.Mocked<SystemDetector>;
-    mockWizard = new ProjectWizard() as jest.Mocked<ProjectWizard>;
-    mockTemplateManager = new TemplateManager() as jest.Mocked<TemplateManager>;
+    mockDetector = new SystemDetector() as vi.Mocked<SystemDetector>;
+    mockWizard = new ProjectWizard() as vi.Mocked<ProjectWizard>;
+    mockTemplateManager = new TemplateManager() as vi.Mocked<TemplateManager>;
 
-    initCommand = new InitCommand(mockDetector, mockWizard, mockTemplateManager);
+    initCommand = new InitCommand(
+      mockDetector,
+      mockWizard,
+      mockTemplateManager
+    );
   });
 
   describe('Project Type Detection and Template Selection', () => {
@@ -44,7 +48,7 @@ describe('InitCommand Advanced Features', () => {
         type: ProjectType.PYTHON,
         description: 'Test Python project',
         author: 'Test Author',
-        packageManager: 'npm'
+        packageManager: 'npm',
       };
 
       mockWizard.run.mockResolvedValue(projectConfig);
@@ -56,8 +60,8 @@ describe('InitCommand Advanced Features', () => {
           'pyproject.toml',
           'src/__init__.py',
           '.moai/config.json',
-          '.claude/agents/moai/spec-builder.md'
-        ]
+          '.claude/agents/moai/spec-builder.md',
+        ],
       });
 
       // Act
@@ -68,7 +72,10 @@ describe('InitCommand Advanced Features', () => {
       expect(result.config.type).toBe(ProjectType.PYTHON);
       expect(result.createdFiles).toContain('pyproject.toml');
       expect(result.createdFiles).toContain('.moai/config.json');
-      expect(mockTemplateManager.generateProject).toHaveBeenCalledWith(projectConfig, expect.any(String));
+      expect(mockTemplateManager.generateProject).toHaveBeenCalledWith(
+        projectConfig,
+        expect.any(String)
+      );
     });
 
     test('should create Node.js project with package.json and npm configuration', async () => {
@@ -79,8 +86,8 @@ describe('InitCommand Advanced Features', () => {
         packageManager: 'yarn',
         features: [
           { name: 'typescript', enabled: true },
-          { name: 'testing', enabled: true }
-        ]
+          { name: 'testing', enabled: true },
+        ],
       };
 
       mockWizard.run.mockResolvedValue(projectConfig);
@@ -91,10 +98,10 @@ describe('InitCommand Advanced Features', () => {
         createdFiles: [
           'package.json',
           'tsconfig.json',
-          'jest.config.js',
+          'vi.config.js',
           '.moai/config.json',
-          '.claude/commands/moai/init.md'
-        ]
+          '.claude/commands/moai/init.md',
+        ],
       });
 
       // Act
@@ -117,8 +124,8 @@ describe('InitCommand Advanced Features', () => {
         features: [
           { name: 'backend-python', enabled: true },
           { name: 'frontend-typescript', enabled: true },
-          { name: 'claude-integration', enabled: true }
-        ]
+          { name: 'claude-integration', enabled: true },
+        ],
       };
 
       mockWizard.run.mockResolvedValue(projectConfig);
@@ -131,8 +138,8 @@ describe('InitCommand Advanced Features', () => {
           'frontend/package.json',
           'frontend/tsconfig.json',
           '.moai/config.json',
-          '.claude/agents/moai/code-builder.md'
-        ]
+          '.claude/agents/moai/code-builder.md',
+        ],
       });
 
       // Act
@@ -148,14 +155,14 @@ describe('InitCommand Advanced Features', () => {
     test('should fail when system requirements are not met', async () => {
       // Arrange
       // Mock DoctorCommand.run to return failed result
-      jest.spyOn(initCommand as any, 'doctorCommand', 'get').mockReturnValue({
-        run: jest.fn().mockResolvedValue({
+      vi.spyOn(initCommand as any, 'doctorCommand', 'get').mockReturnValue({
+        run: vi.fn().mockResolvedValue({
           allPassed: false,
           results: [],
           missingRequirements: [],
           versionConflicts: [],
-          summary: { total: 1, passed: 0, failed: 1 }
-        })
+          summary: { total: 1, passed: 0, failed: 1 },
+        }),
       });
 
       // Act
@@ -181,8 +188,8 @@ describe('InitCommand Advanced Features', () => {
         features: [
           { name: 'eslint', enabled: true },
           { name: 'prettier', enabled: true },
-          { name: 'jest', enabled: true }
-        ]
+          { name: 'jest', enabled: true },
+        ],
       };
 
       // Mock successful doctor run
@@ -191,15 +198,17 @@ describe('InitCommand Advanced Features', () => {
         results: [],
         missingRequirements: [],
         versionConflicts: [],
-        summary: { total: 5, passed: 5, failed: 0 }
+        summary: { total: 5, passed: 5, failed: 0 },
       } as DoctorResult;
-      (initCommand as any).doctorCommand.run = jest.fn().mockResolvedValue(mockDoctorResult) as any;
+      (initCommand as any).doctorCommand.run = vi
+        .fn()
+        .mockResolvedValue(mockDoctorResult) as any;
       mockWizard.run.mockResolvedValue(expectedConfig);
       mockTemplateManager.generateProject.mockResolvedValue({
         success: true,
         projectPath: '/generated/path',
         config: expectedConfig,
-        createdFiles: ['package.json', 'tsconfig.json']
+        createdFiles: ['package.json', 'tsconfig.json'],
       });
 
       // Act
@@ -208,7 +217,10 @@ describe('InitCommand Advanced Features', () => {
       // Assert
       expect(mockWizard.run).toHaveBeenCalledWith();
       expect(result.config).toEqual(expectedConfig);
-      expect(mockTemplateManager.generateProject).toHaveBeenCalledWith(expectedConfig, expect.any(String));
+      expect(mockTemplateManager.generateProject).toHaveBeenCalledWith(
+        expectedConfig,
+        expect.any(String)
+      );
     });
 
     test('should handle wizard cancellation gracefully', async () => {
@@ -219,9 +231,11 @@ describe('InitCommand Advanced Features', () => {
         results: [],
         missingRequirements: [],
         versionConflicts: [],
-        summary: { total: 5, passed: 5, failed: 0 }
+        summary: { total: 5, passed: 5, failed: 0 },
       } as DoctorResult;
-      (initCommand as any).doctorCommand.run = jest.fn().mockResolvedValue(mockDoctorResult) as any;
+      (initCommand as any).doctorCommand.run = vi
+        .fn()
+        .mockResolvedValue(mockDoctorResult) as any;
       mockWizard.run.mockRejectedValue(new Error('User cancelled'));
 
       // Act
@@ -238,7 +252,7 @@ describe('InitCommand Advanced Features', () => {
       // Arrange
       const projectConfig: ProjectConfig = {
         name: 'structure-test',
-        type: ProjectType.PYTHON
+        type: ProjectType.PYTHON,
       };
 
       mockWizard.run.mockResolvedValue(projectConfig);
@@ -251,9 +265,9 @@ describe('InitCommand Advanced Features', () => {
           '.moai/project/product.md',
           '.moai/project/structure.md',
           '.moai/project/tech.md',
-          '.moai/indexes/tags.json',
-          '.moai/reports/sync-report.md'
-        ]
+          '.moai/indexes/tags.db',
+          '.moai/reports/sync-report.md',
+        ],
       });
 
       // Act
@@ -262,7 +276,7 @@ describe('InitCommand Advanced Features', () => {
       // Assert
       expect(result.createdFiles).toContain('.moai/config.json');
       expect(result.createdFiles).toContain('.moai/project/product.md');
-      expect(result.createdFiles).toContain('.moai/indexes/tags.json');
+      expect(result.createdFiles).toContain('.moai/indexes/tags.db');
     });
 
     test('should create .claude directory with agent configurations', async () => {
@@ -270,9 +284,7 @@ describe('InitCommand Advanced Features', () => {
       const projectConfig: ProjectConfig = {
         name: 'claude-test',
         type: ProjectType.NODEJS,
-        features: [
-          { name: 'claude-integration', enabled: true }
-        ]
+        features: [{ name: 'claude-integration', enabled: true }],
       };
 
       mockWizard.run.mockResolvedValue(projectConfig);
@@ -286,16 +298,20 @@ describe('InitCommand Advanced Features', () => {
           '.claude/agents/moai/doc-syncer.md',
           '.claude/commands/moai/0-project.md',
           '.claude/commands/moai/1-spec.md',
-          '.claude/hooks/moai/pre-commit.py'
-        ]
+          '.claude/hooks/moai/pre-commit.py',
+        ],
       });
 
       // Act
       const result = await initCommand.runInteractive();
 
       // Assert
-      expect(result.createdFiles).toContain('.claude/agents/moai/spec-builder.md');
-      expect(result.createdFiles).toContain('.claude/commands/moai/0-project.md');
+      expect(result.createdFiles).toContain(
+        '.claude/agents/moai/spec-builder.md'
+      );
+      expect(result.createdFiles).toContain(
+        '.claude/commands/moai/0-project.md'
+      );
       expect(result.createdFiles).toContain('.claude/hooks/moai/pre-commit.py');
     });
   });
@@ -305,7 +321,7 @@ describe('InitCommand Advanced Features', () => {
       // Arrange
       const projectConfig: ProjectConfig = {
         name: 'fail-test',
-        type: ProjectType.PYTHON
+        type: ProjectType.PYTHON,
       };
 
       mockWizard.run.mockResolvedValue(projectConfig);
@@ -314,7 +330,7 @@ describe('InitCommand Advanced Features', () => {
         projectPath: '',
         config: projectConfig,
         createdFiles: [],
-        errors: ['Failed to create directory', 'Permission denied']
+        errors: ['Failed to create directory', 'Permission denied'],
       });
 
       // Act
@@ -329,7 +345,7 @@ describe('InitCommand Advanced Features', () => {
       // Arrange
       const invalidConfig: ProjectConfig = {
         name: 'invalid name with spaces!',
-        type: ProjectType.PYTHON
+        type: ProjectType.PYTHON,
       };
 
       mockWizard.run.mockResolvedValue(invalidConfig);

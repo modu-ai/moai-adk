@@ -1,0 +1,10 @@
+{"tag": "TEST:CLI-EXECUTION-001", "type": "test", "description": "CLI execution tests", "created": "2025-09-28"}
+{"tag": "TEST:TS-FOUNDATION-012", "type": "test", "description": "TypeScript foundation tests", "created": "2025-09-28"}
+{"tag": "TEST:ACCEPTANCE-CRITERIA-012", "type": "test", "description": "Acceptance criteria tests", "created": "2025-09-28"}
+{"tag": "TEST:INTEGRATION-001", "type": "test", "description": "Integration tests", "created": "2025-09-28"}
+{"tag": "TEST:UNIT-001", "type": "test", "description": "Unit tests", "created": "2025-09-28"}
+{"tag": "TEST:PERFORMANCE-001", "type": "test", "description": "Performance tests", "created": "2025-09-28"}
+{"tag": "TEST:DISTRIBUTED-STORAGE-001", "type": "test", "description": "Distributed storage tests", "created": "2025-09-29"}
+{"tag": "TEST:CATEGORIES-ACCESS-001", "type": "test", "description": "Categories access tests", "created": "2025-09-29"}
+{"tag": "TEST:JSONL-PARSING-001", "type": "test", "description": "JSON Lines parsing tests", "created": "2025-09-29"}
+{"tag": "TEST:CACHE-VALIDATION-001", "type": "test", "description": "Cache validation tests", "created": "2025-09-29"}

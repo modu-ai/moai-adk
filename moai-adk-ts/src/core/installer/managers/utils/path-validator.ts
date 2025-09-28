@@ -20,7 +20,14 @@ export class PathValidator {
 
   constructor() {
     // 시스템 중요 디렉토리 목록 (Unix 계열)
-    this.dangerousPaths = ['/etc', '/usr/bin', '/usr/sbin', '/boot', '/sys', '/proc'];
+    this.dangerousPaths = [
+      '/etc',
+      '/usr/bin',
+      '/usr/sbin',
+      '/boot',
+      '/sys',
+      '/proc',
+    ];
     this.tmpDirectory = tmpdir();
   }
 
@@ -74,6 +81,8 @@ export class PathValidator {
    */
   private isDangerousSystemPath(targetPath: string): boolean {
     const resolvedPath = path.resolve(targetPath);
-    return this.dangerousPaths.some(dangerous => resolvedPath.startsWith(dangerous));
+    return this.dangerousPaths.some(dangerous =>
+      resolvedPath.startsWith(dangerous)
+    );
   }
 }

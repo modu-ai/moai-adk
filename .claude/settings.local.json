@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(awk:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": []

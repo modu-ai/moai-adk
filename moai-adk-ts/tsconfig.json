@@ -4,6 +4,7 @@
     "module": "ESNext",
     "moduleResolution": "node",
     "lib": ["ES2022", "DOM"],
+    "types": ["vitest/globals", "@vitest/spy"],
     "outDir": "./dist",
     "rootDir": "./src",
     "strict": true,
@@ -27,6 +28,8 @@
     "noUncheckedIndexedAccess": true,
     "allowUnusedLabels": false,
     "allowUnreachableCode": false,
+    "strictBuiltinIteratorReturn": true,
+    "noErrorTruncation": true,
     "baseUrl": "./",
     "paths": {
       "@/*": ["src/*"],

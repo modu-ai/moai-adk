@@ -37,7 +37,13 @@ export class FileOperations {
         continue;
       }
 
-      await this.copyEntry(entry, sourcePath, targetPath, overwrite, excludeSubdirs);
+      await this.copyEntry(
+        entry,
+        sourcePath,
+        targetPath,
+        overwrite,
+        excludeSubdirs
+      );
     }
   }
 
@@ -55,7 +61,9 @@ export class FileOperations {
         await this.setExecutablePermission(pyFile);
       }
     } catch (error) {
-      logger.warn(`Failed to ensure hook permissions under ${claudeRoot}: ${error}`);
+      logger.warn(
+        `Failed to ensure hook permissions under ${claudeRoot}: ${error}`
+      );
     }
   }
 
@@ -70,19 +78,23 @@ export class FileOperations {
       const checks = [
         this.validateEmptySpecs(targetPath),
         this.validateInitialTags(targetPath),
-        this.validateEmptyReports(targetPath)
+        this.validateEmptyReports(targetPath),
       ];
 
       const results = await Promise.all(checks);
       const isClean = results.every(result => result);
 
       if (isClean) {
-        logger.debug(`Clean installation validated successfully: ${targetPath}`);
+        logger.debug(
+          `Clean installation validated successfully: ${targetPath}`
+        );
       }
 
       return isClean;
     } catch (error) {
-      logger.error(`Failed to validate clean installation at ${targetPath}: ${error}`);
+      logger.error(
+        `Failed to validate clean installation at ${targetPath}: ${error}`
+      );
       return false;
     }
   }
@@ -92,7 +104,10 @@ export class FileOperations {
   /**
    * @TASK:EXCLUDE-ENTRY-001 엔트리 제외 여부 확인
    */
-  private shouldExcludeEntry(entryName: string, excludeSubdirs?: string[]): boolean {
+  private shouldExcludeEntry(
+    entryName: string,
+    excludeSubdirs?: string[]
+  ): boolean {
     return excludeSubdirs?.includes(entryName) ?? false;
   }
 
@@ -110,9 +125,18 @@ export class FileOperations {
     const targetEntryPath = path.join(targetPath, entry.name);
 
     if (entry.isDirectory()) {
-      await this.copyDirectory(sourceEntryPath, targetEntryPath, overwrite, excludeSubdirs);
+      await this.copyDirectory(
+        sourceEntryPath,
+        targetEntryPath,
+        overwrite,
+        excludeSubdirs
+      );
     } else {
-      await this.copyFileWithPolicy(sourceEntryPath, targetEntryPath, overwrite);
+      await this.copyFileWithPolicy(
+        sourceEntryPath,
+        targetEntryPath,
+        overwrite
+      );
     }
   }
 
@@ -178,21 +202,25 @@ export class FileOperations {
   }
 
   /**
-   * @TASK:VALIDATE-TAGS-001 tags.json 초기 구조 검증
+   * @TASK:VALIDATE-TAGS-001 tags.db 초기 구조 검증
    */
   private async validateInitialTags(targetPath: string): Promise<boolean> {
     try {
-      const tagsFile = path.join(targetPath, 'indexes', 'tags.json');
-      const content = await fs.readFile(tagsFile, 'utf-8');
-      const lineCount = content.split('\n').length;
+      const tagsFile = path.join(targetPath, 'indexes', 'tags.db');
+      const stats = await fs.stat(tagsFile);
+      const fileSize = stats.size;
 
-      if (lineCount > 50) {
-        logger.warn(`tags.json seems to contain development data: ${lineCount} lines (expected < 50)`);
+      // SQLite3 파일이 너무 크면 개발 데이터가 포함되었을 가능성
+      if (fileSize > 50 * 1024) {
+        // 50KB 제한
+        logger.warn(
+          `tags.db seems to contain development data: ${fileSize} bytes (expected < 50KB)`
+        );
         return false;
       }
       return true;
     } catch {
-      return true; // tags.json이 없음 - 정상
+      return true; // tags.db가 없음 - 정상 (처음 설치)
     }
   }
 
@@ -207,13 +235,18 @@ export class FileOperations {
   /**
    * @TASK:VALIDATE-EMPTY-DIR-001 빈 디렉토리 검증
    */
-  private async validateEmptyDirectory(dirPath: string, fileType: string): Promise<boolean> {
+  private async validateEmptyDirectory(
+    dirPath: string,
+    fileType: string
+  ): Promise<boolean> {
     try {
       const entries = await fs.readdir(dirPath);
       const nonGitkeepFiles = entries.filter(f => f !== '.gitkeep');
 
       if (nonGitkeepFiles.length > 0) {
-        logger.warn(`Found unexpected ${fileType} in clean installation: ${nonGitkeepFiles}`);
+        logger.warn(
+          `Found unexpected ${fileType} in clean installation: ${nonGitkeepFiles}`
+        );
         return false;
       }
       return true;

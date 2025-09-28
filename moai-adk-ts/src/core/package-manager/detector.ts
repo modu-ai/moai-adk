@@ -4,14 +4,14 @@
  * @tags @FEATURE:PACKAGE-MANAGER-DETECTOR-001 @REQ:PACKAGE-MANAGER-002
  */
 
-import execa from 'execa';
+import { execa } from 'execa';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import {
   PackageManagerType,
-  PackageManagerInfo,
-  PackageManagerDetectionResult,
-  PackageManagerCommands
+  type PackageManagerInfo,
+  type PackageManagerDetectionResult,
+  type PackageManagerCommands,
 } from '@/types/package-manager';
 
 /**
@@ -25,31 +25,33 @@ export class PackageManagerDetector {
    * @returns Package manager information
    * @tags @API:DETECT-SINGLE-001
    */
-  public async detectPackageManager(type: PackageManagerType): Promise<PackageManagerInfo> {
+  public async detectPackageManager(
+    type: PackageManagerType
+  ): Promise<PackageManagerInfo> {
     try {
       const result = await execa(type, ['--version'], {
         timeout: 10000,
-        reject: false
+        reject: false,
       });
 
       if (result.exitCode === 0) {
         return {
           type,
           version: result.stdout.trim(),
-          isAvailable: true
+          isAvailable: true,
         };
       } else {
         return {
           type,
           version: 'unknown',
-          isAvailable: false
+          isAvailable: false,
         };
       }
     } catch (error) {
       return {
         type,
         version: 'unknown',
-        isAvailable: false
+        isAvailable: false,
       };
     }
   }
@@ -89,7 +91,7 @@ export class PackageManagerDetector {
     return {
       available,
       preferred,
-      recommended
+      recommended,
     };
   }
 
@@ -109,7 +111,7 @@ export class PackageManagerDetector {
           run: 'npm run',
           build: 'npm run build',
           test: 'npm test',
-          init: 'npm init -y'
+          init: 'npm init -y',
         };
 
       case PackageManagerType.YARN:
@@ -120,7 +122,7 @@ export class PackageManagerDetector {
           run: 'yarn run',
           build: 'yarn build',
           test: 'yarn test',
-          init: 'yarn init -y'
+          init: 'yarn init -y',
         };
 
       case PackageManagerType.PNPM:
@@ -131,7 +133,7 @@ export class PackageManagerDetector {
           run: 'pnpm run',
           build: 'pnpm build',
           test: 'pnpm test',
-          init: 'pnpm init'
+          init: 'pnpm init',
         };
 
       default:
@@ -145,13 +147,19 @@ export class PackageManagerDetector {
    * @returns Recommended package manager
    * @tags @API:RECOMMEND-001
    */
-  public recommendPackageManager(available: PackageManagerInfo[]): PackageManagerInfo {
+  public recommendPackageManager(
+    available: PackageManagerInfo[]
+  ): PackageManagerInfo {
     if (available.length === 0) {
       throw new Error('No package managers available');
     }
 
     // Priority order: pnpm > yarn > npm (based on performance and features)
-    const priority = [PackageManagerType.PNPM, PackageManagerType.YARN, PackageManagerType.NPM];
+    const priority = [
+      PackageManagerType.PNPM,
+      PackageManagerType.YARN,
+      PackageManagerType.NPM,
+    ];
 
     for (const preferredType of priority) {
       const found = available.find(pm => pm.type === preferredType);
@@ -170,13 +178,15 @@ export class PackageManagerDetector {
    * @returns Detected package manager type or null
    * @tags @API:DETECT-LOCK-001
    */
-  private async detectLockFile(workingDirectory?: string): Promise<PackageManagerType | null> {
+  private async detectLockFile(
+    workingDirectory?: string
+  ): Promise<PackageManagerType | null> {
     const baseDir = workingDirectory || process.cwd();
 
     const lockFiles = [
       { file: 'package-lock.json', type: PackageManagerType.NPM },
       { file: 'yarn.lock', type: PackageManagerType.YARN },
-      { file: 'pnpm-lock.yaml', type: PackageManagerType.PNPM }
+      { file: 'pnpm-lock.yaml', type: PackageManagerType.PNPM },
     ];
 
     for (const { file, type } of lockFiles) {

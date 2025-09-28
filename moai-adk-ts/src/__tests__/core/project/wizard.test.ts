@@ -4,21 +4,21 @@
  * @tags @TEST:PROJECT-WIZARD-001 @REQ:CLI-WIZARD-001
  */
 
-import { describe, test, expect, beforeEach, jest } from '@jest/globals';
+import { describe, test, expect, beforeEach, jest, vi } from 'vitest';
 import '@/__tests__/setup';
 import { ProjectWizard } from '@/core/project/wizard';
 import { ProjectType, ProjectConfig } from '@/types/project';
 import inquirer from 'inquirer';
 
 // Mock inquirer
-jest.mock('inquirer');
-const mockInquirer = inquirer as jest.Mocked<typeof inquirer>;
+vi.mock('inquirer');
+const mockInquirer = inquirer as vi.Mocked<typeof inquirer>;
 
 describe('ProjectWizard', () => {
   let wizard: ProjectWizard;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     wizard = new ProjectWizard();
   });
 
@@ -32,7 +32,7 @@ describe('ProjectWizard', () => {
         author: 'Test Developer',
         license: 'MIT',
         packageManager: 'npm',
-        features: ['testing', 'linting', 'documentation']
+        features: ['testing', 'linting', 'documentation'],
       };
 
       mockInquirer.prompt.mockResolvedValue(mockAnswers);
@@ -54,7 +54,7 @@ describe('ProjectWizard', () => {
       // Arrange
       const invalidNameAnswers = {
         projectName: 'Invalid Name!',
-        projectType: ProjectType.NODEJS
+        projectType: ProjectType.NODEJS,
       };
 
       mockInquirer.prompt.mockResolvedValue(invalidNameAnswers);
@@ -68,7 +68,7 @@ describe('ProjectWizard', () => {
       const pythonAnswers = {
         projectName: 'python-project',
         projectType: ProjectType.PYTHON,
-        features: ['pytest', 'black', 'mypy']
+        features: ['pytest', 'black', 'mypy'],
       };
 
       mockInquirer.prompt.mockResolvedValueOnce(pythonAnswers);
@@ -77,13 +77,13 @@ describe('ProjectWizard', () => {
       const pythonResult = await wizard.run();
 
       // Reset for Node.js test
-      jest.clearAllMocks();
+      vi.clearAllMocks();
 
       // Arrange - Node.js project
       const nodeAnswers = {
         projectName: 'node-project',
         projectType: ProjectType.NODEJS,
-        features: ['jest', 'eslint', 'prettier']
+        features: ['jest', 'eslint', 'prettier'],
       };
 
       mockInquirer.prompt.mockResolvedValueOnce(nodeAnswers);
@@ -92,8 +92,16 @@ describe('ProjectWizard', () => {
       const nodeResult = await wizard.run();
 
       // Assert
-      expect(pythonResult.features?.map(f => f.name)).toEqual(['pytest', 'black', 'mypy']);
-      expect(nodeResult.features?.map(f => f.name)).toEqual(['jest', 'eslint', 'prettier']);
+      expect(pythonResult.features?.map(f => f.name)).toEqual([
+        'pytest',
+        'black',
+        'mypy',
+      ]);
+      expect(nodeResult.features?.map(f => f.name)).toEqual([
+        'jest',
+        'eslint',
+        'prettier',
+      ]);
     });
 
     test('should handle mixed project type with both backend and frontend options', async () => {
@@ -103,7 +111,7 @@ describe('ProjectWizard', () => {
         projectType: ProjectType.MIXED,
         backendLanguage: 'python',
         frontendFramework: 'react',
-        features: ['docker', 'ci-cd', 'monitoring']
+        features: ['docker', 'ci-cd', 'monitoring'],
       };
 
       mockInquirer.prompt.mockResolvedValue(mixedAnswers);
@@ -123,13 +131,17 @@ describe('ProjectWizard', () => {
       const answers = {
         projectName: 'package-manager-test',
         projectType: ProjectType.NODEJS,
-        autoDetectPackageManager: true
+        autoDetectPackageManager: true,
       };
 
       mockInquirer.prompt.mockResolvedValue(answers);
 
       // Mock package manager detection
-      jest.spyOn(wizard as any, 'detectPackageManagers').mockResolvedValue(['npm', 'yarn', 'pnpm']);
+      vi.spyOn(wizard as any, 'detectPackageManagers').mockResolvedValue([
+        'npm',
+        'yarn',
+        'pnpm',
+      ]);
 
       // Act
       const result = await wizard.run();
@@ -144,7 +156,7 @@ describe('ProjectWizard', () => {
         projectName: 'manual-pm-test',
         projectType: ProjectType.NODEJS,
         autoDetectPackageManager: false,
-        packageManager: 'yarn'
+        packageManager: 'yarn',
       };
 
       mockInquirer.prompt.mockResolvedValue(answers);
@@ -167,7 +179,9 @@ describe('ProjectWizard', () => {
 
       for (const type of projectTypes) {
         expect(wizard.getProjectTypeDescription(type)).toBeDefined();
-        expect(wizard.getProjectTypeDescription(type).length).toBeGreaterThan(10);
+        expect(wizard.getProjectTypeDescription(type).length).toBeGreaterThan(
+          10
+        );
       }
     });
 
@@ -175,13 +189,13 @@ describe('ProjectWizard', () => {
       // Arrange
       const answers = {
         projectName: 'progress-test',
-        projectType: ProjectType.MIXED
+        projectType: ProjectType.MIXED,
       };
 
       mockInquirer.prompt.mockResolvedValue(answers);
 
       // Mock console.log to capture progress messages
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation();
 
       // Act
       await wizard.run();
@@ -196,13 +210,13 @@ describe('ProjectWizard', () => {
       const firstAttempt = {
         projectName: 'first-attempt',
         projectType: ProjectType.PYTHON,
-        goBack: true
+        goBack: true,
       };
 
       const secondAttempt = {
         projectName: 'corrected-name',
         projectType: ProjectType.NODEJS,
-        goBack: false
+        goBack: false,
       };
 
       mockInquirer.prompt

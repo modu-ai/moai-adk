@@ -1,28 +1,153 @@
 ---
 name: moai:3-sync
 description: 문서 동기화 + PR Ready 전환
-argument-hint: "모드 대상경로 - 모드: auto(기본)|force|status|project, 대상경로: 동기화 대상 경로"
-tools: Read, Write, Edit, MultiEdit, Bash(git status:*), Bash(git add:*), Bash(git diff:*), Bash(git commit:*), Bash(gh:*), Bash(python3:*), Task, Grep, Glob, TodoWrite
+argument-hint: "[mode] [target-path]"
+tools: Read, Write, Edit, MultiEdit, Bash, Task, Grep, Glob, TodoWrite
 ---
 
 # MoAI-ADK 3단계: 문서 동기화(+선택적 PR Ready)
 
-- ULTRATHINK: doc-syncer 에이전트가 Living Document 동기화와 16-Core @TAG 업데이트를 수행합니다. 팀 모드에서만 PR Ready 전환을 선택적으로 실행합니다.
+**문서 동기화 대상**: $ARGUMENTS
 
-## 에이전트 협업 구조
+## 🔍 STEP 1: 동기화 범위 분석 및 계획 수립
+
+프로젝트 상태를 분석하여 동기화 범위를 결정하고 체계적인 동기화 계획을 수립한 후 사용자 확인을 받습니다.
+
+### 동기화 분석 진행
+
+1. **프로젝트 상태 확인**
+   - Git 상태 및 변경된 파일 목록
+   - 코드-문서 일치성 검사
+   - 16-Core TAG 시스템 검증
+
+2. **동기화 범위 결정**
+   - Living Document 업데이트 필요 영역
+   - TAG 인덱스 갱신 필요성
+   - PR 상태 전환 가능성 (팀 모드)
+
+3. **동기화 전략 수립**
+   - 모드별 동기화 접근 방식
+   - 예상 작업 시간 및 우선순위
+   - 잠재적 위험 요소 식별
+
+### 사용자 확인 단계
+
+동기화 계획 검토 후 다음 중 선택하세요:
+- **"진행"** 또는 **"시작"**: 계획대로 동기화 시작
+- **"수정 [내용]"**: 동기화 계획 수정 요청
+- **"중단"**: 동기화 작업 중단
+
+---
+
+## 🚀 STEP 2: 문서 동기화 실행 (사용자 승인 후)
+
+사용자 승인 후 doc-syncer 에이전트가 **Living Document 동기화와 16-Core @TAG 업데이트**를 수행하고, 팀 모드에서만 PR Ready 전환을 선택적으로 실행합니다.
+
+## 기능
+
+- **ULTRATHINK**: doc-syncer 에이전트가 Living Document 동기화와 16-Core @TAG 업데이트를 수행합니다. 팀 모드에서만 PR Ready 전환을 선택적으로 실행합니다.
+
+## 동기화 산출물
+
+- `.moai/reports/sync-report.md` 생성/갱신
+- TAG 인덱스 업데이트: TypeScript 기반 TAG 자동 갱신
+
+## 모드별 실행 방식
+
+## 📋 STEP 1 실행 가이드: 동기화 범위 분석 및 계획 수립
+
+### 1. 프로젝트 상태 분석
+
+다음을 우선적으로 실행하여 동기화 범위를 분석합니다:
+
+```bash
+# 동기화 분석 스크립트 실행
+tsx .moai/scripts/sync-analyzer.ts --target="$ARGUMENTS" --mode=analysis
+```
+
+#### 분석 체크리스트
+
+- [ ] **Git 상태**: 변경된 파일, 브랜치 상태, 커밋 히스토리
+- [ ] **문서 일치성**: 코드-문서 간 동기화 필요성
+- [ ] **TAG 시스템**: 16-Core TAG 체계 검증 및 끊어진 링크
+- [ ] **동기화 범위**: 전체 vs 부분 vs 특정 경로 동기화
+
+### 2. 동기화 전략 결정
+
+#### 모드별 동기화 접근법
+
+| 모드 | 동기화 범위 | PR 처리 | 주요 특징 |
+|------|-------------|---------|----------|
+| **Personal** | 로컬 문서 동기화 | 체크포인트만 | 개인 작업 중심 |
+| **Team** | 전체 동기화 + TAG | PR Ready 전환 | 협업 지원 |
+| **Auto** | 지능형 자동 선택 | 상황별 결정 | 최적 전략 |
+| **Force** | 강제 전체 동기화 | 전체 재생성 | 오류 복구용 |
+
+#### 예상 작업 범위
+
+- **Living Document**: API 문서, README, 아키텍처 문서
+- **TAG 인덱스**: `.moai/indexes/tags.json` 갱신
+- **동기화 보고서**: `.moai/reports/sync-report.md`
+- **PR 상태**: Draft → Ready for Review 전환
+
+### 3. 동기화 계획 보고서 생성
+
+다음 형식으로 계획을 제시합니다:
+
+```
+## 문서 동기화 계획 보고서: [TARGET]
+
+### 📊 상태 분석 결과
+- **변경된 파일**: [개수 및 유형]
+- **동기화 필요성**: [높음/중간/낮음]
+- **TAG 시스템 상태**: [정상/문제 감지]
+
+### 🎯 동기화 전략
+- **선택된 모드**: [auto/force/status/project]
+- **동기화 범위**: [전체/부분/선택적]
+- **PR 처리**: [유지/Ready 전환/새 PR 생성]
+
+### 🚨 주의사항
+- **잠재적 충돌**: [문서 충돌 가능성]
+- **TAG 문제**: [끊어진 링크, 중복 TAG]
+- **성능 영향**: [대용량 동기화 예상시간]
+
+### ✅ 예상 산출물
+- **sync-report.md**: [동기화 결과 요약]
+- **tags.json**: [업데이트된 TAG 인덱스]
+- **Living Documents**: [갱신된 문서 목록]
+- **PR 상태**: [팀 모드에서 PR 전환]
+
+---
+**승인 요청**: 위 계획으로 동기화를 진행하시겠습니까?
+("진행", "수정 [내용]", "중단" 중 선택)
+```
+
+---
+
+## 🚀 STEP 2 실행 가이드: 문서 동기화 (승인 후)
+
+사용자가 **"진행"** 또는 **"시작"**을 선택한 경우에만 다음을 실행합니다:
+
+```bash
+# 문서 동기화 시작
+tsx .moai/scripts/doc-syncer.ts --target="$ARGUMENTS" --mode=sync --approved=true
+```
+
+### 동기화 단계별 가이드
+
+1. **Living Document 동기화**: 코드 → 문서 자동 반영
+2. **TAG 시스템 검증**: 16-Core TAG 체계 무결성 확인
+3. **인덱스 업데이트**: 트레이시빌리티 매트릭스 갱신
+4. **보고서 생성**: 동기화 결과 요약 작성
+
+### 에이전트 협업 구조
 
 - **1단계**: `doc-syncer` 에이전트가 Living Document 동기화 및 16-Core TAG 관리를 전담합니다.
 - **2단계**: `git-manager` 에이전트가 모든 Git 커밋, PR 상태 전환, 동기화를 전담합니다.
 - **단일 책임 원칙**: doc-syncer는 문서 작업만, git-manager는 Git 작업만 수행합니다.
 - **순차 실행**: doc-syncer → git-manager 순서로 실행하여 명확한 의존성을 유지합니다.
-- **에이전트 간 호출 금지**: 각 에이전트는 다른 에이전트를 직접 호출하지 않고, 커멘드 레벨에서만 순차 실행합니다.
-
-## 동기화 산출물
-
-- `.moai/reports/sync-report.md` 생성/갱신
-- TAG 인덱스 업데이트: `python3 .moai/scripts/check-traceability.py --update`
-
-## 모드별 실행 방식
+- **에이전트 간 호출 금지**: 각 에이전트는 다른 에이전트를 직접 호출하지 않고, 커맨드 레벨에서만 순차 실행합니다.
 
 ## 🚀 최적화된 병렬/순차 하이브리드 워크플로우
 
@@ -118,7 +243,7 @@ Task 2 (sonnet): 문서 구조 분석
 
 1. 프로젝트 분석 및 TAG 검증 → 끊어진/중복/고아 TAG 점검
 2. 코드 ↔ 문서 동기화 → API/README/아키텍처 문서 갱신, SPEC ↔ 코드 TODO 동기화
-3. TAG 인덱스 업데이트 → `python3 .moai/scripts/check-traceability.py --update`
+3. TAG 인덱스 업데이트 → TypeScript 기반 TAG 자동 갱신
 
 ## 다음 단계
 

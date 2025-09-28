@@ -1,11 +1,18 @@
 {
+  "env": {
+    "MOAI_RUNTIME": "typescript",
+    "MOAI_PROJECT_PATH": "./moai-adk-ts",
+    "MOAI_AUTO_ROUTING": "true",
+    "MOAI_PERFORMANCE_MONITORING": "true",
+    "NODE_ENV": "production"
+  },
   "hooks": {
     "PostToolUse": [],
     "PreToolUse": [
       {
         "hooks": [
           {
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_write_guard.py",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre-write-guard.js",
             "type": "command"
           }
         ],
@@ -14,7 +21,7 @@
       {
         "hooks": [
           {
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/policy_block.py",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/policy-block.js",
             "type": "command"
           }
         ],
@@ -25,7 +32,7 @@
       {
         "hooks": [
           {
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start_notice.py",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session-notice.js",
             "type": "command"
           }
         ],
@@ -36,7 +43,7 @@
       {
         "hooks": [
           {
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/steering_guard.py",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/steering-guard.js",
             "type": "command"
           }
         ]
@@ -65,20 +72,16 @@
       "Bash(echo:*)",
       "Bash(which:*)",
       "Bash(make:*)",
-      "Bash(python:*)",
-      "Bash(python3:*)",
-      "Bash(pytest:*)",
-      "Bash(ruff:*)",
-      "Bash(black:*)",
-      "Bash(mypy:*)",
-      "Bash(bandit:*)",
-      "Bash(coverage:*)",
-      "Bash(pip:*)",
-      "Bash(poetry:*)",
-      "Bash(uv:*)",
+      "Bash(node:*)",
+      "Bash(tsx:*)",
+      "Bash(moai-ts:*)",
       "Bash(npm:*)",
       "Bash(node:*)",
       "Bash(pnpm:*)",
+      "Bash(npx:*)",
+      "Bash(tsc:*)",
+      "Bash(jest:*)",
+      "Bash(ts-node:*)",
       "Bash(moai:*)",
       "Bash(gh pr create:*)",
       "Bash(gh pr view:*)",
@@ -99,8 +102,6 @@
       "Bash(git push:*)",
       "Bash(git merge:*)",
       "Bash(gh pr merge:*)",
-      "Bash(pip install:*)",
-      "Bash(poetry add:*)",
       "Bash(npm install:*)",
       "Bash(rm:*)"
     ],

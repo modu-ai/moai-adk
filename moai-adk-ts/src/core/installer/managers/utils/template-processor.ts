@@ -33,12 +33,17 @@ export class TemplateProcessor {
   ): Promise<void> {
     try {
       const content = await this.readFileContent(filePath);
-      const substitutedContent = this.processTemplateVariables(content, context);
+      const substitutedContent = this.processTemplateVariables(
+        content,
+        context
+      );
       await this.writeFileContent(filePath, substitutedContent);
 
       logger.debug(`Template variables substituted in ${filePath}`);
     } catch (error) {
-      logger.warn(`Failed to substitute template variables in ${filePath}: ${error}`);
+      logger.warn(
+        `Failed to substitute template variables in ${filePath}: ${error}`
+      );
     }
   }
 
@@ -69,7 +74,10 @@ export class TemplateProcessor {
   /**
    * @TASK:WRITE-CONTENT-001 파일 내용 쓰기
    */
-  private async writeFileContent(filePath: string, content: string): Promise<void> {
+  private async writeFileContent(
+    filePath: string,
+    content: string
+  ): Promise<void> {
     await fs.writeFile(filePath, content, 'utf-8');
   }
 
@@ -78,12 +86,18 @@ export class TemplateProcessor {
    *
    * 더 안전한 템플릿 치환을 위해 정확한 패턴만 치환
    */
-  private processTemplateVariables(content: string, context: TemplateContext): string {
+  private processTemplateVariables(
+    content: string,
+    context: TemplateContext
+  ): string {
     let processedContent = content;
 
     for (const [key, value] of Object.entries(context)) {
       const pattern = `{{${key}}}`;
-      processedContent = processedContent.replace(new RegExp(pattern, 'g'), value);
+      processedContent = processedContent.replace(
+        new RegExp(pattern, 'g'),
+        value
+      );
     }
 
     return processedContent;

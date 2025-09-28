@@ -5,11 +5,14 @@
  */
 
 import chalk from 'chalk';
-import {
+import type {
   SystemDetector,
   RequirementCheckResult,
 } from '@/core/system-checker/detector';
-import { requirementRegistry, SystemRequirement } from '@/core/system-checker/requirements';
+import {
+  requirementRegistry,
+  type SystemRequirement,
+} from '@/core/system-checker/requirements';
 
 /**
  * Doctor command result summary
@@ -86,7 +89,8 @@ export class DoctorCommand {
    */
   private gatherRequirements(): SystemRequirement[] {
     const runtimeRequirements = requirementRegistry.getByCategory('runtime');
-    const developmentRequirements = requirementRegistry.getByCategory('development');
+    const developmentRequirements =
+      requirementRegistry.getByCategory('development');
     return [...runtimeRequirements, ...developmentRequirements];
   }
 
@@ -96,7 +100,9 @@ export class DoctorCommand {
    * @returns Check results
    * @tags @UTIL:EXECUTE-CHECKS-001
    */
-  private async executeChecks(requirements: SystemRequirement[]): Promise<RequirementCheckResult[]> {
+  private async executeChecks(
+    requirements: SystemRequirement[]
+  ): Promise<RequirementCheckResult[]> {
     try {
       return await this.detector.checkMultipleRequirements(requirements);
     } catch (error) {
@@ -111,7 +117,9 @@ export class DoctorCommand {
    * @returns Categorized results
    * @tags @UTIL:CATEGORIZE-RESULTS-001
    */
-  private categorizeResults(results: RequirementCheckResult[]): CategorizedResults {
+  private categorizeResults(
+    results: RequirementCheckResult[]
+  ): CategorizedResults {
     const missing = results.filter(r => !r.result.isInstalled);
     const conflicts = results.filter(
       r => r.result.isInstalled && !r.result.versionSatisfied
@@ -130,9 +138,14 @@ export class DoctorCommand {
    * @returns Summary object
    * @tags @UTIL:GENERATE-SUMMARY-001
    */
-  private generateSummary(categorized: CategorizedResults): DoctorResult['summary'] {
+  private generateSummary(
+    categorized: CategorizedResults
+  ): DoctorResult['summary'] {
     return {
-      total: categorized.missing.length + categorized.conflicts.length + categorized.passed.length,
+      total:
+        categorized.missing.length +
+        categorized.conflicts.length +
+        categorized.passed.length,
       passed: categorized.passed.length,
       failed: categorized.missing.length + categorized.conflicts.length,
     };

@@ -7,7 +7,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
-import { BenchmarkResult, BenchmarkConfig } from '@/types/diagnostics';
+import type { BenchmarkResult, BenchmarkConfig } from '@/types/diagnostics';
 
 /**
  * Performance benchmark runner for system testing
@@ -40,8 +40,8 @@ export class BenchmarkRunner {
           baseline: benchmark.baseline,
           score: 0,
           recommendations: [
-            `Benchmark failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-          ]
+            `Benchmark failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          ],
         });
       }
     }
@@ -55,7 +55,9 @@ export class BenchmarkRunner {
    * @returns Benchmark result
    * @tags @API:RUN-SPECIFIC-BENCHMARK-001
    */
-  public async runSpecificBenchmark(benchmarkName: string): Promise<BenchmarkResult | null> {
+  public async runSpecificBenchmark(
+    benchmarkName: string
+  ): Promise<BenchmarkResult | null> {
     const benchmark = this.benchmarks.find(b => b.name === benchmarkName);
     if (!benchmark) {
       return null;
@@ -70,13 +72,15 @@ export class BenchmarkRunner {
    * @returns Benchmark result
    * @tags @API:RUN-SINGLE-BENCHMARK-001
    */
-  private async runSingleBenchmark(benchmark: BenchmarkConfig): Promise<BenchmarkResult> {
+  private async runSingleBenchmark(
+    benchmark: BenchmarkConfig
+  ): Promise<BenchmarkResult> {
     const startTime = Date.now();
 
     // Run the benchmark with timeout
     const duration = await Promise.race([
       benchmark.testFunction(),
-      this.createTimeoutPromise(benchmark.timeout)
+      this.createTimeoutPromise(benchmark.timeout),
     ]);
 
     const actualDuration = Date.now() - startTime;
@@ -84,7 +88,11 @@ export class BenchmarkRunner {
     // Calculate score based on performance vs baseline
     const score = this.calculateScore(duration, benchmark.baseline);
     const status = this.determineStatus(score, duration, benchmark.baseline);
-    const recommendations = this.generateRecommendations(benchmark, score, duration);
+    const recommendations = this.generateRecommendations(
+      benchmark,
+      score,
+      duration
+    );
 
     return {
       name: benchmark.name,
@@ -92,7 +100,7 @@ export class BenchmarkRunner {
       status,
       baseline: benchmark.baseline,
       score,
-      recommendations
+      recommendations,
     };
   }
 
@@ -211,7 +219,7 @@ export class BenchmarkRunner {
         category: 'io',
         timeout: 30000,
         baseline: 150,
-        testFunction: this.fileIOBenchmark.bind(this)
+        testFunction: this.fileIOBenchmark.bind(this),
       },
       {
         name: 'CPU Performance',
@@ -219,7 +227,7 @@ export class BenchmarkRunner {
         category: 'cpu',
         timeout: 15000,
         baseline: 100,
-        testFunction: this.cpuBenchmark.bind(this)
+        testFunction: this.cpuBenchmark.bind(this),
       },
       {
         name: 'Memory Performance',
@@ -227,7 +235,7 @@ export class BenchmarkRunner {
         category: 'memory',
         timeout: 10000,
         baseline: 75,
-        testFunction: this.memoryBenchmark.bind(this)
+        testFunction: this.memoryBenchmark.bind(this),
       },
       {
         name: 'Network Connectivity',
@@ -235,8 +243,8 @@ export class BenchmarkRunner {
         category: 'network',
         timeout: 20000,
         baseline: 200,
-        testFunction: this.networkBenchmark.bind(this)
-      }
+        testFunction: this.networkBenchmark.bind(this),
+      },
     ];
   }
 
@@ -359,7 +367,7 @@ export class BenchmarkRunner {
       const urls = [
         'https://httpbin.org/delay/0',
         'https://httpbin.org/get',
-        'https://httpbin.org/user-agent'
+        'https://httpbin.org/user-agent',
       ];
 
       const requests = urls.map(url =>
@@ -377,7 +385,9 @@ export class BenchmarkRunner {
       return Date.now() - start;
     } catch (error) {
       // Network might be unavailable
-      throw new Error(`Network benchmark failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Network benchmark failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 }

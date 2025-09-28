@@ -1,0 +1,289 @@
+/**
+ * @file Project type detection for MoAI-ADK TypeScript
+ * @author MoAI Team
+ * @tags @FEATURE:PROJECT-001 @REQ:CORE-SYSTEM-013
+ */
+
+import * as fs from 'fs';
+import * as path from 'path';
+import type {
+  ProjectInfo,
+  PackageAnalysis,
+  ProjectConfig,
+  FileInfo,
+  LanguageExtensions,
+  ProjectFileIndicators,
+  FrameworkIndicators,
+  BuildToolIndicators,
+} from './types';
+
+/**
+ * ProjectDetector class for analyzing project type, language, and frameworks
+ * @tags @TASK:PROJECT-DETECTOR-001
+ */
+export class ProjectDetector {
+  private readonly projectFileIndicators: ProjectFileIndicators = {
+    'package.json': { type: 'nodejs', language: 'javascript' },
+    'requirements.txt': { type: 'python', language: 'python' },
+    'pyproject.toml': { type: 'python', language: 'python' },
+    'Cargo.toml': { type: 'rust', language: 'rust' },
+    'go.mod': { type: 'go', language: 'go' },
+    'pom.xml': { type: 'java', language: 'java' },
+    'build.gradle': { type: 'java', language: 'java' },
+    Gemfile: { type: 'ruby', language: 'ruby' },
+    'composer.json': { type: 'php', language: 'php' },
+  };
+
+  private readonly frameworkIndicators: FrameworkIndicators = {
+    react: ['react', '@types/react'],
+    vue: ['vue', '@vue/cli'],
+    angular: ['@angular/core', '@angular/cli'],
+    svelte: ['svelte'],
+    nextjs: ['next'],
+    nuxtjs: ['nuxt'],
+    express: ['express'],
+    fastify: ['fastify'],
+  };
+
+  private readonly buildToolIndicators: BuildToolIndicators = {
+    webpack: ['webpack'],
+    vite: ['vite'],
+    rollup: ['rollup'],
+    parcel: ['parcel'],
+    typescript: ['typescript', '@types/node'],
+  };
+
+  private readonly languageExtensions: LanguageExtensions = {
+    python: ['.py', '.pyx', '.pyi'],
+    javascript: ['.js', '.jsx', '.mjs'],
+    typescript: ['.ts', '.tsx'],
+    rust: ['.rs'],
+    go: ['.go'],
+    java: ['.java'],
+    ruby: ['.rb'],
+    php: ['.php'],
+    cpp: ['.cpp', '.cxx', '.cc'],
+    c: ['.c'],
+  };
+
+  /**
+   * Detect project type based on existing files
+   * @param projectPath Path to project directory
+   * @returns Project information
+   * @tags @API:DETECT-PROJECT-001
+   */
+  public async detectProjectType(projectPath: string): Promise<ProjectInfo> {
+    const detected: ProjectInfo = {
+      type: 'unknown',
+      language: 'unknown',
+      frameworks: [],
+      buildTools: [],
+      filesFound: [],
+      hasScripts: false,
+      scripts: [],
+    };
+
+    console.log(`Detecting project type in: ${projectPath}`);
+
+    // Check for various project files
+    for (const [fileName, info] of Object.entries(this.projectFileIndicators)) {
+      const filePath = path.join(projectPath, fileName);
+      if (fs.existsSync(filePath)) {
+        detected.filesFound.push(fileName);
+        detected.type = info.type;
+        detected.language = info.language;
+        console.log(`Found ${fileName}, detected as ${info.language} project`);
+      }
+    }
+
+    // Analyze package.json if present
+    if (detected.filesFound.includes('package.json')) {
+      const packageAnalysis = await this.analyzePackageJson(
+        path.join(projectPath, 'package.json')
+      );
+      return {
+        ...detected,
+        frameworks: packageAnalysis.frameworks,
+        buildTools: packageAnalysis.buildTools,
+        hasScripts: packageAnalysis.hasScripts,
+        scripts: packageAnalysis.scripts,
+      };
+    }
+
+    console.log(`Project detection completed:`, detected);
+    return detected;
+  }
+
+  /**
+   * Analyze package.json for frameworks and dependencies
+   * @param packageJsonPath Path to package.json file
+   * @returns Package analysis result
+   * @tags @API:ANALYZE-PACKAGE-001
+   */
+  public async analyzePackageJson(
+    packageJsonPath: string
+  ): Promise<PackageAnalysis> {
+    try {
+      const packageData = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+
+      const frameworks: string[] = [];
+      const buildTools: string[] = [];
+
+      // Combine dependencies and devDependencies
+      const allDeps = {
+        ...(packageData.dependencies || {}),
+        ...(packageData.devDependencies || {}),
+      };
+
+      // Detect frameworks
+      for (const [framework, indicators] of Object.entries(
+        this.frameworkIndicators
+      )) {
+        if (indicators.some(indicator => indicator in allDeps)) {
+          frameworks.push(framework);
+          console.log(`Detected framework: ${framework}`);
+        }
+      }
+
+      // Detect build tools
+      for (const [tool, indicators] of Object.entries(
+        this.buildToolIndicators
+      )) {
+        if (indicators.some(indicator => indicator in allDeps)) {
+          buildTools.push(tool);
+          console.log(`Detected build tool: ${tool}`);
+        }
+      }
+
+      const hasScripts = Boolean(packageData.scripts);
+      const scripts = Object.keys(packageData.scripts || {});
+
+      console.log(
+        `Package.json analysis: frameworks=${frameworks}, buildTools=${buildTools}`
+      );
+
+      return {
+        frameworks,
+        buildTools,
+        hasScripts,
+        scripts,
+      };
+    } catch (error) {
+      console.error('Error analyzing package.json:', error);
+      return {
+        frameworks: [],
+        buildTools: [],
+        hasScripts: false,
+        scripts: [],
+      };
+    }
+  }
+
+  /**
+   * Check if package.json should be created based on project configuration
+   * @param config Project configuration
+   * @returns True if package.json should be created
+   * @tags @API:SHOULD-CREATE-PACKAGE-001
+   */
+  public shouldCreatePackageJson(config: ProjectConfig): boolean {
+    const shouldCreate =
+      config.runtime.name === 'node' ||
+      config.runtime.name === 'tsx' ||
+      config.techStack.some(tech =>
+        ['nextjs', 'react', 'vue', 'angular', 'svelte'].includes(tech)
+      );
+
+    console.log(
+      `Should create package.json: ${shouldCreate} (runtime: ${config.runtime.name})`
+    );
+    return shouldCreate;
+  }
+
+  /**
+   * Detect primary language based on file extensions in project
+   * @param projectPath Path to project directory
+   * @returns Detected primary language
+   * @tags @API:DETECT-LANGUAGE-001
+   */
+  public async detectLanguageFromFiles(projectPath: string): Promise<string> {
+    if (!fs.existsSync(projectPath)) {
+      console.warn(`Project path does not exist: ${projectPath}`);
+      return 'unknown';
+    }
+
+    const fileCounts: { [key: string]: number } = {};
+    for (const lang of Object.keys(this.languageExtensions)) {
+      fileCounts[lang] = 0;
+    }
+
+    try {
+      const files = await this.scanDirectory(projectPath);
+
+      for (const file of files) {
+        if (file.isFile()) {
+          const ext = path.extname(file.path).toLowerCase();
+          for (const [lang, extensions] of Object.entries(
+            this.languageExtensions
+          )) {
+            if (extensions.includes(ext)) {
+              fileCounts[lang] = (fileCounts[lang] || 0) + 1;
+            }
+          }
+        }
+      }
+
+      // Return language with most files
+      const detectedLanguage = Object.keys(fileCounts).reduce((a, b) =>
+        (fileCounts[a] || 0) > (fileCounts[b] || 0) ? a : b
+      );
+
+      if ((fileCounts[detectedLanguage] || 0) > 0) {
+        console.log(
+          `Detected language: ${detectedLanguage} (${fileCounts[detectedLanguage]} files)`
+        );
+        return detectedLanguage;
+      } else {
+        console.log('No specific language detected from file extensions');
+        return 'unknown';
+      }
+    } catch (error) {
+      console.error(`Error scanning files: ${error}`);
+      return 'unknown';
+    }
+  }
+
+  /**
+   * Scan directory recursively for files
+   * @param dirPath Directory path to scan
+   * @returns Array of file information
+   * @tags @UTIL:SCAN-DIRECTORY-001
+   */
+  private async scanDirectory(dirPath: string): Promise<FileInfo[]> {
+    const files: FileInfo[] = [];
+
+    const scanRecursive = (currentPath: string) => {
+      try {
+        const entries = fs.readdirSync(currentPath, { withFileTypes: true });
+
+        for (const entry of entries) {
+          const fullPath = path.join(currentPath, entry.name);
+
+          if (entry.isDirectory() && !entry.name.startsWith('.')) {
+            // Skip hidden directories but recurse into others
+            scanRecursive(fullPath);
+          } else if (entry.isFile()) {
+            files.push({
+              path: fullPath,
+              isFile: () => true,
+            });
+          }
+        }
+      } catch (error) {
+        console.error(`Error scanning directory ${currentPath}:`, error);
+      }
+    };
+
+    scanRecursive(dirPath);
+    return files;
+  }
+}

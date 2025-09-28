@@ -1,3 +1,15 @@
+---
+spec_id: SPEC-013
+status: active
+priority: high
+dependencies: [SPEC-012]
+tags:
+  - migration
+  - typescript
+  - week-3
+  - claude-code
+---
+
 # SPEC-013: Python → TypeScript 완전 포팅 (Week 3)
 
 > **@REQ:PYTHON-ELIMINATION-013** Python 런타임 의존성 완전 제거 및 TypeScript 단일 언어 전환
@@ -89,8 +101,9 @@
 - **호환성**: 기존 Markdown 에이전트 정의 100% 호환
 
 #### R2.3 명령어 시스템 TypeScript 구현
-- **대상**: `.claude/commands/moai/` 5개 워크플로우 명령어
-- **구현**: /moai:0-project, /moai:1-spec, /moai:2-build, /moai:3-sync, /moai:debug
+- **대상**: `.claude/commands/moai/` 4개 워크플로우 명령어
+- **구현**: /moai:0-project, /moai:1-spec, /moai:2-build, /moai:3-sync
+- **디버깅**: `@agent-debug-helper` 온디맨드 에이전트 호출 방식
 - **기능**: Python 백엔드 → TypeScript 백엔드 완전 전환
 - **성능**: 명령어 실행 시간 최적화
 

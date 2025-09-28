@@ -74,7 +74,10 @@ describe('FileOperations', () => {
       const dirPath = path.join(tempDir, 'existing-dir');
       await fs.ensureDir(dirPath);
 
-      await expect(fileOps.ensureDirectory(dirPath)).resolves.not.toThrow();
+      // Should not throw when directory already exists
+      await expect(async () => {
+        await fileOps.ensureDirectory(dirPath);
+      }).not.toThrow();
     });
 
     it('should create directory with custom permissions on Unix', async () => {
@@ -214,7 +217,10 @@ describe('FileOperations', () => {
     it('should not throw error if file does not exist', async () => {
       const nonExistentFile = path.join(tempDir, 'non-existent.txt');
 
-      await expect(fileOps.removeFile(nonExistentFile)).resolves.not.toThrow();
+      // Should not throw when file doesn't exist
+      await expect(async () => {
+        await fileOps.removeFile(nonExistentFile);
+      }).not.toThrow();
     });
   });
 
@@ -241,7 +247,10 @@ describe('FileOperations', () => {
     it('should not throw error if directory does not exist', async () => {
       const nonExistentDir = path.join(tempDir, 'non-existent-dir');
 
-      await expect(fileOps.removeDirectory(nonExistentDir)).resolves.not.toThrow();
+      // Should not throw when directory doesn't exist
+      await expect(async () => {
+        await fileOps.removeDirectory(nonExistentDir);
+      }).not.toThrow();
     });
   });
 
@@ -486,9 +495,9 @@ describe('FileOperations', () => {
       const testFile = path.join(tempDir, 'large.txt');
 
       // This should either succeed or not throw an error for this size
-      await expect(
-        fileOps.writeFileContent(testFile, largeContent)
-      ).resolves.not.toThrow();
+      await expect(async () => {
+        await fileOps.writeFileContent(testFile, largeContent);
+      }).not.toThrow();
     });
   });
 });

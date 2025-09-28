@@ -58,31 +58,16 @@ cc-manager는 다음을 보장합니다:
 
 **파일 위치**: `.claude/commands/`
 
-```markdown
----
-name: command-name
-description: Clear one-line description of command purpose
-argument-hint: [param1] [param2] [optional-param]
-tools: Tool1, Tool2, Task, Bash(cmd:*)
-model: sonnet
----
+**커맨드 파일 표준 템플릿:**
 
-# Command Title
+모든 커맨드 파일은 다음 구조를 따릅니다:
 
-Brief description of what this command does.
+- YAML frontmatter: name, description, argument-hint, tools, model
+- 제목 및 간략한 설명
+- Usage 섹션: 기본 사용법, 파라미터 설명, 예상 동작
+- Agent Orchestration: 에이전트 호출 및 결과 처리
 
-## Usage
-
-- Basic usage example
-- Parameter descriptions
-- Expected behavior
-
-## Agent Orchestration
-
-1. Call specific agent for task
-2. Handle results
-3. Provide user feedback
-```
+**스크립트 생성:** `tsx .moai/scripts/command-generator.ts --template-apply`
 
 **필수 YAML 필드**:
 
@@ -126,43 +111,18 @@ Brief description of what this command does.
 
 **파일 위치**: `.claude/agents/`
 
-```markdown
----
-name: agent-name
-description: Use PROACTIVELY for [specific task trigger conditions]
-tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep
-model: sonnet
----
+**에이전트 파일 표준 템플릿:**
 
-# Agent Name - Specialist Role
+모든 에이전트 파일은 다음 구조를 따릅니다:
 
-Brief description of agent's expertise and purpose.
+- YAML frontmatter: name, description ("Use PROACTIVELY for" 패턴 필수), tools, model
+- 전문 역할과 목적 설명
+- Core Mission: 주요 책임, 범위 경계, 성공 기준
+- Proactive Triggers: 자동 활성화 조건, 호출 상황, 워크플로우 연동
+- Workflow Steps: 입력 검증, 작업 실행, 출력 검증, 다음 단계 전달
+- Constraints: 금지 사항, 위임 규칙, 품질 게이트
 
-## Core Mission
-
-- Primary responsibility
-- Scope boundaries
-- Success criteria
-
-## Proactive Triggers
-
-- When to activate automatically
-- Specific conditions for invocation
-- Integration with workflow
-
-## Workflow Steps
-
-1. Input validation
-2. Task execution
-3. Output verification
-4. Handoff to next agent (if applicable)
-
-## Constraints
-
-- What NOT to do
-- Delegation rules
-- Quality gates
-```
+**스크립트 생성:** `tsx .moai/scripts/agent-generator.ts --template-apply`
 
 **필수 YAML 필드**:
 
@@ -210,102 +170,24 @@ Brief description of agent's expertise and purpose.
 
 ### 권장 권한 구성 (.claude/settings.json)
 
-```json
-{
-  "permissions": {
-    "defaultMode": "default",
-    "allow": [
-      "Task",
-      "Read",
-      "Write",
-      "Edit",
-      "MultiEdit",
-      "NotebookEdit",
-      "Grep",
-      "Glob",
-      "TodoWrite",
-      "WebFetch",
-      "WebSearch",
-      "BashOutput",
-      "KillShell",
-      "Bash(git:*)",
-      "Bash(rg:*)",
-      "Bash(ls:*)",
-      "Bash(cat:*)",
-      "Bash(echo:*)",
-      "Bash(python:*)",
-      "Bash(python3:*)",
-      "Bash(pytest:*)",
-      "Bash(npm:*)",
-      "Bash(node:*)",
-      "Bash(pnpm:*)",
-      "Bash(gh pr create:*)",
-      "Bash(gh pr view:*)",
-      "Bash(gh pr list:*)",
-      "Bash(find:*)",
-      "Bash(mkdir:*)",
-      "Bash(cp:*)",
-      "Bash(mv:*)"
-    ],
-    "ask": [
-      "Bash(git push:*)",
-      "Bash(git merge:*)",
-      "Bash(pip install:*)",
-      "Bash(npm install:*)",
-      "Bash(rm:*)"
-    ],
-    "deny": [
-      "Read(./.env)",
-      "Read(./.env.*)",
-      "Read(./secrets/**)",
-      "Bash(sudo:*)",
-      "Bash(rm -rf:*)",
-      "Bash(chmod -R 777:*)"
-    ]
-  }
-}
-```
+**권장 권한 구성 (.claude/settings.json):**
+
+- **defaultMode**: "default" 설정
+- **allow**: Task, Read, Write, Edit, MultiEdit, Grep, Glob 등 기본 도구와 안전한 Bash 명령어들
+- **ask**: git push, git merge, package 설치 등 중요 작업
+- **deny**: 환경변수, 비밀 파일, 위험한 시스템 명령어
+
+**스크립트 생성:** `tsx .moai/scripts/settings-generator.ts --security-optimized`
 
 ### 훅 시스템 설정
 
-```json
-{
-  "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start_notice.py",
-            "type": "command"
-          }
-        ],
-        "matcher": "*"
-      }
-    ],
-    "PreToolUse": [
-      {
-        "hooks": [
-          {
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_write_guard.py",
-            "type": "command"
-          }
-        ],
-        "matcher": "Edit|Write|MultiEdit"
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/moai/steering_guard.py",
-            "type": "command"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
+**훅 시스템 설정:**
+
+- **SessionStart**: 세션 시작 시 알림 및 프로젝트 상태 확인
+- **PreToolUse**: 파일 수정 전 보안 검사
+- **UserPromptSubmit**: 사용자 입력 시 정책 가이드
+
+**스크립트 생성:** `tsx .moai/scripts/hooks-generator.ts --javascript-hooks`
 
 ## 🔍 표준 검증 체크리스트
 
@@ -440,11 +322,11 @@ Brief description of agent's expertise and purpose.
 
 ### cc-manager 직접 호출
 
-```
-@agent-cc-manager "새 에이전트 생성: data-processor"
-@agent-cc-manager "커맨드 파일 표준화 검증"
-@agent-cc-manager "설정 최적화"
-```
+**cc-manager 직접 호출 방법:**
+
+- `@agent-cc-manager "새 에이전트 생성: data-processor"`
+- `@agent-cc-manager "커맨드 파일 표준화 검증"`
+- `@agent-cc-manager "설정 최적화"`
 
 ### 자동 실행 조건
 

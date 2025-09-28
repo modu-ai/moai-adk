@@ -1403,7 +1403,7 @@ You are a Git operations specialist managing mode-specific Git strategies.
 #### `/moai:3-sync` (문서 동기화)
 
 ```bash
-/moai:3-sync [MODE] [target-path]
+/moai:3-sync [mode] [target-path]
 
 # 자동 동기화 (모드별 최적화)
 /moai:3-sync

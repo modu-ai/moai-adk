@@ -61,24 +61,27 @@ export type PlatformType = 'windows' | 'unix';
  * @tags @DESIGN:MOAI-PERMISSIONS-001
  */
 export const MoAIPermissions = {
-  SCRIPT_FILES: { // .py, .sh, .js files
+  SCRIPT_FILES: {
+    // .py, .sh, .js files
     owner: { read: true, write: true, execute: true },
     group: { read: true, write: false, execute: true },
-    others: { read: true, write: false, execute: false }
+    others: { read: true, write: false, execute: false },
   },
-  CONFIG_FILES: { // .json, .yaml files
+  CONFIG_FILES: {
+    // .json, .yaml files
     owner: { read: true, write: true, execute: false },
     group: { read: true, write: false, execute: false },
-    others: { read: false, write: false, execute: false }
+    others: { read: false, write: false, execute: false },
   },
   DIRECTORIES: {
     owner: { read: true, write: true, execute: true },
     group: { read: true, write: false, execute: true },
-    others: { read: true, write: false, execute: true }
+    others: { read: true, write: false, execute: true },
   },
-  SENSITIVE_FILES: { // secret files
+  SENSITIVE_FILES: {
+    // secret files
     owner: { read: true, write: true, execute: false },
     group: { read: false, write: false, execute: false },
-    others: { read: false, write: false, execute: false }
-  }
+    others: { read: false, write: false, execute: false },
+  },
 } as const;

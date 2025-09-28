@@ -5,7 +5,7 @@
  */
 
 import * as path from 'path';
-import { FilePermissions, PlatformType } from './permission-types';
+import type { FilePermissions, PlatformType } from './permission-types';
 
 /**
  * Permission utility helper class
@@ -35,13 +35,13 @@ export class PermissionUtils {
     const parseOctal = (value: number) => ({
       read: (value & 4) !== 0,
       write: (value & 2) !== 0,
-      execute: (value & 1) !== 0
+      execute: (value & 1) !== 0,
     });
 
     return {
       owner: parseOctal(owner),
       group: parseOctal(group),
-      others: parseOctal(others)
+      others: parseOctal(others),
     };
   }
 
@@ -51,7 +51,11 @@ export class PermissionUtils {
    * @returns Octal permission string
    */
   static permissionsToOctal(permissions: FilePermissions): string {
-    const toOctal = (perm: { read: boolean; write: boolean; execute: boolean }) => {
+    const toOctal = (perm: {
+      read: boolean;
+      write: boolean;
+      execute: boolean;
+    }) => {
       let value = 0;
       if (perm.read) value += 4;
       if (perm.write) value += 2;
@@ -85,9 +89,11 @@ export class PermissionUtils {
     const ext = path.extname(filePath).toLowerCase();
     const basename = path.basename(filePath).toLowerCase();
 
-    return ['.json', '.yaml', '.yml', '.toml', '.ini', '.conf'].includes(ext) ||
-           basename.startsWith('.env') ||
-           basename.includes('config');
+    return (
+      ['.json', '.yaml', '.yml', '.toml', '.ini', '.conf'].includes(ext) ||
+      basename.startsWith('.env') ||
+      basename.includes('config')
+    );
   }
 
   /**
@@ -100,12 +106,22 @@ export class PermissionUtils {
     const dirname = path.dirname(filePath).toLowerCase();
 
     const sensitivePatterns = [
-      '.env', 'secret', 'credential', 'key', 'token', 'password',
-      'auth', 'private', '.ssh', '.pem', '.p12', '.pfx'
+      '.env',
+      'secret',
+      'credential',
+      'key',
+      'token',
+      'password',
+      'auth',
+      'private',
+      '.ssh',
+      '.pem',
+      '.p12',
+      '.pfx',
     ];
 
-    return sensitivePatterns.some(pattern =>
-      basename.includes(pattern) || dirname.includes(pattern)
+    return sensitivePatterns.some(
+      pattern => basename.includes(pattern) || dirname.includes(pattern)
     );
   }
 

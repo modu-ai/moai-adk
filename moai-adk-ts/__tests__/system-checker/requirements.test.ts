@@ -4,7 +4,7 @@
  * @tags @TEST:SYSTEM-REQUIREMENTS-001 @REQ:AUTO-VERIFY-012
  */
 
-import { describe, test, expect } from '@jest/globals';
+import { describe, test, expect } from 'vitest';
 import { SystemRequirement, requirementRegistry } from '@/core/system-checker/requirements';
 
 describe('SystemRequirement', () => {

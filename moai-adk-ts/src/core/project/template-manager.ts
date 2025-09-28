@@ -6,7 +6,13 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { ProjectConfig, InitResult, TemplateData, ProjectType } from '@/types/project';
+import {
+  type ProjectConfig,
+  type InitResult,
+  type TemplateData,
+  ProjectType,
+} from '@/types/project';
+import { getDefaultTagDatabase } from '../tag-system/tag-database';
 
 /**
  * Template manager for project structure generation
@@ -16,7 +22,8 @@ export class TemplateManager {
   private readonly templatesPath: string;
 
   constructor(templatesPath?: string) {
-    this.templatesPath = templatesPath || path.join(__dirname, '../../templates');
+    this.templatesPath =
+      templatesPath || path.join(__dirname, '../../templates');
   }
 
   /**
@@ -35,7 +42,10 @@ export class TemplateManager {
    * @returns Generation result
    * @tags @API:TEMPLATE-GENERATE-001
    */
-  public async generateProject(config: ProjectConfig, targetPath: string): Promise<InitResult> {
+  public async generateProject(
+    config: ProjectConfig,
+    targetPath: string
+  ): Promise<InitResult> {
     try {
       const result: InitResult = {
         success: false,
@@ -43,7 +53,7 @@ export class TemplateManager {
         config,
         createdFiles: [],
         errors: [],
-        warnings: []
+        warnings: [],
       };
 
       // Validate project name
@@ -75,14 +85,13 @@ export class TemplateManager {
 
       result.success = true;
       return result;
-
     } catch (error) {
       return {
         success: false,
         projectPath: targetPath,
         config,
         createdFiles: [],
-        errors: [error instanceof Error ? error.message : 'Unknown error']
+        errors: [error instanceof Error ? error.message : 'Unknown error'],
       };
     }
   }
@@ -99,12 +108,13 @@ export class TemplateManager {
       projectType: config.type,
       timestamp: new Date().toISOString(),
       author: config.author || 'MoAI Developer',
-      description: config.description || `A ${config.type} project built with MoAI-ADK`,
+      description:
+        config.description || `A ${config.type} project built with MoAI-ADK`,
       license: config.license || 'MIT',
       packageManager: config.packageManager || 'npm',
       features: Object.fromEntries(
         (config.features || []).map(f => [f.name, f.enabled])
-      )
+      ),
     };
   }
 
@@ -114,7 +124,10 @@ export class TemplateManager {
    * @param result - Result object to update
    * @tags @API:TEMPLATE-BASE-001
    */
-  private async createBaseStructure(projectPath: string, _result: InitResult): Promise<void> {
+  private async createBaseStructure(
+    projectPath: string,
+    _result: InitResult
+  ): Promise<void> {
     const directories = [
       'src',
       'tests',
@@ -122,7 +135,7 @@ export class TemplateManager {
       '.moai',
       '.moai/project',
       '.moai/indexes',
-      '.moai/reports'
+      '.moai/reports',
     ];
 
     for (const dir of directories) {
@@ -210,14 +223,23 @@ export class TemplateManager {
     // package.json
     const packageJsonContent = this.generatePackageJson(templateData);
     const packageJsonPath = path.join(projectPath, 'package.json');
-    await fs.writeFile(packageJsonPath, JSON.stringify(packageJsonContent, null, 2));
+    await fs.writeFile(
+      packageJsonPath,
+      JSON.stringify(packageJsonContent, null, 2)
+    );
     result.createdFiles.push('package.json');
 
     // tsconfig.json (for TypeScript projects)
-    if (templateData.projectType === ProjectType.TYPESCRIPT || templateData.features['typescript']) {
+    if (
+      templateData.projectType === ProjectType.TYPESCRIPT ||
+      templateData.features['typescript']
+    ) {
       const tsconfigContent = this.generateTsConfig();
       const tsconfigPath = path.join(projectPath, 'tsconfig.json');
-      await fs.writeFile(tsconfigPath, JSON.stringify(tsconfigContent, null, 2));
+      await fs.writeFile(
+        tsconfigPath,
+        JSON.stringify(tsconfigContent, null, 2)
+      );
       result.createdFiles.push('tsconfig.json');
     }
 
@@ -312,15 +334,26 @@ export class TemplateManager {
       result.createdFiles.push(`.moai/project/${file}`);
     }
 
-    // .moai/indexes/tags.json
-    const tagsIndex = { tags: [], last_updated: new Date().toISOString() };
-    const tagsPath = path.join(projectPath, '.moai', 'indexes', 'tags.json');
-    await fs.writeFile(tagsPath, JSON.stringify(tagsIndex, null, 2));
-    result.createdFiles.push('.moai/indexes/tags.json');
+    // .moai/indexes/tags.db (SQLite3 TAG database)
+    try {
+      const tagDb = getDefaultTagDatabase(projectPath);
+      await tagDb.initialize();
+      result.createdFiles.push('.moai/indexes/tags.db');
+    } catch (error) {
+      // Graceful degradation - create empty file for compatibility
+      const tagsPath = path.join(projectPath, '.moai', 'indexes', 'tags.db');
+      await fs.writeFile(tagsPath, '');
+      result.createdFiles.push('.moai/indexes/tags.db');
+    }
 
     // .moai/reports/sync-report.md
     const syncReportContent = this.generateSyncReport(templateData);
-    const syncReportPath = path.join(projectPath, '.moai', 'reports', 'sync-report.md');
+    const syncReportPath = path.join(
+      projectPath,
+      '.moai',
+      'reports',
+      'sync-report.md'
+    );
     await fs.writeFile(syncReportPath, syncReportContent);
     result.createdFiles.push('.moai/reports/sync-report.md');
   }
@@ -345,7 +378,7 @@ export class TemplateManager {
       '.claude/commands',
       '.claude/commands/moai',
       '.claude/hooks',
-      '.claude/hooks/moai'
+      '.claude/hooks/moai',
     ];
 
     for (const dir of claudeDirs) {
@@ -356,7 +389,13 @@ export class TemplateManager {
     const agents = ['spec-builder.md', 'code-builder.md', 'doc-syncer.md'];
     for (const agent of agents) {
       const content = this.generateAgentFile(agent, templateData);
-      const agentPath = path.join(projectPath, '.claude', 'agents', 'moai', agent);
+      const agentPath = path.join(
+        projectPath,
+        '.claude',
+        'agents',
+        'moai',
+        agent
+      );
       await fs.writeFile(agentPath, content);
       result.createdFiles.push(`.claude/agents/moai/${agent}`);
     }
@@ -365,14 +404,26 @@ export class TemplateManager {
     const commands = ['0-project.md', '1-spec.md', '2-build.md', '3-sync.md'];
     for (const command of commands) {
       const content = this.generateCommandFile(command, templateData);
-      const commandPath = path.join(projectPath, '.claude', 'commands', 'moai', command);
+      const commandPath = path.join(
+        projectPath,
+        '.claude',
+        'commands',
+        'moai',
+        command
+      );
       await fs.writeFile(commandPath, content);
       result.createdFiles.push(`.claude/commands/moai/${command}`);
     }
 
     // Create hook files
     const hookContent = this.generatePreCommitHook(templateData);
-    const hookPath = path.join(projectPath, '.claude', 'hooks', 'moai', 'pre-commit.py');
+    const hookPath = path.join(
+      projectPath,
+      '.claude',
+      'hooks',
+      'moai',
+      'pre-commit.py'
+    );
     await fs.writeFile(hookPath, hookContent);
     result.createdFiles.push('.claude/hooks/moai/pre-commit.py');
   }
@@ -385,7 +436,9 @@ export class TemplateManager {
    * @tags @API:TEMPLATE-FEATURE-001
    */
   private hasFeature(config: ProjectConfig, featureName: string): boolean {
-    return config.features?.some(f => f.name === featureName && f.enabled) || false;
+    return (
+      config.features?.some(f => f.name === featureName && f.enabled) || false
+    );
   }
 
   /**
@@ -426,10 +479,10 @@ version = "0.1.0"
       scripts: {
         build: 'tsc',
         test: 'jest',
-        start: 'node dist/index.js'
+        start: 'node dist/index.js',
       },
       dependencies: {},
-      devDependencies: {}
+      devDependencies: {},
     };
   }
 
@@ -441,10 +494,10 @@ version = "0.1.0"
         outDir: './dist',
         rootDir: './src',
         strict: true,
-        esModuleInterop: true
+        esModuleInterop: true,
       },
       include: ['src/**/*'],
-      exclude: ['node_modules', 'dist']
+      exclude: ['node_modules', 'dist'],
     };
   }
 
@@ -472,12 +525,12 @@ python_functions = test_*
         name: data.projectName,
         type: data.projectType,
         version: '0.1.0',
-        created_at: data.timestamp
+        created_at: data.timestamp,
       },
       constitution: {
         enforce_tdd: true,
-        test_coverage_target: 85
-      }
+        test_coverage_target: 85,
+      },
     };
   }
 

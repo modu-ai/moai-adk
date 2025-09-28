@@ -1,34 +1,40 @@
-# SPEC-012 TDD 구현 계획: TypeScript 기반 구축 (Week 1)
+# SPEC-012 TDD 구현 계획: Python → TypeScript 완전 포팅 (5주)
 
-> **@TASK:IMPLEMENTATION-PLAN-012** SPEC-012 TypeScript 기반 구축을 위한 TDD 실행 계획
-> **@DESIGN:TDD-STRATEGY-012** Red-Green-Refactor 사이클 기반 단계별 접근
-> **@PERF:MILESTONE-012** Week 1 Day-by-Day 마일스톤 및 성과 대상
-
----
-
-## 구현 전략
-
-### TDD 사이클 적용
-
-```
-Red → Green → Refactor → Integration
- │      │        │            │
- │      │        │            └─ CI/CD 통합
- │      │        └───────────── 코드 품질 개선
- │      └─────────────────────── 최소 구현
- └───────────────────────────── 실패하는 테스트 작성
-```
-
-### 우선순위 및 의존성
-
-1. **Day 1-2**: 프로젝트 초기화 (기반 작업)
-2. **Day 3-4**: 시스템 검증 모듈 (핵심 기능)
-3. **Day 5-6**: CLI 구조 및 명령어 (사용자 인터페이스)
-4. **Day 7**: 통합 테스트 및 검증 (전체 연동)
+> **@TASK:COMPLETE-PORTING-PLAN-012** Python MoAI-ADK를 TypeScript로 완전 전환하는 TDD 실행 계획
+> **@DESIGN:MIGRATION-STRATEGY-012** 5주 단계별 포팅 전략 및 Red-Green-Refactor 적용
+> **@PERF:FULL-MIGRATION-012** Python 완전 제거 + TypeScript 단독 실행 목표
 
 ---
 
-## Day-by-Day 마일스톤
+## 완전 포팅 전략
+
+### 포팅 원칙
+```
+Python 분석 → TypeScript 설계 → TDD 구현 → 기능 검증 → Python 제거
+    │              │              │           │             │
+    │              │              │           │             └─ 완전 전환
+    │              │              │           └─────────────── 동등성 확인
+    │              │              └─────────────────────────── Red-Green-Refactor
+    │              └─────────────────────────────────────────── 타입 안전 설계
+    └─────────────────────────────────────────────────────── 기존 기능 매핑
+```
+
+### 5주 포팅 로드맵
+
+1. **Week 1**: TypeScript 기반 구축 + 시스템 검증 (신규 기능)
+2. **Week 2**: 설치 시스템 완전 포팅 (Python install/ → TypeScript)
+3. **Week 3**: 훅 시스템 완전 전환 (7개 Python 훅 → TypeScript)
+4. **Week 4**: 통합 최적화 + 성능 목표 달성 (0.8초, 80MB)
+5. **Week 5**: npm 배포 + Python 버전 deprecation
+
+### 포팅 우선순위
+1. **핵심 기능**: CLI, 설치, Git 관리, TAG 시스템
+2. **품질 기능**: TRUST 검증, 보안 훅, 품질 게이트
+3. **확장 기능**: 문서 시스템, 에이전트, 템플릿
+
+---
+
+## Week 1: TypeScript 기반 구축
 
 ### Day 1: 프로젝트 초기화 (RED 단계)
 
@@ -465,58 +471,105 @@ describe('Full Workflow Integration', () => {
 
 ---
 
-## 성능 목표 및 측정
+## 전체 5주 포팅 마일스톤
 
-### 성능 지표
+### Week 2: 설치 시스템 완전 포팅
+**목표**: Python install/ 모듈 → TypeScript 100% 전환
+
+**주요 작업**:
+- InstallationOrchestrator 포팅 (src/moai_adk/install/installer.py → TypeScript)
+- Git 관리 시스템 포팅 (src/moai_adk/core/git_manager.py → TypeScript)
+- 템플릿 엔진 포팅 (Jinja2 → Mustache.js)
+- 크로스 플랫폼 파일 작업 (fs-extra 활용)
+
+### Week 3: 훅 시스템 완전 전환
+**목표**: 7개 Python 훅 → TypeScript 완전 대체
+
+**주요 작업**:
+- pre_write_guard.py → pre-write-guard.ts
+- policy_block.py → policy-block.ts
+- steering_guard.py → steering-guard.ts
+- session_start.py → session-start.ts
+- (추가 3개 훅 포팅)
+- Claude Code 인터페이스 호환성 유지
+
+### Week 4: 통합 최적화 + 성능 달성
+**목표**: TRUST 원칙 구현 + 성능 목표 달성
+
+**주요 작업**:
+- TAG 시스템 성능 최적화 (1.1초 → 0.8초)
+- 메모리 사용량 최적화 (174MB → 80MB)
+- better-sqlite3 통합 및 최적화
+- TRUST 검증 시스템 구현
+
+### Week 5: 배포 및 Python 폐기
+**목표**: npm 정식 배포 + Python 버전 deprecation
+
+**주요 작업**:
+- npm 패키지 정식 배포 (moai-adk@1.0.0)
+- Python 버전 deprecation 공지
+- 마이그레이션 가이드 작성
+- 사용자 지원 체계 구축
+
+---
+
+## 성능 목표 및 측정 (완전 포팅 기준)
+
+### 포팅 성능 목표
 ```
-CLI 시작 시간: < 2초
-시스템 검사: < 5초
-메모리 사용: < 100MB
-빌드 시간: < 30초
-테스트 실행: < 60초
+스캔 성능: Python 1.1초 → TypeScript 0.8초 (27% 개선)
+메모리 사용: Python 174MB → TypeScript 80MB (54% 절약)
+설치 시간: pip 30-60초 → npm 30초 이하
+패키지 크기: Python 15MB → TypeScript 10MB 이하
+설치 성공률: Python 95% → TypeScript 98%
 ```
 
-### 품질 지표
+### 품질 지표 (완전 전환)
 ```
-코드 커버리지: ≥ 80%
-타입 커버리지: 100%
-ESLint 에러: 0개
-대상 파일 수: < 50개
-평균 함수 길이: < 30 LOC
+Python 코드 잔존: 0% (완전 제거)
+TypeScript 구현: 100% (모든 기능 포팅)
+타입 커버리지: 100% (strict 모드)
+테스트 커버리지: ≥ 85%
+크로스 플랫폼: Windows/macOS/Linux 100% 지원
 ```
 
 ---
 
-## 위험 관리 및 대응책
+## 위험 관리 및 대응책 (완전 포팅 관점)
 
-### 기술적 위험
-1. **Node.js 버전 호환성**
-   - 위험: Claude Code에서 사용하는 Node.js 버전과 불일치
-   - 대응: 최소 버전 18.0.0으로 설정, 호환성 테스트
+### 포팅 위험
+1. **기능 누락 위험**
+   - 위험: Python 기능이 TypeScript에서 구현되지 않음
+   - 대응: 기능 매핑 체크리스트, 단위 테스트 기반 검증
 
-2. **TypeScript 컴파일 오류**
-   - 위험: 복잡한 타입 정의로 인한 컴파일 실패
-   - 대응: 단계적 타입 도입, strict 모드 점진적 적용
+2. **성능 저하 위험**
+   - 위험: TypeScript 버전이 Python보다 느림
+   - 대응: 벤치마크 테스트, 프로파일링, 최적화
 
-3. **크로스 플랫폼 이슈**
-   - 위험: Windows/macOS/Linux 환경별 동작 차이
-   - 대응: 각 플랫폼에서 단위 테스트, CI/CD 매트릭스
+3. **호환성 깨짐 위험**
+   - 위험: 기존 사용자 프로젝트와 호환성 문제
+   - 대응: 호환성 테스트 수트, 마이그레이션 도구
 
-### 상황별 대응 계획
+### 포팅 실패 시 대응
 ```
-시나리오 1: Day 3-4 지연
-→ Day 5-6 작업을 Day 6-7로 연기
-→ 핵심 기능 우선 구현
+시나리오 1: 중대한 기능 누락 발견
+→ 해당 기능 긴급 포팅
+→ 배포 일정 조정
 
 시나리오 2: 성능 목표 미달성
-→ 기능 범위 축소
-→ Week 2로 원래 기능 이전
+→ 성능 집중 최적화 주간
+→ 병목 지점 프로파일링 및 개선
 
-시나리오 3: 심각한 블로커 발생
-→ Python 기반 대안 접근
-→ 하이브리드 접근법 고려
+시나리오 3: 사용자 호환성 문제
+→ 호환성 레이어 구현
+→ 점진적 마이그레이션 지원
 ```
 
 ---
 
-**Week 1 성공 완료 조건**: `moai --version`, `moai --help`, `moai doctor` 명령어가 정상 동작하고, 시스템 요구사항 자동 검증 모듈이 완성되어 테스트를 통과해야 함.
+**5주 완전 포팅 성공 조건**:
+- Python 코드 0% 잔존
+- npm install -g moai-adk 단독 설치
+- 기존 모든 기능 100% 동작
+- 성능 목표 달성 (0.8초, 80MB)
+- 기존 프로젝트 완벽 호환

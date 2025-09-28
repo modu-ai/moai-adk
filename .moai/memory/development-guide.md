@@ -1,83 +1,114 @@
-# MoAI-ADK Development Guide (TRUST 5 Principles)
+# MoAI-ADK Development Guide (SPEC-First TDD Principles)
 
-> "No spec, no code. No tests, no implementation."
+> "No SPEC, no code. No tests, no implementation. SPEC-First TDD, Language Agnostic."
 
-This development guide is the unified guardrail for all agents and developers working on the MoAI-ADK project. It applies to Claude Code sessions, Headless CLI automation, and both team and individual workflows. Korean is the default communication language for the project.
-
----
-
-## 0. Scope · Base Loop
-
-- Base action loop: **Problem Definition → Small & Safe Change → Change Review → Refactor → Docs/TAG Sync**.
-- All changes must follow AGENTS rules, the 16-Core TAG system, the Waiver process, structured logging, and security policies.
+This development guide is the unified guardrail for all agents and developers working with the MoAI-ADK universal development toolkit. **MoAI-ADK itself is built with TypeScript**, but **supports all major programming languages** for user projects. It follows the **SPEC-First TDD methodology** with 16-Core @TAG traceability. Korean is the default communication language for the project.
 
 ---
 
-## TRUST 5 — Core Engineering Principles
+## 0. SPEC-First TDD Workflow
 
-### **T** - **Test First**
+**Core Development Loop (3-Stage)**:
+1. **SPEC Creation** (`/moai:1-spec`) → 명세 없이는 코드 없음
+2. **TDD Implementation** (`/moai:2-build`) → 테스트 없이는 구현 없음
+3. **Documentation Sync** (`/moai:3-sync`) → 추적성 없이는 완성 없음
 
-1. **Red → Green → Refactor** (Kent Beck)
-   - RED: Write a failing test first and confirm it fails.
-   - GREEN: Make it pass with the minimum code and commit.
-   - REFACTOR: Refactor only when all tests pass.
-2. **Test Policy**
-   - New features require new tests; bug fixes require regression tests.
-   - Tests must be deterministic and isolated; replace external systems with fakes/contracts.
-   - Include at least one success and one failure path in E2E.
-3. **Coverage Goal**: Recommended ≥ 85%. If lower, record a remediation plan or a Waiver.
+**On-Demand Quality Assurance**:
+- **Debug & Validation** (`@agent-debug-helper`) → 디버깅이 필요할 때 debug 에이전트 호출해서 사용
 
-### **R** - **Readable**
-
-1. **Clean Code Rules** (Robert C. Martin)
-   - Clear names, small functions (≤ 50 LOC), single responsibility, minimal parameters.
-   - Remove duplication; reveal intent with structure; keep comments minimal (intent only).
-   - Follow team formatting rules; add vertical whitespace between related concepts.
-2. **Variable Roles** (Sajaniemi): Use the 11 roles explicitly, e.g., Fixed Value, Stepper, Flag, Walker, etc.
-3. **Side-Effect Isolation**: Separate I/O, network, and global state into boundaries; prefer guard clauses; symbolize constants.
-
-### **U** - **Unified**
-
-1. **Complexity Recommendation**: Default `simplicity_threshold = 5` per module. If exceeding, write a Waiver (reason, risk, mitigation, expiry conditions).
-2. **Fowler’s Two Hats**: Separate “feature work” and “refactoring”; never wear both hats at once.
-3. **Refactoring Signals**: Long functions, large classes, long parameter lists, duplication, feature envy. Plan refactors when smells appear.
-4. **Architecture Principles**: Separate Domain/Application/Infrastructure layers, follow DIP, interface-first design, document API/data contracts.
-
-### **S** - **Secured**
-
-1. Collect structured logs (JSONL) and key metrics (latency, error rate, throughput, resources); mask PII/secrets with `***redacted***`.
-2. Record all significant events for audit; on hook failure, trip a circuit breaker and switch to safe mode (additional approvals, restricted Bash).
-3. Pre-block dangerous commands (`rm -rf`, disallowed network) and manage allowlists via `policy_block.py`.
-4. **Security/Quality**: Validate/normalize/encode inputs, structured (JSON) logging, mask sensitive info, apply least privilege.
-
-### **T** - **Trackable**
-
-1. Maintain semantic versioning (MAJOR.MINOR.BUILD); make Git history traceable via `@TAG`s and commit messages.
-2. Use `/moai:git:*` commands for checkpoints, branches, commits, and sync; auto-tag before/after risky ops.
-3. Follow `/moai:3-sync` checklist when moving Draft PR → Ready.
+All changes must follow the 16-Core TAG system, SPEC-driven requirements, and language-appropriate TDD practices.
 
 ---
 
-## Article I — Mindset & Decision Loop
+## TRUST 5 — SPEC-First TDD Engineering Principles
 
-1. **Senior Engineer Mindset**: Decide based on facts, not assumptions; compare at least two alternatives (pros/cons/risks) and choose the simplest viable solution.
-2. **Whole-Context Reading**: Before edits, read related files/definitions/references/tests/docs/flags end-to-end and jot down 1–3 lines on impact.
-3. **Korean Communication**: Korean is the default for team/AI communication; quote originals when needed and add explanations.
+### **T** - **Test-Driven Development (SPEC-Based)**
+
+1. **SPEC → Test → Code** (SPEC-First TDD Cycle)
+   - **SPEC**: Create detailed SPEC with `@REQ`, `@DESIGN`, `@TASK` tags first
+   - **RED**: Write failing tests based on SPEC requirements and confirm failure
+   - **GREEN**: Implement minimum code to pass tests and fulfill SPEC
+   - **REFACTOR**: Improve code quality while maintaining SPEC compliance
+2. **Language-Specific TDD Implementation**
+   - **Python**: pytest + SPEC-driven test cases (type hints with mypy)
+   - **TypeScript/JavaScript**: Vitest + SPEC-based test suites (strict typing)
+   - **Java**: JUnit + SPEC annotations (behavior-driven tests)
+   - **Go**: go test + SPEC table-driven tests (interface compliance)
+   - **Rust**: cargo test + SPEC documentation tests (trait validation)
+   - **C++**: GoogleTest + SPEC template tests (concept validation)
+   - **C#**: xUnit + SPEC attribute tests (contract validation)
+3. **SPEC-TDD Integration**: Each test must trace back to specific SPEC requirements via @TAG references.
+
+### **R** - **Requirements-Driven Readable Code**
+
+1. **SPEC-Aligned Clean Code**
+   - Functions directly implement SPEC requirements (≤ 50 LOC per function)
+   - Variable names reflect SPEC terminology and domain language
+   - Code structure mirrors SPEC design decisions
+   - Comments only for SPEC clarifications and @TAG references
+2. **Language-Specific SPEC Implementation**
+   - **Python**: Type hints reflecting SPEC interfaces + mypy validation
+   - **TypeScript**: Strict interfaces matching SPEC contracts + Biome
+   - **Java**: Classes implementing SPEC components + strong typing
+   - **Go**: Interfaces fulfilling SPEC requirements + gofmt
+   - **Rust**: Types embodying SPEC safety requirements + rustfmt
+3. **SPEC Traceability**: Every code element should be traceable to SPEC via @TAG comments.
+
+### **U** - **Unified SPEC Architecture**
+
+1. **SPEC-Driven Complexity Management**: Each SPEC defines complexity thresholds. Exceeding requires new SPEC or Waiver with clear justification.
+2. **SPEC Implementation Phases**: Separate SPEC creation from implementation; never modify SPEC during TDD cycle.
+3. **Cross-Language SPEC Compliance**:
+   - **Python**: Modules following SPEC component boundaries
+   - **TypeScript**: Interfaces implementing SPEC contracts
+   - **Java**: Packages aligned with SPEC architecture
+   - **Go**: Packages respecting SPEC interface definitions
+   - **Rust**: Crates embodying SPEC module separation
+4. **SPEC-Driven Architecture**: Domain boundaries defined by SPEC, not language conventions. Use 16-Core @TAG system for cross-language traceability.
+
+### **S** - **SPEC-Compliant Security**
+
+1. **SPEC Security Requirements**: Every SPEC must define security requirements, data sensitivity, and access controls explicitly.
+2. **Security-by-Design**: Security controls implemented during TDD phase, not retrofitted after completion.
+3. **Language-Agnostic Security Patterns**:
+   - Input validation based on SPEC interface definitions
+   - Audit logging for SPEC-defined critical operations
+   - Access control following SPEC permission models
+   - Secret management per SPEC environment requirements
+4. **MoAI-ADK Security**: TypeScript policy-block hooks enforce SPEC security rules across all language implementations.
+
+### **T** - **SPEC Traceability**
+
+1. **SPEC-to-Code Traceability**: Every code change must reference SPEC ID and specific requirement via 16-Core @TAG system.
+2. **3-Stage Workflow Tracking**:
+   - `/moai:1-spec`: SPEC creation with @REQ, @DESIGN, @TASK tags
+   - `/moai:2-build`: TDD implementation with @TEST, @FEATURE tags
+   - `/moai:3-sync`: Documentation sync with @DOCS, @TAG tags
+   - `@agent-debug-helper`: 온디맨드 디버깅 with @PERF, @SEC tags
+3. **Cross-Language TAG Consistency**: JSON tags.json maintains unified traceability across all programming languages.
 
 ---
 
-## Article II — Workflow Guardrails
+## Article I — SPEC-First Mindset
 
-1. **Pre-work**: Before coding, clarify `Background/Problem/Goals/Non-Goals/Constraints` and check required SPEC/TAGs.
-2. **Small & Safe Changes**: Minimize scope of PRs/commits/files; create checkpoints before risky operations.
-3. **Review & Docs**: After changes, run `/moai:3-sync` to update the living docs/TAGs; capture summaries/reviews/refactor plans.
+1. **SPEC-Driven Decisions**: All technical decisions must reference existing SPEC or create new SPEC. No implementation without clear requirements.
+2. **SPEC-Context Reading**: Before any code changes, read relevant SPEC documents, understand @TAG relationships, and verify compliance.
+3. **SPEC Communication**: Korean is default for communication; all SPEC documents use clear Korean with technical terms in English.
+
+---
+
+## Article II — SPEC-TDD Workflow
+
+1. **SPEC-First**: Create or reference SPEC before any code. Use `/moai:1-spec` to define requirements, design, and tasks clearly.
+2. **TDD Implementation**: Follow Red-Green-Refactor strictly. Use `/moai:2-build` with language-appropriate testing frameworks.
+3. **Traceability Sync**: Run `/moai:3-sync` to update documentation and maintain @TAG relationships across SPEC and code.
 
 ---
 
 ## Article III — 16-Core @TAG System (Traceability)
 
 1. Maintain the 16-Core @TAG chain: Primary (@REQ → @DESIGN → @TASK → @TEST), Steering, Implementation, Quality.
-2. Keep `.moai/indexes/tags.db` and `.moai/reports/sync-report.md` up to date.
+2. Keep `.moai/indexes/tags.json` and `.moai/reports/sync-report.md` up to date.
 
 
 ---
@@ -159,4 +190,4 @@ This development guide is the unified guardrail for all agents and developers wo
 
 ---
 
-This guide provides standards to execute the MoAI-ADK 4-stage pipeline, Git automation, Headless CLI automation, and team/individual collaboration safely and consistently. All contributors should link this document into session-start memory (e.g., `CLAUDE.md`) for constant reference.
+This guide provides SPEC-First TDD standards to execute the MoAI-ADK 3-stage pipeline (`/moai:1-spec` → `/moai:2-build` → `/moai:3-sync`) with universal language support and 16-Core @TAG traceability. Use `@agent-debug-helper` when issues arise. All contributors should follow SPEC-driven development with language-appropriate TDD practices.

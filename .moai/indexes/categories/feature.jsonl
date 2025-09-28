@@ -1,0 +1,5 @@
+{"tag": "FEATURE:CLI-UNIFIED-001", "type": "feature", "description": "Unified CLI feature", "created": "2025-09-28"}
+{"tag": "FEATURE:DISTRIBUTED-TAGS-001", "type": "feature", "description": "Distributed tags feature", "created": "2025-09-29"}
+{"tag": "FEATURE:PERFORMANCE-BOOST-001", "type": "feature", "description": "Performance boost feature", "created": "2025-09-29"}
+{"tag": "FEATURE:CACHE-SYSTEM-001", "type": "feature", "description": "Cache system feature", "created": "2025-09-29"}
+{"tag": "FEATURE:JSONL-SUPPORT-001", "type": "feature", "description": "JSON Lines support feature", "created": "2025-09-29"}

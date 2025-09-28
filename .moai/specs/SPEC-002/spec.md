@@ -1,3 +1,16 @@
+---
+spec_id: SPEC-002
+status: active
+priority: high
+dependencies: []
+tags:
+  - quality-assurance
+  - testing
+  - coverage
+  - tdd-automation
+  - python
+---
+
 # SPEC-002: Python 코드 품질 개선 시스템
 
 ## @REQ:QUALITY-002 프로젝트 컨텍스트

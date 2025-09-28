@@ -267,17 +267,17 @@ describe('InstallationValidator', () => {
       await fs.mkdir(path.join(tempDir, '.moai', 'memory'), { recursive: true });
       await fs.mkdir(path.join(tempDir, '.moai', 'indexes'), { recursive: true });
 
-      // Create corrupted index file
+      // Create corrupted SQLite3 database file
       await fs.writeFile(
-        path.join(tempDir, '.moai', 'indexes', 'tags.json'),
-        '{ "corrupted": '  // Incomplete JSON
+        path.join(tempDir, '.moai', 'indexes', 'tags.db'),
+        'corrupted sqlite content'  // Invalid SQLite3 content
       );
 
       const result = await validator.validateMoaiIntegration(tempDir);
 
       expect(result.valid).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors.some((e: any) => e.code === ValidationErrorCodes.INVALID_JSON)).toBe(true);
+      expect(result.errors.some((e: any) => e.code === ValidationErrorCodes.INVALID_SQLITE || e.code === ValidationErrorCodes.INVALID_JSON)).toBe(true);
     });
   });
 

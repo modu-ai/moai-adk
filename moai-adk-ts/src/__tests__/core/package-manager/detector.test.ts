@@ -4,21 +4,24 @@
  * @tags @TEST:PACKAGE-MANAGER-DETECTOR-001 @REQ:PACKAGE-MANAGER-002
  */
 
-import { describe, test, expect, beforeEach, jest } from '@jest/globals';
+import { describe, test, expect, beforeEach, jest, vi } from 'vitest';
 import '@/__tests__/setup';
 import { PackageManagerDetector } from '@/core/package-manager/detector';
-import { PackageManagerType, PackageManagerInfo } from '@/types/package-manager';
-import execa from 'execa';
+import {
+  PackageManagerType,
+  type PackageManagerInfo,
+} from '@/types/package-manager';
+import { execa } from 'execa';
 
 // Mock execa
-jest.mock('execa');
-const mockExeca = execa as jest.MockedFunction<typeof execa>;
+vi.mock('execa');
+const mockExeca = execa as vi.MockedFunction<typeof execa>;
 
 describe('PackageManagerDetector', () => {
   let detector: PackageManagerDetector;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     detector = new PackageManagerDetector();
   });
 
@@ -28,17 +31,23 @@ describe('PackageManagerDetector', () => {
       mockExeca.mockResolvedValue({
         stdout: '9.8.1',
         stderr: '',
-        exitCode: 0
+        exitCode: 0,
       } as any);
 
       // Act
-      const result = await detector.detectPackageManager(PackageManagerType.NPM);
+      const result = await detector.detectPackageManager(
+        PackageManagerType.NPM
+      );
 
       // Assert
       expect(result.isAvailable).toBe(true);
       expect(result.type).toBe(PackageManagerType.NPM);
       expect(result.version).toBe('9.8.1');
-      expect(mockExeca).toHaveBeenCalledWith('npm', ['--version'], expect.any(Object));
+      expect(mockExeca).toHaveBeenCalledWith(
+        'npm',
+        ['--version'],
+        expect.any(Object)
+      );
     });
 
     test('should detect yarn when available', async () => {
@@ -46,17 +55,23 @@ describe('PackageManagerDetector', () => {
       mockExeca.mockResolvedValue({
         stdout: '1.22.19',
         stderr: '',
-        exitCode: 0
+        exitCode: 0,
       } as any);
 
       // Act
-      const result = await detector.detectPackageManager(PackageManagerType.YARN);
+      const result = await detector.detectPackageManager(
+        PackageManagerType.YARN
+      );
 
       // Assert
       expect(result.isAvailable).toBe(true);
       expect(result.type).toBe(PackageManagerType.YARN);
       expect(result.version).toBe('1.22.19');
-      expect(mockExeca).toHaveBeenCalledWith('yarn', ['--version'], expect.any(Object));
+      expect(mockExeca).toHaveBeenCalledWith(
+        'yarn',
+        ['--version'],
+        expect.any(Object)
+      );
     });
 
     test('should detect pnpm when available', async () => {
@@ -64,17 +79,23 @@ describe('PackageManagerDetector', () => {
       mockExeca.mockResolvedValue({
         stdout: '8.7.0',
         stderr: '',
-        exitCode: 0
+        exitCode: 0,
       } as any);
 
       // Act
-      const result = await detector.detectPackageManager(PackageManagerType.PNPM);
+      const result = await detector.detectPackageManager(
+        PackageManagerType.PNPM
+      );
 
       // Assert
       expect(result.isAvailable).toBe(true);
       expect(result.type).toBe(PackageManagerType.PNPM);
       expect(result.version).toBe('8.7.0');
-      expect(mockExeca).toHaveBeenCalledWith('pnpm', ['--version'], expect.any(Object));
+      expect(mockExeca).toHaveBeenCalledWith(
+        'pnpm',
+        ['--version'],
+        expect.any(Object)
+      );
     });
 
     test('should handle unavailable package manager', async () => {
@@ -82,7 +103,9 @@ describe('PackageManagerDetector', () => {
       mockExeca.mockRejectedValue(new Error('Command not found'));
 
       // Act
-      const result = await detector.detectPackageManager(PackageManagerType.YARN);
+      const result = await detector.detectPackageManager(
+        PackageManagerType.YARN
+      );
 
       // Assert
       expect(result.isAvailable).toBe(false);
@@ -95,8 +118,16 @@ describe('PackageManagerDetector', () => {
     test('should detect all available package managers', async () => {
       // Arrange
       mockExeca
-        .mockResolvedValueOnce({ stdout: '9.8.1', stderr: '', exitCode: 0 } as any) // npm
-        .mockResolvedValueOnce({ stdout: '1.22.19', stderr: '', exitCode: 0 } as any) // yarn
+        .mockResolvedValueOnce({
+          stdout: '9.8.1',
+          stderr: '',
+          exitCode: 0,
+        } as any) // npm
+        .mockResolvedValueOnce({
+          stdout: '1.22.19',
+          stderr: '',
+          exitCode: 0,
+        } as any) // yarn
         .mockRejectedValueOnce(new Error('Command not found')); // pnpm not available
 
       // Act
@@ -113,12 +144,26 @@ describe('PackageManagerDetector', () => {
     test('should identify preferred package manager based on lock files', async () => {
       // Arrange
       mockExeca
-        .mockResolvedValueOnce({ stdout: '9.8.1', stderr: '', exitCode: 0 } as any) // npm
-        .mockResolvedValueOnce({ stdout: '1.22.19', stderr: '', exitCode: 0 } as any) // yarn
-        .mockResolvedValueOnce({ stdout: '8.7.0', stderr: '', exitCode: 0 } as any); // pnpm
+        .mockResolvedValueOnce({
+          stdout: '9.8.1',
+          stderr: '',
+          exitCode: 0,
+        } as any) // npm
+        .mockResolvedValueOnce({
+          stdout: '1.22.19',
+          stderr: '',
+          exitCode: 0,
+        } as any) // yarn
+        .mockResolvedValueOnce({
+          stdout: '8.7.0',
+          stderr: '',
+          exitCode: 0,
+        } as any); // pnpm
 
       // Mock file system to simulate yarn.lock exists
-      jest.spyOn(detector as any, 'detectLockFile').mockResolvedValue(PackageManagerType.YARN);
+      vi.spyOn(detector as any, 'detectLockFile').mockResolvedValue(
+        PackageManagerType.YARN
+      );
 
       // Act
       const result = await detector.detectAllPackageManagers();
@@ -131,12 +176,24 @@ describe('PackageManagerDetector', () => {
     test('should recommend fastest package manager when no preference exists', async () => {
       // Arrange
       mockExeca
-        .mockResolvedValueOnce({ stdout: '9.8.1', stderr: '', exitCode: 0 } as any) // npm
-        .mockResolvedValueOnce({ stdout: '1.22.19', stderr: '', exitCode: 0 } as any) // yarn
-        .mockResolvedValueOnce({ stdout: '8.7.0', stderr: '', exitCode: 0 } as any); // pnpm
+        .mockResolvedValueOnce({
+          stdout: '9.8.1',
+          stderr: '',
+          exitCode: 0,
+        } as any) // npm
+        .mockResolvedValueOnce({
+          stdout: '1.22.19',
+          stderr: '',
+          exitCode: 0,
+        } as any) // yarn
+        .mockResolvedValueOnce({
+          stdout: '8.7.0',
+          stderr: '',
+          exitCode: 0,
+        } as any); // pnpm
 
       // Mock no lock file found
-      jest.spyOn(detector as any, 'detectLockFile').mockResolvedValue(null);
+      vi.spyOn(detector as any, 'detectLockFile').mockResolvedValue(null);
 
       // Act
       const result = await detector.detectAllPackageManagers();
@@ -193,9 +250,9 @@ describe('PackageManagerDetector', () => {
   describe('Lock File Detection', () => {
     test('should detect npm from package-lock.json', async () => {
       // Arrange
-      jest.spyOn(detector as any, 'fileExists')
-        .mockResolvedValueOnce(true)   // package-lock.json exists
-        .mockResolvedValueOnce(false)  // yarn.lock doesn't exist
+      vi.spyOn(detector as any, 'fileExists')
+        .mockResolvedValueOnce(true) // package-lock.json exists
+        .mockResolvedValueOnce(false) // yarn.lock doesn't exist
         .mockResolvedValueOnce(false); // pnpm-lock.yaml doesn't exist
 
       // Act
@@ -207,9 +264,9 @@ describe('PackageManagerDetector', () => {
 
     test('should detect yarn from yarn.lock', async () => {
       // Arrange
-      jest.spyOn(detector as any, 'fileExists')
-        .mockResolvedValueOnce(false)  // package-lock.json doesn't exist
-        .mockResolvedValueOnce(true)   // yarn.lock exists
+      vi.spyOn(detector as any, 'fileExists')
+        .mockResolvedValueOnce(false) // package-lock.json doesn't exist
+        .mockResolvedValueOnce(true) // yarn.lock exists
         .mockResolvedValueOnce(false); // pnpm-lock.yaml doesn't exist
 
       // Act
@@ -221,10 +278,10 @@ describe('PackageManagerDetector', () => {
 
     test('should detect pnpm from pnpm-lock.yaml', async () => {
       // Arrange
-      jest.spyOn(detector as any, 'fileExists')
-        .mockResolvedValueOnce(false)  // package-lock.json doesn't exist
-        .mockResolvedValueOnce(false)  // yarn.lock doesn't exist
-        .mockResolvedValueOnce(true);  // pnpm-lock.yaml exists
+      vi.spyOn(detector as any, 'fileExists')
+        .mockResolvedValueOnce(false) // package-lock.json doesn't exist
+        .mockResolvedValueOnce(false) // yarn.lock doesn't exist
+        .mockResolvedValueOnce(true); // pnpm-lock.yaml exists
 
       // Act
       const result = await (detector as any).detectLockFile();
@@ -235,8 +292,7 @@ describe('PackageManagerDetector', () => {
 
     test('should return null when no lock files exist', async () => {
       // Arrange
-      jest.spyOn(detector as any, 'fileExists')
-        .mockResolvedValue(false); // No lock files exist
+      vi.spyOn(detector as any, 'fileExists').mockResolvedValue(false); // No lock files exist
 
       // Act
       const result = await (detector as any).detectLockFile();
@@ -252,23 +308,27 @@ describe('PackageManagerDetector', () => {
       const npmInfo: PackageManagerInfo = {
         type: PackageManagerType.NPM,
         version: '9.8.1',
-        isAvailable: true
+        isAvailable: true,
       };
 
       const yarnInfo: PackageManagerInfo = {
         type: PackageManagerType.YARN,
         version: '1.22.19',
-        isAvailable: true
+        isAvailable: true,
       };
 
       const pnpmInfo: PackageManagerInfo = {
         type: PackageManagerType.PNPM,
         version: '8.7.0',
-        isAvailable: true
+        isAvailable: true,
       };
 
       // Act
-      const recommended = detector.recommendPackageManager([npmInfo, yarnInfo, pnpmInfo]);
+      const recommended = detector.recommendPackageManager([
+        npmInfo,
+        yarnInfo,
+        pnpmInfo,
+      ]);
 
       // Assert
       expect(recommended.type).toBe(PackageManagerType.PNPM); // Fastest and most modern
@@ -279,7 +339,7 @@ describe('PackageManagerDetector', () => {
       const npmInfo: PackageManagerInfo = {
         type: PackageManagerType.NPM,
         version: '9.8.1',
-        isAvailable: true
+        isAvailable: true,
       };
 
       // Act

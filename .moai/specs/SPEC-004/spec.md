@@ -1,3 +1,17 @@
+---
+spec_id: SPEC-004
+status: active
+priority: medium
+dependencies: []
+tags:
+  - cross-platform
+  - windows
+  - macos
+  - linux
+  - compatibility
+  - installation
+---
+
 # SPEC-004: Windows/macOS/Linux 환경별 최적화
 
 ## @REQ:PLATFORM-004 프로젝트 컨텍스트

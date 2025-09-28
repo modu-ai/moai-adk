@@ -4,34 +4,33 @@
  * @tags @TEST:CLI-INIT-SIMPLE-001
  */
 
-import { describe, test, expect, beforeEach, jest } from '@jest/globals';
-import '@/__tests__/setup';
+import { describe, test, expect, beforeEach, jest, vi } from 'vitest';
+import { InitCommand } from '@/cli/commands/init';
+import { ProjectWizard } from '@/core/project/wizard';
+import { TemplateManager } from '@/core/project/template-manager';
+import { ProjectType } from '@/types/project';
 
 describe('InitCommand Basic Tests', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test('should define InitCommand class', () => {
-    const { InitCommand } = require('@/cli/commands/init');
     expect(InitCommand).toBeDefined();
     expect(typeof InitCommand).toBe('function');
   });
 
   test('should define ProjectWizard class', () => {
-    const { ProjectWizard } = require('@/core/project/wizard');
     expect(ProjectWizard).toBeDefined();
     expect(typeof ProjectWizard).toBe('function');
   });
 
   test('should define TemplateManager class', () => {
-    const { TemplateManager } = require('@/core/project/template-manager');
     expect(TemplateManager).toBeDefined();
     expect(typeof TemplateManager).toBe('function');
   });
 
   test('should define project types', () => {
-    const { ProjectType } = require('@/types/project');
     expect(ProjectType).toBeDefined();
     expect(ProjectType.PYTHON).toBe('python');
     expect(ProjectType.NODEJS).toBe('nodejs');
@@ -41,9 +40,6 @@ describe('InitCommand Basic Tests', () => {
   });
 
   test('should create wizard with proper project type descriptions', () => {
-    const { ProjectWizard } = require('@/core/project/wizard');
-    const { ProjectType } = require('@/types/project');
-
     const wizard = new ProjectWizard();
 
     // Test each project type has a description
@@ -61,15 +57,12 @@ describe('InitCommand Basic Tests', () => {
   });
 
   test('should create template manager with project generation capability', async () => {
-    const { TemplateManager } = require('@/core/project/template-manager');
-    const { ProjectType } = require('@/types/project');
-
     const templateManager = new TemplateManager();
     const mockConfig = {
       name: 'test-project',
       type: ProjectType.PYTHON,
       description: 'Test project',
-      author: 'Test Author'
+      author: 'Test Author',
     };
 
     // Test that generateProject method exists and has correct signature

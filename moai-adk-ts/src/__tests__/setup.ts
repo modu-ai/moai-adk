@@ -1,16 +1,19 @@
 /**
- * @file Jest test setup and extensions
+ * @file Vitest test setup and extensions
  * @author MoAI Team
  * @tags @TEST:SETUP-001
  */
 
-// Extend Jest matchers for better testing
-declare global {
-  namespace jest {
-    interface Matchers<R> {
-      toBeOneOf(expected: any[]): R;
-    }
-  }
+import { expect } from 'vitest';
+
+// Extend Vitest matchers for better testing
+interface CustomMatchers<R = unknown> {
+  toBeOneOf(expected: any[]): R;
+}
+
+declare module 'vitest' {
+  interface Assertion<T = any> extends CustomMatchers<T> {}
+  interface AsymmetricMatchersContaining extends CustomMatchers {}
 }
 
 // Custom matcher for "one of" assertions

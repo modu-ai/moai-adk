@@ -1,3 +1,17 @@
+---
+spec_id: SPEC-009
+status: active
+priority: high
+dependencies: [SPEC-006]
+tags:
+  - tag-system
+  - sqlite
+  - migration
+  - performance
+  - database
+  - optimization
+---
+
 # SPEC-009: TAG 시스템 SQLite 마이그레이션
 
 **@SPEC:SPEC-009-STARTED** ← 시작점  

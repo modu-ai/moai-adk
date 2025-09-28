@@ -1,8 +1,13 @@
 /**
- * @fileoverview File I/O Operations - Core file system operations
+ * @API:FILE-IO-001 Core File I/O Operations
+ * @FEATURE:FS-EXTRA-CORE-001 fs-extra 기반 핵심 파일 작업
  *
  * SPEC-012 Week 2 Track C-1: Basic file I/O operations
  * Separated from main FileOperations class to maintain TRUST principle (Under 300 LOC)
+ *
+ * @TASK:FILE-IO-SEPARATION-001 파일 I/O 클래스 분리
+ * @DESIGN:TRUST-COMPLIANCE-001 TRUST 원칙 준수 (300 LOC 이하)
+ * @PERF:ASYNC-IO-001 비동기 파일 I/O 최적화
  *
  * @author MoAI Team
  * @version 0.0.1
@@ -12,7 +17,7 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as os from 'os';
-import { FileStats, FileOperationOptions } from './file-operations';
+import type { FileStats, FileOperationOptions } from './file-operations';
 
 /**
  * Core file I/O operations
@@ -25,7 +30,10 @@ export class FileIO {
    * @param mode - Directory permissions (default: 0o755)
    * @returns Promise that resolves when directory is created
    */
-  static async ensureDirectory(dirPath: string, mode: number = 0o755): Promise<void> {
+  static async ensureDirectory(
+    dirPath: string,
+    mode: number = 0o755
+  ): Promise<void> {
     try {
       await fs.ensureDir(dirPath);
 
@@ -46,7 +54,11 @@ export class FileIO {
    * @param overwrite - Whether to overwrite existing files
    * @returns Promise that resolves when file is copied
    */
-  static async copyFile(src: string, dst: string, overwrite: boolean = false): Promise<void> {
+  static async copyFile(
+    src: string,
+    dst: string,
+    overwrite: boolean = false
+  ): Promise<void> {
     try {
       // Check if source exists
       if (!(await fs.pathExists(src))) {
@@ -54,8 +66,10 @@ export class FileIO {
       }
 
       // Check if destination exists and handle overwrite
-      if (await fs.pathExists(dst) && !overwrite) {
-        throw new Error(`Destination file already exists and overwrite is false: ${dst}`);
+      if ((await fs.pathExists(dst)) && !overwrite) {
+        throw new Error(
+          `Destination file already exists and overwrite is false: ${dst}`
+        );
       }
 
       // Ensure destination directory exists
@@ -65,7 +79,9 @@ export class FileIO {
       // Copy the file
       await fs.copy(src, dst, { overwrite });
     } catch (error) {
-      throw new Error(`Failed to copy file from '${src}' to '${dst}': ${error}`);
+      throw new Error(
+        `Failed to copy file from '${src}' to '${dst}': ${error}`
+      );
     }
   }
 
@@ -172,7 +188,7 @@ export class FileIO {
         isFile: stats.isFile(),
         isDirectory: stats.isDirectory(),
         modified: stats.mtime,
-        permissions: stats.mode.toString(8)
+        permissions: stats.mode.toString(8),
       };
     } catch (error) {
       throw new Error(`Failed to get stats for '${filePath}': ${error}`);

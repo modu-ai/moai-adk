@@ -30,24 +30,16 @@ export class InstallationValidator {
     '.moai',
     '.moai/project',
     '.moai/specs',
-    '.moai/memory'
+    '.moai/memory',
   ] as const;
 
-  private readonly requiredFiles: readonly string[] = [
-    'CLAUDE.md'
-  ] as const;
+  private readonly requiredFiles: readonly string[] = ['CLAUDE.md'] as const;
 
-  private readonly configFiles: readonly { path: string; required: boolean }[] = [
-    { path: '.claude/settings.json', required: false },
-    { path: '.moai/config.json', required: false }
-  ] as const;
-
-  private readonly moaiDirectories: readonly string[] = [
-    'project',
-    'specs',
-    'memory',
-    'indexes'
-  ] as const;
+  private readonly configFiles: readonly { path: string; required: boolean }[] =
+    [
+      { path: '.claude/settings.json', required: false },
+      { path: '.moai/config.json', required: false },
+    ] as const;
 
   constructor() {
     // Optimized validator with pre-defined constants
@@ -61,7 +53,9 @@ export class InstallationValidator {
    * @param projectPath - Path to the project root
    * @returns Validation result with any errors found
    */
-  async validateProjectStructure(projectPath: string): Promise<ValidationResult> {
+  async validateProjectStructure(
+    projectPath: string
+  ): Promise<ValidationResult> {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
@@ -80,13 +74,14 @@ export class InstallationValidator {
       }
 
       return this.createValidationResult(errors, warnings);
-
     } catch (error: any) {
-      errors.push(this.createError(
-        ValidationErrorCodes.MISSING_DIRECTORY,
-        `Project path validation failed: ${error.message}`,
-        projectPath
-      ));
+      errors.push(
+        this.createError(
+          ValidationErrorCodes.MISSING_DIRECTORY,
+          `Project path validation failed: ${error.message}`,
+          projectPath
+        )
+      );
 
       return this.createValidationResult(errors, warnings);
     }
@@ -98,7 +93,10 @@ export class InstallationValidator {
    * @param dirPath - Relative directory path to validate
    * @returns ValidationError if directory is invalid, null if valid
    */
-  private async validateDirectory(projectPath: string, dirPath: string): Promise<ValidationError | null> {
+  private async validateDirectory(
+    projectPath: string,
+    dirPath: string
+  ): Promise<ValidationError | null> {
     const fullPath = path.join(projectPath, dirPath);
 
     try {
@@ -144,7 +142,9 @@ export class InstallationValidator {
    * @param projectPath - Path to the project root
    * @returns Validation result with any configuration errors
    */
-  async validateConfigurationFiles(projectPath: string): Promise<ValidationResult> {
+  async validateConfigurationFiles(
+    projectPath: string
+  ): Promise<ValidationResult> {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
@@ -163,13 +163,14 @@ export class InstallationValidator {
       }
 
       return this.createValidationResult(errors, warnings);
-
     } catch (error: any) {
-      errors.push(this.createError(
-        ValidationErrorCodes.INVALID_JSON,
-        `Configuration validation failed: ${error.message}`,
-        projectPath
-      ));
+      errors.push(
+        this.createError(
+          ValidationErrorCodes.INVALID_JSON,
+          `Configuration validation failed: ${error.message}`,
+          projectPath
+        )
+      );
 
       return this.createValidationResult(errors, warnings);
     }
@@ -251,13 +252,14 @@ export class InstallationValidator {
       }
 
       return this.createValidationResult(errors, warnings);
-
     } catch (error: any) {
-      errors.push(this.createError(
-        ValidationErrorCodes.MISSING_FILE,
-        `Resource validation failed: ${error.message}`,
-        projectPath
-      ));
+      errors.push(
+        this.createError(
+          ValidationErrorCodes.MISSING_FILE,
+          `Resource validation failed: ${error.message}`,
+          projectPath
+        )
+      );
 
       return this.createValidationResult(errors, warnings);
     }
@@ -327,12 +329,14 @@ export class InstallationValidator {
     try {
       await fs.access(fullPath, fs.constants.R_OK);
     } catch (permError) {
-      warnings.push(this.createWarning(
-        ValidationErrorCodes.PERMISSION_DENIED,
-        `File permission issues detected: ${fileName}`,
-        fullPath,
-        'Check file permissions'
-      ));
+      warnings.push(
+        this.createWarning(
+          ValidationErrorCodes.PERMISSION_DENIED,
+          `File permission issues detected: ${fileName}`,
+          fullPath,
+          'Check file permissions'
+        )
+      );
     }
   }
 
@@ -344,7 +348,9 @@ export class InstallationValidator {
    * @param projectPath - Path to the project root
    * @returns Validation result for Claude integration
    */
-  async validateClaudeIntegration(projectPath: string): Promise<ValidationResult> {
+  async validateClaudeIntegration(
+    projectPath: string
+  ): Promise<ValidationResult> {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
@@ -366,7 +372,7 @@ export class InstallationValidator {
             code: ValidationErrorCodes.INVALID_JSON,
             message: 'Claude settings.json must contain an object',
             path: settingsPath,
-            severity: 'error'
+            severity: 'error',
           });
         }
 
@@ -374,19 +380,19 @@ export class InstallationValidator {
         if (Object.keys(settings).length === 0) {
           errors.push({
             code: ValidationErrorCodes.INTEGRATION_FAILURE,
-            message: 'Claude settings.json appears to be empty - required field missing',
+            message:
+              'Claude settings.json appears to be empty - required field missing',
             path: settingsPath,
-            severity: 'error'
+            severity: 'error',
           });
         }
-
       } catch (error: any) {
         if (error.code !== 'ENOENT') {
           errors.push({
             code: ValidationErrorCodes.INVALID_JSON,
             message: `Error reading Claude settings.json: ${error.message}`,
             path: settingsPath,
-            severity: 'error'
+            severity: 'error',
           });
         }
       }
@@ -406,12 +412,15 @@ export class InstallationValidator {
               const content = await fs.readFile(filePath, 'utf-8');
 
               // Simple check for binary data in text files
-              if (content.includes('\0') || /[\x00-\x08\x0E-\x1F\x7F]/.test(content)) {
+              if (
+                content.includes('\0') ||
+                /[\x00-\x08\x0E-\x1F\x7F]/.test(content)
+              ) {
                 warnings.push({
                   code: ValidationErrorCodes.CORRUPTED_FILE,
                   message: `Agent file may be corrupted: ${file}`,
                   path: filePath,
-                  suggestion: 'Check file encoding and content'
+                  suggestion: 'Check file encoding and content',
                 });
               }
             } catch (readError) {
@@ -419,7 +428,7 @@ export class InstallationValidator {
                 code: ValidationErrorCodes.CORRUPTED_FILE,
                 message: `Cannot read agent file: ${file}`,
                 path: filePath,
-                suggestion: 'Check file permissions and encoding'
+                suggestion: 'Check file permissions and encoding',
               });
             }
           }
@@ -431,21 +440,20 @@ export class InstallationValidator {
       return {
         valid: errors.length === 0,
         errors: Object.freeze(errors),
-        warnings: Object.freeze(warnings)
+        warnings: Object.freeze(warnings),
       };
-
     } catch (error: any) {
       errors.push({
         code: ValidationErrorCodes.INTEGRATION_FAILURE,
         message: `Claude integration validation failed: ${error.message}`,
         path: projectPath,
-        severity: 'error'
+        severity: 'error',
       });
 
       return {
         valid: false,
         errors: Object.freeze(errors),
-        warnings: Object.freeze(warnings)
+        warnings: Object.freeze(warnings),
       };
     }
   }
@@ -458,7 +466,9 @@ export class InstallationValidator {
    * @param projectPath - Path to the project root
    * @returns Validation result for MoAI integration
    */
-  async validateMoaiIntegration(projectPath: string): Promise<ValidationResult> {
+  async validateMoaiIntegration(
+    projectPath: string
+  ): Promise<ValidationResult> {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
@@ -478,7 +488,7 @@ export class InstallationValidator {
               code: ValidationErrorCodes.MISSING_DIRECTORY,
               message: `MoAI directory is not a directory: ${dirName}`,
               path: dirPath,
-              severity: 'error'
+              severity: 'error',
             });
           }
         } catch (error: any) {
@@ -487,7 +497,7 @@ export class InstallationValidator {
               code: ValidationErrorCodes.MISSING_DIRECTORY,
               message: `Required MoAI directory missing: ${dirName}`,
               path: dirPath,
-              severity: 'error'
+              severity: 'error',
             });
           }
         }
@@ -515,9 +525,9 @@ export class InstallationValidator {
         const files = await fs.readdir(indexesDir);
 
         for (const file of files) {
-          if (file.endsWith('.json')) {
-            const filePath = path.join(indexesDir, file);
+          const filePath = path.join(indexesDir, file);
 
+          if (file.endsWith('.json')) {
             try {
               const content = await fs.readFile(filePath, 'utf-8');
               JSON.parse(content);
@@ -526,7 +536,32 @@ export class InstallationValidator {
                 code: ValidationErrorCodes.INVALID_JSON,
                 message: `Invalid JSON in index file ${file}: ${jsonError.message}`,
                 path: filePath,
-                severity: 'error'
+                severity: 'error',
+              });
+            }
+          } else if (file.endsWith('.db')) {
+            // SQLite3 database validation
+            try {
+              const content = await fs.readFile(filePath);
+
+              // Check SQLite3 magic number (first 16 bytes should start with "SQLite format 3\0")
+              const sqliteHeader = 'SQLite format 3\0';
+              const fileHeader = content.slice(0, 16).toString('utf8');
+
+              if (!fileHeader.startsWith(sqliteHeader)) {
+                errors.push({
+                  code: ValidationErrorCodes.INVALID_SQLITE,
+                  message: `Invalid SQLite3 database file ${file}: Invalid header`,
+                  path: filePath,
+                  severity: 'error',
+                });
+              }
+            } catch (sqliteError: any) {
+              errors.push({
+                code: ValidationErrorCodes.INVALID_SQLITE,
+                message: `Failed to validate SQLite3 database ${file}: ${sqliteError.message}`,
+                path: filePath,
+                severity: 'error',
               });
             }
           }
@@ -538,21 +573,20 @@ export class InstallationValidator {
       return {
         valid: errors.length === 0,
         errors: Object.freeze(errors),
-        warnings: Object.freeze(warnings)
+        warnings: Object.freeze(warnings),
       };
-
     } catch (error: any) {
       errors.push({
         code: ValidationErrorCodes.INTEGRATION_FAILURE,
         message: `MoAI integration validation failed: ${error.message}`,
         path: projectPath,
-        severity: 'error'
+        severity: 'error',
       });
 
       return {
         valid: false,
         errors: Object.freeze(errors),
-        warnings: Object.freeze(warnings)
+        warnings: Object.freeze(warnings),
       };
     }
   }
@@ -565,7 +599,9 @@ export class InstallationValidator {
    * @param projectPath - Path to the project root
    * @returns Complete diagnostic report with recommendations
    */
-  async generateDiagnosticReport(projectPath: string): Promise<DiagnosticReport> {
+  async generateDiagnosticReport(
+    projectPath: string
+  ): Promise<DiagnosticReport> {
     const timestamp = new Date();
     const validationResults: ValidationResult[] = [];
 
@@ -587,7 +623,9 @@ export class InstallationValidator {
 
     // Determine overall health
     const hasErrors = validationResults.some(result => !result.valid);
-    const hasWarnings = validationResults.some(result => result.warnings.length > 0);
+    const hasWarnings = validationResults.some(
+      result => result.warnings.length > 0
+    );
 
     let overallHealth: 'healthy' | 'warning' | 'error';
     if (hasErrors) {
@@ -604,7 +642,9 @@ export class InstallationValidator {
 
     if (hasErrors) {
       recommendations.push('Fix critical errors before proceeding');
-      nextSteps.push('Review error messages and fix missing or corrupted files');
+      nextSteps.push(
+        'Review error messages and fix missing or corrupted files'
+      );
     }
 
     if (hasWarnings) {
@@ -623,7 +663,79 @@ export class InstallationValidator {
       overallHealth,
       validationResults: Object.freeze(validationResults),
       recommendations: Object.freeze(recommendations),
-      nextSteps: Object.freeze(nextSteps)
+      nextSteps: Object.freeze(nextSteps),
+    };
+  }
+
+  /**
+   * Helper method to create validation errors with consistent structure
+   * @param code - Error code
+   * @param message - Error message
+   * @param path - Optional file path
+   * @returns Formatted ValidationError
+   */
+  private createError(
+    code: ValidationErrorCode,
+    message: string,
+    path?: string
+  ): ValidationError {
+    const error: ValidationError = {
+      code,
+      message,
+      severity: 'error' as const,
+    };
+
+    if (path !== undefined) {
+      (error as any).path = path;
+    }
+
+    return error;
+  }
+
+  /**
+   * Helper method to create validation warnings with consistent structure
+   * @param code - Warning code
+   * @param message - Warning message
+   * @param path - Optional file path
+   * @param suggestion - Optional suggestion for fixing the issue
+   * @returns Formatted ValidationWarning
+   */
+  private createWarning(
+    code: ValidationErrorCode,
+    message: string,
+    path?: string,
+    suggestion?: string
+  ): ValidationWarning {
+    const warning: ValidationWarning = {
+      code,
+      message,
+    };
+
+    if (path !== undefined) {
+      (warning as any).path = path;
+    }
+
+    if (suggestion !== undefined) {
+      (warning as any).suggestion = suggestion;
+    }
+
+    return warning;
+  }
+
+  /**
+   * Helper method to create validation results with frozen arrays
+   * @param errors - Array of validation errors
+   * @param warnings - Array of validation warnings
+   * @returns Formatted ValidationResult
+   */
+  private createValidationResult(
+    errors: ValidationError[],
+    warnings: ValidationWarning[]
+  ): ValidationResult {
+    return {
+      valid: errors.length === 0,
+      errors: Object.freeze(errors),
+      warnings: Object.freeze(warnings),
     };
   }
 }
@@ -633,13 +745,15 @@ export const ValidationErrorCodes = {
   MISSING_DIRECTORY: 'MISSING_DIRECTORY',
   MISSING_FILE: 'MISSING_FILE',
   INVALID_JSON: 'INVALID_JSON',
+  INVALID_SQLITE: 'INVALID_SQLITE',
   PERMISSION_DENIED: 'PERMISSION_DENIED',
   INVALID_STRUCTURE: 'INVALID_STRUCTURE',
   CORRUPTED_FILE: 'CORRUPTED_FILE',
-  INTEGRATION_FAILURE: 'INTEGRATION_FAILURE'
+  INTEGRATION_FAILURE: 'INTEGRATION_FAILURE',
 } as const;
 
-export type ValidationErrorCode = typeof ValidationErrorCodes[keyof typeof ValidationErrorCodes];
+export type ValidationErrorCode =
+  (typeof ValidationErrorCodes)[keyof typeof ValidationErrorCodes];
 
 // Interface definitions
 export interface ValidationResult {

@@ -4,10 +4,10 @@
  * @tags @FEATURE:SYSTEM-DETECTOR-001 @REQ:AUTO-VERIFY-012
  */
 
-import execa from 'execa';
+import { execa } from 'execa';
 import * as semver from 'semver';
 import * as os from 'os';
-import { SystemRequirement } from './requirements';
+import type { SystemRequirement } from './requirements';
 
 /**
  * Detection result for a single requirement

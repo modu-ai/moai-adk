@@ -1,3 +1,17 @@
+---
+spec_id: SPEC-006
+status: active
+priority: high
+dependencies: []
+tags:
+  - tag-system
+  - traceability
+  - 16-core
+  - indexing
+  - automation
+  - requirements-tracking
+---
+
 # SPEC-006: 16-Core TAG 추적성 시스템 완성
 
 ## @REQ:TRACEABILITY-006 프로젝트 컨텍스트

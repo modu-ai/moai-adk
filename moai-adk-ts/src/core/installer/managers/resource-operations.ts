@@ -8,7 +8,12 @@
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import { logger } from '../../../utils/logger';
-import { PathValidator, TemplateProcessor, FileOperations, type TemplateContext } from './utils';
+import {
+  PathValidator,
+  TemplateProcessor,
+  FileOperations,
+  type TemplateContext,
+} from './utils';
 
 /**
  * @DESIGN:CLASS-001 리소스 복사 작업 전용 클래스
@@ -31,13 +36,20 @@ export class ResourceOperations {
   /**
    * @API:COPY-CLAUDE-001 Claude 리소스 복사
    */
-  async copyClaudeResources(targetPath: string, overwrite: boolean = false): Promise<string[]> {
+  async copyClaudeResources(
+    targetPath: string,
+    overwrite: boolean = false
+  ): Promise<string[]> {
     const copiedFiles: string[] = [];
     const claudeResources = ['.claude'];
 
     for (const resource of claudeResources) {
       const resourceTargetPath = path.join(targetPath, resource);
-      const success = await this.copyTemplate(resource, resourceTargetPath, overwrite);
+      const success = await this.copyTemplate(
+        resource,
+        resourceTargetPath,
+        overwrite
+      );
 
       if (success) {
         // 실행 권한 보장 (Unix 계열 시스템에서)
@@ -93,7 +105,9 @@ export class ResourceOperations {
       await this.applyProjectContextBatch(copiedFiles, projectContext);
     }
 
-    logger.info(`MoAI resources installation completed. ${copiedFiles.length} resources installed.`);
+    logger.info(
+      `MoAI resources installation completed. ${copiedFiles.length} resources installed.`
+    );
     return copiedFiles;
   }
 
@@ -107,10 +121,17 @@ export class ResourceOperations {
   ): Promise<boolean> {
     try {
       const targetPath = path.join(projectPath, 'CLAUDE.md');
-      const success = await this.copyTemplate('CLAUDE.md', targetPath, overwrite);
+      const success = await this.copyTemplate(
+        'CLAUDE.md',
+        targetPath,
+        overwrite
+      );
 
       if (success && projectContext) {
-        await this.templateProcessor.substituteFileVariables(targetPath, projectContext);
+        await this.templateProcessor.substituteFileVariables(
+          targetPath,
+          projectContext
+        );
       }
 
       return success;
@@ -145,10 +166,14 @@ export class ResourceOperations {
       try {
         const stat = await fs.stat(absoluteTargetPath);
         if (stat.isFile() && !overwrite) {
-          logger.info(`Target file already exists, skipping: ${absoluteTargetPath}`);
+          logger.info(
+            `Target file already exists, skipping: ${absoluteTargetPath}`
+          );
           return true;
         } else if (stat.isDirectory()) {
-          logger.info(`Target directory exists, will merge contents: ${absoluteTargetPath}`);
+          logger.info(
+            `Target directory exists, will merge contents: ${absoluteTargetPath}`
+          );
         }
       } catch {
         // 파일이 존재하지 않음 - 정상적인 케이스
@@ -161,14 +186,20 @@ export class ResourceOperations {
       const sourceStat = await fs.stat(templatePath);
 
       if (sourceStat.isDirectory()) {
-        await this.fileOperations.copyDirectory(templatePath, absoluteTargetPath, overwrite, excludeSubdirs);
+        await this.fileOperations.copyDirectory(
+          templatePath,
+          absoluteTargetPath,
+          overwrite,
+          excludeSubdirs
+        );
       } else {
         await fs.copyFile(templatePath, absoluteTargetPath);
       }
 
-      logger.info(`Successfully copied ${templateName} to ${absoluteTargetPath}`);
+      logger.info(
+        `Successfully copied ${templateName} to ${absoluteTargetPath}`
+      );
       return true;
-
     } catch (error) {
       logger.error(`Failed to copy template ${templateName}: ${error}`);
       return false;
@@ -193,7 +224,7 @@ export class ResourceOperations {
       'config.json',
       'project/product.md',
       'project/structure.md',
-      'project/tech.md'
+      'project/tech.md',
     ];
 
     const filesToProcess: string[] = [];
@@ -214,11 +245,13 @@ export class ResourceOperations {
           }
         }
       } catch {
-        continue;
       }
     }
 
     // 일괄 템플릿 변수 치환
-    await this.templateProcessor.substituteBatchVariables(filesToProcess, projectContext);
+    await this.templateProcessor.substituteBatchVariables(
+      filesToProcess,
+      projectContext
+    );
   }
 }
