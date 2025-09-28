@@ -1,0 +1,13 @@
+{
+  "project": {
+    "name": "{{PROJECT_NAME}}",
+    "description": "{{PROJECT_DESCRIPTION}}",
+    "version": "0.1.0",
+    "initialized": true
+  },
+  "constitution": {
+    "enforce_tdd": true,
+    "test_coverage_target": 85,
+    "require_tags": true
+  }
+}

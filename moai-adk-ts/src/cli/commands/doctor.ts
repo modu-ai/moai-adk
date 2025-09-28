@@ -9,7 +9,7 @@ import {
   SystemDetector,
   RequirementCheckResult,
 } from '@/core/system-checker/detector';
-import { requirementRegistry } from '@/core/system-checker/requirements';
+import { requirementRegistry, SystemRequirement } from '@/core/system-checker/requirements';
 
 /**
  * Doctor command result summary
@@ -28,6 +28,17 @@ export interface DoctorResult {
 }
 
 /**
+ * Categorized check results type
+ * @tags @DESIGN:CATEGORIZED-RESULTS-001
+ */
+type CategorizedResults = {
+  readonly missing: RequirementCheckResult[];
+  readonly conflicts: RequirementCheckResult[];
+  readonly passed: RequirementCheckResult[];
+  readonly allPassed: boolean;
+};
+
+/**
  * Doctor command for system diagnostics
  * @tags @FEATURE:CLI-DOCTOR-001
  */
@@ -40,52 +51,90 @@ export class DoctorCommand {
    * @tags @API:DOCTOR-RUN-001
    */
   public async run(): Promise<DoctorResult> {
-    console.log(chalk.blue.bold('🔍 MoAI-ADK System Diagnostics'));
-    console.log(chalk.blue('Checking system requirements...\n'));
+    this.printHeader();
 
-    // Get runtime requirements
-    const runtimeRequirements = requirementRegistry.getByCategory('runtime');
-    const developmentRequirements =
-      requirementRegistry.getByCategory('development');
-    const allRequirements = [
-      ...runtimeRequirements,
-      ...developmentRequirements,
-    ];
+    const requirements = this.gatherRequirements();
+    const results = await this.executeChecks(requirements);
+    const categorizedResults = this.categorizeResults(results);
 
-    // Check all requirements
-    const results =
-      await this.detector.checkMultipleRequirements(allRequirements);
-
-    // Categorize results
-    const missingRequirements = results.filter(r => !r.result.isInstalled);
-    const versionConflicts = results.filter(
-      r => r.result.isInstalled && !r.result.versionSatisfied
-    );
-    const passedChecks = results.filter(
-      r => r.result.isInstalled && r.result.versionSatisfied
-    );
-
-    // Print results
     this.printResults(results);
-
-    // Generate summary
-    const allPassed =
-      missingRequirements.length === 0 && versionConflicts.length === 0;
-    const summary = {
-      total: results.length,
-      passed: passedChecks.length,
-      failed: missingRequirements.length + versionConflicts.length,
-    };
-
-    // Print summary
-    this.printSummary(summary, allPassed);
+    const summary = this.generateSummary(categorizedResults);
+    this.printSummary(summary, categorizedResults.allPassed);
 
     return {
-      allPassed,
+      allPassed: categorizedResults.allPassed,
       results,
-      missingRequirements,
-      versionConflicts,
+      missingRequirements: categorizedResults.missing,
+      versionConflicts: categorizedResults.conflicts,
       summary,
+    };
+  }
+
+  /**
+   * Print diagnostic header
+   * @tags @UTIL:PRINT-HEADER-001
+   */
+  private printHeader(): void {
+    console.log(chalk.blue.bold('🔍 MoAI-ADK System Diagnostics'));
+    console.log(chalk.blue('Checking system requirements...\n'));
+  }
+
+  /**
+   * Gather all system requirements
+   * @returns Array of system requirements
+   * @tags @UTIL:GATHER-REQUIREMENTS-001
+   */
+  private gatherRequirements(): SystemRequirement[] {
+    const runtimeRequirements = requirementRegistry.getByCategory('runtime');
+    const developmentRequirements = requirementRegistry.getByCategory('development');
+    return [...runtimeRequirements, ...developmentRequirements];
+  }
+
+  /**
+   * Execute requirement checks
+   * @param requirements - Requirements to check
+   * @returns Check results
+   * @tags @UTIL:EXECUTE-CHECKS-001
+   */
+  private async executeChecks(requirements: SystemRequirement[]): Promise<RequirementCheckResult[]> {
+    try {
+      return await this.detector.checkMultipleRequirements(requirements);
+    } catch (error) {
+      console.error(chalk.red('❌ Failed to execute system checks:'), error);
+      throw new Error('System diagnostics failed');
+    }
+  }
+
+  /**
+   * Categorize check results
+   * @param results - Raw check results
+   * @returns Categorized results
+   * @tags @UTIL:CATEGORIZE-RESULTS-001
+   */
+  private categorizeResults(results: RequirementCheckResult[]): CategorizedResults {
+    const missing = results.filter(r => !r.result.isInstalled);
+    const conflicts = results.filter(
+      r => r.result.isInstalled && !r.result.versionSatisfied
+    );
+    const passed = results.filter(
+      r => r.result.isInstalled && r.result.versionSatisfied
+    );
+    const allPassed = missing.length === 0 && conflicts.length === 0;
+
+    return { missing, conflicts, passed, allPassed };
+  }
+
+  /**
+   * Generate summary statistics
+   * @param categorized - Categorized results
+   * @returns Summary object
+   * @tags @UTIL:GENERATE-SUMMARY-001
+   */
+  private generateSummary(categorized: CategorizedResults): DoctorResult['summary'] {
+    return {
+      total: categorized.missing.length + categorized.conflicts.length + categorized.passed.length,
+      passed: categorized.passed.length,
+      failed: categorized.missing.length + categorized.conflicts.length,
     };
   }
 
@@ -130,7 +179,7 @@ export class DoctorCommand {
       return `${chalk.gray('Manual installation required for')} ${chalk.bold(checkResult.requirement.name)}`;
     }
 
-    return `${chalk.blue('Install with:')} ${chalk.cyan(installCommand)}`;
+    return `${chalk.blue('Install')} ${chalk.bold(checkResult.requirement.name)} ${chalk.blue('with:')} ${chalk.cyan(installCommand)}`;
   }
 
   /**

@@ -7,6 +7,15 @@
 // Core system checker
 export * from './core/system-checker';
 
+// Core installer components
+export {
+  TemplateManager,
+  templateManager,
+  TemplateContext,
+  TemplateRenderResult,
+  ITemplateManager
+} from './core/installer/managers/template-manager';
+
 // CLI components
 export { CLIApp } from './cli';
 export { DoctorCommand } from './cli/commands/doctor';

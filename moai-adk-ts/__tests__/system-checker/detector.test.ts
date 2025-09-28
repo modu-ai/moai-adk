@@ -9,13 +9,14 @@ import { SystemDetector } from '@/core/system-checker/detector';
 import { SystemRequirement } from '@/core/system-checker/requirements';
 
 // Mock execa for command execution
-jest.mock('execa', () => ({
-  execa: jest.fn()
-}));
+jest.mock('execa');
+import { jest as jestGlobal } from '@jest/globals';
+import execa from 'execa';
 
-describe('SystemDetector', async () => {
+const mockExeca = jestGlobal.mocked(execa);
+
+describe('SystemDetector', () => {
   let detector: SystemDetector;
-  const mockExeca = jest.mocked((await import('execa')).default);
 
   beforeEach(() => {
     detector = new SystemDetector();
@@ -43,8 +44,8 @@ describe('SystemDetector', async () => {
     test('should detect installed requirement with valid version', async () => {
       // Given: Git이 설치되어 있고 유효한 버전
       mockExeca.mockResolvedValueOnce({
-        stdout: 'git version 2.35.1',
-        stderr: '',
+        stdout: Buffer.from('git version 2.35.1'),
+        stderr: Buffer.from(''),
         exitCode: 0,
         command: 'git --version',
         escapedCommand: 'git --version',
@@ -67,8 +68,8 @@ describe('SystemDetector', async () => {
     test('should detect installed requirement with insufficient version', async () => {
       // Given: Git이 설치되어 있지만 버전이 부족함
       mockExeca.mockResolvedValueOnce({
-        stdout: 'git version 2.25.0',
-        stderr: '',
+        stdout: Buffer.from('git version 2.25.0'),
+        stderr: Buffer.from(''),
         exitCode: 0,
         command: 'git --version',
         escapedCommand: 'git --version',
@@ -107,8 +108,8 @@ describe('SystemDetector', async () => {
     test('should handle version parsing errors gracefully', async () => {
       // Given: 버전 파싱이 불가능한 출력
       mockExeca.mockResolvedValueOnce({
-        stdout: 'invalid version output',
-        stderr: '',
+        stdout: Buffer.from('invalid version output'),
+        stderr: Buffer.from(''),
         exitCode: 0,
         command: 'git --version',
         escapedCommand: 'git --version',
@@ -152,8 +153,8 @@ describe('SystemDetector', async () => {
       // Given: Git은 설치됨, Node.js는 설치되지 않음
       mockExeca
         .mockResolvedValueOnce({
-          stdout: 'git version 2.35.1',
-          stderr: '',
+          stdout: Buffer.from('git version 2.35.1'),
+          stderr: Buffer.from(''),
           exitCode: 0,
           command: 'git --version',
           escapedCommand: 'git --version',

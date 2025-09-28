@@ -10,13 +10,38 @@ import { SystemDetector } from '@/core/system-checker/detector';
 
 // Mock dependencies
 jest.mock('@/core/system-checker/detector');
-jest.mock('chalk', () => ({
-  green: jest.fn(str => str),
-  red: jest.fn(str => str),
-  yellow: jest.fn(str => str),
-  blue: jest.fn(str => str),
-  bold: jest.fn(str => str)
-}));
+jest.mock('chalk', () => {
+  const mockMethod = Object.assign(
+    jest.fn((str: string) => str),
+    {
+      bold: jest.fn((str: string) => str),
+      dim: jest.fn((str: string) => str),
+      italic: jest.fn((str: string) => str),
+      underline: jest.fn((str: string) => str),
+    }
+  );
+
+  return {
+    default: {
+      green: mockMethod,
+      red: mockMethod,
+      yellow: mockMethod,
+      blue: mockMethod,
+      cyan: mockMethod,
+      white: mockMethod,
+      gray: mockMethod,
+      bold: jest.fn((str: string) => str),
+    },
+    green: mockMethod,
+    red: mockMethod,
+    yellow: mockMethod,
+    blue: mockMethod,
+    cyan: mockMethod,
+    white: mockMethod,
+    gray: mockMethod,
+    bold: jest.fn((str: string) => str),
+  };
+});
 
 describe('DoctorCommand', () => {
   let doctorCommand: DoctorCommand;
