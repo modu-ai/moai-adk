@@ -237,77 +237,102 @@ export class InstallationValidator {
     const warnings: ValidationWarning[] = [];
 
     try {
-      const requiredFiles = [
-        'CLAUDE.md'
-      ];
+      // Validate all required files concurrently
+      const validationPromises = this.requiredFiles.map(fileName =>
+        this.validateResourceFile(projectPath, fileName, warnings)
+      );
 
-      for (const fileName of requiredFiles) {
-        const fullPath = path.join(projectPath, fileName);
+      const results = await Promise.allSettled(validationPromises);
 
-        try {
-          const stats = await fs.stat(fullPath);
-
-          if (!stats.isFile()) {
-            errors.push({
-              code: ValidationErrorCodes.MISSING_FILE,
-              message: `Required file is not a file: ${fileName}`,
-              path: fullPath,
-              severity: 'error'
-            });
-          }
-
-          // Check file permissions on Unix systems
-          if (process.platform !== 'win32') {
-            try {
-              await fs.access(fullPath, fs.constants.R_OK);
-            } catch (permError) {
-              warnings.push({
-                code: ValidationErrorCodes.PERMISSION_DENIED,
-                message: `File permission issues detected: ${fileName}`,
-                path: fullPath,
-                suggestion: 'Check file permissions'
-              });
-            }
-          }
-
-        } catch (error: any) {
-          if (error.code === 'ENOENT') {
-            errors.push({
-              code: ValidationErrorCodes.MISSING_FILE,
-              message: `Required file missing: ${fileName}`,
-              path: fullPath,
-              severity: 'error'
-            });
-          } else {
-            errors.push({
-              code: ValidationErrorCodes.PERMISSION_DENIED,
-              message: `Cannot access file ${fileName}: ${error.message}`,
-              path: fullPath,
-              severity: 'error'
-            });
-          }
+      for (const result of results) {
+        if (result.status === 'fulfilled' && result.value) {
+          errors.push(result.value);
         }
       }
 
-      return {
-        valid: errors.length === 0,
-        errors: Object.freeze(errors),
-        warnings: Object.freeze(warnings)
-      };
+      return this.createValidationResult(errors, warnings);
 
     } catch (error: any) {
-      errors.push({
-        code: ValidationErrorCodes.MISSING_FILE,
-        message: `Resource validation failed: ${error.message}`,
-        path: projectPath,
-        severity: 'error'
-      });
+      errors.push(this.createError(
+        ValidationErrorCodes.MISSING_FILE,
+        `Resource validation failed: ${error.message}`,
+        projectPath
+      ));
 
-      return {
-        valid: false,
-        errors: Object.freeze(errors),
-        warnings: Object.freeze(warnings)
-      };
+      return this.createValidationResult(errors, warnings);
+    }
+  }
+
+  /**
+   * Helper method to validate a single resource file
+   * @param projectPath - Root project path
+   * @param fileName - Resource file name to validate
+   * @param warnings - Array to collect warnings
+   * @returns ValidationError if file is invalid, null if valid
+   */
+  private async validateResourceFile(
+    projectPath: string,
+    fileName: string,
+    warnings: ValidationWarning[]
+  ): Promise<ValidationError | null> {
+    const fullPath = path.join(projectPath, fileName);
+
+    try {
+      const stats = await fs.stat(fullPath);
+
+      if (!stats.isFile()) {
+        return this.createError(
+          ValidationErrorCodes.MISSING_FILE,
+          `Required file is not a file: ${fileName}`,
+          fullPath
+        );
+      }
+
+      // Check file permissions on Unix systems (async to avoid blocking)
+      if (process.platform !== 'win32') {
+        this.checkFilePermissions(fullPath, fileName, warnings).catch(() => {
+          // Ignore permission check errors - they're non-critical
+        });
+      }
+
+      return null;
+    } catch (error: any) {
+      if (error.code === 'ENOENT') {
+        return this.createError(
+          ValidationErrorCodes.MISSING_FILE,
+          `Required file missing: ${fileName}`,
+          fullPath
+        );
+      } else {
+        return this.createError(
+          ValidationErrorCodes.PERMISSION_DENIED,
+          `Cannot access file ${fileName}: ${error.message}`,
+          fullPath
+        );
+      }
+    }
+  }
+
+  /**
+   * Helper method to check file permissions asynchronously
+   * @param fullPath - Full path to file
+   * @param fileName - File name for error messages
+   * @param warnings - Array to collect warnings
+   */
+  private async checkFilePermissions(
+    fullPath: string,
+    fileName: string,
+    warnings: ValidationWarning[]
+  ): Promise<void> {
+    try {
+      await fs.access(fullPath, fs.constants.R_OK);
+    } catch (permError) {
+      warnings.push(this.createWarning(
+        ValidationErrorCodes.PERMISSION_DENIED,
+        `File permission issues detected: ${fileName}`,
+        fullPath,
+        'Check file permissions'
+      ));
     }
   }
 
