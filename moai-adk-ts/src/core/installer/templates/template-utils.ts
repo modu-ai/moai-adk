@@ -6,8 +6,8 @@
  * @SECURITY:REDOS-PROTECTION-001 정규식 DoS 공격 방어
  */
 
+import { createSafeRegex } from '../../../utils/regex-security';
 import type { TemplateContext } from './template-processor';
-import { safeReplace, safeMatch, createSafeRegex } from '../../../utils/regex-security';
 
 /**
  * @TASK:MULTIPLE-FORMATS-001 다중 변수 포맷 처리 (ReDoS 방어)
@@ -19,7 +19,10 @@ export function processMultipleVariableFormats(
   context: TemplateContext
 ): string {
   // ReDoS 방어를 위한 안전한 정규식 생성
-  const safePattern = createSafeRegex('\\[([\\w]+)\\]|\\$\\{([\\w]+)\\}|\\$([\\w]+)(?![a-zA-Z0-9_])', 'g');
+  const safePattern = createSafeRegex(
+    '\\[([\\w]+)\\]|\\$\\{([\\w]+)\\}|\\$([\\w]+)(?![a-zA-Z0-9_])',
+    'g'
+  );
 
   if (!safePattern) {
     console.warn('Failed to create safe regex pattern for variable formats');
@@ -33,13 +36,16 @@ export function processMultipleVariableFormats(
   }
 
   try {
-    return content.replace(safePattern, (match, bracket, dollarBrace, dollarSimple) => {
-      const varName = bracket || dollarBrace || dollarSimple;
-      if (varName && varName in context) {
-        return String(context[varName]);
+    return content.replace(
+      safePattern,
+      (match, bracket, dollarBrace, dollarSimple) => {
+        const varName = bracket || dollarBrace || dollarSimple;
+        if (varName && varName in context) {
+          return String(context[varName]);
+        }
+        return match;
       }
-      return match;
-    });
+    );
   } catch (error) {
     console.warn('Variable replacement failed:', error);
     return content;
@@ -66,7 +72,10 @@ export function expandNestedVariables(
     iterations++;
 
     // Python과 동일한 중첩 패턴: {{...{{내부변수}}...}} - ReDoS 방어
-    const safeNestedPattern = createSafeRegex('\\{\\{([^{}]*?)\\{\\{([^{}]+?)\\}\\}([^{}]*?)\\}\\}', 'g');
+    const safeNestedPattern = createSafeRegex(
+      '\\{\\{([^{}]*?)\\{\\{([^{}]+?)\\}\\}([^{}]*?)\\}\\}',
+      'g'
+    );
 
     if (!safeNestedPattern) {
       console.warn('Failed to create safe nested pattern regex');
@@ -187,7 +196,7 @@ export function shouldProcessAsTemplate(filePath: string): boolean {
  */
 export async function fileExists(filePath: string): Promise<boolean> {
   try {
-    const { promises: fs } = await import('fs');
+    const { promises: fs } = await import('node:fs');
     await fs.access(filePath);
     return true;
   } catch {
@@ -199,7 +208,7 @@ export async function fileExists(filePath: string): Promise<boolean> {
  * @TASK:GET-EXTENSION-001 파일 확장자 추출
  */
 function getFileExtension(filePath: string): string {
-  const path = require('path');
+  const path = require('node:path');
   return path.extname(filePath).toLowerCase();
 }
 
@@ -212,7 +221,7 @@ export async function copyBinaryFile(
   preserveTimestamps: boolean,
   overwrite: boolean
 ): Promise<void> {
-  const { promises: fs } = await import('fs');
+  const { promises: fs } = await import('node:fs');
 
   if (!overwrite && (await fileExists(targetPath))) {
     return;
@@ -308,7 +317,7 @@ export async function applyProjectContext(
   context: TemplateContext
 ): Promise<boolean> {
   try {
-    const { promises: fs } = await import('fs');
+    const { promises: fs } = await import('node:fs');
 
     if (!(await fileExists(templatePath))) {
       console.warn(`Template file not found: ${templatePath}`);

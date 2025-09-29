@@ -4,7 +4,7 @@
  * @tags @TEST:CLI-HELP-001 @REQ:CLI-FOUNDATION-012
  */
 
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+import { beforeEach, describe, expect, vi } from 'vitest';
 import { HelpCommand } from '../help';
 
 describe('HelpCommand', () => {

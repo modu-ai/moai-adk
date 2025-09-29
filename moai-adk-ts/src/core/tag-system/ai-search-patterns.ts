@@ -20,7 +20,11 @@
  * - TAG 관계 분석 자동화
  */
 
-import { AISearchPattern, TagCategory, TagBlock } from './code-first-types.js';
+import {
+  type AISearchPattern,
+  type TagBlock,
+  TagCategory,
+} from './code-first-types.js';
 
 /**
  * 핵심 TAG 검색 패턴들
@@ -33,10 +37,10 @@ export class AISearchPatterns {
    * 모든 TAG 블록을 찾는 기본 패턴
    */
   static readonly FIND_ALL_TAGS: AISearchPattern = {
-    name: "find_all_tags",
-    pattern: "@TAG:[A-Z]+:[A-Z0-9-]+",
-    fileTypes: ["ts", "js", "py", "java", "go", "rs", "cpp", "cs", "md"],
-    options: ["-n", "--color=never"]
+    name: 'find_all_tags',
+    pattern: '@TAG:[A-Z]+:[A-Z0-9-]+',
+    fileTypes: ['ts', 'js', 'py', 'java', 'go', 'rs', 'cpp', 'cs', 'md'],
+    options: ['-n', '--color=never'],
   };
 
   /**
@@ -46,8 +50,8 @@ export class AISearchPatterns {
     return {
       name: `find_${category.toLowerCase()}_tags`,
       pattern: `@TAG:${category}:[A-Z0-9-]+`,
-      fileTypes: ["ts", "js", "py", "java", "go", "rs", "cpp", "cs", "md"],
-      options: ["-n", "--color=never", "-A", "10"]
+      fileTypes: ['ts', 'js', 'py', 'java', 'go', 'rs', 'cpp', 'cs', 'md'],
+      options: ['-n', '--color=never', '-A', '10'],
     };
   }
 
@@ -55,50 +59,50 @@ export class AISearchPatterns {
    * TAG 체인을 찾는 패턴
    */
   static readonly FIND_TAG_CHAINS: AISearchPattern = {
-    name: "find_tag_chains",
-    pattern: "@CHAIN:\\s*([A-Z]+:[A-Z0-9-]+\\s*->\\s*)+[A-Z]+:[A-Z0-9-]+",
-    fileTypes: ["ts", "js", "py", "java", "go", "rs", "cpp", "cs", "md"],
-    options: ["-n", "--color=never", "-A", "5"]
+    name: 'find_tag_chains',
+    pattern: '@CHAIN:\\s*([A-Z]+:[A-Z0-9-]+\\s*->\\s*)+[A-Z]+:[A-Z0-9-]+',
+    fileTypes: ['ts', 'js', 'py', 'java', 'go', 'rs', 'cpp', 'cs', 'md'],
+    options: ['-n', '--color=never', '-A', '5'],
   };
 
   /**
    * TAG 의존성을 찾는 패턴
    */
   static readonly FIND_TAG_DEPENDENCIES: AISearchPattern = {
-    name: "find_tag_dependencies",
-    pattern: "@DEPENDS:\\s*(@TAG:[A-Z]+:[A-Z0-9-]+(,\\s*)?)+",
-    fileTypes: ["ts", "js", "py", "java", "go", "rs", "cpp", "cs", "md"],
-    options: ["-n", "--color=never", "-A", "5"]
+    name: 'find_tag_dependencies',
+    pattern: '@DEPENDS:\\s*(@TAG:[A-Z]+:[A-Z0-9-]+(,\\s*)?)+',
+    fileTypes: ['ts', 'js', 'py', 'java', 'go', 'rs', 'cpp', 'cs', 'md'],
+    options: ['-n', '--color=never', '-A', '5'],
   };
 
   /**
    * 불변 TAG를 찾는 패턜
    */
   static readonly FIND_IMMUTABLE_TAGS: AISearchPattern = {
-    name: "find_immutable_tags",
-    pattern: "@IMMUTABLE",
-    fileTypes: ["ts", "js", "py", "java", "go", "rs", "cpp", "cs", "md"],
-    options: ["-n", "--color=never", "-B", "10", "-A", "2"]
+    name: 'find_immutable_tags',
+    pattern: '@IMMUTABLE',
+    fileTypes: ['ts', 'js', 'py', 'java', 'go', 'rs', 'cpp', 'cs', 'md'],
+    options: ['-n', '--color=never', '-B', '10', '-A', '2'],
   };
 
   /**
    * 완전한 TAG 블록을 찾는 패턴 (주석 시작부터 끝까지)
    */
   static readonly FIND_COMPLETE_TAG_BLOCKS: AISearchPattern = {
-    name: "find_complete_tag_blocks",
-    pattern: "/\\*\\*[\\s\\S]*?@TAG:[A-Z]+:[A-Z0-9-]+[\\s\\S]*?\\*/",
-    fileTypes: ["ts", "js", "java", "cs", "cpp"],
-    options: ["-U", "--multiline", "-n", "--color=never"]
+    name: 'find_complete_tag_blocks',
+    pattern: '/\\*\\*[\\s\\S]*?@TAG:[A-Z]+:[A-Z0-9-]+[\\s\\S]*?\\*/',
+    fileTypes: ['ts', 'js', 'java', 'cs', 'cpp'],
+    options: ['-U', '--multiline', '-n', '--color=never'],
   };
 
   /**
    * Python docstring TAG 블록 패턴
    */
   static readonly FIND_PYTHON_TAG_BLOCKS: AISearchPattern = {
-    name: "find_python_tag_blocks",
+    name: 'find_python_tag_blocks',
     pattern: '"""[\\s\\S]*?@TAG:[A-Z]+:[A-Z0-9-]+[\\s\\S]*?"""',
-    fileTypes: ["py"],
-    options: ["-U", "--multiline", "-n", "--color=never"]
+    fileTypes: ['py'],
+    options: ['-U', '--multiline', '-n', '--color=never'],
   };
 
   /**
@@ -108,8 +112,8 @@ export class AISearchPatterns {
     return {
       name: `find_domain_${domainId.toLowerCase()}`,
       pattern: `@TAG:[A-Z]+:${domainId.toUpperCase()}`,
-      fileTypes: ["ts", "js", "py", "java", "go", "rs", "cpp", "cs", "md"],
-      options: ["-n", "--color=never", "-B", "5", "-A", "15"]
+      fileTypes: ['ts', 'js', 'py', 'java', 'go', 'rs', 'cpp', 'cs', 'md'],
+      options: ['-n', '--color=never', '-B', '5', '-A', '15'],
     };
   }
 
@@ -122,7 +126,7 @@ export class AISearchPatterns {
     AISearchPatterns.FIND_TAG_DEPENDENCIES,
     AISearchPatterns.FIND_IMMUTABLE_TAGS,
     AISearchPatterns.FIND_COMPLETE_TAG_BLOCKS,
-    AISearchPatterns.FIND_PYTHON_TAG_BLOCKS
+    AISearchPatterns.FIND_PYTHON_TAG_BLOCKS,
   ];
 }
 
@@ -139,7 +143,7 @@ export class AIContextBuilder {
    * @param rootPath 프로젝트 루트 경로
    * @returns TAG 맵과 관계 정보
    */
-  async buildProjectTagMap(rootPath: string): Promise<{
+  async buildProjectTagMap(_rootPath: string): Promise<{
     tags: Map<string, TagBlock>;
     chains: Map<string, string[]>;
     dependencies: Map<string, string[]>;
@@ -161,14 +165,17 @@ export class AIContextBuilder {
    * @param rootPath 프로젝트 루트 경로
    * @returns 관련 TAG들과 체인 정보
    */
-  async buildTagContext(tagId: string, rootPath: string): Promise<{
+  async buildTagContext(
+    _tagId: string,
+    _rootPath: string
+  ): Promise<{
     primaryTag: TagBlock;
     relatedTags: TagBlock[];
     chainTags: TagBlock[];
     dependentTags: TagBlock[];
   }> {
     // TODO: 실제 구현 필요
-    throw new Error("Not implemented yet");
+    throw new Error('Not implemented yet');
   }
 
   /**
@@ -187,13 +194,16 @@ export class AIContextBuilder {
       if (!categorized.has(tag.category)) {
         categorized.set(tag.category, []);
       }
-      categorized.get(tag.category)!.push(tag);
+      categorized.get(tag.category)?.push(tag);
     }
 
     // 생명주기 TAG들 우선 표시
     const lifecycleOrder: TagCategory[] = [
-      TagCategory.SPEC, TagCategory.REQ, TagCategory.DESIGN,
-      TagCategory.TASK, TagCategory.TEST
+      TagCategory.SPEC,
+      TagCategory.REQ,
+      TagCategory.DESIGN,
+      TagCategory.TASK,
+      TagCategory.TEST,
     ];
 
     for (const category of lifecycleOrder) {
@@ -213,7 +223,11 @@ export class AIContextBuilder {
     }
 
     // 구현 TAG들
-    const implCategories = [TagCategory.FEATURE, TagCategory.API, TagCategory.FIX];
+    const implCategories = [
+      TagCategory.FEATURE,
+      TagCategory.API,
+      TagCategory.FIX,
+    ];
 
     for (const category of implCategories) {
       const categoryTags = categorized.get(category);
@@ -242,7 +256,10 @@ export class TagSearchExecutor {
    * @param rootPath 검색할 루트 경로
    * @returns 검색 결과
    */
-  async executeSearch(pattern: AISearchPattern, rootPath: string): Promise<{
+  async executeSearch(
+    _pattern: AISearchPattern,
+    _rootPath: string
+  ): Promise<{
     matches: Array<{
       file: string;
       line: number;
@@ -255,7 +272,7 @@ export class TagSearchExecutor {
 
     return {
       matches: [],
-      totalMatches: 0
+      totalMatches: 0,
     };
   }
 
@@ -267,8 +284,8 @@ export class TagSearchExecutor {
    * @returns 통합된 검색 결과
    */
   async executeMultipleSearches(
-    patterns: AISearchPattern[],
-    rootPath: string
+    _patterns: AISearchPattern[],
+    _rootPath: string
   ): Promise<Map<string, any>> {
     // TODO: 병렬 검색 실행 구현
     return new Map();
@@ -280,7 +297,6 @@ export class TagSearchExecutor {
  */
 export class AITagSearchAPI {
   private contextBuilder = new AIContextBuilder();
-  private searchExecutor = new TagSearchExecutor();
 
   /**
    * AI가 프로젝트 전체 컨텍스트를 이해할 수 있도록
@@ -302,7 +318,10 @@ export class AITagSearchAPI {
    * @param rootPath 프로젝트 루트 경로
    * @returns 관련 TAG 정보
    */
-  async findRelatedTags(keyword: string, rootPath: string): Promise<TagBlock[]> {
+  async findRelatedTags(
+    _keyword: string,
+    _rootPath: string
+  ): Promise<TagBlock[]> {
     // TODO: 키워드 기반 TAG 검색 구현
     return [];
   }
@@ -313,7 +332,7 @@ export class AITagSearchAPI {
    * @param rootPath 프로젝트 루트 경로
    * @returns 체인별 완성도 리포트
    */
-  async analyzeChainCompleteness(rootPath: string): Promise<{
+  async analyzeChainCompleteness(_rootPath: string): Promise<{
     chains: Array<{
       chainId: string;
       completeness: number;
@@ -324,7 +343,7 @@ export class AITagSearchAPI {
     // TODO: 체인 완성도 분석 구현
     return {
       chains: [],
-      overallCompleteness: 0
+      overallCompleteness: 0,
     };
   }
 }

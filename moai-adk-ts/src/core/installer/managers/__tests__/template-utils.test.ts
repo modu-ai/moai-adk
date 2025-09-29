@@ -5,19 +5,19 @@
  * @FEATURE:TEMPLATE-UTILS-001 완전한 템플릿 유틸리티 기능 테스트
  */
 
-import {
-  unifiedSubstituteTemplateVariables,
-  processMultipleVariableFormats,
-  expandNestedVariables,
-  mergeTemplateContexts,
-  applyProjectContext,
-  shouldProcessAsTemplate,
-  fileExists,
-} from '../template-utils';
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import type { TemplateContext } from '../template-processor';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import * as os from 'os';
+import {
+  applyProjectContext,
+  expandNestedVariables,
+  fileExists,
+  mergeTemplateContexts,
+  processMultipleVariableFormats,
+  shouldProcessAsTemplate,
+  unifiedSubstituteTemplateVariables,
+} from '../template-utils';
 
 describe('Template Utils - Python Porting Tests', () => {
   let tempDir: string;
@@ -153,10 +153,10 @@ describe('Template Utils - Python Porting Tests', () => {
 
       const result = mergeTemplateContexts(primary, secondary1, secondary2);
 
-      expect(result['A']).toBe('primary'); // primary만 존재
-      expect(result['B']).toBe('primary'); // primary 우선
-      expect(result['C']).toBe('secondary2'); // 나중 secondary 우선
-      expect(result['D']).toBe('secondary2'); // secondary2만 존재
+      expect(result.A).toBe('primary'); // primary만 존재
+      expect(result.B).toBe('primary'); // primary 우선
+      expect(result.C).toBe('secondary2'); // 나중 secondary 우선
+      expect(result.D).toBe('secondary2'); // secondary2만 존재
     });
 
     it('should return immutable result', () => {

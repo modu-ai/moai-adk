@@ -4,14 +4,14 @@
  * @tags @FEATURE:PACKAGE-MANAGER-DETECTOR-001 @REQ:PACKAGE-MANAGER-002
  */
 
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 import { execa } from 'execa';
-import * as fs from 'fs/promises';
-import * as path from 'path';
 import {
-  PackageManagerType,
-  type PackageManagerInfo,
-  type PackageManagerDetectionResult,
   type PackageManagerCommands,
+  type PackageManagerDetectionResult,
+  type PackageManagerInfo,
+  PackageManagerType,
 } from '@/types/package-manager';
 
 /**
@@ -47,7 +47,7 @@ export class PackageManagerDetector {
           isAvailable: false,
         };
       }
-    } catch (error) {
+    } catch (_error) {
       return {
         type,
         version: 'unknown',

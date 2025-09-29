@@ -12,21 +12,21 @@
 
 // Core TAG 파싱 시스템
 export {
-  TagParser,
-  TagCategory,
-  TagMatch,
-  TagPosition,
-  TagChain,
   DuplicateTagInfo,
+  TagCategory,
+  TagChain,
+  TagMatch,
+  TagParser,
+  TagPosition,
 } from './tag-parser';
 
 // TAG 검증 시스템
 export {
-  TagValidator,
-  ChainValidationResult,
-  ValidationError,
   BrokenReference,
+  ChainValidationResult,
   ConsistencyViolation,
+  TagValidator,
+  ValidationError,
 } from './tag-validator';
 
 // TAG 데이터베이스 시스템 (임시 비활성화 - tag-database 모듈 누락)

@@ -5,14 +5,14 @@
  * TRUST-U 원칙: 단일 책임 및 300 LOC 이하 파일 크기
  */
 
-import { promises as fs } from 'fs';
-import * as path from 'path';
+import { promises as fs } from 'node:fs';
+import * as path from 'node:path';
 import { logger } from '../../../utils/logger';
 import {
-  PathValidator,
-  TemplateProcessor,
   FileOperations,
+  PathValidator,
   type TemplateContext,
+  TemplateProcessor,
 } from './utils';
 
 /**
@@ -244,8 +244,7 @@ export class ResourceOperations {
             // 파일이 존재하지 않음 - 정상적인 케이스
           }
         }
-      } catch {
-      }
+      } catch {}
     }
 
     // 일괄 템플릿 변수 치환

@@ -22,25 +22,25 @@
  */
 export enum TagCategory {
   // Lifecycle (생명주기 - 필수 체인)
-  SPEC = "SPEC",        // 명세 작성
-  REQ = "REQ",          // 요구사항 정의
-  DESIGN = "DESIGN",    // 아키텍처 설계
-  TASK = "TASK",        // 구현 작업
-  TEST = "TEST",        // 테스트 검증
+  SPEC = 'SPEC', // 명세 작성
+  REQ = 'REQ', // 요구사항 정의
+  DESIGN = 'DESIGN', // 아키텍처 설계
+  TASK = 'TASK', // 구현 작업
+  TEST = 'TEST', // 테스트 검증
 
   // Implementation (구현 - 선택적)
-  FEATURE = "FEATURE",  // 비즈니스 기능
-  API = "API",         // 인터페이스
-  FIX = "FIX"          // 버그 수정
+  FEATURE = 'FEATURE', // 비즈니스 기능
+  API = 'API', // 인터페이스
+  FIX = 'FIX', // 버그 수정
 }
 
 /**
  * TAG 상태
  */
 export enum TagStatus {
-  ACTIVE = "active",        // 활성 상태
-  DEPRECATED = "deprecated", // 폐기 예정
-  COMPLETED = "completed"   // 완료 상태
+  ACTIVE = 'active', // 활성 상태
+  DEPRECATED = 'deprecated', // 폐기 예정
+  COMPLETED = 'completed', // 완료 상태
 }
 
 /**

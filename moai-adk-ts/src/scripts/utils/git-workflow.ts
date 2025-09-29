@@ -3,8 +3,8 @@
  * @연결: @REQ:GIT-WORKFLOW-001 → @DESIGN:UNIFIED-GIT-001 → @TASK:GIT-TS-PORT-001
  */
 
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
 
 const execAsync = promisify(exec);
 

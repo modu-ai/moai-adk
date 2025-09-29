@@ -6,12 +6,12 @@
  * 자동 메시지 생성 및 TRUST 원칙 준수 커밋 시스템
  */
 
-import * as path from 'path';
-import { GitWorkflow } from './utils/git-workflow';
-import { CommitValidator } from './validators/commit-validator';
+import * as path from 'node:path';
 import { FileAnalyzer } from './analyzers/file-analyzer';
 import { MessageGenerator } from './generators/message-generator';
+import { GitWorkflow } from './utils/git-workflow';
 import { ProjectHelper } from './utils/project-helper';
+import { CommitValidator } from './validators/commit-validator';
 
 export interface FileChange {
   status: string;
@@ -83,10 +83,10 @@ export class CommitHelper {
     while (currentDir !== root) {
       try {
         const gitDir = path.join(currentDir, '.git');
-        if (require('fs').existsSync(gitDir)) {
+        if (require('node:fs').existsSync(gitDir)) {
           return currentDir;
         }
-      } catch (error) {
+      } catch (_error) {
         // 무시하고 계속
       }
       currentDir = path.dirname(currentDir);

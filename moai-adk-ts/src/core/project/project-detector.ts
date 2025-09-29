@@ -4,17 +4,17 @@
  * @tags @FEATURE:PROJECT-001 @REQ:CORE-SYSTEM-013
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import type {
-  ProjectInfo,
+  BuildToolIndicators,
+  FileInfo,
+  FrameworkIndicators,
+  LanguageExtensions,
   PackageAnalysis,
   ProjectConfig,
-  FileInfo,
-  LanguageExtensions,
   ProjectFileIndicators,
-  FrameworkIndicators,
-  BuildToolIndicators,
+  ProjectInfo,
 } from './types';
 
 /**
@@ -83,7 +83,9 @@ export class ProjectDetector {
       scripts: [],
     };
 
-    console.log(`Detecting project type in: ${projectPath} (excluding MoAI framework files)`);
+    console.log(
+      `Detecting project type in: ${projectPath} (excluding MoAI framework files)`
+    );
 
     // Check for various project files
     for (const [fileName, info] of Object.entries(this.projectFileIndicators)) {
@@ -102,14 +104,22 @@ export class ProjectDetector {
 
       // Check if this is a MoAI-ADK package.json (exclude it from user project analysis)
       try {
-        const packageData = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
-        if (packageData.name === 'moai-adk' || packageData.description?.includes('MoAI-ADK')) {
+        const packageData = JSON.parse(
+          fs.readFileSync(packageJsonPath, 'utf-8')
+        );
+        if (
+          packageData.name === 'moai-adk' ||
+          packageData.description?.includes('MoAI-ADK')
+        ) {
           console.log('Skipping MoAI-ADK package.json from project analysis');
-          detected.filesFound = detected.filesFound.filter(f => f !== 'package.json');
+          detected.filesFound = detected.filesFound.filter(
+            f => f !== 'package.json'
+          );
           detected.type = 'unknown';
           detected.language = 'unknown';
         } else {
-          const packageAnalysis = await this.analyzePackageJson(packageJsonPath);
+          const packageAnalysis =
+            await this.analyzePackageJson(packageJsonPath);
           return {
             ...detected,
             frameworks: packageAnalysis.frameworks,
@@ -283,7 +293,7 @@ export class ProjectDetector {
       '.git',
       'dist',
       'build',
-      'coverage'
+      'coverage',
     ];
 
     const scanRecursive = (currentPath: string) => {
@@ -295,7 +305,9 @@ export class ProjectDetector {
 
           // Skip MoAI framework files and directories
           if (moaiExclusions.includes(entry.name)) {
-            console.log(`Skipping MoAI framework file/directory: ${entry.name}`);
+            console.log(
+              `Skipping MoAI framework file/directory: ${entry.name}`
+            );
             continue;
           }
 

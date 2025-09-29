@@ -4,9 +4,9 @@
  * @tags @FEATURE:CLI-STATUS-001 @REQ:CLI-FOUNDATION-012
  */
 
+import * as path from 'node:path';
 import chalk from 'chalk';
 import * as fs from 'fs-extra';
-import * as path from 'path';
 
 /**
  * Status command options
@@ -67,8 +67,6 @@ export interface StatusResult {
  * @tags @FEATURE:CLI-STATUS-001
  */
 export class StatusCommand {
-  constructor() {}
-
   /**
    * Check project status and components
    * @param projectPath - Path to project directory
@@ -226,7 +224,7 @@ export class StatusCommand {
         counts['CLAUDE.md'] = 0;
       }
 
-      counts['total'] = total;
+      counts.total = total;
       return counts;
     } catch (error) {
       throw new Error(

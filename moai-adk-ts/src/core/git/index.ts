@@ -12,7 +12,7 @@
  * @fileoverview Export all Git-related modules
  */
 
+export * from '../../types/git';
+export * from './constants';
 export { GitManager } from './git-manager';
 export { GitHubIntegration } from './github-integration';
-export * from './constants';
-export * from '../../types/git';

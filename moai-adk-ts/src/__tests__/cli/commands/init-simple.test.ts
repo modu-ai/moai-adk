@@ -4,10 +4,10 @@
  * @tags @TEST:CLI-INIT-SIMPLE-001
  */
 
-import { describe, test, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { InitCommand } from '@/cli/commands/init';
-import { ProjectWizard } from '@/core/project/wizard';
 import { TemplateManager } from '@/core/project/template-manager';
+import { ProjectWizard } from '@/core/project/wizard';
 import { ProjectType } from '@/types/project';
 
 describe('InitCommand Basic Tests', () => {

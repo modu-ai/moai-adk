@@ -4,13 +4,12 @@
  * @tags @FEATURE:ENVIRONMENT-ANALYZER-001 @REQ:ADVANCED-DOCTOR-001
  */
 
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import { execSync } from 'child_process';
+import { execSync } from 'node:child_process';
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 import type {
   EnvironmentConfig,
   OptimizationRecommendation,
-  DiagnosticSeverity,
 } from '@/types/diagnostics';
 
 /**
@@ -46,7 +45,7 @@ export class EnvironmentAnalyzer {
         if (analysis) {
           environments.push(analysis);
         }
-      } catch (error) {
+      } catch (_error) {
         // Environment not detected or analysis failed
         environments.push({
           name: envName,
@@ -112,7 +111,10 @@ export class EnvironmentAnalyzer {
 
     // Check Node.js version
     if (version) {
-      const majorVersion = parseInt(version.replace('v', '').split('.')[0] || '0');
+      const majorVersion = parseInt(
+        version.replace('v', '').split('.')[0] || '0',
+        10
+      );
       if (majorVersion < 18) {
         recommendations.push({
           category: 'compatibility',
@@ -146,7 +148,9 @@ export class EnvironmentAnalyzer {
    * @returns TypeScript environment analysis
    * @tags @UTIL:ANALYZE-TYPESCRIPT-001
    */
-  private async analyzeTypeScript(projectPath: string): Promise<EnvironmentConfig> {
+  private async analyzeTypeScript(
+    projectPath: string
+  ): Promise<EnvironmentConfig> {
     const version = this.getToolVersion('tsc --version');
     const configFiles = await this.findConfigFiles(projectPath, [
       'tsconfig.json',
@@ -163,7 +167,8 @@ export class EnvironmentAnalyzer {
         category: 'compatibility',
         severity: DiagnosticSeverity.WARNING,
         title: 'Missing TypeScript Configuration',
-        description: 'No tsconfig.json found. This is recommended for TypeScript projects',
+        description:
+          'No tsconfig.json found. This is recommended for TypeScript projects',
         impact: 'medium',
         effort: 'easy',
         steps: [
@@ -191,8 +196,9 @@ export class EnvironmentAnalyzer {
    * @tags @UTIL:ANALYZE-PYTHON-001
    */
   private async analyzePython(projectPath: string): Promise<EnvironmentConfig> {
-    const version = this.getToolVersion('python --version') ||
-                   this.getToolVersion('python3 --version');
+    const version =
+      this.getToolVersion('python --version') ||
+      this.getToolVersion('python3 --version');
     const configFiles = await this.findConfigFiles(projectPath, [
       'requirements.txt',
       'pyproject.toml',
@@ -207,8 +213,8 @@ export class EnvironmentAnalyzer {
     if (version) {
       const versionMatch = version.match(/(\d+)\.(\d+)/);
       if (versionMatch) {
-        const major = parseInt(versionMatch[1] || '0');
-        const minor = parseInt(versionMatch[2] || '0');
+        const major = parseInt(versionMatch[1] || '0', 10);
+        const minor = parseInt(versionMatch[2] || '0', 10);
 
         if (major < 3 || (major === 3 && minor < 8)) {
           recommendations.push({
@@ -256,7 +262,10 @@ export class EnvironmentAnalyzer {
 
     // Check if it's a git repository
     try {
-      execSync('git rev-parse --git-dir', { cwd: projectPath, stdio: 'ignore' });
+      execSync('git rev-parse --git-dir', {
+        cwd: projectPath,
+        stdio: 'ignore',
+      });
     } catch {
       recommendations.push({
         category: 'maintenance',
@@ -315,8 +324,9 @@ export class EnvironmentAnalyzer {
    * @tags @UTIL:ANALYZE-JAVA-001
    */
   private async analyzeJava(projectPath: string): Promise<EnvironmentConfig> {
-    const version = this.getToolVersion('java --version') ||
-                   this.getToolVersion('java -version');
+    const version =
+      this.getToolVersion('java --version') ||
+      this.getToolVersion('java -version');
     const configFiles = await this.findConfigFiles(projectPath, [
       'pom.xml',
       'build.gradle',
@@ -392,7 +402,7 @@ export class EnvironmentAnalyzer {
       const output = execSync(command, {
         encoding: 'utf8',
         stdio: 'pipe',
-        timeout: 5000
+        timeout: 5000,
       });
       return output.trim();
     } catch {
@@ -439,9 +449,15 @@ export class EnvironmentAnalyzer {
       return 'optimal';
     }
 
-    const hasCritical = recommendations.some(r => r.severity === DiagnosticSeverity.CRITICAL);
-    const hasError = recommendations.some(r => r.severity === DiagnosticSeverity.ERROR);
-    const hasWarning = recommendations.some(r => r.severity === DiagnosticSeverity.WARNING);
+    const hasCritical = recommendations.some(
+      r => r.severity === DiagnosticSeverity.CRITICAL
+    );
+    const hasError = recommendations.some(
+      r => r.severity === DiagnosticSeverity.ERROR
+    );
+    const hasWarning = recommendations.some(
+      r => r.severity === DiagnosticSeverity.WARNING
+    );
 
     if (hasCritical) return 'problematic';
     if (hasError) return 'needs_improvement';

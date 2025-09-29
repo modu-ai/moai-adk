@@ -57,10 +57,9 @@ function getMoaiLogo(): string[] {
  * @returns Complete banner string
  * @tags @API:CREATE-BANNER-001
  */
-export function createBanner(options: {
-  version?: string;
-  showUsage?: boolean;
-} = {}): string {
+export function createBanner(
+  options: { version?: string; showUsage?: boolean } = {}
+): string {
   const { version = getCurrentVersion(), showUsage = false } = options;
 
   const moaiLines = getMoaiLogo();
@@ -85,9 +84,8 @@ export function createBanner(options: {
   // Description with version in one line
   const description = `🗿 MoAI-ADK: Modu-AI's Agentic Development kit (v${version}) 🚀`;
 
-  bannerLines.push(supportsColor()
-    ? applyClaudeBrandColor(description)
-    : description
+  bannerLines.push(
+    supportsColor() ? applyClaudeBrandColor(description) : description
   );
   bannerLines.push('');
 
@@ -97,21 +95,30 @@ export function createBanner(options: {
     bannerLines.push('Usage: moai [options] [command]');
     bannerLines.push('');
     bannerLines.push('Commands:');
-    bannerLines.push('  doctor [options]                 Run system diagnostics');
-    bannerLines.push('  init [options] [project]         Initialize a new MoAI-ADK project');
-    bannerLines.push('  restore [options] <backup-path>  Restore MoAI-ADK from a backup directory');
-    bannerLines.push('  status [options]                 Show MoAI-ADK project status');
-    bannerLines.push('  update [options]                 Update MoAI-ADK to the latest version');
-    bannerLines.push('  help [command]                   Show help for MoAI-ADK commands');
+    bannerLines.push(
+      '  doctor [options]                 Run system diagnostics'
+    );
+    bannerLines.push(
+      '  init [options] [project]         Initialize a new MoAI-ADK project'
+    );
+    bannerLines.push(
+      '  restore [options] <backup-path>  Restore MoAI-ADK from a backup directory'
+    );
+    bannerLines.push(
+      '  status [options]                 Show MoAI-ADK project status'
+    );
+    bannerLines.push(
+      '  update [options]                 Update MoAI-ADK to the latest version'
+    );
+    bannerLines.push(
+      '  help [command]                   Show help for MoAI-ADK commands'
+    );
   }
 
   // Footer
   bannerLines.push('');
   const footer = 'copyleft 2024, Modu-AI / 모두의AI (https://mo.ai.kr)';
-  bannerLines.push(supportsColor()
-    ? chalk.gray(footer)
-    : footer
-  );
+  bannerLines.push(supportsColor() ? chalk.gray(footer) : footer);
   bannerLines.push('');
 
   return bannerLines.join('\n');
@@ -122,10 +129,9 @@ export function createBanner(options: {
  * @param options Banner options
  * @tags @API:PRINT-BANNER-001
  */
-export function printBanner(options: {
-  version?: string;
-  showUsage?: boolean;
-} = {}): void {
+export function printBanner(
+  options: { version?: string; showUsage?: boolean } = {}
+): void {
   console.log(createBanner(options));
 }
 
@@ -146,9 +152,7 @@ export function createHeader(title: string, subtitle?: string): string {
   lines.push(formattedTitle);
 
   if (subtitle) {
-    const formattedSubtitle = supportsColor()
-      ? chalk.blue(subtitle)
-      : subtitle;
+    const formattedSubtitle = supportsColor() ? chalk.blue(subtitle) : subtitle;
     lines.push(formattedSubtitle);
   }
 

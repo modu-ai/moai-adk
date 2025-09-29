@@ -6,9 +6,9 @@
 
 import { logger } from '../../../utils/logger';
 import type {
-  ValidationResult,
-  TemplateCheckResult,
   IntegrityResult,
+  TemplateCheckResult,
+  ValidationResult,
 } from '../types';
 
 /**

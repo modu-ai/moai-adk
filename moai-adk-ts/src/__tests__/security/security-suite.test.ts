@@ -5,19 +5,27 @@
  * @description Comprehensive security tests for all vulnerability fixes
  */
 
-import { describe, test, expect, beforeEach, vi } from 'vitest';
-import { renderTemplateSafely, validateTemplateContent } from '../../core/installer/templates/template-security';
-import { InputValidator } from '../../utils/input-validator';
-import { RegexSecurity, safeMatch, safeReplace } from '../../utils/regex-security';
+import { beforeEach, describe, expect, test } from 'vitest';
 import { TemplateProcessor } from '../../core/installer/templates/template-processor';
+import {
+  renderTemplateSafely,
+  validateTemplateContent,
+} from '../../core/installer/templates/template-security';
+import { InputValidator } from '../../utils/input-validator';
+import {
+  RegexSecurity,
+  safeMatch,
+  safeReplace,
+} from '../../utils/regex-security';
 
 describe('Security Test Suite', () => {
   describe('Template Injection Protection', () => {
     test('should block constructor access in templates', () => {
       const maliciousContext = {
         constructor: {
-          constructor: 'return process.mainModule.require("child_process").exec("rm -rf /")'
-        }
+          constructor:
+            'return process.mainModule.require("child_process").exec("rm -rf /")',
+        },
       };
 
       expect(() => {
@@ -28,10 +36,13 @@ describe('Security Test Suite', () => {
     test('should block prototype pollution attempts', () => {
       const maliciousContext = {
         __proto__: { isAdmin: true },
-        prototype: { dangerous: true }
+        prototype: { dangerous: true },
       };
 
-      const result = renderTemplateSafely('{{__proto__.isAdmin}}', maliciousContext);
+      const result = renderTemplateSafely(
+        '{{__proto__.isAdmin}}',
+        maliciousContext
+      );
       expect(result).not.toContain('true');
     });
 
@@ -40,10 +51,13 @@ describe('Security Test Suite', () => {
         PROJECT_NAME: 'test-project',
         eval: 'eval("malicious code")',
         Function: 'new Function("return process")',
-        require: 'require("fs")'
+        require: 'require("fs")',
       };
 
-      const result = renderTemplateSafely('{{PROJECT_NAME}}{{eval}}{{Function}}{{require}}', maliciousContext);
+      const result = renderTemplateSafely(
+        '{{PROJECT_NAME}}{{eval}}{{Function}}{{require}}',
+        maliciousContext
+      );
       expect(result).toBe('test-project');
     });
 
@@ -53,7 +67,7 @@ describe('Security Test Suite', () => {
         '{{constructor.constructor("return process")()}}',
         '{{__proto__.isAdmin}}',
         '<script>alert(1)</script>',
-        'eval("malicious")'
+        'eval("malicious")',
       ];
 
       for (const template of dangerousTemplates) {
@@ -66,7 +80,7 @@ describe('Security Test Suite', () => {
         'Hello {{PROJECT_NAME}}!',
         'Version: {{PROJECT_VERSION}}',
         'Environment: {{ENVIRONMENT}}',
-        'Path: {{PROJECT_PATH}}'
+        'Path: {{PROJECT_PATH}}',
       ];
 
       for (const template of safeTemplates) {
@@ -76,10 +90,10 @@ describe('Security Test Suite', () => {
   });
 
   describe('Path Traversal Protection', () => {
-    let processor: TemplateProcessor;
+    let _processor: TemplateProcessor;
 
     beforeEach(() => {
-      processor = new TemplateProcessor();
+      _processor = new TemplateProcessor();
     });
 
     test('should block path traversal in file names', async () => {
@@ -88,7 +102,7 @@ describe('Security Test Suite', () => {
         '..\\..\\..\\Windows\\System32',
         '/etc/shadow',
         'C:\\Windows\\System32\\config\\SAM',
-        '....//....//....//etc/passwd'
+        '....//....//....//etc/passwd',
       ];
 
       for (const path of maliciousPaths) {
@@ -103,11 +117,13 @@ describe('Security Test Suite', () => {
         './project/src/index.ts',
         'src/components/Button.tsx',
         'docs/README.md',
-        'package.json'
+        'package.json',
       ];
 
       for (const path of safePaths) {
-        const validation = await InputValidator.validatePath(path, { mustExist: false });
+        const validation = await InputValidator.validatePath(path, {
+          mustExist: false,
+        });
         expect(validation.isValid).toBe(true);
       }
     });
@@ -120,7 +136,7 @@ describe('Security Test Suite', () => {
         'CON',
         'PRN',
         'file<name>.txt',
-        'file|pipe.txt'
+        'file|pipe.txt',
       ];
 
       for (const name of dangerousNames) {
@@ -133,31 +149,33 @@ describe('Security Test Suite', () => {
   describe('Input Validation Protection', () => {
     test('should validate project names securely', () => {
       const invalidNames = [
-        '',                    // Empty
-        'a'.repeat(60),        // Too long
+        '', // Empty
+        'a'.repeat(60), // Too long
         'project with spaces', // Spaces (when not allowed)
-        'project<script>',     // HTML injection
-        'project/../other',    // Path traversal
-        'CON',                 // Windows reserved
-        'project|pipe'         // Pipe character
+        'project<script>', // HTML injection
+        'project/../other', // Path traversal
+        'CON', // Windows reserved
+        'project|pipe', // Pipe character
       ];
 
       for (const name of invalidNames) {
-        const validation = InputValidator.validateProjectName(name, { allowSpaces: false });
+        const validation = InputValidator.validateProjectName(name, {
+          allowSpaces: false,
+        });
         expect(validation.isValid).toBe(false);
       }
     });
 
     test('should validate Git branch names securely', () => {
       const invalidBranches = [
-        '',                    // Empty
-        'feature..bug',        // Double dots
-        '.hidden',             // Starting with dot
-        'branch-',             // Ending with dash
-        'feature~1',           // Tilde character
-        'branch:name',         // Colon character
-        'feature branch',      // Space
-        'a'.repeat(300)        // Too long
+        '', // Empty
+        'feature..bug', // Double dots
+        '.hidden', // Starting with dot
+        'branch-', // Ending with dash
+        'feature~1', // Tilde character
+        'branch:name', // Colon character
+        'feature branch', // Space
+        'a'.repeat(300), // Too long
       ];
 
       for (const branch of invalidBranches) {
@@ -169,14 +187,15 @@ describe('Security Test Suite', () => {
     test('should validate command options securely', () => {
       const dangerousOptions = {
         normalOption: 'safe-value',
-        longOption: 'x'.repeat(2000),               // Too long
-        scriptOption: '<script>alert(1)</script>',  // HTML injection
-        evalOption: 'eval("malicious")',            // JavaScript code
-        'invalid-key-!@#': 'value',                 // Invalid key format
-        functionOption: () => 'function value'      // Function (should be rejected)
+        longOption: 'x'.repeat(2000), // Too long
+        scriptOption: '<script>alert(1)</script>', // HTML injection
+        evalOption: 'eval("malicious")', // JavaScript code
+        'invalid-key-!@#': 'value', // Invalid key format
+        functionOption: () => 'function value', // Function (should be rejected)
       };
 
-      const validation = InputValidator.validateCommandOptions(dangerousOptions);
+      const validation =
+        InputValidator.validateCommandOptions(dangerousOptions);
       expect(validation.isValid).toBe(false);
       expect(validation.errors.length).toBeGreaterThan(0);
     });
@@ -185,11 +204,11 @@ describe('Security Test Suite', () => {
   describe('ReDoS Protection', () => {
     test('should detect dangerous regex patterns', () => {
       const dangerousPatterns = [
-        /^(a+)+$/,                    // Nested quantifiers
-        /^(a|a)*$/,                   // Alternation with repetition
-        /^(a+)*$/,                    // Repeated groups with quantifiers
-        /^(a*)*$/,                    // Evil regex
-        /^([a-zA-Z]+)*$/              // Character class with repetition
+        /^(a+)+$/, // Nested quantifiers
+        /^(a|a)*$/, // Alternation with repetition
+        /^(a+)*$/, // Repeated groups with quantifiers
+        /^(a*)*$/, // Evil regex
+        /^([a-zA-Z]+)*$/, // Character class with repetition
       ];
 
       for (const pattern of dangerousPatterns) {
@@ -201,10 +220,10 @@ describe('Security Test Suite', () => {
 
     test('should allow safe regex patterns', () => {
       const safePatterns = [
-        /^[a-zA-Z]+$/,               // Simple character class
-        /^\d{1,10}$/,                // Bounded quantifier
-        /^[a-z][a-z0-9-]*$/,         // Simple pattern with hyphen
-        /^.{1,100}$/                 // Bounded dot quantifier
+        /^[a-zA-Z]+$/, // Simple character class
+        /^\d{1,10}$/, // Bounded quantifier
+        /^[a-z][a-z0-9-]*$/, // Simple pattern with hyphen
+        /^.{1,100}$/, // Bounded dot quantifier
       ];
 
       for (const pattern of safePatterns) {
@@ -216,7 +235,7 @@ describe('Security Test Suite', () => {
 
     test('should timeout on ReDoS attack', () => {
       const evilRegex = /^(a+)+$/;
-      const attackString = 'a'.repeat(50) + 'X'; // Will cause exponential backtracking
+      const attackString = `${'a'.repeat(50)}X`; // Will cause exponential backtracking
 
       const result = safeMatch(evilRegex, attackString, { timeout: 10 });
       expect(result.success).toBe(false);
@@ -237,17 +256,19 @@ describe('Security Test Suite', () => {
       const input = 'test string with test words';
       const replacement = 'demo';
 
-      const result = safeReplace(safePattern, input, replacement, { timeout: 50 });
+      const result = safeReplace(safePattern, input, replacement, {
+        timeout: 50,
+      });
       expect(result).toBe('demo string with demo words');
     });
   });
 
   describe('Git Security', () => {
     test('should validate Git URLs securely', () => {
-      const validUrls = [
+      const _validUrls = [
         'https://github.com/user/repo.git',
         'git@github.com:user/repo.git',
-        'https://gitlab.com/user/repo'
+        'https://gitlab.com/user/repo',
       ];
 
       const invalidUrls = [
@@ -255,7 +276,7 @@ describe('Security Test Suite', () => {
         'file:///etc/passwd',
         'http://malicious.com/$(whoami)',
         'git://github.com/user/repo.git', // Insecure protocol
-        'https://github.com/user/re<po.git' // Invalid characters
+        'https://github.com/user/re<po.git', // Invalid characters
       ];
 
       // Note: This would require implementing URL validation in GitManager
@@ -271,9 +292,9 @@ describe('Security Test Suite', () => {
       // Mock package.json reading
       const mockPackageJson = {
         dependencies: {
-          'validator': '^13.12.0',
-          'mustache': '^4.2.0'
-        }
+          validator: '^13.12.0',
+          mustache: '^4.2.0',
+        },
       };
 
       expect(mockPackageJson.dependencies).toHaveProperty('validator');
@@ -286,7 +307,7 @@ describe('Security Test Suite', () => {
       const sensitiveData = {
         password: 'secret123',
         apiKey: 'sk-1234567890abcdef',
-        token: 'ghp_1234567890abcdef'
+        token: 'ghp_1234567890abcdef',
       };
 
       // Test that error messages don't contain sensitive data
@@ -303,10 +324,11 @@ describe('Security Test Suite', () => {
 
   describe('Integration Security Tests', () => {
     test('should maintain security through the full template processing pipeline', () => {
-      const maliciousTemplate = '{{constructor.constructor("return process")()}}';
+      const maliciousTemplate =
+        '{{constructor.constructor("return process")()}}';
       const context = {
         PROJECT_NAME: 'test-project',
-        constructor: { constructor: 'malicious' }
+        constructor: { constructor: 'malicious' },
       };
 
       expect(() => {
@@ -318,15 +340,20 @@ describe('Security Test Suite', () => {
       const complexAttack = {
         name: '../../../etc/passwd',
         branch: 'feature~1$(rm -rf /)',
-        template: 'Hello {{__proto__.constructor.constructor("return process")()}}'
+        template:
+          'Hello {{__proto__.constructor.constructor("return process")()}}',
       };
 
       // Project name validation
-      const nameValidation = InputValidator.validateProjectName(complexAttack.name);
+      const nameValidation = InputValidator.validateProjectName(
+        complexAttack.name
+      );
       expect(nameValidation.isValid).toBe(false);
 
       // Branch name validation
-      const branchValidation = InputValidator.validateBranchName(complexAttack.branch);
+      const branchValidation = InputValidator.validateBranchName(
+        complexAttack.branch
+      );
       expect(branchValidation.isValid).toBe(false);
 
       // Template validation

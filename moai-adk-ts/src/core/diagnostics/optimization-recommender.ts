@@ -5,10 +5,9 @@
  */
 
 import type {
+  BenchmarkResult,
   OptimizationRecommendation,
   SystemPerformanceMetrics,
-  BenchmarkResult,
-  DiagnosticSeverity,
 } from '@/types/diagnostics';
 
 /**
@@ -31,7 +30,9 @@ export class OptimizationRecommender {
 
     // Performance-based recommendations
     if (performanceMetrics) {
-      recommendations.push(...this.analyzePerformanceMetrics(performanceMetrics));
+      recommendations.push(
+        ...this.analyzePerformanceMetrics(performanceMetrics)
+      );
     }
 
     // Benchmark-based recommendations
@@ -47,7 +48,8 @@ export class OptimizationRecommender {
       const severityOrder = { critical: 4, error: 3, warning: 2, info: 1 };
       const impactOrder = { critical: 4, high: 3, medium: 2, low: 1 };
 
-      const severityDiff = severityOrder[b.severity] - severityOrder[a.severity];
+      const severityDiff =
+        severityOrder[b.severity] - severityOrder[a.severity];
       if (severityDiff !== 0) return severityDiff;
 
       return impactOrder[b.impact] - impactOrder[a.impact];
@@ -247,7 +249,8 @@ export class OptimizationRecommender {
       category: 'maintenance',
       severity: DiagnosticSeverity.INFO,
       title: 'Regular System Maintenance',
-      description: 'Perform regular system maintenance to ensure optimal performance',
+      description:
+        'Perform regular system maintenance to ensure optimal performance',
       impact: 'medium',
       effort: 'easy',
       steps: [

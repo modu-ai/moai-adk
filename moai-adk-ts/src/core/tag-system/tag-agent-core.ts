@@ -13,16 +13,15 @@
  */
 
 import { promises as fs } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join } from 'node:path';
+import { TagManager } from './tag-manager.js';
+import { TagParser } from './tag-parser.js';
 import type {
   TagEntry,
   TagSearchQuery,
-  TagSearchResult,
-  TagValidationResult,
   TagStatistics,
+  TagValidationResult,
 } from './types.js';
-import { TagManager } from './tag-manager.js';
-import { TagParser } from './tag-parser.js';
 
 /**
  * TAG Agent 요청 인터페이스
@@ -84,7 +83,6 @@ export interface TagChainRepairResult {
 export class TagAgentCore {
   private readonly tagManager: TagManager;
   private readonly tagParser: TagParser;
-  private readonly projectRoot: string;
   private readonly indexesPath: string;
 
   constructor(projectRoot: string) {
@@ -149,12 +147,13 @@ export class TagAgentCore {
           searchSpeed: executionTime,
         },
       };
-
     } catch (error) {
       return {
         success: false,
         message: `TAG ${request.action} failed: ${error instanceof Error ? error.message : String(error)}`,
-        warnings: [error instanceof Error ? error.stack || error.message : String(error)],
+        warnings: [
+          error instanceof Error ? error.stack || error.message : String(error),
+        ],
       };
     }
   }
@@ -199,16 +198,22 @@ export class TagAgentCore {
 
     for (const [index, category] of primaryChain.entries()) {
       const tagId = `@${category}:${nextId}`;
-      const parentTags = index > 0 ? [`@${primaryChain[index - 1]}:${nextId}`] : [];
+      const parentTags =
+        index > 0 ? [`@${primaryChain[index - 1]}:${nextId}`] : [];
 
       await this.tagManager.createTag({
         id: tagId,
         type: category as any,
         category: 'PRIMARY',
         title: `${category} for ${request.domain}`,
-        description: request.description || `${category} requirements for ${request.domain}`,
+        description:
+          request.description ||
+          `${category} requirements for ${request.domain}`,
         parents: parentTags,
-        children: index < primaryChain.length - 1 ? [`@${primaryChain[index + 1]}:${nextId}`] : [],
+        children:
+          index < primaryChain.length - 1
+            ? [`@${primaryChain[index + 1]}:${nextId}`]
+            : [],
         files: request.relatedFiles || [],
       });
 
@@ -305,7 +310,7 @@ export class TagAgentCore {
     const invalidTags: string[] = [];
     const orphanedTags: string[] = [];
     const brokenChains: string[] = [];
-    const circularReferences: string[] = [];
+    const _circularReferences: string[] = [];
 
     for (const tag of allTags) {
       // 형식 검증
@@ -353,7 +358,7 @@ export class TagAgentCore {
     const validation = await this.validateTagSystem();
     let repairedChains = 0;
     let orphanedTagsFixed = 0;
-    let circularReferencesResolved = 0;
+    const circularReferencesResolved = 0;
     const newConnections: string[] = [];
 
     // 1. 끊어진 체인 수리
@@ -365,7 +370,9 @@ export class TagAgentCore {
       if (similarParent) {
         const child = await this.tagManager.getTag(childId);
         if (child) {
-          const updatedParents = child.parents.map(p => p === parentId ? similarParent.id : p);
+          const updatedParents = child.parents.map(p =>
+            p === parentId ? similarParent.id : p
+          );
           await this.tagManager.updateTag(childId, { parents: updatedParents });
           newConnections.push(`${childId} -> ${similarParent.id}`);
           repairedChains++;
@@ -379,11 +386,14 @@ export class TagAgentCore {
       if (orphan && orphan.type !== 'REQ') {
         // 같은 도메인의 상위 TAG 찾기
         const domain = this.extractDomain(orphan.id);
-        const possibleParent = await this.findParentTagForDomain(domain, orphan.type);
+        const possibleParent = await this.findParentTagForDomain(
+          domain,
+          orphan.type
+        );
 
         if (possibleParent) {
           await this.tagManager.updateTag(orphanId, {
-            parents: [possibleParent.id]
+            parents: [possibleParent.id],
           });
           newConnections.push(`${orphanId} -> ${possibleParent.id}`);
           orphanedTagsFixed++;
@@ -437,17 +447,19 @@ export class TagAgentCore {
   /**
    * @API:TAG-STATS-001: TAG 시스템 통계 생성
    */
-  private async generateStatistics(): Promise<TagStatistics & {
-    performance: {
-      indexSize: number;
-      searchSpeed: number;
-      memoryUsage: number;
-    };
-    health: {
-      integrityScore: number;
-      qualityGate: 'healthy' | 'warning' | 'critical';
-    };
-  }> {
+  private async generateStatistics(): Promise<
+    TagStatistics & {
+      performance: {
+        indexSize: number;
+        searchSpeed: number;
+        memoryUsage: number;
+      };
+      health: {
+        integrityScore: number;
+        qualityGate: 'healthy' | 'warning' | 'critical';
+      };
+    }
+  > {
     const stats = await this.tagManager.getStatistics();
     const validation = await this.validateTagSystem();
 
@@ -500,7 +512,9 @@ export class TagAgentCore {
    * 문자열 유사도 계산 (Levenshtein distance 기반)
    */
   private calculateSimilarity(str1: string, str2: string): number {
-    const matrix: number[][] = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
+    const matrix: number[][] = Array(str2.length + 1)
+      .fill(null)
+      .map(() => Array(str1.length + 1).fill(null));
 
     for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
     for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
@@ -509,15 +523,17 @@ export class TagAgentCore {
       for (let i = 1; i <= str1.length; i++) {
         const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
         matrix[j][i] = Math.min(
-          matrix[j][i - 1] + 1,     // insertion
-          matrix[j - 1][i] + 1,     // deletion
+          matrix[j][i - 1] + 1, // insertion
+          matrix[j - 1][i] + 1, // deletion
           matrix[j - 1][i - 1] + indicator // substitution
         );
       }
     }
 
     const maxLength = Math.max(str1.length, str2.length);
-    return maxLength === 0 ? 1 : (maxLength - matrix[str2.length][str1.length]) / maxLength;
+    return maxLength === 0
+      ? 1
+      : (maxLength - matrix[str2.length][str1.length]) / maxLength;
   }
 
   /**
@@ -551,7 +567,7 @@ export class TagAgentCore {
     const warnings: string[] = [];
 
     // Primary Chain 순서 검증
-    const expectedOrder = ['REQ', 'DESIGN', 'TASK', 'TEST'];
+    const _expectedOrder = ['REQ', 'DESIGN', 'TASK', 'TEST'];
     for (let i = 0; i < tags.length - 1; i++) {
       const current = await this.tagManager.getTag(tags[i]);
       const next = await this.tagManager.getTag(tags[i + 1]);
@@ -608,7 +624,7 @@ export class TagAgentCore {
     for (const dir of dirs) {
       try {
         await fs.mkdir(dir, { recursive: true });
-      } catch (error) {
+      } catch (_error) {
         // 이미 존재하는 경우 무시
       }
     }
@@ -618,7 +634,11 @@ export class TagAgentCore {
    * TAG를 분산 인덱스에 기록
    */
   private async writeTagToDistributedIndex(tag: TagEntry): Promise<void> {
-    const categoryFile = join(this.indexesPath, 'categories', `${tag.type.toLowerCase()}.jsonl`);
+    const categoryFile = join(
+      this.indexesPath,
+      'categories',
+      `${tag.type.toLowerCase()}.jsonl`
+    );
     const indexEntry = {
       tag: tag.id,
       type: tag.type.toLowerCase(),
@@ -628,7 +648,7 @@ export class TagAgentCore {
     };
 
     // JSONL 형식으로 추가
-    await fs.appendFile(categoryFile, JSON.stringify(indexEntry) + '\n');
+    await fs.appendFile(categoryFile, `${JSON.stringify(indexEntry)}\n`);
   }
 
   /**
@@ -636,10 +656,27 @@ export class TagAgentCore {
    */
   private async rebuildDistributedIndexes(): Promise<void> {
     // 기존 인덱스 파일들 삭제
-    const categories = ['req', 'design', 'task', 'test', 'feature', 'api', 'ui', 'data', 'perf', 'sec', 'docs', 'tag'];
+    const categories = [
+      'req',
+      'design',
+      'task',
+      'test',
+      'feature',
+      'api',
+      'ui',
+      'data',
+      'perf',
+      'sec',
+      'docs',
+      'tag',
+    ];
 
     for (const category of categories) {
-      const categoryFile = join(this.indexesPath, 'categories', `${category}.jsonl`);
+      const categoryFile = join(
+        this.indexesPath,
+        'categories',
+        `${category}.jsonl`
+      );
       try {
         await fs.unlink(categoryFile);
       } catch {
@@ -693,8 +730,10 @@ export class TagAgentCore {
     // 카테고리 기반 제안
     const categories = Object.values(this.tagParser.getTagCategories()).flat();
     for (const category of categories) {
-      if (category.toLowerCase().includes(keyword.toLowerCase()) ||
-          keyword.toLowerCase().includes(category.toLowerCase())) {
+      if (
+        category.toLowerCase().includes(keyword.toLowerCase()) ||
+        keyword.toLowerCase().includes(category.toLowerCase())
+      ) {
         suggestions.push(category);
       }
     }
@@ -740,15 +779,18 @@ export class TagAgentCore {
   /**
    * 도메인과 타입에 맞는 부모 TAG 찾기
    */
-  private async findParentTagForDomain(domain: string, tagType: string): Promise<TagEntry | null> {
+  private async findParentTagForDomain(
+    domain: string,
+    tagType: string
+  ): Promise<TagEntry | null> {
     const parentTypes: Record<string, string> = {
-      'DESIGN': 'REQ',
-      'TASK': 'DESIGN',
-      'TEST': 'TASK',
-      'FEATURE': 'TASK',
-      'API': 'FEATURE',
-      'UI': 'FEATURE',
-      'DATA': 'FEATURE',
+      DESIGN: 'REQ',
+      TASK: 'DESIGN',
+      TEST: 'TASK',
+      FEATURE: 'TASK',
+      API: 'FEATURE',
+      UI: 'FEATURE',
+      DATA: 'FEATURE',
     };
 
     const parentType = parentTypes[tagType];

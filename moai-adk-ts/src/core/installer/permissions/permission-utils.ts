@@ -4,7 +4,7 @@
  * @tags @DESIGN:PERMISSION-UTILS-012 @REQ:CROSS-PLATFORM-PERMISSIONS-012
  */
 
-import * as path from 'path';
+import * as path from 'node:path';
 import type { FilePermissions, PlatformType } from './permission-types';
 
 /**

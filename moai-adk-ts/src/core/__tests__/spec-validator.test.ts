@@ -8,9 +8,13 @@
  * @TEST:STATUS-TRANSITION-001 상태 전환 검증 테스트
  */
 
-import { describe, test, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, test } from 'vitest';
+import {
+  type SpecMetadata,
+  SpecPriority,
+  SpecStatus,
+} from '../../types/spec-metadata.js';
 import { SpecValidator } from '../spec-validator.js';
-import { SpecStatus, SpecPriority, type SpecMetadata } from '../../types/spec-metadata.js';
 
 describe('SpecValidator', () => {
   let validator: SpecValidator;
@@ -26,7 +30,7 @@ describe('SpecValidator', () => {
         status: SpecStatus.DRAFT,
         priority: SpecPriority.HIGH,
         dependencies: [],
-        tags: ['feature', 'backend']
+        tags: ['feature', 'backend'],
       };
 
       const result = validator.validateMetadata(validMetadata);
@@ -39,20 +43,22 @@ describe('SpecValidator', () => {
       const invalidMetadata: SpecMetadata = {
         spec_id: 'INVALID-ID',
         status: SpecStatus.DRAFT,
-        priority: SpecPriority.MEDIUM
+        priority: SpecPriority.MEDIUM,
       };
 
       const result = validator.validateMetadata(invalidMetadata);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain('Invalid spec_id format: INVALID-ID. Expected format: SPEC-XXX');
+      expect(result.errors).toContain(
+        'Invalid spec_id format: INVALID-ID. Expected format: SPEC-XXX'
+      );
     });
 
     test('잘못된 상태 값 검증', () => {
       const invalidMetadata: SpecMetadata = {
         spec_id: 'SPEC-014',
         status: 'invalid-status' as SpecStatus,
-        priority: SpecPriority.MEDIUM
+        priority: SpecPriority.MEDIUM,
       };
 
       const result = validator.validateMetadata(invalidMetadata);
@@ -65,7 +71,7 @@ describe('SpecValidator', () => {
       const invalidMetadata: SpecMetadata = {
         spec_id: 'SPEC-014',
         status: SpecStatus.DRAFT,
-        priority: 'invalid-priority' as SpecPriority
+        priority: 'invalid-priority' as SpecPriority,
       };
 
       const result = validator.validateMetadata(invalidMetadata);
@@ -125,15 +131,29 @@ describe('SpecValidator', () => {
   describe('의존성 검증', () => {
     test('존재하는 의존성은 유효', () => {
       const allSpecs = new Map([
-        ['SPEC-010', { spec_id: 'SPEC-010', status: SpecStatus.COMPLETED, priority: SpecPriority.MEDIUM }],
-        ['SPEC-011', { spec_id: 'SPEC-011', status: SpecStatus.COMPLETED, priority: SpecPriority.MEDIUM }]
+        [
+          'SPEC-010',
+          {
+            spec_id: 'SPEC-010',
+            status: SpecStatus.COMPLETED,
+            priority: SpecPriority.MEDIUM,
+          },
+        ],
+        [
+          'SPEC-011',
+          {
+            spec_id: 'SPEC-011',
+            status: SpecStatus.COMPLETED,
+            priority: SpecPriority.MEDIUM,
+          },
+        ],
       ]);
 
       const metadata: SpecMetadata = {
         spec_id: 'SPEC-012',
         status: SpecStatus.DRAFT,
         priority: SpecPriority.HIGH,
-        dependencies: ['SPEC-010', 'SPEC-011']
+        dependencies: ['SPEC-010', 'SPEC-011'],
       };
 
       const result = validator.validateMetadata(metadata, allSpecs);
@@ -144,14 +164,21 @@ describe('SpecValidator', () => {
 
     test('존재하지 않는 의존성 검출', () => {
       const allSpecs = new Map([
-        ['SPEC-010', { spec_id: 'SPEC-010', status: SpecStatus.COMPLETED, priority: SpecPriority.MEDIUM }]
+        [
+          'SPEC-010',
+          {
+            spec_id: 'SPEC-010',
+            status: SpecStatus.COMPLETED,
+            priority: SpecPriority.MEDIUM,
+          },
+        ],
       ]);
 
       const metadata: SpecMetadata = {
         spec_id: 'SPEC-012',
         status: SpecStatus.DRAFT,
         priority: SpecPriority.HIGH,
-        dependencies: ['SPEC-010', 'SPEC-999'] // SPEC-999는 존재하지 않음
+        dependencies: ['SPEC-010', 'SPEC-999'], // SPEC-999는 존재하지 않음
       };
 
       const result = validator.validateMetadata(metadata, allSpecs);
@@ -167,12 +194,14 @@ describe('SpecValidator', () => {
         spec_id: 'SPEC-014',
         status: SpecStatus.DRAFT,
         priority: SpecPriority.MEDIUM,
-        tags: []
+        tags: [],
       };
 
       const result = validator.validateMetadata(metadata);
 
-      expect(result.warnings).toContain('No tags specified. Consider adding tags for better organization.');
+      expect(result.warnings).toContain(
+        'No tags specified. Consider adding tags for better organization.'
+      );
     });
 
     test('활성 상태인데 의존성이 없는 경우 경고', () => {
@@ -180,12 +209,14 @@ describe('SpecValidator', () => {
         spec_id: 'SPEC-014',
         status: SpecStatus.ACTIVE,
         priority: SpecPriority.MEDIUM,
-        dependencies: []
+        dependencies: [],
       };
 
       const result = validator.validateMetadata(metadata);
 
-      expect(result.warnings).toContain('Active SPEC without dependencies. Verify if this is intentional.');
+      expect(result.warnings).toContain(
+        'Active SPEC without dependencies. Verify if this is intentional.'
+      );
     });
   });
 

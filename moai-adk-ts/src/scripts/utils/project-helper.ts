@@ -3,8 +3,8 @@
  * @연결: @TASK:PROJECT-UTILS-001 → @FEATURE:PROJECT-MANAGEMENT-001 → @API:PROJECT-HELPER
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 export interface ProjectConfig {
   mode?: string;
@@ -58,7 +58,7 @@ export class ProjectHelper {
         if (fs.existsSync(moaiDir)) {
           return currentDir;
         }
-      } catch (error) {
+      } catch (_error) {
         // 무시하고 계속
       }
       currentDir = path.dirname(currentDir);
@@ -99,16 +99,28 @@ export class ProjectHelper {
     // Check if package.json exists and is not a MoAI-ADK package
     if (fs.existsSync(packageJsonPath)) {
       try {
-        const packageData = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+        const packageData = JSON.parse(
+          fs.readFileSync(packageJsonPath, 'utf-8')
+        );
         // Exclude MoAI-ADK package.json from user project detection
-        if (!(packageData.name === 'moai-adk' || packageData.description?.includes('MoAI-ADK'))) {
+        if (
+          !(
+            packageData.name === 'moai-adk' ||
+            packageData.description?.includes('MoAI-ADK')
+          )
+        ) {
           hasUserPackageJson = true;
           console.log('Detected user package.json (not MoAI-ADK)');
         } else {
-          console.log('Skipping MoAI-ADK package.json in project type detection');
+          console.log(
+            'Skipping MoAI-ADK package.json in project type detection'
+          );
         }
       } catch (error) {
-        console.warn('Could not parse package.json for project type detection:', error);
+        console.warn(
+          'Could not parse package.json for project type detection:',
+          error
+        );
       }
     }
 

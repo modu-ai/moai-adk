@@ -4,8 +4,8 @@
  * @tags @TEST:CONFIG-MANAGER-001 @REQ:CORE-SYSTEM-013
  */
 
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
-import fs from 'fs';
+import fs from 'node:fs';
+import { beforeEach, describe, expect, vi } from 'vitest';
 import { ConfigManager } from '../config-manager';
 
 // Mock fs and path modules
@@ -209,9 +209,7 @@ describe('ConfigManager', () => {
         tsConfig
       );
 
-      expect(
-        result.packageConfig?.devDependencies?.['typescript']
-      ).toBeDefined();
+      expect(result.packageConfig?.devDependencies?.typescript).toBeDefined();
       expect(
         result.packageConfig?.devDependencies?.['@types/node']
       ).toBeDefined();

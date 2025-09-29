@@ -6,19 +6,22 @@
  * @DESIGN:MOAI-INTEGRATION-001 MoAI 프로젝트 특화 템플릿 기능
  */
 
-import { promises as fs } from 'fs';
-import * as path from 'path';
+import { promises as fs } from 'node:fs';
+import * as path from 'node:path';
 import { logger } from '../../../utils/logger';
 import {
-  processMultipleVariableFormats,
-  expandNestedVariables,
-  shouldProcessAsTemplate,
-  fileExists,
+  renderTemplateSafely,
+  validateTemplateContent,
+} from './template-security';
+import {
   copyBinaryFile,
+  expandNestedVariables,
+  fileExists,
   mergeTemplateContexts,
+  processMultipleVariableFormats,
+  shouldProcessAsTemplate,
 } from './template-utils';
 import { validateTemplateContext } from './template-validator';
-import { renderTemplateSafely, validateTemplateContent } from './template-security';
 
 /**
  * @DESIGN:INTERFACES-001 Template Processor Core Interfaces
@@ -383,7 +386,11 @@ export class TemplateProcessor {
         // Path traversal 공격 방어
         if (!normalizedSourcePath.startsWith(normalizedSourceDir)) {
           logger.error(`Path traversal attempt detected: ${entry.name}`);
-          this.addProcessError(state, sourcePath, new Error('Path traversal attack blocked'));
+          this.addProcessError(
+            state,
+            sourcePath,
+            new Error('Path traversal attack blocked')
+          );
           continue;
         }
 
@@ -397,7 +404,11 @@ export class TemplateProcessor {
         // 타겟 경로 보안 검증
         if (!this.validateTargetPath(targetPath, targetDir)) {
           logger.error(`Invalid target path: ${targetPath}`);
-          this.addProcessError(state, sourcePath, new Error('Invalid target path blocked'));
+          this.addProcessError(
+            state,
+            sourcePath,
+            new Error('Invalid target path blocked')
+          );
           continue;
         }
 
@@ -500,14 +511,14 @@ export class TemplateProcessor {
 
       // 금지된 경로 패턴 검사
       const forbiddenPatterns = [
-        /\.\./,           // 상위 디렉토리 접근
-        /\/etc\//,        // 시스템 설정 디렉토리
-        /\/bin\//,        // 실행 파일 디렉토리
-        /\/usr\/bin\//,   // 시스템 바이너리
-        /\/var\/log\//,   // 로그 디렉토리
-        /\/home\/.*\/\.ssh\//,  // SSH 키 디렉토리
-        /C:\\Windows\\/,  // Windows 시스템 디렉토리
-        /C:\\Program Files\//,  // Windows 프로그램 디렉토리
+        /\.\./, // 상위 디렉토리 접근
+        /\/etc\//, // 시스템 설정 디렉토리
+        /\/bin\//, // 실행 파일 디렉토리
+        /\/usr\/bin\//, // 시스템 바이너리
+        /\/var\/log\//, // 로그 디렉토리
+        /\/home\/.*\/\.ssh\//, // SSH 키 디렉토리
+        /C:\\Windows\\/, // Windows 시스템 디렉토리
+        /C:\\Program Files\//, // Windows 프로그램 디렉토리
       ];
 
       for (const pattern of forbiddenPatterns) {
@@ -535,10 +546,10 @@ export class TemplateProcessor {
 
     // 위험한 파일명 패턴 검사
     const dangerousPatterns = [
-      /\.\./,              // 상위 디렉토리 접근
-      /^\.+$/,             // 점으로만 구성된 파일명
-      /[\x00-\x1f]/,       // 제어 문자
-      /[<>:"|?*]/,         // Windows 금지 문자
+      /\.\./, // 상위 디렉토리 접근
+      /^\.+$/, // 점으로만 구성된 파일명
+      /[\x00-\x1f]/, // 제어 문자
+      /[<>:"|?*]/, // Windows 금지 문자
       /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i, // Windows 예약어
       /\.(exe|bat|cmd|scr|pif|com|vbs|js|jar|sh)$/i, // 실행 파일 확장자
     ];

@@ -4,17 +4,17 @@
  * @tags @DESIGN:PERMISSION-MANAGER-012 @REQ:CROSS-PLATFORM-PERMISSIONS-012
  */
 
+import * as path from 'node:path';
 import * as fs from 'fs-extra';
-import * as path from 'path';
+import { PermissionHelpers } from './permission-helpers';
 import {
   type FilePermissions,
-  type PermissionStatus,
-  type PermissionFixResult,
-  type PlatformType,
   MoAIPermissions,
+  type PermissionFixResult,
+  type PermissionStatus,
+  type PlatformType,
 } from './permission-types';
 import { PermissionUtils } from './permission-utils';
-import { PermissionHelpers } from './permission-helpers';
 
 /**
  * Cross-platform permission manager

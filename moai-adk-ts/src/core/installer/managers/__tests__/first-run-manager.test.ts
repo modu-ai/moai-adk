@@ -3,7 +3,7 @@
  * @task FIRST-RUN-TEST-001 RED stage - failing tests for first run detection
  */
 
-import { describe, test, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, test } from 'vitest';
 import { FirstRunManager } from '../first-run-manager';
 
 describe('FirstRunManager', () => {

@@ -4,14 +4,14 @@
  * @tags @TEST:CLI-INIT-001 @REQ:CLI-INIT-002
  */
 
-import { describe, test, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import '@/__tests__/setup';
-import { InitCommand } from '@/cli/commands/init';
-import { ProjectWizard } from '@/core/project/wizard';
-import { TemplateManager } from '@/core/project/template-manager';
-import { SystemDetector } from '@/core/system-checker/detector';
-import { ProjectType, type ProjectConfig } from '@/types/project';
 import type { DoctorResult } from '@/cli/commands/doctor';
+import { InitCommand } from '@/cli/commands/init';
+import { TemplateManager } from '@/core/project/template-manager';
+import { ProjectWizard } from '@/core/project/wizard';
+import { SystemDetector } from '@/core/system-checker/detector';
+import { type ProjectConfig, ProjectType } from '@/types/project';
 
 // Mock modules
 vi.mock('@/core/project/wizard');

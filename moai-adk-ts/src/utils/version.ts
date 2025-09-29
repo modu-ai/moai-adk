@@ -4,8 +4,8 @@
  * @tags @FEATURE:VERSION-UTILS-001 @REQ:CLI-FOUNDATION-012
  */
 
-import * as path from 'path';
-import * as fs from 'fs';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 /**
  * Package information interface
@@ -26,9 +26,9 @@ export function getPackageInfo(): PackageInfo {
   try {
     // Try multiple possible locations for package.json
     const possiblePaths = [
-      path.resolve(__dirname, '../../package.json'),  // From dist/
-      path.resolve(__dirname, '../package.json'),     // From src/
-      path.resolve(process.cwd(), 'package.json'),    // From current working directory
+      path.resolve(__dirname, '../../package.json'), // From dist/
+      path.resolve(__dirname, '../package.json'), // From src/
+      path.resolve(process.cwd(), 'package.json'), // From current working directory
     ];
 
     for (const packageJsonPath of possiblePaths) {
@@ -50,7 +50,7 @@ export function getPackageInfo(): PackageInfo {
     }
 
     throw new Error('package.json not found in any expected location');
-  } catch (error) {
+  } catch (_error) {
     // Fallback for development/test environments
     return {
       name: 'moai-adk',

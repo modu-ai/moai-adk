@@ -8,18 +8,17 @@
  * @TASK:METADATA-VALIDATION-001 메타데이터 검증 구현
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import * as yaml from 'yaml';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { execa } from 'execa';
+import * as yaml from 'yaml';
 import {
-  SpecMetadata,
-  SpecStatus,
+  type SpecDependencyNode,
+  type SpecMetadata,
+  type SpecMetadataValidation,
   SpecPriority,
-  SpecMetadataValidation,
-  SpecDependency,
-  SpecDependencyNode,
-  STATUS_TRANSITIONS
+  SpecStatus,
+  STATUS_TRANSITIONS,
 } from '../types/spec-metadata.js';
 
 /**
@@ -67,7 +66,8 @@ export class SpecValidator {
       return specs;
     }
 
-    const specDirs = fs.readdirSync(this.specDirectory)
+    const specDirs = fs
+      .readdirSync(this.specDirectory)
       .filter(dir => dir.startsWith('SPEC-'))
       .sort();
 
@@ -119,7 +119,10 @@ export class SpecValidator {
    * @param newStatus 새로운 상태
    * @returns 전환 가능 여부
    */
-  validateStatusTransition(currentStatus: SpecStatus, newStatus: SpecStatus): boolean {
+  validateStatusTransition(
+    currentStatus: SpecStatus,
+    newStatus: SpecStatus
+  ): boolean {
     if (currentStatus === newStatus) {
       return true; // 같은 상태는 항상 허용
     }
@@ -151,7 +154,7 @@ export class SpecValidator {
 
     return {
       valid: missing.length === 0,
-      missing
+      missing,
     };
   }
 
@@ -210,22 +213,33 @@ export class SpecValidator {
 
     // 기본 필드 검증
     if (!this.validateSpecId(metadata.spec_id)) {
-      errors.push(`Invalid spec_id format: ${metadata.spec_id}. Expected format: SPEC-XXX`);
+      errors.push(
+        `Invalid spec_id format: ${metadata.spec_id}. Expected format: SPEC-XXX`
+      );
     }
 
     if (!this.validateStatus(metadata.status)) {
-      errors.push(`Invalid status: ${metadata.status}. Must be one of: ${Object.values(SpecStatus).join(', ')}`);
+      errors.push(
+        `Invalid status: ${metadata.status}. Must be one of: ${Object.values(SpecStatus).join(', ')}`
+      );
     }
 
     if (!this.validatePriority(metadata.priority)) {
-      errors.push(`Invalid priority: ${metadata.priority}. Must be one of: ${Object.values(SpecPriority).join(', ')}`);
+      errors.push(
+        `Invalid priority: ${metadata.priority}. Must be one of: ${Object.values(SpecPriority).join(', ')}`
+      );
     }
 
     // 의존성 검증 (allSpecs가 제공된 경우)
     if (allSpecs) {
-      const depValidation = this.validateDependencies(metadata.dependencies, allSpecs);
+      const depValidation = this.validateDependencies(
+        metadata.dependencies,
+        allSpecs
+      );
       if (!depValidation.valid) {
-        errors.push(`Missing dependencies: ${depValidation.missing.join(', ')}`);
+        errors.push(
+          `Missing dependencies: ${depValidation.missing.join(', ')}`
+        );
       }
 
       // 순환 의존성 검증
@@ -236,17 +250,24 @@ export class SpecValidator {
 
     // 경고 검사
     if (!metadata.tags || metadata.tags.length === 0) {
-      warnings.push('No tags specified. Consider adding tags for better organization.');
+      warnings.push(
+        'No tags specified. Consider adding tags for better organization.'
+      );
     }
 
-    if (metadata.status === SpecStatus.ACTIVE && (!metadata.dependencies || metadata.dependencies.length === 0)) {
-      warnings.push('Active SPEC without dependencies. Verify if this is intentional.');
+    if (
+      metadata.status === SpecStatus.ACTIVE &&
+      (!metadata.dependencies || metadata.dependencies.length === 0)
+    ) {
+      warnings.push(
+        'Active SPEC without dependencies. Verify if this is intentional.'
+      );
     }
 
     return {
       isValid: errors.length === 0,
       errors,
-      warnings
+      warnings,
     };
   }
 
@@ -280,7 +301,7 @@ export class SpecValidator {
         spec_id: specId,
         metadata,
         dependencies: [],
-        dependents: []
+        dependents: [],
       });
     }
 
@@ -295,7 +316,7 @@ export class SpecValidator {
             node.dependencies.push({
               spec_id: depId,
               status: depSpec.status,
-              satisfied: depSpec.status === SpecStatus.COMPLETED
+              satisfied: depSpec.status === SpecStatus.COMPLETED,
             });
 
             // 역방향 관계도 설정
@@ -319,9 +340,11 @@ export class SpecValidator {
     const graph = this.buildDependencyGraph();
     const readySpecs: SpecMetadata[] = [];
 
-    for (const [specId, node] of graph) {
+    for (const [_specId, node] of graph) {
       if (node.metadata.status === SpecStatus.DRAFT) {
-        const allDependenciesSatisfied = node.dependencies.every(dep => dep.satisfied);
+        const allDependenciesSatisfied = node.dependencies.every(
+          dep => dep.satisfied
+        );
         if (allDependenciesSatisfied) {
           readySpecs.push(node.metadata);
         }
@@ -343,16 +366,20 @@ export class SpecValidator {
    * @param options ripgrep 옵션
    * @returns 검색 결과
    */
-  async searchSpecs(pattern: string, options: string[] = []): Promise<string[]> {
+  async searchSpecs(
+    pattern: string,
+    options: string[] = []
+  ): Promise<string[]> {
     try {
       const { stdout } = await execa('rg', [
         pattern,
         this.specDirectory,
-        '--type', 'md',
-        ...options
+        '--type',
+        'md',
+        ...options,
       ]);
       return stdout.split('\n').filter(line => line.trim());
-    } catch (error) {
+    } catch (_error) {
       // ripgrep이 설치되지 않은 경우 fallback
       console.warn('ripgrep not found, falling back to filesystem search');
       return [];
@@ -369,8 +396,9 @@ export class SpecValidator {
       const { stdout } = await execa('rg', [
         `status: ${status}`,
         this.specDirectory,
-        '--type', 'md',
-        '-l'  // 파일명만 출력
+        '--type',
+        'md',
+        '-l', // 파일명만 출력
       ]);
 
       const files = stdout.split('\n').filter(line => line.trim());
@@ -381,7 +409,8 @@ export class SpecValidator {
           'spec_id: (SPEC-\\d{3})',
           file,
           '--only-matching',
-          '--replace', '$1'
+          '--replace',
+          '$1',
         ]);
         if (specIdOutput.trim()) {
           specIds.push(specIdOutput.trim());
@@ -389,7 +418,7 @@ export class SpecValidator {
       }
 
       return specIds;
-    } catch (error) {
+    } catch (_error) {
       console.warn('ripgrep search failed, falling back to filesystem scan');
       return this.getSpecsByStatusFallback(status);
     }
@@ -417,8 +446,9 @@ export class SpecValidator {
       const { stdout } = await execa('rg', [
         `^\\s*-\\s+${tag}`,
         this.specDirectory,
-        '--type', 'md',
-        '-l'
+        '--type',
+        'md',
+        '-l',
       ]);
 
       const files = stdout.split('\n').filter(line => line.trim());
@@ -429,7 +459,8 @@ export class SpecValidator {
           'spec_id: (SPEC-\\d{3})',
           file,
           '--only-matching',
-          '--replace', '$1'
+          '--replace',
+          '$1',
         ]);
         if (specIdOutput.trim()) {
           specIds.push(specIdOutput.trim());
@@ -437,7 +468,7 @@ export class SpecValidator {
       }
 
       return specIds;
-    } catch (error) {
+    } catch (_error) {
       console.warn('ripgrep tag search failed');
       return [];
     }
@@ -470,7 +501,9 @@ export class SpecValidator {
 
       // 상태 전환 검증
       if (!this.validateStatusTransition(metadata.status, newStatus)) {
-        console.error(`Invalid status transition from ${metadata.status} to ${newStatus}`);
+        console.error(
+          `Invalid status transition from ${metadata.status} to ${newStatus}`
+        );
         return false;
       }
 

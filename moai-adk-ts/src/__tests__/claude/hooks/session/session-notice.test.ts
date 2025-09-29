@@ -3,10 +3,11 @@
  * @description Tests for SessionNotifier hook
  */
 
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
-import { SessionNotifier } from '../../../../claude/hooks/session/session-notice';
 // import { HookInput } from '../../../../claude/hooks/types';
-import * as fs from 'fs';
+import * as fs from 'node:fs';
+import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
+import { SessionNotifier } from '../../../../claude/hooks/session/session-notice';
+
 // import * as path from 'path';
 
 // Mock filesystem

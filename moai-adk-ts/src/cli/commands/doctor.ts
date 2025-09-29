@@ -4,15 +4,15 @@
  * @tags @FEATURE:CLI-DOCTOR-001 @REQ:CLI-FOUNDATION-012
  */
 
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import chalk from 'chalk';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import * as os from 'os';
 import {
-  SystemChecker,
-  SystemDetector,
   type RequirementCheckResult,
+  SystemChecker,
   type SystemCheckSummary,
+  type SystemDetector,
 } from '@/core/system-checker';
 
 /**
@@ -56,7 +56,9 @@ export class DoctorCommand {
    * @returns Doctor result with all checks
    * @tags @API:DOCTOR-RUN-001
    */
-  public async run(options: { listBackups?: boolean; projectPath?: string } = {}): Promise<DoctorResult> {
+  public async run(
+    options: { listBackups?: boolean; projectPath?: string } = {}
+  ): Promise<DoctorResult> {
     // Handle --list-backups option
     if (options.listBackups) {
       return this.listBackups();
@@ -71,7 +73,11 @@ export class DoctorCommand {
     this.printEnhancedResults(checkSummary);
     this.printEnhancedSummary(checkSummary);
 
-    const results = [...checkSummary.runtime, ...checkSummary.development, ...checkSummary.optional];
+    const results = [
+      ...checkSummary.runtime,
+      ...checkSummary.development,
+      ...checkSummary.optional,
+    ];
     const categorizedResults = this.categorizeResults(results);
 
     return {
@@ -96,7 +102,6 @@ export class DoctorCommand {
     console.log(chalk.blue('Checking system requirements...\n'));
   }
 
-
   /**
    * Categorize check results
    * @param results - Raw check results
@@ -117,7 +122,6 @@ export class DoctorCommand {
 
     return { missing, conflicts, passed, allPassed };
   }
-
 
   /**
    * Format individual check result
@@ -202,7 +206,9 @@ export class DoctorCommand {
       checkSummary.optional.forEach(result => {
         console.log(`  ${this.formatCheckResult(result)}`);
         if (!result.result.isInstalled || !result.result.versionSatisfied) {
-          console.log(`    ${chalk.gray(this.getInstallationSuggestion(result))}`);
+          console.log(
+            `    ${chalk.gray(this.getInstallationSuggestion(result))}`
+          );
         }
       });
     }
@@ -222,7 +228,9 @@ export class DoctorCommand {
     console.log(`  ${chalk.red('Failed:')} ${checkSummary.failedChecks}`);
 
     if (checkSummary.detectedLanguages.length > 0) {
-      console.log(`  ${chalk.blue('Languages:')} ${checkSummary.detectedLanguages.join(', ')}`);
+      console.log(
+        `  ${chalk.blue('Languages:')} ${checkSummary.detectedLanguages.join(', ')}`
+      );
     }
     console.log('');
 
@@ -240,7 +248,6 @@ export class DoctorCommand {
     }
   }
 
-
   /**
    * List available MoAI-ADK backups
    * @returns Doctor result with backup information
@@ -255,13 +262,23 @@ export class DoctorCommand {
 
       if (backupPaths.length === 0) {
         console.log(chalk.yellow('📁 No backup directories found.'));
-        console.log(chalk.gray('  Backup directories are typically created in:'));
+        console.log(
+          chalk.gray('  Backup directories are typically created in:')
+        );
         console.log(chalk.gray('  • .moai-backup/ (current directory)'));
         console.log(chalk.gray('  • ~/.moai/backups/ (global backups)'));
         console.log('');
-        console.log(chalk.blue('💡 Tip: Run "moai init --backup" to create a backup during initialization.'));
+        console.log(
+          chalk.blue(
+            '💡 Tip: Run "moai init --backup" to create a backup during initialization.'
+          )
+        );
       } else {
-        console.log(chalk.green(`📁 Found ${backupPaths.length} backup director${backupPaths.length === 1 ? 'y' : 'ies'}:`));
+        console.log(
+          chalk.green(
+            `📁 Found ${backupPaths.length} backup director${backupPaths.length === 1 ? 'y' : 'ies'}:`
+          )
+        );
         console.log('');
 
         for (const backupPath of backupPaths) {
@@ -269,7 +286,11 @@ export class DoctorCommand {
         }
 
         console.log('');
-        console.log(chalk.blue('💡 To restore from a backup, use: "moai restore <backup-path>"'));
+        console.log(
+          chalk.blue(
+            '💡 To restore from a backup, use: "moai restore <backup-path>"'
+          )
+        );
       }
 
       // Return a successful result for backup listing
@@ -319,7 +340,9 @@ export class DoctorCommand {
         const exists = await this.directoryExists(searchPath);
         if (exists) {
           const subdirs = await this.getSubdirectories(searchPath);
-          backupPaths.push(...subdirs.map(subdir => path.join(searchPath, subdir)));
+          backupPaths.push(
+            ...subdirs.map(subdir => path.join(searchPath, subdir))
+          );
         }
       } catch {
         // Directory doesn't exist or can't be accessed
@@ -356,7 +379,9 @@ export class DoctorCommand {
       return entries
         .filter(entry => entry.isDirectory())
         .map(entry => entry.name)
-        .filter(name => name.startsWith('backup-') || /^\d{4}-\d{2}-\d{2}/.test(name));
+        .filter(
+          name => name.startsWith('backup-') || /^\d{4}-\d{2}-\d{2}/.test(name)
+        );
     } catch {
       return [];
     }
@@ -376,7 +401,9 @@ export class DoctorCommand {
 
       console.log(`  📦 ${chalk.bold(backupName)}`);
       console.log(`     📍 Path: ${chalk.gray(backupPath)}`);
-      console.log(`     📅 Created: ${chalk.cyan(backupDate)} ${chalk.gray(backupTime)}`);
+      console.log(
+        `     📅 Created: ${chalk.cyan(backupDate)} ${chalk.gray(backupTime)}`
+      );
 
       // Check backup contents
       const contents = await this.getBackupContents(backupPath);
@@ -384,7 +411,7 @@ export class DoctorCommand {
         console.log(`     📄 Contains: ${chalk.green(contents.join(', '))}`);
       }
       console.log('');
-    } catch (error) {
+    } catch (_error) {
       console.log(`  ❌ ${chalk.red('Error reading backup:')} ${backupPath}`);
       console.log('');
     }
@@ -407,7 +434,8 @@ export class DoctorCommand {
       if (entries.includes('package.json')) contents.push('Package config');
       if (entries.includes('tsconfig.json')) contents.push('TypeScript config');
       if (entries.some(e => e.endsWith('.py'))) contents.push('Python files');
-      if (entries.some(e => e.endsWith('.ts'))) contents.push('TypeScript files');
+      if (entries.some(e => e.endsWith('.ts')))
+        contents.push('TypeScript files');
 
       const totalFiles = entries.filter(e => !e.startsWith('.')).length;
       if (totalFiles > 0) {

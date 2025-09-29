@@ -5,8 +5,8 @@
  * @FEATURE:TAG-VALIDATOR-001 Primary Chain 검증 및 무결성 검사
  */
 
-import { TagValidator } from '../tag-validator';
 import type { TagMatch } from '../tag-parser';
+import { TagValidator } from '../tag-validator';
 
 describe('TagValidator -  TAG Chain Validation', () => {
   let tagValidator: TagValidator;
@@ -255,9 +255,9 @@ describe('TagValidator -  TAG Chain Validation', () => {
       const violations = tagValidator.checkNamingConsistency(tags);
 
       expect(violations).toHaveLength(2);
-      expect(violations[0]!.identifier).toBe('user-login-001');
-      expect(violations[0]!.issueType).toBe('naming_inconsistency');
-      expect(violations[1]!.identifier).toBe('Auth_System_001');
+      expect(violations[0]?.identifier).toBe('user-login-001');
+      expect(violations[0]?.issueType).toBe('naming_inconsistency');
+      expect(violations[1]?.identifier).toBe('Auth_System_001');
     });
   });
 
@@ -335,19 +335,19 @@ describe('TagValidator -  TAG Chain Validation', () => {
 
       const coverage = tagValidator.calculateTagCoverage(tags);
 
-      expect(coverage['PRIMARY']).toBe(0.5);
-      expect(coverage['STEERING']).toBe(0.25);
-      expect(coverage['IMPLEMENTATION']).toBe(0.75);
-      expect(coverage['QUALITY']).toBe(1.0);
+      expect(coverage.PRIMARY).toBe(0.5);
+      expect(coverage.STEERING).toBe(0.25);
+      expect(coverage.IMPLEMENTATION).toBe(0.75);
+      expect(coverage.QUALITY).toBe(1.0);
     });
 
     it('should return zero coverage for empty tag list', () => {
       const coverage = tagValidator.calculateTagCoverage([]);
 
-      expect(coverage['PRIMARY']).toBe(0.0);
-      expect(coverage['STEERING']).toBe(0.0);
-      expect(coverage['IMPLEMENTATION']).toBe(0.0);
-      expect(coverage['QUALITY']).toBe(0.0);
+      expect(coverage.PRIMARY).toBe(0.0);
+      expect(coverage.STEERING).toBe(0.0);
+      expect(coverage.IMPLEMENTATION).toBe(0.0);
+      expect(coverage.QUALITY).toBe(0.0);
     });
   });
 
@@ -392,9 +392,9 @@ describe('TagValidator -  TAG Chain Validation', () => {
       const brokenRefs = tagValidator.validateReferenceIntegrity(tags);
 
       expect(brokenRefs).toHaveLength(3);
-      expect(brokenRefs[0]!.sourceIdentifier).toBe('A-001');
-      expect(brokenRefs[0]!.brokenReference).toBe('DESIGN:MISSING-001');
-      expect(brokenRefs[0]!.reason).toBe('Referenced tag does not exist');
+      expect(brokenRefs[0]?.sourceIdentifier).toBe('A-001');
+      expect(brokenRefs[0]?.brokenReference).toBe('DESIGN:MISSING-001');
+      expect(brokenRefs[0]?.reason).toBe('Referenced tag does not exist');
     });
   });
 
@@ -477,17 +477,17 @@ describe('TagValidator -  TAG Chain Validation', () => {
       // Test orphaned tag detection
       const orphans = tagValidator.findOrphanedTags(tags);
       expect(orphans).toHaveLength(1);
-      expect(orphans[0]!.identifier).toBe('ORPHAN-DOC-001');
+      expect(orphans[0]?.identifier).toBe('ORPHAN-DOC-001');
 
       // Test reference integrity
       const brokenRefs = tagValidator.validateReferenceIntegrity(tags);
       expect(brokenRefs).toHaveLength(1);
-      expect(brokenRefs[0]!.brokenReference).toBe('TASK:MISSING-TASK-001');
+      expect(brokenRefs[0]?.brokenReference).toBe('TASK:MISSING-TASK-001');
 
       // Test coverage calculation
       const coverage = tagValidator.calculateTagCoverage(tags);
-      expect(coverage['PRIMARY']).toBe(1.0); // All 4 categories present
-      expect(coverage['IMPLEMENTATION']).toBe(0.75); // 3 out of 4 categories (FEATURE, API, UI)
+      expect(coverage.PRIMARY).toBe(1.0); // All 4 categories present
+      expect(coverage.IMPLEMENTATION).toBe(0.75); // 3 out of 4 categories (FEATURE, API, UI)
     });
   });
 });

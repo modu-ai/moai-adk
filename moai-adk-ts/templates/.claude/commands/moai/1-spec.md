@@ -40,7 +40,7 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 - 3-5개 후보 리스트 생성
 
 ### 3. SPEC 문서 생성
-- **EARS 구조**: Environment, Assumptions, Requirements, Specifications
+- **EARS 방법론**: Easy Approach to Requirements Syntax (5가지 구문 형식)
 - **3개 파일**: spec.md, plan.md, acceptance.md
 - **@TAG**: 명령어가 tag-agent를 호출하여 @REQ → @DESIGN → @TASK → @TEST 체인 생성
 
@@ -85,48 +85,50 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 
 ## 실행 순서
 
-### 1. SPEC 문서 생성 + TAG 시스템 통합
+### 1. 순수 SPEC 문서 생성 (TAG 작업 제외)
 
-먼저 spec-builder 에이전트로 EARS 구조 SPEC을 생성합니다:
+먼저 spec-builder 에이전트로 순수한 EARS 방법론 SPEC을 생성합니다:
 
-@agent-spec-builder "${ARGUMENTS:-"프로젝트 분석을 통한 SPEC 후보"}를 위한 EARS 구조 SPEC 생성해주세요"
+@agent-spec-builder "${ARGUMENTS:-"프로젝트 분석을 통한 SPEC 후보"}를 위한 EARS 방법론 SPEC 생성해주세요. TAG 관련 작업은 제외하고 SPEC 내용과 TAG 요구사항 YAML만 작성해주세요."
 
-- 프로젝트 문서 분석
-- SPEC 후보 제안 및 사용자 선택
-- EARS 구조 SPEC 문서 작성
+- 프로젝트 문서 분석 및 SPEC 후보 제안
+- 사용자 선택 후 EARS 5개 구문 형식 SPEC 작성
 - 3개 파일 동시 생성 (spec.md, plan.md, acceptance.md)
+- **TAG 요구사항 YAML 내에 도메인, 키워드, 의존성 명시**
 
-### 2. TAG 시스템 자동 관리
+### 2. TAG 시스템 전체 관리 (독점 처리)
 
-SPEC 생성 후 명령어가 tag-agent를 호출하여 TAG를 관리합니다:
+SPEC 생성 후 tag-agent가 생성된 TAG 요구사항 YAML을 바탕으로 전체 TAG 작업을 수행합니다:
 
-@agent-tag-agent "새 SPEC의 TAG 체인 생성하고 기존 TAG와 연결 확인해주세요"
+@agent-tag-agent "생성된 SPEC 기반으로 완전한 TAG 체인 생성하고 기존 TAG 검색, 중복 방지, 체인 검증, 인덱스 업데이트를 수행해주세요"
 
-- @REQ → @DESIGN → @TASK → @TEST 체인 생성
-- 기존 TAG와의 중복 방지 및 연결성 검증
-- JSONL 인덱스 자동 업데이트
-- TAG 무결성 검사
+- **기존 TAG 검색**: ripgrep으로 도메인 관련 TAG 발견 및 재사용 검토
+- **TAG 생성**: @REQ → @DESIGN → @TASK → @TEST Primary Chain 생성
+- **중복 방지**: TAG 형식 및 고유성 검증
+- **체인 검증**: 체인 무결성 및 순환 참조 방지
+- **인덱스 관리**: JSONL 기반 분산 인덱스 업데이트
 
-### 3. Git 작업 자동화
+### 3. Git 작업 자동화 (TAG 정보 연동)
 
-마지막으로 명령어가 git-manager를 호출하여 브랜치/PR을 생성합니다:
+마지막으로 SPEC과 TAG 정보를 포함한 Git 작업을 자동화합니다:
 
-@agent-git-manager "SPEC 생성 완료, 브랜치와 PR 자동 생성해주세요"
+@agent-git-manager "SPEC 및 TAG 생성 완료, TAG 정보를 포함한 브랜치와 PR 자동 생성해주세요"
 
-- 브랜치 생성 (Personal/Team 모드별)
-- GitHub Issue/PR 생성 (Team 모드)
-- TAG와 연결된 초기 커밋
+- **브랜치 생성**: Personal/Team 모드별 브랜치 전략 적용
+- **GitHub Issue/PR 생성**: Team 모드 시 TAG 체인 정보 포함
+- **초기 커밋**: SPEC 파일과 TAG 요구사항 YAML 포함
+- **PR 템플릿**: TAG 추적성 및 Related TAG 정보 자동 삽입
 
 ## 품질 기준
 
-- **EARS 구조**: Environment, Assumptions, Requirements, Specifications 필수
-- **TAG 체인**: 명령어가 tag-agent 호출하여 @REQ → @DESIGN → @TASK → @TEST 무결성 100% 보장
+- **EARS 방법론**: Easy Approach to Requirements Syntax 5가지 구문 형식 완전 준수
+- **에이전트 역할 분리**: 각 에이전트 고유 책임 영역 100% 준수
 - **Acceptance Criteria**: Given-When-Then 시나리오 최소 2개
-- **TAG 품질 게이트**:
-  - 중복 TAG 0건 (tag-agent 자동 검증)
-  - 체인 연결 완전성 100% (tag-agent 자동 검사)
-  - 고아 TAG 방지 (tag-agent 자동 방지)
-  - JSONL 인덱스 실시간 동기화
+- **TAG 위임 완료**:
+  - spec-builder: TAG 요구사항 YAML 완성 (tag-agent 위임)
+  - tag-agent: TAG 생성, 검증, 체인 관리, 인덱스 업데이트 독점 처리
+  - 중복 작업 0건 (각 에이전트 단일 책임)
+  - 오케스트레이션 품질: 에이전트 간 데이터 전달 무결성
 
 ## 다음 단계
 

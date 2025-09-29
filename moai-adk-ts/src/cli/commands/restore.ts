@@ -4,9 +4,9 @@
  * @tags @FEATURE:CLI-RESTORE-001 @REQ:CLI-FOUNDATION-012
  */
 
+import * as path from 'node:path';
 import chalk from 'chalk';
 import * as fs from 'fs-extra';
-import * as path from 'path';
 
 /**
  * Backup validation result
@@ -46,8 +46,6 @@ export interface RestoreResult {
  */
 export class RestoreCommand {
   private readonly requiredItems = ['.moai', '.claude', 'CLAUDE.md'];
-
-  constructor() {}
 
   /**
    * Validate backup path and contents

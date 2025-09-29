@@ -5,23 +5,35 @@
  *  TAG 카테고리 정의
  */
 export type TagCategory =
-  | 'PRIMARY'     // @REQ, @DESIGN, @TASK, @TEST
-  | 'STEERING'    // @VISION, @STRUCT, @TECH, @ADR
+  | 'PRIMARY' // @REQ, @DESIGN, @TASK, @TEST
+  | 'STEERING' // @VISION, @STRUCT, @TECH, @ADR
   | 'IMPLEMENTATION' // @FEATURE, @API, @UI, @DATA
-  | 'QUALITY';    // @PERF, @SEC, @DOCS, @TAG
+  | 'QUALITY'; // @PERF, @SEC, @DOCS, @TAG
 
 /**
  * TAG 타입 정의 ( 시스템)
  */
 export type TagType =
   // Primary Chain
-  | 'REQ' | 'DESIGN' | 'TASK' | 'TEST'
+  | 'REQ'
+  | 'DESIGN'
+  | 'TASK'
+  | 'TEST'
   // Steering
-  | 'VISION' | 'STRUCT' | 'TECH' | 'ADR'
+  | 'VISION'
+  | 'STRUCT'
+  | 'TECH'
+  | 'ADR'
   // Implementation
-  | 'FEATURE' | 'API' | 'UI' | 'DATA'
+  | 'FEATURE'
+  | 'API'
+  | 'UI'
+  | 'DATA'
   // Quality
-  | 'PERF' | 'SEC' | 'DOCS' | 'TAG';
+  | 'PERF'
+  | 'SEC'
+  | 'DOCS'
+  | 'TAG';
 
 /**
  * TAG 상태 정의

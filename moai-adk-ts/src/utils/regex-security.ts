@@ -34,8 +34,8 @@ export interface RegexValidationResult {
  * @tags @DATA:SAFE-REGEX-OPTIONS-001
  */
 export interface SafeRegexOptions {
-  readonly timeout?: number;        // Timeout in milliseconds (default: 100ms)
-  readonly maxLength?: number;      // Maximum input string length (default: 10000)
+  readonly timeout?: number; // Timeout in milliseconds (default: 100ms)
+  readonly maxLength?: number; // Maximum input string length (default: 10000)
   readonly enableLogging?: boolean; // Enable security logging (default: true)
 }
 
@@ -57,8 +57,8 @@ export class RegexSecurity {
     options: SafeRegexOptions = {}
   ): RegexResult {
     const {
-      timeout = this.DEFAULT_TIMEOUT,
-      maxLength = this.DEFAULT_MAX_LENGTH,
+      timeout = RegexSecurity.DEFAULT_TIMEOUT,
+      maxLength = RegexSecurity.DEFAULT_MAX_LENGTH,
       enableLogging = true,
     } = options;
 
@@ -79,8 +79,11 @@ export class RegexSecurity {
     }
 
     // Regex safety validation
-    const validation = this.validateRegexSafety(pattern);
-    if (validation.riskLevel === 'critical' || validation.riskLevel === 'high') {
+    const validation = RegexSecurity.validateRegexSafety(pattern);
+    if (
+      validation.riskLevel === 'critical' ||
+      validation.riskLevel === 'high'
+    ) {
       if (enableLogging) {
         logger.error(`Dangerous regex pattern detected: ${pattern.source}`, {
           vulnerabilities: validation.vulnerabilities,
@@ -134,7 +137,8 @@ export class RegexSecurity {
       };
     } catch (error) {
       const executionTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
 
       if (enableLogging) {
         logger.error(`Regex execution failed: ${errorMessage}`, {
@@ -163,7 +167,7 @@ export class RegexSecurity {
     input: string,
     options: SafeRegexOptions = {}
   ): boolean {
-    const result = this.safeMatch(pattern, input, options);
+    const result = RegexSecurity.safeMatch(pattern, input, options);
     return result.success && result.matches !== null;
   }
 
@@ -178,22 +182,27 @@ export class RegexSecurity {
     options: SafeRegexOptions = {}
   ): string {
     const {
-      timeout = this.DEFAULT_TIMEOUT,
-      maxLength = this.DEFAULT_MAX_LENGTH,
+      timeout = RegexSecurity.DEFAULT_TIMEOUT,
+      maxLength = RegexSecurity.DEFAULT_MAX_LENGTH,
       enableLogging = true,
     } = options;
 
     // Input length validation
     if (input.length > maxLength) {
       if (enableLogging) {
-        logger.warn(`Input too long for regex replace: ${input.length} > ${maxLength}`);
+        logger.warn(
+          `Input too long for regex replace: ${input.length} > ${maxLength}`
+        );
       }
       return input; // Return original string
     }
 
     // Regex safety validation
-    const validation = this.validateRegexSafety(pattern);
-    if (validation.riskLevel === 'critical' || validation.riskLevel === 'high') {
+    const validation = RegexSecurity.validateRegexSafety(pattern);
+    if (
+      validation.riskLevel === 'critical' ||
+      validation.riskLevel === 'high'
+    ) {
       if (enableLogging) {
         logger.error(`Dangerous regex pattern in replace: ${pattern.source}`);
       }
@@ -267,7 +276,8 @@ export class RegexSecurity {
       // Alternation with repetition
       {
         pattern: /\([^)]*\|[^)]*\)[*+]/g,
-        vulnerability: 'Alternation with repetition can cause exponential backtracking',
+        vulnerability:
+          'Alternation with repetition can cause exponential backtracking',
         risk: 'high' as const,
       },
       // Repeated groups with nested quantifiers
@@ -284,10 +294,17 @@ export class RegexSecurity {
       },
     ];
 
-    for (const { pattern: dangerousPattern, vulnerability, risk } of dangerousPatterns) {
+    for (const {
+      pattern: dangerousPattern,
+      vulnerability,
+      risk,
+    } of dangerousPatterns) {
       if (dangerousPattern.test(source)) {
         vulnerabilities.push(vulnerability);
-        if (risk === 'critical' || (risk === 'high' && riskLevel !== 'critical')) {
+        if (
+          risk === 'critical' ||
+          (risk === 'high' && riskLevel !== 'critical')
+        ) {
           riskLevel = risk;
         }
       }
@@ -315,7 +332,11 @@ export class RegexSecurity {
       },
     ];
 
-    for (const { pattern: complexPattern, vulnerability, risk } of complexityPatterns) {
+    for (const {
+      pattern: complexPattern,
+      vulnerability,
+      risk,
+    } of complexityPatterns) {
       if (complexPattern.test(source)) {
         vulnerabilities.push(vulnerability);
         if (riskLevel === 'low') {
@@ -346,11 +367,11 @@ export class RegexSecurity {
   static createSafeRegex(
     pattern: string,
     flags?: string,
-    options: SafeRegexOptions = {}
+    _options: SafeRegexOptions = {}
   ): RegExp | null {
     try {
       const regex = new RegExp(pattern, flags);
-      const validation = this.validateRegexSafety(regex);
+      const validation = RegexSecurity.validateRegexSafety(regex);
 
       if (!validation.isSafe) {
         logger.error(`Unsafe regex pattern rejected: ${pattern}`, {
@@ -387,8 +408,10 @@ export const safeReplace = RegexSecurity.safeReplace.bind(RegexSecurity);
 /**
  * @tags @API:VALIDATE-REGEX-SAFETY-EXPORT-001
  */
-export const validateRegexSafety = RegexSecurity.validateRegexSafety.bind(RegexSecurity);
+export const validateRegexSafety =
+  RegexSecurity.validateRegexSafety.bind(RegexSecurity);
 /**
  * @tags @API:CREATE-SAFE-REGEX-EXPORT-001
  */
-export const createSafeRegex = RegexSecurity.createSafeRegex.bind(RegexSecurity);
+export const createSafeRegex =
+  RegexSecurity.createSafeRegex.bind(RegexSecurity);

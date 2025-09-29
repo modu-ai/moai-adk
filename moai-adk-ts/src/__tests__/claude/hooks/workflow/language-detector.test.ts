@@ -4,10 +4,8 @@ import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
  * @description Tests for LanguageDetector hook
  */
 
+import * as fs from 'node:fs';
 import { LanguageDetector } from '../../../../claude/hooks/workflow/language-detector';
-import { HookInput } from '../../../../claude/hooks/types';
-import * as fs from 'fs';
-import * as path from 'path';
 
 // Mock filesystem
 vi.mock('fs');
@@ -219,7 +217,7 @@ describe('LanguageDetector', () => {
     });
 
     it('should skip ignored directories', async () => {
-      mockFs.readdirSync.mockImplementation((dir: string) => {
+      mockFs.readdirSync.mockImplementation((_dir: string) => {
         return ['node_modules', '.git', '__pycache__', 'src'] as any;
       });
 

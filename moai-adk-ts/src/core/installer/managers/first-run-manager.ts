@@ -4,8 +4,8 @@
  * @design TRUST-COMPLIANT Single responsibility for first run management
  */
 
-import path from 'path';
-import os from 'os';
+import os from 'node:os';
+import path from 'node:path';
 import { logger } from '../../../utils/logger';
 import type { FirstRunState } from '../types';
 

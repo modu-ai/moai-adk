@@ -3,13 +3,8 @@
  * @task RESOURCE-TEST-001 RED stage - failing tests for resource validation
  */
 
-import { describe, test, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, test } from 'vitest';
 import { ResourceValidator } from '../resource-validator';
-import type {
-  ValidationResult,
-  TemplateCheckResult,
-  IntegrityResult,
-} from '../../types';
 
 describe('ResourceValidator', () => {
   let validator: ResourceValidator;

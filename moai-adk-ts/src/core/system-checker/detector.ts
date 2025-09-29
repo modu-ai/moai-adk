@@ -4,9 +4,9 @@
  * @tags @FEATURE:SYSTEM-DETECTOR-001 @REQ:AUTO-VERIFY-012
  */
 
+import * as os from 'node:os';
 import { execa } from 'execa';
 import * as semver from 'semver';
-import * as os from 'os';
 import type { SystemRequirement } from './requirements';
 
 /**

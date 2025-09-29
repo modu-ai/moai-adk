@@ -4,15 +4,15 @@
  * @tags @FEATURE:CLI-INIT-INTEGRATION-001 @REQ:CLI-FOUNDATION-012
  */
 
+import * as path from 'node:path';
 import chalk from 'chalk';
-import * as path from 'path';
-import type { SystemDetector } from '@/core/system-checker/detector';
 import { InstallationOrchestrator } from '@/core/installer/orchestrator';
 import type { InstallationConfig } from '@/core/installer/types';
-import { DoctorCommand } from './doctor';
+import type { SystemDetector } from '@/core/system-checker/detector';
 import type { InitResult } from '@/types/project';
+import { createHeader, printBanner } from '@/utils/banner';
 import { InputValidator } from '@/utils/input-validator';
-import { printBanner, createHeader } from '@/utils/banner';
+import { DoctorCommand } from './doctor';
 
 /**
  * Progress callback for installation progress display
@@ -97,14 +97,15 @@ export class InitCommand {
           createdFiles: [],
           errors: [
             'Project name validation failed:',
-            ...projectNameValidation.errors
+            ...projectNameValidation.errors,
           ],
         };
       }
 
       // Determine project path
       let projectPathInput: string;
-      const projectName = projectNameValidation.sanitizedValue || 'moai-project';
+      const projectName =
+        projectNameValidation.sanitizedValue || 'moai-project';
 
       if (options?.path) {
         // Explicit path provided
@@ -117,10 +118,13 @@ export class InitCommand {
         projectPathInput = path.join(process.cwd(), projectName);
       }
 
-      const pathValidation = await InputValidator.validatePath(projectPathInput, {
-        mustBeDirectory: false, // Directory will be created if needed
-        maxDepth: 10,
-      });
+      const pathValidation = await InputValidator.validatePath(
+        projectPathInput,
+        {
+          mustBeDirectory: false, // Directory will be created if needed
+          maxDepth: 10,
+        }
+      );
 
       if (!pathValidation.isValid) {
         return {
@@ -128,10 +132,7 @@ export class InitCommand {
           projectPath: '',
           config: { name: '', type: 'typescript' as any },
           createdFiles: [],
-          errors: [
-            'Project path validation failed:',
-            ...pathValidation.errors
-          ],
+          errors: ['Project path validation failed:', ...pathValidation.errors],
         };
       }
 
@@ -144,7 +145,9 @@ export class InitCommand {
           projectPath: '',
           config: { name: '', type: 'typescript' as any },
           createdFiles: [],
-          errors: [`Invalid mode: ${mode}. Must be one of: ${validModes.join(', ')}`],
+          errors: [
+            `Invalid mode: ${mode}. Must be one of: ${validModes.join(', ')}`,
+          ],
         };
       }
 

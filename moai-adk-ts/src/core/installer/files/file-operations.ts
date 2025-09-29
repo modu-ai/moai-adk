@@ -14,9 +14,9 @@
  * @since 2025-01-07
  */
 
-import * as path from 'path';
-import { FileUtils } from './file-utils';
+import * as path from 'node:path';
 import { FileIO } from './file-io';
+import { FileUtils } from './file-utils';
 
 /**
  * File statistics information interface

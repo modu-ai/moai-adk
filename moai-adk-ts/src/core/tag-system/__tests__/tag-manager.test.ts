@@ -1,20 +1,19 @@
 // @TEST-TAG-MANAGER-001: TagManager 핵심 기능 테스트
 // 연결: @REQ-TAG-JSON-001 → @DESIGN-TAG-TYPES-001 → @TASK-TAG-MANAGER-001
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { promises as fs } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import type {
-  TagEntry,
-  TagDatabase,
-  TagSearchQuery,
-  TagManagerConfig,
-  TagType,
-  TagCategory,
-  TagStatus,
-} from '../types.js';
+import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { TagManager } from '../tag-manager.js';
+import type {
+  TagCategory,
+  TagEntry,
+  TagManagerConfig,
+  TagSearchQuery,
+  TagStatus,
+  TagType,
+} from '../types.js';
 
 describe('@TEST-TAG-MANAGER-001: TagManager Core Functionality', () => {
   let tagManager: TagManager;
@@ -160,7 +159,9 @@ describe('@TEST-TAG-MANAGER-001: TagManager Core Functionality', () => {
       const loadedDatabase = await newTagManager.load();
 
       expect(loadedDatabase.tags['@FEATURE-AUTH-001']).toBeDefined();
-      expect(loadedDatabase.tags['@FEATURE-AUTH-001'].title).toBe('인증 기능 구현');
+      expect(loadedDatabase.tags['@FEATURE-AUTH-001'].title).toBe(
+        '인증 기능 구현'
+      );
       expect(loadedDatabase.metadata.totalTags).toBe(1);
     });
   });
@@ -207,7 +208,9 @@ describe('@TEST-TAG-MANAGER-001: TagManager Core Functionality', () => {
 
       expect(result.tags).toHaveLength(2);
       expect(result.total).toBe(2);
-      expect(result.tags.map(tag => tag.type)).toEqual(expect.arrayContaining(['REQ', 'DESIGN']));
+      expect(result.tags.map(tag => tag.type)).toEqual(
+        expect.arrayContaining(['REQ', 'DESIGN'])
+      );
     });
 
     it('@TEST-SEARCH-BY-CATEGORY-001: should search TAGs by category', async () => {
@@ -312,8 +315,9 @@ describe('@TEST-TAG-MANAGER-001: TagManager Core Functionality', () => {
       const result = await tagManager.getTag('@NONEXISTENT-001');
       expect(result).toBeNull();
 
-      await expect(tagManager.updateTag('@NONEXISTENT-001', { status: 'completed' }))
-        .rejects.toThrow('TAG with ID @NONEXISTENT-001 not found');
+      await expect(
+        tagManager.updateTag('@NONEXISTENT-001', { status: 'completed' })
+      ).rejects.toThrow('TAG with ID @NONEXISTENT-001 not found');
 
       const deleteResult = await tagManager.deleteTag('@NONEXISTENT-001');
       expect(deleteResult).toBe(false);
@@ -377,7 +381,9 @@ describe('@TEST-TAG-MANAGER-001: TagManager Core Functionality', () => {
       await tagManager.getTag('@CACHE-INVALIDATE-001'); // 캐시에 저장
 
       // 업데이트 (캐시 무효화)
-      await tagManager.updateTag('@CACHE-INVALIDATE-001', { status: 'completed' });
+      await tagManager.updateTag('@CACHE-INVALIDATE-001', {
+        status: 'completed',
+      });
 
       const updatedTag = await tagManager.getTag('@CACHE-INVALIDATE-001');
       expect(updatedTag?.status).toBe('completed');

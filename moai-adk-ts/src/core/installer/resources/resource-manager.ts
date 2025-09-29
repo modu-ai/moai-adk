@@ -7,11 +7,11 @@
  * @REFACTOR:RESOURCE-SPLIT-001 리소스 작업을 ResourceOperations로 분리
  */
 
-import { promises as fs } from 'fs';
-import * as path from 'path';
+import { promises as fs } from 'node:fs';
+import * as path from 'node:path';
 import { logger } from '../../../utils/logger';
-import type { TemplateContext as TemplateContextType } from './utils';
 import { ResourceOperations } from './resource-operations';
+import type { TemplateContext as TemplateContextType } from './utils';
 
 // Re-export for external use
 export type TemplateContext = TemplateContextType;

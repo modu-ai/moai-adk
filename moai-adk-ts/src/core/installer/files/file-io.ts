@@ -14,10 +14,10 @@
  * @since 2025-01-07
  */
 
-import * as fs from 'fs-extra';
-import * as path from 'path';
-import * as os from 'os';
-import type { FileStats, FileOperationOptions } from './file-operations';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { promises as fs, constants } from 'node:fs';
+import type { FileOperationOptions, FileStats } from './file-operations';
 
 /**
  * Core file I/O operations
@@ -35,12 +35,7 @@ export class FileIO {
     mode: number = 0o755
   ): Promise<void> {
     try {
-      await fs.ensureDir(dirPath);
-
-      // Set permissions on Unix-like systems only
-      if (os.platform() !== 'win32') {
-        await fs.chmod(dirPath, mode);
-      }
+      await fs.mkdir(dirPath, { recursive: true, mode });
     } catch (error) {
       throw new Error(`Failed to ensure directory '${dirPath}': ${error}`);
     }
@@ -61,23 +56,32 @@ export class FileIO {
   ): Promise<void> {
     try {
       // Check if source exists
-      if (!(await fs.pathExists(src))) {
+      try {
+        await fs.access(src, constants.F_OK);
+      } catch {
         throw new Error(`Source file does not exist: ${src}`);
       }
 
       // Check if destination exists and handle overwrite
-      if ((await fs.pathExists(dst)) && !overwrite) {
-        throw new Error(
-          `Destination file already exists and overwrite is false: ${dst}`
-        );
+      if (!overwrite) {
+        try {
+          await fs.access(dst, constants.F_OK);
+          throw new Error(
+            `Destination file already exists and overwrite is false: ${dst}`
+          );
+        } catch (error: any) {
+          if (error.code !== 'ENOENT') {
+            throw error;
+          }
+        }
       }
 
       // Ensure destination directory exists
       const dstDir = path.dirname(dst);
-      await fs.ensureDir(dstDir);
+      await fs.mkdir(dstDir, { recursive: true });
 
       // Copy the file
-      await fs.copy(src, dst, { overwrite });
+      await fs.copyFile(src, dst);
     } catch (error) {
       throw new Error(
         `Failed to copy file from '${src}' to '${dst}': ${error}`
@@ -93,10 +97,10 @@ export class FileIO {
    */
   static async removeFile(filePath: string): Promise<void> {
     try {
-      await fs.remove(filePath);
-    } catch (error) {
+      await fs.unlink(filePath);
+    } catch (error: any) {
       // Ignore if file doesn't exist
-      if ((error as any).code !== 'ENOENT') {
+      if (error.code !== 'ENOENT') {
         throw new Error(`Failed to remove file '${filePath}': ${error}`);
       }
     }
@@ -110,10 +114,10 @@ export class FileIO {
    */
   static async removeDirectory(dirPath: string): Promise<void> {
     try {
-      await fs.remove(dirPath);
-    } catch (error) {
+      await fs.rmdir(dirPath, { recursive: true });
+    } catch (error: any) {
       // Ignore if directory doesn't exist
-      if ((error as any).code !== 'ENOENT') {
+      if (error.code !== 'ENOENT') {
         throw new Error(`Failed to remove directory '${dirPath}': ${error}`);
       }
     }
@@ -149,7 +153,7 @@ export class FileIO {
     try {
       // Ensure parent directory exists
       const dir = path.dirname(filePath);
-      await fs.ensureDir(dir);
+      await fs.mkdir(dir, { recursive: true });
 
       // Write file with UTF-8 encoding
       await fs.writeFile(filePath, content, 'utf8');

@@ -25,7 +25,10 @@ export type LogFormat = 'json' | 'human';
  */
 function getLogFormat(): LogFormat {
   // Use JSON format for development or when LOG_FORMAT is explicitly set to json
-  if (process.env['NODE_ENV'] === 'development' || process.env['LOG_FORMAT'] === 'json') {
+  if (
+    process.env['NODE_ENV'] === 'development' ||
+    process.env['LOG_FORMAT'] === 'json'
+  ) {
     return 'json';
   }
 
@@ -176,7 +179,9 @@ export class Logger {
         .join(', ');
 
       if (userContext) {
-        output += colorize ? chalk.gray(` (${userContext})`) : ` (${userContext})`;
+        output += colorize
+          ? chalk.gray(` (${userContext})`)
+          : ` (${userContext})`;
       }
     }
 

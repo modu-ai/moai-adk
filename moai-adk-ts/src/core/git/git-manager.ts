@@ -5,30 +5,30 @@
  * @fileoverview Git operations manager using simple-git
  */
 
-import simpleGit, { type SimpleGit, type StatusResult } from 'simple-git';
+import * as path from 'node:path';
 import * as fs from 'fs-extra';
-import * as path from 'path';
+import simpleGit, { type SimpleGit, type StatusResult } from 'simple-git';
 import type {
-  GitConfig,
-  GitInitResult,
-  GitStatus,
-  GitCommitResult,
   CreatePullRequestOptions,
   CreateRepositoryOptions,
-  GitignoreTemplate,
+  GitCommitResult,
+  GitConfig,
   GitError,
   GitErrorType,
+  GitInitResult,
+  GitignoreTemplate,
+  GitStatus,
 } from '../../types/git';
+import { InputValidator } from '../../utils/input-validator';
 import {
-  GitNamingRules,
   GitCommitTemplates,
-  GitignoreTemplates,
   GitDefaults,
+  GitignoreTemplates,
+  GitNamingRules,
   GitTimeouts,
 } from './constants';
-import { GitHubIntegration } from './github-integration';
 import { GitLockManager } from './git-lock-manager';
-import { InputValidator } from '../../utils/input-validator';
+import { GitHubIntegration } from './github-integration';
 
 /**
  * Git 작업을 관리하는 메인 클래스
@@ -181,7 +181,9 @@ export class GitManager {
       // 강화된 브랜치명 검증
       const validation = InputValidator.validateBranchName(branchName);
       if (!validation.isValid) {
-        throw new Error(`Branch name validation failed: ${validation.errors.join(', ')}`);
+        throw new Error(
+          `Branch name validation failed: ${validation.errors.join(', ')}`
+        );
       }
 
       // 추가적인 Git 명명 규칙 검증
@@ -208,9 +210,12 @@ export class GitManager {
         // 베이스 브랜치가 존재하는지 확인
         const branches = await this.git.branch();
         // 베이스 브랜치명도 검증
-        const baseBranchValidation = InputValidator.validateBranchName(baseBranch);
+        const baseBranchValidation =
+          InputValidator.validateBranchName(baseBranch);
         if (!baseBranchValidation.isValid) {
-          throw new Error(`Base branch name validation failed: ${baseBranchValidation.errors.join(', ')}`);
+          throw new Error(
+            `Base branch name validation failed: ${baseBranchValidation.errors.join(', ')}`
+          );
         }
 
         if (
@@ -653,7 +658,6 @@ export class GitManager {
         return GitignoreTemplates.NODE;
       case 'python':
         return GitignoreTemplates.PYTHON;
-      case 'moai':
       default:
         return GitignoreTemplates.MOAI;
     }

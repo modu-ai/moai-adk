@@ -4,8 +4,8 @@
  * @tags @FEATURE:PERFORMANCE-ANALYZER-001 @REQ:ADVANCED-DOCTOR-001
  */
 
-import * as os from 'os';
-import * as fs from 'fs/promises';
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
 import type { SystemPerformanceMetrics } from '@/types/diagnostics';
 
 /**

@@ -4,16 +4,16 @@
 import { promises as fs } from 'node:fs';
 import { dirname } from 'node:path';
 import type {
-  TagEntry,
+  TagCategory,
   TagDatabase,
+  TagEntry,
+  TagManagerConfig,
   TagSearchQuery,
   TagSearchResult,
-  TagManagerConfig,
-  TagValidationResult,
   TagStatistics,
-  TagType,
-  TagCategory,
   TagStatus,
+  TagType,
+  TagValidationResult,
 } from './types.js';
 
 /**
@@ -32,7 +32,6 @@ export class TagManager {
   private database: TagDatabase | null = null;
   private readonly cache: Map<string, TagEntry> = new Map();
   private readonly searchIndexCache: Map<string, TagEntry[]> = new Map();
-  private isDirty = false;
   private autoSaveTimer: NodeJS.Timeout | null = null;
   private loadPromise: Promise<TagDatabase> | null = null;
 
@@ -143,7 +142,7 @@ export class TagManager {
       throw new Error(`Invalid TAG ID format: ${tagEntry.id}`);
     }
 
-    if (this.database!.tags[tagEntry.id]) {
+    if (this.database?.tags[tagEntry.id]) {
       throw new Error(`TAG with ID ${tagEntry.id} already exists`);
     }
 
@@ -165,7 +164,7 @@ export class TagManager {
       metadata: tagEntry.metadata,
     };
 
-    this.database!.tags[fullTagEntry.id] = fullTagEntry;
+    this.database?.tags[fullTagEntry.id] = fullTagEntry;
 
     if (this.config.enableCache) {
       this.cache.set(fullTagEntry.id, fullTagEntry);
@@ -188,7 +187,7 @@ export class TagManager {
       return this.cache.get(id) || null;
     }
 
-    const tag = this.database!.tags[id] || null;
+    const tag = this.database?.tags[id] || null;
 
     if (tag && this.config.enableCache) {
       this.cache.set(id, tag);
@@ -205,7 +204,7 @@ export class TagManager {
       await this.load();
     }
 
-    const existingTag = this.database!.tags[id];
+    const existingTag = this.database?.tags[id];
     if (!existingTag) {
       throw new Error(`TAG with ID ${id} not found`);
     }
@@ -220,7 +219,7 @@ export class TagManager {
       updatedAt: new Date().toISOString(),
     };
 
-    this.database!.tags[id] = updatedTag;
+    this.database?.tags[id] = updatedTag;
 
     if (this.config.enableCache) {
       this.cache.set(id, updatedTag);
@@ -238,11 +237,11 @@ export class TagManager {
       await this.load();
     }
 
-    if (!this.database!.tags[id]) {
+    if (!this.database?.tags[id]) {
       return false;
     }
 
-    delete this.database!.tags[id];
+    delete this.database?.tags[id];
 
     if (this.config.enableCache) {
       this.cache.delete(id);
@@ -262,23 +261,29 @@ export class TagManager {
     }
 
     const startTime = performance.now();
-    const allTags = Object.values(this.database!.tags);
+    const allTags = Object.values(this.database?.tags);
 
     let filteredTags = allTags;
 
     // 타입 필터
     if (query.types && query.types.length > 0) {
-      filteredTags = filteredTags.filter(tag => query.types!.includes(tag.type));
+      filteredTags = filteredTags.filter(tag =>
+        query.types?.includes(tag.type)
+      );
     }
 
     // 카테고리 필터
     if (query.categories && query.categories.length > 0) {
-      filteredTags = filteredTags.filter(tag => query.categories!.includes(tag.category));
+      filteredTags = filteredTags.filter(tag =>
+        query.categories?.includes(tag.category)
+      );
     }
 
     // 상태 필터
     if (query.statuses && query.statuses.length > 0) {
-      filteredTags = filteredTags.filter(tag => query.statuses!.includes(tag.status));
+      filteredTags = filteredTags.filter(tag =>
+        query.statuses?.includes(tag.status)
+      );
     }
 
     // ID 패턴 필터
@@ -290,39 +295,49 @@ export class TagManager {
     // 파일 경로 필터
     if (query.filePaths && query.filePaths.length > 0) {
       filteredTags = filteredTags.filter(tag =>
-        tag.files.some(file => query.filePaths!.some(path => file.includes(path)))
+        tag.files.some(file =>
+          query.filePaths?.some(path => file.includes(path))
+        )
       );
     }
 
     // 부모 TAG 필터
     if (query.parentIds && query.parentIds.length > 0) {
       filteredTags = filteredTags.filter(tag =>
-        tag.parents.some(parent => query.parentIds!.includes(parent))
+        tag.parents.some(parent => query.parentIds?.includes(parent))
       );
     }
 
     // 자식 TAG 필터
     if (query.childIds && query.childIds.length > 0) {
       filteredTags = filteredTags.filter(tag =>
-        tag.children.some(child => query.childIds!.includes(child))
+        tag.children.some(child => query.childIds?.includes(child))
       );
     }
 
     // 날짜 범위 필터
     if (query.createdAfter) {
-      filteredTags = filteredTags.filter(tag => tag.createdAt >= query.createdAfter!);
+      filteredTags = filteredTags.filter(
+        tag => tag.createdAt >= query.createdAfter!
+      );
     }
 
     if (query.createdBefore) {
-      filteredTags = filteredTags.filter(tag => tag.createdAt <= query.createdBefore!);
+      filteredTags = filteredTags.filter(
+        tag => tag.createdAt <= query.createdBefore!
+      );
     }
 
     if (query.updatedAfter) {
-      filteredTags = filteredTags.filter(tag => tag.updatedAt >= query.updatedAfter!);
+      filteredTags = filteredTags.filter(
+        tag => tag.updatedAt >= query.updatedAfter!
+      );
     }
 
     if (query.updatedBefore) {
-      filteredTags = filteredTags.filter(tag => tag.updatedAt <= query.updatedBefore!);
+      filteredTags = filteredTags.filter(
+        tag => tag.updatedAt <= query.updatedBefore!
+      );
     }
 
     const endTime = performance.now();
@@ -376,7 +391,7 @@ export class TagManager {
       await this.load();
     }
 
-    const tags = Object.values(this.database!.tags);
+    const tags = Object.values(this.database?.tags);
     const stats: TagStatistics = {
       total: tags.length,
       byType: {} as Record<TagType, number>,
@@ -387,9 +402,36 @@ export class TagManager {
     };
 
     // 카운터 초기화
-    const allTypes: TagType[] = ['REQ', 'DESIGN', 'TASK', 'TEST', 'VISION', 'STRUCT', 'TECH', 'ADR', 'FEATURE', 'API', 'UI', 'DATA', 'PERF', 'SEC', 'DOCS', 'TAG'];
-    const allCategories: TagCategory[] = ['PRIMARY', 'STEERING', 'IMPLEMENTATION', 'QUALITY'];
-    const allStatuses: TagStatus[] = ['pending', 'in_progress', 'completed', 'blocked'];
+    const allTypes: TagType[] = [
+      'REQ',
+      'DESIGN',
+      'TASK',
+      'TEST',
+      'VISION',
+      'STRUCT',
+      'TECH',
+      'ADR',
+      'FEATURE',
+      'API',
+      'UI',
+      'DATA',
+      'PERF',
+      'SEC',
+      'DOCS',
+      'TAG',
+    ];
+    const allCategories: TagCategory[] = [
+      'PRIMARY',
+      'STEERING',
+      'IMPLEMENTATION',
+      'QUALITY',
+    ];
+    const allStatuses: TagStatus[] = [
+      'pending',
+      'in_progress',
+      'completed',
+      'blocked',
+    ];
 
     for (const type of allTypes) {
       stats.byType[type] = 0;
@@ -606,7 +648,9 @@ export class TagManager {
           candidates.add(id);
         }
       }
-      return Array.from(candidates).map(id => this.database!.tags[id]).filter(Boolean);
+      return Array.from(candidates)
+        .map(id => this.database?.tags[id])
+        .filter(Boolean);
     }
 
     if (query.categories && query.categories.length > 0) {
@@ -617,7 +661,9 @@ export class TagManager {
           candidates.add(id);
         }
       }
-      return Array.from(candidates).map(id => this.database!.tags[id]).filter(Boolean);
+      return Array.from(candidates)
+        .map(id => this.database?.tags[id])
+        .filter(Boolean);
     }
 
     if (query.statuses && query.statuses.length > 0) {
@@ -628,7 +674,9 @@ export class TagManager {
           candidates.add(id);
         }
       }
-      return Array.from(candidates).map(id => this.database!.tags[id]).filter(Boolean);
+      return Array.from(candidates)
+        .map(id => this.database?.tags[id])
+        .filter(Boolean);
     }
 
     // 필터가 없으면 모든 TAG 반환
@@ -638,22 +686,27 @@ export class TagManager {
   /**
    * @PERF:SEARCH-005: 추가 필터링 적용
    */
-  private applyAdditionalFilters(tags: TagEntry[], query: TagSearchQuery): TagEntry[] {
+  private applyAdditionalFilters(
+    tags: TagEntry[],
+    query: TagSearchQuery
+  ): TagEntry[] {
     let filtered = tags;
 
     // 타입 필터 (getInitialCandidates에서 처리하지 않은 경우)
     if (query.types && query.types.length > 0) {
-      filtered = filtered.filter(tag => query.types!.includes(tag.type));
+      filtered = filtered.filter(tag => query.types?.includes(tag.type));
     }
 
     // 카테고리 필터 (getInitialCandidates에서 처리하지 않은 경우)
     if (query.categories && query.categories.length > 0) {
-      filtered = filtered.filter(tag => query.categories!.includes(tag.category));
+      filtered = filtered.filter(tag =>
+        query.categories?.includes(tag.category)
+      );
     }
 
     // 상태 필터 (getInitialCandidates에서 처리하지 않은 경우)
     if (query.statuses && query.statuses.length > 0) {
-      filtered = filtered.filter(tag => query.statuses!.includes(tag.status));
+      filtered = filtered.filter(tag => query.statuses?.includes(tag.status));
     }
 
     // ID 패턴 필터
@@ -665,21 +718,23 @@ export class TagManager {
     // 파일 경로 필터
     if (query.filePaths && query.filePaths.length > 0) {
       filtered = filtered.filter(tag =>
-        tag.files.some(file => query.filePaths!.some(path => file.includes(path)))
+        tag.files.some(file =>
+          query.filePaths?.some(path => file.includes(path))
+        )
       );
     }
 
     // 부모 TAG 필터
     if (query.parentIds && query.parentIds.length > 0) {
       filtered = filtered.filter(tag =>
-        tag.parents.some(parent => query.parentIds!.includes(parent))
+        tag.parents.some(parent => query.parentIds?.includes(parent))
       );
     }
 
     // 자식 TAG 필터
     if (query.childIds && query.childIds.length > 0) {
       filtered = filtered.filter(tag =>
-        tag.children.some(child => query.childIds!.includes(child))
+        tag.children.some(child => query.childIds?.includes(child))
       );
     }
 

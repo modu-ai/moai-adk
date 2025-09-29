@@ -14,8 +14,8 @@
 
 import { execa } from 'execa';
 import type {
-  CreateRepositoryOptions,
   CreatePullRequestOptions,
+  CreateRepositoryOptions,
   GitConfig,
 } from '../../types/git';
 import { GitHubDefaults } from './constants';
@@ -248,7 +248,7 @@ export class GitHubIntegration {
     content: string
   ): Promise<void> {
     const fs = await import('fs-extra');
-    const path = await import('path');
+    const path = await import('node:path');
 
     try {
       const workflowDir = path.join(process.cwd(), '.github', 'workflows');

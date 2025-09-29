@@ -124,7 +124,11 @@ export function sanitizeTemplateContext(
     }
 
     // Check for dangerous property access patterns
-    if (key.includes('__') || key.includes('constructor') || key.includes('prototype')) {
+    if (
+      key.includes('__') ||
+      key.includes('constructor') ||
+      key.includes('prototype')
+    ) {
       removedKeys.push(key);
       warnings.push(`Removed suspicious property: ${key}`);
       continue;
@@ -149,11 +153,14 @@ export function sanitizeTemplateContext(
 
   // Log security actions
   if (removedKeys.length > 0) {
-    logger.warn(`Template security: removed ${removedKeys.length} dangerous properties`, {
-      removedKeys,
-      originalKeyCount: Object.keys(context).length,
-      sanitizedKeyCount: Object.keys(sanitizedContext).length,
-    });
+    logger.warn(
+      `Template security: removed ${removedKeys.length} dangerous properties`,
+      {
+        removedKeys,
+        originalKeyCount: Object.keys(context).length,
+        sanitizedKeyCount: Object.keys(sanitizedContext).length,
+      }
+    );
   }
 
   return {
@@ -267,7 +274,7 @@ export function renderTemplateSafely(
 
     // Disable Mustache functions to prevent code execution
     const oldWriter = Mustache.Writer;
-    Mustache.Writer = function() {
+    Mustache.Writer = () => {
       const writer = new oldWriter();
       writer.compileFn = null; // Disable function compilation
       return writer;
@@ -282,6 +289,8 @@ export function renderTemplateSafely(
     return result;
   } catch (error) {
     logger.error('Safe template rendering failed:', error);
-    throw new Error(`Template rendering failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `Template rendering failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }

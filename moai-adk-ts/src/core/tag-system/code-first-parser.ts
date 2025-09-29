@@ -8,17 +8,15 @@
  */
 
 import { promises as fs } from 'node:fs';
-import { dirname, extname } from 'node:path';
+import { extname } from 'node:path';
 import {
-  TagBlock,
+  type CodeFirstTagConfig,
+  type PerformanceMetrics,
+  type TagBlock,
   TagCategory,
+  type TagParseResult,
   TagStatus,
-  TagParseResult,
-  TagValidationResult,
-  TagChain,
-  TagDependencyGraph,
-  PerformanceMetrics,
-  CodeFirstTagConfig
+  type TagValidationResult,
 } from './code-first-types.js';
 
 /**
@@ -66,18 +64,24 @@ export class CodeFirstTagParser {
     TAG_REFERENCE: /([A-Z]+):([A-Z0-9-]+)/g,
 
     // 의존성 파싱
-    DEPENDENCY_SEPARATOR: /,\s*/
+    DEPENDENCY_SEPARATOR: /,\s*/,
   };
 
   constructor(config?: Partial<CodeFirstTagConfig>) {
     this.config = {
       scanExtensions: ['.ts', '.tsx', '.js', '.jsx', '.py', '.md'],
-      excludeDirectories: ['node_modules', '.git', 'dist', 'build', '__pycache__'],
+      excludeDirectories: [
+        'node_modules',
+        '.git',
+        'dist',
+        'build',
+        '__pycache__',
+      ],
       tagBlockStartPattern: '/**',
       tagBlockEndPattern: '*/',
       enforceImmutability: true,
       enablePerformanceTracking: true,
-      ...config
+      ...config,
     };
 
     this.performanceMetrics = {
@@ -85,7 +89,7 @@ export class CodeFirstTagParser {
       parseTime: 0,
       memoryUsage: 0,
       filesScanned: 0,
-      tagsFound: 0
+      tagsFound: 0,
     };
   }
 
@@ -112,7 +116,7 @@ export class CodeFirstTagParser {
       return {
         success: false,
         error: `파일 읽기 실패: ${error.message}`,
-        warnings: []
+        warnings: [],
       };
     }
   }
@@ -129,7 +133,7 @@ export class CodeFirstTagParser {
       return {
         success: false,
         error: 'TAG 블록이 발견되지 않았습니다',
-        warnings
+        warnings,
       };
     }
 
@@ -137,12 +141,13 @@ export class CodeFirstTagParser {
     const lineNumber = blockMatch.lineNumber;
 
     // 2. 메인 TAG 파싱
-    const tagMatch = CodeFirstTagParser.TAG_BLOCK_PATTERNS.TAG_LINE.exec(blockContent);
+    const tagMatch =
+      CodeFirstTagParser.TAG_BLOCK_PATTERNS.TAG_LINE.exec(blockContent);
     if (!tagMatch) {
       return {
         success: false,
         error: '@TAG 라인이 발견되지 않았습니다',
-        warnings
+        warnings,
       };
     }
 
@@ -154,7 +159,7 @@ export class CodeFirstTagParser {
       return {
         success: false,
         error: `유효하지 않은 TAG 카테고리: ${categoryStr}`,
-        warnings
+        warnings,
       };
     }
 
@@ -178,7 +183,7 @@ export class CodeFirstTagParser {
       created,
       immutable,
       filePath,
-      lineNumber
+      lineNumber,
     };
 
     // 6. 유효성 검증
@@ -187,28 +192,31 @@ export class CodeFirstTagParser {
       return {
         success: false,
         error: `TAG 검증 실패: ${validation.errors.join(', ')}`,
-        warnings: [...warnings, ...validation.warnings]
+        warnings: [...warnings, ...validation.warnings],
       };
     }
 
     return {
       success: true,
       tagBlock,
-      warnings: [...warnings, ...validation.warnings]
+      warnings: [...warnings, ...validation.warnings],
     };
   }
 
   /**
    * 파일 최상단에서 TAG 블록 추출
    */
-  private extractTagBlock(content: string): { content: string; lineNumber: number } | null {
+  private extractTagBlock(
+    content: string
+  ): { content: string; lineNumber: number } | null {
     // 파일 시작부분에서 첫 번째 주석 블록 찾기
     const lines = content.split('\n');
     let inBlock = false;
     let blockLines: string[] = [];
     let startLineNumber = 0;
 
-    for (let i = 0; i < Math.min(lines.length, 50); i++) { // 첫 50줄만 검사
+    for (let i = 0; i < Math.min(lines.length, 50); i++) {
+      // 첫 50줄만 검사
       const line = lines[i].trim();
 
       // 빈 줄이나 shebang 무시
@@ -236,7 +244,7 @@ export class CodeFirstTagParser {
           if (blockContent.includes('@TAG:')) {
             return {
               content: blockContent,
-              lineNumber: startLineNumber
+              lineNumber: startLineNumber,
             };
           }
 
@@ -248,7 +256,12 @@ export class CodeFirstTagParser {
       }
 
       // TAG 블록이 아닌 코드 시작되면 중단
-      if (!inBlock && line && !line.startsWith('//') && !line.startsWith('/*')) {
+      if (
+        !inBlock &&
+        line &&
+        !line.startsWith('//') &&
+        !line.startsWith('/*')
+      ) {
         break;
       }
     }
@@ -259,19 +272,25 @@ export class CodeFirstTagParser {
   /**
    * 체인 파싱 (REQ:AUTH-001 -> DESIGN:AUTH-001 -> ...)
    */
-  private parseChain(blockContent: string, warnings: string[]): string[] | undefined {
-    const chainMatch = CodeFirstTagParser.TAG_BLOCK_PATTERNS.CHAIN_LINE.exec(blockContent);
+  private parseChain(
+    blockContent: string,
+    warnings: string[]
+  ): string[] | undefined {
+    const chainMatch =
+      CodeFirstTagParser.TAG_BLOCK_PATTERNS.CHAIN_LINE.exec(blockContent);
     if (!chainMatch) {
       return undefined;
     }
 
     const chainStr = chainMatch[1];
-    const chainParts = chainStr.split(CodeFirstTagParser.TAG_BLOCK_PATTERNS.CHAIN_ARROW);
+    const chainParts = chainStr.split(
+      CodeFirstTagParser.TAG_BLOCK_PATTERNS.CHAIN_ARROW
+    );
 
     const chain = chainParts
       .map(part => part.trim())
       .filter(part => part.length > 0)
-      .map(part => part.startsWith('@') ? part : `@${part}`);
+      .map(part => (part.startsWith('@') ? part : `@${part}`));
 
     // 체인 유효성 검사
     for (const chainTag of chain) {
@@ -286,8 +305,12 @@ export class CodeFirstTagParser {
   /**
    * 의존성 파싱 (FEATURE:USER-001, API:SESSION-001)
    */
-  private parseDepends(blockContent: string, warnings: string[]): string[] | undefined {
-    const dependsMatch = CodeFirstTagParser.TAG_BLOCK_PATTERNS.DEPENDS_LINE.exec(blockContent);
+  private parseDepends(
+    blockContent: string,
+    warnings: string[]
+  ): string[] | undefined {
+    const dependsMatch =
+      CodeFirstTagParser.TAG_BLOCK_PATTERNS.DEPENDS_LINE.exec(blockContent);
     if (!dependsMatch) {
       return undefined;
     }
@@ -297,16 +320,20 @@ export class CodeFirstTagParser {
     }
 
     const dependsStr = dependsMatch[1];
-    const dependsParts = dependsStr.split(CodeFirstTagParser.TAG_BLOCK_PATTERNS.DEPENDENCY_SEPARATOR);
+    const dependsParts = dependsStr.split(
+      CodeFirstTagParser.TAG_BLOCK_PATTERNS.DEPENDENCY_SEPARATOR
+    );
 
     const depends = dependsParts
       .map(part => part.trim())
       .filter(part => part.length > 0)
-      .map(part => part.startsWith('@') ? part : `@${part}`);
+      .map(part => (part.startsWith('@') ? part : `@${part}`));
 
     // 의존성 유효성 검사
     for (const dependTag of depends) {
-      if (!CodeFirstTagParser.TAG_BLOCK_PATTERNS.TAG_REFERENCE.test(dependTag)) {
+      if (
+        !CodeFirstTagParser.TAG_BLOCK_PATTERNS.TAG_REFERENCE.test(dependTag)
+      ) {
         warnings.push(`잘못된 의존성 TAG 형식: ${dependTag}`);
       }
     }
@@ -318,7 +345,8 @@ export class CodeFirstTagParser {
    * 상태 파싱
    */
   private parseStatus(blockContent: string, warnings: string[]): TagStatus {
-    const statusMatch = CodeFirstTagParser.TAG_BLOCK_PATTERNS.STATUS_LINE.exec(blockContent);
+    const statusMatch =
+      CodeFirstTagParser.TAG_BLOCK_PATTERNS.STATUS_LINE.exec(blockContent);
     if (!statusMatch) {
       warnings.push('STATUS가 명시되지 않아 기본값(active) 사용');
       return TagStatus.ACTIVE;
@@ -339,7 +367,8 @@ export class CodeFirstTagParser {
    * 생성 날짜 파싱
    */
   private parseCreated(blockContent: string, warnings: string[]): string {
-    const createdMatch = CodeFirstTagParser.TAG_BLOCK_PATTERNS.CREATED_LINE.exec(blockContent);
+    const createdMatch =
+      CodeFirstTagParser.TAG_BLOCK_PATTERNS.CREATED_LINE.exec(blockContent);
     if (!createdMatch) {
       const today = new Date().toISOString().split('T')[0];
       warnings.push(`CREATED가 명시되지 않아 오늘 날짜(${today}) 사용`);
@@ -353,7 +382,9 @@ export class CodeFirstTagParser {
    * 불변성 마커 파싱
    */
   private parseImmutable(blockContent: string): boolean {
-    return CodeFirstTagParser.TAG_BLOCK_PATTERNS.IMMUTABLE_LINE.test(blockContent);
+    return CodeFirstTagParser.TAG_BLOCK_PATTERNS.IMMUTABLE_LINE.test(
+      blockContent
+    );
   }
 
   /**
@@ -379,13 +410,20 @@ export class CodeFirstTagParser {
 
     // 2. 도메인 ID 형식 검증 (DOMAIN-NNN)
     if (tagBlock.domainId && !/^[A-Z0-9-]+-\d{3,}$/.test(tagBlock.domainId)) {
-      warnings.push(`도메인 ID 형식을 확인하세요: ${tagBlock.domainId} (권장: DOMAIN-001)`);
+      warnings.push(
+        `도메인 ID 형식을 확인하세요: ${tagBlock.domainId} (권장: DOMAIN-001)`
+      );
     }
 
     // 3. 체인 유효성 검증
     if (tagBlock.chain && tagBlock.chain.length > 0) {
       // Primary Chain 검증 (REQ -> DESIGN -> TASK -> TEST)
-      const primaryCategories = [TagCategory.REQ, TagCategory.DESIGN, TagCategory.TASK, TagCategory.TEST];
+      const primaryCategories = [
+        TagCategory.REQ,
+        TagCategory.DESIGN,
+        TagCategory.TASK,
+        TagCategory.TEST,
+      ];
       const chainCategories = tagBlock.chain
         .map(chainTag => chainTag.split(':')[1]?.split('-')[0])
         .filter(cat => primaryCategories.includes(cat as TagCategory));
@@ -393,11 +431,17 @@ export class CodeFirstTagParser {
       if (chainCategories.length > 1) {
         // 순서 검증
         for (let i = 0; i < chainCategories.length - 1; i++) {
-          const currentIndex = primaryCategories.indexOf(chainCategories[i] as TagCategory);
-          const nextIndex = primaryCategories.indexOf(chainCategories[i + 1] as TagCategory);
+          const currentIndex = primaryCategories.indexOf(
+            chainCategories[i] as TagCategory
+          );
+          const nextIndex = primaryCategories.indexOf(
+            chainCategories[i + 1] as TagCategory
+          );
 
           if (currentIndex >= nextIndex) {
-            warnings.push(`체인 순서가 올바르지 않습니다: ${chainCategories[i]} -> ${chainCategories[i + 1]}`);
+            warnings.push(
+              `체인 순서가 올바르지 않습니다: ${chainCategories[i]} -> ${chainCategories[i + 1]}`
+            );
           }
         }
       }
@@ -405,19 +449,23 @@ export class CodeFirstTagParser {
 
     // 4. 불변성 검증
     if (this.config.enforceImmutability && !tagBlock.immutable) {
-      suggestions.push('@IMMUTABLE 마커를 추가하여 TAG 불변성을 보장하는 것을 권장합니다');
+      suggestions.push(
+        '@IMMUTABLE 마커를 추가하여 TAG 불변성을 보장하는 것을 권장합니다'
+      );
     }
 
     // 5. 생성 날짜 검증
     if (tagBlock.created && !/^\d{4}-\d{2}-\d{2}$/.test(tagBlock.created)) {
-      warnings.push(`생성 날짜 형식을 확인하세요: ${tagBlock.created} (YYYY-MM-DD)`);
+      warnings.push(
+        `생성 날짜 형식을 확인하세요: ${tagBlock.created} (YYYY-MM-DD)`
+      );
     }
 
     return {
       valid: errors.length === 0,
       errors,
       warnings,
-      suggestions
+      suggestions,
     };
   }
 
@@ -445,7 +493,10 @@ export class CodeFirstTagParser {
   /**
    * 재귀적 디렉토리 스캔
    */
-  private async scanDirectoryRecursive(dirPath: string, results: TagBlock[]): Promise<void> {
+  private async scanDirectoryRecursive(
+    dirPath: string,
+    results: TagBlock[]
+  ): Promise<void> {
     try {
       const entries = await fs.readdir(dirPath, { withFileTypes: true });
 
@@ -492,7 +543,7 @@ export class CodeFirstTagParser {
       parseTime: 0,
       memoryUsage: 0,
       filesScanned: 0,
-      tagsFound: 0
+      tagsFound: 0,
     };
   }
 

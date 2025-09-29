@@ -5,19 +5,18 @@
  */
 
 import chalk from 'chalk';
+import type { BenchmarkRunner } from '@/core/diagnostics/benchmark-runner';
+import type { EnvironmentAnalyzer } from '@/core/diagnostics/environment-analyzer';
+import type { OptimizationRecommender } from '@/core/diagnostics/optimization-recommender';
+import type { SystemPerformanceAnalyzer } from '@/core/diagnostics/performance-analyzer';
 import type { SystemDetector } from '@/core/system-checker/detector';
-import { SystemPerformanceAnalyzer } from '@/core/diagnostics/performance-analyzer';
-import { BenchmarkRunner } from '@/core/diagnostics/benchmark-runner';
-import { OptimizationRecommender } from '@/core/diagnostics/optimization-recommender';
-import { EnvironmentAnalyzer } from '@/core/diagnostics/environment-analyzer';
 import type {
-  DoctorOptions,
   AdvancedDoctorResult,
-  SystemPerformanceMetrics,
   BenchmarkResult,
-  OptimizationRecommendation,
+  DoctorOptions,
   EnvironmentAnalysis,
-  DiagnosticSeverity,
+  OptimizationRecommendation,
+  SystemPerformanceMetrics,
 } from '@/types/diagnostics';
 
 /**
@@ -26,7 +25,7 @@ import type {
  */
 export class AdvancedDoctorCommand {
   constructor(
-    private readonly systemDetector: SystemDetector,
+    readonly _systemDetector: SystemDetector,
     private readonly performanceAnalyzer: SystemPerformanceAnalyzer,
     private readonly benchmarkRunner: BenchmarkRunner,
     private readonly optimizationRecommender: OptimizationRecommender,
@@ -39,7 +38,9 @@ export class AdvancedDoctorCommand {
    * @returns Advanced doctor result
    * @tags @API:RUN-ADVANCED-001
    */
-  public async runAdvanced(options: DoctorOptions = {}): Promise<AdvancedDoctorResult> {
+  public async runAdvanced(
+    options: DoctorOptions = {}
+  ): Promise<AdvancedDoctorResult> {
     if (options.verbose) {
       this.printAdvancedHeader();
     }
@@ -106,10 +107,11 @@ export class AdvancedDoctorCommand {
     // Generate recommendations if requested
     let recommendations: OptimizationRecommendation[] = [];
     if (options.includeRecommendations) {
-      recommendations = await this.optimizationRecommender.generateRecommendations(
-        performanceMetrics,
-        benchmarks
-      );
+      recommendations =
+        await this.optimizationRecommender.generateRecommendations(
+          performanceMetrics,
+          benchmarks
+        );
     }
 
     // Analyze environments if requested
@@ -186,8 +188,12 @@ export class AdvancedDoctorCommand {
 
     // Benchmark results impact (30% of score)
     if (results.benchmarks.length > 0) {
-      const avgBenchmarkScore = results.benchmarks.reduce((sum, b) => sum + b.score, 0) / results.benchmarks.length;
-      const failedBenchmarks = results.benchmarks.filter(b => b.status === 'fail').length;
+      const avgBenchmarkScore =
+        results.benchmarks.reduce((sum, b) => sum + b.score, 0) /
+        results.benchmarks.length;
+      const failedBenchmarks = results.benchmarks.filter(
+        b => b.status === 'fail'
+      ).length;
 
       score -= (100 - avgBenchmarkScore) * 0.3; // Scale benchmark impact
       score -= failedBenchmarks * 5; // Penalty for failed benchmarks
@@ -250,7 +256,9 @@ export class AdvancedDoctorCommand {
     ).length;
 
     const warnings = results.recommendations.filter(
-      r => r.severity === DiagnosticSeverity.WARNING || r.severity === DiagnosticSeverity.ERROR
+      r =>
+        r.severity === DiagnosticSeverity.WARNING ||
+        r.severity === DiagnosticSeverity.ERROR
     ).length;
 
     const suggestions = results.recommendations.filter(
@@ -290,11 +298,19 @@ export class AdvancedDoctorCommand {
   ): void {
     // Performance metrics
     console.log(chalk.bold('📊 Performance Metrics:'));
-    console.log(`  CPU Usage: ${results.performanceMetrics.cpuUsage.toFixed(1)}%`);
-    console.log(`  Memory Usage: ${results.performanceMetrics.memoryUsage.percentage}% (${results.performanceMetrics.memoryUsage.used}MB/${results.performanceMetrics.memoryUsage.total}MB)`);
-    console.log(`  Disk Usage: ${results.performanceMetrics.diskSpace.percentage}% (${results.performanceMetrics.diskSpace.used}GB/${results.performanceMetrics.diskSpace.available + results.performanceMetrics.diskSpace.used}GB)`);
+    console.log(
+      `  CPU Usage: ${results.performanceMetrics.cpuUsage.toFixed(1)}%`
+    );
+    console.log(
+      `  Memory Usage: ${results.performanceMetrics.memoryUsage.percentage}% (${results.performanceMetrics.memoryUsage.used}MB/${results.performanceMetrics.memoryUsage.total}MB)`
+    );
+    console.log(
+      `  Disk Usage: ${results.performanceMetrics.diskSpace.percentage}% (${results.performanceMetrics.diskSpace.used}GB/${results.performanceMetrics.diskSpace.available + results.performanceMetrics.diskSpace.used}GB)`
+    );
     if (results.performanceMetrics.networkLatency) {
-      console.log(`  Network Latency: ${results.performanceMetrics.networkLatency}ms`);
+      console.log(
+        `  Network Latency: ${results.performanceMetrics.networkLatency}ms`
+      );
     }
     console.log('');
 
@@ -302,9 +318,15 @@ export class AdvancedDoctorCommand {
     if (results.benchmarks.length > 0) {
       console.log(chalk.bold('🏃 Benchmark Results:'));
       results.benchmarks.forEach(benchmark => {
-        const statusIcon = benchmark.status === 'pass' ? '✅' :
-                          benchmark.status === 'warning' ? '⚠️' : '❌';
-        console.log(`  ${statusIcon} ${benchmark.name}: ${benchmark.score}/100 (${benchmark.duration}ms)`);
+        const statusIcon =
+          benchmark.status === 'pass'
+            ? '✅'
+            : benchmark.status === 'warning'
+              ? '⚠️'
+              : '❌';
+        console.log(
+          `  ${statusIcon} ${benchmark.name}: ${benchmark.score}/100 (${benchmark.duration}ms)`
+        );
       });
       console.log('');
     }
@@ -313,21 +335,35 @@ export class AdvancedDoctorCommand {
     if (results.environments.length > 0) {
       console.log(chalk.bold('🛠️ Development Environments:'));
       results.environments.forEach(env => {
-        const statusIcon = env.status === 'optimal' ? '✅' :
-                          env.status === 'good' ? '👍' :
-                          env.status === 'warning' ? '⚠️' : '❌';
-        console.log(`  ${statusIcon} ${env.name} ${env.version || 'unknown'} - ${env.status}`);
+        const statusIcon =
+          env.status === 'optimal'
+            ? '✅'
+            : env.status === 'good'
+              ? '👍'
+              : env.status === 'warning'
+                ? '⚠️'
+                : '❌';
+        console.log(
+          `  ${statusIcon} ${env.name} ${env.version || 'unknown'} - ${env.status}`
+        );
       });
       console.log('');
     }
 
     // Health score
-    const scoreColor = healthScore >= 90 ? chalk.green :
-                      healthScore >= 70 ? chalk.blue :
-                      healthScore >= 50 ? chalk.yellow : chalk.red;
+    const scoreColor =
+      healthScore >= 90
+        ? chalk.green
+        : healthScore >= 70
+          ? chalk.blue
+          : healthScore >= 50
+            ? chalk.yellow
+            : chalk.red;
 
     console.log(chalk.bold('🎯 System Health Score:'));
-    console.log(`  ${scoreColor(healthScore.toString())}/100 - ${chalk.bold(summary.status.toUpperCase())}`);
+    console.log(
+      `  ${scoreColor(healthScore.toString())}/100 - ${chalk.bold(summary.status.toUpperCase())}`
+    );
     console.log('');
 
     // Summary
@@ -341,9 +377,14 @@ export class AdvancedDoctorCommand {
     if (results.recommendations.length > 0) {
       console.log(chalk.bold('💡 Top Recommendations:'));
       results.recommendations.slice(0, 5).forEach((rec, index) => {
-        const severityIcon = rec.severity === DiagnosticSeverity.CRITICAL ? '🚨' :
-                           rec.severity === DiagnosticSeverity.ERROR ? '❌' :
-                           rec.severity === DiagnosticSeverity.WARNING ? '⚠️' : 'ℹ️';
+        const severityIcon =
+          rec.severity === DiagnosticSeverity.CRITICAL
+            ? '🚨'
+            : rec.severity === DiagnosticSeverity.ERROR
+              ? '❌'
+              : rec.severity === DiagnosticSeverity.WARNING
+                ? '⚠️'
+                : 'ℹ️';
         console.log(`  ${index + 1}. ${severityIcon} ${rec.title}`);
         console.log(`     ${rec.description}`);
       });

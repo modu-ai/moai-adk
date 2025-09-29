@@ -6,8 +6,8 @@
  */
 
 import type {
-  TemplateContext,
   ContextSchema,
+  TemplateContext,
   ValidationResult,
 } from './template-processor';
 

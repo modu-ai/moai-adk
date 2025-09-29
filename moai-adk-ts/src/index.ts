@@ -4,28 +4,21 @@
  * @tags @FEATURE:MAIN-API-001 @REQ:PACKAGE-CONFIG-012
  */
 
-// Core system checker
-export * from './core/system-checker';
-
-// Core project components
-export {
-  TemplateManager,
-} from './core/project/template-manager';
-
-// Template processing types
-export {
-  TemplateContext,
-} from './core/installer/templates/template-processor';
-
 // CLI components
 export { CLIApp } from './cli';
 export { DoctorCommand } from './cli/commands/doctor';
 export { InitCommand } from './cli/commands/init';
+// Template processing types
+export { TemplateContext } from './core/installer/templates/template-processor';
+// Core project components
+export { TemplateManager } from './core/project/template-manager';
+// Core system checker
+export * from './core/system-checker';
 
 // Utilities
-export { Logger, logger, LogLevel, LogEntry } from './utils/logger';
+export { LogEntry, Logger, LogLevel, logger } from './utils/logger';
 export {
-  getPackageInfo,
   getCurrentVersion,
+  getPackageInfo,
   PackageInfo,
 } from './utils/version';

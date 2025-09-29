@@ -4,7 +4,7 @@
  * @tags @TEST:CLI-STATUS-001 @REQ:CLI-FOUNDATION-012
  */
 
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+import { beforeEach, describe, expect, vi } from 'vitest';
 
 import { StatusCommand } from '../status';
 
@@ -68,7 +68,7 @@ describe('StatusCommand', () => {
       expect(result['.moai']).toBe(0);
       expect(result['.claude']).toBe(0);
       expect(result['CLAUDE.md']).toBe(0);
-      expect(result['total']).toBe(0);
+      expect(result.total).toBe(0);
     });
 
     it('should run status command successfully', async () => {

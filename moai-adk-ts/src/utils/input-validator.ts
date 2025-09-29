@@ -5,8 +5,7 @@
  * @description Secure input validation for CLI parameters and user inputs
  */
 
-import * as path from 'path';
-import { logger } from './logger';
+import * as path from 'node:path';
 
 /**
  * Validation result interface
@@ -93,10 +92,10 @@ export class InputValidator {
 
     // Dangerous pattern detection
     const dangerousPatterns = [
-      /\.\./,                    // Path traversal
-      /^[.-]/,                   // Starting with dot or dash
-      /[<>:"|?*]/,              // File system reserved chars
-      /[\x00-\x1f]/,            // Control characters
+      /\.\./, // Path traversal
+      /^[.-]/, // Starting with dot or dash
+      /[<>:"|?*]/, // File system reserved chars
+      /[\x00-\x1f]/, // Control characters
       /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i, // Windows reserved names
     ];
 
@@ -147,12 +146,13 @@ export class InputValidator {
     const trimmed = inputPath.trim();
 
     // Path length validation
-    if (trimmed.length > 260) { // Windows MAX_PATH limitation
+    if (trimmed.length > 260) {
+      // Windows MAX_PATH limitation
       errors.push('Path is too long (maximum 260 characters)');
     }
 
     // Dangerous pattern detection
-    if (this.containsDangerousPathPatterns(trimmed)) {
+    if (InputValidator.containsDangerousPathPatterns(trimmed)) {
       errors.push('Path contains dangerous patterns');
     }
 
@@ -166,22 +166,24 @@ export class InputValidator {
     let normalizedPath: string;
     try {
       normalizedPath = path.resolve(trimmed);
-    } catch (error) {
+    } catch (_error) {
       errors.push('Invalid path format');
       return { isValid: false, errors };
     }
 
     // Path traversal protection
-    if (!this.isPathSafe(normalizedPath, process.cwd())) {
+    if (!InputValidator.isPathSafe(normalizedPath, process.cwd())) {
       errors.push('Path traversal detected');
     }
 
     // File system checks (if required)
     if (mustExist || mustBeDirectory || mustBeFile) {
-      const { existsChecks, existsErrors } = await this.performExistenceChecks(
-        normalizedPath,
-        { mustExist, mustBeDirectory, mustBeFile }
-      );
+      const { existsChecks, existsErrors } =
+        await InputValidator.performExistenceChecks(normalizedPath, {
+          mustExist,
+          mustBeDirectory,
+          mustBeFile,
+        });
 
       if (!existsChecks) {
         errors.push(...existsErrors);
@@ -192,7 +194,9 @@ export class InputValidator {
     if (allowedExtensions && allowedExtensions.length > 0) {
       const ext = path.extname(normalizedPath).toLowerCase();
       if (!allowedExtensions.includes(ext)) {
-        errors.push(`File extension not allowed. Allowed: ${allowedExtensions.join(', ')}`);
+        errors.push(
+          `File extension not allowed. Allowed: ${allowedExtensions.join(', ')}`
+        );
       }
     }
 
@@ -250,15 +254,15 @@ export class InputValidator {
 
     // Git branch naming rules
     const invalidPatterns = [
-      /\.\./,                    // Double dots
-      /^[.-]/,                   // Starting with dot or dash
-      /[.-]$/,                   // Ending with dot or dash
-      /[\x00-\x1f\x7f]/,        // Control characters
-      /[~^:?*\[\]\\]/,          // Git-reserved characters
-      /\s/,                      // Whitespace
-      /@{/,                      // @{ sequence
-      /\/$/,                     // Ending with slash
-      /\/\//,                    // Double slashes
+      /\.\./, // Double dots
+      /^[.-]/, // Starting with dot or dash
+      /[.-]$/, // Ending with dot or dash
+      /[\x00-\x1f\x7f]/, // Control characters
+      /[~^:?*[\]\\]/, // Git-reserved characters
+      /\s/, // Whitespace
+      /@{/, // @{ sequence
+      /\/$/, // Ending with slash
+      /\/\//, // Double slashes
     ];
 
     for (const pattern of invalidPatterns) {
@@ -285,7 +289,9 @@ export class InputValidator {
    * Validate command options
    * @tags @API:VALIDATE-COMMAND-OPTIONS-001
    */
-  static validateCommandOptions(options: Record<string, any>): ValidationResult {
+  static validateCommandOptions(
+    options: Record<string, any>
+  ): ValidationResult {
     const errors: string[] = [];
     const sanitizedOptions: Record<string, any> = {};
 
@@ -303,7 +309,7 @@ export class InputValidator {
           continue;
         }
 
-        if (this.containsDangerousString(value)) {
+        if (InputValidator.containsDangerousString(value)) {
           errors.push(`Option ${key} contains dangerous content`);
           continue;
         }
@@ -335,14 +341,14 @@ export class InputValidator {
    */
   private static containsDangerousPathPatterns(inputPath: string): boolean {
     const dangerousPatterns = [
-      /\.\./,                    // Path traversal
-      /[\x00-\x1f]/,            // Control characters
-      /[<>:"|?*]/,              // Windows reserved chars
-      /\/etc\//,                // Unix system directories
+      /\.\./, // Path traversal
+      /[\x00-\x1f]/, // Control characters
+      /[<>:"|?*]/, // Windows reserved chars
+      /\/etc\//, // Unix system directories
       /\/bin\//,
       /\/usr\/bin\//,
       /\/var\/log\//,
-      /C:\\Windows\\/i,         // Windows system directories
+      /C:\\Windows\\/i, // Windows system directories
       /C:\\Program Files\\/i,
       /\.(exe|bat|cmd|scr|pif|com|vbs)$/i, // Executable extensions
     ];
@@ -377,9 +383,9 @@ export class InputValidator {
       /setTimeout\s*\(/i,
       /setInterval\s*\(/i,
       /<script/i,
-      /on\w+\s*=/i,           // Event handlers
-      /\${.*}/,               // Template expressions
-      /`.*`/,                 // Template literals
+      /on\w+\s*=/i, // Event handlers
+      /\${.*}/, // Template expressions
+      /`.*`/, // Template literals
     ];
 
     return dangerousPatterns.some(pattern => pattern.test(value));
@@ -391,13 +397,17 @@ export class InputValidator {
    */
   private static async performExistenceChecks(
     normalizedPath: string,
-    checks: { mustExist: boolean; mustBeDirectory: boolean; mustBeFile: boolean }
+    checks: {
+      mustExist: boolean;
+      mustBeDirectory: boolean;
+      mustBeFile: boolean;
+    }
   ): Promise<{ existsChecks: boolean; existsErrors: string[] }> {
     const { mustExist, mustBeDirectory, mustBeFile } = checks;
     const existsErrors: string[] = [];
 
     try {
-      const { promises: fs } = await import('fs');
+      const { promises: fs } = await import('node:fs');
       const stats = await fs.stat(normalizedPath);
 
       if (mustBeDirectory && !stats.isDirectory()) {
@@ -407,7 +417,7 @@ export class InputValidator {
       if (mustBeFile && !stats.isFile()) {
         existsErrors.push('Path must be a file');
       }
-    } catch (error) {
+    } catch (_error) {
       if (mustExist) {
         existsErrors.push('Path does not exist');
       }
@@ -432,7 +442,9 @@ export function validateProjectName(name: string): ValidationResult {
  * Helper function for quick path validation
  * @tags @API:QUICK-VALIDATE-PATH-001
  */
-export async function validatePath(inputPath: string): Promise<ValidationResult> {
+export async function validatePath(
+  inputPath: string
+): Promise<ValidationResult> {
   return InputValidator.validatePath(inputPath);
 }
 

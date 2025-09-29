@@ -5,8 +5,8 @@
  * and verification of all components for proper MoAI-ADK operation.
  */
 
-import { promises as fs } from 'fs';
-import path from 'path';
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
 
 /**
  * @TASK:VALIDATOR-MAIN-001 Specialized installation validation component
@@ -40,10 +40,6 @@ export class InstallationValidator {
       { path: '.claude/settings.json', required: false },
       { path: '.moai/config.json', required: false },
     ] as const;
-
-  constructor() {
-    // Optimized validator with pre-defined constants
-  }
 
   /**
    * @TASK:VALIDATE-STRUCTURE-001 Validate basic project directory structure
@@ -328,7 +324,7 @@ export class InstallationValidator {
   ): Promise<void> {
     try {
       await fs.access(fullPath, fs.constants.R_OK);
-    } catch (permError) {
+    } catch (_permError) {
       warnings.push(
         this.createWarning(
           ValidationErrorCodes.PERMISSION_DENIED,
@@ -423,7 +419,7 @@ export class InstallationValidator {
                   suggestion: 'Check file encoding and content',
                 });
               }
-            } catch (readError) {
+            } catch (_readError) {
               warnings.push({
                 code: ValidationErrorCodes.CORRUPTED_FILE,
                 message: `Cannot read agent file: ${file}`,
@@ -433,7 +429,7 @@ export class InstallationValidator {
             }
           }
         }
-      } catch (error: any) {
+      } catch (_error: any) {
         // Agents directory doesn't exist or can't be read - that's handled in structure validation
       }
 
@@ -511,10 +507,10 @@ export class InstallationValidator {
 
         try {
           await fs.access(guidePath);
-        } catch (error) {
+        } catch (_error) {
           // Development guide is optional
         }
-      } catch (error) {
+      } catch (_error) {
         // Memory directory doesn't exist - handled above
       }
 
@@ -566,7 +562,7 @@ export class InstallationValidator {
             }
           }
         }
-      } catch (error: any) {
+      } catch (_error: any) {
         // Indexes directory doesn't exist - handled above
       }
 

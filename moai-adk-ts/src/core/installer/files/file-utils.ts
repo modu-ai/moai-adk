@@ -5,7 +5,7 @@
  * @description Path security and utility functions for cross-platform compatibility
  */
 
-import * as path from 'path';
+import * as path from 'node:path';
 
 /**
  * File security and path utility functions
@@ -32,7 +32,7 @@ export class FileUtils {
 
       // If relative path starts with '..' or is absolute, it's outside the root
       return !relativePath.startsWith('..') && !path.isAbsolute(relativePath);
-    } catch (error) {
+    } catch (_error) {
       // If path resolution fails, consider it unsafe
       return false;
     }

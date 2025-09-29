@@ -4,14 +4,14 @@
  * @tags @TEST:PACKAGE-MANAGER-DETECTOR-001 @REQ:PACKAGE-MANAGER-002
  */
 
-import { describe, test, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import '@/__tests__/setup';
+import { execa } from 'execa';
 import { PackageManagerDetector } from '@/core/package-manager/detector';
 import {
-  PackageManagerType,
   type PackageManagerInfo,
+  PackageManagerType,
 } from '@/types/package-manager';
-import { execa } from 'execa';
 
 // Mock execa
 vi.mock('execa');

@@ -4,21 +4,21 @@
  * @tags @FEATURE:SYSTEM-CHECKER-001 @REQ:AUTO-VERIFY-012
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { type RequirementCheckResult, SystemDetector } from './detector';
 import { requirementRegistry } from './requirements';
-import { SystemDetector, type RequirementCheckResult } from './detector';
 
 export {
-  SystemRequirement,
-  RequirementRegistry,
-  requirementRegistry,
-} from './requirements';
-export {
-  SystemDetector,
   DetectionResult,
   RequirementCheckResult,
+  SystemDetector,
 } from './detector';
+export {
+  RequirementRegistry,
+  requirementRegistry,
+  SystemRequirement,
+} from './requirements';
 
 /**
  * System check summary interface
@@ -47,7 +47,9 @@ export class SystemChecker {
    * @returns System check summary
    * @tags @API:COMPREHENSIVE-CHECK-001
    */
-  public async runSystemCheck(projectPath?: string): Promise<SystemCheckSummary> {
+  public async runSystemCheck(
+    projectPath?: string
+  ): Promise<SystemCheckSummary> {
     // Detect languages if project path is provided
     const detectedLanguages: string[] = [];
     if (projectPath && fs.existsSync(projectPath)) {
@@ -61,19 +63,27 @@ export class SystemChecker {
 
     // Get all requirements by category
     const runtimeRequirements = requirementRegistry.getByCategory('runtime');
-    const developmentRequirements = requirementRegistry.getByCategory('development');
+    const developmentRequirements =
+      requirementRegistry.getByCategory('development');
     const optionalRequirements = requirementRegistry.getByCategory('optional');
 
     // Run checks concurrently
-    const [runtimeResults, developmentResults, optionalResults] = await Promise.all([
-      this.detector.checkMultipleRequirements(runtimeRequirements),
-      this.detector.checkMultipleRequirements(developmentRequirements),
-      this.detector.checkMultipleRequirements(optionalRequirements),
-    ]);
+    const [runtimeResults, developmentResults, optionalResults] =
+      await Promise.all([
+        this.detector.checkMultipleRequirements(runtimeRequirements),
+        this.detector.checkMultipleRequirements(developmentRequirements),
+        this.detector.checkMultipleRequirements(optionalRequirements),
+      ]);
 
     // Calculate summary
-    const allResults = [...runtimeResults, ...developmentResults, ...optionalResults];
-    const passedChecks = allResults.filter(r => r.result.isInstalled && r.result.versionSatisfied).length;
+    const allResults = [
+      ...runtimeResults,
+      ...developmentResults,
+      ...optionalResults,
+    ];
+    const passedChecks = allResults.filter(
+      r => r.result.isInstalled && r.result.versionSatisfied
+    ).length;
     const failedChecks = allResults.length - passedChecks;
 
     return {

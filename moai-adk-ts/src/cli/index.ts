@@ -1,21 +1,22 @@
 #!/usr/bin/env node
+
 /**
  * @file CLI entry point
  * @author MoAI Team
  * @tags @FEATURE:CLI-ENTRY-001 @REQ:CLI-FOUNDATION-012
  */
 
-import { Command } from 'commander';
 import chalk from 'chalk';
+import { Command } from 'commander';
 import { SystemDetector } from '@/core/system-checker/detector';
+import { createBanner } from '@/utils/banner';
+import { getCurrentVersion } from '@/utils/version';
 import { DoctorCommand } from './commands/doctor';
+import { HelpCommand } from './commands/help';
 import { InitCommand } from './commands/init';
 import { RestoreCommand } from './commands/restore';
 import { StatusCommand } from './commands/status';
 import { UpdateCommand } from './commands/update';
-import { HelpCommand } from './commands/help';
-import { createBanner } from '@/utils/banner';
-import { getCurrentVersion } from '@/utils/version';
 
 /**
  * CLI Application
@@ -51,14 +52,18 @@ export class CLIApp {
   private setupCommands(): void {
     this.program
       .name('moai')
-      .description('')  // Remove duplicate description since it's in the banner
-      .version(getCurrentVersion(), '-v, --version', 'output the current version')
+      .description('') // Remove duplicate description since it's in the banner
+      .version(
+        getCurrentVersion(),
+        '-v, --version',
+        'output the current version'
+      )
       .configureHelp({
         helpWidth: 80,
         sortSubcommands: false,
         formatHelp: () => {
           return createBanner({ showUsage: true });
-        }
+        },
       })
       .helpOption('-h, --help', 'display help for command');
 

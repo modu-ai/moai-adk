@@ -4,16 +4,16 @@
  * @tags @FEATURE:INSTALL-ORCHESTRATOR-001 @REQ:INSTALL-SYSTEM-012
  */
 
-import { logger } from '@/utils/logger';
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import mustache from 'mustache';
+import { logger } from '@/utils/logger';
 import type {
   InstallationConfig,
-  InstallationResult,
   InstallationContext,
-  ProgressCallback,
+  InstallationResult,
   PhaseStatus,
+  ProgressCallback,
 } from './types';
 // import { getDefaultTagDatabase } from '../tag-system/tag-database';
 
@@ -376,7 +376,7 @@ export class InstallationOrchestrator {
     const steps = [
       `cd ${this.config.projectName}`,
       'claude',
-      '',  // Empty line for better readability
+      '', // Empty line for better readability
       `💡 Tip: Next time use "moai init ${this.config.projectName}" to recreate this setup`,
     ];
 
@@ -540,17 +540,24 @@ export class InstallationOrchestrator {
 
     try {
       // Generate Claude Code settings only if not already installed from template
-      const existingClaudeSettingsPath = path.join(this.config.projectPath, '.claude', 'settings.json');
+      const existingClaudeSettingsPath = path.join(
+        this.config.projectPath,
+        '.claude',
+        'settings.json'
+      );
       if (!fs.existsSync(existingClaudeSettingsPath)) {
         const claudeSettingsPath = await this.createClaudeSettings();
         if (claudeSettingsPath) {
           configFiles.push(claudeSettingsPath);
         }
       } else {
-        logger.debug('Claude settings already exists from template, skipping creation', {
-          settingsPath: existingClaudeSettingsPath,
-          tag: '@DEBUG:CLAUDE-SETTINGS-EXISTS-001',
-        });
+        logger.debug(
+          'Claude settings already exists from template, skipping creation',
+          {
+            settingsPath: existingClaudeSettingsPath,
+            tag: '@DEBUG:CLAUDE-SETTINGS-EXISTS-001',
+          }
+        );
         configFiles.push(existingClaudeSettingsPath);
       }
 
@@ -814,7 +821,10 @@ export class InstallationOrchestrator {
 
       if (fs.existsSync(templatePath)) {
         // Use template file with variable substitution
-        const templateContent = await fs.promises.readFile(templatePath, 'utf-8');
+        const templateContent = await fs.promises.readFile(
+          templatePath,
+          'utf-8'
+        );
         memoryContent = mustache.render(templateContent, templateVars);
       } else {
         // Fallback: use minimal content
@@ -872,10 +882,13 @@ export class InstallationOrchestrator {
 
       // Check if settings file already exists from template
       if (fs.existsSync(settingsPath)) {
-        logger.debug('Settings file already exists from template, skipping creation', {
-          settingsPath,
-          tag: '@DEBUG:CLAUDE-SETTINGS-EXISTS-002',
-        });
+        logger.debug(
+          'Settings file already exists from template, skipping creation',
+          {
+            settingsPath,
+            tag: '@DEBUG:CLAUDE-SETTINGS-EXISTS-002',
+          }
+        );
         return settingsPath;
       }
 
@@ -1046,7 +1059,7 @@ Thumbs.db
    * @tags @UTIL:INIT-GIT-001
    */
   private async initializeGitRepository(): Promise<void> {
-    const { execSync } = require('child_process');
+    const { execSync } = require('node:child_process');
 
     try {
       process.chdir(this.config.projectPath);
@@ -1094,7 +1107,14 @@ Thumbs.db
       path.join(process.cwd(), '..', 'templates'),
       // Common npm global paths
       '/usr/local/lib/node_modules/moai-adk/templates',
-      path.join(process.env.HOME || '~', '.npm-global', 'lib', 'node_modules', 'moai-adk', 'templates'),
+      path.join(
+        process.env.HOME || '~',
+        '.npm-global',
+        'lib',
+        'node_modules',
+        'moai-adk',
+        'templates'
+      ),
     ];
 
     for (const templatePath of possiblePaths) {
@@ -1153,7 +1173,9 @@ Thumbs.db
 
     try {
       await fs.promises.mkdir(dstDir, { recursive: true });
-      const entries = await fs.promises.readdir(srcDir, { withFileTypes: true });
+      const entries = await fs.promises.readdir(srcDir, {
+        withFileTypes: true,
+      });
 
       for (const entry of entries) {
         const srcPath = path.join(srcDir, entry.name);
@@ -1161,7 +1183,11 @@ Thumbs.db
 
         if (entry.isDirectory()) {
           // Recursively copy subdirectories
-          const subFiles = await this.copyTemplateDirectory(srcPath, dstPath, variables);
+          const subFiles = await this.copyTemplateDirectory(
+            srcPath,
+            dstPath,
+            variables
+          );
           copiedFiles.push(...subFiles);
         } else {
           // Copy and process file
@@ -1201,7 +1227,16 @@ Thumbs.db
 
       // Apply Mustache template processing for text files
       const fileExt = path.extname(srcPath).toLowerCase();
-      const isTextFile = ['.md', '.json', '.js', '.ts', '.py', '.txt', '.yml', '.yaml'].includes(fileExt);
+      const isTextFile = [
+        '.md',
+        '.json',
+        '.js',
+        '.ts',
+        '.py',
+        '.txt',
+        '.yml',
+        '.yaml',
+      ].includes(fileExt);
 
       let processedContent: string;
       if (isTextFile) {
@@ -1271,7 +1306,10 @@ Thumbs.db
         },
       };
 
-      await fs.promises.writeFile(tagsPath, JSON.stringify(initialTags, null, 2));
+      await fs.promises.writeFile(
+        tagsPath,
+        JSON.stringify(initialTags, null, 2)
+      );
 
       // Create meta.json
       const metaPath = path.join(indexesDir, 'meta.json');
@@ -1298,7 +1336,10 @@ Thumbs.db
         brokenLinks: [],
       };
 
-      await fs.promises.writeFile(summaryPath, JSON.stringify(summaryData, null, 2));
+      await fs.promises.writeFile(
+        summaryPath,
+        JSON.stringify(summaryData, null, 2)
+      );
 
       logger.debug('TAG system initialized successfully', {
         tagsPath,

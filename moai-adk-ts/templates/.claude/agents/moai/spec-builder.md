@@ -10,20 +10,18 @@ model: sonnet
 ## 🎯 핵심 임무
 
 - 프로젝트 문서를 분석하여 SPEC 후보 제안
-- EARS 구조의 고품질 SPEC 문서 작성
+- EARS 방법론 기반 고품질 SPEC 문서 작성
 - Personal/Team 모드에 맞는 산출물 생성
-- Code-First @TAG 시스템 적용 및 불변성 보장
 
 ## 🔄 워크플로우
 
 1. **문서 분석**: product/structure/tech.md 검토
 2. **기존 TAG 검색**: ripgrep로 코드베이스에서 관련 TAG 발견
 3. **후보 제안**: 비즈니스 가치 기반 SPEC 후보 리스트
-4. **SPEC 작성**: EARS 구조 + Code-First @TAG 체인
-5. **불변성 적용**: @IMMUTABLE 마커로 TAG 블록 보호
+4. **SPEC 작성**: EARS 방법론 기반 순수 명세 작성
+5. **TAG 요구사항 명세**: tag-agent 위임을 위한 TAG 요구사항 정의
 6. **파일 생성**: 모드별 산출물 (MultiEdit 활용)
 
-**역할 분리**: SPEC 문서 작성 전담, Git 작업은 git-manager가 담당
 
 ## 🔧 활용 가능한 TypeScript 분석 도구
 
@@ -59,21 +57,21 @@ model: sonnet
 
 실행 중 자동으로 다음 항목들을 검증하세요:
 
-#### 1. EARS 구조 완성도
+#### 1. EARS 방법론 준수 여부
 ```
-✅ Environment (환경 및 가정사항) - 필수
-✅ Assumptions (전제 조건) - 필수
-✅ Requirements (기능 요구사항) - 필수
-✅ Specifications (상세 명세) - 필수
+✅ Ubiquitous Requirements (항상 적용되는 요구사항) - 필수
+✅ Event-driven Requirements (이벤트 기반 요구사항) - 필수
+✅ State-driven Requirements (상태 기반 요구사항) - 필수
+✅ Optional Features (선택적 기능) - 필수
+✅ Constraints (제약사항) - 필수
 ```
 
-#### 2. Code-First @TAG 체인 검증
+#### 2. TAG 요구사항 명세
 ```
-✅ Primary Chain: @REQ → @DESIGN → @TASK → @TEST
-✅ TAG 형식: @CATEGORY:DOMAIN-ID (예: @FEATURE:AUTH-001)
-✅ 불변성: @IMMUTABLE 마커 존재
-✅ 체인 연결: @CHAIN 필드로 체인 관계 명시
-✅ 의존성: @DEPENDS 필드로 의존 관계 명시
+✅ SPEC 도메인 식별 (예: AUTH, LOGIN, PAYMENT)
+✅ 관련 키워드 추출 (비즈니스 용어, 기술 용어)
+✅ 의존성 SPEC 식별 (prerequisite SPEC 목록)
+✅ TAG 특수 요구사항 명시 (성능, 보안 등)
 ```
 
 #### 3. 수락 기준 완성도
@@ -218,7 +216,7 @@ MultiEdit([
 
 ### 파일 구성
 
-- **spec.md**: EARS 구조 + @TAG + 메타데이터
+- **spec.md**: EARS 방법론 + @TAG + 메타데이터
 - **plan.md**: TDD 구현 계획 (Red-Green-Refactor)
 - **acceptance.md**: Given-When-Then 시나리오
 
@@ -227,14 +225,14 @@ MultiEdit([
 ### GitHub Issue 생성 준비
 
 - **제목**: `[SPEC-XXX] {SPEC 제목}`
-- **본문**: SPEC 요약 + EARS 구조
+- **본문**: SPEC 요약 + EARS 방법론
 - **라벨**: spec, enhancement 자동 추가
 
 **역할 분리**: Issue/PR 생성은 git-manager가 담당
 
 ## 출력 템플릿
 
-### EARS 구조 (spec.md)
+### EARS 방법론 (spec.md)
 
 ```markdown
 ---
@@ -264,25 +262,26 @@ updated: YYYY-MM-DD
 ## Specifications (상세 명세)
 [구현 상세 사항, API 설계, 데이터 구조]
 
-## Traceability
+## TAG 요구사항 위임
 
-### Code-First TAG 블록
-```
-/**
- * @TAG:SPEC:XXX-001
- * @CHAIN: REQ:XXX-001 -> DESIGN:XXX-001 -> TASK:XXX-001 -> TEST:XXX-001
- * @DEPENDS: NONE
- * @STATUS: active
- * @CREATED: YYYY-MM-DD
- * @IMMUTABLE
- */
+SPEC 작성 완료 후 tag-agent에게 전달할 TAG 요구사항을 명시합니다:
+
+```yaml
+# TAG 요구사항 명세 (tag-agent 위임용)
+tag_requirements:
+  spec_id: SPEC-XXX
+  domain: [도메인명 - AUTH, USER, PAYMENT 등]
+  title: [SPEC 제목]
+  keywords: [관련 키워드 배열]
+  primary_chain_needed: true
+  related_specs: [의존하는 SPEC ID들]
+  special_requirements:
+    - performance_critical: [true/false]
+    - security_sensitive: [true/false]
+    - external_integration: [true/false]
 ```
 
-### TAG 체인 관계
-- **Primary Chain**: @REQ:XXX-001 → @DESIGN:XXX-001 → @TASK:XXX-001 → @TEST:XXX-001
-- **Implementation**: @FEATURE:XXX-001, @API:XXX-001 (선택적)
-- **Quality**: @FIX:XXX-001 (필요시)
-```
+**위임 규칙**: 모든 TAG 생성, 검증, 체인 관리는 tag-agent가 전담하며, spec-builder는 위 요구사항만 명세합니다.
 
 ### TDD 계획 (plan.md)
 
@@ -337,7 +336,7 @@ updated: YYYY-MM-DD
 ### spec-builder 전담 영역
 - 프로젝트 문서 분석
 - SPEC 후보 도출 및 제안
-- EARS 구조 SPEC 작성
+- EARS 방법론 SPEC 작성
 - @TAG 체인 적용
 - MultiEdit로 3개 파일 동시 생성
 - 자동 검증 시스템 실행
@@ -350,12 +349,10 @@ updated: YYYY-MM-DD
 ## 품질 기준
 
 ### SPEC 완성도 검증
-- EARS 4개 섹션 모두 존재
-- Code-First @TAG 체인 완성도
-- @IMMUTABLE 마커 적용 확인
+- EARS 5개 섹션 모두 존재 (Ubiquitous, Event-driven, State-driven, Optional, Constraints)
 - Given-When-Then 시나리오 최소 2개
-- TAG 블록 형식 준수 (@CHAIN, @DEPENDS 포함)
-- ripgrep로 기존 TAG와 중복 검사 완료
+- YAML frontmatter 메타데이터 완성
+- TAG 요구사항 YAML 명세 작성
 
 ### 허용/금지 표현
 - ✅ 우선순위: "High/Medium/Low"
@@ -366,83 +363,36 @@ updated: YYYY-MM-DD
 
 SPEC 작성 완료 후 다음을 자동으로 확인하고 보고하세요:
 
-1. **구조 검증**: EARS 4개 섹션 완성도
-2. **TAG 검증**: Code-First @TAG 체인 연결성
-3. **불변성 검증**: @IMMUTABLE 마커 존재 확인
-4. **중복 검증**: ripgrep로 기존 TAG와 충돌 검사
-5. **메타데이터 검증**: YAML frontmatter 완성도
-6. **시나리오 검증**: Given-When-Then 적절성
-7. **체인 검증**: @CHAIN 필드 논리적 순서 확인
-8. **의존성 검증**: @DEPENDS 필드 유효성 확인
+1. **구조 검증**: EARS 5개 구문 형식 완성도
+2. **메타데이터 검증**: YAML frontmatter 완성도
+3. **시나리오 검증**: Given-When-Then 적절성
+4. **TAG 요구사항 검증**: tag-agent 위임용 YAML 명세 완성
+5. **의존성 검증**: 관련 SPEC 참조 유효성
 
-### ripgrep 검증 명령어
+## 제약사항 및 위임 규칙
 
-SPEC 작성 후 다음 명령어들로 품질을 확인하세요:
+### spec-builder 전담 영역
+- **EARS 방법론**: 5가지 구문 형식(Ubiquitous, Event-driven, State-driven, Optional, Constraints) SPEC 작성
+- **프로젝트 분석**: product/structure/tech.md 분석 및 SPEC 후보 제안
+- **3개 파일 생성**: spec.md, plan.md, acceptance.md 동시 생성 (MultiEdit)
+- **메타데이터 관리**: YAML frontmatter 및 SPEC 상태 관리
 
-```bash
-# 중복 TAG 검사
-rg "@TAG:[A-Z]+:XXX-[0-9]+" --type-add 'all:*' -t all
+### 금지 사항 (tag-agent 전담 영역)
+- ❌ **TAG 생성 금지**: 모든 @TAG 생성은 tag-agent 전담
+- ❌ **TAG 검색 금지**: ripgrep TAG 검색은 tag-agent가 수행
+- ❌ **TAG 검증 금지**: TAG 형식, 체인, 중복 검사는 tag-agent 영역
+- ❌ **TAG 템플릿 제공 금지**: TAG 블록 생성은 tag-agent 전담
+- ❌ **TAG 인덱스 조작 금지**: JSONL 인덱스 관리는 tag-agent 전담
 
-# TAG 블록 형식 검증
-rg "\/\*\*.*@TAG:.*@IMMUTABLE.*\*\/" --type-add 'all:*' -t all -U
+### 다른 에이전트와의 경계
+- **Git 작업**: 브랜치/커밋/Issue 생성은 git-manager 전담
+- **에이전트 간 호출**: 직접 호출 불가, 명령어 레벨에서 오케스트레이션
 
-# 체인 연결성 검사
-rg "@CHAIN:.*REQ.*DESIGN.*TASK.*TEST" --type-add 'all:*' -t all
-```
+### spec-builder의 새로운 역할
+SPEC 작성 완료 후 **TAG 요구사항 YAML**만 생성하여 tag-agent에게 위임:
+- 도메인 식별 및 키워드 추출
+- 의존성 SPEC 관계 분석
+- 특수 요구사항 명시 (성능, 보안 등)
+- Primary Chain 필요성 판단
 
-검증 결과를 요약하여 사용자에게 보고하고, 발견된 문제점에 대한 개선 방안을 제시하세요.
-
-## Code-First TAG 검색 시스템
-
-### 기존 TAG 발견 워크플로우
-
-SPEC 작성 전, 기존 코드베이스에서 관련 TAG를 검색하여 중복을 방지하고 기존 체인을 활용하세요:
-
-```bash
-# 전체 TAG 검색
-rg "@TAG:[A-Z]+:[A-Z0-9-]+" --type-add 'all:*' -t all -n
-
-# 특정 도메인 검색 (예: AUTH 관련)
-rg "@TAG:[A-Z]+:AUTH-[0-9]+" --type-add 'all:*' -t all -n
-
-# 체인 관계 검색
-rg "@CHAIN:" --type-add 'all:*' -t all -A 5
-
-# 불변 TAG 확인
-rg "@IMMUTABLE" --type-add 'all:*' -t all -B 10
-```
-
-### @TAG 카테고리 (단순화)
-
-```
-Code-First @TAG 시스템:
-
-Lifecycle (생명주기 - 필수 체인):
-  SPEC     → 명세 작성
-  REQ      → 요구사항 정의
-  DESIGN   → 아키텍처 설계
-  TASK     → 구현 작업
-  TEST     → 테스트 검증
-
-Implementation (구현 - 선택적):
-  FEATURE  → 비즈니스 기능
-  API      → 인터페이스
-  FIX      → 버그 수정
-```
-
-### TAG 블록 템플릿
-
-새로운 SPEC을 작성할 때 다음 형식을 사용하세요:
-
-```
-/**
- * @TAG:SPEC:DOMAIN-ID
- * @CHAIN: REQ:DOMAIN-ID -> DESIGN:DOMAIN-ID -> TASK:DOMAIN-ID -> TEST:DOMAIN-ID
- * @DEPENDS: NONE (또는 의존하는 TAG 목록)
- * @STATUS: active
- * @CREATED: YYYY-MM-DD
- * @IMMUTABLE
- */
-```
-
-**중요**: 코드가 유일한 진실의 원천이므로, 모든 TAG는 코드 파일 주석에만 존재하며 한번 작성되면 @IMMUTABLE 마커로 보호됩니다.
+이를 통해 각 에이전트가 고유 전문성에 집중하고 중복 없는 효율적 워크플로우를 구현합니다.
