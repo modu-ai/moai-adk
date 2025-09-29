@@ -1284,34 +1284,21 @@ Thumbs.db
    * Initialize JSON-based TAG system
    * @param moaiDir MoAI directory path
    * @tags @UTIL:INIT-TAG-SYSTEM-001
+   *
+   * NOTE: [v0.0.3+] TAG 시스템 철학 변경
+   * - 이전: tags.json 인덱스 캐시 기반 관리
+   * - 현재: 코드 직접 스캔 (rg/grep) 기반 실시간 검증
+   * - 이유: 단일 진실 소스(코드)로 동기화 문제 해결
    */
   private async initializeTagSystem(moaiDir: string): Promise<void> {
     try {
       const indexesDir = path.join(moaiDir, 'indexes');
       await fs.promises.mkdir(indexesDir, { recursive: true });
 
-      // Create initial tags.json
-      const tagsPath = path.join(indexesDir, 'tags.json');
-      const initialTags = {
-        version: '1.0.0',
-        project: this.config.projectName,
-        created: new Date().toISOString(),
-        tags: {},
-        chains: [],
-        categories: {
-          primary: ['REQ', 'DESIGN', 'TASK', 'TEST'],
-          implementation: ['FEATURE', 'API', 'UI', 'DATA'],
-          quality: ['PERF', 'SEC', 'DOCS', 'TAG'],
-          project: ['VISION', 'STRUCT', 'TECH', 'ADR'],
-        },
-      };
+      // NOTE: tags.json 생성 제거 - 코드 직접 스캔으로 전환
+      // TAG의 진실은 코드 자체에만 존재하며, 별도 인덱스 파일 불필요
 
-      await fs.promises.writeFile(
-        tagsPath,
-        JSON.stringify(initialTags, null, 2)
-      );
-
-      // Create meta.json
+      // Create meta.json (프로젝트 메타데이터는 유지)
       const metaPath = path.join(indexesDir, 'meta.json');
       const metaData = {
         project: this.config.projectName,
@@ -1323,28 +1310,13 @@ Thumbs.db
 
       await fs.promises.writeFile(metaPath, JSON.stringify(metaData, null, 2));
 
-      // Create cache directory and summary
+      // Create cache directory (다른 용도로 사용 가능)
       const cacheDir = path.join(indexesDir, 'cache');
       await fs.promises.mkdir(cacheDir, { recursive: true });
 
-      const summaryPath = path.join(cacheDir, 'summary.json');
-      const summaryData = {
-        lastUpdate: new Date().toISOString(),
-        totalTags: 0,
-        recentTags: [],
-        orphanTags: [],
-        brokenLinks: [],
-      };
-
-      await fs.promises.writeFile(
-        summaryPath,
-        JSON.stringify(summaryData, null, 2)
-      );
-
-      logger.debug('TAG system initialized successfully', {
-        tagsPath,
+      logger.debug('TAG system initialized successfully (code-scan based)', {
         metaPath,
-        summaryPath,
+        cacheDir,
         tag: '@SUCCESS:TAG-SYSTEM-INIT-001',
       });
     } catch (error) {

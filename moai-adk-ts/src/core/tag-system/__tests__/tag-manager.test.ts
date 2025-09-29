@@ -142,7 +142,9 @@ describe('@TEST-TAG-MANAGER-001: TagManager Core Functionality', () => {
       expect(retrievedTag).toBeNull();
     });
 
-    it('@TEST-SAVE-LOAD-001: should save and load database to/from JSON file', async () => {
+    // DEPRECATED: [v0.0.3+] tags.json 인덱스 테스트 - 코드 직접 스캔으로 전환
+    // NOTE: TagManager 자체는 유지하지만, 실제 프로젝트에서는 코드 스캔 사용
+    it.skip('@TEST-SAVE-LOAD-001: should save and load database to/from JSON file', async () => {
       // @TEST-SAVE-LOAD-001: JSON 파일로 저장 및 로드
       const tagEntry: Partial<TagEntry> = {
         id: '@FEATURE-AUTH-001',

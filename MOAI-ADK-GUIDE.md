@@ -35,8 +35,7 @@ MoAI-ADK는 Claude Code 환경에서 **SPEC-First TDD 개발**을 누구나 쉽�
 
 - **3단계 파이프라인**: `/moai:1-spec` → `/moai:2-build` → `/moai:3-sync`
 - **온디맨드 디버깅**: `@agent-debug-helper` (필요 시 호출)
-- ** @TAG**: 언어 중립적 추적성 시스템
-- **SQLite3 tags.db**: 모든 언어 프로젝트 통합 관리
+- ** @TAG**: 언어 중립적 추적성 시스템 (코드 직접 스캔 기반)
 
 #### 4. 🧹 하이브리드 복잡성 완전 제거
 
@@ -134,8 +133,8 @@ MoAI-ADK (TypeScript) → 언어별 TDD 도구 → 사용자 프로젝트 (모�
 
 #### **T** - **SPEC Traceability**
 - **3단계 추적**: 1-spec → 2-build → 3-sync
-- **@TAG**: 언어 무관 통합 추적성
-- **SQLite3 tags.db**: 모든 언어 프로젝트 통합 관리
+- **@TAG**: 언어 무관 통합 추적성 (코드 직접 스캔 방식)
+- **코드 기반 검증**: rg/grep을 통한 실시간 TAG 스캔
 
 ### 🎨 3단계 SPEC-First TDD 워크플로우
 
@@ -442,7 +441,7 @@ MoAI-ADK는 SPEC-First TDD를 위한 3단계 워크플로우를 제공합니다:
 ├── memory/
 │   └── development-guide.md # SPEC-First TDD 가이드
 ├── indexes/
-│   └── tags.json           #  TAG 인덱스 (SQLite3)
+│   └── (TAG는 코드에서 직접 스캔)
 ├── specs/                  # SPEC 문서들
 │   ├── SPEC-001/
 │   ├── SPEC-002/
@@ -487,7 +486,7 @@ MoAI-ADK는 SPEC-First TDD를 위한 3단계 워크플로우를 제공합니다:
 ### 개요
 
 - **목적**: 모든 산출물(SPEC, 코드, 테스트, 문서)의 추적성을 보장하고 AI 보조 개발 흐름에서 중복 작성 및 누락을 방지
-- **범위**: `.moai/` SPEC 문서, `moai-adk-ts/templates/` 기반으로 생성되는 모든 코드/리소스 파일, `tags.db`/`tags.json` 인덱스
+- **범위**: `.moai/` SPEC 문서, `moai-adk-ts/templates/` 기반으로 생성되는 모든 코드/리소스 파일, 코드 직접 스캔
 - **원칙**: "TAG 없는 변경은 없다" — 새 산출물은 생성 시점에 TAG를 할당하고, 변경 시 TAG를 동기화한다
 
 ### TAG 계층 구조 재정의
@@ -500,15 +499,15 @@ MoAI-ADK는 SPEC-First TDD를 위한 3단계 워크플로우를 제공합니다:
 | **Meta** | 거버넌스/릴리즈/운영 메타데이터 | `@OPS:PAYMENTS-001`, `@DEBT:PAYMENTS-001`, `@TAG:PAYMENTS-001` |
 
 - TAG ID 규칙: `<도메인>-<3자리 일련번호>` (`AUTH-001`, `PAYMENTS-010` 등) — 중복 방지를 위해 생성 전 `rg "@REQ:AUTH" -n` 조회 필수
-- 모든 TAG는 `tags.db`(SQLite)와 `.moai/indexes/tags.json`에 동기화되며, 체인 내 어느 Tag라도 누락될 수 없다
+- 모든 TAG는 코드에 직접 작성되며, `/moai:3-sync` 실행 시 정규식으로 스캔하여 검증한다
 
 ### 생성 및 등록 절차
 
-1. **사전 조사**: 새 기능을 정의하기 전에 `rg "@TAG"` 또는 `sqlite3 tags.db` 조회로 기존 체인을 검색해 재사용 가능 여부 확인
+1. **사전 조사**: 새 기능을 정의하기 전에 `rg "@TAG"` 명령으로 코드에서 기존 체인을 검색해 재사용 가능 여부 확인
 2. **SPEC 작성 시점**: `/moai:1-spec` 단계에서 `@TAG Catalog` 섹션을 작성하고 Primary Chain 4종(@REQ/@DESIGN/@TASK/@TEST)을 우선 등록
 3. **코드 생성 시점**: 템플릿에서 제공하는 `TAG BLOCK`을 파일 헤더(주석) 또는 주요 함수 위에 그대로 채워 넣고, Implementation/Quality TAG를 추가
 4. **테스트 작성 시점**: 테스트 함수/케이스 주석에 `@TEST` TAG를 명시하고 Primary Chain과 연결된 Implementation TAG를 참조
-5. **동기화**: `/moai:3-sync` 단계에서 `tags.json`과 `tags.db`에 최신 TAG 체인을 반영하고 고아 TAG 여부를 검사
+5. **동기화**: `/moai:3-sync` 단계에서 코드 전체를 스캔하여 TAG 체인 검증 및 고아 TAG 여부를 검사
 
 ### SPEC 문서 통합 지침
 
@@ -552,7 +551,7 @@ MoAI-ADK는 SPEC-First TDD를 위한 3단계 워크플로우를 제공합니다:
 - [ ] SPEC에 `@TAG Catalog`가 존재하고 Primary Chain이 완결되었는가?
 - [ ] 새/수정된 코드 파일 헤더에 TAG BLOCK이 반영되었는가?
 - [ ] 테스트 케이스에 대응되는 `@TEST` TAG가 존재하는가?
-- [ ] `tags.json`과 `tags.db`가 최신 상태로 동기화되었는가?
+- [ ] TAG 체인이 코드 스캔을 통해 검증되었는가?
 - [ ] 중복 TAG 또는 고아 TAG가 없는가?
 
 ---

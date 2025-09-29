@@ -59,11 +59,12 @@ graph TB
 - **trust-checker**: TRUST 5원칙 자동 검증
 - **cc-manager**: Claude Code 설정 최적화
 
-#### 🏷️ ** @AI-TAG 시스템**: 완전한 추적성
+#### 🏷️ ** @AI-TAG 시스템**: 코드 직접 스캔 기반 추적성
 - **Primary Chain**: @REQ → @DESIGN → @TASK → @TEST (필수 체인)
 - **Implementation Tags**: @FEATURE, @API, @UI, @DATA (구현 유형)
 - **Quality Tags**: @PERF, @SEC, @DOCS, @TAG (품질 속성)
 - **Meta Tags**: @OPS, @RELEASE, @DEPRECATED (메타데이터)
+- **검증 방식**: 정규식 패턴으로 코드에서 직접 스캔, 중간 캐시 없음
 
 #### ⚡ **지능형 시스템 진단**: 실용성 극대화
 - **5-Category 진단**: Runtime(2) + Development(2) + Optional(1) + Language-Specific + Performance
@@ -758,7 +759,7 @@ rg "@REQ:AUTH" -n
 # TAG 체인 추적
 rg "AUTH-001" -n
 
-# 전체 TAG 인덱스 재구축
+# 전체 코드 스캔 및 TAG 검증
 /moai:3-sync
 ```
 

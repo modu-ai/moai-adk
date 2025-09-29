@@ -289,21 +289,13 @@ export class ResourceInstaller {
       fs.mkdirSync(indexesDir, { recursive: true });
     }
 
-    // Create initial tags.json
-    const tagsFile = path.join(indexesDir, 'tags.json');
-    const initialTags = {
-      version: '1.0.0',
-      lastUpdated: new Date().toISOString(),
-      tags: [],
-      chains: [],
-      statistics: {
-        totalTags: 0,
-        totalChains: 0,
-        coverage: 0,
-      },
-    };
+    // NOTE: [v0.0.3+] TAG 시스템 철학 변경
+    // - 이전: tags.json 인덱스 캐시 기반 관리
+    // - 현재: 코드 직접 스캔 (rg/grep) 기반 실시간 검증
+    // - 이유: 단일 진실 소스(코드)로 동기화 문제 해결
+    // tags.json 생성 코드 제거됨
 
-    fs.writeFileSync(tagsFile, JSON.stringify(initialTags, null, 2), 'utf8');
+    // NOTE: .moai/indexes/ 디렉토리는 유지 (다른 인덱스 파일용)
   }
 
   private async setExecutablePermissions(scriptsDir: string): Promise<void> {

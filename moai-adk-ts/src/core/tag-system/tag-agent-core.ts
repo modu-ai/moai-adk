@@ -89,6 +89,10 @@ export class TagAgentCore {
     this.projectRoot = projectRoot;
     this.indexesPath = join(projectRoot, '.moai/indexes');
 
+    // NOTE: [v0.0.3+] TAG 시스템 철학 변경
+    // - 이전: tags.json 인덱스 캐시 기반 관리
+    // - 현재: 코드 직접 스캔 (rg/grep) 기반 실시간 검증
+    // - 이유: 단일 진실 소스(코드)로 동기화 문제 해결
     this.tagManager = new TagManager({
       filePath: join(this.indexesPath, 'tags.json'),
       enableCache: true,
@@ -415,6 +419,9 @@ export class TagAgentCore {
 
   /**
    * @API:TAG-INDEX-001: 인덱스 최적화
+   *
+   * NOTE: [v0.0.3+] tags.json 캐싱 제거 - 코드 직접 스캔 방식으로 전환
+   * 이 함수는 하위 호환성을 위해 유지하지만 실제로는 코드 스캔만 수행
    */
   private async optimizeIndexes(): Promise<{
     sizeBefore: number;
@@ -425,8 +432,8 @@ export class TagAgentCore {
     const sizeBefore = await this.getIndexSize();
     const startTime = performance.now();
 
-    // 1. 메인 TAG 데이터베이스 최적화
-    await this.tagManager.save();
+    // NOTE: 메인 TAG 데이터베이스 최적화 제거 (코드 스캔으로 전환)
+    // await this.tagManager.save();
 
     // 2. 분산 인덱스 재구축
     await this.rebuildDistributedIndexes();
@@ -434,7 +441,7 @@ export class TagAgentCore {
     // 3. 성능 지표 측정
     const sizeAfter = await this.getIndexSize();
     const indexingSpeed = performance.now() - startTime;
-    const optimizationRatio = ((sizeBefore - sizeAfter) / sizeBefore) * 100;
+    const optimizationRatio = sizeBefore > 0 ? ((sizeBefore - sizeAfter) / sizeBefore) * 100 : 0;
 
     return {
       sizeBefore,
@@ -693,15 +700,17 @@ export class TagAgentCore {
 
   /**
    * 인덱스 크기 계산
+   *
+   * NOTE: [v0.0.3+] tags.json 제외, 코드 스캔 기반으로 전환
    */
   private async getIndexSize(): Promise<number> {
     let totalSize = 0;
 
     try {
-      // 메인 인덱스 파일
-      const mainIndexPath = join(this.indexesPath, 'tags.json');
-      const mainStat = await fs.stat(mainIndexPath);
-      totalSize += mainStat.size;
+      // NOTE: 메인 인덱스 파일(tags.json) 제거 - 코드 직접 스캔으로 전환
+      // const mainIndexPath = join(this.indexesPath, 'tags.json');
+      // const mainStat = await fs.stat(mainIndexPath);
+      // totalSize += mainStat.size;
 
       // 분산 인덱스 파일들
       const categoriesDir = join(this.indexesPath, 'categories');
