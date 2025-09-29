@@ -4,7 +4,7 @@
  * @tags @TEST:PACKAGE-MANAGER-INSTALLER-001 @REQ:PACKAGE-MANAGER-003
  */
 
-import { describe, test, expect, beforeEach, jest, vi } from 'vitest';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 import '@/__tests__/setup';
 import { PackageManagerInstaller } from '@/core/package-manager/installer';
 import {

@@ -1,14 +1,50 @@
 /**
- * @file Structured logging utility
+ * @file Structured logging utility with user-friendly output support
  * @author MoAI Team
  * @tags @FEATURE:STRUCTURED-LOGGING-001 @REQ:TRUST-SECURE-001
  */
+
+import chalk from 'chalk';
 
 /**
  * Log levels for structured logging
  * @tags @DESIGN:LOG-LEVELS-001
  */
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+
+/**
+ * Log output format modes
+ * @tags @DESIGN:LOG-FORMAT-001
+ */
+export type LogFormat = 'json' | 'human';
+
+/**
+ * Determine the appropriate log format based on environment
+ * @returns Log format to use
+ * @tags @UTIL:DETECT-FORMAT-001
+ */
+function getLogFormat(): LogFormat {
+  // Use JSON format for development or when LOG_FORMAT is explicitly set to json
+  if (process.env['NODE_ENV'] === 'development' || process.env['LOG_FORMAT'] === 'json') {
+    return 'json';
+  }
+
+  // Use human-readable format for CLI usage and production
+  return 'human';
+}
+
+/**
+ * Check if output should be colorized
+ * @returns True if colors should be used
+ * @tags @UTIL:SHOULD-COLORIZE-001
+ */
+function shouldColorize(): boolean {
+  return (
+    process.stdout.isTTY &&
+    process.env['TERM'] !== 'dumb' &&
+    process.env['NO_COLOR'] === undefined
+  );
+}
 
 /**
  * Structured log entry
@@ -109,6 +145,70 @@ export class Logger {
   }
 
   /**
+   * Format log entry for human-readable output
+   * @param entry - Log entry to format
+   * @returns Formatted string
+   * @tags @UTIL:FORMAT-HUMAN-001
+   */
+  private formatHumanReadable(entry: LogEntry): string {
+    const colorize = shouldColorize();
+    const { level, message, context } = entry;
+
+    // Level indicators
+    const levelColors = {
+      debug: chalk.gray,
+      info: chalk.blue,
+      warn: chalk.yellow,
+      error: chalk.red,
+    };
+
+    const levelColor = levelColors[level];
+
+    // Format the main message
+    let output = colorize && levelColor ? levelColor(message) : message;
+
+    // Add context if present and relevant for user display
+    if (context) {
+      // Only show user-relevant context, not debug tags
+      const userContext = Object.entries(context)
+        .filter(([key]) => !key.startsWith('tag') && !key.startsWith('@'))
+        .map(([key, value]) => `${key}: ${value}`)
+        .join(', ');
+
+      if (userContext) {
+        output += colorize ? chalk.gray(` (${userContext})`) : ` (${userContext})`;
+      }
+    }
+
+    return output;
+  }
+
+  /**
+   * Output log entry in appropriate format
+   * @param entry - Log entry to output
+   * @param outputMethod - Console method to use
+   * @tags @UTIL:OUTPUT-LOG-001
+   */
+  private outputLog(
+    entry: LogEntry,
+    outputMethod: (message: string) => void
+  ): void {
+    const format = getLogFormat();
+
+    if (format === 'json') {
+      outputMethod(JSON.stringify(entry));
+    } else {
+      // Human-readable format - suppress debug logs in human mode
+      if (entry.level === 'debug') {
+        return; // Skip debug logs in human-readable mode
+      }
+
+      const formatted = this.formatHumanReadable(entry);
+      outputMethod(formatted);
+    }
+  }
+
+  /**
    * Log debug message
    * @param message - Debug message
    * @param context - Additional context
@@ -116,7 +216,7 @@ export class Logger {
    */
   public debug(message: string, context?: Record<string, unknown>): void {
     const entry = this.createLogEntry('debug', message, context);
-    console.debug(JSON.stringify(entry));
+    this.outputLog(entry, console.debug);
   }
 
   /**
@@ -127,7 +227,7 @@ export class Logger {
    */
   public info(message: string, context?: Record<string, unknown>): void {
     const entry = this.createLogEntry('info', message, context);
-    console.log(JSON.stringify(entry));
+    this.outputLog(entry, console.log);
   }
 
   /**
@@ -138,7 +238,7 @@ export class Logger {
    */
   public warn(message: string, context?: Record<string, unknown>): void {
     const entry = this.createLogEntry('warn', message, context);
-    console.warn(JSON.stringify(entry));
+    this.outputLog(entry, console.warn);
   }
 
   /**
@@ -164,7 +264,28 @@ export class Logger {
           },
         }
       : baseEntry;
-    console.error(JSON.stringify(entry));
+    this.outputLog(entry, console.error);
+  }
+
+  /**
+   * Log a simple message without JSON formatting (always human-readable)
+   * @param message - Message to log
+   * @param level - Log level for styling
+   * @tags @API:LOG-SIMPLE-001
+   */
+  public simple(message: string, level: LogLevel = 'info'): void {
+    const colorize = shouldColorize();
+
+    const levelColors = {
+      debug: chalk.gray,
+      info: chalk.blue,
+      warn: chalk.yellow,
+      error: chalk.red,
+    };
+
+    const levelColor = levelColors[level];
+    const output = colorize && levelColor ? levelColor(message) : message;
+    console.log(output);
   }
 }
 

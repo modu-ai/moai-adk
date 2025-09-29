@@ -1,5 +1,5 @@
 /**
- * @FEATURE-COMMIT-HELPER-001: TypeScript CommitHelper 구현
+ * @FEATURE:COMMIT-HELPER-001 TypeScript CommitHelper 구현
  * @연결: @REQ:GIT-COMMIT-001 → @DESIGN:COMMIT-WORKFLOW-003 → @TASK:COMMIT-TS-PORT-001
  *
  * MoAI 커밋 도우미 v1.0.0 (TypeScript 포팅)
@@ -97,7 +97,7 @@ export class CommitHelper {
   }
 
   /**
-   * @API-GET-CHANGED-FILES-001: 변경된 파일 목록 조회
+   * @API:GET-CHANGED-FILES-001 변경된 파일 목록 조회
    */
   async getChangedFiles(): Promise<ChangedFilesResult> {
     try {
@@ -138,7 +138,7 @@ export class CommitHelper {
   }
 
   /**
-   * @API-CREATE-SMART-COMMIT-001: 스마트 커밋 생성
+   * @API:CREATE-SMART-COMMIT-001 스마트 커밋 생성
    */
   async createSmartCommit(
     message?: string,
@@ -193,7 +193,7 @@ export class CommitHelper {
   }
 
   /**
-   * @API-CREATE-CONSTITUTION-COMMIT-001: TRUST 원칙 기반 커밋 생성
+   * @API:CREATE-CONSTITUTION-COMMIT-001 TRUST 원칙 기반 커밋 생성
    */
   async createConstitutionCommit(
     message: string,
@@ -238,7 +238,7 @@ export class CommitHelper {
   }
 
   /**
-   * @API-SUGGEST-COMMIT-MESSAGE-001: 커밋 메시지 제안
+   * @API:SUGGEST-COMMIT-MESSAGE-001 커밋 메시지 제안
    */
   async suggestCommitMessage(context?: string): Promise<SuggestionResult> {
     try {

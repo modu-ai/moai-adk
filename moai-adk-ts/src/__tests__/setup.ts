@@ -6,7 +6,10 @@
 
 import { expect } from 'vitest';
 
-// Extend Vitest matchers for better testing
+/**
+ * Extend Vitest matchers for better testing
+ * @tags @TEST:CUSTOM-MATCHERS-001
+ */
 interface CustomMatchers<R = unknown> {
   toBeOneOf(expected: any[]): R;
 }
@@ -16,7 +19,10 @@ declare module 'vitest' {
   interface AsymmetricMatchersContaining extends CustomMatchers {}
 }
 
-// Custom matcher for "one of" assertions
+/**
+ * Custom matcher for "one of" assertions
+ * @tags @TEST:ONE-OF-MATCHER-001
+ */
 expect.extend({
   toBeOneOf(received: any, expected: any[]) {
     const pass = expected.includes(received);

@@ -1,0 +1,86 @@
+{
+  "_meta": {
+    "@DATA:CONFIG-STRUCTURE-001": "@TECH:JSON-CONFIG-001",
+    "@REQ:PROJECT-CONFIG-001": "@DESIGN:MOAI-CONFIG-001"
+  },
+  "constitution": {
+    "enforce_tdd": true,
+    "principles": {
+      "simplicity": {
+        "max_projects": 5,
+        "notes": "기본 권장값. 프로젝트 규모에 따라 .moai/config.json 또는 SPEC/ADR로 근거와 함께 조정하세요."
+      }
+    },
+    "require_tags": true,
+    "simplicity_threshold": 5,
+    "test_coverage_target": 85
+  },
+  "git_strategy": {
+    "personal": {
+      "auto_checkpoint": true,
+      "auto_commit": true,
+      "branch_prefix": "feature/",
+      "checkpoint_interval": 300,
+      "cleanup_days": 7,
+      "max_checkpoints": 50
+    },
+    "team": {
+      "auto_pr": true,
+      "develop_branch": "develop",
+      "draft_pr": true,
+      "feature_prefix": "feature/SPEC-",
+      "main_branch": "main",
+      "use_gitflow": true
+    }
+  },
+  "pipeline": {
+    "available_commands": [
+      "/moai:1-spec",
+      "/moai:2-build",
+      "/moai:3-sync",
+      "/moai:4-debug"
+    ],
+    "current_stage": "initialized"
+  },
+  "project": {
+    "created_at": "{{CREATION_TIMESTAMP}}",
+    "description": "{{PROJECT_DESCRIPTION}}",
+    "initialized": true,
+    "mode": "{{PROJECT_MODE}}",
+    "name": "{{PROJECT_NAME}}",
+    "version": "{{PROJECT_VERSION}}"
+  },
+  "tags": {
+    "auto_sync": true,
+    "storage_type": "distributed",
+    "categories": [
+      "REQ",
+      "DESIGN",
+      "TASK",
+      "TEST",
+      "VISION",
+      "STRUCT",
+      "TECH",
+      "ADR",
+      "FEATURE",
+      "API",
+      "UI",
+      "DATA",
+      "PERF",
+      "SEC",
+      "DOCS",
+      "TAG"
+    ],
+    "distributed_storage": {
+      "meta_path": ".moai/indexes/meta.json",
+      "categories_path": ".moai/indexes/categories/",
+      "relations_path": ".moai/indexes/relations/",
+      "cache_path": ".moai/indexes/cache/"
+    },
+    "legacy_support": {
+      "monolithic_path": ".moai/indexes/tags.json",
+      "adapter_enabled": true,
+      "fallback_mode": false
+    }
+  }
+}

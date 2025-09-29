@@ -14,6 +14,7 @@ import { RestoreCommand } from './commands/restore';
 import { StatusCommand } from './commands/status';
 import { UpdateCommand } from './commands/update';
 import { HelpCommand } from './commands/help';
+import { createBanner } from '@/utils/banner';
 
 /**
  * CLI Application
@@ -49,17 +50,25 @@ export class CLIApp {
   private setupCommands(): void {
     this.program
       .name('moai')
-      .description('🗿 MoAI-ADK: Modu-AI Agentic Development kit')
-      .version('0.0.1', '-v, --version', 'output the current version');
+      .description('')  // Remove duplicate description since it's in the banner
+      .version('0.0.1', '-v, --version', 'output the current version')
+      .configureHelp({
+        helpWidth: 80,
+        sortSubcommands: false,
+        formatHelp: () => {
+          return createBanner({ showUsage: true });
+        }
+      })
+      .helpOption('-h, --help', 'display help for command');
 
     // Doctor command
     this.program
       .command('doctor')
       .description('Run system diagnostics')
       .option('-l, --list-backups', 'List available backups')
-      .action(async () => {
+      .action(async (options: { listBackups?: boolean }) => {
         try {
-          await this.doctorCommand.run();
+          await this.doctorCommand.run(options);
         } catch (error) {
           console.error(chalk.red('Error running diagnostics:'), error);
           process.exit(1);

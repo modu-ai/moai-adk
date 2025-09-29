@@ -22,7 +22,7 @@
   },
   "packageManager": "bun@1.2.19",
   "scripts": {
-    "build": "tsup && bun run build:hooks && bun run build:scripts",
+    "build": "tsup && bun run build:scripts",
     "build:hooks": "tsup --config tsup.hooks.config.ts",
     "build:scripts": "tsup --config tsup.scripts.config.ts",
     "build:watch": "tsup --watch",
@@ -55,7 +55,8 @@
     "mustache": "^4.2.0",
     "semver": "^7.7.2",
     "simple-git": "^3.28.0",
-    "yaml": "^2.6.2"
+    "yaml": "^2.6.2",
+    "validator": "^13.12.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.4",
@@ -65,6 +66,7 @@
     "@types/mustache": "^4.2.5",
     "@types/node": "^24.5.2",
     "@types/semver": "^7.7.1",
+    "@types/validator": "^13.12.2",
     "@vitest/spy": "^3.2.4",
     "@vitest/ui": "^3.2.4",
     "c8": "^10.1.3",
@@ -77,6 +79,7 @@
   },
   "files": [
     "dist",
+    "templates",
     "README.md",
     "LICENSE"
   ],

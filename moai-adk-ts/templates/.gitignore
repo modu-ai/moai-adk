@@ -1,0 +1,61 @@
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Cache
+__pycache__/
+.pytest_cache/
+*.pyc
+*.pyo
+node_modules/
+*.tsbuildinfo
+.tscache/
+
+# Backups
+
+# Virtual environment
+venv/
+.venv/
+env/
+.env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.moai/checkpoints/snapshots/
+.moai/checkpoints/tmp/
+
+# SQLite databases (legacy - migrated to distributed JSON)
+*.db
+*.db-shm
+*.db-wal
+migration_test.db*
+test_tags.db*
+**/indexes/*.db*
+
+# Large TAG index files (use distributed storage instead)
+.moai/indexes/tags.json
+moai-adk-ts/.moai/indexes/tags.json
+
+# Distributed TAG system (keep tracked)
+!.moai/indexes/meta.json
+!.moai/indexes/categories/
+!.moai/indexes/relations/
+!.moai/indexes/cache/summary.json

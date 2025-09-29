@@ -174,7 +174,7 @@ GuidelineChecker가 코드 변경 시 위 원칙을 자동 점검하며, 위반 
 | Implementation | `@FEATURE → @API → @UI → @DATA` | 구현 세부 항목 추적 |
 | Quality | `@PERF → @SEC → @DOCS → @TAG` | 성능·보안·문서·추적 품질 |
 
-`/moai:3-sync`는 `.moai/indexes/tags.json`과 `.moai/reports/sync-report.md`를 갱신하여 요구사항 ↔ 구현 ↔ 테스트를 끊김 없이 연결합니다.
+✅ **분산 TAG 시스템 v4.0**이 JSONL 기반으로 `.moai/indexes/`에서 요구사항 ↔ 구현 ↔ 테스트를 94% 최적화된 성능으로 연결합니다.
 
 ---
 

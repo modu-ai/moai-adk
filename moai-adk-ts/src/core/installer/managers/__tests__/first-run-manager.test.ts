@@ -3,7 +3,7 @@
  * @task FIRST-RUN-TEST-001 RED stage - failing tests for first run detection
  */
 
-import { jest } from 'vitest';
+import { describe, test, expect, beforeEach } from 'vitest';
 import { FirstRunManager } from '../first-run-manager';
 
 describe('FirstRunManager', () => {

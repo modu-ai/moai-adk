@@ -4,7 +4,7 @@
  * @tags @TEST:PROJECT-WIZARD-001 @REQ:CLI-WIZARD-001
  */
 
-import { describe, test, expect, beforeEach, jest, vi } from 'vitest';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 import '@/__tests__/setup';
 import { ProjectWizard } from '@/core/project/wizard';
 import { ProjectType, ProjectConfig } from '@/types/project';

@@ -28,6 +28,7 @@ import {
 } from './constants';
 import { GitHubIntegration } from './github-integration';
 import { GitLockManager } from './git-lock-manager';
+import { InputValidator } from '../../utils/input-validator';
 
 /**
  * Git 작업을 관리하는 메인 클래스
@@ -173,14 +174,23 @@ export class GitManager {
   }
 
   /**
-   * 새 브랜치 생성
+   * 새 브랜치 생성 (보안 강화)
    */
   async createBranch(branchName: string, baseBranch?: string): Promise<void> {
     try {
-      // 브랜치명 검증
+      // 강화된 브랜치명 검증
+      const validation = InputValidator.validateBranchName(branchName);
+      if (!validation.isValid) {
+        throw new Error(`Branch name validation failed: ${validation.errors.join(', ')}`);
+      }
+
+      // 추가적인 Git 명명 규칙 검증
       if (!GitNamingRules.isValidBranchName(branchName)) {
         throw new Error(`Invalid branch name: ${branchName}`);
       }
+
+      // 안전한 브랜치명 사용
+      const safeBranchName = validation.sanitizedValue || branchName;
 
       // 초기 커밋이 없는 경우 기본 파일 생성
       const status = await this.git.status();
@@ -197,6 +207,12 @@ export class GitManager {
       if (baseBranch) {
         // 베이스 브랜치가 존재하는지 확인
         const branches = await this.git.branch();
+        // 베이스 브랜치명도 검증
+        const baseBranchValidation = InputValidator.validateBranchName(baseBranch);
+        if (!baseBranchValidation.isValid) {
+          throw new Error(`Base branch name validation failed: ${baseBranchValidation.errors.join(', ')}`);
+        }
+
         if (
           !branches.all.includes(baseBranch) &&
           baseBranch !== 'main' &&
@@ -204,9 +220,9 @@ export class GitManager {
         ) {
           throw new Error(`Base branch '${baseBranch}' does not exist`);
         }
-        await this.git.checkoutBranch(branchName, baseBranch);
+        await this.git.checkoutBranch(safeBranchName, baseBranch);
       } else {
-        await this.git.checkoutLocalBranch(branchName);
+        await this.git.checkoutLocalBranch(safeBranchName);
       }
     } catch (error) {
       throw this.createGitError(

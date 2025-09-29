@@ -76,6 +76,19 @@ export interface EnvironmentConfig {
 }
 
 /**
+ * Environment analysis result (alias for EnvironmentConfig)
+ * @tags @DATA:ENV-ANALYSIS-001
+ */
+export interface EnvironmentAnalysis extends EnvironmentConfig {
+  readonly name: string;
+  readonly detected: boolean;
+  readonly version?: string;
+  readonly configFiles: string[];
+  readonly recommendations: OptimizationRecommendation[];
+  readonly status: 'optimal' | 'good' | 'warning' | 'poor';
+}
+
+/**
  * Extended doctor result with advanced features
  * @tags @DATA:ADVANCED-DOCTOR-RESULT-001
  */

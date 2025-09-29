@@ -5,11 +5,14 @@
  */
 
 import chalk from 'chalk';
+import * as path from 'path';
 import type { SystemDetector } from '@/core/system-checker/detector';
 import { InstallationOrchestrator } from '@/core/installer/orchestrator';
 import type { InstallationConfig } from '@/core/installer/types';
 import { DoctorCommand } from './doctor';
 import type { InitResult } from '@/types/project';
+import { InputValidator } from '@/utils/input-validator';
+import { printBanner, createHeader } from '@/utils/banner';
 
 /**
  * Progress callback for installation progress display
@@ -56,13 +59,15 @@ export class InitCommand {
     features?: string[];
   }): Promise<InitResult> {
     try {
-      console.log(
-        chalk.blue.bold('🚀 MoAI-ADK TypeScript Project Initialization')
-      );
-      console.log(chalk.blue('Integrating all ported components...\n'));
+      // Display the MoAI banner
+      printBanner();
+
+      // Display initialization header
+      const inputProjectName = options?.name || 'moai-project';
+      console.log(createHeader(`Initializing ${inputProjectName} project...`));
 
       // Step 1: System verification
-      console.log(chalk.yellow('Step 1: System Verification'));
+      console.log(chalk.yellow.bold('Step 1: System Verification'));
       const doctorResult = await this.doctorCommand.run();
 
       if (!doctorResult.allPassed) {
@@ -75,12 +80,78 @@ export class InitCommand {
         };
       }
 
-      // Step 2: Configuration setup
-      console.log(chalk.yellow('\nStep 2: Configuration Setup'));
+      // Step 2: Input validation and configuration setup
+      console.log(chalk.yellow.bold('\nStep 2: Configuration'));
+
+      // Validate project name
+      const projectNameValidation = InputValidator.validateProjectName(
+        options?.name || 'moai-project',
+        { maxLength: 50, allowSpaces: false }
+      );
+
+      if (!projectNameValidation.isValid) {
+        return {
+          success: false,
+          projectPath: '',
+          config: { name: '', type: 'typescript' as any },
+          createdFiles: [],
+          errors: [
+            'Project name validation failed:',
+            ...projectNameValidation.errors
+          ],
+        };
+      }
+
+      // Determine project path
+      let projectPathInput: string;
+      const projectName = projectNameValidation.sanitizedValue || 'moai-project';
+
+      if (options?.path) {
+        // Explicit path provided
+        projectPathInput = options.path;
+      } else if (projectName === '.' || projectName === 'moai-project') {
+        // Current directory installation (moai init . or default name)
+        projectPathInput = process.cwd();
+      } else {
+        // Create new directory with project name
+        projectPathInput = path.join(process.cwd(), projectName);
+      }
+
+      const pathValidation = await InputValidator.validatePath(projectPathInput, {
+        mustBeDirectory: false, // Directory will be created if needed
+        maxDepth: 10,
+      });
+
+      if (!pathValidation.isValid) {
+        return {
+          success: false,
+          projectPath: '',
+          config: { name: '', type: 'typescript' as any },
+          createdFiles: [],
+          errors: [
+            'Project path validation failed:',
+            ...pathValidation.errors
+          ],
+        };
+      }
+
+      // Validate mode
+      const validModes = ['personal', 'team'];
+      const mode = options?.mode || 'personal';
+      if (!validModes.includes(mode)) {
+        return {
+          success: false,
+          projectPath: '',
+          config: { name: '', type: 'typescript' as any },
+          createdFiles: [],
+          errors: [`Invalid mode: ${mode}. Must be one of: ${validModes.join(', ')}`],
+        };
+      }
+
       const config: InstallationConfig = {
-        projectPath: options?.path || process.cwd(),
-        projectName: options?.name || 'moai-project',
-        mode: options?.mode || 'personal',
+        projectPath: pathValidation.sanitizedValue || projectPathInput,
+        projectName: projectNameValidation.sanitizedValue || 'moai-project',
+        mode: mode as 'personal' | 'team',
         backupEnabled: options?.backup !== false,
         overwriteExisting: options?.force || false,
         additionalFeatures: options?.features || [],
@@ -91,7 +162,7 @@ export class InitCommand {
       console.log(chalk.gray(`  Path: ${config.projectPath}`));
 
       // Step 3: Full installation with orchestrator
-      console.log(chalk.yellow('\nStep 3: Project Installation'));
+      console.log(chalk.yellow.bold('\nStep 3: Installation'));
       const orchestrator = new InstallationOrchestrator(config);
       const installResult =
         await orchestrator.executeInstallation(displayProgress);
@@ -165,7 +236,7 @@ export class InitCommand {
       ? {
           name: projectName,
           mode: 'personal' as const,
-          path: process.cwd(),
+          // Remove explicit path to let runInteractive handle path logic
         }
       : undefined;
 

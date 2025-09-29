@@ -4,7 +4,7 @@
  * @tags @TEST:CLI-INIT-001 @REQ:CLI-INIT-002
  */
 
-import { describe, test, expect, beforeEach, jest, vi } from 'vitest';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 import '@/__tests__/setup';
 import { InitCommand } from '@/cli/commands/init';
 import { ProjectWizard } from '@/core/project/wizard';

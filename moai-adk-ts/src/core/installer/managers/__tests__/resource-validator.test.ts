@@ -3,7 +3,7 @@
  * @task RESOURCE-TEST-001 RED stage - failing tests for resource validation
  */
 
-import { jest } from 'vitest';
+import { describe, test, expect, beforeEach } from 'vitest';
 import { ResourceValidator } from '../resource-validator';
 import type {
   ValidationResult,

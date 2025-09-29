@@ -6,6 +6,7 @@
  * @REQ:SPEC-METADATA-001 SPEC 메타데이터 구조 정의 요구사항
  * @DESIGN:YAML-FRONTMATTER-001 YAML frontmatter 기반 메타데이터 설계
  * @TASK:TYPE-DEFINITION-001 TypeScript 타입 정의 구현
+ * @TEST:SPEC-METADATA-TEST-001 메타데이터 타입 정의 테스트 (covered by enum validation)
  */
 
 /**

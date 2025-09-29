@@ -1,19 +1,13 @@
 /**
- * @DATA:GIT-CONSTANTS-001 Git Configuration Constants
- * @FEATURE:GIT-DEFAULTS-001 Git 기본 설정 상수
- *
- * Git Manager Constants
- * SPEC-012 Week 2 Track D: Git System Integration
- *
- * @TASK:GIT-CONFIG-SETUP-001 Git 설정 상수 정의
- * @DESIGN:DEFAULT-VALUES-001 기본값 설계
- * @STRUCT:GIT-SYSTEM-001 Git 시스템 구조 정의
- *
- * @fileoverview Git naming rules, templates, and constants
+ * @file Git Configuration Constants
+ * @author MoAI Team
+ * @tags @DATA:GIT-CONSTANTS-001 @FEATURE:GIT-DEFAULTS-001 @TASK:GIT-CONFIG-SETUP-001
+ * @description Git naming rules, templates, and default configuration constants
  */
 
 /**
  * Git 브랜치 명명 규칙
+ * @tags @DATA:GIT-NAMING-RULES-001
  */
 export const GitNamingRules = {
   FEATURE_PREFIX: 'feature/',
@@ -24,26 +18,31 @@ export const GitNamingRules = {
 
   /**
    * 기능 브랜치명 생성
+   * @tags @API:CREATE-FEATURE-BRANCH-001
    */
   createFeatureBranch: (name: string): string => `feature/${name}`,
 
   /**
    * SPEC 브랜치명 생성
+   * @tags @API:CREATE-SPEC-BRANCH-001
    */
   createSpecBranch: (specId: string): string => `spec/${specId}`,
 
   /**
    * 버그픽스 브랜치명 생성
+   * @tags @API:CREATE-BUGFIX-BRANCH-001
    */
   createBugfixBranch: (name: string): string => `bugfix/${name}`,
 
   /**
    * 핫픽스 브랜치명 생성
+   * @tags @API:CREATE-HOTFIX-BRANCH-001
    */
   createHotfixBranch: (name: string): string => `hotfix/${name}`,
 
   /**
    * 브랜치명 검증
+   * @tags @API:VALIDATE-BRANCH-NAME-001
    */
   isValidBranchName: (name: string): boolean => {
     // Git 브랜치명 규칙: 알파벳, 숫자, 하이픈, 슬래시 허용
@@ -60,6 +59,7 @@ export const GitNamingRules = {
 
 /**
  * Git 커밋 메시지 템플릿
+ * @tags @DATA:GIT-COMMIT-TEMPLATES-001
  */
 export const GitCommitTemplates = {
   FEATURE: '✨ feat: {message}',
@@ -120,6 +120,7 @@ export const GitCommitTemplates = {
 
 /**
  * MoAI-ADK .gitignore 템플릿
+ * @tags @DATA:GITIGNORE-TEMPLATES-001
  */
 export const GitignoreTemplates = {
   MOAI: `# MoAI-ADK Generated .gitignore
@@ -298,6 +299,7 @@ dmypy.json
 
 /**
  * Git 기본 설정
+ * @tags @DATA:GIT-DEFAULTS-001
  */
 export const GitDefaults = {
   DEFAULT_BRANCH: 'main',
@@ -345,6 +347,7 @@ export const GitDefaults = {
 
 /**
  * GitHub 설정
+ * @tags @DATA:GITHUB-DEFAULTS-001
  */
 export const GitHubDefaults = {
   API_BASE_URL: 'https://api.github.com',
@@ -439,6 +442,7 @@ What actually happens
 
 /**
  * Git 타임아웃 설정
+ * @tags @DATA:GIT-TIMEOUTS-001
  */
 export const GitTimeouts = {
   CLONE: 300000, // 5분

@@ -3,7 +3,7 @@
  * @task POST-INSTALL-TEST-001 RED stage - failing tests for PostInstall functionality
  */
 
-import { jest, vi } from 'vitest';
+import { vi } from 'vitest';
 import { PostInstallManager } from '../post-install-manager';
 import type { ResourceValidator } from '../resource-validator';
 import type { FirstRunManager } from '../first-run-manager';

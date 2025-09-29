@@ -4,7 +4,7 @@
  * @tags @TEST:ADVANCED-DOCTOR-001 @REQ:ADVANCED-DOCTOR-001
  */
 
-import { describe, test, expect, beforeEach, jest, vi } from 'vitest';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 import '@/__tests__/setup';
 import { AdvancedDoctorCommand } from '@/cli/commands/doctor-advanced';
 import { SystemPerformanceAnalyzer } from '@/core/diagnostics/performance-analyzer';
@@ -15,11 +15,21 @@ import { SystemDetector } from '@/core/system-checker/detector';
 import { DiagnosticSeverity, type DoctorOptions } from '@/types/diagnostics';
 
 // Mock modules
-vi.mock('@/core/diagnostics/performance-analyzer');
-vi.mock('@/core/diagnostics/benchmark-runner');
-vi.mock('@/core/diagnostics/optimization-recommender');
-vi.mock('@/core/diagnostics/environment-analyzer');
-vi.mock('@/core/system-checker/detector');
+vi.mock('@/core/diagnostics/performance-analyzer', () => ({
+  SystemPerformanceAnalyzer: vi.fn()
+}));
+vi.mock('@/core/diagnostics/benchmark-runner', () => ({
+  BenchmarkRunner: vi.fn()
+}));
+vi.mock('@/core/diagnostics/optimization-recommender', () => ({
+  OptimizationRecommender: vi.fn()
+}));
+vi.mock('@/core/diagnostics/environment-analyzer', () => ({
+  EnvironmentAnalyzer: vi.fn()
+}));
+vi.mock('@/core/system-checker/detector', () => ({
+  SystemDetector: vi.fn()
+}));
 
 describe('AdvancedDoctorCommand', () => {
   let doctorCommand: AdvancedDoctorCommand;

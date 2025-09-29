@@ -7,14 +7,15 @@
 // Core system checker
 export * from './core/system-checker';
 
-// Core installer components
+// Core project components
 export {
   TemplateManager,
-  templateManager,
+} from './core/project/template-manager';
+
+// Template processing types
+export {
   TemplateContext,
-  TemplateRenderResult,
-  ITemplateManager,
-} from './core/installer/managers/template-manager';
+} from './core/installer/templates/template-processor';
 
 // CLI components
 export { CLIApp } from './cli';

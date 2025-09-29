@@ -5,6 +5,9 @@
  */
 
 import chalk from 'chalk';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import * as os from 'os';
 import type {
   SystemDetector,
   RequirementCheckResult,
@@ -50,10 +53,16 @@ export class DoctorCommand {
 
   /**
    * Run system diagnostics
+   * @param options - Doctor command options
    * @returns Doctor result with all checks
    * @tags @API:DOCTOR-RUN-001
    */
-  public async run(): Promise<DoctorResult> {
+  public async run(options: { listBackups?: boolean } = {}): Promise<DoctorResult> {
+    // Handle --list-backups option
+    if (options.listBackups) {
+      return this.listBackups();
+    }
+
     this.printHeader();
 
     const requirements = this.gatherRequirements();
@@ -254,5 +263,184 @@ export class DoctorCommand {
         )
       );
     }
+  }
+
+  /**
+   * List available MoAI-ADK backups
+   * @returns Doctor result with backup information
+   * @tags @API:LIST-BACKUPS-001
+   */
+  private async listBackups(): Promise<DoctorResult> {
+    console.log(chalk.blue.bold('📦 MoAI-ADK Backup Directory Listing'));
+    console.log(chalk.blue('Searching for available backups...\n'));
+
+    try {
+      const backupPaths = await this.findBackupDirectories();
+
+      if (backupPaths.length === 0) {
+        console.log(chalk.yellow('📁 No backup directories found.'));
+        console.log(chalk.gray('  Backup directories are typically created in:'));
+        console.log(chalk.gray('  • .moai-backup/ (current directory)'));
+        console.log(chalk.gray('  • ~/.moai/backups/ (global backups)'));
+        console.log('');
+        console.log(chalk.blue('💡 Tip: Run "moai init --backup" to create a backup during initialization.'));
+      } else {
+        console.log(chalk.green(`📁 Found ${backupPaths.length} backup director${backupPaths.length === 1 ? 'y' : 'ies'}:`));
+        console.log('');
+
+        for (const backupPath of backupPaths) {
+          await this.printBackupInfo(backupPath);
+        }
+
+        console.log('');
+        console.log(chalk.blue('💡 To restore from a backup, use: "moai restore <backup-path>"'));
+      }
+
+      // Return a successful result for backup listing
+      return {
+        allPassed: true,
+        results: [],
+        missingRequirements: [],
+        versionConflicts: [],
+        summary: {
+          total: backupPaths.length,
+          passed: backupPaths.length,
+          failed: 0,
+        },
+      };
+    } catch (error) {
+      console.error(chalk.red('❌ Error scanning for backups:'), error);
+
+      return {
+        allPassed: false,
+        results: [],
+        missingRequirements: [],
+        versionConflicts: [],
+        summary: {
+          total: 0,
+          passed: 0,
+          failed: 1,
+        },
+      };
+    }
+  }
+
+  /**
+   * Find backup directories in common locations
+   * @returns Array of backup directory paths
+   * @tags @UTIL:FIND-BACKUP-DIRS-001
+   */
+  private async findBackupDirectories(): Promise<string[]> {
+    const backupPaths: string[] = [];
+    const searchPaths = [
+      path.join(process.cwd(), '.moai-backup'),
+      path.join(process.cwd(), '.moai-backup'),
+      path.join(os.homedir(), '.moai', 'backups'),
+    ];
+
+    for (const searchPath of searchPaths) {
+      try {
+        const exists = await this.directoryExists(searchPath);
+        if (exists) {
+          const subdirs = await this.getSubdirectories(searchPath);
+          backupPaths.push(...subdirs.map(subdir => path.join(searchPath, subdir)));
+        }
+      } catch {
+        // Directory doesn't exist or can't be accessed
+      }
+    }
+
+    return backupPaths.sort();
+  }
+
+  /**
+   * Check if directory exists
+   * @param dirPath - Directory path to check
+   * @returns True if directory exists
+   * @tags @UTIL:DIRECTORY-EXISTS-001
+   */
+  private async directoryExists(dirPath: string): Promise<boolean> {
+    try {
+      const stat = await fs.stat(dirPath);
+      return stat.isDirectory();
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Get subdirectories in a directory
+   * @param dirPath - Directory path
+   * @returns Array of subdirectory names
+   * @tags @UTIL:GET-SUBDIRECTORIES-001
+   */
+  private async getSubdirectories(dirPath: string): Promise<string[]> {
+    try {
+      const entries = await fs.readdir(dirPath, { withFileTypes: true });
+      return entries
+        .filter(entry => entry.isDirectory())
+        .map(entry => entry.name)
+        .filter(name => name.startsWith('backup-') || /^\d{4}-\d{2}-\d{2}/.test(name));
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Print information about a backup directory
+   * @param backupPath - Path to backup directory
+   * @tags @UTIL:PRINT-BACKUP-INFO-001
+   */
+  private async printBackupInfo(backupPath: string): Promise<void> {
+    try {
+      const stat = await fs.stat(backupPath);
+      const backupName = path.basename(backupPath);
+      const backupDate = stat.mtime.toLocaleDateString();
+      const backupTime = stat.mtime.toLocaleTimeString();
+
+      console.log(`  📦 ${chalk.bold(backupName)}`);
+      console.log(`     📍 Path: ${chalk.gray(backupPath)}`);
+      console.log(`     📅 Created: ${chalk.cyan(backupDate)} ${chalk.gray(backupTime)}`);
+
+      // Check backup contents
+      const contents = await this.getBackupContents(backupPath);
+      if (contents.length > 0) {
+        console.log(`     📄 Contains: ${chalk.green(contents.join(', '))}`);
+      }
+      console.log('');
+    } catch (error) {
+      console.log(`  ❌ ${chalk.red('Error reading backup:')} ${backupPath}`);
+      console.log('');
+    }
+  }
+
+  /**
+   * Get backup directory contents summary
+   * @param backupPath - Path to backup directory
+   * @returns Array of content descriptions
+   * @tags @UTIL:GET-BACKUP-CONTENTS-001
+   */
+  private async getBackupContents(backupPath: string): Promise<string[]> {
+    const contents: string[] = [];
+
+    try {
+      const entries = await fs.readdir(backupPath);
+
+      if (entries.includes('.claude')) contents.push('Claude Code config');
+      if (entries.includes('.moai')) contents.push('MoAI config');
+      if (entries.includes('package.json')) contents.push('Package config');
+      if (entries.includes('tsconfig.json')) contents.push('TypeScript config');
+      if (entries.some(e => e.endsWith('.py'))) contents.push('Python files');
+      if (entries.some(e => e.endsWith('.ts'))) contents.push('TypeScript files');
+
+      const totalFiles = entries.filter(e => !e.startsWith('.')).length;
+      if (totalFiles > 0) {
+        contents.push(`${totalFiles} files`);
+      }
+    } catch {
+      // Can't read contents
+    }
+
+    return contents;
   }
 }

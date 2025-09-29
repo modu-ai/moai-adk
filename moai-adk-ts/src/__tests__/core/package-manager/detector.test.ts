@@ -4,7 +4,7 @@
  * @tags @TEST:PACKAGE-MANAGER-DETECTOR-001 @REQ:PACKAGE-MANAGER-002
  */
 
-import { describe, test, expect, beforeEach, jest, vi } from 'vitest';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 import '@/__tests__/setup';
 import { PackageManagerDetector } from '@/core/package-manager/detector';
 import {

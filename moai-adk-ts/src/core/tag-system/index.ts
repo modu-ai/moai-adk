@@ -29,35 +29,35 @@ export {
   ConsistencyViolation,
 } from './tag-validator';
 
-// TAG 데이터베이스 시스템
-export {
-  TagDatabase,
-  TagSearchFilter,
-  TagRecord,
-  IndexingResult,
-  PrimaryChainAnalysis,
-  TagStatistics,
-  TableSchema,
-  FileIndexRequest,
-  getDefaultTagDatabase,
-  createTagDatabase,
-} from './tag-database';
+// TAG 데이터베이스 시스템 (임시 비활성화 - tag-database 모듈 누락)
+// export {
+//   TagDatabase,
+//   TagSearchFilter,
+//   TagRecord,
+//   IndexingResult,
+//   PrimaryChainAnalysis,
+//   TagStatistics,
+//   TableSchema,
+//   FileIndexRequest,
+//   getDefaultTagDatabase,
+//   createTagDatabase,
+// } from './tag-database';
 
-// 편의 함수들
-export function createTagSystem(dbPath?: string) {
+// 편의 함수들 (tag-database 비활성화)
+export function createTagSystem(_dbPath?: string) {
   const parser = new TagParser();
   const validator = new TagValidator();
-  const database = dbPath ? createTagDatabase(dbPath) : getDefaultTagDatabase();
+  // const database = dbPath ? createTagDatabase(dbPath) : getDefaultTagDatabase();
 
   return {
     parser,
     validator,
-    database,
+    // database,
     async initialize() {
-      await database.initialize();
+      // await database.initialize();
     },
     async close() {
-      await database.close();
+      // await database.close();
     },
   };
 }

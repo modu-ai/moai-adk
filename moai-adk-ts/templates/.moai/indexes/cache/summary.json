@@ -1,0 +1,51 @@
+{
+  "quick_stats": {
+    "total_tags": 0,
+    "total_files": 0,
+    "categories": {
+      "REQ": 0,
+      "DESIGN": 0,
+      "TASK": 0,
+      "TEST": 0,
+      "FEATURE": 0,
+      "API": 0,
+      "DATA": 0,
+      "PERF": 0,
+      "SEC": 0,
+      "DEBT": 0,
+      "TODO": 0,
+      "VISION": 0,
+      "STRUCT": 0,
+      "TECH": 0,
+      "ADR": 0
+    }
+  },
+  "health_status": {
+    "chain_integrity": "100%",
+    "orphaned_tags": 0,
+    "broken_links": 0,
+    "duplicate_tags": 0
+  },
+  "recent_activity": {
+    "last_sync": "{{CREATION_TIMESTAMP}}",
+    "tags_added_today": 0,
+    "tags_modified_today": 0,
+    "files_updated_today": 0
+  },
+  "compliance_summary": {
+    "trust_compliance": "100%",
+    "coverage_complete": true,
+    "critical_gaps": 0
+  },
+  "performance_info": {
+    "storage_size": "0KB",
+    "reduction_from_legacy": "N/A",
+    "avg_load_time": "1ms"
+  },
+  "project_info": {
+    "name": "{{PROJECT_NAME}}",
+    "description": "{{PROJECT_DESCRIPTION}}",
+    "version": "{{PROJECT_VERSION}}",
+    "mode": "{{PROJECT_MODE}}"
+  }
+}

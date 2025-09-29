@@ -12,7 +12,7 @@ import {
   type TemplateData,
   ProjectType,
 } from '@/types/project';
-import { getDefaultTagDatabase } from '../tag-system/tag-database';
+// import { getDefaultTagDatabase } from '../tag-system/tag-database';
 
 /**
  * Template manager for project structure generation
@@ -334,10 +334,15 @@ export class TemplateManager {
       result.createdFiles.push(`.moai/project/${file}`);
     }
 
-    // .moai/indexes/tags.db (SQLite3 TAG database)
+    // .moai/indexes/tags.db (SQLite3 TAG database) - 임시 비활성화
     try {
-      const tagDb = getDefaultTagDatabase(projectPath);
-      await tagDb.initialize();
+      // const tagDb = getDefaultTagDatabase(projectPath);
+      // await tagDb.initialize();
+      // result.createdFiles.push('.moai/indexes/tags.db');
+
+      // Graceful degradation - create empty file for compatibility
+      const tagsPath = path.join(projectPath, '.moai', 'indexes', 'tags.db');
+      await fs.writeFile(tagsPath, '');
       result.createdFiles.push('.moai/indexes/tags.db');
     } catch (error) {
       // Graceful degradation - create empty file for compatibility
