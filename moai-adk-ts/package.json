@@ -93,10 +93,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-org/moai-adk.git"
+    "url": "https://github.com/modu-ai/moai-adk.git"
   },
   "bugs": {
-    "url": "https://github.com/your-org/moai-adk/issues"
+    "url": "https://github.com/modu-ai/moai-adk/issues"
   },
-  "homepage": "https://github.com/your-org/moai-adk#readme"
+  "homepage": "https://github.com/modu-ai/moai-adk#readme"
 }

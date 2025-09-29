@@ -1,5 +1,0 @@
-# This directory contains TAG relationship files
-# Files will be generated automatically as TAG chains are created
-#
-# Structure:
-# - chains.jsonl  (TAG chain relationships: REQ→DESIGN→TASK→TEST)
