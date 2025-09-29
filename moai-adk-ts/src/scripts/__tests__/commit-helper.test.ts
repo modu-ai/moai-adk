@@ -6,13 +6,13 @@
  * CommitHelper 클래스의 동작을 검증합니다.
  */
 
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
+import { FileAnalyzer } from '../analyzers/file-analyzer';
 import { CommitHelper } from '../commit-helper';
+import { MessageGenerator } from '../generators/message-generator';
 import { GitWorkflow } from '../utils/git-workflow';
 import { CommitValidator } from '../validators/commit-validator';
-import { FileAnalyzer } from '../analyzers/file-analyzer';
-import { MessageGenerator } from '../generators/message-generator';
-import * as path from 'path';
 
 // Mock 의존성들
 vi.mock('../utils/git-workflow');

@@ -2,7 +2,7 @@
 
 @FEATURE:TAG-PARSER-001 - TAG 파싱 엔진 최소 구현
 
-16-Core TAG 시스템의 TAG 추출 및 분류 엔진
+ TAG 시스템의 TAG 추출 및 분류 엔진
 
 ## Functions
 
@@ -22,7 +22,7 @@ __init__(self)
 
 ### get_tag_categories
 
-16-Core TAG 카테고리 반환
+ TAG 카테고리 반환
 
 ```python
 get_tag_categories(self)
@@ -110,7 +110,7 @@ _is_valid_tag_category(self, category)
 
 ### TagCategory
 
-16-Core TAG 카테고리 분류
+ TAG 카테고리 분류
 
 ### TagMatch
 
@@ -130,7 +130,7 @@ TAG 체인
 
 ### TagParser
 
-16-Core TAG 파싱 엔진 최소 구현
+ TAG 파싱 엔진 최소 구현
 
 TRUST 원칙 적용:
 - Test First: 테스트가 요구하는 최소 기능만 구현

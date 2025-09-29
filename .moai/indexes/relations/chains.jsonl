@@ -3,3 +3,26 @@
 {"from": "TASK:INIT-001", "to": "TEST:INIT-001", "relation": "leads_to", "chain": "primary"}
 {"from": "TEST:INIT-001", "to": "FEATURE:INIT-001", "relation": "leads_to", "chain": "implementation"}
 {"from": "FEATURE:INIT-001", "to": "PERF:INIT-001", "relation": "supports", "chain": "quality"}
+{"type": "primary_chain", "from": "REQ:GIT-COMMIT-001", "to": "DESIGN:COMMIT-WORKFLOW-003", "relation": "implements", "created": "2025-09-29"}
+{"type": "primary_chain", "from": "DESIGN:COMMIT-WORKFLOW-003", "to": "TASK:COMMIT-TS-PORT-001", "relation": "implements", "created": "2025-09-29"}
+{"type": "primary_chain", "from": "TASK:COMMIT-TS-PORT-001", "to": "FEATURE:COMMIT-HELPER-001", "relation": "implements", "created": "2025-09-29"}
+{"type": "primary_chain", "from": "REQ:CLI-FOUNDATION-012", "to": "FEATURE:VERSION-UTILS-001", "relation": "implements", "created": "2025-09-29"}
+{"type": "primary_chain", "from": "REQ:CLI-FOUNDATION-012", "to": "FEATURE:CLI-ENTRY-001", "relation": "implements", "created": "2025-09-29"}
+{"type": "primary_chain", "from": "REQ:AUTO-VERIFY-012", "to": "TEST:SYSTEM-REQUIREMENTS-001", "relation": "validates", "created": "2025-09-29"}
+{"type": "primary_chain", "from": "REQ:ADVANCED-DOCTOR-001", "to": "FEATURE:ADVANCED-DOCTOR-001", "relation": "implements", "created": "2025-09-29"}
+{"type": "primary_chain", "from": "REQ:ADVANCED-DOCTOR-001", "to": "TEST:ADVANCED-DOCTOR-001", "relation": "validates", "created": "2025-09-29"}
+{"type": "primary_chain", "from": "REQ:CLI-INIT-002", "to": "TEST:CLI-INIT-001", "relation": "validates", "created": "2025-09-29"}
+{"type": "primary_chain", "from": "REQ:PACKAGE-CONFIG-012", "to": "FEATURE:MAIN-API-001", "relation": "implements", "created": "2025-09-29"}
+{"type": "primary_chain", "from": "REQ:TRUST-SECURE-001", "to": "FEATURE:STRUCTURED-LOGGING-001", "relation": "implements", "created": "2025-09-29"}
+{"type": "primary_chain", "from": "REQ:CLI-UX-001", "to": "FEATURE:BANNER-001", "relation": "implements", "created": "2025-09-29"}
+{"type": "primary_chain", "from": "TASK:TAG-VALIDATOR-001", "to": "TEST:TAG-VALIDATOR-001", "relation": "validates", "created": "2025-09-29"}
+{"type": "primary_chain", "from": "TASK:TAG-PARSER-001", "to": "TEST:TAG-PARSER-001", "relation": "validates", "created": "2025-09-29"}
+{"type": "primary_chain", "from": "DESIGN:MODULE-STRUCTURE-001", "to": "TASK:TAG-EXPORTS-001", "relation": "implements", "created": "2025-09-29"}
+{"type": "primary_chain", "from": "DESIGN:MODULE-STRUCTURE-001", "to": "TASK:GIT-EXPORTS-001", "relation": "implements", "created": "2025-09-29"}
+{"type": "primary_chain", "from": "REQ:CORE-SYSTEM-013", "to": "FEATURE:GIT-LOCK-001", "relation": "implements", "created": "2025-09-29"}
+{"type": "primary_chain", "from": "REQ:CORE-SYSTEM-013", "to": "TEST:GIT-LOCK-001", "relation": "validates", "created": "2025-09-29"}
+{"type": "primary_chain", "from": "DESIGN:GIT-LOCK-001", "to": "TASK:GIT-LOCK-MANAGER-001", "relation": "implements", "created": "2025-09-29"}
+{"type": "tag_dependency", "from": "FEATURE:TAG-UNIFIED-001", "to": "TASK:TAG-EXPORTS-001", "relation": "depends_on", "created": "2025-09-29"}
+{"type": "tag_dependency", "from": "FEATURE:COMMIT-HELPER-001", "to": "FEATURE:TRUST-VALIDATION-001", "relation": "uses", "created": "2025-09-29"}
+{"type": "tag_dependency", "from": "FEATURE:CLI-UPDATE-001", "to": "DESIGN:UPDATE-OPTIONS-001", "relation": "implements", "created": "2025-09-29"}
+{"type": "tag_dependency", "from": "FEATURE:CLI-HELP-001", "to": "DESIGN:HELP-OPTIONS-001", "relation": "implements", "created": "2025-09-29"}

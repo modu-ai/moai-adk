@@ -1,14 +1,14 @@
 import { defineConfig } from 'tsup';
+import { existsSync } from 'fs';
+
+// hooks 빌드는 templates/.claude/hooks/moai/ 에 존재하는 test_hook.ts 파일 사용
+// 실제 TypeScript 소스 파일이 있는 템플릿 경로 확인
+const hasHookSources = existsSync('./templates/.claude/hooks/moai/test_hook.ts');
 
 export default defineConfig({
-  entry: {
-    'claude/hooks/security/pre-write-guard': 'src/claude/hooks/security/pre-write-guard.ts',
-    'claude/hooks/security/policy-block': 'src/claude/hooks/security/policy-block.ts',
-    'claude/hooks/security/steering-guard': 'src/claude/hooks/security/steering-guard.ts',
-    'claude/hooks/session/session-notice': 'src/claude/hooks/session/session-notice.ts',
-    'claude/hooks/workflow/file-monitor': 'src/claude/hooks/workflow/file-monitor.ts',
-    'claude/hooks/workflow/language-detector': 'src/claude/hooks/workflow/language-detector.ts',
-  },
+  entry: hasHookSources ? {
+    'hooks/moai/test_hook': 'templates/.claude/hooks/moai/test_hook.ts',
+  } : {},
   format: ['cjs'],
   target: 'node18',
   outDir: 'dist',

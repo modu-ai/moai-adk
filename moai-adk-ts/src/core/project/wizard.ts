@@ -5,7 +5,11 @@
  */
 
 import inquirer from 'inquirer';
-import { ProjectType, type ProjectConfig, type ProjectFeature } from '@/types/project';
+import {
+  type ProjectConfig,
+  type ProjectFeature,
+  ProjectType,
+} from '@/types/project';
 
 /**
  * Interactive wizard for project configuration

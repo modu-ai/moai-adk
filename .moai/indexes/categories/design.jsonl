@@ -1,1 +1,16 @@
 {"tag": "DESIGN:INIT-001", "type": "design", "description": "v0.0.1 초기 설계", "created": "2025-09-29", "version": "0.0.1"}
+{"tag": "DESIGN:COMMIT-WORKFLOW-003", "type": "design", "description": "Git Commit Workflow Design", "file": "moai-adk-ts/src/scripts/commit-helper.ts", "line": 3, "created": "2025-09-29", "status": "active"}
+{"tag": "DESIGN:UNIFIED-GIT-001", "type": "design", "description": "Unified Git Integration Design", "file": "moai-adk-ts/src/scripts/utils/git-workflow.ts", "line": 3, "created": "2025-09-29", "status": "active"}
+{"tag": "DESIGN:UPDATE-OPTIONS-001", "type": "design", "description": "CLI Update Options Design", "file": "moai-adk-ts/src/cli/commands/update.ts", "line": 13, "created": "2025-09-29", "status": "active"}
+{"tag": "DESIGN:SPEC-PIPELINE-001", "type": "design", "description": "SPEC Pipeline Design", "file": "moai-adk-ts/src/core/git/workflow-automation.ts", "line": 9, "created": "2025-09-29", "status": "active"}
+{"tag": "DESIGN:MODULE-STRUCTURE-001", "type": "design", "description": "Module Structure Design", "file": "moai-adk-ts/src/core/git/index.ts", "line": 9, "created": "2025-09-29", "status": "active"}
+{"tag": "DESIGN:GIT-LOCK-001", "type": "design", "description": "Git Lock Mechanism Design", "file": "moai-adk-ts/src/types/git.ts", "line": 187, "created": "2025-09-29", "status": "active"}
+{"tag": "DESIGN:PACKAGE-INFO-001", "type": "design", "description": "Package Information Design", "file": "moai-adk-ts/src/utils/version.ts", "line": 12, "created": "2025-09-29", "status": "active"}
+{"tag": "DESIGN:LOG-LEVELS-001", "type": "design", "description": "Log Levels Design", "file": "moai-adk-ts/src/utils/logger.ts", "line": 11, "created": "2025-09-29", "status": "active"}
+{"tag": "DESIGN:YAML-FRONTMATTER-001", "type": "design", "description": "YAML Frontmatter Design", "file": "moai-adk-ts/src/types/spec-metadata.ts", "line": 7, "created": "2025-09-29", "status": "active"}
+{"tag": "DESIGN:HELP-OPTIONS-001", "type": "design", "description": "Help Options Design", "file": "moai-adk-ts/src/cli/commands/help.ts", "line": 11, "created": "2025-09-29", "status": "active"}
+{"tag": "DESIGN:VALIDATION-RULES-001", "type": "design", "description": "Validation Rules Design", "file": "moai-adk-ts/src/core/spec-validator.ts", "line": 7, "created": "2025-09-29", "status": "active"}
+{"tag": "DESIGN:PYTHON-PORTING-001", "type": "design", "description": "Python Implementation Porting Design", "file": "moai-adk-ts/src/core/tag-system/tag-validator.ts", "line": 8, "created": "2025-09-29", "status": "active"}
+{"tag": "DESIGN:SEPARATE-CONCERNS-001", "type": "design", "description": "Separation of Concerns Design", "file": "moai-adk-ts/src/core/installer/templates/template-validator.ts", "line": 5, "created": "2025-09-29", "status": "active"}
+{"tag": "DESIGN:TEAM-WORKFLOW-001", "type": "design", "description": "Team Workflow Design", "file": "moai-adk-ts/src/core/git/github-integration.ts", "line": 9, "created": "2025-09-29", "status": "active"}
+{"tag": "DESIGN:MOAI-INTEGRATION-001", "type": "design", "description": "MoAI Integration Design", "file": "moai-adk-ts/src/core/installer/templates/template-processor.ts", "line": 6, "created": "2025-09-29", "status": "active"}

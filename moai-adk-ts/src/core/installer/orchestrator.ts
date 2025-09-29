@@ -4,17 +4,18 @@
  * @tags @FEATURE:INSTALL-ORCHESTRATOR-001 @REQ:INSTALL-SYSTEM-012
  */
 
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import mustache from 'mustache';
 import { logger } from '@/utils/logger';
-import * as fs from 'fs';
-import * as path from 'path';
 import type {
   InstallationConfig,
-  InstallationResult,
   InstallationContext,
-  ProgressCallback,
+  InstallationResult,
   PhaseStatus,
+  ProgressCallback,
 } from './types';
-import { getDefaultTagDatabase } from '../tag-system/tag-database';
+// import { getDefaultTagDatabase } from '../tag-system/tag-database';
 
 /**
  * Central coordinator for MoAI-ADK installation
@@ -28,7 +29,7 @@ export class InstallationOrchestrator {
     this.config = config;
     this.context = this.createInitialContext(config);
 
-    logger.info('InstallationOrchestrator initialized', {
+    logger.debug('InstallationOrchestrator initialized', {
       projectPath: config.projectPath,
       mode: config.mode,
       tag: '@INIT:ORCHESTRATOR-001',
@@ -285,7 +286,7 @@ export class InstallationOrchestrator {
     const current = this.context.phases.length;
     const total = 5; // Total number of phases
 
-    logger.info(message, { current, total, tag: '@PROGRESS:UPDATE-001' });
+    logger.debug(message, { current, total, tag: '@PROGRESS:UPDATE-001' });
 
     if (callback) {
       callback(message, current, total);
@@ -373,8 +374,10 @@ export class InstallationOrchestrator {
    */
   private generateNextSteps(): string[] {
     const steps = [
-      'Run "moai doctor" to verify system configuration',
-      'Check the generated configuration files',
+      `cd ${this.config.projectName}`,
+      'claude',
+      '', // Empty line for better readability
+      `💡 Tip: Next time use "moai init ${this.config.projectName}" to recreate this setup`,
     ];
 
     if (this.config.mode === 'team') {
@@ -405,7 +408,7 @@ export class InstallationOrchestrator {
             await this.copyDirectory(srcPath, dstPath);
           }
         }
-        logger.info('Backup created at', {
+        logger.debug('Backup created at', {
           backupPath,
           tag: '@SUCCESS:BACKUP-001',
         });
@@ -434,12 +437,13 @@ export class InstallationOrchestrator {
         );
       }
 
-      // Check write permissions
+      // Check write permissions on project path (create directory if needed)
+      await fs.promises.mkdir(this.config.projectPath, { recursive: true });
       const testPath = path.join(this.config.projectPath, '.test-write');
       await fs.promises.writeFile(testPath, 'test');
       await fs.promises.unlink(testPath);
 
-      logger.info('System requirements validated', {
+      logger.debug('System requirements validated', {
         tag: '@SUCCESS:SYSTEM-VALIDATION-001',
       });
     } catch (error) {
@@ -477,7 +481,7 @@ export class InstallationOrchestrator {
         });
       }
 
-      logger.info('Project directories created', {
+      logger.debug('Project directories created', {
         tag: '@SUCCESS:CREATE-DIRECTORIES-001',
       });
     } catch (error) {
@@ -512,7 +516,7 @@ export class InstallationOrchestrator {
         installedFiles.push(memoryFile);
       }
 
-      logger.info('Resources installed', {
+      logger.debug('Resources installed', {
         count: installedFiles.length,
         tag: '@SUCCESS:INSTALL-RESOURCES-001',
       });
@@ -535,10 +539,26 @@ export class InstallationOrchestrator {
     const configFiles: string[] = [];
 
     try {
-      // Generate Claude Code settings
-      const claudeSettingsPath = await this.createClaudeSettings();
-      if (claudeSettingsPath) {
-        configFiles.push(claudeSettingsPath);
+      // Generate Claude Code settings only if not already installed from template
+      const existingClaudeSettingsPath = path.join(
+        this.config.projectPath,
+        '.claude',
+        'settings.json'
+      );
+      if (!fs.existsSync(existingClaudeSettingsPath)) {
+        const claudeSettingsPath = await this.createClaudeSettings();
+        if (claudeSettingsPath) {
+          configFiles.push(claudeSettingsPath);
+        }
+      } else {
+        logger.debug(
+          'Claude settings already exists from template, skipping creation',
+          {
+            settingsPath: existingClaudeSettingsPath,
+            tag: '@DEBUG:CLAUDE-SETTINGS-EXISTS-001',
+          }
+        );
+        configFiles.push(existingClaudeSettingsPath);
       }
 
       // Generate MoAI configuration
@@ -553,7 +573,7 @@ export class InstallationOrchestrator {
         configFiles.push(gitignorePath);
       }
 
-      logger.info('Configuration files generated', {
+      logger.debug('Configuration files generated', {
         count: configFiles.length,
         tag: '@SUCCESS:GENERATE-CONFIG-001',
       });
@@ -601,7 +621,7 @@ export class InstallationOrchestrator {
       JSON.parse(await fs.promises.readFile(settingsPath, 'utf-8'));
       JSON.parse(await fs.promises.readFile(configPath, 'utf-8'));
 
-      logger.info('Installation validation successful', {
+      logger.debug('Installation validation successful', {
         tag: '@SUCCESS:VALIDATE-INSTALLATION-001',
       });
     } catch (error) {
@@ -637,7 +657,7 @@ export class InstallationOrchestrator {
       }
 
       // Log successful completion
-      logger.info('Installation finalized successfully', {
+      logger.debug('Installation finalized successfully', {
         projectPath: this.config.projectPath,
         mode: this.config.mode,
         tag: '@SUCCESS:FINALIZE-INSTALLATION-001',
@@ -701,99 +721,118 @@ export class InstallationOrchestrator {
   }
 
   /**
-   * Install Claude Code resources
+   * Install Claude Code resources from templates
    * @returns List of installed files
    * @tags @UTIL:INSTALL-CLAUDE-001
    */
   private async installClaudeResources(): Promise<string[]> {
     const installedFiles: string[] = [];
     const claudeDir = path.join(this.config.projectPath, '.claude');
+    const templatesPath = this.getTemplatesPath();
+    const claudeTemplatesPath = path.join(templatesPath, '.claude');
 
-    // Create basic Claude Code structure
-    const claudeStructure = {
-      'settings.json': JSON.stringify(
-        {
-          outputStyle: 'study',
-          agents: {
-            'moai/spec-builder': { enabled: true },
-            'moai/code-builder': { enabled: true },
-            'moai/doc-syncer': { enabled: true },
-          },
-        },
-        null,
-        2
-      ),
-      'agents/moai/spec-builder.md':
-        '# SPEC Builder Agent\n\nBuilds SPEC documents using EARS methodology.',
-      'commands/moai/1-spec.md':
-        '# SPEC Command\n\nCreates new SPEC documents.',
-      'hooks/moai/steering_guard.py':
-        '# Steering Guard Hook\n\n# Validates development guidelines',
-    };
+    // Create template variables
+    const templateVars = this.createTemplateVariables();
 
-    for (const [relativePath, content] of Object.entries(claudeStructure)) {
-      const fullPath = path.join(claudeDir, relativePath);
-      await fs.promises.mkdir(path.dirname(fullPath), { recursive: true });
-      await fs.promises.writeFile(fullPath, content);
-      installedFiles.push(fullPath);
+    // Copy .claude directory structure from templates
+    if (fs.existsSync(claudeTemplatesPath)) {
+      const copiedFiles = await this.copyTemplateDirectory(
+        claudeTemplatesPath,
+        claudeDir,
+        templateVars
+      );
+      installedFiles.push(...copiedFiles);
+
+      // Validate critical Claude settings file
+      await this.validateClaudeSettings(claudeDir);
+    } else {
+      // Fallback: create minimal structure if templates not found
+      logger.warn('Claude templates not found, creating minimal structure', {
+        templatesPath: claudeTemplatesPath,
+        tag: '@WARN:CLAUDE-TEMPLATES-001',
+      });
+      await this.createMinimalClaudeStructure(claudeDir, installedFiles);
     }
 
     return installedFiles;
   }
 
   /**
-   * Install MoAI resources
+   * Install MoAI resources from templates
    * @returns List of installed files
    * @tags @UTIL:INSTALL-MOAI-001
    */
   private async installMoaiResources(): Promise<string[]> {
     const installedFiles: string[] = [];
     const moaiDir = path.join(this.config.projectPath, '.moai');
+    const templatesPath = this.getTemplatesPath();
+    const moaiTemplatesPath = path.join(templatesPath, '.moai');
 
-    // Create basic MoAI structure
-    const moaiStructure = {
-      'config.json': JSON.stringify(
-        {
-          version: '0.0.1',
-          mode: this.config.mode,
-          projectName: this.config.projectName,
-        },
-        null,
-        2
-      ),
-      'memory/development-guide.md':
-        '# Development Guide\n\nTRUST 5 principles and guidelines.',
-      // Note: tags.db will be initialized by TagDatabase when first accessed
-    };
+    // Create template variables
+    const templateVars = this.createTemplateVariables();
 
-    for (const [relativePath, content] of Object.entries(moaiStructure)) {
-      const fullPath = path.join(moaiDir, relativePath);
-      await fs.promises.mkdir(path.dirname(fullPath), { recursive: true });
-      await fs.promises.writeFile(fullPath, content);
-      installedFiles.push(fullPath);
+    // Copy .moai directory structure from templates
+    if (fs.existsSync(moaiTemplatesPath)) {
+      const copiedFiles = await this.copyTemplateDirectory(
+        moaiTemplatesPath,
+        moaiDir,
+        templateVars
+      );
+      installedFiles.push(...copiedFiles);
+    } else {
+      // Fallback: create minimal structure if templates not found
+      logger.warn('MoAI templates not found, creating minimal structure', {
+        templatesPath: moaiTemplatesPath,
+        tag: '@WARN:MOAI-TEMPLATES-001',
+      });
+      await this.createMinimalMoaiStructure(moaiDir, installedFiles);
     }
 
-    // Initialize SQLite3 TAG database
+    // Initialize JSON-based TAG database
     try {
-      const tagDb = getDefaultTagDatabase(this.config.targetDirectory);
-      await tagDb.initialize();
-      logger.info('SQLite3 TAG database initialized successfully');
+      await this.initializeTagSystem(moaiDir);
+      logger.debug('JSON-based TAG system initialized successfully', {
+        tag: '@SUCCESS:TAG-INIT-001',
+      });
     } catch (error) {
-      logger.warn(`Failed to initialize TAG database: ${error}`);
+      logger.warn(`Failed to initialize TAG system: ${error}`, {
+        tag: '@WARN:TAG-INIT-001',
+      });
     }
 
     return installedFiles;
   }
 
   /**
-   * Install project memory file
+   * Install project memory file from template
    * @returns Path to memory file
    * @tags @UTIL:INSTALL-MEMORY-001
    */
   private async installProjectMemory(): Promise<string | null> {
     try {
       const memoryPath = path.join(this.config.projectPath, 'CLAUDE.md');
-      const memoryContent = `# ${this.config.projectName} - MoAI Project
+      const templatesPath = this.getTemplatesPath();
+      const templatePath = path.join(templatesPath, 'CLAUDE.md');
+
+      // Create template variables
+      const templateVars = this.createTemplateVariables();
+
+      let memoryContent: string;
+
+      if (fs.existsSync(templatePath)) {
+        // Use template file with variable substitution
+        const templateContent = await fs.promises.readFile(
+          templatePath,
+          'utf-8'
+        );
+        memoryContent = mustache.render(templateContent, templateVars);
+      } else {
+        // Fallback: use minimal content
+        logger.warn('CLAUDE.md template not found, using fallback', {
+          templatePath,
+          tag: '@WARN:CLAUDE-TEMPLATE-001',
+        });
+        memoryContent = `# ${this.config.projectName} - MoAI Project
 
 **Spec-First TDD Development Guide**
 
@@ -815,6 +854,7 @@ export class InstallationOrchestrator {
 - **Project**: ${this.config.projectName}
 - **Backup**: ${this.config.backupEnabled ? 'Enabled' : 'Disabled'}
 `;
+      }
 
       await fs.promises.writeFile(memoryPath, memoryContent);
       return memoryPath;
@@ -839,6 +879,25 @@ export class InstallationOrchestrator {
         '.claude',
         'settings.json'
       );
+
+      // Check if settings file already exists from template
+      if (fs.existsSync(settingsPath)) {
+        logger.debug(
+          'Settings file already exists from template, skipping creation',
+          {
+            settingsPath,
+            tag: '@DEBUG:CLAUDE-SETTINGS-EXISTS-002',
+          }
+        );
+        return settingsPath;
+      }
+
+      // Fallback: create minimal settings if template was not found
+      logger.warn('Creating fallback Claude settings (template not found)', {
+        settingsPath,
+        tag: '@WARN:CLAUDE-SETTINGS-FALLBACK-001',
+      });
+
       const settings = {
         outputStyle: 'study',
         statusLine: {
@@ -1000,7 +1059,7 @@ Thumbs.db
    * @tags @UTIL:INIT-GIT-001
    */
   private async initializeGitRepository(): Promise<void> {
-    const { execSync } = require('child_process');
+    const { execSync } = require('node:child_process');
 
     try {
       process.chdir(this.config.projectPath);
@@ -1010,7 +1069,7 @@ Thumbs.db
         stdio: 'ignore',
       });
 
-      logger.info('Git repository initialized', {
+      logger.debug('Git repository initialized', {
         tag: '@SUCCESS:INIT-GIT-001',
       });
     } catch (error) {
@@ -1018,6 +1077,391 @@ Thumbs.db
         error,
         tag: '@ERROR:INIT-GIT-001',
       });
+    }
+  }
+
+  // Template-related helper methods
+
+  /**
+   * Get templates directory path
+   * @returns Path to templates directory
+   * @tags @UTIL:GET-TEMPLATES-PATH-001
+   */
+  private getTemplatesPath(): string {
+    // Get Node.js executable path to find global node_modules
+    const nodeExecPath = process.execPath;
+    const nodeBinDir = path.dirname(nodeExecPath);
+    const nodeInstallDir = path.dirname(nodeBinDir);
+
+    // Try to find templates directory using multiple strategies
+    const possiblePaths = [
+      // From project root (development)
+      path.join(process.cwd(), 'templates'),
+      // From source directory (development)
+      path.join(process.cwd(), 'src', '..', 'templates'),
+      // From npm package (local node_modules)
+      path.join(process.cwd(), 'node_modules', 'moai-adk', 'templates'),
+      // From current Node.js installation (nvm, nodenv, etc.)
+      path.join(nodeInstallDir, 'lib', 'node_modules', 'moai-adk', 'templates'),
+      // From parent directory (various installations)
+      path.join(process.cwd(), '..', 'templates'),
+      // Common npm global paths
+      '/usr/local/lib/node_modules/moai-adk/templates',
+      path.join(
+        process.env.HOME || '~',
+        '.npm-global',
+        'lib',
+        'node_modules',
+        'moai-adk',
+        'templates'
+      ),
+    ];
+
+    for (const templatePath of possiblePaths) {
+      const resolvedPath = path.resolve(templatePath);
+      if (fs.existsSync(resolvedPath)) {
+        logger.debug('Found templates directory', {
+          templatePath: resolvedPath,
+          tag: '@DEBUG:TEMPLATES-PATH-001',
+        });
+        return resolvedPath;
+      }
+    }
+
+    // Fallback to project root templates
+    const fallbackPath = path.join(process.cwd(), 'templates');
+    logger.warn('Templates directory not found, using fallback', {
+      fallbackPath,
+      searchedPaths: possiblePaths.map(p => path.resolve(p)),
+      cwd: process.cwd(),
+      tag: '@WARN:TEMPLATES-PATH-001',
+    });
+    return fallbackPath;
+  }
+
+  /**
+   * Create template variables for Mustache rendering
+   * @returns Template variables object
+   * @tags @UTIL:CREATE-TEMPLATE-VARS-001
+   */
+  private createTemplateVariables(): Record<string, any> {
+    return {
+      PROJECT_NAME: this.config.projectName,
+      PROJECT_DESCRIPTION: `A ${this.config.projectName} project built with MoAI-ADK`,
+      PROJECT_VERSION: '0.1.0',
+      PROJECT_MODE: this.config.mode,
+      TIMESTAMP: new Date().toISOString(),
+      AUTHOR: 'MoAI Developer',
+      LICENSE: 'MIT',
+    };
+  }
+
+  /**
+   * Copy template directory with variable substitution
+   * @param srcDir Source template directory
+   * @param dstDir Destination directory
+   * @param variables Template variables
+   * @returns List of copied files
+   * @tags @UTIL:COPY-TEMPLATE-DIR-001
+   */
+  private async copyTemplateDirectory(
+    srcDir: string,
+    dstDir: string,
+    variables: Record<string, any>
+  ): Promise<string[]> {
+    const copiedFiles: string[] = [];
+
+    try {
+      await fs.promises.mkdir(dstDir, { recursive: true });
+      const entries = await fs.promises.readdir(srcDir, {
+        withFileTypes: true,
+      });
+
+      for (const entry of entries) {
+        const srcPath = path.join(srcDir, entry.name);
+        const dstPath = path.join(dstDir, entry.name);
+
+        if (entry.isDirectory()) {
+          // Recursively copy subdirectories
+          const subFiles = await this.copyTemplateDirectory(
+            srcPath,
+            dstPath,
+            variables
+          );
+          copiedFiles.push(...subFiles);
+        } else {
+          // Copy and process file
+          await this.copyTemplateFile(srcPath, dstPath, variables);
+          copiedFiles.push(dstPath);
+        }
+      }
+
+      return copiedFiles;
+    } catch (error) {
+      logger.error('Failed to copy template directory', {
+        error,
+        srcDir,
+        dstDir,
+        tag: '@ERROR:COPY-TEMPLATE-DIR-001',
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Copy and process template file with variable substitution
+   * @param srcPath Source file path
+   * @param dstPath Destination file path
+   * @param variables Template variables
+   * @tags @UTIL:COPY-TEMPLATE-FILE-001
+   */
+  private async copyTemplateFile(
+    srcPath: string,
+    dstPath: string,
+    variables: Record<string, any>
+  ): Promise<void> {
+    try {
+      await fs.promises.mkdir(path.dirname(dstPath), { recursive: true });
+
+      const content = await fs.promises.readFile(srcPath, 'utf-8');
+
+      // Apply Mustache template processing for text files
+      const fileExt = path.extname(srcPath).toLowerCase();
+      const isTextFile = [
+        '.md',
+        '.json',
+        '.js',
+        '.ts',
+        '.py',
+        '.txt',
+        '.yml',
+        '.yaml',
+      ].includes(fileExt);
+
+      let processedContent: string;
+      if (isTextFile) {
+        processedContent = mustache.render(content, variables);
+      } else {
+        processedContent = content;
+      }
+
+      await fs.promises.writeFile(dstPath, processedContent);
+
+      // Preserve executable permissions for script files
+      if (['.py', '.sh', '.js'].includes(fileExt)) {
+        try {
+          await fs.promises.chmod(dstPath, 0o755);
+        } catch (chmodError) {
+          // Ignore chmod errors on Windows
+          if (process.platform !== 'win32') {
+            logger.warn('Failed to set executable permissions', {
+              dstPath,
+              error: chmodError,
+              tag: '@WARN:CHMOD-001',
+            });
+          }
+        }
+      }
+
+      logger.debug('Template file copied and processed', {
+        srcPath,
+        dstPath,
+        isTextFile,
+        tag: '@DEBUG:COPY-TEMPLATE-FILE-001',
+      });
+    } catch (error) {
+      logger.error('Failed to copy template file', {
+        error,
+        srcPath,
+        dstPath,
+        tag: '@ERROR:COPY-TEMPLATE-FILE-001',
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Initialize JSON-based TAG system
+   * @param moaiDir MoAI directory path
+   * @tags @UTIL:INIT-TAG-SYSTEM-001
+   *
+   * NOTE: [v0.0.3+] TAG 시스템 철학 변경
+   * - 이전: tags.json 인덱스 캐시 기반 관리
+   * - 현재: 코드 직접 스캔 (rg/grep) 기반 실시간 검증
+   * - 이유: 단일 진실 소스(코드)로 동기화 문제 해결
+   */
+  private async initializeTagSystem(moaiDir: string): Promise<void> {
+    try {
+      const indexesDir = path.join(moaiDir, 'indexes');
+      await fs.promises.mkdir(indexesDir, { recursive: true });
+
+      // NOTE: tags.json 생성 제거 - 코드 직접 스캔으로 전환
+      // TAG의 진실은 코드 자체에만 존재하며, 별도 인덱스 파일 불필요
+
+      // Create meta.json (프로젝트 메타데이터는 유지)
+      const metaPath = path.join(indexesDir, 'meta.json');
+      const metaData = {
+        project: this.config.projectName,
+        created: new Date().toISOString(),
+        lastSync: new Date().toISOString(),
+        totalTags: 0,
+        totalFiles: 0,
+      };
+
+      await fs.promises.writeFile(metaPath, JSON.stringify(metaData, null, 2));
+
+      // Create cache directory (다른 용도로 사용 가능)
+      const cacheDir = path.join(indexesDir, 'cache');
+      await fs.promises.mkdir(cacheDir, { recursive: true });
+
+      logger.debug('TAG system initialized successfully (code-scan based)', {
+        metaPath,
+        cacheDir,
+        tag: '@SUCCESS:TAG-SYSTEM-INIT-001',
+      });
+    } catch (error) {
+      logger.error('Failed to initialize TAG system', {
+        error,
+        moaiDir,
+        tag: '@ERROR:TAG-SYSTEM-INIT-001',
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Create minimal Claude structure (fallback)
+   * @param claudeDir Claude directory path
+   * @param installedFiles Array to track installed files
+   * @tags @UTIL:CREATE-MINIMAL-CLAUDE-001
+   */
+  private async createMinimalClaudeStructure(
+    claudeDir: string,
+    installedFiles: string[]
+  ): Promise<void> {
+    const minimalStructure = {
+      'settings.json': JSON.stringify(
+        {
+          outputStyle: 'study',
+          agents: {
+            'moai/spec-builder': { enabled: true },
+            'moai/code-builder': { enabled: true },
+            'moai/doc-syncer': { enabled: true },
+          },
+        },
+        null,
+        2
+      ),
+      'agents/moai/spec-builder.md':
+        '# SPEC Builder Agent\n\nBuilds SPEC documents using EARS methodology.',
+      'commands/moai/1-spec.md':
+        '# SPEC Command\n\nCreates new SPEC documents.',
+      'hooks/moai/steering_guard.py':
+        '# Steering Guard Hook\n\n# Validates development guidelines',
+    };
+
+    for (const [relativePath, content] of Object.entries(minimalStructure)) {
+      const fullPath = path.join(claudeDir, relativePath);
+      await fs.promises.mkdir(path.dirname(fullPath), { recursive: true });
+      await fs.promises.writeFile(fullPath, content);
+      installedFiles.push(fullPath);
+    }
+  }
+
+  /**
+   * Create minimal MoAI structure (fallback)
+   * @param moaiDir MoAI directory path
+   * @param installedFiles Array to track installed files
+   * @tags @UTIL:CREATE-MINIMAL-MOAI-001
+   */
+  private async createMinimalMoaiStructure(
+    moaiDir: string,
+    installedFiles: string[]
+  ): Promise<void> {
+    const minimalStructure = {
+      'config.json': JSON.stringify(
+        {
+          version: '0.0.1',
+          mode: this.config.mode,
+          projectName: this.config.projectName,
+        },
+        null,
+        2
+      ),
+      'memory/development-guide.md':
+        '# Development Guide\n\nTRUST 5 principles and guidelines.',
+    };
+
+    for (const [relativePath, content] of Object.entries(minimalStructure)) {
+      const fullPath = path.join(moaiDir, relativePath);
+      await fs.promises.mkdir(path.dirname(fullPath), { recursive: true });
+      await fs.promises.writeFile(fullPath, content);
+      installedFiles.push(fullPath);
+    }
+  }
+
+  /**
+   * Validate Claude settings file from template
+   * @param claudeDir Claude directory path
+   * @tags @UTIL:VALIDATE-CLAUDE-SETTINGS-001
+   */
+  private async validateClaudeSettings(claudeDir: string): Promise<void> {
+    try {
+      const settingsPath = path.join(claudeDir, 'settings.json');
+
+      if (!fs.existsSync(settingsPath)) {
+        logger.warn('Claude settings.json not found after template copy', {
+          settingsPath,
+          tag: '@WARN:SETTINGS-NOT-FOUND-001',
+        });
+        return;
+      }
+
+      // Parse and validate settings content
+      const settingsContent = await fs.promises.readFile(settingsPath, 'utf-8');
+      const settings = JSON.parse(settingsContent);
+
+      // Check for critical sections
+      const hasEnv = !!settings.env;
+      const hasHooks = !!settings.hooks;
+      const hasPermissions = !!settings.permissions;
+      const hasAgents = !!settings.agents;
+      const hasCommands = !!settings.commands;
+
+      // Log validation results
+      logger.debug('Claude settings validation results', {
+        settingsPath,
+        hasEnv,
+        hasHooks,
+        hasPermissions,
+        hasAgents,
+        hasCommands,
+        fileSize: settingsContent.length,
+        tag: '@DEBUG:SETTINGS-VALIDATION-001',
+      });
+
+      // Warn if critical sections are missing
+      if (!hasEnv || !hasHooks || !hasPermissions) {
+        logger.warn('Incomplete Claude settings detected', {
+          settingsPath,
+          missingEnv: !hasEnv,
+          missingHooks: !hasHooks,
+          missingPermissions: !hasPermissions,
+          tag: '@WARN:SETTINGS-INCOMPLETE-001',
+        });
+      } else {
+        logger.debug('Claude settings validation successful', {
+          settingsPath,
+          tag: '@SUCCESS:SETTINGS-VALIDATION-001',
+        });
+      }
+    } catch (error) {
+      logger.error('Failed to validate Claude settings', {
+        error,
+        claudeDir,
+        tag: '@ERROR:SETTINGS-VALIDATION-001',
+      });
+      // Don't throw - validation failure shouldn't stop installation
     }
   }
 }

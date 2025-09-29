@@ -1,0 +1,4 @@
+{"tag": "@STRUCT:ARCHITECTURE-001", "type": "structure", "description": "TypeScript 기반 시스템 아키텍처", "file": ".moai/project/structure.md", "line": 5, "created": "2025-09-29", "status": "active", "category": "STEERING"}
+{"tag": "@STRUCT:MODULES-001", "type": "structure", "description": "모듈별 책임 구분", "file": ".moai/project/structure.md", "line": 20, "created": "2025-09-29", "status": "active", "category": "STEERING"}
+{"tag": "@STRUCT:INTEGRATION-001", "type": "structure", "description": "외부 시스템 통합", "file": ".moai/project/structure.md", "line": 45, "created": "2025-09-29", "status": "active", "category": "STEERING"}
+{"tag": "@STRUCT:TRACEABILITY-001", "type": "structure", "description": "추적성 전략", "file": ".moai/project/structure.md", "line": 67, "created": "2025-09-29", "status": "active", "category": "STEERING"}

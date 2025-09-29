@@ -4,11 +4,11 @@ import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
  * @description Tests for SteeringGuard hook
  */
 
+import * as fs from 'node:fs';
+// import * as path from 'path';
+import * as os from 'node:os';
 import { SteeringGuard } from '../../../../claude/hooks/security/steering-guard';
 import type { HookInput } from '../../../../claude/hooks/types';
-import * as fs from 'fs';
-// import * as path from 'path';
-import * as os from 'os';
 
 // Mock filesystem
 vi.mock('fs');

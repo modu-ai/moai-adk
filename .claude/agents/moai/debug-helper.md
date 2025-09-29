@@ -18,7 +18,7 @@ model: sonnet
 ### 단일 책임 원칙
 
 - **진단만**: 문제 분석 및 해결책 제시
-- **실행 금지**: 실제 수정은 전담 에이전트에게 위임
+- **실행 금지**: 실제 수정은 명령어 레벨에서 처리
 - **구조화 출력**: 일관된 포맷으로 결과 제공
 
 ## 🔧 활용 가능한 TypeScript 진단 도구
@@ -46,7 +46,7 @@ model: sonnet
 - `tsx .moai/scripts/tag-analyzer.ts --relationship-check`
 - `tsx .moai/scripts/requirements-tracker.ts --traceability`
 
-**TRUST 원칙 검증은 별도 trust-checker 에이전트를 이용하세요** (`@agent-trust-checker`)
+**품질 검증은 trust-checker 에이전트가 담당합니다** (`@agent-trust-checker`)
 
 ## 🐛 일반 오류 디버깅 모드
 
@@ -129,7 +129,7 @@ model: sonnet
 → [전담 에이전트] 호출 권장
 → 예상 명령: /moai:...
 
-💡 TRUST 5원칙 전체 검증: @agent-trust-checker
+💡 품질 검증: trust-checker 에이전트 담당
 ```
 
 ## 🔧 진단 도구 및 방법
@@ -167,9 +167,9 @@ model: sonnet
 - **설정 변경**: Claude Code 설정은 cc-manager에게
 - **문서 갱신**: 문서 동기화는 doc-syncer에게
 
-### 에이전트 위임 규칙
+### 명령어 레벨 호출 규칙
 
-**에이전트 위임 규칙:**
+**명령어 레벨 호출 규칙:**
 
 - **코드 관련 문제** → code-builder
 - **Git 관련 문제** → git-manager
@@ -216,7 +216,7 @@ model: sonnet
 - 해결책 유효성: 90% 이상
 - 응답 시간: 30초 이내
 
-### 위임 효율성
+### 명령어 레벨 호출 효율성
 
 - 적절한 에이전트 추천율: 95% 이상
 - 중복 진단 방지: 100%

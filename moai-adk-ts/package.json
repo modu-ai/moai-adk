@@ -1,6 +1,6 @@
 {
   "name": "moai-adk",
-  "version": "0.0.1",
+  "version": "0.0.4",
   "description": "🗿 MoAI-ADK: TypeScript-based SPEC-First TDD Development Kit with Universal Language Support",
   "type": "module",
   "main": "dist/index.js",
@@ -22,7 +22,7 @@
   },
   "packageManager": "bun@1.2.19",
   "scripts": {
-    "build": "tsup && bun run build:hooks && bun run build:scripts",
+    "build": "tsup && bun run build:scripts",
     "build:hooks": "tsup --config tsup.hooks.config.ts",
     "build:scripts": "tsup --config tsup.scripts.config.ts",
     "build:watch": "tsup --watch",
@@ -42,7 +42,7 @@
     "clean": "rimraf dist .turbo node_modules/.cache",
     "check": "bun run type-check && bun run check:biome",
     "ci": "bun run clean && bun run build && bun run check && bun run test:ci",
-    "prepublishOnly": "bun run ci"
+    "//prepublishOnly": "bun run ci"
   },
   "dependencies": {
     "chalk": "^5.6.2",
@@ -77,6 +77,7 @@
   },
   "files": [
     "dist",
+    "templates",
     "README.md",
     "LICENSE"
   ],

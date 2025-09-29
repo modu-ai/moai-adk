@@ -6,8 +6,8 @@
  * MoAI-ADK의 TRUST 5원칙 준수 여부를 자동 검증합니다.
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 export interface TrustViolation {
   principle: string;
@@ -125,7 +125,7 @@ export class TrustPrinciplesChecker {
         return false;
       }
       return true;
-    } catch (error) {
+    } catch (_error) {
       return true; // 에러 시 통과
     }
   }
@@ -173,7 +173,7 @@ export class TrustPrinciplesChecker {
       }
 
       return true;
-    } catch (error) {
+    } catch (_error) {
       return true; // 에러 시 통과
     }
   }
@@ -296,7 +296,7 @@ export class TrustPrinciplesChecker {
           files.push(fullPath);
         }
       }
-    } catch (error) {
+    } catch (_error) {
       // 에러 시 빈 배열 반환
     }
 
@@ -307,7 +307,7 @@ export class TrustPrinciplesChecker {
     try {
       const files = fs.readdirSync(dir, { withFileTypes: true });
       return files.some(file => file.isFile() && this.isSourceFile(file.name));
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }
@@ -406,7 +406,7 @@ export class TrustPrinciplesChecker {
           }
         });
       }
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
 
@@ -444,7 +444,7 @@ export class TrustPrinciplesChecker {
           }
         });
       }
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
 
@@ -485,7 +485,7 @@ export class TrustPrinciplesChecker {
           return false;
         }
       });
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }

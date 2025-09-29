@@ -1,10 +1,10 @@
 /**
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
  * @file Tests for help command implementation
  * @author MoAI Team
  * @tags @TEST:CLI-HELP-001 @REQ:CLI-FOUNDATION-012
  */
 
+import { beforeEach, describe, expect, vi } from 'vitest';
 import { HelpCommand } from '../help';
 
 describe('HelpCommand', () => {

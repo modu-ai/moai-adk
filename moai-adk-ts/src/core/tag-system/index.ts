@@ -1,5 +1,5 @@
 /**
- * @API:TAG-SYSTEM-001 16-Core TAG System Module Exports
+ * @API:TAG-SYSTEM-001  TAG System Module Exports
  * @FEATURE:TAG-UNIFIED-001 통합 TAG 시스템 진입점
  *
  * TAG 시스템 통합 모듈 export
@@ -12,58 +12,58 @@
 
 // Core TAG 파싱 시스템
 export {
-  TagParser,
-  TagCategory,
-  TagMatch,
-  TagPosition,
-  TagChain,
   DuplicateTagInfo,
+  TagCategory,
+  TagChain,
+  TagMatch,
+  TagParser,
+  TagPosition,
 } from './tag-parser';
 
 // TAG 검증 시스템
 export {
-  TagValidator,
-  ChainValidationResult,
-  ValidationError,
   BrokenReference,
+  ChainValidationResult,
   ConsistencyViolation,
+  TagValidator,
+  ValidationError,
 } from './tag-validator';
 
-// TAG 데이터베이스 시스템
-export {
-  TagDatabase,
-  TagSearchFilter,
-  TagRecord,
-  IndexingResult,
-  PrimaryChainAnalysis,
-  TagStatistics,
-  TableSchema,
-  FileIndexRequest,
-  getDefaultTagDatabase,
-  createTagDatabase,
-} from './tag-database';
+// TAG 데이터베이스 시스템 (임시 비활성화 - tag-database 모듈 누락)
+// export {
+//   TagDatabase,
+//   TagSearchFilter,
+//   TagRecord,
+//   IndexingResult,
+//   PrimaryChainAnalysis,
+//   TagStatistics,
+//   TableSchema,
+//   FileIndexRequest,
+//   getDefaultTagDatabase,
+//   createTagDatabase,
+// } from './tag-database';
 
-// 편의 함수들
-export function createTagSystem(dbPath?: string) {
+// 편의 함수들 (tag-database 비활성화)
+export function createTagSystem(_dbPath?: string) {
   const parser = new TagParser();
   const validator = new TagValidator();
-  const database = dbPath ? createTagDatabase(dbPath) : getDefaultTagDatabase();
+  // const database = dbPath ? createTagDatabase(dbPath) : getDefaultTagDatabase();
 
   return {
     parser,
     validator,
-    database,
+    // database,
     async initialize() {
-      await database.initialize();
+      // await database.initialize();
     },
     async close() {
-      await database.close();
+      // await database.close();
     },
   };
 }
 
 /**
- * 16-Core TAG 카테고리 상수
+ *  TAG 카테고리 상수
  */
 export const TAG_CATEGORIES = {
   PRIMARY: ['REQ', 'DESIGN', 'TASK', 'TEST'],

@@ -1,21 +1,21 @@
 /**
- * @TEST:TAG-PARSER-001 16-Core TAG Parser Tests
+ * @TEST:TAG-PARSER-001  TAG Parser Tests
  *
  * Python tag_system/parser.py의 완전 포팅 테스트
- * @FEATURE:TAG-SYSTEM-001 16-Core TAG 추적성 시스템
+ * @FEATURE:TAG-SYSTEM-001  TAG 추적성 시스템
  */
 
-import { TagParser, TagCategory } from '../tag-parser';
+import { TagCategory, TagParser } from '../tag-parser';
 
-describe('TagParser - 16-Core TAG System', () => {
+describe('TagParser -  TAG System', () => {
   let tagParser: TagParser;
 
   beforeEach(() => {
     tagParser = new TagParser();
   });
 
-  describe('@TEST:16-CORE-CATEGORIES-001 16-Core TAG 카테고리 체계', () => {
-    it('should have correct 16-Core TAG categories', () => {
+  describe('@TEST:-CATEGORIES-001  TAG 카테고리 체계', () => {
+    it('should have correct  TAG categories', () => {
       const categories = tagParser.getTagCategories();
 
       // PRIMARY Chain: REQ → DESIGN → TASK → TEST
@@ -57,7 +57,7 @@ describe('TagParser - 16-Core TAG System', () => {
   });
 
   describe('@TEST:TAG-EXTRACTION-001 TAG 추출 기능', () => {
-    it('should extract valid 16-Core TAGs', () => {
+    it('should extract valid  TAGs', () => {
       const content = `
         @REQ:USER-LOGIN-001 사용자 로그인 요구사항
         @DESIGN:AUTH-001 인증 설계
@@ -96,8 +96,8 @@ describe('TagParser - 16-Core TAG System', () => {
       const tags = tagParser.extractTags(content);
 
       expect(tags).toHaveLength(2);
-      expect(tags[0]!.category).toBe('REQ');
-      expect(tags[1]!.category).toBe('FEATURE');
+      expect(tags[0]?.category).toBe('REQ');
+      expect(tags[1]?.category).toBe('FEATURE');
     });
 
     it('should extract tags without descriptions', () => {
@@ -106,8 +106,8 @@ describe('TagParser - 16-Core TAG System', () => {
       const tags = tagParser.extractTags(content);
 
       expect(tags).toHaveLength(2);
-      expect(tags[0]!.description).toBeNull();
-      expect(tags[1]!.description).toBeNull();
+      expect(tags[0]?.description).toBeNull();
+      expect(tags[1]?.description).toBeNull();
     });
   });
 
@@ -119,11 +119,11 @@ describe('TagParser - 16-Core TAG System', () => {
       const chains = tagParser.parseTagChains(content);
 
       expect(chains).toHaveLength(1);
-      expect(chains[0]!.links).toHaveLength(4);
-      expect(chains[0]!.links[0]!.category).toBe('REQ');
-      expect(chains[0]!.links[1]!.category).toBe('DESIGN');
-      expect(chains[0]!.links[2]!.category).toBe('TASK');
-      expect(chains[0]!.links[3]!.category).toBe('TEST');
+      expect(chains[0]?.links).toHaveLength(4);
+      expect(chains[0]?.links[0]?.category).toBe('REQ');
+      expect(chains[0]?.links[1]?.category).toBe('DESIGN');
+      expect(chains[0]?.links[2]?.category).toBe('TASK');
+      expect(chains[0]?.links[3]?.category).toBe('TEST');
     });
 
     it('should parse multiple chains in content', () => {
@@ -135,8 +135,8 @@ describe('TagParser - 16-Core TAG System', () => {
       const chains = tagParser.parseTagChains(content);
 
       expect(chains).toHaveLength(2);
-      expect(chains[0]!.links).toHaveLength(3);
-      expect(chains[1]!.links).toHaveLength(3);
+      expect(chains[0]?.links).toHaveLength(3);
+      expect(chains[1]?.links).toHaveLength(3);
     });
 
     it('should ignore chains with invalid categories', () => {
@@ -145,9 +145,9 @@ describe('TagParser - 16-Core TAG System', () => {
       const chains = tagParser.parseTagChains(content);
 
       expect(chains).toHaveLength(1);
-      expect(chains[0]!.links).toHaveLength(2); // Only REQ and TASK
-      expect(chains[0]!.links[0]!.category).toBe('REQ');
-      expect(chains[0]!.links[1]!.category).toBe('TASK');
+      expect(chains[0]?.links).toHaveLength(2); // Only REQ and TASK
+      expect(chains[0]?.links[0]?.category).toBe('REQ');
+      expect(chains[0]?.links[1]?.category).toBe('TASK');
     });
   });
 
@@ -218,12 +218,12 @@ Line 3: @DESIGN:SECOND-001 Design document`;
       const duplicates = tagParser.findDuplicateTags(content);
 
       expect(duplicates).toHaveLength(1);
-      expect(duplicates[0]!.category).toBe('REQ');
-      expect(duplicates[0]!.identifier).toBe('DUPLICATE-001');
-      expect(duplicates[0]!.positions).toHaveLength(3);
-      expect(duplicates[0]!.positions[0]!.lineNumber).toBe(2);
-      expect(duplicates[0]!.positions[1]!.lineNumber).toBe(4);
-      expect(duplicates[0]!.positions[2]!.lineNumber).toBe(6);
+      expect(duplicates[0]?.category).toBe('REQ');
+      expect(duplicates[0]?.identifier).toBe('DUPLICATE-001');
+      expect(duplicates[0]?.positions).toHaveLength(3);
+      expect(duplicates[0]?.positions[0]?.lineNumber).toBe(2);
+      expect(duplicates[0]?.positions[1]?.lineNumber).toBe(4);
+      expect(duplicates[0]?.positions[2]?.lineNumber).toBe(6);
     });
 
     it('should return empty array when no duplicates exist', () => {
@@ -271,8 +271,8 @@ Line 3: @DESIGN:SECOND-001 Design document`;
       const tags = tagParser.extractTags(content);
 
       expect(tags).toHaveLength(2); // Only valid tags
-      expect(tags[0]!.identifier).toBe('GOOD-001');
-      expect(tags[1]!.identifier).toBe('VALID-002');
+      expect(tags[0]?.identifier).toBe('GOOD-001');
+      expect(tags[1]?.identifier).toBe('VALID-002');
     });
   });
 

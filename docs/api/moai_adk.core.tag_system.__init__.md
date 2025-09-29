@@ -1,6 +1,6 @@
 # moai_adk.core.tag_system.__init__
 
-16-Core TAG 추적성 시스템
+ TAG 추적성 시스템
 
 @FEATURE:TAG-SYSTEM-001 - 완전한 TAG 체인 추적 시스템
 - TAG 파싱 엔진: parser.py

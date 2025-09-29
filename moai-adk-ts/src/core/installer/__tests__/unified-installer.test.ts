@@ -3,8 +3,8 @@
  * @task UNIFIED-INSTALLER-TEST-001 Test unified installation flow
  */
 
-import { UnifiedInstaller } from '../unified-installer';
 import type { InstallationConfig } from '../types';
+import { UnifiedInstaller } from '../unified-installer';
 
 describe('UnifiedInstaller', () => {
   let installer: UnifiedInstaller;

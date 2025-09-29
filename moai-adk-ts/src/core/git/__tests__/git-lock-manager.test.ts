@@ -6,8 +6,8 @@ import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
  */
 
 import fs from 'fs-extra';
-import { GitLockManager } from '../git-lock-manager';
 import { GitLockedException } from '../../../types/git';
+import { GitLockManager } from '../git-lock-manager';
 
 // Mock fs-extra
 vi.mock('fs-extra');

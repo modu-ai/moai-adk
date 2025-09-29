@@ -223,7 +223,7 @@ Examples:
   moai help init           Get help for init command
 `;
 
-    return banner + '\n' + commandList + footer;
+    return `${banner}\n${commandList}${footer}`;
   }
 
   /**
@@ -255,7 +255,7 @@ Usage:
       help += commandHelp.examples.map(example => `  ${example}`).join('\n');
     }
 
-    return help + '\n';
+    return `${help}\n`;
   }
 
   /**

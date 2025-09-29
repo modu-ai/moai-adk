@@ -6,10 +6,10 @@
 
 import chalk from 'chalk';
 import { logger } from '../../../utils/logger';
-import { ResourceValidator } from './resource-validator';
+import type { PostInstallOptions, PostInstallResult } from '../types';
 import { FirstRunManager } from './first-run-manager';
 import { GlobalSetupManager } from './global-setup-manager';
-import type { PostInstallOptions, PostInstallResult } from '../types';
+import { ResourceValidator } from './resource-validator';
 
 /**
  * Post-Installation Manager

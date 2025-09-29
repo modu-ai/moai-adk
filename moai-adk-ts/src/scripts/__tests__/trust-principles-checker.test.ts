@@ -6,10 +6,10 @@
  * TrustPrinciplesChecker 클래스의 동작을 검증합니다.
  */
 
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { beforeEach, describe, expect, vi } from 'vitest';
 import { TrustPrinciplesChecker } from '../trust-principles-checker';
-import * as fs from 'fs';
-import * as path from 'path';
 
 // Mock fs module
 vi.mock('fs');

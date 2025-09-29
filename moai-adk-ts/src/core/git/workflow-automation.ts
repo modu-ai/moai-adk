@@ -12,9 +12,9 @@
  * @fileoverview Automated Git workflows for SPEC development
  */
 
+import type { CreatePullRequestOptions, GitConfig } from '../../types/git';
+import { GitCommitTemplates, GitNamingRules } from './constants';
 import type { GitManager } from './git-manager';
-import type { GitConfig, CreatePullRequestOptions } from '../../types/git';
-import { GitNamingRules, GitCommitTemplates } from './constants';
 
 /**
  * SPEC 개발 워크플로우 단계
@@ -114,7 +114,7 @@ export class WorkflowAutomation {
       );
 
       // 3. TDD REFACTOR 단계 체크포인트
-      const refactorCommit = await this.gitManager.createCheckpoint(
+      const _refactorCommit = await this.gitManager.createCheckpoint(
         `${specId} TDD REFACTOR phase - Code optimized`
       );
 
@@ -155,7 +155,7 @@ export class WorkflowAutomation {
       }
 
       // 3. 태그 생성 (완료 마킹)
-      const tagName = `${specId}-completed`;
+      const _tagName = `${specId}-completed`;
       // await this.gitManager.createTag(tagName, `SPEC ${specId} completed`);
 
       return {
@@ -209,7 +209,7 @@ export class WorkflowAutomation {
    * 브랜치 정리 워크플로우
    */
   async cleanupBranches(
-    excludeBranches: string[] = ['main', 'develop']
+    _excludeBranches: string[] = ['main', 'develop']
   ): Promise<string[]> {
     try {
       // Git에서 merged 브랜치 목록 조회 (실제 구현 시)
@@ -285,7 +285,7 @@ export class WorkflowAutomation {
     description: string
   ): Promise<void> {
     const fs = await import('fs-extra');
-    const path = await import('path');
+    const path = await import('node:path');
 
     const specDir = path.join(process.cwd(), '.moai', 'specs', specId);
     await fs.ensureDir(specDir);

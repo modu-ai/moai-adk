@@ -4,10 +4,10 @@
  * @tags @FEATURE:BENCHMARK-RUNNER-001 @REQ:ADVANCED-DOCTOR-001
  */
 
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import * as os from 'os';
-import type { BenchmarkResult, BenchmarkConfig } from '@/types/diagnostics';
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import type { BenchmarkConfig, BenchmarkResult } from '@/types/diagnostics';
 
 /**
  * Performance benchmark runner for system testing
@@ -83,7 +83,7 @@ export class BenchmarkRunner {
       this.createTimeoutPromise(benchmark.timeout),
     ]);
 
-    const actualDuration = Date.now() - startTime;
+    const _actualDuration = Date.now() - startTime;
 
     // Calculate score based on performance vs baseline
     const score = this.calculateScore(duration, benchmark.baseline);
@@ -150,7 +150,7 @@ export class BenchmarkRunner {
   private generateRecommendations(
     benchmark: BenchmarkConfig,
     score: number,
-    duration: number
+    _duration: number
   ): string[] {
     const recommendations: string[] = [];
 

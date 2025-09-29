@@ -4,11 +4,11 @@
  * @tags @TEST:PROJECT-WIZARD-001 @REQ:CLI-WIZARD-001
  */
 
-import { describe, test, expect, beforeEach, jest, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import '@/__tests__/setup';
-import { ProjectWizard } from '@/core/project/wizard';
-import { ProjectType, ProjectConfig } from '@/types/project';
 import inquirer from 'inquirer';
+import { ProjectWizard } from '@/core/project/wizard';
+import { ProjectType } from '@/types/project';
 
 // Mock inquirer
 vi.mock('inquirer');

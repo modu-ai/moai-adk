@@ -6,6 +6,7 @@
  * @REQ:SPEC-METADATA-001 SPEC 메타데이터 구조 정의 요구사항
  * @DESIGN:YAML-FRONTMATTER-001 YAML frontmatter 기반 메타데이터 설계
  * @TASK:TYPE-DEFINITION-001 TypeScript 타입 정의 구현
+ * @TEST:SPEC-METADATA-TEST-001 메타데이터 타입 정의 테스트 (covered by enum validation)
  */
 
 /**
@@ -22,7 +23,7 @@ export enum SpecStatus {
   COMPLETED = 'completed',
 
   /** 폐기 - 더 이상 사용하지 않음, 다른 SPEC으로 대체됨 */
-  DEPRECATED = 'deprecated'
+  DEPRECATED = 'deprecated',
 }
 
 /**
@@ -36,7 +37,7 @@ export enum SpecPriority {
   MEDIUM = 'medium',
 
   /** 낮음 - 추후 처리 가능, 개선 사항 */
-  LOW = 'low'
+  LOW = 'low',
 }
 
 /**
@@ -133,7 +134,7 @@ export const STATUS_TRANSITIONS: Record<SpecStatus, SpecStatus[]> = {
   [SpecStatus.DRAFT]: [SpecStatus.ACTIVE, SpecStatus.DEPRECATED],
   [SpecStatus.ACTIVE]: [SpecStatus.COMPLETED, SpecStatus.DEPRECATED],
   [SpecStatus.COMPLETED]: [SpecStatus.DEPRECATED],
-  [SpecStatus.DEPRECATED]: [] // 폐기된 SPEC은 상태 변경 불가
+  [SpecStatus.DEPRECATED]: [], // 폐기된 SPEC은 상태 변경 불가
 };
 
 /**
@@ -144,5 +145,5 @@ export const DEFAULT_METADATA: Partial<SpecMetadata> = {
   priority: SpecPriority.MEDIUM,
   dependencies: [],
   related_specs: [],
-  tags: []
+  tags: [],
 };

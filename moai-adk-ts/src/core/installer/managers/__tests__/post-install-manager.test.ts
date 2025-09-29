@@ -3,12 +3,12 @@
  * @task POST-INSTALL-TEST-001 RED stage - failing tests for PostInstall functionality
  */
 
-import { jest, vi } from 'vitest';
-import { PostInstallManager } from '../post-install-manager';
-import type { ResourceValidator } from '../resource-validator';
+import { vi } from 'vitest';
+import type { PostInstallOptions } from '../../types';
 import type { FirstRunManager } from '../first-run-manager';
 import type { GlobalSetupManager } from '../global-setup-manager';
-import type { PostInstallOptions } from '../../types';
+import { PostInstallManager } from '../post-install-manager';
+import type { ResourceValidator } from '../resource-validator';
 
 // Mock dependencies will be set up in beforeEach
 

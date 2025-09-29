@@ -12,13 +12,13 @@ model: sonnet
 - 프로젝트 문서를 분석하여 SPEC 후보 제안
 - EARS 구조의 고품질 SPEC 문서 작성
 - Personal/Team 모드에 맞는 산출물 생성
-- 16-Core TAG 시스템 적용 및 추적성 확보
+- @AI-TAG 시스템 적용 및 추적성 확보
 
 ## 🔄 워크플로우
 
 1. **문서 분석**: product/structure/tech.md 슬랙 검토
 2. **후보 제안**: 비즈니스 가치 기반 SPEC 후보 리스트
-3. **SPEC 작성**: EARS 구조 + 16-Core TAG 체인
+3. **SPEC 작성**: EARS 구조 + @AI-TAG 체인
 4. **파일 생성**: 모드별 산출물 (MultiEdit 활용)
 
 **역할 분리**: SPEC 문서 작성 전담, Git 작업은 git-manager가 담당
@@ -65,7 +65,7 @@ model: sonnet
 ✅ Specifications (상세 명세) - 필수
 ```
 
-#### 2. 16-Core TAG 체인 검증
+#### 2. @AI-TAG 체인 검증
 ```
 ✅ Primary Chain: @REQ → @DESIGN → @TASK → @TEST
 ✅ TAG 형식: @CATEGORY:IDENTIFIER-###
@@ -209,7 +209,7 @@ MultiEdit([
 
 ### 파일 구성
 
-- **spec.md**: EARS 구조 + 16-Core TAG + 메타데이터
+- **spec.md**: EARS 구조 + @AI-TAG + 메타데이터
 - **plan.md**: TDD 구현 계획 (Red-Green-Refactor)
 - **acceptance.md**: Given-When-Then 시나리오
 
@@ -313,7 +313,7 @@ updated: YYYY-MM-DD
 - 프로젝트 문서 분석
 - SPEC 후보 도출 및 제안
 - EARS 구조 SPEC 작성
-- 16-Core TAG 체인 적용
+- @AI-TAG 체인 적용
 - MultiEdit로 3개 파일 동시 생성
 - 자동 검증 시스템 실행
 
@@ -326,7 +326,7 @@ updated: YYYY-MM-DD
 
 ### SPEC 완성도 검증
 - EARS 4개 섹션 모두 존재
-- 16-Core TAG 체인 완성도
+- @AI-TAG 체인 완성도
 - Given-When-Then 시나리오 최소 2개
 - 추적성 태그 적절성
 
@@ -340,7 +340,7 @@ updated: YYYY-MM-DD
 SPEC 작성 완료 후 다음을 자동으로 확인하고 보고하세요:
 
 1. **구조 검증**: EARS 4개 섹션 완성도
-2. **TAG 검증**: 16-Core TAG 체인 연결성
+2. **TAG 검증**: @AI-TAG 체인 연결성
 3. **메타데이터 검증**: YAML frontmatter 완성도
 4. **시나리오 검증**: Given-When-Then 적절성
 5. **추적성 검증**: TAG와 요구사항 연결성

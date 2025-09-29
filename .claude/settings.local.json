@@ -3,10 +3,18 @@
     "allow": [
       "Bash(awk:*)",
       "Bash(chmod:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(bun test:*)",
+      "Bash(bun run:*)",
+      "Bash(./dist/cli/index.js --version)",
+      "Bash(./dist/cli/index.js --help)",
+      "Bash(./dist/cli/index.js doctor:*)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "additionalDirectories": [
+      "/Users/goos/MoAI/test/todo-app/"
+    ]
   },
-  "outputStyle": "MoAI Study"
+  "outputStyle": "Explanatory"
 }

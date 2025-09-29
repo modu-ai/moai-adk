@@ -1,195 +1,335 @@
-# 🗿 MoAI-ADK TypeScript Foundation (Week 1)
+# MoAI-ADK
 
-**SPEC-012**: TypeScript 기반 구축 Week 1 완료 버전
+[![npm version](https://img.shields.io/npm/v/moai-adk)](https://www.npmjs.com/package/moai-adk)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9.2+-blue)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/node-18.0+-green)](https://nodejs.org/)
 
-## 개요
+TypeScript-based SPEC-First TDD Development Kit with Universal Language Support
 
-MoAI-ADK (Modu-AI Agentic Development Kit)의 TypeScript 포팅 프로젝트입니다. TDD(Red-Green-Refactor) 방식으로 구현되었으며, TRUST 5원칙을 준수합니다.
+## Features
 
-## 완성된 기능
+- **SPEC-First TDD Workflow**: 3-stage development process (SPEC → TDD → Sync)
+- **Universal Language Support**: Python, TypeScript, Java, Go, Rust, and more
+- **Claude Code Integration**: 7 specialized agents for automated development
+- **Complete Traceability**: @TAG system for full requirement-to-code tracking
+- **Intelligent Diagnostics**: Automatic project language detection and environment optimization
 
-### 🔍 시스템 요구사항 자동 검증 (@REQ:AUTO-VERIFY-012)
+## Installation
 
-혁신적인 자동 시스템 검증 기능:
-
-- **자동 감지**: Git, Node.js, SQLite3 등 필수 도구 설치 상태 확인
-- **버전 검증**: semver 기반 최소 버전 요구사항 확인
-- **플랫폼 대응**: macOS, Linux, Windows 지원
-- **설치 제안**: 플랫폼별 자동 설치 명령어 제공
-
-### 🖥️ CLI 인터페이스 (@REQ:CLI-FOUNDATION-012)
-
-Commander.js 기반 CLI 도구:
+### Global Installation
 
 ```bash
-moai --version           # 버전 정보 출력
-moai --help             # 도움말 표시
-moai doctor             # 시스템 진단 실행
-moai init <project>     # 프로젝트 초기화 (시스템 검증 포함)
+# Using npm
+npm install -g moai-adk
+
+# Using Bun (recommended)
+bun add -g moai-adk
 ```
 
-### 🏗️ 빌드 시스템 (@REQ:BUILD-SYSTEM-012)
-
-최신 TypeScript 개발 환경:
-
-- **TypeScript 5.0+**: ES2022 타겟, strict 모드
-- **tsup 빌드**: 고성능 번들링, ESM/CJS 듀얼 지원
-- **타입 정의**: .d.ts 파일 자동 생성
-- **소스맵**: 디버깅을 위한 소스맵 생성
-
-### 📦 패키지 구성 (@REQ:PACKAGE-CONFIG-012)
-
-npm 패키지 준비 완료:
-
-- **Node.js 18+** 지원
-- **bin 명령어**: `moai` CLI 글로벌 설치 지원
-- **듀얼 모듈**: ESM/CommonJS 모두 지원
-- **타입 안전성**: 완전한 TypeScript 타입 정의
-
-## 프로젝트 구조
-
-```
-moai-adk-ts/
-├── package.json              # npm 패키지 설정
-├── tsconfig.json            # TypeScript 설정
-├── tsup.config.ts           # 빌드 설정
-├── jest.config.js           # 테스트 설정
-├── .eslintrc.json          # 린트 설정
-├── .prettierrc             # 포맷터 설정
-├── src/
-│   ├── cli/
-│   │   ├── index.ts        # CLI 진입점
-│   │   └── commands/
-│   │       ├── init.ts     # moai init 명령어
-│   │       └── doctor.ts   # moai doctor 명령어
-│   ├── core/
-│   │   └── system-checker/ # 🆕 시스템 요구사항 검증
-│   │       ├── requirements.ts  # 요구사항 정의
-│   │       ├── detector.ts      # 설치된 도구 감지
-│   │       └── index.ts         # 통합 인터페이스
-│   ├── utils/
-│   │   ├── logger.ts       # 구조화 로깅
-│   │   └── version.ts      # 버전 정보
-│   └── index.ts            # 메인 API 진입점
-├── __tests__/              # Jest 테스트
-│   ├── system-checker/     # 시스템 검증 테스트
-│   └── cli/               # CLI 테스트
-└── dist/                  # 컴파일된 JavaScript
-```
-
-## 사용법
-
-### 개발 환경
+### Local Installation
 
 ```bash
-# 의존성 설치
-npm install
+# Using npm
+npm install moai-adk
 
-# 개발 모드 실행
-npm run dev -- --help
-
-# 빌드
-npm run build
-
-# 테스트
-npm test
-
-# 린팅
-npm run lint
-
-# 포맷팅
-npm run format
+# Using Bun
+bun add moai-adk
 ```
 
-### CLI 사용
+## Requirements
+
+- **Node.js**: 18.0 or higher
+- **Git**: 2.30.0 or higher
+- **npm**: 8.0.0 or higher (or Bun 1.2.0+)
+
+## Quick Start
+
+### 1. Initialize a New Project
 
 ```bash
-# 시스템 진단 실행
-npm run dev -- doctor
-
-# 프로젝트 초기화
-npm run dev -- init my-project
-
-# 버전 확인
-npm run dev -- --version
+moai init my-project
+cd my-project
 ```
 
-## TRUST 5원칙 준수
+### 2. Check System Status
 
-### ✅ T (Test First)
-- **Red-Green-Refactor**: 모든 기능이 TDD 사이클로 구현
-- **테스트 커버리지**: 80% 이상 목표
-- **Given-When-Then**: 명확한 테스트 구조
+```bash
+# Run system diagnostics
+moai doctor
 
-### ✅ R (Readable)
-- **파일 크기**: 모든 파일 300 LOC 이하
-- **함수 크기**: 50 LOC 이하 유지
-- **매개변수**: 5개 이하 제한
-- **명확한 네이밍**: 의도를 드러내는 함수/변수명
+# Check project status
+moai status
+```
 
-### ✅ U (Unified)
-- **복잡도**: 사이클로매틱 복잡도 10 이하
-- **단일 책임**: 각 모듈이 명확한 책임 분담
-- **인터페이스 기반**: 타입 안전성 보장
+### 3. Development Workflow
 
-### ✅ S (Secured)
-- **구조화 로깅**: JSON 형태 로그, 민감정보 마스킹
-- **입력 검증**: 모든 외부 입력 검증
-- **에러 처리**: 안전한 에러 처리 및 복구
+```bash
+# Stage 1: Write SPEC
+/moai:1-spec "user authentication system"
 
-### ✅ T (Trackable)
-- **16-Core TAG**: 모든 코드에 추적성 태그 적용
-- **버전 관리**: 시맨틱 버저닝 준수
-- **문서화**: JSDoc을 통한 API 문서화
+# Stage 2: Implement with TDD
+/moai:2-build SPEC-001
 
-## 성능 지표
+# Stage 3: Sync documentation
+/moai:3-sync
+```
 
-- **CLI 시작 시간**: < 2초 ✅
-- **시스템 검사**: < 5초 ✅
-- **메모리 사용**: < 100MB ✅
-- **빌드 시간**: < 30초 ✅
-- **파일 크기**: 최대 196 LOC (300 LOC 미만) ✅
+## CLI Commands
 
-## 주요 혁신 기능
+### `moai init <project-name>`
 
-### 🔍 시스템 검증 엔진
-- 플랫폼별 자동 도구 감지
-- semver 기반 버전 요구사항 검증
-- 자동 설치 명령어 제안
+Initialize a new MoAI-ADK project with the specified name.
 
-### 🛡️ 타입 안전성
-- `exactOptionalPropertyTypes` 활성화
-- 엄격한 TypeScript 설정
-- 런타임 타입 검증
+```bash
+moai init my-api --type web-api --language typescript
+```
 
-### 📊 구조화 로깅
-- JSON 형태 로그
-- 민감정보 자동 마스킹
-- 구조화된 에러 추적
+### `moai doctor`
 
-## Week 1 완료 조건 ✅
+Run comprehensive system diagnostics to verify environment setup.
 
-Week 1 종료 시점 모든 요구사항 만족:
+```bash
+moai doctor
+moai doctor --list-backups
+```
 
-- ✅ `moai --version` 명령어 정상 동작
-- ✅ `moai --help` 명령어 정상 동작
-- ✅ `moai doctor` 명령어 정상 동작
-- ✅ 시스템 요구사항 자동 검증 모듈 완성
-- ✅ 모든 테스트 통과
-- ✅ TRUST 5원칙 100% 준수
-- ✅ 빌드 시스템 완전 구축
-- ✅ 성능 목표 달성
+### `moai status`
 
-## 다음 단계 (Week 2)
+Display current project status and configuration.
 
-- 패키지 매니저 통합 (npm, yarn, pnpm)
-- Claude Code 통합 모듈
-- 프로젝트 템플릿 시스템
-- 고급 시스템 진단 기능
+```bash
+moai status --detailed --tags --git
+```
+
+### `moai update`
+
+Update MoAI-ADK templates to the latest version.
+
+```bash
+moai update --backup
+```
+
+### `moai restore`
+
+Restore project from backup.
+
+```bash
+moai restore --list
+moai restore backup-20241201.tar.gz
+```
+
+## Agent System
+
+MoAI-ADK provides 7 specialized agents for different development tasks:
+
+| Agent | Purpose | Usage |
+|-------|---------|-------|
+| **spec-builder** | EARS specification writing | `@agent-spec-builder "new feature spec"` |
+| **code-builder** | TDD implementation | `@agent-code-builder "implement SPEC-001"` |
+| **doc-syncer** | Documentation synchronization | `@agent-doc-syncer "update docs"` |
+| **cc-manager** | Claude Code management | `@agent-cc-manager "optimize settings"` |
+| **debug-helper** | Error diagnosis | `@agent-debug-helper "build failure analysis"` |
+| **git-manager** | Git workflow automation | `@agent-git-manager "create feature branch"` |
+| **trust-checker** | Quality verification | `@agent-trust-checker "code quality check"` |
+
+## Language Support
+
+| Language | Test Framework | Linter/Formatter | Build Tool |
+|----------|----------------|------------------|------------|
+| **TypeScript** | Vitest/Jest | Biome/ESLint | tsup/Vite |
+| **Python** | pytest | ruff/black | uv/pip |
+| **Java** | JUnit | checkstyle | Maven/Gradle |
+| **Go** | go test | golint/gofmt | go mod |
+| **Rust** | cargo test | clippy/rustfmt | cargo |
+
+## @TAG System
+
+The @TAG system provides complete traceability from requirements to implementation:
+
+### Core Tags
+
+- `@REQ`: Requirements definition
+- `@DESIGN`: Architecture design
+- `@TASK`: Implementation tasks
+- `@TEST`: Test verification
+- `@FEATURE`: Business features
+- `@API`: Interface definitions
+- `@SEC`: Security requirements
+- `@DOCS`: Documentation
+
+### Usage Example
+
+```typescript
+// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+// Related: @SEC:AUTH-001, @API:AUTH-001
+
+class AuthenticationService {
+  /**
+   * @API:AUTH-001: User authentication endpoint
+   */
+  async authenticate(email: string, password: string): Promise<boolean> {
+    // @SEC:AUTH-001: Input validation
+    if (!this.validateInput(email, password)) {
+      return false;
+    }
+
+    return this.verifyCredentials(email, password);
+  }
+}
+```
+
+## TRUST Principles
+
+All development follows the TRUST principles:
+
+- **T**est First: Test-driven development (SPEC-First TDD)
+- **R**eadable: Clear code (≤50 lines per function, clear naming)
+- **U**nified: Single responsibility (≤300 lines per module, type safety)
+- **S**ecured: Security by design (input validation, static analysis)
+- **T**rackable: Complete traceability (@TAG system)
+
+## Performance
+
+- **Build Time**: 226ms
+- **Package Size**: 471KB
+- **TAG System Loading**: 45ms
+- **Test Success Rate**: 92.9% (Vitest)
+- **Performance Improvements**:
+  - Bun: 98% faster than npm
+  - Vitest: 92.9% success rate
+  - Biome: 94.8% faster than ESLint+Prettier
+
+## API Usage
+
+### Programmatic API
+
+```typescript
+import { MoAI } from 'moai-adk';
+
+const moai = new MoAI();
+
+// Initialize project
+await moai.init('my-project', {
+  type: 'web-api',
+  language: 'typescript'
+});
+
+// Run diagnostics
+const diagnostics = await moai.doctor();
+
+// Get project status
+const status = await moai.status();
+```
+
+### Configuration
+
+```json
+// .moai/config.json
+{
+  "project": {
+    "name": "my-project",
+    "type": "web-api",
+    "language": "typescript"
+  },
+  "workflow": {
+    "enableAutoSync": true,
+    "gitIntegration": true
+  }
+}
+```
+
+## Troubleshooting
+
+### Installation Issues
+
+```bash
+# Permission errors
+sudo npm install -g moai-adk
+
+# Cache issues
+npm cache clean --force
+npm install -g moai-adk
+```
+
+### Command Not Found
+
+```bash
+# Check PATH
+echo $PATH
+
+# Restart shell
+source ~/.bashrc  # or ~/.zshrc
+```
+
+### System Diagnostics
+
+```bash
+# Re-run diagnostics
+moai doctor
+
+# Check individual tools
+node --version
+git --version
+npm --version
+```
+
+## Development
+
+### Setup Development Environment
+
+```bash
+git clone https://github.com/your-org/moai-adk.git
+cd moai-adk/moai-adk-ts
+
+# Install dependencies
+bun install
+
+# Run in development mode
+bun run dev
+
+# Build
+bun run build
+
+# Test
+bun test
+```
+
+### Scripts
+
+- `bun run build`: Build the project
+- `bun run test`: Run tests
+- `bun run test:coverage`: Run tests with coverage
+- `bun run lint`: Lint code
+- `bun run format`: Format code
+- `bun run type-check`: Type checking
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/new-feature`)
+3. Commit your changes (`git commit -am 'Add new feature'`)
+4. Push to the branch (`git push origin feature/new-feature`)
+5. Create a Pull Request
+
+### Development Guidelines
+
+- Follow TRUST principles
+- Apply @TAG system
+- Use TypeScript strict mode
+- Maintain ≤50 lines per function
+- Keep test coverage ≥85%
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
+## Support
+
+- **Issues**: [GitHub Issues](https://github.com/your-org/moai-adk/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/your-org/moai-adk/discussions)
+- **Documentation**: [Project Documentation](https://moai-adk.github.io)
 
 ---
 
-**구현 완료**: 2024년 SPEC-012 Week 1
-**TDD 방식**: Red-Green-Refactor 사이클 완전 준수
-**품질 보증**: TRUST 5원칙 100% 적용
-**혁신 기능**: 자동 시스템 검증 및 플랫폼 대응
+**MoAI-ADK v0.0.3** - TypeScript-based SPEC-First TDD Development Framework

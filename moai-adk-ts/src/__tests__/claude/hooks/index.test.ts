@@ -3,16 +3,20 @@
  * @description Tests for the hook system
  */
 
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 
 import {
   HookSystem,
-  parseClaudeInput,
   outputResult,
+  parseClaudeInput,
 } from '../../../claude/hooks/index';
-import { SteeringGuard } from '../../../claude/hooks/security/steering-guard';
 import { PolicyBlock } from '../../../claude/hooks/security/policy-block';
-import type { HookInput, HookResult, MoAIHook } from '../../../claude/hooks/types';
+import { SteeringGuard } from '../../../claude/hooks/security/steering-guard';
+import type {
+  HookInput,
+  HookResult,
+  MoAIHook,
+} from '../../../claude/hooks/types';
 
 // Mock console and process
 const mockConsoleError = vi
@@ -252,7 +256,7 @@ describe('HookSystem', () => {
       };
 
       // Mock fs module
-      const fs = require('fs');
+      const _fs = require('node:fs');
       vi.doMock('fs', () => ({
         existsSync: vi.fn().mockReturnValue(true),
         readFileSync: vi.fn().mockReturnValue(JSON.stringify(mockConfig)),

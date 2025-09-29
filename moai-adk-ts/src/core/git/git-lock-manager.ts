@@ -4,14 +4,14 @@
  * @tags @FEATURE:GIT-LOCK-001 @REQ:CORE-SYSTEM-013
  */
 
+import * as os from 'node:os';
+import * as path from 'node:path';
 import * as fs from 'fs-extra';
-import * as path from 'path';
-import * as os from 'os';
 import {
-  type GitLockInfo,
-  type GitLockStatus,
   type GitLockContext,
   GitLockedException,
+  type GitLockInfo,
+  type GitLockStatus,
 } from '../../types/git';
 
 /**
@@ -293,7 +293,7 @@ export class GitLockManager {
       // On Unix systems, sending signal 0 checks if process exists
       process.kill(pid, 0);
       return true;
-    } catch (error) {
+    } catch (_error) {
       // Process not found or permission denied
       return false;
     }

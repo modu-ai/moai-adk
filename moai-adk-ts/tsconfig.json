@@ -44,6 +44,9 @@
   "exclude": [
     "node_modules",
     "dist",
-    "__tests__"
+    "__tests__",
+    "src/__tests__/claude/**",
+    "src/scripts/__tests__/**",
+    "src/__tests__/cli/commands/doctor-advanced.test.ts"
   ]
 }

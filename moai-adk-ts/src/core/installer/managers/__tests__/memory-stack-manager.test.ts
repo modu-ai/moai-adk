@@ -5,8 +5,8 @@
  * @FEATURE:MEMORY-STACK-001 기술 스택별 메모리 템플릿 자동 선택
  */
 
-import { MemoryStackManager } from '../memory-stack-manager';
 import type { TechStack } from '../../types';
+import { MemoryStackManager } from '../memory-stack-manager';
 
 describe('MemoryStackManager', () => {
   let memoryStackManager: MemoryStackManager;

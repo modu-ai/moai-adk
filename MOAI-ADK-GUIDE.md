@@ -35,8 +35,7 @@ MoAI-ADK는 Claude Code 환경에서 **SPEC-First TDD 개발**을 누구나 쉽�
 
 - **3단계 파이프라인**: `/moai:1-spec` → `/moai:2-build` → `/moai:3-sync`
 - **온디맨드 디버깅**: `@agent-debug-helper` (필요 시 호출)
-- **16-Core @TAG**: 언어 중립적 추적성 시스템
-- **SQLite3 tags.db**: 모든 언어 프로젝트 통합 관리
+- ** @TAG**: 언어 중립적 추적성 시스템 (코드 직접 스캔 기반)
 
 #### 4. 🧹 하이브리드 복잡성 완전 제거
 
@@ -67,7 +66,7 @@ MoAI-ADK SPEC-013 Architecture
 │   ├── Project Manager       # 프로젝트 초기화 및 관리
 │   ├── Git Integration       # Git 작업 자동화
 │   ├── Template System       # .moai/, .claude/ 구조 생성
-│   └── Tag System           # 16-Core @TAG 관리
+│   └── Tag System           # @TAG 관리
 │
 ├── Universal Language Support # 모든 언어 프로젝트 지원
 │   ├── Python Projects       # pytest, mypy, black, ruff
@@ -124,7 +123,7 @@ MoAI-ADK (TypeScript) → 언어별 TDD 도구 → 사용자 프로젝트 (모�
 
 #### **U** - **Unified SPEC Architecture**
 - **SPEC 중심 설계**: 언어가 아닌 SPEC이 아키텍처 결정
-- **크로스 랭귀지**: 16-Core @TAG로 언어 무관 추적성
+- **크로스 랭귀지**:  @TAG로 언어 무관 추적성
 - **단일 도구**: TypeScript MoAI-ADK가 모든 언어 지원
 
 #### **S** - **SPEC-Compliant Security**
@@ -134,8 +133,8 @@ MoAI-ADK (TypeScript) → 언어별 TDD 도구 → 사용자 프로젝트 (모�
 
 #### **T** - **SPEC Traceability**
 - **3단계 추적**: 1-spec → 2-build → 3-sync
-- **16-Core @TAG**: 언어 무관 통합 추적성
-- **SQLite3 tags.db**: 모든 언어 프로젝트 통합 관리
+- **@TAG**: 언어 무관 통합 추적성 (코드 직접 스캔 방식)
+- **코드 기반 검증**: rg/grep을 통한 실시간 TAG 스캔
 
 ### 🎨 3단계 SPEC-First TDD 워크플로우
 
@@ -185,7 +184,7 @@ moai-adk-ts/                    # TypeScript 메인 프로젝트
 │   │   ├── installer/        # 설치 시스템
 │   │   ├── project/          # 프로젝트 관리
 │   │   ├── config/           # 설정 관리
-│   │   └── tag-system/       # 16-Core @TAG
+│   │   └── tag-system/       #  @TAG
 │   │
 │   ├── claude/               # Claude Code 통합
 │   │   ├── agents/           # 에이전트 정의
@@ -205,13 +204,15 @@ moai-adk-ts/                    # TypeScript 메인 프로젝트
 
 ```
 .claude/
-├── agents/moai/              # 6개 범용 언어 에이전트
-│   ├── spec-builder.md       # SPEC 작성 에이전트
-│   ├── code-builder.md       # 범용 언어 TDD 에이전트
-│   ├── doc-syncer.md         # 문서 동기화
-│   ├── cc-manager.md         # Claude Code 관리
-│   ├── debug-helper.md       # 디버깅 도우미
-│   └── git-manager.md        # Git 작업 관리
+├── agents/moai/              # 8개 전문 에이전트
+│   ├── spec-builder.md       # SPEC 작성 전담
+│   ├── code-builder.md       # TDD 구현 전담 (슬림화 완료)
+│   ├── doc-syncer.md         # 문서 동기화 전담
+│   ├── cc-manager.md         # Claude Code 설정 전담 (슬림화 완료)
+│   ├── debug-helper.md       # 오류 분석 전담
+│   ├── git-manager.md        # Git 작업 전담
+│   ├── trust-checker.md      # 품질 검증 통합
+│   └── tag-agent.md          # TAG 시스템 독점 관리
 │
 ├── commands/moai/            # 3단계 워크플로우 명령어
 │   ├── 0-project.md          # 프로젝트 초기화
@@ -401,7 +402,7 @@ MoAI-ADK는 SPEC-First TDD를 위한 3단계 워크플로우를 제공합니다:
 /moai:1-spec SPEC-ID "수정내용"    # 기존 SPEC 수정
 ```
 - EARS 명세 작성 (언어 중립적)
-- 16-Core @TAG 자동 생성
+-  @TAG 자동 생성
 - 브랜치/PR 생성 (환경 의존)
 
 ### Stage 2: TDD Implementation (범용 언어)
@@ -419,7 +420,7 @@ MoAI-ADK는 SPEC-First TDD를 위한 3단계 워크플로우를 제공합니다:
 /moai:3-sync [mode] [target-path]  # 동기화 모드 선택
 ```
 - 문서 동기화 (언어 무관)
-- 16-Core @TAG 인덱스 업데이트
+-  @TAG 인덱스 업데이트
 - PR Ready 전환
 
 ### On-Demand Support
@@ -440,7 +441,7 @@ MoAI-ADK는 SPEC-First TDD를 위한 3단계 워크플로우를 제공합니다:
 ├── memory/
 │   └── development-guide.md # SPEC-First TDD 가이드
 ├── indexes/
-│   └── tags.json           # 16-Core TAG 인덱스 (SQLite3)
+│   └── (TAG는 코드에서 직접 스캔)
 ├── specs/                  # SPEC 문서들
 │   ├── SPEC-001/
 │   ├── SPEC-002/
@@ -477,6 +478,81 @@ MoAI-ADK는 SPEC-First TDD를 위한 3단계 워크플로우를 제공합니다:
   }
 }
 ```
+
+---
+
+## 🧭 @TAG Lifecycle 2.0 (SPEC-013.1)
+
+### 개요
+
+- **목적**: 모든 산출물(SPEC, 코드, 테스트, 문서)의 추적성을 보장하고 AI 보조 개발 흐름에서 중복 작성 및 누락을 방지
+- **범위**: `.moai/` SPEC 문서, `moai-adk-ts/templates/` 기반으로 생성되는 모든 코드/리소스 파일, 코드 직접 스캔
+- **원칙**: "TAG 없는 변경은 없다" — 새 산출물은 생성 시점에 TAG를 할당하고, 변경 시 TAG를 동기화한다
+
+### TAG 계층 구조 재정의
+
+| 체계 | 설명 | 예시 |
+|------|------|------|
+| **Primary Chain** | 요구→설계→작업→검증을 잇는 필수 체인 | `@REQ:PAYMENTS-001 → @DESIGN:PAYMENTS-001 → @TASK:PAYMENTS-001 → @TEST:PAYMENTS-001` |
+| **Implementation** | 구현 단위(Feature/API/UI/Data 등)를 세분화 | `@FEATURE:PAYMENTS-001`, `@API:PAYMENTS-001`, `@DATA:PAYMENTS-001` |
+| **Quality** | 성능/보안/부채/문서 등 품질 속성 | `@SEC:PAYMENTS-001`, `@PERF:PAYMENTS-001`, `@DOCS:PAYMENTS-001` |
+| **Meta** | 거버넌스/릴리즈/운영 메타데이터 | `@OPS:PAYMENTS-001`, `@DEBT:PAYMENTS-001`, `@TAG:PAYMENTS-001` |
+
+- TAG ID 규칙: `<도메인>-<3자리 일련번호>` (`AUTH-001`, `PAYMENTS-010` 등) — 중복 방지를 위해 생성 전 `rg "@REQ:AUTH" -n` 조회 필수
+- 모든 TAG는 코드에 직접 작성되며, `/moai:3-sync` 실행 시 정규식으로 스캔하여 검증한다
+
+### 생성 및 등록 절차
+
+1. **사전 조사**: 새 기능을 정의하기 전에 `rg "@TAG"` 명령으로 코드에서 기존 체인을 검색해 재사용 가능 여부 확인
+2. **SPEC 작성 시점**: `/moai:1-spec` 단계에서 `@TAG Catalog` 섹션을 작성하고 Primary Chain 4종(@REQ/@DESIGN/@TASK/@TEST)을 우선 등록
+3. **코드 생성 시점**: 템플릿에서 제공하는 `TAG BLOCK`을 파일 헤더(주석) 또는 주요 함수 위에 그대로 채워 넣고, Implementation/Quality TAG를 추가
+4. **테스트 작성 시점**: 테스트 함수/케이스 주석에 `@TEST` TAG를 명시하고 Primary Chain과 연결된 Implementation TAG를 참조
+5. **동기화**: `/moai:3-sync` 단계에서 코드 전체를 스캔하여 TAG 체인 검증 및 고아 TAG 여부를 검사
+
+### SPEC 문서 통합 지침
+
+- 모든 SPEC 문서는 `Metadata → Requirements → Acceptance` 흐름 다음에 **`@TAG Catalog`** 테이블을 포함한다
+- Catalog 포맷 예시:
+
+```markdown
+### @TAG Catalog
+| Chain | TAG | 설명 | 연관 산출물 |
+|-------|-----|------|--------------|
+| Primary | @REQ:AUTH-003 | 소셜 로그인 요구사항 | SPEC-AUTH-003 |
+| Primary | @DESIGN:AUTH-003 | OAuth2 설계 | design/oauth.md |
+| Primary | @TASK:AUTH-003 | OAuth2 구현 작업 | src/auth/oauth2.ts |
+| Primary | @TEST:AUTH-003 | OAuth2 시나리오 테스트 | tests/auth/oauth2.test.ts |
+| Implementation | @FEATURE:AUTH-003 | 인증 도메인 서비스 | src/auth/service.ts |
+| Quality | @SEC:AUTH-003 | OAuth2 보안 점검 | docs/security/oauth2.md |
+```
+
+- SPEC 변경 시 `@TAG Catalog`부터 수정하고, 이후 코드/테스트에 반영 → 마지막으로 `/moai:3-sync`로 인덱스 업데이트
+
+### 템플릿 및 코드 생성 규칙
+
+- `moai-adk-ts/templates/CLAUDE.md`는 새 코드 파일 생성 시 **`TAG BLOCK`**을 요구한다
+  - 예시: 파일 최상단에
+    ```
+    # @FEATURE:AUTH-003 | Chain: @REQ:AUTH-003 → @DESIGN:AUTH-003 → @TASK:AUTH-003 → @TEST:AUTH-003
+    # Related: @SEC:AUTH-003, @DOCS:AUTH-003
+    ```
+- AI가 자동 생성하는 코드도 동일한 블록을 포함하며, 수정 작업 시 **TAG를 먼저 검토하고 변경 필요 여부를 결정**한다
+- 새 폴더/모듈 추가 시 `README.md` 또는 `index` 파일에 해당 모듈이 담당하는 TAG 범위를 기술한다
+
+### 검색 및 유지보수 전략
+
+- **중복 방지**: 새 TAG를 만들기 전 `rg "@REQ:AUTH" -n`과 `rg "AUTH-003" -n`으로 기존 참조 확인
+- **재사용 촉진**: 구현 전 `rg "@FEATURE:AUTH"`로 기존 코드 재사용 가능성 분석 후, 재사용 시 SPEC에 연결 근거를 기록
+- **무결성 검사**: `@agent-doc-syncer "TAG 인덱스를 업데이트해주세요"` 실행 후 로그에서 끊어진 체인을 확인
+- **리팩터링 시**: 불필요해진 TAG는 `@TAG:DEPRECATED-XXX`로 명시한 뒤 `/moai:3-sync`에서 인덱스를 재구축
+
+### 업데이트 체크리스트
+
+- [ ] SPEC에 `@TAG Catalog`가 존재하고 Primary Chain이 완결되었는가?
+- [ ] 새/수정된 코드 파일 헤더에 TAG BLOCK이 반영되었는가?
+- [ ] 테스트 케이스에 대응되는 `@TEST` TAG가 존재하는가?
+- [ ] TAG 체인이 코드 스캔을 통해 검증되었는가?
+- [ ] 중복 TAG 또는 고아 TAG가 없는가?
 
 ---
 
@@ -529,7 +605,7 @@ moai doctor                  # 시스템 검증
 
 - ✅ `.moai/` 구조 100% 호환
 - ✅ `.claude/` 설정 자동 마이그레이션
-- ✅ 16-Core @TAG 시스템 유지
+- ✅  @TAG 시스템 유지
 - ✅ SPEC 문서 포맷 동일
 - ⚠️ Python 훅 → TypeScript 훅 전환
 
@@ -573,7 +649,7 @@ moai doctor                  # 시스템 검증
 2. **TypeScript strict 모드**
 3. **범용 언어 지원 고려**
 4. **Jest 테스트 100% 커버리지**
-5. **16-Core @TAG 시스템 활용**
+5. ** @TAG 시스템 활용**
 
 ### 코드 리뷰 체크리스트
 

@@ -35,6 +35,6 @@ moai init my-project
 - **🔄 TDD Integration**: Red-Green-Refactor 자동화
 - **🤖 Claude Code Native**: 완전한 Claude Code 통합
 - **📊 Git Workflow Automation**: Git 지식 없이도 완전한 GitFlow
-- **🏷️ 16-Core TAG System**: 요구사항부터 구현까지 완전한 추적성
+- **🏷️  TAG System**: 요구사항부터 구현까지 완전한 추적성
 - **📖 Living Documentation**: 코드-문서 실시간 동기화
 - **🗿 TRUST Principles**: Test-Readable-Unified-Secured-Trackable

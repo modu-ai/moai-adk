@@ -9,7 +9,7 @@
  */
 
 import { logger } from '../../../utils/logger';
-import type { TechStack, MemoryTemplate } from '../types';
+import type { MemoryTemplate, TechStack } from '../types';
 
 /**
  * 메모리 스택 템플릿 매핑 테이블

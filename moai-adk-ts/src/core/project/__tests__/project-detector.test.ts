@@ -4,8 +4,8 @@
  * @tags @TEST:PROJECT-DETECTOR-001 @REQ:CORE-SYSTEM-013
  */
 
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
-import fs from 'fs';
+import fs from 'node:fs';
+import { beforeEach, describe, expect, vi } from 'vitest';
 import { ProjectDetector } from '../project-detector';
 
 // Mock fs and path modules

@@ -86,4 +86,4 @@ MoAI-ADK는 Spec-First TDD 개발을 Claude Code 환경에서 지원하는 핵�
 - 개발 가이드 위반 시 경고 메시지 출력
 - TDD 사이클 건너뛸 시 알림
 
-이 SPEC은 MoAI-ADK의 품질 시스템을 설계하는 좋은 예제입니다. EARS (Environment, Assumptions, Requirements, Success criteria) 형식을 완전히 따르며, 16-Core TAG 시스템을 활용한 추적성을 보여줍니다.
+이 SPEC은 MoAI-ADK의 품질 시스템을 설계하는 좋은 예제입니다. EARS (Environment, Assumptions, Requirements, Success criteria) 형식을 완전히 따르며,  TAG 시스템을 활용한 추적성을 보여줍니다.

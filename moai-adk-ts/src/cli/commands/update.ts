@@ -1,12 +1,18 @@
 /**
- * @file CLI update command implementation
+ * @file CLI update command implementation with real update orchestration
  * @author MoAI Team
- * @tags @FEATURE:CLI-UPDATE-001 @REQ:CLI-FOUNDATION-012
+ * @tags @FEATURE:CLI-UPDATE-001 @REQ:CLI-FOUNDATION-012 | Chain: @REQ:UPDATE-REAL-001 -> @DESIGN:UPDATE-CLI-001 -> @TASK:UPDATE-CLI-001 -> @TEST:UPDATE-CLI-001
+ * Related: @SEC:UPDATE-CLI-001, @DOCS:UPDATE-CLI-001
  */
 
+import * as path from 'node:path';
 import chalk from 'chalk';
 import * as fs from 'fs-extra';
-import * as path from 'path';
+import {
+  type UpdateConfiguration,
+  type UpdateOperationResult,
+  UpdateOrchestrator,
+} from '../../core/update/update-orchestrator.js';
 
 /**
  * Update command options
@@ -64,8 +70,6 @@ export interface UpdateResult {
  * @tags @FEATURE:CLI-UPDATE-001
  */
 export class UpdateCommand {
-  constructor() {}
-
   /**
    * Check for available updates
    * @param projectPath - Path to project directory
@@ -202,7 +206,7 @@ export class UpdateCommand {
   }
 
   /**
-   * Run update command
+   * Run update command with real Update Orchestrator
    * @param options - Update options
    * @returns Update result
    * @tags @API:UPDATE-RUN-001
@@ -212,12 +216,11 @@ export class UpdateCommand {
     const projectPath = options.projectPath || process.cwd();
 
     try {
-      console.log(chalk.cyan('🔄 MoAI-ADK Update'));
+      console.log(chalk.cyan('🔄 MoAI-ADK Update (Real Implementation)'));
 
-      // Step 1: Check for updates
-      const updateStatus = await this.checkForUpdates(projectPath);
-
+      // Step 1: Quick check mode
       if (options.check) {
+        const updateStatus = await this.checkForUpdates(projectPath);
         console.log(`Current version: v${updateStatus.currentVersion}`);
         console.log(
           `Installed template version: ${updateStatus.currentResourceVersion}`
@@ -263,51 +266,34 @@ export class UpdateCommand {
         };
       }
 
-      // Step 2: Create backup unless disabled
-      let backupPath: string | undefined;
-      if (!options.noBackup) {
-        console.log(chalk.cyan('📦 Creating backup...'));
-        backupPath = await this.createBackup(projectPath);
-        console.log(chalk.green('✅ Backup created'));
-      }
+      // Step 2: Use Real Update Orchestrator
+      const templatePath = this.getTemplatePath(projectPath);
+      const orchestrator = new UpdateOrchestrator(projectPath);
 
-      // Step 3: Update resources and package
-      let updatedResources = false;
-      let updatedPackage = false;
+      const updateConfig: UpdateConfiguration = {
+        projectPath,
+        templatePath,
+        backupEnabled: !options.noBackup,
+        interactiveMode: !process.env['CI'], // Disable interactive mode in CI
+        dryRun: false,
+        verbose: options.verbose || false,
+        forceUpdate: false,
+        skipValidation: false,
+      };
 
-      if (!options.packageOnly) {
-        console.log(chalk.cyan('🔄 Updating project resources...'));
-        updatedResources = await this.updateResources(projectPath, {
-          packageOnly: options.packageOnly || false,
-          resourcesOnly: options.resourcesOnly || false,
-        });
-        console.log(
-          `   Templates updated to v${updateStatus.availableResourceVersion}`
-        );
-      }
+      console.log(chalk.cyan('🚀 Starting Real Update Operation...'));
+      const result: UpdateOperationResult = await orchestrator.executeUpdate(updateConfig);
 
-      if (!options.resourcesOnly) {
-        console.log(chalk.cyan('📦 Checking package version...'));
-        updatedPackage = await this.updatePackage();
-      }
-
-      // Step 4: Synchronize versions
-      const versionsUpdated = await this.synchronizeVersions(projectPath);
-
-      console.log(chalk.green('\n✅ Update completed successfully'));
-      console.log(`Package version: v${updateStatus.currentVersion}`);
-      console.log(
-        `Template version: v${updateStatus.availableResourceVersion}`
-      );
-
+      // Convert to CLI result format
       return {
-        success: true,
-        updatedPackage,
-        updatedResources,
-        backupCreated: !options.noBackup,
-        backupPath: backupPath,
-        versionsUpdated,
-        duration: Date.now() - startTime,
+        success: result.success,
+        updatedPackage: false, // Package updates are handled separately
+        updatedResources: result.summary.filesChanged > 0,
+        backupCreated: result.backupInfo?.success || false,
+        backupPath: result.backupInfo?.backupPath,
+        versionsUpdated: result.success,
+        duration: result.duration,
+        error: result.errors.length > 0 ? result.errors[0] : undefined,
       };
     } catch (error) {
       const errorMessage =
@@ -324,5 +310,17 @@ export class UpdateCommand {
         error: errorMessage,
       };
     }
+  }
+
+  /**
+   * Get template path for updates
+   * @param projectPath - Project directory path
+   * @returns Template path
+   * @tags @UTIL:GET-TEMPLATE-PATH-001
+   */
+  private getTemplatePath(projectPath: string): string {
+    // For now, use the templates directory within the project
+    // In production, this would point to the MoAI-ADK template repository
+    return path.join(__dirname, '..', '..', '..', 'templates');
   }
 }

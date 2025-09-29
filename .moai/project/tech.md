@@ -19,11 +19,11 @@
 
 ### 멀티 플랫폼 지원 현황
 
-| 플랫폼      | TypeScript (주) | Python 지원     | 검증 도구          | 주요 제약              |
-| ----------- | --------------- | --------------- | ------------------ | ---------------------- |
-| **Windows** | ✅ 완성         | ✅ 지원         | GitHub Actions CI  | None                   |
-| **macOS**   | ✅ 완성         | ✅ 지원         | 로컬 테스트        | None                   |
-| **Linux**   | ✅ 완성         | ✅ 지원         | GitHub Actions CI  | None                   |
+| 플랫폼      | TypeScript (주) | 다중 언어 지원 | 지능형 진단 | 주요 성과 |
+| ----------- | --------------- | --------------- | ----------- | --------- |
+| **Windows** | ✅ 완성         | ✅ JS/TS/Python/Java/Go | ✅ 5-category | 226ms 빌드, 471KB |
+| **macOS**   | ✅ 완성         | ✅ JS/TS/Python/Java/Go | ✅ 5-category | SQLite3 제거, npm 추가 |
+| **Linux**   | ✅ 완성         | ✅ JS/TS/Python/Java/Go | ✅ 5-category | 실용성 혁신 완성 |
 
 ## @TECH:FRAMEWORK-001 핵심 프레임워크 & 라이브러리
 
@@ -85,9 +85,9 @@ linter = "ruff"
 
 ### 테스트 커버리지 목표
 
-- **현재 상태**: Python 85%+, TypeScript 100% (SPEC-013 현대화 완료)
+- **현재 상태**: TypeScript 100% (SPEC-013 현대화 완료), 사용자 Python 프로젝트 85%+ 지원
 - **목표**: 전체 코드베이스 85% 이상 유지
-- **측정 도구**: pytest-cov (Python), Vitest coverage (TypeScript, 92.9% 성공률)
+- **측정 도구**: Vitest coverage (TypeScript, 92.9% 성공률), pytest-cov (사용자 Python 프로젝트)
 - **실패 시 대응**: PR 블록, 추가 테스트 작성 요구
 
 ### 정적 분석 도구
@@ -183,19 +183,19 @@ cd moai-adk-ts && bun install && bun run build  # TypeScript 환경 (Bun)
 
 ### 3. 배포 채널 계획
 
-| 채널            | 현재 상태 | 목표               | 배포 주기          | 성능 개선 |
+| 채널            | 현재 상태 | 목표               | 배포 준비도       | 성능 지표 |
 | --------------- | --------- | ------------------ | ------------------ | --------- |
-| **npm**         | ✅ 활성   | TypeScript 주력 배포 | 매 SPEC 완료 시    | Bun 98% 향상 |
-| **PyPI**        | ✅ 활성   | Python 지원 배포   | TypeScript와 동기화 | - |
-| **conda-forge** | 📋 계획   | conda 생태계 지원  | 월 1회 안정 버전   | - |
-| **Docker Hub**  | 📋 계획   | 컨테이너 배포      | 분기별 LTS 버전    | - |
+| **npm**         | ✅ 준비   | TypeScript 주력 배포 | CLI 100% 완성     | Bun 98% 향상 |
+| **GitHub**      | ✅ 활성   | 소스 코드 및 릴리스  | 실시간 동기화      | Git 100% 지원 |
+| **로컬 빌드**   | ✅ 완성   | 개발자 테스트       | 즉시 사용 가능      | 고속 진단 |
+| **Docker Hub**  | 📋 계획   | 컨테이너 배포      | v1.0 안정 버전    | - |
 
 ## 현재 프로젝트 현황
 
 ### 기술 스택 현황 요약
 
-- **TypeScript v0.0.1**: 초기 개발 단계, Bun+Vitest+Biome 스택, npm 계획
-- **Python 지원**: 사용자 프로젝트 TDD 도구, 85%+ 커버리지 유지
+- **TypeScript v0.0.1**: 주 개발 스택, Bun+Vitest+Biome 완성, npm 배포 준비
+- **사용자 프로젝트 지원**: Python, Java, Go, Rust 등 TDD 도구, 85%+ 커버리지 유지
 - **Claude Code 통합**: 7개 에이전트, 5개 명령어, 8개 훅 완성
 - **성능 개선**: Bun 98% 향상, Vitest 92.9% 성공률, Biome 94.8% 향상
 - **TAG 시스템 v0.0.1**: 분산 구조 초기 개발 상태

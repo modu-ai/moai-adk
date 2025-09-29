@@ -1,1 +1,17 @@
 {"tag": "FEATURE:INIT-001", "type": "feature", "description": "v0.0.1 초기 기능", "created": "2025-09-29", "version": "0.0.1"}
+{"tag": "FEATURE:MAIN-API-001", "type": "feature", "description": "Main API Implementation", "file": "moai-adk-ts/src/index.ts", "line": 4, "created": "2025-09-29", "status": "active"}
+{"tag": "FEATURE:COMMIT-HELPER-001", "type": "feature", "description": "TypeScript CommitHelper Implementation", "file": "moai-adk-ts/src/scripts/commit-helper.ts", "line": 2, "created": "2025-09-29", "status": "active"}
+{"tag": "FEATURE:TRUST-VALIDATION-001", "type": "feature", "description": "TRUST Principles Validation", "file": "moai-adk-ts/src/scripts/trust-principles-checker.ts", "line": 3, "created": "2025-09-29", "status": "active"}
+{"tag": "FEATURE:SMART-MESSAGE-001", "type": "feature", "description": "Smart Message Generation", "file": "moai-adk-ts/src/scripts/generators/message-generator.ts", "line": 3, "created": "2025-09-29", "status": "active"}
+{"tag": "FEATURE:COMMIT-VALIDATION-001", "type": "feature", "description": "Commit Validation System", "file": "moai-adk-ts/src/scripts/validators/commit-validator.ts", "line": 3, "created": "2025-09-29", "status": "active"}
+{"tag": "FEATURE:PROJECT-MANAGEMENT-001", "type": "feature", "description": "Project Management System", "file": "moai-adk-ts/src/scripts/utils/project-helper.ts", "line": 3, "created": "2025-09-29", "status": "active"}
+{"tag": "FEATURE:FILE-ANALYSIS-001", "type": "feature", "description": "File Analysis System", "file": "moai-adk-ts/src/scripts/analyzers/file-analyzer.ts", "line": 3, "created": "2025-09-29", "status": "active"}
+{"tag": "FEATURE:VERSION-UTILS-001", "type": "feature", "description": "Version Utilities", "file": "moai-adk-ts/src/utils/version.ts", "line": 4, "created": "2025-09-29", "status": "active"}
+{"tag": "FEATURE:STRUCTURED-LOGGING-001", "type": "feature", "description": "Structured Logging System", "file": "moai-adk-ts/src/utils/logger.ts", "line": 4, "created": "2025-09-29", "status": "active"}
+{"tag": "FEATURE:BANNER-001", "type": "feature", "description": "CLI Banner System", "file": "moai-adk-ts/src/utils/banner.ts", "line": 4, "created": "2025-09-29", "status": "active"}
+{"tag": "FEATURE:CLI-ENTRY-001", "type": "feature", "description": "CLI Entry Point", "file": "moai-adk-ts/src/cli/index.ts", "line": 5, "created": "2025-09-29", "status": "active"}
+{"tag": "FEATURE:CLI-UPDATE-001", "type": "feature", "description": "CLI Update Command", "file": "moai-adk-ts/src/cli/commands/update.ts", "line": 4, "created": "2025-09-29", "status": "active"}
+{"tag": "FEATURE:ADVANCED-DOCTOR-001", "type": "feature", "description": "Advanced Doctor Diagnostics", "file": "moai-adk-ts/src/cli/commands/doctor-advanced.ts", "line": 4, "created": "2025-09-29", "status": "active"}
+{"tag": "FEATURE:CLI-HELP-001", "type": "feature", "description": "CLI Help System", "file": "moai-adk-ts/src/cli/commands/help.ts", "line": 4, "created": "2025-09-29", "status": "active"}
+{"tag": "FEATURE:GIT-LOCK-001", "type": "feature", "description": "Git Lock System", "file": "moai-adk-ts/src/core/git/git-lock-manager.ts", "line": 4, "created": "2025-09-29", "status": "active"}
+{"tag": "FEATURE:TAG-UNIFIED-001", "type": "feature", "description": "Unified TAG System Entry Point", "file": "moai-adk-ts/src/core/tag-system/index.ts", "line": 3, "created": "2025-09-29", "status": "active"}

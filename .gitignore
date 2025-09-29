@@ -11,6 +11,8 @@ __pycache__/
 *.pyo
 
 # Backups
+CLAUDE.md.backup
+*.backup
 
 # Virtual environment
 venv/
@@ -38,6 +40,15 @@ logs/
 *.temp
 .moai/checkpoints/snapshots/
 .moai/checkpoints/tmp/
+coverage_html/
+local-archive/
+my_docs/
+test-final/
+test-project/
+moai-adk-ts/test-final/
+moai-adk-ts/test-local/
+moai-adk-ts/moai-adk-*.tgz
+
 
 # SQLite databases (no longer used - migrated to JSON)
 *.db
@@ -67,3 +78,9 @@ node_modules/
 # TypeScript build outputs
 moai-adk-ts/dist/
 moai-adk-ts/coverage/
+
+# MoAI-ADK private configurations and documents (not shared on GitHub)
+# Only root level configs are private, moai-adk-ts/ package templates are public
+.claude/
+.moai/
+CLAUDE.md
