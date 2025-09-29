@@ -36,15 +36,127 @@
 **Git 자동화**: 모든 워크플로우에서 자동 처리 (99% 케이스)
 **Git 직접**: `@agent-git-manager "명령"` (1% 특수 케이스)
 
-## 16-Core @TAG 시스템 (JSON)
+## 16-Core @TAG Lifecycle 2.0
 
-```
-@REQ → @DESIGN → @TASK → @TEST
-SPEC: REQ,DESIGN,TASK | PROJECT: VISION,STRUCT,TECH,ADR
-IMPLEMENTATION: FEATURE,API,TEST,DATA | QUALITY: PERF,SEC,DEBT,TODO
+### TAG BLOCK 템플릿 (필수)
+
+```text
+# @FEATURE:<DOMAIN-ID> | Chain: @REQ:<ID> -> @DESIGN:<ID> -> @TASK:<ID> -> @TEST:<ID>
+# Related: @SEC:<ID>, @DOCS:<ID>
 ```
 
-**TAG 인덱스**: `.moai/indexes/tags.json` (JSON 기반)
+- 새 코드/문서/테스트 파일을 생성할 때: 위 TAG BLOCK을 파일 상단(주석) 또는 최상위 선언 근처에 배치한다
+- 수정 시: 기존 TAG BLOCK을 검토해 영향받는 TAG를 업데이트하고, 불필요해진 TAG는 `@TAG:DEPRECATED-XXX`로 표시 후 `/moai:3-sync`를 수행한다
+- 생성 전 중복 확인: `rg "@REQ:<키워드>" -n` 또는 `rg "<DOMAIN-ID>" -n`으로 기존 체인을 검색한다
+
+### 체계 요약
+
+| 카테고리 | 설명 | 필수 여부 |
+|----------|------|-----------|
+| Primary Chain | 요구 -> 설계 -> 작업 -> 검증 4단계 기본 체인 | 필수 |
+| Implementation | Feature/API/UI/Data 등 구현 유형 | 선택 |
+| Quality | Perf/Sec/Docs/Debt 등 품질 속성 | 선택 |
+| Meta | Ops/Release/Tag/Deprecated 등 메타데이터 | 선택 |
+
+- TAG ID: `<도메인>-<3자리>` (예: `AUTH-003`) — 체인 내 모든 TAG는 동일 ID를 사용한다
+- 인덱스 저장소: `.moai/indexes/tags.json`, `tags.db` (SQLite) -> `/moai:3-sync` 단계에서 자동 갱신된다
+
+### SPEC 연동 가이드
+
+- `/moai:1-spec` 수행 시 SPEC 문서 안에 `### @TAG Catalog` 섹션을 작성한다
+- Catalog 예시:
+
+```markdown
+### @TAG Catalog
+| Chain | TAG | 설명 | 연관 산출물 |
+|-------|-----|------|--------------|
+| Primary | @REQ:AUTH-003 | OAuth2 요구사항 | SPEC-AUTH-003 |
+| Primary | @DESIGN:AUTH-003 | OAuth2 시퀀스 설계 | design/oauth.md |
+| Primary | @TASK:AUTH-003 | OAuth2 구현 작업 | src/auth/oauth2.ts |
+| Primary | @TEST:AUTH-003 | OAuth2 통합 테스트 | tests/auth/oauth2.test.ts |
+| Implementation | @FEATURE:AUTH-003 | 인증 서비스 | src/auth/service.ts |
+| Quality | @SEC:AUTH-003 | 보안 점검 | docs/security/oauth2.md |
+```
+
+- SPEC 변경 -> Catalog 업데이트 -> 코드/테스트 반영 -> `/moai:3-sync`로 인덱스 확정 순서를 유지한다
+
+### 코드/테스트 적용 예시
+
+**Python 예시**:
+```python
+# @FEATURE:LOGIN-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+# Related: @SEC:LOGIN-001, @DOCS:LOGIN-001
+class AuthenticationService:
+    """@FEATURE:LOGIN-001: 사용자 인증 서비스 구현"""
+
+    def authenticate(self, username: str, password: str) -> bool:
+        """@API:LOGIN-001: 사용자 인증 API 엔드포인트"""
+        # @SEC:LOGIN-001: 입력값 보안 검증
+        if not self._validate_input(username, password):
+            return False
+
+        # @PERF:LOGIN-001: 캐시된 인증 결과 확인
+        if cached_result := self._get_cached_auth(username):
+            return cached_result
+
+        return self._verify_credentials(username, password)
+
+# @TEST:LOGIN-001 연결: @TASK:LOGIN-001 -> @TEST:LOGIN-001
+def test_should_authenticate_valid_user():
+    """@TEST:LOGIN-001: 유효한 사용자 인증 테스트"""
+    service = AuthenticationService()
+    result = service.authenticate("user", "password")
+    assert result is True
+```
+
+**TypeScript 예시**:
+```typescript
+// @FEATURE:LOGIN-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+// Related: @SEC:LOGIN-001, @DOCS:LOGIN-001
+interface AuthService {
+  // @API:LOGIN-001: 인증 API 인터페이스 정의
+  authenticate(username: string, password: string): Promise<boolean>;
+}
+
+// @UI:LOGIN-001: 로그인 컴포넌트
+const LoginForm: React.FC = () => {
+  // @SEC:LOGIN-001: 클라이언트 사이드 입력 검증
+  const handleSubmit = (username: string, password: string) => {
+    // 구현...
+  };
+
+  return <form>...</form>;
+};
+
+// @TEST:LOGIN-001: Vitest/Jest 테스트
+describe('AuthService', () => {
+  test('@TEST:LOGIN-001: should authenticate valid user', () => {
+    // 테스트 구현...
+  });
+});
+```
+
+### 검색 & 무결성 유지
+
+- 중복 방지: 새 TAG 도입 전 `rg "@TAG" -g"*.ts"`, `rg "AUTH-001"` 등으로 기존 체인을 확인한다
+- 재사용 촉진: 구현 계획 단계에서 `@agent-code-builder`에게 "기존 TAG 재사용 후보를 찾아주세요"라고 요청한다
+- 무결성 검사: `/moai:3-sync` 또는 `@agent-doc-syncer "TAG 인덱스를 업데이트해주세요"` 실행 후 로그에서 고아 TAG를 해결한다
+- 폐기 절차: 더 이상 사용하지 않는 TAG는 `@TAG:DEPRECATED-<ID>`로 표기하고 Catalog에서 상태를 `Deprecated`로 갱신한다
+
+### 금지 패턴 (잘못된 예시)
+
+```python
+@TASK:LOGIN-001 -> @DESIGN:LOGIN-001      # 순서 위반
+@FEATURE:LOGIN-001 (중복 선언)          # 고유성 위반
+@REQ:ABC-123                             # 의미 없는 ID
+```
+
+### 업데이트 체크리스트 (점검용)
+
+- [ ] TAG BLOCK이 모든 신규/수정 파일에 존재하는가?
+- [ ] Primary Chain 4종이 끊김 없이 연결되는가?
+- [ ] SPEC `@TAG Catalog`와 코드/테스트가 동일한 ID를 공유하는가?
+- [ ] `tags.json`/`tags.db`가 `/moai:3-sync` 이후 최신 상태인가?
 
 ## 에이전트 실제 사용법
 
@@ -91,125 +203,6 @@ IMPLEMENTATION: FEATURE,API,TEST,DATA | QUALITY: PERF,SEC,DEBT,TODO
 # 특정 문서 갱신
 @agent-doc-syncer "API 문서를 갱신해주세요"
 @agent-doc-syncer "README 업데이트 필요"
-```
-
-## @TAG 시스템 실제 사용법
-
-### 16-Core TAG 카테고리
-
-**Primary Chain (필수)**: 모든 기능은 이 체인을 따라야 함
-```
-@REQ:LOGIN-001 → @DESIGN:LOGIN-001 → @TASK:LOGIN-001 → @TEST:LOGIN-001
-```
-
-**Implementation (구현별)**: 기능 유형에 따라 선택
-```
-@FEATURE:LOGIN-001  # 비즈니스 로직
-@API:LOGIN-001      # API 엔드포인트
-@UI:LOGIN-001       # 사용자 인터페이스
-@DATA:LOGIN-001     # 데이터 모델
-```
-
-**Quality (품질보증)**: 필요에 따라 적용
-```
-@PERF:LOGIN-001     # 성능 최적화
-@SEC:LOGIN-001      # 보안 강화
-@DOCS:LOGIN-001     # 문서화
-@TAG:LOGIN-001      # 메타 태깅
-```
-
-### 코드에서 @TAG 적용 예시
-
-**Python 예시**:
-```python
-# @FEATURE:LOGIN-001 연결: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001
-class AuthenticationService:
-    """@FEATURE:LOGIN-001: 사용자 인증 서비스 구현"""
-
-    def authenticate(self, username: str, password: str) -> bool:
-        """@API:LOGIN-001: 사용자 인증 API 엔드포인트"""
-        # @SEC:LOGIN-001: 입력값 보안 검증
-        if not self._validate_input(username, password):
-            return False
-
-        # @PERF:LOGIN-001: 캐시된 인증 결과 확인
-        if cached_result := self._get_cached_auth(username):
-            return cached_result
-
-        return self._verify_credentials(username, password)
-
-# @TEST:LOGIN-001 연결: @TASK:LOGIN-001 → @TEST:LOGIN-001
-def test_should_authenticate_valid_user():
-    """@TEST:LOGIN-001: 유효한 사용자 인증 테스트"""
-    service = AuthenticationService()
-    result = service.authenticate("user", "password")
-    assert result is True
-```
-
-**TypeScript 예시**:
-```typescript
-// @FEATURE:LOGIN-001: 인증 서비스 타입스크립트 구현
-interface AuthService {
-  // @API:LOGIN-001: 인증 API 인터페이스 정의
-  authenticate(username: string, password: string): Promise<boolean>;
-}
-
-// @UI:LOGIN-001: 로그인 컴포넌트
-const LoginForm: React.FC = () => {
-  // @SEC:LOGIN-001: 클라이언트 사이드 입력 검증
-  const handleSubmit = (username: string, password: string) => {
-    // 구현...
-  };
-
-  return <form>...</form>;
-};
-
-// @TEST:LOGIN-001: Jest 테스트
-describe('AuthService', () => {
-  test('@TEST:LOGIN-001: should authenticate valid user', () => {
-    // 테스트 구현...
-  });
-});
-```
-
-### TAG 체인 연결 원칙
-
-1. **순차적 연결**: Primary Chain은 반드시 순서대로
-2. **명확한 참조**: 부모 TAG를 명시적으로 참조
-3. **고유성 보장**: 동일 기능에 중복 TAG ID 금지
-4. **의미있는 네이밍**: 기능을 명확히 드러내는 ID 사용
-
-### 잘못된 TAG 사용 예시 (❌)
-
-```python
-# ❌ 순서 위반: @TASK가 @DESIGN보다 먼저
-@TASK:LOGIN-001 → @DESIGN:LOGIN-001
-
-# ❌ 고아 TAG: 연결되지 않은 독립 태그
-@FEATURE:RANDOM-999
-
-# ❌ 중복 ID: 동일 기능에 여러 TAG
-@FEATURE:LOGIN-001
-@FEATURE:LOGIN-001  # 중복!
-
-# ❌ 의미 없는 ID
-@REQ:ABC-123
-```
-
-### 올바른 TAG 사용 예시 (✅)
-
-```python
-# ✅ 완전한 Primary Chain
-@REQ:USER-AUTH-001 → @DESIGN:USER-AUTH-001 → @TASK:USER-AUTH-001 → @TEST:USER-AUTH-001
-
-# ✅ Implementation과 Quality TAG 연결
-@TASK:USER-AUTH-001 → @FEATURE:USER-AUTH-001, @API:USER-AUTH-001
-@FEATURE:USER-AUTH-001 → @PERF:USER-AUTH-001, @SEC:USER-AUTH-001
-
-# ✅ 의미있는 네이밍
-@REQ:USER-AUTH-001  # 사용자 인증 요구사항
-@DESIGN:USER-AUTH-001  # 사용자 인증 설계
-@TASK:USER-AUTH-001  # 사용자 인증 구현 작업
 ```
 
 ## TRUST 5원칙 (범용 언어 지원)

@@ -1,0 +1,33 @@
+{
+  "version": "1.0.0",
+  "project": "test-final",
+  "created": "2025-09-29T05:12:20.411Z",
+  "tags": {},
+  "chains": [],
+  "categories": {
+    "primary": [
+      "REQ",
+      "DESIGN",
+      "TASK",
+      "TEST"
+    ],
+    "implementation": [
+      "FEATURE",
+      "API",
+      "UI",
+      "DATA"
+    ],
+    "quality": [
+      "PERF",
+      "SEC",
+      "DOCS",
+      "TAG"
+    ],
+    "project": [
+      "VISION",
+      "STRUCT",
+      "TECH",
+      "ADR"
+    ]
+  }
+}

@@ -42,7 +42,7 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 ### 3. SPEC 문서 생성
 - **EARS 구조**: Environment, Assumptions, Requirements, Specifications
 - **3개 파일**: spec.md, plan.md, acceptance.md
-- **16-Core TAG**: @REQ → @DESIGN → @TASK → @TEST 체인
+- **16-Core TAG**: tag-agent가 @REQ → @DESIGN → @TASK → @TEST 체인 자동 생성
 
 ### 4. Git 작업 자동화
 - **Personal 모드**: 로컬 브랜치 + 체크포인트
@@ -50,31 +50,48 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 
 ## 실행 순서
 
-### 1. SPEC 문서 생성
-```bash
-# SPEC 생성 스크립트 실행
-tsx .moai/scripts/spec-builder.ts --target="$ARGUMENTS" --format=EARS
-```
+### 1. SPEC 문서 생성 + TAG 시스템 통합
+
+먼저 spec-builder 에이전트로 EARS 구조 SPEC을 생성합니다:
+
+@agent-spec-builder "$ARGUMENTS를 위한 EARS 구조 SPEC 생성해주세요"
+
 - 프로젝트 문서 분석
 - SPEC 후보 제안 및 사용자 선택
 - EARS 구조 SPEC 문서 작성
 - 3개 파일 동시 생성 (spec.md, plan.md, acceptance.md)
 
-### 2. Git 작업 자동화
-```bash
-# 브랜치 및 PR 생성 스크립트 실행
-tsx .moai/scripts/git-workflow.ts --action=spec-created --mode="$MODE"
-```
+### 2. TAG 시스템 자동 관리
+
+SPEC 생성과 동시에 tag-agent가 자동으로 TAG를 관리합니다:
+
+@agent-tag-agent "새 SPEC의 TAG 체인 생성하고 기존 TAG와 연결 확인해주세요"
+
+- @REQ → @DESIGN → @TASK → @TEST 체인 생성
+- 기존 TAG와의 중복 방지 및 연결성 검증
+- JSONL 인덱스 자동 업데이트
+- TAG 무결성 검사
+
+### 3. Git 작업 자동화
+
+마지막으로 git-manager가 브랜치/PR 생성을 처리합니다:
+
+@agent-git-manager "SPEC 생성 완료, 브랜치와 PR 자동 생성해주세요"
+
 - 브랜치 생성 (Personal/Team 모드별)
 - GitHub Issue/PR 생성 (Team 모드)
-- 초기 커밋 및 태그
+- TAG와 연결된 초기 커밋
 
 ## 품질 기준
 
 - **EARS 구조**: Environment, Assumptions, Requirements, Specifications 필수
-- **TAG 체인**: @REQ → @DESIGN → @TASK → @TEST 완전성
+- **TAG 체인**: tag-agent가 @REQ → @DESIGN → @TASK → @TEST 무결성 100% 보장
 - **Acceptance Criteria**: Given-When-Then 시나리오 최소 2개
-- **16-Core TAG**: 추적성 확보를 위한 TAG 시스템 적용
+- **TAG 품질 게이트**:
+  - 중복 TAG 0건 (tag-agent 자동 검증)
+  - 체인 연결 완전성 100% (tag-agent 자동 검사)
+  - 고아 TAG 방지 (tag-agent 자동 방지)
+  - JSONL 인덱스 실시간 동기화
 
 ## 다음 단계
 

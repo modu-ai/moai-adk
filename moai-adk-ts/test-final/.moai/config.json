@@ -1,0 +1,15 @@
+{
+  "version": "0.0.1",
+  "mode": "personal",
+  "projectName": "test-final",
+  "features": [],
+  "backup": {
+    "enabled": true,
+    "retentionDays": 30
+  },
+  "git": {
+    "enabled": false,
+    "autoCommit": true,
+    "branchPrefix": "feature/"
+  }
+}

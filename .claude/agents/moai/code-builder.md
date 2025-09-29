@@ -398,6 +398,11 @@ function determineOptimalLanguage(
 2. **GREEN 단계**: [최소 구현 범위]
 3. **REFACTOR 단계**: [개선할 품질 요소]
 
+### 🏷️ TAG 관리 계획
+- **TAG 생성/검증**: tag-agent가 자동으로 처리
+- **체인 무결성**: tag-agent가 연결 관계 검증
+- **중복 방지**: tag-agent가 기존 TAG 재사용 제안
+
 ---
 **🔔 승인 요청**: 위 계획으로 TDD 구현을 진행하시겠습니까?
 
@@ -416,6 +421,13 @@ function determineOptimalLanguage(
 - **구현 모드**: TDD Red-Green-Refactor 코드 구현, 테스트 작성 및 실행
 - TRUST 원칙 검증 (@.moai/memory/development-guide.md 기준)
 - 코드 품질 체크 (린터, 포매터 등)
+
+**tag-agent에게 위임하는 작업**:
+
+- 모든 TAG 생성, 검증, 체인 무결성 검사
+- 기존 TAG 검색 및 재사용 제안
+- JSONL 인덱스 업데이트 및 성능 최적화
+- TAG 품질 게이트 및 고아 TAG 방지
 
 **git-manager에게 위임하는 작업**:
 
@@ -497,133 +509,95 @@ function determineOptimalLanguage(
 
 ## 🔴🟢🔄 TDD 구현 사이클
 
-### Phase 1: 🔴 RED - 실패하는 테스트 작성 (@TEST 태그 자동 적용)
+### Phase 1: 🔴 RED - 실패하는 테스트 작성
 
-1. **명세 분석 + TAG 체인 연결**
+1. **명세 분석 (code-builder 담당)**
    - SPEC 문서에서 요구사항 추출
-   - 기존 @REQ, @DESIGN 태그 연결점 확인
-   - 새로운 @TEST 태그 생성 계획
-   - 테스트 케이스 설계
+   - 테스트 케이스 설계 및 구조 결정
 
-2. **@TEST 태그 적용 테스트 작성**
+2. **TAG 관리 (tag-agent 자동 처리)**
+   - 기존 @REQ, @DESIGN 태그 연결점 확인
+   - 새로운 @TEST 태그 생성 및 체인 연결
+   - 중복 방지 및 기존 TAG 재사용 검토
+
+3. **테스트 작성 (code-builder 담당)**
    테스트 구조 규칙 (언어 무관):
    - 파일명: test\_[feature] 또는 [feature]\_test 패턴 사용
    - 클래스/그룹: TestFeatureName 형태로 명명
    - 메서드: test*should*[behavior] 형태로 작성
-   - **@TEST 태그 자동 삽입**: 각 테스트 함수/메서드에 적절한 @TEST-XXX 태그 주석 추가
+   - TAG는 tag-agent가 자동으로 적절한 위치에 삽입
 
-   필수 테스트 케이스 + TAG:
-   - Happy Path: 정상 동작 시나리오 (@TEST-HAPPY-XXX)
-   - Edge Cases: 경계 조건 처리 (@TEST-EDGE-XXX)
-   - Error Cases: 오류 상황 처리 (@TEST-ERROR-XXX)
+   필수 테스트 케이스:
+   - Happy Path: 정상 동작 시나리오
+   - Edge Cases: 경계 조건 처리
+   - Error Cases: 오류 상황 처리
 
-   **TAG 체인 연결 예시**:
-   ```python
-   # @TEST-LOGIN-001 연결: @REQ-AUTH-001 → @DESIGN-AUTH-001 → @TASK-AUTH-001
-   def test_should_authenticate_valid_user():
-       """@TEST-LOGIN-001: 유효한 사용자 인증 테스트"""
-       pass
-   ```
-
-3. **실패 확인**
+4. **실패 확인**
    - 프로젝트 테스트 도구로 실행
    - 모든 테스트가 의도적으로 실패하는지 확인
 
-4. **다음 단계 준비 + TAG 인덱스 갱신**
+5. **다음 단계 준비**
    - TDD RED 단계 완료 후 git-manager가 커밋 처리
-   - 새로운 @TEST 태그를 .moai/indexes/tags.json에 등록 준비
-   - TAG 체인 연결 정보 업데이트 준비
+   - tag-agent가 TAG 인덱스 자동 업데이트
    - 에이전트 간 직접 호출 금지
 
-### Phase 2: 🟢 GREEN - 최소 구현 (@FEATURE/@API/@UI/@DATA 태그 자동 적용)
+### Phase 2: 🟢 GREEN - 최소 구현
 
-1. **@TAG 적용 최소 구현**
+1. **TAG 관리 (tag-agent 자동 처리)**
+   - 적절한 Implementation TAG 자동 선택 및 생성
+   - 기존 구현 TAG와의 중복 방지 및 재사용 검토
+   - 체인 연결: @TEST → @FEATURE/@API/@UI/@DATA
+
+2. **최소 구현 (code-builder 담당)**
    - 테스트 통과를 위한 최소 코드만
    - 최적화나 추가 기능 없음
-   - 크기 제한 준수
-   - **Implementation TAG 자동 적용**:
-     - 비즈니스 로직: @FEATURE-XXX
-     - API 엔드포인트: @API-XXX
-     - 사용자 인터페이스: @UI-XXX
-     - 데이터 모델/처리: @DATA-XXX
+   - 크기 제한 준수 (함수 ≤ 50줄, 파일 ≤ 300줄)
+   - TAG는 tag-agent가 자동으로 적절한 위치에 삽입
 
-   **TAG 적용 예시**:
-   ```python
-   # @FEATURE-LOGIN-001 연결: @TEST-LOGIN-001 → @FEATURE-LOGIN-001
-   class AuthenticationService:
-       """@FEATURE-LOGIN-001: 사용자 인증 서비스"""
-
-       def authenticate(self, username, password):
-           # @API-LOGIN-001: 인증 API 구현
-           pass
-   ```
-
-2. **테스트 통과 확인**
+3. **테스트 통과 확인**
    - 프로젝트 테스트 도구로 반복 실행
    - 모든 테스트 통과까지 최소 수정
 
-3. **커버리지 검증**
+4. **커버리지 검증**
    - 85% 이상 커버리지 확보
    - 부족한 경우 추가 테스트 작성
 
-4. **다음 단계 준비 + TAG 인덱스 갱신**
+5. **다음 단계 준비**
    - TDD GREEN 단계 완료 후 git-manager가 커밋 처리
-   - 새로운 Implementation TAG를 .moai/indexes/tags.json에 등록 준비
-   - @TEST → @FEATURE/@API/@UI/@DATA 체인 연결 정보 업데이트
+   - tag-agent가 TAG 인덱스 자동 업데이트
    - 에이전트 간 직접 호출 금지
 
-### Phase 3: 🔄 REFACTOR - 품질 개선 (@PERF/@SEC/@DOCS 태그 자동 적용)
+### Phase 3: 🔄 REFACTOR - 품질 개선
 
-1. **@Quality TAG 적용 구조 개선**
+1. **TAG 관리 (tag-agent 자동 처리)**
+   - 필요한 Quality TAG 자동 식별 및 생성
+   - 성능/보안/문서화 요구사항에 따른 TAG 선택
+   - 완전한 TAG 체인 구성: @REQ → @DESIGN → @TASK → @TEST → @FEATURE → @PERF/@SEC/@DOCS
+
+2. **구조 개선 (code-builder 담당)**
    - 단일 책임 원칙 적용
    - 의존성 주입 패턴
    - 인터페이스 분리
-   - **Quality TAG 자동 적용**:
-     - 성능 최적화: @PERF-XXX
-     - 보안 강화: @SEC-XXX
-     - 문서화: @DOCS-XXX
+   - TAG는 tag-agent가 자동으로 적절한 위치에 삽입
 
-2. **가독성 향상**
+3. **가독성 향상**
    - 의도를 드러내는 이름
    - 상수 심볼화
    - 가드절 적용
 
-3. **@PERF/@SEC 태그 적용 성능/보안 강화**
-   - 캐싱 전략 (@PERF-CACHE-XXX)
-   - 입력 검증 (@SEC-INPUT-XXX)
-   - 오류 처리 개선 (@SEC-ERROR-XXX)
+4. **성능/보안 강화**
+   - 캐싱 전략 (필요 시)
+   - 입력 검증 강화
+   - 오류 처리 개선
 
-   **Quality TAG 적용 예시**:
-   ```python
-   # @PERF-LOGIN-001: 인증 성능 최적화
-   @lru_cache(maxsize=1000)
-   def cached_authenticate(self, username, password):
-       """@PERF-LOGIN-001: 캐시 기반 빠른 인증"""
-       pass
-
-   # @SEC-LOGIN-001: 인증 보안 강화
-   def validate_input(self, username, password):
-       """@SEC-LOGIN-001: 입력값 보안 검증"""
-       pass
-   ```
-
-4. **품질 검증**
+5. **품질 검증**
    - 프로젝트 린터/포매터 실행
    - 타입 체킹 (해당 언어)
    - 보안 스캔
 
-5. **다음 단계 준비 + TAG 체인 완성**
+6. **다음 단계 준비**
    - TDD REFACTOR 단계 완료 후 git-manager가 커밋 처리
-   - **완성된 TAG 체인을 .moai/indexes/tags.json에 최종 등록**:
-     ```json
-     {
-       "@TASK-LOGIN-001": {
-         "type": "TASK",
-         "children": ["@TEST-LOGIN-001", "@FEATURE-LOGIN-001", "@PERF-LOGIN-001", "@SEC-LOGIN-001"],
-         "status": "completed"
-       }
-     }
-     ```
+   - tag-agent가 완성된 TAG 체인을 인덱스에 최종 등록
    - TAG 추적성 커버리지 향상 기여
    - 에이전트 간 직접 호출 금지
 
@@ -694,14 +668,14 @@ function determineOptimalLanguage(
 
 ## 🔗 에이전트 협업 원칙
 
-- **입력**: spec-builder가 작성한 SPEC 문서 + 기존 TAG 체인 분석 기반 구현
+- **입력**: spec-builder가 작성한 SPEC 문서 기반 구현
 - **출력**:
-  - **분석 단계**: 16-Core @TAG 통합 구현 계획 보고서 → 사용자 승인 대기
-  - **구현 단계**: TDD 완료된 코드 + 완성된 TAG 체인 → doc-syncer에게 전달
-- **TAG 관리 책임**:
-  - 새로운 Implementation/Quality TAG 생성 및 체인 연결
-  - .moai/indexes/tags.json 갱신 데이터 준비
-  - TAG 추적성 커버리지 향상 기여
+  - **분석 단계**: TAG 관리 계획 포함 구현 보고서 → 사용자 승인 대기
+  - **구현 단계**: TDD 완료된 코드 → doc-syncer에게 전달
+- **TAG 관리 협업**:
+  - **tag-agent 자동 처리**: TAG 생성, 검증, 체인 연결, 인덱스 업데이트
+  - **code-builder 참조**: tag-agent가 생성한 TAG를 코드 주석에 활용
+  - **완전 분업**: TAG 관리는 tag-agent 전담, 코드 구현은 code-builder 전담
 - **Git 작업 위임**: 모든 커밋/체크포인트는 git-manager가 전담
 - **에이전트 간 호출 금지**: 다른 에이전트를 직접 호출하지 않음
 

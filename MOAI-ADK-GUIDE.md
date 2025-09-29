@@ -480,6 +480,81 @@ MoAI-ADK는 SPEC-First TDD를 위한 3단계 워크플로우를 제공합니다:
 
 ---
 
+## 🧭 @TAG Lifecycle 2.0 (SPEC-013.1)
+
+### 개요
+
+- **목적**: 모든 산출물(SPEC, 코드, 테스트, 문서)의 추적성을 보장하고 AI 보조 개발 흐름에서 중복 작성 및 누락을 방지
+- **범위**: `.moai/` SPEC 문서, `moai-adk-ts/templates/` 기반으로 생성되는 모든 코드/리소스 파일, `tags.db`/`tags.json` 인덱스
+- **원칙**: "TAG 없는 변경은 없다" — 새 산출물은 생성 시점에 TAG를 할당하고, 변경 시 TAG를 동기화한다
+
+### TAG 계층 구조 재정의
+
+| 체계 | 설명 | 예시 |
+|------|------|------|
+| **Primary Chain** | 요구→설계→작업→검증을 잇는 필수 체인 | `@REQ:PAYMENTS-001 → @DESIGN:PAYMENTS-001 → @TASK:PAYMENTS-001 → @TEST:PAYMENTS-001` |
+| **Implementation** | 구현 단위(Feature/API/UI/Data 등)를 세분화 | `@FEATURE:PAYMENTS-001`, `@API:PAYMENTS-001`, `@DATA:PAYMENTS-001` |
+| **Quality** | 성능/보안/부채/문서 등 품질 속성 | `@SEC:PAYMENTS-001`, `@PERF:PAYMENTS-001`, `@DOCS:PAYMENTS-001` |
+| **Meta** | 거버넌스/릴리즈/운영 메타데이터 | `@OPS:PAYMENTS-001`, `@DEBT:PAYMENTS-001`, `@TAG:PAYMENTS-001` |
+
+- TAG ID 규칙: `<도메인>-<3자리 일련번호>` (`AUTH-001`, `PAYMENTS-010` 등) — 중복 방지를 위해 생성 전 `rg "@REQ:AUTH" -n` 조회 필수
+- 모든 TAG는 `tags.db`(SQLite)와 `.moai/indexes/tags.json`에 동기화되며, 체인 내 어느 Tag라도 누락될 수 없다
+
+### 생성 및 등록 절차
+
+1. **사전 조사**: 새 기능을 정의하기 전에 `rg "@TAG"` 또는 `sqlite3 tags.db` 조회로 기존 체인을 검색해 재사용 가능 여부 확인
+2. **SPEC 작성 시점**: `/moai:1-spec` 단계에서 `@TAG Catalog` 섹션을 작성하고 Primary Chain 4종(@REQ/@DESIGN/@TASK/@TEST)을 우선 등록
+3. **코드 생성 시점**: 템플릿에서 제공하는 `TAG BLOCK`을 파일 헤더(주석) 또는 주요 함수 위에 그대로 채워 넣고, Implementation/Quality TAG를 추가
+4. **테스트 작성 시점**: 테스트 함수/케이스 주석에 `@TEST` TAG를 명시하고 Primary Chain과 연결된 Implementation TAG를 참조
+5. **동기화**: `/moai:3-sync` 단계에서 `tags.json`과 `tags.db`에 최신 TAG 체인을 반영하고 고아 TAG 여부를 검사
+
+### SPEC 문서 통합 지침
+
+- 모든 SPEC 문서는 `Metadata → Requirements → Acceptance` 흐름 다음에 **`@TAG Catalog`** 테이블을 포함한다
+- Catalog 포맷 예시:
+
+```markdown
+### @TAG Catalog
+| Chain | TAG | 설명 | 연관 산출물 |
+|-------|-----|------|--------------|
+| Primary | @REQ:AUTH-003 | 소셜 로그인 요구사항 | SPEC-AUTH-003 |
+| Primary | @DESIGN:AUTH-003 | OAuth2 설계 | design/oauth.md |
+| Primary | @TASK:AUTH-003 | OAuth2 구현 작업 | src/auth/oauth2.ts |
+| Primary | @TEST:AUTH-003 | OAuth2 시나리오 테스트 | tests/auth/oauth2.test.ts |
+| Implementation | @FEATURE:AUTH-003 | 인증 도메인 서비스 | src/auth/service.ts |
+| Quality | @SEC:AUTH-003 | OAuth2 보안 점검 | docs/security/oauth2.md |
+```
+
+- SPEC 변경 시 `@TAG Catalog`부터 수정하고, 이후 코드/테스트에 반영 → 마지막으로 `/moai:3-sync`로 인덱스 업데이트
+
+### 템플릿 및 코드 생성 규칙
+
+- `moai-adk-ts/templates/CLAUDE.md`는 새 코드 파일 생성 시 **`TAG BLOCK`**을 요구한다
+  - 예시: 파일 최상단에
+    ```
+    # @FEATURE:AUTH-003 | Chain: @REQ:AUTH-003 → @DESIGN:AUTH-003 → @TASK:AUTH-003 → @TEST:AUTH-003
+    # Related: @SEC:AUTH-003, @DOCS:AUTH-003
+    ```
+- AI가 자동 생성하는 코드도 동일한 블록을 포함하며, 수정 작업 시 **TAG를 먼저 검토하고 변경 필요 여부를 결정**한다
+- 새 폴더/모듈 추가 시 `README.md` 또는 `index` 파일에 해당 모듈이 담당하는 TAG 범위를 기술한다
+
+### 검색 및 유지보수 전략
+
+- **중복 방지**: 새 TAG를 만들기 전 `rg "@REQ:AUTH" -n`과 `rg "AUTH-003" -n`으로 기존 참조 확인
+- **재사용 촉진**: 구현 전 `rg "@FEATURE:AUTH"`로 기존 코드 재사용 가능성 분석 후, 재사용 시 SPEC에 연결 근거를 기록
+- **무결성 검사**: `@agent-doc-syncer "TAG 인덱스를 업데이트해주세요"` 실행 후 로그에서 끊어진 체인을 확인
+- **리팩터링 시**: 불필요해진 TAG는 `@TAG:DEPRECATED-XXX`로 명시한 뒤 `/moai:3-sync`에서 인덱스를 재구축
+
+### 업데이트 체크리스트
+
+- [ ] SPEC에 `@TAG Catalog`가 존재하고 Primary Chain이 완결되었는가?
+- [ ] 새/수정된 코드 파일 헤더에 TAG BLOCK이 반영되었는가?
+- [ ] 테스트 케이스에 대응되는 `@TEST` TAG가 존재하는가?
+- [ ] `tags.json`과 `tags.db`가 최신 상태로 동기화되었는가?
+- [ ] 중복 TAG 또는 고아 TAG가 없는가?
+
+---
+
 ## 📊 Performance & Metrics
 
 ### SPEC-013 전환 성과 지표

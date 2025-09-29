@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "moai-adk": "file:../moai-adk-ts/moai-adk-0.0.3.tgz"
+  }
+}

@@ -1,5 +1,5 @@
-// @FEATURE-TAG-MANAGER-001: JSON 기반 TAG 관리 시스템
-// 연결: @REQ-TAG-JSON-001 → @DESIGN-TAG-TYPES-001 → @TASK-TAG-MANAGER-001 → @FEATURE-TAG-MANAGER-001
+// @FEATURE:TAG-MANAGER-001 | Chain: @REQ:TAG-MANAGER-001 → @DESIGN:TAG-MANAGER-001 → @TASK:TAG-MANAGER-001 → @FEATURE:TAG-MANAGER-001
+// Related: @SEC:TAG-MANAGER-001, @PERF:TAG-MANAGER-001
 
 import { promises as fs } from 'node:fs';
 import { dirname } from 'node:path';
@@ -17,9 +17,9 @@ import type {
 } from './types.js';
 
 /**
- * @FEATURE-TAG-MANAGER-001: JSON 기반 TAG 관리 시스템
- * @PERF-TAG-MANAGER-001: 고성능 메모리 캐싱 시스템
- * @SEC-TAG-MANAGER-001: 입력 검증 및 데이터 무결성 보장
+ * @FEATURE:TAG-MANAGER-001: JSON 기반 TAG 관리 시스템
+ * @PERF:TAG-MANAGER-001: 고성능 메모리 캐싱 시스템
+ * @SEC:TAG-MANAGER-001: 입력 검증 및 데이터 무결성 보장
  *
  * SQLite3를 대체하는 경량 JSON 기반 TAG 시스템입니다.
  * - 메모리 캐싱: < 50ms 로드 성능 보장
@@ -41,8 +41,8 @@ export class TagManager {
   }
 
   /**
-   * @API-TAG-LOAD-001: 데이터베이스 로드
-   * @PERF-LOAD-001: 중복 로드 방지 및 캐싱 최적화
+   * @API:TAG-LOAD-001: 데이터베이스 로드
+   * @PERF:LOAD-001: 중복 로드 방지 및 캐싱 최적화
    */
   async load(): Promise<TagDatabase> {
     // 이미 로딩 중이면 기존 Promise 반환 (중복 로드 방지)
@@ -66,8 +66,8 @@ export class TagManager {
   }
 
   /**
-   * @PERF-LOAD-002: 실제 로드 작업 수행
-   * @SEC-LOAD-001: 보안 검증 및 오류 처리
+   * @PERF:LOAD-002: 실제 로드 작업 수행
+   * @SEC:LOAD-001: 보안 검증 및 오류 처리
    */
   private async performLoad(): Promise<TagDatabase> {
     try {
@@ -94,7 +94,7 @@ export class TagManager {
   }
 
   /**
-   * @API-TAG-SAVE-001: 데이터베이스 저장
+   * @API:TAG-SAVE-001: 데이터베이스 저장
    */
   async save(): Promise<void> {
     if (!this.database) {
@@ -128,7 +128,7 @@ export class TagManager {
   }
 
   /**
-   * @API-TAG-CREATE-001: TAG 생성
+   * @API:TAG-CREATE-001: TAG 생성
    */
   async createTag(tagEntry: Partial<TagEntry>): Promise<TagEntry> {
     if (!this.database) {
@@ -176,7 +176,7 @@ export class TagManager {
   }
 
   /**
-   * @API-TAG-GET-001: TAG 조회
+   * @API:TAG-GET-001: TAG 조회
    */
   async getTag(id: string): Promise<TagEntry | null> {
     if (!this.database) {
@@ -198,7 +198,7 @@ export class TagManager {
   }
 
   /**
-   * @API-TAG-UPDATE-001: TAG 업데이트
+   * @API:TAG-UPDATE-001: TAG 업데이트
    */
   async updateTag(id: string, updates: Partial<TagEntry>): Promise<TagEntry> {
     if (!this.database) {
@@ -231,7 +231,7 @@ export class TagManager {
   }
 
   /**
-   * @API-TAG-DELETE-001: TAG 삭제
+   * @API:TAG-DELETE-001: TAG 삭제
    */
   async deleteTag(id: string): Promise<boolean> {
     if (!this.database) {
@@ -253,8 +253,8 @@ export class TagManager {
   }
 
   /**
-   * @API-TAG-SEARCH-001: TAG 검색
-   * @PERF-SEARCH-001: 인덱스 기반 고성능 검색
+   * @API:TAG-SEARCH-001: TAG 검색
+   * @PERF:SEARCH-001: 인덱스 기반 고성능 검색
    */
   async search(query: TagSearchQuery): Promise<TagSearchResult> {
     if (!this.database) {
@@ -335,7 +335,7 @@ export class TagManager {
   }
 
   /**
-   * @API-TAG-VALIDATE-001: TAG 유효성 검증
+   * @API:TAG-VALIDATE-001: TAG 유효성 검증
    */
   async validateTag(tagEntry: TagEntry): Promise<TagValidationResult> {
     const errors: string[] = [];
@@ -369,7 +369,7 @@ export class TagManager {
   }
 
   /**
-   * @API-TAG-STATS-001: TAG 통계 정보
+   * @API:TAG-STATS-001: TAG 통계 정보
    */
   async getStatistics(): Promise<TagStatistics> {
     if (!this.database) {
@@ -501,7 +501,7 @@ export class TagManager {
   }
 
   private isValidTagId(id: string): boolean {
-    // @TYPE-CATEGORY-NUMBER 형식 검증 (예: @REQ-AUTH-001, @REQ-PERF-1000)
+    // @CATEGORY:DOMAIN-ID 형식 검증 (예: @REQ:AUTH-001, @PERF:LOAD-001)
     // 숫자는 3자리 이상 허용
     const pattern = /^@[A-Z]+(-[A-Z0-9]+)*-\d{3,}$/;
     return pattern.test(id);
@@ -556,7 +556,7 @@ export class TagManager {
   }
 
   /**
-   * @PERF-SEARCH-002: 검색 인덱스 구축
+   * @PERF:SEARCH-002: 검색 인덱스 구축
    */
   private buildSearchIndexes(): void {
     if (!this.database) return;
@@ -585,14 +585,14 @@ export class TagManager {
   }
 
   /**
-   * @PERF-SEARCH-003: 검색 캐시 키 생성
+   * @PERF:SEARCH-003: 검색 캐시 키 생성
    */
   private generateSearchCacheKey(query: TagSearchQuery): string {
     return JSON.stringify(query, Object.keys(query).sort());
   }
 
   /**
-   * @PERF-SEARCH-004: 인덱스 기반 초기 후보 선택
+   * @PERF:SEARCH-004: 인덱스 기반 초기 후보 선택
    */
   private getInitialCandidates(query: TagSearchQuery): TagEntry[] {
     if (!this.database) return [];
@@ -636,7 +636,7 @@ export class TagManager {
   }
 
   /**
-   * @PERF-SEARCH-005: 추가 필터링 적용
+   * @PERF:SEARCH-005: 추가 필터링 적용
    */
   private applyAdditionalFilters(tags: TagEntry[], query: TagSearchQuery): TagEntry[] {
     let filtered = tags;
@@ -704,7 +704,7 @@ export class TagManager {
   }
 
   /**
-   * @PERF-SEARCH-006: 실제 검색 수행 (캐싱용)
+   * @PERF:SEARCH-006: 실제 검색 수행 (캐싱용)
    */
   private performSearch(query: TagSearchQuery): TagEntry[] {
     if (!this.database) return [];

@@ -11,7 +11,10 @@
       "Bash(./dist/cli/index.js doctor:*)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "additionalDirectories": [
+      "/Users/goos/MoAI/test/todo-app/"
+    ]
   },
   "outputStyle": "MoAI Pair Programming"
 }

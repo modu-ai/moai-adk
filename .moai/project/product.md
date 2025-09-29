@@ -2,13 +2,13 @@
 
 ## @VISION:MISSION-001 핵심 미션
 
-**TypeScript 기반 범용 SPEC-First TDD 개발 도구 (v0.0.1)**
+**TypeScript 기반 범용 SPEC-First TDD 개발 도구 (v0.0.3 지능형 진단)**
 
 ### 핵심 가치 제안
 
 MoAI-ADK는 Claude Code와 네이티브 통합되어 SPEC-First TDD 방법론을 지원하는 고성능 개발 도구입니다. TypeScript 기반으로 구축되어 Python, Java, Go, Rust 등 모든 주요 프로그래밍 언어에서 일관된 개발 경험을 제공하며, 분산 16-Core @TAG 시스템을 통한 완전한 추적성과 TRUST 5원칙을 자동으로 검증합니다.
 
-**현재 성과**: CLI 100% 완성, 분산 TAG 시스템 94% 최적화, TypeScript 현대화 스택 완성
+**현재 성과**: CLI 100% 완성 + **혁신적 시스템 진단**, 분산 TAG 시스템 94% 최적화, TypeScript 현대화 스택 완성, **지능형 언어 감지** 및 **동적 요구사항** 완성
 
 ## @REQ:USER-001 주요 사용자층
 
@@ -17,8 +17,10 @@ MoAI-ADK는 Claude Code와 네이티브 통합되어 SPEC-First TDD 방법론을
 - **핵심 니즈**: SPEC-First TDD 워크플로우, 다양한 언어 지원, 자동화된 품질 검증
 - **핵심 시나리오**:
   - 새 프로젝트 시작 시 일관된 구조와 워크플로우 설정
+  - **지능형 진단**: `moai doctor` 실행 시 프로젝트 언어 자동 감지 및 맞춤형 도구 추천
   - SPEC 작성 → TDD 구현 → 문서 동기화의 3단계 반복 사이클
   - 언어에 관계없이 동일한 품질 기준과 추적성 확보
+  - **실용적 개발 환경**: SQLite3 제거 → npm+TypeScript+Git LFS 전환으로 실용성 극대화
 
 ### 2차 사용자
 - **대상**: AI 페어 프로그래밍을 처음 시도하는 개발자
@@ -26,10 +28,11 @@ MoAI-ADK는 Claude Code와 네이티브 통합되어 SPEC-First TDD 방법론을
 
 ## @REQ:PROBLEM-001 해결하는 핵심 문제
 
-### 우선순위 높음
-1. **언어별 개발 도구 파편화**: 각 언어마다 다른 도구와 방법론으로 일관성 부족
-2. **AI 페어 프로그래밍의 체계 부재**: Claude Code 사용 시 일관된 개발 방법론 부족
-3. **추적성 관리의 복잡성**: 요구사항-설계-구현-테스트 간 연결고리 관리 어려움
+### 우선순위 높음 (v0.0.3 해결 완료)
+1. **언어별 개발 도구 파편화**: ✅ **지능형 언어 감지**로 JavaScript/TypeScript/Python/Java/Go 통합 관리
+2. **AI 페어 프로그래밍의 체계 부재**: ✅ Claude Code 사용 시 일관된 개발 방법론 + **동적 요구사항** 제공
+3. **추적성 관리의 복잡성**: ✅ 16-Core @TAG v4.0 + SystemChecker 아키텍처로 완전 해결
+4. **시스템 진단의 비실용성**: ✅ SQLite3 제거, npm+TypeScript+Git LFS로 **실용적 도구체인** 구축
 
 ### 우선순위 중간
 - **프로젝트 품질 기준의 주관성**: 객관적 품질 지표와 자동 검증 부족
@@ -54,20 +57,28 @@ MoAI-ADK는 Claude Code와 네이티브 통합되어 SPEC-First TDD 방법론을
 
 ## @REQ:SUCCESS-001 성공 지표 (달성 현황)
 
-### 현재 달성된 KPI ✅
+### 현재 달성된 KPI ✅ (v0.0.3)
 1. **프로젝트 초기화 성공률**: **100%** (Windows/macOS/Linux 모든 환경)
-   - 시스템 진단 자동화로 요구사항 100% 검증
+   - **혁신적 시스템 진단**으로 요구사항 100% 검증 + **언어별 맞춤형 진단**
    - 크로스 플랫폼 호환성 완전 확보
 
-2. **CLI 명령어 완성도**: **100%** (7개 핵심 명령어)
+2. **CLI 명령어 완성도**: **100%** (7개 핵심 명령어 + 지능형 진단)
    - `moai init`, `doctor`, `status`, `update`, `restore`, `help`, `version`
-   - 고급 진단 시스템 4개 모듈 완성
+   - **SystemChecker 아키텍처**: RequirementRegistry + 언어 감지 시스템 완성
+   - **5-category 진단**: Runtime(2) + Development(2) + Optional(1) + Language-Specific + Performance
 
 3. **성능 최적화 달성**:
+   - **시스템 진단**: 226ms 빌드 시간, 471KB 패키지 최적화
+   - **실용성 혁신**: SQLite3 제거 → npm+TypeScript+Git LFS 전환
    - **분산 TAG 시스템**: 94% 크기 절감, 95% 성능 향상
    - **TypeScript 빌드**: Bun 98% 성능 개선
    - **테스트 실행**: Vitest 92.9% 성공률
    - **코드 품질**: Biome 94.8% 성능 향상
+
+4. **지능형 기능 달성** (NEW in v0.0.3):
+   - **언어 자동 감지**: JavaScript/TypeScript/Python/Java/Go 프로젝트 분석
+   - **동적 요구사항**: 감지된 언어에 따른 개발 도구 자동 추가
+   - **실용적 도구**: 불필요한 SQLite3 제거, 실제 필요한 npm/TypeScript 추가
 
 ### 측정 주기
 - **일간**: 설치 성공률, 오류 발생률
@@ -76,13 +87,17 @@ MoAI-ADK는 Claude Code와 네이티브 통합되어 SPEC-First TDD 방법론을
 
 ## @SUCCESS:FOUNDATION-001 현재 달성 상태 ✅
 
-### 핵심 기반 시설 완성
-- **TypeScript CLI v0.0.1**: ✅ **100% 완성** (7개 명령어, 고성능 진단)
+### 핵심 기반 시설 완성 (v0.0.3)
+- **TypeScript CLI v0.0.3**: ✅ **100% 완성** (7개 명령어, **혁신적 지능형 진단**)
+- **SystemChecker 아키텍처**: ✅ **완성** (RequirementRegistry, 언어 감지, 동적 요구사항)
 - **분산 TAG 시스템 v4.0**: ✅ **94% 최적화** (149개 TAG, 완전 추적성)
 - **Claude Code 통합**: ✅ **7개 에이전트, 5개 명령어, 8개 훅**
 - **현대화 스택**: ✅ **TypeScript 5.9.2 + Bun 1.2.19 + Vitest + Biome**
 
-### 핵심 성능 지표
+### 핵심 성능 지표 (v0.0.3)
+- **시스템 진단**: 226ms 빌드 시간, 471KB 패키지 최적화
+- **실용성 혁신**: SQLite3 제거 → npm+TypeScript+Git LFS (실제 필요 도구)
+- **언어 지원**: JavaScript/TypeScript/Python/Java/Go 자동 감지 및 도구 매핑
 - **빌드 성능**: Bun 98% 향상 (npm 대비)
 - **테스트 성공률**: Vitest 92.9%
 - **코드 품질**: Biome 94.8% 성능 향상 (ESLint+Prettier 통합)
@@ -91,17 +106,25 @@ MoAI-ADK는 Claude Code와 네이티브 통합되어 SPEC-First TDD 방법론을
 
 ## @VISION:ROADMAP-001 다음 단계 로드맵
 
-### Phase 2: 확장 및 통합 (예정)
-1. **SPEC-014**: ✅ **완료** - CLI 명령어 100% 완성 (7개 명령어)
-2. **SPEC-015**: 📋 **계획** - 범용 언어 지원 강화 (Java, Go, Rust)
-3. **SPEC-016**: 📋 **계획** - 웹 대시보드 및 실시간 모니터링
-4. **SPEC-017**: 📋 **계획** - GitHub Actions 완전 통합
-5. **SPEC-018**: 📋 **계획** - VSCode Extension 개발
+### Phase 2: 확장 및 통합 (v0.0.3 완료 + 예정)
+1. **SPEC-014**: ✅ **완료** - CLI 명령어 100% 완성 (7개 명령어 + 지능형 진단)
+2. **SPEC-014-A**: ✅ **NEW 완료** - **혁신적 시스템 진단** (언어 감지, 동적 요구사항, 실용성 개선)
+3. **SPEC-015**: 📋 **계획** - 범용 언어 지원 강화 (Rust, C#, 추가 언어)
+4. **SPEC-016**: 📋 **계획** - 웹 대시보드 및 실시간 모니터링
+5. **SPEC-017**: 📋 **계획** - GitHub Actions 완전 통합
+6. **SPEC-018**: 📋 **계획** - VSCode Extension 개발
 
-### 현재 우선순위
-- **사용자 피드백 수집**: 실제 사용 사례 분석
+### v0.0.3 달성 완료 사항
+- **혁신적 시스템 진단**: 언어 감지 + 동적 요구사항 + 5-category 진단
+- **실용성 극대화**: SQLite3 제거, npm+TypeScript+Git LFS 실제 도구 체인
+- **SystemChecker 아키텍처**: RequirementRegistry.addLanguageRequirements() 완성
+- **성능 최적화**: 226ms 빌드, 471KB 패키지 크기
+
+### 현재 우선순위 (v0.0.4 준비)
+- **사용자 피드백 수집**: 지능형 진단 시스템 실제 사용 사례 분석
+- **언어 지원 확대**: Rust, C#, 추가 언어 패턴 인식 강화
 - **성능 최적화**: 대용량 프로젝트 대응
-- **문서화 강화**: 사용자 가이드 및 튜토리얼
+- **문서화 강화**: 새로운 지능형 기능 사용자 가이드
 - **커뮤니티 구축**: 오픈소스 기여자 생태계
 
 ---

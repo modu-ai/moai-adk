@@ -537,10 +537,19 @@ export class InstallationOrchestrator {
     const configFiles: string[] = [];
 
     try {
-      // Generate Claude Code settings
-      const claudeSettingsPath = await this.createClaudeSettings();
-      if (claudeSettingsPath) {
-        configFiles.push(claudeSettingsPath);
+      // Generate Claude Code settings only if not already installed from template
+      const existingClaudeSettingsPath = path.join(this.config.projectPath, '.claude', 'settings.json');
+      if (!fs.existsSync(existingClaudeSettingsPath)) {
+        const claudeSettingsPath = await this.createClaudeSettings();
+        if (claudeSettingsPath) {
+          configFiles.push(claudeSettingsPath);
+        }
+      } else {
+        logger.debug('Claude settings already exists from template, skipping creation', {
+          settingsPath: existingClaudeSettingsPath,
+          tag: '@DEBUG:CLAUDE-SETTINGS-EXISTS-001',
+        });
+        configFiles.push(existingClaudeSettingsPath);
       }
 
       // Generate MoAI configuration
@@ -724,6 +733,9 @@ export class InstallationOrchestrator {
         templateVars
       );
       installedFiles.push(...copiedFiles);
+
+      // Validate critical Claude settings file
+      await this.validateClaudeSettings(claudeDir);
     } else {
       // Fallback: create minimal structure if templates not found
       logger.warn('Claude templates not found, creating minimal structure', {
@@ -855,6 +867,22 @@ export class InstallationOrchestrator {
         '.claude',
         'settings.json'
       );
+
+      // Check if settings file already exists from template
+      if (fs.existsSync(settingsPath)) {
+        logger.debug('Settings file already exists from template, skipping creation', {
+          settingsPath,
+          tag: '@DEBUG:CLAUDE-SETTINGS-EXISTS-002',
+        });
+        return settingsPath;
+      }
+
+      // Fallback: create minimal settings if template was not found
+      logger.warn('Creating fallback Claude settings (template not found)', {
+        settingsPath,
+        tag: '@WARN:CLAUDE-SETTINGS-FALLBACK-001',
+      });
+
       const settings = {
         outputStyle: 'study',
         statusLine: {
@@ -1045,16 +1073,26 @@ Thumbs.db
    * @tags @UTIL:GET-TEMPLATES-PATH-001
    */
   private getTemplatesPath(): string {
+    // Get Node.js executable path to find global node_modules
+    const nodeExecPath = process.execPath;
+    const nodeBinDir = path.dirname(nodeExecPath);
+    const nodeInstallDir = path.dirname(nodeBinDir);
+
     // Try to find templates directory using multiple strategies
     const possiblePaths = [
       // From project root (development)
       path.join(process.cwd(), 'templates'),
       // From source directory (development)
       path.join(process.cwd(), 'src', '..', 'templates'),
-      // From npm package (installed)
+      // From npm package (local node_modules)
       path.join(process.cwd(), 'node_modules', 'moai-adk', 'templates'),
+      // From current Node.js installation (nvm, nodenv, etc.)
+      path.join(nodeInstallDir, 'lib', 'node_modules', 'moai-adk', 'templates'),
       // From parent directory (various installations)
       path.join(process.cwd(), '..', 'templates'),
+      // Common npm global paths
+      '/usr/local/lib/node_modules/moai-adk/templates',
+      path.join(process.env.HOME || '~', '.npm-global', 'lib', 'node_modules', 'moai-adk', 'templates'),
     ];
 
     for (const templatePath of possiblePaths) {
@@ -1344,6 +1382,71 @@ Thumbs.db
       await fs.promises.mkdir(path.dirname(fullPath), { recursive: true });
       await fs.promises.writeFile(fullPath, content);
       installedFiles.push(fullPath);
+    }
+  }
+
+  /**
+   * Validate Claude settings file from template
+   * @param claudeDir Claude directory path
+   * @tags @UTIL:VALIDATE-CLAUDE-SETTINGS-001
+   */
+  private async validateClaudeSettings(claudeDir: string): Promise<void> {
+    try {
+      const settingsPath = path.join(claudeDir, 'settings.json');
+
+      if (!fs.existsSync(settingsPath)) {
+        logger.warn('Claude settings.json not found after template copy', {
+          settingsPath,
+          tag: '@WARN:SETTINGS-NOT-FOUND-001',
+        });
+        return;
+      }
+
+      // Parse and validate settings content
+      const settingsContent = await fs.promises.readFile(settingsPath, 'utf-8');
+      const settings = JSON.parse(settingsContent);
+
+      // Check for critical sections
+      const hasEnv = !!settings.env;
+      const hasHooks = !!settings.hooks;
+      const hasPermissions = !!settings.permissions;
+      const hasAgents = !!settings.agents;
+      const hasCommands = !!settings.commands;
+
+      // Log validation results
+      logger.debug('Claude settings validation results', {
+        settingsPath,
+        hasEnv,
+        hasHooks,
+        hasPermissions,
+        hasAgents,
+        hasCommands,
+        fileSize: settingsContent.length,
+        tag: '@DEBUG:SETTINGS-VALIDATION-001',
+      });
+
+      // Warn if critical sections are missing
+      if (!hasEnv || !hasHooks || !hasPermissions) {
+        logger.warn('Incomplete Claude settings detected', {
+          settingsPath,
+          missingEnv: !hasEnv,
+          missingHooks: !hasHooks,
+          missingPermissions: !hasPermissions,
+          tag: '@WARN:SETTINGS-INCOMPLETE-001',
+        });
+      } else {
+        logger.debug('Claude settings validation successful', {
+          settingsPath,
+          tag: '@SUCCESS:SETTINGS-VALIDATION-001',
+        });
+      }
+    } catch (error) {
+      logger.error('Failed to validate Claude settings', {
+        error,
+        claudeDir,
+        tag: '@ERROR:SETTINGS-VALIDATION-001',
+      });
+      // Don't throw - validation failure shouldn't stop installation
     }
   }
 }

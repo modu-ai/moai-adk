@@ -8,14 +8,12 @@ import chalk from 'chalk';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
-import type {
-  SystemDetector,
-  RequirementCheckResult,
-} from '@/core/system-checker/detector';
 import {
-  requirementRegistry,
-  type SystemRequirement,
-} from '@/core/system-checker/requirements';
+  SystemChecker,
+  SystemDetector,
+  type RequirementCheckResult,
+  type SystemCheckSummary,
+} from '@/core/system-checker';
 
 /**
  * Doctor command result summary
@@ -45,19 +43,20 @@ type CategorizedResults = {
 };
 
 /**
- * Doctor command for system diagnostics
+ * Doctor command for system diagnostics with enhanced language detection
  * @tags @FEATURE:CLI-DOCTOR-001
  */
 export class DoctorCommand {
+  private readonly systemChecker = new SystemChecker();
   constructor(private readonly detector: SystemDetector) {}
 
   /**
-   * Run system diagnostics
+   * Run system diagnostics with language detection
    * @param options - Doctor command options
    * @returns Doctor result with all checks
    * @tags @API:DOCTOR-RUN-001
    */
-  public async run(options: { listBackups?: boolean } = {}): Promise<DoctorResult> {
+  public async run(options: { listBackups?: boolean; projectPath?: string } = {}): Promise<DoctorResult> {
     // Handle --list-backups option
     if (options.listBackups) {
       return this.listBackups();
@@ -65,20 +64,26 @@ export class DoctorCommand {
 
     this.printHeader();
 
-    const requirements = this.gatherRequirements();
-    const results = await this.executeChecks(requirements);
+    // Use enhanced system checker with language detection
+    const projectPath = options.projectPath || process.cwd();
+    const checkSummary = await this.systemChecker.runSystemCheck(projectPath);
+
+    this.printEnhancedResults(checkSummary);
+    this.printEnhancedSummary(checkSummary);
+
+    const results = [...checkSummary.runtime, ...checkSummary.development, ...checkSummary.optional];
     const categorizedResults = this.categorizeResults(results);
 
-    this.printResults(results);
-    const summary = this.generateSummary(categorizedResults);
-    this.printSummary(summary, categorizedResults.allPassed);
-
     return {
-      allPassed: categorizedResults.allPassed,
+      allPassed: checkSummary.passedChecks === checkSummary.totalChecks,
       results,
       missingRequirements: categorizedResults.missing,
       versionConflicts: categorizedResults.conflicts,
-      summary,
+      summary: {
+        total: checkSummary.totalChecks,
+        passed: checkSummary.passedChecks,
+        failed: checkSummary.failedChecks,
+      },
     };
   }
 
@@ -91,34 +96,6 @@ export class DoctorCommand {
     console.log(chalk.blue('Checking system requirements...\n'));
   }
 
-  /**
-   * Gather all system requirements
-   * @returns Array of system requirements
-   * @tags @UTIL:GATHER-REQUIREMENTS-001
-   */
-  private gatherRequirements(): SystemRequirement[] {
-    const runtimeRequirements = requirementRegistry.getByCategory('runtime');
-    const developmentRequirements =
-      requirementRegistry.getByCategory('development');
-    return [...runtimeRequirements, ...developmentRequirements];
-  }
-
-  /**
-   * Execute requirement checks
-   * @param requirements - Requirements to check
-   * @returns Check results
-   * @tags @UTIL:EXECUTE-CHECKS-001
-   */
-  private async executeChecks(
-    requirements: SystemRequirement[]
-  ): Promise<RequirementCheckResult[]> {
-    try {
-      return await this.detector.checkMultipleRequirements(requirements);
-    } catch (error) {
-      console.error(chalk.red('❌ Failed to execute system checks:'), error);
-      throw new Error('System diagnostics failed');
-    }
-  }
 
   /**
    * Categorize check results
@@ -141,24 +118,6 @@ export class DoctorCommand {
     return { missing, conflicts, passed, allPassed };
   }
 
-  /**
-   * Generate summary statistics
-   * @param categorized - Categorized results
-   * @returns Summary object
-   * @tags @UTIL:GENERATE-SUMMARY-001
-   */
-  private generateSummary(
-    categorized: CategorizedResults
-  ): DoctorResult['summary'] {
-    return {
-      total:
-        categorized.missing.length +
-        categorized.conflicts.length +
-        categorized.passed.length,
-      passed: categorized.passed.length,
-      failed: categorized.missing.length + categorized.conflicts.length,
-    };
-  }
 
   /**
    * Format individual check result
@@ -205,16 +164,22 @@ export class DoctorCommand {
   }
 
   /**
-   * Print all check results
-   * @param results - Array of check results
-   * @tags @UTIL:PRINT-RESULTS-001
+   * Print enhanced check results with language detection
+   * @param checkSummary - System check summary
+   * @tags @UTIL:PRINT-ENHANCED-RESULTS-001
    */
-  private printResults(results: RequirementCheckResult[]): void {
+  private printEnhancedResults(checkSummary: SystemCheckSummary): void {
+    // Show detected languages first if any
+    if (checkSummary.detectedLanguages.length > 0) {
+      console.log(chalk.blue.bold('🔍 Detected Languages:'));
+      checkSummary.detectedLanguages.forEach(lang => {
+        console.log(`  ${chalk.cyan('•')} ${chalk.bold(lang)}`);
+      });
+      console.log('');
+    }
+
     console.log(chalk.bold('Runtime Requirements:'));
-    const runtimeResults = results.filter(
-      r => r.requirement.category === 'runtime'
-    );
-    runtimeResults.forEach(result => {
+    checkSummary.runtime.forEach(result => {
       console.log(`  ${this.formatCheckResult(result)}`);
       if (!result.result.isInstalled || !result.result.versionSatisfied) {
         console.log(`    ${this.getInstallationSuggestion(result)}`);
@@ -223,35 +188,45 @@ export class DoctorCommand {
 
     console.log('');
     console.log(chalk.bold('Development Requirements:'));
-    const devResults = results.filter(
-      r => r.requirement.category === 'development'
-    );
-    devResults.forEach(result => {
+    checkSummary.development.forEach(result => {
       console.log(`  ${this.formatCheckResult(result)}`);
       if (!result.result.isInstalled || !result.result.versionSatisfied) {
         console.log(`    ${this.getInstallationSuggestion(result)}`);
       }
     });
+
+    // Show optional requirements if any
+    if (checkSummary.optional.length > 0) {
+      console.log('');
+      console.log(chalk.bold('Optional Requirements:'));
+      checkSummary.optional.forEach(result => {
+        console.log(`  ${this.formatCheckResult(result)}`);
+        if (!result.result.isInstalled || !result.result.versionSatisfied) {
+          console.log(`    ${chalk.gray(this.getInstallationSuggestion(result))}`);
+        }
+      });
+    }
+
     console.log('');
   }
 
   /**
-   * Print summary of checks
-   * @param summary - Check summary
-   * @param allPassed - Whether all checks passed
-   * @tags @UTIL:PRINT-SUMMARY-001
+   * Print enhanced summary with language info
+   * @param checkSummary - System check summary
+   * @tags @UTIL:PRINT-ENHANCED-SUMMARY-001
    */
-  private printSummary(
-    summary: { total: number; passed: number; failed: number },
-    allPassed: boolean
-  ): void {
+  private printEnhancedSummary(checkSummary: SystemCheckSummary): void {
     console.log(chalk.bold('Summary:'));
-    console.log(`  Total checks: ${summary.total}`);
-    console.log(`  ${chalk.green('Passed:')} ${summary.passed}`);
-    console.log(`  ${chalk.red('Failed:')} ${summary.failed}`);
+    console.log(`  Total checks: ${checkSummary.totalChecks}`);
+    console.log(`  ${chalk.green('Passed:')} ${checkSummary.passedChecks}`);
+    console.log(`  ${chalk.red('Failed:')} ${checkSummary.failedChecks}`);
+
+    if (checkSummary.detectedLanguages.length > 0) {
+      console.log(`  ${chalk.blue('Languages:')} ${checkSummary.detectedLanguages.join(', ')}`);
+    }
     console.log('');
 
-    if (allPassed) {
+    if (checkSummary.passedChecks === checkSummary.totalChecks) {
       console.log(chalk.green.bold('✅ All system requirements satisfied!'));
     } else {
       console.log(
@@ -264,6 +239,7 @@ export class DoctorCommand {
       );
     }
   }
+
 
   /**
    * List available MoAI-ADK backups

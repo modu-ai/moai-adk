@@ -19,11 +19,11 @@
 
 ### 멀티 플랫폼 지원 현황
 
-| 플랫폼      | TypeScript (주) | Python 지원     | 검증 도구          | 주요 제약              |
-| ----------- | --------------- | --------------- | ------------------ | ---------------------- |
-| **Windows** | ✅ 완성         | ✅ 지원         | GitHub Actions CI  | None                   |
-| **macOS**   | ✅ 완성         | ✅ 지원         | 로컬 테스트        | None                   |
-| **Linux**   | ✅ 완성         | ✅ 지원         | GitHub Actions CI  | None                   |
+| 플랫폼      | TypeScript (주) | 다중 언어 지원 | 지능형 진단 | 주요 성과 |
+| ----------- | --------------- | --------------- | ----------- | --------- |
+| **Windows** | ✅ 완성         | ✅ JS/TS/Python/Java/Go | ✅ 5-category | 226ms 빌드, 471KB |
+| **macOS**   | ✅ 완성         | ✅ JS/TS/Python/Java/Go | ✅ 5-category | SQLite3 제거, npm 추가 |
+| **Linux**   | ✅ 완성         | ✅ JS/TS/Python/Java/Go | ✅ 5-category | 실용성 혁신 완성 |
 
 ## @TECH:FRAMEWORK-001 핵심 프레임워크 & 라이브러리
 
