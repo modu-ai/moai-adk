@@ -193,7 +193,7 @@ MoAI-ADK는 8개의 전문 에이전트를 제공하여 각 개발 단계를 지
 | **debug-helper** | 오류 분석 | 에러 진단, 해결방안 제시, 개발 가이드 검증 |
 | **git-manager** | Git 자동화 | 브랜치, 커밋, PR, 체크포인트 관리 |
 | **trust-checker** | 품질 검증 | TRUST 5원칙 검사, 코드 품질 분석 |
-| **tag-agent** | TAG 관리 | 16-Core @TAG 시스템 전담 |
+| **tag-agent** | TAG 관리 | @TAG 시스템 전담 |
 
 ### 에이전트 사용 예제
 
@@ -319,9 +319,9 @@ moai help init      # init 명령어 도움말
 moai help doctor    # doctor 명령어 도움말
 ```
 
-## 16-Core @TAG 시스템
+## @TAG 시스템
 
-MoAI-ADK는 코드 기반 추적성을 위해 16-Core @TAG 시스템을 사용합니다.
+MoAI-ADK는 코드 기반 추적성을 위해 @TAG 시스템을 사용합니다.
 
 ### TAG 카테고리
 
@@ -412,7 +412,7 @@ MoAI-ADK는 다음 TRUST 5원칙을 준수합니다:
 - 구조화된 로그 관리
 
 ### T - Trackable (추적성)
-- 16-Core @TAG 시스템으로 완전한 추적성
+- @TAG 시스템으로 완전한 추적성
 - 모든 변경사항 기록
 - SPEC-코드-테스트 연결성 보장
 
