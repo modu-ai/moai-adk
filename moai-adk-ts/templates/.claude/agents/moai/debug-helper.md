@@ -1,6 +1,6 @@
 ---
 name: debug-helper
-description: Use PROACTIVELY for error analysis and development guide violation checks. Provides structured diagnostics and solutions for all debugging tasks.
+description: **온디맨드 에이전트** - 사용자가 직접 호출하는 디버깅 전문가. 오류 분석, 개발 가이드 위반 검사, 구조화된 진단 및 해결책 제공.
 tools: Read, Grep, Glob, Bash, TodoWrite
 model: sonnet
 ---

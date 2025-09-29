@@ -1,6 +1,6 @@
 ---
 name: trust-checker
-description: Use PROACTIVELY for all quality verification including TRUST 5원칙, code standards, security checks, and performance analysis. Central quality assurance agent for comprehensive validation.
+description: **온디맨드 에이전트** - 사용자가 직접 호출하는 품질 검증 전문가. TRUST 5원칙, 코드 표준, 보안 검사, 성능 분석 등 종합적 품질 보증.
 tools: Read, Grep, Glob, Bash, TodoWrite
 model: sonnet
 ---
@@ -199,7 +199,7 @@ Level 2 중간 검사:
   - 시맨틱 버전 체계 기본 검증
 
 Level 3 심화 검사:
-  - @AI-TAG 시스템 완전 분석
+  - @TAG 시스템 완전 분석
   - 요구사항 추적성 매트릭스 검증
   - 릴리스 관리 체계 종합 평가
 ```

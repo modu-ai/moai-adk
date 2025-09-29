@@ -18,7 +18,7 @@ tools: Read, Write, Edit, MultiEdit, Bash, Task, Grep, Glob, TodoWrite
 1. **프로젝트 상태 확인**
    - Git 상태 및 변경된 파일 목록
    - 코드-문서 일치성 검사
-   - @AI-TAG 시스템 검증
+   - @TAG 시스템 검증
 
 2. **동기화 범위 결정**
    - Living Document 업데이트 필요 영역
@@ -54,11 +54,11 @@ fi
 
 ## 🚀 STEP 2: 문서 동기화 실행 (사용자 승인 후)
 
-사용자 승인 후 doc-syncer 에이전트가 **Living Document 동기화와 16-Core @TAG 업데이트**를 수행하고, 팀 모드에서만 PR Ready 전환을 선택적으로 실행합니다.
+사용자 승인 후 doc-syncer 에이전트가 **Living Document 동기화와 @TAG 업데이트**를 수행하고, 팀 모드에서만 PR Ready 전환을 선택적으로 실행합니다.
 
 ## 기능
 
-- **ULTRATHINK**: doc-syncer 에이전트가 Living Document 동기화와 16-Core @TAG 업데이트를 수행합니다. 팀 모드에서만 PR Ready 전환을 선택적으로 실행합니다.
+- **ULTRATHINK**: doc-syncer 에이전트가 Living Document 동기화와 @TAG 업데이트를 수행합니다. 팀 모드에서만 PR Ready 전환을 선택적으로 실행합니다.
 
 ## 동기화 산출물
 
@@ -135,7 +135,7 @@ esac
 
 - [ ] **Git 상태**: 변경된 파일, 브랜치 상태, 커밋 히스토리
 - [ ] **문서 일치성**: 코드-문서 간 동기화 필요성
-- [ ] **TAG 시스템**: @AI-TAG 체계 검증 및 끊어진 링크
+- [ ] **TAG 시스템**: @TAG 체계 검증 및 끊어진 링크
 - [ ] **동기화 범위**: 전체 vs 부분 vs 특정 경로 동기화
 
 ### 2. 동기화 전략 결정
@@ -217,13 +217,13 @@ fi
 ### 동기화 단계별 가이드
 
 1. **Living Document 동기화**: 코드 → 문서 자동 반영
-2. **TAG 시스템 검증**: @AI-TAG 체계 무결성 확인
+2. **TAG 시스템 검증**: @TAG 체계 무결성 확인
 3. **인덱스 업데이트**: 트레이시빌리티 매트릭스 갱신
 4. **보고서 생성**: 동기화 결과 요약 작성
 
 ### 에이전트 협업 구조
 
-- **1단계**: `doc-syncer` 에이전트가 Living Document 동기화 및 @AI-TAG 관리를 전담합니다.
+- **1단계**: `doc-syncer` 에이전트가 Living Document 동기화 및 @TAG 관리를 전담합니다.
 - **2단계**: `git-manager` 에이전트가 모든 Git 커밋, PR 상태 전환, 동기화를 전담합니다.
 - **단일 책임 원칙**: doc-syncer는 문서 작업만, git-manager는 Git 작업만 수행합니다.
 - **순차 실행**: doc-syncer → git-manager 순서로 실행하여 명확한 의존성을 유지합니다.
@@ -317,7 +317,7 @@ Phase 3: Git 후처리 (3-5초)
 #### doc-syncer 전담 영역
 
 - Living Document 동기화 (코드 ↔ 문서)
-- @AI-TAG 시스템 검증 및 업데이트
+- @TAG 시스템 검증 및 업데이트
 - API 문서 자동 생성/갱신
 - README 및 아키텍처 문서 동기화
 - 문서-코드 일치성 검증
@@ -337,7 +337,7 @@ Phase 3: Git 후처리 (3-5초)
 
 ### 🏢 팀 모드 (Team)
 
-- Living Document 완전 동기화 + @AI-TAG 검증/보정
+- Living Document 완전 동기화 + @TAG 검증/보정
 - gh CLI가 설정된 경우에 한해 PR Ready 전환과 라벨링을 선택적으로 실행
 
 **중요**: 모든 Git 작업(커밋, 동기화, PR 관리)은 git-manager 에이전트가 전담하므로, 이 커멘드에서는 Git 작업을 직접 실행하지 않습니다.
@@ -442,4 +442,4 @@ Phase 3: Git 후처리 (3-5초)
 
 ---
 
-**doc-syncer 서브에이전트와 연동하여 코드-문서 일치성 향상과 @AI-TAG 추적성 보장을 목표로 합니다.**
+**doc-syncer 서브에이전트와 연동하여 코드-문서 일치성 향상과 @TAG 추적성 보장을 목표로 합니다.**

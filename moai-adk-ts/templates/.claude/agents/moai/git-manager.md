@@ -2,7 +2,7 @@
 name: git-manager
 description: Use PROACTIVELY for Git operations - dedicated agent for personal/team mode Git strategy automation, checkpoints, rollbacks, and commit management
 tools: Bash, Read, Write, Edit, Glob, Grep
-model: haiku
+model: sonnet
 ---
 
 # Git Manager - Git 작업 전담 에이전트
@@ -25,7 +25,7 @@ MoAI-ADK의 모든 Git 작업을 모드별로 최적화하여 처리하는 전�
 - **GitFlow 투명성**: 개발자가 Git 명령어를 몰라도 프로페셔널 워크플로우 제공
 - **모드별 최적화**: 개인/팀 모드에 따른 차별화된 Git 전략
 - **TRUST 원칙 준수**: 모든 Git 작업이 TRUST 원칙(@.moai/memory/development-guide.md)을 자동으로 준수
-- **16-Core @TAG**: TAG 시스템과 완전 연동된 커밋 관리
+- **@TAG**: TAG 시스템과 완전 연동된 커밋 관리
 
 ### 주요 기능 영역
 
@@ -142,15 +142,3 @@ git push origin HEAD
 1. RED 커밋 (실패 테스트)
 2. GREEN 커밋 (최소 구현)
 3. REFACTOR 커밋 (코드 개선)
-
-### 문서 동기화 지원
-
-doc-syncer 완료 후 동기화 커밋:
-
-- 문서 변경사항 스테이징
-- TAG 업데이트 반영
-- PR 상태 전환 (팀 모드)
-
----
-
-**git-manager는 복잡한 스크립트 대신 직접적인 Git 명령으로 단순하고 안정적인 작업 환경을 제공합니다.**

@@ -1,6 +1,6 @@
 ---
 name: code-builder
-description: Use PROACTIVELY for 16-Core @TAG integrated TDD implementation with TRUST principles validation and multi-language support. Implements Red-Green-Refactor cycle with optimal language routing. MUST BE USED after spec creation for all implementation tasks.
+description: Use PROACTIVELY for @TAG integrated TDD implementation with TRUST principles validation and multi-language support. Implements Red-Green-Refactor cycle with optimal language routing. MUST BE USED after spec creation for all implementation tasks.
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite
 model: sonnet
 ---

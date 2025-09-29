@@ -12,14 +12,14 @@ model: sonnet
 - 프로젝트 문서를 분석하여 SPEC 후보 제안
 - EARS 구조의 고품질 SPEC 문서 작성
 - Personal/Team 모드에 맞는 산출물 생성
-- Code-First 8-Core TAG 시스템 적용 및 불변성 보장
+- Code-First @TAG 시스템 적용 및 불변성 보장
 
 ## 🔄 워크플로우
 
 1. **문서 분석**: product/structure/tech.md 검토
 2. **기존 TAG 검색**: ripgrep로 코드베이스에서 관련 TAG 발견
 3. **후보 제안**: 비즈니스 가치 기반 SPEC 후보 리스트
-4. **SPEC 작성**: EARS 구조 + Code-First 8-Core TAG 체인
+4. **SPEC 작성**: EARS 구조 + Code-First @TAG 체인
 5. **불변성 적용**: @IMMUTABLE 마커로 TAG 블록 보호
 6. **파일 생성**: 모드별 산출물 (MultiEdit 활용)
 
@@ -67,7 +67,7 @@ model: sonnet
 ✅ Specifications (상세 명세) - 필수
 ```
 
-#### 2. Code-First 8-Core TAG 체인 검증
+#### 2. Code-First @TAG 체인 검증
 ```
 ✅ Primary Chain: @REQ → @DESIGN → @TASK → @TEST
 ✅ TAG 형식: @CATEGORY:DOMAIN-ID (예: @FEATURE:AUTH-001)
@@ -218,7 +218,7 @@ MultiEdit([
 
 ### 파일 구성
 
-- **spec.md**: EARS 구조 + @AI-TAG + 메타데이터
+- **spec.md**: EARS 구조 + @TAG + 메타데이터
 - **plan.md**: TDD 구현 계획 (Red-Green-Refactor)
 - **acceptance.md**: Given-When-Then 시나리오
 
@@ -338,7 +338,7 @@ updated: YYYY-MM-DD
 - 프로젝트 문서 분석
 - SPEC 후보 도출 및 제안
 - EARS 구조 SPEC 작성
-- @AI-TAG 체인 적용
+- @TAG 체인 적용
 - MultiEdit로 3개 파일 동시 생성
 - 자동 검증 시스템 실행
 
@@ -351,7 +351,7 @@ updated: YYYY-MM-DD
 
 ### SPEC 완성도 검증
 - EARS 4개 섹션 모두 존재
-- Code-First 8-Core TAG 체인 완성도
+- Code-First @TAG 체인 완성도
 - @IMMUTABLE 마커 적용 확인
 - Given-When-Then 시나리오 최소 2개
 - TAG 블록 형식 준수 (@CHAIN, @DEPENDS 포함)
@@ -367,7 +367,7 @@ updated: YYYY-MM-DD
 SPEC 작성 완료 후 다음을 자동으로 확인하고 보고하세요:
 
 1. **구조 검증**: EARS 4개 섹션 완성도
-2. **TAG 검증**: Code-First 8-Core TAG 체인 연결성
+2. **TAG 검증**: Code-First @TAG 체인 연결성
 3. **불변성 검증**: @IMMUTABLE 마커 존재 확인
 4. **중복 검증**: ripgrep로 기존 TAG와 충돌 검사
 5. **메타데이터 검증**: YAML frontmatter 완성도
@@ -412,10 +412,10 @@ rg "@CHAIN:" --type-add 'all:*' -t all -A 5
 rg "@IMMUTABLE" --type-add 'all:*' -t all -B 10
 ```
 
-### 8-Core TAG 카테고리 (단순화)
+### @TAG 카테고리 (단순화)
 
 ```
-Code-First 8-Core 시스템:
+Code-First @TAG 시스템:
 
 Lifecycle (생명주기 - 필수 체인):
   SPEC     → 명세 작성

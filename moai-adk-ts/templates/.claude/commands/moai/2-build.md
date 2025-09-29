@@ -221,7 +221,7 @@ tsx .moai/scripts/tdd-runner.ts --spec-id=SPEC-001 --phase=refactor # 코드 개
 - 테스트 커버리지 ≥ `.moai/config.json.test_coverage_target` (기본 85%)
 - 린터/포매터 통과 (`ruff`, `eslint --fix`, `gofmt` 등)
 - 구조화 로깅 또는 관측 도구 호출 존재 확인
-- 16-Core @TAG 업데이트 필요 변경 사항 메모 (다음 단계에서 doc-syncer가 사용)
+- @TAG 업데이트 필요 변경 사항 메모 (다음 단계에서 doc-syncer가 사용)
 
 ## 다음 단계
 

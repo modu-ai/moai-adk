@@ -42,7 +42,7 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 ### 3. SPEC 문서 생성
 - **EARS 구조**: Environment, Assumptions, Requirements, Specifications
 - **3개 파일**: spec.md, plan.md, acceptance.md
-- **@AI-TAG**: 명령어가 tag-agent를 호출하여 @REQ → @DESIGN → @TASK → @TEST 체인 생성
+- **@TAG**: 명령어가 tag-agent를 호출하여 @REQ → @DESIGN → @TASK → @TEST 체인 생성
 
 ### EARS (Easy Approach to Requirements Syntax) 작성법
 
@@ -51,7 +51,7 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 2. **Event-driven Requirements**: WHEN [조건]이면, 시스템은 [동작]해야 한다
 3. **State-driven Requirements**: WHILE [상태]일 때, 시스템은 [동작]해야 한다
 4. **Optional Features**: WHERE [조건]이면, 시스템은 [동작]할 수 있다
-5. **Constraints**: IF [조건]이면, 시스템은 [제약]해야 한다
+5. **Constraints**: IF [조건]이면, THEN 시스템은 [제약 동작]해야 한다
 
 #### EARS 작성 예시
 ```markdown
@@ -73,9 +73,10 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 - WHERE 2FA가 활성화되면, 시스템은 추가 인증을 요구할 수 있다
 
 ### Constraints (제약사항)
-- IF 토큰이 변조되었으면, 시스템은 접근을 거부해야 한다
-- 액세스 토큰 만료시간은 15분을 초과하지 않아야 한다
-- 리프레시 토큰 만료시간은 7일을 초과하지 않아야 한다
+- IF 토큰이 변조된 상태라면, THEN 시스템은 모든 요청을 거부해야 한다
+- IF 사용자가 3회 연속 로그인에 실패하면, THEN 계정을 30분간 잠금해야 한다
+- IF 액세스 토큰 만료시간이 15분을 초과하면, THEN 시스템은 토큰 생성을 거부해야 한다
+- IF 리프레시 토큰이 7일을 초과하면, THEN 시스템은 재인증을 요구해야 한다
 ```
 
 ### 4. Git 작업 자동화

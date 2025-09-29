@@ -6,9 +6,9 @@
 
 - **Spec-First**: 명세 없이는 코드 없음
 - **TDD-First**: 테스트 없이는 구현 없음
-- **GitFlow 지원**: Git 작업 자동화, Living Document 동기화, @AI-TAG 추적성
+- **GitFlow 지원**: Git 작업 자동화, Living Document 동기화, @TAG 추적성
 
-**다중 언어 지원**: 각 언어별 최적 도구와 타입 안전성, JSON 기반 @AI-TAG 시스템
+**다중 언어 지원**: 각 언어별 최적 도구와 타입 안전성, JSON 기반 @TAG 시스템
 
 ## 3단계 개발 워크플로우
 
@@ -47,7 +47,7 @@
 **Git 자동화**: 커밋, 푸시 등 일반 작업만 자동 처리
 **Git 직접**: `@agent-git-manager "명령"` (특수 케이스)
 
-## @AI-TAG Lifecycle 2.0
+## @TAG Lifecycle 2.0
 
 ### TAG BLOCK 템플릿 (필수)
 
@@ -250,7 +250,7 @@ describe('AuthService', () => {
 - **R**eadable: 언어별 린터 (ESLint/Biome, ruff, golint, clippy 등)
 - **U**nified: 타입 안전성 (TypeScript, Go, Rust, Java) 또는 런타임 검증 (Python, JS)
 - **S**ecured: 언어별 보안 도구 및 정적 분석
-- **T**rackable: JSON 기반 @AI-TAG 시스템
+- **T**rackable: JSON 기반 @TAG 시스템
 
 상세: @.moai/memory/development-guide.md
 
@@ -262,7 +262,7 @@ describe('AuthService', () => {
 
 ## 메모리 전략
 
-**핵심 메모리**: @.moai/memory/development-guide.md (TRUST+@AI-TAG)
+**핵심 메모리**: @.moai/memory/development-guide.md (TRUST+@TAG)
 **프로젝트 컨텍스트**:
 - @.moai/project/product.md
 - @.moai/project/structure.md

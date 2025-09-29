@@ -12,7 +12,7 @@ TypeScript-based SPEC-First TDD Development Kit with Universal Language Support
 - **SPEC-First TDD Workflow**: 3-stage development process (SPEC → TDD → Sync)
 - **Universal Language Support**: Python, TypeScript, Java, Go, Rust, and more
 - **Claude Code Integration**: 7 specialized agents for automated development
-- **Complete Traceability**: @AI-TAG system for full requirement-to-code tracking
+- **Complete Traceability**: @TAG system for full requirement-to-code tracking
 - **Intelligent Diagnostics**: Automatic project language detection and environment optimization
 
 ## Installation
@@ -143,9 +143,9 @@ MoAI-ADK provides 7 specialized agents for different development tasks:
 | **Go** | go test | golint/gofmt | go mod |
 | **Rust** | cargo test | clippy/rustfmt | cargo |
 
-## @AI-TAG System
+## @TAG System
 
-The @AI-TAG system provides complete traceability from requirements to implementation:
+The @TAG system provides complete traceability from requirements to implementation:
 
 ### Core Tags
 
@@ -187,7 +187,7 @@ All development follows the TRUST principles:
 - **R**eadable: Clear code (≤50 lines per function, clear naming)
 - **U**nified: Single responsibility (≤300 lines per module, type safety)
 - **S**ecured: Security by design (input validation, static analysis)
-- **T**rackable: Complete traceability (@AI-TAG system)
+- **T**rackable: Complete traceability (@TAG system)
 
 ## Performance
 
@@ -315,7 +315,7 @@ bun test
 ### Development Guidelines
 
 - Follow TRUST principles
-- Apply @AI-TAG system
+- Apply @TAG system
 - Use TypeScript strict mode
 - Maintain ≤50 lines per function
 - Keep test coverage ≥85%

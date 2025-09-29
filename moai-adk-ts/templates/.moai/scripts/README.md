@@ -39,7 +39,7 @@ tsx .moai/scripts/spec-validator.ts --all --fix
 tsx .moai/scripts/spec-validator.ts --spec SPEC-001 --strict
 ```
 - SPEC 문서 유효성 검증
-- 16-Core TAG 형식 검사
+- @TAG 형식 검사
 - 자동 수정 기능
 
 ### 3. TDD 구현 스크립트

@@ -43,9 +43,8 @@
 - 🔍 **언어 자동 감지**: JavaScript/TypeScript/Python/Java/Go 프로젝트 분석
 - 🎯 **동적 요구사항**: 감지된 언어에 따라 개발 도구 자동 추가
 - 📊 **5단계 진단**: Runtime(2) + Development(2) + Optional(1) + Language-Specific + Performance
-- ⚡ **고성능**: 226ms 빌드, 471KB 패키지, SQLite3 제거로 실용성 향상
 
-## @AI-TAG Lifecycle 2.0 (v4.0 분산 최적화) ✅
+## @TAG Lifecycle  ✅
 
 ### TAG BLOCK 템플릿 (필수)
 
