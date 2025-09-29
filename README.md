@@ -16,7 +16,7 @@ MoAI-ADK는 Claude Code 환경에서 SPEC-First TDD 개발 방법론을 지원�
 
 - **3단계 개발 워크플로우**: 프로젝트 설정 → SPEC 작성 → TDD 구현 → 문서 동기화
 - **8개 전문 에이전트**: 각 개발 단계별 전문화된 AI 보조 시스템
-- **16-Core @TAG 시스템**: 코드 기반 완전한 추적성 관리
+- **@TAG 시스템**: 코드 기반 완전한 추적성 관리
 - **범용 언어 지원**: Python, TypeScript, Java, Go, Rust 등 주요 언어 지원
 - **시스템 자동 진단**: 개발 환경 요구사항 자동 검증 및 설정
 
@@ -138,7 +138,7 @@ MoAI-ADK는 Claude Code 환경에서 다음과 같은 3단계 워크플로우를
 
 **수행 작업**:
 - EARS (Easy Approach to Requirements Syntax) 명세 작성
-- 16-Core @TAG 체인 생성
+- @TAG 체인 생성
 - Git 브랜치 자동 생성
 - GitHub Issue/PR 템플릿 생성 (환경에 따라)
 
@@ -157,7 +157,7 @@ MoAI-ADK는 Claude Code 환경에서 다음과 같은 3단계 워크플로우를
 - 프로젝트 언어 자동 감지
 - 언어별 테스트 도구 자동 선택 (pytest, Vitest, JUnit 등)
 - Red-Green-Refactor 사이클 실행
-- 코드에 16-Core @TAG 자동 삽입
+- 코드에 @TAG 자동 삽입
 - 체크포인트 자동 생성
 
 **담당 에이전트**: `code-builder`
@@ -528,7 +528,7 @@ npm test
 ### 코딩 규칙
 
 - TRUST 5원칙 준수
-- @AI-TAG 시스템 적용
+- 16-Core @TAG 시스템 적용
 - TypeScript strict 모드 사용
 - 함수당 50줄 이하 유지
 - 명확한 함수/변수 네이밍
