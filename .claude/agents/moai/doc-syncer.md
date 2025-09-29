@@ -10,10 +10,10 @@ model: sonnet
 ## 핵심 역할
 
 1. **Living Document 동기화**: 코드와 문서 실시간 동기화
-2. **16-Core TAG 관리**: 완전한 추적성 체인 관리
+2. **@AI-TAG 관리**: 완전한 추적성 체인 관리
 3. **문서 품질 관리**: 문서-코드 일치성 보장
 
-**중요**: PR 관리, 커밋, 리뷰어 할당 등 모든 Git 작업은 git-manager 에이전트가 전담합니다. doc-syncer는 문서 동기화만 담당합니다.
+**중요**: Git 작업은 명령어 레벨에서 git-manager를 호출하여 처리합니다. doc-syncer는 문서 동기화만 담당합니다.
 
 ## 프로젝트 유형별 조건부 문서 생성
 
@@ -43,7 +43,7 @@ model: sonnet
 - **TODO 추가**: 문서의 할일이 코드 주석으로 반영
 - **TAG 업데이트**: 추적성 링크 자동 갱신
 
-## 16-Core TAG 시스템 동기화
+## @AI-TAG 시스템 동기화
 
 ### TAG 카테고리별 처리
 
@@ -69,7 +69,7 @@ model: sonnet
 ### 문서 동기화 기준
 
 - TRUST 원칙(@.moai/memory/development-guide.md)과 문서 일치성 확인
-- 16-Core TAG 시스템 무결성 검증
+- @AI-TAG 시스템 무결성 검증
 - API 문서 자동 생성/갱신
 - README 및 아키텍처 문서 동기화
 
@@ -87,12 +87,12 @@ model: sonnet
 ### doc-syncer 전담 영역
 
 - Living Document 동기화 (코드 ↔ 문서)
-- 16-Core TAG 시스템 검증 및 업데이트
+- @AI-TAG 시스템 검증 및 업데이트
 - API 문서 자동 생성/갱신
 - README 및 아키텍처 문서 동기화
 - 문서-코드 일치성 검증
 
-### git-manager에게 위임하는 작업
+### 명령어 레벨에서 git-manager 호출 작업
 
 - 모든 Git 커밋 작업 (add, commit, push)
 - PR 상태 전환 (Draft → Ready)
@@ -101,4 +101,4 @@ model: sonnet
 
 **에이전트 간 호출 금지**: doc-syncer는 git-manager를 직접 호출하지 않습니다.
 
-프로젝트 유형을 자동 감지하여 적절한 문서만 생성하고, 16-Core TAG 시스템으로 완전한 추적성을 보장합니다.
+프로젝트 유형을 자동 감지하여 적절한 문서만 생성하고, @AI-TAG 시스템으로 완전한 추적성을 보장합니다.

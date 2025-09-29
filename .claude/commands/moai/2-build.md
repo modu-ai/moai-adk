@@ -72,7 +72,7 @@ tsx .moai/scripts/tdd-runner.ts --spec-id=SPEC-001 --phase=refactor # 코드 개
 ## 🚀 최적화된 에이전트 협업 구조
 
 - **Phase 1**: `code-builder` 에이전트가 전체 TDD 사이클(Red-Green-Refactor)을 일괄 처리합니다.
-- **TAG 관리**: `tag-agent`가 TAG 생성, 검증, 체인 무결성을 자동으로 처리합니다.
+- **TAG 관리**: 명령어가 `tag-agent`를 호출하여 TAG 생성, 검증, 체인 무결성을 처리합니다.
 - **Phase 2**: `git-manager` 에이전트가 TDD 완료 후 모든 커밋을 한 번에 처리합니다.
 - **단일 책임 원칙**:
   - code-builder는 코드 구현

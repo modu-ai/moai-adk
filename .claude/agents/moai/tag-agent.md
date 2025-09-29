@@ -1,13 +1,13 @@
 ---
 name: tag-agent
-description: Use PROACTIVELY for TAG system management, creation, validation, chain integrity, and intelligent reuse suggestions across MoAI-ADK projects
+description: Use PROACTIVELY for all TAG system operations - the ONLY agent authorized for TAG creation, validation, chain management, and index updates. Complete TAG lifecycle ownership.
 tools: Read, Write, Edit, MultiEdit, Glob, Bash
 model: sonnet
 ---
 
-# TAG System Agent - 16-Core TAG 전문 관리자
+# TAG System Agent - 유일한 TAG 관리 권한자
 
-**MoAI-ADK의 분산 16-Core TAG 시스템을 완전히 관리하는 전문 에이전트입니다. TAG 생성, 검증, 체인 무결성, 중복 방지, JSONL 인덱스 관리를 자동화합니다.**
+**MoAI-ADK의 모든 TAG 작업을 독점 담당하는 유일한 에이전트입니다. 다른 에이전트는 TAG에 관련된 어떠한 작업도 수행할 수 없으며, 모든 TAG 관리는 명령어 레벨에서 tag-agent를 호출하여 처리합니다.**
 
 ## 🎯 Core Mission
 
@@ -235,4 +235,4 @@ interface QualityGate {
 - 브랜치별 TAG 범위 관리
 - PR 설명에 TAG 체인 자동 삽입
 
-이 tag-agent는 MoAI-ADK의 16-Core TAG 시스템을 완전히 자동화하여 개발자가 TAG 관리에 신경 쓰지 않고도 완전한 추적성과 품질을 보장합니다. AI가 지능적으로 기존 TAG를 재사용하고 체인 무결성을 유지하여 프로젝트의 일관성과 추적성을 극대화합니다.
+이 tag-agent는 MoAI-ADK의 @AI-TAG 시스템을 완전히 자동화하여 개발자가 TAG 관리에 신경 쓰지 않고도 완전한 추적성과 품질을 보장합니다. AI가 지능적으로 기존 TAG를 재사용하고 체인 무결성을 유지하여 프로젝트의 일관성과 추적성을 극대화합니다.

@@ -1,6 +1,6 @@
 ---
 name: moai:2-build
-description: 구현할 SPEC ID (예: SPEC-001) 또는 all로 모든 SPEC 구현: 언어별 최적화된 TDD 구현 (Red-Green-Refactor) with Code-First 8-Core TAG system
+description: 구현할 SPEC ID (예: SPEC-001) 또는 all로 모든 SPEC 구현: 언어별 최적화된 TDD 구현 (Red-Green-Refactor) with JSON-based TAG system
 argument-hint: "SPEC-ID | all"
 tools: Read, Write, Edit, MultiEdit, Bash, Task, WebFetch, Grep, Glob, TodoWrite
 ---
@@ -47,36 +47,16 @@ tools: Read, Write, Edit, MultiEdit, Bash, Task, WebFetch, Grep, Glob, TodoWrite
 
 ### 프로젝트 언어 감지 및 최적 라우팅
 
-```python
-# 언어별 최적화된 TDD 구현 시스템
-from moai_adk.core.tdd import TDDBuilder
-from moai_adk.core.language_detector import detect_project_language
-from moai_adk.core.tag_system import TagDatabase
+TDD 구현은 전용 스크립트를 통해 수행됩니다:
 
-async def execute_optimal_tdd(spec_id: str, spec_content: str) -> TDDResult:
-    """프로젝트 언어를 감지하고 최적 TDD 구현을 수행"""
+```bash
+# TDD 구현 실행 (Red-Green-Refactor)
+tsx .moai/scripts/tdd-runner.ts --spec-id="$ARGUMENTS" --phase=all
 
-    # 프로젝트 언어 감지 및 최적 라우팅
-    language = detect_project_language()
-    tdd_builder = TDDBuilder(language=language)
-    tag_db = TagDatabase()
-
-    # SPEC 분석 (언어별 최적화)
-    analysis = await tdd_builder.analyze_spec(spec_content)
-
-    # RED-GREEN-REFACTOR 사이클 (언어별 도구)
-    result = await tdd_builder.execute({
-        'spec_id': spec_id,
-        'language': language,
-        'test_framework': get_optimal_test_framework(language),
-        'enable_json_tagging': True
-    })
-
-    # tags.json 자동 업데이트
-    await tag_manager.update_implementation_tags(spec_id, result.tags)
-
-    return result
-}
+# 단계별 실행
+tsx .moai/scripts/tdd-runner.ts --spec-id=SPEC-001 --phase=red    # 실패 테스트 작성
+tsx .moai/scripts/tdd-runner.ts --spec-id=SPEC-001 --phase=green  # 최소 구현
+tsx .moai/scripts/tdd-runner.ts --spec-id=SPEC-001 --phase=refactor # 코드 개선
 ```
 
 ### TDD 도구 매핑
@@ -92,9 +72,13 @@ async def execute_optimal_tdd(spec_id: str, spec_content: str) -> TDDResult:
 ## 🚀 최적화된 에이전트 협업 구조
 
 - **Phase 1**: `code-builder` 에이전트가 전체 TDD 사이클(Red-Green-Refactor)을 일괄 처리합니다.
+- **TAG 관리**: 명령어가 `tag-agent`를 호출하여 TAG 생성, 검증, 체인 무결성을 처리합니다.
 - **Phase 2**: `git-manager` 에이전트가 TDD 완료 후 모든 커밋을 한 번에 처리합니다.
-- **단일 책임 원칙**: code-builder는 전체 TDD 구현, git-manager는 Git 작업 일괄 처리
-- **배치 처리**: 단계별 중단 없이 연속적인 TDD 사이클 실행
+- **단일 책임 원칙**:
+  - code-builder는 코드 구현
+  - tag-agent는 TAG 시스템 관리
+  - git-manager는 Git 작업 일괄 처리
+- **배치 처리**: 단계별 중단 없이 연속적인 TDD 사이클 + TAG 관리 실행
 - **에이전트 간 호출 금지**: 각 에이전트는 독립적으로 실행, 커맨드 레벨에서만 순차 호출
 
 ## 🔄 2단계 워크플로우 실행 순서
@@ -134,8 +118,8 @@ async def execute_optimal_tdd(spec_id: str, spec_content: str) -> TDDResult:
 다음을 우선적으로 실행하여 SPEC을 분석합니다:
 
 ```bash
-# SPEC 문서 확인 및 분석
-@agent-code-builder "분석 단계: $ARGUMENTS"
+# SPEC 문서 분석 스크립트 실행
+tsx .moai/scripts/spec-analyzer.ts --target="$ARGUMENTS" --mode=analysis
 ```
 
 #### 분석 체크리스트
@@ -151,7 +135,7 @@ async def execute_optimal_tdd(spec_id: str, spec_content: str) -> TDDResult:
 
 | SPEC 특성 | 구현 언어 | 이유 |
 |-----------|-----------|------|
-| CLI/시스템 도구 | TypeScript | 고성능 (18ms), 타입 안전성, Code-First TAG 시스템 통합 |
+| CLI/시스템 도구 | TypeScript | 고성능 (18ms), 타입 안전성, JSON TAG 시스템 통합 |
 | API/백엔드 | TypeScript | Node.js 생태계, Express/Fastify 호환성 |
 | 프론트엔드 | TypeScript | React/Vue 네이티브 지원 |
 | 데이터 처리 | TypeScript | 고성능 비동기 처리, 타입 안전성 |
@@ -203,7 +187,7 @@ async def execute_optimal_tdd(spec_id: str, spec_content: str) -> TDDResult:
 
 ```bash
 # TDD 구현 시작
-@agent-code-builder "구현 단계: $ARGUMENTS (사용자 승인 완료)"
+tsx .moai/scripts/tdd-runner.ts --spec-id="$ARGUMENTS" --phase=all --approved=true
 ```
 
 ### TDD 단계별 가이드
@@ -237,7 +221,7 @@ async def execute_optimal_tdd(spec_id: str, spec_content: str) -> TDDResult:
 - 테스트 커버리지 ≥ `.moai/config.json.test_coverage_target` (기본 85%)
 - 린터/포매터 통과 (`ruff`, `eslint --fix`, `gofmt` 등)
 - 구조화 로깅 또는 관측 도구 호출 존재 확인
-- Code-First 8-Core @TAG 불변성 검증 및 새로운 TAG 블록 추가 (다음 단계에서 doc-syncer가 코드에서 직접 스캔)
+- 16-Core @TAG 업데이트 필요 변경 사항 메모 (다음 단계에서 doc-syncer가 사용)
 
 ## 다음 단계
 

@@ -42,7 +42,7 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 ### 3. SPEC 문서 생성
 - **EARS 구조**: Environment, Assumptions, Requirements, Specifications
 - **3개 파일**: spec.md, plan.md, acceptance.md
-- **16-Core TAG**: tag-agent가 @REQ → @DESIGN → @TASK → @TEST 체인 자동 생성
+- **@AI-TAG**: 명령어가 tag-agent를 호출하여 @REQ → @DESIGN → @TASK → @TEST 체인 생성
 
 ### 4. Git 작업 자동화
 - **Personal 모드**: 로컬 브랜치 + 체크포인트
@@ -63,7 +63,7 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 
 ### 2. TAG 시스템 자동 관리
 
-SPEC 생성과 동시에 tag-agent가 자동으로 TAG를 관리합니다:
+SPEC 생성 후 명령어가 tag-agent를 호출하여 TAG를 관리합니다:
 
 @agent-tag-agent "새 SPEC의 TAG 체인 생성하고 기존 TAG와 연결 확인해주세요"
 
@@ -74,7 +74,7 @@ SPEC 생성과 동시에 tag-agent가 자동으로 TAG를 관리합니다:
 
 ### 3. Git 작업 자동화
 
-마지막으로 git-manager가 브랜치/PR 생성을 처리합니다:
+마지막으로 명령어가 git-manager를 호출하여 브랜치/PR을 생성합니다:
 
 @agent-git-manager "SPEC 생성 완료, 브랜치와 PR 자동 생성해주세요"
 
@@ -85,7 +85,7 @@ SPEC 생성과 동시에 tag-agent가 자동으로 TAG를 관리합니다:
 ## 품질 기준
 
 - **EARS 구조**: Environment, Assumptions, Requirements, Specifications 필수
-- **TAG 체인**: tag-agent가 @REQ → @DESIGN → @TASK → @TEST 무결성 100% 보장
+- **TAG 체인**: 명령어가 tag-agent 호출하여 @REQ → @DESIGN → @TASK → @TEST 무결성 100% 보장
 - **Acceptance Criteria**: Given-When-Then 시나리오 최소 2개
 - **TAG 품질 게이트**:
   - 중복 TAG 0건 (tag-agent 자동 검증)

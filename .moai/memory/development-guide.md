@@ -18,7 +18,7 @@ This development guide is the unified guardrail for all agents and developers wo
 - **CLI Commands** → ✅ 7개 명령어 100% 완성 (init, doctor, status, update, restore, help, version)
 - **System Diagnosis Innovation** → ✅ **SQLite3 제거**, **npm+TypeScript+Git LFS 실용화**, **동적 요구사항**
 
-All changes must follow the 16-Core TAG system, SPEC-driven requirements, and language-appropriate TDD practices.
+All changes must follow the 16-Core @TAG system, SPEC-driven requirements, and language-appropriate TDD practices.
 
 ---
 
@@ -87,7 +87,7 @@ All changes must follow the 16-Core TAG system, SPEC-driven requirements, and la
    - `/moai:2-build`: TDD implementation with @TEST, @FEATURE tags
    - `/moai:3-sync`: Documentation sync with @DOCS, @TAG tags
    - `@agent-debug-helper`: **혁신적 온디맨드 진단** with @PERF, @SEC tags + **언어 감지** + **동적 요구사항**
-3. **Distributed TAG System v4.0**: JSONL 기반 분산 저장으로 94% 크기 절감, 95% 파싱 속도 향상, 149개 TAG 완전 추적성 달성. ✅
+3. **Distributed 16-Core @TAG System**: JSONL 기반 분산 저장으로 94% 크기 절감, 95% 파싱 속도 향상, 149개 TAG 완전 추적성 달성. ✅
 4. **Intelligent System Diagnosis**: **5-category requirements** (Runtime, Development, Optional, Language-Specific, Performance) with **auto-detection**
 
 ---
@@ -108,9 +108,9 @@ All changes must follow the 16-Core TAG system, SPEC-driven requirements, and la
 
 ---
 
-## Article III — 16-Core @TAG System v4.0 (분산 최적화 완성) ✅
+## Article III — 16-Core @TAG System (분산 최적화 완성) ✅
 
-1. **Distributed TAG Architecture**: 16-Core @TAG chain 분산 저장 완료 - Primary (@REQ → @DESIGN → @TASK → @TEST), Steering, Implementation, Quality
+1. **Distributed 16-Core @TAG Architecture**: 16-Core @TAG chain 분산 저장 완료 - Primary (@REQ → @DESIGN → @TASK → @TEST), Steering, Implementation, Quality
 2. **Performance Achievements**:
    - ✅ 94% 크기 절감 (487KB 최적화)
    - ✅ 95% 파싱 속도 향상 (45ms 평균 로딩)
@@ -283,7 +283,7 @@ This guide provides SPEC-First TDD standards to execute the MoAI-ADK 3-stage pip
 - **동적 요구사항**: 감지된 언어에 따른 개발 도구 자동 추가
 - **실용성 향상**: SQLite3 제거 → npm+TypeScript+Git LFS 전환
 - **성능 최적화**: 226ms 빌드, 471KB 패키지, 5-category 진단
-- 분산 TAG 시스템 94% 최적화 완료
+- 분산 16-Core @TAG 시스템 94% 최적화 완료
 - TypeScript 현대화 스택 달성 (Bun 98%, Vitest 92.9%, Biome 94.8%)
 - 크로스 플랫폼 100% 호환성
 - **SystemChecker 아키텍처**: RequirementRegistry.addLanguageRequirements() 완성

@@ -1,260 +1,552 @@
-# MoAI-ADK (Modu-AI Agentic Development Kit)
+# MoAI-ADK (Agentic Development Kit)
 
-[![Version](https://img.shields.io/github/v/release/modu-ai/moai-adk?label=release)](https://github.com/modu-ai/moai-adk/releases)
+[![Version](https://img.shields.io/badge/version-v0.0.1-blue)](https://github.com/modu-ai/moai-adk)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
-[![TypeScript](https://img.shields.io/badge/typescript-5.0%2B-blue)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9.2+-blue)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/node-18.0+-green)](https://nodejs.org/)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-integrated-purple)](https://docs.anthropic.com/claude-code)
-[![Toolchain](https://img.shields.io/badge/toolchain-uv%20%2B%20ruff-orange)](https://github.com/astral-sh/uv)
 
-> 🇺🇸 English README is in progress. 영어판 README는 곧 추가됩니다.
+**SPEC-First TDD 개발을 위한 체계적 AI 보조 개발 프레임워크**
 
----
+## 개요
 
-## 📌 프로젝트 한눈에 보기
+MoAI-ADK는 Claude Code 환경에서 SPEC-First TDD 개발 방법론을 지원하는 TypeScript 기반 CLI 도구입니다. AI와 함께하는 체계적이고 자동화된 개발 워크플로우를 제공하여 일관된 품질과 완전한 추적성을 보장합니다.
 
-MoAI-ADK는 Claude Code 환경에서 SDD + TDD를 자동화하는 **모두의AI**에서 개발한 **Agentic Development Kit**입니다.
+### 주요 기능
 
-| 범주 | 핵심 내용 |
-| --- | --- |
-| 개발 철학 | 명세 우선 작성 → 테스트 → 구현 → 문서 동기화 |
-| 자동화 수준 | 4단계 `/moai:*` 파이프라인 + 5종 `/moai:git:*` 워크플로우 |
-| 품질 보증 | GuidelineChecker 기반 TRUST 게이트, 91.7% 기준 커버리지 |
-| 추적성 | **3,434개 TAG 완전 추적** + 16-Core @TAG 체계 + Living Document 동기화 |
-| 국제화 | 전역 영어화 완료, 8개 언어 자동 감지, 자연어 지시 시스템 |
-| **🌟 v0.1.28+ 혁신** | **Living Document 동기화 100%** + **TRUST 92.9% 준수** + **75% 토큰 절약** |
-| **🚀 SPEC-012 달성** | **TypeScript 기반 구축 완료** + **혁신적 시스템 검증** + **686ms 고성능 빌드** |
+- **3단계 개발 워크플로우**: 프로젝트 설정 → SPEC 작성 → TDD 구현 → 문서 동기화
+- **8개 전문 에이전트**: 각 개발 단계별 전문화된 AI 보조 시스템
+- **16-Core @TAG 시스템**: 코드 기반 완전한 추적성 관리
+- **범용 언어 지원**: Python, TypeScript, Java, Go, Rust 등 주요 언어 지원
+- **시스템 자동 진단**: 개발 환경 요구사항 자동 검증 및 설정
 
----
+### 지원 환경
 
-## ⚡ 빠른 시작
+- **운영체제**: Windows, macOS, Linux
+- **Node.js**: 18.0 이상
+- **TypeScript**: 5.9.2 이상
+- **Claude Code**: 필수 (에이전트 시스템 연동)
 
-```bash
-# 1. 설치 (Python 3.10+ 또는 TypeScript Node.js 18+)
-pip install moai-adk                 # Python 버전
-# 또는 npm install -g moai-adk      # TypeScript 버전 (v0.0.1)
+## 설치 가이드
 
-# 2. 새 프로젝트 초기화
-moai init awesome-project
-cd awesome-project
+### 1. 시스템 요구사항 확인
 
-# 3. Claude Code에서 4단계 파이프라인 실행
-/moai:0-project                     # 프로젝트 콘텍스트 문서화
-/moai:1-spec                        # EARS 기반 스펙 도출
-/moai:2-build                       # 테스트 우선 구현 (RED→GREEN→REFACTOR)
-/moai:3-sync                        # 문서·TAG·PR 동기화
-
-# 4. 시스템 진단 (TypeScript 혁신 기능)
-moai doctor                         # 시스템 요구사항 자동 검증
-```
-
-### 🧪 TestPyPI에서 설치 (개발 버전 - v0.1.26+ 리팩토링 완료)
+다음 도구들이 설치되어 있어야 합니다:
 
 ```bash
-# 기존 패키지 제거
-pip uninstall -y moai-adk
-
-# TestPyPI에서 최신 버전 설치 (Windows/macOS/Linux 모든 환경 지원)
-pip install --no-cache-dir -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple moai-adk
-
-# 설치 확인
-moai --version  # v0.1.26+ 표시 확인
+node --version    # v18.0.0 이상
+git --version     # 2.30.0 이상
+npm --version     # 8.0.0 이상
 ```
 
-**✅ v0.1.26+ 개선사항**: TRUST 원칙 준수 모듈 리팩토링 완료
-- **모듈 분해**: resource_manager.py (675 LOC) → 4개 전문 모듈
-- **크로스 플랫폼**: Python 명령어 자동 감지 + Claude 설정 자동화
-- **백업 시스템**: 상세한 백업 정보 및 검증 로직 개선
-- **TRUST 원칙**: 모든 새 모듈이 단일 책임 원칙 준수
-
-**참고**: TestPyPI는 일부 의존성이 누락될 수 있어 `--extra-index-url https://pypi.org/simple` 옵션을 반드시 포함해야 합니다.
-
-### 🆕 TypeScript CLI (SPEC-012 완료)
+### 2. MoAI-ADK 설치
 
 ```bash
-# TypeScript 버전 개발 설치
-cd moai-adk-ts
-npm install
-npm run build
-npm link
+# npm을 사용한 글로벌 설치
+npm install -g moai-adk
 
-# 핵심 기능 확인
-moai --version                      # 0.0.1
-moai doctor                         # 혁신적 시스템 검증
-moai init my-ts-project            # TypeScript 프로젝트 초기화
+# 또는 Bun 사용 (권장)
+bun add -g moai-adk
 ```
 
-**🌟 TypeScript CLI 혁신 특징**:
-- **자동 시스템 검증**: Node.js, Git, SQLite3 등 필수 도구 자동 감지 및 버전 확인
-- **고성능 빌드**: tsup 기반 686ms 컴파일 (30초 목표 대비 99% 개선)
-- **완전한 타입 안전성**: TypeScript strict 모드 100% 지원
-- **크로스 플랫폼**: Windows/macOS/Linux 완전 호환
-
----
-
-## 🏛️ 아키텍처 개요
-
-```mermaid
-graph TD
-    CLI[CLI Layer] --> Engine[Core Engine]
-    TS[TypeScript CLI] --> TSCore[TS System Checker]
-    Engine --> Install[Install System]
-    Engine --> Quality[Quality Services]
-    Engine --> Tags[TAG System]
-    Engine --> Docs[Docs Builder]
-    CLI --> Hooks[Claude Hooks]
-    TS --> Hooks
-    Hooks --> Agents[MoAI Agents]
-    Agents --> Resources[Templates & Memories]
-    TSCore --> Verification[Auto Verification]
-```
-
-- **CLI Layer**: `moai` 명령과 `/moai:*` 파이프라인을 제공하는 인터페이스
-- **TypeScript CLI**: **SPEC-012** 혁신적 시스템 검증 및 고성능 CLI 구현
-- **Core Engine**: config, quality, tag 시스템 등 도메인 로직을 구성
-- **Claude Extensions**: `.claude/agents`, `hooks`, `commands`로 시나리오별 자동화를 담당
-- **Docs Builder**: MkDocs + Material 기반 Living Documentation 파이프라인을 유지
-- **Auto Verification**: Node.js, Git, SQLite3 등 시스템 요구사항 자동 감지
-
----
-
-## 🧭 Spec-First TDD 파이프라인
-
-```mermaid
-flowchart LR
-    A["/moai:0-project"<br>Project Kickoff] --> B["/moai:1-spec"<br>Specification]
-    B --> C["/moai:2-build"<br>TDD Execution]
-    C --> D["/moai:3-sync"<br>Documentation Sync]
-```
-
-| 단계 | 핵심 작업 | 산출물 | 담당 에이전트 |
-| --- | --- | --- | --- |
-| `/moai:0-project` | 제품·구조·기술 인터뷰 | `.moai/project/*.md`, CLAUDE 메모리 | project-manager |
-| `/moai:1-spec` | 요구사항 정제, 브랜치 전략 수립 | SPEC 문서 또는 Issue/PR 템플릿 | spec-builder |
-| `/moai:2-build` | 테스트 우선 구현, 체크포인트 관리 | 테스트 코드, 구현, 자동 커밋 | code-builder |
-| `/moai:3-sync` | 문서/릴리스 노트/TAG 동기화 | sync-report, docs 업데이트 | doc-syncer |
-
----
-
-## 🤖 에이전트 생태계
-
-| 에이전트 | 역할 | 대표 산출물 |
-| --- | --- | --- |
-| project-manager | 프로젝트 초기 인터뷰 및 구조화 | product/structure/tech 문서 |
-| spec-builder | EARS 기반 SPEC 도출 및 ISSUE/PR 템플릿 생성 | SPEC, 브랜치 네이밍 |
-| code-builder | RED→GREEN→REFACTOR 사이클 관리 | 테스트 & 구현 커밋, 체크포인트 |
-| doc-syncer | Living Document와 TAG 갱신 | sync-report, release 노트 |
-| cc-manager | Claude Code 설정/권한 최적화 | `.claude/settings.json` 유지 |
-| git-manager | Git 자동화 5종 명령 제공 | checkpoint/rollback/worktree |
-
-사용자는 `.claude/agents/` 아래에 도메인 맞춤 에이전트를 추가하여 자신만의 자동화를 확장할 수 있습니다.
-
----
-
-## 🔐 TRUST 5원칙 요약
-
-| 원칙 | 의미 | 실천 요소 |
-| --- | --- | --- |
-| Test First | 테스트가 명세를 검증하고 구현을 이끕니다. | Red-Green-Refactor, 회귀 테스트, 85% 이상 커버리지 |
-| Readable | 누구나 이해 가능한 코드와 문서를 지향합니다. | 함수 ≤50 LOC, 명시적 네이밍, 구조화 주석 |
-| Unified | 단일 책임과 낮은 결합을 유지합니다. | 모듈 ≤300 LOC, 계층 분리, 명확한 인터페이스 |
-| Secured | 안전한 입출력과 로깅을 보장합니다. | 구조화 로깅, 민감 정보 마스킹, 입력 검증 |
-| Trackable | 모든 변경을 추적 가능하게 기록합니다. | **100% @TAG 커버리지**, 16-Core TAG 시스템, sync-report, 의미 있는 커밋 |
-
-GuidelineChecker가 코드 변경 시 위 원칙을 자동 점검하며, 위반 시 CLI에서 즉시 피드백합니다.
-
----
-
-## 🏷️ 16-Core @TAG 추적 시스템
-
-| 체인 | 태그 | 설명 |
-| --- | --- | --- |
-| Primary | `@REQ → @DESIGN → @TASK → @TEST` | 요구사항에서 테스트까지 필수 연계 |
-| Steering | `@VISION → @STRUCT → @TECH → @ADR` | 방향성과 의사결정 기록 |
-| Implementation | `@FEATURE → @API → @UI → @DATA` | 구현 세부 항목 추적 |
-| Quality | `@PERF → @SEC → @DOCS → @TAG` | 성능·보안·문서·추적 품질 |
-
-✅ **분산 TAG 시스템 v4.0**이 JSONL 기반으로 `.moai/indexes/`에서 요구사항 ↔ 구현 ↔ 테스트를 94% 최적화된 성능으로 연결합니다.
-
----
-
-## 🧰 현대적 도구체인
-
-| 언어/스택 | 자동 선택 도구 | 특징 |
-| --- | --- | --- |
-| Python | uv, ruff, pytest | 초고속 패키지 관리, 100배 빠른 린팅 |
-| **TypeScript** | **tsup, jest, eslint** | **🆕 686ms 빌드, 100% 타입 안전성** |
-| JavaScript/TypeScript | pnpm, biome, vitest | 워크스페이스 지원, AST 기반 포매터 |
-| Go | go mod, golangci-lint, go test | 병렬 정적 분석, 모듈 캐시 활용 |
-| Rust | cargo, clippy, cargo test | 표준 도구 연동, 린트/테스트 일관화 |
-| Dart/Flutter | dart, flutter format/analyze/test | 모바일/크로스플랫폼 UI 테스트 자동화 |
-| 기타 (Java, .NET, Swift 등) | 환경 감지 후 해당 언어 표준 도구 | 프로젝트 구성에 따른 자동 추천 |
-
-`make -f Makefile.modern`을 사용하면 품질 검사, 벤치마크, 도구 정보 확인을 단일 명령으로 처리할 수 있습니다.
-
----
-
-## 🛠️ 개발 환경 설정과 워크플로우
-
-### 기본 설정 절차
+### 3. 설치 검증
 
 ```bash
-# 리포지토리 클론 및 의존성 설치
+# 버전 확인
+moai --version
+
+# 시스템 진단 실행
+moai doctor
+```
+
+시스템 진단에서 모든 요구사항이 충족되었다면 설치가 완료되었습니다.
+
+## 기본 사용법
+
+### 새 프로젝트 시작하기
+
+```bash
+# 1. 새 프로젝트 생성
+moai init my-project
+
+# 2. 프로젝트 디렉터리로 이동
+cd my-project
+
+# 3. 프로젝트 구조 확인
+ls -la
+```
+
+생성된 프로젝트는 다음 구조를 가집니다:
+
+```
+my-project/
+├── .moai/                 # MoAI-ADK 설정 및 문서
+│   ├── project/          # 프로젝트 정의 문서
+│   ├── memory/           # 개발 가이드
+│   └── specs/            # SPEC 문서 저장소
+├── .claude/              # Claude Code 통합 설정
+│   ├── agents/           # 8개 전문 에이전트
+│   ├── commands/         # 워크플로우 명령어
+│   └── hooks/            # 자동화 훅
+└── CLAUDE.md             # 프로젝트 개발 가이드
+```
+
+### 기본 CLI 명령어
+
+```bash
+# 프로젝트 상태 확인
+moai status
+
+# 시스템 진단
+moai doctor
+
+# 백업 목록 확인
+moai doctor --list-backups
+
+# 도움말
+moai help
+```
+
+## 3단계 개발 워크플로우
+
+MoAI-ADK는 Claude Code 환경에서 다음과 같은 3단계 워크플로우를 제공합니다.
+
+### Stage 0: 프로젝트 킥오프
+
+```bash
+/moai:0-project
+```
+
+**목적**: 프로젝트 기초 컨텍스트 설정
+
+**수행 작업**:
+- 제품 정의서 생성 (`.moai/project/product.md`)
+- 시스템 구조 설계서 생성 (`.moai/project/structure.md`)
+- 기술 스택 문서 생성 (`.moai/project/tech.md`)
+- Claude Code 환경 최적화
+
+**담당 에이전트**: `project-manager`
+
+### Stage 1: SPEC 작성
+
+```bash
+/moai:1-spec "기능명1" "기능명2" ...    # 새 SPEC 작성
+/moai:1-spec SPEC-001 "수정내용"       # 기존 SPEC 수정
+```
+
+**목적**: EARS 형식 명세 작성 및 개발 준비
+
+**수행 작업**:
+- EARS (Easy Approach to Requirements Syntax) 명세 작성
+- 16-Core @TAG 체인 생성
+- Git 브랜치 자동 생성
+- GitHub Issue/PR 템플릿 생성 (환경에 따라)
+
+**담당 에이전트**: `spec-builder`
+
+### Stage 2: TDD 구현
+
+```bash
+/moai:2-build SPEC-001    # 특정 SPEC 구현
+/moai:2-build all         # 모든 SPEC 구현
+```
+
+**목적**: Red-Green-Refactor 사이클로 TDD 구현
+
+**수행 작업**:
+- 프로젝트 언어 자동 감지
+- 언어별 테스트 도구 자동 선택 (pytest, Vitest, JUnit 등)
+- Red-Green-Refactor 사이클 실행
+- 코드에 16-Core @TAG 자동 삽입
+- 체크포인트 자동 생성
+
+**담당 에이전트**: `code-builder`
+
+### Stage 3: 문서 동기화
+
+```bash
+/moai:3-sync [mode] [target-path]
+```
+
+**목적**: 코드와 문서 동기화 및 완료 처리
+
+**수행 작업**:
+- Living Document 업데이트
+- TAG 인덱스 재구축
+- sync-report 생성
+- PR Ready 상태 전환
+
+**담당 에이전트**: `doc-syncer`
+
+## 에이전트 시스템
+
+MoAI-ADK는 8개의 전문 에이전트를 제공하여 각 개발 단계를 지원합니다.
+
+### 핵심 에이전트
+
+| 에이전트 | 역할 | 주요 기능 |
+|---------|------|-----------|
+| **spec-builder** | SPEC 작성 전담 | EARS 명세, 브랜치 전략, 요구사항 정리 |
+| **code-builder** | TDD 구현 전담 | Red-Green-Refactor, 언어별 도구 선택 |
+| **doc-syncer** | 문서 동기화 | Living Document, sync-report, TAG 관리 |
+| **cc-manager** | Claude 설정 관리 | .claude/settings.json, 권한 최적화 |
+| **debug-helper** | 오류 분석 | 에러 진단, 해결방안 제시, 개발 가이드 검증 |
+| **git-manager** | Git 자동화 | 브랜치, 커밋, PR, 체크포인트 관리 |
+| **trust-checker** | 품질 검증 | TRUST 5원칙 검사, 코드 품질 분석 |
+| **tag-agent** | TAG 관리 | 16-Core @TAG 시스템 전담 |
+
+### 에이전트 사용 예제
+
+```bash
+# 오류 분석 및 디버깅
+@agent-debug-helper "TypeError: Cannot read property 'name' of undefined"
+@agent-debug-helper "빌드 실패 원인 분석해주세요"
+
+# TDD 구현 요청
+@agent-code-builder "SPEC-001 구현 계획 분석"
+@agent-code-builder "테스트 케이스 작성 및 구현 시작"
+
+# 문서 동기화
+@agent-doc-syncer "코드 변경사항을 문서에 반영"
+@agent-doc-syncer "TAG 인덱스 업데이트"
+
+# Git 작업
+@agent-git-manager "feature 브랜치 생성 및 체크포인트 설정"
+@agent-git-manager "현재 작업을 커밋하고 PR 준비"
+
+# 품질 검증
+@agent-trust-checker "TRUST 5원칙 준수 여부 검사"
+@agent-trust-checker "코드 복잡도 및 가독성 분석"
+
+# TAG 관리
+@agent-tag-agent "현재 프로젝트의 TAG 체인 분석"
+@agent-tag-agent "누락된 TAG 검사 및 보완"
+```
+
+## CLI 명령어 레퍼런스
+
+### moai init
+
+프로젝트를 초기화합니다.
+
+```bash
+moai init <project-name> [options]
+```
+
+**옵션**:
+- `--type <type>`: 프로젝트 타입 (web-api, library, cli, mobile)
+- `--language <lang>`: 주 언어 (python, typescript, java, go, rust)
+- `--template <template>`: 템플릿 (basic, advanced, enterprise)
+- `--backup`: 초기화 전 백업 생성
+- `--force`: 기존 디렉터리 덮어쓰기
+- `--verbose`: 상세 로그 출력
+
+**예제**:
+```bash
+moai init my-api --type web-api --language typescript
+moai init my-lib --type library --template advanced --backup
+```
+
+### moai doctor
+
+시스템 요구사항을 진단합니다.
+
+```bash
+moai doctor [options]
+```
+
+**옵션**:
+- `--list-backups`: 사용 가능한 백업 목록 표시
+
+**예제**:
+```bash
+moai doctor
+moai doctor --list-backups
+```
+
+### moai status
+
+프로젝트 상태를 확인합니다.
+
+```bash
+moai status [options]
+```
+
+**옵션**:
+- `--detailed`: 상세 상태 정보 표시
+- `--tags`: TAG 체인 분석 결과 포함
+- `--specs`: SPEC 완성도 표시
+- `--git`: Git 상태 정보 포함
+
+### moai update
+
+MoAI-ADK 템플릿을 업데이트합니다.
+
+```bash
+moai update [options]
+```
+
+**옵션**:
+- `--check`: 업데이트 가능 여부만 확인
+- `--backup`: 업데이트 전 백업 생성
+- `--force`: 강제 업데이트
+
+### moai restore
+
+백업에서 프로젝트를 복원합니다.
+
+```bash
+moai restore [backup-path] [options]
+```
+
+**옵션**:
+- `--list`: 사용 가능한 백업 목록 표시
+- `--preview`: 복원될 내용 미리보기
+- `--force`: 현재 내용 덮어쓰기
+
+### moai help
+
+도움말을 표시합니다.
+
+```bash
+moai help [command]
+```
+
+**예제**:
+```bash
+moai help           # 전체 도움말
+moai help init      # init 명령어 도움말
+moai help doctor    # doctor 명령어 도움말
+```
+
+## 16-Core @TAG 시스템
+
+MoAI-ADK는 코드 기반 추적성을 위해 16-Core @TAG 시스템을 사용합니다.
+
+### TAG 카테고리
+
+**Lifecycle (필수 체인)**:
+- `SPEC`: 명세 작성
+- `REQ`: 요구사항 정의
+- `DESIGN`: 아키텍처 설계
+- `TASK`: 구현 작업
+- `TEST`: 테스트 검증
+
+**Implementation (선택적)**:
+- `FEATURE`: 비즈니스 기능
+- `API`: 인터페이스
+- `FIX`: 버그 수정
+
+### TAG 사용법
+
+코드 파일 상단에 다음과 같은 TAG 블록을 작성합니다:
+
+```typescript
+/**
+ * @TAG:FEATURE:AUTH-001
+ * @CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001 -> TASK:AUTH-001 -> TEST:AUTH-001
+ * @DEPENDS: FEATURE:USER-001, API:SESSION-001
+ * @STATUS: active
+ * @CREATED: 2024-12-01
+ * @IMMUTABLE
+ */
+```
+
+**TAG 블록 구성 요소**:
+- `@TAG`: 메인 TAG 식별자
+- `@CHAIN`: TAG 체인 연결 관계
+- `@DEPENDS`: 의존성 TAG들
+- `@STATUS`: TAG 상태 (active, deprecated, completed)
+- `@CREATED`: 생성 날짜
+- `@IMMUTABLE`: 불변성 마커
+
+### 언어별 TAG 적용 예제
+
+**Python**:
+```python
+# @TAG:FEATURE:AUTH-001
+# @CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001 -> TASK:AUTH-001 -> TEST:AUTH-001
+# @STATUS: active | @CREATED: 2024-12-01 | @IMMUTABLE
+
+def authenticate_user(username: str, password: str) -> bool:
+    """사용자 인증 함수"""
+    return verify_credentials(username, password)
+```
+
+**Java**:
+```java
+/**
+ * @TAG:API:AUTH-001
+ * @CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001 -> TASK:AUTH-001 -> TEST:AUTH-001
+ * @STATUS: active | @CREATED: 2024-12-01 | @IMMUTABLE
+ */
+public class AuthService {
+    public boolean authenticate(String username, String password) {
+        return verifyCredentials(username, password);
+    }
+}
+```
+
+## TRUST 5원칙
+
+MoAI-ADK는 다음 TRUST 5원칙을 준수합니다:
+
+### T - Test First (테스트 우선)
+- 모든 구현은 테스트부터 작성
+- Red-Green-Refactor 사이클 준수
+- 언어별 최적 테스트 도구 자동 선택
+
+### R - Readable (가독성)
+- 함수 크기 50줄 이하 유지
+- 명확한 함수/변수 네이밍
+- 의도를 드러내는 코드 구조
+
+### U - Unified (단일 책임)
+- 모듈당 300줄 이하 유지
+- 각 모듈의 명확한 역할 분담
+- 낮은 결합도, 높은 응집도
+
+### S - Secured (보안성)
+- 모든 외부 입력 검증
+- 민감 정보 자동 마스킹
+- 구조화된 로그 관리
+
+### T - Trackable (추적성)
+- 16-Core @TAG 시스템으로 완전한 추적성
+- 모든 변경사항 기록
+- SPEC-코드-테스트 연결성 보장
+
+## 범용 언어 지원
+
+MoAI-ADK는 다음 언어들을 지원하며, 각 언어별 최적 도구를 자동으로 선택합니다.
+
+| 언어 | 테스트 도구 | 린터/포맷터 | 빌드 도구 |
+|------|------------|-------------|----------|
+| **TypeScript** | Vitest/Jest | Biome/ESLint | tsup/Vite |
+| **Python** | pytest | ruff/black | uv/pip |
+| **Java** | JUnit | checkstyle | Maven/Gradle |
+| **Go** | go test | golint/gofmt | go mod |
+| **Rust** | cargo test | clippy/rustfmt | cargo |
+| **C++** | GoogleTest | clang-format | CMake |
+| **C#** | xUnit | dotnet-format | dotnet |
+| **PHP** | PHPUnit | PHP-CS-Fixer | Composer |
+
+## 문제 해결
+
+### 자주 발생하는 문제
+
+**1. 설치 실패**
+
+```bash
+# 권한 문제 해결
+sudo npm install -g moai-adk
+
+# 캐시 클리어 후 재설치
+npm cache clean --force
+npm install -g moai-adk
+```
+
+**2. moai 명령어 인식 안 됨**
+
+```bash
+# PATH 확인
+echo $PATH
+
+# npm 전역 설치 경로 확인
+npm list -g --depth=0
+
+# 셸 재시작
+source ~/.bashrc  # 또는 source ~/.zshrc
+```
+
+**3. 시스템 진단 실패**
+
+```bash
+# 시스템 진단 재실행
+moai doctor
+
+# 개별 도구 버전 확인
+node --version
+git --version
+npm --version
+```
+
+**4. Claude Code 연동 문제**
+
+- `.claude/settings.json` 파일 확인
+- Claude Code 최신 버전 사용 여부 확인
+- 에이전트 파일 권한 확인
+
+### 로그 확인
+
+MoAI-ADK 로그는 다음 위치에 저장됩니다:
+
+```bash
+# 일반 로그
+~/.moai/logs/moai.log
+
+# 에러 로그
+~/.moai/logs/error.log
+
+# 프로젝트별 로그
+.moai/logs/
+```
+
+## 개발 참여
+
+### 기여 방법
+
+1. GitHub Repository fork
+2. 기능 브랜치 생성 (`git checkout -b feature/새기능`)
+3. 변경사항 커밋 (`git commit -am '새기능 추가'`)
+4. 브랜치 푸시 (`git push origin feature/새기능`)
+5. Pull Request 생성
+
+### 개발 환경 설정
+
+```bash
+# 저장소 클론
 git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk
-uv pip install -e .             # uv 권장
-# 또는 pip install -e .
 
-# 핵심 점검
-make -f Makefile.modern quality  # 린트 + 타입 + 포맷 병렬 검사
-make test                         # 통합 테스트 실행
-make -f Makefile.modern benchmark # 도구체인 성능 확인
+# TypeScript 프로젝트로 이동
+cd moai-adk-ts
+
+# 의존성 설치
+npm install
+
+# 개발 모드 실행
+npm run dev -- --help
+
+# 빌드
+npm run build
+
+# 테스트
+npm test
 ```
 
-테스트 디렉터리는 `unit`, `integration`, `e2e`로 분리되어 있으며, 각 모듈 리팩토링 결과를 검증하는 전용 스위트를 제공합니다.
+### 코딩 규칙
 
-### Make 기반 자동화 명령
+- TRUST 5원칙 준수
+- @AI-TAG 시스템 적용
+- TypeScript strict 모드 사용
+- 함수당 50줄 이하 유지
+- 명확한 함수/변수 네이밍
 
-| 범주 | 주요 명령어 | 설명 |
-| --- | --- | --- |
-| Build | `make build`, `make build-force`, `make build-clean`, `make status` | 통합 Python 빌드 시스템 실행 및 산출물 검사 |
-| Quality & Test | `make test`, `make test-coverage`, `make test-ci`, `make test-hooks`, `make test-build` | 전 범위 테스트, 커버리지 리포트, Hook/빌드 검증 |
-| 환경 구성 | `make setup`, `make permissions`, `make deps`, `make validate`, `make help` | 개발 환경 초기화, 권한 및 설정 검증, 도움말 출력 |
-| 버전 자동화 | `make version-check`, `make version-sync`, `make version-bump-{patch,minor,major}`, `make version-bump-*-auto`, `make version-status` | 통합 버전 일관성 검사, 동기화, 자동 재설치까지 포함한 버전 상승 |
-| 패키지 검증 | `make test-package`, `make test-tools`, `make test-cross-platform`, `make test-full-compatibility` | 설치된 `moai` CLI, 도구 체인, 플랫폼 호환성을 단계별로 확인 |
-| 릴리스 | `make release` | 빌드→테스트→검증 전체 파이프라인을 실행해 배포 가능 상태를 보장 |
+## 라이선스 및 지원
 
-`make version-*` 명령은 `scripts/version_manager.py`를 호출해 소스 코드, 패키지 메타데이터, 문서 버전을 동시에 갱신하며 `version-bump-*-auto`는 새로운 버전을 즉시 개발 모드로 재설치해 후속 작업을 빠르게 이어갈 수 있습니다.
+### 라이선스
 
----
+이 프로젝트는 [MIT License](LICENSE)를 따릅니다.
 
-## 📚 문서 & 참고 자료
+### 지원 및 문의
 
-- [MoAI-ADK Development Guide](docs/MOAI-ADK-GUIDE.md)
-- [온라인 문서 사이트](https://moai-adk.github.io) — MkDocs Material 기반 Living Docs
-- `docs/reference/` — API 문서 자동 생성 (85개 모듈 기준)
-- **🆕 [TypeScript CLI API 문서](.moai/docs/api/typescript-cli.md)** — SPEC-012 완성된 TypeScript CLI 가이드
-- `.moai/memory/development-guide.md` — TRUST 가이드와 Waiver 정책
-- 예제 SPEC: `examples/specs/README.md`
+- **GitHub Issues**: [https://github.com/modu-ai/moai-adk/issues](https://github.com/modu-ai/moai-adk/issues)
+- **GitHub Discussions**: [https://github.com/modu-ai/moai-adk/discussions](https://github.com/modu-ai/moai-adk/discussions)
+- **Documentation**: [https://moai-adk.github.io](https://moai-adk.github.io)
 
 ---
 
-## 🤝 기여 방법
+**MoAI-ADK v0.0.1 - SPEC-First TDD 개발 프레임워크**
 
-1. GitHub Issue로 버그 또는 아이디어를 공유합니다.
-2. Fork → 기능 개발 → 테스트 추가 → Pull Request를 생성합니다.
-3. PR에는 TRUST 체크리스트, TAG 링크, sync-report 스냅샷을 포함하면 리뷰가 원활합니다.
-
-컨트리뷰션 규칙은 `docs/CONTRIBUTING.md`에서 상세히 확인할 수 있습니다.
-
----
-
-## 📝 라이선스
-
-본 프로젝트는 [MIT License](LICENSE)를 따릅니다. 모든 기여 사항은 동일한 라이선스로 배포됩니다.
-
----
-
-**"명세가 없으면 코드도 없다. 테스트가 없으면 구현도 없다."**
-
-MoAI-ADK와 함께 Spec-First TDD 문화를 팀 전체로 확장해 보세요.
+*"명세가 없으면 코드도 없다. 테스트가 없으면 구현도 없다."*

@@ -6,9 +6,9 @@
 
 - **Spec-First**: 명세 없이는 코드 없음
 - **TDD-First**: 테스트 없이는 구현 없음
-- **GitFlow 지원**: Git 작업 자동화, Living Document 동기화, 16-Core @TAG 추적성
+- **GitFlow 지원**: Git 작업 자동화, Living Document 동기화, @AI-TAG 추적성
 
-**다중 언어 지원**: 각 언어별 최적 도구와 타입 안전성, JSON 기반 TAG 시스템
+**다중 언어 지원**: 각 언어별 최적 도구와 타입 안전성, JSON 기반 @AI-TAG 시스템
 
 ## 3단계 개발 워크플로우
 
@@ -36,7 +36,7 @@
 **Git 자동화**: 모든 워크플로우에서 자동 처리 (99% 케이스)
 **Git 직접**: `@agent-git-manager "명령"` (1% 특수 케이스)
 
-## 16-Core @TAG Lifecycle 2.0
+## @AI-TAG Lifecycle 2.0
 
 ### TAG BLOCK 템플릿 (필수)
 
@@ -59,7 +59,7 @@
 | Meta | Ops/Release/Tag/Deprecated 등 메타데이터 | 선택 |
 
 - TAG ID: `<도메인>-<3자리>` (예: `AUTH-003`) — 체인 내 모든 TAG는 동일 ID를 사용한다
-- 인덱스 저장소: `.moai/indexes/tags.json`, `tags.db` (SQLite) -> `/moai:3-sync` 단계에서 자동 갱신된다
+- 인덱스 저장소: `.moai/indexes/tags.json` -> `/moai:3-sync` 단계에서 자동 갱신된다
 
 ### SPEC 연동 가이드
 
@@ -156,7 +156,7 @@ describe('AuthService', () => {
 - [ ] TAG BLOCK이 모든 신규/수정 파일에 존재하는가?
 - [ ] Primary Chain 4종이 끊김 없이 연결되는가?
 - [ ] SPEC `@TAG Catalog`와 코드/테스트가 동일한 ID를 공유하는가?
-- [ ] `tags.json`/`tags.db`가 `/moai:3-sync` 이후 최신 상태인가?
+- [ ] `tags.json`이 `/moai:3-sync` 이후 최신 상태인가?
 
 ## 에이전트 실제 사용법
 
@@ -212,7 +212,7 @@ describe('AuthService', () => {
 - **R**eadable: 언어별 린터 (ESLint/Biome, ruff, golint, clippy 등)
 - **U**nified: 타입 안전성 (TypeScript, Go, Rust, Java) 또는 런타임 검증 (Python, JS)
 - **S**ecured: 언어별 보안 도구 및 정적 분석
-- **T**rackable: JSON 기반 16-Core @TAG 시스템
+- **T**rackable: JSON 기반 @AI-TAG 시스템
 
 상세: @.moai/memory/development-guide.md
 
@@ -224,7 +224,7 @@ describe('AuthService', () => {
 
 ## 메모리 전략
 
-**핵심 메모리**: @.moai/memory/development-guide.md (TRUST+16-Core TAG)
+**핵심 메모리**: @.moai/memory/development-guide.md (TRUST+@AI-TAG)
 **프로젝트 컨텍스트**:
 - @.moai/project/product.md
 - @.moai/project/structure.md

@@ -18,56 +18,47 @@ model: sonnet
 ### 단일 책임 원칙
 
 - **진단만**: 문제 분석 및 해결책 제시
-- **실행 금지**: 실제 수정은 전담 에이전트에게 위임
+- **실행 금지**: 실제 수정은 명령어 레벨에서 처리
 - **구조화 출력**: 일관된 포맷으로 결과 제공
 
 ## 🔧 활용 가능한 TypeScript 진단 도구
 
 ### 커밋 및 Git 워크플로우 분석
-```typescript
-// 지능형 커밋 분석 및 검증
-.moai/scripts/commit-helper.ts
-.moai/scripts/validators/commit-validator.ts
-.moai/scripts/utils/git-workflow.ts
-```
+
+**Git 워크플로우 및 커밋 품질 분석:**
+
+- `tsx .moai/scripts/commit-analyzer.ts --history-check`
+- `tsx .moai/scripts/git-workflow-analyzer.ts --pattern-analysis`
+- `tsx .moai/scripts/commit-validator.ts --message-quality`
 
 ### 성능 및 코드 품질 분석
-```typescript
-// 프로젝트 구조 및 성능 병목 분석
-.moai/scripts/utils/performance-analyzer.ts
-.moai/scripts/utils/project-structure-analyzer.ts
-.moai/scripts/validators/code-quality-gate.ts
-```
+
+**프로젝트 구조 및 성능 진단:**
+
+- `tsx .moai/scripts/performance-analyzer.ts --bottleneck-detection`
+- `tsx .moai/scripts/project-analyzer.ts --structure-validation`
+- `tsx .moai/scripts/quality-gate.ts --comprehensive-check`
 
 ### 요구사항 및 추적성 검증
-```typescript
-// TAG 관계 및 요구사항 추적 분석
-.moai/scripts/utils/tag-relationship-analyzer.ts
-.moai/scripts/utils/requirements-tracker.ts
-```
 
-**TRUST 원칙 검증은 별도 trust-checker 에이전트를 이용하세요** (`@agent-trust-checker`)
+**TAG 시스템 및 요구사항 추적성 진단:**
+
+- `tsx .moai/scripts/tag-analyzer.ts --relationship-check`
+- `tsx .moai/scripts/requirements-tracker.ts --traceability`
+
+**품질 검증은 trust-checker 에이전트가 담당합니다** (`@agent-trust-checker`)
 
 ## 🐛 일반 오류 디버깅 모드
 
 ### 처리 가능한 오류 유형
 
-```yaml
-코드 오류:
-  - TypeError, ImportError, SyntaxError
-  - 런타임 오류, 의존성 문제
-  - 테스트 실패, 빌드 오류
+**처리 가능한 오류 유형:**
 
-Git 오류:
-  - push rejected, merge conflict
-  - detached HEAD, 권한 오류
-  - 브랜치/원격 동기화 문제
+- **코드 오류**: TypeError, ImportError, SyntaxError, 런타임 오류, 의존성 문제, 테스트 실패, 빌드 오류
+- **Git 오류**: push rejected, merge conflict, detached HEAD, 권한 오류, 브랜치/원격 동기화 문제
+- **설정 오류**: Permission denied, Hook 실패, MCP 연결, 환경 변수 문제, Claude Code 권한 설정
 
-설정 오류:
-  - Permission denied, Hook 실패
-  - MCP 연결, 환경 변수 문제
-  - Claude Code 권한 설정
-```
+**스크립트 실행:** `tsx .moai/scripts/error-analyzer.ts --categorize`
 
 ### 분석 프로세스
 
@@ -109,27 +100,12 @@ Git 오류:
 
 기본적인 개발 가이드 준수 여부를 확인합니다:
 
-```yaml
-기본 검사 항목:
-  - 파일 크기 (≤ 300 LOC)
-  - 함수 크기 (≤ 50 LOC)
-  - 매개변수 수 (≤ 5개)
-  - 기본 테스트 존재 여부
-  - Git 상태 일관성
+**개발 가이드 준수 검증 항목:**
 
-고급 검사:
-  - TypeScript 스크립트 활용한 정밀 분석
-  - 프로젝트 구조 및 의존성 검증
-  - 커밋 메시지 및 TAG 추적성 확인
+- **기본 검사**: 파일 크기 (≤ 300 LOC), 함수 크기 (≤ 50 LOC), 매개변수 수 (≤ 5개), 기본 테스트 존재 여부, Git 상태 일관성
+- **고급 검사**: TypeScript 스크립트 활용한 정밀 분석, 프로젝트 구조 및 의존성 검증, 커밋 메시지 및 TAG 추적성 확인
 
-16-Core @TAG 시스템 검사:
-  - Primary Chain 순서: @REQ → @DESIGN → @TASK → @TEST
-  - Implementation TAG 연결: @FEATURE, @API, @UI, @DATA
-  - Quality TAG 적용: @PERF, @SEC, @DOCS, @TAG
-  - TAG 고유성 및 중복 방지
-  - 고아 TAG 및 끊어진 링크 감지
-  - .moai/indexes/tags.json 무결성 검증
-```
+**스크립트 실행:** `tsx .moai/scripts/guide-checker.ts --comprehensive`
 
 ### 진단 결과 출력 포맷
 
@@ -153,50 +129,34 @@ Git 오류:
 → [전담 에이전트] 호출 권장
 → 예상 명령: /moai:...
 
-💡 TRUST 5원칙 전체 검증: @agent-trust-checker
+💡 품질 검증: trust-checker 에이전트 담당
 ```
 
 ## 🔧 진단 도구 및 방법
 
 ### 파일 시스템 분석
 
-```bash
-# 파일 크기 검사
-find . -name "*.py" -exec wc -l {} + | sort -nr
+**파일 시스템 분석 스크립트:**
 
-# 함수 복잡도 분석
-grep -n "def \|class " **/*.py
-
-# import 의존성 분석
-grep -r "^import\|^from" --include="*.py" .
-```
+- `tsx .moai/scripts/file-analyzer.ts --size-check`
+- `tsx .moai/scripts/complexity-analyzer.ts --function-analysis`
+- `tsx .moai/scripts/dependency-analyzer.ts --import-graph`
 
 ### Git 상태 분석
 
-```bash
-# 브랜치 상태
-git status --porcelain
-git branch -vv
+**Git 상태 분석 스크립트:**
 
-# 커밋 히스토리
-git log --oneline -10
-
-# 원격 동기화 상태
-git fetch --dry-run
-```
+- `tsx .moai/scripts/git-status-analyzer.ts --comprehensive`
+- `tsx .moai/scripts/commit-history-analyzer.ts --recent-changes`
+- `tsx .moai/scripts/remote-sync-checker.ts --status`
 
 ### 테스트 및 품질 검사
 
-```bash
-# 테스트 실행
-python -m pytest --tb=short
+**테스트 및 품질 검사 스크립트:**
 
-# 커버리지 확인
-python -m pytest --cov=. --cov-report=term-missing
-
-# 린터 실행
-ruff check . || flake8 . || echo "No linter found"
-```
+- `tsx .moai/scripts/test-runner.ts --language-auto-detect`
+- `tsx .moai/scripts/coverage-analyzer.ts --detailed-report`
+- `tsx .moai/scripts/linter.ts --auto-select-tool`
 
 ## ⚠️ 제약사항
 
@@ -207,15 +167,17 @@ ruff check . || flake8 . || echo "No linter found"
 - **설정 변경**: Claude Code 설정은 cc-manager에게
 - **문서 갱신**: 문서 동기화는 doc-syncer에게
 
-### 에이전트 위임 규칙
+### 명령어 레벨 호출 규칙
 
-```yaml
-코드 관련 문제: → code-builder
-Git 관련 문제: → git-manager
-설정 관련 문제: → cc-manager
-문서 관련 문제: → doc-syncer
-복합 문제: → 해당 커맨드 실행 권장
-```
+**명령어 레벨 호출 규칙:**
+
+- **코드 관련 문제** → code-builder
+- **Git 관련 문제** → git-manager
+- **설정 관련 문제** → cc-manager
+- **문서 관련 문제** → doc-syncer
+- **복합 문제** → 해당 커맨드 실행 권장
+
+**스크립트 실행:** `tsx .moai/scripts/agent-router.ts --problem-categorization`
 
 ## 🎯 사용 예시
 
@@ -242,11 +204,6 @@ Git 관련 문제: → git-manager
 @agent-debug-helper "프로젝트 구조 분석"
 @agent-debug-helper "커밋 품질 검사"
 
-# 16-Core @TAG 시스템 검증
-@agent-debug-helper "TAG 체인 검증을 수행해주세요"
-@agent-debug-helper "TAG 무결성 검사"
-@agent-debug-helper "고아 TAG 및 끊어진 링크 감지"
-
 # TRUST 5원칙 전체 검증은 별도 에이전트 사용
 @agent-trust-checker
 ```
@@ -259,7 +216,7 @@ Git 관련 문제: → git-manager
 - 해결책 유효성: 90% 이상
 - 응답 시간: 30초 이내
 
-### 위임 효율성
+### 명령어 레벨 호출 효율성
 
 - 적절한 에이전트 추천율: 95% 이상
 - 중복 진단 방지: 100%

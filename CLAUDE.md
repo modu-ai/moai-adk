@@ -6,10 +6,10 @@
 
 - ✅ **Spec-First**: 명세 없이는 코드 없음 (3단계 워크플로우 완성)
 - ✅ **TDD-First**: 테스트 없이는 구현 없음 (Vitest 92.9% 성공률)
-- ✅ **GitFlow 지원**: Git 작업 자동화, Living Document 동기화, 분산 16-Core @TAG 추적성
+- ✅ **GitFlow 지원**: Git 작업 자동화, Living Document 동기화, 분산 @AI-TAG 추적성
 - ✅ **언어 지능형**: 프로젝트 언어 자동 감지 및 동적 도구 요구사항 (JavaScript/TypeScript/Python/Java/Go)
 
-**성능 지표**: TypeScript 5.9.2 + Bun 98% + Vitest 92.9% + Biome 94.8% + 분산 TAG 94% 최적화 + 시스템 진단 226ms
+**성능 지표**: TypeScript 5.9.2 + Bun 98% + Vitest 92.9% + Biome 94.8% + 분산 @AI-TAG 94% 최적화 + 시스템 진단 226ms
 
 ## 3단계 핵심 워크플로우 (완성) ✅
 
@@ -44,7 +44,7 @@
 - 📊 **5단계 진단**: Runtime(2) + Development(2) + Optional(1) + Language-Specific + Performance
 - ⚡ **고성능**: 226ms 빌드, 471KB 패키지, SQLite3 제거로 실용성 향상
 
-## 16-Core @TAG Lifecycle 2.0 (v4.0 분산 최적화) ✅
+## @AI-TAG Lifecycle 2.0 (v4.0 분산 최적화) ✅
 
 ### TAG BLOCK 템플릿 (필수)
 
@@ -176,7 +176,7 @@ describe('AuthService', () => {
 - ✅ **R**eadable: Biome 94.8% 성능 향상, 언어별 린터 지원
 - ✅ **U**nified: TypeScript 5.9.2 엄격 타입 검사, 모듈화 아키텍처
 - ✅ **S**ecured: 입력 검증, 보안 스캐닝, 언어별 보안 도구
-- ✅ **T**rackable: 분산 16-Core @TAG v4.0 (94% 최적화, 149개 TAG)
+- ✅ **T**rackable: 분산 @AI-TAG v4.0 (94% 최적화, 149개 TAG)
 
 상세: @.moai/memory/development-guide.md
 
@@ -188,11 +188,11 @@ describe('AuthService', () => {
 
 ## Living Document 전략 (자동 동기화) ✅
 
-**핵심 메모리**: @.moai/memory/development-guide.md (TRUST+16-Core TAG 완성)
+**핵심 메모리**: @.moai/memory/development-guide.md (TRUST+@AI-TAG 완성)
 **프로젝트 문서**: ✅ 자동 동기화 완료
 - @.moai/project/product.md (v0.0.3 시스템 진단 개선 반영)
 - @.moai/project/structure.md (SystemChecker 아키텍처 개선)
 - @.moai/project/tech.md (언어별 도구 매핑 완성)
-**분산 TAG v4.0**: JSONL 기반, 487KB 경량화, 94% 최적화 달성
+**분산 @AI-TAG v4.0**: JSONL 기반, 487KB 경량화, 94% 최적화 달성
 **고속 검색**: 45ms 로딩, 카테고리별 분산 저장, rg/grep 지원
 **시스템 진단 성과**: SQLite3→npm+TypeScript+Git LFS 실용화, 언어 감지 시스템 완성

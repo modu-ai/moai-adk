@@ -218,7 +218,7 @@ MultiEdit([
 
 ### 파일 구성
 
-- **spec.md**: EARS 구조 + 16-Core TAG + 메타데이터
+- **spec.md**: EARS 구조 + @AI-TAG + 메타데이터
 - **plan.md**: TDD 구현 계획 (Red-Green-Refactor)
 - **acceptance.md**: Given-When-Then 시나리오
 
@@ -338,7 +338,7 @@ updated: YYYY-MM-DD
 - 프로젝트 문서 분석
 - SPEC 후보 도출 및 제안
 - EARS 구조 SPEC 작성
-- 16-Core TAG 체인 적용
+- @AI-TAG 체인 적용
 - MultiEdit로 3개 파일 동시 생성
 - 자동 검증 시스템 실행
 

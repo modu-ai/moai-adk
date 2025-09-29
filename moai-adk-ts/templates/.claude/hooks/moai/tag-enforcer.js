@@ -16,7 +16,7 @@ import path from 'path';
  * 새로운 Code-First TAG 시스템을 위한 불변성 보장 훅:
  * - @IMMUTABLE 마커가 있는 TAG 블록 수정 차단
  * - 새로운 @TAG:CATEGORY:DOMAIN-ID 형식 검증
- * - 8-Core TAG 카테고리 지원
+ * - @AI-TAG 카테고리 지원
  * - 체인 및 의존성 검증
  */
 
