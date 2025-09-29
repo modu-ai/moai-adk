@@ -67,6 +67,37 @@
 2. **SPEC-002**: [두 번째 구현할 기능]
 3. **SPEC-003**: [세 번째 구현할 기능]
 
+## EARS 요구사항 작성 가이드
+
+### EARS (Easy Approach to Requirements Syntax)
+
+SPEC 작성 시 다음 EARS 구문을 활용하여 체계적인 요구사항을 작성하세요:
+
+#### EARS 구문 형식
+1. **Ubiquitous Requirements**: 시스템은 [기능]을 제공해야 한다
+2. **Event-driven Requirements**: WHEN [조건]이면, 시스템은 [동작]해야 한다
+3. **State-driven Requirements**: WHILE [상태]일 때, 시스템은 [동작]해야 한다
+4. **Optional Features**: WHERE [조건]이면, 시스템은 [동작]할 수 있다
+5. **Constraints**: IF [조건]이면, 시스템은 [제약]해야 한다
+
+#### 적용 예시
+```markdown
+### Ubiquitous Requirements (기본 기능)
+- 시스템은 사용자 관리 기능을 제공해야 한다
+
+### Event-driven Requirements (이벤트 기반)
+- WHEN 사용자가 가입하면, 시스템은 환영 이메일을 발송해야 한다
+
+### State-driven Requirements (상태 기반)
+- WHILE 사용자가 로그인된 상태일 때, 시스템은 개인화된 대시보드를 표시해야 한다
+
+### Optional Features (선택적 기능)
+- WHERE 프리미엄 계정이면, 시스템은 고급 기능을 제공할 수 있다
+
+### Constraints (제약사항)
+- IF 계정이 잠긴 상태이면, 시스템은 로그인을 거부해야 한다
+```
+
 ---
 
 _이 문서는 `/moai:1-spec` 실행 시 SPEC 생성의 기준이 됩니다._

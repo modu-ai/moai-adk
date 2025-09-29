@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    - `/moai:2-build`: TDD 구현 (RED→GREEN→REFACTOR)
    - `/moai:3-sync`: 문서 동기화
 
-2. **16-Core TAG 시스템 v0.0.1**
+2. **@TAG 시스템**
    - 분산 JSONL 구조 (초기 개발)
    - 카테고리별 저장: `.moai/indexes/categories/*.jsonl`
    - 관계 매핑: `.moai/indexes/relations/chains.jsonl`

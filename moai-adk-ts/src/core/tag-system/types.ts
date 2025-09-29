@@ -2,7 +2,7 @@
 // 연결: @REQ-TAG-JSON-001 → @DESIGN-TAG-TYPES-001 → @TASK-TAG-TYPES-001
 
 /**
- * 16-Core TAG 카테고리 정의
+ *  TAG 카테고리 정의
  */
 export type TagCategory =
   | 'PRIMARY'     // @REQ, @DESIGN, @TASK, @TEST
@@ -11,7 +11,7 @@ export type TagCategory =
   | 'QUALITY';    // @PERF, @SEC, @DOCS, @TAG
 
 /**
- * TAG 타입 정의 (16-Core 시스템)
+ * TAG 타입 정의 ( 시스템)
  */
 export type TagType =
   // Primary Chain

@@ -13,28 +13,39 @@
 ## 3단계 개발 워크플로우
 
 ```bash
-/moai:1-spec     # 명세 작성 (EARS 방식, 브랜치/PR 생성)
+/moai:1-spec     # 명세 작성 (EARS 방식, 사용자 확인 후 브랜치/PR 생성)
 /moai:2-build    # TDD 구현 (RED→GREEN→REFACTOR)
 /moai:3-sync     # 문서 동기화 (PR 상태 전환)
 ```
 
+**EARS (Easy Approach to Requirements Syntax)**: 체계적인 요구사항 작성 방법론
+- **Ubiquitous**: 시스템은 [기능]을 제공해야 한다
+- **Event-driven**: WHEN [조건]이면, 시스템은 [동작]해야 한다
+- **State-driven**: WHILE [상태]일 때, 시스템은 [동작]해야 한다
+- **Optional**: WHERE [조건]이면, 시스템은 [동작]할 수 있다
+- **Constraints**: IF [조건]이면, 시스템은 [제약]해야 한다
+
 **반복 사이클**: 1-spec → 2-build → 3-sync → 1-spec (다음 기능)
 
-## 핵심 에이전트 (5개)
+## 핵심 에이전트 (8개)
 
 | 에이전트 | 역할 | 자동화 |
 |---------|------|--------|
-| **spec-builder** | EARS 명세 작성 | 브랜치/PR 생성 |
-| **code-builder** | 범용 언어 TDD 구현 | Red-Green-Refactor (Python, TypeScript, Java, Go, Rust 등) |
-| **doc-syncer** | 문서 동기화 | PR 상태 전환/라벨링 |
-| **cc-manager** | Claude Code 관리 | 설정 최적화/권한 |
-| **debug-helper** | 오류 진단 | 개발 가이드 검사 |
+| **spec-builder** | SPEC 작성 전담 | 사용자 확인 후 브랜치/PR 생성 |
+| **code-builder** | TDD 구현 전담 (슬림화 완료) | Red-Green-Refactor (Python, TypeScript, Java, Go, Rust 등) |
+| **doc-syncer** | 문서 동기화 전담 | PR 상태 전환/라벨링 |
+| **cc-manager** | Claude Code 설정 전담 (슬림화 완료) | 설정 최적화/권한 |
+| **debug-helper** | 오류 분석 전담 | 개발 가이드 검사 |
+| **git-manager** | Git 작업 전담 | 사용자 확인 후 브랜치/PR, 커밋 자동화 |
+| **trust-checker** | 품질 검증 통합 | TRUST 5원칙 검사, 코드 품질 분석 |
+| **tag-agent** | TAG 시스템 독점 관리 | @TAG 체인 생성/검증/인덱싱 |
 
 ## 디버깅 & Git 관리
 
 **디버깅**: `@agent-debug-helper "오류내용"` 또는 `@agent-debug-helper "TAG 체인 검증을 수행해주세요"`
-**Git 자동화**: 모든 워크플로우에서 자동 처리 (99% 케이스)
-**Git 직접**: `@agent-git-manager "명령"` (1% 특수 케이스)
+**Git 브랜치 정책**: 모든 브랜치 생성/머지는 사용자 확인 필수
+**Git 자동화**: 커밋, 푸시 등 일반 작업만 자동 처리
+**Git 직접**: `@agent-git-manager "명령"` (특수 케이스)
 
 ## @AI-TAG Lifecycle 2.0
 
@@ -157,6 +168,33 @@ describe('AuthService', () => {
 - [ ] Primary Chain 4종이 끊김 없이 연결되는가?
 - [ ] SPEC `@TAG Catalog`와 코드/테스트가 동일한 ID를 공유하는가?
 - [ ] `tags.json`이 `/moai:3-sync` 이후 최신 상태인가?
+
+## 에이전트별 브랜치 처리 가이드라인
+
+### 🔧 spec-builder 에이전트
+```bash
+# SPEC 작성 시 브랜치 생성 요청 예시
+사용자: "SPEC-015 새로운 기능에 대한 명세를 작성해주세요"
+에이전트: "SPEC-015 작성을 위해 feature/spec-015-new-feature 브랜치를 생성하겠습니다. 진행하시겠습니까? (y/n)"
+사용자 확인 후: ✅ 브랜치 생성 및 SPEC 작성 진행
+```
+
+### 🏗️ git-manager 에이전트
+```bash
+# 브랜치 관리 요청 시 사용자 확인 필수
+@agent-git-manager "feature 브랜치 생성"
+→ "새 브랜치 feature/task-name을 생성하시겠습니까? (y/n)"
+
+@agent-git-manager "develop 브랜치로 머지"
+→ "현재 브랜치를 develop으로 머지하시겠습니까? 테스트와 문서화가 완료되었는지 확인해주세요. (y/n)"
+```
+
+### 📝 doc-syncer 에이전트
+```bash
+# /moai:3-sync 단계에서 머지 제안
+@agent-doc-syncer "문서 동기화 완료"
+→ "문서 동기화가 완료되었습니다. develop 브랜치로 머지를 진행하시겠습니까? (y/n)"
+```
 
 ## 에이전트 실제 사용법
 

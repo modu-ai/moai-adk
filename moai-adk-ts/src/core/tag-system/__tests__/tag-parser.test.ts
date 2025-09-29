@@ -1,21 +1,21 @@
 /**
- * @TEST:TAG-PARSER-001 16-Core TAG Parser Tests
+ * @TEST:TAG-PARSER-001  TAG Parser Tests
  *
  * Python tag_system/parser.py의 완전 포팅 테스트
- * @FEATURE:TAG-SYSTEM-001 16-Core TAG 추적성 시스템
+ * @FEATURE:TAG-SYSTEM-001  TAG 추적성 시스템
  */
 
 import { TagParser, TagCategory } from '../tag-parser';
 
-describe('TagParser - 16-Core TAG System', () => {
+describe('TagParser -  TAG System', () => {
   let tagParser: TagParser;
 
   beforeEach(() => {
     tagParser = new TagParser();
   });
 
-  describe('@TEST:16-CORE-CATEGORIES-001 16-Core TAG 카테고리 체계', () => {
-    it('should have correct 16-Core TAG categories', () => {
+  describe('@TEST:-CATEGORIES-001  TAG 카테고리 체계', () => {
+    it('should have correct  TAG categories', () => {
       const categories = tagParser.getTagCategories();
 
       // PRIMARY Chain: REQ → DESIGN → TASK → TEST
@@ -57,7 +57,7 @@ describe('TagParser - 16-Core TAG System', () => {
   });
 
   describe('@TEST:TAG-EXTRACTION-001 TAG 추출 기능', () => {
-    it('should extract valid 16-Core TAGs', () => {
+    it('should extract valid  TAGs', () => {
       const content = `
         @REQ:USER-LOGIN-001 사용자 로그인 요구사항
         @DESIGN:AUTH-001 인증 설계

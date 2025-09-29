@@ -6,7 +6,7 @@
   "total_tags": 3567,
   "total_files": 425,
   "summary": {
-    "description": "Distributed 16-Core TAG System for MoAI-ADK v2.0.0+",
+    "description": "Distributed  TAG System for MoAI-ADK v2.0.0+",
     "coverage": "100% 추적성 - 분산 저장으로 94% 크기 절감",
     "performance": "95% 향상 - 필요한 부분만 로딩",
     "version": "v2.0.0+ 분산 아키텍처 완성"

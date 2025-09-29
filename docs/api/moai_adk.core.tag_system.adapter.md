@@ -196,7 +196,7 @@ search_by_category(self, category)
 
 ### get_traceability_chain
 
-TAG 추적성 체인 구축 (16-Core TAG 시스템 지원)
+TAG 추적성 체인 구축 ( TAG 시스템 지원)
 
 TRUST 원칙 적용:
 - Test First: 실패 테스트 기반 구현

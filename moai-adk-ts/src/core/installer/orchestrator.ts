@@ -374,8 +374,10 @@ export class InstallationOrchestrator {
    */
   private generateNextSteps(): string[] {
     const steps = [
-      'Run "moai doctor" to verify system configuration',
-      'Check the generated configuration files',
+      `cd ${this.config.projectName}`,
+      'claude',
+      '',  // Empty line for better readability
+      `💡 Tip: Next time use "moai init ${this.config.projectName}" to recreate this setup`,
     ];
 
     if (this.config.mode === 'team') {

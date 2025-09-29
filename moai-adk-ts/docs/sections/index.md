@@ -19,12 +19,12 @@
 ### 상태 리포트
 - **[Sync Report](../status/sync-report.md)** - 최신 동기화 리포트
 
-## 🏷️ 16-Core TAG 시스템
+## 🏷️  TAG 시스템
 
 ### 최근 업데이트 (2025-09-29)
 - **Primary Chain**: @REQ:ADVANCED-DOCTOR-001 → @DESIGN:DOCTOR-RESULT-001 → @TASK:WEEK1-012 → @TEST:CLI-EXECUTION-001
 - **Implementation**: @FEATURE:COMPLETE-DIAGNOSTICS → @API:CLI-COMMANDS-001 → @UI:BANNER-001 → @DATA:PERFORMANCE-METRICS
-- **Quality**: @PERF:HEALTH-SCORE-001 → @SEC:COMMAND-VALIDATION → @DOCS:SYNC-REPORT-001 → @TAG:16-CORE-UPDATE
+- **Quality**: @PERF:HEALTH-SCORE-001 → @SEC:COMMAND-VALIDATION → @DOCS:SYNC-REPORT-001 → @TAG:-UPDATE
 
 ### TAG 메타데이터
 - **총 TAG 수**: 28개 (신규 추가)

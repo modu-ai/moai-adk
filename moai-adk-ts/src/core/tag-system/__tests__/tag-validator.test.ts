@@ -1,5 +1,5 @@
 /**
- * @TEST:TAG-VALIDATOR-001 16-Core TAG Validator Tests
+ * @TEST:TAG-VALIDATOR-001  TAG Validator Tests
  *
  * Python tag_system/validator.py의 완전 포팅 테스트
  * @FEATURE:TAG-VALIDATOR-001 Primary Chain 검증 및 무결성 검사
@@ -8,7 +8,7 @@
 import { TagValidator } from '../tag-validator';
 import type { TagMatch } from '../tag-parser';
 
-describe('TagValidator - 16-Core TAG Chain Validation', () => {
+describe('TagValidator -  TAG Chain Validation', () => {
   let tagValidator: TagValidator;
 
   beforeEach(() => {
@@ -262,7 +262,7 @@ describe('TagValidator - 16-Core TAG Chain Validation', () => {
   });
 
   describe('@TEST:TAG-COVERAGE-001 TAG 커버리지 계산', () => {
-    it('should calculate coverage for all 16-Core categories', () => {
+    it('should calculate coverage for all  categories', () => {
       const tags: TagMatch[] = [
         // PRIMARY: 2/4 = 0.5
         {

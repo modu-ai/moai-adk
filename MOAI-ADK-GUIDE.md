@@ -35,7 +35,7 @@ MoAI-ADK는 Claude Code 환경에서 **SPEC-First TDD 개발**을 누구나 쉽�
 
 - **3단계 파이프라인**: `/moai:1-spec` → `/moai:2-build` → `/moai:3-sync`
 - **온디맨드 디버깅**: `@agent-debug-helper` (필요 시 호출)
-- **16-Core @TAG**: 언어 중립적 추적성 시스템
+- ** @TAG**: 언어 중립적 추적성 시스템
 - **SQLite3 tags.db**: 모든 언어 프로젝트 통합 관리
 
 #### 4. 🧹 하이브리드 복잡성 완전 제거
@@ -67,7 +67,7 @@ MoAI-ADK SPEC-013 Architecture
 │   ├── Project Manager       # 프로젝트 초기화 및 관리
 │   ├── Git Integration       # Git 작업 자동화
 │   ├── Template System       # .moai/, .claude/ 구조 생성
-│   └── Tag System           # 16-Core @TAG 관리
+│   └── Tag System           # @TAG 관리
 │
 ├── Universal Language Support # 모든 언어 프로젝트 지원
 │   ├── Python Projects       # pytest, mypy, black, ruff
@@ -124,7 +124,7 @@ MoAI-ADK (TypeScript) → 언어별 TDD 도구 → 사용자 프로젝트 (모�
 
 #### **U** - **Unified SPEC Architecture**
 - **SPEC 중심 설계**: 언어가 아닌 SPEC이 아키텍처 결정
-- **크로스 랭귀지**: 16-Core @TAG로 언어 무관 추적성
+- **크로스 랭귀지**:  @TAG로 언어 무관 추적성
 - **단일 도구**: TypeScript MoAI-ADK가 모든 언어 지원
 
 #### **S** - **SPEC-Compliant Security**
@@ -134,7 +134,7 @@ MoAI-ADK (TypeScript) → 언어별 TDD 도구 → 사용자 프로젝트 (모�
 
 #### **T** - **SPEC Traceability**
 - **3단계 추적**: 1-spec → 2-build → 3-sync
-- **16-Core @TAG**: 언어 무관 통합 추적성
+- **@TAG**: 언어 무관 통합 추적성
 - **SQLite3 tags.db**: 모든 언어 프로젝트 통합 관리
 
 ### 🎨 3단계 SPEC-First TDD 워크플로우
@@ -185,7 +185,7 @@ moai-adk-ts/                    # TypeScript 메인 프로젝트
 │   │   ├── installer/        # 설치 시스템
 │   │   ├── project/          # 프로젝트 관리
 │   │   ├── config/           # 설정 관리
-│   │   └── tag-system/       # 16-Core @TAG
+│   │   └── tag-system/       #  @TAG
 │   │
 │   ├── claude/               # Claude Code 통합
 │   │   ├── agents/           # 에이전트 정의
@@ -205,13 +205,15 @@ moai-adk-ts/                    # TypeScript 메인 프로젝트
 
 ```
 .claude/
-├── agents/moai/              # 6개 범용 언어 에이전트
-│   ├── spec-builder.md       # SPEC 작성 에이전트
-│   ├── code-builder.md       # 범용 언어 TDD 에이전트
-│   ├── doc-syncer.md         # 문서 동기화
-│   ├── cc-manager.md         # Claude Code 관리
-│   ├── debug-helper.md       # 디버깅 도우미
-│   └── git-manager.md        # Git 작업 관리
+├── agents/moai/              # 8개 전문 에이전트
+│   ├── spec-builder.md       # SPEC 작성 전담
+│   ├── code-builder.md       # TDD 구현 전담 (슬림화 완료)
+│   ├── doc-syncer.md         # 문서 동기화 전담
+│   ├── cc-manager.md         # Claude Code 설정 전담 (슬림화 완료)
+│   ├── debug-helper.md       # 오류 분석 전담
+│   ├── git-manager.md        # Git 작업 전담
+│   ├── trust-checker.md      # 품질 검증 통합
+│   └── tag-agent.md          # TAG 시스템 독점 관리
 │
 ├── commands/moai/            # 3단계 워크플로우 명령어
 │   ├── 0-project.md          # 프로젝트 초기화
@@ -401,7 +403,7 @@ MoAI-ADK는 SPEC-First TDD를 위한 3단계 워크플로우를 제공합니다:
 /moai:1-spec SPEC-ID "수정내용"    # 기존 SPEC 수정
 ```
 - EARS 명세 작성 (언어 중립적)
-- 16-Core @TAG 자동 생성
+-  @TAG 자동 생성
 - 브랜치/PR 생성 (환경 의존)
 
 ### Stage 2: TDD Implementation (범용 언어)
@@ -419,7 +421,7 @@ MoAI-ADK는 SPEC-First TDD를 위한 3단계 워크플로우를 제공합니다:
 /moai:3-sync [mode] [target-path]  # 동기화 모드 선택
 ```
 - 문서 동기화 (언어 무관)
-- 16-Core @TAG 인덱스 업데이트
+-  @TAG 인덱스 업데이트
 - PR Ready 전환
 
 ### On-Demand Support
@@ -440,7 +442,7 @@ MoAI-ADK는 SPEC-First TDD를 위한 3단계 워크플로우를 제공합니다:
 ├── memory/
 │   └── development-guide.md # SPEC-First TDD 가이드
 ├── indexes/
-│   └── tags.json           # 16-Core TAG 인덱스 (SQLite3)
+│   └── tags.json           #  TAG 인덱스 (SQLite3)
 ├── specs/                  # SPEC 문서들
 │   ├── SPEC-001/
 │   ├── SPEC-002/
@@ -604,7 +606,7 @@ moai doctor                  # 시스템 검증
 
 - ✅ `.moai/` 구조 100% 호환
 - ✅ `.claude/` 설정 자동 마이그레이션
-- ✅ 16-Core @TAG 시스템 유지
+- ✅  @TAG 시스템 유지
 - ✅ SPEC 문서 포맷 동일
 - ⚠️ Python 훅 → TypeScript 훅 전환
 
@@ -648,7 +650,7 @@ moai doctor                  # 시스템 검증
 2. **TypeScript strict 모드**
 3. **범용 언어 지원 고려**
 4. **Jest 테스트 100% 커버리지**
-5. **16-Core @TAG 시스템 활용**
+5. ** @TAG 시스템 활용**
 
 ### 코드 리뷰 체크리스트
 

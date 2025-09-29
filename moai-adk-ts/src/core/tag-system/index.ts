@@ -1,5 +1,5 @@
 /**
- * @API:TAG-SYSTEM-001 16-Core TAG System Module Exports
+ * @API:TAG-SYSTEM-001  TAG System Module Exports
  * @FEATURE:TAG-UNIFIED-001 통합 TAG 시스템 진입점
  *
  * TAG 시스템 통합 모듈 export
@@ -63,7 +63,7 @@ export function createTagSystem(_dbPath?: string) {
 }
 
 /**
- * 16-Core TAG 카테고리 상수
+ *  TAG 카테고리 상수
  */
 export const TAG_CATEGORIES = {
   PRIMARY: ['REQ', 'DESIGN', 'TASK', 'TEST'],

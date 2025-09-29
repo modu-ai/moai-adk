@@ -6,7 +6,7 @@
   "total_tags": 0,
   "total_files": 0,
   "summary": {
-    "description": "Distributed 16-Core TAG System for {{PROJECT_NAME}}",
+    "description": "Distributed  TAG System for {{PROJECT_NAME}}",
     "coverage": "100% 추적성 - 분산 저장으로 94% 크기 절감",
     "performance": "95% 향상 - 필요한 부분만 로딩",
     "version": "{{PROJECT_VERSION}} 분산 아키텍처"

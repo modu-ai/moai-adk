@@ -2,7 +2,7 @@
 
 @FEATURE:TAG-VALIDATOR-001 - Primary Chain 검증 로직 최소 구현
 
-16-Core TAG 체인 유효성 검증 및 무결성 검사
+ TAG 체인 유효성 검증 및 무결성 검사
 
 ## Functions
 

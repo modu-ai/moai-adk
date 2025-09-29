@@ -1,15 +1,15 @@
 /**
- * @FEATURE:TAG-PARSER-001 16-Core TAG Parser
+ * @FEATURE:TAG-PARSER-001  TAG Parser
  *
  * Python tag_system/parser.py의 완전 포팅
- * 16-Core TAG 시스템의 TAG 추출 및 분류 엔진
+ *  TAG 시스템의 TAG 추출 및 분류 엔진
  *
  * @TASK:TAG-PARSER-001 TAG 파싱 엔진 TypeScript 구현
  * @DESIGN:PYTHON-PORTING-001 Python 구현과 완전 호환
  */
 
 /**
- * 16-Core TAG 카테고리 분류
+ *  TAG 카테고리 분류
  */
 export enum TagCategory {
   PRIMARY = 'PRIMARY',
@@ -53,7 +53,7 @@ export interface DuplicateTagInfo {
 }
 
 /**
- * 16-Core TAG 파싱 엔진
+ *  TAG 파싱 엔진
  *
  * Python TagParser 클래스의 완전 포팅
  * TRUST 원칙 적용:
@@ -64,7 +64,7 @@ export interface DuplicateTagInfo {
  * - Trackable: @TAG 시스템으로 추적 가능한 구현
  */
 export class TagParser {
-  // 상수: 16-Core TAG 체계 정의 (Python과 동일)
+  // 상수:  TAG 체계 정의 (Python과 동일)
   private static readonly PRIMARY_CATEGORIES = [
     'REQ',
     'DESIGN',
@@ -105,7 +105,7 @@ export class TagParser {
   }
 
   /**
-   * 16-Core TAG 카테고리 반환
+   *  TAG 카테고리 반환
    * Python: get_tag_categories()
    */
   getTagCategories(): Record<TagCategory, readonly string[]> {
@@ -126,7 +126,7 @@ export class TagParser {
       const identifier = match[2]!;
       const description = match[3] || null;
 
-      // 16-Core TAG 검증 (Python과 동일)
+      //  TAG 검증 (Python과 동일)
       if (this.isValidTagCategory(category)) {
         tags.push({
           category,

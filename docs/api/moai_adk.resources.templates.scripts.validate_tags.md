@@ -1,10 +1,10 @@
 # moai_adk.resources.templates.scripts.validate_tags
 
 MoAI-ADK Tag System Validator v0.1.12
-16-Core @TAG 무결성 검사 및 추적성 매트릭스 검증
+ @TAG 무결성 검사 및 추적성 매트릭스 검증
 
 이 스크립트는 프로젝트 전체의 @TAG 시스템을:
-- 16-Core 태그 체계 준수 검증
+-  태그 체계 준수 검증
 - 고아 태그 및 연결 끊김 감지  
 - 태그 인덱스 일관성 확인
 - 추적성 매트릭스 업데이트
@@ -118,4 +118,4 @@ run_validation(self)
 
 ### TagValidator
 
-16-Core TAG 시스템 검증기
+ TAG 시스템 검증기

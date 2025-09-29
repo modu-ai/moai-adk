@@ -14,11 +14,11 @@
  * - 코드가 유일한 진실의 원천
  * - TAG는 파일 주석에만 존재
  * - @IMMUTABLE 마커로 불변성 보장
- * - 8-Core 단순화 (기존 16-Core 대비)
+ * - 8-Core 단순화 (기존  대비)
  */
 
 /**
- * 8-Core TAG 카테고리 (16-Core에서 단순화)
+ * 8-Core TAG 카테고리 (에서 단순화)
  */
 export enum TagCategory {
   // Lifecycle (생명주기 - 필수 체인)

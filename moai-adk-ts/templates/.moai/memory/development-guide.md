@@ -19,6 +19,37 @@ This development guide is the unified guardrail for all agents and developers wo
 
 All changes must follow the @AI-TAG system, SPEC-driven requirements, and language-appropriate TDD practices.
 
+### EARS Requirements Writing Method
+
+**EARS (Easy Approach to Requirements Syntax)**: 체계적인 요구사항 작성 방법론
+
+#### EARS 구문 형식
+1. **Ubiquitous Requirements**: 시스템은 [기능]을 제공해야 한다
+2. **Event-driven Requirements**: WHEN [조건]이면, 시스템은 [동작]해야 한다
+3. **State-driven Requirements**: WHILE [상태]일 때, 시스템은 [동작]해야 한다
+4. **Optional Features**: WHERE [조건]이면, 시스템은 [동작]할 수 있다
+5. **Constraints**: IF [조건]이면, 시스템은 [제약]해야 한다
+
+#### EARS 작성 예시
+```markdown
+### Ubiquitous Requirements (언제나 적용)
+- 시스템은 사용자 인증 기능을 제공해야 한다
+
+### Event-driven Requirements (이벤트 기반)
+- WHEN 사용자가 유효한 자격증명으로 로그인하면, 시스템은 JWT 토큰을 발급해야 한다
+- WHEN 토큰이 만료되면, 시스템은 401 에러를 반환해야 한다
+
+### State-driven Requirements (상태 기반)
+- WHILE 사용자가 인증된 상태일 때, 시스템은 보호된 리소스 접근을 허용해야 한다
+
+### Optional Features (선택적 기능)
+- WHERE 리프레시 토큰이 제공되면, 시스템은 새로운 액세스 토큰을 발급할 수 있다
+
+### Constraints (제약사항)
+- IF 잘못된 토큰이 제공되면, 시스템은 접근을 거부해야 한다
+- 액세스 토큰 만료시간은 15분을 초과하지 않아야 한다
+```
+
 ---
 
 ## TRUST 5 — SPEC-First TDD Engineering Principles
@@ -100,13 +131,32 @@ All changes must follow the @AI-TAG system, SPEC-driven requirements, and langua
 
 ## Article II — SPEC-TDD Workflow
 
-1. **SPEC-First**: Create or reference SPEC before any code. Use `/moai:1-spec` to define requirements, design, and tasks clearly.
+1. **SPEC-First**: Create or reference SPEC before any code. Use `/moai:1-spec` to define requirements, design, and tasks clearly. **Branch creation requires user confirmation.**
 2. **TDD Implementation**: Follow Red-Green-Refactor strictly. Use `/moai:2-build` with language-appropriate testing frameworks.
-3. **Traceability Sync**: Run `/moai:3-sync` to update documentation and maintain @TAG relationships across SPEC and code.
+3. **Traceability Sync**: Run `/moai:3-sync` to update documentation and maintain @TAG relationships across SPEC and code. **Merge to main branch requires user approval.**
 
 ---
 
-## Article III — @AI-TAG System (Traceability)
+## Article III — Git Branch Management Policy
+
+### Branch Creation Policy
+1. **User Confirmation Required**: All new branch creation must be approved by user before execution
+2. **Branch Naming Convention**: Follow `feature/spec-XXX-description` or `feature/task-description` pattern
+3. **No Auto-Branch**: Agents must ask permission before creating any new branches
+
+### Branch Merge Policy
+1. **User Approval Required**: All merges to main/develop branches require explicit user confirmation
+2. **Merge Timing**: Typically occurs during `/moai:3-sync` phase after documentation synchronization
+3. **Pre-Merge Checks**: Ensure all tests pass, documentation is updated, and @TAG system is synchronized
+
+### Agent Guidelines
+- **spec-builder**: Must ask user before creating feature branches for new SPECs
+- **git-manager**: Must request user permission for all branch operations (create, merge, delete)
+- **doc-syncer**: May suggest merge during `/moai:3-sync` but requires user approval
+
+---
+
+## Article IV — @AI-TAG System (Traceability)
 
 1. Maintain the @AI-TAG chain: Primary (@REQ → @DESIGN → @TASK → @TEST), Steering, Implementation, Quality.
 2. Keep `.moai/indexes/tags.json` and `.moai/reports/sync-report.md` up to date.
@@ -114,7 +164,7 @@ All changes must follow the @AI-TAG system, SPEC-driven requirements, and langua
 
 ---
 
-## Article IV — Review & Refactoring Discipline
+## Article V — Review & Refactoring Discipline
 
 1. **Rule of Three**: On the third repetition of a pattern, plan a refactor.
 2. **Preparatory Refactoring**: Prepare the environment to make the change easy, then apply the change.
@@ -122,7 +172,7 @@ All changes must follow the @AI-TAG system, SPEC-driven requirements, and langua
 
 ---
 
-## Article V — Microservice/API Patterns (Olaf Zimmermann)
+## Article VI — Microservice/API Patterns (Olaf Zimmermann)
 
 1. **Foundation**: Choose the appropriate frontend integration strategy among BFF, API Gateway, and Client-Side Composition.
 2. **Design**: Specify patterns such as Request/Response, Request-Acknowledge, Event Message, and keep contracts documented.
@@ -131,7 +181,7 @@ All changes must follow the @AI-TAG system, SPEC-driven requirements, and langua
 
 ---
 
-## Article VI — Exceptions & Waivers
+## Article VII — Exceptions & Waivers
 
 - When deviating from or exceeding recommendations, write a Waiver and attach it to PR/Issue/ADR.
 - Waiver must include: reason, alternatives considered, risks/mitigations, temporary/permanent status, expiry conditions, approver.

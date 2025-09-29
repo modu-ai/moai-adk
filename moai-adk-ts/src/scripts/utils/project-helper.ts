@@ -88,19 +88,35 @@ export class ProjectHelper {
   }
 
   static detectProjectType(projectRoot: string): string {
-    const hasPackageJson = fs.existsSync(
-      path.join(projectRoot, 'package.json')
-    );
+    const packageJsonPath = path.join(projectRoot, 'package.json');
     const hasPyprojectToml = fs.existsSync(
       path.join(projectRoot, 'pyproject.toml')
     );
     const hasSetupPy = fs.existsSync(path.join(projectRoot, 'setup.py'));
 
-    if (hasPackageJson && (hasPyprojectToml || hasSetupPy)) {
+    let hasUserPackageJson = false;
+
+    // Check if package.json exists and is not a MoAI-ADK package
+    if (fs.existsSync(packageJsonPath)) {
+      try {
+        const packageData = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+        // Exclude MoAI-ADK package.json from user project detection
+        if (!(packageData.name === 'moai-adk' || packageData.description?.includes('MoAI-ADK'))) {
+          hasUserPackageJson = true;
+          console.log('Detected user package.json (not MoAI-ADK)');
+        } else {
+          console.log('Skipping MoAI-ADK package.json in project type detection');
+        }
+      } catch (error) {
+        console.warn('Could not parse package.json for project type detection:', error);
+      }
+    }
+
+    if (hasUserPackageJson && (hasPyprojectToml || hasSetupPy)) {
       return 'fullstack';
     }
 
-    if (hasPackageJson) {
+    if (hasUserPackageJson) {
       return 'typescript';
     }
 

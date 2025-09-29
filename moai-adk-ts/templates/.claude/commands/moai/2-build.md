@@ -7,7 +7,7 @@ tools: Read, Write, Edit, MultiEdit, Bash, Task, WebFetch, Grep, Glob, TodoWrite
 
 # MoAI-ADK 2단계: 언어별 최적화된 TDD 구현 (Red-Green-Refactor)
 
-**TDD 구현 대상**: $ARGUMENTS
+**TDD 구현 대상**: ${ARGUMENTS:-"모든 SPEC"}
 
 ## 🔍 STEP 1: SPEC 분석 및 구현 계획 수립
 
@@ -51,7 +51,7 @@ TDD 구현은 전용 스크립트를 통해 수행됩니다:
 
 ```bash
 # TDD 구현 실행 (Red-Green-Refactor)
-tsx .moai/scripts/tdd-runner.ts --spec-id="$ARGUMENTS" --phase=all
+@agent-code-builder "${ARGUMENTS:-"모든 SPEC"}에 대한 TDD 구현을 Red-Green-Refactor 사이클로 진행해주세요"
 
 # 단계별 실행
 tsx .moai/scripts/tdd-runner.ts --spec-id=SPEC-001 --phase=red    # 실패 테스트 작성
@@ -118,8 +118,8 @@ tsx .moai/scripts/tdd-runner.ts --spec-id=SPEC-001 --phase=refactor # 코드 개
 다음을 우선적으로 실행하여 SPEC을 분석합니다:
 
 ```bash
-# SPEC 문서 분석 스크립트 실행
-tsx .moai/scripts/spec-analyzer.ts --target="$ARGUMENTS" --mode=analysis
+# SPEC 문서 분석 실행
+@agent-code-builder "${ARGUMENTS:-"모든 SPEC"}을 분석하여 구현 계획을 수립해주세요"
 ```
 
 #### 분석 체크리스트
@@ -187,7 +187,7 @@ tsx .moai/scripts/spec-analyzer.ts --target="$ARGUMENTS" --mode=analysis
 
 ```bash
 # TDD 구현 시작
-tsx .moai/scripts/tdd-runner.ts --spec-id="$ARGUMENTS" --phase=all --approved=true
+@agent-code-builder "승인된 계획대로 ${ARGUMENTS:-"모든 SPEC"}의 TDD 구현을 시작해주세요"
 ```
 
 ### TDD 단계별 가이드

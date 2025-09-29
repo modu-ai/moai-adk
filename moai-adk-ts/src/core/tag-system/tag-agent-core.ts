@@ -5,7 +5,7 @@
  *
  * TAG Agent 핵심 구현체
  *
- * 16-Core TAG 시스템의 모든 관리 기능을 제공하는 전문 에이전트 코어입니다.
+ *  TAG 시스템의 모든 관리 기능을 제공하는 전문 에이전트 코어입니다.
  * - TAG 생성, 검증, 체인 무결성 관리
  * - 지능적 중복 방지 및 재사용 제안
  * - JSONL 인덱스 자동 관리 및 성능 최적화
@@ -78,7 +78,7 @@ export interface TagChainRepairResult {
 /**
  * @FEATURE:TAG-AGENT-001: TAG Agent 핵심 구현체
  *
- * MoAI-ADK의 16-Core TAG 시스템을 완전히 관리하는 전문 에이전트입니다.
+ * MoAI-ADK의  TAG 시스템을 완전히 관리하는 전문 에이전트입니다.
  * Claude Code 에이전트에서 호출되어 모든 TAG 관리 작업을 자동화합니다.
  */
 export class TagAgentCore {

@@ -83,7 +83,7 @@ export class ProjectDetector {
       scripts: [],
     };
 
-    console.log(`Detecting project type in: ${projectPath}`);
+    console.log(`Detecting project type in: ${projectPath} (excluding MoAI framework files)`);
 
     // Check for various project files
     for (const [fileName, info] of Object.entries(this.projectFileIndicators)) {
@@ -96,18 +96,31 @@ export class ProjectDetector {
       }
     }
 
-    // Analyze package.json if present
+    // Analyze package.json if present (but exclude MoAI-specific package.json)
     if (detected.filesFound.includes('package.json')) {
-      const packageAnalysis = await this.analyzePackageJson(
-        path.join(projectPath, 'package.json')
-      );
-      return {
-        ...detected,
-        frameworks: packageAnalysis.frameworks,
-        buildTools: packageAnalysis.buildTools,
-        hasScripts: packageAnalysis.hasScripts,
-        scripts: packageAnalysis.scripts,
-      };
+      const packageJsonPath = path.join(projectPath, 'package.json');
+
+      // Check if this is a MoAI-ADK package.json (exclude it from user project analysis)
+      try {
+        const packageData = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+        if (packageData.name === 'moai-adk' || packageData.description?.includes('MoAI-ADK')) {
+          console.log('Skipping MoAI-ADK package.json from project analysis');
+          detected.filesFound = detected.filesFound.filter(f => f !== 'package.json');
+          detected.type = 'unknown';
+          detected.language = 'unknown';
+        } else {
+          const packageAnalysis = await this.analyzePackageJson(packageJsonPath);
+          return {
+            ...detected,
+            frameworks: packageAnalysis.frameworks,
+            buildTools: packageAnalysis.buildTools,
+            hasScripts: packageAnalysis.hasScripts,
+            scripts: packageAnalysis.scripts,
+          };
+        }
+      } catch (error) {
+        console.warn('Could not read package.json for MoAI check:', error);
+      }
     }
 
     console.log(`Project detection completed:`, detected);
@@ -261,12 +274,30 @@ export class ProjectDetector {
   private async scanDirectory(dirPath: string): Promise<FileInfo[]> {
     const files: FileInfo[] = [];
 
+    // MoAI framework files and directories to exclude from analysis
+    const moaiExclusions = [
+      '.claude',
+      '.moai',
+      'CLAUDE.md',
+      'node_modules',
+      '.git',
+      'dist',
+      'build',
+      'coverage'
+    ];
+
     const scanRecursive = (currentPath: string) => {
       try {
         const entries = fs.readdirSync(currentPath, { withFileTypes: true });
 
         for (const entry of entries) {
           const fullPath = path.join(currentPath, entry.name);
+
+          // Skip MoAI framework files and directories
+          if (moaiExclusions.includes(entry.name)) {
+            console.log(`Skipping MoAI framework file/directory: ${entry.name}`);
+            continue;
+          }
 
           if (entry.isDirectory() && !entry.name.startsWith('.')) {
             // Skip hidden directories but recurse into others

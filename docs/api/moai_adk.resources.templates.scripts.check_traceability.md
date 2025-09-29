@@ -1,7 +1,7 @@
 # moai_adk.resources.templates.scripts.check_traceability
 
 MoAI-ADK Traceability Checker
-16-Core TAG 시스템의 추적성 검증
+ TAG 시스템의 추적성 검증
 
 ## Functions
 

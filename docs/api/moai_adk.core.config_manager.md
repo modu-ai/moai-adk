@@ -82,7 +82,7 @@ create_package_json(self, project_path, config)
 
 ### create_initial_indexes
 
-Create initial 16-Core TAG index files.
+Create initial  TAG index files.
 
 Args:
     project_path: Project root path

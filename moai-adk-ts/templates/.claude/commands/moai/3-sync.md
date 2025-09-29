@@ -7,7 +7,7 @@ tools: Read, Write, Edit, MultiEdit, Bash, Task, Grep, Glob, TodoWrite
 
 # MoAI-ADK 3단계: 문서 동기화(+선택적 PR Ready)
 
-**문서 동기화 대상**: $ARGUMENTS
+**문서 동기화 대상**: ${ARGUMENTS:-"전체 프로젝트"}
 
 ## 🔍 STEP 1: 동기화 범위 분석 및 계획 수립
 
@@ -199,12 +199,12 @@ esac
 # 최적화된 문서 동기화 실행
 if [[ "$SKIP_CONFIRMATION" == "true" ]]; then
   echo "⚡ 고속 자동 동기화 시작"
-  # 경량화된 동기화 (node 직접 실행)
-  node .moai/scripts/doc-syncer.js --target="$2" --mode=sync --auto=true --fast=true
+  # 경량화된 동기화 (에이전트 고속 모드)
+  @agent-doc-syncer "${2:-"전체 프로젝트"} 범위의 문서를 ${1:-"auto"} 모드로 고속 동기화해주세요"
 else
   echo "🔄 전체 문서 동기화 시작"
-  # 완전한 동기화 (기존 방식)
-  tsx .moai/scripts/doc-syncer.ts --target="$2" --mode=sync --approved=true
+  # 완전한 동기화 (에이전트 전체 모드)
+  @agent-doc-syncer "승인된 계획대로 ${2:-"전체 프로젝트"}의 완전한 문서 동기화를 진행해주세요"
 fi
 
 # 스크립트 실행 실패 시 에이전트 fallback

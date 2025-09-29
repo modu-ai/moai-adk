@@ -14,7 +14,7 @@
 ## 3단계 핵심 워크플로우 (완성) ✅
 
 ```bash
-/moai:1-spec     # ✅ 명세 작성 (EARS 방식, 브랜치/PR 생성)
+/moai:1-spec     # ✅ 명세 작성 (EARS 방식, 사용자 확인 후 브랜치/PR 생성)
 /moai:2-build    # ✅ TDD 구현 (RED→GREEN→REFACTOR)
 /moai:3-sync     # ✅ 문서 동기화 (PR 상태 전환)
 ```
@@ -25,19 +25,20 @@
 
 | 에이전트 | v0.0.3 달성 상태 | 주요 기능 |
 |---------|---------|---------|
-| **spec-builder** | ✅ **완성** | EARS 명세 작성, 브랜치/PR 생성 |
+| **spec-builder** | ✅ **완성** | EARS 명세 작성, 사용자 확인 후 브랜치/PR 생성 |
 | **code-builder** | ✅ **완성** | 범용 언어 TDD 구현 (Red-Green-Refactor) |
 | **doc-syncer** | ✅ **완성** | 문서 동기화, PR 상태 전환 |
 | **cc-manager** | ✅ **완성** | Claude Code 설정 최적화 |
 | **debug-helper** | ✅ **강화** | **지능형 시스템 진단**, 언어 감지, 동적 요구사항 |
-| **git-manager** | ✅ **완성** | Git 자동화, 브랜치 관리 |
+| **git-manager** | ✅ **완성** | 사용자 확인 후 브랜치/PR, 커밋 자동화 |
 | **trust-checker** | ✅ **완성** | TRUST 5원칙 검증 |
 
 ## CLI 및 디버깅 (100% 완성 + 혁신적 진단) ✅
 
 **CLI 명령어**: `moai doctor`, `moai init`, `moai status`, `moai update`, `moai restore`
 **지능형 진단**: `@agent-debug-helper "오류내용"` (시스템 진단 자동화 + 언어 감지)
-**Git 자동화**: ✅ 모든 워크플로우에서 자동 처리
+**Git 브랜치 정책**: ✅ 모든 브랜치 생성/머지는 사용자 확인 필수
+**Git 자동화**: ✅ 커밋, 푸시 등 일반 작업만 자동 처리
 **혁신적 시스템 진단**:
 - 🔍 **언어 자동 감지**: JavaScript/TypeScript/Python/Java/Go 프로젝트 분석
 - 🎯 **동적 요구사항**: 감지된 언어에 따라 개발 도구 자동 추가

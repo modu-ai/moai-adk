@@ -9,7 +9,7 @@
 - **학습 포인트**:
   - EARS (Environment, Assumptions, Requirements, Success criteria) 형식 활용
   - TRUST 5원칙 구현을 위한 구체적 요구사항 정의
-  - 16-Core TAG 시스템을 통한 추적성 확보
+  -  TAG 시스템을 통한 추적성 확보
   - TDD Red-Green-Refactor 자동화 설계
 
 ### SPEC-010: 온라인 문서 사이트 제작
@@ -39,7 +39,7 @@
 - 실패 시나리오 포함
 ```
 
-### 2. 16-Core TAG 시스템 활용
+### 2.  TAG 시스템 활용
 ```markdown
 @REQ:USER-001        # 사용자 요구사항
 @DESIGN:SYSTEM-001   # 시스템 설계
@@ -107,6 +107,6 @@
 
 - **MoAI-ADK 개발 가이드**: [MOAI-ADK-GUIDE.md](../../MOAI-ADK-GUIDE.md)
 - **TRUST 5원칙**: [development-guide.md](../../.moai/memory/development-guide.md)
-- **16-Core TAG 시스템**: [tags.json](../../.moai/indexes/tags.json)
+- ** TAG 시스템**: [tags.json](../../.moai/indexes/tags.json)
 
 이 예제들을 통해 체계적이고 추적 가능한 SPEC 작성 방법을 익히고, MoAI-ADK의 Spec-First TDD 개발 프로세스를 마스터하세요!

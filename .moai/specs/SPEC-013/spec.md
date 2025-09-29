@@ -397,7 +397,7 @@ jobs:
 - **@DOCS:MIGRATION-GUIDE-013**: Python → TypeScript 마이그레이션 문서
 
 ### Project Integration Tags
-- **@TAG:16CORE-COMPATIBILITY-013**: 16-Core TAG 시스템 완전 호환
+- **@TAG:16CORE-COMPATIBILITY-013**:  TAG 시스템 완전 호환
 - **@CLAUDE:HOOK-INTEGRATION-013**: Claude Code 훅 시스템 TypeScript 통합
 - **@GIT:WORKFLOW-PRESERVATION-013**: 기존 Git 워크플로우 완전 보존
 

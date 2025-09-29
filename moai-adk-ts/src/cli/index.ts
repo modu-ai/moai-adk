@@ -15,6 +15,7 @@ import { StatusCommand } from './commands/status';
 import { UpdateCommand } from './commands/update';
 import { HelpCommand } from './commands/help';
 import { createBanner } from '@/utils/banner';
+import { getCurrentVersion } from '@/utils/version';
 
 /**
  * CLI Application
@@ -51,7 +52,7 @@ export class CLIApp {
     this.program
       .name('moai')
       .description('')  // Remove duplicate description since it's in the banner
-      .version('0.0.1', '-v, --version', 'output the current version')
+      .version(getCurrentVersion(), '-v, --version', 'output the current version')
       .configureHelp({
         helpWidth: 80,
         sortSubcommands: false,

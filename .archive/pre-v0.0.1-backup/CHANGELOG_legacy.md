@@ -9,12 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🌟 **최종 문서화 및 품질 검증 완료 - Living Document 혁신**
 
-**MoAI-ADK v0.1.28+는 완벽한 Living Document 동기화와 16-Core TAG 시스템 정비를 완료하여, 소프트웨어 개발 분야에서 새로운 문서화 표준을 제시한 혁신 릴리스입니다**
+**MoAI-ADK v0.1.28+는 완벽한 Living Document 동기화와  TAG 시스템 정비를 완료하여, 소프트웨어 개발 분야에서 새로운 문서화 표준을 제시한 혁신 릴리스입니다**
 
 #### 🎯 핵심 혁신사항
 - **3,434개 TAG 완전 추적**: 413개 파일에서 100% 추적성 보장, 인간이 불가능한 수준의 체계적 관리
 - **Living Document 동기화**: 코드-문서 실시간 일치성 100% 달성, Zero-Lag 동기화 시스템 구축
-- **16-Core TAG 시스템**: 완전한 Primary Chain 관리 체계 완성 (@REQ → @DESIGN → @TASK → @TEST)
+- ** TAG 시스템**: 완전한 Primary Chain 관리 체계 완성 (@REQ → @DESIGN → @TASK → @TEST)
 - **TRUST 5원칙 92.9% 준수**: 세계 수준의 품질 표준 달성, 자동 검증 시스템 구축
 
 #### 📚 문서화 혁신
@@ -299,7 +299,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **83배 성능 가속**: TAG 검색 성능 150ms → 1.8ms (실측 기준)
 - **SQLite 기반 TAG 데이터베이스**: JSON 파일 기반에서 관계형 데이터베이스로 완전 전환
 - **고급 검색 API**: 복합 쿼리, 트랜잭션 안전성, 실시간 인덱싱 지원
-- **완전한 추적성**: 16-Core TAG 시스템과 SQLite의 완벽한 결합
+- **완전한 추적성**:  TAG 시스템과 SQLite의 완벽한 결합
 
 #### 🏗️ 아키텍처 혁신
 
@@ -325,7 +325,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **doc-syncer 에이전트 기반:**
 
 - **실시간 동기화**: 코드 변경사항과 문서 자동 연동
-- **TAG 추적성**: 16-Core TAG 시스템으로 완전한 변경사항 추적
+- **TAG 추적성**:  TAG 시스템으로 완전한 변경사항 추적
 - **일관성 보장**: 모든 문서에서 버전 및 기능 설명 통일
 
 #### 🎯 사용자 경험 개선
@@ -362,7 +362,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **tags.json 최적화**: 50줄 미만 초기 구조로 정리 (기존 4747줄→11줄)
 - **무결성 보장**: 예상치 못한 개발 파일 존재 시 경고 및 정리
 
-#### 🏷️ 16-Core TAG 업데이트
+#### 🏷️  TAG 업데이트
 
 **새로운 TAG 체인:**
 
@@ -434,7 +434,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **file_monitor.py**: 기존 4개 파일 기능을 단일 모듈로 통합
 - **보안 유지**: 민감정보 검사, 정책 차단 등 핵심 보안 기능 100% 보존
 
-#### 🔧 16-Core TAG 업데이트
+#### 🔧  TAG 업데이트
 
 **SPEC-007 완료 TAG 체인:**
 
@@ -445,11 +445,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.3] - 2025-09-24
 
-### 🎉 MoAI-ADK 0.2.3 - 16-Core TAG 추적성 시스템 완성
+### 🎉 MoAI-ADK 0.2.3 -  TAG 추적성 시스템 완성
 
 **SPEC-006 완전 구현으로 코드-문서-TAG 삼위일체 추적성 달성**
 
-#### 🔍 SPEC-006: 16-Core TAG 추적성 시스템 완성 (91% 테스트 커버리지)
+#### 🔍 SPEC-006:  TAG 추적성 시스템 완성 (91% 테스트 커버리지)
 
 **완전한 TAG 체인 추적 및 실시간 동기화 시스템:**
 
@@ -466,7 +466,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **69개 TAG 관리**: 40개 완료, 91% 추적성 커버리지
 - **Living Document 동기화**: 실시간 코드 변경과 문서 일치성 보장
 - **TDD 성과 추적**: 31개 테스트 중 30개 통과, 품질 지표 완전 추적
-- **16-Core TAG 체계**: SPEC → PROJECT → IMPLEMENTATION → QUALITY 완전 분류
+- ** TAG 체계**: SPEC → PROJECT → IMPLEMENTATION → QUALITY 완전 분류
 
 #### 🚀 새로운 의존성 추가
 
@@ -507,7 +507,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Claude Code 표준화 + Git 간소화**: 완전 자동화된 개발 워크플로우
 - **중앙 관제탑 + 개인/팀 모드**: 모든 개발자를 위한 최적화된 환경
-- **16-Core TAG 완전성**: 64개 TAG, 38개 완료, 추적성 100% 보장
+- ** TAG 완전성**: 64개 TAG, 38개 완료, 추적성 100% 보장
 
 ### 🚀 SPEC-002: Python 코드 품질 개선 시스템 완성
 
@@ -543,7 +543,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **병렬 처리**: 멀티코어 환경에서 스캔 속도 3-4배 향상
 - **메모리 효율성**: 스마트 캐시 관리로 메모리 사용량 최적화
 
-#### 🏷️ 16-Core TAG 추적성 완성
+#### 🏷️  TAG 추적성 완성
 
 ```
 @REQ:QUALITY-002 → @DESIGN:QUALITY-SYSTEM-002 → @TASK:IMPLEMENT-002 → @TEST:ACCEPTANCE-002
@@ -574,7 +574,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Readable**: 코드 가독성 실시간 검증 및 개선 제안
 - **Unified**: 통합된 품질 기준으로 일관성 있는 코드베이스
 - **Secured**: 코드 품질 게이트로 안전한 개발 프로세스
-- **Trackable**: 16-Core TAG로 완벽한 품질 개선 추적성
+- **Trackable**:  TAG로 완벽한 품질 개선 추적성
 
 ## [0.1.26] - 2025-01-19
 
@@ -623,7 +623,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 설치 시간     | 100%  | 50%   | **50% 단축** |
 | 메모리 사용량 | 100%  | 30%   | **70% 절약** |
 
-#### 🏷️ 16-Core TAG 추적성 완성
+#### 🏷️  TAG 추적성 완성
 
 - **94.7% 전체 TAG 커버리지**: 18개 TAG, 9개 완전 체인
 - **0개 고아 TAG**: 끊어진 링크 없음
@@ -699,13 +699,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **자동 업데이트 시스템 고도화**: `.moai/version.json`으로 템플릿 버전을 기록하고 `moai update --check`에서 즉시 비교합니다.
 - **moai update 개선**: 리소스만 덮어쓰거나 패키지와 함께 갱신 가능하며, 실행 전에 자동 백업을 생성합니다.
 - **상태 보고 강화**: `moai status`가 패키지/템플릿 버전을 함께 표시하고, 구버전이면 경고합니다.
-- **16-Core 태그/모델 반영**: 기본 템플릿과 설정이 최신 16-Core 체계와 모델 매핑을 사용합니다.
+- ** 태그/모델 반영**: 기본 템플릿과 설정이 최신  체계와 모델 매핑을 사용합니다.
 
 ### ✅ 변경 사항
 
 - 업데이트 시 `.moai/version.json` 자동 생성 및 최신 버전 기록
 - `ResourceVersionManager` 추가로 프로젝트 리소스 버전 관리
-- `ConfigManager`/템플릿에서 16-Core 태그(ADR, SPEC 포함)와 모델 매핑 업데이트
+- `ConfigManager`/템플릿에서  태그(ADR, SPEC 포함)와 모델 매핑 업데이트
 - 문서(`commands`, `installation`, `config`)에 업데이트 절차 및 버전 추적 안내 추가
 - `python -m build` 테스트로 패키지 배포 검증 완료
 
@@ -751,7 +751,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **🆕 Modern Python Features**: Enhanced templates to leverage Python 3.11+ features (match-case, exception groups, etc.)
 - **📚 Comprehensive Memory System**: Improved documentation files in `.claude/memory/` and `.moai/memory/`
 - **🏗️ Updated Architecture Standards**: Enhanced coding standards with Python 3.11+ best practices
-- **📋 Refined Project Guidelines**: Updated 16-Core TAG system documentation
+- **📋 Refined Project Guidelines**: Updated  TAG system documentation
 - **🤝 Enhanced Team Conventions**: Improved collaboration protocols and workflows
 
 ### 📖 Documentation Improvements
@@ -905,7 +905,7 @@ moai restore .moai_backup_20241215_143022
 
 - 🚀 Initial beta release of MoAI-ADK (MoAI Agentic Development Kit)
 - 🤖 Complete Claude Code project initialization system
-- 📋 16-Core TAG system for perfect traceability
+- 📋  TAG system for perfect traceability
 - 🔧 Node.js native Hook system (pre-tool-use, post-tool-use, session-start)
 - 🎯 AZENT methodology integration (SPEC → @TAG → TDD philosophy)
 - 📊 Real-time document synchronization system

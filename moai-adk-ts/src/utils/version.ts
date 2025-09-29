@@ -24,25 +24,37 @@ export interface PackageInfo {
  */
 export function getPackageInfo(): PackageInfo {
   try {
-    const packageJsonPath = path.resolve(__dirname, '../../package.json');
-    const packageJson = JSON.parse(
-      fs.readFileSync(packageJsonPath, 'utf-8')
-    ) as {
-      name: string;
-      version: string;
-      description: string;
-    };
+    // Try multiple possible locations for package.json
+    const possiblePaths = [
+      path.resolve(__dirname, '../../package.json'),  // From dist/
+      path.resolve(__dirname, '../package.json'),     // From src/
+      path.resolve(process.cwd(), 'package.json'),    // From current working directory
+    ];
 
-    return {
-      name: packageJson.name,
-      version: packageJson.version,
-      description: packageJson.description,
-    };
+    for (const packageJsonPath of possiblePaths) {
+      if (fs.existsSync(packageJsonPath)) {
+        const packageJson = JSON.parse(
+          fs.readFileSync(packageJsonPath, 'utf-8')
+        ) as {
+          name: string;
+          version: string;
+          description: string;
+        };
+
+        return {
+          name: packageJson.name,
+          version: packageJson.version,
+          description: packageJson.description,
+        };
+      }
+    }
+
+    throw new Error('package.json not found in any expected location');
   } catch (error) {
     // Fallback for development/test environments
     return {
       name: 'moai-adk',
-      version: '0.0.1',
+      version: '0.0.3',
       description: '🗿 MoAI-ADK: Modu-AI Agentic Development kit',
     };
   }

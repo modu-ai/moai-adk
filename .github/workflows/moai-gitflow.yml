@@ -5,7 +5,7 @@ name: MoAI-ADK GitFlow 자동화
 
 on:
   push:
-    branches: [develop, 'feature/**']
+    branches: [develop, "feature/**"]
   pull_request:
     types: [opened, ready_for_review, converted_to_draft]
 
@@ -20,20 +20,20 @@ jobs:
       - name: Python 환경 설정
         uses: actions/setup-python@v4
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
       # Multi-language toolchains (conditional)
       - name: Setup Node.js
         if: ${{ hashFiles('package.json') != '' }}
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Setup Go
         if: ${{ hashFiles('go.mod') != '' }}
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: "1.21"
 
       - name: Setup Rust
         if: ${{ hashFiles('Cargo.toml') != '' }}
@@ -43,14 +43,14 @@ jobs:
         if: ${{ hashFiles('pom.xml') != '' || hashFiles('build.gradle') != '' || hashFiles('build.gradle.kts') != '' }}
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: "temurin"
+          java-version: "17"
 
       - name: Setup .NET
         if: ${{ hashFiles('**/*.sln') != '' || hashFiles('**/*.csproj') != '' }}
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: "8.0.x"
 
       # TRUST 5원칙 자동 검증
       - name: 🧭 TRUST 5원칙 검증
@@ -90,7 +90,7 @@ jobs:
             dotnet test || true
           fi
 
-      # 16-Core TAG 시스템 검증 (코드 파일만)
+      #  TAG 시스템 검증 (코드 파일만)
       - name: 🏷️ TAG 시스템 검증
         run: |
           echo "✅ TAG 검증은 tag_validator.py Hook에서 자동 처리됨"

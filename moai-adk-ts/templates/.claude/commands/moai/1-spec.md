@@ -7,7 +7,7 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 
 # MoAI-ADK 1단계: EARS 명세 작성 + 브랜치/PR 생성
 
-**SPEC 생성 대상**: $ARGUMENTS
+**SPEC 생성 대상**: ${ARGUMENTS:-"SPEC 후보"}
 
 ## 🚀 SPEC 작성 및 브랜치 생성
 
@@ -44,6 +44,40 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 - **3개 파일**: spec.md, plan.md, acceptance.md
 - **@AI-TAG**: 명령어가 tag-agent를 호출하여 @REQ → @DESIGN → @TASK → @TEST 체인 생성
 
+### EARS (Easy Approach to Requirements Syntax) 작성법
+
+#### EARS 구문 형식
+1. **Ubiquitous Requirements**: 시스템은 [기능]을 제공해야 한다
+2. **Event-driven Requirements**: WHEN [조건]이면, 시스템은 [동작]해야 한다
+3. **State-driven Requirements**: WHILE [상태]일 때, 시스템은 [동작]해야 한다
+4. **Optional Features**: WHERE [조건]이면, 시스템은 [동작]할 수 있다
+5. **Constraints**: IF [조건]이면, 시스템은 [제약]해야 한다
+
+#### EARS 작성 예시
+```markdown
+### Ubiquitous Requirements (언제나 적용)
+- 시스템은 사용자 인증 기능을 제공해야 한다
+- 시스템은 JWT 토큰 기반 세션 관리를 지원해야 한다
+
+### Event-driven Requirements (이벤트 기반)
+- WHEN 사용자가 유효한 이메일과 패스워드로 로그인하면, 시스템은 JWT 토큰을 발급해야 한다
+- WHEN 액세스 토큰이 만료되면, 시스템은 401 에러를 반환해야 한다
+- WHEN 잘못된 자격증명이 제공되면, 시스템은 로그인을 거부해야 한다
+
+### State-driven Requirements (상태 기반)
+- WHILE 사용자가 인증된 상태일 때, 시스템은 보호된 리소스 접근을 허용해야 한다
+- WHILE 토큰이 유효한 상태일 때, 시스템은 API 요청을 처리해야 한다
+
+### Optional Features (선택적 기능)
+- WHERE 리프레시 토큰이 제공되면, 시스템은 새로운 액세스 토큰을 발급할 수 있다
+- WHERE 2FA가 활성화되면, 시스템은 추가 인증을 요구할 수 있다
+
+### Constraints (제약사항)
+- IF 토큰이 변조되었으면, 시스템은 접근을 거부해야 한다
+- 액세스 토큰 만료시간은 15분을 초과하지 않아야 한다
+- 리프레시 토큰 만료시간은 7일을 초과하지 않아야 한다
+```
+
 ### 4. Git 작업 자동화
 - **Personal 모드**: 로컬 브랜치 + 체크포인트
 - **Team 모드**: GitHub Issue + 원격 브랜치 + PR
@@ -54,7 +88,7 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 
 먼저 spec-builder 에이전트로 EARS 구조 SPEC을 생성합니다:
 
-@agent-spec-builder "$ARGUMENTS를 위한 EARS 구조 SPEC 생성해주세요"
+@agent-spec-builder "${ARGUMENTS:-"프로젝트 분석을 통한 SPEC 후보"}를 위한 EARS 구조 SPEC 생성해주세요"
 
 - 프로젝트 문서 분석
 - SPEC 후보 제안 및 사용자 선택

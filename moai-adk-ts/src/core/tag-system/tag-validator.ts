@@ -1,5 +1,5 @@
 /**
- * @FEATURE:TAG-VALIDATOR-001 16-Core TAG Validator
+ * @FEATURE:TAG-VALIDATOR-001  TAG Validator
  *
  * Python tag_system/validator.py의 완전 포팅
  * Primary Chain 검증 및 무결성 검사
@@ -49,7 +49,7 @@ export interface ConsistencyViolation {
 }
 
 /**
- * 16-Core TAG 검증 엔진
+ *  TAG 검증 엔진
  *
  * Python TagValidator 클래스의 완전 포팅
  * TRUST 원칙 적용:
@@ -60,7 +60,7 @@ export interface ConsistencyViolation {
  * - Trackable: @TAG 시스템으로 추적 가능한 검증
  */
 export class TagValidator {
-  // 16-Core TAG 체계 정의 (Python과 동일)
+  //  TAG 체계 정의 (Python과 동일)
   private readonly primaryChain = ['REQ', 'DESIGN', 'TASK', 'TEST'];
   private readonly steeringChain = ['VISION', 'STRUCT', 'TECH', 'ADR'];
   private readonly implementationChain = ['FEATURE', 'API', 'UI', 'DATA'];
