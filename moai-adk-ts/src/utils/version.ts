@@ -54,7 +54,7 @@ export function getPackageInfo(): PackageInfo {
     // Fallback for development/test environments
     return {
       name: 'moai-adk',
-      version: '0.0.4',
+      version: '0.0.1',
       description: '🗿 MoAI-ADK: Modu-AI Agentic Development kit',
     };
   }

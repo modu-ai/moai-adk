@@ -71,16 +71,206 @@ TDD 구현 후 tag-agent가 @TEST TAG 체인 생성 및 연결 작업을 수행�
 - **체인 검증**: 체인 무결성 및 순환 참조 방지
 - **인덱스 업데이트**: JSONL 기반 분산 인덱스 갱신
 
-### Phase 4: Git 작업 자동화 (git-manager 전담)
+### Phase 4: 브랜치 머지 및 종료 (git-manager 전담, 신규 책임)
 
-마지막으로 TDD와 TAG 작업을 포함한 Git 자동화를 수행합니다:
+TDD와 TAG 작업 완료 후 품질 게이트를 통과하면 브랜치를 main으로 머지하고 종료합니다:
 
-@agent-git-manager "TDD 및 TAG 작업 완료된 ${ARGUMENTS}의 구조화된 커밋(RED-GREEN-REFACTOR)과 브랜치 동기화를 수행해주세요"
+@agent-git-manager "TDD 및 TAG 작업 완료, 품질 게이트 통과. 브랜치 머지 및 종료를 수행해주세요"
 
-- **구조화된 커밋**: TDD 단계별 커밋 (🔴RED, 🟢GREEN, ♻️REFACTOR)
-- **TAG 정보 포함**: 커밋 메시지에 TAG 체인 정보 자동 삽입
-- **브랜치 동기화**: Personal/Team 모드별 Git 전략 적용
-- **체크포인트 생성**: TDD 완료 상태 백업
+#### 브랜치 머지 단계
+
+1. **품질 게이트 최종 검증**:
+   ```bash
+   # 필수 검증 항목
+   ✅ 테스트 커버리지 ≥ 85%
+   ✅ 모든 테스트 통과 (0 실패)
+   ✅ 린터/포매터 통과 (0 경고)
+   ✅ TRUST 5원칙 준수
+   ✅ TAG 체인 완성 (@REQ → @DESIGN → @TASK → @TEST)
+
+   # 실패 시 처리
+   → 브랜치 유지, 사용자에게 재작업 안내
+   → 체크포인트 생성: git tag "checkpoint/spec-XXX-failed-$(date +%s)"
+   ```
+
+2. **변경사항 요약**:
+   ```bash
+   # 머지 전 상태 확인
+   git status --short
+   git diff --stat main...HEAD
+
+   # 요약 생성
+   📊 TDD 구현 결과 요약:
+   - 변경 파일: X개 (소스 Y개, 테스트 Z개)
+   - 추가 라인: +XXX
+   - 삭제 라인: -YYY
+   - 테스트 커버리지: ZZ%
+   - TAG 체인: @TASK:XXX → @TEST:XXX 연결 완료
+   ```
+
+3. **사용자 확인 요청**:
+   ```
+   🎯 품질 게이트 통과 완료
+
+   📋 머지 계획:
+   - 현재 브랜치: feature/spec-${SPEC_ID}-${DESCRIPTION}
+   - 대상 브랜치: main (또는 develop)
+   - 변경사항: 파일 X개, 테스트 Y개 추가, 커버리지 Z%
+   - TAG 체인: @TASK → @TEST 연결 완료
+
+   main 브랜치로 머지하시겠습니까? (y/n)
+
+   ⚠️ 주의: 머지 후 브랜치는 자동으로 삭제됩니다.
+   ```
+
+4. **브랜치 머지 실행 (승인 시)**:
+
+   **Personal 모드:**
+   ```bash
+   # 1. main 브랜치 최신화
+   git checkout main
+   git pull origin main
+
+   # 2. 머지 (--no-ff로 머지 커밋 생성)
+   git merge --no-ff feature/spec-${SPEC_ID}-${DESCRIPTION} \
+     -m "🎉 MERGE: [SPEC-${SPEC_ID}] ${DESCRIPTION} TDD 구현 완료
+
+   ## TDD 구현 요약
+   - RED: 테스트 작성 및 실패 확인
+   - GREEN: 최소 구현으로 테스트 통과
+   - REFACTOR: 코드 품질 개선 및 TRUST 검증
+
+   ## 품질 지표
+   - 테스트 커버리지: ${COVERAGE}%
+   - 테스트 통과율: 100%
+   - 린터 경고: 0건
+
+   ## TAG 체인
+   - @TASK:${SPEC_ID} → @TEST:${SPEC_ID}
+
+   🤖 Generated with Claude Code
+
+   Co-Authored-By: Claude <noreply@anthropic.com>"
+
+   # 3. 브랜치 삭제
+   git branch -d feature/spec-${SPEC_ID}-${DESCRIPTION}
+
+   # 4. 체크포인트 생성
+   git tag "checkpoint/spec-${SPEC_ID}-tdd-complete"
+
+   # 5. 원격 저장소 동기화
+   git push origin main --tags
+   ```
+
+   **Team 모드:**
+   ```bash
+   # 1. 원격 브랜치 푸시
+   git push origin feature/spec-${SPEC_ID}-${DESCRIPTION}
+
+   # 2. PR 상태 전환 (Draft → Ready)
+   gh pr ready
+   gh pr edit \
+     --add-label "ready-for-review" \
+     --add-label "tdd-complete" \
+     --add-label "quality-gate-passed"
+
+   # 3. PR 본문 업데이트
+   gh pr edit --body "$(cat <<'EOF'
+   ## ✅ TDD 구현 완료
+
+   ### 품질 게이트 통과
+   - [x] 테스트 커버리지 ≥ 85% (실제: ${COVERAGE}%)
+   - [x] 모든 테스트 통과
+   - [x] 린터/포매터 통과
+   - [x] TRUST 5원칙 검증 완료
+
+   ### TAG 체인 완성
+   - @REQ:${SPEC_ID} → @DESIGN:${SPEC_ID} → @TASK:${SPEC_ID} → @TEST:${SPEC_ID}
+
+   ### 변경사항
+   ${CHANGES_SUMMARY}
+
+   ### 다음 단계
+   - 코드 리뷰 대기
+   - 승인 후 main 브랜치로 머지
+   - /moai:3-sync로 문서 동기화
+
+   🤖 Generated with Claude Code
+   EOF
+   )"
+
+   # 4. 알림
+   echo "📢 PR이 리뷰 준비 상태로 전환되었습니다."
+   echo "🔗 PR 링크: $(gh pr view --json url -q .url)"
+   echo "⏳ 팀원의 리뷰를 기다립니다."
+   echo "✅ 승인 후 GitHub에서 수동으로 머지해주세요."
+   ```
+
+5. **브랜치 머지 완료 보고**:
+   ```
+   ✅ TDD 구현 및 브랜치 머지 완료
+
+   📊 최종 결과:
+   - 브랜치: feature/spec-${SPEC_ID} → main (머지 완료)
+   - 커버리지: ${COVERAGE}% (목표: ≥85%)
+   - 테스트: ${TESTS_PASSED}개 통과 / ${TESTS_TOTAL}개
+   - TAG 체인: @TASK → @TEST 연결 완료
+   - 체크포인트: checkpoint/spec-${SPEC_ID}-tdd-complete
+
+   🚀 다음 단계: /moai:3-sync
+   ```
+
+#### 예외 처리 시나리오
+
+**시나리오 1: 테스트 실패**
+```bash
+❌ 품질 게이트 실패: 테스트 X개 실패
+
+🔴 실패한 테스트:
+- test_authentication_with_invalid_credentials
+- test_token_expiration_edge_case
+
+📋 권장 조치:
+1. 실패한 테스트 원인 분석
+2. 코드 수정 후 테스트 재실행
+3. 모든 테스트 통과 후 다시 머지 시도
+
+⚠️ 브랜치 유지: feature/spec-${SPEC_ID} (삭제하지 않음)
+🏷️ 체크포인트: checkpoint/spec-${SPEC_ID}-failed-${TIMESTAMP}
+```
+
+**시나리오 2: 커버리지 미달**
+```bash
+❌ 품질 게이트 실패: 커버리지 ${ACTUAL_COVERAGE}% (목표: ≥85%)
+
+📊 커버리지 부족 파일:
+- src/auth/validator.ts: 72% (목표: 85%)
+- src/utils/parser.ts: 68% (목표: 85%)
+
+📋 권장 조치:
+1. 미달 파일에 대한 추가 테스트 작성
+2. 커버리지 측정 재실행
+3. 85% 이상 달성 후 다시 머지 시도
+
+⚠️ 브랜치 유지: feature/spec-${SPEC_ID} (삭제하지 않음)
+```
+
+**시나리오 3: 충돌 발생**
+```bash
+❌ 머지 충돌 발생
+
+🔴 충돌 파일:
+- src/auth/service.ts
+- tests/auth/service.test.ts
+
+📋 해결 방법:
+1. git checkout feature/spec-${SPEC_ID}
+2. git rebase main (충돌 해결)
+3. 테스트 재실행 및 품질 게이트 재검증
+4. /moai:2-build 재실행
+
+⚠️ 브랜치 유지: 충돌 해결 후 재시도
+```
 
 ## 품질 기준
 
@@ -261,11 +451,14 @@ interface TagChainResult {
 - [ ] TAG 중복 없음
 - [ ] JSONL 인덱스 업데이트 완료
 
-### Phase 4 완료 기준 (git-manager)
-- [ ] TDD 단계별 커밋 완료
-- [ ] TAG 정보 포함 확인
-- [ ] 브랜치 동기화 성공
-- [ ] 체크포인트 생성 완료
+### Phase 4 완료 기준 (git-manager) - 브랜치 종료 책임 추가
+- [ ] 품질 게이트 최종 검증 완료
+- [ ] 사용자 머지 승인 완료
+- [ ] 브랜치 머지 성공 (main 또는 develop)
+- [ ] feature 브랜치 삭제 완료 (Personal 모드)
+- [ ] PR 상태 전환 완료 (Team 모드: Draft → Ready)
+- [ ] 체크포인트 태그 생성 완료
+- [ ] 예외 상황 시 브랜치 보존 및 사용자 안내
 
 ## 🔄 다음 단계
 

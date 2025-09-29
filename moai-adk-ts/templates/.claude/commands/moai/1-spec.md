@@ -108,16 +108,85 @@ SPEC 생성 후 tag-agent가 생성된 TAG 요구사항 YAML을 바탕으로 전
 - **체인 검증**: 체인 무결성 및 순환 참조 방지
 - **인덱스 관리**: JSONL 기반 분산 인덱스 업데이트
 
-### 3. Git 작업 자동화 (TAG 정보 연동)
+### 3. 브랜치 생성 자동화 (신규 책임)
 
-마지막으로 SPEC과 TAG 정보를 포함한 Git 작업을 자동화합니다:
+SPEC과 TAG 작업 완료 후 브랜치 생성 및 초기 설정을 자동화합니다:
 
-@agent-git-manager "SPEC 및 TAG 생성 완료, TAG 정보를 포함한 브랜치와 PR 자동 생성해주세요"
+@agent-git-manager "SPEC 및 TAG 생성 완료, 브랜치 생성 및 초기 커밋을 수행해주세요"
 
-- **브랜치 생성**: Personal/Team 모드별 브랜치 전략 적용
-- **GitHub Issue/PR 생성**: Team 모드 시 TAG 체인 정보 포함
-- **초기 커밋**: SPEC 파일과 TAG 요구사항 YAML 포함
-- **PR 템플릿**: TAG 추적성 및 Related TAG 정보 자동 삽입
+#### 브랜치 생성 단계
+
+1. **기존 브랜치 확인**:
+   ```bash
+   # 중복 브랜치 검색
+   git branch --list "feature/spec-${SPEC_ID}*"
+   git branch --list "*${DOMAIN}*"
+
+   # 중복 발견 시
+   → 사용자에게 경고: "유사한 브랜치가 존재합니다. 계속하시겠습니까? (y/n)"
+   → 정리 제안: "기존 브랜치를 정리하시겠습니까? (y/n)"
+   ```
+
+2. **사용자 확인 요청**:
+   ```
+   📋 브랜치 생성 계획:
+   - 브랜치명: feature/spec-${SPEC_ID}-${DESCRIPTION}
+   - 기반 브랜치: main (또는 develop)
+   - SPEC 파일: .moai/specs/SPEC-${SPEC_ID}/
+   - TAG 체인: @REQ → @DESIGN → @TASK
+
+   생성하시겠습니까? (y/n)
+   ```
+
+3. **브랜치 생성 (승인 시)**:
+   ```bash
+   # Personal 모드
+   git checkout -b feature/spec-${SPEC_ID}-${DESCRIPTION}
+   git add .moai/specs/SPEC-${SPEC_ID}/
+   git commit -m "📝 SPEC: [SPEC-${SPEC_ID}] ${DESCRIPTION} SPEC 생성
+
+   @REQ:${SPEC_ID}, @DESIGN:${SPEC_ID}, @TASK:${SPEC_ID}
+
+   🤖 Generated with Claude Code"
+
+   # Team 모드 (추가)
+   git push -u origin feature/spec-${SPEC_ID}-${DESCRIPTION}
+   gh pr create --draft \
+     --title "🚧 [SPEC-${SPEC_ID}] ${DESCRIPTION}" \
+     --body "$(cat <<'EOF'
+   ## SPEC 개요
+   ${SPEC_SUMMARY}
+
+   ## TAG 체인
+   - @REQ:${SPEC_ID}
+   - @DESIGN:${SPEC_ID}
+   - @TASK:${SPEC_ID}
+
+   ## 다음 단계
+   - [ ] /moai:2-build로 TDD 구현
+   - [ ] 품질 게이트 통과
+   - [ ] /moai:3-sync로 문서 동기화
+
+   🤖 Generated with Claude Code
+   EOF
+   )"
+   ```
+
+4. **브랜치 생성 완료 보고**:
+   ```
+   ✅ 브랜치 생성 완료
+   📂 브랜치: feature/spec-${SPEC_ID}-${DESCRIPTION}
+   📝 SPEC 파일: .moai/specs/SPEC-${SPEC_ID}/spec.md
+   🏷️ TAG 체인: @REQ → @DESIGN → @TASK
+
+   🚀 다음 단계: /moai:2-build SPEC-${SPEC_ID}
+   ```
+
+#### 브랜치 충돌 방지 정책
+
+- **중복 브랜치 감지**: 동일 SPEC ID 또는 유사 도메인 브랜치 확인
+- **자동 정리 제안**: 머지된 feature 브랜치 자동 삭제 제안
+- **병렬 작업 감지**: 동일 SPEC에 대한 여러 브랜치 생성 방지
 
 ## 품질 기준
 
@@ -132,5 +201,12 @@ SPEC 생성 후 tag-agent가 생성된 TAG 요구사항 YAML을 바탕으로 전
 
 ## 다음 단계
 
-- `/moai:2-build SPEC-XXX`: TDD 구현 시작
-- `/moai:3-sync`: 문서 동기화 및 PR 상태 전환
+- `/moai:2-build SPEC-XXX`: TDD 구현 및 브랜치 머지
+  - Red-Green-Refactor 사이클 실행
+  - 품질 게이트 검증 후 main 브랜치로 머지
+  - **브랜치 종료는 이 단계에서 수행됨**
+
+- `/moai:3-sync`: 문서 동기화 및 TAG 검증 (브랜치 관리 없음)
+  - Living Document 동기화
+  - TAG 무결성 검증
+  - sync-report.md 생성

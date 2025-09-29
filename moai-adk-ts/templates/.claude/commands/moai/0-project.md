@@ -3,7 +3,6 @@ name: moai:0-project
 description: 프로젝트 초기화 및 문서 생성 - 인텔리전트 에이전트 오케스트레이션
 argument-hints: ["update"]
 tools: Read, Write, Edit, MultiEdit, Glob, Bash
-model: sonnet
 ---
 
 # MoAI-ADK 프로젝트 초기화

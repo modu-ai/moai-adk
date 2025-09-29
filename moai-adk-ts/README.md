@@ -7,6 +7,8 @@
 
 TypeScript-based SPEC-First TDD Development Kit with Universal Language Support
 
+> **Note**: This is an early development version (v0.0.1). Features and APIs are subject to change.
+
 ## Features
 
 - **SPEC-First TDD Workflow**: 3-stage development process (SPEC → TDD → Sync)
@@ -99,7 +101,7 @@ moai doctor --list-backups
 Display current project status and configuration.
 
 ```bash
-moai status --detailed --tags --git
+moai status --verbose
 ```
 
 ### `moai update`
@@ -107,7 +109,8 @@ moai status --detailed --tags --git
 Update MoAI-ADK templates to the latest version.
 
 ```bash
-moai update --backup
+moai update --check
+moai update --verbose
 ```
 
 ### `moai restore`
@@ -115,8 +118,7 @@ moai update --backup
 Restore project from backup.
 
 ```bash
-moai restore --list
-moai restore backup-20241201.tar.gz
+moai restore <backup-path>
 ```
 
 ## Agent System
@@ -189,17 +191,6 @@ All development follows the TRUST principles:
 - **S**ecured: Security by design (input validation, static analysis)
 - **T**rackable: Complete traceability (@TAG system)
 
-## Performance
-
-- **Build Time**: 226ms
-- **Package Size**: 471KB
-- **TAG System Loading**: 45ms
-- **Test Success Rate**: 92.9% (Vitest)
-- **Performance Improvements**:
-  - Bun: 98% faster than npm
-  - Vitest: 92.9% success rate
-  - Biome: 94.8% faster than ESLint+Prettier
-
 ## API Usage
 
 ### Programmatic API
@@ -239,47 +230,12 @@ const status = await moai.status();
 }
 ```
 
-## Troubleshooting
-
-### Installation Issues
-
-```bash
-# Permission errors
-sudo npm install -g moai-adk
-
-# Cache issues
-npm cache clean --force
-npm install -g moai-adk
-```
-
-### Command Not Found
-
-```bash
-# Check PATH
-echo $PATH
-
-# Restart shell
-source ~/.bashrc  # or ~/.zshrc
-```
-
-### System Diagnostics
-
-```bash
-# Re-run diagnostics
-moai doctor
-
-# Check individual tools
-node --version
-git --version
-npm --version
-```
-
 ## Development
 
 ### Setup Development Environment
 
 ```bash
-git clone https://github.com/your-org/moai-adk.git
+git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk/moai-adk-ts
 
 # Install dependencies
@@ -326,10 +282,9 @@ This project is licensed under the [MIT License](LICENSE).
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/your-org/moai-adk/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-org/moai-adk/discussions)
-- **Documentation**: [Project Documentation](https://moai-adk.github.io)
+- **Issues**: [GitHub Issues](https://github.com/modu-ai/moai-adk/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)
 
 ---
 
-**MoAI-ADK v0.0.3** - TypeScript-based SPEC-First TDD Development Framework
+**MoAI-ADK v0.0.1** - TypeScript-based SPEC-First TDD Development Framework

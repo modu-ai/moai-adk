@@ -1,25 +1,26 @@
 ---
 name: moai:3-sync
-description: 문서 동기화 + TAG 검증 + Git 자동화 (자동 모드)
+description: 문서 동기화 + TAG 검증 (자동 모드)
 argument-hint: "[target-path]"
 tools: Bash, Task
-model: sonnet
 ---
 
-# MoAI-ADK 3단계: 문서 동기화 + TAG 검증 + Git 자동화
+# MoAI-ADK 3단계: 문서 동기화 + TAG 검증
 
 **동기화 대상**: ${ARGUMENTS:-"전체 프로젝트"}
 
 ## 개요
 
-코드-문서 동기화, TAG 무결성 검증, Git 작업 자동화를 4단계로 순차 실행합니다.
+코드-문서 동기화, TAG 무결성 검증을 3단계로 순차 실행합니다.
+
+**⚠️ 중요**: 이 명령어는 `/moai:2-build`에서 브랜치 머지 완료 후 실행합니다.
+**브랜치 관리 책임 없음**: 문서 동기화와 TAG 검증만 수행합니다.
 
 ### 핵심 기능
 
 - **스마트 분석**: 프로젝트 상태 분석 및 동기화 계획 자동 수립
 - **문서 동기화**: Living Document 실시간 동기화 (doc-syncer)
 - **TAG 검증**: 코드 스캔 기반 TAG 무결성 검증 (tag-agent)
-- **Git 자동화**: 구조화된 커밋 및 브랜치 동기화 (git-manager)
 
 ---
 
@@ -32,10 +33,29 @@ model: sonnet
 #### 1. 프로젝트 상태 분석
 
 sync-analyzer 스크립트를 실행하여 다음 정보를 수집합니다:
-- Git 상태: 변경된 파일, 브랜치 상태, 커밋 히스토리
+- Git 상태: 변경된 파일, 최근 커밋, main 브랜치 상태
 - 문서 일치성: 코드-문서 간 동기화 필요성
 - TAG 시스템: @TAG 체계 검증 및 끊어진 링크
 - 동기화 범위: 전체 vs 부분 vs 특정 경로
+
+**⚠️ 전제조건 확인**:
+```bash
+# 현재 브랜치가 main인지 확인
+CURRENT_BRANCH=$(git branch --show-current)
+if [ "$CURRENT_BRANCH" != "main" ]; then
+  echo "❌ 오류: 현재 브랜치가 main이 아닙니다 (현재: $CURRENT_BRANCH)"
+  echo "📋 /moai:2-build에서 브랜치 머지를 먼저 완료해주세요"
+  exit 1
+fi
+
+# feature 브랜치가 남아있는지 확인
+FEATURE_BRANCHES=$(git branch --list "feature/*")
+if [ -n "$FEATURE_BRANCHES" ]; then
+  echo "⚠️ 경고: 정리되지 않은 feature 브랜치가 있습니다"
+  echo "$FEATURE_BRANCHES"
+  echo "📋 이 브랜치들을 정리하시겠습니까? (y/n)"
+fi
+```
 
 #### 2. 동기화 전략 결정
 
@@ -160,26 +180,47 @@ sync-analyzer 스크립트를 실행하여 다음 정보를 수집합니다:
 
 ---
 
-### Phase 4: Git 작업 자동화 (git-manager 전담)
+### Phase 4: 문서 동기화 커밋 (단순화)
 
-문서 동기화 및 TAG 검증 완료 후 git-manager를 호출합니다:
+문서 동기화와 TAG 검증 결과를 main 브랜치에 커밋합니다:
 
+#### 동기화 커밋 수행
+
+```bash
+# 1. 변경사항 확인
+git status --short
+
+# 2. 동기화 결과 커밋
+git add .moai/reports/sync-report.md
+git add docs/  # 갱신된 Living Documents
+git commit -m "📝 SYNC: 문서 동기화 및 TAG 검증 완료
+
+## 동기화 결과
+- Living Document 갱신: X개 파일
+- TAG 검증: Y개 TAG 스캔
+- 고아 TAG: Z개 (자동 수정: W개)
+
+## TAG 무결성
+- Primary Chain: 정상
+- 끊어진 링크: 0개
+- 중복 TAG: 0개
+
+🤖 Generated with Claude Code
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+
+# 3. 원격 저장소 동기화
+git push origin main
+
+# 4. 동기화 완료 태그
+git tag "sync/$(date +%Y%m%d-%H%M%S)"
+git push origin --tags
 ```
-@agent-git-manager "문서 동기화 및 TAG 업데이트 완료된 변경사항의 커밋과 브랜치 동기화를 수행해주세요"
-```
-
-#### git-manager 작업 영역
-- 구조화된 커밋: 문서 동기화 커밋 (📝SYNC)
-- TAG 정보 포함: 커밋 메시지에 TAG 변경사항 자동 삽입
-- 브랜치 동기화: Personal/Team 모드별 Git 전략 적용
-- PR 상태 전환: Draft → Ready (Team 모드)
-- 체크포인트 생성: 동기화 완료 상태 백업 포인트
 
 #### 완료 기준
-- 문서 동기화 커밋 완료
-- 브랜치 동기화 성공
-- PR 상태 전환 (팀 모드)
-- 체크포인트 생성 완료
+- [ ] 문서 동기화 커밋 완료
+- [ ] 원격 저장소 푸시 성공
+- [ ] 동기화 태그 생성 완료
 
 ---
 
@@ -250,12 +291,40 @@ sync-analyzer 스크립트를 실행하여 다음 정보를 수집합니다:
 
 ```
 🔄 MoAI-ADK 3단계 워크플로우 완성:
-✅ /moai:1-spec → EARS 명세 작성
-✅ /moai:2-build → TDD 구현
-✅ /moai:3-sync → 문서 동기화
+✅ /moai:1-spec → EARS 명세 작성 + 브랜치 생성
+✅ /moai:2-build → TDD 구현 + 브랜치 머지
+✅ /moai:3-sync → 문서 동기화 + TAG 검증
 
 🎉 다음 기능 개발 준비 완료
 > /moai:1-spec "다음 기능 설명"
+```
+
+### 브랜치 정리 (선택사항)
+
+```bash
+# 로컬에 남은 머지된 브랜치 정리
+git branch --merged main | grep -v "\* main" | xargs -r git branch -d
+
+# 원격에 남은 머지된 브랜치 정리 (Team 모드)
+gh pr list --state merged --json headRefName | \
+  jq -r '.[].headRefName' | \
+  xargs -I {} git push origin --delete {}
+```
+
+### 다음 개발 사이클 시작
+
+```
+🚀 새로운 기능 개발 시작:
+1. /moai:1-spec "새로운 기능 설명"
+2. 브랜치 생성 승인 (y/n)
+3. /moai:2-build로 TDD 구현
+4. 품질 게이트 통과 후 브랜치 머지
+5. /moai:3-sync로 문서 동기화
+
+📊 현재 상태:
+- 활성 브랜치: main
+- 대기 중인 SPEC: 없음
+- TAG 무결성: 정상
 ```
 
 ---
@@ -269,14 +338,16 @@ sync-analyzer 스크립트를 실행하여 다음 정보를 수집합니다:
 
 ### 전제 조건
 - MoAI-ADK 프로젝트 구조 (.moai/, .claude/)
-- TDD 구현 완료 상태
+- `/moai:2-build`에서 TDD 구현 완료
+- **feature 브랜치 → main 브랜치 머지 완료**
+- 현재 작업 브랜치: main
 - TRUST 5원칙 준수
 
 ### 제한 사항
 - TAG 검증은 파일 존재 기반 체크
-- PR 자동 전환은 gh CLI 환경에서만 동작
+- 브랜치 관리는 수행하지 않음 (`/moai:2-build`의 책임)
 - 커버리지 수치는 별도 측정 필요
 
 ---
 
-**doc-syncer, tag-agent, git-manager 에이전트와 연동하여 코드-문서 일치성 향상과 @TAG 추적성 보장을 목표로 합니다.**
+**doc-syncer, tag-agent 에이전트와 연동하여 코드-문서 일치성 향상과 @TAG 추적성 보장을 목표로 합니다.**
