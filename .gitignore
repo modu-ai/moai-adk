@@ -67,3 +67,9 @@ node_modules/
 # TypeScript build outputs
 moai-adk-ts/dist/
 moai-adk-ts/coverage/
+
+# MoAI-ADK private configurations and documents (not shared on GitHub)
+# Only root level configs are private, moai-adk-ts/ package templates are public
+.claude/
+.moai/
+CLAUDE.md
