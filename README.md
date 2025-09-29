@@ -14,9 +14,9 @@ MoAI-ADK는 Claude Code 환경에서 SPEC-First TDD 개발 방법론을 지원�
 
 ### 주요 기능
 
-- **3단계 개발 워크플로우**: 프로젝트 설정 → SPEC 작성 → TDD 구현 → 문서 동기화
+- **4단계 개발 워크플로우**: 프로젝트 킥오프 → SPEC 작성 → TDD 구현 → 문서 동기화
 - **8개 전문 에이전트**: 각 개발 단계별 전문화된 AI 보조 시스템
-- **@TAG 시스템**: 코드 기반 완전한 추적성 관리
+- **@AI-TAG 시스템**: 코드 기반 완전한 추적성 관리
 - **범용 언어 지원**: Python, TypeScript, Java, Go, Rust 등 주요 언어 지원
 - **시스템 자동 진단**: 개발 환경 요구사항 자동 검증 및 설정
 
@@ -107,14 +107,14 @@ moai doctor --list-backups
 moai help
 ```
 
-## 3단계 개발 워크플로우
+## 4단계 개발 워크플로우
 
-MoAI-ADK는 Claude Code 환경에서 다음과 같은 3단계 워크플로우를 제공합니다.
+MoAI-ADK는 Claude Code 환경에서 다음과 같은 4단계 워크플로우를 제공합니다.
 
 ### Stage 0: 프로젝트 킥오프
 
 ```bash
-/moai:0-project
+/moai:0-project PROJECT_NAME
 ```
 
 **목적**: 프로젝트 기초 컨텍스트 설정
@@ -124,6 +124,7 @@ MoAI-ADK는 Claude Code 환경에서 다음과 같은 3단계 워크플로우를
 - 시스템 구조 설계서 생성 (`.moai/project/structure.md`)
 - 기술 스택 문서 생성 (`.moai/project/tech.md`)
 - Claude Code 환경 최적화
+- @AI-TAG 시스템 초기화
 
 **담당 에이전트**: `project-manager`
 
@@ -132,15 +133,17 @@ MoAI-ADK는 Claude Code 환경에서 다음과 같은 3단계 워크플로우를
 ```bash
 /moai:1-spec "기능명1" "기능명2" ...    # 새 SPEC 작성
 /moai:1-spec SPEC-001 "수정내용"       # 기존 SPEC 수정
+/moai:1-spec                           # 자동 제안 (권장)
 ```
 
 **목적**: EARS 형식 명세 작성 및 개발 준비
 
 **수행 작업**:
+- 프로젝트 문서 분석 및 SPEC 후보 제안
 - EARS (Easy Approach to Requirements Syntax) 명세 작성
-- @TAG 체인 생성
-- Git 브랜치 자동 생성
-- GitHub Issue/PR 템플릿 생성 (환경에 따라)
+- @AI-TAG 체인 생성 (@REQ → @DESIGN → @TASK → @TEST)
+- Git 브랜치 자동 생성 (Personal/Team 모드별)
+- GitHub Issue/PR 템플릿 생성 (Team 모드)
 
 **담당 에이전트**: `spec-builder`
 
@@ -154,10 +157,12 @@ MoAI-ADK는 Claude Code 환경에서 다음과 같은 3단계 워크플로우를
 **목적**: Red-Green-Refactor 사이클로 TDD 구현
 
 **수행 작업**:
-- 프로젝트 언어 자동 감지
-- 언어별 테스트 도구 자동 선택 (pytest, Vitest, JUnit 등)
+- 프로젝트 언어 자동 감지 및 최적 도구 선택
+- 언어별 테스트 도구 자동 선택 (pytest, Vitest, JUnit, go test, cargo test 등)
 - Red-Green-Refactor 사이클 실행
-- 코드에 @TAG 자동 삽입
+- @AI-TAG 시스템으로 완전한 추적성 보장
+- 16-Core @TAG 체인 자동 적용
+- TRUST 5원칙 자동 검증
 - 체크포인트 자동 생성
 
 **담당 에이전트**: `code-builder`
@@ -171,10 +176,12 @@ MoAI-ADK는 Claude Code 환경에서 다음과 같은 3단계 워크플로우를
 **목적**: 코드와 문서 동기화 및 완료 처리
 
 **수행 작업**:
-- Living Document 업데이트
-- TAG 인덱스 재구축
-- sync-report 생성
-- PR Ready 상태 전환
+- Living Document 자동 동기화
+- @AI-TAG 인덱스 재구축 (`.moai/indexes/tags.json`)
+- sync-report 생성 (`.moai/reports/sync-report.md`)
+- API 문서 자동 생성/갱신
+- PR Draft → Ready 상태 전환
+- 리뷰어 자동 할당 (Team 모드)
 
 **담당 에이전트**: `doc-syncer`
 
@@ -182,18 +189,18 @@ MoAI-ADK는 Claude Code 환경에서 다음과 같은 3단계 워크플로우를
 
 MoAI-ADK는 8개의 전문 에이전트를 제공하여 각 개발 단계를 지원합니다.
 
-### 핵심 에이전트
+### 핵심 에이전트 (8개)
 
-| 에이전트 | 역할 | 주요 기능 |
-|---------|------|-----------|
-| **spec-builder** | SPEC 작성 전담 | EARS 명세, 브랜치 전략, 요구사항 정리 |
-| **code-builder** | TDD 구현 전담 | Red-Green-Refactor, 언어별 도구 선택 |
-| **doc-syncer** | 문서 동기화 | Living Document, sync-report, TAG 관리 |
-| **cc-manager** | Claude 설정 관리 | .claude/settings.json, 권한 최적화 |
-| **debug-helper** | 오류 분석 | 에러 진단, 해결방안 제시, 개발 가이드 검증 |
+| 에이전트 | 역할 | 자동화 |
+|---------|------|--------|
+| **spec-builder** | EARS 명세 작성 | 브랜치/PR 생성 |
+| **code-builder** | 범용 언어 TDD 구현 | Red-Green-Refactor (Python, TypeScript, Java, Go, Rust 등) |
+| **doc-syncer** | 문서 동기화 | PR 상태 전환/라벨링 |
+| **cc-manager** | Claude Code 관리 | 설정 최적화/권한 |
+| **debug-helper** | 오류 진단 | 개발 가이드 검사 |
 | **git-manager** | Git 자동화 | 브랜치, 커밋, PR, 체크포인트 관리 |
 | **trust-checker** | 품질 검증 | TRUST 5원칙 검사, 코드 품질 분석 |
-| **tag-agent** | TAG 관리 | @TAG 시스템 전담 |
+| **project-manager** | 프로젝트 킥오프 | 기초 컨텍스트 설정 |
 
 ### 에이전트 사용 예제
 
@@ -319,102 +326,128 @@ moai help init      # init 명령어 도움말
 moai help doctor    # doctor 명령어 도움말
 ```
 
-## @TAG 시스템
+## @AI-TAG 시스템
 
-MoAI-ADK는 코드 기반 추적성을 위해 @TAG 시스템을 사용합니다.
+MoAI-ADK는 코드 기반 완전한 추적성을 위해 @AI-TAG 시스템을 사용합니다.
 
-### TAG 카테고리
+### @AI-TAG Lifecycle 2.0
 
-**Lifecycle (필수 체인)**:
-- `SPEC`: 명세 작성
-- `REQ`: 요구사항 정의
-- `DESIGN`: 아키텍처 설계
-- `TASK`: 구현 작업
-- `TEST`: 테스트 검증
+**Primary Chain (필수 체인)**:
+- `@REQ`: 요구사항 정의
+- `@DESIGN`: 아키텍처 설계
+- `@TASK`: 구현 작업
+- `@TEST`: 테스트 검증
 
 **Implementation (선택적)**:
-- `FEATURE`: 비즈니스 기능
-- `API`: 인터페이스
-- `FIX`: 버그 수정
+- `@FEATURE`: 비지니스 기능
+- `@API`: 인터페이스
+- `@UI`: 사용자 인터페이스
+- `@DATA`: 데이터 처리
 
-### TAG 사용법
+**Quality (품질 속성)**:
+- `@PERF`: 성능 최적화
+- `@SEC`: 보안 강화
+- `@DOCS`: 문서화
+- `@DEBT`: 기술 부채
 
-코드 파일 상단에 다음과 같은 TAG 블록을 작성합니다:
+### TAG BLOCK 템플릿 (필수)
 
-```typescript
-/**
- * @TAG:FEATURE:AUTH-001
- * @CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001 -> TASK:AUTH-001 -> TEST:AUTH-001
- * @DEPENDS: FEATURE:USER-001, API:SESSION-001
- * @STATUS: active
- * @CREATED: 2024-12-01
- * @IMMUTABLE
- */
+코드 파일 상단에 다음과 같은 TAG BLOCK을 작성합니다:
+
+```text
+# @FEATURE:<DOMAIN-ID> | Chain: @REQ:<ID> -> @DESIGN:<ID> -> @TASK:<ID> -> @TEST:<ID>
+# Related: @SEC:<ID>, @DOCS:<ID>
 ```
 
-**TAG 블록 구성 요소**:
-- `@TAG`: 메인 TAG 식별자
-- `@CHAIN`: TAG 체인 연결 관계
-- `@DEPENDS`: 의존성 TAG들
-- `@STATUS`: TAG 상태 (active, deprecated, completed)
-- `@CREATED`: 생성 날짜
-- `@IMMUTABLE`: 불변성 마커
+**TAG BLOCK 가이드라인**:
+- 새 코드/문서/테스트 파일 생성 시: TAG BLOCK을 파일 상단(주석)에 배치
+- 수정 시: 기존 TAG BLOCK 검토 후 영향받는 TAG 업데이트
+- 생성 전 중복 확인: `rg "@REQ:<키워드>" -n`로 기존 체인 검색
+- TAG ID: `<도메인>-<3자리>` (예: `AUTH-003`) — 체인 내 모든 TAG는 동일 ID 사용
 
-### 언어별 TAG 적용 예제
+### 언어별 @AI-TAG 적용 예제
 
 **Python**:
 ```python
-# @TAG:FEATURE:AUTH-001
-# @CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001 -> TASK:AUTH-001 -> TEST:AUTH-001
-# @STATUS: active | @CREATED: 2024-12-01 | @IMMUTABLE
+# @FEATURE:LOGIN-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+# Related: @SEC:LOGIN-001, @DOCS:LOGIN-001
+class AuthenticationService:
+    """@FEATURE:LOGIN-001: 사용자 인증 서비스 구현"""
 
-def authenticate_user(username: str, password: str) -> bool:
-    """사용자 인증 함수"""
-    return verify_credentials(username, password)
+    def authenticate(self, username: str, password: str) -> bool:
+        """@API:LOGIN-001: 사용자 인증 API 엔드포인트"""
+        # @SEC:LOGIN-001: 입력값 보안 검증
+        if not self._validate_input(username, password):
+            return False
+        return self._verify_credentials(username, password)
+
+# @TEST:LOGIN-001 연결: @TASK:LOGIN-001 -> @TEST:LOGIN-001
+def test_should_authenticate_valid_user():
+    """@TEST:LOGIN-001: 유효한 사용자 인증 테스트"""
+    service = AuthenticationService()
+    result = service.authenticate("user", "password")
+    assert result is True
 ```
 
-**Java**:
-```java
-/**
- * @TAG:API:AUTH-001
- * @CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001 -> TASK:AUTH-001 -> TEST:AUTH-001
- * @STATUS: active | @CREATED: 2024-12-01 | @IMMUTABLE
- */
-public class AuthService {
-    public boolean authenticate(String username, String password) {
-        return verifyCredentials(username, password);
-    }
+**TypeScript**:
+```typescript
+// @FEATURE:LOGIN-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+// Related: @SEC:LOGIN-001, @DOCS:LOGIN-001
+interface AuthService {
+  // @API:LOGIN-001: 인증 API 인터페이스 정의
+  authenticate(username: string, password: string): Promise<boolean>;
 }
+
+// @UI:LOGIN-001: 로그인 컴포넌트
+const LoginForm: React.FC = () => {
+  // @SEC:LOGIN-001: 클라이언트 사이드 입력 검증
+  const handleSubmit = (username: string, password: string) => {
+    // 구현...
+  };
+
+  return <form>...</form>;
+};
+
+// @TEST:LOGIN-001: Vitest/Jest 테스트
+describe('AuthService', () => {
+  test('@TEST:LOGIN-001: should authenticate valid user', () => {
+    // 테스트 구현...
+  });
+});
 ```
 
-## TRUST 5원칙
+## TRUST 5원칙 (범용 언어 지원)
 
-MoAI-ADK는 다음 TRUST 5원칙을 준수합니다:
+MoAI-ADK는 다음 TRUST 5원칙을 모든 주요 프로그래밍 언어에서 준수합니다:
 
 ### T - Test First (테스트 우선)
-- 모든 구현은 테스트부터 작성
+- 모든 구현은 테스트부터 작성 (SPEC-First TDD)
 - Red-Green-Refactor 사이클 준수
-- 언어별 최적 테스트 도구 자동 선택
+- 언어별 최적 도구 (Jest/Vitest, pytest, go test, cargo test, JUnit 등)
 
 ### R - Readable (가독성)
 - 함수 크기 50줄 이하 유지
-- 명확한 함수/변수 네이밍
+- 명확한 함수/변수 네이밍 (SPEC 용어 반영)
+- 언어별 린터 (ESLint/Biome, ruff, golint, clippy 등)
 - 의도를 드러내는 코드 구조
 
 ### U - Unified (단일 책임)
-- 모듈당 300줄 이하 유지
+- 모듈당 300줄 이하 유지 (SPEC 기준)
 - 각 모듈의 명확한 역할 분담
+- 타입 안전성 (TypeScript, Go, Rust, Java) 또는 런타임 검증 (Python, JS)
 - 낮은 결합도, 높은 응집도
 
 ### S - Secured (보안성)
-- 모든 외부 입력 검증
-- 민감 정보 자동 마스킹
-- 구조화된 로그 관리
+- SPEC Security Requirements: 모든 SPEC에 보안 요구사항 정의
+- 모든 외부 입력 검증 (SPEC 인터페이스 기반)
+- 언어별 보안 도구 및 정적 분석
+- 민감 정보 자동 마스킹 및 감사 로깅
 
 ### T - Trackable (추적성)
-- @TAG 시스템으로 완전한 추적성
-- 모든 변경사항 기록
-- SPEC-코드-테스트 연결성 보장
+- @AI-TAG 시스템으로 완전한 추적성
+- SPEC-to-Code Traceability: 모든 코드 변경이 SPEC ID 참조
+- 3단계 워크플로우 추적: `/moai:1-spec` → `/moai:2-build` → `/moai:3-sync`
+- JSON 기반 @AI-TAG 시스템 인덱스 관리
 
 ## 범용 언어 지원
 
@@ -528,7 +561,7 @@ npm test
 ### 코딩 규칙
 
 - TRUST 5원칙 준수
-- 16-Core @TAG 시스템 적용
+- @TAG 시스템 적용
 - TypeScript strict 모드 사용
 - 함수당 50줄 이하 유지
 - 명확한 함수/변수 네이밍

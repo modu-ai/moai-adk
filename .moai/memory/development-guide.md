@@ -1,291 +1,170 @@
-# MoAI-ADK Development Guide (SPEC-First TDD Principles)
+# MoAI-ADK 개발 가이드
 
-> "No SPEC, no code. No tests, no implementation. SPEC-First TDD, Language Agnostic + Intelligent Diagnosis."
+> "명세 없으면 코드 없다. 테스트 없으면 구현 없다."
 
-This development guide is the unified guardrail for all agents and developers working with the MoAI-ADK universal development toolkit. **MoAI-ADK v0.0.3 is built with TypeScript** and has achieved **CLI 100% completion** with **혁신적 시스템 진단** and **분산 TAG 시스템 94% 최적화**. The toolkit itself is TypeScript-based while supporting all major programming languages for user projects, following the **SPEC-First TDD methodology** with distributed 16-Core @TAG traceability and **intelligent language detection**. Korean is the default communication language for the project.
+MoAI-ADK 범용 개발 툴킷을 사용하는 모든 에이전트와 개발자를 위한 통합 가드레일이다. TypeScript 기반으로 구축된 툴킷은 모든 주요 프로그래밍 언어를 지원하며, @TAG 추적성을 통한 SPEC 우선 TDD 방법론을 따른다. 한국어가 기본 소통 언어다.
 
----
+## SPEC 우선 TDD 워크플로우
 
-## 0. SPEC-First TDD Workflow
+### 핵심 개발 루프 (3단계)
 
-**Core Development Loop (3-Stage) - v0.0.3 완성**:
-1. **SPEC Creation** (`/moai:1-spec`) → 명세 없이는 코드 없음 ✅
-2. **TDD Implementation** (`/moai:2-build`) → 테스트 없이는 구현 없음 ✅
-3. **Documentation Sync** (`/moai:3-sync`) → 추적성 없이는 완성 없음 ✅
+1. **SPEC 작성** (`/moai:1-spec`) → 명세 없이는 코드 없음
+2. **TDD 구현** (`/moai:2-build`) → 테스트 없이는 구현 없음
+3. **문서 동기화** (`/moai:3-sync`) → 추적성 없이는 완성 없음
 
-**On-Demand Quality Assurance (혁신적 진단 완성)**:
-- **Intelligent Debug & Validation** (`@agent-debug-helper`) → ✅ **지능형 시스템 진단** + **언어 감지** 완료
-- **CLI Commands** → ✅ 7개 명령어 100% 완성 (init, doctor, status, update, restore, help, version)
-- **System Diagnosis Innovation** → ✅ **SQLite3 제거**, **npm+TypeScript+Git LFS 실용화**, **동적 요구사항**
+### 온디맨드 품질 보증
 
-All changes must follow the 16-Core @TAG system, SPEC-driven requirements, and language-appropriate TDD practices.
+- **디버깅**: `@agent-debug-helper` 오류 발생 시 호출
+- **CLI 명령어**: init, doctor, status, update, restore, help, version
+- **시스템 진단**: 언어별 도구 자동 감지 및 요구사항 검증
 
----
+모든 변경사항은 @TAG 시스템, SPEC 기반 요구사항, 언어별 TDD 관행을 따른다.
 
-## TRUST 5 — SPEC-First TDD Engineering Principles
+## TRUST 5원칙
 
-### **T** - **Test-Driven Development (SPEC-Based)**
+### T - 테스트 주도 개발 (SPEC 기반)
 
-1. **SPEC → Test → Code** (SPEC-First TDD Cycle)
-   - **SPEC**: Create detailed SPEC with `@REQ`, `@DESIGN`, `@TASK` tags first
-   - **RED**: Write failing tests based on SPEC requirements and confirm failure
-   - **GREEN**: Implement minimum code to pass tests and fulfill SPEC
-   - **REFACTOR**: Improve code quality while maintaining SPEC compliance
-2. **Language-Specific TDD Implementation**
-   - **Python**: pytest + SPEC-driven test cases (type hints with mypy)
-   - **TypeScript** (주력): Vitest + SPEC-based test suites (strict typing, 92.9% 성공률) ✅
-   - **Java**: JUnit + SPEC annotations (behavior-driven tests)
-   - **Go**: go test + SPEC table-driven tests (interface compliance)
-   - **Rust**: cargo test + SPEC documentation tests (trait validation)
-   - **C++**: GoogleTest + SPEC template tests (concept validation)
-   - **C#**: xUnit + SPEC attribute tests (contract validation)
-3. **SPEC-TDD Integration**: Each test must trace back to specific SPEC requirements via @TAG references.
+**SPEC → Test → Code 사이클**:
 
-### **R** - **Requirements-Driven Readable Code**
+- **SPEC**: `@REQ`, `@DESIGN`, `@TASK` 태그가 포함된 상세 SPEC 우선 작성
+- **RED**: SPEC 요구사항 기반 실패하는 테스트 작성 및 실패 확인
+- **GREEN**: 테스트를 통과하고 SPEC을 충족하는 최소한의 코드 구현
+- **REFACTOR**: SPEC 준수를 유지하면서 코드 품질 개선
 
-1. **SPEC-Aligned Clean Code**
-   - Functions directly implement SPEC requirements (≤ 50 LOC per function)
-   - Variable names reflect SPEC terminology and domain language
-   - Code structure mirrors SPEC design decisions
-   - Comments only for SPEC clarifications and @TAG references
-2. **Language-Specific SPEC Implementation**
-   - **Python**: Type hints reflecting SPEC interfaces + mypy validation
-   - **TypeScript** (주력): Strict interfaces matching SPEC contracts + Biome (94.8% 성능향상) ✅
-   - **Java**: Classes implementing SPEC components + strong typing
-   - **Go**: Interfaces fulfilling SPEC requirements + gofmt
-   - **Rust**: Types embodying SPEC safety requirements + rustfmt
-3. **SPEC Traceability**: Every code element should be traceable to SPEC via @TAG comments.
+**언어별 TDD 구현**:
 
-### **U** - **Unified SPEC Architecture**
+- **Python**: pytest + SPEC 기반 테스트 케이스 (mypy 타입 힌트)
+- **TypeScript**: Vitest + SPEC 기반 테스트 스위트 (strict typing)
+- **Java**: JUnit + SPEC 어노테이션 (행동 주도 테스트)
+- **Go**: go test + SPEC 테이블 주도 테스트 (인터페이스 준수)
+- **Rust**: cargo test + SPEC 문서 테스트 (trait 검증)
 
-1. **SPEC-Driven Complexity Management**: Each SPEC defines complexity thresholds. Exceeding requires new SPEC or Waiver with clear justification.
-2. **SPEC Implementation Phases**: Separate SPEC creation from implementation; never modify SPEC during TDD cycle.
-3. **Cross-Language SPEC Compliance**:
-   - **Python**: Modules following SPEC component boundaries
-   - **TypeScript** (주력): Interfaces implementing SPEC contracts ✅
-   - **Java**: Packages aligned with SPEC architecture
-   - **Go**: Packages respecting SPEC interface definitions
-   - **Rust**: Crates embodying SPEC module separation
-4. **SPEC-Driven Architecture**: Domain boundaries defined by SPEC, not language conventions. Use 16-Core @TAG system for cross-language traceability.
+각 테스트는 @TAG 참조를 통해 특정 SPEC 요구사항과 연결한다.
 
-### **S** - **SPEC-Compliant Security**
+### R - 요구사항 주도 가독성
 
-1. **SPEC Security Requirements**: Every SPEC must define security requirements, data sensitivity, and access controls explicitly.
-2. **Security-by-Design**: Security controls implemented during TDD phase, not retrofitted after completion.
-3. **Language-Agnostic Security Patterns**:
-   - Input validation based on SPEC interface definitions
-   - Audit logging for SPEC-defined critical operations
-   - Access control following SPEC permission models
-   - Secret management per SPEC environment requirements
-4. **MoAI-ADK Security**: TypeScript policy-block hooks enforce SPEC security rules across all language implementations. ✅ 입력 검증 시스템 완성.
+**SPEC 정렬 클린 코드**:
 
-### **T** - **SPEC Traceability**
+- 함수는 SPEC 요구사항을 직접 구현 (함수당 ≤ 50 LOC)
+- 변수명은 SPEC 용어와 도메인 언어를 반영
+- 코드 구조는 SPEC 설계 결정을 반영
+- 주석은 SPEC 설명과 @TAG 참조만 허용
 
-1. **SPEC-to-Code Traceability**: Every code change must reference SPEC ID and specific requirement via 16-Core @TAG system.
-2. **3-Stage Workflow Tracking**:
-   - `/moai:1-spec`: SPEC creation with @REQ, @DESIGN, @TASK tags
-   - `/moai:2-build`: TDD implementation with @TEST, @FEATURE tags
-   - `/moai:3-sync`: Documentation sync with @DOCS, @TAG tags
-   - `@agent-debug-helper`: **혁신적 온디맨드 진단** with @PERF, @SEC tags + **언어 감지** + **동적 요구사항**
-3. **Distributed 16-Core @TAG System**: JSONL 기반 분산 저장으로 94% 크기 절감, 95% 파싱 속도 향상, 149개 TAG 완전 추적성 달성. ✅
-4. **Intelligent System Diagnosis**: **5-category requirements** (Runtime, Development, Optional, Language-Specific, Performance) with **auto-detection**
+**언어별 SPEC 구현**:
 
----
+- **Python**: SPEC 인터페이스를 반영하는 타입 힌트 + mypy 검증
+- **TypeScript**: SPEC 계약과 일치하는 엄격한 인터페이스
+- **Java**: SPEC 구성요소 구현 클래스 + 강한 타이핑
+- **Go**: SPEC 요구사항 충족 인터페이스 + gofmt
+- **Rust**: SPEC 안전 요구사항을 구현하는 타입 + rustfmt
 
-## Article I — SPEC-First Mindset
+모든 코드 요소는 @TAG 주석을 통해 SPEC까지 추적 가능하다.
 
-1. **SPEC-Driven Decisions**: All technical decisions must reference existing SPEC or create new SPEC. No implementation without clear requirements.
-2. **SPEC-Context Reading**: Before any code changes, read relevant SPEC documents, understand @TAG relationships, and verify compliance.
-3. **SPEC Communication**: Korean is default for communication; all SPEC documents use clear Korean with technical terms in English.
+### U - 통합 SPEC 아키텍처
 
----
+- **SPEC 기반 복잡도 관리**: 각 SPEC은 복잡도 임계값을 정의한다. 초과 시 새로운 SPEC 또는 명확한 근거가 있는 면제가 필요하다.
+- **SPEC 구현 단계**: SPEC 작성과 구현을 분리하며, TDD 사이클 중 SPEC을 수정하지 않는다.
+- **언어 간 SPEC 준수**: Python(모듈), TypeScript(인터페이스), Java(패키지), Go(패키지), Rust(크레이트) 등 언어별 경계를 SPEC이 정의한다.
+- **SPEC 기반 아키텍처**: 도메인 경계는 언어 관례가 아닌 SPEC에 의해 정의되며, @TAG 시스템으로 언어 간 추적성을 유지한다.
 
-## Article II — SPEC-TDD Workflow
+### S - SPEC 준수 보안
 
-1. **SPEC-First**: Create or reference SPEC before any code. Use `/moai:1-spec` to define requirements, design, and tasks clearly.
-2. **TDD Implementation**: Follow Red-Green-Refactor strictly. Use `/moai:2-build` with language-appropriate testing frameworks.
-3. **Traceability Sync**: Run `/moai:3-sync` to update documentation and maintain @TAG relationships across SPEC and code.
+- **SPEC 보안 요구사항**: 모든 SPEC에 보안 요구사항, 데이터 민감도, 접근 제어를 명시적으로 정의한다.
+- **보안 by 설계**: 보안 제어는 완료 후 추가하는 것이 아니라 TDD 단계에서 구현한다.
+- **언어 무관 보안 패턴**:
+  - SPEC 인터페이스 정의 기반 입력 검증
+  - SPEC 정의 중요 작업에 대한 감사 로깅
+  - SPEC 권한 모델을 따르는 접근 제어
+  - SPEC 환경 요구사항별 비밀 관리
 
----
+### T - SPEC 추적성
 
-## Article III — 16-Core @TAG System (분산 최적화 완성) ✅
+- **SPEC-코드 추적성**: 모든 코드 변경은 @TAG 시스템을 통해 SPEC ID와 특정 요구사항을 참조한다.
+- **3단계 워크플로우 추적**:
+  - `/moai:1-spec`: @REQ, @DESIGN, @TASK 태그로 SPEC 작성
+  - `/moai:2-build`: @TEST, @FEATURE 태그로 TDD 구현
+  - `/moai:3-sync`: @DOCS, @TAG 태그로 문서 동기화
+- **분산 @TAG 시스템**: JSONL 기반 분산 저장으로 완전한 추적성을 제공한다.
 
-1. **Distributed 16-Core @TAG Architecture**: 16-Core @TAG chain 분산 저장 완료 - Primary (@REQ → @DESIGN → @TASK → @TEST), Steering, Implementation, Quality
-2. **Performance Achievements**:
-   - ✅ 94% 크기 절감 (487KB 최적화)
-   - ✅ 95% 파싱 속도 향상 (45ms 평균 로딩)
-   - ✅ 149개 TAG, 122개 파일 완전 추적성
-3. **Storage Structure**: JSONL 기반 분산 저장 (.moai/indexes/categories/, relations/, cache/)
+## SPEC 우선 사고방식
 
----
+1. **SPEC 기반 의사결정**: 모든 기술적 결정은 기존 SPEC을 참조하거나 새로운 SPEC을 만든다. 명확한 요구사항 없이는 구현하지 않는다.
+2. **SPEC 맥락 읽기**: 코드 변경 전에 관련 SPEC 문서를 읽고, @TAG 관계를 파악하고, 준수를 검증한다.
+3. **SPEC 소통**: 한국어가 기본 소통 언어다. 모든 SPEC 문서는 기술 용어는 영어로, 설명은 명확한 한국어로 작성한다.
 
-## Article III-A — Intelligent System Diagnosis (v0.0.3 혁신) ✅
+## SPEC-TDD 워크플로우
 
-### Core Innovation: Language-Aware Dynamic Requirements
+1. **SPEC 우선**: 코드 작성 전에 SPEC을 생성하거나 참조한다. `/moai:1-spec`을 사용하여 요구사항, 설계, 작업을 명확히 정의한다.
+2. **TDD 구현**: Red-Green-Refactor를 엄격히 따른다. 언어별 적절한 테스트 프레임워크와 함께 `/moai:2-build`를 사용한다.
+3. **추적성 동기화**: `/moai:3-sync`를 실행하여 문서를 업데이트하고 SPEC과 코드 간 @TAG 관계를 유지한다.
 
-1. **Intelligent Language Detection**:
-   - **Project Analysis**: Automatic detection of JavaScript/TypeScript/Python/Java/Go in project directories
-   - **File Pattern Recognition**: `.ts`, `.js`, `.py`, `.java`, `.go`, `package.json`, `requirements.txt`, `pom.xml`, `go.mod`
-   - **Statistical Analysis**: Language prevalence scoring for multi-language projects
+## @TAG 시스템
 
-2. **Dynamic Requirement Registry** (@FEATURE:SYSTEM-REQUIREMENTS-001):
-   ```typescript
-   class RequirementRegistry {
-     addLanguageRequirements(language: string): void {
-       // Automatic tool mapping based on detected language
-       switch (language.toLowerCase()) {
-         case 'typescript': // TypeScript → npm, TypeScript compiler
-         case 'python':     // Python → pip, python3, mypy
-         case 'java':       // Java → JDK 17+, Maven/Gradle
-         case 'go':         // Go → Go toolchain 1.21+
-       }
-     }
-   }
-   ```
+### Primary Chain (필수)
 
-3. **5-Category System Diagnosis**:
-   - **Runtime Requirements** (2): Git 2.30+, Node.js 18.0+ (core system)
-   - **Development Requirements** (2): npm 8.0+, Language-specific tools (dynamic)
-   - **Optional Requirements** (1): Git LFS 3.0+ (enhancement)
-   - **Language-Specific** (Dynamic): Auto-added based on project detection
-   - **Performance Metrics**: 226ms build time, 471KB package optimization
-
-4. **Practical Improvements** (@TASK:PRACTICAL-IMPROVEMENTS-001):
-   - ❌ **Removed SQLite3**: Eliminated unnecessary database dependency
-   - ✅ **Added npm**: Essential for TypeScript ecosystem
-   - ✅ **Added TypeScript**: Core development tool for the toolkit
-   - ✅ **Added Git LFS**: Large file support for modern projects
-
-### SystemChecker Architecture (@DESIGN:SYSTEM-CHECKER-001)
-
-```typescript
-// Enhanced SystemChecker with language intelligence
-export class SystemChecker {
-  private registry = new RequirementRegistry();
-
-  async diagnose(): Promise<DiagnosisResult> {
-    const languages = await this.detectLanguages();
-
-    // Dynamic requirement addition
-    for (const language of languages) {
-      this.registry.addLanguageRequirements(language);
-    }
-
-    return {
-      detectedLanguages: languages,
-      runtimeRequirements: this.registry.getByCategory('runtime'),
-      developmentRequirements: this.registry.getByCategory('development'),
-      optionalRequirements: this.registry.getByCategory('optional'),
-      performanceMetrics: { buildTime: '226ms', packageSize: '471KB' }
-    };
-  }
-}
+```text
+@REQ → @DESIGN → @TASK → @TEST
 ```
 
-### Quality Assurance Integration
+### TAG 사용 규칙
 
-1. **TRUST Principle Compliance**:
-   - **T**est: Each requirement has automated verification tests
-   - **R**eadable: Clear requirement descriptions with install commands
-   - **U**nified: Consistent interface across all requirement types
-   - **S**ecured: Input validation for all system commands
-   - **T**rackable: Full @TAG traceability for all diagnostic components
+- 모든 코드 파일 상단에 TAG BLOCK 배치
+- 새 TAG 생성 전 중복 확인: `rg "@REQ:<키워드>" -n`
+- TAG ID 규칙: `<도메인>-<3자리>` (예: AUTH-003)
 
-2. **Error Recovery Patterns**:
-   - **Graceful Degradation**: Optional requirements don't block core functionality
-   - **Alternative Suggestions**: Multiple installation methods per platform
-   - **Version Tolerance**: Minimum version requirements with upgrade paths
+### TAG BLOCK 템플릿
 
----
+```text
+# @FEATURE:<DOMAIN-ID> | Chain: @REQ → @DESIGN → @TASK → @TEST
+# Related: @SEC:<ID>, @DOCS:<ID>
+```
 
-## Article IV — Review & Refactoring Discipline
+### 체계 구성
 
-1. **Rule of Three**: On the third repetition of a pattern, plan a refactor.
-2. **Preparatory Refactoring**: Prepare the environment to make the change easy, then apply the change.
-3. **Litter-Pickup**: Fix small smells immediately; if scope grows, split into a separate task.
+- **Primary Chain**: 요구 → 설계 → 작업 → 검증 (필수)
+- **Implementation**: Feature/API/UI/Data 등 구현 유형
+- **Quality**: Perf/Sec/Docs/Debt 등 품질 속성
+- **Meta**: Ops/Release/Tag/Deprecated 등 메타데이터
 
----
+## 개발 원칙
 
-## Article V — Microservice/API Patterns (Olaf Zimmermann)
+### 코드 제약
 
-1. **Foundation**: Choose the appropriate frontend integration strategy among BFF, API Gateway, and Client-Side Composition.
-2. **Design**: Specify patterns such as Request/Response, Request-Acknowledge, Event Message, and keep contracts documented.
-3. **Quality**: Apply performance patterns (Pagination, Wish List, Conditional Request) and security patterns (Rate Limiting, Circuit Breaker).
-4. **Evolution**: Manage compatibility via explicit version IDs, "Two in Production", Consumer-Driven Contracts, Published Language.
+- 파일당 300 LOC 이하
+- 함수당 50 LOC 이하
+- 매개변수 5개 이하
+- 복잡도 10 이하
 
----
+### 품질 기준
 
-## Article VI — Exceptions & Waivers
+- 테스트 커버리지 85% 이상
+- 의도 드러내는 이름 사용
+- 가드절 우선 사용
+- 언어별 표준 도구 활용
 
-- When deviating from or exceeding recommendations, write a Waiver and attach it to PR/Issue/ADR.
-- Waiver must include: reason, alternatives considered, risks/mitigations, temporary/permanent status, expiry conditions, approver.
+### 리팩토링 규칙
 
----
+- **3회 반복 규칙**: 패턴의 3번째 반복 시 리팩토링 계획
+- **준비 리팩토링**: 변경을 쉽게 만드는 환경 준비 후 변경 적용
+- **즉시 정리**: 작은 문제는 즉시 수정, 범위 확대 시 별도 작업으로 분리
 
-## Operational Appendix A — Work Loop & Checklist
+## 예외 처리
 
-1. **Preparation**
-   - Write Background/Problem/Goals/Non-Goals/Constraints
-   - Read all related files/tests/docs/flags end-to-end
-   - Draft an alternatives comparison table
-2. **Execution**
-   - Create required SPEC/TAGs
-   - Make small changes with per-change checkpoints
-   - Follow the TDD cycle; run tests/linters
-3. **Wrap-up**
-   - Run `/moai:3-sync` → update TAG index and docs
-   - Record logs and a summary for analysis/implementation commands 
+권장사항을 초과하거나 벗어날 때 Waiver를 작성하여 PR/Issue/ADR에 첨부한다.
 
----
+**Waiver 필수 포함 사항**:
 
-## Operational Appendix B — Sajaniemi’s Variable Roles
+- 이유와 검토한 대안
+- 위험과 완화 방안
+- 임시/영구 상태
+- 만료 조건과 승인자
 
-| Role               | Description                         | Example                               |
-| ------------------ | ----------------------------------- | ------------------------------------- |
-| Fixed Value        | Constant after initialization       | `const MAX_SIZE = 100`                |
-| Stepper            | Changes sequentially                | `for (let i = 0; i < n; i++)`         |
-| Flag               | Boolean state indicator             | `let isValid = true`                  |
-| Walker             | Traverses a data structure          | `while (node) { node = node.next; }`  |
-| Most Recent Holder | Holds the most recent value         | `let lastError`                       |
-| Most Wanted Holder | Holds optimal/maximum value         | `let bestScore = -Infinity`           |
-| Gatherer           | Accumulator                         | `sum += value`                        |
-| Container          | Stores multiple values              | `const list = []`                     |
-| Follower           | Previous value of another variable  | `prev = curr; curr = next;`           |
-| Organizer          | Reorganizes data                    | `const sorted = array.sort()`         |
-| Temporary          | Temporary storage                   | `const temp = a; a = b; b = temp;`    |
+## 언어별 도구 매핑
 
----
+- **Python**: pytest (테스트), mypy (타입 검사), black (포맷)
+- **TypeScript**: Vitest (테스트), Biome (린터+포맷)
+- **Java**: JUnit (테스트), Maven/Gradle (빌드)
+- **Go**: go test (테스트), gofmt (포맷)
+- **Rust**: cargo test (테스트), rustfmt (포맷)
 
-## Operational Appendix C — Refactoring Quick Reference
-
-- **Extract Method**: Reveal intent and remove duplication
-- **Rename Variable**: Use meaningful names
-- **Move Method**: Move to the appropriate object
-- **Replace Temp with Query**: Prefer query over temps
-- **Introduce Parameter Object**: Group related parameters
-- **Matt Beck Rule**: "Do not implement while tests are failing"
-
----
-
-## Operational Appendix D — TDD & Microservice Patterns
-
-- **TDD Rules**: Write tests first, confirm failure, implement minimally, refactor only when all tests pass.
-- **Microservice Quality Patterns**: Apply Pagination, Conditional Request, Rate Limiting, Circuit Breaker.
-- **API Documentation**: Maintain OpenAPI/Swagger; verify both sides via Consumer-Driven Contracts.
-
----
-
-This guide provides SPEC-First TDD standards to execute the MoAI-ADK 3-stage pipeline (`/moai:1-spec` → `/moai:2-build` → `/moai:3-sync`) with universal language support and distributed 16-Core @TAG traceability.
-
-**v0.0.3 Achievement Summary** ✅:
-- CLI 100% 완성 (7개 명령어) + **혁신적 시스템 진단**
-- **지능형 언어 감지**: JavaScript/TypeScript/Python/Java/Go 자동 인식
-- **동적 요구사항**: 감지된 언어에 따른 개발 도구 자동 추가
-- **실용성 향상**: SQLite3 제거 → npm+TypeScript+Git LFS 전환
-- **성능 최적화**: 226ms 빌드, 471KB 패키지, 5-category 진단
-- 분산 16-Core @TAG 시스템 94% 최적화 완료
-- TypeScript 현대화 스택 달성 (Bun 98%, Vitest 92.9%, Biome 94.8%)
-- 크로스 플랫폼 100% 호환성
-- **SystemChecker 아키텍처**: RequirementRegistry.addLanguageRequirements() 완성
-
-Use `@agent-debug-helper` when issues arise. All contributors should follow SPEC-driven development with language-appropriate TDD practices based on this proven foundation.
+이 가이드는 MoAI-ADK 3단계 파이프라인을 실행하는 표준을 제공한다.
