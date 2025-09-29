@@ -70,7 +70,7 @@
 | Meta | Ops/Release/Tag/Deprecated 등 메타데이터 | 선택 |
 
 - TAG ID: `<도메인>-<3자리>` (예: `AUTH-003`) — 체인 내 모든 TAG는 동일 ID를 사용한다
-- 인덱스 저장소: `.moai/indexes/tags.json` -> `/moai:3-sync` 단계에서 자동 갱신된다
+- **TAG의 진실은 코드 자체에만 존재**: 정규식 패턴으로 코드에서 직접 스캔하여 실시간 검증
 
 ### SPEC 연동 가이드
 
@@ -89,7 +89,7 @@
 | Quality | @SEC:AUTH-003 | 보안 점검 | docs/security/oauth2.md |
 ```
 
-- SPEC 변경 -> Catalog 업데이트 -> 코드/테스트 반영 -> `/moai:3-sync`로 인덱스 확정 순서를 유지한다
+- SPEC 변경 -> Catalog 업데이트 -> 코드/테스트 반영 -> `/moai:3-sync`로 코드 스캔 및 검증 수행한다
 
 ### 코드/테스트 적용 예시
 
@@ -151,7 +151,7 @@ describe('AuthService', () => {
 
 - 중복 방지: 새 TAG 도입 전 `rg "@TAG" -g"*.ts"`, `rg "AUTH-001"` 등으로 기존 체인을 확인한다
 - 재사용 촉진: 구현 계획 단계에서 `@agent-code-builder`에게 "기존 TAG 재사용 후보를 찾아주세요"라고 요청한다
-- 무결성 검사: `/moai:3-sync` 또는 `@agent-doc-syncer "TAG 인덱스를 업데이트해주세요"` 실행 후 로그에서 고아 TAG를 해결한다
+- 무결성 검사: `/moai:3-sync` 실행으로 코드 전체를 스캔하여 TAG 체인 검증 및 고아 TAG 식별
 - 폐기 절차: 더 이상 사용하지 않는 TAG는 `@TAG:DEPRECATED-<ID>`로 표기하고 Catalog에서 상태를 `Deprecated`로 갱신한다
 
 ### 금지 패턴 (잘못된 예시)
@@ -167,7 +167,7 @@ describe('AuthService', () => {
 - [ ] TAG BLOCK이 모든 신규/수정 파일에 존재하는가?
 - [ ] Primary Chain 4종이 끊김 없이 연결되는가?
 - [ ] SPEC `@TAG Catalog`와 코드/테스트가 동일한 ID를 공유하는가?
-- [ ] `tags.json`이 `/moai:3-sync` 이후 최신 상태인가?
+- [ ] TAG 체인이 코드 스캔을 통해 검증되었는가?
 
 ## 에이전트별 브랜치 처리 가이드라인
 
@@ -234,9 +234,9 @@ describe('AuthService', () => {
 @agent-doc-syncer "코드와 문서를 동기화해주세요"
 @agent-doc-syncer "문서 동기화 수행"
 
-# TAG 인덱스 갱신
-@agent-doc-syncer "TAG 인덱스를 업데이트해주세요"
-@agent-doc-syncer "tags.json 갱신"
+# TAG 체인 검증
+@agent-tag-agent "코드 전체를 스캔하여 TAG 검증해주세요"
+@agent-doc-syncer "TAG 체인 무결성 확인"
 
 # 특정 문서 갱신
 @agent-doc-syncer "API 문서를 갱신해주세요"
@@ -267,8 +267,8 @@ describe('AuthService', () => {
 - @.moai/project/product.md
 - @.moai/project/structure.md
 - @.moai/project/tech.md
-**TAG 시스템**: JSON 기반 인덱스 (범용 언어 프로젝트 지원)
-**검색 도구**: 언어별 최적화된 TAG 검색, rg(권장), grep, find 지원
+**TAG 시스템**: 코드 직접 스캔 방식 (범용 언어 프로젝트 지원)
+**검색 도구**: rg(권장), grep 명령어로 코드에서 직접 TAG 검색
 
 ## 프로젝트 정보
 
