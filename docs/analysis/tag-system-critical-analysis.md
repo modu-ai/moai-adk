@@ -1,6 +1,6 @@
 # @TAG 시스템 비판적 분석 보고서
 
-> **목적**: 현재 8-Core TAG 시스템이 SPEC-First TDD 워크플로우에 최적인지 심층 분석
+> **목적**: 현재 4-Core TAG 시스템이 SPEC-First TDD 워크플로우에 최적인지 심층 분석
 
 **분석 일자**: 2025-10-01
 **분석자**: Claude (ultrathink mode)
@@ -10,7 +10,7 @@
 
 ## 📊 Executive Summary
 
-### 현재 8-Core TAG 구성
+### 현재 4-Core TAG 구성
 
 ```
 Primary Chain (4 Core - 필수):
@@ -68,7 +68,7 @@ graph LR
 
 **실제 코드 예시:**
 ```typescript
-// @TASK:AUTH-001: 인증 서비스 구현
+// @CODE:AUTH-001: 인증 서비스 구현
 class AuthService {
   // 이것이 GREEN phase인가? REFACTOR phase인가?
   authenticate(username: string, password: string): boolean {
@@ -106,7 +106,7 @@ TDD 순서: @TEST (RED) → @TASK (GREEN) → @REFACTOR → 반복
 
 **실무 사례:**
 ```typescript
-// @TASK:AUTH-001: 이것이 무슨 작업인지?
+// @CODE:AUTH-001: 이것이 무슨 작업인지?
 // - 최초 구현? (GREEN)
 // - 리팩토링? (REFACTOR)
 // - 버그 수정? (BUG FIX)
@@ -143,7 +143,7 @@ TDD 순서: @TEST (RED) → @TASK (GREEN) → @REFACTOR → 반복
 ```markdown
 # SPEC-AUTH-001
 
-## @REQ:AUTH-001
+## @SPEC:AUTH-001
 ### Ubiquitous Requirements
 - 시스템은 JWT 인증을 제공해야 한다
 
@@ -155,7 +155,7 @@ TDD 순서: @TEST (RED) → @TASK (GREEN) → @REFACTOR → 반복
 ```
 
 **문제:**
-- 코드에서 `@REQ:AUTH-001`만 보면 위 3가지 중 어느 것인지 모름
+- 코드에서 `@SPEC:AUTH-001`만 보면 위 3가지 중 어느 것인지 모름
 - EARS의 장점(명확한 요구사항 구분)이 TAG에 전달 안 됨
 
 ### ⚠️ 문제점 5: SPEC 문서와 TAG의 중복
@@ -168,13 +168,13 @@ TDD 순서: @TEST (RED) → @TASK (GREEN) → @REFACTOR → 반복
 **중복 예시:**
 ```markdown
 # .moai/specs/SPEC-AUTH-001.md
-## @REQ:AUTH-001
+## @SPEC:AUTH-001
 - 시스템은 JWT 인증을 제공해야 한다
 ```
 
 ```typescript
 // src/auth/service.ts
-// @REQ:AUTH-001 → 위와 동일한 내용이 TAG에 또 있어야 하나?
+// @SPEC:AUTH-001 → 위와 동일한 내용이 TAG에 또 있어야 하나?
 class AuthService {
   // ...
 }
@@ -202,10 +202,10 @@ class AuthService {
 
 **실제 코드 예시:**
 ```typescript
-// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+// @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
 //                                                                   ^^^^^^^^
 //                                                                   이미 @TASK가 있는데?
-// Related: @API:AUTH-001
+// Related: @CODE:AUTH-001:API
 
 class AuthService {  // 이게 @FEATURE인가? @TASK인가?
   // ...
@@ -213,7 +213,7 @@ class AuthService {  // 이게 @FEATURE인가? @TASK인가?
 ```
 
 **혼란스러운 점:**
-- @TASK:AUTH-001과 @FEATURE:AUTH-001이 같은 코드를 가리킴
+- @CODE:AUTH-001과 @CODE:AUTH-001이 같은 코드를 가리킴
 - 왜 두 개가 필요한가?
 - 차이가 뭔가?
 
@@ -229,8 +229,8 @@ class AuthService {  // 이게 @FEATURE인가? @TASK인가?
 **모순:**
 ```typescript
 // CLI 프로젝트
-// @FEATURE:CLI-001 | Chain: @REQ:CLI-001 -> @DESIGN:CLI-001 -> @TASK:CLI-001 -> @TEST:CLI-001
-// Related: @UI:CLI-001  ← CLI인데 UI가 필수?
+// @CODE:CLI-001 | Chain: @SPEC:CLI-001 ->  -> @CODE:CLI-001 -> @TEST:CLI-001
+// Related: @CODE:CLI-001:UI  ← CLI인데 UI가 필수?
 ```
 
 **"필수"라고 하지만 실제로는 선택적!**
@@ -261,7 +261,7 @@ class AuthService {  // 이게 @FEATURE인가? @TASK인가?
 ### 현재 체인
 
 ```
-@REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
+@SPEC:AUTH-001 →  → @CODE:AUTH-001 → @TEST:AUTH-001
 ```
 
 ### ✅ 잘된 점
@@ -278,8 +278,8 @@ class AuthService {  // 이게 @FEATURE인가? @TASK인가?
 
 **개선 제안:**
 ```typescript
-// @FEATURE:AUTH-001 | SPEC: .moai/specs/SPEC-AUTH-001.md
-// Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+// @CODE:AUTH-001 | SPEC: .moai/specs/SPEC-AUTH-001.md
+// Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
 ```
 
 ### ⚠️ 문제점 10: Lifecycle 단계 누락
@@ -307,8 +307,8 @@ class AuthService {  // 이게 @FEATURE인가? @TASK인가?
 ### 현재 TAG BLOCK
 
 ```typescript
-// @FEATURE:LOGIN-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-// Related: @API:LOGIN-001, @UI:LOGIN-001, @DATA:LOGIN-001
+// @CODE:LOGIN-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
+// Related: @CODE:LOGIN-001:API, @CODE:LOGIN-001:UI, @CODE:LOGIN-001:DATA
 
 class LoginService {
   // ...
@@ -338,11 +338,11 @@ TAG 개수: 8개
 
 **Chain vs Related?**
 ```typescript
-// @FEATURE:LOGIN-001 | Chain: @REQ:AUTH-001 ...
+// @CODE:LOGIN-001 | Chain: @SPEC:AUTH-001 ...
 //                            ^^^^^^^^^^^^^^
 //                            FEATURE는 LOGIN인데 Chain은 AUTH?
 
-// Related: @API:LOGIN-001 ...
+// Related: @CODE:LOGIN-001:API ...
 //          ^^^^^^^^^^^^^^
 //          이건 LOGIN-001
 
@@ -397,7 +397,7 @@ TAG 개수: 8개
 **제안:**
 ```typescript
 // 현재 (중복)
-// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+// @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
 
 // 개선 (SPEC 참조로 단순화)
 // @IMPL:AUTH-001 | SPEC: SPEC-AUTH-001 | TEST: test_auth_001.py
@@ -413,7 +413,7 @@ v4.0: 8-Core (여전히 복잡) → 더 단순화 필요?
 ```
 
 **인지 부하:**
-- 개발자가 8개 TAG 타입을 모두 이해해야 함
+- 개발자가 4개 TAG 타입을 모두 이해해야 함
 - Primary vs Implementation 구분을 알아야 함
 - 어떤 TAG가 필수고 선택인지 헷갈림
 
@@ -611,12 +611,12 @@ After:
 
 ## 🔚 결론
 
-### 현재 8-Core TAG 시스템의 핵심 문제
+### 현재 4-Core TAG 시스템의 핵심 문제
 
 1. **TDD 사이클 불완전**: REFACTOR 단계 누락
 2. **EARS 미반영**: 요구사항 유형 구분 불가
 3. **중복성**: @FEATURE vs @TASK, @REQ vs SPEC
-4. **복잡성**: 8개 TAG가 너무 많고 관계 복잡
+4. **복잡성**: 4개 TAG가 너무 많고 관계 복잡
 5. **실무 사용성**: TAG BLOCK 길고 수동 관리 어려움
 6. **누락**: @REFACTOR, @BUG, @SECURITY 등
 

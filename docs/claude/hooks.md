@@ -394,7 +394,7 @@ Consider fixing these before committing.
 
 ```typescript
 // ✅ Good
-// @FEATURE:AUTH-001 | Chain: @REQ → @DESIGN → @TASK → @TEST
+// @CODE:AUTH-001 | Chain: @REQ → @DESIGN → @TASK → @TEST
 export class AuthService {
   // ...
 }
@@ -620,7 +620,7 @@ export async function onBeforeWrite(file) {
       throw new ValidationError(
         `Invalid TAG format: ${tag}\n` +
         `Expected format: @CATEGORY:DOMAIN-NNN\n` +
-        `Example: @REQ:AUTH-001`
+        `Example: @SPEC:AUTH-001`
       );
     }
   }
@@ -651,8 +651,8 @@ Complete your chain: @REQ → @DESIGN → @TASK → @TEST
 
 ```typescript
 // ✅ Good: TAG BLOCK 존재
-// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
-// Related: @API:AUTH-001, @SEC:AUTH-001
+// @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 →  → @CODE:AUTH-001 → @TEST:AUTH-001
+// Related: @CODE:AUTH-001:API, @CODE:AUTH-001:INFRA
 export class AuthService {
   // ...
 }
@@ -667,9 +667,9 @@ export class AuthService {
 
 ```typescript
 // ✅ Good: 올바른 형식
-@REQ:AUTH-001
-@DESIGN:AUTH-001
-@TASK:AUTH-001
+@SPEC:AUTH-001
+
+@CODE:AUTH-001
 
 // ❌ Bad: 잘못된 형식 (에러)
 @REQ-AUTH-001      // 잘못된 구분자
@@ -681,10 +681,10 @@ export class AuthService {
 
 ```typescript
 // ✅ Good: 완전한 체인
-// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
+// @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 →  → @CODE:AUTH-001 → @TEST:AUTH-001
 
 // ⚠️ Warning: 불완전한 체인
-// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001
+// @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 →  → @CODE:AUTH-001
 // Missing: @TEST:AUTH-001
 ```
 
@@ -697,8 +697,8 @@ File: src/payment/service.ts
 Error: TAG BLOCK is required in source files
 
 Add a TAG BLOCK at the top of the file:
-// @FEATURE:PAYMENT-001 | Chain: @REQ:PAYMENT-001 → @DESIGN:PAYMENT-001 → @TASK:PAYMENT-001 → @TEST:PAYMENT-001
-// Related: @API:PAYMENT-001, @DATA:PAYMENT-001
+// @CODE:PAYMENT-001 | Chain: @SPEC:PAYMENT-001 →  → @CODE:PAYMENT-001 → @TEST:PAYMENT-001
+// Related: @CODE:PAYMENT-001:API, @CODE:PAYMENT-001:DATA
 
 This ensures full traceability from requirements to tests.
 ```

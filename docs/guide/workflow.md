@@ -133,7 +133,7 @@ EARS (Easy Approach to Requirements Syntax)는 체계적인 요구사항 작성�
 ```markdown
 # SPEC-AUTH-001: 사용자 인증 시스템
 
-## @REQ:AUTH-001 요구사항
+## @SPEC:AUTH-001 요구사항
 
 ### Ubiquitous Requirements
 - 시스템은 이메일/비밀번호 기반 인증을 제공해야 한다
@@ -154,7 +154,7 @@ EARS (Easy Approach to Requirements Syntax)는 체계적인 요구사항 작성�
 - 리프레시 토큰 유효기간은 7일이다
 - 비밀번호는 bcrypt로 해싱해야 한다
 
-## @DESIGN:AUTH-001 설계
+##  설계
 
 ### 아키텍처 결정
 - JWT 토큰 형식: Header.Payload.Signature
@@ -184,7 +184,7 @@ interface AuthToken {
 }
 ```
 
-## @TASK:AUTH-001 작업 계획
+## @CODE:AUTH-001 작업 계획
 
 ### Phase 1: 기반 구조
 - [ ] User 모델 정의
@@ -483,8 +483,8 @@ class TestAuthService:
 #### TypeScript 예시
 
 ```typescript
-// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-// Related: @SEC:AUTH-001, @DOCS:AUTH-001
+// @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
+// Related: @CODE:AUTH-001:INFRA, @DOC:AUTH-001
 
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
@@ -496,7 +496,7 @@ interface AuthResult {
 }
 
 /**
- * @FEATURE:AUTH-001: 사용자 인증 서비스
+ * @CODE:AUTH-001: 사용자 인증 서비스
  */
 export class AuthService {
   private readonly ACCESS_TOKEN_EXPIRY = 900; // 15분
@@ -505,10 +505,10 @@ export class AuthService {
   constructor(private userRepository: UserRepository) {}
 
   /**
-   * @API:AUTH-001: 사용자 로그인
+   * @CODE:AUTH-001:API: 사용자 로그인
    */
   async login(email: string, password: string): Promise<AuthResult> {
-    // @SEC:AUTH-001: 입력 검증
+    // @CODE:AUTH-001:INFRA: 입력 검증
     if (!email || !password) {
       throw new Error('Invalid credentials');
     }
@@ -519,13 +519,13 @@ export class AuthService {
       throw new Error('Invalid credentials');
     }
 
-    // @SEC:AUTH-001: 비밀번호 검증
+    // @CODE:AUTH-001:INFRA: 비밀번호 검증
     const isValidPassword = await bcrypt.compare(password, user.passwordHash);
     if (!isValidPassword) {
       throw new Error('Invalid credentials');
     }
 
-    // @TASK:AUTH-001: JWT 토큰 생성
+    // @CODE:AUTH-001: JWT 토큰 생성
     const accessToken = this.generateAccessToken(user);
     const refreshToken = this.generateRefreshToken(user);
 
@@ -557,8 +557,8 @@ export class AuthService {
 #### Python 예시
 
 ```python
-# @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-# Related: @SEC:AUTH-001, @DOCS:AUTH-001
+# @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
+# Related: @CODE:AUTH-001:INFRA, @DOC:AUTH-001
 
 import bcrypt
 import jwt
@@ -566,11 +566,11 @@ from datetime import datetime, timedelta
 from typing import Dict
 
 class InvalidCredentialsError(Exception):
-    """@SEC:AUTH-001: 잘못된 자격증명 예외"""
+    """@CODE:AUTH-001:INFRA: 잘못된 자격증명 예외"""
     pass
 
 class AuthService:
-    """@FEATURE:AUTH-001: 사용자 인증 서비스"""
+    """@CODE:AUTH-001: 사용자 인증 서비스"""
 
     ACCESS_TOKEN_EXPIRY = 900  # 15분
     REFRESH_TOKEN_EXPIRY = 604800  # 7일
@@ -580,7 +580,7 @@ class AuthService:
 
     def login(self, email: str, password: str) -> Dict[str, any]:
         """
-        @API:AUTH-001: 사용자 로그인
+        @CODE:AUTH-001:API: 사용자 로그인
 
         Args:
             email: 사용자 이메일
@@ -592,7 +592,7 @@ class AuthService:
         Raises:
             InvalidCredentialsError: 잘못된 자격증명
         """
-        # @SEC:AUTH-001: 입력 검증
+        # @CODE:AUTH-001:INFRA: 입력 검증
         if not email or not password:
             raise InvalidCredentialsError("Invalid credentials")
 
@@ -601,11 +601,11 @@ class AuthService:
         if not user:
             raise InvalidCredentialsError("Invalid credentials")
 
-        # @SEC:AUTH-001: 비밀번호 검증
+        # @CODE:AUTH-001:INFRA: 비밀번호 검증
         if not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
             raise InvalidCredentialsError("Invalid credentials")
 
-        # @TASK:AUTH-001: JWT 토큰 생성
+        # @CODE:AUTH-001: JWT 토큰 생성
         access_token = self._generate_access_token(user)
         refresh_token = self._generate_refresh_token(user)
 
@@ -644,11 +644,11 @@ class AuthService:
 ### REFACTOR 단계: 코드 품질 개선
 
 ```typescript
-// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-// Related: @SEC:AUTH-001, @DOCS:AUTH-001
+// @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
+// Related: @CODE:AUTH-001:INFRA, @DOC:AUTH-001
 
 /**
- * @FEATURE:AUTH-001: 사용자 인증 서비스 (리팩토링 완료)
+ * @CODE:AUTH-001: 사용자 인증 서비스 (리팩토링 완료)
  */
 export class AuthService {
   private readonly config = {
@@ -663,7 +663,7 @@ export class AuthService {
   ) {}
 
   /**
-   * @API:AUTH-001: 사용자 로그인
+   * @CODE:AUTH-001:API: 사용자 로그인
    */
   async login(email: string, password: string): Promise<AuthResult> {
     this.validateCredentials(email, password);
@@ -674,7 +674,7 @@ export class AuthService {
   }
 
   /**
-   * @SEC:AUTH-001: 자격증명 유효성 검사
+   * @CODE:AUTH-001:INFRA: 자격증명 유효성 검사
    */
   private validateCredentials(email: string, password: string): void {
     if (!email || !password) {
@@ -687,13 +687,13 @@ export class AuthService {
   }
 
   /**
-   * @TASK:AUTH-001: 사용자 인증 처리
+   * @CODE:AUTH-001: 사용자 인증 처리
    */
   private async authenticateUser(email: string, password: string): Promise<User> {
     const user = await this.userRepository.findByEmail(email);
 
     if (!user) {
-      // @SEC:AUTH-001: 타이밍 공격 방지 (일정 시간 대기)
+      // @CODE:AUTH-001:INFRA: 타이밍 공격 방지 (일정 시간 대기)
       await this.constantTimeDelay();
       throw new InvalidCredentialsError('Invalid credentials');
     }
@@ -711,7 +711,7 @@ export class AuthService {
   }
 
   /**
-   * @TASK:AUTH-001: 인증 토큰 생성
+   * @CODE:AUTH-001: 인증 토큰 생성
    */
   private generateTokens(user: User): AuthResult {
     return {
@@ -733,7 +733,7 @@ export class AuthService {
   }
 
   /**
-   * @SEC:AUTH-001: 타이밍 공격 방어를 위한 일정 시간 대기
+   * @CODE:AUTH-001:INFRA: 타이밍 공격 방어를 위한 일정 시간 대기
    */
   private async constantTimeDelay(): Promise<void> {
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -866,7 +866,7 @@ public class AuthServiceTest {
     }
 }
 
-// @FEATURE:AUTH-001: 인증 서비스 구현
+// @CODE:AUTH-001: 인증 서비스 구현
 public class AuthService {
     private static final int ACCESS_TOKEN_EXPIRY = 900;
     private static final int REFRESH_TOKEN_EXPIRY = 604800;
@@ -877,7 +877,7 @@ public class AuthService {
         this.userRepository = userRepository;
     }
 
-    // @API:AUTH-001: 사용자 로그인
+    // @CODE:AUTH-001:API: 사용자 로그인
     public AuthResult login(String email, String password)
             throws InvalidCredentialsException {
         validateCredentials(email, password);
@@ -887,7 +887,7 @@ public class AuthService {
         return generateTokens(user);
     }
 
-    // @SEC:AUTH-001: 자격증명 검증
+    // @CODE:AUTH-001:INFRA: 자격증명 검증
     private void validateCredentials(String email, String password)
             throws InvalidCredentialsException {
         if (email == null || password == null ||
@@ -963,7 +963,7 @@ func TestAuthService_Login_InvalidPassword(t *testing.T) {
     assert.Equal(t, ErrInvalidCredentials, err)
 }
 
-// @FEATURE:AUTH-001: 인증 서비스 구현
+// @CODE:AUTH-001: 인증 서비스 구현
 package auth
 
 import (
@@ -990,7 +990,7 @@ func NewAuthService(userRepo UserRepository) *AuthService {
     return &AuthService{userRepo: userRepo}
 }
 
-// @API:AUTH-001: 사용자 로그인
+// @CODE:AUTH-001:API: 사용자 로그인
 func (s *AuthService) Login(email, password string) (*AuthResult, error) {
     if err := s.validateCredentials(email, password); err != nil {
         return nil, err
@@ -1004,7 +1004,7 @@ func (s *AuthService) Login(email, password string) (*AuthResult, error) {
     return s.generateTokens(user)
 }
 
-// @SEC:AUTH-001: 자격증명 검증
+// @CODE:AUTH-001:INFRA: 자격증명 검증
 func (s *AuthService) validateCredentials(email, password string) error {
     if email == "" || password == "" {
         return ErrInvalidCredentials
@@ -1169,11 +1169,11 @@ rg "@(SPEC|TEST|CODE|DOC):" -n
 
 **추출 결과 예시**:
 ```
-src/auth/service.ts:1:// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-src/auth/service.ts:15:  // @API:AUTH-001: 사용자 로그인
-src/auth/service.ts:25:  // @SEC:AUTH-001: 입력 검증
+src/auth/service.ts:1:// @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
+src/auth/service.ts:15:  // @CODE:AUTH-001:API: 사용자 로그인
+src/auth/service.ts:25:  // @CODE:AUTH-001:INFRA: 입력 검증
 tests/auth/service.test.ts:5:describe('@TEST:AUTH-001 사용자 인증', () => {
-docs/specs/SPEC-AUTH-001.md:5:## @REQ:AUTH-001 요구사항
+docs/specs/SPEC-AUTH-001.md:5:## @SPEC:AUTH-001 요구사항
 ```
 
 #### 2. TAG 체인 검증
@@ -1208,7 +1208,7 @@ SPEC-AUTH-001: User Authentication
   ⚠️ @DOC:AUTH-001 - NOT FOUND
 
 Orphaned Tags:
-  ⚠️ @FEATURE:LOGIN-001 (src/auth/login.ts:1) - No matching SPEC (v4.0 legacy tag)
+  ⚠️ @CODE:LOGIN-001 (src/auth/login.ts:1) - No matching SPEC (v4.0 legacy tag)
 
 Action Required:
   1. Add @CODE:AUTH-001 tag to implementation file
@@ -1256,18 +1256,18 @@ Summary: 2/4 tags validated, 1 legacy tag found
 
 ## 고아 TAG
 
-- @FEATURE:OLD-001 (src/legacy/old.ts:1)
+- @CODE:OLD-001 (src/legacy/old.ts:1)
   - 권장 조치: 제거 또는 SPEC 생성
 
 ## 변경 사항
 
 ### 새로 추가
-- @REQ:AUTH-003 (SPEC-AUTH-003.md)
-- @DESIGN:AUTH-003 (SPEC-AUTH-003.md)
+- @SPEC:AUTH-003 (SPEC-AUTH-003.md)
+-  (SPEC-AUTH-003.md)
 
 ### 폐기
-- @FEATURE:LEGACY-001 → @DEPRECATED:LEGACY-001
-- @API:OLD-002 → @DEPRECATED:OLD-002
+- @CODE:LEGACY-001 → @DEPRECATED:LEGACY-001
+- @CODE:OLD-002:API → @DEPRECATED:OLD-002
 ```
 
 #### 4. PR 상태 업데이트
@@ -1388,9 +1388,9 @@ feature/spec-auth-001-user-authentication 브랜치를 생성하시겠습니까?
 TAG 체인 검증 중...
 
 ✅ SPEC-AUTH-001 검증 완료
-  ✅ @REQ:AUTH-001
-  ✅ @DESIGN:AUTH-001
-  ✅ @TASK:AUTH-001
+  ✅ @SPEC:AUTH-001
+  ✅ 
+  ✅ @CODE:AUTH-001
   ✅ @TEST:AUTH-001
 
 문서 생성 중...
@@ -1423,7 +1423,7 @@ develop 브랜치로 머지를 진행하시겠습니까? (y/n)
 ```markdown
 # SPEC-AUTH-002: 이메일 대소문자 구분 버그 수정
 
-## @REQ:AUTH-002 요구사항
+## @SPEC:AUTH-002 요구사항
 
 ### Event-driven Requirements
 - WHEN 사용자가 대문자가 포함된 이메일로 로그인 시도하면
@@ -1461,7 +1461,7 @@ describe('@TEST:AUTH-002 이메일 대소문자 처리', () => {
 ```typescript
 class AuthService {
   async login(email: string, password: string): Promise<AuthResult> {
-    // @SEC:AUTH-002: 이메일 정규화
+    // @CODE:AUTH-002:INFRA: 이메일 정규화
     const normalizedEmail = email.toLowerCase().trim();
 
     this.validateCredentials(normalizedEmail, password);
@@ -1484,7 +1484,7 @@ class AuthService {
   }
 
   /**
-   * @SEC:AUTH-002: 이메일 정규화
+   * @CODE:AUTH-002:INFRA: 이메일 정규화
    * 대소문자 구분 없이 이메일 처리
    */
   private normalizeEmail(email: string): string {
@@ -1525,8 +1525,8 @@ SPEC-AUTH-001에 MFA (다중 인증) 요구사항을 추가해야 합니다.
 
 **2단계: TAG BLOCK 업데이트**
 ```markdown
-# @FEATURE:MFA-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:MFA-001 -> @TEST:MFA-001
-# Related: @API:MFA-001
+# @CODE:MFA-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:MFA-001 -> @TEST:MFA-001
+# Related: @CODE:MFA-001:API
 ```
 
 **3단계: TDD 구현**
@@ -1547,14 +1547,14 @@ SPEC-AUTH-001에 MFA (다중 인증) 요구사항을 추가해야 합니다.
 TAG 체인 검증 중...
 
 ✅ SPEC-AUTH-001 (수정) 검증 완료
-  ✅ @REQ:AUTH-001
-  ✅ @DESIGN:AUTH-001
-  ✅ @TASK:AUTH-001
+  ✅ @SPEC:AUTH-001
+  ✅ 
+  ✅ @CODE:AUTH-001
   ✅ @TEST:AUTH-001
 
 새로 추가된 TAG:
-  ✅ @FEATURE:MFA-001
-  ✅ @SEC:MFA-001
+  ✅ @CODE:MFA-001
+  ✅ @CODE:MFA-001:INFRA
 
 문서 업데이트 완료.
 ```
@@ -1575,7 +1575,7 @@ TypeScript 백엔드와 Python 데이터 처리 파이프라인을 가진 프로
 ```markdown
 # SPEC-AUTH-003: 통합 인증 시스템
 
-## @REQ:AUTH-003 요구사항
+## @SPEC:AUTH-003 요구사항
 
 ### Ubiquitous Requirements
 - 시스템은 TypeScript API와 Python 워커 간 통합 인증을 제공해야 한다
@@ -1601,8 +1601,8 @@ cd backend-api
 ```
 
 ```typescript
-// @FEATURE:AUTH-003 | Chain: @REQ:AUTH-003 -> @DESIGN:AUTH-003 -> @TASK:AUTH-003 -> @TEST:AUTH-003
-// Related: @SEC:AUTH-003
+// @CODE:AUTH-003 | Chain: @SPEC:AUTH-003 ->  -> @CODE:AUTH-003 -> @TEST:AUTH-003
+// Related: @CODE:AUTH-003:INFRA
 
 // tests/auth/integrated-auth.test.ts
 describe('@TEST:AUTH-003 통합 인증', () => {
@@ -1627,7 +1627,7 @@ export class IntegratedAuthService {
       { algorithm: 'HS256', expiresIn: '15m' }
     );
 
-    // @TASK:AUTH-003: Redis에 토큰 저장 (Python 워커가 사용)
+    // @CODE:AUTH-003: Redis에 토큰 저장 (Python 워커가 사용)
     await this.redis.set(`token:${user.id}`, token, 'EX', 900);
 
     return token;
@@ -1642,8 +1642,8 @@ cd background-worker
 ```
 
 ```python
-# @FEATURE:AUTH-003 | Chain: @REQ:AUTH-003 -> @DESIGN:AUTH-003 -> @TASK:AUTH-003 -> @TEST:AUTH-003
-# Related: @SEC:AUTH-003
+# @CODE:AUTH-003 | Chain: @SPEC:AUTH-003 ->  -> @CODE:AUTH-003 -> @TEST:AUTH-003
+# Related: @CODE:AUTH-003:INFRA
 
 # tests/test_integrated_auth.py
 import pytest
@@ -1668,7 +1668,7 @@ import redis
 import os
 
 class IntegratedAuthService:
-    """@FEATURE:AUTH-003: 통합 인증 서비스 (Python)"""
+    """@CODE:AUTH-003: 통합 인증 서비스 (Python)"""
 
     def __init__(self):
         self.redis_client = redis.Redis(host='localhost', port=6379, db=0)
@@ -1676,7 +1676,7 @@ class IntegratedAuthService:
 
     def verify_token(self, token: str) -> dict:
         """
-        @API:AUTH-003: JWT 토큰 검증 (TypeScript와 호환)
+        @CODE:AUTH-003:API: JWT 토큰 검증 (TypeScript와 호환)
 
         Args:
             token: JWT 토큰 문자열
@@ -1685,7 +1685,7 @@ class IntegratedAuthService:
             Dict containing valid flag and user_id
         """
         try:
-            # @SEC:AUTH-003: JWT 검증 (TypeScript와 동일한 알고리즘)
+            # @CODE:AUTH-003:INFRA: JWT 검증 (TypeScript와 동일한 알고리즘)
             payload = jwt.decode(
                 token,
                 self.jwt_secret,
@@ -1734,9 +1734,9 @@ describe('@TEST:AUTH-003 다중 언어 통합 테스트', () => {
 TAG 체인 검증 중...
 
 ✅ SPEC-AUTH-003 검증 완료
-  ✅ @REQ:AUTH-003 (SPEC-AUTH-003.md)
-  ✅ @DESIGN:AUTH-003 (SPEC-AUTH-003.md)
-  ✅ @TASK:AUTH-003 (TypeScript: src/auth/integrated-auth.ts, Python: src/integrated_auth.py)
+  ✅ @SPEC:AUTH-003 (SPEC-AUTH-003.md)
+  ✅  (SPEC-AUTH-003.md)
+  ✅ @CODE:AUTH-003 (TypeScript: src/auth/integrated-auth.ts, Python: src/integrated_auth.py)
   ✅ @TEST:AUTH-003 (TypeScript: tests/auth/integrated-auth.test.ts, Python: tests/test_integrated_auth.py)
 
 언어별 구현:
@@ -1763,7 +1763,7 @@ TAG 체인 검증 중...
 1. 영향받는 코드 식별
    ```bash
    # TAG로 관련 코드 찾기
-   rg "@TASK:AUTH-001" -n
+   rg "@CODE:AUTH-001" -n
    rg "@TEST:AUTH-001" -n
    ```
 
@@ -1797,9 +1797,9 @@ TAG 체인 검증 중...
 ❌ TAG Chain Validation
 
 SPEC-AUTH-001: User Authentication
-  ✅ @REQ:AUTH-001
-  ✅ @DESIGN:AUTH-001
-  ❌ @TASK:AUTH-001 - NOT FOUND
+  ✅ @SPEC:AUTH-001
+  ✅ 
+  ❌ @CODE:AUTH-001 - NOT FOUND
   ✅ @TEST:AUTH-001
 ```
 
@@ -1809,7 +1809,7 @@ SPEC-AUTH-001: User Authentication
 1. 누락된 TAG 추가
    ```typescript
    // src/auth/service.ts
-   // @TASK:AUTH-001: 사용자 인증 구현
+   // @CODE:AUTH-001: 사용자 인증 구현
    class AuthService {
      // ...
    }
@@ -1817,8 +1817,8 @@ SPEC-AUTH-001: User Authentication
 
 2. TAG Block 전체 추가
    ```typescript
-   // @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-   // Related: @SEC:AUTH-001, @DOCS:AUTH-001
+   // @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
+   // Related: @CODE:AUTH-001:INFRA, @DOC:AUTH-001
    class AuthService {
      // ...
    }
@@ -1911,8 +1911,8 @@ SPEC-AUTH-001: User Authentication
 **경고 메시지**:
 ```
 ⚠️ Orphaned Tags:
-  @FEATURE:OLD-001 (src/legacy/old.ts:1) - No matching SPEC
-  @API:LEGACY-002 (src/legacy/api.ts:5) - No matching SPEC
+  @CODE:OLD-001 (src/legacy/old.ts:1) - No matching SPEC
+  @CODE:LEGACY-002:API (src/legacy/api.ts:5) - No matching SPEC
 ```
 
 **원인**: SPEC 없이 코드에 TAG만 존재
@@ -1932,7 +1932,7 @@ SPEC-AUTH-001: User Authentication
 
 3. **옵션 C: 기존 SPEC와 연결**
    ```typescript
-   // @FEATURE:NEW-001 (기존 SPEC와 연결)
+   // @CODE:NEW-001 (기존 SPEC와 연결)
    ```
 
 ### 문제 6: 성능 저하
@@ -1967,7 +1967,7 @@ SPEC-AUTH-001: User Authentication
 
 1. **명확성**: 구체적이고 측정 가능한 요구사항
 2. **EARS 형식**: 5가지 구문 활용
-3. **TAG BLOCK**: 8-Core TAG 체계 적용
+3. **TAG BLOCK**: 4-Core TAG 체계 적용
 4. **검증 가능성**: 테스트로 검증 가능한 요구사항
 
 ### TDD 구현

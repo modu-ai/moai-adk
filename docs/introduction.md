@@ -102,15 +102,15 @@ class AuthService {
 **CODE-FIRST TAG 시스템**으로 요구사항부터 코드까지 완전한 추적성:
 
 ```typescript
-// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
-// Related: @API:AUTH-001, @UI:AUTH-001, @DATA:AUTH-001
+// @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 →  → @CODE:AUTH-001 → @TEST:AUTH-001
+// Related: @CODE:AUTH-001:API, @CODE:AUTH-001:UI, @CODE:AUTH-001:DATA
 
 /**
- * @API:AUTH-001: 사용자 인증 API
+ * @CODE:AUTH-001:API: 사용자 인증 API
  */
 class AuthService {
   /**
-   * @TASK:AUTH-001: 입력값 검증 및 인증 처리
+   * @CODE:AUTH-001: 입력값 검증 및 인증 처리
    */
   async authenticate(username: string, password: string): Promise<AuthResult> {
     // 구현...
@@ -118,7 +118,7 @@ class AuthService {
 }
 ```
 
-**8-Core TAG 체계**:
+**4-Core TAG 체계**:
 
 - **Primary Chain (4 Core)**: @REQ → @DESIGN → @TASK → @TEST (필수)
 - **Implementation (4 Core)**: @FEATURE, @API, @UI, @DATA (필수)

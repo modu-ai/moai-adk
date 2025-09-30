@@ -82,8 +82,8 @@ MoAI-ADK는 SPEC-First TDD 개발을 자동화하는 **8개 전문 에이전트*
 ## Traceability
 
 ```markdown
-# @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-# Related: @API:AUTH-001
+# @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
+# Related: @CODE:AUTH-001:API
 
 # SPEC-AUTH-001: 사용자 인증 시스템
 ```
@@ -211,7 +211,7 @@ describe('AuthService', () => {
 
 ```typescript
 // src/auth/service.ts
-// @TASK:AUTH-001
+// @CODE:AUTH-001
 export class AuthService {
   async authenticate(email: string, password: string) {
     // 최소 구현
@@ -222,7 +222,7 @@ export class AuthService {
 3. **REFACTOR Phase**: 품질 개선
 
 ```typescript
-// @FEATURE:AUTH-001 | Chain: @REQ → @DESIGN → @TASK → @TEST
+// @CODE:AUTH-001 | Chain: @REQ → @DESIGN → @TASK → @TEST
 export class AuthService {
   constructor(
     private userRepository: UserRepository,
@@ -407,14 +407,14 @@ export class AuthService {
 ## 기존 TAG 재사용 제안
 
 ### 유사 TAG 발견
-- @REQ:AUTH-001: 사용자 인증 요구사항
-- @TASK:AUTH-001: 인증 로직 구현
+- @SPEC:AUTH-001: 사용자 인증 요구사항
+- @CODE:AUTH-001: 인증 로직 구현
 
 ### 재사용 권장
 기존 AUTH-001 체인을 확장하여 LOGIN 기능을 추가하는 것을 권장합니다.
 
 ### 새 TAG 필요 시
-@FEATURE:LOGIN-001 생성을 권장합니다.
+@CODE:LOGIN-001 생성을 권장합니다.
 ```
 
 #### 3. TAG 무결성 검사
@@ -674,7 +674,7 @@ git commit -m "feat(auth): implement authentication service
 - Add AuthService with email/password authentication
 - Add JWT token generation
 - Add input validation
-- @TASK:AUTH-001"
+- @CODE:AUTH-001"
 ```
 
 #### 3. PR 생성 (사용자 확인)

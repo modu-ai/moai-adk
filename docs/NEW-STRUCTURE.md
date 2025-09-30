@@ -223,8 +223,8 @@
 
 - **TAG BLOCK 템플릿**
   ```typescript
-  // @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
-  // Related: @SEC:AUTH-001, @DOCS:AUTH-001
+  // @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 →  → @CODE:AUTH-001 → @TEST:AUTH-001
+  // Related: @CODE:AUTH-001:INFRA, @DOC:AUTH-001
   ```
 
 - **TAG 무결성 관리**
@@ -533,7 +533,7 @@
 
 - **TAG 사용 예시**
   ```typescript
-  // @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
+  // @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 →  → @CODE:AUTH-001 → @TEST:AUTH-001
   interface AuthService {
     authenticate(username: string, password: string): Promise<boolean>;
   }
@@ -565,7 +565,7 @@
 
 - **TAG 사용 예시**
   ```python
-  # @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
+  # @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 →  → @CODE:AUTH-001 → @TEST:AUTH-001
   class AuthService:
       def authenticate(self, username: str, password: str) -> bool:
           pass

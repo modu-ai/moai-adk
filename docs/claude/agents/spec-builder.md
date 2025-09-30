@@ -138,13 +138,13 @@ GitHub Issue 생성 요청:
 
 ### 4. TAG BLOCK 자동 설정
 
-**TAG 체인 설정**: 추적성 확보를 위한 8-Core TAG 체계 적용
+**TAG 체인 설정**: 추적성 확보를 위한 4-Core TAG 체계 적용
 
 SPEC 문서에 TAG BLOCK을 포함하여 작성합니다:
 
 ```markdown
-# @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-# Related: @API:AUTH-001
+# @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
+# Related: @CODE:AUTH-001:API
 
 # SPEC-AUTH-001: 사용자 인증 시스템
 
@@ -179,12 +179,12 @@ SPEC 문서에 TAG BLOCK을 포함하여 작성합니다:
 🎯 구현 추천 기능 (우선순위 순):
 
 1. [높음] 사용자 인증 시스템
-   - 출처: product.md @REQ:USER-001
+   - 출처: product.md @SPEC:USER-001
    - 가치: 핵심 사용자 경험
    - 난이도: 중간
 
 2. [높음] 결제 시스템 통합
-   - 출처: product.md @REQ:PROBLEM-001
+   - 출처: product.md @SPEC:PROBLEM-001
    - 가치: 수익 모델 핵심
    - 난이도: 높음
 
@@ -418,13 +418,13 @@ sequenceDiagram
 ## TAG BLOCK
 | Chain | TAG | 설명 | 연관 산출물 |
 |-------|-----|------|------------|
-| Primary | @REQ:AUTH-001 | 인증 요구사항 | 이 문서 |
-| Primary | @DESIGN:AUTH-001 | 인증 설계 | design/auth-flow.md |
-| Primary | @TASK:AUTH-001 | 인증 구현 | src/auth/service.ts |
+| Primary | @SPEC:AUTH-001 | 인증 요구사항 | 이 문서 |
+| Primary |  | 인증 설계 | design/auth-flow.md |
+| Primary | @CODE:AUTH-001 | 인증 구현 | src/auth/service.ts |
 | Primary | @TEST:AUTH-001 | 인증 테스트 | tests/auth/service.test.ts |
-| Implementation | @FEATURE:AUTH-001 | 인증 서비스 | src/auth/ |
-| Implementation | @API:AUTH-001 | 인증 API | src/auth/api.ts |
-| Implementation | @DATA:AUTH-001 | 사용자 모델 | src/models/user.ts |
+| Implementation | @CODE:AUTH-001 | 인증 서비스 | src/auth/ |
+| Implementation | @CODE:AUTH-001:API | 인증 API | src/auth/api.ts |
+| Implementation | @CODE:AUTH-001:DATA | 사용자 모델 | src/models/user.ts |
 ```
 
 #### Team 모드 출력

@@ -476,11 +476,11 @@ moai migrate-tags --from v4.0 --to v5.0 --dry-run
 
 **Before (v4.0):**
 ```typescript
-// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-// Related: @API:AUTH-001, @DATA:AUTH-001
+// @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
+// Related: @CODE:AUTH-001:API, @CODE:AUTH-001:DATA
 
 export class AuthService {
-  // @API:AUTH-001
+  // @CODE:AUTH-001:API
   authenticate() {}
 }
 ```

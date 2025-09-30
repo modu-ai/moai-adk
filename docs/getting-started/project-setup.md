@@ -292,13 +292,13 @@ SPEC-First TDD 개발 가이드 (TRUST 5원칙 포함):
 ## @VISION:MISSION-001 핵심 미션
 [프로젝트 미션과 목표]
 
-## @REQ:USER-001 주요 사용자층
+## @SPEC:USER-001 주요 사용자층
 [타겟 사용자 정의]
 
-## @REQ:PROBLEM-001 해결하는 핵심 문제
+## @SPEC:PROBLEM-001 해결하는 핵심 문제
 [해결할 문제들]
 
-## @REQ:SUCCESS-001 성공 지표
+## @SPEC:SUCCESS-001 성공 지표
 [측정 가능한 KPI]
 ```
 

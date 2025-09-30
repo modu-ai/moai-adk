@@ -1,19 +1,19 @@
 ---
 title: tag-agent - TAG 시스템 독점 관리 에이전트
-description: 8-Core TAG 체계 생성, 검증, 추적성 관리 전문 에이전트
+description: 4-Core TAG 체계 생성, 검증, 추적성 관리 전문 에이전트
 ---
 
 # tag-agent - TAG 시스템 독점 관리 에이전트
 
 ## 개요
 
-tag-agent는 MoAI-ADK의 **TAG 시스템 독점 관리자**로서 8-Core TAG 체계의 생성, 검증, 무결성 유지를 전담하는 에이전트입니다. CODE-FIRST 철학에 따라 코드에서 직접 TAG를 스캔하고 검증하며, 중간 캐시 없이 실시간 추적성을 보장합니다.
+tag-agent는 MoAI-ADK의 **TAG 시스템 독점 관리자**로서 4-Core TAG 체계의 생성, 검증, 무결성 유지를 전담하는 에이전트입니다. CODE-FIRST 철학에 따라 코드에서 직접 TAG를 스캔하고 검증하며, 중간 캐시 없이 실시간 추적성을 보장합니다.
 
 ### 역할과 책임
 
 **핵심 역할**: TAG Lifecycle 완전 관리 (The ONLY Agent for TAG)
 
-- **8-Core TAG 체계** 생성 및 관리
+- **4-Core TAG 체계** 생성 및 관리
 - **Primary Chain** (4 Core): @REQ → @DESIGN → @TASK → @TEST
 - **Implementation** (4 Core): @FEATURE, @API, @UI, @DATA
 - **코드 스캔** 기반 실시간 검증 (`rg '@TAG' -n`)
@@ -72,11 +72,11 @@ graph TB
 
 ---
 
-## 8-Core TAG 체계
+## 4-Core TAG 체계
 
 ### TAG 체계 개요
 
-MoAI-ADK는 **8-Core TAG 체계**를 사용하여 완전한 추적성을 보장합니다.
+MoAI-ADK는 **4-Core TAG 체계**를 사용하여 완전한 추적성을 보장합니다.
 
 ```mermaid
 graph TB
@@ -117,17 +117,17 @@ graph TB
 **1. @REQ (Requirements) - 요구사항**
 - **역할**: 사용자 요구사항 또는 비즈니스 요구 정의
 - **위치**: SPEC 문서, 요구사항 문서
-- **예시**: `@REQ:AUTH-001` (사용자 인증 요구사항)
+- **예시**: `@SPEC:AUTH-001` (사용자 인증 요구사항)
 
 **2. @DESIGN (Design) - 설계**
 - **역할**: 요구사항을 해결하기 위한 설계 결정
 - **위치**: 설계 문서, 아키텍처 다이어그램
-- **예시**: `@DESIGN:AUTH-001` (JWT 기반 인증 설계)
+- **예시**: `` (JWT 기반 인증 설계)
 
 **3. @TASK (Task) - 작업**
 - **역할**: 설계를 구현하기 위한 구체적 작업
 - **위치**: 구현 코드, 함수, 클래스
-- **예시**: `@TASK:AUTH-001` (로그인 함수 구현)
+- **예시**: `@CODE:AUTH-001` (로그인 함수 구현)
 
 **4. @TEST (Test) - 테스트**
 - **역할**: 구현을 검증하는 테스트
@@ -139,22 +139,22 @@ graph TB
 **5. @FEATURE (Feature) - 기능**
 - **역할**: 사용자 관점의 완전한 기능 구현
 - **위치**: 서비스, 컴포넌트, 모듈
-- **예시**: `@FEATURE:AUTH-001` (인증 서비스)
+- **예시**: `@CODE:AUTH-001` (인증 서비스)
 
 **6. @API (API) - API 엔드포인트**
 - **역할**: 외부 인터페이스 또는 API 엔드포인트
 - **위치**: API 라우터, 컨트롤러, 엔드포인트
-- **예시**: `@API:AUTH-001` (POST /api/login)
+- **예시**: `@CODE:AUTH-001:API` (POST /api/login)
 
 **7. @UI (User Interface) - 사용자 인터페이스**
 - **역할**: 사용자 인터페이스 컴포넌트
 - **위치**: UI 컴포넌트, 뷰, 템플릿
-- **예시**: `@UI:AUTH-001` (로그인 폼 컴포넌트)
+- **예시**: `@CODE:AUTH-001:UI` (로그인 폼 컴포넌트)
 
 **8. @DATA (Data) - 데이터 모델**
 - **역할**: 데이터 구조, 스키마, 엔티티
 - **위치**: 모델, 스키마, 데이터베이스
-- **예시**: `@DATA:AUTH-001` (사용자 인증 정보 모델)
+- **예시**: `@CODE:AUTH-001:DATA` (사용자 인증 정보 모델)
 
 ### TAG ID 형식
 
@@ -196,27 +196,27 @@ graph TB
 #### TypeScript
 
 ```typescript
-// @FEATURE:LOGIN-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-// Related: @API:LOGIN-001, @UI:LOGIN-001, @DATA:LOGIN-001
+// @CODE:LOGIN-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
+// Related: @CODE:LOGIN-001:API, @CODE:LOGIN-001:UI, @CODE:LOGIN-001:DATA
 
 /**
- * @FEATURE:LOGIN-001: 사용자 로그인 서비스
+ * @CODE:LOGIN-001: 사용자 로그인 서비스
  *
  * JWT 기반 인증을 제공하는 로그인 서비스 구현
  */
 export class LoginService {
   /**
-   * @API:LOGIN-001: 로그인 API 엔드포인트
+   * @CODE:LOGIN-001:API: 로그인 API 엔드포인트
    */
   async login(username: string, password: string): Promise<AuthToken> {
-    // @TASK:LOGIN-001: 로그인 로직 구현
+    // @CODE:LOGIN-001: 로그인 로직 구현
     const user = await this.validateCredentials(username, password);
 
     if (!user) {
       throw new UnauthorizedError('Invalid credentials');
     }
 
-    // @DATA:LOGIN-001: 인증 토큰 생성
+    // @CODE:LOGIN-001:DATA: 인증 토큰 생성
     return this.generateToken(user);
   }
 }
@@ -234,19 +234,19 @@ describe('LoginService', () => {
 #### Python
 
 ```python
-# @FEATURE:LOGIN-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-# Related: @API:LOGIN-001, @UI:LOGIN-001, @DATA:LOGIN-001
+# @CODE:LOGIN-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
+# Related: @CODE:LOGIN-001:API, @CODE:LOGIN-001:UI, @CODE:LOGIN-001:DATA
 
 class LoginService:
     """
-    @FEATURE:LOGIN-001: 사용자 로그인 서비스
+    @CODE:LOGIN-001: 사용자 로그인 서비스
 
     JWT 기반 인증을 제공하는 로그인 서비스 구현
     """
 
     def login(self, username: str, password: str) -> AuthToken:
         """
-        @API:LOGIN-001: 로그인 API 엔드포인트
+        @CODE:LOGIN-001:API: 로그인 API 엔드포인트
 
         Args:
             username: 사용자 이름
@@ -255,13 +255,13 @@ class LoginService:
         Returns:
             AuthToken: 인증 토큰
         """
-        # @TASK:LOGIN-001: 로그인 로직 구현
+        # @CODE:LOGIN-001: 로그인 로직 구현
         user = self._validate_credentials(username, password)
 
         if not user:
             raise UnauthorizedError('Invalid credentials')
 
-        # @DATA:LOGIN-001: 인증 토큰 생성
+        # @CODE:LOGIN-001:DATA: 인증 토큰 생성
         return self._generate_token(user)
 
 # @TEST:LOGIN-001: 로그인 테스트
@@ -275,27 +275,27 @@ def test_should_authenticate_valid_user():
 #### Java
 
 ```java
-// @FEATURE:LOGIN-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-// Related: @API:LOGIN-001, @UI:LOGIN-001, @DATA:LOGIN-001
+// @CODE:LOGIN-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
+// Related: @CODE:LOGIN-001:API, @CODE:LOGIN-001:UI, @CODE:LOGIN-001:DATA
 
 /**
- * @FEATURE:LOGIN-001: 사용자 로그인 서비스
+ * @CODE:LOGIN-001: 사용자 로그인 서비스
  *
  * JWT 기반 인증을 제공하는 로그인 서비스 구현
  */
 public class LoginService {
     /**
-     * @API:LOGIN-001: 로그인 API 엔드포인트
+     * @CODE:LOGIN-001:API: 로그인 API 엔드포인트
      */
     public AuthToken login(String username, String password) {
-        // @TASK:LOGIN-001: 로그인 로직 구현
+        // @CODE:LOGIN-001: 로그인 로직 구현
         User user = validateCredentials(username, password);
 
         if (user == null) {
             throw new UnauthorizedException("Invalid credentials");
         }
 
-        // @DATA:LOGIN-001: 인증 토큰 생성
+        // @CODE:LOGIN-001:DATA: 인증 토큰 생성
         return generateToken(user);
     }
 }
@@ -315,26 +315,26 @@ public class LoginServiceTest {
 #### Go
 
 ```go
-// @FEATURE:LOGIN-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-// Related: @API:LOGIN-001, @UI:LOGIN-001, @DATA:LOGIN-001
+// @CODE:LOGIN-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
+// Related: @CODE:LOGIN-001:API, @CODE:LOGIN-001:UI, @CODE:LOGIN-001:DATA
 
-// @FEATURE:LOGIN-001: 사용자 로그인 서비스
+// @CODE:LOGIN-001: 사용자 로그인 서비스
 //
 // JWT 기반 인증을 제공하는 로그인 서비스 구현
 type LoginService struct {
     // ...
 }
 
-// @API:LOGIN-001: 로그인 API 엔드포인트
+// @CODE:LOGIN-001:API: 로그인 API 엔드포인트
 func (s *LoginService) Login(username, password string) (*AuthToken, error) {
-    // @TASK:LOGIN-001: 로그인 로직 구현
+    // @CODE:LOGIN-001: 로그인 로직 구현
     user, err := s.validateCredentials(username, password)
 
     if err != nil {
         return nil, ErrUnauthorized
     }
 
-    // @DATA:LOGIN-001: 인증 토큰 생성
+    // @CODE:LOGIN-001:DATA: 인증 토큰 생성
     return s.generateToken(user)
 }
 
@@ -357,10 +357,10 @@ func TestLogin(t *testing.T) {
 #### Rust
 
 ```rust
-// @FEATURE:LOGIN-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-// Related: @API:LOGIN-001, @UI:LOGIN-001, @DATA:LOGIN-001
+// @CODE:LOGIN-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
+// Related: @CODE:LOGIN-001:API, @CODE:LOGIN-001:UI, @CODE:LOGIN-001:DATA
 
-/// @FEATURE:LOGIN-001: 사용자 로그인 서비스
+/// @CODE:LOGIN-001: 사용자 로그인 서비스
 ///
 /// JWT 기반 인증을 제공하는 로그인 서비스 구현
 pub struct LoginService {
@@ -368,12 +368,12 @@ pub struct LoginService {
 }
 
 impl LoginService {
-    /// @API:LOGIN-001: 로그인 API 엔드포인트
+    /// @CODE:LOGIN-001:API: 로그인 API 엔드포인트
     pub async fn login(&self, username: &str, password: &str) -> Result<AuthToken, AuthError> {
-        // @TASK:LOGIN-001: 로그인 로직 구현
+        // @CODE:LOGIN-001: 로그인 로직 구현
         let user = self.validate_credentials(username, password).await?;
 
-        // @DATA:LOGIN-001: 인증 토큰 생성
+        // @CODE:LOGIN-001:DATA: 인증 토큰 생성
         self.generate_token(&user).await
     }
 }
@@ -434,7 +434,7 @@ rg '@\w+:LOGIN-001' -n
 rg '^# @FEATURE:\w+-\d+ \| Chain: @REQ:\w+-\d+ -> @DESIGN:\w+-\d+ -> @TASK:\w+-\d+ -> @TEST:\w+-\d+' -n
 
 # 끊어진 체인 감지 (간접적 방법)
-rg '@REQ:AUTH-001' -n && rg '@DESIGN:AUTH-001' -n && rg '@TASK:AUTH-001' -n && rg '@TEST:AUTH-001' -n
+rg '@SPEC:AUTH-001' -n && rg '' -n && rg '@CODE:AUTH-001' -n && rg '@TEST:AUTH-001' -n
 
 # 고아 TAG 검사 (단일 참조)
 rg '@\w+:[\w-]+' -n --no-heading | awk '{print $NF}' | sort | uniq -c | awk '$1 == 1'
@@ -450,7 +450,7 @@ graph TB
     A[코드 스캔 시작] --> B[rg 명령 실행]
     B --> C[TAG 추출]
     C --> D[TAG 파싱]
-    D --> E[8-Core 검증]
+    D --> E[4-Core 검증]
     E --> F{규칙 준수?}
     F -->|No| G[위반 사항 수집]
     F -->|Yes| H[Chain 연결 검증]
@@ -484,8 +484,8 @@ TAG는 별도의 카탈로그나 인덱스 파일 없이 코드에 직접 작성
 
 **TAG BLOCK 템플릿**:
 ```markdown
-# @FEATURE:AUTH-003 | Chain: @REQ:AUTH-003 -> @DESIGN:AUTH-003 -> @TASK:AUTH-003 -> @TEST:AUTH-003
-# Related: @API:AUTH-003, @UI:AUTH-003, @DATA:AUTH-003
+# @CODE:AUTH-003 | Chain: @SPEC:AUTH-003 ->  -> @CODE:AUTH-003 -> @TEST:AUTH-003
+# Related: @CODE:AUTH-003:API, @CODE:AUTH-003:UI, @CODE:AUTH-003:DATA
 ```
 
 ### TAG 생성 프로세스
@@ -533,7 +533,7 @@ rg '@\w+:AUTH-(\d+)' -o | sort -t'-' -k2 -n | tail -1
 
 ## TAG 검증
 
-### 8-Core 체계 검증
+### 4-Core 체계 검증
 
 #### 검증 항목
 
@@ -550,7 +550,7 @@ rg '@\w+:AUTH-(\d+)' -o | sort -t'-' -k2 -n | tail -1
 graph TB
     A[검증 시작] --> B[코드 전체 스캔]
     B --> C[TAG 추출 및 파싱]
-    C --> D[8-Core 체계 검증]
+    C --> D[4-Core 체계 검증]
 
     D --> E{형식 준수?}
     E -->|No| F[형식 오류 수집]
@@ -608,18 +608,18 @@ done
 ### 끊어진 링크 발견
 
 1. **AUTH-003**
-   - @REQ:AUTH-003: ✅ 존재 (spec/auth.md)
-   - @DESIGN:AUTH-003: ✅ 존재 (design/auth-flow.md)
-   - @TASK:AUTH-003: ❌ 누락
+   - @SPEC:AUTH-003: ✅ 존재 (spec/auth.md)
+   - : ✅ 존재 (design/auth-flow.md)
+   - @CODE:AUTH-003: ❌ 누락
    - @TEST:AUTH-003: ✅ 존재 (tests/auth.test.ts)
-   - **조치**: @TASK:AUTH-003을 src/auth/oauth.ts에 추가 필요
+   - **조치**: @CODE:AUTH-003을 src/auth/oauth.ts에 추가 필요
 
 2. **USER-007**
-   - @REQ:USER-007: ✅ 존재
-   - @DESIGN:USER-007: ❌ 누락
-   - @TASK:USER-007: ✅ 존재
+   - @SPEC:USER-007: ✅ 존재
+   - : ❌ 누락
+   - @CODE:USER-007: ✅ 존재
    - @TEST:USER-007: ✅ 존재
-   - **조치**: @DESIGN:USER-007 설계 문서 작성 필요
+   - **조치**:  설계 문서 작성 필요
 ```
 
 ### 고아 TAG 감지
@@ -631,8 +631,8 @@ done
 rg '@\w+:[\w-]+' -o --no-filename | sort | uniq -c | awk '$1 == 1'
 
 # 출력 예시:
-# 1 @FEATURE:LEGACY-001
-# 1 @API:TEMP-999
+# 1 @CODE:LEGACY-001
+# 1 @CODE:TEMP-999:API
 ```
 
 **고아 TAG 분류**:
@@ -692,7 +692,7 @@ graph LR
 
 **문제**:
 ```
-AUTH-003 체인에서 @TASK:AUTH-003 누락
+AUTH-003 체인에서 @CODE:AUTH-003 누락
 ```
 
 **해결 방법**:
@@ -707,10 +707,10 @@ export class OAuthService {
 }
 
 // After (TAG 추가)
-// @TASK:AUTH-003 | Chain: @REQ:AUTH-003 -> @DESIGN:AUTH-003 -> @TASK:AUTH-003 -> @TEST:AUTH-003
+// @CODE:AUTH-003 | Chain: @SPEC:AUTH-003 ->  -> @CODE:AUTH-003 -> @TEST:AUTH-003
 export class OAuthService {
   /**
-   * @TASK:AUTH-003: OAuth 인증 구현
+   * @CODE:AUTH-003: OAuth 인증 구현
    */
   async authenticate(code: string) {
     // 구현...
@@ -722,7 +722,7 @@ export class OAuthService {
 
 **문제**:
 ```
-USER-007 체인에서 @DESIGN:USER-007 누락
+USER-007 체인에서  누락
 ```
 
 **해결 방법**:
@@ -731,7 +731,7 @@ USER-007 체인에서 @DESIGN:USER-007 누락
 
 # User Profile Design
 
-## @DESIGN:USER-007 | Chain: @REQ:USER-007 -> @DESIGN:USER-007 -> @TASK:USER-007 -> @TEST:USER-007
+##  | Chain: @SPEC:USER-007 ->  -> @CODE:USER-007 -> @TEST:USER-007
 
 ### 설계 개요
 사용자 프로필 관리 기능 설계
@@ -768,16 +768,16 @@ PAYMENT-005 TAG가 코드에만 존재하고 SPEC 없음
 
 | 언어 | TAG 주석 형식 | 예시 |
 |------|--------------|------|
-| **TypeScript** | `// @TAG:ID` | `// @FEATURE:AUTH-001` |
-| **Python** | `# @TAG:ID` | `# @FEATURE:AUTH-001` |
-| **Java** | `// @TAG:ID` | `// @FEATURE:AUTH-001` |
-| **Go** | `// @TAG:ID` | `// @FEATURE:AUTH-001` |
-| **Rust** | `// @TAG:ID` | `// @FEATURE:AUTH-001` |
-| **C++** | `// @TAG:ID` | `// @FEATURE:AUTH-001` |
-| **C#** | `// @TAG:ID` | `// @FEATURE:AUTH-001` |
-| **Ruby** | `# @TAG:ID` | `# @FEATURE:AUTH-001` |
-| **PHP** | `// @TAG:ID` | `// @FEATURE:AUTH-001` |
-| **Swift** | `// @TAG:ID` | `// @FEATURE:AUTH-001` |
+| **TypeScript** | `// @TAG:ID` | `// @CODE:AUTH-001` |
+| **Python** | `# @TAG:ID` | `# @CODE:AUTH-001` |
+| **Java** | `// @TAG:ID` | `// @CODE:AUTH-001` |
+| **Go** | `// @TAG:ID` | `// @CODE:AUTH-001` |
+| **Rust** | `// @TAG:ID` | `// @CODE:AUTH-001` |
+| **C++** | `// @TAG:ID` | `// @CODE:AUTH-001` |
+| **C#** | `// @TAG:ID` | `// @CODE:AUTH-001` |
+| **Ruby** | `# @TAG:ID` | `# @CODE:AUTH-001` |
+| **PHP** | `// @TAG:ID` | `// @CODE:AUTH-001` |
+| **Swift** | `// @TAG:ID` | `// @CODE:AUTH-001` |
 
 ### 다중 언어 스캔
 
@@ -897,16 +897,16 @@ rg '@\w+:[\w-]+' -g '*.java' -c | awk '{sum+=$1} END {print "Java:", sum}'
 ### 끊어진 체인 (2개)
 
 1. **AUTH-003**
-   - @REQ:AUTH-003: ✅ spec/auth.md:45
-   - @DESIGN:AUTH-003: ✅ design/oauth.md:12
-   - @TASK:AUTH-003: ❌ 누락
+   - @SPEC:AUTH-003: ✅ spec/auth.md:45
+   - : ✅ design/oauth.md:12
+   - @CODE:AUTH-003: ❌ 누락
    - @TEST:AUTH-003: ✅ tests/auth.test.ts:67
-   - **조치**: src/auth/oauth.ts에 @TASK:AUTH-003 추가
+   - **조치**: src/auth/oauth.ts에 @CODE:AUTH-003 추가
 
 2. **USER-007**
-   - @REQ:USER-007: ✅ spec/user.md:89
-   - @DESIGN:USER-007: ❌ 누락
-   - @TASK:USER-007: ✅ src/user/profile.ts:23
+   - @SPEC:USER-007: ✅ spec/user.md:89
+   - : ❌ 누락
+   - @CODE:USER-007: ✅ src/user/profile.ts:23
    - @TEST:USER-007: ✅ tests/user.test.ts:101
    - **조치**: design/ 디렉토리에 user-profile.md 작성
 
@@ -927,19 +927,19 @@ rg '@\w+:[\w-]+' -g '*.java' -c | awk '{sum+=$1} END {print "Java:", sum}'
 
 ## 고아 TAG (3개)
 
-1. **@FEATURE:LEGACY-001**
+1. **@CODE:LEGACY-001**
    - 위치: src/legacy/old-auth.ts:12
    - 참조: 1회 (고아)
    - 상태: 레거시 코드
    - 조치: 삭제 권장
 
-2. **@API:TEMP-999**
+2. **@CODE:TEMP-999:API**
    - 위치: src/temp/experiment.ts:5
    - 참조: 1회 (고아)
    - 상태: 실험 코드
    - 조치: SPEC 연결 또는 삭제
 
-3. **@DATA:UNUSED-005**
+3. **@CODE:UNUSED-005:DATA**
    - 위치: src/models/deprecated.ts:34
    - 참조: 1회 (고아)
    - 상태: 사용하지 않음
@@ -995,7 +995,7 @@ UTILS   ██ 3개
 
 tag-agent는 TAG 시스템의 독점 관리자로서:
 
-- **8-Core TAG 체계**: Primary (4) + Implementation (4)
+- **4-Core TAG 체계**: Primary (4) + Implementation (4)
 - **CODE-FIRST**: 코드 직접 스캔, 중간 캐시 없음
 - **실시간 검증**: `rg '@TAG' -n` 기반 검증
 - **체인 관리**: 끊어진 링크, 고아 TAG 탐지 및 복구

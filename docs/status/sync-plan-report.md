@@ -62,12 +62,12 @@ c4a288e Merge branch 'cleanup/remove-unused-files-phase2' into develop
 
 ### 3. TAG 스캔 결과 분석
 
-#### v4.0 8-Core TAG 잔여 현황
+#### v4.0 4-Core TAG 잔여 현황
 **총 발견**: 450+ 건 (추정)
 
 **주요 위치**:
 - **예시/문서**: `README.md`, `docs/guide/workflow.md`, `docs/help/faq.md` 등
-  - v4.0 예시 코드 (`@FEATURE:AUTH-001`, `@REQ:AUTH-001` 등)
+  - v4.0 예시 코드 (`@CODE:AUTH-001`, `@SPEC:AUTH-001` 등)
   - 마이그레이션 가이드 참조 (의도적 보존)
 
 - **아카이브**: `.archive/`, `MOAI-ADK-GUIDE.md` (레거시 참조용)
@@ -101,7 +101,7 @@ c4a288e Merge branch 'cleanup/remove-unused-files-phase2' into develop
 - **CODE-FIRST 원칙**: "TAG의 진실은 코드 자체에만 존재" 통일
 
 #### ⚠️ 불일치 영역
-1. **README.md**: 여전히 v4.0 8-Core TAG 예시 사용
+1. **README.md**: 여전히 v4.0 4-Core TAG 예시 사용
 2. **docs/guide/workflow.md**: v4.0 TAG BLOCK 템플릿 예시
 3. **examples/specs/**: v4.0 TAG 구조 예시 파일들
 4. **테스트 주석**: 일부 테스트 파일에 v4.0 TAG 참조

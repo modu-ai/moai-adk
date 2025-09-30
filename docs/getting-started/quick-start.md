@@ -257,8 +257,8 @@ Claude Code 채팅창에서 다음 명령을 실행합니다:
 ## Traceability
 
 ```markdown
-# @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-# Related: @API:AUTH-001
+# @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
+# Related: @CODE:AUTH-001:API
 
 # SPEC-AUTH-001: 사용자 인증 시스템
 ```
@@ -286,7 +286,7 @@ SPEC 작성이 완료되면 `/moai:2-build` 명령으로 TDD 구현을 시작합
 
 ```typescript
 // tests/auth/service.test.ts
-// @TEST:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
+// @TEST:AUTH-001 | Chain: @SPEC:AUTH-001 →  → @CODE:AUTH-001 → @TEST:AUTH-001
 import { describe, test, expect } from 'vitest';
 import { AuthService } from '@/auth/service';
 
@@ -319,7 +319,7 @@ describe('AuthService', () => {
 
 ```typescript
 // src/auth/service.ts
-// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
+// @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 →  → @CODE:AUTH-001 → @TEST:AUTH-001
 import jwt from 'jsonwebtoken';
 
 export class AuthService {
@@ -328,14 +328,14 @@ export class AuthService {
     token?: string;
     error?: string;
   }> {
-    // @SEC:AUTH-001: 입력 검증
+    // @CODE:AUTH-001:INFRA: 입력 검증
     if (!email || !password) {
       return { success: false, error: 'Missing credentials' };
     }
 
-    // @SEC:AUTH-001: 비밀번호 검증 (실제로는 DB 조회)
+    // @CODE:AUTH-001:INFRA: 비밀번호 검증 (실제로는 DB 조회)
     if (password === 'password123') {
-      // @API:AUTH-001: JWT 토큰 발급
+      // @CODE:AUTH-001:API: JWT 토큰 발급
       const token = jwt.sign({ email }, 'secret', { expiresIn: '15m' });
       return { success: true, token };
     }
@@ -378,7 +378,7 @@ code-builder 에이전트가 TRUST 5원칙을 자동으로 검증하여 코드 �
    ```
    🔍 Scanning codebase for @TAGs...
    ✅ Found 8 TAGs in 4 files
-   ✅ Primary Chain complete: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
+   ✅ Primary Chain complete: @SPEC:AUTH-001 →  → @CODE:AUTH-001 → @TEST:AUTH-001
    ```
 
 2. **TAG 무결성 검증**

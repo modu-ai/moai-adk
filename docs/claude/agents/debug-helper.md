@@ -109,7 +109,7 @@ TypeError: 'NoneType' object has no attribute 'name'
 🎯 영향 범위:
   - 파일: src/auth/service.py (45줄)
   - 함수: AuthenticationService.authenticate()
-  - 관련 TAG: @TASK:AUTH-001, @TEST:AUTH-001
+  - 관련 TAG: @CODE:AUTH-001, @TEST:AUTH-001
 
 💡 해결 방안:
   1. 가드절 추가: user가 None인지 먼저 확인
@@ -370,12 +370,12 @@ flowchart TD
   - tests/integration/test_api.py (TAG BLOCK 없음)
 
 ❌ Primary Chain 끊김:
-  - @TASK:AUTH-002 → @TEST:AUTH-002 (연결 없음)
-  - @DESIGN:PAYMENT-001 → @TASK:PAYMENT-001 (연결 없음)
+  - @CODE:AUTH-002 → @TEST:AUTH-002 (연결 없음)
+  -  → @CODE:PAYMENT-001 (연결 없음)
 
 ⚠️  고아 TAG: 2개 발견
-  - @FEATURE:LEGACY-001 (참조 없음)
-  - @API:DEPRECATED-003 (삭제 표시 누락)
+  - @CODE:LEGACY-001 (참조 없음)
+  - @CODE:DEPRECATED-003:API (삭제 표시 누락)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📐 코드 규칙 검증
@@ -599,7 +599,7 @@ flowchart TD
   2. test_should_lock_account_after_three_attempts
      - 원인: 계정 잠금 로직 미구현
      - 위치: tests/auth/test_service.py:78
-     - @TASK:AUTH-002 구현 누락
+     - @CODE:AUTH-002 구현 누락
 
 🔍 근본 원인:
   - SPEC과 구현 불일치 (SPEC-AUTH-001)
@@ -736,7 +736,7 @@ sequenceDiagram
     "impact": {
       "files": ["src/auth/service.py"],
       "lines": [45],
-      "tags": ["@TASK:AUTH-001", "@TEST:AUTH-001"]
+      "tags": ["@CODE:AUTH-001", "@TEST:AUTH-001"]
     },
     "solutions": [
       {

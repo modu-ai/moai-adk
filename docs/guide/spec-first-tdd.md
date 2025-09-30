@@ -23,7 +23,7 @@ graph LR
 
 1. **명세 우선 (SPEC-First)**: 모든 구현은 명시적인 SPEC에서 시작
 2. **테스트 주도 (Test-Driven)**: Red-Green-Refactor 사이클 엄수
-3. **완전 추적성 (Full Traceability)**: 8-Core @TAG 시스템으로 요구사항부터 구현까지 추적
+3. **완전 추적성 (Full Traceability)**: 4-Core @TAG 시스템 (SPEC → TEST → CODE → DOC)으로 코드 직접 스캔
 
 ## TDD Red-Green-Refactor 사이클
 
@@ -225,9 +225,9 @@ EARS (Easy Approach to Requirements Syntax)는 체계적인 요구사항 작성�
 완전한 SPEC 문서 템플릿:
 
 ```markdown
-# SPEC-AUTH-001: 사용자 인증 시스템
+# @SPEC:AUTH-001: 사용자 인증 시스템
 
-## @REQ:AUTH-001 요구사항
+## 요구사항 (EARS)
 
 ### Ubiquitous Requirements
 - 시스템은 이메일/비밀번호 기반 인증을 제공해야 한다
@@ -252,7 +252,7 @@ EARS (Easy Approach to Requirements Syntax)는 체계적인 요구사항 작성�
 - 비밀번호는 bcrypt로 해싱해야 한다
 - API 요청은 초당 100개를 초과할 수 없다
 
-## @DESIGN:AUTH-001 설계
+## 설계
 
 ### 아키텍처 결정
 - **토큰 형식**: JWT (Header.Payload.Signature)
@@ -307,33 +307,29 @@ interface Session {
 }
 ```
 
-## @TASK:AUTH-001 작업 계획
+## TDD 구현 계획
 
-### Phase 1: 기반 구조 (1-2일)
-- [ ] User 모델 정의 및 마이그레이션
-- [ ] AuthService 클래스 스켈레톤
-- [ ] JWT 유틸리티 함수
-- [ ] Redis 연결 설정
+### Phase 1: RED - 테스트 작성 (1일)
+- [ ] 로그인 테스트 (실패 확인)
+- [ ] 토큰 검증 테스트 (실패 확인)
+- [ ] 로그아웃 테스트 (실패 확인)
+- [ ] 계정 잠금 테스트 (실패 확인)
 
-### Phase 2: 핵심 기능 (2-3일)
-- [ ] 로그인 API 구현
-- [ ] 토큰 검증 미들웨어
-- [ ] 로그아웃 API 구현
-- [ ] 실패 횟수 추적 로직
+### Phase 2: GREEN - 최소 구현 (2-3일)
+- [ ] User 모델 정의
+- [ ] AuthService 클래스
+- [ ] JWT 생성/검증 로직
+- [ ] Redis 세션 관리
+- [ ] 테스트 통과 확인
 
-### Phase 3: 추가 기능 (2일)
-- [ ] 리프레시 토큰 구현
-- [ ] 계정 잠금 메커니즘
-- [ ] 비밀번호 재설정 API
-- [ ] 이메일 인증 시스템
+### Phase 3: REFACTOR - 코드 개선 (2일)
+- [ ] 의존성 주입 리팩토링
+- [ ] 보안 강화 (rate limiting, CSRF)
+- [ ] 에러 처리 개선
+- [ ] 성능 최적화
+- [ ] 문서화 (@DOC:AUTH-001)
 
-### Phase 4: 보안 강화 (1-2일)
-- [ ] Rate limiting 적용
-- [ ] CSRF 보호
-- [ ] 입력 검증 강화
-- [ ] 감사 로그 구현
-
-## @TEST:AUTH-001 테스트 계획
+## 테스트 전략
 
 ### 단위 테스트
 - [ ] bcrypt 해싱 검증
@@ -361,15 +357,14 @@ interface Session {
 - [ ] 토큰 검증 속도 (<10ms)
 - [ ] 데이터베이스 쿼리 최적화
 
-## Traceability
+## @TAG 추적성 (v5.0 4-Core)
 
 TAG BLOCK을 통한 추적성 확보:
 
 ```markdown
-# @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-# Related: @API:AUTH-001
+# @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth/service.test.ts
 
-# SPEC-AUTH-001: 사용자 인증 시스템
+# @SPEC:AUTH-001: 사용자 인증 시스템
 ```
 
 ## 다중 언어 TDD 구현
@@ -379,11 +374,13 @@ TAG BLOCK을 통한 추적성 확보:
 #### 프로젝트 구조
 ```
 auth-system/
+├── .moai/
+│   └── specs/
+│       └── SPEC-AUTH-001.md  # @SPEC:AUTH-001
 ├── src/
 │   ├── auth/
-│   │   ├── service.ts        # @FEATURE:AUTH-001
-│   │   ├── controller.ts     # @API:AUTH-001
-│   │   ├── middleware.ts     # @SEC:AUTH-001
+│   │   ├── service.ts        # @CODE:AUTH-001
+│   │   ├── controller.ts     # @CODE:AUTH-001:API
 │   │   └── types.ts
 │   └── utils/
 │       ├── jwt.ts
@@ -398,13 +395,13 @@ auth-system/
 
 ```typescript
 // tests/auth/service.test.ts
-// @TEST:AUTH-001: 사용자 인증 테스트
+// @TEST:AUTH-001 | SPEC: SPEC-AUTH-001.md
 
 import { describe, test, expect, beforeEach } from 'vitest';
 import { AuthService } from '@/auth/service';
 import { MockUserRepository } from './mocks';
 
-describe('@TEST:AUTH-001 AuthService', () => {
+describe('AuthService', () => {
   let authService: AuthService;
   let userRepository: MockUserRepository;
 
@@ -551,15 +548,15 @@ describe('@TEST:AUTH-001 AuthService', () => {
 
 ```typescript
 // src/auth/service.ts
-// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-// Related: @SEC:AUTH-001, @DOCS:AUTH-001
+// @CODE:AUTH-001 
+// 
 
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { UserRepository } from './repository';
 
 /**
- * @FEATURE:AUTH-001: 사용자 인증 서비스
+ * @CODE:AUTH-001: 사용자 인증 서비스
  */
 export class AuthService {
   private readonly ACCESS_TOKEN_EXPIRY = 900; // 15분
@@ -573,10 +570,10 @@ export class AuthService {
   constructor(private userRepository: UserRepository) {}
 
   /**
-   * @API:AUTH-001: 사용자 로그인
+   * @CODE:AUTH-001:API: 사용자 로그인
    */
   async login(email: string, password: string): Promise<AuthResult> {
-    // @SEC:AUTH-001: 입력 검증
+    // @CODE:AUTH-001:INFRA: 입력 검증
     if (!email) {
       throw new Error('Email is required');
     }
@@ -596,7 +593,7 @@ export class AuthService {
       throw new Error('Invalid credentials');
     }
 
-    // @SEC:AUTH-001: 비밀번호 검증
+    // @CODE:AUTH-001:INFRA: 비밀번호 검증
     const isValidPassword = await bcrypt.compare(password, user.passwordHash);
     if (!isValidPassword) {
       this.recordFailedAttempt(email);
@@ -606,7 +603,7 @@ export class AuthService {
     // 성공 시 실패 횟수 초기화
     this.failedAttempts.delete(email);
 
-    // @TASK:AUTH-001: JWT 토큰 생성
+    // @CODE:AUTH-001: JWT 토큰 생성
     const accessToken = this.generateAccessToken(user);
     const refreshToken = this.generateRefreshToken(user);
 
@@ -618,14 +615,14 @@ export class AuthService {
   }
 
   /**
-   * @API:AUTH-001: 로그아웃
+   * @CODE:AUTH-001:API: 로그아웃
    */
   async logout(token: string): Promise<void> {
     this.revokedTokens.add(token);
   }
 
   /**
-   * @API:AUTH-001: 토큰 검증
+   * @CODE:AUTH-001:API: 토큰 검증
    */
   async verifyToken(token: string): Promise<User> {
     if (this.revokedTokens.has(token)) {
@@ -641,7 +638,7 @@ export class AuthService {
   }
 
   /**
-   * @API:AUTH-001: 리프레시 토큰으로 액세스 토큰 갱신
+   * @CODE:AUTH-001:API: 리프레시 토큰으로 액세스 토큰 갱신
    */
   async refreshAccessToken(refreshToken: string): Promise<Partial<AuthResult>> {
     try {
@@ -662,7 +659,7 @@ export class AuthService {
   }
 
   /**
-   * @SEC:AUTH-001: 계정 잠금 상태 확인
+   * @CODE:AUTH-001:INFRA: 계정 잠금 상태 확인
    */
   private isAccountLocked(email: string): boolean {
     const attempts = this.failedAttempts.get(email);
@@ -680,7 +677,7 @@ export class AuthService {
   }
 
   /**
-   * @SEC:AUTH-001: 로그인 실패 기록
+   * @CODE:AUTH-001:INFRA: 로그인 실패 기록
    */
   private recordFailedAttempt(email: string): void {
     const attempts = this.failedAttempts.get(email) || { count: 0 };
@@ -729,7 +726,7 @@ interface User {
 
 ```typescript
 // src/auth/service.ts (리팩토링 완료)
-// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+// @CODE:AUTH-001 
 
 import { injectable, inject } from 'inversify';
 import { PasswordHasher } from '@/utils/password';
@@ -739,7 +736,7 @@ import { SessionStore } from './session-store';
 import { AuthConfig } from './config';
 
 /**
- * @FEATURE:AUTH-001: 사용자 인증 서비스 (리팩토링 완료)
+ * @CODE:AUTH-001: 사용자 인증 서비스 (리팩토링 완료)
  */
 @injectable()
 export class AuthService {
@@ -752,7 +749,7 @@ export class AuthService {
   ) {}
 
   /**
-   * @API:AUTH-001: 사용자 로그인
+   * @CODE:AUTH-001:API: 사용자 로그인
    */
   async login(email: string, password: string): Promise<AuthResult> {
     this.validateCredentials(email, password);
@@ -767,14 +764,14 @@ export class AuthService {
   }
 
   /**
-   * @API:AUTH-001: 로그아웃
+   * @CODE:AUTH-001:API: 로그아웃
    */
   async logout(token: string): Promise<void> {
     await this.sessionStore.revokeToken(token);
   }
 
   /**
-   * @API:AUTH-001: 토큰 검증
+   * @CODE:AUTH-001:API: 토큰 검증
    */
   async verifyToken(token: string): Promise<User> {
     if (await this.sessionStore.isRevoked(token)) {
@@ -786,7 +783,7 @@ export class AuthService {
   }
 
   /**
-   * @API:AUTH-001: 리프레시 토큰으로 액세스 토큰 갱신
+   * @CODE:AUTH-001:API: 리프레시 토큰으로 액세스 토큰 갱신
    */
   async refreshAccessToken(refreshToken: string): Promise<Partial<AuthResult>> {
     const payload = this.tokenGenerator.verifyRefreshToken(refreshToken);
@@ -803,7 +800,7 @@ export class AuthService {
   }
 
   /**
-   * @SEC:AUTH-001: 자격증명 유효성 검사
+   * @CODE:AUTH-001:INFRA: 자격증명 유효성 검사
    */
   private validateCredentials(email: string, password: string): void {
     if (!email || !this.isValidEmail(email)) {
@@ -816,7 +813,7 @@ export class AuthService {
   }
 
   /**
-   * @SEC:AUTH-001: 계정 잠금 확인
+   * @CODE:AUTH-001:INFRA: 계정 잠금 확인
    */
   private async checkAccountLock(email: string): Promise<void> {
     const lockInfo = await this.sessionStore.getLockInfo(email);
@@ -828,13 +825,13 @@ export class AuthService {
   }
 
   /**
-   * @TASK:AUTH-001: 사용자 인증 처리
+   * @CODE:AUTH-001: 사용자 인증 처리
    */
   private async authenticateUser(email: string, password: string): Promise<User> {
     const user = await this.userRepository.findByEmail(email);
 
     if (!user) {
-      // @SEC:AUTH-001: 타이밍 공격 방지 (일정 시간 대기)
+      // @CODE:AUTH-001:INFRA: 타이밍 공격 방지 (일정 시간 대기)
       await this.constantTimeDelay();
       await this.recordFailedAttempt(email);
       throw new InvalidCredentialsError();
@@ -854,7 +851,7 @@ export class AuthService {
   }
 
   /**
-   * @TASK:AUTH-001: 인증 결과 생성
+   * @CODE:AUTH-001: 인증 결과 생성
    */
   private generateAuthResult(user: User): AuthResult {
     return {
@@ -865,7 +862,7 @@ export class AuthService {
   }
 
   /**
-   * @SEC:AUTH-001: 로그인 실패 기록
+   * @CODE:AUTH-001:INFRA: 로그인 실패 기록
    */
   private async recordFailedAttempt(email: string): Promise<void> {
     const attempts = await this.sessionStore.incrementFailedAttempts(email);
@@ -876,14 +873,14 @@ export class AuthService {
   }
 
   /**
-   * @SEC:AUTH-001: 실패 횟수 초기화
+   * @CODE:AUTH-001:INFRA: 실패 횟수 초기화
    */
   private clearFailedAttempts(email: string): void {
     this.sessionStore.clearFailedAttempts(email);
   }
 
   /**
-   * @SEC:AUTH-001: 타이밍 공격 방어를 위한 일정 시간 대기
+   * @CODE:AUTH-001:INFRA: 타이밍 공격 방어를 위한 일정 시간 대기
    */
   private async constantTimeDelay(): Promise<void> {
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -942,9 +939,9 @@ auth-system/
 ├── src/
 │   ├── auth/
 │   │   ├── __init__.py
-│   │   ├── service.py        # @FEATURE:AUTH-001
-│   │   ├── controller.py     # @API:AUTH-001
-│   │   ├── middleware.py     # @SEC:AUTH-001
+│   │   ├── service.py        # @CODE:AUTH-001
+│   │   ├── controller.py     # @CODE:AUTH-001:API
+│   │   ├── middleware.py     # @CODE:AUTH-001:INFRA
 │   │   └── types.py
 │   └── utils/
 │       ├── jwt.py
@@ -1079,8 +1076,8 @@ class TestAuthService:
 
 ```python
 # src/auth/service.py
-# @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-# Related: @SEC:AUTH-001, @DOCS:AUTH-001
+# @CODE:AUTH-001 
+# 
 
 import bcrypt
 import jwt
@@ -1099,25 +1096,25 @@ class AuthResult:
     expires_in: int
 
 class InvalidCredentialsError(Exception):
-    """@SEC:AUTH-001: 잘못된 자격증명 예외"""
+    """@CODE:AUTH-001:INFRA: 잘못된 자격증명 예외"""
     pass
 
 class AccountLockedError(Exception):
-    """@SEC:AUTH-001: 계정 잠금 예외"""
+    """@CODE:AUTH-001:INFRA: 계정 잠금 예외"""
     def __init__(self, remaining_seconds: int):
         self.remaining_seconds = remaining_seconds
         super().__init__(f"Account is locked. Try again in {remaining_seconds} seconds.")
 
 class TokenRevokedError(Exception):
-    """@SEC:AUTH-001: 토큰 취소 예외"""
+    """@CODE:AUTH-001:INFRA: 토큰 취소 예외"""
     pass
 
 class TokenExpiredError(Exception):
-    """@SEC:AUTH-001: 토큰 만료 예외"""
+    """@CODE:AUTH-001:INFRA: 토큰 만료 예외"""
     pass
 
 class ValidationError(Exception):
-    """@SEC:AUTH-001: 검증 오류 예외"""
+    """@CODE:AUTH-001:INFRA: 검증 오류 예외"""
     pass
 
 class UserNotFoundError(Exception):
@@ -1125,7 +1122,7 @@ class UserNotFoundError(Exception):
     pass
 
 class AuthService:
-    """@FEATURE:AUTH-001: 사용자 인증 서비스"""
+    """@CODE:AUTH-001: 사용자 인증 서비스"""
 
     ACCESS_TOKEN_EXPIRY = 900  # 15분
     REFRESH_TOKEN_EXPIRY = 604800  # 7일
@@ -1139,7 +1136,7 @@ class AuthService:
 
     def login(self, email: str, password: str) -> Dict[str, any]:
         """
-        @API:AUTH-001: 사용자 로그인
+        @CODE:AUTH-001:API: 사용자 로그인
 
         Args:
             email: 사용자 이메일
@@ -1153,7 +1150,7 @@ class AuthService:
             AccountLockedError: 계정 잠금
             ValidationError: 검증 오류
         """
-        # @SEC:AUTH-001: 입력 검증
+        # @CODE:AUTH-001:INFRA: 입력 검증
         self._validate_credentials(email, password)
 
         # 계정 잠금 확인
@@ -1165,7 +1162,7 @@ class AuthService:
         # 실패 횟수 초기화
         self._clear_failed_attempts(email)
 
-        # @TASK:AUTH-001: JWT 토큰 생성
+        # @CODE:AUTH-001: JWT 토큰 생성
         access_token = self._generate_access_token(user)
         refresh_token = self._generate_refresh_token(user)
 
@@ -1177,7 +1174,7 @@ class AuthService:
 
     def logout(self, token: str) -> None:
         """
-        @API:AUTH-001: 로그아웃
+        @CODE:AUTH-001:API: 로그아웃
 
         Args:
             token: 취소할 액세스 토큰
@@ -1186,7 +1183,7 @@ class AuthService:
 
     def verify_token(self, token: str) -> dict:
         """
-        @API:AUTH-001: 토큰 검증
+        @CODE:AUTH-001:API: 토큰 검증
 
         Args:
             token: 검증할 JWT 토큰
@@ -1211,7 +1208,7 @@ class AuthService:
 
     def refresh_access_token(self, refresh_token: str) -> Dict[str, any]:
         """
-        @API:AUTH-001: 리프레시 토큰으로 액세스 토큰 갱신
+        @CODE:AUTH-001:API: 리프레시 토큰으로 액세스 토큰 갱신
 
         Args:
             refresh_token: 리프레시 토큰
@@ -1244,7 +1241,7 @@ class AuthService:
             raise TokenExpiredError("Invalid token")
 
     def _validate_credentials(self, email: str, password: str) -> None:
-        """@SEC:AUTH-001: 자격증명 검증"""
+        """@CODE:AUTH-001:INFRA: 자격증명 검증"""
         if not email or not self._is_valid_email(email):
             raise ValidationError("Invalid email format")
 
@@ -1257,7 +1254,7 @@ class AuthService:
         return re.match(pattern, email) is not None
 
     def _check_account_lock(self, email: str) -> None:
-        """@SEC:AUTH-001: 계정 잠금 확인"""
+        """@CODE:AUTH-001:INFRA: 계정 잠금 확인"""
         if email in self.failed_attempts:
             attempts = self.failed_attempts[email]
             if "locked_until" in attempts:
@@ -1270,16 +1267,16 @@ class AuthService:
                     del self.failed_attempts[email]
 
     def _authenticate_user(self, email: str, password: str) -> dict:
-        """@TASK:AUTH-001: 사용자 인증 처리"""
+        """@CODE:AUTH-001: 사용자 인증 처리"""
         user = self.user_repository.find_by_email(email)
 
         if not user:
-            # @SEC:AUTH-001: 타이밍 공격 방지
+            # @CODE:AUTH-001:INFRA: 타이밍 공격 방지
             time.sleep(0.1)
             self._record_failed_attempt(email)
             raise InvalidCredentialsError("Invalid credentials")
 
-        # @SEC:AUTH-001: 비밀번호 검증
+        # @CODE:AUTH-001:INFRA: 비밀번호 검증
         if not bcrypt.checkpw(password.encode(), user["password_hash"].encode()):
             self._record_failed_attempt(email)
             raise InvalidCredentialsError("Invalid credentials")
@@ -1287,7 +1284,7 @@ class AuthService:
         return user
 
     def _record_failed_attempt(self, email: str) -> None:
-        """@SEC:AUTH-001: 로그인 실패 기록"""
+        """@CODE:AUTH-001:INFRA: 로그인 실패 기록"""
         if email not in self.failed_attempts:
             self.failed_attempts[email] = {"count": 0}
 
@@ -1327,7 +1324,7 @@ class AuthService:
 
 ```python
 # src/auth/service.py (리팩토링 완료)
-# @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+# @CODE:AUTH-001 
 
 from __future__ import annotations
 from typing import Protocol, Dict, Any
@@ -1352,7 +1349,7 @@ class User:
 
 class AuthService:
     """
-    @FEATURE:AUTH-001: 사용자 인증 서비스 (리팩토링 완료)
+    @CODE:AUTH-001: 사용자 인증 서비스 (리팩토링 완료)
 
     의존성 주입을 통해 테스트 가능성과 유지보수성을 개선했습니다.
     """
@@ -1373,7 +1370,7 @@ class AuthService:
 
     async def login(self, email: str, password: str) -> AuthResult:
         """
-        @API:AUTH-001: 사용자 로그인
+        @CODE:AUTH-001:API: 사용자 로그인
 
         Args:
             email: 사용자 이메일
@@ -1398,11 +1395,11 @@ class AuthService:
         return self._generate_auth_result(user)
 
     async def logout(self, token: str) -> None:
-        """@API:AUTH-001: 로그아웃"""
+        """@CODE:AUTH-001:API: 로그아웃"""
         await self._session_store.revoke_token(token)
 
     async def verify_token(self, token: str) -> User:
-        """@API:AUTH-001: 토큰 검증"""
+        """@CODE:AUTH-001:API: 토큰 검증"""
         if await self._session_store.is_revoked(token):
             raise TokenRevokedError()
 
@@ -1410,7 +1407,7 @@ class AuthService:
         return await self._user_repository.find_by_id(payload["user_id"])
 
     async def refresh_access_token(self, refresh_token: str) -> Dict[str, Any]:
-        """@API:AUTH-001: 리프레시 토큰으로 액세스 토큰 갱신"""
+        """@CODE:AUTH-001:API: 리프레시 토큰으로 액세스 토큰 갱신"""
         payload = self._token_generator.verify_refresh_token(refresh_token)
         user = await self._user_repository.find_by_id(payload["user_id"])
 
@@ -1423,7 +1420,7 @@ class AuthService:
         }
 
     def _validate_credentials(self, email: str, password: str) -> None:
-        """@SEC:AUTH-001: 자격증명 검증"""
+        """@CODE:AUTH-001:INFRA: 자격증명 검증"""
         if not email or not self._is_valid_email(email):
             raise ValidationError("Invalid email format")
 
@@ -1433,7 +1430,7 @@ class AuthService:
             )
 
     async def _check_account_lock(self, email: str) -> None:
-        """@SEC:AUTH-001: 계정 잠금 확인"""
+        """@CODE:AUTH-001:INFRA: 계정 잠금 확인"""
         lock_info = await self._session_store.get_lock_info(email)
 
         if lock_info and lock_info.is_locked:
@@ -1441,11 +1438,11 @@ class AuthService:
             raise AccountLockedError(remaining_seconds)
 
     async def _authenticate_user(self, email: str, password: str) -> User:
-        """@TASK:AUTH-001: 사용자 인증 처리"""
+        """@CODE:AUTH-001: 사용자 인증 처리"""
         user = await self._user_repository.find_by_email(email)
 
         if not user:
-            # @SEC:AUTH-001: 타이밍 공격 방지
+            # @CODE:AUTH-001:INFRA: 타이밍 공격 방지
             await self._constant_time_delay()
             await self._record_failed_attempt(email)
             raise InvalidCredentialsError()
@@ -1459,7 +1456,7 @@ class AuthService:
         return user
 
     def _generate_auth_result(self, user: User) -> AuthResult:
-        """@TASK:AUTH-001: 인증 결과 생성"""
+        """@CODE:AUTH-001: 인증 결과 생성"""
         return AuthResult(
             access_token=self._token_generator.generate_access_token(user),
             refresh_token=self._token_generator.generate_refresh_token(user),
@@ -1467,7 +1464,7 @@ class AuthService:
         )
 
     async def _record_failed_attempt(self, email: str) -> None:
-        """@SEC:AUTH-001: 로그인 실패 기록"""
+        """@CODE:AUTH-001:INFRA: 로그인 실패 기록"""
         attempts = await self._session_store.increment_failed_attempts(email)
 
         if attempts >= self._config.max_failed_attempts:
@@ -1481,7 +1478,7 @@ class AuthService:
         await self._session_store.clear_failed_attempts(email)
 
     async def _constant_time_delay(self) -> None:
-        """@SEC:AUTH-001: 타이밍 공격 방어"""
+        """@CODE:AUTH-001:INFRA: 타이밍 공격 방어"""
         await asyncio.sleep(0.1)
 
     @staticmethod
@@ -1505,9 +1502,9 @@ auth-system/
 │           └── com/
 │               └── example/
 │                   └── auth/
-│                       ├── AuthService.java        # @FEATURE:AUTH-001
-│                       ├── AuthController.java     # @API:AUTH-001
-│                       ├── AuthMiddleware.java     # @SEC:AUTH-001
+│                       ├── AuthService.java        # @CODE:AUTH-001
+│                       ├── AuthController.java     # @CODE:AUTH-001:API
+│                       ├── AuthMiddleware.java     # @CODE:AUTH-001:INFRA
 │                       └── models/
 │                           ├── User.java
 │                           └── AuthResult.java
@@ -1685,8 +1682,8 @@ class AuthServiceTest {
 
 ```java
 // src/main/java/com/example/auth/AuthService.java
-// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-// Related: @SEC:AUTH-001, @DOCS:AUTH-001
+// @CODE:AUTH-001 
+// 
 
 package com.example.auth;
 
@@ -1697,7 +1694,7 @@ import java.util.*;
 import java.time.*;
 
 /**
- * @FEATURE:AUTH-001: 사용자 인증 서비스
+ * @CODE:AUTH-001: 사용자 인증 서비스
  */
 @Service
 public class AuthService {
@@ -1719,11 +1716,11 @@ public class AuthService {
     }
 
     /**
-     * @API:AUTH-001: 사용자 로그인
+     * @CODE:AUTH-001:API: 사용자 로그인
      */
     public AuthResult login(String email, String password)
             throws InvalidCredentialsException, AccountLockedException, ValidationException {
-        // @SEC:AUTH-001: 입력 검증
+        // @CODE:AUTH-001:INFRA: 입력 검증
         validateCredentials(email, password);
 
         // 계정 잠금 확인
@@ -1735,7 +1732,7 @@ public class AuthService {
         // 실패 횟수 초기화
         clearFailedAttempts(email);
 
-        // @TASK:AUTH-001: JWT 토큰 생성
+        // @CODE:AUTH-001: JWT 토큰 생성
         String accessToken = generateAccessToken(user);
         String refreshToken = generateRefreshToken(user);
 
@@ -1743,14 +1740,14 @@ public class AuthService {
     }
 
     /**
-     * @API:AUTH-001: 로그아웃
+     * @CODE:AUTH-001:API: 로그아웃
      */
     public void logout(String token) {
         revokedTokens.add(token);
     }
 
     /**
-     * @API:AUTH-001: 토큰 검증
+     * @CODE:AUTH-001:API: 토큰 검증
      */
     public User verifyToken(String token)
             throws TokenRevokedException, InvalidCredentialsException {
@@ -1773,7 +1770,7 @@ public class AuthService {
     }
 
     /**
-     * @API:AUTH-001: 리프레시 토큰으로 액세스 토큰 갱신
+     * @CODE:AUTH-001:API: 리프레시 토큰으로 액세스 토큰 갱신
      */
     public AuthResult refreshAccessToken(String refreshToken)
             throws TokenExpiredException, UserNotFoundException {
@@ -1795,7 +1792,7 @@ public class AuthService {
     }
 
     /**
-     * @SEC:AUTH-001: 자격증명 검증
+     * @CODE:AUTH-001:INFRA: 자격증명 검증
      */
     private void validateCredentials(String email, String password)
             throws ValidationException {
@@ -1814,7 +1811,7 @@ public class AuthService {
     }
 
     /**
-     * @SEC:AUTH-001: 계정 잠금 확인
+     * @CODE:AUTH-001:INFRA: 계정 잠금 확인
      */
     private void checkAccountLock(String email) throws AccountLockedException {
         FailedAttemptInfo info = failedAttempts.get(email);
@@ -1825,14 +1822,14 @@ public class AuthService {
     }
 
     /**
-     * @TASK:AUTH-001: 사용자 인증 처리
+     * @CODE:AUTH-001: 사용자 인증 처리
      */
     private User authenticateUser(String email, String password)
             throws InvalidCredentialsException {
         Optional<User> userOpt = userRepository.findByEmail(email);
 
         if (userOpt.isEmpty()) {
-            // @SEC:AUTH-001: 타이밍 공격 방지
+            // @CODE:AUTH-001:INFRA: 타이밍 공격 방지
             constantTimeDelay();
             recordFailedAttempt(email);
             throw new InvalidCredentialsException("Invalid credentials");
@@ -1840,7 +1837,7 @@ public class AuthService {
 
         User user = userOpt.get();
 
-        // @SEC:AUTH-001: 비밀번호 검증
+        // @CODE:AUTH-001:INFRA: 비밀번호 검증
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
             recordFailedAttempt(email);
             throw new InvalidCredentialsException("Invalid credentials");
@@ -1850,7 +1847,7 @@ public class AuthService {
     }
 
     /**
-     * @SEC:AUTH-001: 로그인 실패 기록
+     * @CODE:AUTH-001:INFRA: 로그인 실패 기록
      */
     private void recordFailedAttempt(String email) {
         FailedAttemptInfo info = failedAttempts.getOrDefault(
@@ -1872,7 +1869,7 @@ public class AuthService {
     }
 
     /**
-     * @SEC:AUTH-001: 타이밍 공격 방어
+     * @CODE:AUTH-001:INFRA: 타이밍 공격 방어
      */
     private void constantTimeDelay() {
         try {

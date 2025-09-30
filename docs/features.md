@@ -75,7 +75,7 @@ MoAI-ADK는 SPEC-First TDD 개발을 위한 완전한 자동화 프레임워크�
 TAG BLOCK을 통한 추적성 확보:
 
 ```markdown
-# @FEATURE:SPEC-001 | Chain: @REQ:SPEC-001 -> @DESIGN:SPEC-001 -> @TASK:SPEC-001 -> @TEST:SPEC-001
+# @CODE:SPEC-001 | Chain: @SPEC:SPEC-001 ->  -> @CODE:SPEC-001 -> @TEST:SPEC-001
 
 # SPEC-001: [기능 제목]
 ```
@@ -133,7 +133,7 @@ describe('AuthService', () => {
 #### Green Phase: 최소 구현
 
 ```typescript
-// @FEATURE:AUTH-001 | Chain: @REQ → @DESIGN → @TASK → @TEST
+// @CODE:AUTH-001 | Chain: @REQ → @DESIGN → @TASK → @TEST
 export class AuthService {
   async authenticate(email: string, password: string) {
     // 최소한의 구현으로 테스트 통과
@@ -156,8 +156,8 @@ export class AuthService {
 #### Refactor Phase: 품질 개선
 
 ```typescript
-// @FEATURE:AUTH-001 | Chain: @REQ → @DESIGN → @TASK → @TEST
-// Related: @API:AUTH-001, @DATA:AUTH-001
+// @CODE:AUTH-001 | Chain: @REQ → @DESIGN → @TASK → @TEST
+// Related: @CODE:AUTH-001:API, @CODE:AUTH-001:DATA
 
 export class AuthService {
   constructor(
@@ -167,22 +167,22 @@ export class AuthService {
   ) {}
 
   async authenticate(email: string, password: string): Promise<AuthResult> {
-    // @TASK:AUTH-001: 입력값 검증
+    // @CODE:AUTH-001: 입력값 검증
     this.validateInput(email, password);
 
-    // @DATA:AUTH-001: 사용자 조회
+    // @CODE:AUTH-001:DATA: 사용자 조회
     const user = await this.userRepository.findByEmail(email);
     if (!user) {
       return this.failureResponse('Invalid credentials');
     }
 
-    // @TASK:AUTH-001: 비밀번호 검증
+    // @CODE:AUTH-001: 비밀번호 검증
     const isValid = await this.passwordService.verify(password, user.passwordHash);
     if (!isValid) {
       return this.failureResponse('Invalid credentials');
     }
 
-    // @API:AUTH-001: 토큰 발급
+    // @CODE:AUTH-001:API: 토큰 발급
     const token = await this.tokenService.generate(user);
 
     return {
@@ -270,7 +270,7 @@ MoAI-ADK v0.0.1 달성 지표:
 ```markdown
 # SPEC-AUTH-001
 
-## @REQ:AUTH-001
+## @SPEC:AUTH-001
 - 시스템은 이메일/비밀번호 기반 인증을 제공해야 한다
 - WHEN 유효한 자격증명이 제공되면, JWT 토큰을 발급해야 한다
 - IF 자격증명이 틀리면, 접근을 거부해야 한다
@@ -279,7 +279,7 @@ MoAI-ADK v0.0.1 달성 지표:
 **2. @DESIGN (설계)**
 
 ```markdown
-## @DESIGN:AUTH-001
+## 
 
 ### 시퀀스 다이어그램
 User → AuthService → UserRepository → PasswordService → TokenService
@@ -293,7 +293,7 @@ interface AuthService {
 **3. @TASK (구현)**
 
 ```typescript
-// @TASK:AUTH-001: 인증 서비스 구현
+// @CODE:AUTH-001: 인증 서비스 구현
 export class AuthService {
   async authenticate(email: string, password: string): Promise<AuthResult> {
     // 구현...
@@ -318,8 +318,8 @@ MoAI-ADK는 중간 캐시 없이 코드를 직접 스캔하여 TAG 추적성을 
 
 ```bash
 # TAG 검색 (ripgrep 권장)
-rg "@REQ:AUTH-001" -n          # 요구사항 TAG 검색
-rg "@TASK:AUTH-001" -n         # 구현 TAG 검색
+rg "@SPEC:AUTH-001" -n          # 요구사항 TAG 검색
+rg "@CODE:AUTH-001" -n         # 구현 TAG 검색
 rg "AUTH-001" -n               # 모든 관련 TAG 검색
 
 # TAG 체인 검증
@@ -558,8 +558,8 @@ moai doctor
 ```
 src/
   auth/
-    service.ts        # @TASK:AUTH-001
-    types.ts          # @DATA:AUTH-001
+    service.ts        # @CODE:AUTH-001
+    types.ts          # @CODE:AUTH-001:DATA
 __tests__/
   auth/
     service.test.ts   # @TEST:AUTH-001

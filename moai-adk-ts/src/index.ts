@@ -1,7 +1,7 @@
 /**
  * @file Main API entry point
  * @author MoAI Team
- * @tags @FEATURE:MAIN-API-001 @REQ:PACKAGE-CONFIG-012
+ * @tags @CODE:MAIN-001:API @SPEC:PKG-012
  */
 
 // CLI components

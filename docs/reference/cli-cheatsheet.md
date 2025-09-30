@@ -339,8 +339,8 @@ npm test
 rg "@TAG" -n
 
 # 특정 TAG 검색
-rg "@REQ:AUTH-001" -n
-rg "@TASK:AUTH-001" -n
+rg "@SPEC:AUTH-001" -n
+rg "@CODE:AUTH-001" -n
 rg "AUTH-001" -n                           # 모든 관련 TAG
 
 # TAG 타입별 검색

@@ -308,7 +308,7 @@ impl AuthenticationService {
 @CODE:auth-001     // ❌ 소문자 도메인
 @CODE:A-001        // ❌ 도메인 너무 짧음
 @CODE:AUTHENTICATION-SERVICE-001  // ❌ 도메인 너무 김
-@REQ:AUTH-001      // ❌ v4.0 TAG 사용 (v5.0에서는 @SPEC)
+@SPEC:AUTH-001      // ❌ v4.0 TAG 사용 (v5.0에서는 @SPEC)
 ```
 
 ## 코드 스캔 기반 검증
@@ -519,8 +519,8 @@ export class AuthService {
 ```typescript
 // @TEST:AUTH-001 -> @CODE:AUTH-001    ❌ 순서 표기 불필요 (파일 위치로 구분)
 // @CODE:AUTH-001, @CODE:AUTH-002      ❌ 하나의 파일에 여러 ID (분리 필요)
-// @REQ:AUTH-001                        ❌ v4.0 TAG 사용 금지
-// @FEATURE:AUTH-001                    ❌ v4.0 TAG 사용 금지
+// @SPEC:AUTH-001                        ❌ v4.0 TAG 사용 금지
+// @CODE:AUTH-001                    ❌ v4.0 TAG 사용 금지
 // @CODE:ABC-123                        ❌ 의미 없는 도메인명
 ```
 
@@ -543,11 +543,11 @@ export class AuthService {
 
 **v4.0 (8-Core)**:
 ```typescript
-// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-// Related: @API:AUTH-001, @DATA:AUTH-001
+// @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
+// Related: @CODE:AUTH-001:API, @CODE:AUTH-001:DATA
 
 export class AuthService {
-  // @API:AUTH-001
+  // @CODE:AUTH-001:API
   async login() { }
 }
 ```
@@ -615,7 +615,7 @@ graph TD
 ## v5.0 주요 개선 사항
 
 ### 단순성 (+50%)
-- 8개 TAG → 4개 TAG
+- 4개 TAG → 4개 TAG
 - TAG BLOCK 길이: 156자 → 78자 (50% 감소)
 - 학습 곡선: 급격 → 완만
 

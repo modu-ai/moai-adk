@@ -106,7 +106,7 @@ logger.info('Processing items', { count: items.length });
 
 ### 4. TAG 통합
 ```typescript
-logger.logWithTag('info', '@TASK:INIT-001', 'Starting initialization');
+logger.logWithTag('info', '@CODE:INIT-001', 'Starting initialization');
 ```
 
 ##  성능 영향

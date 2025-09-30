@@ -485,7 +485,7 @@ Rust: cargo-audit, cargo-deny
 #### 검증 항목
 
 **1. @TAG 시스템 무결성**
-- 8-Core TAG 체계 준수
+- 4-Core TAG 체계 준수
 - Primary Chain 연결: @REQ → @DESIGN → @TASK → @TEST
 - Implementation TAG 존재: @FEATURE, @API, @UI, @DATA
 
@@ -509,7 +509,7 @@ Rust: cargo-audit, cargo-deny
 ```mermaid
 graph TB
     A[코드 전체 스캔] --> B[TAG 추출]
-    B --> C[8-Core 체계 검증]
+    B --> C[4-Core 체계 검증]
     C --> D{체계 준수?}
     D -->|No| E[위반 TAG 수집]
     D -->|Yes| F[Chain 연결 검증]
@@ -576,19 +576,19 @@ rg '@\w+:[\w-]+' -n --no-heading | awk '{print $NF}' | sort | uniq -c | awk '$1 
 - **총 TAG 수**: 149개
 - **Primary Chain**: 37개 체인 ✅
 - **Implementation TAG**: 112개 ✅
-- **8-Core 준수**: 98.7% ✅
+- **4-Core 준수**: 98.7% ✅
 
 ### TAG 체인 검증
 - **완전한 체인**: 35개 ✅
 - **끊어진 링크**: 2개 ⚠️
-  - `@REQ:AUTH-003` → `@DESIGN:AUTH-003` (존재) → `@TASK:AUTH-003` (누락) → `@TEST:AUTH-003` (존재)
-  - `@REQ:USER-007` → `@DESIGN:USER-007` (누락)
+  - `@SPEC:AUTH-003` → `` (존재) → `@CODE:AUTH-003` (누락) → `@TEST:AUTH-003` (존재)
+  - `@SPEC:USER-007` → `` (누락)
 
 ### 고아 TAG
 - **발견**: 3개 ⚠️
-  - `@FEATURE:LEGACY-001`: 참조 없음 (src/legacy/old.ts)
-  - `@API:TEMP-999`: 실험 코드 (src/temp/test.ts)
-  - `@DATA:UNUSED-005`: 미사용 (src/models/deprecated.ts)
+  - `@CODE:LEGACY-001`: 참조 없음 (src/legacy/old.ts)
+  - `@CODE:TEMP-999:API`: 실험 코드 (src/temp/test.ts)
+  - `@CODE:UNUSED-005:DATA`: 미사용 (src/models/deprecated.ts)
 
 ### SPEC 정렬
 - **SPEC 참조율**: 96.4% ✅
@@ -599,8 +599,8 @@ rg '@\w+:[\w-]+' -n --no-heading | awk '{print $NF}' | sort | uniq -c | awk '$1 
   - `src/temp/*.ts`: 3개 파일
 
 ### 개선 제안
-1. AUTH-003 체인: @TASK:AUTH-003 추가 필요
-2. USER-007 체인: @DESIGN:USER-007 작성 필요
+1. AUTH-003 체인: @CODE:AUTH-003 추가 필요
+2. USER-007 체인:  작성 필요
 3. 고아 TAG 정리:
    - LEGACY-001: 삭제 또는 SPEC 연결
    - TEMP-999: 실험 종료 후 제거

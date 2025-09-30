@@ -265,8 +265,8 @@ moai doctor
 **TAG BLOCK 자동 생성:**
 
 ```markdown
-# @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-# Related: @API:AUTH-001
+# @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
+# Related: @CODE:AUTH-001:API
 
 # SPEC-AUTH-001: 사용자 인증 시스템
 ```
@@ -286,8 +286,8 @@ MoAI-ADK v0.0.1은 CODE-FIRST 아키텍처를 채택하여 TAG의 진실은 오�
 **TAG BLOCK 템플릿:**
 
 ```typescript
-// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
-// Related: @API:AUTH-001, @DATA:AUTH-001
+// @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 →  → @CODE:AUTH-001 → @TEST:AUTH-001
+// Related: @CODE:AUTH-001:API, @CODE:AUTH-001:DATA
 
 export class AuthService {
   // 구현...
@@ -301,7 +301,7 @@ export class AuthService {
 rg "@TAG" -n
 
 # 특정 TAG 검색
-rg "@REQ:AUTH-001" -n
+rg "@SPEC:AUTH-001" -n
 rg "AUTH-001" -n                # 모든 관련 TAG
 
 # TAG 타입별
@@ -323,7 +323,7 @@ rg "@TEST:" -n                  # 모든 테스트
 /moai:3-sync --path src/auth
 ```
 
-**8-Core TAG 체계:**
+**4-Core TAG 체계:**
 
 **Primary Chain (4 Core)** - 필수:
 - @REQ → @DESIGN → @TASK → @TEST
@@ -334,11 +334,11 @@ rg "@TEST:" -n                  # 모든 테스트
 **TAG 체인 예시:**
 
 ```
-@REQ:AUTH-001 (SPEC)
+@SPEC:AUTH-001 (SPEC)
     ↓
-@DESIGN:AUTH-001 (설계 문서)
+ (설계 문서)
     ↓
-@TASK:AUTH-001 (src/auth/service.ts)
+@CODE:AUTH-001 (src/auth/service.ts)
     ↓
 @TEST:AUTH-001 (__tests__/auth/service.test.ts)
 ```

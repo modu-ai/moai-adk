@@ -12,7 +12,7 @@
 ### 업데이트된 파일 (6개)
 
 1. **README.md**
-   - v4.0 8-Core TAG → v5.0 4-Core TAG 변경
+   - v4.0 4-Core TAG → v5.0 4-Core TAG 변경
    - TAG BLOCK 템플릿 업데이트
    - 검색 명령어 업데이트: `rg '@(SPEC|TEST|CODE|DOC):' -n`
    - 코드 예시 v5.0으로 마이그레이션

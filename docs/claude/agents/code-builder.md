@@ -196,7 +196,7 @@ sequenceDiagram
     CB->>CB: 다음 요구사항 선택
     CB->>FS: 테스트 파일 생성
 
-    Note over CB,FS: # @TEST:AUTH-001<br/># @TASK:AUTH-001 -> @TEST:AUTH-001
+    Note over CB,FS: # @TEST:AUTH-001<br/># @CODE:AUTH-001 -> @TEST:AUTH-001
 
     CB->>FS: 테스트 코드 작성<br/>(구현 없이 테스트만)
 
@@ -211,8 +211,8 @@ sequenceDiagram
 **Python 예시 (pytest)**:
 ```python
 # tests/auth/test_authentication_service.py
-# @TEST:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-# Related: @FEATURE:AUTH-001, @API:AUTH-001, @DATA:AUTH-001
+# @TEST:AUTH-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
+# Related: @CODE:AUTH-001, @CODE:AUTH-001:API, @CODE:AUTH-001:DATA
 
 import pytest
 from auth.service import AuthenticationService  # 아직 구현되지 않음
@@ -269,7 +269,7 @@ sequenceDiagram
 
     CB->>FS: 구현 파일 생성
 
-    Note over CB,FS: # @FEATURE:AUTH-001<br/># @API:AUTH-001
+    Note over CB,FS: # @CODE:AUTH-001<br/># @CODE:AUTH-001:API
 
     CB->>FS: 최소한의 코드 작성<br/>(테스트 통과만 목표)
 
@@ -284,8 +284,8 @@ sequenceDiagram
 **Python 구현 (GREEN)**:
 ```python
 # src/auth/service.py
-# @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-# Related: @API:AUTH-001, @DATA:AUTH-001
+# @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
+# Related: @CODE:AUTH-001:API, @CODE:AUTH-001:DATA
 
 from typing import Optional
 from dataclasses import dataclass
@@ -295,14 +295,14 @@ from auth.token import TokenGenerator
 
 @dataclass
 class AuthenticationResult:
-    """@API:AUTH-001: 인증 결과 데이터 클래스"""
+    """@CODE:AUTH-001:API: 인증 결과 데이터 클래스"""
     is_authenticated: bool
     user: Optional[User] = None
     token: Optional[str] = None
     error: Optional[str] = None
 
 class AuthenticationService:
-    """@FEATURE:AUTH-001: 사용자 인증 서비스"""
+    """@CODE:AUTH-001: 사용자 인증 서비스"""
 
     def __init__(self):
         self.password_hasher = PasswordHasher()
@@ -310,7 +310,7 @@ class AuthenticationService:
 
     def authenticate(self, username: str, password: str) -> AuthenticationResult:
         """
-        @API:AUTH-001: 사용자 인증 메서드
+        @CODE:AUTH-001:API: 사용자 인증 메서드
 
         Args:
             username: 사용자 이메일
@@ -319,7 +319,7 @@ class AuthenticationService:
         Returns:
             AuthenticationResult: 인증 결과
         """
-        # @DATA:AUTH-001: 사용자 데이터 조회
+        # @CODE:AUTH-001:DATA: 사용자 데이터 조회
         user = User.find_by_email(username)
 
         if not user:
@@ -407,14 +407,14 @@ sequenceDiagram
 ```python
 # 리팩토링 후
 class AuthenticationService:
-    """@FEATURE:AUTH-001: 사용자 인증 서비스"""
+    """@CODE:AUTH-001: 사용자 인증 서비스"""
 
     # 매직 넘버를 상수로 추출
     MAX_LOGIN_ATTEMPTS = 3
     TOKEN_EXPIRY_MINUTES = 15
 
     def authenticate(self, username: str, password: str) -> AuthenticationResult:
-        """@API:AUTH-001: 사용자 인증 메서드"""
+        """@CODE:AUTH-001:API: 사용자 인증 메서드"""
         # 가드절 사용 (Early Return)
         user = self._find_user(username)
         if not user:
@@ -439,7 +439,7 @@ class AuthenticationService:
 
     # Private 메서드로 세부 로직 추출
     def _find_user(self, username: str) -> Optional[User]:
-        """@DATA:AUTH-001: 사용자 조회"""
+        """@CODE:AUTH-001:DATA: 사용자 조회"""
         return User.find_by_email(username)
 
     def _verify_password(self, password: str, user: User) -> bool:
@@ -507,7 +507,7 @@ biome check src/
 **Vitest 테스트 예시**:
 ```typescript
 // tests/auth/authentication-service.test.ts
-// @TEST:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+// @TEST:AUTH-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { AuthenticationService } from '@/auth/service';
@@ -562,7 +562,7 @@ golangci-lint run ./...
 **Go 테스트 예시**:
 ```go
 // tests/auth/authentication_service_test.go
-// @TEST:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+// @TEST:AUTH-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
 
 package auth_test
 
@@ -618,7 +618,7 @@ mvn spotbugs:check
 **JUnit 5 테스트 예시**:
 ```java
 // src/test/java/com/example/auth/AuthenticationServiceTest.java
-// @TEST:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+// @TEST:AUTH-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
 
 package com.example.auth;
 
@@ -1077,11 +1077,11 @@ flowchart TD
     test_auth_flow.py (4 tests)
 
   src/auth/
-    models.py (@DATA:AUTH-001)
-    password.py (@FEATURE:AUTH-001)
-    token.py (@FEATURE:AUTH-001)
-    service.py (@FEATURE:AUTH-001, @API:AUTH-001)
-    controller.py (@API:AUTH-001)
+    models.py (@CODE:AUTH-001:DATA)
+    password.py (@CODE:AUTH-001)
+    token.py (@CODE:AUTH-001)
+    service.py (@CODE:AUTH-001, @CODE:AUTH-001:API)
+    controller.py (@CODE:AUTH-001:API)
 
 ✅ TAG 검증 완료
   - Primary Chain 완전: @REQ → @DESIGN → @TASK → @TEST
@@ -1360,7 +1360,7 @@ assert service.get_user("id") == expected_user
 
 #### 4. @TAG 검증 실패
 
-**증상**: "고아 TAG 발견: @TASK:AUTH-001"
+**증상**: "고아 TAG 발견: @CODE:AUTH-001"
 
 **원인**:
 - Primary Chain 끊어짐
@@ -1372,12 +1372,12 @@ assert service.get_user("id") == expected_user
 @agent-tag-agent "AUTH-001 체인 확인"
 
 # 출력:
-# ❌ @TASK:AUTH-001 has no parent
-# 💡 Add @DESIGN:AUTH-001 as parent
+# ❌ @CODE:AUTH-001 has no parent
+# 💡 Add  as parent
 
 # 수동 수정
 # src/auth/service.py 파일 상단에 추가:
-# @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+# @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
 
 # 재검증
 @agent-tag-agent "TAG 검증"

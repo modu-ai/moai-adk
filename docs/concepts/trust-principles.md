@@ -77,7 +77,7 @@ describe('AuthService - SPEC-AUTH-001', () => {
     service = new AuthService();
   });
 
-  // @REQ:AUTH-001: 유효한 자격증명 인증
+  // @SPEC:AUTH-001: 유효한 자격증명 인증
   test('should authenticate valid credentials', async () => {
     const result = await service.authenticate(
       'user@example.com',
@@ -89,7 +89,7 @@ describe('AuthService - SPEC-AUTH-001', () => {
     expect(result.token).toMatch(/^[\w-]+\.[\w-]+\.[\w-]+$/); // JWT 형식
   });
 
-  // @REQ:AUTH-001: 잘못된 자격증명 거부
+  // @SPEC:AUTH-001: 잘못된 자격증명 거부
   test('should reject invalid credentials', async () => {
     const result = await service.authenticate(
       'user@example.com',
@@ -129,7 +129,7 @@ FAIL  __tests__/auth/service.test.ts
 #### 3단계: GREEN - 최소 구현
 
 ```typescript
-// @TASK:AUTH-001: 인증 서비스 구현
+// @CODE:AUTH-001: 인증 서비스 구현
 export class AuthService {
   async authenticate(email: string, password: string) {
     // 최소한의 구현으로 테스트 통과
@@ -166,8 +166,8 @@ Tests:       3 passed, 3 total
 #### 4단계: REFACTOR - 품질 개선
 
 ```typescript
-// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
-// Related: @API:AUTH-001, @DATA:AUTH-001
+// @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 →  → @CODE:AUTH-001 → @TEST:AUTH-001
+// Related: @CODE:AUTH-001:API, @CODE:AUTH-001:DATA
 
 export class AuthService {
   constructor(
@@ -177,16 +177,16 @@ export class AuthService {
   ) {}
 
   async authenticate(email: string, password: string): Promise<AuthResult> {
-    // @API:AUTH-001: 입력값 검증
+    // @CODE:AUTH-001:API: 입력값 검증
     this.validateInput(email, password);
 
-    // @DATA:AUTH-001: 사용자 조회
+    // @CODE:AUTH-001:DATA: 사용자 조회
     const user = await this.userRepository.findByEmail(email);
     if (!user) {
       return this.failureResponse();
     }
 
-    // @TASK:AUTH-001: bcrypt 비밀번호 검증
+    // @CODE:AUTH-001: bcrypt 비밀번호 검증
     const isValid = await this.passwordService.verify(
       password,
       user.passwordHash
@@ -195,7 +195,7 @@ export class AuthService {
       return this.failureResponse();
     }
 
-    // @TASK:AUTH-001: JWT 토큰 발급 (15분 만료)
+    // @CODE:AUTH-001: JWT 토큰 발급 (15분 만료)
     const token = await this.tokenService.generate(user, { expiresIn: '15m' });
 
     return {
@@ -265,7 +265,7 @@ def test_should_create_user():
     assert user.id is not None
 
 def test_should_reject_invalid_email():
-    """@API:USER-001: 잘못된 이메일 거부"""
+    """@CODE:USER-001:API: 잘못된 이메일 거부"""
     service = UserService()
     with pytest.raises(ValidationError):
         service.create(email='invalid-email')
@@ -377,9 +377,9 @@ function proc(d: any) {
 
 ```typescript
 // ✅ 좋은 예: SPEC 용어와 의도 명확
-// @FEATURE:PRICING-001: 프리미엄 회원 할인
+// @CODE:PRICING-001: 프리미엄 회원 할인
 function calculatePrice(order: Order): number {
-  // @REQ:PRICING-001: 프리미엄 회원은 10% 할인
+  // @SPEC:PRICING-001: 프리미엄 회원은 10% 할인
   if (order.isPremiumMember()) {
     return order.basePrice * 0.9; // 10% discount
   }
@@ -458,12 +458,12 @@ function calculateSubtotal(items: OrderItem[]): number {
 function calculateDiscount(order: Order, subtotal: number): number {
   let discount = 0;
 
-  // @REQ:PRICING-001: 프리미엄 회원 10% 할인
+  // @SPEC:PRICING-001: 프리미엄 회원 10% 할인
   if (order.user.isPremium) {
     discount += subtotal * 0.1;
   }
 
-  // @REQ:PRICING-002: 쿠폰 할인 적용
+  // @SPEC:PRICING-002: 쿠폰 할인 적용
   if (order.coupon?.isValid()) {
     discount += order.coupon.amount;
   }
@@ -537,7 +537,7 @@ class PayService {
 #### TypeScript 구현
 
 ```typescript
-// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
+// @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 →  → @CODE:AUTH-001 → @TEST:AUTH-001
 export interface AuthService {
   authenticate(email: string, password: string): Promise<AuthResult>;
   validateToken(token: string): Promise<boolean>;
@@ -547,7 +547,7 @@ export interface AuthService {
 #### Python 구현
 
 ```python
-# @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
+# @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 →  → @CODE:AUTH-001 → @TEST:AUTH-001
 from abc import ABC, abstractmethod
 
 class AuthService(ABC):
@@ -563,7 +563,7 @@ class AuthService(ABC):
 #### Go 구현
 
 ```go
-// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
+// @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 →  → @CODE:AUTH-001 → @TEST:AUTH-001
 type AuthService interface {
     Authenticate(email, password string) (*AuthResult, error)
     ValidateToken(token string) (bool, error)
@@ -573,7 +573,7 @@ type AuthService interface {
 #### Java 구현
 
 ```java
-// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
+// @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 →  → @CODE:AUTH-001 → @TEST:AUTH-001
 public interface AuthService {
     CompletableFuture<AuthResult> authenticate(String email, String password);
     CompletableFuture<Boolean> validateToken(String token);
@@ -583,7 +583,7 @@ public interface AuthService {
 #### Rust 구현
 
 ```rust
-// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
+// @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 →  → @CODE:AUTH-001 → @TEST:AUTH-001
 pub trait AuthService {
     async fn authenticate(&self, email: &str, password: &str) -> Result<AuthResult>;
     async fn validate_token(&self, token: &str) -> Result<bool>;
@@ -652,7 +652,7 @@ logger.logWithTag('AUTH-001', 'Authentication successful', {
 ### 입력 검증
 
 ```typescript
-// @API:AUTH-001: 입력값 보안 검증
+// @CODE:AUTH-001:API: 입력값 보안 검증
 class AuthService {
   private validateEmail(email: string): void {
     // 이메일 형식 검증
@@ -703,7 +703,7 @@ CODE-FIRST TAG 시스템으로 요구사항부터 코드까지 완전한 연결�
 - 코드 직접 스캔 (rg '@TAG' -n)
 - 실시간 검증
 
-### 8-Core TAG 체계
+### 4-Core TAG 체계
 
 **Primary Chain (4 Core)**: 요구사항부터 검증까지
 ```
@@ -720,16 +720,16 @@ CODE-FIRST TAG 시스템으로 요구사항부터 코드까지 완전한 연결�
 #### TAG BLOCK 예시
 
 ```typescript
-// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
-// Related: @API:AUTH-001, @DATA:AUTH-001
+// @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 →  → @CODE:AUTH-001 → @TEST:AUTH-001
+// Related: @CODE:AUTH-001:API, @CODE:AUTH-001:DATA
 
 /**
- * @API:AUTH-001: 사용자 인증 서비스
+ * @CODE:AUTH-001:API: 사용자 인증 서비스
  */
 export class AuthService {
   /**
-   * @TASK:AUTH-001: 이메일/비밀번호 인증
-   * @DATA:AUTH-001: 사용자 데이터 조회 및 검증
+   * @CODE:AUTH-001: 이메일/비밀번호 인증
+   * @CODE:AUTH-001:DATA: 사용자 데이터 조회 및 검증
    */
   async authenticate(email: string, password: string): Promise<AuthResult> {
     // 구현...
@@ -762,11 +762,11 @@ describe('AuthService', () => {
 
 ```bash
 # TAG 검색
-rg "@FEATURE:AUTH-001" -n src/
+rg "@CODE:AUTH-001" -n src/
 rg "@TEST:AUTH-001" -n tests/
 
 # TAG 체인 검증
-rg "@REQ:AUTH-001|@DESIGN:AUTH-001|@TASK:AUTH-001|@TEST:AUTH-001" -n .
+rg "@SPEC:AUTH-001||@CODE:AUTH-001|@TEST:AUTH-001" -n .
 
 # 고아 TAG 감지
 rg "@TAG:[A-Z]+-\d+" -n . | @agent-tag-agent "고아 TAG 감지"
