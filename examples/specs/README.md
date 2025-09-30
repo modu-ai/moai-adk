@@ -39,12 +39,12 @@
 - 실패 시나리오 포함
 ```
 
-### 2.  TAG 시스템 활용
+### 2. TAG 시스템 활용 (v5.0)
 ```markdown
-@REQ:USER-001        # 사용자 요구사항
-@DESIGN:SYSTEM-001   # 시스템 설계
-@TASK:IMPLEMENT-001  # 구현 작업
-@TEST:VERIFY-001     # 테스트 검증
+@SPEC:USER-001       # SPEC 문서와 요구사항
+@TEST:USER-001       # 테스트 코드 및 검증
+@CODE:USER-001       # 실제 구현 코드
+@DOC:USER-001        # 문서화 및 주석
 ```
 
 ### 3. 추적성 확보
@@ -59,7 +59,7 @@
 ```markdown
 # SPEC-XXX: [제목]
 
-## @REQ:[CATEGORY]-XXX 프로젝트 컨텍스트
+## @SPEC:[CATEGORY]-XXX 프로젝트 컨텍스트
 
 ### 배경
 - 현재 상황 설명
@@ -67,8 +67,6 @@
 
 ### 목표
 - 구체적이고 측정 가능한 목표
-
-## @DESIGN:[SYSTEM]-XXX 환경 및 가정사항
 
 ### Environment (환경)
 - 기술 스택
@@ -78,7 +76,7 @@
 - 전제 조건
 - 제약사항
 
-## @TASK:IMPLEMENT-XXX 요구사항 명세
+## @SPEC:[CATEGORY]-XXX 요구사항 명세
 
 ### R1. [요구사항 제목]
 **WHEN** [조건]
@@ -87,13 +85,18 @@
 **상세 요구사항:**
 - 구체적 기능 목록
 
-## @TEST:VERIFICATION-XXX 검증 기준
+## @TEST:[CATEGORY]-XXX 검증 기준
 
 ### 성공 기준
 - [ ] 검증 가능한 체크리스트
 
 ### 실패 시나리오
 - 예상 실패 케이스와 대응 방안
+
+## 추적성 체인 (v5.0)
+```
+@SPEC:[CATEGORY]-XXX → @TEST:[CATEGORY]-XXX → @CODE:[CATEGORY]-XXX → @DOC:[CATEGORY]-XXX
+```
 ```
 
 ## 🎓 학습 권장사항

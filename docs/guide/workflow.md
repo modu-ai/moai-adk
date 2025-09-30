@@ -225,8 +225,7 @@ interface AuthToken {
 TAG BLOCK을 통한 추적성 확보:
 
 ```markdown
-# @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-# Related: @API:AUTH-001
+# @SPEC:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth/service.test.ts | CODE: src/auth/service.ts
 
 # SPEC-AUTH-001: 사용자 인증 시스템
 ```
@@ -1164,8 +1163,8 @@ sequenceDiagram
 #### 1. 코드 스캔 및 TAG 추출
 
 ```bash
-# 자동 실행: 모든 소스 파일에서 @TAG 패턴 검색
-rg "@REQ:|@DESIGN:|@TASK:|@TEST:|@FEATURE:|@API:|@UI:|@DATA:|@PERF:|@SEC:|@DOCS:" -n
+# v5.0 자동 실행: 4-Core TAG 패턴 검색
+rg "@(SPEC|TEST|CODE|DOC):" -n
 ```
 
 **추출 결과 예시**:
@@ -1179,51 +1178,44 @@ docs/specs/SPEC-AUTH-001.md:5:## @REQ:AUTH-001 요구사항
 
 #### 2. TAG 체인 검증
 
-**검증 규칙**:
-- Primary Chain 완결성: @REQ → @DESIGN → @TASK → @TEST
+**검증 규칙 (v5.0)**:
+- 4-Core Chain 완결성: @SPEC → @TEST → @CODE → @DOC
 - ID 일관성: 모든 TAG가 동일한 ID 사용
 - 고아 TAG 탐지: 연결되지 않은 TAG 식별
 - 중복 TAG 탐지: 동일한 TAG의 중복 선언
 
-**검증 성공 예시**:
+**검증 성공 예시 (v5.0)**:
 ```
 ✅ TAG Chain Validation
 
 SPEC-AUTH-001: User Authentication
-  ✅ @REQ:AUTH-001 (docs/specs/SPEC-AUTH-001.md:5)
-  ✅ @DESIGN:AUTH-001 (docs/specs/SPEC-AUTH-001.md:25)
-  ✅ @TASK:AUTH-001 (src/auth/service.ts:15)
+  ✅ @SPEC:AUTH-001 (docs/specs/SPEC-AUTH-001.md:5)
   ✅ @TEST:AUTH-001 (tests/auth/service.test.ts:5)
+  ✅ @CODE:AUTH-001 (src/auth/service.ts:1)
+  ✅ @DOC:AUTH-001 (docs/api/auth.md:1)
 
-Implementation Tags:
-  ✅ @FEATURE:AUTH-001 (src/auth/service.ts:1)
-  ✅ @API:AUTH-001 (src/auth/service.ts:15)
-
-Quality Tags:
-  ✅ @SEC:AUTH-001 (src/auth/service.ts:25)
-  ✅ @DOCS:AUTH-001 (docs/api/auth.md:1)
-
-Summary: 8/8 tags validated
+Summary: 4/4 tags validated (4-Core complete)
 ```
 
-**검증 실패 예시**:
+**검증 실패 예시 (v5.0)**:
 ```
 ❌ TAG Chain Validation
 
 SPEC-AUTH-001: User Authentication
-  ✅ @REQ:AUTH-001 (docs/specs/SPEC-AUTH-001.md:5)
-  ✅ @DESIGN:AUTH-001 (docs/specs/SPEC-AUTH-001.md:25)
-  ❌ @TASK:AUTH-001 - NOT FOUND
+  ✅ @SPEC:AUTH-001 (docs/specs/SPEC-AUTH-001.md:5)
   ✅ @TEST:AUTH-001 (tests/auth/service.test.ts:5)
+  ❌ @CODE:AUTH-001 - NOT FOUND
+  ⚠️ @DOC:AUTH-001 - NOT FOUND
 
 Orphaned Tags:
-  ⚠️ @FEATURE:LOGIN-001 (src/auth/login.ts:1) - No matching SPEC
+  ⚠️ @FEATURE:LOGIN-001 (src/auth/login.ts:1) - No matching SPEC (v4.0 legacy tag)
 
 Action Required:
-  1. Add @TASK:AUTH-001 tag to implementation file
-  2. Create SPEC for @FEATURE:LOGIN-001 or remove tag
+  1. Add @CODE:AUTH-001 tag to implementation file
+  2. Add @DOC:AUTH-001 tag to documentation
+  3. Migrate v4.0 tags to v5.0 format or remove
 
-Summary: 3/4 primary tags validated, 1 orphaned tag
+Summary: 2/4 tags validated, 1 legacy tag found
 ```
 
 #### 3. 문서 업데이트

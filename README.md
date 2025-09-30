@@ -31,7 +31,7 @@ graph TB
     B --> E[Red-Green-Refactor]
     C --> F[Living Document 업데이트]
 
-    D --> G["@REQ → @DESIGN → @TASK → @TEST"]
+    D --> G["@SPEC → @TEST → @CODE → @DOC"]
     E --> H[언어별 최적 도구 선택]
     F --> I[완전한 추적성 보장]
 
@@ -41,9 +41,9 @@ graph TB
 ```
 
 #### 🎯 **3단계 워크플로우**: 체계적 개발 프로세스
-- **1단계 SPEC 작성**: EARS(Easy Approach to Requirements Syntax) 형식의 명세서 작성과 동시에 @AI-TAG 체인 자동 생성
-- **2단계 TDD 구현**: Red-Green-Refactor 사이클을 통한 테스트 주도 개발 with 언어별 최적화된 도구
-- **3단계 문서 동기화**: Living Document 자동 업데이트 및 GitHub Issue/PR 상태 관리
+- **1단계 SPEC 작성**: EARS(Easy Approach to Requirements Syntax) 형식의 명세서 작성과 동시에 @SPEC TAG 생성
+- **2단계 TDD 구현**: Red-Green-Refactor 사이클 (@TEST → @CODE 체인 구축)
+- **3단계 문서 동기화**: Living Document 자동 업데이트 (@DOC 동기화) 및 GitHub Issue/PR 상태 관리
 
 #### 🌍 **다중 언어 지원**: 범용 개발 도구
 - **지능형 언어 감지**: 프로젝트 파일 분석을 통한 자동 언어 감지 (JavaScript/TypeScript/Python/Java/Go)
@@ -60,10 +60,11 @@ graph TB
 - **cc-manager**: Claude Code 설정 최적화
 
 #### 🏷️ ** @AI-TAG 시스템**: 코드 직접 스캔 기반 추적성
-- **Primary Chain**: @REQ → @DESIGN → @TASK → @TEST (필수 체인)
-- **Implementation Tags**: @FEATURE, @API, @UI, @DATA (구현 유형)
-- **Quality Tags**: @PERF, @SEC, @DOCS, @TAG (품질 속성)
-- **Meta Tags**: @OPS, @RELEASE, @DEPRECATED (메타데이터)
+- **4-Core TAG 체계**: @SPEC → @TEST → @CODE → @DOC (필수 체인)
+  - `@SPEC`: SPEC 문서와 요구사항 정의
+  - `@TEST`: 테스트 코드 및 검증 로직
+  - `@CODE`: 실제 구현 코드
+  - `@DOC`: 문서화 및 주석
 - **검증 방식**: 정규식 패턴으로 코드에서 직접 스캔, 중간 캐시 없음
 
 #### ⚡ **지능형 시스템 진단**: 실용성 극대화
@@ -307,23 +308,23 @@ MoAI-ADK의 핵심은 **SPEC-First TDD 방법론**을 통한 체계적이고 추
 graph TB
     subgraph "1️⃣ SPEC 작성 단계"
         A["/moai:1-spec 실행"] --> A1["EARS 명세서 생성"]
-        A1 --> A2["@AI-TAG 체인 생성<br/>@REQ → @DESIGN → @TASK → @TEST"]
+        A1 --> A2["@SPEC TAG 생성"]
         A2 --> A3["사용자 확인 후<br/>Git 브랜치 생성"]
         A3 --> A4["GitHub Issue/PR 템플릿"]
     end
 
     subgraph "2️⃣ TDD 구현 단계"
         B["/moai:2-build 실행"] --> B1["언어 자동 감지<br/>(Python/TypeScript/Java/Go)"]
-        B1 --> B2["🔴 RED: 실패하는 테스트 작성"]
-        B2 --> B3["🟢 GREEN: 최소 구현으로 테스트 통과"]
+        B1 --> B2["🔴 RED: 실패하는 테스트 작성<br/>@TEST TAG 생성"]
+        B2 --> B3["🟢 GREEN: 최소 구현으로 테스트 통과<br/>@CODE TAG 생성"]
         B3 --> B4["🔵 REFACTOR: 코드 품질 개선"]
         B4 --> B5["TRUST 5원칙 자동 검증"]
     end
 
     subgraph "3️⃣ 문서 동기화 단계"
-        C["/moai:3-sync 실행"] --> C1["Living Document 업데이트"]
+        C["/moai:3-sync 실행"] --> C1["Living Document 업데이트<br/>@DOC TAG 생성"]
         C1 --> C2["API 문서 자동 생성"]
-        C2 --> C3["@AI-TAG 인덱스 재구축"]
+        C2 --> C3["TAG 체인 검증<br/>@SPEC → @TEST → @CODE → @DOC"]
         C3 --> C4["PR 상태: Draft → Ready"]
     end
 
@@ -414,10 +415,7 @@ sequenceDiagram
 
 2. **@AI-TAG 체인** 자동 생성:
    ```
-   @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
-   ├── @SEC:AUTH-001 (보안 검토)
-   ├── @API:AUTH-001 (API 설계)
-   └── @DOCS:AUTH-001 (문서화)
+   @SPEC:AUTH-001 (SPEC 문서에 자동 태깅)
    ```
 
 3. **사용자 확인 후 Git 작업**:
@@ -443,7 +441,7 @@ SPEC이 완성되면 실제 TDD 사이클을 시작합니다:
 2. **도구 선택**: Vitest + TypeScript + Biome 자동 매핑
 3. **🔴 RED Phase**: 실패하는 테스트 작성
    ```typescript
-   // @TEST:AUTH-001: JWT 인증 테스트
+   // @TEST:AUTH-001 | SPEC: SPEC-AUTH-001.md
    describe('JWT Authentication', () => {
      test('@TEST:AUTH-001: should generate valid JWT token', async () => {
        const authService = new AuthService();
@@ -485,8 +483,8 @@ SPEC이 완성되면 실제 TDD 사이클을 시작합니다:
    - 사용 예제 및 스키마 업데이트
    - 보안 가이드라인 동기화
 
-2. **@AI-TAG 인덱스** 재구축:
-   - 전체 프로젝트의 TAG 관계 매핑 업데이트
+2. **TAG 체인 검증**:
+   - @SPEC → @TEST → @CODE → @DOC 체인 무결성 확인
    - 추적성 매트릭스 생성
    - 고아 TAG 감지 및 정리
 
@@ -500,19 +498,17 @@ SPEC이 완성되면 실제 TDD 사이클을 시작합니다:
 위 3단계 워크플로우를 통해 다음과 같은 완성된 결과물을 얻을 수 있습니다:
 
 ```typescript
-// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-// Related: @SEC:AUTH-001, @API:AUTH-001, @DOCS:AUTH-001
+// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth/service.test.ts
 
 import jwt from 'jsonwebtoken';
 import { AuthService } from './auth.service';
 
-// @API:AUTH-001: JWT 토큰 생성 API
+// @CODE:AUTH-001: JWT 토큰 생성 및 검증 서비스
 export class JwtAuthService implements AuthService {
-  // @SEC:AUTH-001: 보안 키 관리
   private readonly privateKey = process.env.JWT_PRIVATE_KEY!;
   private readonly publicKey = process.env.JWT_PUBLIC_KEY!;
 
-  // @TASK:AUTH-001: JWT 토큰 생성 구현
+  // @CODE:AUTH-001: JWT 토큰 생성 구현
   async generateToken(payload: TokenPayload): Promise<string> {
     return jwt.sign(payload, this.privateKey, {
       algorithm: 'RS256',
@@ -520,7 +516,7 @@ export class JwtAuthService implements AuthService {
     });
   }
 
-  // @TASK:AUTH-001: JWT 토큰 검증 구현
+  // @CODE:AUTH-001: JWT 토큰 검증 구현
   async verifyToken(token: string): Promise<TokenPayload> {
     return jwt.verify(token, this.publicKey) as TokenPayload;
   }
@@ -715,36 +711,33 @@ graph TB
 
 ## @AI-TAG 시스템
 
-코드와 문서 간 완전한 추적성을 제공하는 태깅 시스템입니다.
+코드와 문서 간 완전한 추적성을 제공하는 4-Core TAG 시스템입니다.
 
-### 8개 핵심 TAG
+### 4-Core TAG 체계 (v5.0)
 
-**Primary Chain (필수):**
-- `@REQ`: 요구사항 정의
-- `@DESIGN`: 아키텍처 설계
-- `@TASK`: 구현 작업
-- `@TEST`: 테스트 검증
+**필수 체인:**
+- `@SPEC`: SPEC 문서와 요구사항 정의
+- `@TEST`: 테스트 코드 및 검증 로직
+- `@CODE`: 실제 구현 코드
+- `@DOC`: 문서화 및 주석
 
-**Extension Tags:**
-- `@FEATURE`: 비즈니스 기능
-- `@API`: 인터페이스 정의
-- `@SEC`: 보안 요구사항
-- `@DOCS`: 문서화
+**체인 흐름:**
+```
+@SPEC:ID → @TEST:ID → @CODE:ID → @DOC:ID
+```
 
 ### TAG BLOCK 템플릿
 
 코드 파일 상단에 다음 형태로 작성:
 
 ```python
-# @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-# Related: @SEC:AUTH-001, @DOCS:AUTH-001
+# @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth/test_auth.py
 
 class AuthenticationService:
-    """@FEATURE:AUTH-001: 사용자 인증 서비스"""
+    """@CODE:AUTH-001: 사용자 인증 서비스"""
 
     def authenticate(self, email: str, password: str) -> bool:
-        """@API:AUTH-001: 사용자 인증 API"""
-        # @SEC:AUTH-001: 입력값 보안 검증
+        """@CODE:AUTH-001: 사용자 인증 API"""
         if not self._validate_input(email, password):
             return False
         return self._verify_credentials(email, password)
@@ -753,10 +746,10 @@ class AuthenticationService:
 ### TAG 검색 및 관리
 
 ```bash
-# 기존 TAG 확인
-rg "@REQ:AUTH" -n
+# v5.0 TAG 확인
+rg "@(SPEC|TEST|CODE|DOC):" -n
 
-# TAG 체인 추적
+# 특정 ID TAG 체인 추적
 rg "AUTH-001" -n
 
 # 전체 코드 스캔 및 TAG 검증

@@ -1,6 +1,6 @@
 # SPEC-002: Python 코드 품질 개선 시스템
 
-## @REQ:QUALITY-002 프로젝트 컨텍스트
+## @SPEC:QUALITY-002 프로젝트 컨텍스트
 
 ### 배경
 
@@ -18,7 +18,7 @@ MoAI-ADK는 Spec-First TDD 개발을 Claude Code 환경에서 지원하는 핵�
 2. TDD 사이클 자동화를 통한 개발 효율성 향상
 3. 개발 가이드 위반 0건 달성을 위한 실시간 품질 게이트 구현
 
-## @DESIGN:QUALITY-SYSTEM-002 환경 및 가정사항
+## @SPEC:QUALITY-002 환경 및 가정사항
 
 ### Environment (환경)
 
@@ -34,7 +34,7 @@ MoAI-ADK는 Spec-First TDD 개발을 Claude Code 환경에서 지원하는 핵�
 - pytest-cov와 관련 도구들이 설치되어 있음
 - Git 저장소가 초기화되어 있음
 
-## @TASK:IMPLEMENT-002 요구사항 명세
+## @SPEC:QUALITY-002 요구사항 명세
 
 ### R1. 테스트 커버리지 자동 측정 시스템
 
@@ -71,7 +71,7 @@ MoAI-ADK는 Spec-First TDD 개발을 Claude Code 환경에서 지원하는 핵�
 - 매개변수 개수: 5개 이하
 - 순환 복잡도: 10 이하
 
-## @TEST:VERIFICATION-002 검증 기준
+## @TEST:QUALITY-002 검증 기준
 
 ### 성공 기준
 
@@ -86,4 +86,12 @@ MoAI-ADK는 Spec-First TDD 개발을 Claude Code 환경에서 지원하는 핵�
 - 개발 가이드 위반 시 경고 메시지 출력
 - TDD 사이클 건너뛸 시 알림
 
-이 SPEC은 MoAI-ADK의 품질 시스템을 설계하는 좋은 예제입니다. EARS (Environment, Assumptions, Requirements, Success criteria) 형식을 완전히 따르며,  TAG 시스템을 활용한 추적성을 보여줍니다.
+## 추적성 체인 (v5.0)
+```
+@SPEC:QUALITY-002 (이 문서)
+  → @TEST:QUALITY-002 (tests/quality/test_system.py)
+  → @CODE:QUALITY-002 (src/quality/system.py)
+  → @DOC:QUALITY-002 (docs/quality-system.md)
+```
+
+이 SPEC은 MoAI-ADK의 품질 시스템을 설계하는 좋은 예제입니다. EARS (Environment, Assumptions, Requirements, Success criteria) 형식을 완전히 따르며, v5.0 TAG 시스템을 활용한 추적성을 보여줍니다.

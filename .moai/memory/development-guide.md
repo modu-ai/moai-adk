@@ -61,10 +61,10 @@ MoAI-ADK 범용 개발 툴킷을 사용하는 모든 에이전트와 개발자�
 
 **SPEC → Test → Code 사이클**:
 
-- **SPEC**: `@REQ`, `@DESIGN`, `@TASK` 태그가 포함된 상세 SPEC 우선 작성
-- **RED**: SPEC 요구사항 기반 실패하는 테스트 작성 및 실패 확인
-- **GREEN**: 테스트를 통과하고 SPEC을 충족하는 최소한의 코드 구현
-- **REFACTOR**: SPEC 준수를 유지하면서 코드 품질 개선
+- **SPEC**: `@SPEC:ID` 태그가 포함된 상세 SPEC 우선 작성 (EARS 방식)
+- **RED**: `@TEST:ID` - SPEC 요구사항 기반 실패하는 테스트 작성 및 실패 확인
+- **GREEN**: `@CODE:ID` - 테스트를 통과하고 SPEC을 충족하는 최소한의 코드 구현
+- **REFACTOR**: `@CODE:ID` - SPEC 준수를 유지하면서 코드 품질 개선, `@DOC:ID` 문서화
 
 **언어별 TDD 구현**:
 
@@ -74,7 +74,7 @@ MoAI-ADK 범용 개발 툴킷을 사용하는 모든 에이전트와 개발자�
 - **Go**: go test + SPEC 테이블 주도 테스트 (인터페이스 준수)
 - **Rust**: cargo test + SPEC 문서 테스트 (trait 검증)
 
-각 테스트는 @TAG 참조를 통해 특정 SPEC 요구사항과 연결한다.
+각 테스트는 @TEST:ID → @CODE:ID 참조를 통해 특정 SPEC 요구사항과 연결한다.
 
 ### R - 요구사항 주도 가독성
 
@@ -114,12 +114,12 @@ MoAI-ADK 범용 개발 툴킷을 사용하는 모든 에이전트와 개발자�
 
 ### T - SPEC 추적성
 
-- **SPEC-코드 추적성**: 모든 코드 변경은 @TAG 시스템을 통해 SPEC ID와 특정 요구사항을 참조한다.
+- **SPEC-코드 추적성**: 모든 코드 변경은 4-Core @TAG 시스템을 통해 SPEC ID와 특정 요구사항을 참조한다.
 - **3단계 워크플로우 추적**:
-  - `/moai:1-spec`: @REQ, @DESIGN, @TASK 태그로 SPEC 작성
-  - `/moai:2-build`: @TEST, @FEATURE, @API, @UI, @DATA 태그로 TDD 구현
-  - `/moai:3-sync`: 코드 스캔으로 모든 8-Core TAG 검증 및 문서 동기화
-- **코드 스캔 기반 추적성**: 중간 캐시 없이 `rg '@TAG' -n`으로 코드를 직접 스캔하여 TAG 추적성 보장한다.
+  - `/moai:1-spec`: `@SPEC:ID` 태그로 SPEC 작성 (.moai/specs/)
+  - `/moai:2-build`: `@TEST:ID` (tests/) → `@CODE:ID` (src/) TDD 구현
+  - `/moai:3-sync`: `@DOC:ID` (docs/) 문서 동기화, 전체 TAG 검증
+- **코드 스캔 기반 추적성**: 중간 캐시 없이 `rg '@(SPEC|TEST|CODE|DOC):' -n`으로 코드를 직접 스캔하여 TAG 추적성 보장한다.
 
 ---
 
@@ -135,35 +135,52 @@ MoAI-ADK 범용 개발 툴킷을 사용하는 모든 에이전트와 개발자�
 2. **TDD 구현**: Red-Green-Refactor를 엄격히 따른다. 언어별 적절한 테스트 프레임워크와 함께 `/moai:2-build`를 사용한다.
 3. **추적성 동기화**: `/moai:3-sync`를 실행하여 문서를 업데이트하고 SPEC과 코드 간 @TAG 관계를 유지한다.
 
-## @TAG 시스템
+## @TAG 시스템 v5.0 (4-Core)
 
-### Primary Chain (필수)
+### 핵심 체계
 
 ```text
-@REQ → @DESIGN → @TASK → @TEST
+@SPEC:ID → @TEST:ID → @CODE:ID → @DOC:ID
 ```
+
+**TDD 완벽 정렬**:
+- `@SPEC:ID` (사전 준비) - EARS 방식 요구사항 명세
+- `@TEST:ID` (RED) - 실패하는 테스트 작성
+- `@CODE:ID` (GREEN + REFACTOR) - 구현 및 리팩토링
+- `@DOC:ID` (문서화) - Living Document 생성
 
 ### TAG BLOCK 템플릿
 
+**소스 코드 (src/)**:
 ```text
-# @FEATURE:<DOMAIN-ID> | Chain: @REQ:<ID> -> @DESIGN:<ID> -> @TASK:<ID> -> @TEST:<ID>
-# Related: @API:<ID>, @UI:<ID>, @DATA:<ID>
+# @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth/service.test.ts
 ```
 
-### 8-Core 체계 구성
+**테스트 코드 (tests/)**:
+```text
+# @TEST:AUTH-001 | SPEC: SPEC-AUTH-001.md
+```
 
-**Primary Chain (4 Core)**: 요구 → 설계 → 작업 → 검증 (필수)
-- `@REQ` → `@DESIGN` → `@TASK` → `@TEST`
+**SPEC 문서 (.moai/specs/)**:
+```text
+# @SPEC:AUTH-001: JWT 인증 시스템
+```
 
-**Implementation (4 Core)**: 구현 세부 사항
-- `@FEATURE` → `@API` → `@UI` → `@DATA`
+### @CODE 서브 카테고리 (주석 레벨)
+
+구현 세부사항은 `@CODE:ID` 내부에 주석으로 표기:
+- `@CODE:ID:API` - REST API, GraphQL 엔드포인트
+- `@CODE:ID:UI` - 컴포넌트, 뷰, 화면
+- `@CODE:ID:DATA` - 데이터 모델, 스키마, 타입
+- `@CODE:ID:DOMAIN` - 비즈니스 로직, 도메인 규칙
+- `@CODE:ID:INFRA` - 인프라, 데이터베이스, 외부 연동
 
 ### TAG 사용 규칙
 
-- 모든 코드 파일 상단에 TAG BLOCK 배치
-- 새 TAG 생성 전 중복 확인: `rg "@REQ:<키워드>" -n`
-- TAG ID 규칙: `<도메인>-<3자리>` (예: AUTH-003)
-- TAG 검증: `rg '@TAG' -n src/ tests/` (코드 직접 스캔)
+- TAG ID: `<도메인>-<3자리>` (예: AUTH-003)
+- 새 TAG 생성 전 중복 확인: `rg "@SPEC:AUTH" -n` 또는 `rg "AUTH-001" -n`
+- TAG 검증: `rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/`
+- CODE-FIRST 원칙: TAG의 진실은 코드 자체에만 존재
 
 
 ---

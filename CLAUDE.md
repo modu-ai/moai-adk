@@ -8,7 +8,7 @@
 - **TDD-First**: 테스트 없이는 구현 없음
 - **GitFlow 지원**: Git 작업 자동화, Living Document 동기화, @TAG 추적성
 
-**다중 언어 지원**: 각 언어별 최적 도구와 타입 안전성, JSON 기반 @TAG 시스템
+**다중 언어 지원**: 각 언어별 최적 도구와 타입 안전성, CODE-FIRST @TAG 시스템
 
 ## 3단계 개발 워크플로우
 
@@ -47,63 +47,88 @@
 **Git 자동화**: 커밋, 푸시 등 일반 작업만 자동 처리
 **Git 직접**: `@agent-git-manager "명령"` (특수 케이스)
 
-## @TAG Lifecycle 2.0
+## @TAG Lifecycle 5.0 (4-Core)
 
-### TAG BLOCK 템플릿 (필수)
+### 핵심 설계 철학
 
-```text
-# @FEATURE:<DOMAIN-ID> | Chain: @REQ:<ID> -> @DESIGN:<ID> -> @TASK:<ID> -> @TEST:<ID>
-# Related: @API:<ID>, @UI:<ID>, @DATA:<ID>
+**TDD 완벽 정렬**: RED (테스트) → GREEN (구현) → REFACTOR (문서)
+**단순성**: 8개 TAG → 4개 TAG (50% 감소)
+**추적성**: 코드 직접 스캔 (CODE-FIRST)
+
+### 4-Core TAG 체계
+
+```
+@SPEC:ID → @TEST:ID → @CODE:ID → @DOC:ID
 ```
 
-**8-Core 구성**:
-- Primary (4 Core): @REQ, @DESIGN, @TASK, @TEST
-- Implementation (4 Core): @FEATURE, @API, @UI, @DATA
+| TAG | 역할 | TDD 단계 | 위치 | 필수 |
+|-----|------|----------|------|------|
+| `@SPEC:ID` | 요구사항 명세 (EARS) | 사전 준비 | .moai/specs/ | ✅ |
+| `@TEST:ID` | 테스트 케이스 | RED | tests/ | ✅ |
+| `@CODE:ID` | 구현 코드 | GREEN + REFACTOR | src/ | ✅ |
+| `@DOC:ID` | 문서화 | REFACTOR | docs/ | ⚠️ |
 
-- 새 코드/문서/테스트 파일을 생성할 때: 위 TAG BLOCK을 파일 상단(주석) 또는 최상위 선언 근처에 배치한다
-- 수정 시: 기존 TAG BLOCK을 검토해 영향받는 TAG를 업데이트한다
-- 생성 전 중복 확인: `rg "@REQ:<키워드>" -n` 또는 `rg "<DOMAIN-ID>" -n`으로 기존 체인을 검색한다
+### TAG BLOCK 템플릿
 
-### 체계 요약
+**소스 코드 (src/)**:
+```typescript
+// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth/service.test.ts
+```
 
-### 8-Core @TAG 체계
+**테스트 코드 (tests/)**:
+```typescript
+// @TEST:AUTH-001 | SPEC: SPEC-AUTH-001.md
+```
 
-| 카테고리 | Core | 설명 | 필수 여부 |
-|----------|------|------|-----------|
-| Primary Chain | 4 Core | 요구 → 설계 → 작업 → 검증 | 필수 |
-| Implementation | 4 Core | Feature/API/UI/Data 구현 유형 | 필수 |
+**SPEC 문서 (.moai/specs/)**:
+```markdown
+# @SPEC:AUTH-001: JWT 인증 시스템
+```
 
-- TAG ID: `<도메인>-<3자리>` (예: `AUTH-003`) — 체인 내 모든 TAG는 동일 ID를 사용한다
+- TAG ID: `<도메인>-<3자리>` (예: `AUTH-003`)
+- 생성 전 중복 확인: `rg "@SPEC:AUTH" -n` 또는 `rg "AUTH-001" -n`
 - **TAG의 진실은 코드 자체에만 존재**: 정규식 패턴으로 코드에서 직접 스캔하여 실시간 검증
 
 ### SPEC 연동 가이드
 
-- `/moai:1-spec` 수행 시 SPEC 문서에 TAG BLOCK을 포함하여 작성한다
-- SPEC과 코드의 TAG는 `rg` 명령어로 직접 스캔하여 검증한다
-- SPEC 변경 -> 코드/테스트 반영 -> `/moai:3-sync`로 코드 스캔 및 검증 수행한다
+- `/moai:1-spec` 수행 시 `.moai/specs/SPEC-<ID>.md`에 `@SPEC:ID` 포함하여 작성
+- `/moai:2-build` 수행 시 TDD 사이클에 따라 `@TEST:ID` → `@CODE:ID` 순차 생성
+- `/moai:3-sync` 수행 시 `rg '@(SPEC|TEST|CODE|DOC):' -n`으로 전체 스캔 및 검증
+
+### @CODE 서브 카테고리 (주석 레벨)
+
+구현 세부사항은 `@CODE:ID` 내부에 주석으로 표기:
+- `@CODE:ID:API` - REST API, GraphQL 엔드포인트
+- `@CODE:ID:UI` - 컴포넌트, 뷰, 화면
+- `@CODE:ID:DATA` - 데이터 모델, 스키마, 타입
+- `@CODE:ID:DOMAIN` - 비즈니스 로직, 도메인 규칙
+- `@CODE:ID:INFRA` - 인프라, 데이터베이스, 외부 연동
 
 ### 코드/테스트 적용 예시
 
 **Python 예시**:
 ```python
-# @FEATURE:LOGIN-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-# Related: @API:LOGIN-001, @DATA:LOGIN-001
+# @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth/test_service.py
+
 class AuthenticationService:
-    """@FEATURE:LOGIN-001: 사용자 인증 서비스 구현"""
+    """@CODE:AUTH-001: JWT 인증 서비스"""
 
     def authenticate(self, username: str, password: str) -> bool:
-        """@API:LOGIN-001: 사용자 인증 API 엔드포인트"""
+        """@CODE:AUTH-001:API: 사용자 인증 API"""
+        # @CODE:AUTH-001:DOMAIN: 입력 검증
         if not self._validate_input(username, password):
             return False
 
-        # @DATA:LOGIN-001: 사용자 데이터 조회
+        # @CODE:AUTH-001:DATA: 사용자 조회
         user_data = self._get_user_data(username)
 
         return self._verify_credentials(user_data, password)
 
-# @TEST:LOGIN-001 연결: @TASK:LOGIN-001 -> @TEST:LOGIN-001
+# tests/auth/test_service.py
+# @TEST:AUTH-001 | SPEC: SPEC-AUTH-001.md
+
 def test_should_authenticate_valid_user():
-    """@TEST:LOGIN-001: 유효한 사용자 인증 테스트"""
+    """@TEST:AUTH-001: 유효한 사용자 인증 검증"""
     service = AuthenticationService()
     result = service.authenticate("user", "password")
     assert result is True
@@ -111,58 +136,106 @@ def test_should_authenticate_valid_user():
 
 **TypeScript 예시**:
 ```typescript
-// @FEATURE:LOGIN-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-// Related: @API:LOGIN-001, @UI:LOGIN-001, @DATA:LOGIN-001
+// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth/service.test.ts
 
-// @API:LOGIN-001: 인증 API 인터페이스 정의
-interface AuthService {
-  authenticate(username: string, password: string): Promise<boolean>;
+/**
+ * @CODE:AUTH-001: JWT 인증 서비스
+ *
+ * TDD 이력:
+ * - RED: tests/auth/service.test.ts 작성
+ * - GREEN: 최소 구현 (bcrypt, JWT)
+ * - REFACTOR: 타입 안전성 추가
+ */
+export class AuthService {
+  // @CODE:AUTH-001:API: 인증 API 엔드포인트
+  async authenticate(username: string, password: string): Promise<AuthResult> {
+    // @CODE:AUTH-001:DOMAIN: 입력 검증
+    this.validateInput(username, password);
+
+    // @CODE:AUTH-001:DATA: 사용자 조회
+    const user = await this.userRepository.findByUsername(username);
+
+    return this.verifyCredentials(user, password);
+  }
 }
 
-// @UI:LOGIN-001: 로그인 컴포넌트
-const LoginForm: React.FC = () => {
-  const handleSubmit = (username: string, password: string) => {
-    // @API:LOGIN-001 호출
-  };
+// tests/auth/service.test.ts
+// @TEST:AUTH-001 | SPEC: SPEC-AUTH-001.md
 
-  return <form>...</form>;
-};
-
-// @DATA:LOGIN-001: 사용자 데이터 타입
-interface UserData {
-  id: string;
-  username: string;
-}
-
-// @TEST:LOGIN-001: Vitest/Jest 테스트
 describe('AuthService', () => {
-  test('@TEST:LOGIN-001: should authenticate valid user', () => {
-    // 테스트 구현...
+  test('@TEST:AUTH-001: should authenticate valid user', () => {
+    const service = new AuthService();
+    const result = await service.authenticate('user', 'password');
+    expect(result.success).toBe(true);
   });
 });
 ```
 
 ### 검색 & 무결성 유지
 
-- 중복 방지: 새 TAG 도입 전 `rg "@TAG" -g"*.ts"`, `rg "AUTH-001"` 등으로 기존 체인을 확인한다
-- 재사용 촉진: 구현 계획 단계에서 `@agent-code-builder`에게 "기존 TAG 재사용 후보를 찾아주세요"라고 요청한다
-- 무결성 검사: `/moai:3-sync` 실행으로 코드 전체를 스캔하여 TAG 체인 검증 및 고아 TAG 식별
-- 폐기 절차: 더 이상 사용하지 않는 TAG는 `@TAG:DEPRECATED-<ID>`로 표기하고 코드에서 제거한다
-
-### 금지 패턴 (잘못된 예시)
-
-```python
-@TASK:LOGIN-001 -> @DESIGN:LOGIN-001      # 순서 위반
-@FEATURE:LOGIN-001 (중복 선언)          # 고유성 위반
-@REQ:ABC-123                             # 의미 없는 ID
+**중복 방지**:
+```bash
+# 새 TAG 생성 전 기존 TAG 검색
+rg "@SPEC:AUTH" -n          # SPEC 문서에서 AUTH 도메인 검색
+rg "@CODE:AUTH-001" -n      # 특정 ID 검색
+rg "AUTH-001" -n            # ID 전체 검색
 ```
 
-### 업데이트 체크리스트 (점검용)
+**TAG 체인 검증**:
+```bash
+# /moai:3-sync 실행 시 자동 스캔
+rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/
 
-- [ ] TAG BLOCK이 모든 신규/수정 파일에 존재하는가?
-- [ ] Primary Chain 4종이 끊김 없이 연결되는가?
-- [ ] SPEC과 코드/테스트가 동일한 TAG ID를 공유하는가?
-- [ ] TAG 체인이 코드 스캔을 통해 검증되었는가?
+# 고아 TAG 탐지 (SPEC 없는 CODE)
+rg '@CODE:AUTH-001' -n src/    # CODE는 있는데
+rg '@SPEC:AUTH-001' -n .moai/specs/  # SPEC이 없으면 고아
+```
+
+**재사용 촉진**:
+- `@agent-code-builder "기존 TAG 재사용 후보를 찾아주세요"`
+- `@agent-tag-agent "AUTH 도메인 TAG 목록 조회"`
+
+**폐기 절차**:
+```python
+# Deprecated TAG 표기 후 제거
+# @CODE:AUTH-001:DEPRECATED (2025-01-15: AUTH-002로 대체됨)
+```
+
+### 올바른 TAG 사용 패턴
+
+✅ **권장 패턴**:
+```typescript
+// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth/service.test.ts
+export class AuthService { ... }
+```
+
+❌ **금지 패턴**:
+```typescript
+// @TEST:AUTH-001 -> @CODE:AUTH-001    ❌ 순서 표기 불필요 (파일 위치로 구분)
+// @CODE:AUTH-001, @CODE:AUTH-002      ❌ 하나의 파일에 여러 ID (분리 필요)
+// @REQ:AUTH-001                        ❌ v4.0 TAG 사용 금지
+// @CODE:ABC-123                        ❌ 의미 없는 도메인명
+```
+
+### TDD 워크플로우 체크리스트
+
+**1단계: SPEC 작성** (`/moai:1-spec`)
+- [ ] `.moai/specs/SPEC-<ID>.md` 생성
+- [ ] `@SPEC:ID` TAG 포함
+- [ ] EARS 구문으로 요구사항 작성
+- [ ] 중복 ID 확인: `rg "@SPEC:<ID>" -n`
+
+**2단계: TDD 구현** (`/moai:2-build`)
+- [ ] **RED**: `tests/` 디렉토리에 `@TEST:ID` 작성 및 실패 확인
+- [ ] **GREEN**: `src/` 디렉토리에 `@CODE:ID` 작성 및 테스트 통과
+- [ ] **REFACTOR**: 코드 품질 개선, TDD 이력 주석 추가
+- [ ] TAG BLOCK에 SPEC/TEST 파일 경로 명시
+
+**3단계: 문서 동기화** (`/moai:3-sync`)
+- [ ] 전체 TAG 스캔: `rg '@(SPEC|TEST|CODE):' -n`
+- [ ] 고아 TAG 없음 확인
+- [ ] Living Document 자동 생성 확인
+- [ ] PR 상태 Draft → Ready 전환
 
 ## 에이전트별 브랜치 처리 가이드라인
 
@@ -245,7 +318,7 @@ describe('AuthService', () => {
 - **R**eadable: 언어별 린터 (ESLint/Biome, ruff, golint, clippy 등)
 - **U**nified: 타입 안전성 (TypeScript, Go, Rust, Java) 또는 런타임 검증 (Python, JS)
 - **S**ecured: 언어별 보안 도구 및 정적 분석
-- **T**rackable: JSON 기반 @TAG 시스템
+- **T**rackable: CODE-FIRST @TAG 시스템 (코드 직접 스캔)
 
 상세: @.moai/memory/development-guide.md
 

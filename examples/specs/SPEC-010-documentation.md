@@ -1,9 +1,11 @@
 # SPEC-010: MoAI-ADK 온라인 문서 사이트 제작
 
-**@SPEC:SPEC-010-COMPLETED** ← 테스트 완료 ✅
-**@REQ:DOCS-SITE-001** ← 온라인 문서 요구사항
-**@DESIGN:MKDOCS-MATERIAL-001** ← 설계 결정
-**@TASK:DOCS-AUTOMATION-001** ← 구현 태스크
+**@SPEC:DOCS-010** ← SPEC 문서 (이 파일)
+**@TEST:DOCS-010** ← 테스트 검증
+**@CODE:DOCS-010** ← 구현 코드
+**@DOC:DOCS-010** ← 문서화 완료 ✅
+
+**v5.0 TAG Chain**: @SPEC:DOCS-010 → @TEST:DOCS-010 → @CODE:DOCS-010 → @DOC:DOCS-010
 
 ---
 

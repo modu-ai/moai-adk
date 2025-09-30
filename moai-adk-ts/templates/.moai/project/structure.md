@@ -54,20 +54,24 @@ Project Architecture
 
 ## @STRUCT:TRACEABILITY-001 추적성 전략
 
-### 8-Core @TAG 체계 적용
+### 4-Core @TAG 체계 적용 (v5.0)
 
-**Primary Chain (4 Core)**: 요구사항부터 검증까지 필수 흐름
-- `@REQ` → `@DESIGN` → `@TASK` → `@TEST`
+**TDD 완벽 정렬**: SPEC → 테스트 → 구현 → 문서
+- `@SPEC:ID` (.moai/specs/) → `@TEST:ID` (tests/) → `@CODE:ID` (src/) → `@DOC:ID` (docs/)
 
-**Implementation (4 Core)**: 구현 세부 사항
-- `@FEATURE` → `@API` → `@UI` → `@DATA`
+**구현 세부사항**: @CODE:ID 내부 주석 레벨
+- `@CODE:ID:API` - REST API, GraphQL 엔드포인트
+- `@CODE:ID:UI` - 컴포넌트, 뷰, 화면
+- `@CODE:ID:DATA` - 데이터 모델, 스키마, 타입
+- `@CODE:ID:DOMAIN` - 비즈니스 로직, 도메인 규칙
+- `@CODE:ID:INFRA` - 인프라, 데이터베이스, 외부 연동
 
 ### TAG 추적성 관리 (코드 스캔 방식)
 
-- **검증 방법**: `/moai:3-sync` 실행 시 `rg '@TAG' -n`으로 코드 전체 스캔
-- **추적 범위**: 프로젝트 전체 소스코드 (src/, tests/, docs/)
+- **검증 방법**: `/moai:3-sync` 실행 시 `rg '@(SPEC|TEST|CODE|DOC):' -n`으로 코드 전체 스캔
+- **추적 범위**: 프로젝트 전체 소스코드 (.moai/specs/, tests/, src/, docs/)
 - **유지 주기**: 코드 변경 시점마다 실시간 검증
-- **중간 캐시 없음**: TAG INDEX 파일 미사용, 코드가 유일한 진실의 원천
+- **CODE-FIRST 원칙**: TAG의 진실은 코드 자체에만 존재
 
 ## Legacy Context
 
