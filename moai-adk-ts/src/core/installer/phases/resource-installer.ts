@@ -7,6 +7,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { logger } from '@/utils/logger';
+import { TemplateProcessor } from '../template-processor';
 import type {
   InstallationConfig,
   InstallationContext,
@@ -17,10 +18,15 @@ import type {
  * @tags @FEATURE:RESOURCE-INSTALLER-001
  */
 export class ResourceInstaller {
+  private readonly templateProcessor: TemplateProcessor;
+
   constructor(
     private readonly config: InstallationConfig,
     private readonly context: InstallationContext
-  ) {}
+  ) {
+    // Use centralized template processor for path resolution
+    this.templateProcessor = new TemplateProcessor();
+  }
 
   /**
    * Install all required resources
@@ -68,7 +74,7 @@ export class ResourceInstaller {
       });
     }
 
-    const templatesPath = this.getTemplatesPath();
+    const templatesPath = this.templateProcessor.getTemplatesPath();
     const claudeTemplatesPath = path.join(templatesPath, '.claude');
 
     if (fs.existsSync(claudeTemplatesPath)) {
@@ -108,7 +114,7 @@ export class ResourceInstaller {
       });
     }
 
-    const templatesPath = this.getTemplatesPath();
+    const templatesPath = this.templateProcessor.getTemplatesPath();
     const moaiTemplatesPath = path.join(templatesPath, '.moai');
 
     if (fs.existsSync(moaiTemplatesPath)) {
@@ -157,7 +163,7 @@ export class ResourceInstaller {
       fs.mkdirSync(memoryDir, { recursive: true });
     }
 
-    const templatesPath = this.getTemplatesPath();
+    const templatesPath = this.templateProcessor.getTemplatesPath();
     const memoryTemplate = path.join(
       templatesPath,
       '.moai',
@@ -183,11 +189,6 @@ export class ResourceInstaller {
     }
 
     return memoryFile;
-  }
-
-  private getTemplatesPath(): string {
-    // This should use the actual templates path resolution logic
-    return path.join(__dirname, '../../../../templates');
   }
 
   private async copyTemplateDirectory(src: string, dst: string): Promise<void> {

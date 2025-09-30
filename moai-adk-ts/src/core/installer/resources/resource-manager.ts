@@ -9,6 +9,7 @@
 
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { logger } from '../../../utils/logger';
 import { ResourceOperations } from './resource-operations';
 import type { TemplateContext as TemplateContextType } from './utils';
@@ -50,16 +51,29 @@ export class ResourceManager {
   /**
    * @TASK:INIT-001 ResourceManager 초기화
    * @REFACTOR:COMPOSITION-001 ResourceOperations로 작업 위임
+   * @REFACTOR:PATH-FIX-001 ESM import.meta.url 기반 경로 해결
    */
   constructor() {
-    // 리소스 경로 설정
-    this.resourcesRoot = path.join(__dirname, '../../../../resources');
-    this.templatesRoot = path.join(this.resourcesRoot, 'templates');
+    // Get current file location (ESM-compatible)
+    const currentFilePath = fileURLToPath(import.meta.url);
+    const currentDir = path.dirname(currentFilePath);
+
+    // Calculate package root from dist/core/installer/resources/resource-manager.js
+    // dist/core/installer/resources -> ../../../.. -> package root
+    const packageRoot = path.resolve(currentDir, '../../../..');
+
+    // Templates are at package root level, not inside resources/
+    this.resourcesRoot = packageRoot;
+    this.templatesRoot = path.join(packageRoot, 'templates');
 
     // 리소스 작업 클래스 초기화
     this.resourceOperations = new ResourceOperations(this.templatesRoot);
 
-    logger.info('ResourceManager initialized with ResourceOperations');
+    logger.info('ResourceManager initialized with ResourceOperations', {
+      packageRoot,
+      templatesRoot: this.templatesRoot,
+      tag: '@INIT:RESOURCE-MANAGER-001',
+    });
   }
 
   /**
@@ -67,6 +81,14 @@ export class ResourceManager {
    */
   async getVersion(): Promise<string> {
     try {
+      // Try package.json first (standard location)
+      const packageJsonPath = path.join(this.resourcesRoot, 'package.json');
+      if (await fs.access(packageJsonPath).then(() => true).catch(() => false)) {
+        const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf-8'));
+        return packageJson.version || 'unknown';
+      }
+
+      // Fallback to VERSION file if exists
       const versionFile = path.join(this.resourcesRoot, 'VERSION');
       const version = await fs.readFile(versionFile, 'utf-8');
       return version.trim();
