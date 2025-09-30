@@ -1,7 +1,9 @@
+// @FEATURE:UTIL-007 | Chain: @REQ:UTIL-007 -> @DESIGN:UTIL-007 -> @TASK:UTIL-007 -> @TEST:UTIL-007
+// Related: @DATA:I18N-MSG-001
+
 /**
- * @file Internationalization (i18n) system for MoAI-ADK CLI
+ * @file Internationalization system
  * @author MoAI Team
- * @tags @FEATURE:I18N-001 @REQ:CLI-UX-001
  */
 
 export type Locale = 'en' | 'ko';

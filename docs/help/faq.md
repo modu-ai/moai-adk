@@ -262,16 +262,13 @@ moai doctor
 - 토큰 만료시간은 15분을 초과하지 않아야 한다
 ```
 
-**@TAG Catalog 자동 생성:**
+**TAG BLOCK 자동 생성:**
 
 ```markdown
-## @TAG Catalog
-| Chain | TAG | 설명 | 연관 산출물 |
-|-------|-----|------|------------|
-| Primary | @REQ:AUTH-001 | 인증 요구사항 | 이 문서 |
-| Primary | @DESIGN:AUTH-001 | 인증 설계 | design/ |
-| Primary | @TASK:AUTH-001 | 인증 구현 | src/auth/ |
-| Primary | @TEST:AUTH-001 | 인증 테스트 | __tests__/auth/ |
+# @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+# Related: @API:AUTH-001
+
+# SPEC-AUTH-001: 사용자 인증 시스템
 ```
 
 **더 알아보기:**

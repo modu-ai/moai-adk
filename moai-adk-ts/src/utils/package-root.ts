@@ -1,7 +1,9 @@
+// @FEATURE:UTIL-006 | Chain: @REQ:UTIL-006 -> @DESIGN:UTIL-006 -> @TASK:UTIL-006 -> @TEST:UTIL-006
+// Related: @DATA:PATH-INFO-001
+
 /**
- * @file Package root directory utilities for template path resolution
+ * @file Package root directory utilities
  * @author MoAI Team
- * @tags @UTIL:PACKAGE-ROOT-001 @REQ:CLI-FOUNDATION-012
  */
 
 import { existsSync } from 'node:fs';

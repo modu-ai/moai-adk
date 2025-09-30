@@ -1,11 +1,9 @@
+// @FEATURE:INST-002 | Chain: @REQ:INST-001 -> @DESIGN:INST-002 -> @TASK:INST-002 -> @TEST:INST-002
+// Related: @API:INST-002
+
 /**
- * @file Installation Phase Executor (Refactored)
+ * @file Installation phase execution engine
  * @author MoAI Team
- * @tags @FEATURE:PHASE-EXECUTOR-001 @REQ:INSTALL-SYSTEM-012
- * @description Executes installation phases with dependency injection
- *
- * Chain: @REQ:INSTALL-SYSTEM-012 -> @DESIGN:PHASE-SPLIT-001 -> @TASK:EXECUTOR-001 -> @TEST:EXECUTOR-001
- * Related: @FEATURE:PHASE-VALIDATOR-001, @DOCS:INSTALL-001
  */
 
 import * as fs from 'node:fs';
@@ -19,7 +17,7 @@ import type {
   InstallationContext,
   ProgressCallback,
 } from './types';
-import { ContextManager } from './context-manager';
+import type { ContextManager } from './context-manager';
 import { ResourceInstaller } from './resource-installer';
 import { TemplateProcessor } from './template-processor';
 import { PhaseValidator } from './phase-validator';

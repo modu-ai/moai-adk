@@ -1,8 +1,9 @@
+// @FEATURE:GIT-001 | Chain: @REQ:GIT-001 -> @DESIGN:GIT-001 -> @TASK:GIT-001 -> @TEST:GIT-001
+// Related: @API:GIT-001, @DATA:GIT-CFG-001
+
 /**
- * GitManager Implementation
- * SPEC-012 Week 2 Track D: Git System Integration
- *
- * @fileoverview Git operations manager using simple-git
+ * @file Git operations manager
+ * @author MoAI Team
  */
 
 import * as path from 'node:path';

@@ -1,15 +1,15 @@
+// @FEATURE:CLI-004 | Chain: @REQ:CLI-004 -> @DESIGN:CLI-004 -> @TASK:CLI-004 -> @TEST:CLI-004
+// Related: @API:UPD-001, @DATA:UPD-VER-001
+
 /**
- * @file CLI update command implementation - simplified version
+ * @file CLI update command for toolkit updates
  * @author MoAI Team
- * @tags @FEATURE:CLI-UPDATE-001 @REQ:CLI-FOUNDATION-012 | Chain: @REQ:UPDATE-REAL-001 -> @DESIGN:UPDATE-CLI-001 -> @TASK:UPDATE-CLI-001 -> @TEST:UPDATE-CLI-001
- * Related: @SEC:UPDATE-CLI-001, @DOCS:UPDATE-CLI-001
  */
 
 import * as path from 'node:path';
 import chalk from 'chalk';
 import * as fs from 'fs-extra';
 import { logger } from '../../utils/winston-logger.js';
-import { t } from '../../utils/i18n.js';
 import {
   type UpdateConfiguration,
   type UpdateResult as OrchestratorResult,
@@ -245,7 +245,7 @@ export class UpdateCommand {
       const updateConfig: UpdateConfiguration = {
         projectPath,
         checkOnly: options.check,
-        force: options.noBackup,
+        force: options.noBackup ?? false,
         verbose: options.verbose || false,
       };
 
@@ -258,7 +258,7 @@ export class UpdateCommand {
         updatedPackage: result.hasUpdate && !options.check,
         updatedResources: result.filesUpdated > 0,
         backupCreated: !!result.backupPath,
-        backupPath: result.backupPath,
+        backupPath: result.backupPath ?? undefined,
         versionsUpdated: result.success && result.hasUpdate,
         duration: result.duration,
         error: result.errors.length > 0 ? result.errors[0] : undefined,

@@ -1041,7 +1041,7 @@ flowchart TD
 ### 입력 데이터
 
 **SPEC 문서**:
-- `spec.md`: EARS 요구사항, @TAG Catalog
+- `spec.md`: EARS 요구사항, TAG BLOCK
 - `plan.md`: 구현 계획, 아키텍처 설계
 - `acceptance.md`: Given-When-Then 시나리오
 

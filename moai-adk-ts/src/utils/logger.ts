@@ -1,7 +1,9 @@
+// @FEATURE:LOG-001 | Chain: @REQ:LOG-001 -> @DESIGN:LOG-001 -> @TASK:LOG-001 -> @TEST:LOG-001
+// Related: @API:LOG-001, @DATA:LOG-CFG-001
+
 /**
- * @file Structured logging utility with user-friendly output support
+ * @file Structured logging utility
  * @author MoAI Team
- * @tags @FEATURE:STRUCTURED-LOGGING-001 @REQ:TRUST-SECURE-001
  */
 
 import chalk from 'chalk';

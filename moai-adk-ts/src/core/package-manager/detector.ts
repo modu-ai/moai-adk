@@ -1,7 +1,9 @@
+// @FEATURE:PKG-001 | Chain: @REQ:PKG-001 -> @DESIGN:PKG-001 -> @TASK:PKG-001 -> @TEST:PKG-001
+// Related: @API:PKG-001, @DATA:PKG-INFO-001
+
 /**
  * @file Package manager detector and analyzer
  * @author MoAI Team
- * @tags @FEATURE:PACKAGE-MANAGER-DETECTOR-001 @REQ:PACKAGE-MANAGER-002
  */
 
 import * as fs from 'node:fs/promises';

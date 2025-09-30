@@ -1,8 +1,9 @@
+// @FEATURE:UTIL-004 | Chain: @REQ:UTIL-004 -> @DESIGN:UTIL-004 -> @TASK:UTIL-004 -> @TEST:UTIL-004
+// Related: @API:SEC-REGEX-001
+
 /**
- * @file Regex Security Utilities
+ * @file Regex security utilities
  * @author MoAI Team
- * @tags @SECURITY:REDOS-PROTECTION-001 @FIX:REDOS-VULNERABILITY-001
- * @description Safe regex execution with timeout protection against ReDoS attacks
  */
 
 import { logger } from './logger';

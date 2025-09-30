@@ -1,7 +1,9 @@
+// @FEATURE:CLI-001 | Chain: @REQ:CLI-001 -> @DESIGN:CLI-001 -> @TASK:CLI-001 -> @TEST:CLI-001
+// Related: @API:INST-001, @UI:PROMPT-001, @DATA:CFG-001
+
 /**
  * @file CLI init command implementation with integrated TypeScript components
  * @author MoAI Team
- * @tags @FEATURE:CLI-INIT-INTEGRATION-001 @REQ:CLI-FOUNDATION-012
  */
 
 import * as path from 'node:path';

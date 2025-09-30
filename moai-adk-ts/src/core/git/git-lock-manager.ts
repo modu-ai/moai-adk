@@ -1,7 +1,9 @@
+// @FEATURE:GIT-002 | Chain: @REQ:GIT-001 -> @DESIGN:GIT-002 -> @TASK:GIT-002 -> @TEST:GIT-002
+// Related: @API:GIT-002
+
 /**
- * @file Git Lock Manager for preventing concurrent Git operations
+ * @file Git lock management for concurrent operations
  * @author MoAI Team
- * @tags @FEATURE:GIT-LOCK-001 @REQ:CORE-SYSTEM-013
  */
 
 import * as os from 'node:os';

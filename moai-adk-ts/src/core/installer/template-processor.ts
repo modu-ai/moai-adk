@@ -1,7 +1,9 @@
+// @FEATURE:INST-005 | Chain: @REQ:INST-001 -> @DESIGN:INST-005 -> @TASK:INST-005 -> @TEST:INST-005
+// Related: @API:INST-005, @DATA:INST-TPL-001
+
 /**
- * @file Template Processing and File Operations
+ * @file Template processing and interpolation
  * @author MoAI Team
- * @tags @FEATURE:TEMPLATE-PROCESSOR-001 @REQ:INSTALL-SYSTEM-012
  */
 
 import * as fs from 'node:fs';

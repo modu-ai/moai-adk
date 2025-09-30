@@ -220,16 +220,15 @@ interface AuthToken {
 - [ ] CSRF 방어
 - [ ] 비밀번호 복잡도 검증
 
-## @TAG Catalog
+## Traceability
 
-| Chain | TAG | 설명 | 연관 산출물 |
-|-------|-----|------|-------------|
-| Primary | @REQ:AUTH-001 | 인증 요구사항 | SPEC-AUTH-001 |
-| Primary | @DESIGN:AUTH-001 | JWT 설계 | design/auth.md |
-| Primary | @TASK:AUTH-001 | 인증 구현 | src/auth/service.ts |
-| Primary | @TEST:AUTH-001 | 인증 테스트 | tests/auth/service.test.ts |
-| Implementation | @FEATURE:AUTH-001 | 인증 서비스 | src/auth/service.ts |
-| Implementation | @API:AUTH-001 | 인증 API | src/auth/controller.ts |
+TAG BLOCK을 통한 추적성 확보:
+
+```markdown
+# @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+# Related: @API:AUTH-001
+
+# SPEC-AUTH-001: 사용자 인증 시스템
 ```
 
 ### 브랜치 생성 확인
@@ -1338,7 +1337,7 @@ feature/spec-auth-001-user-authentication 브랜치를 생성하시겠습니까?
 **결과**:
 - 브랜치 생성: `feature/spec-auth-001-user-authentication`
 - SPEC 문서 생성: `docs/specs/SPEC-AUTH-001.md`
-- TAG Catalog 포함
+- TAG BLOCK 포함
 
 **2단계: TDD 구현**
 ```bash
@@ -1532,9 +1531,11 @@ SPEC-AUTH-001에 MFA (다중 인증) 요구사항을 추가해야 합니다.
 - MFA 코드는 6자리 숫자여야 한다
 ```
 
-**2단계: TAG Catalog 업데이트**
+**2단계: TAG BLOCK 업데이트**
 ```markdown
-| Implementation | @FEATURE:MFA-001 | MFA 지원 | src/auth/mfa.ts |
+# @FEATURE:MFA-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:MFA-001 -> @TEST:MFA-001
+# Related: @API:MFA-001
+```
 
 **3단계: TDD 구현**
 ```bash
@@ -1974,7 +1975,7 @@ SPEC-AUTH-001: User Authentication
 
 1. **명확성**: 구체적이고 측정 가능한 요구사항
 2. **EARS 형식**: 5가지 구문 활용
-3. **TAG Catalog**: 모든 관련 TAG 나열
+3. **TAG BLOCK**: 8-Core TAG 체계 적용
 4. **검증 가능성**: 테스트로 검증 가능한 요구사항
 
 ### TDD 구현

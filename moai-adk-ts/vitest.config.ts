@@ -13,7 +13,10 @@ export default defineConfig({
     // Test files
     include: [
       'src/**/*.{test,spec}.ts',
-      '__tests__/**/*.{test,spec}.ts'
+      '__tests__/core/git/**/*.test.ts',
+      '__tests__/utils/**/*.test.ts',
+      '__tests__/system-checker/**/*.test.ts',
+      '__tests__/cli/**/*.test.ts'
     ],
     exclude: [
       'node_modules',

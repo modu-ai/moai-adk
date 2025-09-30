@@ -1,13 +1,9 @@
+// @FEATURE:GIT-004 | Chain: @REQ:GIT-004 -> @DESIGN:GIT-004 -> @TASK:GIT-004 -> @TEST:GIT-004
+// Related: @API:GIT-004
+
 /**
- * @API:WORKFLOW-AUTOMATION-001 Git Workflow Automation API
- * @FEATURE:SPEC-WORKFLOW-001 SPEC 개발 워크플로우 자동화
- *
- * Workflow Automation for MoAI-ADK
- * SPEC-012 Week 2 Track D: Git System Integration
- *
- * @TASK:WORKFLOW-AUTOMATION-001 Git 워크플로우 자동화
- * @DESIGN:SPEC-PIPELINE-001 SPEC 파이프라인 설계
- * @API:GIT-AUTOMATION-001 Git 자동화 API
+ * @file Git workflow automation
+ * @author MoAI Team
  *
  * @fileoverview Automated Git workflows for SPEC development
  */
@@ -117,7 +113,7 @@ export class WorkflowAutomation {
       );
 
       // 3. TDD REFACTOR 단계 체크포인트
-      const _refactorCommit = await this.gitManager.createCheckpoint(
+      await this.gitManager.createCheckpoint(
         `${specId} TDD REFACTOR phase - Code optimized`
       );
 
@@ -158,7 +154,7 @@ export class WorkflowAutomation {
       }
 
       // 3. 태그 생성 (완료 마킹)
-      const _tagName = `${specId}-completed`;
+      // const tagName = `${specId}-completed`;
       // await this.gitManager.createTag(tagName, `SPEC ${specId} completed`);
 
       return {

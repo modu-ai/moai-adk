@@ -1,8 +1,9 @@
+// @FEATURE:INST-006 | Chain: @REQ:INST-006 -> @DESIGN:INST-006 -> @TASK:INST-006 -> @TEST:INST-006
+// Related: @API:INST-006
+
 /**
- * @file Template Security Module
+ * @file Template security validation
  * @author MoAI Team
- * @tags @SECURITY:TEMPLATE-SECURITY-001 @FIX:TEMPLATE-INJECTION-001
- * @description Secure template processing utilities to prevent injection attacks
  */
 
 import { logger } from '../../../utils/logger';

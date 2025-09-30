@@ -359,14 +359,14 @@ export async function runInteractivePrompts(defaultName?: string, isCurrentDirMo
   const pushInfo = await promptAutoPush(githubInfo.githubEnabled);
 
   const answers: InitAnswers = {
-    locale: localeInfo.locale,
+    locale: localeInfo.locale ?? 'ko',
     projectName: basicInfo.projectName as string,
     mode: modeInfo.mode as 'personal' | 'team',
     gitEnabled: gitInfo.gitEnabled as boolean,
-    githubEnabled: githubInfo.githubEnabled,
-    githubUrl: githubInfo.githubUrl,
-    specWorkflow: workflowInfo.specWorkflow,
-    autoPush: pushInfo.autoPush,
+    githubEnabled: githubInfo.githubEnabled ?? undefined,
+    githubUrl: githubInfo.githubUrl ?? undefined,
+    specWorkflow: workflowInfo.specWorkflow ?? undefined,
+    autoPush: pushInfo.autoPush ?? undefined,
   };
 
   displaySummary(answers);

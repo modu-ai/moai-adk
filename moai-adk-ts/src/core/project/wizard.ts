@@ -1,7 +1,9 @@
+// @FEATURE:PROJ-001 | Chain: @REQ:PROJ-001 -> @DESIGN:PROJ-001 -> @TASK:PROJ-001 -> @TEST:PROJ-001
+// Related: @API:PROJ-001, @UI:WIZARD-001, @DATA:PROJ-CFG-001
+
 /**
- * @file Interactive project wizard
+ * @file Interactive project configuration wizard
  * @author MoAI Team
- * @tags @FEATURE:PROJECT-WIZARD-001 @REQ:CLI-WIZARD-001
  */
 
 import inquirer from 'inquirer';

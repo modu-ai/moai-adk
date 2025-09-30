@@ -27,7 +27,7 @@ tag-agent는 MoAI-ADK의 **TAG 시스템 독점 관리자**로서 8-Core TAG 체
 ```mermaid
 graph TB
     subgraph "1. SPEC 작성"
-        A[/moai:1-spec] --> A1[TAG Catalog 생성]
+        A[/moai:1-spec] --> A1[TAG BLOCK 생성]
         A1 --> A2[Primary Chain 정의]
     end
 
@@ -58,13 +58,13 @@ graph TB
 ```
 
 **tag-agent 활성화 시점**:
-- `/moai:1-spec` 실행 시: TAG Catalog 자동 생성
+- `/moai:1-spec` 실행 시: TAG BLOCK 자동 생성
 - `/moai:3-sync` 실행 시: TAG 검증 자동 실행
 - 온디맨드: TAG 체인 검증, 고아 TAG 정리 필요 시
 
 ### 다른 에이전트와의 협력
 
-- **spec-builder**: SPEC 작성 시 TAG Catalog 생성
+- **spec-builder**: SPEC 작성 시 TAG BLOCK 생성
 - **code-builder**: 코드 구현 시 TAG BLOCK 삽입
 - **doc-syncer**: 문서 동기화 시 TAG 검증 실행
 - **trust-checker**: Trackable 원칙 검증 시 협력
@@ -476,24 +476,16 @@ graph TB
 
 ## TAG 생성 및 관리
 
-### TAG Catalog 생성
+### 코드 스캔 기반 TAG 관리
 
-**위치**: SPEC 문서 내 `### @TAG Catalog` 섹션
+**핵심 원칙**: TAG의 진실은 코드 자체에만 존재
 
-**템플릿**:
+TAG는 별도의 카탈로그나 인덱스 파일 없이 코드에 직접 작성되며, `rg` 명령어로 스캔하여 검증합니다.
+
+**TAG BLOCK 템플릿**:
 ```markdown
-### @TAG Catalog
-
-| Chain | TAG | 설명 | 연관 산출물 |
-|-------|-----|------|--------------|
-| Primary | @REQ:AUTH-003 | OAuth2 요구사항 | SPEC-AUTH-003 |
-| Primary | @DESIGN:AUTH-003 | OAuth2 시퀀스 설계 | design/oauth.md |
-| Primary | @TASK:AUTH-003 | OAuth2 구현 작업 | src/auth/oauth2.ts |
-| Primary | @TEST:AUTH-003 | OAuth2 통합 테스트 | tests/auth/oauth2.test.ts |
-| Implementation | @FEATURE:AUTH-003 | 인증 서비스 | src/auth/service.ts |
-| Implementation | @API:AUTH-003 | OAuth API 엔드포인트 | src/auth/oauth-api.ts |
-| Implementation | @UI:AUTH-003 | OAuth 로그인 UI | src/components/OAuthLogin.tsx |
-| Implementation | @DATA:AUTH-003 | OAuth 토큰 모델 | src/models/OAuthToken.ts |
+# @FEATURE:AUTH-003 | Chain: @REQ:AUTH-003 -> @DESIGN:AUTH-003 -> @TASK:AUTH-003 -> @TEST:AUTH-003
+# Related: @API:AUTH-003, @UI:AUTH-003, @DATA:AUTH-003
 ```
 
 ### TAG 생성 프로세스
@@ -504,8 +496,8 @@ graph LR
     B --> C[TAG ID 생성]
     C --> D[Primary Chain 정의]
     D --> E[Implementation TAG 추가]
-    E --> F[TAG Catalog 작성]
-    F --> G[코드에 TAG BLOCK 삽입]
+    E --> F[코드에 TAG BLOCK 삽입]
+    F --> G[rg로 TAG 스캔 검증]
 
     style A fill:#ff6b6b,stroke:#c92a2a,color:#fff
     style D fill:#ffd43b,stroke:#fab005,color:#000
@@ -764,7 +756,7 @@ PAYMENT-005 TAG가 코드에만 존재하고 SPEC 없음
 
 **해결 방법**:
 1. SPEC 문서 작성
-2. TAG Catalog 추가
+2. TAG BLOCK 추가
 3. Primary Chain 완성
 4. 코드에 체인 연결
 
@@ -829,7 +821,7 @@ rg '@\w+:[\w-]+' -g '*.java' -c | awk '{sum+=$1} END {print "Java:", sum}'
 # 1. SPEC 작성 시작
 /moai:1-spec
 
-# 2. TAG Catalog 자동 생성
+# 2. TAG BLOCK 자동 생성
 # (spec-builder가 tag-agent 호출)
 
 # 3. TAG 중복 확인
@@ -979,7 +971,7 @@ UTILS   ██ 3개
 2. 레거시 코드 리팩토링 또는 삭제
 
 ### 일반 (점진적)
-1. TAG Catalog 문서 업데이트
+1. TAG 문서 업데이트
 2. TAG 명명 규칙 재검토
 
 ---

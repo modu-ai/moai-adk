@@ -1,7 +1,9 @@
+// @FEATURE:INST-004 | Chain: @REQ:INST-001 -> @DESIGN:INST-004 -> @TASK:INST-004 -> @TEST:INST-004
+// Related: @API:INST-004, @DATA:INST-RES-001
+
 /**
- * @file Resource Installation Handler
+ * @file Resource installation manager
  * @author MoAI Team
- * @tags @FEATURE:RESOURCE-INSTALLER-001 @REQ:INSTALL-SYSTEM-012
  */
 
 import * as fs from 'node:fs';
@@ -10,7 +12,7 @@ import mustache from 'mustache';
 import { logger } from '@/utils/logger';
 import { InstallationError, getErrorMessage } from '@/utils/errors';
 import type { InstallationConfig } from './types';
-import { TemplateProcessor } from './template-processor';
+import type { TemplateProcessor } from './template-processor';
 import { FallbackBuilder } from './fallback-builder';
 
 /**

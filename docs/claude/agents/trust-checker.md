@@ -496,7 +496,7 @@ Rust: cargo-audit, cargo-deny
 
 **3. SPEC-코드 추적성**
 - 모든 코드가 SPEC 참조
-- TAG Catalog와 코드 일치
+- TAG BLOCK와 코드 일치
 - SPEC 변경 이력 추적
 
 **4. 코드 스캔 기반 검증**
@@ -592,7 +592,7 @@ rg '@\w+:[\w-]+' -n --no-heading | awk '{print $NF}' | sort | uniq -c | awk '$1 
 
 ### SPEC 정렬
 - **SPEC 참조율**: 96.4% ✅
-- **TAG Catalog 일치**: 94.1% ✅
+- **TAG BLOCK 일치**: 94.1% ✅
 - **SPEC 미참조 파일**: 5개
   - `src/utils/helper.ts`: TAG 없음
   - `src/config/constants.ts`: TAG 없음

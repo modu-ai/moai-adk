@@ -121,7 +121,7 @@ Project Architecture
 
 **EARS 방법론 기반 SPEC 작성**
 
-기능 요구사항을 체계적으로 작성하고, @TAG Catalog를 생성합니다.
+기능 요구사항을 체계적으로 작성하고, TAG BLOCK을 생성합니다.
 
 ### 기본 사용법
 
@@ -185,15 +185,15 @@ Project Architecture
 - [ ] 토큰 만료 시 401 에러 반환
 - [ ] 비밀번호 bcrypt 해싱 적용
 
-## @TAG Catalog
-| Chain | TAG | 설명 | 연관 산출물 |
-|-------|-----|------|------------|
-| Primary | @REQ:AUTH-001 | 인증 요구사항 | 이 문서 |
-| Primary | @DESIGN:AUTH-001 | 인증 설계 | design/auth-sequence.md |
-| Primary | @TASK:AUTH-001 | 인증 구현 | src/auth/service.ts |
-| Primary | @TEST:AUTH-001 | 인증 테스트 | __tests__/auth/service.test.ts |
-| Implementation | @FEATURE:AUTH-001 | 인증 서비스 | src/auth/ |
-| Implementation | @API:AUTH-001 | 인증 API | src/auth/controller.ts |
+## Traceability
+
+TAG BLOCK을 통한 추적성 확보:
+
+```markdown
+# @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+# Related: @API:AUTH-001
+
+# SPEC-AUTH-001: 사용자 이메일/비밀번호 인증
 ```
 
 #### 2단계: 사용자 확인 및 수정

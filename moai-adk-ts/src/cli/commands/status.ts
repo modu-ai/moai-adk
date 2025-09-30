@@ -1,7 +1,9 @@
+// @FEATURE:CLI-003 | Chain: @REQ:CLI-003 -> @DESIGN:CLI-003 -> @TASK:CLI-003 -> @TEST:CLI-003
+// Related: @API:GIT-001, @DATA:GIT-STATUS-001
+
 /**
- * @file CLI status command implementation
+ * @file CLI status command for project status
  * @author MoAI Team
- * @tags @FEATURE:CLI-STATUS-001 @REQ:CLI-FOUNDATION-012
  */
 
 import * as path from 'node:path';

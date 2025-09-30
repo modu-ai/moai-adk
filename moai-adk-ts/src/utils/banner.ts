@@ -1,7 +1,9 @@
+// @FEATURE:UTIL-001 | Chain: @REQ:UTIL-001 -> @DESIGN:UTIL-001 -> @TASK:UTIL-001 -> @TEST:UTIL-001
+// Related: @UI:BANNER-001
+
 /**
- * @file MoAI-ADK Banner Module
+ * @file MoAI-ADK Banner display utility
  * @author MoAI Team
- * @tags @FEATURE:BANNER-001 @REQ:CLI-UX-001
  */
 
 import chalk from 'chalk';

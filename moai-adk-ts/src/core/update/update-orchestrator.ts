@@ -1,8 +1,9 @@
+// @FEATURE:UPD-001 | Chain: @REQ:UPD-001 -> @DESIGN:UPD-001 -> @TASK:UPD-001 -> @TEST:UPD-001
+// Related: @API:UPD-001, @DATA:UPD-VER-001
+
 /**
- * @file Simplified update orchestrator - backup and overwrite strategy
+ * @file Update orchestration system
  * @author MoAI Team
- * @tags @FEATURE:UPDATE-SIMPLE-001 | Chain: @REQ:UPDATE-REAL-001 -> @DESIGN:UPDATE-ORCHESTRATOR-002 -> @TASK:UPDATE-ORCHESTRATOR-002 -> @TEST:UPDATE-ORCHESTRATOR-002
- * Related: @SEC:UPDATE-STRATEGY-001, @DOCS:UPDATE-STRATEGY-001
  */
 
 import { promises as fs } from 'node:fs';

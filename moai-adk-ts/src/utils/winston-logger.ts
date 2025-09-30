@@ -1,7 +1,9 @@
+// @FEATURE:LOG-002 | Chain: @REQ:LOG-001 -> @DESIGN:LOG-002 -> @TASK:LOG-002 -> @TEST:LOG-002
+// Related: @API:LOG-002, @DATA:LOG-CFG-001
+
 /**
  * @file Winston-based structured logging system
  * @author MoAI Team
- * @tags @FEATURE:WINSTON-LOGGER-001 @REQ:TRUST-SECURE-001
  */
 
 import winston from 'winston';

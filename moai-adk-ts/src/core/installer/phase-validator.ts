@@ -1,11 +1,9 @@
+// @FEATURE:INST-003 | Chain: @REQ:INST-001 -> @DESIGN:INST-003 -> @TASK:INST-003 -> @TEST:INST-003
+// Related: @API:INST-003
+
 /**
- * @file Installation Phase Validator
+ * @file Installation phase validation
  * @author MoAI Team
- * @tags @FEATURE:PHASE-VALIDATOR-001 @REQ:INSTALL-SYSTEM-012
- * @description Handles validation logic for installation phases
- *
- * Chain: @REQ:INSTALL-SYSTEM-012 -> @DESIGN:PHASE-SPLIT-001 -> @TASK:VALIDATOR-001 -> @TEST:VALIDATOR-001
- * Related: @SEC:INSTALL-001, @DOCS:INSTALL-001
  */
 
 import * as fs from 'node:fs';

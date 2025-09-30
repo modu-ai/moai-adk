@@ -1,7 +1,9 @@
+// @DATA:LOG-TYPES-001 | Chain: @REQ:LOG-001 -> @DESIGN:LOG-001 -> @TASK:LOG-001 -> @TEST:LOG-001
+// Related: @FEATURE:LOG-001
+
 /**
  * @file Logger type definitions
  * @author MoAI Team
- * @tags @DESIGN:WINSTON-LOGGER-001
  */
 
 import type winston from 'winston';

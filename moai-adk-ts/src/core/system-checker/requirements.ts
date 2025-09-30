@@ -1,7 +1,9 @@
+// @DATA:SYS-REQ-001 | Chain: @REQ:SYS-001 -> @DESIGN:SYS-002 -> @TASK:SYS-002 -> @TEST:SYS-002
+// Related: @FEATURE:SYS-001
+
 /**
- * @file System requirements definition and registry
+ * @file System requirements definition
  * @author MoAI Team
- * @tags @FEATURE:SYSTEM-REQUIREMENTS-001 @REQ:AUTO-VERIFY-012
  */
 
 /**

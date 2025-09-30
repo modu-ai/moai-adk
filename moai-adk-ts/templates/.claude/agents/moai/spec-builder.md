@@ -34,7 +34,7 @@ model: sonnet
 `@agent-spec-builder`는 작성된 SPEC의 품질을 다음 기준으로 검증합니다:
 
 - **EARS 준수**: Event-Action-Response-State 구문 검증
-- **완전성**: 필수 섹션(@TAG Catalog, 요구사항, 제약사항) 확인
+- **완전성**: 필수 섹션(TAG BLOCK, 요구사항, 제약사항) 확인
 - **일관성**: 프로젝트 문서(product.md, structure.md, tech.md)와 정합성 검증
 - **추적성**: @TAG 체인의 완전성 확인
 

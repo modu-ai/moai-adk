@@ -1,7 +1,9 @@
+// @FEATURE:CFG-001 | Chain: @REQ:CFG-001 -> @DESIGN:CFG-001 -> @TASK:CFG-001 -> @TEST:CFG-001
+// Related: @API:CFG-001, @DATA:CFG-001
+
 /**
- * @file Configuration management for MoAI-ADK TypeScript
+ * @file Configuration management system
  * @author MoAI Team
- * @tags @FEATURE:CONFIG-001 @REQ:CORE-SYSTEM-013
  */
 
 import * as fs from 'node:fs';

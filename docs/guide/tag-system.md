@@ -197,27 +197,9 @@ impl AuthenticationService {
 @REQ:AUTHENTICATION-SERVICE-001  // ❌ 도메인 너무 김
 ```
 
-## SPEC TAG Catalog
-
-SPEC 문서에서 TAG 카탈로그를 유지관리합니다.
-
-```markdown
-# SPEC-AUTH-001: 사용자 인증 시스템
-
-## @TAG Catalog
-
-| Chain | TAG | 설명 | 연관 산출물 |
-|-------|-----|------|-------------|
-| Primary | @REQ:AUTH-001 | 인증 요구사항 | SPEC-AUTH-001 |
-| Primary | @DESIGN:AUTH-001 | JWT 설계 | design/auth.md |
-| Primary | @TASK:AUTH-001 | 인증 구현 | src/auth/service.ts |
-| Primary | @TEST:AUTH-001 | 인증 테스트 | tests/auth/service.test.ts |
-| Implementation | @FEATURE:AUTH-001 | 인증 서비스 | src/auth/service.ts |
-| Implementation | @API:AUTH-001 | 인증 API | src/auth/controller.ts |
-| Implementation | @DATA:AUTH-001 | 사용자 모델 | src/auth/models.ts |
-```
-
 ## 코드 스캔 기반 검증
+
+TAG의 진실은 코드 자체에만 존재합니다. 별도의 TAG 카탈로그나 인덱스 파일을 생성하지 않고, `rg` 명령어로 코드를 직접 스캔하여 TAG를 검증합니다.
 
 ### 검색 명령어
 
@@ -457,7 +439,7 @@ class LoginService {
 
 ```mermaid
 graph TD
-    A[1. SPEC 작성<br/>/moai:1-spec] --> B[2. TAG Catalog 생성]
+    A[1. SPEC 작성<br/>/moai:1-spec] --> B[2. TAG BLOCK 생성]
     B --> C[3. 코드 작성 시<br/>TAG BLOCK 배치]
     C --> D[4. 테스트 작성 시<br/>@TEST TAG 연결]
     D --> E{5. /moai:3-sync<br/>코드 스캔 검증}
@@ -479,19 +461,9 @@ graph TD
 ```
 - EARS 방법론으로 요구사항 작성
 - Primary Chain 정의 (@REQ, @DESIGN, @TASK, @TEST)
+- TAG BLOCK을 SPEC 문서에 포함
 
-#### 2. TAG Catalog 생성
-```markdown
-### @TAG Catalog
-| Chain | TAG | 설명 | 연관 산출물 |
-|-------|-----|------|-------------|
-| Primary | @REQ:AUTH-001 | 인증 요구사항 | SPEC-AUTH-001 |
-| Primary | @DESIGN:AUTH-001 | JWT 설계 | design/auth.md |
-| Primary | @TASK:AUTH-001 | 인증 구현 | src/auth/service.ts |
-| Primary | @TEST:AUTH-001 | 인증 테스트 | tests/auth/service.test.ts |
-```
-
-#### 3. 코드 작성 시 TAG BLOCK 배치
+#### 2. 코드 작성 시 TAG BLOCK 배치
 ```typescript
 // @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
 // Related: @API:AUTH-001
@@ -502,7 +474,7 @@ class AuthService {
 }
 ```
 
-#### 4. 테스트 작성 시 @TEST TAG 연결
+#### 3. 테스트 작성 시 @TEST TAG 연결
 ```typescript
 describe('@TEST:AUTH-001 사용자 인증', () => {
   test('유효한 자격증명으로 로그인 시 토큰 반환', () => {

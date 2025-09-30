@@ -748,7 +748,7 @@ describe('AuthService', () => {
 
 ```
 /moai:1-spec  → @REQ, @DESIGN, @TASK 생성
-             → SPEC 문서에 @TAG Catalog
+             → SPEC 문서에 TAG BLOCK
 
 /moai:2-build → @TEST, @FEATURE, @API, @UI, @DATA 적용
              → 코드에 TAG BLOCK 삽입

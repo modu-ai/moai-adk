@@ -1,7 +1,9 @@
+// @FEATURE:INST-001 | Chain: @REQ:INST-001 -> @DESIGN:INST-001 -> @TASK:INST-001 -> @TEST:INST-001
+// Related: @API:INST-001, @DATA:INST-CTX-001
+
 /**
- * @file Installation Process Orchestrator (Refactored)
+ * @file Installation orchestration coordinator
  * @author MoAI Team
- * @tags @FEATURE:INSTALL-ORCHESTRATOR-001 @REQ:INSTALL-SYSTEM-012
  */
 
 import { logger } from '@/utils/logger';

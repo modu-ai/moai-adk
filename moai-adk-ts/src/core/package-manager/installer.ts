@@ -1,7 +1,9 @@
+// @FEATURE:PKG-002 | Chain: @REQ:PKG-002 -> @DESIGN:PKG-002 -> @TASK:PKG-002 -> @TEST:PKG-002
+// Related: @API:PKG-002, @DATA:PKG-CFG-001
+
 /**
- * @file Package manager installer and package.json manager
+ * @file Package manager installer
  * @author MoAI Team
- * @tags @FEATURE:PACKAGE-MANAGER-INSTALLER-001 @REQ:PACKAGE-MANAGER-003
  */
 
 import { execa } from 'execa';

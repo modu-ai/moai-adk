@@ -16,7 +16,7 @@ spec-builder는 MoAI-ADK의 3단계 워크플로우 중 **1단계(/moai:1-spec)*
 - 프로젝트 문서(.moai/project/)를 분석하여 기능 후보 도출
 - EARS 방법론 기반 체계적 요구사항 작성
 - Personal/Team 모드에 최적화된 산출물 생성
-- @TAG Catalog 자동 생성 및 추적성 설정
+- TAG BLOCK 자동 설정 및 추적성 확보
 
 ### 3단계 워크플로우에서의 위치
 
@@ -111,7 +111,7 @@ spec-builder는 자연어 입력을 EARS 구문으로 자동 변환합니다:
    - Assumptions (전제 조건)
    - Requirements (EARS 요구사항)
    - Specifications (상세 명세)
-   - Traceability (@TAG Catalog)
+   - Traceability (TAG BLOCK)
 
 2. **plan.md**: 구현 계획
    - 우선순위별 마일스톤 (시간 예측 제외)
@@ -136,20 +136,19 @@ GitHub Issue 생성 요청:
 
 **중요**: Issue 생성 및 브랜치 작업은 git-manager가 전담합니다.
 
-### 4. @TAG Catalog 자동 생성
+### 4. TAG BLOCK 자동 설정
 
 **TAG 체인 설정**: 추적성 확보를 위한 8-Core TAG 체계 적용
 
+SPEC 문서에 TAG BLOCK을 포함하여 작성합니다:
+
 ```markdown
-### @TAG Catalog
-| Chain | TAG | 설명 | 연관 산출물 |
-|-------|-----|------|--------------|
-| Primary | @REQ:AUTH-001 | 사용자 인증 요구사항 | 이 SPEC 문서 |
-| Primary | @DESIGN:AUTH-001 | 인증 시스템 설계 | design/auth-flow.md |
-| Primary | @TASK:AUTH-001 | 인증 로직 구현 | src/auth/service.ts |
-| Primary | @TEST:AUTH-001 | 인증 테스트 | tests/auth/service.test.ts |
-| Implementation | @FEATURE:AUTH-001 | 인증 서비스 | src/auth/ |
-| Implementation | @API:AUTH-001 | 인증 API | src/auth/api.ts |
+# @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+# Related: @API:AUTH-001
+
+# SPEC-AUTH-001: 사용자 인증 시스템
+
+(SPEC 내용...)
 ```
 
 **자동 ID 할당**: 도메인별 순차 번호 자동 생성 (예: AUTH-001, AUTH-002)
@@ -221,7 +220,7 @@ GitHub Issue 생성 요청:
 # 실행 결과:
 # 1. 기존 SPEC-AUTH-001 로딩
 # 2. 2FA 관련 EARS 요구사항 추가
-# 3. @TAG Catalog 업데이트
+# 3. TAG BLOCK 업데이트
 # 4. acceptance.md에 2FA 테스트 시나리오 추가
 ```
 
@@ -310,7 +309,7 @@ GitHub Issue 생성 요청:
 > - State-driven: 3개 요구사항
 > - Constraints: 5개 제약사항
 >
-> @TAG Catalog 생성:
+> TAG BLOCK 생성:
 > - Primary Chain: 4개 TAG
 > - Implementation: 6개 TAG (다중 통합)
 ```
@@ -338,7 +337,7 @@ sequenceDiagram
     U->>SB: 기능 선택 또는 직접 입력
 
     SB->>SB: EARS 요구사항 생성
-    SB->>TA: @TAG Catalog 요청
+    SB->>TA: TAG BLOCK 요청
     TA-->>SB: TAG ID 할당 및 체인 설정
 
     SB->>SB: 3개 파일 생성 (MultiEdit)
@@ -416,7 +415,7 @@ sequenceDiagram
 - 비밀번호는 bcrypt로 해싱해야 한다
 - API 호출은 HTTPS로만 허용해야 한다
 
-## @TAG Catalog
+## TAG BLOCK
 | Chain | TAG | 설명 | 연관 산출물 |
 |-------|-----|------|------------|
 | Primary | @REQ:AUTH-001 | 인증 요구사항 | 이 문서 |
@@ -556,7 +555,7 @@ touch .moai/project/{product,structure,tech}.md
 - 토큰 만료시간 15분"
 ```
 
-#### 3. @TAG Catalog 중복 ID
+#### 3. TAG BLOCK 중복 ID
 
 **증상**: "TAG ID AUTH-001이 이미 존재합니다" 경고
 
@@ -687,7 +686,7 @@ spec-builder는 MoAI-ADK의 "명세 없이는 코드 없음" 원칙을 구현하
 - EARS 5가지 구문 자동 변환
 - Personal 모드: MultiEdit로 3개 파일 동시 생성
 - Team 모드: GitHub Issue 자동 생성
-- @TAG Catalog 자동 생성 및 체인 설정
+- TAG BLOCK 자동 생성 및 체인 설정
 - git-manager 연동을 통한 브랜치 관리
 
 ### 다음 단계

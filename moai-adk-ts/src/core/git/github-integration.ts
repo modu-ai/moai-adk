@@ -1,13 +1,9 @@
+// @FEATURE:GIT-003 | Chain: @REQ:GIT-003 -> @DESIGN:GIT-003 -> @TASK:GIT-003 -> @TEST:GIT-003
+// Related: @API:GIT-003, @DATA:GIT-GH-001
+
 /**
- * @API:GITHUB-INTEGRATION-001 GitHub API Integration
- * @FEATURE:TEAM-MODE-001 팀 모드 GitHub 연동
- *
- * GitHub Integration for Team Mode
- * SPEC-012 Week 2 Track D: Git System Integration
- *
- * @TASK:GITHUB-CLI-INTEGRATION-001 GitHub CLI 통합
- * @DESIGN:TEAM-WORKFLOW-001 팀 워크플로우 설계
- * @API:GITHUB-CLI-001 GitHub CLI 기반 API 래퍼
+ * @file GitHub API integration
+ * @author MoAI Team
  *
  * @fileoverview GitHub API integration using GitHub CLI
  */

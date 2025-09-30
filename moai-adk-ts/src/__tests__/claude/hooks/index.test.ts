@@ -1,6 +1,9 @@
+// @TEST:HOOK-001 | Chain: @REQ:HOOK-001 -> @DESIGN:HOOK-001 -> @TASK:HOOK-001 -> @TEST:HOOK-001
+// Related: @FEATURE:HOOK-001
+
 /**
- * @file index.test.ts
- * @description Tests for the hook system
+ * @file Hook system integration tests
+ * @author MoAI Team
  */
 
 import { afterEach, beforeEach, describe, expect, vi } from 'vitest';

@@ -1,7 +1,9 @@
+// @FEATURE:CLI-002 | Chain: @REQ:CLI-002 -> @DESIGN:CLI-002 -> @TASK:CLI-002 -> @TEST:CLI-002
+// Related: @API:SYS-001, @DATA:SYS-INFO-001
+
 /**
- * @file CLI doctor command implementation
+ * @file CLI doctor command for system diagnostics
  * @author MoAI Team
- * @tags @FEATURE:CLI-DOCTOR-001 @REQ:CLI-FOUNDATION-012
  */
 
 import * as fs from 'node:fs/promises';

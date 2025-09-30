@@ -1,7 +1,9 @@
+// @DATA:PKG-TYPES-001 | Chain: @REQ:PKG-001 -> @DESIGN:PKG-001 -> @TASK:PKG-001 -> @TEST:PKG-001
+// Related: @FEATURE:PKG-001
+
 /**
  * @file Package manager type definitions
  * @author MoAI Team
- * @tags @DATA:PACKAGE-MANAGER-001 @REQ:PACKAGE-MANAGER-002
  */
 
 /**

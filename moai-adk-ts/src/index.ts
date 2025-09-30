@@ -8,8 +8,6 @@
 export { CLIApp } from './cli';
 export { DoctorCommand } from './cli/commands/doctor';
 export { InitCommand } from './cli/commands/init';
-// Template processing types
-export { TemplateContext } from './core/installer/templates/template-processor';
 // Core project components
 export { TemplateManager } from './core/project/template-manager';
 // Core system checker

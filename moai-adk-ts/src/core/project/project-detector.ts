@@ -1,7 +1,9 @@
+// @FEATURE:PROJ-003 | Chain: @REQ:PROJ-003 -> @DESIGN:PROJ-003 -> @TASK:PROJ-003 -> @TEST:PROJ-003
+// Related: @API:PROJ-003, @DATA:PROJ-INFO-001
+
 /**
- * @file Project type detection for MoAI-ADK TypeScript
+ * @file Project type and structure detection
  * @author MoAI Team
- * @tags @FEATURE:PROJECT-001 @REQ:CORE-SYSTEM-013
  */
 
 import * as fs from 'node:fs';

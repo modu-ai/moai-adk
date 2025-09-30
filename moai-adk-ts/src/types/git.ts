@@ -1,8 +1,9 @@
+// @DATA:GIT-TYPES-001 | Chain: @REQ:GIT-001 -> @DESIGN:GIT-001 -> @TASK:GIT-001 -> @TEST:GIT-001
+// Related: @FEATURE:GIT-001
+
 /**
- * Git Manager Types
- * SPEC-012 Week 2 Track D: Git System Integration
- *
- * @fileoverview Type definitions for Git operations and GitHub integration
+ * @file Git operations type definitions
+ * @author MoAI Team
  */
 
 /**

@@ -248,7 +248,7 @@
 - **Stage 1: SPEC 작성**
   - `/moai:1-spec "기능 제목"`
   - EARS 요구사항 작성
-  - @TAG Catalog 생성
+  - TAG BLOCK 생성
   - 사용자 확인 후 브랜치 생성
 
 - **Stage 2: TDD 구현**
@@ -466,7 +466,7 @@
 2. `/moai:1-spec`
    - SPEC 작성
    - EARS 요구사항
-   - TAG Catalog
+   - TAG BLOCK
 
 3. `/moai:2-build`
    - TDD 구현

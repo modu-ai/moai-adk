@@ -70,13 +70,14 @@ MoAI-ADK는 SPEC-First TDD 개발을 위한 완전한 자동화 프레임워크�
 - [ ] [검수 기준 1]
 - [ ] [검수 기준 2]
 
-## @TAG Catalog
-| Chain | TAG | 설명 | 연관 산출물 |
-|-------|-----|------|------------|
-| Primary | @REQ:SPEC-001 | 요구사항 | 이 문서 |
-| Primary | @DESIGN:SPEC-001 | 설계 | design/ |
-| Primary | @TASK:SPEC-001 | 구현 | src/ |
-| Primary | @TEST:SPEC-001 | 테스트 | __tests__/ |
+## Traceability
+
+TAG BLOCK을 통한 추적성 확보:
+
+```markdown
+# @FEATURE:SPEC-001 | Chain: @REQ:SPEC-001 -> @DESIGN:SPEC-001 -> @TASK:SPEC-001 -> @TEST:SPEC-001
+
+# SPEC-001: [기능 제목]
 ```
 
 ### GitHub Issues 통합 (Team 모드)
@@ -433,7 +434,7 @@ moai doctor
 
 - SPEC 작성 전담
 - EARS 요구사항 생성
-- @TAG Catalog 자동 생성
+- TAG BLOCK 자동 생성
 - 브랜치 생성 (사용자 확인 후)
 
 #### 2. code-builder

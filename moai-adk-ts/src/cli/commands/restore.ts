@@ -1,7 +1,9 @@
+// @FEATURE:CLI-005 | Chain: @REQ:CLI-005 -> @DESIGN:CLI-005 -> @TASK:CLI-005 -> @TEST:CLI-005
+// Related: @API:CFG-001, @DATA:CFG-BACKUP-001
+
 /**
- * @file CLI restore command implementation
+ * @file CLI restore command for configuration recovery
  * @author MoAI Team
- * @tags @FEATURE:CLI-RESTORE-001 @REQ:CLI-FOUNDATION-012
  */
 
 import * as path from 'node:path';

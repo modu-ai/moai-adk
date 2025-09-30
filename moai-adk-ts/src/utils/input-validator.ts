@@ -1,8 +1,9 @@
+// @FEATURE:UTIL-005 | Chain: @REQ:UTIL-005 -> @DESIGN:UTIL-005 -> @TASK:UTIL-005 -> @TEST:UTIL-005
+// Related: @API:VALID-002
+
 /**
- * @file Input Validation Utilities
+ * @file Input validation utilities
  * @author MoAI Team
- * @tags @SECURITY:INPUT-VALIDATION-001 @FIX:INPUT-BYPASS-001
- * @description Secure input validation for CLI parameters and user inputs
  */
 
 import * as path from 'node:path';

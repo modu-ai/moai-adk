@@ -78,22 +78,9 @@
 
 ### SPEC 연동 가이드
 
-- `/moai:1-spec` 수행 시 SPEC 문서 안에 `### @TAG Catalog` 섹션을 작성한다
-- Catalog 예시:
-
-```markdown
-### @TAG Catalog
-| Chain | TAG | 설명 | 연관 산출물 |
-|-------|-----|------|--------------|
-| Primary | @REQ:AUTH-003 | OAuth2 요구사항 | SPEC-AUTH-003 |
-| Primary | @DESIGN:AUTH-003 | OAuth2 시퀀스 설계 | design/oauth.md |
-| Primary | @TASK:AUTH-003 | OAuth2 구현 작업 | src/auth/oauth2.ts |
-| Primary | @TEST:AUTH-003 | OAuth2 통합 테스트 | tests/auth/oauth2.test.ts |
-| Implementation | @FEATURE:AUTH-003 | 인증 서비스 | src/auth/service.ts |
-| Implementation | @API:AUTH-003 | OAuth API 엔드포인트 | src/auth/oauth-api.ts |
-```
-
-- SPEC 변경 -> Catalog 업데이트 -> 코드/테스트 반영 -> `/moai:3-sync`로 코드 스캔 및 검증 수행한다
+- `/moai:1-spec` 수행 시 SPEC 문서에 TAG BLOCK을 포함하여 작성한다
+- SPEC과 코드의 TAG는 `rg` 명령어로 직접 스캔하여 검증한다
+- SPEC 변경 -> 코드/테스트 반영 -> `/moai:3-sync`로 코드 스캔 및 검증 수행한다
 
 ### 코드/테스트 적용 예시
 
@@ -160,7 +147,7 @@ describe('AuthService', () => {
 - 중복 방지: 새 TAG 도입 전 `rg "@TAG" -g"*.ts"`, `rg "AUTH-001"` 등으로 기존 체인을 확인한다
 - 재사용 촉진: 구현 계획 단계에서 `@agent-code-builder`에게 "기존 TAG 재사용 후보를 찾아주세요"라고 요청한다
 - 무결성 검사: `/moai:3-sync` 실행으로 코드 전체를 스캔하여 TAG 체인 검증 및 고아 TAG 식별
-- 폐기 절차: 더 이상 사용하지 않는 TAG는 `@TAG:DEPRECATED-<ID>`로 표기하고 Catalog에서 상태를 `Deprecated`로 갱신한다
+- 폐기 절차: 더 이상 사용하지 않는 TAG는 `@TAG:DEPRECATED-<ID>`로 표기하고 코드에서 제거한다
 
 ### 금지 패턴 (잘못된 예시)
 
@@ -174,7 +161,7 @@ describe('AuthService', () => {
 
 - [ ] TAG BLOCK이 모든 신규/수정 파일에 존재하는가?
 - [ ] Primary Chain 4종이 끊김 없이 연결되는가?
-- [ ] SPEC `@TAG Catalog`와 코드/테스트가 동일한 ID를 공유하는가?
+- [ ] SPEC과 코드/테스트가 동일한 TAG ID를 공유하는가?
 - [ ] TAG 체인이 코드 스캔을 통해 검증되었는가?
 
 ## 에이전트별 브랜치 처리 가이드라인

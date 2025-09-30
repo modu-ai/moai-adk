@@ -1,8 +1,9 @@
+// @TEST:SEC-004 | Chain: @REQ:SEC-004 -> @DESIGN:SEC-004 -> @TASK:SEC-004 -> @TEST:SEC-004
+// Related: @FEATURE:SEC-SUITE-001
+
 /**
- * @file Security Test Suite
+ * @file Comprehensive security suite tests
  * @author MoAI Team
- * @tags @SECURITY:TEST-SUITE-001 @FIX:SECURITY-VALIDATION-001
- * @description Comprehensive security tests for all vulnerability fixes
  */
 
 import { describe, expect, test } from 'vitest';

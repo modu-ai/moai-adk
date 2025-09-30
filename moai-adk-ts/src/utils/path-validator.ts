@@ -1,7 +1,9 @@
+// @FEATURE:UTIL-003 | Chain: @REQ:UTIL-003 -> @DESIGN:UTIL-003 -> @TASK:UTIL-003 -> @TEST:UTIL-003
+// Related: @API:VALID-001
+
 /**
- * @file Path validation utilities for preventing package internal initialization
+ * @file Path validation utilities
  * @author MoAI Team
- * @tags @FEATURE:PATH-VALIDATOR-001 @REQ:BUG-FIX-PACKAGE-PATH-001
  */
 
 import * as fs from 'node:fs';

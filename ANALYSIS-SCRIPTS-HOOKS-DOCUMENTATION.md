@@ -119,7 +119,7 @@ interface SpecMetadata {
 **@TAG**: ✅ 있음
 **특징**:
 - EARS 구문 검증
-- @TAG Catalog 확인
+- TAG BLOCK 확인
 - 필수 섹션 존재 여부
 **문서화**: ❌ 없음
 

@@ -1,7 +1,9 @@
+// @FEATURE:PROJ-002 | Chain: @REQ:PROJ-002 -> @DESIGN:PROJ-002 -> @TASK:PROJ-002 -> @TEST:PROJ-002
+// Related: @API:PROJ-002, @DATA:PROJ-TPL-001
+
 /**
- * @file Template management for project generation with package root resolution
+ * @file Project template management
  * @author MoAI Team
- * @tags @FEATURE:TEMPLATE-MANAGER-001 @REQ:PROJECT-TEMPLATES-001
  */
 
 import * as fs from 'node:fs/promises';

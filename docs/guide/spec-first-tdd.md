@@ -361,16 +361,15 @@ interface Session {
 - [ ] 토큰 검증 속도 (<10ms)
 - [ ] 데이터베이스 쿼리 최적화
 
-## @TAG Catalog
+## Traceability
 
-| Chain | TAG | 설명 | 연관 산출물 |
-|-------|-----|------|-------------|
-| Primary | @REQ:AUTH-001 | 인증 요구사항 | SPEC-AUTH-001 |
-| Primary | @DESIGN:AUTH-001 | JWT 설계 | design/auth.md |
-| Primary | @TASK:AUTH-001 | 인증 구현 | src/auth/service.ts |
-| Primary | @TEST:AUTH-001 | 인증 테스트 | tests/auth/service.test.ts |
-| Implementation | @FEATURE:AUTH-001 | 인증 서비스 | src/auth/service.ts |
-| Implementation | @API:AUTH-001 | 인증 API | src/auth/controller.ts |
+TAG BLOCK을 통한 추적성 확보:
+
+```markdown
+# @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+# Related: @API:AUTH-001
+
+# SPEC-AUTH-001: 사용자 인증 시스템
 ```
 
 ## 다중 언어 TDD 구현

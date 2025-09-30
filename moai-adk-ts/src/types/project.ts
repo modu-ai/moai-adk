@@ -1,7 +1,9 @@
+// @DATA:PROJ-TYPES-001 | Chain: @REQ:PROJ-001 -> @DESIGN:PROJ-001 -> @TASK:PROJ-001 -> @TEST:PROJ-001
+// Related: @FEATURE:PROJ-001
+
 /**
  * @file Project type definitions
  * @author MoAI Team
- * @tags @DATA:PROJECT-TYPES-001 @REQ:CLI-INIT-002
  */
 
 /**

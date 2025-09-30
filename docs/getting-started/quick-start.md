@@ -215,7 +215,7 @@ Claude Code 채팅창에서 다음 명령을 실행합니다:
    - Optional: WHERE [조건]이면, 시스템은 [동작]할 수 있다
    - Constraints: IF [조건]이면, 시스템은 [제약]해야 한다
 
-2. **@TAG Catalog 생성**
+2. **TAG BLOCK 생성**
    - Primary Chain: @REQ → @DESIGN → @TASK → @TEST
    - Implementation: @FEATURE, @API, @UI, @DATA
 
@@ -254,13 +254,14 @@ Claude Code 채팅창에서 다음 명령을 실행합니다:
 - 비밀번호는 최소 8자 이상이어야 한다
 - 토큰 만료시간은 15분을 초과하지 않아야 한다
 
-## @TAG Catalog
-| Chain | TAG | 설명 | 연관 산출물 |
-|-------|-----|------|--------------|
-| Primary | @REQ:AUTH-001 | 인증 요구사항 | SPEC-001 |
-| Primary | @DESIGN:AUTH-001 | JWT 기반 설계 | design/auth.md |
-| Primary | @TASK:AUTH-001 | 인증 구현 작업 | src/auth/service.ts |
-| Primary | @TEST:AUTH-001 | 인증 테스트 | tests/auth/service.test.ts |
+## Traceability
+
+```markdown
+# @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+# Related: @API:AUTH-001
+
+# SPEC-AUTH-001: 사용자 인증 시스템
+```
 
 ## Acceptance Criteria
 - [ ] 유효한 이메일/비밀번호로 로그인 성공

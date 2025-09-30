@@ -1,8 +1,12 @@
+// @TEST:SEC-001 | Chain: @REQ:SEC-001 -> @DESIGN:SEC-001 -> @TASK:SEC-001 -> @TEST:SEC-001
+// Related: @FEATURE:SEC-POLICY-001
+
 /**
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
- * @file policy-block.test.ts
- * @description Tests for PolicyBlock hook
+ * @file Policy block security tests
+ * @author MoAI Team
  */
+
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { PolicyBlock } from '../../../../claude/hooks/security/policy-block';
 import type { HookInput } from '../../../../claude/hooks/types';

@@ -637,18 +637,18 @@ tsx .moai/scripts/test-analyzer.ts --coverage
 ### 생성 및 등록 절차
 
 1. **사전 조사**: 새 기능을 정의하기 전에 `rg "@TAG"` 명령으로 코드에서 기존 체인을 검색해 재사용 가능 여부 확인
-2. **SPEC 작성 시점**: `/moai:1-spec` 단계에서 `@TAG Catalog` 섹션을 작성하고 Primary Chain 4종(@REQ/@DESIGN/@TASK/@TEST)을 우선 등록
+2. **SPEC 작성 시점**: `/moai:1-spec` 단계에서 `TAG BLOCK` 섹션을 작성하고 Primary Chain 4종(@REQ/@DESIGN/@TASK/@TEST)을 우선 등록
 3. **코드 생성 시점**: 템플릿에서 제공하는 `TAG BLOCK`을 파일 헤더(주석) 또는 주요 함수 위에 그대로 채워 넣고, Implementation/Quality TAG를 추가
 4. **테스트 작성 시점**: 테스트 함수/케이스 주석에 `@TEST` TAG를 명시하고 Primary Chain과 연결된 Implementation TAG를 참조
 5. **동기화**: `/moai:3-sync` 단계에서 코드 전체를 스캔하여 TAG 체인 검증 및 고아 TAG 여부를 검사
 
 ### SPEC 문서 통합 지침
 
-- 모든 SPEC 문서는 `Metadata → Requirements → Acceptance` 흐름 다음에 **`@TAG Catalog`** 테이블을 포함한다
+- 모든 SPEC 문서는 `Metadata → Requirements → Acceptance` 흐름 다음에 **`TAG BLOCK`** 테이블을 포함한다
 - Catalog 포맷 예시:
 
 ```markdown
-### @TAG Catalog
+### TAG BLOCK
 | Chain | TAG | 설명 | 연관 산출물 |
 |-------|-----|------|--------------|
 | Primary | @REQ:AUTH-003 | 소셜 로그인 요구사항 | SPEC-AUTH-003 |
@@ -659,7 +659,7 @@ tsx .moai/scripts/test-analyzer.ts --coverage
 | Quality | @SEC:AUTH-003 | OAuth2 보안 점검 | docs/security/oauth2.md |
 ```
 
-- SPEC 변경 시 `@TAG Catalog`부터 수정하고, 이후 코드/테스트에 반영 → 마지막으로 `/moai:3-sync`로 인덱스 업데이트
+- SPEC 변경 시 `TAG BLOCK`부터 수정하고, 이후 코드/테스트에 반영 → 마지막으로 `/moai:3-sync`로 인덱스 업데이트
 
 ### 템플릿 및 코드 생성 규칙
 
@@ -681,7 +681,7 @@ tsx .moai/scripts/test-analyzer.ts --coverage
 
 ### 업데이트 체크리스트
 
-- [ ] SPEC에 `@TAG Catalog`가 존재하고 Primary Chain이 완결되었는가?
+- [ ] SPEC에 `TAG BLOCK`가 존재하고 Primary Chain이 완결되었는가?
 - [ ] 새/수정된 코드 파일 헤더에 TAG BLOCK이 반영되었는가?
 - [ ] 테스트 케이스에 대응되는 `@TEST` TAG가 존재하는가?
 - [ ] TAG 체인이 코드 스캔을 통해 검증되었는가?

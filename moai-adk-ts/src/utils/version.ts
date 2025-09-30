@@ -1,7 +1,9 @@
+// @FEATURE:UTIL-002 | Chain: @REQ:UTIL-002 -> @DESIGN:UTIL-002 -> @TASK:UTIL-002 -> @TEST:UTIL-002
+// Related: @DATA:VER-INFO-001
+
 /**
- * @file Version utilities with package root resolution
+ * @file Version utilities
  * @author MoAI Team
- * @tags @FEATURE:VERSION-UTILS-001 @REQ:CLI-FOUNDATION-012
  */
 
 import * as fs from 'node:fs';

@@ -1,7 +1,9 @@
+// @FEATURE:SYS-001 | Chain: @REQ:SYS-001 -> @DESIGN:SYS-001 -> @TASK:SYS-001 -> @TEST:SYS-001
+// Related: @API:SYS-001, @DATA:SYS-INFO-001
+
 /**
- * @file System requirement detector and validator
+ * @file System requirements detector
  * @author MoAI Team
- * @tags @FEATURE:SYSTEM-DETECTOR-001 @REQ:AUTO-VERIFY-012
  */
 
 import * as os from 'node:os';

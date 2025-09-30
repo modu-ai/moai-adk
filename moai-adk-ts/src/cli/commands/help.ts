@@ -1,7 +1,9 @@
+// @FEATURE:CLI-006 | Chain: @REQ:CLI-006 -> @DESIGN:CLI-006 -> @TASK:CLI-006 -> @TEST:CLI-006
+// Related: @UI:HELP-001
+
 /**
- * @file CLI help command implementation
+ * @file CLI help command and documentation display
  * @author MoAI Team
- * @tags @FEATURE:CLI-HELP-001 @REQ:CLI-FOUNDATION-012
  */
 
 import chalk from 'chalk';

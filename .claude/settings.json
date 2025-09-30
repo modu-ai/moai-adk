@@ -42,16 +42,6 @@
         ],
         "matcher": "*"
       }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/steering-guard.cjs",
-            "type": "command"
-          }
-        ]
-      }
     ]
   },
   "permissions": {
