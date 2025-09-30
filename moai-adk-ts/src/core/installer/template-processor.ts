@@ -11,7 +11,7 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import mustache from 'mustache';
-import { logger } from '@/utils/logger';
+import { logger } from '@/utils/winston-logger';
 import { InstallationError, getErrorMessage } from '@/utils/errors';
 import type { InstallationConfig } from './types';
 

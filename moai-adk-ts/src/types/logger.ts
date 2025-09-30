@@ -9,6 +9,12 @@
 import type winston from 'winston';
 
 /**
+ * Log levels for structured logging
+ * @tags @DESIGN:LOG-LEVELS-001
+ */
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+
+/**
  * Logger configuration options
  */
 export interface LoggerOptions {
