@@ -19,8 +19,8 @@
 │   └── settings.json           # 🆕 .claude/hooks 경로 참조
 ├── .moai/                      # MoAI 개발 메타데이터
 │   ├── config.json             # 프로젝트 설정
-│   ├── indexes/
-│   │   └── meta.json           # 프로젝트 메타데이터
+│   # TAG는 소스코드에만 존재 (CODE-FIRST)
+│   # 별도 폴더 불필요: rg '@TAG' 명령으로 직접 스캔
 │   ├── project/
 │   ├── specs/
 │   └── reports/

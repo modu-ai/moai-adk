@@ -220,13 +220,15 @@ moai-adk-ts/                    # TypeScript 메인 프로젝트
 │   ├── 2-build.md           # TDD 구현 (범용 언어)
 │   └── 3-sync.md            # 문서 동기화
 │
-├── hooks/moai/               # TypeScript 빌드된 훅
-│   ├── file-monitor.js       # 파일 모니터링
-│   ├── language-detector.js  # 언어 감지
-│   ├── policy-block.js       # 정책 차단
-│   ├── pre-write-guard.js    # 쓰기 전 가드
-│   ├── session-notice.js     # 세션 알림
-│   └── steering-guard.js     # 방향성 가드
+├── hooks/moai/               # JavaScript hooks (CommonJS)
+│   ├── package.json          # "type": "commonjs" 선언
+│   ├── file-monitor.js       # 파일 변경 감지
+│   ├── language-detector.js  # 언어 자동 감지 및 도구 권장
+│   ├── policy-block.js       # 보안 정책 강제 (Bash 명령어)
+│   ├── pre-write-guard.js    # 쓰기 전 검증 (Edit/Write/MultiEdit)
+│   ├── session-notice.js     # 세션 시작 알림 (프로젝트 상태)
+│   ├── steering-guard.js     # 사용자 입력 방향성 가이드
+│   └── tag-enforcer.js       # Code-First TAG 시스템 검증 ✅
 │
 ├── output-styles/            # 범용 언어 출력 스타일
 │   ├── beginner.md           # 초보자용
@@ -234,6 +236,89 @@ moai-adk-ts/                    # TypeScript 메인 프로젝트
 │   └── pair.md              # 페어 프로그래밍용
 │
 └── settings.json            # TypeScript 훅 경로 설정
+```
+
+### 🛠️ Hooks Build Process
+
+Hooks는 TypeScript로 작성되어 CommonJS로 컴파일됩니다:
+
+**TypeScript 소스** (`src/claude/hooks/`):
+```
+src/claude/hooks/
+├── security/                 # 보안 hooks
+│   ├── policy-block.ts
+│   ├── pre-write-guard.ts
+│   └── steering-guard.ts
+├── session/                  # 세션 hooks
+│   └── session-notice.ts
+└── workflow/                 # 워크플로우 hooks
+    ├── file-monitor.ts
+    └── language-detector.ts
+```
+
+**빌드 명령어**:
+```bash
+cd moai-adk-ts
+bun run build:hooks          # TypeScript → CommonJS 컴파일
+```
+
+**빌드 설정** (`tsup.hooks.config.ts`):
+```typescript
+export default defineConfig({
+  format: ['cjs'],           # CommonJS 형식
+  outExtension: () => ({ js: '.js' }),
+  // hooks/moai/package.json: "type": "commonjs"
+});
+```
+
+### 🎯 tag-enforcer.js 상세
+
+**Code-First TAG 시스템 검증 Hook**:
+
+| 항목 | 설명 |
+|------|------|
+| **Trigger** | Edit, Write, MultiEdit |
+| **목적** | TAG 무결성 보장, @IMMUTABLE 보호 |
+| **검증 항목** | TAG 형식, 체인 무결성, 의존성, 불변성 |
+
+**핵심 기능**:
+- `@IMMUTABLE` 마커가 있는 TAG 블록 수정 차단
+- `@TAG:CATEGORY:DOMAIN-ID` 형식 강제
+- TAG 체인 검증: REQ → DESIGN → TASK → TEST
+- 8-Core TAG 카테고리 준수: Lifecycle (REQ, DESIGN, TASK, TEST, SPEC) + Implementation (FEATURE, API, FIX)
+
+### 🏗️ Hooks 아키텍처
+
+**Hook 실행 흐름**:
+
+```
+SessionStart
+  └─> session-notice.js (프로젝트 상태 표시)
+
+UserPromptSubmit
+  └─> steering-guard.js
+      └─> language-detector.js (언어 감지, 도구 권장)
+
+Edit/Write/MultiEdit
+  ├─> pre-write-guard.js
+  │   └─> file-monitor.js (파일 변경 감지)
+  └─> tag-enforcer.js (TAG 무결성 검증)
+
+Bash
+  └─> policy-block.js (보안 정책 강제)
+      └─> file-monitor.js (명령어 영향 분석)
+```
+
+**모듈 의존성**:
+
+```
+file-monitor.js (공통 모듈)
+    ├─> pre-write-guard.js에서 import
+    ├─> policy-block.js에서 import
+    └─> detect-language.ts 호출
+
+language-detector.js (공통 모듈)
+    └─> steering-guard.js에서 import
 ```
 
 ---
@@ -440,8 +525,10 @@ MoAI-ADK는 SPEC-First TDD를 위한 3단계 워크플로우를 제공합니다:
 ├── config.json             # TypeScript 기반 메인 설정
 ├── memory/
 │   └── development-guide.md # SPEC-First TDD 가이드
-├── indexes/
-│   └── (TAG는 코드에서 직접 스캔)
+# TAG는 소스코드에만 존재 (CODE-FIRST)
+# - 이유: 단일 진실 소스(코드)로 동기화 문제 해결
+# - 검색: rg '@TAG' 명령으로 코드 직접 스캔
+# - 별도 indexes/ 또는 tags/ 폴더 불필요
 ├── specs/                  # SPEC 문서들
 │   ├── SPEC-001/
 │   ├── SPEC-002/
@@ -450,8 +537,54 @@ MoAI-ADK는 SPEC-First TDD를 위한 3단계 워크플로우를 제공합니다:
 │   ├── product.md          # 제품 정의
 │   ├── structure.md        # 구조 설계
 │   └── tech.md            # 기술 스택
+├── scripts/                # 자동화 스크립트 (TypeScript)
+│   ├── README.md           # 스크립트 사용 가이드
+│   ├── debug-analyzer.ts   # 시스템 진단 및 오류 분석
+│   ├── detect-language.ts  # 프로젝트 언어 자동 감지
+│   ├── doc-syncer.ts       # Living Document 동기화
+│   ├── project-init.ts     # 프로젝트 초기 설정
+│   ├── spec-builder.ts     # SPEC 문서 템플릿 생성
+│   ├── spec-validator.ts   # SPEC 유효성 검사
+│   ├── tdd-runner.ts       # TDD 사이클 자동 실행
+│   ├── test-analyzer.ts    # 테스트 결과 분석
+│   └── trust-checker.ts    # TRUST 5원칙 검증
 └── reports/               # 동기화 리포트
 ```
+
+### 📜 Scripts 사용법
+
+#### 언어 자동 감지
+```bash
+tsx .moai/scripts/detect-language.ts
+# 출력: TypeScript 프로젝트 감지 → Vitest, Biome 권장
+```
+
+#### SPEC 생성
+```bash
+tsx .moai/scripts/spec-builder.ts --id SPEC-015 --title "새로운 기능" --type feature
+```
+
+#### TRUST 원칙 검증
+```bash
+tsx .moai/scripts/trust-checker.ts --all
+# Test First, Readable, Unified, Secured, Trackable 검증
+```
+
+#### 테스트 분석
+```bash
+tsx .moai/scripts/test-analyzer.ts --coverage
+```
+
+### 🔗 Scripts ↔ Agents 연동
+
+| Agent | 사용 Script | 용도 |
+|-------|-------------|------|
+| `@agent-spec-builder` | `spec-builder.ts` | SPEC 문서 생성 |
+| `@agent-code-builder` | `tdd-runner.ts` | TDD 사이클 실행 |
+| `@agent-doc-syncer` | `doc-syncer.ts` | 문서 동기화 |
+| `@agent-debug-helper` | `debug-analyzer.ts` | 디버깅 정보 수집 |
+| `@agent-trust-checker` | `trust-checker.ts` | 품질 검증 |
+| `@agent-tag-agent` | (코드 직접 스캔) | `rg '@TAG' -n` 사용 |
 
 ### TypeScript 기반 MoAI-ADK 설정
 

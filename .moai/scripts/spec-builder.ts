@@ -1,6 +1,13 @@
 #!/usr/bin/env tsx
-// @FEATURE-SPEC-BUILDER-001: SPEC 문서 생성 스크립트
-// 연결: @REQ-SPEC-001 → @DESIGN-SPEC-BUILDER-001 → @TASK-SPEC-001
+/**
+ * @FEATURE:SPEC-BUILDER-001 | Chain: @REQ:SPEC-001 -> @DESIGN:SPEC-BUILDER-001 -> @TASK:SPEC-001 -> @TEST:SPEC-001
+ * Related: @API:SPEC-001, @DATA:SPEC-001
+ *
+ * SPEC 문서 생성 스크립트
+ * - EARS 방식 요구사항 작성
+ * - TAG Catalog 자동 생성
+ * - SPEC 템플릿 기반 문서화
+ */
 
 import { program } from 'commander';
 import { promises as fs } from 'fs';

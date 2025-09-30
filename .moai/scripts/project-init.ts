@@ -1,6 +1,13 @@
 #!/usr/bin/env tsx
-// @FEATURE-PROJECT-INIT-001: 프로젝트 초기화 스크립트
-// 연결: @REQ-PROJECT-001 → @DESIGN-INIT-001 → @TASK-INIT-001
+/**
+ * @FEATURE:PROJECT-INIT-001 | Chain: @REQ:PROJECT-001 -> @DESIGN:INIT-001 -> @TASK:INIT-001 -> @TEST:INIT-001
+ * Related: @API:PROJECT-001, @DATA:PROJECT-001
+ *
+ * 프로젝트 초기화 스크립트
+ * - .moai 구조 생성
+ * - 기본 설정 파일 생성
+ * - 템플릿 파일 복사
+ */
 
 import { program } from 'commander';
 import { promises as fs } from 'fs';

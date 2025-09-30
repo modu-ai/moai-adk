@@ -13,7 +13,8 @@ hero:
       text: GitHub 보기
       link: https://github.com/modu-ai/moai-adk
   image:
-    src: /logo.svg
+    light: /moai-logo-light.png
+    dark: /moai-logo-dark.png
     alt: MoAI-ADK
 
 features:

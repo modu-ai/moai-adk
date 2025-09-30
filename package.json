@@ -1,0 +1,26 @@
+{
+  "name": "moai-adk-monorepo",
+  "version": "0.0.1",
+  "private": true,
+  "description": "MoAI-ADK Monorepo - Documentation and TypeScript Package",
+  "type": "module",
+  "scripts": {
+    "docs:dev": "node ./scripts/docs-dev.mjs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.1",
+    "playwright": "^1.55.1",
+    "typedoc": "^0.27.6",
+    "vitepress": "^1.6.4"
+  },
+  "workspaces": [
+    "moai-adk-ts"
+  ],
+  "engines": {
+    "node": ">=18.0.0",
+    "bun": ">=1.2.0"
+  },
+  "packageManager": "bun@1.2.19"
+}

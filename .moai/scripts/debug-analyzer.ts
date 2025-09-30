@@ -1,6 +1,13 @@
 #!/usr/bin/env tsx
-// @FEATURE-DEBUG-ANALYZER-001: 디버깅 분석 및 문제 진단 스크립트
-// 연결: @REQ-DEBUG-001 → @DESIGN-DEBUG-ANALYZER-001 → @TASK-DEBUG-001
+/**
+ * @FEATURE:DEBUG-ANALYZER-001 | Chain: @REQ:DEBUG-001 -> @DESIGN:DEBUG-ANALYZER-001 -> @TASK:DEBUG-001 -> @TEST:DEBUG-001
+ * Related: @API:DEBUG-001, @DATA:DEBUG-001
+ *
+ * 디버깅 분석 및 문제 진단 스크립트
+ * - 오류 패턴 분석
+ * - 개발 가이드 준수 검사
+ * - 구조화된 진단 및 해결책 제공
+ */
 
 import { program } from 'commander';
 import { promises as fs } from 'fs';

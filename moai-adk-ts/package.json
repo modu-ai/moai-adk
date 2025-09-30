@@ -23,7 +23,6 @@
   "packageManager": "bun@1.2.19",
   "scripts": {
     "build": "tsup && bun run build:scripts",
-    "build:hooks": "tsup --config tsup.hooks.config.ts",
     "build:scripts": "tsup --config tsup.scripts.config.ts",
     "build:watch": "tsup --watch",
     "dev": "tsx src/cli/index.ts",
@@ -42,10 +41,10 @@
     "clean": "rimraf dist .turbo node_modules/.cache",
     "check": "bun run type-check && bun run check:biome",
     "ci": "bun run clean && bun run build && bun run check && bun run test:ci",
-    "docs:api": "typedoc",
-    "docs:dev": "vitepress dev docs",
-    "docs:build": "bun run docs:api && vitepress build docs",
-    "docs:preview": "vitepress preview docs",
+    "docs:api": "typedoc --out ../docs/api",
+    "docs:dev": "vitepress dev ../docs",
+    "docs:build": "bun run docs:api && vitepress build ../docs",
+    "docs:preview": "vitepress preview ../docs",
     "//prepublishOnly": "bun run ci"
   },
   "dependencies": {

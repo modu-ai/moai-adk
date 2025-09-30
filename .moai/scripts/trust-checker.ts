@@ -1,6 +1,15 @@
 #!/usr/bin/env tsx
-// @FEATURE-TRUST-CHECKER-001: TRUST 5원칙 검증 스크립트
-// 연결: @REQ-TRUST-001 → @DESIGN-TRUST-CHECKER-001 → @TASK-TRUST-001
+/**
+ * @FEATURE:TRUST-CHECKER-001 | Chain: @REQ:TRUST-001 -> @DESIGN:TRUST-CHECKER-001 -> @TASK:TRUST-001 -> @TEST:TRUST-001
+ * Related: @API:TRUST-001, @DATA:TRUST-001
+ *
+ * TRUST 5원칙 검증 스크립트
+ * - Test First: TDD 준수 확인
+ * - Readable: 가독성 검증
+ * - Unified: 아키텍처 일관성
+ * - Secured: 보안 패턴 검증
+ * - Trackable: TAG 추적성 확인
+ */
 
 import { program } from 'commander';
 import { promises as fs } from 'fs';

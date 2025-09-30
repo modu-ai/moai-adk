@@ -33,11 +33,7 @@ describe('InitCommand Advanced Features', () => {
     mockWizard = new ProjectWizard() as unknown as Mocked<ProjectWizard>;
     mockTemplateManager = new TemplateManager() as unknown as Mocked<TemplateManager>;
 
-    initCommand = new InitCommand(
-      mockDetector,
-      mockWizard,
-      mockTemplateManager
-    );
+    initCommand = new InitCommand(mockDetector);
   });
 
   describe('Project Type Detection and Template Selection', () => {

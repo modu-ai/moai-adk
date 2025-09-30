@@ -1,6 +1,13 @@
 #!/usr/bin/env tsx
-// @FEATURE-DOC-SYNCER-001: 문서 동기화 및 Living Document 관리 스크립트
-// 연결: @REQ-DOC-SYNC-001 → @DESIGN-DOC-SYNCER-001 → @TASK-DOC-SYNC-001
+/**
+ * @FEATURE:DOC-SYNCER-001 | Chain: @REQ:DOC-SYNC-001 -> @DESIGN:DOC-SYNCER-001 -> @TASK:DOC-SYNC-001 -> @TEST:DOC-SYNC-001
+ * Related: @API:DOC-SYNC-001, @DATA:DOC-SYNC-001
+ *
+ * 문서 동기화 및 Living Document 관리 스크립트
+ * - 코드-문서 동기화
+ * - TAG 체인 검증
+ * - Living Document 자동 갱신
+ */
 
 import { program } from 'commander';
 import { promises as fs } from 'fs';

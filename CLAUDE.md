@@ -1,76 +1,80 @@
-# ${PROJECT_NAME} - MoAI Agentic Development Kit v0.0.4 ✅
+# {{PROJECT_NAME}} - MoAI Agentic Development Kit
 
-**TypeScript 기반 고성능 SPEC-First TDD 개발 가이드 (TRUST 92% 달성 + 모듈화 아키텍처 완성)**
+**SPEC-First TDD 개발 가이드**
 
-## 핵심 철학 (v0.0.4 달성)
+## 핵심 철학
 
-- ✅ **Spec-First**: 명세 없이는 코드 없음 (3단계 워크플로우 완성)
-- ✅ **TDD-First**: 테스트 없이는 구현 없음 (Vitest 92.9% 성공률)
-- ✅ **TRUST 5원칙**: 62% → 92% 달성 (목표 82% 대비 112% 초과 달성)
-- ✅ **모듈화 설계**: Orchestrator 1,467 → 135 LOC (91% 감소)
-- ✅ **보안 강화**: Winston logger + 구조화 로깅, console.* 완전 제거
+- **Spec-First**: 명세 없이는 코드 없음
+- **TDD-First**: 테스트 없이는 구현 없음
+- **GitFlow 지원**: Git 작업 자동화, Living Document 동기화, @TAG 추적성
 
-**성능 지표**: TypeScript 5.9.2 + Bun 98% + Vitest 92.9% + Biome 94.8% + Winston Logger 97.92% coverage + TRUST 92%
+**다중 언어 지원**: 각 언어별 최적 도구와 타입 안전성, JSON 기반 @TAG 시스템
 
-## 3단계 핵심 워크플로우 (완성) ✅
+## 3단계 개발 워크플로우
 
 ```bash
-/moai:1-spec     # ✅ 명세 작성 (EARS 방식, 사용자 확인 후 브랜치/PR 생성)
-/moai:2-build    # ✅ TDD 구현 (RED→GREEN→REFACTOR)
-/moai:3-sync     # ✅ 문서 동기화 (PR 상태 전환)
+/moai:1-spec     # 명세 작성 (EARS 방식, 사용자 확인 후 브랜치/PR 생성)
+/moai:2-build    # TDD 구현 (RED→GREEN→REFACTOR)
+/moai:3-sync     # 문서 동기화 (PR 상태 전환)
 ```
 
-**CLI 명령어 (v0.0.3 100% 완성)**: init, doctor, status, update, restore, help, version (언어 감지 + 동적 요구사항)
+**EARS (Easy Approach to Requirements Syntax)**: 체계적인 요구사항 작성 방법론
+- **Ubiquitous**: 시스템은 [기능]을 제공해야 한다
+- **Event-driven**: WHEN [조건]이면, 시스템은 [동작]해야 한다
+- **State-driven**: WHILE [상태]일 때, 시스템은 [동작]해야 한다
+- **Optional**: WHERE [조건]이면, 시스템은 [동작]할 수 있다
+- **Constraints**: IF [조건]이면, 시스템은 [제약]해야 한다
 
-## 핵심 에이전트 (7개) ✅
+**반복 사이클**: 1-spec → 2-build → 3-sync → 1-spec (다음 기능)
 
-| 에이전트 | v0.0.3 달성 상태 | 주요 기능 |
-|---------|---------|---------|
-| **spec-builder** | ✅ **완성** | EARS 명세 작성, 사용자 확인 후 브랜치/PR 생성 |
-| **code-builder** | ✅ **완성** | 범용 언어 TDD 구현 (Red-Green-Refactor) |
-| **doc-syncer** | ✅ **완성** | 문서 동기화, PR 상태 전환 |
-| **cc-manager** | ✅ **완성** | Claude Code 설정 최적화 |
-| **debug-helper** | ✅ **강화** | **지능형 시스템 진단**, 언어 감지, 동적 요구사항 |
-| **git-manager** | ✅ **완성** | 사용자 확인 후 브랜치/PR, 커밋 자동화 |
-| **trust-checker** | ✅ **완성** | TRUST 5원칙 검증 |
+## 핵심 에이전트 (8개)
 
-## CLI 및 디버깅 (100% 완성 + 혁신적 진단) ✅
+| 에이전트 | 역할 | 자동화 |
+|---------|------|--------|
+| **spec-builder** | SPEC 작성 전담 | 사용자 확인 후 브랜치/PR 생성 |
+| **code-builder** | TDD 구현 전담 (슬림화 완료) | Red-Green-Refactor (Python, TypeScript, Java, Go, Rust 등) |
+| **doc-syncer** | 문서 동기화 전담 | PR 상태 전환/라벨링 |
+| **cc-manager** | Claude Code 설정 전담 (슬림화 완료) | 설정 최적화/권한 |
+| **debug-helper** | 오류 분석 전담 | 개발 가이드 검사 |
+| **git-manager** | Git 작업 전담 | 사용자 확인 후 브랜치/PR, 커밋 자동화 |
+| **trust-checker** | 품질 검증 통합 | TRUST 5원칙 검사, 코드 품질 분석 |
+| **tag-agent** | TAG 시스템 독점 관리 | @TAG 체인 생성/검증/인덱싱 |
 
-**CLI 명령어**: `moai doctor`, `moai init`, `moai status`, `moai update`, `moai restore`
-**지능형 진단**: `@agent-debug-helper "오류내용"` (시스템 진단 자동화 + 언어 감지)
-**Git 브랜치 정책**: ✅ 모든 브랜치 생성/머지는 사용자 확인 필수
-**Git 자동화**: ✅ 커밋, 푸시 등 일반 작업만 자동 처리
-**혁신적 시스템 진단**:
-- 🔍 **언어 자동 감지**: JavaScript/TypeScript/Python/Java/Go 프로젝트 분석
-- 🎯 **동적 요구사항**: 감지된 언어에 따라 개발 도구 자동 추가
-- 📊 **5단계 진단**: Runtime(2) + Development(2) + Optional(1) + Language-Specific + Performance
+## 디버깅 & Git 관리
 
-## @TAG Lifecycle  ✅
+**디버깅**: `@agent-debug-helper "오류내용"` 또는 `@agent-debug-helper "TAG 체인 검증을 수행해주세요"`
+**Git 브랜치 정책**: 모든 브랜치 생성/머지는 사용자 확인 필수
+**Git 자동화**: 커밋, 푸시 등 일반 작업만 자동 처리
+**Git 직접**: `@agent-git-manager "명령"` (특수 케이스)
+
+## @TAG Lifecycle 2.0
 
 ### TAG BLOCK 템플릿 (필수)
 
 ```text
 # @FEATURE:<DOMAIN-ID> | Chain: @REQ:<ID> -> @DESIGN:<ID> -> @TASK:<ID> -> @TEST:<ID>
-# Related: @SEC:<ID>, @DOCS:<ID>
+# Related: @API:<ID>, @UI:<ID>, @DATA:<ID>
 ```
 
+**8-Core 구성**:
+- Primary (4 Core): @REQ, @DESIGN, @TASK, @TEST
+- Implementation (4 Core): @FEATURE, @API, @UI, @DATA
+
 - 새 코드/문서/테스트 파일을 생성할 때: 위 TAG BLOCK을 파일 상단(주석) 또는 최상위 선언 근처에 배치한다
-- 수정 시: 기존 TAG BLOCK을 검토해 영향받는 TAG를 업데이트하고, 불필요해진 TAG는 `@TAG:DEPRECATED-XXX`로 표시 후 `/moai:3-sync`를 수행한다
+- 수정 시: 기존 TAG BLOCK을 검토해 영향받는 TAG를 업데이트한다
 - 생성 전 중복 확인: `rg "@REQ:<키워드>" -n` 또는 `rg "<DOMAIN-ID>" -n`으로 기존 체인을 검색한다
 
 ### 체계 요약
 
-| 카테고리 | 설명 | 필수 여부 |
-|----------|------|-----------|
-| Primary Chain | 요구 -> 설계 -> 작업 -> 검증 4단계 기본 체인 | 필수 |
-| Implementation | Feature/API/UI/Data 등 구현 유형 | 선택 |
-| Quality | Perf/Sec/Docs/Debt 등 품질 속성 | 선택 |
-| Meta | Ops/Release/Tag/Deprecated 등 메타데이터 | 선택 |
+### 8-Core @TAG 체계
+
+| 카테고리 | Core | 설명 | 필수 여부 |
+|----------|------|------|-----------|
+| Primary Chain | 4 Core | 요구 → 설계 → 작업 → 검증 | 필수 |
+| Implementation | 4 Core | Feature/API/UI/Data 구현 유형 | 필수 |
 
 - TAG ID: `<도메인>-<3자리>` (예: `AUTH-003`) — 체인 내 모든 TAG는 동일 ID를 사용한다
 - **TAG의 진실은 코드 자체에만 존재**: 정규식 패턴으로 코드에서 직접 스캔하여 실시간 검증
-
-**코드 스캔 철학**: 중간 캐시 없이 코드를 직접 스캔하여 TAG 추적성 보장
 
 ### SPEC 연동 가이드
 
@@ -86,7 +90,7 @@
 | Primary | @TASK:AUTH-003 | OAuth2 구현 작업 | src/auth/oauth2.ts |
 | Primary | @TEST:AUTH-003 | OAuth2 통합 테스트 | tests/auth/oauth2.test.ts |
 | Implementation | @FEATURE:AUTH-003 | 인증 서비스 | src/auth/service.ts |
-| Quality | @SEC:AUTH-003 | 보안 점검 | docs/security/oauth2.md |
+| Implementation | @API:AUTH-003 | OAuth API 엔드포인트 | src/auth/oauth-api.ts |
 ```
 
 - SPEC 변경 -> Catalog 업데이트 -> 코드/테스트 반영 -> `/moai:3-sync`로 코드 스캔 및 검증 수행한다
@@ -96,21 +100,19 @@
 **Python 예시**:
 ```python
 # @FEATURE:LOGIN-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-# Related: @SEC:LOGIN-001, @DOCS:LOGIN-001
+# Related: @API:LOGIN-001, @DATA:LOGIN-001
 class AuthenticationService:
     """@FEATURE:LOGIN-001: 사용자 인증 서비스 구현"""
 
     def authenticate(self, username: str, password: str) -> bool:
         """@API:LOGIN-001: 사용자 인증 API 엔드포인트"""
-        # @SEC:LOGIN-001: 입력값 보안 검증
         if not self._validate_input(username, password):
             return False
 
-        # @PERF:LOGIN-001: 캐시된 인증 결과 확인
-        if cached_result := self._get_cached_auth(username):
-            return cached_result
+        # @DATA:LOGIN-001: 사용자 데이터 조회
+        user_data = self._get_user_data(username)
 
-        return self._verify_credentials(username, password)
+        return self._verify_credentials(user_data, password)
 
 # @TEST:LOGIN-001 연결: @TASK:LOGIN-001 -> @TEST:LOGIN-001
 def test_should_authenticate_valid_user():
@@ -123,21 +125,27 @@ def test_should_authenticate_valid_user():
 **TypeScript 예시**:
 ```typescript
 // @FEATURE:LOGIN-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-// Related: @SEC:LOGIN-001, @DOCS:LOGIN-001
+// Related: @API:LOGIN-001, @UI:LOGIN-001, @DATA:LOGIN-001
+
+// @API:LOGIN-001: 인증 API 인터페이스 정의
 interface AuthService {
-  // @API:LOGIN-001: 인증 API 인터페이스 정의
   authenticate(username: string, password: string): Promise<boolean>;
 }
 
 // @UI:LOGIN-001: 로그인 컴포넌트
 const LoginForm: React.FC = () => {
-  // @SEC:LOGIN-001: 클라이언트 사이드 입력 검증
   const handleSubmit = (username: string, password: string) => {
-    // 구현...
+    // @API:LOGIN-001 호출
   };
 
   return <form>...</form>;
 };
+
+// @DATA:LOGIN-001: 사용자 데이터 타입
+interface UserData {
+  id: string;
+  username: string;
+}
 
 // @TEST:LOGIN-001: Vitest/Jest 테스트
 describe('AuthService', () => {
@@ -169,21 +177,88 @@ describe('AuthService', () => {
 - [ ] SPEC `@TAG Catalog`와 코드/테스트가 동일한 ID를 공유하는가?
 - [ ] TAG 체인이 코드 스캔을 통해 검증되었는가?
 
-## TRUST 5원칙 (v0.0.4: 92% 달성) ✅
+## 에이전트별 브랜치 처리 가이드라인
 
-**전체 준수율**: 62% → 92% (+30%, 목표 82% 대비 112% 달성)
+### 🔧 spec-builder 에이전트
+```bash
+# SPEC 작성 시 브랜치 생성 요청 예시
+사용자: "SPEC-015 새로운 기능에 대한 명세를 작성해주세요"
+에이전트: "SPEC-015 작성을 위해 feature/spec-015-new-feature 브랜치를 생성하겠습니다. 진행하시겠습니까? (y/n)"
+사용자 확인 후: ✅ 브랜치 생성 및 SPEC 작성 진행
+```
 
-- ✅ **T**est First (70% → 80%): Vitest 92.9% 성공률, GitLockManager/GitManager 테스트 안정화
-- ✅ **R**eadable (52% → 100%): Orchestrator 모듈화 (1,467 → 135 LOC, 91% 감소), Biome 94.8%
-- ✅ **U**nified (75% → 90%): TypeScript 5.9.2 엄격 타입 검사, 의존성 주입 패턴, 단일 책임 원칙
-- ✅ **S**ecured (65% → 100%): Winston logger (97.92% coverage), 민감정보 마스킹, console.* 완전 제거
-- ✅ **T**rackable (48% → 90%): @AI-TAG 코드 스캔 시스템, TAG 체인 검증
+### 🏗️ git-manager 에이전트
+```bash
+# 브랜치 관리 요청 시 사용자 확인 필수
+@agent-git-manager "feature 브랜치 생성"
+→ "새 브랜치 feature/task-name을 생성하시겠습니까? (y/n)"
 
-**v0.0.4 핵심 개선**:
-- Phase 1: GitLockManager 테스트 안정화 (26 tests 100% pass)
-- Phase 2: Orchestrator 대규모 리팩토링 (9개 모듈 분해)
-- Phase 3: Winston logger 보안 시스템 (288 console.* 전환)
-- Phase 4: GitManager 테스트 안정화 + 최종 console.* 제거
+@agent-git-manager "develop 브랜치로 머지"
+→ "현재 브랜치를 develop으로 머지하시겠습니까? 테스트와 문서화가 완료되었는지 확인해주세요. (y/n)"
+```
+
+### 📝 doc-syncer 에이전트
+```bash
+# /moai:3-sync 단계에서 머지 제안
+@agent-doc-syncer "문서 동기화 완료"
+→ "문서 동기화가 완료되었습니다. develop 브랜치로 머지를 진행하시겠습니까? (y/n)"
+```
+
+## 에이전트 실제 사용법
+
+### 🔍 디버깅 & 분석
+
+```bash
+# 오류 분석
+@agent-debug-helper "TypeError: 'NoneType' object has no attribute 'name'"
+@agent-debug-helper "Git push 오류 해결 방법"
+
+# @TAG 시스템 검증
+@agent-debug-helper "TAG 체인 검증을 수행해주세요"
+@agent-debug-helper "고아 TAG 및 끊어진 링크 감지"
+@agent-debug-helper "TAG 무결성 검사"
+
+# 개발 가이드 준수 확인
+@agent-debug-helper "개발 가이드 검사"
+@agent-debug-helper "TRUST 원칙 준수 여부 확인"
+```
+
+### 🚀 TDD 구현
+
+```bash
+# 분석 단계 (계획 수립)
+@agent-code-builder "SPEC-013 분석해주세요"
+@agent-code-builder "구현 계획을 수립해주세요"
+
+# 구현 단계 (사용자 승인 후)
+@agent-code-builder "승인된 계획으로 TDD 구현을 시작해주세요"
+@agent-code-builder "구현을 진행해주세요"
+```
+
+### 📝 문서 동기화
+
+```bash
+# 전체 문서 동기화
+@agent-doc-syncer "코드와 문서를 동기화해주세요"
+@agent-doc-syncer "문서 동기화 수행"
+
+# TAG 체인 검증
+@agent-tag-agent "코드 전체를 스캔하여 TAG 검증해주세요"
+@agent-doc-syncer "TAG 체인 무결성 확인"
+
+# 특정 문서 갱신
+@agent-doc-syncer "API 문서를 갱신해주세요"
+@agent-doc-syncer "README 업데이트 필요"
+```
+
+## TRUST 5원칙 (범용 언어 지원)
+
+**{{PROJECT_NAME}}**: 모든 주요 프로그래밍 언어 지원
+- **T**est First: 언어별 최적 도구 (Jest/Vitest, pytest, go test, cargo test, JUnit 등)
+- **R**eadable: 언어별 린터 (ESLint/Biome, ruff, golint, clippy 등)
+- **U**nified: 타입 안전성 (TypeScript, Go, Rust, Java) 또는 런타임 검증 (Python, JS)
+- **S**ecured: 언어별 보안 도구 및 정적 분석
+- **T**rackable: JSON 기반 @TAG 시스템
 
 상세: @.moai/memory/development-guide.md
 
@@ -193,13 +268,20 @@ describe('AuthService', () => {
 **품질**: 언어별 최적 도구 자동 선택, 의도 드러내는 이름, 가드절 우선
 **테스트**: 언어별 표준 프레임워크, 독립적/결정적, 커버리지≥85%
 
-## Living Document 전략 (자동 동기화) ✅
+## 메모리 전략
 
-**핵심 메모리**: @.moai/memory/development-guide.md (TRUST+@AI-TAG 완성)
-**프로젝트 문서**: ✅ 자동 동기화 완료
-- @.moai/project/product.md (v0.0.3 시스템 진단 개선 반영)
-- @.moai/project/structure.md (SystemChecker 아키텍처 개선)
-- @.moai/project/tech.md (언어별 도구 매핑 완성)
-**@AI-TAG 시스템**: 코드 직접 스캔 방식, 정규식 기반 실시간 추출
-**고속 검색**: rg/grep 명령어로 코드 직접 검색, 중간 캐시 없음
-**시스템 진단 성과**: SQLite3→npm+TypeScript+Git LFS 실용화, 언어 감지 시스템 완성
+**핵심 메모리**: @.moai/memory/development-guide.md (TRUST+@TAG)
+**프로젝트 컨텍스트**:
+- @.moai/project/product.md
+- @.moai/project/structure.md
+- @.moai/project/tech.md
+**TAG 시스템**: 코드 직접 스캔 방식 (범용 언어 프로젝트 지원)
+**검색 도구**: rg(권장), grep 명령어로 코드에서 직접 TAG 검색
+
+## 프로젝트 정보
+
+- **이름**: {{PROJECT_NAME}}
+- **설명**: {{PROJECT_DESCRIPTION}}
+- **버전**: {{PROJECT_VERSION}}
+- **모드**: {{PROJECT_MODE}}
+- **개발 도구**: 프로젝트 언어에 최적화된 도구 체인 자동 선택

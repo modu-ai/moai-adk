@@ -95,12 +95,11 @@ export class DoctorCommand {
   }
 
   /**
-   * Print diagnostic header
+   * Print diagnostic header (simplified for clean output)
    * @tags @UTIL:PRINT-HEADER-001
    */
   private printHeader(): void {
-    logger.info(chalk.blue.bold('🔍 MoAI-ADK System Diagnostics'));
-    logger.info(chalk.blue('Checking system requirements...\n'));
+    console.log(chalk.cyan('🔍 Checking system requirements...\n'));
   }
 
   /**
@@ -176,45 +175,42 @@ export class DoctorCommand {
   private printEnhancedResults(checkSummary: SystemCheckSummary): void {
     // Show detected languages first if any
     if (checkSummary.detectedLanguages.length > 0) {
-      logger.info(chalk.blue.bold('🔍 Detected Languages:'));
-      checkSummary.detectedLanguages.forEach(lang => {
-        logger.info(`  ${chalk.cyan('•')} ${chalk.bold(lang)}`);
-      });
-      logger.info('');
+      console.log(chalk.cyan.bold('  Languages:'), chalk.white(checkSummary.detectedLanguages.join(', ')));
+      console.log();
     }
 
-    logger.info(chalk.bold('Runtime Requirements:'));
+    console.log(chalk.bold('  ⚙️  Runtime:'));
     checkSummary.runtime.forEach(result => {
-      logger.info(`  ${this.formatCheckResult(result)}`);
+      console.log(`    ${this.formatCheckResult(result)}`);
       if (!result.result.isInstalled || !result.result.versionSatisfied) {
-        logger.info(`    ${this.getInstallationSuggestion(result)}`);
+        console.log(`      ${this.getInstallationSuggestion(result)}`);
       }
     });
 
-    logger.info('');
-    logger.info(chalk.bold('Development Requirements:'));
+    console.log();
+    console.log(chalk.bold('  🛠️  Development:'));
     checkSummary.development.forEach(result => {
-      logger.info(`  ${this.formatCheckResult(result)}`);
+      console.log(`    ${this.formatCheckResult(result)}`);
       if (!result.result.isInstalled || !result.result.versionSatisfied) {
-        logger.info(`    ${this.getInstallationSuggestion(result)}`);
+        console.log(`      ${this.getInstallationSuggestion(result)}`);
       }
     });
 
     // Show optional requirements if any
     if (checkSummary.optional.length > 0) {
-      logger.info('');
-      logger.info(chalk.bold('Optional Requirements:'));
+      console.log();
+      console.log(chalk.bold('  📦 Optional:'));
       checkSummary.optional.forEach(result => {
-        logger.info(`  ${this.formatCheckResult(result)}`);
+        console.log(`    ${this.formatCheckResult(result)}`);
         if (!result.result.isInstalled || !result.result.versionSatisfied) {
-          logger.info(
-            `    ${chalk.gray(this.getInstallationSuggestion(result))}`
+          console.log(
+            `      ${chalk.gray(this.getInstallationSuggestion(result))}`
           );
         }
       });
     }
 
-    logger.info('');
+    console.log();
   }
 
   /**
@@ -223,29 +219,17 @@ export class DoctorCommand {
    * @tags @UTIL:PRINT-ENHANCED-SUMMARY-001
    */
   private printEnhancedSummary(checkSummary: SystemCheckSummary): void {
-    logger.info(chalk.bold('Summary:'));
-    logger.info(`  Total checks: ${checkSummary.totalChecks}`);
-    logger.info(`  ${chalk.green('Passed:')} ${checkSummary.passedChecks}`);
-    logger.info(`  ${chalk.red('Failed:')} ${checkSummary.failedChecks}`);
-
-    if (checkSummary.detectedLanguages.length > 0) {
-      logger.info(
-        `  ${chalk.blue('Languages:')} ${checkSummary.detectedLanguages.join(', ')}`
-      );
-    }
-    logger.info('');
+    console.log(chalk.gray('─'.repeat(60)));
+    console.log(chalk.bold('  📊 Summary:'));
+    console.log(chalk.gray(`     Checks: ${chalk.white(checkSummary.totalChecks)} total`));
+    console.log(chalk.gray(`     Status: ${chalk.green(checkSummary.passedChecks + ' passed')} ${checkSummary.failedChecks > 0 ? chalk.red(checkSummary.failedChecks + ' failed') : ''}`));
+    console.log(chalk.gray('─'.repeat(60)));
 
     if (checkSummary.passedChecks === checkSummary.totalChecks) {
-      logger.info(chalk.green.bold('✅ All system requirements satisfied!'));
+      console.log(chalk.green.bold('\n✅ All requirements satisfied!\n'));
     } else {
-      logger.info(
-        chalk.red.bold('❌ Some system requirements need attention.')
-      );
-      logger.info(
-        chalk.yellow(
-          'Please install missing tools or upgrade versions as suggested above.'
-        )
-      );
+      console.log(chalk.yellow.bold('\n⚠️  Some requirements need attention\n'));
+      console.log(chalk.gray('Install missing tools as suggested above.\n'));
     }
   }
 

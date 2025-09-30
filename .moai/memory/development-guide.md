@@ -1,8 +1,10 @@
-# MoAI-ADK 개발 가이드
+# {{PROJECT_NAME}} 개발 가이드
 
 > "명세 없으면 코드 없다. 테스트 없으면 구현 없다."
 
 MoAI-ADK 범용 개발 툴킷을 사용하는 모든 에이전트와 개발자를 위한 통합 가드레일이다. TypeScript 기반으로 구축된 툴킷은 모든 주요 프로그래밍 언어를 지원하며, @TAG 추적성을 통한 SPEC 우선 TDD 방법론을 따른다. 한국어가 기본 소통 언어다.
+
+---
 
 ## SPEC 우선 TDD 워크플로우
 
@@ -12,13 +14,46 @@ MoAI-ADK 범용 개발 툴킷을 사용하는 모든 에이전트와 개발자�
 2. **TDD 구현** (`/moai:2-build`) → 테스트 없이는 구현 없음
 3. **문서 동기화** (`/moai:3-sync`) → 추적성 없이는 완성 없음
 
-### 온디맨드 품질 보증
+### 온디맨드 지원
 
 - **디버깅**: `@agent-debug-helper` 오류 발생 시 호출
 - **CLI 명령어**: init, doctor, status, update, restore, help, version
 - **시스템 진단**: 언어별 도구 자동 감지 및 요구사항 검증
 
 모든 변경사항은 @TAG 시스템, SPEC 기반 요구사항, 언어별 TDD 관행을 따른다.
+
+### EARS 요구사항 작성법
+
+**EARS (Easy Approach to Requirements Syntax)**: 체계적인 요구사항 작성 방법론
+
+#### EARS 5가지 구문
+1. **기본 요구사항 (Ubiquitous)**: 시스템은 [기능]을 제공해야 한다
+2. **이벤트 기반 (Event-driven)**: WHEN [조건]이면, 시스템은 [동작]해야 한다
+3. **상태 기반 (State-driven)**: WHILE [상태]일 때, 시스템은 [동작]해야 한다
+4. **선택적 기능 (Optional)**: WHERE [조건]이면, 시스템은 [동작]할 수 있다
+5. **제약사항 (Constraints)**: IF [조건]이면, 시스템은 [제약]해야 한다
+
+#### 실제 작성 예시
+```markdown
+### Ubiquitous Requirements (기본 요구사항)
+- 시스템은 사용자 인증 기능을 제공해야 한다
+
+### Event-driven Requirements (이벤트 기반)
+- WHEN 사용자가 유효한 자격증명으로 로그인하면, 시스템은 JWT 토큰을 발급해야 한다
+- WHEN 토큰이 만료되면, 시스템은 401 에러를 반환해야 한다
+
+### State-driven Requirements (상태 기반)
+- WHILE 사용자가 인증된 상태일 때, 시스템은 보호된 리소스 접근을 허용해야 한다
+
+### Optional Features (선택적 기능)
+- WHERE 리프레시 토큰이 제공되면, 시스템은 새로운 액세스 토큰을 발급할 수 있다
+
+### Constraints (제약사항)
+- IF 잘못된 토큰이 제공되면, 시스템은 접근을 거부해야 한다
+- 액세스 토큰 만료시간은 15분을 초과하지 않아야 한다
+```
+
+---
 
 ## TRUST 5원칙
 
@@ -67,33 +102,26 @@ MoAI-ADK 범용 개발 툴킷을 사용하는 모든 에이전트와 개발자�
 - **언어 간 SPEC 준수**: Python(모듈), TypeScript(인터페이스), Java(패키지), Go(패키지), Rust(크레이트) 등 언어별 경계를 SPEC이 정의한다.
 - **SPEC 기반 아키텍처**: 도메인 경계는 언어 관례가 아닌 SPEC에 의해 정의되며, @TAG 시스템으로 언어 간 추적성을 유지한다.
 
-### S - SPEC 준수 보안 (v0.0.4 Winston Logger 표준)
+### S - SPEC 준수 보안
 
 - **SPEC 보안 요구사항**: 모든 SPEC에 보안 요구사항, 데이터 민감도, 접근 제어를 명시적으로 정의한다.
 - **보안 by 설계**: 보안 제어는 완료 후 추가하는 것이 아니라 TDD 단계에서 구현한다.
-
-**v0.0.4 구조화 로깅 표준** (Winston Logger):
-- **필수 사용**: 모든 production 코드에서 `winston-logger.ts` 사용 (console.* 금지)
-- **민감정보 자동 마스킹**: 15개 필드 + 12개 패턴 (password, token, apiKey, secret 등)
-- **TAG 기반 추적성**: `logWithTag()` 메서드로 @TAG 통합 로깅
-- **테스트 커버리지**: 97.92% 이상 유지 (24 tests minimum)
-- **로그 파일 관리**: `.moai/logs/` (daily rotation, max 7 days 보관)
-
-**언어 무관 보안 패턴**:
-- SPEC 인터페이스 정의 기반 입력 검증
-- SPEC 정의 중요 작업에 대한 감사 로깅 (Winston logger 필수)
-- SPEC 권한 모델을 따르는 접근 제어
-- SPEC 환경 요구사항별 비밀 관리
-- **console.* 사용 금지**: production 코드에서 절대 사용 불가 (테스트는 예외)
+- **언어 무관 보안 패턴**:
+  - SPEC 인터페이스 정의 기반 입력 검증
+  - SPEC 정의 중요 작업에 대한 감사 로깅
+  - SPEC 권한 모델을 따르는 접근 제어
+  - SPEC 환경 요구사항별 비밀 관리
 
 ### T - SPEC 추적성
 
 - **SPEC-코드 추적성**: 모든 코드 변경은 @TAG 시스템을 통해 SPEC ID와 특정 요구사항을 참조한다.
 - **3단계 워크플로우 추적**:
   - `/moai:1-spec`: @REQ, @DESIGN, @TASK 태그로 SPEC 작성
-  - `/moai:2-build`: @TEST, @FEATURE 태그로 TDD 구현
-  - `/moai:3-sync`: @DOCS, @TAG 태그로 문서 동기화
-- **분산 @TAG 시스템**: JSONL 기반 분산 저장으로 완전한 추적성을 제공한다.
+  - `/moai:2-build`: @TEST, @FEATURE, @API, @UI, @DATA 태그로 TDD 구현
+  - `/moai:3-sync`: 코드 스캔으로 모든 8-Core TAG 검증 및 문서 동기화
+- **코드 스캔 기반 추적성**: 중간 캐시 없이 `rg '@TAG' -n`으로 코드를 직접 스캔하여 TAG 추적성 보장한다.
+
+---
 
 ## SPEC 우선 사고방식
 
@@ -115,25 +143,30 @@ MoAI-ADK 범용 개발 툴킷을 사용하는 모든 에이전트와 개발자�
 @REQ → @DESIGN → @TASK → @TEST
 ```
 
+### TAG BLOCK 템플릿
+
+```text
+# @FEATURE:<DOMAIN-ID> | Chain: @REQ:<ID> -> @DESIGN:<ID> -> @TASK:<ID> -> @TEST:<ID>
+# Related: @API:<ID>, @UI:<ID>, @DATA:<ID>
+```
+
+### 8-Core 체계 구성
+
+**Primary Chain (4 Core)**: 요구 → 설계 → 작업 → 검증 (필수)
+- `@REQ` → `@DESIGN` → `@TASK` → `@TEST`
+
+**Implementation (4 Core)**: 구현 세부 사항
+- `@FEATURE` → `@API` → `@UI` → `@DATA`
+
 ### TAG 사용 규칙
 
 - 모든 코드 파일 상단에 TAG BLOCK 배치
 - 새 TAG 생성 전 중복 확인: `rg "@REQ:<키워드>" -n`
 - TAG ID 규칙: `<도메인>-<3자리>` (예: AUTH-003)
+- TAG 검증: `rg '@TAG' -n src/ tests/` (코드 직접 스캔)
 
-### TAG BLOCK 템플릿
 
-```text
-# @FEATURE:<DOMAIN-ID> | Chain: @REQ → @DESIGN → @TASK → @TEST
-# Related: @SEC:<ID>, @DOCS:<ID>
-```
-
-### 체계 구성
-
-- **Primary Chain**: 요구 → 설계 → 작업 → 검증 (필수)
-- **Implementation**: Feature/API/UI/Data 등 구현 유형
-- **Quality**: Perf/Sec/Docs/Debt 등 품질 속성
-- **Meta**: Ops/Release/Tag/Deprecated 등 메타데이터
+---
 
 ## 개발 원칙
 
@@ -175,5 +208,23 @@ MoAI-ADK 범용 개발 툴킷을 사용하는 모든 에이전트와 개발자�
 - **Java**: JUnit (테스트), Maven/Gradle (빌드)
 - **Go**: go test (테스트), gofmt (포맷)
 - **Rust**: cargo test (테스트), rustfmt (포맷)
+
+## 변수 역할 참고
+
+| Role               | Description                         | Example                               |
+| ------------------ | ----------------------------------- | ------------------------------------- |
+| Fixed Value        | Constant after initialization       | `const MAX_SIZE = 100`                |
+| Stepper            | Changes sequentially                | `for (let i = 0; i < n; i++)`         |
+| Flag               | Boolean state indicator             | `let isValid = true`                  |
+| Walker             | Traverses a data structure          | `while (node) { node = node.next; }`  |
+| Most Recent Holder | Holds the most recent value         | `let lastError`                       |
+| Most Wanted Holder | Holds optimal/maximum value         | `let bestScore = -Infinity`           |
+| Gatherer           | Accumulator                         | `sum += value`                        |
+| Container          | Stores multiple values              | `const list = []`                     |
+| Follower           | Previous value of another variable  | `prev = curr; curr = next;`           |
+| Organizer          | Reorganizes data                    | `const sorted = array.sort()`         |
+| Temporary          | Temporary storage                   | `const temp = a; a = b; b = temp;`    |
+
+---
 
 이 가이드는 MoAI-ADK 3단계 파이프라인을 실행하는 표준을 제공한다.

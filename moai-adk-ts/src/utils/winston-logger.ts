@@ -92,13 +92,16 @@ export class MoaiLogger {
   private createDefaultTransports(): winston.transport[] {
     const transports: winston.transport[] = [];
 
-    // Console transport
+    // Console transport with clean format
     if (this.options.enableConsole) {
       transports.push(
         new winston.transports.Console({
           format: winston.format.combine(
             winston.format.colorize(),
-            winston.format.simple()
+            winston.format.printf(({ level, message }) => {
+              // Clean format without timestamp for better UX
+              return `${level}: ${message}`;
+            })
           ),
         })
       );

@@ -1,5 +1,0 @@
-{"tag": "@TECH:STACK-001", "type": "technology", "description": "TypeScript 5.9.2 메인 언어 스택", "file": ".moai/project/tech.md", "line": 3, "created": "2025-09-29", "status": "active", "category": "STEERING"}
-{"tag": "@TECH:FRAMEWORK-001", "type": "technology", "description": "현대화된 개발 프레임워크", "file": ".moai/project/tech.md", "line": 25, "created": "2025-09-29", "status": "active", "category": "STEERING"}
-{"tag": "@TECH:QUALITY-001", "type": "technology", "description": "품질 게이트 및 정책", "file": ".moai/project/tech.md", "line": 45, "created": "2025-09-29", "status": "active", "category": "STEERING"}
-{"tag": "@TECH:DEPLOY-001", "type": "technology", "description": "배포 채널 및 전략", "file": ".moai/project/tech.md", "line": 67, "created": "2025-09-29", "status": "active", "category": "STEERING"}
-{"tag": "@TECH:MODERN-STACK-013", "type": "technology", "description": "현대적 개발 스택 완성", "file": ".moai/project/tech.md", "line": 124, "created": "2025-09-29", "status": "active", "category": "STEERING"}

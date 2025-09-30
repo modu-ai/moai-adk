@@ -8,7 +8,10 @@
       "Bash(bun run:*)",
       "Bash(./dist/cli/index.js --version)",
       "Bash(./dist/cli/index.js --help)",
-      "Bash(./dist/cli/index.js doctor:*)"
+      "Bash(./dist/cli/index.js doctor:*)",
+      "Read(//Users/goos/MoAI/test/todo-app/.moai/indexes/**)",
+      "Bash(killall:*)",
+      "Bash(bun:*)"
     ],
     "deny": [],
     "ask": [],

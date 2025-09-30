@@ -1,4 +1,0 @@
-{"tag": "@ADR:TYPESCRIPT-001", "type": "decision", "description": "TypeScript 메인 언어 선택 결정", "file": ".moai/project/tech.md", "line": 5, "created": "2025-09-29", "status": "active", "category": "STEERING"}
-{"tag": "@ADR:BUN-ADOPTION-001", "type": "decision", "description": "Bun 패키지 매니저 채택", "file": ".moai/project/tech.md", "line": 18, "created": "2025-09-29", "status": "active", "category": "STEERING"}
-{"tag": "@ADR:JSONL-DISTRIBUTED-001", "type": "decision", "description": "JSONL 기반 분산 TAG 시스템", "file": "moai-adk-ts/src/core/tag-system/tag-manager.ts", "line": 1, "created": "2025-09-29", "status": "active", "category": "STEERING"}
-{"tag": "@ADR:16CORE-TAG-001", "type": "decision", "description": "16-Core TAG 아키텍처 선택", "file": ".moai/memory/development-guide.md", "line": 42, "created": "2025-09-29", "status": "active", "category": "STEERING"}

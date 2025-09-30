@@ -1,6 +1,13 @@
 #!/usr/bin/env tsx
-// @FEATURE-TAG-UPDATER-001: TAG 인덱스 업데이트 및 관리 스크립트
-// 연결: @REQ-TAG-UPDATE-001 → @DESIGN-TAG-UPDATER-001 → @TASK-TAG-UPDATE-001
+/**
+ * @FEATURE:TAG-UPDATER-001 | Chain: @REQ:TAG-UPDATER-001 -> @DESIGN:TAG-UPDATER-001 -> @TASK:TAG-UPDATER-001 -> @TEST:TAG-UPDATER-001
+ * Related: @API:TAG-UPDATER-001, @DATA:TAG-UPDATER-001
+ *
+ * TAG 시스템 업데이트 스크립트
+ * - TAG 체인 자동 생성
+ * - TAG 무결성 검증
+ * - TAG 인덱스 갱신
+ */
 
 import { program } from 'commander';
 import { promises as fs } from 'fs';
@@ -90,7 +97,7 @@ const TAG_CATEGORIES: Record<TagType, TagCategory> = {
   'TAG': 'QUALITY'
 };
 
-const TAG_PATTERN = /@([A-Z]+)(?:[:|-]([A-Z0-9-]+))?/g;
+const TAG_PATTERN = /@([A-Z]+):([A-Z0-9-]+)/g;
 
 async function loadTagDatabase(): Promise<TagDatabase> {
   const tagDbPath = '.moai/indexes/tags.json';
@@ -301,7 +308,7 @@ async function scanFile(
 
       // 유효한 TAG 타입인지 확인
       if (TAG_CATEGORIES[tagType]) {
-        const tagId = `@${tagType}-${tagSuffix}`;
+        const tagId = `@${tagType}:${tagSuffix}`;
 
         if (!tagReferences.has(tagId)) {
           tagReferences.set(tagId, { files: [], contexts: [] });

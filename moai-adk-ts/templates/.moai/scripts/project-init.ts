@@ -40,11 +40,10 @@ async function initializeProject(options: ProjectInitOptions): Promise<{ success
     const projectName = options.name || path.basename(process.cwd());
     const projectType = options.type || 'personal';
 
-    // MoAI 디렉토리 구조 생성
+    // MoAI 디렉토리 구조 생성 (CODE-FIRST: indexes 제거)
     const moaiDirs = [
       '.moai',
       '.moai/specs',
-      '.moai/indexes',
       '.moai/reports',
       '.moai/checkpoints',
       '.moai/memory',
@@ -89,26 +88,8 @@ async function initializeProject(options: ProjectInitOptions): Promise<{ success
       JSON.stringify(config, null, 2)
     );
 
-    // 기본 태그 인덱스 초기화
-    const tagIndex = {
-      version: '1.0.0',
-      tags: {},
-      indexes: {
-        byType: {},
-        byCategory: {},
-        byStatus: {},
-        byFile: {}
-      },
-      metadata: {
-        totalTags: 0,
-        lastUpdated: new Date().toISOString()
-      }
-    };
-
-    await fs.writeFile(
-      '.moai/indexes/tags.json',
-      JSON.stringify(tagIndex, null, 2)
-    );
+    // CODE-FIRST: TAG INDEX 제거됨
+    // TAG 추적성은 코드 직접 스캔 방식 사용 (rg '@TAG' -n)
 
     return {
       success: true,

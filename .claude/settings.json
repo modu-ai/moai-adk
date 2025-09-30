@@ -16,7 +16,7 @@
             "type": "command"
           },
           {
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag-enforcer.mjs",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag-enforcer.js",
             "type": "command"
           }
         ],

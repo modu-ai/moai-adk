@@ -35,7 +35,6 @@
   },
   "pipeline": {
     "available_commands": [
-      "/moai:0-project",
       "/moai:1-spec",
       "/moai:2-build",
       "/moai:3-sync",
@@ -44,44 +43,32 @@
     "current_stage": "initialized"
   },
   "project": {
-    "created_at": "${CREATION_TIMESTAMP}",
-    "description": "${PROJECT_DESCRIPTION}",
+    "created_at": "{{CREATION_TIMESTAMP}}",
+    "description": "{{PROJECT_DESCRIPTION}}",
     "initialized": true,
-    "mode": "personal",
-    "name": "${PROJECT_NAME}",
-    "version": "0.0.1"
+    "mode": "{{PROJECT_MODE}}",
+    "name": "{{PROJECT_NAME}}",
+    "version": "{{PROJECT_VERSION}}"
   },
   "tags": {
     "auto_sync": true,
-    "storage_type": "distributed",
+    "storage_type": "code_scan",
     "categories": [
       "REQ",
       "DESIGN",
       "TASK",
       "TEST",
-      "VISION",
-      "STRUCT",
-      "TECH",
-      "ADR",
       "FEATURE",
       "API",
       "UI",
-      "DATA",
-      "PERF",
-      "SEC",
-      "DOCS",
-      "TAG"
+      "DATA"
     ],
-    "distributed_storage": {
-      "meta_path": ".moai/indexes/meta.json",
-      "categories_path": ".moai/indexes/categories/",
-      "relations_path": ".moai/indexes/relations/",
-      "cache_path": ".moai/indexes/cache/"
-    },
-    "legacy_support": {
-      "monolithic_path": ".moai/indexes/tags.json",
-      "adapter_enabled": true,
-      "fallback_mode": false
+    "code_scan_policy": {
+      "no_intermediate_cache": true,
+      "realtime_validation": true,
+      "scan_tools": ["rg", "grep"],
+      "scan_command": "rg '@TAG' -n",
+      "philosophy": "TAG의 진실은 코드 자체에만 존재"
     }
   }
 }
