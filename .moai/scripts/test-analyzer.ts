@@ -1,13 +1,6 @@
 #!/usr/bin/env tsx
-/**
- * @FEATURE:TEST-ANALYZER-001 | Chain: @REQ:TEST-ANALYSIS-001 -> @DESIGN:TEST-ANALYZER-001 -> @TASK:TEST-001 -> @TEST:TEST-001
- * Related: @API:TEST-ANALYSIS-001, @DATA:TEST-ANALYSIS-001
- *
- * 테스트 분석 및 품질 측정 스크립트
- * - 테스트 커버리지 분석
- * - 품질 메트릭 측정
- * - 테스트 실행 결과 리포팅
- */
+// @FEATURE-TEST-ANALYZER-001: 테스트 분석 및 품질 측정 스크립트
+// 연결: @REQ-TEST-ANALYSIS-001 → @DESIGN-TEST-ANALYZER-001 → @TASK-TEST-001
 
 import { program } from 'commander';
 import { promises as fs } from 'fs';

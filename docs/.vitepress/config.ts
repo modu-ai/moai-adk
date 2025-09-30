@@ -1,20 +1,35 @@
 import { defineConfig } from 'vitepress'
+import { withMermaid } from 'vitepress-plugin-mermaid'
 
-export default defineConfig({
-  title: 'MoAI-ADK',
-  description: 'TypeScript 기반 SPEC 우선 TDD 개발 도구',
-  lang: 'ko-KR',
-  ignoreDeadLinks: true,
+export default withMermaid(
+  defineConfig({
+    title: 'MoAI-ADK',
+    description: 'TypeScript 기반 SPEC 우선 TDD 개발 도구',
+    lang: 'ko-KR',
+    ignoreDeadLinks: true,
 
-  // Mermaid diagram support
-  markdown: {
-    config: (md) => {
-      // Mermaid is natively supported in VitePress v1.6.4+
-    }
-  },
+    // Mermaid configuration
+    mermaid: {
+      // Mermaid theme configuration
+      theme: 'default',
+      // Optional: customize Mermaid settings
+      // theme: 'neutral', 'dark', 'forest', 'default'
+      themeVariables: {
+        primaryColor: '#5f67ee',
+        primaryTextColor: '#fff',
+        primaryBorderColor: '#5f67ee',
+        lineColor: '#5f67ee',
+        secondaryColor: '#339af0',
+        tertiaryColor: '#51cf66'
+      }
+    },
 
-  // Enable Mermaid rendering
-  mermaid: {},
+    // Markdown configuration
+    markdown: {
+      config: (md) => {
+        // Mermaid plugin will handle the rendering
+      }
+    },
 
   themeConfig: {
     logo: {
@@ -203,4 +218,5 @@ export default defineConfig({
     ['meta', { property: 'og:url', content: 'https://adk.mo.ai.kr/' }],
     ['meta', { property: 'og:description', content: 'TypeScript 기반 범용 언어 지원 SPEC-First TDD 개발 도구' }]
   ]
-})
+  })
+)

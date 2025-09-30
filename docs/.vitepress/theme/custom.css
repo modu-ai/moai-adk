@@ -6,68 +6,80 @@
 
 /* ============================================
    Pretendard Font Family - Korean Web Font
+   Using official Pretendard repository with woff2
    ============================================ */
 
 @font-face {
     font-family: 'Pretendard';
-    src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Thin.woff') format('woff');
+    src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/woff2/Pretendard-Thin.woff2') format('woff2');
     font-weight: 100;
     font-display: swap;
 }
 
 @font-face {
     font-family: 'Pretendard';
-    src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-ExtraLight.woff') format('woff');
+    src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/woff2/Pretendard-ExtraLight.woff2') format('woff2');
     font-weight: 200;
     font-display: swap;
 }
 
 @font-face {
     font-family: 'Pretendard';
-    src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Light.woff') format('woff');
+    src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/woff2/Pretendard-Light.woff2') format('woff2');
     font-weight: 300;
     font-display: swap;
 }
 
 @font-face {
     font-family: 'Pretendard';
-    src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Regular.woff') format('woff');
+    src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/woff2/Pretendard-Regular.woff2') format('woff2');
     font-weight: 400;
     font-display: swap;
 }
 
 @font-face {
     font-family: 'Pretendard';
-    src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Medium.woff') format('woff');
+    src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/woff2/Pretendard-Medium.woff2') format('woff2');
     font-weight: 500;
     font-display: swap;
 }
 
 @font-face {
     font-family: 'Pretendard';
-    src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-SemiBold.woff') format('woff');
+    src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/woff2/Pretendard-SemiBold.woff2') format('woff2');
     font-weight: 600;
     font-display: swap;
 }
 
 @font-face {
     font-family: 'Pretendard';
-    src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Bold.woff') format('woff');
+    src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/woff2/Pretendard-Bold.woff2') format('woff2');
     font-weight: 700;
     font-display: swap;
 }
 
 @font-face {
     font-family: 'Pretendard';
-    src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-ExtraBold.woff') format('woff');
+    src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/woff2/Pretendard-ExtraBold.woff2') format('woff2');
     font-weight: 800;
     font-display: swap;
 }
 
 @font-face {
     font-family: 'Pretendard';
-    src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Black.woff') format('woff');
+    src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/woff2/Pretendard-Black.woff2') format('woff2');
     font-weight: 900;
+    font-display: swap;
+}
+
+/* ============================================
+   CloudSansCode Font Family - Code Font
+   ============================================ */
+
+@font-face {
+    font-family: 'CloudSansCode';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408@1.0/goorm-sans-code.woff2') format('woff2');
+    font-weight: normal;
     font-display: swap;
 }
 
@@ -79,7 +91,7 @@
 :root {
   /* Base Font */
   --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, Monaco, monospace;
+  --font-mono: 'CloudSansCode', 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, Monaco, monospace;
 
   /* shadcn/ui Color System - HSL Values */
   /* Light Mode - Monochrome Palette */
@@ -236,9 +248,20 @@ body {
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-sans);
-  font-weight: 700;
+  font-weight: 900;
   letter-spacing: -0.025em;
-  line-height: 1.1;
+  line-height: 1.0;
+}
+
+/* VitePress 문서 영역의 제목도 동일하게 적용 */
+.vp-doc h1,
+.vp-doc h2,
+.vp-doc h3,
+.vp-doc h4,
+.vp-doc h5,
+.vp-doc h6 {
+  font-weight: 900;
+  line-height: 1.0;
 }
 
 /* Adjust paragraph and content spacing */

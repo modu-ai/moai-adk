@@ -1,13 +1,6 @@
 #!/usr/bin/env tsx
-/**
- * @FEATURE:SPEC-VALIDATOR-001 | Chain: @REQ:VALIDATION-001 -> @DESIGN:SPEC-VALIDATOR-001 -> @TASK:VALIDATOR-001 -> @TEST:VALIDATOR-001
- * Related: @API:VALIDATION-001, @DATA:VALIDATION-001
- *
- * SPEC 문서 검증 스크립트
- * - SPEC 구조 검증
- * - TAG Catalog 일치성 확인
- * - EARS 요구사항 형식 검증
- */
+// @FEATURE-SPEC-VALIDATOR-001: SPEC 문서 검증 스크립트
+// 연결: @REQ-VALIDATION-001 → @DESIGN-SPEC-VALIDATOR-001 → @TASK-VALIDATOR-001
 
 import { program } from 'commander';
 import { promises as fs } from 'fs';

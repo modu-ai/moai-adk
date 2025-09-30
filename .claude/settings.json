@@ -1,7 +1,7 @@
 {
   "env": {
     "MOAI_RUNTIME": "typescript",
-    "MOAI_PROJECT_PATH": "./{{PROJECT_NAME}}",
+    "MOAI_PROJECT_PATH": "./MoAI-ADK",
     "MOAI_AUTO_ROUTING": "true",
     "MOAI_PERFORMANCE_MONITORING": "true",
     "NODE_ENV": "{{PROJECT_MODE}}"
@@ -12,11 +12,11 @@
       {
         "hooks": [
           {
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre-write-guard.js",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre-write-guard.cjs",
             "type": "command"
           },
           {
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag-enforcer.js",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag-enforcer.cjs",
             "type": "command"
           }
         ],
@@ -25,7 +25,7 @@
       {
         "hooks": [
           {
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/policy-block.js",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/policy-block.cjs",
             "type": "command"
           }
         ],
@@ -36,7 +36,7 @@
       {
         "hooks": [
           {
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session-notice.js",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session-notice.cjs",
             "type": "command"
           }
         ],
@@ -47,7 +47,7 @@
       {
         "hooks": [
           {
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/steering-guard.js",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/steering-guard.cjs",
             "type": "command"
           }
         ]

@@ -1,13 +1,6 @@
 #!/usr/bin/env tsx
-/**
- * @FEATURE:TDD-RUNNER-001 | Chain: @REQ:TDD-001 -> @DESIGN:TDD-RUNNER-001 -> @TASK:TDD-001 -> @TEST:TDD-001
- * Related: @API:TDD-001, @DATA:TDD-001
- *
- * TDD Red-Green-Refactor 실행 스크립트
- * - Red: 실패하는 테스트 작성
- * - Green: 테스트 통과 최소 코드
- * - Refactor: 코드 품질 개선
- */
+// @FEATURE-TDD-RUNNER-001: TDD Red-Green-Refactor 실행 스크립트
+// 연결: @REQ-TDD-001 → @DESIGN-TDD-RUNNER-001 → @TASK-TDD-001
 
 import { program } from 'commander';
 import { promises as fs } from 'fs';

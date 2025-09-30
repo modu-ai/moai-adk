@@ -11,9 +11,11 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.55.1",
+    "mermaid": "^11.12.0",
     "playwright": "^1.55.1",
     "typedoc": "^0.27.6",
-    "vitepress": "^1.6.4"
+    "vitepress": "^1.6.4",
+    "vitepress-plugin-mermaid": "^2.0.17"
   },
   "workspaces": [
     "moai-adk-ts"

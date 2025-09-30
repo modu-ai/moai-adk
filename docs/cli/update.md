@@ -10,6 +10,109 @@
 
 UpdateOrchestrator는 업데이트 중 발생할 수 있는 다양한 시나리오를 처리합니다. 사용자가 템플릿 파일을 수정한 경우 충돌을 감지하고 선택 옵션을 제공하며, 버전 간 호환성 문제가 있으면 마이그레이션 스크립트를 자동으로 실행합니다. 또한 업데이트 실패 시 자동으로 백업에서 복원하는 롤백 메커니즘을 내장하고 있어, 프로젝트가 손상될 위험이 없습니다.
 
+## 동작 방식
+
+`moai update` 명령어의 전체 업데이트 프로세스를 시각화한 다이어그램입니다.
+
+```mermaid
+flowchart TD
+    A[moai update 실행] --> B{프로젝트<br/>검증}
+    B -->|유효| C[버전 확인]
+    B -->|무효| Z[❌ 종료:<br/>moai init 필요]
+
+    C --> D{업데이트<br/>필요?}
+    D -->|아니오| Y[✅ 최신 상태]
+    D -->|예| E{--check<br/>모드?}
+
+    E -->|예| Y2[📊 업데이트 가능<br/>알림만]
+    E -->|아니오| F{--no-backup?}
+
+    F -->|아니오| G[📦 백업 생성]
+    F -->|예| H[🔍 변경 분석]
+    G --> H
+
+    H --> I{충돌 감지?}
+    I -->|없음| J[⚙️ 파일 업데이트]
+    I -->|있음| K[ConflictResolver<br/>충돌 해결]
+    K --> J
+
+    J --> L[🔄 마이그레이션<br/>실행]
+    L --> M{성공?}
+    M -->|예| N[버전 동기화]
+    M -->|아니오| O[롤백 실행]
+    O --> Z2[❌ 업데이트 실패]
+
+    N --> P[✅ 업데이트 완료]
+
+    style A fill:#fab005
+    style P fill:#51cf66
+    style Y fill:#51cf66
+    style Z fill:#ff6b6b
+    style Z2 fill:#ff6b6b
+    style K fill:#fab005
+```
+
+### Update Orchestrator 아키텍처
+
+업데이트 시스템의 내부 컴포넌트 구조입니다.
+
+```mermaid
+graph TB
+    CLI[UpdateCommand<br/>CLI Layer] --> ORC[UpdateOrchestrator<br/>Core Layer]
+
+    ORC --> BM[BackupManager<br/>백업 생성/복원]
+    ORC --> CA[ChangeAnalyzer<br/>파일 비교]
+    ORC --> CR[ConflictResolver<br/>충돌 해결]
+    ORC --> MF[MigrationFramework<br/>버전 마이그레이션]
+    ORC --> FSM[FileSystemManager<br/>파일 작업]
+
+    BM --> FS[(File System)]
+    CA --> FS
+    CR --> FS
+    MF --> FS
+    FSM --> FS
+
+    CR --> MRG[3-Way Merge<br/>알고리즘]
+    MF --> MS[(Migration Scripts)]
+
+    style CLI fill:#339af0
+    style ORC fill:#fab005
+    style BM fill:#51cf66
+    style CA fill:#51cf66
+    style CR fill:#51cf66
+    style MF fill:#51cf66
+    style FSM fill:#51cf66
+```
+
+### 충돌 해결 프로세스
+
+```mermaid
+sequenceDiagram
+    participant ORC as UpdateOrchestrator
+    participant CR as ConflictResolver
+    participant USER as 사용자
+    participant FS as 파일 시스템
+
+    ORC->>CR: 충돌 파일 전달
+    CR->>FS: 원본 템플릿 읽기
+    CR->>FS: 사용자 버전 읽기
+    CR->>FS: 새 템플릿 읽기
+
+    CR->>CR: 3-Way Diff 분석
+
+    alt 자동 병합 가능
+        CR->>FS: 병합 결과 적용
+        CR-->>ORC: 성공
+    else 수동 병합 필요
+        CR->>USER: 선택 옵션 제시<br/>(Keep/Use/Merge/Skip)
+        USER-->>CR: 선택 입력
+        CR->>FS: 선택에 따라 적용
+        CR-->>ORC: 성공
+    end
+
+    Note over CR,USER: 대화형 모드<br/>(CI/CD에서는 자동 Skip)
+```
+
 ## 개요
 
 `moai update`는 다음 기능을 제공합니다:

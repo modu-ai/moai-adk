@@ -37,6 +37,8 @@ moai status -p, --project-path <path>      # 특정 경로
 # 시스템 진단
 moai doctor                                # 전체 진단
 moai doctor --list-backups                 # 백업 목록
+moai doctor --advanced                     # 고급 진단 (성능 분석)
+moai doctor --verbose                      # 상세 로그 출력
 
 # 도움말 및 버전
 moai help                                  # 전체 도움말

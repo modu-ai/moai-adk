@@ -1,13 +1,6 @@
 #!/usr/bin/env tsx
-/**
- * @FEATURE:LANGUAGE-DETECT-001 | Chain: @REQ:LANGUAGE-001 -> @DESIGN:DETECT-001 -> @TASK:DETECT-001 -> @TEST:DETECT-001
- * Related: @API:LANGUAGE-001, @DATA:LANGUAGE-001
- *
- * 프로젝트 언어 자동 감지 스크립트
- * - 파일 확장자 분석
- * - 의존성 파일 검사
- * - 언어별 도구 추천
- */
+// @FEATURE-LANGUAGE-DETECT-001: 프로젝트 언어 자동 감지 스크립트
+// 연결: @REQ-LANGUAGE-001 → @DESIGN-DETECT-001 → @TASK-DETECT-001
 
 import { program } from 'commander';
 import { promises as fs } from 'fs';

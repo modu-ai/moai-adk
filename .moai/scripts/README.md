@@ -1,28 +1,6 @@
-# MoAI 스크립트 디렉토리
+# MoAI 스크립트 디렉토리 (템플릿)
 
-이 디렉토리는 MoAI-ADK 핵심 스크립트와 프로젝트별 자동화 스크립트를 포함한다.
-
-## 📦 MoAI-ADK 핵심 Scripts (10개)
-
-### 1차 호출 Scripts (에이전트가 직접 실행)
-
-| Script | TAG | 역할 | 사용처 |
-|--------|-----|------|--------|
-| **debug-analyzer.ts** | DEBUG-ANALYZER-001 | 오류 분석 및 진단 | `@agent-debug-helper` |
-| **detect-language.ts** | LANGUAGE-DETECT-001 | 프로젝트 언어 감지 | `steering-guard.js`, `file-monitor.js` |
-| **doc-syncer.ts** | DOC-SYNCER-001 | 문서 동기화 | `@agent-doc-syncer`, `/moai:3-sync` |
-| **spec-builder.ts** | SPEC-BUILDER-001 | SPEC 문서 생성 | `@agent-spec-builder`, `/moai:1-spec` |
-| **tdd-runner.ts** | TDD-RUNNER-001 | TDD 실행 | `@agent-code-builder`, `/moai:2-build` |
-| **trust-checker.ts** | TRUST-CHECKER-001 | TRUST 5원칙 검증 | `@agent-trust-checker` |
-| **tag-updater.ts** | TAG-UPDATER-001 | TAG 시스템 관리 | `@agent-tag-agent` |
-
-### 내부 지원 Scripts (다른 scripts가 import)
-
-| Script | TAG | 역할 | 사용처 |
-|--------|-----|------|--------|
-| **project-init.ts** | PROJECT-INIT-001 | 프로젝트 초기화 | CLI `init` 명령 내부 |
-| **spec-validator.ts** | SPEC-VALIDATOR-001 | SPEC 검증 | `spec-builder.ts` 내부 |
-| **test-analyzer.ts** | TEST-ANALYZER-001 | 테스트 분석 | `tdd-runner.ts`, `trust-checker.ts` 내부 |
+이 디렉토리는 프로젝트별로 필요한 자동화 스크립트를 작성하는 공간이다.
 
 ## 권장 스크립트 구조
 

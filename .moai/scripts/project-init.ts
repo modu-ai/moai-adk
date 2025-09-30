@@ -1,13 +1,6 @@
 #!/usr/bin/env tsx
-/**
- * @FEATURE:PROJECT-INIT-001 | Chain: @REQ:PROJECT-001 -> @DESIGN:INIT-001 -> @TASK:INIT-001 -> @TEST:INIT-001
- * Related: @API:PROJECT-001, @DATA:PROJECT-001
- *
- * 프로젝트 초기화 스크립트
- * - .moai 구조 생성
- * - 기본 설정 파일 생성
- * - 템플릿 파일 복사
- */
+// @FEATURE-PROJECT-INIT-001: 프로젝트 초기화 스크립트
+// 연결: @REQ-PROJECT-001 → @DESIGN-INIT-001 → @TASK-INIT-001
 
 import { program } from 'commander';
 import { promises as fs } from 'fs';
@@ -47,11 +40,10 @@ async function initializeProject(options: ProjectInitOptions): Promise<{ success
     const projectName = options.name || path.basename(process.cwd());
     const projectType = options.type || 'personal';
 
-    // MoAI 디렉토리 구조 생성
+    // MoAI 디렉토리 구조 생성 (CODE-FIRST: indexes 제거)
     const moaiDirs = [
       '.moai',
       '.moai/specs',
-      '.moai/indexes',
       '.moai/reports',
       '.moai/checkpoints',
       '.moai/memory',
@@ -96,26 +88,8 @@ async function initializeProject(options: ProjectInitOptions): Promise<{ success
       JSON.stringify(config, null, 2)
     );
 
-    // 기본 태그 인덱스 초기화
-    const tagIndex = {
-      version: '1.0.0',
-      tags: {},
-      indexes: {
-        byType: {},
-        byCategory: {},
-        byStatus: {},
-        byFile: {}
-      },
-      metadata: {
-        totalTags: 0,
-        lastUpdated: new Date().toISOString()
-      }
-    };
-
-    await fs.writeFile(
-      '.moai/indexes/tags.json',
-      JSON.stringify(tagIndex, null, 2)
-    );
+    // CODE-FIRST: TAG INDEX 제거됨
+    // TAG 추적성은 코드 직접 스캔 방식 사용 (rg '@TAG' -n)
 
     return {
       success: true,

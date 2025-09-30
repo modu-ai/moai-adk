@@ -1,15 +1,6 @@
 #!/usr/bin/env tsx
-/**
- * @FEATURE:TRUST-CHECKER-001 | Chain: @REQ:TRUST-001 -> @DESIGN:TRUST-CHECKER-001 -> @TASK:TRUST-001 -> @TEST:TRUST-001
- * Related: @API:TRUST-001, @DATA:TRUST-001
- *
- * TRUST 5원칙 검증 스크립트
- * - Test First: TDD 준수 확인
- * - Readable: 가독성 검증
- * - Unified: 아키텍처 일관성
- * - Secured: 보안 패턴 검증
- * - Trackable: TAG 추적성 확인
- */
+// @FEATURE-TRUST-CHECKER-001: TRUST 5원칙 검증 스크립트
+// 연결: @REQ-TRUST-001 → @DESIGN-TRUST-CHECKER-001 → @TASK-TRUST-001
 
 import { program } from 'commander';
 import { promises as fs } from 'fs';
@@ -497,22 +488,9 @@ async function checkTrackablePrinciple(files: FileMetrics[]): Promise<TrustRepor
   metrics.totalTags = totalTags;
   metrics.tagCoverage = files.length > 0 ? (filesWithTags / files.length) * 100 : 0;
 
-  // TAG 데이터베이스 확인
-  try {
-    const tagDbPath = '.moai/indexes/tags.json';
-    await fs.access(tagDbPath);
-    const tagDb = JSON.parse(await fs.readFile(tagDbPath, 'utf-8'));
-    metrics.tagsInDatabase = Object.keys(tagDb.tags || {}).length;
-  } catch {
-    violations.push({
-      principle: 'Trackable',
-      severity: 'error',
-      file: 'project',
-      message: 'TAG 데이터베이스가 없습니다',
-      suggestion: 'tag-updater를 실행하여 TAG 시스템을 초기화하세요',
-      fixable: true
-    });
-  }
+  // CODE-FIRST: TAG INDEX 제거됨
+  // TAG 추적성은 코드 직접 스캔 방식 사용 (rg '@TAG' -n)
+  // 별도의 TAG 데이터베이스 파일 없이 코드가 유일한 진실의 원천
 
   // Git 히스토리 확인
   try {
@@ -683,12 +661,11 @@ function generateTrackableRecommendations(metrics: Record<string, number>, viola
     recommendations.push('더 많은 파일에 @TAG를 추가하세요');
   }
 
-  if (!metrics.tagsInDatabase) {
-    recommendations.push('TAG 데이터베이스를 초기화하세요 (tag-updater 실행)');
-  }
+  // CODE-FIRST: TAG INDEX 방식 제거됨
+  // TAG 추적성은 코드 직접 스캔으로 보장
 
   recommendations.push('Git 커밋 메시지에 관련 TAG를 포함하세요');
-  recommendations.push('정기적으로 TAG 시스템을 업데이트하세요');
+  recommendations.push('정기적으로 /moai:3-sync를 실행하여 TAG 체인을 검증하세요');
 
   return recommendations;
 }
