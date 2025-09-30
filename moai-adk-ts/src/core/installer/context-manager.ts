@@ -4,7 +4,7 @@
  * @tags @FEATURE:CONTEXT-MANAGER-001 @REQ:INSTALL-SYSTEM-012
  */
 
-import { logger } from '@/utils/logger';
+import { logger } from '@/utils/winston-logger';
 import type {
   InstallationConfig,
   InstallationContext,

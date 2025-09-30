@@ -14,7 +14,8 @@ export { TemplateManager } from './core/project/template-manager';
 export * from './core/system-checker';
 
 // Utilities
-export { LogEntry, Logger, LogLevel, logger } from './utils/logger';
+export { LogEntry, LogLevel } from './types/logger';
+export { MoaiLogger as Logger, logger } from './utils/winston-logger';
 export {
   getCurrentVersion,
   getPackageInfo,

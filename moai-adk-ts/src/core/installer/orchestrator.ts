@@ -6,7 +6,7 @@
  * @author MoAI Team
  */
 
-import { logger } from '@/utils/logger';
+import { logger } from '@/utils/winston-logger';
 import { InstallationError } from '@/utils/errors';
 import type {
   InstallationConfig,

@@ -9,7 +9,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execSync } from 'node:child_process';
-import { logger } from '@/utils/logger';
+import { logger } from '@/utils/winston-logger';
 import { InstallationError, getErrorMessage } from '@/utils/errors';
 import { isInsideMoAIPackage } from '@/utils/path-validator';
 import type {
