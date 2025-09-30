@@ -1,8 +1,26 @@
 // @FEATURE:TAG-MANAGER-001 | Chain: @REQ:TAG-MANAGER-001 → @DESIGN:TAG-MANAGER-001 → @TASK:TAG-MANAGER-001 → @FEATURE:TAG-MANAGER-001
 // Related: @SEC:TAG-MANAGER-001, @PERF:TAG-MANAGER-001
 
+/**
+ * ⚠️ DEPRECATED: This file is deprecated and should not be used in new code.
+ *
+ * **Migration Guide:**
+ * - Use `CodeFirstTagParser` from `./code-first-parser.ts` instead
+ * - Tags should exist in code only (CODE-FIRST philosophy)
+ * - No more tags.json index files
+ * - Direct code scanning with rg/grep for TAG search
+ *
+ * **Why deprecated:**
+ * - TAG system philosophy changed to CODE-FIRST approach
+ * - tags.json caused synchronization issues
+ * - Single source of truth should be code, not cache files
+ *
+ * @deprecated Since v0.0.3 - Use CodeFirstTagParser instead
+ */
+
 import { promises as fs } from 'node:fs';
 import { dirname } from 'node:path';
+import { logger } from '../../utils/winston-logger.js';
 import type {
   TagCategory,
   TagDatabase,
@@ -21,11 +39,15 @@ import type {
  * @PERF:TAG-MANAGER-001: 고성능 메모리 캐싱 시스템
  * @SEC:TAG-MANAGER-001: 입력 검증 및 데이터 무결성 보장
  *
+ * @deprecated Since v0.0.3 - Use CodeFirstTagParser from './code-first-parser.ts' instead
+ *
  * SQLite3를 대체하는 경량 JSON 기반 TAG 시스템입니다.
  * - 메모리 캐싱: < 50ms 로드 성능 보장
  * - 자동 백업: 데이터 손실 방지
  * - 인덱스 최적화: 빠른 검색 성능
  * - 타입 안전성: 완전한 TypeScript 지원
+ *
+ * **⚠️ This class is deprecated. Use CodeFirstTagParser instead.**
  */
 export class TagManager {
   private readonly config: TagManagerConfig;
@@ -591,7 +613,9 @@ export class TagManager {
 
     if (this.config.autoSave && !this.autoSaveTimer) {
       this.autoSaveTimer = setTimeout(() => {
-        this.save().catch(console.error);
+        this.save().catch((error) => {
+          logger.error('Auto-save failed', error);
+        });
         this.autoSaveTimer = null;
       }, this.config.autoSaveDelay);
     }

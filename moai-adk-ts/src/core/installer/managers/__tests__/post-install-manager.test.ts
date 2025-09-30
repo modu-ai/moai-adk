@@ -3,7 +3,7 @@
  * @task POST-INSTALL-TEST-001 RED stage - failing tests for PostInstall functionality
  */
 
-import { vi } from 'vitest';
+import { vi, type Mocked } from 'vitest';
 import type { PostInstallOptions } from '../../types';
 import type { FirstRunManager } from '../first-run-manager';
 import type { GlobalSetupManager } from '../global-setup-manager';
@@ -14,9 +14,9 @@ import type { ResourceValidator } from '../resource-validator';
 
 describe('PostInstallManager', () => {
   let manager: PostInstallManager;
-  let mockResourceValidator: vi.Mocked<ResourceValidator>;
-  let mockFirstRunManager: vi.Mocked<FirstRunManager>;
-  let mockGlobalSetupManager: vi.Mocked<GlobalSetupManager>;
+  let mockResourceValidator: Mocked<ResourceValidator>;
+  let mockFirstRunManager: Mocked<FirstRunManager>;
+  let mockGlobalSetupManager: Mocked<GlobalSetupManager>;
 
   beforeEach(() => {
     // Reset mocks

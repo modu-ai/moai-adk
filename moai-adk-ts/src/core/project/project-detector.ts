@@ -6,6 +6,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { logger } from '../../utils/winston-logger.js';
 import type {
   BuildToolIndicators,
   FileInfo,
@@ -83,7 +84,7 @@ export class ProjectDetector {
       scripts: [],
     };
 
-    console.log(
+    logger.info(
       `Detecting project type in: ${projectPath} (excluding MoAI framework files)`
     );
 
@@ -94,7 +95,7 @@ export class ProjectDetector {
         detected.filesFound.push(fileName);
         detected.type = info.type;
         detected.language = info.language;
-        console.log(`Found ${fileName}, detected as ${info.language} project`);
+        logger.info(`Found ${fileName}, detected as ${info.language} project`);
       }
     }
 
@@ -111,7 +112,7 @@ export class ProjectDetector {
           packageData.name === 'moai-adk' ||
           packageData.description?.includes('MoAI-ADK')
         ) {
-          console.log('Skipping MoAI-ADK package.json from project analysis');
+          logger.info('Skipping MoAI-ADK package.json from project analysis');
           detected.filesFound = detected.filesFound.filter(
             f => f !== 'package.json'
           );
@@ -129,11 +130,11 @@ export class ProjectDetector {
           };
         }
       } catch (error) {
-        console.warn('Could not read package.json for MoAI check:', error);
+        logger.warn('Could not read package.json for MoAI check:', error);
       }
     }
 
-    console.log(`Project detection completed:`, detected);
+    logger.info(`Project detection completed:`, detected);
     return detected;
   }
 
@@ -164,7 +165,7 @@ export class ProjectDetector {
       )) {
         if (indicators.some(indicator => indicator in allDeps)) {
           frameworks.push(framework);
-          console.log(`Detected framework: ${framework}`);
+          logger.info(`Detected framework: ${framework}`);
         }
       }
 
@@ -174,14 +175,14 @@ export class ProjectDetector {
       )) {
         if (indicators.some(indicator => indicator in allDeps)) {
           buildTools.push(tool);
-          console.log(`Detected build tool: ${tool}`);
+          logger.info(`Detected build tool: ${tool}`);
         }
       }
 
       const hasScripts = Boolean(packageData.scripts);
       const scripts = Object.keys(packageData.scripts || {});
 
-      console.log(
+      logger.info(
         `Package.json analysis: frameworks=${frameworks}, buildTools=${buildTools}`
       );
 
@@ -192,7 +193,7 @@ export class ProjectDetector {
         scripts,
       };
     } catch (error) {
-      console.error('Error analyzing package.json:', error);
+      logger.error('Error analyzing package.json:', error);
       return {
         frameworks: [],
         buildTools: [],
@@ -216,7 +217,7 @@ export class ProjectDetector {
         ['nextjs', 'react', 'vue', 'angular', 'svelte'].includes(tech)
       );
 
-    console.log(
+    logger.info(
       `Should create package.json: ${shouldCreate} (runtime: ${config.runtime.name})`
     );
     return shouldCreate;
@@ -230,7 +231,7 @@ export class ProjectDetector {
    */
   public async detectLanguageFromFiles(projectPath: string): Promise<string> {
     if (!fs.existsSync(projectPath)) {
-      console.warn(`Project path does not exist: ${projectPath}`);
+      logger.warn(`Project path does not exist: ${projectPath}`);
       return 'unknown';
     }
 
@@ -261,16 +262,16 @@ export class ProjectDetector {
       );
 
       if ((fileCounts[detectedLanguage] || 0) > 0) {
-        console.log(
+        logger.info(
           `Detected language: ${detectedLanguage} (${fileCounts[detectedLanguage]} files)`
         );
         return detectedLanguage;
       } else {
-        console.log('No specific language detected from file extensions');
+        logger.info('No specific language detected from file extensions');
         return 'unknown';
       }
     } catch (error) {
-      console.error(`Error scanning files: ${error}`);
+      logger.error(`Error scanning files: ${error}`);
       return 'unknown';
     }
   }
@@ -305,7 +306,7 @@ export class ProjectDetector {
 
           // Skip MoAI framework files and directories
           if (moaiExclusions.includes(entry.name)) {
-            console.log(
+            logger.info(
               `Skipping MoAI framework file/directory: ${entry.name}`
             );
             continue;
@@ -322,7 +323,7 @@ export class ProjectDetector {
           }
         }
       } catch (error) {
-        console.error(`Error scanning directory ${currentPath}:`, error);
+        logger.error(`Error scanning directory ${currentPath}:`, error);
       }
     };
 

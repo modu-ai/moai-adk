@@ -10,13 +10,15 @@ import type { EnvironmentAnalyzer } from '@/core/diagnostics/environment-analyze
 import type { OptimizationRecommender } from '@/core/diagnostics/optimization-recommender';
 import type { SystemPerformanceAnalyzer } from '@/core/diagnostics/performance-analyzer';
 import type { SystemDetector } from '@/core/system-checker/detector';
-import type {
-  AdvancedDoctorResult,
-  BenchmarkResult,
-  DoctorOptions,
-  EnvironmentAnalysis,
-  OptimizationRecommendation,
-  SystemPerformanceMetrics,
+import { logger } from '../../utils/winston-logger.js';
+import {
+  DiagnosticSeverity,
+  type AdvancedDoctorResult,
+  type BenchmarkResult,
+  type DoctorOptions,
+  type EnvironmentAnalysis,
+  type OptimizationRecommendation,
+  type SystemPerformanceMetrics,
 } from '@/types/diagnostics';
 
 /**
@@ -74,8 +76,8 @@ export class AdvancedDoctorCommand {
    * @tags @UTIL:PRINT-ADVANCED-HEADER-001
    */
   private printAdvancedHeader(): void {
-    console.log(chalk.blue.bold('🔍 Advanced MoAI-ADK System Diagnostics'));
-    console.log(chalk.blue('Running comprehensive system analysis...\n'));
+    logger.info(chalk.blue.bold('🔍 Advanced MoAI-ADK System Diagnostics'));
+    logger.info(chalk.blue('Running comprehensive system analysis...\n'));
   }
 
   /**
@@ -99,7 +101,9 @@ export class AdvancedDoctorCommand {
       try {
         benchmarks = await this.benchmarkRunner.runAllBenchmarks();
       } catch (error) {
-        console.warn(chalk.yellow('⚠️ Benchmark execution failed:'), error);
+        logger.warn(chalk.yellow('⚠️ Benchmark execution failed:'),
+          error instanceof Error ? { error: error.message } : { error: String(error) }
+        );
         benchmarks = [];
       }
     }
@@ -297,26 +301,26 @@ export class AdvancedDoctorCommand {
     summary: AdvancedDoctorResult['summary']
   ): void {
     // Performance metrics
-    console.log(chalk.bold('📊 Performance Metrics:'));
-    console.log(
+    logger.info(chalk.bold('📊 Performance Metrics:'));
+    logger.info(
       `  CPU Usage: ${results.performanceMetrics.cpuUsage.toFixed(1)}%`
     );
-    console.log(
+    logger.info(
       `  Memory Usage: ${results.performanceMetrics.memoryUsage.percentage}% (${results.performanceMetrics.memoryUsage.used}MB/${results.performanceMetrics.memoryUsage.total}MB)`
     );
-    console.log(
+    logger.info(
       `  Disk Usage: ${results.performanceMetrics.diskSpace.percentage}% (${results.performanceMetrics.diskSpace.used}GB/${results.performanceMetrics.diskSpace.available + results.performanceMetrics.diskSpace.used}GB)`
     );
     if (results.performanceMetrics.networkLatency) {
-      console.log(
+      logger.info(
         `  Network Latency: ${results.performanceMetrics.networkLatency}ms`
       );
     }
-    console.log('');
+    logger.info('');
 
     // Benchmarks
     if (results.benchmarks.length > 0) {
-      console.log(chalk.bold('🏃 Benchmark Results:'));
+      logger.info(chalk.bold('🏃 Benchmark Results:'));
       results.benchmarks.forEach(benchmark => {
         const statusIcon =
           benchmark.status === 'pass'
@@ -324,16 +328,16 @@ export class AdvancedDoctorCommand {
             : benchmark.status === 'warning'
               ? '⚠️'
               : '❌';
-        console.log(
+        logger.info(
           `  ${statusIcon} ${benchmark.name}: ${benchmark.score}/100 (${benchmark.duration}ms)`
         );
       });
-      console.log('');
+      logger.info('');
     }
 
     // Environments
     if (results.environments.length > 0) {
-      console.log(chalk.bold('🛠️ Development Environments:'));
+      logger.info(chalk.bold('🛠️ Development Environments:'));
       results.environments.forEach(env => {
         const statusIcon =
           env.status === 'optimal'
@@ -343,11 +347,11 @@ export class AdvancedDoctorCommand {
               : env.status === 'warning'
                 ? '⚠️'
                 : '❌';
-        console.log(
+        logger.info(
           `  ${statusIcon} ${env.name} ${env.version || 'unknown'} - ${env.status}`
         );
       });
-      console.log('');
+      logger.info('');
     }
 
     // Health score
@@ -360,22 +364,22 @@ export class AdvancedDoctorCommand {
             ? chalk.yellow
             : chalk.red;
 
-    console.log(chalk.bold('🎯 System Health Score:'));
-    console.log(
+    logger.info(chalk.bold('🎯 System Health Score:'));
+    logger.info(
       `  ${scoreColor(healthScore.toString())}/100 - ${chalk.bold(summary.status.toUpperCase())}`
     );
-    console.log('');
+    logger.info('');
 
     // Summary
-    console.log(chalk.bold('📋 Summary:'));
-    console.log(`  Critical Issues: ${summary.criticalIssues}`);
-    console.log(`  Warnings: ${summary.warnings}`);
-    console.log(`  Suggestions: ${summary.suggestions}`);
-    console.log('');
+    logger.info(chalk.bold('📋 Summary:'));
+    logger.info(`  Critical Issues: ${summary.criticalIssues}`);
+    logger.info(`  Warnings: ${summary.warnings}`);
+    logger.info(`  Suggestions: ${summary.suggestions}`);
+    logger.info('');
 
     // Recommendations
     if (results.recommendations.length > 0) {
-      console.log(chalk.bold('💡 Top Recommendations:'));
+      logger.info(chalk.bold('💡 Top Recommendations:'));
       results.recommendations.slice(0, 5).forEach((rec, index) => {
         const severityIcon =
           rec.severity === DiagnosticSeverity.CRITICAL
@@ -385,8 +389,8 @@ export class AdvancedDoctorCommand {
               : rec.severity === DiagnosticSeverity.WARNING
                 ? '⚠️'
                 : 'ℹ️';
-        console.log(`  ${index + 1}. ${severityIcon} ${rec.title}`);
-        console.log(`     ${rec.description}`);
+        logger.info(`  ${index + 1}. ${severityIcon} ${rec.title}`);
+        logger.info(`     ${rec.description}`);
       });
     }
   }

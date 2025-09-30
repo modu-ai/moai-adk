@@ -6,6 +6,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { logger } from '../../utils/winston-logger.js';
 import type {
   BackupResult,
   ClaudeSettings,
@@ -81,7 +82,7 @@ export class ConfigManager {
         'utf-8'
       );
 
-      console.log(`Claude settings created: ${settingsPath}`);
+      logger.info(`Claude settings created: ${settingsPath}`);
       return {
         success: true,
         filePath: settingsPath,
@@ -90,7 +91,7 @@ export class ConfigManager {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
-      console.error('Error creating Claude settings:', errorMessage);
+      logger.error('Error creating Claude settings:', errorMessage);
       return {
         success: false,
         error: errorMessage,
@@ -152,7 +153,7 @@ export class ConfigManager {
         'utf-8'
       );
 
-      console.log(`MoAI config created: ${configPath}`);
+      logger.info(`MoAI config created: ${configPath}`);
       return {
         success: true,
         filePath: configPath,
@@ -162,7 +163,7 @@ export class ConfigManager {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
-      console.error('Error creating MoAI config:', errorMessage);
+      logger.error('Error creating MoAI config:', errorMessage);
       return {
         success: false,
         error: errorMessage,
@@ -213,7 +214,7 @@ export class ConfigManager {
         'utf-8'
       );
 
-      console.log(`Package.json created: ${packagePath}`);
+      logger.info(`Package.json created: ${packagePath}`);
       return {
         success: true,
         filePath: packagePath,
@@ -222,7 +223,7 @@ export class ConfigManager {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
-      console.error('Error creating package.json:', errorMessage);
+      logger.error('Error creating package.json:', errorMessage);
       return {
         success: false,
         error: errorMessage,
@@ -254,7 +255,7 @@ export class ConfigManager {
       const content = fs.readFileSync(filePath, 'utf-8');
       JSON.parse(content); // Validate JSON format
 
-      console.log(`Configuration file validated: ${filePath}`);
+      logger.info(`Configuration file validated: ${filePath}`);
       return result;
     } catch (error) {
       result.isValid = false;
@@ -294,7 +295,7 @@ export class ConfigManager {
       const content = fs.readFileSync(filePath, 'utf-8');
       fs.writeFileSync(backupPath, content, 'utf-8');
 
-      console.log(`Backup created: ${backupPath}`);
+      logger.info(`Backup created: ${backupPath}`);
       return {
         success: true,
         backupPath,
@@ -381,7 +382,7 @@ export class ConfigManager {
       }
 
       result.duration = Date.now() - startTime;
-      console.log(
+      logger.info(
         `Full project configuration completed in ${result.duration}ms`
       );
       return result;
@@ -467,8 +468,8 @@ export class ConfigManager {
     }
 
     if (config.techStack.includes('react')) {
-      scripts.dev = 'vite';
-      scripts.build = 'vite build';
+      scripts['dev'] = 'vite';
+      scripts['build'] = 'vite build';
     }
 
     return scripts;
@@ -480,16 +481,16 @@ export class ConfigManager {
     const deps: Record<string, string> = {};
 
     if (config.techStack.includes('react')) {
-      deps.react = '^18.0.0';
+      deps['react'] = '^18.0.0';
       deps['react-dom'] = '^18.0.0';
     }
 
     if (config.techStack.includes('nextjs')) {
-      deps.next = '^13.0.0';
+      deps['next'] = '^13.0.0';
     }
 
     if (config.techStack.includes('express')) {
-      deps.express = '^4.18.0';
+      deps['express'] = '^4.18.0';
     }
 
     return deps;
@@ -505,15 +506,15 @@ export class ConfigManager {
     };
 
     if (config.techStack.includes('typescript')) {
-      devDeps.typescript = '^5.0.0';
+      devDeps['typescript'] = '^5.0.0';
       devDeps['@types/node'] = '^20.0.0';
-      devDeps.tsx = '^4.0.0';
+      devDeps['tsx'] = '^4.0.0';
     }
 
     if (config.techStack.includes('react')) {
       devDeps['@types/react'] = '^18.0.0';
       devDeps['@types/react-dom'] = '^18.0.0';
-      devDeps.vite = '^4.0.0';
+      devDeps['vite'] = '^4.0.0';
     }
 
     return devDeps;

@@ -294,8 +294,7 @@ export class ResourceInstaller {
     // - 현재: 코드 직접 스캔 (rg/grep) 기반 실시간 검증
     // - 이유: 단일 진실 소스(코드)로 동기화 문제 해결
     // tags.json 생성 코드 제거됨
-
-    // NOTE: .moai/indexes/ 디렉토리는 유지 (다른 인덱스 파일용)
+    // .moai/indexes/ 디렉토리도 불필요 - CODE-FIRST 방식으로 전환
   }
 
   private async setExecutablePermissions(scriptsDir: string): Promise<void> {

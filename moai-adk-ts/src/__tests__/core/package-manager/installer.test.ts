@@ -4,7 +4,7 @@
  * @tags @TEST:PACKAGE-MANAGER-INSTALLER-001 @REQ:PACKAGE-MANAGER-003
  */
 
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi, type MockedFunction } from 'vitest';
 import '@/__tests__/setup';
 import { execa } from 'execa';
 import { PackageManagerInstaller } from '@/core/package-manager/installer';
@@ -15,7 +15,7 @@ import {
 
 // Mock execa
 vi.mock('execa');
-const mockExeca = execa as vi.MockedFunction<typeof execa>;
+const mockExeca = execa as MockedFunction<typeof execa>;
 
 describe('PackageManagerInstaller', () => {
   let installer: PackageManagerInstaller;
@@ -153,10 +153,10 @@ describe('PackageManagerInstaller', () => {
       expect(packageJson.name).toBe('my-node-app');
       expect(packageJson.version).toBe('1.0.0');
       expect(packageJson.type).toBe('module');
-      expect(packageJson.scripts?.build).toBeDefined();
-      expect(packageJson.scripts?.test).toBeDefined();
-      expect(packageJson.scripts?.start).toBeDefined();
-      expect(packageJson.engines?.node).toBeDefined();
+      expect(packageJson.scripts?.['build']).toBeDefined();
+      expect(packageJson.scripts?.['test']).toBeDefined();
+      expect(packageJson.scripts?.['start']).toBeDefined();
+      expect(packageJson.engines?.['node']).toBeDefined();
     });
 
     test('should generate package.json with TypeScript configuration', async () => {
@@ -179,9 +179,9 @@ describe('PackageManagerInstaller', () => {
       );
 
       // Assert
-      expect(packageJson.scripts?.build).toContain('tsc');
+      expect(packageJson.scripts?.['build']).toContain('tsc');
       expect(packageJson.scripts?.['type-check']).toBeDefined();
-      expect(packageJson.devDependencies?.typescript).toBeDefined();
+      expect(packageJson.devDependencies?.['typescript']).toBeDefined();
       expect(packageJson.devDependencies?.['@types/node']).toBeDefined();
     });
 
@@ -205,10 +205,10 @@ describe('PackageManagerInstaller', () => {
       );
 
       // Assert
-      expect(packageJson.scripts?.test).toContain('jest');
+      expect(packageJson.scripts?.['test']).toContain('jest');
       expect(packageJson.scripts?.['test:watch']).toBeDefined();
       expect(packageJson.scripts?.['test:coverage']).toBeDefined();
-      expect(packageJson.devDependencies?.jest).toBeDefined();
+      expect(packageJson.devDependencies?.['jest']).toBeDefined();
       expect(packageJson.devDependencies?.['@types/jest']).toBeDefined();
     });
   });
@@ -268,7 +268,7 @@ describe('PackageManagerInstaller', () => {
       );
 
       // Assert
-      expect(updatedPackageJson.dependencies?.express).toBe('^4.18.0');
+      expect(updatedPackageJson.dependencies?.['express']).toBe('^4.18.0');
       expect(updatedPackageJson.devDependencies).toEqual({
         typescript: '^5.0.0',
         '@types/express': '^4.17.17',

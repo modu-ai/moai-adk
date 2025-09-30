@@ -5,8 +5,7 @@
  * @description Comprehensive security tests for all vulnerability fixes
  */
 
-import { beforeEach, describe, expect, test } from 'vitest';
-import { TemplateProcessor } from '../../core/installer/templates/template-processor';
+import { describe, expect, test } from 'vitest';
 import {
   renderTemplateSafely,
   validateTemplateContent,
@@ -90,12 +89,6 @@ describe('Security Test Suite', () => {
   });
 
   describe('Path Traversal Protection', () => {
-    let _processor: TemplateProcessor;
-
-    beforeEach(() => {
-      _processor = new TemplateProcessor();
-    });
-
     test('should block path traversal in file names', async () => {
       const maliciousPaths = [
         '../../../etc/passwd',
@@ -265,11 +258,12 @@ describe('Security Test Suite', () => {
 
   describe('Git Security', () => {
     test('should validate Git URLs securely', () => {
-      const _validUrls = [
-        'https://github.com/user/repo.git',
-        'git@github.com:user/repo.git',
-        'https://gitlab.com/user/repo',
-      ];
+      // Valid URLs for reference (not tested in this case)
+      // const validUrls = [
+      //   'https://github.com/user/repo.git',
+      //   'git@github.com:user/repo.git',
+      //   'https://gitlab.com/user/repo',
+      // ];
 
       const invalidUrls = [
         'javascript:alert(1)',

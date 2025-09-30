@@ -5,6 +5,7 @@
  */
 
 import chalk from 'chalk';
+import { logger } from '../../utils/winston-logger.js';
 
 /**
  * Help command options
@@ -272,7 +273,7 @@ Usage:
 
         if (!commandHelp) {
           const helpText = `❌ Unknown command: ${options.command}\n\nAvailable commands: ${this.getAvailableCommands().join(', ')}\n\nRun 'moai help' to see all commands.`;
-          console.log(chalk.red(helpText));
+          logger.info(chalk.red(helpText));
 
           return {
             success: false,
@@ -282,7 +283,7 @@ Usage:
         }
 
         const helpText = this.formatCommandHelp(commandHelp);
-        console.log(helpText);
+        logger.info(helpText);
 
         return {
           success: true,
@@ -292,7 +293,7 @@ Usage:
       } else {
         // Show general help
         const helpText = this.formatGeneralHelp();
-        console.log(helpText);
+        logger.info(helpText);
 
         return {
           success: true,
@@ -303,7 +304,7 @@ Usage:
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
       const helpText = `❌ Failed to show help: ${errorMessage}`;
-      console.log(chalk.red(helpText));
+      logger.info(chalk.red(helpText));
 
       return {
         success: false,

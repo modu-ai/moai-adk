@@ -8,6 +8,7 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import semver from 'semver';
+import { logger } from '../../utils/winston-logger.js';
 
 /**
  * Migration script interface
@@ -344,20 +345,20 @@ export class ConsoleMigrationLogger implements MigrationLogger {
   constructor(private readonly verbose: boolean = false) {}
 
   public info(message: string): void {
-    console.log(`ℹ️  ${message}`);
+    logger.info(`ℹ️  ${message}`);
   }
 
   public warn(message: string): void {
-    console.log(`⚠️  ${message}`);
+    logger.info(`⚠️  ${message}`);
   }
 
   public error(message: string): void {
-    console.log(`❌ ${message}`);
+    logger.info(`❌ ${message}`);
   }
 
   public debug(message: string): void {
     if (this.verbose) {
-      console.log(`🔍 ${message}`);
+      logger.info(`🔍 ${message}`);
     }
   }
 }
@@ -376,7 +377,7 @@ export abstract class BaseMigration implements MigrationScript {
 
   abstract up(context: MigrationContext): Promise<MigrationResult>;
 
-  public async down(context: MigrationContext): Promise<MigrationResult> {
+  public async down(_context: MigrationContext): Promise<MigrationResult> {
     return {
       success: false,
       message: 'Rollback not implemented',
@@ -386,7 +387,7 @@ export abstract class BaseMigration implements MigrationScript {
     };
   }
 
-  public async validate(context: MigrationContext): Promise<boolean> {
+  public async validate(_context: MigrationContext): Promise<boolean> {
     return true; // Default: no validation required
   }
 

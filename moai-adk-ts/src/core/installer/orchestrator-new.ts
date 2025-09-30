@@ -23,7 +23,7 @@ export class InstallationOrchestrator {
   private readonly config: InstallationConfig;
   private context: InstallationContext;
   private readonly phaseExecutor: PhaseExecutor;
-  private readonly resourceInstaller: ResourceInstaller;
+  // private readonly resourceInstaller: ResourceInstaller; // TODO: Implement resource installation
 
   constructor(config: InstallationConfig) {
     this.config = config;

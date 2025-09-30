@@ -1,0 +1,205 @@
+<!DOCTYPE html><html class="default" lang="en" data-base="./"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>moai-adk - v0.0.1</title><meta name="description" content="Documentation for moai-adk"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="assets/style.css"/><link rel="stylesheet" href="assets/highlight.css"/><script defer src="assets/main.js"></script><script async src="assets/icons.js" id="tsd-icons-script"></script><script async src="assets/search.js" id="tsd-search-script"></script><script async src="assets/navigation.js" id="tsd-nav-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><a href="index.html" class="title">moai-adk - v0.0.1</a><div id="tsd-toolbar-links"></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/><ul role="listbox" id="tsd-search-results"></ul><div id="tsd-search-status" aria-live="polite" aria-atomic="true"><div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-menu"></use></svg></a></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><h1>moai-adk - v0.0.1</h1></div><div class="tsd-panel tsd-typography"><h1 id="moai-adk" class="tsd-anchor-link">MoAI-ADK<a href="#moai-adk" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h1><p><a href="https://www.npmjs.com/package/moai-adk"><img src="https://img.shields.io/npm/v/moai-adk" alt="npm version"></a>
+<a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+<a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.9.2+-blue" alt="TypeScript"></a>
+<a href="https://nodejs.org/"><img src="https://img.shields.io/badge/node-18.0+-green" alt="Node.js"></a></p>
+<p>TypeScript-based SPEC-First TDD Development Kit with Universal Language Support</p>
+<blockquote>
+<p><strong>Note</strong>: This is an early development version (v0.0.1). Features and APIs are subject to change.</p>
+</blockquote>
+<h2 id="features" class="tsd-anchor-link">Features<a href="#features" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><ul>
+<li><strong>SPEC-First TDD Workflow</strong>: 3-stage development process (SPEC → TDD → Sync)</li>
+<li><strong>Universal Language Support</strong>: Python, TypeScript, Java, Go, Rust, and more</li>
+<li><strong>Claude Code Integration</strong>: 7 specialized agents for automated development</li>
+<li><strong>Complete Traceability</strong>: @TAG system for full requirement-to-code tracking</li>
+<li><strong>Intelligent Diagnostics</strong>: Automatic project language detection and environment optimization</li>
+</ul>
+<h2 id="installation" class="tsd-anchor-link">Installation<a href="#installation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="global-installation" class="tsd-anchor-link">Global Installation<a href="#global-installation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="bash"><span class="hl-0"># Using npm</span><br/><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-3">install</span><span class="hl-2"> </span><span class="hl-4">-g</span><span class="hl-2"> </span><span class="hl-3">moai-adk</span><br/><br/><span class="hl-0"># Using Bun (recommended)</span><br/><span class="hl-1">bun</span><span class="hl-2"> </span><span class="hl-3">add</span><span class="hl-2"> </span><span class="hl-4">-g</span><span class="hl-2"> </span><span class="hl-3">moai-adk</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="local-installation" class="tsd-anchor-link">Local Installation<a href="#local-installation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="bash"><span class="hl-0"># Using npm</span><br/><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-3">install</span><span class="hl-2"> </span><span class="hl-3">moai-adk</span><br/><br/><span class="hl-0"># Using Bun</span><br/><span class="hl-1">bun</span><span class="hl-2"> </span><span class="hl-3">add</span><span class="hl-2"> </span><span class="hl-3">moai-adk</span>
+</code><button type="button">Copy</button></pre>
+
+<h2 id="requirements" class="tsd-anchor-link">Requirements<a href="#requirements" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><ul>
+<li><strong>Node.js</strong>: 18.0 or higher</li>
+<li><strong>Git</strong>: 2.30.0 or higher</li>
+<li><strong>npm</strong>: 8.0.0 or higher (or Bun 1.2.0+)</li>
+</ul>
+<h2 id="quick-start" class="tsd-anchor-link">Quick Start<a href="#quick-start" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="1-initialize-a-new-project" class="tsd-anchor-link">1. Initialize a New Project<a href="#1-initialize-a-new-project" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="bash"><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-3">init</span><span class="hl-2"> </span><span class="hl-3">my-project</span><br/><span class="hl-1">cd</span><span class="hl-2"> </span><span class="hl-3">my-project</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="2-check-system-status" class="tsd-anchor-link">2. Check System Status<a href="#2-check-system-status" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="bash"><span class="hl-0"># Run system diagnostics</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-3">doctor</span><br/><br/><span class="hl-0"># Check project status</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-3">status</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="3-development-workflow" class="tsd-anchor-link">3. Development Workflow<a href="#3-development-workflow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="bash"><span class="hl-0"># Stage 1: Write SPEC</span><br/><span class="hl-1">/moai:1-spec</span><span class="hl-2"> </span><span class="hl-3">&quot;user authentication system&quot;</span><br/><br/><span class="hl-0"># Stage 2: Implement with TDD</span><br/><span class="hl-1">/moai:2-build</span><span class="hl-2"> </span><span class="hl-3">SPEC-001</span><br/><br/><span class="hl-0"># Stage 3: Sync documentation</span><br/><span class="hl-1">/moai:3-sync</span>
+</code><button type="button">Copy</button></pre>
+
+<h2 id="cli-commands" class="tsd-anchor-link">CLI Commands<a href="#cli-commands" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="moai-init-" class="tsd-anchor-link"><code>moai init &lt;project-name&gt;</code><a href="#moai-init-" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Initialize a new MoAI-ADK project with the specified name.</p>
+<pre><code class="bash"><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-3">init</span><span class="hl-2"> </span><span class="hl-3">my-api</span><span class="hl-2"> </span><span class="hl-4">--type</span><span class="hl-2"> </span><span class="hl-3">web-api</span><span class="hl-2"> </span><span class="hl-4">--language</span><span class="hl-2"> </span><span class="hl-3">typescript</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="moai-doctor" class="tsd-anchor-link"><code>moai doctor</code><a href="#moai-doctor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Run comprehensive system diagnostics to verify environment setup.</p>
+<pre><code class="bash"><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-3">doctor</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-3">doctor</span><span class="hl-2"> </span><span class="hl-4">--list-backups</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="moai-status" class="tsd-anchor-link"><code>moai status</code><a href="#moai-status" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Display current project status and configuration.</p>
+<pre><code class="bash"><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-3">status</span><span class="hl-2"> </span><span class="hl-4">--verbose</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="moai-update" class="tsd-anchor-link"><code>moai update</code><a href="#moai-update" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Update MoAI-ADK templates to the latest version.</p>
+<pre><code class="bash"><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-3">update</span><span class="hl-2"> </span><span class="hl-4">--check</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-3">update</span><span class="hl-2"> </span><span class="hl-4">--verbose</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="moai-restore" class="tsd-anchor-link"><code>moai restore</code><a href="#moai-restore" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Restore project from backup.</p>
+<pre><code class="bash"><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-3">restore</span><span class="hl-2"> &lt;</span><span class="hl-3">backup-pat</span><span class="hl-2">h&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<h2 id="agent-system" class="tsd-anchor-link">Agent System<a href="#agent-system" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><p>MoAI-ADK provides 7 specialized agents for different development tasks:</p>
+<table>
+<thead>
+<tr>
+<th>Agent</th>
+<th>Purpose</th>
+<th>Usage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>spec-builder</strong></td>
+<td>EARS specification writing</td>
+<td><code>@agent-spec-builder &quot;new feature spec&quot;</code></td>
+</tr>
+<tr>
+<td><strong>code-builder</strong></td>
+<td>TDD implementation</td>
+<td><code>@agent-code-builder &quot;implement SPEC-001&quot;</code></td>
+</tr>
+<tr>
+<td><strong>doc-syncer</strong></td>
+<td>Documentation synchronization</td>
+<td><code>@agent-doc-syncer &quot;update docs&quot;</code></td>
+</tr>
+<tr>
+<td><strong>cc-manager</strong></td>
+<td>Claude Code management</td>
+<td><code>@agent-cc-manager &quot;optimize settings&quot;</code></td>
+</tr>
+<tr>
+<td><strong>debug-helper</strong></td>
+<td>Error diagnosis</td>
+<td><code>@agent-debug-helper &quot;build failure analysis&quot;</code></td>
+</tr>
+<tr>
+<td><strong>git-manager</strong></td>
+<td>Git workflow automation</td>
+<td><code>@agent-git-manager &quot;create feature branch&quot;</code></td>
+</tr>
+<tr>
+<td><strong>trust-checker</strong></td>
+<td>Quality verification</td>
+<td><code>@agent-trust-checker &quot;code quality check&quot;</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="language-support" class="tsd-anchor-link">Language Support<a href="#language-support" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
+<thead>
+<tr>
+<th>Language</th>
+<th>Test Framework</th>
+<th>Linter/Formatter</th>
+<th>Build Tool</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>TypeScript</strong></td>
+<td>Vitest/Jest</td>
+<td>Biome/ESLint</td>
+<td>tsup/Vite</td>
+</tr>
+<tr>
+<td><strong>Python</strong></td>
+<td>pytest</td>
+<td>ruff/black</td>
+<td>uv/pip</td>
+</tr>
+<tr>
+<td><strong>Java</strong></td>
+<td>JUnit</td>
+<td>checkstyle</td>
+<td>Maven/Gradle</td>
+</tr>
+<tr>
+<td><strong>Go</strong></td>
+<td>go test</td>
+<td>golint/gofmt</td>
+<td>go mod</td>
+</tr>
+<tr>
+<td><strong>Rust</strong></td>
+<td>cargo test</td>
+<td>clippy/rustfmt</td>
+<td>cargo</td>
+</tr>
+</tbody>
+</table>
+<h2 id="tag-system" class="tsd-anchor-link">@TAG System<a href="#tag-system" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The @TAG system provides complete traceability from requirements to implementation:</p>
+<h3 id="core-tags" class="tsd-anchor-link">Core Tags<a href="#core-tags" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><code>@REQ</code>: Requirements definition</li>
+<li><code>@DESIGN</code>: Architecture design</li>
+<li><code>@TASK</code>: Implementation tasks</li>
+<li><code>@TEST</code>: Test verification</li>
+<li><code>@FEATURE</code>: Business features</li>
+<li><code>@API</code>: Interface definitions</li>
+<li><code>@SEC</code>: Security requirements</li>
+<li><code>@DOCS</code>: Documentation</li>
+</ul>
+<h3 id="usage-example" class="tsd-anchor-link">Usage Example<a href="#usage-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-0">// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -&gt; @DESIGN:AUTH-001 -&gt; @TASK:AUTH-001 -&gt; @TEST:AUTH-001</span><br/><span class="hl-0">// Related: @SEC:AUTH-001, @API:AUTH-001</span><br/><br/><span class="hl-4">class</span><span class="hl-2"> </span><span class="hl-5">AuthenticationService</span><span class="hl-2"> {</span><br/><span class="hl-2">  </span><span class="hl-0">/**</span><br/><span class="hl-0">   * @API:AUTH-001: User authentication endpoint</span><br/><span class="hl-0">   */</span><br/><span class="hl-2">  </span><span class="hl-4">async</span><span class="hl-2"> </span><span class="hl-1">authenticate</span><span class="hl-2">(</span><span class="hl-6">email</span><span class="hl-2">: </span><span class="hl-5">string</span><span class="hl-2">, </span><span class="hl-6">password</span><span class="hl-2">: </span><span class="hl-5">string</span><span class="hl-2">): </span><span class="hl-5">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">boolean</span><span class="hl-2">&gt; {</span><br/><span class="hl-2">    </span><span class="hl-0">// @SEC:AUTH-001: Input validation</span><br/><span class="hl-2">    </span><span class="hl-7">if</span><span class="hl-2"> (!</span><span class="hl-4">this</span><span class="hl-2">.</span><span class="hl-1">validateInput</span><span class="hl-2">(</span><span class="hl-6">email</span><span class="hl-2">, </span><span class="hl-6">password</span><span class="hl-2">)) {</span><br/><span class="hl-2">      </span><span class="hl-7">return</span><span class="hl-2"> </span><span class="hl-4">false</span><span class="hl-2">;</span><br/><span class="hl-2">    }</span><br/><br/><span class="hl-2">    </span><span class="hl-7">return</span><span class="hl-2"> </span><span class="hl-4">this</span><span class="hl-2">.</span><span class="hl-1">verifyCredentials</span><span class="hl-2">(</span><span class="hl-6">email</span><span class="hl-2">, </span><span class="hl-6">password</span><span class="hl-2">);</span><br/><span class="hl-2">  }</span><br/><span class="hl-2">}</span>
+</code><button type="button">Copy</button></pre>
+
+<h2 id="trust-principles" class="tsd-anchor-link">TRUST Principles<a href="#trust-principles" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All development follows the TRUST principles:</p>
+<ul>
+<li><strong>T</strong>est First: Test-driven development (SPEC-First TDD)</li>
+<li><strong>R</strong>eadable: Clear code (≤50 lines per function, clear naming)</li>
+<li><strong>U</strong>nified: Single responsibility (≤300 lines per module, type safety)</li>
+<li><strong>S</strong>ecured: Security by design (input validation, static analysis)</li>
+<li><strong>T</strong>rackable: Complete traceability (@TAG system)</li>
+</ul>
+<h2 id="api-usage" class="tsd-anchor-link">API Usage<a href="#api-usage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="programmatic-api" class="tsd-anchor-link">Programmatic API<a href="#programmatic-api" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">import</span><span class="hl-2"> { </span><span class="hl-6">MoAI</span><span class="hl-2"> } </span><span class="hl-7">from</span><span class="hl-2"> </span><span class="hl-3">&#39;moai-adk&#39;</span><span class="hl-2">;</span><br/><br/><span class="hl-4">const</span><span class="hl-2"> </span><span class="hl-8">moai</span><span class="hl-2"> = </span><span class="hl-4">new</span><span class="hl-2"> </span><span class="hl-1">MoAI</span><span class="hl-2">();</span><br/><br/><span class="hl-0">// Initialize project</span><br/><span class="hl-7">await</span><span class="hl-2"> </span><span class="hl-6">moai</span><span class="hl-2">.</span><span class="hl-1">init</span><span class="hl-2">(</span><span class="hl-3">&#39;my-project&#39;</span><span class="hl-2">, {</span><br/><span class="hl-2">  </span><span class="hl-6">type:</span><span class="hl-2"> </span><span class="hl-3">&#39;web-api&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-6">language:</span><span class="hl-2"> </span><span class="hl-3">&#39;typescript&#39;</span><br/><span class="hl-2">});</span><br/><br/><span class="hl-0">// Run diagnostics</span><br/><span class="hl-4">const</span><span class="hl-2"> </span><span class="hl-8">diagnostics</span><span class="hl-2"> = </span><span class="hl-7">await</span><span class="hl-2"> </span><span class="hl-6">moai</span><span class="hl-2">.</span><span class="hl-1">doctor</span><span class="hl-2">();</span><br/><br/><span class="hl-0">// Get project status</span><br/><span class="hl-4">const</span><span class="hl-2"> </span><span class="hl-8">status</span><span class="hl-2"> = </span><span class="hl-7">await</span><span class="hl-2"> </span><span class="hl-6">moai</span><span class="hl-2">.</span><span class="hl-1">status</span><span class="hl-2">();</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="configuration" class="tsd-anchor-link">Configuration<a href="#configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="json"><span class="hl-0">// .moai/config.json</span><br/><span class="hl-2">{</span><br/><span class="hl-2">  </span><span class="hl-9">&quot;project&quot;</span><span class="hl-2">: {</span><br/><span class="hl-2">    </span><span class="hl-9">&quot;name&quot;</span><span class="hl-2">: </span><span class="hl-3">&quot;my-project&quot;</span><span class="hl-2">,</span><br/><span class="hl-2">    </span><span class="hl-9">&quot;type&quot;</span><span class="hl-2">: </span><span class="hl-3">&quot;web-api&quot;</span><span class="hl-2">,</span><br/><span class="hl-2">    </span><span class="hl-9">&quot;language&quot;</span><span class="hl-2">: </span><span class="hl-3">&quot;typescript&quot;</span><br/><span class="hl-2">  },</span><br/><span class="hl-2">  </span><span class="hl-9">&quot;workflow&quot;</span><span class="hl-2">: {</span><br/><span class="hl-2">    </span><span class="hl-9">&quot;enableAutoSync&quot;</span><span class="hl-2">: </span><span class="hl-4">true</span><span class="hl-2">,</span><br/><span class="hl-2">    </span><span class="hl-9">&quot;gitIntegration&quot;</span><span class="hl-2">: </span><span class="hl-4">true</span><br/><span class="hl-2">  }</span><br/><span class="hl-2">}</span>
+</code><button type="button">Copy</button></pre>
+
+<h2 id="development" class="tsd-anchor-link">Development<a href="#development" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="setup-development-environment" class="tsd-anchor-link">Setup Development Environment<a href="#setup-development-environment" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="bash"><span class="hl-1">git</span><span class="hl-2"> </span><span class="hl-3">clone</span><span class="hl-2"> </span><span class="hl-3">https://github.com/modu-ai/moai-adk.git</span><br/><span class="hl-1">cd</span><span class="hl-2"> </span><span class="hl-3">moai-adk/moai-adk-ts</span><br/><br/><span class="hl-0"># Install dependencies</span><br/><span class="hl-1">bun</span><span class="hl-2"> </span><span class="hl-3">install</span><br/><br/><span class="hl-0"># Run in development mode</span><br/><span class="hl-1">bun</span><span class="hl-2"> </span><span class="hl-3">run</span><span class="hl-2"> </span><span class="hl-3">dev</span><br/><br/><span class="hl-0"># Build</span><br/><span class="hl-1">bun</span><span class="hl-2"> </span><span class="hl-3">run</span><span class="hl-2"> </span><span class="hl-3">build</span><br/><br/><span class="hl-0"># Test</span><br/><span class="hl-1">bun</span><span class="hl-2"> </span><span class="hl-3">test</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="scripts" class="tsd-anchor-link">Scripts<a href="#scripts" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><code>bun run build</code>: Build the project</li>
+<li><code>bun run test</code>: Run tests</li>
+<li><code>bun run test:coverage</code>: Run tests with coverage</li>
+<li><code>bun run lint</code>: Lint code</li>
+<li><code>bun run format</code>: Format code</li>
+<li><code>bun run type-check</code>: Type checking</li>
+</ul>
+<h2 id="contributing" class="tsd-anchor-link">Contributing<a href="#contributing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><ol>
+<li>Fork the repository</li>
+<li>Create a feature branch (<code>git checkout -b feature/new-feature</code>)</li>
+<li>Commit your changes (<code>git commit -am 'Add new feature'</code>)</li>
+<li>Push to the branch (<code>git push origin feature/new-feature</code>)</li>
+<li>Create a Pull Request</li>
+</ol>
+<h3 id="development-guidelines" class="tsd-anchor-link">Development Guidelines<a href="#development-guidelines" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li>Follow TRUST principles</li>
+<li>Apply @TAG system</li>
+<li>Use TypeScript strict mode</li>
+<li>Maintain ≤50 lines per function</li>
+<li>Keep test coverage ≥85%</li>
+</ul>
+<h2 id="license" class="tsd-anchor-link">License<a href="#license" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This project is licensed under the <a href="LICENSE">MIT License</a>.</p>
+<h2 id="support" class="tsd-anchor-link">Support<a href="#support" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><ul>
+<li><strong>Issues</strong>: <a href="https://github.com/modu-ai/moai-adk/issues">GitHub Issues</a></li>
+<li><strong>Discussions</strong>: <a href="https://github.com/modu-ai/moai-adk/discussions">GitHub Discussions</a></li>
+</ul>
+<hr>
+<p><strong>MoAI-ADK v0.0.1</strong> - TypeScript-based SPEC-First TDD Development Framework</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-chevronDown"></use></svg><h3>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-chevronDown"></use></svg><h3>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#moai-adk"><span>Mo<wbr/>AI-<wbr/>ADK</span></a><ul><li><a href="#features"><span>Features</span></a></li><li><a href="#installation"><span>Installation</span></a></li><li><ul><li><a href="#global-installation"><span>Global <wbr/>Installation</span></a></li><li><a href="#local-installation"><span>Local <wbr/>Installation</span></a></li></ul></li><li><a href="#requirements"><span>Requirements</span></a></li><li><a href="#quick-start"><span>Quick <wbr/>Start</span></a></li><li><ul><li><a href="#1-initialize-a-new-project"><span>1. <wbr/>Initialize a <wbr/>New <wbr/>Project</span></a></li><li><a href="#2-check-system-status"><span>2. <wbr/>Check <wbr/>System <wbr/>Status</span></a></li><li><a href="#3-development-workflow"><span>3. <wbr/>Development <wbr/>Workflow</span></a></li></ul></li><li><a href="#cli-commands"><span>CLI <wbr/>Commands</span></a></li><li><ul><li><a href="#moai-init-"><span>moai init &lt;project-<wbr/>name&gt;</span></a></li><li><a href="#moai-doctor"><span>moai doctor</span></a></li><li><a href="#moai-status"><span>moai status</span></a></li><li><a href="#moai-update"><span>moai update</span></a></li><li><a href="#moai-restore"><span>moai restore</span></a></li></ul></li><li><a href="#agent-system"><span>Agent <wbr/>System</span></a></li><li><a href="#language-support"><span>Language <wbr/>Support</span></a></li><li><a href="#tag-system"><span>@<wbr/>TAG <wbr/>System</span></a></li><li><ul><li><a href="#core-tags"><span>Core <wbr/>Tags</span></a></li><li><a href="#usage-example"><span>Usage <wbr/>Example</span></a></li></ul></li><li><a href="#trust-principles"><span>TRUST <wbr/>Principles</span></a></li><li><a href="#api-usage"><span>API <wbr/>Usage</span></a></li><li><ul><li><a href="#programmatic-api"><span>Programmatic <wbr/>API</span></a></li><li><a href="#configuration"><span>Configuration</span></a></li></ul></li><li><a href="#development"><span>Development</span></a></li><li><ul><li><a href="#setup-development-environment"><span>Setup <wbr/>Development <wbr/>Environment</span></a></li><li><a href="#scripts"><span>Scripts</span></a></li></ul></li><li><a href="#contributing"><span>Contributing</span></a></li><li><ul><li><a href="#development-guidelines"><span>Development <wbr/>Guidelines</span></a></li></ul></li><li><a href="#license"><span>License</span></a></li><li><a href="#support"><span>Support</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="modules.html">moai-adk - v0.0.1</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>

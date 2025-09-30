@@ -22,9 +22,9 @@ import {
 } from './migration-framework.js';
 import { UpdateStrategy, type UpdateStrategyResult } from './strategy.js';
 import { UpdateAction } from './types.js';
+import { logger } from '../../utils/winston-logger.js';
 import {
   type UpdateRecord,
-  type VersionInfo,
   VersionManager,
 } from './version-manager.js';
 
@@ -104,27 +104,27 @@ export class UpdateOrchestrator {
     const warnings: string[] = [];
 
     try {
-      console.log(chalk.cyan('🚀 Starting MoAI-ADK Update Operation'));
-      console.log(`Project: ${config.projectPath}`);
-      console.log(`Template: ${config.templatePath}`);
+      logger.info(chalk.cyan('🚀 Starting MoAI-ADK Update Operation'));
+      logger.info(`Project: ${config.projectPath}`);
+      logger.info(`Template: ${config.templatePath}`);
 
       if (config.dryRun) {
-        console.log(chalk.yellow('🧪 DRY RUN MODE - No changes will be made'));
+        logger.info(chalk.yellow('🧪 DRY RUN MODE - No changes will be made'));
       }
 
       // Step 1: Load version information
-      console.log(chalk.cyan('\n📋 Step 1: Version Analysis'));
+      logger.info(chalk.cyan('\n📋 Step 1: Version Analysis'));
       const versionInfo = await this.versionManager.loadVersionInfo();
       const currentVersion = versionInfo.templateVersion;
 
       // For demo purposes, assume we're updating to a newer version
       const targetVersion = this.getNextVersion(currentVersion);
 
-      console.log(`Current version: ${currentVersion}`);
-      console.log(`Target version: ${targetVersion}`);
+      logger.info(`Current version: ${currentVersion}`);
+      logger.info(`Target version: ${targetVersion}`);
 
       // Step 2: Analyze project files
-      console.log(chalk.cyan('\n🔍 Step 2: Project Analysis'));
+      logger.info(chalk.cyan('\n🔍 Step 2: Project Analysis'));
       const analysisResult = await this.updateStrategy.analyzeProject(
         config.projectPath,
         config.templatePath
@@ -133,7 +133,7 @@ export class UpdateOrchestrator {
       this.printAnalysisResult(analysisResult);
 
       // Step 3: Create migration plan
-      console.log(chalk.cyan('\n📝 Step 3: Migration Planning'));
+      logger.info(chalk.cyan('\n📝 Step 3: Migration Planning'));
       const migrationPlan = this.migrationFramework.createMigrationPlan(
         currentVersion,
         targetVersion
@@ -144,7 +144,7 @@ export class UpdateOrchestrator {
       // Step 4: Create backup if needed
       let backupResult: BackupResult | undefined;
       if (config.backupEnabled && !config.dryRun) {
-        console.log(chalk.cyan('\n💾 Step 4: Creating Backup'));
+        logger.info(chalk.cyan('\n💾 Step 4: Creating Backup'));
 
         const filesToBackup = this.updateStrategy.getFilesRequiringBackup(
           analysisResult.analysisResults
@@ -159,22 +159,22 @@ export class UpdateOrchestrator {
           );
 
           if (backupResult.success) {
-            console.log(
+            logger.info(
               chalk.green(`✅ Backup created: ${backupResult.backupId}`)
             );
-            console.log(`Backed up ${backupResult.filesBackedUp} files`);
+            logger.info(`Backed up ${backupResult.filesBackedUp} files`);
           } else {
             errors.push(
               `Backup failed: ${backupResult.error || 'Unknown error'}`
             );
           }
         } else {
-          console.log(chalk.gray('ℹ️  No files require backup'));
+          logger.info(chalk.gray('ℹ️  No files require backup'));
         }
       }
 
       // Step 5: Resolve conflicts
-      console.log(chalk.cyan('\n🔧 Step 5: Conflict Resolution'));
+      logger.info(chalk.cyan('\n🔧 Step 5: Conflict Resolution'));
       const conflictFiles = analysisResult.analysisResults.filter(
         result =>
           result.conflictPotential === 'high' ||
@@ -193,7 +193,7 @@ export class UpdateOrchestrator {
           config.templatePath
         );
       } else if (conflictFiles.length > 0) {
-        console.log(
+        logger.info(
           chalk.yellow(
             `⚠️  ${conflictFiles.length} conflicts require manual resolution`
           )
@@ -202,13 +202,13 @@ export class UpdateOrchestrator {
           `${conflictFiles.length} conflicts require manual resolution`
         );
       } else {
-        console.log(chalk.green('✅ No conflicts detected'));
+        logger.info(chalk.green('✅ No conflicts detected'));
       }
 
       // Step 6: Execute migrations
       let migrationResult: MigrationResult | undefined;
       if (migrationPlan.totalSteps > 0 && !config.dryRun) {
-        console.log(chalk.cyan('\n⚡ Step 6: Executing Migrations'));
+        logger.info(chalk.cyan('\n⚡ Step 6: Executing Migrations'));
 
         const migrationContext: MigrationContext = {
           projectPath: config.projectPath,
@@ -232,7 +232,7 @@ export class UpdateOrchestrator {
       }
 
       // Step 7: Apply file updates
-      console.log(chalk.cyan('\n📝 Step 7: Applying Updates'));
+      logger.info(chalk.cyan('\n📝 Step 7: Applying Updates'));
       const { filesChanged, filesSkipped } = await this.applyFileUpdates(
         analysisResult,
         resolutions,
@@ -241,7 +241,7 @@ export class UpdateOrchestrator {
 
       // Step 8: Update version information
       if (!config.dryRun) {
-        console.log(chalk.cyan('\n📊 Step 8: Updating Version Information'));
+        logger.info(chalk.cyan('\n📊 Step 8: Updating Version Information'));
         await this.updateVersionInformation(
           currentVersion,
           targetVersion,
@@ -286,7 +286,7 @@ export class UpdateOrchestrator {
         error instanceof Error ? error.message : 'Unknown error';
       errors.push(`Update operation failed: ${errorMessage}`);
 
-      console.log(chalk.red(`\n❌ Update failed: ${errorMessage}`));
+      logger.info(chalk.red(`\n❌ Update failed: ${errorMessage}`));
 
       return {
         success: false,
@@ -312,13 +312,13 @@ export class UpdateOrchestrator {
    * @tags @UTIL:PRINT-ANALYSIS-RESULT-001
    */
   private printAnalysisResult(result: UpdateStrategyResult): void {
-    console.log(`📁 Files analyzed: ${result.totalFiles}`);
-    console.log(`🔄 Safe to auto-update: ${result.safeToAutoUpdate}`);
-    console.log(`👤 Requires manual review: ${result.requiresManualReview}`);
-    console.log(`💾 Requires backup: ${result.requiresBackup}`);
+    logger.info(`📁 Files analyzed: ${result.totalFiles}`);
+    logger.info(`🔄 Safe to auto-update: ${result.safeToAutoUpdate}`);
+    logger.info(`👤 Requires manual review: ${result.requiresManualReview}`);
+    logger.info(`💾 Requires backup: ${result.requiresBackup}`);
 
     if (result.conflictFiles.length > 0) {
-      console.log(
+      logger.info(
         chalk.yellow(`⚠️  Conflict files: ${result.conflictFiles.join(', ')}`)
       );
     }
@@ -330,17 +330,17 @@ export class UpdateOrchestrator {
    * @tags @UTIL:PRINT-MIGRATION-PLAN-001
    */
   private printMigrationPlan(plan: MigrationExecutionPlan): void {
-    console.log(`📝 Migrations to execute: ${plan.totalSteps}`);
-    console.log(`💾 Backup required: ${plan.requiresBackup ? 'Yes' : 'No'}`);
-    console.log(`⚠️  Risk level: ${plan.riskLevel}`);
-    console.log(
+    logger.info(`📝 Migrations to execute: ${plan.totalSteps}`);
+    logger.info(`💾 Backup required: ${plan.requiresBackup ? 'Yes' : 'No'}`);
+    logger.info(`⚠️  Risk level: ${plan.riskLevel}`);
+    logger.info(
       `⏱️  Estimated duration: ${Math.round(plan.estimatedDuration / 1000)}s`
     );
 
     if (plan.migrations.length > 0) {
-      console.log('\nMigrations:');
+      logger.info('\nMigrations:');
       for (const migration of plan.migrations) {
-        console.log(`  • ${migration.name} (${migration.version})`);
+        logger.info(`  • ${migration.name} (${migration.version})`);
       }
     }
   }
@@ -380,13 +380,13 @@ export class UpdateOrchestrator {
               );
             }
             filesChanged++;
-            console.log(chalk.green(`✅ Replaced: ${filePath}`));
+            logger.info(chalk.green(`✅ Replaced: ${filePath}`));
             break;
 
           case UpdateAction.MERGE:
             if (!config.dryRun) {
               // Smart merge would be implemented here
-              console.log(chalk.blue(`🔄 Merged: ${filePath}`));
+              logger.info(chalk.blue(`🔄 Merged: ${filePath}`));
             }
             filesChanged++;
             break;
@@ -394,7 +394,7 @@ export class UpdateOrchestrator {
           case UpdateAction.REGENERATE:
             if (!config.dryRun) {
               // File regeneration logic would be here
-              console.log(chalk.cyan(`🔄 Regenerated: ${filePath}`));
+              logger.info(chalk.cyan(`🔄 Regenerated: ${filePath}`));
             }
             filesChanged++;
             break;
@@ -403,12 +403,12 @@ export class UpdateOrchestrator {
           case UpdateAction.MANUAL:
           default:
             filesSkipped++;
-            console.log(chalk.gray(`⏭️  Skipped: ${filePath} (${action})`));
+            logger.info(chalk.gray(`⏭️  Skipped: ${filePath} (${action})`));
             break;
         }
       } catch (error) {
         filesSkipped++;
-        console.log(chalk.red(`❌ Failed to update: ${filePath}`));
+        logger.info(chalk.red(`❌ Failed to update: ${filePath}`));
       }
     }
 
@@ -487,8 +487,8 @@ export class UpdateOrchestrator {
    * @tags @UTIL:GET-UPDATE-TYPE-001
    */
   private getUpdateType(
-    fromVersion: string,
-    toVersion: string
+    _fromVersion: string,
+    _toVersion: string
   ): 'major' | 'minor' | 'patch' | 'prerelease' {
     // Simple implementation
     return 'patch';
@@ -510,26 +510,26 @@ export class UpdateOrchestrator {
     warnings: readonly string[],
     dryRun: boolean
   ): void {
-    console.log(chalk.cyan('\n📊 Update Summary'));
-    console.log(`Version: ${summary.fromVersion} → ${summary.toVersion}`);
-    console.log(`Files analyzed: ${summary.filesAnalyzed}`);
-    console.log(`Files changed: ${summary.filesChanged}`);
-    console.log(`Files skipped: ${summary.filesSkipped}`);
-    console.log(`Conflicts resolved: ${summary.conflictsResolved}`);
-    console.log(`Migrations executed: ${summary.migrationsExecuted}`);
-    console.log(`Duration: ${Math.round(duration / 1000)}s`);
+    logger.info(chalk.cyan('\n📊 Update Summary'));
+    logger.info(`Version: ${summary.fromVersion} → ${summary.toVersion}`);
+    logger.info(`Files analyzed: ${summary.filesAnalyzed}`);
+    logger.info(`Files changed: ${summary.filesChanged}`);
+    logger.info(`Files skipped: ${summary.filesSkipped}`);
+    logger.info(`Conflicts resolved: ${summary.conflictsResolved}`);
+    logger.info(`Migrations executed: ${summary.migrationsExecuted}`);
+    logger.info(`Duration: ${Math.round(duration / 1000)}s`);
 
     if (warnings.length > 0) {
-      console.log(chalk.yellow('\n⚠️  Warnings:'));
+      logger.info(chalk.yellow('\n⚠️  Warnings:'));
       for (const warning of warnings) {
-        console.log(chalk.yellow(`  • ${warning}`));
+        logger.info(chalk.yellow(`  • ${warning}`));
       }
     }
 
     if (errors.length > 0) {
-      console.log(chalk.red('\n❌ Errors:'));
+      logger.info(chalk.red('\n❌ Errors:'));
       for (const error of errors) {
-        console.log(chalk.red(`  • ${error}`));
+        logger.info(chalk.red(`  • ${error}`));
       }
     }
 
@@ -537,9 +537,9 @@ export class UpdateOrchestrator {
       const message = dryRun
         ? '✅ Dry run completed successfully - Ready for actual update'
         : '🎉 Update completed successfully!';
-      console.log(chalk.green(`\n${message}`));
+      logger.info(chalk.green(`\n${message}`));
     } else {
-      console.log(chalk.red('\n❌ Update completed with errors'));
+      logger.info(chalk.red('\n❌ Update completed with errors'));
     }
   }
 }

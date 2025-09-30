@@ -80,14 +80,17 @@ export class WorkflowAutomation {
         );
       }
 
-      return {
+      const result: WorkflowResult = {
         success: true,
         stage: SpecWorkflowStage.SPEC,
         branchName,
         commitHash: commitResult.hash,
-        pullRequestUrl,
         message: `SPEC ${specId} workflow started successfully`,
       };
+      if (pullRequestUrl) {
+        result.pullRequestUrl = pullRequestUrl;
+      }
+      return result;
     } catch (error) {
       return {
         success: false,
@@ -258,14 +261,17 @@ export class WorkflowAutomation {
         );
       }
 
-      return {
+      const result: WorkflowResult = {
         success: true,
         stage: SpecWorkflowStage.SYNC,
         branchName: releaseBranch,
         commitHash: versionResult.hash,
-        pullRequestUrl,
         message: `Release ${version} workflow completed successfully`,
       };
+      if (pullRequestUrl) {
+        result.pullRequestUrl = pullRequestUrl;
+      }
+      return result;
     } catch (error) {
       return {
         success: false,

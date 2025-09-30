@@ -8,6 +8,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import chalk from 'chalk';
+import { logger } from '../../utils/winston-logger.js';
 import {
   type RequirementCheckResult,
   SystemChecker,
@@ -98,8 +99,8 @@ export class DoctorCommand {
    * @tags @UTIL:PRINT-HEADER-001
    */
   private printHeader(): void {
-    console.log(chalk.blue.bold('🔍 MoAI-ADK System Diagnostics'));
-    console.log(chalk.blue('Checking system requirements...\n'));
+    logger.info(chalk.blue.bold('🔍 MoAI-ADK System Diagnostics'));
+    logger.info(chalk.blue('Checking system requirements...\n'));
   }
 
   /**
@@ -175,45 +176,45 @@ export class DoctorCommand {
   private printEnhancedResults(checkSummary: SystemCheckSummary): void {
     // Show detected languages first if any
     if (checkSummary.detectedLanguages.length > 0) {
-      console.log(chalk.blue.bold('🔍 Detected Languages:'));
+      logger.info(chalk.blue.bold('🔍 Detected Languages:'));
       checkSummary.detectedLanguages.forEach(lang => {
-        console.log(`  ${chalk.cyan('•')} ${chalk.bold(lang)}`);
+        logger.info(`  ${chalk.cyan('•')} ${chalk.bold(lang)}`);
       });
-      console.log('');
+      logger.info('');
     }
 
-    console.log(chalk.bold('Runtime Requirements:'));
+    logger.info(chalk.bold('Runtime Requirements:'));
     checkSummary.runtime.forEach(result => {
-      console.log(`  ${this.formatCheckResult(result)}`);
+      logger.info(`  ${this.formatCheckResult(result)}`);
       if (!result.result.isInstalled || !result.result.versionSatisfied) {
-        console.log(`    ${this.getInstallationSuggestion(result)}`);
+        logger.info(`    ${this.getInstallationSuggestion(result)}`);
       }
     });
 
-    console.log('');
-    console.log(chalk.bold('Development Requirements:'));
+    logger.info('');
+    logger.info(chalk.bold('Development Requirements:'));
     checkSummary.development.forEach(result => {
-      console.log(`  ${this.formatCheckResult(result)}`);
+      logger.info(`  ${this.formatCheckResult(result)}`);
       if (!result.result.isInstalled || !result.result.versionSatisfied) {
-        console.log(`    ${this.getInstallationSuggestion(result)}`);
+        logger.info(`    ${this.getInstallationSuggestion(result)}`);
       }
     });
 
     // Show optional requirements if any
     if (checkSummary.optional.length > 0) {
-      console.log('');
-      console.log(chalk.bold('Optional Requirements:'));
+      logger.info('');
+      logger.info(chalk.bold('Optional Requirements:'));
       checkSummary.optional.forEach(result => {
-        console.log(`  ${this.formatCheckResult(result)}`);
+        logger.info(`  ${this.formatCheckResult(result)}`);
         if (!result.result.isInstalled || !result.result.versionSatisfied) {
-          console.log(
+          logger.info(
             `    ${chalk.gray(this.getInstallationSuggestion(result))}`
           );
         }
       });
     }
 
-    console.log('');
+    logger.info('');
   }
 
   /**
@@ -222,25 +223,25 @@ export class DoctorCommand {
    * @tags @UTIL:PRINT-ENHANCED-SUMMARY-001
    */
   private printEnhancedSummary(checkSummary: SystemCheckSummary): void {
-    console.log(chalk.bold('Summary:'));
-    console.log(`  Total checks: ${checkSummary.totalChecks}`);
-    console.log(`  ${chalk.green('Passed:')} ${checkSummary.passedChecks}`);
-    console.log(`  ${chalk.red('Failed:')} ${checkSummary.failedChecks}`);
+    logger.info(chalk.bold('Summary:'));
+    logger.info(`  Total checks: ${checkSummary.totalChecks}`);
+    logger.info(`  ${chalk.green('Passed:')} ${checkSummary.passedChecks}`);
+    logger.info(`  ${chalk.red('Failed:')} ${checkSummary.failedChecks}`);
 
     if (checkSummary.detectedLanguages.length > 0) {
-      console.log(
+      logger.info(
         `  ${chalk.blue('Languages:')} ${checkSummary.detectedLanguages.join(', ')}`
       );
     }
-    console.log('');
+    logger.info('');
 
     if (checkSummary.passedChecks === checkSummary.totalChecks) {
-      console.log(chalk.green.bold('✅ All system requirements satisfied!'));
+      logger.info(chalk.green.bold('✅ All system requirements satisfied!'));
     } else {
-      console.log(
+      logger.info(
         chalk.red.bold('❌ Some system requirements need attention.')
       );
-      console.log(
+      logger.info(
         chalk.yellow(
           'Please install missing tools or upgrade versions as suggested above.'
         )
@@ -254,39 +255,39 @@ export class DoctorCommand {
    * @tags @API:LIST-BACKUPS-001
    */
   private async listBackups(): Promise<DoctorResult> {
-    console.log(chalk.blue.bold('📦 MoAI-ADK Backup Directory Listing'));
-    console.log(chalk.blue('Searching for available backups...\n'));
+    logger.info(chalk.blue.bold('📦 MoAI-ADK Backup Directory Listing'));
+    logger.info(chalk.blue('Searching for available backups...\n'));
 
     try {
       const backupPaths = await this.findBackupDirectories();
 
       if (backupPaths.length === 0) {
-        console.log(chalk.yellow('📁 No backup directories found.'));
-        console.log(
+        logger.info(chalk.yellow('📁 No backup directories found.'));
+        logger.info(
           chalk.gray('  Backup directories are typically created in:')
         );
-        console.log(chalk.gray('  • .moai-backup/ (current directory)'));
-        console.log(chalk.gray('  • ~/.moai/backups/ (global backups)'));
-        console.log('');
-        console.log(
+        logger.info(chalk.gray('  • .moai-backup/ (current directory)'));
+        logger.info(chalk.gray('  • ~/.moai/backups/ (global backups)'));
+        logger.info('');
+        logger.info(
           chalk.blue(
             '💡 Tip: Run "moai init --backup" to create a backup during initialization.'
           )
         );
       } else {
-        console.log(
+        logger.info(
           chalk.green(
             `📁 Found ${backupPaths.length} backup director${backupPaths.length === 1 ? 'y' : 'ies'}:`
           )
         );
-        console.log('');
+        logger.info('');
 
         for (const backupPath of backupPaths) {
           await this.printBackupInfo(backupPath);
         }
 
-        console.log('');
-        console.log(
+        logger.info('');
+        logger.info(
           chalk.blue(
             '💡 To restore from a backup, use: "moai restore <backup-path>"'
           )
@@ -306,7 +307,7 @@ export class DoctorCommand {
         },
       };
     } catch (error) {
-      console.error(chalk.red('❌ Error scanning for backups:'), error);
+      logger.error(chalk.red('❌ Error scanning for backups:'), error);
 
       return {
         allPassed: false,
@@ -399,21 +400,21 @@ export class DoctorCommand {
       const backupDate = stat.mtime.toLocaleDateString();
       const backupTime = stat.mtime.toLocaleTimeString();
 
-      console.log(`  📦 ${chalk.bold(backupName)}`);
-      console.log(`     📍 Path: ${chalk.gray(backupPath)}`);
-      console.log(
+      logger.info(`  📦 ${chalk.bold(backupName)}`);
+      logger.info(`     📍 Path: ${chalk.gray(backupPath)}`);
+      logger.info(
         `     📅 Created: ${chalk.cyan(backupDate)} ${chalk.gray(backupTime)}`
       );
 
       // Check backup contents
       const contents = await this.getBackupContents(backupPath);
       if (contents.length > 0) {
-        console.log(`     📄 Contains: ${chalk.green(contents.join(', '))}`);
+        logger.info(`     📄 Contains: ${chalk.green(contents.join(', '))}`);
       }
-      console.log('');
+      logger.info('');
     } catch (_error) {
-      console.log(`  ❌ ${chalk.red('Error reading backup:')} ${backupPath}`);
-      console.log('');
+      logger.info(`  ❌ ${chalk.red('Error reading backup:')} ${backupPath}`);
+      logger.info('');
     }
   }
 

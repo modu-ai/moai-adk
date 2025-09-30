@@ -10,6 +10,7 @@ import * as path from 'node:path';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import { type FileChangeAnalysis, UpdateAction } from './types.js';
+import { logger } from '../../utils/winston-logger.js';
 
 /**
  * Conflict resolution choice
@@ -70,8 +71,8 @@ export class ConflictResolver {
     projectPath: string,
     templatePath: string
   ): Promise<Map<string, ConflictResolution>> {
-    console.log(chalk.cyan('🔧 Conflict Resolution Required'));
-    console.log(`Found ${conflicts.length} files requiring manual review:\n`);
+    logger.info(chalk.cyan('🔧 Conflict Resolution Required'));
+    logger.info(`Found ${conflicts.length} files requiring manual review:\n`);
 
     for (const conflict of conflicts) {
       // Check if we have a pattern-based resolution
@@ -89,7 +90,7 @@ export class ConflictResolver {
         };
 
         this.resolutions.set(conflict.path, resolution);
-        console.log(
+        logger.info(
           chalk.green(`✓ ${conflict.path}: ${patternAction} (pattern)`)
         );
         continue;
@@ -110,7 +111,7 @@ export class ConflictResolver {
       }
     }
 
-    console.log(chalk.green('\n✅ All conflicts resolved!'));
+    logger.info(chalk.green('\n✅ All conflicts resolved!'));
     return new Map(this.resolutions);
   }
 
@@ -127,10 +128,10 @@ export class ConflictResolver {
     projectPath: string,
     templatePath: string
   ): Promise<ConflictResolution> {
-    console.log(chalk.yellow(`\n📄 Resolving: ${conflict.path}`));
-    console.log(`Type: ${conflict.type}`);
-    console.log(`Conflict Level: ${conflict.conflictPotential}`);
-    console.log(`Recommended: ${conflict.recommendedAction}\n`);
+    logger.info(chalk.yellow(`\n📄 Resolving: ${conflict.path}`));
+    logger.info(`Type: ${conflict.type}`);
+    logger.info(`Conflict Level: ${conflict.conflictPotential}`);
+    logger.info(`Recommended: ${conflict.recommendedAction}\n`);
 
     // Show file diff if both files exist
     await this.showFileDiff(conflict.path, projectPath, templatePath);
@@ -271,7 +272,7 @@ export class ConflictResolver {
    * @tags @UTIL:SELECT-MERGE-STRATEGY-001
    */
   private async selectMergeStrategy(
-    conflict: FileChangeAnalysis
+    _conflict: FileChangeAnalysis
   ): Promise<MergeStrategy> {
     const choices = [
       {
@@ -338,18 +339,18 @@ export class ConflictResolver {
           fs.readFile(templateFile, 'utf-8'),
         ]);
 
-        console.log(chalk.blue('📄 Current file (first 10 lines):'));
-        console.log(userContent.split('\n').slice(0, 10).join('\n'));
+        logger.info(chalk.blue('📄 Current file (first 10 lines):'));
+        logger.info(userContent.split('\n').slice(0, 10).join('\n'));
 
-        console.log(chalk.green('\n📄 Template version (first 10 lines):'));
-        console.log(templateContent.split('\n').slice(0, 10).join('\n'));
+        logger.info(chalk.green('\n📄 Template version (first 10 lines):'));
+        logger.info(templateContent.split('\n').slice(0, 10).join('\n'));
       } else if (!userExists) {
-        console.log(chalk.yellow('📄 File does not exist in current project'));
+        logger.info(chalk.yellow('📄 File does not exist in current project'));
       } else {
-        console.log(chalk.yellow('📄 No template version available'));
+        logger.info(chalk.yellow('📄 No template version available'));
       }
     } catch {
-      console.log(chalk.red('❌ Could not read file contents'));
+      logger.info(chalk.red('❌ Could not read file contents'));
     }
   }
 
@@ -429,7 +430,7 @@ export class ConflictResolver {
    * @tags @UTIL:REPLACE-SECTIONS-001
    */
   private async replaceSections(
-    userContent: string,
+    _userContent: string,
     templateContent: string
   ): Promise<string> {
     // For now, return template content (sophisticated section detection would be needed)
@@ -444,7 +445,7 @@ export class ConflictResolver {
    * @tags @UTIL:TEMPLATE-BASE-MERGE-001
    */
   private async templateBaseMerge(
-    userContent: string,
+    _userContent: string,
     templateContent: string
   ): Promise<string> {
     // Simple implementation: use template but preserve user-specific sections

@@ -17,6 +17,7 @@ import { InitCommand } from './commands/init';
 import { RestoreCommand } from './commands/restore';
 import { StatusCommand } from './commands/status';
 import { UpdateCommand } from './commands/update';
+import { logger } from '../utils/winston-logger.js';
 
 /**
  * CLI Application
@@ -76,7 +77,7 @@ export class CLIApp {
         try {
           await this.doctorCommand.run(options);
         } catch (error) {
-          console.error(chalk.red('Error running diagnostics:'), error);
+          logger.error(chalk.red('Error running diagnostics:'), error);
           process.exit(1);
         }
       });
@@ -100,7 +101,7 @@ export class CLIApp {
           const success = await this.initCommand.run(project);
           process.exit(success ? 0 : 1);
         } catch (error) {
-          console.error(chalk.red('Error during initialization:'), error);
+          logger.error(chalk.red('Error during initialization:'), error);
           process.exit(1);
         }
       });
@@ -123,7 +124,7 @@ export class CLIApp {
             });
             process.exit(result.success ? 0 : 1);
           } catch (error) {
-            console.error(chalk.red('Error during restore:'), error);
+            logger.error(chalk.red('Error during restore:'), error);
             process.exit(1);
           }
         }
@@ -143,7 +144,7 @@ export class CLIApp {
           });
           process.exit(result.success ? 0 : 1);
         } catch (error) {
-          console.error(chalk.red('Error getting status:'), error);
+          logger.error(chalk.red('Error getting status:'), error);
           process.exit(1);
         }
       });
@@ -175,7 +176,7 @@ export class CLIApp {
             });
             process.exit(result.success ? 0 : 1);
           } catch (error) {
-            console.error(chalk.red('Error during update:'), error);
+            logger.error(chalk.red('Error during update:'), error);
             process.exit(1);
           }
         }
@@ -190,7 +191,7 @@ export class CLIApp {
           const result = await this.helpCommand.run({ command });
           process.exit(result.success ? 0 : 1);
         } catch (error) {
-          console.error(chalk.red('Error showing help:'), error);
+          logger.error(chalk.red('Error showing help:'), error);
           process.exit(1);
         }
       });

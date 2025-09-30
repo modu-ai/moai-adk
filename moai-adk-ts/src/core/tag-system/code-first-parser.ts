@@ -9,6 +9,7 @@
 
 import { promises as fs } from 'node:fs';
 import { extname } from 'node:path';
+import { logger } from '../../utils/winston-logger.js';
 import {
   type CodeFirstTagConfig,
   type PerformanceMetrics,
@@ -113,9 +114,10 @@ export class CodeFirstTagParser {
 
       return result;
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       return {
         success: false,
-        error: `파일 읽기 실패: ${error.message}`,
+        error: `파일 읽기 실패: ${errorMessage}`,
         warnings: [],
       };
     }
@@ -485,7 +487,7 @@ export class CodeFirstTagParser {
 
       return tagBlocks;
     } catch (error) {
-      console.error(`디렉토리 스캔 실패: ${error.message}`);
+      logger.error(`디렉토리 스캔 실패: ${error.message}`);
       return [];
     }
   }
@@ -522,7 +524,7 @@ export class CodeFirstTagParser {
     } catch (error) {
       // 권한 없는 디렉토리는 무시
       if (error.code !== 'EACCES' && error.code !== 'EPERM') {
-        console.warn(`디렉토리 스캔 경고: ${dirPath} - ${error.message}`);
+        logger.warn(`디렉토리 스캔 경고: ${dirPath} - ${error.message}`);
       }
     }
   }

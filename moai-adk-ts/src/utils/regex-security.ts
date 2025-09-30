@@ -6,6 +6,7 @@
  */
 
 import { logger } from './logger';
+import { ValidationError, getErrorMessage } from './errors';
 
 /**
  * Regex execution result
@@ -86,7 +87,7 @@ export class RegexSecurity {
     ) {
       if (enableLogging) {
         logger.error(`Dangerous regex pattern detected: ${pattern.source}`, {
-          vulnerabilities: validation.vulnerabilities,
+          vulnerabilities: Array.from(validation.vulnerabilities),
           riskLevel: validation.riskLevel,
         });
       }
@@ -243,9 +244,10 @@ export class RegexSecurity {
       return result;
     } catch (error) {
       const executionTime = Date.now() - startTime;
+      const errorMessage = getErrorMessage(error);
 
       if (enableLogging) {
-        logger.error(`Regex replace failed: ${error}`, {
+        logger.error(`Regex replace failed: ${errorMessage}`, {
           pattern: pattern.source,
           inputLength: input.length,
           executionTime,
@@ -374,17 +376,23 @@ export class RegexSecurity {
       const validation = RegexSecurity.validateRegexSafety(regex);
 
       if (!validation.isSafe) {
-        logger.error(`Unsafe regex pattern rejected: ${pattern}`, {
-          vulnerabilities: validation.vulnerabilities,
-          riskLevel: validation.riskLevel,
+        throw new ValidationError(`Unsafe regex pattern rejected: ${pattern}`, {
+          pattern,
+          vulnerabilities: Array.from(validation.vulnerabilities),
+          context: { riskLevel: validation.riskLevel },
         });
-        return null;
       }
 
       return regex;
     } catch (error) {
-      logger.error(`Invalid regex pattern: ${pattern}`, { error });
-      return null;
+      if (error instanceof ValidationError) {
+        throw error;
+      }
+      const errorMessage = getErrorMessage(error);
+      throw new ValidationError(`Invalid regex pattern: ${pattern}`, {
+        pattern,
+        context: { originalError: errorMessage },
+      });
     }
   }
 }

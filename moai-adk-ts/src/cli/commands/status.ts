@@ -7,6 +7,7 @@
 import * as path from 'node:path';
 import chalk from 'chalk';
 import * as fs from 'fs-extra';
+import { logger } from '../../utils/winston-logger.js';
 
 /**
  * Status command options
@@ -224,7 +225,7 @@ export class StatusCommand {
         counts['CLAUDE.md'] = 0;
       }
 
-      counts.total = total;
+      counts['total'] = total;
       return counts;
     } catch (error) {
       throw new Error(
@@ -270,35 +271,35 @@ export class StatusCommand {
     try {
       const projectPath = options.projectPath || process.cwd();
 
-      console.log(chalk.cyan('📊 MoAI-ADK Project Status'));
+      logger.info(chalk.cyan('📊 MoAI-ADK Project Status'));
 
       // Step 1: Get project status
       const status = await this.checkProjectStatus(projectPath);
 
-      console.log(`\n📂 Project: ${status.path}`);
-      console.log(`   Type: ${status.projectType}`);
+      logger.info(`\n📂 Project: ${status.path}`);
+      logger.info(`   Type: ${status.projectType}`);
 
       // Step 2: Display core status
-      console.log('\n🗿 MoAI-ADK Components:');
-      console.log(`   MoAI System: ${status.moaiInitialized ? '✅' : '❌'}`);
-      console.log(
+      logger.info('\n🗿 MoAI-ADK Components:');
+      logger.info(`   MoAI System: ${status.moaiInitialized ? '✅' : '❌'}`);
+      logger.info(
         `   Claude Integration: ${status.claudeInitialized ? '✅' : '❌'}`
       );
-      console.log(`   Memory File: ${status.memoryFile ? '✅' : '❌'}`);
-      console.log(`   Git Repository: ${status.gitRepository ? '✅' : '❌'}`);
+      logger.info(`   Memory File: ${status.memoryFile ? '✅' : '❌'}`);
+      logger.info(`   Git Repository: ${status.gitRepository ? '✅' : '❌'}`);
 
       // Step 3: Get and display version information
       const versions = await this.getVersionInfo(projectPath);
-      console.log('\n🧭 Versions:');
-      console.log(`   Package: v${versions.package}`);
-      console.log(`   Templates: v${versions.resources}`);
+      logger.info('\n🧭 Versions:');
+      logger.info(`   Package: v${versions.package}`);
+      logger.info(`   Templates: v${versions.resources}`);
 
       if (versions.available && versions.available !== versions.resources) {
-        console.log(`   Available template update: v${versions.available}`);
+        logger.info(`   Available template update: v${versions.available}`);
       }
 
       if (versions.outdated) {
-        console.log(
+        logger.info(
           chalk.yellow(
             "   ⚠️  Templates are outdated. Run 'moai update' to refresh."
           )
@@ -308,11 +309,11 @@ export class StatusCommand {
       // Step 4: Display file counts if verbose
       if (options.verbose) {
         const fileCounts = await this.countProjectFiles(projectPath);
-        console.log('\n📁 File Counts:');
+        logger.info('\n📁 File Counts:');
 
         for (const [component, count] of Object.entries(fileCounts)) {
           if (component !== 'total') {
-            console.log(`   ${component}: ${count} files`);
+            logger.info(`   ${component}: ${count} files`);
           }
         }
       }
@@ -327,9 +328,9 @@ export class StatusCommand {
       }
 
       if (recommendations.length > 0) {
-        console.log('\n💡 Recommendations:');
+        logger.info('\n💡 Recommendations:');
         for (const rec of recommendations) {
-          console.log(`   - ${rec}`);
+          logger.info(`   - ${rec}`);
         }
       }
 
@@ -352,7 +353,7 @@ export class StatusCommand {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
-      console.log(
+      logger.info(
         chalk.red(`❌ Failed to get project status: ${errorMessage}`)
       );
 

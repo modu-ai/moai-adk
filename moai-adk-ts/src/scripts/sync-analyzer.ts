@@ -15,6 +15,7 @@
 
 import { execSync } from 'child_process';
 import { existsSync, statSync } from 'fs';
+import { logger } from '../utils/winston-logger.js';
 
 // 타입 정의
 interface SyncAnalyzerOptions {
@@ -101,13 +102,9 @@ function analyzeGitStatus(): ProjectStatus {
     });
   }
 
-  // TAG 파일 수
-  const tagIndexPath = '.moai/indexes';
-  let tagFiles = 0;
-  if (existsSync(tagIndexPath)) {
-    const findOutput = execCommand(`find ${tagIndexPath} -name "*.json" -o -name "*-report.md" 2>/dev/null`);
-    tagFiles = countLines(findOutput);
-  }
+  // TAG 파일 수 - CODE-FIRST: 인덱스 불필요
+  // NOTE: [v0.0.3+] .moai/indexes 제거 - 코드 직접 스캔 방식으로 전환
+  const tagFiles = 0; // 더 이상 인덱스 파일 사용하지 않음
 
   return {
     changedFiles,
@@ -315,7 +312,7 @@ function main() {
   const result = analyzeSyncStatus(options);
 
   // JSON 출력
-  console.log(JSON.stringify(result, null, 2));
+  logger.info(JSON.stringify(result, null, 2));
 
   // 종료 코드 결정
   if (result.recommendations.action === 'abort') {

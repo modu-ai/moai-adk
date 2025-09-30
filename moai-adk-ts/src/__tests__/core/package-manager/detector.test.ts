@@ -4,7 +4,7 @@
  * @tags @TEST:PACKAGE-MANAGER-DETECTOR-001 @REQ:PACKAGE-MANAGER-002
  */
 
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi, type MockedFunction } from 'vitest';
 import '@/__tests__/setup';
 import { execa } from 'execa';
 import { PackageManagerDetector } from '@/core/package-manager/detector';
@@ -15,7 +15,7 @@ import {
 
 // Mock execa
 vi.mock('execa');
-const mockExeca = execa as vi.MockedFunction<typeof execa>;
+const mockExeca = execa as MockedFunction<typeof execa>;
 
 describe('PackageManagerDetector', () => {
   let detector: PackageManagerDetector;

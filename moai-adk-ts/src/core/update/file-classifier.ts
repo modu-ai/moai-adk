@@ -97,7 +97,6 @@ export class FileClassifier {
 
       // Generated files - can be recreated
       generated: [
-        '.moai/indexes/**',
         '.moai/reports/**',
         'node_modules/**',
         'dist/**',

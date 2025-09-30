@@ -7,6 +7,7 @@
 import * as os from 'node:os';
 import * as path from 'node:path';
 import * as fs from 'fs-extra';
+import { logger } from '../../utils/winston-logger.js';
 import {
   type GitLockContext,
   GitLockedException,
@@ -55,7 +56,7 @@ export class GitLockManager {
 
       // Check if process is still running
       if (!this.isProcessRunning(lockInfo.pid)) {
-        console.log(`Cleaning up stale lock from process ${lockInfo.pid}`);
+        logger.info(`Cleaning up stale lock from process ${lockInfo.pid}`);
         await this.releaseLock();
         return false;
       }
@@ -63,14 +64,14 @@ export class GitLockManager {
       // Check if lock is too old
       const lockAge = Date.now() - lockInfo.timestamp;
       if (lockAge > this.maxLockAge) {
-        console.log(`Cleaning up expired lock (age: ${lockAge}ms)`);
+        logger.info(`Cleaning up expired lock (age: ${lockAge}ms)`);
         await this.releaseLock();
         return false;
       }
 
       return true;
     } catch (error) {
-      console.error('Error checking lock status:', error);
+      logger.error('Error checking lock status:', error);
       // Clean up corrupt lock file
       await this.cleanupCorruptLock();
       return false;
@@ -132,10 +133,10 @@ export class GitLockManager {
     try {
       if (await fs.pathExists(this.lockFile)) {
         await fs.remove(this.lockFile);
-        console.log('Git lock released');
+        logger.info('Git lock released');
       }
     } catch (error) {
-      console.error('Error releasing lock:', error);
+      logger.error('Error releasing lock:', error);
       // Don't throw - we want to be resilient
     }
   }
@@ -158,7 +159,7 @@ export class GitLockManager {
     const lockContext = await this.acquireLock(wait, timeout);
 
     try {
-      console.log(`Executing Git operation: ${operationName}`);
+      logger.info(`Executing Git operation: ${operationName}`);
       return await operation();
     } finally {
       await lockContext.release();
@@ -219,7 +220,7 @@ export class GitLockManager {
 
     // Check if process is still running
     if (!this.isProcessRunning(lockInfo.pid)) {
-      console.log(`Cleaning up stale lock from dead process ${lockInfo.pid}`);
+      logger.info(`Cleaning up stale lock from dead process ${lockInfo.pid}`);
       await this.releaseLock();
       return;
     }
@@ -227,12 +228,12 @@ export class GitLockManager {
     // Check if lock is too old
     const lockAge = Date.now() - lockInfo.timestamp;
     if (lockAge > this.maxLockAge) {
-      console.log(`Cleaning up expired lock (age: ${lockAge}ms)`);
+      logger.info(`Cleaning up expired lock (age: ${lockAge}ms)`);
       await this.releaseLock();
       return;
     }
 
-    console.log('Lock is active and valid');
+    logger.info('Lock is active and valid');
   }
 
   // Private helper methods
@@ -255,7 +256,7 @@ export class GitLockManager {
     };
 
     await fs.writeJson(this.lockFile, lockInfo, { spaces: 2 });
-    console.log(
+    logger.info(
       `Git lock acquired by process ${lockInfo.pid} for operation: ${operation}`
     );
 
@@ -280,7 +281,7 @@ export class GitLockManager {
 
       return lockInfo;
     } catch (error) {
-      console.error('Error reading lock file:', error);
+      logger.error('Error reading lock file:', error);
       return null;
     }
   }
@@ -306,10 +307,10 @@ export class GitLockManager {
     try {
       if (await fs.pathExists(this.lockFile)) {
         await fs.remove(this.lockFile);
-        console.log('Cleaned up corrupt lock file');
+        logger.info('Cleaned up corrupt lock file');
       }
     } catch (error) {
-      console.error('Error cleaning up corrupt lock:', error);
+      logger.error('Error cleaning up corrupt lock:', error);
     }
   }
 

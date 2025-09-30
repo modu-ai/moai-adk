@@ -5,6 +5,7 @@
  */
 
 import chalk from 'chalk';
+import { logger as winstonLogger } from './winston-logger.js';
 
 /**
  * Log levels for structured logging
@@ -191,17 +192,18 @@ export class Logger {
   /**
    * Output log entry in appropriate format
    * @param entry - Log entry to output
-   * @param outputMethod - Console method to use
+   * @param level - Log level for Winston logger
    * @tags @UTIL:OUTPUT-LOG-001
    */
   private outputLog(
     entry: LogEntry,
-    outputMethod: (message: string) => void
+    level: 'debug' | 'info' | 'warn' | 'error'
   ): void {
     const format = getLogFormat();
 
     if (format === 'json') {
-      outputMethod(JSON.stringify(entry));
+      // JSON format: delegate to Winston logger
+      winstonLogger[level](entry.message, entry.context);
     } else {
       // Human-readable format - suppress debug logs in human mode
       if (entry.level === 'debug') {
@@ -209,7 +211,8 @@ export class Logger {
       }
 
       const formatted = this.formatHumanReadable(entry);
-      outputMethod(formatted);
+      // Use Winston logger instead of console.*
+      winstonLogger[level](formatted);
     }
   }
 
@@ -221,7 +224,7 @@ export class Logger {
    */
   public debug(message: string, context?: Record<string, unknown>): void {
     const entry = this.createLogEntry('debug', message, context);
-    this.outputLog(entry, console.debug);
+    this.outputLog(entry, 'debug');
   }
 
   /**
@@ -232,7 +235,7 @@ export class Logger {
    */
   public info(message: string, context?: Record<string, unknown>): void {
     const entry = this.createLogEntry('info', message, context);
-    this.outputLog(entry, console.log);
+    this.outputLog(entry, 'info');
   }
 
   /**
@@ -243,7 +246,7 @@ export class Logger {
    */
   public warn(message: string, context?: Record<string, unknown>): void {
     const entry = this.createLogEntry('warn', message, context);
-    this.outputLog(entry, console.warn);
+    this.outputLog(entry, 'warn');
   }
 
   /**
@@ -269,7 +272,7 @@ export class Logger {
           },
         }
       : baseEntry;
-    this.outputLog(entry, console.error);
+    this.outputLog(entry, 'error');
   }
 
   /**
@@ -290,7 +293,7 @@ export class Logger {
 
     const levelColor = levelColors[level];
     const output = colorize && levelColor ? levelColor(message) : message;
-    console.log(output);
+    winstonLogger.info(output);
   }
 }
 

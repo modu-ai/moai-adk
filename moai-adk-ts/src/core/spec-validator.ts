@@ -12,6 +12,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execa } from 'execa';
 import * as yaml from 'yaml';
+import { logger } from '../utils/winston-logger.js';
 import {
   type SpecDependencyNode,
   type SpecMetadata,
@@ -50,7 +51,7 @@ export class SpecValidator {
       const metadata = yaml.parse(frontmatterMatch[1]) as SpecMetadata;
       return metadata;
     } catch (error) {
-      console.error(`Error parsing metadata from ${specFilePath}:`, error);
+      logger.error(`Error parsing metadata from ${specFilePath}:`, error);
       return null;
     }
   }
@@ -381,7 +382,7 @@ export class SpecValidator {
       return stdout.split('\n').filter(line => line.trim());
     } catch (_error) {
       // ripgrep이 설치되지 않은 경우 fallback
-      console.warn('ripgrep not found, falling back to filesystem search');
+      logger.warn('ripgrep not found, falling back to filesystem search');
       return [];
     }
   }
@@ -419,7 +420,7 @@ export class SpecValidator {
 
       return specIds;
     } catch (_error) {
-      console.warn('ripgrep search failed, falling back to filesystem scan');
+      logger.warn('ripgrep search failed, falling back to filesystem scan');
       return this.getSpecsByStatusFallback(status);
     }
   }
@@ -469,7 +470,7 @@ export class SpecValidator {
 
       return specIds;
     } catch (_error) {
-      console.warn('ripgrep tag search failed');
+      logger.warn('ripgrep tag search failed');
       return [];
     }
   }
@@ -484,7 +485,7 @@ export class SpecValidator {
     const specFile = path.join(this.specDirectory, specId, 'spec.md');
 
     if (!fs.existsSync(specFile)) {
-      console.error(`SPEC file not found: ${specFile}`);
+      logger.error(`SPEC file not found: ${specFile}`);
       return false;
     }
 
@@ -493,7 +494,7 @@ export class SpecValidator {
       const frontmatterMatch = content.match(/^(---\n)([\s\S]*?)(\n---)/);
 
       if (!frontmatterMatch) {
-        console.error(`No frontmatter found in ${specFile}`);
+        logger.error(`No frontmatter found in ${specFile}`);
         return false;
       }
 
@@ -501,7 +502,7 @@ export class SpecValidator {
 
       // 상태 전환 검증
       if (!this.validateStatusTransition(metadata.status, newStatus)) {
-        console.error(
+        logger.error(
           `Invalid status transition from ${metadata.status} to ${newStatus}`
         );
         return false;
@@ -525,7 +526,7 @@ export class SpecValidator {
 
       return true;
     } catch (error) {
-      console.error(`Error updating SPEC status:`, error);
+      logger.error(`Error updating SPEC status:`, error);
       return false;
     }
   }

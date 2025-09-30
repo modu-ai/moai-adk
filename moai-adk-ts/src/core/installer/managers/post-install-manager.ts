@@ -10,6 +10,7 @@ import type { PostInstallOptions, PostInstallResult } from '../types';
 import { FirstRunManager } from './first-run-manager';
 import { GlobalSetupManager } from './global-setup-manager';
 import { ResourceValidator } from './resource-validator';
+import { logger } from '../../../utils/winston-logger.js';
 
 /**
  * Post-Installation Manager
@@ -253,7 +254,7 @@ ${chalk.blue('━'.repeat(48))}
 Setting up global resources for optimal MoAI-ADK experience...
 `;
 
-    console.log(banner);
+    logger.info(banner);
     logger.info('Post-installation banner displayed', { version });
   }
 }

@@ -4,7 +4,6 @@
  * @tags @FEATURE:PHASE-EXECUTOR-001 @REQ:INSTALL-SYSTEM-012
  */
 
-import * as path from 'node:path';
 import { logger } from '@/utils/logger';
 import type {
   InstallationConfig,

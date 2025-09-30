@@ -298,7 +298,7 @@ export class PackageManagerInstaller {
 
     if (includeTypeScript) {
       baseScripts['type-check'] = 'tsc --noEmit';
-      baseScripts.dev = 'ts-node src/index.ts';
+      baseScripts['dev'] = 'ts-node src/index.ts';
     }
 
     if (testingFramework === 'jest') {

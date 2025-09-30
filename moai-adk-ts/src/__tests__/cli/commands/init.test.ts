@@ -4,7 +4,7 @@
  * @tags @TEST:CLI-INIT-001 @REQ:CLI-INIT-002
  */
 
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi, type Mocked } from 'vitest';
 import '@/__tests__/setup';
 import type { DoctorResult } from '@/cli/commands/doctor';
 import { InitCommand } from '@/cli/commands/init';
@@ -20,18 +20,18 @@ vi.mock('@/core/system-checker/detector');
 
 describe('InitCommand Advanced Features', () => {
   let initCommand: InitCommand;
-  let mockDetector: vi.Mocked<SystemDetector>;
-  let mockWizard: vi.Mocked<ProjectWizard>;
-  let mockTemplateManager: vi.Mocked<TemplateManager>;
+  let mockDetector: Mocked<SystemDetector>;
+  let mockWizard: Mocked<ProjectWizard>;
+  let mockTemplateManager: Mocked<TemplateManager>;
 
   beforeEach(() => {
     // Reset all mocks
     vi.clearAllMocks();
 
     // Setup mock instances
-    mockDetector = new SystemDetector() as vi.Mocked<SystemDetector>;
-    mockWizard = new ProjectWizard() as vi.Mocked<ProjectWizard>;
-    mockTemplateManager = new TemplateManager() as vi.Mocked<TemplateManager>;
+    mockDetector = new SystemDetector() as unknown as Mocked<SystemDetector>;
+    mockWizard = new ProjectWizard() as unknown as Mocked<ProjectWizard>;
+    mockTemplateManager = new TemplateManager() as unknown as Mocked<TemplateManager>;
 
     initCommand = new InitCommand(
       mockDetector,
@@ -265,7 +265,6 @@ describe('InitCommand Advanced Features', () => {
           '.moai/project/product.md',
           '.moai/project/structure.md',
           '.moai/project/tech.md',
-          '.moai/indexes/tags.db',
           '.moai/reports/sync-report.md',
         ],
       });
@@ -276,7 +275,7 @@ describe('InitCommand Advanced Features', () => {
       // Assert
       expect(result.createdFiles).toContain('.moai/config.json');
       expect(result.createdFiles).toContain('.moai/project/product.md');
-      expect(result.createdFiles).toContain('.moai/indexes/tags.db');
+      // NOTE: [v0.0.3+] .moai/indexes/tags.db 제거 - CODE-FIRST 방식으로 전환
     });
 
     test('should create .claude directory with agent configurations', async () => {

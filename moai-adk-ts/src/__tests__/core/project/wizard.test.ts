@@ -4,7 +4,7 @@
  * @tags @TEST:PROJECT-WIZARD-001 @REQ:CLI-WIZARD-001
  */
 
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi, type Mocked } from 'vitest';
 import '@/__tests__/setup';
 import inquirer from 'inquirer';
 import { ProjectWizard } from '@/core/project/wizard';
@@ -12,7 +12,7 @@ import { ProjectType } from '@/types/project';
 
 // Mock inquirer
 vi.mock('inquirer');
-const mockInquirer = inquirer as vi.Mocked<typeof inquirer>;
+const mockInquirer = inquirer as Mocked<typeof inquirer>;
 
 describe('ProjectWizard', () => {
   let wizard: ProjectWizard;

@@ -4,10 +4,11 @@
  * @tags @FEATURE:OPTIMIZATION-RECOMMENDER-001 @REQ:ADVANCED-DOCTOR-001
  */
 
-import type {
-  BenchmarkResult,
-  OptimizationRecommendation,
-  SystemPerformanceMetrics,
+import {
+  DiagnosticSeverity,
+  type BenchmarkResult,
+  type OptimizationRecommendation,
+  type SystemPerformanceMetrics,
 } from '@/types/diagnostics';
 
 /**

@@ -134,8 +134,8 @@ export class TemplateManager {
       'docs',
       '.moai',
       '.moai/project',
-      '.moai/indexes',
       '.moai/reports',
+      // NOTE: [v0.0.3+] .moai/indexes 제거 - CODE-FIRST 방식으로 전환
     ];
 
     for (const dir of directories) {
@@ -334,22 +334,8 @@ export class TemplateManager {
       result.createdFiles.push(`.moai/project/${file}`);
     }
 
-    // .moai/indexes/tags.db (SQLite3 TAG database) - 임시 비활성화
-    try {
-      // const tagDb = getDefaultTagDatabase(projectPath);
-      // await tagDb.initialize();
-      // result.createdFiles.push('.moai/indexes/tags.db');
-
-      // Graceful degradation - create empty file for compatibility
-      const tagsPath = path.join(projectPath, '.moai', 'indexes', 'tags.db');
-      await fs.writeFile(tagsPath, '');
-      result.createdFiles.push('.moai/indexes/tags.db');
-    } catch (_error) {
-      // Graceful degradation - create empty file for compatibility
-      const tagsPath = path.join(projectPath, '.moai', 'indexes', 'tags.db');
-      await fs.writeFile(tagsPath, '');
-      result.createdFiles.push('.moai/indexes/tags.db');
-    }
+    // NOTE: [v0.0.3+] .moai/indexes/tags.db 제거 - CODE-FIRST 방식으로 전환
+    // TAG 인덱스 파일 불필요 - 코드에서 직접 스캔하는 방식으로 변경됨
 
     // .moai/reports/sync-report.md
     const syncReportContent = this.generateSyncReport(templateData);

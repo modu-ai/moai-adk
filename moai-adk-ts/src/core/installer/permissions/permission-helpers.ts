@@ -7,6 +7,7 @@
 import * as fs from 'fs-extra';
 import { type FilePermissions, MoAIPermissions } from './permission-types';
 import { PermissionUtils } from './permission-utils';
+import { logger } from '../../../utils/winston-logger.js';
 
 /**
  * Permission operation helper functions
@@ -33,7 +34,7 @@ export class PermissionHelpers {
         await fs.chmod(targetPath, stats.mode | 0o200);
       }
     } catch (error) {
-      console.warn(
+      logger.warn(
         `Windows permission setting limited for ${targetPath}: ${
           error instanceof Error ? error.message : String(error)
         }`
@@ -50,7 +51,7 @@ export class PermissionHelpers {
 
   static async makeWindowsExecutable(filePath: string): Promise<void> {
     if (!PermissionUtils.isScript(filePath)) {
-      console.warn(
+      logger.warn(
         `Warning: ${filePath} may not be executable on Windows without proper extension`
       );
     }

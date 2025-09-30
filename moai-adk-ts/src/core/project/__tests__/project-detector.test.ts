@@ -5,12 +5,12 @@
  */
 
 import fs from 'node:fs';
-import { beforeEach, describe, expect, vi } from 'vitest';
+import { beforeEach, describe, expect, vi, type Mocked } from 'vitest';
 import { ProjectDetector } from '../project-detector';
 
 // Mock fs and path modules
 vi.mock('fs');
-const mockFs = fs as vi.Mocked<typeof fs>;
+const mockFs = fs as Mocked<typeof fs>;
 
 describe('ProjectDetector', () => {
   let detector: ProjectDetector;

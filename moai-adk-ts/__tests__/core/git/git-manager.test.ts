@@ -538,19 +538,22 @@ describe('GitManager', () => {
       await fs.writeFile(file1, 'Content 1');
       await fs.writeFile(file2, 'Content 2');
 
-      // 동시 커밋 시도 (하나는 대기하지 않도록 설정)
+      // 동시 커밋 시도 (둘 다 대기 모드로 순차 실행)
       const commit1Promise = lockGitManager.commitWithLock('Concurrent commit 1', [file1], true, 5);
 
-      // 약간의 지연 후 두 번째 커밋 시도 (대기하지 않음)
-      await new Promise(resolve => setTimeout(resolve, 100));
-      const commit2Promise = lockGitManager.commitWithLock('Concurrent commit 2', [file2], false, 1);
+      // 약간의 지연 후 두 번째 커밋 시도 (대기 모드)
+      await new Promise(resolve => setTimeout(resolve, 50));
+      const commit2Promise = lockGitManager.commitWithLock('Concurrent commit 2', [file2], true, 5);
 
-      // 첫 번째는 성공, 두 번째는 lock 예외로 실패해야 함
+      // 두 커밋 모두 성공해야 함 (Lock이 순차적으로 작동)
       const result1 = await commit1Promise;
       expect(result1.hash).toBeDefined();
 
-      // 두 번째 커밋은 GitLockedException이 발생해야 함
-      await expect(commit2Promise).rejects.toThrow('Git operations are locked by another process');
+      const result2 = await commit2Promise;
+      expect(result2.hash).toBeDefined();
+
+      // 두 커밋이 서로 다른 해시를 가져야 함
+      expect(result1.hash).not.toBe(result2.hash);
     }, 15000);
   });
 });

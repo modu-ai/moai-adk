@@ -8,6 +8,7 @@
 import * as path from 'node:path';
 import chalk from 'chalk';
 import * as fs from 'fs-extra';
+import { logger } from '../../utils/winston-logger.js';
 import {
   type UpdateConfiguration,
   type UpdateOperationResult,
@@ -59,7 +60,7 @@ export interface UpdateResult {
   readonly updatedPackage: boolean;
   readonly updatedResources: boolean;
   readonly backupCreated: boolean;
-  readonly backupPath?: string | undefined;
+  readonly backupPath?: string;
   readonly versionsUpdated: boolean;
   readonly duration: number;
   readonly error?: string;
@@ -132,7 +133,7 @@ export class UpdateCommand {
 
     try {
       // Simulate backup creation
-      console.log(`Would create backup at: ${backupPath}`);
+      logger.info(`Would create backup at: ${backupPath}`);
       return backupPath;
     } catch (error) {
       throw new Error(
@@ -155,9 +156,9 @@ export class UpdateCommand {
     try {
       // For now, just simulate resource update
       // In a real implementation, this would copy new templates
-      console.log(`Updating resources for: ${projectPath}`);
-      console.log(`Package only: ${options.packageOnly}`);
-      console.log(`Resources only: ${options.resourcesOnly}`);
+      logger.info(`Updating resources for: ${projectPath}`);
+      logger.info(`Package only: ${options.packageOnly}`);
+      logger.info(`Resources only: ${options.resourcesOnly}`);
 
       // Simulate successful update
       return true;
@@ -176,7 +177,7 @@ export class UpdateCommand {
   public async updatePackage(): Promise<boolean> {
     try {
       // For now, just log recommendation
-      console.log(
+      logger.info(
         '💡 Manual upgrade recommended: npm install --global moai-adk@latest'
       );
       return true;
@@ -196,7 +197,7 @@ export class UpdateCommand {
   public async synchronizeVersions(projectPath: string): Promise<boolean> {
     try {
       // For tests and simplicity, just simulate version synchronization
-      console.log(`Would synchronize versions for: ${projectPath}`);
+      logger.info(`Would synchronize versions for: ${projectPath}`);
       return true;
     } catch (error) {
       throw new Error(
@@ -216,23 +217,23 @@ export class UpdateCommand {
     const projectPath = options.projectPath || process.cwd();
 
     try {
-      console.log(chalk.cyan('🔄 MoAI-ADK Update (Real Implementation)'));
+      logger.info(chalk.cyan('🔄 MoAI-ADK Update (Real Implementation)'));
 
       // Step 1: Quick check mode
       if (options.check) {
         const updateStatus = await this.checkForUpdates(projectPath);
-        console.log(`Current version: v${updateStatus.currentVersion}`);
-        console.log(
+        logger.info(`Current version: v${updateStatus.currentVersion}`);
+        logger.info(
           `Installed template version: ${updateStatus.currentResourceVersion}`
         );
-        console.log(
+        logger.info(
           `Available template version: ${updateStatus.availableResourceVersion}`
         );
 
         if (!updateStatus.needsUpdate) {
-          console.log(chalk.green('✅ Project resources are up to date'));
+          logger.info(chalk.green('✅ Project resources are up to date'));
         } else {
-          console.log(
+          logger.info(
             chalk.yellow("⚠️  Updates available. Run 'moai update' to refresh.")
           );
         }
@@ -250,10 +251,10 @@ export class UpdateCommand {
       // Check if this is a MoAI project
       const moaiDir = path.join(projectPath, '.moai');
       if (!(await fs.pathExists(moaiDir))) {
-        console.log(
+        logger.info(
           chalk.yellow("⚠️  This doesn't appear to be a MoAI-ADK project")
         );
-        console.log("Run 'moai init' to initialize a new project");
+        logger.info("Run 'moai init' to initialize a new project");
 
         return {
           success: false,
@@ -281,7 +282,7 @@ export class UpdateCommand {
         skipValidation: false,
       };
 
-      console.log(chalk.cyan('🚀 Starting Real Update Operation...'));
+      logger.info(chalk.cyan('🚀 Starting Real Update Operation...'));
       const result: UpdateOperationResult = await orchestrator.executeUpdate(updateConfig);
 
       // Convert to CLI result format
@@ -298,7 +299,7 @@ export class UpdateCommand {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
-      console.log(chalk.red(`❌ Update failed: ${errorMessage}`));
+      logger.info(chalk.red(`❌ Update failed: ${errorMessage}`));
 
       return {
         success: false,
@@ -314,11 +315,11 @@ export class UpdateCommand {
 
   /**
    * Get template path for updates
-   * @param projectPath - Project directory path
+   * @param _projectPath - Project directory path (reserved for future use)
    * @returns Template path
    * @tags @UTIL:GET-TEMPLATE-PATH-001
    */
-  private getTemplatePath(projectPath: string): string {
+  private getTemplatePath(_projectPath: string): string {
     // For now, use the templates directory within the project
     // In production, this would point to the MoAI-ADK template repository
     return path.join(__dirname, '..', '..', '..', 'templates');

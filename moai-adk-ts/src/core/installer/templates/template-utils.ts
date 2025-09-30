@@ -8,6 +8,7 @@
 
 import { createSafeRegex } from '../../../utils/regex-security';
 import type { TemplateContext } from './template-processor';
+import { logger } from '../../../utils/winston-logger.js';
 
 /**
  * @TASK:MULTIPLE-FORMATS-001 다중 변수 포맷 처리 (ReDoS 방어)
@@ -25,13 +26,13 @@ export function processMultipleVariableFormats(
   );
 
   if (!safePattern) {
-    console.warn('Failed to create safe regex pattern for variable formats');
+    logger.warn('Failed to create safe regex pattern for variable formats');
     return content;
   }
 
   // 안전성 검사 후 기본 replace 사용 (함수 replacement 지원)
   if (content.length > 50000) {
-    console.warn('Content too long for variable replacement');
+    logger.warn('Content too long for variable replacement');
     return content;
   }
 
@@ -47,7 +48,7 @@ export function processMultipleVariableFormats(
       }
     );
   } catch (error) {
-    console.warn('Variable replacement failed:', error);
+    logger.warn('Variable replacement failed:', error);
     return content;
   }
 }
@@ -78,7 +79,7 @@ export function expandNestedVariables(
     );
 
     if (!safeNestedPattern) {
-      console.warn('Failed to create safe nested pattern regex');
+      logger.warn('Failed to create safe nested pattern regex');
       break;
     }
     let match;
@@ -299,7 +300,7 @@ export function unifiedSubstituteTemplateVariables(
     return result;
   } catch (error) {
     // Python 구현과 동일: 오류 시 원본 내용 반환
-    console.error(
+    logger.error(
       `Failed to substitute template variables (unified): ${error}`
     );
     return content;
@@ -320,7 +321,7 @@ export async function applyProjectContext(
     const { promises: fs } = await import('node:fs');
 
     if (!(await fileExists(templatePath))) {
-      console.warn(`Template file not found: ${templatePath}`);
+      logger.warn(`Template file not found: ${templatePath}`);
       return false;
     }
 
@@ -336,12 +337,12 @@ export async function applyProjectContext(
     // Write back if changed
     if (processedContent !== originalContent) {
       await fs.writeFile(templatePath, processedContent, 'utf-8');
-      console.info(`Applied project context to: ${templatePath}`);
+      logger.info(`Applied project context to: ${templatePath}`);
     }
 
     return true;
   } catch (error) {
-    console.error(
+    logger.error(
       `Failed to apply project context to ${templatePath}: ${error}`
     );
     return false;

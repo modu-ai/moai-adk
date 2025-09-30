@@ -7,9 +7,10 @@
 import { execSync } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import type {
-  EnvironmentConfig,
-  OptimizationRecommendation,
+import {
+  DiagnosticSeverity,
+  type EnvironmentConfig,
+  type OptimizationRecommendation,
 } from '@/types/diagnostics';
 
 /**

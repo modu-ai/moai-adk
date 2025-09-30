@@ -5,6 +5,7 @@
  */
 
 import inquirer from 'inquirer';
+import { logger } from '../../utils/winston-logger.js';
 import {
   type ProjectConfig,
   type ProjectFeature,
@@ -22,8 +23,8 @@ export class ProjectWizard {
    * @tags @API:WIZARD-RUN-001
    */
   public async run(): Promise<ProjectConfig> {
-    console.log('🧙‍♂️ Project Configuration Wizard');
-    console.log('Step 1/5: Basic Information\n');
+    logger.info('🧙‍♂️ Project Configuration Wizard');
+    logger.info('Step 1/5: Basic Information\n');
 
     const basicAnswers = await inquirer.prompt([
       {
@@ -83,7 +84,7 @@ export class ProjectWizard {
       throw new Error('Invalid project name format');
     }
 
-    console.log('\nStep 2/5: License and Package Manager\n');
+    logger.info('\nStep 2/5: License and Package Manager\n');
 
     const configAnswers = await inquirer.prompt([
       {
@@ -102,7 +103,7 @@ export class ProjectWizard {
       },
     ]);
 
-    console.log('\nStep 3/5: Project Features\n');
+    logger.info('\nStep 3/5: Project Features\n');
 
     const features = await this.collectFeatures(basicAnswers.projectType);
 

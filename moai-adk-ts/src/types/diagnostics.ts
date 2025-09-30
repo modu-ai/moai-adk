@@ -69,7 +69,7 @@ export interface OptimizationRecommendation {
 export interface EnvironmentConfig {
   name: string;
   detected: boolean;
-  version?: string;
+  version: string | undefined;
   configFiles: string[];
   recommendations: OptimizationRecommendation[];
   status: 'optimal' | 'good' | 'needs_improvement' | 'problematic';
@@ -79,13 +79,13 @@ export interface EnvironmentConfig {
  * Environment analysis result (alias for EnvironmentConfig)
  * @tags @DATA:ENV-ANALYSIS-001
  */
-export interface EnvironmentAnalysis extends EnvironmentConfig {
+export interface EnvironmentAnalysis extends Omit<EnvironmentConfig, 'status'> {
   readonly name: string;
   readonly detected: boolean;
-  readonly version?: string;
+  readonly version: string | undefined;
   readonly configFiles: string[];
   readonly recommendations: OptimizationRecommendation[];
-  readonly status: 'optimal' | 'good' | 'warning' | 'poor';
+  readonly status: 'optimal' | 'good' | 'needs_improvement' | 'problematic' | 'warning' | 'poor';
 }
 
 /**

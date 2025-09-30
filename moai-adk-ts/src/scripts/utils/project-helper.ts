@@ -5,6 +5,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { logger } from '../../utils/winston-logger.js';
 
 export interface ProjectConfig {
   mode?: string;
@@ -30,7 +31,7 @@ export class ProjectHelper {
         return JSON.parse(configContent);
       }
     } catch (error) {
-      console.warn(
+      logger.warn(
         `Config 로드 실패: ${error instanceof Error ? error.message : String(error)}`
       );
     }
@@ -110,14 +111,14 @@ export class ProjectHelper {
           )
         ) {
           hasUserPackageJson = true;
-          console.log('Detected user package.json (not MoAI-ADK)');
+          logger.info('Detected user package.json (not MoAI-ADK)');
         } else {
-          console.log(
+          logger.info(
             'Skipping MoAI-ADK package.json in project type detection'
           );
         }
       } catch (error) {
-        console.warn(
+        logger.warn(
           'Could not parse package.json for project type detection:',
           error
         );

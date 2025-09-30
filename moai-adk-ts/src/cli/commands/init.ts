@@ -13,6 +13,7 @@ import type { InitResult } from '@/types/project';
 import { createHeader, printBanner } from '@/utils/banner';
 import { InputValidator } from '@/utils/input-validator';
 import { DoctorCommand } from './doctor';
+import { logger } from '../../utils/winston-logger.js';
 
 /**
  * Progress callback for installation progress display
@@ -30,7 +31,7 @@ function displayProgress(
   const progressBar =
     '█'.repeat(Math.floor(percentage / 5)) +
     '░'.repeat(20 - Math.floor(percentage / 5));
-  console.log(chalk.blue(`[${progressBar}] ${percentage}% - ${message}`));
+  logger.info(chalk.blue(`[${progressBar}] ${percentage}% - ${message}`));
 }
 
 /**
@@ -64,10 +65,10 @@ export class InitCommand {
 
       // Display initialization header
       const inputProjectName = options?.name || 'moai-project';
-      console.log(createHeader(`Initializing ${inputProjectName} project...`));
+      logger.info(createHeader(`Initializing ${inputProjectName} project...`));
 
       // Step 1: System verification
-      console.log(chalk.yellow.bold('Step 1: System Verification'));
+      logger.info(chalk.yellow.bold('Step 1: System Verification'));
       const doctorResult = await this.doctorCommand.run();
 
       if (!doctorResult.allPassed) {
@@ -81,7 +82,7 @@ export class InitCommand {
       }
 
       // Step 2: Input validation and configuration setup
-      console.log(chalk.yellow.bold('\nStep 2: Configuration'));
+      logger.info(chalk.yellow.bold('\nStep 2: Configuration'));
 
       // Validate project name
       const projectNameValidation = InputValidator.validateProjectName(
@@ -160,12 +161,12 @@ export class InitCommand {
         additionalFeatures: options?.features || [],
       };
 
-      console.log(chalk.gray(`  Project: ${config.projectName}`));
-      console.log(chalk.gray(`  Mode: ${config.mode}`));
-      console.log(chalk.gray(`  Path: ${config.projectPath}`));
+      logger.info(chalk.gray(`  Project: ${config.projectName}`));
+      logger.info(chalk.gray(`  Mode: ${config.mode}`));
+      logger.info(chalk.gray(`  Path: ${config.projectPath}`));
 
       // Step 3: Full installation with orchestrator
-      console.log(chalk.yellow.bold('\nStep 3: Installation'));
+      logger.info(chalk.yellow.bold('\nStep 3: Installation'));
       const orchestrator = new InstallationOrchestrator(config);
       const installResult =
         await orchestrator.executeInstallation(displayProgress);
@@ -180,27 +181,27 @@ export class InitCommand {
       };
 
       if (result.success) {
-        console.log(
+        logger.info(
           chalk.green.bold('\n✅ Initialization completed successfully!')
         );
-        console.log(chalk.gray(`📁 Project created at: ${result.projectPath}`));
-        console.log(
+        logger.info(chalk.gray(`📁 Project created at: ${result.projectPath}`));
+        logger.info(
           chalk.gray(`📄 Files created: ${result.createdFiles.length}`)
         );
-        console.log(chalk.gray(`⏱️  Duration: ${installResult.duration}ms`));
+        logger.info(chalk.gray(`⏱️  Duration: ${installResult.duration}ms`));
 
         if (installResult.nextSteps.length > 0) {
-          console.log(chalk.blue.bold('\n📋 Next Steps:'));
+          logger.info(chalk.blue.bold('\n📋 Next Steps:'));
           installResult.nextSteps.forEach((step, index) => {
-            console.log(chalk.blue(`${index + 1}. ${step}`));
+            logger.info(chalk.blue(`${index + 1}. ${step}`));
           });
         }
       } else {
-        console.log(chalk.red.bold('\n❌ Initialization failed!'));
+        logger.info(chalk.red.bold('\n❌ Initialization failed!'));
         if (result.errors && result.errors.length > 0) {
-          console.log(chalk.red('\nErrors:'));
+          logger.info(chalk.red('\nErrors:'));
           result.errors.forEach(error => {
-            console.log(chalk.red(`  • ${error}`));
+            logger.info(chalk.red(`  • ${error}`));
           });
         }
       }
@@ -211,9 +212,9 @@ export class InitCommand {
         error instanceof Error ? error.message : 'Unknown error';
 
       if (errorMessage === 'User cancelled') {
-        console.log(chalk.yellow('\nInitialization cancelled by user.'));
+        logger.info(chalk.yellow('\nInitialization cancelled by user.'));
       } else {
-        console.log(
+        logger.info(
           chalk.red(`\nError during initialization: ${errorMessage}`)
         );
       }

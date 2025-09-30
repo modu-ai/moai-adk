@@ -8,6 +8,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { logger } from '../utils/winston-logger.js';
 
 export interface TrustViolation {
   principle: string;
@@ -61,7 +62,7 @@ export class TrustPrinciplesChecker {
         return JSON.parse(configContent);
       }
     } catch (error) {
-      console.warn(
+      logger.warn(
         `Config 로드 실패: ${error instanceof Error ? error.message : String(error)}`
       );
     }

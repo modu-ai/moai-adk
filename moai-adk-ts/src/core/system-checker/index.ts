@@ -8,6 +8,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { type RequirementCheckResult, SystemDetector } from './detector';
 import { requirementRegistry } from './requirements';
+import { logger } from '../../utils/winston-logger.js';
 
 export {
   DetectionResult,
@@ -162,7 +163,9 @@ export class SystemChecker {
       }
     } catch (error) {
       // If we can't read the directory, just return empty array
-      console.warn(`Could not analyze project at ${projectPath}:`, error);
+      logger.warn(`Could not analyze project at ${projectPath}`,
+        error instanceof Error ? { error: error.message } : { error: String(error) }
+      );
     }
 
     return Array.from(languages);

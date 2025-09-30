@@ -14,14 +14,14 @@
 
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
-import { TagManager } from './tag-manager.js';
+import { CodeFirstTagParser } from './code-first-parser.js';
 import { TagParser } from './tag-parser.js';
 import type {
-  TagEntry,
   TagSearchQuery,
   TagStatistics,
   TagValidationResult,
 } from './types.js';
+import type { TagBlock } from './code-first-types.js';
 
 /**
  * TAG Agent 요청 인터페이스
@@ -81,23 +81,22 @@ export interface TagChainRepairResult {
  * Claude Code 에이전트에서 호출되어 모든 TAG 관리 작업을 자동화합니다.
  */
 export class TagAgentCore {
-  private readonly tagManager: TagManager;
+  private readonly codeFirstParser: CodeFirstTagParser;
   private readonly tagParser: TagParser;
-  private readonly indexesPath: string;
+  private readonly projectRoot: string;
 
   constructor(projectRoot: string) {
     this.projectRoot = projectRoot;
-    this.indexesPath = join(projectRoot, '.moai/indexes');
 
-    // NOTE: [v0.0.3+] TAG 시스템 철학 변경
-    // - 이전: tags.json 인덱스 캐시 기반 관리
-    // - 현재: 코드 직접 스캔 (rg/grep) 기반 실시간 검증
-    // - 이유: 단일 진실 소스(코드)로 동기화 문제 해결
-    this.tagManager = new TagManager({
-      filePath: join(this.indexesPath, 'tags.json'),
-      enableCache: true,
-      autoSave: true,
-      autoSaveDelay: 1000,
+    // NOTE: [v0.0.3+] CODE-FIRST TAG 시스템
+    // - tags.json 인덱스 캐시 제거
+    // - 코드 직접 스캔 (rg/grep) 기반 실시간 검증
+    // - 단일 진실 소스(코드)로 동기화 문제 완전 해결
+    this.codeFirstParser = new CodeFirstTagParser({
+      scanExtensions: ['.ts', '.tsx', '.js', '.jsx', '.py', '.md'],
+      excludeDirectories: ['node_modules', '.git', 'dist', 'build', '__pycache__'],
+      enforceImmutability: true,
+      enablePerformanceTracking: true,
     });
 
     this.tagParser = new TagParser();
@@ -112,7 +111,7 @@ export class TagAgentCore {
     const startTime = performance.now();
 
     try {
-      await this.tagManager.load();
+      // NOTE: 코드 직접 스캔 방식 - tags.json 로드 제거
 
       let result: any;
 
@@ -130,7 +129,8 @@ export class TagAgentCore {
           result = await this.repairTagChains();
           break;
         case 'index':
-          result = await this.optimizeIndexes();
+          // NOTE: 인덱싱 불필요 - 코드 직접 스캔 방식
+          result = { message: 'No indexing needed - using code-first approach' };
           break;
         case 'stats':
           result = await this.generateStatistics();
@@ -147,7 +147,7 @@ export class TagAgentCore {
         data: result,
         performance: {
           executionTime,
-          indexSize: await this.getIndexSize(),
+          indexSize: 0, // 인덱스 없음
           searchSpeed: executionTime,
         },
       };
@@ -163,9 +163,10 @@ export class TagAgentCore {
   }
 
   /**
-   * @API:TAG-CREATE-001: 새로운 TAG 체인 생성
+   * @API:TAG-CREATE-001: TAG 체인 생성 가이드 제공 (CODE-FIRST)
    *
-   * 지능적 중복 방지 및 재사용 제안을 포함한 TAG 체인 생성
+   * CODE-FIRST 철학: TAG는 코드에만 존재합니다.
+   * 이 메서드는 새로운 TAG를 생성하는 대신, 코드에 작성할 TAG 템플릿을 제공합니다.
    */
   private async createTagChain(request: TagAgentRequest): Promise<{
     createdTags: string[];
@@ -176,17 +177,17 @@ export class TagAgentCore {
       throw new Error('Domain is required for TAG creation');
     }
 
-    // 1. 기존 유사 TAG 검색
+    // 1. 기존 유사 TAG 검색 (코드 스캔)
     const existingSimilar = await this.findSimilarTags(request.domain);
     const reuseRecommendations: TagReuseRecommendation[] = [];
 
     for (const similar of existingSimilar) {
-      const similarity = this.calculateSimilarity(request.domain, similar.id);
+      const similarity = this.calculateSimilarity(request.domain, similar.tag);
       if (similarity > 0.7) {
         reuseRecommendations.push({
-          existingTag: similar.id,
+          existingTag: similar.tag,
           similarity,
-          reason: `Similar domain: ${similar.description || similar.title}`,
+          reason: `Found in ${similar.filePath}`,
           shouldReuse: similarity > 0.8,
         });
       }
@@ -196,54 +197,32 @@ export class TagAgentCore {
     const baseId = this.generateTagId(request.domain);
     const nextId = await this.getNextAvailableId(baseId);
 
-    // 3. Primary Chain 생성
+    // 3. Primary Chain TAG IDs 생성 (가이드용)
     const createdTags: string[] = [];
     const primaryChain = ['REQ', 'DESIGN', 'TASK', 'TEST'];
 
-    for (const [index, category] of primaryChain.entries()) {
+    for (const category of primaryChain) {
       const tagId = `@${category}:${nextId}`;
-      const parentTags =
-        index > 0 ? [`@${primaryChain[index - 1]}:${nextId}`] : [];
-
-      await this.tagManager.createTag({
-        id: tagId,
-        type: category as any,
-        category: 'PRIMARY',
-        title: `${category} for ${request.domain}`,
-        description:
-          request.description ||
-          `${category} requirements for ${request.domain}`,
-        parents: parentTags,
-        children:
-          index < primaryChain.length - 1
-            ? [`@${primaryChain[index + 1]}:${nextId}`]
-            : [],
-        files: request.relatedFiles || [],
-      });
-
       createdTags.push(tagId);
     }
 
-    // 4. 체인 무결성 검증
-    const chainIntegrity = await this.validateTagChain(createdTags);
-
-    // 5. 인덱스 업데이트
-    await this.updateDistributedIndexes(createdTags);
+    // NOTE: 실제 TAG 생성은 코드에 직접 작성해야 합니다.
+    // 이 메서드는 TAG 템플릿만 제공합니다.
 
     return {
       createdTags,
       suggestedReuse: reuseRecommendations,
-      chainIntegrity: chainIntegrity.isValid,
+      chainIntegrity: true, // 템플릿 제공만 하므로 항상 true
     };
   }
 
   /**
-   * @API:TAG-SEARCH-001: 지능적 TAG 검색
+   * @API:TAG-SEARCH-001: 지능적 TAG 검색 (CODE-FIRST)
    *
-   * 키워드, 도메인, 파일 경로 등을 기반으로 한 포괄적 TAG 검색
+   * 코드를 직접 스캔하여 TAG 검색 (tags.json 인덱스 불필요)
    */
   private async searchTags(request: TagAgentRequest): Promise<{
-    matches: TagEntry[];
+    matches: TagBlock[];
     suggestions: string[];
     reuseRecommendations: TagReuseRecommendation[];
   }> {
@@ -251,37 +230,32 @@ export class TagAgentCore {
       throw new Error('Keyword is required for TAG search');
     }
 
-    // 1. 다중 검색 전략
-    const searchQuery: TagSearchQuery = {
-      idPattern: request.keyword,
-    };
+    // 1. 코드 전체 스캔
+    const allTagBlocks = await this.codeFirstParser.scanDirectory(this.projectRoot);
 
-    // 키워드가 카테고리명인지 확인
-    const categories = Object.values(this.tagParser.getTagCategories()).flat();
-    if (categories.includes(request.keyword.toUpperCase())) {
-      searchQuery.types = [request.keyword.toUpperCase() as any];
-    }
-
-    // 파일 경로 패턴 감지
-    if (request.keyword.includes('/') || request.keyword.includes('.')) {
-      searchQuery.filePaths = [request.keyword];
-    }
-
-    const searchResult = await this.tagManager.search(searchQuery);
-
-    // 2. 유사도 기반 추가 검색
-    const allTags = searchResult.tags;
-    const similarTags = await this.findSimilarTags(request.keyword);
+    // 2. 키워드로 필터링
+    const keyword = request.keyword.toUpperCase();
+    const matches = allTagBlocks.filter(block => {
+      // TAG ID 매칭
+      if (block.tag.includes(keyword)) return true;
+      // 도메인 ID 매칭
+      if (block.domainId.includes(keyword)) return true;
+      // 카테고리 매칭
+      if (block.category.includes(keyword)) return true;
+      // 파일 경로 매칭
+      if (request.keyword.includes('/') && block.filePath.includes(request.keyword)) return true;
+      return false;
+    });
 
     // 3. 재사용 제안 생성
     const reuseRecommendations: TagReuseRecommendation[] = [];
-    for (const tag of [...allTags, ...similarTags]) {
-      const similarity = this.calculateSimilarity(request.keyword, tag.id);
+    for (const block of matches) {
+      const similarity = this.calculateSimilarity(request.keyword, block.tag);
       if (similarity > 0.5) {
         reuseRecommendations.push({
-          existingTag: tag.id,
+          existingTag: block.tag,
           similarity,
-          reason: `Keyword match: ${tag.title}`,
+          reason: `Found in ${block.filePath}`,
           shouldReuse: similarity > 0.7,
         });
       }
@@ -291,14 +265,16 @@ export class TagAgentCore {
     const suggestions = this.generateSearchSuggestions(request.keyword);
 
     return {
-      matches: searchResult.tags,
+      matches,
       suggestions,
       reuseRecommendations,
     };
   }
 
   /**
-   * @API:TAG-VALIDATE-001: TAG 시스템 전체 검증
+   * @API:TAG-VALIDATE-001: TAG 시스템 전체 검증 (CODE-FIRST)
+   *
+   * 코드를 직접 스캔하여 TAG 검증
    */
   private async validateTagSystem(): Promise<{
     totalTags: number;
@@ -308,111 +284,87 @@ export class TagAgentCore {
     brokenChains: string[];
     circularReferences: string[];
   }> {
-    const stats = await this.tagManager.getStatistics();
-    const allTags = (await this.tagManager.search({})).tags;
+    // 코드 전체 스캔
+    const allTagBlocks = await this.codeFirstParser.scanDirectory(this.projectRoot);
 
     const invalidTags: string[] = [];
     const orphanedTags: string[] = [];
     const brokenChains: string[] = [];
-    const _circularReferences: string[] = [];
+    const circularReferences: string[] = [];
 
-    for (const tag of allTags) {
+    // TAG 맵 구축 (검증용)
+    const tagMap = new Map<string, TagBlock>();
+    for (const block of allTagBlocks) {
+      tagMap.set(block.tag, block);
+    }
+
+    for (const block of allTagBlocks) {
       // 형식 검증
-      if (!this.tagParser.validateTagFormat(tag.id)) {
-        invalidTags.push(tag.id);
+      if (!this.tagParser.validateTagFormat(block.tag)) {
+        invalidTags.push(block.tag);
         continue;
       }
 
-      // TAG 검증
-      const validation = await this.tagManager.validateTag(tag);
-      if (!validation.isValid) {
-        invalidTags.push(tag.id);
-      }
-
-      // 고아 TAG 검사 (Primary Chain 외)
-      if (tag.parents.length === 0 && tag.type !== 'REQ') {
-        orphanedTags.push(tag.id);
-      }
-
       // 체인 연결 검사
-      for (const parentId of tag.parents) {
-        const parent = await this.tagManager.getTag(parentId);
-        if (!parent) {
-          brokenChains.push(`${tag.id} -> ${parentId}`);
+      if (block.chain) {
+        for (const chainTag of block.chain) {
+          if (!tagMap.has(chainTag)) {
+            brokenChains.push(`${block.tag} -> ${chainTag}`);
+          }
         }
       }
 
-      // 순환 참조 검사는 이미 tagManager.validateTag에서 처리됨
+      // 의존성 검사
+      if (block.depends) {
+        for (const depTag of block.depends) {
+          if (!tagMap.has(depTag)) {
+            brokenChains.push(`${block.tag} depends on ${depTag} (not found)`);
+          }
+        }
+      }
+
+      // 고아 TAG 검사 (REQ가 아닌데 체인이 없는 경우)
+      if (!block.chain || block.chain.length === 0) {
+        if (!block.category.includes('REQ')) {
+          orphanedTags.push(block.tag);
+        }
+      }
     }
 
     return {
-      totalTags: stats.total,
-      validTags: stats.total - invalidTags.length,
+      totalTags: allTagBlocks.length,
+      validTags: allTagBlocks.length - invalidTags.length,
       invalidTags,
       orphanedTags,
       brokenChains,
-      circularReferences: [], // stats.circularReferences로 대체 가능
+      circularReferences,
     };
   }
 
   /**
-   * @API:TAG-REPAIR-001: TAG 체인 자동 수리
+   * @API:TAG-REPAIR-001: TAG 체인 수리 가이드 제공 (CODE-FIRST)
+   *
+   * CODE-FIRST 철학: TAG는 코드에만 존재하므로, 자동 수리 불가.
+   * 대신 문제가 있는 TAG 목록과 수정 가이드를 제공합니다.
    */
   private async repairTagChains(): Promise<TagChainRepairResult> {
     const validation = await this.validateTagSystem();
-    let repairedChains = 0;
-    let orphanedTagsFixed = 0;
-    const circularReferencesResolved = 0;
+
+    // 수리 가이드만 제공
     const newConnections: string[] = [];
 
-    // 1. 끊어진 체인 수리
     for (const brokenChain of validation.brokenChains) {
-      const [childId, parentId] = brokenChain.split(' -> ');
-
-      // 유사한 이름의 기존 TAG 찾기
-      const similarParent = await this.findMostSimilarTag(parentId);
-      if (similarParent) {
-        const child = await this.tagManager.getTag(childId);
-        if (child) {
-          const updatedParents = child.parents.map(p =>
-            p === parentId ? similarParent.id : p
-          );
-          await this.tagManager.updateTag(childId, { parents: updatedParents });
-          newConnections.push(`${childId} -> ${similarParent.id}`);
-          repairedChains++;
-        }
-      }
+      newConnections.push(`Fix needed: ${brokenChain}`);
     }
 
-    // 2. 고아 TAG 부모 찾기
-    for (const orphanId of validation.orphanedTags) {
-      const orphan = await this.tagManager.getTag(orphanId);
-      if (orphan && orphan.type !== 'REQ') {
-        // 같은 도메인의 상위 TAG 찾기
-        const domain = this.extractDomain(orphan.id);
-        const possibleParent = await this.findParentTagForDomain(
-          domain,
-          orphan.type
-        );
-
-        if (possibleParent) {
-          await this.tagManager.updateTag(orphanId, {
-            parents: [possibleParent.id],
-          });
-          newConnections.push(`${orphanId} -> ${possibleParent.id}`);
-          orphanedTagsFixed++;
-        }
-      }
+    for (const orphanTag of validation.orphanedTags) {
+      newConnections.push(`Orphaned TAG: ${orphanTag} - Add chain in code`);
     }
-
-    // 3. 인덱스 재구축
-    await this.tagManager.save();
-    await this.updateDistributedIndexes();
 
     return {
-      repairedChains,
-      orphanedTagsFixed,
-      circularReferencesResolved,
+      repairedChains: 0, // 자동 수리 불가
+      orphanedTagsFixed: 0, // 자동 수리 불가
+      circularReferencesResolved: 0,
       newConnections,
     };
   }
@@ -452,7 +404,9 @@ export class TagAgentCore {
   }
 
   /**
-   * @API:TAG-STATS-001: TAG 시스템 통계 생성
+   * @API:TAG-STATS-001: TAG 시스템 통계 생성 (CODE-FIRST)
+   *
+   * 코드를 직접 스캔하여 통계 생성
    */
   private async generateStatistics(): Promise<
     TagStatistics & {
@@ -467,17 +421,30 @@ export class TagAgentCore {
       };
     }
   > {
-    const stats = await this.tagManager.getStatistics();
-    const validation = await this.validateTagSystem();
-
-    // 성능 지표
-    const indexSize = await this.getIndexSize();
+    // 코드 전체 스캔
     const searchStartTime = performance.now();
-    await this.tagManager.search({ types: ['REQ'] });
+    const allTagBlocks = await this.codeFirstParser.scanDirectory(this.projectRoot);
     const searchSpeed = performance.now() - searchStartTime;
 
+    const validation = await this.validateTagSystem();
+
+    // 카테고리별 통계
+    const byType: any = {};
+    const byCategory: any = {};
+    const byStatus: any = {};
+
+    for (const block of allTagBlocks) {
+      // 타입별 카운트
+      byType[block.category] = (byType[block.category] || 0) + 1;
+
+      // 상태별 카운트
+      byStatus[block.status] = (byStatus[block.status] || 0) + 1;
+    }
+
     // 건강도 지표
-    const integrityScore = (validation.validTags / validation.totalTags) * 100;
+    const integrityScore = validation.totalTags > 0
+      ? (validation.validTags / validation.totalTags) * 100
+      : 100;
     let qualityGate: 'healthy' | 'warning' | 'critical';
 
     if (integrityScore >= 95 && validation.brokenChains.length === 0) {
@@ -489,9 +456,14 @@ export class TagAgentCore {
     }
 
     return {
-      ...stats,
+      total: validation.totalTags,
+      byType,
+      byCategory,
+      byStatus,
+      orphanedTags: validation.orphanedTags.length,
+      circularReferences: validation.circularReferences.length,
       performance: {
-        indexSize,
+        indexSize: 0, // 인덱스 없음
         searchSpeed,
         memoryUsage: process.memoryUsage().heapUsed,
       },
@@ -505,12 +477,12 @@ export class TagAgentCore {
   // Helper Methods
 
   /**
-   * 유사 TAG 검색
+   * 유사 TAG 검색 (CODE-FIRST)
    */
-  private async findSimilarTags(keyword: string): Promise<TagEntry[]> {
-    const allTags = (await this.tagManager.search({})).tags;
-    return allTags.filter(tag => {
-      const similarity = this.calculateSimilarity(keyword, tag.id);
+  private async findSimilarTags(keyword: string): Promise<TagBlock[]> {
+    const allTagBlocks = await this.codeFirstParser.scanDirectory(this.projectRoot);
+    return allTagBlocks.filter(block => {
+      const similarity = this.calculateSimilarity(keyword, block.tag);
       return similarity > 0.3;
     });
   }
@@ -520,27 +492,30 @@ export class TagAgentCore {
    */
   private calculateSimilarity(str1: string, str2: string): number {
     const matrix: number[][] = Array(str2.length + 1)
-      .fill(null)
-      .map(() => Array(str1.length + 1).fill(null));
+      .fill(0)
+      .map(() => Array(str1.length + 1).fill(0));
 
-    for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
-    for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
+    for (let i = 0; i <= str1.length; i++) matrix[0]![i] = i;
+    for (let j = 0; j <= str2.length; j++) matrix[j]![0] = j;
 
     for (let j = 1; j <= str2.length; j++) {
       for (let i = 1; i <= str1.length; i++) {
         const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
-        matrix[j][i] = Math.min(
-          matrix[j][i - 1] + 1, // insertion
-          matrix[j - 1][i] + 1, // deletion
-          matrix[j - 1][i - 1] + indicator // substitution
+        const row = matrix[j]!;
+        const prevRow = matrix[j - 1]!;
+        row[i] = Math.min(
+          row[i - 1]! + 1, // insertion
+          prevRow[i]! + 1, // deletion
+          prevRow[i - 1]! + indicator // substitution
         );
       }
     }
 
     const maxLength = Math.max(str1.length, str2.length);
+    const lastRow = matrix[str2.length]!;
     return maxLength === 0
       ? 1
-      : (maxLength - matrix[str2.length][str1.length]) / maxLength;
+      : (maxLength - lastRow[str1.length]!) / maxLength;
   }
 
   /**
@@ -552,13 +527,22 @@ export class TagAgentCore {
   }
 
   /**
-   * 다음 사용 가능한 ID 찾기
+   * 다음 사용 가능한 ID 찾기 (CODE-FIRST)
    */
   private async getNextAvailableId(baseId: string): Promise<string> {
+    const allTagBlocks = await this.codeFirstParser.scanDirectory(this.projectRoot);
+    const existingIds = new Set<string>();
+
+    // 모든 TAG에서 도메인 ID 추출
+    for (const block of allTagBlocks) {
+      existingIds.add(block.domainId);
+    }
+
+    // 다음 사용 가능한 ID 찾기
     let counter = 1;
     let candidateId = `${baseId}-${counter.toString().padStart(3, '0')}`;
 
-    while (await this.tagManager.getTag(`@REQ:${candidateId}`)) {
+    while (existingIds.has(candidateId)) {
       counter++;
       candidateId = `${baseId}-${counter.toString().padStart(3, '0')}`;
     }
@@ -567,167 +551,29 @@ export class TagAgentCore {
   }
 
   /**
-   * TAG 체인 검증
+   * TAG 체인 검증 (CODE-FIRST)
    */
-  private async validateTagChain(tags: string[]): Promise<TagValidationResult> {
-    const errors: string[] = [];
-    const warnings: string[] = [];
-
-    // Primary Chain 순서 검증
-    const _expectedOrder = ['REQ', 'DESIGN', 'TASK', 'TEST'];
-    for (let i = 0; i < tags.length - 1; i++) {
-      const current = await this.tagManager.getTag(tags[i]);
-      const next = await this.tagManager.getTag(tags[i + 1]);
-
-      if (!current || !next) {
-        errors.push(`Missing TAG in chain: ${tags[i]} -> ${tags[i + 1]}`);
-        continue;
-      }
-
-      if (!current.children.includes(next.id)) {
-        errors.push(`Broken chain link: ${current.id} -> ${next.id}`);
-      }
-    }
-
+  private async validateTagChain(_tags: string[]): Promise<TagValidationResult> {
+    // NOTE: CODE-FIRST 방식에서는 체인 검증이 validateTagSystem에서 처리됨
     return {
-      isValid: errors.length === 0,
-      errors,
-      warnings,
+      isValid: true,
+      errors: [],
+      warnings: ['Use validateTagSystem() for comprehensive validation'],
     };
   }
 
   /**
-   * 분산 인덱스 업데이트
+   * @deprecated 인덱스 불필요 - 코드 직접 스캔 방식으로 전환
    */
-  private async updateDistributedIndexes(tags?: string[]): Promise<void> {
-    // JSONL 인덱스 업데이트 로직
-    // 실제 구현은 기존 tag-system의 분산 구조를 활용
-    await this.ensureIndexDirectories();
-
-    if (tags) {
-      // 특정 TAG들에 대한 인덱스 업데이트
-      for (const tagId of tags) {
-        const tag = await this.tagManager.getTag(tagId);
-        if (tag) {
-          await this.writeTagToDistributedIndex(tag);
-        }
-      }
-    } else {
-      // 전체 인덱스 재구축
-      await this.rebuildDistributedIndexes();
-    }
+  private async updateDistributedIndexes(_tags?: string[]): Promise<void> {
+    // NO-OP: 인덱스 불필요
   }
 
   /**
-   * 인덱스 디렉터리 보장
-   */
-  private async ensureIndexDirectories(): Promise<void> {
-    const dirs = [
-      join(this.indexesPath, 'categories'),
-      join(this.indexesPath, 'relations'),
-      join(this.indexesPath, 'cache'),
-    ];
-
-    for (const dir of dirs) {
-      try {
-        await fs.mkdir(dir, { recursive: true });
-      } catch (_error) {
-        // 이미 존재하는 경우 무시
-      }
-    }
-  }
-
-  /**
-   * TAG를 분산 인덱스에 기록
-   */
-  private async writeTagToDistributedIndex(tag: TagEntry): Promise<void> {
-    const categoryFile = join(
-      this.indexesPath,
-      'categories',
-      `${tag.type.toLowerCase()}.jsonl`
-    );
-    const indexEntry = {
-      tag: tag.id,
-      type: tag.type.toLowerCase(),
-      description: tag.description || tag.title,
-      created: new Date().toISOString().split('T')[0],
-      status: tag.status,
-    };
-
-    // JSONL 형식으로 추가
-    await fs.appendFile(categoryFile, `${JSON.stringify(indexEntry)}\n`);
-  }
-
-  /**
-   * 분산 인덱스 재구축
+   * @deprecated 인덱스 불필요 - 코드 직접 스캔 방식으로 전환
    */
   private async rebuildDistributedIndexes(): Promise<void> {
-    // 기존 인덱스 파일들 삭제
-    const categories = [
-      'req',
-      'design',
-      'task',
-      'test',
-      'feature',
-      'api',
-      'ui',
-      'data',
-      'perf',
-      'sec',
-      'docs',
-      'tag',
-    ];
-
-    for (const category of categories) {
-      const categoryFile = join(
-        this.indexesPath,
-        'categories',
-        `${category}.jsonl`
-      );
-      try {
-        await fs.unlink(categoryFile);
-      } catch {
-        // 파일이 없는 경우 무시
-      }
-    }
-
-    // 모든 TAG를 다시 인덱싱
-    const allTags = (await this.tagManager.search({})).tags;
-    for (const tag of allTags) {
-      await this.writeTagToDistributedIndex(tag);
-    }
-  }
-
-  /**
-   * 인덱스 크기 계산
-   *
-   * NOTE: [v0.0.3+] tags.json 제외, 코드 스캔 기반으로 전환
-   */
-  private async getIndexSize(): Promise<number> {
-    let totalSize = 0;
-
-    try {
-      // NOTE: 메인 인덱스 파일(tags.json) 제거 - 코드 직접 스캔으로 전환
-      // const mainIndexPath = join(this.indexesPath, 'tags.json');
-      // const mainStat = await fs.stat(mainIndexPath);
-      // totalSize += mainStat.size;
-
-      // 분산 인덱스 파일들
-      const categoriesDir = join(this.indexesPath, 'categories');
-      const categoryFiles = await fs.readdir(categoriesDir);
-
-      for (const file of categoryFiles) {
-        if (file.endsWith('.jsonl')) {
-          const filePath = join(categoriesDir, file);
-          const stat = await fs.stat(filePath);
-          totalSize += stat.size;
-        }
-      }
-    } catch {
-      // 파일이 없는 경우 0 반환
-    }
-
-    return totalSize;
+    // NO-OP: 인덱스 불필요
   }
 
   /**
@@ -782,7 +628,7 @@ export class TagAgentCore {
    */
   private extractDomain(tagId: string): string {
     const match = tagId.match(/@[A-Z]+:([A-Z0-9-]+)/);
-    return match ? match[1] : '';
+    return match?.[1] ?? '';
   }
 
   /**

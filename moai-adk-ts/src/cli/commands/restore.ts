@@ -7,6 +7,7 @@
 import * as path from 'node:path';
 import chalk from 'chalk';
 import * as fs from 'fs-extra';
+import { logger } from '../../utils/winston-logger.js';
 
 /**
  * Backup validation result
@@ -208,7 +209,7 @@ export class RestoreCommand {
     const validation = await this.validateBackupPath(backupPath);
 
     if (!validation.isValid) {
-      console.log(chalk.red(`❌ ${validation.error}`));
+      logger.info(chalk.red(`❌ ${validation.error}`));
       return {
         success: false,
         isDryRun: options.dryRun,
@@ -219,14 +220,14 @@ export class RestoreCommand {
 
     // Step 2: Show warning if backup is incomplete
     if (validation.warning) {
-      console.log(chalk.yellow(`⚠️  Warning: ${validation.warning}`));
+      logger.info(chalk.yellow(`⚠️  Warning: ${validation.warning}`));
     }
 
     // Step 3: Perform restore operation
     const currentDir = process.cwd();
 
     if (options.dryRun) {
-      console.log(chalk.cyan(`🔍 Dry run - would restore to: ${currentDir}`));
+      logger.info(chalk.cyan(`🔍 Dry run - would restore to: ${currentDir}`));
 
       // Show what would be restored
       for (const item of this.requiredItems) {
@@ -235,11 +236,11 @@ export class RestoreCommand {
         const exists = await fs.pathExists(sourcePath);
 
         if (exists) {
-          console.log(`  Would restore: ${sourcePath} → ${targetPath}`);
+          logger.info(`  Would restore: ${sourcePath} → ${targetPath}`);
         }
       }
     } else {
-      console.log(chalk.cyan(`🔄 Restoring backup to: ${currentDir}`));
+      logger.info(chalk.cyan(`🔄 Restoring backup to: ${currentDir}`));
     }
 
     // Step 4: Execute restore
@@ -248,19 +249,19 @@ export class RestoreCommand {
     // Step 5: Display results
     if (result.success) {
       if (options.dryRun) {
-        console.log(chalk.green(`✅ Dry run completed successfully`));
-        console.log(`  Would restore ${result.restoredItems.length} items`);
+        logger.info(chalk.green(`✅ Dry run completed successfully`));
+        logger.info(`  Would restore ${result.restoredItems.length} items`);
       } else {
-        console.log(chalk.green(`✅ Backup restored successfully`));
+        logger.info(chalk.green(`✅ Backup restored successfully`));
 
         // Show restored items
         for (const item of result.restoredItems) {
-          console.log(`  Restored: ${item}`);
+          logger.info(`  Restored: ${item}`);
         }
 
         // Show skipped items
         if (result.skippedItems && result.skippedItems.length > 0) {
-          console.log(
+          logger.info(
             chalk.yellow(
               `  Skipped ${result.skippedItems.length} existing items (use --force to overwrite)`
             )
@@ -268,7 +269,7 @@ export class RestoreCommand {
         }
       }
     } else {
-      console.log(chalk.red(`❌ Failed to restore backup: ${result.error}`));
+      logger.info(chalk.red(`❌ Failed to restore backup: ${result.error}`));
     }
 
     return result;

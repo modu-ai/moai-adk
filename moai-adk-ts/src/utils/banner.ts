@@ -6,6 +6,7 @@
 
 import chalk from 'chalk';
 import { getCurrentVersion } from './version';
+import { logger } from './/winston-logger.js';
 
 /**
  * Check if terminal supports color output
@@ -15,8 +16,8 @@ import { getCurrentVersion } from './version';
 function supportsColor(): boolean {
   return (
     process.stdout.isTTY &&
-    process.env.TERM !== 'dumb' &&
-    process.env.NO_COLOR === undefined
+    process.env['TERM'] !== 'dumb' &&
+    process.env['NO_COLOR'] === undefined
   );
 }
 
@@ -132,7 +133,7 @@ export function createBanner(
 export function printBanner(
   options: { version?: string; showUsage?: boolean } = {}
 ): void {
-  console.log(createBanner(options));
+  logger.info(createBanner(options));
 }
 
 /**
