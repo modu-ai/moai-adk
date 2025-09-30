@@ -221,8 +221,8 @@ my-project/
 │   ├── specs/                      # SPEC 문서 저장소
 │   │   └── .gitkeep               # Git tracking
 │   │
-│   ├── indexes/                    # TAG 인덱스 (JSON)
-│   │   └── tags.json              # TAG 추적성 데이터
+│   # TAG는 소스코드에만 존재 (CODE-FIRST)
+│   # 별도의 tags/ 폴더 불필요 - 코드 직접 스캔
 │   │
 │   ├── project/                    # 프로젝트 메타데이터
 │   │   ├── product.md             # 제품 정의 (EARS)
@@ -288,7 +288,7 @@ my-project/
 - ✅ 6개 핵심 훅
 - ✅ 3개 출력 스타일
 - ✅ TRUST 5원칙 개발 가이드
-- ✅ TAG 시스템 (JSON 기반)
+- ✅ TAG 시스템 (CODE-FIRST, 소스코드 기반)
 - ✅ 프로젝트 메타데이터 템플릿
 
 **장점**:

@@ -395,7 +395,7 @@ CI/CD에서 `moai status`를 사용하면 다음과 같은 이점이 있습니�
 - `.moai/memory/`: 개발 가이드, 프로젝트 정의
 - `.moai/project/`: product.md, structure.md, tech.md
 - `.moai/scripts/`: 자동화 스크립트
-- `.moai/indexes/`: TAG 인덱스
+- TAG 시스템: 소스코드에만 존재 (CODE-FIRST, `rg '@TAG'` 명령으로 검색)
 - `.moai/version.json`: 템플릿 버전 정보
 
 **Claude Integration (`.claude/`)**: Claude Code와의 통합을 위한 디렉토리입니다. 다음 요소를 포함합니다:

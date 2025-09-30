@@ -1234,7 +1234,7 @@ Summary: 3/4 primary tags validated, 1 orphaned tag
 **자동 생성 문서**:
 - `.moai/reports/sync-report.md`: 동기화 상태 리포트
 - `docs/api/`: API 문서 (코드 주석에서 추출)
-- `.moai/indexes/tags.json`: TAG 인덱스 (검색용)
+- 코드 직접 스캔: CODE-FIRST 방식 (별도 인덱스 파일 없음)
 
 **sync-report.md 예시**:
 ```markdown

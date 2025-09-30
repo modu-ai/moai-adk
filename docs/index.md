@@ -2,9 +2,9 @@
 layout: home
 
 hero:
-  name: "🗿 MoAI-ADK"
-  text: "SPEC 우선 TDD 개발 도구"
-  tagline: TypeScript 기반 범용 언어 지원 개발 툴킷
+  name: "MoAI-ADK"
+  text: "모두의 ADK / Agentic Development Kit"
+  tagline: Claude Code 기반 범용 언어 지원 개발 툴킷
   actions:
     - theme: brand
       text: 시작하기
@@ -17,22 +17,34 @@ hero:
     alt: MoAI-ADK
 
 features:
-  - icon: 📝
+  - icon:
+      src: /icons/spec.svg
+      alt: SPEC
     title: SPEC 우선 개발
     details: 코드보다 명세를 먼저 작성합니다. 모든 구현은 EARS 방법론을 사용한 명확한 요구사항으로 시작합니다.
-  - icon: 🧪
+  - icon:
+      src: /icons/test.svg
+      alt: Test
     title: 테스트 주도 개발
     details: Red-Green-Refactor 사이클 강제 적용. 테스트 없이는 구현 없음. 92.9% 테스트 성공률 (Vitest).
-  - icon: 🏷️
-    title: "TAG 추적성 시스템"
-    details: 요구사항부터 구현까지 완전한 추적성 제공. JSON 기반 분산 TAG 시스템으로 94% 최적화 달성.
-  - icon: 🌍
+  - icon:
+      src: /icons/tag.svg
+      alt: TAG
+    title: TAG 추적성 시스템
+    details: 요구사항부터 구현까지 완전한 추적성 제공. CODE-FIRST 방식으로 소스코드 기반 TAG 시스템.
+  - icon:
+      src: /icons/language.svg
+      alt: Languages
     title: 범용 언어 지원
     details: TypeScript, Python, Java, Go, Rust 등 지원. 지능형 언어 감지 및 자동 도구 매핑.
-  - icon: ⚡
+  - icon:
+      src: /icons/performance.svg
+      alt: Performance
     title: 초고속 성능
     details: Bun으로 98% 빠른 패키지 관리. 빌드 182ms, TAG 로딩 < 50ms. Biome 94.8% 성능 향상.
-  - icon: 🤖
+  - icon:
+      src: /icons/claude.svg
+      alt: Claude
     title: Claude Code 완전 통합
     details: Claude Code 네이티브 통합. 7개 전문 에이전트, 5개 워크플로우 명령어, 8개 이벤트 훅.
 ---

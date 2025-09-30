@@ -516,13 +516,11 @@ MigrationFramework가 버전별 마이그레이션 스크립트를 실행합니�
 ```typescript
 // migrations/v0.0.0-to-v0.0.1.ts
 export async function migrate(projectPath: string): Promise<void> {
-  // 1. 파일 구조 변경
-  await fs.move(
-    path.join(projectPath, '.moai/tags.json'),
-    path.join(projectPath, '.moai/indexes/tags.json')
-  );
+  // NOTE: v0.0.3+ TAG 시스템은 CODE-FIRST 방식
+  // - TAG 인덱스 파일 불필요 (소스코드가 단일 진실 소스)
+  // - 검색: rg '@TAG' -n 명령으로 코드 직접 스캔
 
-  // 2. 설정 형식 변환
+  // 설정 형식 변환
   const config = await fs.readJson(path.join(projectPath, '.moai/config.json'));
   config.version = '2';
   await fs.writeJson(path.join(projectPath, '.moai/config.json'), config);

@@ -25,6 +25,36 @@ graph LR
 2. **테스트 주도 (Test-Driven)**: Red-Green-Refactor 사이클 엄수
 3. **완전 추적성 (Full Traceability)**: 8-Core @TAG 시스템으로 요구사항부터 구현까지 추적
 
+## TDD Red-Green-Refactor 사이클
+
+```mermaid
+graph TD
+    A[RED<br/>실패하는 테스트 작성] --> B{테스트<br/>실패?}
+    B -->|Yes| C[GREEN<br/>최소 구현]
+    B -->|No| A
+    C --> D{테스트<br/>통과?}
+    D -->|No| C
+    D -->|Yes| E[REFACTOR<br/>코드 개선]
+    E --> F{테스트<br/>통과?}
+    F -->|No| E
+    F -->|Yes| G[커밋]
+    G --> H[다음 기능]
+    H --> A
+
+    style A fill:#ff6b6b
+    style C fill:#51cf66
+    style E fill:#339af0
+    style G fill:#fab005
+```
+
+### TDD 사이클 단계별 설명
+
+1. **RED (🔴 실패하는 테스트)**: SPEC 요구사항에 기반한 테스트를 먼저 작성하고 실패를 확인
+2. **GREEN (🟢 최소 구현)**: 테스트를 통과하는 최소한의 코드만 작성
+3. **REFACTOR (🔵 리팩토링)**: 테스트를 유지하면서 코드 품질 개선
+4. **COMMIT (🟡 커밋)**: 변경사항을 버전 관리 시스템에 저장
+5. **다음 기능**: 다음 SPEC 요구사항으로 사이클 반복
+
 ## EARS 방법론 심화
 
 EARS (Easy Approach to Requirements Syntax)는 체계적인 요구사항 작성을 위한 방법론입니다. 5가지 구문 형식을 제공합니다.

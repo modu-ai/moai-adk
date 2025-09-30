@@ -35,7 +35,7 @@ import {
   unref,
   watch,
   watchEffect
-} from "./chunk-Q5X63IKG.js";
+} from "./chunk-QAXAIFA7.js";
 
 // node_modules/@vueuse/shared/index.mjs
 function computedEager(fn, options) {
@@ -1660,7 +1660,7 @@ function createReusableTemplate(options = {}) {
     setup(props, { attrs, slots }) {
       return () => {
         var _a;
-        if (!render.value && false)
+        if (!render.value && true)
           throw new Error("[VueUse] Failed to find the definition of reusable template");
         const vnode = (_a = render.value) == null ? void 0 : _a.call(render, {
           ...options.props == null ? keysToCamelKebabCase(attrs) : props,
@@ -9716,4 +9716,4 @@ export {
   useWindowScroll,
   useWindowSize
 };
-//# sourceMappingURL=chunk-Q27XT5IU.js.map
+//# sourceMappingURL=chunk-Q2AYPHVK.js.map

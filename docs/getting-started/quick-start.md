@@ -151,7 +151,7 @@ moai init
    │   ├── config.json          # 프로젝트 설정
    │   ├── memory/              # 개발 가이드라인
    │   ├── specs/               # SPEC 문서 저장소
-   │   ├── indexes/             # TAG 인덱스 (JSON)
+   │   # TAG는 소스코드에만 존재 (CODE-FIRST)
    │   └── project/             # 프로젝트 메타데이터
    │       ├── product.md       # 제품 정의
    │       ├── structure.md     # 구조 설계
@@ -395,9 +395,9 @@ code-builder 에이전트가 TRUST 5원칙을 자동으로 검증하여 코드 �
    - `.moai/project/` 문서 동기화
    - API 문서 자동 생성 (TypeDoc, Sphinx 등)
 
-4. **TAG 인덱스 갱신**
-   ```json
-   // .moai/indexes/tags.json
+4. **TAG 코드 스캔 (CODE-FIRST)**
+   ```typescript
+   // 코드에서 직접 @TAG 추출 (인덱스 파일 없음)
    {
      "version": "4.0",
      "lastUpdated": "2025-01-15T10:30:00Z",

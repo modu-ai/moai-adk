@@ -6,6 +6,16 @@ export default defineConfig({
   lang: 'ko-KR',
   ignoreDeadLinks: true,
 
+  // Mermaid diagram support
+  markdown: {
+    config: (md) => {
+      // Mermaid is natively supported in VitePress v1.6.4+
+    }
+  },
+
+  // Enable Mermaid rendering
+  mermaid: {},
+
   themeConfig: {
     logo: '/logo.svg',
 
@@ -175,7 +185,7 @@ export default defineConfig({
     },
 
     editLink: {
-      pattern: 'https://github.com/modu-ai/moai-adk/edit/main/moai-adk-ts/docs/:path',
+      pattern: 'https://github.com/modu-ai/moai-adk/edit/main/docs/:path',
       text: 'GitHub에서 이 페이지 편집하기'
     }
   },
