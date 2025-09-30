@@ -1,11 +1,11 @@
 ---
 title: Claude Code 에이전트 가이드
-description: 7개 전문 에이전트 활용법
+description: 8개 전문 에이전트 활용법
 ---
 
 # Claude Code 에이전트 가이드
 
-MoAI-ADK는 SPEC-First TDD 개발을 자동화하는 **7개 전문 에이전트**를 제공합니다. 각 에이전트는 특정 역할에 전문화되어 있으며, 3단계 워크플로우를 지원합니다.
+MoAI-ADK는 SPEC-First TDD 개발을 자동화하는 **8개 전문 에이전트**를 제공합니다. 각 에이전트는 특정 역할에 전문화되어 있으며, 3단계 워크플로우를 지원합니다.
 
 ## 에이전트 개요
 
@@ -16,6 +16,7 @@ MoAI-ADK는 SPEC-First TDD 개발을 자동화하는 **7개 전문 에이전트*
 | **spec-builder** | SPEC 작성 | EARS 요구사항 생성 | 사용자 확인 후 브랜치 |
 | **code-builder** | TDD 구현 | Red-Green-Refactor | 자동 (범용 언어) |
 | **doc-syncer** | 문서 동기화 | TAG 검증, PR 전환 | 사용자 확인 후 머지 |
+| **tag-agent** | TAG 시스템 관리 | TAG 스캔/검증/무결성 | 자동 (코드 스캔) |
 | **cc-manager** | Claude Code 설정 | 권한 최적화 | 자동 |
 | **debug-helper** | 디버깅 지원 | 시스템 진단 | 온디맨드 |
 | **git-manager** | Git 작업 | 브랜치/커밋/머지 | 사용자 확인 필수 |
@@ -30,6 +31,7 @@ MoAI-ADK는 SPEC-First TDD 개발을 자동화하는 **7개 전문 에이전트*
 # 예시
 @agent-spec-builder "사용자 인증 기능 SPEC 작성"
 @agent-code-builder "SPEC-001 구현 계획 수립"
+@agent-tag-agent "코드 전체 스캔하여 TAG 검증해주세요"
 @agent-debug-helper "TypeError 오류 분석"
 ```
 
@@ -175,11 +177,10 @@ SPEC 작성 완료 후:
 4. AuthService 구현
 5. 통합 테스트
 
-### 예상 소요 시간
-- RED: 30분
-- GREEN: 1시간
-- REFACTOR: 30분
-총: 2시간
+### 우선순위
+- 1차 목표: 핵심 인증 로직
+- 2차 목표: 토큰 검증
+- 최종 목표: 통합 테스트
 
 승인하시겠습니까? (y/n)
 ```
@@ -362,7 +363,110 @@ export class AuthService {
 @agent-doc-syncer "TAG 체인 검증만 수행"
 ```
 
-## 4. cc-manager
+## 4. tag-agent
+
+### 역할
+
+**TAG 시스템 독점 관리**
+
+- 코드 기반 TAG 실시간 스캔
+- TAG 무결성 검증
+- TAG 체인 관리
+
+### 주요 기능
+
+#### 1. 코드 전체 스캔
+
+```bash
+@agent-tag-agent "코드 전체 스캔하여 TAG 검증"
+```
+
+스캔 결과:
+
+```
+✓ TAG 스캔 완료
+  - 총 TAG: 149개
+  - 파일: 122개
+  - 스캔 시간: 45ms
+
+✓ Primary Chain 검증
+  - 완결 체인: 32개
+  - 불완전 체인: 2개
+  - 고아 TAG: 0개
+```
+
+#### 2. TAG 재사용 제안
+
+```bash
+@agent-tag-agent "LOGIN 기능 관련 기존 TAG 찾아서 재사용 제안"
+```
+
+재사용 제안:
+
+```markdown
+## 기존 TAG 재사용 제안
+
+### 유사 TAG 발견
+- @REQ:AUTH-001: 사용자 인증 요구사항
+- @TASK:AUTH-001: 인증 로직 구현
+
+### 재사용 권장
+기존 AUTH-001 체인을 확장하여 LOGIN 기능을 추가하는 것을 권장합니다.
+
+### 새 TAG 필요 시
+@FEATURE:LOGIN-001 생성을 권장합니다.
+```
+
+#### 3. TAG 무결성 검사
+
+```bash
+@agent-tag-agent "프로젝트 TAG 체인 무결성 검사"
+```
+
+무결성 리포트:
+
+```markdown
+# TAG 무결성 리포트
+
+## 체인 완전성: 94%
+
+### 완결된 체인 (32개)
+✅ AUTH-001: @REQ → @DESIGN → @TASK → @TEST
+✅ PAYMENT-002: @REQ → @DESIGN → @TASK → @TEST
+
+### 불완전한 체인 (2개)
+⚠️ NOTIFICATION-004: @TEST 누락
+⚠️ REPORT-005: @DESIGN 누락
+
+### 고아 TAG (0개)
+
+### 중복 TAG (0개)
+```
+
+### 핵심 원칙
+
+**TAG의 진실은 코드 자체에만 존재합니다:**
+- TAG INDEX 파일 미사용
+- 정규식 패턴으로 코드 직접 스캔
+- 실시간 검증 및 추적성 보장
+
+### 사용 예시
+
+```bash
+# 코드 스캔 및 검증
+@agent-tag-agent "코드 전체 스캔하여 TAG 검증 및 통계 보고"
+
+# 재사용 제안
+@agent-tag-agent "PAYMENT 도메인 관련 기존 TAG 검색"
+
+# 무결성 검사
+@agent-tag-agent "TAG 체인 무결성 검사"
+
+# 새 TAG 생성
+@agent-tag-agent "PERFORMANCE 도메인 새 TAG 생성"
+```
+
+## 5. cc-manager
 
 ### 역할
 
@@ -416,7 +520,7 @@ export class AuthService {
 @agent-cc-manager "pre-write-guard 훅 활성화"
 ```
 
-## 5. debug-helper
+## 6. debug-helper
 
 ### 역할
 
@@ -533,7 +637,7 @@ TRUST 5원칙 검증:
 - TAG 체인 완결성 개선
 ```
 
-## 6. git-manager
+## 7. git-manager
 
 ### 역할
 
@@ -587,7 +691,7 @@ Pull Request를 생성하시겠습니까?
 진행하시겠습니까? (y/n)
 ```
 
-## 7. trust-checker
+## 8. trust-checker
 
 ### 역할
 
@@ -672,6 +776,19 @@ Pull Request를 생성하시겠습니까?
 
 # 검증
 @agent-trust-checker "품질 검증"
+```
+
+### TAG 시스템 활용
+
+```bash
+# TAG 검증
+@agent-tag-agent "코드 전체 스캔하여 TAG 검증"
+
+# TAG 재사용
+@agent-tag-agent "LOGIN 기능 관련 기존 TAG 찾기"
+
+# 무결성 검사
+@agent-tag-agent "TAG 체인 무결성 검사"
 ```
 
 ## 다음 단계

@@ -29,227 +29,262 @@ MoAI-ADK는 `.moai/config.json`과 `.claude/settings.json` 두 개의 주요 설
 
 ## .moai/config.json
 
-### 전체 구조
+### 전체 구조 (v0.0.1)
 
 ```json
 {
-  "version": "0.0.1",
-  "name": "my-project",
-  "description": "A my-project project built with MoAI-ADK",
-  "mode": "personal",
-  "features": {
-    "specFirst": true,
-    "tddEnforced": true,
-    "tagTracking": true,
-    "autoSync": false
+  "_meta": {
+    "@DATA:CONFIG-STRUCTURE-001": "@TECH:JSON-CONFIG-001",
+    "@REQ:PROJECT-CONFIG-001": "@DESIGN:MOAI-CONFIG-001"
   },
-  "backup": {
-    "enabled": true,
-    "path": ".moai/backups",
-    "retention": 7,
-    "autoBackup": true,
-    "beforeCommit": true,
-    "compress": true
+  "constitution": {
+    "enforce_tdd": true,
+    "principles": {
+      "simplicity": {
+        "max_projects": 5,
+        "notes": "기본 권장값. 프로젝트 규모에 따라 .moai/config.json 또는 SPEC/ADR로 근거와 함께 조정하세요."
+      }
+    },
+    "require_tags": true,
+    "simplicity_threshold": 5,
+    "test_coverage_target": 85
   },
-  "git": {
-    "defaultBranch": "main",
-    "developBranch": "develop",
-    "featurePrefix": "feature/",
-    "requireApproval": true,
-    "autoCommit": false
-  },
-  "quality": {
-    "testCoverage": 85,
-    "trustScore": 82,
-    "enforceChecks": true,
-    "blockCommitOnFailure": true
-  },
-  "hooks": {
-    "enabled": true,
-    "fileMonitor": true,
-    "languageDetector": true,
-    "policyBlock": true,
-    "preWriteGuard": true,
-    "runTestsAndReport": {
-      "enabled": true,
-      "autoTest": false,
-      "onSave": false,
-      "onCommit": true
+  "git_strategy": {
+    "personal": {
+      "auto_checkpoint": true,
+      "auto_commit": true,
+      "branch_prefix": "feature/",
+      "checkpoint_interval": 300,
+      "cleanup_days": 7,
+      "max_checkpoints": 50
+    },
+    "team": {
+      "auto_pr": true,
+      "develop_branch": "develop",
+      "draft_pr": true,
+      "feature_prefix": "feature/SPEC-",
+      "main_branch": "main",
+      "use_gitflow": true
     }
   },
-  "logging": {
-    "level": "info",
-    "path": ".moai/logs",
-    "maxFiles": 7,
-    "maxSize": "10m"
+  "pipeline": {
+    "available_commands": [
+      "/moai:1-spec",
+      "/moai:2-build",
+      "/moai:3-sync",
+      "/moai:4-debug"
+    ],
+    "current_stage": "initialized"
+  },
+  "project": {
+    "created_at": "{{CREATION_TIMESTAMP}}",
+    "description": "{{PROJECT_DESCRIPTION}}",
+    "initialized": true,
+    "mode": "{{PROJECT_MODE}}",
+    "name": "{{PROJECT_NAME}}",
+    "version": "{{PROJECT_VERSION}}"
+  },
+  "tags": {
+    "auto_sync": true,
+    "storage_type": "code_scan",
+    "categories": [
+      "REQ",
+      "DESIGN",
+      "TASK",
+      "TEST",
+      "FEATURE",
+      "API",
+      "UI",
+      "DATA"
+    ],
+    "code_scan_policy": {
+      "no_intermediate_cache": true,
+      "realtime_validation": true,
+      "scan_tools": ["rg", "grep"],
+      "scan_command": "rg '@TAG' -n",
+      "philosophy": "TAG의 진실은 코드 자체에만 존재"
+    }
   }
 }
 ```
 
 ### 섹션별 상세 설명
 
-#### 1. 기본 정보
+#### 1. 메타데이터 (_meta)
 
 ```json
 {
-  "version": "0.0.1",           // MoAI-ADK 버전
-  "name": "my-project",         // 프로젝트 이름
-  "description": "...",         // 프로젝트 설명
-  "mode": "personal"            // "personal" | "team"
+  "_meta": {
+    "@DATA:CONFIG-STRUCTURE-001": "@TECH:JSON-CONFIG-001",
+    "@REQ:PROJECT-CONFIG-001": "@DESIGN:MOAI-CONFIG-001"
+  }
 }
 ```
 
-**mode 옵션**:
+**설명**: 설정 파일 자체의 @TAG 추적성을 위한 메타데이터
 
-- **`personal`**: 로컬 개발, `.moai/specs/`에 SPEC 저장
-- **`team`**: GitHub Issues 통합, PR 자동화
-
-#### 2. 기능 설정
+#### 2. 헌법 (constitution)
 
 ```json
 {
-  "features": {
-    "specFirst": true,          // SPEC-First 강제
-    "tddEnforced": true,        // TDD 사이클 강제
-    "tagTracking": true,        // @TAG 시스템 활성화
-    "autoSync": false           // 자동 문서 동기화
+  "constitution": {
+    "enforce_tdd": true,                     // TDD 사이클 강제
+    "principles": {
+      "simplicity": {
+        "max_projects": 5,
+        "notes": "기본 권장값. 프로젝트 규모에 따라 조정 가능"
+      }
+    },
+    "require_tags": true,                    // @TAG 시스템 필수
+    "simplicity_threshold": 5,               // 복잡도 임계값
+    "test_coverage_target": 85               // 최소 커버리지 (%)
   }
 }
 ```
 
 **옵션 설명**:
 
-- **`specFirst`**: `true`면 SPEC 없이 `/moai:2-build` 실행 불가
-- **`tddEnforced`**: `true`면 테스트 실패 시 커밋 차단
-- **`tagTracking`**: `true`면 TAG BLOCK 없는 파일 경고
-- **`autoSync`**: `true`면 코드 변경 시 자동으로 `/moai:3-sync` 실행
+- **`enforce_tdd`**: `true`면 테스트 실패 시 커밋 차단
+- **`require_tags`**: `true`면 TAG BLOCK 없는 파일 경고
+- **`simplicity_threshold`**: 모듈/함수 복잡도 기준값
+- **`test_coverage_target`**: 최소 테스트 커버리지 목표
 
-#### 3. 백업 설정
+#### 3. Git 전략 (git_strategy)
+
+##### Personal 모드
 
 ```json
 {
-  "backup": {
-    "enabled": true,            // 백업 시스템 활성화
-    "path": ".moai/backups",    // 백업 저장 경로
-    "retention": 7,             // 보관 기간 (일)
-    "autoBackup": true,         // 파일 변경 시 자동 백업
-    "beforeCommit": true,       // 커밋 전 백업
-    "compress": true            // 백업 압축
+  "personal": {
+    "auto_checkpoint": true,                 // 자동 체크포인트
+    "auto_commit": true,                     // 자동 커밋
+    "branch_prefix": "feature/",             // 브랜치 접두사
+    "checkpoint_interval": 300,              // 체크포인트 간격 (초)
+    "cleanup_days": 7,                       // 정리 주기 (일)
+    "max_checkpoints": 50                    // 최대 체크포인트 수
   }
 }
 ```
 
-**백업 전략**:
+**Personal 모드 특징**:
+- 로컬 개발 중심
+- `.moai/specs/`에 SPEC 저장
+- 자동 체크포인트/커밋
+- GitHub 통합 없음
 
-```bash
-# 백업 생성 시점
-- 파일 수정 전 (autoBackup: true)
-- Git 커밋 전 (beforeCommit: true)
-- 수동: moai restore --create-backup
-
-# 백업 파일 형식
-{filename}.{timestamp}.bak
-
-# 예시
-service.ts → service.ts.20240115-143045.bak
-```
-
-#### 4. Git 설정
+##### Team 모드
 
 ```json
 {
-  "git": {
-    "defaultBranch": "main",     // 메인 브랜치
-    "developBranch": "develop",  // 개발 브랜치
-    "featurePrefix": "feature/", // 기능 브랜치 접두사
-    "requireApproval": true,     // 브랜치 생성/머지 승인 필요
-    "autoCommit": false          // 자동 커밋 비활성화
+  "team": {
+    "auto_pr": true,                         // 자동 PR 생성
+    "develop_branch": "develop",             // 개발 브랜치
+    "draft_pr": true,                        // Draft PR로 생성
+    "feature_prefix": "feature/SPEC-",       // 기능 브랜치 접두사
+    "main_branch": "main",                   // 메인 브랜치
+    "use_gitflow": true                      // GitFlow 사용
   }
 }
 ```
+
+**Team 모드 특징**:
+- GitHub Issues 통합
+- PR 자동화
+- GitFlow 브랜치 전략
+- Draft PR → Ready for Review 전환
 
 **브랜치 전략**:
 
 ```bash
-# Feature 브랜치
-feature/spec-001-user-auth
+# Personal 모드
 feature/task-implement-login
+feature/fix-auth-bug
 
-# SPEC 브랜치
-feature/spec-{SPEC-ID}-{description}
+# Team 모드
+feature/SPEC-001-user-auth
+feature/SPEC-002-api-gateway
 
-# 머지 흐름
-feature/spec-001 → develop → main
+# 머지 흐름 (Team)
+feature/SPEC-001 → develop → main
 ```
 
-#### 5. 품질 게이트
+#### 4. 파이프라인 (pipeline)
 
 ```json
 {
-  "quality": {
-    "testCoverage": 85,          // 최소 테스트 커버리지 (%)
-    "trustScore": 82,            // 최소 TRUST 준수율 (%)
-    "enforceChecks": true,       // 품질 검사 강제
-    "blockCommitOnFailure": true // 실패 시 커밋 차단
+  "pipeline": {
+    "available_commands": [
+      "/moai:1-spec",
+      "/moai:2-build",
+      "/moai:3-sync",
+      "/moai:4-debug"
+    ],
+    "current_stage": "initialized"
   }
 }
 ```
 
-**품질 검증 시점**:
+**Stage 설명**:
+- `/moai:1-spec`: SPEC 작성 (EARS 방식)
+- `/moai:2-build`: TDD 구현 (RED→GREEN→REFACTOR)
+- `/moai:3-sync`: 문서 동기화 (PR 상태 전환)
+- `/moai:4-debug`: 디버깅 및 검증 (온디맨드)
 
-```bash
-# Git 커밋 전
-- 테스트 커버리지 확인
-- TRUST 준수율 계산
-- TAG 체인 검증
-
-# 실패 시
-✗ Commit blocked: Test coverage 78% < 85%
-✗ Commit blocked: TRUST score 75% < 82%
-
-# 강제 커밋 (권장하지 않음)
-git commit --no-verify
-```
-
-#### 6. 훅 설정
+#### 5. 프로젝트 정보 (project)
 
 ```json
 {
-  "hooks": {
-    "enabled": true,             // 전체 훅 활성화
-    "fileMonitor": true,         // 파일 모니터링
-    "languageDetector": true,    // 언어 감지
-    "policyBlock": true,         // 정책 차단
-    "preWriteGuard": true,       // 쓰기 전 검증
-    "runTestsAndReport": {
-      "enabled": true,
-      "autoTest": false,         // 자동 테스트 비활성화
-      "onSave": false,
-      "onCommit": true           // 커밋 전 테스트
+  "project": {
+    "created_at": "2025-09-30T12:00:00Z",    // 생성 시간
+    "description": "A TypeScript project",    // 프로젝트 설명
+    "initialized": true,                      // 초기화 여부
+    "mode": "personal",                       // personal | team
+    "name": "my-project",                     // 프로젝트 이름
+    "version": "0.1.0"                        // 버전
+  }
+}
+```
+
+#### 6. TAG 시스템 (tags)
+
+```json
+{
+  "tags": {
+    "auto_sync": true,                       // 자동 TAG 동기화
+    "storage_type": "code_scan",             // 저장소 타입
+    "categories": [
+      "REQ",                                 // 요구사항
+      "DESIGN",                              // 설계
+      "TASK",                                // 작업
+      "TEST",                                // 테스트
+      "FEATURE",                             // 기능 구현
+      "API",                                 // API 엔드포인트
+      "UI",                                  // UI 컴포넌트
+      "DATA"                                 // 데이터 타입
+    ],
+    "code_scan_policy": {
+      "no_intermediate_cache": true,         // 중간 캐시 없음
+      "realtime_validation": true,           // 실시간 검증
+      "scan_tools": ["rg", "grep"],          // 스캔 도구
+      "scan_command": "rg '@TAG' -n",        // 스캔 명령어
+      "philosophy": "TAG의 진실은 코드 자체에만 존재"
     }
   }
 }
 ```
 
-#### 7. 로깅 설정
+**8-Core @TAG 체계**:
 
-```json
-{
-  "logging": {
-    "level": "info",             // "debug" | "info" | "warn" | "error"
-    "path": ".moai/logs",        // 로그 저장 경로
-    "maxFiles": 7,               // 최대 파일 수
-    "maxSize": "10m"             // 최대 파일 크기
-  }
-}
-```
+| 카테고리 | Core | 설명 | 필수 여부 |
+|----------|------|------|-----------|
+| Primary Chain | 4 Core | 요구 → 설계 → 작업 → 검증 | 필수 |
+| Implementation | 4 Core | Feature/API/UI/Data 구현 유형 | 필수 |
 
-**로그 레벨**:
-
-- **`debug`**: 모든 로그 (개발용)
-- **`info`**: 일반 정보 (기본값)
-- **`warn`**: 경고 이상
-- **`error`**: 오류만
+**CODE-FIRST 철학**:
+- TAG INDEX 파일 없음 (완전 제거)
+- 코드 직접 스캔 방식 (`rg '@TAG' -n`)
+- 실시간 검증
+- 중간 캐시 없음
 
 ## .claude/settings.json
 
@@ -269,7 +304,8 @@ git commit --no-verify
       "cc-manager": true,
       "debug-helper": true,
       "git-manager": true,
-      "trust-checker": true
+      "trust-checker": true,
+      "tag-agent": true
     }
   },
   "commands": {
@@ -309,21 +345,22 @@ git commit --no-verify
 
 ### 섹션별 상세 설명
 
-#### 1. 에이전트 설정
+#### 1. 에이전트 설정 (8개)
 
 ```json
 {
   "agents": {
-    "enabled": true,              // 전체 에이전트 활성화
-    "path": "agents/moai",        // 에이전트 경로
+    "enabled": true,
+    "path": "agents/moai",
     "individual": {
-      "spec-builder": true,       // 개별 에이전트 제어
-      "code-builder": true,
-      "doc-syncer": true,
-      "cc-manager": true,
-      "debug-helper": true,
-      "git-manager": true,
-      "trust-checker": true
+      "spec-builder": true,       // SPEC 작성 전담
+      "code-builder": true,       // TDD 구현 전담
+      "doc-syncer": true,         // 문서 동기화 전담
+      "cc-manager": true,         // Claude Code 설정 전담
+      "debug-helper": true,       // 오류 분석 전담
+      "git-manager": true,        // Git 작업 전담
+      "trust-checker": true,      // 품질 검증 전담
+      "tag-agent": true           // TAG 시스템 독점 관리
     }
   }
 }
@@ -340,7 +377,8 @@ git commit --no-verify
     "cc-manager": false,         // 비활성화
     "debug-helper": true,
     "git-manager": true,
-    "trust-checker": true
+    "trust-checker": true,
+    "tag-agent": true
   }
 }
 ```
@@ -371,21 +409,20 @@ git commit --no-verify
     "enabled": true,
     "path": "hooks/moai",
     "order": [
-      "session-notice",           // 실행 순서 정의
-      "language-detector",
-      "policy-block",
-      "pre-write-guard",
-      "file-monitor",
-      "steering-guard",
-      "run-tests-and-report",
-      "claude-code-monitor"
+      "session-notice",           // 세션 안내
+      "language-detector",        // 언어 감지
+      "policy-block",             // 정책 차단
+      "pre-write-guard",          // 쓰기 전 검증
+      "file-monitor",             // 파일 모니터링
+      "steering-guard",           // 방향 가드
+      "run-tests-and-report",     // 테스트 실행 및 보고
+      "claude-code-monitor"       // Claude Code 모니터링
     ]
   }
 }
 ```
 
 **훅 순서 중요성**:
-
 - `session-notice`: 가장 먼저 (사용자에게 안내)
 - `policy-block`: 초기 단계 (위험한 작업 차단)
 - `pre-write-guard`: 파일 쓰기 전 (검증 및 백업)
@@ -496,8 +533,8 @@ export MOAI_MIN_COVERAGE=85
 
 # 3. .moai/config.json
 {
-  "quality": {
-    "testCoverage": 82
+  "constitution": {
+    "test_coverage_target": 82
   }
 }
 
@@ -513,7 +550,7 @@ export MOAI_MIN_COVERAGE=85
 
 ```bash
 # 설정 파일 검증
-moai doctor --check-config
+moai doctor
 
 # 출력:
 ✓ Configuration Validation
@@ -523,7 +560,7 @@ moai doctor --check-config
   ✓ No conflicting settings
 
 # 설정 출력
-moai status --config
+moai status -v
 
 # 출력:
 Current Configuration:
@@ -540,18 +577,26 @@ Current Configuration:
 ```json
 // ❌ Bad: mode와 GitHub 설정 불일치
 {
-  "mode": "personal",
-  "github": {
-    "enabled": true         // personal 모드에서는 사용 불가
+  "project": {
+    "mode": "personal"
+  },
+  "git_strategy": {
+    "team": {
+      "auto_pr": true         // personal 모드에서는 사용 불가
+    }
   }
 }
 
 // ✅ Good
 {
-  "mode": "team",
-  "github": {
-    "owner": "username",
-    "repo": "project"
+  "project": {
+    "mode": "team"
+  },
+  "git_strategy": {
+    "team": {
+      "auto_pr": true,
+      "develop_branch": "develop"
+    }
   }
 }
 ```
@@ -583,57 +628,41 @@ Current Configuration:
 
 ### Personal → Team 모드 전환
 
-```json
-// Step 1: mode 변경
-{
-  "mode": "team"
-}
+```bash
+# 1. moai update 명령어로 전환
+moai update --mode team
 
-// Step 2: GitHub 설정 추가
+# 2. .moai/config.json 자동 업데이트
 {
-  "github": {
-    "owner": "your-username",
-    "repo": "your-project",
-    "enableIssues": true,
-    "enablePR": true,
-    "defaultLabels": ["moai-adk", "spec-first"]
+  "project": {
+    "mode": "team"
   }
 }
 
-// Step 3: 재초기화
-// moai update --mode team
+# 3. GitHub 통합 활성화
+# - GitHub Issues 연동
+# - PR 자동화
+# - Draft PR → Ready for Review
 ```
 
-### 커스텀 훅 경로
+### 언어별 도구 자동 감지
 
-```json
-{
-  "hooks": {
-    "enabled": true,
-    "path": "hooks/moai",
-    "customPath": ".custom-hooks"  // 추가 훅 경로
-  }
-}
-```
+MoAI-ADK는 프로젝트 언어를 자동으로 감지하여 최적의 도구를 선택합니다:
 
-### 언어별 설정
+| 언어 | 테스트 | 린터 | 포매터 |
+|------|--------|------|--------|
+| TypeScript | Vitest | Biome | Biome |
+| Python | pytest | ruff | black |
+| Java | JUnit | checkstyle | google-java-format |
+| Go | go test | golint | gofmt |
+| Rust | cargo test | clippy | rustfmt |
 
-```json
-{
-  "languages": {
-    "typescript": {
-      "testRunner": "vitest",
-      "linter": "biome",
-      "formatter": "biome"
-    },
-    "python": {
-      "testRunner": "pytest",
-      "linter": "ruff",
-      "formatter": "black"
-    }
-  }
-}
-```
+**언어 감지 우선순위**:
+1. `package.json` (TypeScript/JavaScript)
+2. `pyproject.toml` / `requirements.txt` (Python)
+3. `pom.xml` / `build.gradle` (Java)
+4. `go.mod` (Go)
+5. `Cargo.toml` (Rust)
 
 ## 다음 단계
 

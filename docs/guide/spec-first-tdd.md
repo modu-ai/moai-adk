@@ -371,8 +371,6 @@ interface Session {
 | Primary | @TEST:AUTH-001 | 인증 테스트 | tests/auth/service.test.ts |
 | Implementation | @FEATURE:AUTH-001 | 인증 서비스 | src/auth/service.ts |
 | Implementation | @API:AUTH-001 | 인증 API | src/auth/controller.ts |
-| Quality | @SEC:AUTH-001 | 보안 감사 | docs/security/auth.md |
-| Quality | @DOCS:AUTH-001 | API 문서 | docs/api/auth.md |
 ```
 
 ## 다중 언어 TDD 구현

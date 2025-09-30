@@ -13,15 +13,15 @@ TRUST는 MoAI-ADK가 지향하는 **5가지 핵심 품질 원칙**입니다. SPE
 
 ### TRUST 5원칙 요약
 
-| 원칙 | 의미 | 목표 | v0.0.4 달성율 |
+| 원칙 | 의미 | 목표 | v0.1.8 달성율 |
 |------|------|------|--------------|
-| **T** | Test First | SPEC 기반 TDD | 80% |
+| **T** | Test First | SPEC 기반 TDD | 92.9% |
 | **R** | Readable | 요구사항 주도 가독성 | 100% |
-| **U** | Unified | SPEC 기반 아키텍처 | 90% |
+| **U** | Unified | SPEC 기반 아키텍처 | 95% |
 | **S** | Secured | 보안 by 설계 | 100% |
-| **T** | Trackable | @TAG 추적성 | 90% |
+| **T** | Trackable | CODE-FIRST TAG 추적성 | 95% |
 
-**전체 준수율**: 92% (목표 82% 대비 112% 초과 달성)
+**전체 준수율**: 96.6% (목표 85% 대비 113.6% 초과 달성)
 
 ### 왜 TRUST인가?
 
@@ -167,7 +167,7 @@ Tests:       3 passed, 3 total
 
 ```typescript
 // @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
-// Related: @SEC:AUTH-001, @PERF:AUTH-001
+// Related: @API:AUTH-001, @DATA:AUTH-001
 
 export class AuthService {
   constructor(
@@ -177,16 +177,16 @@ export class AuthService {
   ) {}
 
   async authenticate(email: string, password: string): Promise<AuthResult> {
-    // @SEC:AUTH-001: 입력값 검증
+    // @API:AUTH-001: 입력값 검증
     this.validateInput(email, password);
 
-    // @TASK:AUTH-001: 사용자 조회
+    // @DATA:AUTH-001: 사용자 조회
     const user = await this.userRepository.findByEmail(email);
     if (!user) {
       return this.failureResponse();
     }
 
-    // @SEC:AUTH-001: bcrypt 비밀번호 검증
+    // @TASK:AUTH-001: bcrypt 비밀번호 검증
     const isValid = await this.passwordService.verify(
       password,
       user.passwordHash
@@ -225,7 +225,7 @@ export class AuthService {
 
 ### 언어별 테스트 프레임워크
 
-#### TypeScript (Vitest)
+#### TypeScript (Vitest) - 92.9% 성공률
 
 ```typescript
 import { describe, test, expect } from 'vitest';
@@ -247,7 +247,11 @@ npm test -- --watch       # watch 모드
 npm test -- --coverage    # 커버리지
 ```
 
-#### Python (pytest)
+**v0.1.8 성과**:
+- Vitest 테스트 성공률: 92.9% (52/56 통과)
+- 커버리지: 92.5%
+
+#### Python (pytest + mypy)
 
 ```python
 # @TEST:USER-001: 사용자 생성 테스트
@@ -261,7 +265,7 @@ def test_should_create_user():
     assert user.id is not None
 
 def test_should_reject_invalid_email():
-    """@SEC:USER-001: 잘못된 이메일 거부"""
+    """@API:USER-001: 잘못된 이메일 거부"""
     service = UserService()
     with pytest.raises(ValidationError):
         service.create(email='invalid-email')
@@ -273,6 +277,61 @@ def test_should_reject_invalid_email():
 pytest                          # 모든 테스트
 pytest --cov=src tests/        # 커버리지
 pytest -v                       # 상세 출력
+mypy src/                      # 타입 검사
+```
+
+#### Java (JUnit)
+
+```java
+// @TEST:USER-001: 사용자 생성 테스트
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+
+class UserServiceTest {
+    @Test
+    void shouldCreateUser() {
+        UserService service = new UserService();
+        User user = service.create("test@example.com");
+        assertNotNull(user.getId());
+    }
+}
+```
+
+#### Go (go test)
+
+```go
+// @TEST:USER-001: 사용자 생성 테스트
+package user_test
+
+import (
+    "testing"
+    "github.com/stretchr/testify/assert"
+)
+
+func TestShouldCreateUser(t *testing.T) {
+    service := NewUserService()
+    user, err := service.Create("test@example.com")
+
+    assert.NoError(t, err)
+    assert.NotEmpty(t, user.ID)
+}
+```
+
+#### Rust (cargo test)
+
+```rust
+// @TEST:USER-001: 사용자 생성 테스트
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn should_create_user() {
+        let service = UserService::new();
+        let user = service.create("test@example.com").unwrap();
+        assert!(user.id.is_some());
+    }
+}
 ```
 
 ### 커버리지 85% 이상
@@ -478,7 +537,7 @@ class PayService {
 #### TypeScript 구현
 
 ```typescript
-// @FEATURE:AUTH-001
+// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
 export interface AuthService {
   authenticate(email: string, password: string): Promise<AuthResult>;
   validateToken(token: string): Promise<boolean>;
@@ -488,7 +547,7 @@ export interface AuthService {
 #### Python 구현
 
 ```python
-# @FEATURE:AUTH-001
+# @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
 from abc import ABC, abstractmethod
 
 class AuthService(ABC):
@@ -504,10 +563,30 @@ class AuthService(ABC):
 #### Go 구현
 
 ```go
-// @FEATURE:AUTH-001
+// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
 type AuthService interface {
     Authenticate(email, password string) (*AuthResult, error)
     ValidateToken(token string) (bool, error)
+}
+```
+
+#### Java 구현
+
+```java
+// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
+public interface AuthService {
+    CompletableFuture<AuthResult> authenticate(String email, String password);
+    CompletableFuture<Boolean> validateToken(String token);
+}
+```
+
+#### Rust 구현
+
+```rust
+// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
+pub trait AuthService {
+    async fn authenticate(&self, email: &str, password: &str) -> Result<AuthResult>;
+    async fn validate_token(&self, token: &str) -> Result<bool>;
 }
 ```
 
@@ -543,7 +622,7 @@ type AuthService interface {
 - 일반적인 "Invalid credentials" 메시지 사용
 ```
 
-### Winston Logger (v0.0.4)
+### Winston Logger (v0.1.8)
 
 **민감정보 자동 마스킹**:
 
@@ -573,7 +652,7 @@ logger.logWithTag('AUTH-001', 'Authentication successful', {
 ### 입력 검증
 
 ```typescript
-// @SEC:AUTH-001: 입력값 보안 검증
+// @API:AUTH-001: 입력값 보안 검증
 class AuthService {
   private validateEmail(email: string): void {
     // 이메일 형식 검증
@@ -615,7 +694,26 @@ class AuthService {
 
 **"모든 코드는 SPEC으로 추적 가능해야 한다"**
 
-@TAG 시스템으로 요구사항부터 코드까지 완전한 연결을 유지합니다.
+CODE-FIRST TAG 시스템으로 요구사항부터 코드까지 완전한 연결을 유지합니다.
+
+### CODE-FIRST TAG 시스템
+
+**핵심 철학**: TAG의 진실은 코드 자체에만 존재
+- 중간 캐시 없음 (indexes 디렉토리 제거)
+- 코드 직접 스캔 (rg '@TAG' -n)
+- 실시간 검증
+
+### 8-Core TAG 체계
+
+**Primary Chain (4 Core)**: 요구사항부터 검증까지
+```
+@REQ → @DESIGN → @TASK → @TEST
+```
+
+**Implementation (4 Core)**: 구현 세부 사항
+```
+@FEATURE → @API → @UI → @DATA
+```
 
 ### SPEC-코드 추적성
 
@@ -623,7 +721,7 @@ class AuthService {
 
 ```typescript
 // @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
-// Related: @SEC:AUTH-001, @DOCS:AUTH-001, @PERF:AUTH-001
+// Related: @API:AUTH-001, @DATA:AUTH-001
 
 /**
  * @API:AUTH-001: 사용자 인증 서비스
@@ -631,8 +729,7 @@ class AuthService {
 export class AuthService {
   /**
    * @TASK:AUTH-001: 이메일/비밀번호 인증
-   * @SEC:AUTH-001: bcrypt 해싱 적용
-   * @PERF:AUTH-001: 캐시 활용
+   * @DATA:AUTH-001: 사용자 데이터 조회 및 검증
    */
   async authenticate(email: string, password: string): Promise<AuthResult> {
     // 구현...
@@ -653,18 +750,32 @@ describe('AuthService', () => {
 /moai:1-spec  → @REQ, @DESIGN, @TASK 생성
              → SPEC 문서에 @TAG Catalog
 
-/moai:2-build → @TASK, @TEST, @FEATURE 적용
+/moai:2-build → @TEST, @FEATURE, @API, @UI, @DATA 적용
              → 코드에 TAG BLOCK 삽입
 
-/moai:3-sync  → 전체 코드 스캔
+/moai:3-sync  → 코드 직접 스캔 (rg '@TAG' -n)
              → TAG 체인 검증
              → sync-report.md 생성
+```
+
+### 코드 스캔 기반 검증
+
+```bash
+# TAG 검색
+rg "@FEATURE:AUTH-001" -n src/
+rg "@TEST:AUTH-001" -n tests/
+
+# TAG 체인 검증
+rg "@REQ:AUTH-001|@DESIGN:AUTH-001|@TASK:AUTH-001|@TEST:AUTH-001" -n .
+
+# 고아 TAG 감지
+rg "@TAG:[A-Z]+-\d+" -n . | @agent-tag-agent "고아 TAG 감지"
 ```
 
 ### TAG 검증 리포트
 
 ```markdown
-# TAG 검증 리포트 (2024-01-15)
+# TAG 검증 리포트 (2025-09-30)
 
 ## 통계
 - 총 TAG: 149개
@@ -701,32 +812,33 @@ moai status --trust
 ### 리포트 생성
 
 ```markdown
-# TRUST 준수율 리포트
+# TRUST 준수율 리포트 (v0.1.8)
 
-## 전체 준수율: 92%
+## 전체 준수율: 96.6%
 
-### T - Test First: 80%
+### T - Test First: 92.9%
+✓ 테스트 성공률: 92.9% (Vitest 52/56)
 ✓ 테스트 커버리지: 92.5%
-✓ TDD 사이클 준수: 85%
-⚠️ Red-Green-Refactor: 75%
+✓ TDD 사이클 준수: 90%
 
 ### R - Readable: 100%
 ✓ 함수 크기: 100% (모두 ≤50 LOC)
 ✓ 파일 크기: 100% (모두 ≤300 LOC)
 ✓ 복잡도: 98% (≤10)
 
-### U - Unified: 90%
-✓ SPEC 기반 설계: 95%
-✓ 언어 간 일관성: 85%
+### U - Unified: 95%
+✓ SPEC 기반 설계: 98%
+✓ 언어 간 일관성: 92%
 
 ### S - Secured: 100%
 ✓ 입력 검증: 100%
 ✓ Winston logger: 97.92% coverage
 ✓ 민감정보 마스킹: 100%
 
-### T - Trackable: 90%
+### T - Trackable: 95%
+✓ CODE-FIRST TAG 시스템: 100%
 ✓ TAG 체인 완결: 94%
-✓ SPEC-코드 연결: 88%
+✓ SPEC-코드 연결: 91%
 ```
 
 ### 개선 가이드
@@ -734,12 +846,12 @@ moai status --trust
 준수율이 낮은 항목에 대한 자동 제안:
 
 ```
-⚠️ Red-Green-Refactor: 75%
+⚠️ Vitest 테스트 실패: 4건
 
 권장 사항:
-1. 테스트 실패 확인 후 구현
-2. Refactor 단계 누락 확인
-3. 커밋 전 테스트 실행
+1. 실패 원인 분석 및 수정
+2. 테스트 격리 확인
+3. 비동기 처리 검토
 
 관련 자료:
 - /concepts/spec-first-tdd

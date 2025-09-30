@@ -282,11 +282,15 @@ moai doctor
 
 **답변:**
 
+**CODE-FIRST TAG 시스템:**
+
+MoAI-ADK v0.0.1은 CODE-FIRST 아키텍처를 채택하여 TAG의 진실은 오직 코드 자체에만 존재합니다.
+
 **TAG BLOCK 템플릿:**
 
 ```typescript
 // @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
-// Related: @SEC:AUTH-001, @DOCS:AUTH-001
+// Related: @API:AUTH-001, @DATA:AUTH-001
 
 export class AuthService {
   // 구현...
@@ -321,6 +325,14 @@ rg "@TEST:" -n                  # 모든 테스트
 # 특정 경로만
 /moai:3-sync --path src/auth
 ```
+
+**8-Core TAG 체계:**
+
+**Primary Chain (4 Core)** - 필수:
+- @REQ → @DESIGN → @TASK → @TEST
+
+**Implementation (4 Core)** - 구현 세부사항:
+- @FEATURE → @API → @UI → @DATA
 
 **TAG 체인 예시:**
 

@@ -1,11 +1,11 @@
 ---
 title: 이벤트 훅
-description: 8개 자동화 훅으로 개발 프로세스 보호
+description: 9개 자동화 훅으로 개발 프로세스 보호
 ---
 
 # 이벤트 훅
 
-MoAI-ADK는 개발 프로세스를 자동으로 보호하고 가이드하는 **8개 이벤트 훅**을 제공합니다. TypeScript로 빌드되어 고성능으로 실행됩니다.
+MoAI-ADK는 개발 프로세스를 자동으로 보호하고 가이드하는 **9개 이벤트 훅**을 제공합니다. TypeScript/JavaScript로 빌드되어 고성능으로 실행됩니다.
 
 ## 훅 개요
 
@@ -19,8 +19,7 @@ MoAI-ADK는 개발 프로세스를 자동으로 보호하고 가이드하는 **8
 | **pre-write-guard** | 파일 쓰기 전 | 파일 검증 및 백업 | ✅ |
 | **session-notice** | 세션 시작 | 개발 가이드 안내 | ✅ |
 | **steering-guard** | 주기적 | 방향성 가이드 | ✅ |
-| **run-tests-and-report** | 코드 변경 후 | 테스트 자동 실행 | 선택 |
-| **claude-code-monitor** | 주기적 | Claude Code 상태 감시 | ✅ |
+| **tag-enforcer** | 파일 쓰기 전 | TAG 규칙 강제 적용 | ✅ |
 
 ### 훅 위치
 
@@ -32,8 +31,8 @@ MoAI-ADK는 개발 프로세스를 자동으로 보호하고 가이드하는 **8
 ├── pre-write-guard.js
 ├── session-notice.js
 ├── steering-guard.js
-├── run-tests-and-report.js
-└── claude-code-monitor.js
+├── tag-enforcer.js
+└── package.json
 ```
 
 ## 1. file-monitor
@@ -478,6 +477,7 @@ Mode: ${mode}
 
 On-Demand Support:
   @agent-debug-helper "오류내용"
+  @agent-tag-agent "TAG 검증"
 
 TRUST 5 Principles:
   ✓ Test First
@@ -486,7 +486,7 @@ TRUST 5 Principles:
   ✓ Secured
   ✓ Trackable
 
-Run '/moai:help' for more information.
+Run 'moai doctor' for diagnostics.
   `);
 }
 ```
@@ -581,123 +581,141 @@ Debug:
 - TRUST 준수율 하락
 - TAG 체인 불완전
 
-## 7. run-tests-and-report
+## 7. tag-enforcer
 
 ### 목적
 
-**테스트 자동 실행 및 리포트**
+**TAG 규칙 강제 적용**
 
-코드 변경 후 자동으로 테스트를 실행합니다 (선택적).
+신규 소스 파일 생성 시 TAG BLOCK 존재를 강제하고, TAG 체인 무결성을 보장합니다.
 
 ### 동작 방식
 
 ```javascript
 /**
- * @HOOK:RUN-TESTS-001
- * 코드 변경 후 테스트 자동 실행
+ * @HOOK:TAG-ENFORCER-001
+ * TAG 규칙 강제 적용
  */
-export async function onCodeChange(files) {
-  // 설정 확인
-  if (!config.autoTest) {
-    return; // 자동 테스트 비활성화됨
+export async function onBeforeWrite(file) {
+  // 소스 파일만 검증
+  if (!isSourceFile(file.path)) {
+    return;
   }
 
-  const affectedTests = findAffectedTests(files);
-
-  console.log(`
-Running ${affectedTests.length} test(s)...
-  `);
-
-  const result = await runTests(affectedTests);
-
-  if (result.success) {
-    console.log(`
-✓ All Tests Passed
-
-  Total: ${result.total}
-  Passed: ${result.passed}
-  Duration: ${result.duration}ms
-    `);
-  } else {
-    console.error(`
-✗ ${result.failed} Test(s) Failed
-
-${result.failures.map(f => `
-  ${f.test}
-  ${f.error}
-`).join('\n')}
-
-Debug:
-  @agent-debug-helper "테스트 실패"
-    `);
+  // TAG BLOCK 필수 확인
+  if (!hasTagBlock(file.content)) {
+    throw new ValidationError(
+      `TAG BLOCK is required in source files.\n` +
+      `File: ${file.path}\n\n` +
+      `Add a TAG BLOCK at the top of the file:\n` +
+      `// @FEATURE:<DOMAIN-ID> | Chain: @REQ → @DESIGN → @TASK → @TEST\n` +
+      `// Related: @API:<ID>, @UI:<ID>, @DATA:<ID>`
+    );
   }
-}
-```
 
-### 설정
-
-```json
-// .moai/config.json
-{
-  "hooks": {
-    "runTestsAndReport": {
-      "enabled": true,
-      "autoTest": false,      // 자동 실행 비활성화 (기본값)
-      "onSave": false,
-      "onCommit": true        // 커밋 전에만 실행
+  // TAG 형식 검증
+  const tags = extractTags(file.content);
+  for (const tag of tags) {
+    if (!isValidTagFormat(tag)) {
+      throw new ValidationError(
+        `Invalid TAG format: ${tag}\n` +
+        `Expected format: @CATEGORY:DOMAIN-NNN\n` +
+        `Example: @REQ:AUTH-001`
+      );
     }
   }
+
+  // Primary Chain 완결성 확인
+  const chainStatus = validatePrimaryChain(tags);
+  if (!chainStatus.complete) {
+    logger.warn('Incomplete TAG chain', {
+      path: file.path,
+      missing: chainStatus.missingTags
+    });
+
+    console.warn(`
+⚠️  Incomplete TAG Chain in ${file.path}
+
+Missing TAGs:
+${chainStatus.missingTags.map(t => `  - ${t}`).join('\n')}
+
+Complete your chain: @REQ → @DESIGN → @TASK → @TEST
+    `);
+  }
 }
 ```
 
-## 8. claude-code-monitor
+### 검증 규칙
 
-### 목적
+#### TAG BLOCK 필수
 
-**Claude Code 상태 감시**
-
-Claude Code의 상태를 주기적으로 확인합니다.
-
-### 동작 방식
-
-```javascript
-/**
- * @HOOK:CLAUDE-MONITOR-001
- * Claude Code 상태 감시 (5분마다)
- */
-export function onPeriodic() {
-  const status = checkClaudeCodeStatus();
-
-  // 메모리 사용량 경고
-  if (status.memory > 80) {
-    console.warn(`
-⚠️  High Memory Usage: ${status.memory}%
-
-Recommendation:
-  Restart Claude Code session
-    `);
-  }
-
-  // 응답 속도 저하
-  if (status.responseTime > 5000) {
-    console.warn(`
-⚠️  Slow Response Time: ${status.responseTime}ms
-
-Recommendation:
-  Check system resources
-    `);
-  }
-
-  // 에이전트 오류
-  if (status.agentErrors > 0) {
-    console.error(`
-✗ ${status.agentErrors} Agent Error(s) Detected
-
-Debug:
-  @agent-debug-helper "에이전트 오류"
-    `);
-  }
+```typescript
+// ✅ Good: TAG BLOCK 존재
+// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
+// Related: @API:AUTH-001, @SEC:AUTH-001
+export class AuthService {
+  // ...
 }
+
+// ❌ Bad: TAG BLOCK 없음 (에러)
+export class AuthService {
+  // TAG가 없어서 에러 발생
+}
+```
+
+#### TAG 형식 검증
+
+```typescript
+// ✅ Good: 올바른 형식
+@REQ:AUTH-001
+@DESIGN:AUTH-001
+@TASK:AUTH-001
+
+// ❌ Bad: 잘못된 형식 (에러)
+@REQ-AUTH-001      // 잘못된 구분자
+@AUTH-001          // 카테고리 누락
+@REQ:AUTH001       // 하이픈 누락
+```
+
+#### Primary Chain 완결성
+
+```typescript
+// ✅ Good: 완전한 체인
+// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
+
+// ⚠️ Warning: 불완전한 체인
+// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001
+// Missing: @TEST:AUTH-001
+```
+
+### 에러 예시
+
+```
+❌ TAG BLOCK Required
+
+File: src/payment/service.ts
+Error: TAG BLOCK is required in source files
+
+Add a TAG BLOCK at the top of the file:
+// @FEATURE:PAYMENT-001 | Chain: @REQ:PAYMENT-001 → @DESIGN:PAYMENT-001 → @TASK:PAYMENT-001 → @TEST:PAYMENT-001
+// Related: @API:PAYMENT-001, @DATA:PAYMENT-001
+
+This ensures full traceability from requirements to tests.
+```
+
+### 경고 예시
+
+```
+⚠️  Incomplete TAG Chain
+
+File: src/auth/service.ts
+
+Missing TAGs:
+  - @TEST:AUTH-001
+
+Complete your chain: @REQ → @DESIGN → @TASK → @TEST
+
+Use '@agent-tag-agent' to verify chain integrity.
 ```
 
 ## 훅 커스터마이징
@@ -716,8 +734,7 @@ Debug:
       "pre-write-guard": true,
       "session-notice": true,
       "steering-guard": false,    // 비활성화
-      "run-tests-and-report": false,
-      "claude-code-monitor": true
+      "tag-enforcer": true
     }
   }
 }
@@ -748,11 +765,10 @@ export function onCustomEvent(data) {
       "session-notice",       // 가장 먼저
       "language-detector",
       "policy-block",
+      "tag-enforcer",         // TAG 검증
       "pre-write-guard",
       "file-monitor",
-      "steering-guard",
-      "run-tests-and-report",
-      "claude-code-monitor"   // 가장 나중
+      "steering-guard"        // 가장 나중
     ]
   }
 }
@@ -785,11 +801,24 @@ cat .moai/logs/hooks.log
 node .claude/hooks/moai/pre-write-guard.js
 ```
 
+### TAG 검증 오류
+
+```bash
+# TAG 스캔 및 검증
+@agent-tag-agent "코드 전체 스캔하여 TAG 검증"
+
+# TAG 형식 확인
+@agent-tag-agent "TAG 형식 검증"
+
+# 불완전한 체인 확인
+@agent-tag-agent "TAG 체인 무결성 검사"
+```
+
 ## 다음 단계
 
 ### 에이전트 활용
 
-- **[에이전트 가이드](/claude/agents)**: 7개 에이전트
+- **[에이전트 가이드](/claude/agents)**: 8개 에이전트
 - **[명령어](/claude/commands)**: 워크플로우 명령어
 
 ### 고급 설정

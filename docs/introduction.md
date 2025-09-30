@@ -26,7 +26,7 @@ MoAI-ADK는 **SPEC-First TDD 자동화 프레임워크**로 다음을 제공합�
 
 - **3단계 워크플로우**: SPEC 작성 → TDD 구현 → 문서 동기화
 - **7개 전문 에이전트**: 각 단계를 자동화하는 AI 에이전트
-- **@TAG 추적성**: 요구사항부터 구현까지 완전한 추적성
+- **CODE-FIRST TAG 추적성**: 요구사항부터 구현까지 완전한 추적성
 - **범용 언어 지원**: TypeScript, Python, Java, Go, Rust, C++, C#, PHP 등
 
 ## 핵심 개념 3가지
@@ -99,18 +99,18 @@ class AuthService {
 
 ### 3. TAG-First: 추적성 없이는 완성 없음
 
-**@TAG 시스템**으로 요구사항부터 코드까지 완전한 추적성:
+**CODE-FIRST TAG 시스템**으로 요구사항부터 코드까지 완전한 추적성:
 
 ```typescript
 // @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 → @DESIGN:AUTH-001 → @TASK:AUTH-001 → @TEST:AUTH-001
-// Related: @SEC:AUTH-001, @DOCS:AUTH-001
+// Related: @API:AUTH-001, @UI:AUTH-001, @DATA:AUTH-001
 
 /**
  * @API:AUTH-001: 사용자 인증 API
  */
 class AuthService {
   /**
-   * @SEC:AUTH-001: 입력값 보안 검증
+   * @TASK:AUTH-001: 입력값 검증 및 인증 처리
    */
   async authenticate(username: string, password: string): Promise<AuthResult> {
     // 구현...
@@ -118,12 +118,15 @@ class AuthService {
 }
 ```
 
-**TAG 체계**:
+**8-Core TAG 체계**:
 
-- **Primary Chain**: @REQ → @DESIGN → @TASK → @TEST (필수)
-- **Implementation**: @FEATURE, @API, @UI, @DATA
-- **Quality**: @PERF, @SEC, @DOCS, @DEBT
-- **Meta**: @OPS, @RELEASE, @DEPRECATED
+- **Primary Chain (4 Core)**: @REQ → @DESIGN → @TASK → @TEST (필수)
+- **Implementation (4 Core)**: @FEATURE, @API, @UI, @DATA (필수)
+
+**CODE-FIRST 철학**:
+- TAG의 진실은 오직 코드 자체에만 존재
+- 중간 캐시 없이 ripgrep으로 직접 스캔
+- 실시간 검증으로 94% 최적화 달성
 
 ## 아키텍처 다이어그램
 
@@ -226,7 +229,7 @@ MoAI-ADK (TypeScript) → 언어별 TDD 도구 → 사용자 프로젝트
 ### 핵심 개념 학습
 
 1. **[SPEC-First TDD](/concepts/spec-first-tdd)**: 방법론 완전 가이드
-2. **[TAG 시스템](/concepts/tag-system)**: 추적성 관리 방법
+2. **[TAG 시스템](/concepts/tag-system)**: CODE-FIRST 추적성 관리 방법
 3. **[3단계 워크플로우](/concepts/workflow)**: 개발 사이클 이해
 4. **[TRUST 원칙](/concepts/trust-principles)**: 품질 기준 학습
 
@@ -234,10 +237,10 @@ MoAI-ADK (TypeScript) → 언어별 TDD 도구 → 사용자 프로젝트
 
 1. **[에이전트 가이드](/claude/agents)**: 7개 전문 에이전트 활용
 2. **[워크플로우 명령어](/claude/commands)**: 5개 핵심 명령어 사용
-3. **[이벤트 훅](/claude/hooks)**: 자동화 시스템 이해
+3. **[이벤트 훅](/claude/hooks)**: 8개 자동화 시스템 이해
 
 ## 참고 자료
 
 - **GitHub**: [MoAI-ADK Repository](https://github.com/modu-ai/moai-adk)
-- **NPM**: [@moai/adk](https://www.npmjs.com/package/@moai/adk)
+- **NPM**: [moai-adk](https://www.npmjs.com/package/moai-adk)
 - **커뮤니티**: [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)

@@ -37,6 +37,70 @@ UpdateOrchestrator는 업데이트 중 발생할 수 있는 다양한 시나리�
 
 업데이트는 항상 안전을 최우선으로 합니다. 기본적으로 백업이 자동 생성되며, 충돌 시 사용자에게 선택권을 제공하고, 실패 시 자동 롤백이 실행됩니다. `--no-backup` 플래그는 CI/CD 환경이나 Git에 이미 커밋된 상태에서만 사용하는 것이 권장됩니다.
 
+## UpdateCommand와 UpdateOrchestrator 역할 분리
+
+`moai update` 명령어는 두 계층으로 구성되어 책임을 명확히 분리합니다:
+
+### CLI Layer: UpdateCommand
+
+**역할**: 사용자 인터페이스 및 입력 처리
+
+**주요 메서드**:
+- `run(options)`: 명령 실행 진입점
+- `checkForUpdates()`: 업데이트 가능 여부 확인
+- `getTemplatePath()`: 템플릿 경로 해결
+
+**책임**:
+- 명령줄 옵션 파싱 (`--check`, `--no-backup`, `--verbose` 등)
+- 사용자에게 진행 상황 표시
+- 결과 요약 출력
+- UpdateOrchestrator에 작업 위임
+
+**구현 예시**:
+```typescript
+public async run(options: UpdateOptions): Promise<UpdateResult> {
+  // CLI 레이어는 사용자 입력 처리만 담당
+  const updateConfig: UpdateConfiguration = {
+    projectPath,
+    templatePath,
+    backupEnabled: !options.noBackup,
+    verbose: options.verbose || false,
+    // ...
+  };
+
+  // 실제 업데이트는 Orchestrator에게 위임
+  const orchestrator = new UpdateOrchestrator(projectPath);
+  const result = await orchestrator.executeUpdate(updateConfig);
+
+  // 결과를 사용자 친화적 형식으로 표시
+  return this.formatResult(result);
+}
+```
+
+### Core Layer: UpdateOrchestrator
+
+**역할**: 실제 업데이트 로직 실행
+
+**주요 작업**:
+- 백업 생성 (BackupManager 사용)
+- 파일 변경 분석 (ChangeAnalyzer 사용)
+- 충돌 해결 (ConflictResolver 사용)
+- 마이그레이션 실행 (MigrationFramework 사용)
+
+**책임**:
+- 파일 시스템 직접 변경
+- 오류 처리 및 롤백
+- 트랜잭션 보장
+- 업데이트 무결성 검증
+
+**아키텍처 이점**:
+- **테스트 용이성**: CLI 레이어는 파일 시스템 모킹 없이 테스트 가능
+- **유지보수성**: Core 레이어의 업데이트 전략 변경이 CLI에 영향 없음
+- **재사용성**: UpdateOrchestrator를 다른 CLI 도구에서도 사용 가능
+- **일관성**: 백업/롤백 로직이 한 곳에 집중되어 버그 감소
+
+**참고**: UpdateCommand의 `updateResources()` 메서드는 실제로 파일을 직접 업데이트하지 않고, UpdateOrchestrator에게 작업을 위임합니다. 이는 CLI 레이어와 Core 레이어의 책임을 분리하여 테스트 용이성과 유지보수성을 높이기 위한 설계입니다.
+
 ## 기본 사용법
 
 ```bash
@@ -104,7 +168,7 @@ Available template version: 0.0.1
 
 ### 2. 기본 업데이트 (백업 자동 생성)
 
-가장 안전하고 권장되는 업데이트 방법입니다. 자동으로 백업을 생성한 후 업데이트를 진행합니다.
+가장 안전하고 권장되는 업데이트 방법입니다. UpdateOrchestrator가 자동으로 백업을 생성한 후 업데이트를 진행합니다.
 
 ```bash
 cd my-project
@@ -141,7 +205,12 @@ moai update
 
 업데이트 프로세스는 여러 단계로 진행됩니다:
 
-1. **백업 생성**: 현재 `.moai`와 `.claude` 디렉토리를 `.moai_backup_<timestamp>` 디렉토리에 복사합니다. 타임스탬프는 ISO 8601 형식을 사용하여 고유성을 보장합니다.
+1. **백업 생성**: UpdateOrchestrator의 BackupManager가 현재 `.moai`와 `.claude` 디렉토리를 `.moai_backup_<timestamp>` 디렉토리에 복사합니다. 타임스탬프는 ISO 8601 형식을 사용하여 고유성을 보장합니다.
+
+**구현 세부사항**: UpdateCommand의 `createBackup()` 메서드는 백업 경로만 반환하며, 실제 백업 파일 복사는 UpdateOrchestrator가 수행합니다. 이는 다음과 같은 이점을 제공합니다:
+- CLI 테스트 시 파일 시스템 모킹 불필요
+- Core 레이어에서 백업 전략 변경 가능
+- 백업 실패 시 일관된 롤백 처리
 
 2. **변경 분석**: UpdateOrchestrator가 템플릿 디렉토리와 프로젝트 디렉토리를 비교하여 업데이트가 필요한 파일을 식별합니다. 파일 해시를 계산하여 실제로 변경된 파일만 업데이트 대상으로 선정합니다.
 
@@ -300,7 +369,7 @@ moai update --resources-only
 - 템플릿 파일을 실수로 삭제하여 복원하고 싶을 때
 - 사용자 수정 사항을 덮어쓰고 깨끗한 템플릿으로 재시작하고 싶을 때
 
-`--resources-only` 플래그는 `updateResources()` 메서드만 호출하고 `updatePackage()` 메서드는 건너뜁니다. 이를 통해 글로벌 설치된 `moai` CLI는 변경하지 않고 프로젝트 파일만 업데이트합니다.
+`--resources-only` 플래그는 UpdateCommand가 UpdateOrchestrator를 호출하되, 템플릿 파일만 업데이트하도록 구성합니다. 글로벌 설치된 `moai` CLI는 변경하지 않고 프로젝트 파일만 업데이트합니다.
 
 ### 6. 패키지만 업그레이드 (--package-only)
 
@@ -418,7 +487,7 @@ const needsUpdate = currentResourceVersion !== availableResourceVersion;
 
 ### 3. 백업 생성 단계
 
-업데이트 전에 현재 상태를 백업하여 롤백 가능하도록 합니다.
+UpdateOrchestrator의 BackupManager가 업데이트 전에 현재 상태를 백업하여 롤백 가능하도록 합니다.
 
 **백업 위치**: 프로젝트 상위 디렉토리의 `.moai_backup_<ISO-timestamp>`
 
@@ -494,7 +563,7 @@ ConflictResolver는 3-way merge 알고리즘을 사용하여 가능한 경우 �
 
 ### 6. 파일 업데이트 단계
 
-충돌이 해결된 후 실제로 파일을 업데이트합니다.
+충돌이 해결된 후 UpdateOrchestrator가 실제로 파일을 업데이트합니다.
 
 **업데이트 전략**:
 - **자동 업데이트**: 충돌 없는 파일은 즉시 덮어쓰기
@@ -525,7 +594,7 @@ export async function migrate(projectPath: string): Promise<void> {
   config.version = '2';
   await fs.writeJson(path.join(projectPath, '.moai/config.json'), config);
 
-  // 3. 스크립트 권한 설정
+  // 스크립트 권한 설정
   const scripts = await glob('.moai/scripts/**/*.sh');
   for (const script of scripts) {
     await fs.chmod(path.join(projectPath, script), 0o755);

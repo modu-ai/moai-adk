@@ -30,8 +30,8 @@ features:
   - icon:
       src: /icons/tag.svg
       alt: TAG
-    title: TAG 추적성 시스템
-    details: 요구사항부터 구현까지 완전한 추적성 제공. CODE-FIRST 방식으로 소스코드 기반 TAG 시스템.
+    title: CODE-FIRST TAG 시스템
+    details: 요구사항부터 구현까지 완전한 추적성 제공. 중간 캐시 없이 소스코드 직접 스캔으로 94% 최적화 달성.
   - icon:
       src: /icons/language.svg
       alt: Languages
@@ -49,7 +49,7 @@ features:
     details: Claude Code 네이티브 통합. 7개 전문 에이전트, 5개 워크플로우 명령어, 8개 이벤트 훅.
 ---
 
-## 🚀 빠른 시작
+## 빠른 시작
 
 :::code-group
 
@@ -98,7 +98,7 @@ moai doctor
 | **빌드 시간** | 96% 단축 (4.6초 → 182ms) |
 | **테스트 성공률** | 92.9% (Vitest 3.2.4) |
 | **코드 품질** | 94.8% 성능 향상 (Biome) |
-| **TAG 시스템** | 95% 속도 향상, 94% 크기 절감 |
+| **TAG 시스템** | CODE-FIRST 방식으로 94% 최적화 |
 | **CLI 완성도** | 100% (7개 명령어 완성) |
 
 ## 🎨 핵심 원칙: TRUST 5원칙
@@ -107,7 +107,7 @@ moai doctor
 - **R**eadable: 요구사항 주도 가독성 (SPEC 기반 코드)
 - **U**nified: 통합 SPEC 아키텍처 (언어 무관 일관성)
 - **S**ecured: SPEC 준수 보안 (설계 시점 보안)
-- **T**rackable: SPEC 추적성 (@TAG 시스템)
+- **T**rackable: SPEC 추적성 (CODE-FIRST TAG 시스템)
 
 ## 🌐 링크 및 리소스
 
@@ -121,8 +121,8 @@ moai doctor
 ### TypeScript 단일 스택, 모든 언어 지원
 MoAI-ADK 자체는 TypeScript로 구축된 고성능 CLI 도구입니다. 하지만 사용자 프로젝트는 Python, JavaScript, Java, Go, Rust, C++, C# 등 모든 주요 언어를 지원합니다. 프로젝트 언어를 자동으로 감지하고, 해당 언어에 최적화된 TDD 도구(pytest, Vitest, JUnit, go test 등)를 동적으로 추천합니다.
 
-### JSON 기반 분산 TAG 시스템
-SQLite3를 완전히 제거하고, 경량 JSON 파일 기반 TAG 관리 시스템으로 전환했습니다. 코드에서 직접 TAG를 스캔하는 방식으로 중간 캐시 없이 실시간 추적성을 보장하며, 로딩 성능은 50ms 이하를 달성했습니다.
+### CODE-FIRST TAG 시스템 (94% 최적화)
+SQLite3와 모든 중간 캐시를 완전히 제거했습니다. TAG의 진실은 오직 코드 자체에만 존재하며, ripgrep으로 코드를 직접 스캔하여 실시간 추적성을 보장합니다. 로딩 성능 50ms 이하, 저장공간 94% 절감을 달성했습니다.
 
 ### 지능형 시스템 진단
 `moai doctor` 명령은 단순히 도구 설치 여부만 확인하지 않습니다. 프로젝트 디렉토리를 분석하여 사용 중인 언어를 자동으로 감지하고, 해당 언어에 필요한 개발 도구를 동적으로 추가합니다. Runtime(Node.js, Git), Development(npm, TypeScript), Optional(Docker, GitHub CLI), Language-Specific(언어별 도구), Performance(디스크 I/O) 등 5개 카테고리로 체계적인 진단을 제공합니다.
@@ -146,7 +146,7 @@ SQLite3를 완전히 제거하고, 경량 JSON 파일 기반 TAG 관리 시스�
 ### 핵심 가이드
 - [3단계 워크플로우](/guide/workflow) - SPEC → Build → Sync
 - [SPEC-First TDD](/guide/spec-first-tdd) - EARS 방식 명세 작성법
-- [TAG 시스템](/guide/tag-system) - 추적성 관리 완전 가이드
+- [TAG 시스템](/guide/tag-system) - CODE-FIRST 추적성 관리
 
 ### CLI 명령어
 - `moai init` - 프로젝트 초기화

@@ -86,10 +86,10 @@ moai init my-project --force
 ```bash
 ✓ System Verification Phase
   ✓ Node.js: v18.19.0 (required: >=18.0.0)
-  ✓ Git: v2.39.2 (required: >=2.0.0)
+  ✓ Git: v2.42.0 (required: >=2.28.0)
   ✓ npm: v10.2.3
-  ✓ TypeScript: v5.9.2
-  ✓ Git LFS: v3.4.0 (optional)
+  ✓ TypeScript: v5.9.2 (required: >=5.0.0)
+  ✓ Bun: v1.2.19 (optional)
 ```
 
 #### Phase 2: Configuration
@@ -123,9 +123,9 @@ moai init my-project --force
 ✓ Template Installation Phase
   ✓ Created .moai/ directory
   ✓ Created .claude/ directory
-  ✓ Installed 7 agents
+  ✓ Installed 8 agents
   ✓ Installed 5 commands
-  ✓ Installed 8 hooks
+  ✓ Installed 8 hooks (JavaScript)
   ✓ Created memory files
 ```
 
@@ -175,10 +175,11 @@ my-project/
 │   └── logs/                 # Winston 로그
 │
 ├── .claude/                   # Claude Code 통합
-│   ├── agents/moai/          # 7개 전문 에이전트
+│   ├── agents/moai/          # 8개 전문 에이전트
 │   │   ├── spec-builder.md
 │   │   ├── code-builder.md
 │   │   ├── doc-syncer.md
+│   │   ├── tag-agent.md
 │   │   ├── cc-manager.md
 │   │   ├── debug-helper.md
 │   │   ├── git-manager.md
@@ -191,7 +192,7 @@ my-project/
 │   │   ├── 3-sync.md
 │   │   └── help.md
 │   │
-│   ├── hooks/moai/           # 8개 이벤트 훅
+│   ├── hooks/moai/           # 8개 이벤트 훅 (JavaScript)
 │   │   ├── file-monitor.js
 │   │   ├── language-detector.js
 │   │   ├── policy-block.js
@@ -356,10 +357,10 @@ cd my-project
 moai doctor
 
 # 확인 항목:
-# ✓ Node.js 버전
-# ✓ Git 설치
-# ✓ npm/TypeScript
-# ✓ Git LFS (선택)
+# ✓ Node.js 18.0.0+
+# ✓ Git 2.28.0+
+# ✓ npm/Bun
+# ✓ TypeScript 5.0.0+
 # ✓ 언어별 도구
 ```
 
@@ -474,7 +475,7 @@ npm install -g moai-adk
 npm install -g typescript
 
 # 버전 확인
-tsc --version  # 5.9.2+
+tsc --version  # 5.0.0+
 ```
 
 **Git 오류**:
@@ -515,7 +516,7 @@ moai init . --backup
 
 ### Claude Code 활용
 
-1. **[에이전트 가이드](/claude/agents)**: 7개 에이전트 활용법
+1. **[에이전트 가이드](/claude/agents)**: 8개 에이전트 활용법
 2. **[명령어](/claude/commands)**: 워크플로우 명령어 사용
 3. **[훅](/claude/hooks)**: 자동화 시스템 이해
 

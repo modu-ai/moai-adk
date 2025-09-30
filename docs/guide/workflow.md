@@ -230,8 +230,6 @@ interface AuthToken {
 | Primary | @TEST:AUTH-001 | 인증 테스트 | tests/auth/service.test.ts |
 | Implementation | @FEATURE:AUTH-001 | 인증 서비스 | src/auth/service.ts |
 | Implementation | @API:AUTH-001 | 인증 API | src/auth/controller.ts |
-| Quality | @SEC:AUTH-001 | 보안 감사 | docs/security/auth.md |
-| Quality | @DOCS:AUTH-001 | API 문서 | docs/api/auth.md |
 ```
 
 ### 브랜치 생성 확인
@@ -1255,7 +1253,6 @@ Summary: 3/4 primary tags validated, 1 orphaned tag
 - 상태: 완료
 - Primary Chain: @REQ → @DESIGN → @TASK → @TEST ✅
 - Implementation: @FEATURE, @API ✅
-- Quality: @SEC, @DOCS ✅
 
 ### SPEC-AUTH-002: 권한 관리 ⚠️
 - 상태: 진행 중
@@ -1538,8 +1535,6 @@ SPEC-AUTH-001에 MFA (다중 인증) 요구사항을 추가해야 합니다.
 **2단계: TAG Catalog 업데이트**
 ```markdown
 | Implementation | @FEATURE:MFA-001 | MFA 지원 | src/auth/mfa.ts |
-| Quality | @SEC:MFA-001 | TOTP 보안 | docs/security/mfa.md |
-```
 
 **3단계: TDD 구현**
 ```bash

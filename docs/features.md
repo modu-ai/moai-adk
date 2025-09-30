@@ -156,7 +156,7 @@ export class AuthService {
 
 ```typescript
 // @FEATURE:AUTH-001 | Chain: @REQ → @DESIGN → @TASK → @TEST
-// Related: @SEC:AUTH-001, @PERF:AUTH-001
+// Related: @API:AUTH-001, @DATA:AUTH-001
 
 export class AuthService {
   constructor(
@@ -166,22 +166,22 @@ export class AuthService {
   ) {}
 
   async authenticate(email: string, password: string): Promise<AuthResult> {
-    // @SEC:AUTH-001: 입력값 검증
+    // @TASK:AUTH-001: 입력값 검증
     this.validateInput(email, password);
 
-    // @TASK:AUTH-001: 사용자 조회
+    // @DATA:AUTH-001: 사용자 조회
     const user = await this.userRepository.findByEmail(email);
     if (!user) {
       return this.failureResponse('Invalid credentials');
     }
 
-    // @SEC:AUTH-001: 비밀번호 검증
+    // @TASK:AUTH-001: 비밀번호 검증
     const isValid = await this.passwordService.verify(password, user.passwordHash);
     if (!isValid) {
       return this.failureResponse('Invalid credentials');
     }
 
-    // @TASK:AUTH-001: 토큰 발급
+    // @API:AUTH-001: 토큰 발급
     const token = await this.tokenService.generate(user);
 
     return {
@@ -252,7 +252,7 @@ MoAI-ADK v0.0.1 달성 지표:
 - **커버리지**: 85% 이상 목표
 - **타입 안전성**: TypeScript strict 모드 100%
 
-## 3. @TAG 추적성
+## 3. CODE-FIRST TAG 추적성
 
 ### Primary Chain: 4단계 필수 체인
 
@@ -311,7 +311,7 @@ describe('AuthService', () => {
 });
 ```
 
-### 코드 직접 스캔 방식
+### CODE-FIRST 방식 (94% 최적화)
 
 MoAI-ADK는 중간 캐시 없이 코드를 직접 스캔하여 TAG 추적성을 보장합니다:
 
@@ -324,6 +324,12 @@ rg "AUTH-001" -n               # 모든 관련 TAG 검색
 # TAG 체인 검증
 /moai:3-sync                   # 전체 코드 스캔 및 검증
 ```
+
+**CODE-FIRST 철학**:
+- TAG의 진실은 오직 코드 자체에만 존재
+- SQLite3, JSON INDEX 등 중간 캐시 완전 제거
+- ripgrep으로 실시간 코드 스캔
+- 로딩 성능 50ms 이하, 저장공간 94% 절감
 
 ### 실시간 무결성 검증
 
@@ -582,7 +588,7 @@ __tests__/
 ### 심화 학습
 
 - **[SPEC-First TDD](/concepts/spec-first-tdd)**: 방법론 완전 가이드
-- **[TAG 시스템](/concepts/tag-system)**: 추적성 관리
+- **[TAG 시스템](/concepts/tag-system)**: CODE-FIRST 추적성 관리
 - **[TRUST 원칙](/concepts/trust-principles)**: 품질 기준
 
 ### 실전 활용
@@ -594,5 +600,5 @@ __tests__/
 ## 참고 자료
 
 - **GitHub**: [MoAI-ADK Repository](https://github.com/modu-ai/moai-adk)
-- **NPM**: [@moai/adk](https://www.npmjs.com/package/@moai/adk)
+- **NPM**: [moai-adk](https://www.npmjs.com/package/moai-adk)
 - **커뮤니티**: [Discussions](https://github.com/modu-ai/moai-adk/discussions)

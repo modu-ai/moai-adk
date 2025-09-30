@@ -15,9 +15,10 @@ All documentation has been synchronized with the latest codebase (moai-adk-ts v0
 - ✅ CLI documentation updated with actual command implementations
 - ✅ API documentation regenerated via TypeDoc
 - ✅ Workflow guides reflect CODE-FIRST TAG system
-- ✅ TAG system documentation updated to match v4.0 distributed architecture
+- ✅ TAG system documentation updated to CODE-FIRST architecture
 - ✅ 7 CLI commands fully documented (init, doctor, status, update, restore, help, version)
 - ✅ SPEC-First TDD methodology fully described
+- ✅ FAQ updated with latest features and CODE-FIRST system
 
 ---
 
@@ -35,7 +36,7 @@ All documentation has been synchronized with the latest codebase (moai-adk-ts v0
 | **moai help** | ✅ Embedded in CLI | src/cli/commands/help.ts | 🟢 Synchronized |
 | **moai version** | ✅ Embedded in CLI | src/cli/index.ts | 🟢 Synchronized |
 
-#### Notable Updates
+#### Notable Updates (2025-09-30)
 
 **moai init (docs/cli/init.md)**:
 - ✅ Personal/Team mode distinction documented
@@ -68,7 +69,7 @@ All documentation has been synchronized with the latest codebase (moai-adk-ts v0
 |-------|---------------|--------|
 | **3단계 워크플로우** | docs/guide/workflow.md | 🟢 Synchronized |
 | **SPEC-First TDD** | docs/guide/spec-first-tdd.md | 🟢 Synchronized |
-| **TAG 시스템** | docs/guide/tag-system.md | 🟢 Updated to v4.0 |
+| **TAG 시스템** | docs/guide/tag-system.md | 🟢 Updated to CODE-FIRST |
 
 #### Key Content Verification
 
@@ -94,7 +95,25 @@ All documentation has been synchronized with the latest codebase (moai-adk-ts v0
 - ✅ Language-agnostic TDD patterns
 - ✅ Test-driven development best practices
 
-### 1.3 API Documentation (docs/api/)
+### 1.3 Help Documentation (docs/help/)
+
+| Document | Documentation | Status |
+|----------|---------------|--------|
+| **FAQ** | docs/help/faq.md | 🟢 Updated 2025-09-30 |
+
+#### FAQ Updates (2025-09-30)
+
+**docs/help/faq.md** (708 lines):
+- ✅ CODE-FIRST TAG system explained
+- ✅ Latest version info (v0.0.1)
+- ✅ 8-Core TAG architecture
+- ✅ Branch management policy
+- ✅ Language auto-detection
+- ✅ Offline mode capabilities
+- ✅ CI/CD integration examples
+- ✅ Custom agents guide
+
+### 1.4 API Documentation (docs/api/)
 
 **Status**: ✅ Generated via TypeDoc
 
@@ -116,7 +135,7 @@ cd moai-adk-ts && bun run docs:api
 - ⚠️ Unknown @tags block tag (expected - custom TAG system)
 - ⚠️ Unknown @file block tag (expected - JSDoc extension)
 
-### 1.4 Reference Documentation (docs/reference/)
+### 1.5 Reference Documentation (docs/reference/)
 
 | Reference | Documentation | Status |
 |-----------|---------------|--------|
@@ -185,12 +204,12 @@ cd moai-adk-ts && bun run docs:api
 
 ### 3.1 TAG Architecture
 
-**Current Implementation**: CODE-FIRST v4.0
+**Current Implementation**: CODE-FIRST
 
 **Key Principles**:
 1. ✅ **No intermediate INDEX files**: TAG의 진실은 코드 자체에만 존재
 2. ✅ **Direct code scanning**: `rg '@TAG' -n` 패턴으로 실시간 검증
-3. ✅ **94% size reduction**: JSONL 분산 저장소 최적화
+3. ✅ **Simplified architecture**: .moai/indexes 디렉토리 제거, 소스코드 직접 파싱
 
 ### 3.2 8-Core TAG System
 
@@ -201,9 +220,10 @@ cd moai-adk-ts && bun run docs:api
 - ✅ @FEATURE → @API → @UI → @DATA
 
 **Documentation Examples**:
-- ✅ TypeScript example in docs/guide/tag-system.md (lines 105-110)
-- ✅ Python example in docs/guide/tag-system.md (lines 169-193)
-- ✅ Java example in docs/guide/tag-system.md (lines 197-221)
+- ✅ TypeScript example in docs/guide/tag-system.md
+- ✅ Python example in docs/guide/tag-system.md
+- ✅ Java example in docs/guide/tag-system.md
+- ✅ FAQ updated with CODE-FIRST explanation
 
 ### 3.3 TAG in Source Code
 
@@ -265,6 +285,9 @@ cd moai-adk-ts && bun run docs:api
 ✅ Reference
    ├── CLI Cheatsheet
    └── Configuration
+
+✅ Help
+   └── FAQ (Updated 2025-09-30)
 ```
 
 ---
@@ -277,6 +300,7 @@ cd moai-adk-ts && bun run docs:api
 |--------|-------|--------|
 | Total CLI Commands | 7 | ✅ 100% Documented |
 | Guide Pages | 3 | ✅ All Updated |
+| Help Pages | 1 | ✅ Updated 2025-09-30 |
 | API Documentation | Auto-generated | ✅ Current |
 | Reference Pages | 2 | ✅ Current |
 | Code Examples | 50+ | ✅ Tested |
@@ -290,11 +314,13 @@ cd moai-adk-ts && bun run docs:api
 - ✅ Troubleshooting sections
 - ✅ Best practices and anti-patterns
 - ✅ Mermaid diagrams for visual clarity
+- ✅ CODE-FIRST TAG system explanation
 
-**Areas for Future Enhancement**:
-- 📝 Add video tutorials (external content)
-- 📝 Interactive examples (future VitePress plugin)
-- 📝 Performance benchmarks (ongoing collection)
+**Recent Updates (2025-09-30)**:
+- ✅ FAQ modernized with CODE-FIRST system
+- ✅ 8-Core TAG architecture documented
+- ✅ Branch management policy clarified
+- ✅ Offline mode capabilities explained
 
 ---
 
@@ -308,6 +334,7 @@ cd moai-adk-ts && bun run docs:api
 | Documentation | v0.0.1 | docs/index.md | ✅ Consistent |
 | CLI Banner | v0.0.1 | src/utils/version.ts | ✅ Consistent |
 | Templates | v0.0.1 | templates/ | ✅ Consistent |
+| FAQ | v0.0.1 | docs/help/faq.md | ✅ Updated 2025-09-30 |
 
 ### 6.2 Feature Set Consistency
 
@@ -316,6 +343,7 @@ cd moai-adk-ts && bun run docs:api
 | 7 CLI Commands | ✅ | ✅ | 🟢 Synchronized |
 | SPEC-First TDD | ✅ | ✅ | 🟢 Synchronized |
 | 8-Core TAG System | ✅ | ✅ | 🟢 Synchronized |
+| CODE-FIRST Architecture | ✅ | ✅ | 🟢 Synchronized |
 | Language Detection | ✅ | ✅ | 🟢 Synchronized |
 | Multi-language Support | ✅ | ✅ | 🟢 Synchronized |
 | Git Branch Policy | ✅ | ✅ | 🟢 Synchronized |
@@ -366,16 +394,17 @@ rg "@REQ:|@DESIGN:|@TASK:|@TEST:|@FEATURE:|@API:|@UI:|@DATA:" -n moai-adk-ts/src
 
 ## 8. Synchronization Summary
 
-### 8.1 Updated Documentation Files
+### 8.1 Updated Documentation Files (2025-09-30)
 
 | File | Changes | Lines | Status |
 |------|---------|-------|--------|
+| docs/help/faq.md | CODE-FIRST TAG 시스템 반영 | 708 | ✅ |
 | docs/cli/init.md | Updated with latest features | 650 | ✅ |
 | docs/cli/doctor.md | Language detection added | ~450 | ✅ |
 | docs/cli/status.md | Version info enhanced | ~380 | ✅ |
 | docs/cli/update.md | Real UpdateOrchestrator | ~330 | ✅ |
 | docs/guide/workflow.md | EARS + multi-lang examples | 2003 | ✅ |
-| docs/guide/tag-system.md | CODE-FIRST v4.0 | 320 | ✅ |
+| docs/guide/tag-system.md | CODE-FIRST architecture | 320 | ✅ |
 | docs/api/** | TypeDoc regeneration | Auto | ✅ |
 
 ### 8.2 Files Already Current
@@ -397,6 +426,7 @@ rg "@REQ:|@DESIGN:|@TASK:|@TEST:|@FEATURE:|@API:|@UI:|@DATA:" -n moai-adk-ts/src
 - ✅ Verify CLI command options match implementation
 - ✅ Add EARS methodology to workflow guide
 - ✅ Document branch creation/merge confirmation policy
+- ✅ Update FAQ with CODE-FIRST TAG system
 
 ### 9.2 Ongoing Maintenance
 
@@ -417,17 +447,18 @@ rg "@REQ:|@DESIGN:|@TASK:|@TEST:|@FEATURE:|@API:|@UI:|@DATA:" -n moai-adk-ts/src
 
 ## 10. Conclusion
 
-### Synchronization Status: ✅ COMPLETE
+### Synchronization Status: ✅ COMPLETE (2025-09-30)
 
 All documentation has been successfully synchronized with the moai-adk-ts v0.0.1 codebase. The documentation accurately reflects:
 
 1. ✅ 7 CLI commands with all options and workflows
-2. ✅ 8-Core CODE-FIRST TAG system (v4.0)
+2. ✅ 8-Core CODE-FIRST TAG system
 3. ✅ SPEC-First TDD methodology with EARS syntax
 4. ✅ Multi-language support (TypeScript, Python, Java, Go, Rust)
 5. ✅ Git branch management with user confirmation policy
 6. ✅ TRUST 5 principles across all languages
 7. ✅ Real-world scenarios and troubleshooting guides
+8. ✅ FAQ updated with latest features and CODE-FIRST system
 
 ### Documentation Quality: 🟢 HIGH
 
@@ -437,6 +468,7 @@ All documentation has been successfully synchronized with the moai-adk-ts v0.0.1
 - Visual aids (Mermaid diagrams)
 - Troubleshooting sections
 - Best practices and anti-patterns
+- CODE-FIRST TAG system clearly explained
 
 ### Next Synchronization: **As needed after code changes**
 
@@ -451,12 +483,13 @@ All documentation has been successfully synchronized with the moai-adk-ts v0.0.1
 **Report Generated**: 2025-09-30
 **Synchronization Tool**: Manual verification + TypeDoc automation
 **Status**: ✅ All systems synchronized
+**Last Update**: FAQ modernization with CODE-FIRST TAG system
 
 ---
 
 ## Appendix: File Inventory
 
-### Documentation Files Verified
+### Documentation Files Verified (2025-09-30)
 
 ```
 docs/
@@ -473,7 +506,7 @@ docs/
 ├── guide/
 │   ├── workflow.md ✅ (2003 lines)
 │   ├── spec-first-tdd.md ✅
-│   └── tag-system.md ✅ (320 lines)
+│   └── tag-system.md ✅ (320 lines, CODE-FIRST)
 ├── cli/
 │   ├── init.md ✅ (650 lines)
 │   ├── doctor.md ✅
@@ -489,12 +522,14 @@ docs/
 ├── reference/
 │   ├── cli-cheatsheet.md ✅
 │   └── configuration.md ✅
-└── sync-report.md ✅ (this file)
+├── help/
+│   └── faq.md ✅ (Updated 2025-09-30, CODE-FIRST)
+└── sync-report.md ✅ (this file, Updated 2025-09-30)
 ```
 
 **Total Documentation Files**: 30+
 **Total Lines of Documentation**: 10,000+
-**Synchronization Status**: ✅ All current
+**Synchronization Status**: ✅ All current (2025-09-30)
 
 ---
 

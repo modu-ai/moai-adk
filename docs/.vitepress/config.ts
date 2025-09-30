@@ -17,7 +17,10 @@ export default defineConfig({
   mermaid: {},
 
   themeConfig: {
-    logo: '/logo.svg',
+    logo: {
+      light: '/moai-logo-light.png',
+      dark: '/moai-logo-dark.png'
+    },
 
     nav: [
       { text: '홈', link: '/' },
@@ -191,7 +194,7 @@ export default defineConfig({
   },
 
   head: [
-    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/logo.svg' }],
+    ['link', { rel: 'icon', type: 'image/png', href: '/moai-logo-dark.png' }],
     ['meta', { name: 'theme-color', content: '#5f67ee' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:locale', content: 'ko' }],

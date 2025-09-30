@@ -1,65 +1,29 @@
-# @TAG 추적성 시스템
+# @TAG 추적성 시스템 v4.0 (CODE-FIRST)
 
-## 개요
+## 핵심 철학: CODE-FIRST 방식
 
-@TAG 시스템은 요구사항부터 구현까지 완전한 추적성을 제공합니다.
+**TAG의 진실은 코드 자체에만 존재합니다.**
 
-## 시스템 아키텍처
+- 별도의 TAG 인덱스 파일 없음 (`.moai/indexes/` 미사용)
+- 코드 직접 스캔으로 실시간 검증: `rg '@TAG' -n src/ tests/ docs/`
+- 중간 캐시 없음: 코드가 유일한 진실의 원천 (Single Source of Truth)
 
 ```mermaid
-graph TB
-    subgraph "MoAI-ADK 전체 아키텍처"
-        CLI[CLI Layer<br/>7개 명령어]
-        AGENTS[7개 에이전트]
-        WORKFLOW[3단계 워크플로우]
-        TAG[16-Core TAG 시스템]
-    end
+graph LR
+    CODE[코드 파일<br/>TAG BLOCK 포함] --> SCAN[rg '@TAG' -n<br/>실시간 스캔]
+    SCAN --> VERIFY[TAG 체인 검증]
+    VERIFY --> REPORT[동기화 리포트]
 
-    subgraph "3단계 워크플로우"
-        SPEC["/moai:1-spec<br/>SPEC 작성<br/>EARS 방법론"]
-        BUILD["/moai:2-build<br/>TDD 구현<br/>Red-Green-Refactor"]
-        SYNC["/moai:3-sync<br/>문서 동기화<br/>TAG 검증"]
-    end
-
-    subgraph "7개 전문 에이전트"
-        SPEC_AGENT["spec-builder<br/>SPEC 작성 전담"]
-        CODE_AGENT["code-builder<br/>TDD 구현 전담"]
-        DOC_AGENT["doc-syncer<br/>문서 동기화"]
-        DEBUG_AGENT["debug-helper<br/>시스템 진단"]
-        GIT_AGENT["git-manager<br/>Git 자동화"]
-        TRUST_AGENT["trust-checker<br/>품질 검증"]
-        TAG_AGENT["tag-agent<br/>TAG 관리"]
-    end
-
-    subgraph "16-Core TAG 체인"
-        PRIMARY["Primary Chain<br/>@REQ → @DESIGN<br/>→ @TASK → @TEST"]
-        IMPL["Implementation<br/>@FEATURE @API<br/>@UI @DATA"]
-        QUALITY["Quality<br/>@PERF @SEC<br/>@DOCS @DEBT"]
-    end
-
-    CLI --> WORKFLOW
-    WORKFLOW --> SPEC
-    SPEC --> BUILD
-    BUILD --> SYNC
-
-    SPEC_AGENT -.-> SPEC
-    CODE_AGENT -.-> BUILD
-    DOC_AGENT -.-> SYNC
-
-    SPEC --> PRIMARY
-    BUILD --> IMPL
-    SYNC --> QUALITY
-    TAG_AGENT -.-> TAG
-
-    style CLI fill:#fab005
-    style WORKFLOW fill:#51cf66
-    style TAG fill:#339af0
-    style AGENTS fill:#845ef7
+    style CODE fill:#51cf66
+    style SCAN fill:#339af0
+    style VERIFY fill:#fab005
 ```
 
-## TAG 카테고리
+## 8-Core TAG 체계
 
-### Primary Chain (필수)
+MoAI-ADK v4.0부터 **8-Core TAG 체계**를 채택합니다.
+
+### Primary Chain (4 Core) - 필수
 
 ```mermaid
 graph LR
@@ -74,237 +38,431 @@ graph LR
 ```
 
 모든 기능은 이 체인을 따라야 합니다:
-- **@REQ:ID**: 요구사항 명세
-- **@DESIGN:ID**: 설계 결정
-- **@TASK:ID**: 구현 작업
-- **@TEST:ID**: 테스트 명세
+- **@REQ:ID**: 요구사항 명세 (SPEC 문서)
+- **@DESIGN:ID**: 설계 결정 (아키텍처, 시퀀스 다이어그램)
+- **@TASK:ID**: 구현 작업 (실제 코드)
+- **@TEST:ID**: 테스트 명세 (단위/통합 테스트)
 
-### Implementation Tags (구현)
+### Implementation (4 Core) - 구현 세부 사항
 
-- **@FEATURE:ID**: 기능 구현
-- **@API:ID**: API 엔드포인트
-- **@UI:ID**: 사용자 인터페이스 컴포넌트
-- **@DATA:ID**: 데이터 모델
+- **@FEATURE:ID**: 기능 전체 구현 (클래스, 모듈)
+- **@API:ID**: API 엔드포인트 (REST, GraphQL, gRPC)
+- **@UI:ID**: 사용자 인터페이스 컴포넌트 (React, Vue, Angular)
+- **@DATA:ID**: 데이터 모델 (엔티티, 스키마, 타입)
 
-### Quality Tags (품질)
+### 8-Core 구성 요약
 
-- **@PERF:ID**: 성능 최적화
-- **@SEC:ID**: 보안 조치
-- **@DOCS:ID**: 문서화
-- **@DEBT:ID**: 기술 부채
+| 카테고리 | Core | 설명 | 필수 여부 |
+|----------|------|------|-----------|
+| **Primary Chain** | 4 Core | 요구 → 설계 → 작업 → 검증 | 필수 |
+| **Implementation** | 4 Core | Feature/API/UI/Data 구현 유형 | 필수 |
 
-### Meta Tags (메타)
+**변경 이력**:
+- v3.0: 16-Core (Primary 4 + Implementation 4 + Quality 4 + Meta 4)
+- v4.0: 8-Core (Primary 4 + Implementation 4) - 단순화 및 CODE-FIRST 집중
 
-- **@OPS:ID**: 운영
-- **@RELEASE:ID**: 릴리스
-- **@DEPRECATED:ID**: 폐기됨
+## TAG BLOCK 템플릿 (필수)
 
-## TAG Block 템플릿
+모든 코드 파일 상단에 TAG BLOCK을 배치합니다.
 
+### 기본 템플릿
+
+```text
+# @FEATURE:<DOMAIN-ID> | Chain: @REQ:<ID> -> @DESIGN:<ID> -> @TASK:<ID> -> @TEST:<ID>
+# Related: @API:<ID>, @UI:<ID>, @DATA:<ID>
+```
+
+### 언어별 주석 형식
+
+#### TypeScript
 ```typescript
 // @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-// Related: @SEC:AUTH-001, @DOCS:AUTH-001
-class AuthenticationService {
-  // 구현...
+// Related: @API:AUTH-001, @DATA:AUTH-001
+
+export class AuthenticationService {
+  // @API:AUTH-001: 사용자 인증 API
+  async authenticate(username: string, password: string): Promise<boolean> {
+    // @DATA:AUTH-001: 사용자 데이터 조회
+    const user = await this.userRepository.findByUsername(username);
+
+    return this.verifyPassword(user, password);
+  }
+}
+```
+
+#### Python
+```python
+# @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+# Related: @API:AUTH-001, @DATA:AUTH-001
+
+class AuthenticationService:
+    """@FEATURE:AUTH-001: 사용자 인증 서비스"""
+
+    def authenticate(self, username: str, password: str) -> bool:
+        """@API:AUTH-001: 사용자 인증 API 엔드포인트"""
+        # @DATA:AUTH-001: 사용자 데이터 조회
+        user = self.user_repository.find_by_username(username)
+
+        return self._verify_password(user, password)
+```
+
+#### Java
+```java
+// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+// Related: @API:AUTH-001, @DATA:AUTH-001
+
+public class AuthenticationService {
+    // @API:AUTH-001: 사용자 인증 API
+    public boolean authenticate(String username, String password) {
+        // @DATA:AUTH-001: 사용자 데이터 조회
+        User user = userRepository.findByUsername(username);
+
+        return verifyPassword(user, password);
+    }
+}
+```
+
+#### Go
+```go
+// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+// Related: @API:AUTH-001, @DATA:AUTH-001
+
+package auth
+
+// @FEATURE:AUTH-001: 사용자 인증 서비스
+type AuthenticationService struct {
+    userRepo UserRepository
+}
+
+// @API:AUTH-001: 사용자 인증 API
+func (s *AuthenticationService) Authenticate(username, password string) (bool, error) {
+    // @DATA:AUTH-001: 사용자 데이터 조회
+    user, err := s.userRepo.FindByUsername(username)
+    if err != nil {
+        return false, err
+    }
+
+    return s.verifyPassword(user, password), nil
+}
+```
+
+#### Rust
+```rust
+// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+// Related: @API:AUTH-001, @DATA:AUTH-001
+
+/// @FEATURE:AUTH-001: 사용자 인증 서비스
+pub struct AuthenticationService {
+    user_repo: Box<dyn UserRepository>,
+}
+
+impl AuthenticationService {
+    /// @API:AUTH-001: 사용자 인증 API
+    pub async fn authenticate(&self, username: &str, password: &str) -> Result<bool, Error> {
+        // @DATA:AUTH-001: 사용자 데이터 조회
+        let user = self.user_repo.find_by_username(username).await?;
+
+        Ok(self.verify_password(&user, password))
+    }
 }
 ```
 
 ## TAG 명명 규칙
 
-형식: `@TYPE:DOMAIN-###`
+### 형식
+```
+@TYPE:DOMAIN-###
+```
 
-예시:
-- `@REQ:AUTH-001`: 인증 요구사항 #1
-- `@TEST:LOGIN-003`: 로그인 테스트 #3
-- `@SEC:API-005`: API 보안 조치 #5
+### 구성 요소
+- **@TYPE**: TAG 타입 (REQ, DESIGN, TASK, TEST, FEATURE, API, UI, DATA)
+- **DOMAIN**: 도메인 이름 (대문자, 3-10자)
+- **###**: 일련번호 (001-999)
 
-## SPEC Catalog
+### 좋은 예시
+```
+@REQ:AUTH-001      // 인증 요구사항 #1
+@DESIGN:AUTH-001   // 인증 설계 (같은 ID 사용)
+@TASK:AUTH-001     // 인증 구현 (같은 ID 사용)
+@TEST:AUTH-001     // 인증 테스트 (같은 ID 사용)
+@API:LOGIN-003     // 로그인 API #3
+@DATA:USER-005     // 사용자 데이터 모델 #5
+```
 
-SPEC 문서에서 TAG 카탈로그를 유지관리합니다:
+### 나쁜 예시
+```
+@AUTH-001          // ❌ TYPE 누락
+@REQ:auth-001      // ❌ 소문자 도메인
+@REQ:A-001         // ❌ 도메인 너무 짧음
+@REQ:AUTHENTICATION-SERVICE-001  // ❌ 도메인 너무 김
+```
+
+## SPEC TAG Catalog
+
+SPEC 문서에서 TAG 카탈로그를 유지관리합니다.
 
 ```markdown
-### @TAG Catalog
+# SPEC-AUTH-001: 사용자 인증 시스템
+
+## @TAG Catalog
+
 | Chain | TAG | 설명 | 연관 산출물 |
 |-------|-----|------|-------------|
-| Primary | @REQ:AUTH-001 | 사용자 인증 | SPEC-AUTH-001 |
-| Primary | @DESIGN:AUTH-001 | OAuth2 설계 | design/oauth.md |
-| Primary | @TASK:AUTH-001 | OAuth2 구현 | src/auth/oauth2.ts |
-| Primary | @TEST:AUTH-001 | 통합 테스트 | tests/auth/oauth2.test.ts |
+| Primary | @REQ:AUTH-001 | 인증 요구사항 | SPEC-AUTH-001 |
+| Primary | @DESIGN:AUTH-001 | JWT 설계 | design/auth.md |
+| Primary | @TASK:AUTH-001 | 인증 구현 | src/auth/service.ts |
+| Primary | @TEST:AUTH-001 | 인증 테스트 | tests/auth/service.test.ts |
 | Implementation | @FEATURE:AUTH-001 | 인증 서비스 | src/auth/service.ts |
-| Quality | @SEC:AUTH-001 | 보안 감사 | docs/security/oauth2.md |
+| Implementation | @API:AUTH-001 | 인증 API | src/auth/controller.ts |
+| Implementation | @DATA:AUTH-001 | 사용자 모델 | src/auth/models.ts |
 ```
 
-## 언어별 TAG 적용
+## 코드 스캔 기반 검증
 
-### TypeScript
+### 검색 명령어
 
-```typescript
-// @FEATURE:LOGIN-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-// Related: @SEC:LOGIN-001, @DOCS:LOGIN-001
-interface AuthService {
-  // @API:LOGIN-001: 인증 API 인터페이스 정의
-  authenticate(username: string, password: string): Promise<boolean>;
-}
+```bash
+# 모든 TAG 찾기
+rg "@REQ:|@DESIGN:|@TASK:|@TEST:|@FEATURE:|@API:|@UI:|@DATA:" -n
 
-// @UI:LOGIN-001: 로그인 컴포넌트
-const LoginForm: React.FC = () => {
-  // @SEC:LOGIN-001: 클라이언트 입력 검증
-  const handleSubmit = (username: string, password: string) => {
-    // 구현...
-  };
+# 특정 도메인의 모든 TAG 찾기
+rg "AUTH-001" -n
 
-  return <form>...</form>;
-};
+# 특정 TAG 타입만 찾기
+rg "@API:" -g "*.ts" -n
+rg "@TEST:" -g "*.py" -n
 
-// @TEST:LOGIN-001: Vitest/Jest 테스트
-describe('AuthService', () => {
-  test('@TEST:LOGIN-001: 유효한 사용자 인증', () => {
-    // 테스트 구현...
-  });
-});
+# 파일별 TAG 개수 확인
+rg "@TAG" -c
 ```
-
-### Python
-
-```python
-# @FEATURE:LOGIN-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-# Related: @SEC:LOGIN-001, @DOCS:LOGIN-001
-class AuthenticationService:
-    """@FEATURE:LOGIN-001: 사용자 인증 서비스 구현"""
-
-    def authenticate(self, username: str, password: str) -> bool:
-        """@API:LOGIN-001: 사용자 인증 API 엔드포인트"""
-        # @SEC:LOGIN-001: 입력값 보안 검증
-        if not self._validate_input(username, password):
-            return False
-
-        # @PERF:LOGIN-001: 캐시된 인증 결과 확인
-        if cached_result := self._get_cached_auth(username):
-            return cached_result
-
-        return self._verify_credentials(username, password)
-
-# @TEST:LOGIN-001 연결: @TASK:LOGIN-001 -> @TEST:LOGIN-001
-def test_should_authenticate_valid_user():
-    """@TEST:LOGIN-001: 유효한 사용자 인증 테스트"""
-    service = AuthenticationService()
-    result = service.authenticate("user", "password")
-    assert result is True
-```
-
-### Java
-
-```java
-// @FEATURE:LOGIN-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-// Related: @SEC:LOGIN-001, @DOCS:LOGIN-001
-public class AuthenticationService {
-    // @API:LOGIN-001: 사용자 인증 API
-    public boolean authenticate(String username, String password) {
-        // @SEC:LOGIN-001: 입력 검증
-        if (!validateInput(username, password)) {
-            return false;
-        }
-
-        // 구현...
-    }
-}
-
-// @TEST:LOGIN-001: JUnit 테스트
-public class AuthenticationServiceTest {
-    @Test
-    public void testAuthenticateValidUser() {
-        // @TEST:LOGIN-001: 유효한 사용자 인증 테스트
-        boolean result = service.authenticate("user", "password");
-        assertTrue(result);
-    }
-}
-```
-
-## TAG 검색 및 유지관리
 
 ### 중복 방지
 
 새 TAG 도입 전 기존 체인 확인:
 
 ```bash
-# 특정 TAG 타입 찾기
-rg "@REQ:" -n
+# 1. 도메인 중복 확인
+rg "LOGIN-001" -n
 
-# 특정 TAG 체인 찾기
-rg "AUTH-001" -n
+# 2. TAG 타입별 확인
+rg "@REQ:LOGIN-" -n
 
-# 모든 보안 TAG 나열
-rg "@SEC:" -g "*.ts" -n
+# 3. 파일 경로와 함께 확인
+rg "@FEATURE:LOGIN-" -l
 ```
 
 ### 무결성 검사
 
-`/moai:3-sync`로 검증:
-- 코드 전체 스캔
-- TAG 체인 검증
-- 고아 TAG 식별
-- 추적성 리포트 생성
+`/moai:3-sync` 실행 시 자동으로 수행:
 
-### 폐기 절차
+1. **코드 전체 스캔**: 모든 소스 파일에서 TAG 추출
+2. **TAG 체인 검증**: Primary Chain 완결성 확인
+3. **고아 TAG 식별**: SPEC 없는 TAG 탐지
+4. **중복 TAG 탐지**: 동일 TAG의 중복 선언 확인
 
-더 이상 사용하지 않는 TAG:
+## 다중 언어 프로젝트 예시
+
+### 통합 인증 시스템 (TypeScript + Python)
+
+#### TypeScript (API 서버)
 
 ```typescript
-// @TAG:DEPRECATED-AUTH-001: AUTH-002로 대체됨
+// backend-api/src/auth/integrated-auth.ts
+// @FEATURE:AUTH-003 | Chain: @REQ:AUTH-003 -> @DESIGN:AUTH-003 -> @TASK:AUTH-003 -> @TEST:AUTH-003
+// Related: @API:AUTH-003
+
+export class IntegratedAuthService {
+  /**
+   * @API:AUTH-003: JWT 토큰 생성 (Python 워커와 호환)
+   */
+  async generateToken(user: User): Promise<string> {
+    const token = jwt.sign(
+      { userId: user.id, email: user.email },
+      process.env.JWT_SECRET!,
+      { algorithm: 'HS256', expiresIn: '15m' }
+    );
+
+    // @TASK:AUTH-003: Redis에 토큰 저장 (Python 워커가 사용)
+    await this.redis.set(`token:${user.id}`, token, 'EX', 900);
+
+    return token;
+  }
+}
 ```
 
-Catalog에서 상태를 `Deprecated`로 업데이트합니다.
+#### Python (백그라운드 워커)
+
+```python
+# background-worker/src/integrated_auth.py
+# @FEATURE:AUTH-003 | Chain: @REQ:AUTH-003 -> @DESIGN:AUTH-003 -> @TASK:AUTH-003 -> @TEST:AUTH-003
+# Related: @API:AUTH-003
+
+import jwt
+import redis
+import os
+
+class IntegratedAuthService:
+    """@FEATURE:AUTH-003: 통합 인증 서비스 (Python)"""
+
+    def __init__(self):
+        self.redis_client = redis.Redis(host='localhost', port=6379, db=0)
+        self.jwt_secret = os.getenv("JWT_SECRET")
+
+    def verify_token(self, token: str) -> dict:
+        """
+        @API:AUTH-003: JWT 토큰 검증 (TypeScript와 호환)
+        """
+        try:
+            payload = jwt.decode(
+                token,
+                self.jwt_secret,
+                algorithms=["HS256"]
+            )
+
+            return {
+                "valid": True,
+                "user_id": payload["userId"],
+                "email": payload["email"]
+            }
+        except jwt.ExpiredSignatureError:
+            return {"valid": False, "error": "Token expired"}
+        except jwt.InvalidTokenError:
+            return {"valid": False, "error": "Invalid token"}
+```
+
+#### 통합 검증
+
+```bash
+# 다중 언어 프로젝트 전체 스캔
+rg "AUTH-003" -n
+
+# 출력 예시:
+# backend-api/src/auth/integrated-auth.ts:1:// @FEATURE:AUTH-003 | Chain: ...
+# backend-api/tests/auth/integrated-auth.test.ts:5:describe('@TEST:AUTH-003', () => {
+# background-worker/src/integrated_auth.py:1:# @FEATURE:AUTH-003 | Chain: ...
+# background-worker/tests/test_integrated_auth.py:5:def test_verify_token():  # @TEST:AUTH-003
+```
 
 ## TAG 체인 검증 플로우
 
 ```mermaid
 sequenceDiagram
     participant D as 개발자
-    participant C as 코드
+    participant C as 코드 (TAG 포함)
     participant S as /moai:3-sync
-    participant R as 리포트
+    participant RG as ripgrep (rg)
+    participant R as sync-report.md
 
-    D->>C: TAG 포함 코드 작성
+    D->>C: TAG BLOCK 포함 코드 작성
     D->>S: 동기화 명령 실행
-    S->>C: 코드 스캔
+    S->>RG: rg '@TAG' -n src/ tests/
+    RG->>S: TAG 목록 반환
     S->>S: TAG 체인 검증
     alt TAG 체인 유효
-        S->>R: 성공 리포트 생성
-        R->>D: ✅ 추적성 확인
+        S->>R: ✅ 추적성 확인 리포트
+        R->>D: 동기화 완료
     else TAG 체인 끊김
-        S->>R: 오류 리포트 생성
-        R->>D: ❌ 누락된 TAG 표시
+        S->>R: ❌ 누락된 TAG 리포트
+        R->>D: 수정 필요 항목 표시
         D->>C: TAG 수정
     end
 ```
 
+## 폐기 TAG 관리
+
+더 이상 사용하지 않는 TAG는 코드에서 제거하거나 DEPRECATED 표시:
+
+### 옵션 1: 완전 제거 (권장)
+```typescript
+// TAG BLOCK 전체 제거
+// class OldAuthService {  // 코드도 제거
+```
+
+### 옵션 2: DEPRECATED 표시
+```typescript
+// @DEPRECATED:OLD-AUTH-001: AUTH-002로 대체됨
+// 마이그레이션 가이드: docs/migration/auth-v2.md
+class LegacyAuthService {
+  // 코드 유지 (하위 호환성)
+}
+```
+
+SPEC Catalog에서도 상태 업데이트:
+
+```markdown
+| Primary | @REQ:OLD-AUTH-001 | (DEPRECATED) 구 인증 | AUTH-002로 대체 |
+```
+
 ## 금지 패턴
 
-잘못된 예시:
-
+### 잘못된 TAG 순서
 ```python
-@TASK:LOGIN-001 -> @DESIGN:LOGIN-001      # ❌ 순서 위반
-@FEATURE:LOGIN-001 (중복 선언)          # ❌ 고유성 위반
-@REQ:ABC-123                             # ❌ 의미 없는 ID
+@TASK:LOGIN-001 -> @DESIGN:LOGIN-001  # ❌ 순서 위반 (설계 없이 작업)
+```
+
+**올바른 순서**:
+```python
+@REQ:LOGIN-001 -> @DESIGN:LOGIN-001 -> @TASK:LOGIN-001 -> @TEST:LOGIN-001
+```
+
+### TAG 중복 선언
+```typescript
+// @FEATURE:LOGIN-001
+class LoginService {
+  // @FEATURE:LOGIN-001  // ❌ 같은 파일 내 중복
+  login() {}
+}
+```
+
+**올바른 방식**:
+```typescript
+// @FEATURE:LOGIN-001 | Chain: @REQ:LOGIN-001 -> @DESIGN:LOGIN-001 -> @TASK:LOGIN-001 -> @TEST:LOGIN-001
+class LoginService {
+  // @API:LOGIN-001
+  login() {}
+}
+```
+
+### 의미 없는 ID
+```typescript
+@REQ:ABC-123  // ❌ 도메인명 의미 불명확
+@REQ:TEST-001 // ❌ "TEST"는 TAG 타입명과 혼동
+```
+
+**올바른 방식**:
+```typescript
+@REQ:AUTH-001    // ✅ 명확한 도메인명
+@REQ:USER-001    // ✅ 비즈니스 도메인 반영
 ```
 
 ## 업데이트 체크리스트
 
-- [ ] TAG BLOCK이 모든 신규/수정 파일에 존재하는가?
-- [ ] Primary Chain 4종이 끊김 없이 연결되는가?
-- [ ] SPEC `@TAG Catalog`와 코드/테스트가 동일한 ID를 공유하는가?
-- [ ] TAG 체인이 코드 스캔을 통해 검증되었는가?
+### 코드 작성 시
+- [ ] 파일 상단에 TAG BLOCK이 존재하는가?
+- [ ] Primary Chain 4종이 모두 포함되었는가?
+- [ ] Implementation TAG (FEATURE/API/UI/DATA)가 적절히 배치되었는가?
+- [ ] TAG ID가 SPEC Catalog와 일치하는가?
+
+### 동기화 전
+- [ ] 중복 TAG가 없는지 `rg "<DOMAIN-ID>"` 확인
+- [ ] 모든 TAG가 코드 스캔으로 찾아지는가?
+- [ ] SPEC Catalog가 최신 상태인가?
+
+### 동기화 후
+- [ ] sync-report.md에서 TAG 체인 검증 통과 확인
+- [ ] 고아 TAG가 없는지 확인
+- [ ] 끊어진 링크가 해결되었는가?
 
 ## 실전 워크플로우
 
 ```mermaid
 graph TD
-    A[1. SPEC 작성] --> B[2. TAG Catalog 생성]
-    B --> C[3. 코드에 TAG 적용]
-    C --> D[4. 테스트에 TAG 연결]
-    D --> E{5. /moai:3-sync}
-    E -->|성공| F[✅ 추적성 확보]
-    E -->|실패| G[❌ TAG 수정 필요]
+    A[1. SPEC 작성<br/>/moai:1-spec] --> B[2. TAG Catalog 생성]
+    B --> C[3. 코드 작성 시<br/>TAG BLOCK 배치]
+    C --> D[4. 테스트 작성 시<br/>@TEST TAG 연결]
+    D --> E{5. /moai:3-sync<br/>코드 스캔 검증}
+    E -->|성공| F[✅ 추적성 확보<br/>문서 동기화 완료]
+    E -->|실패| G[❌ TAG 수정 필요<br/>누락/중복/순서 오류]
     G --> C
 
     style A fill:#fab005
@@ -313,8 +471,64 @@ graph TD
     style G fill:#ff6b6b
 ```
 
+### 단계별 상세 설명
+
+#### 1. SPEC 작성 (`/moai:1-spec`)
+```bash
+/moai:1-spec "사용자 인증 시스템"
+```
+- EARS 방법론으로 요구사항 작성
+- Primary Chain 정의 (@REQ, @DESIGN, @TASK, @TEST)
+
+#### 2. TAG Catalog 생성
+```markdown
+### @TAG Catalog
+| Chain | TAG | 설명 | 연관 산출물 |
+|-------|-----|------|-------------|
+| Primary | @REQ:AUTH-001 | 인증 요구사항 | SPEC-AUTH-001 |
+| Primary | @DESIGN:AUTH-001 | JWT 설계 | design/auth.md |
+| Primary | @TASK:AUTH-001 | 인증 구현 | src/auth/service.ts |
+| Primary | @TEST:AUTH-001 | 인증 테스트 | tests/auth/service.test.ts |
+```
+
+#### 3. 코드 작성 시 TAG BLOCK 배치
+```typescript
+// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+// Related: @API:AUTH-001
+
+class AuthService {
+  // @API:AUTH-001
+  login() {}
+}
+```
+
+#### 4. 테스트 작성 시 @TEST TAG 연결
+```typescript
+describe('@TEST:AUTH-001 사용자 인증', () => {
+  test('유효한 자격증명으로 로그인 시 토큰 반환', () => {
+    // 테스트 구현
+  });
+});
+```
+
+#### 5. /moai:3-sync 실행
+```bash
+/moai:3-sync
+```
+- 코드 전체 스캔: `rg '@TAG' -n`
+- TAG 체인 검증: Primary Chain 완결성 확인
+- sync-report.md 생성
+
+## CODE-FIRST 원칙 요약
+
+1. **코드가 진실의 유일한 원천**: 별도 인덱스 파일 미사용
+2. **실시간 스캔 검증**: `rg` 명령어로 코드 직접 스캔
+3. **중간 캐시 없음**: 항상 코드에서 직접 TAG 추출
+4. **8-Core 단순화**: Primary 4 + Implementation 4 (Quality, Meta 제거)
+5. **TAG BLOCK 필수**: 모든 코드 파일 상단에 배치
+
 ## 다음 단계
 
-- [3단계 워크플로우](/guide/workflow) 실습
-- [SPEC 우선 TDD](/guide/spec-first-tdd) 적용
-- CLI 명령어로 TAG 관리 자동화
+- [3단계 워크플로우](/guide/workflow) - 전체 개발 프로세스 이해
+- [SPEC 우선 TDD](/guide/spec-first-tdd) - TDD 사이클과 TAG 통합
+- [CLI 명령어](/cli/init) - `moai` 명령어로 TAG 관리 자동화

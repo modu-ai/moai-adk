@@ -1,11 +1,11 @@
 ---
 title: 워크플로우 명령어
-description: 5개 슬래시 명령어로 개발 사이클 자동화
+description: 4개 슬래시 명령어로 개발 사이클 자동화
 ---
 
 # 워크플로우 명령어
 
-MoAI-ADK는 SPEC-First TDD 개발을 위한 **5개 슬래시 명령어**를 제공합니다. 각 명령어는 개발 사이클의 특정 단계를 자동화합니다.
+MoAI-ADK는 SPEC-First TDD 개발을 위한 **4개 슬래시 명령어**를 제공합니다. 각 명령어는 개발 사이클의 특정 단계를 자동화합니다.
 
 ## 명령어 개요
 
@@ -17,7 +17,6 @@ MoAI-ADK는 SPEC-First TDD 개발을 위한 **5개 슬래시 명령어**를 제�
 | `/moai:1-spec` | SPEC 작성 | EARS 요구사항 작성 | 사용자 확인 후 브랜치 |
 | `/moai:2-build` | TDD 구현 | Red-Green-Refactor | 범용 언어 자동 지원 |
 | `/moai:3-sync` | 문서 동기화 | TAG 검증, PR 전환 | 사용자 확인 후 머지 |
-| `/moai:help` | 도움말 | 사용법 가이드 | 즉시 표시 |
 
 ### 기본 사용법
 
@@ -195,8 +194,6 @@ Project Architecture
 | Primary | @TEST:AUTH-001 | 인증 테스트 | __tests__/auth/service.test.ts |
 | Implementation | @FEATURE:AUTH-001 | 인증 서비스 | src/auth/ |
 | Implementation | @API:AUTH-001 | 인증 API | src/auth/controller.ts |
-| Quality | @SEC:AUTH-001 | 보안 검증 | docs/security/auth.md |
-| Quality | @DOCS:AUTH-001 | API 문서 | docs/api/auth.md |
 ```
 
 #### 2단계: 사용자 확인 및 수정
@@ -327,11 +324,10 @@ Red-Green-Refactor 사이클로 SPEC을 코드로 전환합니다.
 - jsonwebtoken: JWT 생성/검증
 - @types/bcrypt, @types/jsonwebtoken
 
-### 예상 소요 시간
-- RED: 30분
-- GREEN: 1시간
-- REFACTOR: 30분
-총: 2시간
+### 우선순위
+- 1차 목표: 핵심 인증 로직
+- 2차 목표: 토큰 검증
+- 최종 목표: 통합 테스트
 
 이 계획으로 진행하시겠습니까? (y/n)
 ```
@@ -642,53 +638,6 @@ TRUST 준수율: 100%
 /moai:3-sync --path src/auth
 ```
 
-## /moai:help
-
-### 목적
-
-**사용법 가이드 표시**
-
-모든 명령어와 에이전트 사용법을 빠르게 확인합니다.
-
-### 기본 사용법
-
-```bash
-# 전체 도움말
-/moai:help
-
-# 특정 명령어
-/moai:help 1-spec
-/moai:help 2-build
-
-# 특정 에이전트
-/moai:help agent-spec-builder
-```
-
-### 출력 예시
-
-```markdown
-# MoAI-ADK 사용 가이드
-
-## 3단계 워크플로우
-1. /moai:1-spec    → SPEC 작성
-2. /moai:2-build   → TDD 구현
-3. /moai:3-sync    → 문서 동기화
-
-## 7개 에이전트
-- @agent-spec-builder: SPEC 작성
-- @agent-code-builder: TDD 구현
-- @agent-doc-syncer: 문서 동기화
-- @agent-cc-manager: Claude Code 설정
-- @agent-debug-helper: 디버깅
-- @agent-git-manager: Git 작업
-- @agent-trust-checker: 품질 검증
-
-## CLI 명령어
-- moai init: 프로젝트 초기화
-- moai doctor: 시스템 진단
-- moai status: 프로젝트 상태
-```
-
 ## 워크플로우 완전 예시
 
 ### 사용자 인증 기능 구현
@@ -719,7 +668,7 @@ TRUST 준수율: 100%
 
 ### 에이전트 활용
 
-- **[에이전트 가이드](/claude/agents)**: 7개 에이전트 상세
+- **[에이전트 가이드](/claude/agents)**: 8개 에이전트 상세
 - **[훅 시스템](/claude/hooks)**: 자동화 훅
 
 ### 실전 활용
@@ -731,4 +680,4 @@ TRUST 준수율: 100%
 
 - **명령어 소스**: `.claude/commands/moai/`
 - **설정 파일**: `.claude/settings.json`
-- **커스터마이징**: [고급 가이드](/advanced/custom-agents)
+- **커스터마이징**: [고급 가이드](/advanced/custom-commands)

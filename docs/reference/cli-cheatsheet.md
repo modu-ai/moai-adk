@@ -22,23 +22,27 @@ MoAI-ADK의 모든 명령어를 빠르게 찾아볼 수 있는 참조 가이드�
 
 ```bash
 # 프로젝트 초기화
-moai init [project-name]                   # Personal 모드
+moai init [project-name]                   # Personal 모드 (기본)
 moai init [project-name] --team            # Team 모드
 moai init [project-name] --backup          # 백업 생성
 moai init [project-name] --force           # 강제 덮어쓰기
+moai init .                                # 현재 디렉토리에 초기화
+moai init [project-name] --interactive     # 대화형 설정 마법사
 
 # 프로젝트 상태 확인
 moai status                                # 기본 상태
 moai status -v, --verbose                  # 상세 정보
-moai status --trust                        # TRUST 준수율
-moai status --config                       # 설정 출력
-moai status --project-path /path           # 특정 경로
+moai status -p, --project-path <path>      # 특정 경로
 
 # 시스템 진단
 moai doctor                                # 전체 진단
-moai doctor --check-config                 # 설정 검증
-moai doctor --verbose                      # 상세 진단
 moai doctor --list-backups                 # 백업 목록
+
+# 도움말 및 버전
+moai help                                  # 전체 도움말
+moai help init                             # 특정 명령어
+moai --version                             # 버전 출력
+moai -v                                    # 버전 출력 (단축)
 ```
 
 ### 업데이트 및 복원
@@ -50,30 +54,12 @@ moai update --check                        # 버전 확인만
 moai update --package-only                 # 패키지만
 moai update --resources-only               # 리소스만
 moai update --no-backup                    # 백업 생략
-moai update --mode team                    # Team 모드 전환
+moai update --verbose                      # 상세 정보
 
 # 복원
 moai restore <backup-path>                 # 백업 복원
 moai restore <backup-path> --dry-run       # 미리보기
 moai restore <backup-path> --force         # 강제 복원
-
-# 백업 관리
-moai backup create                         # 수동 백업
-moai backup list                           # 백업 목록
-moai backup clean                          # 오래된 백업 정리
-```
-
-### 도움말 및 버전
-
-```bash
-# 도움말
-moai help                                  # 전체 도움말
-moai help init                             # 특정 명령어
-moai help --all                            # 모든 명령어
-
-# 버전 정보
-moai --version                             # 버전 출력
-moai -v                                    # 버전 출력 (단축)
 ```
 
 ## 에이전트 호출
@@ -187,6 +173,19 @@ moai -v                                    # 버전 출력 (단축)
 
 # 개선 제안
 @agent-trust-checker "품질 개선 제안"
+```
+
+### 8. tag-agent
+
+```bash
+# TAG 시스템 스캔
+@agent-tag-agent "코드 전체를 스캔하여 TAG 검증"
+
+# TAG 무결성 검사
+@agent-tag-agent "TAG 체인 무결성 확인"
+
+# 고아 TAG 감지
+@agent-tag-agent "고아 TAG 및 끊어진 링크 감지"
 ```
 
 ## 워크플로우 명령어
@@ -452,7 +451,7 @@ npm test
 
 ```bash
 # 1. 현재 상태 확인
-moai status --trust
+moai status
 
 # 2. TRUST 검증
 @agent-trust-checker "TRUST 원칙 검증"
@@ -464,7 +463,7 @@ moai status --trust
 # (코드 개선)
 
 # 5. 재검증
-moai status --trust
+moai status
 ```
 
 ## 문제 해결
@@ -479,7 +478,7 @@ npm install -g moai-adk
 
 # Claude Code 통합 안 됨
 cat .claude/settings.json
-moai doctor --check-config
+moai doctor
 
 # TAG 검증 실패
 /moai:3-sync tags-only
@@ -507,7 +506,7 @@ git branch
 
 ### 에이전트 가이드
 
-- **[에이전트](/claude/agents)**: 7개 에이전트 상세
+- **[에이전트](/claude/agents)**: 8개 에이전트 상세
 - **[명령어](/claude/commands)**: 워크플로우 명령어
 - **[훅](/claude/hooks)**: 이벤트 훅
 

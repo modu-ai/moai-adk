@@ -8,8 +8,8 @@
 
 MoAI-ADK를 사용하기 전에 다음 요구사항을 확인하세요:
 
-- **Node.js 18.0 이상**: [nodejs.org](https://nodejs.org)에서 다운로드
-- **Git 2.25 이상**: [git-scm.com](https://git-scm.com)에서 다운로드
+- **Node.js 18.0.0 이상**: [nodejs.org](https://nodejs.org)에서 다운로드
+- **Git 2.28.0 이상**: [git-scm.com](https://git-scm.com)에서 다운로드
 - **(권장) Bun 1.2.19 이상**: [bun.sh](https://bun.sh)에서 설치
 
 MoAI-ADK는 Windows, macOS, Linux 모든 플랫폼에서 동작합니다. 설치 후 `moai doctor` 명령으로 시스템 요구사항을 자동으로 검증할 수 있습니다.
@@ -22,7 +22,7 @@ MoAI-ADK는 npm 패키지로 제공되며, Bun, npm, yarn 중 원하는 패키�
 
 ```bash [Bun (권장 - 98% 빠름)]
 # 글로벌 설치
-bun add -g moai-adk
+bun install -g moai-adk
 
 # 버전 확인
 moai --version
@@ -63,25 +63,25 @@ moai doctor
 
 진단은 다음 5개 카테고리로 구분되며, 각 카테고리별로 필수 도구를 검증합니다:
 
-1. **Runtime Requirements** ✅
-   - Node.js 18.0+ 버전 확인
-   - Git 2.25+ 버전 및 설정 확인
+1. **Runtime Requirements** ⚙️
+   - Node.js 18.0.0+ 버전 확인
+   - Git 2.28.0+ 버전 및 설정 확인
 
-2. **Development Tools** 🔧
+2. **Development Tools** 🛠️
    - npm, yarn, pnpm, Bun 중 사용 가능한 패키지 매니저 감지
-   - TypeScript 설치 확인 (선택적)
+   - TypeScript 5.0.0+ 설치 확인 (선택적)
 
-3. **Optional Tools** ⭐
+3. **Optional Tools** 📦
    - Docker (컨테이너 환경 지원 시)
    - GitHub CLI (Team 모드 사용 시)
-   - SQLite3 제거 (v0.0.1부터 불필요)
 
 4. **Language-Specific Tools** 🌍
    - 프로젝트 디렉토리 분석으로 언어 자동 감지
    - JavaScript/TypeScript: Vitest, Biome 추천
    - Python: pytest, mypy, ruff 추천
    - Java: JUnit, Maven/Gradle 추천
-   - Go, Rust 등 추가 언어 지원
+   - Go: go test, gofmt 추천
+   - Rust: cargo test, rustfmt 추천
 
 5. **Performance Checks** ⚡
    - 디스크 I/O 속도 테스트
@@ -90,33 +90,30 @@ moai doctor
 ### 진단 결과 예시
 
 ```
-🗿 MoAI-ADK v0.0.1 - System Diagnostics
+🔍 Checking system requirements...
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Runtime Requirements
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ✅ Node.js  18.19.0 (required: >=18.0.0)
-  ✅ Git      2.42.0 (required: >=2.25.0)
+  Languages: TypeScript, JavaScript
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Development Tools
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ✅ bun      1.2.19 (recommended)
-  ✅ npm      10.2.5
-  ✅ TypeScript 5.9.2
+  ⚙️  Runtime:
+    ✅ Node.js (18.19.0)
+    ✅ Git (2.42.0)
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Language-Specific Tools
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  🌐 Detected Language: TypeScript
-  ✅ Vitest   3.2.4 (test runner)
-  ✅ Biome    2.2.4 (linter/formatter)
+  🛠️  Development:
+    ✅ bun (1.2.19)
+    ✅ npm (10.2.5)
+    ✅ TypeScript (5.9.2)
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Summary: 9/9 checks passed (100%)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  📦 Optional:
+    ✅ Vitest (3.2.4)
+    ✅ Biome (2.2.4)
 
-✅ Your system is ready for SPEC-First TDD development!
+─────────────────────────────────────────────────────
+  📊 Summary:
+     Checks: 7 total
+     Status: 7 passed
+─────────────────────────────────────────────────────
+
+✅ All requirements satisfied!
 ```
 
 진단에서 문제가 발견되면 각 항목별로 해결 방법이 표시됩니다. 예를 들어 Node.js 버전이 낮으면 업그레이드 링크를, Git이 설치되지 않았으면 다운로드 링크를 제공합니다.
@@ -151,14 +148,13 @@ moai init
    │   ├── config.json          # 프로젝트 설정
    │   ├── memory/              # 개발 가이드라인
    │   ├── specs/               # SPEC 문서 저장소
-   │   # TAG는 소스코드에만 존재 (CODE-FIRST)
    │   └── project/             # 프로젝트 메타데이터
    │       ├── product.md       # 제품 정의
    │       ├── structure.md     # 구조 설계
    │       └── tech.md         # 기술 스택
    │
    ├── .claude/                 # Claude Code 통합
-   │   ├── agents/moai/         # 7개 전문 에이전트
+   │   ├── agents/moai/         # 8개 전문 에이전트
    │   ├── commands/moai/       # 3단계 워크플로우 명령어
    │   ├── hooks/moai/          # 8개 이벤트 훅 (JavaScript)
    │   └── output-styles/       # 출력 스타일
@@ -168,9 +164,9 @@ moai init
 
 3. **템플릿 설치**
    - `.moai/memory/development-guide.md`: TRUST 5원칙 및 개발 가이드
-   - 7개 에이전트 정의 파일
+   - 8개 에이전트 정의 파일
    - 3단계 워크플로우 명령어 (`/moai:1-spec`, `/moai:2-build`, `/moai:3-sync`)
-   - TypeScript 훅 (빌드된 JavaScript 파일)
+   - JavaScript 훅 (빌드된 JavaScript 파일)
 
 4. **설치 완료 메시지**
    ```
@@ -222,7 +218,6 @@ Claude Code 채팅창에서 다음 명령을 실행합니다:
 2. **@TAG Catalog 생성**
    - Primary Chain: @REQ → @DESIGN → @TASK → @TEST
    - Implementation: @FEATURE, @API, @UI, @DATA
-   - Quality: @PERF, @SEC, @DOCS
 
 3. **Acceptance Criteria 정의**
    - Given-When-Then 형식의 검증 기준
@@ -395,28 +390,7 @@ code-builder 에이전트가 TRUST 5원칙을 자동으로 검증하여 코드 �
    - `.moai/project/` 문서 동기화
    - API 문서 자동 생성 (TypeDoc, Sphinx 등)
 
-4. **TAG 코드 스캔 (CODE-FIRST)**
-   ```typescript
-   // 코드에서 직접 @TAG 추출 (인덱스 파일 없음)
-   {
-     "version": "4.0",
-     "lastUpdated": "2025-01-15T10:30:00Z",
-     "tags": [
-       {
-         "id": "AUTH-001",
-         "chain": ["REQ", "DESIGN", "TASK", "TEST"],
-         "files": [
-           "specs/SPEC-001/spec.md",
-           "src/auth/service.ts",
-           "tests/auth/service.test.ts"
-         ],
-         "status": "completed"
-       }
-     ]
-   }
-   ```
-
-5. **PR 상태 전환 (Team 모드)**
+4. **PR 상태 전환 (Team 모드)**
    - Draft → Ready for Review
    - 체크리스트 및 테스트 결과 추가
    - Merge 준비 완료
@@ -473,7 +447,7 @@ npm install -g moai-adk
 
 # 또는 Bun 사용
 bun cache rm
-bun add -g moai-adk
+bun install -g moai-adk
 ```
 
 ### 권한 오류 (macOS/Linux)
@@ -494,8 +468,8 @@ sudo npm install -g moai-adk
 moai doctor --verbose
 
 # 특정 요구사항 확인
-node --version  # 18.0 이상 필요
-git --version   # 2.25 이상 필요
+node --version  # 18.0.0 이상 필요
+git --version   # 2.28.0 이상 필요
 ```
 
 ## 도움말
