@@ -38,29 +38,15 @@ model: sonnet
 
 **중요**: Git 커밋 작업은 git-manager 에이전트가 전담합니다. code-builder는 분석 및 TDD 코드 구현만 담당합니다.
 
-## 🔗 하이브리드 TDD 시스템
+## 🔗 언어별 TDD 시스템
 
-### 언어별 최적 라우팅 전략
+### 언어 자동 감지 및 최적 도구 선택
 
-```python
-# 하이브리드 라우터를 통한 최적 TDD 구현
-from moai_adk.core.bridge import create_hybrid_router
+`@agent-code-builder`는 프로젝트 파일을 분석하여 자동으로 언어와 TDD 도구를 선택합니다:
 
-def execute_optimal_tdd(spec_id, spec_type):
-    """SPEC 타입에 따른 최적 TDD 구현"""
-    router = create_hybrid_router()
-
-    # 구현 언어 자동 결정
-    if 'cli' in spec_type or 'frontend' in spec_type or 'performance' in spec_type:
-        # 고성능 언어 우선 (TypeScript, Go, Rust 등)
-        return router.execute_optimal('high-performance-tdd', [spec_id])
-    elif 'ml' in spec_type or 'data' in spec_type or 'backend' in spec_type:
-        # Python 우선
-        return router.execute_optimal('python-tdd', [spec_id])
-    else:
-        # 자동 선택: 프로젝트 컨텍스트 기반 최적 언어
-        return router.execute_optimal('auto-detect-tdd', [spec_id])
-```
+- **언어 감지**: package.json, pyproject.toml, go.mod, Cargo.toml 등 분석
+- **도구 자동 선택**: 언어별 최적 테스트 프레임워크 선택
+- **TDD 사이클**: RED (실패 테스트) → GREEN (통과 코드) → REFACTOR (개선)
 
 ### 타입별 TDD 전략
 
@@ -76,67 +62,31 @@ def execute_optimal_tdd(spec_id, spec_type):
 
 ### TAG 카테고리별 자동 적용 규칙
 
-```python
-# @ TAG 시스템 (MoAI-ADK 표준)
-TAG_CATEGORIES = {
-    'PRIMARY': ['@REQ', '@DESIGN', '@TASK', '@TEST'],      # 기본 체인
-    'STEERING': ['@VISION', '@STRUCT', '@TECH', '@ADR'],   # 프로젝트 방향
-    'IMPLEMENTATION': ['@FEATURE', '@API', '@UI', '@DATA'], # 구현 영역
-    'QUALITY': ['@PERF', '@SEC', '@DOCS', '@TAG']          # 품질 보증
-}
+코드 파일 작성 시 파일 상단에 TAG BLOCK을 직접 작성합니다:
 
-def auto_apply_tags(code_type, spec_content, implementation_phase):
-    """코드 생성 시 자동 TAG 적용"""
-    tags = []
-
-    # Primary Chain (필수)
-    if 'requirement' in spec_content.lower():
-        tags.append('@REQ')
-    if implementation_phase == 'design':
-        tags.append('@DESIGN')
-    if implementation_phase in ['red', 'green', 'refactor']:
-        tags.append('@TASK')
-    if 'test' in code_type.lower():
-        tags.append('@TEST')
-
-    # Implementation Category
-    if 'feature' in code_type or 'function' in code_type:
-        tags.append('@FEATURE')
-    if 'api' in code_type or 'endpoint' in code_type:
-        tags.append('@API')
-    if 'ui' in code_type or 'interface' in code_type:
-        tags.append('@UI')
-    if 'data' in code_type or 'model' in code_type:
-        tags.append('@DATA')
-
-    # Quality Category (조건부)
-    if 'performance' in spec_content.lower():
-        tags.append('@PERF')
-    if 'security' in spec_content.lower():
-        tags.append('@SEC')
-
-    return tags
+```typescript
+// @FEATURE:<DOMAIN-ID> | Chain: @REQ:<ID> -> @DESIGN:<ID> -> @TASK:<ID> -> @TEST:<ID>
+// Related: @API:<ID>, @UI:<ID>, @DATA:<ID>
 ```
+
+**TAG 카테고리**:
+- **Primary Chain** (필수): @REQ → @DESIGN → @TASK → @TEST
+- **Implementation**: @FEATURE, @API, @UI, @DATA
+- **Quality** (선택): @PERF, @SEC, @DOCS
 
 ### TAG 체인 무결성 검증
 
-```python
-def verify_tag_chain_integrity(current_tags, existing_chain):
-    """TAG 체인 연결 무결성 검증"""
+TAG 검증은 코드 직접 스캔 방식으로 수행합니다:
 
-    # Primary Chain 순서 검증
-    primary_order = ['@REQ', '@DESIGN', '@TASK', '@TEST']
-    found_primary = [tag for tag in current_tags if tag in primary_order]
+```bash
+# Primary Chain 검증
+rg '@REQ:[A-Z]+-[0-9]{3}' -n src/
+rg '@DESIGN:[A-Z]+-[0-9]{3}' -n src/
+rg '@TASK:[A-Z]+-[0-9]{3}' -n src/
+rg '@TEST:[A-Z]+-[0-9]{3}' -n tests/
 
-    # 순서 위반 검사
-    if not is_valid_primary_sequence(found_primary, primary_order):
-        return False, f"Primary TAG 순서 위반: {found_primary}"
-
-    # 기존 체인과의 연결성 검증
-    if not has_valid_parent_connection(current_tags, existing_chain):
-        return False, "기존 TAG 체인과의 연결 끊어짐"
-
-    return True, "TAG 체인 무결성 검증 완료"
+# 고아 TAG 감지
+rg '@DEPRECATED' -n
 ```
 
 ## 📋 분석 모드 실행 가이드
@@ -146,10 +96,10 @@ def verify_tag_chain_integrity(current_tags, existing_chain):
 **1. SPEC 문서 로딩 및 검증**
 ```bash
 # SPEC 문서 확인
-@tool:Read .moai/specs/[SPEC-ID].md
+@tool:Read .moai/specs/[SPEC-ID]/spec.md
 
-# TAG 인덱스 확인
-@tool:Read .moai/indexes/tags.db
+# 코드에서 TAG 스캔
+rg '@TAG' -n src/ tests/
 ```
 
 **2. 요구사항 분석**
@@ -174,24 +124,14 @@ def verify_tag_chain_integrity(current_tags, existing_chain):
 - [ ] **TAG 추적성 복잡도 평가**
 
 **4. 언어 선택 결정 로직**
-```python
-def determine_optimal_language(spec_content, project_context):
-    """SPEC 분석을 통한 최적 언어 결정"""
 
-    # 성능 요구사항 확인
-    if has_performance_requirements(spec_content):
-        return analyze_performance_profile()
+언어 선택은 다음 우선순위에 따라 결정됩니다:
 
-    # 생태계 의존성 확인
-    if requires_ml_libraries(spec_content):
-        return "Python"  # NumPy, Pandas, sklearn
-
-    if requires_web_frontend(spec_content):
-        return "TypeScript"  # React, Angular 생태계
-
-    # 기존 코드베이스 일관성
-    return get_project_primary_language(project_context)
-```
+1. **성능 요구사항**: SPEC에 명시된 성능 목표 분석
+2. **생태계 의존성**:
+   - ML/데이터 처리 → Python (NumPy, Pandas, sklearn)
+   - 웹 프론트엔드 → TypeScript (React, Angular)
+3. **프로젝트 일관성**: 기존 코드베이스의 주 언어 우선 사용
 
 **5. 구현 계획 보고서 생성**
 
@@ -254,31 +194,16 @@ def determine_optimal_language(spec_content, project_context):
 
 **언어 감지 제거**: 매번 언어 감지 대신 `.moai/config.json`에서 사전 설정된 언어 정보를 활용합니다.
 
-```python
-# ❌ 비효율적 (매번 감지)
-def detect_project_language():
-    # 파일 시스템 스캔, 설정 파일 분석...
-    return detected_language
+**config.json 기반 언어 컨텍스트**:
 
-# ✅ 효율적 (config.json 활용)
-def get_language_context(file_path):
-    config = load_config('.moai/config.json')
+1. **풀스택 프로젝트**: 경로별 언어 구분
+   - `backend/` → Python, Go 등
+   - `frontend/` → TypeScript, React 등
 
-    # 풀스택 프로젝트
-    if config.get('project_type') == 'fullstack':
-        if 'backend/' in file_path:
-            return config['languages']['backend']
-        elif 'frontend/' in file_path:
-            return config['languages']['frontend']
-
-    # 단일 언어 프로젝트
-    return {
-        'language': config['project_language'],
-        'test_framework': config['test_framework'],
-        'linter': config.get('linter'),
-        'formatter': config.get('formatter')
-    }
-```
+2. **단일 언어 프로젝트**: config.json에서 직접 로드
+   - `project_language`: 주 개발 언어
+   - `test_framework`: 테스트 프레임워크
+   - `linter`, `formatter`: 품질 도구
 
 **자동 도구 선택**: config.json 설정에 따라 pytest, jest, ruff, eslint 등을 자동 선택
 

@@ -50,7 +50,7 @@ tools: Read, Write, Edit, MultiEdit, Bash(git status:*), Bash(git add:*), Bash(g
 ## 동기화 산출물
 
 - `.moai/reports/sync-report.md` 생성/갱신
-- TAG 체인 검증: 코드 직접 스캔 (rg 기반)
+- TAG 체인 검증: 코드 직접 스캔 (`rg '@TAG' -n src/ tests/`)
 
 ## 모드별 실행 방식
 
@@ -246,6 +246,8 @@ Task 2 (sonnet): 문서 구조 분석
 3. TAG 체인 검증 → `rg '@TAG' -n src/ tests/` (코드 직접 스캔)
 
 ## 다음 단계
+
+**권장사항**: 다음 단계 진행 전 `/clear` 또는 `/new` 명령으로 새로운 대화 세션을 시작하면 더 나은 성능과 컨텍스트 관리를 경험할 수 있습니다.
 
 - 문서 동기화 완료 후 전체 MoAI-ADK 워크플로우 완성
 - 모든 Git 작업은 git-manager 에이전트가 전담하여 일관성 보장

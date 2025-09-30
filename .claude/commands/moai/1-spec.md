@@ -80,7 +80,7 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 
 ```bash
 # 프로젝트 문서 기반 SPEC 분석
-@agent-spec-builder --mode=analysis --spec=$ARGUMENTS
+@agent-spec-builder "$ARGUMENTS 분석 및 SPEC 계획 수립"
 ```
 
 #### 분석 체크리스트
@@ -148,7 +148,7 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 
 ```bash
 # SPEC 문서 작성 시작
-@agent-spec-builder --mode=create --spec=$ARGUMENTS --approved=true
+@agent-spec-builder "$ARGUMENTS SPEC 문서 작성 시작 (사용자 승인 완료)"
 ```
 
 ### EARS 명세 작성 가이드
@@ -259,6 +259,8 @@ Task 2 (sonnet): 심화 문서 분석
 - TRUST 원칙 중 Readable(읽기 쉬움) 기준 완화로 인해 모듈 수가 권장치(기본 5)를 초과하는 경우, 근거를 SPEC `context` 섹션에 함께 기록하세요.
 
 ## 다음 단계
+
+**권장사항**: 다음 단계 진행 전 `/clear` 또는 `/new` 명령으로 새로운 대화 세션을 시작하면 더 나은 성능과 컨텍스트 관리를 경험할 수 있습니다.
 
 - `/moai:2-build SPEC-XXX`로 TDD 구현 시작
 - 팀 모드: Issue 생성 후 git-manager 에이전트가 자동으로 브랜치 생성

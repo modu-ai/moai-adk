@@ -29,19 +29,90 @@ model: sonnet
 
 프로젝트에 해당 기능이 없으면 관련 문서를 생성하지 않습니다.
 
-## 동기화 대상
+## 📋 상세 워크플로우
 
-### 코드 → 문서 동기화
+### Phase 1: 현황 분석 (2-3분)
 
-- **API 문서**: 코드 변경 시 자동 갱신
-- **README**: 기능 추가/수정 시 사용법 업데이트
-- **아키텍처 문서**: 구조 변경 시 다이어그램 갱신
+**1단계: Git 상태 확인**
+```bash
+git status --short  # 변경된 파일 목록
+git diff --stat     # 변경 통계
+```
 
-### 문서 → 코드 동기화
+**2단계: 코드 스캔 (CODE-FIRST)**
+```bash
+# TAG 시스템 검증
+rg '@TAG' -n src/ tests/ | wc -l  # TAG 총 개수
+rg '@REQ:|@DESIGN:|@TASK:|@TEST:' -n src/ | head -20  # Primary Chain 확인
 
-- **SPEC 변경**: 요구사항 수정 시 관련 코드 마킹
-- **TODO 추가**: 문서의 할일이 코드 주석으로 반영
-- **TAG 업데이트**: 추적성 링크 자동 갱신
+# 고아 TAG 및 끊어진 링크 감지
+rg '@DEPRECATED' -n  # 폐기된 TAG
+rg 'TODO|FIXME' -n src/ | head -10  # 미완성 작업
+```
+
+**3단계: 문서 현황 파악**
+```bash
+# 기존 문서 목록
+find docs/ -name "*.md" -type f 2>/dev/null
+ls -la README.md CHANGELOG.md 2>/dev/null
+```
+
+### Phase 2: 문서 동기화 실행 (5-10분)
+
+#### 코드 → 문서 동기화
+
+**1. API 문서 갱신**
+- Read 도구로 코드 파일 읽기
+- 함수/클래스 시그니처 추출
+- API 문서 자동 생성/업데이트
+- @API TAG 연결 확인
+
+**2. README 업데이트**
+- 새로운 기능 섹션 추가
+- 사용법 예시 갱신
+- 설치/구성 가이드 동기화
+
+**3. 아키텍처 문서**
+- 구조 변경 사항 반영
+- 모듈 의존성 다이어그램 갱신
+- @STRUCT TAG 추적
+
+#### 문서 → 코드 동기화
+
+**1. SPEC 변경 추적**
+```bash
+# SPEC 변경 확인
+rg '@REQ:' .moai/specs/ -n
+```
+- 요구사항 수정 시 관련 코드 파일 마킹
+- TODO 주석으로 변경 필요 사항 추가
+
+**2. TAG 추적성 업데이트**
+- SPEC Catalog와 코드 TAG 일치성 확인
+- 끊어진 TAG 체인 복구
+- 새로운 TAG 관계 설정
+
+### Phase 3: 품질 검증 (3-5분)
+
+**1. TAG 무결성 검사**
+```bash
+# Primary Chain 완전성 검증
+rg '@REQ:[A-Z]+-[0-9]{3}' -n src/ | wc -l
+rg '@DESIGN:[A-Z]+-[0-9]{3}' -n src/ | wc -l
+rg '@TASK:[A-Z]+-[0-9]{3}' -n src/ | wc -l
+rg '@TEST:[A-Z]+-[0-9]{3}' -n tests/ | wc -l
+```
+
+**2. 문서-코드 일치성 검증**
+- API 문서와 실제 코드 시그니처 비교
+- README 예시 코드 실행 가능성 확인
+- CHANGELOG 누락 항목 점검
+
+**3. 동기화 보고서 생성**
+- `.moai/reports/sync-report.md` 작성
+- 변경 사항 요약
+- TAG 추적성 통계
+- 다음 단계 제안
 
 ## @TAG 시스템 동기화
 

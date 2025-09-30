@@ -23,7 +23,7 @@ export function getLoggerConfig(): EnvironmentConfig {
   const env = process.env['NODE_ENV'] || 'development';
 
   const configs: Record<string, EnvironmentConfig> = {
-    development: { level: 'debug', enableFile: true, enableConsole: true },
+    development: { level: 'debug', enableFile: false, enableConsole: true },
     test: { level: 'error', enableFile: false, enableConsole: false },
     production: { level: 'info', enableFile: true, enableConsole: true },
   };

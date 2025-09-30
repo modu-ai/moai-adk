@@ -24,5 +24,8 @@
     "node": ">=18.0.0",
     "bun": ">=1.2.0"
   },
-  "packageManager": "bun@1.2.19"
+  "packageManager": "bun@1.2.19",
+  "dependencies": {
+    "moai-adk": "^0.0.1"
+  }
 }
