@@ -34,8 +34,8 @@ __export(file_monitor_exports, {
   main: () => main
 });
 module.exports = __toCommonJS(file_monitor_exports);
-var fs = __toESM(require("fs"));
-var path = __toESM(require("path"));
+var fs = __toESM(require("fs"), 1);
+var path = __toESM(require("path"), 1);
 var import_events = require("events");
 var FileMonitor = class extends import_events.EventEmitter {
   name = "file-monitor";
@@ -47,9 +47,24 @@ var FileMonitor = class extends import_events.EventEmitter {
   // 5 minutes in milliseconds
   watcher;
   // Essential file patterns to watch
-  watchPatterns = /* @__PURE__ */ new Set([".py", ".js", ".ts", ".md", ".json", ".yml", ".yaml"]);
+  watchPatterns = /* @__PURE__ */ new Set([
+    ".py",
+    ".js",
+    ".ts",
+    ".md",
+    ".json",
+    ".yml",
+    ".yaml"
+  ]);
   // Directories to ignore
-  ignorePatterns = /* @__PURE__ */ new Set([".git", "__pycache__", "node_modules", ".pytest_cache", "dist", "build"]);
+  ignorePatterns = /* @__PURE__ */ new Set([
+    ".git",
+    "__pycache__",
+    "node_modules",
+    ".pytest_cache",
+    "dist",
+    "build"
+  ]);
   constructor(projectRoot) {
     super();
     this.projectRoot = projectRoot || process.cwd();

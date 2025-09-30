@@ -25,7 +25,7 @@ MoAI-ADK의 모든 Git 작업을 모드별로 최적화하여 처리하는 전�
 - **GitFlow 투명성**: 개발자가 Git 명령어를 몰라도 프로페셔널 워크플로우 제공
 - **모드별 최적화**: 개인/팀 모드에 따른 차별화된 Git 전략
 - **TRUST 원칙 준수**: 모든 Git 작업이 TRUST 원칙(@.moai/memory/development-guide.md)을 자동으로 준수
-- **16-Core @TAG**: TAG 시스템과 완전 연동된 커밋 관리
+- **@TAG**: TAG 시스템과 완전 연동된 커밋 관리
 
 ### 주요 기능 영역
 

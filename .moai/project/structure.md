@@ -1,20 +1,36 @@
 # MoAI-ADK Structure Design
 
-## @STRUCT:ARCHITECTURE-001 시스템 아키텍처 (v0.0.1 완성)
+## @STRUCT:ARCHITECTURE-001 시스템 아키텍처 (v0.0.4 완성)
 
-### TypeScript 기반 고성능 아키텍처 ✅
+### TypeScript 기반 모듈화 아키텍처 ✅
 
-MoAI-ADK는 **TypeScript CLI + 분산 TAG 시스템 + Claude Code 통합** 구조로 완성되어 단일 패키지 배포와 고성능 사용자 경험을 제공합니다.
+MoAI-ADK는 **TypeScript CLI + 모듈화 Core Engine + 분산 TAG 시스템 + Claude Code 통합** 구조로 완성되어 단일 패키지 배포와 고성능 사용자 경험을 제공합니다.
 
 ```
-MoAI-ADK v0.0.1 Architecture (완성)
+MoAI-ADK v0.0.4 Architecture (모듈화 완성)
 ├── CLI Layer (TypeScript)    # ✅ 7개 명령어 100% 완성
-├── Core Engine             # ✅ 진단 시스템 4모듈
+├── Core Engine             # ✅ 모듈화 설계 (Orchestrator 91% 감소)
+│   ├── installer/          # ✅ 9개 모듈 분해 (DI 패턴)
+│   │   ├── orchestrator.ts (135 LOC)
+│   │   ├── context-manager.ts (127 LOC)
+│   │   ├── result-builder.ts (124 LOC)
+│   │   ├── phase-executor.ts (496 LOC)
+│   │   ├── phase-validator.ts (198 LOC)
+│   │   ├── resource-installer.ts (241 LOC)
+│   │   ├── fallback-builder.ts (297 LOC)
+│   │   └── template-processor.ts (225 LOC)
+│   ├── system-checker/     # ✅ 시스템 진단 (4모듈)
+│   └── git/                # ✅ Git 자동화 (테스트 안정화)
+├── Security System         # ✅ Winston logger (97.92% coverage)
 ├── Distributed TAG System  # ✅ 94% 최적화 (149 TAGs)
 └── Claude Extensions        # ✅ 7에이전트+5명령+8훅
 ```
 
-**성과**: CLI 100% 완성, 분산 TAG 94% 최적화, TypeScript 현대화 스택 달성
+**성과 (v0.0.4)**:
+- TRUST 92% 달성 (Elite 등급)
+- Orchestrator 모듈화 (1,467 → 135 LOC, 91% 감소)
+- Winston logger 보안 시스템 구축
+- 테스트 안정화 완료
 
 ## @STRUCT:MODULES-001 모듈별 책임 구분
 
@@ -35,20 +51,46 @@ MoAI-ADK v0.0.1 Architecture (완성)
 | `moai help`              | ✅ **완성** | 전체 도움말, 사용법 가이드       |
 | `moai --version`         | ✅ **완성** | 버전 정보, 빌드 메타데이터       |
 
-### 2. Core Engine (`src/core/`) - 진단 시스템 ✅
+### 2. Core Engine (`src/core/`) - 모듈화 완성 ✅
 
-- **책임**: 시스템 진단, 프로젝트 관리, Git 자동화, TAG 시스템
+- **책임**: 시스템 진단, 프로젝트 관리, Git 자동화, TAG 시스템, 설치 오케스트레이션
 - **입력**: 시스템 상태, 프로젝트 설정, 템플릿 데이터
-- **처리**: 요구사항 검증, 자동 배치, 성능 모니터링
+- **처리**: 요구사항 검증, 자동 배치, 성능 모니터링, 모듈화 설치
 - **출력**: 진단 리포트, 프로젝트 구조, 추적성 데이터
 
 | 모듈                     | 상태       | 주요 기능                       |
 | ---------------------- | -------- | ------------------------------- |
+| `installer/`           | ✅ **v0.0.4 완성** | 모듈화 설치 오케스트레이션 (9개 모듈) |
 | `system-checker/`      | ✅ **완성** | Node.js, Git, 버전 자동 검증      |
 | `package-manager/`     | ✅ **완성** | npm, Bun, 의존성 관리           |
 | `project/`             | ✅ **완성** | 프로젝트 위저드, 템플릿 관리     |
-| `git/`                 | ✅ **완성** | Git 자동화, 브랜치 관리         |
+| `git/`                 | ✅ **v0.0.4 완성** | Git 자동화, 테스트 안정화 완료   |
 | `tag-system/`          | ✅ **완성** | 분산 16-Core TAG 시스템        |
+
+#### 2.1. Installer System (`src/core/installer/`) - v0.0.4 모듈화 완성 ✅
+
+**Phase 2 대규모 리팩토링 성과**:
+- **이전**: orchestrator.ts (1,467 LOC) - 단일 거대 파일
+- **이후**: 9개 전문 모듈 (135~496 LOC) - 의존성 주입 패턴
+- **감소율**: 91% LOC 감소 (R: Readable 52% → 100%)
+
+| 모듈                          | LOC  | 역할                    | 주요 기능                              |
+| ----------------------------- | ---- | ----------------------- | -------------------------------------- |
+| `orchestrator.ts`            | 135  | 설치 조정               | PhaseExecutor/ContextManager/ResultBuilder 통합 |
+| `context-manager.ts`         | 127  | 컨텍스트 관리           | 설치 컨텍스트 생성, 상태 추적           |
+| `result-builder.ts`          | 124  | 결과 수집               | 단계별 결과 집계, 리포트 생성           |
+| `phase-executor.ts`          | 496  | 단계 실행               | Phase 실행 조정, 의존성 관리           |
+| `phase-validator.ts`         | 198  | 검증 로직               | 의존성 검증, 전제 조건 확인            |
+| `resource-installer.ts`      | 241  | 리소스 설치             | 템플릿 복사, 파일 작업 조정            |
+| `fallback-builder.ts`        | 297  | 대체 전략               | 실패 시 복구 전략 생성                 |
+| `template-processor.ts`      | 225  | 템플릿 처리             | 템플릿 렌더링, 변수 치환               |
+| `*-types.ts`                 | -    | 타입 정의               | 공유 인터페이스, 타입 안전성           |
+
+**v0.0.4 적용 패턴**:
+- **의존성 주입 (DI)**: 모든 모듈이 생성자 주입 패턴 사용
+- **단일 책임 원칙 (SRP)**: 각 모듈이 하나의 책임만 담당
+- **인터페이스 분리 (ISP)**: 명확한 타입 정의 및 계약
+- **개방-폐쇄 원칙 (OCP)**: 확장 가능하되 수정 불필요
 
 #### 2.1. Documentation System (`src/moai_adk/core/docs/`) - SPEC-010 추가
 

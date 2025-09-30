@@ -1,115 +1,83 @@
-# MoAI 핵심 스크립트
+# MoAI 스크립트 디렉토리 (템플릿)
 
-이 디렉토리는 MoAI-ADK의 핵심 기능을 담당하는 TypeScript 스크립트들을 포함합니다.
+이 디렉토리는 프로젝트별로 필요한 자동화 스크립트를 작성하는 공간이다.
 
-## 📋 스크립트 목록
+## 권장 스크립트 구조
 
-### 1. 프로젝트 관리 스크립트
+### 1. 프로젝트 관리
+- `project-setup.ts` - 프로젝트 초기 설정
+- `detect-tools.ts` - 개발 도구 자동 감지
+- `language-detector.ts` - 프로젝트 주 언어 식별
 
-#### `project-init.ts` - 프로젝트 초기화
+### 2. TAG 시스템 관리 (코드 스캔 방식)
+
+**핵심 철학**: TAG의 진실은 코드 자체에만 존재한다. 중간 인덱스 없이 rg/grep으로 실시간 스캔한다.
+
 ```bash
-tsx .moai/scripts/project-init.ts --name "my-project" --type personal
+# TAG 전체 검증 (코드 직접 스캔)
+rg '@TAG' -n src/ tests/ docs/
+
+# 8-Core @TAG 검증
+
+# Primary Chain (4 Core) 검증
+rg '@REQ:[A-Z]+-[0-9]{3}' -n src/
+rg '@DESIGN:[A-Z]+-[0-9]{3}' -n src/
+rg '@TASK:[A-Z]+-[0-9]{3}' -n src/
+rg '@TEST:[A-Z]+-[0-9]{3}' -n tests/
+
+# Implementation (4 Core) 검증
+rg '@FEATURE:[A-Z]+-[0-9]{3}' -n src/
+rg '@API:[A-Z]+-[0-9]{3}' -n src/
+rg '@UI:[A-Z]+-[0-9]{3}' -n src/
+rg '@DATA:[A-Z]+-[0-9]{3}' -n src/
+
+# 고아 TAG 감지
+rg '@TAG:DEPRECATED' -n
+
+# 특정 도메인 TAG 검색
+rg '@TAG:[A-Z]+-AUTH' -n
 ```
-- MoAI 프로젝트 구조 생성
-- 기본 설정 파일 생성
-- TAG 시스템 초기화
 
-#### `detect-language.ts` - 언어 감지
-```bash
-tsx .moai/scripts/detect-language.ts --path . --verbose
+**스크립트 예시** (`tag-validator.ts`):
+```typescript
+// @FEATURE:TAG-VALIDATOR-001 | Chain: @REQ:TAG-001 -> @DESIGN:TAG-001 -> @TASK:TAG-001 -> @TEST:TAG-001
+import { execSync } from 'child_process';
+
+interface TagValidationResult {
+  total: number;
+  broken: string[];
+  orphaned: string[];
+}
+
+export function validateTags(): TagValidationResult {
+  // 코드 직접 스캔 - 중간 인덱스 없음
+  const output = execSync('rg "@TAG" -n src/ tests/', {
+    encoding: 'utf-8',
+  });
+
+  // TAG 체인 검증 로직
+  // ...
+}
 ```
-- 프로젝트 주 언어 자동 감지
-- 프레임워크 및 도구 추천
-- 패키지 매니저 감지
 
-### 2. SPEC 관리 스크립트
+### 3. 품질 검증
+- `quality-check.ts` - TRUST 원칙 검증
+- `coverage-report.ts` - 테스트 커버리지 리포트
+- `complexity-analyzer.ts` - 복잡도 분석
 
-#### `spec-builder.ts` - SPEC 문서 생성
-```bash
-tsx .moai/scripts/spec-builder.ts --interactive
-tsx .moai/scripts/spec-builder.ts --title "새 기능" --type feature
-```
-- EARS 방식 SPEC 문서 생성
-- 대화형 SPEC 작성 지원
-- 메타데이터 자동 관리
+### 4. 문서 관리
+- `doc-generator.ts` - API 문서 자동 생성
+- `readme-updater.ts` - README 동기화
+- `changelog-builder.ts` - 변경 이력 생성
 
-#### `spec-validator.ts` - SPEC 검증
-```bash
-tsx .moai/scripts/spec-validator.ts --all --fix
-tsx .moai/scripts/spec-validator.ts --spec SPEC-001 --strict
-```
-- SPEC 문서 유효성 검증
-- @TAG 형식 검사
-- 자동 수정 기능
-
-### 3. TDD 구현 스크립트
-
-#### `tdd-runner.ts` - TDD 사이클 실행
-```bash
-tsx .moai/scripts/tdd-runner.ts --phase all --coverage
-tsx .moai/scripts/tdd-runner.ts --phase red --language typescript
-```
-- Red-Green-Refactor 사이클 자동화
-- 다중 언어 지원 (Python, TypeScript, Java, Go, Rust)
-- 커버리지 측정 및 품질 검증
-
-#### `test-analyzer.ts` - 테스트 분석
-```bash
-tsx .moai/scripts/test-analyzer.ts --coverage --format markdown
-tsx .moai/scripts/test-analyzer.ts --path src --save
-```
-- 테스트 파일 자동 스캔
-- 커버리지 분석
-- 품질 점수 계산
-
-### 4. 동기화 스크립트
-
-#### `doc-syncer.ts` - 문서 동기화
-```bash
-tsx .moai/scripts/doc-syncer.ts --target all
-tsx .moai/scripts/doc-syncer.ts --target readme
-```
-- README.md 자동 업데이트
-- API 문서 생성
-- 릴리스 노트 생성
-
-#### `tag-updater.ts` - TAG 인덱스 업데이트
-```bash
-tsx .moai/scripts/tag-updater.ts --scan --repair --backup
-tsx .moai/scripts/tag-updater.ts --validate --cleanup
-```
-- 프로젝트 전체 TAG 스캔
-- TAG 데이터베이스 수리
-- 고아 TAG 및 끊어진 참조 감지
-
-### 5. 품질 검증 스크립트
-
-#### `trust-checker.ts` - TRUST 원칙 검증
-```bash
-tsx .moai/scripts/trust-checker.ts --principle all --report
-tsx .moai/scripts/trust-checker.ts --principle test --fix
-```
-- TRUST 5원칙 자동 검증
-- 코드 품질 점수 계산
-- 자동 수정 제안
-
-#### `debug-analyzer.ts` - 디버깅 분석
-```bash
-tsx .moai/scripts/debug-analyzer.ts --error "Error message"
-tsx .moai/scripts/debug-analyzer.ts --system --performance --dependencies
-```
-- 에러 메시지 패턴 분석
-- 시스템 진단 및 성능 분석
-- 의존성 이슈 감지
-
-## 🔧 사용법
+## 사용 가이드
 
 ### 기본 실행
 ```bash
-# tsx로 직접 실행
+# TypeScript 직접 실행 (tsx 사용)
 tsx .moai/scripts/[script-name].ts [options]
 
-# 또는 Node.js로 실행 (사전 컴파일 필요)
+# 컴파일 후 실행
 node .moai/scripts/[script-name].js [options]
 ```
 
@@ -118,90 +86,15 @@ node .moai/scripts/[script-name].js [options]
 tsx .moai/scripts/[script-name].ts --help
 ```
 
-### 전역 설치 (선택사항)
-```bash
-# TypeScript를 전역으로 실행할 수 있도록 설정
-npm install -g tsx
+## 스크립트 작성 가이드
 
-# 이후 간단하게 실행 가능
-cd your-project
-tsx .moai/scripts/project-init.ts
-```
+스크립트를 추가할 때 다음 규칙을 준수한다:
 
-## 📊 워크플로우 통합
-
-### 1. 새 프로젝트 시작
-```bash
-# 1. 프로젝트 초기화
-tsx .moai/scripts/project-init.ts --name "my-project"
-
-# 2. 언어 감지 및 설정
-tsx .moai/scripts/detect-language.ts --verbose
-
-# 3. 첫 번째 SPEC 생성
-tsx .moai/scripts/spec-builder.ts --interactive
-```
-
-### 2. 개발 사이클
-```bash
-# 1. SPEC 검증
-tsx .moai/scripts/spec-validator.ts --spec SPEC-001 --fix
-
-# 2. TDD 구현
-tsx .moai/scripts/tdd-runner.ts --phase all --coverage
-
-# 3. 품질 검증
-tsx .moai/scripts/trust-checker.ts --principle all
-
-# 4. 문서 동기화
-tsx .moai/scripts/doc-syncer.ts --target all
-```
-
-### 3. 유지보수
-```bash
-# 1. TAG 시스템 업데이트
-tsx .moai/scripts/tag-updater.ts --scan --repair
-
-# 2. 테스트 분석
-tsx .moai/scripts/test-analyzer.ts --coverage --save
-
-# 3. 시스템 진단
-tsx .moai/scripts/debug-analyzer.ts --system --performance
-```
-
-## 🎯 출력 형식
-
-모든 스크립트는 다음 형식으로 일관된 출력을 제공합니다:
-
-```json
-{
-  "success": true,
-  "result": { ... },
-  "nextSteps": [
-    "다음 단계 안내"
-  ]
-}
-```
-
-## 🔗 .claude/ 지침과의 연동
-
-이 스크립트들은 `.claude/` 디렉토리의 에이전트 지침에서 참조됩니다:
-
-- **spec-builder**: `/moai:1-spec` 명령어에서 사용
-- **tdd-runner**: `/moai:2-build` 명령어에서 사용
-- **doc-syncer**: `/moai:3-sync` 명령어에서 사용
-- **debug-analyzer**: `@agent-debug-helper`에서 사용
-- **trust-checker**: 품질 검증 시 사용
-
-## 🛠️ 개발자 가이드
-
-### 새 스크립트 추가 시 준수사항
-
-1. **TypeScript 기반**: 모든 스크립트는 TypeScript로 작성
-2. **Commander.js 사용**: CLI 인터페이스는 Commander.js 패턴 준수
-3. **JSON 출력**: 구조화된 결과를 JSON으로 출력
-4. **에러 처리**: 명확한 에러 메시지와 종료 코드 제공
-5. **도움말**: `--help` 옵션으로 사용법 안내
+1. **TypeScript로 작성**: 모든 스크립트는 TypeScript로 작성
+2. **Commander.js 패턴 사용**: CLI 인터페이스 표준화
+3. **JSON 출력 형식 준수**: 구조화된 결과 제공
+4. **`--help` 옵션 제공**: 사용법 안내 필수
+5. **에러 처리**: 명확한 에러 메시지와 종료 코드
 
 ### 공통 인터페이스
 ```typescript
@@ -217,6 +110,26 @@ interface ScriptResult {
 - `0`: 성공
 - `1`: 실패 또는 오류
 
+## TAG 시스템 통합
+
+**중요**: TAG INDEX 파일을 생성하거나 관리하는 스크립트는 작성하지 않는다. TAG의 진실은 오직 코드 자체에만 존재한다.
+
+**권장 방식**:
+- ✅ `rg`/`grep`으로 코드 직접 스캔
+- ✅ 실시간 TAG 검증
+- ✅ TAG 체인 무결성 확인
+- ❌ TAG INDEX 파일 생성/관리
+- ❌ 중간 캐시 사용
+- ❌ 별도 TAG 데이터베이스
+
+## .claude/ 에이전트 통합
+
+이 디렉토리의 스크립트들은 `.claude/agents/` 에이전트 지침에서 참조될 수 있다:
+
+- `doc-syncer.ts` → `@agent-doc-syncer`에서 사용
+- `quality-check.ts` → `@agent-trust-checker`에서 사용
+- `tag-validator.ts` → `/moai:3-sync`에서 사용
+
 ---
 
-이 스크립트들은 MoAI-ADK의 핵심 기능을 담당하며, `.claude/` 에이전트 시스템과 완전히 통합되어 동작합니다.
+이 디렉토리는 프로젝트별 자동화 스크립트를 위한 **템플릿 공간**이다. 필요에 따라 스크립트를 추가하고 커스터마이징한다.

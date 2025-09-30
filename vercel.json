@@ -1,0 +1,7 @@
+{
+  "framework": "vitepress",
+  "buildCommand": "cd moai-adk-ts && bun install && bun run docs:build",
+  "outputDirectory": "moai-adk-ts/docs/.vitepress/dist",
+  "installCommand": "bun install",
+  "devCommand": "cd moai-adk-ts && bun run docs:dev"
+}

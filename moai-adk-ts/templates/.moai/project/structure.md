@@ -54,17 +54,20 @@ Project Architecture
 
 ## @STRUCT:TRACEABILITY-001 추적성 전략
 
-### TAG 체계 적용
+### 8-Core @TAG 체계 적용
 
-- **Primary Chain**: `@REQ → @DESIGN → @TASK → @TEST`
-- **Implementation**: `@FEATURE → @API → @UI → @DATA`
-- **Quality**: `@PERF → @SEC → @DOCS → @TAG`
+**Primary Chain (4 Core)**: 요구사항부터 검증까지 필수 흐름
+- `@REQ` → `@DESIGN` → `@TASK` → `@TEST`
 
-### TAG 인덱스 관리
+**Implementation (4 Core)**: 구현 세부 사항
+- `@FEATURE` → `@API` → `@UI` → `@DATA`
 
-- **자동 생성**: `/moai:3-sync` 실행 시 `.moai/indexes/tags.json` 갱신
-- **추적 범위**: [추적할 범위와 대상]
-- **유지 주기**: [업데이트 주기와 조건]
+### TAG 추적성 관리 (코드 스캔 방식)
+
+- **검증 방법**: `/moai:3-sync` 실행 시 `rg '@TAG' -n`으로 코드 전체 스캔
+- **추적 범위**: 프로젝트 전체 소스코드 (src/, tests/, docs/)
+- **유지 주기**: 코드 변경 시점마다 실시간 검증
+- **중간 캐시 없음**: TAG INDEX 파일 미사용, 코드가 유일한 진실의 원천
 
 ## Legacy Context
 

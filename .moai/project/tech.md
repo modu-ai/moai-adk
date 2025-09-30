@@ -30,7 +30,7 @@
 ### 1. TypeScript 런타임 의존성 (주 개발 스택)
 
 ```json
-// package.json v0.0.1 - 초기 개발 버전
+// package.json v0.0.4 - 보안 시스템 완성
 {
   "dependencies": {
     "commander": "^14.0.1",     // CLI 프레임워크 (최신)
@@ -40,10 +40,17 @@
     "execa": "^9.6.0",          // 프로세스 실행 (최신)
     "lodash": "^4.17.21",       // 유틸리티 함수 (JSON 처리 최적화)
     "yaml": "^2.6.2",           // YAML 파서 (신규)
-    "simple-git": "^3.28.0"     // Git 통합 (신규)
+    "simple-git": "^3.28.0",    // Git 통합 (신규)
+    "winston": "^3.17.0"        // ✅ v0.0.4 추가: 구조화 로깅 (97.92% coverage)
   }
 }
 ```
+
+**v0.0.4 보안 강화**:
+- **Winston Logger**: 구조화 로깅 시스템 도입 (Phase 3)
+- **민감정보 마스킹**: 15개 필드 + 12개 패턴 자동 마스킹
+- **TAG 통합**: @TAG 기반 추적성 로깅
+- **console.* 완전 제거**: 288개 전환 완료 (production code 0개)
 
 ### 2. Python (사용자 프로젝트 지원용)
 
@@ -138,12 +145,25 @@ bun run type-check                         # TypeScript 5.9.2 타입 검사
 }
 ```
 
-### 로깅 정책
+### 로깅 정책 (v0.0.4 Winston Logger 완성) ✅
 
-- **구조화 로깅**: JSON Lines 포맷 (Python: structlog, TypeScript: winston)
+**구조화 로깅 시스템** (`src/utils/winston-logger.ts`):
+- **프레임워크**: Winston 3.17.0 (TypeScript 네이티브)
+- **테스트 커버리지**: 97.92% (24 tests, 100% pass)
+- **포맷**: JSON Lines (구조화 데이터 로깅)
 - **로그 수준**: DEBUG, INFO, WARNING, ERROR, CRITICAL
-- **민감정보 마스킹**: API 키, 비밀번호, 토큰을 `***redacted***`로 마스킹
+- **TAG 통합**: @TAG 기반 추적성 로깅 (`logWithTag()` 메서드)
+
+**민감정보 자동 마스킹** (15개 필드 + 12개 패턴):
+- **필드 마스킹**: password, token, apiKey, secret, accessKey, privateKey, credentials, authToken, sessionId, cookie, jwt, refreshToken, clientSecret, apiSecret, bearerToken
+- **패턴 마스킹**: email, credit card, SSN, phone, IP address, URL credentials, API keys, JWT tokens, AWS keys, GitHub tokens, database URLs, private keys
+- **출력 형태**: `***REDACTED***` (일관된 마스킹 표시)
+
+**v0.0.4 보안 강화 성과**:
+- **console.* 완전 제거**: 288개 전환 (production code 0개)
+- **로그 파일 관리**: `.moai/logs/` (daily rotation, max 7 days)
 - **감사 로그**: 모든 CLI 명령어, Git 작업, 파일 변경 기록
+- **S (Secured)**: 65% → 100% 달성
 
 ## @TECH:DEPLOY-001 배포 채널 & 전략
 

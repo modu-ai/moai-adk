@@ -96,15 +96,38 @@ export class CLIApp {
       .option('-f, --force', 'Force overwrite existing files')
       .option('--personal', 'Initialize in personal mode (default)')
       .option('--team', 'Initialize in team mode')
-      .action(async (project: string | undefined) => {
-        try {
-          const success = await this.initCommand.run(project);
-          process.exit(success ? 0 : 1);
-        } catch (error) {
-          logger.error(chalk.red('Error during initialization:'), error);
-          process.exit(1);
+      .action(
+        async (
+          project: string | undefined,
+          options: {
+            template?: string;
+            interactive?: boolean;
+            backup?: boolean;
+            force?: boolean;
+            personal?: boolean;
+            team?: boolean;
+          }
+        ) => {
+          try {
+            // Determine mode: team takes precedence over personal
+            const mode = options.team ? 'team' : 'personal';
+
+            // Call runInteractive with all options
+            // Use spread operator to avoid passing undefined explicitly
+            const result = await this.initCommand.runInteractive({
+              ...(project && { name: project }),
+              mode: mode as 'personal' | 'team',
+              ...(options.backup !== undefined && { backup: options.backup }),
+              ...(options.force !== undefined && { force: options.force }),
+            });
+
+            process.exit(result.success ? 0 : 1);
+          } catch (error) {
+            logger.error(chalk.red('Error during initialization:'), error);
+            process.exit(1);
+          }
         }
-      });
+      );
 
     // Restore command
     this.program

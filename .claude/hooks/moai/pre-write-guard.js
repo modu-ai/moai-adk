@@ -54,7 +54,9 @@ async function main() {
     const result = await guard.execute(input);
     outputResult2(result);
   } catch (error) {
-    console.error(`ERROR steering_guard: ${error instanceof Error ? error.message : "Unknown error"}`);
+    console.error(
+      `ERROR steering_guard: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
     process.exit(1);
   }
 }
@@ -63,9 +65,9 @@ var init_steering_guard = __esm({
   "src/claude/hooks/security/steering-guard.ts"() {
     "use strict";
     init_cjs_shims();
-    fs = __toESM(require("fs"));
-    path = __toESM(require("path"));
-    os = __toESM(require("os"));
+    fs = __toESM(require("fs"), 1);
+    path = __toESM(require("path"), 1);
+    os = __toESM(require("os"), 1);
     BANNED_PATTERNS = [
       {
         pattern: /ignore (the )?(claude|constitution|steering|instructions)/i,
@@ -133,7 +135,13 @@ var init_steering_guard = __esm({
         const currentDir = process.cwd();
         const tsProject = path.join(currentDir, "moai-adk-ts");
         const hasTypeScript = fs.existsSync(tsProject) && fs.existsSync(path.join(tsProject, "package.json"));
-        const pythonBridge = path.join(currentDir, "src", "moai_adk", "core", "bridge");
+        const pythonBridge = path.join(
+          currentDir,
+          "src",
+          "moai_adk",
+          "core",
+          "bridge"
+        );
         const hasPythonBridge = fs.existsSync(pythonBridge) && fs.existsSync(path.join(pythonBridge, "typescript_bridge.py"));
         if (hasTypeScript && hasPythonBridge) {
           return {
@@ -169,8 +177,12 @@ var init_steering_guard = __esm({
         }
         const hybridStatus = this.checkHybridSystemStatus();
         console.error("\u{1F680} MoAI-ADK \uD558\uC774\uBE0C\uB9AC\uB4DC \uD504\uB85C\uC81D\uD2B8\uAC00 \uAC10\uC9C0\uB418\uC5C8\uC2B5\uB2C8\uB2E4!");
-        console.error("\u{1F4D6} \uAC1C\uBC1C \uAC00\uC774\uB4DC: CLAUDE.md | TRUST \uC6D0\uCE59: .moai/memory/development-guide.md");
-        console.error("\u26A1 \uD558\uC774\uBE0C\uB9AC\uB4DC \uC6CC\uD06C\uD50C\uB85C\uC6B0: /moai:1-spec \u2192 /moai:2-build \u2192 /moai:3-sync");
+        console.error(
+          "\u{1F4D6} \uAC1C\uBC1C \uAC00\uC774\uB4DC: CLAUDE.md | TRUST \uC6D0\uCE59: .moai/memory/development-guide.md"
+        );
+        console.error(
+          "\u26A1 \uD558\uC774\uBE0C\uB9AC\uB4DC \uC6CC\uD06C\uD50C\uB85C\uC6B0: /moai:1-spec \u2192 /moai:2-build \u2192 /moai:3-sync"
+        );
         console.error(`\u{1F517} \uC2DC\uC2A4\uD15C \uC0C1\uD0DC: ${hybridStatus.description}`);
         console.error("\u{1F527} \uB514\uBC84\uAE45: /moai:4-debug | \uC124\uC815 \uAD00\uB9AC: @agent-cc-manager");
         console.error("");
@@ -182,7 +194,9 @@ var init_steering_guard = __esm({
     };
     if (require.main === module) {
       main().catch((error) => {
-        console.error(`ERROR steering_guard: ${error instanceof Error ? error.message : "Unknown error"}`);
+        console.error(
+          `ERROR steering_guard: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
         process.exit(1);
       });
     }
@@ -198,7 +212,9 @@ async function main2() {
     const result = await policyBlock.execute(input);
     outputResult2(result);
   } catch (error) {
-    console.error(`ERROR policy_block: ${error instanceof Error ? error.message : "Unknown error"}`);
+    console.error(
+      `ERROR policy_block: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
     process.exit(1);
   }
 }
@@ -255,7 +271,9 @@ var init_policy_block = __esm({
           }
         }
         if (!this.isAllowedPrefix(command)) {
-          console.error("NOTICE: \uB4F1\uB85D\uB418\uC9C0 \uC54A\uC740 \uBA85\uB839\uC785\uB2C8\uB2E4. \uD544\uC694 \uC2DC settings.json \uC758 allow \uBAA9\uB85D\uC744 \uAC31\uC2E0\uD558\uC138\uC694.");
+          console.error(
+            "NOTICE: \uB4F1\uB85D\uB418\uC9C0 \uC54A\uC740 \uBA85\uB839\uC785\uB2C8\uB2E4. \uD544\uC694 \uC2DC settings.json \uC758 allow \uBAA9\uB85D\uC744 \uAC31\uC2E0\uD558\uC138\uC694."
+          );
         }
         return { success: true };
       }
@@ -281,7 +299,9 @@ var init_policy_block = __esm({
     };
     if (require.main === module) {
       main2().catch((error) => {
-        console.error(`ERROR policy_block: ${error instanceof Error ? error.message : "Unknown error"}`);
+        console.error(
+          `ERROR policy_block: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
         process.exit(1);
       });
     }
@@ -315,8 +335,8 @@ var init_file_monitor = __esm({
   "src/claude/hooks/workflow/file-monitor.ts"() {
     "use strict";
     init_cjs_shims();
-    fs2 = __toESM(require("fs"));
-    path2 = __toESM(require("path"));
+    fs2 = __toESM(require("fs"), 1);
+    path2 = __toESM(require("path"), 1);
     import_events = require("events");
     FileMonitor = class extends import_events.EventEmitter {
       name = "file-monitor";
@@ -328,9 +348,24 @@ var init_file_monitor = __esm({
       // 5 minutes in milliseconds
       watcher;
       // Essential file patterns to watch
-      watchPatterns = /* @__PURE__ */ new Set([".py", ".js", ".ts", ".md", ".json", ".yml", ".yaml"]);
+      watchPatterns = /* @__PURE__ */ new Set([
+        ".py",
+        ".js",
+        ".ts",
+        ".md",
+        ".json",
+        ".yml",
+        ".yaml"
+      ]);
       // Directories to ignore
-      ignorePatterns = /* @__PURE__ */ new Set([".git", "__pycache__", "node_modules", ".pytest_cache", "dist", "build"]);
+      ignorePatterns = /* @__PURE__ */ new Set([
+        ".git",
+        "__pycache__",
+        "node_modules",
+        ".pytest_cache",
+        "dist",
+        "build"
+      ]);
       constructor(projectRoot) {
         super();
         this.projectRoot = projectRoot || process.cwd();
@@ -491,8 +526,8 @@ var init_language_detector = __esm({
   "src/claude/hooks/workflow/language-detector.ts"() {
     "use strict";
     init_cjs_shims();
-    fs3 = __toESM(require("fs"));
-    path3 = __toESM(require("path"));
+    fs3 = __toESM(require("fs"), 1);
+    path3 = __toESM(require("path"), 1);
     DEFAULT_MAPPINGS = {
       test_runners: {
         python: "pytest",
@@ -620,7 +655,14 @@ var init_language_detector = __esm({
           for (const entry of entries) {
             const fullPath = path3.join(dir, entry.name);
             if (entry.isDirectory()) {
-              if (["node_modules", ".git", "__pycache__", ".pytest_cache", "dist", "build"].includes(entry.name)) {
+              if ([
+                "node_modules",
+                ".git",
+                "__pycache__",
+                ".pytest_cache",
+                "dist",
+                "build"
+              ].includes(entry.name)) {
                 continue;
               }
               if (this.findFilesWithExtension(fullPath, extension)) {
@@ -641,7 +683,12 @@ var init_language_detector = __esm({
        * Load language mappings from configuration
        */
       loadMappings() {
-        const mappingPath = path3.join(this.projectRoot, ".moai", "config", "language_mappings.json");
+        const mappingPath = path3.join(
+          this.projectRoot,
+          ".moai",
+          "config",
+          "language_mappings.json"
+        );
         try {
           if (fs3.existsSync(mappingPath)) {
             const data = fs3.readFileSync(mappingPath, "utf-8");
@@ -669,9 +716,13 @@ var init_language_detector = __esm({
             const testRunner = mappings.test_runners[lang] || "-";
             const linter = mappings.linters[lang] || "-";
             const formatter = mappings.formatters[lang] || "-";
-            lines.push(`- ${lang}: test=${testRunner}, lint=${linter}, format=${formatter}`);
+            lines.push(
+              `- ${lang}: test=${testRunner}, lint=${linter}, format=${formatter}`
+            );
           }
-          lines.push("\u{1F4A1} \uD544\uC694 \uC2DC /moai:2-build \uB2E8\uACC4\uC5D0\uC11C \uD574\uB2F9 \uB3C4\uAD6C\uB97C \uC0AC\uC6A9\uD574 TDD\uB97C \uC2E4\uD589\uD558\uC138\uC694.");
+          lines.push(
+            "\u{1F4A1} \uD544\uC694 \uC2DC /moai:2-build \uB2E8\uACC4\uC5D0\uC11C \uD574\uB2F9 \uB3C4\uAD6C\uB97C \uC0AC\uC6A9\uD574 TDD\uB97C \uC2E4\uD589\uD558\uC138\uC694."
+          );
         }
         return lines.join("\n");
       }
@@ -712,8 +763,8 @@ var init_test_runner = __esm({
     "use strict";
     init_cjs_shims();
     import_child_process = require("child_process");
-    fs4 = __toESM(require("fs"));
-    path4 = __toESM(require("path"));
+    fs4 = __toESM(require("fs"), 1);
+    path4 = __toESM(require("path"), 1);
     TIMEOUT_SECONDS = 3e5;
     TestRunner = class {
       name = "test-runner";
@@ -891,7 +942,9 @@ var init_test_runner = __esm({
             lines.push(`   Error: ${result.stderr}`);
           }
           if (result.stdout) {
-            lines.push(`   Output: ${result.stdout.substring(0, 200)}${result.stdout.length > 200 ? "..." : ""}`);
+            lines.push(
+              `   Output: ${result.stdout.substring(0, 200)}${result.stdout.length > 200 ? "..." : ""}`
+            );
           }
           lines.push("");
         }
@@ -932,8 +985,8 @@ var init_session_notice = __esm({
     "use strict";
     init_cjs_shims();
     import_child_process2 = require("child_process");
-    fs5 = __toESM(require("fs"));
-    path5 = __toESM(require("path"));
+    fs5 = __toESM(require("fs"), 1);
+    path5 = __toESM(require("path"), 1);
     SessionNotifier = class {
       name = "session-notice";
       projectRoot;
@@ -995,10 +1048,7 @@ var init_session_notice = __esm({
             violations: []
           };
         }
-        const criticalFiles = [
-          ".moai/memory/development-guide.md",
-          "CLAUDE.md"
-        ];
+        const criticalFiles = [".moai/memory/development-guide.md", "CLAUDE.md"];
         const violations = [];
         for (const filePath of criticalFiles) {
           if (!fs5.existsSync(path5.join(this.projectRoot, filePath))) {
@@ -1162,12 +1212,16 @@ var init_session_notice = __esm({
         const shortCommit = gitInfo.commit.substring(0, 7);
         const shortMessage = gitInfo.message.substring(0, 50);
         const ellipsis = gitInfo.message.length > 50 ? "..." : "";
-        lines.push(`\u{1F33F} \uD604\uC7AC \uBE0C\uB79C\uCE58: ${gitInfo.branch} (${shortCommit} ${shortMessage}${ellipsis})`);
+        lines.push(
+          `\u{1F33F} \uD604\uC7AC \uBE0C\uB79C\uCE58: ${gitInfo.branch} (${shortCommit} ${shortMessage}${ellipsis})`
+        );
         if (gitInfo.changesCount > 0) {
           lines.push(`\u{1F4DD} \uBCC0\uACBD\uC0AC\uD56D: ${gitInfo.changesCount}\uAC1C \uD30C\uC77C`);
         }
         const remaining = status.specProgress.total - status.specProgress.completed;
-        lines.push(`\u{1F4DD} SPEC \uC9C4\uD589\uB960: ${status.specProgress.completed}/${status.specProgress.total} (\uBBF8\uC644\uB8CC ${remaining}\uAC1C)`);
+        lines.push(
+          `\u{1F4DD} SPEC \uC9C4\uD589\uB960: ${status.specProgress.completed}/${status.specProgress.total} (\uBBF8\uC644\uB8CC ${remaining}\uAC1C)`
+        );
         lines.push("\u2705 \uD1B5\uD569 \uCCB4\uD06C\uD3EC\uC778\uD2B8 \uC2DC\uC2A4\uD15C \uC0AC\uC6A9 \uAC00\uB2A5");
         return lines.join("\n");
       }
@@ -1208,7 +1262,11 @@ function parseClaudeInput() {
           resolve2({});
         }
       } catch (error) {
-        reject(new Error(`Invalid JSON input: ${error instanceof Error ? error.message : "Unknown error"}`));
+        reject(
+          new Error(
+            `Invalid JSON input: ${error instanceof Error ? error.message : "Unknown error"}`
+          )
+        );
       }
     });
     process.stdin.on("error", (error) => {
@@ -1233,8 +1291,8 @@ var init_hooks = __esm({
   "src/claude/hooks/index.ts"() {
     "use strict";
     init_cjs_shims();
-    path6 = __toESM(require("path"));
-    fs6 = __toESM(require("fs"));
+    path6 = __toESM(require("path"), 1);
+    fs6 = __toESM(require("fs"), 1);
     init_types();
     init_steering_guard();
     init_policy_block();
@@ -1253,7 +1311,15 @@ var init_hooks = __esm({
           // 10 seconds
           disabledHooks: [],
           security: {
-            allowedCommands: ["git", "npm", "node", "python", "pytest", "go", "cargo"],
+            allowedCommands: [
+              "git",
+              "npm",
+              "node",
+              "python",
+              "pytest",
+              "go",
+              "cargo"
+            ],
             blockedPatterns: ["rm -rf", "sudo", "chmod 777"],
             requireApproval: ["--force", "--hard"]
           },
@@ -1334,7 +1400,15 @@ var init_hooks = __esm({
           timeout: 1e4,
           disabledHooks: [],
           security: {
-            allowedCommands: ["git", "npm", "node", "python", "pytest", "go", "cargo"],
+            allowedCommands: [
+              "git",
+              "npm",
+              "node",
+              "python",
+              "pytest",
+              "go",
+              "cargo"
+            ],
             blockedPatterns: ["rm -rf", "sudo", "chmod 777"],
             requireApproval: ["--force", "--hard"]
           }
@@ -1355,7 +1429,9 @@ var init_hooks = __esm({
       createTimeoutPromise() {
         return new Promise((_, reject) => {
           setTimeout(() => {
-            reject(new Error(`Hook execution timed out after ${this.config.timeout}ms`));
+            reject(
+              new Error(`Hook execution timed out after ${this.config.timeout}ms`)
+            );
           }, this.config.timeout);
         });
       }
@@ -1385,15 +1461,8 @@ var SENSITIVE_KEYWORDS, PROTECTED_PATHS, PreWriteGuard;
 var init_pre_write_guard = __esm({
   "src/claude/hooks/security/pre-write-guard.ts"() {
     init_cjs_shims();
-    SENSITIVE_KEYWORDS = [
-      ".env",
-      "/secrets",
-      "/.git/",
-      "/.ssh"
-    ];
-    PROTECTED_PATHS = [
-      ".moai/memory/"
-    ];
+    SENSITIVE_KEYWORDS = [".env", "/secrets", "/.git/", "/.ssh"];
+    PROTECTED_PATHS = [".moai/memory/"];
     PreWriteGuard = class {
       name = "pre-write-guard";
       async execute(input) {

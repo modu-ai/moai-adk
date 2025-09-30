@@ -52,7 +52,7 @@ tests/
 
 ### 1단계: 명세 작성 (`/moai:1-spec`) ✅
 - EARS 방법론으로 요구사항 정의 완료
-- 16-Core TAG 시스템 적용 완료
+- @TAG 시스템 적용 완료
 
 ### 2단계: TDD 구현 (`/moai:2-build`) ✅
 - RED-GREEN-REFACTOR 사이클 적용
@@ -103,4 +103,4 @@ npm run build
 
 ---
 
-**MoAI-ADK 지원**: 이 프로젝트는 MoAI-ADK의 SPEC-First TDD 방법론과 16-Core TAG 시스템을 적용하여 개발되었습니다.
+**MoAI-ADK 지원**: 이 프로젝트는 MoAI-ADK의 SPEC-First TDD 방법론과 @TAG 시스템을 적용하여 개발되었습니다.

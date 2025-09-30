@@ -1,0 +1,593 @@
+/**
+ * Custom VitePress Theme - MoAI-ADK
+ * Based on shadcn/ui Design System
+ * Monochrome Design with Pretendard Font
+ */
+
+/* ============================================
+   Pretendard Font Family - Korean Web Font
+   ============================================ */
+
+@font-face {
+    font-family: 'Pretendard';
+    src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Thin.woff') format('woff');
+    font-weight: 100;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Pretendard';
+    src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-ExtraLight.woff') format('woff');
+    font-weight: 200;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Pretendard';
+    src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Light.woff') format('woff');
+    font-weight: 300;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Pretendard';
+    src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Regular.woff') format('woff');
+    font-weight: 400;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Pretendard';
+    src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Medium.woff') format('woff');
+    font-weight: 500;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Pretendard';
+    src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-SemiBold.woff') format('woff');
+    font-weight: 600;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Pretendard';
+    src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Bold.woff') format('woff');
+    font-weight: 700;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Pretendard';
+    src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-ExtraBold.woff') format('woff');
+    font-weight: 800;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Pretendard';
+    src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Black.woff') format('woff');
+    font-weight: 900;
+    font-display: swap;
+}
+
+/* ============================================
+   shadcn/ui Design Tokens - Light Mode
+   Based on Monochrome Palette
+   ============================================ */
+
+:root {
+  /* Base Font */
+  --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, Monaco, monospace;
+
+  /* shadcn/ui Color System - HSL Values */
+  /* Light Mode - Monochrome Palette */
+
+  /* Background Colors */
+  --background: 0 0% 98%;           /* #FAF9F6 - Off-white warmest */
+  --foreground: 0 0% 5%;            /* #0D0D0D - Almost black */
+
+  /* Card & Popover */
+  --card: 0 0% 96%;                 /* #F5F5F5 - Light gray */
+  --card-foreground: 0 0% 5%;       /* #0D0D0D */
+
+  --popover: 0 0% 98%;              /* #FAF9F6 */
+  --popover-foreground: 0 0% 5%;    /* #0D0D0D */
+
+  /* Primary - Main brand color (dark in light mode) */
+  --primary: 0 0% 13%;              /* #222222 - Dark gray */
+  --primary-foreground: 0 0% 98%;   /* #FAF9F6 */
+
+  /* Secondary - Subtle emphasis */
+  --secondary: 0 0% 93%;            /* #EDEDED - Medium light gray */
+  --secondary-foreground: 0 0% 5%;  /* #0D0D0D */
+
+  /* Muted - Subtle backgrounds */
+  --muted: 0 0% 94%;                /* #F1F2F5 - Cool light gray */
+  --muted-foreground: 0 0% 17%;     /* #2C2C2C - Medium dark gray */
+
+  /* Accent - Interactive elements */
+  --accent: 0 0% 93%;               /* #EDEDED */
+  --accent-foreground: 0 0% 5%;     /* #0D0D0D */
+
+  /* Destructive - Error states */
+  --destructive: 0 0% 20%;          /* Dark for light mode */
+  --destructive-foreground: 0 0% 98%;
+
+  /* Border & Input */
+  --border: 0 0% 93%;               /* #EDEDED */
+  --input: 0 0% 93%;                /* #EDEDED */
+  --ring: 0 0% 13%;                 /* #222222 - Focus ring */
+
+  /* Radius */
+  --radius: 0.5rem;
+
+  /* VitePress Integration */
+  --vp-c-bg: hsl(var(--background));
+  --vp-c-bg-soft: hsl(var(--card));
+  --vp-c-bg-mute: hsl(var(--muted));
+  --vp-c-bg-alt: hsl(var(--secondary));
+
+  --vp-c-text-1: hsl(var(--foreground));
+  --vp-c-text-2: hsl(var(--muted-foreground));
+  --vp-c-text-3: hsl(0 0% 30%);
+
+  --vp-c-border: hsl(var(--border));
+  --vp-c-divider: hsl(var(--border));
+  --vp-c-gutter: hsl(var(--muted));
+
+  --vp-c-brand-1: hsl(var(--primary));
+  --vp-c-brand-2: hsl(0 0% 10%);
+  --vp-c-brand-3: hsl(0 0% 5%);
+  --vp-c-brand-soft: hsl(var(--secondary));
+
+  --vp-code-bg: hsl(var(--muted));
+  --vp-code-block-bg: hsl(var(--card));
+}
+
+/* ============================================
+   shadcn/ui Design Tokens - Dark Mode
+   ============================================ */
+
+.dark {
+  /* Dark Mode - Inverted Monochrome Palette */
+
+  /* Background Colors */
+  --background: 0 0% 5%;            /* #0D0D0D - Darkest */
+  --foreground: 0 0% 98%;           /* #FAF9F6 - Off-white */
+
+  /* Card & Popover */
+  --card: 0 0% 10%;                 /* #1A1A1A - Very dark gray */
+  --card-foreground: 0 0% 98%;      /* #FAF9F6 */
+
+  --popover: 0 0% 5%;               /* #0D0D0D */
+  --popover-foreground: 0 0% 98%;   /* #FAF9F6 */
+
+  /* Primary - Main brand color (light in dark mode) */
+  --primary: 0 0% 94%;              /* #F1F2F5 - Cool light gray */
+  --primary-foreground: 0 0% 5%;    /* #0D0D0D */
+
+  /* Secondary - Subtle emphasis */
+  --secondary: 0 0% 13%;            /* #222222 - Dark gray */
+  --secondary-foreground: 0 0% 98%; /* #FAF9F6 */
+
+  /* Muted - Subtle backgrounds */
+  --muted: 0 0% 17%;                /* #2C2C2C - Medium dark gray */
+  --muted-foreground: 0 0% 94%;     /* #F1F2F5 */
+
+  /* Accent - Interactive elements */
+  --accent: 0 0% 17%;               /* #2C2C2C */
+  --accent-foreground: 0 0% 98%;    /* #FAF9F6 */
+
+  /* Destructive - Error states */
+  --destructive: 0 0% 80%;          /* Light for dark mode */
+  --destructive-foreground: 0 0% 5%;
+
+  /* Border & Input */
+  --border: 0 0% 17%;               /* #2C2C2C */
+  --input: 0 0% 17%;                /* #2C2C2C */
+  --ring: 0 0% 94%;                 /* #F1F2F5 - Focus ring */
+
+  /* VitePress Integration */
+  --vp-c-bg: hsl(var(--background));
+  --vp-c-bg-soft: hsl(var(--card));
+  --vp-c-bg-mute: hsl(var(--muted));
+  --vp-c-bg-alt: hsl(var(--secondary));
+
+  --vp-c-text-1: hsl(var(--foreground));
+  --vp-c-text-2: hsl(var(--muted-foreground));
+  --vp-c-text-3: hsl(0 0% 70%);
+
+  --vp-c-border: hsl(var(--border));
+  --vp-c-divider: hsl(var(--border));
+  --vp-c-gutter: hsl(var(--muted));
+
+  --vp-c-brand-1: hsl(var(--primary));
+  --vp-c-brand-2: hsl(0 0% 90%);
+  --vp-c-brand-3: hsl(0 0% 98%);
+  --vp-c-brand-soft: hsl(var(--secondary));
+
+  --vp-code-bg: hsl(var(--muted));
+  --vp-code-block-bg: hsl(var(--card));
+}
+
+/* ============================================
+   Base Styles - shadcn/ui inspired
+   ============================================ */
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ============================================
+   Typography - shadcn/ui style
+   ============================================ */
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+code, kbd, samp, pre {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+/* ============================================
+   Hero Section - shadcn/ui inspired
+   ============================================ */
+
+.VPHero {
+  padding: 48px 24px;
+}
+
+.VPHero .container {
+  max-width: 1152px;
+  margin: 0 auto;
+}
+
+.VPHero .name {
+  font-size: clamp(2.5rem, 8vw, 4rem);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  background: linear-gradient(135deg,
+    hsl(var(--foreground)) 0%,
+    hsl(var(--muted-foreground)) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.VPHero .tagline {
+  font-size: clamp(1rem, 3vw, 1.5rem);
+  color: hsl(var(--muted-foreground));
+  font-weight: 500;
+  margin-top: 0.75rem;
+}
+
+/* ============================================
+   Buttons - shadcn/ui style
+   ============================================ */
+
+.VPButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0.625rem 1.25rem;
+  height: 2.5rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.VPButton.brand {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-color: hsl(var(--primary));
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.VPButton.brand:hover {
+  background-color: hsl(var(--primary) / 0.9);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.VPButton.alt {
+  background-color: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+  border-color: hsl(var(--border));
+}
+
+.VPButton.alt:hover {
+  background-color: hsl(var(--secondary) / 0.8);
+  border-color: hsl(var(--ring));
+}
+
+/* ============================================
+   Feature Cards - shadcn/ui style
+   ============================================ */
+
+.VPFeature {
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: calc(var(--radius) + 2px);
+  padding: 1.5rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.VPFeature:hover {
+  border-color: hsl(var(--ring));
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+              0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  transform: translateY(-4px);
+}
+
+.VPFeature .icon {
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+  display: block;
+}
+
+.VPFeature .title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  margin-bottom: 0.5rem;
+}
+
+.VPFeature .details {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.6;
+}
+
+/* ============================================
+   Sidebar - shadcn/ui style
+   ============================================ */
+
+.VPSidebar {
+  background-color: hsl(var(--background));
+  border-right: 1px solid hsl(var(--border));
+}
+
+.VPSidebarItem {
+  border-radius: var(--radius);
+  padding: 0.5rem 0.75rem;
+  margin: 0.125rem 0;
+  transition: all 0.15s ease;
+}
+
+.VPSidebarItem:hover {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+.VPSidebarItem.is-active {
+  background-color: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+  font-weight: 600;
+}
+
+/* ============================================
+   Code Blocks - shadcn/ui style
+   ============================================ */
+
+.vp-code-group {
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  overflow: hidden;
+  background-color: hsl(var(--card));
+}
+
+div[class*='language-'] {
+  background-color: hsl(var(--muted));
+  border-radius: var(--radius);
+  border: 1px solid hsl(var(--border));
+  margin: 1rem 0;
+}
+
+div[class*='language-']:hover {
+  border-color: hsl(var(--ring) / 0.5);
+}
+
+code {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
+  padding: 0.2em 0.4em;
+  border-radius: calc(var(--radius) - 2px);
+  font-size: 0.875em;
+}
+
+pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+/* ============================================
+   Tables - shadcn/ui style
+   ============================================ */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+thead {
+  background-color: hsl(var(--muted));
+}
+
+th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+tr:hover {
+  background-color: hsl(var(--muted) / 0.5);
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+/* ============================================
+   Links - shadcn/ui style
+   ============================================ */
+
+.vp-doc a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+  text-decoration-color: hsl(var(--primary) / 0.3);
+  text-underline-offset: 2px;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.vp-doc a:hover {
+  color: hsl(var(--primary) / 0.8);
+  text-decoration-color: hsl(var(--primary));
+}
+
+/* ============================================
+   Badges - shadcn/ui inspired
+   ============================================ */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: calc(var(--radius) - 2px);
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.15s ease;
+  background-color: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+  border: 1px solid hsl(var(--border));
+}
+
+/* ============================================
+   Alerts/Callouts - shadcn/ui style
+   ============================================ */
+
+.vp-doc .tip,
+.vp-doc .warning,
+.vp-doc .danger,
+.vp-doc .info {
+  border-radius: var(--radius);
+  border: 1px solid hsl(var(--border));
+  padding: 1rem;
+  margin: 1rem 0;
+  background-color: hsl(var(--card));
+}
+
+.vp-doc .tip {
+  border-left: 4px solid hsl(var(--primary));
+}
+
+.vp-doc .warning {
+  border-left: 4px solid hsl(0 0% 50%);
+}
+
+/* ============================================
+   Scrollbar - shadcn/ui style
+   ============================================ */
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted));
+  border-radius: 6px;
+  border: 2px solid hsl(var(--background));
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* ============================================
+   Focus Ring - shadcn/ui style
+   ============================================ */
+
+*:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* ============================================
+   Smooth Transitions
+   ============================================ */
+
+* {
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================
+   Responsive Design
+   ============================================ */
+
+@media (max-width: 768px) {
+  .VPHero .name {
+    font-size: 2rem;
+  }
+
+  .VPHero .tagline {
+    font-size: 1rem;
+  }
+
+  .VPFeature {
+    margin-bottom: 1rem;
+  }
+}
+
+/* ============================================
+   Print Styles
+   ============================================ */
+
+@media print {
+  body {
+    font-family: var(--font-sans);
+    background: white;
+    color: black;
+  }
+
+  .VPNav,
+  .VPSidebar,
+  .VPFooter {
+    display: none;
+  }
+}

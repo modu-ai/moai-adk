@@ -342,6 +342,8 @@ export class PhaseExecutor {
 
       if (fs.existsSync(config.projectPath)) {
         await fs.promises.mkdir(backupPath, { recursive: true });
+
+        // Backup critical directories
         const criticalDirs = ['.claude', '.moai'];
         for (const dir of criticalDirs) {
           const srcPath = path.join(config.projectPath, dir);
@@ -350,6 +352,17 @@ export class PhaseExecutor {
             await this.templateProcessor.copyDirectory(srcPath, dstPath);
           }
         }
+
+        // Backup critical files
+        const criticalFiles = ['CLAUDE.md'];
+        for (const file of criticalFiles) {
+          const srcPath = path.join(config.projectPath, file);
+          const dstPath = path.join(backupPath, file);
+          if (fs.existsSync(srcPath)) {
+            await fs.promises.copyFile(srcPath, dstPath);
+          }
+        }
+
         logger.debug('Backup created at', {
           backupPath,
           tag: '@SUCCESS:BACKUP-001',

@@ -1,10 +1,10 @@
 {
   "env": {
     "MOAI_RUNTIME": "typescript",
-    "MOAI_PROJECT_PATH": "./moai-adk-ts",
+    "MOAI_PROJECT_PATH": "./{{PROJECT_NAME}}",
     "MOAI_AUTO_ROUTING": "true",
     "MOAI_PERFORMANCE_MONITORING": "true",
-    "NODE_ENV": "production"
+    "NODE_ENV": "{{PROJECT_MODE}}"
   },
   "hooks": {
     "PostToolUse": [],
@@ -13,6 +13,10 @@
         "hooks": [
           {
             "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre-write-guard.js",
+            "type": "command"
+          },
+          {
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag-enforcer.mjs",
             "type": "command"
           }
         ],

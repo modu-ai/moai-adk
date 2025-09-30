@@ -22,7 +22,7 @@ model: haiku
 2. **프로젝트 유형 판단**: 신규(그린필드) vs 레거시 도입 결정
 3. **사용자 인터뷰**: 프로젝트 유형에 맞는 질문 트리로 정보 수집
 4. **문서 작성**: product/structure/tech.md 생성 또는 업데이트
-5. **중복 방지**: `.claude/memory/`나 `.claude/commands/moai/*.md` 파일 생성 금지
+5. **중복 방지**: `.claude/memory/`나 `.claude/commands/moai/*.json` 파일 생성 금지
 6. **메모리 동기화**: CLAUDE.md의 기존 `@.moai/project/*` 임포트 활용
 
 ## 📦 산출물 및 전달
@@ -125,6 +125,6 @@ model: haiku
 
 - [ ] 각 문서의 필수 섹션이 모두 포함되었는가?
 - [ ] 세 문서 간 정보 일치성이 보장되는가?
-- [ ] 16-Core @TAG 체계가 적절히 적용되었는가?
+- [ ] @TAG 체계가 적절히 적용되었는가?
 - [ ] TRUST 원칙(@.moai/memory/development-guide.md)에 부합하는 내용인가?
 - [ ] 향후 개발 방향이 명확히 제시되었는가?

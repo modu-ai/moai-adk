@@ -35,8 +35,8 @@ __export(session_notice_exports, {
 });
 module.exports = __toCommonJS(session_notice_exports);
 var import_child_process = require("child_process");
-var fs = __toESM(require("fs"));
-var path = __toESM(require("path"));
+var fs = __toESM(require("fs"), 1);
+var path = __toESM(require("path"), 1);
 var SessionNotifier = class {
   name = "session-notice";
   projectRoot;
@@ -98,10 +98,7 @@ var SessionNotifier = class {
         violations: []
       };
     }
-    const criticalFiles = [
-      ".moai/memory/development-guide.md",
-      "CLAUDE.md"
-    ];
+    const criticalFiles = [".moai/memory/development-guide.md", "CLAUDE.md"];
     const violations = [];
     for (const filePath of criticalFiles) {
       if (!fs.existsSync(path.join(this.projectRoot, filePath))) {
@@ -265,12 +262,16 @@ var SessionNotifier = class {
     const shortCommit = gitInfo.commit.substring(0, 7);
     const shortMessage = gitInfo.message.substring(0, 50);
     const ellipsis = gitInfo.message.length > 50 ? "..." : "";
-    lines.push(`\u{1F33F} \uD604\uC7AC \uBE0C\uB79C\uCE58: ${gitInfo.branch} (${shortCommit} ${shortMessage}${ellipsis})`);
+    lines.push(
+      `\u{1F33F} \uD604\uC7AC \uBE0C\uB79C\uCE58: ${gitInfo.branch} (${shortCommit} ${shortMessage}${ellipsis})`
+    );
     if (gitInfo.changesCount > 0) {
       lines.push(`\u{1F4DD} \uBCC0\uACBD\uC0AC\uD56D: ${gitInfo.changesCount}\uAC1C \uD30C\uC77C`);
     }
     const remaining = status.specProgress.total - status.specProgress.completed;
-    lines.push(`\u{1F4DD} SPEC \uC9C4\uD589\uB960: ${status.specProgress.completed}/${status.specProgress.total} (\uBBF8\uC644\uB8CC ${remaining}\uAC1C)`);
+    lines.push(
+      `\u{1F4DD} SPEC \uC9C4\uD589\uB960: ${status.specProgress.completed}/${status.specProgress.total} (\uBBF8\uC644\uB8CC ${remaining}\uAC1C)`
+    );
     lines.push("\u2705 \uD1B5\uD569 \uCCB4\uD06C\uD3EC\uC778\uD2B8 \uC2DC\uC2A4\uD15C \uC0AC\uC6A9 \uAC00\uB2A5");
     return lines.join("\n");
   }

@@ -67,15 +67,24 @@ MoAI-ADK 범용 개발 툴킷을 사용하는 모든 에이전트와 개발자�
 - **언어 간 SPEC 준수**: Python(모듈), TypeScript(인터페이스), Java(패키지), Go(패키지), Rust(크레이트) 등 언어별 경계를 SPEC이 정의한다.
 - **SPEC 기반 아키텍처**: 도메인 경계는 언어 관례가 아닌 SPEC에 의해 정의되며, @TAG 시스템으로 언어 간 추적성을 유지한다.
 
-### S - SPEC 준수 보안
+### S - SPEC 준수 보안 (v0.0.4 Winston Logger 표준)
 
 - **SPEC 보안 요구사항**: 모든 SPEC에 보안 요구사항, 데이터 민감도, 접근 제어를 명시적으로 정의한다.
 - **보안 by 설계**: 보안 제어는 완료 후 추가하는 것이 아니라 TDD 단계에서 구현한다.
-- **언어 무관 보안 패턴**:
-  - SPEC 인터페이스 정의 기반 입력 검증
-  - SPEC 정의 중요 작업에 대한 감사 로깅
-  - SPEC 권한 모델을 따르는 접근 제어
-  - SPEC 환경 요구사항별 비밀 관리
+
+**v0.0.4 구조화 로깅 표준** (Winston Logger):
+- **필수 사용**: 모든 production 코드에서 `winston-logger.ts` 사용 (console.* 금지)
+- **민감정보 자동 마스킹**: 15개 필드 + 12개 패턴 (password, token, apiKey, secret 등)
+- **TAG 기반 추적성**: `logWithTag()` 메서드로 @TAG 통합 로깅
+- **테스트 커버리지**: 97.92% 이상 유지 (24 tests minimum)
+- **로그 파일 관리**: `.moai/logs/` (daily rotation, max 7 days 보관)
+
+**언어 무관 보안 패턴**:
+- SPEC 인터페이스 정의 기반 입력 검증
+- SPEC 정의 중요 작업에 대한 감사 로깅 (Winston logger 필수)
+- SPEC 권한 모델을 따르는 접근 제어
+- SPEC 환경 요구사항별 비밀 관리
+- **console.* 사용 금지**: production 코드에서 절대 사용 불가 (테스트는 예외)
 
 ### T - SPEC 추적성
 

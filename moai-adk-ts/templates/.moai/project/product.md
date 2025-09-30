@@ -1,4 +1,4 @@
-# ${PROJECT_NAME} Product Definition
+# {{PROJECT_NAME}} Product Definition
 
 ## @VISION:MISSION-001 핵심 미션
 

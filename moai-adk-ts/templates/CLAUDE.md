@@ -53,21 +53,25 @@
 
 ```text
 # @FEATURE:<DOMAIN-ID> | Chain: @REQ:<ID> -> @DESIGN:<ID> -> @TASK:<ID> -> @TEST:<ID>
-# Related: @SEC:<ID>, @DOCS:<ID>
+# Related: @API:<ID>, @UI:<ID>, @DATA:<ID>
 ```
 
+**8-Core 구성**:
+- Primary (4 Core): @REQ, @DESIGN, @TASK, @TEST
+- Implementation (4 Core): @FEATURE, @API, @UI, @DATA
+
 - 새 코드/문서/테스트 파일을 생성할 때: 위 TAG BLOCK을 파일 상단(주석) 또는 최상위 선언 근처에 배치한다
-- 수정 시: 기존 TAG BLOCK을 검토해 영향받는 TAG를 업데이트하고, 불필요해진 TAG는 `@TAG:DEPRECATED-XXX`로 표시 후 `/moai:3-sync`를 수행한다
+- 수정 시: 기존 TAG BLOCK을 검토해 영향받는 TAG를 업데이트한다
 - 생성 전 중복 확인: `rg "@REQ:<키워드>" -n` 또는 `rg "<DOMAIN-ID>" -n`으로 기존 체인을 검색한다
 
 ### 체계 요약
 
-| 카테고리 | 설명 | 필수 여부 |
-|----------|------|-----------|
-| Primary Chain | 요구 -> 설계 -> 작업 -> 검증 4단계 기본 체인 | 필수 |
-| Implementation | Feature/API/UI/Data 등 구현 유형 | 선택 |
-| Quality | Perf/Sec/Docs/Debt 등 품질 속성 | 선택 |
-| Meta | Ops/Release/Tag/Deprecated 등 메타데이터 | 선택 |
+### 8-Core @TAG 체계
+
+| 카테고리 | Core | 설명 | 필수 여부 |
+|----------|------|------|-----------|
+| Primary Chain | 4 Core | 요구 → 설계 → 작업 → 검증 | 필수 |
+| Implementation | 4 Core | Feature/API/UI/Data 구현 유형 | 필수 |
 
 - TAG ID: `<도메인>-<3자리>` (예: `AUTH-003`) — 체인 내 모든 TAG는 동일 ID를 사용한다
 - **TAG의 진실은 코드 자체에만 존재**: 정규식 패턴으로 코드에서 직접 스캔하여 실시간 검증
@@ -86,7 +90,7 @@
 | Primary | @TASK:AUTH-003 | OAuth2 구현 작업 | src/auth/oauth2.ts |
 | Primary | @TEST:AUTH-003 | OAuth2 통합 테스트 | tests/auth/oauth2.test.ts |
 | Implementation | @FEATURE:AUTH-003 | 인증 서비스 | src/auth/service.ts |
-| Quality | @SEC:AUTH-003 | 보안 점검 | docs/security/oauth2.md |
+| Implementation | @API:AUTH-003 | OAuth API 엔드포인트 | src/auth/oauth-api.ts |
 ```
 
 - SPEC 변경 -> Catalog 업데이트 -> 코드/테스트 반영 -> `/moai:3-sync`로 코드 스캔 및 검증 수행한다
@@ -96,21 +100,19 @@
 **Python 예시**:
 ```python
 # @FEATURE:LOGIN-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-# Related: @SEC:LOGIN-001, @DOCS:LOGIN-001
+# Related: @API:LOGIN-001, @DATA:LOGIN-001
 class AuthenticationService:
     """@FEATURE:LOGIN-001: 사용자 인증 서비스 구현"""
 
     def authenticate(self, username: str, password: str) -> bool:
         """@API:LOGIN-001: 사용자 인증 API 엔드포인트"""
-        # @SEC:LOGIN-001: 입력값 보안 검증
         if not self._validate_input(username, password):
             return False
 
-        # @PERF:LOGIN-001: 캐시된 인증 결과 확인
-        if cached_result := self._get_cached_auth(username):
-            return cached_result
+        # @DATA:LOGIN-001: 사용자 데이터 조회
+        user_data = self._get_user_data(username)
 
-        return self._verify_credentials(username, password)
+        return self._verify_credentials(user_data, password)
 
 # @TEST:LOGIN-001 연결: @TASK:LOGIN-001 -> @TEST:LOGIN-001
 def test_should_authenticate_valid_user():
@@ -123,21 +125,27 @@ def test_should_authenticate_valid_user():
 **TypeScript 예시**:
 ```typescript
 // @FEATURE:LOGIN-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-// Related: @SEC:LOGIN-001, @DOCS:LOGIN-001
+// Related: @API:LOGIN-001, @UI:LOGIN-001, @DATA:LOGIN-001
+
+// @API:LOGIN-001: 인증 API 인터페이스 정의
 interface AuthService {
-  // @API:LOGIN-001: 인증 API 인터페이스 정의
   authenticate(username: string, password: string): Promise<boolean>;
 }
 
 // @UI:LOGIN-001: 로그인 컴포넌트
 const LoginForm: React.FC = () => {
-  // @SEC:LOGIN-001: 클라이언트 사이드 입력 검증
   const handleSubmit = (username: string, password: string) => {
-    // 구현...
+    // @API:LOGIN-001 호출
   };
 
   return <form>...</form>;
 };
+
+// @DATA:LOGIN-001: 사용자 데이터 타입
+interface UserData {
+  id: string;
+  username: string;
+}
 
 // @TEST:LOGIN-001: Vitest/Jest 테스트
 describe('AuthService', () => {

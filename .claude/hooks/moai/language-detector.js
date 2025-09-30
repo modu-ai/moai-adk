@@ -34,8 +34,8 @@ __export(language_detector_exports, {
   main: () => main
 });
 module.exports = __toCommonJS(language_detector_exports);
-var fs = __toESM(require("fs"));
-var path = __toESM(require("path"));
+var fs = __toESM(require("fs"), 1);
+var path = __toESM(require("path"), 1);
 var DEFAULT_MAPPINGS = {
   test_runners: {
     python: "pytest",
@@ -163,7 +163,14 @@ var LanguageDetector = class {
       for (const entry of entries) {
         const fullPath = path.join(dir, entry.name);
         if (entry.isDirectory()) {
-          if (["node_modules", ".git", "__pycache__", ".pytest_cache", "dist", "build"].includes(entry.name)) {
+          if ([
+            "node_modules",
+            ".git",
+            "__pycache__",
+            ".pytest_cache",
+            "dist",
+            "build"
+          ].includes(entry.name)) {
             continue;
           }
           if (this.findFilesWithExtension(fullPath, extension)) {
@@ -184,7 +191,12 @@ var LanguageDetector = class {
    * Load language mappings from configuration
    */
   loadMappings() {
-    const mappingPath = path.join(this.projectRoot, ".moai", "config", "language_mappings.json");
+    const mappingPath = path.join(
+      this.projectRoot,
+      ".moai",
+      "config",
+      "language_mappings.json"
+    );
     try {
       if (fs.existsSync(mappingPath)) {
         const data = fs.readFileSync(mappingPath, "utf-8");
@@ -212,9 +224,13 @@ var LanguageDetector = class {
         const testRunner = mappings.test_runners[lang] || "-";
         const linter = mappings.linters[lang] || "-";
         const formatter = mappings.formatters[lang] || "-";
-        lines.push(`- ${lang}: test=${testRunner}, lint=${linter}, format=${formatter}`);
+        lines.push(
+          `- ${lang}: test=${testRunner}, lint=${linter}, format=${formatter}`
+        );
       }
-      lines.push("\u{1F4A1} \uD544\uC694 \uC2DC /moai:2-build \uB2E8\uACC4\uC5D0\uC11C \uD574\uB2F9 \uB3C4\uAD6C\uB97C \uC0AC\uC6A9\uD574 TDD\uB97C \uC2E4\uD589\uD558\uC138\uC694.");
+      lines.push(
+        "\u{1F4A1} \uD544\uC694 \uC2DC /moai:2-build \uB2E8\uACC4\uC5D0\uC11C \uD574\uB2F9 \uB3C4\uAD6C\uB97C \uC0AC\uC6A9\uD574 TDD\uB97C \uC2E4\uD589\uD558\uC138\uC694."
+      );
     }
     return lines.join("\n");
   }

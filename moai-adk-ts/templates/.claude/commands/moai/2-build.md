@@ -1,589 +1,246 @@
 ---
 name: moai:2-build
-description: TDD 구현 (Red-Green-Refactor) + TAG 체인 연결 + Git 자동화
-argument-hint: "SPEC-ID | all"
-tools: Read, Write, Edit, MultiEdit, Bash, Task, WebFetch, Grep, Glob, TodoWrite
+description: 구현할 SPEC ID (예: SPEC-001) 또는 all로 모든 SPEC 구현: 언어별 최적화된 TDD 구현 (Red-Green-Refactor) with SQLite3 tags.db
+argument-hint: "SPEC-ID - 구현할 SPEC ID (예: SPEC-001) 또는 all로 모든 SPEC 구현"
+tools: Read, Write, Edit, MultiEdit, Bash(python3:*), Bash(pytest:*), Bash(npm:*), Bash(node:*), Task, WebFetch, Grep, Glob, TodoWrite
 ---
 
-# MoAI-ADK 2단계: 4단계 TDD 구현 워크플로우
+# MoAI-ADK 2단계: 언어별 최적화된 TDD 구현 (Red-Green-Refactor)
 
-**TDD 구현 대상**: ${ARGUMENTS:-"모든 SPEC"}
+**TDD 구현 대상**: $ARGUMENTS
 
-## 🚀 4단계 최적화 워크플로우
+## 🔍 STEP 1: SPEC 분석 및 구현 계획 수립
 
-프로젝트 문서를 분석하여 TDD 구현 계획을 수립하고, 승인된 계획으로 Red-Green-Refactor 사이클을 실행합니다.
+먼저 지정된 SPEC을 분석하여 구현 계획을 수립하고 사용자 확인을 받습니다.
 
-### 핵심 기능
+### SPEC 분석 진행
 
-- **스마트 분석**: SPEC 문서 분석 및 구현 계획 자동 수립
-- **TDD 구현**: 승인된 계획 기반 Red-Green-Refactor 사이클
-- **TAG 연결**: @TEST TAG 자동 생성 및 Primary Chain 연결
-- **Git 자동화**: TDD 단계별 구조화된 커밋
+1. **SPEC 문서 분석**
+   - 요구사항 추출 및 복잡도 평가
+   - 기술적 제약사항 확인
+   - 의존성 및 영향 범위 분석
 
-## 실행 순서
+2. **구현 전략 수립**
+   - 프로젝트 언어 감지 및 최적화된 구현 전략
+   - TDD 접근 방식 결정 (언어별 도구 선택)
+   - 예상 작업 범위 및 시간 산정
 
-### Phase 1: 분석 및 계획 (명령어 레벨)
+3. **구현 계획 보고**
+   - 단계별 구현 계획 제시
+   - 잠재적 위험 요소 식별
+   - 품질 게이트 체크포인트 설정
 
-SPEC 문서 분석 및 구현 계획을 수립합니다:
+### 사용자 확인 단계
 
-```bash
-# 1. SPEC 문서 로딩 및 분석
-# - 요구사항 추출 및 복잡도 평가
-# - 기술적 제약사항 확인
-# - 의존성 및 영향 범위 분석
+구현 계획 검토 후 다음 중 선택하세요:
+- **"진행"** 또는 **"시작"**: 계획대로 TDD 구현 시작
+- **"수정 [내용]"**: 계획 수정 요청
+- **"중단"**: 구현 작업 중단
 
-# 2. 구현 전략 결정
-# - 프로젝트 언어 감지 및 최적화 전략
-# - TDD 접근 방식 결정
-# - 예상 작업 범위 및 시간 산정
+---
 
-# 3. 구현 계획 보고서 생성
-# - 단계별 구현 계획 제시
-# - 잠재적 위험 요소 식별
-# - 품질 게이트 체크포인트 설정
+## 🚀 STEP 2: TDD 구현 실행 (사용자 승인 후)
 
-# 4. 사용자 승인 요청
-# "진행" 또는 "시작": TDD 구현 시작
-# "수정 [내용]": 계획 수정 요청
-# "중단": 구현 작업 중단
-```
+사용자 승인 후 code-builder 에이전트가 **언어별 최적화**된 Red-Green-Refactor 사이클과 TRUST 원칙 검증을 지원합니다.
 
-### Phase 2: TDD 구현 (code-builder 전담)
+## 🔗 언어별 TDD 최적화
 
-사용자 승인 후 code-builder 에이전트로 순수한 TDD 구현을 수행합니다:
+### 프로젝트 언어 감지 및 최적 라우팅
 
-@agent-code-builder "승인된 계획: ${ARGUMENTS:-"모든 SPEC"}의 TDD 구현을 Red-Green-Refactor 사이클로 수행해주세요"
+```python
+# 언어별 최적화된 TDD 구현 시스템
+from moai_adk.core.tdd import TDDBuilder
+from moai_adk.core.language_detector import detect_project_language
+from moai_adk.core.tag_system import TagDatabase
 
-- **언어별 최적화**: 프로젝트 언어 감지 후 최적 도구 선택
-- **RED 단계**: 실패하는 테스트 작성 및 확인
-- **GREEN 단계**: 최소 구현으로 테스트 통과
-- **REFACTOR 단계**: 코드 품질 개선 및 TRUST 원칙 검증
-- **품질 보장**: 커버리지 85% 이상, 린터/포매터 통과
+async def execute_optimal_tdd(spec_id: str, spec_content: str) -> TDDResult:
+    """프로젝트 언어를 감지하고 최적 TDD 구현을 수행"""
 
-### Phase 3: TAG 시스템 관리 (tag-agent 전담)
+    # 프로젝트 언어 감지 및 최적 라우팅
+    language = detect_project_language()
+    tdd_builder = TDDBuilder(language=language)
+    tag_db = TagDatabase()
 
-TDD 구현 후 tag-agent가 @TEST TAG 체인 생성 및 연결 작업을 수행합니다:
+    # SPEC 분석 (언어별 최적화)
+    analysis = await tdd_builder.analyze_spec(spec_content)
 
-@agent-tag-agent "TDD 완료된 ${ARGUMENTS}의 @TEST TAG 체인 생성하고 @TASK와 연결, 인덱스 업데이트를 수행해주세요"
+    # RED-GREEN-REFACTOR 사이클 (언어별 도구)
+    result = await tdd_builder.execute({
+        'spec_id': spec_id,
+        'language': language,
+        'test_framework': get_optimal_test_framework(language),
+        'enable_sqlite_tagging': True
+    })
 
-- **@TEST TAG 생성**: 생성된 테스트 파일 기반 TAG 생성
-- **Primary Chain 연결**: @TASK:SPEC-XXX → @TEST:SPEC-XXX
-- **체인 검증**: 체인 무결성 및 순환 참조 방지
-- **인덱스 업데이트**: JSONL 기반 분산 인덱스 갱신
+    # tags.db 자동 업데이트
+    await tag_db.update_implementation_tags(spec_id, result.tags)
 
-### Phase 4: Git 워크플로우 완료 (config 기반 동적 전략)
-
-TDD와 TAG 작업 완료 후 `.moai/config.json` 설정에 따라 Git 워크플로우를 완료합니다:
-
-@agent-git-manager "TDD 및 TAG 작업 완료, 품질 게이트 통과. config 기반 Git 워크플로우를 완료해주세요"
-
-#### 워크플로우 결정 로직
-
-```typescript
-// 1. config.json 읽기
-const config = readMoAIConfig('.moai/config.json');
-
-// 2. 워크플로우 전략 결정
-if (config.mode === 'personal' && config.spec.workflow === 'commit') {
-  // 전략 A: Personal + Commit (머지 없음, 추가 커밋만)
-  executeAdditionalCommit();
-} else if (config.mode === 'personal' && config.spec.workflow === 'branch') {
-  // 전략 B: Personal + Branch (로컬 머지)
-  executeLocalMerge();
-} else if (config.mode === 'team' && config.spec.workflow === 'branch') {
-  // 전략 C: Team + Branch (PR Ready 전환)
-  executePRReady();
+    return result
 }
 ```
 
-#### 공통: 품질 게이트 최종 검증
+### TDD 도구 매핑
 
-**모든 워크플로우 시작 전 필수 검증**:
-
-```bash
-# 필수 검증 항목
-✅ 테스트 커버리지 ≥ 85%
-✅ 모든 테스트 통과 (0 실패)
-✅ 린터/포매터 통과 (0 경고)
-✅ TRUST 5원칙 준수
-✅ TAG 체인 완성 (@REQ → @DESIGN → @TASK → @TEST)
-
-# 실패 시 처리
-→ 워크플로우 중단, 사용자에게 재작업 안내
-→ 체크포인트 생성: git tag "checkpoint/spec-XXX-failed-$(date +%s)"
-```
-
-#### 전략 A: Personal + Commit (머지 없음)
-
-**적용 조건**: `mode: "personal"` + `spec.workflow: "commit"`
-
-```bash
-# 1. 변경사항 요약
-git status --short
-echo ""
-echo "📊 TDD 구현 결과 요약:"
-echo "- 변경 파일: X개 (소스 Y개, 테스트 Z개)"
-echo "- 테스트 커버리지: ${COVERAGE}%"
-echo "- TAG 체인: @TASK:${SPEC_ID} → @TEST:${SPEC_ID}"
-
-# 2. 사용자 확인 요청
-echo ""
-echo "🎯 품질 게이트 통과 완료"
-echo ""
-echo "📋 커밋 계획:"
-echo "- 워크플로우: 로컬 커밋만 (머지 없음)"
-echo "- 변경사항: 파일 X개, 테스트 Y개 추가"
-echo "- TAG 체인: @TASK → @TEST 연결 완료"
-echo ""
-echo "커밋하시겠습니까? (y/n)"
-
-# 3. 승인 시 추가 커밋
-git add .
-git commit -m "🎉 TDD: [SPEC-${SPEC_ID}] ${DESCRIPTION} 구현 완료
-
-## TDD 구현 요약
-- RED: 테스트 작성 및 실패 확인
-- GREEN: 최소 구현으로 테스트 통과
-- REFACTOR: 코드 품질 개선 및 TRUST 검증
-
-## 품질 지표
-- 테스트 커버리지: ${COVERAGE}%
-- 테스트 통과율: 100%
-- 린터 경고: 0건
-
-## TAG 체인
-- @TASK:${SPEC_ID} → @TEST:${SPEC_ID}
-
-🤖 Generated with Claude Code
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
-
-# 4. 체크포인트 생성
-git tag "checkpoint/spec-${SPEC_ID}-tdd-complete"
-
-# 5. 원격 푸시 (config.git.remote.autoPush가 true인 경우)
-if [ "${AUTO_PUSH}" = "true" ]; then
-  git push origin $(git branch --show-current) --tags
-fi
-
-# 6. 완료 보고
-echo ""
-echo "✅ TDD 구현 커밋 완료"
-echo ""
-echo "📊 최종 결과:"
-echo "- 커버리지: ${COVERAGE}% (목표: ≥85%)"
-echo "- 테스트: ${TESTS_PASSED}개 통과 / ${TESTS_TOTAL}개"
-echo "- TAG 체인: @TASK → @TEST 연결 완료"
-echo "- 체크포인트: checkpoint/spec-${SPEC_ID}-tdd-complete"
-echo ""
-echo "🚀 다음 단계: /moai:3-sync"
-```
-
-#### 전략 B: Personal + Branch (로컬 머지)
-
-**적용 조건**: `mode: "personal"` + `spec.workflow: "branch"`
-
-```bash
-# 1. 변경사항 요약
-git status --short
-git diff --stat main...HEAD
-echo ""
-echo "📊 TDD 구현 결과 요약:"
-echo "- 변경 파일: X개 (소스 Y개, 테스트 Z개)"
-echo "- 추가 라인: +XXX"
-echo "- 삭제 라인: -YYY"
-echo "- 테스트 커버리지: ${COVERAGE}%"
-echo "- TAG 체인: @TASK:${SPEC_ID} → @TEST:${SPEC_ID}"
-
-# 2. 사용자 확인 요청
-echo ""
-echo "🎯 품질 게이트 통과 완료"
-echo ""
-echo "📋 머지 계획:"
-echo "- 현재 브랜치: feature/spec-${SPEC_ID}-${DESCRIPTION}"
-echo "- 대상 브랜치: main (또는 develop)"
-echo "- 변경사항: 파일 X개, 테스트 Y개 추가, 커버리지 ${COVERAGE}%"
-echo "- TAG 체인: @TASK → @TEST 연결 완료"
-echo "- 워크플로우: 로컬 머지 (원격 푸시 ${AUTO_PUSH_TEXT})"
-echo ""
-echo "main 브랜치로 머지하시겠습니까? (y/n)"
-echo "⚠️ 주의: 머지 후 브랜치는 자동으로 삭제됩니다."
-
-# 3. 승인 시 로컬 머지 실행
-# 3-1. main 브랜치 최신화
-git checkout main
-git pull origin main
-
-# 3-2. 머지 (--no-ff로 머지 커밋 생성)
-git merge --no-ff feature/spec-${SPEC_ID}-${DESCRIPTION} \
-  -m "🎉 MERGE: [SPEC-${SPEC_ID}] ${DESCRIPTION} TDD 구현 완료
-
-## TDD 구현 요약
-- RED: 테스트 작성 및 실패 확인
-- GREEN: 최소 구현으로 테스트 통과
-- REFACTOR: 코드 품질 개선 및 TRUST 검증
-
-## 품질 지표
-- 테스트 커버리지: ${COVERAGE}%
-- 테스트 통과율: 100%
-- 린터 경고: 0건
-
-## TAG 체인
-- @TASK:${SPEC_ID} → @TEST:${SPEC_ID}
-
-🤖 Generated with Claude Code
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
-
-# 3-3. 브랜치 삭제
-git branch -d feature/spec-${SPEC_ID}-${DESCRIPTION}
-
-# 3-4. 체크포인트 생성
-git tag "checkpoint/spec-${SPEC_ID}-tdd-complete"
-
-# 3-5. 원격 저장소 동기화 (config.git.remote.autoPush가 true인 경우)
-if [ "${AUTO_PUSH}" = "true" ]; then
-  git push origin main --tags
-fi
-
-# 4. 완료 보고
-echo ""
-echo "✅ TDD 구현 및 브랜치 머지 완료"
-echo ""
-echo "📊 최종 결과:"
-echo "- 브랜치: feature/spec-${SPEC_ID} → main (머지 완료)"
-echo "- 커버리지: ${COVERAGE}% (목표: ≥85%)"
-echo "- 테스트: ${TESTS_PASSED}개 통과 / ${TESTS_TOTAL}개"
-echo "- TAG 체인: @TASK → @TEST 연결 완료"
-echo "- 체크포인트: checkpoint/spec-${SPEC_ID}-tdd-complete"
-echo ""
-echo "🚀 다음 단계: /moai:3-sync"
-```
-
-#### 전략 C: Team + Branch (PR Ready 전환)
-
-**적용 조건**: `mode: "team"` + `spec.workflow: "branch"`
-
-```bash
-# 1. 변경사항 요약
-git status --short
-git diff --stat origin/main...HEAD
-echo ""
-echo "📊 TDD 구현 결과 요약:"
-echo "- 변경 파일: X개 (소스 Y개, 테스트 Z개)"
-echo "- 추가 라인: +XXX"
-echo "- 삭제 라인: -YYY"
-echo "- 테스트 커버리지: ${COVERAGE}%"
-echo "- TAG 체인: @TASK:${SPEC_ID} → @TEST:${SPEC_ID}"
-
-# 2. 사용자 확인 요청
-echo ""
-echo "🎯 품질 게이트 통과 완료"
-echo ""
-echo "📋 PR 준비 계획:"
-echo "- 현재 브랜치: feature/spec-${SPEC_ID}-${DESCRIPTION}"
-echo "- 원격 저장소: $(git remote get-url origin)"
-echo "- PR 상태: Draft → Ready for Review"
-echo "- 변경사항: 파일 X개, 테스트 Y개 추가, 커버리지 ${COVERAGE}%"
-echo "- TAG 체인: @TASK → @TEST 연결 완료"
-echo ""
-echo "PR을 리뷰 준비 상태로 전환하시겠습니까? (y/n)"
-
-# 3. 승인 시 PR Ready 전환 실행
-# 3-1. 원격 브랜치 푸시
-git push origin feature/spec-${SPEC_ID}-${DESCRIPTION}
-
-# 3-2. PR 상태 전환 (Draft → Ready)
-gh pr ready
-gh pr edit \
-  --add-label "ready-for-review" \
-  --add-label "tdd-complete" \
-  --add-label "quality-gate-passed"
-
-# 3-3. PR 본문 업데이트
-gh pr edit --body "$(cat <<'EOF'
-## ✅ TDD 구현 완료
-
-### 품질 게이트 통과
-- [x] 테스트 커버리지 ≥ 85% (실제: ${COVERAGE}%)
-- [x] 모든 테스트 통과
-- [x] 린터/포매터 통과
-- [x] TRUST 5원칙 검증 완료
-
-### TAG 체인 완성
-- @REQ:${SPEC_ID} → @DESIGN:${SPEC_ID} → @TASK:${SPEC_ID} → @TEST:${SPEC_ID}
-
-### 변경사항
-${CHANGES_SUMMARY}
-
-### 다음 단계
-- 코드 리뷰 대기
-- 승인 후 main 브랜치로 머지
-- /moai:3-sync로 문서 동기화
-
-🤖 Generated with Claude Code
-EOF
-)"
-
-# 4. 완료 보고
-echo ""
-echo "✅ PR 리뷰 준비 상태 전환 완료"
-echo ""
-echo "📊 최종 결과:"
-echo "- 브랜치: feature/spec-${SPEC_ID}-${DESCRIPTION}"
-echo "- PR 링크: $(gh pr view --json url -q .url)"
-echo "- 커버리지: ${COVERAGE}% (목표: ≥85%)"
-echo "- 테스트: ${TESTS_PASSED}개 통과 / ${TESTS_TOTAL}개"
-echo "- TAG 체인: @TASK → @TEST 연결 완료"
-echo ""
-echo "📢 팀원의 리뷰를 기다립니다."
-echo "✅ 승인 후 GitHub에서 수동으로 머지해주세요."
-echo "🚀 머지 완료 후: /moai:3-sync"
-```
-
-#### 예외 처리 시나리오
-
-**시나리오 1: 테스트 실패**
-```bash
-❌ 품질 게이트 실패: 테스트 X개 실패
-
-🔴 실패한 테스트:
-- test_authentication_with_invalid_credentials
-- test_token_expiration_edge_case
-
-📋 권장 조치:
-1. 실패한 테스트 원인 분석
-2. 코드 수정 후 테스트 재실행
-3. 모든 테스트 통과 후 다시 머지 시도
-
-⚠️ 브랜치 유지: feature/spec-${SPEC_ID} (삭제하지 않음)
-🏷️ 체크포인트: checkpoint/spec-${SPEC_ID}-failed-${TIMESTAMP}
-```
-
-**시나리오 2: 커버리지 미달**
-```bash
-❌ 품질 게이트 실패: 커버리지 ${ACTUAL_COVERAGE}% (목표: ≥85%)
-
-📊 커버리지 부족 파일:
-- src/auth/validator.ts: 72% (목표: 85%)
-- src/utils/parser.ts: 68% (목표: 85%)
-
-📋 권장 조치:
-1. 미달 파일에 대한 추가 테스트 작성
-2. 커버리지 측정 재실행
-3. 85% 이상 달성 후 다시 머지 시도
-
-⚠️ 브랜치 유지: feature/spec-${SPEC_ID} (삭제하지 않음)
-```
-
-**시나리오 3: 충돌 발생**
-```bash
-❌ 머지 충돌 발생
-
-🔴 충돌 파일:
-- src/auth/service.ts
-- tests/auth/service.test.ts
-
-📋 해결 방법:
-1. git checkout feature/spec-${SPEC_ID}
-2. git rebase main (충돌 해결)
-3. 테스트 재실행 및 품질 게이트 재검증
-4. /moai:2-build 재실행
-
-⚠️ 브랜치 유지: 충돌 해결 후 재시도
-```
-
-## 품질 기준
-
-- **TDD 사이클**: Red-Green-Refactor 완전 준수
-- **에이전트 역할 분리**: 각 에이전트 고유 책임 영역 100% 준수
-- **TRUST 원칙**: Test First, Readable, Unified, Secured, Trackable 검증
-- **TAG 위임 완료**:
-  - code-builder: TDD 구현 완성 (tag-agent 위임)
-  - tag-agent: @TEST TAG 생성, 체인 관리, 인덱스 업데이트 독점 처리
-  - git-manager: TDD 커밋 및 브랜치 동기화 전담
-  - 중복 작업 0건 (각 에이전트 단일 책임)
-  - 오케스트레이션 품질: 에이전트 간 데이터 전달 무결성
-
-## 📋 TDD 도구 매핑 및 성능 목표
-
-### 언어별 최적 라우팅 전략
-
-| SPEC 타입 | 최적 언어 | 테스트 프레임워크 | 성능 목표 | 커버리지 목표 |
+| SPEC 타입 | 구현 언어 | 테스트 프레임워크 | 성능 목표 | 커버리지 목표 |
 |-----------|-----------|-------------------|-----------|---------------|
-| **CLI/시스템** | TypeScript | Vitest + tsx | < 50ms | 95%+ |
-| **API/백엔드** | TypeScript/Go | Vitest/go test | < 150ms | 90%+ |
-| **프론트엔드** | TypeScript | Vitest + Testing Library | < 100ms | 85%+ |
-| **데이터 처리** | Python/TypeScript | pytest/Vitest | < 500ms | 85%+ |
-| **범용** | 프로젝트 언어 감지 | 언어별 최적 도구 | 언어별 최적화 | 85%+ |
+| **CLI/시스템** | TypeScript | Jest + ts-node | < 18ms | 95%+ |
+| **API/백엔드** | TypeScript | Jest + SuperTest | < 50ms | 90%+ |
+| **프론트엔드** | TypeScript | Jest + Testing Library | < 100ms | 85%+ |
+| **데이터 처리** | TypeScript | Jest + Mock | < 200ms | 85%+ |
+| **사용자 Python 프로젝트** | Python 지원 | pytest 도구 | 사용자 정의 | 사용자 정의 |
 
-### 자동 언어 감지 및 도구 선택
+## 🚀 최적화된 에이전트 협업 구조
 
-```bash
-# JavaScript/TypeScript 프로젝트
-test=npm test, lint=eslint, format=prettier
+- **Phase 1**: `code-builder` 에이전트가 전체 TDD 사이클(Red-Green-Refactor)을 일괄 처리합니다.
+- **Phase 2**: `git-manager` 에이전트가 TDD 완료 후 모든 커밋을 한 번에 처리합니다.
+- **단일 책임 원칙**: code-builder는 전체 TDD 구현, git-manager는 Git 작업 일괄 처리
+- **배치 처리**: 단계별 중단 없이 연속적인 TDD 사이클 실행
+- **에이전트 간 호출 금지**: 각 에이전트는 독립적으로 실행, 커맨드 레벨에서만 순차 호출
 
-# Python 프로젝트
-test=pytest, lint=ruff, format=black
+## 🔄 2단계 워크플로우 실행 순서
 
-# Go 프로젝트
-test=go test, lint=golint, format=gofmt
+### Phase 1: 분석 및 계획 단계
 
-# 멀티 언어 프로젝트
-자동 감지 후 주 언어 기준 도구 선택
-```
+**SPEC 분석기**가 다음을 수행:
+
+1. **SPEC 문서 로딩**: 지정된 SPEC ID 또는 all 모드에 따른 문서 분석
+2. **복잡도 평가**: 구현 범위, 기술적 제약사항, 의존성 분석
+3. **언어별 구현 전략**: 프로젝트 언어별 최적화 방안 제시
+4. **구현 계획 생성**: 단계별 TDD 접근 방식 및 예상 작업량 산정
+5. **사용자 승인 대기**: 계획 검토 및 피드백 수집
+
+### Phase 2: TDD 구현 단계 (승인 후)
+
+`code-builder` 에이전트가 사용자 승인 후 **연속적으로** 수행:
+
+1. **RED**: 실패하는 테스트 작성 및 확인
+2. **GREEN**: 최소 구현으로 테스트 통과 확인
+3. **REFACTOR**: 코드 품질 개선 및 TRUST 원칙 검증
+4. **품질 검증**: 린터, 테스트 커버리지, 보안 검사 일괄 실행
+
+### Phase 3: Git 작업 (git-manager)
+
+`git-manager` 에이전트가 TDD 완료 후 **한 번에** 수행:
+
+1. **체크포인트 생성**: TDD 시작 전 백업 포인트
+2. **구조화된 커밋**: RED→GREEN→REFACTOR 단계별 커밋 생성
+3. **최종 동기화**: 모드별 Git 전략 적용 및 원격 동기화
 
 
-## 📋 Phase 1: 분석 및 계획 실행 가이드
-
-명령어 레벨에서 직접 수행하는 SPEC 분석 및 구현 계획 수립:
+## 📋 STEP 1 실행 가이드: SPEC 분석 및 계획 수립
 
 ### 1. SPEC 문서 분석
 
+다음을 우선적으로 실행하여 SPEC을 분석합니다:
+
 ```bash
-# SPEC 문서 로딩 및 분석
-# .moai/specs/${SPEC_ID}/ 디렉터리 또는 개별 SPEC 파일 확인
+# SPEC 문서 확인 및 분석
+@agent-code-builder --mode=analysis --spec=$ARGUMENTS
 ```
 
 #### 분석 체크리스트
 
-- [ ] **SPEC 문서 존재 확인**: spec.md, plan.md, acceptance.md
-- [ ] **EARS 방법론 준수**: 5가지 구문 형식 완성도 확인
-- [ ] **요구사항 명확성**: 기능/비기능 요구사항 구체성
-- [ ] **의존성 분석**: 기존 SPEC과의 연관성 및 영향 범위
-- [ ] **복잡도 평가**: 구현 난이도 (낮음/중간/높음)
+- [ ] **요구사항 명확성**: SPEC의 기능 요구사항이 구체적인가?
+- [ ] **기술적 제약**: 성능, 호환성, 보안 요구사항 확인
+- [ ] **의존성 분석**: 기존 코드와의 연결점 및 영향 범위
+- [ ] **복잡도 평가**: 구현 난이도 및 예상 작업량
 
 ### 2. 구현 전략 결정
 
-#### 언어별 구현 기준
+#### TypeScript 구현 기준
 
-```typescript
-// 프로젝트 언어 감지 로직
-interface ImplementationStrategy {
-  spec_id: string;
-  complexity: 'low' | 'medium' | 'high';
-  language: string;
-  test_framework: string;
-  approach: 'bottom-up' | 'top-down' | 'middle-out';
-  estimated_time: string;
-}
-```
+| SPEC 특성 | 구현 언어 | 이유 |
+|-----------|-----------|------|
+| CLI/시스템 도구 | TypeScript | 고성능 (18ms), 타입 안전성, SQLite3 통합 |
+| API/백엔드 | TypeScript | Node.js 생태계, Express/Fastify 호환성 |
+| 프론트엔드 | TypeScript | React/Vue 네이티브 지원 |
+| 데이터 처리 | TypeScript | 고성능 비동기 처리, 타입 안전성 |
+| 사용자 Python 프로젝트 | Python 도구 지원 | MoAI-ADK가 Python 프로젝트 개발 도구 제공 |
+
+#### TDD 접근 방식
+
+- **Bottom-up**: 유틸리티 → 서비스 → API
+- **Top-down**: API → 서비스 → 유틸리티
+- **Middle-out**: 핵심 로직 → 양방향 확장
 
 ### 3. 구현 계획 보고서 생성
 
-다음 형식으로 계획을 제시하고 사용자 승인을 받습니다:
+다음 형식으로 계획을 제시합니다:
 
-```markdown
-## 🔍 TDD 구현 계획 보고서: [SPEC-ID]
+```
+## 구현 계획 보고서: [SPEC-ID]
 
 ### 📊 분석 결과
-- **복잡도**: [낮음/중간/높음] - [상세 근거]
-- **예상 작업시간**: [N시간] - [산정 근거]
-- **주요 기술 도전**: [구체적 어려움 3가지]
+- **복잡도**: [낮음/중간/높음]
+- **예상 작업시간**: [시간 산정]
+- **주요 기술 도전**: [기술적 어려움]
 
 ### 🎯 구현 전략
-- **선택 언어**: [감지된 언어] - [선택 이유]
-- **TDD 접근법**: [Bottom-up/Top-down/Middle-out] - [근거]
-- **핵심 모듈**: [구현할 주요 모듈 목록]
+- **선택 언어**: [Python/TypeScript + 이유]
+- **TDD 접근법**: [Bottom-up/Top-down/Middle-out]
+- **핵심 모듈**: [주요 구현 대상]
 
 ### 🚨 위험 요소
-- **기술적 위험**: [예상 문제점과 대응 방안]
-- **의존성 위험**: [외부 라이브러리 이슈]
-- **일정 위험**: [지연 가능성과 완화 방안]
+- **기술적 위험**: [예상 문제점]
+- **의존성 위험**: [외부 의존성 이슈]
+- **일정 위험**: [지연 가능성]
 
 ### ✅ 품질 게이트
-- **테스트 커버리지**: [목표 %] - [측정 방법]
-- **성능 목표**: [구체적 지표] - [검증 방법]
-- **보안 체크포인트**: [검증할 보안 항목]
+- **테스트 커버리지**: [목표 %]
+- **성능 목표**: [구체적 지표]
+- **보안 체크포인트**: [검증 항목]
 
 ---
-**🔔 승인 요청**: 위 계획으로 TDD 구현을 진행하시겠습니까?
-
-다음 중 하나를 선택해 주세요:
-- **"진행"** 또는 **"시작"**: 계획대로 Phase 2 TDD 구현 시작
-- **"수정 [구체적 변경사항]"**: 계획 수정 후 재검토
-- **"중단"**: 구현 작업 중단
+**승인 요청**: 위 계획으로 진행하시겠습니까?
+("진행", "수정 [내용]", "중단" 중 선택)
 ```
 
-## 📋 에이전트 역할 분리 및 데이터 전달
+---
 
-### code-builder 전담 영역 (Phase 2)
+## 🚀 STEP 2 실행 가이드: TDD 구현 (승인 후)
 
-- **TDD 구현**: Red-Green-Refactor 사이클 순수 실행
-- **테스트 작성**: 언어별 최적 테스트 프레임워크 활용
-- **품질 보장**: TRUST 5원칙 검증, 커버리지 85% 이상
-- **코드 품질**: 린터, 포매터, 타입 체킹 통과
+사용자가 **"진행"** 또는 **"시작"**을 선택한 경우에만 다음을 실행합니다:
 
-### tag-agent 전담 영역 (Phase 3)
-
-- **@TEST TAG 생성**: 생성된 테스트 파일 기반 TAG 생성
-- **Primary Chain 연결**: @TASK → @TEST 체인 무결성 보장
-- **중복 방지**: 기존 TAG 검색 및 재사용 검토
-- **인덱스 관리**: JSONL 기반 분산 인덱스 업데이트
-
-### git-manager 전담 영역 (Phase 4)
-
-- **구조화된 커밋**: TDD 단계별 커밋 (🔴RED, 🟢GREEN, ♻️REFACTOR)
-- **TAG 정보 포함**: 커밋 메시지에 TAG 체인 정보 자동 삽입
-- **브랜치 동기화**: Personal/Team 모드별 Git 전략 적용
-- **체크포인트 생성**: TDD 완료 상태 백업 포인트
-
-### 데이터 전달 인터페이스
-
-```typescript
-// Phase 1 → Phase 2: 승인된 구현 계획
-interface ApprovedPlan {
-  spec_id: string;
-  complexity: 'low' | 'medium' | 'high';
-  language: string;
-  strategy: string;
-  approved: boolean;
-}
-
-// Phase 2 → Phase 3: TDD 구현 결과
-interface TDDResult {
-  spec_id: string;
-  test_files: string[];
-  source_files: string[];
-  tdd_phases: ['RED', 'GREEN', 'REFACTOR'];
-  coverage_achieved: number;
-}
-
-// Phase 3 → Phase 4: TAG 체인 정보
-interface TagChainResult {
-  spec_id: string;
-  created_test_tags: string[];
-  chain_connection: string; // "@TASK:XXX → @TEST:XXX"
-  related_tags: string[];
-}
+```bash
+# TDD 구현 시작
+@agent-code-builder --mode=implement --spec=$ARGUMENTS --approved=true
 ```
 
-## 📊 품질 게이트 체크리스트
+### TDD 단계별 가이드
 
-### Phase 2 완료 기준 (code-builder)
-- [ ] 테스트 커버리지 ≥ 85%
-- [ ] 모든 테스트 통과 (RED → GREEN → REFACTOR)
-- [ ] 린터/포매터 통과
-- [ ] TRUST 5원칙 검증 완료
+1. **RED**: Given/When/Then 구조로 실패 테스트 작성. 언어별 테스트 파일 규칙을 따르고, 실패 로그를 간단히 기록합니다.
+2. **GREEN**: 테스트를 통과시키는 최소한의 구현만 추가합니다. 최적화는 REFACTOR 단계로 미룹니다.
+3. **REFACTOR**: 중복 제거, 명시적 네이밍, 구조화 로깅/예외 처리 보강. 필요 시 추가 커밋으로 분리합니다.
 
-### Phase 3 완료 기준 (tag-agent)
-- [ ] @TEST TAG 생성 완료
-- [ ] Primary Chain 연결 검증
-- [ ] TAG 중복 없음
-- [ ] JSONL 인덱스 업데이트 완료
+> 헌법 Article I은 기본 권장치만 제공하므로, `simplicity_threshold`를 초과하는 구조가 필요하다면 SPEC 또는 ADR에 근거를 남기고 진행하세요.
 
-### Phase 4 완료 기준 (git-manager) - 브랜치 종료 책임 추가
-- [ ] 품질 게이트 최종 검증 완료
-- [ ] 사용자 머지 승인 완료
-- [ ] 브랜치 머지 성공 (main 또는 develop)
-- [ ] feature 브랜치 삭제 완료 (Personal 모드)
-- [ ] PR 상태 전환 완료 (Team 모드: Draft → Ready)
-- [ ] 체크포인트 태그 생성 완료
-- [ ] 예외 상황 시 브랜치 보존 및 사용자 안내
+## 에이전트 역할 분리
 
-## 🔄 다음 단계
+### code-builder 전담 영역
 
-- **TDD 및 TAG 연결 완료 후**: `/moai:3-sync`로 문서 동기화 진행
-- **Living Document 업데이트**: TAG 체인 정보 문서 반영
-- **에이전트 독립성 보장**: 각 Phase별 완전한 작업 격리
-- **오류 복구**: Phase별 체크포인트로 정확한 상태 복구 가능
+- TDD Red-Green-Refactor 코드 구현
+- 테스트 작성 및 실행
+- TRUST 5원칙 검증
+- 코드 품질 체크
+- 언어별 린터/포매터 실행
+
+### git-manager 전담 영역
+
+- 모든 Git 커밋 작업 (add, commit, push)
+- TDD 단계별 체크포인트 생성
+- 모드별 커밋 전략 적용
+- 깃 브랜치/태그 관리
+- 원격 동기화 처리
+
+## 품질 게이트 체크리스트
+
+- 테스트 커버리지 ≥ `.moai/config.json.test_coverage_target` (기본 85%)
+- 린터/포매터 통과 (`ruff`, `eslint --fix`, `gofmt` 등)
+- 구조화 로깅 또는 관측 도구 호출 존재 확인
+- @TAG 업데이트 필요 변경 사항 메모 (다음 단계에서 doc-syncer가 사용)
+
+## 다음 단계
+
+- TDD 구현 완료 후 `/moai:3-sync`로 문서 동기화 진행
+- 모든 Git 작업은 git-manager 에이전트가 전담하여 일관성 보장
+- 에이전트 간 직접 호출 없이 커맨드 레벨 오케스트레이션만 사용
