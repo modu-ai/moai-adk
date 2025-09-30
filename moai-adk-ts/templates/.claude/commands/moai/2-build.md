@@ -71,154 +71,275 @@ TDD 구현 후 tag-agent가 @TEST TAG 체인 생성 및 연결 작업을 수행�
 - **체인 검증**: 체인 무결성 및 순환 참조 방지
 - **인덱스 업데이트**: JSONL 기반 분산 인덱스 갱신
 
-### Phase 4: 브랜치 머지 및 종료 (git-manager 전담, 신규 책임)
+### Phase 4: Git 워크플로우 완료 (config 기반 동적 전략)
 
-TDD와 TAG 작업 완료 후 품질 게이트를 통과하면 브랜치를 main으로 머지하고 종료합니다:
+TDD와 TAG 작업 완료 후 `.moai/config.json` 설정에 따라 Git 워크플로우를 완료합니다:
 
-@agent-git-manager "TDD 및 TAG 작업 완료, 품질 게이트 통과. 브랜치 머지 및 종료를 수행해주세요"
+@agent-git-manager "TDD 및 TAG 작업 완료, 품질 게이트 통과. config 기반 Git 워크플로우를 완료해주세요"
 
-#### 브랜치 머지 단계
+#### 워크플로우 결정 로직
 
-1. **품질 게이트 최종 검증**:
-   ```bash
-   # 필수 검증 항목
-   ✅ 테스트 커버리지 ≥ 85%
-   ✅ 모든 테스트 통과 (0 실패)
-   ✅ 린터/포매터 통과 (0 경고)
-   ✅ TRUST 5원칙 준수
-   ✅ TAG 체인 완성 (@REQ → @DESIGN → @TASK → @TEST)
+```typescript
+// 1. config.json 읽기
+const config = readMoAIConfig('.moai/config.json');
 
-   # 실패 시 처리
-   → 브랜치 유지, 사용자에게 재작업 안내
-   → 체크포인트 생성: git tag "checkpoint/spec-XXX-failed-$(date +%s)"
-   ```
+// 2. 워크플로우 전략 결정
+if (config.mode === 'personal' && config.spec.workflow === 'commit') {
+  // 전략 A: Personal + Commit (머지 없음, 추가 커밋만)
+  executeAdditionalCommit();
+} else if (config.mode === 'personal' && config.spec.workflow === 'branch') {
+  // 전략 B: Personal + Branch (로컬 머지)
+  executeLocalMerge();
+} else if (config.mode === 'team' && config.spec.workflow === 'branch') {
+  // 전략 C: Team + Branch (PR Ready 전환)
+  executePRReady();
+}
+```
 
-2. **변경사항 요약**:
-   ```bash
-   # 머지 전 상태 확인
-   git status --short
-   git diff --stat main...HEAD
+#### 공통: 품질 게이트 최종 검증
 
-   # 요약 생성
-   📊 TDD 구현 결과 요약:
-   - 변경 파일: X개 (소스 Y개, 테스트 Z개)
-   - 추가 라인: +XXX
-   - 삭제 라인: -YYY
-   - 테스트 커버리지: ZZ%
-   - TAG 체인: @TASK:XXX → @TEST:XXX 연결 완료
-   ```
+**모든 워크플로우 시작 전 필수 검증**:
 
-3. **사용자 확인 요청**:
-   ```
-   🎯 품질 게이트 통과 완료
+```bash
+# 필수 검증 항목
+✅ 테스트 커버리지 ≥ 85%
+✅ 모든 테스트 통과 (0 실패)
+✅ 린터/포매터 통과 (0 경고)
+✅ TRUST 5원칙 준수
+✅ TAG 체인 완성 (@REQ → @DESIGN → @TASK → @TEST)
 
-   📋 머지 계획:
-   - 현재 브랜치: feature/spec-${SPEC_ID}-${DESCRIPTION}
-   - 대상 브랜치: main (또는 develop)
-   - 변경사항: 파일 X개, 테스트 Y개 추가, 커버리지 Z%
-   - TAG 체인: @TASK → @TEST 연결 완료
+# 실패 시 처리
+→ 워크플로우 중단, 사용자에게 재작업 안내
+→ 체크포인트 생성: git tag "checkpoint/spec-XXX-failed-$(date +%s)"
+```
 
-   main 브랜치로 머지하시겠습니까? (y/n)
+#### 전략 A: Personal + Commit (머지 없음)
 
-   ⚠️ 주의: 머지 후 브랜치는 자동으로 삭제됩니다.
-   ```
+**적용 조건**: `mode: "personal"` + `spec.workflow: "commit"`
 
-4. **브랜치 머지 실행 (승인 시)**:
+```bash
+# 1. 변경사항 요약
+git status --short
+echo ""
+echo "📊 TDD 구현 결과 요약:"
+echo "- 변경 파일: X개 (소스 Y개, 테스트 Z개)"
+echo "- 테스트 커버리지: ${COVERAGE}%"
+echo "- TAG 체인: @TASK:${SPEC_ID} → @TEST:${SPEC_ID}"
 
-   **Personal 모드:**
-   ```bash
-   # 1. main 브랜치 최신화
-   git checkout main
-   git pull origin main
+# 2. 사용자 확인 요청
+echo ""
+echo "🎯 품질 게이트 통과 완료"
+echo ""
+echo "📋 커밋 계획:"
+echo "- 워크플로우: 로컬 커밋만 (머지 없음)"
+echo "- 변경사항: 파일 X개, 테스트 Y개 추가"
+echo "- TAG 체인: @TASK → @TEST 연결 완료"
+echo ""
+echo "커밋하시겠습니까? (y/n)"
 
-   # 2. 머지 (--no-ff로 머지 커밋 생성)
-   git merge --no-ff feature/spec-${SPEC_ID}-${DESCRIPTION} \
-     -m "🎉 MERGE: [SPEC-${SPEC_ID}] ${DESCRIPTION} TDD 구현 완료
+# 3. 승인 시 추가 커밋
+git add .
+git commit -m "🎉 TDD: [SPEC-${SPEC_ID}] ${DESCRIPTION} 구현 완료
 
-   ## TDD 구현 요약
-   - RED: 테스트 작성 및 실패 확인
-   - GREEN: 최소 구현으로 테스트 통과
-   - REFACTOR: 코드 품질 개선 및 TRUST 검증
+## TDD 구현 요약
+- RED: 테스트 작성 및 실패 확인
+- GREEN: 최소 구현으로 테스트 통과
+- REFACTOR: 코드 품질 개선 및 TRUST 검증
 
-   ## 품질 지표
-   - 테스트 커버리지: ${COVERAGE}%
-   - 테스트 통과율: 100%
-   - 린터 경고: 0건
+## 품질 지표
+- 테스트 커버리지: ${COVERAGE}%
+- 테스트 통과율: 100%
+- 린터 경고: 0건
 
-   ## TAG 체인
-   - @TASK:${SPEC_ID} → @TEST:${SPEC_ID}
+## TAG 체인
+- @TASK:${SPEC_ID} → @TEST:${SPEC_ID}
 
-   🤖 Generated with Claude Code
+🤖 Generated with Claude Code
 
-   Co-Authored-By: Claude <noreply@anthropic.com>"
+Co-Authored-By: Claude <noreply@anthropic.com>"
 
-   # 3. 브랜치 삭제
-   git branch -d feature/spec-${SPEC_ID}-${DESCRIPTION}
+# 4. 체크포인트 생성
+git tag "checkpoint/spec-${SPEC_ID}-tdd-complete"
 
-   # 4. 체크포인트 생성
-   git tag "checkpoint/spec-${SPEC_ID}-tdd-complete"
+# 5. 원격 푸시 (config.git.remote.autoPush가 true인 경우)
+if [ "${AUTO_PUSH}" = "true" ]; then
+  git push origin $(git branch --show-current) --tags
+fi
 
-   # 5. 원격 저장소 동기화
-   git push origin main --tags
-   ```
+# 6. 완료 보고
+echo ""
+echo "✅ TDD 구현 커밋 완료"
+echo ""
+echo "📊 최종 결과:"
+echo "- 커버리지: ${COVERAGE}% (목표: ≥85%)"
+echo "- 테스트: ${TESTS_PASSED}개 통과 / ${TESTS_TOTAL}개"
+echo "- TAG 체인: @TASK → @TEST 연결 완료"
+echo "- 체크포인트: checkpoint/spec-${SPEC_ID}-tdd-complete"
+echo ""
+echo "🚀 다음 단계: /moai:3-sync"
+```
 
-   **Team 모드:**
-   ```bash
-   # 1. 원격 브랜치 푸시
-   git push origin feature/spec-${SPEC_ID}-${DESCRIPTION}
+#### 전략 B: Personal + Branch (로컬 머지)
 
-   # 2. PR 상태 전환 (Draft → Ready)
-   gh pr ready
-   gh pr edit \
-     --add-label "ready-for-review" \
-     --add-label "tdd-complete" \
-     --add-label "quality-gate-passed"
+**적용 조건**: `mode: "personal"` + `spec.workflow: "branch"`
 
-   # 3. PR 본문 업데이트
-   gh pr edit --body "$(cat <<'EOF'
-   ## ✅ TDD 구현 완료
+```bash
+# 1. 변경사항 요약
+git status --short
+git diff --stat main...HEAD
+echo ""
+echo "📊 TDD 구현 결과 요약:"
+echo "- 변경 파일: X개 (소스 Y개, 테스트 Z개)"
+echo "- 추가 라인: +XXX"
+echo "- 삭제 라인: -YYY"
+echo "- 테스트 커버리지: ${COVERAGE}%"
+echo "- TAG 체인: @TASK:${SPEC_ID} → @TEST:${SPEC_ID}"
 
-   ### 품질 게이트 통과
-   - [x] 테스트 커버리지 ≥ 85% (실제: ${COVERAGE}%)
-   - [x] 모든 테스트 통과
-   - [x] 린터/포매터 통과
-   - [x] TRUST 5원칙 검증 완료
+# 2. 사용자 확인 요청
+echo ""
+echo "🎯 품질 게이트 통과 완료"
+echo ""
+echo "📋 머지 계획:"
+echo "- 현재 브랜치: feature/spec-${SPEC_ID}-${DESCRIPTION}"
+echo "- 대상 브랜치: main (또는 develop)"
+echo "- 변경사항: 파일 X개, 테스트 Y개 추가, 커버리지 ${COVERAGE}%"
+echo "- TAG 체인: @TASK → @TEST 연결 완료"
+echo "- 워크플로우: 로컬 머지 (원격 푸시 ${AUTO_PUSH_TEXT})"
+echo ""
+echo "main 브랜치로 머지하시겠습니까? (y/n)"
+echo "⚠️ 주의: 머지 후 브랜치는 자동으로 삭제됩니다."
 
-   ### TAG 체인 완성
-   - @REQ:${SPEC_ID} → @DESIGN:${SPEC_ID} → @TASK:${SPEC_ID} → @TEST:${SPEC_ID}
+# 3. 승인 시 로컬 머지 실행
+# 3-1. main 브랜치 최신화
+git checkout main
+git pull origin main
 
-   ### 변경사항
-   ${CHANGES_SUMMARY}
+# 3-2. 머지 (--no-ff로 머지 커밋 생성)
+git merge --no-ff feature/spec-${SPEC_ID}-${DESCRIPTION} \
+  -m "🎉 MERGE: [SPEC-${SPEC_ID}] ${DESCRIPTION} TDD 구현 완료
 
-   ### 다음 단계
-   - 코드 리뷰 대기
-   - 승인 후 main 브랜치로 머지
-   - /moai:3-sync로 문서 동기화
+## TDD 구현 요약
+- RED: 테스트 작성 및 실패 확인
+- GREEN: 최소 구현으로 테스트 통과
+- REFACTOR: 코드 품질 개선 및 TRUST 검증
 
-   🤖 Generated with Claude Code
-   EOF
-   )"
+## 품질 지표
+- 테스트 커버리지: ${COVERAGE}%
+- 테스트 통과율: 100%
+- 린터 경고: 0건
 
-   # 4. 알림
-   echo "📢 PR이 리뷰 준비 상태로 전환되었습니다."
-   echo "🔗 PR 링크: $(gh pr view --json url -q .url)"
-   echo "⏳ 팀원의 리뷰를 기다립니다."
-   echo "✅ 승인 후 GitHub에서 수동으로 머지해주세요."
-   ```
+## TAG 체인
+- @TASK:${SPEC_ID} → @TEST:${SPEC_ID}
 
-5. **브랜치 머지 완료 보고**:
-   ```
-   ✅ TDD 구현 및 브랜치 머지 완료
+🤖 Generated with Claude Code
 
-   📊 최종 결과:
-   - 브랜치: feature/spec-${SPEC_ID} → main (머지 완료)
-   - 커버리지: ${COVERAGE}% (목표: ≥85%)
-   - 테스트: ${TESTS_PASSED}개 통과 / ${TESTS_TOTAL}개
-   - TAG 체인: @TASK → @TEST 연결 완료
-   - 체크포인트: checkpoint/spec-${SPEC_ID}-tdd-complete
+Co-Authored-By: Claude <noreply@anthropic.com>"
 
-   🚀 다음 단계: /moai:3-sync
-   ```
+# 3-3. 브랜치 삭제
+git branch -d feature/spec-${SPEC_ID}-${DESCRIPTION}
+
+# 3-4. 체크포인트 생성
+git tag "checkpoint/spec-${SPEC_ID}-tdd-complete"
+
+# 3-5. 원격 저장소 동기화 (config.git.remote.autoPush가 true인 경우)
+if [ "${AUTO_PUSH}" = "true" ]; then
+  git push origin main --tags
+fi
+
+# 4. 완료 보고
+echo ""
+echo "✅ TDD 구현 및 브랜치 머지 완료"
+echo ""
+echo "📊 최종 결과:"
+echo "- 브랜치: feature/spec-${SPEC_ID} → main (머지 완료)"
+echo "- 커버리지: ${COVERAGE}% (목표: ≥85%)"
+echo "- 테스트: ${TESTS_PASSED}개 통과 / ${TESTS_TOTAL}개"
+echo "- TAG 체인: @TASK → @TEST 연결 완료"
+echo "- 체크포인트: checkpoint/spec-${SPEC_ID}-tdd-complete"
+echo ""
+echo "🚀 다음 단계: /moai:3-sync"
+```
+
+#### 전략 C: Team + Branch (PR Ready 전환)
+
+**적용 조건**: `mode: "team"` + `spec.workflow: "branch"`
+
+```bash
+# 1. 변경사항 요약
+git status --short
+git diff --stat origin/main...HEAD
+echo ""
+echo "📊 TDD 구현 결과 요약:"
+echo "- 변경 파일: X개 (소스 Y개, 테스트 Z개)"
+echo "- 추가 라인: +XXX"
+echo "- 삭제 라인: -YYY"
+echo "- 테스트 커버리지: ${COVERAGE}%"
+echo "- TAG 체인: @TASK:${SPEC_ID} → @TEST:${SPEC_ID}"
+
+# 2. 사용자 확인 요청
+echo ""
+echo "🎯 품질 게이트 통과 완료"
+echo ""
+echo "📋 PR 준비 계획:"
+echo "- 현재 브랜치: feature/spec-${SPEC_ID}-${DESCRIPTION}"
+echo "- 원격 저장소: $(git remote get-url origin)"
+echo "- PR 상태: Draft → Ready for Review"
+echo "- 변경사항: 파일 X개, 테스트 Y개 추가, 커버리지 ${COVERAGE}%"
+echo "- TAG 체인: @TASK → @TEST 연결 완료"
+echo ""
+echo "PR을 리뷰 준비 상태로 전환하시겠습니까? (y/n)"
+
+# 3. 승인 시 PR Ready 전환 실행
+# 3-1. 원격 브랜치 푸시
+git push origin feature/spec-${SPEC_ID}-${DESCRIPTION}
+
+# 3-2. PR 상태 전환 (Draft → Ready)
+gh pr ready
+gh pr edit \
+  --add-label "ready-for-review" \
+  --add-label "tdd-complete" \
+  --add-label "quality-gate-passed"
+
+# 3-3. PR 본문 업데이트
+gh pr edit --body "$(cat <<'EOF'
+## ✅ TDD 구현 완료
+
+### 품질 게이트 통과
+- [x] 테스트 커버리지 ≥ 85% (실제: ${COVERAGE}%)
+- [x] 모든 테스트 통과
+- [x] 린터/포매터 통과
+- [x] TRUST 5원칙 검증 완료
+
+### TAG 체인 완성
+- @REQ:${SPEC_ID} → @DESIGN:${SPEC_ID} → @TASK:${SPEC_ID} → @TEST:${SPEC_ID}
+
+### 변경사항
+${CHANGES_SUMMARY}
+
+### 다음 단계
+- 코드 리뷰 대기
+- 승인 후 main 브랜치로 머지
+- /moai:3-sync로 문서 동기화
+
+🤖 Generated with Claude Code
+EOF
+)"
+
+# 4. 완료 보고
+echo ""
+echo "✅ PR 리뷰 준비 상태 전환 완료"
+echo ""
+echo "📊 최종 결과:"
+echo "- 브랜치: feature/spec-${SPEC_ID}-${DESCRIPTION}"
+echo "- PR 링크: $(gh pr view --json url -q .url)"
+echo "- 커버리지: ${COVERAGE}% (목표: ≥85%)"
+echo "- 테스트: ${TESTS_PASSED}개 통과 / ${TESTS_TOTAL}개"
+echo "- TAG 체인: @TASK → @TEST 연결 완료"
+echo ""
+echo "📢 팀원의 리뷰를 기다립니다."
+echo "✅ 승인 후 GitHub에서 수동으로 머지해주세요."
+echo "🚀 머지 완료 후: /moai:3-sync"
+```
 
 #### 예외 처리 시나리오
 

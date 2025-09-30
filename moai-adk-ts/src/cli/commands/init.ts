@@ -5,6 +5,7 @@
  */
 
 import * as path from 'node:path';
+import * as fs from 'node:fs';
 import chalk from 'chalk';
 import { InstallationOrchestrator } from '@/core/installer/orchestrator';
 import type { InstallationConfig } from '@/core/installer/types';
@@ -14,6 +15,8 @@ import { createHeader, printBanner } from '@/utils/banner';
 import { InputValidator } from '@/utils/input-validator';
 import { DoctorCommand } from './doctor';
 import { logger } from '../../utils/winston-logger.js';
+import { promptProjectSetup, displayWelcomeBanner } from '../prompts/init-prompts';
+import { buildMoAIConfig } from '../config/config-builder';
 
 /**
  * Progress callback for installation progress display
@@ -81,48 +84,34 @@ export class InitCommand {
         };
       }
 
-      // Step 2: Input validation and configuration setup
-      logger.info(chalk.yellow.bold('\nStep 2: Configuration'));
+      // Step 2: Interactive Configuration
+      logger.info(chalk.yellow.bold('\nStep 2: Interactive Configuration'));
 
-      // Validate project name
-      const projectNameValidation = InputValidator.validateProjectName(
-        options?.name || 'moai-project',
-        { maxLength: 50, allowSpaces: false }
-      );
+      // Display welcome banner for interactive setup
+      displayWelcomeBanner();
 
-      if (!projectNameValidation.isValid) {
-        return {
-          success: false,
-          projectPath: '',
-          config: { name: '', type: 'typescript' as any },
-          createdFiles: [],
-          errors: [
-            'Project name validation failed:',
-            ...projectNameValidation.errors,
-          ],
-        };
-      }
+      // Run interactive prompts
+      const answers = await promptProjectSetup(options?.name);
+
+      // Build MoAI config from answers
+      const moaiConfig = buildMoAIConfig(answers);
 
       // Determine project path
       let projectPathInput: string;
-      const projectName =
-        projectNameValidation.sanitizedValue || 'moai-project';
+      const projectName = answers.projectName;
 
       if (options?.path) {
-        // Explicit path provided
         projectPathInput = options.path;
       } else if (projectName === '.' || projectName === 'moai-project') {
-        // Current directory installation (moai init . or default name)
         projectPathInput = process.cwd();
       } else {
-        // Create new directory with project name
         projectPathInput = path.join(process.cwd(), projectName);
       }
 
       const pathValidation = await InputValidator.validatePath(
         projectPathInput,
         {
-          mustBeDirectory: false, // Directory will be created if needed
+          mustBeDirectory: false,
           maxDepth: 10,
         }
       );
@@ -137,25 +126,24 @@ export class InitCommand {
         };
       }
 
-      // Validate mode
-      const validModes = ['personal', 'team'];
-      const mode = options?.mode || 'personal';
-      if (!validModes.includes(mode)) {
-        return {
-          success: false,
-          projectPath: '',
-          config: { name: '', type: 'typescript' as any },
-          createdFiles: [],
-          errors: [
-            `Invalid mode: ${mode}. Must be one of: ${validModes.join(', ')}`,
-          ],
-        };
+      // Save MoAI config to .moai/config.json
+      const finalProjectPath = pathValidation.sanitizedValue || projectPathInput;
+      const moaiConfigPath = path.join(finalProjectPath, '.moai', 'config.json');
+
+      // Ensure .moai directory exists
+      const moaiDir = path.join(finalProjectPath, '.moai');
+      if (!fs.existsSync(moaiDir)) {
+        fs.mkdirSync(moaiDir, { recursive: true });
       }
 
+      // Write config.json
+      fs.writeFileSync(moaiConfigPath, JSON.stringify(moaiConfig, null, 2), 'utf-8');
+      logger.info(chalk.green(`✅ Config saved: ${moaiConfigPath}`));
+
       const config: InstallationConfig = {
-        projectPath: pathValidation.sanitizedValue || projectPathInput,
-        projectName: projectNameValidation.sanitizedValue || 'moai-project',
-        mode: mode as 'personal' | 'team',
+        projectPath: finalProjectPath,
+        projectName: projectName,
+        mode: moaiConfig.mode,
         backupEnabled: options?.backup !== false,
         overwriteExisting: options?.force || false,
         additionalFeatures: options?.features || [],

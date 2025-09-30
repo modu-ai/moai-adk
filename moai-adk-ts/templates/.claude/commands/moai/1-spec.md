@@ -108,85 +108,163 @@ SPEC 생성 후 tag-agent가 생성된 TAG 요구사항 YAML을 바탕으로 전
 - **체인 검증**: 체인 무결성 및 순환 참조 방지
 - **인덱스 관리**: JSONL 기반 분산 인덱스 업데이트
 
-### 3. 브랜치 생성 자동화 (신규 책임)
+### 3. Git 워크플로우 자동화 (config 기반 동적 전략)
 
-SPEC과 TAG 작업 완료 후 브랜치 생성 및 초기 설정을 자동화합니다:
+SPEC과 TAG 작업 완료 후 `.moai/config.json` 설정에 따라 Git 워크플로우를 자동화합니다:
 
-@agent-git-manager "SPEC 및 TAG 생성 완료, 브랜치 생성 및 초기 커밋을 수행해주세요"
+@agent-git-manager "SPEC 및 TAG 생성 완료, config 기반 Git 워크플로우를 실행해주세요"
 
-#### 브랜치 생성 단계
+#### 워크플로우 결정 로직
 
-1. **기존 브랜치 확인**:
-   ```bash
-   # 중복 브랜치 검색
-   git branch --list "feature/spec-${SPEC_ID}*"
-   git branch --list "*${DOMAIN}*"
+```typescript
+// 1. config.json 읽기
+const config = readMoAIConfig('.moai/config.json');
 
-   # 중복 발견 시
-   → 사용자에게 경고: "유사한 브랜치가 존재합니다. 계속하시겠습니까? (y/n)"
-   → 정리 제안: "기존 브랜치를 정리하시겠습니까? (y/n)"
-   ```
+// 2. 워크플로우 전략 결정
+if (config.mode === 'personal' && config.spec.workflow === 'commit') {
+  // 전략 A: Personal + Commit (브랜치 없음)
+  executeLocalCommitOnly();
+} else if (config.mode === 'personal' && config.spec.workflow === 'branch') {
+  // 전략 B: Personal + Branch
+  executeLocalBranchWorkflow();
+} else if (config.mode === 'team' && config.spec.workflow === 'branch') {
+  // 전략 C: Team + Branch + GitHub PR
+  executeTeamBranchWithPR();
+}
+```
 
-2. **사용자 확인 요청**:
-   ```
-   📋 브랜치 생성 계획:
-   - 브랜치명: feature/spec-${SPEC_ID}-${DESCRIPTION}
-   - 기반 브랜치: main (또는 develop)
-   - SPEC 파일: .moai/specs/SPEC-${SPEC_ID}/
-   - TAG 체인: @REQ → @DESIGN → @TASK
+#### 전략 A: Personal + Commit (브랜치 없음)
 
-   생성하시겠습니까? (y/n)
-   ```
+**적용 조건**: `mode: "personal"` + `spec.workflow: "commit"`
 
-3. **브랜치 생성 (승인 시)**:
-   ```bash
-   # Personal 모드
-   git checkout -b feature/spec-${SPEC_ID}-${DESCRIPTION}
-   git add .moai/specs/SPEC-${SPEC_ID}/
-   git commit -m "📝 SPEC: [SPEC-${SPEC_ID}] ${DESCRIPTION} SPEC 생성
+```bash
+# 1. 사용자 확인 요청
+echo "📋 로컬 커밋 계획:"
+echo "- SPEC 파일: .moai/specs/SPEC-${SPEC_ID}/"
+echo "- TAG 체인: @REQ → @DESIGN → @TASK"
+echo "- 워크플로우: 로컬 커밋만 (브랜치 없음)"
+echo ""
+echo "커밋하시겠습니까? (y/n)"
 
-   @REQ:${SPEC_ID}, @DESIGN:${SPEC_ID}, @TASK:${SPEC_ID}
+# 2. 승인 시 로컬 커밋
+git add .moai/specs/SPEC-${SPEC_ID}/
+git commit -m "📝 SPEC: [SPEC-${SPEC_ID}] ${DESCRIPTION}
 
-   🤖 Generated with Claude Code"
+@REQ:${SPEC_ID}, @DESIGN:${SPEC_ID}, @TASK:${SPEC_ID}
 
-   # Team 모드 (추가)
-   git push -u origin feature/spec-${SPEC_ID}-${DESCRIPTION}
-   gh pr create --draft \
-     --title "🚧 [SPEC-${SPEC_ID}] ${DESCRIPTION}" \
-     --body "$(cat <<'EOF'
-   ## SPEC 개요
-   ${SPEC_SUMMARY}
+🤖 Generated with Claude Code"
 
-   ## TAG 체인
-   - @REQ:${SPEC_ID}
-   - @DESIGN:${SPEC_ID}
-   - @TASK:${SPEC_ID}
+# 3. 완료 보고
+echo "✅ 로컬 커밋 완료"
+echo "📝 SPEC 파일: .moai/specs/SPEC-${SPEC_ID}/spec.md"
+echo "🏷️ TAG 체인: @REQ → @DESIGN → @TASK"
+echo ""
+echo "🚀 다음 단계: /moai:2-build SPEC-${SPEC_ID}"
+```
 
-   ## 다음 단계
-   - [ ] /moai:2-build로 TDD 구현
-   - [ ] 품질 게이트 통과
-   - [ ] /moai:3-sync로 문서 동기화
+#### 전략 B: Personal + Branch
 
-   🤖 Generated with Claude Code
-   EOF
-   )"
-   ```
+**적용 조건**: `mode: "personal"` + `spec.workflow: "branch"`
 
-4. **브랜치 생성 완료 보고**:
-   ```
-   ✅ 브랜치 생성 완료
-   📂 브랜치: feature/spec-${SPEC_ID}-${DESCRIPTION}
-   📝 SPEC 파일: .moai/specs/SPEC-${SPEC_ID}/spec.md
-   🏷️ TAG 체인: @REQ → @DESIGN → @TASK
+```bash
+# 1. 중복 브랜치 확인
+git branch --list "feature/spec-${SPEC_ID}*"
+git branch --list "*${DOMAIN}*"
 
-   🚀 다음 단계: /moai:2-build SPEC-${SPEC_ID}
-   ```
+# 2. 사용자 확인 요청
+echo "📋 브랜치 생성 계획:"
+echo "- 브랜치명: feature/spec-${SPEC_ID}-${DESCRIPTION}"
+echo "- 기반 브랜치: $(git branch --show-current)"
+echo "- SPEC 파일: .moai/specs/SPEC-${SPEC_ID}/"
+echo "- TAG 체인: @REQ → @DESIGN → @TASK"
+echo "- 워크플로우: 로컬 브랜치 (원격 푸시 없음)"
+echo ""
+echo "생성하시겠습니까? (y/n)"
+
+# 3. 승인 시 브랜치 생성 및 커밋
+git checkout -b feature/spec-${SPEC_ID}-${DESCRIPTION}
+git add .moai/specs/SPEC-${SPEC_ID}/
+git commit -m "📝 SPEC: [SPEC-${SPEC_ID}] ${DESCRIPTION}
+
+@REQ:${SPEC_ID}, @DESIGN:${SPEC_ID}, @TASK:${SPEC_ID}
+
+🤖 Generated with Claude Code"
+
+# 4. 완료 보고
+echo "✅ 브랜치 생성 완료"
+echo "📂 브랜치: feature/spec-${SPEC_ID}-${DESCRIPTION}"
+echo "📝 SPEC 파일: .moai/specs/SPEC-${SPEC_ID}/spec.md"
+echo "🏷️ TAG 체인: @REQ → @DESIGN → @TASK"
+echo ""
+echo "🚀 다음 단계: /moai:2-build SPEC-${SPEC_ID}"
+```
+
+#### 전략 C: Team + Branch + GitHub PR
+
+**적용 조건**: `mode: "team"` + `spec.workflow: "branch"`
+
+```bash
+# 1. 중복 브랜치 확인 (로컬 + 원격)
+git branch --list "feature/spec-${SPEC_ID}*"
+git branch -r --list "origin/feature/spec-${SPEC_ID}*"
+
+# 2. 사용자 확인 요청
+echo "📋 브랜치 및 PR 생성 계획:"
+echo "- 브랜치명: feature/spec-${SPEC_ID}-${DESCRIPTION}"
+echo "- 원격 저장소: $(git remote get-url origin)"
+echo "- SPEC 파일: .moai/specs/SPEC-${SPEC_ID}/"
+echo "- TAG 체인: @REQ → @DESIGN → @TASK"
+echo "- 워크플로우: GitHub PR (Draft)"
+echo ""
+echo "생성하시겠습니까? (y/n)"
+
+# 3. 승인 시 브랜치 생성, 푸시, PR 생성
+git checkout -b feature/spec-${SPEC_ID}-${DESCRIPTION}
+git add .moai/specs/SPEC-${SPEC_ID}/
+git commit -m "📝 SPEC: [SPEC-${SPEC_ID}] ${DESCRIPTION}
+
+@REQ:${SPEC_ID}, @DESIGN:${SPEC_ID}, @TASK:${SPEC_ID}
+
+🤖 Generated with Claude Code"
+
+git push -u origin feature/spec-${SPEC_ID}-${DESCRIPTION}
+
+gh pr create --draft \
+  --title "🚧 [SPEC-${SPEC_ID}] ${DESCRIPTION}" \
+  --body "$(cat <<'EOF'
+## 📋 SPEC 개요
+${SPEC_SUMMARY}
+
+## 🏷️ TAG 체인
+- @REQ:${SPEC_ID}
+- @DESIGN:${SPEC_ID}
+- @TASK:${SPEC_ID}
+
+## 📝 다음 단계
+- [ ] /moai:2-build로 TDD 구현
+- [ ] 품질 게이트 통과
+- [ ] /moai:3-sync로 문서 동기화
+
+🤖 Generated with Claude Code
+EOF
+)"
+
+# 4. 완료 보고
+echo "✅ 브랜치 및 PR 생성 완료"
+echo "📂 브랜치: feature/spec-${SPEC_ID}-${DESCRIPTION}"
+echo "🔗 PR 링크: $(gh pr view --json url -q .url)"
+echo "📝 SPEC 파일: .moai/specs/SPEC-${SPEC_ID}/spec.md"
+echo "🏷️ TAG 체인: @REQ → @DESIGN → @TASK"
+echo ""
+echo "🚀 다음 단계: /moai:2-build SPEC-${SPEC_ID}"
+```
 
 #### 브랜치 충돌 방지 정책
 
-- **중복 브랜치 감지**: 동일 SPEC ID 또는 유사 도메인 브랜치 확인
+- **중복 브랜치 감지**: 동일 SPEC ID 또는 유사 도메인 브랜치 확인 (로컬 + 원격)
 - **자동 정리 제안**: 머지된 feature 브랜치 자동 삭제 제안
 - **병렬 작업 감지**: 동일 SPEC에 대한 여러 브랜치 생성 방지
+- **config 검증**: 워크플로우 실행 전 config.json 유효성 확인
 
 ## 품질 기준
 
