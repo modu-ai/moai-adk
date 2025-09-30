@@ -11,7 +11,7 @@ import { InstallationOrchestrator } from '@/core/installer/orchestrator';
 import type { InstallationConfig } from '@/core/installer/types';
 import type { SystemDetector } from '@/core/system-checker/detector';
 import type { InitResult } from '@/types/project';
-import { createHeader, printBanner } from '@/utils/banner';
+import { printBanner } from '@/utils/banner';
 import { InputValidator } from '@/utils/input-validator';
 import { DoctorCommand } from './doctor';
 import { logger } from '../../utils/winston-logger.js';
@@ -66,15 +66,19 @@ export class InitCommand {
       // Display the MoAI banner
       printBanner();
 
-      // Display initialization header
+      // Display initialization header with modern design
       const inputProjectName = options?.name || 'moai-project';
-      logger.info(createHeader(`Initializing ${inputProjectName} project...`));
+      console.log(chalk.cyan.bold(`\n🚀 Initializing ${chalk.white(inputProjectName)} project...\n`));
 
-      // Step 1: System verification
-      logger.info(chalk.yellow.bold('Step 1: System Verification'));
+      // Step 1: System verification with clean separator
+      console.log(chalk.gray('─'.repeat(60)));
+      console.log(chalk.yellow.bold('📋 Step 1: System Verification'));
+      console.log(chalk.gray('─'.repeat(60)) + '\n');
+
       const doctorResult = await this.doctorCommand.run();
 
       if (!doctorResult.allPassed) {
+        console.log(chalk.red.bold('\n❌ System verification failed\n'));
         return {
           success: false,
           projectPath: '',
@@ -84,27 +88,35 @@ export class InitCommand {
         };
       }
 
-      // Step 2: Interactive Configuration
-      logger.info(chalk.yellow.bold('\nStep 2: Interactive Configuration'));
+      // Step 2: Interactive Configuration with modern separator
+      console.log(chalk.gray('\n' + '─'.repeat(60)));
+      console.log(chalk.yellow.bold('⚙️  Step 2: Interactive Configuration'));
+      console.log(chalk.gray('─'.repeat(60)) + '\n');
 
       // Display welcome banner for interactive setup
       displayWelcomeBanner();
 
-      // Run interactive prompts
-      const answers = await promptProjectSetup(options?.name);
+      // Determine initialization mode BEFORE prompting
+      const isCurrentDirMode = options?.name === '.';
+
+      // Run interactive prompts with mode context
+      const answers = await promptProjectSetup(options?.name, isCurrentDirMode);
 
       // Build MoAI config from answers
       const moaiConfig = buildMoAIConfig(answers);
 
-      // Determine project path
+      // Determine project path based on initialization mode
       let projectPathInput: string;
       const projectName = answers.projectName;
 
       if (options?.path) {
+        // Explicit path provided
         projectPathInput = options.path;
-      } else if (projectName === '.' || projectName === 'moai-project') {
+      } else if (isCurrentDirMode) {
+        // moai init . mode - always use current directory
         projectPathInput = process.cwd();
       } else {
+        // moai init project-name mode - create new directory
         projectPathInput = path.join(process.cwd(), projectName);
       }
 
@@ -138,23 +150,21 @@ export class InitCommand {
 
       // Write config.json
       fs.writeFileSync(moaiConfigPath, JSON.stringify(moaiConfig, null, 2), 'utf-8');
-      logger.info(chalk.green(`✅ Config saved: ${moaiConfigPath}`));
+      console.log(chalk.green(`\n✅ Configuration saved\n`));
 
       const config: InstallationConfig = {
         projectPath: finalProjectPath,
         projectName: projectName,
         mode: moaiConfig.mode,
-        backupEnabled: options?.backup !== false,
+        backupEnabled: false, // No backup needed for new project initialization
         overwriteExisting: options?.force || false,
         additionalFeatures: options?.features || [],
       };
 
-      logger.info(chalk.gray(`  Project: ${config.projectName}`));
-      logger.info(chalk.gray(`  Mode: ${config.mode}`));
-      logger.info(chalk.gray(`  Path: ${config.projectPath}`));
-
-      // Step 3: Full installation with orchestrator
-      logger.info(chalk.yellow.bold('\nStep 3: Installation'));
+      // Step 3: Full installation with orchestrator and modern header
+      console.log(chalk.gray('─'.repeat(60)));
+      console.log(chalk.yellow.bold('📦 Step 3: Installation'));
+      console.log(chalk.gray('─'.repeat(60)) + '\n');
       const orchestrator = new InstallationOrchestrator(config);
       const installResult =
         await orchestrator.executeInstallation(displayProgress);
@@ -169,29 +179,33 @@ export class InitCommand {
       };
 
       if (result.success) {
-        logger.info(
-          chalk.green.bold('\n✅ Initialization completed successfully!')
-        );
-        logger.info(chalk.gray(`📁 Project created at: ${result.projectPath}`));
-        logger.info(
-          chalk.gray(`📄 Files created: ${result.createdFiles.length}`)
-        );
-        logger.info(chalk.gray(`⏱️  Duration: ${installResult.duration}ms`));
+        // Modern success message with clean design
+        console.log(chalk.gray('\n' + '─'.repeat(60)));
+        console.log(chalk.green.bold('✅ Initialization Completed Successfully!'));
+        console.log(chalk.gray('─'.repeat(60)));
+
+        console.log(chalk.cyan('\n📊 Summary:'));
+        console.log(chalk.gray(`  📁 Location:  ${chalk.white(result.projectPath)}`));
+        console.log(chalk.gray(`  📄 Files:     ${chalk.white(result.createdFiles.length)} created`));
+        console.log(chalk.gray(`  ⏱️  Duration:  ${chalk.white(installResult.duration + 'ms')}`));
 
         if (installResult.nextSteps.length > 0) {
-          logger.info(chalk.blue.bold('\n📋 Next Steps:'));
+          console.log(chalk.cyan('\n🚀 Next Steps:'));
           installResult.nextSteps.forEach((step, index) => {
-            logger.info(chalk.blue(`${index + 1}. ${step}`));
+            console.log(chalk.blue(`  ${index + 1}. ${step}`));
           });
         }
+
+        console.log(chalk.gray('\n' + '─'.repeat(60) + '\n'));
       } else {
-        logger.info(chalk.red.bold('\n❌ Initialization failed!'));
+        console.log(chalk.red.bold('\n❌ Initialization failed!'));
         if (result.errors && result.errors.length > 0) {
-          logger.info(chalk.red('\nErrors:'));
+          console.log(chalk.red('\nErrors:'));
           result.errors.forEach(error => {
-            logger.info(chalk.red(`  • ${error}`));
+            console.log(chalk.red(`  • ${error}`));
           });
         }
+        console.log();
       }
 
       return result;
