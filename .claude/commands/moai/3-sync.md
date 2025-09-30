@@ -50,7 +50,7 @@ tools: Read, Write, Edit, MultiEdit, Bash(git status:*), Bash(git add:*), Bash(g
 ## 동기화 산출물
 
 - `.moai/reports/sync-report.md` 생성/갱신
-- TAG 인덱스 업데이트: `python3 .moai/scripts/check-traceability.py --update`
+- TAG 체인 검증: 코드 직접 스캔 (rg 기반)
 
 ## 모드별 실행 방식
 
@@ -243,7 +243,7 @@ Task 2 (sonnet): 문서 구조 분석
 
 1. 프로젝트 분석 및 TAG 검증 → 끊어진/중복/고아 TAG 점검
 2. 코드 ↔ 문서 동기화 → API/README/아키텍처 문서 갱신, SPEC ↔ 코드 TODO 동기화
-3. TAG 인덱스 업데이트 → `python3 .moai/scripts/check-traceability.py --update`
+3. TAG 체인 검증 → `rg '@TAG' -n src/ tests/` (코드 직접 스캔)
 
 ## 다음 단계
 

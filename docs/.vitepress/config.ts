@@ -10,10 +10,7 @@ export default withMermaid(
 
     // Mermaid configuration
     mermaid: {
-      // Mermaid theme configuration
       theme: 'default',
-      // Optional: customize Mermaid settings
-      // theme: 'neutral', 'dark', 'forest', 'default'
       themeVariables: {
         primaryColor: '#5f67ee',
         primaryTextColor: '#fff',
@@ -22,6 +19,11 @@ export default withMermaid(
         secondaryColor: '#339af0',
         tertiaryColor: '#51cf66'
       }
+    },
+
+    // Mermaid 플러그인 옵션
+    mermaidPlugin: {
+      class: "mermaid my-class", // Mermaid 다이어그램에 적용할 CSS 클래스
     },
 
     // Markdown configuration

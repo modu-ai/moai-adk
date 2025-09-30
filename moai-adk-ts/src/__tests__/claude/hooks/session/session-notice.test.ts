@@ -41,7 +41,7 @@ describe('SessionNotifier', () => {
 
       expect(result.success).toBe(true);
       expect(result.message).toBe(
-        '💡 Run `/moai:0-project` to initialize MoAI-ADK'
+        '💡 Run `/moai:8-project` to initialize MoAI-ADK'
       );
     });
 

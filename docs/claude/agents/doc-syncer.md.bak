@@ -1,0 +1,1418 @@
+---
+title: doc-syncer - Living Document 동기화 에이전트
+description: 코드와 문서의 실시간 동기화 및 @TAG 추적성을 보장하는 전문 에이전트
+---
+
+# doc-syncer - Living Document 동기화 에이전트
+
+## 개요
+
+doc-syncer는 MoAI-ADK의 3단계 워크플로우 중 **3단계(/moai:3-sync)**를 담당하는 핵심 에이전트입니다. Living Document 개념을 구현하여 코드 변경사항이 문서에 자동 반영되고, @TAG 시스템을 통한 완전한 추적성을 보장합니다. TDD 구현 완료 후 반드시 실행해야 하는 필수 단계입니다.
+
+### 역할과 책임
+
+**핵심 역할**: 추적성 없이는 완성 없음 (No Traceability, No Done) 원칙 구현
+
+doc-syncer의 주요 책임은 다음과 같습니다. 첫째, Living Document 동기화를 통해 코드와 문서의 일치성을 유지합니다. 코드 변경 시 관련 문서(API 문서, README, 아키텍처 다이어그램)를 자동으로 갱신하고, SPEC 문서와 실제 구현의 일치 여부를 검증하며, 문서 메타데이터(Last Updated, Version)를 자동으로 업데이트합니다. 둘째, @TAG 체인 검증 및 복구를 수행합니다. 코드 전체를 스캔하여 TAG 무결성을 확인하고, Primary Chain(@REQ → @DESIGN → @TASK → @TEST) 완전성을 검증하며, 고아 TAG와 끊어진 링크를 자동 감지하여 수정 제안을 제공합니다. 셋째, PR 상태 전환 및 관리를 담당합니다. Draft PR을 Ready for Review 상태로 자동 전환하고(사용자 확인 필요), Team 모드에서 적절한 라벨을 자동으로 부여하며, 리뷰어 할당을 제안합니다(gh CLI 사용 시). 넷째, 문서 완전성 체크를 수행합니다. SPEC 문서의 모든 섹션이 작성되었는지 확인하고, 테스트 커버리지 리포트와 문서의 일치성을 검증하며, TODO 및 FIXME 주석을 문서화합니다.
+
+doc-syncer는 **CODE-FIRST 철학**을 따릅니다. 문서는 코드의 복사본이 아니라 코드를 설명하는 보조 자료입니다. 따라서 코드가 진실의 원천(Single Source of Truth)이며, 문서는 코드로부터 자동 생성되거나 수동 작성 시 코드와 동기화됩니다. @TAG 시스템도 중간 인덱스 파일 없이 코드를 직접 스캔하여 실시간 검증합니다.
+
+### 3단계 워크플로우에서의 위치
+
+```mermaid
+graph LR
+    A[/moai:1-spec] -->|SPEC 생성| B[/moai:2-build]
+    B -->|코드 구현| C[/moai:3-sync]
+    C -->|문서 동기화| D[완료]
+
+    style A fill:#e9ecef,stroke:#adb5bd
+    style B fill:#e9ecef,stroke:#adb5bd
+    style C fill:#ff6b6b,stroke:#c92a2a,color:#fff
+    style D fill:#51cf66,stroke:#2f9e44
+```
+
+**doc-syncer 활성화 시점**: 사용자가 `/moai:3-sync` 명령어를 실행하거나 TDD 구현 완료 후
+
+### 다른 에이전트와의 협력
+
+**입력**:
+- code-builder가 생성한 구현 파일 및 테스트 파일
+- SPEC 문서 (`.moai/specs/SPEC-XXX/`)
+- 프로젝트 문서 (`.moai/project/`)
+- 기존 문서 (README.md, API.md, docs/ 등)
+
+**출력**:
+- 갱신된 문서 (README, API 문서, 아키텍처 다이어그램)
+- 동기화 리포트 (`.moai/reports/sync-report-{timestamp}.md`)
+- TAG 검증 결과
+- PR 상태 전환 요청 (git-manager에게 위임)
+
+**연계**:
+- code-builder: 구현 완료 후 doc-syncer 호출
+- tag-agent: TAG 체인 검증 및 무결성 확인 요청
+- git-manager: PR 상태 전환, 라벨 관리, 커밋 작업 위임
+- trust-checker: 문서 품질 검증 요청
+
+**중요**: doc-syncer는 Git 작업(커밋, 푸시, PR 관리)을 직접 수행하지 않습니다. 모든 Git 작업은 git-manager에게 위임합니다.
+
+---
+
+## 핵심 기능
+
+### 1. Living Document 동기화
+
+Living Document는 코드 변경과 함께 자동으로 갱신되는 문서를 의미합니다. doc-syncer는 코드와 문서의 일치성을 유지하는 핵심 메커니즘을 제공합니다.
+
+#### 코드 → 문서 동기화
+
+코드 변경 사항을 자동으로 감지하고 관련 문서를 갱신합니다.
+
+**API 문서 자동 생성**:
+
+```mermaid
+sequenceDiagram
+    participant DS as doc-syncer
+    participant Code as Codebase
+    participant API as API.md
+    participant User
+
+    User->>DS: /moai:3-sync 실행
+    DS->>Code: 코드 스캔 (AST 분석)
+    Code-->>DS: 함수/클래스 시그니처 추출
+
+    DS->>DS: 기존 API.md와 비교
+    DS->>DS: 변경사항 감지
+
+    alt 새로운 API 추가됨
+        DS->>API: 새 섹션 추가
+    else 기존 API 수정됨
+        DS->>API: 해당 섹션 갱신
+    else API 삭제됨
+        DS->>API: Deprecated 표시
+    end
+
+    DS->>User: 동기화 완료 보고
+```
+
+**예시: Python API 문서 자동 생성**
+
+```python
+# src/auth/service.py
+# @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+# Related: @API:AUTH-001
+
+class AuthenticationService:
+    """사용자 인증 서비스"""
+
+    def authenticate(self, username: str, password: str) -> AuthenticationResult:
+        """
+        사용자 인증을 수행합니다.
+
+        Args:
+            username (str): 사용자 이메일 주소
+            password (str): 평문 비밀번호
+
+        Returns:
+            AuthenticationResult: 인증 결과 객체
+
+        Raises:
+            ValueError: 잘못된 입력 형식
+            DatabaseError: 데이터베이스 연결 오류
+
+        Examples:
+            >>> service = AuthenticationService()
+            >>> result = service.authenticate("user@example.com", "password123")
+            >>> print(result.is_authenticated)
+            True
+
+        Note:
+            @API:AUTH-001: JWT 토큰 기반 인증 구현
+        """
+        pass
+```
+
+**doc-syncer가 자동 생성하는 API.md**:
+
+```markdown
+# API Reference
+
+## Authentication API
+
+### `AuthenticationService.authenticate`
+
+**@API:AUTH-001** | [Source](../src/auth/service.py#L15)
+
+사용자 인증을 수행합니다.
+
+**Signature**:
+```python
+def authenticate(username: str, password: str) -> AuthenticationResult
+```
+
+**Parameters**:
+| 이름 | 타입 | 설명 |
+|------|------|------|
+| `username` | `str` | 사용자 이메일 주소 |
+| `password` | `str` | 평문 비밀번호 |
+
+**Returns**:
+- `AuthenticationResult`: 인증 결과 객체
+
+**Raises**:
+- `ValueError`: 잘못된 입력 형식
+- `DatabaseError`: 데이터베이스 연결 오류
+
+**Example**:
+```python
+service = AuthenticationService()
+result = service.authenticate("user@example.com", "password123")
+print(result.is_authenticated)  # True
+```
+
+**Related SPEC**: [SPEC-AUTH-001](../.moai/specs/SPEC-AUTH-001/spec.md)
+
+**Last Updated**: 2025-01-20 14:30:00
+```
+
+#### README 자동 갱신
+
+프로젝트 변경사항을 README에 자동 반영합니다.
+
+**감지 대상**:
+- 새로운 CLI 명령어 추가 → Usage 섹션 업데이트
+- 의존성 변경 (package.json, requirements.txt) → Installation 섹션 업데이트
+- 환경 변수 추가 (.env.example) → Configuration 섹션 업데이트
+- 새로운 기능 구현 (@FEATURE TAG) → Features 섹션 업데이트
+
+```typescript
+// doc-syncer의 README 동기화 로직
+interface ReadmeSection {
+  title: string;
+  detector: (codebase: Codebase) => boolean;
+  generator: (codebase: Codebase) => string;
+}
+
+const readmeSections: ReadmeSection[] = [
+  {
+    title: '## Installation',
+    detector: (codebase) => codebase.hasChangedFile(['package.json', 'requirements.txt']),
+    generator: (codebase) => generateInstallationSection(codebase.dependencies)
+  },
+  {
+    title: '## Usage',
+    detector: (codebase) => codebase.hasNewCLICommands(),
+    generator: (codebase) => generateUsageSection(codebase.cliCommands)
+  },
+  {
+    title: '## Features',
+    detector: (codebase) => codebase.hasNewFeatureTags(),
+    generator: (codebase) => generateFeaturesSection(codebase.features)
+  }
+];
+```
+
+#### 아키텍처 문서 동기화
+
+코드 구조 변경 시 아키텍처 다이어그램을 자동 갱신합니다.
+
+```mermaid
+flowchart TD
+    A[코드 스캔] --> B{디렉토리<br/>구조 변경?}
+    B -->|Yes| C[Mermaid 다이어그램 재생성]
+    B -->|No| D{모듈 의존성<br/>변경?}
+
+    D -->|Yes| E[의존성 그래프 업데이트]
+    D -->|No| F[변경 없음]
+
+    C --> G[structure.md 갱신]
+    E --> G
+
+    G --> H[사용자에게 보고]
+
+    style C fill:#fab005
+    style E fill:#fab005
+    style G fill:#51cf66
+```
+
+**예시: 자동 생성되는 아키텍처 다이어그램**
+
+```markdown
+# Project Structure
+
+Last Updated: 2025-01-20 14:35:00 (Auto-generated by doc-syncer)
+
+## Directory Layout
+
+\`\`\`
+project/
+├── src/
+│   ├── auth/          # @FEATURE:AUTH-001 (3 modules)
+│   ├── api/           # @API:REST-001 (5 endpoints)
+│   ├── models/        # @DATA:USER-001 (2 models)
+│   └── utils/         # Common utilities
+├── tests/             # 26 test files, 94% coverage
+└── docs/              # Living Documents
+\`\`\`
+
+## Module Dependencies
+
+\`\`\`mermaid
+graph TD
+    API[api/] --> AUTH[auth/]
+    API --> MODELS[models/]
+    AUTH --> MODELS
+    AUTH --> UTILS[utils/]
+
+    style AUTH fill:#ff6b6b
+    style API fill:#fab005
+    style MODELS fill:#51cf66
+\`\`\`
+
+## @TAG Distribution
+
+| Module | Primary Chain | Implementation | Total |
+|--------|---------------|----------------|-------|
+| auth/  | 4 (REQ, DESIGN, TASK, TEST) | 3 (FEATURE, API, DATA) | 7 |
+| api/   | 4 | 2 (API, UI) | 6 |
+| models/| 2 | 1 (DATA) | 3 |
+
+Total: 16 TAG chains
+```
+
+### 2. @TAG 체인 검증 및 복구
+
+doc-syncer는 tag-agent와 협력하여 @TAG 시스템의 무결성을 보장합니다.
+
+#### TAG 스캔 및 검증
+
+```mermaid
+sequenceDiagram
+    participant DS as doc-syncer
+    participant TA as tag-agent
+    participant Code as Codebase
+    participant User
+
+    DS->>TA: TAG 검증 요청
+    TA->>Code: rg '@TAG' -n 실행
+    Code-->>TA: TAG 목록 반환
+
+    TA->>TA: Primary Chain 검증
+    TA->>TA: Implementation TAG 검증
+    TA->>TA: 고아 TAG 감지
+
+    alt 검증 성공
+        TA-->>DS: ✅ TAG 무결성 확인
+        DS->>User: 동기화 완료
+    else 검증 실패
+        TA-->>DS: ❌ TAG 오류 발견
+        DS->>User: 오류 리포트 + 수정 제안
+        User->>DS: 수정 승인
+        DS->>Code: TAG 자동 수정
+        DS->>TA: 재검증 요청
+    end
+```
+
+#### Primary Chain 검증
+
+**검증 규칙**:
+1. 모든 @TASK는 @DESIGN을 부모로 가져야 함
+2. 모든 @TEST는 @TASK를 참조해야 함
+3. @REQ → @DESIGN → @TASK → @TEST 순서 준수
+4. 동일한 DOMAIN-ID 사용 (예: AUTH-001)
+
+**검증 예시**:
+
+```bash
+# doc-syncer 실행
+/moai:3-sync
+
+# TAG 검증 과정:
+> 🔍 코드베이스 스캔 중...
+> 발견된 TAG: 43개
+>
+> ✅ Primary Chain 검증:
+>   - @REQ:AUTH-001 ✓
+>   - @DESIGN:AUTH-001 ✓
+>   - @TASK:AUTH-001 ✓
+>   - @TEST:AUTH-001 ✓
+>
+> ✅ Implementation TAG 검증:
+>   - @FEATURE:AUTH-001 ✓
+>   - @API:AUTH-001 ✓
+>   - @DATA:AUTH-001 ✓
+>
+> ❌ 문제 발견:
+>   - @TASK:PAYMENT-002 has no @DESIGN parent
+>   - @TEST:NOTIF-003 references non-existent @TASK:NOTIF-003
+>
+> 💡 자동 수정 제안:
+>   1. src/payment/service.py에 @DESIGN:PAYMENT-002 추가
+>   2. tests/notif/test_service.py의 @TASK:NOTIF-003을 @TASK:NOTIF-004로 변경
+>
+> 수정을 적용하시겠습니까? (y/n):
+```
+
+#### 고아 TAG 감지 및 처리
+
+**고아 TAG**: 부모나 자식 없이 독립적으로 존재하는 TAG
+
+```typescript
+interface OrphanTag {
+  tag: string;
+  file: string;
+  line: number;
+  reason: 'no_parent' | 'no_child' | 'invalid_reference';
+  suggestion: string;
+}
+
+function detectOrphanTags(tags: TagIndex[]): OrphanTag[] {
+  const orphans: OrphanTag[] = [];
+
+  for (const tag of tags) {
+    if (tag.type === 'TASK' && !hasParent(tag, 'DESIGN')) {
+      orphans.push({
+        tag: tag.id,
+        file: tag.file,
+        line: tag.line,
+        reason: 'no_parent',
+        suggestion: `Add @DESIGN:${tag.domainId} in design document`
+      });
+    }
+
+    if (tag.type === 'TEST' && !references(tag, 'TASK')) {
+      orphans.push({
+        tag: tag.id,
+        file: tag.file,
+        line: tag.line,
+        reason: 'invalid_reference',
+        suggestion: `Add @TASK:${tag.domainId} reference in TAG BLOCK`
+      });
+    }
+  }
+
+  return orphans;
+}
+```
+
+#### TAG 추적성 매트릭스 생성
+
+모든 TAG 체인을 시각화한 추적성 매트릭스를 자동 생성합니다.
+
+```markdown
+# TAG Traceability Matrix
+
+Generated: 2025-01-20 14:40:00 by doc-syncer
+
+## Complete Chains
+
+| DOMAIN-ID | @REQ | @DESIGN | @TASK | @TEST | @FEATURE | @API | @DATA |
+|-----------|------|---------|-------|-------|----------|------|-------|
+| AUTH-001  | ✓ spec.md:45 | ✓ design/auth.md:20 | ✓ src/auth/service.py:15 | ✓ tests/auth/test_service.py:10 | ✓ | ✓ | ✓ |
+| PAYMENT-002 | ✓ spec.md:120 | ❌ **MISSING** | ✓ src/payment/service.py:10 | ✓ tests/payment/test_service.py:8 | ✓ | ✓ | - |
+| NOTIF-003 | ✓ spec.md:200 | ✓ design/notif.md:15 | ✓ src/notif/sender.py:12 | ❌ **BROKEN LINK** | ✓ | - | - |
+
+## Statistics
+
+- Total Chains: 3
+- Complete Chains: 1 (33%)
+- Incomplete Chains: 2 (67%)
+- Total TAGs: 18
+- Orphan TAGs: 2
+
+## Issues to Fix
+
+1. **PAYMENT-002**: Missing @DESIGN:PAYMENT-002
+   - Action: Create design document at design/payment.md
+   - Priority: High
+
+2. **NOTIF-003**: @TEST references non-existent @TASK:NOTIF-003
+   - Action: Update tests/notif/test_sender.py TAG reference
+   - Priority: Critical
+```
+
+### 3. PR 상태 전환 및 관리
+
+doc-syncer는 문서 동기화 완료 후 PR을 Ready for Review 상태로 전환하도록 git-manager에게 요청합니다.
+
+#### Draft → Ready 자동 전환
+
+```mermaid
+flowchart TD
+    A[/moai:3-sync 실행] --> B[문서 동기화 완료]
+    B --> C[TAG 검증 완료]
+    C --> D{모든 검증<br/>통과?}
+
+    D -->|No| E[오류 리포트 생성]
+    E --> F[사용자에게 수정 요청]
+    F --> A
+
+    D -->|Yes| G[PR 상태 전환 제안]
+    G --> H{사용자<br/>승인?}
+
+    H -->|No| I[동기화만 완료]
+
+    H -->|Yes| J[git-manager 호출]
+    J --> K[Draft → Ready]
+    K --> L[라벨 자동 추가]
+    L --> M[리뷰어 할당 제안]
+
+    M --> N[완료 보고]
+
+    style D fill:#fab005
+    style K fill:#51cf66
+    style N fill:#51cf66
+```
+
+**PR 상태 전환 예시**:
+
+```bash
+/moai:3-sync
+
+> ✅ 문서 동기화 완료
+> ✅ TAG 검증 통과 (43/43)
+> ✅ 커버리지 목표 달성 (94%)
+>
+> 📋 PR 상태 전환 준비:
+>   현재: Draft
+>   변경: Ready for Review
+>
+> 🏷️  추가할 라벨:
+>   - documentation
+>   - tested
+>   - ready-for-review
+>
+> 👥 제안 리뷰어:
+>   - @tech-lead (코드 리뷰)
+>   - @doc-team (문서 리뷰)
+>
+> PR을 Ready 상태로 전환하시겠습니까? (y/n): y
+>
+> git-manager에게 요청 전달 중...
+> ✅ PR #123 상태 전환 완료
+```
+
+#### 라벨 자동 관리 (Team 모드)
+
+Personal 모드에서는 라벨 관리가 생략되며, Team 모드에서만 자동 라벨링이 적용됩니다.
+
+**자동 추가 라벨**:
+- `documentation`: 문서 변경 포함
+- `tested`: 테스트 커버리지 85% 이상
+- `tag-verified`: TAG 검증 통과
+- `ready-for-review`: 모든 검증 통과
+
+**조건부 라벨**:
+- `breaking-change`: API 시그니처 변경 감지
+- `needs-migration`: 데이터 모델 변경 감지
+- `security`: 보안 관련 변경 감지
+
+### 4. 문서 완전성 체크
+
+doc-syncer는 SPEC 문서와 관련 문서의 완전성을 검증합니다.
+
+#### SPEC 완전성 검증
+
+```typescript
+interface SpecCompleteness {
+  hasEnvironment: boolean;
+  hasAssumptions: boolean;
+  hasRequirements: boolean;
+  hasSpecifications: boolean;
+  hasTagCatalog: boolean;
+  hasAcceptanceCriteria: boolean;
+  completenessScore: number;
+}
+
+function checkSpecCompleteness(specPath: string): SpecCompleteness {
+  const spec = parseMarkdown(specPath);
+
+  const checks = {
+    hasEnvironment: spec.hasSection('Environment'),
+    hasAssumptions: spec.hasSection('Assumptions'),
+    hasRequirements: spec.hasSection('Requirements'),
+    hasSpecifications: spec.hasSection('Specifications'),
+    hasTagCatalog: spec.hasSection('@TAG Catalog'),
+    hasAcceptanceCriteria: spec.hasSection('Acceptance Criteria')
+  };
+
+  const completenessScore = Object.values(checks).filter(Boolean).length / 6 * 100;
+
+  return { ...checks, completenessScore };
+}
+```
+
+**완전성 리포트**:
+
+```markdown
+# SPEC Completeness Report
+
+## SPEC-AUTH-001
+
+- ✅ Environment (Present)
+- ✅ Assumptions (Present)
+- ✅ Requirements (EARS format, 15 items)
+- ✅ Specifications (Detailed)
+- ✅ @TAG Catalog (7 TAGs)
+- ❌ Acceptance Criteria (Missing)
+
+**Completeness Score**: 83% (5/6)
+
+**Action Required**: Add Given-When-Then scenarios to acceptance.md
+```
+
+#### 테스트 커버리지 문서 동기화
+
+테스트 커버리지 리포트를 문서에 자동 반영합니다.
+
+```markdown
+# Test Coverage Report
+
+Last Updated: 2025-01-20 14:45:00 (Auto-generated)
+
+## Overall Coverage
+
+- **Total Coverage**: 94%
+- **Target**: 85% ✅
+- **Trend**: +5% from last sync
+
+## Module Breakdown
+
+| Module | Coverage | Status | Tests |
+|--------|----------|--------|-------|
+| auth/  | 98% | ✅ | 26 tests |
+| api/   | 92% | ✅ | 18 tests |
+| models/| 89% | ✅ | 12 tests |
+| utils/ | 85% | ✅ | 8 tests |
+
+## Uncovered Lines
+
+### src/auth/service.py
+- Line 145-148: Error handling for edge case
+- Suggestion: Add test for DatabaseError exception
+
+### src/api/handler.py
+- Line 67-70: Fallback logic
+- Suggestion: Add integration test for API failure
+```
+
+#### TODO 및 FIXME 문서화
+
+코드 내 TODO/FIXME 주석을 자동으로 추출하여 문서화합니다.
+
+```markdown
+# TODO & FIXME Tracker
+
+Generated: 2025-01-20 14:50:00
+
+## High Priority
+
+### FIXME: Security vulnerability
+- **File**: src/auth/token.py:45
+- **Description**: Token expiration not validated properly
+- **@TAG**: @API:AUTH-001
+- **Assigned**: @security-team
+- **Created**: 2025-01-15
+
+### TODO: Performance optimization
+- **File**: src/api/handler.py:120
+- **Description**: Add caching layer for repeated queries
+- **@TAG**: @PERF:API-001
+- **Assigned**: Unassigned
+- **Created**: 2025-01-18
+
+## Medium Priority
+
+... (continues)
+```
+
+---
+
+## 사용법
+
+### 기본 사용
+
+#### 전체 문서 동기화
+
+```bash
+# TDD 구현 완료 후 실행
+/moai:3-sync
+
+# 실행 과정:
+# 1. 코드베이스 스캔
+# 2. 문서 변경사항 감지
+# 3. API 문서 자동 생성/갱신
+# 4. README 업데이트
+# 5. TAG 체인 검증
+# 6. 동기화 리포트 생성
+# 7. PR 상태 전환 제안
+```
+
+**출력 예시**:
+
+```
+🔄 Living Document 동기화 시작...
+
+📂 코드베이스 스캔:
+  - 발견된 파일: 45개
+  - 변경된 파일: 8개
+  - 새로운 TAG: 7개
+
+📝 문서 갱신:
+  ✅ API.md 업데이트 (3개 API 추가)
+  ✅ README.md 업데이트 (Installation, Features)
+  ✅ structure.md 업데이트 (아키텍처 다이어그램)
+  ✅ coverage-report.md 생성
+
+🔍 TAG 검증:
+  ✅ Primary Chain: 완전 (7/7)
+  ✅ Implementation TAG: 완전 (5/5)
+  ✅ 고아 TAG: 없음
+  ✅ 끊어진 링크: 없음
+
+📊 통계:
+  - 동기화된 문서: 4개
+  - 생성된 다이어그램: 2개
+  - TAG 검증: 43개 (100%)
+  - 커버리지: 94% (목표 달성)
+
+✅ 동기화 완료!
+
+🚀 다음 단계:
+  1. PR을 Ready for Review로 전환하시겠습니까? (y/n)
+  2. 리뷰어를 할당하시겠습니까? (y/n)
+```
+
+#### SPEC 기반 동기화
+
+```bash
+# 특정 SPEC만 동기화
+/moai:3-sync SPEC-AUTH-001
+
+# 실행 과정:
+# 1. SPEC-AUTH-001 관련 파일만 스캔
+# 2. AUTH-001 도메인 TAG만 검증
+# 3. 관련 문서만 갱신
+```
+
+### 고급 사용
+
+#### 선택적 동기화
+
+```bash
+# API 문서만 갱신
+/moai:3-sync --only-api
+
+# TAG 검증만 수행
+/moai:3-sync --only-tags
+
+# README만 업데이트
+/moai:3-sync --only-readme
+
+# 커버리지 리포트만 생성
+/moai:3-sync --only-coverage
+```
+
+#### Dry-run 모드
+
+```bash
+# 변경사항 미리보기 (실제 변경 없음)
+/moai:3-sync --dry-run
+
+# 출력:
+> 📋 변경 예정 파일:
+>   - API.md (3 sections to update)
+>   - README.md (2 sections to update)
+>   - structure.md (1 diagram to regenerate)
+>
+> 💡 실제 적용하려면 --dry-run 없이 실행하세요
+```
+
+#### 강제 재생성
+
+```bash
+# 모든 문서를 강제로 재생성
+/moai:3-sync --force-regenerate
+
+# 사용 사례:
+# - 문서 형식 변경 후 전체 재생성
+# - 문서가 손상된 경우 복구
+# - TAG 시스템 전면 개편 후
+```
+
+### 옵션 및 플래그
+
+| 옵션 | 설명 | 예시 |
+|------|------|------|
+| `--only-api` | API 문서만 갱신 | `/moai:3-sync --only-api` |
+| `--only-tags` | TAG 검증만 수행 | `/moai:3-sync --only-tags` |
+| `--only-readme` | README만 업데이트 | `/moai:3-sync --only-readme` |
+| `--only-coverage` | 커버리지 리포트만 생성 | `/moai:3-sync --only-coverage` |
+| `--dry-run` | 미리보기 모드 (변경 없음) | `/moai:3-sync --dry-run` |
+| `--force-regenerate` | 전체 문서 강제 재생성 | `/moai:3-sync --force-regenerate` |
+| `--no-pr-transition` | PR 상태 전환 생략 | `/moai:3-sync --no-pr-transition` |
+| `--skip-tag-validation` | TAG 검증 건너뛰기 | `/moai:3-sync --skip-tag-validation` |
+
+### 실전 시나리오
+
+#### 시나리오 1: 표준 TDD 사이클 완료
+
+```bash
+# 1. SPEC 작성
+/moai:1-spec "사용자 인증"
+
+# 2. TDD 구현
+/moai:2-build SPEC-AUTH-001
+
+# 3. 문서 동기화 (이 단계!)
+/moai:3-sync
+
+# 대화형 진행:
+> ✅ 코드베이스 스캔 완료
+> ✅ API.md 업데이트 완료
+> ✅ TAG 검증 통과
+>
+> 📋 동기화 리포트:
+>   - 새로운 API: 3개
+>   - 갱신된 문서: 4개
+>   - TAG 체인: 완전 (7/7)
+>
+> 🚀 PR 상태 전환:
+>   현재: Draft PR #123
+>   제안: Ready for Review
+>
+> PR을 전환하시겠습니까? (y/n): y
+>
+> git-manager에게 요청 전달...
+> ✅ PR #123 → Ready for Review
+> ✅ 라벨 추가: documentation, tested, tag-verified
+>
+> 🎉 동기화 완료! 다음 기능으로 진행하세요.
+```
+
+#### 시나리오 2: TAG 검증 실패 시 복구
+
+```bash
+/moai:3-sync
+
+# 실행 결과:
+> ❌ TAG 검증 실패
+>
+> 🔍 발견된 문제:
+>   1. @TASK:PAYMENT-002 has no @DESIGN parent
+>      File: src/payment/service.py:15
+>      Suggestion: Add @DESIGN:PAYMENT-002 in design/payment.md
+>
+>   2. @TEST:NOTIF-003 references broken @TASK:NOTIF-004
+>      File: tests/notif/test_sender.py:10
+>      Expected: @TASK:NOTIF-003
+>
+> 💡 자동 수정 옵션:
+>   1. design/payment.md 생성 및 @DESIGN:PAYMENT-002 추가
+>   2. tests/notif/test_sender.py의 TAG 참조 수정
+>
+> 자동 수정을 적용하시겠습니까? (y/n): y
+>
+> [1/2] design/payment.md 생성 중...
+> ✅ @DESIGN:PAYMENT-002 추가 완료
+>
+> [2/2] TAG 참조 수정 중...
+> ✅ @TASK:NOTIF-004 → @TASK:NOTIF-003 수정 완료
+>
+> 🔄 재검증 중...
+> ✅ 모든 TAG 검증 통과!
+>
+> 계속 진행하시겠습니까? (y/n): y
+```
+
+#### 시나리오 3: 문서 불일치 감지 및 해결
+
+```bash
+/moai:3-sync
+
+# 실행 결과:
+> ⚠️  문서-코드 불일치 감지
+>
+> 📋 불일치 항목:
+>
+>   1. API.md vs src/auth/service.py
+>      - API.md: authenticate(email, password)
+>      - Code: authenticate(username, password)
+>      - Action: API.md 갱신 필요
+>
+>   2. README.md vs package.json
+>      - README: "Requires Node.js 18+"
+>      - package.json: "engines": { "node": ">=20.0.0" }
+>      - Action: README 버전 정보 갱신 필요
+>
+>   3. SPEC-AUTH-001 vs tests/auth/test_service.py
+>      - SPEC: 토큰 만료시간 15분
+>      - Code: TOKEN_EXPIRY = 30 (분)
+>      - Action: ⚠️ CRITICAL - SPEC 또는 코드 수정 필요
+>
+> 💡 자동 수정 가능 항목: 1, 2
+> ⚠️  수동 확인 필요 항목: 3
+>
+> 자동 수정 가능 항목을 갱신하시겠습니까? (y/n): y
+>
+> [1/2] API.md 갱신 중...
+> ✅ email → username 수정
+>
+> [2/2] README.md 갱신 중...
+> ✅ Node.js 버전 18+ → 20+ 수정
+>
+> ⚠️  CRITICAL 항목 처리:
+>   SPEC-AUTH-001과 코드의 토큰 만료시간 불일치
+>
+>   옵션:
+>   a) SPEC 수정 (15분 → 30분)
+>   b) 코드 수정 (30분 → 15분)
+>   c) 나중에 수동 해결
+>
+> 선택 (a/b/c): b
+>
+> src/auth/service.py 수정 중...
+> ✅ TOKEN_EXPIRY = 30 → 15
+>
+> 🔄 테스트 재실행 중...
+> ✅ 모든 테스트 통과
+>
+> ✅ 문서 동기화 완료!
+```
+
+---
+
+## 워크플로우
+
+### 동기화 프로세스 상세 흐름
+
+<!--
+```mermaid
+flowchart TD
+    A["moai:3-sync 실행"] --> B[1. 코드베이스 스캔]
+    B --> C[2. 변경사항 감지]
+
+    C --> D{변경사항<br/>존재?}
+    D -->|No| E[변경 없음 보고]
+    E --> Z[종료]
+
+    D -->|Yes| F[3. API 문서 생성]
+    F --> G[4. README 갱신]
+    G --> H[5. 아키텍처 문서 갱신]
+
+    H --> I[6. TAG 검증 시작]
+    I --> J{TAG<br/>무결성?}
+
+    J -->|Fail| K[TAG 오류 리포트]
+    K --> L{자동 수정<br/>가능?}
+
+    L -->|Yes| M[자동 수정 제안]
+    M --> N{사용자<br/>승인?}
+    N -->|Yes| O[TAG 자동 수정]
+    O --> I
+
+    N -->|No| P[수동 수정 안내]
+    P --> Z
+
+    L -->|No| P
+
+    J -->|Pass| Q[7. 문서-코드 일치성 검증]
+    Q --> R{불일치<br/>발견?}
+
+    R -->|Yes| S[불일치 리포트 생성]
+    S --> T[자동 갱신 제안]
+    T --> U{사용자<br/>승인?}
+    U -->|Yes| V[문서 갱신]
+    V --> Q
+
+    U -->|No| W[수동 해결 안내]
+    W --> Z
+
+    R -->|No| X[8. 동기화 리포트 생성]
+    X --> Y[9. PR 상태 전환 제안]
+
+    Y --> AA{사용자<br/>승인?}
+    AA -->|Yes| AB[git-manager 호출]
+    AB --> AC[Draft → Ready]
+    AC --> AD[라벨 추가]
+    AD --> AE[완료 보고]
+
+    AA -->|No| AE
+    AE --> Z
+
+    style B fill:#fab005
+    style I fill:#fab005
+    style J fill:#ff6b6b
+    style O fill:#51cf66
+    style AC fill:#51cf66
+    style AE fill:#51cf66
+```
+-->
+
+### 입력 데이터
+
+**코드베이스**:
+- 구현 파일 (src 하위 모든 소스 파일)
+- 테스트 파일 (tests 하위 모든 테스트 파일)
+- 설정 파일 (package.json, requirements.txt, go.mod)
+
+**SPEC 문서**:
+- `.moai/specs/SPEC-XXX/spec.md`
+- `.moai/specs/SPEC-XXX/plan.md`
+- `.moai/specs/SPEC-XXX/acceptance.md`
+
+**프로젝트 문서**:
+- `.moai/project/product.md`
+- `.moai/project/structure.md`
+- `.moai/project/tech.md`
+
+**기존 문서**:
+- `README.md`
+- `docs/API.md`
+- `docs/architecture.md`
+
+### 출력 결과
+
+#### 성공 시
+
+동기화 성공 시 상세한 통계와 다음 단계가 표시됩니다.
+
+#### 실패 시
+
+::: raw
+<pre>
+❌ 동기화 실패
+
+📊 진행 상황:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+완료된 작업:
+  ✅ 코드베이스 스캔
+  ✅ API.md 갱신 (부분 완료)
+  ⚠️  TAG 검증 (실패)
+  ❌ 문서-코드 일치성 (미실행)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❌ 실패 원인:
+  TAG 무결성 검증 실패 (2개 오류)
+
+🔍 발견된 문제:
+  1. @TASK:PAYMENT-002 has no @DESIGN parent
+     File: src/payment/service.py:15
+     Impact: 추적성 체인 끊김
+
+  2. @TEST:NOTIF-003 references non-existent @TASK:NOTIF-004
+     File: tests/notif/test_sender.py:10
+     Impact: 테스트-구현 연결 끊김
+
+💡 해결 방법:
+
+Option 1 (자동):
+  /moai:3-sync --auto-fix-tags
+
+Option 2 (수동):
+  1. design/payment.md 생성 및 @DESIGN:PAYMENT-002 추가
+  2. tests/notif/test_sender.py:10의 TAG 참조 수정
+
+Option 3 (에이전트):
+  @agent-tag-agent "PAYMENT-002와 NOTIF-003 TAG 체인 수정"
+
+🔄 재시도:
+  문제 해결 후 다시 실행하세요:
+    /moai:3-sync
+</pre>
+:::
+
+---
+
+## 커스터마이징
+
+### 설정 옵션
+
+doc-syncer는 `.moai/config.json`에서 다음 옵션을 지원합니다:
+
+```json
+{
+  "doc_syncer": {
+    "auto_sync": true,
+    "sync_on_build_complete": true,
+    "generate_api_docs": true,
+    "update_readme": true,
+    "update_architecture": true,
+    "tag_validation": {
+      "strict_mode": true,
+      "auto_fix_simple_errors": false,
+      "orphan_tag_tolerance": 0
+    },
+    "pr_management": {
+      "auto_transition": false,
+      "auto_label": true,
+      "suggest_reviewers": true
+    },
+    "documentation": {
+      "api_doc_path": "docs/API.md",
+      "architecture_doc_path": "docs/architecture.md",
+      "coverage_report_path": "docs/coverage.md",
+      "todo_tracker_path": "docs/TODO.md"
+    },
+    "reporting": {
+      "generate_sync_report": true,
+      "report_directory": ".moai/reports",
+      "verbose": false
+    }
+  }
+}
+```
+
+| 설정 | 설명 | 기본값 |
+|------|------|--------|
+| `auto_sync` | 코드 변경 시 자동 동기화 | `true` |
+| `sync_on_build_complete` | /moai:2-build 완료 후 자동 실행 | `true` |
+| `tag_validation.strict_mode` | 엄격한 TAG 검증 모드 | `true` |
+| `tag_validation.auto_fix_simple_errors` | 간단한 TAG 오류 자동 수정 | `false` |
+| `pr_management.auto_transition` | PR 자동 전환 (사용자 확인 없음) | `false` |
+| `pr_management.auto_label` | 자동 라벨 추가 | `true` |
+
+### 커스텀 문서 템플릿
+
+프로젝트별로 문서 템플릿을 커스터마이징할 수 있습니다.
+
+**템플릿 위치**: `.moai/templates/docs/`
+
+**API.md 템플릿 예시**:
+
+```markdown
+<!-- .moai/templates/docs/api_template.md -->
+# API Reference
+
+> Last Updated: \{\{LAST_UPDATED\}\} (Auto-generated by doc-syncer)
+> Version: \{\{PROJECT_VERSION\}\}
+
+## Overview
+
+\{\{PROJECT_DESCRIPTION\}\}
+
+---
+
+\{\{#each modules\}\}
+## \{\{moduleName\}\} API
+
+\{\{#each apis\}\}
+### `\{\{signature\}\}`
+
+**\{\{tag\}\}** | [Source](\{\{sourceLink\}\})
+
+\{\{description\}\}
+
+**Parameters**:
+\{\{#each parameters\}\}
+- `\{\{name\}\}` (\{\{type\}\}): \{\{description\}\}
+\{\{/each\}\}
+
+**Returns**: `\{\{returnType\}\}` - \{\{returnDescription\}\}
+
+\{\{#if raises\}\}
+**Raises**:
+\{\{#each raises\}\}
+- `\{\{exceptionType\}\}`: \{\{description\}\}
+\{\{/each\}\}
+\{\{/if\}\}
+
+**Example**:
+```\{\{language\}\}
+\{\{example\}\}
+```
+
+**Related SPEC**: [\{\{specId\}\}](\{\{specLink\}\})
+
+---
+
+\{\{/each\}\}
+\{\{/each\}\}
+
+## See Also
+
+- [Architecture Documentation](./architecture.md)
+- [Test Coverage Report](./coverage.md)
+- [SPEC Index](../.moai/specs/README.md)
+```
+
+### 확장 방법
+
+#### 새로운 문서 타입 추가
+
+```typescript
+// .moai/scripts/doc-syncer-extension.ts
+interface DocumentGenerator {
+  name: string;
+  filePattern: string;
+  outputPath: string;
+  generate: (codebase: Codebase) => string;
+}
+
+const changelogGenerator: DocumentGenerator = {
+  name: 'CHANGELOG',
+  filePattern: 'CHANGELOG.md',
+  outputPath: './CHANGELOG.md',
+  generate: (codebase) => {
+    const commits = codebase.getCommitsSinceLastSync();
+    const grouped = groupByType(commits); // feat, fix, docs, etc.
+
+    return `
+# Changelog
+
+## [Unreleased] - ${new Date().toISOString().split('T')[0]}
+
+${generateChangelogSections(grouped)}
+
+Auto-generated by doc-syncer
+    `.trim();
+  }
+};
+
+// 등록
+registerDocumentGenerator(changelogGenerator);
+```
+
+#### 커스텀 TAG 검증 규칙
+
+```typescript
+// .moai/scripts/custom-tag-rules.ts
+import { TagValidationRule } from '@moai-adk/doc-syncer';
+
+export const customTagRule: TagValidationRule = {
+  name: 'require-perf-tag-for-loops',
+  description: 'for/while 루프가 있는 함수는 @PERF TAG 필요',
+  validator: (file, tags) => {
+    // 정규식 패턴: /for\s*\(|while\s*\(/
+    const loopPattern = new RegExp('for\\s*\\(|while\\s*\\(');
+    const hasLoop = file.content.match(loopPattern);
+    const hasPerfTag = tags.some(tag => tag.type === 'PERF');
+
+    if (hasLoop && !hasPerfTag) {
+      return {
+        valid: false,
+        message: `File ${file.path} contains loop but missing @PERF tag`,
+        suggestion: 'Add @PERF:DOMAIN_ID to document performance characteristics'
+      };
+    }
+
+    return { valid: true };
+  }
+};
+```
+
+---
+
+## 문제 해결
+
+### 일반적인 문제
+
+#### 1. API 문서 생성 실패
+
+**증상**: "Failed to generate API.md" 오류
+
+**원인**:
+- Docstring/JSDoc 누락
+- 함수 시그니처 파싱 오류
+- 타입 정보 부족
+
+**해결**:
+
+```bash
+# 1. Docstring 완전성 확인
+# Python
+grep -r "def " src/ | grep -v '"""'
+
+# TypeScript
+grep -r "export function" src/ | grep -v "/**"
+
+# 2. 수동 API 문서 생성 후 재시도
+/moai:3-sync --force-regenerate --only-api
+
+# 3. 디버그 모드 실행
+export MOAI_DEBUG=1
+/moai:3-sync --only-api
+
+# 4. 로그 확인
+cat .moai/logs/doc-syncer.log
+```
+
+#### 2. TAG 검증 무한 루프
+
+**증상**: TAG 자동 수정이 반복적으로 실패
+
+**원인**:
+- TAG 순환 참조
+- 잘못된 DOMAIN-ID 형식
+
+**해결**:
+
+```bash
+# 1. 순환 참조 감지
+@agent-tag-agent "순환 참조 검사"
+
+# 출력:
+# ❌ Circular reference detected:
+#   @TASK:AUTH-001 -> @TEST:AUTH-002 -> @TASK:AUTH-001
+
+# 2. TAG 체인 수동 확인
+rg "@TASK:AUTH-001" -A 2 -B 2
+
+# 3. 잘못된 참조 수정
+# src/auth/service.py:15
+# Before: @TASK:AUTH-001 -> @TEST:AUTH-002 (잘못됨)
+# After: @TASK:AUTH-001 -> @TEST:AUTH-001 (올바름)
+
+# 4. 재검증
+/moai:3-sync --only-tags
+```
+
+#### 3. PR 상태 전환 실패
+
+**증상**: "Failed to transition PR to Ready" 오류
+
+**원인**:
+- gh CLI 미설치 또는 인증 실패
+- PR이 이미 Ready 상태
+- 필수 검증 미통과
+
+**해결**:
+
+```bash
+# 1. gh CLI 설치 확인
+gh --version
+
+# 설치되지 않았다면:
+# macOS
+brew install gh
+
+# Linux
+sudo apt install gh
+
+# 2. gh 인증 확인
+gh auth status
+
+# 인증 필요 시:
+gh auth login
+
+# 3. PR 상태 수동 확인
+gh pr view
+
+# 4. 필수 검증 확인
+gh pr checks
+
+# 5. doc-syncer 재시도
+/moai:3-sync --no-pr-transition  # PR 전환 생략
+```
+
+#### 4. 문서-코드 불일치 감지 실패
+
+**증상**: 명백한 불일치가 있는데 doc-syncer가 감지 못함
+
+**원인**:
+- 커스텀 문서 형식 미지원
+- 파싱 규칙 부족
+
+**해결**:
+
+```bash
+# 1. 수동 불일치 검사
+# API.md와 코드 비교
+diff <(grep "def authenticate" src/auth/service.py) \
+     <(grep "authenticate" docs/API.md)
+
+# 2. 강제 재생성
+/moai:3-sync --force-regenerate
+
+# 3. 커스텀 파싱 규칙 추가
+# .moai/config.json
+{
+  "doc_syncer": {
+    "custom_parsers": [
+      {
+        "file_pattern": "**/*.custom.md",
+        "parser": ".moai/scripts/custom-parser.ts"
+      }
+    ]
+  }
+}
+```
+
+### 디버깅 팁
+
+#### 동기화 과정 추적
+
+```bash
+# 상세 로깅 활성화
+export MOAI_DEBUG=1
+export MOAI_VERBOSE=1
+/moai:3-sync
+
+# 로그 실시간 확인
+tail -f .moai/logs/doc-syncer.log
+```
+
+#### TAG 검증 시각화
+
+```bash
+# TAG 체인 그래프 생성
+@agent-tag-agent "TAG 체인 시각화 생성"
+
+# 출력: .moai/reports/tag-graph.svg
+open .moai/reports/tag-graph.svg
+```
+
+#### 문서 diff 비교
+
+```bash
+# 동기화 전후 비교
+cp docs/API.md docs/API.md.backup
+/moai:3-sync
+diff docs/API.md.backup docs/API.md
+```
+
+---
+
+## 관련 문서 링크
+
+### MoAI-ADK 공식 문서
+- [3단계 워크플로우](/guide/workflow)
+- [Living Document 개념](/concepts/living-document)
+- [@TAG 시스템](/concepts/tag-system)
+
+### 에이전트 연계
+- [spec-builder - SPEC 작성](/claude/agents/spec-builder)
+- [code-builder - TDD 구현](/claude/agents/code-builder)
+- [tag-agent - TAG 관리](/claude/agents/tag-agent)
+- [git-manager - Git 작업](/claude/agents/git-manager)
+
+### 고급 가이드
+- [커스텀 문서 템플릿](/advanced/custom-doc-templates)
+- [TAG 검증 규칙 확장](/advanced/tag-validation-rules)
+- [PR 자동화 전략](/advanced/pr-automation)
+
+### 실전 예제
+- [API 문서 자동 생성](/examples/api-doc-generation)
+- [TAG 체인 복구 사례](/examples/tag-chain-recovery)
+- [문서-코드 동기화](/examples/doc-code-sync)
+
+---
+
+## 요약
+
+doc-syncer는 MoAI-ADK의 "추적성 없이는 완성 없음" 원칙을 구현하는 핵심 에이전트입니다. Living Document 동기화, @TAG 검증, PR 상태 전환을 통해 코드와 문서의 완전한 일치성을 보장합니다.
+
+### 핵심 특징
+- CODE-FIRST 철학: 코드가 진실의 원천
+- 실시간 TAG 검증: 중간 인덱스 없이 코드 직접 스캔
+- 자동 문서 갱신: API, README, 아키텍처 문서
+- PR 상태 관리: Draft → Ready 자동 전환 제안
+- 추적성 매트릭스: TAG 체인 시각화
+
+### 다음 단계
+문서 동기화 완료 후:
+1. 코드 리뷰 진행 (git-manager 활용)
+2. 다음 기능 개발: `/moai:1-spec` 실행
+3. 반복: SPEC → BUILD → SYNC 사이클
+
+**중요**: doc-syncer는 TDD 구현 완료 후 필수로 실행해야 하며, 모든 Git 작업은 git-manager에게 위임합니다.

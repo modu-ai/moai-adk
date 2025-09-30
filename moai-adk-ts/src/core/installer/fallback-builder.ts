@@ -138,7 +138,7 @@ export class FallbackBuilder {
 
 ## Development Workflow
 \`\`\`bash
-/moai:0-project  # Initialize project documents
+/moai:8-project  # Initialize project documents
 /moai:1-spec     # Create specifications
 /moai:2-build    # TDD implementation
 /moai:3-sync     # Document synchronization
@@ -232,7 +232,7 @@ export class FallbackBuilder {
         'moai/debug-helper': { enabled: true },
       },
       commands: {
-        'moai:0-project': { enabled: true },
+        'moai:8-project': { enabled: true },
         'moai:1-spec': { enabled: true },
         'moai:2-build': { enabled: true },
         'moai:3-sync': { enabled: true },

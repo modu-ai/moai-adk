@@ -67,7 +67,6 @@ export class FileClassifier {
         '.claude/hooks/moai/**',
         '.claude/output-styles/**',
         '.moai/memory/development-guide.md',
-        '.moai/scripts/**',
       ],
 
       // User files - never touch

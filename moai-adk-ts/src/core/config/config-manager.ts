@@ -408,7 +408,7 @@ export class ConfigManager {
 
   private getEnabledCommands(mode: string): string[] {
     const baseCommands = [
-      '/moai:0-project',
+      '/moai:8-project',
       '/moai:1-spec',
       '/moai:2-build',
       '/moai:3-sync',

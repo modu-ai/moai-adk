@@ -8,11 +8,13 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
 import { InputValidator } from '@/utils/input-validator';
+import { type Locale, setLocale, t } from '../../utils/i18n.js';
 
 /**
  * User answers from interactive prompts
  */
 export interface InitAnswers {
+  locale?: Locale;
   projectName: string;
   mode: 'personal' | 'team';
   gitEnabled: boolean;
@@ -42,6 +44,46 @@ function displayStep(current: number, total: number, question: string): void {
 }
 
 /**
+ * Get locale (language) selection
+ * This is the FIRST prompt users see
+ */
+export async function promptLocale(): Promise<Partial<InitAnswers>> {
+  displayStep(1, 4, 'Language Selection / 언어 선택');
+
+  const answers = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'locale',
+      message: chalk.cyan('Choose CLI language / CLI 언어를 선택하세요:'),
+      choices: [
+        {
+          name: chalk.white('🇰🇷 한국어') + chalk.gray(' - Korean'),
+          value: 'ko',
+          short: '한국어',
+        },
+        {
+          name: chalk.white('🇺🇸 English') + chalk.gray(' - English'),
+          value: 'en',
+          short: 'English',
+        },
+      ],
+      default: 'ko',
+    },
+  ]);
+
+  // Immediately apply locale for subsequent prompts
+  setLocale(answers.locale);
+
+  if (answers.locale === 'ko') {
+    displayTip('한국어가 선택되었습니다. 이후 모든 메시지가 한국어로 표시됩니다.');
+  } else {
+    displayTip('English selected. All subsequent messages will be in English.');
+  }
+
+  return answers;
+}
+
+/**
  * Display helpful tip
  */
 function displayTip(tip: string): void {
@@ -52,7 +94,7 @@ function displayTip(tip: string): void {
  * Get basic project information
  */
 export async function promptBasicInfo(defaultName?: string, isCurrentDirMode = false): Promise<Partial<InitAnswers>> {
-  displayStep(1, 3, 'Project Information');
+  displayStep(2, 4, t('init.prompts.projectInfo'));
 
   // Determine appropriate default name and tip based on mode
   let effectiveDefaultName: string;
@@ -63,18 +105,18 @@ export async function promptBasicInfo(defaultName?: string, isCurrentDirMode = f
     const cwd = process.cwd();
     const currentDirName = cwd.split('/').pop() || 'moai-project';
     effectiveDefaultName = currentDirName;
-    tipMessage = 'This will be used in configuration (current directory will NOT be renamed)';
+    tipMessage = t('init.prompts.projectNameTipCurrent');
   } else {
     // For "moai init project-name" - use provided name or default
     effectiveDefaultName = defaultName || 'moai-project';
-    tipMessage = 'This will be used as the folder name and project identifier';
+    tipMessage = t('init.prompts.projectNameTipNew');
   }
 
   const answers = await inquirer.prompt([
     {
       type: 'input',
       name: 'projectName',
-      message: chalk.cyan('Project name:'),
+      message: chalk.cyan(t('init.prompts.projectNameLabel')),
       default: effectiveDefaultName,
       validate: (input: string) => {
         const result = InputValidator.validateProjectName(input, {
@@ -96,21 +138,21 @@ export async function promptBasicInfo(defaultName?: string, isCurrentDirMode = f
  * Get mode selection (Personal/Team)
  */
 export async function promptMode(): Promise<Partial<InitAnswers>> {
-  displayStep(2, 3, 'Development Mode');
+  displayStep(3, 4, t('init.prompts.devMode'));
 
   const answers = await inquirer.prompt([
     {
       type: 'list',
       name: 'mode',
-      message: chalk.cyan('Select mode:'),
+      message: chalk.cyan(t('init.prompts.selectMode')),
       choices: [
         {
-          name: chalk.white('🧑 Personal') + chalk.gray(' - Local development with .moai/specs/'),
+          name: chalk.white(t('init.prompts.modePersonal')) + chalk.gray(` - ${t('init.prompts.modePersonalDesc')}`),
           value: 'personal',
           short: 'Personal',
         },
         {
-          name: chalk.white('👥 Team') + chalk.gray('     - GitHub Issues for SPEC management'),
+          name: chalk.white(t('init.prompts.modeTeam')) + chalk.gray(`     - ${t('init.prompts.modeTeamDesc')}`),
           value: 'team',
           short: 'Team',
         },
@@ -120,9 +162,9 @@ export async function promptMode(): Promise<Partial<InitAnswers>> {
   ]);
 
   if (answers.mode === 'personal') {
-    displayTip('Personal mode: SPEC files stored locally, simpler workflow');
+    displayTip(t('init.prompts.tipPersonal'));
   } else {
-    displayTip('Team mode: GitHub Issues for SPECs, PR-based workflow');
+    displayTip(t('init.prompts.tipTeam'));
   }
 
   return answers;
@@ -132,21 +174,21 @@ export async function promptMode(): Promise<Partial<InitAnswers>> {
  * Get Git configuration
  */
 export async function promptGitConfig(): Promise<Partial<InitAnswers>> {
-  displayStep(3, 3, 'Version Control');
+  displayStep(4, 4, t('init.prompts.versionControl'));
 
   const answers = await inquirer.prompt([
     {
       type: 'confirm',
       name: 'gitEnabled',
-      message: chalk.cyan('Initialize local Git repository?'),
+      message: chalk.cyan(t('init.prompts.initGit')),
       default: true,
     },
   ]);
 
   if (answers.gitEnabled) {
-    displayTip('Git will be initialized with initial commit');
+    displayTip(t('init.prompts.tipGitEnabled'));
   } else {
-    displayTip('You can initialize Git later with: git init');
+    displayTip(t('init.prompts.tipGitDisabled'));
   }
 
   return answers;
@@ -160,29 +202,29 @@ export async function promptGitHubConfig(mode: 'personal' | 'team'): Promise<Par
     return {};
   }
 
-  displayStep(4, 7, 'GitHub Integration');
+  displayStep(4, 7, t('init.prompts.github'));
 
   const githubAnswers = await inquirer.prompt([
     {
       type: 'confirm',
       name: 'githubEnabled',
-      message: chalk.cyan('Use GitHub for remote repository?'),
+      message: chalk.cyan(t('init.prompts.useGithub')),
       default: true,
     },
   ]);
 
   if (!githubAnswers.githubEnabled) {
-    displayTip('GitHub integration disabled - local Git only');
+    displayTip(t('init.prompts.tipGithubDisabled'));
     return githubAnswers;
   }
 
-  displayStep(5, 7, 'GitHub Repository');
+  displayStep(5, 7, t('init.prompts.githubRepo'));
 
   const urlAnswers = await inquirer.prompt([
     {
       type: 'input',
       name: 'githubUrl',
-      message: chalk.cyan('GitHub repository URL:'),
+      message: chalk.cyan(t('init.prompts.githubUrl')),
       default: 'https://github.com/username/project-name',
       validate: (input: string) => {
         const githubRegex = /^https:\/\/github\.com\/[\w-]+\/[\w-]+$/;
@@ -195,7 +237,7 @@ export async function promptGitHubConfig(mode: 'personal' | 'team'): Promise<Par
     },
   ]);
 
-  displayTip('Example: https://github.com/username/project-name');
+  displayTip(t('init.prompts.tipGithubUrl'));
 
   return { ...githubAnswers, ...urlAnswers };
 }
@@ -211,21 +253,21 @@ export async function promptSpecWorkflow(
     return { specWorkflow: 'commit' };
   }
 
-  displayStep(6, 7, 'SPEC Workflow');
+  displayStep(6, 7, t('init.prompts.specWorkflow'));
 
   const answers = await inquirer.prompt([
     {
       type: 'list',
       name: 'specWorkflow',
-      message: chalk.cyan('SPEC workflow:'),
+      message: chalk.cyan(t('init.prompts.specWorkflow') + ':'),
       choices: [
         {
-          name: chalk.white('🌿 Branch + Merge') + chalk.gray(' - GitHub PR workflow (recommended)'),
+          name: chalk.white(t('init.prompts.workflowBranch')) + chalk.gray(` - ${t('init.prompts.workflowBranchDesc')}`),
           value: 'branch',
           short: 'Branch',
         },
         {
-          name: chalk.white('📝 Local commits') + chalk.gray('  - Direct commits to main'),
+          name: chalk.white(t('init.prompts.workflowCommit')) + chalk.gray(`  - ${t('init.prompts.workflowCommitDesc')}`),
           value: 'commit',
           short: 'Commit',
         },
@@ -235,9 +277,9 @@ export async function promptSpecWorkflow(
   ]);
 
   if (answers.specWorkflow === 'branch') {
-    displayTip('Branch workflow: feature/* branches + Pull Requests');
+    displayTip(t('init.prompts.tipBranch'));
   } else {
-    displayTip('Commit workflow: Direct commits to main branch');
+    displayTip(t('init.prompts.tipCommit'));
   }
 
   return answers;
@@ -251,21 +293,21 @@ export async function promptAutoPush(githubEnabled?: boolean): Promise<Partial<I
     return { autoPush: false };
   }
 
-  displayStep(7, 7, 'Remote Synchronization');
+  displayStep(7, 7, t('init.prompts.remoteSyn'));
 
   const answers = await inquirer.prompt([
     {
       type: 'confirm',
       name: 'autoPush',
-      message: chalk.cyan('Auto-push commits to remote repository?'),
+      message: chalk.cyan(t('init.prompts.autoPush')),
       default: true,
     },
   ]);
 
   if (answers.autoPush) {
-    displayTip('Commits will be automatically pushed to GitHub');
+    displayTip(t('init.prompts.tipAutoPushEnabled'));
   } else {
-    displayTip('You\'ll need to manually push with: git push');
+    displayTip(t('init.prompts.tipAutoPushDisabled'));
   }
 
   return answers;
@@ -303,6 +345,9 @@ export function displaySummary(answers: InitAnswers): void {
 export async function runInteractivePrompts(defaultName?: string, isCurrentDirMode = false): Promise<InitAnswers> {
   // Banner is already displayed in init.ts, no need to display again
 
+  // Step 0: Select language FIRST (before any other prompts)
+  const localeInfo = await promptLocale();
+
   const basicInfo = await promptBasicInfo(defaultName, isCurrentDirMode);
   const modeInfo = await promptMode();
   const gitInfo = await promptGitConfig();
@@ -314,6 +359,7 @@ export async function runInteractivePrompts(defaultName?: string, isCurrentDirMo
   const pushInfo = await promptAutoPush(githubInfo.githubEnabled);
 
   const answers: InitAnswers = {
+    locale: localeInfo.locale,
     projectName: basicInfo.projectName as string,
     mode: modeInfo.mode as 'personal' | 'team',
     gitEnabled: gitInfo.gitEnabled as boolean,

@@ -139,13 +139,13 @@ export class MigrationFramework {
     const warnings: string[] = [];
     const errors: string[] = [];
 
-    context.logger.info(
+    context.logger.verbose(
       `Starting migration from ${context.fromVersion} to ${context.toVersion}`
     );
-    context.logger.info(`Executing ${plan.totalSteps} migration(s)`);
+    context.logger.verbose(`Executing ${plan.totalSteps} migration(s)`);
 
     for (const [index, migration] of plan.migrations.entries()) {
-      context.logger.info(
+      context.logger.verbose(
         `[${index + 1}/${plan.totalSteps}] Running: ${migration.name}`
       );
 
@@ -168,7 +168,7 @@ export class MigrationFramework {
         allResults.push(result);
 
         if (result.success) {
-          context.logger.info(`✅ Migration completed: ${migration.name}`);
+          context.logger.verbose(`✅ Migration completed: ${migration.name}`);
           filesChanged.push(...result.filesChanged);
           warnings.push(...result.warnings);
         } else {
@@ -194,7 +194,7 @@ export class MigrationFramework {
       ? `All migrations completed successfully`
       : `Migration failed with ${errors.length} error(s)`;
 
-    context.logger.info(message);
+    context.logger.verbose(message);
 
     return {
       success: overallSuccess,
@@ -221,7 +221,7 @@ export class MigrationFramework {
     const warnings: string[] = [];
     const errors: string[] = [];
 
-    context.logger.info('Starting migration rollback...');
+    context.logger.verbose('Starting migration rollback...');
 
     // Execute rollbacks in reverse order
     const reversedMigrations = [...plan.migrations].reverse();
@@ -233,12 +233,12 @@ export class MigrationFramework {
       }
 
       try {
-        context.logger.info(`Rolling back: ${migration.name}`);
+        context.logger.verbose(`Rolling back: ${migration.name}`);
         const result = await migration.down(context);
         rollbackResults.push(result);
 
         if (result.success) {
-          context.logger.info(`✅ Rollback completed: ${migration.name}`);
+          context.logger.verbose(`✅ Rollback completed: ${migration.name}`);
           filesChanged.push(...result.filesChanged);
           warnings.push(...result.warnings);
         } else {
@@ -345,20 +345,20 @@ export class ConsoleMigrationLogger implements MigrationLogger {
   constructor(private readonly verbose: boolean = false) {}
 
   public info(message: string): void {
-    logger.info(`ℹ️  ${message}`);
+    logger.verbose(`ℹ️  ${message}`);
   }
 
   public warn(message: string): void {
-    logger.info(`⚠️  ${message}`);
+    logger.verbose(`⚠️  ${message}`);
   }
 
   public error(message: string): void {
-    logger.info(`❌ ${message}`);
+    logger.verbose(`❌ ${message}`);
   }
 
   public debug(message: string): void {
     if (this.verbose) {
-      logger.info(`🔍 ${message}`);
+      logger.verbose(`🔍 ${message}`);
     }
   }
 }

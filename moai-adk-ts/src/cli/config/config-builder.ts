@@ -15,6 +15,7 @@ export interface MoAIConfig {
   mode: 'personal' | 'team';
   projectName: string;
   features: string[];
+  locale?: 'ko' | 'en'; // User's preferred CLI language
 
   git: {
     enabled: boolean;
@@ -59,6 +60,7 @@ export class ConfigBuilder {
       mode: answers.mode,
       projectName: answers.projectName,
       features: [],
+      locale: answers.locale || 'ko', // Default to Korean if not specified
 
       git: this.buildGitConfig(answers),
       spec: this.buildSpecConfig(answers),

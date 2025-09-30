@@ -1,11 +1,12 @@
 /**
- * @file Template management for project generation
+ * @file Template management for project generation with package root resolution
  * @author MoAI Team
  * @tags @FEATURE:TEMPLATE-MANAGER-001 @REQ:PROJECT-TEMPLATES-001
  */
 
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { getTemplatesPath } from '../../utils/package-root.js';
 import {
   type InitResult,
   type ProjectConfig,
@@ -16,14 +17,25 @@ import {
 
 /**
  * Template manager for project structure generation
+ * Resolves templates from installed package location
  * @tags @FEATURE:TEMPLATE-MANAGER-001
  */
 export class TemplateManager {
   private readonly templatesPath: string;
 
+  /**
+   * Create a new TemplateManager instance
+   * @param templatesPath - Optional explicit templates path. If not provided,
+   *                        automatically resolves to the installed package's templates directory
+   */
   constructor(templatesPath?: string) {
-    this.templatesPath =
-      templatesPath || path.join(__dirname, '../../templates');
+    if (templatesPath) {
+      this.templatesPath = templatesPath;
+    } else {
+      // Use package root resolution to find templates in installed package
+      // Works in development (src/), build (dist/), and global install
+      this.templatesPath = getTemplatesPath(import.meta.url);
+    }
   }
 
   /**
@@ -392,7 +404,7 @@ export class TemplateManager {
     }
 
     // Create command files
-    const commands = ['0-project.md', '1-spec.md', '2-build.md', '3-sync.md'];
+    const commands = ['8-project.md', '1-spec.md', '2-build.md', '3-sync.md'];
     for (const command of commands) {
       const content = this.generateCommandFile(command, templateData);
       const commandPath = path.join(

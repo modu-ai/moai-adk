@@ -47,37 +47,12 @@ tools: Read, Write, Edit, MultiEdit, Bash(python3:*), Bash(pytest:*), Bash(npm:*
 
 ### 프로젝트 언어 감지 및 최적 라우팅
 
-```python
-# 언어별 최적화된 TDD 구현 시스템
-from moai_adk.core.tdd import TDDBuilder
-from moai_adk.core.language_detector import detect_project_language
-from moai_adk.core.tag_system import TagDatabase
+`@agent-code-builder`는 프로젝트의 언어를 자동으로 감지하여 최적의 TDD 도구와 워크플로우를 선택합니다:
 
-async def execute_optimal_tdd(spec_id: str, spec_content: str) -> TDDResult:
-    """프로젝트 언어를 감지하고 최적 TDD 구현을 수행"""
-
-    # 프로젝트 언어 감지 및 최적 라우팅
-    language = detect_project_language()
-    tdd_builder = TDDBuilder(language=language)
-    tag_db = TagDatabase()
-
-    # SPEC 분석 (언어별 최적화)
-    analysis = await tdd_builder.analyze_spec(spec_content)
-
-    # RED-GREEN-REFACTOR 사이클 (언어별 도구)
-    result = await tdd_builder.execute({
-        'spec_id': spec_id,
-        'language': language,
-        'test_framework': get_optimal_test_framework(language),
-        'enable_sqlite_tagging': True
-    })
-
-    # tags.db 자동 업데이트
-    await tag_db.update_implementation_tags(spec_id, result.tags)
-
-    return result
-}
-```
+- **언어 감지**: 프로젝트 파일(package.json, pyproject.toml, go.mod 등) 분석
+- **도구 선택**: 언어별 최적 테스트 프레임워크 자동 선택
+- **TAG 적용**: 코드 파일에 @TAG 주석 직접 작성
+- **사이클 실행**: RED → GREEN → REFACTOR 순차 진행
 
 ### TDD 도구 매핑
 
@@ -240,6 +215,8 @@ async def execute_optimal_tdd(spec_id: str, spec_content: str) -> TDDResult:
 - @TAG 업데이트 필요 변경 사항 메모 (다음 단계에서 doc-syncer가 사용)
 
 ## 다음 단계
+
+**권장사항**: 다음 단계 진행 전 `/clear` 또는 `/new` 명령으로 새로운 대화 세션을 시작하면 더 나은 성능과 컨텍스트 관리를 경험할 수 있습니다.
 
 - TDD 구현 완료 후 `/moai:3-sync`로 문서 동기화 진행
 - 모든 Git 작업은 git-manager 에이전트가 전담하여 일관성 보장

@@ -8,9 +8,12 @@
 
 import chalk from 'chalk';
 import { Command } from 'commander';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { SystemDetector } from '@/core/system-checker/detector';
 import { createBanner } from '@/utils/banner';
 import { getCurrentVersion } from '@/utils/version';
+import { setLocale, type Locale } from '@/utils/i18n';
 import { DoctorCommand } from './commands/doctor';
 import { HelpCommand } from './commands/help';
 import { InitCommand } from './commands/init';
@@ -34,6 +37,9 @@ export class CLIApp {
   private readonly helpCommand: HelpCommand;
 
   constructor() {
+    // Load locale from config.json if available
+    this.loadLocaleFromConfig();
+
     this.program = new Command();
     this.detector = new SystemDetector();
     this.doctorCommand = new DoctorCommand(this.detector);
@@ -44,6 +50,27 @@ export class CLIApp {
     this.helpCommand = new HelpCommand();
 
     this.setupCommands();
+  }
+
+  /**
+   * Load locale from config.json if available
+   * @tags @FEATURE:I18N-INIT-001
+   */
+  private loadLocaleFromConfig(): void {
+    try {
+      const configPath = join(process.cwd(), '.moai', 'config.json');
+      if (existsSync(configPath)) {
+        const configContent = readFileSync(configPath, 'utf-8');
+        const config = JSON.parse(configContent) as { locale?: Locale };
+
+        if (config.locale) {
+          setLocale(config.locale);
+        }
+      }
+    } catch (error) {
+      // Silently ignore errors - will use default locale (ko)
+      // This is expected when running outside of a MoAI project directory
+    }
   }
 
   /**

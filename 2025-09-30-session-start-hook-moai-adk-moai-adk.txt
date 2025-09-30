@@ -12,7 +12,7 @@
   ⎿  Referenced file .claude/hooks/moai/tag-enforcer.js
   ⎿  Referenced file .claude/hooks/moai/steering-guard.js
 
-> <session-start-hook>💡 Run `/moai:0-project` to initialize 
+> <session-start-hook>💡 Run `/moai:8-project` to initialize
 MoAI-ADK</session-start-hook> 
 
 > 이어서 계속 진행 

@@ -215,7 +215,7 @@ moai-adk-ts/                    # TypeScript 메인 프로젝트
 │   └── tag-agent.md          # TAG 시스템 독점 관리
 │
 ├── commands/moai/            # 3단계 워크플로우 명령어
-│   ├── 0-project.md          # 프로젝트 초기화
+│   ├── 8-project.md          # 프로젝트 초기화
 │   ├── 1-spec.md            # SPEC 작성
 │   ├── 2-build.md           # TDD 구현 (범용 언어)
 │   └── 3-sync.md            # 문서 동기화

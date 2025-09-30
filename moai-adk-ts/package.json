@@ -22,8 +22,10 @@
   },
   "packageManager": "bun@1.2.19",
   "scripts": {
-    "build": "tsup && bun run build:scripts",
+    "build": "tsup && bun run build:scripts && bun run build:hooks",
     "build:scripts": "tsup --config tsup.scripts.config.ts",
+    "build:hooks": "tsup --config tsup.hooks.config.ts && bun run copy:hooks",
+    "copy:hooks": "cp ../.claude/hooks/moai/*.cjs templates/.claude/hooks/moai/",
     "build:watch": "tsup --watch",
     "dev": "tsx src/cli/index.ts",
     "test": "vitest run",
@@ -45,7 +47,7 @@
     "docs:dev": "vitepress dev ../docs",
     "docs:build": "bun run docs:api && vitepress build ../docs",
     "docs:preview": "vitepress preview ../docs",
-    "//prepublishOnly": "bun run ci"
+    "prepublishOnly": "bun run ci"
   },
   "dependencies": {
     "chalk": "^5.6.2",

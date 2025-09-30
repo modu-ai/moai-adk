@@ -71,8 +71,8 @@ export class ConflictResolver {
     projectPath: string,
     templatePath: string
   ): Promise<Map<string, ConflictResolution>> {
-    logger.info(chalk.cyan('🔧 Conflict Resolution Required'));
-    logger.info(`Found ${conflicts.length} files requiring manual review:\n`);
+    logger.verbose(chalk.cyan('🔧 Conflict Resolution Required'));
+    logger.verbose(`Found ${conflicts.length} files requiring manual review:\n`);
 
     for (const conflict of conflicts) {
       // Check if we have a pattern-based resolution
@@ -90,7 +90,7 @@ export class ConflictResolver {
         };
 
         this.resolutions.set(conflict.path, resolution);
-        logger.info(
+        logger.verbose(
           chalk.green(`✓ ${conflict.path}: ${patternAction} (pattern)`)
         );
         continue;
@@ -111,7 +111,7 @@ export class ConflictResolver {
       }
     }
 
-    logger.info(chalk.green('\n✅ All conflicts resolved!'));
+    logger.verbose(chalk.green('\n✅ All conflicts resolved!'));
     return new Map(this.resolutions);
   }
 
@@ -128,10 +128,10 @@ export class ConflictResolver {
     projectPath: string,
     templatePath: string
   ): Promise<ConflictResolution> {
-    logger.info(chalk.yellow(`\n📄 Resolving: ${conflict.path}`));
-    logger.info(`Type: ${conflict.type}`);
-    logger.info(`Conflict Level: ${conflict.conflictPotential}`);
-    logger.info(`Recommended: ${conflict.recommendedAction}\n`);
+    logger.verbose(chalk.yellow(`\n📄 Resolving: ${conflict.path}`));
+    logger.verbose(`Type: ${conflict.type}`);
+    logger.verbose(`Conflict Level: ${conflict.conflictPotential}`);
+    logger.verbose(`Recommended: ${conflict.recommendedAction}\n`);
 
     // Show file diff if both files exist
     await this.showFileDiff(conflict.path, projectPath, templatePath);
@@ -339,18 +339,18 @@ export class ConflictResolver {
           fs.readFile(templateFile, 'utf-8'),
         ]);
 
-        logger.info(chalk.blue('📄 Current file (first 10 lines):'));
-        logger.info(userContent.split('\n').slice(0, 10).join('\n'));
+        logger.verbose(chalk.blue('📄 Current file (first 10 lines):'));
+        logger.verbose(userContent.split('\n').slice(0, 10).join('\n'));
 
-        logger.info(chalk.green('\n📄 Template version (first 10 lines):'));
-        logger.info(templateContent.split('\n').slice(0, 10).join('\n'));
+        logger.verbose(chalk.green('\n📄 Template version (first 10 lines):'));
+        logger.verbose(templateContent.split('\n').slice(0, 10).join('\n'));
       } else if (!userExists) {
-        logger.info(chalk.yellow('📄 File does not exist in current project'));
+        logger.verbose(chalk.yellow('📄 File does not exist in current project'));
       } else {
-        logger.info(chalk.yellow('📄 No template version available'));
+        logger.verbose(chalk.yellow('📄 No template version available'));
       }
     } catch {
-      logger.info(chalk.red('❌ Could not read file contents'));
+      logger.verbose(chalk.red('❌ Could not read file contents'));
     }
   }
 

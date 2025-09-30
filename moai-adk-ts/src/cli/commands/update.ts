@@ -1,5 +1,5 @@
 /**
- * @file CLI update command implementation with real update orchestration
+ * @file CLI update command implementation - simplified version
  * @author MoAI Team
  * @tags @FEATURE:CLI-UPDATE-001 @REQ:CLI-FOUNDATION-012 | Chain: @REQ:UPDATE-REAL-001 -> @DESIGN:UPDATE-CLI-001 -> @TASK:UPDATE-CLI-001 -> @TEST:UPDATE-CLI-001
  * Related: @SEC:UPDATE-CLI-001, @DOCS:UPDATE-CLI-001
@@ -9,9 +9,10 @@ import * as path from 'node:path';
 import chalk from 'chalk';
 import * as fs from 'fs-extra';
 import { logger } from '../../utils/winston-logger.js';
+import { t } from '../../utils/i18n.js';
 import {
   type UpdateConfiguration,
-  type UpdateOperationResult,
+  type UpdateResult as OrchestratorResult,
   UpdateOrchestrator,
 } from '../../core/update/update-orchestrator.js';
 
@@ -207,54 +208,25 @@ export class UpdateCommand {
   }
 
   /**
-   * Run update command with real Update Orchestrator
+   * Run simplified update command
    * @param options - Update options
    * @returns Update result
    * @tags @API:UPDATE-RUN-001
    */
   public async run(options: UpdateOptions): Promise<UpdateResult> {
-    const startTime = Date.now();
     const projectPath = options.projectPath || process.cwd();
 
+    // Enable verbose mode if requested
+    logger.setVerbose(options.verbose || false);
+
     try {
-      logger.info(chalk.cyan('🔄 MoAI-ADK Update (Real Implementation)'));
-
-      // Step 1: Quick check mode
-      if (options.check) {
-        const updateStatus = await this.checkForUpdates(projectPath);
-        logger.info(`Current version: v${updateStatus.currentVersion}`);
-        logger.info(
-          `Installed template version: ${updateStatus.currentResourceVersion}`
-        );
-        logger.info(
-          `Available template version: ${updateStatus.availableResourceVersion}`
-        );
-
-        if (!updateStatus.needsUpdate) {
-          logger.info(chalk.green('✅ Project resources are up to date'));
-        } else {
-          logger.info(
-            chalk.yellow("⚠️  Updates available. Run 'moai update' to refresh.")
-          );
-        }
-
-        return {
-          success: true,
-          updatedPackage: false,
-          updatedResources: false,
-          backupCreated: false,
-          versionsUpdated: false,
-          duration: Date.now() - startTime,
-        };
-      }
-
       // Check if this is a MoAI project
       const moaiDir = path.join(projectPath, '.moai');
       if (!(await fs.pathExists(moaiDir))) {
-        logger.info(
+        logger.log(
           chalk.yellow("⚠️  This doesn't appear to be a MoAI-ADK project")
         );
-        logger.info("Run 'moai init' to initialize a new project");
+        logger.log("Run 'moai init' to initialize a new project");
 
         return {
           success: false,
@@ -262,44 +234,39 @@ export class UpdateCommand {
           updatedResources: false,
           backupCreated: false,
           versionsUpdated: false,
-          duration: Date.now() - startTime,
+          duration: 0,
           error: 'Not a MoAI project',
         };
       }
 
-      // Step 2: Use Real Update Orchestrator
-      const templatePath = this.getTemplatePath(projectPath);
+      // Use simplified Update Orchestrator
       const orchestrator = new UpdateOrchestrator(projectPath);
 
       const updateConfig: UpdateConfiguration = {
         projectPath,
-        templatePath,
-        backupEnabled: !options.noBackup,
-        interactiveMode: !process.env['CI'], // Disable interactive mode in CI
-        dryRun: false,
+        checkOnly: options.check,
+        force: options.noBackup,
         verbose: options.verbose || false,
-        forceUpdate: false,
-        skipValidation: false,
       };
 
-      logger.info(chalk.cyan('🚀 Starting Real Update Operation...'));
-      const result: UpdateOperationResult = await orchestrator.executeUpdate(updateConfig);
+      const result: OrchestratorResult =
+        await orchestrator.executeUpdate(updateConfig);
 
       // Convert to CLI result format
       return {
         success: result.success,
-        updatedPackage: false, // Package updates are handled separately
-        updatedResources: result.summary.filesChanged > 0,
-        backupCreated: result.backupInfo?.success || false,
-        backupPath: result.backupInfo?.backupPath,
-        versionsUpdated: result.success,
+        updatedPackage: result.hasUpdate && !options.check,
+        updatedResources: result.filesUpdated > 0,
+        backupCreated: !!result.backupPath,
+        backupPath: result.backupPath,
+        versionsUpdated: result.success && result.hasUpdate,
         duration: result.duration,
         error: result.errors.length > 0 ? result.errors[0] : undefined,
       };
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
-      logger.info(chalk.red(`❌ Update failed: ${errorMessage}`));
+      logger.log(chalk.red(`❌ 업데이트 실패: ${errorMessage}`));
 
       return {
         success: false,
@@ -307,21 +274,9 @@ export class UpdateCommand {
         updatedResources: false,
         backupCreated: false,
         versionsUpdated: false,
-        duration: Date.now() - startTime,
+        duration: 0,
         error: errorMessage,
       };
     }
-  }
-
-  /**
-   * Get template path for updates
-   * @param _projectPath - Project directory path (reserved for future use)
-   * @returns Template path
-   * @tags @UTIL:GET-TEMPLATE-PATH-001
-   */
-  private getTemplatePath(_projectPath: string): string {
-    // For now, use the templates directory within the project
-    // In production, this would point to the MoAI-ADK template repository
-    return path.join(__dirname, '..', '..', '..', 'templates');
   }
 }

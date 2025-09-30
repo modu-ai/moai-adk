@@ -13,6 +13,7 @@ import type { SystemDetector } from '@/core/system-checker/detector';
 import type { InitResult } from '@/types/project';
 import { printBanner } from '@/utils/banner';
 import { InputValidator } from '@/utils/input-validator';
+import { validateProjectPath } from '@/utils/path-validator';
 import { DoctorCommand } from './doctor';
 import { logger } from '../../utils/winston-logger.js';
 import { promptProjectSetup, displayWelcomeBanner } from '../prompts/init-prompts';
@@ -120,6 +121,21 @@ export class InitCommand {
         projectPathInput = path.join(process.cwd(), projectName);
       }
 
+      // Step 2.1: Check if path is inside MoAI-ADK package
+      const packageValidation = validateProjectPath(projectPathInput);
+      if (!packageValidation.isValid) {
+        console.log(chalk.red.bold('\n❌ Invalid project location\n'));
+        console.log(chalk.red(packageValidation.error));
+        return {
+          success: false,
+          projectPath: '',
+          config: { name: '', type: 'typescript' as any },
+          createdFiles: [],
+          errors: [packageValidation.error || 'Path validation failed'],
+        };
+      }
+
+      // Step 2.2: Validate path format and structure
       const pathValidation = await InputValidator.validatePath(
         projectPathInput,
         {

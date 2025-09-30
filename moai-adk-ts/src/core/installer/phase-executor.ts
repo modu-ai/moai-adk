@@ -10,8 +10,10 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { execSync } from 'node:child_process';
 import { logger } from '@/utils/logger';
 import { InstallationError, getErrorMessage } from '@/utils/errors';
+import { isInsideMoAIPackage } from '@/utils/path-validator';
 import type {
   InstallationConfig,
   InstallationContext,
@@ -336,6 +338,14 @@ export class PhaseExecutor {
    */
   private async createBackup(config: InstallationConfig): Promise<void> {
     try {
+      // Prevent backup creation inside package directory
+      if (isInsideMoAIPackage(config.projectPath)) {
+        throw new InstallationError(
+          'Cannot create backup inside MoAI-ADK package directory',
+          'BACKUP_IN_PACKAGE_DIR'
+        );
+      }
+
       const backupDir = path.join(config.projectPath, '.moai-backup');
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const backupPath = path.join(backupDir, `backup-${timestamp}`);
@@ -488,8 +498,6 @@ export class PhaseExecutor {
   private async initializeGitRepository(
     config: InstallationConfig
   ): Promise<void> {
-    const { execSync } = require('node:child_process');
-
     try {
       process.chdir(config.projectPath);
       execSync('git init', { stdio: 'ignore' });

@@ -27,45 +27,16 @@ model: sonnet
 
 **중요**: Git 작업(브랜치 생성, 커밋, GitHub Issue 생성)은 모두 git-manager 에이전트가 전담합니다. spec-builder는 SPEC 문서 작성과 지능형 검증만 담당합니다.
 
-## 🔗 하이브리드 통합 기능
+## 🔗 SPEC 검증 기능
 
-### 지능형 시스템 검증 통합
+### SPEC 품질 검증
 
-```python
-# 언어별 최적화된 시스템 검증
-from moai_adk.core.bridge import create_hybrid_router
-from moai_adk.core.language_detector import detect_project_language
+`@agent-spec-builder`는 작성된 SPEC의 품질을 다음 기준으로 검증합니다:
 
-def validate_spec_with_optimal_tools(spec_content, requirements):
-    """SPEC 작성 시 프로젝트 언어별 시스템 검증"""
-    language = detect_project_language()
-    router = create_hybrid_router()
-
-    # 언어별 최적화된 시스템 검증 실행
-    validation_result = router.execute_optimal(
-        'system-check',
-        requirements,
-        spec_content=spec_content
-    )
-
-    if validation_result['success']:
-        return {
-            'validated': True,
-            'implementation_used': validation_result['implementation_used'],
-            'execution_time': validation_result['execution_time']
-        }
-    else:
-        return {
-            'validated': False,
-            'errors': validation_result['stderr']
-        }
-```
-
-### 언어별 최적 라우팅
-
-- **Python 우선**: EARS 명세 작성, 복잡한 요구사항 분석
-- **지능형 라우팅**: 프로젝트 언어별 시스템 요구사항 검증, 성능 체크
-- **하이브리드**: SPEC 품질 보장을 위한 양방향 검증
+- **EARS 준수**: Event-Action-Response-State 구문 검증
+- **완전성**: 필수 섹션(@TAG Catalog, 요구사항, 제약사항) 확인
+- **일관성**: 프로젝트 문서(product.md, structure.md, tech.md)와 정합성 검증
+- **추적성**: @TAG 체인의 완전성 확인
 
 ## 명령 사용 예시
 

@@ -33,26 +33,26 @@ model: sonnet
 
 ## 🔧 활용 가능한 TypeScript 검증 도구
 
-### TRUST 원칙별 전용 스크립트
+### TRUST 원칙 검증 방법
 
-```typescript
-// TRUST 5원칙 통합 검증
-.moai/scripts/trust-principles-checker.ts
+```bash
+# TRUST 5원칙 통합 검증
+@agent-trust-checker "전체 품질 검증"
 
-// 코드 품질 게이트 검증
-.moai/scripts/validators/code-quality-gate.ts
+# 코드 품질 게이트 검증
+@agent-trust-checker "코드 품질 검사"
 
-// 테스트 커버리지 분석
-.moai/scripts/utils/test-coverage-analyzer.ts
+# 테스트 커버리지 분석
+@agent-trust-checker "테스트 커버리지 확인"
 
-// TDD 워크플로우 검증
-.moai/scripts/validators/tdd-workflow-validator.ts
+# TDD 워크플로우 검증
+@agent-code-builder "TDD 사이클 검증"
 
-// 아키텍처 의존성 분석
-.moai/scripts/utils/project-structure-analyzer.ts
+# 아키텍처 의존성 분석
+@agent-debug-helper "아키텍처 분석"
 
-// 보안 정책 검증
-.moai/scripts/validators/security-gate.ts
+# 보안 정책 검증
+@agent-trust-checker "보안 검사"
 ```
 
 ## 🚀 차등 스캔 시스템 (성능 최적화)
@@ -98,10 +98,13 @@ npm run test:coverage --silent 2>/dev/null | tail -5
 #### Level 3 - 심화 분석 (20-30초)
 ```bash
 # 전체 TRUST 원칙 검증
-tsx .moai/scripts/trust-checker.ts --principle all --deep-analysis
+@agent-trust-checker "전체 품질 검증 --deep-analysis"
 
 # 아키텍처 분석
-tsx .moai/scripts/debug-analyzer.ts --system --architecture
+@agent-debug-helper "아키텍처 분석 --system"
+
+# TAG 체인 무결성 검증
+@agent-tag-agent "TAG 체인 검증"
 ```
 
 ## 📊 TRUST 5원칙 검증 체계

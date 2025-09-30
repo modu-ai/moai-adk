@@ -6,6 +6,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import * as os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import mustache from 'mustache';
 import { logger } from '@/utils/logger';
@@ -18,28 +19,32 @@ import type { InstallationConfig } from './types';
  */
 export class TemplateProcessor {
   /**
-   * Get templates directory path with robust resolution for all installation scenarios
-   * @returns Path to templates directory
-   * @tags @API:GET-TEMPLATES-PATH-001
+   * Get user home directory in a cross-platform way
    *
-   * Handles:
-   * - Local development: moai-adk-ts/templates
-   * - Global install: /usr/local/lib/node_modules/moai-adk/templates
-   * - Local install: node_modules/moai-adk/templates
-   * - Bun global: ~/.bun/install/global/node_modules/moai-adk/templates
+   * @returns Home directory path
+   * @private
+   *
+   * Priority:
+   * 1. process.env.HOME (Unix/macOS)
+   * 2. process.env.USERPROFILE (Windows)
+   * 3. os.homedir() (fallback)
    */
-  getTemplatesPath(): string {
-    // Get current file location (works in ESM)
-    const currentFilePath = fileURLToPath(import.meta.url);
-    const currentDir = path.dirname(currentFilePath);
+  private getHomeDirectory(): string {
+    return process.env.HOME || process.env.USERPROFILE || os.homedir();
+  }
 
-    // Calculate package root from dist/core/installer/template-processor.js
-    // dist/core/installer -> ../../.. -> package root
+  /**
+   * Try to find templates relative to package installation
+   * Strategy 1: Package-relative (HIGHEST PRIORITY)
+   *
+   * @param currentDir Current file directory
+   * @returns Templates path if found, null otherwise
+   * @private
+   */
+  private tryPackageRelativeTemplates(currentDir: string): string | null {
     const packageRoot = path.resolve(currentDir, '../../..');
     const packageTemplates = path.join(packageRoot, 'templates');
 
-    // Strategy 1: Package-relative (HIGHEST PRIORITY)
-    // This works for: npm install -g, npm install, bun install -g, bun install
     if (fs.existsSync(packageTemplates)) {
       logger.debug('Found templates in package root', {
         templatePath: packageTemplates,
@@ -49,9 +54,20 @@ export class TemplateProcessor {
       return packageTemplates;
     }
 
-    // Strategy 2: Development environment (for moai-adk-ts development)
-    // dist/core/installer -> ../../../../templates
+    return null;
+  }
+
+  /**
+   * Try to find templates in development directory
+   * Strategy 2: Development environment
+   *
+   * @param currentDir Current file directory
+   * @returns Templates path if found, null otherwise
+   * @private
+   */
+  private tryDevelopmentTemplates(currentDir: string): string | null {
     const devTemplates = path.resolve(currentDir, '../../../templates');
+
     if (fs.existsSync(devTemplates)) {
       logger.debug('Found templates in development directory', {
         templatePath: devTemplates,
@@ -61,8 +77,19 @@ export class TemplateProcessor {
       return devTemplates;
     }
 
-    // Strategy 3: User's project node_modules (when user runs moai init)
+    return null;
+  }
+
+  /**
+   * Try to find templates in user's project node_modules
+   * Strategy 3: User's project node_modules
+   *
+   * @returns Templates path if found, null otherwise
+   * @private
+   */
+  private tryUserNodeModulesTemplates(): string | null {
     const userNodeModules = path.join(process.cwd(), 'node_modules', 'moai-adk', 'templates');
+
     if (fs.existsSync(userNodeModules)) {
       logger.debug('Found templates in user node_modules', {
         templatePath: userNodeModules,
@@ -72,21 +99,32 @@ export class TemplateProcessor {
       return userNodeModules;
     }
 
-    // Strategy 4: Global installation paths
+    return null;
+  }
+
+  /**
+   * Try to find templates in global installation paths
+   * Strategy 4: Global installation paths
+   *
+   * @returns Templates path if found, null otherwise
+   * @private
+   */
+  private tryGlobalInstallTemplates(): string | null {
     const nodeExecPath = process.execPath;
     const nodeBinDir = path.dirname(nodeExecPath);
     const nodeInstallDir = path.dirname(nodeBinDir);
+    const homeDir = this.getHomeDirectory();
 
     const globalPaths = [
-      // Standard npm global
-      '/usr/local/lib/node_modules/moai-adk/templates',
-      // Node version manager paths
       path.join(nodeInstallDir, 'lib', 'node_modules', 'moai-adk', 'templates'),
-      // Bun global
-      path.join(process.env['HOME'] || '~', '.bun', 'install', 'global', 'node_modules', 'moai-adk', 'templates'),
-      // npm-global (alternative)
-      path.join(process.env['HOME'] || '~', '.npm-global', 'lib', 'node_modules', 'moai-adk', 'templates'),
+      path.join(homeDir, '.bun', 'install', 'global', 'node_modules', 'moai-adk', 'templates'),
+      path.join(homeDir, '.npm-global', 'lib', 'node_modules', 'moai-adk', 'templates'),
     ];
+
+    // Platform-specific paths
+    if (process.platform !== 'win32') {
+      globalPaths.unshift('/usr/local/lib/node_modules/moai-adk/templates');
+    }
 
     for (const globalPath of globalPaths) {
       const resolvedPath = path.resolve(globalPath);
@@ -100,18 +138,50 @@ export class TemplateProcessor {
       }
     }
 
-    // Fallback: Return package-relative path even if it doesn't exist
-    // This allows for better error messages downstream
-    logger.warn('Templates directory not found, using package-relative fallback', {
+    return null;
+  }
+  /**
+   * Get templates directory path with robust cross-platform resolution
+   *
+   * @returns Path to templates directory
+   * @tags @API:GET-TEMPLATES-PATH-001
+   *
+   * Resolution strategies (in priority order):
+   * 1. Package-relative: Works for npm/bun install (global/local)
+   * 2. Development: moai-adk-ts/templates (for development)
+   * 3. User's node_modules: When user runs moai init
+   * 4. Platform-specific global paths
+   *
+   * Cross-platform considerations:
+   * - Uses process.env.HOME (Unix) or process.env.USERPROFILE (Windows)
+   * - Unix-specific paths are conditionally added only on non-Windows platforms
+   */
+  getTemplatesPath(): string {
+    const currentFilePath = fileURLToPath(import.meta.url);
+    const currentDir = path.dirname(currentFilePath);
+
+    // Try each strategy in priority order
+    const strategies = [
+      () => this.tryPackageRelativeTemplates(currentDir),
+      () => this.tryDevelopmentTemplates(currentDir),
+      () => this.tryUserNodeModulesTemplates(),
+      () => this.tryGlobalInstallTemplates(),
+    ];
+
+    for (const strategy of strategies) {
+      const result = strategy();
+      if (result !== null) {
+        return result;
+      }
+    }
+
+    // Fallback: Return package-relative path for better error messages
+    const packageRoot = path.resolve(currentDir, '../../..');
+    const packageTemplates = path.join(packageRoot, 'templates');
+
+    logger.warn('Templates directory not found, using fallback', {
       fallbackPath: packageTemplates,
-      searchedPaths: [
-        packageTemplates,
-        devTemplates,
-        userNodeModules,
-        ...globalPaths.map(p => path.resolve(p)),
-      ],
       currentFile: currentFilePath,
-      packageRoot,
       tag: '@WARN:TEMPLATES-PATH-001',
     });
 

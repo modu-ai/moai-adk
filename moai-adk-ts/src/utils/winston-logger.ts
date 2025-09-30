@@ -12,12 +12,14 @@ import { mergeLoggerOptions } from '../config/logger-config.js';
 
 /**
  * Winston-based MoAI Logger with structured logging and sensitive data masking
+ * Supports verbose mode for detailed debugging output
  */
 export class MoaiLogger {
   private logger: winston.Logger;
   private readonly options: Required<Omit<LoggerOptions, 'transports'>> & {
     transports?: winston.transport[];
   };
+  private verboseMode: boolean = false;
 
   /**
    * Sensitive field patterns to mask (case-insensitive)
@@ -281,6 +283,61 @@ export class MoaiLogger {
   ): void {
     const taggedMeta = { ...meta, tag };
     this.logger.log(level, message, taggedMeta);
+  }
+
+  /**
+   * Set verbose mode (enables detailed debug output)
+   * @param verbose - Enable or disable verbose mode
+   */
+  setVerbose(verbose: boolean): void {
+    this.verboseMode = verbose;
+    // Update logger level to debug when verbose is enabled
+    if (verbose) {
+      this.logger.level = 'debug';
+    } else {
+      this.logger.level = this.options.level;
+    }
+  }
+
+  /**
+   * Get verbose mode status
+   * @returns Current verbose mode status
+   */
+  isVerbose(): boolean {
+    return this.verboseMode;
+  }
+
+  /**
+   * Log verbose message (only shown in verbose mode)
+   * Use this for detailed debugging information
+   */
+  verbose(message: string, meta?: Record<string, unknown>): void {
+    if (this.verboseMode) {
+      this.logger.info(message, meta);
+    }
+  }
+
+  /**
+   * Log user-facing message (always shown, regardless of verbose mode)
+   * Use this for important user messages like success, errors, warnings
+   */
+  log(message: string): void {
+    // Direct console output for clean user-facing messages
+    console.log(message);
+  }
+
+  /**
+   * Log success message with emoji
+   */
+  success(message: string): void {
+    console.log(message);
+  }
+
+  /**
+   * Log error message with emoji (always shown)
+   */
+  errorMessage(message: string): void {
+    console.error(message);
   }
 }
 

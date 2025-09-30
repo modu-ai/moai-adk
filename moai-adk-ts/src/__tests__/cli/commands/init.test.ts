@@ -291,7 +291,7 @@ describe('InitCommand Advanced Features', () => {
           '.claude/agents/moai/spec-builder.md',
           '.claude/agents/moai/code-builder.md',
           '.claude/agents/moai/doc-syncer.md',
-          '.claude/commands/moai/0-project.md',
+          '.claude/commands/moai/8-project.md',
           '.claude/commands/moai/1-spec.md',
           '.claude/hooks/moai/pre-commit.py',
         ],
@@ -305,7 +305,7 @@ describe('InitCommand Advanced Features', () => {
         '.claude/agents/moai/spec-builder.md'
       );
       expect(result.createdFiles).toContain(
-        '.claude/commands/moai/0-project.md'
+        '.claude/commands/moai/8-project.md'
       );
       expect(result.createdFiles).toContain('.claude/hooks/moai/pre-commit.py');
     });
