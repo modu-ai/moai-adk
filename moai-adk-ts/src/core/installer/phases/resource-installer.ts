@@ -285,17 +285,17 @@ export class ResourceInstaller {
   }
 
   private async initializeTagSystem(moaiDir: string): Promise<void> {
-    const indexesDir = path.join(moaiDir, 'indexes');
-    if (!fs.existsSync(indexesDir)) {
-      fs.mkdirSync(indexesDir, { recursive: true });
-    }
-
-    // NOTE: [v0.0.3+] TAG 시스템 철학 변경
-    // - 이전: tags.json 인덱스 캐시 기반 관리
+    // NOTE: [v0.0.1] TAG 시스템 철학 - CODE-FIRST
+    // - 이전 버전: tags.json 인덱스 캐시 기반 관리
     // - 현재: 코드 직접 스캔 (rg/grep) 기반 실시간 검증
     // - 이유: 단일 진실 소스(코드)로 동기화 문제 해결
-    // tags.json 생성 코드 제거됨
-    // .moai/indexes/ 디렉토리도 불필요 - CODE-FIRST 방식으로 전환
+    // - .moai/indexes/ 디렉토리 불필요
+    // - 모든 TAG 정보는 소스코드에만 존재
+
+    logger.debug('TAG system initialized (CODE-FIRST mode)', {
+      moaiDir,
+      tag: '@DEBUG:TAG-SYSTEM-INIT-001',
+    });
   }
 
   private async setExecutablePermissions(scriptsDir: string): Promise<void> {

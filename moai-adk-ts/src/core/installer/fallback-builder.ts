@@ -25,42 +25,18 @@ export class FallbackBuilder {
     moaiDir: string,
     config: InstallationConfig
   ): Promise<void> {
-    try {
-      const indexesDir = path.join(moaiDir, 'indexes');
-      await fs.promises.mkdir(indexesDir, { recursive: true });
+    // NOTE: [v0.0.1] TAG 시스템 철학 - CODE-FIRST
+    // - 이전: meta.json, indexes, cache 디렉토리 생성
+    // - 현재: 코드 직접 스캔 (rg/grep) 기반 실시간 검증
+    // - 이유: 단일 진실 소스(코드)로 동기화 문제 해결
+    // - 모든 TAG 정보는 소스코드에만 존재
+    // - indexes, cache, meta.json 불필요
 
-      const metaPath = path.join(indexesDir, 'meta.json');
-      const metaData = {
-        project: config.projectName,
-        created: new Date().toISOString(),
-        lastSync: new Date().toISOString(),
-        totalTags: 0,
-        totalFiles: 0,
-      };
-
-      await fs.promises.writeFile(metaPath, JSON.stringify(metaData, null, 2));
-
-      const cacheDir = path.join(indexesDir, 'cache');
-      await fs.promises.mkdir(cacheDir, { recursive: true });
-
-      logger.debug('TAG system initialized successfully (code-scan based)', {
-        metaPath,
-        cacheDir,
-        tag: '@SUCCESS:TAG-SYSTEM-INIT-001',
-      });
-    } catch (error) {
-      const errorMessage = getErrorMessage(error);
-      logger.error('Failed to initialize TAG system', {
-        error: errorMessage,
-        moaiDir,
-        tag: '@ERROR:TAG-SYSTEM-INIT-001',
-      });
-      throw new InstallationError('Failed to initialize TAG system', {
-        error: error instanceof Error ? error : undefined,
-        errorMessage,
-        context: { moaiDir },
-      });
-    }
+    logger.debug('TAG system initialized (CODE-FIRST mode - no cache files)', {
+      projectName: config.projectName,
+      moaiDir,
+      tag: '@SUCCESS:TAG-SYSTEM-INIT-001',
+    });
   }
 
   /**

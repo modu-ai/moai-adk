@@ -395,7 +395,7 @@ export class PhaseExecutor {
         path.join(config.projectPath, '.moai', 'specs'),
         path.join(config.projectPath, '.moai', 'reports'),
         path.join(config.projectPath, '.moai', 'memory'),
-        path.join(config.projectPath, '.moai', 'indexes'),
+        // NOTE: .moai/indexes removed - CODE-FIRST TAG system doesn't use cached indexes
       ];
 
       for (const dir of directories) {
