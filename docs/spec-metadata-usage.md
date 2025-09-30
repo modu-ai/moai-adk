@@ -1,6 +1,6 @@
 # SPEC 메타데이터 시스템 활용 가이드
 
-## 🔍 ripgrep(rg) 기반 검색 예시
+##  ripgrep(rg) 기반 검색 예시
 
 ### 기본 SPEC 검색
 
@@ -122,7 +122,7 @@ else
 fi
 ```
 
-## 📊 성능 비교
+##  성능 비교
 
 ### grep vs ripgrep 성능
 

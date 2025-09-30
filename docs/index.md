@@ -91,7 +91,7 @@ moai doctor
 /moai:3-sync
 ```
 
-## 📊 현대화 성과 (v0.0.1)
+## 현대화 성과 (v0.0.1)
 
 | 지표 | 성과 |
 |------|------|
@@ -102,7 +102,7 @@ moai doctor
 | **TAG 시스템** | CODE-FIRST 방식으로 94% 최적화 |
 | **CLI 완성도** | 100% (7개 명령어 완성) |
 
-## 🎨 핵심 원칙: TRUST 5원칙
+## 핵심 원칙: TRUST 5원칙
 
 - **T**est First: 테스트 없이는 코드 없음 (TDD 강제)
 - **R**eadable: 요구사항 주도 가독성 (SPEC 기반 코드)
@@ -110,14 +110,14 @@ moai doctor
 - **S**ecured: SPEC 준수 보안 (설계 시점 보안)
 - **T**rackable: SPEC 추적성 (CODE-FIRST TAG 시스템)
 
-## 🌐 링크 및 리소스
+## 링크 및 리소스
 
-- **📚 공식 문서**: [https://adk.mo.ai.kr](https://adk.mo.ai.kr)
-- **💬 커뮤니티**: [https://mo.ai.kr](https://mo.ai.kr) *(오픈 예정)*
-- **🐙 GitHub**: [github.com/modu-ai/moai-adk](https://github.com/modu-ai/moai-adk)
-- **📦 NPM Package**: [npmjs.com/package/moai-adk](https://www.npmjs.com/package/moai-adk)
+- **공식 문서**: [https://adk.mo.ai.kr](https://adk.mo.ai.kr)
+- **커뮤니티**: [https://mo.ai.kr](https://mo.ai.kr) *(오픈 예정)*
+- **GitHub**: [github.com/modu-ai/moai-adk](https://github.com/modu-ai/moai-adk)
+- **NPM Package**: [npmjs.com/package/moai-adk](https://www.npmjs.com/package/moai-adk)
 
-## 💡 왜 MoAI-ADK인가?
+## 왜 MoAI-ADK인가?
 
 ### TypeScript 단일 스택, 모든 언어 지원
 MoAI-ADK 자체는 TypeScript로 구축된 고성능 CLI 도구입니다. 하지만 사용자 프로젝트는 Python, JavaScript, Java, Go, Rust, C++, C# 등 모든 주요 언어를 지원합니다. 프로젝트 언어를 자동으로 감지하고, 해당 언어에 최적화된 TDD 도구(pytest, Vitest, JUnit, go test 등)를 동적으로 추천합니다.
@@ -138,7 +138,7 @@ SQLite3와 모든 중간 캐시를 완전히 제거했습니다. TAG의 진실�
 - **Biome 2.2.4**: ESLint + Prettier를 통합하여 94.8% 성능 향상
 - **tsup 8.5.0**: 182ms 초고속 빌드, ESM/CJS 듀얼 번들링
 
-## 📚 더 알아보기
+## 더 알아보기
 
 ### 시작하기
 - [설치 가이드](/getting-started/installation) - 시스템 요구사항 및 설치 방법
@@ -156,13 +156,13 @@ SQLite3와 모든 중간 캐시를 완전히 제거했습니다. TAG의 진실�
 - `moai update` - 업데이트 관리
 - `moai restore` - 백업 복원
 
-## 🤝 기여하기
+## 기여하기
 
 MoAI-ADK는 MIT 라이선스 오픈소스 프로젝트입니다. 기여를 환영합니다!
 
-- 🐛 [버그 리포트](https://github.com/modu-ai/moai-adk/issues) - 문제 발견 시 이슈 등록
-- 💡 [기능 제안](https://github.com/modu-ai/moai-adk/discussions) - 새로운 아이디어 공유
-- 📝 [문서 개선](https://github.com/modu-ai/moai-adk/pulls) - Pull Request 제출
+- [버그 리포트](https://github.com/modu-ai/moai-adk/issues) - 문제 발견 시 이슈 등록
+- [기능 제안](https://github.com/modu-ai/moai-adk/discussions) - 새로운 아이디어 공유
+- [문서 개선](https://github.com/modu-ai/moai-adk/pulls) - Pull Request 제출
 
 ---
 

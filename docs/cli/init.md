@@ -57,7 +57,7 @@ moai init my-awesome-project
 #   Step 2: Configuration
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 📂 Project Name: my-awesome-project
-# 🌐 Detected Language: TypeScript
+# Detected Language: TypeScript
 # 🗿 Mode: Personal
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -77,7 +77,7 @@ moai init my-awesome-project
 #
 # ✅ Project initialized successfully!
 #
-# 🚀 Next steps:
+# Next steps:
 # 1. cd my-awesome-project
 # 2. Open in Claude Code
 # 3. Run: /moai:1-spec "Your first feature"

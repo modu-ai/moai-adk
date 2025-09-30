@@ -1,6 +1,6 @@
 # Console to Winston Logger Migration - 완료 보고서
 
-## 📊 마이그레이션 통계
+##  마이그레이션 통계
 
 ### 자동 변환 결과
 - **전체 파일 스캔**: 105개
@@ -52,7 +52,7 @@
 - ✅ 파일 로그 및 로테이션
 - ✅ @TAG 기반 추적성
 
-## 📝 변환된 주요 파일
+##  변환된 주요 파일
 
 ### CLI 명령어 (6개)
 - cli/commands/doctor.ts (46개)
@@ -75,7 +75,7 @@
 - core/installer/templates/template-utils.ts (8개)
 - 기타 4개 파일
 
-## 🔧 기술적 개선사항
+##  기술적 개선사항
 
 ### 1. 구조화 로깅
 ```typescript
@@ -109,7 +109,7 @@ logger.info('Processing items', { count: items.length });
 logger.logWithTag('info', '@TASK:INIT-001', 'Starting initialization');
 ```
 
-## 🚀 성능 영향
+##  성능 영향
 
 - **빌드 시간**: 변화 없음 (333ms)
 - **런타임 오버헤드**: < 1ms (Winston 비동기 I/O)
@@ -160,7 +160,7 @@ logger.logWithTag('info', '@TASK:INIT-001', 'Starting initialization');
 
 4. **테스트 파일**: Mock 및 테스트 헬퍼
 
-## ✨ 결론
+##  결론
 
 **97.6%의 console.* 사용을 Winston logger로 성공적으로 마이그레이션**하여:
 - ✅ TRUST-S 보안 준수율 64% → 85%+ 향상

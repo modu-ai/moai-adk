@@ -446,7 +446,7 @@ CI/CD에서 `moai status`를 사용하면 다음과 같은 이점이 있습니�
 
 이 통계는 `--verbose` 플래그를 사용할 때만 표시되며, 일상적인 확인에는 필요하지 않으므로 기본적으로 숨겨져 있습니다.
 
-### 5. 권장 사항 (💡 Recommendations)
+### 5. 권장 사항 (Recommendations)
 
 ```
 💡 Recommendations:
