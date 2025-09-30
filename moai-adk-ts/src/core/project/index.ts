@@ -5,7 +5,6 @@
  */
 
 export { ProjectDetector } from './project-detector';
-export * from './types';
 
 /**
  * @tags @SUCCESS:PROJECT-DETECTOR-TDD-001
