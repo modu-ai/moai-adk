@@ -97,14 +97,8 @@ export class ResultBuilder {
   private generateNextSteps(config: InstallationConfig): string[] {
     const steps = [
       `cd ${config.projectName}`,
-      'claude',
-      '', // Empty line for better readability
-      `💡 Tip: Next time use "moai init ${config.projectName}" to recreate this setup`,
+      `💡 Tip: Run "claude" to start development with Claude Code`,
     ];
-
-    if (config.mode === 'team') {
-      steps.push('Initialize Git repository and configure team settings');
-    }
 
     return steps;
   }

@@ -26,20 +26,13 @@ export interface InitAnswers {
  * Display welcome banner for moai init
  */
 export function displayWelcomeBanner(): void {
-  console.log('\n');
-  console.log(chalk.cyan.bold('╔═══════════════════════════════════════════════════════════╗'));
-  console.log(chalk.cyan.bold('║                                                           ║'));
-  console.log(chalk.cyan.bold('║  ') + chalk.white.bold('🗿  MoAI-ADK Project Initialization') + chalk.cyan.bold('                 ║'));
-  console.log(chalk.cyan.bold('║                                                           ║'));
-  console.log(chalk.cyan.bold('╚═══════════════════════════════════════════════════════════╝'));
-  console.log('\n');
-  console.log(chalk.gray('  Let\'s set up your MoAI-ADK project with a few questions...'));
-  console.log(chalk.gray('  You can always change these settings in .moai/config.json'));
-  console.log('\n');
+  console.log(chalk.gray('  Let\'s set up your project with a few questions...'));
+  console.log(chalk.gray('  You can change these settings later in .moai/config.json\n'));
 }
 
 /**
  * Display step indicator
+ * Note: Total is calculated dynamically based on mode
  */
 function displayStep(current: number, total: number, question: string): void {
   const progress = `[${current}/${total}]`;
@@ -58,15 +51,31 @@ function displayTip(tip: string): void {
 /**
  * Get basic project information
  */
-export async function promptBasicInfo(defaultName?: string): Promise<Partial<InitAnswers>> {
-  displayStep(1, 7, 'Project Information');
+export async function promptBasicInfo(defaultName?: string, isCurrentDirMode = false): Promise<Partial<InitAnswers>> {
+  displayStep(1, 3, 'Project Information');
+
+  // Determine appropriate default name and tip based on mode
+  let effectiveDefaultName: string;
+  let tipMessage: string;
+
+  if (isCurrentDirMode) {
+    // For "moai init ." - suggest current directory name
+    const cwd = process.cwd();
+    const currentDirName = cwd.split('/').pop() || 'moai-project';
+    effectiveDefaultName = currentDirName;
+    tipMessage = 'This will be used in configuration (current directory will NOT be renamed)';
+  } else {
+    // For "moai init project-name" - use provided name or default
+    effectiveDefaultName = defaultName || 'moai-project';
+    tipMessage = 'This will be used as the folder name and project identifier';
+  }
 
   const answers = await inquirer.prompt([
     {
       type: 'input',
       name: 'projectName',
       message: chalk.cyan('Project name:'),
-      default: defaultName || 'moai-project',
+      default: effectiveDefaultName,
       validate: (input: string) => {
         const result = InputValidator.validateProjectName(input, {
           maxLength: 50,
@@ -78,7 +87,7 @@ export async function promptBasicInfo(defaultName?: string): Promise<Partial<Ini
     },
   ]);
 
-  displayTip('This will be used as the folder name and project identifier');
+  displayTip(tipMessage);
 
   return answers;
 }
@@ -87,7 +96,7 @@ export async function promptBasicInfo(defaultName?: string): Promise<Partial<Ini
  * Get mode selection (Personal/Team)
  */
 export async function promptMode(): Promise<Partial<InitAnswers>> {
-  displayStep(2, 7, 'Development Mode');
+  displayStep(2, 3, 'Development Mode');
 
   const answers = await inquirer.prompt([
     {
@@ -123,7 +132,7 @@ export async function promptMode(): Promise<Partial<InitAnswers>> {
  * Get Git configuration
  */
 export async function promptGitConfig(): Promise<Partial<InitAnswers>> {
-  displayStep(3, 7, 'Version Control');
+  displayStep(3, 3, 'Version Control');
 
   const answers = await inquirer.prompt([
     {
@@ -291,10 +300,10 @@ export function displaySummary(answers: InitAnswers): void {
 /**
  * Run all prompts in sequence
  */
-export async function runInteractivePrompts(defaultName?: string): Promise<InitAnswers> {
-  displayWelcomeBanner();
+export async function runInteractivePrompts(defaultName?: string, isCurrentDirMode = false): Promise<InitAnswers> {
+  // Banner is already displayed in init.ts, no need to display again
 
-  const basicInfo = await promptBasicInfo(defaultName);
+  const basicInfo = await promptBasicInfo(defaultName, isCurrentDirMode);
   const modeInfo = await promptMode();
   const gitInfo = await promptGitConfig();
   const githubInfo = await promptGitHubConfig(modeInfo.mode as 'personal' | 'team');
