@@ -241,7 +241,7 @@
 
 #### 3.3 3단계 워크플로우 (workflow.md) - 기존 개선
 - **Stage 0: 프로젝트 준비** (선택)
-  - `/moai:0-project` 실행
+  - `/moai:8-project` 실행
   - product/structure/tech 문서 생성
   - 프로젝트 비전 수립
 
@@ -459,7 +459,7 @@
 #### 5.2 워크플로우 명령어 (commands.md) - 새 페이지
 - **5개 슬래시 명령어**
 
-1. `/moai:0-project` (선택)
+1. `/moai:8-project` (선택)
    - 프로젝트 비전 수립
    - 3대 문서 생성
 

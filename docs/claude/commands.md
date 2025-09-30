@@ -13,7 +13,7 @@ MoAI-ADK는 SPEC-First TDD 개발을 위한 **4개 슬래시 명령어**를 제�
 
 | 명령어 | 단계 | 주요 기능 | 자동화 |
 |--------|------|-----------|--------|
-| `/moai:0-project` | 준비 (선택) | 프로젝트 비전 수립 | 3대 문서 생성 |
+| `/moai:8-project` | 준비 (선택) | 프로젝트 비전 수립 | 3대 문서 생성 |
 | `/moai:1-spec` | SPEC 작성 | EARS 요구사항 작성 | 사용자 확인 후 브랜치 |
 | `/moai:2-build` | TDD 구현 | Red-Green-Refactor | 범용 언어 자동 지원 |
 | `/moai:3-sync` | 문서 동기화 | TAG 검증, PR 전환 | 사용자 확인 후 머지 |
@@ -27,7 +27,7 @@ MoAI-ADK는 SPEC-First TDD 개발을 위한 **4개 슬래시 명령어**를 제�
 /moai:3-sync
 ```
 
-## /moai:0-project (선택)
+## /moai:8-project (선택)
 
 ### 목적
 
@@ -95,7 +95,7 @@ Project Architecture
 
 ```bash
 # 기본 사용
-/moai:0-project
+/moai:8-project
 
 # 대화형 생성
 에이전트: "프로젝트 이름은 무엇인가요?"
@@ -644,7 +644,7 @@ TRUST 준수율: 100%
 
 ```bash
 # 1단계: 프로젝트 준비 (선택)
-/moai:0-project
+/moai:8-project
 
 # 2단계: SPEC 작성
 /moai:1-spec "사용자 이메일/비밀번호 인증"

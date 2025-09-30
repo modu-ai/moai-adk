@@ -217,7 +217,7 @@ moai restore <backup-path> --force         # 강제 복원
 
 ```bash
 # 프로젝트 비전 수립
-/moai:0-project
+/moai:8-project
 ```
 
 ### 도움말

@@ -85,7 +85,16 @@ export default withMermaid(
         text: '레퍼런스',
         items: [
           { text: '설정 파일', link: '/reference/configuration' },
-          { text: 'CLI 치트시트', link: '/reference/cli-cheatsheet' }
+          { text: 'CLI 치트시트', link: '/reference/cli-cheatsheet' },
+          { text: 'API 레퍼런스', link: '/reference/api-reference' },
+          { text: 'Core 모듈', link: '/reference/core-modules' }
+        ]
+      },
+      {
+        text: '고급',
+        items: [
+          { text: 'doctor 고급 진단', link: '/advanced/doctor-advanced' },
+          { text: '템플릿 커스터마이징', link: '/advanced/template-customization' }
         ]
       },
       {
@@ -160,13 +169,36 @@ export default withMermaid(
           ]
         }
       ],
+      '/advanced/': [
+        {
+          text: '고급 가이드',
+          items: [
+            { text: 'doctor 고급 진단', link: '/advanced/doctor-advanced' },
+            { text: '템플릿 커스터마이징', link: '/advanced/template-customization' }
+          ]
+        }
+      ],
       '/claude/': [
         {
           text: 'Claude Code 통합',
           items: [
-            { text: '에이전트 가이드', link: '/claude/agents' },
+            { text: '에이전트 개요', link: '/claude/agents' },
             { text: '워크플로우 명령어', link: '/claude/commands' },
-            { text: '이벤트 훅', link: '/claude/hooks' }
+            { text: '이벤트 훅', link: '/claude/hooks' },
+            { text: '훅 시스템 상세', link: '/claude/hooks-detailed' }
+          ]
+        },
+        {
+          text: '에이전트 가이드',
+          items: [
+            { text: 'spec-builder', link: '/claude/agents/spec-builder' },
+            { text: 'code-builder', link: '/claude/agents/code-builder' },
+            { text: 'doc-syncer', link: '/claude/agents/doc-syncer' },
+            { text: 'git-manager', link: '/claude/agents/git-manager' },
+            { text: 'debug-helper', link: '/claude/agents/debug-helper' },
+            { text: 'cc-manager', link: '/claude/agents/cc-manager' },
+            { text: 'trust-checker', link: '/claude/agents/trust-checker' },
+            { text: 'tag-agent', link: '/claude/agents/tag-agent' }
           ]
         }
       ],
@@ -175,7 +207,9 @@ export default withMermaid(
           text: '레퍼런스',
           items: [
             { text: '설정 파일', link: '/reference/configuration' },
-            { text: 'CLI 치트시트', link: '/reference/cli-cheatsheet' }
+            { text: 'CLI 치트시트', link: '/reference/cli-cheatsheet' },
+            { text: 'API 레퍼런스', link: '/reference/api-reference' },
+            { text: 'Core 모듈', link: '/reference/core-modules' }
           ]
         }
       ],

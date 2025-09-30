@@ -186,7 +186,7 @@ my-project/
 │   │   └── trust-checker.md
 │   │
 │   ├── commands/moai/        # 5개 워크플로우 명령어
-│   │   ├── 0-project.md
+│   │   ├── 8-project.md
 │   │   ├── 1-spec.md
 │   │   ├── 2-build.md
 │   │   ├── 3-sync.md

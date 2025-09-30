@@ -191,7 +191,7 @@ moai init enterprise-project --template advanced
 
 # Advanced 템플릿 추가 항목:
 # - 전체 7개 에이전트
-# - 추가 명령어 (/moai:0-project)
+# - 추가 명령어 (/moai:8-project)
 # - 전체 8개 훅
 # - CI/CD 템플릿 (GitHub Actions, GitLab CI)
 # - Docker 및 docker-compose 설정
@@ -243,7 +243,7 @@ my-project/
 │   │   └── trust-checker.md      # 품질 검증
 │   │
 │   ├── commands/moai/             # 워크플로우 명령어
-│   │   ├── 0-project.md          # 프로젝트 초기화
+│   │   ├── 8-project.md          # 프로젝트 초기화
 │   │   ├── 1-spec.md            # SPEC 작성
 │   │   ├── 2-build.md           # TDD 구현
 │   │   └── 3-sync.md            # 문서 동기화

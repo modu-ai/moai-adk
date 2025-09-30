@@ -465,7 +465,7 @@ CI/CD에서 `moai status`를 사용하면 다음과 같은 이점이 있습니�
 
 **Claude Integration (`.claude/`)**: Claude Code와의 통합을 위한 디렉토리입니다. 다음 요소를 포함합니다:
 - `.claude/agents/moai/`: 7개 전문 에이전트 (`spec-builder`, `code-builder`, `doc-syncer`, `cc-manager`, `debug-helper`, `git-manager`, `trust-checker`)
-- `.claude/commands/moai/`: 5개 슬래시 명령어 (`/moai:0-project`, `/moai:1-spec`, `/moai:2-build`, `/moai:3-sync`)
+- `.claude/commands/moai/`: 5개 슬래시 명령어 (`/moai:8-project`, `/moai:1-spec`, `/moai:2-build`, `/moai:3-sync`)
 - `.claude/hooks/moai/`: 8개 이벤트 훅 (보안, 모니터링)
 - `.claude/output-styles/`: 5개 출력 스타일 (학습, 페어, 초보)
 

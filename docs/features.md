@@ -502,7 +502,7 @@ moai doctor
 ### 5개 워크플로우 명령어
 
 ```bash
-/moai:0-project    # (선택) 프로젝트 비전 수립
+/moai:8-project    # (선택) 프로젝트 비전 수립
 /moai:1-spec      # SPEC 작성
 /moai:2-build     # TDD 구현
 /moai:3-sync      # 문서 동기화

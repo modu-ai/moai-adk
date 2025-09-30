@@ -312,7 +312,7 @@ feature/SPEC-001 → develop → main
     "enabled": true,
     "path": "commands/moai",
     "individual": {
-      "0-project": true,
+      "8-project": true,
       "1-spec": true,
       "2-build": true,
       "3-sync": true,
@@ -391,7 +391,7 @@ feature/SPEC-001 → develop → main
     "enabled": true,
     "path": "commands/moai",
     "individual": {
-      "0-project": true,          // /moai:0-project
+      "8-project": true,          // /moai:8-project
       "1-spec": true,             // /moai:1-spec
       "2-build": true,            // /moai:2-build
       "3-sync": true,             // /moai:3-sync

@@ -46,8 +46,8 @@
 ### 2.1 SPEC-013 워크플로우 명령어 업데이트
 **파일**: `/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-013/spec.md` (라인 103-108)
 ```diff
-- **구현**: /moai:0-project, /moai:1-spec, /moai:2-build, /moai:3-sync, /moai:4-debug
-+ **구현**: /moai:0-project, /moai:1-spec, /moai:2-build, /moai:3-sync
+- **구현**: /moai:8-project, /moai:1-spec, /moai:2-build, /moai:3-sync, /moai:4-debug
++ **구현**: /moai:8-project, /moai:1-spec, /moai:2-build, /moai:3-sync
 + **디버깅**: `@agent-debug-helper` 온디맨드 에이전트 호출 방식
 ```
 
@@ -62,7 +62,7 @@
 
 **변경사항**:
 ```diff
-- /moai:0-project  # 프로젝트 문서 초기화
+- /moai:8-project  # 프로젝트 문서 초기화
   /moai:1-spec     # 명세 작성
   /moai:2-build    # TDD 구현
   /moai:3-sync     # 문서 동기화
