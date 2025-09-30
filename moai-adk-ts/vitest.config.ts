@@ -16,7 +16,8 @@ export default defineConfig({
       '__tests__/core/git/**/*.test.ts',
       '__tests__/utils/**/*.test.ts',
       '__tests__/system-checker/**/*.test.ts',
-      '__tests__/cli/**/*.test.ts'
+      '__tests__/cli/**/*.test.ts',
+      '__tests__/claude/**/*.test.ts'
     ],
     exclude: [
       'node_modules',

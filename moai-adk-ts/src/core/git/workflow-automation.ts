@@ -1,5 +1,5 @@
-// @FEATURE:GIT-004 | Chain: @REQ:GIT-004 -> @DESIGN:GIT-004 -> @TASK:GIT-004 -> @TEST:GIT-004
-// Related: @API:GIT-004
+// @CODE:GIT-004 | 
+// Related: @CODE:GIT-004:API
 
 /**
  * @file Git workflow automation
@@ -9,7 +9,7 @@
  */
 
 import type { CreatePullRequestOptions, GitConfig } from '../../types/git';
-import { GitCommitTemplates, GitNamingRules } from './constants';
+import { GitCommitTemplates, GitNamingRules } from './constants/index';
 import type { GitManager } from './git-manager';
 
 /**

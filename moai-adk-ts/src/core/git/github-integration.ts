@@ -1,5 +1,5 @@
-// @FEATURE:GIT-003 | Chain: @REQ:GIT-003 -> @DESIGN:GIT-003 -> @TASK:GIT-003 -> @TEST:GIT-003
-// Related: @API:GIT-003, @DATA:GIT-GH-001
+// @CODE:GIT-003 | 
+// Related: @CODE:GIT-003:API, @CODE:GIT-GH-001
 
 /**
  * @file GitHub API integration
@@ -14,7 +14,7 @@ import type {
   CreateRepositoryOptions,
   GitConfig,
 } from '../../types/git';
-import { GitHubDefaults } from './constants';
+import { GitHubDefaults } from './constants/index';
 
 /**
  * GitHub CLI를 사용한 GitHub 연동

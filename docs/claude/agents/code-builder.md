@@ -679,11 +679,11 @@ class AuthenticationServiceTest {
 function generateTagBlock(spec: SpecDocument, fileType: 'implementation' | 'test'): string {
   const domainId = spec.metadata.id.replace('SPEC-', ''); // SPEC-AUTH-001 -> AUTH-001
 
-  const primaryChain = `@REQ:${domainId} -> @DESIGN:${domainId} -> @TASK:${domainId} -> @TEST:${domainId}`;
+  const primaryChain = `@SPEC:${domainId} -> @DESIGN:${domainId} -> @TASK:${domainId} -> @TEST:${domainId}`;
 
   const relatedTags = [];
   if (fileType === 'implementation') {
-    relatedTags.push(`@FEATURE:${domainId}`);
+    relatedTags.push(`@CODE:${domainId}`);
     if (spec.hasAPI) relatedTags.push(`@API:${domainId}`);
     if (spec.hasUI) relatedTags.push(`@UI:${domainId}`);
     if (spec.hasData) relatedTags.push(`@DATA:${domainId}`);

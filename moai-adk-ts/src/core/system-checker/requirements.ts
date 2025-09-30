@@ -1,5 +1,5 @@
-// @DATA:SYS-REQ-001 | Chain: @REQ:SYS-001 -> @DESIGN:SYS-002 -> @TASK:SYS-002 -> @TEST:SYS-002
-// Related: @FEATURE:SYS-001
+// @CODE:SYS-REQ-001 | 
+// Related: @CODE:SYS-001
 
 /**
  * @file System requirements definition
@@ -8,7 +8,7 @@
 
 /**
  * System requirement definition interface
- * @tags @DESIGN:REQUIREMENT-INTERFACE-001
+ * @tags @SPEC:REQUIREMENT-INTERFACE-001
  */
 export interface SystemRequirement {
   readonly name: string;
@@ -21,7 +21,7 @@ export interface SystemRequirement {
 
 /**
  * System requirements registry for centralized management
- * @tags @FEATURE:REQUIREMENT-REGISTRY-001
+ * @tags @CODE:REQUIREMENT-REGISTRY-001
  */
 export class RequirementRegistry {
   private readonly requirements: Map<string, SystemRequirement> = new Map();
@@ -33,7 +33,7 @@ export class RequirementRegistry {
   /**
    * Add language-specific development requirements
    * @param language - Programming language detected
-   * @tags @API:ADD-LANGUAGE-REQUIREMENTS-001
+   * @tags @CODE:ADD-LANGUAGE-REQUIREMENTS-001:API
    */
   public addLanguageRequirements(language: string): void {
     switch (language.toLowerCase()) {
@@ -113,7 +113,7 @@ export class RequirementRegistry {
 
   /**
    * Initialize default system requirements
-   * @tags @TASK:DEFAULT-REQUIREMENTS-001
+   * @tags @CODE:DEFAULT-REQUIREMENTS-001
    */
   private initializeDefaultRequirements(): void {
     // Git requirement
@@ -177,7 +177,7 @@ export class RequirementRegistry {
   /**
    * Add new requirement to registry
    * @param requirement - System requirement to add
-   * @tags @API:ADD-REQUIREMENT-001
+   * @tags @CODE:ADD-REQUIREMENT-001:API
    */
   public addRequirement(requirement: SystemRequirement): void {
     this.requirements.set(requirement.name, requirement);
@@ -187,7 +187,7 @@ export class RequirementRegistry {
    * Get specific requirement by name
    * @param name - Requirement name
    * @returns System requirement or undefined
-   * @tags @API:GET-REQUIREMENT-001
+   * @tags @CODE:GET-REQUIREMENT-001:API
    */
   public getRequirement(name: string): SystemRequirement | undefined {
     return this.requirements.get(name);
@@ -197,7 +197,7 @@ export class RequirementRegistry {
    * Get requirements by category
    * @param category - Requirement category
    * @returns Array of matching requirements
-   * @tags @API:GET-BY-CATEGORY-001
+   * @tags @CODE:GET-BY-CATEGORY-001:API
    */
   public getByCategory(
     category: SystemRequirement['category']
@@ -210,7 +210,7 @@ export class RequirementRegistry {
   /**
    * Get all requirements
    * @returns Array of all requirements
-   * @tags @API:GET-ALL-REQUIREMENTS-001
+   * @tags @CODE:GET-ALL-REQUIREMENTS-001:API
    */
   public getAllRequirements(): SystemRequirement[] {
     return Array.from(this.requirements.values());

@@ -1,7 +1,7 @@
 /**
  * @file Installation Context Manager
  * @author MoAI Team
- * @tags @FEATURE:CONTEXT-MANAGER-001 @REQ:INSTALL-SYSTEM-012
+ * @tags @CODE:CONTEXT-MANAGER-001 @SPEC:INSTALL-SYSTEM-012
  */
 
 import { logger } from '@/utils/winston-logger';
@@ -14,14 +14,14 @@ import type {
 
 /**
  * Manages installation context and progress tracking
- * @tags @FEATURE:CONTEXT-MANAGER-001
+ * @tags @CODE:CONTEXT-MANAGER-001
  */
 export class ContextManager {
   /**
    * Create initial installation context
    * @param config Installation configuration
    * @returns Initial context
-   * @tags @API:CREATE-CONTEXT-001
+   * @tags @CODE:CREATE-CONTEXT-001:API
    */
   createInitialContext(config: InstallationConfig): InstallationContext {
     return {
@@ -40,7 +40,7 @@ export class ContextManager {
    * @param startTime Phase start time
    * @param filesCreated Files created in phase
    * @param errors Errors in phase
-   * @tags @API:RECORD-PHASE-001
+   * @tags @CODE:RECORD-PHASE-001:API
    */
   recordPhaseCompletion(
     context: InstallationContext,
@@ -75,7 +75,7 @@ export class ContextManager {
    * @param message Progress message
    * @param totalPhases Total number of phases
    * @param callback Progress callback
-   * @tags @API:UPDATE-PROGRESS-001
+   * @tags @CODE:UPDATE-PROGRESS-001:API
    */
   updateProgress(
     context: InstallationContext,
@@ -100,7 +100,7 @@ export class ContextManager {
    * Get current phase count
    * @param context Current context
    * @returns Number of completed phases
-   * @tags @API:GET-PHASE-COUNT-001
+   * @tags @CODE:GET-PHASE-COUNT-001:API
    */
   getPhaseCount(context: InstallationContext): number {
     return context.phases.length;
@@ -110,7 +110,7 @@ export class ContextManager {
    * Check if context has errors
    * @param context Current context
    * @returns True if context has errors
-   * @tags @API:HAS-ERRORS-001
+   * @tags @CODE:HAS-ERRORS-001:API
    */
   hasErrors(context: InstallationContext): boolean {
     return context.allErrors.length > 0;
@@ -120,7 +120,7 @@ export class ContextManager {
    * Get total duration from context
    * @param context Current context
    * @returns Duration in milliseconds
-   * @tags @API:GET-DURATION-001
+   * @tags @CODE:GET-DURATION-001:API
    */
   getDuration(context: InstallationContext): number {
     return Date.now() - context.startTime.getTime();

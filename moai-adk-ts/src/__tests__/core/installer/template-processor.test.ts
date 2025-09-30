@@ -1,6 +1,6 @@
 /**
  * @TEST:TEMPLATE-PROCESSOR-001 Template Processor Cross-Platform Test Suite
- * @tags @TEST:TEMPLATE-PROCESSOR-001 @REQ:INSTALL-SYSTEM-012
+ * @tags @TEST:TEMPLATE-PROCESSOR-001 @SPEC:INSTALL-SYSTEM-012
  *
  * Phase 2: Cross-platform path resolution tests
  * Tests for Windows/macOS/Linux compatibility and environment variable handling

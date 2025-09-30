@@ -1,5 +1,5 @@
-// @FEATURE:PKG-001 | Chain: @REQ:PKG-001 -> @DESIGN:PKG-001 -> @TASK:PKG-001 -> @TEST:PKG-001
-// Related: @API:PKG-001, @DATA:PKG-INFO-001
+// @CODE:PKG-001 | 
+// Related: @CODE:PKG-001:API, @CODE:PKG-INFO-001
 
 /**
  * @file Package manager detector and analyzer
@@ -18,14 +18,14 @@ import {
 
 /**
  * Package manager detector for automatic detection and recommendation
- * @tags @FEATURE:PACKAGE-MANAGER-DETECTOR-001
+ * @tags @CODE:PACKAGE-MANAGER-DETECTOR-001
  */
 export class PackageManagerDetector {
   /**
    * Detect single package manager availability and version
    * @param type - Package manager type to detect
    * @returns Package manager information
-   * @tags @API:DETECT-SINGLE-001
+   * @tags @CODE:DETECT-SINGLE-001:API
    */
   public async detectPackageManager(
     type: PackageManagerType
@@ -62,7 +62,7 @@ export class PackageManagerDetector {
    * Detect all available package managers
    * @param workingDirectory - Directory to check for lock files
    * @returns Detection result with all available package managers
-   * @tags @API:DETECT-ALL-001
+   * @tags @CODE:DETECT-ALL-001:API
    */
   public async detectAllPackageManagers(
     workingDirectory?: string
@@ -101,7 +101,7 @@ export class PackageManagerDetector {
    * Get commands for specific package manager
    * @param type - Package manager type
    * @returns Commands object
-   * @tags @API:GET-COMMANDS-001
+   * @tags @CODE:GET-COMMANDS-001:API
    */
   public getCommands(type: PackageManagerType): PackageManagerCommands {
     switch (type) {
@@ -147,7 +147,7 @@ export class PackageManagerDetector {
    * Recommend best package manager from available options
    * @param available - Available package managers
    * @returns Recommended package manager
-   * @tags @API:RECOMMEND-001
+   * @tags @CODE:RECOMMEND-001:API
    */
   public recommendPackageManager(
     available: PackageManagerInfo[]
@@ -178,7 +178,7 @@ export class PackageManagerDetector {
    * Detect preferred package manager from lock files
    * @param workingDirectory - Directory to check
    * @returns Detected package manager type or null
-   * @tags @API:DETECT-LOCK-001
+   * @tags @CODE:DETECT-LOCK-001:API
    */
   private async detectLockFile(
     workingDirectory?: string

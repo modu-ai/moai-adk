@@ -1,5 +1,5 @@
-// @DATA:PROJ-TYPES-001 | Chain: @REQ:PROJ-001 -> @DESIGN:PROJ-001 -> @TASK:PROJ-001 -> @TEST:PROJ-001
-// Related: @FEATURE:PROJ-001
+// @CODE:PROJ-TYPES-001 | 
+// Related: @CODE:PROJ-001
 
 /**
  * @file Project type definitions
@@ -8,7 +8,7 @@
 
 /**
  * Supported project types for initialization
- * @tags @DATA:PROJECT-TYPES-001
+ * @tags @CODE:PROJECT-TYPES-001:DATA
  */
 export enum ProjectType {
   PYTHON = 'python',
@@ -20,7 +20,7 @@ export enum ProjectType {
 
 /**
  * Project configuration interface
- * @tags @DATA:PROJECT-CONFIG-001
+ * @tags @CODE:PROJECT-CONFIG-001:DATA
  */
 export interface ProjectConfig {
   name: string;
@@ -34,7 +34,7 @@ export interface ProjectConfig {
 
 /**
  * Optional project features
- * @tags @DATA:PROJECT-FEATURES-001
+ * @tags @CODE:PROJECT-FEATURES-001:DATA
  */
 export interface ProjectFeature {
   name: string;
@@ -44,7 +44,7 @@ export interface ProjectFeature {
 
 /**
  * Project initialization result
- * @tags @DATA:INIT-RESULT-001
+ * @tags @CODE:INIT-RESULT-001:DATA
  */
 export interface InitResult {
   success: boolean;
@@ -57,7 +57,7 @@ export interface InitResult {
 
 /**
  * Template data for project generation
- * @tags @DATA:TEMPLATE-001
+ * @tags @CODE:TEMPLATE-001:DATA
  */
 export interface TemplateData {
   projectName: string;

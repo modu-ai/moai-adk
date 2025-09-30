@@ -1,8 +1,8 @@
 /**
  * @file Configuration builder from interactive prompts
  * @author MoAI Team
- * @tags @FEATURE:INTERACTIVE-INIT-019 | Chain: @REQ:INTERACTIVE-INIT-019 -> @DESIGN:INTERACTIVE-INIT-019 -> @TASK:INTERACTIVE-INIT-019 -> @TEST:INTERACTIVE-INIT-019
- * Related: @DOCS:INTERACTIVE-INIT-019
+ * @tags @CODE:INTERACTIVE-INIT-019 | Chain: @SPEC:INTERACTIVE-INIT-019 -> @SPEC:INTERACTIVE-INIT-019 -> @CODE:INTERACTIVE-INIT-019 -> @TEST:INTERACTIVE-INIT-019
+ * Related: @DOC:INTERACTIVE-INIT-019
  */
 
 import type { InitAnswers } from '../prompts/init-prompts';

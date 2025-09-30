@@ -1,7 +1,7 @@
 /**
  * @file System checker module exports and main system checker class
  * @author MoAI Team
- * @tags @FEATURE:SYSTEM-CHECKER-001 @REQ:AUTO-VERIFY-012
+ * @tags @CODE:SYSTEM-CHECKER-001 @SPEC:AUTO-VERIFY-012
  */
 
 import * as fs from 'node:fs';
@@ -23,7 +23,7 @@ export {
 
 /**
  * System check summary interface
- * @tags @DESIGN:CHECK-SUMMARY-001
+ * @tags @SPEC:CHECK-SUMMARY-001
  */
 export interface SystemCheckSummary {
   readonly runtime: RequirementCheckResult[];
@@ -37,7 +37,7 @@ export interface SystemCheckSummary {
 
 /**
  * Enhanced system checker with language detection
- * @tags @FEATURE:ENHANCED-SYSTEM-CHECKER-001
+ * @tags @CODE:ENHANCED-SYSTEM-CHECKER-001
  */
 export class SystemChecker {
   private readonly detector = new SystemDetector();
@@ -46,7 +46,7 @@ export class SystemChecker {
    * Run comprehensive system check with language detection
    * @param projectPath - Project path to analyze
    * @returns System check summary
-   * @tags @API:COMPREHENSIVE-CHECK-001
+   * @tags @CODE:COMPREHENSIVE-CHECK-001:API
    */
   public async runSystemCheck(
     projectPath?: string

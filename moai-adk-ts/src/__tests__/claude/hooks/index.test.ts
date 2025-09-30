@@ -1,5 +1,5 @@
-// @TEST:HOOK-001 | Chain: @REQ:HOOK-001 -> @DESIGN:HOOK-001 -> @TASK:HOOK-001 -> @TEST:HOOK-001
-// Related: @FEATURE:HOOK-001
+// @TEST:HOOK-001 | 
+// Related: @CODE:HOOK-001
 
 /**
  * @file Hook system integration tests

@@ -135,7 +135,7 @@ c4a288e Merge branch 'cleanup/remove-unused-files-phase2' into develop
 - **영향도**: 높음 (개발자 주 참조 문서)
 
 **3. examples/specs/** - SPEC 예시 문서
-- **문제**: `@REQ:`, `@DESIGN:`, `@TASK:` 사용
+- **문제**: `@SPEC:`, `@SPEC:`, `@CODE:` 사용
 - **조치**: v5.0 `@SPEC:`, `@CODE:` 형식으로 변환
 - **예상 시간**: 15분
 - **영향도**: 중간 (교육용)

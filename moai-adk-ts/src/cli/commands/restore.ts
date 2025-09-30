@@ -1,5 +1,5 @@
-// @FEATURE:CLI-005 | Chain: @REQ:CLI-005 -> @DESIGN:CLI-005 -> @TASK:CLI-005 -> @TEST:CLI-005
-// Related: @API:CFG-001, @DATA:CFG-BACKUP-001
+// @CODE:CLI-005 | 
+// Related: @CODE:CFG-001:API, @CODE:CFG-BACKUP-001
 
 /**
  * @file CLI restore command for configuration recovery
@@ -13,7 +13,7 @@ import { logger } from '../../utils/winston-logger.js';
 
 /**
  * Backup validation result
- * @tags @DESIGN:BACKUP-VALIDATION-001
+ * @tags @SPEC:BACKUP-VALIDATION-001
  */
 export interface BackupValidationResult {
   readonly isValid: boolean;
@@ -24,7 +24,7 @@ export interface BackupValidationResult {
 
 /**
  * Restore operation options
- * @tags @DESIGN:RESTORE-OPTIONS-001
+ * @tags @SPEC:RESTORE-OPTIONS-001
  */
 export interface RestoreOptions {
   readonly dryRun: boolean;
@@ -33,7 +33,7 @@ export interface RestoreOptions {
 
 /**
  * Restore operation result
- * @tags @DESIGN:RESTORE-RESULT-001
+ * @tags @SPEC:RESTORE-RESULT-001
  */
 export interface RestoreResult {
   readonly success: boolean;
@@ -45,7 +45,7 @@ export interface RestoreResult {
 
 /**
  * Restore command for backup restoration
- * @tags @FEATURE:CLI-RESTORE-001
+ * @tags @CODE:CLI-RESTORE-001
  */
 export class RestoreCommand {
   private readonly requiredItems = ['.moai', '.claude', 'CLAUDE.md'];
@@ -54,7 +54,7 @@ export class RestoreCommand {
    * Validate backup path and contents
    * @param backupPath - Path to backup directory
    * @returns Validation result
-   * @tags @API:VALIDATE-BACKUP-001
+   * @tags @CODE:VALIDATE-BACKUP-001:API
    */
   public async validateBackupPath(
     backupPath: string
@@ -120,7 +120,7 @@ export class RestoreCommand {
    * @param backupPath - Path to backup directory
    * @param options - Restore options
    * @returns Restore result
-   * @tags @API:PERFORM-RESTORE-001
+   * @tags @CODE:PERFORM-RESTORE-001:API
    */
   public async performRestore(
     backupPath: string,
@@ -201,7 +201,7 @@ export class RestoreCommand {
    * @param backupPath - Path to backup directory
    * @param options - Restore options
    * @returns Restore result
-   * @tags @API:RESTORE-RUN-001
+   * @tags @CODE:RESTORE-RUN-001:API
    */
   public async run(
     backupPath: string,

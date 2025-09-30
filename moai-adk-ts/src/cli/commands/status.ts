@@ -1,5 +1,5 @@
-// @FEATURE:CLI-003 | Chain: @REQ:CLI-003 -> @DESIGN:CLI-003 -> @TASK:CLI-003 -> @TEST:CLI-003
-// Related: @API:GIT-001, @DATA:GIT-STATUS-001
+// @CODE:CLI-003 | 
+// Related: @CODE:GIT-001:API, @CODE:GIT-STATUS-001
 
 /**
  * @file CLI status command for project status
@@ -13,7 +13,7 @@ import { logger } from '../../utils/winston-logger.js';
 
 /**
  * Status command options
- * @tags @DESIGN:STATUS-OPTIONS-001
+ * @tags @SPEC:STATUS-OPTIONS-001
  */
 export interface StatusOptions {
   readonly verbose: boolean;
@@ -22,7 +22,7 @@ export interface StatusOptions {
 
 /**
  * Version information
- * @tags @DESIGN:VERSION-INFO-001
+ * @tags @SPEC:VERSION-INFO-001
  */
 export interface VersionInfo {
   readonly package: string;
@@ -33,7 +33,7 @@ export interface VersionInfo {
 
 /**
  * File count information
- * @tags @DESIGN:FILE-COUNT-001
+ * @tags @SPEC:FILE-COUNT-001
  */
 export interface FileCount {
   [key: string]: number;
@@ -41,7 +41,7 @@ export interface FileCount {
 
 /**
  * Project status information
- * @tags @DESIGN:PROJECT-STATUS-001
+ * @tags @SPEC:PROJECT-STATUS-001
  */
 export interface ProjectStatus {
   readonly path: string;
@@ -56,7 +56,7 @@ export interface ProjectStatus {
 
 /**
  * Status result
- * @tags @DESIGN:STATUS-RESULT-001
+ * @tags @SPEC:STATUS-RESULT-001
  */
 export interface StatusResult {
   readonly success: boolean;
@@ -67,14 +67,14 @@ export interface StatusResult {
 
 /**
  * Status command for project status display
- * @tags @FEATURE:CLI-STATUS-001
+ * @tags @CODE:CLI-STATUS-001
  */
 export class StatusCommand {
   /**
    * Check project status and components
    * @param projectPath - Path to project directory
    * @returns Project status information
-   * @tags @API:CHECK-STATUS-001
+   * @tags @CODE:CHECK-STATUS-001:API
    */
   public async checkProjectStatus(projectPath: string): Promise<ProjectStatus> {
     try {
@@ -125,7 +125,7 @@ export class StatusCommand {
    * Get version information
    * @param projectPath - Path to project directory
    * @returns Version information
-   * @tags @API:GET-VERSION-INFO-001
+   * @tags @CODE:GET-VERSION-INFO-001:API
    */
   public async getVersionInfo(projectPath: string): Promise<VersionInfo> {
     try {
@@ -188,7 +188,7 @@ export class StatusCommand {
    * Count project files
    * @param projectPath - Path to project directory
    * @returns File count information
-   * @tags @API:COUNT-FILES-001
+   * @tags @CODE:COUNT-FILES-001:API
    */
   public async countProjectFiles(projectPath: string): Promise<FileCount> {
     try {
@@ -267,7 +267,7 @@ export class StatusCommand {
    * Run status command
    * @param options - Status options
    * @returns Status result
-   * @tags @API:STATUS-RUN-001
+   * @tags @CODE:STATUS-RUN-001:API
    */
   public async run(options: StatusOptions): Promise<StatusResult> {
     try {

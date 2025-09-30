@@ -1,5 +1,5 @@
-// @FEATURE:UTIL-005 | Chain: @REQ:UTIL-005 -> @DESIGN:UTIL-005 -> @TASK:UTIL-005 -> @TEST:UTIL-005
-// Related: @API:VALID-002
+// @CODE:UTIL-005 | 
+// Related: @CODE:VALID-002:API
 
 /**
  * @file Input validation utilities
@@ -10,7 +10,7 @@ import * as path from 'node:path';
 
 /**
  * Validation result interface
- * @tags @DATA:VALIDATION-RESULT-001
+ * @tags @CODE:VALIDATION-RESULT-001:DATA
  */
 export interface ValidationResult {
   readonly isValid: boolean;
@@ -20,7 +20,7 @@ export interface ValidationResult {
 
 /**
  * Project name validation options
- * @tags @DATA:PROJECT-NAME-OPTIONS-001
+ * @tags @CODE:PROJECT-NAME-OPTIONS-001:DATA
  */
 export interface ProjectNameOptions {
   readonly minLength?: number;
@@ -31,7 +31,7 @@ export interface ProjectNameOptions {
 
 /**
  * Path validation options
- * @tags @DATA:PATH-VALIDATION-OPTIONS-001
+ * @tags @CODE:PATH-VALIDATION-OPTIONS-001:DATA
  */
 export interface PathValidationOptions {
   readonly mustExist?: boolean;
@@ -48,7 +48,7 @@ export interface PathValidationOptions {
 export class InputValidator {
   /**
    * Validate project name
-   * @tags @API:VALIDATE-PROJECT-NAME-001
+   * @tags @CODE:VALIDATE-PROJECT-NAME-001:API
    */
   static validateProjectName(
     projectName: string,
@@ -122,7 +122,7 @@ export class InputValidator {
 
   /**
    * Validate file/directory path
-   * @tags @API:VALIDATE-PATH-001
+   * @tags @CODE:VALIDATE-PATH-001:API
    */
   static async validatePath(
     inputPath: string,
@@ -210,7 +210,7 @@ export class InputValidator {
 
   /**
    * Validate template type
-   * @tags @API:VALIDATE-TEMPLATE-TYPE-001
+   * @tags @CODE:VALIDATE-TEMPLATE-TYPE-001:API
    */
   static validateTemplateType(templateType: string): ValidationResult {
     const errors: string[] = [];
@@ -236,7 +236,7 @@ export class InputValidator {
 
   /**
    * Validate Git branch name
-   * @tags @API:VALIDATE-BRANCH-NAME-001
+   * @tags @CODE:VALIDATE-BRANCH-NAME-001:API
    */
   static validateBranchName(branchName: string): ValidationResult {
     const errors: string[] = [];
@@ -288,7 +288,7 @@ export class InputValidator {
 
   /**
    * Validate command options
-   * @tags @API:VALIDATE-COMMAND-OPTIONS-001
+   * @tags @CODE:VALIDATE-COMMAND-OPTIONS-001:API
    */
   static validateCommandOptions(
     options: Record<string, any>
@@ -433,7 +433,7 @@ export class InputValidator {
 
 /**
  * Helper function for quick project name validation
- * @tags @API:QUICK-VALIDATE-PROJECT-NAME-001
+ * @tags @CODE:QUICK-VALIDATE-PROJECT-NAME-001:API
  */
 export function validateProjectName(name: string): ValidationResult {
   return InputValidator.validateProjectName(name);
@@ -441,7 +441,7 @@ export function validateProjectName(name: string): ValidationResult {
 
 /**
  * Helper function for quick path validation
- * @tags @API:QUICK-VALIDATE-PATH-001
+ * @tags @CODE:QUICK-VALIDATE-PATH-001:API
  */
 export async function validatePath(
   inputPath: string
@@ -451,7 +451,7 @@ export async function validatePath(
 
 /**
  * Helper function for quick branch name validation
- * @tags @API:QUICK-VALIDATE-BRANCH-NAME-001
+ * @tags @CODE:QUICK-VALIDATE-BRANCH-NAME-001:API
  */
 export function validateBranchName(branchName: string): ValidationResult {
   return InputValidator.validateBranchName(branchName);

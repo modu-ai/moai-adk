@@ -1,126 +1,14 @@
+// @CODE:REFACTOR-004 연결: @TEST:REFACTOR-004 -> @CODE:REFACTOR-004
 /**
- * @file Git Configuration Constants
+ * @file Git Configuration and Templates
  * @author MoAI Team
- * @tags @DATA:GIT-CONSTANTS-001 @FEATURE:GIT-DEFAULTS-001 @TASK:GIT-CONFIG-SETUP-001
- * @description Git naming rules, templates, and default configuration constants
+ * @tags @CODE:REFACTOR-004 @CODE:GIT-DEFAULTS-001:DATA
+ * @description Git 기본 설정, .gitignore 템플릿, GitHub 설정, 타임아웃 상수
  */
-
-/**
- * Git 브랜치 명명 규칙
- * @tags @DATA:GIT-NAMING-RULES-001
- */
-export const GitNamingRules = {
-  FEATURE_PREFIX: 'feature/',
-  BUGFIX_PREFIX: 'bugfix/',
-  HOTFIX_PREFIX: 'hotfix/',
-  SPEC_PREFIX: 'spec/',
-  CHORE_PREFIX: 'chore/',
-
-  /**
-   * 기능 브랜치명 생성
-   * @tags @API:CREATE-FEATURE-BRANCH-001
-   */
-  createFeatureBranch: (name: string): string => `feature/${name}`,
-
-  /**
-   * SPEC 브랜치명 생성
-   * @tags @API:CREATE-SPEC-BRANCH-001
-   */
-  createSpecBranch: (specId: string): string => `spec/${specId}`,
-
-  /**
-   * 버그픽스 브랜치명 생성
-   * @tags @API:CREATE-BUGFIX-BRANCH-001
-   */
-  createBugfixBranch: (name: string): string => `bugfix/${name}`,
-
-  /**
-   * 핫픽스 브랜치명 생성
-   * @tags @API:CREATE-HOTFIX-BRANCH-001
-   */
-  createHotfixBranch: (name: string): string => `hotfix/${name}`,
-
-  /**
-   * 브랜치명 검증
-   * @tags @API:VALIDATE-BRANCH-NAME-001
-   */
-  isValidBranchName: (name: string): boolean => {
-    // Git 브랜치명 규칙: 알파벳, 숫자, 하이픈, 슬래시 허용
-    const pattern = /^[a-zA-Z0-9/\-_.]+$/;
-    return (
-      pattern.test(name) &&
-      !name.startsWith('-') &&
-      !name.endsWith('-') &&
-      !name.includes('//') &&
-      !name.includes('..')
-    );
-  },
-} as const;
-
-/**
- * Git 커밋 메시지 템플릿
- * @tags @DATA:GIT-COMMIT-TEMPLATES-001
- */
-export const GitCommitTemplates = {
-  FEATURE: '✨ feat: {message}',
-  BUGFIX: '🐛 fix: {message}',
-  DOCS: '📝 docs: {message}',
-  REFACTOR: '♻️ refactor: {message}',
-  TEST: '✅ test: {message}',
-  CHORE: '🔧 chore: {message}',
-  STYLE: '💄 style: {message}',
-  PERF: '⚡ perf: {message}',
-  BUILD: '👷 build: {message}',
-  CI: '💚 ci: {message}',
-  REVERT: '⏪ revert: {message}',
-
-  /**
-   * 템플릿에 메시지 적용
-   */
-  apply: (template: string, message: string): string => {
-    return template.replace('{message}', message);
-  },
-
-  /**
-   * 자동 커밋 메시지 생성
-   */
-  createAutoCommit: (type: string, scope?: string): string => {
-    const emoji = GitCommitTemplates.getEmoji(type);
-    const prefix = scope ? `${type}(${scope})` : type;
-    return `${emoji} ${prefix}: Auto-generated commit`;
-  },
-
-  /**
-   * 체크포인트 커밋 메시지 생성
-   */
-  createCheckpoint: (message: string): string => {
-    return `🔖 checkpoint: ${message}`;
-  },
-
-  /**
-   * 타입별 이모지 반환
-   */
-  getEmoji: (type: string): string => {
-    const emojiMap: Record<string, string> = {
-      feat: '✨',
-      fix: '🐛',
-      docs: '📝',
-      refactor: '♻️',
-      test: '✅',
-      chore: '🔧',
-      style: '💄',
-      perf: '⚡',
-      build: '👷',
-      ci: '💚',
-      revert: '⏪',
-    };
-    return emojiMap[type] || '📝';
-  },
-} as const;
 
 /**
  * MoAI-ADK .gitignore 템플릿
- * @tags @DATA:GITIGNORE-TEMPLATES-001
+ * @tags @CODE:GITIGNORE-TEMPLATES-001:DATA
  */
 export const GitignoreTemplates = {
   MOAI: `# MoAI-ADK Generated .gitignore
@@ -299,7 +187,7 @@ dmypy.json
 
 /**
  * Git 기본 설정
- * @tags @DATA:GIT-DEFAULTS-001
+ * @tags @CODE:GIT-DEFAULTS-001:DATA
  */
 export const GitDefaults = {
   DEFAULT_BRANCH: 'main',
@@ -347,7 +235,7 @@ export const GitDefaults = {
 
 /**
  * GitHub 설정
- * @tags @DATA:GITHUB-DEFAULTS-001
+ * @tags @CODE:GITHUB-DEFAULTS-001:DATA
  */
 export const GitHubDefaults = {
   API_BASE_URL: 'https://api.github.com',
@@ -442,7 +330,7 @@ What actually happens
 
 /**
  * Git 타임아웃 설정
- * @tags @DATA:GIT-TIMEOUTS-001
+ * @tags @CODE:GIT-TIMEOUTS-001:DATA
  */
 export const GitTimeouts = {
   CLONE: 300000, // 5분

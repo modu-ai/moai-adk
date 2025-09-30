@@ -1,5 +1,5 @@
-// @FEATURE:INST-006 | Chain: @REQ:INST-006 -> @DESIGN:INST-006 -> @TASK:INST-006 -> @TEST:INST-006
-// Related: @API:INST-006
+// @CODE:INST-006 | 
+// Related: @CODE:INST-006:API
 
 /**
  * @file Template security validation

@@ -2,7 +2,7 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
  * @file Tests for restore command implementation
  * @author MoAI Team
- * @tags @TEST:CLI-RESTORE-001 @REQ:CLI-FOUNDATION-012
+ * @tags @TEST:CLI-RESTORE-001 @SPEC:CLI-FOUNDATION-012
  */
 
 import { RestoreCommand } from '../restore';
@@ -35,21 +35,14 @@ describe('RestoreCommand', () => {
     });
 
     it('should run restore command and handle invalid backup path', async () => {
-      // Mock console.log to prevent output during tests
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
       const result = await restoreCommand.run('/test/backup', {
         dryRun: false,
       });
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Backup path does not exist');
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('❌ Backup path does not exist')
-      );
-
-      consoleSpy.mockRestore();
+      expect(result.restoredItems).toEqual([]);
+      expect(result.isDryRun).toBe(false);
     });
 
     it('should have required items defined', () => {

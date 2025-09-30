@@ -1,5 +1,5 @@
-// @FEATURE:UTIL-003 | Chain: @REQ:UTIL-003 -> @DESIGN:UTIL-003 -> @TASK:UTIL-003 -> @TEST:UTIL-003
-// Related: @API:VALID-001
+// @CODE:UTIL-003 | 
+// Related: @CODE:VALID-001:API
 
 /**
  * @file Path validation utilities
@@ -99,7 +99,7 @@ function findPackageRoot(startPath: string): string | null {
  * Check if a given path is inside the MoAI-ADK package
  * @param targetPath - Path to check (defaults to current working directory)
  * @returns true if inside MoAI-ADK package, false otherwise
- * @tags @API:PATH-VALIDATOR-CHECK-001
+ * @tags @CODE:PATH-VALIDATOR-CHECK-001:API
  *
  * @example
  * ```typescript
@@ -142,7 +142,7 @@ const ERROR_INSIDE_PACKAGE =
  * Validate if a project path is safe for initialization
  * @param projectPath - Path to validate
  * @returns Validation result with error message if invalid
- * @tags @API:PATH-VALIDATOR-VALIDATE-001
+ * @tags @CODE:PATH-VALIDATOR-VALIDATE-001:API
  *
  * @example
  * ```typescript

@@ -1,5 +1,5 @@
-// @DATA:LOG-TYPES-001 | Chain: @REQ:LOG-001 -> @DESIGN:LOG-001 -> @TASK:LOG-001 -> @TEST:LOG-001
-// Related: @FEATURE:LOG-001
+// @CODE:LOG-TYPES-001 | 
+// Related: @CODE:LOG-001
 
 /**
  * @file Logger type definitions
@@ -10,7 +10,7 @@ import type winston from 'winston';
 
 /**
  * Log levels for structured logging
- * @tags @DESIGN:LOG-LEVELS-001
+ * @tags @SPEC:LOG-LEVELS-001
  */
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 

@@ -1,5 +1,5 @@
-// @FEATURE:UPD-001 | Chain: @REQ:UPD-001 -> @DESIGN:UPD-001 -> @TASK:UPD-001 -> @TEST:UPD-001
-// Related: @API:UPD-001, @DATA:UPD-VER-001
+// @CODE:UPD-001 | 
+// Related: @CODE:UPD-001:API, @CODE:UPD-VER-001
 
 /**
  * @file Update orchestration system
@@ -15,7 +15,7 @@ import { checkLatestVersion, getCurrentVersion } from '../../utils/version.js';
 
 /**
  * Simplified update configuration
- * @tags @DESIGN:UPDATE-CONFIG-002
+ * @tags @SPEC:UPDATE-CONFIG-002
  */
 export interface UpdateConfiguration {
   readonly projectPath: string;
@@ -26,7 +26,7 @@ export interface UpdateConfiguration {
 
 /**
  * Update operation result
- * @tags @DESIGN:UPDATE-RESULT-002
+ * @tags @SPEC:UPDATE-RESULT-002
  */
 export interface UpdateResult {
   readonly success: boolean;
@@ -41,7 +41,7 @@ export interface UpdateResult {
 
 /**
  * Simplified update orchestrator: backup and overwrite strategy
- * @tags @FEATURE:UPDATE-ORCHESTRATOR-001
+ * @tags @CODE:UPDATE-ORCHESTRATOR-001
  */
 export class UpdateOrchestrator {
   private readonly projectPath: string;
@@ -54,7 +54,7 @@ export class UpdateOrchestrator {
    * Execute simplified update operation
    * @param config - Update configuration
    * @returns Update operation result
-   * @tags @API:EXECUTE-UPDATE-001
+   * @tags @CODE:EXECUTE-UPDATE-001:API
    */
   public async executeUpdate(
     config: UpdateConfiguration

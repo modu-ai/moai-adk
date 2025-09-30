@@ -1,5 +1,5 @@
-// @DATA:PKG-TYPES-001 | Chain: @REQ:PKG-001 -> @DESIGN:PKG-001 -> @TASK:PKG-001 -> @TEST:PKG-001
-// Related: @FEATURE:PKG-001
+// @CODE:PKG-TYPES-001 | 
+// Related: @CODE:PKG-001
 
 /**
  * @file Package manager type definitions
@@ -8,7 +8,7 @@
 
 /**
  * Supported package managers
- * @tags @DATA:PACKAGE-MANAGER-TYPES-001
+ * @tags @CODE:PACKAGE-MANAGER-TYPES-001:DATA
  */
 export enum PackageManagerType {
   NPM = 'npm',
@@ -18,7 +18,7 @@ export enum PackageManagerType {
 
 /**
  * Package manager information
- * @tags @DATA:PACKAGE-MANAGER-INFO-001
+ * @tags @CODE:PACKAGE-MANAGER-INFO-001:DATA
  */
 export interface PackageManagerInfo {
   type: PackageManagerType;
@@ -30,7 +30,7 @@ export interface PackageManagerInfo {
 
 /**
  * Package manager detection result
- * @tags @DATA:PACKAGE-MANAGER-DETECTION-001
+ * @tags @CODE:PACKAGE-MANAGER-DETECTION-001:DATA
  */
 export interface PackageManagerDetectionResult {
   available: PackageManagerInfo[];
@@ -40,7 +40,7 @@ export interface PackageManagerDetectionResult {
 
 /**
  * Package manager operation commands
- * @tags @DATA:PACKAGE-MANAGER-COMMANDS-001
+ * @tags @CODE:PACKAGE-MANAGER-COMMANDS-001:DATA
  */
 export interface PackageManagerCommands {
   install: string;
@@ -54,7 +54,7 @@ export interface PackageManagerCommands {
 
 /**
  * Package.json dependencies structure
- * @tags @DATA:PACKAGE-JSON-DEPS-001
+ * @tags @CODE:PACKAGE-JSON-DEPS-001:DATA
  */
 export interface PackageJsonDependencies {
   dependencies?: Record<string, string>;
@@ -65,7 +65,7 @@ export interface PackageJsonDependencies {
 
 /**
  * Package.json structure for project generation
- * @tags @DATA:PACKAGE-JSON-001
+ * @tags @CODE:PACKAGE-JSON-001:DATA
  */
 export interface PackageJsonConfig {
   name: string;
@@ -98,7 +98,7 @@ export interface PackageJsonConfig {
 
 /**
  * Package installation options
- * @tags @DATA:PACKAGE-INSTALL-OPTS-001
+ * @tags @CODE:PACKAGE-INSTALL-OPTS-001:DATA
  */
 export interface PackageInstallOptions {
   packageManager: PackageManagerType;

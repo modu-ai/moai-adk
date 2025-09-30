@@ -530,11 +530,11 @@ export class AuthService {
 
 | v4.0 (8-Core) | v5.0 (4-Core) | 위치 | 비고 |
 |---------------|---------------|------|------|
-| `@REQ:ID` | `@SPEC:ID` | .moai/specs/ | SPEC 문서에 통합 |
-| `@DESIGN:ID` | `@SPEC:ID` | .moai/specs/ | SPEC 문서에 통합 |
-| `@TASK:ID` | `@CODE:ID` | src/ | 구현 통합 |
+| `@SPEC:ID` | `@SPEC:ID` | .moai/specs/ | SPEC 문서에 통합 |
+| `@SPEC:ID` | `@SPEC:ID` | .moai/specs/ | SPEC 문서에 통합 |
+| `@CODE:ID` | `@CODE:ID` | src/ | 구현 통합 |
 | `@TEST:ID` | `@TEST:ID` | tests/ | 동일 |
-| `@FEATURE:ID` | `@CODE:ID` | src/ | 구현 통합 |
+| `@CODE:ID` | `@CODE:ID` | src/ | 구현 통합 |
 | `@API:ID` | `@CODE:ID:API` | src/ | 주석 레벨 |
 | `@UI:ID` | `@CODE:ID:UI` | src/ | 주석 레벨 |
 | `@DATA:ID` | `@CODE:ID:DATA` | src/ | 주석 레벨 |

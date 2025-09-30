@@ -1,5 +1,5 @@
-// @TEST:SEC-001 | Chain: @REQ:SEC-001 -> @DESIGN:SEC-001 -> @TASK:SEC-001 -> @TEST:SEC-001
-// Related: @FEATURE:SEC-POLICY-001
+// @TEST:SEC-001 | 
+// Related: @CODE:SEC-POLICY-001
 
 /**
  * @file Policy block security tests

@@ -1,7 +1,7 @@
 /**
  * @file ConfigManager test suite - RED phase TDD
  * @author MoAI Team
- * @tags @TEST:CONFIG-MANAGER-001 @REQ:CORE-SYSTEM-013
+ * @tags @TEST:CONFIG-MANAGER-001 @SPEC:CORE-SYSTEM-013
  */
 
 import fs from 'node:fs';

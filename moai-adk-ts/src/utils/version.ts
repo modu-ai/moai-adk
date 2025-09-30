@@ -1,5 +1,5 @@
-// @FEATURE:UTIL-002 | Chain: @REQ:UTIL-002 -> @DESIGN:UTIL-002 -> @TASK:UTIL-002 -> @TEST:UTIL-002
-// Related: @DATA:VER-INFO-001
+// @CODE:UTIL-002 | 
+// Related: @CODE:VER-INFO-001
 
 /**
  * @file Version utilities
@@ -11,7 +11,7 @@ import * as path from 'node:path';
 
 /**
  * Package information interface
- * @tags @DESIGN:PACKAGE-INFO-001
+ * @tags @SPEC:PACKAGE-INFO-001
  */
 export interface PackageInfo {
   readonly name: string;
@@ -24,7 +24,7 @@ export interface PackageInfo {
  * Works reliably in development (src/), build (dist/), and global install environments
  *
  * @returns Package information
- * @tags @API:GET-PACKAGE-INFO-001
+ * @tags @CODE:GET-PACKAGE-INFO-001:API
  */
 export function getPackageInfo(): PackageInfo {
   try {
@@ -80,7 +80,7 @@ export function getPackageInfo(): PackageInfo {
 /**
  * Get current version string
  * @returns Version string
- * @tags @API:GET-VERSION-001
+ * @tags @CODE:GET-VERSION-001:API
  */
 export function getCurrentVersion(): string {
   return getPackageInfo().version;
@@ -88,7 +88,7 @@ export function getCurrentVersion(): string {
 
 /**
  * Version comparison result
- * @tags @DESIGN:VERSION-CHECK-001
+ * @tags @SPEC:VERSION-CHECK-001
  */
 export interface VersionCheckResult {
   readonly current: string;
@@ -103,7 +103,7 @@ export interface VersionCheckResult {
  *
  * @param timeout - Timeout in milliseconds (default: 2000ms)
  * @returns Version check result
- * @tags @API:CHECK-LATEST-VERSION-001
+ * @tags @CODE:CHECK-LATEST-VERSION-001:API
  */
 export async function checkLatestVersion(
   timeout = 2000

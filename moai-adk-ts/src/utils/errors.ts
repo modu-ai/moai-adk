@@ -1,5 +1,5 @@
-// @FEATURE:TYPE-SAFETY-001 | Chain: @REQ:TYPE-001 -> @DESIGN:TYPE-001 -> @TASK:TYPE-001 -> @TEST:TYPE-001
-// Related: @SEC:TYPE-001, @DOCS:TYPE-001
+// @CODE:TYPE-SAFETY-001 | 
+// Related: @CODE:TYPE-001:INFRA, @DOC:TYPE-001
 
 /**
  * Custom Error classes with type-safe properties

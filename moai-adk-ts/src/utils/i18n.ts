@@ -1,5 +1,5 @@
-// @FEATURE:UTIL-007 | Chain: @REQ:UTIL-007 -> @DESIGN:UTIL-007 -> @TASK:UTIL-007 -> @TEST:UTIL-007
-// Related: @DATA:I18N-MSG-001
+// @CODE:UTIL-007 | 
+// Related: @CODE:I18N-MSG-001
 
 /**
  * @file Internationalization system

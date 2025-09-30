@@ -1,5 +1,5 @@
-// @FEATURE:PROJ-003 | Chain: @REQ:PROJ-003 -> @DESIGN:PROJ-003 -> @TASK:PROJ-003 -> @TEST:PROJ-003
-// Related: @API:PROJ-003, @DATA:PROJ-INFO-001
+// @CODE:PROJ-003 | 
+// Related: @CODE:PROJ-003:API, @CODE:PROJ-INFO-001
 
 /**
  * @file Project type and structure detection
@@ -22,7 +22,7 @@ import type {
 
 /**
  * ProjectDetector class for analyzing project type, language, and frameworks
- * @tags @TASK:PROJECT-DETECTOR-001
+ * @tags @CODE:PROJECT-DETECTOR-001
  */
 export class ProjectDetector {
   private readonly projectFileIndicators: ProjectFileIndicators = {
@@ -73,7 +73,7 @@ export class ProjectDetector {
    * Detect project type based on existing files
    * @param projectPath Path to project directory
    * @returns Project information
-   * @tags @API:DETECT-PROJECT-001
+   * @tags @CODE:DETECT-PROJECT-001:API
    */
   public async detectProjectType(projectPath: string): Promise<ProjectInfo> {
     const detected: ProjectInfo = {
@@ -144,7 +144,7 @@ export class ProjectDetector {
    * Analyze package.json for frameworks and dependencies
    * @param packageJsonPath Path to package.json file
    * @returns Package analysis result
-   * @tags @API:ANALYZE-PACKAGE-001
+   * @tags @CODE:ANALYZE-PACKAGE-001:API
    */
   public async analyzePackageJson(
     packageJsonPath: string
@@ -209,7 +209,7 @@ export class ProjectDetector {
    * Check if package.json should be created based on project configuration
    * @param config Project configuration
    * @returns True if package.json should be created
-   * @tags @API:SHOULD-CREATE-PACKAGE-001
+   * @tags @CODE:SHOULD-CREATE-PACKAGE-001:API
    */
   public shouldCreatePackageJson(config: ProjectConfig): boolean {
     const shouldCreate =
@@ -229,7 +229,7 @@ export class ProjectDetector {
    * Detect primary language based on file extensions in project
    * @param projectPath Path to project directory
    * @returns Detected primary language
-   * @tags @API:DETECT-LANGUAGE-001
+   * @tags @CODE:DETECT-LANGUAGE-001:API
    */
   public async detectLanguageFromFiles(projectPath: string): Promise<string> {
     if (!fs.existsSync(projectPath)) {

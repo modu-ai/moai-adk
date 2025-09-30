@@ -1,7 +1,7 @@
 /**
  * @file Project system exports
  * @author MoAI Team
- * @tags @FEATURE:PROJECT-EXPORTS-001 @REQ:CORE-SYSTEM-013
+ * @tags @CODE:PROJECT-EXPORTS-001 @SPEC:CORE-SYSTEM-013
  */
 
 export { ProjectDetector } from './project-detector';

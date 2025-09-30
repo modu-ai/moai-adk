@@ -1,5 +1,5 @@
-// @FEATURE:CLI-002 | Chain: @REQ:CLI-002 -> @DESIGN:CLI-002 -> @TASK:CLI-002 -> @TEST:CLI-002
-// Related: @API:SYS-001, @DATA:SYS-INFO-001
+// @CODE:CLI-002 | 
+// Related: @CODE:SYS-001:API, @CODE:SYS-INFO-001
 
 /**
  * @file CLI doctor command for system diagnostics
@@ -20,7 +20,7 @@ import {
 
 /**
  * Doctor command result summary
- * @tags @DESIGN:DOCTOR-RESULT-001
+ * @tags @SPEC:DOCTOR-RESULT-001
  */
 export interface DoctorResult {
   readonly allPassed: boolean;
@@ -36,7 +36,7 @@ export interface DoctorResult {
 
 /**
  * Categorized check results type
- * @tags @DESIGN:CATEGORIZED-RESULTS-001
+ * @tags @SPEC:CATEGORIZED-RESULTS-001
  */
 type CategorizedResults = {
   readonly missing: RequirementCheckResult[];
@@ -47,7 +47,7 @@ type CategorizedResults = {
 
 /**
  * Doctor command for system diagnostics with enhanced language detection
- * @tags @FEATURE:CLI-DOCTOR-001
+ * @tags @CODE:CLI-DOCTOR-001
  */
 export class DoctorCommand {
   private readonly systemChecker = new SystemChecker();
@@ -57,7 +57,7 @@ export class DoctorCommand {
    * Run system diagnostics with language detection
    * @param options - Doctor command options
    * @returns Doctor result with all checks
-   * @tags @API:DOCTOR-RUN-001
+   * @tags @CODE:DOCTOR-RUN-001:API
    */
   public async run(
     options: { listBackups?: boolean; projectPath?: string } = {}
@@ -238,7 +238,7 @@ export class DoctorCommand {
   /**
    * List available MoAI-ADK backups
    * @returns Doctor result with backup information
-   * @tags @API:LIST-BACKUPS-001
+   * @tags @CODE:LIST-BACKUPS-001:API
    */
   private async listBackups(): Promise<DoctorResult> {
     logger.info(chalk.blue.bold('📦 MoAI-ADK Backup Directory Listing'));

@@ -1,7 +1,7 @@
 /**
  * @file Package manager detector test suite
  * @author MoAI Team
- * @tags @TEST:PACKAGE-MANAGER-DETECTOR-001 @REQ:PACKAGE-MANAGER-002
+ * @tags @TEST:PACKAGE-MANAGER-DETECTOR-001 @SPEC:PACKAGE-MANAGER-002
  */
 
 import { beforeEach, describe, expect, test, vi, type MockedFunction } from 'vitest';

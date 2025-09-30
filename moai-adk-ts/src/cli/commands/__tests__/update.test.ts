@@ -2,7 +2,7 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
  * @file Tests for update command implementation
  * @author MoAI Team
- * @tags @TEST:CLI-UPDATE-001 @REQ:CLI-FOUNDATION-012
+ * @tags @TEST:CLI-UPDATE-001 @SPEC:CLI-FOUNDATION-012
  */
 
 import { UpdateCommand } from '../update';
@@ -80,9 +80,11 @@ describe('UpdateCommand', () => {
         projectPath: '/test/project',
       });
 
-      expect(result.success).toBe(true);
+      // Non-MoAI project should return failure
+      expect(result.success).toBe(false);
       expect(result.updatedPackage).toBe(false);
       expect(result.updatedResources).toBe(false);
+      expect(result.error).toContain('Not a MoAI project');
 
       consoleSpy.mockRestore();
     });

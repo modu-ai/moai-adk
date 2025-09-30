@@ -3,8 +3,8 @@
   "version": "0.0.1",
   "description": "🗿 MoAI-ADK: TypeScript-based SPEC-First TDD Development Kit with Universal Language Support",
   "type": "module",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
     "moai": "dist/cli/index.js"
@@ -12,8 +12,8 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
     }
   },
   "engines": {
@@ -22,7 +22,8 @@
   },
   "packageManager": "bun@1.2.19",
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && bun run build:hooks",
+    "build:hooks": "tsup --config tsup.hooks.config.ts",
     "build:watch": "tsup --watch",
     "dev": "tsx src/cli/index.ts",
     "test": "vitest run",
@@ -37,10 +38,9 @@
     "check:biome": "biome check src",
     "check:biome:fix": "biome check --write src",
     "type-check": "tsc --noEmit --incremental false",
-    "clean": "rimraf dist .turbo node_modules/.cache",
+    "clean": "rimraf dist .turbo node_modules/.cache logs/*.log",
     "check": "bun run type-check && bun run check:biome",
-    "validate:tags": "tsx scripts/validate-tags.ts",
-    "ci": "bun run clean && bun run build && bun run check && bun run test:ci && bun run validate:tags",
+    "ci": "bun run clean && bun run build && bun run check && bun run test:ci",
     "docs:api": "typedoc --out ../docs/api",
     "docs:dev": "vitepress dev ../docs",
     "docs:build": "bun run docs:api && vitepress build ../docs",
@@ -70,6 +70,7 @@
     "@types/node": "^24.5.2",
     "@types/semver": "^7.7.1",
     "@types/winston": "^2.4.4",
+    "@vitest/coverage-v8": "^3.2.4",
     "@vitest/spy": "^3.2.4",
     "@vitest/ui": "^3.2.4",
     "c8": "^10.1.3",

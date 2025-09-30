@@ -1,12 +1,12 @@
 /**
  * @file Installation system type definitions
  * @author MoAI Team
- * @tags @DESIGN:INSTALLER-TYPES-001 @REQ:INSTALL-SYSTEM-012
+ * @tags @SPEC:INSTALLER-TYPES-001 @SPEC:INSTALL-SYSTEM-012
  */
 
 /**
  * Installation configuration interface
- * @tags @DESIGN:INSTALL-CONFIG-001
+ * @tags @SPEC:INSTALL-CONFIG-001
  */
 export interface InstallationConfig {
   readonly projectPath: string;
@@ -20,7 +20,7 @@ export interface InstallationConfig {
 
 /**
  * Installation progress callback type
- * @tags @DESIGN:PROGRESS-CALLBACK-001
+ * @tags @SPEC:PROGRESS-CALLBACK-001
  */
 export type ProgressCallback = (
   message: string,
@@ -30,7 +30,7 @@ export type ProgressCallback = (
 
 /**
  * Installation result interface
- * @tags @DESIGN:INSTALL-RESULT-001
+ * @tags @SPEC:INSTALL-RESULT-001
  */
 export interface InstallationResult {
   readonly success: boolean;
@@ -45,7 +45,7 @@ export interface InstallationResult {
 
 /**
  * Installation phase status
- * @tags @DESIGN:PHASE-STATUS-001
+ * @tags @SPEC:PHASE-STATUS-001
  */
 export interface PhaseStatus {
   readonly name: string;
@@ -57,7 +57,7 @@ export interface PhaseStatus {
 
 /**
  * Installation context for tracking progress
- * @tags @DESIGN:INSTALL-CONTEXT-001
+ * @tags @SPEC:INSTALL-CONTEXT-001
  */
 export interface InstallationContext {
   readonly config: InstallationConfig;
@@ -69,7 +69,7 @@ export interface InstallationContext {
 
 /**
  * Security validation result
- * @tags @DESIGN:SECURITY-VALIDATION-001
+ * @tags @SPEC:SECURITY-VALIDATION-001
  */
 export interface SecurityValidationResult {
   readonly valid: boolean;
@@ -79,7 +79,7 @@ export interface SecurityValidationResult {
 
 /**
  * Post-installation configuration options
- * @tags @DESIGN:POST-INSTALL-CONFIG-001
+ * @tags @SPEC:POST-INSTALL-CONFIG-001
  */
 export interface PostInstallOptions {
   readonly projectPath: string;
@@ -91,7 +91,7 @@ export interface PostInstallOptions {
 
 /**
  * Post-installation result
- * @tags @DESIGN:POST-INSTALL-RESULT-001
+ * @tags @SPEC:POST-INSTALL-RESULT-001
  */
 export interface PostInstallResult {
   readonly success: boolean;
@@ -107,7 +107,7 @@ export interface PostInstallResult {
 
 /**
  * Resource validation result
- * @tags @DESIGN:RESOURCE-VALIDATION-001
+ * @tags @SPEC:RESOURCE-VALIDATION-001
  */
 export interface ValidationResult {
   readonly isValid: boolean;
@@ -117,7 +117,7 @@ export interface ValidationResult {
 
 /**
  * Template check result
- * @tags @DESIGN:TEMPLATE-CHECK-001
+ * @tags @SPEC:TEMPLATE-CHECK-001
  */
 export interface TemplateCheckResult {
   readonly allPresent: boolean;
@@ -127,7 +127,7 @@ export interface TemplateCheckResult {
 
 /**
  * Resource integrity result
- * @tags @DESIGN:INTEGRITY-CHECK-001
+ * @tags @SPEC:INTEGRITY-CHECK-001
  */
 export interface IntegrityResult {
   readonly isValid: boolean;
@@ -137,7 +137,7 @@ export interface IntegrityResult {
 
 /**
  * First run state information
- * @tags @DESIGN:FIRST-RUN-STATE-001
+ * @tags @SPEC:FIRST-RUN-STATE-001
  */
 export interface FirstRunState {
   readonly isFirstRun: boolean;
@@ -147,7 +147,7 @@ export interface FirstRunState {
 
 /**
  * Technology stack enum for memory template mapping
- * @tags @DESIGN:TECH-STACK-001
+ * @tags @SPEC:TECH-STACK-001
  */
 export type TechStack =
   | 'python'
@@ -180,7 +180,7 @@ export type TechStack =
 
 /**
  * Memory template names enum
- * @tags @DESIGN:MEMORY-TEMPLATE-001
+ * @tags @SPEC:MEMORY-TEMPLATE-001
  */
 export type MemoryTemplate =
   | 'development-guide'

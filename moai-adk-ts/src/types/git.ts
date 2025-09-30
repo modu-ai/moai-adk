@@ -1,5 +1,5 @@
-// @DATA:GIT-TYPES-001 | Chain: @REQ:GIT-001 -> @DESIGN:GIT-001 -> @TASK:GIT-001 -> @TEST:GIT-001
-// Related: @FEATURE:GIT-001
+// @CODE:GIT-TYPES-001 | 
+// Related: @CODE:GIT-001
 
 /**
  * @file Git operations type definitions
@@ -185,7 +185,7 @@ export interface GitLogEntry {
 
 /**
  * Git lock information interface
- * @tags @DESIGN:GIT-LOCK-001
+ * @tags @SPEC:GIT-LOCK-001
  */
 export interface GitLockInfo {
   pid: number;
@@ -198,7 +198,7 @@ export interface GitLockInfo {
 
 /**
  * Git lock status interface
- * @tags @DESIGN:GIT-LOCK-STATUS-001
+ * @tags @SPEC:GIT-LOCK-STATUS-001
  */
 export interface GitLockStatus {
   isLocked: boolean;
@@ -210,7 +210,7 @@ export interface GitLockStatus {
 
 /**
  * Git lock context interface for context manager pattern
- * @tags @DESIGN:GIT-LOCK-CONTEXT-001
+ * @tags @SPEC:GIT-LOCK-CONTEXT-001
  */
 export interface GitLockContext {
   readonly lockInfo: GitLockInfo;
@@ -220,7 +220,7 @@ export interface GitLockContext {
 
 /**
  * Git lock exception class
- * @tags @DESIGN:GIT-LOCK-EXCEPTION-001
+ * @tags @SPEC:GIT-LOCK-EXCEPTION-001
  */
 export class GitLockedException extends Error {
   constructor(

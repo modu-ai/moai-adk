@@ -1,5 +1,5 @@
-// @FEATURE:CLI-001 | Chain: @REQ:CLI-001 -> @DESIGN:CLI-001 -> @TASK:CLI-001 -> @TEST:CLI-001
-// Related: @API:INST-001, @UI:PROMPT-001, @DATA:CFG-001
+// @CODE:CLI-001 | 
+// Related: @CODE:INST-001:API, @CODE:PROMPT-001:UI, @CODE:CFG-001:DATA
 
 /**
  * @file CLI init command implementation with integrated TypeScript components
@@ -42,7 +42,7 @@ function displayProgress(
 
 /**
  * Initialize command for project setup with TypeScript orchestrator
- * @tags @FEATURE:CLI-INIT-INTEGRATION-001
+ * @tags @CODE:CLI-INIT-INTEGRATION-001
  */
 export class InitCommand {
   private readonly doctorCommand: DoctorCommand;
@@ -55,7 +55,7 @@ export class InitCommand {
    * Run project initialization with TypeScript orchestrator
    * @param options Init command options
    * @returns Complete initialization result
-   * @tags @API:INIT-INTERACTIVE-001
+   * @tags @CODE:INIT-INTERACTIVE-001:API
    */
   public async runInteractive(options?: {
     name?: string;
@@ -170,11 +170,17 @@ export class InitCommand {
       fs.writeFileSync(moaiConfigPath, JSON.stringify(moaiConfig, null, 2), 'utf-8');
       console.log(chalk.green(`\n✅ Configuration saved\n`));
 
+      // Check if backup is needed (only for existing projects in current directory mode)
+      const needsBackup = isCurrentDirMode && (
+        fs.existsSync(path.join(finalProjectPath, '.moai')) ||
+        fs.existsSync(path.join(finalProjectPath, '.claude'))
+      );
+
       const config: InstallationConfig = {
         projectPath: finalProjectPath,
         projectName: projectName,
         mode: moaiConfig.mode,
-        backupEnabled: false, // No backup needed for new project initialization
+        backupEnabled: needsBackup,
         overwriteExisting: options?.force || false,
         additionalFeatures: options?.features || [],
       };
@@ -253,7 +259,7 @@ export class InitCommand {
    * Run project initialization (legacy method)
    * @param projectName - Name of the project to initialize
    * @returns Success status
-   * @tags @API:INIT-RUN-001
+   * @tags @CODE:INIT-RUN-001:API
    */
   public async run(projectName?: string): Promise<boolean> {
     const options = projectName

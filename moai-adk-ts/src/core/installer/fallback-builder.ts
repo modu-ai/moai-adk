@@ -1,7 +1,7 @@
 /**
  * @file Fallback Structure Builder
  * @author MoAI Team
- * @tags @FEATURE:FALLBACK-BUILDER-001 @REQ:INSTALL-SYSTEM-012
+ * @tags @CODE:FALLBACK-BUILDER-001 @SPEC:INSTALL-SYSTEM-012
  */
 
 import * as fs from 'node:fs';
@@ -12,14 +12,14 @@ import type { InstallationConfig } from './types';
 
 /**
  * Builds fallback directory structures and configuration files
- * @tags @FEATURE:FALLBACK-BUILDER-001
+ * @tags @CODE:FALLBACK-BUILDER-001
  */
 export class FallbackBuilder {
   /**
    * Initialize JSON-based TAG system
    * @param moaiDir MoAI directory path
    * @param config Installation configuration
-   * @tags @API:INIT-TAG-SYSTEM-001
+   * @tags @CODE:INIT-TAG-SYSTEM-001:API
    */
   async initializeTagSystem(
     moaiDir: string,
@@ -43,7 +43,7 @@ export class FallbackBuilder {
    * Create minimal Claude structure (fallback)
    * @param claudeDir Claude directory path
    * @param installedFiles Array to track installed files
-   * @tags @API:CREATE-MINIMAL-CLAUDE-001
+   * @tags @CODE:CREATE-MINIMAL-CLAUDE-001:API
    */
   async createMinimalClaudeStructure(
     claudeDir: string,
@@ -87,7 +87,7 @@ export class FallbackBuilder {
    * Create minimal MoAI structure (fallback)
    * @param moaiDir MoAI directory path
    * @param installedFiles Array to track installed files
-   * @tags @API:CREATE-MINIMAL-MOAI-001
+   * @tags @CODE:CREATE-MINIMAL-MOAI-001:API
    */
   async createMinimalMoaiStructure(
     moaiDir: string,
@@ -124,7 +124,7 @@ export class FallbackBuilder {
    * Create fallback memory content
    * @param config Installation configuration
    * @returns Fallback memory content
-   * @tags @API:CREATE-FALLBACK-MEMORY-001
+   * @tags @CODE:CREATE-FALLBACK-MEMORY-001:API
    */
   createFallbackMemoryContent(config: InstallationConfig): string {
     return `# ${config.projectName} - MoAI Project
@@ -154,7 +154,7 @@ export class FallbackBuilder {
   /**
    * Validate Claude settings file from template
    * @param claudeDir Claude directory path
-   * @tags @API:VALIDATE-CLAUDE-SETTINGS-001
+   * @tags @CODE:VALIDATE-CLAUDE-SETTINGS-001:API
    */
   async validateClaudeSettings(claudeDir: string): Promise<void> {
     try {

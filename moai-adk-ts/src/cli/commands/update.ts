@@ -1,5 +1,5 @@
-// @FEATURE:CLI-004 | Chain: @REQ:CLI-004 -> @DESIGN:CLI-004 -> @TASK:CLI-004 -> @TEST:CLI-004
-// Related: @API:UPD-001, @DATA:UPD-VER-001
+// @CODE:CLI-004 | 
+// Related: @CODE:UPD-001:API, @CODE:UPD-VER-001
 
 /**
  * @file CLI update command for toolkit updates
@@ -18,7 +18,7 @@ import {
 
 /**
  * Update command options
- * @tags @DESIGN:UPDATE-OPTIONS-001
+ * @tags @SPEC:UPDATE-OPTIONS-001
  */
 export interface UpdateOptions {
   readonly check: boolean;
@@ -31,7 +31,7 @@ export interface UpdateOptions {
 
 /**
  * Resource update options
- * @tags @DESIGN:RESOURCE-UPDATE-OPTIONS-001
+ * @tags @SPEC:RESOURCE-UPDATE-OPTIONS-001
  */
 export interface ResourceUpdateOptions {
   readonly packageOnly: boolean;
@@ -40,7 +40,7 @@ export interface ResourceUpdateOptions {
 
 /**
  * Update status information
- * @tags @DESIGN:UPDATE-STATUS-001
+ * @tags @SPEC:UPDATE-STATUS-001
  */
 export interface UpdateStatus {
   readonly currentVersion: string;
@@ -54,7 +54,7 @@ export interface UpdateStatus {
 
 /**
  * Update result information
- * @tags @DESIGN:UPDATE-RESULT-001
+ * @tags @SPEC:UPDATE-RESULT-001
  */
 export interface UpdateResult {
   readonly success: boolean;
@@ -69,14 +69,14 @@ export interface UpdateResult {
 
 /**
  * Update command for template resource updates
- * @tags @FEATURE:CLI-UPDATE-001
+ * @tags @CODE:CLI-UPDATE-001
  */
 export class UpdateCommand {
   /**
    * Check for available updates
    * @param projectPath - Path to project directory
    * @returns Update status information
-   * @tags @API:CHECK-UPDATES-001
+   * @tags @CODE:CHECK-UPDATES-001:API
    */
   public async checkForUpdates(projectPath: string): Promise<UpdateStatus> {
     try {
@@ -125,7 +125,7 @@ export class UpdateCommand {
    * Create backup before update
    * @param projectPath - Path to project directory
    * @returns Backup path
-   * @tags @API:CREATE-BACKUP-001
+   * @tags @CODE:CREATE-BACKUP-001:API
    */
   public async createBackup(projectPath: string): Promise<string> {
     // For tests and simplicity, just return a backup path without actual file operations
@@ -148,7 +148,7 @@ export class UpdateCommand {
    * @param projectPath - Path to project directory
    * @param options - Resource update options
    * @returns Update success status
-   * @tags @API:UPDATE-RESOURCES-001
+   * @tags @CODE:UPDATE-RESOURCES-001:API
    */
   public async updateResources(
     projectPath: string,
@@ -173,7 +173,7 @@ export class UpdateCommand {
   /**
    * Update package
    * @returns Update success status
-   * @tags @API:UPDATE-PACKAGE-001
+   * @tags @CODE:UPDATE-PACKAGE-001:API
    */
   public async updatePackage(): Promise<boolean> {
     try {
@@ -193,7 +193,7 @@ export class UpdateCommand {
    * Synchronize version information
    * @param projectPath - Path to project directory
    * @returns Synchronization success status
-   * @tags @API:SYNC-VERSIONS-001
+   * @tags @CODE:SYNC-VERSIONS-001:API
    */
   public async synchronizeVersions(projectPath: string): Promise<boolean> {
     try {
@@ -211,7 +211,7 @@ export class UpdateCommand {
    * Run simplified update command
    * @param options - Update options
    * @returns Update result
-   * @tags @API:UPDATE-RUN-001
+   * @tags @CODE:UPDATE-RUN-001:API
    */
   public async run(options: UpdateOptions): Promise<UpdateResult> {
     const projectPath = options.projectPath || process.cwd();

@@ -1,35 +1,44 @@
 /**
  * @file GitLockManager test suite
  * @author MoAI Team
- * @tags @TEST:GIT-LOCK-001 @REQ:CORE-SYSTEM-013
+ * @tags @TEST:GIT-LOCK-001 @SPEC:CORE-SYSTEM-013
  */
 
 import { describe, test, expect, beforeEach, vi, afterEach } from 'vitest';
 import { GitLockedException } from '../../../types/git';
 import { GitLockManager } from '../git-lock-manager';
 
-// Create mock functions
-const mockPathExists = vi.fn();
-const mockEnsureDir = vi.fn();
-const mockWriteJson = vi.fn();
-const mockReadJson = vi.fn();
-const mockRemove = vi.fn();
+// Mock fs-extra module - 팩토리 함수 내부에서 모든 것 정의
+vi.mock('fs-extra', () => {
+  const mockPathExists = vi.fn();
+  const mockEnsureDir = vi.fn();
+  const mockWriteJson = vi.fn();
+  const mockReadJson = vi.fn();
+  const mockRemove = vi.fn();
 
-// Mock fs-extra module
-vi.mock('fs-extra', () => ({
-  default: {
+  return {
+    default: {
+      pathExists: mockPathExists,
+      ensureDir: mockEnsureDir,
+      writeJson: mockWriteJson,
+      readJson: mockReadJson,
+      remove: mockRemove,
+    },
     pathExists: mockPathExists,
     ensureDir: mockEnsureDir,
     writeJson: mockWriteJson,
     readJson: mockReadJson,
     remove: mockRemove,
-  },
-  pathExists: mockPathExists,
-  ensureDir: mockEnsureDir,
-  writeJson: mockWriteJson,
-  readJson: mockReadJson,
-  remove: mockRemove,
-}));
+  };
+});
+
+// Import mocked functions after vi.mock
+import * as fs from 'fs-extra';
+const mockPathExists = vi.mocked(fs.pathExists);
+const mockEnsureDir = vi.mocked(fs.ensureDir);
+const mockWriteJson = vi.mocked(fs.writeJson);
+const mockReadJson = vi.mocked(fs.readJson);
+const mockRemove = vi.mocked(fs.remove);
 
 describe('GitLockManager', () => {
   let lockManager: GitLockManager;

@@ -1,7 +1,7 @@
 /**
  * @file Init command path validation integration test
  * @author MoAI Team
- * @tags @TEST:CLI-INIT-PATH-001 @REQ:BUG-FIX-PACKAGE-PATH-001
+ * @tags @TEST:CLI-INIT-PATH-001 @SPEC:BUG-FIX-PACKAGE-PATH-001
  */
 
 import { beforeEach, describe, expect, test, vi, type Mocked } from 'vitest';

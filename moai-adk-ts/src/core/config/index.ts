@@ -1,7 +1,7 @@
 /**
  * @file Configuration system exports
  * @author MoAI Team
- * @tags @FEATURE:CONFIG-EXPORTS-001 @REQ:CORE-SYSTEM-013
+ * @tags @CODE:CONFIG-EXPORTS-001 @SPEC:CORE-SYSTEM-013
  */
 
 export { ConfigManager } from './config-manager';

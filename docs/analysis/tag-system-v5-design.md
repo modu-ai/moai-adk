@@ -453,11 +453,11 @@ rg "@DOC:AUTH-001" docs/ README.md
 
 | v4.0 (8-Core) | v5.0 (4-Core) | 비고 |
 |---------------|---------------|------|
-| `@REQ:ID` | `@SPEC:ID` | SPEC 문서에 통합 |
-| `@DESIGN:ID` | `@SPEC:ID` | SPEC 문서에 통합 |
-| `@TASK:ID` | `@CODE:ID` | 구현 통합 |
+| `@SPEC:ID` | `@SPEC:ID` | SPEC 문서에 통합 |
+| `@SPEC:ID` | `@SPEC:ID` | SPEC 문서에 통합 |
+| `@CODE:ID` | `@CODE:ID` | 구현 통합 |
 | `@TEST:ID` | `@TEST:ID` | 동일 |
-| `@FEATURE:ID` | `@CODE:ID` | 구현 통합 |
+| `@CODE:ID` | `@CODE:ID` | 구현 통합 |
 | `@API:ID` | `@CODE:ID:API` | 주석 레벨 |
 | `@UI:ID` | `@CODE:ID:UI` | 주석 레벨 |
 | `@DATA:ID` | `@CODE:ID:DATA` | 주석 레벨 |

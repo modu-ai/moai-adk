@@ -1,5 +1,5 @@
-// @FEATURE:INST-005 | Chain: @REQ:INST-001 -> @DESIGN:INST-005 -> @TASK:INST-005 -> @TEST:INST-005
-// Related: @API:INST-005, @DATA:INST-TPL-001
+// @CODE:INST-005 | 
+// Related: @CODE:INST-005:API, @CODE:INST-TPL-001
 
 /**
  * @file Template processing and interpolation
@@ -17,7 +17,7 @@ import type { InstallationConfig } from './types';
 
 /**
  * Handles template processing and file operations
- * @tags @FEATURE:TEMPLATE-PROCESSOR-001
+ * @tags @CODE:TEMPLATE-PROCESSOR-001
  */
 export class TemplateProcessor {
   /**
@@ -146,7 +146,7 @@ export class TemplateProcessor {
    * Get templates directory path with robust cross-platform resolution
    *
    * @returns Path to templates directory
-   * @tags @API:GET-TEMPLATES-PATH-001
+   * @tags @CODE:GET-TEMPLATES-PATH-001:API
    *
    * Resolution strategies (in priority order):
    * 1. Package-relative: Works for npm/bun install (global/local)
@@ -194,7 +194,7 @@ export class TemplateProcessor {
    * Create template variables for Mustache rendering
    * @param config Installation configuration
    * @returns Template variables object
-   * @tags @API:CREATE-TEMPLATE-VARS-001
+   * @tags @CODE:CREATE-TEMPLATE-VARS-001:API
    */
   createTemplateVariables(
     config: InstallationConfig
@@ -216,7 +216,7 @@ export class TemplateProcessor {
    * @param dstDir Destination directory
    * @param variables Template variables
    * @returns List of copied files
-   * @tags @API:COPY-TEMPLATE-DIR-001
+   * @tags @CODE:COPY-TEMPLATE-DIR-001:API
    */
   async copyTemplateDirectory(
     srcDir: string,
@@ -265,7 +265,7 @@ export class TemplateProcessor {
    * @param srcPath Source file path
    * @param dstPath Destination file path
    * @param variables Template variables
-   * @tags @API:COPY-TEMPLATE-FILE-001
+   * @tags @CODE:COPY-TEMPLATE-FILE-001:API
    */
   async copyTemplateFile(
     srcPath: string,
@@ -333,7 +333,7 @@ export class TemplateProcessor {
    * Copy directory recursively (without template processing)
    * @param src Source directory
    * @param dst Destination directory
-   * @tags @API:COPY-DIRECTORY-001
+   * @tags @CODE:COPY-DIRECTORY-001:API
    */
   async copyDirectory(src: string, dst: string): Promise<void> {
     await fs.promises.mkdir(dst, { recursive: true });

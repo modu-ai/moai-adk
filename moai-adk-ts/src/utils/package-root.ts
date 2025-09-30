@@ -1,5 +1,5 @@
-// @FEATURE:UTIL-006 | Chain: @REQ:UTIL-006 -> @DESIGN:UTIL-006 -> @TASK:UTIL-006 -> @TEST:UTIL-006
-// Related: @DATA:PATH-INFO-001
+// @CODE:UTIL-006 | 
+// Related: @CODE:PATH-INFO-001
 
 /**
  * @file Package root directory utilities
@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
  * @param currentModuleUrl - import.meta.url from the calling module
  * @returns Absolute path to the package root directory
  * @throws Error if package.json is not found within 10 directory levels
- * @tags @API:FIND-PACKAGE-ROOT-001
+ * @tags @CODE:FIND-PACKAGE-ROOT-001:API
  *
  * @example
  * ```typescript
@@ -61,7 +61,7 @@ export function findPackageRoot(currentModuleUrl: string): string {
  * @param currentModuleUrl - import.meta.url from the calling module
  * @returns Absolute path to the templates directory
  * @throws Error if package root or templates directory is not found
- * @tags @API:GET-TEMPLATES-PATH-001
+ * @tags @CODE:GET-TEMPLATES-PATH-001:API
  *
  * @example
  * ```typescript
@@ -90,7 +90,7 @@ export function getTemplatesPath(currentModuleUrl: string): string {
  *
  * @param currentModuleUrl - import.meta.url from the calling module
  * @returns Absolute path to the package root directory
- * @tags @API:GET-PACKAGE-ROOT-001
+ * @tags @CODE:GET-PACKAGE-ROOT-001:API
  */
 export function getPackageRoot(currentModuleUrl: string): string {
   return findPackageRoot(currentModuleUrl);

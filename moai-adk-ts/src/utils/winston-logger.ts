@@ -1,5 +1,5 @@
-// @FEATURE:LOG-002 | Chain: @REQ:LOG-001 -> @DESIGN:LOG-002 -> @TASK:LOG-002 -> @TEST:LOG-002
-// Related: @API:LOG-002, @DATA:LOG-CFG-001
+// @CODE:LOG-002 | 
+// Related: @CODE:LOG-002:API, @CODE:LOG-CFG-001
 
 /**
  * @file Winston-based structured logging system

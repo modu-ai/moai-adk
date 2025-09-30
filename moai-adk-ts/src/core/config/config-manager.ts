@@ -1,5 +1,5 @@
-// @FEATURE:CFG-001 | Chain: @REQ:CFG-001 -> @DESIGN:CFG-001 -> @TASK:CFG-001 -> @TEST:CFG-001
-// Related: @API:CFG-001, @DATA:CFG-001
+// @CODE:CFG-001 | 
+// Related: @CODE:CFG-001:API, @CODE:CFG-001:DATA
 
 /**
  * @file Configuration management system
@@ -24,7 +24,7 @@ import type {
 
 /**
  * ConfigManager class for creating and managing configuration files
- * @tags @TASK:CONFIG-MANAGER-001
+ * @tags @CODE:CONFIG-MANAGER-001
  */
 export class ConfigManager {
   private readonly version = '0.0.1';
@@ -34,7 +34,7 @@ export class ConfigManager {
    * @param settingsPath Path to settings file
    * @param config Project configuration
    * @returns Claude settings creation result
-   * @tags @API:CREATE-CLAUDE-SETTINGS-001
+   * @tags @CODE:CREATE-CLAUDE-SETTINGS-001:API
    */
   public async createClaudeSettings(
     settingsPath: string,
@@ -106,7 +106,7 @@ export class ConfigManager {
    * @param configPath Path to config file
    * @param config Project configuration
    * @returns MoAI config creation result
-   * @tags @API:CREATE-MOAI-CONFIG-001
+   * @tags @CODE:CREATE-MOAI-CONFIG-001:API
    */
   public async createMoAIConfig(
     configPath: string,
@@ -178,7 +178,7 @@ export class ConfigManager {
    * @param packagePath Path to package.json
    * @param config Project configuration
    * @returns Package.json creation result
-   * @tags @API:CREATE-PACKAGE-JSON-001
+   * @tags @CODE:CREATE-PACKAGE-JSON-001:API
    */
   public async createPackageJson(
     packagePath: string,
@@ -237,7 +237,7 @@ export class ConfigManager {
    * Validate configuration file format and content
    * @param filePath Path to configuration file
    * @returns Validation result
-   * @tags @API:VALIDATE-CONFIG-001
+   * @tags @CODE:VALIDATE-CONFIG-001:API
    */
   public async validateConfigFile(filePath: string): Promise<ValidationResult> {
     const result: ValidationResult = {
@@ -276,7 +276,7 @@ export class ConfigManager {
    * Create backup of configuration file
    * @param filePath Path to file to backup
    * @returns Backup result
-   * @tags @API:BACKUP-CONFIG-001
+   * @tags @CODE:BACKUP-CONFIG-001:API
    */
   public async backupConfigFile(filePath: string): Promise<BackupResult> {
     try {
@@ -319,7 +319,7 @@ export class ConfigManager {
    * @param projectPath Project directory path
    * @param config Project configuration
    * @returns Full configuration result
-   * @tags @API:SETUP-FULL-CONFIG-001
+   * @tags @CODE:SETUP-FULL-CONFIG-001:API
    */
   public async setupFullProjectConfig(
     projectPath: string,

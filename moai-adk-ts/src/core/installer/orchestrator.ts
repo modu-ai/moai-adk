@@ -1,5 +1,5 @@
-// @FEATURE:INST-001 | Chain: @REQ:INST-001 -> @DESIGN:INST-001 -> @TASK:INST-001 -> @TEST:INST-001
-// Related: @API:INST-001, @DATA:INST-CTX-001
+// @CODE:INST-001 | 
+// Related: @CODE:INST-001:API, @CODE:INST-CTX-001
 
 /**
  * @file Installation orchestration coordinator
@@ -27,7 +27,7 @@ import { ResultBuilder } from './result-builder';
  * - Manage context via ContextManager
  * - Build results via ResultBuilder
  *
- * @tags @FEATURE:INSTALL-ORCHESTRATOR-001
+ * @tags @CODE:INSTALL-ORCHESTRATOR-001
  */
 export class InstallationOrchestrator {
   private readonly config: InstallationConfig;
@@ -60,7 +60,7 @@ export class InstallationOrchestrator {
    * Execute complete MoAI-ADK project installation
    * @param progressCallback Progress callback function
    * @returns Complete installation result
-   * @tags @API:EXECUTE-INSTALLATION-001
+   * @tags @CODE:EXECUTE-INSTALLATION-001:API
    */
   public async executeInstallation(
     progressCallback?: ProgressCallback
@@ -129,7 +129,7 @@ export class InstallationOrchestrator {
   /**
    * Get current installation context (for testing/debugging)
    * @returns Current context
-   * @tags @API:GET-CONTEXT-001
+   * @tags @CODE:GET-CONTEXT-001:API
    */
   public getContext(): InstallationContext {
     return this.context;
@@ -138,7 +138,7 @@ export class InstallationOrchestrator {
   /**
    * Get installation configuration (for testing/debugging)
    * @returns Installation configuration
-   * @tags @API:GET-CONFIG-001
+   * @tags @CODE:GET-CONFIG-001:API
    */
   public getConfig(): InstallationConfig {
     return this.config;

@@ -1,12 +1,12 @@
 /**
  * @file Configuration system type definitions
  * @author MoAI Team
- * @tags @DESIGN:CONFIG-TYPES-001 @REQ:CORE-SYSTEM-013
+ * @tags @SPEC:CONFIG-TYPES-001 @SPEC:CORE-SYSTEM-013
  */
 
 /**
  * Claude Code settings interface
- * @tags @DESIGN:CLAUDE-SETTINGS-001
+ * @tags @SPEC:CLAUDE-SETTINGS-001
  */
 export interface ClaudeSettings {
   mode: 'personal' | 'team';
@@ -40,7 +40,7 @@ export interface ClaudeSettings {
 
 /**
  * MoAI configuration interface
- * @tags @DESIGN:MOAI-CONFIG-001
+ * @tags @SPEC:MOAI-CONFIG-001
  */
 export interface MoAIConfig {
   projectName: string;
@@ -69,7 +69,7 @@ export interface MoAIConfig {
 
 /**
  * Package.json configuration interface
- * @tags @DESIGN:PACKAGE-CONFIG-001
+ * @tags @SPEC:PACKAGE-CONFIG-001
  */
 export interface PackageConfig {
   name: string;
@@ -89,7 +89,7 @@ export interface PackageConfig {
 
 /**
  * Configuration creation result
- * @tags @DESIGN:CONFIG-RESULT-001
+ * @tags @SPEC:CONFIG-RESULT-001
  */
 export interface ConfigResult {
   success: boolean;
@@ -102,7 +102,7 @@ export interface ConfigResult {
 
 /**
  * Claude settings creation result
- * @tags @DESIGN:CLAUDE-RESULT-001
+ * @tags @SPEC:CLAUDE-RESULT-001
  */
 export interface ClaudeSettingsResult extends ConfigResult {
   settings?: ClaudeSettings;
@@ -110,7 +110,7 @@ export interface ClaudeSettingsResult extends ConfigResult {
 
 /**
  * MoAI config creation result
- * @tags @DESIGN:MOAI-RESULT-001
+ * @tags @SPEC:MOAI-RESULT-001
  */
 export interface MoAIConfigResult extends ConfigResult {
   config?: MoAIConfig;
@@ -118,7 +118,7 @@ export interface MoAIConfigResult extends ConfigResult {
 
 /**
  * Package.json creation result
- * @tags @DESIGN:PACKAGE-RESULT-001
+ * @tags @SPEC:PACKAGE-RESULT-001
  */
 export interface PackageJsonResult extends ConfigResult {
   packageConfig?: PackageConfig;
@@ -126,7 +126,7 @@ export interface PackageJsonResult extends ConfigResult {
 
 /**
  * Configuration validation result
- * @tags @DESIGN:VALIDATION-RESULT-001
+ * @tags @SPEC:VALIDATION-RESULT-001
  */
 export interface ValidationResult {
   isValid: boolean;
@@ -137,7 +137,7 @@ export interface ValidationResult {
 
 /**
  * Configuration backup result
- * @tags @DESIGN:BACKUP-RESULT-001
+ * @tags @SPEC:BACKUP-RESULT-001
  */
 export interface BackupResult {
   success: boolean;
@@ -148,7 +148,7 @@ export interface BackupResult {
 
 /**
  * Full project configuration result
- * @tags @DESIGN:FULL-CONFIG-RESULT-001
+ * @tags @SPEC:FULL-CONFIG-RESULT-001
  */
 export interface FullConfigResult {
   success: boolean;
@@ -163,7 +163,7 @@ export interface FullConfigResult {
 
 /**
  * Project configuration input
- * @tags @DESIGN:PROJECT-CONFIG-INPUT-001
+ * @tags @SPEC:PROJECT-CONFIG-INPUT-001
  */
 export interface ProjectConfigInput {
   projectName: string;
@@ -180,7 +180,7 @@ export interface ProjectConfigInput {
 
 /**
  * Configuration file info
- * @tags @DESIGN:CONFIG-FILE-INFO-001
+ * @tags @SPEC:CONFIG-FILE-INFO-001
  */
 export interface ConfigFileInfo {
   path: string;
@@ -192,7 +192,7 @@ export interface ConfigFileInfo {
 
 /**
  * Configuration status summary
- * @tags @DESIGN:CONFIG-STATUS-001
+ * @tags @SPEC:CONFIG-STATUS-001
  */
 export interface ConfigStatus {
   claudeSettings: ConfigFileInfo;

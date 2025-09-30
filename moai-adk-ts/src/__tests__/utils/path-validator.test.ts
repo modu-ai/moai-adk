@@ -1,7 +1,7 @@
 /**
  * @file Path validator test suite for package root detection
  * @author MoAI Team
- * @tags @TEST:PATH-VALIDATOR-001 @REQ:BUG-FIX-PACKAGE-PATH-001
+ * @tags @TEST:PATH-VALIDATOR-001 @SPEC:BUG-FIX-PACKAGE-PATH-001
  */
 
 import { describe, expect, test, beforeEach, afterEach } from 'vitest';

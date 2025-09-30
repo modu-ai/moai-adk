@@ -1,5 +1,5 @@
-// @FEATURE:GIT-002 | Chain: @REQ:GIT-001 -> @DESIGN:GIT-002 -> @TASK:GIT-002 -> @TEST:GIT-002
-// Related: @API:GIT-002
+// @CODE:GIT-002 | 
+// Related: @CODE:GIT-002:API
 
 /**
  * @file Git lock management for concurrent operations
@@ -20,7 +20,7 @@ import {
 /**
  * GitLockManager class for preventing concurrent Git operations
  * Ports Python git_lock_manager.py with TypeScript improvements
- * @tags @TASK:GIT-LOCK-MANAGER-001
+ * @tags @CODE:GIT-LOCK-MANAGER-001
  */
 export class GitLockManager {
   private readonly projectDir: string;
@@ -42,7 +42,7 @@ export class GitLockManager {
   /**
    * Check if Git operations are currently locked
    * @returns True if locked, false otherwise
-   * @tags @API:IS-LOCKED-001
+   * @tags @CODE:IS-LOCKED-001:API
    */
   public async isLocked(): Promise<boolean> {
     try {
@@ -85,7 +85,7 @@ export class GitLockManager {
    * @param wait Whether to wait for lock
    * @param timeout Timeout in seconds
    * @returns Lock context
-   * @tags @API:ACQUIRE-LOCK-001
+   * @tags @CODE:ACQUIRE-LOCK-001:API
    */
   public async acquireLock(
     wait: boolean = true,
@@ -129,7 +129,7 @@ export class GitLockManager {
 
   /**
    * Release the Git lock
-   * @tags @API:RELEASE-LOCK-001
+   * @tags @CODE:RELEASE-LOCK-001:API
    */
   public async releaseLock(): Promise<void> {
     try {
@@ -150,7 +150,7 @@ export class GitLockManager {
    * @param wait Whether to wait for lock
    * @param timeout Timeout in seconds
    * @returns Operation result
-   * @tags @API:WITH-LOCK-001
+   * @tags @CODE:WITH-LOCK-001:API
    */
   public async withLock<T>(
     operation: () => Promise<T>,
@@ -171,7 +171,7 @@ export class GitLockManager {
   /**
    * Get comprehensive lock status
    * @returns Lock status information
-   * @tags @API:GET-LOCK-STATUS-001
+   * @tags @CODE:GET-LOCK-STATUS-001:API
    */
   public async getLockStatus(): Promise<GitLockStatus> {
     const lockFileExists = await fs.pathExists(this.lockFile);
@@ -207,7 +207,7 @@ export class GitLockManager {
 
   /**
    * Clean up stale locks
-   * @tags @API:CLEANUP-STALE-LOCKS-001
+   * @tags @CODE:CLEANUP-STALE-LOCKS-001:API
    */
   public async cleanupStaleLocks(): Promise<void> {
     if (!(await fs.pathExists(this.lockFile))) {

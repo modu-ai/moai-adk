@@ -1,5 +1,5 @@
-// @FEATURE:UTIL-001 | Chain: @REQ:UTIL-001 -> @DESIGN:UTIL-001 -> @TASK:UTIL-001 -> @TEST:UTIL-001
-// Related: @UI:BANNER-001
+// @CODE:UTIL-001 | 
+// Related: @CODE:BANNER-001:UI
 
 /**
  * @file MoAI-ADK Banner display utility
@@ -58,7 +58,7 @@ function getMoaiLogo(): string[] {
  * Create the complete MoAI banner
  * @param options Banner options
  * @returns Complete banner string
- * @tags @API:CREATE-BANNER-001
+ * @tags @CODE:CREATE-BANNER-001:API
  */
 export function createBanner(
   options: { version?: string; showUsage?: boolean } = {}
@@ -130,7 +130,7 @@ export function createBanner(
 /**
  * Print the MoAI-ADK banner to stdout
  * @param options Banner options
- * @tags @API:PRINT-BANNER-001
+ * @tags @CODE:PRINT-BANNER-001:API
  */
 export function printBanner(
   options: { version?: string; showUsage?: boolean } = {}
@@ -143,7 +143,7 @@ export function printBanner(
  * @param title Command title
  * @param subtitle Optional subtitle
  * @returns Formatted header
- * @tags @API:CREATE-HEADER-001
+ * @tags @CODE:CREATE-HEADER-001:API
  */
 export function createHeader(title: string, subtitle?: string): string {
   const lines: string[] = [];

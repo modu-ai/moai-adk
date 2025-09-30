@@ -1,5 +1,5 @@
-// @FEATURE:PKG-002 | Chain: @REQ:PKG-002 -> @DESIGN:PKG-002 -> @TASK:PKG-002 -> @TEST:PKG-002
-// Related: @API:PKG-002, @DATA:PKG-CFG-001
+// @CODE:PKG-002 | 
+// Related: @CODE:PKG-002:API, @CODE:PKG-CFG-001
 
 /**
  * @file Package manager installer
@@ -15,7 +15,7 @@ import {
 
 /**
  * Result of package installation operation
- * @tags @DATA:INSTALL-RESULT-001
+ * @tags @CODE:INSTALL-RESULT-001:DATA
  */
 export interface InstallResult {
   success: boolean;
@@ -26,7 +26,7 @@ export interface InstallResult {
 
 /**
  * Result of project initialization operation
- * @tags @DATA:INIT-RESULT-001
+ * @tags @CODE:INIT-RESULT-001:DATA
  */
 export interface InitResult {
   success: boolean;
@@ -37,7 +37,7 @@ export interface InitResult {
 
 /**
  * Package manager installer for dependency management and project setup
- * @tags @FEATURE:PACKAGE-MANAGER-INSTALLER-001
+ * @tags @CODE:PACKAGE-MANAGER-INSTALLER-001
  */
 export class PackageManagerInstaller {
   /**
@@ -45,7 +45,7 @@ export class PackageManagerInstaller {
    * @param packages - Package names to install
    * @param options - Installation options
    * @returns Installation result
-   * @tags @API:INSTALL-PACKAGES-001
+   * @tags @CODE:INSTALL-PACKAGES-001:API
    */
   public async installPackages(
     packages: string[],
@@ -92,7 +92,7 @@ export class PackageManagerInstaller {
    * @param includeTypeScript - Whether to include TypeScript setup
    * @param testingFramework - Testing framework to include
    * @returns Generated package.json configuration
-   * @tags @API:GENERATE-PACKAGE-JSON-001
+   * @tags @CODE:GENERATE-PACKAGE-JSON-001:API
    */
   public generatePackageJson(
     projectConfig: Partial<PackageJsonConfig>,
@@ -156,7 +156,7 @@ export class PackageManagerInstaller {
    * @param existingPackageJson - Existing package.json content
    * @param newDependencies - New dependencies to add
    * @returns Updated package.json
-   * @tags @API:ADD-DEPENDENCIES-001
+   * @tags @CODE:ADD-DEPENDENCIES-001:API
    */
   public addDependencies(
     existingPackageJson: Partial<PackageJsonConfig>,
@@ -176,7 +176,7 @@ export class PackageManagerInstaller {
    * @param existingPackageJson - Existing package.json content
    * @param newDevDependencies - New dev dependencies to add
    * @returns Updated package.json
-   * @tags @API:ADD-DEV-DEPENDENCIES-001
+   * @tags @CODE:ADD-DEV-DEPENDENCIES-001:API
    */
   public addDevDependencies(
     existingPackageJson: Partial<PackageJsonConfig>,
@@ -196,7 +196,7 @@ export class PackageManagerInstaller {
    * @param projectPath - Project directory path
    * @param packageManagerType - Package manager to use
    * @returns Initialization result
-   * @tags @API:INIT-PROJECT-001
+   * @tags @CODE:INIT-PROJECT-001:API
    */
   public async initializeProject(
     projectPath: string,

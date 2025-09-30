@@ -3,7 +3,7 @@
 /**
  * @file CLI entry point
  * @author MoAI Team
- * @tags @FEATURE:CLI-ENTRY-001 @REQ:CLI-FOUNDATION-012
+ * @tags @CODE:CLI-ENTRY-001 @SPEC:CLI-FOUNDATION-012
  */
 
 import chalk from 'chalk';
@@ -24,7 +24,7 @@ import { logger } from '../utils/winston-logger.js';
 
 /**
  * CLI Application
- * @tags @FEATURE:CLI-APP-001
+ * @tags @CODE:CLI-APP-001
  */
 export class CLIApp {
   private readonly program: Command;
@@ -54,7 +54,7 @@ export class CLIApp {
 
   /**
    * Load locale from config.json if available
-   * @tags @FEATURE:I18N-INIT-001
+   * @tags @CODE:I18N-INIT-001
    */
   private loadLocaleFromConfig(): void {
     try {
@@ -250,7 +250,7 @@ export class CLIApp {
   /**
    * Run CLI application
    * @param argv - Command line arguments
-   * @tags @API:CLI-RUN-001
+   * @tags @CODE:CLI-RUN-001:API
    */
   public run(argv: string[]): void {
     this.program.parse(argv);

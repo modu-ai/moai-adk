@@ -1,0 +1,31 @@
+# Development files
+src/
+*.ts
+!*.d.ts
+tsconfig.json
+tsup.config.ts
+tsup.hooks.config.ts
+
+# Test files
+**/__tests__/
+**/*.test.ts
+**/*.spec.ts
+vitest.config.ts
+
+# Build tools
+.turbo/
+node_modules/
+.git/
+.github/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+logs/
+*.log
+
+# Coverage
+coverage/
+.nyc_output/

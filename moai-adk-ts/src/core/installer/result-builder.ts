@@ -1,7 +1,7 @@
 /**
  * @file Installation Result Builder
  * @author MoAI Team
- * @tags @FEATURE:RESULT-BUILDER-001 @REQ:INSTALL-SYSTEM-012
+ * @tags @CODE:RESULT-BUILDER-001 @SPEC:INSTALL-SYSTEM-012
  */
 
 import { logger } from '@/utils/winston-logger';
@@ -14,7 +14,7 @@ import type {
 
 /**
  * Builds installation results and generates next steps
- * @tags @FEATURE:RESULT-BUILDER-001
+ * @tags @CODE:RESULT-BUILDER-001
  */
 export class ResultBuilder {
   /**
@@ -22,7 +22,7 @@ export class ResultBuilder {
    * @param context Installation context
    * @param startTime Installation start time
    * @returns Success result
-   * @tags @API:CREATE-SUCCESS-RESULT-001
+   * @tags @CODE:CREATE-SUCCESS-RESULT-001:API
    */
   createSuccessResult(
     context: InstallationContext,
@@ -55,7 +55,7 @@ export class ResultBuilder {
    * @param startTime Installation start time
    * @param error Failure error
    * @returns Failure result
-   * @tags @API:CREATE-FAILURE-RESULT-001
+   * @tags @CODE:CREATE-FAILURE-RESULT-001:API
    */
   createFailureResult(
     context: InstallationContext,
@@ -92,7 +92,7 @@ export class ResultBuilder {
    * Generate next steps for user
    * @param config Installation configuration
    * @returns Array of next steps
-   * @tags @API:GENERATE-NEXT-STEPS-001
+   * @tags @CODE:GENERATE-NEXT-STEPS-001:API
    */
   private generateNextSteps(config: InstallationConfig): string[] {
     const steps = [
@@ -107,7 +107,7 @@ export class ResultBuilder {
    * Build summary message from context
    * @param context Installation context
    * @returns Summary message
-   * @tags @API:BUILD-SUMMARY-001
+   * @tags @CODE:BUILD-SUMMARY-001:API
    */
   buildSummary(context: InstallationContext): string {
     const total = context.phases.length;

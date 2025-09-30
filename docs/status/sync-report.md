@@ -65,10 +65,10 @@
 **총 v4.0 TAG 발견**: 622개 (43개 파일)
 
 **카테고리별 분포**:
-- `@REQ:*` - 요구사항 (v4.0 legacy)
-- `@DESIGN:*` - 설계 (v4.0 legacy)
-- `@TASK:*` - 작업 (v4.0 legacy)
-- `@FEATURE:*` - 기능 (v4.0 legacy)
+- `@SPEC:*` - 요구사항 (v4.0 legacy)
+- `@SPEC:*` - 설계 (v4.0 legacy)
+- `@CODE:*` - 작업 (v4.0 legacy)
+- `@CODE:*` - 기능 (v4.0 legacy)
 - `@API:*` - API (v4.0 legacy)
 - 기타: @UI, @DATA, @PERF, @SEC, @DOCS, @OPS
 

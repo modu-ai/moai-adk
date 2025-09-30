@@ -1,5 +1,5 @@
-// @FEATURE:INST-002 | Chain: @REQ:INST-001 -> @DESIGN:INST-002 -> @TASK:INST-002 -> @TEST:INST-002
-// Related: @API:INST-002
+// @CODE:INST-002 | 
+// Related: @CODE:INST-002:API
 
 /**
  * @file Installation phase execution engine
@@ -31,7 +31,7 @@ import { PhaseValidator } from './phase-validator';
  * - Track phase progress via ContextManager
  * - Delegate validation to PhaseValidator
  *
- * @tags @FEATURE:PHASE-EXECUTOR-001
+ * @tags @CODE:PHASE-EXECUTOR-001
  */
 export class PhaseExecutor {
   private readonly contextManager: ContextManager;
@@ -50,7 +50,7 @@ export class PhaseExecutor {
    * Execute preparation phase including backup creation
    * @param context Installation context
    * @param progressCallback Progress callback
-   * @tags @API:EXECUTE-PREPARATION-001
+   * @tags @CODE:EXECUTE-PREPARATION-001:API
    */
   async executePreparationPhase(
     context: InstallationContext,
@@ -98,7 +98,7 @@ export class PhaseExecutor {
    * Execute directory structure creation phase
    * @param context Installation context
    * @param progressCallback Progress callback
-   * @tags @API:EXECUTE-DIRECTORY-001
+   * @tags @CODE:EXECUTE-DIRECTORY-001:API
    */
   async executeDirectoryPhase(
     context: InstallationContext,
@@ -143,7 +143,7 @@ export class PhaseExecutor {
    * Execute resource installation phase
    * @param context Installation context
    * @param progressCallback Progress callback
-   * @tags @API:EXECUTE-RESOURCE-001
+   * @tags @CODE:EXECUTE-RESOURCE-001:API
    */
   async executeResourcePhase(
     context: InstallationContext,
@@ -202,7 +202,7 @@ export class PhaseExecutor {
    * Execute configuration generation phase
    * @param context Installation context
    * @param progressCallback Progress callback
-   * @tags @API:EXECUTE-CONFIGURATION-001
+   * @tags @CODE:EXECUTE-CONFIGURATION-001:API
    */
   async executeConfigurationPhase(
     context: InstallationContext,
@@ -284,7 +284,7 @@ export class PhaseExecutor {
    * Execute validation and finalization phase
    * @param context Installation context
    * @param progressCallback Progress callback
-   * @tags @API:EXECUTE-VALIDATION-001
+   * @tags @CODE:EXECUTE-VALIDATION-001:API
    */
   async executeValidationPhase(
     context: InstallationContext,

@@ -1,5 +1,5 @@
-// @FEATURE:SYS-001 | Chain: @REQ:SYS-001 -> @DESIGN:SYS-001 -> @TASK:SYS-001 -> @TEST:SYS-001
-// Related: @API:SYS-001, @DATA:SYS-INFO-001
+// @CODE:SYS-001 | 
+// Related: @CODE:SYS-001:API, @CODE:SYS-INFO-001
 
 /**
  * @file System requirements detector
@@ -13,7 +13,7 @@ import type { SystemRequirement } from './requirements';
 
 /**
  * Detection result for a single requirement
- * @tags @DESIGN:DETECTION-RESULT-001
+ * @tags @SPEC:DETECTION-RESULT-001
  */
 export interface DetectionResult {
   readonly isInstalled: boolean;
@@ -24,7 +24,7 @@ export interface DetectionResult {
 
 /**
  * Combined requirement and detection result
- * @tags @DESIGN:CHECK-RESULT-001
+ * @tags @SPEC:CHECK-RESULT-001
  */
 export interface RequirementCheckResult {
   readonly requirement: SystemRequirement;
@@ -34,14 +34,14 @@ export interface RequirementCheckResult {
 /**
  * System requirement detector
  * Automatically detects installed tools and validates versions
- * @tags @FEATURE:SYSTEM-DETECTOR-001
+ * @tags @CODE:SYSTEM-DETECTOR-001
  */
 export class SystemDetector {
   /**
    * Check single system requirement
    * @param requirement - System requirement to check
    * @returns Detection result
-   * @tags @API:CHECK-REQUIREMENT-001
+   * @tags @CODE:CHECK-REQUIREMENT-001:API
    */
   public async checkRequirement(
     requirement: SystemRequirement
@@ -102,7 +102,7 @@ export class SystemDetector {
    * Check multiple requirements concurrently
    * @param requirements - Array of system requirements
    * @returns Array of check results
-   * @tags @API:CHECK-MULTIPLE-001
+   * @tags @CODE:CHECK-MULTIPLE-001:API
    */
   public async checkMultipleRequirements(
     requirements: SystemRequirement[]
@@ -122,7 +122,7 @@ export class SystemDetector {
   /**
    * Get current platform
    * @returns Platform identifier
-   * @tags @API:GET-PLATFORM-001
+   * @tags @CODE:GET-PLATFORM-001:API
    */
   public getCurrentPlatform(): 'darwin' | 'linux' | 'win32' {
     const platform = os.platform();
@@ -137,7 +137,7 @@ export class SystemDetector {
    * Get install command for current platform
    * @param requirement - System requirement
    * @returns Install command or undefined
-   * @tags @API:GET-INSTALL-COMMAND-001
+   * @tags @CODE:GET-INSTALL-COMMAND-001:API
    */
   public getInstallCommandForCurrentPlatform(
     requirement: SystemRequirement

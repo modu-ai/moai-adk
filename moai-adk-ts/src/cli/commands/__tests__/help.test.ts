@@ -1,7 +1,7 @@
 /**
  * @file Tests for help command implementation
  * @author MoAI Team
- * @tags @TEST:CLI-HELP-001 @REQ:CLI-FOUNDATION-012
+ * @tags @TEST:CLI-HELP-001 @SPEC:CLI-FOUNDATION-012
  */
 
 import { beforeEach, describe, expect, vi } from 'vitest';
@@ -81,35 +81,21 @@ describe('HelpCommand', () => {
 
   describe('Help Command Execution', () => {
     it('should run general help successfully', async () => {
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
       const result = await helpCommand.run({});
 
       expect(result.success).toBe(true);
       expect(result.helpText).toContain('MoAI-ADK');
       expect(result.command).toBeUndefined();
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('MoAI-ADK')
-      );
-
-      consoleSpy.mockRestore();
+      expect(result.helpText).toContain('Usage: moai <command>');
     });
 
     it('should run command-specific help successfully', async () => {
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
       const result = await helpCommand.run({ command: 'init' });
 
       expect(result.success).toBe(true);
       expect(result.command).toBe('init');
       expect(result.helpText).toContain('Command: init');
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Command: init')
-      );
-
-      consoleSpy.mockRestore();
+      expect(result.helpText).toContain('Initialize a new MoAI-ADK project');
     });
 
     it('should handle unknown command gracefully', async () => {

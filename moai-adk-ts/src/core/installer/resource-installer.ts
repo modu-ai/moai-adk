@@ -1,5 +1,5 @@
-// @FEATURE:INST-004 | Chain: @REQ:INST-001 -> @DESIGN:INST-004 -> @TASK:INST-004 -> @TEST:INST-004
-// Related: @API:INST-004, @DATA:INST-RES-001
+// @CODE:INST-004 | 
+// Related: @CODE:INST-004:API, @CODE:INST-RES-001
 
 /**
  * @file Resource installation manager
@@ -59,7 +59,7 @@ Thumbs.db
 
 /**
  * Handles resource installation and configuration file generation
- * @tags @FEATURE:RESOURCE-INSTALLER-001
+ * @tags @CODE:RESOURCE-INSTALLER-001
  */
 export class ResourceInstaller {
   private readonly templateProcessor: TemplateProcessor;
@@ -74,7 +74,7 @@ export class ResourceInstaller {
    * Install Claude Code resources from templates
    * @param config Installation configuration
    * @returns List of installed files
-   * @tags @API:INSTALL-CLAUDE-001
+   * @tags @CODE:INSTALL-CLAUDE-001:API
    */
   async installClaudeResources(
     config: InstallationConfig
@@ -110,7 +110,7 @@ export class ResourceInstaller {
    * Install MoAI resources from templates
    * @param config Installation configuration
    * @returns List of installed files
-   * @tags @API:INSTALL-MOAI-001
+   * @tags @CODE:INSTALL-MOAI-001:API
    */
   async installMoaiResources(
     config: InstallationConfig
@@ -155,7 +155,7 @@ export class ResourceInstaller {
    * Install project memory file from template
    * @param config Installation configuration
    * @returns Path to memory file
-   * @tags @API:INSTALL-MEMORY-001
+   * @tags @CODE:INSTALL-MEMORY-001:API
    */
   async installProjectMemory(
     config: InstallationConfig
@@ -198,7 +198,7 @@ export class ResourceInstaller {
    * Create Claude Code settings (delegates to FallbackBuilder)
    * @param config Installation configuration
    * @returns Path to settings file
-   * @tags @API:CREATE-CLAUDE-SETTINGS-001
+   * @tags @CODE:CREATE-CLAUDE-SETTINGS-001:API
    */
   async createClaudeSettings(
     config: InstallationConfig
@@ -210,7 +210,7 @@ export class ResourceInstaller {
    * Create MoAI configuration (delegates to FallbackBuilder)
    * @param config Installation configuration
    * @returns Path to config file
-   * @tags @API:CREATE-MOAI-CONFIG-001
+   * @tags @CODE:CREATE-MOAI-CONFIG-001:API
    */
   async createMoaiConfig(
     config: InstallationConfig
@@ -222,7 +222,7 @@ export class ResourceInstaller {
    * Create gitignore file
    * @param config Installation configuration
    * @returns Path to gitignore file
-   * @tags @API:CREATE-GITIGNORE-001
+   * @tags @CODE:CREATE-GITIGNORE-001:API
    */
   async createGitignore(
     config: InstallationConfig

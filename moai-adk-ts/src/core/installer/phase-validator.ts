@@ -1,5 +1,5 @@
-// @FEATURE:INST-003 | Chain: @REQ:INST-001 -> @DESIGN:INST-003 -> @TASK:INST-003 -> @TEST:INST-003
-// Related: @API:INST-003
+// @CODE:INST-003 | 
+// Related: @CODE:INST-003:API
 
 /**
  * @file Installation phase validation
@@ -21,14 +21,14 @@ import type { InstallationConfig } from './types';
  * - Installation completeness verification
  * - Node.js version validation
  *
- * @tags @FEATURE:PHASE-VALIDATOR-001
+ * @tags @CODE:PHASE-VALIDATOR-001
  */
 export class PhaseValidator {
   /**
    * Validate system requirements
    * @param config Installation configuration
    * @throws Error if requirements not met
-   * @tags @API:VALIDATE-SYSTEM-001
+   * @tags @CODE:VALIDATE-SYSTEM-001:API
    */
   async validateSystemRequirements(config: InstallationConfig): Promise<void> {
     try {
@@ -63,7 +63,7 @@ export class PhaseValidator {
    * Validate installation completeness
    * @param config Installation configuration
    * @throws Error if validation fails
-   * @tags @API:VALIDATE-INSTALLATION-001
+   * @tags @CODE:VALIDATE-INSTALLATION-001:API
    */
   async validateInstallation(config: InstallationConfig): Promise<void> {
     try {
@@ -107,7 +107,7 @@ export class PhaseValidator {
    * Validate directory structure can be created
    * @param config Installation configuration
    * @returns true if directory structure is valid
-   * @tags @API:VALIDATE-DIRECTORIES-001
+   * @tags @CODE:VALIDATE-DIRECTORIES-001:API
    */
   async validateDirectoryStructure(config: InstallationConfig): Promise<boolean> {
     try {
@@ -143,7 +143,7 @@ export class PhaseValidator {
    * Validate backup can be created
    * @param config Installation configuration
    * @returns true if backup can be created
-   * @tags @API:VALIDATE-BACKUP-001
+   * @tags @CODE:VALIDATE-BACKUP-001:API
    */
   async validateBackupPossible(config: InstallationConfig): Promise<boolean> {
     try {

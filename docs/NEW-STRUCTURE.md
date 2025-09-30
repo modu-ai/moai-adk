@@ -207,9 +207,9 @@
 
 - **TAG 체계 완전 가이드**
   - **Primary Chain** (필수)
-    - @REQ: 요구사항
-    - @DESIGN: 설계
-    - @TASK: 구현
+    - @SPEC: 요구사항
+    - @SPEC: 설계
+    - @CODE: 구현
     - @TEST: 검증
 
   - **Implementation Tags**

@@ -104,15 +104,15 @@ describe('RequirementRegistry', () => {
       expect(nodeRequirement?.minVersion).toBe('18.0.0');
     });
 
-    test('should include SQLite3 requirement', () => {
-      // Given: SQLite3가 선택적 요구사항
-      // When: 요구사항 레지스트리에서 SQLite3 조회
-      const sqliteRequirement = requirementRegistry.getRequirement('SQLite3');
+    test('should include npm requirement', () => {
+      // Given: npm이 개발 요구사항
+      // When: 요구사항 레지스트리에서 npm 조회
+      const npmRequirement = requirementRegistry.getRequirement('npm');
 
-      // Then: SQLite3 요구사항이 정의되어야 함
-      expect(sqliteRequirement).toBeDefined();
-      expect(sqliteRequirement?.name).toBe('SQLite3');
-      expect(sqliteRequirement?.category).toBe('development');
+      // Then: npm 요구사항이 정의되어야 함
+      expect(npmRequirement).toBeDefined();
+      expect(npmRequirement?.name).toBe('npm');
+      expect(npmRequirement?.category).toBe('development');
     });
 
     test('should return all runtime requirements', () => {

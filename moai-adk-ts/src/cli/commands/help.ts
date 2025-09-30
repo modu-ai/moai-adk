@@ -1,5 +1,5 @@
-// @FEATURE:CLI-006 | Chain: @REQ:CLI-006 -> @DESIGN:CLI-006 -> @TASK:CLI-006 -> @TEST:CLI-006
-// Related: @UI:HELP-001
+// @CODE:CLI-006 | 
+// Related: @CODE:HELP-001:UI
 
 /**
  * @file CLI help command and documentation display
@@ -11,7 +11,7 @@ import { logger } from '../../utils/winston-logger.js';
 
 /**
  * Help command options
- * @tags @DESIGN:HELP-OPTIONS-001
+ * @tags @SPEC:HELP-OPTIONS-001
  */
 export interface HelpOptions {
   readonly command?: string | undefined;
@@ -19,7 +19,7 @@ export interface HelpOptions {
 
 /**
  * Command help information
- * @tags @DESIGN:COMMAND-HELP-001
+ * @tags @SPEC:COMMAND-HELP-001
  */
 export interface CommandHelp {
   readonly name: string;
@@ -34,7 +34,7 @@ export interface CommandHelp {
 
 /**
  * Help result
- * @tags @DESIGN:HELP-RESULT-001
+ * @tags @SPEC:HELP-RESULT-001
  */
 export interface HelpResult {
   readonly success: boolean;
@@ -44,7 +44,7 @@ export interface HelpResult {
 
 /**
  * Help command for comprehensive help system
- * @tags @FEATURE:CLI-HELP-001
+ * @tags @CODE:CLI-HELP-001
  */
 export class HelpCommand {
   private readonly commands: Map<string, CommandHelp> = new Map();
@@ -183,7 +183,7 @@ export class HelpCommand {
    * Get help for a specific command
    * @param commandName - Name of the command
    * @returns Command help information
-   * @tags @API:GET-COMMAND-HELP-001
+   * @tags @CODE:GET-COMMAND-HELP-001:API
    */
   public getCommandHelp(commandName: string): CommandHelp | undefined {
     return this.commands.get(commandName);
@@ -192,7 +192,7 @@ export class HelpCommand {
   /**
    * Get list of all available commands
    * @returns Array of command names
-   * @tags @API:GET-COMMANDS-001
+   * @tags @CODE:GET-COMMANDS-001:API
    */
   public getAvailableCommands(): string[] {
     return Array.from(this.commands.keys());
@@ -265,7 +265,7 @@ Usage:
    * Run help command
    * @param options - Help options
    * @returns Help result
-   * @tags @API:HELP-RUN-001
+   * @tags @CODE:HELP-RUN-001:API
    */
   public async run(options: HelpOptions): Promise<HelpResult> {
     try {
