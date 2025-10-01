@@ -1,13 +1,14 @@
 /**
- * @file Package manager installer test suite
+ * @file Package manager installer test suite (Refactored)
  * @author MoAI Team
- * @tags @TEST:PACKAGE-MANAGER-INSTALLER-001 @SPEC:PACKAGE-MANAGER-003
+ * @tags @TEST:REFACTOR-007 @SPEC:REFACTOR-007
  */
 
 import { beforeEach, describe, expect, test, vi, type MockedFunction } from 'vitest';
 import '@/__tests__/setup';
 import { execa } from 'execa';
 import { PackageManagerInstaller } from '@/core/package-manager/installer';
+import { CommandBuilder } from '@/core/package-manager/command-builder';
 import {
   type PackageInstallOptions,
   PackageManagerType,
@@ -19,10 +20,12 @@ const mockExeca = execa as MockedFunction<typeof execa>;
 
 describe('PackageManagerInstaller', () => {
   let installer: PackageManagerInstaller;
+  let commandBuilder: CommandBuilder;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    installer = new PackageManagerInstaller();
+    commandBuilder = new CommandBuilder();
+    installer = new PackageManagerInstaller(commandBuilder);
   });
 
   describe('Package Installation', () => {
@@ -126,154 +129,6 @@ describe('PackageManagerInstaller', () => {
       expect(result.success).toBe(false);
       expect(result.error).toContain('Package not found');
       expect(result.installedPackages).toEqual([]);
-    });
-  });
-
-  describe('Package.json Generation', () => {
-    test('should generate package.json for Node.js project', async () => {
-      // Arrange
-      const projectConfig = {
-        name: 'my-node-app',
-        version: '1.0.0',
-        description: 'A Node.js application',
-        author: 'John Doe',
-        license: 'MIT',
-        type: 'module' as const,
-      };
-
-      const packageManagerType = PackageManagerType.NPM;
-
-      // Act
-      const packageJson = installer.generatePackageJson(
-        projectConfig,
-        packageManagerType
-      );
-
-      // Assert
-      expect(packageJson.name).toBe('my-node-app');
-      expect(packageJson.version).toBe('1.0.0');
-      expect(packageJson.type).toBe('module');
-      expect(packageJson.scripts?.['build']).toBeDefined();
-      expect(packageJson.scripts?.['test']).toBeDefined();
-      expect(packageJson.scripts?.['start']).toBeDefined();
-      expect(packageJson.engines?.['node']).toBeDefined();
-    });
-
-    test('should generate package.json with TypeScript configuration', async () => {
-      // Arrange
-      const projectConfig = {
-        name: 'my-ts-app',
-        version: '0.1.0',
-        description: 'A TypeScript application',
-        main: 'dist/index.js',
-      };
-
-      const packageManagerType = PackageManagerType.PNPM;
-      const includeTypeScript = true;
-
-      // Act
-      const packageJson = installer.generatePackageJson(
-        projectConfig,
-        packageManagerType,
-        includeTypeScript
-      );
-
-      // Assert
-      expect(packageJson.scripts?.['build']).toContain('tsc');
-      expect(packageJson.scripts?.['type-check']).toBeDefined();
-      expect(packageJson.devDependencies?.['typescript']).toBeDefined();
-      expect(packageJson.devDependencies?.['@types/node']).toBeDefined();
-    });
-
-    test('should generate package.json with testing framework', async () => {
-      // Arrange
-      const projectConfig = {
-        name: 'my-test-app',
-        version: '1.0.0',
-      };
-
-      const packageManagerType = PackageManagerType.YARN;
-      const includeTypeScript = true;
-      const testingFramework = 'jest';
-
-      // Act
-      const packageJson = installer.generatePackageJson(
-        projectConfig,
-        packageManagerType,
-        includeTypeScript,
-        testingFramework
-      );
-
-      // Assert
-      expect(packageJson.scripts?.['test']).toContain('jest');
-      expect(packageJson.scripts?.['test:watch']).toBeDefined();
-      expect(packageJson.scripts?.['test:coverage']).toBeDefined();
-      expect(packageJson.devDependencies?.['jest']).toBeDefined();
-      expect(packageJson.devDependencies?.['@types/jest']).toBeDefined();
-    });
-  });
-
-  describe('Dependency Management', () => {
-    test('should add dependencies to existing package.json', async () => {
-      // Arrange
-      const existingPackageJson = {
-        name: 'existing-project',
-        version: '1.0.0',
-        dependencies: {
-          express: '^4.18.0',
-        },
-      };
-
-      const newDependencies = {
-        lodash: '^4.17.21',
-        axios: '^1.5.0',
-      };
-
-      // Act
-      const updatedPackageJson = installer.addDependencies(
-        existingPackageJson,
-        newDependencies
-      );
-
-      // Assert
-      expect(updatedPackageJson.dependencies).toEqual({
-        express: '^4.18.0',
-        lodash: '^4.17.21',
-        axios: '^1.5.0',
-      });
-    });
-
-    test('should add dev dependencies without affecting regular dependencies', async () => {
-      // Arrange
-      const existingPackageJson = {
-        name: 'existing-project',
-        version: '1.0.0',
-        dependencies: {
-          express: '^4.18.0',
-        },
-        devDependencies: {
-          typescript: '^5.0.0',
-        },
-      };
-
-      const newDevDependencies = {
-        '@types/express': '^4.17.17',
-        jest: '^29.0.0',
-      };
-
-      // Act
-      const updatedPackageJson = installer.addDevDependencies(
-        existingPackageJson,
-        newDevDependencies
-      );
-
-      // Assert
-      expect(updatedPackageJson.dependencies?.['express']).toBe('^4.18.0');
-      expect(updatedPackageJson.devDependencies).toEqual({
-        typescript: '^5.0.0',
-        '@types/express': '^4.17.17',
-        jest: '^29.0.0',
-      });
     });
   });
 
