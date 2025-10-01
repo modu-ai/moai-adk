@@ -289,117 +289,163 @@ code, kbd, samp, pre {
 }
 
 /* ============================================
-   Hero Section - CLI 스크린샷 배경 레이아웃
+   Hero Section - Tailwind-inspired 2-column Layout
    ============================================ */
 
 .VPHero {
-  padding: 48px 24px;
+  padding: 80px 24px;
   position: relative;
-  min-height: 600px;
-  display: flex;
-  align-items: center;
-}
-
-/* CLI 스크린샷을 좌측 배경으로 배치 */
-.VPHero::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 50%;
-  height: 80%;
-  background-image: url('/moai-tui_screen-light.png');
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: left center;
-  opacity: 0.85;
-  z-index: 0;
-  pointer-events: none;
-}
-
-.dark .VPHero::before {
-  background-image: url('/moai-tui_screen-dark.png');
-  opacity: 0.9;
+  overflow: hidden;
 }
 
 .VPHero .container {
-  max-width: 1152px;
+  max-width: 1280px;
   margin: 0 auto;
   position: relative;
   z-index: 1;
-  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: center;
 }
 
+/* 좌측 텍스트 영역 */
 .VPHero .main {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  text-align: right;
-  margin-left: auto;
-  max-width: 55%;
+  gap: 1.5rem;
+  padding-right: 2rem;
 }
 
 .VPHero .name {
-  font-size: clamp(2.5rem, 8vw, 4rem);
+  font-size: clamp(3rem, 5vw, 4.5rem);
   font-weight: 900;
-  letter-spacing: -0.04em;
-  background: linear-gradient(135deg,
-    hsl(var(--foreground)) 0%,
-    hsl(var(--muted-foreground)) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-align: right;
+  letter-spacing: -0.05em;
+  line-height: 1.1;
+  color: hsl(var(--foreground));
+  margin: 0;
+}
+
+.VPHero .text {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  color: hsl(var(--foreground));
+  margin: 0;
 }
 
 .VPHero .tagline {
-  font-size: clamp(1rem, 3vw, 1.5rem);
+  font-size: clamp(1.125rem, 2vw, 1.25rem);
   color: hsl(var(--muted-foreground));
-  font-weight: 500;
-  margin-top: 0.5rem;
-  line-height: 1.3;
-  text-align: right;
+  font-weight: 400;
+  line-height: 1.6;
+  margin: 0.5rem 0 0 0;
 }
 
 .VPHero .actions {
   display: flex;
-  justify-content: flex-end;
   gap: 1rem;
-  margin-top: 2rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
 }
 
-/* 기존 이미지 컨테이너 숨김 */
+/* 우측 이미지 영역 */
 .VPHero .image-container {
-  display: none !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 2rem;
 }
 
-/* 모바일 반응형 */
-@media (max-width: 768px) {
+.VPHero .image-container img {
+  width: 100%;
+  height: auto;
+  border-radius: calc(var(--radius) + 8px);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  border: 1px solid hsl(var(--border));
+  transition: none !important;
+  transform: none !important;
+}
+
+.VPHero .image-container img:hover {
+  transform: none !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+}
+
+.dark .VPHero .image-container img {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  border-color: hsl(var(--border));
+}
+
+/* 데스크톱 레이아웃 (1024px+) */
+@media (min-width: 1024px) {
   .VPHero {
-    min-height: 500px;
+    padding: 120px 24px;
   }
 
-  .VPHero::before {
-    width: 100%;
-    height: 40%;
-    top: 20%;
-    opacity: 0.3;
+  .VPHero .container {
+    gap: 6rem;
+  }
+}
+
+/* 태블릿 레이아웃 (768px ~ 1023px) */
+@media (max-width: 1023px) {
+  .VPHero .container {
+    grid-template-columns: 1fr;
+    gap: 3rem;
+    text-align: center;
   }
 
   .VPHero .main {
-    max-width: 100%;
+    padding-right: 0;
     align-items: center;
-    text-align: center;
-  }
-
-  .VPHero .name,
-  .VPHero .tagline {
-    text-align: center;
   }
 
   .VPHero .actions {
+    justify-content: center;
+  }
+
+  .VPHero .image-container {
+    order: -1;
+    padding: 1rem;
+  }
+}
+
+/* 모바일 레이아웃 (768px 이하) */
+@media (max-width: 767px) {
+  .VPHero {
+    padding: 60px 16px;
+  }
+
+  .VPHero .container {
+    gap: 2rem;
+  }
+
+  .VPHero .name {
+    font-size: 2.5rem;
+  }
+
+  .VPHero .text {
+    font-size: 1.5rem;
+  }
+
+  .VPHero .tagline {
+    font-size: 1rem;
+  }
+
+  .VPHero .image-container {
+    padding: 0.5rem;
+  }
+
+  .VPHero .actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .VPHero .actions .VPButton {
+    width: 100%;
     justify-content: center;
   }
 }
