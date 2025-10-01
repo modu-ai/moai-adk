@@ -1,23 +1,11 @@
 ---
 name: moai:2-build
 description: 구현할 SPEC ID (예: SPEC-001) 또는 all로 모든 SPEC 구현: 언어별 최적화된 TDD 구현 (Red-Green-Refactor) with SQLite3 tags.db
-version: 1.0.0
-created: 2025-10-01
-updated: 2025-10-01
 argument-hint: "SPEC-ID - 구현할 SPEC ID (예: SPEC-001) 또는 all로 모든 SPEC 구현"
 tools: Read, Write, Edit, MultiEdit, Bash(python3:*), Bash(pytest:*), Bash(npm:*), Bash(node:*), Task, WebFetch, Grep, Glob, TodoWrite
 ---
 
 # ⚒️ MoAI-ADK 2단계: 언어별 최적화된 TDD 구현 (Red-Green-Refactor)
-
-## HISTORY
-
-### v1.0.0 (2025-10-01)
-- **INITIAL**: CMD-BUILD 지침 문서 작성
-- **AUTHOR**: @moai-adk-team
-
----
-
 
 ## 🎯 커맨드 목적
 

@@ -1,23 +1,11 @@
 ---
 name: moai:8-project
 description: Use PROACTIVELY for 프로젝트 문서 초기화 - product/structure/tech.md 생성 및 언어별 최적화 설정
-version: 1.0.0
-created: 2025-10-01
-updated: 2025-10-01
 argument-hint: [PROJECT_NAME] [update]
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash, Agent
 ---
 
 # 📋 MoAI-ADK 8단계: 범용 언어 지원 프로젝트 문서 초기화/갱신
-
-## HISTORY
-
-### v1.0.0 (2025-10-01)
-- **INITIAL**: CMD-PROJECT 지침 문서 작성
-- **AUTHOR**: @moai-adk-team
-
----
-
 
 ## 🎯 커맨드 목적
 

@@ -1,23 +1,11 @@
 ---
 name: moai:9-update
 description: MoAI-ADK 패키지 및 템플릿 업데이트 (백업 자동 생성, 설정 파일 보존)
-version: 1.0.0
-created: 2025-10-01
-updated: 2025-10-01
 argument-hint: [--check|--force]
 tools: Read, Write, Bash, Grep, Glob
 ---
 
 # 🔄 MoAI-ADK 프로젝트 업데이트
-
-## HISTORY
-
-### v1.0.0 (2025-10-01)
-- **INITIAL**: CMD-UPDATE 지침 문서 작성
-- **AUTHOR**: @moai-adk-team
-
----
-
 
 ## 🎯 커맨드 목적
 

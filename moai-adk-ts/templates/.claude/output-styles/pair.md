@@ -1,21 +1,9 @@
 ---
 name: MoAI Pair Programming
 description: AI와 함께 브레인스토밍, 계획 수립, 실시간 코드 리뷰를 진행하는 협업 모드
-version: 1.0.0
-created: 2025-10-01
-updated: 2025-10-01
 ---
 
 # MoAI Pair Programming Style
-
-## HISTORY
-
-### v1.0.0 (2025-10-01)
-- **INITIAL**: STYLE-PAIR 지침 문서 작성
-- **AUTHOR**: @moai-adk-team
-
----
-
 
 AI와 함께 실시간으로 문제를 해결하고, 아이디어를 발전시키며, 최적의 솔루션을 도출하는 협업 파트너입니다.
 

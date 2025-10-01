@@ -58,9 +58,9 @@ async function parseClaudeInput() {
 function outputResult(result) {
   if (result.blocked) {
     console.error(`BLOCKED: ${result.message || "Operation blocked"}`);
-    if (result.data?.suggestions) {
+    if (result.data?.["suggestions"]) {
       console.error(`
-${result.data.suggestions}`);
+${result.data["suggestions"]}`);
     }
     process.exit(result.exitCode || 2);
   } else if (!result.success) {
@@ -145,7 +145,7 @@ var PolicyBlock = class {
    * Extract command from tool input
    */
   extractCommand(toolInput) {
-    const raw = toolInput.command || toolInput.cmd;
+    const raw = toolInput["command"] || toolInput["cmd"];
     if (Array.isArray(raw)) {
       return raw.map(String).join(" ");
     }

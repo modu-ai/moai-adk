@@ -1,23 +1,11 @@
 ---
 name: moai:1-spec
 description: EARS 명세 작성 + 브랜치/PR 생성
-version: 1.0.0
-created: 2025-10-01
-updated: 2025-10-01
 argument-hint: "제목1 제목2 ... | SPEC-ID 수정내용"
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 ---
 
 # 🏗️ MoAI-ADK 1단계: EARS 명세 작성 + 브랜치/PR 생성
-
-## HISTORY
-
-### v1.0.0 (2025-10-01)
-- **INITIAL**: CMD-SPEC 지침 문서 작성
-- **AUTHOR**: @moai-adk-team
-
----
-
 
 ## 🎯 커맨드 목적
 
