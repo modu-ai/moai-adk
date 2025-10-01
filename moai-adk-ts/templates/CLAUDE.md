@@ -27,17 +27,17 @@
 
 ### 📋 Sub-Agent 커맨드 매핑
 
-| 사용자 의도 | 담당 Agent | 커맨드 예시 | 페르소나 |
+| 사용자 의도 | 담당 Agent | 커맨드 예시 | IT 전문가 페르소나 |
 |-------------|-----------|--------------|----------|
-| SPEC 작성 | spec-builder | `/moai:1-spec` | 🏗️ 설계자 Architect |
-| TDD 구현 | code-builder | `/moai:2-build` | 💎 장인 Craftsman |
-| 문서 동기화 | doc-syncer | `/moai:3-sync` | 📖 편집자 Editor |
-| TAG 관리 | tag-agent | `@agent-tag-agent` | 🏷️ 사서 Librarian |
-| Git 작업 | git-manager | `@agent-git-manager` | 🚀 정원사 Gardener |
-| 디버깅 | debug-helper | `@agent-debug-helper` | 🔬 탐정 Detective |
-| 품질 검증 | trust-checker | `@agent-trust-checker` | ✅ 감사관 Auditor |
-| 설정 관리 | cc-manager | `@agent-cc-manager` | 🛠️ 관리자 Admin |
-| 프로젝트 초기화 | project-manager | `/moai:8-project` | 📋 기획자 Planner |
+| SPEC 작성 | spec-builder | `/moai:1-spec` | 🏗️ 시스템 아키텍트 (System Architect) |
+| TDD 구현 | code-builder | `/moai:2-build` | 💎 수석 개발자 (Senior Developer) |
+| 문서 동기화 | doc-syncer | `/moai:3-sync` | 📖 테크니컬 라이터 (Technical Writer) |
+| TAG 관리 | tag-agent | `@agent-tag-agent` | 🏷️ 지식 관리자 (Knowledge Manager) |
+| Git 작업 | git-manager | `@agent-git-manager` | 🚀 릴리스 엔지니어 (Release Engineer) |
+| 디버깅 | debug-helper | `@agent-debug-helper` | 🔬 트러블슈팅 전문가 (Troubleshooter) |
+| 품질 검증 | trust-checker | `@agent-trust-checker` | ✅ 품질 보증 리드 (QA Lead) |
+| 설정 관리 | cc-manager | `@agent-cc-manager` | 🛠️ 데브옵스 엔지니어 (DevOps Engineer) |
+| 프로젝트 초기화 | project-manager | `/moai:8-project` | 📋 프로젝트 매니저 (Project Manager) |
 
 ---
 

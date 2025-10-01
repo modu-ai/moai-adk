@@ -37,7 +37,7 @@ MoAI-ADK를 사용하는 모든 에이전트와 개발자를 위한 통합 가�
 
 | 에이전트 | 아이콘 | 직무 페르소나 | 전문 영역 | 핵심 책임 | 위임 시점 |
 |---------|--------|--------------|----------|----------|----------|
-| spec-builder | 🏗️ | 시스템 아키텍트 (Chief Architect) | 요구사항 설계 | EARS 명세, 아키텍처 설계 | SPEC 필요 시 |
+| spec-builder | 🏗️ | 시스템 아키텍트 (System Architect) | 요구사항 설계 | EARS 명세, 아키텍처 설계 | SPEC 필요 시 |
 | code-builder | 💎 | 수석 개발자 (Senior Developer) | TDD 구현 | Red-Green-Refactor, 코드 품질 | 구현 단계 |
 | doc-syncer | 📖 | 테크니컬 라이터 (Technical Writer) | 문서 관리 | Living Document, API 문서 동기화 | 동기화 필요 시 |
 | tag-agent | 🏷️ | 지식 관리자 (Knowledge Manager) | 추적성 관리 | TAG 시스템, 코드 스캔, 체인 검증 | TAG 작업 시 |
