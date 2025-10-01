@@ -70,22 +70,53 @@
 
 ### TAG BLOCK 템플릿
 
+**SPEC 문서 (.moai/specs/)** - **HISTORY 섹션 필수**:
+```markdown
+---
+id: AUTH-001
+version: 2.1.0
+status: active
+created: 2025-09-15
+updated: 2025-10-01
+---
+
+# @SPEC:AUTH-001: JWT 인증 시스템
+
+## 📋 HISTORY
+
+### v2.1.0 (2025-10-01)
+- **CHANGED**: 토큰 만료 시간 15분 → 30분으로 변경
+- **ADDED**: 리프레시 토큰 자동 갱신 요구사항 추가
+- **AUTHOR**: @goos
+- **REVIEW**: @security-team (승인)
+
+### v2.0.0 (2025-09-20)
+- **BREAKING**: OAuth2 통합 요구사항 추가
+- **ADDED**: 소셜 로그인 지원 명세
+- **AUTHOR**: @goos
+
+### v1.0.0 (2025-09-15)
+- **INITIAL**: 기본 JWT 인증 명세 작성
+- **AUTHOR**: @goos
+
+## EARS 요구사항
+...
+```
+
 **소스 코드 (src/)**:
 ```typescript
-// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth/service.test.ts
+// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md v2.1.0 | TEST: tests/auth/service.test.ts
 ```
 
 **테스트 코드 (tests/)**:
 ```typescript
-// @TEST:AUTH-001 | SPEC: SPEC-AUTH-001.md
+// @TEST:AUTH-001 | SPEC: SPEC-AUTH-001.md v2.1.0
 ```
 
-**SPEC 문서 (.moai/specs/)**:
-```markdown
-# @SPEC:AUTH-001: JWT 인증 시스템
-```
-
-- TAG ID: `<도메인>-<3자리>` (예: `AUTH-003`)
+**핵심 원칙**:
+- TAG ID: `<도메인>-<3자리>` (예: `AUTH-003`) - **영구 불변**
+- TAG 내용: **자유롭게 수정 가능** (HISTORY에 기록 필수)
+- 버전: Semantic Versioning (Major.Minor.Patch)
 - 생성 전 중복 확인: `rg "@SPEC:AUTH" -n` 또는 `rg "AUTH-001" -n`
 - **TAG의 진실은 코드 자체에만 존재**: 정규식 패턴으로 코드에서 직접 스캔하여 실시간 검증
 
@@ -221,18 +252,28 @@ export class AuthService { ... }
 
 **1단계: SPEC 작성** (`/moai:1-spec`)
 - [ ] `.moai/specs/SPEC-<ID>.md` 생성
+- [ ] YAML Front Matter 추가 (id, version, status, created)
 - [ ] `@SPEC:ID` TAG 포함
+- [ ] **HISTORY 섹션 작성** (v1.0.0 INITIAL 항목)
 - [ ] EARS 구문으로 요구사항 작성
 - [ ] 중복 ID 확인: `rg "@SPEC:<ID>" -n`
 
+**1-1단계: SPEC 수정 시** (요구사항 변경)
+- [ ] 버전 업데이트 (Semantic Versioning)
+- [ ] **HISTORY 섹션에 변경 이력 추가**
+- [ ] CHANGED/ADDED/REMOVED/BREAKING 태그 명시
+- [ ] 작성자, 리뷰어 기록
+- [ ] updated 날짜 갱신
+
 **2단계: TDD 구현** (`/moai:2-build`)
-- [ ] **RED**: `tests/` 디렉토리에 `@TEST:ID` 작성 및 실패 확인
-- [ ] **GREEN**: `src/` 디렉토리에 `@CODE:ID` 작성 및 테스트 통과
+- [ ] **RED**: `tests/` 디렉토리에 `@TEST:ID | SPEC: SPEC-<ID>.md v<버전>` 작성
+- [ ] **GREEN**: `src/` 디렉토리에 `@CODE:ID | SPEC: SPEC-<ID>.md v<버전>` 작성
 - [ ] **REFACTOR**: 코드 품질 개선, TDD 이력 주석 추가
-- [ ] TAG BLOCK에 SPEC/TEST 파일 경로 명시
+- [ ] TAG BLOCK에 SPEC 버전 명시
 
 **3단계: 문서 동기화** (`/moai:3-sync`)
 - [ ] 전체 TAG 스캔: `rg '@(SPEC|TEST|CODE):' -n`
+- [ ] SPEC 버전 일치성 확인: `rg "SPEC-<ID>.md v" -n`
 - [ ] 고아 TAG 없음 확인
 - [ ] Living Document 자동 생성 확인
 - [ ] PR 상태 Draft → Ready 전환

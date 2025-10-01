@@ -151,19 +151,52 @@ MoAI-ADK 범용 개발 툴킷을 사용하는 모든 에이전트와 개발자�
 
 ### TAG BLOCK 템플릿
 
+**SPEC 문서 (.moai/specs/)** - **HISTORY 섹션 필수**:
+```markdown
+---
+id: AUTH-001
+version: 2.1.0
+status: active
+created: 2025-09-15
+updated: 2025-10-01
+authors: ["@goos"]
+---
+
+# @SPEC:AUTH-001: JWT 인증 시스템
+
+## 📋 HISTORY
+
+### v2.1.0 (2025-10-01)
+- **CHANGED**: 토큰 만료 시간 15분 → 30분으로 변경
+- **ADDED**: 리프레시 토큰 자동 갱신 요구사항 추가
+- **AUTHOR**: @goos
+- **REVIEW**: @security-team (승인)
+- **REASON**: 사용자 경험 개선 요청
+
+### v2.0.0 (2025-09-20)
+- **BREAKING**: OAuth2 통합 요구사항 추가
+- **ADDED**: 소셜 로그인 지원 명세
+- **AUTHOR**: @goos
+- **REVIEW**: @product-team (승인)
+
+### v1.0.0 (2025-09-15)
+- **INITIAL**: 기본 JWT 인증 명세 작성
+- **AUTHOR**: @goos
+
+---
+
+## EARS 요구사항
+...
+```
+
 **소스 코드 (src/)**:
 ```text
-# @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth/service.test.ts
+# @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md v2.1.0 | TEST: tests/auth/service.test.ts
 ```
 
 **테스트 코드 (tests/)**:
 ```text
-# @TEST:AUTH-001 | SPEC: SPEC-AUTH-001.md
-```
-
-**SPEC 문서 (.moai/specs/)**:
-```text
-# @SPEC:AUTH-001: JWT 인증 시스템
+# @TEST:AUTH-001 | SPEC: SPEC-AUTH-001.md v2.1.0
 ```
 
 ### @CODE 서브 카테고리 (주석 레벨)
@@ -177,10 +210,45 @@ MoAI-ADK 범용 개발 툴킷을 사용하는 모든 에이전트와 개발자�
 
 ### TAG 사용 규칙
 
-- TAG ID: `<도메인>-<3자리>` (예: AUTH-003)
+- TAG ID: `<도메인>-<3자리>` (예: AUTH-003) - **영구 불변**
+- TAG 내용: **자유롭게 수정 가능** (HISTORY에 기록 필수)
+- 버전 관리: Semantic Versioning (Major.Minor.Patch)
+  - **Major**: BREAKING 변경 (하위 호환성 깨짐)
+  - **Minor**: ADDED 기능 추가 (하위 호환성 유지)
+  - **Patch**: FIXED/CHANGED 수정 (버그 수정, 개선)
 - 새 TAG 생성 전 중복 확인: `rg "@SPEC:AUTH" -n` 또는 `rg "AUTH-001" -n`
 - TAG 검증: `rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/`
+- SPEC 버전 일치성 확인: `rg "SPEC-AUTH-001.md v" -n`
 - CODE-FIRST 원칙: TAG의 진실은 코드 자체에만 존재
+
+### HISTORY 작성 가이드
+
+**변경 유형 태그**:
+- `INITIAL`: 최초 작성 (v1.0.0)
+- `ADDED`: 새 기능/요구사항 추가 → Minor 버전 증가
+- `CHANGED`: 기존 내용 수정 → Patch 버전 증가
+- `FIXED`: 버그/오류 수정 → Patch 버전 증가
+- `REMOVED`: 기능/요구사항 제거 → Major 버전 증가
+- `BREAKING`: 하위 호환성 깨지는 변경 → Major 버전 증가
+- `DEPRECATED`: 향후 제거 예정 표시
+
+**필수 메타데이터**:
+- `AUTHOR`: 작성자/수정자 (GitHub ID)
+- `REVIEW`: 리뷰어 및 승인 상태
+- `REASON`: 변경 이유 (선택사항, 중요 변경 시 권장)
+- `RELATED`: 관련 이슈/PR 번호 (선택사항)
+
+**HISTORY 검색 예시**:
+```bash
+# 특정 TAG의 전체 변경 이력 조회
+rg -A 20 "# @SPEC:AUTH-001" .moai/specs/SPEC-AUTH-001.md
+
+# HISTORY 섹션만 추출
+rg -A 50 "## 📋 HISTORY" .moai/specs/SPEC-AUTH-001.md
+
+# 최근 변경 사항만 확인
+rg "### v[0-9]" .moai/specs/SPEC-AUTH-001.md | head -3
+```
 
 
 ---
