@@ -8,7 +8,10 @@ import { describe, expect, test, beforeEach, afterEach } from 'vitest';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
-import { isInsideMoAIPackage, validateProjectPath } from '@/utils/path-validator';
+import {
+  isInsideMoAIPackage,
+  validateProjectPath,
+} from '@/utils/path-validator';
 
 describe('Path Validator - Package Root Detection', () => {
   let tempDir: string;
@@ -134,7 +137,9 @@ describe('Path Validator - Package Root Detection', () => {
 
       // Assert: Should reject the path
       expect(result.isValid).toBe(false);
-      expect(result.error).toContain('Cannot initialize project inside MoAI-ADK package');
+      expect(result.error).toContain(
+        'Cannot initialize project inside MoAI-ADK package'
+      );
     });
 
     test('should accept paths outside MoAI package', () => {

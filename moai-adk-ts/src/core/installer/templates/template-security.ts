@@ -1,4 +1,4 @@
-// @CODE:INST-006 | 
+// @CODE:INST-006 |
 // Related: @CODE:INST-006:API
 
 /**

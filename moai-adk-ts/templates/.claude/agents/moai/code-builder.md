@@ -65,8 +65,8 @@ model: sonnet
 코드 파일 작성 시 파일 상단에 TAG BLOCK을 직접 작성합니다:
 
 ```typescript
-// @FEATURE:<DOMAIN-ID> | Chain: @REQ:<ID> -> @DESIGN:<ID> -> @TASK:<ID> -> @TEST:<ID>
-// Related: @API:<ID>, @UI:<ID>, @DATA:<ID>
+// @CODE:<DOMAIN-ID> | Chain: @SPEC:<ID> -> @SPEC:<ID> -> @CODE:<ID> -> @TEST:<ID>
+// Related: @CODE::API<ID>, @CODE::UI<ID>, @CODE::DATA<ID>
 ```
 
 **TAG 카테고리**:
@@ -80,9 +80,9 @@ TAG 검증은 코드 직접 스캔 방식으로 수행합니다:
 
 ```bash
 # Primary Chain 검증
-rg '@REQ:[A-Z]+-[0-9]{3}' -n src/
-rg '@DESIGN:[A-Z]+-[0-9]{3}' -n src/
-rg '@TASK:[A-Z]+-[0-9]{3}' -n src/
+rg '@SPEC:[A-Z]+-[0-9]{3}' -n src/
+rg '@SPEC:[A-Z]+-[0-9]{3}' -n src/
+rg '@CODE:[A-Z]+-[0-9]{3}' -n src/
 rg '@TEST:[A-Z]+-[0-9]{3}' -n tests/
 
 # 고아 TAG 감지

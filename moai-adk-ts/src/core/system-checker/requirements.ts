@@ -1,4 +1,4 @@
-// @CODE:SYS-REQ-001 | 
+// @CODE:SYS-REQ-001 |
 // Related: @CODE:SYS-001
 
 /**

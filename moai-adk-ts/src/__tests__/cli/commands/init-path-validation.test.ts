@@ -53,7 +53,9 @@ describe('InitCommand - Package Path Validation', () => {
 
       // Assert: Should fail with package path error
       expect(result.success).toBe(false);
-      expect(result.errors[0]).toContain('Cannot initialize project inside MoAI-ADK package');
+      expect(result.errors[0]).toContain(
+        'Cannot initialize project inside MoAI-ADK package'
+      );
     });
 
     test('should prevent initialization in package subdirectory', async () => {
@@ -86,7 +88,9 @@ describe('InitCommand - Package Path Validation', () => {
 
       // Assert: Should fail with package path error
       expect(result.success).toBe(false);
-      expect(result.errors[0]).toContain('Cannot initialize project inside MoAI-ADK package');
+      expect(result.errors[0]).toContain(
+        'Cannot initialize project inside MoAI-ADK package'
+      );
     });
   });
 });

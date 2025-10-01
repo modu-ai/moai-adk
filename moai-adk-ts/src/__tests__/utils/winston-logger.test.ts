@@ -1,4 +1,4 @@
-// @TEST:UTIL-006 | 
+// @TEST:UTIL-006 |
 // Related: @CODE:LOG-002, @CODE:LOG-002:API
 
 /**
@@ -101,7 +101,9 @@ describe('MoaiLogger', () => {
       });
 
       // When/Then: debug 로그 기록 시 에러 없음
-      expect(() => logger.debug('Debug message', { key: 'value' })).not.toThrow();
+      expect(() =>
+        logger.debug('Debug message', { key: 'value' })
+      ).not.toThrow();
     });
 
     test('should log info message', () => {
@@ -430,7 +432,9 @@ describe('MoaiLogger', () => {
       const tag = '@SPEC:TEST-001';
 
       // When/Then: TAG와 함께 로그 기록 시 에러 없음
-      expect(() => logger.logWithTag('info', tag, 'Test message')).not.toThrow();
+      expect(() =>
+        logger.logWithTag('info', tag, 'Test message')
+      ).not.toThrow();
     });
 
     test('should log with TAG and metadata', () => {
@@ -443,7 +447,9 @@ describe('MoaiLogger', () => {
       const metadata = { action: 'login', userId: 123 };
 
       // When/Then: TAG + 메타데이터와 함께 로그 기록 시 에러 없음
-      expect(() => logger.logWithTag('info', tag, 'User action', metadata)).not.toThrow();
+      expect(() =>
+        logger.logWithTag('info', tag, 'User action', metadata)
+      ).not.toThrow();
     });
 
     test('should support all log levels with TAG', () => {

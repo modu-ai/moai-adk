@@ -29,7 +29,9 @@ describe('@TEST:REFACTOR-004 - GitCommitTemplates', () => {
     it('@TEST-COMMIT-CONSTANTS-002: should apply message to template', () => {
       const template = '✨ feat: {message}';
       const message = 'add login feature';
-      expect(GitCommitTemplates.apply(template, message)).toBe('✨ feat: add login feature');
+      expect(GitCommitTemplates.apply(template, message)).toBe(
+        '✨ feat: add login feature'
+      );
     });
 
     it('@TEST-COMMIT-CONSTANTS-003: should handle multiple placeholders', () => {

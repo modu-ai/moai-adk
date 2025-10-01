@@ -79,13 +79,13 @@ describe('@TEST:REFACTOR-003: TAG Patterns', () => {
 
   describe('TAG_REFERENCE pattern', () => {
     test('should match TAG references', () => {
-      const text = 'Related to @REQ:AUTH-001 and @DESIGN:AUTH-001';
+      const text = 'Related to @SPEC:AUTH-001 and @SPEC:AUTH-001';
       const matches = Array.from(text.matchAll(CODE_FIRST_PATTERNS.TAG_REFERENCE));
 
       expect(matches).toHaveLength(2);
-      expect(matches[0][1]).toBe('REQ');
+      expect(matches[0][1]).toBe('SPEC');
       expect(matches[0][2]).toBe('AUTH-001');
-      expect(matches[1][1]).toBe('DESIGN');
+      expect(matches[1][1]).toBe('SPEC');
       expect(matches[1][2]).toBe('AUTH-001');
     });
   });

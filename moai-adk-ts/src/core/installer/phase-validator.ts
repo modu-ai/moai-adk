@@ -1,4 +1,4 @@
-// @CODE:INST-003 | 
+// @CODE:INST-003 |
 // Related: @CODE:INST-003:API
 
 /**
@@ -109,7 +109,9 @@ export class PhaseValidator {
    * @returns true if directory structure is valid
    * @tags @CODE:VALIDATE-DIRECTORIES-001:API
    */
-  async validateDirectoryStructure(config: InstallationConfig): Promise<boolean> {
+  async validateDirectoryStructure(
+    config: InstallationConfig
+  ): Promise<boolean> {
     try {
       const directories = [
         config.projectPath,

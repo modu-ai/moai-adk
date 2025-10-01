@@ -501,7 +501,7 @@ describe('GitManager', () => {
     });
 
     /**
-     * @tags @TEST:COMMIT-WITH-LOCK-001 @FEATURE:GIT-LOCK-INTEGRATION-001
+     * @tags @TEST:COMMIT-WITH-LOCK-001 @CODE:GIT-LOCK-INTEGRATION-001
      */
     it('should commit with lock successfully', async () => {
       // 테스트 파일 생성
@@ -517,7 +517,7 @@ describe('GitManager', () => {
     }, 10000);
 
     /**
-     * @tags @TEST:BRANCH-WITH-LOCK-001 @FEATURE:GIT-LOCK-INTEGRATION-001
+     * @tags @TEST:BRANCH-WITH-LOCK-001 @CODE:GIT-LOCK-INTEGRATION-001
      */
     it('should create branch with lock safely', async () => {
       const branchName = 'feature/lock-test-branch';
@@ -531,7 +531,7 @@ describe('GitManager', () => {
     }, 10000);
 
     /**
-     * @tags @TEST:LOCK-STATUS-001 @FEATURE:GIT-LOCK-INTEGRATION-001
+     * @tags @TEST:LOCK-STATUS-001 @CODE:GIT-LOCK-INTEGRATION-001
      */
     it('should return correct lock status', async () => {
       const lockStatus = await lockGitManager.getLockStatus();
@@ -543,7 +543,7 @@ describe('GitManager', () => {
     });
 
     /**
-     * @tags @TEST:CLEANUP-STALE-LOCKS-001 @FEATURE:GIT-LOCK-INTEGRATION-001
+     * @tags @TEST:CLEANUP-STALE-LOCKS-001 @CODE:GIT-LOCK-INTEGRATION-001
      */
     it('should cleanup stale locks without error', async () => {
       // 오래된 lock 정리는 에러 없이 실행되어야 함
@@ -551,7 +551,7 @@ describe('GitManager', () => {
     });
 
     /**
-     * @tags @TEST:CONCURRENT-OPERATIONS-001 @FEATURE:GIT-LOCK-INTEGRATION-001
+     * @tags @TEST:CONCURRENT-OPERATIONS-001 @CODE:GIT-LOCK-INTEGRATION-001
      */
     it('should handle concurrent commit attempts safely', async () => {
       // 첫 번째 커밋 준비

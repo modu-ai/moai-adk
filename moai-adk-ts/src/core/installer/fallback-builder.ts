@@ -218,45 +218,59 @@ export class FallbackBuilder {
   async createClaudeSettings(
     config: InstallationConfig
   ): Promise<string | null> {
-    const settingsPath = path.join(config.projectPath, '.claude', 'settings.json');
+    const settingsPath = path.join(
+      config.projectPath,
+      '.claude',
+      'settings.json'
+    );
     if (fs.existsSync(settingsPath)) return settingsPath;
 
-    return this.writeJsonFile(settingsPath, {
-      outputStyle: 'study',
-      statusLine: { enabled: true, format: 'MoAI-ADK TypeScript v{version}' },
-      agents: {
-        'moai/spec-builder': { enabled: true },
-        'moai/code-builder': { enabled: true },
-        'moai/doc-syncer': { enabled: true },
-        'moai/cc-manager': { enabled: true },
-        'moai/debug-helper': { enabled: true },
+    return this.writeJsonFile(
+      settingsPath,
+      {
+        outputStyle: 'study',
+        statusLine: { enabled: true, format: 'MoAI-ADK TypeScript v{version}' },
+        agents: {
+          'moai/spec-builder': { enabled: true },
+          'moai/code-builder': { enabled: true },
+          'moai/doc-syncer': { enabled: true },
+          'moai/cc-manager': { enabled: true },
+          'moai/debug-helper': { enabled: true },
+        },
+        commands: {
+          'moai:8-project': { enabled: true },
+          'moai:1-spec': { enabled: true },
+          'moai:2-build': { enabled: true },
+          'moai:3-sync': { enabled: true },
+          'moai:4-debug': { enabled: true },
+        },
       },
-      commands: {
-        'moai:8-project': { enabled: true },
-        'moai:1-spec': { enabled: true },
-        'moai:2-build': { enabled: true },
-        'moai:3-sync': { enabled: true },
-        'moai:4-debug': { enabled: true },
-      },
-    }, '@ERROR:CLAUDE-SETTINGS-001');
+      '@ERROR:CLAUDE-SETTINGS-001'
+    );
   }
 
   /**
    * Create MoAI configuration
    */
-  async createMoaiConfig(
-    config: InstallationConfig
-  ): Promise<string | null> {
+  async createMoaiConfig(config: InstallationConfig): Promise<string | null> {
     const configPath = path.join(config.projectPath, '.moai', 'config.json');
 
-    return this.writeJsonFile(configPath, {
-      version: '0.0.1',
-      mode: config.mode,
-      projectName: config.projectName,
-      features: config.additionalFeatures,
-      backup: { enabled: config.backupEnabled, retentionDays: 30 },
-      git: { enabled: config.mode === 'team', autoCommit: true, branchPrefix: 'feature/' },
-    }, '@ERROR:MOAI-CONFIG-001');
+    return this.writeJsonFile(
+      configPath,
+      {
+        version: '0.0.1',
+        mode: config.mode,
+        projectName: config.projectName,
+        features: config.additionalFeatures,
+        backup: { enabled: config.backupEnabled, retentionDays: 30 },
+        git: {
+          enabled: config.mode === 'team',
+          autoCommit: true,
+          branchPrefix: 'feature/',
+        },
+      },
+      '@ERROR:MOAI-CONFIG-001'
+    );
   }
 
   /**

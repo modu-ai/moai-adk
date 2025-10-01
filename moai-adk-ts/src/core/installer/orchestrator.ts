@@ -1,4 +1,4 @@
-// @CODE:INST-001 | 
+// @CODE:INST-001 |
 // Related: @CODE:INST-001:API, @CODE:INST-CTX-001
 
 /**
@@ -105,12 +105,14 @@ export class InstallationOrchestrator {
       // Build success result
       return this.resultBuilder.createSuccessResult(this.context, startTime);
     } catch (error) {
-      const installError = error instanceof InstallationError
-        ? error
-        : new InstallationError('Installation failed', {
-            error: error instanceof Error ? error : undefined,
-            errorMessage: error instanceof Error ? error.message : String(error),
-          });
+      const installError =
+        error instanceof InstallationError
+          ? error
+          : new InstallationError('Installation failed', {
+              error: error instanceof Error ? error : undefined,
+              errorMessage:
+                error instanceof Error ? error.message : String(error),
+            });
 
       logger.error('Installation failed', {
         error: installError.message,

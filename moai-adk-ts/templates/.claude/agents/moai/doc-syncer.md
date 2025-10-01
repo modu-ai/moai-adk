@@ -43,7 +43,7 @@ git diff --stat     # 변경 통계
 ```bash
 # TAG 시스템 검증
 rg '@TAG' -n src/ tests/ | wc -l  # TAG 총 개수
-rg '@REQ:|@DESIGN:|@TASK:|@TEST:' -n src/ | head -20  # Primary Chain 확인
+rg '@SPEC:|@SPEC:|@CODE:|@TEST:' -n src/ | head -20  # Primary Chain 확인
 
 # 고아 TAG 및 끊어진 링크 감지
 rg '@DEPRECATED' -n  # 폐기된 TAG
@@ -82,7 +82,7 @@ ls -la README.md CHANGELOG.md 2>/dev/null
 **1. SPEC 변경 추적**
 ```bash
 # SPEC 변경 확인
-rg '@REQ:' .moai/specs/ -n
+rg '@SPEC:' .moai/specs/ -n
 ```
 - 요구사항 수정 시 관련 코드 파일 마킹
 - TODO 주석으로 변경 필요 사항 추가
@@ -97,9 +97,9 @@ rg '@REQ:' .moai/specs/ -n
 **1. TAG 무결성 검사**
 ```bash
 # Primary Chain 완전성 검증
-rg '@REQ:[A-Z]+-[0-9]{3}' -n src/ | wc -l
-rg '@DESIGN:[A-Z]+-[0-9]{3}' -n src/ | wc -l
-rg '@TASK:[A-Z]+-[0-9]{3}' -n src/ | wc -l
+rg '@SPEC:[A-Z]+-[0-9]{3}' -n src/ | wc -l
+rg '@SPEC:[A-Z]+-[0-9]{3}' -n src/ | wc -l
+rg '@CODE:[A-Z]+-[0-9]{3}' -n src/ | wc -l
 rg '@TEST:[A-Z]+-[0-9]{3}' -n tests/ | wc -l
 ```
 

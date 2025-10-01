@@ -45,8 +45,8 @@ export class AuthService {}`;
         tool_name: 'Write',
         tool_input: {
           file_path: '/project/src/auth.ts',
-          content: validContent
-        }
+          content: validContent,
+        },
       };
 
       const result = await enforcer.execute(input);
@@ -59,8 +59,8 @@ export class AuthService {}`;
       const input: HookInput = {
         tool_name: 'Read',
         tool_input: {
-          file_path: '/project/src/auth.ts'
-        }
+          file_path: '/project/src/auth.ts',
+        },
       };
 
       const result = await enforcer.execute(input);
@@ -77,8 +77,8 @@ export class AuthService {}`;
         tool_name: 'Write',
         tool_input: {
           file_path: '/project/src/utils.ts',
-          content
-        }
+          content,
+        },
       };
 
       const result = await enforcer.execute(input);
@@ -91,8 +91,8 @@ export class AuthService {}`;
         tool_name: 'Write',
         tool_input: {
           file_path: '/project/src/auth.test.ts',
-          content: 'test content'
-        }
+          content: 'test content',
+        },
       };
 
       const result = await enforcer.execute(input);
@@ -129,8 +129,8 @@ export class AuthService {}`;
         tool_name: 'Write',
         tool_input: {
           file_path: '/project/src/auth.ts',
-          content: newContent
-        }
+          content: newContent,
+        },
       };
 
       const result = await enforcer.execute(input);
@@ -156,8 +156,8 @@ export class AuthService {}`;
         tool_name: 'Write',
         tool_input: {
           file_path: '/project/src/auth.ts',
-          content: newContent
-        }
+          content: newContent,
+        },
       };
 
       const result = await enforcer.execute(input);
@@ -187,8 +187,8 @@ export class AuthService {}`;
         tool_name: 'Write',
         tool_input: {
           file_path: '/project/src/auth.ts',
-          content: newContent
-        }
+          content: newContent,
+        },
       };
 
       const result = await enforcer.execute(input);
@@ -212,8 +212,8 @@ export class AuthService {}`;
         tool_name: 'Write',
         tool_input: {
           file_path: '/project/src/auth.ts',
-          content: invalidContent
-        }
+          content: invalidContent,
+        },
       };
 
       const result = await enforcer.execute(input);
@@ -237,8 +237,8 @@ export class AuthService {}`;
         tool_name: 'Write',
         tool_input: {
           file_path: '/project/src/auth.ts',
-          content: contentWithChain
-        }
+          content: contentWithChain,
+        },
       };
 
       const result = await enforcer.execute(input);
@@ -261,8 +261,8 @@ export class AuthService {}`;
         tool_name: 'Write',
         tool_input: {
           file_path: '/project/src/auth.ts',
-          content: contentWithDeps
-        }
+          content: contentWithDeps,
+        },
       };
 
       const result = await enforcer.execute(input);
@@ -279,8 +279,8 @@ export class AuthService {}`;
         tool_name: 'Write',
         tool_input: {
           file_path: '/project/src/new-file.ts',
-          content: 'export const value = 1;'
-        }
+          content: 'export const value = 1;',
+        },
       };
 
       const result = await enforcer.execute(input);
@@ -295,8 +295,8 @@ export class AuthService {}`;
         tool_name: 'Edit',
         tool_input: {
           file_path: '/project/src/file.ts',
-          new_string: 'new content'
-        }
+          new_string: 'new content',
+        },
       };
 
       const result = await enforcer.execute(input);
@@ -311,11 +311,8 @@ export class AuthService {}`;
         tool_name: 'MultiEdit',
         tool_input: {
           file_path: '/project/src/file.ts',
-          edits: [
-            { new_string: 'edit 1' },
-            { new_string: 'edit 2' }
-          ]
-        }
+          edits: [{ new_string: 'edit 1' }, { new_string: 'edit 2' }],
+        },
       };
 
       const result = await enforcer.execute(input);
@@ -324,14 +321,16 @@ export class AuthService {}`;
     });
 
     it('should handle errors gracefully', async () => {
-      vi.spyOn(fs, 'readFile').mockRejectedValue(new Error('Permission denied'));
+      vi.spyOn(fs, 'readFile').mockRejectedValue(
+        new Error('Permission denied')
+      );
 
       const input: HookInput = {
         tool_name: 'Write',
         tool_input: {
           file_path: '/project/src/file.ts',
-          content: 'content'
-        }
+          content: 'content',
+        },
       };
 
       const result = await enforcer.execute(input);
@@ -345,8 +344,8 @@ export class AuthService {}`;
         tool_name: 'Write',
         tool_input: {
           file_path: '/project/node_modules/package/index.ts',
-          content: 'module code'
-        }
+          content: 'module code',
+        },
       };
 
       const result = await enforcer.execute(input);

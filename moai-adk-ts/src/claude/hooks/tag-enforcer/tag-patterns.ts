@@ -27,7 +27,7 @@ export const CODE_FIRST_PATTERNS = {
   IMMUTABLE_MARKER: /^\s*\*\s*@IMMUTABLE\s*$/m,
 
   // TAG 참조
-  TAG_REFERENCE: /@([A-Z]+):([A-Z0-9-]+)/g
+  TAG_REFERENCE: /@([A-Z]+):([A-Z0-9-]+)/g,
 } as const;
 
 /**
@@ -39,5 +39,5 @@ export const VALID_CATEGORIES = {
   lifecycle: ['SPEC', 'REQ', 'DESIGN', 'TASK', 'TEST'],
 
   // Implementation (선택적)
-  implementation: ['FEATURE', 'API', 'FIX']
+  implementation: ['FEATURE', 'API', 'FIX'],
 } as const;

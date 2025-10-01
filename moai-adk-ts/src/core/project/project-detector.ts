@@ -1,4 +1,4 @@
-// @CODE:PROJ-003 | 
+// @CODE:PROJ-003 |
 // Related: @CODE:PROJ-003:API, @CODE:PROJ-INFO-001
 
 /**

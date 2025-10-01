@@ -1,7 +1,7 @@
 /**
  * @file Test for CLI version command
  * @author MoAI Team
- * @tags @TEST:CLI-VERSION-001 @REQ:CLI-FOUNDATION-012
+ * @tags @TEST:CLI-VERSION-001 @SPEC:CLI-FOUNDATION-012
  */
 
 import { describe, test, expect, beforeEach } from 'vitest';

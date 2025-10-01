@@ -68,10 +68,7 @@ export class ResultBuilder {
       success: false,
       projectPath: context.config.projectPath,
       filesCreated: [...context.allFilesCreated],
-      errors: [
-        ...context.allErrors,
-        `Installation failed: ${errorMessage}`,
-      ],
+      errors: [...context.allErrors, `Installation failed: ${errorMessage}`],
       nextSteps: ['Fix the errors above and retry installation'],
       config: context.config,
       timestamp: new Date(),

@@ -1440,9 +1440,9 @@ if (result.success) {
 TagManager는 MoAI-ADK의 @TAG 시스템을 구현하는 핵심 모듈입니다. 코드, 문서, 테스트 간의 완전한 추적성을 제공하며, 다음 기능을 담당합니다:
 
 **TAG 인덱싱**: 프로젝트 전체를 스캔하여 모든 @TAG를 수집하고 JSONL 파일로 저장합니다.
-**TAG 검증**: Primary Chain 완전성, 고아 TAG, 순환 참조 등을 검사합니다.
+**TAG 검증**: TAG 체인 완전성, 고아 TAG, 순환 참조 등을 검사합니다.
 **TAG 검색**: 타입, 카테고리, 상태, 파일 경로 등 다양한 기준으로 TAG를 검색합니다.
-**TAG 관계 분석**: 부모-자식 관계를 추적하고 의존성 그래프를 생성합니다.
+**TAG 관계 분석**: TAG 간 관계를 추적하고 의존성 그래프를 생성합니다.
 
 TagManager는 **코드 스캔 방식**을 사용하여 중간 캐시 없이 항상 코드가 진실의 원천(Single Source of Truth)이 되도록 보장합니다.
 
@@ -1578,23 +1578,23 @@ async function scan(directory: string): Promise<TagEntry[]> {
 }
 ```
 
-#### 2. Primary Chain 검증
+#### 2. TAG 체인 검증
 
-@REQ → @DESIGN → @TASK → @TEST 체인이 끊기지 않았는지 확인합니다.
+@SPEC → @TEST → @CODE → @DOC 체인이 끊기지 않았는지 확인합니다.
 
 ```typescript
-function checkPrimaryChain(tag: TagEntry, database: TagDatabase): ValidationError[] {
+function checkTagChain(tag: TagEntry, database: TagDatabase): ValidationError[] {
   const errors: ValidationError[] = [];
 
-  // Primary Chain 순서 정의
-  const chainOrder = ['REQ', 'DESIGN', 'TASK', 'TEST'];
+  // TAG 순서 정의
+  const chainOrder = ['SPEC', 'TEST', 'CODE', 'DOC'];
   const currentIndex = chainOrder.indexOf(tag.type);
 
   if (currentIndex === -1) {
-    return []; // Primary Chain 타입이 아님
+    return []; // TAG 체인 타입이 아님
   }
 
-  // 부모 검증 (REQ 제외)
+  // 부모 검증 (SPEC 제외)
   if (currentIndex > 0) {
     const expectedParentType = chainOrder[currentIndex - 1];
     const hasValidParent = tag.parents.some(parentId => {
@@ -1612,7 +1612,7 @@ function checkPrimaryChain(tag: TagEntry, database: TagDatabase): ValidationErro
     }
   }
 
-  // 자식 검증 (TEST 제외)
+  // 자식 검증 (DOC 제외)
   if (currentIndex < chainOrder.length - 1) {
     const expectedChildType = chainOrder[currentIndex + 1];
     const hasValidChild = tag.children.some(childId => {

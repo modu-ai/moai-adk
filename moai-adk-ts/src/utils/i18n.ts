@@ -1,4 +1,4 @@
-// @CODE:UTIL-007 | 
+// @CODE:UTIL-007 |
 // Related: @CODE:I18N-MSG-001
 
 /**
@@ -108,8 +108,10 @@ const en: Messages = {
     prompts: {
       projectInfo: 'Project Information',
       projectNameLabel: 'Project name:',
-      projectNameTipNew: 'This will be used as the folder name and project identifier',
-      projectNameTipCurrent: 'This will be used in configuration (current directory will NOT be renamed)',
+      projectNameTipNew:
+        'This will be used as the folder name and project identifier',
+      projectNameTipCurrent:
+        'This will be used in configuration (current directory will NOT be renamed)',
       devMode: 'Development Mode',
       selectMode: 'Select mode:',
       modePersonal: '🧑 Personal',
@@ -186,19 +188,22 @@ const ko: Messages = {
       projectInfo: '프로젝트 정보',
       projectNameLabel: '프로젝트 이름:',
       projectNameTipNew: '폴더 이름과 프로젝트 식별자로 사용됩니다',
-      projectNameTipCurrent: '설정에 사용될 이름입니다 (현재 디렉토리는 이름이 변경되지 않습니다)',
+      projectNameTipCurrent:
+        '설정에 사용될 이름입니다 (현재 디렉토리는 이름이 변경되지 않습니다)',
       devMode: '개발 모드',
       selectMode: '모드 선택:',
       modePersonal: '🧑 Personal',
       modePersonalDesc: '.moai/specs/를 사용한 로컬 개발',
       modeTeam: '👥 Team',
       modeTeamDesc: 'SPEC 관리를 위한 GitHub Issues',
-      tipPersonal: 'Personal 모드: SPEC 파일이 로컬에 저장되며, 단순한 워크플로우',
+      tipPersonal:
+        'Personal 모드: SPEC 파일이 로컬에 저장되며, 단순한 워크플로우',
       tipTeam: 'Team 모드: SPEC을 위한 GitHub Issues, PR 기반 워크플로우',
       versionControl: '버전 관리',
       initGit: '로컬 Git 저장소를 초기화하시겠습니까?',
       tipGitEnabled: 'Git이 초기 커밋과 함께 초기화됩니다',
-      tipGitDisabled: '나중에 다음 명령어로 Git을 초기화할 수 있습니다: git init',
+      tipGitDisabled:
+        '나중에 다음 명령어로 Git을 초기화할 수 있습니다: git init',
       github: 'GitHub 연동',
       useGithub: '원격 저장소로 GitHub를 사용하시겠습니까?',
       tipGithubDisabled: 'GitHub 연동 비활성화 - 로컬 Git만 사용',
@@ -277,7 +282,10 @@ export function getLocale(): Locale {
  * @param params - Parameters for interpolation
  * @returns Translated string
  */
-export function t(key: string, params?: Record<string, string | number>): string {
+export function t(
+  key: string,
+  params?: Record<string, string | number>
+): string {
   const keys = key.split('.');
   let value: any = translations[currentLocale];
 

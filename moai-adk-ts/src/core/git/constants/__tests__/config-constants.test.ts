@@ -50,7 +50,9 @@ describe('@TEST:REFACTOR-004 - Git Configuration Constants', () => {
 
   describe('GitignoreTemplates', () => {
     it('@TEST-CONFIG-CONSTANTS-006: should have MOAI template', () => {
-      expect(GitignoreTemplates.MOAI).toContain('# MoAI-ADK Generated .gitignore');
+      expect(GitignoreTemplates.MOAI).toContain(
+        '# MoAI-ADK Generated .gitignore'
+      );
       expect(GitignoreTemplates.MOAI).toContain('.claude/logs/');
       expect(GitignoreTemplates.MOAI).toContain('.moai/logs/');
       expect(GitignoreTemplates.MOAI).toContain('node_modules/');
@@ -90,7 +92,9 @@ describe('@TEST:REFACTOR-004 - Git Configuration Constants', () => {
 
     it('@TEST-CONFIG-CONSTANTS-012: should have default labels', () => {
       expect(GitHubDefaults.DEFAULT_LABELS).toHaveLength(8);
-      const bugLabel = GitHubDefaults.DEFAULT_LABELS.find((l) => l.name === 'bug');
+      const bugLabel = GitHubDefaults.DEFAULT_LABELS.find(
+        l => l.name === 'bug'
+      );
       expect(bugLabel).toBeDefined();
       expect(bugLabel?.color).toBe('d73a4a');
     });

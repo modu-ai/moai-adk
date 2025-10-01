@@ -73,13 +73,13 @@ import * as fs from 'fs';`;
   describe('extractMainTag', () => {
     test('should extract TAG from block content', () => {
       const blockContent = `/**
- * @TAG:FEATURE:AUTH-001
+ * @TAG:CODE:AUTH-001
  * @IMMUTABLE
  */`;
 
       const tag = validator.extractMainTag(blockContent);
 
-      expect(tag).toBe('@FEATURE:AUTH-001');
+      expect(tag).toBe('@CODE:AUTH-001');
     });
 
     test('should return UNKNOWN if no TAG found', () => {

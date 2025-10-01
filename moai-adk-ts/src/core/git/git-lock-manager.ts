@@ -1,4 +1,4 @@
-// @CODE:GIT-002 | 
+// @CODE:GIT-002 |
 // Related: @CODE:GIT-002:API
 
 /**

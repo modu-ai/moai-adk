@@ -104,7 +104,10 @@ describe('TemplateProcessor - Cross-Platform Path Resolution', () => {
       const path = require('node:path');
       // __dirname is /Users/goos/MoAI/MoAI-ADK/moai-adk-ts/src/__tests__/core/installer
       // We need to go to src/core/installer/template-processor.ts
-      const sourceFile = path.join(__dirname, '../../../core/installer/template-processor.ts');
+      const sourceFile = path.join(
+        __dirname,
+        '../../../core/installer/template-processor.ts'
+      );
       const sourceCode = fs.readFileSync(sourceFile, 'utf-8');
 
       // Check for the problematic pattern
@@ -127,20 +130,31 @@ describe('TemplateProcessor - Cross-Platform Path Resolution', () => {
 
       const fs = require('node:fs');
       const path = require('node:path');
-      const sourceFile = path.join(__dirname, '../../../core/installer/template-processor.ts');
+      const sourceFile = path.join(
+        __dirname,
+        '../../../core/installer/template-processor.ts'
+      );
       const sourceCode = fs.readFileSync(sourceFile, 'utf-8');
 
       // Check that Unix-specific paths are now wrapped in platform checks
-      const hasUnixPath = sourceCode.includes("'/usr/local/lib/node_modules/moai-adk/templates'");
-      const hasPlatformCheck = sourceCode.includes("process.platform !== 'win32'");
+      const hasUnixPath = sourceCode.includes(
+        "'/usr/local/lib/node_modules/moai-adk/templates'"
+      );
+      const hasPlatformCheck = sourceCode.includes(
+        "process.platform !== 'win32'"
+      );
 
       if (hasUnixPath) {
         // If Unix path exists, it MUST be within a platform check
         expect(hasPlatformCheck).toBe(true);
 
         // Verify the pattern: Unix path should come after platform check
-        const platformCheckIndex = sourceCode.indexOf("process.platform !== 'win32'");
-        const unixPathIndex = sourceCode.indexOf("'/usr/local/lib/node_modules/moai-adk/templates'");
+        const platformCheckIndex = sourceCode.indexOf(
+          "process.platform !== 'win32'"
+        );
+        const unixPathIndex = sourceCode.indexOf(
+          "'/usr/local/lib/node_modules/moai-adk/templates'"
+        );
 
         expect(platformCheckIndex).toBeLessThan(unixPathIndex);
         expect(unixPathIndex - platformCheckIndex).toBeLessThan(500); // Within reasonable proximity

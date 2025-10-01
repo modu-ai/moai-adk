@@ -6,7 +6,10 @@
  */
 
 import { describe, test, expect } from 'vitest';
-import { CODE_FIRST_PATTERNS, VALID_CATEGORIES } from '../../../claude/hooks/tag-enforcer/tag-patterns';
+import {
+  CODE_FIRST_PATTERNS,
+  VALID_CATEGORIES,
+} from '../../../claude/hooks/tag-enforcer/tag-patterns';
 
 describe('@TEST:REFACTOR-003: TAG Patterns', () => {
   describe('TAG_BLOCK pattern', () => {
@@ -53,7 +56,8 @@ describe('@TEST:REFACTOR-003: TAG Patterns', () => {
 
   describe('CHAIN_LINE pattern', () => {
     test('should match valid chain line', () => {
-      const line = ' * @CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001 -> TASK:AUTH-001';
+      const line =
+        ' * @CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001 -> TASK:AUTH-001';
       const match = CODE_FIRST_PATTERNS.CHAIN_LINE.exec(line);
 
       expect(match).not.toBeNull();
@@ -80,7 +84,9 @@ describe('@TEST:REFACTOR-003: TAG Patterns', () => {
   describe('TAG_REFERENCE pattern', () => {
     test('should match TAG references', () => {
       const text = 'Related to @SPEC:AUTH-001 and ';
-      const matches = Array.from(text.matchAll(CODE_FIRST_PATTERNS.TAG_REFERENCE));
+      const matches = Array.from(
+        text.matchAll(CODE_FIRST_PATTERNS.TAG_REFERENCE)
+      );
 
       expect(matches).toHaveLength(2);
       expect(matches[0][1]).toBe('REQ');

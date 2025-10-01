@@ -1,5 +1,5 @@
 /**
- * @TEST:PREWRITE-001 | 
+ * @TEST:PREWRITE-001 |
  * Related: @CODE:HOOK-002, @CODE:HOOK-002:API
  *
  * Pre-Write Guard Hook Test Suite
@@ -23,8 +23,8 @@ describe('PreWriteGuard Hook', () => {
         tool_name: 'Write',
         tool_input: {
           file_path: '/project/src/index.ts',
-          content: 'console.log("hello");'
-        }
+          content: 'console.log("hello");',
+        },
       };
 
       const result = await preWriteGuard.execute(input);
@@ -39,8 +39,8 @@ describe('PreWriteGuard Hook', () => {
         tool_input: {
           file_path: '/project/src/utils.ts',
           old_string: 'old code',
-          new_string: 'new code'
-        }
+          new_string: 'new code',
+        },
       };
 
       const result = await preWriteGuard.execute(input);
@@ -53,8 +53,8 @@ describe('PreWriteGuard Hook', () => {
         tool_name: 'MultiEdit',
         tool_input: {
           file_path: '/project/src/config.ts',
-          edits: []
-        }
+          edits: [],
+        },
       };
 
       const result = await preWriteGuard.execute(input);
@@ -66,8 +66,8 @@ describe('PreWriteGuard Hook', () => {
       const input: HookInput = {
         tool_name: 'Read',
         tool_input: {
-          file_path: '/project/src/index.ts'
-        }
+          file_path: '/project/src/index.ts',
+        },
       };
 
       const result = await preWriteGuard.execute(input);
@@ -82,8 +82,8 @@ describe('PreWriteGuard Hook', () => {
         tool_name: 'Write',
         tool_input: {
           file_path: '/project/.env',
-          content: 'API_KEY=secret'
-        }
+          content: 'API_KEY=secret',
+        },
       };
 
       const result = await preWriteGuard.execute(input);
@@ -99,8 +99,8 @@ describe('PreWriteGuard Hook', () => {
         tool_name: 'Write',
         tool_input: {
           file_path: '/project/secrets/credentials.json',
-          content: '{}'
-        }
+          content: '{}',
+        },
       };
 
       const result = await preWriteGuard.execute(input);
@@ -115,8 +115,8 @@ describe('PreWriteGuard Hook', () => {
         tool_input: {
           file_path: '/project/.git/config',
           old_string: 'old',
-          new_string: 'new'
-        }
+          new_string: 'new',
+        },
       };
 
       const result = await preWriteGuard.execute(input);
@@ -130,8 +130,8 @@ describe('PreWriteGuard Hook', () => {
         tool_name: 'Write',
         tool_input: {
           file_path: '/home/user/.ssh/id_rsa',
-          content: 'private key'
-        }
+          content: 'private key',
+        },
       };
 
       const result = await preWriteGuard.execute(input);
@@ -145,8 +145,8 @@ describe('PreWriteGuard Hook', () => {
         tool_name: 'Write',
         tool_input: {
           file_path: '/project/.moai/memory/development-guide.md',
-          content: 'modified guide'
-        }
+          content: 'modified guide',
+        },
       };
 
       const result = await preWriteGuard.execute(input);
@@ -161,8 +161,8 @@ describe('PreWriteGuard Hook', () => {
       const input: HookInput = {
         tool_name: 'Write',
         tool_input: {
-          content: 'test'
-        }
+          content: 'test',
+        },
       };
 
       const result = await preWriteGuard.execute(input);
@@ -175,8 +175,8 @@ describe('PreWriteGuard Hook', () => {
         tool_name: 'Write',
         tool_input: {
           file_path: '/project/.ENV',
-          content: 'test'
-        }
+          content: 'test',
+        },
       };
 
       const result = await preWriteGuard.execute(input);
@@ -190,8 +190,8 @@ describe('PreWriteGuard Hook', () => {
         tool_name: 'Write',
         tool_input: {
           filePath: '/project/src/test.ts',
-          content: 'test'
-        }
+          content: 'test',
+        },
       };
 
       const result = await preWriteGuard.execute(input);
@@ -204,8 +204,8 @@ describe('PreWriteGuard Hook', () => {
         tool_name: 'Write',
         tool_input: {
           path: '/project/.env.local',
-          content: 'test'
-        }
+          content: 'test',
+        },
       };
 
       const result = await preWriteGuard.execute(input);

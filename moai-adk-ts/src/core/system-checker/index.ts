@@ -163,8 +163,11 @@ export class SystemChecker {
       }
     } catch (error) {
       // If we can't read the directory, just return empty array
-      logger.warn(`Could not analyze project at ${projectPath}`,
-        error instanceof Error ? { error: error.message } : { error: String(error) }
+      logger.warn(
+        `Could not analyze project at ${projectPath}`,
+        error instanceof Error
+          ? { error: error.message }
+          : { error: String(error) }
       );
     }
 

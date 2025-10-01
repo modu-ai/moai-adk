@@ -1,4 +1,4 @@
-// @TEST:HOOK-001 | 
+// @TEST:HOOK-001 |
 // Related: @CODE:HOOK-001
 
 /**

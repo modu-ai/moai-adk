@@ -183,7 +183,7 @@ describe('TemplateManager - Phase 3: Refactored Integration', () => {
       const result = await manager.generateProject(config, tempDir);
 
       expect(result.success).toBe(false);
-      expect(result.errors.some((e) => e.includes('incompatible'))).toBe(true);
+      expect(result.errors.some(e => e.includes('incompatible'))).toBe(true);
     });
   });
 

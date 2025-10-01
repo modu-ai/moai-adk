@@ -1,4 +1,4 @@
-// @CODE:GIT-PR-001 | 
+// @CODE:GIT-PR-001 |
 // Related: @CODE:GIT-PR-001
 
 /**

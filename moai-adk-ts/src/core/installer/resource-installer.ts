@@ -1,4 +1,4 @@
-// @CODE:INST-004 | 
+// @CODE:INST-004 |
 // Related: @CODE:INST-004:API, @CODE:INST-RES-001
 
 /**
@@ -76,9 +76,7 @@ export class ResourceInstaller {
    * @returns List of installed files
    * @tags @CODE:INSTALL-CLAUDE-001:API
    */
-  async installClaudeResources(
-    config: InstallationConfig
-  ): Promise<string[]> {
+  async installClaudeResources(config: InstallationConfig): Promise<string[]> {
     const installedFiles: string[] = [];
     const claudeDir = path.join(config.projectPath, '.claude');
     const templatesPath = this.templateProcessor.getTemplatesPath();
@@ -100,7 +98,10 @@ export class ResourceInstaller {
         templatesPath: claudeTemplatesPath,
         tag: '@WARN:CLAUDE-TEMPLATES-001',
       });
-      await this.fallbackBuilder.createMinimalClaudeStructure(claudeDir, installedFiles);
+      await this.fallbackBuilder.createMinimalClaudeStructure(
+        claudeDir,
+        installedFiles
+      );
     }
 
     return installedFiles;
@@ -112,9 +113,7 @@ export class ResourceInstaller {
    * @returns List of installed files
    * @tags @CODE:INSTALL-MOAI-001:API
    */
-  async installMoaiResources(
-    config: InstallationConfig
-  ): Promise<string[]> {
+  async installMoaiResources(config: InstallationConfig): Promise<string[]> {
     const installedFiles: string[] = [];
     const moaiDir = path.join(config.projectPath, '.moai');
     const templatesPath = this.templateProcessor.getTemplatesPath();
@@ -134,7 +133,10 @@ export class ResourceInstaller {
         templatesPath: moaiTemplatesPath,
         tag: '@WARN:MOAI-TEMPLATES-001',
       });
-      await this.fallbackBuilder.createMinimalMoaiStructure(moaiDir, installedFiles);
+      await this.fallbackBuilder.createMinimalMoaiStructure(
+        moaiDir,
+        installedFiles
+      );
     }
 
     try {
@@ -165,7 +167,8 @@ export class ResourceInstaller {
       const templatesPath = this.templateProcessor.getTemplatesPath();
       const templatePath = path.join(templatesPath, 'CLAUDE.md');
 
-      const templateVars = this.templateProcessor.createTemplateVariables(config);
+      const templateVars =
+        this.templateProcessor.createTemplateVariables(config);
 
       let memoryContent: string;
 
@@ -180,7 +183,8 @@ export class ResourceInstaller {
           templatePath,
           tag: '@WARN:CLAUDE-TEMPLATE-001',
         });
-        memoryContent = this.fallbackBuilder.createFallbackMemoryContent(config);
+        memoryContent =
+          this.fallbackBuilder.createFallbackMemoryContent(config);
       }
 
       await fs.promises.writeFile(memoryPath, memoryContent);
@@ -212,9 +216,7 @@ export class ResourceInstaller {
    * @returns Path to config file
    * @tags @CODE:CREATE-MOAI-CONFIG-001:API
    */
-  async createMoaiConfig(
-    config: InstallationConfig
-  ): Promise<string | null> {
+  async createMoaiConfig(config: InstallationConfig): Promise<string | null> {
     return this.fallbackBuilder.createMoaiConfig(config);
   }
 
@@ -224,9 +226,7 @@ export class ResourceInstaller {
    * @returns Path to gitignore file
    * @tags @CODE:CREATE-GITIGNORE-001:API
    */
-  async createGitignore(
-    config: InstallationConfig
-  ): Promise<string | null> {
+  async createGitignore(config: InstallationConfig): Promise<string | null> {
     if (config.mode === 'personal') return null;
 
     try {
@@ -241,5 +241,4 @@ export class ResourceInstaller {
       return null;
     }
   }
-
 }

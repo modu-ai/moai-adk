@@ -1,5 +1,5 @@
 /**
- * @CODE:HOOK-001 | 
+ * @CODE:HOOK-001 |
  * Related: @CODE:HOOK-001:API, @SECURITY:POLICY-001
  *
  * Policy Blocking Hook - Steering Guard

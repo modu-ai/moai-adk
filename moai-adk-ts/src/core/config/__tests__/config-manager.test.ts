@@ -209,7 +209,9 @@ describe('ConfigManager', () => {
         tsConfig
       );
 
-      expect(result.packageConfig?.devDependencies?.['typescript']).toBeDefined();
+      expect(
+        result.packageConfig?.devDependencies?.['typescript']
+      ).toBeDefined();
       expect(
         result.packageConfig?.devDependencies?.['@types/node']
       ).toBeDefined();
