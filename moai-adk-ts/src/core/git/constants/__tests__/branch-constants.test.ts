@@ -5,7 +5,7 @@
  * @description GitNamingRules 분리 및 타입 안전성 검증
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { GitNamingRules } from '../branch-constants';
 
 describe('@TEST:REFACTOR-004 - GitNamingRules', () => {

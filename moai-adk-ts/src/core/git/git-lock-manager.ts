@@ -9,13 +9,13 @@
 import * as os from 'node:os';
 import * as path from 'node:path';
 import * as fs from 'fs-extra';
-import { logger } from '../../utils/winston-logger.js';
 import {
   type GitLockContext,
   GitLockedException,
   type GitLockInfo,
   type GitLockStatus,
 } from '../../types/git';
+import { logger } from '../../utils/winston-logger.js';
 
 /**
  * GitLockManager class for preventing concurrent Git operations

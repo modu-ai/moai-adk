@@ -7,16 +7,15 @@
  * @tags @TEST:UTIL-006 @SPEC:QUAL-006 @SECURITY:INPUT-VALIDATION-001
  */
 
-import { describe, expect, test, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import {
   InputValidator,
-  validateProjectName,
-  validatePath,
   validateBranchName,
-  type ValidationResult,
+  validatePath,
+  validateProjectName,
 } from '@/utils/input-validator';
 
 describe('InputValidator', () => {
@@ -272,7 +271,7 @@ describe('InputValidator', () => {
 
     test('should reject path longer than 260 characters', async () => {
       // Given: 260자 초과 경로
-      const longPath = '/long/path/' + 'a'.repeat(260);
+      const longPath = `/long/path/${'a'.repeat(260)}`;
 
       // When: validatePath 호출
       const result = await InputValidator.validatePath(longPath);
@@ -594,7 +593,7 @@ describe('InputValidator', () => {
 
     test('should reject branch name longer than 250 characters', () => {
       // Given: 250자 초과 브랜치명
-      const longName = 'feature/' + 'a'.repeat(250);
+      const longName = `feature/${'a'.repeat(250)}`;
 
       // When: validateBranchName 호출
       const result = InputValidator.validateBranchName(longName);

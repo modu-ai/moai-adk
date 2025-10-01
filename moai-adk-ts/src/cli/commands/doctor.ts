@@ -10,13 +10,13 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import chalk from 'chalk';
-import { logger } from '../../utils/winston-logger.js';
 import {
   type RequirementCheckResult,
   SystemChecker,
   type SystemCheckSummary,
   type SystemDetector,
 } from '@/core/system-checker';
+import { logger } from '../../utils/winston-logger.js';
 
 /**
  * Doctor command result summary
@@ -231,7 +231,7 @@ export class DoctorCommand {
     );
     console.log(
       chalk.gray(
-        `     Status: ${chalk.green(checkSummary.passedChecks + ' passed')} ${checkSummary.failedChecks > 0 ? chalk.red(checkSummary.failedChecks + ' failed') : ''}`
+        `     Status: ${chalk.green(`${checkSummary.passedChecks} passed`)} ${checkSummary.failedChecks > 0 ? chalk.red(`${checkSummary.failedChecks} failed`) : ''}`
       )
     );
     console.log(chalk.gray('─'.repeat(60)));

@@ -14,16 +14,16 @@ import type {
   ProjectConfigInput,
 } from '../types';
 import {
+  ensureDirectoryExists,
+  writeJsonFile,
+} from '../utils/config-file-utils.js';
+import {
   getCommandShortcuts,
   getEnabledAgents,
   getEnabledCommands,
   getEnabledHooks,
   getHookConfiguration,
 } from '../utils/config-helpers.js';
-import {
-  ensureDirectoryExists,
-  writeJsonFile,
-} from '../utils/config-file-utils.js';
 
 /**
  * Build Claude Code settings.json

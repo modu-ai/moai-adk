@@ -4,7 +4,7 @@
  * @tags @TEST:GIT-LOCK-001 @SPEC:CORE-SYSTEM-013
  */
 
-import { describe, test, expect, beforeEach, vi, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { GitLockedException } from '../../../types/git';
 import { GitLockManager } from '../git-lock-manager';
 
@@ -34,6 +34,7 @@ vi.mock('fs-extra', () => {
 
 // Import mocked functions after vi.mock
 import * as fs from 'fs-extra';
+
 const mockPathExists = vi.mocked(fs.pathExists);
 const mockEnsureDir = vi.mocked(fs.ensureDir);
 const mockWriteJson = vi.mocked(fs.writeJson);

@@ -15,9 +15,9 @@ export * from './core/system-checker';
 
 // Utilities
 export { LogEntry, LogLevel } from './types/logger';
-export { MoaiLogger as Logger, logger } from './utils/winston-logger';
 export {
   getCurrentVersion,
   getPackageInfo,
   PackageInfo,
 } from './utils/version';
+export { logger, MoaiLogger as Logger } from './utils/winston-logger';

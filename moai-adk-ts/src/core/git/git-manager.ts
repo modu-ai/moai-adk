@@ -63,7 +63,7 @@ export class GitManager {
    * Git 저장소 초기화
    */
   async initializeRepository(projectPath?: string): Promise<GitInitResult> {
-    const targetPath = projectPath || this.currentWorkingDir;
+    const _targetPath = projectPath || this.currentWorkingDir;
 
     // 임시로 새 브랜치 매니저 생성 (다른 경로용)
     if (projectPath && projectPath !== this.currentWorkingDir) {

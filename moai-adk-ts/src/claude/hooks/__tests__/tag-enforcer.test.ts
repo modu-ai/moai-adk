@@ -6,10 +6,10 @@
  * Code-First TAG 블록 불변성 및 8-Core TAG 체계 검증 테스트
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import * as fs from 'node:fs/promises';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { HookInput } from '../tag-enforcer';
 import { CodeFirstTAGEnforcer } from '../tag-enforcer';
-import type { HookInput, HookResult } from '../tag-enforcer';
-import * as fs from 'fs/promises';
 
 // Mock fs/promises
 vi.mock('fs/promises');

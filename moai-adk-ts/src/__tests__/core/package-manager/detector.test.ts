@@ -8,9 +8,9 @@ import {
   beforeEach,
   describe,
   expect,
+  type MockedFunction,
   test,
   vi,
-  type MockedFunction,
 } from 'vitest';
 import '@/__tests__/setup';
 import { execa } from 'execa';

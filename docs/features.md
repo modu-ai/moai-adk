@@ -255,7 +255,7 @@ MoAI-ADK v0.0.1 달성 지표:
 
 ## 3. CODE-FIRST TAG 추적성
 
-### Primary Chain: 4단계 필수 체인
+### 필수 TAG 흐름: 4단계 필수 체인
 
 모든 기능은 다음 4단계 체인을 따릅니다:
 
@@ -336,7 +336,7 @@ rg "AUTH-001" -n               # 모든 관련 TAG 검색
 
 `/moai:3-sync` 실행 시 자동으로 검증되는 항목:
 
-- ✅ **Primary Chain 완결성**: @REQ → @DESIGN → @TASK → @TEST 연결 확인
+- ✅ **필수 TAG 흐름 완결성**: @REQ → @DESIGN → @TASK → @TEST 연결 확인
 - ✅ **고아 TAG 감지**: 참조되지 않는 TAG 식별
 - ✅ **끊어진 링크**: 중간 단계 누락 확인
 - ✅ **중복 TAG**: 동일 ID 중복 사용 검사

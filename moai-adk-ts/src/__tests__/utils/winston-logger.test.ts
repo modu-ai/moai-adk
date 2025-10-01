@@ -7,9 +7,9 @@
  * @tags @TEST:UTIL-006 @SPEC:QUAL-006 @CODE:LOG-002
  */
 
-import { describe, expect, test, beforeEach, vi } from 'vitest';
-import { MoaiLogger } from '@/utils/winston-logger';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type winston from 'winston';
+import { MoaiLogger } from '@/utils/winston-logger';
 
 describe('MoaiLogger', () => {
   let mockTransport: any;
@@ -17,7 +17,7 @@ describe('MoaiLogger', () => {
   beforeEach(() => {
     // Mock transport 생성 (EventEmitter 인터페이스 포함)
     mockTransport = {
-      log: vi.fn((info, callback) => {
+      log: vi.fn((_info, callback) => {
         if (callback) callback();
       }),
       level: 'info',

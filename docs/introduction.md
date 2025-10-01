@@ -118,9 +118,9 @@ class AuthService {
 }
 ```
 
-**4-Core TAG 체계**:
+**TAG 체계**:
 
-- **Primary Chain (4 Core)**: @REQ → @DESIGN → @TASK → @TEST (필수)
+- **필수 TAG 흐름 (4 Core)**: @REQ → @DESIGN → @TASK → @TEST (필수)
 - **Implementation (4 Core)**: @FEATURE, @API, @UI, @DATA (필수)
 
 **CODE-FIRST 철학**:

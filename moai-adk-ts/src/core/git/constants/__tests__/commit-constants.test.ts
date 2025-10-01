@@ -5,7 +5,7 @@
  * @description GitCommitTemplates 분리 및 타입 안전성 검증
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { GitCommitTemplates } from '../commit-constants';
 
 describe('@TEST:REFACTOR-004 - GitCommitTemplates', () => {

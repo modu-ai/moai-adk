@@ -6,8 +6,8 @@
 
 import { beforeEach, describe, expect, test } from 'vitest';
 import '@/__tests__/setup';
-import { PackageJsonBuilder } from '@/core/package-manager/package-json-builder';
 import { CommandBuilder } from '@/core/package-manager/command-builder';
+import { PackageJsonBuilder } from '@/core/package-manager/package-json-builder';
 import { PackageManagerType } from '@/types/package-manager';
 
 describe('PackageJsonBuilder', () => {
@@ -114,7 +114,7 @@ describe('PackageJsonBuilder', () => {
       );
 
       // Assert
-      expect(packageJson.devDependencies?.typescript).toBe('^5.0.0');
+      expect(packageJson.devDependencies?.['typescript']).toBe('^5.0.0');
       expect(packageJson.devDependencies?.['@types/node']).toBe('^20.0.0');
     });
 
@@ -136,9 +136,9 @@ describe('PackageJsonBuilder', () => {
       );
 
       // Assert
-      expect(packageJson.scripts?.build).toBe('tsc');
+      expect(packageJson.scripts?.['build']).toBe('tsc');
       expect(packageJson.scripts?.['type-check']).toBe('tsc --noEmit');
-      expect(packageJson.scripts?.dev).toBe('ts-node src/index.ts');
+      expect(packageJson.scripts?.['dev']).toBe('ts-node src/index.ts');
     });
   });
 
@@ -163,7 +163,7 @@ describe('PackageJsonBuilder', () => {
       );
 
       // Assert
-      expect(packageJson.devDependencies?.jest).toBe('^29.0.0');
+      expect(packageJson.devDependencies?.['jest']).toBe('^29.0.0');
     });
 
     // @TEST:REFACTOR-007-107: Jest 스크립트 포함
@@ -186,7 +186,7 @@ describe('PackageJsonBuilder', () => {
       );
 
       // Assert
-      expect(packageJson.scripts?.test).toBe('jest');
+      expect(packageJson.scripts?.['test']).toBe('jest');
       expect(packageJson.scripts?.['test:watch']).toBe('jest --watch');
       expect(packageJson.scripts?.['test:coverage']).toBe('jest --coverage');
     });
@@ -211,7 +211,7 @@ describe('PackageJsonBuilder', () => {
       );
 
       // Assert
-      expect(packageJson.devDependencies?.jest).toBe('^29.0.0');
+      expect(packageJson.devDependencies?.['jest']).toBe('^29.0.0');
       expect(packageJson.devDependencies?.['@types/jest']).toBe('^29.0.0');
       expect(packageJson.devDependencies?.['ts-jest']).toBe('^29.0.0');
     });
@@ -231,9 +231,9 @@ describe('PackageJsonBuilder', () => {
       );
 
       // Assert
-      expect(scripts.start).toBe('node index.js');
-      expect(scripts.test).toBe('npm test');
-      expect(scripts.build).toBe('echo "No build step configured"');
+      expect(scripts['start']).toBe('node index.js');
+      expect(scripts['test']).toBe('npm test');
+      expect(scripts['build']).toBe('echo "No build step configured"');
     });
 
     // @TEST:REFACTOR-007-110: TypeScript 스크립트 생성
@@ -249,9 +249,9 @@ describe('PackageJsonBuilder', () => {
       );
 
       // Assert
-      expect(scripts.build).toBe('tsc');
+      expect(scripts['build']).toBe('tsc');
       expect(scripts['type-check']).toBe('tsc --noEmit');
-      expect(scripts.dev).toBe('ts-node src/index.ts');
+      expect(scripts['dev']).toBe('ts-node src/index.ts');
     });
 
     // @TEST:REFACTOR-007-111: Jest 스크립트 생성
@@ -269,7 +269,7 @@ describe('PackageJsonBuilder', () => {
       );
 
       // Assert
-      expect(scripts.test).toBe('jest');
+      expect(scripts['test']).toBe('jest');
       expect(scripts['test:watch']).toBe('jest --watch');
       expect(scripts['test:coverage']).toBe('jest --coverage');
     });
@@ -330,7 +330,7 @@ describe('PackageJsonBuilder', () => {
       );
 
       // Assert
-      expect(updatedPackageJson.dependencies?.express).toBe('^4.18.0');
+      expect(updatedPackageJson.dependencies?.['express']).toBe('^4.18.0');
       expect(updatedPackageJson.devDependencies).toEqual({
         typescript: '^5.0.0',
         '@types/express': '^4.17.17',
@@ -385,7 +385,7 @@ describe('PackageJsonBuilder', () => {
       );
 
       // Assert
-      expect(packageJson.engines?.yarn).toBe('>=1.22.0');
+      expect(packageJson.engines?.['yarn']).toBe('>=1.22.0');
     });
 
     // @TEST:REFACTOR-007-116: PNPM 엔진 요구사항
@@ -404,7 +404,7 @@ describe('PackageJsonBuilder', () => {
       );
 
       // Assert
-      expect(packageJson.engines?.pnpm).toBe('>=8.0.0');
+      expect(packageJson.engines?.['pnpm']).toBe('>=8.0.0');
     });
   });
 });

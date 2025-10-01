@@ -6,8 +6,8 @@
  * @author MoAI Team
  */
 
-import type { InstallationContext, ProgressCallback } from '../types';
 import type { ContextManager } from '../context-manager';
+import type { InstallationContext, ProgressCallback } from '../types';
 
 /**
  * Phase execution result

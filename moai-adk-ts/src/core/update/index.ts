@@ -5,10 +5,10 @@
  * Related: @CODE:UPDATE-STRATEGY-001, @DOCS:UPDATE-STRATEGY-001
  */
 
-// Main orchestrator (only implemented module)
-export { UpdateOrchestrator } from './update-orchestrator.js';
 export type {
   UpdateConfiguration,
   UpdateOperationResult,
   UpdateSummary,
 } from './update-orchestrator.js';
+// Main orchestrator (only implemented module)
+export { UpdateOrchestrator } from './update-orchestrator.js';

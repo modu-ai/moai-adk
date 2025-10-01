@@ -15,7 +15,7 @@ export { GitCommitTemplates } from './commit-constants';
 // Configuration and templates
 export {
   GitDefaults,
-  GitignoreTemplates,
   GitHubDefaults,
+  GitignoreTemplates,
   GitTimeouts,
 } from './config-constants';

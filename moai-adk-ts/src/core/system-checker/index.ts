@@ -6,9 +6,9 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { logger } from '../../utils/winston-logger.js';
 import { type RequirementCheckResult, SystemDetector } from './detector';
 import { requirementRegistry } from './requirements';
-import { logger } from '../../utils/winston-logger.js';
 
 export {
   DetectionResult,

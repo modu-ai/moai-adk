@@ -6,8 +6,8 @@
  * @author MoAI Team
  */
 
-import * as path from 'node:path';
 import * as fs from 'node:fs';
+import * as path from 'node:path';
 import chalk from 'chalk';
 import { InstallationOrchestrator } from '@/core/installer/orchestrator';
 import type { InstallationConfig } from '@/core/installer/types';
@@ -16,13 +16,13 @@ import type { InitResult } from '@/types/project';
 import { printBanner } from '@/utils/banner';
 import { InputValidator } from '@/utils/input-validator';
 import { validateProjectPath } from '@/utils/path-validator';
-import { DoctorCommand } from './doctor';
 import { logger } from '../../utils/winston-logger.js';
-import {
-  promptProjectSetup,
-  displayWelcomeBanner,
-} from '../prompts/init-prompts';
 import { buildMoAIConfig } from '../config/config-builder';
+import {
+  displayWelcomeBanner,
+  promptProjectSetup,
+} from '../prompts/init';
+import { DoctorCommand } from './doctor';
 
 /**
  * Progress callback for installation progress display
@@ -83,7 +83,7 @@ export class InitCommand {
       // Step 1: System verification with clean separator
       console.log(chalk.gray('─'.repeat(60)));
       console.log(chalk.yellow.bold('📋 Step 1: System Verification'));
-      console.log(chalk.gray('─'.repeat(60)) + '\n');
+      console.log(`${chalk.gray('─'.repeat(60))}\n`);
 
       const doctorResult = await this.doctorCommand.run();
 
@@ -99,9 +99,9 @@ export class InitCommand {
       }
 
       // Step 2: Interactive Configuration with modern separator
-      console.log(chalk.gray('\n' + '─'.repeat(60)));
+      console.log(chalk.gray(`\n${'─'.repeat(60)}`));
       console.log(chalk.yellow.bold('⚙️  Step 2: Interactive Configuration'));
-      console.log(chalk.gray('─'.repeat(60)) + '\n');
+      console.log(`${chalk.gray('─'.repeat(60))}\n`);
 
       // Display welcome banner for interactive setup
       displayWelcomeBanner();
@@ -204,7 +204,7 @@ export class InitCommand {
       // Step 3: Full installation with orchestrator and modern header
       console.log(chalk.gray('─'.repeat(60)));
       console.log(chalk.yellow.bold('📦 Step 3: Installation'));
-      console.log(chalk.gray('─'.repeat(60)) + '\n');
+      console.log(`${chalk.gray('─'.repeat(60))}\n`);
       const orchestrator = new InstallationOrchestrator(config);
       const installResult =
         await orchestrator.executeInstallation(displayProgress);
@@ -220,7 +220,7 @@ export class InitCommand {
 
       if (result.success) {
         // Modern success message with clean design
-        console.log(chalk.gray('\n' + '─'.repeat(60)));
+        console.log(chalk.gray(`\n${'─'.repeat(60)}`));
         console.log(
           chalk.green.bold('✅ Initialization Completed Successfully!')
         );
@@ -237,7 +237,7 @@ export class InitCommand {
         );
         console.log(
           chalk.gray(
-            `  ⏱️  Duration:  ${chalk.white(installResult.duration + 'ms')}`
+            `  ⏱️  Duration:  ${chalk.white(`${installResult.duration}ms`)}`
           )
         );
 
@@ -248,7 +248,7 @@ export class InitCommand {
           });
         }
 
-        console.log(chalk.gray('\n' + '─'.repeat(60) + '\n'));
+        console.log(chalk.gray(`\n${'─'.repeat(60)}\n`));
       } else {
         console.log(chalk.red.bold('\n❌ Initialization failed!'));
         if (result.errors && result.errors.length > 0) {

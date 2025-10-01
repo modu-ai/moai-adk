@@ -70,7 +70,7 @@
   - 92.9% 테스트 성공률
 
 - **3. @TAG 추적성**
-  - Primary Chain: @REQ → @DESIGN → @TASK → @TEST
+  - 필수 TAG 흐름: @REQ → @DESIGN → @TASK → @TEST
   - 코드 직접 스캔 (94% 최적화)
   - 실시간 무결성 검증
 
@@ -202,11 +202,11 @@
 #### 3.2 TAG 시스템 (tag-system.md) - 기존 확장
 - **@TAG란 무엇인가?**
   - 코드와 요구사항의 연결고리
-  - Primary Chain 4단계
+  - 필수 TAG 흐름 4단계
   - 실시간 추적성 보장
 
 - **TAG 체계 완전 가이드**
-  - **Primary Chain** (필수)
+  - **필수 TAG 흐름** (필수)
     - @SPEC: 요구사항
     - @SPEC: 설계
     - @CODE: 구현
@@ -770,7 +770,7 @@
 - **TDD**: Test-Driven Development
 - **TAG**: Traceability TAG
 - **TRUST**: Test/Readable/Unified/Secured/Trackable
-- **Primary Chain**: @REQ → @DESIGN → @TASK → @TEST
+- **필수 TAG 흐름**: @REQ → @DESIGN → @TASK → @TEST
 
 ---
 

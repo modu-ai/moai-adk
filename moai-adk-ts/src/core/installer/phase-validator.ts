@@ -9,7 +9,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { logger } from '@/utils/winston-logger';
-import { InstallationError, getErrorMessage } from '@/utils/errors';
 import type { InstallationConfig } from './types';
 
 /**

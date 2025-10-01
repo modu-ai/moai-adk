@@ -7,7 +7,7 @@
  * @tags @TEST:ORCHESTRATOR-001
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { InstallationOrchestrator } from '../orchestrator';
 import type { InstallationConfig } from '../types';
 
@@ -275,7 +275,7 @@ describe('@TEST:ORCHESTRATOR-001: InstallationOrchestrator', () => {
     it('@TEST:ORCHESTRATOR-PROGRESS-003: should provide progress numbers', async () => {
       const progressData: Array<{ current: number; total: number }> = [];
       const progressCallback = (
-        message: string,
+        _message: string,
         current: number,
         total: number
       ) => {

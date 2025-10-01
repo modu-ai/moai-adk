@@ -5,7 +5,7 @@
  * CODE-FIRST TAG 정규식 패턴 검증
  */
 
-import { describe, test, expect } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import {
   CODE_FIRST_PATTERNS,
   VALID_CATEGORIES,
@@ -42,8 +42,8 @@ describe('@TEST:REFACTOR-003: TAG Patterns', () => {
       const match = CODE_FIRST_PATTERNS.MAIN_TAG.exec(line);
 
       expect(match).not.toBeNull();
-      expect(match![1]).toBe('FEATURE');
-      expect(match![2]).toBe('AUTH-001');
+      expect(match?.[1]).toBe('FEATURE');
+      expect(match?.[2]).toBe('AUTH-001');
     });
 
     test('should not match invalid TAG format', () => {
@@ -61,7 +61,7 @@ describe('@TEST:REFACTOR-003: TAG Patterns', () => {
       const match = CODE_FIRST_PATTERNS.CHAIN_LINE.exec(line);
 
       expect(match).not.toBeNull();
-      expect(match![1]).toContain('REQ:AUTH-001');
+      expect(match?.[1]).toContain('REQ:AUTH-001');
     });
   });
 
@@ -118,7 +118,7 @@ describe('@TEST:REFACTOR-003: TAG Patterns', () => {
       const match = CODE_FIRST_PATTERNS.STATUS_LINE.exec(line);
 
       expect(match).not.toBeNull();
-      expect(match![1]).toBe('active');
+      expect(match?.[1]).toBe('active');
     });
   });
 
@@ -128,7 +128,7 @@ describe('@TEST:REFACTOR-003: TAG Patterns', () => {
       const match = CODE_FIRST_PATTERNS.CREATED_LINE.exec(line);
 
       expect(match).not.toBeNull();
-      expect(match![1]).toBe('2025-01-15');
+      expect(match?.[1]).toBe('2025-01-15');
     });
 
     test('should not match invalid date format', () => {

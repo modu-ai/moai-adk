@@ -6,9 +6,9 @@
  * 파일 쓰기 전 위험 패턴 검증 및 차단 테스트
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import type { HookInput } from '../pre-write-guard';
 import { PreWriteGuard } from '../pre-write-guard';
-import type { HookInput, HookResult } from '../pre-write-guard';
 
 describe('PreWriteGuard Hook', () => {
   let preWriteGuard: PreWriteGuard;

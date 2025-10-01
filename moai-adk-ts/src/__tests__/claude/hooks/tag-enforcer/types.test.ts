@@ -5,10 +5,10 @@
  * TAG 시스템 타입 정의 검증
  */
 
-import { describe, test, expect } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import type {
-  TagBlock,
   ImmutabilityCheck,
+  TagBlock,
   ValidationResult,
 } from '../../../claude/hooks/tag-enforcer/types';
 

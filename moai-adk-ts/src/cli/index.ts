@@ -6,21 +6,21 @@
  * @tags @CODE:CLI-ENTRY-001 @SPEC:CLI-FOUNDATION-012
  */
 
-import chalk from 'chalk';
-import { Command } from 'commander';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import chalk from 'chalk';
+import { Command } from 'commander';
 import { SystemDetector } from '@/core/system-checker/detector';
 import { createBanner } from '@/utils/banner';
+import { type Locale, setLocale } from '@/utils/i18n';
 import { getCurrentVersion } from '@/utils/version';
-import { setLocale, type Locale } from '@/utils/i18n';
+import { logger } from '../utils/winston-logger.js';
 import { DoctorCommand } from './commands/doctor';
 import { HelpCommand } from './commands/help';
 import { InitCommand } from './commands/init';
 import { RestoreCommand } from './commands/restore';
 import { StatusCommand } from './commands/status';
 import { UpdateCommand } from './commands/update';
-import { logger } from '../utils/winston-logger.js';
 
 /**
  * CLI Application
@@ -67,7 +67,7 @@ export class CLIApp {
           setLocale(config.locale);
         }
       }
-    } catch (error) {
+    } catch (_error) {
       // Silently ignore errors - will use default locale (ko)
       // This is expected when running outside of a MoAI project directory
     }

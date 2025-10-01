@@ -4,11 +4,11 @@
  * @tags @TEST:CLI-INIT-PATH-001 @SPEC:BUG-FIX-PACKAGE-PATH-001
  */
 
-import { beforeEach, describe, expect, test, vi, type Mocked } from 'vitest';
+import { beforeEach, describe, expect, type Mocked, test, vi } from 'vitest';
 import '@/__tests__/setup';
+import type { DoctorResult } from '@/cli/commands/doctor';
 import { InitCommand } from '@/cli/commands/init';
 import { SystemDetector } from '@/core/system-checker/detector';
-import type { DoctorResult } from '@/cli/commands/doctor';
 
 // Mock modules
 vi.mock('@/core/system-checker/detector');
@@ -53,7 +53,7 @@ describe('InitCommand - Package Path Validation', () => {
 
       // Assert: Should fail with package path error
       expect(result.success).toBe(false);
-      expect(result.errors[0]).toContain(
+      expect(result.errors?.[0]).toContain(
         'Cannot initialize project inside MoAI-ADK package'
       );
     });
@@ -83,12 +83,12 @@ describe('InitCommand - Package Path Validation', () => {
       // Act: Try to initialize in a subdirectory of the package
       const result = await initCommand.runInteractive({
         name: 'my-project',
-        path: process.cwd() + '/src/my-project', // Inside package
+        path: `${process.cwd()}/src/my-project`, // Inside package
       });
 
       // Assert: Should fail with package path error
       expect(result.success).toBe(false);
-      expect(result.errors[0]).toContain(
+      expect(result.errors?.[0]).toContain(
         'Cannot initialize project inside MoAI-ADK package'
       );
     });

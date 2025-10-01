@@ -27,7 +27,7 @@ export class TagValidator {
     let startLineNumber = 0;
 
     for (let i = 0; i < Math.min(lines.length, 30); i++) {
-      const line = lines[i].trim();
+      const line = lines[i]?.trim();
 
       // 빈 줄이나 shebang 무시
       if (!line || line.startsWith('#!')) {
@@ -132,12 +132,12 @@ export class TagValidator {
         ...VALID_CATEGORIES.lifecycle,
         ...VALID_CATEGORIES.implementation,
       ];
-      if (!allValidCategories.includes(category)) {
+      if (category && !allValidCategories.includes(category)) {
         violations.push(`유효하지 않은 TAG 카테고리: ${category}`);
       }
 
       // 도메인 ID 형식 검사 (하이픈 권장, 언더스코어 사용 시 경고)
-      if (!/^[A-Z0-9]+-\d{3,}$/.test(domainId)) {
+      if (domainId && !/^[A-Z0-9]+-\d{3,}$/.test(domainId)) {
         // 하이픈이 아닌 다른 구분자를 사용하거나 형식이 올바르지 않으면 경고
         warnings.push(`도메인 ID 형식 권장: ${domainId} -> DOMAIN-001`);
       }
@@ -147,11 +147,13 @@ export class TagValidator {
     const chainMatch = CODE_FIRST_PATTERNS.CHAIN_LINE.exec(blockContent);
     if (chainMatch) {
       const chainStr = chainMatch[1];
-      const chainTags = chainStr.split(/\s*->\s*/);
+      if (chainStr) {
+        const chainTags = chainStr.split(/\s*->\s*/);
 
-      for (const chainTag of chainTags) {
-        if (!CODE_FIRST_PATTERNS.TAG_REFERENCE.test(chainTag.trim())) {
-          warnings.push(`체인의 TAG 형식을 확인하세요: ${chainTag.trim()}`);
+        for (const chainTag of chainTags) {
+          if (!CODE_FIRST_PATTERNS.TAG_REFERENCE.test(chainTag.trim())) {
+            warnings.push(`체인의 TAG 형식을 확인하세요: ${chainTag.trim()}`);
+          }
         }
       }
     }
@@ -160,7 +162,7 @@ export class TagValidator {
     const dependsMatch = CODE_FIRST_PATTERNS.DEPENDS_LINE.exec(blockContent);
     if (dependsMatch) {
       const dependsStr = dependsMatch[1];
-      if (dependsStr.trim().toLowerCase() !== 'none') {
+      if (dependsStr && dependsStr.trim().toLowerCase() !== 'none') {
         const dependsTags = dependsStr.split(/,\s*/);
 
         for (const dependTag of dependsTags) {
@@ -174,8 +176,8 @@ export class TagValidator {
     // 5. 상태 검증
     const statusMatch = CODE_FIRST_PATTERNS.STATUS_LINE.exec(blockContent);
     if (statusMatch) {
-      const status = statusMatch[1].toLowerCase();
-      if (!['active', 'deprecated', 'completed'].includes(status)) {
+      const status = statusMatch[1]?.toLowerCase();
+      if (status && !['active', 'deprecated', 'completed'].includes(status)) {
         warnings.push(`알 수 없는 STATUS: ${status}`);
       }
     }
@@ -184,7 +186,7 @@ export class TagValidator {
     const createdMatch = CODE_FIRST_PATTERNS.CREATED_LINE.exec(blockContent);
     if (createdMatch) {
       const created = createdMatch[1];
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(created)) {
+      if (created && !/^\d{4}-\d{2}-\d{2}$/.test(created)) {
         warnings.push(`생성 날짜 형식을 확인하세요: ${created} (YYYY-MM-DD)`);
       }
     }

@@ -4,10 +4,10 @@
  * @tags @TEST:PATH-VALIDATOR-001 @SPEC:BUG-FIX-PACKAGE-PATH-001
  */
 
-import { describe, expect, test, beforeEach, afterEach } from 'vitest';
-import * as path from 'node:path';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
+import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import {
   isInsideMoAIPackage,
   validateProjectPath,
@@ -91,7 +91,7 @@ describe('Path Validator - Package Root Detection', () => {
       // Create symlink (skip test on Windows if symlink creation fails)
       try {
         fs.symlinkSync(packageRoot, symlinkedPath, 'dir');
-      } catch (error) {
+      } catch (_error) {
         // Symlink creation might fail on Windows without admin rights
         console.warn('Skipping symlink test: symlink creation failed');
         return;

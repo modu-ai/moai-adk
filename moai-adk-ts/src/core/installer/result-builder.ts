@@ -5,7 +5,6 @@
  */
 
 import { logger } from '@/utils/winston-logger';
-import { InstallationError, getErrorMessage } from '@/utils/errors';
 import type {
   InstallationConfig,
   InstallationContext,

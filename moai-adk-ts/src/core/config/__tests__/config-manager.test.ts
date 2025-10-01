@@ -5,7 +5,7 @@
  */
 
 import fs from 'node:fs';
-import { beforeEach, describe, expect, vi, type Mocked } from 'vitest';
+import { beforeEach, describe, expect, type Mocked, vi } from 'vitest';
 import { ConfigManager } from '../config-manager';
 
 // Mock fs and path modules
@@ -209,9 +209,7 @@ describe('ConfigManager', () => {
         tsConfig
       );
 
-      expect(
-        result.packageConfig?.devDependencies?.['typescript']
-      ).toBeDefined();
+      expect(result.packageConfig?.devDependencies?.typescript).toBeDefined();
       expect(
         result.packageConfig?.devDependencies?.['@types/node']
       ).toBeDefined();

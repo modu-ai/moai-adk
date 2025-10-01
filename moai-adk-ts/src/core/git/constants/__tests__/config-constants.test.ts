@@ -5,11 +5,11 @@
  * @description GitDefaults, GitignoreTemplates, GitHubDefaults, GitTimeouts 분리 및 검증
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   GitDefaults,
-  GitignoreTemplates,
   GitHubDefaults,
+  GitignoreTemplates,
   GitTimeouts,
 } from '../config-constants';
 

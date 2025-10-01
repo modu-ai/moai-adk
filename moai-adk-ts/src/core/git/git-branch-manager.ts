@@ -25,7 +25,6 @@ import { GitLockManager } from './git-lock-manager';
  */
 export class GitBranchManager {
   public readonly git: SimpleGit; // 테스트를 위해 public으로 변경
-  private config: GitConfig;
   private workingDir: string;
   private lockManager: GitLockManager;
 

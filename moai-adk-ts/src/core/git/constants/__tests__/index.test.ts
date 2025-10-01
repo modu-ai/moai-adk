@@ -5,7 +5,7 @@
  * @description index.ts barrel export 검증 및 import 경로 호환성 테스트
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 describe('@TEST:REFACTOR-004 - Barrel Export', () => {
   describe('Import Path Compatibility', () => {

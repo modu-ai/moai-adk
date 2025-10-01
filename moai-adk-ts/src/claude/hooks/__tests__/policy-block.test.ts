@@ -6,9 +6,9 @@
  * 위험한 명령어 차단 및 정책 검증 테스트
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import type { HookInput } from '../policy-block';
 import { PolicyBlock } from '../policy-block';
-import type { HookInput, HookResult } from '../policy-block';
 
 describe('PolicyBlock Hook', () => {
   let policyBlock: PolicyBlock;

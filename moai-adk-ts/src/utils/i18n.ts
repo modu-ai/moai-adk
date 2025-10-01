@@ -322,7 +322,7 @@ export function initI18n(locale?: Locale): void {
   }
 
   // Try to detect from environment
-  const envLocale = process.env['MOAI_LOCALE'] || process.env['LANG'];
+  const envLocale = process.env.MOAI_LOCALE || process.env.LANG;
   if (envLocale) {
     const detected = envLocale.toLowerCase().startsWith('ko') ? 'ko' : 'en';
     setLocale(detected);

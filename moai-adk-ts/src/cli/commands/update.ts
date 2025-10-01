@@ -9,12 +9,12 @@
 import * as path from 'node:path';
 import chalk from 'chalk';
 import * as fs from 'fs-extra';
-import { logger } from '../../utils/winston-logger.js';
 import {
-  type UpdateConfiguration,
   type UpdateResult as OrchestratorResult,
+  type UpdateConfiguration,
   UpdateOrchestrator,
 } from '../../core/update/update-orchestrator.js';
+import { logger } from '../../utils/winston-logger.js';
 
 /**
  * Update command options

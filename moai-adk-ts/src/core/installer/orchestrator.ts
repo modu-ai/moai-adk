@@ -6,17 +6,17 @@
  * @author MoAI Team
  */
 
-import { logger } from '@/utils/winston-logger';
 import { InstallationError } from '@/utils/errors';
+import { logger } from '@/utils/winston-logger';
+import { ContextManager } from './context-manager';
+import { PhaseExecutor } from './phase-executor';
+import { ResultBuilder } from './result-builder';
 import type {
   InstallationConfig,
   InstallationContext,
   InstallationResult,
   ProgressCallback,
 } from './types';
-import { ContextManager } from './context-manager';
-import { PhaseExecutor } from './phase-executor';
-import { ResultBuilder } from './result-builder';
 
 /**
  * Central coordinator for MoAI-ADK installation (Refactored)

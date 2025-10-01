@@ -51,12 +51,7 @@ export class PreWriteGuard implements MoAIHook {
    * Extract file path from tool input
    */
   private extractFilePath(toolInput: Record<string, any>): string | null {
-    return (
-      toolInput['file_path'] ||
-      toolInput['filePath'] ||
-      toolInput['path'] ||
-      null
-    );
+    return toolInput['file_path'] || toolInput['filePath'] || toolInput['path'] || null;
   }
 
   /**
@@ -97,7 +92,7 @@ export async function main(): Promise<void> {
     const preWriteGuard = new PreWriteGuard();
     const result = await preWriteGuard.execute(input);
     outputResult(result);
-  } catch (error) {
+  } catch (_error) {
     // Silent failure to avoid breaking Claude Code session
     process.exit(0);
   }

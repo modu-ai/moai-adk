@@ -5,7 +5,7 @@
  * Related: @DOC:INTERACTIVE-INIT-019
  */
 
-import type { InitAnswers } from '../prompts/init-prompts';
+import type { InitAnswers } from '../prompts/init';
 
 /**
  * Enhanced MoAI configuration interface

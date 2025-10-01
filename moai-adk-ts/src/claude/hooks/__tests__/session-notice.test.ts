@@ -6,11 +6,10 @@
  * 세션 시작 알림 및 프로젝트 상태 표시 테스트
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { SessionNotifier } from '../session-notice';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 import { spawn } from 'node:child_process';
+import * as fs from 'node:fs';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { SessionNotifier } from '../session-notice/index';
 
 // Mock modules
 vi.mock('node:fs');
@@ -204,7 +203,7 @@ describe('SessionNotifier Hook', () => {
     });
 
     it('should count completed specs', () => {
-      vi.spyOn(fs, 'existsSync').mockImplementation((p: any) => {
+      vi.spyOn(fs, 'existsSync').mockImplementation((_p: any) => {
         return true;
       });
       vi.spyOn(fs, 'readdirSync').mockReturnValue(['SPEC-001'] as any);

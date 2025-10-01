@@ -6,11 +6,11 @@
  * @author MoAI Team
  */
 
-import winston from 'winston';
 import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import type { LoggerOptions } from '../types/logger.js';
+import winston from 'winston';
 import { mergeLoggerOptions } from '../config/logger-config.js';
+import type { LoggerOptions } from '../types/logger.js';
 
 /**
  * Winston-based MoAI Logger with structured logging and sensitive data masking
@@ -159,8 +159,8 @@ export class MoaiLogger {
       const masked = { ...info };
 
       // Mask message string
-      if (typeof masked['message'] === 'string') {
-        masked['message'] = this.maskSensitiveString(masked['message']);
+      if (typeof masked.message === 'string') {
+        masked.message = this.maskSensitiveString(masked.message);
       }
 
       // Mask metadata fields
@@ -265,13 +265,13 @@ export class MoaiLogger {
     const errorMeta: Record<string, unknown> = { ...meta };
 
     if (error instanceof Error) {
-      errorMeta['error'] = {
+      errorMeta.error = {
         name: error.name,
         message: error.message,
         stack: error.stack,
       };
     } else if (error !== undefined) {
-      errorMeta['error'] = error;
+      errorMeta.error = error;
     }
 
     this.logger.error(message, errorMeta);

@@ -10,10 +10,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import mustache from 'mustache';
 import { logger } from '@/utils/winston-logger';
-import { InstallationError, getErrorMessage } from '@/utils/errors';
-import type { InstallationConfig } from './types';
-import type { TemplateProcessor } from './template-processor';
 import { FallbackBuilder } from './fallback-builder';
+import type { TemplateProcessor } from './template-processor';
+import type { InstallationConfig } from './types';
 
 /**
  * Default gitignore template for team mode

@@ -12,12 +12,12 @@ import type {
   PackageJsonResult,
   ProjectConfigInput,
 } from '../types';
+import { writeJsonFile } from '../utils/config-file-utils.js';
 import {
   getPackageDependencies,
   getPackageDevDependencies,
   getPackageScripts,
 } from '../utils/config-helpers.js';
-import { writeJsonFile } from '../utils/config-file-utils.js';
 
 /**
  * Build package.json for Node.js projects

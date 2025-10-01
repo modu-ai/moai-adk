@@ -6,21 +6,21 @@
  * @author MoAI Team
  */
 
+import { execSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { execSync } from 'node:child_process';
-import { logger } from '@/utils/winston-logger';
 import { InstallationError } from '@/utils/errors';
 import { isInsideMoAIPackage } from '@/utils/path-validator';
+import { logger } from '@/utils/winston-logger';
+import type { ContextManager } from './context-manager';
+import { PhaseValidator } from './phase-validator';
+import { ResourceInstaller } from './resource-installer';
+import { TemplateProcessor } from './template-processor';
 import type {
   InstallationConfig,
   InstallationContext,
   ProgressCallback,
 } from './types';
-import type { ContextManager } from './context-manager';
-import { ResourceInstaller } from './resource-installer';
-import { TemplateProcessor } from './template-processor';
-import { PhaseValidator } from './phase-validator';
 import { executePhase } from './utils/phase-runner.js';
 
 /**

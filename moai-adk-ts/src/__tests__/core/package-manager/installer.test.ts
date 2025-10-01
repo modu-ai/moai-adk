@@ -8,14 +8,14 @@ import {
   beforeEach,
   describe,
   expect,
+  type MockedFunction,
   test,
   vi,
-  type MockedFunction,
 } from 'vitest';
 import '@/__tests__/setup';
 import { execa } from 'execa';
-import { PackageManagerInstaller } from '@/core/package-manager/installer';
 import { CommandBuilder } from '@/core/package-manager/command-builder';
+import { PackageManagerInstaller } from '@/core/package-manager/installer';
 import {
   type PackageInstallOptions,
   PackageManagerType,

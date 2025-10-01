@@ -20,15 +20,15 @@
 
 #### 새로운 @TAG 아키텍처
 ```
-구 시스템 () → 신 시스템 (8-Core)
-├── Primary Chain: REQ → DESIGN → TASK → TEST
+구 시스템 () → 신 시스템 (구 TAG 체계)
+├── 필수 TAG 흐름: REQ → DESIGN → TASK → TEST
 ├── Implementation: FEATURE, API, FIX
 └── @IMMUTABLE 마커를 통한 불변성 보장
 ```
 
 #### 핵심 변경사항
 - **분산 저장 → Code-First 파싱**: `.moai/indexes` 제거, 코드 주석에서 직접 추출
-- ** → 8-Core 단순화**: 복잡성 50% 감소, 성능 향상
+- ** → 구 TAG 체계 단순화**: 복잡성 50% 감소, 성능 향상
 - **ripgrep 직접 스캔**: 실시간 TAG 검색 및 분석
 - **@IMMUTABLE 마커**: TAG 불변성 강제 보장
 
@@ -76,8 +76,8 @@
 
 #### 2. TAG 시스템 표기 불일치 (보통)
 ```
-📄 문서:    " TAG 시스템", "분산 TAG v4.0"
-💻 코드:    8-Core Code-First TAG 시스템 구현
+📄 문서:    " TAG 시스템", "분산 TAG "
+💻 코드:    구 TAG 체계 Code-First TAG 시스템 구현
 📊 현실:    Code-First 방식으로 완전 전환 완료
 ```
 
@@ -89,7 +89,7 @@
 
 #### 4. 아키텍처 설명 불일치 (보통)
 ```
-📄 structure.md:    "분산 TAG 시스템 v4.0"
+📄 structure.md:    "분산 TAG 시스템 "
 💻 실제 구현:       Code-First 파서 시스템
 ```
 
@@ -99,7 +99,7 @@
 
 ### 🔴 긴급 (High Priority)
 1. **버전 정보 통일**: v0.0.3으로 모든 문서 동기화
-2. **TAG 시스템 설명 업데이트**:  → 8-Core Code-First 반영
+2. **TAG 시스템 설명 업데이트**:  → 구 TAG 체계 Code-First 반영
 3. **CLI_COMMANDS.md 생성**: 7개 명령어 상세 문서화
 
 ### 🟡 중요 (Medium Priority)
@@ -133,7 +133,7 @@
 
 2. **TAG 시스템 설명 불일치**
    - 영향: 개발자가 잘못된 TAG 형식 사용
-   - 해결: Code-First 8-Core 시스템 정확히 반영
+   - 해결: Code-First 구 TAG 체계 시스템 정확히 반영
 
 #### 중간 위험
 3. **CLI 명령어 문서 부재**
@@ -160,7 +160,7 @@
    - CLI 하드코딩된 버전 동적 로딩으로 변경
 
 2. TAG 시스템 설명 수정 (1시간)
-   -  → 8-Core Code-First 반영
+   -  → 구 TAG 체계 Code-First 반영
    - 분산 저장 → 코드 파싱 방식 설명 수정
 
 3. CLI_COMMANDS.md 생성 (2시간)

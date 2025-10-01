@@ -10,8 +10,8 @@
 import * as path from 'node:path';
 import * as fs from 'fs-extra';
 import simpleGit, { type SimpleGit, type StatusResult } from 'simple-git';
-import type { GitConfig, GitCommitResult, GitStatus } from '../../types/git';
-import { GitCommitTemplates, GitDefaults, GitTimeouts } from './constants';
+import type { GitCommitResult, GitConfig, GitStatus } from '../../types/git';
+import { GitCommitTemplates, GitTimeouts } from './constants';
 import { GitLockManager } from './git-lock-manager';
 
 /**
@@ -174,18 +174,6 @@ export class GitCommitManager {
       };
     } catch (error) {
       throw new Error(`Failed to get status: ${(error as Error).message}`);
-    }
-  }
-
-  /**
-   * 현재 브랜치명 조회
-   */
-  private async getCurrentBranch(): Promise<string> {
-    try {
-      const branchResult = await this.git.branch();
-      return branchResult.current;
-    } catch {
-      return GitDefaults.DEFAULT_BRANCH;
     }
   }
 

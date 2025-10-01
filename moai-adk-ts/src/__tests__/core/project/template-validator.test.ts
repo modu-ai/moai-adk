@@ -11,7 +11,7 @@
  * - 경로 검증
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { TemplateValidator } from '@/core/project/template-validator';
 import type { ProjectConfig } from '@/types/project';
 import { ProjectType } from '@/types/project';
@@ -54,7 +54,6 @@ describe('TemplateValidator - Phase 1: Validation Logic', () => {
       const config: ProjectConfig = {
         name: 'test-project',
         type: ProjectType.TYPESCRIPT,
-        version: '0.1.0',
         description: 'Test project',
         author: 'Test Author',
         license: 'MIT',
@@ -82,7 +81,6 @@ describe('TemplateValidator - Phase 1: Validation Logic', () => {
       const config: ProjectConfig = {
         name: 'test-project',
         type: 'invalid-type' as any,
-        version: '0.1.0',
       };
 
       const result = validator.validateConfig(config);
@@ -148,7 +146,6 @@ describe('TemplateValidator - Phase 1: Validation Logic', () => {
       const config: ProjectConfig = {
         name: 'test-project',
         type: ProjectType.PYTHON,
-        version: '0.1.0',
         features: [
           { name: 'typescript', enabled: true }, // 호환되지 않음
         ],
@@ -165,7 +162,6 @@ describe('TemplateValidator - Phase 1: Validation Logic', () => {
       const config: ProjectConfig = {
         name: 'invalid name!',
         type: 'wrong-type' as any,
-        version: '0.1.0',
       };
 
       const result = validator.validateConfig(config);

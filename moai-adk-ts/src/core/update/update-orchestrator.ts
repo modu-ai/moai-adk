@@ -10,8 +10,8 @@ import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import chalk from 'chalk';
 import { execa } from 'execa';
-import { logger } from '../../utils/winston-logger.js';
 import { checkLatestVersion, getCurrentVersion } from '../../utils/version.js';
+import { logger } from '../../utils/winston-logger.js';
 
 /**
  * Simplified update configuration
@@ -356,7 +356,7 @@ export class UpdateOrchestrator {
    * @param templatePath - Template path for verification
    * @tags @UTIL:VERIFY-UPDATE-001
    */
-  private async verifyUpdate(templatePath: string): Promise<void> {
+  private async verifyUpdate(_templatePath: string): Promise<void> {
     // Verify key files exist
     const keyFiles = [
       '.moai/memory/development-guide.md',

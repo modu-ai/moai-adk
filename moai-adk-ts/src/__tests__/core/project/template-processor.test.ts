@@ -11,7 +11,7 @@
  * - 타입별 프로젝트 파일 생성
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { TemplateProcessor } from '@/core/project/template-processor';
 import type { ProjectConfig, TemplateData } from '@/types/project';
 import { ProjectType } from '@/types/project';
@@ -29,7 +29,6 @@ describe('TemplateProcessor - Phase 2: Template Processing Logic', () => {
       const config: ProjectConfig = {
         name: 'test-project',
         type: ProjectType.TYPESCRIPT,
-        version: '0.1.0',
         description: 'Test project',
         author: 'Test Author',
         license: 'MIT',
@@ -51,7 +50,6 @@ describe('TemplateProcessor - Phase 2: Template Processing Logic', () => {
       const minimalConfig: ProjectConfig = {
         name: 'minimal-project',
         type: ProjectType.PYTHON,
-        version: '0.1.0',
       };
 
       const data = processor.createTemplateData(minimalConfig);
@@ -65,7 +63,6 @@ describe('TemplateProcessor - Phase 2: Template Processing Logic', () => {
       const config: ProjectConfig = {
         name: 'feature-project',
         type: ProjectType.TYPESCRIPT,
-        version: '0.1.0',
         features: [
           { name: 'typescript', enabled: true },
           { name: 'jest', enabled: true },
@@ -126,8 +123,8 @@ describe('TemplateProcessor - Phase 2: Template Processing Logic', () => {
       expect(packageJson.author).toBe('Test Author');
       expect(packageJson.license).toBe('MIT');
       expect(packageJson.scripts).toBeDefined();
-      expect(packageJson.scripts.build).toBeDefined();
-      expect(packageJson.scripts.test).toBeDefined();
+      expect(packageJson.scripts['build']).toBeDefined();
+      expect(packageJson.scripts['test']).toBeDefined();
     });
 
     it('should generate tsconfig.json content', () => {

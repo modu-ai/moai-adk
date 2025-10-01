@@ -11,9 +11,9 @@
  * - Project generation workflow
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { TemplateManager } from '@/core/project/template-manager';
 import type { ProjectConfig } from '@/types/project';
 import { ProjectType } from '@/types/project';
@@ -25,7 +25,7 @@ describe('TemplateManager - Phase 3: Refactored Integration', () => {
   beforeEach(async () => {
     manager = new TemplateManager();
     // 임시 디렉토리 생성
-    tempDir = path.join(process.cwd(), 'tmp-test-' + Date.now());
+    tempDir = path.join(process.cwd(), `tmp-test-${Date.now()}`);
     await fs.mkdir(tempDir, { recursive: true });
   });
 
@@ -33,7 +33,7 @@ describe('TemplateManager - Phase 3: Refactored Integration', () => {
     // 테스트 후 정리
     try {
       await fs.rm(tempDir, { recursive: true, force: true });
-    } catch (error) {
+    } catch (_error) {
       // 정리 실패는 무시
     }
   });
@@ -43,7 +43,6 @@ describe('TemplateManager - Phase 3: Refactored Integration', () => {
       const config: ProjectConfig = {
         name: 'test-typescript-project',
         type: ProjectType.TYPESCRIPT,
-        version: '0.1.0',
         description: 'Test TypeScript project',
         author: 'Test Author',
         license: 'MIT',
@@ -68,14 +67,13 @@ describe('TemplateManager - Phase 3: Refactored Integration', () => {
       const invalidConfig: ProjectConfig = {
         name: 'invalid name!', // 공백과 특수문자
         type: ProjectType.PYTHON,
-        version: '0.1.0',
       };
 
       const result = await manager.generateProject(invalidConfig, tempDir);
 
       expect(result.success).toBe(false);
-      expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors[0]).toContain('Invalid project name');
+      expect(result.errors?.length).toBeGreaterThan(0);
+      expect(result.errors?.[0]).toContain('Invalid project name');
     });
   });
 
@@ -84,7 +82,6 @@ describe('TemplateManager - Phase 3: Refactored Integration', () => {
       const config: ProjectConfig = {
         name: 'py-test',
         type: ProjectType.PYTHON,
-        version: '0.1.0',
       };
 
       const result = await manager.generateProject(config, tempDir);
@@ -99,7 +96,6 @@ describe('TemplateManager - Phase 3: Refactored Integration', () => {
       const config: ProjectConfig = {
         name: 'node-test',
         type: ProjectType.NODEJS,
-        version: '0.1.0',
       };
 
       const result = await manager.generateProject(config, tempDir);
@@ -113,7 +109,6 @@ describe('TemplateManager - Phase 3: Refactored Integration', () => {
       const config: ProjectConfig = {
         name: 'ts-test',
         type: ProjectType.TYPESCRIPT,
-        version: '0.1.0',
         features: [{ name: 'typescript', enabled: true }],
       };
 
@@ -129,7 +124,6 @@ describe('TemplateManager - Phase 3: Refactored Integration', () => {
       const config: ProjectConfig = {
         name: 'moai-test',
         type: ProjectType.TYPESCRIPT,
-        version: '0.1.0',
       };
 
       const result = await manager.generateProject(config, tempDir);
@@ -161,20 +155,18 @@ describe('TemplateManager - Phase 3: Refactored Integration', () => {
       const config: ProjectConfig = {
         name: 'test-validation',
         type: 'invalid-type' as any, // 잘못된 타입
-        version: '0.1.0',
       };
 
       const result = await manager.generateProject(config, tempDir);
 
       expect(result.success).toBe(false);
-      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors?.length).toBeGreaterThan(0);
     });
 
     it('should handle feature compatibility validation', async () => {
       const config: ProjectConfig = {
         name: 'test-features',
         type: ProjectType.PYTHON,
-        version: '0.1.0',
         features: [
           { name: 'typescript', enabled: true }, // Python 프로젝트에 호환되지 않음
         ],
@@ -183,7 +175,7 @@ describe('TemplateManager - Phase 3: Refactored Integration', () => {
       const result = await manager.generateProject(config, tempDir);
 
       expect(result.success).toBe(false);
-      expect(result.errors.some(e => e.includes('incompatible'))).toBe(true);
+      expect(result.errors?.some(e => e.includes('incompatible'))).toBe(true);
     });
   });
 
@@ -192,7 +184,6 @@ describe('TemplateManager - Phase 3: Refactored Integration', () => {
       const config: ProjectConfig = {
         name: 'error-test',
         type: ProjectType.TYPESCRIPT,
-        version: '0.1.0',
       };
 
       // 읽기 전용 디렉토리에 쓰기 시도 (시스템에 따라 다름)
@@ -201,7 +192,7 @@ describe('TemplateManager - Phase 3: Refactored Integration', () => {
       const result = await manager.generateProject(config, readonlyPath);
 
       expect(result.success).toBe(false);
-      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors?.length).toBeGreaterThan(0);
     });
 
     it('should collect all errors during generation', async () => {
@@ -214,7 +205,7 @@ describe('TemplateManager - Phase 3: Refactored Integration', () => {
 
       expect(result.success).toBe(false);
       // 여러 검증 오류 수집
-      expect(result.errors.length).toBeGreaterThanOrEqual(1);
+      expect(result.errors?.length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -223,7 +214,6 @@ describe('TemplateManager - Phase 3: Refactored Integration', () => {
       const config: ProjectConfig = {
         name: 'cross-platform-test',
         type: ProjectType.TYPESCRIPT,
-        version: '0.1.0',
       };
 
       const result = await manager.generateProject(config, tempDir);

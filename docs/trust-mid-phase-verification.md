@@ -146,7 +146,7 @@ utils/regex-security.ts:         7개 (error properties)
 **Phase 2-1 개선 효과:**
 - orchestrator 리팩토링 시 TAG 체계 완전 적용
 - 9개 신규 모듈 모두 @TAG 주석 포함
-- Primary Chain + Implementation Tags 완전 추적성
+- 필수 TAG 흐름 + Implementation Tags 완전 추적성
 
 **TAG 체계 현황:**
 ```

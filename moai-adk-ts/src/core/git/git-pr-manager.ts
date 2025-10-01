@@ -10,9 +10,9 @@
 import * as fs from 'fs-extra';
 import simpleGit, { type SimpleGit } from 'simple-git';
 import type {
-  GitConfig,
   CreatePullRequestOptions,
   CreateRepositoryOptions,
+  GitConfig,
 } from '../../types/git';
 import { GitDefaults, GitTimeouts } from './constants';
 import { GitLockManager } from './git-lock-manager';
@@ -30,7 +30,6 @@ import { GitHubIntegration } from './github-integration';
  */
 export class GitPRManager {
   public readonly git: SimpleGit;
-  private config: GitConfig;
   private workingDir: string;
   private lockManager: GitLockManager;
   private githubIntegration: GitHubIntegration;
