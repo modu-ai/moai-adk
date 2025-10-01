@@ -47,15 +47,15 @@
 **Git 자동화**: 커밋, 푸시 등 일반 작업만 자동 처리
 **Git 직접**: `@agent-git-manager "명령"` (특수 케이스)
 
-## @TAG Lifecycle 5.0 (4-Core)
+## @TAG Lifecycle
 
 ### 핵심 설계 철학
 
 **TDD 완벽 정렬**: RED (테스트) → GREEN (구현) → REFACTOR (문서)
-**단순성**: 8개 TAG → 4개 TAG (50% 감소)
+**단순성**: TAG 체계 간소화
 **추적성**: 코드 직접 스캔 (CODE-FIRST)
 
-### 4-Core TAG 체계
+### TAG 체계
 
 ```
 @SPEC:ID → @TEST:ID → @CODE:ID → @DOC:ID
@@ -213,7 +213,7 @@ export class AuthService { ... }
 ```typescript
 // @TEST:AUTH-001 -> @CODE:AUTH-001    ❌ 순서 표기 불필요 (파일 위치로 구분)
 // @CODE:AUTH-001, @CODE:AUTH-002      ❌ 하나의 파일에 여러 ID (분리 필요)
-// @REQ:AUTH-001                        ❌ v4.0 TAG 사용 금지
+// @REQ:AUTH-001                        ❌ 구형 TAG 사용 금지
 // @CODE:ABC-123                        ❌ 의미 없는 도메인명
 ```
 

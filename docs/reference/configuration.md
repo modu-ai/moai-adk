@@ -273,11 +273,11 @@ feature/SPEC-001 → develop → main
 }
 ```
 
-**4-Core @TAG 체계**:
+**필수 TAG @TAG 체계**:
 
 | 카테고리 | Core | 설명 | 필수 여부 |
 |----------|------|------|-----------|
-| Primary Chain | 4 Core | 요구 → 설계 → 작업 → 검증 | 필수 |
+| 필수 TAG 흐름 | 4 Core | 요구 → 설계 → 작업 → 검증 | 필수 |
 | Implementation | 4 Core | Feature/API/UI/Data 구현 유형 | 필수 |
 
 **CODE-FIRST 철학**:

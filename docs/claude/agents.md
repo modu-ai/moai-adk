@@ -293,7 +293,7 @@ export class AuthService {
 ```
 ✓ TAG 체인 검증
   - 코드 전체 스캔
-  - Primary Chain 완결성 확인
+  - TAG 체인 완결성 확인
   - 고아 TAG 감지
 
 ✓ Living Document 업데이트
@@ -389,7 +389,7 @@ export class AuthService {
   - 파일: 122개
   - 스캔 시간: 45ms
 
-✓ Primary Chain 검증
+✓ TAG 체인 검증
   - 완결 체인: 32개
   - 불완전 체인: 2개
   - 고아 TAG: 0개

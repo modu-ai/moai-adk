@@ -5,7 +5,7 @@
  */
 
 import { describe, test, expect } from 'vitest';
-import { CodeFirstTAGEnforcer } from '../../../../src/claude/hooks/tag-enforcer-refactored';
+import { CodeFirstTAGEnforcer } from '../../../../src/claude/hooks/tag-enforcer';
 import type { HookInput } from '../../../../src/claude/types';
 
 describe('@TEST:REFACTOR-003: TAG Enforcer Simple Tests', () => {

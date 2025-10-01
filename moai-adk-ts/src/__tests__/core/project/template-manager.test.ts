@@ -14,7 +14,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { TemplateManager } from '@/core/project/template-manager-refactored';
+import { TemplateManager } from '@/core/project/template-manager';
 import type { ProjectConfig } from '@/types/project';
 import { ProjectType } from '@/types/project';
 

@@ -5,7 +5,7 @@
 **@CODE:DOCS-010** ← 구현 코드
 **@DOC:DOCS-010** ← 문서화 완료 ✅
 
-**v5.0 TAG Chain**: @SPEC:DOCS-010 → @TEST:DOCS-010 → @CODE:DOCS-010 → @DOC:DOCS-010
+** TAG Chain**: @SPEC:DOCS-010 → @TEST:DOCS-010 → @CODE:DOCS-010 → @DOC:DOCS-010
 
 ---
 

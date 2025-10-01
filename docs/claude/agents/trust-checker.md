@@ -485,9 +485,9 @@ Rust: cargo-audit, cargo-deny
 #### 검증 항목
 
 **1. @TAG 시스템 무결성**
-- 4-Core TAG 체계 준수
-- Primary Chain 연결: @REQ → @DESIGN → @TASK → @TEST
-- Implementation TAG 존재: @FEATURE, @API, @UI, @DATA
+- @TAG 체계 준수
+- TAG 체인 연결: @REQ → @DESIGN → @TASK → @TEST
+- @CODE 서브카테고리 존재: @FEATURE, @API, @UI, @DATA
 
 **2. TAG 체인 검증**
 - 끊어진 링크 감지
@@ -509,7 +509,7 @@ Rust: cargo-audit, cargo-deny
 ```mermaid
 graph TB
     A[코드 전체 스캔] --> B[TAG 추출]
-    B --> C[4-Core 체계 검증]
+    B --> C[@TAG 체계 검증]
     C --> D{체계 준수?}
     D -->|No| E[위반 TAG 수집]
     D -->|Yes| F[Chain 연결 검증]
@@ -545,7 +545,7 @@ graph TB
 # 전체 TAG 스캔
 rg '@(REQ|DESIGN|TASK|TEST|FEATURE|API|UI|DATA):[\w-]+' -n
 
-# Primary Chain 검증
+# TAG 체인 검증
 rg '@REQ:[\w-]+.*@DESIGN:[\w-]+.*@TASK:[\w-]+.*@TEST:[\w-]+' -n
 
 # 고아 TAG 검사
@@ -574,9 +574,9 @@ rg '@\w+:[\w-]+' -n --no-heading | awk '{print $NF}' | sort | uniq -c | awk '$1 
 
 ### TAG 시스템 현황
 - **총 TAG 수**: 149개
-- **Primary Chain**: 37개 체인 ✅
-- **Implementation TAG**: 112개 ✅
-- **4-Core 준수**: 98.7% ✅
+- **TAG 체인**: 37개 체인 ✅
+- **@CODE 서브카테고리**: 112개 ✅
+- **@TAG 준수**: 98.7% ✅
 
 ### TAG 체인 검증
 - **완전한 체인**: 35개 ✅

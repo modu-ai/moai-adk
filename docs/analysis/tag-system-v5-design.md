@@ -1,6 +1,6 @@
-# TAG 시스템 v5.0 설계 문서 (4-Core)
+# TAG 시스템  설계 문서 (필수 TAG)
 
-> **버전**: v5.0
+> **버전**: 
 > **상태**: 설계 완료 / 구현 준비
 > **적용 대상**: MoAI-ADK v0.1.0+
 
@@ -8,14 +8,14 @@
 
 ## 📊 변경 요약
 
-### 8-Core (v4.0) → 4-Core (v5.0)
+### 구 TAG 체계 () → 필수 TAG ()
 
 ```
-Before (v4.0 - 8-Core):
+Before ( - 구 TAG 체계):
 Primary: @REQ, @DESIGN, @TASK, @TEST
 Implementation: @FEATURE, @API, @UI, @DATA
 
-After (v5.0 - 4-Core):
+After ( - 필수 TAG):
 @SPEC → @TEST → @CODE → @DOC
 ```
 
@@ -57,7 +57,7 @@ graph LR
 
 ---
 
-## 🏗️ 4-Core TAG 상세 설계
+## 🏗️ 필수 TAG TAG 상세 설계
 
 ### @SPEC:ID - SPEC 문서
 
@@ -432,9 +432,9 @@ rg "@DOC:AUTH-001" docs/ README.md
 
 ---
 
-## 📊 v4.0 vs v5.0 비교
+## 📊  vs  비교
 
-| 항목 | v4.0 (8-Core) | v5.0 (4-Core) | 개선 |
+| 항목 |  (구 TAG 체계) |  (필수 TAG) | 개선 |
 |------|---------------|---------------|------|
 | **TAG 개수** | 8개 | 4개 | ✅ 50% 감소 |
 | **TDD 정렬** | 60/100 | 95/100 | ✅ +35 |
@@ -449,9 +449,9 @@ rg "@DOC:AUTH-001" docs/ README.md
 
 ## 🚀 마이그레이션 가이드
 
-### v4.0 → v5.0 매핑
+###  →  매핑
 
-| v4.0 (8-Core) | v5.0 (4-Core) | 비고 |
+|  (구 TAG 체계) |  (필수 TAG) | 비고 |
 |---------------|---------------|------|
 | `@SPEC:ID` | `@SPEC:ID` | SPEC 문서에 통합 |
 | `@SPEC:ID` | `@SPEC:ID` | SPEC 문서에 통합 |
@@ -465,16 +465,16 @@ rg "@DOC:AUTH-001" docs/ README.md
 ### 자동 변환 스크립트
 
 ```bash
-# v4.0 TAG를 v5.0으로 자동 변환
-moai migrate-tags --from v4.0 --to v5.0
+#  TAG를 으로 자동 변환
+moai migrate-tags --from  --to 
 
 # 변환 미리보기 (드라이런)
-moai migrate-tags --from v4.0 --to v5.0 --dry-run
+moai migrate-tags --from  --to  --dry-run
 ```
 
 ### 수동 변환 예시
 
-**Before (v4.0):**
+**Before ():**
 ```typescript
 // @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
 // Related: @CODE:AUTH-001:API, @CODE:AUTH-001:DATA
@@ -485,7 +485,7 @@ export class AuthService {
 }
 ```
 
-**After (v5.0):**
+**After ():**
 ```typescript
 // @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth/auth.service.test.ts
 
@@ -612,7 +612,7 @@ export class AuthService {
 ### T - Trackable
 
 ```
-4-Core 체인: @SPEC → @TEST → @CODE → @DOC
+필수 TAG 체인: @SPEC → @TEST → @CODE → @DOC
 ```
 
 ---
@@ -627,7 +627,7 @@ export class AuthService {
 
 ## 🔚 결론
 
-**TAG 시스템 v5.0 (4-Core)는:**
+**TAG 시스템  (필수 TAG)는:**
 - ✅ TDD 사이클과 완벽 정렬 (RED → GREEN → REFACTOR)
 - ✅ 단순성 극대화 (8개 → 4개)
 - ✅ 중복 제거 (@FEATURE vs @TASK)
@@ -638,6 +638,6 @@ export class AuthService {
 
 ---
 
-**문서 버전**: v5.0.0
+**문서 버전**: .0
 **최종 수정**: 2025-10-01
 **다음 단계**: 구현 및 문서 업데이트

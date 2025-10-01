@@ -7,17 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.0.2] - 2025-10-01
 
-### 🎯 **TAG System v5.0 - 4-Core Revolution**
+### 🎯 **TAG System - 체계 개선**
 
-**TAG 시스템을 v4.0 8-Core에서 v5.0 4-Core로 대폭 단순화하여 TDD와 완벽하게 정렬했습니다**
+**TAG 시스템을 구 TAG 체계에서 신 TAG 체계로 대폭 단순화하여 TDD와 완벽하게 정렬했습니다**
 
 #### 🌟 주요 변경사항
 
 ##### 1. TAG 체계 단순화 (50% 감소)
-- **Before (v4.0)**: 8-Core TAG 체계
+- **Before ()**: 구 TAG 체계 TAG 체계
   - Primary: `@REQ`, `@DESIGN`, `@TASK`, `@TEST`
   - Implementation: `@FEATURE`, `@API`, `@UI`, `@DATA`
-- **After (v5.0)**: 4-Core TAG 체계
+- **After ()**: TAG 체계
   - `@SPEC:ID` → `@TEST:ID` → `@CODE:ID` → `@DOC:ID`
 
 ##### 2. TDD 사이클 완벽 정렬
@@ -26,8 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **REFACTOR Phase**: `@CODE:ID` 개선 + `@DOC:ID` 문서화
 
 ##### 3. 구현 세부사항 주석 레벨화
-- v4.0: 파일 레벨 TAG (@FEATURE, @API, @UI, @DATA)
-- v5.0: 주석 레벨 서브카테고리
+- : 파일 레벨 TAG (@FEATURE, @API, @UI, @DATA)
+- : 주석 레벨 서브카테고리
   - `@CODE:ID:API` - REST API, GraphQL
   - `@CODE:ID:UI` - 컴포넌트, 화면
   - `@CODE:ID:DATA` - 데이터 모델
@@ -36,17 +36,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ##### 4. TAG BLOCK 템플릿 단순화
 ```typescript
-// v4.0 (156 characters)
+//  (156 characters)
 // @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
 // Related: @API:AUTH-001, @DATA:AUTH-001
 
-// v5.0 (78 characters, 50% reduction)
+//  (78 characters, 50% reduction)
 // @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth/service.test.ts
 ```
 
 #### 📊 성능 개선
 
-| 항목 | v4.0 | v5.0 | 개선율 |
+| 항목 |  |  | 개선율 |
 |------|------|------|--------|
 | TAG 개수 | 8개 | 4개 | -50% |
 | TAG BLOCK 길이 | 156자 | 78자 | -50% |
@@ -58,7 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### 🔧 마이그레이션 가이드
 
 ##### TAG 매핑 규칙
-| v4.0 (8-Core) | v5.0 (4-Core) | 위치 |
+|  (구 TAG 체계) |  (필수 TAG) | 위치 |
 |---------------|---------------|------|
 | `@REQ:ID` | `@SPEC:ID` | .moai/specs/ |
 | `@DESIGN:ID` | `@SPEC:ID` | .moai/specs/ |
@@ -72,10 +72,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ##### 자동 마이그레이션
 ```bash
 # TAG 스캔 명령어 업데이트
-# v4.0
+# 
 rg '@(REQ|DESIGN|TASK|TEST|FEATURE|API|UI|DATA):' -n
 
-# v5.0
+# 
 rg '@(SPEC|TEST|CODE|DOC):' -n
 ```
 
@@ -83,13 +83,13 @@ rg '@(SPEC|TEST|CODE|DOC):' -n
 
 - **설계 문서**: `docs/analysis/tag-system-v5-design.md` (신규)
 - **분석 리포트**: `docs/analysis/tag-system-critical-analysis.md` (신규)
-- **가이드**: `docs/guide/tag-system.md` (v5.0 전면 개편)
+- **가이드**: `docs/guide/tag-system.md` ( 전면 개편)
 - **핵심 가이드**: `CLAUDE.md`, `.moai/memory/development-guide.md` (업데이트)
 - **템플릿**: `moai-adk-ts/templates/` (전체 업데이트)
 
 #### ⚠️ Breaking Changes
 
-- **TAG 형식 변경**: v4.0 8-Core TAG는 더 이상 지원하지 않음
+- **TAG 형식 변경**: 구 TAG 체계 TAG는 더 이상 지원하지 않음
 - **TAG BLOCK 형식 변경**: 새로운 템플릿 필수 적용
 - **스캔 패턴 변경**: ripgrep 검색 패턴 업데이트 필요
 - **에이전트 연동 변경**: tag-agent, spec-builder, code-builder 업데이트
@@ -124,7 +124,7 @@ rg '@(SPEC|TEST|CODE|DOC):' -n
 
 #### 🔗 관련 문서
 
-- [TAG System v5.0 Design](/docs/analysis/tag-system-v5-design.md)
+- [TAG System Design](/docs/analysis/tag-system-v5-design.md)
 - [Critical Analysis Report](/docs/analysis/tag-system-critical-analysis.md)
 - [TAG System Guide](/docs/guide/tag-system.md)
 - [Migration Guide v4 → v5](/docs/guide/migration-v5.md)

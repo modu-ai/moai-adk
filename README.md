@@ -60,7 +60,7 @@ graph TB
 - **cc-manager**: Claude Code 설정 최적화
 
 #### 🏷️ ** @AI-TAG 시스템**: 코드 직접 스캔 기반 추적성
-- **4-Core TAG 체계**: @SPEC → @TEST → @CODE → @DOC (필수 체인)
+- **@TAG 체계**: @SPEC → @TEST → @CODE → @DOC (필수 체인)
   - `@SPEC`: SPEC 문서와 요구사항 정의
   - `@TEST`: 테스트 코드 및 검증 로직
   - `@CODE`: 실제 구현 코드
@@ -711,9 +711,9 @@ graph TB
 
 ## @AI-TAG 시스템
 
-코드와 문서 간 완전한 추적성을 제공하는 4-Core TAG 시스템입니다.
+코드와 문서 간 완전한 추적성을 제공하는 @TAG TAG 시스템입니다.
 
-### 4-Core TAG 체계 (v5.0)
+### @TAG 체계 ()
 
 **필수 체인:**
 - `@SPEC`: SPEC 문서와 요구사항 정의
@@ -746,7 +746,7 @@ class AuthenticationService:
 ### TAG 검색 및 관리
 
 ```bash
-# v5.0 TAG 확인
+#  TAG 확인
 rg "@(SPEC|TEST|CODE|DOC):" -n
 
 # 특정 ID TAG 체인 추적

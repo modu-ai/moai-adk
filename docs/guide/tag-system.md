@@ -1,4 +1,4 @@
-# @TAG 추적성 시스템 v5.0 (4-Core)
+# @TAG 추적성 시스템 (필수 TAG)
 
 ## 핵심 철학: CODE-FIRST 방식
 
@@ -24,9 +24,9 @@ graph LR
     style VERIFY fill:#ffd43b
 ```
 
-## 4-Core TAG 체계
+## @TAG 체계
 
-MoAI-ADK v5.0부터 **4-Core TAG 체계**를 채택합니다.
+MoAI-ADK는 단일 TAG 체계를 사용합니다.
 
 ### TDD 사이클 완벽 정렬
 
@@ -42,7 +42,7 @@ graph LR
     style DOC fill:#339af0
 ```
 
-### 4가지 핵심 TAG
+### 필수 필수 TAG TAG
 
 | TAG | 역할 | TDD 단계 | 위치 | 필수 |
 |-----|------|----------|------|------|
@@ -51,10 +51,7 @@ graph LR
 | `@CODE:ID` | 구현 코드 | GREEN + REFACTOR | src/ | ✅ |
 | `@DOC:ID` | 문서화 | REFACTOR | docs/ | ⚠️ |
 
-**변경 이력**:
-- v3.0: 16-Core (Primary 4 + Implementation 4 + Quality 4 + Meta 4)
-- v4.0: 8-Core (Primary 4 + Implementation 4) - 단순화 시도
-- **v5.0**: 4-Core (@SPEC → @TEST → @CODE → @DOC) - TDD 완벽 정렬 ⭐
+> ✅ 모든 신규 기능과 문서는 위 4개의 TAG를 기준으로 작성합니다. 체인 검증(`rg '@(SPEC|TEST|CODE|DOC):' -n`, `/moai:3-sync`) 역시 이 체계를 전제로 동작합니다.
 
 ## TAG BLOCK 템플릿
 
@@ -308,7 +305,7 @@ impl AuthenticationService {
 @CODE:auth-001     // ❌ 소문자 도메인
 @CODE:A-001        // ❌ 도메인 너무 짧음
 @CODE:AUTHENTICATION-SERVICE-001  // ❌ 도메인 너무 김
-@SPEC:AUTH-001      // ❌ v4.0 TAG 사용 (v5.0에서는 @SPEC)
+@SPEC:AUTH-001      // ❌  TAG 사용 (에서는 @SPEC)
 ```
 
 ## 코드 스캔 기반 검증
@@ -519,47 +516,9 @@ export class AuthService {
 ```typescript
 // @TEST:AUTH-001 -> @CODE:AUTH-001    ❌ 순서 표기 불필요 (파일 위치로 구분)
 // @CODE:AUTH-001, @CODE:AUTH-002      ❌ 하나의 파일에 여러 ID (분리 필요)
-// @SPEC:AUTH-001                        ❌ v4.0 TAG 사용 금지
-// @CODE:AUTH-001                    ❌ v4.0 TAG 사용 금지
+// @REQ:AUTH-001                         ❌ 레거시 TAG (사용 금지)
+// @FEATURE:AUTH-001                     ❌ 레거시 TAG (사용 금지)
 // @CODE:ABC-123                        ❌ 의미 없는 도메인명
-```
-
-## v4.0 → v5.0 마이그레이션
-
-### TAG 매핑 규칙
-
-| v4.0 (8-Core) | v5.0 (4-Core) | 위치 | 비고 |
-|---------------|---------------|------|------|
-| `@SPEC:ID` | `@SPEC:ID` | .moai/specs/ | SPEC 문서에 통합 |
-| `@SPEC:ID` | `@SPEC:ID` | .moai/specs/ | SPEC 문서에 통합 |
-| `@CODE:ID` | `@CODE:ID` | src/ | 구현 통합 |
-| `@TEST:ID` | `@TEST:ID` | tests/ | 동일 |
-| `@CODE:ID` | `@CODE:ID` | src/ | 구현 통합 |
-| `@API:ID` | `@CODE:ID:API` | src/ | 주석 레벨 |
-| `@UI:ID` | `@CODE:ID:UI` | src/ | 주석 레벨 |
-| `@DATA:ID` | `@CODE:ID:DATA` | src/ | 주석 레벨 |
-
-### 마이그레이션 예시
-
-**v4.0 (8-Core)**:
-```typescript
-// @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
-// Related: @CODE:AUTH-001:API, @CODE:AUTH-001:DATA
-
-export class AuthService {
-  // @CODE:AUTH-001:API
-  async login() { }
-}
-```
-
-**v5.0 (4-Core)**:
-```typescript
-// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth/service.test.ts
-
-export class AuthService {
-  // @CODE:AUTH-001:API
-  async login() { }
-}
 ```
 
 ## TDD 워크플로우 체크리스트
@@ -608,11 +567,11 @@ graph TD
 1. **코드가 진실의 유일한 원천**: 별도 인덱스 파일 미사용
 2. **실시간 스캔 검증**: `rg` 명령어로 코드 직접 스캔
 3. **중간 캐시 없음**: 항상 코드에서 직접 TAG 추출
-4. **4-Core 단순화**: @SPEC → @TEST → @CODE → @DOC (50% 감소)
+4. **@TAG 단순화**: @SPEC → @TEST → @CODE → @DOC (50% 감소)
 5. **TDD 완벽 정렬**: RED (TEST) → GREEN (CODE) → REFACTOR (CODE + DOC)
 6. **TAG BLOCK 필수**: 모든 코드 파일 상단에 배치
 
-## v5.0 주요 개선 사항
+##  주요 개선 사항
 
 ### 단순성 (+50%)
 - 4개 TAG → 4개 TAG
@@ -620,8 +579,8 @@ graph TD
 - 학습 곡선: 급격 → 완만
 
 ### TDD 정렬 (+100%)
-- v4.0: @REQ → @DESIGN → @TASK → @TEST (TDD와 불일치)
-- v5.0: @SPEC → @TEST → @CODE (TDD와 완벽 일치)
+- : @REQ → @DESIGN → @TASK → @TEST (TDD와 불일치)
+- : @SPEC → @TEST → @CODE (TDD와 완벽 일치)
 
 ### 실무 사용성 (+40%)
 - 모든 구현은 `@CODE:ID` 하나로 통합
@@ -637,4 +596,4 @@ graph TD
 - [3단계 워크플로우](/guide/workflow) - 전체 개발 프로세스 이해
 - [SPEC 우선 TDD](/guide/spec-first-tdd) - TDD 사이클과 TAG 통합
 - [CLI 명령어](/cli/init) - `moai` 명령어로 TAG 관리 자동화
-- [마이그레이션 가이드](/guide/migration-v5) - v4.0에서 v5.0으로 전환
+- [마이그레이션 가이드](/guide/migration-v5) - 에서 으로 전환

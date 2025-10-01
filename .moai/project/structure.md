@@ -54,13 +54,10 @@ Project Architecture
 
 ## @STRUCT:TRACEABILITY-001 추적성 전략
 
-### 8-Core @TAG 체계 적용
+### @TAG 체계 적용
 
-**Primary Chain (4 Core)**: 요구사항부터 검증까지 필수 흐름
-- `@REQ` → `@DESIGN` → `@TASK` → `@TEST`
-
-**Implementation (4 Core)**: 구현 세부 사항
-- `@FEATURE` → `@API` → `@UI` → `@DATA`
+**TAG 흐름**: 요구사항부터 검증까지 필수 흐름
+- `@SPEC` → `@TEST` → `@CODE` → `@DOC`
 
 ### TAG 추적성 관리 (코드 스캔 방식)
 

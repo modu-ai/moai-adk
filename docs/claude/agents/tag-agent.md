@@ -27,11 +27,11 @@ tag-agent는 MoAI-ADK의 **TAG 시스템 독점 관리자**로서 @TAG 체계의
 graph TB
     subgraph "1. SPEC 작성"
         A[/moai:1-spec] --> A1[TAG BLOCK 생성]
-        A1 --> A2[Primary Chain 정의]
+        A1 --> A2[TAG 체인 정의]
     end
 
     subgraph "2. TDD 구현"
-        B[/moai:2-build] --> B1[Implementation TAG 추가]
+        B[/moai:2-build] --> B1[@CODE 서브카테고리 추가]
         B1 --> B2[코드에 TAG BLOCK 삽입]
     end
 
@@ -460,8 +460,8 @@ TAG는 별도의 카탈로그나 인덱스 파일 없이 코드에 직접 작성
 graph LR
     A[SPEC 작성] --> B[도메인 식별]
     B --> C[TAG ID 생성]
-    C --> D[Primary Chain 정의]
-    D --> E[Implementation TAG 추가]
+    C --> D[TAG 체인 정의]
+    D --> E[@CODE 서브카테고리 추가]
     E --> F[코드에 TAG BLOCK 삽입]
     F --> G[rg로 TAG 스캔 검증]
 
@@ -554,7 +554,7 @@ graph TB
 # 1. 모든 TAG ID 수집
 TAG_IDS=$(rg '@\w+:([\w-]+)' -o --no-filename | sed 's/@[A-Z]*://' | sort -u)
 
-# 2. 각 TAG ID에 대해 Primary Chain 검증
+# 2. 각 TAG ID에 대해 TAG 체인 검증
 for ID in $TAG_IDS; do
     REQ=$(rg "@REQ:$ID" -c)
     DESIGN=$(rg "@DESIGN:$ID" -c)
@@ -722,7 +722,7 @@ PAYMENT-005 TAG가 코드에만 존재하고 SPEC 없음
 **해결 방법**:
 1. SPEC 문서 작성
 2. TAG BLOCK 추가
-3. Primary Chain 완성
+3. TAG 체인 완성
 4. 코드에 체인 연결
 
 ---
@@ -841,14 +841,14 @@ rg '@\w+:[\w-]+' -g '*.java' -c | awk '{sum+=$1} END {print "Java:", sum}'
 | 항목 | 개수 |
 |------|------|
 | **총 TAG 수** | 149 |
-| **Primary Chain** | 37개 체인 |
-| **Implementation TAG** | 112개 |
+| **TAG 체인** | 37개 체인 |
+| **@CODE 서브카테고리** | 112개 |
 | **고아 TAG** | 3개 |
 | **끊어진 링크** | 2개 |
 
 ---
 
-## Primary Chain 현황
+## TAG 체인 현황
 
 ### 완전한 체인 (35개)
 
@@ -877,7 +877,7 @@ rg '@\w+:[\w-]+' -g '*.java' -c | awk '{sum+=$1} END {print "Java:", sum}'
 
 ---
 
-## Implementation TAG 현황
+## @CODE 서브카테고리 현황
 
 | 도메인 | FEATURE | API | UI | DATA | 합계 |
 |--------|---------|-----|----|----- |------|

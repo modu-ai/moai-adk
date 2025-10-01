@@ -34,9 +34,9 @@ export function getLoggerConfig(): EnvironmentConfig {
 /**
  * Merge user options with environment config
  */
-export function mergeLoggerOptions(
-  userOptions?: LoggerOptions
-): Required<Omit<LoggerOptions, 'transports'>> & {
+export function mergeLoggerOptions(userOptions?: LoggerOptions): Required<
+  Omit<LoggerOptions, 'transports'>
+> & {
   transports?: winston.transport[];
 } {
   const envConfig = getLoggerConfig();

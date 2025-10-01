@@ -1,19 +1,19 @@
 # @TAG 시스템 비판적 분석 보고서
 
-> **목적**: 현재 4-Core TAG 시스템이 SPEC-First TDD 워크플로우에 최적인지 심층 분석
+> **목적**: 현재 필수 TAG TAG 시스템이 SPEC-First TDD 워크플로우에 최적인지 심층 분석
 
 **분석 일자**: 2025-10-01
 **분석자**: Claude (ultrathink mode)
-**대상**: MoAI-ADK v0.0.2 TAG System v4.0
+**대상**: MoAI-ADK v0.0.2 TAG System 
 
 ---
 
 ## 📊 Executive Summary
 
-### 현재 4-Core TAG 구성
+### 현재 필수 TAG TAG 구성
 
 ```
-Primary Chain (4 Core - 필수):
+필수 TAG 흐름 (4 Core - 필수):
 @REQ → @DESIGN → @TASK → @TEST
 
 Implementation (4 Core - 필수):
@@ -87,7 +87,7 @@ class AuthService {
 **현상:**
 - @TEST가 RED phase (실패 테스트)인지, 검증 단계인지 불명확
 - TDD에서 테스트는 "먼저" 작성하는데, TAG 순서는 마지막
-- Primary Chain에서 @TEST가 끝인데, TDD는 RED부터 시작
+- 필수 TAG 흐름에서 @TEST가 끝인데, TDD는 RED부터 시작
 
 **TAG 체인 vs TDD 사이클:**
 ```
@@ -182,7 +182,7 @@ class AuthService {
 
 ---
 
-## 🔍 3. Implementation TAG의 필요성 분석
+## 🔍 3. @CODE 서브카테고리의 필요성 분석
 
 ### 현재 Implementation (4 Core)
 
@@ -197,7 +197,7 @@ class AuthService {
 
 **현상:**
 - @FEATURE가 "기능 전체 구현"이면 @TASK는 뭐지?
-- Primary Chain에 @TASK가 있는데 Implementation에 @FEATURE도 있음
+- 필수 TAG 흐름에 @TASK가 있는데 Implementation에 @FEATURE도 있음
 - 역할 구분이 모호함
 
 **실제 코드 예시:**
@@ -217,7 +217,7 @@ class AuthService {  // 이게 @FEATURE인가? @TASK인가?
 - 왜 두 개가 필요한가?
 - 차이가 뭔가?
 
-### ❌ 문제점 7: Implementation TAG가 모두 "필수"?
+### ❌ 문제점 7: @CODE 서브카테고리가 모두 "필수"?
 
 **현상:**
 - @API, @UI, @DATA가 모두 "필수"로 표기됨
@@ -350,7 +350,7 @@ TAG 개수: 8개
 ```
 
 **혼란스러운 규칙:**
-- Primary Chain은 AUTH-001
+- 필수 TAG 흐름은 AUTH-001
 - Implementation은 LOGIN-001
 - 왜 다른가? 일관성이 없음!
 
@@ -403,12 +403,12 @@ TAG 개수: 8개
 // @IMPL:AUTH-001 | SPEC: SPEC-AUTH-001 | TEST: test_auth_001.py
 ```
 
-### ⚠️ 문제점 15: 8-Core가 너무 많음
+### ⚠️ 문제점 15: 구 TAG 체계가 너무 많음
 
 **복잡성 비교:**
 ```
-v3.0: 16-Core (너무 복잡) → 단순화 필요
-v4.0: 8-Core (여전히 복잡) → 더 단순화 필요?
+v3.0: 확장 TAG 체계 (너무 복잡) → 단순화 필요
+: 구 TAG 체계 (여전히 복잡) → 더 단순화 필요?
 이상적: 4-5 Core?
 ```
 
@@ -481,7 +481,7 @@ async function authenticate(
 
 ## 📋 개선 제안
 
-### 제안 1: TDD 사이클 중심 4-Core (추천 ⭐)
+### 제안 1: TDD 사이클 중심 필수 TAG (추천 ⭐)
 
 ```
 @SPEC:ID → @TEST:ID → @CODE:ID → @DOC:ID
@@ -562,7 +562,7 @@ After:
    - 중복 제거
    - 역할 명확화
 
-3. **Implementation TAG를 "필수"에서 "선택적"으로 변경**
+3. **@CODE 서브카테고리를 "필수"에서 "선택적"으로 변경**
    - 프로젝트 유형별 유연성 확보
 
 ### 우선순위 2 (단기 개선) 🟡
@@ -581,7 +581,7 @@ After:
 
 ### 우선순위 3 (장기 개선) 🟢
 
-7. **4-Core로 재설계**
+7. **필수 TAG로 재설계**
    - @SPEC → @TEST → @CODE → @DOC
    - 근본적 단순화
 
@@ -611,7 +611,7 @@ After:
 
 ## 🔚 결론
 
-### 현재 4-Core TAG 시스템의 핵심 문제
+### 현재 필수 TAG TAG 시스템의 핵심 문제
 
 1. **TDD 사이클 불완전**: REFACTOR 단계 누락
 2. **EARS 미반영**: 요구사항 유형 구분 불가
@@ -625,14 +625,14 @@ After:
 **즉시 조치 (v0.0.3):**
 - @REFACTOR TAG 추가
 - @FEATURE 제거 또는 @IMPL로 통합
-- Implementation TAG를 선택적으로 변경
+- @CODE 서브카테고리를 선택적으로 변경
 
 **단기 조치 (v0.1.0):**
 - TAG BLOCK 단순화
 - 자동 생성 도구 개발
 
 **장기 조치 (v1.0.0):**
-- 4-Core 시스템으로 재설계
+- 필수 TAG 시스템으로 재설계
 - EARS 통합
 - Lifecycle TAG 추가
 

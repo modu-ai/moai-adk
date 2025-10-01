@@ -47,7 +47,7 @@ model: sonnet
 
 ### TAG 카테고리별 처리
 
-- **Primary Chain**: REQ → DESIGN → TASK → TEST
+- **TAG 체인**: REQ → DESIGN → TASK → TEST
 - **Quality Chain**: PERF → SEC → DOCS → TAG
 - **추적성 매트릭스**: 100% 유지
 

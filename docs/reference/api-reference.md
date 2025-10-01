@@ -736,7 +736,7 @@ export interface TagEntry {
 
 ```typescript
 export type TagType =
-  // Primary Chain (4 Core)
+  // 필수 TAG 흐름 (4 Core)
   | 'REQ'      // 요구사항
   | 'DESIGN'   // 설계
   | 'TASK'     // 작업
@@ -870,7 +870,7 @@ export interface TagValidationResult {
 #### 설명
 
 TAG 검증은 다음 규칙을 확인합니다:
-- **Primary Chain 완전성**: @REQ → @DESIGN → @TASK → @TEST 체인이 끊기지 않았는지
+- **필수 TAG 흐름 완전성**: @REQ → @DESIGN → @TASK → @TEST 체인이 끊기지 않았는지
 - **고아 TAG 감지**: 부모나 자식이 없는 TAG
 - **순환 참조 감지**: TAG 체인에 순환 참조가 있는지
 - **파일 존재성**: 참조된 파일이 실제로 존재하는지
@@ -933,7 +933,7 @@ const query3: TagSearchQuery = {
 
 ```mermaid
 graph LR
-    subgraph "Primary Chain"
+    subgraph "필수 TAG 흐름"
         REQ[@REQ-AUTH-001<br/>OAuth2 요구사항]
         DESIGN[@DESIGN-AUTH-001<br/>시퀀스 설계]
         TASK[@TASK-AUTH-001<br/>구현 작업]

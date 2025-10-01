@@ -114,7 +114,7 @@ MoAI-ADK 범용 개발 툴킷을 사용하는 모든 에이전트와 개발자�
 
 ### T - SPEC 추적성
 
-- **SPEC-코드 추적성**: 모든 코드 변경은 4-Core @TAG 시스템을 통해 SPEC ID와 특정 요구사항을 참조한다.
+- **SPEC-코드 추적성**: 모든 코드 변경은 @TAG 시스템을 통해 SPEC ID와 특정 요구사항을 참조한다.
 - **3단계 워크플로우 추적**:
   - `/moai:1-spec`: `@SPEC:ID` 태그로 SPEC 작성 (.moai/specs/)
   - `/moai:2-build`: `@TEST:ID` (tests/) → `@CODE:ID` (src/) TDD 구현
@@ -135,7 +135,7 @@ MoAI-ADK 범용 개발 툴킷을 사용하는 모든 에이전트와 개발자�
 2. **TDD 구현**: Red-Green-Refactor를 엄격히 따른다. 언어별 적절한 테스트 프레임워크와 함께 `/moai:2-build`를 사용한다.
 3. **추적성 동기화**: `/moai:3-sync`를 실행하여 문서를 업데이트하고 SPEC과 코드 간 @TAG 관계를 유지한다.
 
-## @TAG 시스템 v5.0 (4-Core)
+## @TAG 시스템
 
 ### 핵심 체계
 

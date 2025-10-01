@@ -216,7 +216,7 @@ Claude Code 채팅창에서 다음 명령을 실행합니다:
    - Constraints: IF [조건]이면, 시스템은 [제약]해야 한다
 
 2. **TAG BLOCK 생성**
-   - Primary Chain: @REQ → @DESIGN → @TASK → @TEST
+   - TAG 체인: @REQ → @DESIGN → @TASK → @TEST
    - Implementation: @FEATURE, @API, @UI, @DATA
 
 3. **Acceptance Criteria 정의**
@@ -378,7 +378,7 @@ code-builder 에이전트가 TRUST 5원칙을 자동으로 검증하여 코드 �
    ```
    🔍 Scanning codebase for @TAGs...
    ✅ Found 8 TAGs in 4 files
-   ✅ Primary Chain complete: @SPEC:AUTH-001 →  → @CODE:AUTH-001 → @TEST:AUTH-001
+   ✅ TAG 체인 complete: @SPEC:AUTH-001 →  → @CODE:AUTH-001 → @TEST:AUTH-001
    ```
 
 2. **TAG 무결성 검증**
@@ -403,7 +403,7 @@ code-builder 에이전트가 TRUST 5원칙을 자동으로 검증하여 코드 �
 
 📊 Summary:
   - TAGs validated: 8/8 (100%)
-  - Primary Chains: 1/1 complete
+  - TAG 체인s: 1/1 complete
   - Files updated: 3
   - Test coverage: 95%
 

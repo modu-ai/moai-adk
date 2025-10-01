@@ -261,8 +261,8 @@ debug-helper는 `.moai/memory/development-guide.md`를 기준으로 코드와 �
 
 **@TAG 시스템 준수**:
 - TAG BLOCK 존재 여부 (파일 상단)
-- Primary Chain 완전성 (@REQ → @DESIGN → @TASK → @TEST)
-- Implementation TAG 적용 (@FEATURE, @API, @UI, @DATA)
+- TAG 체인 완전성 (@REQ → @DESIGN → @TASK → @TEST)
+- @CODE 서브카테고리 적용 (@FEATURE, @API, @UI, @DATA)
 - TAG ID 형식 준수 (`DOMAIN-###` 형식, 예: AUTH-001)
 - 고아 TAG 및 중복 TAG 식별
 
@@ -291,7 +291,7 @@ flowchart TD
     C --> C5[Trackable 검증]
 
     D --> D1[TAG BLOCK 확인]
-    D --> D2[Primary Chain 검증]
+    D --> D2[TAG 체인 검증]
     D --> D3[고아 TAG 탐지]
 
     E --> E1[LOC 제약 확인]
@@ -369,7 +369,7 @@ flowchart TD
   - src/utils/helper.py (TAG BLOCK 없음)
   - tests/integration/test_api.py (TAG BLOCK 없음)
 
-❌ Primary Chain 끊김:
+❌ TAG 체인 끊김:
   - @CODE:AUTH-002 → @TEST:AUTH-002 (연결 없음)
   -  → @CODE:PAYMENT-001 (연결 없음)
 
@@ -522,7 +522,7 @@ flowchart TD
 
 # 실행 과정:
 # 1. 코드베이스 전체 스캔 (rg '@TAG' -n)
-# 2. Primary Chain 연결 확인
+# 2. TAG 체인 연결 확인
 # 3. 고아 TAG 탐지
 # 4. 중복 TAG 식별
 # 5. tag-agent에게 상세 검증 요청

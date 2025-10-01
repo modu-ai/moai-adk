@@ -285,7 +285,7 @@ export default defineConfig({
 - `@IMMUTABLE` 마커가 있는 TAG 블록 수정 차단
 - `@TAG:CATEGORY:DOMAIN-ID` 형식 강제
 - TAG 체인 검증: REQ → DESIGN → TASK → TEST
-- 8-Core TAG 카테고리 준수: Lifecycle (REQ, DESIGN, TASK, TEST, SPEC) + Implementation (FEATURE, API, FIX)
+- @TAG 카테고리 준수: Lifecycle (REQ, DESIGN, TASK, TEST, SPEC) + 구현 (FEATURE, API, FIX)
 
 ### 🏗️ Hooks 아키텍처
 
@@ -490,7 +490,7 @@ MoAI-ADK는 SPEC-First TDD를 위한 3단계 워크플로우를 제공합니다:
 -  @TAG 자동 생성
 - 브랜치/PR 생성 (환경 의존)
 
-### Stage 2: TDD Implementation (범용 언어)
+### Stage 2: TDD 구현 (범용 언어)
 ```bash
 /moai:2-build SPEC-ID    # 특정 SPEC 구현
 /moai:2-build all        # 모든 SPEC 구현
@@ -626,8 +626,8 @@ tsx .moai/scripts/test-analyzer.ts --coverage
 
 | 체계 | 설명 | 예시 |
 |------|------|------|
-| **Primary Chain** | 요구→설계→작업→검증을 잇는 필수 체인 | `@REQ:PAYMENTS-001 → @DESIGN:PAYMENTS-001 → @TASK:PAYMENTS-001 → @TEST:PAYMENTS-001` |
-| **Implementation** | 구현 단위(Feature/API/UI/Data 등)를 세분화 | `@FEATURE:PAYMENTS-001`, `@API:PAYMENTS-001`, `@DATA:PAYMENTS-001` |
+| **TAG 체인** | 요구→설계→작업→검증을 잇는 필수 체인 | `@REQ:PAYMENTS-001 → @DESIGN:PAYMENTS-001 → @TASK:PAYMENTS-001 → @TEST:PAYMENTS-001` |
+| **구현** | 구현 단위(Feature/API/UI/Data 등)를 세분화 | `@FEATURE:PAYMENTS-001`, `@API:PAYMENTS-001`, `@DATA:PAYMENTS-001` |
 | **Quality** | 성능/보안/부채/문서 등 품질 속성 | `@SEC:PAYMENTS-001`, `@PERF:PAYMENTS-001`, `@DOCS:PAYMENTS-001` |
 | **Meta** | 거버넌스/릴리즈/운영 메타데이터 | `@OPS:PAYMENTS-001`, `@DEBT:PAYMENTS-001`, `@TAG:PAYMENTS-001` |
 
@@ -637,9 +637,9 @@ tsx .moai/scripts/test-analyzer.ts --coverage
 ### 생성 및 등록 절차
 
 1. **사전 조사**: 새 기능을 정의하기 전에 `rg "@TAG"` 명령으로 코드에서 기존 체인을 검색해 재사용 가능 여부 확인
-2. **SPEC 작성 시점**: `/moai:1-spec` 단계에서 `TAG BLOCK` 섹션을 작성하고 Primary Chain 4종(@REQ/@DESIGN/@TASK/@TEST)을 우선 등록
-3. **코드 생성 시점**: 템플릿에서 제공하는 `TAG BLOCK`을 파일 헤더(주석) 또는 주요 함수 위에 그대로 채워 넣고, Implementation/Quality TAG를 추가
-4. **테스트 작성 시점**: 테스트 함수/케이스 주석에 `@TEST` TAG를 명시하고 Primary Chain과 연결된 Implementation TAG를 참조
+2. **SPEC 작성 시점**: `/moai:1-spec` 단계에서 `TAG BLOCK` 섹션을 작성하고 TAG 체인 4종(@REQ/@DESIGN/@TASK/@TEST)을 우선 등록
+3. **코드 생성 시점**: 템플릿에서 제공하는 `TAG BLOCK`을 파일 헤더(주석) 또는 주요 함수 위에 그대로 채워 넣고, 구현/Quality TAG를 추가
+4. **테스트 작성 시점**: 테스트 함수/케이스 주석에 `@TEST` TAG를 명시하고 TAG 체인과 연결된 @CODE 서브카테고리를 참조
 5. **동기화**: `/moai:3-sync` 단계에서 코드 전체를 스캔하여 TAG 체인 검증 및 고아 TAG 여부를 검사
 
 ### SPEC 문서 통합 지침
@@ -655,7 +655,7 @@ tsx .moai/scripts/test-analyzer.ts --coverage
 | Primary | @DESIGN:AUTH-003 | OAuth2 설계 | design/oauth.md |
 | Primary | @TASK:AUTH-003 | OAuth2 구현 작업 | src/auth/oauth2.ts |
 | Primary | @TEST:AUTH-003 | OAuth2 시나리오 테스트 | tests/auth/oauth2.test.ts |
-| Implementation | @FEATURE:AUTH-003 | 인증 도메인 서비스 | src/auth/service.ts |
+| 구현 | @FEATURE:AUTH-003 | 인증 도메인 서비스 | src/auth/service.ts |
 | Quality | @SEC:AUTH-003 | OAuth2 보안 점검 | docs/security/oauth2.md |
 ```
 
@@ -681,7 +681,7 @@ tsx .moai/scripts/test-analyzer.ts --coverage
 
 ### 업데이트 체크리스트
 
-- [ ] SPEC에 `TAG BLOCK`가 존재하고 Primary Chain이 완결되었는가?
+- [ ] SPEC에 `TAG BLOCK`가 존재하고 TAG 체인이 완결되었는가?
 - [ ] 새/수정된 코드 파일 헤더에 TAG BLOCK이 반영되었는가?
 - [ ] 테스트 케이스에 대응되는 `@TEST` TAG가 존재하는가?
 - [ ] TAG 체인이 코드 스캔을 통해 검증되었는가?

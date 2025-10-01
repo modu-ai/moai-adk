@@ -23,7 +23,7 @@ graph LR
 
 1. **명세 우선 (SPEC-First)**: 모든 구현은 명시적인 SPEC에서 시작
 2. **테스트 주도 (Test-Driven)**: Red-Green-Refactor 사이클 엄수
-3. **완전 추적성 (Full Traceability)**: 4-Core @TAG 시스템 (SPEC → TEST → CODE → DOC)으로 코드 직접 스캔
+3. **완전 추적성 (Full Traceability)**: @TAG @TAG 시스템 (SPEC → TEST → CODE → DOC)으로 코드 직접 스캔
 
 ## TDD Red-Green-Refactor 사이클
 
@@ -357,7 +357,7 @@ interface Session {
 - [ ] 토큰 검증 속도 (<10ms)
 - [ ] 데이터베이스 쿼리 최적화
 
-## @TAG 추적성 (v5.0 4-Core)
+## @TAG 추적성 ( @TAG)
 
 TAG BLOCK을 통한 추적성 확보:
 

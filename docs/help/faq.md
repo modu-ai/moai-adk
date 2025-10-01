@@ -323,9 +323,9 @@ rg "@TEST:" -n                  # 모든 테스트
 /moai:3-sync --path src/auth
 ```
 
-**4-Core TAG 체계:**
+**TAG 체계:**
 
-**Primary Chain (4 Core)** - 필수:
+**필수 TAG 흐름 (4 Core)** - 필수:
 - @REQ → @DESIGN → @TASK → @TEST
 
 **Implementation (4 Core)** - 구현 세부사항:

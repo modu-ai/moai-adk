@@ -557,7 +557,7 @@ TRUST 준수율: 100%
   - 파일: 122개
   - 스캔 시간: 45ms
 
-✓ Primary Chain 검증
+✓ TAG 체인 검증
   - 완결 체인: 32개
   - 불완전 체인: 2개
   - 고아 TAG: 0개
@@ -826,7 +826,7 @@ SPEC 기반 배포 자동화 및 롤백 관리
 // .moai/config/tags.ts
 
 export const customTags = {
-  // 기본 8-Core
+  // 기본 
   primary: ['@REQ', '@DESIGN', '@TASK', '@TEST'],
   implementation: ['@FEATURE', '@API', '@UI', '@DATA'],
 

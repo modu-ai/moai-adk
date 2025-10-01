@@ -138,7 +138,7 @@ GitHub Issue 생성 요청:
 
 ### 4. TAG BLOCK 자동 설정
 
-**TAG 체인 설정**: 추적성 확보를 위한 4-Core TAG 체계 적용
+**TAG 체인 설정**: 추적성 확보를 위한 @TAG 체계 적용
 
 SPEC 문서에 TAG BLOCK을 포함하여 작성합니다:
 
@@ -310,7 +310,7 @@ SPEC 문서에 TAG BLOCK을 포함하여 작성합니다:
 > - Constraints: 5개 제약사항
 >
 > TAG BLOCK 생성:
-> - Primary Chain: 4개 TAG
+> - TAG 체인: 4개 TAG
 > - Implementation: 6개 TAG (다중 통합)
 ```
 
@@ -645,8 +645,8 @@ tsx .moai/scripts/spec-validator.ts --spec SPEC-AUTH-001
 @agent-tag-agent "SPEC-AUTH-001 TAG 체인 검증"
 
 # 출력:
-# ✅ Primary Chain 완전: @REQ → @DESIGN → @TASK → @TEST
-# ✅ Implementation TAG: 3개 (FEATURE, API, DATA)
+# ✅ TAG 체인 완전: @REQ → @DESIGN → @TASK → @TEST
+# ✅ @CODE 서브카테고리: 3개 (FEATURE, API, DATA)
 # ✅ 중복 TAG 없음
 # ✅ 고아 TAG 없음
 ```

@@ -1,8 +1,8 @@
-# 문서 동기화 계획 보고서: TAG System v5.0
+# 문서 동기화 계획 보고서: TAG System
 
 **작성일**: 2025-10-01
 **작성자**: doc-syncer agent
-**대상**: MoAI-ADK TAG System v4.0 → v5.0 전환 프로젝트
+**대상**: MoAI-ADK TAG System  →  전환 프로젝트
 **버전**: 동기화 계획 v1.0
 
 ---
@@ -21,7 +21,7 @@ Deleted (D):
 - .github/workflows/README.md
 - .github/workflows/docs.yml
 - .github/workflows/release.yml
-- moai-adk-ts/scripts/validate-tags.ts (v4.0 TAG 검증 스크립트 제거됨)
+- moai-adk-ts/scripts/validate-tags.ts ( TAG 검증 스크립트 제거됨)
 
 Untracked (??):
 - moai-adk-ts/.npmignore (신규 파일)
@@ -42,44 +42,44 @@ c4a288e Merge branch 'cleanup/remove-unused-files-phase2' into develop
 **현재 브랜치**: `develop`
 **Main 브랜치**: 미설정 (develop이 사실상 메인)
 
-### 2. TAG 시스템 v5.0 전환 완료 확인
+### 2. TAG 시스템  전환 완료 확인
 
 #### ✅ 완료된 작업
 1. **핵심 설계 문서 작성**
-   - `docs/analysis/tag-system-v5-design.md` (644줄) - v5.0 4-Core 전체 설계
-   - `docs/analysis/tag-system-critical-analysis.md` (647줄) - v4.0 비판적 분석
+   - `docs/analysis/tag-system-v5-design.md` (644줄) - 신 TAG 체계 전체 설계
+   - `docs/analysis/tag-system-critical-analysis.md` (647줄) -  비판적 분석
 
 2. **핵심 가이드 업데이트**
-   - `CLAUDE.md` - 4-Core TAG 체계 반영
-   - `.moai/memory/development-guide.md` - v5.0 업데이트 완료
+   - `CLAUDE.md` - TAG 체계 반영
+   - `.moai/memory/development-guide.md` -  업데이트 완료
    - `docs/guide/tag-system.md` (641줄) - 전면 개편 완료
 
 3. **템플릿 시스템 업데이트**
-   - `moai-adk-ts/templates/` - 전체 파일 v5.0 반영 완료
+   - `moai-adk-ts/templates/` - 전체 파일  반영 완료
 
 4. **CHANGELOG 작성**
-   - `CHANGELOG.md` - v0.0.2 릴리스 노트 작성 (v5.0 4-Core 전환 내용)
+   - `CHANGELOG.md` - v0.0.2 릴리스 노트 작성 (신 TAG 체계 전환 내용)
 
 ### 3. TAG 스캔 결과 분석
 
-#### v4.0 4-Core TAG 잔여 현황
+####  필수 TAG TAG 잔여 현황
 **총 발견**: 450+ 건 (추정)
 
 **주요 위치**:
 - **예시/문서**: `README.md`, `docs/guide/workflow.md`, `docs/help/faq.md` 등
-  - v4.0 예시 코드 (`@CODE:AUTH-001`, `@SPEC:AUTH-001` 등)
+  -  예시 코드 (`@CODE:AUTH-001`, `@SPEC:AUTH-001` 등)
   - 마이그레이션 가이드 참조 (의도적 보존)
 
 - **아카이브**: `.archive/`, `MOAI-ADK-GUIDE.md` (레거시 참조용)
   - 역사적 기록 보존 필요
 
 - **템플릿 예시**: `examples/specs/` (SPEC 예시 문서)
-  - 교육용 예시 (v5.0 업데이트 필요)
+  - 교육용 예시 ( 업데이트 필요)
 
-- **테스트 코드**: `moai-adk-ts/src/__tests__/` (v4.0 TAG 참조)
+- **테스트 코드**: `moai-adk-ts/src/__tests__/` ( TAG 참조)
   - 주석 레벨 참조 (코드는 동작 유지)
 
-#### v5.0 4-Core TAG 현황
+#### 신 TAG 체계 TAG 현황
 **총 발견**: 150+ 건
 
 **주요 위치**:
@@ -88,7 +88,7 @@ c4a288e Merge branch 'cleanup/remove-unused-files-phase2' into develop
 - **CHANGELOG**: v0.0.2 릴리스 노트
 
 **검증 결과**:
-- ✅ v5.0 체계 (`@SPEC:ID`, `@TEST:ID`, `@CODE:ID`, `@DOC:ID`) 정상 사용
+- ✅  체계 (`@SPEC:ID`, `@TEST:ID`, `@CODE:ID`, `@DOC:ID`) 정상 사용
 - ✅ TAG BLOCK 템플릿 단순화 (`// @CODE:AUTH-001 | SPEC: ... | TEST: ...`)
 - ✅ 서브 카테고리 주석화 (`@CODE:ID:API`, `@CODE:ID:DOMAIN` 등)
 
@@ -96,15 +96,15 @@ c4a288e Merge branch 'cleanup/remove-unused-files-phase2' into develop
 
 #### ✅ 일치하는 영역
 - **TRUST 원칙**: development-guide.md와 CLAUDE.md 완전 일치
-- **TAG 체계**: v5.0 4-Core 정의가 모든 핵심 문서에 일관되게 적용
+- **TAG 체계**: 신 TAG 체계 정의가 모든 핵심 문서에 일관되게 적용
 - **워크플로우**: 3단계 (/moai:1-spec → 2-build → 3-sync) 일관성 유지
 - **CODE-FIRST 원칙**: "TAG의 진실은 코드 자체에만 존재" 통일
 
 #### ⚠️ 불일치 영역
-1. **README.md**: 여전히 v4.0 4-Core TAG 예시 사용
-2. **docs/guide/workflow.md**: v4.0 TAG BLOCK 템플릿 예시
-3. **examples/specs/**: v4.0 TAG 구조 예시 파일들
-4. **테스트 주석**: 일부 테스트 파일에 v4.0 TAG 참조
+1. **README.md**: 여전히  필수 TAG TAG 예시 사용
+2. **docs/guide/workflow.md**:  TAG BLOCK 템플릿 예시
+3. **examples/specs/**:  TAG 구조 예시 파일들
+4. **테스트 주석**: 일부 테스트 파일에  TAG 참조
 
 ---
 
@@ -113,9 +113,9 @@ c4a288e Merge branch 'cleanup/remove-unused-files-phase2' into develop
 ### 선택된 모드: **선택적 동기화 (Selective Sync)**
 
 **근거**:
-- ✅ 핵심 문서는 이미 v5.0 전환 완료
-- ⚠️ 예시/교육 문서는 일부 v4.0 잔여
-- ❌ v4.0 전면 제거는 역사적 맥락 손실 위험
+- ✅ 핵심 문서는 이미  전환 완료
+- ⚠️ 예시/교육 문서는 일부  잔여
+- ❌  전면 제거는 역사적 맥락 손실 위험
 - ✅ 마이그레이션 가이드 보존 필요
 
 ### 동기화 범위
@@ -123,39 +123,39 @@ c4a288e Merge branch 'cleanup/remove-unused-files-phase2' into develop
 #### 🔴 우선순위 1: 즉시 동기화 필요 (Critical)
 
 **1. README.md** - 프로젝트 대표 문서
-- **문제**: v4.0 TAG 예시 코드 다수 포함
-- **조치**: v5.0 예시로 전면 교체
+- **문제**:  TAG 예시 코드 다수 포함
+- **조치**:  예시로 전면 교체
 - **예상 시간**: 30분
 - **영향도**: 높음 (사용자 첫 접점)
 
 **2. docs/guide/workflow.md** - 핵심 워크플로우 가이드
-- **문제**: TAG BLOCK 템플릿이 v4.0 형식
-- **조치**: v5.0 템플릿으로 교체, 마이그레이션 섹션 추가
+- **문제**: TAG BLOCK 템플릿이  형식
+- **조치**:  템플릿으로 교체, 마이그레이션 섹션 추가
 - **예상 시간**: 20분
 - **영향도**: 높음 (개발자 주 참조 문서)
 
 **3. examples/specs/** - SPEC 예시 문서
 - **문제**: `@SPEC:`, `@SPEC:`, `@CODE:` 사용
-- **조치**: v5.0 `@SPEC:`, `@CODE:` 형식으로 변환
+- **조치**:  `@SPEC:`, `@CODE:` 형식으로 변환
 - **예상 시간**: 15분
 - **영향도**: 중간 (교육용)
 
 #### 🟡 우선순위 2: 선택적 동기화 (Optional)
 
 **4. docs/help/faq.md** - FAQ 문서
-- **문제**: v4.0 TAG 검색 예시
-- **조치**: v5.0 검색 패턴 추가, v4.0은 "레거시" 섹션으로 이동
+- **문제**:  TAG 검색 예시
+- **조치**:  검색 패턴 추가, 은 "레거시" 섹션으로 이동
 - **예상 시간**: 10분
 - **영향도**: 중간
 
 **5. docs/reference/cli-cheatsheet.md** - CLI 치트시트
-- **문제**: `rg "@REQ:"` 등 v4.0 검색 예시
-- **조치**: v5.0 패턴 우선 표시, v4.0은 하위 호환성 참고로 표시
+- **문제**: `rg "@REQ:"` 등  검색 예시
+- **조치**:  패턴 우선 표시, 은 하위 호환성 참고로 표시
 - **예상 시간**: 10분
 - **영향도**: 중간
 
 **6. 테스트 코드 주석** - `moai-adk-ts/src/__tests__/`
-- **문제**: 주석에 v4.0 TAG 참조
+- **문제**: 주석에  TAG 참조
 - **조치**: 주석만 업데이트 (코드 동작 유지)
 - **예상 시간**: 30분
 - **영향도**: 낮음 (내부 코드)
@@ -174,14 +174,14 @@ c4a288e Merge branch 'cleanup/remove-unused-files-phase2' into develop
 
 #### 검증 방법
 ```bash
-# v5.0 4-Core TAG 전체 스캔
+# 신 TAG 체계 TAG 전체 스캔
 rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/
 
 # 고아 TAG 탐지
 rg '@CODE:AUTH-001' -n src/    # CODE 존재 확인
 rg '@SPEC:AUTH-001' -n .moai/specs/  # SPEC 존재 확인
 
-# v4.0 잔여 TAG 스캔 (클린업용)
+#  잔여 TAG 스캔 (클린업용)
 rg '@(REQ|DESIGN|TASK|FEATURE|API|UI|DATA):' -n
 ```
 
@@ -189,8 +189,8 @@ rg '@(REQ|DESIGN|TASK|FEATURE|API|UI|DATA):' -n
 - [ ] 모든 `@CODE:ID`에 대응하는 `@SPEC:ID` 존재
 - [ ] 모든 `@CODE:ID`에 대응하는 `@TEST:ID` 존재
 - [ ] TAG BLOCK 형식 일관성 (`// @CODE:ID | SPEC: ... | TEST: ...`)
-- [ ] v4.0 TAG는 예시/마이그레이션 문서에만 존재
-- [ ] 실제 코드/SPEC 파일에는 v5.0 TAG만 사용
+- [ ]  TAG는 예시/마이그레이션 문서에만 존재
+- [ ] 실제 코드/SPEC 파일에는  TAG만 사용
 
 ---
 
@@ -203,17 +203,17 @@ rg '@(REQ|DESIGN|TASK|FEATURE|API|UI|DATA):' -n
 - **대비책**: 동기화 전 현재 상태 커밋 권장
 
 #### TAG 마이그레이션 충돌
-- **v4.0 → v5.0 혼재 위험**: 일부 문서 업데이트 시 중간 상태 발생
+- ** →  혼재 위험**: 일부 문서 업데이트 시 중간 상태 발생
 - **대비책**: 우선순위 순서대로 작업하여 단계적 전환
 
 ### 2. TAG 체인 무결성
 
 #### 끊어진 체인 가능성
-- **원인**: 일부 SPEC만 v5.0 전환 시 연결 끊김
+- **원인**: 일부 SPEC만  전환 시 연결 끊김
 - **대비책**: SPEC-TEST-CODE 세트 단위로 검증
 
 #### 중복 TAG 위험
-- **원인**: v4.0과 v5.0 TAG가 동일 ID로 공존
+- **원인**: 과  TAG가 동일 ID로 공존
 - **대비책**: 동기화 후 중복 스캔 실행
 
 ### 3. 성능 영향
@@ -255,10 +255,10 @@ rg '@(REQ|DESIGN|TASK|FEATURE|API|UI|DATA):' -n
 **생성 위치**: `docs/status/sync-report.md`
 
 **포함 내용**:
-- v5.0 TAG 전체 스캔 결과
+-  TAG 전체 스캔 결과
 - TAG 체인 완결성 검증
 - 고아 TAG 목록 (SPEC 없는 CODE)
-- v4.0 잔여 TAG 위치 (마이그레이션 참조용)
+-  잔여 TAG 위치 (마이그레이션 참조용)
 
 ### 3. Living Documents 갱신
 
@@ -274,7 +274,7 @@ rg '@(REQ|DESIGN|TASK|FEATURE|API|UI|DATA):' -n
 1. 현재 Git 상태 커밋
    ```bash
    git add -A
-   git commit -m "📸 snapshot: Pre-TAG-v5.0-sync"
+   git commit -m "📸 snapshot: Pre-TAG--sync"
    ```
 
 2. 백업 태그 생성
@@ -284,18 +284,18 @@ rg '@(REQ|DESIGN|TASK|FEATURE|API|UI|DATA):' -n
 
 ### Phase 2: 우선순위 1 동기화 (1시간 5분)
 1. README.md 업데이트 (30분)
-   - v4.0 TAG BLOCK 예시 → v5.0
+   -  TAG BLOCK 예시 → 
    - 검색 명령어 업데이트
 
 2. docs/guide/workflow.md 업데이트 (20분)
-   - TAG BLOCK 템플릿 v5.0
+   - TAG BLOCK 템플릿 
    - 마이그레이션 가이드 추가
 
 3. examples/specs/ 업데이트 (15분)
    - 3개 파일 TAG 형식 변환
 
 ### Phase 3: TAG 체인 검증 (15분)
-1. v5.0 TAG 전체 스캔
+1.  TAG 전체 스캔
 2. 고아 TAG 탐지
 3. 검증 리포트 생성
 
@@ -307,7 +307,7 @@ rg '@(REQ|DESIGN|TASK|FEATURE|API|UI|DATA):' -n
 1. 변경 사항 커밋
    ```bash
    git add -A
-   git commit -m "📝 docs: TAG System v5.0 동기화 완료"
+   git commit -m "📝 docs: TAG System 동기화 완료"
    ```
 
 2. 브랜치 정리 (사용자 확인 필요)
@@ -319,18 +319,18 @@ rg '@(REQ|DESIGN|TASK|FEATURE|API|UI|DATA):' -n
 ## 🎯 성공 지표
 
 ### 동기화 완료 기준
-- [x] 핵심 문서 v5.0 전환 완료 (CLAUDE.md, development-guide.md, tag-system.md)
-- [ ] README.md v5.0 예시 적용
-- [ ] workflow.md v5.0 템플릿 적용
-- [ ] examples/specs/ v5.0 형식 변환
+- [x] 핵심 문서  전환 완료 (CLAUDE.md, development-guide.md, tag-system.md)
+- [ ] README.md  예시 적용
+- [ ] workflow.md  템플릿 적용
+- [ ] examples/specs/  형식 변환
 - [ ] TAG 체인 검증 100% 통과
-- [ ] v4.0 TAG는 레거시 참조용으로만 존재
+- [ ]  TAG는 레거시 참조용으로만 존재
 
 ### 품질 기준
-- [ ] 모든 v5.0 TAG가 SPEC-TEST-CODE 체인 완결
+- [ ] 모든  TAG가 SPEC-TEST-CODE 체인 완결
 - [ ] TAG BLOCK 템플릿 일관성 100%
 - [ ] Living Document 자동 갱신 확인
-- [ ] v4.0 → v5.0 마이그레이션 가이드 명확
+- [ ]  →  마이그레이션 가이드 명확
 
 ---
 
@@ -346,7 +346,7 @@ rg '@(REQ|DESIGN|TASK|FEATURE|API|UI|DATA):' -n
 **Git 작업 (사용자 확인 필요)**:
 - 현재 상태 커밋 권장
 - 백업 태그 생성 권장
-- 최종 커밋 메시지: "📝 docs: TAG System v5.0 동기화 완료"
+- 최종 커밋 메시지: "📝 docs: TAG System 동기화 완료"
 
 **예상 소요 시간**: 약 1시간 35분 (우선순위 1 + 검증 + 정리)
 

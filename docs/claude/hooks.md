@@ -625,7 +625,7 @@ export async function onBeforeWrite(file) {
     }
   }
 
-  // Primary Chain 완결성 확인
+  // TAG 체인 완결성 확인
   const chainStatus = validatePrimaryChain(tags);
   if (!chainStatus.complete) {
     logger.warn('Incomplete TAG chain', {
@@ -677,7 +677,7 @@ export class AuthService {
 @REQ:AUTH001       // 하이픈 누락
 ```
 
-#### Primary Chain 완결성
+#### TAG 체인 완결성
 
 ```typescript
 // ✅ Good: 완전한 체인

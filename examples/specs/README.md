@@ -39,7 +39,7 @@
 - 실패 시나리오 포함
 ```
 
-### 2. TAG 시스템 활용 (v5.0)
+### 2. TAG 시스템 활용 ()
 ```markdown
 @SPEC:USER-001       # SPEC 문서와 요구사항
 @TEST:USER-001       # 테스트 코드 및 검증
@@ -93,7 +93,7 @@
 ### 실패 시나리오
 - 예상 실패 케이스와 대응 방안
 
-## 추적성 체인 (v5.0)
+## 추적성 체인 ()
 ```
 @SPEC:[CATEGORY]-XXX → @TEST:[CATEGORY]-XXX → @CODE:[CATEGORY]-XXX → @DOC:[CATEGORY]-XXX
 ```

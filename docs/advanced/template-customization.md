@@ -23,7 +23,7 @@ MoAI-ADK는 `moai init` 명령으로 프로젝트를 초기화할 때 표준화�
 graph TB
     subgraph "필수 유지 (변경 금지)"
         A[TRUST 5원칙]
-        B[4-Core TAG 체계]
+        B[TAG 체계]
         C[3단계 워크플로우]
     end
 
@@ -288,7 +288,7 @@ Microservices Architecture
 
 ## @STRUCT:TRACEABILITY-001 추적성 전략
 
-### 4-Core @TAG 체계 적용
+### 필수 TAG @TAG 체계 적용
 
 **서비스별 TAG 도메인**:
 - User Service: `USER-XXX`, `AUTH-XXX`
@@ -1427,7 +1427,7 @@ MoAI-ADK 템플릿 커스터마이징은:
 - **필수 커스터마이징**: 프로젝트 문서 (product.md, structure.md, tech.md)
 - **권장 커스터마이징**: 설정 파일 (config.json, settings.json)
 - **선택적 커스터마이징**: Hook 시스템, 스크립트 설정
-- **변경 금지**: TRUST 원칙, 4-Core TAG, 3단계 워크플로우
+- **변경 금지**: TRUST 원칙, 필수 TAG TAG, 3단계 워크플로우
 
 프로젝트 특성에 맞게 유연하게 조정하되, 핵심 철학은 유지합니다.
 
