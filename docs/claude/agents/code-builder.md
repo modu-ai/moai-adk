@@ -20,10 +20,6 @@ graph LR
     B -->|코드 구현| C[/moai:3-sync]
     C -->|문서 동기화| D[완료]
 
-    style A fill:#e9ecef,stroke:#adb5bd
-    style B fill:#ff6b6b,stroke:#c92a2a,color:#fff
-    style C fill:#e9ecef,stroke:#adb5bd
-    style D fill:#e9ecef,stroke:#adb5bd
 ```
 
 **code-builder 활성화 시점**: 사용자가 `/moai:2-build` 명령어를 실행하거나 SPEC 기반 구현이 필요한 시점
@@ -134,8 +130,6 @@ flowchart TD
     J -->|거부| L[계획 수정]
     L --> H
 
-    style D fill:#fab005
-    style K fill:#51cf66
 ```
 
 #### 구현 순서 결정
@@ -1030,12 +1024,6 @@ flowchart TD
 
     Z --> AA[완료 보고]
 
-    style G fill:#ff6b6b
-    style K fill:#51cf66
-    style L fill:#fab005
-    style P fill:#51cf66
-    style Q fill:#339af0
-    style X fill:#51cf66
 ```
 
 ### 입력 데이터

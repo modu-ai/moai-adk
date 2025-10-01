@@ -23,8 +23,9 @@ tools: Read, Write, Edit, MultiEdit, Bash(git status:*), Bash(git add:*), Bash(g
 
 ## 🔗 연관 에이전트
 
-- **Primary**: doc-syncer (📚 편집자) - 문서 동기화 전담
-- **Secondary**: git-manager (🌿 정원사) - Git 커밋/PR 전담
+- **Pre-Validator**: trust-checker (✅ 품질 보증 리드) - 동기화 전 검증 (조건부)
+- **Primary**: doc-syncer (📖 테크니컬 라이터) - 문서 동기화 전담
+- **Secondary**: git-manager (🚀 릴리스 엔지니어) - Git 커밋/PR 전담
 
 ## 💡 사용 예시
 
@@ -55,6 +56,45 @@ tools: Read, Write, Edit, MultiEdit, Bash(git status:*), Bash(git add:*), Bash(g
    - 모드별 동기화 접근 방식
    - 예상 작업 시간 및 우선순위
    - 잠재적 위험 요소 식별
+
+### Phase 0.5: 품질 사전 검증 (조건부 자동 실행)
+
+동기화 전 코드 품질을 빠르게 확인합니다.
+
+**실행 조건 (자동 판단)**:
+- Git diff로 코드 변경 라인 수 확인
+- 변경 라인 > 50줄: 자동 실행
+- 변경 라인 ≤ 50줄: 건너뛰기
+- 문서만 변경: 건너뛰기
+
+**사전 검증 목적**:
+- 품질 문제가 있는 코드의 문서화 방지
+- 동기화 전 Critical 이슈 조기 발견
+- Level 1 빠른 스캔 (3-5초)
+
+**실행 방식**:
+```bash
+# 코드 변경이 많을 때 자동 실행
+@agent-trust-checker --mode=quick --pre-sync=true
+```
+
+**검증 결과 처리**:
+
+✅ **Pass**: 동기화 진행
+
+⚠️ **Warning**: 경고 표시 후 동기화 진행
+
+❌ **Critical**: 동기화 중단, 수정 권장
+- Critical 이슈 발견: 동기화 중단, 수정 권장
+- 사용자 선택: "수정 후 재시도" 또는 "강제 진행"
+
+**검증 생략 옵션**:
+```bash
+# 사전 검증을 건너뛰려면
+/moai:3-sync --skip-pre-check
+```
+
+---
 
 ### 사용자 확인 단계
 

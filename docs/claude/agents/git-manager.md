@@ -39,9 +39,6 @@ graph TD
 
     J -->|No| M
 
-    style C fill:#ff6b6b,stroke:#c92a2a,color:#fff
-    style G fill:#ff6b6b,stroke:#c92a2a,color:#fff
-    style K fill:#ff6b6b,stroke:#c92a2a,color:#fff
 ```
 
 **git-manager 활성화 시점**:
@@ -520,9 +517,6 @@ flowchart TD
 
     L --> N[작업 취소 완료]
 
-    style B fill:#fab005
-    style L fill:#ff6b6b
-    style I fill:#51cf66
 ```
 
 **체크포인트 메타데이터**:

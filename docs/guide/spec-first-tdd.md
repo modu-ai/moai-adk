@@ -10,11 +10,6 @@ graph LR
     B --> C[품질 확보]
     C --> D[완전 추적성]
     D --> A
-
-    style A fill:#fab005
-    style B fill:#51cf66
-    style C fill:#339af0
-    style D fill:#845ef7
 ```
 
 > "명세 없으면 코드 없다. 테스트 없으면 구현 없다. 추적성 없으면 완성 없다."
@@ -40,11 +35,6 @@ graph TD
     F -->|Yes| G[커밋]
     G --> H[다음 기능]
     H --> A
-
-    style A fill:#ff6b6b
-    style C fill:#51cf66
-    style E fill:#339af0
-    style G fill:#fab005
 ```
 
 ### TDD 사이클 단계별 설명

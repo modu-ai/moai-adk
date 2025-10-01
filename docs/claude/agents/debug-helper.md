@@ -84,9 +84,6 @@ flowchart TD
     K --> M[진단 보고서 생성]
     L --> M
 
-    style A fill:#fab005
-    style J fill:#fd7e14
-    style M fill:#51cf66
 ```
 
 #### 에러 분석 예시
@@ -319,10 +316,6 @@ flowchart TD
     J --> K[완료]
     I --> K
 
-    style A fill:#fab005
-    style G fill:#fd7e14
-    style I fill:#51cf66
-    style K fill:#51cf66
 ```
 
 #### 개발 가이드 검증 출력 예시

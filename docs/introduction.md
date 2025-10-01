@@ -91,7 +91,7 @@ class AuthService {
 
 **언어별 TDD 지원**:
 
-- **TypeScript**: Vitest + strict typing (92.9% 성공률)
+- **TypeScript**: Vitest + strict typing
 - **Python**: pytest + mypy
 - **Java**: JUnit + Maven/Gradle
 - **Go**: go test + table-driven tests
@@ -99,7 +99,7 @@ class AuthService {
 
 ### 3. TAG-First: 추적성 없이는 완성 없음
 
-**CODE-FIRST TAG 시스템**으로 요구사항부터 코드까지 완전한 추적성:
+**CODE-FIRST TAG 시스템**으로 요구사항부터 코드까지 추적성 제공:
 
 ```typescript
 // @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 →  → @CODE:AUTH-001 → @TEST:AUTH-001
@@ -126,7 +126,7 @@ class AuthService {
 **CODE-FIRST 철학**:
 - TAG의 진실은 오직 코드 자체에만 존재
 - 중간 캐시 없이 ripgrep으로 직접 스캔
-- 실시간 검증으로 94% 최적화 달성
+- 실시간 검증
 
 ## 아키텍처 다이어그램
 
@@ -156,11 +156,11 @@ MoAI-ADK Architecture
 └─────────────────────────────────────────────────┘
 ```
 
-## SPEC-013 전환: Python → TypeScript
+## TypeScript 전환 (SPEC-013)
 
 ### 전환 전후 비교
 
-#### Before (Python 하이브리드)
+#### Before (Python 기반)
 
 ```
 복잡한 아키텍처:
@@ -169,54 +169,51 @@ MoAI-ADK (Python) ↔ TypeScript 브릿지 ↔ 사용자 프로젝트
 - 15MB 패키지 크기
 - 4.6초 빌드 시간
 - Python + TypeScript 이중 의존성
-- 하이브리드 복잡성 관리
 ```
 
-#### After (TypeScript 단일 스택)
+#### After (TypeScript 기반)
 
 ```
 단순한 아키텍처:
 MoAI-ADK (TypeScript) → 언어별 TDD 도구 → 사용자 프로젝트
 
-- 195KB 패키지 크기 (99% 절감)
-- 182ms 빌드 시간 (96% 개선)
+- 195KB 패키지 크기
+- 182ms 빌드 시간
 - Node.js 단일 런타임
-- 언어별 직접 도구 호출
 ```
 
-### 주요 개선 지표
+### 주요 개선 사항
 
-| 지표 | Before | After | 개선율 |
-|------|--------|-------|--------|
-| 패키지 크기 | 15MB | 195KB | 99% 절감 |
-| 빌드 시간 | 4.6초 | 182ms | 96% 단축 |
-| 테스트 성공률 | 80% | 92.9% | 16% 향상 |
-| 메모리 사용량 | 150MB | 75MB | 50% 절감 |
-| 언어 지원 | 제한적 | 8+ 언어 | 무제한 확장 |
+| 항목 | Before | After |
+|------|--------|-------|
+| 패키지 크기 | 15MB | 195KB |
+| 빌드 시간 | 4.6초 | 182ms |
+| 테스트 도구 | 제한적 | Vitest (56개 중 52개 통과) |
+| 런타임 | Python+Node.js | Node.js |
+| 언어 지원 | 제한적 | 8개 언어 |
 
-## 핵심 통계
+## 주요 특징
 
-### 성능 지표
+### 성능
 
-- ✅ **182ms** 빌드 시간 (Bun 98% 향상)
-- ✅ **195KB** 패키지 크기
-- ✅ **92.9%** 테스트 성공률 (Vitest)
-- ✅ **94.8%** 린터 성능 향상 (Biome)
+- **빌드 시간**: 182ms (tsup 기반)
+- **패키지 크기**: 195KB
+- **테스트**: Vitest (56개 중 52개 통과)
+- **린터**: Biome (ESLint+Prettier 통합)
 
-### TRUST 5원칙 준수율
+### TRUST 5원칙
 
-- ✅ **92%** 전체 준수율 (목표 82% 대비 112% 초과 달성)
-  - T (Test First): 80%
-  - R (Readable): 100%
-  - U (Unified): 90%
-  - S (Secured): 100%
-  - T (Trackable): 90%
+- **T** (Test First): TDD 엄격 적용
+- **R** (Readable): SPEC 기반 가독성
+- **U** (Unified): 언어별 일관된 구조
+- **S** (Secured): 설계 시점 보안
+- **T** (Trackable): CODE-FIRST TAG 추적성
 
 ### 언어 지원
 
-- 🌍 **8개 주요 언어**: TypeScript, Python, Java, Go, Rust, C++, C#, PHP
-- 🔧 자동 언어 감지 및 도구 매핑
-- 📦 언어별 최적 테스트 프레임워크 선택
+- **8개 언어**: TypeScript, Python, Java, Go, Rust, C++, C#, PHP
+- 프로젝트 파일 분석 기반 언어 감지
+- 언어별 최적 테스트 프레임워크 자동 추천
 
 ## 다음 단계
 

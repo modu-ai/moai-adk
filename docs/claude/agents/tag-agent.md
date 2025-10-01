@@ -1,6 +1,6 @@
 ---
 title: tag-agent - TAG 시스템 독점 관리 에이전트
-description: @TAG 체계 생성, 검증, 추적성 관리 전문 에이전트
+description: 'TAG 체계 생성, 검증, 추적성 관리 전문 에이전트'
 ---
 
 # tag-agent - TAG 시스템 독점 관리 에이전트
@@ -50,10 +50,6 @@ graph TB
     A2 --> B
     B2 --> C
 
-    style D fill:#a9e34b,stroke:#5c940d,color:#000
-    style A1 fill:#ffd43b,stroke:#fab005,color:#000
-    style C1 fill:#4dabf7,stroke:#1971c2,color:#fff
-    style C3 fill:#51cf66,stroke:#2f9e44,color:#fff
 ```
 
 **tag-agent 활성화 시점**:
@@ -84,10 +80,6 @@ graph LR
     C --> D[@DOC<br/>문서화]
     D -.->|다음 기능| A
 
-    style A fill:#fab005,stroke:#f76707,color:#000
-    style B fill:#ff6b6b,stroke:#c92a2a,color:#fff
-    style C fill:#51cf66,stroke:#2f9e44,color:#fff
-    style D fill:#845ef7,stroke:#5f3dc4,color:#fff
 ```
 
 ### TAG 정의
@@ -433,9 +425,6 @@ graph TB
     J --> O
     M --> O
 
-    style B fill:#4dabf7,stroke:#1971c2,color:#fff
-    style E fill:#ffd43b,stroke:#fab005,color:#000
-    style N fill:#51cf66,stroke:#2f9e44,color:#fff
 ```
 
 ---
@@ -465,10 +454,6 @@ graph LR
     E --> F[코드에 TAG BLOCK 삽입]
     F --> G[rg로 TAG 스캔 검증]
 
-    style A fill:#ff6b6b,stroke:#c92a2a,color:#fff
-    style D fill:#ffd43b,stroke:#fab005,color:#000
-    style E fill:#a9e34b,stroke:#5c940d,color:#000
-    style G fill:#4dabf7,stroke:#1971c2,color:#fff
 ```
 
 ### TAG 중복 방지
@@ -539,11 +524,6 @@ graph TB
     O --> Q
     P --> R[무결성 보고서]
 
-    style E fill:#ffd43b,stroke:#fab005,color:#000
-    style H fill:#ffd43b,stroke:#fab005,color:#000
-    style K fill:#ffd43b,stroke:#fab005,color:#000
-    style N fill:#ffd43b,stroke:#fab005,color:#000
-    style P fill:#51cf66,stroke:#2f9e44,color:#fff
 ```
 
 ### 끊어진 링크 탐지
@@ -645,10 +625,6 @@ graph LR
     M -->|Yes| N[복구 성공]
     M -->|No| O[수동 복구 필요]
 
-    style B fill:#ffd43b,stroke:#fab005,color:#000
-    style M fill:#ffd43b,stroke:#fab005,color:#000
-    style N fill:#51cf66,stroke:#2f9e44,color:#fff
-    style O fill:#ff6b6b,stroke:#c92a2a,color:#fff
 ```
 
 ### 수동 복구 가이드

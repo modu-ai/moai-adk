@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(awk:*)",
+      "Bash(chmod:*)",
+      "Bash(python3:*)",
+      "Bash(bun test:*)",
+      "Bash(bun run:*)",
+      "Bash(./dist/cli/index.js --version)",
+      "Bash(./dist/cli/index.js --help)",
+      "Bash(./dist/cli/index.js doctor:*)",
+      "Bash(lsof:*)",
+      "Bash(curl:*)",
+      "Bash(pkill:*)",
+      "Bash(xargs kill:*)",
+      "Bash(/Users/goos/MoAI/test/todo-app/test-init-current-dir.sh:*)"
+    ],
+    "deny": [],
+    "ask": [],
+    "additionalDirectories": [
+      "/Users/goos/MoAI/test/todo-app/"
+    ]
+  },
+  "outputStyle": "Explanatory"
+}

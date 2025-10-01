@@ -839,3 +839,163 @@ tr:last-child td {
     display: none;
   }
 }
+/* ============================================
+   Mermaid 다이어그램 - 라이트/다크 테마 대응
+   ============================================ */
+
+/* 라이트 모드 - 기본 설정 */
+.mermaid {
+  background: transparent !important;
+}
+
+.mermaid rect,
+.mermaid polygon,
+.mermaid circle,
+.mermaid ellipse {
+  stroke: #6c757d !important;
+}
+
+.mermaid text {
+  fill: #212529 !important;
+  font-family: var(--font-sans) !important;
+}
+
+.mermaid .node rect,
+.mermaid .node circle,
+.mermaid .node ellipse,
+.mermaid .node polygon {
+  fill: #ffffff !important;
+  stroke: #6c757d !important;
+}
+
+.mermaid .edgeLabel {
+  background-color: #ffffff !important;
+  color: #212529 !important;
+}
+
+.mermaid .messageText,
+.mermaid .noteText,
+.mermaid .labelText {
+  fill: #212529 !important;
+}
+
+/* 다크 모드 - 색상 반전 */
+.dark .mermaid {
+  background: transparent !important;
+}
+
+.dark .mermaid rect,
+.dark .mermaid polygon,
+.dark .mermaid circle,
+.dark .mermaid ellipse {
+  stroke: #adb5bd !important;
+}
+
+.dark .mermaid text {
+  fill: #e9ecef !important;
+  font-family: var(--font-sans) !important;
+}
+
+.dark .mermaid .node rect,
+.dark .mermaid .node circle,
+.dark .mermaid .node ellipse,
+.dark .mermaid .node polygon {
+  fill: #2d3748 !important;
+  stroke: #adb5bd !important;
+}
+
+.dark .mermaid .edgeLabel {
+  background-color: #2d3748 !important;
+  color: #e9ecef !important;
+}
+
+.dark .mermaid .messageText,
+.dark .mermaid .noteText,
+.dark .mermaid .labelText {
+  fill: #e9ecef !important;
+}
+
+/* 라인과 화살표 */
+.dark .mermaid .edgePath .path,
+.dark .mermaid line,
+.dark .mermaid path {
+  stroke: #adb5bd !important;
+}
+
+.dark .mermaid marker {
+  fill: #adb5bd !important;
+  stroke: #adb5bd !important;
+}
+
+/* 다이아몬드 노드 (결정 노드) */
+.dark .mermaid .node.decision rect,
+.dark .mermaid .node.decision polygon {
+  fill: #4a5568 !important;
+  stroke: #cbd5e0 !important;
+}
+
+/* 특수 노드 스타일 유지 */
+.dark .mermaid [class*="start"],
+.dark .mermaid [class*="end"] {
+  fill: #4a5568 !important;
+}
+
+/* 그룹/클러스터 배경 */
+.dark .mermaid .cluster rect {
+  fill: #1a202c !important;
+  stroke: #4a5568 !important;
+}
+
+/* 시퀀스 다이어그램 액터 */
+.dark .mermaid .actor {
+  fill: #2d3748 !important;
+  stroke: #adb5bd !important;
+}
+
+.dark .mermaid .actor-line {
+  stroke: #718096 !important;
+}
+
+/* 활성화 박스 */
+.dark .mermaid .activation0,
+.dark .mermaid .activation1,
+.dark .mermaid .activation2 {
+  fill: #4a5568 !important;
+  stroke: #cbd5e0 !important;
+}
+
+/* 노트 */
+.dark .mermaid .note {
+  fill: #2d3748 !important;
+  stroke: #718096 !important;
+}
+
+/* 간트 차트 */
+.dark .mermaid .grid .tick {
+  stroke: #4a5568 !important;
+}
+
+.dark .mermaid .grid path {
+  stroke: #2d3748 !important;
+}
+
+/* 플로우차트 커넥터 라벨 */
+.dark .mermaid .edgeLabel rect {
+  fill: #2d3748 !important;
+}
+
+.dark .mermaid .edgeLabel span {
+  background: #2d3748 !important;
+  color: #e9ecef !important;
+}
+
+/* 개선된 가독성 */
+.dark .mermaid {
+  filter: brightness(1.1) contrast(0.95);
+}
+
+/* Mermaid SVG 크기 조정 */
+.mermaid svg {
+  max-width: 100%;
+  height: auto;
+}

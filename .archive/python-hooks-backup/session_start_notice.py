@@ -186,7 +186,7 @@ def main():
             print("✅ 통합 체크포인트 시스템 사용 가능")
 
         else:
-            print("💡 Run `/moai:0-project` to initialize MoAI-ADK")
+            print("💡 Run `/moai:8-project` to initialize MoAI-ADK")
 
     except Exception:
         # Silent failure to avoid breaking Claude Code session

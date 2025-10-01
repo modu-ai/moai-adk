@@ -1889,11 +1889,6 @@ flowchart LR
     Result --> |No| NextHook[다음 훅 실행]
     NextHook --> H1
 
-    style E3 fill:#ffcccc
-    style E4 fill:#ffffcc
-    style E5 fill:#ffeecc
-    style Success fill:#ccffcc
-    style Stop fill:#ff9999
 ```
 
 ## 실전 예시

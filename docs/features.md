@@ -5,7 +5,7 @@ description: MoAI-ADK의 핵심 기능과 차별점
 
 # 주요 특징
 
-MoAI-ADK는 SPEC-First TDD 개발을 위한 완전한 자동화 프레임워크입니다. 다음 5가지 핵심 기능으로 현대적인 개발 경험을 제공합니다.
+MoAI-ADK는 SPEC-First TDD 개발을 위한 자동화 개발 도구입니다. 다음 5가지 핵심 기능을 제공합니다.
 
 ## 1. SPEC-First 개발
 
@@ -244,14 +244,14 @@ MoAI-ADK는 프로젝트 언어를 자동 감지하고 최적의 도구를 선�
 # - Maven/Gradle: 빌드 도구
 ```
 
-### 92.9% 테스트 성공률
+### 테스트 자동화
 
-MoAI-ADK v0.0.1 달성 지표:
+MoAI-ADK v0.0.1 특징:
 
-- **Vitest 테스트**: 92.9% 성공률
-- **테스트 속도**: 평균 45ms (Bun 최적화)
+- **Vitest 테스트**: 56개 중 52개 통과
+- **테스트 속도**: 평균 45ms
 - **커버리지**: 85% 이상 목표
-- **타입 안전성**: TypeScript strict 모드 100%
+- **타입 안전성**: TypeScript strict 모드
 
 ## 3. CODE-FIRST TAG 추적성
 
@@ -312,7 +312,7 @@ describe('AuthService', () => {
 });
 ```
 
-### CODE-FIRST 방식 (94% 최적화)
+### CODE-FIRST 방식
 
 MoAI-ADK는 중간 캐시 없이 코드를 직접 스캔하여 TAG 추적성을 보장합니다:
 
@@ -328,18 +328,18 @@ rg "AUTH-001" -n               # 모든 관련 TAG 검색
 
 **CODE-FIRST 철학**:
 - TAG의 진실은 오직 코드 자체에만 존재
-- SQLite3, JSON INDEX 등 중간 캐시 완전 제거
+- 중간 캐시 미사용
 - ripgrep으로 실시간 코드 스캔
-- 로딩 성능 50ms 이하, 저장공간 94% 절감
+- 빠른 응답 시간
 
 ### 실시간 무결성 검증
 
 `/moai:3-sync` 실행 시 자동으로 검증되는 항목:
 
-- ✅ **필수 TAG 흐름 완결성**: @SPEC → @TEST → @CODE → @DOC 연결 확인
-- ✅ **고아 TAG 감지**: 참조되지 않는 TAG 식별
-- ✅ **끊어진 링크**: 중간 단계 누락 확인
-- ✅ **중복 TAG**: 동일 ID 중복 사용 검사
+- **필수 TAG 흐름 완결성**: @SPEC → @TEST → @CODE → @DOC 연결 확인
+- **고아 TAG 감지**: 참조되지 않는 TAG 식별
+- **끊어진 링크**: 중간 단계 누락 확인
+- **중복 TAG**: 동일 ID 중복 사용 검사
 
 검증 리포트 예시:
 
@@ -347,23 +347,23 @@ rg "AUTH-001" -n               # 모든 관련 TAG 검색
 # TAG 검증 리포트
 
 ## 완결된 체인 (3개)
-- AUTH-001: ✅ 완전 (REQ → DESIGN → TASK → TEST)
-- PAYMENT-002: ✅ 완전
-- PROFILE-003: ✅ 완전
+- AUTH-001: 완전 (@SPEC → @TEST → @CODE → @DOC)
+- PAYMENT-002: 완전
+- PROFILE-003: 완전
 
 ## 불완전한 체인 (1개)
-- NOTIFICATION-004: ⚠️ @TEST 누락
+- NOTIFICATION-004: @TEST 누락
 
 ## 고아 TAG (0개)
 
 ## 중복 TAG (0개)
 ```
 
-## 4. 범용 언어 지원
+## 4. 다중 언어 지원
 
 ### 지원 언어 목록
 
-MoAI-ADK는 다음 언어를 공식 지원합니다:
+MoAI-ADK는 다음 8개 언어를 지원합니다:
 
 | 언어 | 테스트 도구 | 린터 | 포맷터 | 빌드 도구 |
 |------|-------------|------|--------|-----------|
@@ -378,21 +378,21 @@ MoAI-ADK는 다음 언어를 공식 지원합니다:
 
 ### 자동 언어 감지
 
-프로젝트를 분석하여 자동으로 언어를 감지합니다:
+프로젝트 파일을 분석하여 언어를 감지합니다:
 
 ```bash
 moai doctor
 
-# 출력:
-✓ Language Detection
-  - JavaScript/TypeScript: 65% (package.json, tsconfig.json detected)
-  - Python: 25% (requirements.txt detected)
-  - Go: 10% (go.mod detected)
+# 출력 예시:
+Language Detection
+  - JavaScript/TypeScript: package.json, tsconfig.json 감지
+  - Python: requirements.txt 감지
+  - Go: go.mod 감지
 
-✓ Language-Specific Requirements
-  - npm: ✓ (v10.2.3)
-  - TypeScript: ✓ (v5.9.2)
-  - pytest: ✓ (v8.0.0)
+Language-Specific Requirements
+  - npm: v10.2.3
+  - TypeScript: v5.9.2
+  - pytest: v8.0.0
 ```
 
 ### 도구 자동 매핑
@@ -422,7 +422,7 @@ moai doctor
 
 ## 5. Claude Code 통합
 
-### 7개 전문 에이전트
+### 8개 전문 에이전트
 
 각 단계를 전담하는 전문 에이전트:
 
@@ -496,9 +496,19 @@ moai doctor
 @agent-trust-checker "TRUST 원칙 검증"
 ```
 
-- 품질 검증 통합
+- 품질 검증
 - TRUST 5원칙 검사
 - 코드 품질 분석
+
+#### 8. tag-agent
+
+```
+@agent-tag-agent "TAG 체인 검증"
+```
+
+- TAG 시스템 관리
+- TAG 체인 검증
+- TAG 무결성 검사
 
 ### 5개 워크플로우 명령어
 
@@ -510,18 +520,15 @@ moai doctor
 /moai:help        # 도움말
 ```
 
-### 8개 이벤트 훅
+### 이벤트 훅
 
 자동으로 실행되는 이벤트 훅:
 
-1. **file-monitor**: 파일 변경 모니터링
-2. **language-detector**: 언어 자동 감지
-3. **policy-block**: 정책 위반 차단
-4. **pre-write-guard**: 파일 쓰기 전 검증
-5. **session-notice**: 세션 시작 알림
-6. **steering-guard**: 개발 방향 가이드
-7. **run-tests-and-report**: 테스트 자동 실행
-8. **claude-code-monitor**: Claude Code 상태 감시
+- **file-monitor**: 파일 변경 모니터링
+- **language-detector**: 언어 자동 감지
+- **policy-block**: 정책 위반 차단
+- **pre-write-guard**: 파일 쓰기 전 검증
+- **session-notice**: 세션 시작 알림
 
 ## 실습 예제: 사용자 인증 구현
 

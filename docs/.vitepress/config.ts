@@ -8,17 +8,9 @@ export default withMermaid(
     lang: 'ko-KR',
     ignoreDeadLinks: true,
 
-    // Mermaid configuration
+    // Mermaid configuration - 라이트/다크 테마 자동 전환
     mermaid: {
-      theme: 'default',
-      themeVariables: {
-        primaryColor: '#5f67ee',
-        primaryTextColor: '#fff',
-        primaryBorderColor: '#5f67ee',
-        lineColor: '#5f67ee',
-        secondaryColor: '#339af0',
-        tertiaryColor: '#51cf66'
-      }
+      // 기본 테마 설정 (CSS로 다크/라이트 전환)
     },
 
     // Mermaid 플러그인 옵션

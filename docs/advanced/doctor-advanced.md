@@ -64,11 +64,6 @@ flowchart TD
 
     AA --> AB[Top 5 권장사항 표시]
 
-    style A fill:#fab005
-    style W fill:#51cf66
-    style X fill:#339af0
-    style Y fill:#fab005
-    style Z fill:#ff6b6b
 ```
 
 ### 4-Layer 진단 아키텍처
@@ -96,13 +91,6 @@ graph TB
 
     HSC --> RPT[Result Reporter<br/>보고서 생성]
 
-    style CLI fill:#339af0
-    style ORC fill:#fab005
-    style SPA fill:#51cf66
-    style BR fill:#51cf66
-    style OR fill:#51cf66
-    style EA fill:#51cf66
-    style HSC fill:#fab005
 ```
 
 ### Health Score 계산 프로세스

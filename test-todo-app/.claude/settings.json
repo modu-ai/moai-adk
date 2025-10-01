@@ -1,0 +1,14 @@
+{
+  "outputStyle": "study",
+  "agents": {
+    "moai/spec-builder": {
+      "enabled": true
+    },
+    "moai/code-builder": {
+      "enabled": true
+    },
+    "moai/doc-syncer": {
+      "enabled": true
+    }
+  }
+}

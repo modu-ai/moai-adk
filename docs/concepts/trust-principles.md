@@ -13,15 +13,13 @@ TRUST는 MoAI-ADK가 지향하는 **5가지 핵심 품질 원칙**입니다. SPE
 
 ### TRUST 5원칙 요약
 
-| 원칙 | 의미 | 목표 | v0.1.8 달성율 |
-|------|------|------|--------------|
-| **T** | Test First | SPEC 기반 TDD | 92.9% |
-| **R** | Readable | 요구사항 주도 가독성 | 100% |
-| **U** | Unified | SPEC 기반 아키텍처 | 95% |
-| **S** | Secured | 보안 by 설계 | 100% |
-| **T** | Trackable | CODE-FIRST TAG 추적성 | 95% |
-
-**전체 준수율**: 96.6% (목표 85% 대비 113.6% 초과 달성)
+| 원칙 | 의미 | 목표 |
+|------|------|------|
+| **T** | Test First | SPEC 기반 TDD |
+| **R** | Readable | 요구사항 주도 가독성 |
+| **U** | Unified | SPEC 기반 아키텍처 |
+| **S** | Secured | 보안 by 설계 |
+| **T** | Trackable | CODE-FIRST TAG 추적성 |
 
 ### 왜 TRUST인가?
 
@@ -336,19 +334,19 @@ mod tests {
 
 ### 커버리지 85% 이상
 
-MoAI-ADK는 최소 85% 테스트 커버리지를 요구합니다:
+MoAI-ADK는 최소 85% 테스트 커버리지를 목표로 합니다:
 
 ```bash
 npm test -- --coverage
 
-# 출력:
+# 출력 예시:
 Coverage report
   Lines       : 92.5%
   Statements  : 91.8%
   Branches    : 88.3%
   Functions   : 95.2%
 
-✓ Coverage threshold met: 85%
+Coverage threshold met: 85%
 ```
 
 ## R - Readable (가독성)
@@ -809,53 +807,49 @@ rg "@DOC:[A-Z]+-\d+" -n . | @agent-tag-agent "고아 TAG 감지"
 moai status --trust
 ```
 
-### 리포트 생성
+### 리포트 예시
 
 ```markdown
-# TRUST 준수율 리포트 (v0.1.8)
+# TRUST 준수 리포트
 
-## 전체 준수율: 96.6%
+## T - Test First
+- 테스트 통과: Vitest 52/56 통과
+- 테스트 커버리지: 92.5%
+- TDD 사이클 준수
 
-### T - Test First: 92.9%
-✓ 테스트 성공률: 92.9% (Vitest 52/56)
-✓ 테스트 커버리지: 92.5%
-✓ TDD 사이클 준수: 90%
+## R - Readable
+- 함수 크기: ≤50 LOC 준수
+- 파일 크기: ≤300 LOC 준수
+- 복잡도: ≤10 준수
 
-### R - Readable: 100%
-✓ 함수 크기: 100% (모두 ≤50 LOC)
-✓ 파일 크기: 100% (모두 ≤300 LOC)
-✓ 복잡도: 98% (≤10)
+## U - Unified
+- SPEC 기반 설계
+- 언어 간 일관된 구조
 
-### U - Unified: 95%
-✓ SPEC 기반 설계: 98%
-✓ 언어 간 일관성: 92%
+## S - Secured
+- 입력 검증 적용
+- Winston logger 사용
+- 민감정보 마스킹
 
-### S - Secured: 100%
-✓ 입력 검증: 100%
-✓ Winston logger: 97.92% coverage
-✓ 민감정보 마스킹: 100%
-
-### T - Trackable: 95%
-✓ CODE-FIRST TAG 시스템: 100%
-✓ TAG 체인 완결: 94%
-✓ SPEC-코드 연결: 91%
+## T - Trackable
+- CODE-FIRST TAG 시스템
+- TAG 체인 완결성
+- SPEC-코드 연결
 ```
 
 ### 개선 가이드
 
-준수율이 낮은 항목에 대한 자동 제안:
+TRUST 준수를 위한 권장 사항:
 
 ```
-⚠️ Vitest 테스트 실패: 4건
-
-권장 사항:
+테스트 실패 시:
 1. 실패 원인 분석 및 수정
 2. 테스트 격리 확인
 3. 비동기 처리 검토
 
-관련 자료:
-- /concepts/spec-first-tdd
-- /concepts/workflow
+관련 문서:
+- /guide/spec-first-tdd
+- /guide/workflow
 ```
 
 ## 다음 단계

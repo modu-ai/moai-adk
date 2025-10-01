@@ -35,11 +35,6 @@ graph LR
     REFACTOR --> DOC[@DOC<br/>문서화]
     DOC --> SPEC
 
-    style SPEC fill:#fab005
-    style RED fill:#ff6b6b
-    style GREEN fill:#51cf66
-    style REFACTOR fill:#339af0
-    style DOC fill:#845ef7
 ```
 
 ### 2. CODE-FIRST 원칙 유지

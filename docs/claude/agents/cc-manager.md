@@ -40,8 +40,6 @@ graph TB
         G --> C
     end
 
-    style B fill:#4dabf7,stroke:#1971c2,color:#fff
-    style G fill:#4dabf7,stroke:#1971c2,color:#fff
 ```
 
 **cc-manager 활성화 시점**:
@@ -116,9 +114,6 @@ graph TD
     D --> D2[ask: 확인 필요]
     D --> D3[deny: 금지]
 
-    style A fill:#4dabf7,stroke:#1971c2,color:#fff
-    style C fill:#ffd43b,stroke:#fab005,color:#000
-    style D fill:#ff6b6b,stroke:#c92a2a,color:#fff
 ```
 
 ### 2. 권한 관리 시스템
@@ -195,9 +190,6 @@ graph LR
     C --> F[작업 수행]
     E --> G[오류 메시지]
 
-    style B fill:#ffd43b,stroke:#fab005,color:#000
-    style C fill:#51cf66,stroke:#2f9e44,color:#fff
-    style E fill:#ff6b6b,stroke:#c92a2a,color:#fff
 ```
 
 **권한 조정 가이드**:
@@ -314,11 +306,6 @@ graph TB
         P --> Q
     end
 
-    style B fill:#ffd43b,stroke:#fab005,color:#000
-    style E fill:#ffd43b,stroke:#fab005,color:#000
-    style I fill:#51cf66,stroke:#2f9e44,color:#fff
-    style J fill:#51cf66,stroke:#2f9e44,color:#fff
-    style K fill:#ff6b6b,stroke:#c92a2a,color:#fff
 ```
 
 ### 4. 출력 스타일 설정
@@ -420,12 +407,6 @@ graph TD
     F --> K[간결 + 기술]
     G --> L[균형 출력]
 
-    style B fill:#ffd43b,stroke:#fab005,color:#000
-    style C fill:#74c0fc,stroke:#1c7ed6,color:#fff
-    style D fill:#a9e34b,stroke:#5c940d,color:#000
-    style E fill:#ffa94d,stroke:#d9480f,color:#fff
-    style F fill:#ff6b6b,stroke:#c92a2a,color:#fff
-    style G fill:#e9ecef,stroke:#adb5bd,color:#000
 ```
 
 ### 5. Statusline 구성
@@ -529,9 +510,6 @@ graph LR
     H --> I[옵션 Hook 선택]
     I --> J[설정 완료]
 
-    style C fill:#ffd43b,stroke:#fab005,color:#000
-    style G fill:#a9e34b,stroke:#5c940d,color:#000
-    style J fill:#51cf66,stroke:#2f9e44,color:#fff
 ```
 
 ### 2. 권한 정책 최적화
@@ -590,10 +568,6 @@ graph TB
     E --> E2[audit-logger]
     E --> E3[quality-check]
 
-    style B fill:#ffd43b,stroke:#fab005,color:#000
-    style C fill:#74c0fc,stroke:#1c7ed6,color:#fff
-    style D fill:#a9e34b,stroke:#5c940d,color:#000
-    style E fill:#ff6b6b,stroke:#c92a2a,color:#fff
 ```
 
 ---

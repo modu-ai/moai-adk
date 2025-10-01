@@ -68,10 +68,6 @@ graph TB
     Doctor --> Commands
     Status --> Commands
 
-    style Installation fill:#e1f5ff
-    style Diagnostics fill:#fff4e1
-    style TagSystem fill:#f0e1ff
-    style Update fill:#e1ffe1
 ```
 
 ---
@@ -676,10 +672,6 @@ flowchart TD
     Recommend --> Report[Generate Report]
     Report --> Display[Display to User]
 
-    style Start fill:#e1f5ff
-    style Metrics fill:#fff4e1
-    style Score fill:#e1ffe1
-    style Report fill:#ffe1f5
 ```
 
 ---
@@ -960,10 +952,6 @@ graph LR
         API --> PERF
     end
 
-    style REQ fill:#e1f5ff
-    style DESIGN fill:#fff4e1
-    style TASK fill:#f0e1ff
-    style TEST fill:#e1ffe1
 ```
 
 ---
@@ -1131,10 +1119,6 @@ flowchart TD
     Regen --> End
     Special --> End
 
-    style Start fill:#e1f5ff
-    style Replace fill:#e1ffe1
-    style Keep fill:#fff4e1
-    style Manual fill:#ffe1e1
 ```
 
 ---

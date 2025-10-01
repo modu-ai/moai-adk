@@ -1,0 +1,41 @@
+{
+  "tag_health": {
+    "total_tags": 770,
+    "valid_tags": 756,
+    "invalid_tags": 14,
+    "orphan_tags": 302,
+    "broken_links": 0,
+    "quality_score": 0.957,
+    "issues": [
+      "14 invalid tag format(s)",
+      "302 orphan tag(s) found",
+      "Quality chain broken: DEBT tags exist but no REVIEW tags found"
+    ],
+    "recommendations": [
+      "Fix invalid tag formats using 16-Core naming conventions",
+      "Link orphan tags to parent tags or remove if unused",
+      "Complete traceability chains for all requirements"
+    ]
+  },
+  "violations": [
+    "src/moai_adk/resources/templates/scripts/check_traceability.py:121 - Invalid tag type 'TYPE' (valid: REQ, SPEC, DESIGN, TASK, TEST, VISION, STRUCT, TECH, ADR, FEATURE, API, DATA, PERF, SEC, DEBT, TODO, US, FR, NFR, BUG, REVIEW)",
+    "src/moai_adk/resources/templates/.claude/hooks/moai/tag_validator.py:143 - Invalid tag type 'TYPE' (valid: REQ, SPEC, DESIGN, TASK, TEST, VISION, STRUCT, TECH, ADR, FEATURE, API, DATA, PERF, SEC, DEBT, TODO, US, FR, NFR, BUG, REVIEW)",
+    "src/moai_adk/resources/templates/.claude/hooks/moai/tag_validator.py:143 - Invalid tag type 'TYPE' (valid: REQ, SPEC, DESIGN, TASK, TEST, VISION, STRUCT, TECH, ADR, FEATURE, API, DATA, PERF, SEC, DEBT, TODO, US, FR, NFR, BUG, REVIEW)",
+    "src/moai_adk/resources/templates/.moai/scripts/check-traceability.py:7 - Invalid tag type 'CAT' (valid: REQ, SPEC, DESIGN, TASK, TEST, VISION, STRUCT, TECH, ADR, FEATURE, API, DATA, PERF, SEC, DEBT, TODO, US, FR, NFR, BUG, REVIEW)",
+    "src/moai_adk/resources/templates/.moai/scripts/check-traceability.py:83 - Invalid tag type 'LINK' (valid: REQ, SPEC, DESIGN, TASK, TEST, VISION, STRUCT, TECH, ADR, FEATURE, API, DATA, PERF, SEC, DEBT, TODO, US, FR, NFR, BUG, REVIEW)",
+    ".moai/scripts/check-traceability.py:7 - Invalid tag type 'CAT' (valid: REQ, SPEC, DESIGN, TASK, TEST, VISION, STRUCT, TECH, ADR, FEATURE, API, DATA, PERF, SEC, DEBT, TODO, US, FR, NFR, BUG, REVIEW)",
+    ".moai/scripts/check-traceability.py:84 - Invalid tag type 'LINK' (valid: REQ, SPEC, DESIGN, TASK, TEST, VISION, STRUCT, TECH, ADR, FEATURE, API, DATA, PERF, SEC, DEBT, TODO, US, FR, NFR, BUG, REVIEW)",
+    ".moai/reports/sync-report.md:110 - Invalid tag type 'PROJECT' (valid: REQ, SPEC, DESIGN, TASK, TEST, VISION, STRUCT, TECH, ADR, FEATURE, API, DATA, PERF, SEC, DEBT, TODO, US, FR, NFR, BUG, REVIEW)",
+    ".moai/reports/sync-report.md:149 - Invalid tag type 'PROJECT' (valid: REQ, SPEC, DESIGN, TASK, TEST, VISION, STRUCT, TECH, ADR, FEATURE, API, DATA, PERF, SEC, DEBT, TODO, US, FR, NFR, BUG, REVIEW)",
+    ".moai/indexes/tags.json:58 - Invalid tag type 'PROJECT' (valid: REQ, SPEC, DESIGN, TASK, TEST, VISION, STRUCT, TECH, ADR, FEATURE, API, DATA, PERF, SEC, DEBT, TODO, US, FR, NFR, BUG, REVIEW)",
+    ".moai/indexes/tags.json:249 - Invalid tag type 'PROJECT' (valid: REQ, SPEC, DESIGN, TASK, TEST, VISION, STRUCT, TECH, ADR, FEATURE, API, DATA, PERF, SEC, DEBT, TODO, US, FR, NFR, BUG, REVIEW)",
+    ".moai/indexes/tags.json:593 - Invalid tag type 'PROJECT' (valid: REQ, SPEC, DESIGN, TASK, TEST, VISION, STRUCT, TECH, ADR, FEATURE, API, DATA, PERF, SEC, DEBT, TODO, US, FR, NFR, BUG, REVIEW)",
+    ".moai/specs/SPEC-007/spec.md:158 - Invalid tag type 'TAG' (valid: REQ, SPEC, DESIGN, TASK, TEST, VISION, STRUCT, TECH, ADR, FEATURE, API, DATA, PERF, SEC, DEBT, TODO, US, FR, NFR, BUG, REVIEW)",
+    ".moai/specs/SPEC-007/spec.md:170 - Invalid tag type 'DOCS' (valid: REQ, SPEC, DESIGN, TASK, TEST, VISION, STRUCT, TECH, ADR, FEATURE, API, DATA, PERF, SEC, DEBT, TODO, US, FR, NFR, BUG, REVIEW)"
+  ],
+  "scan_info": {
+    "timestamp": "2025-09-24T19:14:30.321141",
+    "total_files_scanned": 89,
+    "version": "0.1.17"
+  }
+}

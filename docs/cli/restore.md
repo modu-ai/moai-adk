@@ -52,12 +52,6 @@ flowchart TD
     T --> U
     U --> V[✅ 복원 완료]
 
-    style A fill:#fab005
-    style J fill:#51cf66
-    style G fill:#fab005
-    style V fill:#51cf66
-    style Z fill:#ff6b6b
-    style Z2 fill:#ff6b6b
 ```
 
 ### 백업 디렉토리 구조
@@ -83,10 +77,6 @@ graph TB
     CLAUDE --> HK[hooks/moai/<br/>이벤트 훅]
     CLAUDE --> STY[output-styles/<br/>출력 스타일]
 
-    style ROOT fill:#fab005
-    style MOAI fill:#51cf66
-    style CLAUDE fill:#51cf66
-    style CLAUDEMD fill:#339af0
 ```
 
 ### 복원 프로세스 시퀀스

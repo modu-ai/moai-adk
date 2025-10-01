@@ -172,7 +172,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `config_project.py`: 프로젝트 초기화 시 SQLite 생성
 
 #### 🚀 사용자 영향
-- **환경 스캔 정확성**: `/moai:0-project` 명령어가 올바른 데이터베이스 참조
+- **환경 스캔 정확성**: `/moai:8-project` 명령어가 올바른 데이터베이스 참조
 - **TAG 시스템 안정성**: SQLite 기반 완전한 추적성 보장
 - **업데이트 로직 개선**: 버전 불일치 문제 완전 해결
 

@@ -23,8 +23,9 @@ SPEC 문서를 분석하여 언어별 최적화된 TDD 사이클(Red-Green-Refac
 
 ## 🔗 연관 에이전트
 
-- **Primary**: code-builder (⚒️ 장인) - TDD 구현 전담
-- **Secondary**: git-manager (🌿 정원사) - Git 커밋 전담
+- **Primary**: code-builder (💎 수석 개발자) - TDD 구현 전담
+- **Quality Gate**: trust-checker (✅ 품질 보증 리드) - TRUST 원칙 검증 (자동)
+- **Secondary**: git-manager (🚀 릴리스 엔지니어) - Git 커밋 전담
 
 ## 💡 사용 예시
 
@@ -117,6 +118,48 @@ SPEC 문서를 분석하여 언어별 최적화된 TDD 사이클(Red-Green-Refac
 2. **GREEN**: 최소 구현으로 테스트 통과 확인
 3. **REFACTOR**: 코드 품질 개선 및 TRUST 원칙 검증
 4. **품질 검증**: 린터, 테스트 커버리지, 보안 검사 일괄 실행
+
+### Phase 2.5: 품질 검증 게이트 (자동 실행)
+
+TDD 구현 완료 후 `trust-checker` 에이전트가 **자동으로** 품질 검증을 수행합니다.
+
+**자동 실행 조건**:
+- TDD 구현 완료 시 자동 호출
+- 사용자 요청 시 수동 호출 가능
+
+**검증 항목**:
+- **T (Test First)**: 테스트 커버리지 ≥ 85%
+- **R (Readable)**: 코드 가독성 (파일≤300 LOC, 함수≤50 LOC, 복잡도≤10)
+- **U (Unified)**: 아키텍처 통합성 (모듈 의존성 검증)
+- **S (Secured)**: 보안 검증 (입력 검증, 로깅)
+- **T (Trackable)**: @TAG 추적성 무결성
+
+**실행 방식**:
+```bash
+# 자동 실행
+@agent-trust-checker --mode=quick --spec=$ARGUMENTS
+```
+
+**검증 결과 처리**:
+
+✅ **Pass (모든 기준 충족)**:
+- Phase 3 (Git 작업)로 진행
+- 품질 리포트 생성
+
+⚠️ **Warning (일부 기준 미달)**:
+- 경고 표시
+- 사용자 선택: "계속 진행" 또는 "수정 후 재검증"
+
+❌ **Critical (필수 기준 미달)**:
+- Git 커밋 차단
+- 개선 필요 항목 상세 보고
+- code-builder 재호출 권장
+
+**검증 생략 옵션**:
+```bash
+# 품질 검증을 건너뛰려면
+/moai:2-build SPEC-001 --skip-quality-check
+```
 
 ### Phase 3: Git 작업 (git-manager)
 

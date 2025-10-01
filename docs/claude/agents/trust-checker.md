@@ -39,9 +39,6 @@ graph TB
         F[@agent-tag-agent] <-->|TAG 검증| D
     end
 
-    style D fill:#ff6b6b,stroke:#c92a2a,color:#fff
-    style E fill:#ffd43b,stroke:#fab005,color:#000
-    style F fill:#a9e34b,stroke:#5c940d,color:#000
 ```
 
 **trust-checker 활성화 시점** (온디맨드):
@@ -108,10 +105,6 @@ graph LR
     J -->|Yes| K[검증 완료]
     J -->|No| I
 
-    style C fill:#ffd43b,stroke:#fab005,color:#000
-    style F fill:#ffd43b,stroke:#fab005,color:#000
-    style K fill:#51cf66,stroke:#2f9e44,color:#fff
-    style I fill:#ff6b6b,stroke:#c92a2a,color:#fff
 ```
 
 #### 실행 예시
@@ -190,10 +183,6 @@ graph TB
     D --> J[개선 제안 생성]
     J --> K[리포트 작성]
 
-    style C fill:#ffd43b,stroke:#fab005,color:#000
-    style F fill:#ffd43b,stroke:#fab005,color:#000
-    style H fill:#ffd43b,stroke:#fab005,color:#000
-    style I fill:#51cf66,stroke:#2f9e44,color:#fff
 ```
 
 #### 복잡도 측정 도구
@@ -287,11 +276,6 @@ graph LR
     D --> M[리포트 생성]
     G --> M
 
-    style C fill:#ffd43b,stroke:#fab005,color:#000
-    style F fill:#ffd43b,stroke:#fab005,color:#000
-    style I fill:#ffd43b,stroke:#fab005,color:#000
-    style K fill:#ffd43b,stroke:#fab005,color:#000
-    style L fill:#51cf66,stroke:#2f9e44,color:#fff
 ```
 
 #### 아키텍처 검증 도구
@@ -402,12 +386,6 @@ graph TB
     J --> Q
     M --> Q
 
-    style C fill:#ffd43b,stroke:#fab005,color:#000
-    style F fill:#ff6b6b,stroke:#c92a2a,color:#fff
-    style I fill:#ffd43b,stroke:#fab005,color:#000
-    style L fill:#ffd43b,stroke:#fab005,color:#000
-    style O fill:#ffd43b,stroke:#fab005,color:#000
-    style P fill:#51cf66,stroke:#2f9e44,color:#fff
 ```
 
 #### 보안 검증 도구
@@ -531,11 +509,6 @@ graph TB
     K --> P
     N --> P
 
-    style D fill:#ffd43b,stroke:#fab005,color:#000
-    style G fill:#ffd43b,stroke:#fab005,color:#000
-    style J fill:#ffd43b,stroke:#fab005,color:#000
-    style M fill:#ffd43b,stroke:#fab005,color:#000
-    style O fill:#51cf66,stroke:#2f9e44,color:#fff
 ```
 
 #### TAG 검증 도구
@@ -645,9 +618,6 @@ graph TB
     I --> J
     J --> K[검증 완료]
 
-    style G fill:#ff6b6b,stroke:#c92a2a,color:#fff
-    style H fill:#51cf66,stroke:#2f9e44,color:#fff
-    style K fill:#4dabf7,stroke:#1971c2,color:#fff
 ```
 
 ### 종합 품질 점수 산출
@@ -840,9 +810,6 @@ graph LR
     I --> J[우선순위 지정]
     J --> K[개선 제안 완성]
 
-    style C fill:#ffd43b,stroke:#fab005,color:#000
-    style D fill:#ff6b6b,stroke:#c92a2a,color:#fff
-    style K fill:#51cf66,stroke:#2f9e44,color:#fff
 ```
 
 #### 제안 템플릿
@@ -1008,8 +975,6 @@ graph LR
 
     O --> E
 
-    style C fill:#ff6b6b,stroke:#c92a2a,color:#fff
-    style D fill:#ffd43b,stroke:#fab005,color:#000
 ```
 
 ### 통합 사용 예시

@@ -17,11 +17,6 @@ graph LR
     SCAN --> VERIFY[TAG 체인 검증]
     VERIFY --> REPORT[동기화 리포트]
 
-    style SPEC fill:#ff6b6b
-    style TEST fill:#fab005
-    style CODE fill:#51cf66
-    style DOC fill:#339af0
-    style VERIFY fill:#ffd43b
 ```
 
 ## @TAG 체계
@@ -36,22 +31,18 @@ graph LR
     TEST --> CODE[@CODE:ID<br/>GREEN + REFACTOR]
     CODE --> DOC[@DOC:ID<br/>문서화]
 
-    style SPEC fill:#ff6b6b
-    style TEST fill:#fab005
-    style CODE fill:#51cf66
-    style DOC fill:#339af0
 ```
 
-### 필수 필수 TAG TAG
+### 필수 TAG
 
 | TAG | 역할 | TDD 단계 | 위치 | 필수 |
 |-----|------|----------|------|------|
-| `@SPEC:ID` | 요구사항 명세 (EARS) | 사전 준비 | .moai/specs/ | ✅ |
-| `@TEST:ID` | 테스트 케이스 | RED | tests/ | ✅ |
-| `@CODE:ID` | 구현 코드 | GREEN + REFACTOR | src/ | ✅ |
-| `@DOC:ID` | 문서화 | REFACTOR | docs/ | ⚠️ |
+| `@SPEC:ID` | 요구사항 명세 (EARS) | 사전 준비 | .moai/specs/ | 필수 |
+| `@TEST:ID` | 테스트 케이스 | RED | tests/ | 필수 |
+| `@CODE:ID` | 구현 코드 | GREEN + REFACTOR | src/ | 필수 |
+| `@DOC:ID` | 문서화 | REFACTOR | docs/ | 선택 |
 
-> ✅ 모든 신규 기능과 문서는 위 4개의 TAG를 기준으로 작성합니다. 체인 검증(`rg '@(SPEC|TEST|CODE|DOC):' -n`, `/moai:3-sync`) 역시 이 체계를 전제로 동작합니다.
+> 모든 신규 기능은 위 4개 TAG를 기준으로 작성합니다. 체인 검증(`rg '@(SPEC|TEST|CODE|DOC):' -n`, `/moai:3-sync`)도 이 체계를 기반으로 동작합니다.
 
 ## TAG BLOCK 템플릿
 
@@ -549,17 +540,10 @@ graph TD
     B --> C[3. 구현<br/>GREEN Phase<br/>@CODE:ID]
     C --> D[4. 리팩토링<br/>REFACTOR Phase<br/>@CODE:ID 개선]
     D --> E{5. /moai:3-sync<br/>코드 스캔 검증}
-    E -->|성공| F[✅ 추적성 확보<br/>@DOC:ID 생성]
-    E -->|실패| G[❌ TAG 수정 필요<br/>누락/중복/순서 오류]
+    E -->|성공| F[추적성 확보<br/>@DOC:ID 생성]
+    E -->|실패| G[TAG 수정 필요<br/>누락/중복/순서 오류]
     G --> B
 
-    style A fill:#ff6b6b
-    style B fill:#fab005
-    style C fill:#51cf66
-    style D fill:#51cf66
-    style E fill:#339af0
-    style F fill:#339af0
-    style G fill:#ff6b6b
 ```
 
 ## CODE-FIRST 원칙 요약

@@ -67,10 +67,6 @@ graph TD
     G --> J
     H --> J
 
-    style E fill:#51cf66
-    style F fill:#fab005
-    style G fill:#fab005
-    style H fill:#ff6b6b
 ```
 
 ## 개요

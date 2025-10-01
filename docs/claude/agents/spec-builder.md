@@ -26,10 +26,6 @@ graph LR
     B -->|코드 구현| C[/moai:3-sync]
     C -->|문서 동기화| D[완료]
 
-    style A fill:#ff6b6b,stroke:#c92a2a,color:#fff
-    style B fill:#e9ecef,stroke:#adb5bd
-    style C fill:#e9ecef,stroke:#adb5bd
-    style D fill:#e9ecef,stroke:#adb5bd
 ```
 
 **spec-builder 활성화 시점**: 사용자가 `/moai:1-spec` 명령어를 실행하거나 새로운 기능 명세가 필요한 시점

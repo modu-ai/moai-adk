@@ -60,12 +60,6 @@ graph TB
     ConfigManager --> FileSystem
     TagManager --> FileSystem
 
-    style UpdateOrchestrator fill:#fab005
-    style InstallationOrchestrator fill:#fab005
-    style Installer fill:#339af0
-    style SystemChecker fill:#339af0
-    style FileSystem fill:#51cf66
-    style ProcessRunner fill:#51cf66
 ```
 
 ### 사용 시나리오
@@ -1743,7 +1737,6 @@ graph LR
     UpdateOrchestrator -->|UpdateStarted| EventBus
     EventBus -->|Subscribe| BackupManager
 
-    style EventBus fill:#fab005
 ```
 
 #### 이벤트 정의

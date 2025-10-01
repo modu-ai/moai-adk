@@ -33,19 +33,19 @@ MoAI-ADK를 사용하는 모든 에이전트와 개발자를 위한 통합 가�
 - @TAG 추적성 체인 무결성 검증
 - 예외 발생 시 debug-helper 자동 호출
 
-### 9개 전문 에이전트 생태계
+### 9개 전문 에이전트 생태계 (전문 개발사 직무 체계)
 
-| 에이전트 | 아이콘 | 페르소나 | 핵심 역할 | 위임 시점 |
-|---------|--------|----------|----------|----------|
-| spec-builder | 🏗️ | 설계자 (Architect) | EARS 명세 작성 | SPEC 필요 시 |
-| code-builder | ⚒️ | 장인 (Craftsman) | TDD 구현 | 구현 단계 |
-| doc-syncer | 📚 | 편집자 (Editor) | 문서-코드 동기화 | 동기화 필요 시 |
-| tag-agent | 🔖 | 사서 (Librarian) | TAG 시스템 관리 | TAG 작업 시 |
-| git-manager | 🌿 | 정원사 (Gardener) | Git 작업 전담 | Git 조작 시 |
-| debug-helper | 🔍 | 탐정 (Detective) | 오류 분석 | 에러 발생 시 |
-| trust-checker | ⚖️ | 감사관 (Auditor) | 품질 검증 | 검증 요청 시 |
-| cc-manager | ⚙️ | 관리자 (Admin) | 환경 최적화 | 설정 필요 시 |
-| project-manager | 📋 | 기획자 (Planner) | 프로젝트 초기화 | 프로젝트 시작 |
+| 에이전트 | 아이콘 | 직무 페르소나 | 전문 영역 | 핵심 책임 | 위임 시점 |
+|---------|--------|--------------|----------|----------|----------|
+| spec-builder | 🏗️ | 시스템 아키텍트 (Chief Architect) | 요구사항 설계 | EARS 명세, 아키텍처 설계 | SPEC 필요 시 |
+| code-builder | 💎 | 수석 개발자 (Senior Developer) | TDD 구현 | Red-Green-Refactor, 코드 품질 | 구현 단계 |
+| doc-syncer | 📖 | 테크니컬 라이터 (Technical Writer) | 문서 관리 | Living Document, API 문서 동기화 | 동기화 필요 시 |
+| tag-agent | 🏷️ | 지식 관리자 (Knowledge Manager) | 추적성 관리 | TAG 시스템, 코드 스캔, 체인 검증 | TAG 작업 시 |
+| git-manager | 🚀 | 릴리스 엔지니어 (Release Engineer) | 버전 관리 | Git 워크플로우, 브랜치 전략, 배포 | Git 조작 시 |
+| debug-helper | 🔬 | 트러블슈팅 전문가 (Troubleshooter) | 문제 해결 | 오류 진단, 근본 원인 분석, 해결 방안 | 에러 발생 시 |
+| trust-checker | ✅ | 품질 보증 리드 (QA Lead) | 품질 검증 | TRUST 5원칙, 성능/보안 검사 | 검증 요청 시 |
+| cc-manager | 🛠️ | 데브옵스 엔지니어 (DevOps Engineer) | 개발 환경 | Claude Code 설정, 권한, 표준화 | 설정 필요 시 |
+| project-manager | 📋 | 프로젝트 매니저 (Project Manager) | 프로젝트 관리 | 초기화, 문서 구축, 전략 수립 | 프로젝트 시작 |
 
 ### 에이전트 간 협업 원칙
 

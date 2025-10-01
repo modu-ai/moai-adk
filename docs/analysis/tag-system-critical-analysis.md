@@ -45,9 +45,6 @@ graph LR
     GREEN --> REFACTOR[REFACTOR<br/>품질 개선]
     REFACTOR --> RED
 
-    style RED fill:#ff6b6b
-    style GREEN fill:#51cf66
-    style REFACTOR fill:#fab005
 ```
 
 ### 이전 버전 TAG 매핑 (참고용)

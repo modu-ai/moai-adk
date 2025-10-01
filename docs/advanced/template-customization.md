@@ -44,13 +44,6 @@ graph TB
     B -.->|기반| E
     C -.->|기반| F
 
-    style A fill:#ff6b6b,stroke:#c92a2a,color:#fff
-    style B fill:#ffd43b,stroke:#fab005,color:#000
-    style C fill:#4dabf7,stroke:#1971c2,color:#fff
-    style D fill:#a9e34b,stroke:#5c940d,color:#000
-    style E fill:#a9e34b,stroke:#5c940d,color:#000
-    style F fill:#a9e34b,stroke:#5c940d,color:#000
-    style G fill:#a9e34b,stroke:#5c940d,color:#000
 ```
 
 ---
