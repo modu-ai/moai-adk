@@ -54,7 +54,7 @@ Project Architecture
 
 ## @DOC:TRACEABILITY-001 추적성 전략
 
-### 4-Core @TAG 체계 적용 (v5.0)
+### TAG 체계 적용
 
 **TDD 완벽 정렬**: SPEC → 테스트 → 구현 → 문서
 - `@SPEC:ID` (.moai/specs/) → `@TEST:ID` (tests/) → `@CODE:ID` (src/) → `@DOC:ID` (docs/)

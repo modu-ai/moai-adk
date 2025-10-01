@@ -47,7 +47,7 @@
 **Git 자동화**: 커밋, 푸시 등 일반 작업만 자동 처리
 **Git 직접**: `@agent-git-manager "명령"` (특수 케이스)
 
-## @TAG Lifecycle 5.0 (4-Core)
+## @TAG Lifecycle 5.0 (TAG 체계)
 
 ### 핵심 설계 철학
 
@@ -55,7 +55,7 @@
 **단순성**: 8개 TAG → 4개 TAG (50% 감소)
 **추적성**: 코드 직접 스캔 (CODE-FIRST)
 
-### 4-Core TAG 체계
+### TAG 체계 TAG 체계
 
 ```
 @SPEC:ID → @TEST:ID → @CODE:ID → @DOC:ID

@@ -7,7 +7,7 @@ description: TypeScript 기반 SPEC-First TDD 개발 도구
 
 > **명세 없이는 코드 없음. 테스트 없이는 구현 없음. 추적성 없이는 완성 없음.**
 
-MoAI-ADK는 Claude Code 환경에서 **SPEC-First TDD 개발**을 자동화하는 완전한 Agentic Development Kit입니다. TypeScript 기반으로 구축되어 Python, Java, Go, Rust 등 모든 주요 프로그래밍 언어를 지원하며, 범용 개발 도구로서 일관된 개발 경험을 제공합니다.
+MoAI-ADK는 Claude Code 환경에서 **SPEC-First TDD 개발**을 자동화하는 Agentic Development Kit입니다. TypeScript 기반으로 구축되어 TypeScript, Python, Java, Go, Rust, C++, C#, PHP 총 8개 언어를 지원하며, 일관된 개발 경험을 제공합니다.
 
 ## MoAI-ADK란?
 
@@ -22,12 +22,12 @@ MoAI-ADK는 Claude Code 환경에서 **SPEC-First TDD 개발**을 자동화하�
 
 ### MoAI-ADK의 해결책
 
-MoAI-ADK는 **SPEC-First TDD 자동화 프레임워크**로 다음을 제공합니다:
+MoAI-ADK는 **SPEC-First TDD 자동화 개발 도구**로 다음을 제공합니다:
 
 - **3단계 워크플로우**: SPEC 작성 → TDD 구현 → 문서 동기화
-- **7개 전문 에이전트**: 각 단계를 자동화하는 AI 에이전트
-- **CODE-FIRST TAG 추적성**: 요구사항부터 구현까지 완전한 추적성
-- **범용 언어 지원**: TypeScript, Python, Java, Go, Rust, C++, C#, PHP 등
+- **8개 전문 에이전트**: 각 단계를 자동화하는 AI 에이전트
+- **CODE-FIRST TAG 추적성**: 요구사항부터 구현까지 추적성 제공
+- **8개 언어 지원**: TypeScript, Python, Java, Go, Rust, C++, C#, PHP
 
 ## 핵심 개념 3가지
 

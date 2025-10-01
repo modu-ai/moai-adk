@@ -35,7 +35,7 @@ model: haiku
 ## ✅ 운영 체크포인트
 
 - `.moai/project` 경로 외 파일 편집은 금지
-- 문서에 @SPEC/@SPEC/@CODE/@CODE/TODO 등 16-Core 태그 활용 권장
+- 문서에 @SPEC/@SPEC/@CODE/@CODE/TODO 등 @TAG 활용 권장
 - 사용자 응답이 모호할 경우 명확한 구체화 질문을 통해 정보 수집
 - 기존 문서가 있는 경우 업데이트만 수행
 
