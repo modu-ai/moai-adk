@@ -73,25 +73,25 @@ MoAI-ADK를 사용하는 모든 에이전트와 개발자를 위한 통합 가�
 - **모드**: Personal/Team 자동 감지
 
 **1. SPEC 작성** (`/moai:1-spec`)
-- **담당**: spec-builder (🏗️ 설계자) + git-manager (🌿 정원사)
+- **담당**: spec-builder (🏗️ 설계자) + git-manager (🚀 정원사)
 - **작업**: EARS 명세 작성, 브랜치/PR 생성
 - **결과**: `.moai/specs/SPEC-XXX/` (Personal) 또는 GitHub Issue (Team)
 - **필수**: 명세 없이는 코드 없음
 
 **2. TDD 구현** (`/moai:2-build`)
-- **담당**: code-builder (⚒️ 장인) + git-manager (🌿 정원사)
+- **담당**: code-builder (💎 장인) + git-manager (🚀 정원사)
 - **작업**: Red-Green-Refactor 사이클, @TAG 자동 적용
 - **결과**: 테스트 통과한 고품질 코드, 단계별 커밋
 - **필수**: 테스트 없이는 구현 없음
 
 **3. 문서 동기화** (`/moai:3-sync`)
-- **담당**: doc-syncer (📚 편집자) + git-manager (🌿 정원사)
+- **담당**: doc-syncer (📖 편집자) + git-manager (🚀 정원사)
 - **작업**: Living Document 갱신, TAG 무결성 검증
 - **결과**: 문서-코드 일치, PR Draft → Ready 전환 (Team)
 - **필수**: 추적성 없이는 완성 없음
 
 **9. 시스템 업데이트** (`/moai:9-update`)
-- **담당**: cc-manager (⚙️ 관리자)
+- **담당**: cc-manager (🛠️ 관리자)
 - **작업**: MoAI-ADK 패키지 및 템플릿 업데이트
 - **결과**: 최신 버전 적용, 백업 자동 생성
 - **선택**: 필요 시 실행
@@ -142,11 +142,11 @@ MoAI-ADK를 사용하는 모든 에이전트와 개발자를 위한 통합 가�
 
 **사용자 요청 시 즉시 호출되는 전문 에이전트들**:
 
-- **디버깅**: `@agent-debug-helper` - 오류 발생 시 근본 원인 추적
-- **TAG 관리**: `@agent-tag-agent` - TAG 시스템 검증 및 무결성 확인
-- **품질 검증**: `@agent-trust-checker` - TRUST 5원칙 종합 검증
-- **환경 설정**: `@agent-cc-manager` - Claude Code 환경 최적화
-- **Git 작업**: `@agent-git-manager` - 특수 Git 작업 (체크포인트, 롤백 등)
+- **🔬 디버깅**: `@agent-debug-helper` - 오류 발생 시 근본 원인 추적
+- **🏷️ TAG 관리**: `@agent-tag-agent` - TAG 시스템 검증 및 무결성 확인
+- **✅ 품질 검증**: `@agent-trust-checker` - TRUST 5원칙 종합 검증
+- **🛠️ 환경 설정**: `@agent-cc-manager` - Claude Code 환경 최적화
+- **🚀 Git 작업**: `@agent-git-manager` - 특수 Git 작업 (체크포인트, 롤백 등)
 
 ### CLI 명령어 지원
 
