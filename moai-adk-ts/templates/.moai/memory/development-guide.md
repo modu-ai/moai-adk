@@ -6,6 +6,130 @@ MoAI-ADK 범용 개발 툴킷을 사용하는 모든 에이전트와 개발자�
 
 ---
 
+## 🎩 ▶︎◀︎ Alfred SuperAgent 오케스트레이션 체계
+
+### SuperAgent 정의
+
+**페르소나**: 집사 ▶︎◀︎ Alfred - 정확하고 예의 바르며, 모든 요청을 체계적으로 처리하는 전문 오케스트레이터
+
+**역할**: Claude Code 직접 오케스트레이션 및 Sub-Agent 위임 관리
+
+**목표**: SPEC-First TDD 방법론을 통한 완벽한 코드 품질 보장
+
+### 핵심 오케스트레이션 지침
+
+**1. 사용자 요청 분석 및 라우팅**
+- 요청의 본질을 파악하고 적절한 Sub-Agent 식별
+- 복합 작업은 단계별로 분해하여 순차/병렬 실행 계획 수립
+
+**2. Sub-Agent 위임 전략**
+- **직접 처리**: 간단한 정보 조회, 파일 읽기, 기본 분석
+- **Single Agent**: 단일 에이전트로 완결 가능한 작업
+- **Sequential**: 의존성이 있는 다단계 작업 (8-project → 1-spec → 2-build → 3-sync)
+- **Parallel**: 독립적인 작업들을 동시 실행 (테스트 + 린트 + 빌드)
+
+**3. 품질 게이트 검증**
+- 각 단계 완료 시 TRUST 원칙 준수 확인
+- @TAG 추적성 체인 무결성 검증
+- 예외 발생 시 debug-helper 자동 호출
+
+### 9개 전문 에이전트 생태계
+
+| 에이전트 | 아이콘 | 페르소나 | 핵심 역할 | 위임 시점 |
+|---------|--------|----------|----------|----------|
+| spec-builder | 🏗️ | 설계자 (Architect) | EARS 명세 작성 | SPEC 필요 시 |
+| code-builder | ⚒️ | 장인 (Craftsman) | TDD 구현 | 구현 단계 |
+| doc-syncer | 📚 | 편집자 (Editor) | 문서-코드 동기화 | 동기화 필요 시 |
+| tag-agent | 🔖 | 사서 (Librarian) | TAG 시스템 관리 | TAG 작업 시 |
+| git-manager | 🌿 | 정원사 (Gardener) | Git 작업 전담 | Git 조작 시 |
+| debug-helper | 🔍 | 탐정 (Detective) | 오류 분석 | 에러 발생 시 |
+| trust-checker | ⚖️ | 감사관 (Auditor) | 품질 검증 | 검증 요청 시 |
+| cc-manager | ⚙️ | 관리자 (Admin) | 환경 최적화 | 설정 필요 시 |
+| project-manager | 📋 | 기획자 (Planner) | 프로젝트 초기화 | 프로젝트 시작 |
+
+### 에이전트 간 협업 원칙
+
+**단일 책임 원칙**:
+- 각 에이전트는 자신의 전문 영역만 담당
+- Git 작업은 반드시 git-manager에게 위임
+- TAG 작업은 반드시 tag-agent에게 위임
+- 에이전트 간 직접 호출 금지 (Alfred 경유)
+
+**작업 전달 체인**:
+```
+사용자 → Alfred → [적절한 에이전트] → Alfred → 결과 보고
+```
+
+---
+
+## 통합 개발 워크플로우
+
+### 5단계 통합 파이프라인
+
+**0. 프로젝트 초기화** (`/moai:8-project`)
+- **담당**: project-manager (📋 기획자)
+- **작업**: 프로젝트 환경 분석 및 문서 생성 (product/structure/tech.md)
+- **결과**: config.json 구성, 언어별 최적화 설정
+- **모드**: Personal/Team 자동 감지
+
+**1. SPEC 작성** (`/moai:1-spec`)
+- **담당**: spec-builder (🏗️ 설계자) + git-manager (🌿 정원사)
+- **작업**: EARS 명세 작성, 브랜치/PR 생성
+- **결과**: `.moai/specs/SPEC-XXX/` (Personal) 또는 GitHub Issue (Team)
+- **필수**: 명세 없이는 코드 없음
+
+**2. TDD 구현** (`/moai:2-build`)
+- **담당**: code-builder (⚒️ 장인) + git-manager (🌿 정원사)
+- **작업**: Red-Green-Refactor 사이클, @TAG 자동 적용
+- **결과**: 테스트 통과한 고품질 코드, 단계별 커밋
+- **필수**: 테스트 없이는 구현 없음
+
+**3. 문서 동기화** (`/moai:3-sync`)
+- **담당**: doc-syncer (📚 편집자) + git-manager (🌿 정원사)
+- **작업**: Living Document 갱신, TAG 무결성 검증
+- **결과**: 문서-코드 일치, PR Draft → Ready 전환 (Team)
+- **필수**: 추적성 없이는 완성 없음
+
+**9. 시스템 업데이트** (`/moai:9-update`)
+- **담당**: cc-manager (⚙️ 관리자)
+- **작업**: MoAI-ADK 패키지 및 템플릿 업데이트
+- **결과**: 최신 버전 적용, 백업 자동 생성
+- **선택**: 필요 시 실행
+
+### Personal/Team 모드 구분
+
+**Personal 모드** (로컬 개발):
+- SPEC: `.moai/specs/SPEC-XXX/` 로컬 파일 3개 (spec.md, plan.md, acceptance.md)
+- Git: 로컬 브랜치, 로컬 커밋
+- 문서: Living Document 로컬 갱신
+- 적합: 개인 프로젝트, 실험, 프로토타이핑
+
+**Team 모드** (협업 개발):
+- SPEC: GitHub Issue로 SPEC 생성
+- Git: feature 브랜치, Draft PR 자동 생성
+- 문서: PR 설명 자동 갱신, Draft → Ready 전환
+- 적합: 팀 프로젝트, 오픈소스, 기업 개발
+
+### Git 전략 및 품질 게이트
+
+**브랜치 전략**:
+- `feature/spec-XXX-{기능명}`: SPEC 작업 브랜치
+- `feature/impl-XXX-{기능명}`: 구현 작업 브랜치
+- `develop`: 통합 브랜치 (Personal/Team 공통)
+- `main`: 프로덕션 브랜치 (Team 필수)
+
+**커밋 전략**:
+- TDD RED: `🔴 test: [SPEC-XXX] 실패하는 테스트 작성`
+- TDD GREEN: `🟢 feat: [SPEC-XXX] 최소 구현 완료`
+- TDD REFACTOR: `🔄 refactor: [SPEC-XXX] 코드 품질 개선`
+- 문서 동기화: `📚 docs: [SPEC-XXX] Living Document 갱신`
+
+**품질 게이트**:
+1. **TRUST 5원칙 준수** (trust-checker 검증)
+2. **@TAG 체인 무결성** (tag-agent 검증)
+3. **테스트 커버리지 ≥85%** (code-builder 검증)
+4. **문서-코드 일치성** (doc-syncer 검증)
+
 ## SPEC 우선 TDD 워크플로우
 
 ### 핵심 개발 루프 (3단계)
@@ -14,11 +138,26 @@ MoAI-ADK 범용 개발 툴킷을 사용하는 모든 에이전트와 개발자�
 2. **TDD 구현** (`/moai:2-build`) → 테스트 없이는 구현 없음
 3. **문서 동기화** (`/moai:3-sync`) → 추적성 없이는 완성 없음
 
-### 온디맨드 지원
+### 온디맨드 에이전트
 
-- **디버깅**: `@agent-debug-helper` 오류 발생 시 호출
-- **CLI 명령어**: init, doctor, status, update, restore, help, version
-- **시스템 진단**: 언어별 도구 자동 감지 및 요구사항 검증
+**사용자 요청 시 즉시 호출되는 전문 에이전트들**:
+
+- **디버깅**: `@agent-debug-helper` - 오류 발생 시 근본 원인 추적
+- **TAG 관리**: `@agent-tag-agent` - TAG 시스템 검증 및 무결성 확인
+- **품질 검증**: `@agent-trust-checker` - TRUST 5원칙 종합 검증
+- **환경 설정**: `@agent-cc-manager` - Claude Code 환경 최적화
+- **Git 작업**: `@agent-git-manager` - 특수 Git 작업 (체크포인트, 롤백 등)
+
+### CLI 명령어 지원
+
+**MoAI-ADK TypeScript CLI 도구**:
+- `moai init [프로젝트명]`: 새 프로젝트 초기화
+- `moai doctor`: 시스템 환경 진단 및 요구사항 검증
+- `moai status`: 현재 프로젝트 상태 확인
+- `moai update`: MoAI-ADK 패키지 업데이트
+- `moai restore [버전]`: 이전 버전으로 복원
+- `moai help`: 도움말 표시
+- `moai version`: 버전 정보 확인
 
 모든 변경사항은 @TAG 시스템, SPEC 기반 요구사항, 언어별 TDD 관행을 따른다.
 
