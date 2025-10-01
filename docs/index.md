@@ -3,8 +3,8 @@ layout: home
 
 hero:
   name: "MoAI-ADK"
-  text: "모두의 ADK / Agentic Development Kit"
-  tagline: Claude Code 기반 범용 언어 지원 개발 툴킷
+  text: "Agentic Development Kit for Agents"
+  tagline: Claude Code 기반 SPEC-First TDD 범용 개발 툴킷
   actions:
     - theme: brand
       text: 시작하기
@@ -47,7 +47,82 @@ features:
       src: /icons/claude.svg
       alt: Claude
     title: Claude Code 통합
-    details: Claude Code 네이티브 통합. 8개 전문 에이전트, 5개 워크플로우 명령어, 개발 자동화 지원.
+    details: Claude Code 네이티브 통합. 9개 전문 에이전트, 5개 워크플로우 명령어, 개발 자동화 지원.
+---
+
+## 🎩 SuperAgent Alfred
+
+**모두의 AI 집사 Alfred**는 MoAI-ADK의 핵심 오케스트레이터입니다. 정확하고 예의 바르며, 모든 요청을 체계적으로 처리하는 전문 지휘자 역할을 수행합니다.
+
+### 핵심 역할
+
+- **사용자 요청 분석 및 라우팅**: 요청의 본질을 파악하고 적절한 Sub-Agent 식별
+- **Sub-Agent 위임 전략**: 직접 처리, 단일 에이전트, 순차 실행, 병렬 실행 등 최적의 실행 전략 수립
+- **품질 게이트 검증**: 각 단계 완료 시 TRUST 원칙 준수 확인, @TAG 추적성 체인 무결성 검증
+
+Alfred는 복잡한 개발 작업을 체계적으로 분해하고, 9개의 전문 에이전트를 효율적으로 조율하여 SPEC-First TDD 방법론을 통한 완벽한 코드 품질을 보장합니다.
+
+---
+
+## 📋 9개 전문 에이전트 생태계
+
+MoAI-ADK는 전문 개발사의 직무 체계를 모델링한 9개의 전문 에이전트를 제공합니다:
+
+| 에이전트 | 직무 페르소나 | 전문 영역 | 핵심 책임 |
+|---------|--------------|----------|----------|
+| 🏗️ **spec-builder** | 시스템 아키텍트 | 요구사항 설계 | EARS 명세, 아키텍처 설계 |
+| 💎 **code-builder** | 수석 개발자 | TDD 구현 | Red-Green-Refactor, 코드 품질 |
+| 📖 **doc-syncer** | 테크니컬 라이터 | 문서 관리 | Living Document, API 문서 동기화 |
+| 🏷️ **tag-agent** | 지식 관리자 | 추적성 관리 | TAG 시스템, 코드 스캔, 체인 검증 |
+| 🚀 **git-manager** | 릴리스 엔지니어 | 버전 관리 | Git 워크플로우, 브랜치 전략, 배포 |
+| 🔬 **debug-helper** | 트러블슈팅 전문가 | 문제 해결 | 오류 진단, 근본 원인 분석, 해결 방안 |
+| ✅ **trust-checker** | 품질 보증 리드 | 품질 검증 | TRUST 5원칙, 성능/보안 검사 |
+| 🛠️ **cc-manager** | 데브옵스 엔지니어 | 개발 환경 | Claude Code 설정, 권한, 표준화 |
+| 📋 **project-manager** | 프로젝트 매니저 | 프로젝트 관리 | 초기화, 문서 구축, 전략 수립 |
+
+각 에이전트는 단일 책임 원칙을 준수하며, Alfred의 조율 하에 협업하여 최고의 코드 품질을 보장합니다.
+
+---
+
+## 🚀 3단계 워크플로우
+
+MoAI-ADK는 SPEC-First TDD 방법론을 3단계 워크플로우로 자동화합니다:
+
+### 1️⃣ /moai:1-spec - SPEC 작성
+
+**담당**: spec-builder (🏗️ 설계자) + git-manager (🚀 정원사)
+
+- EARS 방법론을 사용한 요구사항 명세 작성
+- 아키텍처 설계 및 기술적 의사결정
+- 브랜치 생성 및 GitHub Issue/PR 자동 생성 (Team 모드)
+- `.moai/specs/SPEC-XXX/` 디렉토리 생성 (Personal 모드)
+
+**핵심 원칙**: 명세 없이는 코드 없음
+
+### 2️⃣ /moai:2-build - TDD 구현
+
+**담당**: code-builder (💎 장인) + git-manager (🚀 정원사)
+
+- **RED**: 실패하는 테스트 작성 및 실패 확인
+- **GREEN**: 테스트를 통과하는 최소한의 코드 구현
+- **REFACTOR**: 코드 품질 개선 및 @TAG 자동 적용
+- 언어별 최적 도구 자동 선택 (pytest, Vitest, JUnit, go test 등)
+- TDD 단계별 자동 커밋
+
+**핵심 원칙**: 테스트 없이는 구현 없음
+
+### 3️⃣ /moai:3-sync - 문서 동기화
+
+**담당**: doc-syncer (📖 편집자) + git-manager (🚀 정원사)
+
+- Living Document 자동 갱신
+- @TAG 체인 무결성 검증 (ripgrep 코드 스캔)
+- API 문서 자동 생성
+- PR 상태 Draft → Ready 전환 (Team 모드)
+- GitHub 라벨 자동 적용
+
+**핵심 원칙**: 추적성 없이는 완성 없음
+
 ---
 
 ## 빠른 시작
@@ -91,52 +166,7 @@ moai doctor
 /moai:3-sync
 ```
 
-## 주요 특징
-
-| 항목 | 상세 |
-|------|------|
-| **패키지 크기** | 195KB (경량화 완료) |
-| **빌드 시간** | 182ms (tsup 기반) |
-| **테스트 도구** | Vitest 3.2.4 (56개 테스트 중 52개 통과) |
-| **코드 품질** | Biome 2.2.4 (린터+포매터 통합) |
-| **TAG 시스템** | CODE-FIRST 방식 (ripgrep 직접 스캔) |
-| **CLI 명령어** | 7개 명령어 (init, doctor, status, update, restore 등) |
-
-## 핵심 원칙: TRUST 5원칙
-
-- **T**est First: 테스트 없이는 코드 없음 (TDD 엄격 적용)
-- **R**eadable: 요구사항 주도 가독성 (SPEC 기반 코드)
-- **U**nified: SPEC 기반 아키텍처 (언어별 일관된 구조)
-- **S**ecured: 설계 시점 보안 (입력 검증, 민감정보 마스킹)
-- **T**rackable: CODE-FIRST TAG 추적성 (@SPEC → @TEST → @CODE → @DOC)
-
-## 링크 및 리소스
-
-- **공식 문서**: [https://adk.mo.ai.kr](https://adk.mo.ai.kr)
-- **커뮤니티**: [https://mo.ai.kr](https://mo.ai.kr) *(오픈 예정)*
-- **GitHub**: [github.com/modu-ai/moai-adk](https://github.com/modu-ai/moai-adk)
-- **NPM Package**: [npmjs.com/package/moai-adk](https://www.npmjs.com/package/moai-adk)
-
-## 왜 MoAI-ADK인가?
-
-### TypeScript 기반, 8개 언어 지원
-MoAI-ADK는 TypeScript로 구축된 CLI 도구입니다. 사용자 프로젝트는 TypeScript, Python, Java, Go, Rust, C++, C#, PHP 총 8개 언어를 지원합니다. 프로젝트 파일을 분석하여 언어를 감지하고, 해당 언어의 TDD 도구(pytest, Vitest, JUnit, go test 등)를 자동 추천합니다.
-
-### CODE-FIRST TAG 시스템
-중간 캐시를 사용하지 않습니다. TAG의 진실은 오직 코드 자체에만 존재하며, ripgrep으로 소스코드를 직접 스캔하여 실시간 추적성을 보장합니다.
-
-### 시스템 진단 자동화
-`moai doctor` 명령은 프로젝트 디렉토리를 분석하여 사용 중인 언어를 감지하고, 해당 언어에 필요한 개발 도구 설치 여부를 확인합니다. Runtime(Node.js, Git), Development(npm, TypeScript), Language-Specific(언어별 도구) 등의 카테고리로 체계적인 진단을 제공합니다.
-
-### Claude Code 통합
-8개 전문 에이전트(`spec-builder`, `code-builder`, `doc-syncer`, `git-manager`, `debug-helper`, `cc-manager`, `trust-checker`, `tag-agent`)가 SPEC-First TDD 워크플로우를 자동화합니다. 명세 작성부터 TDD 구현, 문서 동기화, Git 작업, 품질 검증까지 지원합니다.
-
-### 개발 스택
-- **TypeScript 5.9.2**: 엄격한 타입 검사
-- **Bun 1.2.19**: 빠른 패키지 관리 (npm 대비 약 10-20배, Bun 공식 벤치마크 기준)
-- **Vitest 3.2.4**: 테스트 자동화 (56개 테스트 중 52개 통과)
-- **Biome 2.2.4**: 린터+포매터 통합 (ESLint+Prettier 대체)
-- **tsup 8.5.0**: 빌드 182ms, ESM/CJS 듀얼 번들링
+---
 
 ## 더 알아보기
 
@@ -149,20 +179,17 @@ MoAI-ADK는 TypeScript로 구축된 CLI 도구입니다. 사용자 프로젝트�
 - [SPEC-First TDD](/guide/spec-first-tdd) - EARS 방식 명세 작성법
 - [TAG 시스템](/guide/tag-system) - CODE-FIRST 추적성 관리
 
+### Claude Code 에이전트
+- [에이전트 개요](/claude/agents) - 9개 전문 에이전트 소개
+- [워크플로우 명령어](/claude/commands) - /moai: 명령어 상세
+- [이벤트 훅](/claude/hooks) - 자동화 시스템
+
 ### CLI 명령어
 - `moai init` - 프로젝트 초기화
 - `moai doctor` - 지능형 시스템 진단
 - `moai status` - 프로젝트 상태 확인
 - `moai update` - 업데이트 관리
 - `moai restore` - 백업 복원
-
-## 기여하기
-
-MoAI-ADK는 MIT 라이선스 오픈소스 프로젝트입니다. 기여를 환영합니다!
-
-- [버그 리포트](https://github.com/modu-ai/moai-adk/issues) - 문제 발견 시 이슈 등록
-- [기능 제안](https://github.com/modu-ai/moai-adk/discussions) - 새로운 아이디어 공유
-- [문서 개선](https://github.com/modu-ai/moai-adk/pulls) - Pull Request 제출
 
 ---
 
