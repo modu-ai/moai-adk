@@ -122,7 +122,7 @@ moai-adk-ts/templates/
 ```markdown
 # {{PROJECT_NAME}} Product Definition
 
-## @VISION:MISSION-001 핵심 미션
+## @DOC:MISSION-001 핵심 미션
 **[프로젝트의 핵심 미션과 목표를 정의하세요]**
 
 ## @SPEC:USER-001 주요 사용자층
@@ -134,7 +134,7 @@ moai-adk-ts/templates/
 1. [해결하려는 주요 문제 1]
 2. [해결하려는 주요 문제 2]
 
-## @VISION:STRATEGY-001 차별점 및 강점
+## @DOC:STRATEGY-001 차별점 및 강점
 1. [주요 차별점 1]
 2. [주요 차별점 2]
 
@@ -149,7 +149,7 @@ moai-adk-ts/templates/
 ```markdown
 # DevTools-CLI Product Definition
 
-## @VISION:MISSION-001 핵심 미션
+## @DOC:MISSION-001 핵심 미션
 **개발자의 반복 작업을 자동화하는 강력한 CLI 도구**
 
 ### 핵심 가치 제안
@@ -169,7 +169,7 @@ moai-adk-ts/templates/
 2. **보일러플레이트 코드**: 반복 작업 자동화
 3. **배포 복잡도**: 다단계 프로세스 → 단일 명령
 
-## @VISION:STRATEGY-001 차별점 및 강점
+## @DOC:STRATEGY-001 차별점 및 강점
 1. **Zero Configuration**: 설정 파일 없이 즉시 사용 가능
 2. **Language Agnostic**: TypeScript, Python, Go 등 다중 언어 지원
 3. **Extensible**: 플러그인 시스템으로 무한 확장
@@ -184,7 +184,7 @@ moai-adk-ts/templates/
 ```markdown
 # E-Commerce-API Product Definition
 
-## @VISION:MISSION-001 핵심 미션
+## @DOC:MISSION-001 핵심 미션
 **중소 쇼핑몰을 위한 확장 가능한 E-Commerce API 플랫폼**
 
 ## @SPEC:USER-001 주요 사용자층
@@ -221,7 +221,7 @@ moai-adk-ts/templates/
 ```markdown
 # My-Microservices Structure Design
 
-## @STRUCT:ARCHITECTURE-001 시스템 아키텍처
+## @DOC:ARCHITECTURE-001 시스템 아키텍처
 
 ### 아키텍처 전략
 **마이크로서비스 + API Gateway + Event-Driven**
@@ -252,7 +252,7 @@ Microservices Architecture
 - **확장성**: 부하가 높은 서비스만 스케일 아웃
 - **장애 격리**: 한 서비스 장애가 전체에 영향 최소화
 
-## @STRUCT:MODULES-001 모듈별 책임 구분
+## @DOC:MODULES-001 모듈별 책임 구분
 
 ### 1. User Service
 - **책임**: 사용자 인증, 프로필 관리, 권한 부여
@@ -273,7 +273,7 @@ Microservices Architecture
 - **처리**: 재고 확인, 결제 연동, 배송 상태 업데이트
 - **출력**: 주문 정보, 배송 추적 번호
 
-## @STRUCT:INTEGRATION-001 외부 시스템 통합
+## @DOC:INTEGRATION-001 외부 시스템 통합
 
 ### 결제 게이트웨이 (PG사)
 - **인증 방식**: API Key + HMAC Signature
@@ -286,7 +286,7 @@ Microservices Architecture
 - **의존성 수준**: Medium (배송 추적 기능)
 - **성능 요구사항**: 1초 이내 응답
 
-## @STRUCT:TRACEABILITY-001 추적성 전략
+## @DOC:TRACEABILITY-001 추적성 전략
 
 ### 필수 TAG @TAG 체계 적용
 
@@ -307,7 +307,7 @@ Microservices Architecture
 ```markdown
 # My-Monolith Structure Design
 
-## @STRUCT:ARCHITECTURE-001 시스템 아키텍처
+## @DOC:ARCHITECTURE-001 시스템 아키텍처
 
 ### 아키텍처 전략
 **3-Tier 계층형 아키텍처 (MVC 패턴)**
@@ -334,7 +334,7 @@ Microservices Architecture
 - **성능**: 네트워크 오버헤드 없음 (로컬 함수 호출)
 - **개발 경험**: 팀 규모 작고 익숙한 아키텍처
 
-## @STRUCT:MODULES-001 모듈별 책임 구분
+## @DOC:MODULES-001 모듈별 책임 구분
 
 ### 1. Controllers (Presentation Layer)
 - **책임**: HTTP 요청 처리, 입력 검증, 응답 생성
@@ -365,7 +365,7 @@ Microservices Architecture
 ```markdown
 # My-Backend Technology Stack
 
-## @TECH:STACK-001 언어 & 런타임
+## @DOC:STACK-001 언어 & 런타임
 
 ### 주 언어 선택
 - **언어**: TypeScript
@@ -384,7 +384,7 @@ Microservices Architecture
 | **macOS** | 완전 지원 | GitHub Actions (macOS Runner) | 없음 |
 | **Linux** | 완전 지원 | Docker 컨테이너 | 없음 |
 
-## @TECH:FRAMEWORK-001 핵심 프레임워크 & 라이브러리
+## @DOC:FRAMEWORK-001 핵심 프레임워크 & 라이브러리
 
 ### 1. 주요 의존성
 
@@ -419,7 +419,7 @@ Microservices Architecture
 - **타겟**: Node.js 20.x ESM
 - **성능 목표**: 빌드 시간 < 10초
 
-## @TECH:QUALITY-001 품질 게이트 & 정책
+## @DOC:QUALITY-001 품질 게이트 & 정책
 
 ### 테스트 커버리지
 - **목표**: 85% 이상
@@ -444,7 +444,7 @@ pnpm type-check        # TypeScript 타입 검증
 pnpm build             # 빌드 검증
 ```
 
-## @TECH:SECURITY-001 보안 정책 & 운영
+## @DOC:SECURITY-001 보안 정책 & 운영
 
 ### 비밀 관리
 - **정책**: 환경 변수 (.env) 사용, Git 추적 금지
@@ -463,7 +463,7 @@ pnpm build             # 빌드 검증
 }
 ```
 
-## @TECH:DEPLOY-001 배포 채널 & 전략
+## @DOC:DEPLOY-001 배포 채널 & 전략
 
 ### 1. 배포 채널
 - **주 채널**: Docker 컨테이너 → AWS ECS
@@ -488,7 +488,7 @@ pnpm build             # 빌드 검증
 ```markdown
 # My-Python-API Technology Stack
 
-## @TECH:STACK-001 언어 & 런타임
+## @DOC:STACK-001 언어 & 런타임
 
 ### 주 언어 선택
 - **언어**: Python
@@ -499,7 +499,7 @@ pnpm build             # 빌드 검증
   - 풍부한 데이터 처리 라이브러리
 - **패키지 매니저**: Poetry (의존성 잠금, 가상환경 통합)
 
-## @TECH:FRAMEWORK-001 핵심 프레임워크 & 라이브러리
+## @DOC:FRAMEWORK-001 핵심 프레임워크 & 라이브러리
 
 ### 1. 주요 의존성
 
@@ -523,7 +523,7 @@ ruff = "^0.1.0"                 # 린터 + 포매터
 mypy = "^1.8.0"                 # 타입 체커
 ```
 
-## @TECH:QUALITY-001 품질 게이트 & 정책
+## @DOC:QUALITY-001 품질 게이트 & 정책
 
 ### 테스트 커버리지
 - **목표**: 85% 이상

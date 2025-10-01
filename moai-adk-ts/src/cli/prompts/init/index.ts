@@ -7,18 +7,18 @@
 
 import inquirer from 'inquirer';
 import { setLocale, t } from '@/utils/i18n';
-import type { InitAnswers, PartialInitAnswers } from './types';
 import {
-  getLocalePrompt,
-  getProjectNamePrompt,
-  getModePrompt,
+  getAutoPushPrompt,
   getGitConfigPrompt,
   getGitHubEnabledPrompt,
   getGitHubUrlPrompt,
+  getLocalePrompt,
+  getModePrompt,
+  getProjectNamePrompt,
   getSpecWorkflowPrompt,
-  getAutoPushPrompt,
 } from './definitions';
-import { displayStep, displayTip, displaySummary } from './ui-helpers';
+import type { InitAnswers, PartialInitAnswers } from './types';
+import { displayStep, displaySummary, displayTip } from './ui-helpers';
 
 /**
  * Prompt locale selection
@@ -26,9 +26,9 @@ import { displayStep, displayTip, displaySummary } from './ui-helpers';
 export async function promptLocale(): Promise<PartialInitAnswers> {
   displayStep(1, 4, 'Language Selection / 언어 선택');
   const answers = await inquirer.prompt(getLocalePrompt());
-  setLocale(answers.locale);
+  setLocale(answers['locale']);
   displayTip(
-    answers.locale === 'ko'
+    answers['locale'] === 'ko'
       ? '한국어가 선택되었습니다. 이후 모든 메시지가 한국어로 표시됩니다.'
       : 'English selected. All subsequent messages will be in English.'
   );
@@ -48,7 +48,9 @@ export async function promptBasicInfo(
     ? process.cwd().split('/').pop() || 'moai-project'
     : defaultName || 'moai-project';
 
-  const answers = await inquirer.prompt(getProjectNamePrompt(effectiveDefaultName));
+  const answers = await inquirer.prompt(
+    getProjectNamePrompt(effectiveDefaultName)
+  );
 
   displayTip(
     isCurrentDirMode
@@ -66,7 +68,7 @@ export async function promptMode(): Promise<PartialInitAnswers> {
   displayStep(3, 4, t('init.prompts.devMode'));
   const answers = await inquirer.prompt(getModePrompt());
   displayTip(
-    answers.mode === 'personal'
+    answers['mode'] === 'personal'
       ? t('init.prompts.tipPersonal')
       : t('init.prompts.tipTeam')
   );
@@ -80,7 +82,7 @@ export async function promptGitConfig(): Promise<PartialInitAnswers> {
   displayStep(4, 4, t('init.prompts.versionControl'));
   const answers = await inquirer.prompt(getGitConfigPrompt());
   displayTip(
-    answers.gitEnabled
+    answers['gitEnabled']
       ? t('init.prompts.tipGitEnabled')
       : t('init.prompts.tipGitDisabled')
   );
@@ -98,7 +100,7 @@ export async function promptGitHubConfig(
   displayStep(4, 7, t('init.prompts.github'));
   const githubAnswers = await inquirer.prompt(getGitHubEnabledPrompt());
 
-  if (!githubAnswers.githubEnabled) {
+  if (!githubAnswers['githubEnabled']) {
     displayTip(t('init.prompts.tipGithubDisabled'));
     return githubAnswers;
   }
@@ -124,7 +126,7 @@ export async function promptSpecWorkflow(
   displayStep(6, 7, t('init.prompts.specWorkflow'));
   const answers = await inquirer.prompt(getSpecWorkflowPrompt());
   displayTip(
-    answers.specWorkflow === 'branch'
+    answers['specWorkflow'] === 'branch'
       ? t('init.prompts.tipBranch')
       : t('init.prompts.tipCommit')
   );
@@ -142,7 +144,7 @@ export async function promptAutoPush(
   displayStep(7, 7, t('init.prompts.remoteSyn'));
   const answers = await inquirer.prompt(getAutoPushPrompt());
   displayTip(
-    answers.autoPush
+    answers['autoPush']
       ? t('init.prompts.tipAutoPushEnabled')
       : t('init.prompts.tipAutoPushDisabled')
   );
@@ -168,14 +170,14 @@ export async function runInteractivePrompts(
   const push = await promptAutoPush(github.githubEnabled);
 
   const answers: InitAnswers = {
-    locale: locale.locale ?? 'ko',
-    projectName: basic.projectName as string,
-    mode: mode.mode as 'personal' | 'team',
-    gitEnabled: git.gitEnabled as boolean,
-    githubEnabled: github.githubEnabled,
-    githubUrl: github.githubUrl,
-    specWorkflow: workflow.specWorkflow,
-    autoPush: push.autoPush,
+    locale: locale['locale'] ?? 'ko',
+    projectName: basic['projectName'] as string,
+    mode: mode['mode'] as 'personal' | 'team',
+    gitEnabled: git['gitEnabled'] as boolean,
+    githubEnabled: github['githubEnabled'] ?? undefined,
+    githubUrl: github['githubUrl'] ?? undefined,
+    specWorkflow: workflow['specWorkflow'] ?? undefined,
+    autoPush: push['autoPush'] ?? undefined,
   };
 
   displaySummary(answers);
@@ -187,4 +189,9 @@ export const promptProjectSetup = runInteractivePrompts;
 
 // Re-exports
 export type { InitAnswers, PartialInitAnswers } from './types';
-export { displayWelcomeBanner, displaySummary, displayStep, displayTip } from './ui-helpers';
+export {
+  displayStep,
+  displaySummary,
+  displayTip,
+  displayWelcomeBanner,
+} from './ui-helpers';

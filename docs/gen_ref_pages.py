@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""@DOCS:AUTOMATION-001 Generate API reference pages
+"""@DOC:AUTOMATION-001 Generate API reference pages
 
 Automatically generates API documentation from source code using the
 MoAI-ADK API generator module.

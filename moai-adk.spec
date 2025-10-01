@@ -1,12 +1,12 @@
 # -*- mode: python ; coding: utf-8 -*-
-# @TASK:PYINSTALLER-SPEC-001
+# @CODE:PYINSTALLER-SPEC-001
 """
 MoAI-ADK PyInstaller Build Specification
 
 This spec file builds a single executable for Windows distribution.
 Optimized for minimal size and cross-platform compatibility.
 
-@REQ:WINDOWS-EXE-001 → @DESIGN:PYINSTALLER-BUILD-001 → @TASK:EXE-PACKAGING-001 → @TEST:EXE-VALIDATION-001
+@SPEC:WINDOWS-EXE-001 → @SPEC:PYINSTALLER-BUILD-001 → @CODE:EXE-PACKAGING-001 → @TEST:EXE-VALIDATION-001
 """
 
 import os

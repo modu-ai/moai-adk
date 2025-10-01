@@ -804,7 +804,7 @@ interface TagEnforcerInput {
 
 **검증 항목:**
 1. **@IMMUTABLE TAG 불변성**: 기존에 `@IMMUTABLE` 마커가 있는 TAG 블록을 수정하려고 하면 차단
-2. **TAG 형식 검증**: `@TAG:CATEGORY:DOMAIN-ID` 형식 준수
+2. **TAG 형식 검증**: `@DOC:CATEGORY:DOMAIN-ID` 형식 준수
 3. **체인 무결성**: `@CHAIN` 라인의 TAG 참조가 올바른지 확인
 4. **카테고리 유효성**: SPEC, REQ, DESIGN, TASK, TEST, FEATURE, API, FIX 등만 허용
 
@@ -923,8 +923,8 @@ validateCodeFirstTag(content) {
     };
   }
 
-  // 2. 메인 TAG 검증 (@TAG:CATEGORY:DOMAIN-ID)
-  const tagMatch = /@TAG:([A-Z]+):([A-Z0-9-]+)/.exec(tagBlock.content);
+  // 2. 메인 TAG 검증 (@DOC:CATEGORY:DOMAIN-ID)
+  const tagMatch = /@DOC:([A-Z]+):([A-Z0-9-]+)/.exec(tagBlock.content);
   if (!tagMatch) {
     violations.push('@TAG 라인이 발견되지 않았습니다');
   } else {
@@ -972,7 +972,7 @@ validateCodeFirstTag(content) {
 올바른 TAG 블록 작성:
 ```javascript
 /**
- * @TAG:FEATURE:AUTH-001
+ * @DOC:FEATURE:AUTH-001
  * @CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001 -> TASK:AUTH-001 -> TEST:AUTH-001
  * @DEPENDS: NONE
  * @STATUS: active
@@ -1205,7 +1205,7 @@ MoAI-ADK 커스텀 훅을 작성하려면 표준 인터페이스를 준수해야
 **기본 템플릿:**
 ```javascript
 /**
- * @TAG:CUSTOM:HOOK-NAME-001
+ * @DOC:CUSTOM:HOOK-NAME-001
  * @CHAIN: REQ:CUSTOM-001 -> DESIGN:CUSTOM-001 -> TASK:CUSTOM-001 -> TEST:CUSTOM-001
  * @DEPENDS: NONE
  * @STATUS: active
@@ -1734,7 +1734,7 @@ class CustomHook {
 **6. 버전 관리**
 ```javascript
 /**
- * @TAG:CUSTOM:HOOK-001
+ * @DOC:CUSTOM:HOOK-001
  * @VERSION: 1.0.0
  * @CHANGELOG:
  *   - 1.0.0: Initial release
@@ -1904,7 +1904,7 @@ flowchart LR
 
 ```javascript
 /**
- * @TAG:SECURITY:BRANCH-PROTECTION-001
+ * @DOC:SECURITY:BRANCH-PROTECTION-001
  * @CHAIN: REQ:SEC-001 -> DESIGN:SEC-001 -> TASK:SEC-001 -> TEST:SEC-001
  * @DEPENDS: NONE
  * @STATUS: active
@@ -2037,7 +2037,7 @@ module.exports = { BranchProtectionHook, main };
 
 ```javascript
 /**
- * @TAG:SECURITY:SECRET-DETECTION-001
+ * @DOC:SECURITY:SECRET-DETECTION-001
  * @CHAIN: REQ:SEC-002 -> DESIGN:SEC-002 -> TASK:SEC-002 -> TEST:SEC-002
  * @DEPENDS: NONE
  * @STATUS: active
@@ -2176,7 +2176,7 @@ module.exports = { SecretDetectionHook, main };
 
 ```javascript
 /**
- * @TAG:PERF:HOOK-MONITORING-001
+ * @DOC:PERF:HOOK-MONITORING-001
  * @CHAIN: REQ:PERF-001 -> DESIGN:PERF-001 -> TASK:PERF-001 -> TEST:PERF-001
  * @DEPENDS: NONE
  * @STATUS: active
@@ -2342,7 +2342,7 @@ module.exports = { PerformanceMonitoringHook, main };
 
 ```javascript
 /**
- * @TAG:FEATURE:AUTO-BACKUP-001
+ * @DOC:FEATURE:AUTO-BACKUP-001
  * @CHAIN: REQ:BACKUP-001 -> DESIGN:BACKUP-001 -> TASK:BACKUP-001 -> TEST:BACKUP-001
  * @DEPENDS: NONE
  * @STATUS: active
@@ -2518,7 +2518,7 @@ module.exports = { AutoBackupHook, main };
 
 ```javascript
 /**
- * @TAG:QUALITY:CONVENTION-CHECK-001
+ * @DOC:QUALITY:CONVENTION-CHECK-001
  * @CHAIN: REQ:QA-001 -> DESIGN:QA-001 -> TASK:QA-001 -> TEST:QA-001
  * @DEPENDS: NONE
  * @STATUS: active

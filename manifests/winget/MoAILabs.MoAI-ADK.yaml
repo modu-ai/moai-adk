@@ -1,5 +1,5 @@
 # MoAI-ADK winget Package Manifest
-# @TASK:WINGET-MANIFEST-001
+# @CODE:WINGET-MANIFEST-001
 #
 # This manifest enables Windows users to install MoAI-ADK via:
 # winget install MoAILabs.MoAI-ADK

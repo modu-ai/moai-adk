@@ -149,7 +149,7 @@ c4a288e Merge branch 'cleanup/remove-unused-files-phase2' into develop
 - **영향도**: 중간
 
 **5. docs/reference/cli-cheatsheet.md** - CLI 치트시트
-- **문제**: `rg "@REQ:"` 등  검색 예시
+- **문제**: `rg "@SPEC:"` 등  검색 예시
 - **조치**:  패턴 우선 표시, 은 하위 호환성 참고로 표시
 - **예상 시간**: 10분
 - **영향도**: 중간

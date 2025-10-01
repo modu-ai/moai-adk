@@ -5,8 +5,8 @@
  * Session Message Builder
  */
 
-import type { ProjectStatus, GitInfo, VersionCheckResult } from './types';
-import { getGitInfo, checkLatestVersion } from './utils';
+import type { GitInfo, ProjectStatus, VersionCheckResult } from './types';
+import { checkLatestVersion, getGitInfo } from './utils';
 
 /**
  * Build violation warning messages

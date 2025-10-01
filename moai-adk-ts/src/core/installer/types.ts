@@ -14,7 +14,7 @@ export interface InstallationConfig {
   readonly mode: 'personal' | 'team';
   readonly backupEnabled: boolean;
   readonly overwriteExisting: boolean;
-  readonly templatePath?: string;
+  readonly templatePath?: string | undefined;
   readonly additionalFeatures: readonly string[];
 }
 

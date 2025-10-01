@@ -1,13 +1,13 @@
-# @FEATURE:MODERN-MAKEFILE-001 MoAI-ADK Modern Development Makefile
-# @REQ:FAST-TOOLCHAIN-001 → @DESIGN:UV-INTEGRATION-001 → @TASK:MAKEFILE-MODERN-001 → @TEST:PERFORMANCE-001
+# @CODE:MODERN-MAKEFILE-001 MoAI-ADK Modern Development Makefile
+# @SPEC:FAST-TOOLCHAIN-001 → @SPEC:UV-INTEGRATION-001 → @CODE:MAKEFILE-MODERN-001 → @TEST:PERFORMANCE-001
 #
-# @DESIGN:UV-INTEGRATION-001 Ultra-fast development workflow with uv + ruff
-# @TASK:MAKEFILE-MODERN-001 Modern Makefile with performance optimizations
+# @SPEC:UV-INTEGRATION-001 Ultra-fast development workflow with uv + ruff
+# @CODE:MAKEFILE-MODERN-001 Modern Makefile with performance optimizations
 
 .PHONY: help install dev clean lint format typecheck security test coverage quality all-checks
 .DEFAULT_GOAL := help
 
-# @TASK:UV-PATH-001 Ensure uv is in PATH
+# @CODE:UV-PATH-001 Ensure uv is in PATH
 UV := uv
 RUFF := ruff
 MYPY := mypy
@@ -53,7 +53,7 @@ help: ## Show this help message
 	@echo "  pre-commit  Install pre-commit hooks"
 	@echo "  benchmark   Performance benchmark"
 
-# @TASK:INSTALL-001 Package management with uv
+# @CODE:INSTALL-001 Package management with uv
 install: ## Install dependencies with uv (ultra-fast)
 	@echo "$(CYAN)📦 Installing dependencies with uv...$(RESET)"
 	@$(UV) pip install -e .
@@ -67,7 +67,7 @@ sync: ## Sync dependencies and create lock file
 	@echo "$(CYAN)🔄 Syncing dependencies...$(RESET)"
 	@$(UV) pip compile pyproject.toml -o requirements.lock
 
-# @TASK:QUALITY-PARALLEL-001 Quality checks with parallel execution
+# @CODE:QUALITY-PARALLEL-001 Quality checks with parallel execution
 lint: ## Run ruff linting (Rust-powered, super fast)
 	@echo "$(CYAN)🔍 Running ruff linting...$(RESET)"
 	@$(RUFF) check src/moai_adk
@@ -93,7 +93,7 @@ security: ## Run bandit security scan
 	@$(BANDIT) -r src/moai_adk -f json -o security-report.json || true
 	@$(BANDIT) -r src/moai_adk
 
-# @TASK:TESTING-001 Testing with coverage
+# @CODE:TESTING-001 Testing with coverage
 test: ## Run pytest tests
 	@echo "$(CYAN)🧪 Running tests...$(RESET)"
 	@python -m pytest tests/ -v
@@ -111,7 +111,7 @@ test-watch: ## Run tests in watch mode (requires pytest-watch)
 	@echo "$(CYAN)👁️  Running tests in watch mode...$(RESET)"
 	@python -m pytest tests/ --watch
 
-# @TASK:COMBINED-OPERATIONS-001 Parallel quality checks
+# @CODE:COMBINED-OPERATIONS-001 Parallel quality checks
 quality: ## Run all quality checks in parallel
 	@echo "$(CYAN)🚀 Running quality checks in parallel...$(RESET)"
 	@$(MAKE) -j4 lint format-check typecheck security
@@ -128,7 +128,7 @@ ci: ## Full CI pipeline simulation
 	@$(MAKE) all-checks
 	@echo "$(GREEN)✅ CI pipeline completed successfully!$(RESET)"
 
-# @TASK:MAINTENANCE-001 Maintenance tasks
+# @CODE:MAINTENANCE-001 Maintenance tasks
 clean: ## Clean build artifacts and caches
 	@echo "$(CYAN)🧹 Cleaning build artifacts...$(RESET)"
 	@rm -rf build/ dist/ *.egg-info/
@@ -156,7 +156,7 @@ benchmark: ## Performance benchmark comparison
 	@echo ""
 	@time $(RUFF) format src/moai_adk --check
 
-# @TASK:BUILD-001 Build and distribution
+# @CODE:BUILD-001 Build and distribution
 build: ## Build distribution packages
 	@echo "$(CYAN)📦 Building packages...$(RESET)"
 	@$(UV) build
@@ -168,7 +168,7 @@ release: ## Prepare for release
 	@$(MAKE) build
 	@echo "$(GREEN)🎉 Release ready!$(RESET)"
 
-# @TASK:INFO-001 Project information
+# @CODE:INFO-001 Project information
 info: ## Show project and tool information
 	@echo "$(CYAN)🗿 MoAI-ADK Project Information$(RESET)"
 	@echo "$(CYAN)==============================$(RESET)"

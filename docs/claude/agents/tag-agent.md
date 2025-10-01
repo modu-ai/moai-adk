@@ -503,7 +503,7 @@ rg '@\w+:AUTH-(\d+)' -o | sort -t'-' -k2 -n | tail -1
 
 #### 검증 항목
 
-1. **TAG 형식**: `@TAG:<DOMAIN>-<3자리>`
+1. **TAG 형식**: `@DOC:<DOMAIN>-<3자리>`
 2. **TAG 체인**: @SPEC → @TEST → @CODE → @DOC 순서
 3. **Chain 연결**: 동일 TAG ID로 체인 형성
 4. **고아 TAG**: 단일 참조 TAG 없음
@@ -556,9 +556,9 @@ TAG_IDS=$(rg '@\w+:([\w-]+)' -o --no-filename | sed 's/@[A-Z]*://' | sort -u)
 
 # 2. 각 TAG ID에 대해 TAG 체인 검증
 for ID in $TAG_IDS; do
-    REQ=$(rg "@REQ:$ID" -c)
-    DESIGN=$(rg "@DESIGN:$ID" -c)
-    TASK=$(rg "@TASK:$ID" -c)
+    REQ=$(rg "@SPEC:$ID" -c)
+    DESIGN=$(rg "@SPEC:$ID" -c)
+    TASK=$(rg "@CODE:$ID" -c)
     TEST=$(rg "@TEST:$ID" -c)
 
     # 체인 중 하나라도 0이면 끊어진 링크
@@ -733,16 +733,16 @@ PAYMENT-005 TAG가 코드에만 존재하고 SPEC 없음
 
 | 언어 | TAG 주석 형식 | 예시 |
 |------|--------------|------|
-| **TypeScript** | `// @TAG:ID` | `// @CODE:AUTH-001` |
-| **Python** | `# @TAG:ID` | `# @CODE:AUTH-001` |
-| **Java** | `// @TAG:ID` | `// @CODE:AUTH-001` |
-| **Go** | `// @TAG:ID` | `// @CODE:AUTH-001` |
-| **Rust** | `// @TAG:ID` | `// @CODE:AUTH-001` |
-| **C++** | `// @TAG:ID` | `// @CODE:AUTH-001` |
-| **C#** | `// @TAG:ID` | `// @CODE:AUTH-001` |
-| **Ruby** | `# @TAG:ID` | `# @CODE:AUTH-001` |
-| **PHP** | `// @TAG:ID` | `// @CODE:AUTH-001` |
-| **Swift** | `// @TAG:ID` | `// @CODE:AUTH-001` |
+| **TypeScript** | `// @DOC:ID` | `// @CODE:AUTH-001` |
+| **Python** | `# @DOC:ID` | `# @CODE:AUTH-001` |
+| **Java** | `// @DOC:ID` | `// @CODE:AUTH-001` |
+| **Go** | `// @DOC:ID` | `// @CODE:AUTH-001` |
+| **Rust** | `// @DOC:ID` | `// @CODE:AUTH-001` |
+| **C++** | `// @DOC:ID` | `// @CODE:AUTH-001` |
+| **C#** | `// @DOC:ID` | `// @CODE:AUTH-001` |
+| **Ruby** | `# @DOC:ID` | `# @CODE:AUTH-001` |
+| **PHP** | `// @DOC:ID` | `// @CODE:AUTH-001` |
+| **Swift** | `// @DOC:ID` | `// @CODE:AUTH-001` |
 
 ### 다중 언어 스캔
 

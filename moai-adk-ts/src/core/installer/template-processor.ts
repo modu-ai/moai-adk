@@ -31,7 +31,7 @@ export class TemplateProcessor {
    * 3. os.homedir() (fallback)
    */
   private getHomeDirectory(): string {
-    return process.env.HOME || process.env.USERPROFILE || os.homedir();
+    return process.env['HOME'] || process.env['USERPROFILE'] || os.homedir();
   }
 
   /**

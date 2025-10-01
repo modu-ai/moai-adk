@@ -18,7 +18,7 @@ describe('@TEST:REFACTOR-003: TAG Validator', () => {
   describe('extractTagBlock', () => {
     test('should extract valid TAG block from top of file', () => {
       const content = `/**
- * @TAG:FEATURE:AUTH-001
+ * @DOC:FEATURE:AUTH-001
  * @CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001
  * @IMMUTABLE
  */
@@ -28,7 +28,7 @@ export class AuthService {}`;
       const result = validator.extractTagBlock(content);
 
       expect(result).not.toBeNull();
-      expect(result?.content).toContain('@TAG:FEATURE:AUTH-001');
+      expect(result?.content).toContain('@DOC:FEATURE:AUTH-001');
       expect(result?.content).toContain('@IMMUTABLE');
       expect(result?.lineNumber).toBe(1);
     });
@@ -58,7 +58,7 @@ export class Service {}`;
       const content = `#!/usr/bin/env node
 
 /**
- * @TAG:FEATURE:CLI-001
+ * @DOC:FEATURE:CLI-001
  */
 
 import * as fs from 'fs';`;
@@ -66,14 +66,14 @@ import * as fs from 'fs';`;
       const result = validator.extractTagBlock(content);
 
       expect(result).not.toBeNull();
-      expect(result?.content).toContain('@TAG:FEATURE:CLI-001');
+      expect(result?.content).toContain('@DOC:FEATURE:CLI-001');
     });
   });
 
   describe('extractMainTag', () => {
     test('should extract TAG from block content', () => {
       const blockContent = `/**
- * @TAG:CODE:AUTH-001
+ * @DOC:CODE:AUTH-001
  * @IMMUTABLE
  */`;
 
@@ -96,7 +96,7 @@ import * as fs from 'fs';`;
   describe('normalizeTagBlock', () => {
     test('should normalize TAG block content', () => {
       const blockContent = `/**
- * @TAG:FEATURE:AUTH-001
+ * @DOC:FEATURE:AUTH-001
  *
  * @IMMUTABLE
  */`;
@@ -111,7 +111,7 @@ import * as fs from 'fs';`;
   describe('validateCodeFirstTag', () => {
     test('should validate valid TAG block', () => {
       const content = `/**
- * @TAG:FEATURE:AUTH-001
+ * @DOC:FEATURE:AUTH-001
  * @CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001
  * @STATUS: active
  * @CREATED: 2025-01-15
@@ -129,7 +129,7 @@ export class AuthService {}`;
 
     test('should return warnings for missing @IMMUTABLE', () => {
       const content = `/**
- * @TAG:FEATURE:AUTH-001
+ * @DOC:FEATURE:AUTH-001
  */
 
 export class AuthService {}`;
@@ -142,7 +142,7 @@ export class AuthService {}`;
 
     test('should reject invalid TAG category', () => {
       const content = `/**
- * @TAG:INVALID:AUTH-001
+ * @DOC:INVALID:AUTH-001
  */
 
 export class AuthService {}`;
@@ -165,7 +165,7 @@ export class AuthService {}`;
 
     test('should warn about domain ID format', () => {
       const content = `/**
- * @TAG:FEATURE:AUTH_001
+ * @DOC:FEATURE:AUTH_001
  */
 
 export class AuthService {}`;
@@ -177,7 +177,7 @@ export class AuthService {}`;
 
     test('should validate chain references', () => {
       const content = `/**
- * @TAG:FEATURE:AUTH-001
+ * @DOC:FEATURE:AUTH-001
  * @CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001 -> TASK:AUTH-001
  */
 
@@ -190,7 +190,7 @@ export class AuthService {}`;
 
     test('should validate status values', () => {
       const content = `/**
- * @TAG:FEATURE:AUTH-001
+ * @DOC:FEATURE:AUTH-001
  * @STATUS: active
  */
 
@@ -204,7 +204,7 @@ export class AuthService {}`;
 
     test('should warn about unknown status', () => {
       const content = `/**
- * @TAG:FEATURE:AUTH-001
+ * @DOC:FEATURE:AUTH-001
  * @STATUS: unknown
  */
 

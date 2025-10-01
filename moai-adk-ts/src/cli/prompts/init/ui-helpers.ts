@@ -26,7 +26,11 @@ export function displayWelcomeBanner(): void {
  * @param total Total steps
  * @param question Question text
  */
-export function displayStep(current: number, total: number, question: string): void {
+export function displayStep(
+  current: number,
+  total: number,
+  question: string
+): void {
   const progress = `[${current}/${total}]`;
   console.log('\n');
   console.log(chalk.blue.bold(`❓ Question ${progress}`));

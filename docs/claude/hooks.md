@@ -608,8 +608,8 @@ export async function onBeforeWrite(file) {
       `TAG BLOCK is required in source files.\n` +
       `File: ${file.path}\n\n` +
       `Add a TAG BLOCK at the top of the file:\n` +
-      `// @FEATURE:<DOMAIN-ID> | Chain: @REQ → @DESIGN → @TASK → @TEST\n` +
-      `// Related: @API:<ID>, @UI:<ID>, @DATA:<ID>`
+      `// @CODE:<DOMAIN-ID> | Chain: @REQ → @DESIGN → @TASK → @TEST\n` +
+      `// Related: @CODE:<ID>, @CODE:<ID>, @CODE:<ID>`
     );
   }
 
@@ -674,7 +674,7 @@ export class AuthService {
 // ❌ Bad: 잘못된 형식 (에러)
 @REQ-AUTH-001      // 잘못된 구분자
 @AUTH-001          // 카테고리 누락
-@REQ:AUTH001       // 하이픈 누락
+@SPEC:AUTH001       // 하이픈 누락
 ```
 
 #### TAG 체인 완결성

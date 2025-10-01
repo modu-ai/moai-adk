@@ -42,7 +42,7 @@ MoAI-ADK는 SPEC-First TDD 개발을 위한 **4개 슬래시 명령어**를 제�
 ```markdown
 # my-project Product Definition
 
-## @VISION:MISSION-001 핵심 미션
+## @DOC:MISSION-001 핵심 미션
 [프로젝트의 목표와 가치]
 
 ## @SPEC:USER-001 주요 사용자층
@@ -62,7 +62,7 @@ MoAI-ADK는 SPEC-First TDD 개발을 위한 **4개 슬래시 명령어**를 제�
 ```markdown
 # my-project Structure Design
 
-## @STRUCT:ARCHITECTURE-001 시스템 아키텍처
+## @DOC:ARCHITECTURE-001 시스템 아키텍처
 ```
 Project Architecture
 ├── Frontend Layer    # 사용자 인터페이스
@@ -71,7 +71,7 @@ Project Architecture
 └── External APIs    # 외부 통합
 ```
 
-## @STRUCT:MODULES-001 모듈별 책임 구분
+## @DOC:MODULES-001 모듈별 책임 구분
 [각 모듈의 역할과 인터페이스]
 ```
 
@@ -80,12 +80,12 @@ Project Architecture
 ```markdown
 # my-project Technology Stack
 
-## @TECH:STACK-001 언어 & 런타임
+## @DOC:STACK-001 언어 & 런타임
 - **주 언어**: TypeScript 5.9.2+
 - **런타임**: Node.js 18+
 - **패키지 매니저**: Bun 1.2.19
 
-## @TECH:FRAMEWORK-001 핵심 프레임워크
+## @DOC:FRAMEWORK-001 핵심 프레임워크
 - **웹 프레임워크**: Express.js
 - **테스트**: Vitest
 - **린터**: Biome
@@ -412,7 +412,7 @@ PASS  __tests__/auth/service.test.ts
 
 ```typescript
 // @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 →  → @CODE:AUTH-001 → @TEST:AUTH-001
-// Related: @CODE:AUTH-001:INFRA, @PERF:AUTH-001
+// Related: @CODE:AUTH-001:INFRA, @CODE:AUTH-001
 
 export class AuthService {
   constructor(

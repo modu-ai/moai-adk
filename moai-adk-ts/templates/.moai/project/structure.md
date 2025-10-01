@@ -1,6 +1,6 @@
 # {{PROJECT_NAME}} Structure Design
 
-## @STRUCT:ARCHITECTURE-001 시스템 아키텍처
+## @DOC:ARCHITECTURE-001 시스템 아키텍처
 
 ### 아키텍처 전략
 
@@ -16,7 +16,7 @@ Project Architecture
 
 **선택 이유**: [아키텍처 선택의 근거와 트레이드오프]
 
-## @STRUCT:MODULES-001 모듈별 책임 구분
+## @DOC:MODULES-001 모듈별 책임 구분
 
 ### 1. [주요 모듈 1]
 
@@ -37,7 +37,7 @@ Project Architecture
 - **처리**: [수행하는 주요 처리 과정]
 - **출력**: [생성하는 결과물]
 
-## @STRUCT:INTEGRATION-001 외부 시스템 통합
+## @DOC:INTEGRATION-001 외부 시스템 통합
 
 ### [외부 시스템 1] 연동
 
@@ -52,7 +52,7 @@ Project Architecture
 - **의존성 수준**: [의존도와 대안]
 - **성능 요구사항**: [응답 시간, 처리량 등]
 
-## @STRUCT:TRACEABILITY-001 추적성 전략
+## @DOC:TRACEABILITY-001 추적성 전략
 
 ### 4-Core @TAG 체계 적용 (v5.0)
 

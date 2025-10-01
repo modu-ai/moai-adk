@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @SEC:POLICY-BLOCK-011
+# @CODE:POLICY-BLOCK-011
 """Policy guard for Bash commands in MoAI-ADK."""
 
 from __future__ import annotations

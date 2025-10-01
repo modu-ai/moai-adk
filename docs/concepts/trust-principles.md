@@ -769,7 +769,7 @@ rg "@TEST:AUTH-001" -n tests/
 rg "@SPEC:AUTH-001||@CODE:AUTH-001|@TEST:AUTH-001" -n .
 
 # 고아 TAG 감지
-rg "@TAG:[A-Z]+-\d+" -n . | @agent-tag-agent "고아 TAG 감지"
+rg "@DOC:[A-Z]+-\d+" -n . | @agent-tag-agent "고아 TAG 감지"
 ```
 
 ### TAG 검증 리포트

@@ -69,7 +69,7 @@
 - `@SPEC:*` - 설계 ( legacy)
 - `@CODE:*` - 작업 ( legacy)
 - `@CODE:*` - 기능 ( legacy)
-- `@API:*` - API ( legacy)
+- `@CODE:*` - API ( legacy)
 - 기타: @UI, @DATA, @PERF, @SEC, @DOCS, @OPS
 
 **주요 위치**:

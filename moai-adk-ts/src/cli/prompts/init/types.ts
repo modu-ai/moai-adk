@@ -11,14 +11,14 @@ import type { Locale } from '@/utils/i18n';
  * User answers from interactive prompts
  */
 export interface InitAnswers {
-  locale?: Locale;
+  locale?: Locale | undefined;
   projectName: string;
   mode: 'personal' | 'team';
   gitEnabled: boolean;
-  githubEnabled?: boolean;
-  githubUrl?: string;
-  specWorkflow?: 'commit' | 'branch';
-  autoPush?: boolean;
+  githubEnabled?: boolean | undefined;
+  githubUrl?: string | undefined;
+  specWorkflow?: 'commit' | 'branch' | undefined;
+  autoPush?: boolean | undefined;
 }
 
 /**

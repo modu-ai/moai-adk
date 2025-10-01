@@ -8,16 +8,15 @@
 
 import * as path from 'node:path';
 import { TemplateProcessor } from '@/core/installer/template-processor';
+import type { InstallationConfig } from '@/core/installer/types';
 
 describe('TemplateProcessor - Cross-Platform Path Resolution', () => {
   let processor: TemplateProcessor;
   let originalEnv: NodeJS.ProcessEnv;
-  let _originalPlatform: string;
 
   beforeEach(() => {
     processor = new TemplateProcessor();
     originalEnv = { ...process.env };
-    _originalPlatform = process.platform;
   });
 
   afterEach(() => {
@@ -193,12 +192,13 @@ describe('TemplateProcessor - Cross-Platform Path Resolution', () => {
      * Test: Template variables are created correctly
      */
     it('should create template variables with correct structure', () => {
-      const config = {
+      const config: InstallationConfig = {
         projectPath: '/test/project',
         projectName: 'test-project',
-        mode: 'development' as const,
-        language: 'typescript' as const,
-        forceOverwrite: false,
+        mode: 'personal',
+        backupEnabled: false,
+        overwriteExisting: false,
+        additionalFeatures: [],
       };
 
       const variables = processor.createTemplateVariables(config);

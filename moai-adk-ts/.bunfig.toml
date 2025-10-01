@@ -1,6 +1,6 @@
 # Bun Configuration for MoAI-ADK TypeScript
 # High-performance package manager and runtime configuration
-# @PERF:BUN-CONFIG-001 성능 최적화 설정
+# @CODE:BUN-CONFIG-001 성능 최적화 설정
 
 [install]
 # 패키지 설치 최적화

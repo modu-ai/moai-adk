@@ -1,12 +1,15 @@
 /**
  * @CODE:HOOK-001 |
- * Related: @CODE:HOOK-001:API, @SECURITY:POLICY-001
+ * Related: @CODE:HOOK-001:API, @CODE:POLICY-001
  *
  * Policy Blocking Hook - Steering Guard
  * 위험한 프롬프트 차단 및 헌법/지침 무시 방지
  */
 
 import type { HookInput, HookResult, MoAIHook } from '../types';
+
+// Re-export types for test compatibility
+export type { HookInput, HookResult } from '../types';
 
 /**
  * Dangerous commands that should always be blocked

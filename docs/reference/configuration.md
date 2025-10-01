@@ -34,7 +34,7 @@ MoAI-ADK는 `.moai/config.json`과 `.claude/settings.json` 두 개의 주요 설
 ```json
 {
   "_meta": {
-    "@CODE:CONFIG-001:DATA": "@TECH:JSON-CONFIG-001",
+    "@CODE:CONFIG-001:DATA": "@DOC:JSON-CONFIG-001",
     "@SPEC:PROJECT-CONFIG-001": "@SPEC:MOAI-CONFIG-001"
   },
   "constitution": {
@@ -115,7 +115,7 @@ MoAI-ADK는 `.moai/config.json`과 `.claude/settings.json` 두 개의 주요 설
 ```json
 {
   "_meta": {
-    "@CODE:CONFIG-STRUCTURE-001": "@TECH:JSON-CONFIG-001",
+    "@CODE:CONFIG-STRUCTURE-001": "@DOC:JSON-CONFIG-001",
     "@SPEC:PROJECT-CONFIG-001": "@SPEC:MOAI-CONFIG-001"
   }
 }

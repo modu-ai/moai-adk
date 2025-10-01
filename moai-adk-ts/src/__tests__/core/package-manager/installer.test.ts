@@ -13,7 +13,7 @@ import {
   vi,
 } from 'vitest';
 import '@/__tests__/setup';
-import { execa } from 'execa';
+import { type ExecaReturnValue, execa } from 'execa';
 import { CommandBuilder } from '@/core/package-manager/command-builder';
 import { PackageManagerInstaller } from '@/core/package-manager/installer';
 import {
@@ -48,7 +48,13 @@ describe('PackageManagerInstaller', () => {
         stdout: 'added 2 packages',
         stderr: '',
         exitCode: 0,
-      } as any);
+        command: '',
+        escapedCommand: '',
+        failed: false,
+        timedOut: false,
+        isCanceled: false,
+        killed: false,
+      } as Partial<ExecaReturnValue> as ExecaReturnValue);
 
       // Act
       const result = await installer.installPackages(packages, options);
@@ -78,7 +84,13 @@ describe('PackageManagerInstaller', () => {
         stdout: 'success Saved lockfile.',
         stderr: '',
         exitCode: 0,
-      } as any);
+        command: '',
+        escapedCommand: '',
+        failed: false,
+        timedOut: false,
+        isCanceled: false,
+        killed: false,
+      } as Partial<ExecaReturnValue> as ExecaReturnValue);
 
       // Act
       const result = await installer.installPackages(packages, options);
@@ -106,7 +118,13 @@ describe('PackageManagerInstaller', () => {
         stdout: 'Packages: +2',
         stderr: '',
         exitCode: 0,
-      } as any);
+        command: '',
+        escapedCommand: '',
+        failed: false,
+        timedOut: false,
+        isCanceled: false,
+        killed: false,
+      } as Partial<ExecaReturnValue> as ExecaReturnValue);
 
       // Act
       const result = await installer.installPackages(packages, options);
@@ -149,7 +167,13 @@ describe('PackageManagerInstaller', () => {
         stdout: 'success Saved package.json',
         stderr: '',
         exitCode: 0,
-      } as any);
+        command: '',
+        escapedCommand: '',
+        failed: false,
+        timedOut: false,
+        isCanceled: false,
+        killed: false,
+      } as Partial<ExecaReturnValue> as ExecaReturnValue);
 
       // Act
       const result = await installer.initializeProject(

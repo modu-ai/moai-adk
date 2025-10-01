@@ -16,11 +16,11 @@ describe('@TEST:REFACTOR-003: TAG Types', () => {
   describe('TagBlock', () => {
     test('should accept valid TagBlock structure', () => {
       const tagBlock: TagBlock = {
-        content: '/** @TAG:FEATURE:AUTH-001 */',
+        content: '/** @DOC:FEATURE:AUTH-001 */',
         lineNumber: 1
       };
 
-      expect(tagBlock.content).toBe('/** @TAG:FEATURE:AUTH-001 */');
+      expect(tagBlock.content).toBe('/** @DOC:FEATURE:AUTH-001 */');
       expect(tagBlock.lineNumber).toBe(1);
     });
   });
@@ -39,12 +39,12 @@ describe('@TEST:REFACTOR-003: TAG Types', () => {
     test('should accept violated check with details', () => {
       const check: ImmutabilityCheck = {
         violated: true,
-        modifiedTag: '@TAG:FEATURE:AUTH-001',
+        modifiedTag: '@DOC:FEATURE:AUTH-001',
         violationDetails: '@IMMUTABLE TAG 블록이 수정되었습니다'
       };
 
       expect(check.violated).toBe(true);
-      expect(check.modifiedTag).toBe('@TAG:FEATURE:AUTH-001');
+      expect(check.modifiedTag).toBe('@DOC:FEATURE:AUTH-001');
       expect(check.violationDetails).toBe('@IMMUTABLE TAG 블록이 수정되었습니다');
     });
   });

@@ -37,8 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ##### 4. TAG BLOCK 템플릿 단순화
 ```typescript
 //  (156 characters)
-// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-// Related: @API:AUTH-001, @DATA:AUTH-001
+// @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 -> @SPEC:AUTH-001 -> @CODE:AUTH-001 -> @TEST:AUTH-001
+// Related: @CODE:AUTH-001, @CODE:AUTH-001
 
 //  (78 characters, 50% reduction)
 // @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth/service.test.ts
@@ -60,14 +60,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ##### TAG 매핑 규칙
 |  (구 TAG 체계) |  (필수 TAG) | 위치 |
 |---------------|---------------|------|
-| `@REQ:ID` | `@SPEC:ID` | .moai/specs/ |
-| `@DESIGN:ID` | `@SPEC:ID` | .moai/specs/ |
-| `@TASK:ID` | `@CODE:ID` | src/ |
+| `@SPEC:ID` | `@SPEC:ID` | .moai/specs/ |
+| `@SPEC:ID` | `@SPEC:ID` | .moai/specs/ |
+| `@CODE:ID` | `@CODE:ID` | src/ |
 | `@TEST:ID` | `@TEST:ID` | tests/ |
-| `@FEATURE:ID` | `@CODE:ID` | src/ |
-| `@API:ID` | `@CODE:ID:API` | src/ (주석) |
-| `@UI:ID` | `@CODE:ID:UI` | src/ (주석) |
-| `@DATA:ID` | `@CODE:ID:DATA` | src/ (주석) |
+| `@CODE:ID` | `@CODE:ID` | src/ |
+| `@CODE:ID` | `@CODE:ID:API` | src/ (주석) |
+| `@CODE:ID` | `@CODE:ID:UI` | src/ (주석) |
+| `@CODE:ID` | `@CODE:ID:DATA` | src/ (주석) |
 
 ##### 자동 마이그레이션
 ```bash

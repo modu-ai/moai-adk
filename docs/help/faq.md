@@ -305,8 +305,8 @@ rg "@SPEC:AUTH-001" -n
 rg "AUTH-001" -n                # 모든 관련 TAG
 
 # TAG 타입별
-rg "@REQ:" -n                   # 모든 요구사항
-rg "@TASK:" -n                  # 모든 구현
+rg "@SPEC:" -n                   # 모든 요구사항
+rg "@CODE:" -n                  # 모든 구현
 rg "@TEST:" -n                  # 모든 테스트
 ```
 
@@ -506,7 +506,7 @@ Git 브랜치 생성과 머지는 프로젝트 구조에 영향을 주는 중요
 
 ## 예시
 ```typescript
-// @PERF:OPTIMIZE-001: 성능 최적화 대상
+// @CODE:OPTIMIZE-001: 성능 최적화 대상
 function slowFunction() {
   // 느린 코드
 }

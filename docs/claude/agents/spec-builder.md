@@ -189,7 +189,7 @@ SPEC 문서에 TAG BLOCK을 포함하여 작성합니다:
    - 난이도: 높음
 
 3. [중간] 알림 시스템
-   - 출처: structure.md @STRUCT:INTEGRATION-001
+   - 출처: structure.md @DOC:INTEGRATION-001
    - 가치: 사용자 참여 향상
    - 난이도: 낮음
 

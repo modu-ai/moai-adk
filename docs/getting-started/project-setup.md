@@ -289,7 +289,7 @@ SPEC-First TDD 개발 가이드 (TRUST 5원칙 포함):
 ```markdown
 # my-project Product Definition
 
-## @VISION:MISSION-001 핵심 미션
+## @DOC:MISSION-001 핵심 미션
 [프로젝트 미션과 목표]
 
 ## @SPEC:USER-001 주요 사용자층

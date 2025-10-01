@@ -18,10 +18,7 @@ import { InputValidator } from '@/utils/input-validator';
 import { validateProjectPath } from '@/utils/path-validator';
 import { logger } from '../../utils/winston-logger.js';
 import { buildMoAIConfig } from '../config/config-builder';
-import {
-  displayWelcomeBanner,
-  promptProjectSetup,
-} from '../prompts/init';
+import { displayWelcomeBanner, promptProjectSetup } from '../prompts/init';
 import { DoctorCommand } from './doctor';
 
 /**

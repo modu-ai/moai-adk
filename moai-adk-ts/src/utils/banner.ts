@@ -18,8 +18,8 @@ import { logger } from './/winston-logger.js';
 function supportsColor(): boolean {
   return (
     process.stdout.isTTY &&
-    process.env.TERM !== 'dumb' &&
-    process.env.NO_COLOR === undefined
+    process.env['TERM'] !== 'dumb' &&
+    process.env['NO_COLOR'] === undefined
   );
 }
 

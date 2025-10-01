@@ -1,6 +1,6 @@
 # {{PROJECT_NAME}} Product Definition
 
-## @VISION:MISSION-001 핵심 미션
+## @DOC:MISSION-001 핵심 미션
 
 **[프로젝트의 핵심 미션과 목표를 정의하세요]**
 
@@ -32,7 +32,7 @@
 ### 현재 실패 사례들
 - [기존 솔루션의 한계나 실패 사례들]
 
-## @VISION:STRATEGY-001 차별점 및 강점
+## @DOC:STRATEGY-001 차별점 및 강점
 
 ### 경쟁 솔루션 대비 강점
 1. [주요 차별점 1]

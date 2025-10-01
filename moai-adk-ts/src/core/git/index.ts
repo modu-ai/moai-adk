@@ -7,7 +7,7 @@
  *
  * @CODE:GIT-EXPORTS-001 Git 모듈 export 관리
  * @SPEC:MODULE-STRUCTURE-001 모듈 구조 설계
- * @STRUCT:GIT-API-001 Git API 구조 정의
+ * @DOC:GIT-API-001 Git API 구조 정의
  *
  * @fileoverview Export all Git-related modules
  */

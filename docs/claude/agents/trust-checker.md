@@ -546,7 +546,7 @@ graph TB
 rg '@(REQ|DESIGN|TASK|TEST|FEATURE|API|UI|DATA):[\w-]+' -n
 
 # TAG 체인 검증
-rg '@REQ:[\w-]+.*@DESIGN:[\w-]+.*@TASK:[\w-]+.*@TEST:[\w-]+' -n
+rg '@SPEC:[\w-]+.*@SPEC:[\w-]+.*@CODE:[\w-]+.*@TEST:[\w-]+' -n
 
 # 고아 TAG 검사
 rg '@\w+:[\w-]+' -n --no-heading | awk '{print $NF}' | sort | uniq -c | awk '$1 == 1'

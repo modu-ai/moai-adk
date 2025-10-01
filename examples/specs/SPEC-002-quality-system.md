@@ -4,7 +4,7 @@
 
 ### 배경
 
-MoAI-ADK는 Spec-First TDD 개발을 Claude Code 환경에서 지원하는 핵심 목적을 가지고 있습니다. 현재 @DEBT:TEST-COVERAGE-001에서 "현재 커버리지 상태 불명" 문제와 TRUST 5원칙 중 "Test First" 원칙의 완전한 구현이 필요한 상황입니다.
+MoAI-ADK는 Spec-First TDD 개발을 Claude Code 환경에서 지원하는 핵심 목적을 가지고 있습니다. 현재 @CODE:TEST-COVERAGE-001에서 "현재 커버리지 상태 불명" 문제와 TRUST 5원칙 중 "Test First" 원칙의 완전한 구현이 필요한 상황입니다.
 
 ### 문제 정의
 

@@ -7,16 +7,16 @@
  */
 
 export class ValidationError extends Error {
-  public readonly pattern?: string;
-  public readonly vulnerabilities?: string[];
-  public readonly context?: Record<string, unknown>;
+  public readonly pattern?: string | undefined;
+  public readonly vulnerabilities?: string[] | undefined;
+  public readonly context?: Record<string, unknown> | undefined;
 
   constructor(
     message: string,
     options?: {
-      pattern?: string;
-      vulnerabilities?: string[];
-      context?: Record<string, unknown>;
+      pattern?: string | undefined;
+      vulnerabilities?: string[] | undefined;
+      context?: Record<string, unknown> | undefined;
     }
   ) {
     super(message);
@@ -29,20 +29,20 @@ export class ValidationError extends Error {
 }
 
 export class InstallationError extends Error {
-  public readonly error?: Error;
-  public readonly errorMessage?: string;
-  public readonly projectPath?: string;
-  public readonly phase?: string;
-  public readonly context?: Record<string, unknown>;
+  public readonly error?: Error | undefined;
+  public readonly errorMessage?: string | undefined;
+  public readonly projectPath?: string | undefined;
+  public readonly phase?: string | undefined;
+  public readonly context?: Record<string, unknown> | undefined;
 
   constructor(
     message: string,
     options?: {
-      error?: Error;
-      errorMessage?: string;
-      projectPath?: string;
-      phase?: string;
-      context?: Record<string, unknown>;
+      error?: Error | undefined;
+      errorMessage?: string | undefined;
+      projectPath?: string | undefined;
+      phase?: string | undefined;
+      context?: Record<string, unknown> | undefined;
     }
   ) {
     super(message);
@@ -57,16 +57,16 @@ export class InstallationError extends Error {
 }
 
 export class TemplateError extends Error {
-  public readonly error?: Error;
-  public readonly templatePath?: string;
-  public readonly context?: Record<string, unknown>;
+  public readonly error?: Error | undefined;
+  public readonly templatePath?: string | undefined;
+  public readonly context?: Record<string, unknown> | undefined;
 
   constructor(
     message: string,
     options?: {
-      error?: Error;
-      templatePath?: string;
-      context?: Record<string, unknown>;
+      error?: Error | undefined;
+      templatePath?: string | undefined;
+      context?: Record<string, unknown> | undefined;
     }
   ) {
     super(message);
@@ -79,16 +79,16 @@ export class TemplateError extends Error {
 }
 
 export class ResourceError extends Error {
-  public readonly error?: Error;
-  public readonly resourcePath?: string;
-  public readonly context?: Record<string, unknown>;
+  public readonly error?: Error | undefined;
+  public readonly resourcePath?: string | undefined;
+  public readonly context?: Record<string, unknown> | undefined;
 
   constructor(
     message: string,
     options?: {
-      error?: Error;
-      resourcePath?: string;
-      context?: Record<string, unknown>;
+      error?: Error | undefined;
+      resourcePath?: string | undefined;
+      context?: Record<string, unknown> | undefined;
     }
   ) {
     super(message);
@@ -101,16 +101,16 @@ export class ResourceError extends Error {
 }
 
 export class PhaseError extends Error {
-  public readonly error?: Error;
-  public readonly phase?: string;
-  public readonly context?: Record<string, unknown>;
+  public readonly error?: Error | undefined;
+  public readonly phase?: string | undefined;
+  public readonly context?: Record<string, unknown> | undefined;
 
   constructor(
     message: string,
     options?: {
-      error?: Error;
-      phase?: string;
-      context?: Record<string, unknown>;
+      error?: Error | undefined;
+      phase?: string | undefined;
+      context?: Record<string, unknown> | undefined;
     }
   ) {
     super(message);

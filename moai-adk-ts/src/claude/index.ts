@@ -18,7 +18,7 @@ export async function parseClaudeInput(): Promise<HookInput> {
 
     process.stdin.setEncoding('utf8');
 
-    process.stdin.on('data', (chunk) => {
+    process.stdin.on('data', chunk => {
       data += chunk;
     });
 
@@ -44,7 +44,7 @@ export async function parseClaudeInput(): Promise<HookInput> {
       }
     });
 
-    process.stdin.on('error', (error) => {
+    process.stdin.on('error', error => {
       reject(new Error(`Failed to read stdin: ${error.message}`));
     });
   });

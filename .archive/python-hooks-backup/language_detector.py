@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @FEATURE:LANGUAGE-DETECT-011
+# @CODE:LANGUAGE-DETECT-011
 """
 MoAI-ADK Language Detector Hook
 

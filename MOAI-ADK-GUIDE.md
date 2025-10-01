@@ -283,7 +283,7 @@ export default defineConfig({
 
 **핵심 기능**:
 - `@IMMUTABLE` 마커가 있는 TAG 블록 수정 차단
-- `@TAG:CATEGORY:DOMAIN-ID` 형식 강제
+- `@DOC:CATEGORY:DOMAIN-ID` 형식 강제
 - TAG 체인 검증: REQ → DESIGN → TASK → TEST
 - @TAG 카테고리 준수: Lifecycle (REQ, DESIGN, TASK, TEST, SPEC) + 구현 (FEATURE, API, FIX)
 
@@ -626,12 +626,12 @@ tsx .moai/scripts/test-analyzer.ts --coverage
 
 | 체계 | 설명 | 예시 |
 |------|------|------|
-| **TAG 체인** | 요구→설계→작업→검증을 잇는 필수 체인 | `@REQ:PAYMENTS-001 → @DESIGN:PAYMENTS-001 → @TASK:PAYMENTS-001 → @TEST:PAYMENTS-001` |
-| **구현** | 구현 단위(Feature/API/UI/Data 등)를 세분화 | `@FEATURE:PAYMENTS-001`, `@API:PAYMENTS-001`, `@DATA:PAYMENTS-001` |
-| **Quality** | 성능/보안/부채/문서 등 품질 속성 | `@SEC:PAYMENTS-001`, `@PERF:PAYMENTS-001`, `@DOCS:PAYMENTS-001` |
-| **Meta** | 거버넌스/릴리즈/운영 메타데이터 | `@OPS:PAYMENTS-001`, `@DEBT:PAYMENTS-001`, `@TAG:PAYMENTS-001` |
+| **TAG 체인** | 요구→설계→작업→검증을 잇는 필수 체인 | `@SPEC:PAYMENTS-001 → @SPEC:PAYMENTS-001 → @CODE:PAYMENTS-001 → @TEST:PAYMENTS-001` |
+| **구현** | 구현 단위(Feature/API/UI/Data 등)를 세분화 | `@CODE:PAYMENTS-001`, `@CODE:PAYMENTS-001`, `@CODE:PAYMENTS-001` |
+| **Quality** | 성능/보안/부채/문서 등 품질 속성 | `@CODE:PAYMENTS-001`, `@CODE:PAYMENTS-001`, `@DOC:PAYMENTS-001` |
+| **Meta** | 거버넌스/릴리즈/운영 메타데이터 | `@DOC:PAYMENTS-001`, `@CODE:PAYMENTS-001`, `@DOC:PAYMENTS-001` |
 
-- TAG ID 규칙: `<도메인>-<3자리 일련번호>` (`AUTH-001`, `PAYMENTS-010` 등) — 중복 방지를 위해 생성 전 `rg "@REQ:AUTH" -n` 조회 필수
+- TAG ID 규칙: `<도메인>-<3자리 일련번호>` (`AUTH-001`, `PAYMENTS-010` 등) — 중복 방지를 위해 생성 전 `rg "@SPEC:AUTH" -n` 조회 필수
 - 모든 TAG는 코드에 직접 작성되며, `/moai:3-sync` 실행 시 정규식으로 스캔하여 검증한다
 
 ### 생성 및 등록 절차
@@ -651,12 +651,12 @@ tsx .moai/scripts/test-analyzer.ts --coverage
 ### TAG BLOCK
 | Chain | TAG | 설명 | 연관 산출물 |
 |-------|-----|------|--------------|
-| Primary | @REQ:AUTH-003 | 소셜 로그인 요구사항 | SPEC-AUTH-003 |
-| Primary | @DESIGN:AUTH-003 | OAuth2 설계 | design/oauth.md |
-| Primary | @TASK:AUTH-003 | OAuth2 구현 작업 | src/auth/oauth2.ts |
+| Primary | @SPEC:AUTH-003 | 소셜 로그인 요구사항 | SPEC-AUTH-003 |
+| Primary | @SPEC:AUTH-003 | OAuth2 설계 | design/oauth.md |
+| Primary | @CODE:AUTH-003 | OAuth2 구현 작업 | src/auth/oauth2.ts |
 | Primary | @TEST:AUTH-003 | OAuth2 시나리오 테스트 | tests/auth/oauth2.test.ts |
-| 구현 | @FEATURE:AUTH-003 | 인증 도메인 서비스 | src/auth/service.ts |
-| Quality | @SEC:AUTH-003 | OAuth2 보안 점검 | docs/security/oauth2.md |
+| 구현 | @CODE:AUTH-003 | 인증 도메인 서비스 | src/auth/service.ts |
+| Quality | @CODE:AUTH-003 | OAuth2 보안 점검 | docs/security/oauth2.md |
 ```
 
 - SPEC 변경 시 `TAG BLOCK`부터 수정하고, 이후 코드/테스트에 반영 → 마지막으로 `/moai:3-sync`로 인덱스 업데이트
@@ -666,18 +666,18 @@ tsx .moai/scripts/test-analyzer.ts --coverage
 - `moai-adk-ts/templates/CLAUDE.md`는 새 코드 파일 생성 시 **`TAG BLOCK`**을 요구한다
   - 예시: 파일 최상단에
     ```
-    # @FEATURE:AUTH-003 | Chain: @REQ:AUTH-003 → @DESIGN:AUTH-003 → @TASK:AUTH-003 → @TEST:AUTH-003
-    # Related: @SEC:AUTH-003, @DOCS:AUTH-003
+    # @CODE:AUTH-003 | Chain: @SPEC:AUTH-003 → @SPEC:AUTH-003 → @CODE:AUTH-003 → @TEST:AUTH-003
+    # Related: @CODE:AUTH-003, @DOC:AUTH-003
     ```
 - AI가 자동 생성하는 코드도 동일한 블록을 포함하며, 수정 작업 시 **TAG를 먼저 검토하고 변경 필요 여부를 결정**한다
 - 새 폴더/모듈 추가 시 `README.md` 또는 `index` 파일에 해당 모듈이 담당하는 TAG 범위를 기술한다
 
 ### 검색 및 유지보수 전략
 
-- **중복 방지**: 새 TAG를 만들기 전 `rg "@REQ:AUTH" -n`과 `rg "AUTH-003" -n`으로 기존 참조 확인
-- **재사용 촉진**: 구현 전 `rg "@FEATURE:AUTH"`로 기존 코드 재사용 가능성 분석 후, 재사용 시 SPEC에 연결 근거를 기록
+- **중복 방지**: 새 TAG를 만들기 전 `rg "@SPEC:AUTH" -n`과 `rg "AUTH-003" -n`으로 기존 참조 확인
+- **재사용 촉진**: 구현 전 `rg "@CODE:AUTH"`로 기존 코드 재사용 가능성 분석 후, 재사용 시 SPEC에 연결 근거를 기록
 - **무결성 검사**: `@agent-doc-syncer "TAG 인덱스를 업데이트해주세요"` 실행 후 로그에서 끊어진 체인을 확인
-- **리팩터링 시**: 불필요해진 TAG는 `@TAG:DEPRECATED-XXX`로 명시한 뒤 `/moai:3-sync`에서 인덱스를 재구축
+- **리팩터링 시**: 불필요해진 TAG는 `@DOC:DEPRECATED-XXX`로 명시한 뒤 `/moai:3-sync`에서 인덱스를 재구축
 
 ### 업데이트 체크리스트
 

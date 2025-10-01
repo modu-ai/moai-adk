@@ -458,9 +458,9 @@ rg "@DOC:AUTH-001" docs/ README.md
 | `@CODE:ID` | `@CODE:ID` | 구현 통합 |
 | `@TEST:ID` | `@TEST:ID` | 동일 |
 | `@CODE:ID` | `@CODE:ID` | 구현 통합 |
-| `@API:ID` | `@CODE:ID:API` | 주석 레벨 |
-| `@UI:ID` | `@CODE:ID:UI` | 주석 레벨 |
-| `@DATA:ID` | `@CODE:ID:DATA` | 주석 레벨 |
+| `@CODE:ID` | `@CODE:ID:API` | 주석 레벨 |
+| `@CODE:ID` | `@CODE:ID:UI` | 주석 레벨 |
+| `@CODE:ID` | `@CODE:ID:DATA` | 주석 레벨 |
 
 ### 자동 변환 스크립트
 

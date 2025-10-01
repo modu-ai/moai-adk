@@ -109,9 +109,12 @@ export class InstallationOrchestrator {
         error instanceof InstallationError
           ? error
           : new InstallationError('Installation failed', {
-              error: error instanceof Error ? error : undefined,
-              errorMessage:
-                error instanceof Error ? error.message : String(error),
+              error: (error instanceof Error ? error : undefined) as
+                | Error
+                | undefined,
+              errorMessage: (error instanceof Error
+                ? error.message
+                : String(error)) as string | undefined,
             });
 
       logger.error('Installation failed', {

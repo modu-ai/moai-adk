@@ -387,7 +387,7 @@ sequenceDiagram
    ```markdown
    # SPEC-AUTH-001: 사용자 JWT 인증 시스템
 
-   ## EARS 요구사항 (@REQ:AUTH-001)
+   ## EARS 요구사항 (@SPEC:AUTH-001)
 
    ### Ubiquitous Requirements (언제나 적용)
    - 시스템은 사용자 인증 기능을 제공해야 한다
@@ -407,7 +407,7 @@ sequenceDiagram
    - 액세스 토큰 만료시간은 15분을 초과하지 않아야 한다
    - 리프레시 토큰 유효기간은 7일을 초과하지 않아야 한다
 
-   ## 설계 (@DESIGN:AUTH-001)
+   ## 설계 (@SPEC:AUTH-001)
    - JWT 구조: Header.Payload.Signature
    - 암호화 알고리즘: RS256 (비대칭 키)
    - 토큰 저장소: Redis (리프레시 토큰)

@@ -37,7 +37,7 @@ model: sonnet
 
 1. **TAG 관련 작업 요청**
    - "TAG 생성", "TAG 검색", "TAG 검증" 패턴 감지
-   - "@REQ:", "@DESIGN:", "@TASK:", "@TEST:" 패턴 입력 시
+   - "@SPEC:", "@SPEC:", "@CODE:", "@TEST:" 패턴 입력 시
    - "TAG 체인 확인", "TAG 무결성 검사" 요청 시
 
 2. **MoAI-ADK 워크플로우 연동**
@@ -161,7 +161,7 @@ model: sonnet
 
 ### 자동 실행 상황
 - 새 소스 파일 생성 시 TAG 제안
-- @REQ:, @DESIGN: 패턴 입력 시 자동 완성
+- @SPEC:, @SPEC: 패턴 입력 시 자동 완성
 - `/moai:` 명령어 실행 시 TAG 연동 지원
 
 ---

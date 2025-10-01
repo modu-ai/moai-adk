@@ -187,10 +187,10 @@ class AuthService {
 ### 현재 Implementation (4 Core)
 
 ```
-@FEATURE: 기능 전체 구현 (필수)
-@API: API 엔드포인트 (필수)
-@UI: UI 컴포넌트 (필수)
-@DATA: 데이터 모델 (필수)
+@CODE: 기능 전체 구현 (필수)
+@CODE: API 엔드포인트 (필수)
+@CODE: UI 컴포넌트 (필수)
+@CODE: 데이터 모델 (필수)
 ```
 
 ### ❌ 문제점 6: @FEATURE와 @TASK의 중복
@@ -471,8 +471,8 @@ async function authenticate(
 **실제 필요 사례:**
 ```typescript
 // 보안 패치
-// @SECURITY:AUTH-002: SQL Injection 방어 추가
-// @BUG:AUTH-001: 토큰 검증 로직 오류 수정
+// @CODE:AUTH-002: SQL Injection 방어 추가
+// @CODE:AUTH-001: 토큰 검증 로직 오류 수정
 
 // 현재는 이것들이 모두 @TASK로 통합되어 구분 불가
 ```
@@ -516,7 +516,7 @@ EARS (SPEC 내부):
 @UBIQ:ID, @EVENT:ID, @STATE:ID, @OPT:ID, @CONST:ID
 
 Quality:
-@BUG:ID, @PERF:ID, @SECURITY:ID, @DEBT:ID
+@CODE:ID, @CODE:ID, @CODE:ID, @CODE:ID
 ```
 
 **장점:**

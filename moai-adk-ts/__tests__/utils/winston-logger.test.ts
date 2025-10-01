@@ -161,7 +161,7 @@ describe('MoaiLogger', () => {
       expect(() => {
         logger.logWithTag(
           'error',
-          '@SEC:AUTH-001',
+          '@CODE:AUTH-001',
           'Security violation detected',
           {
             ip: '192.168.1.1',
@@ -174,7 +174,7 @@ describe('MoaiLogger', () => {
     it('should support multiple TAGs in context', () => {
       expect(() => {
         logger.info('Operation completed', {
-          tags: ['@CODE:AUTH-001', '@PERF:AUTH-001'],
+          tags: ['@CODE:AUTH-001', '@CODE:AUTH-001'],
           duration: 150,
         });
       }).not.toThrow();

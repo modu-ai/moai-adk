@@ -516,8 +516,8 @@ export class AuthService {
 ```typescript
 // @TEST:AUTH-001 -> @CODE:AUTH-001    ❌ 순서 표기 불필요 (파일 위치로 구분)
 // @CODE:AUTH-001, @CODE:AUTH-002      ❌ 하나의 파일에 여러 ID (분리 필요)
-// @REQ:AUTH-001                         ❌ 레거시 TAG (사용 금지)
-// @FEATURE:AUTH-001                     ❌ 레거시 TAG (사용 금지)
+// @SPEC:AUTH-001                         ❌ 레거시 TAG (사용 금지)
+// @CODE:AUTH-001                     ❌ 레거시 TAG (사용 금지)
 // @CODE:ABC-123                        ❌ 의미 없는 도메인명
 ```
 

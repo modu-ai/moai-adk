@@ -2,11 +2,11 @@
 
 **TypeScript 기반 TODO 애플리케이션 - SPEC-First TDD 방법론 적용**
 
-## @VISION:MISSION-001 프로젝트 미션
+## @DOC:MISSION-001 프로젝트 미션
 
 MoAI-ADK 방법론을 적용한 TypeScript TODO 애플리케이션으로, EARS 명세 작성부터 TDD 구현, 문서 동기화까지 완전한 SPEC-First 개발 워크플로우를 시연합니다.
 
-## @REQ:CORE-FEATURES-001 핵심 기능 (EARS 방법론)
+## @SPEC:CORE-FEATURES-001 핵심 기능 (EARS 방법론)
 
 ### 필수 요구사항 (Essential)
 - **REQ-001**: 사용자는 새로운 TODO 항목을 추가할 수 있어야 한다
@@ -27,7 +27,7 @@ MoAI-ADK 방법론을 적용한 TypeScript TODO 애플리케이션으로, EARS �
 - 데이터 영구 저장 기능은 v1.0에서 제외
 - 사용자 인증 기능은 현재 범위 외
 
-## @TECH:STACK-001 기술 스택
+## @DOC:STACK-001 기술 스택
 
 - **Frontend**: TypeScript 5.0+
 - **Testing**: Jest 29.0+
@@ -35,13 +35,13 @@ MoAI-ADK 방법론을 적용한 TypeScript TODO 애플리케이션으로, EARS �
 - **Package Manager**: npm/bun
 - **Development**: MoAI-ADK SPEC-First TDD
 
-## @DESIGN:ARCHITECTURE-001 시스템 아키텍처
+## @SPEC:ARCHITECTURE-001 시스템 아키텍처
 
 ```
 src/
-├── index.ts           # @FEATURE:CORE-001 핵심 TODO 관리 클래스
+├── index.ts           # @CODE:CORE-001 핵심 TODO 관리 클래스
 └── types/
-    └── todo.ts        # @DATA:MODELS-001 Todo 인터페이스 정의
+    └── todo.ts        # @CODE:MODELS-001 Todo 인터페이스 정의
 
 tests/
 ├── index.test.ts      # @TEST:UNIT-001 단위 테스트
@@ -71,7 +71,7 @@ npm run test:coverage       # 커버리지 리포트
 
 **현재 커버리지**: 100% (3개 핵심 기능 테스트 완료)
 
-## @TASK:DEVELOPMENT-001 개발 가이드
+## @CODE:DEVELOPMENT-001 개발 가이드
 
 ```bash
 # 프로젝트 설정
@@ -87,14 +87,14 @@ npm test
 npm run build
 ```
 
-## @DOCS:TRACEABILITY-001 TAG 추적성
+## @DOC:TRACEABILITY-001 TAG 추적성
 
 | TAG | 설명 | 파일 위치 |
 |-----|------|-----------|
-| @REQ:CORE-FEATURES-001 | 핵심 기능 요구사항 | README.md |
-| @FEATURE:CORE-001 | TodoManager 클래스 | src/index.ts |
+| @SPEC:CORE-FEATURES-001 | 핵심 기능 요구사항 | README.md |
+| @CODE:CORE-001 | TodoManager 클래스 | src/index.ts |
 | @TEST:UNIT-001 | 단위 테스트 | tests/index.test.ts |
-| @DATA:MODELS-001 | Todo 인터페이스 | src/index.ts |
+| @CODE:MODELS-001 | Todo 인터페이스 | src/index.ts |
 
 ## 📋 버전 히스토리
 

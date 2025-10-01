@@ -11,13 +11,13 @@
 
 ## Environment (환경 및 전제 조건)
 
-### @TECH:RUNTIME-ENV-001 실행 환경
+### @DOC:RUNTIME-ENV-001 실행 환경
 - **Python 버전**: ≥3.11 (MkDocs Material 호환성)
 - **Node.js 버전**: ≥16 (추가 플러그인 지원용)
 - **Git 환경**: GitHub Pages 배포용 Git 저장소
 - **네트워크**: GitHub Actions CI/CD 및 배포 환경
 
-### @TECH:DEPENDENCIES-001 기술 종속성
+### @DOC:DEPENDENCIES-001 기술 종속성
 - **MkDocs Material**: 메인 문서 생성 엔진
 - **mkdocs-autorefs**: 코드 자동 참조 생성
 - **mkdocs-gen-files**: 동적 파일 생성
@@ -25,7 +25,7 @@
 - **GitHub Actions**: 자동 빌드 및 배포
 - **GitHub Pages**: 호스팅 플랫폼
 
-### @STRUCT:EXISTING-SYSTEM-001 현재 문서 상태
+### @DOC:EXISTING-SYSTEM-001 현재 문서 상태
 - **README.md**: 기본 사용법 및 설치 가이드 (완성)
 - **CHANGELOG.md**: 버전별 변경사항 (완성)
 - **docs/ 디렉토리**: 부분적 문서 존재
@@ -36,19 +36,19 @@
 
 ## Assumptions (가정 사항)
 
-### @VISION:DOCS-STRATEGY-001 문서화 전략
+### @DOC:DOCS-STRATEGY-001 문서화 전략
 - **Living Document 원칙**: 코드 변경 시 문서 자동 동기화
 - **Single Source of Truth**: 소스코드에서 자동 생성되는 API 문서
 - **Community-Driven**: 사용자 가이드와 예제는 커뮤니티 기여 기반
 - **Multi-Language**: 한국어 우선, 영어 지원 (향후 확장)
 
-### @REQ:AUTOMATION-001 자동화 가정
+### @SPEC:AUTOMATION-001 자동화 가정
 - **CI/CD 통합**: GitHub Actions를 통한 완전 자동화
 - **실시간 배포**: main 브랜치 푸시 시 자동 사이트 갱신
 - **무중단 서비스**: 배포 중에도 기존 사이트 서비스 유지
 - **캐시 최적화**: CDN 및 브라우저 캐시를 통한 성능 최적화
 
-### @TECH:INTEGRATION-001 시스템 통합 가정
+### @DOC:INTEGRATION-001 시스템 통합 가정
 - **sync-report 활용**: 기존 리포트 구조를 문서 구조의 기반으로 활용
 - **TAG 시스템 연동**:  TAG를 문서 네비게이션에 활용
 - **API 자동 생성**: 소스코드 변경 시 API 문서 자동 갱신
@@ -58,7 +58,7 @@
 
 ## Requirements (요구사항)
 
-### @REQ:DOCS-SITE-001 온라인 문서 사이트 요구사항
+### @SPEC:DOCS-SITE-001 온라인 문서 사이트 요구사항
 
 **WHEN** 사용자가 MoAI-ADK 문서에 접근할 때,
 **THE SYSTEM SHALL** 완전한 온라인 문서 사이트를 제공해야 함
@@ -86,7 +86,7 @@
 - **빠른 로딩**: 5초 이내 초기 로드 완료
 - **오프라인 지원**: 기본 페이지 오프라인 캐시
 
-### @REQ:AUTOMATION-002 자동화 요구사항
+### @SPEC:AUTOMATION-002 자동화 요구사항
 
 **WHEN** 소스코드가 변경되거나 새 버전이 릴리스될 때,
 **THE SYSTEM SHALL** 문서를 자동으로 업데이트하고 배포해야 함

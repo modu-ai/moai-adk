@@ -19,7 +19,7 @@ export const CODE_FIRST_PATTERNS = {
   TAG_BLOCK: /^\/\*\*\s*([\s\S]*?)\*\//m,
 
   // 핵심 TAG 라인들
-  MAIN_TAG: /^\s*\*\s*@TAG:([A-Z]+):([A-Z0-9_-]+)\s*$/m,
+  MAIN_TAG: /^\s*\*\s*@DOC:([A-Z]+):([A-Z0-9_-]+)\s*$/m,
   CHAIN_LINE: /^\s*\*\s*@CHAIN:\s*(.+)\s*$/m,
   DEPENDS_LINE: /^\s*\*\s*@DEPENDS:\s*(.+)\s*$/m,
   STATUS_LINE: /^\s*\*\s*@STATUS:\s*(\w+)\s*$/m,

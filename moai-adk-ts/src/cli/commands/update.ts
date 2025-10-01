@@ -61,10 +61,10 @@ export interface UpdateResult {
   readonly updatedPackage: boolean;
   readonly updatedResources: boolean;
   readonly backupCreated: boolean;
-  readonly backupPath?: string;
+  readonly backupPath?: string | undefined;
   readonly versionsUpdated: boolean;
   readonly duration: number;
-  readonly error?: string;
+  readonly error?: string | undefined;
 }
 
 /**

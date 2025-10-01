@@ -1,7 +1,7 @@
 {
   "_meta": {
-    "@DATA:CONFIG-STRUCTURE-001": "@TECH:JSON-CONFIG-001",
-    "@REQ:PROJECT-CONFIG-001": "@DESIGN:MOAI-CONFIG-001"
+    "@CODE:CONFIG-STRUCTURE-001": "@DOC:JSON-CONFIG-001",
+    "@SPEC:PROJECT-CONFIG-001": "@SPEC:MOAI-CONFIG-001"
   },
   "constitution": {
     "enforce_tdd": true,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @SEC:PRE-WRITE-GUARD-011
+# @CODE:PRE-WRITE-GUARD-011
 """
 Optimized PreToolUse guard for MoAI-ADK - v0.2.0
 Minimal security checking with essential protection.

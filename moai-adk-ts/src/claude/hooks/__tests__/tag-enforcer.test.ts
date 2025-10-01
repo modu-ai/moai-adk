@@ -29,7 +29,7 @@ describe('CodeFirstTAGEnforcer Hook', () => {
   describe('@TEST:ENFORCER-001-HAPPY: 정상 TAG 블록 검증', () => {
     it('should allow valid TAG block', async () => {
       const validContent = `/**
- * @TAG:FEATURE:AUTH-001
+ * @DOC:FEATURE:AUTH-001
  * @CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001 -> TASK:AUTH-001 -> TEST:AUTH-001
  * @DEPENDS: NONE
  * @STATUS: active
@@ -104,7 +104,7 @@ export class AuthService {}`;
   describe('@TEST:ENFORCER-001-IMMUTABLE: @IMMUTABLE TAG 보호', () => {
     it('should block modification of @IMMUTABLE TAG block', async () => {
       const oldContent = `/**
- * @TAG:FEATURE:AUTH-001
+ * @DOC:FEATURE:AUTH-001
  * @CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001
  * @STATUS: active
  * @CREATED: 2025-01-01
@@ -114,7 +114,7 @@ export class AuthService {}`;
 export class AuthService {}`;
 
       const newContent = `/**
- * @TAG:FEATURE:AUTH-002
+ * @DOC:FEATURE:AUTH-002
  * @CHAIN: REQ:AUTH-002 -> DESIGN:AUTH-002
  * @STATUS: active
  * @CREATED: 2025-01-02
@@ -142,7 +142,7 @@ export class AuthService {}`;
 
     it('should block deletion of @IMMUTABLE TAG block', async () => {
       const oldContent = `/**
- * @TAG:FEATURE:AUTH-001
+ * @DOC:FEATURE:AUTH-001
  * @IMMUTABLE
  */
 
@@ -168,14 +168,14 @@ export class AuthService {}`;
 
     it('should allow modifying non-immutable TAG blocks', async () => {
       const oldContent = `/**
- * @TAG:FEATURE:AUTH-001
+ * @DOC:FEATURE:AUTH-001
  * @STATUS: active
  */
 
 export class AuthService {}`;
 
       const newContent = `/**
- * @TAG:FEATURE:AUTH-001
+ * @DOC:FEATURE:AUTH-001
  * @STATUS: completed
  */
 
@@ -200,7 +200,7 @@ export class AuthService {}`;
   describe('@TEST:ENFORCER-001-VALIDATION: TAG 유효성 검증', () => {
     it('should reject invalid TAG category', async () => {
       const invalidContent = `/**
- * @TAG:INVALID:AUTH-001
+ * @DOC:INVALID:AUTH-001
  * @CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001
  */
 
@@ -224,7 +224,7 @@ export class AuthService {}`;
 
     it('should validate TAG chain format', async () => {
       const contentWithChain = `/**
- * @TAG:FEATURE:AUTH-001
+ * @DOC:FEATURE:AUTH-001
  * @CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001 -> TASK:AUTH-001
  * @IMMUTABLE
  */
@@ -248,7 +248,7 @@ export class AuthService {}`;
 
     it('should validate dependencies format', async () => {
       const contentWithDeps = `/**
- * @TAG:FEATURE:AUTH-001
+ * @DOC:FEATURE:AUTH-001
  * @DEPENDS: API:USER-001, DATA:USER-001
  * @IMMUTABLE
  */

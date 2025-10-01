@@ -24,6 +24,9 @@ import { CODE_FIRST_PATTERNS } from './tag-enforcer/tag-patterns';
 import { TagValidator } from './tag-enforcer/tag-validator';
 import type { ImmutabilityCheck } from './tag-enforcer/types';
 
+// Re-export types for test compatibility
+export type { HookInput, HookResult } from '../types';
+
 /**
  * Code-First TAG Enforcer Hook
  * @CODE:HOOK-004:API: TAG 블록 불변성 검증 API
@@ -137,7 +140,9 @@ export class CodeFirstTAGEnforcer implements MoAIHook {
     if (toolInput['new_string']) return toolInput['new_string'];
     if (toolInput['new_source']) return toolInput['new_source'];
     if (toolInput['edits'] && Array.isArray(toolInput['edits'])) {
-      return toolInput['edits'].map((edit: any) => edit['new_string']).join('\n');
+      return toolInput['edits']
+        .map((edit: any) => edit['new_string'])
+        .join('\n');
     }
     return '';
   }
@@ -265,7 +270,7 @@ export class CodeFirstTAGEnforcer implements MoAIHook {
       '',
       '✅ 권장 해결 방법:',
       '1. 새로운 TAG ID로 새 기능을 구현하세요',
-      '   예: @TAG:FEATURE:AUTH-002',
+      '   예: @DOC:FEATURE:AUTH-002',
       '2. 기존 TAG에 @DEPRECATED 마커를 추가하세요',
       '3. 새 TAG에서 이전 TAG를 참조하세요',
       '   예: @REPLACES: FEATURE:AUTH-001',
@@ -287,7 +292,7 @@ export class CodeFirstTAGEnforcer implements MoAIHook {
       '',
       '```',
       '/**',
-      ` * @TAG:FEATURE:${fileName.toUpperCase()}-001`,
+      ` * @DOC:FEATURE:${fileName.toUpperCase()}-001`,
       ` * @CHAIN: REQ:${fileName.toUpperCase()}-001 -> DESIGN:${fileName.toUpperCase()}-001 -> TASK:${fileName.toUpperCase()}-001 -> TEST:${fileName.toUpperCase()}-001`,
       ' * @DEPENDS: NONE',
       ' * @STATUS: active',
@@ -315,7 +320,7 @@ export class CodeFirstTAGEnforcer implements MoAIHook {
  */
 export async function main(): Promise<void> {
   try {
-    const { parseClaudeInput, outputResult } = await import('../index');
+    const { parseClaudeInput } = await import('../index');
     const input = await parseClaudeInput();
     const enforcer = new CodeFirstTAGEnforcer();
     const result = await enforcer.execute(input);

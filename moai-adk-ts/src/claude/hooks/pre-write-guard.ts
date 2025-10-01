@@ -1,12 +1,15 @@
 /**
  * @CODE:HOOK-002 |
- * Related: @CODE:HOOK-002:API, @SECURITY:PREWRITE-001
+ * Related: @CODE:HOOK-002:API, @CODE:PREWRITE-001
  *
  * Pre-Write Guard Hook
  * 파일 쓰기 전 위험 패턴 검증 및 차단
  */
 
 import type { HookInput, HookResult, MoAIHook } from '../types';
+
+// Re-export types for test compatibility
+export type { HookInput, HookResult } from '../types';
 
 /**
  * Sensitive file patterns that should be protected
@@ -51,7 +54,12 @@ export class PreWriteGuard implements MoAIHook {
    * Extract file path from tool input
    */
   private extractFilePath(toolInput: Record<string, any>): string | null {
-    return toolInput['file_path'] || toolInput['filePath'] || toolInput['path'] || null;
+    return (
+      toolInput['file_path'] ||
+      toolInput['filePath'] ||
+      toolInput['path'] ||
+      null
+    );
   }
 
   /**

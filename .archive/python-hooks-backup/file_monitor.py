@@ -3,8 +3,8 @@
 Unified File Monitor for MoAI-ADK - Optimized v0.2.0
 Combines file watching and auto checkpoint functionality.
 
-@REQ:FILE-MONITOR-001
-@FEATURE:FILE-MONITORING-OPT
+@SPEC:FILE-MONITOR-001
+@CODE:FILE-MONITORING-OPT
 @TEST:UNIT-FILE-MONITOR-SIZE
 """
 
@@ -24,7 +24,7 @@ except ImportError:
 class FileMonitor:
     """Unified file monitoring and checkpoint system
 
-    @FEATURE:FILE-MONITORING-OPT
+    @CODE:FILE-MONITORING-OPT
     Merged from file_watcher.py (323 lines) + auto_checkpoint.py (222 lines)
     Reduced to ~150 lines while preserving core functionality:
     - File change detection
@@ -48,7 +48,7 @@ class FileMonitor:
     def watch_files(self) -> bool:
         """Start file watching
 
-        @FEATURE:FILE-CHANGE-DETECTION
+        @CODE:FILE-CHANGE-DETECTION
         Essential functionality for file monitoring
         """
         if not WATCHDOG_AVAILABLE:
@@ -74,7 +74,7 @@ class FileMonitor:
     def on_file_changed(self, file_path: str):
         """Handle file change event
 
-        @FEATURE:FILE-CHANGE-HANDLER
+        @CODE:FILE-CHANGE-HANDLER
         Essential for responding to file changes
         """
         file_path_obj = Path(file_path)
@@ -92,7 +92,7 @@ class FileMonitor:
     def should_create_checkpoint(self) -> bool:
         """Determine if checkpoint should be created
 
-        @FEATURE:CHECKPOINT-LOGIC
+        @CODE:CHECKPOINT-LOGIC
         Essential for auto checkpoint functionality
         """
         current_time = time.time()
@@ -109,7 +109,7 @@ class FileMonitor:
     def create_checkpoint(self) -> bool:
         """Create checkpoint snapshot
 
-        @FEATURE:AUTO-CHECKPOINT
+        @CODE:AUTO-CHECKPOINT
         Essential for Git checkpoint functionality
         """
         try:

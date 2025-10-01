@@ -344,9 +344,9 @@ rg "@CODE:AUTH-001" -n
 rg "AUTH-001" -n                           # 모든 관련 TAG
 
 # TAG 타입별 검색
-rg "@REQ:" -n                              # 모든 요구사항
-rg "@DESIGN:" -n                           # 모든 설계
-rg "@TASK:" -n                             # 모든 구현
+rg "@SPEC:" -n                              # 모든 요구사항
+rg "@SPEC:" -n                           # 모든 설계
+rg "@CODE:" -n                             # 모든 구현
 rg "@TEST:" -n                             # 모든 테스트
 
 # 파일 타입별 검색
@@ -378,8 +378,8 @@ alias sync='claude /moai:3-sync'
 
 # TAG 검색
 alias tag-search='rg "@TAG" -n'
-alias tag-req='rg "@REQ:" -n'
-alias tag-task='rg "@TASK:" -n'
+alias tag-req='rg "@SPEC:" -n'
+alias tag-task='rg "@CODE:" -n'
 alias tag-test='rg "@TEST:" -n'
 
 # 에이전트 호출

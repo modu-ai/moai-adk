@@ -8,7 +8,7 @@
 import chalk from 'chalk';
 import type { QuestionCollection } from 'inquirer';
 import { t } from '@/utils/i18n';
-import { validateProjectName, validateGitHubUrl } from './validators';
+import { validateGitHubUrl, validateProjectName } from './validators';
 
 /**
  * Locale selection prompt

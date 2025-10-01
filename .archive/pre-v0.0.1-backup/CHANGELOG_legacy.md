@@ -366,8 +366,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **새로운 TAG 체인:**
 
-- `@TASK:TEMPLATE-VERIFY-001`: Clean template validation 구현
-- `@FEATURE:RESOURCE-001`: ResourceManager 개선사항 추적
+- `@CODE:TEMPLATE-VERIFY-001`: Clean template validation 구현
+- `@CODE:RESOURCE-001`: ResourceManager 개선사항 추적
 - `@TEST:TEMPLATE-CLEAN-001`: 템플릿 정리 검증 테스트
 - 기존 TAG 시스템과 완전 호환성 유지
 
@@ -438,8 +438,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **SPEC-007 완료 TAG 체인:**
 
-- `@SPEC:SPEC-007-STARTED` → `@TEST:SPEC-007-RED` → `@TASK:SPEC-007-GREEN` → `@TASK:SPEC-007-REFACTOR` → `@SPEC:SPEC-007-COMPLETE` ✅
-- `@PERF:HOOK-OPTIMIZATION`, `@PERF:MEMORY-REDUCTION`, `@DEBT:CODE-REDUCTION` 완료
+- `@SPEC:SPEC-007-STARTED` → `@TEST:SPEC-007-RED` → `@CODE:SPEC-007-GREEN` → `@CODE:SPEC-007-REFACTOR` → `@SPEC:SPEC-007-COMPLETE` ✅
+- `@CODE:HOOK-OPTIMIZATION`, `@CODE:MEMORY-REDUCTION`, `@CODE:CODE-REDUCTION` 완료
 - 총 72개 TAG 관리, 42개 완료로 추적성 지속 향상
 
 
@@ -546,7 +546,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### 🏷️  TAG 추적성 완성
 
 ```
-@REQ:QUALITY-002 → @DESIGN:QUALITY-SYSTEM-002 → @TASK:IMPLEMENT-002 → @TEST:ACCEPTANCE-002
+@SPEC:QUALITY-002 → @SPEC:QUALITY-SYSTEM-002 → @CODE:IMPLEMENT-002 → @TEST:ACCEPTANCE-002
 ```
 
 - **완전한 TAG 체인**: 요구사항부터 수락 테스트까지 완벽한 추적성
@@ -601,9 +601,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### 🎯 새로운 TAG 시스템 구현
 
-- **@DESIGN:PKG-ARCH-001**: 클린 아키텍처 기반 패키지 최적화 설계
-- **@REQ:OPT-CORE-001**: 패키지 크기 80% 감소 요구사항 달성
-- **@TASK:CLEANUP-IMPL-001**: 중복 파일 제거 및 구조 최적화 구현
+- **@SPEC:PKG-ARCH-001**: 클린 아키텍처 기반 패키지 최적화 설계
+- **@SPEC:OPT-CORE-001**: 패키지 크기 80% 감소 요구사항 달성
+- **@CODE:CLEANUP-IMPL-001**: 중복 파일 제거 및 구조 최적화 구현
 - **@TEST:UNIT-OPT-001**: PackageOptimizer 클래스 단위 테스트 완료
 
 #### 🔧 기술적 개선사항

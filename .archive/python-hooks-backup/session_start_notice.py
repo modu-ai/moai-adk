@@ -3,8 +3,8 @@
 MoAI-ADK Session Start Notice Hook - Optimized v0.2.0
 Minimal session start notification with core functionality preserved.
 
-@REQ:HOOK-SESSION-START-001
-@FEATURE:SESSION-NOTICE-OPT
+@SPEC:HOOK-SESSION-START-001
+@CODE:SESSION-NOTICE-OPT
 @TEST:UNIT-SESSION-SIZE
 """
 
@@ -17,7 +17,7 @@ from typing import Any
 class SessionNotifier:
     """Optimized MoAI-ADK session start notification system
 
-    @FEATURE:SESSION-NOTICE-OPT
+    @CODE:SESSION-NOTICE-OPT
     Reduced from 2,133 to ~200 lines while preserving core functions:
     - MoAI project initialization detection
     - Development guide violation checking
@@ -31,7 +31,7 @@ class SessionNotifier:
     def get_project_status(self) -> dict[str, Any]:
         """Get essential project status information
 
-        @FEATURE:PROJECT-STATUS-OPT
+        @CODE:PROJECT-STATUS-OPT
         Returns minimal status needed by agents and tests
         """
         return {
@@ -65,7 +65,7 @@ class SessionNotifier:
     def is_moai_project(self) -> bool:
         """Check if MoAI project is initialized
 
-        @FEATURE:MOAI-PROJECT-DETECTION
+        @CODE:MOAI-PROJECT-DETECTION
         Essential for project status detection
         """
         required_paths = [
@@ -77,7 +77,7 @@ class SessionNotifier:
     def check_constitution_status(self) -> dict[str, Any] | None:
         """Check development guide violations
 
-        @FEATURE:DEV-GUIDE-VIOLATIONS
+        @CODE:DEV-GUIDE-VIOLATIONS
         Essential for maintaining development standards
         """
         if not self.is_moai_project():
@@ -110,7 +110,7 @@ class SessionNotifier:
     def get_current_pipeline_stage(self) -> str:
         """Get current pipeline stage
 
-        @FEATURE:PIPELINE-STAGE-DETECTION
+        @CODE:PIPELINE-STAGE-DETECTION
         """
         try:
             if self.moai_config_path.exists():

@@ -15,7 +15,7 @@ describe('@TEST:REFACTOR-003: TAG Patterns', () => {
   describe('TAG_BLOCK pattern', () => {
     test('should match valid TAG block', () => {
       const content = `/**
- * @TAG:FEATURE:AUTH-001
+ * @DOC:FEATURE:AUTH-001
  * @CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001
  * @IMMUTABLE
  */`;
@@ -38,7 +38,7 @@ describe('@TEST:REFACTOR-003: TAG Patterns', () => {
 
   describe('MAIN_TAG pattern', () => {
     test('should match valid @TAG line', () => {
-      const line = ' * @TAG:FEATURE:AUTH-001';
+      const line = ' * @DOC:FEATURE:AUTH-001';
       const match = CODE_FIRST_PATTERNS.MAIN_TAG.exec(line);
 
       expect(match).not.toBeNull();

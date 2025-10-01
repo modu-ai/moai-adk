@@ -201,7 +201,7 @@ export class TemplateManager {
     result.createdFiles.push('src/__init__.py');
 
     // pytest.ini if feature enabled
-    if (templateData.features.pytest) {
+    if (templateData.features['pytest']) {
       const pytestConfig = this.processor.generatePytestConfig();
       await fs.writeFile(path.join(projectPath, 'pytest.ini'), pytestConfig);
       result.createdFiles.push('pytest.ini');
@@ -227,7 +227,7 @@ export class TemplateManager {
     // tsconfig.json for TypeScript
     if (
       templateData.projectType === ProjectType.TYPESCRIPT ||
-      templateData.features.typescript
+      templateData.features['typescript']
     ) {
       const tsconfig = this.processor.generateTsConfig();
       await fs.writeFile(
@@ -238,7 +238,7 @@ export class TemplateManager {
     }
 
     // jest.config.js if feature enabled
-    if (templateData.features.jest) {
+    if (templateData.features['jest']) {
       const jestConfig = this.processor.generateJestConfig();
       await fs.writeFile(path.join(projectPath, 'jest.config.js'), jestConfig);
       result.createdFiles.push('jest.config.js');

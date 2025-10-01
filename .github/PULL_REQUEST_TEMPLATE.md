@@ -5,7 +5,7 @@
 ## 📝 SPEC 정보
 
 - **관련 SPEC**: `SPEC-XXX` (spec-builder가 자동 생성)
-- **@TAG 연결**: @REQ:XXX @FEATURE:XXX (자동 태깅)
+- **@TAG 연결**: @SPEC:XXX @CODE:XXX (자동 태깅)
 
 ## 🤖 자동 검증 상태 (에이전트가 채움)
 

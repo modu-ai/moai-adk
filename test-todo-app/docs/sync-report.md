@@ -25,11 +25,11 @@
 - TAG 추적성 매트릭스 추가
 
 **주요 추가 섹션**:
-- `@VISION:MISSION-001` - 프로젝트 미션 정의
-- `@REQ:CORE-FEATURES-001` - EARS 방식 요구사항
-- `@TECH:STACK-001` - 기술 스택 상세
-- `@DESIGN:ARCHITECTURE-001` - 시스템 아키텍처
-- `@DOCS:TRACEABILITY-001` - TAG 추적성 매트릭스
+- `@DOC:MISSION-001` - 프로젝트 미션 정의
+- `@SPEC:CORE-FEATURES-001` - EARS 방식 요구사항
+- `@DOC:STACK-001` - 기술 스택 상세
+- `@SPEC:ARCHITECTURE-001` - 시스템 아키텍처
+- `@DOC:TRACEABILITY-001` - TAG 추적성 매트릭스
 
 ### 2. CLAUDE.md - 전체 에이전트 시스템 반영 ✅
 **변경 사항**:
@@ -53,20 +53,20 @@
 
 ### 적용된 TAG 체인
 ```
-@REQ:CORE-FEATURES-001 → @DESIGN:ARCHITECTURE-001 → @TASK:DEVELOPMENT-001 → @TEST:UNIT-001
+@SPEC:CORE-FEATURES-001 → @SPEC:ARCHITECTURE-001 → @CODE:DEVELOPMENT-001 → @TEST:UNIT-001
 ```
 
 ### TAG 매핑 테이블
 | TAG | 설명 | 파일 위치 | 상태 |
 |-----|------|-----------|------|
-| @VISION:MISSION-001 | 프로젝트 미션 | README.md | ✅ 완료 |
-| @REQ:CORE-FEATURES-001 | 핵심 기능 요구사항 (EARS) | README.md | ✅ 완료 |
-| @TECH:STACK-001 | 기술 스택 정의 | README.md | ✅ 완료 |
-| @DESIGN:ARCHITECTURE-001 | 시스템 아키텍처 | README.md | ✅ 완료 |
-| @FEATURE:CORE-001 | TodoManager 클래스 | src/index.ts | 🔄 기존 유지 |
+| @DOC:MISSION-001 | 프로젝트 미션 | README.md | ✅ 완료 |
+| @SPEC:CORE-FEATURES-001 | 핵심 기능 요구사항 (EARS) | README.md | ✅ 완료 |
+| @DOC:STACK-001 | 기술 스택 정의 | README.md | ✅ 완료 |
+| @SPEC:ARCHITECTURE-001 | 시스템 아키텍처 | README.md | ✅ 완료 |
+| @CODE:CORE-001 | TodoManager 클래스 | src/index.ts | 🔄 기존 유지 |
 | @TEST:UNIT-001 | Jest 단위 테스트 | tests/index.test.ts | 🔄 기존 유지 |
-| @DATA:MODELS-001 | Todo 인터페이스 | src/index.ts | 🔄 기존 유지 |
-| @DOCS:TRACEABILITY-001 | TAG 추적성 매트릭스 | README.md | ✅ 신규 |
+| @CODE:MODELS-001 | Todo 인터페이스 | src/index.ts | 🔄 기존 유지 |
+| @DOC:TRACEABILITY-001 | TAG 추적성 매트릭스 | README.md | ✅ 신규 |
 
 ## 📊 EARS 방법론 적용 결과
 

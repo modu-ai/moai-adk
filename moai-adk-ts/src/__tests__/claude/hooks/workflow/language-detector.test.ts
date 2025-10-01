@@ -1,10 +1,11 @@
 /**
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
  * @file language-detector.test.ts
  * @description Tests for LanguageDetector hook
  */
 
+import type { Dirent, Stats } from 'node:fs';
 import * as fs from 'node:fs';
+import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
 import { LanguageDetector } from '../../../../claude/hooks/workflow/language-detector';
 
 // Mock filesystem
@@ -128,11 +129,11 @@ describe('LanguageDetector', () => {
     it('should detect C# projects', async () => {
       // Mock readdirSync to simulate finding .csproj files
       mockFs.readdirSync.mockImplementation(() => {
-        return ['project.csproj'] as any;
+        return ['project.csproj'] as unknown as Dirent[];
       });
 
       mockFs.statSync.mockImplementation(() => {
-        return { isDirectory: () => false, isFile: () => true } as any;
+        return { isDirectory: () => false, isFile: () => true } as Stats;
       });
 
       const result = await languageDetector.execute({});
@@ -188,20 +189,20 @@ describe('LanguageDetector', () => {
       mockFs.readdirSync.mockImplementation((dir: string) => {
         const dirStr = dir.toString();
         if (dirStr.includes('test/project')) {
-          return ['src', 'tests', 'package.json'] as any;
+          return ['src', 'tests', 'package.json'] as unknown as Dirent[];
         }
         if (dirStr.includes('src')) {
-          return ['main.py', 'utils.py'] as any;
+          return ['main.py', 'utils.py'] as unknown as Dirent[];
         }
-        return [] as any;
+        return [] as unknown as Dirent[];
       });
 
       mockFs.statSync.mockImplementation((path: string) => {
         const pathStr = path.toString();
         if (pathStr.includes('src') || pathStr.includes('tests')) {
-          return { isDirectory: () => true, isFile: () => false } as any;
+          return { isDirectory: () => true, isFile: () => false } as Stats;
         }
-        return { isDirectory: () => false, isFile: () => true } as any;
+        return { isDirectory: () => false, isFile: () => true } as Stats;
       });
     });
 
@@ -218,7 +219,12 @@ describe('LanguageDetector', () => {
 
     it('should skip ignored directories', async () => {
       mockFs.readdirSync.mockImplementation((_dir: string) => {
-        return ['node_modules', '.git', '__pycache__', 'src'] as any;
+        return [
+          'node_modules',
+          '.git',
+          '__pycache__',
+          'src',
+        ] as unknown as Dirent[];
       });
 
       // Should not traverse into ignored directories

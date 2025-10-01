@@ -1,10 +1,10 @@
 // @TEST:UTIL-006 |
-// Related: @CODE:UTIL-005, @CODE:VALID-002:API, @SECURITY:INPUT-001
+// Related: @CODE:UTIL-005, @CODE:VALID-002:API, @CODE:INPUT-001
 
 /**
  * @file input-validator.ts test suite
  * @author MoAI Team
- * @tags @TEST:UTIL-006 @SPEC:QUAL-006 @SECURITY:INPUT-VALIDATION-001
+ * @tags @TEST:UTIL-006 @SPEC:QUAL-006 @CODE:INPUT-VALIDATION-001
  */
 
 import * as fs from 'node:fs';

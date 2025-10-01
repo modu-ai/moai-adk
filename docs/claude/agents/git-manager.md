@@ -336,7 +336,7 @@ git-manager는 GitHub CLI(gh)를 활용하여 PR을 자동 생성하고 관리�
 - [ ] 코드 리뷰 완료
 
 ## 🔗 Related
-- @TAG: @SPEC:AUTH-001, 
+- @DOC: @SPEC:AUTH-001, 
 - Issues: Closes #12
 
 ---
@@ -415,7 +415,7 @@ git-manager는 Conventional Commits 형식을 강제하고 의미 있는 커밋 
 > - Add token expiration (15 minutes)
 >
 > Tests: 26 tests, 98% coverage
-> @TAG: @CODE:AUTH-001, @CODE:AUTH-001:API, @CODE:AUTH-001:DATA
+> @DOC: @CODE:AUTH-001, @CODE:AUTH-001:API, @CODE:AUTH-001:DATA
 > SPEC: SPEC-AUTH-001
 > ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 >

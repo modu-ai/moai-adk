@@ -7,9 +7,9 @@
  */
 
 import * as path from 'node:path';
+import { generateSessionOutput } from './message-builder';
 import type { HookInput, HookResult, ProjectStatus } from './types';
 import * as utils from './utils';
-import { generateSessionOutput } from './message-builder';
 
 /**
  * Session notification hook
@@ -22,7 +22,7 @@ export class SessionNotifier {
     this.projectRoot = projectRoot || process.cwd();
   }
 
-  async execute(input: HookInput): Promise<HookResult> {
+  async execute(_input: HookInput): Promise<HookResult> {
     try {
       if (utils.isMoAIProject(this.projectRoot)) {
         const status = await this.getProjectStatus();
@@ -57,9 +57,11 @@ export class SessionNotifier {
 
   // Backward compatibility for tests
   isMoAIProject = () => utils.isMoAIProject(this.projectRoot);
-  checkConstitutionStatus = () => utils.checkConstitutionStatus(this.projectRoot);
+  checkConstitutionStatus = () =>
+    utils.checkConstitutionStatus(this.projectRoot);
   getMoAIVersion = () => utils.getMoAIVersion(this.projectRoot);
-  getCurrentPipelineStage = () => utils.getCurrentPipelineStage(this.projectRoot);
+  getCurrentPipelineStage = () =>
+    utils.getCurrentPipelineStage(this.projectRoot);
   getSpecProgress = () => utils.getSpecProgress(this.projectRoot);
   getGitInfo = () => utils.getGitInfo(this.projectRoot);
   getGitChangesCount = () => utils.getGitChangesCount(this.projectRoot);

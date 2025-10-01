@@ -33,7 +33,7 @@ export interface UpdateResult {
   readonly currentVersion: string;
   readonly latestVersion: string | null;
   readonly hasUpdate: boolean;
-  readonly backupPath?: string;
+  readonly backupPath?: string | undefined;
   readonly filesUpdated: number;
   readonly duration: number;
   readonly errors: string[];
@@ -152,7 +152,7 @@ export class UpdateOrchestrator {
         currentVersion,
         latestVersion: versionCheck.latestVersion,
         hasUpdate: true,
-        backupPath,
+        backupPath: backupPath ?? undefined,
         filesUpdated,
         duration,
         errors: [],

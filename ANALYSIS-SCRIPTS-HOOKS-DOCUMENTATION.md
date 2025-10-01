@@ -33,7 +33,7 @@
 | 4 | `project-init.ts` | ~150 | ✅ | ❌ 미문서화 |
 | 5 | `spec-builder.ts` | ~350 | ✅ @FEATURE-SPEC-BUILDER-001 | ✅ 부분 문서화 |
 | 6 | `spec-validator.ts` | ~400 | ✅ | ❌ 미문서화 |
-| 7 | `tag-updater.ts` | ~650 | ✅ @FEATURE:TAG-UPDATER-001 | ❌ 미문서화 |
+| 7 | `tag-updater.ts` | ~650 | ✅ @CODE:TAG-UPDATER-001 | ❌ 미문서화 |
 | 8 | `tdd-runner.ts` | ~450 | ✅ | ❌ 미문서화 |
 | 9 | `test-analyzer.ts` | ~600 | ✅ | ❌ 미문서화 |
 | 10 | `trust-checker.ts` | ~850 | ✅ | ❌ 미문서화 |
@@ -125,7 +125,7 @@ interface SpecMetadata {
 
 #### 7. `tag-updater.ts` (~650 줄)
 **용도**: TAG 시스템 관리 (구형 INDEX 방식)
-**@TAG**: ✅ @FEATURE:TAG-UPDATER-001
+**@TAG**: ✅ @CODE:TAG-UPDATER-001
 **인터페이스**:
 ```typescript
 interface TagDatabase {

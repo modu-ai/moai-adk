@@ -157,10 +157,10 @@ MoAI-ADK</session-start-hook>
 ⏺ Update(.moai/scripts/tag-updater.ts)
   ⎿  Updated .moai/scripts/tag-updater.ts with 4 additions               
         1    #!/usr/bin/env tsx
-        2    // @FEATURE:TAG-UPDATER-001 | Chain: @REQ:TAG-UPDATER-001 → 
-            @DESIGN:TAG-UPDATER-001 → @TASK:TAG-UPDATER-001 → 
-            @FEATURE:TAG-UPDATER-001
-        3    // Related: @PERF:TAG-UPDATER-001, @SEC:TAG-UPDATER-001
+        2    // @CODE:TAG-UPDATER-001 | Chain: @SPEC:TAG-UPDATER-001 → 
+            @SPEC:TAG-UPDATER-001 → @CODE:TAG-UPDATER-001 → 
+            @CODE:TAG-UPDATER-001
+        3    // Related: @CODE:TAG-UPDATER-001, @CODE:TAG-UPDATER-001
         4 +  //
         5 +  // @deprecated This script uses the old TAG INDEX method.
         6 +  // The current TAG system (v4.0) uses CODE-FIRST approach 
@@ -1544,7 +1544,7 @@ orcer.mjs' 이건 js로 변환을 해야 하지 않나? 그런데 hooks을 위�
        "..." && tail -20
       moai-adk-ts/templates/.claude/hooks/moai/tag-enforcer.mjs)
   ⎿ /**                                                                     
-     * @TAG:SECURITY:TAG-ENFORCER-001
+     * @DOC:SECURITY:TAG-ENFORCER-001
      * @CHAIN: REQ:TAG-SYSTEM-001 -> DESIGN:CODE-FIRST-001 -> TASK:ENFORCER-
     … +34 lines (ctrl+o to expand)
 
@@ -1583,7 +1583,7 @@ orcer.mjs' 이건 js로 변환을 해야 하지 않나? 그런데 hooks을 위�
       "" && echo "..." && echo "" && grep -B 1 -A 1 "^module.exports"
       moai-adk-ts/templates/…)
   ⎿ /**                                                                     
-     * @TAG:SECURITY:TAG-ENFORCER-001
+     * @DOC:SECURITY:TAG-ENFORCER-001
      * @CHAIN: REQ:TAG-SYSTEM-001 -> DESIGN:CODE-FIRST-001 -> TASK:ENFORCER-
     … +18 lines (ctrl+o to expand)
 
@@ -1976,7 +1976,7 @@ orcer.mjs' 이건 js로 변환을 해야 하지 않나? 그런데 hooks을 위�
      … +19 lines (ctrl+o to expand)
 
 ⏺ Bash(ls *.js | while read f; do echo "=== $f ===" && head -20 "$f" | grep -A 2
-      "Code-First\|@TAG:" | head -5; done)
+      "Code-First\|@DOC:" | head -5; done)
   ⎿  ===  ===                      
      ===  ===
      ===  ===
