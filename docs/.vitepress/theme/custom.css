@@ -563,24 +563,26 @@ code, kbd, samp, pre {
   flex-wrap: wrap;
 }
 
-/* 우측 이미지 영역 - 우측 중앙 정렬 */
+/* 우측 이미지 영역 - 중앙 정렬 */
 .VPHero .image-container {
   display: flex !important;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   position: relative;
-  padding: 2rem;
+  padding: 0;
 }
 
-/* 이미지 2배 확대 */
+/* 이미지 크기 - 컨테이너에 맞춤 */
 .VPHero .image-container img {
-  width: 200%;
+  width: 100%;
   height: auto;
+  max-width: 100%;
   border-radius: calc(var(--radius) + 8px);
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   border: 1px solid hsl(var(--border));
   transition: none !important;
   transform: none !important;
+  filter: none !important; /* 이미지 필터 제거 */
 }
 
 .VPHero .image-container img:hover {
@@ -588,9 +590,11 @@ code, kbd, samp, pre {
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
 }
 
+/* 다크 모드 - 이미지 반전 없음 (이미 다크 테마 이미지) */
 .dark .VPHero .image-container img {
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   border-color: hsl(var(--border));
+  filter: none !important; /* 반전 방지 */
 }
 
 /* 데스크톱 레이아웃 (1024px+) */
@@ -1176,8 +1180,8 @@ tr:last-child td {
    Apply to ALL images except logo
    ============================================ */
 
-/* Target all images in dark mode, but exclude navigation logo */
-.dark img:not(.VPNav img):not([alt*="logo"]):not([src*="logo"]) {
+/* Target all images in dark mode, but exclude navigation logo and Hero image */
+.dark img:not(.VPNav img):not([alt*="logo"]):not([src*="logo"]):not(.VPHero img):not(.image-container img) {
   filter: invert(1) brightness(1.1) contrast(1.05) !important;
 }
 
@@ -1189,10 +1193,11 @@ tr:last-child td {
   filter: invert(1) brightness(1.15) contrast(1.1) !important;
 }
 
-/* Ensure hero image is NOT inverted */
+/* Ensure hero image has NO filter (already dark theme image) */
 .dark .VPHero img,
+.dark .VPHero .image-container img,
 .dark .image-container img {
-  filter: brightness(0.95) contrast(1.1) !important;
+  filter: none !important;
 }
 
 /* ============================================
