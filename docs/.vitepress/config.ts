@@ -27,8 +27,8 @@ export default withMermaid(
 
   themeConfig: {
     logo: {
-      light: '/moai-logo-light.png',
-      dark: '/moai-logo-dark.png'
+      light: '/moai-tui_screen-light.png',
+      dark: '/moai-tui_screen-dark.png'
     },
 
     nav: [
@@ -237,7 +237,7 @@ export default withMermaid(
   },
 
   head: [
-    ['link', { rel: 'icon', type: 'image/png', href: '/moai-logo-dark.png' }],
+    ['link', { rel: 'icon', type: 'image/png', href: '/moai-tui_screen-dark.png' }],
     ['meta', { name: 'theme-color', content: '#5f67ee' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:locale', content: 'ko' }],

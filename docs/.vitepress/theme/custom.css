@@ -709,23 +709,32 @@ tr:last-child td {
    Logo & Hero Image Theme Adjustments
    ============================================ */
 
-/* Navigation Logo - Remove background in dark mode, disable hover effects */
+/* Navigation Logo - Completely disable all hover effects and animations */
+.VPNav .logo,
+.VPNav .logo a,
 .VPNav .logo img {
   transition: none !important;
+  transform: none !important;
+  animation: none !important;
   pointer-events: auto;
+  cursor: default !important;
 }
 
+.VPNav .logo:hover,
+.VPNav .logo a:hover,
 .VPNav .logo img:hover {
   transform: none !important;
   filter: none !important;
+  opacity: 1 !important;
+  scale: 1 !important;
 }
 
 .dark .VPNav .logo img {
-  filter: brightness(1.1) contrast(1.05);
+  filter: none !important;
 }
 
 .dark .VPNav .logo img:hover {
-  filter: brightness(1.1) contrast(1.05) !important;
+  filter: none !important;
 }
 
 /* Hero Image - Theme-specific styling (hover effects disabled) */
