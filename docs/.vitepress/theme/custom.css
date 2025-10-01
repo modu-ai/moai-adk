@@ -1292,18 +1292,32 @@ tr:last-child td {
   stroke-width: 2px !important;
 }
 
-/* 엣지 라벨 배경 */
+/* 엣지 라벨 배경 및 텍스트 - 완전 강제 적용 */
 .dark .mermaid .edgeLabel,
 .dark .mermaid .edgeLabel rect {
-  background-color: #1a202c !important;
-  fill: #1a202c !important;
+  background-color: transparent !important;
+  fill: transparent !important;
 }
 
 .dark .mermaid .edgeLabel span,
-.dark .mermaid .edgeLabel foreignObject div {
-  background: #1a202c !important;
-  color: #f7fafc !important;
+.dark .mermaid .edgeLabel foreignObject div,
+.dark .mermaid .edgeLabel p,
+.dark .mermaid .edgeLabel div {
+  background: transparent !important;
+  color: #ffffff !important;
   padding: 2px 6px !important;
+  font-weight: 700 !important;
+}
+
+/* 모든 엣지 라벨 텍스트 - 최우선 순위 */
+.dark .mermaid .edgeLabel text,
+.dark .mermaid .edgeLabel tspan,
+.dark .mermaid g.edgeLabel text,
+.dark .mermaid g.edgeLabel tspan {
+  fill: #ffffff !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  stroke: none !important;
 }
 
 /* 메시지, 노트, 라벨 텍스트 */
@@ -1312,6 +1326,30 @@ tr:last-child td {
 .dark .mermaid .labelText {
   fill: #f7fafc !important;
   font-weight: 600 !important;
+}
+
+/* 플로우차트 엣지 라벨 전용 */
+.dark .mermaid .flowchart .edgeLabel text,
+.dark .mermaid .flowchart-label text {
+  fill: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+/* 분기 조건 텍스트 (예/아니오) */
+.dark .mermaid text[class*="edge"],
+.dark .mermaid text.edgeLabel {
+  fill: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+/* SVG 내부 모든 텍스트 요소 강제 적용 */
+.dark .mermaid svg text {
+  fill: #f7fafc !important;
+}
+
+.dark .mermaid svg .edgeLabel text {
+  fill: #ffffff !important;
+  font-weight: 700 !important;
 }
 
 /* 라인과 화살표 - 더 밝게 */
