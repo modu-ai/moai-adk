@@ -9,7 +9,7 @@ authors: ["@architect"]
 
 # {{PROJECT_NAME}} Structure Design
 
-## 📋 HISTORY
+## HISTORY
 
 ### v1.0.0 (2025-10-01)
 - **INITIAL**: 프로젝트 구조 설계 문서 작성

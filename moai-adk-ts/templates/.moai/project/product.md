@@ -9,7 +9,7 @@ authors: ["@project-owner"]
 
 # {{PROJECT_NAME}} Product Definition
 
-## 📋 HISTORY
+## HISTORY
 
 ### v1.0.0 (2025-10-01)
 - **INITIAL**: 프로젝트 제품 정의 문서 작성

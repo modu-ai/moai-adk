@@ -9,7 +9,7 @@ authors: ["@tech-lead"]
 
 # {{PROJECT_NAME}} Technology Stack
 
-## 📋 HISTORY
+## HISTORY
 
 ### v1.0.0 (2025-10-01)
 - **INITIAL**: 프로젝트 기술 스택 문서 작성

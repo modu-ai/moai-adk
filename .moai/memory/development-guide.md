@@ -164,7 +164,7 @@ authors: ["@goos"]
 
 # @SPEC:AUTH-001: JWT 인증 시스템
 
-## 📋 HISTORY
+## HISTORY
 
 ### v2.1.0 (2025-10-01)
 - **CHANGED**: 토큰 만료 시간 15분 → 30분으로 변경
@@ -244,7 +244,7 @@ authors: ["@goos"]
 rg -A 20 "# @SPEC:AUTH-001" .moai/specs/SPEC-AUTH-001.md
 
 # HISTORY 섹션만 추출
-rg -A 50 "## 📋 HISTORY" .moai/specs/SPEC-AUTH-001.md
+rg -A 50 "## HISTORY" .moai/specs/SPEC-AUTH-001.md
 
 # 최근 변경 사항만 확인
 rg "### v[0-9]" .moai/specs/SPEC-AUTH-001.md | head -3
