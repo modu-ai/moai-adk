@@ -191,12 +191,12 @@ authors: ["@goos"]
 
 **소스 코드 (src/)**:
 ```text
-# @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md v2.1.0 | TEST: tests/auth/service.test.ts
+# @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth/service.test.ts
 ```
 
 **테스트 코드 (tests/)**:
 ```text
-# @TEST:AUTH-001 | SPEC: SPEC-AUTH-001.md v2.1.0
+# @TEST:AUTH-001 | SPEC: SPEC-AUTH-001.md
 ```
 
 ### @CODE 서브 카테고리 (주석 레벨)

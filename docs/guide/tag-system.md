@@ -46,6 +46,31 @@ graph LR
 
 ## TAG BLOCK 템플릿
 
+### SPEC 문서 HISTORY 섹션 (필수)
+
+**모든 SPEC 문서는 HISTORY 섹션을 포함해야 합니다.** TAG의 진화 과정을 추적하여 요구사항 변경 이력을 명확히 기록합니다.
+
+**HISTORY 섹션 역할**:
+- SPEC 버전 관리: YAML front matter의 version과 동기화
+- 변경 이력 추적: 요구사항 수정, 추가, 삭제 기록
+- 작성자/리뷰어 명시: 책임 소재 명확화
+- 변경 이유 문서화: 컨텍스트 보존
+
+**HISTORY 태그**:
+- `INITIAL`: 최초 작성 (v1.0.0)
+- `ADDED`: 새 기능/요구사항 추가 → Minor 버전 증가
+- `CHANGED`: 기존 내용 수정 → Patch 버전 증가
+- `FIXED`: 버그/오류 수정 → Patch 버전 증가
+- `REMOVED`: 기능/요구사항 제거 → Major 버전 증가
+- `BREAKING`: 하위 호환성 깨지는 변경 → Major 버전 증가
+- `DEPRECATED`: 향후 제거 예정 표시
+
+**버전 관리 원칙**:
+- **TAG ID는 영구 불변**: AUTH-001은 절대 변경되지 않음
+- **TAG 내용은 자유롭게 수정**: HISTORY에 기록 필수
+- **Semantic Versioning**: Major.Minor.Patch
+- **코드/테스트에서는 버전 미포함**: `SPEC: SPEC-AUTH-001.md` (버전 없음)
+
 ### 기본 템플릿
 
 **소스 코드 (src/)**:
@@ -60,7 +85,21 @@ graph LR
 
 **SPEC 문서 (.moai/specs/)**:
 ```markdown
+---
+id: AUTH-001
+version: 1.0.0
+status: active
+created: 2025-10-01
+updated: 2025-10-01
+---
+
 # @SPEC:AUTH-001: JWT 인증 시스템
+
+## HISTORY
+
+### v1.0.0 (2025-10-01)
+- **INITIAL**: JWT 인증 시스템 명세 작성
+- **AUTHOR**: @dev-team
 ```
 
 **문서 (docs/)**:

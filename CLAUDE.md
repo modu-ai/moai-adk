@@ -105,18 +105,19 @@ updated: 2025-10-01
 
 **소스 코드 (src/)**:
 ```typescript
-// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md v2.1.0 | TEST: tests/auth/service.test.ts
+// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth/service.test.ts
 ```
 
 **테스트 코드 (tests/)**:
 ```typescript
-// @TEST:AUTH-001 | SPEC: SPEC-AUTH-001.md v2.1.0
+// @TEST:AUTH-001 | SPEC: SPEC-AUTH-001.md
 ```
 
 **핵심 원칙**:
 - TAG ID: `<도메인>-<3자리>` (예: `AUTH-003`) - **영구 불변**
 - TAG 내용: **자유롭게 수정 가능** (HISTORY에 기록 필수)
-- 버전: Semantic Versioning (Major.Minor.Patch)
+- SPEC 버전 관리: SPEC 문서 내부에서만 관리 (YAML front matter + HISTORY)
+- TAG 참조: 버전 없이 파일명만 사용 (예: `SPEC-AUTH-001.md`)
 - 생성 전 중복 확인: `rg "@SPEC:AUTH" -n` 또는 `rg "AUTH-001" -n`
 - **TAG의 진실은 코드 자체에만 존재**: 정규식 패턴으로 코드에서 직접 스캔하여 실시간 검증
 

@@ -418,9 +418,25 @@ sequenceDiagram
 
 **자동 생성되는 것들:**
 
-1. **EARS 형식 명세서** (`.moai/specs/SPEC-AUTH-001/spec.md`):
+1. **EARS 형식 명세서** (`.moai/specs/SPEC-AUTH-001.md`):
 ```markdown
+---
+id: AUTH-001
+version: 1.0.0
+status: active
+created: 2025-10-01
+updated: 2025-10-01
+authors: ["@dev-team"]
+---
+
 # @SPEC:AUTH-001: JWT 기반 사용자 인증 시스템
+
+## HISTORY
+
+### v1.0.0 (2025-10-01)
+- **INITIAL**: JWT 기반 인증 시스템 명세 작성
+- **AUTHOR**: @dev-team
+- **SCOPE**: 기본 로그인, 토큰 발급, 리프레시 토큰 기능
 
 ## EARS 요구사항
 
