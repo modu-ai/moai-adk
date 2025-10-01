@@ -350,7 +350,7 @@ my-project/
 │   │   └── moai/       # /moai:1-spec, /moai:2-build, /moai:3-sync
 │   ├── hooks/          # 자동화 훅 (pre-write-guard, tag-enforcer 등)
 │   │   └── moai/
-│   ├── output-styles/  # 출력 스타일 (pair, beginner, study)
+│   ├── output-styles/  # 출력 스타일 (moai-pro, beginner-learning, pair-collab, study-deep)
 │   └── settings.json   # Claude Code 환경 설정
 └── CLAUDE.md           # 프로젝트 개발 가이드
 ```
