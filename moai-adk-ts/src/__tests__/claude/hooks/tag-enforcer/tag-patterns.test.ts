@@ -9,7 +9,7 @@ import { describe, expect, test } from 'vitest';
 import {
   CODE_FIRST_PATTERNS,
   VALID_CATEGORIES,
-} from '../../../claude/hooks/tag-enforcer/tag-patterns';
+} from '@/claude/hooks/tag-enforcer/tag-patterns';
 
 describe('@TEST:REFACTOR-003: TAG Patterns', () => {
   describe('TAG_BLOCK pattern', () => {
@@ -56,8 +56,7 @@ describe('@TEST:REFACTOR-003: TAG Patterns', () => {
 
   describe('CHAIN_LINE pattern', () => {
     test('should match valid chain line', () => {
-      const line =
-        ' * CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001 -> TASK:AUTH-001';
+      const line = ' * CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001 -> TASK:AUTH-001';
       const match = CODE_FIRST_PATTERNS.CHAIN_LINE.exec(line);
 
       expect(match).not.toBeNull();

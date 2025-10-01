@@ -34,8 +34,8 @@ describe('TemplateProcessor - Cross-Platform Path Resolution', () => {
       // RED: This test will fail until we implement Windows-specific path handling
 
       // Simulate Windows environment
-      process.env['USERPROFILE'] = 'C:\\Users\\TestUser';
-      delete process.env['HOME'];
+      process.env.USERPROFILE = 'C:\\Users\\TestUser';
+      delete process.env.HOME;
 
       const templatesPath = processor.getTemplatesPath();
 
@@ -56,8 +56,8 @@ describe('TemplateProcessor - Cross-Platform Path Resolution', () => {
     it('should resolve macOS paths using HOME environment variable', () => {
       // RED: This test will fail until we fix HOME fallback to '~'
 
-      process.env['HOME'] = '/Users/testuser';
-      delete process.env['USERPROFILE'];
+      process.env.HOME = '/Users/testuser';
+      delete process.env.USERPROFILE;
 
       const templatesPath = processor.getTemplatesPath();
 
@@ -65,7 +65,7 @@ describe('TemplateProcessor - Cross-Platform Path Resolution', () => {
 
       // Should not use '~' literal when HOME is available
       if (templatesPath.includes('~')) {
-        expect(process.env['HOME']).toBeUndefined();
+        expect(process.env.HOME).toBeUndefined();
       }
     });
 
@@ -76,15 +76,15 @@ describe('TemplateProcessor - Cross-Platform Path Resolution', () => {
     it('should resolve Linux paths using HOME environment variable', () => {
       // RED: This test will fail until we implement proper HOME handling
 
-      process.env['HOME'] = '/home/testuser';
-      delete process.env['USERPROFILE'];
+      process.env.HOME = '/home/testuser';
+      delete process.env.USERPROFILE;
 
       const templatesPath = processor.getTemplatesPath();
 
       expect(templatesPath).toBeDefined();
 
       // Should expand HOME properly
-      if (templatesPath.includes(process.env['HOME'] || '')) {
+      if (templatesPath.includes(process.env.HOME || '')) {
         expect(templatesPath).toContain('/home/testuser');
       }
     });
@@ -204,10 +204,10 @@ describe('TemplateProcessor - Cross-Platform Path Resolution', () => {
       const variables = processor.createTemplateVariables(config);
 
       expect(variables).toBeDefined();
-      expect(variables['PROJECT_NAME']).toBe('test-project');
-      expect(variables['PROJECT_MODE']).toBe('development');
-      expect(typeof variables['PROJECT_VERSION']).toBe('string');
-      expect(typeof variables['TIMESTAMP']).toBe('string');
+      expect(variables.PROJECT_NAME).toBe('test-project');
+      expect(variables.PROJECT_MODE).toBe('personal');
+      expect(typeof variables.PROJECT_VERSION).toBe('string');
+      expect(typeof variables.TIMESTAMP).toBe('string');
     });
   });
 });

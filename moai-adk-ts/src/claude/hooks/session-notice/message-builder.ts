@@ -30,7 +30,7 @@ function buildVersionMessage(
   status: ProjectStatus,
   versionCheck: VersionCheckResult | null
 ): string {
-  if (versionCheck && versionCheck.latest) {
+  if (versionCheck?.latest) {
     if (versionCheck.hasUpdate) {
       return `📦 버전: v${versionCheck.current} → ⚡ v${versionCheck.latest} 업데이트 가능`;
     } else {

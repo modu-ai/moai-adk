@@ -20,7 +20,7 @@ interface EnvironmentConfig {
  * Get logger configuration based on NODE_ENV
  */
 export function getLoggerConfig(): EnvironmentConfig {
-  const env = process.env['NODE_ENV'] || 'development';
+  const env = process.env.NODE_ENV || 'development';
 
   const configs: Record<string, EnvironmentConfig> = {
     development: { level: 'debug', enableFile: false, enableConsole: true },
@@ -28,7 +28,7 @@ export function getLoggerConfig(): EnvironmentConfig {
     production: { level: 'info', enableFile: true, enableConsole: true },
   };
 
-  return configs[env] ?? configs['development']!;
+  return configs[env] ?? configs.development!;
 }
 
 /**
@@ -41,7 +41,7 @@ export function mergeLoggerOptions(userOptions?: LoggerOptions): Required<
 } {
   const envConfig = getLoggerConfig();
   const logLevel =
-    process.env['LOG_LEVEL'] || userOptions?.level || envConfig.level;
+    process.env.LOG_LEVEL || userOptions?.level || envConfig.level;
 
   const merged: Required<Omit<LoggerOptions, 'transports'>> & {
     transports?: winston.transport[];

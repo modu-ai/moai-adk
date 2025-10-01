@@ -3,7 +3,7 @@
  * @description Tests for PreWriteGuard hook
  */
 
-import { PreWriteGuard } from '../../../../claude/hooks/security/pre-write-guard';
+import { PreWriteGuard } from '../../../../claude/hooks/pre-write-guard';
 import type { HookInput } from '../../../../claude/hooks/types';
 
 describe('PreWriteGuard', () => {

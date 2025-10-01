@@ -54,12 +54,7 @@ export class PreWriteGuard implements MoAIHook {
    * Extract file path from tool input
    */
   private extractFilePath(toolInput: Record<string, any>): string | null {
-    return (
-      toolInput['file_path'] ||
-      toolInput['filePath'] ||
-      toolInput['path'] ||
-      null
-    );
+    return toolInput.file_path || toolInput.filePath || toolInput.path || null;
   }
 
   /**

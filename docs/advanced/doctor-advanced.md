@@ -966,7 +966,7 @@ bun install
 ### 1. 결과를 JSON으로 저장
 
 ```bash
-# 향후 버전에서 지원 예정 (v0.0.4)
+# 향후 버전에서 지원 예정
 moai doctor --advanced --json > health.json
 
 # 현재는 파싱 필요

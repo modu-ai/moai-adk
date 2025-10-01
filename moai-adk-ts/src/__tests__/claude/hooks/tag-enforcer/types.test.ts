@@ -10,7 +10,7 @@ import type {
   ImmutabilityCheck,
   TagBlock,
   ValidationResult,
-} from '../../../claude/hooks/tag-enforcer/types';
+} from '@/claude/hooks/tag-enforcer/types';
 
 describe('@TEST:REFACTOR-003: TAG Types', () => {
   describe('TagBlock', () => {

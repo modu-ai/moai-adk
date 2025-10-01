@@ -8,10 +8,10 @@ import { beforeEach, describe, expect, type Mocked, test, vi } from 'vitest';
 import '@/__tests__/setup';
 import type { DoctorResult } from '@/cli/commands/doctor';
 import { InitCommand } from '@/cli/commands/init';
-import { SystemDetector } from '@/core/system-checker/detector';
+import type { SystemDetector } from '@/core/system-checker';
 
 // Mock modules
-vi.mock('@/core/system-checker/detector');
+vi.mock('@/core/system-checker');
 
 describe('InitCommand - Package Path Validation', () => {
   let initCommand: InitCommand;
@@ -19,7 +19,7 @@ describe('InitCommand - Package Path Validation', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockDetector = new SystemDetector() as unknown as Mocked<SystemDetector>;
+    mockDetector = {} as Mocked<SystemDetector>;
     initCommand = new InitCommand(mockDetector);
   });
 

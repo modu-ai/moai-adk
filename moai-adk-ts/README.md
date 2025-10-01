@@ -7,7 +7,7 @@
 
 TypeScript-based SPEC-First TDD Development Kit with Universal Language Support
 
-> **Note**: This is an early development version (v0.0.1). Features and APIs are subject to change.
+> **Note**: This is an early development version. Features and APIs are subject to change.
 
 ## Features
 

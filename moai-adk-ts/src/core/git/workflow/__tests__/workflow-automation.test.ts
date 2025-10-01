@@ -74,9 +74,9 @@ describe('WorkflowAutomation Integration Tests', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      (mockGitManager.createBranch as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new Error('Git error')
-      );
+      (
+        mockGitManager.createBranch as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(new Error('Git error'));
 
       const result = await workflow.startSpecWorkflow(
         'SPEC-003',
@@ -109,9 +109,9 @@ describe('WorkflowAutomation Integration Tests', () => {
     });
 
     it('should handle build failures', async () => {
-      (mockGitManager.createCheckpoint as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new Error('Checkpoint failed')
-      );
+      (
+        mockGitManager.createCheckpoint as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(new Error('Checkpoint failed'));
 
       const result = await workflow.runBuildWorkflow('SPEC-001');
 
@@ -131,9 +131,9 @@ describe('WorkflowAutomation Integration Tests', () => {
     });
 
     it('should handle sync failures', async () => {
-      (mockGitManager.commitChanges as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new Error('Commit failed')
-      );
+      (
+        mockGitManager.commitChanges as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(new Error('Commit failed'));
 
       const result = await workflow.runSyncWorkflow('SPEC-001');
 
@@ -157,9 +157,9 @@ describe('WorkflowAutomation Integration Tests', () => {
     });
 
     it('should stop on first failure', async () => {
-      (mockGitManager.createBranch as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new Error('Branch failed')
-      );
+      (
+        mockGitManager.createBranch as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(new Error('Branch failed'));
 
       const results = await workflow.runFullSpecWorkflow(
         'SPEC-001',

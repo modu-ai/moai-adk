@@ -12,7 +12,7 @@
 
 **⚡ 현대적 기술 스택: TypeScript + Bun + Vitest + Biome**
 
-**🤖 Claude Code 완전 통합: 7개 전문 에이전트 시스템**
+**🤖 Claude Code 완전 통합: 8개 전문 에이전트 시스템**
 
 ## 개요
 
@@ -50,13 +50,14 @@ graph TB
 - **동적 도구 매핑**: 감지된 언어에 따라 최적의 테스트/빌드/린트 도구 자동 선택
 - **통일된 워크플로우**: 언어에 관계없이 동일한 3단계 개발 프로세스 적용
 
-#### 🤖 **Claude Code 완전 통합**: 7개 전문 에이전트 시스템
+#### 🤖 **Claude Code 완전 통합**: 8개 전문 에이전트 시스템
 - **spec-builder**: EARS 명세서 자동 생성 및 브랜치/PR 생성
 - **code-builder**:  @TAG 통합 TDD 구현
 - **doc-syncer**: Living Document 동기화 및 PR 상태 전환
 - **debug-helper**: 지능형 오류 진단 및 해결책 제안
 - **git-manager**: Git 워크플로우 자동화 (사용자 확인 후)
 - **trust-checker**: TRUST 5원칙 자동 검증
+- **tag-agent**: @TAG 시스템 독점 관리 (생성/검증/인덱싱)
 - **cc-manager**: Claude Code 설정 최적화
 
 #### 🏷️ ** AI-TAG 시스템**: 코드 직접 스캔 기반 추적성
@@ -632,9 +633,9 @@ moai help init      # init 명령어 도움말
 moai help doctor    # doctor 명령어 도움말
 ```
 
-## 🤖 7개 전문 에이전트 시스템
+## 🤖 8개 전문 에이전트 시스템
 
-MoAI-ADK의 핵심은 Claude Code와 완전히 통합된 **7개 전문 에이전트**입니다. 각 에이전트는 특정 영역에서 최적화되어 있으며, 서로 협력하여 완전한 개발 생명주기를 지원합니다.
+MoAI-ADK의 핵심은 Claude Code와 완전히 통합된 **8개 전문 에이전트**입니다. 각 에이전트는 특정 영역에서 최적화되어 있으며, 서로 협력하여 완전한 개발 생명주기를 지원합니다.
 
 ```mermaid
 graph TB
@@ -691,6 +692,7 @@ graph TB
 | **🔍 debug-helper** | 지능형 오류 진단 | • SystemChecker 아키텍처<br/>• 언어별 도구 감지<br/>• 실용성 중심 해결책 | `@agent-debug-helper "빌드 실패 원인"` |
 | **🔄 git-manager** | Git 워크플로우 자동화 | • 사용자 확인 후 브랜치 생성<br/>• 커밋 메시지 자동화<br/>• Personal/Team 모드 지원 | `@agent-git-manager "feature 브랜치 생성"` |
 | **✅ trust-checker** | 품질 검증 | • TRUST 5원칙 자동 검증<br/>• 보안 스캐닝<br/>• 코드 품질 매트릭스 | `@agent-trust-checker "코드 품질 검사"` |
+| **🏷️ tag-agent** | @TAG 시스템 관리 | • TAG 체인 생성/검증<br/>• 고아 TAG 탐지<br/>• TAG 인덱싱 및 추적 | `@agent-tag-agent "TAG 체인 검증"` |
 
 ### 에이전트 사용 예제
 
@@ -844,7 +846,7 @@ npm --version
 
 ### 성능 문제
 
-**실제 시스템 성능 지표 (v0.0.3):**
+**실제 시스템 성능 지표:**
 - 빌드 시간: ~278ms (ESM), ~903ms (DTS 포함)
 - 패키지 크기: 1.7MB (dist/ 디렉토리)
 - 테스트 성공률: 294/326 (90.2%)

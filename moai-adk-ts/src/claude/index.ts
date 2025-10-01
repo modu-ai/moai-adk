@@ -57,8 +57,8 @@ export async function parseClaudeInput(): Promise<HookInput> {
 export function outputResult(result: HookResult): void {
   if (result.blocked) {
     console.error(`BLOCKED: ${result.message || 'Operation blocked'}`);
-    if (result.data?.['suggestions']) {
-      console.error(`\n${result.data['suggestions']}`);
+    if (result.data?.suggestions) {
+      console.error(`\n${result.data.suggestions}`);
     }
     process.exit(result.exitCode || 2);
   } else if (!result.success) {

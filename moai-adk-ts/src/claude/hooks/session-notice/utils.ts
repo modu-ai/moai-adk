@@ -87,7 +87,7 @@ export function getMoAIVersion(projectRoot: string): string {
         return version;
       }
     }
-  } catch (error) {
+  } catch (_error) {
     // Ignore errors
   }
   return 'unknown';
@@ -106,7 +106,7 @@ export function getCurrentPipelineStage(projectRoot: string): string {
       };
       return config.pipeline?.current_stage || 'unknown';
     }
-  } catch (error) {
+  } catch (_error) {
     // Ignore errors
   }
 
@@ -157,7 +157,7 @@ export function getSpecProgress(projectRoot: string): SpecProgress {
     }
 
     return { total: totalSpecs, completed };
-  } catch (error) {
+  } catch (_error) {
     return { total: 0, completed: 0 };
   }
 }
@@ -216,7 +216,7 @@ export async function getGitChangesCount(projectRoot: string): Promise<number> {
       return lines.length;
     }
     return 0;
-  } catch (error) {
+  } catch (_error) {
     return 0;
   }
 }
@@ -246,7 +246,7 @@ export async function getGitInfo(projectRoot: string): Promise<GitInfo> {
       message: message || defaultInfo.message,
       changesCount,
     };
-  } catch (error) {
+  } catch (_error) {
     return defaultInfo;
   }
 }
@@ -284,7 +284,7 @@ export async function checkLatestVersion(
       latest,
       hasUpdate,
     };
-  } catch (error) {
+  } catch (_error) {
     return null;
   }
 }

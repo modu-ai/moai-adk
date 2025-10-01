@@ -46,7 +46,7 @@ c4a288e Merge branch 'cleanup/remove-unused-files-phase2' into develop
 
 #### ✅ 완료된 작업
 1. **핵심 설계 문서 작성**
-   - `docs/analysis/tag-system-v5-design.md` (644줄) - 신 TAG 체계 전체 설계
+   - `docs/analysis/tag-system-v5-design.md` (644줄) - TAG 체계 전체 설계
    - `docs/analysis/tag-system-critical-analysis.md` (647줄) -  비판적 분석
 
 2. **핵심 가이드 업데이트**
@@ -58,7 +58,7 @@ c4a288e Merge branch 'cleanup/remove-unused-files-phase2' into develop
    - `moai-adk-ts/templates/` - 전체 파일  반영 완료
 
 4. **CHANGELOG 작성**
-   - `CHANGELOG.md` - v0.0.2 릴리스 노트 작성 (신 TAG 체계 전환 내용)
+   - `CHANGELOG.md` - v0.0.2 릴리스 노트 작성 (TAG 체계 전환 내용)
 
 ### 3. TAG 스캔 결과 분석
 
@@ -79,7 +79,7 @@ c4a288e Merge branch 'cleanup/remove-unused-files-phase2' into develop
 - **테스트 코드**: `moai-adk-ts/src/__tests__/` ( TAG 참조)
   - 주석 레벨 참조 (코드는 동작 유지)
 
-#### 신 TAG 체계 TAG 현황
+#### TAG 현황
 **총 발견**: 150+ 건
 
 **주요 위치**:
@@ -96,7 +96,7 @@ c4a288e Merge branch 'cleanup/remove-unused-files-phase2' into develop
 
 #### ✅ 일치하는 영역
 - **TRUST 원칙**: development-guide.md와 CLAUDE.md 완전 일치
-- **TAG 체계**: 신 TAG 체계 정의가 모든 핵심 문서에 일관되게 적용
+- **TAG 체계**: 4개 TAG 정의가 모든 핵심 문서에 일관되게 적용
 - **워크플로우**: 3단계 (/moai:1-spec → 2-build → 3-sync) 일관성 유지
 - **CODE-FIRST 원칙**: "TAG의 진실은 코드 자체에만 존재" 통일
 
@@ -174,7 +174,7 @@ c4a288e Merge branch 'cleanup/remove-unused-files-phase2' into develop
 
 #### 검증 방법
 ```bash
-# 신 TAG 체계 TAG 전체 스캔
+# TAG 전체 스캔
 rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/
 
 # 고아 TAG 탐지

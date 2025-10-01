@@ -73,9 +73,9 @@ describe('TemplateProcessor - Phase 2: Template Processing Logic', () => {
       const data = processor.createTemplateData(config);
 
       expect(data.features).toBeDefined();
-      expect(data.features['typescript']).toBe(true);
-      expect(data.features['jest']).toBe(true);
-      expect(data.features['biome']).toBe(false);
+      expect(data.features.typescript).toBe(true);
+      expect(data.features.jest).toBe(true);
+      expect(data.features.biome).toBe(false);
     });
   });
 
@@ -123,8 +123,8 @@ describe('TemplateProcessor - Phase 2: Template Processing Logic', () => {
       expect(packageJson.author).toBe('Test Author');
       expect(packageJson.license).toBe('MIT');
       expect(packageJson.scripts).toBeDefined();
-      expect(packageJson.scripts['build']).toBeDefined();
-      expect(packageJson.scripts['test']).toBeDefined();
+      expect(packageJson.scripts.build).toBeDefined();
+      expect(packageJson.scripts.test).toBeDefined();
     });
 
     it('should generate tsconfig.json content', () => {

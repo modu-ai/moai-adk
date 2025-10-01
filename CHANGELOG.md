@@ -9,15 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🎯 **TAG System - 체계 개선**
 
-**TAG 시스템을 구 TAG 체계에서 신 TAG 체계로 대폭 단순화하여 TDD와 완벽하게 정렬했습니다**
+**TAG 시스템을 대폭 단순화하여 TDD와 완벽하게 정렬했습니다**
 
 #### 🌟 주요 변경사항
 
 ##### 1. TAG 체계 단순화 (50% 감소)
-- **Before ()**: 구 TAG 체계 TAG 체계
-  - Primary: `@SPEC`, `@SPEC`, `@CODE`, `@TEST`
-  - Implementation: `@CODE`, `@CODE`, `@CODE`, `@CODE`
-- **After ()**: TAG 체계
+- **Before (이전 버전)**: 8개 TAG 체계
+  - Primary: `@REQ`, `@DESIGN`, `@TASK`, `@TEST`
+  - Implementation: `@FEATURE`, `@API`, `@UI`, `@DATA`
+- **After (현재 버전)**: 4개 TAG 체계
   - `@SPEC:ID` → `@TEST:ID` → `@CODE:ID` → `@DOC:ID`
 
 ##### 2. TDD 사이클 완벽 정렬
@@ -26,8 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **REFACTOR Phase**: `@CODE:ID` 개선 + `@DOC:ID` 문서화
 
 ##### 3. 구현 세부사항 주석 레벨화
-- : 파일 레벨 TAG (@CODE, @CODE, @CODE, @CODE)
-- : 주석 레벨 서브카테고리
+- **이전**: 파일 레벨 TAG (@FEATURE, @API, @UI, @DATA)
+- **현재**: 주석 레벨 서브카테고리
   - `@CODE:ID:API` - REST API, GraphQL
   - `@CODE:ID:UI` - 컴포넌트, 화면
   - `@CODE:ID:DATA` - 데이터 모델
@@ -36,17 +36,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ##### 4. TAG BLOCK 템플릿 단순화
 ```typescript
-//  (156 characters)
-// @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 -> @SPEC:AUTH-001 -> @CODE:AUTH-001 -> @TEST:AUTH-001
-// Related: @CODE:AUTH-001, @CODE:AUTH-001
+// 이전 버전 (156 characters)
+// @TASK:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+// Related: @FEATURE:AUTH-001, @API:AUTH-001
 
-//  (78 characters, 50% reduction)
+// 현재 버전 (78 characters, 50% reduction)
 // @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth/service.test.ts
 ```
 
 #### 📊 성능 개선
 
-| 항목 |  |  | 개선율 |
+| 항목 | 이전 | 현재 | 개선율 |
 |------|------|------|--------|
 | TAG 개수 | 8개 | 4개 | -50% |
 | TAG BLOCK 길이 | 156자 | 78자 | -50% |
@@ -58,38 +58,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### 🔧 마이그레이션 가이드
 
 ##### TAG 매핑 규칙
-|  (구 TAG 체계) |  (필수 TAG) | 위치 |
-|---------------|---------------|------|
-| `@SPEC:ID` | `@SPEC:ID` | .moai/specs/ |
-| `@SPEC:ID` | `@SPEC:ID` | .moai/specs/ |
-| `@CODE:ID` | `@CODE:ID` | src/ |
+| 이전 버전 | 현재 버전 | 위치 |
+|-----------|-----------|------|
+| `@REQ:ID` | `@SPEC:ID` | .moai/specs/ |
+| `@DESIGN:ID` | `@SPEC:ID` | .moai/specs/ |
+| `@TASK:ID` | `@CODE:ID` | src/ |
 | `@TEST:ID` | `@TEST:ID` | tests/ |
-| `@CODE:ID` | `@CODE:ID` | src/ |
-| `@CODE:ID` | `@CODE:ID:API` | src/ (주석) |
-| `@CODE:ID` | `@CODE:ID:UI` | src/ (주석) |
-| `@CODE:ID` | `@CODE:ID:DATA` | src/ (주석) |
+| `@FEATURE:ID` | `@CODE:ID` | src/ |
+| `@API:ID` | `@CODE:ID:API` | src/ (주석) |
+| `@UI:ID` | `@CODE:ID:UI` | src/ (주석) |
+| `@DATA:ID` | `@CODE:ID:DATA` | src/ (주석) |
 
 ##### 자동 마이그레이션
 ```bash
 # TAG 스캔 명령어 업데이트
-# 
+# 이전 버전
 rg '@(REQ|DESIGN|TASK|TEST|FEATURE|API|UI|DATA):' -n
 
-# 
+# 현재 버전
 rg '@(SPEC|TEST|CODE|DOC):' -n
 ```
 
 #### 📚 업데이트된 문서
 
-- **설계 문서**: `docs/analysis/tag-system-v5-design.md` (신규)
+- **설계 문서**: `docs/analysis/tag-system-design.md` (신규)
 - **분석 리포트**: `docs/analysis/tag-system-critical-analysis.md` (신규)
-- **가이드**: `docs/guide/tag-system.md` ( 전면 개편)
+- **가이드**: `docs/guide/tag-system.md` (전면 개편)
 - **핵심 가이드**: `CLAUDE.md`, `.moai/memory/development-guide.md` (업데이트)
 - **템플릿**: `moai-adk-ts/templates/` (전체 업데이트)
 
 #### ⚠️ Breaking Changes
 
-- **TAG 형식 변경**: 구 TAG 체계 TAG는 더 이상 지원하지 않음
+- **TAG 형식 변경**: 이전 TAG 체계(@REQ, @DESIGN, @TASK 등)는 더 이상 지원하지 않음
 - **TAG BLOCK 형식 변경**: 새로운 템플릿 필수 적용
 - **스캔 패턴 변경**: ripgrep 검색 패턴 업데이트 필요
 - **에이전트 연동 변경**: tag-agent, spec-builder, code-builder 업데이트
@@ -124,10 +124,10 @@ rg '@(SPEC|TEST|CODE|DOC):' -n
 
 #### 🔗 관련 문서
 
-- [TAG System Design](/docs/analysis/tag-system-v5-design.md)
+- [TAG System Design](/docs/analysis/tag-system-design.md)
 - [Critical Analysis Report](/docs/analysis/tag-system-critical-analysis.md)
 - [TAG System Guide](/docs/guide/tag-system.md)
-- [Migration Guide v4 → v5](/docs/guide/migration-v5.md)
+- [Development Guide](/.moai/memory/development-guide.md)
 
 ---
 

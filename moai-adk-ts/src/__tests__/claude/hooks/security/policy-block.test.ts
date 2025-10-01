@@ -6,9 +6,9 @@
  * @author MoAI Team
  */
 
-import { afterEach, beforeEach, describe, expect, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { PolicyBlock } from '../../../../claude/hooks/security/policy-block';
+import { PolicyBlock } from '../../../../claude/hooks/policy-block';
 import type { HookInput } from '../../../../claude/hooks/types';
 
 describe('PolicyBlock', () => {

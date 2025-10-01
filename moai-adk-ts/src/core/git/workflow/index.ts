@@ -28,7 +28,7 @@ export class WorkflowAutomation {
   private readonly specStructureStep: SpecStructureStep;
 
   constructor(
-    private readonly gitManager: GitManager,
+    readonly gitManager: GitManager,
     private readonly config: GitConfig
   ) {
     this.branchStep = new BranchStep(gitManager);

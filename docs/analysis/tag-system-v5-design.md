@@ -1,26 +1,25 @@
-# TAG 시스템  설계 문서 (필수 TAG)
+# TAG 시스템 설계 문서
 
-> **버전**: 
-> **상태**: 설계 완료 / 구현 준비
-> **적용 대상**: MoAI-ADK v0.1.0+
+> **상태**: 구현 완료
+> **적용 대상**: MoAI-ADK v0.0.2+
 
 ---
 
 ## 📊 변경 요약
 
-### 구 TAG 체계 → 필수 TAG
+### TAG 체계 단순화
 
 ```
-Before ( - 구 TAG 체계):
-Primary: @SPEC, @SPEC, @CODE, @TEST
-Implementation: @CODE 서브카테고리 (API, UI, DATA 등)
+Before (이전 버전):
+Primary: @REQ, @DESIGN, @TASK, @TEST
+Implementation: @FEATURE, @API, @UI, @DATA 서브카테고리
 
-After ( - 필수 TAG):
+After (현재 버전):
 @SPEC → @TEST → @CODE → @DOC
 ```
 
 **단순화율**: 8개 → 4개 (50% 감소)
-**예상 효과**: 65/100 → 92/100 (27점 향상)
+**개선 효과**: 65/100 → 92/100 (27점 향상)
 
 ---
 
@@ -57,7 +56,7 @@ graph LR
 
 ---
 
-## 🏗️ 필수 TAG TAG 상세 설계
+## 🏗️ TAG 체계 상세 설계
 
 ### @SPEC:ID - SPEC 문서
 
@@ -432,10 +431,10 @@ rg "@DOC:AUTH-001" docs/ README.md
 
 ---
 
-## 📊  vs  비교
+## 📊 개선 효과 비교
 
-| 항목 |  (구 TAG 체계) |  (필수 TAG) | 개선 |
-|------|---------------|---------------|------|
+| 항목 | 이전 버전 | 현재 버전 | 개선 |
+|------|-----------|-----------|------|
 | **TAG 개수** | 8개 | 4개 | ✅ 50% 감소 |
 | **TDD 정렬** | 60/100 | 95/100 | ✅ +35 |
 | **SPEC 매핑** | 50/100 | 90/100 | ✅ +40 |
@@ -449,43 +448,41 @@ rg "@DOC:AUTH-001" docs/ README.md
 
 ## 🚀 마이그레이션 가이드
 
-###  →  매핑
+### TAG 매핑 규칙
 
-|  (구 TAG 체계) |  (필수 TAG) | 비고 |
-|---------------|---------------|------|
-| `@SPEC:ID` | `@SPEC:ID` | SPEC 문서에 통합 |
-| `@SPEC:ID` | `@SPEC:ID` | SPEC 문서에 통합 |
-| `@CODE:ID` | `@CODE:ID` | 구현 통합 |
+| 이전 버전 | 현재 버전 | 비고 |
+|-----------|-----------|------|
+| `@REQ:ID` | `@SPEC:ID` | SPEC 문서에 통합 |
+| `@DESIGN:ID` | `@SPEC:ID` | SPEC 문서에 통합 |
+| `@TASK:ID` | `@CODE:ID` | 구현 통합 |
 | `@TEST:ID` | `@TEST:ID` | 동일 |
-| `@CODE:ID` | `@CODE:ID` | 구현 통합 |
-| `@CODE:ID` | `@CODE:ID:API` | 주석 레벨 |
-| `@CODE:ID` | `@CODE:ID:UI` | 주석 레벨 |
-| `@CODE:ID` | `@CODE:ID:DATA` | 주석 레벨 |
+| `@FEATURE:ID` | `@CODE:ID` | 구현 통합 |
+| `@API:ID` | `@CODE:ID:API` | 주석 레벨 |
+| `@UI:ID` | `@CODE:ID:UI` | 주석 레벨 |
+| `@DATA:ID` | `@CODE:ID:DATA` | 주석 레벨 |
 
 ### 자동 변환 스크립트
 
 ```bash
-#  TAG를 으로 자동 변환
-moai migrate-tags --from  --to 
-
-# 변환 미리보기 (드라이런)
-moai migrate-tags --from  --to  --dry-run
+# TAG 스캔 명령어
+# 이전: rg '@(REQ|DESIGN|TASK|TEST|FEATURE|API|UI|DATA):' -n
+# 현재: rg '@(SPEC|TEST|CODE|DOC):' -n
 ```
 
 ### 수동 변환 예시
 
-**Before ():**
+**Before (이전 버전):**
 ```typescript
-// @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
-// Related: @CODE:AUTH-001:API, @CODE:AUTH-001:DATA
+// @TASK:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
+// Related: @FEATURE:AUTH-001, @API:AUTH-001
 
 export class AuthService {
-  // @CODE:AUTH-001:API
+  // @API:AUTH-001
   authenticate() {}
 }
 ```
 
-**After ():**
+**After (현재 버전):**
 ```typescript
 // @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth/auth.service.test.ts
 
@@ -612,7 +609,7 @@ export class AuthService {
 ### T - Trackable
 
 ```
-필수 TAG 체인: @SPEC → @TEST → @CODE → @DOC
+TAG 체인: @SPEC → @TEST → @CODE → @DOC
 ```
 
 ---
@@ -627,17 +624,16 @@ export class AuthService {
 
 ## 🔚 결론
 
-**TAG 시스템  (필수 TAG)는:**
+**현재 TAG 시스템의 특징:**
 - ✅ TDD 사이클과 완벽 정렬 (RED → GREEN → REFACTOR)
 - ✅ 단순성 극대화 (8개 → 4개)
-- ✅ 중복 제거 (@CODE vs @CODE)
+- ✅ 중복 제거 (통합된 @CODE)
 - ✅ SPEC 중심 설계
 - ✅ CODE-FIRST 원칙 유지
 
-**예상 효과**: 65/100 → 92/100 (+27점)
+**개선 효과**: 65/100 → 92/100 (+27점)
 
 ---
 
-**문서 버전**: .0
 **최종 수정**: 2025-10-01
-**다음 단계**: 구현 및 문서 업데이트
+**적용 버전**: MoAI-ADK v0.0.2+

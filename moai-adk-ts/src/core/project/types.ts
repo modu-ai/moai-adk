@@ -6,10 +6,13 @@
  * @author MoAI Team
  */
 
-import type { ProjectConfig as BaseProjectConfig } from '@/types/project';
-
-// Re-export base ProjectConfig
-export type { BaseProjectConfig as ProjectConfig };
+// Local ProjectConfig for detector (different from base config)
+export interface ProjectConfig {
+  runtime: {
+    name: string;
+  };
+  techStack: string[];
+}
 
 /**
  * Project information detected from filesystem

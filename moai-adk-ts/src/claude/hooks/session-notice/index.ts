@@ -39,7 +39,7 @@ export class SessionNotifier {
           message: '💡 Run `/moai:8-project` to initialize MoAI-ADK',
         };
       }
-    } catch (error) {
+    } catch (_error) {
       return { success: true };
     }
   }
@@ -79,7 +79,7 @@ export async function main(): Promise<void> {
     if (result.message) {
       console.log(result.message);
     }
-  } catch (error) {
+  } catch (_error) {
     // Silent failure
   }
 }

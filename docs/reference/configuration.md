@@ -29,7 +29,7 @@ MoAI-ADK는 `.moai/config.json`과 `.claude/settings.json` 두 개의 주요 설
 
 ## .moai/config.json
 
-### 전체 구조 (v0.0.1)
+### 전체 구조
 
 ```json
 {

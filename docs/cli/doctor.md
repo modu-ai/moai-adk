@@ -891,7 +891,7 @@ chmod +x verify-environment.sh
 현재는 사람이 읽기 쉬운 텍스트 형식으로만 출력되지만, v0.0.4에서는 `--format json` 옵션을 지원할 예정입니다.
 
 ```bash
-# 향후 버전 (v0.0.4)
+# 향후 버전
 moai doctor --format json > diagnostics.json
 ```
 

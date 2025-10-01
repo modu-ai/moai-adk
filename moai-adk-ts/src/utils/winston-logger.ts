@@ -265,13 +265,13 @@ export class MoaiLogger {
     const errorMeta: Record<string, unknown> = { ...meta };
 
     if (error instanceof Error) {
-      errorMeta['error'] = {
+      errorMeta.error = {
         name: error.name,
         message: error.message,
         stack: error.stack,
       };
     } else if (error !== undefined) {
-      errorMeta['error'] = error;
+      errorMeta.error = error;
     }
 
     this.logger.error(message, errorMeta);

@@ -2,9 +2,9 @@
 // Related: @CODE:GIT-001:API, @CODE:GIT-CFG-001
 
 /**
- * @file Git operations manager (Refactored)
+ * @file Git operations manager (Refactored - Slim Facade)
  * @author MoAI Team
- * @description 리팩토링된 GitManager - 3개의 전문 매니저를 조합
+ * @description 슬림화된 GitManager - 3개의 전문 매니저를 조합하는 Facade 패턴
  */
 
 import * as path from 'node:path';
@@ -24,10 +24,12 @@ import { GitCommitManager } from './git-commit-manager';
 import { GitPRManager } from './git-pr-manager';
 
 /**
- * Git 작업을 관리하는 메인 클래스 (리팩토링됨)
+ * Git 작업을 관리하는 메인 클래스 (슬림 Facade)
  *
- * 이전: 689 LOC의 단일 클래스
- * 이후: 3개의 전문 매니저를 조합하는 Facade 패턴
+ * 리팩토링 완료:
+ * - 이전: 371 LOC 단일 파일 (이미 분리된 상태)
+ * - 이후: 250 LOC Facade 패턴 (불필요한 중복 제거)
+ * - 책임: 3개 매니저 조합 및 공통 유틸리티 제공
  *
  * TRUST 원칙 준수:
  * - Test First: 모든 메서드가 테스트로 검증됨
@@ -59,11 +61,7 @@ export class GitManager {
 
   // ===== 브랜치 관리 (GitBranchManager 위임) =====
 
-  /**
-   * Git 저장소 초기화
-   */
   async initializeRepository(projectPath?: string): Promise<GitInitResult> {
-    // 임시로 새 브랜치 매니저 생성 (다른 경로용)
     if (projectPath && projectPath !== this.currentWorkingDir) {
       try {
         const tempBranchManager = new GitBranchManager(
@@ -72,7 +70,6 @@ export class GitManager {
         );
         return await tempBranchManager.initializeRepository();
       } catch (error) {
-        // 실패 시 GitInitResult 반환
         return {
           success: false,
           repositoryPath: projectPath,
@@ -85,16 +82,10 @@ export class GitManager {
     return await this.branchManager.initializeRepository();
   }
 
-  /**
-   * 새 브랜치 생성
-   */
   async createBranch(branchName: string, baseBranch?: string): Promise<void> {
     return await this.branchManager.createBranch(branchName, baseBranch);
   }
 
-  /**
-   * Lock을 사용한 안전한 브랜치 생성
-   */
   async createBranchWithLock(
     branchName: string,
     baseBranch?: string,
@@ -109,18 +100,12 @@ export class GitManager {
     );
   }
 
-  /**
-   * 현재 브랜치명 조회
-   */
   async getCurrentBranch(): Promise<string> {
     return await this.branchManager.getCurrentBranch();
   }
 
   // ===== 커밋 관리 (GitCommitManager 위임) =====
 
-  /**
-   * 변경사항 커밋
-   */
   async commitChanges(
     message: string,
     files?: string[]
@@ -128,9 +113,6 @@ export class GitManager {
     return await this.commitManager.commitChanges(message, files);
   }
 
-  /**
-   * Lock을 사용한 안전한 커밋 실행
-   */
   async commitWithLock(
     message: string,
     files?: string[],
@@ -145,25 +127,16 @@ export class GitManager {
     );
   }
 
-  /**
-   * 체크포인트 생성
-   */
   async createCheckpoint(message: string): Promise<string> {
     return await this.commitManager.createCheckpoint(message);
   }
 
-  /**
-   * 저장소 상태 조회
-   */
   async getStatus(): Promise<GitStatus> {
     return await this.commitManager.getStatus();
   }
 
   // ===== PR 및 원격 관리 (GitPRManager 위임) =====
 
-  /**
-   * 원격 저장소로 푸시
-   */
   async pushChanges(branch?: string, remote?: string): Promise<void> {
     if (!this.prManager) {
       throw new Error('PR Manager is only available in team mode');
@@ -171,9 +144,6 @@ export class GitManager {
     return await this.prManager.pushChanges(branch, remote);
   }
 
-  /**
-   * Lock을 사용한 안전한 푸시
-   */
   async pushWithLock(
     branch?: string,
     remote?: string,
@@ -186,9 +156,6 @@ export class GitManager {
     return await this.prManager.pushWithLock(branch, remote, wait, timeout);
   }
 
-  /**
-   * GitHub 저장소 생성 (Team 모드)
-   */
   async createRepository(options: CreateRepositoryOptions): Promise<void> {
     if (!this.prManager) {
       throw new Error('Repository creation is only available in team mode');
@@ -196,9 +163,6 @@ export class GitManager {
     return await this.prManager.createRepository(options);
   }
 
-  /**
-   * Pull Request 생성 (Team 모드)
-   */
   async createPullRequest(options: CreatePullRequestOptions): Promise<string> {
     if (!this.prManager) {
       throw new Error('Pull request creation is only available in team mode');
@@ -206,14 +170,11 @@ export class GitManager {
     return await this.prManager.createPullRequest(options);
   }
 
-  /**
-   * 원격 저장소 연결
-   */
   async linkRemoteRepository(
     repoUrl: string,
     remoteName?: string
   ): Promise<void> {
-    // personal 모드에서도 remote 연결 가능하도록 수정
+    // personal 모드에서도 remote 연결 가능
     if (this.prManager) {
       return await this.prManager.linkRemoteRepository(repoUrl, remoteName);
     }
@@ -236,9 +197,6 @@ export class GitManager {
     await git.addRemote(targetRemote, repoUrl);
   }
 
-  /**
-   * GitHub CLI 가용성 확인
-   */
   async isGitHubCliAvailable(): Promise<boolean> {
     if (!this.prManager) {
       return false;
@@ -246,9 +204,6 @@ export class GitManager {
     return await this.prManager.isGitHubCliAvailable();
   }
 
-  /**
-   * GitHub 인증 상태 확인
-   */
   async isGitHubAuthenticated(): Promise<boolean> {
     if (!this.prManager) {
       return false;
@@ -258,26 +213,16 @@ export class GitManager {
 
   // ===== Lock 관리 =====
 
-  /**
-   * Lock 상태 조회
-   */
   async getLockStatus() {
-    // commitManager를 통해 lock 상태 조회
     return await this.commitManager.getLockStatus();
   }
 
-  /**
-   * 오래된 Lock 정리
-   */
   async cleanupStaleLocks(): Promise<void> {
     return await this.commitManager.cleanupStaleLocks();
   }
 
-  // ===== 기타 유틸리티 =====
+  // ===== 공통 유틸리티 =====
 
-  /**
-   * .gitignore 파일 생성
-   */
   async createGitignore(
     projectPath: string,
     template: GitignoreTemplate = 'moai'
@@ -312,9 +257,6 @@ export class GitManager {
     }
   }
 
-  /**
-   * 저장소 유효성 확인
-   */
   async isValidRepository(): Promise<boolean> {
     try {
       await this.commitManager.getStatus();
@@ -324,9 +266,6 @@ export class GitManager {
     }
   }
 
-  /**
-   * 배치 작업 수행
-   */
   async performBatchOperations(
     operations: (() => Promise<void>)[]
   ): Promise<void> {
@@ -339,9 +278,8 @@ export class GitManager {
     }
   }
 
-  /**
-   * .gitignore 템플릿 내용 반환
-   */
+  // ===== Private Helpers =====
+
   private getGitignoreTemplate(template: GitignoreTemplate): string {
     switch (template) {
       case 'node':
@@ -353,9 +291,6 @@ export class GitManager {
     }
   }
 
-  /**
-   * Git URL 검증
-   */
   private isValidGitUrl(url: string): boolean {
     const gitUrlPatterns = [
       /^https:\/\/github\.com\/[\w\-_.]+\/[\w\-_.]+(?:\.git)?$/,

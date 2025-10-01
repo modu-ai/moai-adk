@@ -6,7 +6,7 @@
  * @author MoAI Team
  */
 
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import type { RequirementCheckResult } from '@/core/system-checker';
 import { ResultFormatter } from '../reporters/result-formatter.js';
 import { SummaryReporter } from '../reporters/summary-reporter.js';

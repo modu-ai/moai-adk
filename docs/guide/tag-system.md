@@ -301,11 +301,11 @@ TYPE:DOMAIN-###
 
 ### 나쁜 예시
 ```
-AUTH-001          // ❌ TYPE 누락
+AUTH-001          // ❌ @ 타입 누락
 @CODE:auth-001     // ❌ 소문자 도메인
 @CODE:A-001        // ❌ 도메인 너무 짧음
 @CODE:AUTHENTICATION-SERVICE-001  // ❌ 도메인 너무 김
-@SPEC:AUTH-001      // ❌  TAG 사용 (에서는 @SPEC)
+@REQ:AUTH-001      // ❌ 구버전 TAG 사용 (현재는 @SPEC)
 ```
 
 ## 코드 스캔 기반 검증
@@ -571,16 +571,16 @@ graph TD
 5. **TDD 완벽 정렬**: RED (TEST) → GREEN (CODE) → REFACTOR (CODE + DOC)
 6. **TAG BLOCK 필수**: 모든 코드 파일 상단에 배치
 
-##  주요 개선 사항
+## 주요 개선 사항
 
 ### 단순성 (+50%)
-- 4개 TAG → 4개 TAG
+- 8개 TAG → 4개 TAG (50% 감소)
 - TAG BLOCK 길이: 156자 → 78자 (50% 감소)
 - 학습 곡선: 급격 → 완만
 
 ### TDD 정렬 (+100%)
-- : @SPEC → @TEST → @CODE → @DOC (TDD와 불일치)
-- : @SPEC → @TEST → @CODE (TDD와 완벽 일치)
+- 이전: @REQ → @DESIGN → @TASK → @TEST (TDD와 불일치)
+- 현재: @SPEC → @TEST → @CODE → @DOC (TDD와 완벽 일치)
 
 ### 실무 사용성 (+40%)
 - 모든 구현은 `@CODE:ID` 하나로 통합
@@ -596,4 +596,4 @@ graph TD
 - [3단계 워크플로우](/guide/workflow) - 전체 개발 프로세스 이해
 - [SPEC 우선 TDD](/guide/spec-first-tdd) - TDD 사이클과 TAG 통합
 - [CLI 명령어](/cli/init) - `moai` 명령어로 TAG 관리 자동화
-- [마이그레이션 가이드](/guide/migration-v5) - 에서 으로 전환
+- [개발 가이드](/.moai/memory/development-guide.md) - TRUST 원칙과 TAG 시스템

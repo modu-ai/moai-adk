@@ -125,9 +125,9 @@ export class CodeFirstTAGEnforcer implements MoAIHook {
    */
   private extractFilePath(toolInput: Record<string, any>): string | null {
     return (
-      toolInput['file_path'] ||
-      toolInput['filePath'] ||
-      toolInput['notebook_path'] ||
+      toolInput.file_path ||
+      toolInput.filePath ||
+      toolInput.notebook_path ||
       null
     );
   }
@@ -136,13 +136,11 @@ export class CodeFirstTAGEnforcer implements MoAIHook {
    * 도구 입력에서 파일 내용 추출
    */
   private extractFileContent(toolInput: Record<string, any>): string {
-    if (toolInput['content']) return toolInput['content'];
-    if (toolInput['new_string']) return toolInput['new_string'];
-    if (toolInput['new_source']) return toolInput['new_source'];
-    if (toolInput['edits'] && Array.isArray(toolInput['edits'])) {
-      return toolInput['edits']
-        .map((edit: any) => edit['new_string'])
-        .join('\n');
+    if (toolInput.content) return toolInput.content;
+    if (toolInput.new_string) return toolInput.new_string;
+    if (toolInput.new_source) return toolInput.new_source;
+    if (toolInput.edits && Array.isArray(toolInput.edits)) {
+      return toolInput.edits.map((edit: any) => edit.new_string).join('\n');
     }
     return '';
   }
@@ -327,9 +325,9 @@ export async function main(): Promise<void> {
 
     if (result.blocked) {
       console.error(`BLOCKED: ${result.message}`);
-      if (result.data?.['suggestions']) {
+      if (result.data?.suggestions) {
         console.error(
-          `\n📝 Code-First TAG 가이드:\n${result.data['suggestions']}`
+          `\n📝 Code-First TAG 가이드:\n${result.data.suggestions}`
         );
       }
       process.exit(2);
