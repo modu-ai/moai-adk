@@ -5,9 +5,34 @@ argument-hint: "SPEC-ID - 구현할 SPEC ID (예: SPEC-001) 또는 all로 모든
 tools: Read, Write, Edit, MultiEdit, Bash(python3:*), Bash(pytest:*), Bash(npm:*), Bash(node:*), Task, WebFetch, Grep, Glob, TodoWrite
 ---
 
-# MoAI-ADK 2단계: 언어별 최적화된 TDD 구현 (Red-Green-Refactor)
+# ⚒️ MoAI-ADK 2단계: 언어별 최적화된 TDD 구현 (Red-Green-Refactor)
+
+## 🎯 커맨드 목적
+
+SPEC 문서를 분석하여 언어별 최적화된 TDD 사이클(Red-Green-Refactor)로 고품질 코드를 구현합니다.
 
 **TDD 구현 대상**: $ARGUMENTS
+
+## 📋 실행 흐름
+
+1. **SPEC 분석**: 요구사항 추출 및 복잡도 평가
+2. **구현 전략 수립**: 언어별 최적화된 TDD 접근법 결정
+3. **사용자 확인**: 구현 계획 검토 및 승인
+4. **TDD 구현**: RED → GREEN → REFACTOR 사이클 실행
+5. **Git 작업**: git-manager를 통한 단계별 커밋 생성
+
+## 🔗 연관 에이전트
+
+- **Primary**: code-builder (⚒️ 장인) - TDD 구현 전담
+- **Secondary**: git-manager (🌿 정원사) - Git 커밋 전담
+
+## 💡 사용 예시
+
+```bash
+/moai:2-build SPEC-001           # 특정 SPEC 구현
+/moai:2-build all                # 모든 SPEC 일괄 구현
+/moai:2-build SPEC-003 --test    # 테스트만 실행
+```
 
 ## 🔍 STEP 1: SPEC 분석 및 구현 계획 수립
 

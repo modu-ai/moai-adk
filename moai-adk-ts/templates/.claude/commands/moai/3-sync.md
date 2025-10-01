@@ -5,9 +5,35 @@ argument-hint: "모드 대상경로 - 모드: auto(기본)|force|status|project,
 tools: Read, Write, Edit, MultiEdit, Bash(git status:*), Bash(git add:*), Bash(git diff:*), Bash(git commit:*), Bash(gh:*), Bash(python3:*), Task, Grep, Glob, TodoWrite
 ---
 
-# MoAI-ADK 3단계: 문서 동기화(+선택적 PR Ready)
+# 📚 MoAI-ADK 3단계: 문서 동기화(+선택적 PR Ready)
+
+## 🎯 커맨드 목적
+
+코드 변경사항을 Living Document에 동기화하고, @TAG 시스템을 검증하여 완벽한 추적성을 보장합니다.
 
 **문서 동기화 대상**: $ARGUMENTS
+
+## 📋 실행 흐름
+
+1. **프로젝트 상태 분석**: Git 변경사항 및 TAG 시스템 검증
+2. **동기화 범위 결정**: 전체/부분/선택적 동기화 전략
+3. **사용자 확인**: 동기화 계획 검토 및 승인
+4. **문서 동기화**: Living Document 갱신 및 TAG 무결성 보장
+5. **Git 작업**: git-manager를 통한 커밋 및 PR 상태 전환
+
+## 🔗 연관 에이전트
+
+- **Primary**: doc-syncer (📚 편집자) - 문서 동기화 전담
+- **Secondary**: git-manager (🌿 정원사) - Git 커밋/PR 전담
+
+## 💡 사용 예시
+
+```bash
+/moai:3-sync                     # 자동 동기화
+/moai:3-sync force               # 강제 전체 동기화
+/moai:3-sync status              # 동기화 상태 확인
+/moai:3-sync project             # 통합 프로젝트 동기화
+```
 
 ## 🔍 STEP 1: 동기화 범위 분석 및 계획 수립
 

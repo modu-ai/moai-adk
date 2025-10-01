@@ -5,9 +5,34 @@ argument-hint: "제목1 제목2 ... | SPEC-ID 수정내용"
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 ---
 
-# MoAI-ADK 1단계: EARS 명세 작성 + 브랜치/PR 생성
+# 🏗️ MoAI-ADK 1단계: EARS 명세 작성 + 브랜치/PR 생성
+
+## 🎯 커맨드 목적
+
+프로젝트 문서를 분석하여 EARS 구문의 명세서를 작성하고, Personal/Team 모드에 따라 Git 브랜치 및 PR을 생성합니다.
 
 **SPEC 자동 제안/생성 대상**: $ARGUMENTS
+
+## 📋 실행 흐름
+
+1. **프로젝트 분석**: product/structure/tech.md 심층 분석
+2. **SPEC 후보 발굴**: 비즈니스 요구사항 기반 우선순위 결정
+3. **사용자 확인**: 작성 계획 검토 및 승인
+4. **SPEC 작성**: EARS 구조의 명세서 생성 (spec.md, plan.md, acceptance.md)
+5. **Git 작업**: git-manager를 통한 브랜치/PR 생성
+
+## 🔗 연관 에이전트
+
+- **Primary**: spec-builder (🏗️ 설계자) - SPEC 문서 작성 전담
+- **Secondary**: git-manager (🌿 정원사) - Git 브랜치/PR 생성 전담
+
+## 💡 사용 예시
+
+```bash
+/moai:1-spec                      # 프로젝트 문서 기반 자동 제안
+/moai:1-spec "JWT 인증 시스템"       # 단일 SPEC 수동 생성
+/moai:1-spec SPEC-001 "보안 보강"   # 기존 SPEC 보완
+```
 
 ## 🔍 STEP 1: SPEC 분석 및 구현 계획 수립
 
