@@ -1,16 +1,16 @@
-# {{PROJECT_NAME}} 개발 가이드
+# MoAI-ADK 개발 가이드
 
 > "명세 없으면 코드 없다. 테스트 없으면 구현 없다."
 
-MoAI-ADK 범용 개발 툴킷을 사용하는 모든 에이전트와 개발자를 위한 통합 가드레일이다. TypeScript 기반으로 구축된 툴킷은 모든 주요 프로그래밍 언어를 지원하며, @TAG 추적성을 통한 SPEC 우선 TDD 방법론을 따른다. 한국어가 기본 소통 언어다.
+MoAI-ADK를 사용하는 모든 에이전트와 개발자를 위한 통합 가드레일이다. TypeScript 기반으로 구축된 툴킷은 모든 주요 프로그래밍 언어를 지원하며, @TAG 추적성을 통한 SPEC 우선 TDD 방법론을 따른다. 한국어가 기본 소통 언어다.
 
 ---
 
-## 🎩 ▶︎◀︎ Alfred SuperAgent 오케스트레이션 체계
+## SuperAgent '🎩 Alfred' 오케스트레이션 체계
 
 ### SuperAgent 정의
 
-**페르소나**: 집사 ▶︎◀︎ Alfred - 정확하고 예의 바르며, 모든 요청을 체계적으로 처리하는 전문 오케스트레이터
+**페르소나**: 모두의 AI 집사 🎩 Alfred - 정확하고 예의 바르며, 모든 요청을 체계적으로 처리하는 전문 오케스트레이터
 
 **역할**: Claude Code 직접 오케스트레이션 및 Sub-Agent 위임 관리
 
@@ -53,7 +53,7 @@ MoAI-ADK 범용 개발 툴킷을 사용하는 모든 에이전트와 개발자�
 - 각 에이전트는 자신의 전문 영역만 담당
 - Git 작업은 반드시 git-manager에게 위임
 - TAG 작업은 반드시 tag-agent에게 위임
-- 에이전트 간 직접 호출 금지 (Alfred 경유)
+- 에이전트 간 직접 호출 금지 (Alfred가 커맨드 지침에서 위임)
 
 **작업 전달 체인**:
 ```
@@ -300,11 +300,6 @@ MoAI-ADK 범용 개발 툴킷을 사용하는 모든 에이전트와 개발자�
 # @TEST:AUTH-001 | SPEC: SPEC-AUTH-001.md
 ```
 
-**SPEC 문서 (.moai/specs/)**:
-```text
-# @SPEC:AUTH-001: JWT 인증 시스템
-```
-
 ### @CODE 서브 카테고리 (주석 레벨)
 
 구현 세부사항은 `@CODE:ID` 내부에 주석으로 표기:
@@ -319,8 +314,84 @@ MoAI-ADK 범용 개발 툴킷을 사용하는 모든 에이전트와 개발자�
 - TAG ID: `<도메인>-<3자리>` (예: AUTH-003)
 - 새 TAG 생성 전 중복 확인: `rg "@SPEC:AUTH" -n` 또는 `rg "AUTH-001" -n`
 - TAG 검증: `rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/`
-- CODE-FIRST 원칙: TAG의 진실은 코드 자체에만 존재
+- CODE-FIRST 원칙: TAG는 코드 자체에만 존재
 
+### TAG 체인 무결성 검증
+
+**고아 TAG 탐지**:
+```bash
+# SPEC 없는 CODE 찾기
+rg '@CODE:AUTH-001' -n src/          # CODE는 있는데
+rg '@SPEC:AUTH-001' -n .moai/specs/  # SPEC이 없으면 고아
+```
+
+**끊어진 참조 검증**:
+```bash
+# 전체 TAG 스캔 후 체인 확인
+rg '@(SPEC|TEST|CODE|DOC):' -n | grep "AUTH-001"
+```
+
+**순환 참조 방지**: TAG는 단방향 체인만 허용 (SPEC → TEST → CODE → DOC)
+
+### TAG 재사용 촉진
+
+**기존 TAG 검색**:
+- `@agent-tag-agent "AUTH 도메인 TAG 목록 조회"`
+- `@agent-code-builder "기존 TAG 재사용 후보를 찾아주세요"`
+
+**중복 방지 원칙**:
+1. 새 TAG 생성 전 반드시 기존 TAG 검색
+2. 유사한 기능은 기존 TAG 확장 우선
+3. 도메인별 TAG 번호 순차 관리
+
+### TAG 폐기 및 마이그레이션
+
+**Deprecated TAG 표기**:
+```python
+# @CODE:AUTH-001:DEPRECATED (2025-01-15: AUTH-002로 대체됨)
+```
+
+**마이그레이션 절차**:
+1. 새 TAG 생성 및 구현
+2. 기존 TAG에 DEPRECATED 표기 및 대체 TAG 명시
+3. 관련 문서 업데이트
+4. 1개월 후 완전 제거
+
+### 올바른 TAG 사용 패턴
+
+✅ **권장 패턴**:
+```typescript
+// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth/service.test.ts
+export class AuthService { ... }
+```
+
+❌ **금지 패턴**:
+```typescript
+// @TEST:AUTH-001 -> @CODE:AUTH-001    ❌ 순서 표기 불필요 (파일 위치로 구분)
+// @CODE:AUTH-001, @CODE:AUTH-002      ❌ 하나의 파일에 여러 ID (분리 필요)
+// @SPEC:AUTH-001                        ❌ v4.0 TAG 사용 금지
+// @CODE:ABC-123                        ❌ 의미 없는 도메인명
+```
+
+### TDD 워크플로우 TAG 체크리스트
+
+**1단계: SPEC 작성** (`/moai:1-spec`)
+- [ ] `.moai/specs/SPEC-<ID>.md` 생성
+- [ ] `@SPEC:ID` TAG 포함
+- [ ] EARS 구문으로 요구사항 작성
+- [ ] 중복 ID 확인: `rg "@SPEC:<ID>" -n`
+
+**2단계: TDD 구현** (`/moai:2-build`)
+- [ ] **RED**: `tests/` 디렉토리에 `@TEST:ID` 작성 및 실패 확인
+- [ ] **GREEN**: `src/` 디렉토리에 `@CODE:ID` 작성 및 테스트 통과
+- [ ] **REFACTOR**: 코드 품질 개선, TDD 이력 주석 추가
+- [ ] TAG BLOCK에 SPEC/TEST 파일 경로 명시
+
+**3단계: 문서 동기화** (`/moai:3-sync`)
+- [ ] 전체 TAG 스캔: `rg '@(SPEC|TEST|CODE):' -n`
+- [ ] 고아 TAG 없음 확인
+- [ ] Living Document 자동 생성 확인
+- [ ] PR 상태 Draft → Ready 전환
 
 ---
 
