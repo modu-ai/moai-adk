@@ -29,14 +29,14 @@ graph TB
     end
 
     subgraph "온디맨드 품질 검증"
-        D[@agent-trust-checker] -.->|품질 검증| A
+        D["@agent-trust-checker"] -.->|품질 검증| A
         D -.->|품질 검증| B
         D -.->|품질 검증| C
     end
 
     subgraph "연계 에이전트"
-        E[@agent-debug-helper] <-->|협력| D
-        F[@agent-tag-agent] <-->|TAG 검증| D
+        E["@agent-debug-helper"] <-->|협력| D
+        F["@agent-tag-agent"] <-->|TAG 검증| D
     end
 
 ```
@@ -952,26 +952,26 @@ import { IAuthService } from '../interfaces/auth.interface';
 
 ```mermaid
 graph LR
-    A[사용자 요청] --> B{요청 유형?}
-    B -->|품질 검증| C[trust-checker]
-    B -->|문제 해결| D[debug-helper]
+    A["사용자 요청"] --> B{요청 유형?}
+    B -->|품질 검증| C["trust-checker"]
+    B -->|문제 해결| D["debug-helper"]
 
-    C --> E[TRUST 검증]
-    D --> F[오류 분석]
+    C --> E["TRUST 검증"]
+    D --> F["오류 분석"]
 
     E --> G{문제 발견?}
-    G -->|Yes| H[debug-helper 호출]
-    G -->|No| I[리포트 생성]
+    G -->|Yes| H["debug-helper 호출"]
+    G -->|No| I["리포트 생성"]
 
-    H --> J[문제 해결]
-    J --> K[재검증]
+    H --> J["문제 해결"]
+    J --> K["재검증"]
     K --> C
 
-    F --> L[해결 방안]
-    L --> M[개발 가이드 확인]
+    F --> L["해결 방안"]
+    L --> M["개발 가이드 확인"]
     M --> N{가이드 위반?}
-    N -->|Yes| O[trust-checker 호출]
-    N -->|No| P[해결 완료]
+    N -->|Yes| O["trust-checker 호출"]
+    N -->|No| P["해결 완료"]
 
     O --> E
 
