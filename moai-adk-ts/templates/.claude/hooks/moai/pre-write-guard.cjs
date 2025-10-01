@@ -58,9 +58,9 @@ async function parseClaudeInput() {
 function outputResult(result) {
   if (result.blocked) {
     console.error(`BLOCKED: ${result.message || "Operation blocked"}`);
-    if (result.data?.["suggestions"]) {
+    if (result.data?.suggestions) {
       console.error(`
-${result.data["suggestions"]}`);
+${result.data.suggestions}`);
     }
     process.exit(result.exitCode || 2);
   } else if (!result.success) {
@@ -112,7 +112,7 @@ var PreWriteGuard = class {
    * Extract file path from tool input
    */
   extractFilePath(toolInput) {
-    return toolInput["file_path"] || toolInput["filePath"] || toolInput["path"] || null;
+    return toolInput.file_path || toolInput.filePath || toolInput.path || null;
   }
   /**
    * Check if file is safe to edit

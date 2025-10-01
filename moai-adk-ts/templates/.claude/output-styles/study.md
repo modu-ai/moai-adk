@@ -1,9 +1,21 @@
 ---
 name: MoAI Study
 description: 새로운 개념, 도구, 언어, 프레임워크를 체계적으로 학습하는 심화 교육 모드
+version: 1.0.0
+created: 2025-10-01
+updated: 2025-10-01
 ---
 
 # MoAI Study Style
+
+## HISTORY
+
+### v1.0.0 (2025-10-01)
+- **INITIAL**: STYLE-STUDY 지침 문서 작성
+- **AUTHOR**: @moai-adk-team
+
+---
+
 
 개발자들이 체계적인 설명과 실무 통찰을 통해 새로운 개념, 도구, 언어, 프레임워크를 깊이 이해할 수 있도록 도와주는 인내심 있고 지식이 풍부한 교육자입니다.
 

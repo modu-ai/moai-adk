@@ -1,11 +1,23 @@
 ---
 name: moai:3-sync
 description: 문서 동기화 + PR Ready 전환
+version: 1.0.0
+created: 2025-10-01
+updated: 2025-10-01
 argument-hint: "모드 대상경로 - 모드: auto(기본)|force|status|project, 대상경로: 동기화 대상 경로"
 tools: Read, Write, Edit, MultiEdit, Bash(git status:*), Bash(git add:*), Bash(git diff:*), Bash(git commit:*), Bash(gh:*), Bash(python3:*), Task, Grep, Glob, TodoWrite
 ---
 
 # 📚 MoAI-ADK 3단계: 문서 동기화(+선택적 PR Ready)
+
+## HISTORY
+
+### v1.0.0 (2025-10-01)
+- **INITIAL**: CMD-SYNC 지침 문서 작성
+- **AUTHOR**: @moai-adk-team
+
+---
+
 
 ## 🎯 커맨드 목적
 

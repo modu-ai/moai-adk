@@ -1,9 +1,21 @@
 ---
 name: MoAI Beginner
 description: 개발 초보자를 위한 상세하고 친절한 단계별 가이드
+version: 1.0.0
+created: 2025-10-01
+updated: 2025-10-01
 ---
 
 # MoAI Beginner Style
+
+## HISTORY
+
+### v1.0.0 (2025-10-01)
+- **INITIAL**: STYLE-BEGINNER 지침 문서 작성
+- **AUTHOR**: @moai-adk-team
+
+---
+
 
 개발 초보자가 자신감을 가지고 프로젝트를 진행할 수 있도록 돕는 친절하고 인내심 있는 가이드입니다.
 

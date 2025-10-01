@@ -82,7 +82,7 @@ function getMoAIVersion(projectRoot) {
         return version;
       }
     }
-  } catch (error) {
+  } catch (_error) {
   }
   return "unknown";
 }
@@ -94,7 +94,7 @@ function getCurrentPipelineStage(projectRoot) {
       const config = JSON.parse(configData);
       return config.pipeline?.current_stage || "unknown";
     }
-  } catch (error) {
+  } catch (_error) {
   }
   const specsDir = path__namespace.join(projectRoot, ".moai", "specs");
   if (fs__namespace.existsSync(specsDir)) {
@@ -125,7 +125,7 @@ function getSpecProgress(projectRoot) {
       }
     }
     return { total: totalSpecs, completed };
-  } catch (error) {
+  } catch (_error) {
     return { total: 0, completed: 0 };
   }
 }
@@ -165,7 +165,7 @@ async function getGitChangesCount(projectRoot) {
       return lines.length;
     }
     return 0;
-  } catch (error) {
+  } catch (_error) {
     return 0;
   }
 }
@@ -189,7 +189,7 @@ async function getGitInfo(projectRoot) {
       message: message || defaultInfo.message,
       changesCount
     };
-  } catch (error) {
+  } catch (_error) {
     return defaultInfo;
   }
 }
@@ -215,7 +215,7 @@ async function checkLatestVersion(currentVersion) {
       latest,
       hasUpdate
     };
-  } catch (error) {
+  } catch (_error) {
     return null;
   }
 }
@@ -242,7 +242,7 @@ function buildViolationMessages(violations) {
   return lines;
 }
 function buildVersionMessage(status, versionCheck) {
-  if (versionCheck && versionCheck.latest) {
+  if (versionCheck?.latest) {
     if (versionCheck.hasUpdate) {
       return `\u{1F4E6} \uBC84\uC804: v${versionCheck.current} \u2192 \u26A1 v${versionCheck.latest} \uC5C5\uB370\uC774\uD2B8 \uAC00\uB2A5`;
     } else {
@@ -304,7 +304,7 @@ var SessionNotifier = class {
           message: "\u{1F4A1} Run `/moai:8-project` to initialize MoAI-ADK"
         };
       }
-    } catch (error) {
+    } catch (_error) {
       return { success: true };
     }
   }
@@ -335,7 +335,7 @@ async function main() {
     if (result.message) {
       console.log(result.message);
     }
-  } catch (error) {
+  } catch (_error) {
   }
 }
 if (__require.main === module) {

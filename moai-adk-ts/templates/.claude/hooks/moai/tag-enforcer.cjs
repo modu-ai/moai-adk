@@ -82,9 +82,9 @@ async function parseClaudeInput() {
 function outputResult(result) {
   if (result.blocked) {
     console.error(`BLOCKED: ${result.message || "Operation blocked"}`);
-    if (result.data?.["suggestions"]) {
+    if (result.data?.suggestions) {
       console.error(`
-${result.data["suggestions"]}`);
+${result.data.suggestions}`);
     }
     process.exit(result.exitCode || 2);
   } else if (!result.success) {
@@ -344,17 +344,17 @@ var CodeFirstTAGEnforcer = class {
    * 도구 입력에서 파일 경로 추출
    */
   extractFilePath(toolInput) {
-    return toolInput["file_path"] || toolInput["filePath"] || toolInput["notebook_path"] || null;
+    return toolInput.file_path || toolInput.filePath || toolInput.notebook_path || null;
   }
   /**
    * 도구 입력에서 파일 내용 추출
    */
   extractFileContent(toolInput) {
-    if (toolInput["content"]) return toolInput["content"];
-    if (toolInput["new_string"]) return toolInput["new_string"];
-    if (toolInput["new_source"]) return toolInput["new_source"];
-    if (toolInput["edits"] && Array.isArray(toolInput["edits"])) {
-      return toolInput["edits"].map((edit) => edit["new_string"]).join("\n");
+    if (toolInput.content) return toolInput.content;
+    if (toolInput.new_string) return toolInput.new_string;
+    if (toolInput.new_source) return toolInput.new_source;
+    if (toolInput.edits && Array.isArray(toolInput.edits)) {
+      return toolInput.edits.map((edit) => edit.new_string).join("\n");
     }
     return "";
   }
@@ -492,11 +492,11 @@ async function main() {
     const result = await enforcer.execute(input);
     if (result.blocked) {
       console.error(`BLOCKED: ${result.message}`);
-      if (result.data?.["suggestions"]) {
+      if (result.data?.suggestions) {
         console.error(
           `
 \u{1F4DD} Code-First TAG \uAC00\uC774\uB4DC:
-${result.data["suggestions"]}`
+${result.data.suggestions}`
         );
       }
       process.exit(2);
