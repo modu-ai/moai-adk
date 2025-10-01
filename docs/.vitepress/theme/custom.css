@@ -852,20 +852,22 @@ tr:last-child td {
 .mermaid polygon,
 .mermaid circle,
 .mermaid ellipse {
-  stroke: #6c757d !important;
+  stroke: #495057 !important;
 }
 
 .mermaid text {
   fill: #212529 !important;
   font-family: var(--font-sans) !important;
+  font-weight: 500 !important;
 }
 
 .mermaid .node rect,
 .mermaid .node circle,
 .mermaid .node ellipse,
 .mermaid .node polygon {
-  fill: #ffffff !important;
-  stroke: #6c757d !important;
+  fill: #f8f9fa !important;
+  stroke: #495057 !important;
+  stroke-width: 2px !important;
 }
 
 .mermaid .edgeLabel {
@@ -877,83 +879,126 @@ tr:last-child td {
 .mermaid .noteText,
 .mermaid .labelText {
   fill: #212529 !important;
+  font-weight: 500 !important;
 }
 
-/* 다크 모드 - 색상 반전 */
+/* 다크 모드 - 강력한 색상 적용 */
 .dark .mermaid {
   background: transparent !important;
 }
 
+/* 모든 도형 테두리 - 밝은 회색 */
 .dark .mermaid rect,
 .dark .mermaid polygon,
 .dark .mermaid circle,
 .dark .mermaid ellipse {
-  stroke: #adb5bd !important;
+  stroke: #cbd5e0 !important;
+  stroke-width: 2px !important;
 }
 
-.dark .mermaid text {
-  fill: #e9ecef !important;
+/* 모든 텍스트 - 밝은 색상으로 강제 변경 */
+.dark .mermaid text,
+.dark .mermaid text.messageText,
+.dark .mermaid text.noteText,
+.dark .mermaid text.labelText,
+.dark .mermaid .edgeLabel text,
+.dark .mermaid .label text,
+.dark .mermaid foreignObject div {
+  fill: #f7fafc !important;
+  color: #f7fafc !important;
   font-family: var(--font-sans) !important;
+  font-weight: 600 !important;
 }
 
+/* 노드 배경 - 어두운 배경 */
 .dark .mermaid .node rect,
 .dark .mermaid .node circle,
 .dark .mermaid .node ellipse,
 .dark .mermaid .node polygon {
   fill: #2d3748 !important;
-  stroke: #adb5bd !important;
+  stroke: #cbd5e0 !important;
+  stroke-width: 2px !important;
 }
 
-.dark .mermaid .edgeLabel {
-  background-color: #2d3748 !important;
-  color: #e9ecef !important;
+/* 엣지 라벨 배경 */
+.dark .mermaid .edgeLabel,
+.dark .mermaid .edgeLabel rect {
+  background-color: #1a202c !important;
+  fill: #1a202c !important;
 }
 
+.dark .mermaid .edgeLabel span,
+.dark .mermaid .edgeLabel foreignObject div {
+  background: #1a202c !important;
+  color: #f7fafc !important;
+  padding: 2px 6px !important;
+}
+
+/* 메시지, 노트, 라벨 텍스트 */
 .dark .mermaid .messageText,
 .dark .mermaid .noteText,
 .dark .mermaid .labelText {
-  fill: #e9ecef !important;
+  fill: #f7fafc !important;
+  font-weight: 600 !important;
 }
 
-/* 라인과 화살표 */
+/* 라인과 화살표 - 더 밝게 */
 .dark .mermaid .edgePath .path,
 .dark .mermaid line,
 .dark .mermaid path {
-  stroke: #adb5bd !important;
+  stroke: #cbd5e0 !important;
+  stroke-width: 2px !important;
 }
 
-.dark .mermaid marker {
-  fill: #adb5bd !important;
-  stroke: #adb5bd !important;
+.dark .mermaid marker,
+.dark .mermaid marker path {
+  fill: #cbd5e0 !important;
+  stroke: #cbd5e0 !important;
 }
 
 /* 다이아몬드 노드 (결정 노드) */
 .dark .mermaid .node.decision rect,
 .dark .mermaid .node.decision polygon {
   fill: #4a5568 !important;
-  stroke: #cbd5e0 !important;
+  stroke: #e2e8f0 !important;
+  stroke-width: 2px !important;
 }
 
-/* 특수 노드 스타일 유지 */
+/* 시작/종료 노드 */
 .dark .mermaid [class*="start"],
 .dark .mermaid [class*="end"] {
   fill: #4a5568 !important;
+  stroke: #cbd5e0 !important;
+  stroke-width: 2px !important;
 }
 
 /* 그룹/클러스터 배경 */
 .dark .mermaid .cluster rect {
   fill: #1a202c !important;
   stroke: #4a5568 !important;
+  stroke-width: 2px !important;
+}
+
+.dark .mermaid .cluster text {
+  fill: #f7fafc !important;
+  font-weight: 700 !important;
 }
 
 /* 시퀀스 다이어그램 액터 */
 .dark .mermaid .actor {
   fill: #2d3748 !important;
-  stroke: #adb5bd !important;
+  stroke: #cbd5e0 !important;
+  stroke-width: 2px !important;
+}
+
+.dark .mermaid .actor text {
+  fill: #f7fafc !important;
+  font-weight: 600 !important;
 }
 
 .dark .mermaid .actor-line {
   stroke: #718096 !important;
+  stroke-width: 1px !important;
 }
 
 /* 활성화 박스 */
@@ -962,12 +1007,19 @@ tr:last-child td {
 .dark .mermaid .activation2 {
   fill: #4a5568 !important;
   stroke: #cbd5e0 !important;
+  stroke-width: 2px !important;
 }
 
 /* 노트 */
 .dark .mermaid .note {
   fill: #2d3748 !important;
   stroke: #718096 !important;
+  stroke-width: 2px !important;
+}
+
+.dark .mermaid .note text {
+  fill: #f7fafc !important;
+  font-weight: 600 !important;
 }
 
 /* 간트 차트 */
@@ -979,19 +1031,50 @@ tr:last-child td {
   stroke: #2d3748 !important;
 }
 
+.dark .mermaid .grid text {
+  fill: #f7fafc !important;
+  font-weight: 500 !important;
+}
+
 /* 플로우차트 커넥터 라벨 */
 .dark .mermaid .edgeLabel rect {
-  fill: #2d3748 !important;
+  fill: #1a202c !important;
 }
 
 .dark .mermaid .edgeLabel span {
-  background: #2d3748 !important;
-  color: #e9ecef !important;
+  background: #1a202c !important;
+  color: #f7fafc !important;
+  padding: 2px 6px !important;
+  font-weight: 600 !important;
 }
 
-/* 개선된 가독성 */
-.dark .mermaid {
-  filter: brightness(1.1) contrast(0.95);
+/* 섹션 배경 */
+.dark .mermaid .section {
+  fill: #2d3748 !important;
+}
+
+.dark .mermaid .section text {
+  fill: #f7fafc !important;
+  font-weight: 600 !important;
+}
+
+/* 서브그래프 라벨 */
+.dark .mermaid .label-container {
+  fill: #1a202c !important;
+}
+
+.dark .mermaid .label-container text {
+  fill: #f7fafc !important;
+  font-weight: 700 !important;
+}
+
+/* 최종 텍스트 강제 적용 */
+.dark .mermaid * {
+  color: #f7fafc !important;
+}
+
+.dark .mermaid text * {
+  fill: #f7fafc !important;
 }
 
 /* Mermaid SVG 크기 조정 */
