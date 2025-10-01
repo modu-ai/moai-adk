@@ -97,13 +97,13 @@ classDiagram
         -fileSystem: FileSystem
         -configManager: ConfigManager
         -logger: Logger
-        +execute(config: InstallationConfig): Promise~InstallationResult~
-        -validatePreconditions(config: InstallationConfig): Promise~void~
-        -copyTemplateFiles(context: InstallationContext): Promise~void~
-        -substituteVariables(context: InstallationContext): Promise~void~
-        -initializeGit(context: InstallationContext): Promise~void~
-        -createBackup(context: InstallationContext): Promise~void~
-        -rollback(context: InstallationContext): Promise~void~
+        "+execute(config: InstallationConfig): Promise~InstallationResult~"
+        "-validatePreconditions(config: InstallationConfig): Promise~void~"
+        "-copyTemplateFiles(context: InstallationContext): Promise~void~"
+        "-substituteVariables(context: InstallationContext): Promise~void~"
+        "-initializeGit(context: InstallationContext): Promise~void~"
+        "-createBackup(context: InstallationContext): Promise~void~"
+        "-rollback(context: InstallationContext): Promise~void~"
     }
 
     class InstallationConfig {
@@ -403,14 +403,14 @@ SystemChecker는 **동적 요구사항 등록** 시스템을 사용합니다. �
 ```mermaid
 classDiagram
     class SystemChecker {
-        -requirements: Map~string, SystemRequirement~
+        "-requirements: Map~string, SystemRequirement~"
         -detectors: ToolDetector[]
         -logger: Logger
-        +registerRequirement(req: SystemRequirement): void
-        +checkAll(): Promise~SystemCheckSummary~
-        +checkCategory(category: string): Promise~RequirementCheckResult[]~
-        -detectLanguages(projectPath: string): Promise~string[]~
-        -executeDetection(req: SystemRequirement): Promise~DetectionResult~
+        "+registerRequirement(req: SystemRequirement): void"
+        "+checkAll(): Promise~SystemCheckSummary~"
+        "+checkCategory(category: string): Promise~RequirementCheckResult[]~"
+        "-detectLanguages(projectPath: string): Promise~string[]~"
+        "-executeDetection(req: SystemRequirement): Promise~DetectionResult~"
     }
 
     class SystemRequirement {
@@ -712,12 +712,12 @@ classDiagram
         -validator: SchemaValidator
         -migrator: ConfigMigrator
         -logger: Logger
-        +load(): Promise~MoaiConfig~
-        +save(config: MoaiConfig): Promise~void~
-        +update(partial: Partial~MoaiConfig~): Promise~void~
-        +validate(config: any): ValidationResult
-        +migrate(oldConfig: any): Promise~MoaiConfig~
-        +getDefaults(): MoaiConfig
+        "+load(): Promise~MoaiConfig~"
+        "+save(config: MoaiConfig): Promise~void~"
+        "+update(partial: Partial~MoaiConfig~): Promise~void~"
+        "+validate(config: any): ValidationResult"
+        "+migrate(oldConfig: any): Promise~MoaiConfig~"
+        "+getDefaults(): MoaiConfig"
     }
 
     class MoaiConfig {
@@ -751,8 +751,8 @@ classDiagram
     }
 
     class ConfigMigrator {
-        +migrate(config: any, fromVersion: string, toVersion: string): Promise~any~
-        -applyMigrationStep(config: any, step: MigrationStep): any
+        "+migrate(config: any, fromVersion: string, toVersion: string): Promise~any~"
+        "-applyMigrationStep(config: any, step: MigrationStep): any"
     }
 
     ConfigManager --> MoaiConfig
@@ -956,13 +956,13 @@ classDiagram
         -compressionEnabled: boolean
         -retentionPolicy: RetentionPolicy
         -logger: Logger
-        +createBackup(source: string, metadata?: BackupMetadata): Promise~BackupInfo~
-        +restore(backupId: string, target: string): Promise~RestoreResult~
-        +listBackups(): Promise~BackupInfo[]~
-        +deleteBackup(backupId: string): Promise~void~
-        +validateBackup(backupId: string): Promise~ValidationResult~
-        -calculateChecksum(file: string): Promise~string~
-        -compressDirectory(source: string, dest: string): Promise~void~
+        "+createBackup(source: string, metadata?: BackupMetadata): Promise~BackupInfo~"
+        "+restore(backupId: string, target: string): Promise~RestoreResult~"
+        "+listBackups(): Promise~BackupInfo[]~"
+        "+deleteBackup(backupId: string): Promise~void~"
+        "+validateBackup(backupId: string): Promise~ValidationResult~"
+        "-calculateChecksum(file: string): Promise~string~"
+        "-compressDirectory(source: string, dest: string): Promise~void~"
     }
 
     class BackupInfo {
@@ -1450,35 +1450,35 @@ classDiagram
         -validator: TagValidator
         -indexer: TagIndexer
         -logger: Logger
-        +scanProject(): Promise~TagDatabase~
-        +validateTags(): Promise~ValidationResult~
-        +searchTags(query: TagSearchQuery): Promise~TagEntry[]~
-        +getTagChain(tagId: string): Promise~TagEntry[]~
-        +generateReport(): Promise~TagReport~
+        "+scanProject(): Promise~TagDatabase~"
+        "+validateTags(): Promise~ValidationResult~"
+        "+searchTags(query: TagSearchQuery): Promise~TagEntry[]~"
+        "+getTagChain(tagId: string): Promise~TagEntry[]~"
+        "+generateReport(): Promise~TagReport~"
     }
 
     class TagScanner {
-        +scan(directory: string, patterns: string[]): Promise~TagEntry[]~
-        -parseTagFromComment(line: string): TagEntry | null
-        -extractChainInfo(comment: string): ChainInfo
+        "+scan(directory: string, patterns: string[]): Promise~TagEntry[]~"
+        "-parseTagFromComment(line: string): TagEntry | null"
+        "-extractChainInfo(comment: string): ChainInfo"
     }
 
     class TagValidator {
-        +validate(database: TagDatabase): Promise~ValidationResult~
-        -checkPrimaryChain(tag: TagEntry): ValidationError[]
-        -detectOrphanedTags(database: TagDatabase): TagEntry[]
-        -detectCycles(database: TagDatabase): string[][]
+        "+validate(database: TagDatabase): Promise~ValidationResult~"
+        "-checkPrimaryChain(tag: TagEntry): ValidationError[]"
+        "-detectOrphanedTags(database: TagDatabase): TagEntry[]"
+        "-detectCycles(database: TagDatabase): string[][]"
     }
 
     class TagIndexer {
-        +buildIndexes(tags: TagEntry[]): TagIndexes
-        +saveToJSONL(tags: TagEntry[], category: string): Promise~void~
-        +loadFromJSONL(category: string): Promise~TagEntry[]~
+        "+buildIndexes(tags: TagEntry[]): TagIndexes"
+        "+saveToJSONL(tags: TagEntry[], category: string): Promise~void~"
+        "+loadFromJSONL(category: string): Promise~TagEntry[]~"
     }
 
     class TagDatabase {
         +version: string
-        +tags: Map~string, TagEntry~
+        "+tags: Map~string, TagEntry~"
         +indexes: TagIndexes
         +metadata: DatabaseMetadata
     }
@@ -1514,13 +1514,13 @@ classDiagram
 ```typescript
 const TAG_PATTERNS = {
   // TAG ID 패턴: TYPE:DOMAIN-NNN
-  id: /@(REQ|DESIGN|TASK|TEST|FEATURE|API|UI|DATA|VISION|STRUCT|TECH|ADR|PERF|SEC|DOCS|TAG):([A-Z]+-\d{3})/g,
+  "id: /@(REQ|DESIGN|TASK|TEST|FEATURE|API|UI|DATA|VISION|STRUCT|TECH|ADR|PERF|SEC|DOCS|TAG):([A-Z]+-\\d{3})/g",
 
   // Chain 정의 패턴
-  chain: /Chain:\s*(@\w+:\w+-\d{3})\s*->\s*(@\w+:\w+-\d{3})\s*->\s*(@\w+:\w+-\d{3})\s*->\s*(@\w+:\w+-\d{3})/,
+  "chain: /Chain:\\s*(@\\w+:\\w+-\\d{3})\\s*->\\s*(@\\w+:\\w+-\\d{3})\\s*->\\s*(@\\w+:\\w+-\\d{3})\\s*->\\s*(@\\w+:\\w+-\\d{3})/",
 
   // Related TAG 패턴
-  related: /Related:\s*(@\w+:\w+-\d{3}(?:,\s*@\w+:\w+-\d{3})*)/
+  "related: /Related:\\s*(@\\w+:\\w+-\\d{3}(?:,\\s*@\\w+:\\w+-\\d{3})*)/",
 };
 
 async function scan(directory: string): Promise<TagEntry[]> {
@@ -1600,8 +1600,8 @@ function checkTagChain(tag: TagEntry, database: TagDatabase): ValidationError[] 
       errors.push({
         type: 'BROKEN_CHAIN',
         severity: 'ERROR',
-        message: `${tag.id} is missing ${expectedParentType} parent`,
-        suggestion: `Add @${expectedParentType}:${tag.id.split(':')[1]} parent`
+        "message: `${tag.id} is missing ${expectedParentType} parent`",
+        "suggestion: `Add @${expectedParentType}:${tag.id.split(':')[1]} parent`",
       });
     }
   }
@@ -1618,8 +1618,8 @@ function checkTagChain(tag: TagEntry, database: TagDatabase): ValidationError[] 
       errors.push({
         type: 'INCOMPLETE_CHAIN',
         severity: 'WARNING',
-        message: `${tag.id} is completed but missing ${expectedChildType} child`,
-        suggestion: `Create @${expectedChildType}:${tag.id.split(':')[1]} implementation`
+        "message: `${tag.id} is completed but missing ${expectedChildType} child`",
+        "suggestion: `Create @${expectedChildType}:${tag.id.split(':')[1]} implementation`",
       });
     }
   }

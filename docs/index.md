@@ -190,8 +190,3 @@ moai doctor
 - `moai status` - 프로젝트 상태 확인
 - `moai update` - 업데이트 관리
 - `moai restore` - 백업 복원
-
----
-
-**MoAI-ADK v0.0.1** - TypeScript 기반 SPEC-First TDD 개발 도구
-*[MoAI Team](https://mo.ai.kr)*

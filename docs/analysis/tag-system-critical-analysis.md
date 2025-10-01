@@ -41,8 +41,8 @@ TAG 흐름:
 
 ```mermaid
 graph LR
-    RED[RED<br/>실패하는 테스트] --> GREEN[GREEN<br/>최소 구현]
-    GREEN --> REFACTOR[REFACTOR<br/>품질 개선]
+    RED["RED<br/>실패하는 테스트"] --> GREEN["GREEN<br/>최소 구현"]
+    GREEN --> REFACTOR["REFACTOR<br/>품질 개선"]
     REFACTOR --> RED
 
 ```

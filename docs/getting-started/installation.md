@@ -86,14 +86,14 @@ sequenceDiagram
 
     U->>D: moai doctor 실행
     D->>F: 프로젝트 파일 스캔
-    F->>L: package.json, *.ts, *.py 등 분석
-    L->>L: 사용 언어 판정<br/>(TypeScript, Python 등)
+    F->>L: "package.json, *.ts, *.py 등 분석"
+    L->>L: "사용 언어 판정<br/>(TypeScript, Python 등)"
     L->>C: 언어별 필수 도구 목록 전달
-    C->>C: 각 도구 설치 여부 확인<br/>(bun, npm, pytest 등)
+    C->>C: "각 도구 설치 여부 확인<br/>(bun, npm, pytest 등)"
     C->>D: 검사 결과 집계
-    D->>U: 📊 진단 리포트 출력
+    D->>U: "📊 진단 리포트 출력"
 
-    Note over D,C: 5-Category 진단:<br/>1. Runtime<br/>2. Development<br/>3. Test<br/>4. Lint<br/>5. Format
+    Note over D,C: "5-Category 진단:<br/>1. Runtime<br/>2. Development<br/>3. Test<br/>4. Lint<br/>5. Format"
 ```
 
 ### 실행 명령어

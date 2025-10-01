@@ -56,14 +56,14 @@ graph TD
     B -->|예| C{.claude 존재?}
     B -->|아니오| D{.claude 존재?}
 
-    C -->|예| E[MoAI Project Full<br/>✅ 모든 기능 사용 가능]
-    C -->|아니오| F[MoAI Project Partial<br/>⚠️ Claude 통합 필요]
+    C -->|예| E["MoAI Project Full<br/>✅ 모든 기능 사용 가능"]
+    C -->|아니오| F["MoAI Project Partial<br/>⚠️ Claude 통합 필요"]
 
-    D -->|예| G[Claude Project<br/>⚠️ MoAI 시스템 필요]
-    D -->|아니오| H[Regular Directory<br/>❌ 초기화 필요]
+    D -->|예| G["Claude Project<br/>⚠️ MoAI 시스템 필요"]
+    D -->|아니오| H["Regular Directory<br/>❌ 초기화 필요"]
 
-    E --> I[✅ Full Setup]
-    F --> J[💡 Run: moai init]
+    E --> I["✅ Full Setup"]
+    F --> J["💡 Run: moai init"]
     G --> J
     H --> J
 

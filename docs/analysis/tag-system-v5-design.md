@@ -29,10 +29,10 @@ After (현재 버전):
 
 ```mermaid
 graph LR
-    SPEC[@SPEC<br/>명세] --> RED[@TEST<br/>RED Phase]
-    RED --> GREEN[@CODE<br/>GREEN Phase]
-    GREEN --> REFACTOR[@CODE<br/>REFACTOR Phase]
-    REFACTOR --> DOC[@DOC<br/>문서화]
+    SPEC["@SPEC<br/>명세"] --> RED["@TEST<br/>RED Phase"]
+    RED --> GREEN["@CODE<br/>GREEN Phase"]
+    GREEN --> REFACTOR["@CODE<br/>REFACTOR Phase"]
+    REFACTOR --> DOC["@DOC<br/>문서화"]
     DOC --> SPEC
 
 ```

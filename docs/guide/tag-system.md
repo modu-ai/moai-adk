@@ -10,12 +10,12 @@
 
 ```mermaid
 graph LR
-    SPEC[.moai/specs/<br/>@SPEC:ID] --> TEST[tests/<br/>@TEST:ID]
-    TEST --> CODE[src/<br/>@CODE:ID]
-    CODE --> DOC[docs/<br/>@DOC:ID]
-    CODE --> SCAN[rg '@TAG' -n<br/>실시간 스캔]
-    SCAN --> VERIFY[TAG 체인 검증]
-    VERIFY --> REPORT[동기화 리포트]
+    SPEC[".moai/specs/<br/>@SPEC:ID"] --> TEST["tests/<br/>@TEST:ID"]
+    TEST --> CODE["src/<br/>@CODE:ID"]
+    CODE --> DOC["docs/<br/>@DOC:ID"]
+    CODE --> SCAN["rg '@TAG' -n<br/>실시간 스캔"]
+    SCAN --> VERIFY["TAG 체인 검증"]
+    VERIFY --> REPORT["동기화 리포트"]
 
 ```
 
@@ -27,9 +27,9 @@ MoAI-ADK는 단일 TAG 체계를 사용합니다.
 
 ```mermaid
 graph LR
-    SPEC[@SPEC:ID<br/>요구사항 명세] --> TEST[@TEST:ID<br/>RED Phase]
-    TEST --> CODE[@CODE:ID<br/>GREEN + REFACTOR]
-    CODE --> DOC[@DOC:ID<br/>문서화]
+    SPEC["@SPEC:ID<br/>요구사항 명세"] --> TEST["@TEST:ID<br/>RED Phase"]
+    TEST --> CODE["@CODE:ID<br/>GREEN + REFACTOR"]
+    CODE --> DOC["@DOC:ID<br/>문서화"]
 
 ```
 
@@ -436,9 +436,9 @@ rg "AUTH-003" -n
 ```mermaid
 sequenceDiagram
     participant D as 개발자
-    participant SPEC as .moai/specs/<br/>@SPEC:ID
-    participant TEST as tests/<br/>@TEST:ID
-    participant CODE as src/<br/>@CODE:ID
+    participant SPEC as ".moai/specs/<br/>@SPEC:ID"
+    participant TEST as "tests/<br/>@TEST:ID"
+    participant CODE as "src/<br/>@CODE:ID"
     participant S as /moai:3-sync
     participant RG as ripgrep (rg)
     participant R as sync-report.md
@@ -447,14 +447,14 @@ sequenceDiagram
     D->>TEST: 2. 테스트 작성 (RED)
     D->>CODE: 3. 구현 (GREEN + REFACTOR)
     D->>S: 4. 동기화 명령 실행
-    S->>RG: rg '@(SPEC|TEST|CODE):' -n
+    S->>RG: "rg '@(SPEC|TEST|CODE):' -n"
     RG->>S: TAG 목록 반환
     S->>S: TAG 체인 검증
     alt TAG 체인 유효
-        S->>R: ✅ 추적성 확인 리포트
+        S->>R: "✅ 추적성 확인 리포트"
         R->>D: 동기화 완료
     else TAG 체인 끊김
-        S->>R: ❌ 누락된 TAG 리포트
+        S->>R: "❌ 누락된 TAG 리포트"
         R->>D: 수정 필요 항목 표시
         D->>CODE: TAG 수정
     end
@@ -536,12 +536,12 @@ export class AuthService {
 
 ```mermaid
 graph TD
-    A[1. SPEC 작성<br/>/moai:1-spec<br/>@SPEC:ID] --> B[2. 테스트 작성<br/>RED Phase<br/>@TEST:ID]
-    B --> C[3. 구현<br/>GREEN Phase<br/>@CODE:ID]
-    C --> D[4. 리팩토링<br/>REFACTOR Phase<br/>@CODE:ID 개선]
-    D --> E{5. /moai:3-sync<br/>코드 스캔 검증}
-    E -->|성공| F[추적성 확보<br/>@DOC:ID 생성]
-    E -->|실패| G[TAG 수정 필요<br/>누락/중복/순서 오류]
+    A["1. SPEC 작성<br/>/moai:1-spec<br/>@SPEC:ID"] --> B["2. 테스트 작성<br/>RED Phase<br/>@TEST:ID"]
+    B --> C["3. 구현<br/>GREEN Phase<br/>@CODE:ID"]
+    C --> D["4. 리팩토링<br/>REFACTOR Phase<br/>@CODE:ID 개선"]
+    D --> E{"5. /moai:3-sync<br/>코드 스캔 검증"}
+    E -->|성공| F["추적성 확보<br/>@DOC:ID 생성"]
+    E -->|실패| G["TAG 수정 필요<br/>누락/중복/순서 오류"]
     G --> B
 
 ```

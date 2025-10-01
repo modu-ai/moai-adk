@@ -22,9 +22,9 @@ spec-builder는 MoAI-ADK의 3단계 워크플로우 중 **1단계(/moai:1-spec)*
 
 ```mermaid
 graph LR
-    A[/moai:1-spec] -->|SPEC 생성| B[/moai:2-build]
-    B -->|코드 구현| C[/moai:3-sync]
-    C -->|문서 동기화| D[완료]
+    A["/moai:1-spec"] -->|"SPEC 생성"| B["/moai:2-build"]
+    B -->|"코드 구현"| C["/moai:3-sync"]
+    C -->|"문서 동기화"| D["완료"]
 
 ```
 
@@ -318,35 +318,35 @@ SPEC 문서에 TAG BLOCK을 포함하여 작성합니다:
 
 ```mermaid
 sequenceDiagram
-    participant U as 사용자
-    participant SB as spec-builder
-    participant PM as Project Manager
-    participant TA as tag-agent
-    participant GM as git-manager
+    participant U as "사용자"
+    participant SB as "spec-builder"
+    participant PM as "Project Manager"
+    participant TA as "tag-agent"
+    participant GM as "git-manager"
 
-    U->>SB: /moai:1-spec 실행
-    SB->>PM: 프로젝트 문서 로딩
-    PM-->>SB: product.md, structure.md, tech.md
+    U->>SB: "/moai:1-spec 실행"
+    SB->>PM: "프로젝트 문서 로딩"
+    PM-->>SB: "product.md, structure.md, tech.md"
 
-    SB->>SB: 기능 후보 분석
-    SB->>U: 우선순위 기능 제안
-    U->>SB: 기능 선택 또는 직접 입력
+    SB->>SB: "기능 후보 분석"
+    SB->>U: "우선순위 기능 제안"
+    U->>SB: "기능 선택 또는 직접 입력"
 
-    SB->>SB: EARS 요구사항 생성
-    SB->>TA: TAG BLOCK 요청
-    TA-->>SB: TAG ID 할당 및 체인 설정
+    SB->>SB: "EARS 요구사항 생성"
+    SB->>TA: "TAG BLOCK 요청"
+    TA-->>SB: "TAG ID 할당 및 체인 설정"
 
-    SB->>SB: 3개 파일 생성 (MultiEdit)
-    SB->>U: SPEC 생성 완료 보고
+    SB->>SB: "3개 파일 생성 (MultiEdit)"
+    SB->>U: "SPEC 생성 완료 보고"
 
-    U->>SB: 브랜치 생성 승인 (y/n)
+    U->>SB: "브랜치 생성 승인 (y/n)"
     alt 사용자 승인
-        SB->>GM: 브랜치 생성 요청
-        GM->>GM: feature/spec-XXX 브랜치 생성
-        GM-->>SB: 브랜치 생성 완료
-        SB->>U: 다음 단계 안내 (/moai:2-build)
+        SB->>GM: "브랜치 생성 요청"
+        GM->>GM: "feature/spec-XXX 브랜치 생성"
+        GM-->>SB: "브랜치 생성 완료"
+        SB->>U: "다음 단계 안내 (/moai:2-build)"
     else 사용자 거부
-        SB->>U: SPEC만 생성 완료
+        SB->>U: "SPEC만 생성 완료"
     end
 ```
 

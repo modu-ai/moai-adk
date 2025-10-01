@@ -926,10 +926,10 @@ const query3: TagSearchQuery = {
 ```mermaid
 graph LR
     subgraph "필수 TAG 흐름"
-        REQ[SPEC-AUTH-001<br/>OAuth2 요구사항]
-        DESIGN[SPEC-AUTH-001<br/>시퀀스 설계]
-        TASK[CODE-AUTH-001<br/>구현 작업]
-        TEST[TEST-AUTH-001<br/>통합 테스트]
+        REQ["@SPEC:AUTH-001<br/>OAuth2 요구사항"]
+        DESIGN["@DESIGN:AUTH-001<br/>시퀀스 설계"]
+        TASK["@CODE:AUTH-001<br/>구현 작업"]
+        TEST["@TEST:AUTH-001<br/>통합 테스트"]
 
         REQ --> DESIGN
         DESIGN --> TASK
@@ -937,16 +937,16 @@ graph LR
     end
 
     subgraph "Implementation"
-        FEATURE[CODE-AUTH-001<br/>인증 서비스]
-        API[CODE-AUTH-001<br/>OAuth 엔드포인트]
+        FEATURE["@FEATURE:AUTH-001<br/>인증 서비스"]
+        API["@API:AUTH-001<br/>OAuth 엔드포인트"]
 
         TASK --> FEATURE
         TASK --> API
     end
 
     subgraph "Quality"
-        SEC[CODE-AUTH-001<br/>보안 검토]
-        PERF[CODE-AUTH-001<br/>성능 최적화]
+        SEC["@SEC:AUTH-001<br/>보안 검토"]
+        PERF["@PERF:AUTH-001<br/>성능 최적화"]
 
         FEATURE --> SEC
         API --> PERF
@@ -1097,21 +1097,21 @@ const defaultPatterns: FilePatterns = {
 
 ```mermaid
 flowchart TD
-    Start[File Update Check] --> Classify{Classify File Type}
+    Start["File Update Check"] --> Classify{"Classify File Type"}
 
-    Classify -->|TEMPLATE| LocalChange{Has Local Changes?}
-    Classify -->|USER| Keep[KEEP]
-    Classify -->|HYBRID| Merge{Merge Possible?}
-    Classify -->|GENERATED| Regen[REGENERATE]
-    Classify -->|METADATA| Special[Special Handling]
+    Classify -->|TEMPLATE| LocalChange{"Has Local Changes?"}
+    Classify -->|USER| Keep["KEEP"]
+    Classify -->|HYBRID| Merge{"Merge Possible?"}
+    Classify -->|GENERATED| Regen["REGENERATE"]
+    Classify -->|METADATA| Special["Special Handling"]
 
-    LocalChange -->|No| Replace[REPLACE]
-    LocalChange -->|Yes| Backup1[Backup + REPLACE]
+    LocalChange -->|No| Replace["REPLACE"]
+    LocalChange -->|Yes| Backup1["Backup + REPLACE"]
 
-    Merge -->|Yes| MergeAction[MERGE]
-    Merge -->|No| Manual[MANUAL]
+    Merge -->|Yes| MergeAction["MERGE"]
+    Merge -->|No| Manual["MANUAL"]
 
-    Keep --> End[Execute Action]
+    Keep --> End["Execute Action"]
     Replace --> End
     Backup1 --> End
     MergeAction --> End
@@ -1149,9 +1149,9 @@ classDiagram
     }
 
     class SystemCheckSummary {
-        +RequirementCheckResult[] runtime
-        +RequirementCheckResult[] development
-        +RequirementCheckResult[] optional
+        +"RequirementCheckResult[] runtime"
+        +"RequirementCheckResult[] development"
+        +"RequirementCheckResult[] optional"
         +number totalChecks
         +number passedChecks
         +number failedChecks
@@ -1162,9 +1162,9 @@ classDiagram
         +boolean allPassed
         +object basicChecks
         +SystemPerformanceMetrics performanceMetrics
-        +BenchmarkResult[] benchmarks
-        +OptimizationRecommendation[] recommendations
-        +EnvironmentConfig[] environments
+        +"BenchmarkResult[] benchmarks"
+        +"OptimizationRecommendation[] recommendations"
+        +"EnvironmentConfig[] environments"
         +number healthScore
         +object summary
     }
@@ -1188,7 +1188,7 @@ classDiagram
 
     class TagDatabase {
         +string version
-        +Record~string,TagEntry~ tags
+        +"Record~string,TagEntry~ tags"
         +object indexes
         +object metadata
     }

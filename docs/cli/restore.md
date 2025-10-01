@@ -16,41 +16,41 @@ RestoreCommand는 안전성을 최우선으로 설계되었습니다. 기본적�
 
 ```mermaid
 flowchart TD
-    A[moai restore 실행] --> B[백업 경로 검증]
-    B --> C{경로 존재?}
-    C -->|아니오| Z[❌ 오류: 경로 없음]
-    C -->|예| D{디렉토리?}
+    A["moai restore 실행"] --> B["백업 경로 검증"]
+    B --> C{"경로 존재?"}
+    C -->|아니오| Z["❌ 오류: 경로 없음"]
+    C -->|예| D{"디렉토리?"}
     D -->|아니오| Z
-    D -->|예| E[필수 항목 확인]
+    D -->|예| E["필수 항목 확인"]
 
-    E --> F{.moai 존재?}
-    F -->|아니오| G[⚠️ 불완전한 백업]
-    F -->|예| H{.claude 존재?}
+    E --> F{".moai 존재?"}
+    F -->|아니오| G["⚠️ 불완전한 백업"]
+    F -->|예| H{".claude 존재?"}
     H -->|아니오| G
-    H -->|예| I{CLAUDE.md 존재?}
+    H -->|예| I{"CLAUDE.md 존재?"}
     I -->|아니오| G
-    I -->|예| J[✅ 유효한 백업]
+    I -->|예| J["✅ 유효한 백업"]
 
-    G --> K{--force?}
-    K -->|아니오| Z2[❌ 복원 중단]
-    K -->|예| L{--dry-run?}
+    G --> K{"--force?"}
+    K -->|아니오| Z2["❌ 복원 중단"]
+    K -->|예| L{"--dry-run?"}
 
     J --> L
-    L -->|예| M[📋 미리보기 모드]
-    L -->|아니오| N[📦 실제 복원 모드]
+    L -->|예| M["📋 미리보기 모드"]
+    L -->|아니오| N["📦 실제 복원 모드"]
 
-    M --> O[복원될 항목 나열]
-    O --> P[✅ 시뮬레이션 완료]
+    M --> O["복원될 항목 나열"]
+    O --> P["✅ 시뮬레이션 완료"]
 
-    N --> Q{기존 파일<br/>충돌?}
-    Q -->|있음<br/>--force 없음| R[건너뛰기]
-    Q -->|있음<br/>--force 있음| S[덮어쓰기]
-    Q -->|없음| T[복사]
+    N --> Q{"기존 파일<br/>충돌?"}
+    Q -->|"있음<br/>--force 없음"| R["건너뛰기"]
+    Q -->|"있음<br/>--force 있음"| S["덮어쓰기"]
+    Q -->|없음| T["복사"]
 
-    R --> U[결과 보고]
+    R --> U["결과 보고"]
     S --> U
     T --> U
-    U --> V[✅ 복원 완료]
+    U --> V["✅ 복원 완료"]
 
 ```
 
@@ -60,22 +60,22 @@ flowchart TD
 
 ```mermaid
 graph TB
-    ROOT[백업 디렉토리<br/>.moai_backup_timestamp]
+    ROOT["백업 디렉토리<br/>.moai_backup_timestamp"]
 
-    ROOT --> MOAI[.moai/<br/>필수]
-    ROOT --> CLAUDE[.claude/<br/>필수]
-    ROOT --> CLAUDEMD[CLAUDE.md<br/>선택]
-    ROOT --> PKG[package.json<br/>선택]
+    ROOT --> MOAI[".moai/<br/>필수"]
+    ROOT --> CLAUDE[".claude/<br/>필수"]
+    ROOT --> CLAUDEMD["CLAUDE.md<br/>선택"]
+    ROOT --> PKG["package.json<br/>선택"]
 
-    MOAI --> MEM[memory/<br/>개발 가이드]
-    MOAI --> PROJ[project/<br/>프로젝트 정의]
-    MOAI --> SCR[scripts/<br/>자동화 스크립트]
-    MOAI --> VER[version.json<br/>버전 정보]
+    MOAI --> MEM["memory/<br/>개발 가이드"]
+    MOAI --> PROJ["project/<br/>프로젝트 정의"]
+    MOAI --> SCR["scripts/<br/>자동화 스크립트"]
+    MOAI --> VER["version.json<br/>버전 정보"]
 
-    CLAUDE --> AGT[agents/moai/<br/>8개 에이전트]
-    CLAUDE --> CMD[commands/moai/<br/>워크플로우 명령]
-    CLAUDE --> HK[hooks/moai/<br/>이벤트 훅]
-    CLAUDE --> STY[output-styles/<br/>출력 스타일]
+    CLAUDE --> AGT["agents/moai/<br/>8개 에이전트"]
+    CLAUDE --> CMD["commands/moai/<br/>워크플로우 명령"]
+    CLAUDE --> HK["hooks/moai/<br/>이벤트 훅"]
+    CLAUDE --> STY["output-styles/<br/>출력 스타일"]
 
 ```
 
@@ -86,31 +86,31 @@ sequenceDiagram
     participant U as 사용자
     participant RC as RestoreCommand
     participant VAL as BackupValidator
-    participant FS as 파일 시스템
+    participant FS as "파일 시스템"
     participant RPT as Reporter
 
-    U->>RC: moai restore <backup-path>
+    U->>RC: "moai restore &lt;backup-path&gt;"
     RC->>VAL: 백업 검증 요청
     VAL->>FS: 경로 존재 확인
     FS-->>VAL: 존재 여부
-    VAL->>FS: .moai 확인
+    VAL->>FS: ".moai 확인"
     FS-->>VAL: 존재 여부
-    VAL->>FS: .claude 확인
+    VAL->>FS: ".claude 확인"
     FS-->>VAL: 존재 여부
     VAL-->>RC: 검증 결과
 
-    alt 불완전한 백업 & --force 없음
-        RC-->>U: ❌ 복원 중단<br/>불완전한 백업
-    else --dry-run 모드
+    alt "불완전한 백업 & --force 없음"
+        RC-->>U: "❌ 복원 중단<br/>불완전한 백업"
+    else "--dry-run 모드"
         RC->>FS: 복원 항목 나열
         RC->>RPT: 미리보기 생성
-        RPT-->>U: 📋 복원될 항목 목록
+        RPT-->>U: "📋 복원될 항목 목록"
     else 실제 복원
         loop 각 항목
             RC->>FS: 파일 복사
-            alt 충돌 & --force 없음
+            alt "충돌 & --force 없음"
                 RC->>RPT: 건너뛴 항목 기록
-            else 충돌 & --force 있음
+            else "충돌 & --force 있음"
                 FS->>FS: 덮어쓰기
                 RC->>RPT: 덮어쓴 항목 기록
             else 충돌 없음
@@ -119,7 +119,7 @@ sequenceDiagram
             end
         end
         RC->>RPT: 결과 요약 생성
-        RPT-->>U: ✅ 복원 완료<br/>통계 표시
+        RPT-->>U: "✅ 복원 완료<br/>통계 표시"
     end
 ```
 

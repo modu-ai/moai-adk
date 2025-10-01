@@ -16,53 +16,53 @@ AdvancedDoctorCommand 클래스는 모듈화와 확장성을 중시하여 설계
 
 ```mermaid
 flowchart TD
-    A[moai doctor --advanced] --> B[🔍 성능 메트릭 수집]
-    B --> C[SystemPerformanceAnalyzer]
-    C --> D{CPU/메모리/디스크<br/>메트릭 수집}
+    A["moai doctor --advanced"] --> B["🔍 성능 메트릭 수집"]
+    B --> C["SystemPerformanceAnalyzer"]
+    C --> D{"CPU/메모리/디스크<br/>메트릭 수집"}
 
-    D --> E{--include-benchmarks?}
-    E -->|예| F[🏃 BenchmarkRunner 실행]
-    E -->|아니오| G[벤치마크 건너뛰기]
+    D --> E{"--include-benchmarks?"}
+    E -->|예| F["🏃 BenchmarkRunner 실행"]
+    E -->|아니오| G["벤치마크 건너뛰기"]
 
-    F --> H{벤치마크<br/>성공?}
-    H -->|예| I[벤치마크 결과 저장]
-    H -->|아니오| J[⚠️ 벤치마크 실패 경고]
+    F --> H{"벤치마크<br/>성공?"}
+    H -->|예| I["벤치마크 결과 저장"]
+    H -->|아니오| J["⚠️ 벤치마크 실패 경고"]
 
-    G --> K{--include-recommendations?}
+    G --> K{"--include-recommendations?"}
     I --> K
     J --> K
 
-    K -->|예| L[💡 OptimizationRecommender]
-    K -->|아니오| M[권장사항 건너뛰기]
+    K -->|예| L["💡 OptimizationRecommender"]
+    K -->|아니오| M["권장사항 건너뛰기"]
 
-    L --> N{최적화<br/>기회 분석}
-    N --> O[권장사항 생성<br/>Critical/Error/Warning/Info]
+    L --> N{"최적화<br/>기회 분석"}
+    N --> O["권장사항 생성<br/>Critical/Error/Warning/Info"]
 
-    M --> P{--include-environment-analysis?}
+    M --> P{"--include-environment-analysis?"}
     O --> P
 
-    P -->|예| Q[🛠️ EnvironmentAnalyzer]
-    P -->|아니오| R[환경 분석 건너뛰기]
+    P -->|예| Q["🛠️ EnvironmentAnalyzer"]
+    P -->|아니오| R["환경 분석 건너뛰기"]
 
-    Q --> S[개발 환경 검증<br/>Node/Bun/Python/Go 등]
+    Q --> S["개발 환경 검증<br/>Node/Bun/Python/Go 등"]
 
-    R --> T[🎯 Health Score 계산]
+    R --> T["🎯 Health Score 계산"]
     S --> T
 
-    T --> U[가중 평가<br/>Performance 40%<br/>Benchmarks 30%<br/>Recommendations 20%<br/>Environment 10%]
+    T --> U["가중 평가<br/>Performance 40%<br/>Benchmarks 30%<br/>Recommendations 20%<br/>Environment 10%"]
 
-    U --> V{Health Score}
-    V -->|90-100| W[✅ Excellent]
-    V -->|70-89| X[👍 Good]
-    V -->|50-69| Y[⚠️ Fair]
-    V -->|0-49| Z[❌ Poor]
+    U --> V{"Health Score"}
+    V -->|90-100| W["✅ Excellent"]
+    V -->|70-89| X["👍 Good"]
+    V -->|50-69| Y["⚠️ Fair"]
+    V -->|0-49| Z["❌ Poor"]
 
-    W --> AA[📋 결과 보고서 생성]
+    W --> AA["📋 결과 보고서 생성"]
     X --> AA
     Y --> AA
     Z --> AA
 
-    AA --> AB[Top 5 권장사항 표시]
+    AA --> AB["Top 5 권장사항 표시"]
 
 ```
 
@@ -72,24 +72,24 @@ flowchart TD
 
 ```mermaid
 graph TB
-    CLI[AdvancedDoctorCommand<br/>CLI Layer] --> ORC[Diagnostic Orchestrator<br/>조정 레이어]
+    CLI["AdvancedDoctorCommand<br/>CLI Layer"] --> ORC["Diagnostic Orchestrator<br/>조정 레이어"]
 
-    ORC --> SPA[SystemPerformanceAnalyzer<br/>성능 메트릭 수집]
-    ORC --> BR[BenchmarkRunner<br/>벤치마크 실행]
-    ORC --> OR[OptimizationRecommender<br/>권장사항 생성]
-    ORC --> EA[EnvironmentAnalyzer<br/>환경 분석]
+    ORC --> SPA["SystemPerformanceAnalyzer<br/>성능 메트릭 수집"]
+    ORC --> BR["BenchmarkRunner<br/>벤치마크 실행"]
+    ORC --> OR["OptimizationRecommender<br/>권장사항 생성"]
+    ORC --> EA["EnvironmentAnalyzer<br/>환경 분석"]
 
-    SPA --> SPM[SystemPerformanceMetrics<br/>CPU/메모리/디스크]
-    BR --> BRM[BenchmarkResult[]<br/>점수/시간/상태]
-    OR --> ORM[OptimizationRecommendation[]<br/>심각도/제목/설명]
-    EA --> EAM[EnvironmentAnalysis[]<br/>이름/버전/상태]
+    SPA --> SPM["SystemPerformanceMetrics<br/>CPU/메모리/디스크"]
+    BR --> BRM["BenchmarkResult[]<br/>점수/시간/상태"]
+    OR --> ORM["OptimizationRecommendation[]<br/>심각도/제목/설명"]
+    EA --> EAM["EnvironmentAnalysis[]<br/>이름/버전/상태"]
 
-    SPM --> HSC[Health Score Calculator<br/>0-100점 산출]
+    SPM --> HSC["Health Score Calculator<br/>0-100점 산출"]
     BRM --> HSC
     ORM --> HSC
     EAM --> HSC
 
-    HSC --> RPT[Result Reporter<br/>보고서 생성]
+    HSC --> RPT["Result Reporter<br/>보고서 생성"]
 
 ```
 
@@ -116,37 +116,37 @@ sequenceDiagram
         BR->>BR: I/O 벤치마크
         BR->>BR: 계산 벤치마크
         BR->>BR: 네트워크 벤치마크
-        BR-->>ORC: BenchmarkResult[]
+        BR-->>ORC: "BenchmarkResult[]"
     end
 
     alt --include-recommendations
-        ORC->>OR: generateRecommendations(metrics, benchmarks)
+        ORC->>OR: "generateRecommendations(metrics, benchmarks)"
         OR->>OR: 병목 지점 분석
         OR->>OR: 최적화 기회 탐색
-        OR->>OR: 심각도 분류 (Critical/Error/Warning/Info)
-        OR-->>ORC: OptimizationRecommendation[]
+        OR->>OR: "심각도 분류 (Critical/Error/Warning/Info)"
+        OR-->>ORC: "OptimizationRecommendation[]"
     end
 
     alt --include-environment-analysis
         ORC->>EA: analyzeEnvironments()
         EA->>EA: 개발 도구 버전 확인
         EA->>EA: 설정 검증
-        EA->>EA: 상태 평가 (Optimal/Good/Warning/Poor)
-        EA-->>ORC: EnvironmentAnalysis[]
+        EA->>EA: "상태 평가 (Optimal/Good/Warning/Poor)"
+        EA-->>ORC: "EnvironmentAnalysis[]"
     end
 
     ORC->>HSC: calculateHealthScore(results)
-    HSC->>HSC: 성능 메트릭 평가 (40%)
-    Note over HSC: CPU >80% → -15점<br/>메모리 >85% → -15점<br/>디스크 >90% → -10점
-    HSC->>HSC: 벤치마크 평가 (30%)
-    Note over HSC: 평균 점수 반영<br/>실패 벤치마크당 -5점
-    HSC->>HSC: 권장사항 평가 (20%)
-    Note over HSC: Critical → -10점<br/>Error → -7점<br/>Warning → -3점
-    HSC->>HSC: 환경 평가 (10%)
-    Note over HSC: Poor → -5점<br/>Optimal → +2점
-    HSC-->>ORC: Health Score (0-100)
+    HSC->>HSC: "성능 메트릭 평가 (40%)"
+    Note over HSC: "CPU >80% → -15점<br/>메모리 >85% → -15점<br/>디스크 >90% → -10점"
+    HSC->>HSC: "벤치마크 평가 (30%)"
+    Note over HSC: "평균 점수 반영<br/>실패 벤치마크당 -5점"
+    HSC->>HSC: "권장사항 평가 (20%)"
+    Note over HSC: "Critical → -10점<br/>Error → -7점<br/>Warning → -3점"
+    HSC->>HSC: "환경 평가 (10%)"
+    Note over HSC: "Poor → -5점<br/>Optimal → +2점"
+    HSC-->>ORC: "Health Score (0-100)"
 
-    ORC->>ORC: 상태 분류<br/>(Excellent/Good/Fair/Poor)
+    ORC->>ORC: "상태 분류<br/>(Excellent/Good/Fair/Poor)"
     ORC-->>ORC: 결과 보고서 생성
 ```
 

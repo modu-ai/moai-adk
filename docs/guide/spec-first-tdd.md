@@ -347,7 +347,7 @@ interface Session {
 - [ ] 토큰 검증 속도 (<10ms)
 - [ ] 데이터베이스 쿼리 최적화
 
-## @TAG 추적성 ( @TAG)
+## @TAG 추적성 (CODE-FIRST @TAG)
 
 TAG BLOCK을 통한 추적성 확보:
 

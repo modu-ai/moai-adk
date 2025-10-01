@@ -222,8 +222,8 @@ export default withMermaid(
     ],
 
     footer: {
-      message: 'MIT 라이선스로 배포됩니다.',
-      copyright: 'Copyright © 2024-present MoAI Team | 문서: https://adk.mo.ai.kr | 커뮤니티: https://mo.ai.kr (오픈 예정)'
+      message: 'Copyleft © 2024 by MoAI🗿 Labs',
+      copyright: '문서: https://moai-adk.vercel.com | 커뮤니티: https://mo.ai.kr'
     },
 
     search: {

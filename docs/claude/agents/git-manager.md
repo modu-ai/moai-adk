@@ -21,21 +21,21 @@ git-manager는 **안전 우선(Safety-First)** 철학을 따릅니다. 모든 �
 
 ```mermaid
 graph TD
-    A[/moai:1-spec] --> B{브랜치<br/>필요?}
-    B -->|Yes| C[git-manager:<br/>브랜치 생성]
-    C --> D[spec-builder:<br/>SPEC 작성]
+    A["/moai:1-spec"] --> B{"브랜치<br/>필요?"}
+    B -->|Yes| C["git-manager:<br/>브랜치 생성"]
+    C --> D["spec-builder:<br/>SPEC 작성"]
 
-    D --> E[/moai:2-build]
-    E --> F[code-builder:<br/>TDD 구현]
-    F --> G[git-manager:<br/>커밋 자동화]
+    D --> E["/moai:2-build"]
+    E --> F["code-builder:<br/>TDD 구현"]
+    F --> G["git-manager:<br/>커밋 자동화"]
 
-    G --> H[/moai:3-sync]
-    H --> I[doc-syncer:<br/>문서 동기화]
-    I --> J{PR 전환?}
+    G --> H["/moai:3-sync"]
+    H --> I["doc-syncer:<br/>문서 동기화"]
+    I --> J{"PR 전환?"}
 
-    J -->|Yes| K[git-manager:<br/>Draft→Ready]
-    K --> L[git-manager:<br/>리뷰어 할당]
-    L --> M[완료]
+    J -->|Yes| K["git-manager:<br/>Draft→Ready"]
+    K --> L["git-manager:<br/>리뷰어 할당"]
+    L --> M["완료"]
 
     J -->|No| M
 
@@ -184,13 +184,13 @@ sequenceDiagram
     participant GM as git-manager
     participant Git
 
-    User->>SB: /moai:1-spec "Auth"
+    User->>SB: "/moai:1-spec 'Auth'"
     SB->>SB: SPEC 작성 완료
 
     SB->>User: 브랜치 생성 요청
-    Note over User: feature/spec-auth-001<br/>생성하시겠습니까?
+    Note over User: "feature/spec-auth-001<br/>생성하시겠습니까?"
 
-    User->>GM: 승인 (y)
+    User->>GM: "승인 (y)"
 
     GM->>Git: 현재 브랜치 확인
     Git-->>GM: develop
@@ -198,10 +198,10 @@ sequenceDiagram
     GM->>Git: 변경사항 확인
     Git-->>GM: Clean working tree
 
-    GM->>Git: git checkout -b feature/spec-auth-001
+    GM->>Git: "git checkout -b feature/spec-auth-001"
     Git-->>GM: 브랜치 생성 완료
 
-    GM->>User: ✅ feature/spec-auth-001 생성 완료
+    GM->>User: "✅ feature/spec-auth-001 생성 완료"
 ```
 
 **브랜치 네이밍 규칙**:
@@ -354,20 +354,20 @@ sequenceDiagram
     DS->>DS: TAG 검증 통과
 
     DS->>GM: PR 상태 전환 요청
-    GM->>User: Draft → Ready 전환?
+    GM->>User: "Draft → Ready 전환?"
 
-    User->>GM: 승인 (y)
+    User->>GM: "승인 (y)"
 
-    GM->>GitHub: gh pr ready <pr-number>
+    GM->>GitHub: "gh pr ready pr-number"
     GitHub-->>GM: 상태 전환 완료
 
-    GM->>GitHub: 라벨 추가<br/>(documentation, tested)
+    GM->>GitHub: "라벨 추가<br/>(documentation, tested)"
     GitHub-->>GM: 라벨 추가 완료
 
     GM->>GitHub: 리뷰어 할당 제안
     GitHub-->>GM: 할당 완료
 
-    GM->>User: ✅ PR #45 Ready for Review
+    GM->>User: "✅ PR #45 Ready for Review"
 ```
 
 ### 4. 커밋 자동화 및 표준화
@@ -498,24 +498,24 @@ git-manager는 주요 작업 전후로 체크포인트를 생성하여 안전한
 
 ```mermaid
 flowchart TD
-    A[작업 시작] --> B[체크포인트 생성]
-    B --> C[Git stash 실행]
-    C --> D[현재 브랜치 기록]
-    D --> E[HEAD 커밋 해시 저장]
-    E --> F[메타데이터 저장<br/>.moai/checkpoints/]
+    A["작업 시작"] --> B["체크포인트 생성"]
+    B --> C["Git stash 실행"]
+    C --> D["현재 브랜치 기록"]
+    D --> E["HEAD 커밋 해시 저장"]
+    E --> F["메타데이터 저장<br/>.moai/checkpoints/"]
 
-    F --> G[작업 수행]
+    F --> G["작업 수행"]
 
-    G --> H{작업 성공?}
+    G --> H{"작업 성공?"}
 
-    H -->|Yes| I[체크포인트 유지<br/>30일 후 자동 삭제]
-    H -->|No| J[자동 롤백 제안]
+    H -->|Yes| I["체크포인트 유지<br/>30일 후 자동 삭제"]
+    H -->|No| J["자동 롤백 제안"]
 
-    J --> K{사용자<br/>승인?}
-    K -->|Yes| L[체크포인트 복원]
-    K -->|No| M[체크포인트 유지]
+    J --> K{"사용자<br/>승인?"}
+    K -->|Yes| L["체크포인트 복원"]
+    K -->|No| M["체크포인트 유지"]
 
-    L --> N[작업 취소 완료]
+    L --> N["작업 취소 완료"]
 
 ```
 

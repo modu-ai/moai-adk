@@ -31,7 +31,7 @@ graph TB
     end
 
     subgraph "2. TDD 구현"
-        B[/moai:2-build] --> B1[@CODE 서브카테고리 추가]
+        B[/moai:2-build] --> B1["@CODE 서브카테고리 추가"]
         B1 --> B2[코드에 TAG BLOCK 삽입]
     end
 
@@ -42,7 +42,7 @@ graph TB
     end
 
     subgraph "TAG Agent 관리"
-        D[@agent-tag-agent] -.->|TAG 생성| A1
+        D["@agent-tag-agent"] -.->|TAG 생성| A1
         D -.->|TAG 검증| C1
         D -.->|체인 복구| C3
     end
@@ -75,9 +75,9 @@ MoAI-ADK는 **@TAG 체계**를 사용하여 TDD 사이클과 완벽 정렬된 �
 
 ```mermaid
 graph LR
-    A[@SPEC<br/>명세] --> B[@TEST<br/>RED Phase]
-    B --> C[@CODE<br/>GREEN+REFACTOR]
-    C --> D[@DOC<br/>문서화]
+    A["@SPEC<br/>명세"] --> B["@TEST<br/>RED Phase"]
+    B --> C["@CODE<br/>GREEN+REFACTOR"]
+    C --> D["@DOC<br/>문서화"]
     D -.->|다음 기능| A
 
 ```

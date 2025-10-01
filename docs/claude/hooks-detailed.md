@@ -146,7 +146,7 @@ sequenceDiagram
     activate TE
     TE->>FS: 기존 파일 읽기
     FS-->>TE: 파일 내용
-    TE->>TE: @IMMUTABLE 검증
+    TE->>TE: "@IMMUTABLE 검증"
     alt TAG 수정 감지
         TE-->>HM: {success: false, blocked: true}
         HM-->>CC: 작업 차단
@@ -1835,7 +1835,7 @@ sequenceDiagram
 
         alt TAG 블록 없음
             TE-->>HM: {success: true, warnings: [...]}
-        else TAG 블록 있음 & @IMMUTABLE
+        else "TAG 블록 있음 & @IMMUTABLE"
             TE->>TE: 불변성 검사
             alt 수정 감지
                 TE-->>HM: {blocked: true}

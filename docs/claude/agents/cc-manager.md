@@ -36,7 +36,7 @@ graph TB
     end
 
     subgraph "설정 조정 단계"
-        F -->|필요시| G[@agent-cc-manager]
+        F -->|필요시| G["@agent-cc-manager"]
         G --> C
     end
 
