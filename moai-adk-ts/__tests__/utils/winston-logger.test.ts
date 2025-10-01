@@ -1,7 +1,7 @@
 /**
  * @file Winston-based structured logging tests
  * @author MoAI Team
- * @tags @TEST:WINSTON-LOGGER-001 @FEATURE:STRUCTURED-LOGGING-001
+ * @tags @TEST:WINSTON-LOGGER-001 @CODE:STRUCTURED-LOGGING-001
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -153,7 +153,7 @@ describe('MoaiLogger', () => {
 
     it('should log with TAG reference', () => {
       expect(() => {
-        logger.logWithTag('info', '@FEATURE:AUTH-001', 'User authenticated');
+        logger.logWithTag('info', '@CODE:AUTH-001', 'User authenticated');
       }).not.toThrow();
     });
 
@@ -174,7 +174,7 @@ describe('MoaiLogger', () => {
     it('should support multiple TAGs in context', () => {
       expect(() => {
         logger.info('Operation completed', {
-          tags: ['@FEATURE:AUTH-001', '@PERF:AUTH-001'],
+          tags: ['@CODE:AUTH-001', '@PERF:AUTH-001'],
           duration: 150,
         });
       }).not.toThrow();

@@ -1,7 +1,7 @@
 /**
  * @file Test for system requirements definition
  * @author MoAI Team
- * @tags @TEST:SYSTEM-REQUIREMENTS-001 @REQ:AUTO-VERIFY-012
+ * @tags @TEST:SYSTEM-REQUIREMENTS-001 @SPEC:AUTO-VERIFY-012
  */
 
 import { describe, test, expect } from 'vitest';

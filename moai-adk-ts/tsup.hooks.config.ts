@@ -1,6 +1,6 @@
 /**
- * @FEATURE:BUILD-001 | Chain: @REQ:BUILD-001 -> @DESIGN:BUILD-001 -> @TASK:BUILD-001 -> @TEST:BUILD-001
- * Related: @API:BUILD-001
+ * @CODE:BUILD-001 | Chain: @SPEC:BUILD-001 -> @SPEC:BUILD-001 -> @CODE:BUILD-001 -> @TEST:BUILD-001
+ * Related: @CODE:BUILD-001:API
  *
  * TSUP Configuration for Claude Code Hooks
  * templates/.claude/hooks/moai/ts/*.ts → templates/.claude/hooks/moai/*.cjs

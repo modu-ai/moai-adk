@@ -163,12 +163,12 @@ The @TAG system provides complete traceability from requirements to implementati
 ### Usage Example
 
 ```typescript
-// @FEATURE:AUTH-001 | Chain: @REQ:AUTH-001 -> @DESIGN:AUTH-001 -> @TASK:AUTH-001 -> @TEST:AUTH-001
-// Related: @SEC:AUTH-001, @API:AUTH-001
+// @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 -> @SPEC:AUTH-001 -> @CODE:AUTH-001 -> @TEST:AUTH-001
+// Related: @SEC:AUTH-001, @CODE:AUTH-001:API
 
 class AuthenticationService {
   /**
-   * @API:AUTH-001: User authentication endpoint
+   * @CODE:AUTH-001:API: User authentication endpoint
    */
   async authenticate(email: string, password: string): Promise<boolean> {
     // @SEC:AUTH-001: Input validation
