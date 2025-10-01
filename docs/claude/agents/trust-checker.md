@@ -269,7 +269,7 @@ graph LR
     I -->|No| G
     I -->|Yes| J[SPEC 정렬 확인]
 
-    J --> K{@TAG 연결?}
+    J --> K{"@TAG 연결?"}
     K -->|No| G
     K -->|Yes| L[검증 완료]
 
@@ -487,7 +487,7 @@ Rust: cargo-audit, cargo-deny
 ```mermaid
 graph TB
     A[코드 전체 스캔] --> B[TAG 추출]
-    B --> C[@TAG 체계 검증]
+    B --> C["@TAG 체계 검증"]
     C --> D{체계 준수?}
     D -->|No| E[위반 TAG 수집]
     D -->|Yes| F[Chain 연결 검증]
@@ -595,8 +595,8 @@ graph TB
     D --> E[Secured]
     E --> F[Trackable]
 
-    B --> B1{커버리지 ≥85%?}
-    C --> C1{복잡도 ≤10?}
+    B --> B1{"커버리지 ≥85%?"}
+    C --> C1{"복잡도 ≤10?"}
     D --> D1{아키텍처 일관?}
     E --> E1{취약점 없음?}
     F --> F1{TAG 무결성?}
