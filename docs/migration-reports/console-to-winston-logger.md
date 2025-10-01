@@ -83,7 +83,7 @@
 console.log('User logged in:', userId);
 
 // After
-logger.info('User logged in', { userId, tag: '@AUTH:LOGIN-001' });
+logger.info('User logged in', { userId, tag: 'AUTH:LOGIN-001' });
 ```
 
 ### 2. 에러 처리

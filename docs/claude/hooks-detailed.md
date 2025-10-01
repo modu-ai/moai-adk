@@ -805,7 +805,7 @@ interface TagEnforcerInput {
 **검증 항목:**
 1. **@IMMUTABLE TAG 불변성**: 기존에 `@IMMUTABLE` 마커가 있는 TAG 블록을 수정하려고 하면 차단
 2. **TAG 형식 검증**: `@DOC:CATEGORY:DOMAIN-ID` 형식 준수
-3. **체인 무결성**: `@CHAIN` 라인의 TAG 참조가 올바른지 확인
+3. **체인 무결성**: `CHAIN` 라인의 TAG 참조가 올바른지 확인
 4. **카테고리 유효성**: SPEC, REQ, DESIGN, TASK, TEST, FEATURE, API, FIX 등만 허용
 
 **실행 로직:**
@@ -942,8 +942,8 @@ validateCodeFirstTag(content) {
     }
   }
 
-  // 3. 체인 검증 (@CHAIN: REQ -> DESIGN -> TASK -> TEST)
-  const chainMatch = /@CHAIN:\s*(.+)/.exec(tagBlock.content);
+  // 3. 체인 검증 (CHAIN: REQ -> DESIGN -> TASK -> TEST)
+  const chainMatch = /CHAIN:\s*(.+)/.exec(tagBlock.content);
   if (chainMatch) {
     const chainTags = chainMatch[1].split(/\s*->\s*/);
     for (const chainTag of chainTags) {
@@ -973,10 +973,10 @@ validateCodeFirstTag(content) {
 ```javascript
 /**
  * @DOC:FEATURE:AUTH-001
- * @CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001 -> TASK:AUTH-001 -> TEST:AUTH-001
- * @DEPENDS: NONE
- * @STATUS: active
- * @CREATED: 2025-09-30
+ * CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001 -> TASK:AUTH-001 -> TEST:AUTH-001
+ * DEPENDS: NONE
+ * STATUS: active
+ * CREATED: 2025-09-30
  * @IMMUTABLE
  */
 export class AuthenticationService {
@@ -1206,10 +1206,10 @@ MoAI-ADK 커스텀 훅을 작성하려면 표준 인터페이스를 준수해야
 ```javascript
 /**
  * @DOC:CUSTOM:HOOK-NAME-001
- * @CHAIN: REQ:CUSTOM-001 -> DESIGN:CUSTOM-001 -> TASK:CUSTOM-001 -> TEST:CUSTOM-001
- * @DEPENDS: NONE
- * @STATUS: active
- * @CREATED: 2025-09-30
+ * CHAIN: REQ:CUSTOM-001 -> DESIGN:CUSTOM-001 -> TASK:CUSTOM-001 -> TEST:CUSTOM-001
+ * DEPENDS: NONE
+ * STATUS: active
+ * CREATED: 2025-09-30
  * @IMMUTABLE
  */
 
@@ -1735,8 +1735,8 @@ class CustomHook {
 ```javascript
 /**
  * @DOC:CUSTOM:HOOK-001
- * @VERSION: 1.0.0
- * @CHANGELOG:
+ * VERSION: 1.0.0
+ * CHANGELOG:
  *   - 1.0.0: Initial release
  *   - 1.1.0: Added API key detection
  *   - 1.2.0: Improved performance
@@ -1905,10 +1905,10 @@ flowchart LR
 ```javascript
 /**
  * @DOC:SECURITY:BRANCH-PROTECTION-001
- * @CHAIN: REQ:SEC-001 -> DESIGN:SEC-001 -> TASK:SEC-001 -> TEST:SEC-001
- * @DEPENDS: NONE
- * @STATUS: active
- * @CREATED: 2025-09-30
+ * CHAIN: REQ:SEC-001 -> DESIGN:SEC-001 -> TASK:SEC-001 -> TEST:SEC-001
+ * DEPENDS: NONE
+ * STATUS: active
+ * CREATED: 2025-09-30
  * @IMMUTABLE
  */
 
@@ -2038,10 +2038,10 @@ module.exports = { BranchProtectionHook, main };
 ```javascript
 /**
  * @DOC:SECURITY:SECRET-DETECTION-001
- * @CHAIN: REQ:SEC-002 -> DESIGN:SEC-002 -> TASK:SEC-002 -> TEST:SEC-002
- * @DEPENDS: NONE
- * @STATUS: active
- * @CREATED: 2025-09-30
+ * CHAIN: REQ:SEC-002 -> DESIGN:SEC-002 -> TASK:SEC-002 -> TEST:SEC-002
+ * DEPENDS: NONE
+ * STATUS: active
+ * CREATED: 2025-09-30
  * @IMMUTABLE
  */
 
@@ -2177,10 +2177,10 @@ module.exports = { SecretDetectionHook, main };
 ```javascript
 /**
  * @DOC:PERF:HOOK-MONITORING-001
- * @CHAIN: REQ:PERF-001 -> DESIGN:PERF-001 -> TASK:PERF-001 -> TEST:PERF-001
- * @DEPENDS: NONE
- * @STATUS: active
- * @CREATED: 2025-09-30
+ * CHAIN: REQ:PERF-001 -> DESIGN:PERF-001 -> TASK:PERF-001 -> TEST:PERF-001
+ * DEPENDS: NONE
+ * STATUS: active
+ * CREATED: 2025-09-30
  * @IMMUTABLE
  */
 
@@ -2343,10 +2343,10 @@ module.exports = { PerformanceMonitoringHook, main };
 ```javascript
 /**
  * @DOC:FEATURE:AUTO-BACKUP-001
- * @CHAIN: REQ:BACKUP-001 -> DESIGN:BACKUP-001 -> TASK:BACKUP-001 -> TEST:BACKUP-001
- * @DEPENDS: NONE
- * @STATUS: active
- * @CREATED: 2025-09-30
+ * CHAIN: REQ:BACKUP-001 -> DESIGN:BACKUP-001 -> TASK:BACKUP-001 -> TEST:BACKUP-001
+ * DEPENDS: NONE
+ * STATUS: active
+ * CREATED: 2025-09-30
  * @IMMUTABLE
  */
 
@@ -2519,10 +2519,10 @@ module.exports = { AutoBackupHook, main };
 ```javascript
 /**
  * @DOC:QUALITY:CONVENTION-CHECK-001
- * @CHAIN: REQ:QA-001 -> DESIGN:QA-001 -> TASK:QA-001 -> TEST:QA-001
- * @DEPENDS: NONE
- * @STATUS: active
- * @CREATED: 2025-09-30
+ * CHAIN: REQ:QA-001 -> DESIGN:QA-001 -> TASK:QA-001 -> TEST:QA-001
+ * DEPENDS: NONE
+ * STATUS: active
+ * CREATED: 2025-09-30
  * @IMMUTABLE
  */
 

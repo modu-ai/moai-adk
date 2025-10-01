@@ -564,7 +564,7 @@ TRUST 준수율: 100%
 
 ⚠️ 불완전한 체인
   - NOTIFICATION-004: @TEST 누락
-  - REPORT-005: @DESIGN 누락
+  - REPORT-005: @SPEC 누락
 ```
 
 #### 2단계: Living Document 업데이트
@@ -827,15 +827,15 @@ SPEC 기반 배포 자동화 및 롤백 관리
 
 export const customTags = {
   // 기본 
-  primary: ['@REQ', '@DESIGN', '@TASK', '@TEST'],
-  implementation: ['@FEATURE', '@API', '@UI', '@DATA'],
+  primary: ['@SPEC', '@SPEC', '@CODE', '@TEST'],
+  implementation: ['@CODE', '@CODE', '@CODE', '@CODE'],
 
   // 커스텀 TAG (금융 도메인)
   finance: [
-    '@COMPLIANCE',  // 규제 준수
-    '@AUDIT',       // 감사 추적
-    '@FRAUD',       // 사기 탐지
-    '@RISK'         // 리스크 관리
+    'COMPLIANCE',  // 규제 준수
+    'AUDIT',       // 감사 추적
+    'FRAUD',       // 사기 탐지
+    'RISK'         // 리스크 관리
   ]
 };
 ```
@@ -1110,7 +1110,7 @@ export async function preSpecHook(context) {
 /moai:3-sync --path "src/**/*.ts"
 
 # 특정 TAG만 검증
-/moai:3-sync --tags @REQ,@DESIGN
+/moai:3-sync --tags @SPEC,@SPEC
 
 # 자동 수정 활성화
 /moai:3-sync --auto-fix
@@ -1586,7 +1586,7 @@ moai status --graph
 ```
 ⚠️ Incomplete TAG chains detected:
 - AUTH-001: Missing @TEST
-- USER-002: Missing @DESIGN
+- USER-002: Missing @SPEC
 ```
 
 **해결 방법:**
@@ -1622,7 +1622,7 @@ rg "@CODE:AUTH-001" -l  # 파일 찾기
 rg "@SPEC:PAYMENT-005" -n
 
 # 옵션 1: TAG 체인 완성
-# 파일에 @DESIGN, @TASK, @TEST 추가
+# 파일에 @SPEC, @CODE, @TEST 추가
 
 # 옵션 2: TAG 제거 (더 이상 사용 안 함)
 # @SPEC:PAYMENT-005 삭제

@@ -717,7 +717,7 @@ export interface TagEntry {
 
 | 필드 | 타입 | 필수 | 설명 |
 |------|------|------|------|
-| `id` | `string` | ✅ | TAG 고유 ID (예: `@REQ-AUTH-001`) |
+| `id` | `string` | ✅ | TAG 고유 ID (예: `SPEC-AUTH-001`) |
 | `type` | `TagType` | ✅ | TAG 타입 (REQ, DESIGN, TASK, TEST 등) |
 | `category` | `TagCategory` | ✅ | TAG 카테고리 (PRIMARY, STEERING, IMPLEMENTATION, QUALITY) |
 | `title` | `string` | ✅ | TAG 제목 (간단한 설명) |
@@ -736,7 +736,7 @@ export interface TagEntry {
 
 ```typescript
 export type TagType =
-  // 필수 TAG 흐름 (4 Core)
+  // TAG 흐름
   | 'REQ'      // 요구사항
   | 'DESIGN'   // 설계
   | 'TASK'     // 작업
@@ -746,7 +746,7 @@ export type TagType =
   | 'STRUCT'   // 구조
   | 'TECH'     // 기술
   | 'ADR'      // 아키텍처 결정 기록
-  // Implementation (4 Core)
+  // @CODE 서브카테고리
   | 'FEATURE'  // 기능
   | 'API'      // API
   | 'UI'       // 사용자 인터페이스
@@ -762,10 +762,10 @@ export type TagType =
 
 ```typescript
 export type TagCategory =
-  | 'PRIMARY'        // @REQ, @DESIGN, @TASK, @TEST
-  | 'STEERING'       // @VISION, @STRUCT, @TECH, @ADR
-  | 'IMPLEMENTATION' // @FEATURE, @API, @UI, @DATA
-  | 'QUALITY';       // @PERF, @SEC, @DOCS, @TAG
+  | 'PRIMARY'        // @SPEC, @SPEC, @CODE, @TEST
+  | 'STEERING'       // @DOC, @DOC, @DOC, @DOC
+  | 'IMPLEMENTATION' // @CODE 서브카테고리 (API, UI, DATA 등)
+  | 'QUALITY';       // @CODE, @CODE, @DOC, @TAG
 ```
 
 ### TagDatabase 인터페이스
@@ -804,8 +804,8 @@ export interface TagDatabase {
 {
   "version": "4.0.0",
   "tags": {
-    "@REQ-AUTH-001": {
-      "id": "@REQ-AUTH-001",
+    "SPEC-AUTH-001": {
+      "id": "SPEC-AUTH-001",
       "type": "REQ",
       "category": "PRIMARY",
       "title": "OAuth2 인증 요구사항",
@@ -813,21 +813,21 @@ export interface TagDatabase {
       "status": "completed",
       "priority": "high",
       "parents": [],
-      "children": ["@DESIGN-AUTH-001"],
+      "children": ["SPEC-AUTH-001"],
       "files": [".moai/specs/SPEC-001/spec.md"],
       "createdAt": "2025-09-30T10:00:00Z",
       "updatedAt": "2025-09-30T15:30:00Z",
       "author": "developer@example.com"
     },
-    "@DESIGN-AUTH-001": {
-      "id": "@DESIGN-AUTH-001",
+    "SPEC-AUTH-001": {
+      "id": "SPEC-AUTH-001",
       "type": "DESIGN",
       "category": "PRIMARY",
       "title": "OAuth2 시퀀스 설계",
       "status": "completed",
       "priority": "high",
-      "parents": ["@REQ-AUTH-001"],
-      "children": ["@TASK-AUTH-001"],
+      "parents": ["SPEC-AUTH-001"],
+      "children": ["CODE-AUTH-001"],
       "files": ["docs/design/oauth2-sequence.md"],
       "createdAt": "2025-09-30T11:00:00Z",
       "updatedAt": "2025-09-30T16:00:00Z"
@@ -835,18 +835,18 @@ export interface TagDatabase {
   },
   "indexes": {
     "byType": {
-      "REQ": ["@REQ-AUTH-001"],
-      "DESIGN": ["@DESIGN-AUTH-001"]
+      "REQ": ["SPEC-AUTH-001"],
+      "DESIGN": ["SPEC-AUTH-001"]
     },
     "byCategory": {
-      "PRIMARY": ["@REQ-AUTH-001", "@DESIGN-AUTH-001"]
+      "PRIMARY": ["SPEC-AUTH-001", "SPEC-AUTH-001"]
     },
     "byStatus": {
-      "completed": ["@REQ-AUTH-001", "@DESIGN-AUTH-001"]
+      "completed": ["SPEC-AUTH-001", "SPEC-AUTH-001"]
     },
     "byFile": {
-      ".moai/specs/SPEC-001/spec.md": ["@REQ-AUTH-001"],
-      "docs/design/oauth2-sequence.md": ["@DESIGN-AUTH-001"]
+      ".moai/specs/SPEC-001/spec.md": ["SPEC-AUTH-001"],
+      "docs/design/oauth2-sequence.md": ["SPEC-AUTH-001"]
     }
   },
   "metadata": {
@@ -870,7 +870,7 @@ export interface TagValidationResult {
 #### 설명
 
 TAG 검증은 다음 규칙을 확인합니다:
-- **필수 TAG 흐름 완전성**: @REQ → @DESIGN → @TASK → @TEST 체인이 끊기지 않았는지
+- **필수 TAG 흐름 완전성**: @SPEC → @TEST → @CODE → @DOC 체인이 끊기지 않았는지
 - **고아 TAG 감지**: 부모나 자식이 없는 TAG
 - **순환 참조 감지**: TAG 체인에 순환 참조가 있는지
 - **파일 존재성**: 참조된 파일이 실제로 존재하는지
@@ -881,12 +881,12 @@ TAG 검증은 다음 규칙을 확인합니다:
 {
   "isValid": false,
   "errors": [
-    "@TASK-AUTH-001 has no parent (orphaned TAG)",
-    "@TEST-AUTH-002 references non-existent file 'tests/auth.test.ts'"
+    "CODE-AUTH-001 has no parent (orphaned TAG)",
+    "TEST-AUTH-002 references non-existent file 'tests/auth.test.ts'"
   ],
   "warnings": [
-    "@REQ-LOGIN-003 has been in 'in_progress' status for 30 days",
-    "@DESIGN-PAYMENT-001 has no children (implementation missing)"
+    "SPEC-LOGIN-003 has been in 'in_progress' status for 30 days",
+    "SPEC-PAYMENT-001 has no children (implementation missing)"
   ]
 }
 ```
@@ -934,10 +934,10 @@ const query3: TagSearchQuery = {
 ```mermaid
 graph LR
     subgraph "필수 TAG 흐름"
-        REQ[@REQ-AUTH-001<br/>OAuth2 요구사항]
-        DESIGN[@DESIGN-AUTH-001<br/>시퀀스 설계]
-        TASK[@TASK-AUTH-001<br/>구현 작업]
-        TEST[@TEST-AUTH-001<br/>통합 테스트]
+        REQ[SPEC-AUTH-001<br/>OAuth2 요구사항]
+        DESIGN[SPEC-AUTH-001<br/>시퀀스 설계]
+        TASK[CODE-AUTH-001<br/>구현 작업]
+        TEST[TEST-AUTH-001<br/>통합 테스트]
 
         REQ --> DESIGN
         DESIGN --> TASK
@@ -945,16 +945,16 @@ graph LR
     end
 
     subgraph "Implementation"
-        FEATURE[@FEATURE-AUTH-001<br/>인증 서비스]
-        API[@API-AUTH-001<br/>OAuth 엔드포인트]
+        FEATURE[CODE-AUTH-001<br/>인증 서비스]
+        API[CODE-AUTH-001<br/>OAuth 엔드포인트]
 
         TASK --> FEATURE
         TASK --> API
     end
 
     subgraph "Quality"
-        SEC[@SEC-AUTH-001<br/>보안 검토]
-        PERF[@PERF-AUTH-001<br/>성능 최적화]
+        SEC[CODE-AUTH-001<br/>보안 검토]
+        PERF[CODE-AUTH-001<br/>성능 최적화]
 
         FEATURE --> SEC
         API --> PERF

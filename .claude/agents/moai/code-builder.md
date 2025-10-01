@@ -70,9 +70,9 @@ model: sonnet
 ```
 
 **TAG 카테고리**:
-- **Primary Chain** (필수): @REQ → @DESIGN → @TASK → @TEST
-- **Implementation**: @FEATURE, @API, @UI, @DATA
-- **Quality** (선택): @PERF, @SEC, @DOCS
+- **Primary Chain** (필수): @SPEC → @SPEC → @CODE → @TEST
+- **Implementation**: @CODE, @CODE, @CODE, @CODE
+- **Quality** (선택): @CODE, @CODE, @DOC
 
 ### TAG 체인 무결성 검증
 
@@ -86,7 +86,7 @@ rg '@CODE:[A-Z]+-[0-9]{3}' -n src/
 rg '@TEST:[A-Z]+-[0-9]{3}' -n tests/
 
 # 고아 TAG 감지
-rg '@DEPRECATED' -n
+rg '@DOC' -n
 ```
 
 ## 📋 분석 모드 실행 가이드
@@ -107,13 +107,13 @@ rg '@TAG' -n src/ tests/
 - [ ] 비기능적 요구사항 (성능, 보안, 호환성)
 - [ ] 제약사항 및 가정 사항
 - [ ] 성공 기준 정의
-- [ ] **기존 @REQ 태그 연결점 확인**
+- [ ] **기존 @SPEC 태그 연결점 확인**
 
 **3. @ TAG 분석**
-- [ ] **Primary TAG 체인 현황 분석** (@REQ → @DESIGN → @TASK → @TEST)
-- [ ] **Steering TAG 연관성 확인** (@VISION, @STRUCT, @TECH, @ADR)
-- [ ] **Implementation TAG 필요성 평가** (@FEATURE, @API, @UI, @DATA)
-- [ ] **Quality TAG 요구사항 식별** (@PERF, @SEC, @DOCS, @TAG)
+- [ ] **Primary TAG 체인 현황 분석** (@SPEC → @SPEC → @CODE → @TEST)
+- [ ] **Steering TAG 연관성 확인** (@DOC, @DOC, @DOC, @DOC)
+- [ ] **Implementation TAG 필요성 평가** (@CODE, @CODE, @CODE, @CODE)
+- [ ] **Quality TAG 요구사항 식별** (@CODE, @CODE, @DOC, @TAG)
 - [ ] **고아 TAG 및 끊어진 링크 감지**
 
 **4. 기술적 복잡도 평가**
@@ -243,9 +243,9 @@ rg '@TAG' -n src/ tests/
 
 ### ✅ 6. **TAG Traceability (추적성) - @TAG 시스템**
 
-- [ ] **Primary Chain 연결**: @REQ → @DESIGN → @TASK → @TEST 체인 무결성
-- [ ] **Implementation TAG 적용**: @FEATURE/@API/@UI/@DATA 중 해당 태그 할당
-- [ ] **Quality TAG 계획**: @PERF/@SEC/@DOCS 필요성 평가 및 적용
+- [ ] **Primary Chain 연결**: @SPEC → @SPEC → @CODE → @TEST 체인 무결성
+- [ ] **Implementation TAG 적용**: @CODE/@CODE/@CODE/@CODE 중 해당 태그 할당
+- [ ] **Quality TAG 계획**: @CODE/@CODE/@DOC 필요성 평가 및 적용
 - [ ] **TAG 고유성 보장**: 동일 기능에 대한 TAG ID 중복 방지
 - [ ] **부모-자식 관계 명확성**: 상위 TAG에서 하위 TAG로의 연결 관계 확립
 - [ ] **고아 TAG 방지**: 연결되지 않은 독립 TAG 생성 금지
@@ -273,7 +273,7 @@ rg '@TAG' -n src/ tests/
 
 1. **명세 분석 + TAG 체인 연결**
    - SPEC 문서에서 요구사항 추출
-   - 기존 @REQ, @DESIGN 태그 연결점 확인
+   - 기존 @SPEC, @SPEC 태그 연결점 확인
    - 새로운 @TEST 태그 생성 계획
    - 테스트 케이스 설계
 
@@ -282,18 +282,18 @@ rg '@TAG' -n src/ tests/
    - 파일명: test\_[feature] 또는 [feature]\_test 패턴 사용
    - 클래스/그룹: TestFeatureName 형태로 명명
    - 메서드: test*should*[behavior] 형태로 작성
-   - **@TEST 태그 자동 삽입**: 각 테스트 함수/메서드에 적절한 @TEST-XXX 태그 주석 추가
+   - **@TEST 태그 자동 삽입**: 각 테스트 함수/메서드에 적절한 TEST-XXX 태그 주석 추가
 
    필수 테스트 케이스 + TAG:
-   - Happy Path: 정상 동작 시나리오 (@TEST-HAPPY-XXX)
-   - Edge Cases: 경계 조건 처리 (@TEST-EDGE-XXX)
-   - Error Cases: 오류 상황 처리 (@TEST-ERROR-XXX)
+   - Happy Path: 정상 동작 시나리오 (TEST-HAPPY-XXX)
+   - Edge Cases: 경계 조건 처리 (TEST-EDGE-XXX)
+   - Error Cases: 오류 상황 처리 (TEST-ERROR-XXX)
 
    **TAG 체인 연결 예시**:
    ```python
-   # @TEST-LOGIN-001 연결: @REQ-AUTH-001 → @DESIGN-AUTH-001 → @TASK-AUTH-001
+   # TEST-LOGIN-001 연결: SPEC-AUTH-001 → SPEC-AUTH-001 → CODE-AUTH-001
    def test_should_authenticate_valid_user():
-       """@TEST-LOGIN-001: 유효한 사용자 인증 테스트"""
+       """TEST-LOGIN-001: 유효한 사용자 인증 테스트"""
        pass
    ```
 
@@ -307,26 +307,26 @@ rg '@TAG' -n src/ tests/
    - TAG 체인 연결 정보 업데이트 준비
    - 에이전트 간 직접 호출 금지
 
-### Phase 2: 🟢 GREEN - 최소 구현 (@FEATURE/@API/@UI/@DATA 태그 자동 적용)
+### Phase 2: 🟢 GREEN - 최소 구현 (@CODE/@CODE/@CODE/@CODE 태그 자동 적용)
 
 1. **@TAG 적용 최소 구현**
    - 테스트 통과를 위한 최소 코드만
    - 최적화나 추가 기능 없음
    - 크기 제한 준수
    - **Implementation TAG 자동 적용**:
-     - 비즈니스 로직: @FEATURE-XXX
-     - API 엔드포인트: @API-XXX
-     - 사용자 인터페이스: @UI-XXX
-     - 데이터 모델/처리: @DATA-XXX
+     - 비즈니스 로직: CODE-XXX
+     - API 엔드포인트: CODE-XXX
+     - 사용자 인터페이스: CODE-XXX
+     - 데이터 모델/처리: CODE-XXX
 
    **TAG 적용 예시**:
    ```python
-   # @FEATURE-LOGIN-001 연결: @TEST-LOGIN-001 → @FEATURE-LOGIN-001
+   # CODE-LOGIN-001 연결: TEST-LOGIN-001 → CODE-LOGIN-001
    class AuthenticationService:
-       """@FEATURE-LOGIN-001: 사용자 인증 서비스"""
+       """CODE-LOGIN-001: 사용자 인증 서비스"""
 
        def authenticate(self, username, password):
-           # @API-LOGIN-001: 인증 API 구현
+           # CODE-LOGIN-001: 인증 API 구현
            pass
    ```
 
@@ -341,41 +341,41 @@ rg '@TAG' -n src/ tests/
 4. **다음 단계 준비 + TAG 인덱스 갱신**
    - TDD GREEN 단계 완료 후 git-manager가 커밋 처리
    - 새로운 Implementation TAG를 .moai/indexes/tags.db에 등록 준비
-   - @TEST → @FEATURE/@API/@UI/@DATA 체인 연결 정보 업데이트
+   - @TEST → @CODE/@CODE/@CODE/@CODE 체인 연결 정보 업데이트
    - 에이전트 간 직접 호출 금지
 
-### Phase 3: 🔄 REFACTOR - 품질 개선 (@PERF/@SEC/@DOCS 태그 자동 적용)
+### Phase 3: 🔄 REFACTOR - 품질 개선 (@CODE/@CODE/@DOC 태그 자동 적용)
 
-1. **@Quality TAG 적용 구조 개선**
+1. **Quality TAG 적용 구조 개선**
    - 단일 책임 원칙 적용
    - 의존성 주입 패턴
    - 인터페이스 분리
    - **Quality TAG 자동 적용**:
-     - 성능 최적화: @PERF-XXX
-     - 보안 강화: @SEC-XXX
-     - 문서화: @DOCS-XXX
+     - 성능 최적화: CODE-XXX
+     - 보안 강화: CODE-XXX
+     - 문서화: DOC-XXX
 
 2. **가독성 향상**
    - 의도를 드러내는 이름
    - 상수 심볼화
    - 가드절 적용
 
-3. **@PERF/@SEC 태그 적용 성능/보안 강화**
-   - 캐싱 전략 (@PERF-CACHE-XXX)
-   - 입력 검증 (@SEC-INPUT-XXX)
-   - 오류 처리 개선 (@SEC-ERROR-XXX)
+3. **@CODE/@CODE 태그 적용 성능/보안 강화**
+   - 캐싱 전략 (CODE-CACHE-XXX)
+   - 입력 검증 (CODE-INPUT-XXX)
+   - 오류 처리 개선 (CODE-ERROR-XXX)
 
    **Quality TAG 적용 예시**:
    ```python
-   # @PERF-LOGIN-001: 인증 성능 최적화
+   # CODE-LOGIN-001: 인증 성능 최적화
    @lru_cache(maxsize=1000)
    def cached_authenticate(self, username, password):
-       """@PERF-LOGIN-001: 캐시 기반 빠른 인증"""
+       """CODE-LOGIN-001: 캐시 기반 빠른 인증"""
        pass
 
-   # @SEC-LOGIN-001: 인증 보안 강화
+   # CODE-LOGIN-001: 인증 보안 강화
    def validate_input(self, username, password):
-       """@SEC-LOGIN-001: 입력값 보안 검증"""
+       """CODE-LOGIN-001: 입력값 보안 검증"""
        pass
    ```
 
@@ -389,9 +389,9 @@ rg '@TAG' -n src/ tests/
    - **완성된 TAG 체인을 .moai/indexes/tags.db에 최종 등록**:
      ```json
      {
-       "@TASK-LOGIN-001": {
+       "CODE-LOGIN-001": {
          "type": "TASK",
-         "children": ["@TEST-LOGIN-001", "@FEATURE-LOGIN-001", "@PERF-LOGIN-001", "@SEC-LOGIN-001"],
+         "children": ["TEST-LOGIN-001", "CODE-LOGIN-001", "CODE-LOGIN-001", "CODE-LOGIN-001"],
          "status": "completed"
        }
      }
@@ -482,7 +482,7 @@ rg '@TAG' -n src/ tests/
 **@TAG 시스템 완전 통합**: 2단계 워크플로우를 통해 사용자 확인 후 TRUST 원칙(@.moai/memory/development-guide.md)과 @TAG 추적성을 완벽히 준수하는 테스트된 코드를 생산하며, TAG 추적성 커버리지 향상에 기여합니다.
 
 **TAG 추적성 향상 기여도**:
-- 새로운 Implementation TAG (@FEATURE/@API/@UI/@DATA) 생성
-- Quality TAG (@PERF/@SEC/@DOCS) 적용으로 품질 추적성 강화
-- Primary Chain (@REQ → @DESIGN → @TASK → @TEST) 완성도 향상
+- 새로운 Implementation TAG (@CODE/@CODE/@CODE/@CODE) 생성
+- Quality TAG (@CODE/@CODE/@DOC) 적용으로 품질 추적성 강화
+- Primary Chain (@SPEC → @SPEC → @CODE → @TEST) 완성도 향상
 - 고아 TAG 및 끊어진 링크 방지를 통한 전체 추적성 시스템 건전성 기여

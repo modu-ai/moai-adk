@@ -13,7 +13,7 @@ import {
   vi,
 } from 'vitest';
 import '@/__tests__/setup';
-import { type ExecaReturnValue, execa } from 'execa';
+import { execa } from 'execa';
 import { CommandBuilder } from '@/core/package-manager/command-builder';
 import { PackageManagerInstaller } from '@/core/package-manager/installer';
 import {
@@ -24,6 +24,9 @@ import {
 // Mock execa
 vi.mock('execa');
 const mockExeca = execa as MockedFunction<typeof execa>;
+
+// Type helper for execa return value (compatible with v9+)
+type ExecaResult = Awaited<ReturnType<typeof execa>>;
 
 describe('PackageManagerInstaller', () => {
   let installer: PackageManagerInstaller;
@@ -54,7 +57,7 @@ describe('PackageManagerInstaller', () => {
         timedOut: false,
         isCanceled: false,
         killed: false,
-      } as Partial<ExecaReturnValue> as ExecaReturnValue);
+      } as ExecaResult);
 
       // Act
       const result = await installer.installPackages(packages, options);
@@ -90,7 +93,7 @@ describe('PackageManagerInstaller', () => {
         timedOut: false,
         isCanceled: false,
         killed: false,
-      } as Partial<ExecaReturnValue> as ExecaReturnValue);
+      } as ExecaResult);
 
       // Act
       const result = await installer.installPackages(packages, options);
@@ -124,7 +127,7 @@ describe('PackageManagerInstaller', () => {
         timedOut: false,
         isCanceled: false,
         killed: false,
-      } as Partial<ExecaReturnValue> as ExecaReturnValue);
+      } as ExecaResult);
 
       // Act
       const result = await installer.installPackages(packages, options);
@@ -173,7 +176,7 @@ describe('PackageManagerInstaller', () => {
         timedOut: false,
         isCanceled: false,
         killed: false,
-      } as Partial<ExecaReturnValue> as ExecaReturnValue);
+      } as ExecaResult);
 
       // Act
       const result = await installer.initializeProject(

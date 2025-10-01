@@ -26,7 +26,7 @@ import { DoctorCommand } from './doctor';
  * @param message Progress message
  * @param current Current step
  * @param total Total steps
- * @tags @UTIL:PROGRESS-DISPLAY-001
+ * @tags UTIL:PROGRESS-DISPLAY-001
  */
 function displayProgress(
   message: string,

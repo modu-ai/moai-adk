@@ -1,4 +1,4 @@
-// @CODE:BACKUP-CHECKER-001 | Chain: @REQ:DOCTOR-001 -> @DESIGN:DOCTOR-001 -> @TASK:DOCTOR-001
+// @CODE:BACKUP-CHECKER-001 | Chain: @SPEC:DOCTOR-001 -> @SPEC:DOCTOR-001 -> @CODE:DOCTOR-001
 // Related: @TEST:BACKUP-CHECKER-001
 
 /**
@@ -78,7 +78,7 @@ export class BackupChecker {
   /**
    * Get default backup search paths
    * @returns Array of default search paths
-   * @tags @UTIL:DEFAULT-PATHS-001
+   * @tags UTIL:DEFAULT-PATHS-001
    */
   private getDefaultSearchPaths(): string[] {
     return [
@@ -91,7 +91,7 @@ export class BackupChecker {
    * Check if directory exists
    * @param dirPath - Directory path to check
    * @returns True if directory exists
-   * @tags @UTIL:DIR-EXISTS-001
+   * @tags UTIL:DIR-EXISTS-001
    */
   private async directoryExists(dirPath: string): Promise<boolean> {
     try {
@@ -106,7 +106,7 @@ export class BackupChecker {
    * Get backup subdirectories matching naming patterns
    * @param dirPath - Directory path to search
    * @returns Array of backup subdirectory names
-   * @tags @UTIL:GET-BACKUP-SUBDIRS-001
+   * @tags UTIL:GET-BACKUP-SUBDIRS-001
    */
   private async getBackupSubdirectories(dirPath: string): Promise<string[]> {
     try {

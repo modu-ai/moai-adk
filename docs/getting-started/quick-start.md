@@ -216,8 +216,8 @@ Claude Code 채팅창에서 다음 명령을 실행합니다:
    - Constraints: IF [조건]이면, 시스템은 [제약]해야 한다
 
 2. **TAG BLOCK 생성**
-   - TAG 체인: @REQ → @DESIGN → @TASK → @TEST
-   - Implementation: @FEATURE, @API, @UI, @DATA
+   - TAG 체인: @SPEC → @TEST → @CODE → @DOC
+   - Implementation: @CODE 서브카테고리 (API, UI, DATA 등)
 
 3. **Acceptance Criteria 정의**
    - Given-When-Then 형식의 검증 기준

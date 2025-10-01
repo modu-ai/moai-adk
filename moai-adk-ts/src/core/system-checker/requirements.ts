@@ -103,7 +103,7 @@ export class RequirementRegistry {
   /**
    * Add requirement only if it doesn't already exist
    * @param requirement - System requirement to add
-   * @tags @UTIL:ADD-IF-NOT-EXISTS-001
+   * @tags UTIL:ADD-IF-NOT-EXISTS-001
    */
   private addIfNotExists(requirement: SystemRequirement): void {
     if (!this.requirements.has(requirement.name)) {
@@ -219,6 +219,6 @@ export class RequirementRegistry {
 
 /**
  * Global requirement registry instance
- * @tags @SINGLETON:REQUIREMENT-REGISTRY-001
+ * @tags SINGLETON:REQUIREMENT-REGISTRY-001
  */
 export const requirementRegistry = new RequirementRegistry();

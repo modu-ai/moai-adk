@@ -20,14 +20,14 @@
 
 MoAI-ADK(Agentic Development Kit)는 현대 소프트웨어 개발에서 가장 큰 도전 과제 중 하나인 **요구사항과 구현 간의 추적성 부재**와 **일관성 없는 개발 프로세스**를 해결하기 위해 설계된 혁신적인 CLI 도구입니다. Claude Code 환경과 완전히 통합되어 AI 페어 프로그래밍의 잠재력을 최대화하면서도 체계적이고 검증 가능한 개발 방법론을 제공합니다.
 
-전통적인 개발에서는 요구사항 → 설계 → 구현 → 테스트 → 문서화 과정이 각각 분리되어 진행되면서 추적성이 손실되고 품질 관리가 어려워집니다. MoAI-ADK는 **SPEC-First TDD** 방법론과 ** @AI-TAG 시스템**을 통해 이러한 문제를 근본적으로 해결하여, 개발자가 품질과 추적성을 보장하면서도 빠르게 개발할 수 있도록 지원합니다.
+전통적인 개발에서는 요구사항 → 설계 → 구현 → 테스트 → 문서화 과정이 각각 분리되어 진행되면서 추적성이 손실되고 품질 관리가 어려워집니다. MoAI-ADK는 **SPEC-First TDD** 방법론과 ** AI-TAG 시스템**을 통해 이러한 문제를 근본적으로 해결하여, 개발자가 품질과 추적성을 보장하면서도 빠르게 개발할 수 있도록 지원합니다.
 
 ### 🚀 핵심 기능 및 혁신
 
 ```mermaid
 graph TB
     A[SPEC 작성] --> B[TDD 구현] --> C[문서 동기화]
-    A --> D["@AI-TAG 체인 생성"]
+    A --> D["AI-TAG 체인 생성"]
     B --> E[Red-Green-Refactor]
     C --> F[Living Document 업데이트]
 
@@ -59,7 +59,7 @@ graph TB
 - **trust-checker**: TRUST 5원칙 자동 검증
 - **cc-manager**: Claude Code 설정 최적화
 
-#### 🏷️ ** @AI-TAG 시스템**: 코드 직접 스캔 기반 추적성
+#### 🏷️ ** AI-TAG 시스템**: 코드 직접 스캔 기반 추적성
 - **@TAG 체계**: @SPEC → @TEST → @CODE → @DOC (필수 체인)
   - `@SPEC`: SPEC 문서와 요구사항 정의
   - `@TEST`: 테스트 코드 및 검증 로직
@@ -351,8 +351,8 @@ sequenceDiagram
 
     Dev->>MoAI: /moai:1-spec "사용자 인증 API"
     MoAI->>MoAI: EARS 명세서 생성
-    MoAI->>Claude: @AI-TAG 체인 생성
-    Claude-->>MoAI: @REQ-AUTH-001 → @DESIGN-AUTH-001
+    MoAI->>Claude: AI-TAG 체인 생성
+    Claude-->>MoAI: SPEC-AUTH-001 → SPEC-AUTH-001
     MoAI->>Dev: 사용자 확인 요청
     Dev->>MoAI: 승인
     MoAI->>Git: feature/auth-001 브랜치 생성
@@ -413,7 +413,7 @@ sequenceDiagram
    - 토큰 저장소: Redis (리프레시 토큰)
    ```
 
-2. **@AI-TAG 체인** 자동 생성:
+2. **AI-TAG 체인** 자동 생성:
    ```
    @SPEC:AUTH-001 (SPEC 문서에 자동 태깅)
    ```
@@ -459,7 +459,7 @@ SPEC이 완성되면 실제 TDD 사이클을 시작합니다:
    - **Readable**: 함수 50줄 이하, 명확한 네이밍
    - **Unified**: 모듈 300줄 이하, 단일 책임
    - **Secured**: 보안 스캐닝 및 입력 검증
-   - **Trackable**: @AI-TAG 완전 추적성
+   - **Trackable**: AI-TAG 완전 추적성
 
 #### 📚 **Step 3: 문서 동기화 - Living Document**
 
@@ -641,7 +641,7 @@ graph TB
     subgraph "🏗️ 개발 기획 단계"
         A[spec-builder<br/>📋 EARS 명세 작성]
         A --> A1["SPEC 문서 생성"]
-        A --> A2["@AI-TAG 체인"]
+        A --> A2["AI-TAG 체인"]
         A --> A3["브랜치/PR 생성"]
     end
 
@@ -684,7 +684,7 @@ graph TB
 
 | 에이전트 | 주요 역할 | 핵심 기능 | 사용법 |
 |---------|---------|---------|--------|
-| **🏗️ spec-builder** | EARS 명세 작성 | • EARS 형식 명세서 자동 생성<br/>• @AI-TAG 체인 생성<br/>• 브랜치/Issue/PR 템플릿 | `@agent-spec-builder "사용자 인증 시스템"` |
+| **🏗️ spec-builder** | EARS 명세 작성 | • EARS 형식 명세서 자동 생성<br/>• AI-TAG 체인 생성<br/>• 브랜치/Issue/PR 템플릿 | `@agent-spec-builder "사용자 인증 시스템"` |
 | **⚙️ code-builder** | TDD 구현 | •  @TAG 통합 TDD<br/>• Red-Green-Refactor 사이클<br/>• 언어별 최적 도구 선택 | `@agent-code-builder "SPEC-001 구현"` |
 | **📖 doc-syncer** | 문서 동기화 | • Living Document 자동 업데이트<br/>• API 문서 생성<br/>• PR 상태 전환 (Draft→Ready) | `@agent-doc-syncer "문서 업데이트"` |
 | **⚙️ cc-manager** | Claude Code 관리 | • 에이전트 설정 최적화<br/>• 출력 스타일 조정<br/>• 훅 시스템 관리 | `@agent-cc-manager "설정 최적화"` |
@@ -709,7 +709,7 @@ graph TB
 @agent-git-manager "feature/auth-001 브랜치 생성"
 ```
 
-## @AI-TAG 시스템
+## AI-TAG 시스템
 
 코드와 문서 간 완전한 추적성을 제공하는 @TAG TAG 시스템입니다.
 
@@ -776,7 +776,7 @@ rg "AUTH-001" -n
 - **R**eadable: 가독성 (함수 50줄 이하, 명확한 네이밍)
 - **U**nified: 단일 책임 (모듈 300줄 이하, 타입 안전성)
 - **S**ecured: 보안성 (입력 검증, 정적 분석)
-- **T**rackable: 추적성 (@AI-TAG 시스템 완전 추적)
+- **T**rackable: 추적성 (AI-TAG 시스템 완전 추적)
 
 ## 문제 해결
 
@@ -900,7 +900,7 @@ bun run type-check
 ### 코딩 규칙
 
 - TRUST 5원칙 준수
-- @AI-TAG 시스템 적용
+- AI-TAG 시스템 적용
 - TypeScript strict 모드 사용
 - 함수당 50줄 이하 유지
 - 명확한 함수/변수 네이밍

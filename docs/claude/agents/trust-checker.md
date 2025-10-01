@@ -486,8 +486,8 @@ Rust: cargo-audit, cargo-deny
 
 **1. @TAG 시스템 무결성**
 - @TAG 체계 준수
-- TAG 체인 연결: @REQ → @DESIGN → @TASK → @TEST
-- @CODE 서브카테고리 존재: @FEATURE, @API, @UI, @DATA
+- TAG 체인 연결: @SPEC → @TEST → @CODE → @DOC
+- @CODE 서브카테고리 존재: @CODE 서브카테고리 (API, UI, DATA 등)
 
 **2. TAG 체인 검증**
 - 끊어진 링크 감지

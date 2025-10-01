@@ -30,10 +30,10 @@ describe('CodeFirstTAGEnforcer Hook', () => {
     it('should allow valid TAG block', async () => {
       const validContent = `/**
  * @DOC:FEATURE:AUTH-001
- * @CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001 -> TASK:AUTH-001 -> TEST:AUTH-001
- * @DEPENDS: NONE
- * @STATUS: active
- * @CREATED: 2025-01-01
+ * CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001 -> TASK:AUTH-001 -> TEST:AUTH-001
+ * DEPENDS: NONE
+ * STATUS: active
+ * CREATED: 2025-01-01
  * @IMMUTABLE
  */
 
@@ -105,9 +105,9 @@ export class AuthService {}`;
     it('should block modification of @IMMUTABLE TAG block', async () => {
       const oldContent = `/**
  * @DOC:FEATURE:AUTH-001
- * @CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001
- * @STATUS: active
- * @CREATED: 2025-01-01
+ * CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001
+ * STATUS: active
+ * CREATED: 2025-01-01
  * @IMMUTABLE
  */
 
@@ -115,9 +115,9 @@ export class AuthService {}`;
 
       const newContent = `/**
  * @DOC:FEATURE:AUTH-002
- * @CHAIN: REQ:AUTH-002 -> DESIGN:AUTH-002
- * @STATUS: active
- * @CREATED: 2025-01-02
+ * CHAIN: REQ:AUTH-002 -> DESIGN:AUTH-002
+ * STATUS: active
+ * CREATED: 2025-01-02
  * @IMMUTABLE
  */
 
@@ -169,14 +169,14 @@ export class AuthService {}`;
     it('should allow modifying non-immutable TAG blocks', async () => {
       const oldContent = `/**
  * @DOC:FEATURE:AUTH-001
- * @STATUS: active
+ * STATUS: active
  */
 
 export class AuthService {}`;
 
       const newContent = `/**
  * @DOC:FEATURE:AUTH-001
- * @STATUS: completed
+ * STATUS: completed
  */
 
 export class AuthService {}`;
@@ -201,7 +201,7 @@ export class AuthService {}`;
     it('should reject invalid TAG category', async () => {
       const invalidContent = `/**
  * @DOC:INVALID:AUTH-001
- * @CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001
+ * CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001
  */
 
 export class AuthService {}`;
@@ -225,7 +225,7 @@ export class AuthService {}`;
     it('should validate TAG chain format', async () => {
       const contentWithChain = `/**
  * @DOC:FEATURE:AUTH-001
- * @CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001 -> TASK:AUTH-001
+ * CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001 -> TASK:AUTH-001
  * @IMMUTABLE
  */
 
@@ -249,7 +249,7 @@ export class AuthService {}`;
     it('should validate dependencies format', async () => {
       const contentWithDeps = `/**
  * @DOC:FEATURE:AUTH-001
- * @DEPENDS: API:USER-001, DATA:USER-001
+ * DEPENDS: API:USER-001, DATA:USER-001
  * @IMMUTABLE
  */
 

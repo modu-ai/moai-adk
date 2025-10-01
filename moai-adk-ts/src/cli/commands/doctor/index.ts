@@ -1,4 +1,4 @@
-// @CODE:DOCTOR-001 | Chain: @REQ:DOCTOR-001 -> @DESIGN:DOCTOR-001 -> @TASK:DOCTOR-001
+// @CODE:DOCTOR-001 | Chain: @SPEC:DOCTOR-001 -> @SPEC:DOCTOR-001 -> @CODE:DOCTOR-001
 // Related: @CODE:SYS-001:API, @CODE:SYS-INFO-001, @TEST:DOCTOR-001
 
 /**
@@ -104,7 +104,7 @@ export class DoctorCommand {
 
   /**
    * Print diagnostic header
-   * @tags @UTIL:PRINT-HEADER-001
+   * @tags UTIL:PRINT-HEADER-001
    */
   private printHeader(): void {
     console.log(chalk.cyan('🔍 Checking system requirements...\n'));
@@ -114,7 +114,7 @@ export class DoctorCommand {
    * Categorize check results
    * @param results - Raw check results
    * @returns Categorized results
-   * @tags @UTIL:CATEGORIZE-RESULTS-001
+   * @tags UTIL:CATEGORIZE-RESULTS-001
    */
   private categorizeResults(
     results: RequirementCheckResult[]
@@ -155,14 +155,14 @@ export class DoctorCommand {
     );
     return this.formatter.getInstallationSuggestion(
       checkResult,
-      installCommand
+      installCommand ?? null
     );
   }
 
   /**
    * Print enhanced check results with language detection
    * @param checkSummary - System check summary
-   * @tags @UTIL:PRINT-ENHANCED-RESULTS-001
+   * @tags UTIL:PRINT-ENHANCED-RESULTS-001
    */
   private printEnhancedResults(checkSummary: SystemCheckSummary): void {
     const results = {
@@ -265,7 +265,7 @@ export class DoctorCommand {
   /**
    * Print information about a backup directory
    * @param backupPath - Path to backup directory
-   * @tags @UTIL:PRINT-BACKUP-INFO-001
+   * @tags UTIL:PRINT-BACKUP-INFO-001
    */
   private async printBackupInfo(backupPath: string): Promise<void> {
     try {

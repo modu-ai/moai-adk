@@ -271,7 +271,7 @@ public class LoginService {
 
 // @TEST:LOGIN-001: 로그인 테스트
 public class LoginServiceTest {
-    @Test
+    Test
     public void testShouldAuthenticateValidUser() {
         // @TEST:LOGIN-001: 유효한 사용자 인증 테스트
         LoginService service = new LoginService();
@@ -625,9 +625,9 @@ rg '@\w+:[\w-]+' -o --no-filename | sort | uniq -c | awk '$1 == 1'
 ```mermaid
 graph LR
     A[끊어진 링크 발견] --> B{누락 TAG 유형?}
-    B -->|@REQ| C[SPEC 검토]
-    B -->|@DESIGN| D[설계 문서 확인]
-    B -->|@TASK| E[코드 검토]
+    B -->|@SPEC| C[SPEC 검토]
+    B -->|@SPEC| D[설계 문서 확인]
+    B -->|@CODE| E[코드 검토]
     B -->|@TEST| F[테스트 검토]
 
     C --> G[요구사항 재작성]
@@ -653,7 +653,7 @@ graph LR
 
 ### 수동 복구 가이드
 
-#### 시나리오 1: @TASK 누락
+#### 시나리오 1: @CODE 누락
 
 **문제**:
 ```
@@ -683,7 +683,7 @@ export class OAuthService {
 }
 ```
 
-#### 시나리오 2: @DESIGN 누락
+#### 시나리오 2: @SPEC 누락
 
 **문제**:
 ```
@@ -928,8 +928,8 @@ UTILS   ██ 3개
 ## 권장 조치
 
 ### 긴급 (즉시 처리)
-1. AUTH-003: @TASK 추가
-2. USER-007: @DESIGN 작성
+1. AUTH-003: @CODE 추가
+2. USER-007: @SPEC 작성
 
 ### 중요 (1주일 내)
 1. 고아 TAG 3개 정리

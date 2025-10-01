@@ -13,7 +13,7 @@ import { logger } from './/winston-logger.js';
 /**
  * Check if terminal supports color output
  * @returns True if colors are supported
- * @tags @UTIL:COLOR-SUPPORT-001
+ * @tags UTIL:COLOR-SUPPORT-001
  */
 function supportsColor(): boolean {
   return (
@@ -27,7 +27,7 @@ function supportsColor(): boolean {
  * Apply Claude AI brand color to ASCII art line
  * @param line - Line to colorize
  * @returns Colorized line
- * @tags @UTIL:COLORIZE-001
+ * @tags UTIL:COLORIZE-001
  */
 function applyClaudeBrandColor(line: string): string {
   if (!supportsColor() || !line.trim()) {
@@ -41,7 +41,7 @@ function applyClaudeBrandColor(line: string): string {
 /**
  * Get MoAI logo ASCII art
  * @returns Array of logo lines
- * @tags @UTIL:LOGO-ASCII-001
+ * @tags UTIL:LOGO-ASCII-001
  */
 function getMoaiLogo(): string[] {
   return [

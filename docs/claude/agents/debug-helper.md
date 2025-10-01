@@ -261,8 +261,8 @@ debug-helper는 `.moai/memory/development-guide.md`를 기준으로 코드와 �
 
 **@TAG 시스템 준수**:
 - TAG BLOCK 존재 여부 (파일 상단)
-- TAG 체인 완전성 (@REQ → @DESIGN → @TASK → @TEST)
-- @CODE 서브카테고리 적용 (@FEATURE, @API, @UI, @DATA)
+- TAG 체인 완전성 (@SPEC → @TEST → @CODE → @DOC)
+- @CODE 서브카테고리 적용 (@CODE 서브카테고리 (API, UI, DATA 등))
 - TAG ID 형식 준수 (`DOMAIN-###` 형식, 예: AUTH-001)
 - 고아 TAG 및 중복 TAG 식별
 

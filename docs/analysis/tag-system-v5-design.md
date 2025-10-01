@@ -8,12 +8,12 @@
 
 ## 📊 변경 요약
 
-### 구 TAG 체계 () → 필수 TAG ()
+### 구 TAG 체계 → 필수 TAG
 
 ```
 Before ( - 구 TAG 체계):
-Primary: @REQ, @DESIGN, @TASK, @TEST
-Implementation: @FEATURE, @API, @UI, @DATA
+Primary: @SPEC, @SPEC, @CODE, @TEST
+Implementation: @CODE 서브카테고리 (API, UI, DATA 등)
 
 After ( - 필수 TAG):
 @SPEC → @TEST → @CODE → @DOC
@@ -630,7 +630,7 @@ export class AuthService {
 **TAG 시스템  (필수 TAG)는:**
 - ✅ TDD 사이클과 완벽 정렬 (RED → GREEN → REFACTOR)
 - ✅ 단순성 극대화 (8개 → 4개)
-- ✅ 중복 제거 (@FEATURE vs @TASK)
+- ✅ 중복 제거 (@CODE vs @CODE)
 - ✅ SPEC 중심 설계
 - ✅ CODE-FIRST 원칙 유지
 

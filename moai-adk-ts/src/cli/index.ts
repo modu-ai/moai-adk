@@ -75,7 +75,7 @@ export class CLIApp {
 
   /**
    * Setup CLI commands
-   * @tags @SETUP:CLI-COMMANDS-001
+   * @tags SETUP:CLI-COMMANDS-001
    */
   private setupCommands(): void {
     this.program

@@ -65,7 +65,7 @@ export class ContextManager {
       phase: phaseName,
       completed: phase.completed,
       duration: phase.duration,
-      tag: '@DEBUG:PHASE-RECORD-001',
+      tag: 'DEBUG:PHASE-RECORD-001',
     });
   }
 
@@ -88,7 +88,7 @@ export class ContextManager {
     logger.debug(message, {
       current,
       total: totalPhases,
-      tag: '@PROGRESS:UPDATE-001',
+      tag: 'PROGRESS:UPDATE-001',
     });
 
     if (callback) {

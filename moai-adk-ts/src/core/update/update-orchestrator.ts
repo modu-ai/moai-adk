@@ -179,7 +179,7 @@ export class UpdateOrchestrator {
   /**
    * Create backup of existing files
    * @returns Backup directory path
-   * @tags @UTIL:CREATE-BACKUP-001
+   * @tags UTIL:CREATE-BACKUP-001
    */
   private async createBackup(): Promise<string> {
     const timestamp = new Date()
@@ -217,7 +217,7 @@ export class UpdateOrchestrator {
    * Copy directory recursively
    * @param source - Source directory
    * @param target - Target directory
-   * @tags @UTIL:COPY-DIRECTORY-001
+   * @tags UTIL:COPY-DIRECTORY-001
    */
   private async copyDirectory(source: string, target: string): Promise<void> {
     await fs.mkdir(target, { recursive: true });
@@ -238,7 +238,7 @@ export class UpdateOrchestrator {
 
   /**
    * Update npm package to latest version
-   * @tags @UTIL:UPDATE-NPM-PACKAGE-001
+   * @tags UTIL:UPDATE-NPM-PACKAGE-001
    */
   private async updateNpmPackage(): Promise<void> {
     const packageJsonPath = path.join(this.projectPath, 'package.json');
@@ -258,7 +258,7 @@ export class UpdateOrchestrator {
   /**
    * Get npm root directory
    * @returns npm root path
-   * @tags @UTIL:GET-NPM-ROOT-001
+   * @tags UTIL:GET-NPM-ROOT-001
    */
   private async getNpmRoot(): Promise<string> {
     try {
@@ -278,7 +278,7 @@ export class UpdateOrchestrator {
    * Copy template files to project (simple overwrite)
    * @param templatePath - Template directory path
    * @returns Number of files copied
-   * @tags @UTIL:COPY-TEMPLATE-FILES-001
+   * @tags UTIL:COPY-TEMPLATE-FILES-001
    */
   private async copyTemplateFiles(templatePath: string): Promise<number> {
     let filesCopied = 0;
@@ -334,7 +334,7 @@ export class UpdateOrchestrator {
    * Count files in directory recursively
    * @param dirPath - Directory path
    * @returns File count
-   * @tags @UTIL:COUNT-FILES-001
+   * @tags UTIL:COUNT-FILES-001
    */
   private async countFiles(dirPath: string): Promise<number> {
     let count = 0;
@@ -354,7 +354,7 @@ export class UpdateOrchestrator {
   /**
    * Verify update was successful
    * @param templatePath - Template path for verification
-   * @tags @UTIL:VERIFY-UPDATE-001
+   * @tags UTIL:VERIFY-UPDATE-001
    */
   private async verifyUpdate(_templatePath: string): Promise<void> {
     // Verify key files exist

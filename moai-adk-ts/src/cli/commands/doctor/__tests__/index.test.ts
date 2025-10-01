@@ -1,4 +1,4 @@
-// @TEST:DOCTOR-001 | Chain: @REQ:DOCTOR-001 -> @DESIGN:DOCTOR-001 -> @TASK:DOCTOR-001
+// @TEST:DOCTOR-001 | Chain: @SPEC:DOCTOR-001 -> @SPEC:DOCTOR-001 -> @CODE:DOCTOR-001
 // Related: @CODE:DOCTOR-001
 
 /**
@@ -116,6 +116,8 @@ describe('DoctorCommand', () => {
         requirement: {
           name: 'TestTool',
           category: 'runtime' as const,
+          installCommands: { darwin: 'brew install testtool' },
+          checkCommand: 'testtool --version',
         },
         result: {
           isInstalled: true,
@@ -137,6 +139,8 @@ describe('DoctorCommand', () => {
         requirement: {
           name: 'Git',
           category: 'development' as const,
+          installCommands: { darwin: 'brew install git' },
+          checkCommand: 'git --version',
         },
         result: {
           isInstalled: false,

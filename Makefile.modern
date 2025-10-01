@@ -1,7 +1,7 @@
 # @CODE:MODERN-MAKEFILE-001 MoAI-ADK Modern Development Makefile
-# @SPEC:FAST-TOOLCHAIN-001 → @SPEC:UV-INTEGRATION-001 → @CODE:MAKEFILE-MODERN-001 → @TEST:PERFORMANCE-001
+# @SPEC:FAST-TOOLCHAIN-001 → @TEST:UV-INTEGRATION-001 → @CODE:MAKEFILE-MODERN-001 → @DOC:PERFORMANCE-001
 #
-# @SPEC:UV-INTEGRATION-001 Ultra-fast development workflow with uv + ruff
+# @TEST:UV-INTEGRATION-001 Ultra-fast development workflow with uv + ruff
 # @CODE:MAKEFILE-MODERN-001 Modern Makefile with performance optimizations
 
 .PHONY: help install dev clean lint format typecheck security test coverage quality all-checks

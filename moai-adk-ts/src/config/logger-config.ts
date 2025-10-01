@@ -1,7 +1,7 @@
 /**
  * @file Logger environment-based configuration
  * @author MoAI Team
- * @tags @CONFIG:WINSTON-LOGGER-001
+ * @tags CONFIG:WINSTON-LOGGER-001
  */
 
 import type winston from 'winston';

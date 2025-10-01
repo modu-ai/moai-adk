@@ -222,7 +222,7 @@ export class AuthService {
 3. **REFACTOR Phase**: 품질 개선
 
 ```typescript
-// @CODE:AUTH-001 | Chain: @REQ → @DESIGN → @TASK → @TEST
+// @CODE:AUTH-001 | Chain: @SPEC → @TEST → @CODE → @DOC
 export class AuthService {
   constructor(
     private userRepository: UserRepository,
@@ -327,7 +327,7 @@ export class AuthService {
   - 파일: src/notification/service.ts
   - 권장: __tests__/notification/service.test.ts 생성
 
-⚠️ REPORT-005: @DESIGN 누락
+⚠️ REPORT-005: @SPEC 누락
   - 파일: .moai/specs/SPEC-005/
   - 권장: design/ 폴더에 설계 문서 추가
 
@@ -431,12 +431,12 @@ export class AuthService {
 ## 체인 완전성: 94%
 
 ### 완결된 체인 (32개)
-✅ AUTH-001: @REQ → @DESIGN → @TASK → @TEST
-✅ PAYMENT-002: @REQ → @DESIGN → @TASK → @TEST
+✅ AUTH-001: @SPEC → @TEST → @CODE → @DOC
+✅ PAYMENT-002: @SPEC → @TEST → @CODE → @DOC
 
 ### 불완전한 체인 (2개)
 ⚠️ NOTIFICATION-004: @TEST 누락
-⚠️ REPORT-005: @DESIGN 누락
+⚠️ REPORT-005: @SPEC 누락
 
 ### 고아 TAG (0개)
 

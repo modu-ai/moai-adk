@@ -20,10 +20,10 @@ export const CODE_FIRST_PATTERNS = {
 
   // 핵심 TAG 라인들
   MAIN_TAG: /^\s*\*\s*@DOC:([A-Z]+):([A-Z0-9_-]+)\s*$/m,
-  CHAIN_LINE: /^\s*\*\s*@CHAIN:\s*(.+)\s*$/m,
-  DEPENDS_LINE: /^\s*\*\s*@DEPENDS:\s*(.+)\s*$/m,
-  STATUS_LINE: /^\s*\*\s*@STATUS:\s*(\w+)\s*$/m,
-  CREATED_LINE: /^\s*\*\s*@CREATED:\s*(\d{4}-\d{2}-\d{2})\s*$/m,
+  CHAIN_LINE: /^\s*\*\s*CHAIN:\s*(.+)\s*$/m,
+  DEPENDS_LINE: /^\s*\*\s*DEPENDS:\s*(.+)\s*$/m,
+  STATUS_LINE: /^\s*\*\s*STATUS:\s*(\w+)\s*$/m,
+  CREATED_LINE: /^\s*\*\s*CREATED:\s*(\d{4}-\d{2}-\d{2})\s*$/m,
   IMMUTABLE_MARKER: /^\s*\*\s*@IMMUTABLE\s*$/m,
 
   // TAG 참조

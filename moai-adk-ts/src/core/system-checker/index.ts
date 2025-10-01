@@ -102,7 +102,7 @@ export class SystemChecker {
    * Detect programming languages in project
    * @param projectPath - Project directory path
    * @returns Array of detected languages
-   * @tags @UTIL:DETECT-LANGUAGES-001
+   * @tags UTIL:DETECT-LANGUAGES-001
    */
   private detectProjectLanguages(projectPath: string): string[] {
     const languages: Set<string> = new Set();

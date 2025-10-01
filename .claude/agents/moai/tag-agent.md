@@ -14,7 +14,7 @@ model: sonnet
 ### 주요 책임
 - **코드 기반 TAG 스캔**: 프로젝트 전체 소스 파일에서 TAG 실시간 추출
 - **TAG 무결성 검증**: Primary Chain, 참조 관계, 중복 검증
-- **TAG 체인 관리**: @REQ → @DESIGN → @TASK → @TEST 체인 무결성 보장
+- **TAG 체인 관리**: @SPEC → @SPEC → @CODE → @TEST 체인 무결성 보장
 
 **핵심 원칙**: TAG의 진실(source of truth)은 **코드 자체에만 존재**하며, 모든 TAG는 소스 파일에서 실시간으로 추출됩니다.
 
@@ -78,7 +78,7 @@ model: sonnet
 ### 3. TAG 무결성 검증
 
 다음 항목을 검증합니다:
-- **Primary Chain 완전성**: @REQ → @DESIGN → @TASK → @TEST 체인 확인
+- **Primary Chain 완전성**: @SPEC → @SPEC → @CODE → @TEST 체인 확인
 - **고아 TAG 감지**: 부모 TAG가 없는 TAG 식별
 - **중복 TAG 감지**: 동일 ID의 중복 사용 확인
 - **끊어진 참조 감지**: 존재하지 않는 TAG 참조 확인
@@ -90,7 +90,7 @@ model: sonnet
 - 중복 가능성 평가 및 재사용 제안
 
 **새 TAG 생성 (필요 시)**:
-- 형식: `@CATEGORY:DOMAIN-NNN`
+- 형식: `CATEGORY:DOMAIN-NNN`
 - 체인 관계 설정 및 순환 참조 방지
 
 ### 5. 결과 보고
@@ -122,7 +122,7 @@ model: sonnet
 ### TAG 품질 게이트
 
 다음 품질 기준을 검증합니다:
-- 형식 준수: @CATEGORY:DOMAIN-ID 규칙
+- 형식 준수: CATEGORY:DOMAIN-ID 규칙
 - 중복 없음: 고유성 보장
 - 체인 무결성: Primary Chain 완전성
 - 코드 스캔 일관성: 실시간 스캔 결과 신뢰성
@@ -169,10 +169,10 @@ model: sonnet
 ## 🔄 Integration with MoAI-ADK Ecosystem
 
 ### spec-builder와 연동
-SPEC 파일 생성 시 TAG 자동 생성하고 @REQ → @DESIGN → @TASK 체인을 자동 구성합니다.
+SPEC 파일 생성 시 TAG 자동 생성하고 @SPEC → @SPEC → @CODE 체인을 자동 구성합니다.
 
 ### code-builder와 연동
-TDD 구현 시 @TEST TAG를 자동 연결하고 @TASK → @FEATURE → @TEST 체인을 검증합니다.
+TDD 구현 시 @TEST TAG를 자동 연결하고 @CODE → @CODE → @TEST 체인을 검증합니다.
 
 ### doc-syncer와 연동
 문서 동기화 시 코드 스캔을 통한 TAG 참조를 실시간 업데이트하고 변경 추적을 위한 TAG 타임라인을 생성합니다.

@@ -150,7 +150,7 @@ utils/regex-security.ts:         7개 (error properties)
 
 **TAG 체계 현황:**
 ```
-@REQ, @DESIGN, @TASK, @TEST, @FEATURE 총 431회 발견
+@SPEC, @SPEC, @CODE, @TEST, @CODE 총 431회 발견
 116개 파일에 분산 적용 (67% 커버리지)
 ```
 

@@ -159,7 +159,7 @@ export class PhaseExecutor {
         } else {
           logger.debug('Claude settings already exists, skipping', {
             settingsPath: claudeSettingsPath,
-            tag: '@DEBUG:CLAUDE-SETTINGS-EXISTS-001',
+            tag: 'DEBUG:CLAUDE-SETTINGS-EXISTS-001',
           });
           files.push(claudeSettingsPath);
         }
@@ -251,7 +251,7 @@ export class PhaseExecutor {
 
       logger.debug('Backup created', {
         backupPath,
-        tag: '@SUCCESS:BACKUP-001',
+        tag: 'SUCCESS:BACKUP-001',
       });
     }
   }
@@ -275,11 +275,11 @@ export class PhaseExecutor {
 
     for (const dir of directories) {
       await fs.promises.mkdir(dir, { recursive: true });
-      logger.debug('Created directory', { dir, tag: '@DEBUG:DIR-CREATE-001' });
+      logger.debug('Created directory', { dir, tag: 'DEBUG:DIR-CREATE-001' });
     }
 
     logger.debug('Project directories created', {
-      tag: '@SUCCESS:CREATE-DIRECTORIES-001',
+      tag: 'SUCCESS:CREATE-DIRECTORIES-001',
     });
   }
 
@@ -305,7 +305,7 @@ export class PhaseExecutor {
     logger.debug('Installation finalized', {
       projectPath: config.projectPath,
       mode: config.mode,
-      tag: '@SUCCESS:FINALIZE-INSTALLATION-001',
+      tag: 'SUCCESS:FINALIZE-INSTALLATION-001',
     });
   }
 
@@ -341,12 +341,12 @@ export class PhaseExecutor {
       });
 
       logger.debug('Git repository initialized', {
-        tag: '@SUCCESS:INIT-GIT-001',
+        tag: 'SUCCESS:INIT-GIT-001',
       });
     } catch (error) {
       logger.error('Git initialization failed', {
         error,
-        tag: '@ERROR:INIT-GIT-001',
+        tag: 'ERROR:INIT-GIT-001',
       });
     }
   }

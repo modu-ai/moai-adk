@@ -70,7 +70,7 @@
   - 92.9% 테스트 성공률
 
 - **3. @TAG 추적성**
-  - 필수 TAG 흐름: @REQ → @DESIGN → @TASK → @TEST
+  - 필수 TAG 흐름: @SPEC → @TEST → @CODE → @DOC
   - 코드 직접 스캔 (94% 최적화)
   - 실시간 무결성 검증
 
@@ -213,13 +213,13 @@
     - @TEST: 검증
 
   - **Implementation Tags**
-    - @FEATURE, @API, @UI, @DATA
+    - @CODE 서브카테고리 (API, UI, DATA 등)
 
   - **Quality Tags**
-    - @PERF, @SEC, @DOCS, @DEBT
+    - @DOC, @CODE 등
 
   - **Meta Tags**
-    - @OPS, @RELEASE, @DEPRECATED
+    - @DOC, @DOC, @DOC
 
 - **TAG BLOCK 템플릿**
   ```typescript
@@ -770,7 +770,7 @@
 - **TDD**: Test-Driven Development
 - **TAG**: Traceability TAG
 - **TRUST**: Test/Readable/Unified/Secured/Trackable
-- **필수 TAG 흐름**: @REQ → @DESIGN → @TASK → @TEST
+- **필수 TAG 흐름**: @SPEC → @TEST → @CODE → @DOC
 
 ---
 

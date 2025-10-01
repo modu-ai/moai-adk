@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### 🎯 핵심 혁신사항
 - **3,434개 TAG 완전 추적**: 413개 파일에서 100% 추적성 보장, 인간이 불가능한 수준의 체계적 관리
 - **Living Document 동기화**: 코드-문서 실시간 일치성 100% 달성, Zero-Lag 동기화 시스템 구축
-- ** TAG 시스템**: 완전한 Primary Chain 관리 체계 완성 (@REQ → @DESIGN → @TASK → @TEST)
+- ** TAG 시스템**: 완전한 Primary Chain 관리 체계 완성 (@SPEC → @SPEC → @CODE → @TEST)
 - **TRUST 5원칙 92.9% 준수**: 세계 수준의 품질 표준 달성, 자동 검증 시스템 구축
 
 #### 📚 문서화 혁신
@@ -144,7 +144,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Living Document 정확성**: 실제 통계 기반 문서화 완성
 
 #### 🔧 사용자 경험 개선
-- **@TASK 태그 제거**: CLI help 출력에서 내부 TAG 완전 제거
+- **@CODE 태그 제거**: CLI help 출력에서 내부 TAG 완전 제거
 - **깔끔한 명령어 설명**: 모든 명령어에 사용자 친화적 설명 적용
 - **개발자 추적성 유지**: 코드 주석에서 TAG 시스템 보존
 
@@ -238,7 +238,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **100% @TAG 커버리지**: 100개 Python 파일 모두에 @TAG 적용 완료
 - **18개 누락 파일 보완**: CLI 모듈, Hook 스크립트, 템플릿 파일 등 체계적 @TAG 추가
 - **0.003초 초고속 검증**: 기존 목표(5초) 대비 1,666배 성능 향상
-- **완전한 Primary Chain**: @REQ → @DESIGN → @TASK → @TEST 75% 완성도 달성
+- **완전한 Primary Chain**: @SPEC → @SPEC → @CODE → @TEST 75% 완성도 달성
 
 #### 🔄 TDD 방식 완전 구현
 **5단계 커밋 체인:**

@@ -282,7 +282,7 @@ export class ProjectDetector {
    * Scan directory recursively for files
    * @param dirPath Directory path to scan
    * @returns Array of file information
-   * @tags @UTIL:SCAN-DIRECTORY-001
+   * @tags UTIL:SCAN-DIRECTORY-001
    */
   private async scanDirectory(dirPath: string): Promise<FileInfo[]> {
     const files: FileInfo[] = [];

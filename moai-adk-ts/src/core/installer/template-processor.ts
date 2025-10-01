@@ -50,7 +50,7 @@ export class TemplateProcessor {
       logger.debug('Found templates in package root', {
         templatePath: packageTemplates,
         strategy: 'package-relative',
-        tag: '@DEBUG:TEMPLATES-PATH-001',
+        tag: 'DEBUG:TEMPLATES-PATH-001',
       });
       return packageTemplates;
     }
@@ -73,7 +73,7 @@ export class TemplateProcessor {
       logger.debug('Found templates in development directory', {
         templatePath: devTemplates,
         strategy: 'development',
-        tag: '@DEBUG:TEMPLATES-PATH-002',
+        tag: 'DEBUG:TEMPLATES-PATH-002',
       });
       return devTemplates;
     }
@@ -100,7 +100,7 @@ export class TemplateProcessor {
       logger.debug('Found templates in user node_modules', {
         templatePath: userNodeModules,
         strategy: 'user-node-modules',
-        tag: '@DEBUG:TEMPLATES-PATH-003',
+        tag: 'DEBUG:TEMPLATES-PATH-003',
       });
       return userNodeModules;
     }
@@ -153,7 +153,7 @@ export class TemplateProcessor {
         logger.debug('Found templates in global installation', {
           templatePath: resolvedPath,
           strategy: 'global-install',
-          tag: '@DEBUG:TEMPLATES-PATH-004',
+          tag: 'DEBUG:TEMPLATES-PATH-004',
         });
         return resolvedPath;
       }
@@ -203,7 +203,7 @@ export class TemplateProcessor {
     logger.warn('Templates directory not found, using fallback', {
       fallbackPath: packageTemplates,
       currentFile: currentFilePath,
-      tag: '@WARN:TEMPLATES-PATH-001',
+      tag: 'WARN:TEMPLATES-PATH-001',
     });
 
     return packageTemplates;
@@ -271,7 +271,7 @@ export class TemplateProcessor {
         error,
         srcDir,
         dstDir,
-        tag: '@ERROR:COPY-TEMPLATE-DIR-001',
+        tag: 'ERROR:COPY-TEMPLATE-DIR-001',
       });
       throw error;
     }
@@ -323,7 +323,7 @@ export class TemplateProcessor {
             logger.warn('Failed to set executable permissions', {
               dstPath,
               error: chmodError,
-              tag: '@WARN:CHMOD-001',
+              tag: 'WARN:CHMOD-001',
             });
           }
         }
@@ -333,14 +333,14 @@ export class TemplateProcessor {
         srcPath,
         dstPath,
         isTextFile,
-        tag: '@DEBUG:COPY-TEMPLATE-FILE-001',
+        tag: 'DEBUG:COPY-TEMPLATE-FILE-001',
       });
     } catch (error) {
       logger.error('Failed to copy template file', {
         error,
         srcPath,
         dstPath,
-        tag: '@ERROR:COPY-TEMPLATE-FILE-001',
+        tag: 'ERROR:COPY-TEMPLATE-FILE-001',
       });
       throw error;
     }

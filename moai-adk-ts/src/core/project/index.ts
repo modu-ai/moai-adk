@@ -7,7 +7,7 @@
 export { ProjectDetector } from './project-detector';
 
 /**
- * @tags @SUCCESS:PROJECT-DETECTOR-TDD-001
+ * @tags SUCCESS:PROJECT-DETECTOR-TDD-001
  * TDD Red-Green-Refactor Complete:
  * ✅ RED: 14 failing tests created
  * ✅ GREEN: ProjectDetector implementation with 100% test pass

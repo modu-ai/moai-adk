@@ -42,7 +42,7 @@ export class ResultBuilder {
       projectPath: result.projectPath,
       filesCreated: result.filesCreated.length,
       duration: result.duration,
-      tag: '@SUCCESS:INSTALL-001',
+      tag: 'SUCCESS:INSTALL-001',
     });
 
     return result;
@@ -78,7 +78,7 @@ export class ResultBuilder {
       projectPath: result.projectPath,
       error: errorMessage,
       duration: result.duration,
-      tag: '@ERROR:INSTALL-001',
+      tag: 'ERROR:INSTALL-001',
     });
 
     return result;

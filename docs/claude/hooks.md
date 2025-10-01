@@ -49,7 +49,7 @@ MoAI-ADK는 개발 프로세스를 자동으로 보호하고 가이드하는 **9
 // .claude/hooks/moai/file-monitor.js
 
 /**
- * @HOOK:FILE-MONITOR-001
+ * HOOK:FILE-MONITOR-001
  * 파일 변경 이벤트 모니터링
  */
 export function onFileChange(event) {
@@ -135,7 +135,7 @@ export function onFileChange(event) {
 
 ```javascript
 /**
- * @HOOK:LANGUAGE-DETECTOR-001
+ * HOOK:LANGUAGE-DETECTOR-001
  * 세션 시작 시 언어 자동 감지
  */
 export function onSessionStart() {
@@ -239,7 +239,7 @@ Run 'moai doctor' for detailed diagnostics.
 
 ```javascript
 /**
- * @HOOK:POLICY-BLOCK-001
+ * HOOK:POLICY-BLOCK-001
  * 정책 위반 명령어 차단
  */
 export function onCommandExecute(command) {
@@ -336,7 +336,7 @@ This ensures:
 
 ```javascript
 /**
- * @HOOK:PRE-WRITE-GUARD-001
+ * HOOK:PRE-WRITE-GUARD-001
  * 파일 쓰기 전 검증
  */
 export async function onBeforeWrite(file) {
@@ -394,7 +394,7 @@ Consider fixing these before committing.
 
 ```typescript
 // ✅ Good
-// @CODE:AUTH-001 | Chain: @REQ → @DESIGN → @TASK → @TEST
+// @CODE:AUTH-001 | Chain: @SPEC → @TEST → @CODE → @DOC
 export class AuthService {
   // ...
 }
@@ -457,7 +457,7 @@ Claude Code 세션 시작 시 개발 가이드를 표시합니다.
 
 ```javascript
 /**
- * @HOOK:SESSION-NOTICE-001
+ * HOOK:SESSION-NOTICE-001
  * 세션 시작 알림
  */
 export function onSessionStart() {
@@ -521,7 +521,7 @@ Run 'moai doctor' for diagnostics.
 
 ```javascript
 /**
- * @HOOK:STEERING-GUARD-001
+ * HOOK:STEERING-GUARD-001
  * 개발 방향성 가이드 (30분마다)
  */
 export function onPeriodic() {
@@ -593,7 +593,7 @@ Debug:
 
 ```javascript
 /**
- * @HOOK:TAG-ENFORCER-001
+ * HOOK:TAG-ENFORCER-001
  * TAG 규칙 강제 적용
  */
 export async function onBeforeWrite(file) {
@@ -608,7 +608,7 @@ export async function onBeforeWrite(file) {
       `TAG BLOCK is required in source files.\n` +
       `File: ${file.path}\n\n` +
       `Add a TAG BLOCK at the top of the file:\n` +
-      `// @CODE:<DOMAIN-ID> | Chain: @REQ → @DESIGN → @TASK → @TEST\n` +
+      `// @CODE:<DOMAIN-ID> | Chain: @SPEC → @TEST → @CODE → @DOC\n` +
       `// Related: @CODE:<ID>, @CODE:<ID>, @CODE:<ID>`
     );
   }
@@ -619,7 +619,7 @@ export async function onBeforeWrite(file) {
     if (!isValidTagFormat(tag)) {
       throw new ValidationError(
         `Invalid TAG format: ${tag}\n` +
-        `Expected format: @CATEGORY:DOMAIN-NNN\n` +
+        `Expected format: CATEGORY:DOMAIN-NNN\n` +
         `Example: @SPEC:AUTH-001`
       );
     }
@@ -639,7 +639,7 @@ export async function onBeforeWrite(file) {
 Missing TAGs:
 ${chainStatus.missingTags.map(t => `  - ${t}`).join('\n')}
 
-Complete your chain: @REQ → @DESIGN → @TASK → @TEST
+Complete your chain: @SPEC → @TEST → @CODE → @DOC
     `);
   }
 }
@@ -672,8 +672,8 @@ export class AuthService {
 @CODE:AUTH-001
 
 // ❌ Bad: 잘못된 형식 (에러)
-@REQ-AUTH-001      // 잘못된 구분자
-@AUTH-001          // 카테고리 누락
+SPEC-AUTH-001      // 잘못된 구분자
+AUTH-001          // 카테고리 누락
 @SPEC:AUTH001       // 하이픈 누락
 ```
 
@@ -713,7 +713,7 @@ File: src/auth/service.ts
 Missing TAGs:
   - @TEST:AUTH-001
 
-Complete your chain: @REQ → @DESIGN → @TASK → @TEST
+Complete your chain: @SPEC → @TEST → @CODE → @DOC
 
 Use '@agent-tag-agent' to verify chain integrity.
 ```
@@ -746,7 +746,7 @@ Use '@agent-tag-agent' to verify chain integrity.
 // .claude/hooks/moai/custom-hook.js
 
 /**
- * @HOOK:CUSTOM-001
+ * HOOK:CUSTOM-001
  * 커스텀 훅 예시
  */
 export function onCustomEvent(data) {

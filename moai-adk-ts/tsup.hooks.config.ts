@@ -12,7 +12,7 @@ export default defineConfig({
   entry: {
     'policy-block': 'src/claude/hooks/policy-block.ts',
     'pre-write-guard': 'src/claude/hooks/pre-write-guard.ts',
-    'session-notice': 'src/claude/hooks/session-notice.ts',
+    'session-notice': 'src/claude/hooks/session-notice/index.ts',
     'tag-enforcer': 'src/claude/hooks/tag-enforcer.ts'
   },
   format: ['cjs'],

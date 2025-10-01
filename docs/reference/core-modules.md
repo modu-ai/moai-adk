@@ -1519,7 +1519,7 @@ classDiagram
 
 ```typescript
 const TAG_PATTERNS = {
-  // TAG ID 패턴: @TYPE:DOMAIN-NNN
+  // TAG ID 패턴: TYPE:DOMAIN-NNN
   id: /@(REQ|DESIGN|TASK|TEST|FEATURE|API|UI|DATA|VISION|STRUCT|TECH|ADR|PERF|SEC|DOCS|TAG):([A-Z]+-\d{3})/g,
 
   // Chain 정의 패턴

@@ -14,10 +14,10 @@
 
 ```
 필수 TAG 흐름 (4 Core - 필수):
-@REQ → @DESIGN → @TASK → @TEST
+@SPEC → @TEST → @CODE → @DOC
 
 Implementation (4 Core - 필수):
-@FEATURE, @API, @UI, @DATA
+@CODE 서브카테고리 (API, UI, DATA 등)
 ```
 
 ### 주요 발견 사항
@@ -53,9 +53,9 @@ graph LR
 ### 현재 TAG 매핑
 
 ```
-@REQ      → 사전 요구사항 (TDD 전)
-@DESIGN   → 사전 설계 (TDD 전)
-@TASK     → 구현 작업 (GREEN? REFACTOR?)
+@SPEC      → 사전 요구사항 (TDD 전)
+@SPEC   → 사전 설계 (TDD 전)
+@CODE     → 구현 작업 (GREEN? REFACTOR?)
 @TEST     → 테스트 (RED?)
 ```
 
@@ -63,7 +63,7 @@ graph LR
 
 **현상:**
 - TDD의 3단계 중 REFACTOR를 표현하는 TAG가 없음
-- @TASK가 GREEN과 REFACTOR 둘 다 포함하는지 불명확
+- @CODE가 GREEN과 REFACTOR 둘 다 포함하는지 불명확
 - 품질 개선 작업을 추적할 방법이 없음
 
 **실제 코드 예시:**
@@ -91,16 +91,16 @@ class AuthService {
 
 **TAG 체인 vs TDD 사이클:**
 ```
-TAG 순서: @REQ → @DESIGN → @TASK → @TEST
-TDD 순서: @TEST (RED) → @TASK (GREEN) → @REFACTOR → 반복
+TAG 순서: @SPEC → @TEST → @CODE → @DOC
+TDD 순서: @TEST (RED) → @CODE (GREEN) → REFACTOR → 반복
 ```
 
 **불일치 발생!**
 
-### ⚠️ 문제점 3: @TASK의 과부하
+### ⚠️ 문제점 3: @CODE의 과부하
 
 **현상:**
-- @TASK가 "작업"이라는 너무 광범위한 의미
+- @CODE가 "작업"이라는 너무 광범위한 의미
 - GREEN phase, REFACTOR phase, 버그 수정, 기능 추가를 모두 포괄
 - 작업의 "유형"을 구분할 수 없음
 
@@ -129,13 +129,13 @@ TDD 순서: @TEST (RED) → @TASK (GREEN) → @REFACTOR → 반복
 ### 현재 TAG 매핑
 
 ```
-@REQ → EARS 5가지 전체를 하나로 통합
+@SPEC → EARS 5가지 전체를 하나로 통합
 ```
 
 ### ❌ 문제점 4: EARS 구문이 TAG에 반영 안 됨
 
 **현상:**
-- @REQ가 너무 광범위하여 EARS 5가지 구문을 구분 못함
+- @SPEC가 너무 광범위하여 EARS 5가지 구문을 구분 못함
 - 이벤트 기반 요구사항과 상태 기반 요구사항의 차이를 표현 불가
 - SPEC 문서를 읽지 않으면 요구사항 유형을 알 수 없음
 
@@ -161,8 +161,8 @@ TDD 순서: @TEST (RED) → @TASK (GREEN) → @REFACTOR → 반복
 ### ⚠️ 문제점 5: SPEC 문서와 TAG의 중복
 
 **현상:**
-- @REQ가 SPEC 문서에 이미 존재하는 요구사항을 또 TAG로 표현
-- 요구사항이 두 곳에 존재 (SPEC 문서 + @REQ TAG)
+- @SPEC가 SPEC 문서에 이미 존재하는 요구사항을 또 TAG로 표현
+- 요구사항이 두 곳에 존재 (SPEC 문서 + @SPEC TAG)
 - 변경 시 두 곳 모두 수정 필요 (동기화 문제)
 
 **중복 예시:**
@@ -184,7 +184,7 @@ class AuthService {
 
 ## 🔍 3. @CODE 서브카테고리의 필요성 분석
 
-### 현재 Implementation (4 Core)
+### 현재 @CODE 서브카테고리
 
 ```
 @CODE: 기능 전체 구현 (필수)
@@ -193,21 +193,21 @@ class AuthService {
 @CODE: 데이터 모델 (필수)
 ```
 
-### ❌ 문제점 6: @FEATURE와 @TASK의 중복
+### ❌ 문제점 6: @CODE와 @CODE의 중복
 
 **현상:**
-- @FEATURE가 "기능 전체 구현"이면 @TASK는 뭐지?
-- 필수 TAG 흐름에 @TASK가 있는데 Implementation에 @FEATURE도 있음
+- @CODE가 "기능 전체 구현"이면 @CODE는 뭐지?
+- 필수 TAG 흐름에 @CODE가 있는데 Implementation에 @CODE도 있음
 - 역할 구분이 모호함
 
 **실제 코드 예시:**
 ```typescript
 // @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
 //                                                                   ^^^^^^^^
-//                                                                   이미 @TASK가 있는데?
+//                                                                   이미 @CODE가 있는데?
 // Related: @CODE:AUTH-001:API
 
-class AuthService {  // 이게 @FEATURE인가? @TASK인가?
+class AuthService {  // 이게 @CODE인가? @CODE인가?
   // ...
 }
 ```
@@ -220,11 +220,11 @@ class AuthService {  // 이게 @FEATURE인가? @TASK인가?
 ### ❌ 문제점 7: @CODE 서브카테고리가 모두 "필수"?
 
 **현상:**
-- @API, @UI, @DATA가 모두 "필수"로 표기됨
+- @CODE, @CODE, @CODE가 모두 "필수"로 표기됨
 - 하지만 실제로는:
-  - CLI 프로젝트에는 @UI가 없음
-  - 순수 함수형 모듈에는 @DATA가 없을 수 있음
-  - 배치 잡에는 @API가 없을 수 있음
+  - CLI 프로젝트에는 @CODE가 없음
+  - 순수 함수형 모듈에는 @CODE가 없을 수 있음
+  - 배치 잡에는 @CODE가 없을 수 있음
 
 **모순:**
 ```typescript
@@ -238,20 +238,20 @@ class AuthService {  // 이게 @FEATURE인가? @TASK인가?
 ### ⚠️ 문제점 8: 기술 스택 중심적
 
 **현상:**
-- @API, @UI, @DATA는 기술 스택 레이어를 표현
+- @CODE, @CODE, @CODE는 기술 스택 레이어를 표현
 - 비즈니스 도메인 관점이 없음
 
 **누락된 중요 레이어:**
-- **@DOMAIN**: 도메인 로직 (핵심 비즈니스 규칙)
-- **@INFRA**: 인프라 레이어 (DB, 캐시, 메시징)
-- **@UTIL**: 유틸리티 (헬퍼, 공통 함수)
-- **@CONFIG**: 설정 관리
-- **@SECURITY**: 보안 레이어
+- **DOMAIN**: 도메인 로직 (핵심 비즈니스 규칙)
+- **INFRA**: 인프라 레이어 (DB, 캐시, 메시징)
+- **UTIL**: 유틸리티 (헬퍼, 공통 함수)
+- **CONFIG**: 설정 관리
+- **@CODE**: 보안 레이어
 
 **DDD 관점에서 보면:**
 ```
-현재: @API, @UI, @DATA (기술 관점)
-필요: @DOMAIN, @APPLICATION, @INFRASTRUCTURE (DDD 레이어)
+현재: @CODE, @CODE, @CODE (기술 관점)
+필요: DOMAIN, APPLICATION, INFRASTRUCTURE (DDD 레이어)
 ```
 
 ---
@@ -289,15 +289,15 @@ class AuthService {  // 이게 @FEATURE인가? @TASK인가?
 - 실제 개발 Lifecycle에는 더 많은 단계가 있음
 
 **누락된 단계:**
-- **@REVIEW**: 코드 리뷰
-- **@APPROVED**: 승인 완료
-- **@DEPLOYED**: 배포 완료
-- **@VERIFIED**: 프로덕션 검증 완료
+- **REVIEW**: 코드 리뷰
+- **APPROVED**: 승인 완료
+- **DEPLOYED**: 배포 완료
+- **VERIFIED**: 프로덕션 검증 완료
 
 **실무에서:**
 ```
 실제: SPEC → 구현 → 테스트 → 리뷰 → 승인 → 배포 → 검증
-현재: @REQ → @DESIGN → @TASK → @TEST (끝?)
+현재: @SPEC → @TEST → @CODE → @DOC (끝?)
 ```
 
 ---
@@ -370,7 +370,7 @@ TAG 개수: 8개
 → 개발자는 복사만 하면 됨
 
 # 코드에서 자동 완성
-// @FEAT<TAB>
+// FEAT<TAB>
 → TAG BLOCK 자동 완성 (IDE 플러그인)
 ```
 
@@ -382,16 +382,16 @@ TAG 개수: 8개
 
 | 중복 쌍 | 역할 | 차이점 | 필요성 |
 |---------|------|--------|--------|
-| @REQ vs SPEC 문서 | 요구사항 | SPEC은 상세, TAG는 참조 | ⚠️ 중복 |
-| @DESIGN vs 설계 문서 | 설계 | 설계는 문서, TAG는 참조 | ⚠️ 중복 |
-| @FEATURE vs @TASK | 구현 | 불명확 | ❌ 불필요 중복 |
+| @SPEC vs SPEC 문서 | 요구사항 | SPEC은 상세, TAG는 참조 | ⚠️ 중복 |
+| @SPEC vs 설계 문서 | 설계 | 설계는 문서, TAG는 참조 | ⚠️ 중복 |
+| @CODE vs @CODE | 구현 | 불명확 | ❌ 불필요 중복 |
 | @TEST vs 테스트 파일 | 테스트 | 테스트는 코드, TAG는 참조 | ✅ 필요 |
 
-### ❌ 문제점 14: @REQ, @DESIGN의 불필요한 중복
+### ❌ 문제점 14: @SPEC, @SPEC의 불필요한 중복
 
 **현상:**
-- @REQ는 SPEC 문서에 이미 존재
-- @DESIGN도 별도 설계 문서가 있을 수 있음
+- @SPEC는 SPEC 문서에 이미 존재
+- @SPEC도 별도 설계 문서가 있을 수 있음
 - TAG로 또 표현하는 것이 중복
 
 **제안:**
@@ -400,7 +400,7 @@ TAG 개수: 8개
 // @CODE:AUTH-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
 
 // 개선 (SPEC 참조로 단순화)
-// @IMPL:AUTH-001 | SPEC: SPEC-AUTH-001 | TEST: test_auth_001.py
+// IMPL:AUTH-001 | SPEC: SPEC-AUTH-001 | TEST: test_auth_001.py
 ```
 
 ### ⚠️ 문제점 15: 구 TAG 체계가 너무 많음
@@ -425,13 +425,13 @@ v3.0: 확장 TAG 체계 (너무 복잡) → 단순화 필요
 
 | TAG | 용도 | 필요성 | 우선순위 |
 |-----|------|--------|----------|
-| **@REFACTOR** | 리팩토링 작업 추적 | TDD의 핵심 단계 | 🔴 높음 |
-| **@BUG** | 버그 수정 추적 | 결함 이력 관리 | 🔴 높음 |
-| **@PERF** | 성능 최적화 추적 | 품질 속성 | 🟡 중간 |
-| **@SECURITY** | 보안 이슈 추적 | TRUST-S 원칙 | 🔴 높음 |
-| **@DEBT** | 기술 부채 추적 | 리팩토링 우선순위 | 🟡 중간 |
-| **@DEPRECATED** | 폐기 예정 기능 | 호환성 관리 | 🟢 낮음 |
-| **@EXPERIMENT** | 실험적 기능 | A/B 테스트 | 🟢 낮음 |
+| **REFACTOR** | 리팩토링 작업 추적 | TDD의 핵심 단계 | 🔴 높음 |
+| **BUG** | 버그 수정 추적 | 결함 이력 관리 | 🔴 높음 |
+| **@CODE** | 성능 최적화 추적 | 품질 속성 | 🟡 중간 |
+| **@CODE** | 보안 이슈 추적 | TRUST-S 원칙 | 🔴 높음 |
+| **@CODE** | 기술 부채 추적 | 리팩토링 우선순위 | 🟡 중간 |
+| **@DOC** | 폐기 예정 기능 | 호환성 관리 | 🟢 낮음 |
+| **EXPERIMENT** | 실험적 기능 | A/B 테스트 | 🟢 낮음 |
 
 ### ❌ 문제점 16: REFACTOR TAG 누락 (치명적)
 
@@ -443,13 +443,13 @@ v3.0: 확장 TAG 체계 (너무 복잡) → 단순화 필요
 **실제 필요 사례:**
 ```typescript
 // 버전 1 (GREEN phase)
-// @GREEN:AUTH-001: 최소 구현
+// GREEN:AUTH-001: 최소 구현
 function authenticate(user, pass) {
   return user === "admin" && pass === "1234";
 }
 
 // 버전 2 (REFACTOR phase)
-// @REFACTOR:AUTH-001: bcrypt 적용, 타입 안전성 추가
+// REFACTOR:AUTH-001: bcrypt 적용, 타입 안전성 추가
 async function authenticate(
   username: string,
   password: string
@@ -464,7 +464,7 @@ async function authenticate(
 ### ❌ 문제점 17: BUG, SECURITY TAG 누락
 
 **영향:**
-- 버그 수정이 일반 @TASK로 기록됨
+- 버그 수정이 일반 @CODE로 기록됨
 - 보안 패치와 일반 기능 구분 안 됨
 - TRUST-S (Secured) 원칙 추적 불가
 
@@ -474,7 +474,7 @@ async function authenticate(
 // @CODE:AUTH-002: SQL Injection 방어 추가
 // @CODE:AUTH-001: 토큰 검증 로직 오류 수정
 
-// 현재는 이것들이 모두 @TASK로 통합되어 구분 불가
+// 현재는 이것들이 모두 @CODE로 통합되어 구분 불가
 ```
 
 ---
@@ -510,10 +510,10 @@ export class AuthService {
 
 ```
 Primary:
-@SPEC:ID → @RED:ID → @GREEN:ID → @REFACTOR:ID
+@SPEC:ID → RED:ID → GREEN:ID → REFACTOR:ID
 
 EARS (SPEC 내부):
-@UBIQ:ID, @EVENT:ID, @STATE:ID, @OPT:ID, @CONST:ID
+UBIQ:ID, EVENT:ID, STATE:ID, OPT:ID, CONST:ID
 
 Quality:
 @CODE:ID, @CODE:ID, @CODE:ID, @CODE:ID
@@ -532,20 +532,20 @@ Quality:
 **변경점:**
 ```
 Before:
-@REQ → @DESIGN → @TASK → @TEST
-@FEATURE, @API, @UI, @DATA
+@SPEC → @TEST → @CODE → @DOC
+@CODE 서브카테고리 (API, UI, DATA 등)
 
 After:
-@SPEC → @TEST → @IMPL → @REFACTOR
-@API, @UI, @DATA, @DOMAIN (선택적)
+@SPEC → @TEST → IMPL → REFACTOR
+@CODE, @CODE, @CODE, DOMAIN (선택적)
 ```
 
 **개선 사항:**
-1. @REQ → @SPEC (SPEC 문서 명시)
-2. @TASK → @IMPL (구현 명확화)
-3. @REFACTOR 추가 (TDD 완전성)
-4. @FEATURE 제거 (중복 제거)
-5. @DESIGN 통합 (@SPEC에 포함)
+1. @SPEC → @SPEC (SPEC 문서 명시)
+2. @CODE → IMPL (구현 명확화)
+3. REFACTOR 추가 (TDD 완전성)
+4. @CODE 제거 (중복 제거)
+5. @SPEC 통합 (@SPEC에 포함)
 6. Implementation을 선택적으로 변경
 
 ---
@@ -554,11 +554,11 @@ After:
 
 ### 우선순위 1 (즉시 적용) 🔴
 
-1. **@REFACTOR TAG 추가**
+1. **REFACTOR TAG 추가**
    - TDD 사이클 완전성 확보
    - 품질 개선 이력 추적
 
-2. **@FEATURE 제거 또는 @TASK와 통합**
+2. **@CODE 제거 또는 @CODE와 통합**
    - 중복 제거
    - 역할 명확화
 
@@ -575,7 +575,7 @@ After:
    - SPEC에서 TAG BLOCK 템플릿 자동 생성
    - IDE 플러그인 개발
 
-6. **@BUG, @SECURITY TAG 추가**
+6. **BUG, @CODE TAG 추가**
    - 결함 추적
    - TRUST-S 원칙 준수
 
@@ -586,11 +586,11 @@ After:
    - 근본적 단순화
 
 8. **EARS 구문 TAG화**
-   - @UBIQ, @EVENT, @STATE 등
+   - UBIQ, EVENT, STATE 등
    - 요구사항 유형 명확화
 
 9. **Lifecycle TAG 추가**
-   - @REVIEW, @APPROVED, @DEPLOYED
+   - REVIEW, APPROVED, DEPLOYED
    - 전체 개발 과정 추적
 
 ---
@@ -615,16 +615,16 @@ After:
 
 1. **TDD 사이클 불완전**: REFACTOR 단계 누락
 2. **EARS 미반영**: 요구사항 유형 구분 불가
-3. **중복성**: @FEATURE vs @TASK, @REQ vs SPEC
+3. **중복성**: @CODE vs @CODE, @SPEC vs SPEC
 4. **복잡성**: 4개 TAG가 너무 많고 관계 복잡
 5. **실무 사용성**: TAG BLOCK 길고 수동 관리 어려움
-6. **누락**: @REFACTOR, @BUG, @SECURITY 등
+6. **누락**: REFACTOR, BUG, @CODE 등
 
 ### 권장 조치
 
 **즉시 조치 (v0.0.3):**
-- @REFACTOR TAG 추가
-- @FEATURE 제거 또는 @IMPL로 통합
+- REFACTOR TAG 추가
+- @CODE 제거 또는 IMPL로 통합
 - @CODE 서브카테고리를 선택적으로 변경
 
 **단기 조치 (v0.1.0):**

@@ -25,6 +25,8 @@ describe('ResultFormatter', () => {
           name: 'Node.js',
           category: 'runtime',
           minVersion: '18.0.0',
+          installCommands: { darwin: 'brew install node' },
+          checkCommand: 'node --version',
         },
         result: {
           isInstalled: true,
@@ -46,6 +48,8 @@ describe('ResultFormatter', () => {
           name: 'Python',
           category: 'runtime',
           minVersion: '3.10.0',
+          installCommands: { darwin: 'brew install python' },
+          checkCommand: 'python --version',
         },
         result: {
           isInstalled: true,
@@ -67,6 +71,8 @@ describe('ResultFormatter', () => {
         requirement: {
           name: 'Git',
           category: 'development',
+          installCommands: { darwin: 'brew install git' },
+          checkCommand: 'git --version',
         },
         result: {
           isInstalled: false,
@@ -87,6 +93,8 @@ describe('ResultFormatter', () => {
         requirement: {
           name: 'Tool',
           category: 'runtime',
+          installCommands: { darwin: 'brew install tool' },
+          checkCommand: 'tool --version',
         },
         result: {
           isInstalled: true,
@@ -106,6 +114,8 @@ describe('ResultFormatter', () => {
         requirement: {
           name: 'Git',
           category: 'development',
+          installCommands: { darwin: 'brew install git' },
+          checkCommand: 'git --version',
         },
         result: {
           isInstalled: false,
@@ -128,6 +138,8 @@ describe('ResultFormatter', () => {
         requirement: {
           name: 'CustomTool',
           category: 'optional',
+          installCommands: {},
+          checkCommand: 'customtool --version',
         },
         result: {
           isInstalled: false,
@@ -200,7 +212,12 @@ describe('SummaryReporter', () => {
       const results = {
         runtime: [
           {
-            requirement: { name: 'Node.js', category: 'runtime' as const },
+            requirement: {
+              name: 'Node.js',
+              category: 'runtime' as const,
+              installCommands: { darwin: 'brew install node' },
+              checkCommand: 'node --version',
+            },
             result: { isInstalled: true, versionSatisfied: true },
           },
         ],

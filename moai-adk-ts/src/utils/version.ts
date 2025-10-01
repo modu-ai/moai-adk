@@ -167,7 +167,7 @@ export async function checkLatestVersion(
  * @param v1 - First version
  * @param v2 - Second version
  * @returns -1 if v1 < v2, 0 if v1 === v2, 1 if v1 > v2
- * @tags @UTIL:VERSION-COMPARE-001
+ * @tags UTIL:VERSION-COMPARE-001
  */
 function compareVersions(v1: string, v2: string): number {
   const parts1 = v1.split('.').map(Number);

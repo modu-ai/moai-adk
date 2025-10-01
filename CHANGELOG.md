@@ -15,8 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ##### 1. TAG 체계 단순화 (50% 감소)
 - **Before ()**: 구 TAG 체계 TAG 체계
-  - Primary: `@REQ`, `@DESIGN`, `@TASK`, `@TEST`
-  - Implementation: `@FEATURE`, `@API`, `@UI`, `@DATA`
+  - Primary: `@SPEC`, `@SPEC`, `@CODE`, `@TEST`
+  - Implementation: `@CODE`, `@CODE`, `@CODE`, `@CODE`
 - **After ()**: TAG 체계
   - `@SPEC:ID` → `@TEST:ID` → `@CODE:ID` → `@DOC:ID`
 
@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **REFACTOR Phase**: `@CODE:ID` 개선 + `@DOC:ID` 문서화
 
 ##### 3. 구현 세부사항 주석 레벨화
-- : 파일 레벨 TAG (@FEATURE, @API, @UI, @DATA)
+- : 파일 레벨 TAG (@CODE, @CODE, @CODE, @CODE)
 - : 주석 레벨 서브카테고리
   - `@CODE:ID:API` - REST API, GraphQL
   - `@CODE:ID:UI` - 컴포넌트, 화면

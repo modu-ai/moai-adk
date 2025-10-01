@@ -16,7 +16,7 @@ import type { InstallationConfig } from './types';
 
 /**
  * Default gitignore template for team mode
- * @tags @CONST:GITIGNORE-TEMPLATE-001
+ * @tags CONST:GITIGNORE-TEMPLATE-001
  */
 const DEFAULT_GITIGNORE = `# MoAI-ADK Generated .gitignore
 
@@ -95,7 +95,7 @@ export class ResourceInstaller {
     } else {
       logger.warn('Claude templates not found, creating minimal structure', {
         templatesPath: claudeTemplatesPath,
-        tag: '@WARN:CLAUDE-TEMPLATES-001',
+        tag: 'WARN:CLAUDE-TEMPLATES-001',
       });
       await this.fallbackBuilder.createMinimalClaudeStructure(
         claudeDir,
@@ -130,7 +130,7 @@ export class ResourceInstaller {
     } else {
       logger.warn('MoAI templates not found, creating minimal structure', {
         templatesPath: moaiTemplatesPath,
-        tag: '@WARN:MOAI-TEMPLATES-001',
+        tag: 'WARN:MOAI-TEMPLATES-001',
       });
       await this.fallbackBuilder.createMinimalMoaiStructure(
         moaiDir,
@@ -141,11 +141,11 @@ export class ResourceInstaller {
     try {
       await this.fallbackBuilder.initializeTagSystem(moaiDir, config);
       logger.debug('JSON-based TAG system initialized successfully', {
-        tag: '@SUCCESS:TAG-INIT-001',
+        tag: 'SUCCESS:TAG-INIT-001',
       });
     } catch (error) {
       logger.warn(`Failed to initialize TAG system: ${error}`, {
-        tag: '@WARN:TAG-INIT-001',
+        tag: 'WARN:TAG-INIT-001',
       });
     }
 
@@ -180,7 +180,7 @@ export class ResourceInstaller {
       } else {
         logger.warn('CLAUDE.md template not found, using fallback', {
           templatePath,
-          tag: '@WARN:CLAUDE-TEMPLATE-001',
+          tag: 'WARN:CLAUDE-TEMPLATE-001',
         });
         memoryContent =
           this.fallbackBuilder.createFallbackMemoryContent(config);
@@ -191,7 +191,7 @@ export class ResourceInstaller {
     } catch (error) {
       logger.error('Failed to create project memory', {
         error,
-        tag: '@ERROR:MEMORY-001',
+        tag: 'ERROR:MEMORY-001',
       });
       return null;
     }
@@ -235,7 +235,7 @@ export class ResourceInstaller {
     } catch (error) {
       logger.error('Failed to create gitignore', {
         error,
-        tag: '@ERROR:GITIGNORE-001',
+        tag: 'ERROR:GITIGNORE-001',
       });
       return null;
     }

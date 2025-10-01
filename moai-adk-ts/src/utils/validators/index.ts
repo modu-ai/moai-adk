@@ -1,5 +1,5 @@
-// @CODE:VALIDATOR-001 | Chain: @REQ:QUAL-001 -> @DESIGN:QUAL-001 -> @TASK:QUAL-001 -> @TEST:UTIL-006
-// Related: @CODE:VALID-002:API, @SECURITY:INPUT-VALIDATION-001
+// @CODE:VALIDATOR-001 | Chain: @SPEC:QUAL-001 -> @SPEC:QUAL-001 -> @CODE:QUAL-001 -> @TEST:UTIL-006
+// Related: @CODE:VALID-002:API, @CODE:INPUT-VALIDATION-001
 
 /**
  * @file Input validation facade (refactored from monolithic input-validator.ts)
@@ -27,7 +27,7 @@ import type { ValidationResult } from './types';
 
 /**
  * Input validator class for CLI parameters and user inputs
- * @tags @SECURITY:INPUT-VALIDATION-001
+ * @tags @CODE:INPUT-VALIDATION-001
  */
 export class InputValidator {
   /**

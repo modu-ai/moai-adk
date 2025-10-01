@@ -55,7 +55,7 @@ Claude Code only = 불확실한 결과
 
 **3. 완전한 추적성**
 ```
-@REQ → @DESIGN → @TASK → @TEST
+@SPEC → @TEST → @CODE → @DOC
 요구사항부터 코드까지 연결
 ```
 
@@ -325,11 +325,11 @@ rg "@TEST:" -n                  # 모든 테스트
 
 **TAG 체계:**
 
-**필수 TAG 흐름 (4 Core)** - 필수:
-- @REQ → @DESIGN → @TASK → @TEST
+**TAG 흐름** - 필수:
+- @SPEC → @TEST → @CODE → @DOC
 
-**Implementation (4 Core)** - 구현 세부사항:
-- @FEATURE → @API → @UI → @DATA
+@CODE 서브카테고리 (선택적):
+- @CODE → @CODE → @CODE → @CODE
 
 **TAG 체인 예시:**
 

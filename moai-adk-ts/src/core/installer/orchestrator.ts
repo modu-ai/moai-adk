@@ -52,7 +52,7 @@ export class InstallationOrchestrator {
     logger.debug('InstallationOrchestrator initialized', {
       projectPath: config.projectPath,
       mode: config.mode,
-      tag: '@INIT:ORCHESTRATOR-001',
+      tag: 'INIT:ORCHESTRATOR-001',
     });
   }
 
@@ -119,7 +119,7 @@ export class InstallationOrchestrator {
 
       logger.error('Installation failed', {
         error: installError.message,
-        tag: '@ERROR:INSTALL-FAILED-001',
+        tag: 'ERROR:INSTALL-FAILED-001',
       });
 
       // Build failure result

@@ -120,8 +120,8 @@ class AuthService {
 
 **TAG 체계**:
 
-- **필수 TAG 흐름 (4 Core)**: @REQ → @DESIGN → @TASK → @TEST (필수)
-- **Implementation (4 Core)**: @FEATURE, @API, @UI, @DATA (필수)
+- **TAG 흐름**: @SPEC → @TEST → @CODE → @DOC (필수)
+- **@CODE 서브카테고리**: @CODE 서브카테고리 (API, UI, DATA 등) (필수)
 
 **CODE-FIRST 철학**:
 - TAG의 진실은 오직 코드 자체에만 존재

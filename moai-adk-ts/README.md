@@ -151,14 +151,14 @@ The @TAG system provides complete traceability from requirements to implementati
 
 ### Core Tags
 
-- `@REQ`: Requirements definition
-- `@DESIGN`: Architecture design
-- `@TASK`: Implementation tasks
+- `@SPEC`: Requirements definition
+- `@SPEC`: Architecture design
+- `@CODE`: Implementation tasks
 - `@TEST`: Test verification
-- `@FEATURE`: Business features
-- `@API`: Interface definitions
-- `@SEC`: Security requirements
-- `@DOCS`: Documentation
+- `@CODE`: Business features
+- `@CODE`: Interface definitions
+- `@CODE`: Security requirements
+- `@DOC`: Documentation
 
 ### Usage Example
 

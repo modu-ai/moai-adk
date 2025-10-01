@@ -13,7 +13,7 @@ describe('@TEST:REFACTOR-003: TAG Patterns', () => {
     test('should match valid TAG block', () => {
       const content = `/**
  * @DOC:FEATURE:AUTH-001
- * @CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001
+ * CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001
  * @IMMUTABLE
  */`;
 
@@ -44,7 +44,7 @@ describe('@TEST:REFACTOR-003: TAG Patterns', () => {
     });
 
     test('should not match invalid TAG format', () => {
-      const line = ' * @TAG-INVALID:TEST';
+      const line = ' * TAG-INVALID:TEST';
       const match = CODE_FIRST_PATTERNS.MAIN_TAG.exec(line);
 
       expect(match).toBeNull();
@@ -53,7 +53,7 @@ describe('@TEST:REFACTOR-003: TAG Patterns', () => {
 
   describe('CHAIN_LINE pattern', () => {
     test('should match valid chain line', () => {
-      const line = ' * @CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001 -> TASK:AUTH-001';
+      const line = ' * CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001 -> TASK:AUTH-001';
       const match = CODE_FIRST_PATTERNS.CHAIN_LINE.exec(line);
 
       expect(match).not.toBeNull();
@@ -108,7 +108,7 @@ describe('@TEST:REFACTOR-003: TAG Patterns', () => {
 
   describe('STATUS_LINE pattern', () => {
     test('should match valid status line', () => {
-      const line = ' * @STATUS: active';
+      const line = ' * STATUS: active';
       const match = CODE_FIRST_PATTERNS.STATUS_LINE.exec(line);
 
       expect(match).not.toBeNull();
@@ -118,7 +118,7 @@ describe('@TEST:REFACTOR-003: TAG Patterns', () => {
 
   describe('CREATED_LINE pattern', () => {
     test('should match valid date format', () => {
-      const line = ' * @CREATED: 2025-01-15';
+      const line = ' * CREATED: 2025-01-15';
       const match = CODE_FIRST_PATTERNS.CREATED_LINE.exec(line);
 
       expect(match).not.toBeNull();
@@ -126,7 +126,7 @@ describe('@TEST:REFACTOR-003: TAG Patterns', () => {
     });
 
     test('should not match invalid date format', () => {
-      const line = ' * @CREATED: 01/15/2025';
+      const line = ' * CREATED: 01/15/2025';
       const match = CODE_FIRST_PATTERNS.CREATED_LINE.exec(line);
 
       expect(match).toBeNull();

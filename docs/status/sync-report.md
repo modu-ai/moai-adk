@@ -28,9 +28,9 @@
    - 추적성 체인 예시 추가
 
 4. **examples/specs/SPEC-002-quality-system.md**
-   - @REQ → @SPEC 변경
-   - @DESIGN → @SPEC 통합
-   - @TASK → @SPEC 통합
+   - @SPEC → @SPEC 변경
+   - @SPEC → @SPEC 통합
+   - @CODE → @SPEC 통합
    - @TEST TAG 유지
    - 추적성 체인  추가
 
@@ -70,7 +70,7 @@
 - `@CODE:*` - 작업 ( legacy)
 - `@CODE:*` - 기능 ( legacy)
 - `@CODE:*` - API ( legacy)
-- 기타: @UI, @DATA, @PERF, @SEC, @DOCS, @OPS
+- 기타: @CODE 서브카테고리 (API, UI, DATA 등), @DOC, @DOC
 
 **주요 위치**:
 - `docs/guide/workflow.md` - 79개 (예시 코드에  TAG 포함)

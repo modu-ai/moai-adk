@@ -280,11 +280,11 @@ impl AuthenticationService {
 
 ### 형식
 ```
-@TYPE:DOMAIN-###
+TYPE:DOMAIN-###
 ```
 
 ### 구성 요소
-- **@TYPE**: TAG 타입 (SPEC, TEST, CODE, DOC)
+- **TYPE**: TAG 타입 (SPEC, TEST, CODE, DOC)
 - **DOMAIN**: 도메인 이름 (대문자, 3-10자)
 - **###**: 일련번호 (001-999)
 
@@ -301,7 +301,7 @@ impl AuthenticationService {
 
 ### 나쁜 예시
 ```
-@AUTH-001          // ❌ TYPE 누락
+AUTH-001          // ❌ TYPE 누락
 @CODE:auth-001     // ❌ 소문자 도메인
 @CODE:A-001        // ❌ 도메인 너무 짧음
 @CODE:AUTHENTICATION-SERVICE-001  // ❌ 도메인 너무 김
@@ -579,7 +579,7 @@ graph TD
 - 학습 곡선: 급격 → 완만
 
 ### TDD 정렬 (+100%)
-- : @REQ → @DESIGN → @TASK → @TEST (TDD와 불일치)
+- : @SPEC → @TEST → @CODE → @DOC (TDD와 불일치)
 - : @SPEC → @TEST → @CODE (TDD와 완벽 일치)
 
 ### 실무 사용성 (+40%)

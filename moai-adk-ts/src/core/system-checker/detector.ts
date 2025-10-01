@@ -150,7 +150,7 @@ export class SystemDetector {
    * Extract version from command output
    * @param output - Command output string
    * @returns Extracted version or undefined
-   * @tags @UTIL:EXTRACT-VERSION-001
+   * @tags UTIL:EXTRACT-VERSION-001
    */
   private extractVersion(output: string): string | undefined {
     // Common version patterns

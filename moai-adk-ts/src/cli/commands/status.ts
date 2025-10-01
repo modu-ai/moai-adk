@@ -240,7 +240,7 @@ export class StatusCommand {
    * Count files in a directory recursively
    * @param dirPath - Directory path
    * @returns Number of files
-   * @tags @UTIL:COUNT-FILES-DIRECTORY-001
+   * @tags UTIL:COUNT-FILES-DIRECTORY-001
    */
   private async countFilesInDirectory(dirPath: string): Promise<number> {
     try {

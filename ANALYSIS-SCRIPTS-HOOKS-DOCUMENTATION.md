@@ -29,9 +29,9 @@
 |------|--------|--------------|------|-------------|
 | 1 | `debug-analyzer.ts` | ~900 | ✅ | ❌ 미문서화 |
 | 2 | `detect-language.ts` | ~300 | ✅ | ❌ 미문서화 |
-| 3 | `doc-syncer.ts` | ~550 | ✅ @FEATURE-DOC-SYNCER-001 | ✅ 부분 문서화 |
+| 3 | `doc-syncer.ts` | ~550 | ✅ CODE-DOC-SYNCER-001 | ✅ 부분 문서화 |
 | 4 | `project-init.ts` | ~150 | ✅ | ❌ 미문서화 |
-| 5 | `spec-builder.ts` | ~350 | ✅ @FEATURE-SPEC-BUILDER-001 | ✅ 부분 문서화 |
+| 5 | `spec-builder.ts` | ~350 | ✅ CODE-SPEC-BUILDER-001 | ✅ 부분 문서화 |
 | 6 | `spec-validator.ts` | ~400 | ✅ | ❌ 미문서화 |
 | 7 | `tag-updater.ts` | ~650 | ✅ @CODE:TAG-UPDATER-001 | ❌ 미문서화 |
 | 8 | `tdd-runner.ts` | ~450 | ✅ | ❌ 미문서화 |
@@ -84,7 +84,7 @@
 
 #### 3. `doc-syncer.ts` (~550 줄)
 **용도**: Living Document 동기화
-**@TAG**: ✅ @FEATURE-DOC-SYNCER-001
+**@TAG**: ✅ CODE-DOC-SYNCER-001
 **특징**:
 - README 자동 갱신
 - API 문서 생성
@@ -101,7 +101,7 @@
 
 #### 5. `spec-builder.ts` (~350 줄)
 **용도**: SPEC 문서 템플릿 생성
-**@TAG**: ✅ @FEATURE-SPEC-BUILDER-001
+**@TAG**: ✅ CODE-SPEC-BUILDER-001
 **인터페이스**:
 ```typescript
 interface SpecMetadata {

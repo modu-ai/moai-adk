@@ -100,7 +100,7 @@ describe('AuthService - SPEC-AUTH-001', () => {
     expect(result.error).toBe('Invalid credentials');
   });
 
-  // @CONSTRAINT:AUTH-001: 토큰 만료시간 검증
+  // CONSTRAINT:AUTH-001: 토큰 만료시간 검증
   test('should generate token with 15 minutes expiry', async () => {
     const result = await service.authenticate(
       'user@example.com',
@@ -288,7 +288,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class UserServiceTest {
-    @Test
+    Test
     void shouldCreateUser() {
         UserService service = new UserService();
         User user = service.create("test@example.com");
@@ -707,12 +707,12 @@ CODE-FIRST TAG 시스템으로 요구사항부터 코드까지 완전한 연결�
 
 **TAG 체인 (4 Core)**: 요구사항부터 검증까지
 ```
-@REQ → @DESIGN → @TASK → @TEST
+@SPEC → @TEST → @CODE → @DOC
 ```
 
-**Implementation (4 Core)**: 구현 세부 사항
+**@CODE 서브카테고리**: 구현 세부 사항
 ```
-@FEATURE → @API → @UI → @DATA
+@CODE → @CODE → @CODE → @CODE
 ```
 
 ### SPEC-코드 추적성
@@ -747,10 +747,10 @@ describe('AuthService', () => {
 ### 3단계 워크플로우 추적
 
 ```
-/moai:1-spec  → @REQ, @DESIGN, @TASK 생성
+/moai:1-spec  → @SPEC, @SPEC, @CODE 생성
              → SPEC 문서에 TAG BLOCK
 
-/moai:2-build → @TEST, @FEATURE, @API, @UI, @DATA 적용
+/moai:2-build → @TEST, @CODE 서브카테고리 (API, UI, DATA 등) 적용
              → 코드에 TAG BLOCK 삽입
 
 /moai:3-sync  → 코드 직접 스캔 (rg '@TAG' -n)
@@ -790,7 +790,7 @@ rg "@DOC:[A-Z]+-\d+" -n . | @agent-tag-agent "고아 TAG 감지"
 
 ## 불완전한 체인
 ⚠️ NOTIFICATION-004: @TEST 누락
-⚠️ REPORT-005: @DESIGN 누락
+⚠️ REPORT-005: @SPEC 누락
 
 ## 권장 사항
 - NOTIFICATION-004: 테스트 추가 필요

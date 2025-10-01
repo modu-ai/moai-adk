@@ -1535,14 +1535,14 @@ class AuthServiceTest {
     private AuthService authService;
     private UserRepository userRepository;
 
-    @BeforeEach
+    BeforeEach
     void setUp() {
         userRepository = mock(UserRepository.class);
         authService = new AuthService(userRepository);
     }
 
-    @Test
-    @DisplayName("@TEST:AUTH-001: 유효한 자격증명으로 로그인 시 JWT 토큰 반환")
+    Test
+    DisplayName("@TEST:AUTH-001: 유효한 자격증명으로 로그인 시 JWT 토큰 반환")
     void testAuthenticateValidUser() {
         // Given: 유효한 사용자
         User user = new User("user@example.com", "Password123!");
@@ -1559,8 +1559,8 @@ class AuthServiceTest {
         assertEquals(3, result.getAccessToken().split("\\.").length); // JWT 형식
     }
 
-    @Test
-    @DisplayName("@TEST:AUTH-001: 잘못된 비밀번호로 로그인 시 예외 발생")
+    Test
+    DisplayName("@TEST:AUTH-001: 잘못된 비밀번호로 로그인 시 예외 발생")
     void testAuthenticateInvalidPassword() {
         // Given: 사용자 존재
         User user = new User("user@example.com", "Password123!");
@@ -1573,8 +1573,8 @@ class AuthServiceTest {
         });
     }
 
-    @Test
-    @DisplayName("@TEST:AUTH-001: 존재하지 않는 사용자로 로그인 시 예외 발생")
+    Test
+    DisplayName("@TEST:AUTH-001: 존재하지 않는 사용자로 로그인 시 예외 발생")
     void testAuthenticateNonexistentUser() {
         // Given: 사용자 미존재
         when(userRepository.findByEmail("nonexistent@example.com"))
@@ -1586,8 +1586,8 @@ class AuthServiceTest {
         });
     }
 
-    @Test
-    @DisplayName("@TEST:AUTH-001: 3회 연속 실패 후 계정 잠금")
+    Test
+    DisplayName("@TEST:AUTH-001: 3회 연속 실패 후 계정 잠금")
     void testLockAccountAfterThreeFailedAttempts() {
         // Given: 사용자 존재
         User user = new User("user@example.com", "Password123!");
@@ -1607,8 +1607,8 @@ class AuthServiceTest {
         });
     }
 
-    @Test
-    @DisplayName("@TEST:AUTH-001: 이메일 형식 검증")
+    Test
+    DisplayName("@TEST:AUTH-001: 이메일 형식 검증")
     void testValidateEmailFormat() {
         // When & Then: 잘못된 이메일 형식으로 로그인 시 예외
         assertThrows(ValidationException.class, () -> {
@@ -1616,8 +1616,8 @@ class AuthServiceTest {
         });
     }
 
-    @Test
-    @DisplayName("@TEST:AUTH-001: 비밀번호 길이 검증")
+    Test
+    DisplayName("@TEST:AUTH-001: 비밀번호 길이 검증")
     void testValidatePasswordLength() {
         // When & Then: 짧은 비밀번호로 로그인 시 예외
         assertThrows(ValidationException.class, () -> {
@@ -1625,8 +1625,8 @@ class AuthServiceTest {
         });
     }
 
-    @Test
-    @DisplayName("@TEST:AUTH-001: 로그아웃 성공")
+    Test
+    DisplayName("@TEST:AUTH-001: 로그아웃 성공")
     void testLogoutSuccessfully() {
         // Given: 로그인된 사용자
         User user = new User("user@example.com", "Password123!");
@@ -1644,8 +1644,8 @@ class AuthServiceTest {
         });
     }
 
-    @Test
-    @DisplayName("@TEST:AUTH-001: 리프레시 토큰으로 액세스 토큰 갱신")
+    Test
+    DisplayName("@TEST:AUTH-001: 리프레시 토큰으로 액세스 토큰 갱신")
     void testRefreshAccessToken() {
         // Given: 로그인된 사용자
         User user = new User("user@example.com", "Password123!");
@@ -1662,8 +1662,8 @@ class AuthServiceTest {
         assertEquals(900, newResult.getExpiresIn());
     }
 
-    @Test
-    @DisplayName("@TEST:AUTH-001: 만료된 리프레시 토큰으로 갱신 시 실패")
+    Test
+    DisplayName("@TEST:AUTH-001: 만료된 리프레시 토큰으로 갱신 시 실패")
     void testRefreshWithExpiredToken() {
         // Given: 만료된 토큰
         String expiredToken = "expired.refresh.token";
@@ -1696,7 +1696,7 @@ import java.time.*;
 /**
  * @CODE:AUTH-001: 사용자 인증 서비스
  */
-@Service
+Service
 public class AuthService {
     private static final int ACCESS_TOKEN_EXPIRY = 900; // 15분
     private static final int REFRESH_TOKEN_EXPIRY = 604800; // 7일

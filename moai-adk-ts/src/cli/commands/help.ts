@@ -55,7 +55,7 @@ export class HelpCommand {
 
   /**
    * Initialize command help information
-   * @tags @UTIL:INIT-COMMANDS-001
+   * @tags UTIL:INIT-COMMANDS-001
    */
   private initializeCommands(): void {
     this.commands.set('init', {
@@ -201,7 +201,7 @@ export class HelpCommand {
   /**
    * Format general help text
    * @returns Formatted help text
-   * @tags @UTIL:FORMAT-GENERAL-HELP-001
+   * @tags UTIL:FORMAT-GENERAL-HELP-001
    */
   public formatGeneralHelp(): string {
     const banner = `
@@ -233,7 +233,7 @@ Examples:
    * Format help for a specific command
    * @param commandHelp - Command help information
    * @returns Formatted help text
-   * @tags @UTIL:FORMAT-COMMAND-HELP-001
+   * @tags UTIL:FORMAT-COMMAND-HELP-001
    */
   public formatCommandHelp(commandHelp: CommandHelp): string {
     let help = `

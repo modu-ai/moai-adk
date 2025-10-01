@@ -8,7 +8,7 @@ export { ConfigManager } from './config-manager';
 export * from './types';
 
 /**
- * @tags @SUCCESS:CONFIG-MANAGER-TDD-001
+ * @tags SUCCESS:CONFIG-MANAGER-TDD-001
  * TDD Red-Green-Refactor Complete:
  * ✅ RED: 17 failing tests created
  * ✅ GREEN: ConfigManager implementation with 100% test pass

@@ -47,12 +47,12 @@ export class PhaseValidator {
       await fs.promises.unlink(testPath);
 
       logger.debug('System requirements validated', {
-        tag: '@SUCCESS:SYSTEM-VALIDATION-001',
+        tag: 'SUCCESS:SYSTEM-VALIDATION-001',
       });
     } catch (error) {
       logger.error('System validation failed', {
         error,
-        tag: '@ERROR:SYSTEM-VALIDATION-001',
+        tag: 'ERROR:SYSTEM-VALIDATION-001',
       });
       throw error;
     }
@@ -91,12 +91,12 @@ export class PhaseValidator {
       JSON.parse(await fs.promises.readFile(configPath, 'utf-8'));
 
       logger.debug('Installation validation successful', {
-        tag: '@SUCCESS:VALIDATE-INSTALLATION-001',
+        tag: 'SUCCESS:VALIDATE-INSTALLATION-001',
       });
     } catch (error) {
       logger.error('Installation validation failed', {
         error,
-        tag: '@ERROR:VALIDATE-INSTALLATION-001',
+        tag: 'ERROR:VALIDATE-INSTALLATION-001',
       });
       throw error;
     }
@@ -124,7 +124,7 @@ export class PhaseValidator {
         if (!fs.existsSync(parentDir)) {
           logger.warn('Parent directory does not exist', {
             parentDir,
-            tag: '@WARN:PARENT-DIR-MISSING-001',
+            tag: 'WARN:PARENT-DIR-MISSING-001',
           });
           return false;
         }
@@ -134,7 +134,7 @@ export class PhaseValidator {
     } catch (error) {
       logger.error('Directory structure validation failed', {
         error,
-        tag: '@ERROR:DIR-VALIDATION-001',
+        tag: 'ERROR:DIR-VALIDATION-001',
       });
       return false;
     }
@@ -166,7 +166,7 @@ export class PhaseValidator {
     } catch (error) {
       logger.error('Backup validation failed', {
         error,
-        tag: '@ERROR:BACKUP-VALIDATION-001',
+        tag: 'ERROR:BACKUP-VALIDATION-001',
       });
       return false;
     }
@@ -177,7 +177,7 @@ export class PhaseValidator {
    * @param current Current version
    * @param required Required minimum version
    * @returns Whether version is satisfied
-   * @tags @UTIL:VERSION-CHECK-001
+   * @tags UTIL:VERSION-CHECK-001
    */
   private isVersionSatisfied(current: string, required: string): boolean {
     const currentParts = current.split('.').map(Number);

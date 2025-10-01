@@ -35,6 +35,7 @@ vi.mock('fs-extra', () => {
 // Import mocked functions after vi.mock
 import * as fs from 'fs-extra';
 
+// Type-safe mocked functions with proper vitest types
 const mockPathExists = vi.mocked(fs.pathExists);
 const mockEnsureDir = vi.mocked(fs.ensureDir);
 const mockWriteJson = vi.mocked(fs.writeJson);

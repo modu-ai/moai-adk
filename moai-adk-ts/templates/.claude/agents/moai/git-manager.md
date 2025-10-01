@@ -98,7 +98,7 @@ git add . && git commit -m "🟢 GREEN: $구현_설명
 
 git add . && git commit -m "♻️ REFACTOR: $개선_설명
 
-@REFACTOR:$SPEC_ID-CLEAN"
+REFACTOR:$SPEC_ID-CLEAN"
 ```
 
 ### 3. 브랜치 관리

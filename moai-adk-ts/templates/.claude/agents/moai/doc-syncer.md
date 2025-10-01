@@ -46,7 +46,7 @@ rg '@TAG' -n src/ tests/ | wc -l  # TAG 총 개수
 rg '@SPEC:|@SPEC:|@CODE:|@TEST:' -n src/ | head -20  # Primary Chain 확인
 
 # 고아 TAG 및 끊어진 링크 감지
-rg '@DEPRECATED' -n  # 폐기된 TAG
+rg '@DOC' -n  # 폐기된 TAG
 rg 'TODO|FIXME' -n src/ | head -10  # 미완성 작업
 ```
 
@@ -65,7 +65,7 @@ ls -la README.md CHANGELOG.md 2>/dev/null
 - Read 도구로 코드 파일 읽기
 - 함수/클래스 시그니처 추출
 - API 문서 자동 생성/업데이트
-- @API TAG 연결 확인
+- @CODE TAG 연결 확인
 
 **2. README 업데이트**
 - 새로운 기능 섹션 추가
@@ -75,7 +75,7 @@ ls -la README.md CHANGELOG.md 2>/dev/null
 **3. 아키텍처 문서**
 - 구조 변경 사항 반영
 - 모듈 의존성 다이어그램 갱신
-- @STRUCT TAG 추적
+- @DOC TAG 추적
 
 #### 문서 → 코드 동기화
 

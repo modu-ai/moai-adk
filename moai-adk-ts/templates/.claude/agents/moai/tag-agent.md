@@ -90,7 +90,7 @@ model: sonnet
 - 중복 가능성 평가 및 재사용 제안
 
 **새 TAG 생성 (필요 시)**:
-- 형식: `@CATEGORY:DOMAIN-NNN`
+- 형식: `CATEGORY:DOMAIN-NNN`
 - 체인 관계 설정 및 순환 참조 방지
 
 ### 5. 결과 보고
@@ -122,7 +122,7 @@ model: sonnet
 ### TAG 품질 게이트
 
 다음 품질 기준을 검증합니다:
-- 형식 준수: @CATEGORY:DOMAIN-ID 규칙
+- 형식 준수: CATEGORY:DOMAIN-ID 규칙
 - 중복 없음: 고유성 보장
 - 체인 무결성: Primary Chain 완전성
 - 코드 스캔 일관성: 실시간 스캔 결과 신뢰성

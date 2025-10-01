@@ -277,8 +277,8 @@ feature/SPEC-001 → develop → main
 
 | 카테고리 | Core | 설명 | 필수 여부 |
 |----------|------|------|-----------|
-| 필수 TAG 흐름 | 4 Core | 요구 → 설계 → 작업 → 검증 | 필수 |
-| Implementation | 4 Core | Feature/API/UI/Data 구현 유형 | 필수 |
+| TAG 흐름 | @SPEC → @TEST → @CODE → @DOC | SPEC → 테스트 → 코드 → 문서 | 필수 |
+| @CODE 서브카테고리 | 선택적 | API/UI/DATA/DOMAIN 등 구현 세부사항 | 필수 |
 
 **CODE-FIRST 철학**:
 - TAG INDEX 파일 없음 (완전 제거)

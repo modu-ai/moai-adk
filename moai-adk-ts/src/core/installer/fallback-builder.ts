@@ -35,7 +35,7 @@ export class FallbackBuilder {
     logger.debug('TAG system initialized (CODE-FIRST mode - no cache files)', {
       projectName: config.projectName,
       moaiDir,
-      tag: '@SUCCESS:TAG-SYSTEM-INIT-001',
+      tag: 'SUCCESS:TAG-SYSTEM-INIT-001',
     });
   }
 
@@ -79,7 +79,7 @@ export class FallbackBuilder {
 
     logger.info('Minimal Claude structure created', {
       fileCount: Object.keys(minimalStructure).length,
-      tag: '@SUCCESS:MINIMAL-CLAUDE-001',
+      tag: 'SUCCESS:MINIMAL-CLAUDE-001',
     });
   }
 
@@ -116,7 +116,7 @@ export class FallbackBuilder {
 
     logger.info('Minimal MoAI structure created', {
       fileCount: Object.keys(minimalStructure).length,
-      tag: '@SUCCESS:MINIMAL-MOAI-001',
+      tag: 'SUCCESS:MINIMAL-MOAI-001',
     });
   }
 
@@ -163,7 +163,7 @@ export class FallbackBuilder {
       if (!fs.existsSync(settingsPath)) {
         logger.warn('Claude settings.json not found after template copy', {
           settingsPath,
-          tag: '@WARN:SETTINGS-NOT-FOUND-001',
+          tag: 'WARN:SETTINGS-NOT-FOUND-001',
         });
         return;
       }
@@ -185,7 +185,7 @@ export class FallbackBuilder {
         hasAgents,
         hasCommands,
         fileSize: settingsContent.length,
-        tag: '@DEBUG:SETTINGS-VALIDATION-001',
+        tag: 'DEBUG:SETTINGS-VALIDATION-001',
       });
 
       if (!hasEnv || !hasHooks || !hasPermissions) {
@@ -194,12 +194,12 @@ export class FallbackBuilder {
           missingEnv: !hasEnv,
           missingHooks: !hasHooks,
           missingPermissions: !hasPermissions,
-          tag: '@WARN:SETTINGS-INCOMPLETE-001',
+          tag: 'WARN:SETTINGS-INCOMPLETE-001',
         });
       } else {
         logger.debug('Claude settings validation successful', {
           settingsPath,
-          tag: '@SUCCESS:SETTINGS-VALIDATION-001',
+          tag: 'SUCCESS:SETTINGS-VALIDATION-001',
         });
       }
     } catch (error) {
@@ -207,7 +207,7 @@ export class FallbackBuilder {
       logger.error('Failed to validate Claude settings', {
         error: errorMessage,
         claudeDir,
-        tag: '@ERROR:SETTINGS-VALIDATION-001',
+        tag: 'ERROR:SETTINGS-VALIDATION-001',
       });
     }
   }
@@ -245,7 +245,7 @@ export class FallbackBuilder {
           'moai:4-debug': { enabled: true },
         },
       },
-      '@ERROR:CLAUDE-SETTINGS-001'
+      'ERROR:CLAUDE-SETTINGS-001'
     );
   }
 
@@ -269,7 +269,7 @@ export class FallbackBuilder {
           branchPrefix: 'feature/',
         },
       },
-      '@ERROR:MOAI-CONFIG-001'
+      'ERROR:MOAI-CONFIG-001'
     );
   }
 

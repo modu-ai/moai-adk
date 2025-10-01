@@ -339,7 +339,7 @@ MoAI-ADK</session-start-hook>
   ⎿  Interrupted · What should Claude do instead?
 
 > TAG INDEX 방식  -> 모두 제거하자 . 더이상 사용하지 않는다. 
-@MOAI-ADK-GUIDE.md 기반으로 스크립트, 훅 전부 제점검해줘. ultrathink
+MOAI-ADK-GUIDE.md 기반으로 스크립트, 훅 전부 제점검해줘. ultrathink
 
 ⏺ 네, TAG INDEX 방식을 완전히 제거하고 CODE-FIRST 방식으로 전면
   전환하겠습니다. MOAI-ADK-GUIDE.md를 기반으로 철저히 재점검합니다.
@@ -1545,7 +1545,7 @@ orcer.mjs' 이건 js로 변환을 해야 하지 않나? 그런데 hooks을 위�
       moai-adk-ts/templates/.claude/hooks/moai/tag-enforcer.mjs)
   ⎿ /**                                                                     
      * @DOC:SECURITY:TAG-ENFORCER-001
-     * @CHAIN: REQ:TAG-SYSTEM-001 -> DESIGN:CODE-FIRST-001 -> TASK:ENFORCER-
+     * CHAIN: REQ:TAG-SYSTEM-001 -> DESIGN:CODE-FIRST-001 -> TASK:ENFORCER-
     … +34 lines (ctrl+o to expand)
 
 
@@ -1584,7 +1584,7 @@ orcer.mjs' 이건 js로 변환을 해야 하지 않나? 그런데 hooks을 위�
       moai-adk-ts/templates/…)
   ⎿ /**                                                                     
      * @DOC:SECURITY:TAG-ENFORCER-001
-     * @CHAIN: REQ:TAG-SYSTEM-001 -> DESIGN:CODE-FIRST-001 -> TASK:ENFORCER-
+     * CHAIN: REQ:TAG-SYSTEM-001 -> DESIGN:CODE-FIRST-001 -> TASK:ENFORCER-
     … +18 lines (ctrl+o to expand)
 
 
@@ -1948,7 +1948,7 @@ orcer.mjs' 이건 js로 변환을 해야 하지 않나? 그런데 hooks을 위�
       && echo "=== detect-language.ts ===" && head -10 detect-language.ts)
   ⎿  === debug-analyzer.ts ===                                        
      #!/usr/bin/env tsx
-     // @FEATURE-DEBUG-ANALYZER-001: 디버깅 분석 및 문제 진단 스크립트
+     // CODE-DEBUG-ANALYZER-001: 디버깅 분석 및 문제 진단 스크립트
      … +20 lines (ctrl+o to expand)
 
 ⏺ Bash(for f in *.ts; do echo "### $f" && head -3 "$f" | tail -2; echo ""; done)
@@ -2186,7 +2186,7 @@ orcer.mjs' 이건 js로 변환을 해야 하지 않나? 그런데 hooks을 위�
     - tag-enforcer.js: MOAI-ADK-GUIDE.md에 미문서화
     - project-init.ts, sync-analyzer.ts, spec-validator.ts: 간략 언급만 존재
   3. TAG BLOCK 불일치
-    - Scripts: 단순 주석 형식 (// @FEATURE-XXX)
+    - Scripts: 단순 주석 형식 (// CODE-XXX)
     - tag-enforcer 검증 형식: /** */ 블록 형식
     - 표준화 필요
 

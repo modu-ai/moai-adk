@@ -19,7 +19,7 @@ describe('@TEST:REFACTOR-003: TAG Validator', () => {
     test('should extract valid TAG block from top of file', () => {
       const content = `/**
  * @DOC:FEATURE:AUTH-001
- * @CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001
+ * CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001
  * @IMMUTABLE
  */
 
@@ -112,9 +112,9 @@ import * as fs from 'fs';`;
     test('should validate valid TAG block', () => {
       const content = `/**
  * @DOC:FEATURE:AUTH-001
- * @CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001
- * @STATUS: active
- * @CREATED: 2025-01-15
+ * CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001
+ * STATUS: active
+ * CREATED: 2025-01-15
  * @IMMUTABLE
  */
 
@@ -178,7 +178,7 @@ export class AuthService {}`;
     test('should validate chain references', () => {
       const content = `/**
  * @DOC:FEATURE:AUTH-001
- * @CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001 -> TASK:AUTH-001
+ * CHAIN: REQ:AUTH-001 -> DESIGN:AUTH-001 -> TASK:AUTH-001
  */
 
 export class AuthService {}`;
@@ -191,7 +191,7 @@ export class AuthService {}`;
     test('should validate status values', () => {
       const content = `/**
  * @DOC:FEATURE:AUTH-001
- * @STATUS: active
+ * STATUS: active
  */
 
 export class AuthService {}`;
@@ -205,7 +205,7 @@ export class AuthService {}`;
     test('should warn about unknown status', () => {
       const content = `/**
  * @DOC:FEATURE:AUTH-001
- * @STATUS: unknown
+ * STATUS: unknown
  */
 
 export class AuthService {}`;

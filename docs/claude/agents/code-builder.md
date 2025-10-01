@@ -8,7 +8,7 @@ code-builder는 MoAI-ADK의 3단계 워크플로우 중 **2단계(/moai:2-build)
 
 **핵심 역할**: 테스트 없이는 구현 없음 (No Test, No Code) 원칙 구현
 
-code-builder의 주요 책임은 다음과 같습니다. 첫째, SPEC 문서(spec.md, plan.md, acceptance.md)를 분석하여 구현 계획을 수립합니다. 이 과정에서 요구사항을 기술적 작업으로 변환하고, 아키텍처 설계를 검증하며, 기술 스택에 최적화된 도구를 선택합니다. 둘째, TDD 사이클을 엄격히 준수하여 코드를 생성합니다. RED 단계에서 실패하는 테스트를 작성하고, GREEN 단계에서 최소한의 코드로 테스트를 통과시키며, REFACTOR 단계에서 코드 품질을 개선합니다. 셋째, 언어별 최적 도구를 자동 선택하여 사용합니다. Python 프로젝트에서는 pytest와 mypy를, TypeScript에서는 Vitest와 Biome를, Go에서는 go test와 golint를 사용합니다. 넷째, @TAG 시스템을 통해 코드와 SPEC의 추적성을 유지합니다. 모든 구현 파일과 테스트 파일에 @TASK, @TEST, @FEATURE, @API, @UI, @DATA TAG를 명시하여 요구사항까지의 추적 경로를 명확히 합니다.
+code-builder의 주요 책임은 다음과 같습니다. 첫째, SPEC 문서(spec.md, plan.md, acceptance.md)를 분석하여 구현 계획을 수립합니다. 이 과정에서 요구사항을 기술적 작업으로 변환하고, 아키텍처 설계를 검증하며, 기술 스택에 최적화된 도구를 선택합니다. 둘째, TDD 사이클을 엄격히 준수하여 코드를 생성합니다. RED 단계에서 실패하는 테스트를 작성하고, GREEN 단계에서 최소한의 코드로 테스트를 통과시키며, REFACTOR 단계에서 코드 품질을 개선합니다. 셋째, 언어별 최적 도구를 자동 선택하여 사용합니다. Python 프로젝트에서는 pytest와 mypy를, TypeScript에서는 Vitest와 Biome를, Go에서는 go test와 golint를 사용합니다. 넷째, @TAG 시스템을 통해 코드와 SPEC의 추적성을 유지합니다. 모든 구현 파일과 테스트 파일에 @CODE, @TEST, @CODE 서브카테고리 (API, UI, DATA 등) TAG를 명시하여 요구사항까지의 추적 경로를 명확히 합니다.
 
 code-builder는 **점진적 구현** 전략을 사용합니다. 전체 기능을 한 번에 구현하는 대신, 작은 단위로 나누어 각 단위마다 TDD 사이클을 완료합니다. 이는 실패 지점을 빠르게 식별하고, 리팩토링 안전성을 확보하며, 코드 리뷰를 용이하게 합니다. 예를 들어, "사용자 인증" 기능을 구현할 때, 1) 사용자 모델 정의 및 테스트, 2) 비밀번호 해싱 및 테스트, 3) 토큰 생성 및 테스트, 4) 인증 미들웨어 및 테스트, 5) 통합 테스트 순서로 점진적으로 구현합니다.
 
@@ -43,7 +43,7 @@ graph LR
 
 **연계**:
 - spec-builder: SPEC 문서를 기반으로 구현 범위 결정
-- tag-agent: @TASK, @TEST, @FEATURE TAG 생성 및 검증 요청
+- tag-agent: @CODE, @TEST, @CODE TAG 생성 및 검증 요청
 - trust-checker: 코드 품질 검증 및 TRUST 원칙 준수 확인
 - doc-syncer: 구현 완료 후 문서 동기화 요청
 
@@ -630,13 +630,13 @@ import static org.junit.jupiter.api.Assertions.*;
 class AuthenticationServiceTest {
     private AuthenticationService authService;
 
-    @BeforeEach
+    BeforeEach
     void setUp() {
         authService = new AuthenticationService();
     }
 
-    @Test
-    @DisplayName("Should authenticate with valid credentials")
+    Test
+    DisplayName("Should authenticate with valid credentials")
     void shouldAuthenticateWithValidCredentials() {
         // GIVEN
         String username = "test@example.com";
@@ -651,8 +651,8 @@ class AuthenticationServiceTest {
         assertNotNull(result.getToken());
     }
 
-    @Test
-    @DisplayName("Should fail with invalid password")
+    Test
+    DisplayName("Should fail with invalid password")
     void shouldFailWithInvalidPassword() {
         // GIVEN
         String username = "test@example.com";
@@ -1084,7 +1084,7 @@ flowchart TD
     controller.py (@CODE:AUTH-001:API)
 
 ✅ TAG 검증 완료
-  - TAG 체인 완전: @REQ → @DESIGN → @TASK → @TEST
+  - TAG 체인 완전: @SPEC → @TEST → @CODE → @DOC
   - @CODE 서브카테고리: 5개 (FEATURE, API, DATA)
   - 고아 TAG 없음
 

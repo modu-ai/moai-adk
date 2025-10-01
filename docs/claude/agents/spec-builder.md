@@ -61,7 +61,7 @@ spec-builder는 `.moai/project/` 디렉토리의 3개 핵심 문서를 분석하
 - `tech.md`: 기술 스택, 품질 게이트, 배포 전략
 
 **추출 알고리즘**:
-1. 문서에서 @TODO, @REQ, 우선순위 항목 식별
+1. 문서에서 TODO, @SPEC, 우선순위 항목 식별
 2. 의존성 관계 분석 및 구현 가능성 평가
 3. 사용자 가치와 기술적 실현 가능성 점수화
 4. 상위 5개 우선순위 기능 제안
@@ -645,7 +645,7 @@ tsx .moai/scripts/spec-validator.ts --spec SPEC-AUTH-001
 @agent-tag-agent "SPEC-AUTH-001 TAG 체인 검증"
 
 # 출력:
-# ✅ TAG 체인 완전: @REQ → @DESIGN → @TASK → @TEST
+# ✅ TAG 체인 완전: @SPEC → @TEST → @CODE → @DOC
 # ✅ @CODE 서브카테고리: 3개 (FEATURE, API, DATA)
 # ✅ 중복 TAG 없음
 # ✅ 고아 TAG 없음

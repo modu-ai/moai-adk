@@ -20,7 +20,7 @@
 **변경 사항**:
 - 기본 TODO 앱 설명 → MoAI-ADK SPEC-First TDD 프로젝트로 전환
 - EARS 방법론 완전 적용 (Essential, Attributes, Rationale, Suppress)
--  TAG 시스템 적용 (@REQ, @DESIGN, @TASK, @TEST)
+-  TAG 시스템 적용 (@SPEC, @SPEC, @CODE, @TEST)
 - MoAI-ADK 3단계 워크플로우 반영
 - TAG 추적성 매트릭스 추가
 

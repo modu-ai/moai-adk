@@ -204,7 +204,7 @@ export class PackageManagerDetector {
    * Check if file exists
    * @param filePath - File path to check
    * @returns Whether file exists
-   * @tags @UTIL:FILE-EXISTS-001
+   * @tags UTIL:FILE-EXISTS-001
    */
   private async fileExists(filePath: string): Promise<boolean> {
     try {
