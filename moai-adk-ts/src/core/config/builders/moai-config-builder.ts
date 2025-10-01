@@ -9,7 +9,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { logger } from '../../../utils/winston-logger.js';
-import type { MoAIConfig, MoAIConfigResult, ProjectConfigInput } from '../types';
+import type {
+  MoAIConfig,
+  MoAIConfigResult,
+  ProjectConfigInput,
+} from '../types';
 import {
   backupConfigFile,
   ensureDirectoryExists,

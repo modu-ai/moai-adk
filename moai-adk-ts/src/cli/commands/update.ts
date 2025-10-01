@@ -1,4 +1,4 @@
-// @CODE:CLI-004 | 
+// @CODE:CLI-004 |
 // Related: @CODE:UPD-001:API, @CODE:UPD-VER-001
 
 /**

@@ -1,4 +1,4 @@
-// @CODE:PROJ-TYPES-001 | 
+// @CODE:PROJ-TYPES-001 |
 // Related: @CODE:PROJ-001
 
 /**

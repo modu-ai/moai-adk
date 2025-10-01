@@ -1,4 +1,4 @@
-// @CODE:GIT-TYPES-001 | 
+// @CODE:GIT-TYPES-001 |
 // Related: @CODE:GIT-001
 
 /**

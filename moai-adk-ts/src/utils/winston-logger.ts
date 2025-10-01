@@ -1,4 +1,4 @@
-// @CODE:LOG-002 | 
+// @CODE:LOG-002 |
 // Related: @CODE:LOG-002:API, @CODE:LOG-CFG-001
 
 /**
@@ -131,7 +131,8 @@ export class MoaiLogger {
       } catch (error) {
         // Fallback to console only if file logging fails
         // Use process.stderr for initialization errors (logger not yet ready)
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
         process.stderr.write(
           `[WINSTON-INIT-WARN] Failed to initialize file logging, using console only: ${errorMessage}\n`
         );
@@ -154,7 +155,7 @@ export class MoaiLogger {
    * Create Winston format for masking sensitive data
    */
   private createMaskingFormat(): winston.Logform.Format {
-    return winston.format((info) => {
+    return winston.format(info => {
       const masked = { ...info };
 
       // Mask message string
@@ -197,7 +198,7 @@ export class MoaiLogger {
   private maskSensitiveString(message: string): string {
     let masked = message;
     for (const pattern of this.sensitivePatterns) {
-      masked = masked.replace(pattern, (match) => {
+      masked = masked.replace(pattern, match => {
         const [key] = match.split('=');
         return `${key}=***redacted***`;
       });
@@ -221,7 +222,9 @@ export class MoaiLogger {
         value !== null &&
         !Array.isArray(value)
       ) {
-        masked[key] = this.maskSensitiveContext(value as Record<string, unknown>);
+        masked[key] = this.maskSensitiveContext(
+          value as Record<string, unknown>
+        );
       } else {
         masked[key] = value;
       }

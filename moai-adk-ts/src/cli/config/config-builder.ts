@@ -141,7 +141,10 @@ export class ConfigBuilder {
    * @param config MoAI configuration
    * @returns Validation result
    */
-  public validateConfig(config: MoAIConfig): { valid: boolean; errors: string[] } {
+  public validateConfig(config: MoAIConfig): {
+    valid: boolean;
+    errors: string[];
+  } {
     const errors: string[] = [];
 
     // Validate project name

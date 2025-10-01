@@ -9,7 +9,7 @@ import { describe, test, expect } from 'vitest';
 import type {
   TagBlock,
   ImmutabilityCheck,
-  ValidationResult
+  ValidationResult,
 } from '../../../claude/hooks/tag-enforcer/types';
 
 describe('@TEST:REFACTOR-003: TAG Types', () => {
@@ -17,7 +17,7 @@ describe('@TEST:REFACTOR-003: TAG Types', () => {
     test('should accept valid TagBlock structure', () => {
       const tagBlock: TagBlock = {
         content: '/** @TAG:FEATURE:AUTH-001 */',
-        lineNumber: 1
+        lineNumber: 1,
       };
 
       expect(tagBlock.content).toBe('/** @TAG:FEATURE:AUTH-001 */');
@@ -28,7 +28,7 @@ describe('@TEST:REFACTOR-003: TAG Types', () => {
   describe('ImmutabilityCheck', () => {
     test('should accept non-violated check', () => {
       const check: ImmutabilityCheck = {
-        violated: false
+        violated: false,
       };
 
       expect(check.violated).toBe(false);
@@ -40,12 +40,14 @@ describe('@TEST:REFACTOR-003: TAG Types', () => {
       const check: ImmutabilityCheck = {
         violated: true,
         modifiedTag: '@TAG:FEATURE:AUTH-001',
-        violationDetails: '@IMMUTABLE TAG 블록이 수정되었습니다'
+        violationDetails: '@IMMUTABLE TAG 블록이 수정되었습니다',
       };
 
       expect(check.violated).toBe(true);
       expect(check.modifiedTag).toBe('@TAG:FEATURE:AUTH-001');
-      expect(check.violationDetails).toBe('@IMMUTABLE TAG 블록이 수정되었습니다');
+      expect(check.violationDetails).toBe(
+        '@IMMUTABLE TAG 블록이 수정되었습니다'
+      );
     });
   });
 
@@ -55,7 +57,7 @@ describe('@TEST:REFACTOR-003: TAG Types', () => {
         isValid: true,
         violations: [],
         warnings: [],
-        hasTag: true
+        hasTag: true,
       };
 
       expect(result.isValid).toBe(true);
@@ -69,7 +71,7 @@ describe('@TEST:REFACTOR-003: TAG Types', () => {
         isValid: false,
         violations: ['Missing @TAG line'],
         warnings: ['Consider adding @IMMUTABLE'],
-        hasTag: false
+        hasTag: false,
       };
 
       expect(result.isValid).toBe(false);

@@ -1,21 +1,20 @@
 ---
 title: tag-agent - TAG 시스템 독점 관리 에이전트
-description: 4-Core TAG 체계 생성, 검증, 추적성 관리 전문 에이전트
+description: @TAG 체계 생성, 검증, 추적성 관리 전문 에이전트
 ---
 
 # tag-agent - TAG 시스템 독점 관리 에이전트
 
 ## 개요
 
-tag-agent는 MoAI-ADK의 **TAG 시스템 독점 관리자**로서 4-Core TAG 체계의 생성, 검증, 무결성 유지를 전담하는 에이전트입니다. CODE-FIRST 철학에 따라 코드에서 직접 TAG를 스캔하고 검증하며, 중간 캐시 없이 실시간 추적성을 보장합니다.
+tag-agent는 MoAI-ADK의 **TAG 시스템 독점 관리자**로서 @TAG 체계의 생성, 검증, 무결성 유지를 전담하는 에이전트입니다. CODE-FIRST 철학에 따라 코드에서 직접 TAG를 스캔하고 검증하며, 중간 캐시 없이 실시간 추적성을 보장합니다.
 
 ### 역할과 책임
 
 **핵심 역할**: TAG Lifecycle 완전 관리 (The ONLY Agent for TAG)
 
-- **4-Core TAG 체계** 생성 및 관리
-- **Primary Chain** (4 Core): @REQ → @DESIGN → @TASK → @TEST
-- **Implementation** (4 Core): @FEATURE, @API, @UI, @DATA
+- **@TAG 체계** 생성 및 관리
+- **TAG 순서**: @SPEC → @TEST → @CODE → @DOC (TDD 사이클 정렬)
 - **코드 스캔** 기반 실시간 검증 (`rg '@TAG' -n`)
 - **TAG 체인** 무결성 검증 및 복구
 - **고아 TAG** 감지 및 정리
@@ -72,89 +71,56 @@ graph TB
 
 ---
 
-## 4-Core TAG 체계
+## @TAG 체계
 
 ### TAG 체계 개요
 
-MoAI-ADK는 **4-Core TAG 체계**를 사용하여 완전한 추적성을 보장합니다.
+MoAI-ADK는 **@TAG 체계**를 사용하여 TDD 사이클과 완벽 정렬된 추적성을 보장합니다.
 
 ```mermaid
-graph TB
-    subgraph "Primary Chain (4 Core)"
-        A[@REQ] -->|설계| B[@DESIGN]
-        B -->|구현| C[@TASK]
-        C -->|검증| D[@TEST]
-    end
+graph LR
+    A[@SPEC<br/>명세] --> B[@TEST<br/>RED Phase]
+    B --> C[@CODE<br/>GREEN+REFACTOR]
+    C --> D[@DOC<br/>문서화]
+    D -.->|다음 기능| A
 
-    subgraph "Implementation (4 Core)"
-        E[@FEATURE]
-        F[@API]
-        G[@UI]
-        H[@DATA]
-    end
-
-    A -.->|참조| E
-    B -.->|참조| E
-    C -.->|참조| E
-    D -.->|참조| E
-
-    E -.->|구현| F
-    E -.->|구현| G
-    E -.->|구현| H
-
-    style A fill:#ff6b6b,stroke:#c92a2a,color:#fff
-    style B fill:#ffd43b,stroke:#fab005,color:#000
-    style C fill:#4dabf7,stroke:#1971c2,color:#fff
-    style D fill:#51cf66,stroke:#2f9e44,color:#fff
-    style E fill:#a9e34b,stroke:#5c940d,color:#000
-    style F fill:#ffa94d,stroke:#d9480f,color:#fff
-    style G fill:#74c0fc,stroke:#1c7ed6,color:#fff
-    style H fill:#da77f2,stroke:#9c36b5,color:#fff
+    style A fill:#fab005,stroke:#f76707,color:#000
+    style B fill:#ff6b6b,stroke:#c92a2a,color:#fff
+    style C fill:#51cf66,stroke:#2f9e44,color:#fff
+    style D fill:#845ef7,stroke:#5f3dc4,color:#fff
 ```
 
-### Primary Chain (4 Core)
+### TAG 정의
 
-**1. @REQ (Requirements) - 요구사항**
-- **역할**: 사용자 요구사항 또는 비즈니스 요구 정의
-- **위치**: SPEC 문서, 요구사항 문서
-- **예시**: `@SPEC:AUTH-001` (사용자 인증 요구사항)
+**1. @SPEC:ID - SPEC 문서 (사전 준비)**
+- **역할**: EARS 방식 요구사항 명세 및 설계
+- **위치**: `.moai/specs/SPEC-<ID>.md`
+- **예시**: `@SPEC:AUTH-001` (사용자 인증 요구사항 및 설계)
 
-**2. @DESIGN (Design) - 설계**
-- **역할**: 요구사항을 해결하기 위한 설계 결정
-- **위치**: 설계 문서, 아키텍처 다이어그램
-- **예시**: `` (JWT 기반 인증 설계)
-
-**3. @TASK (Task) - 작업**
-- **역할**: 설계를 구현하기 위한 구체적 작업
-- **위치**: 구현 코드, 함수, 클래스
-- **예시**: `@CODE:AUTH-001` (로그인 함수 구현)
-
-**4. @TEST (Test) - 테스트**
-- **역할**: 구현을 검증하는 테스트
-- **위치**: 테스트 파일, 테스트 케이스
+**2. @TEST:ID - 테스트 코드 (RED Phase)**
+- **역할**: TDD RED Phase - 실패하는 테스트 작성
+- **위치**: `tests/`, `__tests__/`, `*.test.ts`, `*.spec.py` 등
 - **예시**: `@TEST:AUTH-001` (로그인 테스트)
 
-### Implementation (4 Core)
+**3. @CODE:ID - 구현 코드 (GREEN + REFACTOR)**
+- **역할**: TDD GREEN Phase (최소 구현) + REFACTOR Phase (품질 개선)
+- **위치**: `src/`, `lib/`, 프로젝트 소스 디렉토리
+- **예시**: `@CODE:AUTH-001` (로그인 함수 구현)
 
-**5. @FEATURE (Feature) - 기능**
-- **역할**: 사용자 관점의 완전한 기능 구현
-- **위치**: 서비스, 컴포넌트, 모듈
-- **예시**: `@CODE:AUTH-001` (인증 서비스)
+**4. @DOC:ID - Living Document (문서화)**
+- **역할**: 자동 생성 문서 및 사용자 가이드
+- **위치**: `README.md`, `docs/`, API 문서 등
+- **예시**: `@DOC:AUTH-001` (인증 시스템 문서)
 
-**6. @API (API) - API 엔드포인트**
-- **역할**: 외부 인터페이스 또는 API 엔드포인트
-- **위치**: API 라우터, 컨트롤러, 엔드포인트
-- **예시**: `@CODE:AUTH-001:API` (POST /api/login)
+### @CODE 서브 카테고리 (선택적)
 
-**7. @UI (User Interface) - 사용자 인터페이스**
-- **역할**: 사용자 인터페이스 컴포넌트
-- **위치**: UI 컴포넌트, 뷰, 템플릿
-- **예시**: `@CODE:AUTH-001:UI` (로그인 폼 컴포넌트)
+구현 세부사항은 `@CODE:ID` 내부에 주석으로 표현 (선택적):
 
-**8. @DATA (Data) - 데이터 모델**
-- **역할**: 데이터 구조, 스키마, 엔티티
-- **위치**: 모델, 스키마, 데이터베이스
-- **예시**: `@CODE:AUTH-001:DATA` (사용자 인증 정보 모델)
+- `@CODE:ID:API` - API 엔드포인트
+- `@CODE:ID:UI` - UI 컴포넌트
+- `@CODE:ID:DATA` - 데이터 모델
+- `@CODE:ID:DOMAIN` - 도메인 로직
+- `@CODE:ID:INFRA` - 인프라 레이어
 
 ### TAG ID 형식
 
@@ -182,34 +148,35 @@ graph TB
 ### 표준 템플릿
 
 ```text
-# @FEATURE:<DOMAIN-ID> | Chain: @REQ:<ID> -> @DESIGN:<ID> -> @TASK:<ID> -> @TEST:<ID>
-# Related: @API:<ID>, @UI:<ID>, @DATA:<ID>
+# @CODE:<DOMAIN-ID> | SPEC: SPEC-<ID>.md | TEST: tests/path/test.ts
 ```
 
 **구성 요소**:
-1. **Primary TAG**: @FEATURE (주요 구현 TAG)
-2. **Chain**: Primary Chain 4개 TAG 연결
-3. **Related**: 관련 Implementation TAG
+1. **Primary TAG**: @CODE, @TEST, @SPEC, @DOC 중 하나
+2. **SPEC 참조**: 관련 SPEC 문서 경로
+3. **TEST 참조**: 관련 테스트 파일 경로 (코드 파일의 경우)
 
 ### 언어별 TAG BLOCK 예시
 
 #### TypeScript
 
 ```typescript
-// @CODE:LOGIN-001 | Chain: @SPEC:AUTH-001 ->  -> @CODE:AUTH-001 -> @TEST:AUTH-001
-// Related: @CODE:LOGIN-001:API, @CODE:LOGIN-001:UI, @CODE:LOGIN-001:DATA
+// @CODE:LOGIN-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth/service.test.ts
 
 /**
  * @CODE:LOGIN-001: 사용자 로그인 서비스
  *
- * JWT 기반 인증을 제공하는 로그인 서비스 구현
+ * TDD 이력:
+ * - RED: tests/auth/service.test.ts 작성
+ * - GREEN: 최소 구현 (bcrypt, JWT)
+ * - REFACTOR: 타입 안전성 추가
  */
 export class LoginService {
   /**
    * @CODE:LOGIN-001:API: 로그인 API 엔드포인트
    */
   async login(username: string, password: string): Promise<AuthToken> {
-    // @CODE:LOGIN-001: 로그인 로직 구현
+    // @CODE:LOGIN-001:DOMAIN: 로그인 로직 구현
     const user = await this.validateCredentials(username, password);
 
     if (!user) {
@@ -221,9 +188,11 @@ export class LoginService {
   }
 }
 
-// @TEST:LOGIN-001: 로그인 테스트
-describe('LoginService', () => {
-  it('@TEST:LOGIN-001: should authenticate valid user', async () => {
+// tests/auth/service.test.ts
+// @TEST:LOGIN-001 | SPEC: SPEC-AUTH-001.md | CODE: src/auth/service.ts
+
+describe('@TEST:LOGIN-001: LoginService', () => {
+  test('should authenticate valid user', async () => {
     const service = new LoginService();
     const token = await service.login('user', 'password');
     expect(token).toBeDefined();
@@ -412,13 +381,10 @@ mod tests {
 
 ```bash
 # 전체 TAG 스캔
-rg '@(REQ|DESIGN|TASK|TEST|FEATURE|API|UI|DATA):[\w-]+' -n
+rg '@(SPEC|TEST|CODE|DOC):[\w-]+' -n
 
-# Primary Chain 스캔
-rg '@REQ:[\w-]+.*@DESIGN:[\w-]+.*@TASK:[\w-]+.*@TEST:[\w-]+' -n
-
-# Implementation TAG 스캔
-rg '@(FEATURE|API|UI|DATA):[\w-]+' -n
+# TAG 체인 스캔
+rg '@SPEC:[\w-]+.*@TEST:[\w-]+.*@CODE:[\w-]+.*@DOC:[\w-]+' -n
 
 # 특정 도메인 스캔
 rg '@\w+:AUTH-\d+' -n
@@ -431,10 +397,10 @@ rg '@\w+:LOGIN-001' -n
 
 ```bash
 # TAG BLOCK 전체 스캔
-rg '^# @FEATURE:\w+-\d+ \| Chain: @REQ:\w+-\d+ -> @DESIGN:\w+-\d+ -> @TASK:\w+-\d+ -> @TEST:\w+-\d+' -n
+rg '^# @CODE:\w+-\d+ \| SPEC: SPEC-\w+-\d+\.md \| TEST: tests/' -n
 
-# 끊어진 체인 감지 (간접적 방법)
-rg '@SPEC:AUTH-001' -n && rg '' -n && rg '@CODE:AUTH-001' -n && rg '@TEST:AUTH-001' -n
+# 끊어진 체인 감지
+rg '@SPEC:AUTH-001' -n && rg '@TEST:AUTH-001' -n && rg '@CODE:AUTH-001' -n && rg '@DOC:AUTH-001' -n
 
 # 고아 TAG 검사 (단일 참조)
 rg '@\w+:[\w-]+' -n --no-heading | awk '{print $NF}' | sort | uniq -c | awk '$1 == 1'
@@ -450,7 +416,7 @@ graph TB
     A[코드 스캔 시작] --> B[rg 명령 실행]
     B --> C[TAG 추출]
     C --> D[TAG 파싱]
-    D --> E[4-Core 검증]
+    D --> E[TAG 검증]
     E --> F{규칙 준수?}
     F -->|No| G[위반 사항 수집]
     F -->|Yes| H[Chain 연결 검증]
@@ -533,16 +499,15 @@ rg '@\w+:AUTH-(\d+)' -o | sort -t'-' -k2 -n | tail -1
 
 ## TAG 검증
 
-### 4-Core 체계 검증
+### TAG 체계 검증
 
 #### 검증 항목
 
 1. **TAG 형식**: `@TAG:<DOMAIN>-<3자리>`
-2. **Primary Chain**: @REQ → @DESIGN → @TASK → @TEST 순서
-3. **Implementation TAG**: @FEATURE, @API, @UI, @DATA 존재
-4. **Chain 연결**: 동일 TAG ID로 체인 형성
-5. **고아 TAG**: 단일 참조 TAG 없음
-6. **끊어진 링크**: 체인 중 누락 TAG 없음
+2. **TAG 체인**: @SPEC → @TEST → @CODE → @DOC 순서
+3. **Chain 연결**: 동일 TAG ID로 체인 형성
+4. **고아 TAG**: 단일 참조 TAG 없음
+5. **끊어진 링크**: 체인 중 누락 TAG 없음
 
 #### 검증 워크플로우
 
@@ -550,11 +515,11 @@ rg '@\w+:AUTH-(\d+)' -o | sort -t'-' -k2 -n | tail -1
 graph TB
     A[검증 시작] --> B[코드 전체 스캔]
     B --> C[TAG 추출 및 파싱]
-    C --> D[4-Core 체계 검증]
+    C --> D[TAG 체계 검증]
 
     D --> E{형식 준수?}
     E -->|No| F[형식 오류 수집]
-    E -->|Yes| G[Primary Chain 검증]
+    E -->|Yes| G[TAG 체인 검증]
 
     G --> H{체인 순서?}
     H -->|위반| I[순서 오류 수집]
@@ -995,7 +960,7 @@ UTILS   ██ 3개
 
 tag-agent는 TAG 시스템의 독점 관리자로서:
 
-- **4-Core TAG 체계**: Primary (4) + Implementation (4)
+- **@TAG 체계**: @SPEC → @TEST → @CODE → @DOC
 - **CODE-FIRST**: 코드 직접 스캔, 중간 캐시 없음
 - **실시간 검증**: `rg '@TAG' -n` 기반 검증
 - **체인 관리**: 끊어진 링크, 고아 TAG 탐지 및 복구

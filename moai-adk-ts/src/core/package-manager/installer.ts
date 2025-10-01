@@ -8,8 +8,8 @@
  */
 
 import { execa } from 'execa';
-import {
-  type PackageInstallOptions,
+import type {
+  PackageInstallOptions,
   PackageManagerType,
 } from '@/types/package-manager';
 import { CommandBuilder } from './command-builder';
@@ -59,7 +59,10 @@ export class PackageManagerInstaller {
     options: PackageInstallOptions
   ): Promise<InstallResult> {
     try {
-      const command = this.commandBuilder.buildInstallCommand(packages, options);
+      const command = this.commandBuilder.buildInstallCommand(
+        packages,
+        options
+      );
       const [executable, ...args] = command.split(' ');
 
       const result = await execa(executable!, args, {

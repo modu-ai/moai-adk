@@ -1,4 +1,4 @@
-// @CODE:UTIL-002 | 
+// @CODE:UTIL-002 |
 // Related: @CODE:VER-INFO-001
 
 /**
@@ -42,7 +42,11 @@ export function getPackageInfo(): PackageInfo {
         '..',
         'package.json'
       ),
-      path.resolve(new URL('.', import.meta.url).pathname, '..', 'package.json'),
+      path.resolve(
+        new URL('.', import.meta.url).pathname,
+        '..',
+        'package.json'
+      ),
       // Fallback to cwd
       path.resolve(process.cwd(), 'package.json'),
     ];

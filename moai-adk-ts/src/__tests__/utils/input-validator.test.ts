@@ -1,4 +1,4 @@
-// @TEST:UTIL-006 | 
+// @TEST:UTIL-006 |
 // Related: @CODE:UTIL-005, @CODE:VALID-002:API, @SECURITY:INPUT-001
 
 /**
@@ -94,9 +94,9 @@ describe('InputValidator', () => {
 
       // Then: 검증 실패
       expect(result.isValid).toBe(false);
-      expect(result.errors.some(err => err.includes('cannot contain spaces'))).toBe(
-        true
-      );
+      expect(
+        result.errors.some(err => err.includes('cannot contain spaces'))
+      ).toBe(true);
     });
 
     test('should accept spaces when allowSpaces is true', () => {
@@ -149,7 +149,9 @@ describe('InputValidator', () => {
       // Then: 검증 실패
       expect(result.isValid).toBe(false);
       expect(
-        result.errors.some(err => err.includes('invalid characters or patterns'))
+        result.errors.some(err =>
+          err.includes('invalid characters or patterns')
+        )
       ).toBe(true);
     });
 
@@ -160,9 +162,8 @@ describe('InputValidator', () => {
 
       // When: validateProjectName 호출
       const resultDot = InputValidator.validateProjectName(nameStartingWithDot);
-      const resultDash = InputValidator.validateProjectName(
-        nameStartingWithDash
-      );
+      const resultDash =
+        InputValidator.validateProjectName(nameStartingWithDash);
 
       // Then: 검증 실패
       expect(resultDot.isValid).toBe(false);
@@ -377,9 +378,9 @@ describe('InputValidator', () => {
 
       // Then: 검증 실패
       expect(result.isValid).toBe(false);
-      expect(result.errors.some(err => err.includes('must be a directory'))).toBe(
-        true
-      );
+      expect(
+        result.errors.some(err => err.includes('must be a directory'))
+      ).toBe(true);
     });
 
     test('should enforce mustBeFile option', async () => {

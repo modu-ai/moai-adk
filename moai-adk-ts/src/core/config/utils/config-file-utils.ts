@@ -102,10 +102,6 @@ export function ensureDirectoryExists(dirPath: string): void {
 /**
  * Write JSON file with formatting
  */
-export function writeJsonFile(
-  filePath: string,
-  data: any,
-  indent = 2
-): void {
+export function writeJsonFile(filePath: string, data: any, indent = 2): void {
   fs.writeFileSync(filePath, JSON.stringify(data, null, indent), 'utf-8');
 }

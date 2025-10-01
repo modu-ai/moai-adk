@@ -1,4 +1,4 @@
-// @CODE:LOG-TYPES-001 | 
+// @CODE:LOG-TYPES-001 |
 // Related: @CODE:LOG-001
 
 /**

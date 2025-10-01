@@ -30,7 +30,10 @@ describe('PackageJsonBuilder', () => {
       const packageManager = PackageManagerType.NPM;
 
       // Act
-      const packageJson = builder.generatePackageJson(projectConfig, packageManager);
+      const packageJson = builder.generatePackageJson(
+        projectConfig,
+        packageManager
+      );
 
       // Assert
       expect(packageJson.name).toBe('test-project');
@@ -50,7 +53,10 @@ describe('PackageJsonBuilder', () => {
       const packageManager = PackageManagerType.NPM;
 
       // Act
-      const packageJson = builder.generatePackageJson(projectConfig, packageManager);
+      const packageJson = builder.generatePackageJson(
+        projectConfig,
+        packageManager
+      );
 
       // Assert
       expect(packageJson.name).toBe('unnamed-project');
@@ -74,7 +80,10 @@ describe('PackageJsonBuilder', () => {
       const packageManager = PackageManagerType.YARN;
 
       // Act
-      const packageJson = builder.generatePackageJson(projectConfig, packageManager);
+      const packageJson = builder.generatePackageJson(
+        projectConfig,
+        packageManager
+      );
 
       // Assert
       expect(packageJson.name).toBe('my-app');
@@ -216,7 +225,10 @@ describe('PackageJsonBuilder', () => {
       const includeTypeScript = false;
 
       // Act
-      const scripts = builder.generateScripts(packageManager, includeTypeScript);
+      const scripts = builder.generateScripts(
+        packageManager,
+        includeTypeScript
+      );
 
       // Assert
       expect(scripts.start).toBe('node index.js');
@@ -231,7 +243,10 @@ describe('PackageJsonBuilder', () => {
       const includeTypeScript = true;
 
       // Act
-      const scripts = builder.generateScripts(packageManager, includeTypeScript);
+      const scripts = builder.generateScripts(
+        packageManager,
+        includeTypeScript
+      );
 
       // Assert
       expect(scripts.build).toBe('tsc');
@@ -364,7 +379,10 @@ describe('PackageJsonBuilder', () => {
       const packageManager = PackageManagerType.YARN;
 
       // Act
-      const packageJson = builder.generatePackageJson(projectConfig, packageManager);
+      const packageJson = builder.generatePackageJson(
+        projectConfig,
+        packageManager
+      );
 
       // Assert
       expect(packageJson.engines?.yarn).toBe('>=1.22.0');
@@ -380,7 +398,10 @@ describe('PackageJsonBuilder', () => {
       const packageManager = PackageManagerType.PNPM;
 
       // Act
-      const packageJson = builder.generatePackageJson(projectConfig, packageManager);
+      const packageJson = builder.generatePackageJson(
+        projectConfig,
+        packageManager
+      );
 
       // Assert
       expect(packageJson.engines?.pnpm).toBe('>=8.0.0');

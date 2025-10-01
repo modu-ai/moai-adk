@@ -1,5 +1,5 @@
 /**
- * @CODE:HOOK-003 | 
+ * @CODE:HOOK-003 |
  * Related: @CODE:HOOK-003:API, @CODE:SESSION-001:UI
  *
  * Session Notice Hook
@@ -133,7 +133,7 @@ export class SessionNotifier {
       path.join(this.projectRoot, '.claude', 'commands', 'moai'),
     ];
 
-    return requiredPaths.every((p) => fs.existsSync(p));
+    return requiredPaths.every(p => fs.existsSync(p));
   }
 
   /**
@@ -224,7 +224,7 @@ export class SessionNotifier {
     if (fs.existsSync(specsDir)) {
       const hasSpecs = fs
         .readdirSync(specsDir)
-        .some((dir) => fs.existsSync(path.join(specsDir, dir, 'spec.md')));
+        .some(dir => fs.existsSync(path.join(specsDir, dir, 'spec.md')));
       if (hasSpecs) {
         return 'implementation';
       }
@@ -250,8 +250,8 @@ export class SessionNotifier {
     try {
       const specDirs = fs
         .readdirSync(specsDir)
-        .filter((name) => fs.statSync(path.join(specsDir, name)).isDirectory())
-        .filter((name) => name.startsWith('SPEC-'));
+        .filter(name => fs.statSync(path.join(specsDir, name)).isDirectory())
+        .filter(name => name.startsWith('SPEC-'));
 
       const totalSpecs = specDirs.length;
       let completed = 0;
@@ -311,7 +311,7 @@ export class SessionNotifier {
         const lines = output
           .trim()
           .split('\n')
-          .filter((line) => line.trim().length > 0);
+          .filter(line => line.trim().length > 0);
         return lines.length;
       }
       return 0;
@@ -324,7 +324,7 @@ export class SessionNotifier {
    * Run a Git command and return output
    */
   async runGitCommand(args: string[]): Promise<string | null> {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const proc = spawn('git', args, {
         cwd: this.projectRoot,
         stdio: 'pipe',
@@ -332,7 +332,7 @@ export class SessionNotifier {
 
       let stdout = '';
 
-      proc.stdout?.on('data', (data) => {
+      proc.stdout?.on('data', data => {
         stdout += data.toString();
       });
 
@@ -341,7 +341,7 @@ export class SessionNotifier {
         resolve(null);
       }, 2000);
 
-      proc.on('close', (code) => {
+      proc.on('close', code => {
         clearTimeout(timeout);
         if (code === 0) {
           resolve(stdout.trim());

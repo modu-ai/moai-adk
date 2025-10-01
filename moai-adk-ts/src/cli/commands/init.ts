@@ -1,4 +1,4 @@
-// @CODE:CLI-001 | 
+// @CODE:CLI-001 |
 // Related: @CODE:INST-001:API, @CODE:PROMPT-001:UI, @CODE:CFG-001:DATA
 
 /**
@@ -18,7 +18,10 @@ import { InputValidator } from '@/utils/input-validator';
 import { validateProjectPath } from '@/utils/path-validator';
 import { DoctorCommand } from './doctor';
 import { logger } from '../../utils/winston-logger.js';
-import { promptProjectSetup, displayWelcomeBanner } from '../prompts/init-prompts';
+import {
+  promptProjectSetup,
+  displayWelcomeBanner,
+} from '../prompts/init-prompts';
 import { buildMoAIConfig } from '../config/config-builder';
 
 /**
@@ -71,7 +74,11 @@ export class InitCommand {
 
       // Display initialization header with modern design
       const inputProjectName = options?.name || 'moai-project';
-      console.log(chalk.cyan.bold(`\n🚀 Initializing ${chalk.white(inputProjectName)} project...\n`));
+      console.log(
+        chalk.cyan.bold(
+          `\n🚀 Initializing ${chalk.white(inputProjectName)} project...\n`
+        )
+      );
 
       // Step 1: System verification with clean separator
       console.log(chalk.gray('─'.repeat(60)));
@@ -157,8 +164,13 @@ export class InitCommand {
       }
 
       // Save MoAI config to .moai/config.json
-      const finalProjectPath = pathValidation.sanitizedValue || projectPathInput;
-      const moaiConfigPath = path.join(finalProjectPath, '.moai', 'config.json');
+      const finalProjectPath =
+        pathValidation.sanitizedValue || projectPathInput;
+      const moaiConfigPath = path.join(
+        finalProjectPath,
+        '.moai',
+        'config.json'
+      );
 
       // Ensure .moai directory exists
       const moaiDir = path.join(finalProjectPath, '.moai');
@@ -167,14 +179,18 @@ export class InitCommand {
       }
 
       // Write config.json
-      fs.writeFileSync(moaiConfigPath, JSON.stringify(moaiConfig, null, 2), 'utf-8');
+      fs.writeFileSync(
+        moaiConfigPath,
+        JSON.stringify(moaiConfig, null, 2),
+        'utf-8'
+      );
       console.log(chalk.green(`\n✅ Configuration saved\n`));
 
       // Check if backup is needed (only for existing projects in current directory mode)
-      const needsBackup = isCurrentDirMode && (
-        fs.existsSync(path.join(finalProjectPath, '.moai')) ||
-        fs.existsSync(path.join(finalProjectPath, '.claude'))
-      );
+      const needsBackup =
+        isCurrentDirMode &&
+        (fs.existsSync(path.join(finalProjectPath, '.moai')) ||
+          fs.existsSync(path.join(finalProjectPath, '.claude')));
 
       const config: InstallationConfig = {
         projectPath: finalProjectPath,
@@ -205,13 +221,25 @@ export class InitCommand {
       if (result.success) {
         // Modern success message with clean design
         console.log(chalk.gray('\n' + '─'.repeat(60)));
-        console.log(chalk.green.bold('✅ Initialization Completed Successfully!'));
+        console.log(
+          chalk.green.bold('✅ Initialization Completed Successfully!')
+        );
         console.log(chalk.gray('─'.repeat(60)));
 
         console.log(chalk.cyan('\n📊 Summary:'));
-        console.log(chalk.gray(`  📁 Location:  ${chalk.white(result.projectPath)}`));
-        console.log(chalk.gray(`  📄 Files:     ${chalk.white(result.createdFiles.length)} created`));
-        console.log(chalk.gray(`  ⏱️  Duration:  ${chalk.white(installResult.duration + 'ms')}`));
+        console.log(
+          chalk.gray(`  📁 Location:  ${chalk.white(result.projectPath)}`)
+        );
+        console.log(
+          chalk.gray(
+            `  📄 Files:     ${chalk.white(result.createdFiles.length)} created`
+          )
+        );
+        console.log(
+          chalk.gray(
+            `  ⏱️  Duration:  ${chalk.white(installResult.duration + 'ms')}`
+          )
+        );
 
         if (installResult.nextSteps.length > 0) {
           console.log(chalk.cyan('\n🚀 Next Steps:'));

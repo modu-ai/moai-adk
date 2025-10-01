@@ -1,4 +1,4 @@
-// @CODE:CLI-005 | 
+// @CODE:CLI-005 |
 // Related: @CODE:CFG-001:API, @CODE:CFG-BACKUP-001
 
 /**

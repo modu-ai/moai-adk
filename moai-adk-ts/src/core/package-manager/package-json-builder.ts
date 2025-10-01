@@ -7,11 +7,11 @@
  * @tags @CODE:PACKAGE-JSON-BUILDER-001
  */
 
-import {
-  type PackageJsonConfig,
+import type {
+  PackageJsonConfig,
   PackageManagerType,
 } from '@/types/package-manager';
-import { CommandBuilder } from './command-builder';
+import type { CommandBuilder } from './command-builder';
 
 /**
  * Builds and manages package.json configurations
@@ -153,7 +153,10 @@ export class PackageJsonBuilder {
    */
   private createBaseConfig(
     config: Partial<PackageJsonConfig>
-  ): Omit<PackageJsonConfig, 'scripts' | 'engines' | 'dependencies' | 'devDependencies'> {
+  ): Omit<
+    PackageJsonConfig,
+    'scripts' | 'engines' | 'dependencies' | 'devDependencies'
+  > {
     return {
       name: config.name || 'unnamed-project',
       version: config.version || '1.0.0',

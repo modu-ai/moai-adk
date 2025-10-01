@@ -56,16 +56,20 @@ export class CodeFirstTAGEnforcer implements MoAIHook {
       const newContent = this.extractFileContent(input.tool_input || {});
 
       // 3. @IMMUTABLE TAG 블록 수정 검사
-      const immutabilityCheck = this.checkImmutability(oldContent, newContent, filePath);
+      const immutabilityCheck = this.checkImmutability(
+        oldContent,
+        newContent,
+        filePath
+      );
       if (immutabilityCheck.violated) {
         return {
           success: false,
           blocked: true,
           message: `🚫 @IMMUTABLE TAG 수정 금지: ${immutabilityCheck.violationDetails}`,
           data: {
-            suggestions: this.generateImmutabilityHelp(immutabilityCheck)
+            suggestions: this.generateImmutabilityHelp(immutabilityCheck),
           },
-          exitCode: 2
+          exitCode: 2,
         };
       }
 
@@ -77,9 +81,9 @@ export class CodeFirstTAGEnforcer implements MoAIHook {
           blocked: true,
           message: `🏷️ Code-First TAG 검증 실패: ${validation.violations.join(', ')}`,
           data: {
-            suggestions: this.generateTagSuggestions(filePath, newContent)
+            suggestions: this.generateTagSuggestions(filePath, newContent),
           },
-          exitCode: 2
+          exitCode: 2,
         };
       }
 
@@ -92,12 +96,13 @@ export class CodeFirstTAGEnforcer implements MoAIHook {
         success: true,
         message: validation.hasTag
           ? `✅ Code-First TAG 검증 완료`
-          : `📝 TAG 블록이 없는 파일 (권장사항)`
+          : `📝 TAG 블록이 없는 파일 (권장사항)`,
       };
-
     } catch (error) {
       // 오류 발생 시 블록하지 않고 경고만 출력
-      console.error(`TAG Enforcer 경고: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error(
+        `TAG Enforcer 경고: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
       return { success: true };
     }
   }
@@ -106,14 +111,22 @@ export class CodeFirstTAGEnforcer implements MoAIHook {
    * 파일 쓰기 작업 확인
    */
   private isWriteOperation(toolName?: string): boolean {
-    return !!toolName && ['Write', 'Edit', 'MultiEdit', 'NotebookEdit'].includes(toolName);
+    return (
+      !!toolName &&
+      ['Write', 'Edit', 'MultiEdit', 'NotebookEdit'].includes(toolName)
+    );
   }
 
   /**
    * 도구 입력에서 파일 경로 추출
    */
   private extractFilePath(toolInput: Record<string, any>): string | null {
-    return toolInput.file_path || toolInput.filePath || toolInput.notebook_path || null;
+    return (
+      toolInput.file_path ||
+      toolInput.filePath ||
+      toolInput.notebook_path ||
+      null
+    );
   }
 
   /**
@@ -133,16 +146,37 @@ export class CodeFirstTAGEnforcer implements MoAIHook {
    * TAG 검증 대상 파일인지 확인
    */
   private shouldEnforceTags(filePath: string): boolean {
-    const enforceExtensions = ['.ts', '.tsx', '.js', '.jsx', '.py', '.md', '.go', '.rs', '.java', '.cpp', '.hpp'];
+    const enforceExtensions = [
+      '.ts',
+      '.tsx',
+      '.js',
+      '.jsx',
+      '.py',
+      '.md',
+      '.go',
+      '.rs',
+      '.java',
+      '.cpp',
+      '.hpp',
+    ];
     const ext = path.extname(filePath);
 
     // 테스트 파일은 제외 (다른 TAG 규칙 적용)
-    if (filePath.includes('test') || filePath.includes('spec') || filePath.includes('__test__')) {
+    if (
+      filePath.includes('test') ||
+      filePath.includes('spec') ||
+      filePath.includes('__test__')
+    ) {
       return false;
     }
 
     // node_modules, .git 등 제외
-    if (filePath.includes('node_modules') || filePath.includes('.git') || filePath.includes('dist') || filePath.includes('build')) {
+    if (
+      filePath.includes('node_modules') ||
+      filePath.includes('.git') ||
+      filePath.includes('dist') ||
+      filePath.includes('build')
+    ) {
       return false;
     }
 
@@ -164,7 +198,11 @@ export class CodeFirstTAGEnforcer implements MoAIHook {
   /**
    * @IMMUTABLE TAG 블록 수정 검사 (핵심 불변성 보장)
    */
-  private checkImmutability(oldContent: string, newContent: string, filePath: string): ImmutabilityCheck {
+  private checkImmutability(
+    oldContent: string,
+    newContent: string,
+    filePath: string
+  ): ImmutabilityCheck {
     // 기존 파일이 없으면 새 파일이므로 통과
     if (!oldContent) {
       return { violated: false };
@@ -180,7 +218,9 @@ export class CodeFirstTAGEnforcer implements MoAIHook {
     }
 
     // 2. @IMMUTABLE 마커 확인
-    const wasImmutable = CODE_FIRST_PATTERNS.IMMUTABLE_MARKER.test(oldTagBlock.content);
+    const wasImmutable = CODE_FIRST_PATTERNS.IMMUTABLE_MARKER.test(
+      oldTagBlock.content
+    );
     if (!wasImmutable) {
       return { violated: false };
     }
@@ -190,7 +230,7 @@ export class CodeFirstTAGEnforcer implements MoAIHook {
       return {
         violated: true,
         modifiedTag: this.validator.extractMainTag(oldTagBlock.content),
-        violationDetails: '@IMMUTABLE TAG 블록이 삭제되었습니다'
+        violationDetails: '@IMMUTABLE TAG 블록이 삭제되었습니다',
       };
     }
 
@@ -202,7 +242,7 @@ export class CodeFirstTAGEnforcer implements MoAIHook {
       return {
         violated: true,
         modifiedTag: this.validator.extractMainTag(oldTagBlock.content),
-        violationDetails: '@IMMUTABLE TAG 블록의 내용이 변경되었습니다'
+        violationDetails: '@IMMUTABLE TAG 블록의 내용이 변경되었습니다',
       };
     }
 
@@ -212,7 +252,9 @@ export class CodeFirstTAGEnforcer implements MoAIHook {
   /**
    * @IMMUTABLE 위반 시 도움말 생성
    */
-  private generateImmutabilityHelp(immutabilityCheck: ImmutabilityCheck): string {
+  private generateImmutabilityHelp(
+    immutabilityCheck: ImmutabilityCheck
+  ): string {
     const help = [
       '🚫 @IMMUTABLE TAG 수정이 감지되었습니다.',
       '',
@@ -228,7 +270,7 @@ export class CodeFirstTAGEnforcer implements MoAIHook {
       '3. 새 TAG에서 이전 TAG를 참조하세요',
       '   예: @REPLACES: FEATURE:AUTH-001',
       '',
-      `🔍 수정 시도된 TAG: ${immutabilityCheck.modifiedTag || 'UNKNOWN'}`
+      `🔍 수정 시도된 TAG: ${immutabilityCheck.modifiedTag || 'UNKNOWN'}`,
     ];
 
     return help.join('\n');
@@ -261,7 +303,7 @@ export class CodeFirstTAGEnforcer implements MoAIHook {
       '💡 추가 팁:',
       '• TAG 블록은 파일 최상단에 위치',
       '• @IMMUTABLE 마커로 불변성 보장',
-      '• 체인으로 관련 TAG들 연결'
+      '• 체인으로 관련 TAG들 연결',
     ];
 
     return suggestions.join('\n');
@@ -281,7 +323,9 @@ export async function main(): Promise<void> {
     if (result.blocked) {
       console.error(`BLOCKED: ${result.message}`);
       if (result.data?.suggestions) {
-        console.error('\n📝 Code-First TAG 가이드:\n' + result.data.suggestions);
+        console.error(
+          '\n📝 Code-First TAG 가이드:\n' + result.data.suggestions
+        );
       }
       process.exit(2);
     } else if (!result.success) {
@@ -293,7 +337,9 @@ export async function main(): Promise<void> {
 
     process.exit(0);
   } catch (error) {
-    console.error(`Code-First TAG Enforcer 오류: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error(
+      `Code-First TAG Enforcer 오류: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
     process.exit(0); // 오류 시 블록하지 않음
   }
 }
@@ -301,7 +347,9 @@ export async function main(): Promise<void> {
 // Execute if run directly
 if (require.main === module) {
   main().catch(error => {
-    console.error(`Code-First TAG Enforcer 치명적 오류: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error(
+      `Code-First TAG Enforcer 치명적 오류: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
     process.exit(0);
   });
 }

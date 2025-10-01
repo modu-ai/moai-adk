@@ -1,4 +1,4 @@
-// @CODE:PKG-TYPES-001 | 
+// @CODE:PKG-TYPES-001 |
 // Related: @CODE:PKG-001
 
 /**

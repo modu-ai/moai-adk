@@ -1,4 +1,4 @@
-// @CODE:GIT-BRANCH-001 | 
+// @CODE:GIT-BRANCH-001 |
 // Related: @CODE:GIT-BRANCH-001
 
 /**
@@ -106,9 +106,18 @@ export class GitBranchManager {
       await this.git.init();
 
       // 기본 설정 적용
-      await this.git.addConfig('init.defaultBranch', GitDefaults.DEFAULT_BRANCH);
-      await this.git.addConfig('core.autocrlf', GitDefaults.CONFIG['core.autocrlf']);
-      await this.git.addConfig('core.ignorecase', GitDefaults.CONFIG['core.ignorecase']);
+      await this.git.addConfig(
+        'init.defaultBranch',
+        GitDefaults.DEFAULT_BRANCH
+      );
+      await this.git.addConfig(
+        'core.autocrlf',
+        GitDefaults.CONFIG['core.autocrlf']
+      );
+      await this.git.addConfig(
+        'core.ignorecase',
+        GitDefaults.CONFIG['core.ignorecase']
+      );
 
       // 기본 브랜치로 체크아웃
       try {
@@ -168,7 +177,8 @@ export class GitBranchManager {
       if (baseBranch) {
         // 베이스 브랜치 검증
         const branches = await this.git.branch();
-        const baseBranchValidation = InputValidator.validateBranchName(baseBranch);
+        const baseBranchValidation =
+          InputValidator.validateBranchName(baseBranch);
 
         if (!baseBranchValidation.isValid) {
           throw new Error(

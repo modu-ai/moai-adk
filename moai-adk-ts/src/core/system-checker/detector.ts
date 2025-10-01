@@ -1,4 +1,4 @@
-// @CODE:SYS-001 | 
+// @CODE:SYS-001 |
 // Related: @CODE:SYS-001:API, @CODE:SYS-INFO-001
 
 /**

@@ -1,5 +1,5 @@
 /**
- * @TEST:POLICY-001 | 
+ * @TEST:POLICY-001 |
  * Related: @CODE:HOOK-001, @CODE:HOOK-001:API
  *
  * Policy Block Hook Test Suite
@@ -22,8 +22,8 @@ describe('PolicyBlock Hook', () => {
       const input: HookInput = {
         tool_name: 'Bash',
         tool_input: {
-          command: 'git status'
-        }
+          command: 'git status',
+        },
       };
 
       const result = await policyBlock.execute(input);
@@ -36,8 +36,8 @@ describe('PolicyBlock Hook', () => {
       const input: HookInput = {
         tool_name: 'Bash',
         tool_input: {
-          command: 'npm install'
-        }
+          command: 'npm install',
+        },
       };
 
       const result = await policyBlock.execute(input);
@@ -50,8 +50,8 @@ describe('PolicyBlock Hook', () => {
       const input: HookInput = {
         tool_name: 'Bash',
         tool_input: {
-          command: 'python --version'
-        }
+          command: 'python --version',
+        },
       };
 
       const result = await policyBlock.execute(input);
@@ -64,8 +64,8 @@ describe('PolicyBlock Hook', () => {
         tool_name: 'Write',
         tool_input: {
           file_path: '/test/file.txt',
-          content: 'test'
-        }
+          content: 'test',
+        },
       };
 
       const result = await policyBlock.execute(input);
@@ -79,8 +79,8 @@ describe('PolicyBlock Hook', () => {
       const input: HookInput = {
         tool_name: 'Bash',
         tool_input: {
-          command: 'rm -rf /'
-        }
+          command: 'rm -rf /',
+        },
       };
 
       const result = await policyBlock.execute(input);
@@ -95,8 +95,8 @@ describe('PolicyBlock Hook', () => {
       const input: HookInput = {
         tool_name: 'Bash',
         tool_input: {
-          command: 'sudo rm -rf /important/files'
-        }
+          command: 'sudo rm -rf /important/files',
+        },
       };
 
       const result = await policyBlock.execute(input);
@@ -109,8 +109,8 @@ describe('PolicyBlock Hook', () => {
       const input: HookInput = {
         tool_name: 'Bash',
         tool_input: {
-          command: ':(){:|:&};:'
-        }
+          command: ':(){:|:&};:',
+        },
       };
 
       const result = await policyBlock.execute(input);
@@ -123,8 +123,8 @@ describe('PolicyBlock Hook', () => {
       const input: HookInput = {
         tool_name: 'Bash',
         tool_input: {
-          command: 'mkfs.ext4 /dev/sda1'
-        }
+          command: 'mkfs.ext4 /dev/sda1',
+        },
       };
 
       const result = await policyBlock.execute(input);
@@ -139,8 +139,8 @@ describe('PolicyBlock Hook', () => {
       const input: HookInput = {
         tool_name: 'Bash',
         tool_input: {
-          command: ''
-        }
+          command: '',
+        },
       };
 
       const result = await policyBlock.execute(input);
@@ -152,8 +152,8 @@ describe('PolicyBlock Hook', () => {
       const input: HookInput = {
         tool_name: 'Bash',
         tool_input: {
-          command: ['git', 'status']
-        }
+          command: ['git', 'status'],
+        },
       };
 
       const result = await policyBlock.execute(input);
@@ -163,7 +163,7 @@ describe('PolicyBlock Hook', () => {
 
     it('should handle missing tool_input', async () => {
       const input: HookInput = {
-        tool_name: 'Bash'
+        tool_name: 'Bash',
       };
 
       const result = await policyBlock.execute(input);
@@ -175,8 +175,8 @@ describe('PolicyBlock Hook', () => {
       const input: HookInput = {
         tool_name: 'Bash',
         tool_input: {
-          command: 'RM -RF /'
-        }
+          command: 'RM -RF /',
+        },
       };
 
       const result = await policyBlock.execute(input);

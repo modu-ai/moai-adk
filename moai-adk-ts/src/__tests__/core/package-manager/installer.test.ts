@@ -4,7 +4,14 @@
  * @tags @TEST:REFACTOR-007 @SPEC:REFACTOR-007
  */
 
-import { beforeEach, describe, expect, test, vi, type MockedFunction } from 'vitest';
+import {
+  beforeEach,
+  describe,
+  expect,
+  test,
+  vi,
+  type MockedFunction,
+} from 'vitest';
 import '@/__tests__/setup';
 import { execa } from 'execa';
 import { PackageManagerInstaller } from '@/core/package-manager/installer';

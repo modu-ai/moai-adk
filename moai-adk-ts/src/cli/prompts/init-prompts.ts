@@ -28,8 +28,12 @@ export interface InitAnswers {
  * Display welcome banner for moai init
  */
 export function displayWelcomeBanner(): void {
-  console.log(chalk.gray('  Let\'s set up your project with a few questions...'));
-  console.log(chalk.gray('  You can change these settings later in .moai/config.json\n'));
+  console.log(
+    chalk.gray("  Let's set up your project with a few questions...")
+  );
+  console.log(
+    chalk.gray('  You can change these settings later in .moai/config.json\n')
+  );
 }
 
 /**
@@ -75,7 +79,9 @@ export async function promptLocale(): Promise<Partial<InitAnswers>> {
   setLocale(answers.locale);
 
   if (answers.locale === 'ko') {
-    displayTip('한국어가 선택되었습니다. 이후 모든 메시지가 한국어로 표시됩니다.');
+    displayTip(
+      '한국어가 선택되었습니다. 이후 모든 메시지가 한국어로 표시됩니다.'
+    );
   } else {
     displayTip('English selected. All subsequent messages will be in English.');
   }
@@ -93,7 +99,10 @@ function displayTip(tip: string): void {
 /**
  * Get basic project information
  */
-export async function promptBasicInfo(defaultName?: string, isCurrentDirMode = false): Promise<Partial<InitAnswers>> {
+export async function promptBasicInfo(
+  defaultName?: string,
+  isCurrentDirMode = false
+): Promise<Partial<InitAnswers>> {
   displayStep(2, 4, t('init.prompts.projectInfo'));
 
   // Determine appropriate default name and tip based on mode
@@ -147,12 +156,16 @@ export async function promptMode(): Promise<Partial<InitAnswers>> {
       message: chalk.cyan(t('init.prompts.selectMode')),
       choices: [
         {
-          name: chalk.white(t('init.prompts.modePersonal')) + chalk.gray(` - ${t('init.prompts.modePersonalDesc')}`),
+          name:
+            chalk.white(t('init.prompts.modePersonal')) +
+            chalk.gray(` - ${t('init.prompts.modePersonalDesc')}`),
           value: 'personal',
           short: 'Personal',
         },
         {
-          name: chalk.white(t('init.prompts.modeTeam')) + chalk.gray(`     - ${t('init.prompts.modeTeamDesc')}`),
+          name:
+            chalk.white(t('init.prompts.modeTeam')) +
+            chalk.gray(`     - ${t('init.prompts.modeTeamDesc')}`),
           value: 'team',
           short: 'Team',
         },
@@ -197,7 +210,9 @@ export async function promptGitConfig(): Promise<Partial<InitAnswers>> {
 /**
  * Get GitHub configuration (Team mode only)
  */
-export async function promptGitHubConfig(mode: 'personal' | 'team'): Promise<Partial<InitAnswers>> {
+export async function promptGitHubConfig(
+  mode: 'personal' | 'team'
+): Promise<Partial<InitAnswers>> {
   if (mode !== 'team') {
     return {};
   }
@@ -262,12 +277,16 @@ export async function promptSpecWorkflow(
       message: chalk.cyan(t('init.prompts.specWorkflow') + ':'),
       choices: [
         {
-          name: chalk.white(t('init.prompts.workflowBranch')) + chalk.gray(` - ${t('init.prompts.workflowBranchDesc')}`),
+          name:
+            chalk.white(t('init.prompts.workflowBranch')) +
+            chalk.gray(` - ${t('init.prompts.workflowBranchDesc')}`),
           value: 'branch',
           short: 'Branch',
         },
         {
-          name: chalk.white(t('init.prompts.workflowCommit')) + chalk.gray(`  - ${t('init.prompts.workflowCommitDesc')}`),
+          name:
+            chalk.white(t('init.prompts.workflowCommit')) +
+            chalk.gray(`  - ${t('init.prompts.workflowCommitDesc')}`),
           value: 'commit',
           short: 'Commit',
         },
@@ -288,7 +307,9 @@ export async function promptSpecWorkflow(
 /**
  * Get auto-push configuration (GitHub enabled only)
  */
-export async function promptAutoPush(githubEnabled?: boolean): Promise<Partial<InitAnswers>> {
+export async function promptAutoPush(
+  githubEnabled?: boolean
+): Promise<Partial<InitAnswers>> {
   if (!githubEnabled) {
     return { autoPush: false };
   }
@@ -322,16 +343,40 @@ export function displaySummary(answers: InitAnswers): void {
   console.log('\n');
   console.log(chalk.white.bold('📋 Summary:'));
   console.log(chalk.gray('─'.repeat(60)));
-  console.log(chalk.cyan('  Project Name:  ') + chalk.white(answers.projectName));
-  console.log(chalk.cyan('  Mode:          ') + chalk.white(answers.mode === 'personal' ? '🧑 Personal' : '👥 Team'));
-  console.log(chalk.cyan('  Git:           ') + chalk.white(answers.gitEnabled ? '✓ Enabled' : '✗ Disabled'));
+  console.log(
+    chalk.cyan('  Project Name:  ') + chalk.white(answers.projectName)
+  );
+  console.log(
+    chalk.cyan('  Mode:          ') +
+      chalk.white(answers.mode === 'personal' ? '🧑 Personal' : '👥 Team')
+  );
+  console.log(
+    chalk.cyan('  Git:           ') +
+      chalk.white(answers.gitEnabled ? '✓ Enabled' : '✗ Disabled')
+  );
 
   if (answers.mode === 'team') {
-    console.log(chalk.cyan('  GitHub:        ') + chalk.white(answers.githubEnabled ? '✓ Enabled' : '✗ Disabled'));
+    console.log(
+      chalk.cyan('  GitHub:        ') +
+        chalk.white(answers.githubEnabled ? '✓ Enabled' : '✗ Disabled')
+    );
     if (answers.githubEnabled) {
-      console.log(chalk.cyan('  Repository:    ') + chalk.white(answers.githubUrl || 'N/A'));
-      console.log(chalk.cyan('  Workflow:      ') + chalk.white(answers.specWorkflow === 'branch' ? '🌿 Branch + Merge' : '📝 Commits'));
-      console.log(chalk.cyan('  Auto-push:     ') + chalk.white(answers.autoPush ? '✓ Enabled' : '✗ Disabled'));
+      console.log(
+        chalk.cyan('  Repository:    ') +
+          chalk.white(answers.githubUrl || 'N/A')
+      );
+      console.log(
+        chalk.cyan('  Workflow:      ') +
+          chalk.white(
+            answers.specWorkflow === 'branch'
+              ? '🌿 Branch + Merge'
+              : '📝 Commits'
+          )
+      );
+      console.log(
+        chalk.cyan('  Auto-push:     ') +
+          chalk.white(answers.autoPush ? '✓ Enabled' : '✗ Disabled')
+      );
     }
   }
 
@@ -342,7 +387,10 @@ export function displaySummary(answers: InitAnswers): void {
 /**
  * Run all prompts in sequence
  */
-export async function runInteractivePrompts(defaultName?: string, isCurrentDirMode = false): Promise<InitAnswers> {
+export async function runInteractivePrompts(
+  defaultName?: string,
+  isCurrentDirMode = false
+): Promise<InitAnswers> {
   // Banner is already displayed in init.ts, no need to display again
 
   // Step 0: Select language FIRST (before any other prompts)
@@ -351,7 +399,9 @@ export async function runInteractivePrompts(defaultName?: string, isCurrentDirMo
   const basicInfo = await promptBasicInfo(defaultName, isCurrentDirMode);
   const modeInfo = await promptMode();
   const gitInfo = await promptGitConfig();
-  const githubInfo = await promptGitHubConfig(modeInfo.mode as 'personal' | 'team');
+  const githubInfo = await promptGitHubConfig(
+    modeInfo.mode as 'personal' | 'team'
+  );
   const workflowInfo = await promptSpecWorkflow(
     modeInfo.mode as 'personal' | 'team',
     githubInfo.githubEnabled

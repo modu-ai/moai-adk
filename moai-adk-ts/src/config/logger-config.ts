@@ -36,9 +36,12 @@ export function getLoggerConfig(): EnvironmentConfig {
  */
 export function mergeLoggerOptions(
   userOptions?: LoggerOptions
-): Required<Omit<LoggerOptions, 'transports'>> & { transports?: winston.transport[] } {
+): Required<Omit<LoggerOptions, 'transports'>> & {
+  transports?: winston.transport[];
+} {
   const envConfig = getLoggerConfig();
-  const logLevel = process.env['LOG_LEVEL'] || userOptions?.level || envConfig.level;
+  const logLevel =
+    process.env['LOG_LEVEL'] || userOptions?.level || envConfig.level;
 
   const merged: Required<Omit<LoggerOptions, 'transports'>> & {
     transports?: winston.transport[];

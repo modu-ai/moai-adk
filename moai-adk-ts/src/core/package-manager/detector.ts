@@ -1,4 +1,4 @@
-// @CODE:PKG-001 | 
+// @CODE:PKG-001 |
 // Related: @CODE:PKG-001:API, @CODE:PKG-INFO-001
 
 /**

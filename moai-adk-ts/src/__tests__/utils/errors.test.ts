@@ -1,4 +1,4 @@
-// @TEST:UTIL-006 | 
+// @TEST:UTIL-006 |
 // Related: @CODE:TYPE-SAFETY-001, @CODE:VALID-002:API
 
 /**

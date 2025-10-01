@@ -1,4 +1,4 @@
-// @CODE:GIT-001 | 
+// @CODE:GIT-001 |
 // Related: @CODE:GIT-001:API, @CODE:GIT-CFG-001
 
 /**
@@ -68,7 +68,10 @@ export class GitManager {
     // 임시로 새 브랜치 매니저 생성 (다른 경로용)
     if (projectPath && projectPath !== this.currentWorkingDir) {
       try {
-        const tempBranchManager = new GitBranchManager(this.config, projectPath);
+        const tempBranchManager = new GitBranchManager(
+          this.config,
+          projectPath
+        );
         return await tempBranchManager.initializeRepository();
       } catch (error) {
         // 실패 시 GitInitResult 반환
@@ -136,7 +139,12 @@ export class GitManager {
     wait: boolean = true,
     timeout: number = 30
   ): Promise<GitCommitResult> {
-    return await this.commitManager.commitWithLock(message, files, wait, timeout);
+    return await this.commitManager.commitWithLock(
+      message,
+      files,
+      wait,
+      timeout
+    );
   }
 
   /**

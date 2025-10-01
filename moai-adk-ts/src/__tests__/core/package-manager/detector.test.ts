@@ -4,7 +4,14 @@
  * @tags @TEST:PACKAGE-MANAGER-DETECTOR-001 @SPEC:PACKAGE-MANAGER-002
  */
 
-import { beforeEach, describe, expect, test, vi, type MockedFunction } from 'vitest';
+import {
+  beforeEach,
+  describe,
+  expect,
+  test,
+  vi,
+  type MockedFunction,
+} from 'vitest';
 import '@/__tests__/setup';
 import { execa } from 'execa';
 import { PackageManagerDetector } from '@/core/package-manager/detector';

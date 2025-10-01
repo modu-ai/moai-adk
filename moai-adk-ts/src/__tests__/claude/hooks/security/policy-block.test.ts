@@ -1,4 +1,4 @@
-// @TEST:SEC-001 | 
+// @TEST:SEC-001 |
 // Related: @CODE:SEC-POLICY-001
 
 /**

@@ -1,4 +1,4 @@
-// @CODE:GIT-COMMIT-001 | 
+// @CODE:GIT-COMMIT-001 |
 // Related: @CODE:GIT-COMMIT-001
 
 /**
@@ -160,11 +160,11 @@ export class GitCommitManager {
     try {
       // Git 상태를 명시적으로 갱신
       const status: StatusResult = await this.git.status();
-      const branch = await this.git.branch();  // 브랜치 정보 명시적 조회
+      const branch = await this.git.branch(); // 브랜치 정보 명시적 조회
 
       return {
         clean: status.isClean(),
-        currentBranch: branch.current,  // branchResult에서 직접 가져오기
+        currentBranch: branch.current, // branchResult에서 직접 가져오기
         modified: status.modified,
         added: status.staged,
         deleted: status.deleted,

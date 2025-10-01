@@ -1,4 +1,4 @@
-// @CODE:CLI-003 | 
+// @CODE:CLI-003 |
 // Related: @CODE:GIT-001:API, @CODE:GIT-STATUS-001
 
 /**

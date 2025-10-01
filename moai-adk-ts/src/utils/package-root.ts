@@ -1,4 +1,4 @@
-// @CODE:UTIL-006 | 
+// @CODE:UTIL-006 |
 // Related: @CODE:PATH-INFO-001
 
 /**

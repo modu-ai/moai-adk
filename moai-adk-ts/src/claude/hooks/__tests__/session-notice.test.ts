@@ -1,5 +1,5 @@
 /**
- * @TEST:SESSION-001 | 
+ * @TEST:SESSION-001 |
  * Related: @CODE:HOOK-003, @CODE:HOOK-003:API
  *
  * Session Notice Hook Test Suite
@@ -51,10 +51,12 @@ describe('SessionNotifier Hook', () => {
 
     it('should execute successfully for MoAI project', async () => {
       vi.spyOn(fs, 'existsSync').mockReturnValue(true);
-      vi.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify({
-        project: { version: '0.0.1' },
-        pipeline: { current_stage: 'implementation' }
-      }));
+      vi.spyOn(fs, 'readFileSync').mockReturnValue(
+        JSON.stringify({
+          project: { version: '0.0.1' },
+          pipeline: { current_stage: 'implementation' },
+        })
+      );
       vi.spyOn(fs, 'readdirSync').mockReturnValue([]);
 
       const result = await notifier.execute({});
@@ -79,9 +81,11 @@ describe('SessionNotifier Hook', () => {
     });
 
     it('should get MoAI version from package.json', () => {
-      vi.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify({
-        version: '1.2.3'
-      }));
+      vi.spyOn(fs, 'readFileSync').mockReturnValue(
+        JSON.stringify({
+          version: '1.2.3',
+        })
+      );
 
       const version = notifier.getMoAIVersion();
 
@@ -92,9 +96,11 @@ describe('SessionNotifier Hook', () => {
       vi.spyOn(fs, 'existsSync').mockImplementation((p: any) => {
         return p.toString().includes('config.json');
       });
-      vi.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify({
-        project: { version: '0.5.0' }
-      }));
+      vi.spyOn(fs, 'readFileSync').mockReturnValue(
+        JSON.stringify({
+          project: { version: '0.5.0' },
+        })
+      );
 
       const version = notifier.getMoAIVersion();
 
@@ -110,9 +116,11 @@ describe('SessionNotifier Hook', () => {
     });
 
     it('should detect current pipeline stage', () => {
-      vi.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify({
-        pipeline: { current_stage: 'specification' }
-      }));
+      vi.spyOn(fs, 'readFileSync').mockReturnValue(
+        JSON.stringify({
+          pipeline: { current_stage: 'specification' },
+        })
+      );
 
       const stage = notifier.getCurrentPipelineStage();
 
@@ -124,10 +132,12 @@ describe('SessionNotifier Hook', () => {
       vi.spyOn(fs, 'existsSync').mockImplementation((p: any) => {
         const pathStr = p.toString();
         // Return true for .moai, .claude directories and critical files
-        return pathStr.includes('.moai') ||
-               pathStr.includes('.claude') ||
-               pathStr.includes('CLAUDE.md') ||
-               pathStr.includes('development-guide.md');
+        return (
+          pathStr.includes('.moai') ||
+          pathStr.includes('.claude') ||
+          pathStr.includes('CLAUDE.md') ||
+          pathStr.includes('development-guide.md')
+        );
       });
 
       const status = notifier.checkConstitutionStatus();
@@ -141,14 +151,20 @@ describe('SessionNotifier Hook', () => {
       vi.spyOn(fs, 'existsSync').mockImplementation((p: any) => {
         const pathStr = p.toString();
         // .moai and .claude exist but critical files are missing
-        if (pathStr.includes('.moai') && !pathStr.includes('development-guide')) {
+        if (
+          pathStr.includes('.moai') &&
+          !pathStr.includes('development-guide')
+        ) {
           return true;
         }
         if (pathStr.includes('.claude') && !pathStr.includes('CLAUDE')) {
           return true;
         }
         // Critical files don't exist
-        if (pathStr.includes('development-guide.md') || pathStr.includes('CLAUDE.md')) {
+        if (
+          pathStr.includes('development-guide.md') ||
+          pathStr.includes('CLAUDE.md')
+        ) {
           return false;
         }
         return true;
@@ -167,9 +183,11 @@ describe('SessionNotifier Hook', () => {
       vi.spyOn(fs, 'readdirSync').mockReturnValue([
         'SPEC-001',
         'SPEC-002',
-        'SPEC-003'
+        'SPEC-003',
       ] as any);
-      vi.spyOn(fs, 'statSync').mockReturnValue({ isDirectory: () => true } as any);
+      vi.spyOn(fs, 'statSync').mockReturnValue({
+        isDirectory: () => true,
+      } as any);
 
       const progress = notifier.getSpecProgress();
 
@@ -190,7 +208,9 @@ describe('SessionNotifier Hook', () => {
         return true;
       });
       vi.spyOn(fs, 'readdirSync').mockReturnValue(['SPEC-001'] as any);
-      vi.spyOn(fs, 'statSync').mockReturnValue({ isDirectory: () => true } as any);
+      vi.spyOn(fs, 'statSync').mockReturnValue({
+        isDirectory: () => true,
+      } as any);
 
       const progress = notifier.getSpecProgress();
 
@@ -206,14 +226,14 @@ describe('SessionNotifier Hook', () => {
             if (event === 'data') {
               callback(Buffer.from('develop'));
             }
-          })
+          }),
         },
         stderr: { on: vi.fn() },
         on: vi.fn((event, callback) => {
           if (event === 'close') {
             callback(0);
           }
-        })
+        }),
       });
       vi.mocked(spawn).mockImplementation(mockSpawn as any);
 
@@ -230,7 +250,7 @@ describe('SessionNotifier Hook', () => {
           if (event === 'close') {
             callback(1);
           }
-        })
+        }),
       });
       vi.mocked(spawn).mockImplementation(mockSpawn as any);
 
@@ -246,14 +266,14 @@ describe('SessionNotifier Hook', () => {
             if (event === 'data') {
               callback(Buffer.from(' M file1.ts\n M file2.ts\n'));
             }
-          })
+          }),
         },
         stderr: { on: vi.fn() },
         on: vi.fn((event, callback) => {
           if (event === 'close') {
             callback(0);
           }
-        })
+        }),
       });
       vi.mocked(spawn).mockImplementation(mockSpawn as any);
 
@@ -267,7 +287,7 @@ describe('SessionNotifier Hook', () => {
     it('should check for latest version', async () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ version: '1.0.0' })
+        json: async () => ({ version: '1.0.0' }),
       } as any);
 
       vi.spyOn(notifier, 'getMoAIVersion').mockReturnValue('0.9.0');

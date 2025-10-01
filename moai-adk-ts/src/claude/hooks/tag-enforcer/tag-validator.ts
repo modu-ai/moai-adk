@@ -54,7 +54,7 @@ export class TagValidator {
           if (CODE_FIRST_PATTERNS.MAIN_TAG.test(blockContent)) {
             return {
               content: blockContent,
-              lineNumber: startLineNumber
+              lineNumber: startLineNumber,
             };
           }
 
@@ -66,7 +66,12 @@ export class TagValidator {
       }
 
       // TAG 블록이 아닌 코드 시작되면 중단
-      if (!inBlock && line && !line.startsWith('//') && !line.startsWith('/*')) {
+      if (
+        !inBlock &&
+        line &&
+        !line.startsWith('//') &&
+        !line.startsWith('/*')
+      ) {
         break;
       }
     }
@@ -108,7 +113,7 @@ export class TagValidator {
         isValid: true, // TAG 블록이 없어도 차단하지 않음 (권장사항)
         violations: [],
         warnings: ['파일 최상단에 TAG 블록이 없습니다 (권장사항)'],
-        hasTag: false
+        hasTag: false,
       };
     }
 
@@ -123,7 +128,10 @@ export class TagValidator {
       const [, category, domainId] = tagMatch;
 
       // 카테고리 유효성 검사
-      const allValidCategories = [...VALID_CATEGORIES.lifecycle, ...VALID_CATEGORIES.implementation];
+      const allValidCategories = [
+        ...VALID_CATEGORIES.lifecycle,
+        ...VALID_CATEGORIES.implementation,
+      ];
       if (!allValidCategories.includes(category)) {
         violations.push(`유효하지 않은 TAG 카테고리: ${category}`);
       }
@@ -183,14 +191,16 @@ export class TagValidator {
 
     // 7. @IMMUTABLE 마커 권장
     if (!CODE_FIRST_PATTERNS.IMMUTABLE_MARKER.test(blockContent)) {
-      warnings.push('@IMMUTABLE 마커를 추가하여 TAG 불변성을 보장하는 것을 권장합니다');
+      warnings.push(
+        '@IMMUTABLE 마커를 추가하여 TAG 불변성을 보장하는 것을 권장합니다'
+      );
     }
 
     return {
       isValid: violations.length === 0,
       violations,
       warnings,
-      hasTag
+      hasTag,
     };
   }
 }

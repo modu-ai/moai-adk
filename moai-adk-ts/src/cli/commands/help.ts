@@ -1,4 +1,4 @@
-// @CODE:CLI-006 | 
+// @CODE:CLI-006 |
 // Related: @CODE:HELP-001:UI
 
 /**

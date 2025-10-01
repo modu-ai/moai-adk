@@ -1,4 +1,4 @@
-// @CODE:UTIL-001 | 
+// @CODE:UTIL-001 |
 // Related: @CODE:BANNER-001:UI
 
 /**

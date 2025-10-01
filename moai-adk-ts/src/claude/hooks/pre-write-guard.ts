@@ -1,5 +1,5 @@
 /**
- * @CODE:HOOK-002 | 
+ * @CODE:HOOK-002 |
  * Related: @CODE:HOOK-002:API, @SECURITY:PREWRITE-001
  *
  * Pre-Write Guard Hook

@@ -1,4 +1,4 @@
-// @CODE:INST-005 | 
+// @CODE:INST-005 |
 // Related: @CODE:INST-005:API, @CODE:INST-TPL-001
 
 /**
@@ -90,7 +90,12 @@ export class TemplateProcessor {
    * @private
    */
   private tryUserNodeModulesTemplates(): string | null {
-    const userNodeModules = path.join(process.cwd(), 'node_modules', 'moai-adk', 'templates');
+    const userNodeModules = path.join(
+      process.cwd(),
+      'node_modules',
+      'moai-adk',
+      'templates'
+    );
 
     if (fs.existsSync(userNodeModules)) {
       logger.debug('Found templates in user node_modules', {
@@ -119,8 +124,23 @@ export class TemplateProcessor {
 
     const globalPaths = [
       path.join(nodeInstallDir, 'lib', 'node_modules', 'moai-adk', 'templates'),
-      path.join(homeDir, '.bun', 'install', 'global', 'node_modules', 'moai-adk', 'templates'),
-      path.join(homeDir, '.npm-global', 'lib', 'node_modules', 'moai-adk', 'templates'),
+      path.join(
+        homeDir,
+        '.bun',
+        'install',
+        'global',
+        'node_modules',
+        'moai-adk',
+        'templates'
+      ),
+      path.join(
+        homeDir,
+        '.npm-global',
+        'lib',
+        'node_modules',
+        'moai-adk',
+        'templates'
+      ),
     ];
 
     // Platform-specific paths
@@ -196,9 +216,7 @@ export class TemplateProcessor {
    * @returns Template variables object
    * @tags @CODE:CREATE-TEMPLATE-VARS-001:API
    */
-  createTemplateVariables(
-    config: InstallationConfig
-  ): Record<string, any> {
+  createTemplateVariables(config: InstallationConfig): Record<string, any> {
     return {
       PROJECT_NAME: config.projectName,
       PROJECT_DESCRIPTION: `A ${config.projectName} project built with MoAI-ADK`,

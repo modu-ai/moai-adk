@@ -22,7 +22,9 @@ describe('@TEST:REFACTOR-004 - GitNamingRules', () => {
   describe('Branch Name Creation', () => {
     it('@TEST-BRANCH-CONSTANTS-002: should create feature branch name', () => {
       expect(GitNamingRules.createFeatureBranch('login')).toBe('feature/login');
-      expect(GitNamingRules.createFeatureBranch('user-auth')).toBe('feature/user-auth');
+      expect(GitNamingRules.createFeatureBranch('user-auth')).toBe(
+        'feature/user-auth'
+      );
     });
 
     it('@TEST-BRANCH-CONSTANTS-003: should create spec branch name', () => {
@@ -31,11 +33,15 @@ describe('@TEST:REFACTOR-004 - GitNamingRules', () => {
     });
 
     it('@TEST-BRANCH-CONSTANTS-004: should create bugfix branch name', () => {
-      expect(GitNamingRules.createBugfixBranch('fix-login')).toBe('bugfix/fix-login');
+      expect(GitNamingRules.createBugfixBranch('fix-login')).toBe(
+        'bugfix/fix-login'
+      );
     });
 
     it('@TEST-BRANCH-CONSTANTS-005: should create hotfix branch name', () => {
-      expect(GitNamingRules.createHotfixBranch('critical-bug')).toBe('hotfix/critical-bug');
+      expect(GitNamingRules.createHotfixBranch('critical-bug')).toBe(
+        'hotfix/critical-bug'
+      );
     });
   });
 

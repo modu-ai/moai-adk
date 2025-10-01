@@ -1,4 +1,4 @@
-// @CODE:CLI-002 | 
+// @CODE:CLI-002 |
 // Related: @CODE:SYS-001:API, @CODE:SYS-INFO-001
 
 /**
@@ -177,7 +177,10 @@ export class DoctorCommand {
   private printEnhancedResults(checkSummary: SystemCheckSummary): void {
     // Show detected languages first if any
     if (checkSummary.detectedLanguages.length > 0) {
-      console.log(chalk.cyan.bold('  Languages:'), chalk.white(checkSummary.detectedLanguages.join(', ')));
+      console.log(
+        chalk.cyan.bold('  Languages:'),
+        chalk.white(checkSummary.detectedLanguages.join(', '))
+      );
       console.log();
     }
 
@@ -223,8 +226,14 @@ export class DoctorCommand {
   private printEnhancedSummary(checkSummary: SystemCheckSummary): void {
     console.log(chalk.gray('─'.repeat(60)));
     console.log(chalk.bold('  📊 Summary:'));
-    console.log(chalk.gray(`     Checks: ${chalk.white(checkSummary.totalChecks)} total`));
-    console.log(chalk.gray(`     Status: ${chalk.green(checkSummary.passedChecks + ' passed')} ${checkSummary.failedChecks > 0 ? chalk.red(checkSummary.failedChecks + ' failed') : ''}`));
+    console.log(
+      chalk.gray(`     Checks: ${chalk.white(checkSummary.totalChecks)} total`)
+    );
+    console.log(
+      chalk.gray(
+        `     Status: ${chalk.green(checkSummary.passedChecks + ' passed')} ${checkSummary.failedChecks > 0 ? chalk.red(checkSummary.failedChecks + ' failed') : ''}`
+      )
+    );
     console.log(chalk.gray('─'.repeat(60)));
 
     if (checkSummary.passedChecks === checkSummary.totalChecks) {

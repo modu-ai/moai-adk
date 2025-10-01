@@ -1,4 +1,4 @@
-// @CODE:UTIL-003 | 
+// @CODE:UTIL-003 |
 // Related: @CODE:VALID-001:API
 
 /**

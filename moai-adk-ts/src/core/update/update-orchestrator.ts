@@ -1,4 +1,4 @@
-// @CODE:UPD-001 | 
+// @CODE:UPD-001 |
 // Related: @CODE:UPD-001:API, @CODE:UPD-VER-001
 
 /**
@@ -141,7 +141,9 @@ export class UpdateOrchestrator {
 
       if (backupPath) {
         logger.log(
-          chalk.gray(`\n롤백이 필요하면: moai restore --from=${path.basename(backupPath)}`)
+          chalk.gray(
+            `\n롤백이 필요하면: moai restore --from=${path.basename(backupPath)}`
+          )
         );
       }
 
