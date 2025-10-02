@@ -1206,6 +1206,8 @@ moai restore <backup-path> [options]
 
 ### moai init [project]
 
+새 MoAI-ADK 프로젝트를 초기화하거나 기존 프로젝트에 MoAI-ADK를 설치합니다.
+
 **옵션**:
 
 - `--personal`: Personal 모드로 초기화 (기본값)
@@ -1213,13 +1215,42 @@ moai restore <backup-path> [options]
 - `-b, --backup`: 설치 전 백업 생성
 - `-f, --force`: 기존 파일 강제 덮어쓰기
 
+**사용 예시**:
+
+```bash
+# 새 프로젝트 생성 (Personal 모드)
+moai init my-project
+
+# 현재 디렉토리에 설치
+moai init .
+
+# Team 모드로 초기화
+moai init my-project --team
+
+# 백업 생성 후 설치
+moai init . -b
+
+# 기존 파일 강제 덮어쓰기
+moai init . -f
+```
+
 ### moai doctor
 
-시스템 진단을 실행합니다.
+시스템 진단을 실행하여 MoAI-ADK가 올바르게 설치되었는지 확인합니다.
 
 **옵션**:
 
 - `-l, --list-backups`: 사용 가능한 백업 목록 표시
+
+**사용 예시**:
+
+```bash
+# 시스템 진단 실행
+moai doctor
+
+# 백업 목록 확인
+moai doctor -l
+```
 
 ### moai status
 
@@ -1228,16 +1259,49 @@ MoAI-ADK 프로젝트 상태를 표시합니다.
 **옵션**:
 
 - `-v, --verbose`: 상세 상태 정보 표시
-- `-p, --project-path <path>`: 프로젝트 디렉토리 경로 지정
+- `-p, --project-path <path>`: 프로젝트 디렉토리 경로 지정 (경로 필수)
+
+**사용 예시**:
+
+```bash
+# 현재 디렉토리 상태 확인
+moai status
+
+# 상세 정보 포함
+moai status -v
+
+# 특정 경로 프로젝트 상태 확인
+moai status -p /path/to/project
+
+# 상세 정보 + 특정 경로
+moai status -v -p /path/to/project
+```
 
 ### moai restore <backup-path>
 
 백업 디렉토리에서 MoAI-ADK를 복원합니다.
 
+**인자**:
+
+- `<backup-path>`: 복원할 백업 디렉토리 경로 (필수)
+
 **옵션**:
 
 - `--dry-run`: 변경 없이 복원할 내용 미리보기
 - `--force`: 기존 파일 강제 덮어쓰기
+
+**사용 예시**:
+
+```bash
+# 백업에서 복원 (미리보기)
+moai restore .moai-backup-2025-10-02 --dry-run
+
+# 실제 복원 실행
+moai restore .moai-backup-2025-10-02
+
+# 강제 복원 (기존 파일 덮어쓰기)
+moai restore .moai-backup-2025-10-02 --force
+```
 
 **참고**: MoAI-ADK 업데이트는 Claude Code에서 `/alfred:9-update` 명령어를 사용하세요.
 
