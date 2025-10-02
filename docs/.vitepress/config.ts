@@ -51,7 +51,8 @@ export default withMermaid(defineConfig({
         items: [
           { text: '에이전트', link: '/claude/agents' },
           { text: '명령어', link: '/claude/commands' },
-          { text: '훅', link: '/claude/hooks' }
+          { text: '훅', link: '/claude/hooks' },
+          { text: 'Output Styles', link: '/claude/output-styles' }
         ]
       },
       {

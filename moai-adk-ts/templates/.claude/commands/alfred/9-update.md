@@ -187,7 +187,7 @@ await copyDirectory(sourcePath, targetPath);
 
 **대상 파일** (4개):
 - beginner-learning.md
-- moai-pro.md
+- alfred-pro.md
 - pair-collab.md
 - study-deep.md
 

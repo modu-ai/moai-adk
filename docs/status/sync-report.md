@@ -10,7 +10,7 @@
 
 | 파일 | 변경 전 | 변경 후 | 개선사항 |
 |------|---------|---------|----------|
-| moai-pro.md | 914줄 | 405줄 | 55% 압축, Alfred 오케스트레이션, 다중 언어 TDD |
+| alfred-pro.md | 914줄 | 405줄 | 55% 압축, Alfred 오케스트레이션, 다중 언어 TDD |
 | pair-collab.md | 433줄 | 399줄 | 협업 패턴, 다중 언어 코드 리뷰 |
 | study-deep.md | 444줄 | 399줄 | 프레임워크별 학습 (Express, FastAPI, Gin, Axum) |
 | beginner-learning.md | 224줄 | 324줄 | Alfred 소개, TRUST 비유, Python/Flutter |

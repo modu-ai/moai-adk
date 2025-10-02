@@ -40,7 +40,7 @@ describe('TemplateCopier', () => {
       );
       await fs.mkdir(styleDir, { recursive: true });
       await fs.writeFile(
-        path.join(styleDir, 'moai-pro.md'),
+        path.join(styleDir, 'alfred-pro.md'),
         '# MoAI Pro Style'
       );
       await fs.writeFile(
@@ -85,7 +85,7 @@ describe('TemplateCopier', () => {
 
       // Verify style files exist
       const moaiProExists = await fs
-        .access(path.join(targetStyleDir, 'moai-pro.md'))
+        .access(path.join(targetStyleDir, 'alfred-pro.md'))
         .then(() => true)
         .catch(() => false);
       expect(moaiProExists).toBe(true);

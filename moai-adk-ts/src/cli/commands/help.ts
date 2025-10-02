@@ -64,14 +64,6 @@ export class HelpCommand {
       usage: 'moai init [project-path]',
       options: [
         {
-          flag: '--template, -t',
-          description: 'Template to use (standard, minimal, advanced)',
-        },
-        {
-          flag: '--interactive, -i',
-          description: 'Run interactive setup wizard',
-        },
-        {
           flag: '--backup, -b',
           description: 'Create backup before installation',
         },
@@ -85,7 +77,6 @@ export class HelpCommand {
       examples: [
         'moai init',
         'moai init my-project',
-        'moai init --interactive',
         'moai init --team --backup',
       ],
     });
@@ -136,37 +127,6 @@ export class HelpCommand {
         'moai status',
         'moai status --verbose',
         'moai status --project-path /path/to/project',
-      ],
-    });
-
-    this.commands.set('update', {
-      name: 'update',
-      description: 'Update MoAI-ADK to the latest version',
-      usage: 'moai update',
-      options: [
-        {
-          flag: '--check, -c',
-          description: 'Check for updates without installing',
-        },
-        {
-          flag: '--no-backup',
-          description: 'Skip backup creation before update',
-        },
-        {
-          flag: '--verbose, -v',
-          description: 'Show detailed update information',
-        },
-        { flag: '--package-only', description: 'Update only the package' },
-        {
-          flag: '--resources-only',
-          description: 'Update only project resources',
-        },
-      ],
-      examples: [
-        'moai update',
-        'moai update --check',
-        'moai update --no-backup',
-        'moai update --package-only',
       ],
     });
 
@@ -275,7 +235,7 @@ Usage:
 
         if (!commandHelp) {
           const helpText = `❌ Unknown command: ${options.command}\n\nAvailable commands: ${this.getAvailableCommands().join(', ')}\n\nRun 'moai help' to see all commands.`;
-          logger.info(chalk.red(helpText));
+          logger.log(chalk.red(helpText));
 
           return {
             success: false,
@@ -285,7 +245,7 @@ Usage:
         }
 
         const helpText = this.formatCommandHelp(commandHelp);
-        logger.info(helpText);
+        logger.log(helpText);
 
         return {
           success: true,
@@ -295,7 +255,7 @@ Usage:
       } else {
         // Show general help
         const helpText = this.formatGeneralHelp();
-        logger.info(helpText);
+        logger.log(helpText);
 
         return {
           success: true,
@@ -306,7 +266,7 @@ Usage:
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
       const helpText = `❌ Failed to show help: ${errorMessage}`;
-      logger.info(chalk.red(helpText));
+      logger.log(chalk.red(helpText));
 
       return {
         success: false,

@@ -195,39 +195,39 @@ export class DoctorCommand {
    * @tags @CODE:LIST-BACKUPS-001:API
    */
   private async listBackups(): Promise<DoctorResult> {
-    logger.info(chalk.blue.bold('📦 MoAI-ADK Backup Directory Listing'));
-    logger.info(chalk.blue('Searching for available backups...\n'));
+    logger.log(chalk.blue.bold('📦 MoAI-ADK Backup Directory Listing'));
+    logger.log(chalk.blue('Searching for available backups...\n'));
 
     try {
       const backupPaths = await this.backupChecker.findBackupDirectories();
 
       if (backupPaths.length === 0) {
-        logger.info(chalk.yellow('📁 No backup directories found.'));
-        logger.info(
+        logger.log(chalk.yellow('📁 No backup directories found.'));
+        logger.log(
           chalk.gray('  Backup directories are typically created in:')
         );
-        logger.info(chalk.gray('  • .moai-backup/ (current directory)'));
-        logger.info(chalk.gray('  • ~/.moai/backups/ (global backups)'));
-        logger.info('');
-        logger.info(
+        logger.log(chalk.gray('  • .moai-backup/ (current directory)'));
+        logger.log(chalk.gray('  • ~/.moai/backups/ (global backups)'));
+        logger.log('');
+        logger.log(
           chalk.blue(
             '💡 Tip: Run "moai init --backup" to create a backup during initialization.'
           )
         );
       } else {
-        logger.info(
+        logger.log(
           chalk.green(
             `📁 Found ${backupPaths.length} backup director${backupPaths.length === 1 ? 'y' : 'ies'}:`
           )
         );
-        logger.info('');
+        logger.log('');
 
         for (const backupPath of backupPaths) {
           await this.printBackupInfo(backupPath);
         }
 
-        logger.info('');
-        logger.info(
+        logger.log('');
+        logger.log(
           chalk.blue(
             '💡 To restore from a backup, use: "moai restore <backup-path>"'
           )
@@ -274,21 +274,21 @@ export class DoctorCommand {
       const backupDate = stat.mtime.toLocaleDateString();
       const backupTime = stat.mtime.toLocaleTimeString();
 
-      logger.info(`  📦 ${chalk.bold(backupName)}`);
-      logger.info(`     📍 Path: ${chalk.gray(backupPath)}`);
-      logger.info(
+      logger.log(`  📦 ${chalk.bold(backupName)}`);
+      logger.log(`     📍 Path: ${chalk.gray(backupPath)}`);
+      logger.log(
         `     📅 Created: ${chalk.cyan(backupDate)} ${chalk.gray(backupTime)}`
       );
 
       // Check backup contents using BackupChecker
       const contents = await this.backupChecker.getBackupContents(backupPath);
       if (contents.length > 0) {
-        logger.info(`     📄 Contains: ${chalk.green(contents.join(', '))}`);
+        logger.log(`     📄 Contains: ${chalk.green(contents.join(', '))}`);
       }
-      logger.info('');
+      logger.log('');
     } catch (_error) {
-      logger.info(`  ❌ ${chalk.red('Error reading backup:')} ${backupPath}`);
-      logger.info('');
+      logger.log(`  ❌ ${chalk.red('Error reading backup:')} ${backupPath}`);
+      logger.log('');
     }
   }
 }

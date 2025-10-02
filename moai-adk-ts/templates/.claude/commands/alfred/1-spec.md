@@ -446,26 +446,6 @@ Task 2 (sonnet): 심화 문서 분석
 **권장사항**: SPEC 작성이 완료되었습니다. 다음 단계(`/alfred:2-build`) 진행 전 `/clear` 또는 `/new` 명령으로 새로운 대화 세션을 시작하면 더 나은 성능과 컨텍스트 관리를 경험할 수 있습니다.
 ```
 
-### Structured Memory 활용
-
-**중요한 SPEC 결정 기록**:
-```bash
-# 의사결정 로그
-.moai/memory/decisions/2025-10-02-spec-001-architecture-choice.md
-```
-
-**제약사항 문서화**:
-```bash
-# 기술적 제약사항
-.moai/memory/constraints/spec-001-performance-constraints.md
-```
-
-**리스크 관리**:
-```bash
-# 식별된 리스크
-.moai/memory/risks/spec-001-integration-risk.md
-```
-
 ---
 
 ## 다음 단계

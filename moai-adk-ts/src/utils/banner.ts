@@ -111,9 +111,6 @@ export function createBanner(
       '  status [options]                 Show MoAI-ADK project status'
     );
     bannerLines.push(
-      '  update [options]                 Update MoAI-ADK to the latest version'
-    );
-    bannerLines.push(
       '  help [command]                   Show help for MoAI-ADK commands'
     );
   }

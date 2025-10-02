@@ -208,44 +208,6 @@ SPEC-XXX 작성이 완료되었습니다.
 - `/clear` 또는 `/new` 명령으로 새 세션 시작 권장
 ```
 
-### Structured Memory 활용
-
-**SPEC 작성 중 중요 결정사항**은 외부에 저장합니다:
-
-- **의사결정 로그**: `.moai/memory/decisions/SPEC-XXX-decisions.md`
-  ```markdown
-  # SPEC-XXX 의사결정 로그
-
-  ## 2025-10-01: 인증 방식 선정
-  - **결정**: OAuth2 + JWT 하이브리드 방식 채택
-  - **이유**: 소셜 로그인 지원 필요성
-  - **대안**: 순수 JWT는 소셜 로그인 통합 복잡도 증가
-  - **리스크**: OAuth2 라이브러리 의존성 추가
-  ```
-
-- **기술 제약사항**: `.moai/memory/constraints/tech-constraints.md`
-  ```markdown
-  - Python 3.9+ 필수 (타입 힌팅)
-  - Django REST Framework 3.14+ (OpenAPI 3.0 지원)
-  ```
-
-- **리스크 관리**: `.moai/memory/risks/SPEC-XXX-risks.md`
-  ```markdown
-  - **리스크**: 외부 OAuth 제공자 장애 시 인증 불가
-  - **완화**: Fallback 로컬 인증 메커니즘 필요
-  - **대응**: SPEC-XXX-002로 분리 검토
-  ```
-
-**저장 시점**:
-- 중요 의사결정 직후
-- 기술 제약사항 발견 즉시
-- 리스크 식별 시
-
-**재사용 시점**:
-- 유사 기능 SPEC 작성 시
-- 코드 구현 단계(`/alfred:2-build`)에서 참조
-- 문서화 단계(`/alfred:3-sync`)에서 참조
-
 ## ⚠️ 중요 제약사항
 
 ### 시간 예측 금지

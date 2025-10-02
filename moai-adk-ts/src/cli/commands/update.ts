@@ -134,7 +134,7 @@ export class UpdateCommand {
 
     try {
       // Simulate backup creation
-      logger.info(`Would create backup at: ${backupPath}`);
+      logger.log(`Would create backup at: ${backupPath}`);
       return backupPath;
     } catch (error) {
       throw new Error(
@@ -157,9 +157,9 @@ export class UpdateCommand {
     try {
       // For now, just simulate resource update
       // In a real implementation, this would copy new templates
-      logger.info(`Updating resources for: ${projectPath}`);
-      logger.info(`Package only: ${options.packageOnly}`);
-      logger.info(`Resources only: ${options.resourcesOnly}`);
+      logger.log(`Updating resources for: ${projectPath}`);
+      logger.log(`Package only: ${options.packageOnly}`);
+      logger.log(`Resources only: ${options.resourcesOnly}`);
 
       // Simulate successful update
       return true;
@@ -178,7 +178,7 @@ export class UpdateCommand {
   public async updatePackage(): Promise<boolean> {
     try {
       // For now, just log recommendation
-      logger.info(
+      logger.log(
         '💡 Manual upgrade recommended: npm install --global moai-adk@latest'
       );
       return true;
@@ -198,7 +198,7 @@ export class UpdateCommand {
   public async synchronizeVersions(projectPath: string): Promise<boolean> {
     try {
       // For tests and simplicity, just simulate version synchronization
-      logger.info(`Would synchronize versions for: ${projectPath}`);
+      logger.log(`Would synchronize versions for: ${projectPath}`);
       return true;
     } catch (error) {
       throw new Error(

@@ -310,13 +310,13 @@ class _MyButtonState extends State<MyButton> {
 
 - **study-deep**: 새로운 기술을 깊이 배우고 싶을 때
 - **pair-collab**: 함께 고민하며 개발하고 싶을 때
-- **moai-pro**: 전문 개발자처럼 빠르게 작업하고 싶을 때
+- **alfred-pro**: 전문 개발자처럼 빠르게 작업하고 싶을 때
 
 #### 전환 방법
 ```bash
 /output-style study-deep     # 심화 학습 모드
 /output-style pair-collab    # 협업 모드
-/output-style moai-pro       # 전문 개발 모드 (학습 완료 후)
+/output-style alfred-pro       # 전문 개발 모드 (학습 완료 후)
 ```
 
 ---

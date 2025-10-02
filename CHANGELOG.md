@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **TemplateCopier**: output-styles/alfred 복사 대상 추가
 - **UpdateVerifier**: output-styles/alfred 검증 추가
 - **/alfred:9-update.md**: v2.0.0 업데이트 (Phase 4 전면 개편)
-- **moai-pro.md**: 914줄 → 405줄 압축 (55% 감소), Alfred 오케스트레이션 다이어그램, 다중 언어 TDD 예제
+- **alfred-pro.md**: 914줄 → 405줄 압축 (55% 감소), Alfred 오케스트레이션 다이어그램, 다중 언어 TDD 예제
 - **pair-collab.md**: 433줄 → 399줄 개선, 다중 언어 코드 리뷰 예제 (TypeScript, Python, Go)
 - **study-deep.md**: 444줄 → 399줄 개선, 프레임워크별 학습 경로 (Express, FastAPI, Gin, Axum)
 - **beginner-learning.md**: 224줄 → 324줄 보강, Alfred 9개 에이전트 소개, TRUST 5원칙 비유, Python/Flutter 예제

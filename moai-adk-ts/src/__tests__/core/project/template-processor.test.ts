@@ -161,7 +161,7 @@ describe('TemplateProcessor - Phase 2: Template Processing Logic', () => {
   describe('@TEST:PROCESSOR-MOAI-001 - MoAI Config Generation', () => {
     it('should generate moai config', () => {
       const data: TemplateData = {
-        projectName: 'moai-project',
+        projectName: 'alfred-project',
         projectType: ProjectType.TYPESCRIPT,
         timestamp: new Date().toISOString(),
         author: 'Test Author',
@@ -175,7 +175,7 @@ describe('TemplateProcessor - Phase 2: Template Processing Logic', () => {
       const config = processor.generateMoaiConfig(data);
 
       expect(config.project).toBeDefined();
-      expect(config.project.name).toBe('moai-project');
+      expect(config.project.name).toBe('alfred-project');
       expect(config.project.type).toBe(ProjectType.TYPESCRIPT);
       expect(config.constitution).toBeDefined();
       expect(config.constitution.enforce_tdd).toBe(true);

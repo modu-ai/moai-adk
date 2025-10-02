@@ -62,10 +62,10 @@ Alfred는 9명의 전문 에이전트를 조율합니다. 각 에이전트는 IT
 
 ## Context Engineering 전략
 
-> 본 지침군은 **컨텍스트 엔지니어링**(JIT Retrieval, Compaction, Structured Memory)을 핵심 원리로 한다.
+> 본 지침군은 **컨텍스트 엔지니어링**(JIT Retrieval, Compaction)을 핵심 원리로 한다.
 > **컨텍스트 예산/토큰 예산은 다루지 않는다**(명시적 관리 불필요). 대신 아래 원칙으로 일관성/성능을 확보한다.
 
-Alfred는 효율적인 컨텍스트 관리를 위해 다음 3가지 전략을 사용합니다:
+Alfred는 효율적인 컨텍스트 관리를 위해 다음 2가지 전략을 사용합니다:
 
 ### 1. JIT (Just-in-Time) Retrieval
 필요한 순간에만 문서를 로드하여 초기 컨텍스트 부담을 최소화:
@@ -80,12 +80,6 @@ Alfred는 효율적인 컨텍스트 관리를 위해 다음 3가지 전략을 �
 - 핵심 결정사항 요약
 - 다음 세션에 컨텍스트 전달
 - 권장: `/clear` 또는 `/new` 명령 활용
-
-### 3. Structured Memory
-의사결정, 제약사항, 리스크는 `.moai/memory/`에 외부 저장·재주입:
-- `decisions/` - 주요 의사결정 로그
-- `constraints/` - 기술적/비즈니스적 제약사항
-- `risks/` - 식별된 리스크 및 대응 방안
 
 상세: `.moai/memory/development-guide.md` - "Context Engineering" 챕터 참조
 

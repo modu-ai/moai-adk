@@ -35,7 +35,7 @@ describe('UpdateVerifier', () => {
         'CLAUDE.md',
         '.claude/commands/alfred/1-spec.md',
         '.claude/agents/alfred/spec-builder.md',
-        '.claude/output-styles/alfred/moai-pro.md',
+        '.claude/output-styles/alfred/alfred-pro.md',
       ];
 
       for (const file of keyFiles) {

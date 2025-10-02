@@ -37,7 +37,7 @@ function displayProgress(
   const progressBar =
     '█'.repeat(Math.floor(percentage / 5)) +
     '░'.repeat(20 - Math.floor(percentage / 5));
-  logger.info(chalk.blue(`[${progressBar}] ${percentage}% - ${message}`));
+  logger.log(chalk.blue(`[${progressBar}] ${percentage}% - ${message}`));
 }
 
 /**
@@ -70,7 +70,7 @@ export class InitCommand {
       printBanner();
 
       // Display initialization header with modern design
-      const inputProjectName = options?.name || 'moai-project';
+      const inputProjectName = options?.name || 'alfred-project';
       console.log(
         chalk.cyan.bold(
           `\n🚀 Initializing ${chalk.white(inputProjectName)} project...\n`
@@ -263,9 +263,9 @@ export class InitCommand {
         error instanceof Error ? error.message : 'Unknown error';
 
       if (errorMessage === 'User cancelled') {
-        logger.info(chalk.yellow('\nInitialization cancelled by user.'));
+        logger.log(chalk.yellow('\nInitialization cancelled by user.'));
       } else {
-        logger.info(
+        logger.log(
           chalk.red(`\nError during initialization: ${errorMessage}`)
         );
       }

@@ -87,97 +87,13 @@ MoAI-ADK는 Anthropic의 "Effective Context Engineering for AI Agents" 원칙을
 
 **Compaction 절차**:
 1. **요약 생성**: 현재 세션의 핵심 결정사항, 완료된 작업, 다음 단계를 요약
-2. **Structured Memory 저장**: 의사결정 로그를 `.moai/memory/decisions/`에 저장
-3. **새 세션 시작**: 요약 내용을 새 세션의 첫 메시지로 전달
-4. **권장 사항 안내**: 사용자에게 `/clear` 또는 `/new` 명령 사용 권장
+2. **새 세션 시작**: 요약 내용을 새 세션의 첫 메시지로 전달
+3. **권장 사항 안내**: 사용자에게 `/clear` 또는 `/new` 명령 사용 권장
 
 **예시**:
 ```markdown
 **권장사항**: 다음 단계 진행 전 `/clear` 또는 `/new` 명령으로 새로운 대화 세션을 시작하면 더 나은 성능과 컨텍스트 관리를 경험할 수 있습니다.
 ```
-
-### 3. Structured Memory (구조화된 메모리)
-
-**원칙**: 의사결정, 제약사항, 리스크는 `.moai/memory/`에 외부 저장
-
-**디렉토리 구조**:
-```
-.moai/memory/
-├── development-guide.md          # 단일 진실 공급원 (Single Source of Truth)
-├── decisions/                    # 주요 의사결정 로그
-│   ├── TEMPLATE.md               # 의사결정 템플릿
-│   └── YYYY-MM-DD-title.md       # 개별 의사결정 문서
-├── constraints/                  # 기술적/비즈니스적 제약사항
-│   ├── TEMPLATE.md
-│   └── technical-constraints.md
-└── risks/                        # 식별된 리스크 및 대응 방안
-    ├── TEMPLATE.md
-    └── risk-register.md
-```
-
-**의사결정 템플릿** (`.moai/memory/decisions/TEMPLATE.md`):
-```markdown
----
-date: YYYY-MM-DD
-author: @username
-status: proposed|accepted|rejected|deprecated
-tags: [architecture, security, performance]
----
-
-# 의사결정: [제목]
-
-## Context (배경)
-[왜 이 결정이 필요한가?]
-
-## Decision (결정 내용)
-[무엇을 결정했는가?]
-
-## Rationale (근거)
-[왜 이 방식을 선택했는가?]
-
-## Alternatives (대안)
-[고려했던 다른 방법들]
-
-## Consequences (결과)
-[이 결정의 영향과 트레이드오프]
-
-## Related
-[관련 SPEC, 코드, 문서]
-```
-
-**사용 시나리오**:
-
-1. **언어 선택 결정**:
-   ```markdown
-   # 의사결정: Python vs TypeScript for CLI Tools
-
-   ## Context
-   MoAI-ADK CLI는 고성능(18ms)과 타입 안전성이 필요
-
-   ## Decision
-   TypeScript + Bun 런타임 선택
-
-   ## Rationale
-   - 18ms 실행 속도 (Python 대비 3배 빠름)
-   - 네이티브 타입 시스템
-   - SQLite3 바인딩 성능 우수
-   ```
-
-2. **아키텍처 패턴 결정**:
-   ```markdown
-   # 의사결정: Sub-Agent Architecture 채택
-
-   ## Context
-   Claude Code 공식 가이드 권장 사항
-
-   ## Decision
-   9개 전문 에이전트 + Alfred 오케스트레이터
-
-   ## Rationale
-   - 단일 책임 원칙 준수
-   - 컨텍스트 부담 최소화
-   - 에이전트별 모델 최적화 (sonnet vs haiku)
-   ```
 
 ### Context Engineering 체크리스트
 
@@ -189,7 +105,6 @@ tags: [architecture, security, performance]
 **에이전트 설계 시**:
 - [ ] 최소 도구: 필요한 도구만 YAML frontmatter에 선언했는가?
 - [ ] 명확한 역할: 단일 책임 원칙을 준수하는가?
-- [ ] 의사결정 로그: 중요한 결정은 `.moai/memory/decisions/`에 기록하는가?
 
 **장기 세션 관리**:
 - [ ] 토큰 사용량 모니터링

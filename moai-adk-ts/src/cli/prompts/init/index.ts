@@ -45,8 +45,8 @@ export async function promptBasicInfo(
   displayStep(2, 4, t('init.prompts.projectInfo'));
 
   const effectiveDefaultName = isCurrentDirMode
-    ? process.cwd().split('/').pop() || 'moai-project'
-    : defaultName || 'moai-project';
+    ? process.cwd().split('/').pop() || 'alfred-project'
+    : defaultName || 'alfred-project';
 
   const answers = await inquirer.prompt(
     getProjectNamePrompt(effectiveDefaultName)

@@ -384,13 +384,13 @@ Prevention: mypy 정적 타입 검사 활성화
 ### 다른 스타일로 전환
 
 - **beginner-learning**: 기초부터 시작 필요 시
-- **moai-pro**: 학습 완료 후 실무 적용 시
+- **alfred-pro**: 학습 완료 후 실무 적용 시
 - **pair-collab**: 협업 학습 필요 시
 
 #### 전환 방법
 ```bash
 /output-style beginner-learning  # 기초 학습
-/output-style moai-pro          # 실무 개발
+/output-style alfred-pro          # 실무 개발
 /output-style pair-collab       # 협업 학습
 ```
 

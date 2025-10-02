@@ -426,26 +426,6 @@ Task 2 (sonnet): 문서 구조 분석
 **권장사항**: 문서 동기화가 완료되었습니다. 전체 MoAI-ADK 사이클(1-spec → 2-build → 3-sync)이 완료되었으니, 다음 기능 개발 전 `/clear` 또는 `/new` 명령으로 새로운 대화 세션을 시작하세요.
 ```
 
-### Structured Memory 활용
-
-**동기화 이슈 기록**:
-```bash
-# 동기화 충돌 결정
-.moai/memory/decisions/2025-10-02-sync-conflict-resolution.md
-```
-
-**TAG 정책 문서화**:
-```bash
-# TAG 명명 규칙
-.moai/memory/constraints/tag-naming-policy.md
-```
-
-**동기화 리스크**:
-```bash
-# 대규모 리팩토링 시 동기화 리스크
-.moai/memory/risks/sync-large-refactoring.md
-```
-
 ---
 
 **doc-syncer 서브에이전트와 연동하여 코드-문서 일치성 향상과 @TAG 추적성 보장을 목표로 합니다.**

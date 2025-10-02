@@ -23,17 +23,17 @@ export class StatusFormatter {
    * @tags @CODE:FORMAT-STATUS-001:API
    */
   public displayStatus(status: ProjectStatus): void {
-    logger.info(chalk.cyan('📊 MoAI-ADK Project Status'));
-    logger.info(`\n📂 Project: ${status.path}`);
-    logger.info(`   Type: ${status.projectType}`);
+    logger.log(chalk.cyan('📊 MoAI-ADK Project Status'));
+    logger.log(`\n📂 Project: ${status.path}`);
+    logger.log(`   Type: ${status.projectType}`);
 
-    logger.info('\n🗿 MoAI-ADK Components:');
-    logger.info(`   MoAI System: ${status.moaiInitialized ? '✅' : '❌'}`);
-    logger.info(
+    logger.log('\n🗿 MoAI-ADK Components:');
+    logger.log(`   MoAI System: ${status.moaiInitialized ? '✅' : '❌'}`);
+    logger.log(
       `   Claude Integration: ${status.claudeInitialized ? '✅' : '❌'}`
     );
-    logger.info(`   Memory File: ${status.memoryFile ? '✅' : '❌'}`);
-    logger.info(`   Git Repository: ${status.gitRepository ? '✅' : '❌'}`);
+    logger.log(`   Memory File: ${status.memoryFile ? '✅' : '❌'}`);
+    logger.log(`   Git Repository: ${status.gitRepository ? '✅' : '❌'}`);
   }
 
   /**
@@ -42,16 +42,16 @@ export class StatusFormatter {
    * @tags @CODE:FORMAT-VERSION-001:API
    */
   public displayVersions(versions: VersionInfo): void {
-    logger.info('\n🧭 Versions:');
-    logger.info(`   Package: v${versions.package}`);
-    logger.info(`   Templates: v${versions.resources}`);
+    logger.log('\n🧭 Versions:');
+    logger.log(`   Package: v${versions.package}`);
+    logger.log(`   Templates: v${versions.resources}`);
 
     if (versions.available && versions.available !== versions.resources) {
-      logger.info(`   Available template update: v${versions.available}`);
+      logger.log(`   Available template update: v${versions.available}`);
     }
 
     if (versions.outdated) {
-      logger.info(
+      logger.log(
         chalk.yellow(
           "   ⚠️  Templates are outdated. Run 'moai update' to refresh."
         )
@@ -65,11 +65,11 @@ export class StatusFormatter {
    * @tags @CODE:FORMAT-FILES-001:API
    */
   public displayFileCounts(fileCounts: FileCount): void {
-    logger.info('\n📁 File Counts:');
+    logger.log('\n📁 File Counts:');
 
     for (const [component, count] of Object.entries(fileCounts)) {
       if (component !== 'total') {
-        logger.info(`   ${component}: ${count} files`);
+        logger.log(`   ${component}: ${count} files`);
       }
     }
   }
@@ -100,9 +100,9 @@ export class StatusFormatter {
    */
   public displayRecommendations(recommendations: string[]): void {
     if (recommendations.length > 0) {
-      logger.info('\n💡 Recommendations:');
+      logger.log('\n💡 Recommendations:');
       for (const rec of recommendations) {
-        logger.info(`   - ${rec}`);
+        logger.log(`   - ${rec}`);
       }
     }
   }

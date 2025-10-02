@@ -171,7 +171,7 @@ describe('AlfredUpdateBridge', () => {
       // Given: Output styles in template
       const styleFile = path.join(
         mockTemplatePath,
-        '.claude/output-styles/alfred/moai-pro.md'
+        '.claude/output-styles/alfred/alfred-pro.md'
       );
       await fs.mkdir(path.dirname(styleFile), { recursive: true });
       await fs.writeFile(styleFile, '# MoAI Pro Style');
@@ -183,7 +183,7 @@ describe('AlfredUpdateBridge', () => {
       // Then: Style file exists in project
       const targetStyle = path.join(
         mockProjectPath,
-        '.claude/output-styles/alfred/moai-pro.md'
+        '.claude/output-styles/alfred/alfred-pro.md'
       );
       const exists = await fs
         .access(targetStyle)

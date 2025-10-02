@@ -384,13 +384,13 @@ const userName = user.name;
 ### 다른 스타일로 전환
 
 - **beginner-learning**: 기초 개념 학습 필요 시
-- **moai-pro**: 실무 개발 모드로 전환 (기본)
+- **alfred-pro**: 실무 개발 모드로 전환 (기본)
 - **study-deep**: 신기술 심화 학습 시
 
 #### 전환 방법
 ```bash
 /output-style beginner-learning  # 학습 모드
-/output-style moai-pro          # 실무 개발 모드
+/output-style alfred-pro          # 실무 개발 모드
 /output-style study-deep        # 심화 학습 모드
 ```
 
