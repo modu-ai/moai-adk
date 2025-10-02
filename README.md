@@ -20,12 +20,13 @@
 
 - [Meet Alfred](#-meet-alfred---your-ai-development-partner)
 - [The Problem](#-the-problem---바이브-코딩의-한계)
-- [The Solution](#-the-solution---alfreds-3-step-workflow)
-- [Quick Start](#-quick-start-in-5-minutes)
-- [How Alfred Works](#️-how-alfred-works)
+- [The Solution](#-the-solution---moai-adks-3-step-workflow)
+- [Quick Start](#-quick-start-3분-실전)
+- [How Alfred Works](#️-how-alfred-works---10개-ai-에이전트-팀)
 - [Output Styles](#-alfreds-output-styles)
 - [Language Support](#-universal-language-support)
-- [CLI Commands](#-cli-reference)
+- [Future Roadmap](#-future-roadmap)
+- [CLI Reference](#-cli-reference)
 - [FAQ](#-faq)
 - [Support](#-support)
 
