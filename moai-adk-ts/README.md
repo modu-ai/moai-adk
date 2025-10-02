@@ -1,6 +1,6 @@
 # 🗿 MoAI-ADK (Agentic Development Kit)
 
-[![npm version](https://img.shields.io/npm/v/@moai/adk)](https://www.npmjs.com/package/@moai/adk)
+[![npm version](https://img.shields.io/npm/v/moai-adk-cli)](https://www.npmjs.com/package/moai-adk-cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9.2+-blue)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/node-18.0+-green)](https://nodejs.org/)
@@ -112,13 +112,13 @@ curl -fsSL https://bun.sh/install | bash  # macOS/Linux
 powershell -c "iwr bun.sh/install.ps1|iex"  # Windows
 
 # MoAI-ADK 전역 설치
-bun add -g @moai/adk
+bun add -g moai-adk-cli
 ```
 
 ### Option B: npm 설치 (표준 옵션)
 
 ```bash
-npm install -g @moai/adk
+npm install -g moai-adk-cli
 ```
 
 ### Option C: 개발자 설치 (로컬 개발용)
@@ -494,13 +494,13 @@ await templateManager.copyTemplates(projectPath);
 
 **권한 문제:**
 ```bash
-sudo npm install -g @moai/adk
+sudo npm install -g moai-adk-cli
 ```
 
 **캐시 문제:**
 ```bash
 npm cache clean --force
-npm install -g @moai/adk
+npm install -g moai-adk-cli
 ```
 
 #### 2. 명령어 인식 안 됨

@@ -8,8 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.1] - 2025-01-10
 
 ### Changed
-- Package name changed to scoped package: `@moai/adk`
-- All installation commands updated to use `@moai/adk`
+- Package name changed: `moai-adk` → `moai-adk-cli` (to avoid 24-hour republish restriction)
+- All installation commands updated to use `moai-adk-cli`
 
 ## [0.1.0] - 2025-01-10
 
