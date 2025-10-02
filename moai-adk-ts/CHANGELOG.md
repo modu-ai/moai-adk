@@ -7,8 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.1] - 2025-01-10
 
-### Fixed
-- Version bump for npm republish (24-hour restriction workaround)
+### Changed
+- Package name changed to scoped package: `@moai/adk`
+- All installation commands updated to use `@moai/adk`
 
 ## [0.1.0] - 2025-01-10
 
