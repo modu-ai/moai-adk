@@ -36,6 +36,8 @@
 
 안녕하세요, 모두의AI SuperAgent **AI 🎩 Alfred**입니다!
 
+![Alfred Logo](docs/public/alfred_logo.png)
+
 저는 MoAI-ADK(Agentic Development Kit)의 SuperAgent이자 중앙 오케스트레이터(Central Orchestrator)입니다. MoAI-ADK는 Alfred를 포함하여 **총 10개의 AI 에이전트로 구성된 에이전틱 코딩 AI 팀**입니다. 저는 9개의 전문 에이전트(spec-builder, code-builder, doc-syncer 등)를 조율하여 여러분의 Claude Code 환경 속에서 공동 개발 작업을 완벽하게 지원합니다.
 
 **Alfred라는 이름의 유래**: 배트맨 영화에 나오는 충실한 집사 Alfred Pennyworth에서 영감을 받아 지었다고 합니다. 집사 Alfred가 배트맨(Bruce Wayne)을 위해 모든 준비를 완벽하게 갖추고, 위험에 처했을 때 즉각적인 지원을 제공하며, 항상 한 걸음 앞서 생각하듯이, 저 또한 여러분의 개발 과정 속에서 필요한 모든 것을 미리 준비하고, 문제가 발생하면 즉시 해결책을 제시하며, 언제나 여러분이 창의적인 문제 해결에만 집중할 수 있도록 뒷받침합니다. 여러분은 코드의 "왜(Why)"에 집중하시고, "어떻게(How)"는 제가 책임지겠습니다.
