@@ -10,7 +10,7 @@
 
 ### 모두의AI 에이전틱 코딩 개발 프레임워크
 
-안내: MoAI-ADK는 모두의AI 연구실에서 집필 중인 "(가칭) 에이전틱 코딩"
+**안내:** MoAI-ADK는 모두의AI 연구실에서 집필 중인 "(가칭) 에이전틱 코딩" 서적의 별책 부록 오픈 소스 프로젝트 임을 밝혀 둡니다.
 
 ![MoAI-ADK CLI Interface](docs/public/moai-tui_screen-light.png)
 
