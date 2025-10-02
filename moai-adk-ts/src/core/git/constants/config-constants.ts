@@ -11,7 +11,7 @@
  * @tags @CODE:GITIGNORE-TEMPLATES-001:DATA
  */
 export const GitignoreTemplates = {
-  alfred: `# MoAI-ADK Generated .gitignore
+  MOAI: `# MoAI-ADK Generated .gitignore
 
 # Logs and temporary files
 .claude/logs/
@@ -112,6 +112,11 @@ public
 # DynamoDB Local files
 .dynamodb/
 `,
+
+  /** @deprecated Use MOAI instead */
+  get alfred() {
+    return this.MOAI;
+  },
 
   NODE: `# Node.js
 node_modules/

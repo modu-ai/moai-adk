@@ -212,7 +212,8 @@ var TagValidator = class {
         ...VALID_CATEGORIES.lifecycle,
         ...VALID_CATEGORIES.implementation
       ];
-      if (category && !allValidCategories.includes(category)) {
+      const validCategorySet = /* @__PURE__ */ new Set([...allValidCategories]);
+      if (category && !validCategorySet.has(category)) {
         violations.push(`\uC720\uD6A8\uD558\uC9C0 \uC54A\uC740 TAG \uCE74\uD14C\uACE0\uB9AC: ${category}`);
       }
       if (domainId && !/^[A-Z0-9]+-\d{3,}$/.test(domainId)) {

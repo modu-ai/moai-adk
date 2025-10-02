@@ -1,0 +1,27 @@
+@@ -83,7 +83,7 @@
+         isDevelopment: true,
+       };
+ 
+-      mockExeca.mockResolvedValue({
++      mockExeca.mockResolvedValue({
+         stdout: 'added 2 packages in devDependencies',
+         stderr: '',
+         exitCode: 0,
+@@ -117,7 +117,7 @@
+         isDevelopment: false,
+       };
+ 
+-      mockExeca.mockResolvedValue({
++      mockExeca.mockResolvedValue({
+         stdout: 'success Saved 2 new dependencies.',
+         stderr: '',
+         exitCode: 0,
+@@ -166,7 +166,7 @@
+         isDevelopment: false,
+       };
+ 
+-      mockExeca.mockResolvedValue({
++      mockExeca.mockResolvedValue({
+         stdout: 'Packages installed',
+         stderr: '',
+         exitCode: 0,

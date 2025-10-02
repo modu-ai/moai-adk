@@ -11,7 +11,6 @@ import * as path from 'node:path';
 import { logger } from '@/utils/winston-logger.js';
 import type {
   BuildToolIndicators,
-  FileInfo,
   FrameworkIndicators,
   LanguageExtensions,
   PackageAnalysis,
@@ -40,7 +39,7 @@ export class ProjectDetector {
     Gemfile: { type: 'ruby', language: 'ruby' },
     'composer.json': { type: 'php', language: 'php' },
     'pubspec.yaml': { type: 'flutter', language: 'dart' },
-    'Podfile': { type: 'ios', language: 'swift' },
+    Podfile: { type: 'ios', language: 'swift' },
     'Package.swift': { type: 'ios', language: 'swift' },
     'build.gradle.kts': { type: 'android', language: 'kotlin' },
   };
@@ -201,5 +200,4 @@ export class ProjectDetector {
   public async detectLanguageFromFiles(projectPath: string): Promise<string> {
     return this.languageDetector.detectLanguageFromFiles(projectPath);
   }
-
 }

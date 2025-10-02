@@ -7,9 +7,9 @@
  * @tags @TEST:UPDATE-REFACTOR-001-T005, @TEST:UPDATE-REFACTOR-001-T006
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { UpdateVerifier } from '../update-verifier.js';
 
 describe('UpdateVerifier', () => {
@@ -136,7 +136,9 @@ Content here...`;
       await fs.writeFile(testFile, yamlContent);
 
       // When: Parse YAML (simulation)
-      const parseYAML = async (filePath: string): Promise<Record<string, unknown>> => {
+      const parseYAML = async (
+        filePath: string
+      ): Promise<Record<string, unknown>> => {
         const content = await fs.readFile(filePath, 'utf-8');
         const match = content.match(/^---\n([\s\S]*?)\n---/);
 
@@ -145,13 +147,16 @@ Content here...`;
         }
 
         const yamlText = match[1];
+        if (!yamlText) return {};
         const lines = yamlText.split('\n');
         const result: Record<string, unknown> = {};
 
         for (const line of lines) {
           if (line.includes(':')) {
             const [key, value] = line.split(':').map(s => s.trim());
-            result[key] = value;
+            if (key) {
+              result[key] = value;
+            }
           }
         }
 

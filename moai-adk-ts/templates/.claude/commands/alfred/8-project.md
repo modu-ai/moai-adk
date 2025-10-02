@@ -1,7 +1,6 @@
 ---
 name: alfred:8-project
 description: Use PROACTIVELY for 프로젝트 문서 초기화 - product/structure/tech.md 생성 및 언어별 최적화 설정
-argument-hint: [PROJECT_NAME] [update]
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash, Agent
 ---
 
@@ -9,9 +8,7 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash, Agent
 
 ## 🎯 커맨드 목적
 
-프로젝트 환경을 자동 분석하여 product/structure/tech.md 문서를 생성하고 언어별 최적화 설정을 구성합니다.
-
-**프로젝트 초기화 대상**: $ARGUMENTS
+프로젝트 환경을 자동 분석하여 product/structure/tech.md 문서를 생성/갱신하고 언어별 최적화 설정을 구성합니다.
 
 ## 📋 실행 흐름
 
@@ -30,10 +27,7 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash, Agent
 ## 💡 사용 예시
 
 ```bash
-/alfred:8-project                  # 현재 디렉토리 분석 및 초기화
-/alfred:8-project update          # 기존 문서 재조정
-/alfred:8-project MyProject       # 프로젝트명 지정
-/alfred:8-project analyze         # 코드베이스 병렬 분석
+/alfred:8-project                  # 프로젝트 분석 및 문서 생성/갱신
 ```
 
 ## 명령어 개요
@@ -48,15 +42,13 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash, Agent
 ## 사용법
 
 ```bash
-/alfred:8-project                    # 프로젝트 문서 생성
-/alfred:8-project update            # 기존 설정 재조정
-/alfred:8-project MyProject         # 프로젝트 이름 지정
+/alfred:8-project                    # 프로젝트 분석 및 문서 생성/갱신
 ```
 
-**인수 처리**:
-- `$ARGUMENTS` 없음: 현재 디렉토리 분석
-- `$ARGUMENTS` = "update": 기존 문서 갱신 모드
-- `$ARGUMENTS` = 프로젝트명: 신규 프로젝트로 초기화
+**자동 처리**:
+- 기존 `.moai/project/` 문서가 있으면 갱신 모드
+- 문서가 없으면 신규 생성 모드
+- 언어 및 프로젝트 유형은 자동 감지
 
 ## 🚀 STEP 1: 환경 분석 및 인터뷰 계획 수립
 
@@ -162,12 +154,12 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash, Agent
 ```bash
 # 에이전트 호출 패턴
 @agent-project-manager 프로젝트 초기화를 시작합니다. 다음 정보를 기반으로 진행합니다:
-- 프로젝트명: $ARGUMENTS
 - 감지된 언어: [언어 목록]
 - 프로젝트 유형: [신규/기존]
+- 기존 문서 상태: [존재/부재]
 - 승인된 인터뷰 계획: [계획 요약]
 
-체계적인 인터뷰를 진행하고 product/structure/tech.md 문서를 생성해주세요.
+체계적인 인터뷰를 진행하고 product/structure/tech.md 문서를 생성/갱신해주세요.
 ```
 
 ### 2.2 프로젝트 유형별 처리 방식
@@ -438,137 +430,6 @@ tests/**/*.{ts,js,py,go,rs,java}, **/*.test.*, **/*.spec.*
 - 기본적으로 검증은 실행되지 않음
 - 사용자가 명시적으로 요청할 때만 실행
 
-## 📊 STEP 3: 기존 프로젝트 코드베이스 병렬 분석 (리팩토링 모드)
-
-기존 프로젝트의 전체 코드베이스를 체계적으로 분석하고 리팩토링 로드맵을 생성합니다.
-
-### 3.1 병렬 분석 모드 활성화
-
-**명령어**:
-```bash
-/alfred:8-project analyze              # 전체 코드베이스 분석
-/alfred:8-project analyze --areas=3,5  # 특정 영역만 분석
-/alfred:8-project analyze --update     # 기존 보고서 업데이트
-```
-
-### 3.2 10개 병렬 분석 영역 자동 정의
-
-프로젝트 구조를 스캔하여 다음 영역으로 자동 분할:
-
-| # | 영역명 | 자동 감지 패턴 | 우선순위 |
-|---|--------|---------------|----------|
-| 1 | CLI Core | `src/cli/`, `bin/` | 높음 |
-| 2 | Command Handlers | `src/commands/`, `*Command.ts` | 높음 |
-| 3 | Core Managers | `src/core/`, `src/managers/` | 중간 |
-| 4 | Installation | `src/installation/`, `src/setup/` | 중간 |
-| 5 | Sync System | `src/sync/`, `src/version/` | 중간 |
-| 6 | Database/TAG | `src/db/`, `src/tags/` | 높음 |
-| 7 | Git Strategies | `src/git/`, `src/vcs/` | 중간 |
-| 8 | Documentation | `src/docs/`, `src/generators/` | 낮음 |
-| 9 | Quality/TDD | `src/quality/`, `src/tdd/` | 높음 |
-| 10 | Integration | `.claude/`, `templates/` | 중간 |
-
-### 3.3 병렬 에이전트 실행 전략
-
-**Task 에이전트 병렬 호출**: 단일 메시지로 최대 10개 Task 에이전트를 동시에 실행합니다.
-
-**에이전트별 분석 프롬프트 자동 생성**:
-
-각 에이전트는 다음 단계를 독립적으로 수행:
-
-1. **파일 목록 수집**: Glob으로 타겟 파일 수집
-2. **병렬 파일 읽기**: Read 도구로 핵심 파일 20개 우선 읽기
-3. **패턴 분석**: Grep으로 에러 핸들링, TODO/FIXME, @TAG 검색
-4. **보고서 생성**: `.moai/reports/analysis/{순번}-{영역명}-analysis.md`
-
-### 3.4 보고서 생성 및 저장 구조
-
-```
-.moai/reports/analysis/
-├── index.md                          # 종합 인덱스 (자동 생성)
-├── refactoring-roadmap.md           # 리팩토링 로드맵 (자동 생성)
-├── 01-cli-core-analysis.md          # 영역별 보고서
-├── 02-command-handlers-analysis.md
-├── 03-core-managers-analysis.md
-├── 04-installation-analysis.md
-├── 05-sync-system-analysis.md
-├── 06-database-tag-analysis.md
-├── 07-git-strategies-analysis.md
-├── 08-documentation-analysis.md
-├── 09-quality-tdd-analysis.md
-└── 10-integration-analysis.md
-```
-
-### 3.5 표준 분석 보고서 템플릿
-
-각 보고서는 다음 섹션을 포함:
-
-1. **Executive Summary**: 현재 상태 평가 (복잡도, 유지보수성, 테스트 커버리지)
-2. **구조 분석**: 파일 계층, 의존성 맵
-3. **TRUST 5원칙 준수도**: 각 원칙별 평가 및 발견사항
-4. **기술 부채 식별**: @CODE 태그로 추적 (긴급/중요/일반)
-5. **리팩토링 제안**: 우선순위별 (즉시/단계적/전략적)
-6. **상세 파일 분석**: Top 5 파일 심층 분석
-7. **액션 아이템**: 체크리스트 기반 실행 계획
-
-### 3.6 자동 생성 산출물
-
-**1. 종합 인덱스** (`index.md`)
-- 10개 영역 건강 지표 대시보드
-- 우선순위 리팩토링 대상 Top 5
-- 진행 상황 추적
-
-**2. 리팩토링 로드맵** (`refactoring-roadmap.md`)
-- 단계별 리팩토링 계획
-- 의존성 그래프
-- 예상 작업량 및 리스크 평가
-
-**3. 영역별 상세 보고서**
-- 표준 템플릿 기반 일관된 형식
-- @CODE/TODO 태그로 추적 가능
-
-### 3.7 실행 예시
-
-```bash
-사용자: "/alfred:8-project analyze"
-
-에이전트:
-"프로젝트 구조를 분석하여 10개 영역을 감지했습니다.
-
-감지된 영역:
-1. CLI Core (moai-adk-ts/src/cli/) - 12개 파일
-2. Command Handlers (moai-adk-ts/src/commands/) - 8개 파일
-3. Core Managers (moai-adk-ts/src/core/) - 15개 파일
-... (총 10개 영역)
-
-10개 Task 에이전트를 병렬로 실행하여 각 영역을 분석하시겠습니까?
-예상 소요 시간: 5-10분
-
-[진행] [취소]"
-```
-
-### 3.8 보고서 활용 가이드
-
-**리팩토링 시작하기**:
-```bash
-# 1. 종합 인덱스 확인
-cat .moai/reports/analysis/index.md
-
-# 2. 우선순위 Top 1 영역 상세 보고서 확인
-cat .moai/reports/analysis/06-database-tag-analysis.md
-
-# 3. @CODE 태그 기반 SPEC 생성
-/alfred:1-spec "@CODE:TAG-001 해결 - TAG 검색 성능 개선"
-
-# 4. TDD 구현
-/alfred:2-build "SPEC-TAG-001"
-
-# 5. 문서 동기화 및 보고서 업데이트
-/alfred:3-sync
-/alfred:8-project analyze --update
-```
-
----
 
 ## 프로젝트 유형별 인터뷰 가이드
 
@@ -668,7 +529,7 @@ cat .moai/reports/analysis/06-database-tag-analysis.md
 
 - **신규 프로젝트**: `/alfred:1-spec`을 실행해 설계 기반 SPEC 백로그 생성
 - **레거시 프로젝트**: product/structure/tech 문서의 @CODE/@CODE/TODO 항목 검토 후 우선순위 확정
-- **설정 변경**: `/alfred:8-project update`로 인터뷰 다시 진행
+- **설정 변경**: `/alfred:8-project`를 다시 실행하여 문서 갱신
 
 ## 관련 명령어
 

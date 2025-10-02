@@ -145,7 +145,7 @@ var PolicyBlock = class {
    * Extract command from tool input
    */
   extractCommand(toolInput) {
-    const raw = toolInput["command"] || toolInput["cmd"];
+    const raw = toolInput.command || toolInput.cmd;
     if (Array.isArray(raw)) {
       return raw.map(String).join(" ");
     }

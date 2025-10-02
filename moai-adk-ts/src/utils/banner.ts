@@ -18,8 +18,8 @@ import { logger } from './/winston-logger.js';
 function supportsColor(): boolean {
   return (
     process.stdout.isTTY &&
-    process.env['TERM'] !== 'dumb' &&
-    process.env['NO_COLOR'] === undefined
+    process.env.TERM !== 'dumb' &&
+    process.env.NO_COLOR === undefined
   );
 }
 
@@ -87,9 +87,7 @@ export function createBanner(
   // Description with version in one line
   const description = `🗿 MoAI-ADK: Modu-AI's Agentic Development kit (v${version}) 🚀`;
 
-  bannerLines.push(
-    supportsColor() ? applyZincColor(description) : description
-  );
+  bannerLines.push(supportsColor() ? applyZincColor(description) : description);
   bannerLines.push('');
 
   // Usage info if requested

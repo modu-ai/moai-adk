@@ -45,7 +45,7 @@
     "docs:dev": "vitepress dev ../docs",
     "docs:build": "bun run docs:api && vitepress build ../docs",
     "docs:preview": "vitepress preview ../docs",
-    "prepublishOnly": "bun run ci"
+    "prepublishOnly": "bun run build && bun run check"
   },
   "dependencies": {
     "chalk": "^5.6.2",
@@ -108,10 +108,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/modu-ai/moai-adk.git"
+    "url": "git+https://github.com/modu-ai/moai-adk.git"
   },
   "bugs": {
     "url": "https://github.com/modu-ai/moai-adk/issues"
   },
-  "homepage": "https://github.com/modu-ai/moai-adk#readme"
+  "homepage": "https://moai-adk.vercel.app"
 }

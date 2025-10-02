@@ -7,9 +7,9 @@
  * @tags @TEST:UPDATE-REFACTOR-001
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { AlfredUpdateBridge } from '../alfred-update-bridge.js';
 
 describe('AlfredUpdateBridge', () => {
@@ -75,7 +75,7 @@ describe('AlfredUpdateBridge', () => {
       // Then: Backup should exist (file pattern: *.backup-*)
       const projectDir = path.dirname(projectDocPath);
       const files = await fs.readdir(projectDir);
-      const hasBackup = files.some((f) => f.includes('.backup-'));
+      const hasBackup = files.some(f => f.includes('.backup-'));
       expect(hasBackup).toBe(true);
     });
 
@@ -144,10 +144,7 @@ describe('AlfredUpdateBridge', () => {
         '.moai/project/tech.md'
       );
       await fs.mkdir(path.dirname(projectDocPath), { recursive: true });
-      await fs.writeFile(
-        projectDocPath,
-        '# Tech Stack\n\nCustom content here'
-      );
+      await fs.writeFile(projectDocPath, '# Tech Stack\n\nCustom content here');
 
       const templateFile = path.join(mockTemplatePath, '.moai/project/tech.md');
       await fs.mkdir(path.dirname(templateFile), { recursive: true });
@@ -160,7 +157,7 @@ describe('AlfredUpdateBridge', () => {
       // Then: Backup exists
       const projectDir = path.dirname(projectDocPath);
       const files = await fs.readdir(projectDir);
-      const hasBackup = files.some((f) => f.startsWith('tech.md.backup-'));
+      const hasBackup = files.some(f => f.startsWith('tech.md.backup-'));
       expect(hasBackup).toBe(true);
     });
   });

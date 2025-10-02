@@ -9,7 +9,7 @@ description: AI와 함께 브레인스토밍, 계획 수립, 실시간 코드 �
 
 Alfred와 함께 실시간으로 문제를 해결하고, 아이디어를 발전시키며, 최적의 솔루션을 도출하는 협업 스타일입니다.
 
-## 🎩 Alfred SuperAgent
+## ▶◀ Alfred SuperAgent
 
 Alfred는 MoAI-ADK의 중앙 오케스트레이터로 9개 전문 에이전트를 조율합니다.
 

@@ -4,7 +4,14 @@
  * @tags @TEST:REFACTOR-007 @SPEC:REFACTOR-007
  */
 
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import {
+  beforeEach,
+  describe,
+  expect,
+  type MockedFunction,
+  test,
+  vi,
+} from 'vitest';
 import '@/__tests__/setup';
 import { execa } from 'execa';
 import { CommandBuilder } from '@/core/package-manager/command-builder';
@@ -16,11 +23,14 @@ import {
 
 // Mock execa
 vi.mock('execa');
-const mockExeca = vi.mocked(execa);
+const mockExeca = execa as MockedFunction<typeof execa>;
+
+// Type helper for execa return value (compatible with v9+)
+type ExecaResult = Awaited<ReturnType<typeof execa>>;
 
 describe('PackageManagerInstaller', () => {
-  let commandBuilder: CommandBuilder;
   let installer: PackageManagerInstaller;
+  let commandBuilder: CommandBuilder;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -47,7 +57,7 @@ describe('PackageManagerInstaller', () => {
         timedOut: false,
         isCanceled: false,
         killed: false,
-      } as any);
+      } as ExecaResult);
 
       // Act
       const result = await installer.installPackages(packages, options);
@@ -83,7 +93,7 @@ describe('PackageManagerInstaller', () => {
         timedOut: false,
         isCanceled: false,
         killed: false,
-      } as any);
+      } as ExecaResult);
 
       // Act
       const result = await installer.installPackages(packages, options);
@@ -117,7 +127,7 @@ describe('PackageManagerInstaller', () => {
         timedOut: false,
         isCanceled: false,
         killed: false,
-      } as any);
+      } as ExecaResult);
 
       // Act
       const result = await installer.installPackages(packages, options);
@@ -166,7 +176,7 @@ describe('PackageManagerInstaller', () => {
         timedOut: false,
         isCanceled: false,
         killed: false,
-      } as any);
+      } as ExecaResult);
 
       // Act
       const result = await installer.initializeProject(

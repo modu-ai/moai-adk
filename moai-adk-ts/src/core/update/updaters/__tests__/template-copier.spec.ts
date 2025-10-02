@@ -7,9 +7,9 @@
  * @tags @TEST:UPDATE-REFACTOR-001-T004
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { TemplateCopier } from '../template-copier.js';
 
 describe('TemplateCopier', () => {

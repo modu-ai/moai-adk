@@ -385,7 +385,7 @@ describe('PackageJsonBuilder', () => {
       );
 
       // Assert
-      expect(packageJson.engines?.yarn).toBe('>=1.22.0');
+      expect((packageJson.engines as any)?.yarn).toBe('>=1.22.0');
     });
 
     // @TEST:REFACTOR-007-116: PNPM 엔진 요구사항
@@ -404,7 +404,7 @@ describe('PackageJsonBuilder', () => {
       );
 
       // Assert
-      expect(packageJson.engines?.pnpm).toBe('>=8.0.0');
+      expect((packageJson.engines as any)?.pnpm).toBe('>=8.0.0');
     });
   });
 });

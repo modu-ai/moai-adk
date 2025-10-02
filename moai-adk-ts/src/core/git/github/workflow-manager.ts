@@ -6,8 +6,8 @@
  * @author MoAI Team
  */
 
-import * as fs from 'fs-extra';
 import * as path from 'node:path';
+import * as fs from 'fs-extra';
 import type { WorkflowTemplate } from './types';
 
 /**
@@ -134,6 +134,9 @@ jobs:
     const releaseWorkflow = this.getReleaseWorkflowTemplate();
 
     await this.createWorkflowFile(ciWorkflow.name, ciWorkflow.content);
-    await this.createWorkflowFile(releaseWorkflow.name, releaseWorkflow.content);
+    await this.createWorkflowFile(
+      releaseWorkflow.name,
+      releaseWorkflow.content
+    );
   }
 }

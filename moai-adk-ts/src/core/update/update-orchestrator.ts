@@ -11,12 +11,11 @@ import * as path from 'node:path';
 import chalk from 'chalk';
 import { getCurrentVersion } from '../../utils/version.js';
 import { logger } from '../../utils/winston-logger.js';
+import { AlfredUpdateBridge } from './alfred/alfred-update-bridge.js';
 import { UpdateVerifier } from './checkers/update-verifier.js';
 import { VersionChecker } from './checkers/version-checker.js';
 import { BackupManager } from './updaters/backup-manager.js';
 import { NpmUpdater } from './updaters/npm-updater.js';
-import { TemplateCopier } from './updaters/template-copier.js';
-import { AlfredUpdateBridge } from './alfred/alfred-update-bridge.js';
 
 /**
  * Simplified update configuration
@@ -57,14 +56,12 @@ export class UpdateOrchestrator {
   private readonly versionChecker: VersionChecker;
   private readonly backupManager: BackupManager;
   private readonly npmUpdater: NpmUpdater;
-  private readonly templateCopier: TemplateCopier;
   private readonly verifier: UpdateVerifier;
 
   constructor(projectPath: string) {
     this.versionChecker = new VersionChecker();
     this.backupManager = new BackupManager(projectPath);
     this.npmUpdater = new NpmUpdater(projectPath);
-    this.templateCopier = new TemplateCopier(projectPath);
     this.verifier = new UpdateVerifier(projectPath);
   }
 
@@ -122,9 +119,8 @@ export class UpdateOrchestrator {
       const npmRoot = await this.npmUpdater.getNpmRoot();
       const templatePath = path.join(npmRoot, 'moai-adk', 'templates');
       const alfredBridge = new AlfredUpdateBridge(config.projectPath);
-      const filesUpdated = await alfredBridge.copyTemplatesWithClaudeTools(
-        templatePath
-      );
+      const filesUpdated =
+        await alfredBridge.copyTemplatesWithClaudeTools(templatePath);
 
       // Phase 5: Verification
       await this.verifier.verifyUpdate();

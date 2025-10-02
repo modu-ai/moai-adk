@@ -9,7 +9,7 @@ description: 새로운 개념, 도구, 언어, 프레임워크를 체계적으�
 
 Alfred와 함께 체계적인 설명과 실무 통찰을 통해 새로운 개념을 깊이 이해하는 학습 스타일입니다.
 
-## 🎩 Alfred SuperAgent 학습 경로
+## ▶◀ Alfred SuperAgent 학습 경로
 
 Alfred는 MoAI-ADK의 중앙 오케스트레이터로 9개 전문 에이전트의 지식을 활용합니다.
 

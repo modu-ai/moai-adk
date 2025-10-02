@@ -18,8 +18,8 @@ import { AuthChecker } from './auth-checker';
 import { IssueManager } from './issue-manager';
 import { PullRequestManager } from './pr-manager';
 import { RepositoryManager } from './repo-manager';
-import { WorkflowManager } from './workflow-manager';
 import type { RepositoryInfo } from './types';
+import { WorkflowManager } from './workflow-manager';
 
 /**
  * GitHub CLI를 사용한 GitHub 연동 (Facade)

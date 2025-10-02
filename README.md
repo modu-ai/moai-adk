@@ -10,6 +10,8 @@
 
 ### 모두의AI 에이전틱 코딩 개발 프레임워크
 
+안내: MoAI-ADK는 모두의AI 연구실에서 집필 중인 "(가칭) 에이전틱 코딩"
+
 ![MoAI-ADK CLI Interface](docs/public/moai-tui_screen-light.png)
 
 > "SPEC이 없으면 CODE도 없다."
@@ -19,9 +21,9 @@
 ## 목차
 
 - [Meet Alfred](#-meet-alfred---your-ai-development-partner)
+- [Quick Start](#-quick-start-3분-실전)
 - [The Problem](#-the-problem---바이브-코딩의-한계)
 - [The Solution](#-the-solution---moai-adks-3-step-workflow)
-- [Quick Start](#-quick-start-3분-실전)
 - [How Alfred Works](#️-how-alfred-works---10개-ai-에이전트-팀)
 - [Output Styles](#-alfreds-output-styles)
 - [Language Support](#-universal-language-support)
@@ -32,29 +34,33 @@
 
 ---
 
-## 🎩 Meet Alfred - Your AI Development Partner
+## Meet ▶◀ Alfred - Your AI Development Partner
 
-안녕하세요, 모두의AI SuperAgent **AI 🎩 Alfred**입니다!
+안녕하세요, 모두의AI SuperAgent **AI ▶◀ Alfred**입니다!
 
 ![Alfred Logo](docs/public/alfred_logo.png)
 
-저는 MoAI-ADK(Agentic Development Kit)의 SuperAgent이자 중앙 오케스트레이터(Central Orchestrator)입니다. MoAI-ADK는 Alfred를 포함하여 **총 10개의 AI 에이전트로 구성된 에이전틱 코딩 AI 팀**입니다. 저는 9개의 전문 에이전트(spec-builder, code-builder, doc-syncer 등)를 조율하여 여러분의 Claude Code 환경 속에서 공동 개발 작업을 완벽하게 지원합니다.
+저는 MoAI-ADK(모두의AI Agentic Development Kit)의 SuperAgent이자 중앙 오케스트레이터(Central Orchestrator) AI, Alfred입니다. MoAI-ADK는 Alfred를 포함하여 **총 10개의 AI 에이전트로 구성된 에이전틱 코딩 AI 팀**입니다. 저는 9개의 전문 에이전트(spec-builder, code-builder, doc-syncer 등)를 조율하여 여러분의 Claude Code 환경 속에서 공동 개발 작업을 완벽하게 지원합니다.
 
-**Alfred라는 이름의 유래**: 배트맨 영화에 나오는 충실한 집사 Alfred Pennyworth에서 영감을 받아 지었다고 합니다. 집사 Alfred가 배트맨(Bruce Wayne)을 위해 모든 준비를 완벽하게 갖추고, 위험에 처했을 때 즉각적인 지원을 제공하며, 항상 한 걸음 앞서 생각하듯이, 저 또한 여러분의 개발 과정 속에서 필요한 모든 것을 미리 준비하고, 문제가 발생하면 즉시 해결책을 제시하며, 언제나 여러분이 창의적인 문제 해결에만 집중할 수 있도록 뒷받침합니다. 여러분은 코드의 "왜(Why)"에 집중하시고, "어떻게(How)"는 제가 책임지겠습니다.
+**Alfred라는 이름의 유래**: 배트맨 영화에 나오는 충실한 집사 Alfred Pennyworth에서 영감을 받아 지었다고 합니다. 집사 Alfred가 배트맨(Bruce Wayne)을 위해 모든 준비를 완벽하게 갖추고, 위험에 처했을 때 즉각적인 지원을 제공하며, 항상 한 걸음 앞서 생각하듯이, 저 또한 여러분의 개발 과정 속에서 필요한 모든 것을 미리 준비하고, 문제가 발생하면 즉시 해결책을 제시하며, 언제나 여러분이 창의적인 문제 해결에만 집중할 수 있도록 뒷받침합니다. 여러분은 코드의 "**왜(Why)**"에 집중하시고, "**어떻게(How)**"는 제가 책임지겠습니다.
 
 ### 🌟 흥미로운 사실: AI가 만든 AI 개발 도구
 
 이 프로젝트의 모든 코드는 **100% AI에 의해 작성**되었습니다. AI가 직접 설계하고 구현한 AI 개발 프레임워크입니다.
 
-**설계 단계부터 AI 협업**: 초기 아키텍처 설계 단계부터 **GPT-5 Pro**와 **Claude 4.1 Opus** 두 AI 모델이 함께 참여했습니다. 두 AI가 서로 다른 관점에서 설계를 검토하고 토론하며, 더 나은 방향을 제시하고, 최적의 아키텍처를 함께 만들어냈습니다. 이는 마치 두 명의 시니어 아키텍트가 화이트보드 앞에서 "이 부분은 싱글톤 패턴이 적합할까, 팩토리 패턴이 적합할까?"를 논의하는 것과 같은 과정이었습니다. GPT-5 Pro는 폭넓은 사례 분석을, Claude 4.1 Opus는 깊이 있는 코드 구조 설계를 담당하며 서로 보완했습니다.
+**설계 단계부터 AI 협업**: 초기 아키텍처 설계 단계부터 **GPT-5 Pro**와 **Claude 4.1 Opus** 두 AI 모델이 함께 참여했습니다. 두 AI가 서로 다른 관점에서 설계를 검토하고 토론하며, 더 나은 방향을 제시하고, 최적의 아키텍처를 함께 만들어냈습니다. GPT-5 Pro는 폭넓은 사례 분석을, Claude 4.1 Opus는 깊이 있는 코드 구조 설계를 담당하며 서로 보완했습니다.
 
 **Agentic Coding 방법론의 실제 적용**: **모두의AI**팀이 Claude Code와 Agentic Coding 방법론을 활용하여 개발했습니다. 전통적인 방식처럼 사람이 키보드 앞에 앉아 모든 코드를 직접 타이핑하는 대신, AI 에이전트들이 SPEC을 읽고 이해하고, 테스트를 먼저 작성하고(TDD Red), 구현 코드를 만들고(TDD Green), 리팩토링하고(TDD Refactor), 문서를 동기화하는 전 과정을 **자율적으로** 수행했습니다. 저 Alfred와 9개 전문 에이전트로 구성된 **10개 AI 에이전트 팀**이 직접 `.moai/specs/` 폴더에 SPEC 문서를 작성하고, `tests/` 폴더에 테스트 코드를 만들고, `src/` 폴더에 구현 코드를 작성했습니다.
 
-### 🎩 Alfred가 제공하는 4가지 핵심 가치
+**100% AI 생성 코드의 진실**: 이 프로젝트는 100% AI로 만들어진 오픈소스이기 때문에, 코드베이스에서 다소 정리되지 않은 부분이나 개선이 필요한 영역이 보일 수 있습니다. 하지만 이것이 이 프로젝트의 핵심 철학입니다.
+
+**투명성과 지속적 개선**: 완벽하지 않은 코드를 숨기는 대신, AI 개발 도구가 실제로 어떻게 만들어지는지 그대로 보여주고, 커뮤니티와 함께 더 나은 방향으로 발전시켜 나가고자 합니다. 여러분의 사용 경험과 피드백이 이 프로젝트를 더욱 강력하게 만듭니다. [GitHub Issues](https://github.com/modu-ai/moai-adk/issues)나 [Discussions](https://github.com/modu-ai/moai-adk/discussions)에 피드백을 남겨주시면, **최대한 빠르게 업데이트하고 배포할 것을 약속드립니다**. AI가 만든 도구를 함께 더 나은 도구로 만들어가는 여정에 동참해주세요!
+
+### ▶◀ Alfred가 제공하는 4가지 핵심 가치
 
 #### 1️⃣ 일관성(Consistency): 플랑켄슈타인 코드를 방지하는 3단계 파이프라인
 
-Alfred는 모든 개발 작업을 **SPEC → TDD → Sync**라는 3단계 파이프라인으로 표준화합니다. 월요일에 ChatGPT로 만든 코드, 수요일에 Claude로 만든 코드, 금요일에 Copilot으로 만든 코드가 서로 다른 스타일, 네이밍 규칙, 아키텍처 패턴을 가지는 "플랑켄슈타인 코드"의 문제를 **원천적으로 차단**합니다. 같은 프로젝트 안에서 `getUserInfo()`, `fetchUser()`, `retrieveUserData()` 같은 이름으로 똑같은 기능이 3번 구현되는 악몽을 경험해보셨나요? Alfred는 이런 일이 절대 일어나지 않도록 보장합니다.
+Alfred는 모든 개발 작업을 **SPEC → TDD → Sync**라는 3단계 파이프라인으로 표준화합니다. 월요일에 ChatGPT로 만든 코드, 수요일에 Claude로 만든 코드, 금요일에 Gemini으로 만든 코드가 서로 다른 스타일, 네이밍 규칙, 아키텍처 패턴을 가지는 "플랑켄슈타인 코드"의 문제를 **원천적으로 차단**합니다. 같은 프로젝트 안에서 `getUserInfo()`, `fetchUser()`, `retrieveUserData()` 같은 이름으로 똑같은 기능이 3번 구현되는 악몽을 경험해보셨나요? Alfred는 이런 일이 절대 일어나지 않도록 보장합니다.
 
 이 3단계 파이프라인은 마치 자동차 공장의 조립 라인처럼 작동합니다. 어떤 기능을 만들든(사용자 인증, 결제 시스템, 알림 기능), 누가 만들든(신입 개발자, 시니어 개발자, AI 도구), 언제 만들든(월요일 오전, 금요일 밤) 항상 같은 프로세스를 거치게 됩니다. 결과적으로 **6개월 후에 코드를 다시 봐도**, **새로운 팀원이 코드를 처음 봐도**, "아, 이건 Alfred 방식으로 만들어졌구나. SPEC을 먼저 보고, 테스트를 보고, 구현을 보면 되겠네"라고 즉시 이해할 수 있습니다. 일관성은 유지보수성의 핵심이며, **기술 부채를 줄이는 가장 강력한 무기**입니다.
 
@@ -68,13 +74,97 @@ Alfred는 모든 코드에 **TRUST 5원칙**(Test First, Readable, Unified, Secu
 
 Alfred의 **@TAG 시스템**은 모든 코드 조각을 `@SPEC:ID → @TEST:ID → @CODE:ID → @DOC:ID`로 완벽하게 연결합니다. 6개월 후 누군가 "왜 이 함수는 이렇게 복잡하게 구현했나요? 더 간단하게 할 수 있지 않나요?"라고 물어보면, **@TAG를 따라가면 답을 찾을 수 있습니다**. SPEC 문서를 열어 "아, 이건 금융 규정 때문에 3단계 검증이 필수구나"를 확인하고, TEST 코드를 보며 "이 엣지 케이스들이 실제로 프로덕션에서 발생했던 버그구나"를 이해하고, CODE를 보며 "이렇게 구현한 이유가 있었구나"를 납득하고, DOC을 보며 "다른 팀원들도 이 문제를 겪었고 해결책을 공유했구나"를 배웁니다.
 
-특히 Alfred의 TAG 시스템은 **CODE-FIRST** 방식을 사용합니다. 중간에 별도의 데이터베이스나 YAML 파일, JSON 캐시 파일을 두지 않고, **코드 자체를 직접 스캔**하여 TAG를 찾습니다(`rg '@CODE:AUTH-001' -n`). 이는 "**코드가 진실의 유일한 원천(single source of truth)**"이라는 철학을 반영한 것입니다. TAG는 외부 문서가 아니라 살아있는 코드 안에 주석으로 존재하며, 코드가 변경되면 TAG도 함께 변경됩니다. 코드와 문서가 따로 놀 수 없습니다. 추적성은 문서화의 부산물이 아니라 **코드의 일부**입니다. 금융, 의료, 국방 등 규정 준수(compliance)가 중요한 산업에서는 이런 추적성이 선택이 아니라 필수입니다.
+특히 Alfred의 TAG 시스템은 **CODE-FIRST** 방식을 사용합니다. 중간에 별도의 데이터베이스나 YAML 파일, JSON 캐시 파일을 두지 않고, **코드 자체를 직접 스캔**하여 TAG를 찾습니다(`rg '@CODE:AUTH-001' -n`). 이는 "**코드가 진실의 유일한 원천(single source of truth)**"이라는 철학을 반영한 것입니다. TAG는 외부 문서가 아니라 살아있는 코드 안에 주석으로 존재하며, 코드가 변경되면 TAG도 함께 변경됩니다. 코드와 문서가 따로 놀 수 없습니다. 추적성은 문서화의 부산물이 아니라 **코드의 일부**입니다. 
 
 #### 4️⃣ 범용성(Universality): 한 번 배우면 어디서나 쓸 수 있는 워크플로우
 
 Alfred는 특정 언어나 프레임워크에 종속되지 않습니다. **Python, TypeScript, Java, Go, Rust, Dart, Swift, Kotlin** 등 모든 주요 프로그래밍 언어를 지원하며, 각 언어에 최적화된 도구 체인(테스트 프레임워크, 린터, 타입 체커)을 자동으로 선택합니다. 백엔드 개발자가 Python FastAPI로 API 서버를 만들든, 프론트엔드 개발자가 TypeScript React로 웹앱을 만들든, 모바일 개발자가 Flutter로 앱을 만들든, **모두 같은 3단계 워크플로우**를 사용합니다.
 
 예를 들어, Python 프로젝트에서는 `pytest`(테스트)와 `ruff`(린터)와 `mypy`(타입 체커)를 자동으로 사용하고, TypeScript 프로젝트에서는 `Vitest`와 `Biome`를 사용하고, Go 프로젝트에서는 `go test`와 `golint`를 사용하고, Rust 프로젝트에서는 `cargo test`와 `clippy`를 사용합니다. 여러분은 "내 프로젝트는 Python이야"라고 선택만 하면 되고, 나머지 도구 선택과 설정은 **Alfred가 알아서** 합니다. 팀에 백엔드 개발자, 프론트엔드 개발자, 모바일 개발자가 섞여 있어도 모두가 "Alfred 워크플로우"라는 공통 언어로 소통할 수 있습니다. 범용성은 **팀 협업의 핵심**이며, 개발자 온보딩 시간을 획기적으로 줄여줍니다.
+
+---
+
+## 🚀 Quick Start (3분 실전)
+
+### 📋 준비물
+
+- ✅ Bun 또는 npm 설치됨
+- ✅ Claude Code 실행 중
+- ✅ Git 설치됨 (선택사항)
+
+### ⚡ 3단계로 시작하기
+
+#### 1️⃣ 설치 (30초)
+
+```bash
+# Bun 권장 (5배 빠른 성능)
+curl -fsSL https://bun.sh/install | bash
+bun add -g moai-adk
+
+# 또는 npm 사용
+npm install -g moai-adk
+
+# 설치 확인
+moai --version
+# 출력: v0.x.x
+```
+
+#### 2️⃣ 초기화 (1분)
+
+**터미널에서:**
+```bash
+# 새 프로젝트 생성
+moai init my-project
+cd my-project
+
+# Claude Code 실행
+claude
+```
+
+**Claude Code에서** (필수):
+```text
+/alfred:8-project
+```
+
+Alfred가 자동으로 수행:
+- `.moai/project/` 문서 3종 생성 (product/structure/tech.md)
+- 언어별 최적 도구 체인 설정
+- 프로젝트 컨텍스트 완벽 이해
+
+#### 3️⃣ 첫 기능 개발 (1분 30초)
+
+**Claude Code에서 3단계 워크플로우 실행:**
+
+```text
+# SPEC 작성
+/alfred:1-spec "JWT 기반 사용자 로그인 API"
+
+# TDD 구현
+/alfred:2-build AUTH-001
+
+# 문서 동기화
+/alfred:3-sync
+```
+
+### 🎉 완료!
+
+**생성된 것들:**
+- ✅ `.moai/specs/SPEC-AUTH-001.md` (명세)
+- ✅ `tests/auth/login.test.ts` (테스트)
+- ✅ `src/services/auth.ts` (구현)
+- ✅ `docs/api/auth.md` (문서)
+- ✅ `@SPEC → @TEST → @CODE → @DOC` TAG 체인
+
+### 💡 다음 단계
+
+- 📖 [Output Styles](#-alfreds-output-styles) - 학습 모드로 전환
+- 🌍 [Language Support](#-universal-language-support) - 다른 언어 사용
+- 💻 [CLI Reference](#-cli-reference) - 모든 명령어 보기
+
+**더 궁금한 점이 있으신가요?**
+
+- 💬 **질문 & 토론**: [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)
+- 🐛 **버그 리포트**: [GitHub Issues](https://github.com/modu-ai/moai-adk/issues)
 
 ---
 
@@ -89,7 +179,7 @@ AI 도구(Codex, Claude, Gemini)로 빠르게 코딩하는 시대가 열렸습�
 - **컴파일은 되지만 실행은 안 됨**: TypeScript 타입은 완벽하게 맞는데, 런타임에 `undefined` 에러가 발생합니다. "분명 타입 체크는 통과했는데 왜?"
 - **엣지 케이스 처리 부족**: 정상 시나리오(happy path)만 고려하고, 빈 배열, null 값, 네트워크 타임아웃 같은 예외 상황은 완전히 무시합니다.
 - **성능 문제**: 알고리즘은 맞는데 `O(n³)` 복잡도로 구현되어, 데이터가 100개일 때는 괜찮지만 10,000개가 되면 서버가 멈춥니다.
-- **의존성 지옥**: 단순한 날짜 포맷팅을 위해 100MB짜리 라이브러리를 추천받아 설치하고, 나중에 보안 취약점 경고가 쏟아집니다.
+- **의존성 지옥**: 단순한 날짜 포맷팅을 위해 다양한 라이브러리를 추천받아 설치하고, 나중에 보안 취약점 경고가 쏟아집니다.
 
 **AI 예측 사례**: 한 개발자가 ChatGPT로 사용자 인증 코드를 생성했습니다. 코드는 아름다웠고 컴파일도 완벽했습니다. 하지만 실제로 배포 후, 비밀번호가 평문(plain text)으로 데이터베이스에 저장되고 있었습니다. AI는 "사용자 인증"이라는 요청만 받았지, "보안 요구사항"을 명시적으로 듣지 못했기 때문입니다. 실제로 돌려보기 전까지는 이런 치명적인 문제를 알 수 없습니다.
 
@@ -102,7 +192,7 @@ AI 도구(Codex, Claude, Gemini)로 빠르게 코딩하는 시대가 열렸습�
 - **아키텍처 붕괴**: 프로젝트는 MVC 패턴으로 시작했는데, 어느새 Hexagonal Architecture와 Clean Architecture가 혼재되고, 일부는 CQRS 패턴까지 섞여있습니다.
 - **네이밍 혼란**: `getUserData()`, `fetchUser()`, `retrieveUserInfo()`, `loadUserProfile()` 모두 같은 기능인데 이름만 다릅니다.
 
-**AI 예측 사례**: 스타트업 팀이 6개월간 AI로 빠르게 프로토타입을 만들었습니다. 기능은 모두 작동했지만, 코드베이스는 각 개발자가 다른 AI로 만든 코드들이 뒤섞인 "플랑켄슈타인"이 되었습니다. 각 부분은 훌륭했지만, 전체는 재앙이었습니다. 결국 기술 부채를 갚기 위해 3개월을 투자했고, 그 사이 경쟁사에 시장을 빼앗겼습니다. "빠르게 만들었지만, 느리게 망했다"는 교훈만 남았습니다.
+**AI 예측 사례**: 스타트업 팀이 1개월간 AI로 빠르게 프로토타입을 만들었습니다. 기능은 모두 작동했지만, 코드베이스는 각 개발자가 다른 AI로 만든 코드들이 뒤섞인 "플랑켄슈타인"이 되었습니다. 각 부분은 훌륭했지만, 전체는 재앙이었습니다. 결국 기술 부채를 갚기 위해 3개월을 투자했고, 그 사이 경쟁사에 시장을 빼앗겼습니다. "빠르게 만들었지만, 느리게 망했다"는 교훈만 남았습니다.
 
 ### 3. 디버깅 지옥
 
@@ -122,7 +212,6 @@ AI 도구(Codex, Claude, Gemini)로 빠르게 코딩하는 시대가 열렸습�
 - **"왜"를 잃어버림**: 비즈니스 로직의 배경과 이유를 모릅니다. "왜 결제 금액이 10만원을 넘으면 추가 인증을 요구하나요?" → "글쎄요, AI가 그렇게 만들었는데요..."
 - **변경 이력 부재**: 누가, 언제, 왜 이 코드를 바꿨는지 기록이 없습니다. Git 커밋 메시지도 "fix bug", "update code" 같은 무의미한 메시지뿐입니다.
 - **의사결정 근거 사라짐**: "왜 JWT를 선택했고, Session 대신 사용하나요?" → "기억 안 나요. AI가 추천해서요."
-- **규정 준수 불가**: 금융, 의료, 국방 등 감사 추적(audit trail)이 필수인 산업에서는 이런 추적성 부재가 치명적입니다. "이 개인정보 처리 로직이 GDPR을 준수하는지 증명해주세요" → 증명 불가능.
 
 **AI 예측 사례**: 핀테크 스타트업이 감사를 받았습니다. 감사관이 "이 고객 신용 평가 로직의 근거를 설명해주세요"라고 요청했지만, 코드만 있고 SPEC 문서가 없었습니다. 누가 왜 이 알고리즘을 선택했는지, 어떤 비즈니스 요구사항을 반영한 것인지 아무도 몰랐습니다. AI가 생성한 코드였고, 작동하니까 그냥 사용했던 것입니다. 결과적으로 금융 라이선스 승인이 6개월 지연되었습니다. 코드는 있는데 컨텍스트가 없어서 생긴 비극입니다.
 
@@ -130,12 +219,12 @@ AI 도구(Codex, Claude, Gemini)로 빠르게 코딩하는 시대가 열렸습�
 
 **문제 상황**: 여러 개발자가 각자 AI를 사용하면서 협업이 무너집니다.
 
-- **스파게티 코드 양산**: A 개발자는 ChatGPT로, B 개발자는 Claude로, C 개발자는 Copilot으로 각자 코드를 만들어서 Git에 푸시합니다. 코드 리뷰 없이 그냥 머지합니다. 3개월 후 코드베이스는 스파게티가 됩니다.
+- **스파게티 코드 양산**: A 개발자는 ChatGPT로, B 개발자는 Claude로, C 개발자는 Gemini으로 각자 코드를 만들어서 Git에 푸시합니다. 코드 리뷰 없이 그냥 머지합니다. 3개월 후 코드베이스는 스파게티가 됩니다.
 - **코드 리뷰 불가**: 리뷰어가 "이게 뭐 하는 코드인지 모르겠어요. 설명 부탁드려요"라고 하면, 작성자도 "저도 AI가 만든 건데, 잘 모르겠어요"라고 답합니다.
 - **온보딩 악몽**: 새로 입사한 개발자가 코드베이스를 이해하는 데 한 달 이상 걸립니다. 멘토가 "이 부분은... 음... 솔직히 저도 잘 모르겠네요"라고 답하는 순간, 신입은 절망합니다.
 - **기술 부채 폭발**: "이 코드 건드리면 뭔가 깨질 것 같아서 못 건드리겠어요"라는 "금기 코드" 영역이 점점 확대됩니다. 리팩토링은 불가능해지고, 새 기능은 덕지덕지 붙여나갑니다.
 
-**AI 상상하는 사례**: 10명 규모의 개발 팀이 각자 AI로 빠르게 기능을 만들었습니다. 개별 기능은 모두 작동했지만, 통합하니 충돌이 발생했습니다. 같은 데이터베이스 테이블을 서로 다른 방식으로 접근하고, API 응답 형식도 제각각이었습니다. 코드 리뷰를 하려 해도, 각자가 만든 코드를 본인도 완전히 이해하지 못했기 때문에 리뷰가 불가능했습니다. 결국 CTO가 "이 프로젝트는 유지보수가 불가능하다. 처음부터 다시 만들자"는 결론을 내렸고, 6개월의 개발이 물거품이 되었습니다.
+**AI 예측 사례**: 10명 규모의 개발 팀이 각자 AI로 빠르게 기능을 만들었습니다. 개별 기능은 모두 작동했지만, 통합하니 충돌이 발생했습니다. 같은 데이터베이스 테이블을 서로 다른 방식으로 접근하고, API 응답 형식도 제각각이었습니다. 코드 리뷰를 하려 해도, 각자가 만든 코드를 본인도 완전히 이해하지 못했기 때문에 리뷰가 불가능했습니다. 결국 CTO가 "이 프로젝트는 유지보수가 불가능하다. 처음부터 다시 만들자"는 결론을 내렸고, 6개월의 개발이 물거품이 되었습니다.
 
 ### 💔 바이브 코딩의 역설
 
@@ -149,9 +238,9 @@ AI 도구(Codex, Claude, Gemini)로 빠르게 코딩하는 시대가 열렸습�
 
 ## ✨ The Solution - MoAI-ADK's 3-Step Workflow
 
-Alfred는 AI 시대의 코드 품질 문제를 **체계적인 3단계 MoAI-ADK 워크플로우**로 해결합니다. 바이브 코딩의 혼란을 **일관성, 품질, 추적성**이 보장되는 체계적인 프로세스로 전환합니다.
+Alfred는 Agentic AI 시대의 코드 품질 문제를 **체계적인 3단계 MoAI-ADK 워크플로우**로 해결합니다. 바이브 코딩의 혼란을 **일관성, 품질, 추적성**이 보장되는 체계적인 프로세스로 전환합니다.
 
-이 3단계 워크플로우는 소프트웨어 공학의 오랜 지혜(명세 작성, TDD, 문서화)를 AI 시대에 맞게 재해석한 것입니다. 사람이 일일이 하기엔 번거롭지만, AI 에이전트가 자동화하면 놀라울 정도로 효율적입니다.
+이 3단계 워크플로우는 소프트웨어 공학의 오랜 지혜(명세 작성, TDD, 문서화)를 AI 시대에 맞게 재해석한 것입니다. 사람이 일일이 하기엔 번거롭지만, AI 에이전트가 자동화하면 놀라울 정도로 효율적입니다. 이제 **코드/문서 작성은 AI, 검토는 여러분**이 하시면 됩니다.
 
 ```mermaid
 graph LR
@@ -495,90 +584,11 @@ SPEC (무엇을) → BUILD (어떻게 + 검증) → SYNC (추적성 보장)
 
 ---
 
-## 🚀 Quick Start (3분 실전)
-
-### 📋 준비물
-
-- ✅ Bun 또는 npm 설치됨
-- ✅ Claude Code 실행 중
-- ✅ Git 설치됨 (선택사항)
-
-### ⚡ 3단계로 시작하기
-
-#### 1️⃣ 설치 (30초)
-
-```bash
-# Bun 권장 (5배 빠른 성능)
-curl -fsSL https://bun.sh/install | bash
-bun add -g moai-adk
-
-# 또는 npm 사용
-npm install -g moai-adk
-
-# 설치 확인
-moai --version
-# 출력: v0.x.x
-```
-
-#### 2️⃣ 초기화 (1분)
-
-**터미널에서:**
-```bash
-# 새 프로젝트 생성
-moai init my-project
-cd my-project
-
-# 시스템 진단 (선택사항)
-moai doctor
-```
-
-**Claude Code에서** (필수):
-```text
-/alfred:8-project
-```
-
-Alfred가 자동으로 수행:
-- `.moai/project/` 문서 3종 생성 (product/structure/tech.md)
-- 언어별 최적 도구 체인 설정
-- 프로젝트 컨텍스트 완벽 이해
-
-#### 3️⃣ 첫 기능 개발 (1분 30초)
-
-**Claude Code에서 3단계 워크플로우 실행:**
-
-```text
-# SPEC 작성
-/alfred:1-spec "JWT 기반 사용자 로그인 API"
-
-# TDD 구현
-/alfred:2-build AUTH-001
-
-# 문서 동기화
-/alfred:3-sync
-```
-
-### 🎉 완료!
-
-**생성된 것들:**
-- ✅ `.moai/specs/SPEC-AUTH-001.md` (명세)
-- ✅ `tests/auth/login.test.ts` (테스트)
-- ✅ `src/services/auth.ts` (구현)
-- ✅ `docs/api/auth.md` (문서)
-- ✅ `@SPEC → @TEST → @CODE → @DOC` TAG 체인
-
-### 💡 다음 단계
-
-- 📖 [Output Styles](#-alfreds-output-styles) - 학습 모드로 전환
-- 🌍 [Language Support](#-universal-language-support) - 다른 언어 사용
-- 💻 [CLI Reference](#-cli-reference) - 모든 명령어 보기
-
----
-
 ## 🏗️ How Alfred Works - 10개 AI 에이전트 팀
 
 MoAI-ADK는 **Alfred (SuperAgent) + 9개 전문 에이전트 = 총 10개 AI 에이전트**로 구성된 에이전틱 코딩 팀입니다. 각 에이전트는 IT 업계의 실제 직무에 매핑되어 명확한 역할을 가지고 있습니다.
 
-### 🎩 Alfred - SuperAgent (1번째 에이전트)
+### ▶◀ Alfred - SuperAgent (1번째 에이전트)
 
 **역할**: 중앙 오케스트레이터 (Central Orchestrator)
 
@@ -618,9 +628,9 @@ graph TD
 
 ---
 
-### 9개 전문 에이전트 (2-10번째 에이전트)
+### 전문가 AI 서브 에이전트 
 
-Alfred가 조율하는 전문 에이전트들입니다.
+Alfred가 조율하는 전문 AI 에이전트들입니다.
 
 #### 핵심 3단계 에이전트 (자동 호출)
 
@@ -650,7 +660,7 @@ Alfred가 조율하는 전문 에이전트들입니다.
 
 ```mermaid
 graph TB
-    Alfred["🎩 Alfred<br/>(SuperAgent)<br/>중앙 오케스트레이터"]
+    Alfred["▶◀ Alfred<br/>(SuperAgent)<br/>중앙 오케스트레이터"]
 
     subgraph core["핵심 3단계 에이전트"]
         Spec["🏗️ spec-builder<br/>명세 작성"]
@@ -768,38 +778,38 @@ rg 'AUTH-001' -n
 
 ## 🎨 Alfred's Output Styles
 
-Alfred는 개발 상황에 따라 **4가지 대화 스타일**을 제공합니다. 같은 요청도 스타일별로 다르게 응답합니다.
+Alfred는 개발 상황에 따라 **4가지 대화 스타일**을 제공합니다. Claude Code에서 `/output-style` 명령어로 언제든 전환할 수 있습니다.
 
-### 📊 스타일 비교 (한눈에 보기)
+### 📋 제공되는 Output Styles
 
-**테스트 요청**: "JWT 기반 사용자 인증 구현"
-
-| 스타일 | 응답 길이 | 설명 수준 | 코드 예시 | 대상 개발자 | 사용 시나리오 |
-|--------|----------|----------|----------|------------|--------------|
-| `alfred-pro` | 23줄 | 최소 | 파일 경로만 | 3년+ 경력 | 실무 프로젝트 빠른 개발 |
-| `beginner-learning` | 63줄 | 최대 | 단계별 설명 | 입문자 | 프로그래밍 처음 배움 |
-| `pair-collab` | 70줄 | 중간 | 선택지 제시 | 시니어/리드 | 팀 기술 선택 논의 |
-| `study-deep` | 148줄 | 심화 | 개념+구현+팁 | 학습자 | 새로운 기술 학습 |
+| 스타일 이름 | 설명 |
+|-----------|------|
+| **MoAI Professional** | SPEC-First TDD 전문가를 위한 간결하고 기술적인 개발 스타일. Alfred SuperAgent가 9개 전문 에이전트를 조율하여 TRUST 5원칙과 @TAG 추적성을 자동 적용합니다. |
+| **MoAI Beginner Learning** | 개발 초보자를 위한 상세하고 친절한 단계별 학습 가이드 (학습 전용) |
+| **MoAI Pair Collaboration** | AI와 함께 브레인스토밍, 계획 수립, 실시간 코드 리뷰를 진행하는 협업 모드. Alfred SuperAgent가 9개 전문 에이전트를 조율하여 최적의 협업 경험을 제공합니다. |
+| **MoAI Study Deep** | 새로운 개념, 도구, 언어, 프레임워크를 체계적으로 학습하는 심화 교육 모드. Alfred SuperAgent가 9개 전문 에이전트의 전문 지식을 활용하여 깊이 있는 학습 경험을 제공합니다. |
 
 ### 🔄 스타일 전환 방법
 
+Claude Code에서 `/output-style` 명령어로 전환:
+
 ```bash
-/output-style alfred-pro           # 전문 개발 (기본값)
-/output-style beginner-learning    # 초보자 학습
-/output-style pair-collab          # 페어 협업
-/output-style study-deep           # 심화 학습
+/output-style alfred-pro           # MoAI Professional (기본값)
+/output-style beginner-learning    # MoAI Beginner Learning
+/output-style pair-collab          # MoAI Pair Collaboration
+/output-style study-deep           # MoAI Study Deep
 ```
 
 ### 🎯 스타일 선택 가이드
 
-| 상황 | 추천 스타일 | 이유 |
-|------|-----------|------|
-| 실무 프로젝트 빠르게 개발 | `alfred-pro` | 간결하고 빠름 |
-| 프로그래밍 처음 배움 | `beginner-learning` | 친절하고 상세함 |
-| 팀과 기술 선택 논의 | `pair-collab` | 질문과 토론 중심 |
-| 새로운 기술 학습 | `study-deep` | 개념부터 체계적 학습 |
-| 코드 리뷰 세션 | `pair-collab` | 트레이드오프 분석 |
-| 온보딩 (신입 교육) | `study-deep` | 개념 + 실습 + 팁 |
+| 상황 | 추천 스타일 | 대상 | 특징 |
+|------|-----------|------|------|
+| 실무 프로젝트 빠른 개발 | `alfred-pro` | 실무 개발자, 프로젝트 리더 | 간결, 기술적, 결과 중심 |
+| 프로그래밍 처음 배우기 | `beginner-learning` | 개발 입문자 | 친절, 상세 설명, 단계별 안내 |
+| 팀 기술 선택 & 설계 논의 | `pair-collab` | 협업 개발자, 아키텍트 | 질문 기반, 브레인스토밍 |
+| 새로운 기술 학습 | `study-deep` | 신기술 학습자 | 개념 → 실습 → 전문가 팁 |
+| 코드 리뷰 세션 | `pair-collab` | 시니어/리드 개발자 | 트레이드오프 분석 |
+| 신입 개발자 온보딩 | `study-deep` | 팀 합류자 | 체계적 교육, 실무 통찰 |
 
 ### 💡 모든 스타일에서 동일하게 작동
 
@@ -815,10 +825,11 @@ Alfred는 개발 상황에 따라 **4가지 대화 스타일**을 제공합니�
 
 ---
 
-### 1️⃣ alfred-pro (전문 개발)
+### 1️⃣ MoAI Professional
 
+**명령어**: `/output-style alfred-pro`
 **응답 방식**: 간결, 결과 중심, 최소 설명
-**대상**: 3년+ 경력 개발자, 프로덕션 환경
+**대상**: 실무 개발자, 프로젝트 리더, SPEC-First TDD 전문가
 
 <details>
 <summary><b>출력 예시</b></summary>
@@ -847,10 +858,11 @@ JWT 인증 구현 시작.
 
 ---
 
-### 2️⃣ beginner-learning (초보자 학습)
+### 2️⃣ MoAI Beginner Learning
 
+**명령어**: `/output-style beginner-learning`
 **응답 방식**: 상세한 단계별 설명, 개념 먼저 설명
-**대상**: 프로그래밍 입문자, 개발 학습자
+**대상**: 개발 입문자 및 프로그래밍 초보자 (학습 전용)
 
 <details>
 <summary><b>출력 예시</b></summary>
@@ -922,10 +934,11 @@ JWT 인증 구현을 시작합니다.
 
 ---
 
-### 3️⃣ pair-collab (페어 협업)
+### 3️⃣ MoAI Pair Collaboration
 
+**명령어**: `/output-style pair-collab`
 **응답 방식**: 질문 기반, 트레이드오프 분석, 선택지 제시
-**대상**: 시니어/리드 개발자, 아키텍트, 코드 리뷰
+**대상**: 협업 개발자, 아키텍트, 설계 세션, 코드 리뷰
 
 <details>
 <summary><b>출력 예시</b></summary>
@@ -996,10 +1009,11 @@ if (tokenExpiresIn < 5 * 60) await refreshToken();
 
 ---
 
-### 4️⃣ study-deep (심화 학습)
+### 4️⃣ MoAI Study Deep
 
+**명령어**: `/output-style study-deep`
 **응답 방식**: 개념 → 실습 → 전문가 팁 (3단계 학습)
-**대상**: 신기술 학습자, 프레임워크 전환자
+**대상**: 신기술 학습자, 프레임워크 전환자, 심화 이론 탐구자
 
 <details>
 <summary><b>출력 예시</b></summary>
@@ -1158,7 +1172,7 @@ MoAI-ADK는 **모듈형 에이전트 아키텍처**로 설계되어, 다양한 �
 
 ```text
 MoAI-ADK Ecosystem
-├─ 🎩 Alfred (개발 워크플로우) ← 현재 공개
+├─ ▶◀ Alfred (개발 워크플로우) ← 현재 공개
 │   └─ 9개 서브에이전트
 ├─ 🖋️ Writing Agent (콘텐츠 제작) ← 향후
 ├─ 🚀 Startup MVP Agent (제품 개발) ← 향후
@@ -1202,8 +1216,8 @@ moai restore <backup-path> [options]
 # 템플릿 업데이트 (권장 ⭐)
 /alfred:9-update
 
-# 프로젝트 설정
-/alfred:8-project "프로젝트명"
+# 프로젝트 초기화
+/alfred:8-project
 ```
 
 ### moai init [project]
@@ -1367,9 +1381,14 @@ Alfred가 자동으로:
 
 ---
 
+### 💡 다음 단계
+
+- 📖 [Output Styles](#-alfreds-output-styles) - 학습 모드로 전환
+- 🌍 [Language Support](#-universal-language-support) - 다른 언어 사용
+- 💻 [CLI Reference](#-cli-reference) - 모든 명령어 보기
+
 **더 궁금한 점이 있으신가요?**
 
-- 📖 **공식 문서**: <https://moai-adk.vercel.app>
 - 💬 **질문 & 토론**: [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)
 - 🐛 **버그 리포트**: [GitHub Issues](https://github.com/modu-ai/moai-adk/issues)
 
@@ -1377,7 +1396,6 @@ Alfred가 자동으로:
 
 ## 📞 Support
 
-- **공식 문서**: <https://moai-adk.vercel.app>
 - **버그 리포트**: [GitHub Issues](https://github.com/modu-ai/moai-adk/issues)
 - **질문 & 토론**: [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)
 - **npm 패키지**: [moai-adk](https://www.npmjs.com/package/moai-adk)

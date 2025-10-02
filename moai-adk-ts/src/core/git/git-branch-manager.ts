@@ -27,11 +27,9 @@ export class GitBranchManager {
   public readonly git: SimpleGit; // 테스트를 위해 public으로 변경
   private workingDir: string;
   private lockManager: GitLockManager;
-  private config: GitConfig; // Used for configuration access
 
   constructor(config: GitConfig, workingDir?: string) {
     this.validateConfig(config);
-    this.config = config;
     this.workingDir = workingDir || process.cwd();
 
     // 디렉토리가 존재하지 않는 경우 동기적으로 생성

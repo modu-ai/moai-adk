@@ -36,11 +36,19 @@ vi.mock('fs-extra', () => {
 import * as fs from 'fs-extra';
 
 // Type-safe mocked functions with proper vitest types
-const mockPathExists = vi.mocked(fs.pathExists);
-const mockEnsureDir = vi.mocked(fs.ensureDir);
-const mockWriteJson = vi.mocked(fs.writeJson);
-const mockReadJson = vi.mocked(fs.readJson);
-const mockRemove = vi.mocked(fs.remove);
+const mockPathExists = fs.pathExists as ReturnType<
+  typeof vi.fn<() => Promise<boolean>>
+>;
+const mockEnsureDir = fs.ensureDir as ReturnType<
+  typeof vi.fn<() => Promise<void>>
+>;
+const mockWriteJson = fs.writeJson as ReturnType<
+  typeof vi.fn<() => Promise<void>>
+>;
+const mockReadJson = fs.readJson as ReturnType<
+  typeof vi.fn<() => Promise<Record<string, unknown>>>
+>;
+const mockRemove = fs.remove as ReturnType<typeof vi.fn<() => Promise<void>>>;
 
 describe('GitLockManager', () => {
   let lockManager: GitLockManager;
@@ -101,7 +109,7 @@ describe('GitLockManager', () => {
       };
 
       mockPathExists.mockResolvedValue(true);
-      mockReadJson.mockResolvedValue(lockInfo);
+      void mockReadJson.mockResolvedValue(lockInfo);
 
       const result = await lockManager.isLocked();
 
@@ -119,7 +127,7 @@ describe('GitLockManager', () => {
       };
 
       mockPathExists.mockResolvedValue(true);
-      mockReadJson.mockResolvedValue(staleLockInfo);
+      void mockReadJson.mockResolvedValue(staleLockInfo);
 
       const result = await lockManager.isLocked();
 
@@ -147,7 +155,7 @@ describe('GitLockManager', () => {
       };
 
       mockPathExists.mockResolvedValue(true);
-      mockReadJson.mockResolvedValue(expiredLock);
+      void mockReadJson.mockResolvedValue(expiredLock);
 
       const result = await lockManager.isLocked();
 
@@ -181,7 +189,7 @@ describe('GitLockManager', () => {
       };
 
       mockPathExists.mockResolvedValue(true);
-      mockReadJson.mockResolvedValue(existingLock);
+      void mockReadJson.mockResolvedValue(existingLock);
 
       await expect(lockManager.acquireLock(false)).rejects.toThrow(
         GitLockedException
@@ -204,7 +212,7 @@ describe('GitLockManager', () => {
 
     test('should timeout when waiting too long', async () => {
       mockPathExists.mockResolvedValue(true);
-      mockReadJson.mockResolvedValue({
+      void mockReadJson.mockResolvedValue({
         pid: process.pid,
         timestamp: Date.now(),
         operation: 'commit',
@@ -296,7 +304,7 @@ describe('GitLockManager', () => {
       };
 
       mockPathExists.mockResolvedValue(true);
-      mockReadJson.mockResolvedValue(lockInfo);
+      void mockReadJson.mockResolvedValue(lockInfo);
 
       const status = await lockManager.getLockStatus();
 
@@ -343,7 +351,7 @@ describe('GitLockManager', () => {
       };
 
       mockPathExists.mockResolvedValue(true);
-      mockReadJson.mockResolvedValue(staleLock);
+      void mockReadJson.mockResolvedValue(staleLock);
 
       await lockManager.cleanupStaleLocks();
 
@@ -361,7 +369,7 @@ describe('GitLockManager', () => {
       };
 
       mockPathExists.mockResolvedValue(true);
-      mockReadJson.mockResolvedValue(expiredLock);
+      void mockReadJson.mockResolvedValue(expiredLock);
 
       await lockManager.cleanupStaleLocks();
 
@@ -379,7 +387,7 @@ describe('GitLockManager', () => {
       };
 
       mockPathExists.mockResolvedValue(true);
-      mockReadJson.mockResolvedValue(activeLock);
+      void mockReadJson.mockResolvedValue(activeLock);
 
       await lockManager.cleanupStaleLocks();
 

@@ -265,9 +265,7 @@ export class InitCommand {
       if (errorMessage === 'User cancelled') {
         logger.log(chalk.yellow('\nInitialization cancelled by user.'));
       } else {
-        logger.log(
-          chalk.red(`\nError during initialization: ${errorMessage}`)
-        );
+        logger.log(chalk.red(`\nError during initialization: ${errorMessage}`));
       }
 
       return {

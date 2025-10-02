@@ -33,11 +33,9 @@ export class GitPRManager {
   private workingDir: string;
   private lockManager: GitLockManager;
   private githubIntegration: GitHubIntegration;
-  private config: GitConfig; // Used for PR configuration
 
   constructor(config: GitConfig, workingDir?: string) {
     this.validateConfig(config);
-    this.config = config;
     this.workingDir = workingDir || process.cwd();
 
     // 디렉토리가 존재하지 않는 경우 동기적으로 생성

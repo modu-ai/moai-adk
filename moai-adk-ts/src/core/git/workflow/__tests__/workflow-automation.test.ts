@@ -28,9 +28,10 @@ describe('WorkflowAutomation Integration Tests', () => {
     } as unknown as GitManager;
 
     config = {
-      mode: 'solo',
-      branchStrategy: 'feature',
-      commitStyle: 'conventional',
+      mode: 'personal',
+      autoCommit: true,
+      branchPrefix: 'feature/',
+      commitMessageTemplate: '{type}: {message}',
     } as GitConfig;
 
     workflow = new WorkflowAutomation(mockGitManager, config);
@@ -49,7 +50,7 @@ describe('WorkflowAutomation Integration Tests', () => {
 
       expect(result.success).toBe(true);
       expect(result.stage).toBe('spec');
-      expect(result.branchName).toBe('spec/SPEC-001');
+      expect(result.branchName!).toBe('spec/SPEC-001');
       expect(result.commitHash).toBe('abc123');
       expect(mockGitManager.createBranch).toHaveBeenCalledWith(
         'spec/SPEC-001',
@@ -85,7 +86,7 @@ describe('WorkflowAutomation Integration Tests', () => {
 
       expect(result.success).toBe(false);
       expect(result.stage).toBe('init');
-      expect(result.message).toContain('Failed to start SPEC workflow');
+      expect(result.message!).toContain('Failed to start SPEC workflow');
     });
   });
 
@@ -150,9 +151,9 @@ describe('WorkflowAutomation Integration Tests', () => {
       );
 
       expect(results).toHaveLength(3);
-      expect(results[0].stage).toBe('spec');
-      expect(results[1].stage).toBe('build');
-      expect(results[2].stage).toBe('sync');
+      expect(results[0]?.stage).toBe('spec');
+      expect(results[1]?.stage).toBe('build');
+      expect(results[2]?.stage).toBe('sync');
       expect(results.every(r => r.success)).toBe(true);
     });
 
@@ -167,7 +168,7 @@ describe('WorkflowAutomation Integration Tests', () => {
       );
 
       expect(results).toHaveLength(1);
-      expect(results[0].success).toBe(false);
+      expect(results[0]?.success).toBe(false);
     });
   });
 
@@ -176,7 +177,7 @@ describe('WorkflowAutomation Integration Tests', () => {
       const result = await workflow.createRelease('1.0.0', 'Initial release');
 
       expect(result.success).toBe(true);
-      expect(result.branchName).toBe('release/1.0.0');
+      expect(result.branchName!).toBe('release/1.0.0');
       expect(result.commitHash).toBe('abc123');
       expect(mockGitManager.createBranch).toHaveBeenCalledWith(
         'release/1.0.0',

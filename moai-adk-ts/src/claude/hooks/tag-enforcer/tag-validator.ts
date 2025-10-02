@@ -131,8 +131,12 @@ export class TagValidator {
       const allValidCategories = [
         ...VALID_CATEGORIES.lifecycle,
         ...VALID_CATEGORIES.implementation,
-      ];
-      if (category && !allValidCategories.includes(category)) {
+      ] as const;
+      const validCategorySet = new Set([...allValidCategories]);
+      if (
+        category &&
+        !validCategorySet.has(category as (typeof allValidCategories)[number])
+      ) {
         violations.push(`유효하지 않은 TAG 카테고리: ${category}`);
       }
 

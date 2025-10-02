@@ -96,8 +96,8 @@ export function getPackageScripts(
   }
 
   if (config.techStack.includes('react')) {
-    scripts['dev'] = 'vite';
-    scripts['build'] = 'vite build';
+    scripts.dev = 'vite';
+    scripts.build = 'vite build';
   }
 
   return scripts;
@@ -112,16 +112,16 @@ export function getPackageDependencies(
   const deps: Record<string, string> = {};
 
   if (config.techStack.includes('react')) {
-    deps['react'] = '^18.0.0';
+    deps.react = '^18.0.0';
     deps['react-dom'] = '^18.0.0';
   }
 
   if (config.techStack.includes('nextjs')) {
-    deps['next'] = '^13.0.0';
+    deps.next = '^13.0.0';
   }
 
   if (config.techStack.includes('express')) {
-    deps['express'] = '^4.18.0';
+    deps.express = '^4.18.0';
   }
 
   return deps;
@@ -140,15 +140,15 @@ export function getPackageDevDependencies(
   };
 
   if (config.techStack.includes('typescript')) {
-    devDeps['typescript'] = '^5.0.0';
+    devDeps.typescript = '^5.0.0';
     devDeps['@types/node'] = '^20.0.0';
-    devDeps['tsx'] = '^4.0.0';
+    devDeps.tsx = '^4.0.0';
   }
 
   if (config.techStack.includes('react')) {
     devDeps['@types/react'] = '^18.0.0';
     devDeps['@types/react-dom'] = '^18.0.0';
-    devDeps['vite'] = '^4.0.0';
+    devDeps.vite = '^4.0.0';
   }
 
   return devDeps;

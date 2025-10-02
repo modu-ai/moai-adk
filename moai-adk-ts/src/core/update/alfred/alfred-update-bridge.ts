@@ -132,7 +132,8 @@ export class AlfredUpdateBridge {
           count++;
         } else {
           // Target exists
-          const isTargetCustomized = !targetContent.includes('{{PROJECT_NAME}}');
+          const isTargetCustomized =
+            !targetContent.includes('{{PROJECT_NAME}}');
 
           if (isTargetCustomized) {
             // User has customized the file, backup before overwriting
@@ -225,11 +226,11 @@ export class AlfredUpdateBridge {
    * @tags @CODE:UPDATE-REFACTOR-001:OUTPUT-STYLES
    */
   private async handleOutputStyles(templatePath: string): Promise<number> {
-    const sourcePath = path.join(
-      templatePath,
+    const sourcePath = path.join(templatePath, '.claude/output-styles/alfred');
+    const targetPath = path.join(
+      this.projectPath,
       '.claude/output-styles/alfred'
     );
-    const targetPath = path.join(this.projectPath, '.claude/output-styles/alfred');
 
     try {
       // Check if source exists

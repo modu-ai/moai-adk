@@ -266,7 +266,7 @@ export function renderTemplateSafely(
 
   // Log warnings if any
   if (warnings.length > 0) {
-    logger.warn('Template context sanitization warnings:', warnings);
+    logger.warn('Template context sanitization warnings:', { warnings });
   }
 
   try {

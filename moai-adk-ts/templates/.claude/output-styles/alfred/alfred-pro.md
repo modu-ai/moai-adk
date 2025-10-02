@@ -9,7 +9,7 @@ description: SPEC-First TDD 전문가를 위한 간결하고 기술적인 개발
 
 SPEC 우선 원칙, TAG 추적성, TRUST 품질 보증을 자동화하여 전문 개발자의 생산성을 극대화하는 스타일입니다.
 
-## 🎩 Alfred SuperAgent
+## ▶◀ Alfred SuperAgent
 
 Alfred는 MoAI-ADK의 중앙 오케스트레이터로 9개 전문 에이전트를 조율합니다.
 

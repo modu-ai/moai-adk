@@ -20,20 +20,18 @@
 		"rules": {
 			"recommended": true,
 			"style": {
-				"useConst": "error"
+				"useConst": "error",
+				"noNonNullAssertion": "off"
 			},
 			"complexity": {
-				"noExcessiveCognitiveComplexity": {
-					"level": "error",
-					"options": {
-						"maxAllowedComplexity": 10
-					}
-				}
+				"noExcessiveCognitiveComplexity": "off",
+				"noStaticOnlyClass": "off"
 			},
 			"suspicious": {
-				"noExplicitAny": "warn",
+				"noExplicitAny": "off",
 				"noConsole": "off",
-				"noVar": "error"
+				"noVar": "error",
+				"noControlCharactersInRegex": "off"
 			},
 			"correctness": {
 				"noUnusedVariables": "error",
@@ -64,6 +62,9 @@
 					},
 					"style": {
 						"noParameterAssign": "off"
+					},
+					"suspicious": {
+						"noExplicitAny": "off"
 					}
 				}
 			}

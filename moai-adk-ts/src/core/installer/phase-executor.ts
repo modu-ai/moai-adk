@@ -218,7 +218,10 @@ export class PhaseExecutor {
     if (isInsideMoAIPackage(config.projectPath)) {
       throw new InstallationError(
         'Cannot create backup inside MoAI-ADK package directory',
-        'BACKUP_IN_PACKAGE_DIR'
+        {
+          phase: 'BACKUP_IN_PACKAGE_DIR',
+          projectPath: config.projectPath,
+        }
       );
     }
 

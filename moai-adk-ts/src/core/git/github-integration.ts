@@ -9,5 +9,5 @@
  * @deprecated Import from './github/index' instead
  */
 
-export { GitHubIntegration } from './github/index';
 export type { RepositoryInfo } from './github/index';
+export { GitHubIntegration } from './github/index';

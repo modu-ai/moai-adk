@@ -77,6 +77,7 @@ export class WorkflowAutomation {
       return {
         success: false,
         stage: SpecWorkflowStage.INIT,
+        pullRequestUrl: undefined,
         message: `Failed to start SPEC workflow: ${(error as Error).message}`,
       };
     }
@@ -99,12 +100,14 @@ export class WorkflowAutomation {
         success: true,
         stage: SpecWorkflowStage.BUILD,
         commitHash,
+        pullRequestUrl: undefined,
         message: `Build workflow for ${specId} completed successfully`,
       };
     } catch (error) {
       return {
         success: false,
         stage: SpecWorkflowStage.BUILD,
+        pullRequestUrl: undefined,
         message: `Build workflow failed: ${(error as Error).message}`,
       };
     }
@@ -126,12 +129,14 @@ export class WorkflowAutomation {
         success: true,
         stage: SpecWorkflowStage.SYNC,
         commitHash,
+        pullRequestUrl: undefined,
         message: `Sync workflow for ${specId} completed successfully`,
       };
     } catch (error) {
       return {
         success: false,
         stage: SpecWorkflowStage.SYNC,
+        pullRequestUrl: undefined,
         message: `Sync workflow failed: ${(error as Error).message}`,
       };
     }
@@ -219,6 +224,7 @@ export class WorkflowAutomation {
       return {
         success: false,
         stage: SpecWorkflowStage.INIT,
+        pullRequestUrl: undefined,
         message: `Release workflow failed: ${(error as Error).message}`,
       };
     }

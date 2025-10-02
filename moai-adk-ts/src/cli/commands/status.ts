@@ -9,9 +9,18 @@
 
 import chalk from 'chalk';
 import { logger } from '../../utils/winston-logger.js';
-import { FileCounter, type FileCount } from './status/collectors/file-counter.js';
-import { StatusCollector, type ProjectStatus } from './status/collectors/status-collector.js';
-import { VersionCollector, type VersionInfo } from './status/collectors/version-collector.js';
+import {
+  type FileCount,
+  FileCounter,
+} from './status/collectors/file-counter.js';
+import {
+  type ProjectStatus,
+  StatusCollector,
+} from './status/collectors/status-collector.js';
+import {
+  VersionCollector,
+  type VersionInfo,
+} from './status/collectors/version-collector.js';
 import { StatusFormatter } from './status/formatters/status-formatter.js';
 
 /**
@@ -80,7 +89,8 @@ export class StatusCommand {
       this.formatter.displayStatus(status);
 
       // Step 2: Collect and display version information
-      const versions = await this.versionCollector.collectVersionInfo(projectPath);
+      const versions =
+        await this.versionCollector.collectVersionInfo(projectPath);
       this.formatter.displayVersions(versions);
 
       // Step 3: Collect and display file counts if verbose

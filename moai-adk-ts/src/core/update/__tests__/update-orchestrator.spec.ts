@@ -7,9 +7,8 @@
  * @tags @TEST:UPDATE-REFACTOR-001-T007
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { promises as fs } from 'node:fs';
-import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { UpdateOrchestrator } from '../update-orchestrator.js';
 
 describe('UpdateOrchestrator', () => {
@@ -74,9 +73,8 @@ describe('UpdateOrchestrator', () => {
   describe('Phase execution order', () => {
     it('should execute phases in correct order', async () => {
       // Given: Orchestrator setup
-      const orchestrator = new UpdateOrchestrator(mockProjectPath);
-      const executionOrder: string[] = [];
 
+      const executionOrder: string[] = [];
       // Mock phase tracking
       const trackPhase = (phase: string) => {
         executionOrder.push(phase);

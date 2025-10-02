@@ -7,7 +7,10 @@
  */
 
 import chalk from 'chalk';
-import { checkLatestVersion, getCurrentVersion } from '../../../utils/version.js';
+import {
+  checkLatestVersion,
+  getCurrentVersion,
+} from '../../../utils/version.js';
 import { logger } from '../../../utils/winston-logger.js';
 
 /**

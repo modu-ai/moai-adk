@@ -81,7 +81,7 @@ export class PythonDetector {
         if (content.includes('fastapi')) frameworks.push('fastapi');
       }
     } catch (error: unknown) {
-      logger.warn('Error detecting Python frameworks:', error);
+      logger.warn('Error detecting Python frameworks:', { error });
     }
 
     return [...new Set(frameworks)]; // Remove duplicates
@@ -121,9 +121,7 @@ export class PythonDetector {
    */
   private detectTests(projectPath: string): boolean {
     const testDirs = ['tests', 'test', '__tests__'];
-    return testDirs.some(dir =>
-      fs.existsSync(path.join(projectPath, dir))
-    );
+    return testDirs.some(dir => fs.existsSync(path.join(projectPath, dir)));
   }
 
   /**
@@ -136,8 +134,6 @@ export class PythonDetector {
       '.circleci/config.yml',
     ];
 
-    return ciFiles.some(file =>
-      fs.existsSync(path.join(projectPath, file))
-    );
+    return ciFiles.some(file => fs.existsSync(path.join(projectPath, file)));
   }
 }
