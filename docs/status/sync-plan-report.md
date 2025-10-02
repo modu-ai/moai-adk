@@ -97,7 +97,7 @@ c4a288e Merge branch 'cleanup/remove-unused-files-phase2' into develop
 #### ✅ 일치하는 영역
 - **TRUST 원칙**: development-guide.md와 CLAUDE.md 완전 일치
 - **TAG 체계**: 4개 TAG 정의가 모든 핵심 문서에 일관되게 적용
-- **워크플로우**: 3단계 (/moai:1-spec → 2-build → 3-sync) 일관성 유지
+- **워크플로우**: 3단계 (/alfred:1-spec → 2-build → 3-sync) 일관성 유지
 - **CODE-FIRST 원칙**: "TAG의 진실은 코드 자체에만 존재" 통일
 
 #### ⚠️ 불일치 영역

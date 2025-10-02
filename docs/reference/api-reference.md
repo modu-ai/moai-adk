@@ -35,20 +35,20 @@ MoAI-ADK의 타입 시스템은 다음 원칙을 따릅니다:
 
 ```mermaid
 graph TB
-    subgraph "Core API Types"
+    subgraph CoreAPITypes[Core API Types]
         Installation[Installation API]
         Diagnostics[Diagnostics API]
         TagSystem[TAG System API]
         Update[Update API]
     end
 
-    subgraph "System Layer"
+    subgraph SystemLayer[System Layer]
         SystemChecker[System Checker]
         Installer[Installer]
         Updater[Updater]
     end
 
-    subgraph "CLI Layer"
+    subgraph CLILayer[CLI Layer]
         Commands[CLI Commands]
         Doctor[moai doctor]
         Init[moai init]
@@ -186,7 +186,7 @@ export interface InstallationResult {
     "cd /Users/username/projects/my-app",
     "Review .moai/project/*.md files",
     "Run 'moai doctor' to verify setup",
-    "Start with /moai:1-spec to create your first SPEC"
+    "Start with /alfred:1-spec to create your first SPEC"
   ],
   "config": {
     "projectPath": "/Users/username/projects/my-app",
@@ -925,28 +925,28 @@ const query3: TagSearchQuery = {
 
 ```mermaid
 graph LR
-    subgraph "필수 TAG 흐름"
-        REQ["@SPEC:AUTH-001<br/>OAuth2 요구사항"]
-        DESIGN["@DESIGN:AUTH-001<br/>시퀀스 설계"]
-        TASK["@CODE:AUTH-001<br/>구현 작업"]
-        TEST["@TEST:AUTH-001<br/>통합 테스트"]
+    subgraph PrimaryFlow[필수 TAG 흐름]
+        REQ["@SPEC:AUTH-001 - OAuth2 요구사항"]
+        DESIGN["@DESIGN:AUTH-001 - 시퀀스 설계"]
+        TASK["@CODE:AUTH-001 - 구현 작업"]
+        TEST["@TEST:AUTH-001 - 통합 테스트"]
 
         REQ --> DESIGN
         DESIGN --> TASK
         TASK --> TEST
     end
 
-    subgraph "Implementation"
-        FEATURE["@FEATURE:AUTH-001<br/>인증 서비스"]
-        API["@API:AUTH-001<br/>OAuth 엔드포인트"]
+    subgraph Implementation[Implementation]
+        FEATURE["@FEATURE:AUTH-001 - 인증 서비스"]
+        API["@API:AUTH-001 - OAuth 엔드포인트"]
 
         TASK --> FEATURE
         TASK --> API
     end
 
-    subgraph "Quality"
-        SEC["@SEC:AUTH-001<br/>보안 검토"]
-        PERF["@PERF:AUTH-001<br/>성능 최적화"]
+    subgraph Quality[Quality]
+        SEC["@SEC:AUTH-001 - 보안 검토"]
+        PERF["@PERF:AUTH-001 - 성능 최적화"]
 
         FEATURE --> SEC
         API --> PERF
@@ -1133,38 +1133,38 @@ classDiagram
         +string mode
         +boolean backupEnabled
         +boolean overwriteExisting
-        +string? templatePath
-        +string[] additionalFeatures
+        +string templatePath
+        +Array~string~ additionalFeatures
     }
 
     class InstallationResult {
         +boolean success
         +string projectPath
-        +string[] filesCreated
-        +string[] errors
-        +string[] nextSteps
+        +Array~string~ filesCreated
+        +Array~string~ errors
+        +Array~string~ nextSteps
         +InstallationConfig config
         +Date timestamp
         +number duration
     }
 
     class SystemCheckSummary {
-        +"RequirementCheckResult[] runtime"
-        +"RequirementCheckResult[] development"
-        +"RequirementCheckResult[] optional"
+        +Array~RequirementCheckResult~ runtime
+        +Array~RequirementCheckResult~ development
+        +Array~RequirementCheckResult~ optional
         +number totalChecks
         +number passedChecks
         +number failedChecks
-        +string[] detectedLanguages
+        +Array~string~ detectedLanguages
     }
 
     class AdvancedDoctorResult {
         +boolean allPassed
         +object basicChecks
         +SystemPerformanceMetrics performanceMetrics
-        +"BenchmarkResult[] benchmarks"
-        +"OptimizationRecommendation[] recommendations"
-        +"EnvironmentConfig[] environments"
+        +Array~BenchmarkResult~ benchmarks
+        +Array~OptimizationRecommendation~ recommendations
+        +Array~EnvironmentConfig~ environments
         +number healthScore
         +object summary
     }
@@ -1174,21 +1174,21 @@ classDiagram
         +TagType type
         +TagCategory category
         +string title
-        +string? description
+        +string description
         +TagStatus status
         +TagPriority priority
-        +string[] parents
-        +string[] children
-        +string[] files
+        +Array~string~ parents
+        +Array~string~ children
+        +Array~string~ files
         +string createdAt
         +string updatedAt
-        +string? author
-        +object? metadata
+        +string author
+        +object metadata
     }
 
     class TagDatabase {
         +string version
-        +"Record~string,TagEntry~ tags"
+        +Map~string,TagEntry~ tags
         +object indexes
         +object metadata
     }

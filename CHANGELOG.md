@@ -5,7 +5,117 @@ All notable changes to MoAI-ADK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.0.2] - 2025-10-01
+## [0.0.1] - 2025-10-02
+
+### 🚀 **첫 공식 배포 - @moai/adk**
+
+**스코프 패키지로 전환하여 0.0.1부터 새롭게 시작합니다**
+
+#### 🎯 주요 변경사항
+
+##### 1. 패키지 이름 변경
+- **이전**: `moai-adk`
+- **신규**: `@moai/adk` (스코프 패키지)
+- **이유**:
+  - 더 전문적인 네이밍 구조
+  - npm Organization 활용
+  - 향후 확장성 확보 (`@moai/cli`, `@moai/core` 등)
+
+##### 2. 공식 배포 준비
+- ✅ GitHub Repository: `modu-ai/moai-adk` (오픈소스 준비 중)
+- ✅ npm 배포 설정: `publishConfig.access: "public"`
+- ✅ 문서 정비: README.md 전면 개편
+- ✅ 키워드 확장: `spec-first`, `claude-code`, `ai-agent` 추가
+
+##### 3. 문서 개선
+- **README.md**: npm 패키지용으로 최적화
+  - 설치 명령어: `npm install -g @moai/adk`
+  - 프로그래매틱 API 문서 추가
+  - 실전 시나리오 예제 보강
+- **CHANGELOG.md**: 체계적 변경 이력 관리
+- **GitHub URL**: `https://github.com/modu-ai/moai-adk` 통일
+
+##### 4. 배포 시스템 개선
+- **.npmignore**: 불필요한 파일 제외 설정
+- **빌드 검증**: `prepublishOnly` 스크립트로 CI 자동 실행
+- **크로스 플랫폼 지원**: Windows/macOS/Linux 검증 완료
+
+#### ✨ 핵심 기능 (유지)
+
+모든 MoAI-ADK 핵심 기능은 그대로 유지됩니다:
+
+- 🎯 **SPEC-First TDD Workflow**: 3단계 개발 프로세스
+- 🤖 **9개 전문 에이전트**: Alfred SuperAgent 오케스트레이션
+- 🏷️ **4-Core @TAG System**: 완전한 추적성
+- 🌍 **Universal Language Support**: TypeScript, Python, Java, Go, Rust
+- 🔒 **TRUST 5원칙**: Test, Readable, Unified, Secured, Trackable
+
+#### 📦 설치 방법
+
+```bash
+# npm
+npm install -g @moai/adk
+
+# Bun (권장)
+bun add -g @moai/adk
+
+# 설치 확인
+moai --version  # v0.0.1
+```
+
+#### 🔄 마이그레이션 가이드
+
+**기존 `moai-adk` 사용자**:
+
+```bash
+# 1. 기존 패키지 제거
+npm uninstall -g moai-adk
+
+# 2. 새 패키지 설치
+npm install -g @moai/adk
+
+# 3. 확인 (동일한 CLI 명령어)
+moai --version
+moai init my-project
+```
+
+**참고**: CLI 명령어(`moai`)와 모든 기능은 동일하게 유지됩니다.
+
+#### ⚠️ Breaking Changes
+
+- **패키지명 변경**: `moai-adk` → `@moai/adk`
+  - npm/Bun 재설치 필요
+  - 프로그래매틱 API import 경로 변경:
+    ```typescript
+    // 이전
+    import { CLIApp } from 'moai-adk';
+
+    // 신규
+    import { CLIApp } from '@moai/adk';
+    ```
+- **GitHub Repository**: `modu-ai/moai-adk` (신규 URL)
+
+#### 🎉 향후 계획
+
+**v0.0.x** (안정화):
+- 커뮤니티 피드백 반영
+- 버그 수정 및 성능 개선
+- 다국어 문서 확장
+
+**v0.1.0** (첫 마이너 릴리스):
+- 추가 프로그래밍 언어 지원 (C#, Ruby)
+- Web UI 대시보드
+- 고급 AI 페어 프로그래밍 기능
+
+#### 📝 참고 링크
+
+- **공식 문서**: https://moai-adk.vercel.app
+- **GitHub**: https://github.com/modu-ai/moai-adk
+- **npm**: https://www.npmjs.com/package/@moai/adk
+
+---
+
+## [0.0.2] - 2025-10-01 (레거시)
 
 ### 🎯 **TAG System - 체계 개선**
 
@@ -147,9 +257,9 @@ rg '@(SPEC|TEST|CODE|DOC):' -n
 #### 📋 초기 기능 세트
 
 1. **SPEC-First TDD 워크플로우**
-   - `/moai:1-spec`: 명세 작성 (EARS 방식)
-   - `/moai:2-build`: TDD 구현 (RED→GREEN→REFACTOR)
-   - `/moai:3-sync`: 문서 동기화
+   - `/alfred:1-spec`: 명세 작성 (EARS 방식)
+   - `/alfred:2-build`: TDD 구현 (RED→GREEN→REFACTOR)
+   - `/alfred:3-sync`: 문서 동기화
 
 2. **@TAG 시스템**
    - 분산 JSONL 구조 (초기 개발)

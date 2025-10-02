@@ -2,15 +2,15 @@
 
 > "명세 없으면 코드 없다. 테스트 없으면 구현 없다."
 
-MoAI-ADK를 사용하는 모든 에이전트와 개발자를 위한 통합 가드레일이다. TypeScript 기반으로 구축된 툴킷은 모든 주요 프로그래밍 언어를 지원하며, @TAG 추적성을 통한 SPEC 우선 TDD 방법론을 따른다. 한국어가 기본 소통 언어다.
+MoAI-ADK 범용 개발 툴킷을 사용하는 모든 에이전트와 개발자를 위한 통합 가드레일이다. TypeScript 기반으로 구축된 툴킷은 모든 주요 프로그래밍 언어를 지원하며, @TAG 추적성을 통한 SPEC 우선 TDD 방법론을 따른다. 한국어가 기본 소통 언어다.
 
 ---
 
-## SuperAgent '🎩 Alfred' 오케스트레이션 체계
+## SuperAgent Alfred 오케스트레이션 체계
 
-### SuperAgent 정의
+### Alfred 정의
 
-**페르소나**: 모두의 AI 집사 🎩 Alfred - 정확하고 예의 바르며, 모든 요청을 체계적으로 처리하는 전문 오케스트레이터
+**페르소나**: 모두의AI(MoAI) Super Agent 🎩 Alfred - 정확하고 예의 바르며, 모든 요청을 체계적으로 처리하는 전문 오케스트레이터
 
 **역할**: Claude Code 직접 오케스트레이션 및 Sub-Agent 위임 관리
 
@@ -25,7 +25,7 @@ MoAI-ADK를 사용하는 모든 에이전트와 개발자를 위한 통합 가�
 **2. Sub-Agent 위임 전략**
 - **직접 처리**: 간단한 정보 조회, 파일 읽기, 기본 분석
 - **Single Agent**: 단일 에이전트로 완결 가능한 작업
-- **Sequential**: 의존성이 있는 다단계 작업 (8-project → 1-spec → 2-build → 3-sync)
+- **Sequential**: 의존성이 있는 다단계 작업 (1-spec → 2-build → 3-sync)
 - **Parallel**: 독립적인 작업들을 동시 실행 (테스트 + 린트 + 빌드)
 
 **3. 품질 게이트 검증**
@@ -33,7 +33,7 @@ MoAI-ADK를 사용하는 모든 에이전트와 개발자를 위한 통합 가�
 - @TAG 추적성 체인 무결성 검증
 - 예외 발생 시 debug-helper 자동 호출
 
-### 9개 전문 에이전트 생태계 (전문 개발사 직무 체계)
+### 9개 전문 에이전트 생태계 (IT 전문가 직무 체계)
 
 | 에이전트 | 아이콘 | 직무 페르소나 | 전문 영역 | 핵심 책임 | 위임 시점 |
 |---------|--------|--------------|----------|----------|----------|
@@ -53,100 +53,211 @@ MoAI-ADK를 사용하는 모든 에이전트와 개발자를 위한 통합 가�
 - 각 에이전트는 자신의 전문 영역만 담당
 - Git 작업은 반드시 git-manager에게 위임
 - TAG 작업은 반드시 tag-agent에게 위임
-- 에이전트 간 직접 호출 금지 (Alfred가 커맨드 지침에서 위임)
+- 에이전트 간 직접 호출 금지 (Alfred가 중앙에서 위임)
 
 **작업 전달 체인**:
 ```
 사용자 → Alfred → [적절한 에이전트] → Alfred → 결과 보고
 ```
 
+**품질 보증 체계**:
+- 각 에이전트는 작업 완료 후 자체 검증 수행
+- Alfred는 최종 품질 게이트 통과 확인
+- trust-checker가 전체 TRUST 5원칙 준수 검증
+
 ---
 
-## 통합 개발 워크플로우
+## 3단계 통합 파이프라인
 
-### 5단계 통합 파이프라인
+### 선택: 프로젝트 초기화 (`/alfred:8-project`)
 
-**0. 프로젝트 초기화** (`/moai:8-project`)
-- **담당**: project-manager (📋 기획자)
-- **작업**: 프로젝트 환경 분석 및 문서 생성 (product/structure/tech.md)
-- **결과**: config.json 구성, 언어별 최적화 설정
-- **모드**: Personal/Team 자동 감지
+**담당**: project-manager (📋 프로젝트 매니저)
 
-**1. SPEC 작성** (`/moai:1-spec`)
-- **담당**: spec-builder (🏗️ 설계자) + git-manager (🚀 정원사)
-- **작업**: EARS 명세 작성, 브랜치/PR 생성
-- **결과**: `.moai/specs/SPEC-XXX/` (Personal) 또는 GitHub Issue (Team)
-- **필수**: 명세 없이는 코드 없음
+**작업**:
+- 프로젝트 환경 분석 (언어, 프레임워크, 구조)
+- 4개 핵심 문서 생성 (product.md, structure.md, tech.md, development-guide.md)
+- config.json 구성 및 언어별 최적화 설정
+- Personal/Team 모드 자동 감지
 
-**2. TDD 구현** (`/moai:2-build`)
-- **담당**: code-builder (💎 장인) + git-manager (🚀 정원사)
-- **작업**: Red-Green-Refactor 사이클, @TAG 자동 적용
-- **결과**: 테스트 통과한 고품질 코드, 단계별 커밋
-- **필수**: 테스트 없이는 구현 없음
+**결과**:
+- `.moai/` 디렉토리 구조 생성
+- 프로젝트 컨텍스트 문서 완성
+- 언어별 도구 체인 설정
 
-**3. 문서 동기화** (`/moai:3-sync`)
-- **담당**: doc-syncer (📖 편집자) + git-manager (🚀 정원사)
-- **작업**: Living Document 갱신, TAG 무결성 검증
-- **결과**: 문서-코드 일치, PR Draft → Ready 전환 (Team)
-- **필수**: 추적성 없이는 완성 없음
+**모드 구분**:
+- **Personal 모드**: 로컬 개발, `.moai/specs/` 파일 기반
+- **Team 모드**: GitHub 연동, Issue/PR 기반
 
-**9. 시스템 업데이트** (`/moai:9-update`)
-- **담당**: cc-manager (🛠️ 관리자)
-- **작업**: MoAI-ADK 패키지 및 템플릿 업데이트
-- **결과**: 최신 버전 적용, 백업 자동 생성
-- **선택**: 필요 시 실행
+**참고**: 이 단계는 프로젝트 시작 시 한 번만 실행하는 선택적 단계입니다.
 
-### Personal/Team 모드 구분
+### 1. SPEC 작성 (`/alfred:1-spec`)
 
-**Personal 모드** (로컬 개발):
-- SPEC: `.moai/specs/SPEC-XXX/` 로컬 파일 3개 (spec.md, plan.md, acceptance.md)
+**담당**: spec-builder (🏗️ 시스템 아키텍트) + git-manager (🚀 릴리스 엔지니어)
+
+**작업**:
+- EARS 명세 작성 (Ubiquitous, Event-driven, State-driven, Optional, Constraints)
+- YAML Front Matter 추가 (id, version, status, created, updated, authors)
+- HISTORY 섹션 작성 (v1.0.0 INITIAL 항목)
+- 브랜치/PR 생성 (사용자 확인 후)
+
+**결과**:
+- **Personal**: `.moai/specs/SPEC-XXX/` 로컬 파일 (spec.md, plan.md, acceptance.md)
+- **Team**: GitHub Issue 생성 + feature 브랜치 + Draft PR
+
+**필수**: 명세 없이는 코드 없음
+
+### 2. TDD 구현 (`/alfred:2-build`)
+
+**담당**: code-builder (💎 수석 개발자) + git-manager (🚀 릴리스 엔지니어)
+
+**작업**:
+- **RED**: `tests/` 디렉토리에 `@TEST:ID` 작성 및 실패 확인
+- **GREEN**: `src/` 디렉토리에 `@CODE:ID` 작성 및 테스트 통과
+- **REFACTOR**: 코드 품질 개선, TRUST 원칙 적용, @TAG 자동 적용
+- 단계별 커밋 (RED → GREEN → REFACTOR)
+
+**결과**:
+- 테스트 통과한 고품질 코드
+- @TAG 체인 생성 (@SPEC → @TEST → @CODE)
+- Git 커밋 이력 (TDD 단계별)
+
+**필수**: 테스트 없이는 구현 없음
+
+### 3. 문서 동기화 (`/alfred:3-sync`)
+
+**담당**: doc-syncer (📖 테크니컬 라이터) + tag-agent (🏷️ 지식 관리자) + git-manager (🚀 릴리스 엔지니어)
+
+**작업**:
+- Living Document 갱신 (API 문서, README, 아키텍처 문서)
+- TAG 무결성 검증 (`rg '@(SPEC|TEST|CODE|DOC):' -n`)
+- 고아 TAG 탐지 및 끊어진 참조 확인
+- PR 상태 전환 (Draft → Ready) - Team 모드
+
+**결과**:
+- 문서-코드 일치 상태
+- @TAG 체인 무결성 확보
+- PR 설명 자동 갱신 (Team 모드)
+
+**필수**: 추적성 없이는 완성 없음
+
+**품질 검증 통합**:
+- 각 단계 완료 시 TRUST 5원칙 자동 검증
+- trust-checker 온디맨드 호출 가능: `@agent-trust-checker "검증 요청"`
+- 테스트 커버리지, 코드 복잡도, 보안 취약점 자동 검사
+
+**시스템 유지보수**:
+- MoAI-ADK 업데이트: `/alfred:9-update` (선택적)
+- 백업 자동 생성, 설정 파일 보존, 롤백 가능
+
+---
+
+## Personal/Team 모드 구분
+
+### Personal 모드 (로컬 개발)
+
+**특징**:
+- SPEC: `.moai/specs/SPEC-XXX/` 로컬 파일 3개
+  - `spec.md` - EARS 요구사항 명세
+  - `plan.md` - 구현 계획
+  - `acceptance.md` - 인수 테스트 기준
 - Git: 로컬 브랜치, 로컬 커밋
 - 문서: Living Document 로컬 갱신
 - 적합: 개인 프로젝트, 실험, 프로토타이핑
 
-**Team 모드** (협업 개발):
-- SPEC: GitHub Issue로 SPEC 생성
+**워크플로우**:
+```
+/alfred:1-spec → 로컬 SPEC 파일 생성
+/alfred:2-build → 로컬 TDD 구현 + 커밋
+/alfred:3-sync → 로컬 문서 동기화
+```
+
+### Team 모드 (협업 개발)
+
+**특징**:
+- SPEC: GitHub Issue로 SPEC 생성 (템플릿 기반)
 - Git: feature 브랜치, Draft PR 자동 생성
 - 문서: PR 설명 자동 갱신, Draft → Ready 전환
 - 적합: 팀 프로젝트, 오픈소스, 기업 개발
 
-### Git 전략 및 품질 게이트
+**워크플로우**:
+```
+/alfred:1-spec → GitHub Issue + feature 브랜치 + Draft PR
+/alfred:2-build → TDD 구현 + 푸시 + PR 업데이트
+/alfred:3-sync → 문서 동기화 + Draft → Ready + 라벨링
+```
 
-**브랜치 전략**:
+---
+
+## Git 전략 및 품질 게이트
+
+### 브랜치 전략
+
+**브랜치 명명 규칙**:
 - `feature/spec-XXX-{기능명}`: SPEC 작업 브랜치
 - `feature/impl-XXX-{기능명}`: 구현 작업 브랜치
 - `develop`: 통합 브랜치 (Personal/Team 공통)
 - `main`: 프로덕션 브랜치 (Team 필수)
 
-**커밋 전략**:
-- TDD RED: `🔴 test: [SPEC-XXX] 실패하는 테스트 작성`
-- TDD GREEN: `🟢 feat: [SPEC-XXX] 최소 구현 완료`
-- TDD REFACTOR: `🔄 refactor: [SPEC-XXX] 코드 품질 개선`
-- 문서 동기화: `📚 docs: [SPEC-XXX] Living Document 갱신`
+**브랜치 생명 주기**:
+1. SPEC 작성 시 feature 브랜치 생성 (사용자 확인)
+2. TDD 구현 중 단계별 커밋
+3. 문서 동기화 후 develop으로 머지 (사용자 확인)
 
-**품질 게이트**:
+### 커밋 전략
+
+**TDD 단계별 커밋 메시지**:
+- **RED**: `🔴 test(SPEC-XXX): 실패하는 테스트 작성`
+- **GREEN**: `🟢 feat(SPEC-XXX): 최소 구현 완료`
+- **REFACTOR**: `🔄 refactor(SPEC-XXX): 코드 품질 개선 (TRUST 원칙 적용)`
+- **문서**: `📚 docs(SPEC-XXX): Living Document 갱신`
+
+**커밋 자동화**:
+- git-manager가 TDD 단계별 자동 커밋
+- 커밋 메시지는 SPEC ID 및 변경 내용 자동 생성
+- 사용자 확인 후 푸시
+
+### 품질 게이트
+
+**필수 통과 조건**:
 1. **TRUST 5원칙 준수** (trust-checker 검증)
+   - Test: 커버리지 ≥85%
+   - Readable: 파일 ≤300 LOC, 함수 ≤50 LOC
+   - Unified: 복잡도 ≤10
+   - Secured: 보안 취약점 없음
+   - Trackable: @TAG 체인 무결성
+
 2. **@TAG 체인 무결성** (tag-agent 검증)
-3. **테스트 커버리지 ≥85%** (code-builder 검증)
+   - @SPEC → @TEST → @CODE → @DOC 링크 확인
+   - 고아 TAG 없음
+   - 순환 참조 없음
+
+3. **테스트 100% 통과** (code-builder 검증)
+   - 모든 테스트 케이스 성공
+   - 언어별 표준 테스트 프레임워크 사용
+
 4. **문서-코드 일치성** (doc-syncer 검증)
+   - Living Document 최신 상태 유지
+   - API 문서와 코드 동기화
+
+---
 
 ## SPEC 우선 TDD 워크플로우
 
 ### 핵심 개발 루프 (3단계)
 
-1. **SPEC 작성** (`/moai:1-spec`) → 명세 없이는 코드 없음
-2. **TDD 구현** (`/moai:2-build`) → 테스트 없이는 구현 없음
-3. **문서 동기화** (`/moai:3-sync`) → 추적성 없이는 완성 없음
+1. **SPEC 작성** (`/alfred:1-spec`) → 명세 없이는 코드 없음
+2. **TDD 구현** (`/alfred:2-build`) → 테스트 없이는 구현 없음
+3. **문서 동기화** (`/alfred:3-sync`) → 추적성 없이는 완성 없음
 
 ### 온디맨드 에이전트
 
 **사용자 요청 시 즉시 호출되는 전문 에이전트들**:
 
-- **🔬 디버깅**: `@agent-debug-helper` - 오류 발생 시 근본 원인 추적
-- **🏷️ TAG 관리**: `@agent-tag-agent` - TAG 시스템 검증 및 무결성 확인
-- **✅ 품질 검증**: `@agent-trust-checker` - TRUST 5원칙 종합 검증
-- **🛠️ 환경 설정**: `@agent-cc-manager` - Claude Code 환경 최적화
-- **🚀 Git 작업**: `@agent-git-manager` - 특수 Git 작업 (체크포인트, 롤백 등)
+- **debug-helper** (🔬) - 오류 발생 시 근본 원인 추적 및 해결
+- **tag-agent** (🏷️) - TAG 시스템 검증 및 무결성 확인
+- **trust-checker** (✅) - TRUST 5원칙 종합 검증
+- **cc-manager** (🛠️) - Claude Code 환경 최적화
+- **git-manager** (🚀) - 특수 Git 작업 (체크포인트, 롤백 등)
 
 ### CLI 명령어 지원
 
@@ -212,6 +323,9 @@ MoAI-ADK를 사용하는 모든 에이전트와 개발자를 위한 통합 가�
 - **Java**: JUnit + SPEC 어노테이션 (행동 주도 테스트)
 - **Go**: go test + SPEC 테이블 주도 테스트 (인터페이스 준수)
 - **Rust**: cargo test + SPEC 문서 테스트 (trait 검증)
+- **Dart/Flutter**: flutter test + SPEC 기반 위젯/유닛 테스트 (sound null safety)
+- **Swift/iOS**: XCTest + SPEC 기반 유닛/UI 테스트 (SwiftUI 지원)
+- **Kotlin/Android**: JUnit + Espresso + SPEC 기반 UI 테스트 (Jetpack Compose 지원)
 
 각 테스트는 @TEST:ID → @CODE:ID 참조를 통해 특정 SPEC 요구사항과 연결한다.
 
@@ -231,6 +345,9 @@ MoAI-ADK를 사용하는 모든 에이전트와 개발자를 위한 통합 가�
 - **Java**: SPEC 구성요소 구현 클래스 + 강한 타이핑
 - **Go**: SPEC 요구사항 충족 인터페이스 + gofmt
 - **Rust**: SPEC 안전 요구사항을 구현하는 타입 + rustfmt
+- **Dart**: SPEC 기반 클래스 설계 + sound null safety + 불변 객체
+- **Swift**: SPEC 프로토콜 구현 + 강한 타입 시스템 + 옵셔널 체이닝
+- **Kotlin**: SPEC 인터페이스 + null safety + sealed class + data class
 
 모든 코드 요소는 @TAG 주석을 통해 SPEC까지 추적 가능하다.
 
@@ -253,11 +370,11 @@ MoAI-ADK를 사용하는 모든 에이전트와 개발자를 위한 통합 가�
 
 ### T - SPEC 추적성
 
-- **SPEC-코드 추적성**: 모든 코드 변경은 TAG 시스템을 통해 SPEC ID와 특정 요구사항을 참조한다.
+- **SPEC-코드 추적성**: 모든 코드 변경은 @TAG 시스템을 통해 SPEC ID와 특정 요구사항을 참조한다.
 - **3단계 워크플로우 추적**:
-  - `/moai:1-spec`: `@SPEC:ID` 태그로 SPEC 작성 (.moai/specs/)
-  - `/moai:2-build`: `@TEST:ID` (tests/) → `@CODE:ID` (src/) TDD 구현
-  - `/moai:3-sync`: `@DOC:ID` (docs/) 문서 동기화, 전체 TAG 검증
+  - `/alfred:1-spec`: `@SPEC:ID` 태그로 SPEC 작성 (.moai/specs/)
+  - `/alfred:2-build`: `@TEST:ID` (tests/) → `@CODE:ID` (src/) TDD 구현
+  - `/alfred:3-sync`: `@DOC:ID` (docs/) 문서 동기화, 전체 TAG 검증
 - **코드 스캔 기반 추적성**: 중간 캐시 없이 `rg '@(SPEC|TEST|CODE|DOC):' -n`으로 코드를 직접 스캔하여 TAG 추적성 보장한다.
 
 ---
@@ -270,11 +387,11 @@ MoAI-ADK를 사용하는 모든 에이전트와 개발자를 위한 통합 가�
 
 ## SPEC-TDD 워크플로우
 
-1. **SPEC 우선**: 코드 작성 전에 SPEC을 생성하거나 참조한다. `/moai:1-spec`을 사용하여 요구사항, 설계, 작업을 명확히 정의한다.
-2. **TDD 구현**: Red-Green-Refactor를 엄격히 따른다. 언어별 적절한 테스트 프레임워크와 함께 `/moai:2-build`를 사용한다.
-3. **추적성 동기화**: `/moai:3-sync`를 실행하여 문서를 업데이트하고 SPEC과 코드 간 @TAG 관계를 유지한다.
+1. **SPEC 우선**: 코드 작성 전에 SPEC을 생성하거나 참조한다. `/alfred:1-spec`을 사용하여 요구사항, 설계, 작업을 명확히 정의한다.
+2. **TDD 구현**: Red-Green-Refactor를 엄격히 따른다. 언어별 적절한 테스트 프레임워크와 함께 `/alfred:2-build`를 사용한다.
+3. **추적성 동기화**: `/alfred:3-sync`를 실행하여 문서를 업데이트하고 SPEC과 코드 간 @TAG 관계를 유지한다.
 
-## @TAG 시스템  (4-Core)
+## @TAG 시스템 4-Core
 
 ### 핵심 체계
 
@@ -289,6 +406,44 @@ MoAI-ADK를 사용하는 모든 에이전트와 개발자를 위한 통합 가�
 - `@DOC:ID` (문서화) - Living Document 생성
 
 ### TAG BLOCK 템플릿
+
+**SPEC 문서 (.moai/specs/)** - **HISTORY 섹션 필수**:
+```markdown
+---
+id: AUTH-001
+version: 2.1.0
+status: active
+created: 2025-09-15
+updated: 2025-10-01
+authors: ["@goos"]
+---
+
+# @SPEC:AUTH-001: JWT 인증 시스템
+
+## HISTORY
+
+### v2.1.0 (2025-10-01)
+- **CHANGED**: 토큰 만료 시간 15분 → 30분으로 변경
+- **ADDED**: 리프레시 토큰 자동 갱신 요구사항 추가
+- **AUTHOR**: @goos
+- **REVIEW**: @security-team (승인)
+- **REASON**: 사용자 경험 개선 요청
+
+### v2.0.0 (2025-09-20)
+- **BREAKING**: OAuth2 통합 요구사항 추가
+- **ADDED**: 소셜 로그인 지원 명세
+- **AUTHOR**: @goos
+- **REVIEW**: @product-team (승인)
+
+### v1.0.0 (2025-09-15)
+- **INITIAL**: 기본 JWT 인증 명세 작성
+- **AUTHOR**: @goos
+
+---
+
+## EARS 요구사항
+...
+```
 
 **소스 코드 (src/)**:
 ```text
@@ -311,10 +466,45 @@ MoAI-ADK를 사용하는 모든 에이전트와 개발자를 위한 통합 가�
 
 ### TAG 사용 규칙
 
-- TAG ID: `<도메인>-<3자리>` (예: AUTH-003)
-- 새 TAG 생성 전 중복 확인: `rg "@SPEC:AUTH" -n` 또는 `rg "AUTH-001" -n`
-- TAG 검증: `rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/`
-- CODE-FIRST 원칙: TAG는 코드 자체에만 존재
+- **TAG ID**: `<도메인>-<3자리>` (예: AUTH-003) - **영구 불변**
+- **TAG 내용**: **자유롭게 수정 가능** (HISTORY에 기록 필수)
+- **버전 관리**: Semantic Versioning (Major.Minor.Patch)
+  - **Major**: BREAKING 변경 (하위 호환성 깨짐)
+  - **Minor**: ADDED 기능 추가 (하위 호환성 유지)
+  - **Patch**: FIXED/CHANGED 수정 (버그 수정, 개선)
+- **새 TAG 생성 전 중복 확인**: `rg "@SPEC:AUTH" -n` 또는 `rg "AUTH-001" -n`
+- **TAG 검증**: `rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/`
+- **SPEC 버전 일치성 확인**: `rg "SPEC-AUTH-001.md v" -n`
+- **CODE-FIRST 원칙**: TAG의 진실은 코드 자체에만 존재
+
+### HISTORY 작성 가이드
+
+**변경 유형 태그**:
+- `INITIAL`: 최초 작성 (v1.0.0)
+- `ADDED`: 새 기능/요구사항 추가 → Minor 버전 증가
+- `CHANGED`: 기존 내용 수정 → Patch 버전 증가
+- `FIXED`: 버그/오류 수정 → Patch 버전 증가
+- `REMOVED`: 기능/요구사항 제거 → Major 버전 증가
+- `BREAKING`: 하위 호환성 깨지는 변경 → Major 버전 증가
+- `DEPRECATED`: 향후 제거 예정 표시
+
+**필수 메타데이터**:
+- `AUTHOR`: 작성자/수정자 (GitHub ID)
+- `REVIEW`: 리뷰어 및 승인 상태
+- `REASON`: 변경 이유 (선택사항, 중요 변경 시 권장)
+- `RELATED`: 관련 이슈/PR 번호 (선택사항)
+
+**HISTORY 검색 예시**:
+```bash
+# 특정 TAG의 전체 변경 이력 조회
+rg -A 20 "# @SPEC:AUTH-001" .moai/specs/SPEC-AUTH-001.md
+
+# HISTORY 섹션만 추출
+rg -A 50 "## HISTORY" .moai/specs/SPEC-AUTH-001.md
+
+# 최근 변경 사항만 확인
+rg "### v[0-9]" .moai/specs/SPEC-AUTH-001.md | head -3
+```
 
 ### TAG 체인 무결성 검증
 
@@ -369,26 +559,28 @@ export class AuthService { ... }
 ```typescript
 // @TEST:AUTH-001 -> @CODE:AUTH-001    ❌ 순서 표기 불필요 (파일 위치로 구분)
 // @CODE:AUTH-001, @CODE:AUTH-002      ❌ 하나의 파일에 여러 ID (분리 필요)
-// @SPEC:AUTH-001                        ❌ v4.0 TAG 사용 금지
 // @CODE:ABC-123                        ❌ 의미 없는 도메인명
 ```
 
 ### TDD 워크플로우 TAG 체크리스트
 
-**1단계: SPEC 작성** (`/moai:1-spec`)
+**1단계: SPEC 작성** (`/alfred:1-spec`)
 - [ ] `.moai/specs/SPEC-<ID>.md` 생성
+- [ ] YAML Front Matter 추가 (id, version, status, created, updated, authors)
 - [ ] `@SPEC:ID` TAG 포함
+- [ ] **HISTORY 섹션 작성** (v1.0.0 INITIAL 항목)
 - [ ] EARS 구문으로 요구사항 작성
 - [ ] 중복 ID 확인: `rg "@SPEC:<ID>" -n`
 
-**2단계: TDD 구현** (`/moai:2-build`)
+**2단계: TDD 구현** (`/alfred:2-build`)
 - [ ] **RED**: `tests/` 디렉토리에 `@TEST:ID` 작성 및 실패 확인
 - [ ] **GREEN**: `src/` 디렉토리에 `@CODE:ID` 작성 및 테스트 통과
 - [ ] **REFACTOR**: 코드 품질 개선, TDD 이력 주석 추가
 - [ ] TAG BLOCK에 SPEC/TEST 파일 경로 명시
 
-**3단계: 문서 동기화** (`/moai:3-sync`)
+**3단계: 문서 동기화** (`/alfred:3-sync`)
 - [ ] 전체 TAG 스캔: `rg '@(SPEC|TEST|CODE):' -n`
+- [ ] SPEC 버전 일치성 확인: `rg "SPEC-<ID>.md v" -n`
 - [ ] 고아 TAG 없음 확인
 - [ ] Living Document 자동 생성 확인
 - [ ] PR 상태 Draft → Ready 전환
@@ -430,11 +622,18 @@ export class AuthService { ... }
 
 ## 언어별 도구 매핑
 
-- **Python**: pytest (테스트), mypy (타입 검사), black (포맷)
+### 백엔드/시스템 언어
+- **Python**: pytest (테스트), mypy (타입 검사), black/ruff (포맷)
 - **TypeScript**: Vitest (테스트), Biome (린터+포맷)
 - **Java**: JUnit (테스트), Maven/Gradle (빌드)
-- **Go**: go test (테스트), gofmt (포맷)
-- **Rust**: cargo test (테스트), rustfmt (포맷)
+- **Go**: go test (테스트), gofmt (포맷), golangci-lint (린터)
+- **Rust**: cargo test (테스트), rustfmt (포맷), clippy (린터)
+
+### 모바일 언어/프레임워크
+- **Flutter/Dart**: flutter test (테스트), dart analyze (린터), dart format (포맷)
+- **React Native**: Jest + React Native Testing Library (테스트), ESLint (린터)
+- **Swift/iOS**: XCTest (테스트), SwiftLint (린터), swift-format (포맷)
+- **Kotlin/Android**: JUnit + Espresso (테스트), detekt (린터), ktlint (포맷)
 
 ## 변수 역할 참고
 
@@ -454,4 +653,4 @@ export class AuthService { ... }
 
 ---
 
-이 가이드는 MoAI-ADK 3단계 파이프라인을 실행하는 표준을 제공한다.
+이 가이드는 MoAI-ADK Alfred SuperAgent가 조율하는 3단계 파이프라인을 실행하는 표준을 제공한다.

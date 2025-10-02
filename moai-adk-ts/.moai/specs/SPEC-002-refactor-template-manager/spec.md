@@ -360,12 +360,12 @@ export interface ValidationResult {
 - [ ] API 계약 문서화
 - [ ] 모킹 전략 수립
 
-### Phase 3: TDD 구현 (`/moai:2-build`)
+### Phase 3: TDD 구현 (`/alfred:2-build`)
 - [ ] template-validator.ts 구현 (테스트 우선)
 - [ ] template-processor.ts 구현 (테스트 우선)
 - [ ] template-manager.ts 리팩토링 (테스트 우선)
 
-### Phase 4: 검증 및 문서화 (`/moai:3-sync`)
+### Phase 4: 검증 및 문서화 (`/alfred:3-sync`)
 - [ ] 크로스 플랫폼 통합 테스트
 - [ ] 성능 벤치마크
 - [ ] 문서 동기화

@@ -86,7 +86,7 @@ Project Architecture
 
 ### TAG 추적성 관리 (코드 스캔 방식)
 
-- **검증 방법**: `/moai:3-sync` 실행 시 `rg '@(SPEC|TEST|CODE|DOC):' -n`으로 코드 전체 스캔
+- **검증 방법**: `/alfred:3-sync` 실행 시 `rg '@(SPEC|TEST|CODE|DOC):' -n`으로 코드 전체 스캔
 - **추적 범위**: 프로젝트 전체 소스코드 (.moai/specs/, tests/, src/, docs/)
 - **유지 주기**: 코드 변경 시점마다 실시간 검증
 - **CODE-FIRST 원칙**: TAG의 진실은 코드 자체에만 존재
@@ -147,4 +147,4 @@ Project Architecture
 
 ---
 
-_이 구조는 `/moai:2-build` 실행 시 TDD 구현의 가이드라인이 됩니다._
+_이 구조는 `/alfred:2-build` 실행 시 TDD 구현의 가이드라인이 됩니다._

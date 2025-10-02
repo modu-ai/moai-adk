@@ -176,7 +176,14 @@ export type TechStack =
   | 'cpp'
   | 'c'
   | 'csharp'
-  | 'dotnet';
+  | 'dotnet'
+  | 'flutter'
+  | 'dart'
+  | 'react-native'
+  | 'swift'
+  | 'swiftui'
+  | 'compose'
+  | 'jetpack-compose';
 
 /**
  * Memory template names enum
@@ -192,5 +199,9 @@ export type MemoryTemplate =
   | 'frontend-next'
   | 'frontend-vue'
   | 'frontend-angular'
+  | 'mobile-flutter'
+  | 'mobile-react-native'
+  | 'mobile-ios'
+  | 'mobile-android'
   | 'fullstack-patterns'
   | 'microservice-patterns';

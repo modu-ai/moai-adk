@@ -89,7 +89,7 @@ drwxr-xr-x@ 7 goos  staff    224 Oct  1 02:18 ..
 - 기타 스타일: 학습/협업 맥락에 맞게 간소화 ✅
 
 **3단계 워크플로우**:
-- 모든 스타일에서 `/moai:1-spec` → `/moai:2-build` → `/moai:3-sync` 언급 ✅
+- 모든 스타일에서 `/alfred:1-spec` → `/alfred:2-build` → `/alfred:3-sync` 언급 ✅
 - 초보자용: 쉬운 설명, 전문가용: 기술적 상세 ✅
 
 ### 5. settings.json 검증

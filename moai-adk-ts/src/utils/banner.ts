@@ -18,24 +18,24 @@ import { logger } from './/winston-logger.js';
 function supportsColor(): boolean {
   return (
     process.stdout.isTTY &&
-    process.env.TERM !== 'dumb' &&
-    process.env.NO_COLOR === undefined
+    process.env['TERM'] !== 'dumb' &&
+    process.env['NO_COLOR'] === undefined
   );
 }
 
 /**
- * Apply Claude AI brand color to ASCII art line
+ * Apply zinc monochrome color to ASCII art line
  * @param line - Line to colorize
  * @returns Colorized line
  * @tags UTIL:COLORIZE-001
  */
-function applyClaudeBrandColor(line: string): string {
+function applyZincColor(line: string): string {
   if (!supportsColor() || !line.trim()) {
     return line;
   }
 
-  // Claude AI Official Brand Color - #da7756 (RGB: 218, 119, 86)
-  return chalk.rgb(218, 119, 86)(line);
+  // Zinc-400 monochrome color - #a1a1aa (RGB: 161, 161, 170)
+  return chalk.rgb(161, 161, 170)(line);
 }
 
 /**
@@ -71,15 +71,15 @@ export function createBanner(
   // Empty line at top
   bannerLines.push('');
 
-  // MoAI-ADK logo with Claude brand color
+  // MoAI-ADK logo with zinc monochrome color
   for (const line of moaiLines) {
-    const coloredLine = applyClaudeBrandColor(line);
+    const coloredLine = applyZincColor(line);
     bannerLines.push(coloredLine);
   }
 
   // Bottom border matching logo width (60 chars for MoAI-ADK)
   const border = supportsColor()
-    ? applyClaudeBrandColor('═'.repeat(60))
+    ? applyZincColor('═'.repeat(60))
     : '═'.repeat(60);
   bannerLines.push(border);
   bannerLines.push('');
@@ -88,7 +88,7 @@ export function createBanner(
   const description = `🗿 MoAI-ADK: Modu-AI's Agentic Development kit (v${version}) 🚀`;
 
   bannerLines.push(
-    supportsColor() ? applyClaudeBrandColor(description) : description
+    supportsColor() ? applyZincColor(description) : description
   );
   bannerLines.push('');
 

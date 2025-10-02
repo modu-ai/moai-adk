@@ -60,7 +60,7 @@ debug-helper는 에러 메시지를 패턴 매칭과 컨텍스트 분석을 통�
 
 ```mermaid
 flowchart TD
-    A["에러 메시지 입력"] --> B{"에러 패턴<br/>매칭"}
+    A["에러 메시지 입력"] --> B{"에러 패턴 - 매칭"}
 
     B -->|파일 시스템| C["경로 검증"]
     B -->|의존성| D["package.json 확인"]
@@ -76,7 +76,7 @@ flowchart TD
     G --> I
     H --> I
 
-    I --> J{"자동 수정<br/>가능?"}
+    I --> J{"자동 수정 - 가능?"}
 
     J -->|Yes| K["fix 명령어 제공"]
     J -->|No| L["수동 해결 가이드"]
@@ -172,23 +172,23 @@ sequenceDiagram
     participant PKG as 패키지 매니저
     participant GIT as Git
 
-    U->>DH: "@agent-debug-helper<br/>시스템 진단"
+    U->>DH: "@agent-debug-helper - 시스템 진단"
 
     DH->>SYS: Node.js 버전 확인
     SYS-->>DH: v20.10.0
 
     DH->>GIT: Git 상태 확인
-    GIT-->>DH: branch: develop<br/>clean
+    GIT-->>DH: branch: develop - clean
 
     DH->>PKG: 패키지 매니저 확인
     PKG-->>DH: bun v1.0.0
 
     DH->>SYS: 리소스 사용량 측정
-    SYS-->>DH: disk: 50GB<br/>memory: 8GB/16GB
+    SYS-->>DH: disk: 50GB - memory: 8GB/16GB
 
     DH->>DH: 건강 점수 계산
 
-    DH->>U: "📊 진단 보고서<br/>✅ 정상<br/>⚠️ 경고<br/>❌ 위험"
+    DH->>U: "📊 진단 보고서 - ✅ 정상 - ⚠️ 경고 - ❌ 위험"
 ```
 
 #### 시스템 진단 출력 예시
@@ -277,9 +277,9 @@ debug-helper는 `.moai/memory/development-guide.md`를 기준으로 코드와 �
 flowchart TD
     A["가이드 검증 시작"] --> B["코드베이스 스캔"]
 
-    B --> C{"TRUST<br/>원칙"}
-    B --> D{"@TAG<br/>시스템"}
-    B --> E{"코드<br/>규칙"}
+    B --> C{"TRUST - 원칙"}
+    B --> D{"@TAG - 시스템"}
+    B --> E{"코드 - 규칙"}
 
     C --> C1["Test First 검증"]
     C --> C2["Readable 검증"]
@@ -307,7 +307,7 @@ flowchart TD
     E2 --> F
     E3 --> F
 
-    F --> G{"위반<br/>있음?"}
+    F --> G{"위반 - 있음?"}
 
     G -->|Yes| H["상세 보고서 생성"]
     G -->|No| I["✅ 모든 검증 통과"]
@@ -667,7 +667,7 @@ sequenceDiagram
     participant TC as trust-checker
     participant TA as tag-agent
 
-    U->>DH: "@agent-debug-helper<br/>오류 분석"
+    U->>DH: "@agent-debug-helper - 오류 분석"
 
     DH->>DH: 요청 타입 분류
 

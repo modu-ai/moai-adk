@@ -36,7 +36,7 @@ export class SessionNotifier {
       } else {
         return {
           success: true,
-          message: '💡 Run `/moai:8-project` to initialize MoAI-ADK',
+          message: '💡 Run `/alfred:8-project` to initialize MoAI-ADK',
         };
       }
     } catch (_error) {

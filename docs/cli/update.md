@@ -78,7 +78,7 @@ flowchart TD
 
 ### 5.3 패키지 & 템플릿 업데이트
 - `npm install moai-adk@latest` 시도. 지역 `package.json` 없으면 글로벌 설치로 fallback.
-- 템플릿 복사 대상: `.claude/commands/moai`, `.claude/agents/moai`, `.claude/hooks/moai`, `.moai/memory/development-guide.md`, `.moai/project/{product,structure,tech}.md`, `CLAUDE.md`.
+- 템플릿 복사 대상: `.claude/commands/alfred`, `.claude/agents/alfred`, `.claude/hooks/alfred`, `.moai/memory/development-guide.md`, `.moai/project/{product,structure,tech}.md`, `CLAUDE.md`.
 - 충돌 검사 없이 기존 파일을 덮어씌움.
 
 ### 5.4 검증 및 로그

@@ -26,17 +26,17 @@ tag-agent는 MoAI-ADK의 **TAG 시스템 독점 관리자**로서 @TAG 체계의
 ```mermaid
 graph TB
     subgraph "1. SPEC 작성"
-        A[/moai:1-spec] --> A1[TAG BLOCK 생성]
+        A[/alfred:1-spec] --> A1[TAG BLOCK 생성]
         A1 --> A2[TAG 체인 정의]
     end
 
     subgraph "2. TDD 구현"
-        B[/moai:2-build] --> B1["@CODE 서브카테고리 추가"]
+        B[/alfred:2-build] --> B1["@CODE 서브카테고리 추가"]
         B1 --> B2[코드에 TAG BLOCK 삽입]
     end
 
     subgraph "3. 문서 동기화"
-        C[/moai:3-sync] --> C1[코드 스캔]
+        C[/alfred:3-sync] --> C1[코드 스캔]
         C1 --> C2[TAG 검증]
         C2 --> C3[무결성 확인]
     end
@@ -53,8 +53,8 @@ graph TB
 ```
 
 **tag-agent 활성화 시점**:
-- `/moai:1-spec` 실행 시: TAG BLOCK 자동 생성
-- `/moai:3-sync` 실행 시: TAG 검증 자동 실행
+- `/alfred:1-spec` 실행 시: TAG BLOCK 자동 생성
+- `/alfred:3-sync` 실행 시: TAG 검증 자동 실행
 - 온디맨드: TAG 체인 검증, 고아 TAG 정리 필요 시
 
 ### 다른 에이전트와의 협력
@@ -75,9 +75,9 @@ MoAI-ADK는 **@TAG 체계**를 사용하여 TDD 사이클과 완벽 정렬된 �
 
 ```mermaid
 graph LR
-    A["@SPEC<br/>명세"] --> B["@TEST<br/>RED Phase"]
-    B --> C["@CODE<br/>GREEN+REFACTOR"]
-    C --> D["@DOC<br/>문서화"]
+    A["@SPEC - 명세"] --> B["@TEST - RED Phase"]
+    B --> C["@CODE - GREEN+REFACTOR"]
+    C --> D["@DOC - 문서화"]
     D -.->|다음 기능| A
 
 ```
@@ -760,7 +760,7 @@ rg '@\w+:[\w-]+' -g '*.java' -c | awk '{sum+=$1} END {print "Java:", sum}'
 
 ```bash
 # 1. SPEC 작성 시작
-/moai:1-spec
+/alfred:1-spec
 
 # 2. TAG BLOCK 자동 생성
 # (spec-builder가 tag-agent 호출)
@@ -776,7 +776,7 @@ rg '@\w+:[\w-]+' -g '*.java' -c | awk '{sum+=$1} END {print "Java:", sum}'
 
 ```bash
 # 1. 구현 시작
-/moai:2-build
+/alfred:2-build
 
 # 2. TAG BLOCK 삽입
 # (code-builder가 자동 삽입)
@@ -789,7 +789,7 @@ rg '@\w+:[\w-]+' -g '*.java' -c | awk '{sum+=$1} END {print "Java:", sum}'
 
 ```bash
 # 1. 문서 동기화 시작
-/moai:3-sync
+/alfred:3-sync
 
 # 2. TAG 전체 검증
 # (doc-syncer가 tag-agent 호출)

@@ -21,20 +21,20 @@ git-manager는 **안전 우선(Safety-First)** 철학을 따릅니다. 모든 �
 
 ```mermaid
 graph TD
-    A["/moai:1-spec"] --> B{"브랜치<br/>필요?"}
-    B -->|Yes| C["git-manager:<br/>브랜치 생성"]
-    C --> D["spec-builder:<br/>SPEC 작성"]
+    A["/alfred:1-spec"] --> B{"브랜치 - 필요?"}
+    B -->|Yes| C["git-manager: - 브랜치 생성"]
+    C --> D["spec-builder: - SPEC 작성"]
 
-    D --> E["/moai:2-build"]
-    E --> F["code-builder:<br/>TDD 구현"]
-    F --> G["git-manager:<br/>커밋 자동화"]
+    D --> E["/alfred:2-build"]
+    E --> F["code-builder: - TDD 구현"]
+    F --> G["git-manager: - 커밋 자동화"]
 
-    G --> H["/moai:3-sync"]
-    H --> I["doc-syncer:<br/>문서 동기화"]
+    G --> H["/alfred:3-sync"]
+    H --> I["doc-syncer: - 문서 동기화"]
     I --> J{"PR 전환?"}
 
-    J -->|Yes| K["git-manager:<br/>Draft→Ready"]
-    K --> L["git-manager:<br/>리뷰어 할당"]
+    J -->|Yes| K["git-manager: - Draft→Ready"]
+    K --> L["git-manager: - 리뷰어 할당"]
     L --> M["완료"]
 
     J -->|No| M
@@ -42,9 +42,9 @@ graph TD
 ```
 
 **git-manager 활성화 시점**:
-1. `/moai:1-spec` 실행 시 브랜치 생성 (사용자 확인)
-2. `/moai:2-build` 완료 후 커밋 자동화 (자동 실행)
-3. `/moai:3-sync` 완료 후 PR 상태 전환 (사용자 확인)
+1. `/alfred:1-spec` 실행 시 브랜치 생성 (사용자 확인)
+2. `/alfred:2-build` 완료 후 커밋 자동화 (자동 실행)
+3. `/alfred:3-sync` 완료 후 PR 상태 전환 (사용자 확인)
 4. 사용자가 직접 호출: `@agent-git-manager "명령"`
 
 ### 다른 에이전트와의 협력
@@ -184,11 +184,11 @@ sequenceDiagram
     participant GM as git-manager
     participant Git
 
-    User->>SB: "/moai:1-spec 'Auth'"
+    User->>SB: "/alfred:1-spec 'Auth'"
     SB->>SB: SPEC 작성 완료
 
     SB->>User: 브랜치 생성 요청
-    Note over User: "feature/spec-auth-001<br/>생성하시겠습니까?"
+    Note over User: "feature/spec-auth-001 - 생성하시겠습니까?"
 
     User->>GM: "승인 (y)"
 
@@ -289,7 +289,7 @@ git-manager는 GitHub CLI(gh)를 활용하여 PR을 자동 생성하고 관리�
 #### Draft PR 자동 생성
 
 ```bash
-# /moai:1-spec 완료 후
+# /alfred:1-spec 완료 후
 > SPEC-AUTH-001 작성 완료
 > 브랜치 feature/spec-auth-001 생성 완료
 >
@@ -361,7 +361,7 @@ sequenceDiagram
     GM->>GitHub: "gh pr ready pr-number"
     GitHub-->>GM: 상태 전환 완료
 
-    GM->>GitHub: "라벨 추가<br/>(documentation, tested)"
+    GM->>GitHub: "라벨 추가 - (documentation, tested)"
     GitHub-->>GM: 라벨 추가 완료
 
     GM->>GitHub: 리뷰어 할당 제안
@@ -398,7 +398,7 @@ git-manager는 Conventional Commits 형식을 강제하고 의미 있는 커밋 
 **자동 생성 예시**:
 
 ```bash
-# /moai:2-build 완료 후
+# /alfred:2-build 완료 후
 > TDD 구현 완료
 > 26개 테스트 작성, 모두 통과
 >
@@ -502,16 +502,16 @@ flowchart TD
     B --> C["Git stash 실행"]
     C --> D["현재 브랜치 기록"]
     D --> E["HEAD 커밋 해시 저장"]
-    E --> F["메타데이터 저장<br/>.moai/checkpoints/"]
+    E --> F["메타데이터 저장 - .moai/checkpoints/"]
 
     F --> G["작업 수행"]
 
     G --> H{"작업 성공?"}
 
-    H -->|Yes| I["체크포인트 유지<br/>30일 후 자동 삭제"]
+    H -->|Yes| I["체크포인트 유지 - 30일 후 자동 삭제"]
     H -->|No| J["자동 롤백 제안"]
 
-    J --> K{"사용자<br/>승인?"}
+    J --> K{"사용자 - 승인?"}
     K -->|Yes| L["체크포인트 복원"]
     K -->|No| M["체크포인트 유지"]
 
@@ -596,7 +596,7 @@ flowchart TD
 
 ```bash
 # SPEC 작성 시 자동 제안
-/moai:1-spec "사용자 인증"
+/alfred:1-spec "사용자 인증"
 > 브랜치 feature/spec-auth-001 생성 필요
 > 생성하시겠습니까? (y/n): y
 
@@ -608,7 +608,7 @@ flowchart TD
 
 ```bash
 # TDD 구현 완료 후 자동 실행
-/moai:2-build SPEC-AUTH-001
+/alfred:2-build SPEC-AUTH-001
 > 구현 완료
 > 커밋 메시지 생성 중...
 > 커밋하시겠습니까? (y/n): y
@@ -621,7 +621,7 @@ flowchart TD
 @agent-git-manager "Draft PR 생성"
 
 # 문서 동기화 후 Ready 전환
-/moai:3-sync
+/alfred:3-sync
 > PR #45를 Ready로 전환하시겠습니까? (y/n): y
 ```
 
@@ -679,7 +679,7 @@ flowchart TD
 
 ```bash
 # 1. SPEC 작성 + 브랜치 생성
-/moai:1-spec "사용자 인증"
+/alfred:1-spec "사용자 인증"
 > 브랜치 생성? (y): y
 > ✅ feature/spec-auth-001 생성
 
@@ -688,12 +688,12 @@ flowchart TD
 > ✅ PR #45 생성
 
 # 3. TDD 구현 + 자동 커밋
-/moai:2-build SPEC-AUTH-001
+/alfred:2-build SPEC-AUTH-001
 > 커밋? (y): y
 > ✅ feat(auth): implement authentication
 
 # 4. 문서 동기화 + PR Ready
-/moai:3-sync
+/alfred:3-sync
 > PR Ready 전환? (y): y
 > ✅ PR #45 Ready for Review
 

@@ -288,9 +288,9 @@
 ## 다음 단계
 
 이 SPEC이 완료되면:
-1. `/moai:2-build SPEC-006` 실행하여 TDD 구현
+1. `/alfred:2-build SPEC-006` 실행하여 TDD 구현
 2. 테스트 커버리지 확인 및 리포트 생성
-3. `/moai:3-sync` 실행하여 문서 동기화
+3. `/alfred:3-sync` 실행하여 문서 동기화
 4. 나머지 utils 파일 (banner, i18n 등)은 SPEC-007로 분리
 
 ---

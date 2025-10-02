@@ -443,4 +443,4 @@ installer.test.ts
 
 ---
 
-_이 SPEC은 `/moai:2-build` 단계에서 TDD 구현의 기준이 됩니다._
+_이 SPEC은 `/alfred:2-build` 단계에서 TDD 구현의 기준이 됩니다._

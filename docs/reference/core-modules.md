@@ -29,23 +29,23 @@ MoAI-ADK의 모듈은 3개 계층으로 구성됩니다:
 
 ```mermaid
 graph TB
-    subgraph "Orchestration Layer"
-        UpdateOrchestrator[UpdateOrchestrator<br/>업데이트 조정]
-        InstallationOrchestrator[InstallationOrchestrator<br/>설치 조정]
+    subgraph OrchestrationLayer[Orchestration Layer]
+        UpdateOrchestrator[UpdateOrchestrator - 업데이트 조정]
+        InstallationOrchestrator[InstallationOrchestrator - 설치 조정]
     end
 
-    subgraph "Core Layer"
-        Installer[Installer<br/>프로젝트 설치]
-        SystemChecker[SystemChecker<br/>시스템 진단]
-        ConfigManager[ConfigManager<br/>설정 관리]
-        BackupManager[BackupManager<br/>백업/복원]
-        TagManager[TagManager<br/>TAG 시스템]
+    subgraph CoreLayer[Core Layer]
+        Installer[Installer - 프로젝트 설치]
+        SystemChecker[SystemChecker - 시스템 진단]
+        ConfigManager[ConfigManager - 설정 관리]
+        BackupManager[BackupManager - 백업/복원]
+        TagManager[TagManager - TAG 시스템]
     end
 
-    subgraph "Foundation Layer"
-        FileSystem[FileSystem<br/>파일 I/O]
-        ProcessRunner[ProcessRunner<br/>프로세스 실행]
-        Logger[Logger<br/>구조화 로깅]
+    subgraph FoundationLayer[Foundation Layer]
+        FileSystem[FileSystem - 파일 I/O]
+        ProcessRunner[ProcessRunner - 프로세스 실행]
+        Logger[Logger - 구조화 로깅]
     end
 
     UpdateOrchestrator --> BackupManager
@@ -93,54 +93,54 @@ Installer는 **원자성(Atomicity)**을 보장합니다. 설치 중 오류가 �
 ```mermaid
 classDiagram
     class Installer {
-        -templatePath: string
-        -fileSystem: FileSystem
-        -configManager: ConfigManager
-        -logger: Logger
-        "+execute(config: InstallationConfig): Promise~InstallationResult~"
-        "-validatePreconditions(config: InstallationConfig): Promise~void~"
-        "-copyTemplateFiles(context: InstallationContext): Promise~void~"
-        "-substituteVariables(context: InstallationContext): Promise~void~"
-        "-initializeGit(context: InstallationContext): Promise~void~"
-        "-createBackup(context: InstallationContext): Promise~void~"
-        "-rollback(context: InstallationContext): Promise~void~"
+        -templatePath string
+        -fileSystem FileSystem
+        -configManager ConfigManager
+        -logger Logger
+        +execute(config InstallationConfig) Promise~InstallationResult~
+        -validatePreconditions(config InstallationConfig) Promise~void~
+        -copyTemplateFiles(context InstallationContext) Promise~void~
+        -substituteVariables(context InstallationContext) Promise~void~
+        -initializeGit(context InstallationContext) Promise~void~
+        -createBackup(context InstallationContext) Promise~void~
+        -rollback(context InstallationContext) Promise~void~
     }
 
     class InstallationConfig {
-        +projectPath: string
-        +projectName: string
-        +mode: 'personal' | 'team'
-        +backupEnabled: boolean
-        +overwriteExisting: boolean
-        +templatePath?: string
-        +additionalFeatures: string[]
+        +projectPath string
+        +projectName string
+        +mode string
+        +backupEnabled boolean
+        +overwriteExisting boolean
+        +templatePath string
+        +Array~string~ additionalFeatures
     }
 
     class InstallationResult {
-        +success: boolean
-        +projectPath: string
-        +filesCreated: string[]
-        +errors: string[]
-        +nextSteps: string[]
-        +config: InstallationConfig
-        +timestamp: Date
-        +duration: number
+        +success boolean
+        +projectPath string
+        +Array~string~ filesCreated
+        +Array~string~ errors
+        +Array~string~ nextSteps
+        +InstallationConfig config
+        +Date timestamp
+        +number duration
     }
 
     class InstallationContext {
-        +config: InstallationConfig
-        +startTime: Date
-        +phases: PhaseStatus[]
-        +allFilesCreated: string[]
-        +allErrors: string[]
+        +InstallationConfig config
+        +Date startTime
+        +Array~PhaseStatus~ phases
+        +Array~string~ allFilesCreated
+        +Array~string~ allErrors
     }
 
     class PhaseStatus {
-        +name: string
-        +completed: boolean
-        +duration: number
-        +errors: string[]
-        +filesCreated: string[]
+        +string name
+        +boolean completed
+        +number duration
+        +Array~string~ errors
+        +Array~string~ filesCreated
     }
 
     Installer --> InstallationConfig
@@ -248,36 +248,36 @@ sequenceDiagram
 
     CLI->>Installer: execute(config)
 
-    Note over Installer: Phase 1: Validation
+    Note over Installer: Phase 1 Validation
     Installer->>FileSystem: validatePath(projectPath)
     FileSystem-->>Installer: Path OK
     Installer->>FileSystem: checkPermissions(projectPath)
     FileSystem-->>Installer: Permissions OK
 
-    Note over Installer: Phase 2: Backup (if needed)
-    alt backupEnabled = true
+    Note over Installer: Phase 2 Backup if needed
+    alt backupEnabled true
         Installer->>FileSystem: createBackup(existingFiles)
         FileSystem-->>Installer: Backup created
     end
 
-    Note over Installer: Phase 3: Template Copy
-    Installer->>FileSystem: copyDirectory(.moai/)
-    FileSystem-->>Installer: .moai/ copied
-    Installer->>FileSystem: copyDirectory(.claude/)
-    FileSystem-->>Installer: .claude/ copied
+    Note over Installer: Phase 3 Template Copy
+    Installer->>FileSystem: copyDirectory moai
+    FileSystem-->>Installer: moai copied
+    Installer->>FileSystem: copyDirectory claude
+    FileSystem-->>Installer: claude copied
 
-    Note over Installer: Phase 4: Configuration
+    Note over Installer: Phase 4 Configuration
     Installer->>ConfigManager: initialize(config)
-    ConfigManager->>FileSystem: write config.json
+    ConfigManager->>FileSystem: write config json
     FileSystem-->>ConfigManager: Config written
     ConfigManager-->>Installer: Config initialized
 
-    Note over Installer: Phase 5: Finalization
-    alt mode = 'team'
+    Note over Installer: Phase 5 Finalization
+    alt mode team
         Installer->>Git: init
         Git-->>Installer: Git initialized
     end
-    Installer->>FileSystem: setPermissions(.moai/scripts/, 0o755)
+    Installer->>FileSystem: setPermissions scripts
 
     Installer-->>CLI: InstallationResult
 ```
@@ -403,61 +403,61 @@ SystemChecker는 **동적 요구사항 등록** 시스템을 사용합니다. �
 ```mermaid
 classDiagram
     class SystemChecker {
-        "-requirements: Map~string, SystemRequirement~"
-        -detectors: ToolDetector[]
-        -logger: Logger
-        "+registerRequirement(req: SystemRequirement): void"
-        "+checkAll(): Promise~SystemCheckSummary~"
-        "+checkCategory(category: string): Promise~RequirementCheckResult[]~"
-        "-detectLanguages(projectPath: string): Promise~string[]~"
-        "-executeDetection(req: SystemRequirement): Promise~DetectionResult~"
+        -requirements Map~string,SystemRequirement~
+        -detectors Array~ToolDetector~
+        -logger Logger
+        +registerRequirement(req SystemRequirement) void
+        +checkAll() Promise~SystemCheckSummary~
+        +checkCategory(category string) Promise~RequirementCheckResult~
+        -detectLanguages(projectPath string) Promise~string~
+        -executeDetection(req SystemRequirement) Promise~DetectionResult~
     }
 
     class SystemRequirement {
-        +name: string
-        +category: 'runtime' | 'development' | 'optional'
-        +commands: string[]
-        +versionCommand: string
-        +versionPattern: RegExp
-        +minVersion?: string
-        +installUrl?: string
-        +importance: 'critical' | 'high' | 'medium' | 'low'
+        +name string
+        +category string
+        +Array~string~ commands
+        +versionCommand string
+        +versionPattern RegExp
+        +minVersion string
+        +installUrl string
+        +importance string
     }
 
     class DetectionResult {
-        +isInstalled: boolean
-        +version?: string
-        +versionSatisfied: boolean
-        +path?: string
-        +error?: string
-        +executionTime: number
+        +isInstalled boolean
+        +version string
+        +versionSatisfied boolean
+        +path string
+        +error string
+        +executionTime number
     }
 
     class SystemCheckSummary {
-        +runtime: RequirementCheckResult[]
-        +development: RequirementCheckResult[]
-        +optional: RequirementCheckResult[]
-        +totalChecks: number
-        +passedChecks: number
-        +failedChecks: number
-        +detectedLanguages: string[]
-        +timestamp: Date
+        +Array~RequirementCheckResult~ runtime
+        +Array~RequirementCheckResult~ development
+        +Array~RequirementCheckResult~ optional
+        +totalChecks number
+        +passedChecks number
+        +failedChecks number
+        +Array~string~ detectedLanguages
+        +Date timestamp
     }
 
     class RequirementCheckResult {
-        +requirement: SystemRequirement
-        +result: DetectionResult
+        +SystemRequirement requirement
+        +DetectionResult result
     }
 
     class ToolDetector {
         <<interface>>
-        +detect(req: SystemRequirement): Promise~DetectionResult~
+        +detect(req SystemRequirement) Promise~DetectionResult~
     }
 
     class CommandLineDetector {
-        +detect(req: SystemRequirement): Promise~DetectionResult~
-        -parseVersion(output: string, pattern: RegExp): string
-        -compareVersions(detected: string, min: string): boolean
+        +detect(req SystemRequirement) Promise~DetectionResult~
+        -parseVersion(output string, pattern RegExp) string
+        -compareVersions(detected string, min string) boolean
     }
 
     SystemChecker --> SystemRequirement
@@ -1193,11 +1193,11 @@ sequenceDiagram
     Orchestrator->>Classifier: classify all files
     Classifier->>FS: scan project directory
     FS-->>Classifier: file list
-    Classifier->>Classifier: categorize files<br/>(TEMPLATE/USER/HYBRID)
+    Classifier->>Classifier: categorize files - (TEMPLATE/USER/HYBRID)
     Classifier-->>Orchestrator: FileChangeAnalysis[]
 
     Orchestrator->>Orchestrator: build update plan
-    Note over Orchestrator: TEMPLATE → REPLACE<br/>USER → KEEP<br/>HYBRID → MERGE
+    Note over Orchestrator: TEMPLATE → REPLACE - USER → KEEP - HYBRID → MERGE
 
     Orchestrator->>User: show update plan
     User->>Orchestrator: approve/reject

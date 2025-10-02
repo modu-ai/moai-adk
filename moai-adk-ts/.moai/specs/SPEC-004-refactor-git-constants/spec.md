@@ -330,4 +330,4 @@ rg 'from "./constants"' -l src/core/git/
 ---
 
 _이 SPEC은 MoAI-ADK 개발 가이드 (파일당 300 LOC 이하)를 준수하기 위한 리팩토링입니다._
-_브랜치는 `/moai:2-build SPEC-004` 실행 시 자동 생성됩니다._
+_브랜치는 `/alfred:2-build SPEC-004` 실행 시 자동 생성됩니다._

@@ -58,7 +58,7 @@ export interface MoAIConfig {
     documentSync: boolean;
   };
   directories: {
-    moai: string;
+    alfred: string;
     claude: string;
     specs: string;
     templates: string;

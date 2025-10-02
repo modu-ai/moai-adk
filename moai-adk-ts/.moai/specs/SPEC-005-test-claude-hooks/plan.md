@@ -401,11 +401,11 @@ npm run test:ci
 ## 다음 단계 연계
 
 ### SPEC-005 완료 후
-1. `/moai:2-build SPEC-005` 실행
+1. `/alfred:2-build SPEC-005` 실행
    - TDD로 테스트 구현
    - Red-Green-Refactor 사이클
 
-2. `/moai:3-sync` 실행
+2. `/alfred:3-sync` 실행
    - 문서 동기화
    - TAG 체인 검증
    - PR 상태 전환

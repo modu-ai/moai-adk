@@ -1,3 +1,0 @@
-{"tag": "@DOC:MOAI-001", "type": "vision", "description": "MoAI-ADK 제품 비전 및 미션", "file": ".moai/project/product.md", "line": 3, "created": "2025-09-29", "status": "active", "category": "STEERING"}
-{"tag": "@DOC:FOUNDATION-001", "type": "vision", "description": "v0.0.1 Foundation 비전", "file": "CLAUDE.md", "line": 1, "created": "2025-09-29", "status": "active", "category": "STEERING"}
-{"tag": "@DOC:SPEC-FIRST-001", "type": "vision", "description": "SPEC-First TDD 철학", "file": ".moai/memory/development-guide.md", "line": 5, "created": "2025-09-29", "status": "active", "category": "STEERING"}

@@ -196,40 +196,40 @@ moai restore <backup-path> --force         # 강제 복원
 
 ```bash
 # Stage 1: SPEC 작성
-/moai:1-spec "기능 제목"
-/moai:1-spec "기능1" "기능2" "기능3"
-/moai:1-spec SPEC-001 "수정 내용"
+/alfred:1-spec "기능 제목"
+/alfred:1-spec "기능1" "기능2" "기능3"
+/alfred:1-spec SPEC-001 "수정 내용"
 
 # Stage 2: TDD 구현
-/moai:2-build SPEC-001
-/moai:2-build SPEC-001 SPEC-002 SPEC-003
-/moai:2-build all
+/alfred:2-build SPEC-001
+/alfred:2-build SPEC-001 SPEC-002 SPEC-003
+/alfred:2-build all
 
 # Stage 3: 문서 동기화
-/moai:3-sync
-/moai:3-sync full
-/moai:3-sync tags-only
-/moai:3-sync docs-only
-/moai:3-sync --path src/auth
+/alfred:3-sync
+/alfred:3-sync full
+/alfred:3-sync tags-only
+/alfred:3-sync docs-only
+/alfred:3-sync --path src/auth
 ```
 
 ### 프로젝트 준비 (선택)
 
 ```bash
 # 프로젝트 비전 수립
-/moai:8-project
+/alfred:8-project
 ```
 
 ### 도움말
 
 ```bash
 # 전체 도움말
-/moai:help
+/alfred:help
 
 # 특정 명령어 도움말
-/moai:help 1-spec
-/moai:help 2-build
-/moai:help 3-sync
+/alfred:help 1-spec
+/alfred:help 2-build
+/alfred:help 3-sync
 ```
 
 ## Git 작업
@@ -258,7 +258,7 @@ git log --graph --all
 
 ```bash
 # 1. SPEC 브랜치 생성 (사용자 확인)
-/moai:1-spec "기능명"
+/alfred:1-spec "기능명"
 # → feature/spec-001-feature-name
 
 # 2. 구현 커밋 (자동)
@@ -270,7 +270,7 @@ git log --graph --all
 # → Draft PR: feature/spec-001 → develop
 
 # 4. 동기화 후 머지 (사용자 확인)
-/moai:3-sync
+/alfred:3-sync
 # → Ready for Review
 # → 리뷰어 할당 (Team 모드)
 ```
@@ -368,13 +368,13 @@ alias mu='moai update'
 alias mr='moai restore'
 
 # SPEC 작성
-alias spec='claude /moai:1-spec'
+alias spec='claude /alfred:1-spec'
 
 # TDD 구현
-alias build='claude /moai:2-build'
+alias build='claude /alfred:2-build'
 
 # 문서 동기화
-alias sync='claude /moai:3-sync'
+alias sync='claude /alfred:3-sync'
 
 # TAG 검색
 alias tag-search='rg "@TAG" -n'
@@ -396,9 +396,9 @@ mi my-project                              # moai init my-project
 md                                         # moai doctor
 ms -v                                      # moai status --verbose
 
-spec "사용자 인증"                         # /moai:1-spec "사용자 인증"
-build SPEC-001                             # /moai:2-build SPEC-001
-sync                                       # /moai:3-sync
+spec "사용자 인증"                         # /alfred:1-spec "사용자 인증"
+build SPEC-001                             # /alfred:2-build SPEC-001
+sync                                       # /alfred:3-sync
 
 tag-search                                 # rg "@TAG" -n
 debug "오류 분석"                          # @agent-debug-helper "오류 분석"
@@ -410,19 +410,19 @@ debug "오류 분석"                          # @agent-debug-helper "오류 분
 
 ```bash
 # 1. SPEC 작성
-/moai:1-spec "기능명"
+/alfred:1-spec "기능명"
 
 # 2. 브랜치 확인 (사용자 승인 후 생성됨)
 git branch
 
 # 3. TDD 구현
-/moai:2-build SPEC-{ID}
+/alfred:2-build SPEC-{ID}
 
 # 4. 테스트 확인
 npm test
 
 # 5. 문서 동기화
-/moai:3-sync
+/alfred:3-sync
 
 # 6. PR 확인 (사용자 승인 후 상태 변경됨)
 git log
@@ -483,7 +483,7 @@ cat .claude/settings.json
 moai doctor
 
 # TAG 검증 실패
-/moai:3-sync tags-only
+/alfred:3-sync tags-only
 rg "@TAG" -n
 
 # 테스트 실패

@@ -26,7 +26,7 @@ export interface WorkflowResult {
   stage: SpecWorkflowStage;
   branchName?: string;
   commitHash?: string;
-  pullRequestUrl?: string;
+  pullRequestUrl: string | undefined;
   message: string;
 }
 

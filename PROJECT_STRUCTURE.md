@@ -60,12 +60,12 @@
    - 배포: `moai-adk-ts/dist/claude/hooks/` (컴파일된 JavaScript)
 
 2. **명령어 (Commands)**
-   - 개발: `.claude/commands/moai/`
-   - 배포: `moai-adk-ts/src/claude/commands/moai/`
+   - 개발: `.claude/commands/alfred/`
+   - 배포: `moai-adk-ts/src/claude/commands/alfred/`
 
 3. **에이전트 (Agents)**
-   - 개발: `.claude/agents/moai/`
-   - 배포: `moai-adk-ts/src/claude/agents/moai/`
+   - 개발: `.claude/agents/alfred/`
+   - 배포: `moai-adk-ts/src/claude/agents/alfred/`
 
 4. **스크립트 (Scripts)**
    - 개발: `.moai/scripts/`

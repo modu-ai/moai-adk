@@ -204,7 +204,7 @@ moai init . --backup
 moai doctor
 
 # 5. 첫 SPEC 작성
-/moai:1-spec "기존 코드 문서화"
+/alfred:1-spec "기존 코드 문서화"
 ```
 
 **주의사항:**
@@ -216,14 +216,14 @@ moai doctor
 
 ```bash
 # 단계 1: 새 기능부터 SPEC-First 적용
-/moai:1-spec "새 기능"
-/moai:2-build SPEC-001
+/alfred:1-spec "새 기능"
+/alfred:2-build SPEC-001
 
 # 단계 2: 주요 모듈에 TAG 추가
 # (기존 코드에 TAG BLOCK 추가)
 
 # 단계 3: 문서 동기화
-/moai:3-sync
+/alfred:3-sync
 ```
 
 ## 사용법
@@ -235,7 +235,7 @@ moai doctor
 **기본 사용법:**
 
 ```bash
-/moai:1-spec "기능 제목"
+/alfred:1-spec "기능 제목"
 ```
 
 **EARS 구문 활용:**
@@ -314,13 +314,13 @@ rg "@TEST:" -n                  # 모든 테스트
 
 ```bash
 # 전체 코드 스캔
-/moai:3-sync
+/alfred:3-sync
 
 # TAG만 검증
-/moai:3-sync tags-only
+/alfred:3-sync tags-only
 
 # 특정 경로만
-/moai:3-sync --path src/auth
+/alfred:3-sync --path src/auth
 ```
 
 **TAG 체계:**
@@ -427,7 +427,7 @@ Git 브랜치 생성과 머지는 프로젝트 구조에 영향을 주는 중요
 
 ```bash
 # 1. SPEC 작성 완료
-/moai:1-spec "사용자 인증"
+/alfred:1-spec "사용자 인증"
 
 # 2. 에이전트가 요청
 에이전트: "SPEC-AUTH-001 작성이 완료되었습니다.
@@ -449,7 +449,7 @@ Git 브랜치 생성과 머지는 프로젝트 구조에 영향을 주는 중요
 
 ```bash
 # 1. 문서 동기화 완료
-/moai:3-sync
+/alfred:3-sync
 
 # 2. 에이전트가 요청
 에이전트: "문서 동기화가 완료되었습니다.
@@ -636,13 +636,13 @@ MoAI-ADK는 대규모 프로젝트를 위해 최적화되어 있습니다:
 
 ```bash
 # 특정 경로만 동기화
-/moai:3-sync --path src/auth
+/alfred:3-sync --path src/auth
 
 # TAG만 검증
-/moai:3-sync tags-only
+/alfred:3-sync tags-only
 
 # 병렬 빌드
-/moai:2-build SPEC-001 SPEC-002 SPEC-003
+/alfred:2-build SPEC-001 SPEC-002 SPEC-003
 ```
 
 **더 알아보기:**
@@ -677,9 +677,9 @@ npm install -g moai-adk
 moai init my-project --personal
 
 # 3. 오프라인 작업
-/moai:1-spec "기능"
-/moai:2-build SPEC-001
-/moai:3-sync
+/alfred:1-spec "기능"
+/alfred:2-build SPEC-001
+/alfred:3-sync
 
 # 4. 온라인 복귀 후
 git push origin develop
@@ -692,7 +692,7 @@ git push origin develop
 - **[GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)**: 커뮤니티 질문
 - **[GitHub Issues](https://github.com/modu-ai/moai-adk/issues)**: 버그 리포트
 - **[공식 문서](https://adk.mo.ai.kr)**: 전체 가이드
-- **[CLI 도움말](/)**: `moai help` 또는 `/moai:help`
+- **[CLI 도움말](/)**: `moai help` 또는 `/alfred:help`
 
 ## 관련 자료
 

@@ -35,10 +35,10 @@
   },
   "pipeline": {
     "available_commands": [
-      "/moai:1-spec",
-      "/moai:2-build",
-      "/moai:3-sync",
-      "/moai:4-debug"
+      "/alfred:1-spec",
+      "/alfred:2-build",
+      "/alfred:3-sync",
+      "/alfred:4-debug"
     ],
     "current_stage": "initialized"
   },

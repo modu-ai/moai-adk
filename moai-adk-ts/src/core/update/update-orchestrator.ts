@@ -53,7 +53,6 @@ export interface UpdateResult {
  * - 책임 분리: 버전 체크, 백업, npm 업데이트, 템플릿 복사, 검증
  */
 export class UpdateOrchestrator {
-  private readonly projectPath: string;
   private readonly versionChecker: VersionChecker;
   private readonly backupManager: BackupManager;
   private readonly npmUpdater: NpmUpdater;
@@ -61,7 +60,6 @@ export class UpdateOrchestrator {
   private readonly verifier: UpdateVerifier;
 
   constructor(projectPath: string) {
-    this.projectPath = projectPath;
     this.versionChecker = new VersionChecker();
     this.backupManager = new BackupManager(projectPath);
     this.npmUpdater = new NpmUpdater(projectPath);

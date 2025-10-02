@@ -11,7 +11,7 @@
  * @tags @CODE:GITIGNORE-TEMPLATES-001:DATA
  */
 export const GitignoreTemplates = {
-  MOAI: `# MoAI-ADK Generated .gitignore
+  alfred: `# MoAI-ADK Generated .gitignore
 
 # Logs and temporary files
 .claude/logs/

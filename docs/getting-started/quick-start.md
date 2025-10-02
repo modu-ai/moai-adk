@@ -154,9 +154,9 @@ moai init
    │       └── tech.md         # 기술 스택
    │
    ├── .claude/                 # Claude Code 통합
-   │   ├── agents/moai/         # 8개 전문 에이전트
-   │   ├── commands/moai/       # 3단계 워크플로우 명령어
-   │   ├── hooks/moai/          # 8개 이벤트 훅 (JavaScript)
+   │   ├── agents/alfred/         # 8개 전문 에이전트
+   │   ├── commands/alfred/       # 3단계 워크플로우 명령어
+   │   ├── hooks/alfred/          # 8개 이벤트 훅 (JavaScript)
    │   └── output-styles/       # 출력 스타일
    │
    └── src/                     # 소스 코드 (언어에 따라 다름)
@@ -165,7 +165,7 @@ moai init
 3. **템플릿 설치**
    - `.moai/memory/development-guide.md`: TRUST 5원칙 및 개발 가이드
    - 8개 에이전트 정의 파일
-   - 3단계 워크플로우 명령어 (`/moai:1-spec`, `/moai:2-build`, `/moai:3-sync`)
+   - 3단계 워크플로우 명령어 (`/alfred:1-spec`, `/alfred:2-build`, `/alfred:3-sync`)
    - JavaScript 훅 (빌드된 JavaScript 파일)
 
 4. **설치 완료 메시지**
@@ -179,14 +179,14 @@ moai init
    🚀 Next steps:
    1. cd my-first-project
    2. Open in Claude Code
-   3. Run: /moai:1-spec "Your first feature"
+   3. Run: /alfred:1-spec "Your first feature"
    ```
 
 전체 초기화 과정은 수 초 내에 완료되며, 즉시 SPEC-First TDD 개발을 시작할 수 있습니다.
 
 ## 4단계: 첫 번째 SPEC 작성
 
-프로젝트를 Claude Code에서 열고, `/moai:1-spec` 명령으로 첫 번째 명세를 작성합니다.
+프로젝트를 Claude Code에서 열고, `/alfred:1-spec` 명령으로 첫 번째 명세를 작성합니다.
 
 ### Claude Code에서 프로젝트 열기
 
@@ -203,7 +203,7 @@ code my-first-project
 Claude Code 채팅창에서 다음 명령을 실행합니다:
 
 ```
-/moai:1-spec "사용자 인증 기능 구현"
+/alfred:1-spec "사용자 인증 기능 구현"
 ```
 
 `spec-builder` 에이전트가 활성화되어 다음 과정을 안내합니다:
@@ -261,9 +261,9 @@ Claude Code 채팅창에서 다음 명령을 실행합니다:
 # Related: @CODE:AUTH-001:API
 
 # SPEC-AUTH-001: 사용자 인증 시스템
-```
 
 ## Acceptance Criteria
+
 - [ ] 유효한 이메일/비밀번호로 로그인 성공
 - [ ] 잘못된 자격증명으로 로그인 실패
 - [ ] JWT 토큰 발급 및 검증
@@ -274,10 +274,10 @@ SPEC 작성이 완료되면 Git 브랜치가 생성되고(사용자 확인 후),
 
 ## 5단계: TDD 구현
 
-SPEC 작성이 완료되면 `/moai:2-build` 명령으로 TDD 구현을 시작합니다.
+SPEC 작성이 완료되면 `/alfred:2-build` 명령으로 TDD 구현을 시작합니다.
 
 ```
-/moai:2-build SPEC-001
+/alfred:2-build SPEC-001
 ```
 
 `code-builder` 에이전트가 Red-Green-Refactor 사이클을 가이드합니다:
@@ -366,10 +366,10 @@ code-builder 에이전트가 TRUST 5원칙을 자동으로 검증하여 코드 �
 
 ## 6단계: 문서 동기화 및 완료
 
-구현이 완료되면 `/moai:3-sync` 명령으로 문서를 동기화하고 추적성을 검증합니다.
+구현이 완료되면 `/alfred:3-sync` 명령으로 문서를 동기화하고 추적성을 검증합니다.
 
 ```
-/moai:3-sync
+/alfred:3-sync
 ```
 
 `doc-syncer` 에이전트가 다음 작업을 수행합니다:
@@ -416,9 +416,9 @@ code-builder 에이전트가 TRUST 5원칙을 자동으로 검증하여 코드 �
 
 ### 1. 추가 기능 구현
 ```bash
-/moai:1-spec "비밀번호 재설정 기능"
-/moai:2-build SPEC-002
-/moai:3-sync
+/alfred:1-spec "비밀번호 재설정 기능"
+/alfred:2-build SPEC-002
+/alfred:3-sync
 ```
 
 ### 2. 프로젝트 상태 확인

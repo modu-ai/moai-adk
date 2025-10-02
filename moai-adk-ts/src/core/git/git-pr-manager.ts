@@ -33,6 +33,7 @@ export class GitPRManager {
   private workingDir: string;
   private lockManager: GitLockManager;
   private githubIntegration: GitHubIntegration;
+  private config: GitConfig; // Used for PR configuration
 
   constructor(config: GitConfig, workingDir?: string) {
     this.validateConfig(config);

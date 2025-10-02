@@ -218,4 +218,4 @@ export LOG_LEVEL=warning
 
 ---
 
-_이 기술 스택은 `/moai:2-build` 실행 시 TDD 도구 선택과 품질 게이트 적용의 기준이 됩니다._
+_이 기술 스택은 `/alfred:2-build` 실행 시 TDD 도구 선택과 품질 게이트 적용의 기준이 됩니다._

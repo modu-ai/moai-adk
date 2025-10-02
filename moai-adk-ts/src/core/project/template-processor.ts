@@ -238,8 +238,8 @@ Generated: ${data.timestamp}
 - Ready for development
 
 ## Next Steps
-1. Run \`/moai:1-spec\` to create your first specification
-2. Begin TDD development with \`/moai:2-build\`
+1. Run \`/alfred:1-spec\` to create your first specification
+2. Begin TDD development with \`/alfred:2-build\`
 `;
   }
 

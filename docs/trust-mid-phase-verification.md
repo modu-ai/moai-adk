@@ -62,11 +62,6 @@ orchestrator-types.ts:   0 LOC (타입 정의) ✅
 단일 책임 원칙 준수: orchestrator 135 LOC만 조율 담당
 ```
 
-**주요 개선 효과:**
-- ✅ orchestrator.ts 91% 감소 (TRUST-R 완벽 준수)
-- ✅ 9개 모듈로 책임 명확히 분리
-- ✅ 의존성 주입 패턴 적용
-- ✅ 빌드 성공 (43ms)
 
 **남은 대형 파일 (300+ LOC):**
 ```

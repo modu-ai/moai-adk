@@ -39,6 +39,10 @@ export class ProjectDetector {
     'build.gradle': { type: 'java', language: 'java' },
     Gemfile: { type: 'ruby', language: 'ruby' },
     'composer.json': { type: 'php', language: 'php' },
+    'pubspec.yaml': { type: 'flutter', language: 'dart' },
+    'Podfile': { type: 'ios', language: 'swift' },
+    'Package.swift': { type: 'ios', language: 'swift' },
+    'build.gradle.kts': { type: 'android', language: 'kotlin' },
   };
 
   private readonly frameworkIndicators: FrameworkIndicators = {
@@ -50,6 +54,9 @@ export class ProjectDetector {
     nuxtjs: ['nuxt'],
     express: ['express'],
     fastify: ['fastify'],
+    'react-native': ['react-native', '@react-native'],
+    expo: ['expo', 'expo-cli'],
+    flutter: ['flutter'],
   };
 
   private readonly buildToolIndicators: BuildToolIndicators = {
@@ -71,6 +78,9 @@ export class ProjectDetector {
     php: ['.php'],
     cpp: ['.cpp', '.cxx', '.cc'],
     c: ['.c'],
+    dart: ['.dart'],
+    swift: ['.swift'],
+    kotlin: ['.kt', '.kts'],
   };
 
   // Analyzers and detectors
@@ -141,6 +151,7 @@ export class ProjectDetector {
       hasCI: false,
       filesFound: [],
       hasScripts: false,
+      packageManager: undefined,
       scripts: [],
     };
 

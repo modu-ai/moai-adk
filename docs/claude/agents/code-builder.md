@@ -2,7 +2,7 @@
 
 ## 개요
 
-code-builder는 MoAI-ADK의 3단계 워크플로우 중 **2단계(/moai:2-build)**를 담당하는 핵심 에이전트입니다. SPEC 기반 Test-Driven Development (TDD) 방법론을 엄격히 따르며, RED-GREEN-REFACTOR 사이클을 자동화하여 고품질 코드를 생성합니다.
+code-builder는 MoAI-ADK의 3단계 워크플로우 중 **2단계(/alfred:2-build)**를 담당하는 핵심 에이전트입니다. SPEC 기반 Test-Driven Development (TDD) 방법론을 엄격히 따르며, RED-GREEN-REFACTOR 사이클을 자동화하여 고품질 코드를 생성합니다.
 
 ### 역할과 책임
 
@@ -16,13 +16,13 @@ code-builder는 **점진적 구현** 전략을 사용합니다. 전체 기능을
 
 ```mermaid
 graph LR
-    A[/moai:1-spec] -->|SPEC 생성| B[/moai:2-build]
-    B -->|코드 구현| C[/moai:3-sync]
+    A[/alfred:1-spec] -->|SPEC 생성| B[/alfred:2-build]
+    B -->|코드 구현| C[/alfred:3-sync]
     C -->|문서 동기화| D[완료]
 
 ```
 
-**code-builder 활성화 시점**: 사용자가 `/moai:2-build` 명령어를 실행하거나 SPEC 기반 구현이 필요한 시점
+**code-builder 활성화 시점**: 사용자가 `/alfred:2-build` 명령어를 실행하거나 SPEC 기반 구현이 필요한 시점
 
 ### 다른 에이전트와의 협력
 
@@ -114,10 +114,10 @@ SPEC의 설계 결정이 프로젝트 구조와 일치하는지 확인합니다.
 flowchart TD
     A[SPEC 로딩] --> B[EARS 요구사항 추출]
     B --> C["요구사항 → 테스트 매핑"]
-    C --> D{아키텍처<br/>검증}
+    C --> D{아키텍처 - 검증}
 
     D -->|Pass| E[구현 계획 생성]
-    D -->|Fail| F[사용자에게<br/>불일치 보고]
+    D -->|Fail| F[사용자에게 - 불일치 보고]
 
     F --> G[수정 대기]
     G --> A
@@ -190,14 +190,14 @@ sequenceDiagram
     CB->>CB: 다음 요구사항 선택
     CB->>FS: 테스트 파일 생성
 
-    Note over CB,FS: @TEST:AUTH-001<br/>@CODE:AUTH-001 연결
+    Note over CB,FS: @TEST:AUTH-001 - @CODE:AUTH-001 연결
 
-    CB->>FS: 테스트 코드 작성<br/>(구현 없이 테스트만)
+    CB->>FS: 테스트 코드 작성 - (구현 없이 테스트만)
 
     CB->>TestRunner: 테스트 실행
     TestRunner-->>CB: 실패 (예상된 결과)
 
-    CB->>User: RED 단계 완료<br/>테스트가 실패했습니다
+    CB->>User: RED 단계 완료 - 테스트가 실패했습니다
 
     User->>CB: GREEN 단계로 진행 승인
 ```
@@ -263,14 +263,14 @@ sequenceDiagram
 
     CB->>FS: 구현 파일 생성
 
-    Note over CB,FS: @CODE:AUTH-001<br/>@CODE:AUTH-001:API
+    Note over CB,FS: @CODE:AUTH-001 - @CODE:AUTH-001:API
 
-    CB->>FS: 최소한의 코드 작성<br/>(테스트 통과만 목표)
+    CB->>FS: 최소한의 코드 작성 - (테스트 통과만 목표)
 
     CB->>TestRunner: 테스트 실행
     TestRunner-->>CB: 성공
 
-    CB->>User: GREEN 단계 완료<br/>모든 테스트 통과
+    CB->>User: GREEN 단계 완료 - 모든 테스트 통과
 
     User->>CB: REFACTOR 단계로 진행 승인
 ```
@@ -369,12 +369,12 @@ sequenceDiagram
 
     TrustChecker-->>CB: 검증 결과 + 개선 권장사항
 
-    CB->>CB: 코드 리팩토링<br/>중복 제거/함수 분리/네이밍 개선
+    CB->>CB: 코드 리팩토링 - 중복 제거/함수 분리/네이밍 개선
 
     CB->>TestRunner: 테스트 재실행
     TestRunner-->>CB: 여전히 성공
 
-    CB->>User: REFACTOR 완료<br/>품질 개선 완료
+    CB->>User: REFACTOR 완료 - 품질 개선 완료
 ```
 
 **리팩토링 체크리스트**:
@@ -727,7 +727,7 @@ sequenceDiagram
 
 ```bash
 # SPEC 지정 후 구현
-/moai:2-build SPEC-AUTH-001
+/alfred:2-build SPEC-AUTH-001
 
 # 실행 과정:
 # 1. SPEC 문서 로딩 (.moai/specs/SPEC-AUTH-001/)
@@ -781,10 +781,10 @@ Phase 5: 통합 테스트
 
 ```bash
 # 특정 Phase만 구현
-/moai:2-build SPEC-AUTH-001 --phase 1
+/alfred:2-build SPEC-AUTH-001 --phase 1
 
 # Phase 1 완료 후 Phase 2 진행
-/moai:2-build SPEC-AUTH-001 --phase 2 --continue
+/alfred:2-build SPEC-AUTH-001 --phase 2 --continue
 ```
 
 ### 고급 사용
@@ -793,7 +793,7 @@ Phase 5: 통합 테스트
 
 ```bash
 # 기존 코드를 TDD로 리팩토링
-/moai:2-build --refactor src/auth/legacy_auth.py
+/alfred:2-build --refactor src/auth/legacy_auth.py
 
 # 실행 과정:
 # 1. 기존 코드 분석
@@ -806,7 +806,7 @@ Phase 5: 통합 테스트
 
 ```bash
 # 커버리지가 낮은 파일 개선
-/moai:2-build --improve-coverage src/auth/service.py
+/alfred:2-build --improve-coverage src/auth/service.py
 
 # 실행 과정:
 # 1. 현재 커버리지 측정 (예: 65%)
@@ -819,7 +819,7 @@ Phase 5: 통합 테스트
 
 ```bash
 # 단계별로 승인받으며 진행
-/moai:2-build SPEC-AUTH-001 --interactive
+/alfred:2-build SPEC-AUTH-001 --interactive
 
 # 각 단계마다 다음 질문에 답변:
 # - RED: "이 테스트가 요구사항을 충분히 검증합니까? (y/n/수정)"
@@ -849,7 +849,7 @@ Phase 5: 통합 테스트
 cat .moai/specs/SPEC-AUTH-001/spec.md
 
 # 2. 구현 시작
-/moai:2-build SPEC-AUTH-001 --interactive
+/alfred:2-build SPEC-AUTH-001 --interactive
 
 # 대화형 진행:
 > Phase 1/5: 데이터 모델
@@ -880,7 +880,7 @@ cat .moai/specs/SPEC-AUTH-001/spec.md
 
 ```bash
 # 기존 인증 코드가 테스트 없이 작성됨
-/moai:2-build --refactor src/auth/old_auth.py --interactive
+/alfred:2-build --refactor src/auth/old_auth.py --interactive
 
 # 실행 과정:
 > 📊 기존 코드 분석 중...
@@ -925,7 +925,7 @@ cat .moai/specs/SPEC-AUTH-001/spec.md
 
 ```bash
 # 버그 리포트: 로그인 3회 실패 후에도 계정이 잠기지 않음
-/moai:2-build --fix-bug "로그인 3회 실패 시 계정 잠금 미동작"
+/alfred:2-build --fix-bug "로그인 3회 실패 시 계정 잠금 미동작"
 
 # 실행 과정:
 > 🐛 버그 재현 테스트 작성 중...
@@ -978,7 +978,7 @@ def test_should_lock_account_after_three_failed_attempts():
 flowchart TD
     A[SPEC 로딩] --> B[요구사항 분석]
     B --> C[구현 계획 수립]
-    C --> D{사용자<br/>승인?}
+    C --> D{사용자 - 승인?}
 
     D -->|거부| E[계획 수정]
     E --> C
@@ -987,16 +987,16 @@ flowchart TD
 
     F --> G[RED: 테스트 작성]
     G --> H[테스트 실행]
-    H --> I{테스트<br/>실패?}
+    H --> I{테스트 - 실패?}
 
-    I -->|통과| J["RED 실패<br/>테스트가 너무 쉬움"]
+    I -->|통과| J["RED 실패 - 테스트가 너무 쉬움"]
     J --> G
 
     I -->|실패| K["RED 성공"]
     K --> L[GREEN: 구현 작성]
 
     L --> M[테스트 실행]
-    M --> N{테스트<br/>통과?}
+    M --> N{테스트 - 통과?}
 
     N -->|실패| O[디버깅]
     O --> L
@@ -1005,19 +1005,19 @@ flowchart TD
     P --> Q[REFACTOR: 품질 개선]
 
     Q --> R[trust-checker 검증]
-    R --> S{품질<br/>통과?}
+    R --> S{품질 - 통과?}
 
     S -->|실패| T[코드 개선]
     T --> Q
 
     S -->|통과| U[테스트 재실행]
-    U --> V{여전히<br/>통과?}
+    U --> V{여전히 - 통과?}
 
-    V -->|실패| W["REFACTOR 실패<br/>회귀 발생"]
+    V -->|실패| W["REFACTOR 실패 - 회귀 발생"]
     W --> Q
 
     V -->|통과| X["REFACTOR 성공"]
-    X --> Y{다음<br/>Phase?}
+    X --> Y{다음 - Phase?}
 
     Y -->|있음| F
     Y -->|없음| Z[TAG 검증]
@@ -1085,8 +1085,8 @@ flowchart TD
 
 🚀 다음 단계:
   1. 코드 리뷰 요청: git push origin feature/spec-auth-001
-  2. 문서 동기화: /moai:3-sync
-  3. 다음 SPEC 구현: /moai:1-spec
+  2. 문서 동기화: /alfred:3-sync
+  3. 다음 SPEC 구현: /alfred:1-spec
 ```
 
 #### 실패 시
@@ -1109,10 +1109,10 @@ flowchart TD
      pip install bcrypt
 
   2. 또는 Phase 2 재확인:
-     /moai:2-build SPEC-AUTH-001 --phase 2 --verify
+     /alfred:2-build SPEC-AUTH-001 --phase 2 --verify
 
   3. 의존성 문제 해결 후 재시도:
-     /moai:2-build SPEC-AUTH-001 --phase 3 --continue
+     /alfred:2-build SPEC-AUTH-001 --phase 3 --continue
 
 🔄 롤백 옵션:
   모든 변경사항 되돌리기:
@@ -1316,7 +1316,7 @@ open htmlcov/index.html
 pytest --cov=src --cov-report=term-missing
 
 # code-builder로 커버리지 향상
-/moai:2-build --improve-coverage src/auth/service.py --target-coverage 90
+/alfred:2-build --improve-coverage src/auth/service.py --target-coverage 90
 ```
 
 #### 3. 리팩토링 후 테스트 실패
@@ -1378,7 +1378,7 @@ assert service.get_user("id") == expected_user
 ```bash
 # 상세 로깅 활성화
 export MOAI_DEBUG=1
-/moai:2-build SPEC-AUTH-001
+/alfred:2-build SPEC-AUTH-001
 
 # 로그 확인
 cat .moai/logs/code-builder.log
@@ -1452,8 +1452,8 @@ code-builder는 MoAI-ADK의 "테스트 없이는 구현 없음" 원칙을 구현
 
 ### 다음 단계
 TDD 구현 완료 후:
-1. `/moai:3-sync` 실행 → doc-syncer가 문서 동기화
+1. `/alfred:3-sync` 실행 → doc-syncer가 문서 동기화
 2. 코드 리뷰 및 PR 생성 → git-manager 활용
-3. 반복: 다음 기능을 위한 `/moai:1-spec` 실행
+3. 반복: 다음 기능을 위한 `/alfred:1-spec` 실행
 
 **참고**: 모든 구현은 SPEC 기반으로 진행되며, 테스트 커버리지 85% 이상을 목표로 합니다.

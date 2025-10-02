@@ -745,13 +745,13 @@ describe('AuthService', () => {
 ### 3단계 워크플로우 추적
 
 ```
-/moai:1-spec  → @SPEC, @SPEC, @CODE 생성
+/alfred:1-spec  → @SPEC, @SPEC, @CODE 생성
              → SPEC 문서에 TAG BLOCK
 
-/moai:2-build → @TEST, @CODE 서브카테고리 (API, UI, DATA 등) 적용
+/alfred:2-build → @TEST, @CODE 서브카테고리 (API, UI, DATA 등) 적용
              → 코드에 TAG BLOCK 삽입
 
-/moai:3-sync  → 코드 직접 스캔 (rg '@TAG' -n)
+/alfred:3-sync  → 코드 직접 스캔 (rg '@TAG' -n)
              → TAG 체인 검증
              → sync-report.md 생성
 ```

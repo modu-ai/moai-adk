@@ -24,8 +24,8 @@ trust-checker는 MoAI-ADK의 **온디맨드 품질 보증 전문가**로서 TRUS
 ```mermaid
 graph TB
     subgraph "개발 워크플로우"
-        A[/moai:1-spec] --> B[/moai:2-build]
-        B --> C[/moai:3-sync]
+        A[/alfred:1-spec] --> B[/alfred:2-build]
+        B --> C[/alfred:3-sync]
     end
 
     subgraph "온디맨드 품질 검증"

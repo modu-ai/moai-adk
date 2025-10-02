@@ -62,11 +62,11 @@ export class FallbackBuilder {
         null,
         2
       ),
-      'agents/moai/spec-builder.md':
+      'agents/alfred/spec-builder.md':
         '# SPEC Builder Agent\n\nBuilds SPEC documents using EARS methodology.',
-      'commands/moai/1-spec.md':
+      'commands/alfred/1-spec.md':
         '# SPEC Command\n\nCreates new SPEC documents.',
-      'hooks/moai/steering_guard.py':
+      'hooks/alfred/steering_guard.py':
         '# Steering Guard Hook\n\n# Validates development guidelines',
     };
 
@@ -138,10 +138,10 @@ export class FallbackBuilder {
 
 ## Development Workflow
 \`\`\`bash
-/moai:8-project  # Initialize project documents
-/moai:1-spec     # Create specifications
-/moai:2-build    # TDD implementation
-/moai:3-sync     # Document synchronization
+/alfred:8-project  # Initialize project documents
+/alfred:1-spec     # Create specifications
+/alfred:2-build    # TDD implementation
+/alfred:3-sync     # Document synchronization
 \`\`\`
 
 ## Project Configuration
@@ -238,11 +238,11 @@ export class FallbackBuilder {
           'moai/debug-helper': { enabled: true },
         },
         commands: {
-          'moai:8-project': { enabled: true },
-          'moai:1-spec': { enabled: true },
-          'moai:2-build': { enabled: true },
-          'moai:3-sync': { enabled: true },
-          'moai:4-debug': { enabled: true },
+          'alfred:8-project': { enabled: true },
+          'alfred:1-spec': { enabled: true },
+          'alfred:2-build': { enabled: true },
+          'alfred:3-sync': { enabled: true },
+          'alfred:4-debug': { enabled: true },
         },
       },
       'ERROR:CLAUDE-SETTINGS-001'

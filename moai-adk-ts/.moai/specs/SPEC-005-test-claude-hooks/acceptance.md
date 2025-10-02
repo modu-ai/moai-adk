@@ -187,7 +187,7 @@ And 보호된 경로임을 알려야 함
 
 #### Scenario 4.1: MoAI 프로젝트 감지
 ```gherkin
-Given .moai 디렉토리와 .claude/commands/moai가 존재함
+Given .moai 디렉토리와 .claude/commands/alfred가 존재함
 When isMoAIProject()를 호출함
 Then true를 반환해야 함
 ```
@@ -197,7 +197,7 @@ Then true를 반환해야 함
 test('should detect MoAI project', async () => {
   // Mock file system
   vi.mocked(fs.existsSync).mockImplementation((path) => {
-    return path.includes('.moai') || path.includes('.claude/commands/moai');
+    return path.includes('.moai') || path.includes('.claude/commands/alfred');
   });
 
   const notifier = new SessionNotifier('/mock/project');

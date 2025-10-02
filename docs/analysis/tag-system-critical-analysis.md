@@ -41,8 +41,8 @@ TAG 흐름:
 
 ```mermaid
 graph LR
-    RED["RED<br/>실패하는 테스트"] --> GREEN["GREEN<br/>최소 구현"]
-    GREEN --> REFACTOR["REFACTOR<br/>품질 개선"]
+    RED["RED - 실패하는 테스트"] --> GREEN["GREEN - 최소 구현"]
+    GREEN --> REFACTOR["REFACTOR - 품질 개선"]
     REFACTOR --> RED
 
 ```
@@ -361,7 +361,7 @@ TAG 개수: 8개
 **개선 제안:**
 ```bash
 # SPEC에서 자동 생성
-/moai:1-spec "사용자 인증"
+/alfred:1-spec "사용자 인증"
 → SPEC 문서 생성
 → TAG BLOCK 템플릿 자동 생성
 → 개발자는 복사만 하면 됨

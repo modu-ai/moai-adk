@@ -34,8 +34,8 @@ export class UpdateVerifier {
     const keyFiles = [
       '.moai/memory/development-guide.md',
       'CLAUDE.md',
-      '.claude/commands/moai',
-      '.claude/agents/moai',
+      '.claude/commands/alfred',
+      '.claude/agents/alfred',
     ];
 
     for (const file of keyFiles) {

@@ -29,10 +29,10 @@ After (현재 버전):
 
 ```mermaid
 graph LR
-    SPEC["@SPEC<br/>명세"] --> RED["@TEST<br/>RED Phase"]
-    RED --> GREEN["@CODE<br/>GREEN Phase"]
-    GREEN --> REFACTOR["@CODE<br/>REFACTOR Phase"]
-    REFACTOR --> DOC["@DOC<br/>문서화"]
+    SPEC["@SPEC - 명세"] --> RED["@TEST - RED Phase"]
+    RED --> GREEN["@CODE - GREEN Phase"]
+    GREEN --> REFACTOR["@CODE - REFACTOR Phase"]
+    REFACTOR --> DOC["@DOC - 문서화"]
     DOC --> SPEC
 
 ```
@@ -269,7 +269,7 @@ export interface AuthResult {
 - 사용 가이드: 예시 코드
 - CHANGELOG: 변경 이력
 
-**자동 생성**: `/moai:3-sync` 실행 시
+**자동 생성**: `/alfred:3-sync` 실행 시
 
 **예시**:
 ```markdown
@@ -332,10 +332,10 @@ if (result.success) {
 ```
 
 **흐름**:
-1. **@SPEC:ID**: 요구사항 작성 (`/moai:1-spec`)
+1. **@SPEC:ID**: 요구사항 작성 (`/alfred:1-spec`)
 2. **@TEST:ID**: 테스트 작성 (TDD RED)
 3. **@CODE:ID**: 구현 작성 (TDD GREEN → REFACTOR)
-4. **@DOC:ID**: 문서 생성 (`/moai:3-sync`)
+4. **@DOC:ID**: 문서 생성 (`/alfred:3-sync`)
 
 ### TAG BLOCK 템플릿
 
@@ -417,7 +417,7 @@ rg "@CODE:AUTH-001" src/
 rg "@DOC:AUTH-001" docs/ README.md
 ```
 
-### 무결성 검증 (`/moai:3-sync`)
+### 무결성 검증 (`/alfred:3-sync`)
 
 1. **SPEC 존재 확인**: 모든 @TEST는 @SPEC 참조
 2. **TEST 존재 확인**: 모든 @CODE는 @TEST 참조
@@ -494,7 +494,7 @@ export class AuthService {
 ### 1. SPEC 작성
 
 ```bash
-/moai:1-spec "사용자 JWT 인증"
+/alfred:1-spec "사용자 JWT 인증"
 
 # 생성: .moai/specs/SPEC-AUTH-001.md
 # 포함: @SPEC:AUTH-001
@@ -564,7 +564,7 @@ export class AuthService {
 ### 5. 문서 생성
 
 ```bash
-/moai:3-sync
+/alfred:3-sync
 
 # 자동 생성:
 # - README.md에 @DOC:AUTH-001 섹션 추가

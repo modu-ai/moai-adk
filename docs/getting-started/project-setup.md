@@ -30,54 +30,19 @@ moai init my-project --force
 
 ### Personal vs Team 모드
 
-#### Personal 모드 (기본값)
-
-**특징**:
-- 로컬 개발 중심
-- `.moai/specs/` 디렉토리에 SPEC 저장
-- Git 브랜치 관리 (사용자 확인 필수)
-- 단독 개발자 또는 소규모 팀
-
-**장점**:
-- 빠른 시작
-- 외부 의존성 없음
-- 오프라인 작업 가능
-- 간단한 설정
-
-**적합한 경우**:
-- 개인 프로젝트
-- 프로토타입 개발
-- 학습 목적
-- GitHub 없이 작업
-
-#### Team 모드
-
-**특징**:
-- GitHub Issues/PR 통합
-- 팀 협업 기능
-- 자동 이슈 생성
-- PR 리뷰 프로세스
-
-**장점**:
-- 전체 팀 가시성
-- 코드 리뷰 자동화
-- 진행 상황 추적
-- 문서화 자동화
-
-**요구사항**:
-- GitHub 저장소
-- GitHub CLI (`gh`) 설치
-- 저장소 쓰기 권한
-
-**적합한 경우**:
-- 팀 프로젝트
-- 오픈소스 프로젝트
-- 엔터프라이즈 개발
-- CI/CD 파이프라인 필요
+| 구분 | Personal 모드 (기본값) | Team 모드 |
+|------|------------------------|-----------|
+| **개발 방식** | 로컬 개발 중심 | GitHub Issues/PR 통합 |
+| **SPEC 저장** | `.moai/specs/` 디렉토리 | GitHub Issues |
+| **협업 기능** | Git 브랜치 관리 (사용자 확인 필수) | 팀 협업, PR 리뷰 프로세스 |
+| **대상 규모** | 단독 개발자 또는 소규모 팀 | 팀 프로젝트, 엔터프라이즈 |
+| **주요 장점** | • 빠른 시작<br>• 외부 의존성 없음<br>• 오프라인 작업 가능<br>• 간단한 설정 | • 전체 팀 가시성<br>• 코드 리뷰 자동화<br>• 진행 상황 추적<br>• 문서화 자동화 |
+| **요구사항** | • Node.js 18+<br>• Git 2.28+ | • GitHub 저장소<br>• GitHub CLI (`gh`) 설치<br>• 저장소 쓰기 권한 |
+| **적합한 경우** | • 개인 프로젝트<br>• 프로토타입 개발<br>• 학습 목적<br>• GitHub 없이 작업 | • 팀 프로젝트<br>• 오픈소스 프로젝트<br>• 엔터프라이즈 개발<br>• CI/CD 파이프라인 필요 |
 
 ### 초기화 프로세스
 
-`moai init` 실행 시 다음 5단계가 자동으로 진행됩니다:
+`moai init` 실행 시 다음 프로세스가 자동으로 진행됩니다:
 
 #### Phase 1: System Verification
 
@@ -175,7 +140,7 @@ my-project/
 │   └── logs/                 # Winston 로그
 │
 ├── .claude/                   # Claude Code 통합
-│   ├── agents/moai/          # 8개 전문 에이전트
+│   ├── agents/alfred/          # 8개 전문 에이전트
 │   │   ├── spec-builder.md
 │   │   ├── code-builder.md
 │   │   ├── doc-syncer.md
@@ -185,14 +150,14 @@ my-project/
 │   │   ├── git-manager.md
 │   │   └── trust-checker.md
 │   │
-│   ├── commands/moai/        # 5개 워크플로우 명령어
+│   ├── commands/alfred/        # 5개 워크플로우 명령어
 │   │   ├── 8-project.md
 │   │   ├── 1-spec.md
 │   │   ├── 2-build.md
 │   │   ├── 3-sync.md
 │   │   └── help.md
 │   │
-│   ├── hooks/moai/           # 8개 이벤트 훅 (JavaScript)
+│   ├── hooks/alfred/           # 8개 이벤트 훅 (JavaScript)
 │   │   ├── file-monitor.js
 │   │   ├── language-detector.js
 │   │   ├── policy-block.js
@@ -270,9 +235,9 @@ SPEC-First TDD 개발 가이드 (TRUST 5원칙 포함):
 ## SPEC-First TDD Workflow
 
 ### Core Development Loop (3-Stage)
-1. `/moai:1-spec` → 명세 없이는 코드 없음
-2. `/moai:2-build` → 테스트 없이는 구현 없음
-3. `/moai:3-sync` → 추적성 없이는 완성 없음
+1. `/alfred:1-spec` → 명세 없이는 코드 없음
+2. `/alfred:2-build` → 테스트 없이는 구현 없음
+3. `/alfred:3-sync` → 추적성 없이는 완성 없음
 
 ### TRUST 5 Principles
 - **T**est First: SPEC 기반 TDD
@@ -312,15 +277,15 @@ Claude Code 설정:
   "project": "my-project",
   "agents": {
     "enabled": true,
-    "path": "agents/moai"
+    "path": "agents/alfred"
   },
   "commands": {
     "enabled": true,
-    "path": "commands/moai"
+    "path": "commands/alfred"
   },
   "hooks": {
     "enabled": true,
-    "path": "hooks/moai"
+    "path": "hooks/alfred"
   },
   "outputStyle": "default"
 }
@@ -341,9 +306,9 @@ Claude Code 설정:
 - **GitFlow 지원**: Git 작업 자동화
 
 ## 3단계 개발 워크플로우
-/moai:1-spec     # 명세 작성
-/moai:2-build    # TDD 구현
-/moai:3-sync     # 문서 동기화
+/alfred:1-spec     # 명세 작성
+/alfred:2-build    # TDD 구현
+/alfred:3-sync     # 문서 동기화
 ```
 
 ## 초기 설정 체크리스트
@@ -381,7 +346,7 @@ git status
 claude
 
 # 다음 명령어 테스트:
-/moai:help
+/alfred:help
 @agent-debug-helper "시스템 진단"
 ```
 
@@ -394,7 +359,7 @@ cat .moai/project/structure.md
 cat .moai/project/tech.md
 
 # 첫 SPEC 작성
-/moai:1-spec "프로젝트 초기 설정"
+/alfred:1-spec "프로젝트 초기 설정"
 ```
 
 ## 설정 커스터마이징

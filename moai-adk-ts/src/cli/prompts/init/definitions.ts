@@ -6,14 +6,14 @@
  */
 
 import chalk from 'chalk';
-import type { QuestionCollection } from 'inquirer';
+import type { Answers } from 'inquirer';
 import { t } from '@/utils/i18n';
 import { validateGitHubUrl, validateProjectName } from './validators';
 
 /**
  * Locale selection prompt
  */
-export function getLocalePrompt(): QuestionCollection {
+export function getLocalePrompt(): Answers {
   return [
     {
       type: 'list',
@@ -40,7 +40,7 @@ export function getLocalePrompt(): QuestionCollection {
  * Project name prompt
  * @param defaultName Default project name
  */
-export function getProjectNamePrompt(defaultName: string): QuestionCollection {
+export function getProjectNamePrompt(defaultName: string): Answers {
   return [
     {
       type: 'input',
@@ -56,7 +56,7 @@ export function getProjectNamePrompt(defaultName: string): QuestionCollection {
 /**
  * Mode selection prompt (Personal/Team)
  */
-export function getModePrompt(): QuestionCollection {
+export function getModePrompt(): Answers {
   return [
     {
       type: 'list',
@@ -86,7 +86,7 @@ export function getModePrompt(): QuestionCollection {
 /**
  * Git configuration prompt
  */
-export function getGitConfigPrompt(): QuestionCollection {
+export function getGitConfigPrompt(): Answers {
   return [
     {
       type: 'confirm',
@@ -100,7 +100,7 @@ export function getGitConfigPrompt(): QuestionCollection {
 /**
  * GitHub enabled prompt
  */
-export function getGitHubEnabledPrompt(): QuestionCollection {
+export function getGitHubEnabledPrompt(): Answers {
   return [
     {
       type: 'confirm',
@@ -114,7 +114,7 @@ export function getGitHubEnabledPrompt(): QuestionCollection {
 /**
  * GitHub URL prompt
  */
-export function getGitHubUrlPrompt(): QuestionCollection {
+export function getGitHubUrlPrompt(): Answers {
   return [
     {
       type: 'input',
@@ -130,7 +130,7 @@ export function getGitHubUrlPrompt(): QuestionCollection {
 /**
  * SPEC workflow prompt
  */
-export function getSpecWorkflowPrompt(): QuestionCollection {
+export function getSpecWorkflowPrompt(): Answers {
   return [
     {
       type: 'list',
@@ -160,7 +160,7 @@ export function getSpecWorkflowPrompt(): QuestionCollection {
 /**
  * Auto-push configuration prompt
  */
-export function getAutoPushPrompt(): QuestionCollection {
+export function getAutoPushPrompt(): Answers {
   return [
     {
       type: 'confirm',

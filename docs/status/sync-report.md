@@ -34,8 +34,6 @@
 - TAG 예시 업데이트 (SPEC v2.1.0 버전 관리 시연)
 - 테스트/코드 TAG에서 버전 정보 제거
 
-**주요 개선**:
-```markdown
 ---
 id: AUTH-001
 version: 2.1.0
@@ -63,8 +61,6 @@ updated: 2025-10-01
 - TAG 참조 형식 통일 (버전 정보 제거)
 - SPEC 버전 관리 원칙 명시
 
-**주요 개선**:
-```markdown
 # @SPEC:AUTH-001: JWT 기반 사용자 인증 시스템
 
 ## HISTORY
@@ -81,8 +77,6 @@ updated: 2025-10-01
 - HISTORY 태그 종류 설명 (INITIAL, ADDED, CHANGED, FIXED, REMOVED, BREAKING, DEPRECATED)
 - 버전 관리 원칙 강조
 
-**주요 개선**:
-```markdown
 ### SPEC 문서 HISTORY 섹션 (필수)
 
 **모든 SPEC 문서는 HISTORY 섹션을 포함해야 합니다.** TAG의 진화 과정을 추적하여 요구사항 변경 이력을 명확히 기록합니다.
@@ -100,8 +94,6 @@ updated: 2025-10-01
 - HISTORY 작성 예시 제공 (v2.1.0 → v2.0.0 → v1.0.0)
 - 버전 관리 원칙 명확화
 
-**주요 개선**:
-```markdown
 ## SPEC 문서 HISTORY 섹션 (필수)
 
 ### HISTORY 태그
@@ -128,8 +120,6 @@ updated: 2025-10-01
 - TAG 참조 예시에서 버전 정보 제거
 - TDD 워크플로우 예시 업데이트
 
-**주요 개선**:
-```diff
 - → @TEST:AUTH-001 | SPEC: SPEC-AUTH-001.md v1.0.0
 + → @TEST:AUTH-001 | SPEC: SPEC-AUTH-001.md
 
@@ -176,51 +166,9 @@ rg '@(SPEC|TEST|CODE|DOC):[A-Z]+-[0-9]{3}' -n
 
 ---
 
-## 핵심 개선 사항
-
-### 1. SPEC 버전 관리 명확화
-
-**이전 방식** (혼란):
-- TAG 참조에 버전 포함: `SPEC: SPEC-AUTH-001.md v1.0.0`
-- 코드와 SPEC 문서 버전 불일치 가능성
-- 버전 관리 위치 불명확
-
-**새로운 방식** (명확):
-- **SPEC 문서 내부에서만 버전 관리**: YAML front matter + HISTORY 섹션
-- **TAG 참조는 버전 없이**: `SPEC: SPEC-AUTH-001.md`
-- **TAG ID는 영구 불변**: AUTH-001은 절대 변경되지 않음
-- **TAG 내용은 자유롭게 수정**: HISTORY에 변경 이력 기록 필수
-
-### 2. HISTORY 섹션 필수화
-
-**장점**:
-- 요구사항 변경 이력 투명성 확보
-- 작성자/리뷰어 책임 소재 명확화
-- 변경 이유 컨텍스트 보존
-- Semantic Versioning 자동 적용
-
-**HISTORY 태그 체계**:
-- `INITIAL`: 최초 작성 (v1.0.0)
-- `ADDED`: 새 기능 추가 → Minor 버전 증가
-- `CHANGED`: 기존 내용 수정 → Patch 버전 증가
-- `FIXED`: 버그 수정 → Patch 버전 증가
-- `REMOVED`: 기능 제거 → Major 버전 증가
-- `BREAKING`: 하위 호환성 깨짐 → Major 버전 증가
-- `DEPRECATED`: 향후 제거 예정 표시
-
-### 3. TAG 추적성 강화
-
-**CODE-FIRST 원칙 재확인**:
-- TAG의 진실은 코드 자체에만 존재
-- `rg '@(SPEC|TEST|CODE|DOC):' -n`으로 실시간 검증
-- 별도의 TAG 인덱스 파일 미사용
-- 코드가 유일한 진실의 원천 (Single Source of Truth)
-
----
-
 ## TAG 체계 요약
 
-### 현재 TAG 체계 (4-Core)
+### 현재 TAG 체계
 
 ```
 @SPEC:ID → @TEST:ID → @CODE:ID → @DOC:ID
@@ -318,7 +266,7 @@ authors: ["@dev-team"]
 ## 메타데이터
 
 - **동기화 버전**: SPEC HISTORY 필수화 v1.0
-- **TAG 체계**: @SPEC → @TEST → @CODE → @DOC (4-Core)
+- **TAG 체계**: @SPEC → @TEST → @CODE → @DOC
 - **총 TAG 참조**: 1,729개 (249개 파일, 이전 전체 동기화 기준)
 - **문서 커버리지**: 95% 이상
 - **품질 점수**: 92/100 (v0.0.2)
@@ -326,7 +274,7 @@ authors: ["@dev-team"]
 
 **생성**: 2025-10-01 by doc-syncer 📖
 **Git 상태**: develop 브랜치
-**다음 동기화**: 코드 변경 시점 또는 `/moai:3-sync` 실행 시
+**다음 동기화**: 코드 변경 시점 또는 `/alfred:3-sync` 실행 시
 
 ---
 

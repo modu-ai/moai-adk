@@ -1,35 +1,14 @@
 import { defineConfig } from 'vitepress'
 import { withMermaid } from 'vitepress-plugin-mermaid'
 
-export default withMermaid(
-  defineConfig({
-    title: 'MoAI-ADK',
-    description: 'TypeScript 기반 SPEC 우선 TDD 개발 도구',
-    lang: 'ko-KR',
-    ignoreDeadLinks: true,
-
-    // Mermaid configuration - 라이트/다크 테마 자동 전환
-    mermaid: {
-      // 기본 테마 설정 (CSS로 다크/라이트 전환)
-    },
-
-    // Mermaid 플러그인 옵션
-    mermaidPlugin: {
-      class: "mermaid my-class", // Mermaid 다이어그램에 적용할 CSS 클래스
-    },
-
-    // Markdown configuration
-    markdown: {
-      config: (md) => {
-        // Mermaid plugin will handle the rendering
-      }
-    },
+export default withMermaid(defineConfig({
+  title: 'MoAI-ADK',
+  description: 'TypeScript 기반 SPEC 우선 TDD 개발 도구',
+  lang: 'ko-KR',
+  ignoreDeadLinks: true,
 
   themeConfig: {
-    logo: {
-      light: '/moai-tui_screen-light.png',
-      dark: '/moai-tui_screen-dark.png'
-    },
+    siteTitle: 'MoAI-ADK',
 
     nav: [
       { text: '홈', link: '/' },
@@ -236,8 +215,39 @@ export default withMermaid(
     }
   },
 
+  markdown: {
+    theme: {
+      light: 'github-light',
+      dark: 'github-dark'
+    },
+    lineNumbers: false,
+    codeTransformers: [
+      {
+        // 주석에 볼드 스타일 적용
+        name: 'bold-comments',
+        preprocess(code, options) {
+          return code
+        },
+        line(node, line) {
+          // 주석 토큰에 bold class 추가
+          if (node.children) {
+            node.children.forEach((child: any) => {
+              if (child.type === 'element' &&
+                  child.properties?.style &&
+                  (child.properties.style.includes('6A737D') || // github-light comment color
+                   child.properties.style.includes('8B949E'))) { // github-dark comment color
+                child.properties.style += '; font-weight: 700'
+              }
+            })
+          }
+        }
+      }
+    ]
+  },
+
   head: [
-    ['link', { rel: 'icon', type: 'image/png', href: '/moai-tui_screen-dark.png' }],
+    ['link', { rel: 'icon', type: 'image/png', href: '/moai-tui_screen-dark.png', media: '(prefers-color-scheme: light)' }],
+    ['link', { rel: 'icon', type: 'image/png', href: '/moai-tui_screen-light.png', media: '(prefers-color-scheme: dark)' }],
     ['meta', { name: 'theme-color', content: '#5f67ee' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:locale', content: 'ko' }],
@@ -245,6 +255,32 @@ export default withMermaid(
     ['meta', { property: 'og:site_name', content: 'MoAI-ADK' }],
     ['meta', { property: 'og:url', content: 'https://adk.mo.ai.kr/' }],
     ['meta', { property: 'og:description', content: 'TypeScript 기반 범용 언어 지원 SPEC-First TDD 개발 도구' }]
-  ]
-  })
-)
+  ],
+
+  // Mermaid 설정 - grayscale 색상으로 초기화 (CSS 필터로 최종 제어)
+  mermaid: {
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      // 중간 회색 톤으로 초기화 (CSS 필터가 grayscale로 변환)
+      primaryColor: '#e5e5e5',
+      primaryTextColor: '#2a2a2a',
+      primaryBorderColor: '#666666',
+      lineColor: '#888888',
+      secondaryColor: '#d0d0d0',
+      tertiaryColor: '#c0c0c0',
+      background: 'transparent',
+      mainBkg: '#e8e8e8',
+      secondBkg: '#f5f5f5',
+      mainContrastColor: '#2a2a2a',
+      edgeLabelBackground: 'transparent',
+      clusterBkg: '#f9f9f9',
+      clusterBorder: '#999999',
+      fontFamily: 'Pretendard, sans-serif',
+      fontSize: '14px'
+    }
+  },
+  mermaidPlugin: {
+    class: "mermaid my-class", // Mermaid 요소에 추가될 CSS 클래스
+  }
+}))

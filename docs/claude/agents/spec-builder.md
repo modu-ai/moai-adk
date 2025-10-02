@@ -7,7 +7,7 @@ description: EARS 요구사항 작성과 SPEC 생성을 자동화하는 전문 �
 
 ## 개요
 
-spec-builder는 MoAI-ADK의 3단계 워크플로우 중 **1단계(/moai:1-spec)**를 담당하는 핵심 에이전트입니다. EARS 방법론 기반의 체계적인 요구사항 작성과 프로젝트 문서 분석을 통해 고품질 SPEC을 생성합니다.
+spec-builder는 MoAI-ADK의 3단계 워크플로우 중 **1단계(/alfred:1-spec)**를 담당하는 핵심 에이전트입니다. EARS 방법론 기반의 체계적인 요구사항 작성과 프로젝트 문서 분석을 통해 고품질 SPEC을 생성합니다.
 
 ### 역할과 책임
 
@@ -22,13 +22,13 @@ spec-builder는 MoAI-ADK의 3단계 워크플로우 중 **1단계(/moai:1-spec)*
 
 ```mermaid
 graph LR
-    A["/moai:1-spec"] -->|"SPEC 생성"| B["/moai:2-build"]
-    B -->|"코드 구현"| C["/moai:3-sync"]
+    A["/alfred:1-spec"] -->|"SPEC 생성"| B["/alfred:2-build"]
+    B -->|"코드 구현"| C["/alfred:3-sync"]
     C -->|"문서 동기화"| D["완료"]
 
 ```
 
-**spec-builder 활성화 시점**: 사용자가 `/moai:1-spec` 명령어를 실행하거나 새로운 기능 명세가 필요한 시점
+**spec-builder 활성화 시점**: 사용자가 `/alfred:1-spec` 명령어를 실행하거나 새로운 기능 명세가 필요한 시점
 
 ### 다른 에이전트와의 협력
 
@@ -159,7 +159,7 @@ SPEC 문서에 TAG BLOCK을 포함하여 작성합니다:
 
 ```bash
 # 프로젝트 문서 기반 자동 제안
-/moai:1-spec
+/alfred:1-spec
 
 # 실행 결과:
 # 1. product.md/structure.md/tech.md 분석
@@ -196,13 +196,13 @@ SPEC 문서에 TAG BLOCK을 포함하여 작성합니다:
 
 ```bash
 # 특정 기능 직접 지정
-/moai:1-spec "사용자 이메일/비밀번호 인증"
+/alfred:1-spec "사용자 이메일/비밀번호 인증"
 
 # 복수 기능 동시 지정
-/moai:1-spec "로그인" "회원가입" "비밀번호 재설정"
+/alfred:1-spec "로그인" "회원가입" "비밀번호 재설정"
 
 # 상세 컨텍스트 제공
-/moai:1-spec "OAuth2 소셜 로그인 (Google, GitHub, Apple 지원)"
+/alfred:1-spec "OAuth2 소셜 로그인 (Google, GitHub, Apple 지원)"
 ```
 
 ### 고급 사용
@@ -211,7 +211,7 @@ SPEC 문서에 TAG BLOCK을 포함하여 작성합니다:
 
 ```bash
 # SPEC 내용 업데이트
-/moai:1-spec --update SPEC-AUTH-001 "2FA 요구사항 추가"
+/alfred:1-spec --update SPEC-AUTH-001 "2FA 요구사항 추가"
 
 # 실행 결과:
 # 1. 기존 SPEC-AUTH-001 로딩
@@ -224,10 +224,10 @@ SPEC 문서에 TAG BLOCK을 포함하여 작성합니다:
 
 ```bash
 # API 전용 템플릿 사용
-/moai:1-spec --template api "REST API 엔드포인트"
+/alfred:1-spec --template api "REST API 엔드포인트"
 
 # CLI 도구 템플릿 사용
-/moai:1-spec --template cli "명령어 처리 시스템"
+/alfred:1-spec --template cli "명령어 처리 시스템"
 ```
 
 ### 옵션 및 플래그
@@ -245,10 +245,10 @@ SPEC 문서에 TAG BLOCK을 포함하여 작성합니다:
 
 ```bash
 # 1단계: 프로젝트 문서 초기화 (선택사항)
-/moai:8-project
+/alfred:8-project
 
 # 2단계: 첫 SPEC 생성
-/moai:1-spec
+/alfred:1-spec
 
 # 대화형 프로세스:
 > 우선순위 기능 분석 중...
@@ -270,7 +270,7 @@ SPEC 문서에 TAG BLOCK을 포함하여 작성합니다:
 
 ```bash
 # Team 모드로 SPEC 생성
-/moai:1-spec --mode=team "결제 시스템 통합"
+/alfred:1-spec --mode=team "결제 시스템 통합"
 
 # 실행 결과:
 > SPEC-PAYMENT-002 생성 중...
@@ -287,7 +287,7 @@ SPEC 문서에 TAG BLOCK을 포함하여 작성합니다:
 
 ```bash
 # 상세 컨텍스트와 함께 SPEC 생성
-/moai:1-spec "실시간 알림 시스템
+/alfred:1-spec "실시간 알림 시스템
 - WebSocket 기반
 - 모바일 푸시 알림 통합 (FCM, APNs)
 - 이메일 fallback
@@ -324,7 +324,7 @@ sequenceDiagram
     participant TA as "tag-agent"
     participant GM as "git-manager"
 
-    U->>SB: "/moai:1-spec 실행"
+    U->>SB: "/alfred:1-spec 실행"
     SB->>PM: "프로젝트 문서 로딩"
     PM-->>SB: "product.md, structure.md, tech.md"
 
@@ -344,7 +344,7 @@ sequenceDiagram
         SB->>GM: "브랜치 생성 요청"
         GM->>GM: "feature/spec-XXX 브랜치 생성"
         GM-->>SB: "브랜치 생성 완료"
-        SB->>U: "다음 단계 안내 (/moai:2-build)"
+        SB->>U: "다음 단계 안내 (/alfred:2-build)"
     else 사용자 거부
         SB->>U: "SPEC만 생성 완료"
     end
@@ -499,7 +499,7 @@ mkdir -p .moai/templates/specs/api
 # acceptance_template.md
 
 # 3. 사용
-/moai:1-spec --template api "REST API 설계"
+/alfred:1-spec --template api "REST API 설계"
 ```
 
 #### 언어별 SPEC 템플릿
@@ -526,7 +526,7 @@ spec-builder는 프로젝트 주 언어에 따라 템플릿을 자동 선택합�
 **해결**:
 ```bash
 # 프로젝트 문서 초기화
-/moai:8-project
+/alfred:8-project
 
 # 또는 수동 생성
 mkdir -p .moai/project
@@ -542,10 +542,10 @@ touch .moai/project/{product,structure,tech}.md
 **해결**:
 ```bash
 # ❌ 나쁜 예
-/moai:1-spec "로그인"
+/alfred:1-spec "로그인"
 
 # ✅ 좋은 예
-/moai:1-spec "사용자 이메일/비밀번호 인증
+/alfred:1-spec "사용자 이메일/비밀번호 인증
 - JWT 토큰 발급
 - 3회 실패 시 계정 잠금
 - 토큰 만료시간 15분"
@@ -569,7 +569,7 @@ touch .moai/project/{product,structure,tech}.md
 # 다음 사용 가능 ID: AUTH-003
 
 # 재사용 또는 새 ID 선택
-/moai:1-spec "소셜 로그인" --tag-id AUTH-003
+/alfred:1-spec "소셜 로그인" --tag-id AUTH-003
 ```
 
 #### 4. MultiEdit 파일 생성 실패
@@ -587,7 +587,7 @@ ls -la .moai/specs/
 chmod -R 755 .moai/specs/
 
 # 재시도
-/moai:1-spec --retry SPEC-XXX-001
+/alfred:1-spec --retry SPEC-XXX-001
 ```
 
 #### 5. 브랜치 생성 권한 오류
@@ -602,7 +602,7 @@ chmod -R 755 .moai/specs/
 git config --list | grep user
 
 # 브랜치 생성 건너뛰기
-/moai:1-spec --no-branch "기능명"
+/alfred:1-spec --no-branch "기능명"
 
 # 나중에 수동 생성
 @agent-git-manager "feature 브랜치 생성 spec-XXX"
@@ -615,7 +615,7 @@ git config --list | grep user
 ```bash
 # 상세 로깅 활성화
 export MOAI_DEBUG=1
-/moai:1-spec "기능명"
+/alfred:1-spec "기능명"
 
 # 로그 확인
 cat .moai/logs/spec-builder.log
@@ -687,8 +687,8 @@ spec-builder는 MoAI-ADK의 "명세 없이는 코드 없음" 원칙을 구현하
 
 ### 다음 단계
 SPEC 작성 완료 후:
-1. `/moai:2-build` 실행 → code-builder가 TDD 구현
-2. `/moai:3-sync` 실행 → doc-syncer가 문서 동기화
-3. 반복: 다음 기능을 위한 `/moai:1-spec` 실행
+1. `/alfred:2-build` 실행 → code-builder가 TDD 구현
+2. `/alfred:3-sync` 실행 → doc-syncer가 문서 동기화
+3. 반복: 다음 기능을 위한 `/alfred:1-spec` 실행
 
 **참고**: 모든 Git 작업(브랜치 생성, PR 관리)은 git-manager가 전담하며, 사용자 확인이 필수입니다.

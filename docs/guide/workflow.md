@@ -1,14 +1,14 @@
 # MoAI-ADK 0→3 Workflow
 
 이 문서는 MoAI CLI와 Claude 명령(
-`/moai:*`
+`/alfred:*`
 )으로 프로젝트를 세팅하고 SPEC→BUILD→SYNC 흐름을 빠르게 반복하기 위한 실전 지침입니다. 과장된 수치나 추상적인 설명은 제외하고, 실제로 따라 할 수 있는 명령과 산출물만 정리했습니다.
 
 ---
 
-## 0. 프로젝트 기반 다지기
+## 0단계 - '/alfred:8-project' (프로젝트 초기화)
 
-### 0-1. CLI로 기본 환경 준비
+### CLI로 기본 환경 준비
 
 ```bash
 # 프로젝트 루트에서 실행
@@ -24,12 +24,12 @@ moai update --check      # 템플릿 업데이트 필요 여부만 확인
 - `moai status` → `📊 MoAI-ADK Project Status` 아래에서 `.moai`, `.claude`, `CLAUDE.md`, `.git` 존재 여부와 템플릿 버전을 출력합니다.
 - `moai update` → 최신 버전이 있으면 `⚡ 최신 버전: v…`와 같이 알려 주고, `--no-backup`이 없으면 `.moai-backup/<timestamp>/`에 안전 복사본을 남깁니다.
 
-### 0-2. 프로젝트 문서 정비 (`/moai:8-project`)
+### 프로젝트 문서 작성
 
-Claude 편집기에서 `/moai:8-project`를 실행하면 `project-manager.md`가 product/structure/tech.md 초안을 작성합니다.
+Claude 편집기에서 `/alfred:8-project`를 실행하면 `project-manager.md`가 product/structure/tech.md 초안을 작성합니다.
 
 ```
-/moai:8-project MyService
+/alfred:8-project MyService
 ```
 
 - 현재 디렉터리와 언어(예: `package.json` → TypeScript)를 분석합니다.
@@ -38,12 +38,12 @@ Claude 편집기에서 `/moai:8-project`를 실행하면 `project-manager.md`가
 
 ---
 
-## 1. SPEC 단계 (`/moai:1-spec`)
+## 1단계 - '/alfred:1-spec' (SPEC 단계)
 
 `spec-builder.md`는 요구사항을 정리하여 `docs/specs/` 또는 `.moai/specs/` 등에 저장합니다.
 
 ```
-/moai:1-spec "사용자 인증"
+/alfred:1-spec "사용자 인증"
 ```
 
 - 질문에 답하면 EARS 형식으로 `Ubiquitous`, `Event-driven`, `State-driven`, `Constraints` 섹션을 채웁니다.
@@ -75,12 +75,12 @@ Claude 편집기에서 `/moai:8-project`를 실행하면 `project-manager.md`가
 
 ---
 
-## 2. BUILD 단계 (`/moai:2-build`)
+## 2단계 - '/alfred:2-build' (BUILD 단계)
 
 `code-builder.md`는 SPEC을 받아 테스트와 구현 골격을 생성합니다.
 
 ```
-/moai:2-build SPEC-AUTH-001
+/alfred:2-build SPEC-AUTH-001
 ```
 
 실행 흐름:
@@ -126,12 +126,12 @@ npm test        # npm 사용 시
 
 ---
 
-## 3. SYNC 단계 (`/moai:3-sync`)
+## 3단계 - '/alfred:3-sync' (문서 동기화 SYNC 단계)
 
 `doc-syncer.md`는 코드와 문서를 스캔해 TAG 체인과 문서 상태를 확인합니다.
 
 ```
-/moai:3-sync
+/alfred:3-sync
 ```
 
 실행 결과 예시:
@@ -166,14 +166,14 @@ npm test        # npm 사용 시
 | `spec-builder.md` | 질문을 통해 SPEC 초안 작성 |
 | `code-builder.md` | 테스트/코드 골격 작성, TDD 진행 가이드 |
 | `doc-syncer.md` | SYNC 단계 지원, TAG 검증 안내 |
-| `project-manager.md` | `/moai:8-project` 수행, project/*.md 유지 |
+| `project-manager.md` | `/alfred:8-project` 수행, project/*.md 유지 |
 | `git-manager.md` | Git 작업 체크리스트 안내 |
 | `debug-helper.md` | 실패 로그 분석 도우미 |
 | `tag-agent.md` | @TAG 패턴 진단, 누락된 링크 제안 |
 | `trust-checker.md` | 품질 점검 체크리스트 |
 | `cc-manager.md` | Claude 설정 관련 리마인더 |
 
-모든 에이전트 정의 파일은 `templates/.claude/agents/moai/`에 있으며, 필요 시 내용을 읽고 조직 내부 규칙에 맞게 커스터마이즈할 수 있습니다.
+모든 에이전트 정의 파일은 `templates/.claude/agents/alfred/`에 있으며, 필요 시 내용을 읽고 조직 내부 규칙에 맞게 커스터마이즈할 수 있습니다.
 
 ---
 
@@ -186,7 +186,7 @@ npm test        # npm 사용 시
 | `session-notice.cjs` | 세션 시작 시 | 프로젝트 상태 요약 출력 |
 | `tag-enforcer.cjs` | 저장 전 | TAG 블록 누락/형식 검사 |
 
-Hooks는 `.claude/hooks/moai/`에 있으며 Node 환경에서 동작합니다. 필요 시 `node path/to/hook`으로 단독 실행해 동작을 테스트할 수 있습니다.
+Hooks는 `.claude/hooks/alfred/`에 있으며 Node 환경에서 동작합니다. 필요 시 `node path/to/hook`으로 단독 실행해 동작을 테스트할 수 있습니다.
 
 ---
 
@@ -208,15 +208,15 @@ MoAI-ADK는 코드 자체를 단일 진실 소스로 사용합니다. 파일마�
 - `@CODE` → 구현 파일
 - `@DOC` → 사용자 문서
 
-`/moai:3-sync`는 이 네 가지가 모두 연결돼 있는지 확인합니다. 하나라도 빠지면 sync 보고서에서 `❌`로 표시되므로 즉시 보완하세요.
+`/alfred:3-sync`는 이 네 가지가 모두 연결돼 있는지 확인합니다. 하나라도 빠지면 sync 보고서에서 `❌`로 표시되므로 즉시 보완하세요.
 
 ---
 
 ## 반복 루틴 체크리스트
 
 1. `moai status`로 상태 점검.
-2. `/moai:8-project`로 project/*.md 최신화.
-3. `/moai:1-spec` → `/moai:2-build` → `/moai:3-sync` 순서로 기능 개발.
+2. `/alfred:8-project`로 project/*.md 최신화.
+3. `/alfred:1-spec` → `/alfred:2-build` → `/alfred:3-sync` 순서로 기능 개발.
 4. `npm test`/`bun test` 등 로컬 테스트 통과 여부 확인.
 5. `git status` 확인 후 커밋과 PR 생성.
 

@@ -1,1528 +1,651 @@
 /**
  * Custom VitePress Theme - MoAI-ADK
- * Based on shadcn/ui Design System
- * Monochrome Design with Pretendard Font
+ * zinc 무채색 + 타이포그래피 중심 디자인
  */
 
 /* ============================================
-   Pretendard Font Family - Korean Web Font
-   Using official Pretendard repository with woff2
+   Font Imports - DungGeunMo 둥근모 폰트
    ============================================ */
 
 @font-face {
-    font-family: 'Pretendard';
-    src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/woff2/Pretendard-Thin.woff2') format('woff2');
-    font-weight: 100;
-    font-display: swap;
-}
-
-@font-face {
-    font-family: 'Pretendard';
-    src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/woff2/Pretendard-ExtraLight.woff2') format('woff2');
-    font-weight: 200;
-    font-display: swap;
-}
-
-@font-face {
-    font-family: 'Pretendard';
-    src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/woff2/Pretendard-Light.woff2') format('woff2');
-    font-weight: 300;
-    font-display: swap;
-}
-
-@font-face {
-    font-family: 'Pretendard';
-    src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/woff2/Pretendard-Regular.woff2') format('woff2');
-    font-weight: 400;
-    font-display: swap;
-}
-
-@font-face {
-    font-family: 'Pretendard';
-    src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/woff2/Pretendard-Medium.woff2') format('woff2');
-    font-weight: 500;
-    font-display: swap;
-}
-
-@font-face {
-    font-family: 'Pretendard';
-    src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/woff2/Pretendard-SemiBold.woff2') format('woff2');
-    font-weight: 600;
-    font-display: swap;
-}
-
-@font-face {
-    font-family: 'Pretendard';
-    src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/woff2/Pretendard-Bold.woff2') format('woff2');
-    font-weight: 700;
-    font-display: swap;
-}
-
-@font-face {
-    font-family: 'Pretendard';
-    src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/woff2/Pretendard-ExtraBold.woff2') format('woff2');
-    font-weight: 800;
-    font-display: swap;
-}
-
-@font-face {
-    font-family: 'Pretendard';
-    src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/woff2/Pretendard-Black.woff2') format('woff2');
-    font-weight: 900;
-    font-display: swap;
+  font-family: 'DungGeunMo';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/DungGeunMo.woff') format('woff');
+  font-weight: normal;
+  font-display: swap;
 }
 
 /* ============================================
-   CloudSansCode Font Family - Code Font
-   ============================================ */
-
-@font-face {
-    font-family: 'CloudSansCode';
-    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408@1.0/goorm-sans-code.woff2') format('woff2');
-    font-weight: normal;
-    font-display: swap;
-}
-
-/* ============================================
-   shadcn/ui Design Tokens - Light Mode
-   Based on Monochrome Palette
+   VitePress Theme Variables Override - zinc 무채색
    ============================================ */
 
 :root {
-  /* Base Font */
-  --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  --font-mono: 'CloudSansCode', 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, Monaco, monospace;
-
-  /* shadcn/ui Color System - HSL Values */
-  /* Light Mode - Monochrome Palette */
-
-  /* Background Colors */
-  --background: 0 0% 98%;           /* #FAF9F6 - Off-white warmest */
-  --foreground: 0 0% 5%;            /* #0D0D0D - Almost black */
-
-  /* Card & Popover */
-  --card: 0 0% 96%;                 /* #F5F5F5 - Light gray */
-  --card-foreground: 0 0% 5%;       /* #0D0D0D */
-
-  --popover: 0 0% 98%;              /* #FAF9F6 */
-  --popover-foreground: 0 0% 5%;    /* #0D0D0D */
-
-  /* Primary - Main brand color (dark in light mode) */
-  --primary: 0 0% 13%;              /* #222222 - Dark gray */
-  --primary-foreground: 0 0% 98%;   /* #FAF9F6 */
-
-  /* Secondary - Subtle emphasis */
-  --secondary: 0 0% 93%;            /* #EDEDED - Medium light gray */
-  --secondary-foreground: 0 0% 5%;  /* #0D0D0D */
-
-  /* Muted - Subtle backgrounds */
-  --muted: 0 0% 94%;                /* #F1F2F5 - Cool light gray */
-  --muted-foreground: 0 0% 17%;     /* #2C2C2C - Medium dark gray */
-
-  /* Accent - Interactive elements */
-  --accent: 0 0% 93%;               /* #EDEDED */
-  --accent-foreground: 0 0% 5%;     /* #0D0D0D */
-
-  /* Destructive - Error states */
-  --destructive: 0 0% 20%;          /* Dark for light mode */
-  --destructive-foreground: 0 0% 98%;
-
-  /* Border & Input */
-  --border: 0 0% 93%;               /* #EDEDED */
-  --input: 0 0% 93%;                /* #EDEDED */
-  --ring: 0 0% 13%;                 /* #222222 - Focus ring */
-
-  /* Radius */
-  --radius: 0.5rem;
-
-  /* VitePress Integration */
-  --vp-c-bg: hsl(var(--background));
-  --vp-c-bg-soft: hsl(var(--card));
-  --vp-c-bg-mute: hsl(var(--muted));
-  --vp-c-bg-alt: hsl(var(--secondary));
-
-  --vp-c-text-1: hsl(var(--foreground));
-  --vp-c-text-2: hsl(var(--muted-foreground));
-  --vp-c-text-3: hsl(0 0% 30%);
-
-  --vp-c-border: hsl(var(--border));
-  --vp-c-divider: hsl(var(--border));
-  --vp-c-gutter: hsl(var(--muted));
-
-  --vp-c-brand-1: hsl(var(--primary));
-  --vp-c-brand-2: hsl(0 0% 10%);
-  --vp-c-brand-3: hsl(0 0% 5%);
-  --vp-c-brand-soft: hsl(var(--secondary));
-
-  --vp-code-bg: hsl(var(--muted));
-  --vp-code-block-bg: hsl(var(--card));
-}
-
-/* ============================================
-   shadcn/ui Design Tokens - Dark Mode
-   ============================================ */
-
-.dark {
-  /* Dark Mode - Inverted Monochrome Palette */
+  /* Brand Colors - 무채색 zinc */
+  --vp-c-brand-1: #18181b;
+  --vp-c-brand-2: #27272a;
+  --vp-c-brand-3: #3f3f46;
+  --vp-c-brand-soft: #f4f4f5;
 
   /* Background Colors */
-  --background: 0 0% 5%;            /* #0D0D0D - Darkest */
-  --foreground: 0 0% 98%;           /* #FAF9F6 - Off-white */
+  --vp-c-bg: #ffffff;
+  --vp-c-bg-soft: #fafafa;
+  --vp-c-bg-mute: #f4f4f5;
+  --vp-c-bg-alt: #f4f4f5;
 
-  /* Card & Popover */
-  --card: 0 0% 10%;                 /* #1A1A1A - Very dark gray */
-  --card-foreground: 0 0% 98%;      /* #FAF9F6 */
+  /* Text Colors */
+  --vp-c-text-1: #18181b;
+  --vp-c-text-2: #3f3f46;
+  --vp-c-text-3: #71717a;
 
-  --popover: 0 0% 5%;               /* #0D0D0D */
-  --popover-foreground: 0 0% 98%;   /* #FAF9F6 */
+  /* Border Colors */
+  --vp-c-border: #e4e4e7;
+  --vp-c-divider: #e4e4e7;
+  --vp-c-gutter: #e4e4e7;
 
-  /* Primary - Main brand color (light in dark mode) */
-  --primary: 0 0% 94%;              /* #F1F2F5 - Cool light gray */
-  --primary-foreground: 0 0% 5%;    /* #0D0D0D */
-
-  /* Secondary - Subtle emphasis */
-  --secondary: 0 0% 13%;            /* #222222 - Dark gray */
-  --secondary-foreground: 0 0% 98%; /* #FAF9F6 */
-
-  /* Muted - Subtle backgrounds */
-  --muted: 0 0% 17%;                /* #2C2C2C - Medium dark gray */
-  --muted-foreground: 0 0% 94%;     /* #F1F2F5 */
-
-  /* Accent - Interactive elements */
-  --accent: 0 0% 17%;               /* #2C2C2C */
-  --accent-foreground: 0 0% 98%;    /* #FAF9F6 */
-
-  /* Destructive - Error states */
-  --destructive: 0 0% 80%;          /* Light for dark mode */
-  --destructive-foreground: 0 0% 5%;
-
-  /* Border & Input */
-  --border: 0 0% 17%;               /* #2C2C2C */
-  --input: 0 0% 17%;                /* #2C2C2C */
-  --ring: 0 0% 94%;                 /* #F1F2F5 - Focus ring */
-
-  /* VitePress Integration */
-  --vp-c-bg: hsl(var(--background));
-  --vp-c-bg-soft: hsl(var(--card));
-  --vp-c-bg-mute: hsl(var(--muted));
-  --vp-c-bg-alt: hsl(var(--secondary));
-
-  --vp-c-text-1: hsl(var(--foreground));
-  --vp-c-text-2: hsl(var(--muted-foreground));
-  --vp-c-text-3: hsl(0 0% 70%);
-
-  --vp-c-border: hsl(var(--border));
-  --vp-c-divider: hsl(var(--border));
-  --vp-c-gutter: hsl(var(--muted));
-
-  --vp-c-brand-1: hsl(var(--primary));
-  --vp-c-brand-2: hsl(0 0% 90%);
-  --vp-c-brand-3: hsl(0 0% 98%);
-  --vp-c-brand-soft: hsl(var(--secondary));
-
-  --vp-code-bg: hsl(var(--muted));
-  --vp-code-block-bg: hsl(var(--card));
+  /* Letter Spacing */
+  --letter-spacing-tight: -0.05em;
+  --letter-spacing-normal: -0.03em;
+  --letter-spacing-relaxed: -0.01em;
 }
 
-/* ============================================
-   Base Styles - shadcn/ui inspired
-   ============================================ */
+:root.dark {
+  /* Brand Colors - Dark Mode */
+  --vp-c-brand-1: #fafafa;
+  --vp-c-brand-2: #e4e4e7;
+  --vp-c-brand-3: #d4d4d8;
+  --vp-c-brand-soft: #27272a;
+
+  /* Background Colors - Dark Mode */
+  --vp-c-bg: #09090b;
+  --vp-c-bg-soft: #18181b;
+  --vp-c-bg-mute: #27272a;
+  --vp-c-bg-alt: #18181b;
+
+  /* Text Colors - Dark Mode */
+  --vp-c-text-1: #fafafa;
+  --vp-c-text-2: #d4d4d8;
+  --vp-c-text-3: #a1a1aa;
+
+  /* Border Colors - Dark Mode */
+  --vp-c-border: #3f3f46;
+  --vp-c-divider: #3f3f46;
+  --vp-c-gutter: #27272a;
+}
 
 * {
-  border-color: hsl(var(--border));
-}
-
-body {
-  font-family: var(--font-sans);
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-  line-height: 1.5;
+  letter-spacing: var(--letter-spacing-normal);
 }
 
 /* ============================================
-   shadcn/ui Utility Classes
+   Navigation & Header - 무채색
    ============================================ */
 
-/* Background Colors */
-.bg-background { background-color: hsl(var(--background)); }
-.bg-foreground { background-color: hsl(var(--foreground)); }
-.bg-card { background-color: hsl(var(--card)); }
-.bg-popover { background-color: hsl(var(--popover)); }
-.bg-primary { background-color: hsl(var(--primary)); }
-.bg-secondary { background-color: hsl(var(--secondary)); }
-.bg-muted { background-color: hsl(var(--muted)); }
-.bg-accent { background-color: hsl(var(--accent)); }
-.bg-destructive { background-color: hsl(var(--destructive)); }
-
-/* Text Colors */
-.text-foreground { color: hsl(var(--foreground)); }
-.text-background { color: hsl(var(--background)); }
-.text-card-foreground { color: hsl(var(--card-foreground)); }
-.text-popover-foreground { color: hsl(var(--popover-foreground)); }
-.text-primary { color: hsl(var(--primary)); }
-.text-primary-foreground { color: hsl(var(--primary-foreground)); }
-.text-secondary { color: hsl(var(--secondary)); }
-.text-secondary-foreground { color: hsl(var(--secondary-foreground)); }
-.text-muted { color: hsl(var(--muted)); }
-.text-muted-foreground { color: hsl(var(--muted-foreground)); }
-.text-accent { color: hsl(var(--accent)); }
-.text-accent-foreground { color: hsl(var(--accent-foreground)); }
-.text-destructive { color: hsl(var(--destructive)); }
-.text-destructive-foreground { color: hsl(var(--destructive-foreground)); }
-
-/* Border Colors */
-.border-border { border-color: hsl(var(--border)); }
-.border-input { border-color: hsl(var(--input)); }
-.border-primary { border-color: hsl(var(--primary)); }
-.border-secondary { border-color: hsl(var(--secondary)); }
-
-/* Ring Colors */
-.ring-ring { --tw-ring-color: hsl(var(--ring)); }
-.ring-offset-background { --tw-ring-offset-color: hsl(var(--background)); }
-
-/* Border Radius */
-.rounded-radius { border-radius: var(--radius); }
-.rounded-radius-sm { border-radius: calc(var(--radius) - 2px); }
-.rounded-radius-md { border-radius: calc(var(--radius) + 2px); }
-.rounded-radius-lg { border-radius: calc(var(--radius) + 4px); }
-
-/* ============================================
-   shadcn/ui Component Base Styles
-   ============================================ */
-
-/* Card Component */
-.card {
-  background-color: hsl(var(--card));
-  color: hsl(var(--card-foreground));
-  border: 1px solid hsl(var(--border));
-  border-radius: calc(var(--radius) + 2px);
+/* Site Title (Logo) */
+.VPNavBarTitle .title {
+  font-weight: 900 !important;
+  letter-spacing: -0.05em !important;
 }
 
-.card-header {
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
+/* Navigation Links */
+.VPNavBar .VPLink,
+.VPNavBarMenu .text,
+.VPNavBarMenuLink {
+  font-weight: 800 !important; /* 더 두껍게 */
 }
 
-.card-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  line-height: 1;
-  letter-spacing: -0.025em;
-}
-
-.card-description {
-  font-size: 0.875rem;
-  color: hsl(var(--muted-foreground));
-}
-
-.card-content {
-  padding: 1.5rem;
-  padding-top: 0;
-}
-
-.card-footer {
-  padding: 1.5rem;
-  padding-top: 0;
-  display: flex;
-  align-items: center;
-}
-
-/* Alert Component */
-.alert {
-  position: relative;
-  width: 100%;
-  border-radius: var(--radius);
-  border: 1px solid hsl(var(--border));
-  padding: 1rem;
-  background-color: hsl(var(--background));
-}
-
-.alert-title {
-  font-weight: 500;
-  line-height: 1;
-  margin-bottom: 0.25rem;
-}
-
-.alert-description {
-  font-size: 0.875rem;
-  color: hsl(var(--muted-foreground));
-}
-
-/* Badge Component */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  border-radius: calc(var(--radius) - 2px);
-  padding: 0.25rem 0.625rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  transition: all 0.15s ease;
-  background-color: hsl(var(--secondary));
-  color: hsl(var(--secondary-foreground));
-  border: 1px solid hsl(var(--border));
-}
-
-.badge-primary {
-  background-color: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  border-color: transparent;
-}
-
-.badge-destructive {
-  background-color: hsl(var(--destructive));
-  color: hsl(var(--destructive-foreground));
-  border-color: transparent;
-}
-
-.badge-outline {
-  background-color: transparent;
-  border-color: hsl(var(--border));
-  color: hsl(var(--foreground));
-}
-
-/* ============================================
-   Animations & Transitions
-   ============================================ */
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes fadeOut {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
-}
-
-@keyframes slideDown {
-  from {
-    transform: translateY(-10px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(10px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.2s ease-in-out;
-}
-
-.animate-fade-out {
-  animation: fadeOut 0.2s ease-in-out;
-}
-
-.animate-slide-down {
-  animation: slideDown 0.3s ease-out;
-}
-
-.animate-slide-up {
-  animation: slideUp 0.3s ease-out;
-}
-
-.transition-all {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.transition-colors {
-  transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-              background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-              border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* ============================================
-   Typography - shadcn/ui style
-   ============================================ */
-
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-sans);
-  font-weight: 900;
-  letter-spacing: -0.025em;
-  line-height: 1.0;
-}
-
-/* VitePress 문서 영역의 제목도 동일하게 적용 */
-.vp-doc h1,
-.vp-doc h2,
-.vp-doc h3,
-.vp-doc h4,
-.vp-doc h5,
-.vp-doc h6 {
-  font-weight: 900;
-  line-height: 1.0;
-}
-
-/* Adjust paragraph and content spacing */
-p {
-  line-height: 1.5;
-  margin: 0.75em 0;
-}
-
-.vp-doc p {
-  line-height: 1.5;
-}
-
-.vp-doc ul, .vp-doc ol {
-  line-height: 1.5;
-  margin: 0.75em 0;
-}
-
-.vp-doc li {
-  margin: 0.25em 0;
-}
-
-code, kbd, samp, pre {
-  font-family: var(--font-mono);
-  font-size: 0.9em;
-}
-
-/* ============================================
-   Hero Section - Tailwind-inspired 2-column Layout
-   ============================================ */
-
-.VPHero {
-  padding: 80px 24px;
-  position: relative;
-  overflow: hidden;
-}
-
-.VPHero .container {
-  max-width: 1280px;
-  margin: 0 auto;
-  position: relative;
-  z-index: 1;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4rem;
-  align-items: center;
-}
-
-/* 좌측 텍스트 영역 */
-.VPHero .main {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  padding-right: 2rem;
-}
-
+/* Hero 타이틀: 가장 두껍게 (900) + 검정색 무채색 */
 .VPHero .name {
-  font-size: clamp(3rem, 5vw, 4.5rem);
-  font-weight: 900;
-  letter-spacing: -0.05em;
-  line-height: 1.1;
-  color: hsl(var(--foreground));
-  margin: 0;
+  font-weight: 900 !important; /* 가장 두껍게 */
+  letter-spacing: -0.05em !important;
+  font-size: 5rem !important; /* 큰 타이포그래피 효과 */
+  color: #09090b !important; /* zinc-950 - 가장 진한 검정 */
 }
 
+:root.dark .VPHero .name {
+  color: #fafafa !important; /* zinc-50 */
+}
+
+/* Hero 서브타이틀: 무채색 */
 .VPHero .text {
-  font-size: clamp(1.5rem, 3vw, 2rem);
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1.2;
-  color: hsl(var(--foreground));
-  margin: 0;
+  font-weight: 300 !important;
+  letter-spacing: -0.03em !important;
+  font-size: 1.75rem !important; /* 크기 명시 */
+  color: #52525b !important; /* zinc-600 */
 }
 
+:root.dark .VPHero .text {
+  color: #a1a1aa !important; /* zinc-400 */
+}
+
+/* Hero Tagline: 무채색 */
 .VPHero .tagline {
-  font-size: clamp(1.125rem, 2vw, 1.25rem);
-  color: hsl(var(--muted-foreground));
-  font-weight: 400;
-  line-height: 1.6;
-  margin: 0.5rem 0 0 0;
+  font-weight: 400 !important;
+  letter-spacing: -0.02em !important;
+  color: #71717a !important; /* zinc-500 */
 }
 
-.VPHero .actions {
-  display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
-  flex-wrap: wrap;
+:root.dark .VPHero .tagline {
+  color: #a1a1aa !important; /* zinc-400 */
 }
 
-/* 우측 이미지 영역 - 중앙 정렬 */
-.VPHero .image-container {
-  display: flex !important;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  padding: 0;
+/* 헤딩: 무채색 계열 */
+h1 {
+  font-weight: 900 !important; /* 두껍게 */
+  font-size: 2.5rem !important;
+  letter-spacing: -0.05em !important;
+  color: #09090b !important; /* zinc-950 */
 }
 
-/* 이미지 크기 - 컨테이너에 맞춤 */
-.VPHero .image-container img {
-  width: 100%;
-  height: auto;
-  max-width: 100%;
-  border-radius: calc(var(--radius) + 8px);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  border: 1px solid hsl(var(--border));
-  transition: none !important;
-  transform: none !important;
-  filter: none !important; /* 이미지 필터 제거 */
+h2 {
+  font-weight: 800 !important;
+  font-size: 2rem !important;
+  letter-spacing: -0.04em !important;
+  color: #18181b !important; /* zinc-900 */
 }
 
-.VPHero .image-container img:hover {
-  transform: none !important;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+h3 {
+  font-weight: 700 !important;
+  font-size: 1.5rem !important;
+  letter-spacing: -0.03em !important;
+  color: #27272a !important; /* zinc-800 */
 }
 
-/* 다크 모드 - 이미지 반전 없음 (이미 다크 테마 이미지) */
-.dark .VPHero .image-container img {
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-  border-color: hsl(var(--border));
-  filter: none !important; /* 반전 방지 */
+h4, h5, h6 {
+  font-weight: 600 !important;
+  font-size: 1.25rem !important;
+  letter-spacing: -0.02em !important;
+  color: #3f3f46 !important; /* zinc-700 */
 }
 
-/* 데스크톱 레이아웃 (1024px+) */
-@media (min-width: 1024px) {
-  .VPHero {
-    padding: 120px 24px;
-  }
+:root.dark h1 { color: #fafafa !important; }
+:root.dark h2 { color: #f4f4f5 !important; }
+:root.dark h3 { color: #e4e4e7 !important; }
+:root.dark h4, :root.dark h5, :root.dark h6 { color: #d4d4d8 !important; }
 
-  .VPHero .container {
-    gap: 6rem;
-  }
+/* 본문: Normal Weight (가독성 우선) */
+p, li, span {
+  font-weight: 400 !important; /* 보통 굵기로 가독성 확보 */
+  letter-spacing: -0.02em !important;
+  color: #3f3f46 !important; /* zinc-700 */
 }
 
-/* 태블릿 레이아웃 (768px ~ 1023px) */
-@media (max-width: 1023px) {
-  .VPHero .container {
-    grid-template-columns: 1fr;
-    gap: 3rem;
-    text-align: center;
-  }
-
-  .VPHero .main {
-    padding-right: 0;
-    align-items: center;
-  }
-
-  .VPHero .actions {
-    justify-content: center;
-  }
-
-  .VPHero .image-container {
-    order: -1;
-    padding: 1rem;
-  }
+:root.dark p, :root.dark li, :root.dark span {
+  color: #d4d4d8 !important; /* zinc-300 */
 }
 
-/* 모바일 레이아웃 (768px 이하) */
-@media (max-width: 767px) {
-  .VPHero {
-    padding: 60px 16px;
-  }
-
-  .VPHero .container {
-    gap: 2rem;
-  }
-
-  .VPHero .name {
-    font-size: 2.5rem;
-  }
-
-  .VPHero .text {
-    font-size: 1.5rem;
-  }
-
-  .VPHero .tagline {
-    font-size: 1rem;
-  }
-
-  .VPHero .image-container {
-    padding: 0.5rem;
-  }
-
-  .VPHero .actions {
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .VPHero .actions .VPButton {
-    width: 100%;
-    justify-content: center;
-  }
-}
-
-/* ============================================
-   Buttons - shadcn/ui style
-   ============================================ */
-
-.VPButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
-  border-radius: var(--radius);
-  font-size: 0.875rem;
-  font-weight: 600;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  padding: 0.625rem 1.25rem;
-  height: 2.5rem;
-  cursor: pointer;
-  border: 1px solid transparent;
-}
-
-.VPButton.brand {
-  background-color: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  border-color: hsl(var(--primary));
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-}
-
-.VPButton.brand:hover {
-  background-color: hsl(var(--primary) / 0.9);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  transform: translateY(-1px);
-}
-
-.VPButton.alt {
-  background-color: hsl(var(--secondary));
-  color: hsl(var(--secondary-foreground));
-  border-color: hsl(var(--border));
-}
-
-.VPButton.alt:hover {
-  background-color: hsl(var(--secondary) / 0.8);
-  border-color: hsl(var(--ring));
-}
-
-/* Dark mode button text enhancement */
-.dark .VPButton.brand,
-.dark .VPHero .VPButton.brand,
-.dark a.VPButton.brand {
-  background-color: hsl(0 0% 98%) !important;
-  color: hsl(0 0% 5%) !important;
-  border-color: hsl(0 0% 98%) !important;
-}
-
-.dark .VPButton.brand:hover,
-.dark .VPHero .VPButton.brand:hover,
-.dark a.VPButton.brand:hover {
-  background-color: hsl(0 0% 90%) !important;
-  color: hsl(0 0% 5%) !important;
-}
-
-.dark .VPButton.alt,
-.dark .VPHero .VPButton.alt,
-.dark a.VPButton.alt {
-  background-color: hsl(0 0% 17%) !important;
-  color: hsl(0 0% 98%) !important;
-  border-color: hsl(0 0% 30%) !important;
-}
-
-.dark .VPButton.alt:hover,
-.dark .VPHero .VPButton.alt:hover,
-.dark a.VPButton.alt:hover {
-  background-color: hsl(0 0% 25%) !important;
-  color: hsl(0 0% 98%) !important;
-  border-color: hsl(0 0% 40%) !important;
-}
-
-/* ============================================
-   Feature Cards - shadcn/ui style
-   ============================================ */
-
-.VPFeature {
-  background-color: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
-  border-radius: calc(var(--radius) + 2px);
-  padding: 1.5rem;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.VPFeature:hover {
-  border-color: hsl(var(--ring));
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
-              0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  transform: translateY(-4px);
-}
-
-/* Icon styling with theme support */
-.VPFeature .icon {
-  font-size: 2rem;
-  margin-bottom: 0.75rem;
-  display: block;
-  color: hsl(var(--foreground));
-}
-
-.VPFeature .icon img,
-.VPFeature .icon svg {
-  width: 48px;
-  height: 48px;
-  color: hsl(var(--foreground));
-  stroke: hsl(var(--foreground));
-}
-
-/* Dark mode icon adjustments - Invert black icons to white */
-/* More specific selectors for VitePress structure */
-.dark .VPFeature .icon img,
-.dark .VPFeatures .icon img,
-.dark .vp-feature .icon img {
-  filter: invert(1) brightness(1.1) contrast(1.05) !important;
-}
-
-.dark .VPFeature .icon svg,
-.dark .VPFeatures .icon svg,
-.dark .vp-feature .icon svg {
-  filter: brightness(1.3) contrast(1.1) !important;
-  color: hsl(var(--foreground)) !important;
-  stroke: hsl(var(--foreground)) !important;
-}
-
-/* Additional coverage for nested structures */
-.dark .VPFeatures img,
-.dark .VPHome .VPFeatures img,
-.dark .VPHome img[src*="icons"],
-.dark [class*="feature"] img,
-.dark [class*="Feature"] img {
-  filter: invert(1) brightness(1.1) contrast(1.05) !important;
-}
-
-/* Catch-all for any SVG icons in dark mode */
-.dark .VPFeatures svg,
-.dark .VPHome svg[stroke],
-.dark [class*="feature"] svg,
-.dark [class*="Feature"] svg {
-  filter: brightness(1.5) contrast(1.2) !important;
-  stroke: hsl(var(--foreground)) !important;
-  color: hsl(var(--foreground)) !important;
-}
-
+/* Feature 카드: 무채색 */
 .VPFeature .title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: hsl(var(--foreground));
-  margin-bottom: 0.5rem;
+  font-weight: 700 !important;
+  font-size: 1.5rem !important;
+  letter-spacing: -0.03em !important;
+  color: #18181b !important; /* zinc-900 */
+}
+
+:root.dark .VPFeature .title {
+  color: #fafafa !important;
 }
 
 .VPFeature .details {
-  font-size: 0.875rem;
-  color: hsl(var(--muted-foreground));
-  line-height: 1.4;
+  font-weight: 400 !important;
+  letter-spacing: -0.01em !important;
+  color: #71717a !important; /* zinc-500 */
 }
 
-/* Dark mode text contrast enhancement */
-.dark .VPFeature .title {
-  color: hsl(0 0% 98%) !important;
-  font-weight: 700;
+:root.dark .VPFeature .details {
+  color: #a1a1aa !important;
 }
 
-.dark .VPFeature .details {
-  color: hsl(0 0% 85%) !important;
+/* Feature 아이콘: 무채색 + 다크모드 대응 */
+.VPFeature .icon {
+  background: transparent !important;
 }
 
-/* ============================================
-   Sidebar - shadcn/ui style
-   ============================================ */
-
-.VPSidebar {
-  background-color: hsl(var(--background));
-  border-right: 1px solid hsl(var(--border));
+/* VPImage (img 태그로 로드된 SVG) - 라이트 모드: 검정 유지 */
+.VPFeature .VPImage {
+  filter: none !important;
 }
 
-.VPSidebarItem {
-  border-radius: var(--radius);
-  padding: 0.5rem 0.75rem;
-  margin: 0.125rem 0;
-  transition: all 0.15s ease;
-}
-
-.VPSidebarItem:hover {
-  background-color: hsl(var(--accent));
-  color: hsl(var(--accent-foreground));
-}
-
-.VPSidebarItem.is-active {
-  background-color: hsl(var(--secondary));
-  color: hsl(var(--foreground));
-  font-weight: 600;
+/* VPImage (img 태그로 로드된 SVG) - 다크 모드: 흰색 반전 */
+:root.dark .VPFeature .VPImage {
+  filter: brightness(0) invert(1) !important;
 }
 
 /* ============================================
-   Code Blocks - shadcn/ui style
+   Buttons & Links - 무채색 테마
    ============================================ */
 
-.vp-code-group {
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius);
-  overflow: hidden;
-  background-color: hsl(var(--card));
+/* Hero 버튼: 무채색 zinc */
+.VPButton.brand {
+  background: #18181b !important; /* zinc-900 */
+  border-color: #18181b !important;
+  color: #fafafa !important; /* zinc-50 */
 }
 
-div[class*='language-'] {
-  background-color: hsl(var(--muted));
-  border-radius: var(--radius);
-  border: 1px solid hsl(var(--border));
-  margin: 1rem 0;
+.VPButton.brand:hover {
+  background: #27272a !important; /* zinc-800 */
+  border-color: #27272a !important;
 }
 
-div[class*='language-']:hover {
-  border-color: hsl(var(--ring) / 0.5);
+:root.dark .VPButton.brand {
+  background: #fafafa !important; /* zinc-50 */
+  border-color: #fafafa !important;
+  color: #18181b !important; /* zinc-900 */
 }
 
-code {
-  background-color: hsl(var(--muted));
-  color: hsl(var(--foreground));
-  padding: 0.2em 0.4em;
-  border-radius: calc(var(--radius) - 2px);
-  font-size: 0.875em;
+:root.dark .VPButton.brand:hover {
+  background: #e4e4e7 !important; /* zinc-200 */
+  border-color: #e4e4e7 !important;
+}
+
+/* Alt 버튼: 무채색 outline */
+.VPButton.alt {
+  background: transparent !important;
+  border-color: #18181b !important; /* zinc-900 */
+  color: #18181b !important;
+}
+
+.VPButton.alt:hover {
+  background: #18181b !important;
+  color: #fafafa !important;
+}
+
+:root.dark .VPButton.alt {
+  border-color: #fafafa !important; /* zinc-50 */
+  color: #fafafa !important;
+}
+
+:root.dark .VPButton.alt:hover {
+  background: #fafafa !important;
+  color: #18181b !important;
+}
+
+/* 링크: 무채색 */
+a {
+  color: #18181b !important; /* zinc-900 */
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: #52525b !important; /* zinc-600 */
+}
+
+:root.dark a {
+  color: #fafafa !important; /* zinc-50 */
+}
+
+:root.dark a:hover {
+  color: #d4d4d8 !important; /* zinc-300 */
+}
+
+/* ============================================
+   Mermaid Diagram Theme - zinc 무채색
+   ============================================ */
+
+/* 모든 Mermaid 다이어그램을 grayscale로 강제 변환 */
+.mermaid {
+  filter: grayscale(100%);
+}
+
+/* Dark 모드에서 가독성 향상 */
+:root.dark .mermaid {
+  filter: grayscale(100%) brightness(1.3) contrast(1.2);
+}
+
+/* Light theme - Mermaid zinc 색상 */
+:root {
+  --mermaid-node-bg: #e4e4e7;       /* zinc-200 */
+  --mermaid-node-border: #52525b;   /* zinc-600 */
+  --mermaid-node-text: #18181b;     /* zinc-900 */
+  --mermaid-edge-color: #71717a;    /* zinc-500 */
+  --mermaid-edge-text: #3f3f46;     /* zinc-700 */
+  --mermaid-cluster-bg: #f4f4f5;    /* zinc-100 */
+  --mermaid-cluster-border: #a1a1aa; /* zinc-400 */
+}
+
+/* Dark theme - Mermaid zinc 색상 */
+:root.dark {
+  --mermaid-node-bg: #27272a;       /* zinc-800 */
+  --mermaid-node-border: #d4d4d8;   /* zinc-300 */
+  --mermaid-node-text: #fafafa;     /* zinc-50 */
+  --mermaid-edge-color: #a1a1aa;    /* zinc-400 */
+  --mermaid-edge-text: #e4e4e7;     /* zinc-200 */
+  --mermaid-cluster-bg: #18181b;    /* zinc-900 */
+  --mermaid-cluster-border: #71717a; /* zinc-500 */
+}
+
+/* Light 모드 - Mermaid 다이어그램 */
+.mermaid svg {
+  /* 노드 배경 - 모든 rect 요소 */
+  rect {
+    fill: var(--mermaid-node-bg) !important;
+    stroke: var(--mermaid-node-border) !important;
+    stroke-width: 2px !important;
+  }
+
+  /* 노드 도형 - circle, ellipse, polygon */
+  circle,
+  ellipse,
+  polygon {
+    fill: var(--mermaid-node-bg) !important;
+    stroke: var(--mermaid-node-border) !important;
+    stroke-width: 2px !important;
+  }
+
+  /* 모든 텍스트 요소 */
+  text,
+  tspan,
+  .nodeLabel,
+  .edgeLabel {
+    fill: var(--mermaid-node-text) !important;
+    color: var(--mermaid-node-text) !important;
+  }
+
+  /* foreignObject 내부 div */
+  foreignObject div {
+    color: var(--mermaid-edge-text) !important;
+    background: transparent !important;
+  }
+
+  /* 모든 path 요소 (엣지, 화살표) */
+  path {
+    stroke: var(--mermaid-edge-color) !important;
+    stroke-width: 1.5px !important;
+  }
+
+  /* 화살표 마커 */
+  marker path {
+    fill: var(--mermaid-edge-color) !important;
+    stroke: var(--mermaid-edge-color) !important;
+  }
+
+  /* 클러스터 */
+  .cluster rect {
+    fill: var(--mermaid-cluster-bg) !important;
+    stroke: var(--mermaid-cluster-border) !important;
+    stroke-width: 1.5px !important;
+  }
+}
+
+/* Dark 모드 전용 - 더 강한 대비 */
+:root.dark .mermaid svg {
+  /* 노드 배경 - 모든 rect 요소 (다크 모드) */
+  rect {
+    fill: var(--mermaid-node-bg) !important;
+    stroke: var(--mermaid-node-border) !important;
+    stroke-width: 2px !important;
+  }
+
+  /* 노드 도형 - circle, ellipse, polygon (다크 모드) */
+  circle,
+  ellipse,
+  polygon {
+    fill: var(--mermaid-node-bg) !important;
+    stroke: var(--mermaid-node-border) !important;
+    stroke-width: 2px !important;
+  }
+
+  /* 모든 텍스트 요소 (다크 모드 - 밝게) */
+  text,
+  tspan,
+  .nodeLabel,
+  .edgeLabel {
+    fill: var(--mermaid-node-text) !important;
+    color: var(--mermaid-node-text) !important;
+  }
+
+  /* foreignObject 내부 div (다크 모드) */
+  foreignObject div {
+    color: var(--mermaid-edge-text) !important;
+    background: transparent !important;
+  }
+
+  /* 모든 path 요소 (엣지, 화살표 - 다크 모드) */
+  path {
+    stroke: var(--mermaid-edge-color) !important;
+    stroke-width: 1.5px !important;
+  }
+
+  /* 화살표 마커 (다크 모드) */
+  marker path {
+    fill: var(--mermaid-edge-color) !important;
+    stroke: var(--mermaid-edge-color) !important;
+  }
+
+  /* 클러스터 (다크 모드) */
+  .cluster rect {
+    fill: var(--mermaid-cluster-bg) !important;
+    stroke: var(--mermaid-cluster-border) !important;
+    stroke-width: 1.5px !important;
+  }
+}
+
+/* ============================================
+   Hero Section Layout - 그리드 기반 정렬
+   ============================================ */
+
+/* Hero 컨테이너: 그리드 기반 중앙 정렬 (8px 단위) */
+.VPHero {
+  padding: 96px 32px !important; /* 12 * 8px, 4 * 8px */
+}
+
+/* Desktop 레이아웃: 이미지 좌측, 텍스트 우측, 수직 중앙 정렬 */
+@media (min-width: 960px) {
+  .VPHero .container {
+    display: flex !important;
+    flex-direction: row-reverse !important;
+    align-items: center !important; /* 수직 중앙 정렬 */
+    gap: 64px !important; /* 8 * 8px */
+    padding: 64px 0 !important; /* 8 * 8px */
+  }
+
+  .VPHero .main {
+    text-align: left !important;
+    flex: 1 !important;
+  }
+
+  .VPHero .image-container {
+    flex: 1 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+}
+
+/* 모바일: 스택 레이아웃, 여백 조정 */
+@media (max-width: 959px) {
+  .VPHero {
+    padding: 64px 24px !important; /* 8 * 8px, 3 * 8px */
+  }
+
+  .VPHero .container {
+    gap: 48px !important; /* 6 * 8px */
+  }
+}
+
+/* ============================================
+   Hero Image Size - 원본 크기 + 반응형
+   ============================================ */
+
+/* Hero 이미지 크기 제한 제거 */
+.VPHero .image-container,
+.VPHero .image,
+.VPImage {
+  max-width: 100% !important;
+  max-height: none !important;
+  width: auto !important;
+  height: auto !important;
+}
+
+/* 이미지 컨테이너 제한 제거 */
+.VPHero .image-bg {
+  max-width: 100% !important;
+  max-height: none !important;
+}
+
+/* 실제 img 태그 스타일 */
+.VPHero img,
+.VPImage img {
+  max-width: 100% !important;
+  width: auto !important;
+  height: auto !important;
+  object-fit: contain !important;
+}
+
+/* MoAI CLI 이미지 배경 색상 */
+.VPHero .image-container {
+  background-color: #0A0A0B !important;
+  border-radius: 12px !important;
+  padding: 24px !important;
+}
+
+/* 모바일에서도 동일하게 적용 */
+@media (max-width: 960px) {
+  .VPHero .image-container,
+  .VPHero .image,
+  .VPImage {
+    max-width: 100% !important;
+  }
+
+  .VPHero img,
+  .VPImage img {
+    max-width: 100% !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+}
+
+/* ============================================
+   Mermaid Diagram Text Fix - 텍스트 잘림 방지
+   ============================================ */
+
+/* 노드 텍스트 패딩 및 크기 조정 */
+.mermaid svg .node rect,
+.mermaid svg .node circle,
+.mermaid svg .node ellipse,
+.mermaid svg .node polygon {
+  padding: 12px !important;
+}
+
+/* 노드 레이블 텍스트 스타일 */
+.mermaid svg .nodeLabel,
+.mermaid svg .node text {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  line-height: 1.4 !important;
+}
+
+/* 엣지 레이블 배경 및 패딩 */
+.mermaid svg .edgeLabel {
+  background-color: var(--vp-c-bg) !important;
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+  font-size: 12px !important;
+}
+
+/* foreignObject 크기 자동 조정 */
+.mermaid svg foreignObject {
+  overflow: visible !important;
+}
+
+/* 다크 모드 엣지 레이블 배경 */
+:root.dark .mermaid svg .edgeLabel {
+  background-color: var(--vp-c-bg-soft) !important;
+}
+
+/* ============================================
+   Sidebar - 사이드바 스타일
+   ============================================ */
+
+/* 사이드바 그룹 제목 (섹션 제목) */
+.VPSidebarItem.level-0 .text,
+.group .title {
+  font-size: 0.9rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+}
+
+/* 사이드바 링크 */
+.VPSidebarItem.level-1 .text,
+.VPSidebarItem.level-2 .text {
+  font-size: 0.875rem !important;
+  font-weight: 400 !important;
+}
+
+/* ============================================
+   Code Block - 구름 폰트 적용 + 행간 조정
+   ============================================ */
+
+/* 코드 블록 폰트 - DungGeunMo 둥근모 폰트 (색상 보존) */
+code,
+pre,
+.vp-code,
+kbd {
+  font-family: 'DungGeunMo', 'D2Coding', 'Consolas', 'Monaco', monospace !important;
+  font-size: 16px !important; /* 픽셀 폰트 최적 크기 */
+}
+
+/* Shiki 컨테이너는 폰트만 변경, 색상은 보존 */
+.shiki,
+.shiki span {
+  font-family: 'DungGeunMo', 'D2Coding', 'Consolas', 'Monaco', monospace !important;
+  font-size: 16px !important;
+}
+
+/* Shiki 신텍스 하이라이팅 색상 활성화 */
+.shiki span {
+  color: var(--shiki-light) !important;
+}
+
+:root.dark .shiki span {
+  color: var(--shiki-dark) !important;
+}
+
+/* 인라인 코드 */
+:not(pre) > code {
+  font-family: 'DungGeunMo', 'D2Coding', 'Consolas', 'Monaco', monospace !important;
+  font-size: 16px !important; /* 코드 블록과 동일 크기 */
+}
+
+/* 코드 블록 행간 조정 - 적절한 간격 */
+pre code,
+.vp-code code,
+.shiki code {
+  line-height: 1.2 !important; /* 적절한 행간 */
+  display: block !important;
+}
+
+/* 코드 블록 내부 라인 */
+.vp-code .line,
+.shiki .line {
+  line-height: 1.2 !important;
+}
+
+/* 코드 주석 볼드 처리 - CSS 변수 기반 색상 감지 */
+.vp-code span[style*="--shiki-light:#6A737D"],
+.vp-code span[style*="--shiki-dark:#6A737D"],
+.vp-code span[style*="--shiki-light:#8B949E"],
+.vp-code span[style*="--shiki-dark:#8B949E"],
+.vp-code span[style*="font-weight:700"] {
+  font-weight: 700 !important;
+}
+
+/* 코드 블록 여백 제거 */
+pre,
+.vp-code,
+div[class*="language-"] {
+  margin: 0 !important;
 }
 
 pre code {
-  background-color: transparent;
-  padding: 0;
+  padding: 0 !important;
 }
 
-/* ============================================
-   Tables - shadcn/ui style
-   ============================================ */
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-
-thead {
-  background-color: hsl(var(--muted));
-}
-
-th {
-  padding: 0.75rem 1rem;
-  text-align: left;
-  font-weight: 600;
-  color: hsl(var(--foreground));
-  border-bottom: 1px solid hsl(var(--border));
-}
-
-td {
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid hsl(var(--border));
-}
-
-tr:hover {
-  background-color: hsl(var(--muted) / 0.5);
-}
-
-tr:last-child td {
-  border-bottom: none;
-}
-
-/* ============================================
-   Links - shadcn/ui style
-   ============================================ */
-
-.vp-doc a {
-  color: hsl(var(--primary));
-  text-decoration: underline;
-  text-decoration-color: hsl(var(--primary) / 0.3);
-  text-underline-offset: 2px;
-  transition: all 0.2s ease;
-  font-weight: 500;
-}
-
-.vp-doc a:hover {
-  color: hsl(var(--primary) / 0.8);
-  text-decoration-color: hsl(var(--primary));
-}
-
-/* ============================================
-   Badges - shadcn/ui inspired
-   ============================================ */
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  border-radius: calc(var(--radius) - 2px);
-  padding: 0.25rem 0.625rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  transition: all 0.15s ease;
-  background-color: hsl(var(--secondary));
-  color: hsl(var(--secondary-foreground));
-  border: 1px solid hsl(var(--border));
-}
-
-/* ============================================
-   Alerts/Callouts - shadcn/ui style
-   ============================================ */
-
-.vp-doc .tip,
-.vp-doc .warning,
-.vp-doc .danger,
-.vp-doc .info {
-  border-radius: var(--radius);
-  border: 1px solid hsl(var(--border));
-  padding: 1rem;
-  margin: 1rem 0;
-  background-color: hsl(var(--card));
-}
-
-.vp-doc .tip {
-  border-left: 4px solid hsl(var(--primary));
-}
-
-.vp-doc .warning {
-  border-left: 4px solid hsl(0 0% 50%);
-}
-
-/* ============================================
-   Scrollbar - shadcn/ui style
-   ============================================ */
-
-::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
-}
-
-::-webkit-scrollbar-track {
-  background: hsl(var(--background));
-}
-
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted));
-  border-radius: 6px;
-  border: 2px solid hsl(var(--background));
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.5);
-}
-
-/* ============================================
-   Focus Ring - shadcn/ui style
-   ============================================ */
-
-*:focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 2px;
-}
-
-/* ============================================
-   Smooth Transitions
-   ============================================ */
-
-* {
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* ============================================
-   Responsive Design
-   ============================================ */
-
-@media (max-width: 768px) {
-  .VPHero .name {
-    font-size: 2rem;
-  }
-
-  .VPHero .tagline {
-    font-size: 1rem;
-  }
-
-  .VPFeature {
-    margin-bottom: 1rem;
-  }
-}
-
-/* ============================================
-   Logo & Hero Image Theme Adjustments
-   ============================================ */
-
-/* Navigation Logo - Completely disable all hover effects and animations */
-.VPNav .logo,
-.VPNav .logo a,
-.VPNav .logo img {
-  transition: none !important;
-  transform: none !important;
-  animation: none !important;
-  pointer-events: auto;
-  cursor: default !important;
-}
-
-.VPNav .logo:hover,
-.VPNav .logo a:hover,
-.VPNav .logo img:hover {
-  transform: none !important;
-  filter: none !important;
-  opacity: 1 !important;
-  scale: 1 !important;
-}
-
-.dark .VPNav .logo img {
-  filter: none !important;
-}
-
-.dark .VPNav .logo img:hover {
-  filter: none !important;
-}
-
-/* Hero Image - Theme-specific styling (hover effects disabled) */
-.VPHero .image-container img {
-  border-radius: calc(var(--radius) + 4px);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
-              0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  transition: none !important;
-}
-
-.VPHero .image-container img:hover {
-  transform: none !important;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
-              0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
-}
-
-/* Dark mode - Adjust hero image brightness (hover effects disabled) */
-.dark .VPHero .image-container img {
-  filter: brightness(0.95) contrast(1.1);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3),
-              0 10px 10px -5px rgba(0, 0, 0, 0.15);
-}
-
-.dark .VPHero .image-container img:hover {
-  filter: brightness(0.95) contrast(1.1) !important;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3),
-              0 10px 10px -5px rgba(0, 0, 0, 0.15) !important;
-  transform: none !important;
-}
-
-/* ============================================
-   Global SVG Icon Theme Support
-   ============================================ */
-
-/* Light mode - dark icons */
-:root .vp-doc svg,
-:root .VPFeatures svg {
-  color: hsl(var(--foreground));
-  stroke: hsl(var(--foreground));
-}
-
-/* Dark mode - Comprehensive icon inversion */
-.dark img[src*="/icons/"],
-.dark img[src*="icon"],
-.dark .vp-doc img,
-.dark .VPFeatures img,
-.dark .VPFeature img,
-.dark .VPHome img {
-  filter: invert(1) brightness(1.1) contrast(1.05) !important;
-}
-
-/* Dark mode - SVG icons with enhanced visibility */
-.dark .vp-doc svg,
-.dark .VPFeatures svg,
-.dark .VPFeature svg,
-.dark .VPHome svg {
-  color: hsl(var(--foreground)) !important;
-  stroke: hsl(var(--foreground)) !important;
-  filter: brightness(1.5) contrast(1.2) !important;
-}
-
-/* ============================================
-   Aggressive Dark Mode Icon Inversion
-   Target all possible icon containers
-   ============================================ */
-
-/* All images in features section - dark mode */
-.dark .VPFeatures img,
-.dark .VPFeature img,
-.dark .vp-features img,
-.dark .feature img,
-.dark [class*="feature"] img,
-.dark [class*="Feature"] img {
-  filter: invert(1) brightness(1.1) contrast(1.05) !important;
-}
-
-/* All SVGs in features section - dark mode */
-.dark .VPFeatures svg,
-.dark .VPFeature svg,
-.dark .vp-features svg,
-.dark .feature svg,
-.dark [class*="feature"] svg,
-.dark [class*="Feature"] svg {
-  filter: brightness(1.3) contrast(1.1) !important;
-  color: hsl(var(--foreground)) !important;
-  stroke: hsl(var(--foreground)) !important;
-}
-
-/* Catch-all for home page features */
-.dark .VPHome img[src^="/icons/"],
-.dark img[src^="/icons/"] {
-  filter: invert(1) brightness(1.1) contrast(1.05) !important;
-}
-
-/* ============================================
-   Ultimate Dark Mode Icon Fix
-   Apply to ALL images except logo
-   ============================================ */
-
-/* Target all images in dark mode, but exclude navigation logo and Hero image */
-.dark img:not(.VPNav img):not([alt*="logo"]):not([src*="logo"]):not(.VPHero img):not(.image-container img) {
-  filter: invert(1) brightness(1.1) contrast(1.05) !important;
-}
-
-/* Specifically target feature icons */
-.dark .VPFeatures img,
-.dark .features img,
-.dark [class*="feature"] img,
-.dark [class*="Feature"] img {
-  filter: invert(1) brightness(1.15) contrast(1.1) !important;
-}
-
-/* Ensure hero image has NO filter (already dark theme image) */
-.dark .VPHero img,
-.dark .VPHero .image-container img,
-.dark .image-container img {
-  filter: none !important;
-}
-
-/* ============================================
-   Print Styles
-   ============================================ */
-
-@media print {
-  body {
-    font-family: var(--font-sans);
-    background: white;
-    color: black;
-  }
-
-  .VPNav,
-  .VPSidebar,
-  .VPFooter {
-    display: none;
-  }
-}
-/* ============================================
-   Mermaid 다이어그램 - 라이트/다크 테마 대응
-   ============================================ */
-
-/* 라이트 모드 - 기본 설정 */
-.mermaid {
-  background: transparent !important;
-}
-
-.mermaid rect,
-.mermaid polygon,
-.mermaid circle,
-.mermaid ellipse {
-  stroke: #495057 !important;
-}
-
-.mermaid text {
-  fill: #212529 !important;
-  font-family: var(--font-sans) !important;
-  font-weight: 500 !important;
-}
-
-.mermaid .node rect,
-.mermaid .node circle,
-.mermaid .node ellipse,
-.mermaid .node polygon {
-  fill: #f8f9fa !important;
-  stroke: #495057 !important;
-  stroke-width: 2px !important;
-}
-
-.mermaid .edgeLabel {
-  background-color: #ffffff !important;
-  color: #212529 !important;
-}
-
-.mermaid .messageText,
-.mermaid .noteText,
-.mermaid .labelText {
-  fill: #212529 !important;
-  font-weight: 500 !important;
-}
-
-/* 다크 모드 - 강력한 색상 적용 */
-.dark .mermaid {
-  background: transparent !important;
-}
-
-/* 모든 도형 테두리 - 밝은 회색 */
-.dark .mermaid rect,
-.dark .mermaid polygon,
-.dark .mermaid circle,
-.dark .mermaid ellipse {
-  stroke: #cbd5e0 !important;
-  stroke-width: 2px !important;
-}
-
-/* 모든 텍스트 - 밝은 색상으로 강제 변경 */
-.dark .mermaid text,
-.dark .mermaid text.messageText,
-.dark .mermaid text.noteText,
-.dark .mermaid text.labelText,
-.dark .mermaid .edgeLabel text,
-.dark .mermaid .label text,
-.dark .mermaid foreignObject div {
-  fill: #f7fafc !important;
-  color: #f7fafc !important;
-  font-family: var(--font-sans) !important;
-  font-weight: 600 !important;
-}
-
-/* 노드 배경 - 어두운 배경 */
-.dark .mermaid .node rect,
-.dark .mermaid .node circle,
-.dark .mermaid .node ellipse,
-.dark .mermaid .node polygon {
-  fill: #2d3748 !important;
-  stroke: #cbd5e0 !important;
-  stroke-width: 2px !important;
-}
-
-/* 엣지 라벨 배경 - 투명하게 */
-.dark .mermaid .edgeLabel,
-.dark .mermaid .edgeLabel rect {
-  background-color: transparent !important;
-  fill: transparent !important;
-}
-
-/* 엣지 라벨 HTML 요소 */
-.dark .mermaid .edgeLabel span,
-.dark .mermaid .edgeLabel foreignObject div,
-.dark .mermaid .edgeLabel p,
-.dark .mermaid .edgeLabel div {
-  background: transparent !important;
-  color: #ffffff !important;
-  padding: 2px 6px !important;
-  font-weight: 700 !important;
-}
-
-/* 엣지 라벨 SVG 텍스트 - 최우선 순위 */
-.dark .mermaid .edgeLabel text,
-.dark .mermaid .edgeLabel tspan,
-.dark .mermaid g.edgeLabel text,
-.dark .mermaid g.edgeLabel tspan,
-.dark .mermaid .edge text,
-.dark .mermaid .edge tspan {
-  fill: #ffffff !important;
-  color: #ffffff !important;
-  font-weight: 700 !important;
-  stroke: none !important;
-}
-
-/* Path에 포함된 텍스트 라벨 */
-.dark .mermaid path ~ text,
-.dark .mermaid .edgePath + .edgeLabel text,
-.dark .mermaid .edgePath text {
-  fill: #ffffff !important;
-  font-weight: 700 !important;
-}
-
-/* 메시지, 노트, 라벨 텍스트 */
-.dark .mermaid .messageText,
-.dark .mermaid .noteText,
-.dark .mermaid .labelText {
-  fill: #f7fafc !important;
-  font-weight: 600 !important;
-}
-
-/* 플로우차트 전용 라벨 */
-.dark .mermaid .flowchart .edgeLabel text,
-.dark .mermaid .flowchart-label text,
-.dark .mermaid .edgeLabel.edgeLabel text {
-  fill: #ffffff !important;
-  font-weight: 700 !important;
-}
-
-/* 분기 조건 텍스트 (예/아니오) - 여러 선택자 */
-.dark .mermaid text[class*="edge"],
-.dark .mermaid text.edgeLabel,
-.dark .mermaid text[id*="edge"],
-.dark .mermaid text[id*="Label"] {
-  fill: #ffffff !important;
-  font-weight: 700 !important;
-}
-
-/* SVG 내부 모든 텍스트 - 베이스 스타일 */
-.dark .mermaid svg text {
-  fill: #f7fafc !important;
-}
-
-/* 엣지와 관련된 모든 텍스트 - 최종 override */
-.dark .mermaid svg g[class*="edge"] text,
-.dark .mermaid svg g[class*="Edge"] text,
-.dark .mermaid svg g[class*="label"] text,
-.dark .mermaid svg g[class*="Label"] text,
-.dark .mermaid svg .edgeLabel text {
-  fill: #ffffff !important;
-  font-weight: 700 !important;
-  stroke: none !important;
-}
-
-/* 최종 폴백 - 모든 라벨 텍스트 */
-.dark .mermaid svg text[id*="L"],
-.dark .mermaid svg text[class*="label"],
-.dark .mermaid svg text.label {
-  fill: #ffffff !important;
-  font-weight: 700 !important;
-}
-
-/* 라인과 화살표 - 더 밝게 */
-.dark .mermaid .edgePath .path,
-.dark .mermaid line,
-.dark .mermaid path {
-  stroke: #cbd5e0 !important;
-  stroke-width: 2px !important;
-}
-
-.dark .mermaid marker,
-.dark .mermaid marker path {
-  fill: #cbd5e0 !important;
-  stroke: #cbd5e0 !important;
-}
-
-/* 다이아몬드 노드 (결정 노드) */
-.dark .mermaid .node.decision rect,
-.dark .mermaid .node.decision polygon {
-  fill: #4a5568 !important;
-  stroke: #e2e8f0 !important;
-  stroke-width: 2px !important;
-}
-
-/* 시작/종료 노드 */
-.dark .mermaid [class*="start"],
-.dark .mermaid [class*="end"] {
-  fill: #4a5568 !important;
-  stroke: #cbd5e0 !important;
-  stroke-width: 2px !important;
-}
-
-/* 그룹/클러스터 배경 */
-.dark .mermaid .cluster rect {
-  fill: #1a202c !important;
-  stroke: #4a5568 !important;
-  stroke-width: 2px !important;
-}
-
-.dark .mermaid .cluster text {
-  fill: #f7fafc !important;
-  font-weight: 700 !important;
-}
-
-/* 시퀀스 다이어그램 액터 */
-.dark .mermaid .actor {
-  fill: #2d3748 !important;
-  stroke: #cbd5e0 !important;
-  stroke-width: 2px !important;
-}
-
-.dark .mermaid .actor text {
-  fill: #f7fafc !important;
-  font-weight: 600 !important;
-}
-
-.dark .mermaid .actor-line {
-  stroke: #718096 !important;
-  stroke-width: 1px !important;
-}
-
-/* 활성화 박스 */
-.dark .mermaid .activation0,
-.dark .mermaid .activation1,
-.dark .mermaid .activation2 {
-  fill: #4a5568 !important;
-  stroke: #cbd5e0 !important;
-  stroke-width: 2px !important;
-}
-
-/* 노트 */
-.dark .mermaid .note {
-  fill: #2d3748 !important;
-  stroke: #718096 !important;
-  stroke-width: 2px !important;
-}
-
-.dark .mermaid .note text {
-  fill: #f7fafc !important;
-  font-weight: 600 !important;
-}
-
-/* 간트 차트 */
-.dark .mermaid .grid .tick {
-  stroke: #4a5568 !important;
-}
-
-.dark .mermaid .grid path {
-  stroke: #2d3748 !important;
-}
-
-.dark .mermaid .grid text {
-  fill: #f7fafc !important;
-  font-weight: 500 !important;
-}
-
-/* 플로우차트 커넥터 라벨 */
-.dark .mermaid .edgeLabel rect {
-  fill: #1a202c !important;
-}
-
-.dark .mermaid .edgeLabel span {
-  background: #1a202c !important;
-  color: #f7fafc !important;
-  padding: 2px 6px !important;
-  font-weight: 600 !important;
-}
-
-/* 섹션 배경 */
-.dark .mermaid .section {
-  fill: #2d3748 !important;
-}
-
-.dark .mermaid .section text {
-  fill: #f7fafc !important;
-  font-weight: 600 !important;
-}
-
-/* 서브그래프 라벨 */
-.dark .mermaid .label-container {
-  fill: #1a202c !important;
-}
-
-.dark .mermaid .label-container text {
-  fill: #f7fafc !important;
-  font-weight: 700 !important;
-}
-
-/* 최종 텍스트 강제 적용 */
-.dark .mermaid * {
-  color: #f7fafc !important;
-}
-
-.dark .mermaid text * {
-  fill: #f7fafc !important;
+/* 코드 블록 여백 조정 */
+div[class*="language-"] pre {
+  margin-bottom: 0 !important;
+  padding: 1rem !important;
 }
 
-/* Mermaid SVG 크기 조정 */
-.mermaid svg {
-  max-width: 100%;
-  height: auto;
+div[class*="language-"] {
+  margin-bottom: 1rem !important;
 }

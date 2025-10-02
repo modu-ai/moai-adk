@@ -33,7 +33,7 @@ MoAI-ADK는 Claude Code 환경에서 **SPEC-First TDD 개발**을 누구나 쉽�
 
 #### 3. ✅ SPEC-First TDD 워크플로우 최적화
 
-- **3단계 파이프라인**: `/moai:1-spec` → `/moai:2-build` → `/moai:3-sync`
+- **3단계 파이프라인**: `/alfred:1-spec` → `/alfred:2-build` → `/alfred:3-sync`
 - **온디맨드 디버깅**: `@agent-debug-helper` (필요 시 호출)
 - ** @TAG**: 언어 중립적 추적성 시스템 (코드 직접 스캔 기반)
 
@@ -140,9 +140,9 @@ MoAI-ADK (TypeScript) → 언어별 TDD 도구 → 사용자 프로젝트 (모�
 
 #### **Core Development Loop**
 ```
-1. /moai:1-spec  → 명세 없이는 코드 없음
-2. /moai:2-build → 테스트 없이는 구현 없음
-3. /moai:3-sync  → 추적성 없이는 완성 없음
+1. /alfred:1-spec  → 명세 없이는 코드 없음
+2. /alfred:2-build → 테스트 없이는 구현 없음
+3. /alfred:3-sync  → 추적성 없이는 완성 없음
 ```
 
 #### **On-Demand Support**
@@ -204,7 +204,7 @@ moai-adk-ts/                    # TypeScript 메인 프로젝트
 
 ```
 .claude/
-├── agents/moai/              # 8개 전문 에이전트
+├── agents/alfred/              # 8개 전문 에이전트
 │   ├── spec-builder.md       # SPEC 작성 전담
 │   ├── code-builder.md       # TDD 구현 전담 (슬림화 완료)
 │   ├── doc-syncer.md         # 문서 동기화 전담
@@ -214,13 +214,13 @@ moai-adk-ts/                    # TypeScript 메인 프로젝트
 │   ├── trust-checker.md      # 품질 검증 통합
 │   └── tag-agent.md          # TAG 시스템 독점 관리
 │
-├── commands/moai/            # 3단계 워크플로우 명령어
+├── commands/alfred/            # 3단계 워크플로우 명령어
 │   ├── 8-project.md          # 프로젝트 초기화
 │   ├── 1-spec.md            # SPEC 작성
 │   ├── 2-build.md           # TDD 구현 (범용 언어)
 │   └── 3-sync.md            # 문서 동기화
 │
-├── hooks/moai/               # JavaScript hooks (CommonJS)
+├── hooks/alfred/               # JavaScript hooks (CommonJS)
 │   ├── package.json          # "type": "commonjs" 선언
 │   ├── file-monitor.js       # 파일 변경 감지
 │   ├── language-detector.js  # 언어 자동 감지 및 도구 권장
@@ -267,7 +267,7 @@ bun run build:hooks          # TypeScript → CommonJS 컴파일
 export default defineConfig({
   format: ['cjs'],           # CommonJS 형식
   outExtension: () => ({ js: '.js' }),
-  // hooks/moai/package.json: "type": "commonjs"
+  // hooks/alfred/package.json: "type": "commonjs"
 });
 ```
 
@@ -372,9 +372,9 @@ moai init my-python-project
 cd my-python-project
 
 # Python 도구 자동 감지 및 사용
-/moai:1-spec "Python API 서버 구현"
-/moai:2-build SPEC-001  # pytest, mypy 자동 사용
-/moai:3-sync
+/alfred:1-spec "Python API 서버 구현"
+/alfred:2-build SPEC-001  # pytest, mypy 자동 사용
+/alfred:3-sync
 ```
 
 #### 2. TypeScript 프로젝트
@@ -385,9 +385,9 @@ moai init my-ts-project
 cd my-ts-project
 
 # TypeScript 도구 자동 감지
-/moai:1-spec "React 컴포넌트 구현"
-/moai:2-build SPEC-001  # Vitest, Biome 자동 사용
-/moai:3-sync
+/alfred:1-spec "React 컴포넌트 구현"
+/alfred:2-build SPEC-001  # Vitest, Biome 자동 사용
+/alfred:3-sync
 ```
 
 #### 3. Java 프로젝트
@@ -398,9 +398,9 @@ moai init my-java-project
 cd my-java-project
 
 # Java 도구 자동 감지
-/moai:1-spec "Spring Boot API 구현"
-/moai:2-build SPEC-001  # JUnit, Maven/Gradle 자동 사용
-/moai:3-sync
+/alfred:1-spec "Spring Boot API 구현"
+/alfred:2-build SPEC-001  # JUnit, Maven/Gradle 자동 사용
+/alfred:3-sync
 ```
 
 ### 🎯 코딩 표준 (범용 언어)
@@ -483,8 +483,8 @@ MoAI-ADK는 SPEC-First TDD를 위한 3단계 워크플로우를 제공합니다:
 
 ### Stage 1: SPEC Creation
 ```bash
-/moai:1-spec "제목1" "제목2" ...  # 새 SPEC 작성
-/moai:1-spec SPEC-ID "수정내용"    # 기존 SPEC 수정
+/alfred:1-spec "제목1" "제목2" ...  # 새 SPEC 작성
+/alfred:1-spec SPEC-ID "수정내용"    # 기존 SPEC 수정
 ```
 - EARS 명세 작성 (언어 중립적)
 -  @TAG 자동 생성
@@ -492,8 +492,8 @@ MoAI-ADK는 SPEC-First TDD를 위한 3단계 워크플로우를 제공합니다:
 
 ### Stage 2: TDD 구현 (범용 언어)
 ```bash
-/moai:2-build SPEC-ID    # 특정 SPEC 구현
-/moai:2-build all        # 모든 SPEC 구현
+/alfred:2-build SPEC-ID    # 특정 SPEC 구현
+/alfred:2-build all        # 모든 SPEC 구현
 ```
 - **언어 자동 감지**: 프로젝트 언어 식별
 - **도구 자동 선택**: 언어별 최적 TDD 도구
@@ -502,7 +502,7 @@ MoAI-ADK는 SPEC-First TDD를 위한 3단계 워크플로우를 제공합니다:
 
 ### Stage 3: Documentation Sync
 ```bash
-/moai:3-sync [mode] [target-path]  # 동기화 모드 선택
+/alfred:3-sync [mode] [target-path]  # 동기화 모드 선택
 ```
 - 문서 동기화 (언어 무관)
 -  @TAG 인덱스 업데이트
@@ -618,7 +618,7 @@ tsx .moai/scripts/test-analyzer.ts --coverage
 
 - **필수 체인**: 모든 기능은 `@SPEC → @TEST → @CODE → @DOC` 순서로 연결해야 합니다.
 - **작성 위치**: SPEC 문서(.moai/specs), 테스트(tests), 구현(src), 문서(docs)에 각각 해당 TAG를 작성합니다.
-- **검증 습관**: `rg '@(SPEC|TEST|CODE|DOC):' -n` 또는 `/moai:3-sync`로 체인이 끊어졌는지 항상 확인합니다.
+- **검증 습관**: `rg '@(SPEC|TEST|CODE|DOC):' -n` 또는 `/alfred:3-sync`로 체인이 끊어졌는지 항상 확인합니다.
 - **변경 절차**:
   1. SPEC 수정 → `@SPEC` 갱신
   2. 테스트 보강 → `@TEST`

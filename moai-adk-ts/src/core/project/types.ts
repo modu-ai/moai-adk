@@ -18,11 +18,12 @@ export interface ProjectConfig {
  * Project information detected from filesystem
  */
 export interface ProjectInfo {
+  [key: string]: unknown;
   type: string;
   language: string;
   frameworks: string[];
   buildTools: string[];
-  packageManager?: string;
+  packageManager: string | undefined;
   hasTests: boolean;
   hasDocker: boolean;
   hasCI: boolean;

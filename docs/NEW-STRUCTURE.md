@@ -241,24 +241,24 @@
 
 #### 3.3 3단계 워크플로우 (workflow.md) - 기존 개선
 - **Stage 0: 프로젝트 준비** (선택)
-  - `/moai:8-project` 실행
+  - `/alfred:8-project` 실행
   - product/structure/tech 문서 생성
   - 프로젝트 비전 수립
 
 - **Stage 1: SPEC 작성**
-  - `/moai:1-spec "기능 제목"`
+  - `/alfred:1-spec "기능 제목"`
   - EARS 요구사항 작성
   - TAG BLOCK 생성
   - 사용자 확인 후 브랜치 생성
 
 - **Stage 2: TDD 구현**
-  - `/moai:2-build SPEC-ID`
+  - `/alfred:2-build SPEC-ID`
   - Red-Green-Refactor 자동화
   - 언어별 도구 자동 선택
   - TRUST 원칙 자동 검증
 
 - **Stage 3: 문서 동기화**
-  - `/moai:3-sync`
+  - `/alfred:3-sync`
   - TAG 체인 검증
   - Living Document 업데이트
   - PR 상태 전환
@@ -459,26 +459,26 @@
 #### 5.2 워크플로우 명령어 (commands.md) - 새 페이지
 - **5개 슬래시 명령어**
 
-1. `/moai:8-project` (선택)
+1. `/alfred:8-project` (선택)
    - 프로젝트 비전 수립
    - 3대 문서 생성
 
-2. `/moai:1-spec`
+2. `/alfred:1-spec`
    - SPEC 작성
    - EARS 요구사항
    - TAG BLOCK
 
-3. `/moai:2-build`
+3. `/alfred:2-build`
    - TDD 구현
    - 범용 언어 지원
    - TRUST 검증
 
-4. `/moai:3-sync`
+4. `/alfred:3-sync`
    - 문서 동기화
    - TAG 검증
    - PR 상태 전환
 
-5. `/moai:help` (선택)
+5. `/alfred:help` (선택)
    - 사용법 가이드
    - 예시 모음
 
@@ -759,9 +759,9 @@
 
 - **워크플로우 명령어**
   ```
-  /moai:1-spec "기능"
-  /moai:2-build SPEC-ID
-  /moai:3-sync
+  /alfred:1-spec "기능"
+  /alfred:2-build SPEC-ID
+  /alfred:3-sync
   ```
 
 #### 8.6 용어집 (glossary.md) - 새 페이지
@@ -843,9 +843,9 @@
 - **기여 방법**
   1. Fork & Clone
   2. 개발 환경 설정
-  3. SPEC 작성 (`/moai:1-spec`)
-  4. TDD 구현 (`/moai:2-build`)
-  5. 문서 동기화 (`/moai:3-sync`)
+  3. SPEC 작성 (`/alfred:1-spec`)
+  4. TDD 구현 (`/alfred:2-build`)
+  5. 문서 동기화 (`/alfred:3-sync`)
   6. PR 제출
 
 - **코드 스타일**

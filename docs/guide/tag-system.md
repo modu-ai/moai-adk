@@ -10,10 +10,10 @@
 
 ```mermaid
 graph LR
-    SPEC[".moai/specs/<br/>@SPEC:ID"] --> TEST["tests/<br/>@TEST:ID"]
-    TEST --> CODE["src/<br/>@CODE:ID"]
-    CODE --> DOC["docs/<br/>@DOC:ID"]
-    CODE --> SCAN["rg '@TAG' -n<br/>실시간 스캔"]
+    SPEC[".moai/specs - @SPEC:ID"] --> TEST["tests - @TEST:ID"]
+    TEST --> CODE["src - @CODE:ID"]
+    CODE --> DOC["docs - @DOC:ID"]
+    CODE --> SCAN["rg '@TAG' -n 실시간 스캔"]
     SCAN --> VERIFY["TAG 체인 검증"]
     VERIFY --> REPORT["동기화 리포트"]
 
@@ -27,9 +27,9 @@ MoAI-ADK는 단일 TAG 체계를 사용합니다.
 
 ```mermaid
 graph LR
-    SPEC["@SPEC:ID<br/>요구사항 명세"] --> TEST["@TEST:ID<br/>RED Phase"]
-    TEST --> CODE["@CODE:ID<br/>GREEN + REFACTOR"]
-    CODE --> DOC["@DOC:ID<br/>문서화"]
+    SPEC["@SPEC:ID - 요구사항 명세"] --> TEST["@TEST:ID - RED Phase"]
+    TEST --> CODE["@CODE:ID - GREEN + REFACTOR"]
+    CODE --> DOC["@DOC:ID - 문서화"]
 
 ```
 
@@ -42,7 +42,7 @@ graph LR
 | `@CODE:ID` | 구현 코드 | GREEN + REFACTOR | src/ | 필수 |
 | `@DOC:ID` | 문서화 | REFACTOR | docs/ | 선택 |
 
-> 모든 신규 기능은 위 4개 TAG를 기준으로 작성합니다. 체인 검증(`rg '@(SPEC|TEST|CODE|DOC):' -n`, `/moai:3-sync`)도 이 체계를 기반으로 동작합니다.
+> 모든 신규 기능은 위 4개 TAG를 기준으로 작성합니다. 체인 검증(`rg '@(SPEC|TEST|CODE|DOC):' -n`, `/alfred:3-sync`)도 이 체계를 기반으로 동작합니다.
 
 ## TAG BLOCK 템플릿
 
@@ -380,7 +380,7 @@ rg "@CODE:LOGIN-" -l
 
 ### 무결성 검사
 
-`/moai:3-sync` 실행 시 자동으로 수행:
+`/alfred:3-sync` 실행 시 자동으로 수행:
 
 1. **코드 전체 스캔**: 모든 소스 파일에서 TAG 추출
 2. **TAG 체인 검증**: @SPEC → @TEST → @CODE 완결성 확인
@@ -475,14 +475,14 @@ rg "AUTH-003" -n
 ```mermaid
 sequenceDiagram
     participant D as 개발자
-    participant SPEC as ".moai/specs/<br/>@SPEC:ID"
-    participant TEST as "tests/<br/>@TEST:ID"
-    participant CODE as "src/<br/>@CODE:ID"
-    participant S as /moai:3-sync
+    participant SPEC as ".moai/specs/ - @SPEC:ID"
+    participant TEST as "tests/ - @TEST:ID"
+    participant CODE as "src/ - @CODE:ID"
+    participant S as /alfred:3-sync
     participant RG as ripgrep (rg)
     participant R as sync-report.md
 
-    D->>SPEC: 1. SPEC 작성 (/moai:1-spec)
+    D->>SPEC: 1. SPEC 작성 (/alfred:1-spec)
     D->>TEST: 2. 테스트 작성 (RED)
     D->>CODE: 3. 구현 (GREEN + REFACTOR)
     D->>S: 4. 동기화 명령 실행
@@ -553,19 +553,19 @@ export class AuthService {
 
 ## TDD 워크플로우 체크리스트
 
-### 1단계: SPEC 작성 (`/moai:1-spec`)
+### 1단계: SPEC 작성 (`/alfred:1-spec`)
 - [ ] `.moai/specs/SPEC-<ID>.md` 생성
 - [ ] `@SPEC:ID` TAG 포함
 - [ ] EARS 구문으로 요구사항 작성
 - [ ] 중복 ID 확인: `rg "@SPEC:<ID>" -n`
 
-### 2단계: TDD 구현 (`/moai:2-build`)
+### 2단계: TDD 구현 (`/alfred:2-build`)
 - [ ] **RED**: `tests/` 디렉토리에 `@TEST:ID` 작성 및 실패 확인
 - [ ] **GREEN**: `src/` 디렉토리에 `@CODE:ID` 작성 및 테스트 통과
 - [ ] **REFACTOR**: 코드 품질 개선, TDD 이력 주석 추가
 - [ ] TAG BLOCK에 SPEC/TEST 파일 경로 명시
 
-### 3단계: 문서 동기화 (`/moai:3-sync`)
+### 3단계: 문서 동기화 (`/alfred:3-sync`)
 - [ ] 전체 TAG 스캔: `rg '@(SPEC|TEST|CODE):' -n`
 - [ ] 고아 TAG 없음 확인
 - [ ] Living Document 자동 생성 확인
@@ -575,12 +575,12 @@ export class AuthService {
 
 ```mermaid
 graph TD
-    A["1. SPEC 작성<br/>/moai:1-spec<br/>@SPEC:ID"] --> B["2. 테스트 작성<br/>RED Phase<br/>@TEST:ID"]
-    B --> C["3. 구현<br/>GREEN Phase<br/>@CODE:ID"]
-    C --> D["4. 리팩토링<br/>REFACTOR Phase<br/>@CODE:ID 개선"]
-    D --> E{"5. /moai:3-sync<br/>코드 스캔 검증"}
-    E -->|성공| F["추적성 확보<br/>@DOC:ID 생성"]
-    E -->|실패| G["TAG 수정 필요<br/>누락/중복/순서 오류"]
+    A["1. SPEC 작성 - /alfred:1-spec - @SPEC:ID"] --> B["2. 테스트 작성 - RED Phase - @TEST:ID"]
+    B --> C["3. 구현 - GREEN Phase - @CODE:ID"]
+    C --> D["4. 리팩토링 - REFACTOR Phase - @CODE:ID 개선"]
+    D --> E{"5. /alfred:3-sync - 코드 스캔 검증"}
+    E -->|성공| F["추적성 확보 - @DOC:ID 생성"]
+    E -->|실패| G["TAG 수정 필요 - 누락/중복/순서 오류"]
     G --> B
 
 ```
@@ -593,26 +593,6 @@ graph TD
 4. **@TAG 단순화**: @SPEC → @TEST → @CODE → @DOC (50% 감소)
 5. **TDD 완벽 정렬**: RED (TEST) → GREEN (CODE) → REFACTOR (CODE + DOC)
 6. **TAG BLOCK 필수**: 모든 코드 파일 상단에 배치
-
-## 주요 개선 사항
-
-### 단순성 (+50%)
-- 8개 TAG → 4개 TAG (50% 감소)
-- TAG BLOCK 길이: 156자 → 78자 (50% 감소)
-- 학습 곡선: 급격 → 완만
-
-### TDD 정렬 (+100%)
-- 이전: @REQ → @DESIGN → @TASK → @TEST (TDD와 불일치)
-- 현재: @SPEC → @TEST → @CODE → @DOC (TDD와 완벽 일치)
-
-### 실무 사용성 (+40%)
-- 모든 구현은 `@CODE:ID` 하나로 통합
-- 서브 카테고리는 주석 레벨로 단순화
-- 불필요한 TAG 선택 고민 제거
-
-### EARS 매핑 (+45%)
-- SPEC 문서에서 EARS 구문과 직접 연결
-- 요구사항 → 테스트 → 코드 추적 간소화
 
 ## 다음 단계
 

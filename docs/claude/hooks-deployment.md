@@ -49,7 +49,7 @@ bun run build:hooks
 
 **실행 과정**:
 1. `tsup --config tsup.hooks.config.ts` - TypeScript → .cjs 변환
-2. `cp ../.claude/hooks/moai/*.cjs templates/.claude/hooks/moai/` - 템플릿에 복사
+2. `cp ../.claude/hooks/alfred/*.cjs templates/.claude/hooks/alfred/` - 템플릿에 복사
 
 **tsup 설정** (`tsup.hooks.config.ts`):
 ```typescript
@@ -59,7 +59,7 @@ export default defineConfig({
   },
   format: ['cjs'],                        // CommonJS 형식
   target: 'node18',                       // Node.js 18+
-  outDir: '../.claude/hooks/moai',        // 출력 디렉토리
+  outDir: '../.claude/hooks/alfred',        // 출력 디렉토리
   outExtension: () => ({ js: '.cjs' }),   // .cjs 확장자
   bundle: true,                           // 의존성 번들링
   minify: false,                          // 디버깅 가능하게
@@ -91,7 +91,7 @@ moai-adk/
   "hooks": {
     "SessionStart": [{
       "hooks": [{
-        "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session-notice.cjs",
+        "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session-notice.cjs",
         "type": "command"
       }]
     }]
@@ -265,7 +265,7 @@ bun run type-check
 bun run build:hooks
 
 # 테스트
-node ../.claude/hooks/moai/session-notice.cjs
+node ../.claude/hooks/alfred/session-notice.cjs
 ```
 
 ### 2. 배포 전
@@ -284,9 +284,9 @@ npm pack --dry-run
 
 **체크리스트**:
 1. Node.js 18+ 설치 확인: `node -v`
-2. 파일 경로 확인: `ls .claude/hooks/moai/session-notice.cjs`
-3. 실행 권한 확인: `ls -l .claude/hooks/moai/session-notice.cjs`
-4. 수동 실행 테스트: `node .claude/hooks/moai/session-notice.cjs`
+2. 파일 경로 확인: `ls .claude/hooks/alfred/session-notice.cjs`
+3. 실행 권한 확인: `ls -l .claude/hooks/alfred/session-notice.cjs`
+4. 수동 실행 테스트: `node .claude/hooks/alfred/session-notice.cjs`
 
 ---
 

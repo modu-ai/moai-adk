@@ -20,23 +20,23 @@
 - ✅ `/Users/goos/MoAI/MoAI-ADK/.moai/memory/development-guide.md` - 9건 변경
 
 ### 2. Claude 에이전트 시스템 (6개 파일)
-- ✅ `.claude/agents/moai/tag-agent.md` - 1건 변경
-- ✅ `.claude/agents/moai/doc-syncer.md` - 5건 변경
-- ✅ `.claude/agents/moai/spec-builder.md` - 전체 일괄 변경
-- ✅ `.claude/agents/moai/trust-checker.md` - 전체 일괄 변경
-- ✅ `.claude/commands/moai/1-spec.md` - 1건 변경
-- ✅ `.claude/commands/moai/3-sync.md` - 전체 일괄 변경
+- ✅ `.claude/agents/alfred/tag-agent.md` - 1건 변경
+- ✅ `.claude/agents/alfred/doc-syncer.md` - 5건 변경
+- ✅ `.claude/agents/alfred/spec-builder.md` - 전체 일괄 변경
+- ✅ `.claude/agents/alfred/trust-checker.md` - 전체 일괄 변경
+- ✅ `.claude/commands/alfred/1-spec.md` - 1건 변경
+- ✅ `.claude/commands/alfred/3-sync.md` - 전체 일괄 변경
 
 ### 3. 템플릿 시스템 (9개 파일)
 - ✅ `moai-adk-ts/templates/CLAUDE.md` - 7건 변경
 - ✅ `moai-adk-ts/templates/.moai/memory/development-guide.md` - 8건 변경
-- ✅ `moai-adk-ts/templates/.claude/agents/moai/tag-agent.md` - 전체 일괄 변경
-- ✅ `moai-adk-ts/templates/.claude/agents/moai/trust-checker.md` - 전체 일괄 변경
-- ✅ `moai-adk-ts/templates/.claude/agents/moai/doc-syncer.md` - 전체 일괄 변경
-- ✅ `moai-adk-ts/templates/.claude/agents/moai/spec-builder.md` - 전체 일괄 변경
-- ✅ `moai-adk-ts/templates/.claude/commands/moai/1-spec.md` - 전체 일괄 변경
-- ✅ `moai-adk-ts/templates/.claude/commands/moai/3-sync.md` - 전체 일괄 변경
-- ✅ `moai-adk-ts/templates/.claude/hooks/moai/tag-enforcer.js` - 1건 변경
+- ✅ `moai-adk-ts/templates/.claude/agents/alfred/tag-agent.md` - 전체 일괄 변경
+- ✅ `moai-adk-ts/templates/.claude/agents/alfred/trust-checker.md` - 전체 일괄 변경
+- ✅ `moai-adk-ts/templates/.claude/agents/alfred/doc-syncer.md` - 전체 일괄 변경
+- ✅ `moai-adk-ts/templates/.claude/agents/alfred/spec-builder.md` - 전체 일괄 변경
+- ✅ `moai-adk-ts/templates/.claude/commands/alfred/1-spec.md` - 전체 일괄 변경
+- ✅ `moai-adk-ts/templates/.claude/commands/alfred/3-sync.md` - 전체 일괄 변경
+- ✅ `moai-adk-ts/templates/.claude/hooks/alfred/tag-enforcer.js` - 1건 변경
 
 ## ⚠️ 미변경 남은 파일들 (36개, 81건)
 
@@ -83,7 +83,7 @@
 ### 개발자 경험 개선
 1. **템플릿 동기화**: 새 프로젝트 생성 시 자동으로 AI-TAG 용어 적용
 2. **에이전트 시스템**: Claude Code 에이전트들이 일관된 용어 사용
-3. **명령어 시스템**: /moai: 명령어들에서 통일된 용어 사용
+3. **명령어 시스템**: /alfred: 명령어들에서 통일된 용어 사용
 
 ### 기술 문서 일관성
 1. **개발 가이드**: TRUST 5원칙과 AI-TAG 시스템 완벽 연동

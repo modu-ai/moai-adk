@@ -30,9 +30,9 @@ graph TB
     end
 
     subgraph "개발 실행 단계"
-        C --> D[/moai:1-spec]
-        D --> E[/moai:2-build]
-        E --> F[/moai:3-sync]
+        C --> D[/alfred:1-spec]
+        D --> E[/alfred:2-build]
+        E --> F[/alfred:3-sync]
     end
 
     subgraph "설정 조정 단계"
@@ -228,11 +228,11 @@ MoAI-ADK는 4개 라이프사이클에 8개 Hook 파일을 제공합니다:
       {
         "hooks": [
           {
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre-write-guard.cjs",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/pre-write-guard.cjs",
             "type": "command"
           },
           {
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag-enforcer.cjs",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/tag-enforcer.cjs",
             "type": "command"
           }
         ],
@@ -241,7 +241,7 @@ MoAI-ADK는 4개 라이프사이클에 8개 Hook 파일을 제공합니다:
       {
         "hooks": [
           {
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/policy-block.cjs",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/policy-block.cjs",
             "type": "command"
           }
         ],
@@ -252,7 +252,7 @@ MoAI-ADK는 4개 라이프사이클에 8개 Hook 파일을 제공합니다:
       {
         "hooks": [
           {
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session-notice.cjs",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session-notice.cjs",
             "type": "command"
           }
         ],
@@ -263,7 +263,7 @@ MoAI-ADK는 4개 라이프사이클에 8개 Hook 파일을 제공합니다:
       {
         "hooks": [
           {
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/steering-guard.cjs",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/steering-guard.cjs",
             "type": "command"
           }
         ]
@@ -586,13 +586,13 @@ graph TB
   "hooks": {
     "PreToolUse": [
       {
-        "hooks": [{"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre-write-guard.cjs", "type": "command"}],
+        "hooks": [{"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/pre-write-guard.cjs", "type": "command"}],
         "matcher": "Edit|Write"
       }
     ],
     "SessionStart": [
       {
-        "hooks": [{"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session-notice.cjs", "type": "command"}],
+        "hooks": [{"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session-notice.cjs", "type": "command"}],
         "matcher": "*"
       }
     ]
@@ -619,25 +619,25 @@ graph TB
     "PreToolUse": [
       {
         "hooks": [
-          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre-write-guard.cjs", "type": "command"},
-          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag-enforcer.cjs", "type": "command"}
+          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/pre-write-guard.cjs", "type": "command"},
+          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/tag-enforcer.cjs", "type": "command"}
         ],
         "matcher": "Edit|Write|MultiEdit"
       },
       {
-        "hooks": [{"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/policy-block.cjs", "type": "command"}],
+        "hooks": [{"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/policy-block.cjs", "type": "command"}],
         "matcher": "Bash"
       }
     ],
     "SessionStart": [
       {
-        "hooks": [{"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session-notice.cjs", "type": "command"}],
+        "hooks": [{"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session-notice.cjs", "type": "command"}],
         "matcher": "*"
       }
     ],
     "UserPromptSubmit": [
       {
-        "hooks": [{"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/steering-guard.cjs", "type": "command"}]
+        "hooks": [{"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/steering-guard.cjs", "type": "command"}]
       }
     ]
   },
@@ -701,13 +701,13 @@ Hook 'pre-write-guard.cjs' 실행 오류
 **해결 방법**:
 ```bash
 # 1. Hook 파일 존재 확인
-ls -la .claude/hooks/moai/
+ls -la .claude/hooks/alfred/
 
 # 2. Node.js 경로 확인
 which node
 
 # 3. Hook 파일 권한 확인
-chmod +x .claude/hooks/moai/*.cjs
+chmod +x .claude/hooks/alfred/*.cjs
 
 # 4. cc-manager로 재설정
 @agent-cc-manager "Hook 시스템 재구성"
@@ -764,8 +764,8 @@ MOAI_PROJECT_PATH not found
     "PreToolUse": [
       {
         "hooks": [
-          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre-write-guard.cjs", "type": "command"},
-          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag-enforcer.cjs", "type": "command"}
+          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/pre-write-guard.cjs", "type": "command"},
+          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/tag-enforcer.cjs", "type": "command"}
         ],
         "matcher": "Edit|Write|MultiEdit"
       }
@@ -812,8 +812,8 @@ if (filePath.endsWith('.ts') || filePath.endsWith('.tsx')) {
     "PreToolUse": [
       {
         "hooks": [
-          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre-write-guard.cjs", "type": "command"},
-          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag-enforcer.cjs", "type": "command"}
+          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/pre-write-guard.cjs", "type": "command"},
+          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/tag-enforcer.cjs", "type": "command"}
         ],
         "matcher": "Edit|Write"
       }
@@ -821,7 +821,7 @@ if (filePath.endsWith('.ts') || filePath.endsWith('.tsx')) {
     "PostToolUse": [
       {
         "hooks": [
-          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/quality-check.cjs", "type": "command"}
+          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/quality-check.cjs", "type": "command"}
         ],
         "matcher": "Edit|Write"
       }
@@ -837,7 +837,7 @@ if (filePath.endsWith('.ts') || filePath.endsWith('.tsx')) {
     "PreToolUse": [
       {
         "hooks": [
-          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/policy-block.cjs", "type": "command"}
+          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/policy-block.cjs", "type": "command"}
         ],
         "matcher": "Bash"
       }
@@ -845,7 +845,7 @@ if (filePath.endsWith('.ts') || filePath.endsWith('.tsx')) {
     "PostToolUse": [
       {
         "hooks": [
-          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/audit-logger.cjs", "type": "command"}
+          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/audit-logger.cjs", "type": "command"}
         ],
         "matcher": "Bash"
       }

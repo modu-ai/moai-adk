@@ -10,7 +10,7 @@
 ## 🎯 Executive Summary
 
 ### 핵심 변경사항
-- **워크플로우 전환**: `/moai:4-debug` → `@agent-debug-helper` 온디맨드 호출 방식
+- **워크플로우 전환**: `/alfred:4-debug` → `@agent-debug-helper` 온디맨드 호출 방식
 - **4단계 → 3단계**: 핵심 개발 루프 단순화 완료
 - **문서 일관성**: 모든 관련 문서 동기화 완료
 
@@ -26,7 +26,7 @@
 ### 1.1 TypeScript 프로젝트 설정 업데이트
 **파일**: `/Users/goos/MoAI/MoAI-ADK/moai-adk-ts/.claude/settings.json`
 ```diff
-- "moai:4-debug": { "enabled": true }
+- "alfred:4-debug": { "enabled": true }
 + (제거됨 - 3단계 워크플로우로 단순화)
 ```
 
@@ -46,8 +46,8 @@
 ### 2.1 SPEC-013 워크플로우 명령어 업데이트
 **파일**: `/Users/goos/MoAI/MoAI-ADK/.moai/specs/SPEC-013/spec.md` (라인 103-108)
 ```diff
-- **구현**: /moai:8-project, /moai:1-spec, /moai:2-build, /moai:3-sync, /moai:4-debug
-+ **구현**: /moai:8-project, /moai:1-spec, /moai:2-build, /moai:3-sync
+- **구현**: /alfred:8-project, /alfred:1-spec, /alfred:2-build, /alfred:3-sync, /alfred:4-debug
++ **구현**: /alfred:8-project, /alfred:1-spec, /alfred:2-build, /alfred:3-sync
 + **디버깅**: `@agent-debug-helper` 온디맨드 에이전트 호출 방식
 ```
 
@@ -62,10 +62,10 @@
 
 **변경사항**:
 ```diff
-- /moai:8-project  # 프로젝트 문서 초기화
-  /moai:1-spec     # 명세 작성
-  /moai:2-build    # TDD 구현
-  /moai:3-sync     # 문서 동기화
+- /alfred:8-project  # 프로젝트 문서 초기화
+  /alfred:1-spec     # 명세 작성
+  /alfred:2-build    # TDD 구현
+  /alfred:3-sync     # 문서 동기화
 
 + @agent-debug-helper "error description"  # Debug when needed
 ```
@@ -75,12 +75,12 @@
 ## ✅ Phase 3: 히스토리 문서 업데이트
 
 ### 3.1 debug-helper 에이전트 사용 예시 업데이트
-**파일**: `/Users/goos/MoAI/MoAI-ADK/.claude/agents/moai/debug-helper.md`
+**파일**: `/Users/goos/MoAI/MoAI-ADK/.claude/agents/alfred/debug-helper.md`
 
 **변경된 사용 예시**:
 ```diff
-- /moai:4-debug "PermissionError: [Errno 13] Permission denied"
-- /moai:4-debug --trust-check
+- /alfred:4-debug "PermissionError: [Errno 13] Permission denied"
+- /alfred:4-debug --trust-check
 + @agent-debug-helper "PermissionError: [Errno 13] Permission denied"
 + @agent-debug-helper --trust-check
 ```
@@ -121,7 +121,7 @@
 
 ### 수동 검증 권장 항목
 ⚠️ **기존 사용자 테스트**: `@agent-debug-helper` 호출이 정상 작동하는지 확인
-⚠️ **워크플로우 실행**: `/moai:1-spec` → `/moai:2-build` → `/moai:3-sync` 순서 테스트
+⚠️ **워크플로우 실행**: `/alfred:1-spec` → `/alfred:2-build` → `/alfred:3-sync` 순서 테스트
 ⚠️ **브랜치별 설정**: feature/, hotfix/ 브랜치에서 동일하게 작동하는지 확인
 
 ---
@@ -150,7 +150,7 @@
 - 모든 관련 문서가 동기화되어 사용자 혼란 요소가 제거되었습니다.
 - TypeScript 기반 MoAI-ADK 아키텍처와 완벽하게 일치하는 워크플로우가 구축되었습니다.
 
-**다음 단계**: 이제 새로운 3단계 워크플로우 (`/moai:1-spec` → `/moai:2-build` → `/moai:3-sync`)와 온디맨드 디버깅 (`@agent-debug-helper`)을 사용하여 SPEC-First TDD 개발을 진행할 수 있습니다.
+**다음 단계**: 이제 새로운 3단계 워크플로우 (`/alfred:1-spec` → `/alfred:2-build` → `/alfred:3-sync`)와 온디맨드 디버깅 (`@agent-debug-helper`)을 사용하여 SPEC-First TDD 개발을 진행할 수 있습니다.
 
 ---
 

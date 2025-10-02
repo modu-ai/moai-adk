@@ -35,7 +35,7 @@ MoAI-ADK는 SPEC-First TDD 개발을 위한 자동화 개발 도구입니다. �
 
 ### 자동 SPEC 템플릿 생성
 
-`/moai:1-spec "기능 제목"` 실행 시 자동으로 생성되는 구조:
+`/alfred:1-spec "기능 제목"` 실행 시 자동으로 생성되는 구조:
 
 ```markdown
 # SPEC-001: [기능 제목]
@@ -212,7 +212,7 @@ MoAI-ADK는 프로젝트 언어를 자동 감지하고 최적의 도구를 선�
 
 ```bash
 # 자동 감지: package.json, tsconfig.json
-/moai:2-build SPEC-001
+/alfred:2-build SPEC-001
 
 # 자동 사용 도구:
 # - Vitest: 테스트 프레임워크
@@ -224,7 +224,7 @@ MoAI-ADK는 프로젝트 언어를 자동 감지하고 최적의 도구를 선�
 
 ```bash
 # 자동 감지: requirements.txt, pyproject.toml
-/moai:2-build SPEC-001
+/alfred:2-build SPEC-001
 
 # 자동 사용 도구:
 # - pytest: 테스트 프레임워크
@@ -237,7 +237,7 @@ MoAI-ADK는 프로젝트 언어를 자동 감지하고 최적의 도구를 선�
 
 ```bash
 # 자동 감지: pom.xml, build.gradle
-/moai:2-build SPEC-001
+/alfred:2-build SPEC-001
 
 # 자동 사용 도구:
 # - JUnit: 테스트 프레임워크
@@ -323,7 +323,7 @@ rg "@CODE:AUTH-001" -n         # 구현 TAG 검색
 rg "AUTH-001" -n               # 모든 관련 TAG 검색
 
 # TAG 체인 검증
-/moai:3-sync                   # 전체 코드 스캔 및 검증
+/alfred:3-sync                   # 전체 코드 스캔 및 검증
 ```
 
 **CODE-FIRST 철학**:
@@ -334,7 +334,7 @@ rg "AUTH-001" -n               # 모든 관련 TAG 검색
 
 ### 실시간 무결성 검증
 
-`/moai:3-sync` 실행 시 자동으로 검증되는 항목:
+`/alfred:3-sync` 실행 시 자동으로 검증되는 항목:
 
 - **필수 TAG 흐름 완결성**: @SPEC → @TEST → @CODE → @DOC 연결 확인
 - **고아 TAG 감지**: 참조되지 않는 TAG 식별
@@ -513,11 +513,11 @@ Language-Specific Requirements
 ### 5개 워크플로우 명령어
 
 ```bash
-/moai:8-project    # (선택) 프로젝트 비전 수립
-/moai:1-spec      # SPEC 작성
-/moai:2-build     # TDD 구현
-/moai:3-sync      # 문서 동기화
-/moai:help        # 도움말
+/alfred:8-project    # (선택) 프로젝트 비전 수립
+/alfred:1-spec      # SPEC 작성
+/alfred:2-build     # TDD 구현
+/alfred:3-sync      # 문서 동기화
+/alfred:help        # 도움말
 ```
 
 ### 이벤트 훅
@@ -535,7 +535,7 @@ Language-Specific Requirements
 ### 1단계: SPEC 작성
 
 ```bash
-/moai:1-spec "사용자 이메일/비밀번호 인증"
+/alfred:1-spec "사용자 이메일/비밀번호 인증"
 ```
 
 생성된 SPEC-AUTH-001:
@@ -557,7 +557,7 @@ Language-Specific Requirements
 ### 2단계: TDD 구현
 
 ```bash
-/moai:2-build SPEC-AUTH-001
+/alfred:2-build SPEC-AUTH-001
 ```
 
 자동 생성되는 파일:
@@ -575,7 +575,7 @@ __tests__/
 ### 3단계: 문서 동기화
 
 ```bash
-/moai:3-sync
+/alfred:3-sync
 ```
 
 업데이트되는 항목:

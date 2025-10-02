@@ -53,7 +53,7 @@ export async function buildMoAIConfig(
         documentSync: config.mode === 'team',
       },
       directories: {
-        moai: '.moai',
+        alfred: '.moai',
         claude: '.claude',
         specs: '.moai/specs',
         templates: '.moai/templates',

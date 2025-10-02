@@ -70,7 +70,7 @@ describe('SessionNotifier Hook', () => {
       const result = await notifier.execute({});
 
       expect(result.success).toBe(true);
-      expect(result.message).toContain('/moai:8-project');
+      expect(result.message).toContain('/alfred:8-project');
     });
   });
 

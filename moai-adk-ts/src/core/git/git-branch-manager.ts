@@ -27,6 +27,7 @@ export class GitBranchManager {
   public readonly git: SimpleGit; // 테스트를 위해 public으로 변경
   private workingDir: string;
   private lockManager: GitLockManager;
+  private config: GitConfig; // Used for configuration access
 
   constructor(config: GitConfig, workingDir?: string) {
     this.validateConfig(config);

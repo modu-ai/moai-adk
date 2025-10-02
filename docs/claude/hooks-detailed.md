@@ -191,7 +191,7 @@ async execute(input) {
   if (!this.isMoAIProject()) {
     return {
       success: true,
-      message: "💡 Run `/moai:8-project` to initialize MoAI-ADK"
+      message: "💡 Run `/alfred:8-project` to initialize MoAI-ADK"
     };
   }
 
@@ -247,7 +247,7 @@ async execute(input) {
 
 출력 메시지를 프로젝트 요구사항에 맞게 수정할 수 있습니다:
 ```javascript
-// .claude/hooks/moai/session-notice.js 수정
+// .claude/hooks/alfred/session-notice.js 수정
 
 generateSessionOutput(status) {
   const lines = [];
@@ -363,7 +363,7 @@ const DEFAULT_MAPPINGS = {
 🔧 권장 도구:
 - typescript: test=npm test, lint=eslint, format=prettier
 - python: test=pytest, lint=ruff, format=black
-💡 필요 시 /moai:2-build 단계에서 해당 도구를 사용해 TDD를 실행하세요.
+💡 필요 시 /alfred:2-build 단계에서 해당 도구를 사용해 TDD를 실행하세요.
 ```
 
 **커스터마이징 방법:**
@@ -470,16 +470,16 @@ async execute(input) {
 ```
 🚀 MoAI-ADK 하이브리드 프로젝트가 감지되었습니다!
 📖 개발 가이드: CLAUDE.md | TRUST 원칙: .moai/memory/development-guide.md
-⚡ 하이브리드 워크플로우: /moai:1-spec → /moai:2-build → /moai:3-sync
+⚡ 하이브리드 워크플로우: /alfred:1-spec → /alfred:2-build → /alfred:3-sync
 🔗 시스템 상태: TypeScript (브릿지 없음) ⚠️
-🔧 디버깅: /moai:4-debug | 설정 관리: @agent-cc-manager
+🔧 디버깅: /alfred:4-debug | 설정 관리: @agent-cc-manager
 ```
 
 **커스터마이징 방법:**
 
 프로젝트별 금지 패턴을 추가할 수 있습니다:
 ```javascript
-// .claude/hooks/moai/steering-guard.js 수정
+// .claude/hooks/alfred/steering-guard.js 수정
 
 const PROJECT_SPECIFIC_PATTERNS = [
   {
@@ -624,7 +624,7 @@ extractCommand(toolInput) {
 
 프로젝트별 위험 명령어를 추가:
 ```javascript
-// .claude/hooks/moai/policy-block.js 수정
+// .claude/hooks/alfred/policy-block.js 수정
 
 const PROJECT_SPECIFIC_DANGEROUS = [
   "curl | bash",            // 원격 스크립트 실행
@@ -737,7 +737,7 @@ checkFileSafety(filePath) {
 
 프로젝트별 보호 경로를 설정할 수 있습니다:
 ```javascript
-// .claude/hooks/moai/pre-write-guard.js 수정
+// .claude/hooks/alfred/pre-write-guard.js 수정
 
 const PROJECT_PROTECTED_PATHS = [
   ".moai/memory/",
@@ -988,7 +988,7 @@ export class AuthenticationService {
 
 TAG 검증 규칙을 완화하거나 강화할 수 있습니다:
 ```javascript
-// .claude/hooks/moai/tag-enforcer.js 수정
+// .claude/hooks/alfred/tag-enforcer.js 수정
 
 // 경고를 에러로 승격
 validateCodeFirstTag(content) {
@@ -1175,7 +1175,7 @@ monitor.execute({});
 
 모니터링 대상 파일 확장자 추가:
 ```javascript
-// .claude/hooks/moai/file-monitor.js 수정
+// .claude/hooks/alfred/file-monitor.js 수정
 
 const watchPatterns = new Set([
   '.py', '.js', '.ts', '.md', '.json', '.yml', '.yaml',
@@ -1605,7 +1605,7 @@ INPUT='{
 }'
 
 # 훅 실행
-RESULT=$(echo "$INPUT" | node .claude/hooks/moai/custom-hook.js)
+RESULT=$(echo "$INPUT" | node .claude/hooks/alfred/custom-hook.js)
 
 # 결과 확인
 if [ $? -eq 0 ]; then
@@ -1654,10 +1654,10 @@ describe('CustomHook edge cases', () => {
 **1. 훅 파일 작성 및 배치**
 ```bash
 # 훅 파일 생성
-touch .claude/hooks/moai/my-custom-hook.js
+touch .claude/hooks/alfred/my-custom-hook.js
 
 # 실행 권한 부여
-chmod +x .claude/hooks/moai/my-custom-hook.js
+chmod +x .claude/hooks/alfred/my-custom-hook.js
 ```
 
 **2. settings.json 업데이트**
@@ -1666,7 +1666,7 @@ chmod +x .claude/hooks/moai/my-custom-hook.js
   "hooks": [
     {
       "name": "my-custom-hook",
-      "path": ".claude/hooks/moai/my-custom-hook.js",
+      "path": ".claude/hooks/alfred/my-custom-hook.js",
       "event": "pre-write",
       "enabled": true,
       "timeout": 10000
@@ -1864,15 +1864,15 @@ sequenceDiagram
 ```mermaid
 flowchart LR
     subgraph "훅 실행 계층"
-        H1[Hook 1<br/>steering-guard] --> H2[Hook 2<br/>pre-write-guard]
-        H2 --> H3[Hook 3<br/>tag-enforcer]
+        H1[Hook 1 - steering-guard] --> H2[Hook 2 - pre-write-guard]
+        H2 --> H3[Hook 3 - tag-enforcer]
     end
 
     subgraph "에러 처리 계층"
         E1{에러 발생?} --> |Yes| E2[에러 타입 판별]
-        E2 --> |치명적| E3[작업 차단<br/>exitCode=2]
-        E2 --> |경고| E4[경고 로그<br/>계속 진행]
-        E2 --> |타임아웃| E5[훅 중단<br/>계속 진행]
+        E2 --> |치명적| E3[작업 차단 - exitCode=2]
+        E2 --> |경고| E4[경고 로그 - 계속 진행]
+        E2 --> |타임아웃| E5[훅 중단 - 계속 진행]
 
         E3 --> Stop([작업 중단])
         E4 --> Continue([다음 훅])

@@ -7,8 +7,7 @@
 
 export type {
   UpdateConfiguration,
-  UpdateOperationResult,
-  UpdateSummary,
+  UpdateResult,
 } from './update-orchestrator.js';
 // Main orchestrator (only implemented module)
 export { UpdateOrchestrator } from './update-orchestrator.js';

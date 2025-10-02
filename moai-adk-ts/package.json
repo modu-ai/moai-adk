@@ -1,5 +1,5 @@
 {
-  "name": "moai-adk",
+  "name": "@moai/adk",
   "version": "0.0.1",
   "description": "🗿 MoAI-ADK: TypeScript-based SPEC-First TDD Development Kit with Universal Language Support",
   "type": "module",
@@ -95,10 +95,17 @@
     "cli",
     "development",
     "typescript",
-    "tdd"
+    "tdd",
+    "spec-first",
+    "claude-code",
+    "ai-agent",
+    "test-driven-development"
   ],
   "author": "MoAI Team",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/modu-ai/moai-adk.git"

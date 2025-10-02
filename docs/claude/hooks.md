@@ -24,7 +24,7 @@ MoAI-ADK는 개발 프로세스를 자동으로 보호하고 가이드하는 **9
 ### 훅 위치
 
 ```
-.claude/hooks/moai/
+.claude/hooks/alfred/
 ├── file-monitor.js
 ├── language-detector.js
 ├── policy-block.js
@@ -46,7 +46,7 @@ MoAI-ADK는 개발 프로세스를 자동으로 보호하고 가이드하는 **9
 ### 동작 방식
 
 ```javascript
-// .claude/hooks/moai/file-monitor.js
+// .claude/hooks/alfred/file-monitor.js
 
 /**
  * HOOK:FILE-MONITOR-001
@@ -471,9 +471,9 @@ Project: ${projectName}
 Mode: ${mode}
 
 3-Stage Workflow:
-  /moai:1-spec  → SPEC 작성
-  /moai:2-build → TDD 구현
-  /moai:3-sync  → 문서 동기화
+  /alfred:1-spec  → SPEC 작성
+  /alfred:2-build → TDD 구현
+  /alfred:3-sync  → 문서 동기화
 
 On-Demand Support:
   @agent-debug-helper "오류내용"
@@ -540,7 +540,7 @@ export function onPeriodic() {
 ${oldDrafts.map(s => `- ${s.id}: ${s.title} (${s.age})`).join('\n')}
 
 Next Step:
-  /moai:2-build ${oldDrafts[0].id}
+  /alfred:2-build ${oldDrafts[0].id}
       `);
     }
   }
@@ -554,7 +554,7 @@ ${status.modifiedFiles.length} files modified
 ${status.newTags.length} new TAGs detected
 
 Next Step:
-  /moai:3-sync
+  /alfred:3-sync
     `);
   }
 
@@ -743,7 +743,7 @@ Use '@agent-tag-agent' to verify chain integrity.
 ### 커스텀 훅 추가
 
 ```javascript
-// .claude/hooks/moai/custom-hook.js
+// .claude/hooks/alfred/custom-hook.js
 
 /**
  * HOOK:CUSTOM-001
@@ -783,10 +783,10 @@ export function onCustomEvent(data) {
 cat .claude/settings.json | jq '.hooks.enabled'
 
 # 2. 훅 파일 존재 확인
-ls -la .claude/hooks/moai/
+ls -la .claude/hooks/alfred/
 
 # 3. 권한 확인
-chmod +x .claude/hooks/moai/*.js
+chmod +x .claude/hooks/alfred/*.js
 
 # 4. Claude Code 재시작
 ```
@@ -798,7 +798,7 @@ chmod +x .claude/hooks/moai/*.js
 cat .moai/logs/hooks.log
 
 # 특정 훅 테스트
-node .claude/hooks/moai/pre-write-guard.js
+node .claude/hooks/alfred/pre-write-guard.js
 ```
 
 ### TAG 검증 오류
@@ -828,6 +828,6 @@ node .claude/hooks/moai/pre-write-guard.js
 
 ## 참고 자료
 
-- **훅 소스**: `.claude/hooks/moai/`
+- **훅 소스**: `.claude/hooks/alfred/`
 - **설정 파일**: `.claude/settings.json`
 - **로그 파일**: `.moai/logs/hooks.log`

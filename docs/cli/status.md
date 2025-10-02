@@ -56,11 +56,11 @@ graph TD
     B -->|예| C{.claude 존재?}
     B -->|아니오| D{.claude 존재?}
 
-    C -->|예| E["MoAI Project Full<br/>✅ 모든 기능 사용 가능"]
-    C -->|아니오| F["MoAI Project Partial<br/>⚠️ Claude 통합 필요"]
+    C -->|예| E["MoAI Project Full - ✅ 모든 기능 사용 가능"]
+    C -->|아니오| F["MoAI Project Partial - ⚠️ Claude 통합 필요"]
 
-    D -->|예| G["Claude Project<br/>⚠️ MoAI 시스템 필요"]
-    D -->|아니오| H["Regular Directory<br/>❌ 초기화 필요"]
+    D -->|예| G["Claude Project - ⚠️ MoAI 시스템 필요"]
+    D -->|아니오| H["Regular Directory - ❌ 초기화 필요"]
 
     E --> I["✅ Full Setup"]
     F --> J["💡 Run: moai init"]
@@ -103,7 +103,7 @@ graph TD
 - **Claude Project**: `.claude`만 존재
 - **Regular Directory**: 둘 다 없음
 
-이 분류를 통해 프로젝트의 설정 완성도를 즉시 파악할 수 있습니다. Full MoAI Project는 3단계 워크플로우(`/moai:1-spec`, `/moai:2-build`, `/moai:3-sync`)를 완전히 활용할 수 있는 상태를 의미합니다.
+이 분류를 통해 프로젝트의 설정 완성도를 즉시 파악할 수 있습니다. Full MoAI Project는 3단계 워크플로우(`/alfred:1-spec`, `/alfred:2-build`, `/alfred:3-sync`)를 완전히 활용할 수 있는 상태를 의미합니다.
 
 ## 기본 사용법
 
@@ -264,7 +264,7 @@ moai status --verbose
    Templates: v0.0.1
 
 📁 File Counts:
-   .moai: 47 files
+   .alfred: 47 files
    .claude: 23 files
    CLAUDE.md: 1 files
 ```
@@ -460,9 +460,9 @@ CI/CD에서 `moai status`를 사용하면 다음과 같은 이점이 있습니�
 - `.moai/version.json`: 템플릿 버전 정보
 
 **Claude Integration (`.claude/`)**: Claude Code와의 통합을 위한 디렉토리입니다. 다음 요소를 포함합니다:
-- `.claude/agents/moai/`: 7개 전문 에이전트 (`spec-builder`, `code-builder`, `doc-syncer`, `cc-manager`, `debug-helper`, `git-manager`, `trust-checker`)
-- `.claude/commands/moai/`: 5개 슬래시 명령어 (`/moai:8-project`, `/moai:1-spec`, `/moai:2-build`, `/moai:3-sync`)
-- `.claude/hooks/moai/`: 8개 이벤트 훅 (보안, 모니터링)
+- `.claude/agents/alfred/`: 7개 전문 에이전트 (`spec-builder`, `code-builder`, `doc-syncer`, `cc-manager`, `debug-helper`, `git-manager`, `trust-checker`)
+- `.claude/commands/alfred/`: 5개 슬래시 명령어 (`/alfred:8-project`, `/alfred:1-spec`, `/alfred:2-build`, `/alfred:3-sync`)
+- `.claude/hooks/alfred/`: 8개 이벤트 훅 (보안, 모니터링)
 - `.claude/output-styles/`: 5개 출력 스타일 (학습, 페어, 초보)
 
 **Memory File (`CLAUDE.md`)**: Claude에게 프로젝트 컨텍스트를 전달하는 핵심 메모리 파일입니다. 프로젝트 정보, 개발 철학, @TAG 시스템, TRUST 5원칙 등이 포함됩니다. 이 파일이 없으면 Claude가 프로젝트를 이해하지 못하므로 필수입니다.
@@ -489,7 +489,7 @@ CI/CD에서 `moai status`를 사용하면 다음과 같은 이점이 있습니�
 
 ```
 📁 File Counts:
-   .moai: 47 files
+   .alfred: 47 files
    .claude: 23 files
    CLAUDE.md: 1 files
 ```
@@ -519,7 +519,7 @@ CI/CD에서 `moai status`를 사용하면 다음과 같은 이점이 있습니�
 
 **MoAI 미초기화** (`!status.moaiInitialized`): `.moai` 디렉토리가 없으면 `moai init` 실행을 권장합니다. 이 명령어는 필요한 모든 디렉토리 구조와 설정 파일을 생성합니다.
 
-**Git 미초기화** (`!status.gitRepository`): `.git` 디렉토리가 없으면 `git init` 실행을 권장합니다. Git은 MoAI-ADK의 브랜치 기반 워크플로우에 필수적이며, `/moai:1-spec`과 `/moai:2-build` 단계에서 자동으로 브랜치를 생성합니다.
+**Git 미초기화** (`!status.gitRepository`): `.git` 디렉토리가 없으면 `git init` 실행을 권장합니다. Git은 MoAI-ADK의 브랜치 기반 워크플로우에 필수적이며, `/alfred:1-spec`과 `/alfred:2-build` 단계에서 자동으로 브랜치를 생성합니다.
 
 **템플릿 업데이트** (`versions.outdated`): 템플릿 버전이 패키지 버전보다 낮으면 `moai update` 실행을 권장합니다. 최신 에이전트 개선 사항과 버그 수정을 받을 수 있습니다.
 
@@ -534,7 +534,7 @@ CI/CD에서 `moai status`를 사용하면 다음과 같은 이점이 있습니�
 **상태**: `.moai` ✅ `.claude` ✅ `CLAUDE.md` ✅ `.git` ✅
 
 **사용 가능한 기능**:
-- ✅ 3단계 워크플로우 (`/moai:1-spec`, `/moai:2-build`, `/moai:3-sync`)
+- ✅ 3단계 워크플로우 (`/alfred:1-spec`, `/alfred:2-build`, `/alfred:3-sync`)
 - ✅ 7개 전문 에이전트 (`spec-builder`, `code-builder`, `doc-syncer`, 등)
 - ✅ SPEC-First TDD 방법론
 - ✅ @TAG 추적성 시스템
@@ -630,7 +630,7 @@ moai init
 ls -la .claude/
 
 # 3. 에이전트 파일 확인
-ls -la .claude/agents/moai/
+ls -la .claude/agents/alfred/
 ```
 
 `.claude` 디렉토리를 수동으로 삭제했다면 `moai init`이 자동으로 복원합니다.

@@ -69,10 +69,10 @@ MoAI-ADK는 `.moai/config.json`과 `.claude/settings.json` 두 개의 주요 설
   },
   "pipeline": {
     "available_commands": [
-      "/moai:1-spec",
-      "/moai:2-build",
-      "/moai:3-sync",
-      "/moai:4-debug"
+      "/alfred:1-spec",
+      "/alfred:2-build",
+      "/alfred:3-sync",
+      "/alfred:4-debug"
     ],
     "current_stage": "initialized"
   },
@@ -214,10 +214,10 @@ feature/SPEC-001 → develop → main
 {
   "pipeline": {
     "available_commands": [
-      "/moai:1-spec",
-      "/moai:2-build",
-      "/moai:3-sync",
-      "/moai:4-debug"
+      "/alfred:1-spec",
+      "/alfred:2-build",
+      "/alfred:3-sync",
+      "/alfred:4-debug"
     ],
     "current_stage": "initialized"
   }
@@ -225,10 +225,10 @@ feature/SPEC-001 → develop → main
 ```
 
 **Stage 설명**:
-- `/moai:1-spec`: SPEC 작성 (EARS 방식)
-- `/moai:2-build`: TDD 구현 (RED→GREEN→REFACTOR)
-- `/moai:3-sync`: 문서 동기화 (PR 상태 전환)
-- `/moai:4-debug`: 디버깅 및 검증 (온디맨드)
+- `/alfred:1-spec`: SPEC 작성 (EARS 방식)
+- `/alfred:2-build`: TDD 구현 (RED→GREEN→REFACTOR)
+- `/alfred:3-sync`: 문서 동기화 (PR 상태 전환)
+- `/alfred:4-debug`: 디버깅 및 검증 (온디맨드)
 
 #### 5. 프로젝트 정보 (project)
 
@@ -296,7 +296,7 @@ feature/SPEC-001 → develop → main
   "project": "my-project",
   "agents": {
     "enabled": true,
-    "path": "agents/moai",
+    "path": "agents/alfred",
     "individual": {
       "spec-builder": true,
       "code-builder": true,
@@ -310,7 +310,7 @@ feature/SPEC-001 → develop → main
   },
   "commands": {
     "enabled": true,
-    "path": "commands/moai",
+    "path": "commands/alfred",
     "individual": {
       "8-project": true,
       "1-spec": true,
@@ -321,7 +321,7 @@ feature/SPEC-001 → develop → main
   },
   "hooks": {
     "enabled": true,
-    "path": "hooks/moai",
+    "path": "hooks/alfred",
     "order": [
       "session-notice",
       "language-detector",
@@ -351,7 +351,7 @@ feature/SPEC-001 → develop → main
 {
   "agents": {
     "enabled": true,
-    "path": "agents/moai",
+    "path": "agents/alfred",
     "individual": {
       "spec-builder": true,       // SPEC 작성 전담
       "code-builder": true,       // TDD 구현 전담
@@ -389,13 +389,13 @@ feature/SPEC-001 → develop → main
 {
   "commands": {
     "enabled": true,
-    "path": "commands/moai",
+    "path": "commands/alfred",
     "individual": {
-      "8-project": true,          // /moai:8-project
-      "1-spec": true,             // /moai:1-spec
-      "2-build": true,            // /moai:2-build
-      "3-sync": true,             // /moai:3-sync
-      "help": true                // /moai:help
+      "8-project": true,          // /alfred:8-project
+      "1-spec": true,             // /alfred:1-spec
+      "2-build": true,            // /alfred:2-build
+      "3-sync": true,             // /alfred:3-sync
+      "help": true                // /alfred:help
     }
   }
 }
@@ -407,7 +407,7 @@ feature/SPEC-001 → develop → main
 {
   "hooks": {
     "enabled": true,
-    "path": "hooks/moai",
+    "path": "hooks/alfred",
     "order": [
       "session-notice",           // 세션 안내
       "language-detector",        // 언어 감지

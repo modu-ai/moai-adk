@@ -290,7 +290,7 @@ Microservices Architecture
 - Payment Service: `PAYMENT-XXX`, `REFUND-XXX`
 
 ### TAG 추적성 관리 (코드 스캔 방식)
-- **검증 방법**: `/moai:3-sync` 실행 시 각 서비스 독립적으로 스캔
+- **검증 방법**: `/alfred:3-sync` 실행 시 각 서비스 독립적으로 스캔
 - **추적 범위**: 각 서비스의 src/, tests/ 디렉토리
 - **유지 주기**: PR 생성 전 필수 검증
 - **중간 캐시 없음**: 각 서비스 코드가 유일한 진실의 원천
@@ -724,7 +724,7 @@ MoAI-ADK는 4개 라이프사이클에 8개 Hook을 제공합니다:
     "PreToolUse": [
       {
         "hooks": [
-          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre-write-guard.cjs", "type": "command"}
+          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/pre-write-guard.cjs", "type": "command"}
         ],
         "matcher": "Edit|Write"
       }
@@ -732,7 +732,7 @@ MoAI-ADK는 4개 라이프사이클에 8개 Hook을 제공합니다:
     "SessionStart": [
       {
         "hooks": [
-          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session-notice.cjs", "type": "command"}
+          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session-notice.cjs", "type": "command"}
         ],
         "matcher": "*"
       }
@@ -748,14 +748,14 @@ MoAI-ADK는 4개 라이프사이클에 8개 Hook을 제공합니다:
     "PreToolUse": [
       {
         "hooks": [
-          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre-write-guard.cjs", "type": "command"},
-          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag-enforcer.cjs", "type": "command"}
+          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/pre-write-guard.cjs", "type": "command"},
+          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/tag-enforcer.cjs", "type": "command"}
         ],
         "matcher": "Edit|Write|MultiEdit"
       },
       {
         "hooks": [
-          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/policy-block.cjs", "type": "command"}
+          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/policy-block.cjs", "type": "command"}
         ],
         "matcher": "Bash"
       }
@@ -763,9 +763,9 @@ MoAI-ADK는 4개 라이프사이클에 8개 Hook을 제공합니다:
     "PostToolUse": [
       {
         "hooks": [
-          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/performance-monitor.cjs", "type": "command"},
-          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/audit-logger.cjs", "type": "command"},
-          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/quality-check.cjs", "type": "command"}
+          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/performance-monitor.cjs", "type": "command"},
+          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/audit-logger.cjs", "type": "command"},
+          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/quality-check.cjs", "type": "command"}
         ],
         "matcher": "Edit|Write"
       }
@@ -773,7 +773,7 @@ MoAI-ADK는 4개 라이프사이클에 8개 Hook을 제공합니다:
     "SessionStart": [
       {
         "hooks": [
-          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session-notice.cjs", "type": "command"}
+          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session-notice.cjs", "type": "command"}
         ],
         "matcher": "*"
       }
@@ -781,7 +781,7 @@ MoAI-ADK는 4개 라이프사이클에 8개 Hook을 제공합니다:
     "UserPromptSubmit": [
       {
         "hooks": [
-          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/steering-guard.cjs", "type": "command"}
+          {"command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/steering-guard.cjs", "type": "command"}
         ]
       }
     ]
@@ -898,9 +898,9 @@ if (environment === 'production') {
   "pipeline": {
     "current_stage": "initialized",
     "available_commands": [
-      "/moai:1-spec",
-      "/moai:2-build",
-      "/moai:3-sync"
+      "/alfred:1-spec",
+      "/alfred:2-build",
+      "/alfred:3-sync"
     ]
   },
   "tags": {
@@ -1150,15 +1150,15 @@ my-java-project/
 **워크플로우**:
 ```bash
 # 1. SPEC 작성 (로컬 파일)
-/moai:1-spec
+/alfred:1-spec
 # → .moai/specs/SPEC-001/ 생성
 
 # 2. TDD 구현 (자동 커밋)
-/moai:2-build
+/alfred:2-build
 # → 자동으로 중간 커밋
 
 # 3. 문서 동기화
-/moai:3-sync
+/alfred:3-sync
 # → 로컬 리포트 생성
 ```
 
@@ -1193,17 +1193,17 @@ my-java-project/
 **워크플로우**:
 ```bash
 # 1. SPEC 작성 (GitHub Issue)
-/moai:1-spec
+/alfred:1-spec
 # → GitHub Issue 생성
 # → feature/SPEC-001 브랜치 생성
 # → Draft PR 생성
 
 # 2. TDD 구현 (PR 업데이트)
-/moai:2-build
+/alfred:2-build
 # → PR 자동 업데이트
 
 # 3. 문서 동기화 (PR Ready)
-/moai:3-sync
+/alfred:3-sync
 # → Draft → Ready 전환
 # → 리뷰어 자동 할당
 ```
@@ -1346,8 +1346,8 @@ vi .moai/project/tech.md
 {
   "pipeline": {
     "available_commands": [
-      "/moai:1-custom",  // 금지
-      "/moai:2-custom"   // 금지
+      "/alfred:1-custom",  // 금지
+      "/alfred:2-custom"   // 금지
     ]
   }
 }
@@ -1358,9 +1358,9 @@ vi .moai/project/tech.md
 {
   "pipeline": {
     "available_commands": [
-      "/moai:1-spec",
-      "/moai:2-build",
-      "/moai:3-sync"
+      "/alfred:1-spec",
+      "/alfred:2-build",
+      "/alfred:3-sync"
     ]
   }
 }

@@ -42,9 +42,9 @@ export class TemplateCopier {
     let filesCopied = 0;
 
     const filesToCopy = [
-      { src: '.claude/commands/moai', dest: '.claude/commands/moai' },
-      { src: '.claude/agents/moai', dest: '.claude/agents/moai' },
-      { src: '.claude/hooks/moai', dest: '.claude/hooks/moai' },
+      { src: '.claude/commands/alfred', dest: '.claude/commands/alfred' },
+      { src: '.claude/agents/alfred', dest: '.claude/agents/alfred' },
+      { src: '.claude/hooks/alfred', dest: '.claude/hooks/alfred' },
       {
         src: '.moai/memory/development-guide.md',
         dest: '.moai/memory/development-guide.md',

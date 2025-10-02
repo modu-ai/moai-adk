@@ -13,21 +13,21 @@ MoAI-ADK는 SPEC-First TDD 개발을 위한 **4개 슬래시 명령어**를 제�
 
 | 명령어 | 단계 | 주요 기능 | 자동화 |
 |--------|------|-----------|--------|
-| `/moai:8-project` | 준비 (선택) | 프로젝트 비전 수립 | 3대 문서 생성 |
-| `/moai:1-spec` | SPEC 작성 | EARS 요구사항 작성 | 사용자 확인 후 브랜치 |
-| `/moai:2-build` | TDD 구현 | Red-Green-Refactor | 범용 언어 자동 지원 |
-| `/moai:3-sync` | 문서 동기화 | TAG 검증, PR 전환 | 사용자 확인 후 머지 |
+| `/alfred:8-project` | 준비 (선택) | 프로젝트 비전 수립 | 3대 문서 생성 |
+| `/alfred:1-spec` | SPEC 작성 | EARS 요구사항 작성 | 사용자 확인 후 브랜치 |
+| `/alfred:2-build` | TDD 구현 | Red-Green-Refactor | 범용 언어 자동 지원 |
+| `/alfred:3-sync` | 문서 동기화 | TAG 검증, PR 전환 | 사용자 확인 후 머지 |
 
 ### 기본 사용법
 
 ```bash
 # Claude Code에서 입력
-/moai:1-spec "기능 제목"
-/moai:2-build SPEC-ID
-/moai:3-sync
+/alfred:1-spec "기능 제목"
+/alfred:2-build SPEC-ID
+/alfred:3-sync
 ```
 
-## /moai:8-project (선택)
+## /alfred:8-project (선택)
 
 ### 목적
 
@@ -95,7 +95,7 @@ Project Architecture
 
 ```bash
 # 기본 사용
-/moai:8-project
+/alfred:8-project
 
 # 대화형 생성
 에이전트: "프로젝트 이름은 무엇인가요?"
@@ -115,7 +115,7 @@ Project Architecture
 - ✅ 팀 온보딩 문서 필요
 - ❌ 기존 프로젝트에 기능 추가만 할 때
 
-## /moai:1-spec
+## /alfred:1-spec
 
 ### 목적
 
@@ -127,13 +127,13 @@ Project Architecture
 
 ```bash
 # 새 SPEC 작성
-/moai:1-spec "기능 제목"
+/alfred:1-spec "기능 제목"
 
 # 복수 SPEC 작성
-/moai:1-spec "기능1" "기능2" "기능3"
+/alfred:1-spec "기능1" "기능2" "기능3"
 
 # 기존 SPEC 수정
-/moai:1-spec SPEC-001 "수정 내용"
+/alfred:1-spec SPEC-001 "수정 내용"
 ```
 
 ### 실행 프로세스
@@ -227,7 +227,7 @@ TAG BLOCK을 통한 추적성 확보:
 에이전트: "브랜치 생성 완료.
           Git 브랜치: feature/spec-auth-001-authentication
 
-          다음 단계: /moai:2-build SPEC-AUTH-001"
+          다음 단계: /alfred:2-build SPEC-AUTH-001"
 ```
 
 ### Personal vs Team 모드
@@ -235,7 +235,7 @@ TAG BLOCK을 통한 추적성 확보:
 #### Personal 모드
 
 ```bash
-/moai:1-spec "사용자 인증"
+/alfred:1-spec "사용자 인증"
 
 # 저장 위치: .moai/specs/SPEC-AUTH-001/
 # 브랜치: 로컬 Git 브랜치 생성
@@ -244,7 +244,7 @@ TAG BLOCK을 통한 추적성 확보:
 #### Team 모드
 
 ```bash
-/moai:1-spec "사용자 인증"
+/alfred:1-spec "사용자 인증"
 
 # 저장 위치: GitHub Issues + .moai/specs/
 # 브랜치: GitHub 브랜치 + PR 생성
@@ -257,29 +257,29 @@ TAG BLOCK을 통한 추적성 확보:
 
 ```bash
 # 단일 기능
-/moai:1-spec "사용자 인증"
+/alfred:1-spec "사용자 인증"
 
 # 관련 기능들
-/moai:1-spec "회원가입" "로그인" "비밀번호 재설정"
+/alfred:1-spec "회원가입" "로그인" "비밀번호 재설정"
 
 # 상세 컨텍스트
-/moai:1-spec "OAuth2 소셜 로그인 (Google, GitHub, Apple 지원)"
+/alfred:1-spec "OAuth2 소셜 로그인 (Google, GitHub, Apple 지원)"
 ```
 
 #### 고급 사용
 
 ```bash
 # 기존 SPEC 수정
-/moai:1-spec SPEC-AUTH-001 "2FA 추가"
+/alfred:1-spec SPEC-AUTH-001 "2FA 추가"
 
 # 특정 EARS 구문만
-/moai:1-spec "결제 시스템" --ears event-driven
+/alfred:1-spec "결제 시스템" --ears event-driven
 
 # API 전용 SPEC
-/moai:1-spec "REST API 인증 엔드포인트" --template api
+/alfred:1-spec "REST API 인증 엔드포인트" --template api
 ```
 
-## /moai:2-build
+## /alfred:2-build
 
 ### 목적
 
@@ -291,13 +291,13 @@ Red-Green-Refactor 사이클로 SPEC을 코드로 전환합니다.
 
 ```bash
 # 특정 SPEC 구현
-/moai:2-build SPEC-001
+/alfred:2-build SPEC-001
 
 # 여러 SPEC 구현
-/moai:2-build SPEC-001 SPEC-002 SPEC-003
+/alfred:2-build SPEC-001 SPEC-002 SPEC-003
 
 # 모든 Draft SPEC 구현
-/moai:2-build all
+/alfred:2-build all
 ```
 
 ### 실행 프로세스
@@ -477,7 +477,7 @@ export class AuthService {
 
 TRUST 준수율: 100%
 
-다음 단계: /moai:3-sync
+다음 단계: /alfred:3-sync
 ```
 
 ### 언어별 자동 지원
@@ -485,7 +485,7 @@ TRUST 준수율: 100%
 #### TypeScript
 
 ```bash
-/moai:2-build SPEC-001
+/alfred:2-build SPEC-001
 
 # 자동 사용:
 # - Vitest (테스트)
@@ -496,7 +496,7 @@ TRUST 준수율: 100%
 #### Python
 
 ```bash
-/moai:2-build SPEC-001
+/alfred:2-build SPEC-001
 
 # 자동 사용:
 # - pytest (테스트)
@@ -509,20 +509,20 @@ TRUST 준수율: 100%
 
 ```bash
 # 기본 TDD 구현
-/moai:2-build SPEC-AUTH-001
+/alfred:2-build SPEC-AUTH-001
 
 # 특정 단계만
-/moai:2-build SPEC-AUTH-001 --phase red
-/moai:2-build SPEC-AUTH-001 --phase refactor
+/alfred:2-build SPEC-AUTH-001 --phase red
+/alfred:2-build SPEC-AUTH-001 --phase refactor
 
 # 여러 SPEC 일괄 구현
-/moai:2-build SPEC-001 SPEC-002 SPEC-003
+/alfred:2-build SPEC-001 SPEC-002 SPEC-003
 
 # 모든 Draft SPEC
-/moai:2-build all --filter status:draft
+/alfred:2-build all --filter status:draft
 ```
 
-## /moai:3-sync
+## /alfred:3-sync
 
 ### 목적
 
@@ -534,15 +534,15 @@ TRUST 준수율: 100%
 
 ```bash
 # 전체 동기화
-/moai:3-sync
+/alfred:3-sync
 
 # 특정 모드
-/moai:3-sync full        # 전체 동기화
-/moai:3-sync tags-only   # TAG 검증만
-/moai:3-sync docs-only   # 문서만
+/alfred:3-sync full        # 전체 동기화
+/alfred:3-sync tags-only   # TAG 검증만
+/alfred:3-sync docs-only   # 문서만
 
 # 특정 경로
-/moai:3-sync --path src/auth
+/alfred:3-sync --path src/auth
 ```
 
 ### 실행 프로세스
@@ -626,16 +626,16 @@ TRUST 준수율: 100%
 
 ```bash
 # 전체 동기화
-/moai:3-sync
+/alfred:3-sync
 
 # TAG 검증만
-/moai:3-sync tags-only
+/alfred:3-sync tags-only
 
 # 특정 문서만
-/moai:3-sync docs-only --target api
+/alfred:3-sync docs-only --target api
 
 # 특정 경로만
-/moai:3-sync --path src/auth
+/alfred:3-sync --path src/auth
 ```
 
 ## 워크플로우 완전 예시
@@ -644,20 +644,20 @@ TRUST 준수율: 100%
 
 ```bash
 # 1단계: 프로젝트 준비 (선택)
-/moai:8-project
+/alfred:8-project
 
 # 2단계: SPEC 작성
-/moai:1-spec "사용자 이메일/비밀번호 인증"
+/alfred:1-spec "사용자 이메일/비밀번호 인증"
 
 # (사용자 확인 및 브랜치 생성)
 
 # 3단계: TDD 구현
-/moai:2-build SPEC-AUTH-001
+/alfred:2-build SPEC-AUTH-001
 
 # (사용자 승인 및 구현)
 
 # 4단계: 문서 동기화
-/moai:3-sync
+/alfred:3-sync
 
 # (사용자 확인 및 PR 전환)
 
@@ -686,23 +686,23 @@ MoAI-ADK의 슬래시 명령어는 프로젝트 특성에 맞게 커스터마이
 .claude/
 └── commands/
     └── moai/
-        ├── 0-init.md       # /moai:0-init
-        ├── 1-spec.md       # /moai:1-spec
-        ├── 2-build.md      # /moai:2-build
-        ├── 3-sync.md       # /moai:3-sync
-        └── 8-project.md    # /moai:8-project
+        ├── 0-init.md       # /alfred:0-init
+        ├── 1-spec.md       # /alfred:1-spec
+        ├── 2-build.md      # /alfred:2-build
+        ├── 3-sync.md       # /alfred:3-sync
+        └── 8-project.md    # /alfred:8-project
 ```
 
 ### 명령어 커스터마이징 방법
 
 #### 1. 기존 명령어 수정
 
-**예시: /moai:1-spec에 커스텀 템플릿 추가**
+**예시: /alfred:1-spec에 커스텀 템플릿 추가**
 
 ```markdown
-<!-- .claude/commands/moai/1-spec.md -->
+<!-- .claude/commands/alfred/1-spec.md -->
 
-# /moai:1-spec - SPEC 작성
+# /alfred:1-spec - SPEC 작성
 
 ## 추가 옵션
 
@@ -738,17 +738,17 @@ port: 8080
 
 #### 2. 새로운 명령어 추가
 
-**예시: /moai:4-deploy 추가**
+**예시: /alfred:4-deploy 추가**
 
 ```bash
 # 1. 명령어 파일 생성
-touch .claude/commands/moai/4-deploy.md
+touch .claude/commands/alfred/4-deploy.md
 ```
 
 ```markdown
-<!-- .claude/commands/moai/4-deploy.md -->
+<!-- .claude/commands/alfred/4-deploy.md -->
 
-# /moai:4-deploy - 배포 자동화
+# /alfred:4-deploy - 배포 자동화
 
 ## 목적
 
@@ -757,20 +757,20 @@ SPEC 기반 배포 자동화 및 롤백 관리
 ## 사용법
 
 ```bash
-/moai:4-deploy [SPEC-ID] [환경]
+/alfred:4-deploy [SPEC-ID] [환경]
 ```
 
 ## 예시
 
 ```bash
 # 스테이징 배포
-/moai:4-deploy SPEC-AUTH-001 staging
+/alfred:4-deploy SPEC-AUTH-001 staging
 
 # 프로덕션 배포 (승인 필요)
-/moai:4-deploy SPEC-AUTH-001 production
+/alfred:4-deploy SPEC-AUTH-001 production
 
 # 롤백
-/moai:4-deploy rollback SPEC-AUTH-001
+/alfred:4-deploy rollback SPEC-AUTH-001
 ```
 
 ## 배포 체크리스트
@@ -787,7 +787,7 @@ SPEC 기반 배포 자동화 및 롤백 관리
 ```json
 {
   "customCommands": {
-    "moai:4-deploy": {
+    "alfred:4-deploy": {
       "enabled": true,
       "requiresApproval": true,
       "environments": ["staging", "production"]
@@ -842,7 +842,7 @@ export const customTags = {
 
 ### 워크플로우 훅 커스터마이징
 
-**예시: /moai:1-spec 실행 전 검증**
+**예시: /alfred:1-spec 실행 전 검증**
 
 ```typescript
 // .claude/hooks/pre-spec.ts
@@ -864,7 +864,7 @@ export async function preSpecHook(context) {
   if (!hasProjectDocs) {
     return {
       block: true,
-      reason: '/moai:8-project를 먼저 실행해주세요'
+      reason: '/alfred:8-project를 먼저 실행해주세요'
     };
   }
 
@@ -881,18 +881,18 @@ export async function preSpecHook(context) {
 
 {
   "commandAliases": {
-    "/s": "/moai:1-spec",
-    "/b": "/moai:2-build",
-    "/sync": "/moai:3-sync",
-    "/p": "/moai:8-project"
+    "/s": "/alfred:1-spec",
+    "/b": "/alfred:2-build",
+    "/sync": "/alfred:3-sync",
+    "/p": "/alfred:8-project"
   }
 }
 ```
 
 사용 예시:
 ```bash
-/s "사용자 인증"        # /moai:1-spec "사용자 인증"과 동일
-/b SPEC-001            # /moai:2-build SPEC-001과 동일
+/s "사용자 인증"        # /alfred:1-spec "사용자 인증"과 동일
+/b SPEC-001            # /alfred:2-build SPEC-001과 동일
 ```
 
 ### 언어별 TDD 도구 커스터마이징
@@ -919,25 +919,25 @@ export async function preSpecHook(context) {
 
 각 명령어는 고급 사용자를 위한 추가 옵션을 제공합니다.
 
-### /moai:8-project 고급 옵션
+### /alfred:8-project 고급 옵션
 
 ```bash
 # 기본 사용
-/moai:8-project
+/alfred:8-project
 
 # 특정 템플릿으로 생성
-/moai:8-project --template microservice
+/alfred:8-project --template microservice
 
 # 대화형 모드 스킵 (기본값 사용)
-/moai:8-project --skip-interactive
+/alfred:8-project --skip-interactive
 
 # 기존 문서 업데이트만
-/moai:8-project --update
+/alfred:8-project --update
 
 # 특정 문서만 생성
-/moai:8-project --only product
-/moai:8-project --only structure
-/moai:8-project --only tech
+/alfred:8-project --only product
+/alfred:8-project --only structure
+/alfred:8-project --only tech
 ```
 
 #### 사용 가능한 템플릿
@@ -952,7 +952,7 @@ export async function preSpecHook(context) {
 
 **예시:**
 ```bash
-/moai:8-project --template microservice
+/alfred:8-project --template microservice
 
 # 생성되는 추가 섹션:
 # - Service Contract
@@ -961,97 +961,97 @@ export async function preSpecHook(context) {
 # - 배포 전략
 ```
 
-### /moai:1-spec 고급 옵션
+### /alfred:1-spec 고급 옵션
 
 ```bash
 # 기본 사용
-/moai:1-spec "기능 제목"
+/alfred:1-spec "기능 제목"
 
 # 우선순위 지정
-/moai:1-spec "사용자 인증" --priority high
+/alfred:1-spec "사용자 인증" --priority high
 
 # 특정 EARS 구문만 사용
-/moai:1-spec "결제 시스템" --ears ubiquitous,event-driven
+/alfred:1-spec "결제 시스템" --ears ubiquitous,event-driven
 
 # 템플릿 지정
-/moai:1-spec "API 엔드포인트" --template api
+/alfred:1-spec "API 엔드포인트" --template api
 
 # 의존성 명시
-/moai:1-spec "알림 서비스" --depends-on SPEC-AUTH-001,SPEC-USER-002
+/alfred:1-spec "알림 서비스" --depends-on SPEC-AUTH-001,SPEC-USER-002
 
 # 담당자 지정 (Team 모드)
-/moai:1-spec "UI 개선" --assignee @username
+/alfred:1-spec "UI 개선" --assignee @username
 
 # 마일스톤 연결 (Team 모드)
-/moai:1-spec "대시보드" --milestone v2.0
+/alfred:1-spec "대시보드" --milestone v2.0
 
 # 라벨 추가 (Team 모드)
-/moai:1-spec "성능 개선" --labels performance,optimization
+/alfred:1-spec "성능 개선" --labels performance,optimization
 
 # Draft 스킵하고 바로 Ready
-/moai:1-spec "긴급 수정" --ready
+/alfred:1-spec "긴급 수정" --ready
 
 # 브랜치 생성 스킵
-/moai:1-spec "문서만 작성" --no-branch
+/alfred:1-spec "문서만 작성" --no-branch
 ```
 
 #### EARS 구문 선택
 
 ```bash
 # 기본 기능만
-/moai:1-spec "CRUD API" --ears ubiquitous
+/alfred:1-spec "CRUD API" --ears ubiquitous
 
 # 이벤트 중심 시스템
-/moai:1-spec "알림 시스템" --ears event-driven,state-driven
+/alfred:1-spec "알림 시스템" --ears event-driven,state-driven
 
 # 제약사항 중심
-/moai:1-spec "보안 강화" --ears constraints
+/alfred:1-spec "보안 강화" --ears constraints
 
 # 모두 포함 (기본값)
-/moai:1-spec "사용자 관리" --ears all
+/alfred:1-spec "사용자 관리" --ears all
 ```
 
-### /moai:2-build 고급 옵션
+### /alfred:2-build 고급 옵션
 
 ```bash
 # 기본 사용
-/moai:2-build SPEC-001
+/alfred:2-build SPEC-001
 
 # 특정 Phase만 실행
-/moai:2-build SPEC-001 --phase red
-/moai:2-build SPEC-001 --phase green
-/moai:2-build SPEC-001 --phase refactor
+/alfred:2-build SPEC-001 --phase red
+/alfred:2-build SPEC-001 --phase green
+/alfred:2-build SPEC-001 --phase refactor
 
 # TDD 사이클 스킵 (위험!)
-/moai:2-build SPEC-001 --skip-tdd
+/alfred:2-build SPEC-001 --skip-tdd
 
 # 테스트 커버리지 임계값 지정
-/moai:2-build SPEC-001 --coverage 90
+/alfred:2-build SPEC-001 --coverage 90
 
 # TRUST 검증 스킵 (비권장)
-/moai:2-build SPEC-001 --skip-trust
+/alfred:2-build SPEC-001 --skip-trust
 
 # 병렬 구현 (여러 SPEC)
-/moai:2-build SPEC-001 SPEC-002 SPEC-003 --parallel
+/alfred:2-build SPEC-001 SPEC-002 SPEC-003 --parallel
 
 # 드라이런 (계획만 확인)
-/moai:2-build SPEC-001 --dry-run
+/alfred:2-build SPEC-001 --dry-run
 
 # 특정 언어 도구 강제
-/moai:2-build SPEC-001 --test-framework jest
+/alfred:2-build SPEC-001 --test-framework jest
 
 # 자동 승인 (CI/CD용)
-/moai:2-build SPEC-001 --auto-approve
+/alfred:2-build SPEC-001 --auto-approve
 
 # 실패 시 롤백
-/moai:2-build SPEC-001 --rollback-on-fail
+/alfred:2-build SPEC-001 --rollback-on-fail
 ```
 
 #### Phase별 실행
 
 **RED Phase만:**
 ```bash
-/moai:2-build SPEC-AUTH-001 --phase red
+/alfred:2-build SPEC-AUTH-001 --phase red
 
 # 수행 작업:
 # 1. SPEC 분석
@@ -1062,7 +1062,7 @@ export async function preSpecHook(context) {
 
 **GREEN Phase만:**
 ```bash
-/moai:2-build SPEC-AUTH-001 --phase green
+/alfred:2-build SPEC-AUTH-001 --phase green
 
 # 수행 작업:
 # 1. 최소 구현 작성
@@ -1071,7 +1071,7 @@ export async function preSpecHook(context) {
 
 **REFACTOR Phase만:**
 ```bash
-/moai:2-build SPEC-AUTH-001 --phase refactor
+/alfred:2-build SPEC-AUTH-001 --phase refactor
 
 # 수행 작업:
 # 1. 코드 개선
@@ -1084,60 +1084,60 @@ export async function preSpecHook(context) {
 
 ```bash
 # 여러 SPEC 동시 구현
-/moai:2-build SPEC-001 SPEC-002 SPEC-003 --parallel
+/alfred:2-build SPEC-001 SPEC-002 SPEC-003 --parallel
 
 # 최대 워커 수 지정
-/moai:2-build SPEC-* --parallel --max-workers 4
+/alfred:2-build SPEC-* --parallel --max-workers 4
 
 # 의존성 있는 SPEC 순차 처리
-/moai:2-build SPEC-001 SPEC-002 --parallel --respect-deps
+/alfred:2-build SPEC-001 SPEC-002 --parallel --respect-deps
 ```
 
-### /moai:3-sync 고급 옵션
+### /alfred:3-sync 고급 옵션
 
 ```bash
 # 기본 사용
-/moai:3-sync
+/alfred:3-sync
 
 # 특정 모드
-/moai:3-sync --mode full        # 전체 동기화 (기본값)
-/moai:3-sync --mode tags        # TAG 검증만
-/moai:3-sync --mode docs        # 문서 갱신만
-/moai:3-sync --mode status      # 상태만 확인
+/alfred:3-sync --mode full        # 전체 동기화 (기본값)
+/alfred:3-sync --mode tags        # TAG 검증만
+/alfred:3-sync --mode docs        # 문서 갱신만
+/alfred:3-sync --mode status      # 상태만 확인
 
 # 특정 경로만
-/moai:3-sync --path src/auth
-/moai:3-sync --path "src/**/*.ts"
+/alfred:3-sync --path src/auth
+/alfred:3-sync --path "src/**/*.ts"
 
 # 특정 TAG만 검증
-/moai:3-sync --tags @SPEC,@SPEC
+/alfred:3-sync --tags @SPEC,@SPEC
 
 # 자동 수정 활성화
-/moai:3-sync --auto-fix
+/alfred:3-sync --auto-fix
 
 # Living Document 생성 스킵
-/moai:3-sync --no-docs
+/alfred:3-sync --no-docs
 
 # PR 전환 스킵
-/moai:3-sync --no-pr
+/alfred:3-sync --no-pr
 
 # 강제 동기화 (충돌 무시)
-/moai:3-sync --force
+/alfred:3-sync --force
 
 # 드라이런 (미리보기)
-/moai:3-sync --dry-run
+/alfred:3-sync --dry-run
 
 # 리포트 형식 지정
-/moai:3-sync --format json
-/moai:3-sync --format markdown
-/moai:3-sync --format html
+/alfred:3-sync --format json
+/alfred:3-sync --format markdown
+/alfred:3-sync --format html
 ```
 
 #### 모드별 동작
 
 **tags 모드:**
 ```bash
-/moai:3-sync --mode tags
+/alfred:3-sync --mode tags
 
 # 수행 작업:
 # ✓ 코드 전체 스캔
@@ -1150,7 +1150,7 @@ export async function preSpecHook(context) {
 
 **docs 모드:**
 ```bash
-/moai:3-sync --mode docs
+/alfred:3-sync --mode docs
 
 # 수행 작업:
 # ✗ TAG 검증 안 함
@@ -1162,7 +1162,7 @@ export async function preSpecHook(context) {
 
 **status 모드:**
 ```bash
-/moai:3-sync --mode status
+/alfred:3-sync --mode status
 
 # 수행 작업:
 # ✓ 현재 상태만 출력
@@ -1178,7 +1178,7 @@ export async function preSpecHook(context) {
 #### 자동 수정 옵션
 
 ```bash
-/moai:3-sync --auto-fix
+/alfred:3-sync --auto-fix
 
 # 자동 수정 항목:
 # - 불완전한 TAG 체인 완성
@@ -1192,7 +1192,7 @@ export async function preSpecHook(context) {
 #### 빠른 TAG 검증
 
 ```bash
-/moai:3-sync --mode tags --path src/auth --dry-run
+/alfred:3-sync --mode tags --path src/auth --dry-run
 
 # 출력만 보고 파일 변경 없음
 ```
@@ -1201,52 +1201,52 @@ export async function preSpecHook(context) {
 
 ```bash
 # SPEC 작성 (자동 승인)
-/moai:1-spec "자동 배포" --ready --no-branch
+/alfred:1-spec "자동 배포" --ready --no-branch
 
 # TDD 구현 (자동 승인)
-/moai:2-build SPEC-001 --auto-approve --coverage 90
+/alfred:2-build SPEC-001 --auto-approve --coverage 90
 
 # 동기화 (PR 전환)
-/moai:3-sync --auto-fix --no-pr
+/alfred:3-sync --auto-fix --no-pr
 ```
 
 #### 대규모 리팩토링
 
 ```bash
 # 1. 현재 상태 확인
-/moai:3-sync --mode status
+/alfred:3-sync --mode status
 
 # 2. TAG 검증 (드라이런)
-/moai:3-sync --mode tags --dry-run
+/alfred:3-sync --mode tags --dry-run
 
 # 3. 자동 수정
-/moai:3-sync --mode tags --auto-fix
+/alfred:3-sync --mode tags --auto-fix
 
 # 4. 문서 동기화
-/moai:3-sync --mode docs
+/alfred:3-sync --mode docs
 
 # 5. 전체 검증
-/moai:3-sync --mode full
+/alfred:3-sync --mode full
 ```
 
 #### 핫픽스 워크플로우
 
 ```bash
 # 1. 긴급 SPEC (브랜치 없이)
-/moai:1-spec "긴급 보안 수정" --priority critical --ready --no-branch
+/alfred:1-spec "긴급 보안 수정" --priority critical --ready --no-branch
 
 # 2. 빠른 구현 (TDD 스킵, 비권장!)
-/moai:2-build SPEC-HOTFIX-001 --skip-tdd --skip-trust
+/alfred:2-build SPEC-HOTFIX-001 --skip-tdd --skip-trust
 
 # 3. 최소 동기화
-/moai:3-sync --mode tags --no-pr
+/alfred:3-sync --mode tags --no-pr
 ```
 
 ## 문제 해결 (Troubleshooting)
 
 각 명령어 사용 시 발생할 수 있는 문제와 해결 방법을 안내합니다.
 
-### /moai:8-project 문제 해결
+### /alfred:8-project 문제 해결
 
 #### 문제 1: 프로젝트 문서가 이미 존재
 
@@ -1259,14 +1259,14 @@ Error: .moai/project/ 디렉토리가 이미 존재합니다.
 
 ```bash
 # 방법 1: 업데이트 모드 사용
-/moai:8-project --update
+/alfred:8-project --update
 
 # 방법 2: 기존 문서 백업 후 재생성
 mv .moai/project .moai/project.backup
-/moai:8-project
+/alfred:8-project
 
 # 방법 3: 특정 문서만 재생성
-/moai:8-project --only tech
+/alfred:8-project --only tech
 ```
 
 #### 문제 2: 대화형 입력 타임아웃
@@ -1280,7 +1280,7 @@ Error: 사용자 입력 타임아웃 (60초)
 
 ```bash
 # 기본값으로 생성 (대화형 스킵)
-/moai:8-project --skip-interactive
+/alfred:8-project --skip-interactive
 
 # 또는 설정 파일 수정
 # .moai/config.json
@@ -1312,7 +1312,7 @@ mkdir -p .moai/templates/custom
 # 템플릿 파일 추가...
 ```
 
-### /moai:1-spec 문제 해결
+### /alfred:1-spec 문제 해결
 
 #### 문제 1: 중복된 SPEC ID
 
@@ -1328,10 +1328,10 @@ Error: SPEC-AUTH-001 already exists
 rg "SPEC-AUTH-001" .moai/specs/
 
 # 기존 SPEC 수정
-/moai:1-spec SPEC-AUTH-001 "추가 요구사항"
+/alfred:1-spec SPEC-AUTH-001 "추가 요구사항"
 
 # 새 SPEC으로 생성
-/moai:1-spec "사용자 인증 v2"  # 자동으로 SPEC-AUTH-002 할당
+/alfred:1-spec "사용자 인증 v2"  # 자동으로 SPEC-AUTH-002 할당
 ```
 
 #### 문제 2: 브랜치 생성 실패
@@ -1347,14 +1347,14 @@ fatal: A branch named 'feature/spec-auth-001' already exists.
 ```bash
 # 방법 1: 기존 브랜치로 전환
 git checkout feature/spec-auth-001
-/moai:1-spec SPEC-AUTH-001 "업데이트"
+/alfred:1-spec SPEC-AUTH-001 "업데이트"
 
 # 방법 2: 기존 브랜치 삭제 후 재생성
 git branch -D feature/spec-auth-001
-/moai:1-spec "사용자 인증"
+/alfred:1-spec "사용자 인증"
 
 # 방법 3: 브랜치 생성 스킵
-/moai:1-spec "사용자 인증" --no-branch
+/alfred:1-spec "사용자 인증" --no-branch
 ```
 
 #### 문제 3: GitHub API 권한 오류 (Team 모드)
@@ -1378,7 +1378,7 @@ gh auth login
 gh auth refresh -s repo -s issues
 
 # Personal 모드로 전환 (임시)
-/moai:1-spec "기능" --mode personal
+/alfred:1-spec "기능" --mode personal
 ```
 
 #### 문제 4: EARS 구문 자동 생성 실패
@@ -1392,16 +1392,16 @@ Warning: EARS requirements are incomplete
 
 ```bash
 # 더 상세한 컨텍스트 제공
-/moai:1-spec "사용자가 이메일과 비밀번호로 로그인하고, JWT 토큰을 받아 인증된 상태로 API를 사용할 수 있어야 함"
+/alfred:1-spec "사용자가 이메일과 비밀번호로 로그인하고, JWT 토큰을 받아 인증된 상태로 API를 사용할 수 있어야 함"
 
 # 프로젝트 문서 먼저 생성
-/moai:8-project
-/moai:1-spec "사용자 인증"
+/alfred:8-project
+/alfred:1-spec "사용자 인증"
 
 # 수동으로 EARS 구문 추가 (SPEC 파일 편집)
 ```
 
-### /moai:2-build 문제 해결
+### /alfred:2-build 문제 해결
 
 #### 문제 1: SPEC을 찾을 수 없음
 
@@ -1420,7 +1420,7 @@ moai status
 ls -la .moai/specs/
 
 # SPEC 재생성
-/moai:1-spec "기능 제목"
+/alfred:1-spec "기능 제목"
 ```
 
 #### 문제 2: 테스트 실패 (RED Phase)
@@ -1439,10 +1439,10 @@ Actual: PASS
 rm src/auth/service.ts
 
 # RED Phase 재실행
-/moai:2-build SPEC-AUTH-001 --phase red
+/alfred:2-build SPEC-AUTH-001 --phase red
 
 # 또는 강제 실행
-/moai:2-build SPEC-AUTH-001 --phase red --force
+/alfred:2-build SPEC-AUTH-001 --phase red --force
 ```
 
 #### 문제 3: 테스트 통과 실패 (GREEN Phase)
@@ -1468,7 +1468,7 @@ npm test -- --verbose
 node --inspect-brk node_modules/.bin/vitest run
 
 # 4. Phase 재실행
-/moai:2-build SPEC-AUTH-001 --phase green --retry
+/alfred:2-build SPEC-AUTH-001 --phase green --retry
 ```
 
 #### 문제 4: 커버리지 임계값 미달
@@ -1488,7 +1488,7 @@ npm test -- --coverage
 @agent-debug-helper "커버리지 분석"
 
 # 임시로 임계값 낮춤 (비권장)
-/moai:2-build SPEC-001 --coverage 75
+/alfred:2-build SPEC-001 --coverage 75
 
 # 설정 파일 업데이트
 # .moai/config.json
@@ -1527,7 +1527,7 @@ npm test -- --coverage
 # - 민감정보 마스킹
 
 # 재검증
-/moai:2-build SPEC-001 --phase refactor
+/alfred:2-build SPEC-001 --phase refactor
 ```
 
 #### 문제 6: 언어 감지 실패
@@ -1541,7 +1541,7 @@ Error: Unable to detect project language
 
 ```bash
 # 수동으로 언어 지정
-/moai:2-build SPEC-001 --language typescript
+/alfred:2-build SPEC-001 --language typescript
 
 # 언어 감지 설정 업데이트
 # .moai/config.json
@@ -1568,17 +1568,17 @@ SPEC-002 depends on SPEC-001 (not completed)
 
 ```bash
 # 의존성 순서대로 실행
-/moai:2-build SPEC-001 SPEC-002 --parallel --respect-deps
+/alfred:2-build SPEC-001 SPEC-002 --parallel --respect-deps
 
 # 또는 순차 실행
-/moai:2-build SPEC-001
-/moai:2-build SPEC-002
+/alfred:2-build SPEC-001
+/alfred:2-build SPEC-002
 
 # 의존성 그래프 확인
 moai status --graph
 ```
 
-### /moai:3-sync 문제 해결
+### /alfred:3-sync 문제 해결
 
 #### 문제 1: TAG 체인 불완전
 
@@ -1593,7 +1593,7 @@ moai status --graph
 
 ```bash
 # 자동 수정 시도
-/moai:3-sync --auto-fix
+/alfred:3-sync --auto-fix
 
 # 또는 수동 수정
 # 1. 누락된 TAG 추가
@@ -1601,7 +1601,7 @@ rg "@CODE:AUTH-001" -l  # 파일 찾기
 # 파일에 @TEST:AUTH-001 추가
 
 # 2. 재검증
-/moai:3-sync --mode tags
+/alfred:3-sync --mode tags
 
 # 3. tag-agent로 상세 분석
 @agent-tag-agent "TAG 체인 검증"
@@ -1631,7 +1631,7 @@ rg "@SPEC:PAYMENT-005" -n
 # @SPEC:PAYMENT-005:DEPRECATED
 
 # 재검증
-/moai:3-sync --mode tags
+/alfred:3-sync --mode tags
 ```
 
 #### 문제 3: 문서 동기화 충돌
@@ -1653,10 +1653,10 @@ vi README.md
 git add README.md
 
 # 동기화 재시도
-/moai:3-sync --mode docs
+/alfred:3-sync --mode docs
 
 # 또는 강제 동기화 (주의!)
-/moai:3-sync --force
+/alfred:3-sync --force
 ```
 
 #### 문제 4: PR 전환 실패
@@ -1672,16 +1672,16 @@ Error: Cannot transition PR to Ready
 
 ```bash
 # 1. TAG 체인 완성
-/moai:3-sync --mode tags --auto-fix
+/alfred:3-sync --mode tags --auto-fix
 
 # 2. TRUST 개선
 @agent-trust-checker "전체 검증"
 
 # 3. 재시도
-/moai:3-sync
+/alfred:3-sync
 
 # 4. 강제 전환 (비권장)
-/moai:3-sync --force-ready
+/alfred:3-sync --force-ready
 ```
 
 #### 문제 5: Living Document 생성 오류
@@ -1702,7 +1702,7 @@ cat .moai/templates/changelog.md
 moai restore --templates
 
 # 수동 생성 스킵
-/moai:3-sync --no-docs
+/alfred:3-sync --no-docs
 
 # 또는 doc-syncer 에이전트 직접 호출
 @agent-doc-syncer "CHANGELOG 수동 갱신"
@@ -1714,7 +1714,7 @@ moai restore --templates
 
 **증상:**
 ```
-Unknown command: /moai:1-spec
+Unknown command: /alfred:1-spec
 ```
 
 **해결 방법:**
@@ -1755,14 +1755,14 @@ git config --list | grep user
 
 **증상:**
 ```
-/moai:3-sync takes 5+ minutes
+/alfred:3-sync takes 5+ minutes
 ```
 
 **해결 방법:**
 
 ```bash
 # 1. 특정 경로만 스캔
-/moai:3-sync --path src/
+/alfred:3-sync --path src/
 
 # 2. 캐시 활성화
 # .moai/config.json
@@ -1774,7 +1774,7 @@ git config --list | grep user
 }
 
 # 3. 병렬 처리
-/moai:3-sync --parallel --max-workers 4
+/alfred:3-sync --parallel --max-workers 4
 
 # 4. 불필요한 파일 제외
 # .moai/config.json
@@ -1792,10 +1792,10 @@ git config --list | grep user
 ```bash
 # 상세 로그 활성화
 export MOAI_LOG_LEVEL=debug
-/moai:1-spec "테스트"
+/alfred:1-spec "테스트"
 
 # 또는 명령어 옵션
-/moai:1-spec "테스트" --verbose
+/alfred:1-spec "테스트" --verbose
 
 # 로그 파일 확인
 tail -f .moai/logs/moai.log
@@ -1805,9 +1805,9 @@ tail -f .moai/logs/moai.log
 
 ```bash
 # 실제 변경 없이 미리보기
-/moai:1-spec "기능" --dry-run
-/moai:2-build SPEC-001 --dry-run
-/moai:3-sync --dry-run
+/alfred:1-spec "기능" --dry-run
+/alfred:2-build SPEC-001 --dry-run
+/alfred:3-sync --dry-run
 ```
 
 #### 시스템 진단
@@ -1872,27 +1872,27 @@ moai init
 moai doctor
 
 # 3. 프로젝트 비전 수립
-/moai:8-project
+/alfred:8-project
 
 # (대화형으로 프로젝트 정보 입력)
 
 # 4. 첫 번째 SPEC 작성
-/moai:1-spec "사용자 인증"
+/alfred:1-spec "사용자 인증"
 
 # (SPEC 검토 및 승인)
 
 # 5. TDD 구현
-/moai:2-build SPEC-AUTH-001
+/alfred:2-build SPEC-AUTH-001
 
 # (RED → GREEN → REFACTOR)
 
 # 6. 문서 동기화
-/moai:3-sync
+/alfred:3-sync
 
 # 7. 반복
-/moai:1-spec "사용자 프로필 관리"
-/moai:2-build SPEC-USER-001
-/moai:3-sync
+/alfred:1-spec "사용자 프로필 관리"
+/alfred:2-build SPEC-USER-001
+/alfred:3-sync
 ```
 
 **예상 소요 시간:**
@@ -1913,11 +1913,11 @@ moai init --existing
 moai doctor
 
 # Phase 2: 프로젝트 문서 작성
-/moai:8-project --update
+/alfred:8-project --update
 
 # Phase 3: 기존 코드 분석 및 TAG 추가
 # 기존 기능 1개 선정
-/moai:1-spec "기존 인증 시스템 문서화"
+/alfred:1-spec "기존 인증 시스템 문서화"
 
 # Phase 4: TAG 체인 구축
 # 기존 코드에 수동으로 TAG 추가
@@ -1930,13 +1930,13 @@ class AuthService {
 }
 
 # Phase 5: 검증
-/moai:3-sync --mode tags --dry-run
-/moai:3-sync --mode tags
+/alfred:3-sync --mode tags --dry-run
+/alfred:3-sync --mode tags
 
 # Phase 6: 새 기능부터 정식 워크플로우 적용
-/moai:1-spec "OAuth2 소셜 로그인"
-/moai:2-build SPEC-AUTH-002
-/moai:3-sync
+/alfred:1-spec "OAuth2 소셜 로그인"
+/alfred:2-build SPEC-AUTH-002
+/alfred:3-sync
 ```
 
 **주의사항:**
@@ -1952,29 +1952,29 @@ class AuthService {
 
 ```bash
 # 팀원 A: 인증 기능
-/moai:1-spec "JWT 인증" --assignee @teamA --milestone v1.0
+/alfred:1-spec "JWT 인증" --assignee @teamA --milestone v1.0
 # → SPEC-AUTH-001, feature/spec-auth-001 브랜치, GitHub Issue 생성
 
 # 팀원 B: 결제 기능
-/moai:1-spec "결제 시스템" --assignee @teamB --milestone v1.0
+/alfred:1-spec "결제 시스템" --assignee @teamB --milestone v1.0
 # → SPEC-PAY-001, feature/spec-pay-001 브랜치, GitHub Issue 생성
 
 # 팀원 C: 알림 기능
-/moai:1-spec "이메일 알림" --assignee @teamC --milestone v1.0 --depends-on SPEC-AUTH-001
+/alfred:1-spec "이메일 알림" --assignee @teamC --milestone v1.0 --depends-on SPEC-AUTH-001
 # → SPEC-NOTIF-001, 의존성 명시
 
 # 병렬 구현 (각 브랜치에서)
 # 팀원 A:
-/moai:2-build SPEC-AUTH-001
-/moai:3-sync
+/alfred:2-build SPEC-AUTH-001
+/alfred:3-sync
 
 # 팀원 B:
-/moai:2-build SPEC-PAY-001
-/moai:3-sync
+/alfred:2-build SPEC-PAY-001
+/alfred:3-sync
 
 # 팀원 C (AUTH-001 완료 후):
-/moai:2-build SPEC-NOTIF-001
-/moai:3-sync
+/alfred:2-build SPEC-NOTIF-001
+/alfred:3-sync
 
 # 통합 (develop 브랜치)
 git checkout develop
@@ -1983,7 +1983,7 @@ git merge feature/spec-pay-001
 git merge feature/spec-notif-001
 
 # 전체 TAG 검증
-/moai:3-sync --mode tags
+/alfred:3-sync --mode tags
 ```
 
 **충돌 방지 전략:**
@@ -2002,10 +2002,10 @@ git merge feature/spec-notif-001
 git checkout -b hotfix/security-fix main
 
 # 2. 최소 SPEC (브랜치 생성 스킵)
-/moai:1-spec "XSS 취약점 수정" --priority critical --ready --no-branch
+/alfred:1-spec "XSS 취약점 수정" --priority critical --ready --no-branch
 
 # 3. 빠른 구현 (TDD 스킵 가능, 단 테스트는 필수!)
-/moai:2-build SPEC-HOTFIX-001 --phase green --skip-trust
+/alfred:2-build SPEC-HOTFIX-001 --phase green --skip-trust
 
 # 4. 최소 검증
 npm test
@@ -2026,9 +2026,9 @@ gh pr merge --auto --squash
 # 8. 나중에 보완
 # develop 브랜치에서 SPEC 보완
 git checkout develop
-/moai:1-spec SPEC-HOTFIX-001 "테스트 추가 및 리팩토링"
-/moai:2-build SPEC-HOTFIX-001 --phase refactor
-/moai:3-sync
+/alfred:1-spec SPEC-HOTFIX-001 "테스트 추가 및 리팩토링"
+/alfred:2-build SPEC-HOTFIX-001 --phase refactor
+/alfred:3-sync
 ```
 
 **주의사항:**
@@ -2045,31 +2045,31 @@ git checkout develop
 ```bash
 # 1. 현재 상태 스냅샷
 moai doctor --advanced > refactoring-baseline.txt
-/moai:3-sync --mode status > tag-baseline.txt
+/alfred:3-sync --mode status > tag-baseline.txt
 git tag refactor-start
 
 # 2. 리팩토링 SPEC 작성
-/moai:1-spec "아키텍처 개선: 레이어 분리"
-/moai:1-spec "타입 안전성 강화"
-/moai:1-spec "테스트 커버리지 85% 달성"
+/alfred:1-spec "아키텍처 개선: 레이어 분리"
+/alfred:1-spec "타입 안전성 강화"
+/alfred:1-spec "테스트 커버리지 85% 달성"
 
 # 3. 순차적 리팩토링 (기능 단위)
 # 3-1. 인증 모듈
-/moai:2-build SPEC-REFACTOR-001 --phase refactor
-/moai:3-sync --mode tags
+/alfred:2-build SPEC-REFACTOR-001 --phase refactor
+/alfred:3-sync --mode tags
 
 # 3-2. 사용자 모듈
-/moai:2-build SPEC-REFACTOR-002 --phase refactor
-/moai:3-sync --mode tags
+/alfred:2-build SPEC-REFACTOR-002 --phase refactor
+/alfred:3-sync --mode tags
 
 # 3-3. 결제 모듈
-/moai:2-build SPEC-REFACTOR-003 --phase refactor
-/moai:3-sync --mode tags
+/alfred:2-build SPEC-REFACTOR-003 --phase refactor
+/alfred:3-sync --mode tags
 
 # 4. 중간 검증
 npm test
 npm run build
-/moai:3-sync --mode full
+/alfred:3-sync --mode full
 
 # 5. TRUST 원칙 검증
 @agent-trust-checker "전체 프로젝트 검증"
@@ -2139,7 +2139,7 @@ jobs:
         run: |
           DRAFT_SPECS=$(moai status --format json | jq -r '.specs[] | select(.status=="draft") | .id')
           for SPEC in $DRAFT_SPECS; do
-            /moai:2-build $SPEC --auto-approve --coverage 85
+            /alfred:2-build $SPEC --auto-approve --coverage 85
           done
 
       - name: Run Tests
@@ -2157,13 +2157,13 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: TAG Chain Validation
-        run: /moai:3-sync --mode tags --dry-run
+        run: /alfred:3-sync --mode tags --dry-run
 
       - name: Auto Fix TAG Issues
-        run: /moai:3-sync --mode tags --auto-fix
+        run: /alfred:3-sync --mode tags --auto-fix
 
       - name: Generate Sync Report
-        run: /moai:3-sync --format json > sync-report.json
+        run: /alfred:3-sync --format json > sync-report.json
 
       - name: Comment PR
         uses: actions/github-script@v6
@@ -2182,15 +2182,15 @@ jobs:
 
 ```bash
 # 1. SPEC 작성 (로컬)
-/moai:1-spec "새 기능"
+/alfred:1-spec "새 기능"
 
 # 2. 로컬 구현
-/moai:2-build SPEC-001 --dry-run  # 계획 확인
-/moai:2-build SPEC-001
+/alfred:2-build SPEC-001 --dry-run  # 계획 확인
+/alfred:2-build SPEC-001
 
 # 3. 로컬 검증
 npm test
-/moai:3-sync --dry-run
+/alfred:3-sync --dry-run
 
 # 4. PR 생성
 git push origin feature/spec-001
@@ -2253,22 +2253,22 @@ my-project/
 
 ```bash
 # 1. 프론트엔드 기능
-/moai:1-spec "사용자 대시보드 UI" --workspace frontend
-/moai:2-build SPEC-UI-001 --workspace frontend
+/alfred:1-spec "사용자 대시보드 UI" --workspace frontend
+/alfred:2-build SPEC-UI-001 --workspace frontend
 # → Vitest, Biome 자동 사용
 
 # 2. 백엔드 API
-/moai:1-spec "대시보드 데이터 API" --workspace backend
-/moai:2-build SPEC-API-001 --workspace backend
+/alfred:1-spec "대시보드 데이터 API" --workspace backend
+/alfred:2-build SPEC-API-001 --workspace backend
 # → pytest, mypy, ruff 자동 사용
 
 # 3. 성능 엔진
-/moai:1-spec "데이터 처리 엔진" --workspace engine
-/moai:2-build SPEC-ENGINE-001 --workspace engine
+/alfred:1-spec "데이터 처리 엔진" --workspace engine
+/alfred:2-build SPEC-ENGINE-001 --workspace engine
 # → cargo test, clippy 자동 사용
 
 # 4. 통합 동기화
-/moai:3-sync --all-workspaces
+/alfred:3-sync --all-workspaces
 
 # TAG 체인이 언어 경계를 넘어 연결됨:
 # @SPEC:DASHBOARD-001 (공통)
@@ -2279,7 +2279,7 @@ my-project/
 
 ### 시나리오 8: 롤백 및 복구
 
-**상황:** /moai:2-build 실행 후 문제 발생, 이전 상태로 복구 필요
+**상황:** /alfred:2-build 실행 후 문제 발생, 이전 상태로 복구 필요
 
 **복구 전략:**
 
@@ -2301,11 +2301,11 @@ moai restore --list
 moai restore --timestamp 2024-01-15-14-30
 
 # 방법 3: SPEC 재작성
-/moai:1-spec SPEC-015 "요구사항 재정의"
+/alfred:1-spec SPEC-015 "요구사항 재정의"
 # 기존 SPEC-015를 수정
 
 # 방법 4: 새로운 접근
-/moai:1-spec "대체 접근: [기능명]"
+/alfred:1-spec "대체 접근: [기능명]"
 # SPEC-016으로 새로 시작
 ```
 
@@ -2317,14 +2317,14 @@ git tag checkpoint-before-spec-015
 moai doctor > health-check.txt
 
 # 드라이런으로 미리 확인
-/moai:2-build SPEC-015 --dry-run
+/alfred:2-build SPEC-015 --dry-run
 
 # Phase별 점진적 구현
-/moai:2-build SPEC-015 --phase red
+/alfred:2-build SPEC-015 --phase red
 # 확인 후...
-/moai:2-build SPEC-015 --phase green
+/alfred:2-build SPEC-015 --phase green
 # 확인 후...
-/moai:2-build SPEC-015 --phase refactor
+/alfred:2-build SPEC-015 --phase refactor
 ```
 
 ## Personal vs Team 모드 상세 비교
@@ -2369,17 +2369,17 @@ MoAI-ADK는 두 가지 모드를 제공하며, 프로젝트 규모와 협업 방
 
 ```bash
 # 1. SPEC 작성 (로컬 저장)
-/moai:1-spec "사용자 인증"
+/alfred:1-spec "사용자 인증"
 # 저장 위치: .moai/specs/SPEC-AUTH-001/
 
 # 2. 로컬 브랜치 생성
 # 자동: feature/spec-auth-001
 
 # 3. TDD 구현
-/moai:2-build SPEC-AUTH-001
+/alfred:2-build SPEC-AUTH-001
 
 # 4. 동기화 (로컬 문서만)
-/moai:3-sync
+/alfred:3-sync
 
 # 5. 수동 PR 생성
 git push origin feature/spec-auth-001
@@ -2439,7 +2439,7 @@ gh pr create --title "feat: 사용자 인증 (SPEC-AUTH-001)"
 
 ```bash
 # 1. SPEC 작성 (GitHub Issue + 로컬 저장)
-/moai:1-spec "사용자 인증" --assignee @john --milestone v2.0 --labels feature,high-priority
+/alfred:1-spec "사용자 인증" --assignee @john --milestone v2.0 --labels feature,high-priority
 
 # 생성 결과:
 # - GitHub Issue #42
@@ -2448,10 +2448,10 @@ gh pr create --title "feat: 사용자 인증 (SPEC-AUTH-001)"
 # - Draft PR #43
 
 # 2. TDD 구현
-/moai:2-build SPEC-AUTH-001
+/alfred:2-build SPEC-AUTH-001
 
 # 3. 동기화 (GitHub + 로컬)
-/moai:3-sync
+/alfred:3-sync
 
 # 자동 수행:
 # - Draft PR → Ready for Review
@@ -2589,10 +2589,10 @@ moai status --verbose
 }
 
 # 특정 SPEC만 Personal 모드
-/moai:1-spec "실험적 기능" --mode personal --no-branch
+/alfred:1-spec "실험적 기능" --mode personal --no-branch
 
 # 또는 Private SPEC (팀원 중 일부만)
-/moai:1-spec "내부 리팩토링" --private --assignee @me
+/alfred:1-spec "내부 리팩토링" --private --assignee @me
 ```
 
 ### 모드 선택 가이드
@@ -2712,6 +2712,6 @@ A: Public 리포지토리는 무료이므로, 오픈소스 프로젝트라면 Te
 
 ## 참고 자료
 
-- **명령어 소스**: `.claude/commands/moai/`
+- **명령어 소스**: `.claude/commands/alfred/`
 - **설정 파일**: `.claude/settings.json`
 - **커스터마이징**: [고급 가이드](/advanced/custom-commands)

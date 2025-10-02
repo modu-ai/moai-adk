@@ -80,7 +80,7 @@ moai init my-awesome-project
 # Next steps:
 # 1. cd my-awesome-project
 # 2. Open in Claude Code
-# 3. Run: /moai:1-spec "Your first feature"
+# 3. Run: /alfred:1-spec "Your first feature"
 
 # 프로젝트 디렉토리로 이동
 cd my-awesome-project
@@ -177,7 +177,7 @@ moai init simple-project --template minimal
 
 # Minimal 템플릿 포함 항목:
 # - 필수 에이전트만 (spec-builder, code-builder, doc-syncer)
-# - 기본 명령어만 (/moai:1-spec, /moai:2-build, /moai:3-sync)
+# - 기본 명령어만 (/alfred:1-spec, /alfred:2-build, /alfred:3-sync)
 # - 최소 훅 (policy-block, session-notice)
 # - 기본 프로젝트 템플릿
 ```
@@ -191,7 +191,7 @@ moai init enterprise-project --template advanced
 
 # Advanced 템플릿 추가 항목:
 # - 전체 7개 에이전트
-# - 추가 명령어 (/moai:8-project)
+# - 추가 명령어 (/alfred:8-project)
 # - 전체 8개 훅
 # - CI/CD 템플릿 (GitHub Actions, GitLab CI)
 # - Docker 및 docker-compose 설정
@@ -233,7 +233,7 @@ my-project/
 │       └── .gitkeep
 │
 ├── .claude/                       # Claude Code 통합
-│   ├── agents/moai/               # 7개 전문 에이전트
+│   ├── agents/alfred/               # 7개 전문 에이전트
 │   │   ├── spec-builder.md       # SPEC 작성 전담
 │   │   ├── code-builder.md       # TDD 구현 전담
 │   │   ├── doc-syncer.md         # 문서 동기화
@@ -242,13 +242,13 @@ my-project/
 │   │   ├── git-manager.md        # Git 작업 자동화
 │   │   └── trust-checker.md      # 품질 검증
 │   │
-│   ├── commands/moai/             # 워크플로우 명령어
+│   ├── commands/alfred/             # 워크플로우 명령어
 │   │   ├── 8-project.md          # 프로젝트 초기화
 │   │   ├── 1-spec.md            # SPEC 작성
 │   │   ├── 2-build.md           # TDD 구현
 │   │   └── 3-sync.md            # 문서 동기화
 │   │
-│   ├── hooks/moai/                # 이벤트 훅 (JavaScript)
+│   ├── hooks/alfred/                # 이벤트 훅 (JavaScript)
 │   │   ├── file-monitor.js       # 파일 변경 감지
 │   │   ├── language-detector.js  # 언어 자동 감지
 │   │   ├── policy-block.js       # 보안 정책 강제
@@ -353,13 +353,13 @@ my-project/
 
 **워크플로우**:
 ```bash
-/moai:1-spec "New feature"
+/alfred:1-spec "New feature"
 # → 로컬 브랜치 생성 (feature/spec-001-new-feature)
 
-/moai:2-build SPEC-001
+/alfred:2-build SPEC-001
 # → 로컬에서 TDD 구현
 
-/moai:3-sync
+/alfred:3-sync
 # → 로컬 문서 업데이트
 ```
 
@@ -378,16 +378,16 @@ my-project/
 
 **워크플로우**:
 ```bash
-/moai:1-spec "New feature"
+/alfred:1-spec "New feature"
 # → GitHub Issue 생성
 # → 브랜치 생성 및 연결
 # → Draft PR 생성
 
-/moai:2-build SPEC-001
+/alfred:2-build SPEC-001
 # → TDD 구현
 # → 자동 커밋 및 푸시
 
-/moai:3-sync
+/alfred:3-sync
 # → 문서 동기화
 # → PR 상태: Draft → Ready for Review
 # → 리뷰어 자동 할당
@@ -416,7 +416,7 @@ my-project/
 1. cd my-awesome-project
 2. Open in Claude Code (VS Code with Claude extension)
 3. Run system diagnostics: moai doctor
-4. Start first SPEC: /moai:1-spec "Your first feature"
+4. Start first SPEC: /alfred:1-spec "Your first feature"
 
 📚 Documentation: https://adk.mo.ai.kr
 💬 Community: https://mo.ai.kr (오픈 예정)
@@ -631,7 +631,7 @@ moai init --interactive
 3. **첫 SPEC 작성**
    ```bash
    # Claude Code에서
-   /moai:1-spec "사용자 인증 기능"
+   /alfred:1-spec "사용자 인증 기능"
    ```
    → [SPEC-First TDD 가이드](/guide/spec-first-tdd) 참조
 

@@ -493,11 +493,11 @@ export class AuthService {
   "project": "my-project",
   "agents": {
     "enabled": true,
-    "path": "agents/moai"
+    "path": "agents/alfred"
   },
   "hooks": {
     "enabled": true,
-    "path": "hooks/moai",
+    "path": "hooks/alfred",
     "autoRun": true
   },
   "permissions": {
@@ -795,9 +795,9 @@ Pull Request를 생성하시겠습니까?
 
 ### 워크플로우 명령어
 
-- **[/moai:1-spec](/claude/commands)**: SPEC 작성 자동화
-- **[/moai:2-build](/claude/commands)**: TDD 구현 자동화
-- **[/moai:3-sync](/claude/commands)**: 문서 동기화 자동화
+- **[/alfred:1-spec](/claude/commands)**: SPEC 작성 자동화
+- **[/alfred:2-build](/claude/commands)**: TDD 구현 자동화
+- **[/alfred:3-sync](/claude/commands)**: 문서 동기화 자동화
 
 ### 이벤트 훅
 
@@ -810,6 +810,6 @@ Pull Request를 생성하시겠습니까?
 
 ## 참고 자료
 
-- **에이전트 소스**: `.claude/agents/moai/`
+- **에이전트 소스**: `.claude/agents/alfred/`
 - **설정 파일**: `.claude/settings.json`
 - **커스터마이징**: [고급 가이드](/advanced/custom-agents)

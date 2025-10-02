@@ -42,9 +42,9 @@ flowchart TD
     M --> O["복원될 항목 나열"]
     O --> P["✅ 시뮬레이션 완료"]
 
-    N --> Q{"기존 파일<br/>충돌?"}
-    Q -->|"있음<br/>--force 없음"| R["건너뛰기"]
-    Q -->|"있음<br/>--force 있음"| S["덮어쓰기"]
+    N --> Q{"기존 파일 - 충돌?"}
+    Q -->|"있음 - --force 없음"| R["건너뛰기"]
+    Q -->|"있음 - --force 있음"| S["덮어쓰기"]
     Q -->|없음| T["복사"]
 
     R --> U["결과 보고"]
@@ -60,22 +60,22 @@ flowchart TD
 
 ```mermaid
 graph TB
-    ROOT["백업 디렉토리<br/>.moai_backup_timestamp"]
+    ROOT["백업 디렉토리 - .moai_backup_timestamp"]
 
-    ROOT --> MOAI[".moai/<br/>필수"]
-    ROOT --> CLAUDE[".claude/<br/>필수"]
-    ROOT --> CLAUDEMD["CLAUDE.md<br/>선택"]
-    ROOT --> PKG["package.json<br/>선택"]
+    ROOT --> MOAI[".moai/ - 필수"]
+    ROOT --> CLAUDE[".claude/ - 필수"]
+    ROOT --> CLAUDEMD["CLAUDE.md - 선택"]
+    ROOT --> PKG["package.json - 선택"]
 
-    MOAI --> MEM["memory/<br/>개발 가이드"]
-    MOAI --> PROJ["project/<br/>프로젝트 정의"]
-    MOAI --> SCR["scripts/<br/>자동화 스크립트"]
-    MOAI --> VER["version.json<br/>버전 정보"]
+    MOAI --> MEM["memory/ - 개발 가이드"]
+    MOAI --> PROJ["project/ - 프로젝트 정의"]
+    MOAI --> SCR["scripts/ - 자동화 스크립트"]
+    MOAI --> VER["version.json - 버전 정보"]
 
-    CLAUDE --> AGT["agents/moai/<br/>8개 에이전트"]
-    CLAUDE --> CMD["commands/moai/<br/>워크플로우 명령"]
-    CLAUDE --> HK["hooks/moai/<br/>이벤트 훅"]
-    CLAUDE --> STY["output-styles/<br/>출력 스타일"]
+    CLAUDE --> AGT["agents/alfred/ - 8개 에이전트"]
+    CLAUDE --> CMD["commands/alfred/ - 워크플로우 명령"]
+    CLAUDE --> HK["hooks/alfred/ - 이벤트 훅"]
+    CLAUDE --> STY["output-styles/ - 출력 스타일"]
 
 ```
 
@@ -100,7 +100,7 @@ sequenceDiagram
     VAL-->>RC: 검증 결과
 
     alt "불완전한 백업 & --force 없음"
-        RC-->>U: "❌ 복원 중단<br/>불완전한 백업"
+        RC-->>U: "❌ 복원 중단 - 불완전한 백업"
     else "--dry-run 모드"
         RC->>FS: 복원 항목 나열
         RC->>RPT: 미리보기 생성
@@ -119,7 +119,7 @@ sequenceDiagram
             end
         end
         RC->>RPT: 결과 요약 생성
-        RPT-->>U: "✅ 복원 완료<br/>통계 표시"
+        RPT-->>U: "✅ 복원 완료 - 통계 표시"
     end
 ```
 

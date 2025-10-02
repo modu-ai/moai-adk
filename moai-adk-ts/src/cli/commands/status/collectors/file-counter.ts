@@ -65,7 +65,7 @@ export class FileCounter {
         counts['CLAUDE.md'] = 0;
       }
 
-      counts.total = total;
+      counts['total'] = total;
       return counts;
     } catch (error) {
       throw new Error(

@@ -423,7 +423,7 @@ describe('Cross-platform Path Handling', () => {
 
 ### Phase 4: 마무리 (문서화)
 - [ ] API 문서 업데이트
-- [ ] TAG 체인 검증 (`/moai:3-sync`)
+- [ ] TAG 체인 검증 (`/alfred:3-sync`)
 - [ ] CHANGELOG 업데이트
 - [ ] 성능 벤치마크 실행
 

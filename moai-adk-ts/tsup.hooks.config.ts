@@ -3,7 +3,7 @@
  * Related: @CODE:BUILD-001:API
  *
  * TSUP Configuration for Claude Code Hooks
- * templates/.claude/hooks/moai/ts/*.ts → templates/.claude/hooks/moai/*.cjs
+ * templates/.claude/hooks/alfred/ts/*.ts → templates/.claude/hooks/alfred/*.cjs
  */
 
 import { defineConfig } from 'tsup';
@@ -17,7 +17,7 @@ export default defineConfig({
   },
   format: ['cjs'],
   target: 'node18',
-  outDir: 'templates/.claude/hooks/moai',
+  outDir: 'templates/.claude/hooks/alfred',
   outExtension: () => ({ js: '.cjs' }),
   sourcemap: false,
   clean: false, // CJS 파일 보존

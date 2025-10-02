@@ -90,7 +90,7 @@ export class PolicyBlock implements MoAIHook {
    * Extract command from tool input
    */
   private extractCommand(toolInput: Record<string, any>): string | null {
-    const raw = toolInput.command || toolInput.cmd;
+    const raw = toolInput['command'] || toolInput['cmd'];
 
     if (Array.isArray(raw)) {
       return raw.map(String).join(' ');

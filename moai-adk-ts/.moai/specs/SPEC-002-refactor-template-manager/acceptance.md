@@ -211,14 +211,14 @@ Scenario: Claude 통합 기능 활성화 시 .claude 구조 생성
   Given 유효한 프로젝트 설정이 주어졌을 때
   And claude-integration 기능이 활성화되었을 때
   When generateProject() 메서드를 호출하면
-  Then .claude/agents/moai/ 디렉토리가 생성되어야 한다
-  And .claude/commands/moai/ 디렉토리가 생성되어야 한다
-  And .claude/hooks/moai/ 디렉토리가 생성되어야 한다
-  And .claude/agents/moai/spec-builder.md 파일이 생성되어야 한다
-  And .claude/agents/moai/code-builder.md 파일이 생성되어야 한다
-  And .claude/agents/moai/doc-syncer.md 파일이 생성되어야 한다
-  And .claude/commands/moai/8-project.md 파일이 생성되어야 한다
-  And .claude/hooks/moai/pre-commit.py 파일이 생성되어야 한다
+  Then .claude/agents/alfred/ 디렉토리가 생성되어야 한다
+  And .claude/commands/alfred/ 디렉토리가 생성되어야 한다
+  And .claude/hooks/alfred/ 디렉토리가 생성되어야 한다
+  And .claude/agents/alfred/spec-builder.md 파일이 생성되어야 한다
+  And .claude/agents/alfred/code-builder.md 파일이 생성되어야 한다
+  And .claude/agents/alfred/doc-syncer.md 파일이 생성되어야 한다
+  And .claude/commands/alfred/8-project.md 파일이 생성되어야 한다
+  And .claude/hooks/alfred/pre-commit.py 파일이 생성되어야 한다
 
 Scenario: Claude 통합 기능 비활성화 시 .claude 구조 미생성
   Given 유효한 프로젝트 설정이 주어졌을 때
@@ -244,11 +244,11 @@ describe('AC-3: Claude Integration Structure', () => {
     const result = await manager.generateProject(config, tmpDir);
 
     // Then
-    expect(result.createdFiles).toContain('.claude/agents/moai/spec-builder.md');
-    expect(result.createdFiles).toContain('.claude/agents/moai/code-builder.md');
-    expect(result.createdFiles).toContain('.claude/agents/moai/doc-syncer.md');
-    expect(result.createdFiles).toContain('.claude/commands/moai/8-project.md');
-    expect(result.createdFiles).toContain('.claude/hooks/moai/pre-commit.py');
+    expect(result.createdFiles).toContain('.claude/agents/alfred/spec-builder.md');
+    expect(result.createdFiles).toContain('.claude/agents/alfred/code-builder.md');
+    expect(result.createdFiles).toContain('.claude/agents/alfred/doc-syncer.md');
+    expect(result.createdFiles).toContain('.claude/commands/alfred/8-project.md');
+    expect(result.createdFiles).toContain('.claude/hooks/alfred/pre-commit.py');
   });
 
   test('should not create .claude structure when feature is disabled', async () => {
@@ -742,7 +742,7 @@ describe('AC-12: Generation Performance', () => {
 
 ### Phase 4: 문서화 완료
 - [ ] API 문서 업데이트
-- [ ] TAG 체인 검증 완료 (`/moai:3-sync`)
+- [ ] TAG 체인 검증 완료 (`/alfred:3-sync`)
 - [ ] CHANGELOG 업데이트
 - [ ] 아키텍처 다이어그램 업데이트
 

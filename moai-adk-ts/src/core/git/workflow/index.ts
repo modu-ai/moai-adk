@@ -39,7 +39,7 @@ export class WorkflowAutomation {
 
   /**
    * SPEC 개발 워크플로우 시작
-   * /moai:1-spec 명령어 시뮬레이션
+   * /alfred:1-spec 명령어 시뮬레이션
    */
   async startSpecWorkflow(
     specId: string,
@@ -70,7 +70,7 @@ export class WorkflowAutomation {
         stage: SpecWorkflowStage.SPEC,
         branchName,
         commitHash,
-        pullRequestUrl,
+        pullRequestUrl: pullRequestUrl || undefined,
         message: `SPEC ${specId} workflow started successfully`,
       };
     } catch (error) {
@@ -84,7 +84,7 @@ export class WorkflowAutomation {
 
   /**
    * TDD 빌드 워크플로우 실행
-   * /moai:2-build 명령어 시뮬레이션
+   * /alfred:2-build 명령어 시뮬레이션
    */
   async runBuildWorkflow(specId: string): Promise<WorkflowResult> {
     try {
@@ -112,7 +112,7 @@ export class WorkflowAutomation {
 
   /**
    * 문서 동기화 워크플로우
-   * /moai:3-sync 명령어 시뮬레이션
+   * /alfred:3-sync 명령어 시뮬레이션
    */
   async runSyncWorkflow(specId: string): Promise<WorkflowResult> {
     try {
@@ -212,7 +212,7 @@ export class WorkflowAutomation {
         stage: SpecWorkflowStage.SYNC,
         branchName,
         commitHash,
-        pullRequestUrl,
+        pullRequestUrl: pullRequestUrl || undefined,
         message: `Release ${version} workflow completed successfully`,
       };
     } catch (error) {

@@ -12,11 +12,11 @@
       {
         "hooks": [
           {
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre-write-guard.cjs",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/pre-write-guard.cjs",
             "type": "command"
           },
           {
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/tag-enforcer.cjs",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/tag-enforcer.cjs",
             "type": "command"
           }
         ],
@@ -25,7 +25,7 @@
       {
         "hooks": [
           {
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/policy-block.cjs",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/policy-block.cjs",
             "type": "command"
           }
         ],
@@ -36,7 +36,7 @@
       {
         "hooks": [
           {
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/moai/session-notice.cjs",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/session-notice.cjs",
             "type": "command"
           }
         ],
@@ -76,7 +76,7 @@
       "Bash(tsc:*)",
       "Bash(jest:*)",
       "Bash(ts-node:*)",
-      "Bash(moai:*)",
+      "Bash(alfred:*)",
       "Bash(gh pr create:*)",
       "Bash(gh pr view:*)",
       "Bash(gh pr list:*)",

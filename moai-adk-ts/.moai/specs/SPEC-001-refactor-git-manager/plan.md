@@ -151,7 +151,7 @@
 **작업 항목**:
 
 #### 4.1 문서 동기화
-- [ ] `/moai:3-sync` 실행하여 TAG 검증
+- [ ] `/alfred:3-sync` 실행하여 TAG 검증
 - [ ] API 문서 갱신 (필요 시)
 - [ ] 변경 로그 작성
 
@@ -375,7 +375,7 @@ Infrastructure Layer (SimpleGit, GitLockManager, GitHubIntegration)
 
 리팩토링 완료 후:
 
-1. `/moai:3-sync` 실행하여 TAG 검증
+1. `/alfred:3-sync` 실행하여 TAG 검증
 2. Draft PR 생성 (브랜치: `feature/SPEC-001-refactor-git-manager`)
 3. 팀 리뷰 요청
 4. 승인 후 develop 브랜치로 머지

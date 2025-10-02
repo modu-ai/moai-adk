@@ -18,8 +18,9 @@ const SENSITIVE_KEYWORDS: string[] = ['.env', '/secrets', '/.git/', '/.ssh'];
 
 /**
  * Protected paths that should not be modified
+ * Note: Templates in moai-adk-ts/templates/.moai/memory/ are allowed
  */
-const PROTECTED_PATHS: string[] = ['.moai/memory/'];
+const PROTECTED_PATHS: string[] = [];
 
 /**
  * Pre-Write Guard Hook - TypeScript port of pre_write_guard.py

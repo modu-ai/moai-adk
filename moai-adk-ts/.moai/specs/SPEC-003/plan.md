@@ -257,19 +257,19 @@ export class CodeFirstTAGEnforcer implements MoAIHook {
 npm test
 
 # 3. 1차 목표 실행: tag-patterns.ts 분리
-/moai:2-build SPEC-003 --step 1
+/alfred:2-build SPEC-003 --step 1
 
 # 4. 2차 목표 실행: tag-validator.ts 분리
-/moai:2-build SPEC-003 --step 2
+/alfred:2-build SPEC-003 --step 2
 
 # 5. 3차 목표 실행: tag-enforcer.ts 슬림화
-/moai:2-build SPEC-003 --step 3
+/alfred:2-build SPEC-003 --step 3
 
 # 6. 4차 목표 실행: 테스트 작성
-/moai:2-build SPEC-003 --step 4
+/alfred:2-build SPEC-003 --step 4
 
 # 7. 최종 목표: 문서화 및 배포
-/moai:3-sync
+/alfred:3-sync
 ```
 
 ### 검증 방법

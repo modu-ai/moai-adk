@@ -7,12 +7,18 @@ dist/
 # Cache
 __pycache__/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 *.pyc
 *.pyo
 
 # Backups
 CLAUDE.md.backup
 *.backup
+.moai-backup/
+.archive/
+docs_backup/
+local-archive/
 
 # Virtual environment
 venv/
@@ -34,6 +40,8 @@ Thumbs.db
 # Logs
 *.log
 logs/
+*.txt
+!requirements.txt
 
 # Temporary files
 *.tmp
@@ -41,13 +49,27 @@ logs/
 .moai/checkpoints/snapshots/
 .moai/checkpoints/tmp/
 coverage_html/
-local-archive/
 my_docs/
 test-final/
 test-project/
+test-todo-app/
 moai-adk-ts/test-final/
 moai-adk-ts/test-local/
 moai-adk-ts/moai-adk-*.tgz
+
+# Development files (not for GitHub)
+Makefile
+Makefile.*
+*.spec
+mkdocs.yml
+.pypirc*
+test-vitepress-*.cjs
+manifests/
+ANALYSIS-*.md
+BUGFIX-*.md
+
+# Playwright MCP
+.playwright-mcp/
 
 
 # SQLite databases (no longer used - migrated to JSON)

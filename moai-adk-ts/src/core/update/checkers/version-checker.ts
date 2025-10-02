@@ -11,7 +11,7 @@ import { checkLatestVersion, getCurrentVersion } from '../../../utils/version.js
 import { logger } from '../../../utils/winston-logger.js';
 
 /**
- * Version check result
+ * Version check result (re-export with consistent naming)
  * @tags @SPEC:VERSION-CHECK-RESULT-001
  */
 export interface VersionCheckResult {
@@ -38,21 +38,21 @@ export class VersionChecker {
 
     logger.log(chalk.blue(`📦 현재 버전: v${currentVersion}`));
 
-    if (!versionCheck.hasUpdate || !versionCheck.latestVersion) {
+    if (!versionCheck.hasUpdate || !versionCheck.latest) {
       logger.log(chalk.green('✅ 최신 버전을 사용 중입니다'));
       return {
         currentVersion,
-        latestVersion: versionCheck.latestVersion,
+        latestVersion: versionCheck.latest,
         hasUpdate: false,
       };
     }
 
-    logger.log(chalk.yellow(`⚡ 최신 버전: v${versionCheck.latestVersion}`));
+    logger.log(chalk.yellow(`⚡ 최신 버전: v${versionCheck.latest}`));
     logger.log(chalk.green('✅ 업데이트 가능'));
 
     return {
       currentVersion,
-      latestVersion: versionCheck.latestVersion,
+      latestVersion: versionCheck.latest,
       hasUpdate: true,
     };
   }

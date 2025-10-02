@@ -201,7 +201,7 @@ export class TemplateManager {
     result.createdFiles.push('src/__init__.py');
 
     // pytest.ini if feature enabled
-    if (templateData.features.pytest) {
+    if (templateData.features['pytest']) {
       const pytestConfig = this.processor.generatePytestConfig();
       await fs.writeFile(path.join(projectPath, 'pytest.ini'), pytestConfig);
       result.createdFiles.push('pytest.ini');
@@ -227,7 +227,7 @@ export class TemplateManager {
     // tsconfig.json for TypeScript
     if (
       templateData.projectType === ProjectType.TYPESCRIPT ||
-      templateData.features.typescript
+      templateData.features['typescript']
     ) {
       const tsconfig = this.processor.generateTsConfig();
       await fs.writeFile(
@@ -238,7 +238,7 @@ export class TemplateManager {
     }
 
     // jest.config.js if feature enabled
-    if (templateData.features.jest) {
+    if (templateData.features['jest']) {
       const jestConfig = this.processor.generateJestConfig();
       await fs.writeFile(path.join(projectPath, 'jest.config.js'), jestConfig);
       result.createdFiles.push('jest.config.js');
@@ -331,11 +331,11 @@ export class TemplateManager {
     const claudeDirs = [
       '.claude',
       '.claude/agents',
-      '.claude/agents/moai',
+      '.claude/agents/alfred',
       '.claude/commands',
-      '.claude/commands/moai',
+      '.claude/commands/alfred',
       '.claude/hooks',
-      '.claude/hooks/moai',
+      '.claude/hooks/alfred',
     ];
 
     for (const dir of claudeDirs) {
@@ -353,7 +353,7 @@ export class TemplateManager {
         path.join(projectPath, '.claude', 'agents', 'moai', agent),
         content
       );
-      result.createdFiles.push(`.claude/agents/moai/${agent}`);
+      result.createdFiles.push(`.claude/agents/alfred/${agent}`);
     }
 
     // Command files
@@ -368,7 +368,7 @@ export class TemplateManager {
         path.join(projectPath, '.claude', 'commands', 'moai', cmd),
         content
       );
-      result.createdFiles.push(`.claude/commands/moai/${cmd}`);
+      result.createdFiles.push(`.claude/commands/alfred/${cmd}`);
     }
 
     // Pre-commit hook
@@ -377,7 +377,7 @@ export class TemplateManager {
       path.join(projectPath, '.claude', 'hooks', 'moai', 'pre-commit.py'),
       hookContent
     );
-    result.createdFiles.push('.claude/hooks/moai/pre-commit.py');
+    result.createdFiles.push('.claude/hooks/alfred/pre-commit.py');
   }
 
   /**

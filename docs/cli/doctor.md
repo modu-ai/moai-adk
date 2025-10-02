@@ -418,7 +418,7 @@ NO_COLOR=1 moai doctor > diagnostics-report-plain.txt
 
 **Node.js (≥18.0.0)**: MoAI-ADK는 TypeScript로 작성되었으며, Node.js 런타임이 필요합니다. Node.js 18 이상을 요구하는 이유는 최신 ECMAScript 기능, 네이티브 fetch API, 성능 개선을 활용하기 위함입니다. 버전 확인은 `node --version`으로 수행되며, 18.0.0 미만이면 경고가 표시됩니다.
 
-**Git (≥2.28.0)**: 버전 관리 및 Claude Code 통합에 필수적입니다. Git 2.28.0 이상이 필요한 이유는 `init.defaultBranch` 설정 지원, SHA-256 해시 지원, sparse-checkout v2 기능 등 최신 Git 기능을 사용하기 때문입니다. MoAI-ADK의 3단계 워크플로우(`/moai:1-spec`, `/moai:2-build`, `/moai:3-sync`)는 Git 브랜치 관리와 밀접하게 통합되어 있습니다.
+**Git (≥2.28.0)**: 버전 관리 및 Claude Code 통합에 필수적입니다. Git 2.28.0 이상이 필요한 이유는 `init.defaultBranch` 설정 지원, SHA-256 해시 지원, sparse-checkout v2 기능 등 최신 Git 기능을 사용하기 때문입니다. MoAI-ADK의 3단계 워크플로우(`/alfred:1-spec`, `/alfred:2-build`, `/alfred:3-sync`)는 Git 브랜치 관리와 밀접하게 통합되어 있습니다.
 
 이 두 가지 런타임 요구사항은 모든 프로젝트에 공통적으로 적용되며, 언어에 관계없이 항상 검증됩니다. Node.js와 Git이 없으면 MoAI-ADK 자체가 작동하지 않으므로, 가장 먼저 확인하고 문제가 있으면 즉시 사용자에게 알립니다.
 
