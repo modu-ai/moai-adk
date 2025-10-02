@@ -226,6 +226,24 @@ tags: [authentication, jwt, api]
 
 **Alfred가 수행하는 TDD 사이클**:
 
+```mermaid
+graph LR
+    A[SPEC 읽기] --> B[🔴 RED<br/>테스트 작성]
+    B --> C{테스트 실행}
+    C -->|실패| D[🟢 GREEN<br/>최소 구현]
+    D --> E{테스트 실행}
+    E -->|통과| F[🔵 REFACTOR<br/>코드 개선]
+    F --> G{테스트 실행}
+    G -->|통과| H[✅ 완료]
+    G -->|실패| F
+
+    style A fill:#e1f5ff
+    style B fill:#ffcdd2
+    style D fill:#c8e6c9
+    style F fill:#bbdefb
+    style H fill:#fff9c4
+```
+
 #### 🔴 RED Phase - 실패하는 테스트 작성
 
 Alfred가 SPEC을 읽고 테스트 코드를 먼저 생성합니다 (`@TEST:AUTH-001`).
@@ -568,13 +586,31 @@ MoAI-ADK는 **Alfred (SuperAgent) + 9개 전문 에이전트 = 총 10개 AI 에�
 - 품질 게이트 검증 및 결과 통합
 
 **작동 방식**:
-```
-사용자 요청 → Alfred 분석 → 작업 분해/라우팅
-    ├─→ 직접 처리 (간단한 조회, 파일 읽기)
-    ├─→ Single Agent (단일 전문가 위임)
-    ├─→ Sequential (순차: 1-spec → 2-build → 3-sync)
-    └─→ Parallel (병렬: 테스트 + 린트 + 빌드)
-→ 품질 게이트 검증 → Alfred 결과 통합 보고
+
+```mermaid
+graph TD
+    A[사용자 요청] --> B[Alfred 분석]
+    B --> C{작업 복잡도}
+    C -->|간단| D[직접 처리]
+    C -->|단일| E[Single Agent 위임]
+    C -->|순차| F[Sequential 조율]
+    C -->|병렬| G[Parallel 조율]
+
+    D --> H[결과 반환]
+    E --> I[에이전트 실행]
+    F --> J[순차 실행<br/>1-spec → 2-build → 3-sync]
+    G --> K[병렬 실행<br/>test + lint + build]
+
+    I --> L[품질 게이트 검증]
+    J --> L
+    K --> L
+    L --> M[Alfred 결과 통합]
+    M --> H
+
+    style A fill:#e1f5ff
+    style B fill:#fff4e1
+    style H fill:#e8f5e9
+    style L fill:#fce4ec
 ```
 
 ---
@@ -609,17 +645,36 @@ Alfred가 조율하는 전문 에이전트들입니다.
 
 ### 에이전트 협업 아키텍처
 
-```
-                    🎩 Alfred (SuperAgent)
-                      중앙 오케스트레이터
-                            │
-         ┌──────────────────┼──────────────────┐
-         │                  │                  │
-    핵심 3단계          품질 보증          시스템 관리
-    ├─ spec-builder   ├─ tag-agent      ├─ cc-manager
-    ├─ code-builder   ├─ trust-checker  └─ project-manager
-    └─ doc-syncer     ├─ debug-helper
-                      └─ git-manager
+```mermaid
+graph TB
+    Alfred["🎩 Alfred<br/>(SuperAgent)<br/>중앙 오케스트레이터"]
+
+    subgraph core["핵심 3단계 에이전트"]
+        Spec["🏗️ spec-builder<br/>명세 작성"]
+        Code["💎 code-builder<br/>TDD 구현"]
+        Doc["📖 doc-syncer<br/>문서 동기화"]
+    end
+
+    subgraph quality["품질 보증 에이전트"]
+        Tag["🏷️ tag-agent<br/>TAG 검증"]
+        Trust["✅ trust-checker<br/>TRUST 검증"]
+        Debug["🔬 debug-helper<br/>오류 진단"]
+        Git["🚀 git-manager<br/>Git 워크플로우"]
+    end
+
+    subgraph system["시스템 관리 에이전트"]
+        CC["🛠️ cc-manager<br/>설정 관리"]
+        PM["📋 project-manager<br/>프로젝트 초기화"]
+    end
+
+    Alfred --> core
+    Alfred --> quality
+    Alfred --> system
+
+    style Alfred fill:#fff4e1,stroke:#333,stroke-width:3px
+    style core fill:#e1f5ff
+    style quality fill:#fce4ec
+    style system fill:#e8f5e9
 ```
 
 ### 협업 원칙
@@ -671,8 +726,27 @@ Alfred는 모든 코드에 TRUST 5원칙을 적용합니다:
 
 모든 코드는 4가지 TAG로 완벽하게 추적됩니다:
 
-```text
-@SPEC:ID → @TEST:ID → @CODE:ID → @DOC:ID
+```mermaid
+graph LR
+    A["@SPEC:AUTH-001<br/>.moai/specs/SPEC-AUTH-001.md<br/>요구사항 명세"]
+    B["@TEST:AUTH-001<br/>tests/auth/login.test.ts<br/>테스트 코드"]
+    C["@CODE:AUTH-001<br/>src/services/auth.ts<br/>구현 코드"]
+    D["@DOC:AUTH-001<br/>docs/api/auth.md<br/>API 문서"]
+
+    A -->|참조| B
+    B -->|참조| C
+    C -->|참조| D
+
+    E[TAG 체인 검증<br/>rg '@SPEC:AUTH-001' -n] -.->|스캔| A
+    E -.->|스캔| B
+    E -.->|스캔| C
+    E -.->|스캔| D
+
+    style A fill:#e1f5ff
+    style B fill:#ffcdd2
+    style C fill:#c8e6c9
+    style D fill:#fff9c4
+    style E fill:#f3e5f5
 ```
 
 **TAG ID 규칙**: `<도메인>-<3자리>` (예: `AUTH-001`, `PAYMENT-042`)
