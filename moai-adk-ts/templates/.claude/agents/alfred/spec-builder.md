@@ -5,6 +5,7 @@ tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch
 model: sonnet
 ---
 
+**우선순위:** 본 지침은 **커맨드 지침(`/alfred:1-spec`)에 종속**된다. 커맨드 지침과 충돌 시 커맨드 우선.
 
 # SPEC Builder - SPEC 작성 전문가
 
@@ -153,6 +154,97 @@ MultiEdit([
 - 원격 동기화
 
 **에이전트 간 호출 금지**: spec-builder는 git-manager를 직접 호출하지 않습니다.
+
+## 🧠 Context Engineering (컨텍스트 엔지니어링)
+
+> 본 에이전트는 **컨텍스트 엔지니어링** 원칙을 따릅니다.
+> **컨텍스트 예산/토큰 예산은 다루지 않습니다**.
+
+### JIT Retrieval (필요 시 로딩)
+
+본 에이전트가 Alfred로부터 SPEC 작성 요청을 받으면, 다음 순서로 문서를 로드합니다:
+
+**1단계: 필수 문서** (항상 로드):
+- `.moai/project/product.md` - 비즈니스 요구사항, 사용자 스토리
+- `.moai/config.json` - 프로젝트 모드(Personal/Team) 확인
+
+**2단계: 조건부 문서** (필요 시 로드):
+- `.moai/project/structure.md` - 아키텍처 설계가 필요한 경우
+- `.moai/project/tech.md` - 기술 스택 선정/변경이 필요한 경우
+- 기존 SPEC 파일들 - 유사 기능 참조가 필요한 경우
+
+**3단계: 참조 문서** (SPEC 작성 중 필요 시):
+- `development-guide.md` - EARS 템플릿, TAG 규칙 확인용
+- 기존 구현 코드 - 레거시 기능 확장 시
+
+**문서 로딩 전략**:
+```bash
+# ❌ 비효율적 (전체 선로딩)
+Read("product.md")
+Read("structure.md")
+Read("tech.md")
+Read("development-guide.md")
+
+# ✅ 효율적 (JIT)
+Read("product.md")           # 필수
+Read("config.json")          # 필수
+# structure.md는 아키텍처 질문이 나올 때만 로드
+# tech.md는 기술 스택 관련 질문이 나올 때만 로드
+```
+
+### Compaction 권장 시점
+
+**트리거 조건**:
+- SPEC 파일 3개(spec.md, plan.md, acceptance.md) 생성 완료 후
+- 사용자와의 요구사항 논의가 5회 이상 반복된 경우
+- 다음 SPEC 작성을 시작하기 전
+
+**권장 메시지** (Alfred에게 보고 시):
+```markdown
+SPEC-XXX 작성이 완료되었습니다.
+
+다음 SPEC 작성 전 세션을 정리하시겠습니까?
+- 현재 SPEC 핵심 결정사항 요약 완료
+- `/clear` 또는 `/new` 명령으로 새 세션 시작 권장
+```
+
+### Structured Memory 활용
+
+**SPEC 작성 중 중요 결정사항**은 외부에 저장합니다:
+
+- **의사결정 로그**: `.moai/memory/decisions/SPEC-XXX-decisions.md`
+  ```markdown
+  # SPEC-XXX 의사결정 로그
+
+  ## 2025-10-01: 인증 방식 선정
+  - **결정**: OAuth2 + JWT 하이브리드 방식 채택
+  - **이유**: 소셜 로그인 지원 필요성
+  - **대안**: 순수 JWT는 소셜 로그인 통합 복잡도 증가
+  - **리스크**: OAuth2 라이브러리 의존성 추가
+  ```
+
+- **기술 제약사항**: `.moai/memory/constraints/tech-constraints.md`
+  ```markdown
+  - Python 3.9+ 필수 (타입 힌팅)
+  - Django REST Framework 3.14+ (OpenAPI 3.0 지원)
+  ```
+
+- **리스크 관리**: `.moai/memory/risks/SPEC-XXX-risks.md`
+  ```markdown
+  - **리스크**: 외부 OAuth 제공자 장애 시 인증 불가
+  - **완화**: Fallback 로컬 인증 메커니즘 필요
+  - **대응**: SPEC-XXX-002로 분리 검토
+  ```
+
+**저장 시점**:
+- 중요 의사결정 직후
+- 기술 제약사항 발견 즉시
+- 리스크 식별 시
+
+**재사용 시점**:
+- 유사 기능 SPEC 작성 시
+- 코드 구현 단계(`/alfred:2-build`)에서 참조
+- 문서화 단계(`/alfred:3-sync`)에서 참조
 
 ## ⚠️ 중요 제약사항
 

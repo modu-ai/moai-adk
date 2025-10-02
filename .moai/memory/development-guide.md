@@ -55,6 +55,149 @@ MoAI-ADK 범용 개발 툴킷을 사용하는 모든 에이전트와 개발자�
 
 ---
 
+## Context Engineering (컨텍스트 엔지니어링)
+
+MoAI-ADK는 Anthropic의 "Effective Context Engineering for AI Agents" 원칙을 기반으로 효율적인 컨텍스트 관리를 구현합니다.
+
+### 1. JIT (Just-in-Time) Retrieval
+
+**원칙**: 필요한 순간에만 문서를 로드하여 초기 컨텍스트 부담을 최소화
+
+**Alfred의 JIT 전략**:
+
+| 커맨드 | 필수 로드 | 선택적 로드 | 로드 타이밍 |
+|--------|----------|------------|------------|
+| `/alfred:1-spec` | product.md | structure.md, tech.md | SPEC 후보 발굴 시 |
+| `/alfred:2-build` | SPEC-XXX/spec.md | development-guide.md | TDD 구현 시작 시 |
+| `/alfred:3-sync` | sync-report.md | TAG 인덱스 | 문서 동기화 시 |
+
+**구현 방법**:
+- Alfred는 커맨드 실행 시점에 필요한 문서만 `Read` 도구로 로드
+- 에이전트는 자신의 작업에 필요한 문서만 요청
+- CLAUDE.md의 "메모리 전략" 섹션에 명시된 5개 문서는 항상 로드
+
+### 2. Compaction (압축)
+
+**원칙**: 긴 세션(>70% 토큰 사용)은 요약 후 새 세션으로 재시작
+
+**Compaction 트리거**:
+- 토큰 사용량 > 140,000 (총 200,000의 70%)
+- 대화 턴 수 > 50회
+- 사용자가 명시적으로 `/clear` 또는 `/new` 실행
+
+**Compaction 절차**:
+1. **요약 생성**: 현재 세션의 핵심 결정사항, 완료된 작업, 다음 단계를 요약
+2. **Structured Memory 저장**: 의사결정 로그를 `.moai/memory/decisions/`에 저장
+3. **새 세션 시작**: 요약 내용을 새 세션의 첫 메시지로 전달
+4. **권장 사항 안내**: 사용자에게 `/clear` 또는 `/new` 명령 사용 권장
+
+**예시**:
+```markdown
+**권장사항**: 다음 단계 진행 전 `/clear` 또는 `/new` 명령으로 새로운 대화 세션을 시작하면 더 나은 성능과 컨텍스트 관리를 경험할 수 있습니다.
+```
+
+### 3. Structured Memory (구조화된 메모리)
+
+**원칙**: 의사결정, 제약사항, 리스크는 `.moai/memory/`에 외부 저장
+
+**디렉토리 구조**:
+```
+.moai/memory/
+├── development-guide.md          # 단일 진실 공급원 (Single Source of Truth)
+├── decisions/                    # 주요 의사결정 로그
+│   ├── TEMPLATE.md               # 의사결정 템플릿
+│   └── YYYY-MM-DD-title.md       # 개별 의사결정 문서
+├── constraints/                  # 기술적/비즈니스적 제약사항
+│   ├── TEMPLATE.md
+│   └── technical-constraints.md
+└── risks/                        # 식별된 리스크 및 대응 방안
+    ├── TEMPLATE.md
+    └── risk-register.md
+```
+
+**의사결정 템플릿** (`.moai/memory/decisions/TEMPLATE.md`):
+```markdown
+---
+date: YYYY-MM-DD
+author: @username
+status: proposed|accepted|rejected|deprecated
+tags: [architecture, security, performance]
+---
+
+# 의사결정: [제목]
+
+## Context (배경)
+[왜 이 결정이 필요한가?]
+
+## Decision (결정 내용)
+[무엇을 결정했는가?]
+
+## Rationale (근거)
+[왜 이 방식을 선택했는가?]
+
+## Alternatives (대안)
+[고려했던 다른 방법들]
+
+## Consequences (결과)
+[이 결정의 영향과 트레이드오프]
+
+## Related
+[관련 SPEC, 코드, 문서]
+```
+
+**사용 시나리오**:
+
+1. **언어 선택 결정**:
+   ```markdown
+   # 의사결정: Python vs TypeScript for CLI Tools
+
+   ## Context
+   MoAI-ADK CLI는 고성능(18ms)과 타입 안전성이 필요
+
+   ## Decision
+   TypeScript + Bun 런타임 선택
+
+   ## Rationale
+   - 18ms 실행 속도 (Python 대비 3배 빠름)
+   - 네이티브 타입 시스템
+   - SQLite3 바인딩 성능 우수
+   ```
+
+2. **아키텍처 패턴 결정**:
+   ```markdown
+   # 의사결정: Sub-Agent Architecture 채택
+
+   ## Context
+   Claude Code 공식 가이드 권장 사항
+
+   ## Decision
+   9개 전문 에이전트 + Alfred 오케스트레이터
+
+   ## Rationale
+   - 단일 책임 원칙 준수
+   - 컨텍스트 부담 최소화
+   - 에이전트별 모델 최적화 (sonnet vs haiku)
+   ```
+
+### Context Engineering 체크리스트
+
+**커맨드 설계 시**:
+- [ ] JIT: 필요한 문서만 로드하는가?
+- [ ] 선택적 로드: 조건부로 문서를 로드하는가?
+- [ ] Compaction: 긴 작업 시 중간 요약을 제공하는가?
+
+**에이전트 설계 시**:
+- [ ] 최소 도구: 필요한 도구만 YAML frontmatter에 선언했는가?
+- [ ] 명확한 역할: 단일 책임 원칙을 준수하는가?
+- [ ] 의사결정 로그: 중요한 결정은 `.moai/memory/decisions/`에 기록하는가?
+
+**장기 세션 관리**:
+- [ ] 토큰 사용량 모니터링
+- [ ] 70% 초과 시 Compaction 권장
+- [ ] `/clear` 또는 `/new` 안내 문구 포함
+
+---
+
 ## TRUST 5원칙
 
 ### T - 테스트 주도 개발 (SPEC 기반)

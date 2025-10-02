@@ -505,3 +505,170 @@ rg '@TAG' -n src/ tests/
 - Quality TAG (@CODE/@CODE/@DOC) 적용으로 품질 추적성 강화
 - Primary Chain (@SPEC → @SPEC → @CODE → @TEST) 완성도 향상
 - 고아 TAG 및 끊어진 링크 방지를 통한 전체 추적성 시스템 건전성 기여
+
+---
+
+## 📤 Output Format (출력 형식)
+
+### TDD 단계별 출력
+
+**RED 단계 완료**:
+```markdown
+🔴 RED: 실패 테스트 작성 완료
+
+📝 생성된 테스트:
+- tests/test_auth.py::test_should_authenticate_valid_user
+- tests/test_auth.py::test_should_reject_invalid_password
+- tests/test_auth.py::test_should_handle_expired_token
+- @TEST:AUTH-001 TAG 적용 완료
+
+🔗 다음: GREEN 단계 (최소 구현)
+```
+
+**GREEN 단계 완료**:
+```markdown
+🟢 GREEN: 테스트 통과 확인
+
+✅ 구현 완료:
+- src/auth/service.py::authenticate()
+- src/auth/service.py::verify_token()
+- @CODE:AUTH-001 TAG 적용
+- 테스트 커버리지: 92% (목표 85% 초과)
+
+🔗 다음: REFACTOR 단계 (품질 개선)
+```
+
+**REFACTOR 단계 완료**:
+```markdown
+♻️ REFACTOR: 코드 품질 개선 완료
+
+🔧 개선 사항:
+- 함수 분해: authenticate() → validate_input() + verify_credentials() + log_attempt()
+- @PERF:AUTH-001 (토큰 캐싱) 적용
+- @SEC:AUTH-001 (입력 검증) 적용
+- TRUST 원칙 100% 준수 확인
+  - 파일 크기: 245 LOC ≤ 300 LOC ✅
+  - 함수 크기: 최대 42 LOC ≤ 50 LOC ✅
+  - 복잡도: 최대 8 ≤ 10 ✅
+
+🔗 다음: git-manager 커밋 → /alfred:3-sync
+```
+
+### 최종 완료 출력
+
+```markdown
+🎉 TDD 구현 완료: SPEC-AUTH-001
+
+📊 품질 메트릭:
+- 테스트 커버리지: 94%
+- 테스트 케이스: 15개 (통과 15, 실패 0)
+- TRUST 원칙: 100% 준수
+- TAG 체인: @SPEC:AUTH-001 → @TEST:AUTH-001 → @CODE:AUTH-001 완성
+
+📁 생성된 파일:
+- tests/test_auth.py (230 LOC, 15 tests)
+- src/auth/service.py (245 LOC, 8 functions)
+- src/auth/validator.py (95 LOC, 3 functions)
+
+🔗 다음 단계:
+→ git-manager 에이전트가 TDD 커밋 생성 (RED → GREEN → REFACTOR)
+→ /alfred:3-sync (문서 동기화 및 TAG 검증)
+```
+
+---
+
+## 🔧 Troubleshooting (문제 해결)
+
+### 증상: 테스트 실행 실패
+
+**원인**: 의존성 미설치 또는 환경 문제
+
+**해결**:
+```bash
+# Python
+pip install -r requirements-dev.txt
+pytest --version
+
+# TypeScript
+npm install
+npm test -- --version
+
+# Go
+go mod tidy
+go test -v ./...
+```
+
+**위임**: `@agent-debug-helper --diagnose-test-env`
+
+---
+
+### 증상: TAG 체인 끊어짐
+
+**원인**: @SPEC → @TEST → @CODE 체인 누락
+
+**해결**:
+```bash
+# TAG 체인 검증
+rg '@(SPEC|TEST|CODE):AUTH-001' -n
+
+# 예상 결과:
+# .moai/specs/SPEC-AUTH-001.md: @SPEC:AUTH-001
+# tests/test_auth.py: @TEST:AUTH-001
+# src/auth/service.py: @CODE:AUTH-001
+```
+
+**위임**: `@agent-tag-agent --validate-chain --spec-id=AUTH-001`
+
+---
+
+### 증상: TRUST 원칙 위반 (복잡도 > 10)
+
+**원인**: 함수 크기 초과 또는 중첩 로직
+
+**해결**:
+```python
+# Before (복잡도 15)
+def process(data):
+    if data:
+        if validate(data):
+            if transform(data):
+                return save(data)
+    return None
+
+# After (복잡도 3)
+def process(data):
+    if not data: return None
+    if not validate(data): return None
+    if not transform(data): return None
+    return save(data)
+```
+
+**위임**: `@agent-trust-checker --mode=refactor --spec=$ARGUMENTS`
+
+---
+
+### 증상: 테스트 커버리지 < 85%
+
+**원인**: 엣지 케이스 테스트 누락
+
+**해결**:
+```bash
+# 미커버 코드 확인
+pytest --cov=src --cov-report=html
+open htmlcov/index.html
+```
+
+**위임**: `@agent-code-builder --add-coverage-tests`
+
+---
+
+### 증상: REFACTOR 단계에서 테스트 깨짐
+
+**원인**: 리팩토링 시 로직 변경
+
+**해결**:
+1. REFACTOR 전 커밋: `git commit -m "🟢 GREEN: Tests passing"`
+2. 각 리팩토링 후 테스트 재실행
+3. 실패 시 즉시 롤백: `git reset --hard HEAD`
+
+**위임**: `@agent-code-builder --safe-refactor --incremental`

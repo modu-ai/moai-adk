@@ -5,40 +5,77 @@ All notable changes to MoAI-ADK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.0.1] - 2025-10-02
+## [Unreleased]
 
-### 🚀 **첫 공식 배포 - @moai/adk**
+### Added (2025-10-02)
 
-**스코프 패키지로 전환하여 0.0.1부터 새롭게 시작합니다**
+- **AlfredUpdateBridge 클래스**: /alfred:9-update Phase 4를 Claude Code 도구로 처리
+- **프로젝트 문서 보호**: {{PROJECT_NAME}} 패턴 기반 조건부 복사
+- **훅 파일 권한 처리**: chmod +x 자동 적용 (Unix 계열)
+- **Output Styles 복사**: .claude/output-styles/alfred/ 디렉토리 추가
+- **--check-quality 옵션**: TRUST 5원칙 검증 기능 준비
+- **Output Styles 재구축**: Alfred SuperAgent 통합, 9개 전문 에이전트 소개, 다중 언어 예제 (TypeScript, Python, Go, Rust, Flutter)
+
+### Changed (2025-10-02)
+
+- **UpdateOrchestrator**: Phase 4를 AlfredUpdateBridge에 위임
+- **TemplateCopier**: output-styles/alfred 복사 대상 추가
+- **UpdateVerifier**: output-styles/alfred 검증 추가
+- **/alfred:9-update.md**: v2.0.0 업데이트 (Phase 4 전면 개편)
+- **moai-pro.md**: 914줄 → 405줄 압축 (55% 감소), Alfred 오케스트레이션 다이어그램, 다중 언어 TDD 예제
+- **pair-collab.md**: 433줄 → 399줄 개선, 다중 언어 코드 리뷰 예제 (TypeScript, Python, Go)
+- **study-deep.md**: 444줄 → 399줄 개선, 프레임워크별 학습 경로 (Express, FastAPI, Gin, Axum)
+- **beginner-learning.md**: 224줄 → 324줄 보강, Alfred 9개 에이전트 소개, TRUST 5원칙 비유, Python/Flutter 예제
+
+### Fixed (2025-10-02)
+
+- 문서-구현 불일치 해소 (5개 Critical, 3개 Medium 이슈)
+- 프로젝트 문서 무손실 업데이트
+- 훅 파일 실행 권한 누락 문제
+- output-styles 디렉토리 복사 누락 문제
+
+### Technical Details
+
+- **SPEC**: SPEC-UPDATE-REFACTOR-001
+- **테스트**: 7개 (100% 통과)
+- **커버리지**: 79-96%
+- **TAG**: @CODE:UPDATE-REFACTOR-001
+
+## [0.1.0] - 2025-10-02
+
+### 🎉 **첫 공식 릴리스 - moai-adk**
+
+**0.0.x 테스트 버전을 완전히 정리하고 0.1.0으로 공식 출시합니다**
 
 #### 🎯 주요 변경사항
 
-##### 1. 패키지 이름 변경
-- **이전**: `moai-adk`
-- **신규**: `@moai/adk` (스코프 패키지)
-- **이유**:
-  - 더 전문적인 네이밍 구조
-  - npm Organization 활용
-  - 향후 확장성 확보 (`@moai/cli`, `@moai/core` 등)
+##### 1. 버전 정책 확립
+- **패키지명**: `moai-adk` (단순명료)
+- **버전 전략**: 0.1.0부터 공식 시작
+- **이전 버전**: 0.0.1-0.0.2 테스트 버전 완전 삭제
+- **배포 준비**: GitHub 공개, npm 퍼블릭 배포 준비 완료
 
 ##### 2. 공식 배포 준비
-- ✅ GitHub Repository: `modu-ai/moai-adk` (오픈소스 준비 중)
-- ✅ npm 배포 설정: `publishConfig.access: "public"`
+- ✅ GitHub Repository: `modu-ai/moai-adk`
+- ✅ npm 배포 설정 완료
 - ✅ 문서 정비: README.md 전면 개편
-- ✅ 키워드 확장: `spec-first`, `claude-code`, `ai-agent` 추가
+- ✅ 키워드 최적화: `spec-first`, `claude-code`, `ai-agent`, `tdd`
 
 ##### 3. 문서 개선
-- **README.md**: npm 패키지용으로 최적화
-  - 설치 명령어: `npm install -g @moai/adk`
+- **README.md**: npm 패키지용으로 완전히 재작성
+  - 설치 명령어: `npm install -g moai-adk` 또는 `bun add -g moai-adk`
+  - 9개 전문 에이전트 시스템 상세 설명
+  - 4-Core TAG 시스템 문서화
   - 프로그래매틱 API 문서 추가
   - 실전 시나리오 예제 보강
 - **CHANGELOG.md**: 체계적 변경 이력 관리
 - **GitHub URL**: `https://github.com/modu-ai/moai-adk` 통일
 
 ##### 4. 배포 시스템 개선
-- **.npmignore**: 불필요한 파일 제외 설정
+- **.npmignore**: 불필요한 파일 제외 설정 (47개 파일, 601.5 KB)
 - **빌드 검증**: `prepublishOnly` 스크립트로 CI 자동 실행
 - **크로스 플랫폼 지원**: Windows/macOS/Linux 검증 완료
+- **프로젝트 정리**: 150MB+ 개발 아티팩트 삭제, 깔끔한 구조 확립
 
 #### ✨ 핵심 기능 (유지)
 
@@ -54,64 +91,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ```bash
 # npm
-npm install -g @moai/adk
+npm install -g moai-adk
 
-# Bun (권장)
-bun add -g @moai/adk
+# Bun (권장, 5배 빠름)
+bun add -g moai-adk
 
 # 설치 확인
-moai --version  # v0.0.1
+moai --version  # v0.1.0
+moai doctor     # 시스템 환경 체크
 ```
 
-#### 🔄 마이그레이션 가이드
-
-**기존 `moai-adk` 사용자**:
+#### 🚀 빠른 시작
 
 ```bash
-# 1. 기존 패키지 제거
-npm uninstall -g moai-adk
+# 1. 새 프로젝트 초기화
+moai init my-awesome-project
 
-# 2. 새 패키지 설치
-npm install -g @moai/adk
+# 2. 프로젝트 문서 생성 (선택)
+cd my-awesome-project
+/alfred:8-project
 
-# 3. 확인 (동일한 CLI 명령어)
-moai --version
-moai init my-project
+# 3. SPEC-First TDD 워크플로우 시작
+/alfred:1-spec "사용자 인증 기능"
+/alfred:2-build
+/alfred:3-sync
 ```
-
-**참고**: CLI 명령어(`moai`)와 모든 기능은 동일하게 유지됩니다.
 
 #### ⚠️ Breaking Changes
 
-- **패키지명 변경**: `moai-adk` → `@moai/adk`
-  - npm/Bun 재설치 필요
-  - 프로그래매틱 API import 경로 변경:
-    ```typescript
-    // 이전
-    import { CLIApp } from 'moai-adk';
+**이전 0.0.x 테스트 버전을 사용하던 경우**:
 
-    // 신규
-    import { CLIApp } from '@moai/adk';
-    ```
-- **GitHub Repository**: `modu-ai/moai-adk` (신규 URL)
+```bash
+# 기존 버전 제거
+npm uninstall -g moai-adk
+
+# 0.1.0 설치
+npm install -g moai-adk@0.1.0
+
+# 확인
+moai --version  # v0.1.0
+```
+
+**주요 변경사항**:
+- 버전 0.0.1-0.0.2는 npm에서 삭제됨
+- 0.1.0이 첫 공식 릴리스
+- CLI 명령어와 기능은 동일하게 유지
 
 #### 🎉 향후 계획
 
-**v0.0.x** (안정화):
+**v0.1.x** (안정화 및 개선):
 - 커뮤니티 피드백 반영
-- 버그 수정 및 성능 개선
+- 버그 수정 및 성능 최적화
 - 다국어 문서 확장
+- TypeScript 타입 에러 완전 수정
 
-**v0.1.0** (첫 마이너 릴리스):
-- 추가 프로그래밍 언어 지원 (C#, Ruby)
+**v0.2.0** (기능 확장):
+- 추가 프로그래밍 언어 지원 (C#, Ruby, Kotlin)
+- TAG 시스템 고급 쿼리 기능
+- SPEC 템플릿 라이브러리
+
+**v1.0.0** (프로덕션 릴리스):
 - Web UI 대시보드
 - 고급 AI 페어 프로그래밍 기능
+- 엔터프라이즈 지원
 
 #### 📝 참고 링크
 
 - **공식 문서**: https://moai-adk.vercel.app
 - **GitHub**: https://github.com/modu-ai/moai-adk
-- **npm**: https://www.npmjs.com/package/@moai/adk
+- **npm**: https://www.npmjs.com/package/moai-adk
 
 ---
 

@@ -76,6 +76,32 @@ Alfred는 항상 다음 핵심 문서를 메모리에 로딩하여 컨텍스트�
 
 ---
 
+## Context Engineering 전략
+
+Alfred는 효율적인 컨텍스트 관리를 위해 다음 3가지 전략을 사용합니다:
+
+### 1. JIT (Just-in-Time) Retrieval
+필요한 순간에만 문서를 로드하여 초기 컨텍스트 부담을 최소화:
+- `/alfred:1-spec` → `product.md` 참조
+- `/alfred:2-build` → `SPEC-XXX/spec.md` + `development-guide.md` 참조
+- `/alfred:3-sync` → `sync-report.md` + TAG 인덱스 참조
+
+### 2. Compaction
+긴 세션(>70% 토큰 사용)은 요약 후 새 세션으로 재시작:
+- 핵심 결정사항 요약
+- 다음 세션에 컨텍스트 전달
+- 권장: `/clear` 또는 `/new` 명령 활용
+
+### 3. Structured Memory
+의사결정, 제약사항, 리스크는 `.moai/memory/`에 외부 저장:
+- `decisions/` - 주요 의사결정 로그
+- `constraints/` - 기술적/비즈니스적 제약사항
+- `risks/` - 식별된 리스크 및 대응 방안
+
+상세: `.moai/memory/development-guide.md` - "Context Engineering" 챕터 참조
+
+---
+
 ## 핵심 철학
 
 - **SPEC-First**: 명세 없이는 코드 없음

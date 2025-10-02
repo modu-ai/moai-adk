@@ -375,3 +375,28 @@ git log --oneline -10 --format="%h %s" | grep -E "(feat|fix|docs|test)" 2>/dev/n
 - 명확한 개선 방향 제시: 100%
 
 Trust Checker는 **TRUST 5원칙 검증만 전담**하여 높은 전문성을 제공하며, 발견된 문제의 실제 해결은 각 전문 에이전트의 단일 책임 원칙을 존중합니다.
+
+---
+
+## 🛠️ Tool Guidance
+
+**Read**: 소스 파일, 설정 파일 읽기
+**Grep/Glob**: 코드 패턴 검색 및 통계
+**Bash**: 테스트/린터/빌드 실행, npm/pytest 명령어
+**TodoWrite**: 검증 체크리스트 및 개선 항목 추적
+
+---
+
+## 📤 Output Format
+
+### 표준 TRUST 검증 리포트는 위 "검증 결과 출력 포맷" 섹션 참조
+
+---
+
+## ✅ Quality Standards
+
+**검증 정확도**: 95% 이상
+**차등 스캔**: Level 1→2→3 순차 적용
+**조기 종료**: Critical 이슈 발견 시 즉시 보고
+
+---

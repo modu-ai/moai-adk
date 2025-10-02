@@ -1,8 +1,76 @@
-# MoAI-ADK 개발 가이드
+# MoAI-ADK 개발 가이드 (Final)
 
 > "명세 없으면 코드 없다. 테스트 없으면 구현 없다."
 
+본 가이드는 MoAI-ADK의 **컨텍스트 엔지니어링 기반** 개발 원칙을 정의한다.
+**적용 우선순위:** _커맨드 지침 > 에이전트 지침_.
+
 MoAI-ADK 범용 개발 툴킷을 사용하는 모든 에이전트와 개발자를 위한 통합 가드레일이다. TypeScript 기반으로 구축된 툴킷은 모든 주요 프로그래밍 언어를 지원하며, @TAG 추적성을 통한 SPEC 우선 TDD 방법론을 따른다. 한국어가 기본 소통 언어다.
+
+---
+
+## Context Engineering (컨텍스트 엔지니어링)
+
+> 본 지침군은 **컨텍스트 엔지니어링**(JIT Retrieval, Compaction, Structured Memory)을 핵심 원리로 한다.
+> **컨텍스트 예산/토큰 예산은 다루지 않는다**(명시적 관리 불필요). 대신 아래 원칙으로 일관성/성능을 확보한다.
+
+### 1. JIT (Just-in-Time) Retrieval
+
+**원칙**: 필요한 순간에만 문서를 로드하여 초기 컨텍스트 부담을 최소화
+
+**구현 방법**:
+- 전체 문서를 선로딩하지 말고, **식별자(파일경로/링크/쿼리)**만 보유 후 필요 시 조회→요약 주입
+- Alfred는 커맨드 실행 시점에 필요한 문서만 `Read` 도구로 로드
+- 에이전트는 자신의 작업에 필요한 문서만 요청
+
+**커맨드별 JIT 전략**:
+- `/alfred:1-spec` → `product.md` 우선 로드, `structure.md/tech.md` 필요 시 로드
+- `/alfred:2-build` → `SPEC-XXX/spec.md` + `development-guide.md` 필요 시 로드
+- `/alfred:3-sync` → `sync-report.md` + TAG 인덱스 필요 시 로드
+
+### 2. Compaction (압축)
+
+**원칙**: 긴 세션(>70% 토큰 사용)은 요약 후 새 세션으로 재시작
+
+**Compaction 트리거**:
+- 토큰 사용량 > 140,000 (총 200,000의 70%)
+- 대화 턴 수 > 50회
+- 사용자가 명시적으로 `/clear` 또는 `/new` 실행
+
+**Compaction 절차**:
+1. **요약 생성**: 현재 세션의 핵심 결정사항, 완료된 작업, 다음 단계를 요약
+2. **Structured Memory 저장**: 의사결정 로그를 `.moai/memory/decisions/`에 저장
+3. **새 세션 시작**: 요약 내용을 새 세션의 첫 메시지로 전달
+4. **권장 사항 안내**: 사용자에게 `/clear` 또는 `/new` 명령 사용 권장
+
+**권장 메시지 예시**:
+```markdown
+**권장사항**: 다음 단계 진행 전 `/clear` 또는 `/new` 명령으로 새로운 대화 세션을 시작하면 더 나은 성능과 컨텍스트 관리를 경험할 수 있습니다.
+```
+
+### 3. Structured Memory (구조화된 메모리)
+
+**원칙**: 의사결정, 제약사항, 리스크는 `.moai/memory/`에 외부 저장·재주입
+
+**디렉토리 구조**:
+```
+.moai/memory/
+├── development-guide.md          # 단일 진실 공급원 (Single Source of Truth)
+├── decisions/                    # 주요 의사결정 로그
+│   ├── TEMPLATE.md               # 의사결정 템플릿
+│   └── YYYY-MM-DD-title.md       # 개별 의사결정 문서
+├── constraints/                  # 기술적/비즈니스적 제약사항
+│   ├── TEMPLATE.md
+│   └── technical-constraints.md
+└── risks/                        # 식별된 리스크 및 대응 방안
+    ├── TEMPLATE.md
+    └── risk-register.md
+```
+
+**사용 시나리오**:
+- 중요한 기술적 결정을 `.moai/memory/decisions/`에 기록
+- 프로젝트 제약사항을 `.moai/memory/constraints/`에 문서화
+- 식별된 리스크를 `.moai/memory/risks/`에 관리
 
 ---
 

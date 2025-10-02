@@ -168,3 +168,163 @@ MultiEdit([
 - ✅ 순서: "1차 목표", "2차 목표", "최종 목표"
 - ✅ 의존성: "A 완료 후 B 시작"
 - ❌ 금지: "2-3일", "1주일", "빠른 시간 내"
+
+---
+
+## 🔧 Tool Guidance (도구 사용법)
+
+### MultiEdit (필수 도구 - Personal 모드)
+
+**사용 시점**: 3개 SPEC 파일 동시 생성 시
+
+```typescript
+// ✅ 올바른 사용 (60% 시간 단축)
+MultiEdit([
+  {file: ".moai/specs/SPEC-001/spec.md", content: spec_content},
+  {file: ".moai/specs/SPEC-001/plan.md", content: plan_content},
+  {file: ".moai/specs/SPEC-001/acceptance.md", content: accept_content}
+])
+
+// ❌ 비효율적 (3회 Write)
+Write(".moai/specs/SPEC-001/spec.md", spec_content)
+Write(".moai/specs/SPEC-001/plan.md", plan_content)
+Write(".moai/specs/SPEC-001/acceptance.md", accept_content)
+```
+
+### Read (프로젝트 문서 로딩)
+
+**사용 시점**: SPEC 후보 발굴 전
+
+```bash
+# 비즈니스 요구사항
+Read(".moai/project/product.md")
+
+# 아키텍처 제약사항 (필요 시)
+Read(".moai/project/structure.md")
+
+# 기술 스택 및 품질 정책 (필요 시)
+Read(".moai/project/tech.md")
+```
+
+### Grep (중복 SPEC ID 검증)
+
+**사용 시점**: 새 SPEC ID 할당 전
+
+```bash
+# AUTH 도메인 SPEC 검색
+Grep("@SPEC:AUTH", path=".moai/specs/", output_mode="files_with_matches")
+
+# 특정 ID 중복 확인
+Grep("@SPEC:AUTH-001", path=".moai/specs/", output_mode="content")
+```
+
+---
+
+## 📤 Output Format (출력 형식)
+
+### Personal 모드 출력
+
+```markdown
+✅ SPEC 문서 생성 완료
+
+📁 생성된 파일:
+- .moai/specs/SPEC-001/spec.md (EARS 명세, 120줄)
+- .moai/specs/SPEC-001/plan.md (구현 계획, 45줄)
+- .moai/specs/SPEC-001/acceptance.md (수락 기준, 35줄)
+
+🔍 검증 결과:
+- @SPEC:AUTH-001 TAG 적용 완료
+- EARS 구문 준수 확인
+- Given-When-Then 시나리오 3개 작성
+
+🔗 다음 단계:
+→ git-manager 에이전트가 브랜치 생성 및 커밋 처리
+→ /alfred:2-build SPEC-001 (TDD 구현 시작)
+```
+
+### Team 모드 출력
+
+```markdown
+✅ GitHub Issue 생성 완료
+
+📋 Issue 정보:
+- 번호: #42
+- 제목: [SPEC-001] 사용자 인증 시스템
+- 라벨: spec, priority:high, backend
+- Assignee: @team-lead
+- URL: https://github.com/org/repo/issues/42
+
+🔗 다음 단계:
+→ git-manager 에이전트가 spec/SPEC-001 브랜치 생성
+→ /alfred:2-build SPEC-001
+```
+
+---
+
+## ✅ Quality Standards (품질 기준)
+
+### EARS 구문 검증
+
+- [ ] **Event-driven**: "WHEN [조건]이면, 시스템은..." 형식 사용
+- [ ] **State-driven**: "WHILE [상태]일 때, 시스템은..." 형식 사용
+- [ ] **Ubiquitous**: "시스템은 [기능]을 제공해야 한다" 형식 사용
+- [ ] **Constraints**: "IF [조건]이면, 시스템은..." 형식 사용
+- [ ] **모호한 표현 금지**: "적절한", "빠르게", "효율적으로" 등 제거
+
+### 완전성 검증
+
+- [ ] **필수 섹션 존재**: TAG BLOCK, 요구사항, 제약사항, Acceptance Criteria
+- [ ] **@TAG 체계 적용**: @SPEC:ID 형식 (예: @SPEC:AUTH-001)
+- [ ] **중복 ID 검사**: `rg "@SPEC:AUTH-001" -n .moai/specs/` 실행
+- [ ] **HISTORY 섹션**: v1.0.0 INITIAL 항목 필수 작성
+
+### 일관성 검증
+
+- [ ] **product.md와 정합성**: 비즈니스 요구사항과 일치
+- [ ] **structure.md와 정합성**: 아키텍처 제약사항 반영
+- [ ] **tech.md와 정합성**: 기술 스택 및 품질 정책 준수
+- [ ] **기존 SPEC과 의존성**: 관련 SPEC 명시
+
+---
+
+## 🔧 Troubleshooting (문제 해결)
+
+### 증상: EARS 구문 작성 실패
+
+**원인**: Event-Action-Response-State 형식 미숙지
+
+**해결**:
+1. `development-guide.md`의 EARS 예시 참조
+2. 구체적인 조건과 동작으로 명확히 작성
+3. 모호한 표현 제거
+
+### 증상: SPEC ID 중복
+
+**원인**: 기존 SPEC과 ID 충돌
+
+**해결**:
+```bash
+# 사용 가능한 다음 ID 확인
+rg "@SPEC:AUTH-[0-9]{3}" -n .moai/specs/ | tail -1
+```
+
+### 증상: MultiEdit 실패
+
+**원인**: `.moai/specs/SPEC-XXX/` 디렉토리 미존재
+
+**해결**:
+```bash
+mkdir -p .moai/specs/SPEC-001
+```
+
+### 증상: GitHub Issue 생성 실패
+
+**원인**: gh CLI 권한 부족
+
+**해결**:
+```bash
+gh auth login
+gh repo view --json permissions
+```
+
+**위임**: git-manager 에이전트가 Git 작업 전담

@@ -147,3 +147,66 @@ model: haiku
 - [ ] @TAG 체계가 적절히 적용되었는가?
 - [ ] TRUST 원칙(@.moai/memory/development-guide.md)에 부합하는 내용인가?
 - [ ] 향후 개발 방향이 명확히 제시되었는가?
+
+---
+
+## 🛠️ Tool Guidance
+
+**Read**: 기존 프로젝트 파일 분석 (README, package.json, 소스 구조)
+**Write/Edit**: .moai/project/*.md 문서 작성/수정
+**Grep/Glob**: 프로젝트 구조 파악, 주요 파일 탐색
+**TodoWrite**: 프로젝트 초기화 체크리스트
+
+---
+
+## 📤 Output Format
+
+```markdown
+📋 프로젝트 초기화 완료
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 프로젝트 유형: [신규/레거시]
+📦 기술 스택: [언어/프레임워크]
+👥 팀 모드: [Personal/Team]
+
+✅ 생성된 문서:
+1. .moai/project/product.md
+   - 프로젝트 목적, 주요 기능, 성공 지표
+2. .moai/project/structure.md
+   - 아키텍처 개요, 디렉토리 구조, 모듈 관계
+3. .moai/project/tech.md
+   - 기술 스택, 테스트 전략, CI/CD
+
+📊 프로젝트 통계:
+- 소스 파일: XXX개
+- 주요 의존성: XX개
+- 예상 SPEC 개수: XX개
+
+🔄 다음 단계:
+→ /alfred:1-spec "첫 번째 기능 SPEC 작성"
+```
+
+---
+
+## ✅ Quality Standards
+
+**문서 완전성**: 3개 필수 문서 (product/structure/tech) 모두 작성
+**정보 일치성**: 문서 간 모순 없음
+**프로젝트 특성 반영**: 신규/레거시 구분에 따른 맞춤형 분석
+
+---
+
+## 🔧 Troubleshooting
+
+### 증상 1: 레거시 프로젝트 구조 파악 어려움
+
+**해결책**: 단계별 인터뷰로 정보 수집, 핵심 파일 우선 분석
+
+### 증상 2: 기술 스택 감지 실패
+
+**해결책**: 사용자에게 직접 확인 질문, 설정 파일 기반 추론
+
+### 증상 3: 문서 쓰기 권한 오류
+
+**해결책**: @agent-cc-manager 호출하여 권한 문제 해결
+
+---

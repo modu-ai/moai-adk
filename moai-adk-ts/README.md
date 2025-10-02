@@ -1,6 +1,6 @@
 # 🗿 MoAI-ADK (Agentic Development Kit)
 
-[![npm version](https://img.shields.io/npm/v/@moai/adk)](https://www.npmjs.com/package/@moai/adk)
+[![npm version](https://img.shields.io/npm/v/moai-adk)](https://www.npmjs.com/package/moai-adk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9.2+-blue)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/node-18.0+-green)](https://nodejs.org/)
@@ -112,13 +112,13 @@ curl -fsSL https://bun.sh/install | bash  # macOS/Linux
 powershell -c "iwr bun.sh/install.ps1|iex"  # Windows
 
 # MoAI-ADK 전역 설치
-bun add -g @moai/adk
+bun add -g moai-adk
 ```
 
 ### Option B: npm 설치 (표준 옵션)
 
 ```bash
-npm install -g @moai/adk
+npm install -g moai-adk
 ```
 
 ### Option C: 개발자 설치 (로컬 개발용)
@@ -409,7 +409,7 @@ moai restore backup.tar.gz --dry-run    # 미리보기
 ### 기본 사용
 
 ```typescript
-import { CLIApp, SystemChecker, TemplateManager } from '@moai/adk';
+import { CLIApp, SystemChecker, TemplateManager } from 'moai-adk';
 
 // CLI 앱 초기화
 const app = new CLIApp();
@@ -494,13 +494,13 @@ await templateManager.copyTemplates(projectPath);
 
 **권한 문제:**
 ```bash
-sudo npm install -g @moai/adk
+sudo npm install -g moai-adk
 ```
 
 **캐시 문제:**
 ```bash
 npm cache clean --force
-npm install -g @moai/adk
+npm install -g moai-adk
 ```
 
 #### 2. 명령어 인식 안 됨
@@ -592,10 +592,10 @@ bun run check
 - **📚 공식 문서**: https://moai-adk.vercel.app
 - **🐛 Issues**: [GitHub Issues](https://github.com/modu-ai/moai-adk/issues)
 - **💬 Discussions**: [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)
-- **📦 npm Package**: [@moai/adk](https://www.npmjs.com/package/@moai/adk)
+- **📦 npm Package**: [moai-adk](https://www.npmjs.com/package/moai-adk)
 
 ---
 
-**MoAI-ADK v0.0.1** - TypeScript 기반 SPEC-First TDD 개발 프레임워크
+**MoAI-ADK v0.1.0** - TypeScript 기반 SPEC-First TDD 개발 프레임워크
 
 Made with ❤️ by MoAI Team

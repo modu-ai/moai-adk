@@ -1,5 +1,5 @@
 ---
-name: moai:3-sync
+name: alfred:3-sync
 description: 문서 동기화 + PR Ready 전환
 argument-hint: "모드 대상경로 - 모드: auto(기본)|force|status|project, 대상경로: 동기화 대상 경로"
 tools: Read, Write, Edit, MultiEdit, Bash(git status:*), Bash(git add:*), Bash(git diff:*), Bash(git commit:*), Bash(gh:*), Bash(python3:*), Task, Grep, Glob, TodoWrite
@@ -12,6 +12,26 @@ tools: Read, Write, Edit, MultiEdit, Bash(git status:*), Bash(git add:*), Bash(g
 코드 변경사항을 Living Document에 동기화하고, @TAG 시스템을 검증하여 완벽한 추적성을 보장합니다.
 
 **문서 동기화 대상**: $ARGUMENTS
+
+## 💡 Intent (목적)
+
+**해결하는 문제**: 코드-문서 불일치로 인한 추적성 손실, @TAG 체인 무결성 위반, Living Document 미갱신
+
+**기대 결과**:
+- Living Document 자동 갱신 (API 문서, README, 아키텍처 문서)
+- @TAG 체인 무결성 100% 보장 (@SPEC → @TEST → @CODE → @DOC)
+- 동기화 리포트 생성 (`.moai/reports/sync-report-XXX.md`)
+- PR 상태 Draft → Ready for Review 자동 전환 (Team 모드)
+
+**워크플로우 위치**: MoAI-ADK 3단계 파이프라인의 **최종 완료 단계** (SPEC → Build → Sync)
+
+**성공 기준**:
+- TAG 체인 검증 통과 (고아 TAG, 끊어진 링크, 중복 TAG 0건)
+- Living Document 갱신 완료
+- Git 커밋 생성 (📚 DOCS 커밋)
+- PR 상태 전환 (Team 모드)
+
+---
 
 ## 📋 실행 흐름
 
@@ -310,6 +330,183 @@ Task 2 (sonnet): 문서 구조 분석
 1. 프로젝트 분석 및 TAG 검증 → 끊어진/중복/고아 TAG 점검
 2. 코드 ↔ 문서 동기화 → API/README/아키텍처 문서 갱신, SPEC ↔ 코드 TODO 동기화
 3. TAG 체인 검증 → `rg '@TAG' -n src/ tests/` (코드 직접 스캔)
+
+---
+
+## 🔧 Troubleshooting (문제 해결)
+
+### 증상 1: TAG 체인 무결성 위반
+
+**증상**: @SPEC → @TEST → @CODE 체인 불완전
+
+**원인**:
+- @TEST TAG 누락
+- @CODE TAG 미적용
+- TAG ID 불일치
+
+**해결**:
+```bash
+# TAG 체인 검증
+rg '@(SPEC|TEST|CODE):AUTH-001' -n
+
+# 고아 TAG 탐지
+rg '@CODE:AUTH-001' -n src/          # CODE는 있는데
+rg '@SPEC:AUTH-001' -n .moai/specs/  # SPEC이 없으면 고아
+
+# 끊어진 링크 탐지
+rg '@SPEC:AUTH-002' -n .moai/specs/  # SPEC은 있는데
+rg '@CODE:AUTH-002' -n src/          # CODE가 없으면 끊어짐
+```
+
+**위임**: `@agent-tag-agent --validate-chain --fix-orphans`
+
+---
+
+### 증상 2: 문서-코드 동기화 충돌
+
+**증상**: API 문서와 실제 코드 시그니처 불일치
+
+**원인**:
+- 코드 변경 후 문서 미갱신
+- 수동 문서 수정으로 불일치 발생
+
+**해결**:
+1. **코드 우선 원칙**: 항상 실제 코드가 진실의 원천
+2. doc-syncer 재실행으로 문서 자동 갱신
+3. 수동 문서 수정 최소화
+
+**위임**: `@agent-doc-syncer --force-sync --source-code-first`
+
+---
+
+### 증상 3: PR Ready 전환 실패
+
+**증상**: Draft PR이 Ready for Review로 전환되지 않음
+
+**원인**:
+- gh CLI 권한 부족
+- PR이 Draft 상태가 아님
+- 브랜치 보호 규칙 위반
+
+**해결**:
+```bash
+# gh CLI 권한 확인
+gh auth status
+
+# PR 상태 확인
+gh pr view --json isDraft
+
+# PR 수동 전환
+gh pr ready
+```
+
+**위임**: `@agent-git-manager --pr-ready-check`
+
+---
+
+### 증상 4: 동기화 리포트 생성 실패
+
+**증상**: `.moai/reports/sync-report-XXX.md` 미생성
+
+**원인**:
+- `.moai/reports/` 디렉토리 미존재
+- 디스크 쓰기 권한 부족
+
+**해결**:
+```bash
+# 디렉토리 생성
+mkdir -p .moai/reports
+
+# 권한 확인
+ls -ld .moai/reports
+```
+
+**위임**: `@agent-doc-syncer --retry-report`
+
+---
+
+### 증상 5: TAG 검증 스크립트 실행 오류
+
+**증상**: Python TAG 검증 스크립트 실행 실패
+
+**원인**:
+- Python3 미설치
+- rg (ripgrep) 미설치
+
+**해결**:
+```bash
+# Python 확인
+python3 --version
+
+# ripgrep 설치
+# macOS
+brew install ripgrep
+
+# Ubuntu
+apt-get install ripgrep
+
+# Windows
+choco install ripgrep
+```
+
+**위임**: `@agent-debug-helper --install-dependencies`
+
+---
+
+## 🧠 Context Management (컨텍스트 관리)
+
+### JIT Retrieval (필요 시 로딩)
+
+**우선 로드** (동기화 시작 시):
+- `.moai/reports/sync-report-latest.md` - 이전 동기화 상태
+
+**필요 시 로드** (TAG 검증 시):
+- `.moai/indexes/tags.db` - TAG 인덱스 (있는 경우)
+- `.moai/specs/` - SPEC 문서 목록
+
+**지연 로드** (전체 스캔 시):
+- `src/` - 전체 소스 파일 (TAG 스캔)
+- `tests/` - 전체 테스트 파일 (TAG 스캔)
+- `docs/` - 문서 파일
+
+### Compaction 권장 시점
+
+**트리거 조건**:
+- 문서 동기화 완료 후 전체 MoAI-ADK 사이클 완성
+- 다음 기능 개발(1-spec) 시작 전
+- 토큰 사용량 > 70% (140,000 / 200,000)
+
+**권장 메시지**:
+```markdown
+**권장사항**: 문서 동기화가 완료되었습니다. 전체 MoAI-ADK 사이클(1-spec → 2-build → 3-sync)이 완료되었으니, 다음 기능 개발 전 `/clear` 또는 `/new` 명령으로 새로운 대화 세션을 시작하세요.
+```
+
+### Structured Memory 활용
+
+**동기화 이슈 기록**:
+```bash
+# 동기화 충돌 결정
+.moai/memory/decisions/2025-10-02-sync-conflict-resolution.md
+```
+
+**TAG 정책 문서화**:
+```bash
+# TAG 명명 규칙
+.moai/memory/constraints/tag-naming-policy.md
+```
+
+**동기화 리스크**:
+```bash
+# 대규모 리팩토링 시 동기화 리스크
+.moai/memory/risks/sync-large-refactoring.md
+```
+
+**템플릿 사용**:
+- 의사결정: `.moai/memory/decisions/TEMPLATE.md`
+- 제약사항: `.moai/memory/constraints/TEMPLATE.md`
+- 리스크: `.moai/memory/risks/TEMPLATE.md`
+
+---
 
 ## 다음 단계
 

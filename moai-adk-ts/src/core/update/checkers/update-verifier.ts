@@ -36,6 +36,7 @@ export class UpdateVerifier {
       'CLAUDE.md',
       '.claude/commands/alfred',
       '.claude/agents/alfred',
+      '.claude/output-styles/alfred',
     ];
 
     for (const file of keyFiles) {

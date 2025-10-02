@@ -46,6 +46,10 @@ export class TemplateCopier {
       { src: '.claude/agents/alfred', dest: '.claude/agents/alfred' },
       { src: '.claude/hooks/alfred', dest: '.claude/hooks/alfred' },
       {
+        src: '.claude/output-styles/alfred',
+        dest: '.claude/output-styles/alfred',
+      },
+      {
         src: '.moai/memory/development-guide.md',
         dest: '.moai/memory/development-guide.md',
       },

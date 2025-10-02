@@ -16,6 +16,7 @@ import { VersionChecker } from './checkers/version-checker.js';
 import { BackupManager } from './updaters/backup-manager.js';
 import { NpmUpdater } from './updaters/npm-updater.js';
 import { TemplateCopier } from './updaters/template-copier.js';
+import { AlfredUpdateBridge } from './alfred/alfred-update-bridge.js';
 
 /**
  * Simplified update configuration
@@ -117,10 +118,13 @@ export class UpdateOrchestrator {
       // Phase 3: npm package update
       await this.npmUpdater.updatePackage();
 
-      // Phase 4: Template file copy
+      // Phase 4: Alfred에게 위임 (Claude Tools 사용)
       const npmRoot = await this.npmUpdater.getNpmRoot();
       const templatePath = path.join(npmRoot, 'moai-adk', 'templates');
-      const filesUpdated = await this.templateCopier.copyTemplates(templatePath);
+      const alfredBridge = new AlfredUpdateBridge(config.projectPath);
+      const filesUpdated = await alfredBridge.copyTemplatesWithClaudeTools(
+        templatePath
+      );
 
       // Phase 5: Verification
       await this.verifier.verifyUpdate();

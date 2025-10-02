@@ -1,5 +1,5 @@
 ---
-name: moai:1-spec
+name: alfred:1-spec
 description: EARS 명세 작성 + 브랜치/PR 생성
 argument-hint: "제목1 제목2 ... | SPEC-ID 수정내용"
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
@@ -12,6 +12,25 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 프로젝트 문서를 분석하여 EARS 구문의 명세서를 작성하고, Personal/Team 모드에 따라 Git 브랜치 및 PR을 생성합니다.
 
 **SPEC 자동 제안/생성 대상**: $ARGUMENTS
+
+## 💡 Intent (목적)
+
+**해결하는 문제**: SPEC 없이 코드 구현하여 요구사항 불명확, 구현 방향성 상실, 추적성 부재
+
+**기대 결과**:
+- EARS 구조의 명확한 SPEC 문서 (spec.md, plan.md, acceptance.md)
+- Personal/Team 모드에 따른 Git 브랜치 자동 생성
+- GitHub Issue 생성 (Team 모드)
+- @SPEC TAG 기반 완벽한 추적성 확보
+
+**워크플로우 위치**: MoAI-ADK 3단계 파이프라인의 **첫 단계** (SPEC → Build → Sync)
+
+**성공 기준**:
+- EARS 구문 준수 (Event-Action-Response-State)
+- @TAG 체계 적용 및 중복 검사 완료
+- 사용자 승인 후 Git 브랜치/Issue 생성 완료
+
+---
 
 ## 📋 실행 흐름
 
@@ -282,6 +301,210 @@ Task 2 (sonnet): 심화 문서 분석
 - product/structure/tech 문서에 없는 정보는 새로 질문해 보완합니다.
 - Acceptance Criteria는 Given/When/Then 3단으로 최소 2개 이상 작성하도록 유도합니다.
 - TRUST 원칙 중 Readable(읽기 쉬움) 기준 완화로 인해 모듈 수가 권장치(기본 5)를 초과하는 경우, 근거를 SPEC `context` 섹션에 함께 기록하세요.
+
+---
+
+## ✅ Quality Gates (품질 검증)
+
+SPEC 문서 작성 완료 후 다음 항목을 검증하세요:
+
+### SPEC 완성도 체크리스트
+
+- [ ] **YAML frontmatter 완전성**
+  - id, version, status, created, updated 필드 존재
+  - @SPEC:ID TAG 포함
+  - HISTORY 섹션 작성 (v1.0.0 INITIAL 항목 필수)
+
+- [ ] **EARS 구문 준수**
+  - Event-driven: "WHEN [조건]이면, 시스템은..."
+  - State-driven: "WHILE [상태]일 때, 시스템은..."
+  - Ubiquitous: "시스템은 [기능]을 제공해야 한다"
+  - Constraints: "IF [조건]이면, 시스템은..."
+
+- [ ] **Acceptance Criteria 완전성**
+  - Given-When-Then 형식 준수
+  - 최소 2개 이상의 시나리오
+  - 성공/실패 케이스 모두 포함
+
+- [ ] **@TAG 체계 적용**
+  - @SPEC:ID 형식 준수 (예: @SPEC:AUTH-001)
+  - 중복 ID 검사: `rg "@SPEC:AUTH" -n .moai/specs/`
+  - TAG BLOCK에 spec.md 경로 명시
+
+- [ ] **MultiEdit 활용 (Personal 모드)**
+  - spec.md, plan.md, acceptance.md 동시 생성 확인
+  - 3회 Write → 1회 MultiEdit (60% 시간 단축)
+
+### 모드별 검증
+
+**Personal 모드**:
+- [ ] `.moai/specs/SPEC-XXX/` 디렉토리 생성 확인
+- [ ] 3개 파일 모두 존재 (spec.md, plan.md, acceptance.md)
+- [ ] git-manager 체크포인트 생성 확인
+
+**Team 모드**:
+- [ ] GitHub Issue 생성 확인 (제목: [SPEC-XXX] 제목)
+- [ ] 라벨 할당 확인 (spec, priority:high 등)
+- [ ] Draft PR 생성 확인 (선택사항)
+
+---
+
+## 🔧 Troubleshooting (문제 해결)
+
+### 증상 1: EARS 구문 작성 실패
+
+**증상**: 요구사항이 모호하거나 EARS 형식을 벗어남
+
+**원인**:
+- Event-Action-Response-State 형식 미숙지
+- "적절한", "빠르게" 등 모호한 표현 사용
+
+**해결**:
+1. `development-guide.md`의 EARS 예시 참조
+2. 구체적인 조건과 동작으로 명확히 작성
+3. spec-builder 에이전트 재호출
+
+**위임**: `@agent-spec-builder --mode=ears-validation`
+
+---
+
+### 증상 2: SPEC ID 중복
+
+**증상**: "SPEC ID already exists" 오류
+
+**원인**: 기존 SPEC과 ID 충돌
+
+**해결**:
+```bash
+# 중복 확인
+rg "@SPEC:AUTH-001" -n .moai/specs/
+
+# 사용 가능한 다음 ID 확인
+rg "@SPEC:AUTH-[0-9]{3}" -n .moai/specs/ | tail -1
+```
+
+**위임**: `@agent-spec-builder --assign-new-id`
+
+---
+
+### 증상 3: 브랜치 생성 실패 (Personal 모드)
+
+**증상**: Git 권한 오류 또는 브랜치 이름 중복
+
+**원인**:
+- Git 쓰기 권한 부족
+- 동일한 브랜치 이름 이미 존재
+
+**해결**:
+```bash
+# 브랜치 존재 확인
+git branch --list "spec/SPEC-001*"
+
+# 브랜치 이름 변경
+git branch -m spec/SPEC-001-old spec/SPEC-001-new
+```
+
+**위임**: `@agent-git-manager --resolve-branch-conflict`
+
+---
+
+### 증상 4: GitHub Issue 생성 실패 (Team 모드)
+
+**증상**: `gh` CLI 권한 오류
+
+**원인**:
+- gh CLI 미설정
+- GitHub 토큰 만료
+- 저장소 쓰기 권한 부족
+
+**해결**:
+```bash
+# gh CLI 로그인 확인
+gh auth status
+
+# 로그인 (재인증)
+gh auth login
+
+# 저장소 권한 확인
+gh repo view --json permissions
+```
+
+**위임**: `@agent-git-manager --setup-gh-cli`
+
+---
+
+### 증상 5: MultiEdit 실패 (Personal 모드)
+
+**증상**: 3개 파일 중 일부만 생성됨
+
+**원인**:
+- `.moai/specs/` 디렉토리 미존재
+- 디스크 공간 부족
+
+**해결**:
+```bash
+# 디렉토리 생성
+mkdir -p .moai/specs/SPEC-001
+
+# 디스크 공간 확인
+df -h .moai
+```
+
+**위임**: `@agent-spec-builder --retry-multiedit`
+
+---
+
+## 🧠 Context Management (컨텍스트 관리)
+
+### JIT Retrieval (필요 시 로딩)
+
+**우선 로드** (SPEC 작성 시작 시):
+- `.moai/project/product.md` - 비즈니스 요구사항 및 사용자 스토리
+
+**필요 시 로드** (SPEC 후보 발굴 시):
+- `.moai/project/structure.md` - 시스템 아키텍처 및 모듈 설계
+- `.moai/project/tech.md` - 기술 스택 및 품질 게이트
+
+**지연 로드** (기존 SPEC 확인 필요 시):
+- `.moai/specs/` - 기존 SPEC 목록 및 의존성 분석
+
+### Compaction 권장 시점
+
+**트리거 조건**:
+- SPEC 작성 완료 후 다음 단계(2-build) 진행 전
+- 토큰 사용량 > 70% (140,000 / 200,000)
+
+**권장 메시지**:
+```markdown
+**권장사항**: SPEC 작성이 완료되었습니다. 다음 단계(`/alfred:2-build`) 진행 전 `/clear` 또는 `/new` 명령으로 새로운 대화 세션을 시작하면 더 나은 성능과 컨텍스트 관리를 경험할 수 있습니다.
+```
+
+### Structured Memory 활용
+
+**중요한 SPEC 결정 기록**:
+```bash
+# 의사결정 로그
+.moai/memory/decisions/2025-10-02-spec-001-architecture-choice.md
+```
+
+**제약사항 문서화**:
+```bash
+# 기술적 제약사항
+.moai/memory/constraints/spec-001-performance-constraints.md
+```
+
+**리스크 관리**:
+```bash
+# 식별된 리스크
+.moai/memory/risks/spec-001-integration-risk.md
+```
+
+**템플릿 사용**:
+- 의사결정: `.moai/memory/decisions/TEMPLATE.md`
+- 제약사항: `.moai/memory/constraints/TEMPLATE.md`
+- 리스크: `.moai/memory/risks/TEMPLATE.md`
+
+---
 
 ## 다음 단계
 

@@ -1,5 +1,5 @@
 ---
-name: moai:2-build
+name: alfred:2-build
 description: 구현할 SPEC ID (예: SPEC-001) 또는 all로 모든 SPEC 구현: 언어별 최적화된 TDD 구현 (Red-Green-Refactor) with SQLite3 tags.db
 argument-hint: "SPEC-ID - 구현할 SPEC ID (예: SPEC-001) 또는 all로 모든 SPEC 구현"
 tools: Read, Write, Edit, MultiEdit, Bash(python3:*), Bash(pytest:*), Bash(npm:*), Bash(node:*), Task, WebFetch, Grep, Glob, TodoWrite
@@ -12,6 +12,26 @@ tools: Read, Write, Edit, MultiEdit, Bash(python3:*), Bash(pytest:*), Bash(npm:*
 SPEC 문서를 분석하여 언어별 최적화된 TDD 사이클(Red-Green-Refactor)로 고품질 코드를 구현합니다.
 
 **TDD 구현 대상**: $ARGUMENTS
+
+## 💡 Intent (목적)
+
+**해결하는 문제**: 테스트 없는 구현으로 인한 품질 저하, 요구사항 불일치, 리팩토링 시 회귀 버그 발생
+
+**기대 결과**:
+- TRUST 5원칙 100% 준수 (Test First, Readable, Unified, Secured, Trackable)
+- @TAG 체계 완벽 통합 (@SPEC → @TEST → @CODE 체인)
+- 테스트 커버리지 ≥ 85% (설정 가능)
+- Red-Green-Refactor 사이클 완전 이행
+
+**워크플로우 위치**: MoAI-ADK 3단계 파이프라인의 **핵심 구현 단계** (SPEC → Build → Sync)
+
+**성공 기준**:
+- RED: 실패하는 테스트 작성 및 확인 완료
+- GREEN: 최소 구현으로 모든 테스트 통과
+- REFACTOR: 코드 품질 개선 (파일≤300 LOC, 함수≤50 LOC, 복잡도≤10)
+- TAG 체인: @SPEC:ID → @TEST:ID → @CODE:ID 연결 완료
+
+---
 
 ## 📋 실행 흐름
 
@@ -281,6 +301,220 @@ TDD 구현 완료 후 `trust-checker` 에이전트가 **자동으로** 품질 �
 - 린터/포매터 통과 (`ruff`, `eslint --fix`, `gofmt` 등)
 - 구조화 로깅 또는 관측 도구 호출 존재 확인
 - @TAG 업데이트 필요 변경 사항 메모 (다음 단계에서 doc-syncer가 사용)
+
+---
+
+## 🔧 Troubleshooting (문제 해결)
+
+### 증상 1: 테스트 실행 실패 (RED 단계)
+
+**증상**: pytest, jest, go test 등이 실행되지 않음
+
+**원인**:
+- 테스트 프레임워크 미설치
+- 환경 변수 미설정
+- 의존성 패키지 누락
+
+**해결**:
+```bash
+# Python
+pip install pytest pytest-cov
+
+# TypeScript/JavaScript
+npm install --save-dev jest @types/jest ts-jest
+
+# Go
+go mod tidy
+
+# Rust
+cargo test --no-run  # 테스트 빌드만
+```
+
+**위임**: `@agent-debug-helper --diagnose-test-env`
+
+---
+
+### 증상 2: 테스트 커버리지 < 85%
+
+**증상**: 품질 게이트 미달
+
+**원인**:
+- 엣지 케이스 테스트 누락
+- 에러 핸들링 경로 미테스트
+- 통합 테스트 부족
+
+**해결**:
+```bash
+# Python: 커버리지 리포트 생성
+pytest --cov=src --cov-report=html
+open htmlcov/index.html  # 미커버 코드 확인
+
+# TypeScript: Jest 커버리지
+npm test -- --coverage
+open coverage/lcov-report/index.html
+
+# Go: 커버리지 프로파일
+go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out
+```
+
+**위임**: `@agent-code-builder --add-coverage-tests`
+
+---
+
+### 증상 3: TRUST 원칙 위반
+
+**증상**: trust-checker 검증 실패
+
+**원인**:
+- 파일 크기 > 300 LOC
+- 함수 크기 > 50 LOC
+- 복잡도(Cyclomatic Complexity) > 10
+
+**해결**:
+1. **파일 분해**: 큰 파일을 모듈별로 분리
+2. **함수 추출**: 큰 함수를 작은 함수로 분해
+3. **복잡도 감소**: if/for 중첩 제거, 가드절 활용
+
+```python
+# Before (복잡도 15)
+def process(data):
+    if data:
+        if validate(data):
+            if transform(data):
+                return save(data)
+    return None
+
+# After (복잡도 3)
+def process(data):
+    if not data: return None
+    if not validate(data): return None
+    if not transform(data): return None
+    return save(data)
+```
+
+**위임**: `@agent-trust-checker --mode=refactor --spec=$ARGUMENTS`
+
+---
+
+### 증상 4: TAG 체인 끊어짐
+
+**증상**: @SPEC → @TEST → @CODE 체인 불완전
+
+**원인**:
+- @TEST TAG 누락
+- @CODE TAG 미적용
+- TAG ID 불일치
+
+**해결**:
+```bash
+# TAG 체인 검증
+rg '@(SPEC|TEST|CODE):AUTH-001' -n
+
+# 예상 결과:
+# .moai/specs/SPEC-AUTH-001.md: @SPEC:AUTH-001
+# tests/test_auth.py: @TEST:AUTH-001
+# src/auth/service.py: @CODE:AUTH-001
+```
+
+**위임**: `@agent-tag-agent --validate-chain --spec-id=AUTH-001`
+
+---
+
+### 증상 5: 언어별 테스트 도구 선택 오류
+
+**증상**: 프로젝트 언어와 맞지 않는 테스트 프레임워크 사용
+
+**원인**:
+- 언어 감지 실패
+- 도구 매핑 오류
+
+**해결**:
+```bash
+# 프로젝트 언어 확인
+find . -name "package.json" -o -name "pyproject.toml" -o -name "go.mod" -o -name "Cargo.toml"
+
+# 언어별 올바른 도구:
+# Python → pytest
+# TypeScript → jest, vitest
+# Go → go test
+# Rust → cargo test
+```
+
+**위임**: `@agent-code-builder --detect-language --reselect-tools`
+
+---
+
+### 증상 6: REFACTOR 단계에서 테스트 깨짐
+
+**증상**: GREEN 단계까지는 통과했으나 REFACTOR 후 실패
+
+**원인**:
+- 리팩토링 시 로직 변경
+- 테스트 코드 미업데이트
+
+**해결**:
+1. REFACTOR 전 커밋: `git commit -m "🟢 GREEN: Tests passing"`
+2. 각 리팩토링 후 테스트 재실행
+3. 실패 시 즉시 롤백: `git reset --hard HEAD`
+
+**위임**: `@agent-code-builder --safe-refactor --incremental`
+
+---
+
+## 🧠 Context Management (컨텍스트 관리)
+
+### JIT Retrieval (필요 시 로딩)
+
+**우선 로드** (TDD 구현 시작 시):
+- `.moai/specs/SPEC-XXX/spec.md` - 구현 대상 요구사항
+
+**필요 시 로드** (복잡도 높은 구현):
+- `.moai/memory/development-guide.md` - TRUST 5원칙 참조
+- 기존 코드 파일 (의존성 확인 시)
+
+**지연 로드** (통합 테스트 시):
+- `.moai/specs/` - 관련 SPEC 검색
+- `docs/` - API 문서 참조
+
+### Compaction 권장 시점
+
+**트리거 조건**:
+- TDD 구현 완료 후 다음 단계(3-sync) 진행 전
+- 토큰 사용량 > 70% (140,000 / 200,000)
+- Red-Green-Refactor 사이클 완료 시
+
+**권장 메시지**:
+```markdown
+**권장사항**: TDD 구현이 완료되었습니다. 다음 단계(`/alfred:3-sync`) 진행 전 `/clear` 또는 `/new` 명령으로 새로운 대화 세션을 시작하면 더 나은 성능과 컨텍스트 관리를 경험할 수 있습니다.
+```
+
+### Structured Memory 활용
+
+**TDD 구현 결정 기록**:
+```bash
+# 의사결정 로그
+.moai/memory/decisions/2025-10-02-tdd-auth-approach.md
+```
+
+**성능 제약사항 문서화**:
+```bash
+# 성능 제약
+.moai/memory/constraints/spec-001-performance-18ms.md
+```
+
+**구현 리스크 관리**:
+```bash
+# 기술 리스크
+.moai/memory/risks/spec-001-database-integration.md
+```
+
+**템플릿 사용**:
+- 의사결정: `.moai/memory/decisions/TEMPLATE.md`
+- 제약사항: `.moai/memory/constraints/TEMPLATE.md`
+- 리스크: `.moai/memory/risks/TEMPLATE.md`
+
+---
 
 ## 다음 단계
 

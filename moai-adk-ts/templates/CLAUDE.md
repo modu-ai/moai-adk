@@ -60,19 +60,36 @@ Alfred는 9명의 전문 에이전트를 조율합니다. 각 에이전트는 IT
 
 ---
 
-## 메모리 전략
+## Context Engineering 전략
 
-Alfred는 항상 다음 4개의 핵심 문서를 메모리에 로딩하여 컨텍스트를 유지합니다:
+> 본 지침군은 **컨텍스트 엔지니어링**(JIT Retrieval, Compaction, Structured Memory)을 핵심 원리로 한다.
+> **컨텍스트 예산/토큰 예산은 다루지 않는다**(명시적 관리 불필요). 대신 아래 원칙으로 일관성/성능을 확보한다.
 
-1. **CLAUDE.md** (이 파일) - 엔트리 포인트, Alfred 소개, 빠른 시작 가이드
-2. **.moai/memory/development-guide.md** - 상세 개발 가이드, TRUST 5원칙, @TAG 시스템
-3. **.moai/project/product.md** - 프로젝트 제품 정의, 미션, 사용자, 문제 정의
-4. **.moai/project/structure.md** - 시스템 아키텍처, 모듈 설계, 추적성 전략
-5. **.moai/project/tech.md** - 기술 스택, 품질 게이트, 배포 전략
+Alfred는 효율적인 컨텍스트 관리를 위해 다음 3가지 전략을 사용합니다:
 
-이 문서들은 Alfred가 프로젝트 컨텍스트를 이해하고 적절한 의사결정을 내리는 데 필수적입니다.
+### 1. JIT (Just-in-Time) Retrieval
+필요한 순간에만 문서를 로드하여 초기 컨텍스트 부담을 최소화:
+- 전체 문서를 선로딩하지 말고, **식별자(파일경로/링크/쿼리)**만 보유 후 필요 시 조회→요약 주입
+- `/alfred:1-spec` → `product.md` 참조
+- `/alfred:2-build` → `SPEC-XXX/spec.md` + `development-guide.md` 참조
+- `/alfred:3-sync` → `sync-report.md` + TAG 인덱스 참조
 
-**참조 관계**:
+### 2. Compaction
+긴 세션(>70% 토큰 사용)은 요약 후 새 세션으로 재시작:
+- 대화/로그가 길어지면 **결정/제약/상태** 중심으로 요약하고 **새 컨텍스트로 재시작**
+- 핵심 결정사항 요약
+- 다음 세션에 컨텍스트 전달
+- 권장: `/clear` 또는 `/new` 명령 활용
+
+### 3. Structured Memory
+의사결정, 제약사항, 리스크는 `.moai/memory/`에 외부 저장·재주입:
+- `decisions/` - 주요 의사결정 로그
+- `constraints/` - 기술적/비즈니스적 제약사항
+- `risks/` - 식별된 리스크 및 대응 방안
+
+상세: `.moai/memory/development-guide.md` - "Context Engineering" 챕터 참조
+
+**핵심 참조 문서**:
 - `CLAUDE.md` → `development-guide.md` (상세 규칙)
 - `CLAUDE.md` → `product/structure/tech.md` (프로젝트 컨텍스트)
 - `development-guide.md` ↔ `product/structure/tech.md` (상호 참조)
