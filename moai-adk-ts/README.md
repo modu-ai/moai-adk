@@ -12,12 +12,6 @@
 
 ---
 
-## 📚 공식 문서
-
-**상세한 가이드, 튜토리얼, API 참조는 공식 문서를 참고하세요:**
-
-🌐 **https://moai-adk.vercel.app**
-
 ---
 
 ## 목차
@@ -587,7 +581,6 @@ bun run check
 
 ## 문서 및 지원
 
-- **📚 공식 문서**: https://moai-adk.vercel.app
 - **🐛 Issues**: [GitHub Issues](https://github.com/modu-ai/moai-adk/issues)
 - **💬 Discussions**: [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)
 - **📦 npm Package**: [moai-adk](https://www.npmjs.com/package/moai-adk)
