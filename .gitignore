@@ -108,4 +108,6 @@ moai-adk-ts/coverage/
 /CLAUDE.md
 .vercel
 
-# Documentation is now included in the repository
+# Documentation (exclude all except public assets)
+/docs/*
+!/docs/public/
