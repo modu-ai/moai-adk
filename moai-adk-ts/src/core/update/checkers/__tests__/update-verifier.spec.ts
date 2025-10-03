@@ -29,26 +29,36 @@ describe('UpdateVerifier', () => {
 
   describe('verifyUpdate', () => {
     it('should verify all key files exist', async () => {
-      // Given: Key files exist
+      // Given: Key files and directories exist
       const keyFiles = [
         '.moai/memory/development-guide.md',
         'CLAUDE.md',
-        '.claude/commands/alfred/1-spec.md',
-        '.claude/agents/alfred/spec-builder.md',
-        '.claude/output-styles/alfred/alfred-pro.md',
       ];
 
+      const keyDirs = [
+        '.claude/commands/alfred',
+        '.claude/agents/alfred',
+        '.claude/output-styles/alfred',
+      ];
+
+      // Create files
       for (const file of keyFiles) {
         const filePath = path.join(mockProjectPath, file);
         await fs.mkdir(path.dirname(filePath), { recursive: true });
         await fs.writeFile(filePath, '# Test');
       }
 
+      // Create directories
+      for (const dir of keyDirs) {
+        const dirPath = path.join(mockProjectPath, dir);
+        await fs.mkdir(dirPath, { recursive: true });
+      }
+
       // When: Verify update
       const verifier = new UpdateVerifier(mockProjectPath);
 
-      // Then: Should not throw
-      await expect(verifier.verifyUpdate()).resolves.not.toThrow();
+      // Then: Should not reject
+      await expect(verifier.verifyUpdate()).resolves.toBeUndefined();
     });
 
     it('should throw error if key file is missing', async () => {

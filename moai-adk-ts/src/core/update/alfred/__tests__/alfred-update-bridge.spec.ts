@@ -13,10 +13,16 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { AlfredUpdateBridge } from '../alfred-update-bridge.js';
 
 describe('AlfredUpdateBridge', () => {
-  const mockProjectPath = '/tmp/moai-test-project';
-  const mockTemplatePath = '/tmp/moai-test-template';
+  let mockProjectPath: string;
+  let mockTemplatePath: string;
 
   beforeEach(async () => {
+    // Use unique paths for each test to avoid interference
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(7);
+    mockProjectPath = `/tmp/moai-test-project-${timestamp}-${random}`;
+    mockTemplatePath = `/tmp/moai-test-template-${timestamp}-${random}`;
+
     // Setup mock directories
     await fs.mkdir(mockProjectPath, { recursive: true });
     await fs.mkdir(mockTemplatePath, { recursive: true });

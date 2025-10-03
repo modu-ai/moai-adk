@@ -12,11 +12,8 @@ import { requirementRegistry } from './requirements';
 
 export type { DetectionResult, RequirementCheckResult } from './detector';
 export { SystemDetector } from './detector';
-export {
-  RequirementRegistry,
-  requirementRegistry,
-  SystemRequirement,
-} from './requirements';
+export type { SystemRequirement } from './requirements';
+export { RequirementRegistry, requirementRegistry } from './requirements';
 
 /**
  * System check summary interface

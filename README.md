@@ -627,27 +627,27 @@ Alfred가 조율하는 전문 AI 에이전트들입니다.
 
 #### 핵심 3단계 에이전트 (자동 호출)
 
-| 에이전트 | 페르소나 | 전문 영역 | 호출 시점 |
-|---------|---------|----------|----------|
-| **spec-builder** 🏗️ | 시스템 아키텍트 | EARS 명세 작성 | `/alfred:1-spec` |
-| **code-builder** 💎 | 수석 개발자 | TDD 구현 | `/alfred:2-build` |
-| **doc-syncer** 📖 | 테크니컬 라이터 | 문서 동기화 | `/alfred:3-sync` |
+| 에이전트           | 페르소나        | 전문 영역      | 호출 시점         |
+| ------------------ | --------------- | -------------- | ----------------- |
+| **spec-builder** 🏗️ | 시스템 아키텍트 | EARS 명세 작성 | `/alfred:1-spec`  |
+| **code-builder** 💎 | 수석 개발자     | TDD 구현       | `/alfred:2-build` |
+| **doc-syncer** 📖   | 테크니컬 라이터 | 문서 동기화    | `/alfred:3-sync`  |
 
 #### 품질 보증 에이전트 (온디맨드)
 
-| 에이전트 | 페르소나 | 전문 영역 | 호출 방법 |
-|---------|---------|----------|----------|
-| **tag-agent** 🏷️ | 지식 관리자 | TAG 체인 검증 | `@agent-tag-agent` |
-| **debug-helper** 🔬 | SRE 전문가 | 오류 진단 | `@agent-debug-helper` |
-| **trust-checker** ✅ | QA 리드 | TRUST 검증 | `@agent-trust-checker` |
-| **git-manager** 🚀 | 릴리스 엔지니어 | Git 워크플로우 | `@agent-git-manager` |
+| 에이전트            | 페르소나        | 전문 영역      | 호출 방법              |
+| ------------------- | --------------- | -------------- | ---------------------- |
+| **tag-agent** 🏷️     | 지식 관리자     | TAG 체인 검증  | `@agent-tag-agent`     |
+| **debug-helper** 🔬  | SRE 전문가      | 오류 진단      | `@agent-debug-helper`  |
+| **trust-checker** ✅ | QA 리드         | TRUST 검증     | `@agent-trust-checker` |
+| **git-manager** 🚀   | 릴리스 엔지니어 | Git 워크플로우 | `@agent-git-manager`   |
 
 #### 시스템 관리 에이전트
 
-| 에이전트 | 페르소나 | 전문 영역 | 호출 방법 |
-|---------|---------|----------|----------|
-| **cc-manager** 🛠️ | 데브옵스 엔지니어 | Claude Code 설정 | `@agent-cc-manager` |
-| **project-manager** 📋 | 프로젝트 매니저 | 프로젝트 초기화 | `/alfred:8-project` |
+| 에이전트              | 페르소나          | 전문 영역        | 호출 방법           |
+| --------------------- | ----------------- | ---------------- | ------------------- |
+| **cc-manager** 🛠️      | 데브옵스 엔지니어 | Claude Code 설정 | `@agent-cc-manager` |
+| **project-manager** 📋 | 프로젝트 매니저   | 프로젝트 초기화  | `/alfred:8-project` |
 
 ### 에이전트 협업 아키텍처
 
@@ -775,12 +775,12 @@ Alfred는 개발 상황에 따라 **4가지 대화 스타일**을 제공합니�
 
 ### 📋 제공되는 Output Styles
 
-| 스타일 이름 | 설명 |
-|-----------|------|
-| **MoAI Professional** | SPEC-First TDD 전문가를 위한 간결하고 기술적인 개발 스타일. Alfred SuperAgent가 9개 전문 에이전트를 조율하여 TRUST 5원칙과 @TAG 추적성을 자동 적용합니다. |
-| **MoAI Beginner Learning** | 개발 초보자를 위한 상세하고 친절한 단계별 학습 가이드 (학습 전용) |
-| **MoAI Pair Collaboration** | AI와 함께 브레인스토밍, 계획 수립, 실시간 코드 리뷰를 진행하는 협업 모드. Alfred SuperAgent가 9개 전문 에이전트를 조율하여 최적의 협업 경험을 제공합니다. |
-| **MoAI Study Deep** | 새로운 개념, 도구, 언어, 프레임워크를 체계적으로 학습하는 심화 교육 모드. Alfred SuperAgent가 9개 전문 에이전트의 전문 지식을 활용하여 깊이 있는 학습 경험을 제공합니다. |
+| 스타일 이름                 | 설명                                                                                                                                                                     |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **MoAI Professional**       | SPEC-First TDD 전문가를 위한 간결하고 기술적인 개발 스타일. Alfred SuperAgent가 9개 전문 에이전트를 조율하여 TRUST 5원칙과 @TAG 추적성을 자동 적용합니다.                |
+| **MoAI Beginner Learning**  | 개발 초보자를 위한 상세하고 친절한 단계별 학습 가이드 (학습 전용)                                                                                                        |
+| **MoAI Pair Collaboration** | AI와 함께 브레인스토밍, 계획 수립, 실시간 코드 리뷰를 진행하는 협업 모드. Alfred SuperAgent가 9개 전문 에이전트를 조율하여 최적의 협업 경험을 제공합니다.                |
+| **MoAI Study Deep**         | 새로운 개념, 도구, 언어, 프레임워크를 체계적으로 학습하는 심화 교육 모드. Alfred SuperAgent가 9개 전문 에이전트의 전문 지식을 활용하여 깊이 있는 학습 경험을 제공합니다. |
 
 ### 🔄 스타일 전환 방법
 
@@ -795,12 +795,12 @@ Claude Code에서 `/output-style` 명령어로 전환:
 
 ### 🎯 스타일 선택 가이드
 
-| 상황 | 추천 스타일 | 대상 | 특징 |
-|------|-----------|------|------|
-| 실무 프로젝트 빠른 개발 | `alfred-pro` | 실무 개발자, 프로젝트 리더 | 간결, 기술적, 결과 중심 |
-| 프로그래밍 처음 배우기 | `beginner-learning` | 개발 입문자 | 친절, 상세 설명, 단계별 안내 |
-| 팀 기술 선택 & 설계 논의 | `pair-collab` | 협업 개발자, 아키텍트 | 질문 기반, 브레인스토밍 |
-| 새로운 기술 학습 | `study-deep` | 신기술 학습자 | 개념 → 실습 → 전문가 팁 |
+| 상황                     | 추천 스타일         | 대상                       | 특징                         |
+| ------------------------ | ------------------- | -------------------------- | ---------------------------- |
+| 실무 프로젝트 빠른 개발  | `alfred-pro`        | 실무 개발자, 프로젝트 리더 | 간결, 기술적, 결과 중심      |
+| 프로그래밍 처음 배우기   | `beginner-learning` | 개발 입문자                | 친절, 상세 설명, 단계별 안내 |
+| 팀 기술 선택 & 설계 논의 | `pair-collab`       | 협업 개발자, 아키텍트      | 질문 기반, 브레인스토밍      |
+| 새로운 기술 학습         | `study-deep`        | 신기술 학습자              | 개념 → 실습 → 전문가 팁      |
 
 ### 💡 모든 스타일에서 동일하게 작동
 
@@ -844,7 +844,6 @@ JWT 인증 구현 시작.
 
 구현 완료.
 ```
-
 </details>
 
 ---
@@ -943,11 +942,11 @@ JWT 인증 구현 전에 설계 결정이 필요합니다.
 
 **Q1: 토큰 저장 방식**
 
-| 방식 | 장점 | 단점 | 사용 시나리오 |
-|------|------|------|--------------|
-| localStorage | 간단, 새로고침 유지 | XSS 위험 | 내부 도구 |
-| httpOnly Cookie | XSS 방어 | CSRF 대응 필요 | 프로덕션 (권장) |
-| memory (state) | 최대 보안 | 새로고침 시 로그아웃 | 금융/의료 |
+| 방식            | 장점                | 단점                 | 사용 시나리오   |
+| --------------- | ------------------- | -------------------- | --------------- |
+| localStorage    | 간단, 새로고침 유지 | XSS 위험             | 내부 도구       |
+| httpOnly Cookie | XSS 방어            | CSRF 대응 필요       | 프로덕션 (권장) |
+| memory (state)  | 최대 보안           | 새로고침 시 로그아웃 | 금융/의료       |
 
 **권장**: httpOnly Cookie + CSRF 토큰
 
@@ -1019,10 +1018,10 @@ Stateless 인증을 위한 토큰 기반 방식.
 
 **Session vs JWT**
 
-| 방식 | 저장 위치 | 확장성 | 특징 |
-|------|----------|--------|------|
-| Session | 서버 메모리/DB | 낮음 | Stateful, 서버 의존 |
-| JWT | 클라이언트 | 높음 | Stateless, 분산 시스템 |
+| 방식    | 저장 위치      | 확장성 | 특징                   |
+| ------- | -------------- | ------ | ---------------------- |
+| Session | 서버 메모리/DB | 낮음   | Stateful, 서버 의존    |
+| JWT     | 클라이언트     | 높음   | Stateless, 분산 시스템 |
 
 **JWT 구조 (3 Parts)**
 
@@ -1070,9 +1069,9 @@ await saveRefreshToken(userId, refreshToken);  // DB 저장
 
 **2. 알고리즘**
 
-| 알고리즘 | 사용 사례 |
-|---------|----------|
-| HS256 (대칭키) | 단일 서버 |
+| 알고리즘         | 사용 사례        |
+| ---------------- | ---------------- |
+| HS256 (대칭키)   | 단일 서버        |
 | RS256 (비대칭키) | MSA, 멀티 서비스 |
 
 **3. Payload 최적화**
@@ -1089,12 +1088,12 @@ await saveRefreshToken(userId, refreshToken);  // DB 저장
 
 **5. 라이브러리**
 
-| 언어 | 라이브러리 |
-|------|-----------|
-| TypeScript | jsonwebtoken |
-| Python | PyJWT |
-| Go | golang-jwt/jwt |
-| Rust | jsonwebtoken |
+| 언어       | 라이브러리     |
+| ---------- | -------------- |
+| TypeScript | jsonwebtoken   |
+| Python     | PyJWT          |
+| Go         | golang-jwt/jwt |
+| Rust       | jsonwebtoken   |
 
 **학습 경로**
 1. ✅ JWT 기본
@@ -1113,22 +1112,22 @@ MoAI-ADK는 모든 주요 언어를 지원하며, 언어별 최적 도구 체인
 
 ### 웹/백엔드
 
-| 언어 | 테스트 | 린터 | 타입 | 상태 |
-|------|--------|------|------|------|
-| **TypeScript** | Vitest/Jest | Biome/ESLint | ✅ | Full |
-| **Python** | pytest | ruff/black | mypy | Full |
-| **Java** | JUnit 5 | checkstyle | ✅ | Full |
-| **Go** | go test | golint | ✅ | Full |
-| **Rust** | cargo test | clippy | ✅ | Full |
+| 언어           | 테스트      | 린터         | 타입 | 상태 |
+| -------------- | ----------- | ------------ | ---- | ---- |
+| **TypeScript** | Vitest/Jest | Biome/ESLint | ✅    | Full |
+| **Python**     | pytest      | ruff/black   | mypy | Full |
+| **Java**       | JUnit 5     | checkstyle   | ✅    | Full |
+| **Go**         | go test     | golint       | ✅    | Full |
+| **Rust**       | cargo test  | clippy       | ✅    | Full |
 
 ### 모바일
 
-| 언어/프레임워크 | 테스트 | 린터 | 상태 |
-|----------------|--------|------|------|
-| **Flutter/Dart** | flutter test | dart analyze | Full |
-| **Swift/iOS** | XCTest | SwiftLint | Full |
-| **Kotlin/Android** | JUnit + Espresso | detekt | Full |
-| **React Native** | Jest + RNTL | ESLint | Full |
+| 언어/프레임워크    | 테스트           | 린터         | 상태 |
+| ------------------ | ---------------- | ------------ | ---- |
+| **Flutter/Dart**   | flutter test     | dart analyze | Full |
+| **Swift/iOS**      | XCTest           | SwiftLint    | Full |
+| **Kotlin/Android** | JUnit + Espresso | detekt       | Full |
+| **React Native**   | Jest + RNTL      | ESLint       | Full |
 
 ### 자동 언어 감지
 
