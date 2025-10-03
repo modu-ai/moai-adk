@@ -18,14 +18,17 @@ import { UpdateCommand } from '../update';
 // Simple minimal test to verify TDD Red phase
 describe('UpdateCommand', () => {
   let updateCommand: UpdateCommand;
+  let uniqueProjectPath: string;
 
   beforeEach(() => {
     updateCommand = new UpdateCommand();
+    // Use unique path for each test run to avoid interference
+    uniqueProjectPath = `/tmp/test-update-${Date.now()}-${Math.random().toString(36).substring(7)}`;
   });
 
   describe('TDD Green Phase - Implemented functionality', () => {
     it('should check for updates successfully', async () => {
-      const result = await updateCommand.checkForUpdates('/test/project');
+      const result = await updateCommand.checkForUpdates(uniqueProjectPath);
 
       expect(result).toEqual(
         expect.objectContaining({
@@ -43,7 +46,7 @@ describe('UpdateCommand', () => {
     it('should create backup successfully', async () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
-      const result = await updateCommand.createBackup('/test/project');
+      const result = await updateCommand.createBackup(uniqueProjectPath);
       expect(typeof result).toBe('string');
       expect(result).toContain('.moai_backup_');
 
@@ -53,7 +56,7 @@ describe('UpdateCommand', () => {
     it('should update resources successfully', async () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
-      const result = await updateCommand.updateResources('/test/project', {
+      const result = await updateCommand.updateResources(uniqueProjectPath, {
         packageOnly: false,
         resourcesOnly: false,
       });
@@ -74,7 +77,7 @@ describe('UpdateCommand', () => {
     it('should synchronize versions successfully', async () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
-      const result = await updateCommand.synchronizeVersions('/test/project');
+      const result = await updateCommand.synchronizeVersions(uniqueProjectPath);
       expect(result).toBe(true);
 
       consoleSpy.mockRestore();
@@ -85,7 +88,7 @@ describe('UpdateCommand', () => {
 
       const result = await updateCommand.run({
         check: true,
-        projectPath: '/test/project',
+        projectPath: uniqueProjectPath,
       });
 
       // Non-MoAI project should return failure

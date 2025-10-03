@@ -18,14 +18,17 @@ import { RestoreCommand } from '../restore';
 // Simple minimal test to verify TDD Red phase
 describe('RestoreCommand', () => {
   let restoreCommand: RestoreCommand;
+  let uniqueBackupPath: string;
 
   beforeEach(() => {
     restoreCommand = new RestoreCommand();
+    // Use unique path for each test run to avoid interference
+    uniqueBackupPath = `/tmp/test-restore-${Date.now()}-${Math.random().toString(36).substring(7)}`;
   });
 
   describe('TDD Green Phase - Implemented functionality', () => {
     it('should validate backup path correctly', async () => {
-      const result = await restoreCommand.validateBackupPath('/test/backup');
+      const result = await restoreCommand.validateBackupPath(uniqueBackupPath);
 
       expect(result.isValid).toBe(false);
       expect(result.error).toBe('Backup path does not exist');
@@ -33,7 +36,7 @@ describe('RestoreCommand', () => {
     });
 
     it('should perform restore operation without errors', async () => {
-      const result = await restoreCommand.performRestore('/test/backup', {
+      const result = await restoreCommand.performRestore(uniqueBackupPath, {
         dryRun: true,
       });
 
@@ -43,7 +46,7 @@ describe('RestoreCommand', () => {
     });
 
     it('should run restore command and handle invalid backup path', async () => {
-      const result = await restoreCommand.run('/test/backup', {
+      const result = await restoreCommand.run(uniqueBackupPath, {
         dryRun: false,
       });
 

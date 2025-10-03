@@ -11,16 +11,19 @@ import { StatusCommand } from '../status';
 // Simple minimal test to verify TDD Red phase
 describe('StatusCommand (Refactored)', () => {
   let statusCommand: StatusCommand;
+  let uniqueProjectPath: string;
 
   beforeEach(() => {
     statusCommand = new StatusCommand();
+    // Use unique path for each test run to avoid interference
+    uniqueProjectPath = `/tmp/test-status-${Date.now()}-${Math.random().toString(36).substring(7)}`;
   });
 
   describe('TDD Green Phase - Implemented functionality', () => {
     it('should run status command successfully', async () => {
       const result = await statusCommand.run({
         verbose: false,
-        projectPath: '/test/project',
+        projectPath: uniqueProjectPath,
       });
 
       expect(result.success).toBe(true);
@@ -34,7 +37,7 @@ describe('StatusCommand (Refactored)', () => {
     it('should run status command with verbose mode', async () => {
       const result = await statusCommand.run({
         verbose: true,
-        projectPath: '/test/project',
+        projectPath: uniqueProjectPath,
       });
 
       expect(result.success).toBe(true);
@@ -49,7 +52,7 @@ describe('StatusCommand (Refactored)', () => {
     it('should return proper status structure', async () => {
       const result = await statusCommand.run({
         verbose: false,
-        projectPath: '/test/project',
+        projectPath: uniqueProjectPath,
       });
 
       if (result.status) {

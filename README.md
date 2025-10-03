@@ -74,7 +74,7 @@ Alfred는 모든 코드에 **TRUST 5원칙**(Test First, Readable, Unified, Secu
 
 Alfred의 **@TAG 시스템**은 모든 코드 조각을 `@SPEC:ID → @TEST:ID → @CODE:ID → @DOC:ID`로 완벽하게 연결합니다. 6개월 후 누군가 "왜 이 함수는 이렇게 복잡하게 구현했나요? 더 간단하게 할 수 있지 않나요?"라고 물어보면, **@TAG를 따라가면 답을 찾을 수 있습니다**. SPEC 문서를 열어 "아, 이건 금융 규정 때문에 3단계 검증이 필수구나"를 확인하고, TEST 코드를 보며 "이 엣지 케이스들이 실제로 프로덕션에서 발생했던 버그구나"를 이해하고, CODE를 보며 "이렇게 구현한 이유가 있었구나"를 납득하고, DOC을 보며 "다른 팀원들도 이 문제를 겪었고 해결책을 공유했구나"를 배웁니다.
 
-특히 Alfred의 TAG 시스템은 **CODE-FIRST** 방식을 사용합니다. 중간에 별도의 데이터베이스나 YAML 파일, JSON 캐시 파일을 두지 않고, **코드 자체를 직접 스캔**하여 TAG를 찾습니다(`rg '@CODE:AUTH-001' -n`). 이는 "**코드가 진실의 유일한 원천(single source of truth)**"이라는 철학을 반영한 것입니다. TAG는 외부 문서가 아니라 살아있는 코드 안에 주석으로 존재하며, 코드가 변경되면 TAG도 함께 변경됩니다. 코드와 문서가 따로 놀 수 없습니다. 추적성은 문서화의 부산물이 아니라 **코드의 일부**입니다. 
+특히 Alfred의 TAG 시스템은 **CODE-FIRST** 방식을 사용합니다. 중간에 별도의 데이터베이스나 YAML 파일, JSON 캐시 파일을 두지 않고, **코드 자체를 직접 스캔**하여 TAG를 찾습니다(`rg '@CODE:AUTH-001' -n`). 이는 "**코드가 진실의 유일한 원천(single source of truth)**"이라는 철학을 반영한 것입니다. TAG는 외부 문서가 아니라 살아있는 코드 안에 주석으로 존재하며, 코드가 변경되면 TAG도 함께 변경됩니다. 코드와 문서가 따로 놀 수 없습니다. 추적성은 문서화의 부산물이 아니라 **코드의 일부**입니다.
 
 #### 4️⃣ 범용성(Universality): 한 번 배우면 어디서나 쓸 수 있는 워크플로우
 
@@ -112,6 +112,7 @@ moai --version
 #### 2️⃣ 초기화 (1분)
 
 **터미널에서:**
+
 ```bash
 # 새 프로젝트 생성
 moai init my-project
@@ -126,11 +127,13 @@ claude
 ```
 
 **Claude Code에서** (필수):
+
 ```text
 /alfred:8-project
 ```
 
 Alfred가 자동으로 수행:
+
 - `.moai/project/` 문서 3종 생성 (product/structure/tech.md)
 - 언어별 최적 도구 체인 설정
 - 프로젝트 컨텍스트 완벽 이해
@@ -150,9 +153,10 @@ Alfred가 자동으로 수행:
 /alfred:3-sync
 ```
 
-### 🎉 완료!
+### 🎉 완료
 
 **생성된 것들:**
+
 - ✅ `.moai/specs/SPEC-AUTH-001.md` (명세)
 - ✅ `tests/auth/login.test.ts` (테스트)
 - ✅ `src/services/auth.ts` (구현)
@@ -262,12 +266,14 @@ graph LR
 3. **Git 브랜치 자동 생성**: `feature/SPEC-AUTH-001-jwt-login` 브랜치를 만들고 전환합니다. GitFlow 전략을 자동으로 적용합니다.
 
 4. **HISTORY 섹션 자동 추가**: 변경 이력을 추적합니다.
+
    ```yaml
    ## HISTORY
    - v1.0.0 (2025-10-02): INITIAL - JWT 인증 SPEC 최초 작성
    ```
 
 **실제 생성되는 파일 예시** (`.moai/specs/SPEC-AUTH-001.md`):
+
 ```markdown
 ---
 id: AUTH-001
@@ -506,6 +512,7 @@ function getJwtSecret(): string {
 **Alfred가 자동으로 수행하는 작업**:
 
 1. **TAG 체인 검증**: `@SPEC:AUTH-001` → `@TEST:AUTH-001` → `@CODE:AUTH-001` 체인이 완전한지 검증합니다.
+
    ```bash
    ✅ SPEC-AUTH-001.md에 @SPEC:AUTH-001 존재
    ✅ tests/auth/login.test.ts에 @TEST:AUTH-001 존재
@@ -514,6 +521,7 @@ function getJwtSecret(): string {
    ```
 
 2. **고아 TAG 자동 탐지**: SPEC 없이 CODE만 있거나, TEST 없이 CODE만 있는 경우를 찾아냅니다.
+
    ```bash
    ⚠️ 경고: @CODE:PAYMENT-005가 src/payment.ts에 있지만
           @SPEC:PAYMENT-005를 찾을 수 없습니다
@@ -521,6 +529,7 @@ function getJwtSecret(): string {
    ```
 
 3. **Living Document 자동 생성**: 코드에서 추출한 정보로 최신 문서를 생성합니다 (`docs/api/auth.md`).
+
    ```markdown
    # 인증 API 문서
 
@@ -543,6 +552,7 @@ function getJwtSecret(): string {
    ```
 
    ### 응답 (200 OK)
+
    ```json
    {
      "token": "eyJhbGc...",
@@ -551,11 +561,14 @@ function getJwtSecret(): string {
    ```
 
    ### 에러
+
    - 404: 사용자를 찾을 수 없음
    - 401: 비밀번호가 틀림
+
    ```
 
 4. **PR 상태 전환**: GitHub PR을 Draft에서 Ready for Review로 전환합니다.
+
    ```bash
    🎉 PR #42 상태 변경: Draft → Ready for Review
    📝 리뷰어: @team-lead, @security-team 자동 할당
@@ -586,6 +599,7 @@ MoAI-ADK는 **Alfred (SuperAgent) + 9개 전문 에이전트 = 총 10개 AI 에�
 **역할**: 중앙 오케스트레이터 (Central Orchestrator)
 
 **책임**:
+
 - 사용자 요청 분석 및 작업 분해
 - 적절한 전문 에이전트 선택 및 조율
 - 에이전트 간 협업 관리
@@ -621,7 +635,7 @@ graph TD
 
 ---
 
-### 전문가 AI 서브 에이전트 
+### 전문가 AI 서브 에이전트
 
 Alfred가 조율하는 전문 AI 에이전트들입니다.
 
@@ -686,14 +700,17 @@ graph TB
 ### 협업 원칙
 
 **단일 책임 (Single Responsibility)**:
+
 - 각 에이전트는 자신의 전문 영역만 담당
 - 다른 에이전트의 영역을 침범하지 않음
 
 **중앙 조율 (Central Orchestration)**:
+
 - Alfred만이 에이전트 간 작업을 조율
 - 에이전트끼리 직접 호출 금지
 
 **품질 게이트 (Quality Gates)**:
+
 - 각 단계 완료 시 TRUST 원칙 자동 검증
 - TAG 무결성 자동 확인
 
@@ -810,6 +827,7 @@ Claude Code에서 `/output-style` 명령어로 전환:
 - ✅ @TAG 추적성 보장
 
 **차이점은 오직 설명 방식**:
+
 - 📝 간결 vs 상세
 - 🎓 빠른 구현 vs 개념 학습
 - 💬 기술적 vs 친절 vs 협업적 vs 교육적
@@ -844,6 +862,7 @@ JWT 인증 구현 시작.
 
 구현 완료.
 ```
+
 </details>
 
 ---
@@ -968,6 +987,7 @@ if (tokenExpiresIn < 5 * 60) await refreshToken();
 ```
 
 **트레이드오프**:
+
 - 옵션 A: UX ↑, 서버 부하 ↑
 - 옵션 B: 보안 ↑, 일시적 끊김
 
@@ -976,23 +996,27 @@ if (tokenExpiresIn < 5 * 60) await refreshToken();
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 **1. SPEC 명세**:
-   - Storage: httpOnly Cookie
-   - Expiry: Access 15m, Refresh 7d
-   - Strategy: Auto-refresh at 5m remaining
-   - Security: Double Submit Cookie (CSRF)
+
+- Storage: httpOnly Cookie
+- Expiry: Access 15m, Refresh 7d
+- Strategy: Auto-refresh at 5m remaining
+- Security: Double Submit Cookie (CSRF)
 
 **2. TDD 시나리오**:
-   - ✅ 로그인 → 2개 토큰 발급
-   - ✅ Access 만료 → 자동 갱신
-   - ✅ Refresh 만료 → 재로그인
-   - ✅ CSRF 공격 → 차단
+
+- ✅ 로그인 → 2개 토큰 발급
+- ✅ Access 만료 → 자동 갱신
+- ✅ Refresh 만료 → 재로그인
+- ✅ CSRF 공격 → 차단
 
 **3. 보안 체크리스트**:
-   - [ ] XSS: httpOnly + Secure
-   - [ ] CSRF: SameSite=Strict
-   - [ ] Replay Attack: JWT ID + Redis
+
+- [ ] XSS: httpOnly + Secure
+- [ ] CSRF: SameSite=Strict
+- [ ] Replay Attack: JWT ID + Redis
 
 이 방향으로 진행하시겠습니까? 조정 사항이 있으면 말씀하세요.
+
 ```
 
 </details>
@@ -1009,6 +1033,7 @@ if (tokenExpiresIn < 5 * 60) await refreshToken();
 <summary><b>출력 예시</b></summary>
 
 ```
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📚 1단계: 개념 (Concept)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1030,10 +1055,11 @@ eyJhbGc.eyJzdWI.SflKxw
 Header  Payload  Signature
 
 1. Header: {"alg": "HS256", "typ": "JWT"}
-2. Payload: {"sub": "user-123", "email": "user@example.com", "exp": 1735689600}
+2. Payload: {"sub": "user-123", "email": "<user@example.com>", "exp": 1735689600}
 3. Signature: HMACSHA256(base64(header + payload), SECRET_KEY)
 
 **보안**
+
 - Payload는 Base64 인코딩 (암호화 아님)
 - 민감 정보 절대 포함 금지
 - HTTPS 필수, exp claim 필수
@@ -1045,6 +1071,7 @@ Header  Payload  Signature
 MoAI-ADK로 TDD 구현.
 
 /alfred:1-spec "JWT 기반 사용자 인증 API"
+
 - WHEN POST /api/auth/login → JWT 반환
 - IF 토큰 만료 15분
 
@@ -1096,10 +1123,12 @@ await saveRefreshToken(userId, refreshToken);  // DB 저장
 | Rust       | jsonwebtoken   |
 
 **학습 경로**
+
 1. ✅ JWT 기본
 2. ⏭️ Refresh Token
 3. ⏭️ OAuth 2.0
 4. ⏭️ Zero Trust
+
 ```
 
 </details>
@@ -1292,6 +1321,7 @@ moai init .
 ```
 
 Alfred가 자동으로:
+
 - 언어/프레임워크 감지
 - 폴더 구조 분석
 - 최적 설정 제안
@@ -1323,6 +1353,7 @@ Alfred가 자동으로:
 ```
 
 **왜 이 방법을 권장하나요?**
+
 - 자동 백업 (사용자 파일 보호)
 - 권한 자동 설정 (`chmod +x`)
 - 5단계 검증 (파일/권한/무결성)
