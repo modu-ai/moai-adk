@@ -4,15 +4,7 @@
  * @tags @TEST:CLI-RESTORE-001 @SPEC:CLI-FOUNDATION-012
  */
 
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  test,
-  vi,
-} from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { RestoreCommand } from '../restore';
 
 // Simple minimal test to verify TDD Red phase
