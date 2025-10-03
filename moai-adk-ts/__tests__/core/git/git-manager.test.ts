@@ -92,7 +92,7 @@ describe('GitManager', () => {
       await branchGitManager.initializeRepository(repoPath);
 
       // Should not throw when creating a valid branch
-      await expect(branchGitManager.createBranch(branchName)).resolves.not.toThrow();
+      await expect(branchGitManager.createBranch(branchName)).resolves.toBeUndefined();
 
       // Verify that branch operation completed without error
       const status = await branchGitManager.getStatus();

@@ -23,10 +23,11 @@ describe('@TEST:REFACTOR-004 - Git Configuration Constants', () => {
     });
 
     it('TEST-CONFIG-CONSTANTS-002: should have config object', () => {
-      expect(GitDefaults.CONFIG).toHaveProperty('init.defaultBranch', 'main');
-      expect(GitDefaults.CONFIG).toHaveProperty('core.ignorecase', 'false');
-      expect(GitDefaults.CONFIG).toHaveProperty('pull.rebase', 'false');
-      expect(GitDefaults.CONFIG).toHaveProperty('push.default', 'current');
+      expect(GitDefaults.CONFIG).toBeDefined();
+      expect(GitDefaults.CONFIG['init.defaultBranch']).toBe('main');
+      expect(GitDefaults.CONFIG['core.ignorecase']).toBe('false');
+      expect(GitDefaults.CONFIG['pull.rebase']).toBe('false');
+      expect(GitDefaults.CONFIG['push.default']).toBe('current');
     });
 
     it('TEST-CONFIG-CONSTANTS-003: should have platform-specific autocrlf', () => {

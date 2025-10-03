@@ -1,3 +1,0 @@
-# Implementation Plan
-
-TBD

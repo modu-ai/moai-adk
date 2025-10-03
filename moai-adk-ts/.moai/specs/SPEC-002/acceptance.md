@@ -1,3 +1,0 @@
-# Acceptance Criteria
-
-TBD
