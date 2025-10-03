@@ -594,6 +594,6 @@ bun run check
 
 ---
 
-**MoAI-ADK v0.1.0** - TypeScript 기반 SPEC-First TDD 개발 프레임워크
+**MoAI-ADK** - TypeScript 기반 SPEC-First TDD 개발 프레임워크
 
 Made with ❤️ by MoAI Team
