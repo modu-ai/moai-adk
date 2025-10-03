@@ -1361,12 +1361,6 @@ Alfred가 자동으로:
 
 ---
 
-### 💡 다음 단계
-
-- 📖 [Output Styles](#-alfreds-output-styles) - 학습 모드로 전환
-- 🌍 [Language Support](#-universal-language-support) - 다른 언어 사용
-- 💻 [CLI Reference](#-cli-reference) - 모든 명령어 보기
-
 **더 궁금한 점이 있으신가요?**
 
 - 💬 **질문 & 토론**: [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)

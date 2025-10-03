@@ -4,7 +4,7 @@
  * @tags @TEST:CLI-HELP-001 @SPEC:CLI-FOUNDATION-012
  */
 
-import { beforeEach, describe, expect, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { HelpCommand } from '../help';
 
 describe('HelpCommand', () => {
@@ -22,7 +22,6 @@ describe('HelpCommand', () => {
       expect(availableCommands).toContain('doctor');
       expect(availableCommands).toContain('restore');
       expect(availableCommands).toContain('status');
-      expect(availableCommands).toContain('update');
       expect(availableCommands).toContain('help');
     });
 

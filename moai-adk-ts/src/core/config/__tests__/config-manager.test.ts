@@ -5,11 +5,23 @@
  */
 
 import fs from 'node:fs';
-import { beforeEach, describe, expect, type Mocked, vi } from 'vitest';
+import { beforeEach, describe, expect, it, type Mocked, vi } from 'vitest';
 import { ConfigManager } from '../config-manager';
 
 // Mock fs and path modules
-vi.mock('fs');
+vi.mock('node:fs', async () => {
+  const actual = await vi.importActual<typeof import('node:fs')>('node:fs');
+  return {
+    ...actual,
+    default: {
+      ...actual.default,
+      existsSync: vi.fn(),
+      readFileSync: vi.fn(),
+      writeFileSync: vi.fn(),
+      mkdirSync: vi.fn(),
+    },
+  };
+});
 const mockFs = fs as Mocked<typeof fs>;
 
 describe('ConfigManager', () => {
