@@ -5,11 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.1] - 2025-01-10
+## [0.2.0] - 2025-10-03
 
 ### Changed
-- Package name changed: `moai-adk` → `moai-adk-cli` (to avoid 24-hour republish restriction)
-- All installation commands updated to use `moai-adk-cli`
+- Package name restored to `moai-adk` (from temporary `moai-adk-cli`)
+- All documentation updated to use `moai-adk`
+
+### Note
+- Previous temporary package `moai-adk-cli@0.1.1` is deprecated
+- Use `npm install -g moai-adk` for installation
+
+## [0.1.1] - 2025-10-02
+
+### Changed
+- Temporary package name: `moai-adk-cli` (due to 24-hour npm republish restriction)
+- All installation commands temporarily used `moai-adk-cli`
 
 ## [0.1.0] - 2025-01-10
 
