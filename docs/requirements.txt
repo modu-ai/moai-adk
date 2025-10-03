@@ -1,7 +1,0 @@
-# Documentation dependencies for MkDocs
-mkdocs>=1.5.0
-mkdocs-material>=9.0.0
-pyyaml>=6.0.0
-
-# Required for API documentation generation
--e .
