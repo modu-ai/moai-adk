@@ -1142,40 +1142,6 @@ MoAI-ADK는 모든 주요 언어를 지원하며, 언어별 최적 도구 체인
 
 ---
 
-## 🔮 Future Roadmap
-
-### Alfred - 첫 번째 공개 SuperAgent
-
-**Alfred**는 MoAI-ADK의 **첫 번째 공개 SuperAgent**입니다. 개발 워크플로우(SPEC-First TDD)에 특화되어 있으며, 10개 AI 에이전트 팀을 조율합니다.
-
-### 향후 추가 예정 SuperAgent
-
-MoAI-ADK는 **모듈형 에이전트 아키텍처**로 설계되어, 다양한 도메인별 SuperAgent를 추가할 수 있습니다:
-
-| SuperAgent | 전문 영역 | 주요 기능 | 예상 출시 |
-|-----------|---------|----------|----------|
-| 🖋️ **Writing Agent** | 기술 문서 작성 | 블로그, 튜토리얼, API 문서 자동 생성 | TBD |
-| 🚀 **Startup MVP Agent** | 제품 개발 | 기획→개발→배포 End-to-End 지원 | TBD |
-| 📊 **Analytics Agent** | 데이터 분석 | EDA, 시각화, ML 모델 추천 | TBD |
-| 🎨 **Design System Agent** | UI/UX | 컴포넌트 라이브러리, 디자인 토큰 관리 | TBD |
-
-### 에이전트 생태계 비전
-
-```text
-MoAI-ADK Ecosystem
-├─ ▶◀ Alfred (개발 워크플로우) ← 현재 공개
-│   └─ 9개 서브에이전트
-├─ 🖋️ Writing Agent (콘텐츠 제작) ← 향후
-├─ 🚀 Startup MVP Agent (제품 개발) ← 향후
-├─ 📊 Analytics Agent (데이터 분석) ← 향후
-└─ 🎨 Design System Agent (디자인 시스템) ← 향후
-```
-
-
-**핵심 철학**: "한 가지를 완벽하게, 그 다음 확장하라"
-
----
-
 ## 💻 CLI Reference
 
 ### 핵심 명령어
