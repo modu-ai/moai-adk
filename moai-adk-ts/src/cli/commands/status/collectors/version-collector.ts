@@ -34,7 +34,7 @@ export class VersionCollector {
   public async collectVersionInfo(projectPath: string): Promise<VersionInfo> {
     try {
       // Try to get package version from package.json in moai-adk-ts
-      let packageVersion = '0.0.1';
+      let packageVersion = '0.2.0';
       try {
         const packageJsonPath = path.join(
           __dirname,
@@ -44,11 +44,11 @@ export class VersionCollector {
         const packageJsonExists = await fs.pathExists(packageJsonPath);
         if (packageJsonExists) {
           const packageJson = await fs.readJson(packageJsonPath);
-          packageVersion = packageJson.version || '0.0.1';
+          packageVersion = packageJson.version || '0.2.0';
         }
       } catch {
         // Fallback to default version
-        packageVersion = '0.0.1';
+        packageVersion = '0.2.0';
       }
 
       // Try to get resource version from .moai/version.json

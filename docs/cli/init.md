@@ -168,35 +168,31 @@ moai init --force --backup
 # ✅ Configuration updated successfully!
 ```
 
-### 예제 6: Minimal 템플릿으로 시작
+### 예제 6: 팀 모드로 시작
 
-최소한의 구성으로 빠르게 시작하고 싶을 때 사용합니다.
+Team 모드는 GitHub 통합을 활성화하여 Issue/PR 기반 협업을 지원합니다.
 
 ```bash
-moai init simple-project --template minimal
+moai init my-team-project --team
 
-# Minimal 템플릿 포함 항목:
-# - 필수 에이전트만 (spec-builder, code-builder, doc-syncer)
-# - 기본 명령어만 (/alfred:1-spec, /alfred:2-build, /alfred:3-sync)
-# - 최소 훅 (policy-block, session-notice)
-# - 기본 프로젝트 템플릿
+# Team 모드 특징:
+# - GitHub Issue/PR 기반 SPEC 관리
+# - 자동 브랜치 생성 및 PR 생성
+# - GitFlow 전략 자동 적용
+# - 코드 리뷰 워크플로우 지원
 ```
 
-### 예제 7: Advanced 템플릿으로 시작
+### 예제 7: 백업과 함께 초기화
 
-고급 기능과 추가 도구를 포함한 완전한 환경을 구성합니다.
+기존 설정을 백업하고 새로운 설정으로 초기화합니다.
 
 ```bash
-moai init enterprise-project --template advanced
+moai init . --backup
 
-# Advanced 템플릿 추가 항목:
-# - 전체 7개 에이전트
-# - 추가 명령어 (/alfred:8-project)
-# - 전체 8개 훅
-# - CI/CD 템플릿 (GitHub Actions, GitLab CI)
-# - Docker 및 docker-compose 설정
-# - 성능 모니터링 도구
-# - 보안 스캐닝 설정
+# 백업 기능:
+# - 기존 .moai, .claude 디렉토리 백업
+# - 타임스탬프가 포함된 백업 디렉토리 생성
+# - 안전한 롤백 지원
 ```
 
 ## 생성되는 디렉토리 구조

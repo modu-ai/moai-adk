@@ -7,74 +7,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.0] - 2025-10-03
 
-### Changed
-- Package name restored to `moai-adk` (from temporary `moai-adk-cli`)
-- All documentation updated to use `moai-adk`
+### 🎉 Initial Release
 
-### Note
-- Previous temporary package `moai-adk-cli@0.1.1` is deprecated
-- Use `npm install -g moai-adk` for installation
-
-## [0.1.1] - 2025-10-02
-
-### Changed
-- Temporary package name: `moai-adk-cli` (due to 24-hour npm republish restriction)
-- All installation commands temporarily used `moai-adk-cli`
-
-## [0.1.0] - 2025-01-10
+MoAI-ADK (Agentic Development Kit) - TypeScript 기반 SPEC-First TDD 개발 프레임워크 첫 공식 배포
 
 ### Added
-- 🎯 SPEC-First TDD workflow with 3-step development process
-- 🤖 Alfred SuperAgent with 9 specialized agents ecosystem
-- 🏷️ 4-Core @TAG system (SPEC → TEST → CODE → DOC)
-- 🌍 Universal language support (TypeScript, Python, Java, Go, Rust, Dart, Swift, Kotlin)
-- 📱 Mobile framework support (Flutter, React Native, iOS, Android)
-- ⚡ Intelligent project diagnostics and environment validation
-- 🔒 TRUST 5 principles (Test, Readable, Unified, Secured, Trackable)
-- 📊 Living Document synchronization
-- 🚀 GitFlow integration with automated branching and PR management
-- 🛠️ Claude Code complete integration (Agents, Commands, Hooks, Output Styles)
 
-### Features
-- **CLI Commands**:
-  - `moai init` - Initialize new MoAI-ADK project
-  - `moai doctor` - System environment diagnostics
-  - `moai status` - Project status check
-  - `moai update` - Update MoAI-ADK templates
-  - `moai restore` - Restore from backup
+#### 🎯 Core Features
+- **SPEC-First TDD Workflow**: 3단계 개발 프로세스 (SPEC → TDD → Sync)
+- **Alfred SuperAgent**: 9개 전문 에이전트 시스템
+- **4-Core @TAG System**: SPEC → TEST → CODE → DOC 완전 추적성
+- **Universal Language Support**: TypeScript, Python, Java, Go, Rust, Dart, Swift, Kotlin 등
+- **Mobile Framework Support**: Flutter, React Native, iOS, Android
+- **TRUST 5 Principles**: Test, Readable, Unified, Secured, Trackable
 
-- **Alfred Commands**:
-  - `/alfred:1-spec` - EARS specification creation
-  - `/alfred:2-build` - TDD implementation (Red-Green-Refactor)
-  - `/alfred:3-sync` - Document synchronization
-  - `/alfred:8-project` - Project initialization
-  - `/alfred:9-update` - Package and template updates
+#### 🤖 Alfred Agent Ecosystem
+- **spec-builder** 🏗️ - EARS 명세 작성
+- **code-builder** 💎 - TDD 구현 (Red-Green-Refactor)
+- **doc-syncer** 📖 - 문서 동기화
+- **tag-agent** 🏷️ - TAG 시스템 관리
+- **git-manager** 🚀 - Git 워크플로우 자동화
+- **debug-helper** 🔬 - 오류 진단
+- **trust-checker** ✅ - TRUST 5원칙 검증
+- **cc-manager** 🛠️ - Claude Code 설정
+- **project-manager** 📋 - 프로젝트 초기화
 
-- **Code Quality**:
-  - TypeScript strict mode enabled
-  - Biome linter and formatter integration
-  - Comprehensive test coverage with Vitest
-  - Automated security scanning
+#### 🔧 CLI Commands
+- `moai init` - MoAI-ADK 프로젝트 초기화
+- `moai doctor` - 시스템 환경 진단
+- `moai status` - 프로젝트 상태 확인
+- `moai update` - 템플릿 업데이트
+- `moai restore` - 백업 복원
 
-- **Documentation**:
-  - VitePress documentation site
-  - TypeDoc API documentation
-  - Comprehensive README and guides
+#### 📝 Alfred Commands (Claude Code)
+- `/alfred:1-spec` - EARS 형식 명세서 작성
+- `/alfred:2-build` - TDD 구현
+- `/alfred:3-sync` - Living Document 동기화
+- `/alfred:8-project` - 프로젝트 문서 초기화
+- `/alfred:9-update` - 패키지 및 템플릿 업데이트
 
-### Technical Stack
+#### 🛠️ Technical Stack
 - TypeScript 5.9.2+
-- Node.js 18.0+
-- Bun 1.2.19+ (recommended)
-- Vitest for testing
-- Biome for linting/formatting
-- tsup for building
+- Node.js 18.0+ / Bun 1.2.19+ (권장)
+- Vitest (Testing)
+- Biome (Linting/Formatting)
+- tsup (Building)
 
-### Known Issues
-- Some installation flow edge cases require validation improvements
-- Test coverage at ~95% (target: 100%)
-- Documentation still being enhanced
+#### 📚 Documentation
+- VitePress 문서 사이트
+- TypeDoc API 문서
+- 종합 가이드 및 튜토리얼
 
-### Breaking Changes
-- First release - no breaking changes
+### Installation
 
-[0.1.0]: https://github.com/modu-ai/moai-adk/releases/tag/v0.1.0
+```bash
+# npm
+npm install -g moai-adk
+
+# bun (권장)
+bun add -g moai-adk
+```
+
+### Links
+- **npm Package**: https://www.npmjs.com/package/moai-adk
+- **GitHub**: https://github.com/modu-ai/moai-adk
+- **Documentation**: https://moai-adk.vercel.app
+
+---
+
+[0.2.0]: https://github.com/modu-ai/moai-adk/releases/tag/v0.2.0

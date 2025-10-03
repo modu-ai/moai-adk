@@ -352,15 +352,13 @@ export class AuthService {
 새 MoAI-ADK 프로젝트를 초기화합니다.
 
 ```bash
-moai init my-project                    # 기본 템플릿
-moai init my-api --template advanced    # 고급 템플릿
-moai init --interactive                 # 대화형 마법사
-moai init --team                        # 팀 모드
+moai init my-project                    # 새 프로젝트 생성
+moai init .                             # 현재 디렉토리에 설치
+moai init my-project --team             # Team 모드로 초기화
+moai init . --backup                    # 백업 생성 후 설치
 ```
 
 **옵션**:
-- `-t, --template <type>`: 템플릿 타입
-- `-i, --interactive`: 대화형 설정
 - `-b, --backup`: 설치 전 백업
 - `-f, --force`: 기존 파일 덮어쓰기
 - `--personal`: 개인 모드 (기본값)
