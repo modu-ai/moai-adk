@@ -10,11 +10,8 @@ import { logger } from '../../utils/winston-logger.js';
 import { type RequirementCheckResult, SystemDetector } from './detector';
 import { requirementRegistry } from './requirements';
 
-export {
-  DetectionResult,
-  RequirementCheckResult,
-  SystemDetector,
-} from './detector';
+export type { DetectionResult, RequirementCheckResult } from './detector';
+export { SystemDetector } from './detector';
 export {
   RequirementRegistry,
   requirementRegistry,

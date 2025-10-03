@@ -88,7 +88,7 @@ var init_claude = __esm({
 
 // src/claude/hooks/pre-write-guard.ts
 var SENSITIVE_KEYWORDS = [".env", "/secrets", "/.git/", "/.ssh"];
-var PROTECTED_PATHS = [];
+var PROTECTED_PATHS = [".moai/memory/"];
 var PreWriteGuard = class {
   name = "pre-write-guard";
   async execute(input) {
@@ -127,9 +127,12 @@ var PreWriteGuard = class {
         return false;
       }
     }
-    for (const protectedPath of PROTECTED_PATHS) {
-      if (filePath.includes(protectedPath)) {
-        return false;
+    const isTemplate = filePath.includes("/templates/.moai/");
+    if (!isTemplate) {
+      for (const protectedPath of PROTECTED_PATHS) {
+        if (filePath.includes(protectedPath)) {
+          return false;
+        }
       }
     }
     return true;

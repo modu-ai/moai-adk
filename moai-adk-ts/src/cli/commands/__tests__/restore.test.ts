@@ -1,10 +1,18 @@
 /**
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
  * @file Tests for restore command implementation
  * @author MoAI Team
  * @tags @TEST:CLI-RESTORE-001 @SPEC:CLI-FOUNDATION-012
  */
 
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  test,
+  vi,
+} from 'vitest';
 import { RestoreCommand } from '../restore';
 
 // Simple minimal test to verify TDD Red phase

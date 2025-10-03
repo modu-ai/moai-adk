@@ -142,14 +142,9 @@ describe('PreWriteGuard', () => {
 
         const result = await preWriteGuard.execute(input);
 
-        // SENSITIVE_KEYWORDS includes '/secrets', so paths with 'secrets' are blocked
-        if (filePath.includes('secrets')) {
-          expect(result.success).toBe(false);
-          expect(result.blocked).toBe(true);
-        } else {
-          // PROTECTED_PATHS is empty, other .moai/memory paths are allowed
-          expect(result.success).toBe(true);
-        }
+        // All .moai/memory/ paths are now protected
+        expect(result.success).toBe(false);
+        expect(result.blocked).toBe(true);
       }
     });
 

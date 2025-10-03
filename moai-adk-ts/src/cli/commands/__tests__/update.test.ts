@@ -1,10 +1,18 @@
 /**
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
  * @file Tests for update command implementation
  * @author MoAI Team
  * @tags @TEST:CLI-UPDATE-001 @SPEC:CLI-FOUNDATION-012
  */
 
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  test,
+  vi,
+} from 'vitest';
 import { UpdateCommand } from '../update';
 
 // Simple minimal test to verify TDD Red phase
