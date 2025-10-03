@@ -1,0 +1,651 @@
+/**
+ * Custom VitePress Theme - MoAI-ADK
+ * zinc 무채색 + 타이포그래피 중심 디자인
+ */
+
+/* ============================================
+   Font Imports - DungGeunMo 둥근모 폰트
+   ============================================ */
+
+@font-face {
+  font-family: 'DungGeunMo';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/DungGeunMo.woff') format('woff');
+  font-weight: normal;
+  font-display: swap;
+}
+
+/* ============================================
+   VitePress Theme Variables Override - zinc 무채색
+   ============================================ */
+
+:root {
+  /* Brand Colors - 무채색 zinc */
+  --vp-c-brand-1: #18181b;
+  --vp-c-brand-2: #27272a;
+  --vp-c-brand-3: #3f3f46;
+  --vp-c-brand-soft: #f4f4f5;
+
+  /* Background Colors */
+  --vp-c-bg: #ffffff;
+  --vp-c-bg-soft: #fafafa;
+  --vp-c-bg-mute: #f4f4f5;
+  --vp-c-bg-alt: #f4f4f5;
+
+  /* Text Colors */
+  --vp-c-text-1: #18181b;
+  --vp-c-text-2: #3f3f46;
+  --vp-c-text-3: #71717a;
+
+  /* Border Colors */
+  --vp-c-border: #e4e4e7;
+  --vp-c-divider: #e4e4e7;
+  --vp-c-gutter: #e4e4e7;
+
+  /* Letter Spacing */
+  --letter-spacing-tight: -0.05em;
+  --letter-spacing-normal: -0.03em;
+  --letter-spacing-relaxed: -0.01em;
+}
+
+:root.dark {
+  /* Brand Colors - Dark Mode */
+  --vp-c-brand-1: #fafafa;
+  --vp-c-brand-2: #e4e4e7;
+  --vp-c-brand-3: #d4d4d8;
+  --vp-c-brand-soft: #27272a;
+
+  /* Background Colors - Dark Mode */
+  --vp-c-bg: #09090b;
+  --vp-c-bg-soft: #18181b;
+  --vp-c-bg-mute: #27272a;
+  --vp-c-bg-alt: #18181b;
+
+  /* Text Colors - Dark Mode */
+  --vp-c-text-1: #fafafa;
+  --vp-c-text-2: #d4d4d8;
+  --vp-c-text-3: #a1a1aa;
+
+  /* Border Colors - Dark Mode */
+  --vp-c-border: #3f3f46;
+  --vp-c-divider: #3f3f46;
+  --vp-c-gutter: #27272a;
+}
+
+* {
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+/* ============================================
+   Navigation & Header - 무채색
+   ============================================ */
+
+/* Site Title (Logo) */
+.VPNavBarTitle .title {
+  font-weight: 900 !important;
+  letter-spacing: -0.05em !important;
+}
+
+/* Navigation Links */
+.VPNavBar .VPLink,
+.VPNavBarMenu .text,
+.VPNavBarMenuLink {
+  font-weight: 800 !important; /* 더 두껍게 */
+}
+
+/* Hero 타이틀: 가장 두껍게 (900) + 검정색 무채색 */
+.VPHero .name {
+  font-weight: 900 !important; /* 가장 두껍게 */
+  letter-spacing: -0.05em !important;
+  font-size: 5rem !important; /* 큰 타이포그래피 효과 */
+  color: #09090b !important; /* zinc-950 - 가장 진한 검정 */
+}
+
+:root.dark .VPHero .name {
+  color: #fafafa !important; /* zinc-50 */
+}
+
+/* Hero 서브타이틀: 무채색 */
+.VPHero .text {
+  font-weight: 300 !important;
+  letter-spacing: -0.03em !important;
+  font-size: 1.75rem !important; /* 크기 명시 */
+  color: #52525b !important; /* zinc-600 */
+}
+
+:root.dark .VPHero .text {
+  color: #a1a1aa !important; /* zinc-400 */
+}
+
+/* Hero Tagline: 무채색 */
+.VPHero .tagline {
+  font-weight: 400 !important;
+  letter-spacing: -0.02em !important;
+  color: #71717a !important; /* zinc-500 */
+}
+
+:root.dark .VPHero .tagline {
+  color: #a1a1aa !important; /* zinc-400 */
+}
+
+/* 헤딩: 무채색 계열 */
+h1 {
+  font-weight: 900 !important; /* 두껍게 */
+  font-size: 2.5rem !important;
+  letter-spacing: -0.05em !important;
+  color: #09090b !important; /* zinc-950 */
+}
+
+h2 {
+  font-weight: 800 !important;
+  font-size: 2rem !important;
+  letter-spacing: -0.04em !important;
+  color: #18181b !important; /* zinc-900 */
+}
+
+h3 {
+  font-weight: 700 !important;
+  font-size: 1.5rem !important;
+  letter-spacing: -0.03em !important;
+  color: #27272a !important; /* zinc-800 */
+}
+
+h4, h5, h6 {
+  font-weight: 600 !important;
+  font-size: 1.25rem !important;
+  letter-spacing: -0.02em !important;
+  color: #3f3f46 !important; /* zinc-700 */
+}
+
+:root.dark h1 { color: #fafafa !important; }
+:root.dark h2 { color: #f4f4f5 !important; }
+:root.dark h3 { color: #e4e4e7 !important; }
+:root.dark h4, :root.dark h5, :root.dark h6 { color: #d4d4d8 !important; }
+
+/* 본문: Normal Weight (가독성 우선) */
+p, li, span {
+  font-weight: 400 !important; /* 보통 굵기로 가독성 확보 */
+  letter-spacing: -0.02em !important;
+  color: #3f3f46 !important; /* zinc-700 */
+}
+
+:root.dark p, :root.dark li, :root.dark span {
+  color: #d4d4d8 !important; /* zinc-300 */
+}
+
+/* Feature 카드: 무채색 */
+.VPFeature .title {
+  font-weight: 700 !important;
+  font-size: 1.5rem !important;
+  letter-spacing: -0.03em !important;
+  color: #18181b !important; /* zinc-900 */
+}
+
+:root.dark .VPFeature .title {
+  color: #fafafa !important;
+}
+
+.VPFeature .details {
+  font-weight: 400 !important;
+  letter-spacing: -0.01em !important;
+  color: #71717a !important; /* zinc-500 */
+}
+
+:root.dark .VPFeature .details {
+  color: #a1a1aa !important;
+}
+
+/* Feature 아이콘: 무채색 + 다크모드 대응 */
+.VPFeature .icon {
+  background: transparent !important;
+}
+
+/* VPImage (img 태그로 로드된 SVG) - 라이트 모드: 검정 유지 */
+.VPFeature .VPImage {
+  filter: none !important;
+}
+
+/* VPImage (img 태그로 로드된 SVG) - 다크 모드: 흰색 반전 */
+:root.dark .VPFeature .VPImage {
+  filter: brightness(0) invert(1) !important;
+}
+
+/* ============================================
+   Buttons & Links - 무채색 테마
+   ============================================ */
+
+/* Hero 버튼: 무채색 zinc */
+.VPButton.brand {
+  background: #18181b !important; /* zinc-900 */
+  border-color: #18181b !important;
+  color: #fafafa !important; /* zinc-50 */
+}
+
+.VPButton.brand:hover {
+  background: #27272a !important; /* zinc-800 */
+  border-color: #27272a !important;
+}
+
+:root.dark .VPButton.brand {
+  background: #fafafa !important; /* zinc-50 */
+  border-color: #fafafa !important;
+  color: #18181b !important; /* zinc-900 */
+}
+
+:root.dark .VPButton.brand:hover {
+  background: #e4e4e7 !important; /* zinc-200 */
+  border-color: #e4e4e7 !important;
+}
+
+/* Alt 버튼: 무채색 outline */
+.VPButton.alt {
+  background: transparent !important;
+  border-color: #18181b !important; /* zinc-900 */
+  color: #18181b !important;
+}
+
+.VPButton.alt:hover {
+  background: #18181b !important;
+  color: #fafafa !important;
+}
+
+:root.dark .VPButton.alt {
+  border-color: #fafafa !important; /* zinc-50 */
+  color: #fafafa !important;
+}
+
+:root.dark .VPButton.alt:hover {
+  background: #fafafa !important;
+  color: #18181b !important;
+}
+
+/* 링크: 무채색 */
+a {
+  color: #18181b !important; /* zinc-900 */
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: #52525b !important; /* zinc-600 */
+}
+
+:root.dark a {
+  color: #fafafa !important; /* zinc-50 */
+}
+
+:root.dark a:hover {
+  color: #d4d4d8 !important; /* zinc-300 */
+}
+
+/* ============================================
+   Mermaid Diagram Theme - zinc 무채색
+   ============================================ */
+
+/* 모든 Mermaid 다이어그램을 grayscale로 강제 변환 */
+.mermaid {
+  filter: grayscale(100%);
+}
+
+/* Dark 모드에서 가독성 향상 */
+:root.dark .mermaid {
+  filter: grayscale(100%) brightness(1.3) contrast(1.2);
+}
+
+/* Light theme - Mermaid zinc 색상 */
+:root {
+  --mermaid-node-bg: #e4e4e7;       /* zinc-200 */
+  --mermaid-node-border: #52525b;   /* zinc-600 */
+  --mermaid-node-text: #18181b;     /* zinc-900 */
+  --mermaid-edge-color: #71717a;    /* zinc-500 */
+  --mermaid-edge-text: #3f3f46;     /* zinc-700 */
+  --mermaid-cluster-bg: #f4f4f5;    /* zinc-100 */
+  --mermaid-cluster-border: #a1a1aa; /* zinc-400 */
+}
+
+/* Dark theme - Mermaid zinc 색상 */
+:root.dark {
+  --mermaid-node-bg: #27272a;       /* zinc-800 */
+  --mermaid-node-border: #d4d4d8;   /* zinc-300 */
+  --mermaid-node-text: #fafafa;     /* zinc-50 */
+  --mermaid-edge-color: #a1a1aa;    /* zinc-400 */
+  --mermaid-edge-text: #e4e4e7;     /* zinc-200 */
+  --mermaid-cluster-bg: #18181b;    /* zinc-900 */
+  --mermaid-cluster-border: #71717a; /* zinc-500 */
+}
+
+/* Light 모드 - Mermaid 다이어그램 */
+.mermaid svg {
+  /* 노드 배경 - 모든 rect 요소 */
+  rect {
+    fill: var(--mermaid-node-bg) !important;
+    stroke: var(--mermaid-node-border) !important;
+    stroke-width: 2px !important;
+  }
+
+  /* 노드 도형 - circle, ellipse, polygon */
+  circle,
+  ellipse,
+  polygon {
+    fill: var(--mermaid-node-bg) !important;
+    stroke: var(--mermaid-node-border) !important;
+    stroke-width: 2px !important;
+  }
+
+  /* 모든 텍스트 요소 */
+  text,
+  tspan,
+  .nodeLabel,
+  .edgeLabel {
+    fill: var(--mermaid-node-text) !important;
+    color: var(--mermaid-node-text) !important;
+  }
+
+  /* foreignObject 내부 div */
+  foreignObject div {
+    color: var(--mermaid-edge-text) !important;
+    background: transparent !important;
+  }
+
+  /* 모든 path 요소 (엣지, 화살표) */
+  path {
+    stroke: var(--mermaid-edge-color) !important;
+    stroke-width: 1.5px !important;
+  }
+
+  /* 화살표 마커 */
+  marker path {
+    fill: var(--mermaid-edge-color) !important;
+    stroke: var(--mermaid-edge-color) !important;
+  }
+
+  /* 클러스터 */
+  .cluster rect {
+    fill: var(--mermaid-cluster-bg) !important;
+    stroke: var(--mermaid-cluster-border) !important;
+    stroke-width: 1.5px !important;
+  }
+}
+
+/* Dark 모드 전용 - 더 강한 대비 */
+:root.dark .mermaid svg {
+  /* 노드 배경 - 모든 rect 요소 (다크 모드) */
+  rect {
+    fill: var(--mermaid-node-bg) !important;
+    stroke: var(--mermaid-node-border) !important;
+    stroke-width: 2px !important;
+  }
+
+  /* 노드 도형 - circle, ellipse, polygon (다크 모드) */
+  circle,
+  ellipse,
+  polygon {
+    fill: var(--mermaid-node-bg) !important;
+    stroke: var(--mermaid-node-border) !important;
+    stroke-width: 2px !important;
+  }
+
+  /* 모든 텍스트 요소 (다크 모드 - 밝게) */
+  text,
+  tspan,
+  .nodeLabel,
+  .edgeLabel {
+    fill: var(--mermaid-node-text) !important;
+    color: var(--mermaid-node-text) !important;
+  }
+
+  /* foreignObject 내부 div (다크 모드) */
+  foreignObject div {
+    color: var(--mermaid-edge-text) !important;
+    background: transparent !important;
+  }
+
+  /* 모든 path 요소 (엣지, 화살표 - 다크 모드) */
+  path {
+    stroke: var(--mermaid-edge-color) !important;
+    stroke-width: 1.5px !important;
+  }
+
+  /* 화살표 마커 (다크 모드) */
+  marker path {
+    fill: var(--mermaid-edge-color) !important;
+    stroke: var(--mermaid-edge-color) !important;
+  }
+
+  /* 클러스터 (다크 모드) */
+  .cluster rect {
+    fill: var(--mermaid-cluster-bg) !important;
+    stroke: var(--mermaid-cluster-border) !important;
+    stroke-width: 1.5px !important;
+  }
+}
+
+/* ============================================
+   Hero Section Layout - 그리드 기반 정렬
+   ============================================ */
+
+/* Hero 컨테이너: 그리드 기반 중앙 정렬 (8px 단위) */
+.VPHero {
+  padding: 96px 32px !important; /* 12 * 8px, 4 * 8px */
+}
+
+/* Desktop 레이아웃: 이미지 좌측, 텍스트 우측, 수직 중앙 정렬 */
+@media (min-width: 960px) {
+  .VPHero .container {
+    display: flex !important;
+    flex-direction: row-reverse !important;
+    align-items: center !important; /* 수직 중앙 정렬 */
+    gap: 64px !important; /* 8 * 8px */
+    padding: 64px 0 !important; /* 8 * 8px */
+  }
+
+  .VPHero .main {
+    text-align: left !important;
+    flex: 1 !important;
+  }
+
+  .VPHero .image-container {
+    flex: 1 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+}
+
+/* 모바일: 스택 레이아웃, 여백 조정 */
+@media (max-width: 959px) {
+  .VPHero {
+    padding: 64px 24px !important; /* 8 * 8px, 3 * 8px */
+  }
+
+  .VPHero .container {
+    gap: 48px !important; /* 6 * 8px */
+  }
+}
+
+/* ============================================
+   Hero Image Size - 원본 크기 + 반응형
+   ============================================ */
+
+/* Hero 이미지 크기 제한 제거 */
+.VPHero .image-container,
+.VPHero .image,
+.VPImage {
+  max-width: 100% !important;
+  max-height: none !important;
+  width: auto !important;
+  height: auto !important;
+}
+
+/* 이미지 컨테이너 제한 제거 */
+.VPHero .image-bg {
+  max-width: 100% !important;
+  max-height: none !important;
+}
+
+/* 실제 img 태그 스타일 */
+.VPHero img,
+.VPImage img {
+  max-width: 100% !important;
+  width: auto !important;
+  height: auto !important;
+  object-fit: contain !important;
+}
+
+/* MoAI CLI 이미지 배경 색상 */
+.VPHero .image-container {
+  background-color: #0A0A0B !important;
+  border-radius: 12px !important;
+  padding: 24px !important;
+}
+
+/* 모바일에서도 동일하게 적용 */
+@media (max-width: 960px) {
+  .VPHero .image-container,
+  .VPHero .image,
+  .VPImage {
+    max-width: 100% !important;
+  }
+
+  .VPHero img,
+  .VPImage img {
+    max-width: 100% !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+}
+
+/* ============================================
+   Mermaid Diagram Text Fix - 텍스트 잘림 방지
+   ============================================ */
+
+/* 노드 텍스트 패딩 및 크기 조정 */
+.mermaid svg .node rect,
+.mermaid svg .node circle,
+.mermaid svg .node ellipse,
+.mermaid svg .node polygon {
+  padding: 12px !important;
+}
+
+/* 노드 레이블 텍스트 스타일 */
+.mermaid svg .nodeLabel,
+.mermaid svg .node text {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  line-height: 1.4 !important;
+}
+
+/* 엣지 레이블 배경 및 패딩 */
+.mermaid svg .edgeLabel {
+  background-color: var(--vp-c-bg) !important;
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+  font-size: 12px !important;
+}
+
+/* foreignObject 크기 자동 조정 */
+.mermaid svg foreignObject {
+  overflow: visible !important;
+}
+
+/* 다크 모드 엣지 레이블 배경 */
+:root.dark .mermaid svg .edgeLabel {
+  background-color: var(--vp-c-bg-soft) !important;
+}
+
+/* ============================================
+   Sidebar - 사이드바 스타일
+   ============================================ */
+
+/* 사이드바 그룹 제목 (섹션 제목) */
+.VPSidebarItem.level-0 .text,
+.group .title {
+  font-size: 0.9rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+}
+
+/* 사이드바 링크 */
+.VPSidebarItem.level-1 .text,
+.VPSidebarItem.level-2 .text {
+  font-size: 0.875rem !important;
+  font-weight: 400 !important;
+}
+
+/* ============================================
+   Code Block - 구름 폰트 적용 + 행간 조정
+   ============================================ */
+
+/* 코드 블록 폰트 - DungGeunMo 둥근모 폰트 (색상 보존) */
+code,
+pre,
+.vp-code,
+kbd {
+  font-family: 'DungGeunMo', 'D2Coding', 'Consolas', 'Monaco', monospace !important;
+  font-size: 16px !important; /* 픽셀 폰트 최적 크기 */
+}
+
+/* Shiki 컨테이너는 폰트만 변경, 색상은 보존 */
+.shiki,
+.shiki span {
+  font-family: 'DungGeunMo', 'D2Coding', 'Consolas', 'Monaco', monospace !important;
+  font-size: 16px !important;
+}
+
+/* Shiki 신텍스 하이라이팅 색상 활성화 */
+.shiki span {
+  color: var(--shiki-light) !important;
+}
+
+:root.dark .shiki span {
+  color: var(--shiki-dark) !important;
+}
+
+/* 인라인 코드 */
+:not(pre) > code {
+  font-family: 'DungGeunMo', 'D2Coding', 'Consolas', 'Monaco', monospace !important;
+  font-size: 16px !important; /* 코드 블록과 동일 크기 */
+}
+
+/* 코드 블록 행간 조정 - 적절한 간격 */
+pre code,
+.vp-code code,
+.shiki code {
+  line-height: 1.2 !important; /* 적절한 행간 */
+  display: block !important;
+}
+
+/* 코드 블록 내부 라인 */
+.vp-code .line,
+.shiki .line {
+  line-height: 1.2 !important;
+}
+
+/* 코드 주석 볼드 처리 - CSS 변수 기반 색상 감지 */
+.vp-code span[style*="--shiki-light:#6A737D"],
+.vp-code span[style*="--shiki-dark:#6A737D"],
+.vp-code span[style*="--shiki-light:#8B949E"],
+.vp-code span[style*="--shiki-dark:#8B949E"],
+.vp-code span[style*="font-weight:700"] {
+  font-weight: 700 !important;
+}
+
+/* 코드 블록 여백 제거 */
+pre,
+.vp-code,
+div[class*="language-"] {
+  margin: 0 !important;
+}
+
+pre code {
+  padding: 0 !important;
+}
+
+/* 코드 블록 여백 조정 */
+div[class*="language-"] pre {
+  margin-bottom: 0 !important;
+  padding: 1rem !important;
+}
+
+div[class*="language-"] {
+  margin-bottom: 1rem !important;
+}
