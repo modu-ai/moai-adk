@@ -68,7 +68,7 @@ Alfred는 모든 개발 작업을 **SPEC → TDD → Sync**라는 3단계 파이
 
 Alfred는 모든 코드에 **TRUST 5원칙**(Test First, Readable, Unified, Secured, Trackable)을 자동으로 적용하고 검증합니다. 사람이 일일이 체크리스트를 들고 "테스트 커버리지 확인했나? 함수 길이 확인했나? 보안 취약점 확인했나?"를 물어볼 필요가 없습니다. Alfred가 **자동으로** 테스트 커버리지를 측정하고(≥85% 필수), 코드 복잡도를 분석하고(복잡도 ≤10), 보안 취약점을 스캔하고(SQL Injection, XSS 체크), TAG 추적성을 보장합니다(고아 TAG 자동 탐지).
 
-예를 들어, 함수가 50줄을 넘어가면 Alfred가 즉시 경고합니다: "이 함수는 너무 길어요. 작은 함수로 분리해주세요." 테스트 커버리지가 85% 미만이면 빌드를 멈춥니다: "테스트가 부족합니다. 엣지 케이스를 더 테스트해주세요." SQL 쿼리에 사용자 입력을 직접 넣는 코드가 발견되면 보안 가이드를 제시합니다: "SQL Injection 취약점이 있습니다. Prepared Statement를 사용하세요." 이런 자동 검증 시스템 덕분에 여러분은 "좋은 코드를 작성해야지"라고 **의식적으로 생각할 필요 없이**, 자연스럽게 좋은 코드를 작성하게 됩니다. 품질은 선택이 아니라 **기본값(default)**입니다.
+예를 들어, 함수가 50줄을 넘어가면 Alfred가 즉시 경고합니다: "이 함수는 너무 길어요. 작은 함수로 분리해주세요." 테스트 커버리지가 85% 미만이면 빌드를 멈춥니다: "테스트가 부족합니다. 엣지 케이스를 더 테스트해주세요." SQL 쿼리에 사용자 입력을 직접 넣는 코드가 발견되면 보안 가이드를 제시합니다: "SQL Injection 취약점이 있습니다. Prepared Statement를 사용하세요." 이런 자동 검증 시스템 덕분에 여러분은 "좋은 코드를 작성해야지"라고 **의식적으로 생각할 필요 없이**, 자연스럽게 좋은 코드를 작성하게 됩니다. 품질은 선택이 아니라 기본값(default)입니다.
 
 #### 3️⃣ 추적성(Traceability): 6개월 후에도 "왜"를 찾을 수 있는 @TAG 시스템
 
@@ -537,9 +537,9 @@ function getJwtSecret(): string {
 
    JWT 토큰 기반 사용자 로그인
 
-   **SPEC**: SPEC-AUTH-001.md
-   **구현**: src/services/auth.ts
-   **테스트**: tests/auth/login.test.ts
+   - SPEC: SPEC-AUTH-001.md
+   - 구현: src/services/auth.ts
+   - 테스트: tests/auth/login.test.ts
 
    ### 요청
    ```json
@@ -1023,7 +1023,7 @@ if (tokenExpiresIn < 5 * 60) await refreshToken();
 📚 1단계: 개념 (Concept)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**JWT (JSON Web Token)**
+JWT (JSON Web Token)
 Stateless 인증을 위한 토큰 기반 방식.
 
 **Session vs JWT**
