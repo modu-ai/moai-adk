@@ -117,6 +117,10 @@ moai --version
 moai init my-project
 cd my-project
 
+# 기존 프로젝트에 설치
+cd existing-project
+moai init .
+
 # Claude Code 실행
 claude
 ```
@@ -154,17 +158,6 @@ Alfred가 자동으로 수행:
 - ✅ `src/services/auth.ts` (구현)
 - ✅ `docs/api/auth.md` (문서)
 - ✅ `@SPEC → @TEST → @CODE → @DOC` TAG 체인
-
-### 💡 다음 단계
-
-- 📖 [Output Styles](#-alfreds-output-styles) - 학습 모드로 전환
-- 🌍 [Language Support](#-universal-language-support) - 다른 언어 사용
-- 💻 [CLI Reference](#-cli-reference) - 모든 명령어 보기
-
-**더 궁금한 점이 있으신가요?**
-
-- 💬 **질문 & 토론**: [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)
-- 🐛 **버그 리포트**: [GitHub Issues](https://github.com/modu-ai/moai-adk/issues)
 
 ---
 
@@ -808,8 +801,6 @@ Claude Code에서 `/output-style` 명령어로 전환:
 | 프로그래밍 처음 배우기 | `beginner-learning` | 개발 입문자 | 친절, 상세 설명, 단계별 안내 |
 | 팀 기술 선택 & 설계 논의 | `pair-collab` | 협업 개발자, 아키텍트 | 질문 기반, 브레인스토밍 |
 | 새로운 기술 학습 | `study-deep` | 신기술 학습자 | 개념 → 실습 → 전문가 팁 |
-| 코드 리뷰 세션 | `pair-collab` | 시니어/리드 개발자 | 트레이드오프 분석 |
-| 신입 개발자 온보딩 | `study-deep` | 팀 합류자 | 체계적 교육, 실무 통찰 |
 
 ### 💡 모든 스타일에서 동일하게 작동
 
@@ -1180,13 +1171,6 @@ MoAI-ADK Ecosystem
 └─ 🎨 Design System Agent (디자인 시스템) ← 향후
 ```
 
-### 설치 방법 (향후)
-
-```bash
-moai agent install writing-agent
-moai agent install startup-mvp-agent
-moai agent list  # 설치된 에이전트 목록
-```
 
 **핵심 철학**: "한 가지를 완벽하게, 그 다음 확장하라"
 
