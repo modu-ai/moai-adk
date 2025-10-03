@@ -12,7 +12,10 @@ import type { HookInput } from '../tag-enforcer';
 import { CodeFirstTAGEnforcer } from '../tag-enforcer';
 
 // Mock fs/promises
-vi.mock('fs/promises');
+vi.mock('fs/promises', () => ({
+  readFile: vi.fn(),
+  writeFile: vi.fn(),
+}));
 
 describe('CodeFirstTAGEnforcer Hook', () => {
   let enforcer: CodeFirstTAGEnforcer;

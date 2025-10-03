@@ -5,7 +5,7 @@
  * TAG 검증 로직 테스트
  */
 
-import { describe, test, expect } from 'vitest';
+import { beforeEach, describe, test, expect } from 'vitest';
 import { TagValidator } from '../../../../src/claude/hooks/tag-enforcer/tag-validator';
 
 describe('@TEST:REFACTOR-003: TAG Validator', () => {

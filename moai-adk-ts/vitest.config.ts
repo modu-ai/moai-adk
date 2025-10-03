@@ -61,13 +61,27 @@ export default defineConfig({
     // Types
     types: ['vitest/globals'],
 
-    // Pool options for better performance
-    pool: 'threads',
+    // Pool options for complete isolation
+    // Use 'forks' instead of 'threads' to ensure complete isolation between test files
+    pool: 'forks',
     poolOptions: {
-      threads: {
-        singleThread: false
+      forks: {
+        singleFork: false
       }
-    }
+    },
+
+    // Ensure test isolation
+    isolate: true,
+
+    // Run tests completely sequentially to avoid interference
+    sequence: {
+      concurrent: false,
+      shuffle: false
+    },
+
+    // Force single file execution at a time
+    maxConcurrency: 1,
+    fileParallelism: false
   },
 
   // Path resolution

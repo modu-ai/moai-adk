@@ -12,8 +12,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SessionNotifier } from '../session-notice/index';
 
 // Mock modules
-vi.mock('node:fs');
-vi.mock('node:child_process');
+vi.mock('node:fs', () => ({
+  existsSync: vi.fn(),
+  readFileSync: vi.fn(),
+}));
+vi.mock('node:child_process', () => ({
+  spawn: vi.fn(),
+}));
 
 describe('SessionNotifier Hook', () => {
   let notifier: SessionNotifier;
@@ -234,7 +239,7 @@ describe('SessionNotifier Hook', () => {
           }
         }),
       });
-      vi.mocked(spawn).mockImplementation(mockSpawn as any);
+      (spawn as any).mockImplementation(mockSpawn as any);
 
       const gitInfo = await notifier.getGitInfo();
 
@@ -251,7 +256,7 @@ describe('SessionNotifier Hook', () => {
           }
         }),
       });
-      vi.mocked(spawn).mockImplementation(mockSpawn as any);
+      (spawn as any).mockImplementation(mockSpawn as any);
 
       const gitInfo = await notifier.getGitInfo();
 
@@ -274,7 +279,7 @@ describe('SessionNotifier Hook', () => {
           }
         }),
       });
-      vi.mocked(spawn).mockImplementation(mockSpawn as any);
+      (spawn as any).mockImplementation(mockSpawn as any);
 
       const count = await notifier.getGitChangesCount();
 

@@ -14,8 +14,10 @@ import {
 } from '@/types/package-manager';
 
 // Mock execa
-vi.mock('execa');
-const mockExeca = vi.mocked(execa);
+vi.mock('execa', () => ({
+  execa: vi.fn(),
+}));
+const mockExeca = execa as any;
 
 describe('PackageManagerDetector', () => {
   let detector: PackageManagerDetector;
