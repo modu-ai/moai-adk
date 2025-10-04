@@ -49,6 +49,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ⚠️  0 errors
 ```
 
+### 🙏 Contributors
+- **[@Workuul](https://github.com/Workuul)** - 심볼릭 링크 실행 문제 수정 ([PR #1](https://github.com/modu-ai/moai-adk/pull/1))
+  - `realpathSync()` 적용으로 글로벌 설치 이슈 해결
+  - REPL/eval 환경 방어 로직 추가
+  - JSDoc 문서화 개선
+
 ---
 
 ## [0.2.2] - 2025-10-04
