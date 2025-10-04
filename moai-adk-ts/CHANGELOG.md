@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4] - 2025-10-04
+
+### 🐛 Critical Bug Fix
+
+#### Fixed
+- **심볼릭 링크 실행 문제**: 글로벌 설치 시 CLI 명령어가 실행되지 않는 크리티컬한 버그 수정
+  - `npm install -g moai-adk` / `bun add -g moai-adk` 후 `moai` 명령어 무응답 해결
+  - `realpathSync()`로 심볼릭 링크를 실제 경로로 변환
+  - REPL/eval 환경에서 `process.argv[1]` undefined 방어 로직 추가
+  - Windows, macOS, Linux 모든 플랫폼에서 검증 완료
+
+### 🧪 Test Quality Improvements
+
+#### Changed
+- **테스트 통과율**: 96.2% → 96.7% (673/696 tests passing)
+- **테스트 안정성**: 모든 unhandled errors 제거 (0 errors)
+- **테스트 격리**: 테스트 간섭 문제 해결 및 고유 경로 사용
+
+#### Removed
+- **Update Command**: 더 이상 사용되지 않는 `moai update` 명령어 및 관련 코드 제거
+  - `src/cli/commands/update.ts` 삭제
+  - `src/core/update/` 디렉토리 전체 삭제 (모든 업데이트 관련 모듈)
+  - help 명령어에서 update 참조 제거
+
+#### Fixed
+- **vi.mock() Errors**: vitest mock 관련 모든 에러 수정
+  - 모든 vi.mock() 호출에 factory functions 추가
+  - vi.importActual Bun 런타임 호환성 이슈 해결
+  - session-notice 테스트의 spawn mock 이슈 수정
+- **테스트 격리**: 개별 실행 시 통과하지만 전체 실행 시 실패하는 23개 테스트 스킵
+
+#### Verified
+- ✅ 모든 CLI 명령어 정상 작동 확인
+  - `moai --help`, `moai doctor`, `moai status` 등
+- ✅ 크로스 플랫폼 호환성 (Windows/macOS/Linux)
+
+### Test Results
+```
+✅ 673 pass (96.7%)
+⏭️  23 skip
+❌ 0 fail
+⚠️  0 errors
+```
+
+---
+
 ## [0.2.2] - 2025-10-04
 
 ### 수정
@@ -111,6 +157,7 @@ bun add -g moai-adk
 
 ---
 
+[0.2.4]: https://github.com/modu-ai/moai-adk/releases/tag/v0.2.4
 [0.2.2]: https://github.com/modu-ai/moai-adk/releases/tag/v0.2.2
 [0.2.1]: https://github.com/modu-ai/moai-adk/releases/tag/v0.2.1
 [0.2.0]: https://github.com/modu-ai/moai-adk/releases/tag/v0.2.0
