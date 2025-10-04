@@ -6,7 +6,7 @@
  * @tags @CODE:CLI-ENTRY-001 @SPEC:CLI-FOUNDATION-012
  */
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
 import chalk from 'chalk';
 import { Command } from 'commander';
@@ -213,8 +213,16 @@ export class CLIApp {
   }
 }
 
-// Main execution - ESM compatible
-if (import.meta.url === `file://${process.argv[1]}`) {
+/**
+ * Main execution entry point
+ * Uses realpathSync to handle symlink execution (e.g., via bun/npm global install)
+ * Guards against undefined argv[1] in REPL/eval contexts
+ * @see https://nodejs.org/api/fs.html#fsrealpathsyncpath-options
+ */
+if (
+  process.argv[1] &&
+  import.meta.url === `file://${realpathSync(process.argv[1])}`
+) {
   const app = new CLIApp();
   app.run(process.argv);
 }
