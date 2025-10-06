@@ -33,11 +33,9 @@ var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require
   throw Error('Dynamic require of "' + x + '" is not supported');
 });
 function isMoAIProject(projectRoot) {
-  const requiredPaths = [
-    path__namespace.join(projectRoot, ".moai"),
-    path__namespace.join(projectRoot, ".claude", "commands", "moai")
-  ];
-  return requiredPaths.every((p) => fs__namespace.existsSync(p));
+  const moaiDir = path__namespace.join(projectRoot, ".moai");
+  const alfredCommands = path__namespace.join(projectRoot, ".claude", "commands", "alfred");
+  return fs__namespace.existsSync(moaiDir) && fs__namespace.existsSync(alfredCommands);
 }
 function checkConstitutionStatus(projectRoot) {
   if (!isMoAIProject(projectRoot)) {
