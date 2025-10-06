@@ -7,6 +7,8 @@
  */
 
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { readFile } from 'node:fs/promises';
 import * as fs from 'fs-extra';
 
 /**
@@ -33,22 +35,31 @@ export class VersionCollector {
    */
   public async collectVersionInfo(projectPath: string): Promise<VersionInfo> {
     try {
-      // Try to get package version from package.json in moai-adk-ts
-      let packageVersion = '0.2.0';
+      // Try to get package version from VERSION file or package.json
+      let packageVersion = 'unknown';
       try {
-        const packageJsonPath = path.join(
-          __dirname,
-          '../../../..',
-          'package.json'
-        );
-        const packageJsonExists = await fs.pathExists(packageJsonPath);
-        if (packageJsonExists) {
-          const packageJson = await fs.readJson(packageJsonPath);
-          packageVersion = packageJson.version || '0.2.0';
+        // Use import.meta.url to get the current module path
+        const currentFilePath = fileURLToPath(import.meta.url);
+        const currentDir = path.dirname(currentFilePath);
+
+        // Try VERSION file first (more reliable after bundling)
+        // From: dist/cli/index.js -> ../../VERSION
+        const versionFilePath = path.join(currentDir, '../../VERSION');
+        if (await fs.pathExists(versionFilePath)) {
+          const versionContent = await readFile(versionFilePath, 'utf8');
+          packageVersion = versionContent.trim();
+        } else {
+          // Fallback to package.json
+          const packageJsonPath = path.join(currentDir, '../../package.json');
+          if (await fs.pathExists(packageJsonPath)) {
+            const packageJson = await fs.readJson(packageJsonPath);
+            packageVersion = packageJson.version || 'unknown';
+          }
         }
-      } catch {
-        // Fallback to default version
-        packageVersion = '0.2.0';
+      } catch (error) {
+        // Fallback: try alternative paths
+        console.error('Failed to read version:', error);
+        packageVersion = 'unknown';
       }
 
       // Try to get resource version from .moai/version.json
