@@ -53,6 +53,8 @@ MoAI-ADK의 모든 Git 작업을 모드별로 최적화하여 처리하는 전�
 3. **동기화 전략**: 모드별 원격 저장소 동기화
 4. **브랜치 관리**: 스마트 브랜치 생성 및 정리
 5. **커밋 자동화**: 개발 가이드 기반 커밋 메시지 생성
+6. **PR 자동화**: PR 머지 및 브랜치 정리 (Team 모드)
+7. **GitFlow 완성**: develop 기반 워크플로우 자동화
 
 ## 🔧 간소화된 모드별 Git 전략
 
@@ -75,13 +77,41 @@ MoAI-ADK의 모든 Git 작업을 모드별로 최적화하여 처리하는 전�
 
 ### 팀 모드 (Team Mode)
 
-**철학: "체계적 협업, 간단한 자동화"**
+**철학: "체계적 협업, 완전 자동화된 GitFlow"**
 
 **팀 모드 핵심 기능**:
-- GitFlow: 기본 `git flow` 명령 활용
+- **GitFlow 표준**: **항상 `develop`에서 분기** (feature/SPEC-{ID})
 - 구조화 커밋: 단계별 이모지와 @TAG 자동 생성
-- PR 관리: `gh pr create/merge` 명령 직접 사용
+- **PR 자동화**:
+  - Draft PR 생성: `gh pr create --draft --base develop`
+  - PR Ready 전환: `gh pr ready`
+  - **자동 머지**: `gh pr merge --squash --delete-branch` (--auto-merge 플래그 시)
+- **브랜치 정리**:
+  - 로컬 develop 체크아웃
+  - 원격 동기화: `git pull origin develop`
+  - feature 브랜치 삭제
 - 동기화: `git push/pull`로 단순화
+
+**브랜치 라이프사이클**:
+```bash
+# 1. SPEC 작성 시 (1-spec)
+git checkout develop
+git pull origin develop
+git checkout -b feature/SPEC-{ID}
+gh pr create --draft --base develop --title "[SPEC-{ID}] 제목"
+
+# 2. TDD 구현 시 (2-build)
+# ... RED → GREEN → REFACTOR 커밋
+
+# 3. 동기화 완료 시 (3-sync)
+git push origin feature/SPEC-{ID}
+gh pr ready {PR_NUMBER}
+
+# 4. 자동 머지 (--auto-merge 플래그 시)
+gh pr merge {PR_NUMBER} --squash --delete-branch
+git checkout develop
+git pull origin develop
+# 다음 /alfred:1-spec은 자동으로 develop에서 시작
 ```
 
 ## 📋 간소화된 핵심 기능
@@ -169,6 +199,59 @@ doc-syncer 완료 후 동기화 커밋:
 - 문서 변경사항 스테이징
 - TAG 업데이트 반영
 - PR 상태 전환 (팀 모드)
+- **PR 자동 머지** (--auto-merge 플래그 시)
+
+### 5. PR 자동 머지 및 브랜치 정리 (Team 모드)
+
+**--auto-merge 플래그 사용 시 자동 실행**:
+
+```bash
+# 1. 최종 푸시
+git push origin feature/SPEC-{ID}
+
+# 2. PR Ready 전환
+gh pr ready {PR_NUMBER}
+
+# 3. CI/CD 상태 확인
+gh pr checks {PR_NUMBER} --watch
+
+# 4. 자동 머지 (squash)
+gh pr merge {PR_NUMBER} --squash --delete-branch --body "Automated merge by MoAI-ADK"
+
+# 5. 로컬 정리 및 전환
+git checkout develop
+git pull origin develop
+git branch -d feature/SPEC-{ID}
+
+# 6. 완료 알림
+echo "✅ PR 머지 완료. develop 브랜치로 전환됨"
+echo "📍 다음 /alfred:1-spec은 develop에서 시작됩니다"
+```
+
+**예외 처리**:
+
+```bash
+# CI/CD 실패 시
+if gh pr checks --fail-fast; then
+  echo "❌ CI/CD 실패. PR 머지 중단"
+  echo "🔧 문제 해결 후 다시 시도: /alfred:3-sync --auto-merge --retry"
+  exit 1
+fi
+
+# 충돌 발생 시
+if ! gh pr merge --squash; then
+  echo "❌ PR 머지 실패: 충돌 해결 필요"
+  echo "🔧 수동 해결: git checkout develop && git merge feature/SPEC-{ID}"
+  exit 1
+fi
+
+# 리뷰 필수 정책
+if gh pr view --json reviewDecision | grep "REVIEW_REQUIRED"; then
+  echo "⏳ 리뷰 승인 대기 중. 자동 머지 불가"
+  echo "💡 리뷰 완료 후: /alfred:3-sync --force-merge"
+  exit 0
+fi
+```
 
 ---
 

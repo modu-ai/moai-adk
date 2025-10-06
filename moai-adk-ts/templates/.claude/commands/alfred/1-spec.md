@@ -88,10 +88,10 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 
 ## 모드별 처리 요약
 
-| 모드     | 산출물                                                               | 추가 작업                                       |
-| -------- | -------------------------------------------------------------------- | ----------------------------------------------- |
-| Personal | `.moai/specs/SPEC-XXX/spec.md`, `plan.md`, `acceptance.md` 등 템플릿 | git-manager 에이전트가 자동으로 체크포인트 생성 |
-| Team     | GitHub Issue(`[SPEC-XXX] 제목`), Draft PR(옵션)                      | `gh` CLI 로그인 유지, 라벨/담당자 지정 안내     |
+| 모드     | 산출물                                                               | 브랜치 전략                                     | 추가 작업                                       |
+| -------- | -------------------------------------------------------------------- | ----------------------------------------------- | ----------------------------------------------- |
+| Personal | `.moai/specs/SPEC-XXX/spec.md`, `plan.md`, `acceptance.md` 등 템플릿 | `main` 또는 `develop`에서 분기 (설정 기준)      | git-manager 에이전트가 자동으로 체크포인트 생성 |
+| Team     | GitHub Issue(`[SPEC-XXX] 제목`), Draft PR(옵션)                      | **항상 `develop`에서 분기** (GitFlow 표준)      | `gh` CLI 로그인 유지, Draft PR → develop 생성   |
 
 ## 입력 옵션
 
@@ -377,8 +377,12 @@ Task 2 (sonnet): 심화 문서 분석
 
 `git-manager` 에이전트(haiku)가 최종 처리:
 
-- **브랜치 생성**: 모드별 전략(Personal/Team) 적용
+- **브랜치 생성**: 모드별 전략 적용
+  - **Personal 모드**: `main` 또는 `develop`에서 분기 (프로젝트 설정 기준)
+  - **Team 모드**: **항상 `develop`에서 분기** (GitFlow 표준)
+  - 브랜치명: `feature/SPEC-{ID}` 형식
 - **GitHub Issue 생성**: Team 모드에서 SPEC Issue 생성
+- **Draft PR 생성**: Team 모드에서 `feature/SPEC-{ID}` → `develop` PR 생성
 - **초기 커밋**: SPEC 문서 커밋 및 태그 생성
 
 **중요**: 각 에이전트는 독립적으로 실행되며, 에이전트 간 직접 호출은 금지됩니다.
@@ -396,8 +400,11 @@ Task 2 (sonnet): 심화 문서 분석
 ### git-manager 전담 영역
 
 - 모든 Git 브랜치 생성 및 관리
-- 모드별 브랜치 전략 적용
+- **모드별 브랜치 전략 적용**
+  - Personal: `main` 또는 `develop`에서 분기
+  - Team: **항상 `develop`에서 분기** (GitFlow)
 - GitHub Issue/PR 생성
+  - Team 모드: Draft PR 생성 (`feature/SPEC-{ID}` → `develop`)
 - 초기 커밋 및 태그 생성
 - 원격 동기화 처리
 

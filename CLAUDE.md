@@ -106,9 +106,9 @@ Alfred는 효율적인 컨텍스트 관리를 위해 다음 2가지 전략을 �
 Alfred가 조율하는 핵심 개발 사이클:
 
 ```bash
-/alfred:1-spec     # SPEC 작성 (EARS 방식, 사용자 확인 후 브랜치/PR 생성)
+/alfred:1-spec     # SPEC 작성 (EARS 방식, develop 기반 브랜치/Draft PR 생성)
 /alfred:2-build    # TDD 구현 (RED → GREEN → REFACTOR)
-/alfred:3-sync     # 문서 동기화 (PR 상태 전환, TAG 체인 검증)
+/alfred:3-sync     # 문서 동기화 (PR Ready/자동 머지, TAG 체인 검증)
 ```
 
 **EARS (Easy Approach to Requirements Syntax)**: 체계적인 요구사항 작성 방법론
@@ -119,6 +119,36 @@ Alfred가 조율하는 핵심 개발 사이클:
 - **Constraints**: IF [조건]이면, 시스템은 [제약]해야 한다
 
 **반복 사이클**: 1-spec → 2-build → 3-sync → 1-spec (다음 기능)
+
+### 완전 자동화된 GitFlow 워크플로우
+
+**Team 모드 (권장)**:
+```bash
+# 1단계: SPEC 작성 (develop에서 분기)
+/alfred:1-spec "새 기능"
+→ feature/SPEC-{ID} 브랜치 생성
+→ Draft PR 생성 (feature → develop)
+
+# 2단계: TDD 구현
+/alfred:2-build SPEC-{ID}
+→ RED → GREEN → REFACTOR 커밋
+
+# 3단계: 문서 동기화 + 자동 머지
+/alfred:3-sync --auto-merge
+→ 문서 동기화
+→ PR Ready 전환
+→ CI/CD 확인
+→ PR 자동 머지 (squash)
+→ develop 체크아웃
+→ 다음 작업 준비 완료 ✅
+```
+
+**Personal 모드**:
+```bash
+/alfred:1-spec "새 기능"     # main/develop에서 분기
+/alfred:2-build SPEC-{ID}    # TDD 구현
+/alfred:3-sync               # 문서 동기화 + 로컬 머지
+```
 
 ---
 
