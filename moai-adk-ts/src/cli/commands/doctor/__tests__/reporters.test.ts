@@ -172,6 +172,7 @@ describe('SummaryReporter', () => {
         runtime: [],
         development: [],
         optional: [],
+        allCriticalPassed: true,
       };
 
       // Just ensure it doesn't throw
@@ -187,6 +188,7 @@ describe('SummaryReporter', () => {
         runtime: [],
         development: [],
         optional: [],
+        allCriticalPassed: false,
       };
 
       expect(() => reporter.printEnhancedSummary(summary)).not.toThrow();
@@ -201,6 +203,7 @@ describe('SummaryReporter', () => {
         runtime: [],
         development: [],
         optional: [],
+        allCriticalPassed: true,
       };
 
       expect(() => reporter.printEnhancedSummary(summary)).not.toThrow();

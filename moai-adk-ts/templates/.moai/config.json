@@ -46,6 +46,7 @@
     "created_at": "{{CREATION_TIMESTAMP}}",
     "description": "{{PROJECT_DESCRIPTION}}",
     "initialized": true,
+    "locale": "ko",
     "mode": "{{PROJECT_MODE}}",
     "name": "{{PROJECT_NAME}}",
     "version": "{{PROJECT_VERSION}}"

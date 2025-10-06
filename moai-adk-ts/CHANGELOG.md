@@ -5,6 +5,100 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5] - 2025-10-06
+
+### 🐛 Critical Bug Fix - Windows Compatibility
+
+#### Fixed
+- **Windows/WSL 경로 변환 오류**: 이준석님 피드백으로 발견된 크로스 플랫폼 호환성 문제 수정
+  - **문제**: WSL arm64 환경에서 symlink 경로 해석 실패
+  - **원인**: 단순 문자열 결합으로 Windows 경로 변환 시 잘못된 file:// URL 생성
+    - Unix: `file:///Users/...` ✅ (우연히 작동)
+    - Windows: `file://C:\Users\...` ❌ (백슬래시, 슬래시 2개 → 잘못된 형식)
+  - **해결**: Node.js 표준 `pathToFileURL()` API 적용
+    - `src/cli/index.ts`: `pathToFileURL(resolveRealPath(...)).href` 사용
+    - `src/utils/path-validator.ts`: `resolveRealPath()` 함수 export 추가
+  - **효과**: Windows, macOS, Linux, WSL 모든 환경에서 symlink 정상 작동
+  - **참고**: [16263b3](https://github.com/modu-ai/moai-adk/commit/16263b3)
+
+### ✨ New Features
+
+#### Added
+- **비대화형 모드 지원** (SPEC-INIT-001)
+  - TTY 자동 감지로 Claude Code, CI/CD, Docker 환경 자동 대응
+  - `--yes` 플래그로 명시적 비대화형 모드 지원
+  - 기본값 자동 적용으로 프롬프트 없이 초기화 가능
+  - `src/cli/commands/init.ts`: `runNonInteractive()` 메서드 추가
+  - `src/utils/tty-detector.ts`: TTY 감지 유틸리티 추가
+  - 참고: [3c41c3a](https://github.com/modu-ai/moai-adk/commit/3c41c3a)
+
+- **Alfred 브랜딩 자동 감지** (SPEC-INIT-002)
+  - `CLAUDE.md` 파일에서 "Alfred" 키워드 자동 탐지
+  - 브랜딩 타입 자동 설정: `official` (Alfred 포함) vs `custom` (미포함)
+  - 프로젝트 메타데이터 v2.0.0으로 업그레이드
+  - 참고: [bc37263](https://github.com/modu-ai/moai-adk/commit/bc37263)
+
+### 🔨 Refactoring
+
+#### Changed
+- **SPEC 디렉토리 표준화**
+  - `.moai/specs/` 구조 표준화 및 네이밍 규칙 수립
+  - SPEC 파일명 검증 로직 추가
+  - 참고: [c04efb1](https://github.com/modu-ai/moai-adk/commit/c04efb1), [f6ce789](https://github.com/modu-ai/moai-adk/commit/f6ce789)
+
+- **TAG 체인 통합** (SPEC-REFACTOR-001)
+  - Git 관리 모듈 TAG 통합: `GIT-*-001` → `REFACTOR-001:*`
+  - TAG 추적성: SPEC ↔ CODE ↔ TEST 완전 연결
+  - TAG 무결성: 고아 TAG 0개, 끊어진 링크 0개
+  - 영향 받은 파일:
+    - `src/core/git/git-branch-manager.ts`: `@CODE:REFACTOR-001:BRANCH`
+    - `src/core/git/git-commit-manager.ts`: `@CODE:REFACTOR-001:COMMIT`
+    - `src/core/git/git-pr-manager.ts`: `@CODE:REFACTOR-001:PR`
+  - 참고: [16263b3](https://github.com/modu-ai/moai-adk/commit/16263b3)
+
+- **MoAI-ADK 브랜딩 강화** (SPEC-BRAND-001)
+  - `CLAUDE.md`에서 외부 도구 참조 제거
+  - "Claude Code workflow" → "MoAI-ADK workflow"
+  - "Claude Code settings" → "MoAI-ADK settings"
+  - 프로젝트 정체성 강화 및 브랜딩 일관성 확보
+  - 참고: [16263b3](https://github.com/modu-ai/moai-adk/commit/16263b3)
+
+### 📚 Documentation
+
+#### Updated
+- **Living Document 동기화 완료**
+  - SPEC-INIT-001, SPEC-REFACTOR-001, SPEC-BRAND-001 문서 완전 동기화
+  - 모든 SPEC 문서 Draft → Ready 전환
+  - TAG 체인 무결성 100% 달성
+  - 참고: [b01403e](https://github.com/modu-ai/moai-adk/commit/b01403e)
+
+- **프로젝트 메타데이터 v2.0.0**
+  - Alfred 브랜딩 타입 추가
+  - 문서 버전 관리 체계 수립
+  - 참고: [6d2c16c](https://github.com/modu-ai/moai-adk/commit/6d2c16c)
+
+### 🧹 Maintenance
+
+#### Improved
+- `.gitignore` 개선 및 임시 파일 정리
+- 참고: [3a985f1](https://github.com/modu-ai/moai-adk/commit/3a985f1)
+
+### 🙏 Contributors
+
+- **[이준석](https://namu.wiki/w/%EC%9D%B4%EC%A4%80%EC%84%9D)** - WSL/Windows symlink 문제 발견 및 피드백. 감사합니다 :)
+  - WSL arm64 환경에서 symlink 실행 실패 이슈 리포트
+  - `pathToFileURL()` 도입으로 크로스 플랫폼 호환성 개선
+  - Windows 사용자를 위한 중요한 기여
+
+### 📊 Quality Metrics
+
+- **TAG 추적성**: 100% (고아 TAG 0개)
+- **SPEC 문서화**: 5/5 완료 (100%)
+- **크로스 플랫폼 지원**: Windows ✅ | macOS ✅ | Linux ✅ | WSL ✅
+- **테스트 통과율**: 96.7% 유지 (673/696 tests)
+
+---
+
 ## [0.2.4] - 2025-10-04
 
 ### 🐛 Critical Bug Fix
@@ -163,6 +257,7 @@ bun add -g moai-adk
 
 ---
 
+[0.2.5]: https://github.com/modu-ai/moai-adk/releases/tag/v0.2.5
 [0.2.4]: https://github.com/modu-ai/moai-adk/releases/tag/v0.2.4
 [0.2.2]: https://github.com/modu-ai/moai-adk/releases/tag/v0.2.2
 [0.2.1]: https://github.com/modu-ai/moai-adk/releases/tag/v0.2.1

@@ -1,14 +1,15 @@
 /**
  * @file Configuration builder from interactive prompts
  * @author MoAI Team
- * @tags @CODE:INTERACTIVE-INIT-019 | Chain: @SPEC:INTERACTIVE-INIT-019 -> @SPEC:INTERACTIVE-INIT-019 -> @CODE:INTERACTIVE-INIT-019 -> @TEST:INTERACTIVE-INIT-019
- * Related: @DOC:INTERACTIVE-INIT-019
+ * @tags @CODE:INSTALL-001 | Chain: @SPEC:INSTALL-001 -> @CODE:INSTALL-001 -> @TEST:INSTALL-001
+ * Related: @CODE:INTERACTIVE-INIT-019, @DOC:INSTALL-001
  */
 
 import type { InitAnswers } from '../prompts/init';
 
 /**
  * Enhanced MoAI configuration interface
+ * Extended with SPEC-INSTALL-001 requirements
  */
 export interface MoAIConfig {
   version: string;
@@ -16,6 +17,12 @@ export interface MoAIConfig {
   projectName: string;
   features: string[];
   locale?: 'ko' | 'en'; // User's preferred CLI language
+
+  // SPEC-INSTALL-001: Developer information
+  developer?: {
+    name: string;
+    timestamp: string;
+  };
 
   git: {
     enabled: boolean;
@@ -26,6 +33,22 @@ export interface MoAIConfig {
       url: string;
       autoPush: boolean;
       defaultBranch: string;
+    };
+  };
+
+  // SPEC-INSTALL-001: Constitution with enforce_spec
+  constitution?: {
+    enforce_tdd?: boolean;
+    enforce_spec?: boolean;
+    require_tags?: boolean;
+    test_coverage_target?: number;
+  };
+
+  // SPEC-INSTALL-001: Git strategy with auto_pr and draft_pr
+  git_strategy?: {
+    team?: {
+      auto_pr?: boolean;
+      draft_pr?: boolean;
     };
   };
 
@@ -69,6 +92,32 @@ export class ConfigBuilder {
         retentionDays: 30,
       },
     };
+
+    // SPEC-INSTALL-001: Add developer information if provided
+    if (answers.developerName) {
+      config.developer = {
+        name: answers.developerName,
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    // SPEC-INSTALL-001: Add constitution configuration
+    config.constitution = {
+      enforce_tdd: true,
+      enforce_spec: answers.enforceSpec ?? (answers.mode === 'team'),
+      require_tags: true,
+      test_coverage_target: 85,
+    };
+
+    // SPEC-INSTALL-001: Add git_strategy for Team mode
+    if (answers.mode === 'team') {
+      config.git_strategy = {
+        team: {
+          auto_pr: answers.autoPR ?? true,
+          draft_pr: answers.draftPR ?? true,
+        },
+      };
+    }
 
     return config;
   }

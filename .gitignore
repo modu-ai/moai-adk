@@ -1,30 +1,44 @@
-# Build artifacts
-build/
+# MoAI-ADK Generated .gitignore
+
+# Dependencies
+node_modules/
+bun.lockb
+
+# Build outputs
 dist/
-*.egg-info/
-*.egg
+*.tsbuildinfo
+.turbo/
 
-# Cache
-__pycache__/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-*.pyc
-*.pyo
+# Test coverage
+coverage/
+.nyc_output/
 
-# Backups
-CLAUDE.md.backup
+# Logs and temporary files
+.claude/logs/
+.moai/logs/
+*.log
+*.tmp
+*.temp
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Backup files
+*.bak
 *.backup
+backup-*/
 .moai-backup/
-.archive/
-docs_backup/
-local-archive/
 
-# Virtual environment
-venv/
-.venv/
-env/
-.env/
+# Package files
+*.tgz
+*.tar.gz
+
+# Environment variables
+.env
+.env.local
+.env.*.local
 
 # IDE
 .vscode/
@@ -32,82 +46,17 @@ env/
 *.swp
 *.swo
 *~
+.vscode-test/
 
-# OS
+# Cache
+.cache/
+.vitest/
+
+# OS generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
-
-# Logs
-*.log
-logs/
-*.txt
-!requirements.txt
-
-# Temporary files
-*.tmp
-*.temp
-.moai/checkpoints/snapshots/
-.moai/checkpoints/tmp/
-coverage_html/
-my_docs/
-test-final/
-test-project/
-test-todo-app/
-moai-adk-ts/test-final/
-moai-adk-ts/test-local/
-moai-adk-ts/moai-adk-*.tgz
-
-# Development files (not for GitHub)
-Makefile
-Makefile.*
-*.spec
-mkdocs.yml
-.pypirc*
-test-vitepress-*.cjs
-manifests/
-ANALYSIS-*.md
-BUGFIX-*.md
-
-# Playwright MCP
-.playwright-mcp/
-
-
-# SQLite databases (no longer used - migrated to JSON)
-*.db
-*.db-shm
-*.db-wal
-migration_test.db*
-test_tags.db*
-**/indexes/*.db*
-
-# Large TAG index files (use distributed storage instead)
-.moai/indexes/tags.json
-moai-adk-ts/.moai/indexes/tags.json
-
-# Distributed TAG system (keep tracked)
-!.moai/indexes/meta.json
-!.moai/indexes/categories/
-!.moai/indexes/relations/
-!.moai/indexes/cache/summary.json
-
-my-docs/
-
-# TypeScript specific
-node_modules/
-*.tsbuildinfo
-.tscache/
-
-# TypeScript build outputs
-moai-adk-ts/dist/
-moai-adk-ts/coverage/
-
-# MoAI-ADK private configurations and documents (not shared on GitHub)
-# Only root level configs are private, moai-adk-ts/ package templates are public
-/.claude/
-/.moai/
-/CLAUDE.md
-.vercel
-
-# Documentation (exclude all except public assets)
-/docs/*
-!/docs/public/

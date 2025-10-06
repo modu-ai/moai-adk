@@ -1,5 +1,5 @@
-// @CODE:GIT-BRANCH-001 |
-// Related: @CODE:GIT-BRANCH-001
+// @CODE:REFACTOR-001:BRANCH | SPEC: SPEC-REFACTOR-001.md | TEST: __tests__/core/git/git-branch-manager.test.ts
+// Related: @CODE:GIT-MGR-001, @SPEC:REFACTOR-001
 
 /**
  * @file Git branch operations manager

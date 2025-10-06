@@ -1,5 +1,5 @@
-// @CODE:GIT-PR-001 |
-// Related: @CODE:GIT-PR-001
+// @CODE:REFACTOR-001:PR | SPEC: SPEC-REFACTOR-001.md | TEST: __tests__/core/git/git-pr-manager.test.ts
+// Related: @CODE:GIT-MGR-001, @SPEC:REFACTOR-001
 
 /**
  * @file Git PR and remote operations manager

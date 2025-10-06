@@ -1,5 +1,5 @@
-// @CODE:GIT-COMMIT-001 |
-// Related: @CODE:GIT-COMMIT-001
+// @CODE:REFACTOR-001:COMMIT | SPEC: SPEC-REFACTOR-001.md | TEST: __tests__/core/git/git-commit-manager.test.ts
+// Related: @CODE:GIT-MGR-001, @SPEC:REFACTOR-001
 
 /**
  * @file Git commit operations manager

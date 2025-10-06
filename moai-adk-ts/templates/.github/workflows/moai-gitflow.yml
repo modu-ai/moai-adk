@@ -53,13 +53,12 @@ jobs:
           dotnet-version: "8.0.x"
 
       # TRUST 5원칙 자동 검증
+      # Note: Validation is now handled by TypeScript-based tools
       - name: 🧭 TRUST 5원칙 검증
         run: |
-          if [ -f ".moai/scripts/check_constitution.py" ]; then
-            python .moai/scripts/check_constitution.py
-          else
-            echo "✅ TRUST 원칙 검증 스크립트 없음 - 통과"
-          fi
+          echo "✅ TRUST 원칙 검증은 TypeScript 기반 도구로 수행됩니다"
+          echo "   - @agent-trust-checker 사용"
+          echo "   - TypeScript 훅 시스템 활용"
 
       - name: Run language-aware tests
         run: |

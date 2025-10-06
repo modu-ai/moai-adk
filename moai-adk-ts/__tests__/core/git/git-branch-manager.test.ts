@@ -1,5 +1,5 @@
-// @TEST:REFACTOR-001 | Chain: @SPEC:REFACTOR-001 -> @SPEC:REFACTOR-001 -> @CODE:REFACTOR-001
-// Related: @CODE:GIT-BRANCH-001, @CODE:GIT-BRANCH-001:API
+// @TEST:REFACTOR-001:BRANCH | SPEC: SPEC-REFACTOR-001.md | CODE: src/core/git/git-branch-manager.ts
+// Related: @CODE:REFACTOR-001:BRANCH, @CODE:GIT-MGR-001
 
 /**
  * GitBranchManager Test Suite
