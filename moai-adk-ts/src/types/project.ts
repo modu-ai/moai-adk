@@ -43,6 +43,19 @@ export interface ProjectFeature {
 }
 
 /**
+ * Project initialization options
+ * @tags @CODE:INIT-OPTIONS-001:DATA
+ */
+export interface InitOptions {
+  name?: string;
+  mode?: 'personal' | 'team';
+  path?: string;
+  force?: boolean;
+  backup?: boolean;
+  features?: string[];
+}
+
+/**
  * Project initialization result
  * @tags @CODE:INIT-RESULT-001:DATA
  */

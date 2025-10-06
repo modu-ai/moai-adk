@@ -110,6 +110,7 @@ export class CLIApp {
     this.program
       .command('init [project]')
       .description('Initialize a new MoAI-ADK project')
+      .option('-y, --yes', 'Skip prompts and use default settings')
       .option('-b, --backup', 'Create backup before installation')
       .option('-f, --force', 'Force overwrite existing files')
       .option('--personal', 'Initialize in personal mode (default)')
@@ -118,6 +119,7 @@ export class CLIApp {
         async (
           project: string | undefined,
           options: {
+            yes?: boolean;
             backup?: boolean;
             force?: boolean;
             personal?: boolean;
@@ -125,19 +127,38 @@ export class CLIApp {
           }
         ) => {
           try {
+            // Import TTY detector
+            const { isTTYAvailable } = await import('@/utils/tty-detector');
+
             // Determine mode: team takes precedence over personal
             const mode = options.team ? 'team' : 'personal';
 
-            // Call runInteractive with all options
-            // Use spread operator to avoid passing undefined explicitly
-            const result = await this.initCommand.runInteractive({
-              ...(project && { name: project }),
-              mode: mode as 'personal' | 'team',
-              ...(options.backup !== undefined && { backup: options.backup }),
-              ...(options.force !== undefined && { force: options.force }),
-            });
+            // Check if non-interactive mode should be used
+            // 1. Explicit --yes flag
+            // 2. TTY not available (Claude Code, CI/CD, Docker)
+            const useNonInteractive = options.yes || !isTTYAvailable();
 
-            process.exit(result.success ? 0 : 1);
+            if (useNonInteractive) {
+              // Non-interactive mode
+              const result = await this.initCommand.runNonInteractive({
+                ...(project && { name: project }),
+                mode: mode as 'personal' | 'team',
+                ...(options.backup !== undefined && { backup: options.backup }),
+                ...(options.force !== undefined && { force: options.force }),
+              });
+
+              process.exit(result.success ? 0 : 1);
+            } else {
+              // Interactive mode (existing behavior)
+              const result = await this.initCommand.runInteractive({
+                ...(project && { name: project }),
+                mode: mode as 'personal' | 'team',
+                ...(options.backup !== undefined && { backup: options.backup }),
+                ...(options.force !== undefined && { force: options.force }),
+              });
+
+              process.exit(result.success ? 0 : 1);
+            }
           } catch (error) {
             logger.error(chalk.red('Error during initialization:'), error);
             process.exit(1);

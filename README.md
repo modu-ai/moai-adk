@@ -843,7 +843,7 @@ Claude Code에서 `/output-style` 명령어로 전환:
 <details>
 <summary><b>출력 예시</b></summary>
 
-```
+```text
 JWT 인증 구현 시작.
 
 /alfred:1-spec "JWT 기반 사용자 인증 API"
@@ -876,7 +876,7 @@ JWT 인증 구현 시작.
 <details>
 <summary><b>출력 예시</b></summary>
 
-```
+```text
 JWT 인증 구현을 시작합니다.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -952,7 +952,7 @@ JWT 인증 구현을 시작합니다.
 <details>
 <summary><b>출력 예시</b></summary>
 
-```
+```text
 JWT 인증 구현 전에 설계 결정이 필요합니다.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1032,7 +1032,7 @@ if (tokenExpiresIn < 5 * 60) await refreshToken();
 <details>
 <summary><b>출력 예시</b></summary>
 
-```
+```text
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📚 1단계: 개념 (Concept)
@@ -1346,7 +1346,7 @@ Alfred가 자동으로:
 
 ### Q5: 업데이트는 어떻게 하나요?
 
-✅ **Claude Code에서 간단하게!**
+✅ **방법 1: Claude Code에서 (권장)**
 
 ```text
 /alfred:9-update
@@ -1358,6 +1358,18 @@ Alfred가 자동으로:
 - 권한 자동 설정 (`chmod +x`)
 - 5단계 검증 (파일/권한/무결성)
 - 에러 발생 시 `debug-helper` 자동 지원
+
+✅ **방법 2: 터미널에서**
+
+```bash
+# npm 사용
+npm update -g moai-adk
+
+# Bun 사용 (더 빠름)
+bun update -g moai-adk
+```
+
+**참고**: 터미널 업데이트 후에는 `/alfred:9-update`를 실행하여 템플릿 파일을 최신 버전으로 동기화하세요.
 
 ---
 

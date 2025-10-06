@@ -1,0 +1,15 @@
+{
+  "version": "0.0.1",
+  "mode": "team",
+  "projectName": "MoAI-ADK",
+  "features": [],
+  "backup": {
+    "enabled": true,
+    "retentionDays": 30
+  },
+  "git": {
+    "enabled": true,
+    "autoCommit": true,
+    "branchPrefix": "feature/"
+  }
+}

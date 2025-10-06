@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs:*)",
+      "Read(//Users/goos/.claude/**)",
+      "Bash(bun test:*)",
+      "Bash(bun run:*)",
+      "Bash(sed:*)",
+      "Read(//private/tmp/**)"
+    ]
+  },
+  "outputStyle": "MoAI Beginner Learning"
+}
