@@ -5,7 +5,7 @@ status: draft
 created: 2025-10-06
 updated: 2025-10-06
 author: @Goos
-reference: .moai/reports/moai-adk-redesign-masterplan.md
+priority: medium
 ---
 
 # @SPEC:CONFIG-001: config.json 스키마 통합 및 표준화

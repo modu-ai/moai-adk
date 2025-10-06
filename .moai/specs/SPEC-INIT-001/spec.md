@@ -6,7 +6,6 @@ created: 2025-10-06
 updated: 2025-10-06
 completed: 2025-10-06
 author: @Goos
-reference: .moai/reports/moai-adk-redesign-masterplan.md
 related_issue: "https://github.com/modu-ai/moai-adk/issues/2"
 priority: high
 ---
