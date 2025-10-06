@@ -1,16 +1,31 @@
 ---
 id: INIT-002
-version: 0.1.0
-status: draft
+version: 0.2.0
+status: completed
 created: 2025-10-06
 updated: 2025-10-06
+completed: 2025-10-06
 author: @Goos
 reference: .moai/reports/moai-adk-redesign-masterplan.md
+priority: medium
 ---
 
 # @SPEC:INIT-002: Session Notice 초기화 체크 로직 Alfred 브랜딩 정렬
 
 ## HISTORY
+
+### v0.2.0 (2025-10-06)
+- **COMPLETED**: Session Notice Alfred 브랜딩 경로 정렬 완료
+- **AUTHOR**: @goos, @alfred
+- **IMPLEMENTATION**: `.claude/commands/moai` → `.claude/commands/alfred` 경로 변경 완료
+  - session-notice/utils.ts 업데이트
+  - Alfred 커맨드 경로 체크 로직 구현
+  - 크로스 플랫폼 테스트 추가
+- **EVIDENCE**:
+  - `2510118 Merge feature/INIT-002: Alfred branding path detection`
+  - `bc37263 feat(init): Add SPEC-INIT-002 documentation`
+  - `e8cee54 fix(hooks): Update session-notice to check Alfred commands path`
+  - @CODE:INIT-002 TAG 발견
 
 ### v0.1.0 (2025-10-06)
 - **INITIAL**: Session Notice 초기화 체크 로직 Alfred 브랜딩 정렬 명세 작성

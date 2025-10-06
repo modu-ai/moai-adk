@@ -1,17 +1,33 @@
 ---
 id: INIT-001
-version: 0.1.0
-status: draft
+version: 0.2.0
+status: completed
 created: 2025-10-06
 updated: 2025-10-06
+completed: 2025-10-06
 author: @Goos
 reference: .moai/reports/moai-adk-redesign-masterplan.md
 related_issue: "https://github.com/modu-ai/moai-adk/issues/2"
+priority: high
 ---
 
 # @SPEC:INIT-001: moai init 비대화형 환경 지원 및 의존성 자동 설치
 
 ## HISTORY
+
+### v0.2.0 (2025-10-06)
+- **COMPLETED**: moai init 비대화형 환경 지원 구현 완료
+- **AUTHOR**: @goos, @alfred
+- **IMPLEMENTATION**: TTY 감지, 비대화형 모드, 의존성 자동 설치 완료
+  - tty-detector.ts 신규 구현
+  - interactive-handler.ts 분리
+  - non-interactive-handler.ts 분리
+  - dependency-installer.ts 자동 설치 로직
+- **EVIDENCE**:
+  - `b01403e docs(sync): Complete SPEC-INIT-001, REFACTOR-001, BRAND-001`
+  - `49cc5c7 Merge: feature/INIT-001 → develop`
+  - `3c41c3a feat(init): Add non-interactive mode support with TTY detection`
+  - @CODE:INIT-001 TAG 다수 발견
 
 ### v0.1.0 (2025-10-06)
 - **INITIAL**: moai init 비대화형 환경 지원 및 의존성 자동 설치 명세 작성
