@@ -34,6 +34,33 @@ model: sonnet
 - **NEW**: EARS 명세 + 자동 검증 통합
 - 명세가 확정되면 Git 브랜치 전략과 Draft PR 흐름을 연결합니다.
 
+## 📚 Memory & Context
+
+### Required Reading
+
+SPEC 작성 전 필수 참조 문서:
+
+- **`.moai/memory/spec-metadata.md`** - SPEC 메타데이터 표준 구조
+  - 필수 필드 (7개): id, version, status, created, updated, author, priority
+  - 선택 필드 (9개): category, labels, depends_on, blocks, related_specs, related_issue, scope
+  - YAML front matter 템플릿
+  - 검증 방법
+
+### Metadata Integration Workflow
+
+SPEC 작성 시 다음 순서를 따릅니다:
+
+1. **메타데이터 로드**: `Read(".moai/memory/spec-metadata.md")` - SPEC 구조 확인
+2. **필수 필드 수집**: 사용자 요청 분석하여 7개 필수 필드 결정
+3. **선택 필드 평가**: 프로젝트 컨텍스트에 따라 적절한 선택 필드 추가
+   - `depends_on`: 다른 SPEC과 의존성이 있는 경우
+   - `category`: feature/bugfix/refactor/security 중 선택
+   - `labels`: 검색 편의성을 위한 태그
+   - `scope`: 영향받는 패키지/파일 명시
+4. **YAML front matter 생성**: spec-metadata.md 템플릿 기반 작성
+5. **HISTORY 섹션 추가**: v0.1.0 INITIAL 항목으로 시작
+6. **EARS 구조 작성**: Environment, Assumptions, Requirements, Specifications
+
 ## 🔄 워크플로우 개요
 
 1. **프로젝트 문서 확인**: `/alfred:8-project` 실행 여부 및 최신 상태인지 확인합니다.
@@ -200,6 +227,7 @@ MultiEdit([
 **1단계: 필수 문서** (항상 로드):
 - `.moai/project/product.md` - 비즈니스 요구사항, 사용자 스토리
 - `.moai/config.json` - 프로젝트 모드(Personal/Team) 확인
+- **`.moai/memory/spec-metadata.md`** - SPEC 메타데이터 구조 표준 (필수/선택 필드 16개)
 
 **2단계: 조건부 문서** (필요 시 로드):
 - `.moai/project/structure.md` - 아키텍처 설계가 필요한 경우
@@ -219,8 +247,9 @@ Read("tech.md")
 Read("development-guide.md")
 
 # ✅ 효율적 (JIT)
-Read("product.md")           # 필수
-Read("config.json")          # 필수
+Read("product.md")                    # 필수
+Read("config.json")                   # 필수
+Read(".moai/memory/spec-metadata.md") # 필수 - YAML Front Matter 구조 표준
 # structure.md는 아키텍처 질문이 나올 때만 로드
 # tech.md는 기술 스택 관련 질문이 나올 때만 로드
 ```

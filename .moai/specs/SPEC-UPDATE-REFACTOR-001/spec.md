@@ -5,11 +5,12 @@
 ```yaml
 ---
 id: UPDATE-REFACTOR-001
-version: 1.0.0
-status: active
+version: 0.2.0
+status: completed
 created: 2025-10-02
-updated: 2025-10-02
-authors: [alfred, spec-builder]
+updated: 2025-10-06
+completed: 2025-10-06
+authors: [alfred, spec-builder, code-builder]
 priority: P0
 category: refactor
 ---
@@ -17,7 +18,30 @@ category: refactor
 
 ## HISTORY
 
-### v1.0.0 (2025-10-02)
+### v0.2.0 (2025-10-06) - 🎉 구현 완료
+- **COMPLETED**: /alfred:9-update Option C 하이브리드 리팩토링 구현 완료
+- **AUTHOR**: @alfred, @code-builder
+- **IMPLEMENTATION**: 모든 P0 (7개) + P1 (3개) 요구사항 충족
+- **ARTIFACTS**:
+  - `.claude/commands/alfred/9-update.md`: 468 LOC → 711 LOC (+243, 52% 증가)
+  - `moai-adk-ts/templates/.claude/commands/alfred/9-update.md`: 동기화 완료
+  - Phase 4: 10단계 카테고리별 절차 (A-I) 구현
+  - Phase 5: Claude Code 도구 기반 검증 로직 강화
+  - Phase 5.5: trust-checker 연동 독립 섹션 신설
+- **QUALITY**: cc-manager 검증 통과 (P0 6개 + P1 3개 해결)
+- **CHANGES**:
+  - TypeScript 코드 (AlfredUpdateBridge) 완전 제거
+  - Claude Code 도구 ([Bash], [Glob], [Read], [Grep], [Write]) 전환
+  - 프로젝트 문서 보호 (Grep "{{PROJECT_NAME}}" 패턴)
+  - 훅 파일 권한 자동 부여 (chmod +x)
+  - Output Styles 복사 추가 (.claude/output-styles/alfred/)
+  - 오류 복구 시나리오 4가지 추가
+  - HISTORY v2.0.0 업데이트 (11개 변경 항목)
+- **COMMIT**: `refactor(update): Implement Option C hybrid - Alfred direct execution with Claude Code tools`
+- **FILES**: 15개 파일 변경 (+2920/-465 lines)
+- **PRINCIPLE**: 스크립트 최소화, 커맨드 지침 중심, Claude Code 도구 우선
+
+### v0.1.0 (2025-10-02) - 📋 SPEC 작성
 - **INITIAL**: /alfred:9-update Option C 하이브리드 리팩토링 SPEC 작성
 - **AUTHOR**: @alfred, @spec-builder
 - **CONTEXT**: 문서-구현 불일치 해소, Alfred 중앙 오케스트레이션 복원

@@ -200,6 +200,7 @@ MultiEdit([
 **1단계: 필수 문서** (항상 로드):
 - `.moai/project/product.md` - 비즈니스 요구사항, 사용자 스토리
 - `.moai/config.json` - 프로젝트 모드(Personal/Team) 확인
+- **`.moai/memory/spec-metadata.md`** - SPEC 메타데이터 구조 표준 (필수/선택 필드 16개)
 
 **2단계: 조건부 문서** (필요 시 로드):
 - `.moai/project/structure.md` - 아키텍처 설계가 필요한 경우
@@ -219,8 +220,9 @@ Read("tech.md")
 Read("development-guide.md")
 
 # ✅ 효율적 (JIT)
-Read("product.md")           # 필수
-Read("config.json")          # 필수
+Read("product.md")                    # 필수
+Read("config.json")                   # 필수
+Read(".moai/memory/spec-metadata.md") # 필수 - YAML Front Matter 구조 표준
 # structure.md는 아키텍처 질문이 나올 때만 로드
 # tech.md는 기술 스택 관련 질문이 나올 때만 로드
 ```

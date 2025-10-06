@@ -40,31 +40,74 @@ export interface ClaudeSettings {
 
 /**
  * MoAI configuration interface
+ * Unified with template structure (templates/.moai/config.json)
  * @tags @SPEC:MOAI-CONFIG-001
  */
 export interface MoAIConfig {
-  projectName: string;
-  version: string;
-  mode: 'personal' | 'team';
-  runtime: {
+  _meta?: {
+    '@CODE:CONFIG-STRUCTURE-001'?: string;
+    '@SPEC:PROJECT-CONFIG-001'?: string;
+  };
+
+  project: {
     name: string;
-    version?: string;
+    version: string;
+    mode: 'personal' | 'team';
+    description?: string;
+    initialized: boolean;
+    created_at: string;
+    locale?: 'ko' | 'en';
   };
-  techStack: string[];
-  features: {
-    tdd: boolean;
-    tagSystem: boolean;
-    gitAutomation: boolean;
-    documentSync: boolean;
+
+  constitution: {
+    enforce_tdd: boolean;
+    require_tags: boolean;
+    test_coverage_target: number;
+    simplicity_threshold: number;
+    principles: {
+      simplicity: {
+        max_projects: number;
+        notes: string;
+      };
+    };
   };
-  directories: {
-    alfred: string;
-    claude: string;
-    specs: string;
-    templates: string;
+
+  git_strategy: {
+    personal: {
+      auto_checkpoint: boolean;
+      auto_commit: boolean;
+      branch_prefix: string;
+      checkpoint_interval: number;
+      cleanup_days: number;
+      max_checkpoints: number;
+    };
+    team: {
+      auto_pr: boolean;
+      develop_branch: string;
+      draft_pr: boolean;
+      feature_prefix: string;
+      main_branch: string;
+      use_gitflow: boolean;
+    };
   };
-  createdAt: Date;
-  updatedAt: Date;
+
+  tags: {
+    auto_sync: boolean;
+    storage_type: 'code_scan';
+    categories: string[];
+    code_scan_policy: {
+      no_intermediate_cache: boolean;
+      realtime_validation: boolean;
+      scan_tools: string[];
+      scan_command: string;
+      philosophy: string;
+    };
+  };
+
+  pipeline: {
+    available_commands: string[];
+    current_stage: string;
+  };
 }
 
 /**

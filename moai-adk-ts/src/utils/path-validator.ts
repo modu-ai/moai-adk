@@ -26,11 +26,12 @@ interface PackageJson {
 
 /**
  * Resolve a path to its real location, handling symlinks and non-existent paths
+ * Safely handles WSL/Windows symlink resolution failures
  * @param targetPath - Path to resolve
  * @returns Resolved absolute path
- * @internal
+ * @public
  */
-function resolveRealPath(targetPath: string): string {
+export function resolveRealPath(targetPath: string): string {
   try {
     return fs.realpathSync(targetPath);
   } catch {

@@ -6,13 +6,15 @@
  * @tags @CODE:CLI-ENTRY-001 @SPEC:CLI-FOUNDATION-012
  */
 
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { SystemDetector } from '@/core/system-checker/detector';
 import { createBanner } from '@/utils/banner';
 import { type Locale, setLocale } from '@/utils/i18n';
+import { resolveRealPath } from '@/utils/path-validator';
 import { getCurrentVersion } from '@/utils/version';
 import { logger } from '../utils/winston-logger.js';
 import { DoctorCommand } from './commands/doctor';
@@ -236,13 +238,15 @@ export class CLIApp {
 
 /**
  * Main execution entry point
- * Uses realpathSync to handle symlink execution (e.g., via bun/npm global install)
+ * Uses pathToFileURL for cross-platform file URL conversion (Windows, macOS, Linux)
+ * Uses resolveRealPath to safely handle symlink execution (e.g., via bun/npm global install)
  * Guards against undefined argv[1] in REPL/eval contexts
- * @see https://nodejs.org/api/fs.html#fsrealpathsyncpath-options
+ * @see {@link pathToFileURL} for Node.js standard path-to-URL conversion
+ * @see {@link resolveRealPath} for cross-platform symlink resolution
  */
 if (
   process.argv[1] &&
-  import.meta.url === `file://${realpathSync(process.argv[1])}`
+  import.meta.url === pathToFileURL(resolveRealPath(process.argv[1])).href
 ) {
   const app = new CLIApp();
   app.run(process.argv);

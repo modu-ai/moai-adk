@@ -322,7 +322,8 @@ export class PhaseExecutor {
   private async setExecutablePermissions(scriptsDir: string): Promise<void> {
     const files = await fs.promises.readdir(scriptsDir);
     for (const file of files) {
-      if (file.endsWith('.py') || file.endsWith('.sh')) {
+      // Only .sh scripts need executable permissions now (Python hooks replaced with TS)
+      if (file.endsWith('.sh')) {
         const filePath = path.join(scriptsDir, file);
         await fs.promises.chmod(filePath, 0o755);
       }
