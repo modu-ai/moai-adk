@@ -27,6 +27,7 @@ export interface SystemCheckSummary {
   readonly passedChecks: number;
   readonly failedChecks: number;
   readonly detectedLanguages: string[];
+  readonly allCriticalPassed: boolean; // True if runtime+development all pass (optional excluded)
 }
 
 /**
@@ -71,6 +72,7 @@ export class SystemChecker {
       ]);
 
     // Calculate summary
+    // Note: Optional dependencies do NOT affect allPassed calculation (SPEC-INIT-001)
     const allResults = [
       ...runtimeResults,
       ...developmentResults,
@@ -81,6 +83,13 @@ export class SystemChecker {
     ).length;
     const failedChecks = allResults.length - passedChecks;
 
+    // Calculate critical checks (runtime + development only)
+    const criticalResults = [...runtimeResults, ...developmentResults];
+    const criticalPassed = criticalResults.filter(
+      r => r.result.isInstalled && r.result.versionSatisfied
+    ).length;
+    const allCriticalPassed = criticalPassed === criticalResults.length;
+
     return {
       runtime: runtimeResults,
       development: developmentResults,
@@ -89,6 +98,7 @@ export class SystemChecker {
       passedChecks,
       failedChecks,
       detectedLanguages,
+      allCriticalPassed, // New field: true if all runtime+development pass
     };
   }
 

@@ -302,7 +302,7 @@ describe('GitManager', () => {
       const remoteGitManager = new GitManager(config, repoPath);
       await remoteGitManager.initializeRepository(repoPath);
 
-      const remoteUrl = 'https://github.com/test/repo.git';
+      const remoteUrl = 'https://github.com/modu-ai/moai-adk.git';
 
       // Should not throw when linking valid remote repository
       await expect(async () => {
@@ -317,7 +317,7 @@ describe('GitManager', () => {
       const sshGitManager = new GitManager(config, sshRepoPath);
       await sshGitManager.initializeRepository(sshRepoPath);
 
-      const sshUrl = 'git@github.com:test/repo.git';
+      const sshUrl = 'git@github.com:modu-ai/moai-adk.git';
 
       // Should not throw when linking SSH remote
       await expect(async () => {
@@ -330,7 +330,7 @@ describe('GitManager', () => {
       const httpsGitManager = new GitManager(config, httpsRepoPath);
       await httpsGitManager.initializeRepository(httpsRepoPath);
 
-      const httpsUrl = 'https://github.com/test/repo.git';
+      const httpsUrl = 'https://github.com/modu-ai/moai-adk.git';
 
       // Should not throw when linking HTTPS remote
       await expect(async () => {
@@ -369,7 +369,7 @@ describe('GitManager', () => {
         branchPrefix: 'feature/',
         commitMessageTemplate: GitCommitTemplates.FEATURE,
         github: {
-          owner: 'test-org',
+          owner: 'modu-ai',
           repo: 'test-repo'
         }
       };
@@ -407,7 +407,7 @@ describe('GitManager', () => {
         branchPrefix: 'feature/',
         commitMessageTemplate: GitCommitTemplates.FEATURE,
         github: {
-          owner: 'test-org',
+          owner: 'modu-ai',
           repo: 'test-repo'
         }
       };

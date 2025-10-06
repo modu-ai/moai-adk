@@ -132,14 +132,30 @@ describe('Path Validator - Package Root Detection', () => {
         JSON.stringify({ name: 'moai-adk' }, null, 2)
       );
 
-      // Act: Validate project path inside package
-      const result = validateProjectPath(projectPath);
+      // Temporarily disable test environment skip for this specific test
+      const originalNodeEnv = process.env.NODE_ENV;
+      const originalVitest = process.env.VITEST;
+      delete process.env.NODE_ENV;
+      delete process.env.VITEST;
 
-      // Assert: Should reject the path
-      expect(result.isValid).toBe(false);
-      expect(result.error).toContain(
-        'Cannot initialize project inside MoAI-ADK package'
-      );
+      try {
+        // Act: Validate project path inside package
+        const result = validateProjectPath(projectPath);
+
+        // Assert: Should reject the path
+        expect(result.isValid).toBe(false);
+        expect(result.error).toContain(
+          'Cannot initialize project inside MoAI-ADK package'
+        );
+      } finally {
+        // Restore environment variables
+        if (originalNodeEnv !== undefined) {
+          process.env.NODE_ENV = originalNodeEnv;
+        }
+        if (originalVitest !== undefined) {
+          process.env.VITEST = originalVitest;
+        }
+      }
     });
 
     test('should accept paths outside MoAI package', () => {

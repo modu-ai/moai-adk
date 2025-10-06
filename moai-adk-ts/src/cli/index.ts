@@ -6,13 +6,15 @@
  * @tags @CODE:CLI-ENTRY-001 @SPEC:CLI-FOUNDATION-012
  */
 
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { SystemDetector } from '@/core/system-checker/detector';
 import { createBanner } from '@/utils/banner';
 import { type Locale, setLocale } from '@/utils/i18n';
+import { resolveRealPath } from '@/utils/path-validator';
 import { getCurrentVersion } from '@/utils/version';
 import { logger } from '../utils/winston-logger.js';
 import { DoctorCommand } from './commands/doctor';
@@ -110,6 +112,7 @@ export class CLIApp {
     this.program
       .command('init [project]')
       .description('Initialize a new MoAI-ADK project')
+      .option('-y, --yes', 'Skip prompts and use default settings')
       .option('-b, --backup', 'Create backup before installation')
       .option('-f, --force', 'Force overwrite existing files')
       .option('--personal', 'Initialize in personal mode (default)')
@@ -118,6 +121,7 @@ export class CLIApp {
         async (
           project: string | undefined,
           options: {
+            yes?: boolean;
             backup?: boolean;
             force?: boolean;
             personal?: boolean;
@@ -125,19 +129,38 @@ export class CLIApp {
           }
         ) => {
           try {
+            // Import TTY detector
+            const { isTTYAvailable } = await import('@/utils/tty-detector');
+
             // Determine mode: team takes precedence over personal
             const mode = options.team ? 'team' : 'personal';
 
-            // Call runInteractive with all options
-            // Use spread operator to avoid passing undefined explicitly
-            const result = await this.initCommand.runInteractive({
-              ...(project && { name: project }),
-              mode: mode as 'personal' | 'team',
-              ...(options.backup !== undefined && { backup: options.backup }),
-              ...(options.force !== undefined && { force: options.force }),
-            });
+            // Check if non-interactive mode should be used
+            // 1. Explicit --yes flag
+            // 2. TTY not available (Claude Code, CI/CD, Docker)
+            const useNonInteractive = options.yes || !isTTYAvailable();
 
-            process.exit(result.success ? 0 : 1);
+            if (useNonInteractive) {
+              // Non-interactive mode
+              const result = await this.initCommand.runNonInteractive({
+                ...(project && { name: project }),
+                mode: mode as 'personal' | 'team',
+                ...(options.backup !== undefined && { backup: options.backup }),
+                ...(options.force !== undefined && { force: options.force }),
+              });
+
+              process.exit(result.success ? 0 : 1);
+            } else {
+              // Interactive mode (existing behavior)
+              const result = await this.initCommand.runInteractive({
+                ...(project && { name: project }),
+                mode: mode as 'personal' | 'team',
+                ...(options.backup !== undefined && { backup: options.backup }),
+                ...(options.force !== undefined && { force: options.force }),
+              });
+
+              process.exit(result.success ? 0 : 1);
+            }
           } catch (error) {
             logger.error(chalk.red('Error during initialization:'), error);
             process.exit(1);
@@ -215,13 +238,15 @@ export class CLIApp {
 
 /**
  * Main execution entry point
- * Uses realpathSync to handle symlink execution (e.g., via bun/npm global install)
+ * Uses pathToFileURL for cross-platform file URL conversion (Windows, macOS, Linux)
+ * Uses resolveRealPath to safely handle symlink execution (e.g., via bun/npm global install)
  * Guards against undefined argv[1] in REPL/eval contexts
- * @see https://nodejs.org/api/fs.html#fsrealpathsyncpath-options
+ * @see {@link pathToFileURL} for Node.js standard path-to-URL conversion
+ * @see {@link resolveRealPath} for cross-platform symlink resolution
  */
 if (
   process.argv[1] &&
-  import.meta.url === `file://${realpathSync(process.argv[1])}`
+  import.meta.url === pathToFileURL(resolveRealPath(process.argv[1])).href
 ) {
   const app = new CLIApp();
   app.run(process.argv);
