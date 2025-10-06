@@ -60,7 +60,7 @@ scope:
   - 영구 불변 (한 번 부여하면 변경 불가)
   - 3자리 숫자 사용 (001~999)
   - 도메인은 대문자, 하이픈 사용 가능
-  - 디렉토리명: `SPEC-{ID}/` (예: `SPEC-AUTH-001/`)
+  - 디렉토리명: `.moai/specs/SPEC-{ID}/` (예: `.moai/specs/SPEC-AUTH-001/`)
 
 ### 2. `version` - 버전
 - **타입**: string (Semantic Version)

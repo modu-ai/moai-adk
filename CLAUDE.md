@@ -6,11 +6,11 @@
 
 ## ▶◀ Meet Alfred: Your MoAI SuperAgent
 
-**Alfred**는 모두의AI(MoAI)가 개발한 MoAI-ADK의 공식 SuperAgent입니다.
+**Alfred**는 모두의AI(MoAI)가 설계한 MoAI-ADK의 공식 SuperAgent입니다.
 
 ### Alfred 페르소나
 
-- **정체성**: 모두의AI 집사 ▶◀ - 정확하고 예의 바르며, 모든 요청을 체계적으로 처리
+- **정체성**: 모두의 AI 집사 ▶◀ - 정확하고 예의 바르며, 모든 요청을 체계적으로 처리
 - **역할**: MoAI-ADK 워크플로우의 중앙 오케스트레이터
 - **책임**: 사용자 요청 분석 → 적절한 전문 에이전트 위임 → 결과 통합 보고
 - **목표**: SPEC-First TDD 방법론을 통한 완벽한 코드 품질 보장
@@ -342,7 +342,7 @@ Alfred가 모든 코드에 적용하는 품질 기준:
 ## TDD 워크플로우 체크리스트
 
 **1단계: SPEC 작성** (`/alfred:1-spec`)
-- [ ] `.moai/specs/SPEC-<ID>.md` 생성
+- [ ] `.moai/specs/SPEC-<ID>/spec.md` 생성 (디렉토리 구조)
 - [ ] YAML Front Matter 추가 (id, version, status, created)
 - [ ] `@SPEC:ID` TAG 포함
 - [ ] **HISTORY 섹션 작성** (v0.1.0 INITIAL 항목)

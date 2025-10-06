@@ -342,7 +342,7 @@ Alfred가 모든 코드에 적용하는 품질 기준:
 ## TDD 워크플로우 체크리스트
 
 **1단계: SPEC 작성** (`/alfred:1-spec`)
-- [ ] `.moai/specs/SPEC-<ID>.md` 생성
+- [ ] `.moai/specs/SPEC-<ID>/spec.md` 생성 (디렉토리 구조)
 - [ ] YAML Front Matter 추가 (id, version, status, created)
 - [ ] `@SPEC:ID` TAG 포함
 - [ ] **HISTORY 섹션 작성** (v0.1.0 INITIAL 항목)
