@@ -1,0 +1,55 @@
+name: Test Session Notice (Cross-Platform)
+
+on:
+  push:
+    branches: [ '**' ]
+    paths:
+      - 'test-session-notice.js'
+      - '.claude/hooks/alfred/session-notice.cjs'
+      - 'moai-adk-ts/src/claude/hooks/session-notice/**'
+      - '.github/workflows/test-session-notice.yml'
+  pull_request:
+    paths:
+      - 'test-session-notice.js'
+      - '.claude/hooks/alfred/session-notice.cjs'
+      - 'moai-adk-ts/src/claude/hooks/session-notice/**'
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node-version: [18.x]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      
+      - name: Display environment info
+        run: |
+          echo "OS: ${{ matrix.os }}"
+          echo "Node version: $(node --version)"
+          echo "Working directory: $(pwd)"
+        shell: bash
+      
+      - name: Run session-notice test (JavaScript)
+        run: node test-session-notice.js
+        shell: bash
+      
+      - name: Run session-notice hook
+        run: node .claude/hooks/alfred/session-notice.cjs
+        shell: bash
+      
+      - name: Test summary
+        if: success()
+        run: echo "✅ Session notice test passed on ${{ matrix.os }}"
+        shell: bash
