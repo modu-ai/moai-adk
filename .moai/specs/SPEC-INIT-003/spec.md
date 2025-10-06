@@ -1,9 +1,9 @@
 ---
 id: INIT-003
 version: 0.2.0
-status: draft
+status: completed
 created: 2025-10-06
-updated: 2025-10-06
+updated: 2025-10-07
 author: @Goos
 priority: high
 category: feature
@@ -29,14 +29,24 @@ scope:
 
 ## HISTORY
 
-### v0.2.0 (2025-10-06)
-- **CHANGED**: 설계 전략 변경 - 2단계 분리 접근법 적용
-- **SIMPLIFIED**: moai init은 백업만 수행 (복잡한 병합 엔진 제거)
-- **MOVED**: 병합 로직을 /alfred:8-project로 이동
-- **ADDED**: 백업 메타데이터 시스템 (.moai/backups/latest.json)
-- **IMPROVED**: 사용자 경험 - 설치 빠르게, 선택 신중하게
+### v0.2.0 (2025-10-07)
+- **COMPLETED**: Phase A/B 구현 완료 (TDD 사이클: RED → GREEN → REFACTOR)
+- **TESTED**: 백업 메타데이터 시스템 테스트 통과
+- **TESTED**: 병합 전략 (JSON/Markdown/Hooks) 테스트 통과
+- **VERIFIED**: TAG 체인 무결성 100% (65개 TAG, 고아 없음)
+- **COMMITS**:
+  - 90a8c1e: RED - Phase A 테스트 작성
+  - 58fef69: GREEN - Phase A 백업 메타데이터 구현
+  - 348f825: RED - Phase B 테스트 작성
+  - 384c010: GREEN - Phase B 병합 전략 구현
+  - 072c1ec: REFACTOR - 코드 품질 개선
 - **AUTHOR**: @Goos
-- **CONTEXT**: 복잡도 감소 및 책임 분리 원칙 적용
+- **CHANGED** (2025-10-06): 설계 전략 변경 - 2단계 분리 접근법 적용
+  - SIMPLIFIED: moai init은 백업만 수행 (복잡한 병합 엔진 제거)
+  - MOVED: 병합 로직을 /alfred:8-project로 이동
+  - ADDED: 백업 메타데이터 시스템 (.moai/backups/latest.json)
+  - IMPROVED: 사용자 경험 - 설치 빠르게, 선택 신중하게
+  - CONTEXT: 복잡도 감소 및 책임 분리 원칙 적용
 
 ### v0.1.0 (2025-10-06)
 - **INITIAL**: Init 백업 및 병합 옵션 명세 최초 작성
