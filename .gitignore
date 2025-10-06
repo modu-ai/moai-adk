@@ -1,19 +1,39 @@
 # MoAI-ADK Generated .gitignore
 
+# Dependencies
+node_modules/
+bun.lockb
+
+# Build outputs
+dist/
+*.tsbuildinfo
+.turbo/
+
+# Test coverage
+coverage/
+.nyc_output/
+
 # Logs and temporary files
 .claude/logs/
 .moai/logs/
 *.log
 *.tmp
-
-# Backup directories
-.moai-backup/
-
-# Node.js
-node_modules/
+*.temp
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Backup files
+*.bak
+*.backup
+backup-*/
+.moai-backup/
+
+# Package files
+*.tgz
+*.tar.gz
 
 # Environment variables
 .env
@@ -25,6 +45,12 @@ yarn-error.log*
 .idea/
 *.swp
 *.swo
+*~
+.vscode-test/
+
+# Cache
+.cache/
+.vitest/
 
 # OS generated files
 .DS_Store
