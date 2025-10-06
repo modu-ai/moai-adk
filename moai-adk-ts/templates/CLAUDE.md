@@ -109,6 +109,54 @@ Alfred는 9명의 전문 에이전트를 조율합니다. 각 에이전트는 IT
   → 최신 템플릿 참조: {npm_root}/moai-adk/templates/.moai/project/product.md
 ```
 
+### Git 커밋 메시지 표준 (Locale 기반)
+
+git-manager 에이전트는 `.moai/config.json`의 `locale` 설정에 따라 커밋 메시지를 생성합니다.
+
+#### TDD 단계별 커밋 메시지 템플릿
+
+**한국어 (ko)**:
+```bash
+🔴 RED: [테스트 설명]
+🟢 GREEN: [구현 설명]
+♻️ REFACTOR: [개선 설명]
+📝 DOCS: [문서 설명]
+```
+
+**영어 (en)**:
+```bash
+🔴 RED: [Test description]
+🟢 GREEN: [Implementation description]
+♻️ REFACTOR: [Improvement description]
+📝 DOCS: [Documentation description]
+```
+
+**일본어 (ja)**:
+```bash
+🔴 RED: [テスト説明]
+🟢 GREEN: [実装説明]
+♻️ REFACTOR: [改善説明]
+📝 DOCS: [ドキュメント説明]
+```
+
+**중국어 (zh)**:
+```bash
+🔴 RED: [测试说明]
+🟢 GREEN: [实现说明]
+♻️ REFACTOR: [改进说明]
+📝 DOCS: [文档说明]
+```
+
+#### 커밋 메시지 구조
+```
+[아이콘] [단계]: [설명]
+
+@TAG:[SPEC-ID]-[단계]
+```
+
+**locale 자동 감지**:
+git-manager는 커밋 생성 시 자동으로 `.moai/config.json`의 `project.locale` 값을 읽어 해당 언어로 커밋 메시지를 생성합니다.
+
 ---
 
 ## Context Engineering 전략
