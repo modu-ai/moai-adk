@@ -15,6 +15,8 @@ import { SessionNotifier } from '../session-notice/index';
 vi.mock('node:fs', () => ({
   existsSync: vi.fn(),
   readFileSync: vi.fn(),
+  readdirSync: vi.fn(),
+  statSync: vi.fn(),
 }));
 vi.mock('node:child_process', () => ({
   spawn: vi.fn(),

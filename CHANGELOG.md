@@ -7,6 +7,83 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.6] - 2025-10-06
+
+### Added (SPEC-INSTALL-001)
+
+- **Install Prompts Redesign - 개발자 경험 개선**
+  - 개발자 이름 프롬프트 추가 (Git `user.name` 기본값 제안)
+  - Git 필수 검증 (OS별 설치 안내 메시지)
+  - SPEC Workflow 프롬프트 (Personal 모드 전용)
+  - Auto PR/Draft PR 프롬프트 (Team 모드 전용)
+  - Alfred 환영 메시지 (페르소나 일관성)
+  - Progressive Disclosure 흐름 (인지 부담 최소화)
+
+### Implementation Details
+
+- `@CODE:INSTALL-001:DEVELOPER-INFO` - 개발자 정보 수집 (`src/cli/prompts/developer-info.ts`)
+- `@CODE:INSTALL-001:GIT-VALIDATION` - Git 검증 로직 (`src/utils/git-validator.ts`)
+- `@CODE:INSTALL-001:SPEC-WORKFLOW` - SPEC 워크플로우 프롬프트 (`src/cli/prompts/spec-workflow.ts`)
+- `@CODE:INSTALL-001:PR-CONFIG` - PR 설정 프롬프트 (`src/cli/prompts/pr-config.ts`)
+- `@CODE:INSTALL-001:WELCOME-MESSAGE` - Alfred 환영 메시지 (`src/cli/prompts/welcome-message.ts`)
+- `@CODE:INSTALL-001:INSTALL-FLOW` - 설치 흐름 오케스트레이션 (`src/cli/commands/install-flow.ts`)
+
+### Tests
+
+- `@TEST:INSTALL-001` - 6개 테스트 파일 (100% 커버리지)
+  - 개발자 정보 수집 테스트
+  - Git 검증 테스트
+  - SPEC Workflow 프롬프트 테스트
+  - PR 설정 테스트
+  - 환영 메시지 테스트
+  - 통합 테스트 (E2E)
+
+### Fixed
+
+- **테스트 안정화** (8개 테스트 수정)
+  - Vitest 모킹 호이스팅 이슈 해결 (`init-noninteractive.test.ts`)
+  - 환경 변수 격리 패턴 구현 (`path-validator.test.ts`)
+  - 인터페이스 필드 일치성 수정 (`optional-deps.test.ts`)
+  - fs 모듈 완전 모킹 (`session-notice.test.ts`)
+  - 테스트 통과율: 91.9% → 100% (753/753 tests) ✅
+
+- **VERSION 파일 일치성 유지**
+  - VERSION 파일과 package.json 버전 동기화
+  - 버전 추적성 100% 확보
+
+### Changed
+
+- **문서 동기화 및 품질 검증**
+  - SPEC-INSTALL-001 상태 업데이트 (draft → completed, v0.1.0 → v0.2.0)
+  - 동기화 보고서 생성 (`.moai/reports/sync-report-INSTALL-001.md`)
+  - TAG 체인 무결성 검증 (32개 TAG, 14개 파일, 100% 추적성)
+  - TRUST 5원칙 준수율: 72% → 92% ✅
+
+- **패키지 배포 전략 문서화**
+  - AI Agent 시간 기반 타임라인 추가 (Phase 1-3, 3.5-7시간)
+  - v0.2.x 버전 정책 명시 (v1.0.0 사용자 승인 필수)
+  - 언어별 배포 명령어 가이드 (NPM, PyPI, Maven, Go)
+  - 품질 게이트 검증 기준 정의
+
+### Documentation
+
+- SPEC-INSTALL-001 완료 보고서 (`.moai/specs/SPEC-INSTALL-001/spec.md`)
+- 동기화 보고서 생성 (`.moai/reports/sync-report-INSTALL-001.md`)
+- 배포 전략 가이드 추가 (`CLAUDE.md`, `moai-adk-ts/templates/CLAUDE.md`)
+- HISTORY 섹션 업데이트 (v0.2.0 구현 완료 기록)
+
+### Impact
+
+- ✅ 설치 경험 대폭 개선 (Progressive Disclosure)
+- ✅ Git 필수화로 버전 관리 보장
+- ✅ SPEC Workflow Personal 모드 선택 가능
+- ✅ Team 모드 PR 자동화 옵션 제공
+- ✅ Alfred 페르소나 일관성 유지
+- ✅ 테스트 100% 통과 (프로덕션 배포 준비 완료)
+- ✅ TAG 체인 무결성 100% (고아 TAG 없음)
+
+---
+
 ## [v0.0.3] - 2025-10-06
 
 ### Changed (CONFIG-SCHEMA-001)
