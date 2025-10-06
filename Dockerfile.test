@@ -1,0 +1,11 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copy test script and project files
+COPY test-session-notice.js /app/test-session-notice.js
+COPY .moai /app/.moai
+COPY .claude /app/.claude
+
+# Run test
+CMD ["node", "test-session-notice.js"]
