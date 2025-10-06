@@ -191,22 +191,41 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 
 **spec.md 파일 상단에 반드시 포함**해야 하는 메타데이터:
 
+> **참조**: `.moai/memory/spec-metadata.md` - 필수/선택 필드 16개 정의 문서
+
 ```yaml
 ---
-id: AUTH-001                    # 필수: <도메인>-<3자리> 형식 (영구 불변)
-version: 1.0.0                  # 필수: SemVer 형식 (major.minor.patch)
-status: draft                   # 필수: draft|active|deprecated
-created: 2025-09-15            # 필수: 생성일 (YYYY-MM-DD)
-updated: 2025-10-01            # 필수: 최종 수정일 (YYYY-MM-DD)
-author: @username              # 선택: 작성자 GitHub ID
-reviewers:                     # 선택: 검토자 목록
-  - @reviewer1
-  - @reviewer2
-labels:                        # 선택: 분류 태그
+# 필수 필드 (7개)
+id: AUTH-001                    # SPEC 고유 ID (<도메인>-<3자리>, 영구 불변)
+version: 0.1.0                  # Semantic Version (v0.1.0 = INITIAL)
+status: draft                   # draft|active|completed|deprecated
+created: 2025-09-15            # 생성일 (YYYY-MM-DD)
+updated: 2025-10-01            # 최종 수정일 (YYYY-MM-DD)
+author: @Goos                   # 작성자 (GitHub ID, 단수형)
+priority: high                  # low|medium|high|critical
+
+# 선택 필드 - 분류/메타
+category: security              # feature|bugfix|refactor|security|docs|perf
+labels:                         # 분류 태그 (검색용)
   - authentication
-  - security
-  - api
-priority: high                 # 선택: high|medium|low
+  - jwt
+
+# 선택 필드 - 관계 (의존성 그래프)
+depends_on:                     # 의존하는 SPEC (선택)
+  - USER-001
+blocks:                         # 차단하는 SPEC (선택)
+  - AUTH-002
+related_specs:                  # 관련 SPEC (선택)
+  - TOKEN-002
+related_issue: "https://github.com/modu-ai/moai-adk/issues/123"
+
+# 선택 필드 - 범위 (영향 분석)
+scope:
+  packages:                     # 영향받는 패키지
+    - src/core/auth
+  files:                        # 핵심 파일 (선택)
+    - auth-service.ts
+    - jwt-manager.ts
 ---
 ```
 
@@ -215,16 +234,18 @@ priority: high                 # 선택: high|medium|low
   - **디렉토리명 규칙**: `.moai/specs/SPEC-{ID}/` (예: `SPEC-AUTH-001/`)
   - **ID 중복 확인**: `rg "@SPEC:{ID}" -n .moai/specs/` 로 기존 TAG 검색 필수
   - **복합 도메인**: 하이픈으로 연결 가능 (예: `UPDATE-REFACTOR-001`)
-- **version**: 명세 버전 (HISTORY 섹션과 동기화 필수)
-- **status**:
-  - `draft` - 작성 중
-  - `active` - 승인됨, 구현 진행/완료
-  - `deprecated` - 더 이상 사용 안 함
-- **created/updated**: ISO 8601 날짜 형식
-- **author**: 최초 작성자 (GitHub ID 권장)
-- **reviewers**: 검토자 목록 (Team 모드에서 활용)
-- **labels**: 검색 및 분류용 태그
-- **priority**: 구현 우선순위 (시간 예측 금지)
+- **version**: Semantic Version 체계 (v0.1.0 = INITIAL, v0.2.0~ = 구현 완료, v1.0.0 = 안정화)
+- **status**: `draft` (작성 중) | `active` (구현 진행) | `completed` (완료) | `deprecated` (사용 중지)
+- **created/updated**: YYYY-MM-DD 형식
+- **author**: 단수형, GitHub ID 앞에 @ 접두사 필수 (예: `@Goos`)
+- **priority**: `critical` (즉시) | `high` (높음) | `medium` (중간) | `low` (낮음)
+- **category**: 변경 유형 (feature|bugfix|refactor|security|docs|perf)
+- **labels**: 검색/필터링용 태그 배열
+- **depends_on/blocks/related_specs**: SPEC 간 의존성 그래프
+- **related_issue**: GitHub Issue 전체 URL
+- **scope.packages/files**: 영향받는 패키지/파일 목록
+
+**상세 규칙**: `.moai/memory/spec-metadata.md` 참조
 
 #### HISTORY 섹션 (필수)
 
@@ -235,43 +256,40 @@ priority: high                 # 선택: high|medium|low
 
 ## HISTORY
 
-### v1.0.0 (2025-09-15)
-- **INITIAL**: 기본 JWT 인증 명세 작성
-- **AUTHOR**: @goos
-- **SCOPE**:
-  - 로그인/로그아웃 기본 플로우
-  - 액세스 토큰 발급/검증
-  - 리프레시 토큰 메커니즘
+### v0.1.0 (2025-09-15)
+- **INITIAL**: JWT 기반 인증 시스템 명세 최초 작성
+- **AUTHOR**: @Goos
+- **SCOPE**: 토큰 발급, 검증, 갱신 로직
+- **CONTEXT**: 사용자 인증 강화 요구사항 반영
 
-### v1.1.0 (2025-09-20)
+### v0.2.0 (2025-09-20)
 - **ADDED**: 소셜 로그인 요구사항 추가
-- **AUTHOR**: @goos
+- **AUTHOR**: @Goos
 - **REVIEW**: @security-team (승인)
 - **CHANGES**:
   - OAuth2 통합 요구사항
   - Google/GitHub 로그인 지원
 
-### v2.0.0 (2025-10-01)
-- **BREAKING**: 토큰 만료 시간 정책 변경
-- **CHANGED**: 액세스 토큰 15분 → 30분
-- **ADDED**: 자동 토큰 갱신 요구사항
-- **AUTHOR**: @goos
-- **REVIEW**: @product-team, @security-team (승인)
-- **MIGRATION**: 기존 클라이언트 토큰 갱신 로직 업데이트 필요
+### v0.3.0 (2025-10-01)
+- **CHANGED**: 토큰 만료 시간 15분 → 30분으로 변경
+- **ADDED**: 리프레시 토큰 자동 갱신 요구사항 추가
+- **AUTHOR**: @Goos
+- **REVIEW**: @security-team (승인)
 ```
 
 **HISTORY 작성 규칙**:
+- **버전 체계**: `v0.1.0` = INITIAL (모든 SPEC 시작 버전), `v0.2.0~v0.9.0` = 구현 완료/기능 추가, `v1.0.0` = 정식 안정화
 - **버전 순서**: 최신 버전이 위로 (역순)
 - **변경 타입** (대문자):
-  - `INITIAL` - 최초 작성
+  - `INITIAL` - 최초 작성 (항상 v0.1.0)
   - `ADDED` - 새 요구사항 추가
   - `CHANGED` - 기존 요구사항 수정
-  - `BREAKING` - 하위 호환성 깨는 변경
+  - `BREAKING` - 하위 호환성 깨는 변경 (Major 버전 증가)
   - `DEPRECATED` - 폐기 예정 표시
   - `REMOVED` - 요구사항 제거
-  - `FIXED` - 명세 오류 수정
+  - `FIXED` - 명세 오류 수정 (Patch 버전 증가)
 - **필수 항목**: 버전, 날짜, AUTHOR, 변경 내용
-- **선택 항목**: REVIEW (검토자), SCOPE (범위), MIGRATION (마이그레이션 가이드)
+- **선택 항목**: REVIEW (검토자), SCOPE (범위), CONTEXT (배경), MIGRATION (마이그레이션 가이드)
 
 #### SPEC 문서 전체 구조
 

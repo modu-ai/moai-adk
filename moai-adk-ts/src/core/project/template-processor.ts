@@ -393,28 +393,7 @@ Handles ${commandName} workflow step.
 `;
   }
 
-  /**
-   * Generate pre-commit hook content
-   * @param data - Template data
-   * @returns Pre-commit hook Python script
-   * @tags @CODE:PROCESSOR-HOOK-001:API
-   */
-  public generatePreCommitHook(data: TemplateData): string {
-    return `#!/usr/bin/env python3
-"""
-Pre-commit hook for ${data.projectName}
-Generated: ${data.timestamp}
-"""
-
-import sys
-
-def main():
-    print("Running pre-commit checks...")
-    # Add validation logic here
-    return 0
-
-if __name__ == "__main__":
-    sys.exit(main())
-`;
-  }
+  // Note: Pre-commit hooks are now implemented in TypeScript
+  // See: src/claude/hooks/* for TS-based hook implementations
+  // Legacy Python hook generation has been removed
 }
