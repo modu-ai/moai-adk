@@ -1,0 +1,755 @@
+<!DOCTYPE html><html class="default" lang="en" data-base="./"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>moai-adk - v0.2.5</title><meta name="description" content="Documentation for moai-adk"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="assets/style.css"/><link rel="stylesheet" href="assets/highlight.css"/><script defer src="assets/main.js"></script><script async src="assets/icons.js" id="tsd-icons-script"></script><script async src="assets/search.js" id="tsd-search-script"></script><script async src="assets/navigation.js" id="tsd-nav-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><a href="index.html" class="title">moai-adk - v0.2.5</a><div id="tsd-toolbar-links"></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/><ul role="listbox" id="tsd-search-results"></ul><div id="tsd-search-status" aria-live="polite" aria-atomic="true"><div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-menu"></use></svg></a></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><h1>moai-adk - v0.2.5</h1></div><div class="tsd-panel tsd-typography"><h1 id="moai-adk-agentic-development-kit" class="tsd-anchor-link">MoAI-ADK (Agentic Development Kit)<a href="#moai-adk-agentic-development-kit" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h1><p><a href="https://www.npmjs.com/package/moai-adk"><img src="https://img.shields.io/npm/v/moai-adk" alt="npm version"></a>
+<a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+<a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.9.2+-blue" alt="TypeScript"></a>
+<a href="https://nodejs.org/"><img src="https://img.shields.io/badge/node-18.0+-green" alt="Node.js"></a>
+<a href="https://bun.sh/"><img src="https://img.shields.io/badge/Bun-1.2.19+-black" alt="Bun"></a></p>
+<h2 id="moai-adk" class="tsd-anchor-link">MoAI-ADK<a href="#moai-adk" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="모두의ai-에이전틱-코딩-개발-프레임워크" class="tsd-anchor-link">모두의AI 에이전틱 코딩 개발 프레임워크<a href="#모두의ai-에이전틱-코딩-개발-프레임워크" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>안내:</strong> MoAI-ADK는 모두의AI 연구실에서 집필 중인 &quot;(가칭) 에이전틱 코딩&quot; 서적의 별책 부록 오픈 소스 프로젝트 임을 밝혀 둡니다.</p>
+<p><img src="https://github.com/modu-ai/moai-adk/raw/main/docs/public/moai-tui_screen-light.png" alt="MoAI-ADK CLI Interface"></p>
+<blockquote>
+<p>&quot;SPEC이 없으면 CODE도 없다.&quot;</p>
+</blockquote>
+<hr>
+<h2 id="목차" class="tsd-anchor-link">목차<a href="#목차" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><ul>
+<li><a href="#-meet-alfred---your-ai-development-partner">Meet Alfred</a></li>
+<li><a href="#-quick-start-3%EB%B6%84-%EC%8B%A4%EC%A0%84">Quick Start</a></li>
+<li><a href="#-the-problem---%EB%B0%94%EC%9D%B4%EB%B8%8C-%EC%BD%94%EB%94%A9%EC%9D%98-%ED%95%9C%EA%B3%84">The Problem</a></li>
+<li><a href="#-the-solution---3%EB%8B%A8%EA%B3%84-%EC%9B%8C%ED%81%AC%ED%94%8C%EB%A1%9C%EC%9A%B0">The Solution</a></li>
+<li><a href="#%EF%B8%8F-how-alfred-works---10%EA%B0%9C-ai-%EC%97%90%EC%9D%B4%EC%A0%84%ED%8A%B8-%ED%8C%80">How Alfred Works</a></li>
+<li><a href="#-alfreds-output-styles">Output Styles</a></li>
+<li><a href="#-universal-language-support">Language Support</a></li>
+<li><a href="#-cli-reference">CLI Reference</a></li>
+<li><a href="#-%ED%94%84%EB%A1%9C%EA%B7%B8%EB%9E%98%EB%A7%A4%ED%8B%B1-api">API Reference</a></li>
+<li><a href="#-trust-5%EC%9B%90%EC%B9%99">TRUST 5원칙</a></li>
+<li><a href="#-%EB%AC%B8%EC%A0%9C-%ED%95%B4%EA%B2%B0">문제 해결</a></li>
+<li><a href="#-%EB%AC%B8%EC%84%9C-%EB%B0%8F-%EC%A7%80%EC%9B%90">Support</a></li>
+</ul>
+<hr>
+<h2 id="meet-▶◀-alfred---your-ai-development-partner" class="tsd-anchor-link">Meet ▶◀ Alfred - Your AI Development Partner<a href="#meet-▶◀-alfred---your-ai-development-partner" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><p>안녕하세요, 모두의AI SuperAgent <strong>AI ▶◀ Alfred</strong>입니다!</p>
+<p><img src="https://github.com/modu-ai/moai-adk/raw/main/docs/public/alfred_logo.png" alt="Alfred Logo"></p>
+<p>저는 MoAI-ADK(모두의AI Agentic Development Kit)의 SuperAgent이자 중앙 오케스트레이터(Central Orchestrator) AI, Alfred입니다. MoAI-ADK는 Alfred를 포함하여 <strong>총 10개의 AI 에이전트로 구성된 에이전틱 코딩 AI 팀</strong>입니다. 저는 9개의 전문 에이전트(spec-builder, code-builder, doc-syncer 등)를 조율하여 여러분의 Claude Code 환경 속에서 공동 개발 작업을 완벽하게 지원합니다.</p>
+<p><strong>Alfred라는 이름의 유래</strong>: 배트맨 영화에 나오는 충실한 집사 Alfred Pennyworth에서 영감을 받아 지었다고 합니다. 집사 Alfred가 배트맨(Bruce Wayne)을 위해 모든 준비를 완벽하게 갖추고, 위험에 처했을 때 즉각적인 지원을 제공하며, 항상 한 걸음 앞서 생각하듯이, 저 또한 여러분의 개발 과정 속에서 필요한 모든 것을 미리 준비하고, 문제가 발생하면 즉시 해결책을 제시하며, 언제나 여러분이 창의적인 문제 해결에만 집중할 수 있도록 뒷받침합니다. 여러분은 코드의 &quot;<strong>왜(Why)</strong>&quot;에 집중하시고, &quot;<strong>어떻게(How)</strong>&quot;는 제가 책임지겠습니다.</p>
+<h3 id="🌟-흥미로운-사실-ai가-만든-ai-개발-도구" class="tsd-anchor-link">🌟 흥미로운 사실: AI가 만든 AI 개발 도구<a href="#🌟-흥미로운-사실-ai가-만든-ai-개발-도구" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p>이 프로젝트의 모든 코드는 <strong>100% AI에 의해 작성</strong>되었습니다. AI가 직접 설계하고 구현한 AI 개발 프레임워크입니다.</p>
+<p><strong>설계 단계부터 AI 협업</strong>: 초기 아키텍처 설계 단계부터 <strong>GPT-5 Pro</strong>와 <strong>Claude 4.1 Opus</strong> 두 AI 모델이 함께 참여했습니다. 두 AI가 서로 다른 관점에서 설계를 검토하고 토론하며, 더 나은 방향을 제시하고, 최적의 아키텍처를 함께 만들어냈습니다. GPT-5 Pro는 폭넓은 사례 분석을, Claude 4.1 Opus는 깊이 있는 코드 구조 설계를 담당하며 서로 보완했습니다.</p>
+<p><strong>Agentic Coding 방법론의 실제 적용</strong>: <strong>모두의AI</strong>팀이 Claude Code와 Agentic Coding 방법론을 활용하여 개발했습니다. 전통적인 방식처럼 사람이 키보드 앞에 앉아 모든 코드를 직접 타이핑하는 대신, AI 에이전트들이 SPEC을 읽고 이해하고, 테스트를 먼저 작성하고(TDD Red), 구현 코드를 만들고(TDD Green), 리팩토링하고(TDD Refactor), 문서를 동기화하는 전 과정을 <strong>자율적으로</strong> 수행했습니다. 저 Alfred와 9개 전문 에이전트로 구성된 <strong>10개 AI 에이전트 팀</strong>이 직접 <code>.moai/specs/</code> 폴더에 SPEC 문서를 작성하고, <code>tests/</code> 폴더에 테스트 코드를 만들고, <code>src/</code> 폴더에 구현 코드를 작성했습니다.</p>
+<p><strong>100% AI 생성 코드의 진실</strong>: 이 프로젝트는 100% AI로 만들어진 오픈소스이기 때문에, 코드베이스에서 다소 정리되지 않은 부분이나 개선이 필요한 영역이 보일 수 있습니다. 하지만 이것이 이 프로젝트의 핵심 철학입니다.</p>
+<p><strong>투명성과 지속적 개선</strong>: 완벽하지 않은 코드를 숨기는 대신, AI 개발 도구가 실제로 어떻게 만들어지는지 그대로 보여주고, 커뮤니티와 함께 더 나은 방향으로 발전시켜 나가고자 합니다. 여러분의 사용 경험과 피드백이 이 프로젝트를 더욱 강력하게 만듭니다. <a href="https://github.com/modu-ai/moai-adk/issues">GitHub Issues</a>나 <a href="https://github.com/modu-ai/moai-adk/discussions">Discussions</a>에 피드백을 남겨주시면, <strong>최대한 빠르게 업데이트하고 배포할 것을 약속드립니다</strong>. AI가 만든 도구를 함께 더 나은 도구로 만들어가는 여정에 동참해주세요!</p>
+<h3 id="▶◀-alfred가-제공하는-4가지-핵심-가치" class="tsd-anchor-link">▶◀ Alfred가 제공하는 4가지 핵심 가치<a href="#▶◀-alfred가-제공하는-4가지-핵심-가치" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><h4 id="1️⃣-일관성consistency-플랑켄슈타인-코드를-방지하는-3단계-파이프라인" class="tsd-anchor-link">1️⃣ 일관성(Consistency): 플랑켄슈타인 코드를 방지하는 3단계 파이프라인<a href="#1️⃣-일관성consistency-플랑켄슈타인-코드를-방지하는-3단계-파이프라인" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Alfred는 모든 개발 작업을 <strong>SPEC → TDD → Sync</strong>라는 3단계 파이프라인으로 표준화합니다. 월요일에 ChatGPT로 만든 코드, 수요일에 Claude로 만든 코드, 금요일에 Gemini로 만든 코드가 서로 다른 스타일, 네이밍 규칙, 아키텍처 패턴을 가지는 &quot;플랑켄슈타인 코드&quot;의 문제를 <strong>원천적으로 차단</strong>합니다.</p>
+<h4 id="2️⃣-품질quality-trust-5원칙으로-자동-보장되는-코드-품질" class="tsd-anchor-link">2️⃣ 품질(Quality): TRUST 5원칙으로 자동 보장되는 코드 품질<a href="#2️⃣-품질quality-trust-5원칙으로-자동-보장되는-코드-품질" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Alfred는 모든 코드에 <strong>TRUST 5원칙</strong>(Test First, Readable, Unified, Secured, Trackable)을 자동으로 적용하고 검증합니다. 사람이 일일이 체크리스트를 들고 확인할 필요가 없습니다.</p>
+<h4 id="3️⃣-추적성traceability-6개월-후에도-왜를-찾을-수-있는-tag-시스템" class="tsd-anchor-link">3️⃣ 추적성(Traceability): 6개월 후에도 &quot;왜&quot;를 찾을 수 있는 @TAG 시스템<a href="#3️⃣-추적성traceability-6개월-후에도-왜를-찾을-수-있는-tag-시스템" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Alfred의 <strong>@TAG 시스템</strong>은 모든 코드 조각을 <code>@SPEC:ID → @TEST:ID → @CODE:ID → @DOC:ID</code>로 완벽하게 연결합니다. 6개월 후 누군가 &quot;왜 이 함수는 이렇게 복잡하게 구현했나요?&quot;라고 물어보면, <strong>@TAG를 따라가면 답을 찾을 수 있습니다</strong>.</p>
+<h4 id="4️⃣-범용성universality-한-번-배우면-어디서나-쓸-수-있는-워크플로우" class="tsd-anchor-link">4️⃣ 범용성(Universality): 한 번 배우면 어디서나 쓸 수 있는 워크플로우<a href="#4️⃣-범용성universality-한-번-배우면-어디서나-쓸-수-있는-워크플로우" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Alfred는 특정 언어나 프레임워크에 종속되지 않습니다. <strong>Python, TypeScript, Java, Go, Rust, Dart, Swift, Kotlin</strong> 등 모든 주요 프로그래밍 언어를 지원하며, 각 언어에 최적화된 도구 체인을 자동으로 선택합니다.</p>
+<hr>
+<h2 id="🚀-quick-start-3분-실전" class="tsd-anchor-link">🚀 Quick Start (3분 실전)<a href="#🚀-quick-start-3분-실전" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="📋-준비물" class="tsd-anchor-link">📋 준비물<a href="#📋-준비물" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li>✅ Bun 또는 npm 설치됨</li>
+<li>✅ Claude Code 실행 중</li>
+<li>✅ Git 설치됨 (선택사항)</li>
+</ul>
+<h3 id="⚡-3단계로-시작하기" class="tsd-anchor-link">⚡ 3단계로 시작하기<a href="#⚡-3단계로-시작하기" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><h4 id="1️⃣-설치-30초" class="tsd-anchor-link">1️⃣ 설치 (30초)<a href="#1️⃣-설치-30초" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="bash"><span class="hl-0"># Bun 권장 (5배 빠른 성능)</span><br/><span class="hl-1">curl</span><span class="hl-2"> </span><span class="hl-3">-fsSL</span><span class="hl-2"> </span><span class="hl-4">https://bun.sh/install</span><span class="hl-2"> | </span><span class="hl-1">bash</span><br/><span class="hl-1">bun</span><span class="hl-2"> </span><span class="hl-4">add</span><span class="hl-2"> </span><span class="hl-3">-g</span><span class="hl-2"> </span><span class="hl-4">moai-adk</span><br/><br/><span class="hl-0"># 또는 npm 사용</span><br/><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-4">install</span><span class="hl-2"> </span><span class="hl-3">-g</span><span class="hl-2"> </span><span class="hl-4">moai-adk</span><br/><br/><span class="hl-0"># 설치 확인</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-3">--version</span><br/><span class="hl-0"># 출력: v0.x.x</span>
+</code><button type="button">Copy</button></pre>
+
+<h4 id="2️⃣-초기화-1분" class="tsd-anchor-link">2️⃣ 초기화 (1분)<a href="#2️⃣-초기화-1분" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>터미널에서:</strong></p>
+<pre><code class="bash"><span class="hl-0"># 새 프로젝트 생성</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-4">init</span><span class="hl-2"> </span><span class="hl-4">my-project</span><br/><span class="hl-1">cd</span><span class="hl-2"> </span><span class="hl-4">my-project</span><br/><br/><span class="hl-0"># 기존 프로젝트에 설치</span><br/><span class="hl-1">cd</span><span class="hl-2"> </span><span class="hl-4">existing-project</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-4">init</span><span class="hl-2"> </span><span class="hl-4">.</span><br/><br/><span class="hl-0"># Claude Code 실행</span><br/><span class="hl-1">claude</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Claude Code에서</strong> (필수):</p>
+<pre><code class="text">/alfred:8-project
+</code><button type="button">Copy</button></pre>
+
+<p>Alfred가 자동으로 수행:</p>
+<ul>
+<li><code>.moai/project/</code> 문서 3종 생성 (product/structure/tech.md)</li>
+<li>언어별 최적 도구 체인 설정</li>
+<li>프로젝트 컨텍스트 완벽 이해</li>
+</ul>
+<h4 id="3️⃣-첫-기능-개발-1분-30초" class="tsd-anchor-link">3️⃣ 첫 기능 개발 (1분 30초)<a href="#3️⃣-첫-기능-개발-1분-30초" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Claude Code에서 3단계 워크플로우 실행:</strong></p>
+<pre><code class="text"># SPEC 작성
+/alfred:1-spec &quot;JWT 기반 사용자 로그인 API&quot;
+
+# TDD 구현
+/alfred:2-build AUTH-001
+
+# 문서 동기화
+/alfred:3-sync
+</code><button type="button">Copy</button></pre>
+
+<h3 id="🎉-완료" class="tsd-anchor-link">🎉 완료!<a href="#🎉-완료" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>생성된 것들:</strong></p>
+<ul>
+<li>✅ <code>.moai/specs/SPEC-AUTH-001/spec.md</code> (명세)</li>
+<li>✅ <code>tests/auth/login.test.ts</code> (테스트)</li>
+<li>✅ <code>src/services/auth.ts</code> (구현)</li>
+<li>✅ <code>docs/api/auth.md</code> (문서)</li>
+<li>✅ <code>@SPEC → @TEST → @CODE → @DOC</code> TAG 체인</li>
+</ul>
+<hr>
+<h2 id="🚨-the-problem---바이브-코딩의-한계" class="tsd-anchor-link">🚨 The Problem - 바이브 코딩의 한계<a href="#🚨-the-problem---바이브-코딩의-한계" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><p>AI 도구(Codex, Claude, Gemini)로 빠르게 코딩하는 시대가 열렸습니다. 개발 속도는 확실히 빨라졌지만, <strong>새로운 종류의 문제</strong>들이 생겨났습니다.</p>
+<h3 id="1-아름답지만-작동하지-않는-코드" class="tsd-anchor-link">1. 아름답지만 작동하지 않는 코드<a href="#1-아름답지만-작동하지-않는-코드" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>문제 상황</strong>: AI가 생성한 코드는 문법적으로 완벽하고 구조도 우아합니다. 하지만 실제로 실행해보면...</p>
+<ul>
+<li>컴파일은 되지만 런타임에 <code>undefined</code> 에러</li>
+<li>엣지 케이스 처리 부족 (빈 배열, null 값, 네트워크 타임아웃)</li>
+<li>성능 문제 (<code>O(n³)</code> 복잡도)</li>
+<li>의존성 지옥 및 보안 취약점</li>
+</ul>
+<h3 id="2-플랑켄슈타인-코드의-탄생" class="tsd-anchor-link">2. 플랑켄슈타인 코드의 탄생<a href="#2-플랑켄슈타인-코드의-탄생" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>문제 상황</strong>: 여러 AI 도구를 번갈아 사용하거나, 같은 AI라도 다른 세션에서 코드를 생성하다 보면 일관성 없는 코드베이스가 만들어집니다.</p>
+<ul>
+<li>일관성 없는 코딩 스타일 (함수형, 객체지향, 절차형 혼재)</li>
+<li>중복 로직 난무 (<code>validateEmail()</code>, <code>checkEmailFormat()</code>, <code>isEmailValid()</code>)</li>
+<li>아키텍처 붕괴 (MVC, Hexagonal, Clean Architecture 혼재)</li>
+</ul>
+<h3 id="3-디버깅-지옥" class="tsd-anchor-link">3. 디버깅 지옥<a href="#3-디버깅-지옥" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>문제 상황</strong>: 프로덕션에서 버그가 발생했을 때, 원인을 찾는 것이 거의 불가능합니다.</p>
+<ul>
+<li>원인 추적 불가 (AI 채팅 히스토리 삭제됨)</li>
+<li>사이드 이펙트 파악 불가 (테스트 부재)</li>
+<li>문서 없음 (outdated 상태)</li>
+</ul>
+<h3 id="4-요구사항-추적성-상실" class="tsd-anchor-link">4. 요구사항 추적성 상실<a href="#4-요구사항-추적성-상실" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>문제 상황</strong>: 시간이 지날수록 &quot;왜 이 코드를 이렇게 만들었는지&quot; 맥락을 잃어버립니다.</p>
+<ul>
+<li>&quot;왜&quot;를 잃어버림 (비즈니스 로직 배경 모름)</li>
+<li>변경 이력 부재 (Git 커밋 메시지: &quot;fix bug&quot;)</li>
+<li>의사결정 근거 사라짐</li>
+</ul>
+<h3 id="5-팀-협업-붕괴" class="tsd-anchor-link">5. 팀 협업 붕괴<a href="#5-팀-협업-붕괴" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>문제 상황</strong>: 여러 개발자가 각자 AI를 사용하면서 협업이 무너집니다.</p>
+<ul>
+<li>스파게티 코드 양산</li>
+<li>코드 리뷰 불가</li>
+<li>온보딩 악몽</li>
+<li>기술 부채 폭발</li>
+</ul>
+<h3 id="💔-바이브-코딩의-역설" class="tsd-anchor-link">💔 바이브 코딩의 역설<a href="#💔-바이브-코딩의-역설" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>속도와 품질의 트레이드오프</strong>: AI가 코드를 빠르게 생성해주지만, 그 코드는 <strong>유지보수할 수 없는 블랙박스</strong>가 됩니다. 1주일 만에 만든 프로토타입이 3개월 동안 기술 부채를 만들어냅니다.</p>
+<p><strong>해결책의 필요성</strong>: 이 문제를 해결하려면, AI의 속도는 유지하면서도 코드의 <strong>일관성, 품질, 추적성</strong>을 보장하는 체계적인 방법론이 필요합니다. 바로 여기서 <strong>Alfred와 MoAI-ADK</strong>가 등장합니다.</p>
+<hr>
+<h2 id="✨-the-solution---3단계-워크플로우" class="tsd-anchor-link">✨ The Solution - 3단계 워크플로우<a href="#✨-the-solution---3단계-워크플로우" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Alfred는 Agentic AI 시대의 코드 품질 문제를 <strong>체계적인 3단계 워크플로우</strong>로 해결합니다.</p>
+<h3 id="1️⃣-spec---명세-작성" class="tsd-anchor-link">1️⃣ SPEC - 명세 작성<a href="#1️⃣-spec---명세-작성" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>명령어</strong>: <code>/alfred:1-spec &quot;JWT 기반 사용자 로그인 API&quot;</code></p>
+<p><strong>Alfred가 자동으로 수행</strong>:</p>
+<ul>
+<li>EARS 형식 명세 자동 생성</li>
+<li><code>@SPEC:ID</code> TAG 부여</li>
+<li>Git 브랜치 자동 생성</li>
+<li>HISTORY 섹션 자동 추가</li>
+</ul>
+<h3 id="2️⃣-build---tdd-구현" class="tsd-anchor-link">2️⃣ BUILD - TDD 구현<a href="#2️⃣-build---tdd-구현" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>명령어</strong>: <code>/alfred:2-build AUTH-001</code></p>
+<p><strong>TDD 사이클</strong>:</p>
+<ul>
+<li>🔴 <strong>RED</strong>: 실패하는 테스트 작성 (<code>@TEST:AUTH-001</code>)</li>
+<li>🟢 <strong>GREEN</strong>: 최소 구현으로 테스트 통과 (<code>@CODE:AUTH-001</code>)</li>
+<li>🔵 <strong>REFACTOR</strong>: 코드 품질 개선</li>
+</ul>
+<h3 id="3️⃣-sync---문서-동기화" class="tsd-anchor-link">3️⃣ SYNC - 문서 동기화<a href="#3️⃣-sync---문서-동기화" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>명령어</strong>: <code>/alfred:3-sync</code></p>
+<p><strong>Alfred가 자동으로 수행</strong>:</p>
+<ul>
+<li>TAG 체인 검증: <code>@SPEC</code> → <code>@TEST</code> → <code>@CODE</code> → <code>@DOC</code></li>
+<li>고아 TAG 자동 탐지</li>
+<li>Living Document 자동 생성</li>
+<li>PR 상태 전환 (Draft → Ready)</li>
+</ul>
+<hr>
+<h2 id="시스템-요구사항" class="tsd-anchor-link">시스템 요구사항<a href="#시스템-요구사항" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="🔴-필수-요구사항" class="tsd-anchor-link">🔴 필수 요구사항<a href="#🔴-필수-요구사항" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><strong>Node.js</strong>: 18.0 이상</li>
+<li><strong>Git</strong>: 2.30.0 이상</li>
+<li><strong>npm</strong>: 8.0.0 이상 (또는 <strong>Bun 1.2.0 이상 강력 추천</strong>)</li>
+<li><strong>Claude Code</strong>: v1.2.0 이상 (에이전트 시스템 완전 통합용)</li>
+</ul>
+<h3 id="🌍-지원-운영체제" class="tsd-anchor-link">🌍 지원 운영체제<a href="#🌍-지원-운영체제" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><strong>Windows</strong>: 10/11 (PowerShell 5.1+)</li>
+<li><strong>macOS</strong>: 12 Monterey 이상 (M1/M2 네이티브 지원)</li>
+<li><strong>Linux</strong>: Ubuntu 20.04+, CentOS 8+, Debian 11+, Arch Linux</li>
+</ul>
+<hr>
+<h2 id="설치" class="tsd-anchor-link">설치<a href="#설치" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="option-a-bun-설치-최적-성능-강력-추천-🔥" class="tsd-anchor-link">Option A: Bun 설치 (최적 성능, 강력 추천) 🔥<a href="#option-a-bun-설치-최적-성능-강력-추천-🔥" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="bash"><span class="hl-0"># Bun 설치 (아직 없는 경우)</span><br/><span class="hl-1">curl</span><span class="hl-2"> </span><span class="hl-3">-fsSL</span><span class="hl-2"> </span><span class="hl-4">https://bun.sh/install</span><span class="hl-2"> | </span><span class="hl-1">bash</span><span class="hl-2">  </span><span class="hl-0"># macOS/Linux</span><br/><span class="hl-0"># 또는</span><br/><span class="hl-1">powershell</span><span class="hl-2"> </span><span class="hl-3">-c</span><span class="hl-2"> </span><span class="hl-4">&quot;iwr bun.sh/install.ps1|iex&quot;</span><span class="hl-2">  </span><span class="hl-0"># Windows</span><br/><br/><span class="hl-0"># MoAI-ADK 전역 설치</span><br/><span class="hl-1">bun</span><span class="hl-2"> </span><span class="hl-4">add</span><span class="hl-2"> </span><span class="hl-3">-g</span><span class="hl-2"> </span><span class="hl-4">moai-adk</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="option-b-npm-설치-표준-옵션" class="tsd-anchor-link">Option B: npm 설치 (표준 옵션)<a href="#option-b-npm-설치-표준-옵션" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="bash"><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-4">install</span><span class="hl-2"> </span><span class="hl-3">-g</span><span class="hl-2"> </span><span class="hl-4">moai-adk</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="option-c-개발자-설치-로컬-개발용" class="tsd-anchor-link">Option C: 개발자 설치 (로컬 개발용)<a href="#option-c-개발자-설치-로컬-개발용" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="bash"><span class="hl-1">git</span><span class="hl-2"> </span><span class="hl-4">clone</span><span class="hl-2"> </span><span class="hl-4">https://github.com/modu-ai/moai-adk.git</span><br/><span class="hl-1">cd</span><span class="hl-2"> </span><span class="hl-4">moai-adk/moai-adk-ts</span><br/><span class="hl-1">bun</span><span class="hl-2"> </span><span class="hl-4">install</span><span class="hl-2">  </span><span class="hl-0"># 또는 npm install</span><br/><span class="hl-1">bun</span><span class="hl-2"> </span><span class="hl-4">run</span><span class="hl-2"> </span><span class="hl-4">build</span><br/><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-4">link</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="설치-확인" class="tsd-anchor-link">설치 확인<a href="#설치-확인" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="bash"><span class="hl-0"># 버전 확인</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-3">--version</span><br/><br/><span class="hl-0"># 시스템 진단</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-4">doctor</span><br/><br/><span class="hl-0"># 도움말</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-4">help</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<h2 id="🏗️-how-alfred-works---10개-ai-에이전트-팀" class="tsd-anchor-link">🏗️ How Alfred Works - 10개 AI 에이전트 팀<a href="#🏗️-how-alfred-works---10개-ai-에이전트-팀" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><p>MoAI-ADK는 <strong>Alfred (SuperAgent) + 9개 전문 에이전트 = 총 10개 AI 에이전트</strong>로 구성된 에이전틱 코딩 팀입니다.</p>
+<h3 id="▶◀-alfred---superagent-1번째-에이전트" class="tsd-anchor-link">▶◀ Alfred - SuperAgent (1번째 에이전트)<a href="#▶◀-alfred---superagent-1번째-에이전트" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>역할</strong>: 중앙 오케스트레이터 (Central Orchestrator)</p>
+<p><strong>책임</strong>:</p>
+<ul>
+<li>사용자 요청 분석 및 작업 분해</li>
+<li>적절한 전문 에이전트 선택 및 조율</li>
+<li>에이전트 간 협업 관리</li>
+<li>품질 게이트 검증 및 결과 통합</li>
+</ul>
+<h3 id="전문가-ai-서브-에이전트" class="tsd-anchor-link">전문가 AI 서브 에이전트<a href="#전문가-ai-서브-에이전트" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Alfred가 조율하는 전문 AI 에이전트들입니다.</p>
+<h4 id="핵심-3단계-에이전트-자동-호출" class="tsd-anchor-link">핵심 3단계 에이전트 (자동 호출)<a href="#핵심-3단계-에이전트-자동-호출" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><table>
+<thead>
+<tr>
+<th>에이전트</th>
+<th>페르소나</th>
+<th>전문 영역</th>
+<th>호출 시점</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>spec-builder</strong> 🏗️</td>
+<td>시스템 아키텍트</td>
+<td>EARS 명세 작성</td>
+<td><code>/alfred:1-spec</code></td>
+</tr>
+<tr>
+<td><strong>code-builder</strong> 💎</td>
+<td>수석 개발자</td>
+<td>TDD 구현</td>
+<td><code>/alfred:2-build</code></td>
+</tr>
+<tr>
+<td><strong>doc-syncer</strong> 📖</td>
+<td>테크니컬 라이터</td>
+<td>문서 동기화</td>
+<td><code>/alfred:3-sync</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="품질-보증-에이전트-온디맨드" class="tsd-anchor-link">품질 보증 에이전트 (온디맨드)<a href="#품질-보증-에이전트-온디맨드" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><table>
+<thead>
+<tr>
+<th>에이전트</th>
+<th>페르소나</th>
+<th>전문 영역</th>
+<th>호출 방법</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>tag-agent</strong> 🏷️</td>
+<td>지식 관리자</td>
+<td>TAG 체인 검증</td>
+<td><code>@agent-tag-agent</code></td>
+</tr>
+<tr>
+<td><strong>debug-helper</strong> 🔬</td>
+<td>SRE 전문가</td>
+<td>오류 진단</td>
+<td><code>@agent-debug-helper</code></td>
+</tr>
+<tr>
+<td><strong>trust-checker</strong> ✅</td>
+<td>QA 리드</td>
+<td>TRUST 검증</td>
+<td><code>@agent-trust-checker</code></td>
+</tr>
+<tr>
+<td><strong>git-manager</strong> 🚀</td>
+<td>릴리스 엔지니어</td>
+<td>Git 워크플로우</td>
+<td><code>@agent-git-manager</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="시스템-관리-에이전트" class="tsd-anchor-link">시스템 관리 에이전트<a href="#시스템-관리-에이전트" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><table>
+<thead>
+<tr>
+<th>에이전트</th>
+<th>페르소나</th>
+<th>전문 영역</th>
+<th>호출 방법</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>cc-manager</strong> 🛠️</td>
+<td>데브옵스 엔지니어</td>
+<td>Claude Code 설정</td>
+<td><code>@agent-cc-manager</code></td>
+</tr>
+<tr>
+<td><strong>project-manager</strong> 📋</td>
+<td>프로젝트 매니저</td>
+<td>프로젝트 초기화</td>
+<td><code>/alfred:8-project</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="협업-원칙" class="tsd-anchor-link">협업 원칙<a href="#협업-원칙" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>단일 책임 (Single Responsibility)</strong>:</p>
+<ul>
+<li>각 에이전트는 자신의 전문 영역만 담당</li>
+<li>다른 에이전트의 영역을 침범하지 않음</li>
+</ul>
+<p><strong>중앙 조율 (Central Orchestration)</strong>:</p>
+<ul>
+<li>Alfred만이 에이전트 간 작업을 조율</li>
+<li>에이전트끼리 직접 호출 금지</li>
+</ul>
+<p><strong>품질 게이트 (Quality Gates)</strong>:</p>
+<ul>
+<li>각 단계 완료 시 TRUST 원칙 자동 검증</li>
+<li>TAG 무결성 자동 확인</li>
+</ul>
+<hr>
+<h2 id="🎨-alfreds-output-styles" class="tsd-anchor-link">🎨 Alfred's Output Styles<a href="#🎨-alfreds-output-styles" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Alfred는 개발 상황에 따라 <strong>4가지 대화 스타일</strong>을 제공합니다. Claude Code에서 <code>/output-style</code> 명령어로 언제든 전환할 수 있습니다.</p>
+<h3 id="📋-제공되는-output-styles" class="tsd-anchor-link">📋 제공되는 Output Styles<a href="#📋-제공되는-output-styles" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>스타일 이름</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>MoAI Professional</strong></td>
+<td>SPEC-First TDD 전문가를 위한 간결하고 기술적인 개발 스타일</td>
+</tr>
+<tr>
+<td><strong>MoAI Beginner Learning</strong></td>
+<td>개발 초보자를 위한 상세하고 친절한 단계별 학습 가이드 (학습 전용)</td>
+</tr>
+<tr>
+<td><strong>MoAI Pair Collaboration</strong></td>
+<td>AI와 함께 브레인스토밍, 계획 수립, 실시간 코드 리뷰를 진행하는 협업 모드</td>
+</tr>
+<tr>
+<td><strong>MoAI Study Deep</strong></td>
+<td>새로운 개념, 도구, 언어, 프레임워크를 체계적으로 학습하는 심화 교육 모드</td>
+</tr>
+</tbody>
+</table>
+<h3 id="🔄-스타일-전환-방법" class="tsd-anchor-link">🔄 스타일 전환 방법<a href="#🔄-스타일-전환-방법" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Claude Code에서 <code>/output-style</code> 명령어로 전환:</p>
+<pre><code class="bash"><span class="hl-1">/output-style</span><span class="hl-2"> </span><span class="hl-4">alfred-pro</span><span class="hl-2">           </span><span class="hl-0"># MoAI Professional (기본값)</span><br/><span class="hl-1">/output-style</span><span class="hl-2"> </span><span class="hl-4">beginner-learning</span><span class="hl-2">    </span><span class="hl-0"># MoAI Beginner Learning</span><br/><span class="hl-1">/output-style</span><span class="hl-2"> </span><span class="hl-4">pair-collab</span><span class="hl-2">          </span><span class="hl-0"># MoAI Pair Collaboration</span><br/><span class="hl-1">/output-style</span><span class="hl-2"> </span><span class="hl-4">study-deep</span><span class="hl-2">           </span><span class="hl-0"># MoAI Study Deep</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="🎯-스타일-선택-가이드" class="tsd-anchor-link">🎯 스타일 선택 가이드<a href="#🎯-스타일-선택-가이드" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>상황</th>
+<th>추천 스타일</th>
+<th>대상</th>
+<th>특징</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>실무 프로젝트 빠른 개발</td>
+<td><code>alfred-pro</code></td>
+<td>실무 개발자, 프로젝트 리더</td>
+<td>간결, 기술적, 결과 중심</td>
+</tr>
+<tr>
+<td>프로그래밍 처음 배우기</td>
+<td><code>beginner-learning</code></td>
+<td>개발 입문자</td>
+<td>친절, 상세 설명, 단계별 안내</td>
+</tr>
+<tr>
+<td>팀 기술 선택 &amp; 설계 논의</td>
+<td><code>pair-collab</code></td>
+<td>협업 개발자, 아키텍트</td>
+<td>질문 기반, 브레인스토밍</td>
+</tr>
+<tr>
+<td>새로운 기술 학습</td>
+<td><code>study-deep</code></td>
+<td>신기술 학습자</td>
+<td>개념 → 실습 → 전문가 팁</td>
+</tr>
+</tbody>
+</table>
+<h3 id="💡-모든-스타일에서-동일하게-작동" class="tsd-anchor-link">💡 모든 스타일에서 동일하게 작동<a href="#💡-모든-스타일에서-동일하게-작동" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li>✅ 10개 AI 에이전트 팀 조율</li>
+<li>✅ SPEC-First TDD 워크플로우</li>
+<li>✅ TRUST 5원칙 자동 검증</li>
+<li>✅ @TAG 추적성 보장</li>
+</ul>
+<p><strong>차이점은 오직 설명 방식</strong>:</p>
+<ul>
+<li>📝 간결 vs 상세</li>
+<li>🎓 빠른 구현 vs 개념 학습</li>
+<li>💬 기술적 vs 친절 vs 협업적 vs 교육적</li>
+</ul>
+<hr>
+<h2 id="spec-메타데이터-구조" class="tsd-anchor-link">SPEC 메타데이터 구조<a href="#spec-메타데이터-구조" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><p>모든 SPEC 문서는 표준화된 메타데이터 구조를 따릅니다.</p>
+<h3 id="필수-필드-7개" class="tsd-anchor-link">필수 필드 (7개)<a href="#필수-필드-7개" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="yaml"><span class="hl-5">id</span><span class="hl-2">: </span><span class="hl-6">AUTH-001</span><span class="hl-2">                    </span><span class="hl-0"># SPEC 고유 ID</span><br/><span class="hl-5">version</span><span class="hl-2">: </span><span class="hl-7">0.1.0</span><span class="hl-2">                  </span><span class="hl-0"># Semantic Version (v0.1.0 = INITIAL)</span><br/><span class="hl-5">status</span><span class="hl-2">: </span><span class="hl-6">draft</span><span class="hl-2">                   </span><span class="hl-0"># draft|active|completed|deprecated</span><br/><span class="hl-5">created</span><span class="hl-2">: 2025-09-15            </span><span class="hl-0"># 생성일 (YYYY-MM-DD)</span><br/><span class="hl-5">updated</span><span class="hl-2">: 2025-10-01            </span><span class="hl-0"># 최종 수정일</span><br/><span class="hl-5">author</span><span class="hl-2">: @</span><span class="hl-6">Goos</span><span class="hl-2">                   </span><span class="hl-0"># 작성자 (GitHub ID)</span><br/><span class="hl-5">priority</span><span class="hl-2">: </span><span class="hl-6">high</span><span class="hl-2">                  </span><span class="hl-0"># low|medium|high|critical</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="선택-필드-의존성-그래프--범위" class="tsd-anchor-link">선택 필드 (의존성 그래프 &amp; 범위)<a href="#선택-필드-의존성-그래프--범위" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="yaml"><span class="hl-0"># 분류</span><br/><span class="hl-5">category</span><span class="hl-2">: </span><span class="hl-6">security</span><span class="hl-2">              </span><span class="hl-0"># feature|bugfix|refactor|security|docs|perf</span><br/><span class="hl-5">labels</span><span class="hl-2">: [</span><span class="hl-6">authentication</span><span class="hl-2">, </span><span class="hl-6">jwt</span><span class="hl-2">]   </span><span class="hl-0"># 검색 태그</span><br/><br/><span class="hl-0"># 관계 (의존성 그래프)</span><br/><span class="hl-5">depends_on</span><span class="hl-2">: [</span><span class="hl-6">USER-001</span><span class="hl-2">]          </span><span class="hl-0"># 의존하는 SPEC</span><br/><span class="hl-5">blocks</span><span class="hl-2">: [</span><span class="hl-6">AUTH-002</span><span class="hl-2">]              </span><span class="hl-0"># 차단하는 SPEC</span><br/><span class="hl-5">related_specs</span><span class="hl-2">: [</span><span class="hl-6">TOKEN-002</span><span class="hl-2">]      </span><span class="hl-0"># 관련 SPEC</span><br/><span class="hl-5">related_issue</span><span class="hl-2">: </span><span class="hl-4">&quot;github.com/...&quot;</span><span class="hl-2">  </span><span class="hl-0"># GitHub Issue</span><br/><br/><span class="hl-0"># 범위 (영향 분석)</span><br/><span class="hl-5">scope</span><span class="hl-2">:</span><br/><span class="hl-2">  </span><span class="hl-5">packages</span><span class="hl-2">: [</span><span class="hl-6">src/core/auth</span><span class="hl-2">]     </span><span class="hl-0"># 영향받는 패키지</span><br/><span class="hl-2">  </span><span class="hl-5">files</span><span class="hl-2">: [</span><span class="hl-6">auth-service.ts</span><span class="hl-2">]      </span><span class="hl-0"># 핵심 파일</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>상세 가이드</strong>: <a href="media/spec-metadata.md">SPEC 메타데이터 가이드</a></p>
+<hr>
+<h2 id="tag-시스템" class="tsd-anchor-link">@TAG 시스템<a href="#tag-시스템" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="tag-체계-철학" class="tsd-anchor-link">TAG 체계 철학<a href="#tag-체계-철학" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code><span class="hl-2">@</span><span class="hl-8">SPEC</span><span class="hl-2">:</span><span class="hl-8">ID</span><span class="hl-2"> → @</span><span class="hl-8">TEST</span><span class="hl-2">:</span><span class="hl-8">ID</span><span class="hl-2"> → @</span><span class="hl-8">CODE</span><span class="hl-2">:</span><span class="hl-8">ID</span><span class="hl-2"> → @</span><span class="hl-8">DOC</span><span class="hl-2">:</span><span class="hl-8">ID</span>
+</code><button>Copy</button></pre>
+
+<p><strong>핵심 원칙</strong>:</p>
+<ol>
+<li><strong>단순성</strong>: 4개의 핵심 TAG만 사용</li>
+<li><strong>TDD 완벽 정렬</strong>: RED (TEST) → GREEN (CODE) → REFACTOR (DOC)</li>
+<li><strong>CODE-FIRST</strong>: TAG는 코드 자체에만 존재 (정규식 패턴으로 직접 스캔)</li>
+<li><strong>무결성</strong>: 고아 TAG 자동 탐지, 끊어진 참조 검증</li>
+</ol>
+<h3 id="tag-사용-규칙" class="tsd-anchor-link">TAG 사용 규칙<a href="#tag-사용-규칙" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>TAG ID 형식</strong>: <code>&lt;도메인&gt;-&lt;3자리&gt;</code> (예: AUTH-003)</p>
+<p><strong>중복 방지</strong>:</p>
+<pre><code class="bash"><span class="hl-0"># 새 TAG 생성 전 기존 TAG 검색</span><br/><span class="hl-1">rg</span><span class="hl-2"> </span><span class="hl-4">&quot;@SPEC:AUTH&quot;</span><span class="hl-2"> </span><span class="hl-3">-n</span><span class="hl-2">          </span><span class="hl-0"># SPEC 문서에서 AUTH 도메인 검색</span><br/><span class="hl-1">rg</span><span class="hl-2"> </span><span class="hl-4">&quot;@CODE:AUTH-001&quot;</span><span class="hl-2"> </span><span class="hl-3">-n</span><span class="hl-2">      </span><span class="hl-0"># 특정 ID 검색</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>TAG 체인 검증</strong>:</p>
+<pre><code class="bash"><span class="hl-0"># /alfred:3-sync 실행 시 자동 스캔</span><br/><span class="hl-1">rg</span><span class="hl-2"> </span><span class="hl-4">&#39;@(SPEC|TEST|CODE|DOC):&#39;</span><span class="hl-2"> </span><span class="hl-3">-n</span><span class="hl-2"> </span><span class="hl-4">.moai/specs/</span><span class="hl-2"> </span><span class="hl-4">tests/</span><span class="hl-2"> </span><span class="hl-4">src/</span><span class="hl-2"> </span><span class="hl-4">docs/</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="사용-예시" class="tsd-anchor-link">사용 예시<a href="#사용-예시" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-0">// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001/spec.md | TEST: tests/auth/service.test.ts</span><br/><br/><span class="hl-0">/**</span><br/><span class="hl-0"> * @CODE:AUTH-001: JWT 인증 서비스</span><br/><span class="hl-0"> *</span><br/><span class="hl-0"> * TDD 이력:</span><br/><span class="hl-0"> * - RED: tests/auth/service.test.ts 작성</span><br/><span class="hl-0"> * - GREEN: 최소 구현 (bcrypt, JWT)</span><br/><span class="hl-0"> * - REFACTOR: 타입 안전성 추가</span><br/><span class="hl-0"> */</span><br/><span class="hl-9">export</span><span class="hl-2"> </span><span class="hl-3">class</span><span class="hl-2"> </span><span class="hl-10">AuthService</span><span class="hl-2"> {</span><br/><span class="hl-2">  </span><span class="hl-0">// @CODE:AUTH-001:API: 인증 API 엔드포인트</span><br/><span class="hl-2">  </span><span class="hl-3">async</span><span class="hl-2"> </span><span class="hl-1">authenticate</span><span class="hl-2">(</span><span class="hl-11">username</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-11">password</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">): </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-10">AuthResult</span><span class="hl-2">&gt; {</span><br/><span class="hl-2">    </span><span class="hl-0">// @CODE:AUTH-001:DOMAIN: 입력 검증</span><br/><span class="hl-2">    </span><span class="hl-3">this</span><span class="hl-2">.</span><span class="hl-1">validateInput</span><span class="hl-2">(</span><span class="hl-11">username</span><span class="hl-2">, </span><span class="hl-11">password</span><span class="hl-2">);</span><br/><br/><span class="hl-2">    </span><span class="hl-0">// @CODE:AUTH-001:DATA: 사용자 조회</span><br/><span class="hl-2">    </span><span class="hl-3">const</span><span class="hl-2"> </span><span class="hl-8">user</span><span class="hl-2"> = </span><span class="hl-9">await</span><span class="hl-2"> </span><span class="hl-3">this</span><span class="hl-2">.</span><span class="hl-11">userRepository</span><span class="hl-2">.</span><span class="hl-1">findByUsername</span><span class="hl-2">(</span><span class="hl-11">username</span><span class="hl-2">);</span><br/><br/><span class="hl-2">    </span><span class="hl-9">return</span><span class="hl-2"> </span><span class="hl-3">this</span><span class="hl-2">.</span><span class="hl-1">verifyCredentials</span><span class="hl-2">(</span><span class="hl-11">user</span><span class="hl-2">, </span><span class="hl-11">password</span><span class="hl-2">);</span><br/><span class="hl-2">  }</span><br/><span class="hl-2">}</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="언어별-tag-사용-예시" class="tsd-anchor-link">언어별 TAG 사용 예시<a href="#언어별-tag-사용-예시" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><h4 id="python" class="tsd-anchor-link">Python<a href="#python" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="python"># @CODE:AUTH-001 | SPEC: SPEC-AUTH-001/spec.md | TEST: tests/test_auth.py
+"""
+@CODE:AUTH-001: JWT 인증 서비스
+
+TDD 이력:
+- RED: pytest 테스트 작성
+- GREEN: bcrypt + PyJWT 구현
+- REFACTOR: 타입 힌트 추가
+"""
+
+class AuthService:
+    # @CODE:AUTH-001:API: 인증 API 엔드포인트
+    async def authenticate(
+        self,
+        username: str,
+        password: str
+    ) -> AuthResult:
+        # @CODE:AUTH-001:DOMAIN: 입력 검증
+        self._validate_input(username, password)
+
+        # @CODE:AUTH-001:DATA: 사용자 조회
+        user = await self.user_repo.find_by_username(username)
+
+        return self._verify_credentials(user, password)
+</code><button type="button">Copy</button></pre>
+
+<h4 id="flutterdart" class="tsd-anchor-link">Flutter/Dart<a href="#flutterdart" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="dart">// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001/spec.md | TEST: test/auth_test.dart
+
+/// @CODE:AUTH-001: JWT 인증 서비스
+///
+/// TDD 이력:
+/// - RED: widget test 작성
+/// - GREEN: dio + flutter_secure_storage 구현
+/// - REFACTOR: Riverpod 상태 관리 통합
+class AuthService {
+  // @CODE:AUTH-001:API: 인증 API 엔드포인트
+  Future<AuthResult> authenticate({
+    required String username,
+    required String password,
+  }) async {
+    // @CODE:AUTH-001:DOMAIN: 입력 검증
+    _validateInput(username, password);
+
+    // @CODE:AUTH-001:DATA: 사용자 조회
+    final user = await userRepository.findByUsername(username);
+
+    return _verifyCredentials(user, password);
+  }
+}
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<h2 id="🌍-universal-language-support" class="tsd-anchor-link">🌍 Universal Language Support<a href="#🌍-universal-language-support" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><p>MoAI-ADK는 모든 주요 언어를 지원하며, 언어별 최적 도구 체인을 자동으로 선택합니다.</p>
+<h3 id="웹백엔드" class="tsd-anchor-link">웹/백엔드<a href="#웹백엔드" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>언어</th>
+<th>테스트</th>
+<th>린터</th>
+<th>타입</th>
+<th>상태</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>TypeScript</strong></td>
+<td>Vitest/Jest</td>
+<td>Biome/ESLint</td>
+<td>✅</td>
+<td>Full</td>
+</tr>
+<tr>
+<td><strong>Python</strong></td>
+<td>pytest</td>
+<td>ruff/black</td>
+<td>mypy</td>
+<td>Full</td>
+</tr>
+<tr>
+<td><strong>Java</strong></td>
+<td>JUnit 5</td>
+<td>checkstyle</td>
+<td>✅</td>
+<td>Full</td>
+</tr>
+<tr>
+<td><strong>Go</strong></td>
+<td>go test</td>
+<td>golint</td>
+<td>✅</td>
+<td>Full</td>
+</tr>
+<tr>
+<td><strong>Rust</strong></td>
+<td>cargo test</td>
+<td>clippy</td>
+<td>✅</td>
+<td>Full</td>
+</tr>
+</tbody>
+</table>
+<h3 id="모바일" class="tsd-anchor-link">모바일<a href="#모바일" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>언어/프레임워크</th>
+<th>테스트</th>
+<th>린터</th>
+<th>상태</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Flutter/Dart</strong></td>
+<td>flutter test</td>
+<td>dart analyze</td>
+<td>Full</td>
+</tr>
+<tr>
+<td><strong>Swift/iOS</strong></td>
+<td>XCTest</td>
+<td>SwiftLint</td>
+<td>Full</td>
+</tr>
+<tr>
+<td><strong>Kotlin/Android</strong></td>
+<td>JUnit + Espresso</td>
+<td>detekt</td>
+<td>Full</td>
+</tr>
+<tr>
+<td><strong>React Native</strong></td>
+<td>Jest + RNTL</td>
+<td>ESLint</td>
+<td>Full</td>
+</tr>
+</tbody>
+</table>
+<h3 id="자동-언어-감지" class="tsd-anchor-link">자동 언어 감지<a href="#자동-언어-감지" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p>시스템이 프로젝트를 스캔하여 자동으로 감지:</p>
+<ul>
+<li><code>package.json</code> → TypeScript/JavaScript</li>
+<li><code>requirements.txt</code> → Python</li>
+<li><code>go.mod</code> → Go</li>
+<li><code>Cargo.toml</code> → Rust</li>
+<li><code>pubspec.yaml</code> → Flutter/Dart</li>
+</ul>
+<hr>
+<h2 id="💻-cli-reference" class="tsd-anchor-link">💻 CLI Reference<a href="#💻-cli-reference" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="핵심-명령어" class="tsd-anchor-link">핵심 명령어<a href="#핵심-명령어" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="bash"><span class="hl-0"># 프로젝트 초기화</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-4">init</span><span class="hl-2"> [project] [options]</span><br/><br/><span class="hl-0"># 시스템 진단</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-4">doctor</span><span class="hl-2"> [options]</span><br/><br/><span class="hl-0"># 프로젝트 상태 확인</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-4">status</span><span class="hl-2"> [options]</span><br/><br/><span class="hl-0"># 백업 복원</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-4">restore</span><span class="hl-2"> &lt;</span><span class="hl-4">backup-pat</span><span class="hl-2">h&gt; [options]</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="claude-code-전용-명령어" class="tsd-anchor-link">Claude Code 전용 명령어<a href="#claude-code-전용-명령어" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="text"># 템플릿 업데이트 (권장 ⭐)
+/alfred:9-update
+
+# 프로젝트 초기화
+/alfred:8-project
+</code><button type="button">Copy</button></pre>
+
+<h3 id="moai-init-project" class="tsd-anchor-link">moai init [project]<a href="#moai-init-project" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p>새 MoAI-ADK 프로젝트를 초기화하거나 기존 프로젝트에 MoAI-ADK를 설치합니다.</p>
+<p><strong>옵션</strong>:</p>
+<ul>
+<li><code>--personal</code>: Personal 모드로 초기화 (기본값)</li>
+<li><code>--team</code>: Team 모드로 초기화 (GitHub 통합)</li>
+<li><code>-b, --backup</code>: 설치 전 백업 생성</li>
+<li><code>-f, --force</code>: 기존 파일 강제 덮어쓰기</li>
+</ul>
+<p><strong>사용 예시</strong>:</p>
+<pre><code class="bash"><span class="hl-0"># 새 프로젝트 생성 (Personal 모드)</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-4">init</span><span class="hl-2"> </span><span class="hl-4">my-project</span><br/><br/><span class="hl-0"># 현재 디렉토리에 설치</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-4">init</span><span class="hl-2"> </span><span class="hl-4">.</span><br/><br/><span class="hl-0"># Team 모드로 초기화</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-4">init</span><span class="hl-2"> </span><span class="hl-4">my-project</span><span class="hl-2"> </span><span class="hl-3">--team</span><br/><br/><span class="hl-0"># 백업 생성 후 설치</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-4">init</span><span class="hl-2"> </span><span class="hl-4">.</span><span class="hl-2"> </span><span class="hl-3">-b</span><br/><br/><span class="hl-0"># 기존 파일 강제 덮어쓰기</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-4">init</span><span class="hl-2"> </span><span class="hl-4">.</span><span class="hl-2"> </span><span class="hl-3">-f</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="moai-doctor" class="tsd-anchor-link">moai doctor<a href="#moai-doctor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p>시스템 진단을 실행하여 MoAI-ADK가 올바르게 설치되었는지 확인합니다.</p>
+<p><strong>옵션</strong>:</p>
+<ul>
+<li><code>-l, --list-backups</code>: 사용 가능한 백업 목록 표시</li>
+</ul>
+<p><strong>사용 예시</strong>:</p>
+<pre><code class="bash"><span class="hl-0"># 시스템 진단 실행</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-4">doctor</span><br/><br/><span class="hl-0"># 백업 목록 확인</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-4">doctor</span><span class="hl-2"> </span><span class="hl-3">-l</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="moai-status" class="tsd-anchor-link">moai status<a href="#moai-status" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p>MoAI-ADK 프로젝트 상태를 표시합니다.</p>
+<p><strong>옵션</strong>:</p>
+<ul>
+<li><code>-v, --verbose</code>: 상세 상태 정보 표시</li>
+<li><code>-p, --project-path &lt;path&gt;</code>: 프로젝트 디렉토리 경로 지정 (경로 필수)</li>
+</ul>
+<p><strong>사용 예시</strong>:</p>
+<pre><code class="bash"><span class="hl-0"># 현재 디렉토리 상태 확인</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-4">status</span><br/><br/><span class="hl-0"># 상세 정보 포함</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-4">status</span><span class="hl-2"> </span><span class="hl-3">-v</span><br/><br/><span class="hl-0"># 특정 경로 프로젝트 상태 확인</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-4">status</span><span class="hl-2"> </span><span class="hl-3">-p</span><span class="hl-2"> </span><span class="hl-4">/path/to/project</span><br/><br/><span class="hl-0"># 상세 정보 + 특정 경로</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-4">status</span><span class="hl-2"> </span><span class="hl-3">-v</span><span class="hl-2"> </span><span class="hl-3">-p</span><span class="hl-2"> </span><span class="hl-4">/path/to/project</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="moai-restore-" class="tsd-anchor-link">moai restore <backup-path><a href="#moai-restore-" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p>백업 디렉토리에서 MoAI-ADK를 복원합니다.</p>
+<p><strong>인자</strong>:</p>
+<ul>
+<li><code>&lt;backup-path&gt;</code>: 복원할 백업 디렉토리 경로 (필수)</li>
+</ul>
+<p><strong>옵션</strong>:</p>
+<ul>
+<li><code>--dry-run</code>: 변경 없이 복원할 내용 미리보기</li>
+<li><code>--force</code>: 기존 파일 강제 덮어쓰기</li>
+</ul>
+<p><strong>사용 예시</strong>:</p>
+<pre><code class="bash"><span class="hl-0"># 백업에서 복원 (미리보기)</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-4">restore</span><span class="hl-2"> </span><span class="hl-4">.moai-backup-2025-10-02</span><span class="hl-2"> </span><span class="hl-3">--dry-run</span><br/><br/><span class="hl-0"># 실제 복원 실행</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-4">restore</span><span class="hl-2"> </span><span class="hl-4">.moai-backup-2025-10-02</span><br/><br/><span class="hl-0"># 강제 복원 (기존 파일 덮어쓰기)</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-4">restore</span><span class="hl-2"> </span><span class="hl-4">.moai-backup-2025-10-02</span><span class="hl-2"> </span><span class="hl-3">--force</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>참고</strong>: MoAI-ADK 업데이트는 Claude Code에서 <code>/alfred:9-update</code> 명령어를 사용하세요.</p>
+<hr>
+<h2 id="프로그래매틱-api" class="tsd-anchor-link">프로그래매틱 API<a href="#프로그래매틱-api" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="기본-사용" class="tsd-anchor-link">기본 사용<a href="#기본-사용" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-9">import</span><span class="hl-2"> { </span><span class="hl-11">CLIApp</span><span class="hl-2">, </span><span class="hl-11">SystemChecker</span><span class="hl-2">, </span><span class="hl-11">TemplateManager</span><span class="hl-2"> } </span><span class="hl-9">from</span><span class="hl-2"> </span><span class="hl-4">&#39;moai-adk&#39;</span><span class="hl-2">;</span><br/><br/><span class="hl-0">// CLI 앱 초기화</span><br/><span class="hl-3">const</span><span class="hl-2"> </span><span class="hl-8">app</span><span class="hl-2"> = </span><span class="hl-3">new</span><span class="hl-2"> </span><span class="hl-1">CLIApp</span><span class="hl-2">();</span><br/><span class="hl-9">await</span><span class="hl-2"> </span><span class="hl-11">app</span><span class="hl-2">.</span><span class="hl-1">run</span><span class="hl-2">();</span><br/><br/><span class="hl-0">// 시스템 체크</span><br/><span class="hl-3">const</span><span class="hl-2"> </span><span class="hl-8">checker</span><span class="hl-2"> = </span><span class="hl-3">new</span><span class="hl-2"> </span><span class="hl-1">SystemChecker</span><span class="hl-2">();</span><br/><span class="hl-3">const</span><span class="hl-2"> </span><span class="hl-8">result</span><span class="hl-2"> = </span><span class="hl-9">await</span><span class="hl-2"> </span><span class="hl-11">checker</span><span class="hl-2">.</span><span class="hl-1">checkSystem</span><span class="hl-2">();</span><br/><br/><span class="hl-0">// 템플릿 관리</span><br/><span class="hl-3">const</span><span class="hl-2"> </span><span class="hl-8">templateManager</span><span class="hl-2"> = </span><span class="hl-3">new</span><span class="hl-2"> </span><span class="hl-1">TemplateManager</span><span class="hl-2">();</span><br/><span class="hl-9">await</span><span class="hl-2"> </span><span class="hl-11">templateManager</span><span class="hl-2">.</span><span class="hl-1">copyTemplates</span><span class="hl-2">(</span><span class="hl-11">projectPath</span><span class="hl-2">);</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="설정-파일-moaiconfigjson" class="tsd-anchor-link">설정 파일 (.moai/config.json)<a href="#설정-파일-moaiconfigjson" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="json"><span class="hl-2">{</span><br/><span class="hl-2">  </span><span class="hl-12">&quot;project&quot;</span><span class="hl-2">: {</span><br/><span class="hl-2">    </span><span class="hl-12">&quot;name&quot;</span><span class="hl-2">: </span><span class="hl-4">&quot;my-project&quot;</span><span class="hl-2">,</span><br/><span class="hl-2">    </span><span class="hl-12">&quot;mode&quot;</span><span class="hl-2">: </span><span class="hl-4">&quot;personal&quot;</span><span class="hl-2">,</span><br/><span class="hl-2">    </span><span class="hl-12">&quot;language&quot;</span><span class="hl-2">: </span><span class="hl-4">&quot;typescript&quot;</span><br/><span class="hl-2">  },</span><br/><span class="hl-2">  </span><span class="hl-12">&quot;workflow&quot;</span><span class="hl-2">: {</span><br/><span class="hl-2">    </span><span class="hl-12">&quot;enableAutoSync&quot;</span><span class="hl-2">: </span><span class="hl-3">true</span><span class="hl-2">,</span><br/><span class="hl-2">    </span><span class="hl-12">&quot;gitIntegration&quot;</span><span class="hl-2">: </span><span class="hl-3">true</span><br/><span class="hl-2">  }</span><br/><span class="hl-2">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<h2 id="trust-5원칙" class="tsd-anchor-link">TRUST 5원칙<a href="#trust-5원칙" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><p>모든 개발 과정에서 TRUST 원칙을 준수합니다:</p>
+<h3 id="t---test-first-테스트-우선" class="tsd-anchor-link">T - Test First (테스트 우선)<a href="#t---test-first-테스트-우선" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>SPEC → Test → Code 사이클</strong>:</p>
+<ul>
+<li><strong>@SPEC</strong>: EARS 형식 명세서 우선 작성</li>
+<li><strong>RED</strong>: <code>@TEST</code> TAG - 실패하는 테스트 작성</li>
+<li><strong>GREEN</strong>: <code>@CODE</code> TAG - 최소 구현으로 테스트 통과</li>
+<li><strong>REFACTOR</strong>: <code>@CODE</code> TAG - 코드 품질 개선</li>
+</ul>
+<h3 id="r---readable-가독성" class="tsd-anchor-link">R - Readable (가독성)<a href="#r---readable-가독성" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>코드 제약</strong>:</p>
+<ul>
+<li>파일당 ≤300 LOC</li>
+<li>함수당 ≤50 LOC</li>
+<li>매개변수 ≤5개</li>
+<li>복잡도 ≤10</li>
+</ul>
+<h3 id="u---unified-통합성" class="tsd-anchor-link">U - Unified (통합성)<a href="#u---unified-통합성" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>SPEC 기반 아키텍처</strong>:</p>
+<ul>
+<li>모듈 간 명확한 책임 분리</li>
+<li>타입 안전성 보장</li>
+<li>언어별 경계를 SPEC이 정의</li>
+</ul>
+<h3 id="s---secured-보안성" class="tsd-anchor-link">S - Secured (보안성)<a href="#s---secured-보안성" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>입력 검증</strong>:</p>
+<ul>
+<li>모든 사용자 입력 검증 (정규식, 화이트리스트)</li>
+<li>파일 업로드 제한 (확장자, 크기, MIME 타입)</li>
+</ul>
+<p><strong>주요 취약점 방어</strong>:</p>
+<ul>
+<li><strong>SQL Injection</strong>: Prepared Statement, ORM 사용</li>
+<li><strong>XSS</strong>: HTML 이스케이핑, CSP 헤더</li>
+<li><strong>CSRF</strong>: CSRF 토큰, SameSite 쿠키</li>
+<li><strong>비밀번호</strong>: bcrypt/argon2 해싱 (최소 10 라운드)</li>
+</ul>
+<p><strong>보안 스캐닝</strong>:</p>
+<ul>
+<li>정적 분석 도구 (Snyk, OWASP Dependency-Check)</li>
+<li>환경 변수 보안 (<code>.env</code> Git 제외)</li>
+</ul>
+<h3 id="t---trackable-추적성" class="tsd-anchor-link">T - Trackable (추적성)<a href="#t---trackable-추적성" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>@TAG 시스템으로 완전한 추적성</strong>:</p>
+<ul>
+<li><code>@SPEC</code> → <code>@TEST</code> → <code>@CODE</code> → <code>@DOC</code> 체인</li>
+<li>코드 직접 스캔으로 무결성 검증</li>
+<li>고아 TAG 자동 탐지</li>
+</ul>
+<hr>
+<h2 id="문제-해결" class="tsd-anchor-link">문제 해결<a href="#문제-해결" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="자주-발생하는-문제" class="tsd-anchor-link">자주 발생하는 문제<a href="#자주-발생하는-문제" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><h4 id="1-alfred2-build-실행-시-spec-not-found-에러" class="tsd-anchor-link">1. <code>/alfred:2-build</code> 실행 시 &quot;SPEC not found&quot; 에러<a href="#1-alfred2-build-실행-시-spec-not-found-에러" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>증상</strong>: TDD 구현 중 SPEC 파일을 찾을 수 없다는 에러 발생</p>
+<p><strong>원인</strong>: <code>/alfred:1-spec</code> 단계를 건너뛰었거나, SPEC 파일 경로가 잘못됨</p>
+<p><strong>해결 방법</strong>:</p>
+<pre><code class="bash"><span class="hl-0"># 1. SPEC 파일 존재 여부 확인</span><br/><span class="hl-1">ls</span><span class="hl-2"> </span><span class="hl-4">.moai/specs/SPEC-</span><span class="hl-3">*</span><span class="hl-4">.md</span><br/><br/><span class="hl-0"># 2. SPEC이 없다면 먼저 작성</span><br/><span class="hl-1">/alfred:1-spec</span><span class="hl-2"> </span><span class="hl-4">&quot;기능 설명&quot;</span><br/><br/><span class="hl-0"># 3. SPEC ID 확인 후 재실행</span><br/><span class="hl-1">/alfred:2-build</span><span class="hl-2"> </span><span class="hl-4">SPEC-ID</span>
+</code><button type="button">Copy</button></pre>
+
+<h4 id="2-테스트-실패-시-복구" class="tsd-anchor-link">2. 테스트 실패 시 복구<a href="#2-테스트-실패-시-복구" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>증상</strong>: <code>/alfred:2-build</code> 실행 후 테스트가 계속 실패</p>
+<p><strong>원인</strong>: 엣지 케이스 누락, 의존성 문제, 환경 변수 미설정</p>
+<p><strong>해결 방법</strong>:</p>
+<pre><code class="bash"><span class="hl-0"># 1. 테스트 수동 실행으로 정확한 에러 확인</span><br/><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-4">test</span><span class="hl-2">  </span><span class="hl-0"># 또는 bun test, pytest 등</span><br/><br/><span class="hl-0"># 2. debug-helper 에이전트 호출</span><br/><span class="hl-1">@agent-debug-helper</span><span class="hl-2"> </span><span class="hl-4">&quot;테스트 실패 에러 메시지&quot;</span><br/><br/><span class="hl-0"># 3. 환경 변수 확인</span><br/><span class="hl-1">cat</span><span class="hl-2"> </span><span class="hl-4">.env.example</span><span class="hl-2">  </span><span class="hl-0"># 필요한 환경 변수 확인</span><br/><span class="hl-1">cp</span><span class="hl-2"> </span><span class="hl-4">.env.example</span><span class="hl-2"> </span><span class="hl-4">.env</span><span class="hl-2">  </span><span class="hl-0"># 환경 변수 파일 생성</span><br/><br/><span class="hl-0"># 4. 의존성 재설치</span><br/><span class="hl-1">rm</span><span class="hl-2"> </span><span class="hl-3">-rf</span><span class="hl-2"> </span><span class="hl-4">node_modules</span><span class="hl-2"> &amp;&amp; </span><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-4">install</span>
+</code><button type="button">Copy</button></pre>
+
+<h4 id="3-tag-체인-끊어짐-경고" class="tsd-anchor-link">3. TAG 체인 끊어짐 경고<a href="#3-tag-체인-끊어짐-경고" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>증상</strong>: <code>/alfred:3-sync</code> 실행 시 &quot;고아 TAG 발견&quot; 경고</p>
+<p><strong>원인</strong>: SPEC 없이 CODE만 작성했거나, TAG ID 불일치</p>
+<p><strong>해결 방법</strong>:</p>
+<pre><code class="bash"><span class="hl-0"># 1. 고아 TAG 찾기</span><br/><span class="hl-1">rg</span><span class="hl-2"> </span><span class="hl-4">&#39;@CODE:&#39;</span><span class="hl-2"> </span><span class="hl-3">-n</span><span class="hl-2"> </span><span class="hl-4">src/</span><span class="hl-2">  </span><span class="hl-0"># CODE TAG 목록</span><br/><span class="hl-1">rg</span><span class="hl-2"> </span><span class="hl-4">&#39;@SPEC:&#39;</span><span class="hl-2"> </span><span class="hl-3">-n</span><span class="hl-2"> </span><span class="hl-4">.moai/specs/</span><span class="hl-2">  </span><span class="hl-0"># SPEC TAG 목록</span><br/><br/><span class="hl-0"># 2. 누락된 SPEC 작성</span><br/><span class="hl-1">/alfred:1-spec</span><span class="hl-2"> </span><span class="hl-4">&quot;해당 기능 설명&quot;</span><br/><br/><span class="hl-0"># 3. TAG ID 일치시키기</span><br/><span class="hl-0"># CODE와 SPEC의 ID가 동일한지 확인 (예: AUTH-001)</span><br/><br/><span class="hl-0"># 4. 재검증</span><br/><span class="hl-1">/alfred:3-sync</span>
+</code><button type="button">Copy</button></pre>
+
+<h4 id="4-git-브랜치-충돌" class="tsd-anchor-link">4. Git 브랜치 충돌<a href="#4-git-브랜치-충돌" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>증상</strong>: SPEC 생성 시 브랜치 생성 실패</p>
+<p><strong>원인</strong>: 동일한 이름의 브랜치가 이미 존재</p>
+<p><strong>해결 방법</strong>:</p>
+<pre><code class="bash"><span class="hl-0"># 1. 기존 브랜치 확인</span><br/><span class="hl-1">git</span><span class="hl-2"> </span><span class="hl-4">branch</span><span class="hl-2"> </span><span class="hl-3">-a</span><br/><br/><span class="hl-0"># 2. 기존 브랜치로 전환 (계속 작업하려면)</span><br/><span class="hl-1">git</span><span class="hl-2"> </span><span class="hl-4">checkout</span><span class="hl-2"> </span><span class="hl-4">feature/SPEC-XXX-YYY</span><br/><br/><span class="hl-0"># 3. 또는 새 브랜치 강제 생성 (처음부터 다시 시작)</span><br/><span class="hl-1">git</span><span class="hl-2"> </span><span class="hl-4">branch</span><span class="hl-2"> </span><span class="hl-3">-D</span><span class="hl-2"> </span><span class="hl-4">feature/SPEC-XXX-YYY</span><br/><span class="hl-1">/alfred:1-spec</span><span class="hl-2"> </span><span class="hl-4">&quot;기능 설명&quot;</span>
+</code><button type="button">Copy</button></pre>
+
+<h4 id="5-권한-에러-permission-denied" class="tsd-anchor-link">5. 권한 에러 (Permission Denied)<a href="#5-권한-에러-permission-denied" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>증상</strong>: <code>moai init</code> 또는 <code>/alfred:9-update</code> 실행 시 권한 에러</p>
+<p><strong>원인</strong>: 파일 실행 권한 부족</p>
+<p><strong>해결 방법</strong>:</p>
+<pre><code class="bash"><span class="hl-0"># 1. .claude/commands/ 디렉토리 권한 확인</span><br/><span class="hl-1">ls</span><span class="hl-2"> </span><span class="hl-3">-la</span><span class="hl-2"> </span><span class="hl-4">.claude/commands/</span><br/><br/><span class="hl-0"># 2. 실행 권한 추가</span><br/><span class="hl-1">chmod</span><span class="hl-2"> </span><span class="hl-4">+x</span><span class="hl-2"> </span><span class="hl-4">.claude/commands/</span><span class="hl-3">*</span><span class="hl-4">.md</span><br/><br/><span class="hl-0"># 3. 또는 자동 수정</span><br/><span class="hl-1">/alfred:9-update</span><span class="hl-2"> </span><span class="hl-3">--fix-permissions</span>
+</code><button type="button">Copy</button></pre>
+
+<h4 id="6-테스트-커버리지-85-미만" class="tsd-anchor-link">6. 테스트 커버리지 85% 미만<a href="#6-테스트-커버리지-85-미만" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>증상</strong>: TRUST 검증 실패 - 테스트 커버리지 부족</p>
+<p><strong>원인</strong>: 엣지 케이스 테스트 누락</p>
+<p><strong>해결 방법</strong>:</p>
+<pre><code class="bash"><span class="hl-0"># 1. 커버리지 리포트 확인</span><br/><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-4">test</span><span class="hl-2"> </span><span class="hl-3">--</span><span class="hl-2"> </span><span class="hl-3">--coverage</span><span class="hl-2">  </span><span class="hl-0"># 또는 bun test --coverage</span><br/><br/><span class="hl-0"># 2. 누락된 브랜치 확인</span><br/><span class="hl-0"># 커버리지 리포트에서 빨간색(미테스트) 라인 확인</span><br/><br/><span class="hl-0"># 3. 엣지 케이스 테스트 추가</span><br/><span class="hl-0"># - null/undefined 입력</span><br/><span class="hl-0"># - 빈 배열/객체</span><br/><span class="hl-0"># - 경계값 (0, -1, 최대값)</span><br/><span class="hl-0"># - 에러 케이스</span><br/><br/><span class="hl-0"># 4. 재실행</span><br/><span class="hl-1">/alfred:2-build</span><span class="hl-2"> </span><span class="hl-4">SPEC-ID</span>
+</code><button type="button">Copy</button></pre>
+
+<h4 id="7-설치-실패" class="tsd-anchor-link">7. 설치 실패<a href="#7-설치-실패" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>권한 문제:</strong></p>
+<pre><code class="bash"><span class="hl-1">sudo</span><span class="hl-2"> </span><span class="hl-4">npm</span><span class="hl-2"> </span><span class="hl-4">install</span><span class="hl-2"> </span><span class="hl-3">-g</span><span class="hl-2"> </span><span class="hl-4">moai-adk</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>캐시 문제:</strong></p>
+<pre><code class="bash"><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-4">cache</span><span class="hl-2"> </span><span class="hl-4">clean</span><span class="hl-2"> </span><span class="hl-3">--force</span><br/><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-4">install</span><span class="hl-2"> </span><span class="hl-3">-g</span><span class="hl-2"> </span><span class="hl-4">moai-adk</span>
+</code><button type="button">Copy</button></pre>
+
+<h4 id="8-명령어-인식-안-됨" class="tsd-anchor-link">8. 명령어 인식 안 됨<a href="#8-명령어-인식-안-됨" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>PATH 확인:</strong></p>
+<pre><code class="bash"><span class="hl-1">echo</span><span class="hl-2"> </span><span class="hl-11">$PATH</span><br/><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-4">list</span><span class="hl-2"> </span><span class="hl-3">-g</span><span class="hl-2"> </span><span class="hl-3">--depth=0</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>셸 재시작:</strong></p>
+<pre><code class="bash"><span class="hl-1">source</span><span class="hl-2"> </span><span class="hl-4">~/.bashrc</span><span class="hl-2">  </span><span class="hl-0"># bash</span><br/><span class="hl-1">source</span><span class="hl-2"> </span><span class="hl-4">~/.zshrc</span><span class="hl-2">   </span><span class="hl-0"># zsh</span>
+</code><button type="button">Copy</button></pre>
+
+<h4 id="9-claude-code-연동-문제" class="tsd-anchor-link">9. Claude Code 연동 문제<a href="#9-claude-code-연동-문제" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4><ul>
+<li><code>.claude/settings.json</code> 파일 확인</li>
+<li>Claude Code 최신 버전 사용 확인</li>
+<li>에이전트 파일 권한 확인</li>
+</ul>
+<h3 id="로그-확인" class="tsd-anchor-link">로그 확인<a href="#로그-확인" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p>문제 원인 파악을 위한 로그 위치:</p>
+<pre><code class="bash"><span class="hl-0"># MoAI-ADK 시스템 로그</span><br/><span class="hl-2">~/.moai/logs/moai.log</span><br/><br/><span class="hl-0"># 에러 로그</span><br/><span class="hl-2">~/.moai/logs/error.log</span><br/><br/><span class="hl-0"># 프로젝트별 로그</span><br/><span class="hl-1">.moai/logs/</span><br/><br/><span class="hl-0"># Claude Code 로그</span><br/><span class="hl-2">~/.claude/logs/</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="긴급-복구" class="tsd-anchor-link">긴급 복구<a href="#긴급-복구" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><p>심각한 문제 발생 시 백업에서 복원:</p>
+<pre><code class="bash"><span class="hl-0"># 1. 백업 목록 확인</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-4">doctor</span><span class="hl-2"> </span><span class="hl-3">-l</span><br/><br/><span class="hl-0"># 2. 최신 백업으로 복원 (미리보기)</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-4">restore</span><span class="hl-2"> </span><span class="hl-4">.moai-backup-YYYY-MM-DD</span><span class="hl-2"> </span><span class="hl-3">--dry-run</span><br/><br/><span class="hl-0"># 3. 실제 복원</span><br/><span class="hl-1">moai</span><span class="hl-2"> </span><span class="hl-4">restore</span><span class="hl-2"> </span><span class="hl-4">.moai-backup-YYYY-MM-DD</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<h2 id="개발-참여" class="tsd-anchor-link">개발 참여<a href="#개발-참여" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="기여-방법" class="tsd-anchor-link">기여 방법<a href="#기여-방법" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><ol>
+<li>Repository Fork</li>
+<li>기능 브랜치 생성 (<code>git checkout -b feature/new-feature</code>)</li>
+<li>변경사항 커밋 (<code>git commit -am 'Add new feature'</code>)</li>
+<li>브랜치 푸시 (<code>git push origin feature/new-feature</code>)</li>
+<li>Pull Request 생성</li>
+</ol>
+<h3 id="개발-환경-설정" class="tsd-anchor-link">개발 환경 설정<a href="#개발-환경-설정" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="bash"><span class="hl-0"># 저장소 클론</span><br/><span class="hl-1">git</span><span class="hl-2"> </span><span class="hl-4">clone</span><span class="hl-2"> </span><span class="hl-4">https://github.com/modu-ai/moai-adk.git</span><br/><span class="hl-1">cd</span><span class="hl-2"> </span><span class="hl-4">moai-adk/moai-adk-ts</span><br/><br/><span class="hl-0"># 의존성 설치 (Bun 권장)</span><br/><span class="hl-1">bun</span><span class="hl-2"> </span><span class="hl-4">install</span><br/><br/><span class="hl-0"># 개발 모드 실행</span><br/><span class="hl-1">bun</span><span class="hl-2"> </span><span class="hl-4">run</span><span class="hl-2"> </span><span class="hl-4">dev</span><br/><br/><span class="hl-0"># 빌드</span><br/><span class="hl-1">bun</span><span class="hl-2"> </span><span class="hl-4">run</span><span class="hl-2"> </span><span class="hl-4">build</span><br/><br/><span class="hl-0"># 테스트</span><br/><span class="hl-1">bun</span><span class="hl-2"> </span><span class="hl-4">test</span><br/><br/><span class="hl-0"># 코드 품질 검사</span><br/><span class="hl-1">bun</span><span class="hl-2"> </span><span class="hl-4">run</span><span class="hl-2"> </span><span class="hl-4">check</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="코딩-규칙" class="tsd-anchor-link">코딩 규칙<a href="#코딩-규칙" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li>TRUST 5원칙 준수</li>
+<li>@TAG 시스템 적용</li>
+<li>TypeScript strict 모드 사용</li>
+<li>≤50 LOC per function</li>
+<li>Test coverage ≥85%</li>
+</ul>
+<hr>
+<h2 id="🙏-contributors" class="tsd-anchor-link">🙏 Contributors<a href="#🙏-contributors" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><p>MoAI-ADK 프로젝트에 기여해주신 분들께 감사드립니다:</p>
+<ul>
+<li><strong><a href="https://github.com/Workuul">@Workuul</a></strong> - 심볼릭 링크 실행 문제 수정 (<a href="https://github.com/modu-ai/moai-adk/pull/1">PR #1</a>)
+<ul>
+<li><code>realpathSync()</code> 적용으로 글로벌 설치 이슈 해결</li>
+<li>REPL/eval 환경 방어 로직 추가</li>
+<li>JSDoc 문서화 개선</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h2 id="문서-및-지원" class="tsd-anchor-link">문서 및 지원<a href="#문서-및-지원" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><ul>
+<li><strong>🐛 Issues</strong>: <a href="https://github.com/modu-ai/moai-adk/issues">GitHub Issues</a></li>
+<li><strong>💬 Discussions</strong>: <a href="https://github.com/modu-ai/moai-adk/discussions">GitHub Discussions</a></li>
+<li><strong>📦 npm Package</strong>: <a href="https://www.npmjs.com/package/moai-adk">moai-adk</a></li>
+</ul>
+<hr>
+<p>Made with MoAI's 🪿</p>
+<hr>
+<h2 id="라이선스" class="tsd-anchor-link">라이선스<a href="#라이선스" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2><p>이 프로젝트는 <a href="media/LICENSE">MIT License</a>를 따릅니다.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-chevronDown"></use></svg><h3>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-chevronDown"></use></svg><h3>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#moai-adk-agentic-development-kit"><span>Mo<wbr/>AI-<wbr/>ADK (<wbr/>Agentic <wbr/>Development <wbr/>Kit)</span></a><ul><li><a href="#moai-adk"><span>Mo<wbr/>AI-<wbr/>ADK</span></a></li><li><ul><li><a href="#모두의ai-에이전틱-코딩-개발-프레임워크"><span>모두의<wbr/>AI 에이전틱 코딩 개발 프레임워크</span></a></li></ul></li><li><a href="#목차"><span>목차</span></a></li><li><a href="#meet-▶◀-alfred---your-ai-development-partner"><span>Meet ▶◀ <wbr/>Alfred -<wbr/> <wbr/>Your <wbr/>AI <wbr/>Development <wbr/>Partner</span></a></li><li><ul><li><a href="#🌟-흥미로운-사실-ai가-만든-ai-개발-도구"><span>🌟 흥미로운 사실: <wbr/>AI가 만든 <wbr/>AI 개발 도구</span></a></li><li><a href="#▶◀-alfred가-제공하는-4가지-핵심-가치"><span>▶◀ <wbr/>Alfred가 제공하는 4가지 핵심 가치</span></a></li><li><ul><li><a href="#1️⃣-일관성consistency-플랑켄슈타인-코드를-방지하는-3단계-파이프라인"><span>1️⃣ 일관성(<wbr/>Consistency): 플랑켄슈타인 코드를 방지하는 3단계 파이프라인</span></a></li><li><a href="#2️⃣-품질quality-trust-5원칙으로-자동-보장되는-코드-품질"><span>2️⃣ 품질(<wbr/>Quality): <wbr/>TRUST 5원칙으로 자동 보장되는 코드 품질</span></a></li><li><a href="#3️⃣-추적성traceability-6개월-후에도-왜를-찾을-수-있는-tag-시스템"><span>3️⃣ 추적성(<wbr/>Traceability): 6개월 후에도 &quot;왜&quot;를 찾을 수 있는 @<wbr/>TAG 시스템</span></a></li><li><a href="#4️⃣-범용성universality-한-번-배우면-어디서나-쓸-수-있는-워크플로우"><span>4️⃣ 범용성(<wbr/>Universality): 한 번 배우면 어디서나 쓸 수 있는 워크플로우</span></a></li></ul></li></ul></li><li><a href="#🚀-quick-start-3분-실전"><span>🚀 <wbr/>Quick <wbr/>Start (3분 실전)</span></a></li><li><ul><li><a href="#📋-준비물"><span>📋 준비물</span></a></li><li><a href="#⚡-3단계로-시작하기"><span>⚡ 3단계로 시작하기</span></a></li><li><ul><li><a href="#1️⃣-설치-30초"><span>1️⃣ 설치 (30초)</span></a></li><li><a href="#2️⃣-초기화-1분"><span>2️⃣ 초기화 (1분)</span></a></li><li><a href="#3️⃣-첫-기능-개발-1분-30초"><span>3️⃣ 첫 기능 개발 (1분 30초)</span></a></li></ul></li><li><a href="#🎉-완료"><span>🎉 완료!</span></a></li></ul></li><li><a href="#🚨-the-problem---바이브-코딩의-한계"><span>🚨 <wbr/>The <wbr/>Problem -<wbr/> 바이브 코딩의 한계</span></a></li><li><ul><li><a href="#1-아름답지만-작동하지-않는-코드"><span>1. 아름답지만 작동하지 않는 코드</span></a></li><li><a href="#2-플랑켄슈타인-코드의-탄생"><span>2. 플랑켄슈타인 코드의 탄생</span></a></li><li><a href="#3-디버깅-지옥"><span>3. 디버깅 지옥</span></a></li><li><a href="#4-요구사항-추적성-상실"><span>4. 요구사항 추적성 상실</span></a></li><li><a href="#5-팀-협업-붕괴"><span>5. 팀 협업 붕괴</span></a></li><li><a href="#💔-바이브-코딩의-역설"><span>💔 바이브 코딩의 역설</span></a></li></ul></li><li><a href="#✨-the-solution---3단계-워크플로우"><span>✨ <wbr/>The <wbr/>Solution -<wbr/> 3단계 워크플로우</span></a></li><li><ul><li><a href="#1️⃣-spec---명세-작성"><span>1️⃣ <wbr/>SPEC -<wbr/> 명세 작성</span></a></li><li><a href="#2️⃣-build---tdd-구현"><span>2️⃣ <wbr/>BUILD -<wbr/> <wbr/>TDD 구현</span></a></li><li><a href="#3️⃣-sync---문서-동기화"><span>3️⃣ <wbr/>SYNC -<wbr/> 문서 동기화</span></a></li></ul></li><li><a href="#시스템-요구사항"><span>시스템 요구사항</span></a></li><li><ul><li><a href="#🔴-필수-요구사항"><span>🔴 필수 요구사항</span></a></li><li><a href="#🌍-지원-운영체제"><span>🌍 지원 운영체제</span></a></li></ul></li><li><a href="#설치"><span>설치</span></a></li><li><ul><li><a href="#option-a-bun-설치-최적-성능-강력-추천-🔥"><span>Option <wbr/>A: <wbr/>Bun 설치 (최적 성능, 강력 추천) 🔥</span></a></li><li><a href="#option-b-npm-설치-표준-옵션"><span>Option <wbr/>B: npm 설치 (표준 옵션)</span></a></li><li><a href="#option-c-개발자-설치-로컬-개발용"><span>Option <wbr/>C: 개발자 설치 (로컬 개발용)</span></a></li><li><a href="#설치-확인"><span>설치 확인</span></a></li></ul></li><li><a href="#🏗️-how-alfred-works---10개-ai-에이전트-팀"><span>🏗️ <wbr/>How <wbr/>Alfred <wbr/>Works -<wbr/> 10개 <wbr/>AI 에이전트 팀</span></a></li><li><ul><li><a href="#▶◀-alfred---superagent-1번째-에이전트"><span>▶◀ <wbr/>Alfred -<wbr/> <wbr/>Super<wbr/>Agent (1번째 에이전트)</span></a></li><li><a href="#전문가-ai-서브-에이전트"><span>전문가 <wbr/>AI 서브 에이전트</span></a></li><li><ul><li><a href="#핵심-3단계-에이전트-자동-호출"><span>핵심 3단계 에이전트 (자동 호출)</span></a></li><li><a href="#품질-보증-에이전트-온디맨드"><span>품질 보증 에이전트 (온디맨드)</span></a></li><li><a href="#시스템-관리-에이전트"><span>시스템 관리 에이전트</span></a></li></ul></li><li><a href="#협업-원칙"><span>협업 원칙</span></a></li></ul></li><li><a href="#🎨-alfreds-output-styles"><span>🎨 <wbr/>Alfred&#39;s <wbr/>Output <wbr/>Styles</span></a></li><li><ul><li><a href="#📋-제공되는-output-styles"><span>📋 제공되는 <wbr/>Output <wbr/>Styles</span></a></li><li><a href="#🔄-스타일-전환-방법"><span>🔄 스타일 전환 방법</span></a></li><li><a href="#🎯-스타일-선택-가이드"><span>🎯 스타일 선택 가이드</span></a></li><li><a href="#💡-모든-스타일에서-동일하게-작동"><span>💡 모든 스타일에서 동일하게 작동</span></a></li></ul></li><li><a href="#spec-메타데이터-구조"><span>SPEC 메타데이터 구조</span></a></li><li><ul><li><a href="#필수-필드-7개"><span>필수 필드 (7개)</span></a></li><li><a href="#선택-필드-의존성-그래프--범위"><span>선택 필드 (의존성 그래프 &amp; 범위)</span></a></li></ul></li><li><a href="#tag-시스템"><span>@<wbr/>TAG 시스템</span></a></li><li><ul><li><a href="#tag-체계-철학"><span>TAG 체계 철학</span></a></li><li><a href="#tag-사용-규칙"><span>TAG 사용 규칙</span></a></li><li><a href="#사용-예시"><span>사용 예시</span></a></li><li><a href="#언어별-tag-사용-예시"><span>언어별 <wbr/>TAG 사용 예시</span></a></li><li><ul><li><a href="#python"><span>Python</span></a></li><li><a href="#flutterdart"><span>Flutter/<wbr/>Dart</span></a></li></ul></li></ul></li><li><a href="#🌍-universal-language-support"><span>🌍 <wbr/>Universal <wbr/>Language <wbr/>Support</span></a></li><li><ul><li><a href="#웹백엔드"><span>웹/백엔드</span></a></li><li><a href="#모바일"><span>모바일</span></a></li><li><a href="#자동-언어-감지"><span>자동 언어 감지</span></a></li></ul></li><li><a href="#💻-cli-reference"><span>💻 <wbr/>CLI <wbr/>Reference</span></a></li><li><ul><li><a href="#핵심-명령어"><span>핵심 명령어</span></a></li><li><a href="#claude-code-전용-명령어"><span>Claude <wbr/>Code 전용 명령어</span></a></li><li><a href="#moai-init-project"><span>moai init [project]</span></a></li><li><a href="#moai-doctor"><span>moai doctor</span></a></li><li><a href="#moai-status"><span>moai status</span></a></li><li><a href="#moai-restore-"><span>moai restore &lt;backup-<wbr/>path&gt;</span></a></li></ul></li><li><a href="#프로그래매틱-api"><span>프로그래매틱 <wbr/>API</span></a></li><li><ul><li><a href="#기본-사용"><span>기본 사용</span></a></li><li><a href="#설정-파일-moaiconfigjson"><span>설정 파일 (.moai/config.json)</span></a></li></ul></li><li><a href="#trust-5원칙"><span>TRUST 5원칙</span></a></li><li><ul><li><a href="#t---test-first-테스트-우선"><span>T -<wbr/> <wbr/>Test <wbr/>First (테스트 우선)</span></a></li><li><a href="#r---readable-가독성"><span>R -<wbr/> <wbr/>Readable (가독성)</span></a></li><li><a href="#u---unified-통합성"><span>U -<wbr/> <wbr/>Unified (통합성)</span></a></li><li><a href="#s---secured-보안성"><span>S -<wbr/> <wbr/>Secured (보안성)</span></a></li><li><a href="#t---trackable-추적성"><span>T -<wbr/> <wbr/>Trackable (추적성)</span></a></li></ul></li><li><a href="#문제-해결"><span>문제 해결</span></a></li><li><ul><li><a href="#자주-발생하는-문제"><span>자주 발생하는 문제</span></a></li><li><ul><li><a href="#1-alfred2-build-실행-시-spec-not-found-에러"><span>1. /alfred:2-<wbr/>build 실행 시 &quot;<wbr/>SPEC not found&quot; 에러</span></a></li><li><a href="#2-테스트-실패-시-복구"><span>2. 테스트 실패 시 복구</span></a></li><li><a href="#3-tag-체인-끊어짐-경고"><span>3. <wbr/>TAG 체인 끊어짐 경고</span></a></li><li><a href="#4-git-브랜치-충돌"><span>4. <wbr/>Git 브랜치 충돌</span></a></li><li><a href="#5-권한-에러-permission-denied"><span>5. 권한 에러 (<wbr/>Permission <wbr/>Denied)</span></a></li><li><a href="#6-테스트-커버리지-85-미만"><span>6. 테스트 커버리지 85% 미만</span></a></li><li><a href="#7-설치-실패"><span>7. 설치 실패</span></a></li><li><a href="#8-명령어-인식-안-됨"><span>8. 명령어 인식 안 됨</span></a></li><li><a href="#9-claude-code-연동-문제"><span>9. <wbr/>Claude <wbr/>Code 연동 문제</span></a></li></ul></li><li><a href="#로그-확인"><span>로그 확인</span></a></li><li><a href="#긴급-복구"><span>긴급 복구</span></a></li></ul></li><li><a href="#개발-참여"><span>개발 참여</span></a></li><li><ul><li><a href="#기여-방법"><span>기여 방법</span></a></li><li><a href="#개발-환경-설정"><span>개발 환경 설정</span></a></li><li><a href="#코딩-규칙"><span>코딩 규칙</span></a></li></ul></li><li><a href="#🙏-contributors"><span>🙏 <wbr/>Contributors</span></a></li><li><a href="#문서-및-지원"><span>문서 및 지원</span></a></li><li><a href="#라이선스"><span>라이선스</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="modules.html">moai-adk - v0.2.5</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
