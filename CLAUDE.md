@@ -197,7 +197,7 @@ updated: 2025-10-01
 - **ADDED**: 소셜 로그인 지원
 - **AUTHOR**: @goos
 
-### v0.0.1 (2025-09-15)
+### v0.1.0 (2025-09-15)
 - **INITIAL**: 기본 JWT 인증 명세 작성
 - **AUTHOR**: @goos
 
@@ -219,7 +219,11 @@ updated: 2025-10-01
 
 - **TAG ID**: `<도메인>-<3자리>` (예: `AUTH-003`) - 영구 불변
 - **TAG 내용**: 자유롭게 수정 가능 (HISTORY에 기록 필수)
-- **버전 관리**: SPEC 문서 내부에서만 관리 (YAML front matter + HISTORY)
+- **버전 관리**: 0.x.y 기반 개발 버전 체계
+  - **v0.1.0**: INITIAL - SPEC 최초 작성 (모든 SPEC 시작 버전)
+  - **v0.2.0~v0.9.0**: 구현 완료, 기능 추가, 주요 업데이트
+  - **v0.x.y**: 버그 수정, 문서 개선, 경미한 변경
+  - **v1.0.0**: 정식 안정화 버전 (프로덕션 준비 완료 시에만 사용)
 - **TAG 참조**: 버전 없이 파일명만 사용 (예: `SPEC-AUTH-001.md`)
 - **중복 확인**: `rg "@SPEC:AUTH" -n` 또는 `rg "AUTH-001" -n`
 - **CODE-FIRST**: TAG의 진실은 코드 자체에만 존재
@@ -298,7 +302,7 @@ Alfred가 모든 코드에 적용하는 품질 기준:
 - [ ] `.moai/specs/SPEC-<ID>.md` 생성
 - [ ] YAML Front Matter 추가 (id, version, status, created)
 - [ ] `@SPEC:ID` TAG 포함
-- [ ] **HISTORY 섹션 작성** (v1.0.0 INITIAL 항목)
+- [ ] **HISTORY 섹션 작성** (v0.1.0 INITIAL 항목)
 - [ ] EARS 구문으로 요구사항 작성
 - [ ] 중복 ID 확인: `rg "@SPEC:<ID>" -n`
 

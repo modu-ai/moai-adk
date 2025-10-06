@@ -5,7 +5,7 @@
 ```yaml
 ---
 id: UPDATE-REFACTOR-001
-version: 2.0.0
+version: 0.2.0
 status: completed
 created: 2025-10-02
 updated: 2025-10-06
@@ -18,7 +18,7 @@ category: refactor
 
 ## HISTORY
 
-### v2.0.0 (2025-10-06) - 🎉 구현 완료
+### v0.2.0 (2025-10-06) - 🎉 구현 완료
 - **COMPLETED**: /alfred:9-update Option C 하이브리드 리팩토링 구현 완료
 - **AUTHOR**: @alfred, @code-builder
 - **IMPLEMENTATION**: 모든 P0 (7개) + P1 (3개) 요구사항 충족
@@ -41,7 +41,7 @@ category: refactor
 - **FILES**: 15개 파일 변경 (+2920/-465 lines)
 - **PRINCIPLE**: 스크립트 최소화, 커맨드 지침 중심, Claude Code 도구 우선
 
-### v1.0.0 (2025-10-02) - 📋 SPEC 작성
+### v0.1.0 (2025-10-02) - 📋 SPEC 작성
 - **INITIAL**: /alfred:9-update Option C 하이브리드 리팩토링 SPEC 작성
 - **AUTHOR**: @alfred, @spec-builder
 - **CONTEXT**: 문서-구현 불일치 해소, Alfred 중앙 오케스트레이션 복원

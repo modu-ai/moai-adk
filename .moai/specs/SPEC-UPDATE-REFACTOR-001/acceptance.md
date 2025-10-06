@@ -4,7 +4,7 @@
 
 **SPEC ID**: UPDATE-REFACTOR-001
 **Title**: /alfred:9-update Option C 하이브리드 리팩토링
-**Version**: 2.0.0 ✅ **COMPLETED**
+**Version**: 0.2.0 ✅ **COMPLETED**
 **Priority**: P0 (Critical)
 **Completed**: 2025-10-06
 
