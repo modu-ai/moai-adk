@@ -25,7 +25,12 @@ import type {
  */
 export function isMoAIProject(projectRoot: string): boolean {
   const moaiDir = path.join(projectRoot, '.moai');
-  const alfredCommands = path.join(projectRoot, '.claude', 'commands', 'alfred');
+  const alfredCommands = path.join(
+    projectRoot,
+    '.claude',
+    'commands',
+    'alfred'
+  );
 
   return fs.existsSync(moaiDir) && fs.existsSync(alfredCommands);
 }

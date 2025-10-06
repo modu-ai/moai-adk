@@ -8,7 +8,7 @@
  */
 
 import type { SystemDetector } from '@/core/system-checker/detector';
-import type { InitResult, InitOptions } from '@/types/project';
+import type { InitOptions, InitResult } from '@/types/project';
 import { DoctorCommand } from '../doctor';
 import { handleInteractiveInit } from './interactive-handler';
 import { handleNonInteractiveInit } from './non-interactive-handler';

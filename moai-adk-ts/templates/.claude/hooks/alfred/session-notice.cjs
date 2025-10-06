@@ -34,7 +34,12 @@ var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require
 });
 function isMoAIProject(projectRoot) {
   const moaiDir = path__namespace.join(projectRoot, ".moai");
-  const alfredCommands = path__namespace.join(projectRoot, ".claude", "commands", "alfred");
+  const alfredCommands = path__namespace.join(
+    projectRoot,
+    ".claude",
+    "commands",
+    "alfred"
+  );
   return fs__namespace.existsSync(moaiDir) && fs__namespace.existsSync(alfredCommands);
 }
 function checkConstitutionStatus(projectRoot) {

@@ -1,6 +1,6 @@
 ---
 id: STRUCTURE-001
-version: 1.0.0
+version: 0.1.0
 status: active
 created: 2025-10-01
 updated: 2025-10-01
@@ -11,7 +11,7 @@ authors: ["@architect"]
 
 ## HISTORY
 
-### v1.0.0 (2025-10-01)
+### v0.1.0 (2025-10-01)
 - **INITIAL**: 프로젝트 구조 설계 문서 작성
 - **AUTHOR**: @architect
 - **SECTIONS**: Architecture, Modules, Integration, Traceability

@@ -1,6 +1,6 @@
 ---
 id: INIT-003
-version: 0.1.0
+version: 0.2.0
 status: draft
 created: 2025-10-06
 updated: 2025-10-06
@@ -17,17 +17,26 @@ depends_on:
 scope:
   packages:
     - moai-adk-ts/src/cli/commands/init
-    - moai-adk-ts/src/cli/prompts/init
+    - moai-adk-ts/src/cli/commands/project
     - moai-adk-ts/src/core/installer
   files:
-    - interactive-handler.ts
-    - non-interactive-handler.ts
     - phase-executor.ts
+    - backup-metadata.ts
+    - backup-merger.ts
 ---
 
 # @SPEC:INIT-003: Init 백업 및 병합 옵션
 
 ## HISTORY
+
+### v0.2.0 (2025-10-06)
+- **CHANGED**: 설계 전략 변경 - 2단계 분리 접근법 적용
+- **SIMPLIFIED**: moai init은 백업만 수행 (복잡한 병합 엔진 제거)
+- **MOVED**: 병합 로직을 /alfred:8-project로 이동
+- **ADDED**: 백업 메타데이터 시스템 (.moai/backups/latest.json)
+- **IMPROVED**: 사용자 경험 - 설치 빠르게, 선택 신중하게
+- **AUTHOR**: @Goos
+- **CONTEXT**: 복잡도 감소 및 책임 분리 원칙 적용
 
 ### v0.1.0 (2025-10-06)
 - **INITIAL**: Init 백업 및 병합 옵션 명세 최초 작성
@@ -40,131 +49,252 @@ scope:
 ## Environment (환경 및 전제)
 
 ### 실행 환경
-- **현재 상황**: 기존 `.claude/`, `.moai/`, `CLAUDE.md` 파일이 존재하는 프로젝트에 `moai init .` 실행
+- **Phase A (moai init)**: CLI 도구로 실행, 빠른 백업 수행 (5초 이내)
+- **Phase B (/alfred:8-project)**: Claude Code 세션, 백업 분석 및 병합 수행
 - **사용자**: MoAI-ADK를 이미 사용 중이며, 최신 템플릿으로 업데이트하고자 하는 개발자
-- **도구 체인**: Bun 1.0+, TypeScript 5.0+, @clack/prompts 인터렉티브 UI
+- **도구 체인**: Bun 1.0+, TypeScript 5.0+, @clack/prompts (Phase B에서만)
 
-### 현재 시스템 동작
-- **문제점**: 기존 파일 발견 시 자동으로 백업(`.moai-backup-YYYYMMDD-HHMMSS/`)만 생성하고 신규 템플릿으로 덮어쓰기
-- **영향**: 사용자 커스터마이징(hooks, commands, 설정) 손실
-- **해결 필요성**: 백업 복원 수동 작업 부담, 사용자 선택권 없음
+### 설계 철학 변경 (v0.1.0 → v0.2.0)
+- **기존 (v0.1.0)**: moai init에서 복잡한 병합 엔진 실행 → 설치 시간 증가, 복잡도 높음
+- **신규 (v0.2.0)**: 2단계 분리 접근법
+  - **moai init**: 백업만 수행 + 템플릿 복사 (1-2시간 구현 예상)
+  - **/alfred:8-project**: 백업 발견 시 병합 여부만 물어봄 (4-6시간 구현 예상)
+- **장점**: 책임 분리, 복잡도 감소, 사용자 경험 개선 (설치 빠르게, 선택 신중하게)
 
 ---
 
 ## Assumptions (가정사항)
 
-1. **사용자 의도 가정**:
-   - 사용자는 기존 커스터마이징을 보존하면서 최신 기능을 받고 싶어함
-   - 신규 설치(clean install)도 선택 가능해야 함
+1. **책임 분리 가정**:
+   - **moai init**: 백업 생성만 담당 (병합 로직 없음)
+   - **/alfred:8-project**: 백업 분석 및 병합 담당
+   - 각 단계는 독립적으로 실행 가능해야 함
 
-2. **기술적 가정**:
+2. **사용자 의도 가정**:
+   - moai init은 빠르게 실행되어야 함 (5초 이내)
+   - 병합은 충분한 정보와 함께 선택할 수 있어야 함 (Claude Code 컨텍스트)
+
+3. **기술적 가정**:
+   - 백업 메타데이터(.moai/backups/latest.json)로 Phase A/B 연결
    - 백업은 항상 안전망으로 필요함 (모든 시나리오에서 백업 생성)
    - 병합 실패 시 백업에서 복원 가능해야 함
-   - JSON 파일은 깊은 병합(deep merge) 가능
-   - Markdown 파일은 섹션별 병합 가능
 
-3. **위험 관리 가정**:
-   - 병합 중 충돌 발생 시 사용자 개입 필요
+4. **위험 관리 가정**:
    - 백업 생성 실패 시 설치 중단 필수
+   - 백업 메타데이터 손상 시 백업 상태 확인 불가 → 수동 처리 필요
 
 ---
 
 ## Requirements (EARS 요구사항)
 
-### Ubiquitous Requirements (필수 기능)
+### Phase A: moai init 백업 요구사항
 
-**REQ-INIT-003-U01**: 사용자 선택 프롬프트 제공
-- 시스템은 기존 `.claude/`, `.moai/`, `CLAUDE.md` 감지 시 다음 선택지를 제공해야 한다:
-  1. **병합 (Merge)**: 기존 설정 보존 + 신규 기능 추가
-  2. **새로 설치 (Reinstall)**: 백업 후 전체 덮어쓰기
-  3. **취소 (Cancel)**: 설치 중단
+#### Ubiquitous Requirements (필수 기능)
 
-**REQ-INIT-003-U02**: 백업 필수 생성
-- 시스템은 모든 경우(병합/새로설치)에 백업을 생성해야 한다
-- 백업 경로: `.moai-backup-{timestamp}/`
+**REQ-INIT-003-U01**: 백업 필수 생성
+- 시스템은 모든 경우에 `.moai-backup-{timestamp}/` 디렉토리를 생성해야 한다
+- 백업 대상: `.claude/`, `.moai/`, `CLAUDE.md`
 
-**REQ-INIT-003-U03**: 변경 내역 리포트 생성
-- 시스템은 병합/덮어쓰기 완료 후 변경 내역을 Markdown 형식으로 생성해야 한다
-- 리포트 경로: `.moai/reports/init-merge-report-{timestamp}.md`
+**REQ-INIT-003-U02**: 백업 메타데이터 저장
+- 시스템은 `.moai/backups/latest.json`에 백업 정보를 저장해야 한다
+- 메타데이터 구조:
+  ```json
+  {
+    "timestamp": "2025-10-06T14:30:00.000Z",
+    "backup_path": ".moai-backup-20251006-143000",
+    "backed_up_files": ["..."],
+    "status": "pending",
+    "created_by": "moai init"
+  }
+  ```
 
-### Event-driven Requirements (이벤트 기반)
+**REQ-INIT-003-U03**: 사용자 안내 메시지 출력
+- 시스템은 백업 경로와 다음 단계(Claude Code 실행 → /alfred:8-project)를 안내해야 한다
 
-**REQ-INIT-003-E01**: 병합 모드 선택 시
-- WHEN 사용자가 "병합"을 선택하면
-- 시스템은 파일별 병합 전략을 적용해야 한다:
-  - JSON: 깊은 병합 (deep merge) - 신규 필드 추가, 기존 값 유지
-  - Markdown: 섹션별 병합 - HISTORY 누적, 중복 섹션 제거
-  - Hooks (`.cjs`): 버전 비교 후 최신 사용
-  - Commands (`.md`): 사용자 커스터마이징 보존
+#### Event-driven Requirements (이벤트 기반)
 
-**REQ-INIT-003-E02**: 새로 설치 선택 시
-- WHEN 사용자가 "새로 설치"를 선택하면
-- 시스템은 백업 생성 후 신규 템플릿으로 덮어쓰기해야 한다
-
-**REQ-INIT-003-E03**: 취소 선택 시
-- WHEN 사용자가 "취소"를 선택하면
-- 시스템은 설치를 중단하고 기존 파일을 변경하지 않아야 한다
-
-**REQ-INIT-003-E04**: 백업 생성 실패 시
+**REQ-INIT-003-E01**: 백업 생성 실패 시
 - WHEN 백업 생성이 실패하면
 - 시스템은 설치를 즉시 중단하고 에러 메시지를 표시해야 한다
 
-**REQ-INIT-003-E05**: 병합 충돌 발생 시
-- WHEN 자동 병합이 불가능한 충돌이 발생하면
-- 시스템은 충돌 파일 목록을 표시하고 수동 해결 가이드를 제공해야 한다
+#### State-driven Requirements (상태 기반)
 
-### State-driven Requirements (상태 기반)
-
-**REQ-INIT-003-S01**: 병합 진행 중 상태 표시
-- WHILE 병합 중일 때
-- 시스템은 진행 상황을 실시간으로 표시해야 한다:
-  - 현재 처리 중인 파일명
-  - 진행률 (X/Y 파일)
-  - 병합 전략 (merge/skip/overwrite)
-
-**REQ-INIT-003-S02**: 백업 진행 중 로깅
+**REQ-INIT-003-S01**: 백업 진행 중 로깅
 - WHILE 백업 중일 때
 - 시스템은 백업 경로와 파일 목록을 로깅해야 한다
 
-### Optional Features (선택적 기능)
-
-**REQ-INIT-003-O01**: 수동 충돌 해결
-- WHERE 충돌이 발생하면
-- 시스템은 diff 도구를 열거나 수동 해결 옵션을 제공할 수 있다
-
-**REQ-INIT-003-O02**: 백업 자동 정리
-- WHERE 백업이 5개 이상 존재하면
-- 시스템은 오래된 백업 자동 삭제를 제안할 수 있다
-
-### Constraints (제약사항)
+#### Constraints (제약사항)
 
 **REQ-INIT-003-C01**: 백업 실패 시 중단
 - IF 백업 생성 실패하면
 - 시스템은 설치를 중단해야 한다 (부분 설치 금지)
 
-**REQ-INIT-003-C02**: 병합 오류 시 복원
-- IF 병합 중 치명적 오류 발생하면
+---
+
+### Phase B: /alfred:8-project 병합 요구사항
+
+#### Event-driven Requirements (이벤트 기반)
+
+**REQ-INIT-003-E02**: /alfred:8-project 실행 시 백업 감지
+- WHEN `/alfred:8-project` 실행 시
+- 시스템은 `.moai/backups/latest.json`에서 `status: pending` 백업을 감지해야 한다
+
+**REQ-INIT-003-E03**: 백업 발견 시 병합 프롬프트 표시
+- WHEN 백업이 발견되면
+- 시스템은 백업 내용 분석 및 요약 후 "병합 vs 새로설치" 선택지를 제공해야 한다
+
+**REQ-INIT-003-E04**: 병합 선택 시 병합 전략 실행
+- WHEN 사용자가 "병합"을 선택하면
+- 시스템은 파일별 병합 전략을 적용해야 한다:
+  - JSON: Deep merge (lodash.merge)
+  - Markdown: HISTORY 섹션 누적
+  - Hooks: 버전 비교 후 최신 사용
+  - Commands: 사용자 파일 보존
+
+**REQ-INIT-003-E05**: 새로설치 선택 시 백업 무시
+- WHEN 사용자가 "새로설치"를 선택하면
+- 시스템은 백업을 보존하되 메타데이터 status를 `ignored`로 변경해야 한다
+
+**REQ-INIT-003-E06**: 병합 실패 시 백업에서 복원
+- WHEN 병합 중 치명적 오류 발생하면
 - 시스템은 백업에서 자동 복원해야 한다
 
-**REQ-INIT-003-C03**: 파일 무결성 검증
-- IF 중요 파일(`.claude/settings.json`, `CLAUDE.md`)이 누락되면
-- 시스템은 경고를 표시하고 신규 생성 여부를 물어야 한다
+#### State-driven Requirements (상태 기반)
+
+**REQ-INIT-003-S02**: 병합 진행 중 상태 표시
+- WHILE 병합 중일 때
+- 시스템은 진행 상황을 실시간으로 표시해야 한다:
+  - 현재 처리 중인 파일명
+  - 병합 전략 (merge/skip/overwrite)
+
+#### Constraints (제약사항)
+
+**REQ-INIT-003-C02**: 병합 오류 시 복원 메커니즘 필수
+- IF 병합 중 치명적 오류 발생하면
+- 시스템은 백업에서 자동 복원해야 한다
 
 ---
 
 ## Specifications (상세 명세)
 
-### 1. 사용자 선택 프롬프트 구현
+### Phase A: moai init 백업 로직
 
-**입력 조건**:
-- `.claude/` 디렉토리 존재
-- `.moai/` 디렉토리 존재
-- `CLAUDE.md` 파일 존재
+**구현 위치**: `moai-adk-ts/src/core/installer/phase-executor.ts`
 
-**프롬프트 디자인** (@clack/prompts 기반):
+#### 1. 백업 디렉토리 생성
 ```typescript
+const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+const backupPath = `.moai-backup-${timestamp}/`;
+
+// 백업 대상 복사
+await copyDirectory('.claude/', `${backupPath}.claude/`);
+await copyDirectory('.moai/', `${backupPath}.moai/`);
+await copyFile('CLAUDE.md', `${backupPath}CLAUDE.md`);
+```
+
+#### 2. 백업 메타데이터 저장
+**파일**: `.moai/backups/latest.json`
+
+```typescript
+interface BackupMetadata {
+  timestamp: string;              // ISO 8601 형식
+  backup_path: string;            // 백업 디렉토리 경로
+  backed_up_files: string[];      // 백업된 파일 목록
+  status: 'pending' | 'merged' | 'ignored';  // 백업 상태
+  created_by: string;             // 생성 주체 (moai init)
+}
+
+const metadata: BackupMetadata = {
+  timestamp: new Date().toISOString(),
+  backup_path: backupPath,
+  backed_up_files: [
+    '.claude/settings.json',
+    '.claude/hooks/alfred/tag-enforcer.cjs',
+    '.moai/config.json',
+    'CLAUDE.md'
+  ],
+  status: 'pending',
+  created_by: 'moai init'
+};
+
+await ensureDirectory('.moai/backups/');
+await fs.writeFile('.moai/backups/latest.json', JSON.stringify(metadata, null, 2));
+```
+
+#### 3. 사용자 안내 메시지
+```typescript
+console.log(`
+✅ MoAI-ADK 설치 완료!
+
+📦 기존 설정이 백업되었습니다:
+   경로: ${backupPath}
+
+🚀 다음 단계:
+   1. Claude Code를 실행하세요
+   2. /alfred:8-project 명령을 실행하세요
+   3. 백업 내용을 병합할지 선택하세요
+
+💡 백업은 자동으로 삭제되지 않습니다. 안전하게 확인 후 수동 삭제하세요.
+`);
+```
+
+#### 4. 템플릿 복사
+기존 로직 재사용 (90% 코드 재사용)
+
+---
+
+### Phase B: /alfred:8-project 병합 로직
+
+**구현 위치**: `moai-adk-ts/src/cli/commands/project/backup-merger.ts`
+
+#### 1. 백업 감지
+```typescript
+const backupMetadataPath = '.moai/backups/latest.json';
+
+if (fs.existsSync(backupMetadataPath)) {
+  const backup: BackupMetadata = JSON.parse(
+    fs.readFileSync(backupMetadataPath, 'utf-8')
+  );
+
+  if (backup.status === 'pending') {
+    await handleBackupMerge(backup);
+  }
+}
+```
+
+#### 2. 백업 내용 분석 및 요약
+```typescript
+function analyzeBackup(backup: BackupMetadata): BackupSummary {
+  return {
+    timestamp: backup.timestamp,
+    path: backup.backup_path,
+    files: backup.backed_up_files.map(file => ({
+      path: file,
+      summary: extractFileSummary(file)  // 파일 내용 분석
+    }))
+  };
+}
+
+// 사용자에게 표시
+console.log(`
+📦 기존 설정 백업 발견
+
+**백업 시각**: ${backup.timestamp}
+**백업 경로**: ${backup.backup_path}
+
+**백업된 파일**:
+- .claude/settings.json (모드: personal, 커스텀 hooks: 3개)
+- .moai/config.json (프로젝트: MoAI-ADK, 버전: 0.0.3)
+- CLAUDE.md (사용자 커스터마이징 포함)
+`);
+```
+
+#### 3. 사용자 선택 프롬프트
+```typescript
+import { select } from '@clack/prompts';
+
 const choice = await select({
-  message: '기존 MoAI-ADK 설정이 감지되었습니다. 어떻게 진행하시겠습니까?',
+  message: '백업된 설정을 어떻게 처리하시겠습니까?',
   options: [
     {
       value: 'merge',
@@ -174,147 +304,36 @@ const choice = await select({
     {
       value: 'reinstall',
       label: '새로 설치 (Reinstall)',
-      hint: '백업 후 전체 덮어쓰기'
-    },
-    {
-      value: 'cancel',
-      label: '취소 (Cancel)',
-      hint: '설치 중단'
+      hint: '백업 보존, 신규 템플릿 사용'
     }
   ]
 });
 ```
 
-**출력**:
-- 사용자 선택값: `'merge' | 'reinstall' | 'cancel'`
+#### 4. 병합 전략 실행
+| 파일 유형 | 병합 방법 |
+|----------|---------|
+| JSON | Deep merge (lodash.merge) |
+| Markdown | HISTORY 섹션 누적 |
+| Hooks | 버전 비교 후 최신 사용 |
+| Commands | 사용자 파일 보존 |
 
----
-
-### 2. 스마트 병합 엔진 구현
-
-#### 2.1 JSON 파일 병합 (Deep Merge)
-
-**대상 파일**:
-- `.claude/settings.json`
-- `.moai/config.json`
-
-**병합 알고리즘**:
+**구현 예시** (JSON Deep Merge):
 ```typescript
-function deepMergeJSON(existing: object, newTemplate: object): object {
-  // 1. 신규 필드 추가
-  // 2. 기존 값 유지 (사용자 커스터마이징)
-  // 3. 중첩 객체는 재귀적 병합
-  // 4. 배열은 중복 제거 후 병합
+import { merge } from 'lodash';
+
+function mergeJSON(backupFile: string, currentFile: string): object {
+  const backupData = JSON.parse(fs.readFileSync(backupFile, 'utf-8'));
+  const currentData = JSON.parse(fs.readFileSync(currentFile, 'utf-8'));
+
+  // 기존 값 우선, 신규 필드 추가
+  return merge({}, currentData, backupData);
 }
 ```
 
-**예시**:
-```json
-// 기존 설정
-{
-  "mode": "personal",
-  "hooks": {
-    "PreToolUse": ["tag-enforcer.cjs"]
-  }
-}
+#### 5. 병합 리포트 생성
+**파일**: `.moai/reports/init-merge-report-{timestamp}.md`
 
-// 신규 템플릿
-{
-  "mode": "team",
-  "hooks": {
-    "PreToolUse": ["tag-enforcer.cjs", "pre-write-guard.cjs"],
-    "SessionStart": ["session-notice.cjs"]
-  },
-  "newFeature": "value"
-}
-
-// 병합 결과
-{
-  "mode": "personal",  // 기존 값 유지
-  "hooks": {
-    "PreToolUse": ["tag-enforcer.cjs", "pre-write-guard.cjs"],  // 신규 추가
-    "SessionStart": ["session-notice.cjs"]  // 신규 추가
-  },
-  "newFeature": "value"  // 신규 추가
-}
-```
-
-#### 2.2 Markdown 파일 병합 (Section-based Merge)
-
-**대상 파일**:
-- `CLAUDE.md`
-- `.moai/project/product.md`
-- `.moai/project/structure.md`
-- `.moai/project/tech.md`
-
-**병합 알고리즘**:
-```typescript
-function mergeMDSections(existing: string, newTemplate: string): string {
-  // 1. 섹션 파싱 (## 기준)
-  // 2. HISTORY 섹션: 누적 (기존 + 신규)
-  // 3. 중복 섹션: 기존 내용 우선, 신규 항목 추가
-  // 4. 신규 섹션: 끝에 추가
-}
-```
-
-**HISTORY 섹션 누적 예시**:
-```markdown
-## HISTORY
-
-### v2.0.0 (2025-10-06)
-- **UPDATED**: 신규 업데이트 내용
-
-### v1.0.0 (2025-10-01)  # 기존 내용 보존
-- **INITIAL**: 프로젝트 초기화
-```
-
-#### 2.3 Hooks 파일 병합 (Version-based Merge)
-
-**대상 파일**:
-- `.claude/hooks/**/*.cjs`
-
-**병합 전략**:
-```typescript
-function mergeHooks(existingPath: string, newTemplatePath: string): 'keep' | 'update' {
-  // 1. 파일 헤더에서 버전 추출
-  // 2. 버전 비교
-  // 3. 신규 버전이 높으면 업데이트, 동일하면 유지
-  // 4. 사용자 커스터마이징 감지 시 경고
-}
-```
-
-**버전 추출 예시**:
-```javascript
-// tag-enforcer.cjs 헤더
-/**
- * @name Tag Enforcer Hook
- * @version 1.2.0
- * @description SPEC-INSTALL-001 템플릿 보안 강화
- */
-```
-
-#### 2.4 Commands 파일 병합 (User-first Merge)
-
-**대상 파일**:
-- `.claude/commands/**/*.md`
-
-**병합 전략**:
-```typescript
-function mergeCommands(existingPath: string, newTemplatePath: string): 'keep' | 'skip' | 'prompt' {
-  // 1. 사용자 커스터마이징 감지 (파일 해시 비교)
-  // 2. 커스터마이징 있으면 기존 유지
-  // 3. 템플릿 그대로면 신규로 교체
-  // 4. 애매하면 사용자에게 물어봄
-}
-```
-
----
-
-### 3. 변경 내역 리포트 생성
-
-**파일 경로**: `.moai/reports/init-merge-report-{timestamp}.md`
-
-**리포트 구조**:
 ```markdown
 # MoAI-ADK Init Merge Report
 
@@ -327,7 +346,6 @@ function mergeCommands(existingPath: string, newTemplatePath: string): 'keep' | 
 ## 변경 내역 요약
 
 - **병합된 파일**: 12개
-- **덮어쓴 파일**: 3개
 - **보존된 파일**: 5개
 - **충돌 파일**: 0개
 
@@ -341,57 +359,27 @@ function mergeCommands(existingPath: string, newTemplatePath: string): 'keep' | 
   - 추가: `hooks.SessionStart`
   - 유지: `mode`, `hooks.PreToolUse`
 
-- `CLAUDE.md`
-  - 추가: HISTORY v2.0.0 항목
-  - 유지: 기존 HISTORY v1.0.0
-
-### 덮어쓴 파일 (Overwritten)
-
-- `.claude/hooks/alfred/tag-enforcer.cjs`
-  - 이유: 신규 버전 (v1.2.0 → v1.3.0)
-
 ### 보존된 파일 (Preserved)
 
 - `.claude/commands/custom/my-command.md`
   - 이유: 사용자 커스터마이징 감지
-
----
-
-## 다음 단계
-
-1. 변경사항 확인: `git diff`
-2. 테스트: `moai doctor`
-3. 백업 삭제 (선택): `rm -rf .moai-backup-20251006-143000`
 ```
 
 ---
 
-### 4. PhaseExecutor 통합
+### 2. 스마트 병합 엔진 구현 (Phase B 전용)
 
-**수정 대상**: `moai-adk-ts/src/core/installer/phase-executor.ts`
+#### 2.1 JSON Deep Merge (lodash 활용)
+Phase B에서만 사용. 상세 내용은 v0.1.0 참조.
 
-**현재 구조**:
-```typescript
-// phase-executor.ts:217-260
-private async createBackupIfNeeded(config: MoAIConfig): Promise<void> {
-  // 백업만 생성
-}
-```
+#### 2.2 Markdown Section Merge
+Phase B에서만 사용. HISTORY 누적 로직은 v0.1.0 참조.
 
-**신규 구조**:
-```typescript
-private async handleExistingInstallation(config: MoAIConfig): Promise<'merge' | 'reinstall' | 'cancel'> {
-  // 1. 기존 설치 감지
-  // 2. 사용자 선택 프롬프트 호출
-  // 3. 선택에 따라 분기 처리
-}
+#### 2.3 Hooks Version Comparison
+Phase B에서만 사용. semver 비교 로직은 v0.1.0 참조.
 
-private async mergeExistingFiles(config: MoAIConfig): Promise<MergeReport> {
-  // 1. 백업 생성
-  // 2. 파일별 병합 전략 적용
-  // 3. 변경 내역 리포트 생성
-}
-```
+#### 2.4 Commands User-first Merge
+Phase B에서만 사용. 커스터마이징 감지 로직은 v0.1.0 참조.
 
 ---
 
@@ -401,35 +389,47 @@ private async mergeExistingFiles(config: MoAIConfig): Promise<MergeReport> {
 
 **이 SPEC의 TAG**: `@SPEC:INIT-003`
 
-**구현 위치**:
-- 테스트: `moai-adk-ts/__tests__/cli/init/merge-handler.test.ts` → `@TEST:INIT-003`
-- 구현: `moai-adk-ts/src/cli/commands/init/merge-handler.ts` → `@CODE:INIT-003`
-- 프롬프트: `moai-adk-ts/src/cli/prompts/init/merge-prompt.ts` → `@CODE:INIT-003:UI`
-- 문서: 본 SPEC 문서 → `@SPEC:INIT-003`
+**Phase A 구현 위치**:
+- `@CODE:INIT-003:BACKUP` → `moai-adk-ts/src/core/installer/phase-executor.ts`
+- `@CODE:INIT-003:DATA` → `moai-adk-ts/src/core/installer/backup-metadata.ts`
+- `@TEST:INIT-003:BACKUP` → `moai-adk-ts/__tests__/core/installer/phase-executor.test.ts`
+
+**Phase B 구현 위치**:
+- `@CODE:INIT-003:MERGE` → `moai-adk-ts/src/cli/commands/project/backup-merger.ts`
+- `@CODE:INIT-003:DATA` → `moai-adk-ts/src/cli/commands/project/merge-strategies/`
+- `@CODE:INIT-003:UI` → `moai-adk-ts/src/cli/commands/project/merge-report.ts`
+- `@TEST:INIT-003:MERGE` → `moai-adk-ts/__tests__/cli/commands/project/backup-merger.test.ts`
 
 ### 의존성 체인
 
 **Depends On**:
-- `INIT-001`: MoAI-ADK 설치 기본 플로우 (백업 로직 재사용)
+- `INIT-001`: MoAI-ADK 설치 기본 플로우 (백업 로직 90% 재사용)
 
 **Related**:
-- `INSTALLER-SEC-001`: 템플릿 보안 정책 (병합 시 보안 검증 필요)
+- `INSTALLER-SEC-001`: 템플릿 보안 정책 (백업 무결성 검증 필요)
 
 ---
 
 ## Risks & Mitigation (위험 및 대응)
 
-### 위험 1: 병합 중 데이터 손실
-- **영향**: 사용자 커스터마이징 손실
-- **대응**: 항상 백업 생성, 롤백 메커니즘
+### 감소된 위험 요소 (v0.1.0 → v0.2.0)
+- ✅ **moai init 복잡도 감소**: 백업만 수행 → 실패 가능성 최소화
+- ✅ **Claude Code 컨텍스트 활용**: 파일 분석 강점 활용 → 병합 정확도 향상
+- ✅ **2단계 분리**: 각 단계 독립적 테스트 가능 → 품질 보증 용이
 
-### 위험 2: JSON 병합 충돌
-- **영향**: 설정 파일 손상
-- **대응**: 스키마 검증, 충돌 시 사용자 확인
+### 새로운 위험 요소
 
-### 위험 3: Markdown 섹션 중복
-- **영향**: HISTORY 섹션 중복 항목
-- **대응**: 버전 기반 중복 제거 로직
+**위험 1: 백업 메타데이터 손상**
+- **영향**: 백업 상태 확인 불가
+- **대응**: JSON 스키마 검증, 백업 메타데이터 무결성 체크
+
+**위험 2: /alfred:8-project 미실행**
+- **영향**: 백업 방치 (디스크 공간 낭비)
+- **대응**: moai init 완료 메시지에 명확한 다음 단계 안내
+
+**위험 3: Phase A/B 버전 불일치**
+- **영향**: 백업 메타데이터 형식 불일치
+- **대응**: 메타데이터 버전 필드 추가, 하위 호환성 유지
 
 ---
 
@@ -437,18 +437,26 @@ private async mergeExistingFiles(config: MoAIConfig): Promise<MergeReport> {
 
 본 SPEC의 상세한 수락 기준은 `acceptance.md`를 참조하세요.
 
-**주요 기준**:
-1. ✅ 사용자 선택 프롬프트가 정상 작동하는가?
-2. ✅ 병합 모드에서 기존 설정이 보존되는가?
-3. ✅ 백업이 모든 경우에 생성되는가?
-4. ✅ 변경 내역 리포트가 정확하게 생성되는가?
+**Phase A 주요 기준**:
+1. ✅ 백업 디렉토리가 생성되는가?
+2. ✅ 백업 메타데이터가 올바르게 저장되는가?
+3. ✅ 사용자 안내 메시지가 명확하게 표시되는가?
+4. ✅ 백업 실패 시 설치가 중단되는가?
+
+**Phase B 주요 기준**:
+1. ✅ 백업 감지 및 분석이 정확한가?
+2. ✅ 병합 프롬프트가 정상 작동하는가?
+3. ✅ 병합 모드에서 기존 설정이 보존되는가?
+4. ✅ 병합 리포트가 정확하게 생성되는가?
 5. ✅ 병합 실패 시 롤백이 작동하는가?
 
 ---
 
 ## Next Steps
 
-1. `/alfred:2-build INIT-003` → TDD 구현 시작
+1. `/alfred:2-build INIT-003` → Phase A/B 순차 TDD 구현
+   - Phase A (1-2시간): moai init 백업 로직
+   - Phase B (4-6시간): /alfred:8-project 병합 로직
 2. 구현 완료 후 `/alfred:3-sync` → 문서 동기화 및 TAG 검증
 
 ---

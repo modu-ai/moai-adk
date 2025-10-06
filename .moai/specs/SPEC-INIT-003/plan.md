@@ -1,457 +1,429 @@
-# SPEC-INIT-003 구현 계획
+# SPEC-INIT-003 구현 계획 (v0.2.0)
 
-> **@CODE:INIT-003 TDD 구현 로드맵**
+> **@CODE:INIT-003 TDD 구현 로드맵 - 2단계 분리 접근법**
 
 ---
 
 ## 📋 구현 개요
 
-**목표**: 기존 프로젝트에 `moai init` 실행 시 사용자 선택 및 스마트 병합 기능 구현
+**목표**: 백업 생성(moai init) + 병합 선택(/alfred:8-project) 분리 구현
 
 **우선순위**: High (사용자 경험 개선의 핵심 기능)
 
-**예상 복잡도**: 중간 (파일 I/O, 병합 알고리즘, 인터렉티브 UI)
+**예상 복잡도**: 중간 (기존 대비 단순화됨)
+- **Phase A**: 낮음 (백업만 수행, 기존 로직 90% 재사용)
+- **Phase B**: 중간 (병합 로직, Claude Code 컨텍스트 활용)
+
+**설계 변경 사항 (v0.1.0 → v0.2.0)**:
+- moai init에서 복잡한 병합 엔진 제거
+- 백업 메타데이터(.moai/backups/latest.json) 시스템 추가
+- /alfred:8-project에서 병합 담당 (충분한 컨텍스트 확보)
 
 ---
 
-## 🎯 Phase 1: 사용자 선택 프롬프트 구현
+## 🎯 Phase A: moai init 백업 로직 (1-2시간)
 
 ### 목표
-기존 설치 감지 시 사용자에게 병합/재설치/취소 선택지를 제공하는 인터렉티브 프롬프트 구현
+기존 설치 감지 시 백업만 수행하고, 백업 메타데이터를 저장하여 Phase B와 연결
 
 ### 주요 작업
 
-#### 1.1 기존 설치 감지 로직
-**파일**: `moai-adk-ts/src/cli/commands/init/installation-detector.ts` (신규 생성)
+#### A.1 백업 디렉토리 생성
+**파일**: `moai-adk-ts/src/core/installer/phase-executor.ts` (수정)
 
 **구현 내용**:
 ```typescript
-export interface ExistingInstallation {
-  hasClaudeDir: boolean;
-  hasMoaiDir: boolean;
-  hasClaudeMd: boolean;
-  backupNeeded: boolean;
-}
+private async createBackupWithMetadata(config: MoAIConfig): Promise<string> {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+  const backupPath = `.moai-backup-${timestamp}/`;
 
-export function detectExistingInstallation(targetDir: string): ExistingInstallation {
-  // .claude/, .moai/, CLAUDE.md 존재 여부 확인
+  // 백업 대상 복사
+  await copyDirectory('.claude/', `${backupPath}.claude/`);
+  await copyDirectory('.moai/', `${backupPath}.moai/`);
+  await copyFile('CLAUDE.md', `${backupPath}CLAUDE.md`);
+
+  return backupPath;
 }
 ```
 
 **TDD 순서**:
-1. **RED**: 테스트 작성 (`installation-detector.test.ts`)
-   - 빈 디렉토리 감지
-   - 부분 설치 감지 (`.claude/`만 존재)
-   - 완전 설치 감지 (모두 존재)
-2. **GREEN**: 최소 구현
-3. **REFACTOR**: 경로 검증, 에러 처리 추가
+1. **RED**: 백업 디렉토리 생성 테스트
+2. **GREEN**: 파일 복사 로직 구현 (기존 로직 90% 재사용)
+3. **REFACTOR**: 에러 처리, 경로 검증
 
-#### 1.2 병합 선택 프롬프트 UI
-**파일**: `moai-adk-ts/src/cli/prompts/init/merge-prompt.ts` (신규 생성)
+#### A.2 백업 메타데이터 저장
+**파일**: `moai-adk-ts/src/core/installer/backup-metadata.ts` (신규 생성)
+
+**구현 내용**:
+```typescript
+export interface BackupMetadata {
+  timestamp: string;
+  backup_path: string;
+  backed_up_files: string[];
+  status: 'pending' | 'merged' | 'ignored';
+  created_by: string;
+}
+
+export async function saveBackupMetadata(
+  backupPath: string,
+  backedUpFiles: string[]
+): Promise<void> {
+  const metadata: BackupMetadata = {
+    timestamp: new Date().toISOString(),
+    backup_path: backupPath,
+    backed_up_files: backedUpFiles,
+    status: 'pending',
+    created_by: 'moai init'
+  };
+
+  await ensureDirectory('.moai/backups/');
+  await fs.writeFile(
+    '.moai/backups/latest.json',
+    JSON.stringify(metadata, null, 2)
+  );
+}
+```
+
+**TDD 순서**:
+1. **RED**: 메타데이터 저장 테스트
+2. **GREEN**: JSON 파일 저장 로직 구현
+3. **REFACTOR**: 스키마 검증, 디렉토리 자동 생성
+
+#### A.3 사용자 안내 메시지
+**파일**: `moai-adk-ts/src/core/installer/phase-executor.ts` (수정)
+
+**구현 내용**:
+```typescript
+private showBackupCompletedMessage(backupPath: string): void {
+  console.log(`
+✅ MoAI-ADK 설치 완료!
+
+📦 기존 설정이 백업되었습니다:
+   경로: ${backupPath}
+
+🚀 다음 단계:
+   1. Claude Code를 실행하세요
+   2. /alfred:8-project 명령을 실행하세요
+   3. 백업 내용을 병합할지 선택하세요
+
+💡 백업은 자동으로 삭제되지 않습니다. 안전하게 확인 후 수동 삭제하세요.
+  `);
+}
+```
+
+**TDD 순서**:
+1. **RED**: 메시지 출력 테스트 (모킹)
+2. **GREEN**: 메시지 포맷팅 구현
+3. **REFACTOR**: 다국어 지원 준비
+
+### Phase A 완료 조건
+- ✅ 백업 디렉토리 생성
+- ✅ 백업 메타데이터 저장 (.moai/backups/latest.json)
+- ✅ 사용자 안내 메시지 출력
+- ✅ 백업 실패 시 설치 중단
+- ✅ 테스트 커버리지 ≥85%
+
+---
+
+## 🔀 Phase B: /alfred:8-project 병합 로직 (4-6시간)
+
+### 목표
+백업 메타데이터 감지 → 분석 → 병합 또는 새로설치 선택
+
+### 주요 작업
+
+#### B.1 백업 감지 및 분석
+**파일**: `moai-adk-ts/src/cli/commands/project/backup-merger.ts` (신규 생성)
+
+**구현 내용**:
+```typescript
+export async function detectAndAnalyzeBackup(): Promise<BackupSummary | null> {
+  const metadataPath = '.moai/backups/latest.json';
+
+  if (!fs.existsSync(metadataPath)) {
+    return null;
+  }
+
+  const backup: BackupMetadata = JSON.parse(
+    fs.readFileSync(metadataPath, 'utf-8')
+  );
+
+  if (backup.status !== 'pending') {
+    return null;
+  }
+
+  return analyzeBackup(backup);
+}
+
+function analyzeBackup(backup: BackupMetadata): BackupSummary {
+  // 파일 내용 분석 (Claude Code 컨텍스트 활용)
+}
+```
+
+**TDD 순서**:
+1. **RED**: 백업 감지 테스트
+2. **GREEN**: 메타데이터 읽기 구현
+3. **RED**: 백업 분석 테스트
+4. **GREEN**: 파일 요약 로직 구현
+5. **REFACTOR**: 메타데이터 검증, 에러 처리
+
+#### B.2 병합 선택 프롬프트
+**파일**: `moai-adk-ts/src/cli/commands/project/backup-merger.ts` (추가)
 
 **구현 내용**:
 ```typescript
 import { select } from '@clack/prompts';
 
-export type MergeChoice = 'merge' | 'reinstall' | 'cancel';
+export async function promptBackupMerge(summary: BackupSummary): Promise<'merge' | 'reinstall'> {
+  console.log(`
+📦 기존 설정 백업 발견
 
-export async function promptMergeChoice(): Promise<MergeChoice> {
-  // @clack/prompts 기반 선택 프롬프트
+**백업 시각**: ${summary.timestamp}
+**백업 경로**: ${summary.path}
+
+**백업된 파일**:
+${summary.files.map(f => `- ${f.path} (${f.summary})`).join('\n')}
+  `);
+
+  return await select({
+    message: '백업된 설정을 어떻게 처리하시겠습니까?',
+    options: [
+      { value: 'merge', label: '병합', hint: '기존 설정 보존 + 신규 기능 추가' },
+      { value: 'reinstall', label: '새로 설치', hint: '백업 보존, 신규 템플릿 사용' }
+    ]
+  });
 }
 ```
 
 **TDD 순서**:
-1. **RED**: 모의 입력 기반 테스트
-2. **GREEN**: 프롬프트 UI 구현
-3. **REFACTOR**: 메시지 다국어 지원 준비
+1. **RED**: 프롬프트 테스트 (모킹)
+2. **GREEN**: @clack/prompts 통합
+3. **REFACTOR**: 메시지 다국어화
 
-#### 1.3 InteractiveHandler 통합
-**파일**: `moai-adk-ts/src/cli/commands/init/interactive-handler.ts` (수정)
+#### B.3 병합 전략 실행
+**파일**: `moai-adk-ts/src/cli/commands/project/merge-strategies/` (신규 디렉토리)
 
-**변경 내용**:
-```typescript
-// 기존 로직 전에 추가
-const existing = detectExistingInstallation(targetDir);
-if (existing.backupNeeded) {
-  const choice = await promptMergeChoice();
-  if (choice === 'cancel') {
-    logger.info('설치가 취소되었습니다.');
-    return;
-  }
-  // choice를 config에 추가
-  config.mergeChoice = choice;
-}
-```
+**구현 내용**:
+- `json-merger.ts`: Deep merge (lodash 활용)
+- `markdown-merger.ts`: HISTORY 누적
+- `hooks-merger.ts`: 버전 비교
+- `merge-orchestrator.ts`: 통합 실행
+
+(상세 구현은 v0.1.0 plan.md의 Phase 2 참조)
 
 **TDD 순서**:
-1. **RED**: 기존 설치 감지 시 프롬프트 호출 테스트
-2. **GREEN**: 통합 구현
-3. **REFACTOR**: 에러 처리, 로깅 개선
+1. **RED**: 각 병합기별 단위 테스트
+2. **GREEN**: 병합 알고리즘 구현
+3. **REFACTOR**: 타입 안전성, 에러 처리
 
-### Phase 1 완료 조건
-- ✅ 기존 설치 감지 로직 작동
-- ✅ 사용자 선택 프롬프트 표시
-- ✅ 선택값이 config에 전달됨
-- ✅ 테스트 커버리지 ≥85%
-
----
-
-## 🔀 Phase 2: 병합 엔진 구현
-
-### 목표
-파일 타입별 스마트 병합 알고리즘 구현 (JSON, Markdown, Hooks, Commands)
-
-### 주요 작업
-
-#### 2.1 JSON Deep Merge
-**파일**: `moai-adk-ts/src/core/installer/merge/json-merger.ts` (신규 생성)
+#### B.4 병합 리포트 생성
+**파일**: `moai-adk-ts/src/cli/commands/project/merge-report.ts` (신규 생성)
 
 **구현 내용**:
 ```typescript
-export interface MergeResult {
-  merged: object;
-  changes: {
-    added: string[];
-    updated: string[];
-    preserved: string[];
-  };
-}
+export async function generateMergeReport(
+  mergeResult: MergeReport,
+  backupPath: string
+): Promise<string> {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+  const reportPath = `.moai/reports/init-merge-report-${timestamp}.md`;
 
-export function deepMergeJSON(existing: object, template: object): MergeResult {
-  // 1. 신규 필드 추가
-  // 2. 기존 값 유지
-  // 3. 중첩 객체 재귀 병합
-  // 4. 배열 중복 제거
-}
-```
+  const content = `
+# MoAI-ADK Init Merge Report
 
-**TDD 순서**:
-1. **RED**: 단순 병합 테스트
-   - 신규 필드 추가
-   - 기존 값 유지
-   - 중첩 객체 병합
-   - 배열 병합 (중복 제거)
-2. **GREEN**: 재귀 병합 로직 구현
-3. **REFACTOR**: 타입 안전성, 순환 참조 방지
+**실행 시각**: ${new Date().toISOString()}
+**실행 모드**: merge
+**백업 경로**: ${backupPath}
 
-#### 2.2 Markdown Section Merge
-**파일**: `moai-adk-ts/src/core/installer/merge/markdown-merger.ts` (신규 생성)
+## 변경 내역 요약
+...
+  `;
 
-**구현 내용**:
-```typescript
-export interface MDSection {
-  title: string;
-  level: number;
-  content: string;
-}
+  await ensureDirectory('.moai/reports/');
+  await fs.writeFile(reportPath, content);
 
-export function parseMDSections(markdown: string): MDSection[] {
-  // ## 기준으로 섹션 파싱
-}
-
-export function mergeMDSections(existing: MDSection[], template: MDSection[]): string {
-  // HISTORY 누적, 중복 섹션 처리
+  return reportPath;
 }
 ```
 
 **TDD 순서**:
-1. **RED**: 섹션 파싱 테스트
-2. **GREEN**: 정규식 기반 파싱 구현
-3. **RED**: HISTORY 누적 테스트
-4. **GREEN**: 버전 기반 병합 로직
-5. **REFACTOR**: 중복 제거 알고리즘 최적화
-
-#### 2.3 Hooks Version-based Merge
-**파일**: `moai-adk-ts/src/core/installer/merge/hooks-merger.ts` (신규 생성)
-
-**구현 내용**:
-```typescript
-export interface HookVersion {
-  name: string;
-  version: string;
-  customized: boolean;
-}
-
-export function extractHookVersion(filepath: string): HookVersion {
-  // 파일 헤더에서 @version 추출
-}
-
-export function shouldUpdateHook(existing: HookVersion, template: HookVersion): boolean {
-  // 버전 비교 (semver)
-}
-```
-
-**TDD 순서**:
-1. **RED**: 버전 추출 테스트
-2. **GREEN**: 정규식 기반 버전 파싱
-3. **RED**: 버전 비교 로직 테스트
-4. **GREEN**: semver 비교 구현
-5. **REFACTOR**: 커스터마이징 감지 로직 추가
-
-#### 2.4 Merge Orchestrator (통합)
-**파일**: `moai-adk-ts/src/core/installer/merge/merge-orchestrator.ts` (신규 생성)
-
-**구현 내용**:
-```typescript
-export interface MergeReport {
-  merged: string[];
-  overwritten: string[];
-  preserved: string[];
-  conflicts: string[];
-}
-
-export async function mergeInstallation(
-  targetDir: string,
-  templateDir: string
-): Promise<MergeReport> {
-  // 1. 파일 목록 스캔
-  // 2. 파일 타입별 병합 전략 선택
-  // 3. 병합 실행
-  // 4. 리포트 생성
-}
-```
-
-**TDD 순서**:
-1. **RED**: 전체 병합 플로우 테스트 (통합 테스트)
-2. **GREEN**: 각 병합기 조합
-3. **REFACTOR**: 에러 처리, 진행 상황 표시
-
-### Phase 2 완료 조건
-- ✅ JSON 병합 정상 작동 (신규 필드 추가, 기존 값 유지)
-- ✅ Markdown 병합 정상 작동 (HISTORY 누적)
-- ✅ Hooks 버전 비교 정상 작동
-- ✅ 통합 병합 플로우 정상 작동
-- ✅ 테스트 커버리지 ≥85%
-
----
-
-## 📊 Phase 3: 변경 내역 리포트 구현
-
-### 목표
-병합 결과를 사용자가 이해하기 쉬운 Markdown 리포트로 생성
-
-### 주요 작업
-
-#### 3.1 리포트 생성기
-**파일**: `moai-adk-ts/src/core/installer/merge/report-generator.ts` (신규 생성)
-
-**구현 내용**:
-```typescript
-export function generateMergeReport(
-  mergeReport: MergeReport,
-  backupPath: string,
-  timestamp: string
-): string {
-  // Markdown 형식 리포트 생성
-}
-```
-
-**TDD 순서**:
-1. **RED**: 기본 리포트 구조 테스트
+1. **RED**: 리포트 생성 테스트
 2. **GREEN**: Markdown 템플릿 구현
-3. **REFACTOR**: 상세 변경 목록 포맷팅
+3. **REFACTOR**: 리포트 포맷 개선
 
-#### 3.2 리포트 저장
-**파일**: `moai-adk-ts/src/core/installer/merge/merge-orchestrator.ts` (수정)
-
-**변경 내용**:
-```typescript
-// 병합 완료 후
-const reportContent = generateMergeReport(report, backupPath, timestamp);
-const reportPath = `.moai/reports/init-merge-report-${timestamp}.md`;
-await fs.writeFile(reportPath, reportContent, 'utf-8');
-logger.info(`변경 내역 리포트 생성: ${reportPath}`);
-```
-
-**TDD 순서**:
-1. **RED**: 리포트 파일 생성 테스트
-2. **GREEN**: 파일 저장 로직 구현
-3. **REFACTOR**: 디렉토리 없을 시 자동 생성
-
-### Phase 3 완료 조건
-- ✅ Markdown 리포트 생성
-- ✅ `.moai/reports/` 디렉토리에 저장
-- ✅ 리포트 내용 정확성 검증
-- ✅ 테스트 커버리지 ≥85%
-
----
-
-## 🔗 Phase 4: PhaseExecutor 통합
-
-### 목표
-기존 설치 플로우(`phase-executor.ts`)에 병합 로직 통합
-
-### 주요 작업
-
-#### 4.1 PhaseExecutor 수정
-**파일**: `moai-adk-ts/src/core/installer/phase-executor.ts` (수정)
-
-**변경 내용**:
-```typescript
-private async executePhase1(config: MoAIConfig): Promise<void> {
-  // 기존: createBackupIfNeeded()
-  // 신규: handleExistingInstallation()
-
-  if (config.mergeChoice === 'merge') {
-    await this.mergeInstallation(config);
-  } else {
-    await this.createBackupAndReinstall(config);
-  }
-}
-
-private async mergeInstallation(config: MoAIConfig): Promise<void> {
-  // 1. 백업 생성
-  // 2. mergeInstallation() 호출
-  // 3. 리포트 생성
-  // 4. 성공 메시지 표시
-}
-```
-
-**TDD 순서**:
-1. **RED**: 병합 모드 실행 통합 테스트
-2. **GREEN**: PhaseExecutor 수정 및 연결
-3. **REFACTOR**: 에러 복구 로직 추가
-
-#### 4.2 롤백 메커니즘 추가
-**파일**: `moai-adk-ts/src/core/installer/merge/merge-orchestrator.ts` (수정)
+#### B.5 메타데이터 상태 업데이트
+**파일**: `moai-adk-ts/src/cli/commands/project/backup-merger.ts` (추가)
 
 **구현 내용**:
 ```typescript
-export async function mergeInstallation(
-  targetDir: string,
-  templateDir: string
-): Promise<MergeReport> {
-  try {
-    // 병합 로직
-  } catch (error) {
-    logger.error('병합 중 오류 발생, 백업에서 복원 중...');
-    await rollbackFromBackup(targetDir, backupPath);
-    throw error;
-  }
+export async function updateBackupStatus(
+  status: 'merged' | 'ignored'
+): Promise<void> {
+  const metadataPath = '.moai/backups/latest.json';
+  const backup: BackupMetadata = JSON.parse(
+    fs.readFileSync(metadataPath, 'utf-8')
+  );
+
+  backup.status = status;
+
+  await fs.writeFile(
+    metadataPath,
+    JSON.stringify(backup, null, 2)
+  );
 }
 ```
 
-**TDD 순서**:
-1. **RED**: 병합 실패 시 롤백 테스트
-2. **GREEN**: 롤백 로직 구현
-3. **REFACTOR**: 부분 복원 처리
-
-### Phase 4 완료 조건
-- ✅ PhaseExecutor에 병합 플로우 통합
-- ✅ 병합/재설치 모드 정상 작동
-- ✅ 롤백 메커니즘 작동
-- ✅ 통합 테스트 통과
-- ✅ 전체 테스트 커버리지 ≥85%
+### Phase B 완료 조건
+- ✅ 백업 감지 및 분석
+- ✅ 병합 프롬프트 표시
+- ✅ 병합 전략 실행 (JSON, Markdown, Hooks, Commands)
+- ✅ 병합 리포트 생성
+- ✅ 메타데이터 상태 업데이트
+- ✅ 테스트 커버리지 ≥85%
 
 ---
 
 ## 🧪 테스트 전략
 
 ### Unit Test (단위 테스트)
+
+**Phase A 테스트**:
+- 백업 디렉토리 생성 로직
+- 메타데이터 저장/검증 로직
+- 메시지 포맷팅 로직
+- **목표**: 커버리지 ≥90%
+
+**Phase B 테스트**:
+- 백업 감지 로직
 - 각 병합기(JSON, Markdown, Hooks) 독립 테스트
-- 감지 로직, 프롬프트, 리포트 생성기 독립 테스트
-- **목표**: 각 모듈별 커버리지 ≥90%
+- 리포트 생성기 독립 테스트
+- **목표**: 커버리지 ≥90%
 
 ### Integration Test (통합 테스트)
-- 전체 병합 플로우 테스트
-- PhaseExecutor 통합 테스트
+
+**Phase A 통합**:
+- moai init 전체 플로우 (백업 + 메타데이터)
+- **목표**: 주요 플로우 100% 커버
+
+**Phase B 통합**:
+- /alfred:8-project 전체 플로우 (감지 → 병합 → 리포트)
 - 롤백 시나리오 테스트
 - **목표**: 주요 플로우 100% 커버
 
 ### E2E Test (종단 간 테스트)
-- `moai init .` 실행 시뮬레이션
-- 실제 템플릿 파일 사용
-- 사용자 입력 모킹
-- **목표**: 주요 시나리오 3개 (병합/재설치/취소)
+
+**시나리오 1: 전체 플로우**
+1. moai init 실행
+2. Claude Code 실행
+3. /alfred:8-project 실행
+4. 병합 선택
+5. 결과 확인
+
+**시나리오 2: 새로 설치**
+1. moai init 실행
+2. /alfred:8-project 실행
+3. 새로설치 선택
+4. 결과 확인
+
+**목표**: 2개 주요 시나리오 커버
 
 ---
 
-## 📁 파일 구조
+## 📁 파일 구조 (v0.2.0)
 
 ```
 moai-adk-ts/
 ├── src/
-│   ├── cli/
-│   │   ├── commands/init/
-│   │   │   ├── installation-detector.ts    # 신규
-│   │   │   ├── interactive-handler.ts      # 수정
-│   │   │   └── non-interactive-handler.ts  # 수정
-│   │   └── prompts/init/
-│   │       └── merge-prompt.ts             # 신규
-│   └── core/
-│       └── installer/
-│           ├── merge/
-│           │   ├── json-merger.ts          # 신규
-│           │   ├── markdown-merger.ts      # 신규
-│           │   ├── hooks-merger.ts         # 신규
-│           │   ├── merge-orchestrator.ts   # 신규
-│           │   └── report-generator.ts     # 신규
-│           └── phase-executor.ts           # 수정
+│   ├── cli/commands/
+│   │   ├── init/                           # Phase A (수정)
+│   │   │   ├── interactive-handler.ts      # 수정: 백업 로직 제거
+│   │   │   └── non-interactive-handler.ts  # 수정: 백업 로직 제거
+│   │   └── project/                        # Phase B (신규)
+│   │       ├── backup-merger.ts            # 신규: 백업 감지/분석/병합
+│   │       ├── merge-report.ts             # 신규: 리포트 생성
+│   │       └── merge-strategies/           # 신규 디렉토리
+│   │           ├── json-merger.ts
+│   │           ├── markdown-merger.ts
+│   │           ├── hooks-merger.ts
+│   │           └── merge-orchestrator.ts
+│   └── core/installer/
+│       ├── phase-executor.ts               # 수정: 백업 + 메타데이터
+│       └── backup-metadata.ts              # 신규: 메타데이터 관리
 └── __tests__/
-    ├── cli/init/
-    │   ├── installation-detector.test.ts   # 신규
-    │   └── merge-prompt.test.ts            # 신규
-    └── core/installer/merge/
-        ├── json-merger.test.ts             # 신규
-        ├── markdown-merger.test.ts         # 신규
-        ├── hooks-merger.test.ts            # 신규
-        ├── merge-orchestrator.test.ts      # 신규
-        └── report-generator.test.ts        # 신규
+    ├── core/installer/
+    │   ├── phase-executor.test.ts          # 수정: Phase A 테스트
+    │   └── backup-metadata.test.ts         # 신규
+    └── cli/commands/project/
+        ├── backup-merger.test.ts           # 신규: Phase B 테스트
+        ├── merge-report.test.ts            # 신규
+        └── merge-strategies/               # 신규 디렉토리
+            ├── json-merger.test.ts
+            ├── markdown-merger.test.ts
+            ├── hooks-merger.test.ts
+            └── merge-orchestrator.test.ts
 ```
 
 ---
 
-## 🎯 마일스톤
+## 🎯 마일스톤 (v0.2.0)
 
-### 1차 목표 (Phase 1 완료)
-- 사용자 선택 프롬프트 작동
-- 기존 설치 감지 로직 완성
+### 1차 목표 (Phase A 완료, 1-2시간)
+- moai init 백업 로직 구현
+- 백업 메타데이터 시스템 구현
+- 사용자 안내 메시지 구현
+- Phase A 테스트 통과
 
-### 2차 목표 (Phase 2 완료)
-- 모든 병합 엔진 구현 완료
-- 통합 병합 플로우 작동
+### 2차 목표 (Phase B.1~B.2 완료, 2-3시간)
+- 백업 감지 및 분석 로직 구현
+- 병합 선택 프롬프트 구현
 
-### 3차 목표 (Phase 3 완료)
-- 변경 내역 리포트 생성
+### 3차 목표 (Phase B.3~B.4 완료, 2-3시간)
+- 병합 전략 실행 (JSON, Markdown, Hooks)
+- 병합 리포트 생성
 
-### 최종 목표 (Phase 4 완료)
-- PhaseExecutor 통합 완료
-- 전체 테스트 통과
+### 최종 목표 (Phase B 완료, 총 5-8시간)
+- 메타데이터 상태 업데이트
+- 전체 통합 테스트 통과
 - `/alfred:3-sync` 준비 완료
 
 ---
 
-## ⚠️ 기술적 고려사항
+## ⚠️ 기술적 고려사항 (v0.2.0)
 
-### 1. 파일 I/O 성능
-- **문제**: 병합 시 많은 파일 읽기/쓰기
-- **해결**: 병렬 처리 (Promise.all), 청크 단위 처리
+### 1. 백업 메타데이터 무결성
+- **문제**: JSON 스키마 손상 시 백업 상태 확인 불가
+- **해결**: Zod 스키마 검증, 메타데이터 버전 필드 추가
 
-### 2. 메모리 관리
-- **문제**: 큰 Markdown 파일 메모리 로드
-- **해결**: 스트림 기반 처리, 라인별 파싱
+### 2. Phase A/B 버전 호환성
+- **문제**: Phase A/B 버전 불일치 시 메타데이터 형식 불일치
+- **해결**: 메타데이터에 `schema_version` 필드 추가, 하위 호환성 유지
 
-### 3. 사용자 커스터마이징 감지
-- **문제**: 어떤 파일이 사용자가 수정한 것인지 판단
-- **해결**: 파일 해시 비교, 템플릿 원본 해시 저장
+### 3. Claude Code 컨텍스트 활용
+- **문제**: Phase B에서 파일 분석 시 컨텍스트 예산 소진
+- **해결**: JIT Retrieval - 필요한 파일만 순차 로드
 
-### 4. 충돌 해결 전략
-- **문제**: 자동 병합 불가능한 충돌
-- **해결**: 충돌 파일 목록 제공, 수동 해결 가이드
+### 4. 백업 방치 문제
+- **문제**: /alfred:8-project 미실행 시 백업 디스크 공간 낭비
+- **해결**: moai init 완료 메시지에 명확한 다음 단계 안내
 
 ---
 
 ## 🔄 다음 단계
 
-### 구현 완료 후
-1. `/alfred:3-sync` 실행 → TAG 체인 검증
-2. `moai doctor` 실행 → 시스템 무결성 검증
-3. E2E 테스트 → 실제 프로젝트에서 검증
+### Phase A 구현 후
+1. 단위 테스트 통과 확인
+2. moai init 실행 → 백업 메타데이터 생성 확인
+3. Phase B 구현 진행
+
+### Phase B 구현 후
+1. 통합 테스트 통과 확인
+2. E2E 테스트 → 전체 플로우 검증
+3. `/alfred:3-sync` 실행 → TAG 체인 검증
 
 ### 문서화
-- README 업데이트: 병합 기능 설명 추가
-- CHANGELOG 작성: v0.x.y 릴리스 노트
+- README 업데이트: 2단계 설치 플로우 설명 추가
+- CHANGELOG 작성: v0.2.0 릴리스 노트 (설계 변경 강조)
 
 ---
 
-_이 계획은 TDD 방식으로 진행되며, 각 단계마다 RED-GREEN-REFACTOR 사이클을 따릅니다._
+_이 계획은 TDD 방식으로 진행되며, Phase A → Phase B 순차 구현을 따릅니다._

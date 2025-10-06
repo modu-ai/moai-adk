@@ -8,6 +8,8 @@ bun.lockb
 dist/
 *.tsbuildinfo
 .turbo/
+docs/.vitepress/dist/
+docs/.vitepress/cache/
 
 # Test coverage
 coverage/

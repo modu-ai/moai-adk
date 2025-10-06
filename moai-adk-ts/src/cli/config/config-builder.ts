@@ -104,7 +104,7 @@ export class ConfigBuilder {
     // SPEC-INSTALL-001: Add constitution configuration
     config.constitution = {
       enforce_tdd: true,
-      enforce_spec: answers.enforceSpec ?? (answers.mode === 'team'),
+      enforce_spec: answers.enforceSpec ?? answers.mode === 'team',
       require_tags: true,
       test_coverage_target: 85,
     };

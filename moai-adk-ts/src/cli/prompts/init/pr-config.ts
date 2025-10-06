@@ -5,8 +5,8 @@
  * @tags @CODE:INSTALL-001:PR-CONFIG
  */
 
-import inquirer from 'inquirer';
 import type { Answers } from 'inquirer';
+import inquirer from 'inquirer';
 
 /**
  * PR configuration
@@ -69,7 +69,9 @@ export function getDraftPRPrompt(): Answers {
  * @param mode Project mode
  * @returns Auto PR result (undefined for Personal mode)
  */
-export async function promptAutoPR(mode: 'personal' | 'team'): Promise<AutoPRResult> {
+export async function promptAutoPR(
+  mode: 'personal' | 'team'
+): Promise<AutoPRResult> {
   if (mode !== 'team') {
     return { autoPR: undefined };
   }
@@ -84,7 +86,9 @@ export async function promptAutoPR(mode: 'personal' | 'team'): Promise<AutoPRRes
  * @param autoPREnabled Whether Auto PR is enabled
  * @returns Draft PR result (undefined when Auto PR is disabled)
  */
-export async function promptDraftPR(autoPREnabled: boolean): Promise<DraftPRResult> {
+export async function promptDraftPR(
+  autoPREnabled: boolean
+): Promise<DraftPRResult> {
   if (!autoPREnabled) {
     return { draftPR: undefined };
   }

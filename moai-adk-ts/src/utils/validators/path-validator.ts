@@ -78,7 +78,8 @@ export async function validatePath(
   }
 
   // Path traversal protection (skip in test environment)
-  const isTest = process.env.NODE_ENV === 'test' || process.env.VITEST === 'true';
+  const isTest =
+    process.env.NODE_ENV === 'test' || process.env.VITEST === 'true';
   if (!isTest && !isPathSafe(normalizedPath, process.cwd())) {
     errors.push('Path traversal detected');
   }
