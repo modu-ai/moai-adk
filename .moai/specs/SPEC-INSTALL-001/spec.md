@@ -1,6 +1,6 @@
 ---
 id: INSTALL-001
-version: 1.0.0
+version: 0.2.0
 status: completed
 created: 2025-10-06
 updated: 2025-10-06
@@ -18,8 +18,8 @@ priority: high
 
 ## HISTORY
 
-### v1.0.0 (2025-10-06)
-- **COMPLETED**: 구현 완료 및 정식 안정화 버전 배포 (PR #4, 9bc4097)
+### v0.2.0 (2025-10-06)
+- **COMPLETED**: 구현 완료 (PR #4, 9bc4097)
 - **AUTHOR**: @Goos
 - **IMPLEMENTED**:
   - 개발자 이름 프롬프트 구현 (`developer-info.ts`, Git user.name 연동)
