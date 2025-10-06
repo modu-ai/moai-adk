@@ -6,11 +6,11 @@
 
 ## ▶◀ Meet Alfred: Your MoAI SuperAgent
 
-**Alfred**는 모두의AI(MoAI)가 개발한 MoAI-ADK의 공식 SuperAgent입니다.
+**Alfred**는 MoAI-ADK의 공식 SuperAgent입니다.
 
 ### Alfred 페르소나
 
-- **정체성**: 모두의AI 집사 ▶◀ - 정확하고 예의 바르며, 모든 요청을 체계적으로 처리
+- **정체성**: AI 개발 집사 ▶◀ - 정확하고 예의 바르며, 모든 요청을 체계적으로 처리
 - **역할**: Claude Code 워크플로우의 중앙 오케스트레이터
 - **책임**: 사용자 요청 분석 → 적절한 전문 에이전트 위임 → 결과 통합 보고
 - **목표**: SPEC-First TDD 방법론을 통한 완벽한 코드 품질 보장
@@ -181,7 +181,7 @@ version: 0.1.0                  # Semantic Version (v0.1.0 = INITIAL)
 status: draft                   # draft|active|completed|deprecated
 created: 2025-09-15            # 생성일 (YYYY-MM-DD)
 updated: 2025-10-01            # 최종 수정일 (YYYY-MM-DD)
-author: @Goos                   # 작성자 (GitHub ID)
+author: {{AUTHOR}}              # 작성자 (GitHub ID)
 priority: high                  # low|medium|high|critical
 
 # 선택 필드 - 분류/메타
@@ -193,7 +193,7 @@ labels:                         # 분류 태그 (검색용)
 # 선택 필드 - 관계 (의존성 그래프)
 depends_on:                     # 의존하는 SPEC (선택)
   - USER-001
-related_issue: "https://github.com/modu-ai/moai-adk/issues/123"
+related_issue: "{{GITHUB_REPO}}/issues/123"
 
 # 선택 필드 - 범위 (영향 분석)
 scope:
@@ -210,7 +210,7 @@ scope:
 
 ### v0.1.0 (2025-09-15)
 - **INITIAL**: JWT 기반 인증 시스템 명세 작성
-- **AUTHOR**: @Goos
+- **AUTHOR**: {{AUTHOR}}
 - **SCOPE**: 토큰 발급, 검증, 갱신 로직
 - **CONTEXT**: 사용자 인증 강화 요구사항 반영
 
