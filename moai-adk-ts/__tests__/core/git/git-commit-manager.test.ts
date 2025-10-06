@@ -1,5 +1,5 @@
-// @TEST:REFACTOR-001 | Chain: @SPEC:REFACTOR-001 -> @SPEC:REFACTOR-001 -> @CODE:REFACTOR-001
-// Related: @CODE:GIT-COMMIT-001, @CODE:GIT-COMMIT-001:API
+// @TEST:REFACTOR-001:COMMIT | SPEC: SPEC-REFACTOR-001.md | CODE: src/core/git/git-commit-manager.ts
+// Related: @CODE:REFACTOR-001:COMMIT, @CODE:GIT-MGR-001
 
 /**
  * GitCommitManager Test Suite

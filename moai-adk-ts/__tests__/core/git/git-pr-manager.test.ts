@@ -1,5 +1,5 @@
-// @TEST:REFACTOR-001 | Chain: @SPEC:REFACTOR-001 -> @SPEC:REFACTOR-001 -> @CODE:REFACTOR-001
-// Related: @CODE:GIT-PR-001, @CODE:GIT-PR-001:API
+// @TEST:REFACTOR-001:PR | SPEC: SPEC-REFACTOR-001.md | CODE: src/core/git/git-pr-manager.ts
+// Related: @CODE:REFACTOR-001:PR, @CODE:GIT-MGR-001
 
 /**
  * GitPRManager Test Suite
