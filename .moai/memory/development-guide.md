@@ -1,4 +1,4 @@
-# MoAI-ADK 개발 가이드
+# {{PROJECT_NAME}} 개발 가이드
 
 > "명세 없으면 코드 없다. 테스트 없으면 구현 없다."
 
@@ -268,16 +268,21 @@ authors: ["@goos"]
 
 ### TAG 사용 규칙
 
-- TAG ID: `<도메인>-<3자리>` (예: AUTH-003) - **영구 불변**
-- TAG 내용: **자유롭게 수정 가능** (HISTORY에 기록 필수)
-- 버전 관리: Semantic Versioning (Major.Minor.Patch)
+- **TAG ID**: `<도메인>-<3자리>` (예: `AUTH-003`) - **영구 불변**
+- **디렉토리 명명 규칙**: `.moai/specs/SPEC-{ID}/` (필수)
+  - ✅ **올바른 예**: `SPEC-AUTH-001/`, `SPEC-REFACTOR-001/`, `SPEC-UPDATE-REFACTOR-001/`
+  - ❌ **잘못된 예**: `AUTH-001/`, `SPEC-001-auth/`, `SPEC-AUTH-001-jwt/`
+  - **복합 도메인**: 하이픈으로 연결 가능 (예: `UPDATE-REFACTOR-001`)
+  - **경고**: 하이픈 3개 이상 연결 시 단순화 권장
+- **TAG 내용**: 자유롭게 수정 가능 (HISTORY에 기록 필수)
+- **버전 관리**: Semantic Versioning (Major.Minor.Patch)
   - **Major**: BREAKING 변경 (하위 호환성 깨짐)
   - **Minor**: ADDED 기능 추가 (하위 호환성 유지)
   - **Patch**: FIXED/CHANGED 수정 (버그 수정, 개선)
-- 새 TAG 생성 전 중복 확인: `rg "@SPEC:AUTH" -n` 또는 `rg "AUTH-001" -n`
-- TAG 검증: `rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/`
-- SPEC 버전 일치성 확인: `rg "SPEC-AUTH-001.md v" -n`
-- CODE-FIRST 원칙: TAG의 진실은 코드 자체에만 존재
+- **새 TAG 생성 전 중복 확인**: `rg "@SPEC:{ID}" -n .moai/specs/` (필수)
+- **TAG 검증**: `rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/`
+- **SPEC 버전 일치성 확인**: `rg "SPEC-{ID}.md v" -n`
+- **CODE-FIRST 원칙**: TAG의 진실은 코드 자체에만 존재
 
 ### HISTORY 작성 가이드
 

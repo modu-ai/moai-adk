@@ -39,11 +39,11 @@ model: sonnet
 1. **프로젝트 문서 확인**: `/alfred:8-project` 실행 여부 및 최신 상태인지 확인합니다.
 2. **후보 분석**: Product/Structure/Tech 문서의 주요 bullet을 추출해 기능 후보를 제안합니다.
 3. **산출물 생성**:
-   - **Personal 모드** → `.moai/specs/SPEC-XXX/` 디렉토리에 3개 파일 생성:
+   - **Personal 모드** → `.moai/specs/SPEC-{ID}/` 디렉토리에 3개 파일 생성 (**필수**: `SPEC-` 접두어 + TAG ID):
      - `spec.md`: EARS 형식 명세 (Environment, Assumptions, Requirements, Specifications)
      - `plan.md`: 구현 계획, 마일스톤, 기술적 접근 방법
      - `acceptance.md`: 상세한 수락 기준, 테스트 시나리오, Given-When-Then 형식
-   - **Team 모드** → `gh issue create` 기반 SPEC 이슈 생성 (예: `[SPEC-001] 사용자 인증`).
+   - **Team 모드** → `gh issue create` 기반 SPEC 이슈 생성 (예: `[SPEC-AUTH-001] 사용자 인증`).
 4. **다음 단계 안내**: `/alfred:2-build SPEC-XXX`와 `/alfred:3-sync`로 이어지도록 가이드합니다.
 
 **중요**: Git 작업(브랜치 생성, 커밋, GitHub Issue 생성)은 모두 git-manager 에이전트가 전담합니다. spec-builder는 SPEC 문서 작성과 지능형 검증만 담당합니다.
@@ -83,16 +83,49 @@ Write("spec.md", content1)
 Write("plan.md", content2)
 Write("acceptance.md", content3)
 
-# ✅ 효율적 (동시 생성)
+# ✅ 효율적 (동시 생성) - 디렉토리명 검증 필수
+# 1. 디렉토리명 형식 확인: SPEC-{ID} (예: SPEC-AUTH-001)
+spec_id = "AUTH-001"
+dir_path = f".moai/specs/SPEC-{spec_id}"
+
 MultiEdit([
-  {file: ".moai/specs/SPEC-XXX/spec.md", content: spec_content},
-  {file: ".moai/specs/SPEC-XXX/plan.md", content: plan_content},
-  {file: ".moai/specs/SPEC-XXX/acceptance.md", content: accept_content}
+  {file: f"{dir_path}/spec.md", content: spec_content},
+  {file: f"{dir_path}/plan.md", content: plan_content},
+  {file: f"{dir_path}/acceptance.md", content: accept_content}
 ])
 ```
 
+### ⚠️ 디렉토리 생성 전 필수 검증
+
+**SPEC 문서 작성 전 반드시 다음을 확인**:
+
+1. **디렉토리명 형식 검증**:
+   ```bash
+   # 올바른 형식: .moai/specs/SPEC-{ID}/
+   # ✅ 예: SPEC-AUTH-001/, SPEC-REFACTOR-001/, SPEC-UPDATE-REFACTOR-001/
+   # ❌ 예: AUTH-001/, SPEC-001-auth/, SPEC-AUTH-001-jwt/
+   ```
+
+2. **ID 중복 확인** (필수):
+   ```bash
+   # SPEC 생성 전 기존 TAG ID 검색
+   Grep("@SPEC:{ID}", path=".moai/specs/", output_mode="files_with_matches")
+
+   # 예시: @SPEC:AUTH-001 중복 확인
+   # 결과가 비어있으면 → 생성 가능
+   # 결과가 있으면 → ID 변경 또는 기존 SPEC 보완
+   ```
+
+3. **복합 도메인 경고** (하이픈 3개 이상):
+   ```bash
+   # ⚠️ 주의: UPDATE-REFACTOR-FIX-001 (하이픈 3개)
+   # → 단순화 권장: UPDATE-FIX-001 또는 REFACTOR-FIX-001
+   ```
+
 ### 필수 확인사항
 
+- ✅ **디렉토리명 검증**: `.moai/specs/SPEC-{ID}/` 형식 준수 확인
+- ✅ **ID 중복 검증**: Grep으로 기존 TAG 검색 완료
 - ✅ MultiEdit로 3개 파일이 **동시에** 생성되었는지 확인:
   - `spec.md`: EARS 명세 (필수)
   - `plan.md`: 구현 계획 (필수)

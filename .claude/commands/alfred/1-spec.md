@@ -73,7 +73,7 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 ## 기능
 
 - **ULTRATHINK**: `.moai/project/{product,structure,tech}.md`를 분석해 구현 후보를 제안하고 사용자 승인 후 SPEC을 생성합니다.
-- **Personal 모드**: `.moai/specs/SPEC-XXX/` 디렉터리와 템플릿 문서를 만듭니다.
+- **Personal 모드**: `.moai/specs/SPEC-{ID}/` 디렉터리와 템플릿 문서를 만듭니다 (**디렉토리명 형식 필수**: `SPEC-` 접두어 + TAG ID).
 - **Team 모드**: GitHub Issue(또는 Discussion)를 생성하고 브랜치 템플릿과 연결합니다.
 
 ## 사용법
@@ -212,6 +212,9 @@ priority: high                 # 선택: high|medium|low
 
 **필드 설명**:
 - **id**: TAG ID와 동일 (`<도메인>-<3자리>`) - 생성 후 절대 변경 금지
+  - **디렉토리명 규칙**: `.moai/specs/SPEC-{ID}/` (예: `SPEC-AUTH-001/`)
+  - **ID 중복 확인**: `rg "@SPEC:{ID}" -n .moai/specs/` 로 기존 TAG 검색 필수
+  - **복합 도메인**: 하이픈으로 연결 가능 (예: `UPDATE-REFACTOR-001`)
 - **version**: 명세 버전 (HISTORY 섹션과 동기화 필수)
 - **status**:
   - `draft` - 작성 중
@@ -415,6 +418,22 @@ Task 2 (sonnet): 심화 문서 분석
 - product/structure/tech 문서에 없는 정보는 새로 질문해 보완합니다.
 - Acceptance Criteria는 Given/When/Then 3단으로 최소 2개 이상 작성하도록 유도합니다.
 - TRUST 원칙 중 Readable(읽기 쉬움) 기준 완화로 인해 모듈 수가 권장치(기본 5)를 초과하는 경우, 근거를 SPEC `context` 섹션에 함께 기록하세요.
+
+## ⚠️ 디렉토리 생성 주의사항
+
+**필수 규칙**:
+1. **디렉토리명 형식**: `.moai/specs/SPEC-{ID}/` (예: `SPEC-AUTH-001/`, `SPEC-UPDATE-REFACTOR-001/`)
+   - ❌ 잘못된 예: `AUTH-001/`, `SPEC-001-auth-system/`, `SPEC-AUTH-001-jwt/`
+   - ✅ 올바른 예: `SPEC-AUTH-001/`, `SPEC-REFACTOR-001/`, `SPEC-UPDATE-REFACTOR-001/`
+
+2. **ID 중복 확인**: SPEC 생성 전 반드시 실행
+   ```bash
+   rg "@SPEC:{ID}" -n .moai/specs/  # 기존 TAG ID 검색
+   ```
+
+3. **복합 도메인**: 하이픈으로 연결 가능하나 3개 이상 연결 시 경고 권장
+   - ✅ 허용: `UPDATE-REFACTOR-001` (2개 도메인)
+   - ⚠️ 주의: `UPDATE-REFACTOR-FIX-001` (3개 도메인, 단순화 권장)
 
 ---
 
