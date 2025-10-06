@@ -1,5 +1,5 @@
 // @CODE:INST-002 |
-// Related: @CODE:INST-002:API
+// Related: @CODE:INST-002:API, @CODE:INIT-003:BACKUP
 
 /**
  * @file Installation phase execution engine
@@ -22,6 +22,10 @@ import type {
   ProgressCallback,
 } from './types';
 import { executePhase } from './utils/phase-runner.js';
+import {
+  type BackupMetadata,
+  saveBackupMetadata,
+} from './backup-metadata';
 
 /**
  * Executes installation phases with dependency injection
@@ -213,6 +217,7 @@ export class PhaseExecutor {
 
   /**
    * Create backup of existing project
+   * @CODE:INIT-003:BACKUP - Phase A implementation
    */
   private async createBackup(config: InstallationConfig): Promise<void> {
     if (isInsideMoAIPackage(config.projectPath)) {
@@ -225,9 +230,13 @@ export class PhaseExecutor {
       );
     }
 
-    const backupDir = path.join(config.projectPath, '.moai-backup');
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const backupPath = path.join(backupDir, `backup-${timestamp}`);
+    // Generate timestamp and backup path
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    const backupDirName = `.moai-backup-${timestamp}`;
+    const backupPath = path.join(config.projectPath, backupDirName);
+
+    // Track backed up files for metadata
+    const backedUpFiles: string[] = [];
 
     if (fs.existsSync(config.projectPath)) {
       await fs.promises.mkdir(backupPath, { recursive: true });
@@ -239,6 +248,7 @@ export class PhaseExecutor {
         const dstPath = path.join(backupPath, dir);
         if (fs.existsSync(srcPath)) {
           await this.templateProcessor.copyDirectory(srcPath, dstPath);
+          backedUpFiles.push(`${dir}/`);
         }
       }
 
@@ -249,12 +259,29 @@ export class PhaseExecutor {
         const dstPath = path.join(backupPath, file);
         if (fs.existsSync(srcPath)) {
           await fs.promises.copyFile(srcPath, dstPath);
+          backedUpFiles.push(file);
         }
       }
 
       logger.debug('Backup created', {
         backupPath,
         tag: 'SUCCESS:BACKUP-001',
+      });
+
+      // Save backup metadata (Phase A: SPEC-INIT-003)
+      const metadata: BackupMetadata = {
+        timestamp: new Date().toISOString(),
+        backup_path: backupDirName,
+        backed_up_files: backedUpFiles,
+        status: 'pending',
+        created_by: 'moai init',
+      };
+
+      await saveBackupMetadata(config.projectPath, metadata);
+
+      logger.info('Backup metadata saved', {
+        metadataPath: path.join(config.projectPath, '.moai', 'backups', 'latest.json'),
+        tag: 'SUCCESS:BACKUP-METADATA-001',
       });
     }
   }
