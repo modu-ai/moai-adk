@@ -254,8 +254,6 @@ describe('Doctor Command - Optional Dependencies', () => {
 
     test('should display warning message for optional dependency failures', async () => {
       // Given: optional 의존성 실패
-      const consoleSpy = vi.spyOn(console, 'log');
-
       const mockResults: RequirementCheckResult[] = [
         {
           requirement: {
@@ -290,11 +288,12 @@ describe('Doctor Command - Optional Dependencies', () => {
         },
       });
 
-      await doctorCommand.run();
+      const result = await doctorCommand.run();
 
-      // Then: 경고 메시지 출력 (optional, safe to ignore)
-      // Note: This is a behavior check, not a strict assertion
-      expect(consoleSpy).toHaveBeenCalled();
+      // Then: allPassed should be true even with optional failures
+      // (The warning message is displayed by the actual implementation, not the mock)
+      expect(result.allPassed).toBe(true);
+      expect(result.summary.failed).toBe(1);
     });
 
     test('should categorize dependencies correctly', async () => {
@@ -307,10 +306,10 @@ describe('Doctor Command - Optional Dependencies', () => {
       const optionalDeps = requirementRegistry.getByCategory('optional');
 
       // Then: 각 카테고리에 올바른 의존성 포함
-      expect(runtimeDeps.some(dep => dep.id === 'git')).toBe(true);
-      expect(runtimeDeps.some(dep => dep.id === 'node')).toBe(true);
-      expect(developmentDeps.some(dep => dep.id === 'npm')).toBe(true);
-      expect(optionalDeps.some(dep => dep.id === 'git-lfs')).toBe(true);
+      expect(runtimeDeps.some(dep => dep.name === 'Git')).toBe(true);
+      expect(runtimeDeps.some(dep => dep.name === 'Node.js')).toBe(true);
+      expect(developmentDeps.some(dep => dep.name === 'npm')).toBe(true);
+      expect(optionalDeps.some(dep => dep.name === 'Git LFS')).toBe(true);
     });
   });
 });

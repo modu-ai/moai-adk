@@ -12,6 +12,17 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { InitCommand } from '@/cli/commands/init/index';
 
+// Mock the prompts module which uses inquirer
+vi.mock('@/cli/prompts/init', () => ({
+  displayWelcomeBanner: vi.fn(),
+  promptProjectSetup: vi.fn().mockResolvedValue({
+    projectName: 'test-project',
+    mode: 'personal',
+    gitEnabled: true,
+    locale: 'en',
+  }),
+}));
+
 // Set test environment
 const originalNodeEnv = process.env.NODE_ENV;
 
@@ -264,17 +275,6 @@ describe('Init Command - Non-Interactive Mode', () => {
       // Mock DoctorCommand to pass
       mockDoctorCommand(initCommand, true);
 
-      // Mock inquirer to prevent actual prompts in test
-      vi.mock('inquirer', () => ({
-        default: {
-          prompt: vi.fn().mockResolvedValue({
-            projectName: 'test-project',
-            mode: 'personal',
-            gitEnabled: true,
-          }),
-        },
-      }));
-
       const result = await initCommand.runInteractive(options);
 
       // Then: 대화형 모드 사용 (프롬프트 실행)
@@ -359,16 +359,14 @@ describe('Init Command - Non-Interactive Mode', () => {
       // Mock DoctorCommand to pass
       mockDoctorCommand(initCommand, true);
 
-      // Mock inquirer
-      vi.mock('inquirer', () => ({
-        default: {
-          prompt: vi.fn().mockResolvedValue({
-            projectName: 'custom-project',
-            mode: 'team',
-            gitEnabled: false,
-          }),
-        },
-      }));
+      // Update mock for this specific test
+      const { promptProjectSetup } = await import('@/cli/prompts/init');
+      (promptProjectSetup as any).mockResolvedValueOnce({
+        projectName: 'custom-project',
+        mode: 'team',
+        gitEnabled: false,
+        locale: 'en',
+      });
 
       const result = await initCommand.runInteractive(options);
 
