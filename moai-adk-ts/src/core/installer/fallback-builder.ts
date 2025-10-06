@@ -66,8 +66,6 @@ export class FallbackBuilder {
         '# SPEC Builder Agent\n\nBuilds SPEC documents using EARS methodology.',
       'commands/alfred/1-spec.md':
         '# SPEC Command\n\nCreates new SPEC documents.',
-      'hooks/alfred/steering_guard.py':
-        '# Steering Guard Hook\n\n# Validates development guidelines',
     };
 
     for (const [relativePath, content] of Object.entries(minimalStructure)) {

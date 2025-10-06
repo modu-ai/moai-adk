@@ -26,8 +26,8 @@ describe('GitPRManager', () => {
       commitMessageTemplate: GitCommitTemplates.FEATURE,
       github: {
         token: 'mock-token',
-        owner: 'test-org',
-        repo: 'test-repo',
+        owner: 'modu-ai',
+        repo: 'moai-adk',
       },
     };
 
@@ -155,7 +155,7 @@ describe('GitPRManager', () => {
 
   describe('linkRemoteRepository', () => {
     it('should link remote repository with valid URL', async () => {
-      const remoteUrl = 'https://github.com/test/repo.git';
+      const remoteUrl = 'https://github.com/modu-ai/moai-adk.git';
 
       // 유효한 URL은 성공해야 함 (실제 푸시는 별도)
       await prManager.linkRemoteRepository(remoteUrl);
@@ -177,8 +177,8 @@ describe('GitPRManager', () => {
     });
 
     it('should handle SSH and HTTPS URLs', async () => {
-      const sshUrl = 'git@github.com:test/repo.git';
-      const httpsUrl = 'https://github.com/test/repo.git';
+      const sshUrl = 'git@github.com:modu-ai/moai-adk.git';
+      const httpsUrl = 'https://github.com/modu-ai/moai-adk.git';
 
       // 유효한 URL 형식은 링크 성공
       await prManager.linkRemoteRepository(sshUrl);

@@ -371,13 +371,8 @@ export class TemplateManager {
       result.createdFiles.push(`.claude/commands/alfred/${cmd}`);
     }
 
-    // Pre-commit hook
-    const hookContent = this.processor.generatePreCommitHook(templateData);
-    await fs.writeFile(
-      path.join(projectPath, '.claude', 'hooks', 'moai', 'pre-commit.py'),
-      hookContent
-    );
-    result.createdFiles.push('.claude/hooks/alfred/pre-commit.py');
+    // Note: Python hooks have been replaced with TypeScript hooks
+    // See: src/claude/hooks/* for TS-based hook implementations
   }
 
   /**

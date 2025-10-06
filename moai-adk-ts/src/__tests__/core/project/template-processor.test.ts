@@ -176,10 +176,16 @@ describe('TemplateProcessor - Phase 2: Template Processing Logic', () => {
 
       expect(config.project).toBeDefined();
       expect(config.project.name).toBe('alfred-project');
-      expect(config.project.type).toBe(ProjectType.TYPESCRIPT);
+      expect(config.project.mode).toBe('personal');
+      expect(config.project.locale).toBe('ko');
       expect(config.constitution).toBeDefined();
       expect(config.constitution.enforce_tdd).toBe(true);
       expect(config.constitution.test_coverage_target).toBe(85);
+      expect(config.git_strategy).toBeDefined();
+      expect(config.tags).toBeDefined();
+      expect(config.tags.code_scan_policy.philosophy).toBe(
+        'TAG의 진실은 코드 자체에만 존재'
+      );
     });
 
     it('should generate project documentation files', () => {

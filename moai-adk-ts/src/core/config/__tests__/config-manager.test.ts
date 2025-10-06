@@ -124,7 +124,7 @@ describe.skip('ConfigManager', () => {
 
       expect(result.success).toBe(true);
       expect(result.filePath).toBe(configPath);
-      expect(result.config?.projectName).toBe('test-project');
+      expect(result.config?.project.name).toBe('test-project');
     });
 
     it('should include version and timestamp in MoAI config', async () => {
@@ -139,8 +139,8 @@ describe.skip('ConfigManager', () => {
         mockConfig
       );
 
-      expect(result.config?.version).toBeDefined();
-      expect(result.config?.createdAt).toBeInstanceOf(Date);
+      expect(result.config?.project.version).toBeDefined();
+      expect(result.config?.project.created_at).toBeDefined();
     });
 
     it('should handle backup when file exists', async () => {

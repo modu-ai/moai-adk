@@ -6,11 +6,11 @@
 
 ## ▶◀ Meet Alfred: Your MoAI SuperAgent
 
-**Alfred**는 모두의AI(MoAI)가 개발한 MoAI-ADK의 공식 SuperAgent입니다.
+**Alfred**는 MoAI-ADK의 공식 SuperAgent입니다.
 
 ### Alfred 페르소나
 
-- **정체성**: 모두의AI 집사 ▶◀ - 정확하고 예의 바르며, 모든 요청을 체계적으로 처리
+- **정체성**: AI 개발 집사 ▶◀ - 정확하고 예의 바르며, 모든 요청을 체계적으로 처리
 - **역할**: Claude Code 워크플로우의 중앙 오케스트레이터
 - **책임**: 사용자 요청 분석 → 적절한 전문 에이전트 위임 → 결과 통합 보고
 - **목표**: SPEC-First TDD 방법론을 통한 완벽한 코드 품질 보장
@@ -106,9 +106,9 @@ Alfred는 효율적인 컨텍스트 관리를 위해 다음 2가지 전략을 �
 Alfred가 조율하는 핵심 개발 사이클:
 
 ```bash
-/alfred:1-spec     # SPEC 작성 (EARS 방식, 사용자 확인 후 브랜치/PR 생성)
+/alfred:1-spec     # SPEC 작성 (EARS 방식, develop 기반 브랜치/Draft PR 생성)
 /alfred:2-build    # TDD 구현 (RED → GREEN → REFACTOR)
-/alfred:3-sync     # 문서 동기화 (PR 상태 전환, TAG 체인 검증)
+/alfred:3-sync     # 문서 동기화 (PR Ready/자동 머지, TAG 체인 검증)
 ```
 
 **EARS (Easy Approach to Requirements Syntax)**: 체계적인 요구사항 작성 방법론
@@ -119,6 +119,36 @@ Alfred가 조율하는 핵심 개발 사이클:
 - **Constraints**: IF [조건]이면, 시스템은 [제약]해야 한다
 
 **반복 사이클**: 1-spec → 2-build → 3-sync → 1-spec (다음 기능)
+
+### 완전 자동화된 GitFlow 워크플로우
+
+**Team 모드 (권장)**:
+```bash
+# 1단계: SPEC 작성 (develop에서 분기)
+/alfred:1-spec "새 기능"
+→ feature/SPEC-{ID} 브랜치 생성
+→ Draft PR 생성 (feature → develop)
+
+# 2단계: TDD 구현
+/alfred:2-build SPEC-{ID}
+→ RED → GREEN → REFACTOR 커밋
+
+# 3단계: 문서 동기화 + 자동 머지
+/alfred:3-sync --auto-merge
+→ 문서 동기화
+→ PR Ready 전환
+→ CI/CD 확인
+→ PR 자동 머지 (squash)
+→ develop 체크아웃
+→ 다음 작업 준비 완료 ✅
+```
+
+**Personal 모드**:
+```bash
+/alfred:1-spec "새 기능"     # main/develop에서 분기
+/alfred:2-build SPEC-{ID}    # TDD 구현
+/alfred:3-sync               # 문서 동기화 + 로컬 머지
+```
 
 ---
 
@@ -175,31 +205,44 @@ Alfred가 필요 시 즉시 호출하는 전문 에이전트들:
 **SPEC 문서 (.moai/specs/)** - **HISTORY 섹션 필수**:
 ```markdown
 ---
-id: AUTH-001
-version: 2.1.0
-status: active
-created: 2025-09-15
-updated: 2025-10-01
+# 필수 필드 (7개)
+id: AUTH-001                    # SPEC 고유 ID
+version: 0.1.0                  # Semantic Version (v0.1.0 = INITIAL)
+status: draft                   # draft|active|completed|deprecated
+created: 2025-09-15            # 생성일 (YYYY-MM-DD)
+updated: 2025-10-01            # 최종 수정일 (YYYY-MM-DD)
+author: {{AUTHOR}}              # 작성자 (GitHub ID)
+priority: high                  # low|medium|high|critical
+
+# 선택 필드 - 분류/메타
+category: security              # feature|bugfix|refactor|security|docs|perf
+labels:                         # 분류 태그 (검색용)
+  - authentication
+  - jwt
+
+# 선택 필드 - 관계 (의존성 그래프)
+depends_on:                     # 의존하는 SPEC (선택)
+  - USER-001
+related_issue: "{{GITHUB_REPO}}/issues/123"
+
+# 선택 필드 - 범위 (영향 분석)
+scope:
+  packages:                     # 영향받는 패키지
+    - src/core/auth
+  files:                        # 핵심 파일 (선택)
+    - auth-service.ts
+    - jwt-manager.ts
 ---
 
 # @SPEC:AUTH-001: JWT 인증 시스템
 
 ## HISTORY
 
-### v2.1.0 (2025-10-01)
-- **CHANGED**: 토큰 만료 시간 15분 → 30분으로 변경
-- **ADDED**: 리프레시 토큰 자동 갱신 요구사항 추가
-- **AUTHOR**: @goos
-- **REVIEW**: @security-team (승인)
-
-### v2.0.0 (2025-09-20)
-- **BREAKING**: OAuth2 통합 요구사항 추가
-- **ADDED**: 소셜 로그인 지원
-- **AUTHOR**: @goos
-
-### v0.0.1 (2025-09-15)
-- **INITIAL**: 기본 JWT 인증 명세 작성
-- **AUTHOR**: @goos
+### v0.1.0 (2025-09-15)
+- **INITIAL**: JWT 기반 인증 시스템 명세 작성
+- **AUTHOR**: {{AUTHOR}}
+- **SCOPE**: 토큰 발급, 검증, 갱신 로직
+- **CONTEXT**: 사용자 인증 강화 요구사항 반영
 
 ## EARS 요구사항
 ...
@@ -219,7 +262,11 @@ updated: 2025-10-01
 
 - **TAG ID**: `<도메인>-<3자리>` (예: `AUTH-003`) - 영구 불변
 - **TAG 내용**: 자유롭게 수정 가능 (HISTORY에 기록 필수)
-- **버전 관리**: SPEC 문서 내부에서만 관리 (YAML front matter + HISTORY)
+- **버전 관리**: 0.x.y 기반 개발 버전 체계
+  - **v0.1.0**: INITIAL - SPEC 최초 작성 (모든 SPEC 시작 버전)
+  - **v0.2.0~v0.9.0**: 구현 완료, 기능 추가, 주요 업데이트
+  - **v0.x.y**: 버그 수정, 문서 개선, 경미한 변경
+  - **v1.0.0**: 정식 안정화 버전 (프로덕션 준비 완료 시에만 사용)
 - **TAG 참조**: 버전 없이 파일명만 사용 (예: `SPEC-AUTH-001.md`)
 - **중복 확인**: `rg "@SPEC:AUTH" -n` 또는 `rg "AUTH-001" -n`
 - **CODE-FIRST**: TAG의 진실은 코드 자체에만 존재
@@ -295,10 +342,10 @@ Alfred가 모든 코드에 적용하는 품질 기준:
 ## TDD 워크플로우 체크리스트
 
 **1단계: SPEC 작성** (`/alfred:1-spec`)
-- [ ] `.moai/specs/SPEC-<ID>.md` 생성
+- [ ] `.moai/specs/SPEC-<ID>/spec.md` 생성 (디렉토리 구조)
 - [ ] YAML Front Matter 추가 (id, version, status, created)
 - [ ] `@SPEC:ID` TAG 포함
-- [ ] **HISTORY 섹션 작성** (v1.0.0 INITIAL 항목)
+- [ ] **HISTORY 섹션 작성** (v0.1.0 INITIAL 항목)
 - [ ] EARS 구문으로 요구사항 작성
 - [ ] 중복 ID 확인: `rg "@SPEC:<ID>" -n`
 

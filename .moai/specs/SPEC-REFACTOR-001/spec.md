@@ -1,10 +1,41 @@
-# SPEC-001: Git Manager 리팩토링
+---
+id: REFACTOR-001
+version: 0.2.0
+status: completed
+created: 2025-09-15
+updated: 2025-10-06
+completed: 2025-10-06
+author: @goos
+priority: high
+---
+
+# @SPEC:REFACTOR-001: Git Manager 리팩토링
+
+## HISTORY
+
+### v0.2.0 (2025-10-06)
+- **COMPLETED**: Git Manager 리팩토링 구현 완료
+- **AUTHOR**: @goos, @alfred
+- **IMPLEMENTATION**: git-manager.ts → 3개 모듈로 분리 완료
+  - git-branch-manager.ts
+  - git-commit-manager.ts
+  - git-pr-manager.ts
+- **EVIDENCE**:
+  - `b01403e docs(sync): Complete SPEC-INIT-001, REFACTOR-001, BRAND-001`
+  - `16263b3 refactor(tags): Unify TAG chain for SPEC-REFACTOR-001`
+  - @CODE:REFACTOR-001:* TAG 체인 구축 완료
+
+### v0.1.0 (2025-09-15)
+- **INITIAL**: Git Manager 리팩토링 명세 작성
+- **AUTHOR**: @goos
+- **SCOPE**: 689 LOC → <300 LOC 분리
+- **BACKGROUND**: TRUST 원칙 중 Readable (가독성) 준수 필요
 
 ## TAG BLOCK
 
 ```text
 # @SPEC:REFACTOR-001: Git Manager 리팩토링
-# Related: @CODE:GIT-MGR-001, @CODE:GIT-001
+# Related: @CODE:REFACTOR-001:*, @TEST:REFACTOR-001:*
 ```
 
 ## Environment (환경 및 가정사항)

@@ -11,17 +11,24 @@ tools: Read, Write, Bash, Grep, Glob
 
 ## HISTORY
 
-### v2.0.0 (2025-10-02)
-- **UPDATED**: Phase 4를 AlfredUpdateBridge로 전환 (Option C 하이브리드)
-- **ADDED**: output-styles/alfred 복사 추가
-- **ADDED**: {{PROJECT_NAME}} 패턴 기반 프로젝트 문서 보호
-- **ADDED**: chmod +x 훅 파일 권한 처리
-- **ADDED**: --check-quality 옵션 추가
-- **AUTHOR**: @alfred, @cc-manager
+### v2.0.0 (2025-10-06) - Option C 하이브리드 완성
+- **REFACTORED**: Phase 4를 Alfred가 Claude Code 도구로 직접 실행 (TypeScript 코드 제거)
+- **REFACTORED**: Phase 5 검증을 Claude Code 도구로 전환 ([Glob], [Read], [Grep])
+- **ADDED**: Phase 5.5 품질 검증 독립 섹션 (trust-checker 연동)
+- **ADDED**: 카테고리별 복사 절차 상세화 (A-I: 10단계)
+- **ADDED**: [Grep] "{{PROJECT_NAME}}" 기반 프로젝트 문서 보호
+- **ADDED**: [Bash] chmod +x 훅 파일 권한 자동 부여
+- **ADDED**: Output Styles 복사 (.claude/output-styles/alfred/)
+- **ADDED**: 오류 복구 시나리오 4가지 (파일 복사 실패, 검증 실패, 버전 불일치, Write 실패)
+- **REMOVED**: AlfredUpdateBridge TypeScript 클래스 언급 (문서-구현 일치)
+- **PRINCIPLE**: 스크립트 최소화, 커맨드 지침 중심, Claude Code 도구 우선
+- **AUTHOR**: @alfred, @cc-manager, @code-builder
 - **SPEC**: SPEC-UPDATE-REFACTOR-001
+- **REVIEW**: cc-manager 품질 점검 통과 (P0 6개, P1 3개 완료)
 
 ### v1.0.0 (Initial)
 - **INITIAL**: /alfred:9-update 명령어 최초 작성
+- **AUTHOR**: @alfred
 
 ## 커맨드 개요
 
@@ -85,24 +92,21 @@ fi
 
 ### Phase 4: Alfred가 Claude Code 도구로 템플릿 복사
 
-**담당**: `AlfredUpdateBridge` (moai-adk-ts/src/core/update/alfred/alfred-update-bridge.ts)
+**담당**: Alfred (직접 실행, 에이전트 위임 없음)
+**도구**: [Bash], [Glob], [Read], [Grep], [Write]
 
-**실행 방식**:
-```typescript
-const alfredBridge = new AlfredUpdateBridge(projectPath);
-const filesUpdated = await alfredBridge.copyTemplatesWithClaudeTools(templatePath);
+**실행 절차**:
+
+#### Step 1: npm root 확인
+
+```bash
+[Bash] npm root
+→ Output: /Users/user/project/node_modules
 ```
 
-**복사 대상** (P0 요구사항 반영):
+템플릿 경로 설정:
 ```
-node_modules/moai-adk/templates/
-  ├── .claude/commands/alfred/
-  ├── .claude/agents/alfred/
-  ├── .claude/hooks/alfred/ (chmod +x 자동 적용)
-  ├── .claude/output-styles/alfred/ ✨ 신규 추가
-  ├── .moai/memory/development-guide.md
-  ├── .moai/project/{product,structure,tech}.md ({{PROJECT_NAME}} 검증)
-  └── CLAUDE.md
+TEMPLATE_ROOT="{npm_root}/moai-adk/templates"
 ```
 
 **보존 대상 (절대 덮어쓰지 않음)**:
@@ -110,226 +114,366 @@ node_modules/moai-adk/templates/
 - `.moai/reports/` - 동기화 리포트
 - `.moai/config.json` - 프로젝트 설정
 
-**복사 절차** (4단계):
+---
 
-#### 1. 프로젝트 문서 보호 (`handleProjectDocs`)
+#### Step 2: 명령어 파일 복사 (카테고리 A)
 
-**담당 파일**: product.md, structure.md, tech.md
+**대상**: `.claude/commands/alfred/*.md` (~10개 파일)
 
-**처리 로직**:
-```typescript
-// [Read] 템플릿 파일 내용
-const templateContent = await fs.readFile(sourcePath, 'utf-8');
+```text
+[Step 2.1] 템플릿 파일 검색
+  → [Glob] "{npm_root}/moai-adk/templates/.claude/commands/alfred/*.md"
+  → 결과: [1-spec.md, 2-build.md, 3-sync.md, 8-project.md, 9-update.md, ...]
 
-// [Grep] {{PROJECT_NAME}} 패턴 검증
-const isTemplate = templateContent.includes('{{PROJECT_NAME}}');
+[Step 2.2] 각 파일 복사
+  FOR EACH file IN glob_results:
+    a. [Read] "{npm_root}/moai-adk/templates/.claude/commands/alfred/{file}"
+    b. [Write] ".claude/commands/alfred/{file}"
+    c. 성공 로그: "✅ {file}"
 
-// IF 패턴 존재 → 템플릿 상태 (덮어쓰기)
-if (isTemplate && targetIsTemplate) {
-  await fs.writeFile(targetPath, templateContent);
-  logger.log('템플릿 (덮어쓰기)');
-}
-
-// IF 패턴 없음 → 사용자 수정 (백업 후 덮어쓰기)
-if (!targetIsTemplate) {
-  await backupFile(targetPath);
-  await fs.writeFile(targetPath, templateContent);
-  logger.log('사용자 수정 (백업 완료)');
-}
-
-// IF 파일 없음 → 새로 생성
-if (!targetExists) {
-  await fs.writeFile(targetPath, templateContent);
-  logger.log('새로 생성');
-}
+[Step 2.3] 완료 메시지
+  → "✅ .claude/commands/alfred/ (~10개 파일 복사 완료)"
 ```
 
-**보호 정책**:
-- `{{PROJECT_NAME}}` 패턴 존재 → 템플릿 상태로 판단, 안전하게 덮어쓰기
-- 패턴 없음 → 사용자가 프로젝트 이름을 치환한 것으로 판단, 백업 후 덮어쓰기
-- 파일 없음 → 새로 생성
+**오류 처리**:
+- Glob 결과 비어있음 → "⚠️ 템플릿 디렉토리 경로 확인 필요"
+- Write 실패 → `[Bash] mkdir -p .claude/commands/alfred` 후 재시도
 
-#### 2. 훅 파일 권한 처리 (`handleHookFiles`)
+---
 
-**담당 디렉토리**: `.claude/hooks/alfred/`
+#### Step 3: 에이전트 파일 복사 (카테고리 B)
 
-**처리 로직**:
-```typescript
-// 파일 복사
-await fs.copyFile(source, target);
+**대상**: `.claude/agents/alfred/*.md` (~9개 파일)
 
-// chmod +x 실행 권한 부여 (Windows 예외)
-if (process.platform !== 'win32') {
-  await fs.chmod(target, 0o755);
-  logger.log(`chmod +x ${file}`);
-}
+```text
+[Step 3.1-3.3] 카테고리 A와 동일 절차
+  → 경로만 변경: .claude/agents/alfred/
+  → 예상 파일: spec-builder.md, code-builder.md, doc-syncer.md, ...
+```
+
+---
+
+#### Step 4: 훅 파일 복사 + 권한 부여 (카테고리 C)
+
+**대상**: `.claude/hooks/alfred/*.cjs` (~4개 파일)
+
+```text
+[Step 4.1] 템플릿 파일 검색
+  → [Glob] "{npm_root}/moai-adk/templates/.claude/hooks/alfred/*.cjs"
+  → 예상: [policy-block.cjs, pre-write-guard.cjs, session-notice.cjs, tag-enforcer.cjs]
+
+[Step 4.2] 각 파일 복사
+  FOR EACH file IN glob_results:
+    a. [Read] "{npm_root}/moai-adk/templates/.claude/hooks/alfred/{file}"
+    b. [Write] ".claude/hooks/alfred/{file}"
+
+[Step 4.3] 실행 권한 부여
+  → [Bash] chmod +x .claude/hooks/alfred/*.cjs
+  → IF 성공: "✅ 실행 권한 부여 완료 (755)"
+  → IF 실패: "⚠️ chmod 실패 (Windows 환경에서는 정상, 계속 진행)"
+
+[Step 4.4] 완료 메시지
+  → "✅ .claude/hooks/alfred/ (4개 파일 복사 + 권한 설정 완료)"
 ```
 
 **권한 설정**:
 - Unix 계열: `755` (rwxr-xr-x)
-- Windows: 권한 처리 생략
+- Windows: chmod 실패해도 경고만 출력
 
-**대상 파일**:
-- policy-block.cjs
-- pre-write-guard.cjs
-- session-notice.cjs
-- tag-enforcer.cjs
+---
 
-#### 3. Output Styles 복사 (`handleOutputStyles`)
+#### Step 5: Output Styles 복사 (카테고리 D) ✨
 
-**담당 디렉토리**: `.claude/output-styles/alfred/`
+**대상**: `.claude/output-styles/alfred/*.md` (4개 파일)
 
-**처리 로직**:
-```typescript
-// 디렉토리 전체 복사 (재귀)
-await copyDirectory(sourcePath, targetPath);
+```text
+[Step 5.1] 템플릿 파일 검색
+  → [Glob] "{npm_root}/moai-adk/templates/.claude/output-styles/alfred/*.md"
+  → 예상: [beginner-learning.md, pair-collab.md, study-deep.md, moai-pro.md]
+
+[Step 5.2] 각 파일 복사
+  FOR EACH file IN glob_results:
+    a. [Read] "{npm_root}/moai-adk/templates/.claude/output-styles/alfred/{file}"
+    b. [Write] ".claude/output-styles/alfred/{file}"
+
+[Step 5.3] 완료 메시지
+  → "✅ .claude/output-styles/alfred/ (4개 파일 복사 완료)"
 ```
 
-**대상 파일** (4개):
-- beginner-learning.md
-- alfred-pro.md
-- pair-collab.md
-- study-deep.md
+---
 
-#### 4. 기타 파일 복사 (`handleOtherFiles`)
+#### Step 6: 개발 가이드 복사 (카테고리 E)
+
+**대상**: `.moai/memory/development-guide.md` (무조건 덮어쓰기)
+
+```text
+[Step 6.1] 파일 읽기
+  → [Read] "{npm_root}/moai-adk/templates/.moai/memory/development-guide.md"
+
+[Step 6.2] 파일 쓰기
+  → [Write] ".moai/memory/development-guide.md"
+  → IF 실패: [Bash] mkdir -p .moai/memory 후 재시도
+
+[Step 6.3] 완료 메시지
+  → "✅ .moai/memory/development-guide.md 업데이트 완료"
+```
+
+**참고**: development-guide.md는 항상 최신 템플릿으로 덮어써야 함 (사용자 수정 금지)
+
+---
+
+#### Step 7-9: 프로젝트 문서 복사 (카테고리 F-H) - 지능적 보호
 
 **대상**:
-- `.claude/commands/alfred/` (디렉토리)
-- `.claude/agents/alfred/` (디렉토리)
-- `.moai/memory/development-guide.md` (파일)
-- `CLAUDE.md` (파일)
+- `.moai/project/product.md`
+- `.moai/project/structure.md`
+- `.moai/project/tech.md`
 
-**처리 로직**:
-```typescript
-// 디렉토리 or 파일 판단
-const stat = await fs.stat(source);
-if (stat.isDirectory()) {
-  await copyDirectory(source, target);
-} else {
-  await fs.copyFile(source, target);
-}
+**각 파일마다 다음 절차 반복**:
+
+```text
+[Step 7.1] 기존 파일 존재 확인
+  → [Read] ".moai/project/product.md"
+  → IF 파일 없음: Step 7.5로 이동 (새로 생성)
+  → IF 파일 있음: Step 7.2 진행
+
+[Step 7.2] 템플릿 상태 검증
+  → [Grep] "{{PROJECT_NAME}}" -n ".moai/project/product.md"
+  → IF 검색 결과 있음: 템플릿 상태 (Step 7.5로 이동)
+  → IF 검색 결과 없음: 사용자 수정 상태 (Step 7.3 진행)
+
+[Step 7.3] 백업 생성 (사용자 수정 시)
+  → [Read] ".moai/project/product.md"
+  → [Write] ".moai-backup/{timestamp}/.moai/project/product.md"
+  → IF 실패: "❌ 백업 실패, 복사 중단" → 사용자 확인 요청
+
+[Step 7.4] 백업 로그
+  → "💾 백업 생성: .moai-backup/{timestamp}/.moai/project/product.md"
+
+[Step 7.5] 새 템플릿 복사
+  → [Read] "{npm_root}/moai-adk/templates/.moai/project/product.md"
+  → [Write] ".moai/project/product.md"
+  → IF 실패: [Bash] mkdir -p .moai/project 후 재시도
+
+[Step 7.6] 완료 메시지
+  → "✅ .moai/project/product.md (백업: yes/no)"
 ```
 
-**오류 처리**:
-- 각 단계별 try-catch 독립 처리
-- 오류 발생 시 경고 메시지 출력 후 다음 단계 진행
-- 전체 프로세스 중단 없이 부분 실패 허용
+**보호 정책**:
+- `{{PROJECT_NAME}}` 패턴 존재 → 템플릿 상태, 안전하게 덮어쓰기
+- 패턴 없음 → 사용자 수정, 백업 후 덮어쓰기
+- 파일 없음 → 새로 생성
+
+---
+
+#### Step 10: CLAUDE.md 복사 (카테고리 I)
+
+**대상**: `CLAUDE.md` (프로젝트 루트)
+
+```text
+[Step 10.1-10.6] 카테고리 F-H와 동일 절차
+  → 경로: "./CLAUDE.md"
+  → 백업 경로: ".moai-backup/{timestamp}/CLAUDE.md"
+  → Grep 패턴: "{{PROJECT_NAME}}"
+```
+
+**특수 케이스**:
+- CLAUDE.md는 프로젝트 루트에 위치
+- 백업 경로도 타임스탬프 디렉토리 바로 아래
+
+---
+
+**전체 오류 처리 원칙**:
+- 각 Step별 독립적 오류 처리
+- 한 파일 실패가 전체 프로세스를 중단시키지 않음
+- 실패한 파일 목록 수집하여 Phase 4 종료 후 보고
+- 디렉토리 없음 → `mkdir -p` 자동 실행 후 재시도
 
 ### Phase 5: 업데이트 검증
 
-**담당**: `UpdateVerifier` + `AlfredUpdateBridge`
+**담당**: Alfred (직접 실행)
+**도구**: [Bash], [Glob], [Read], [Grep]
 
 **검증 항목**:
 
-#### 1. 파일 존재 확인 ([Bash] fs.access)
+#### 5.1 파일 개수 검증 (동적)
 
-**디렉토리 검증**:
-- `.claude/commands/alfred/`
-- `.claude/agents/alfred/`
-- `.claude/hooks/alfred/`
-- `.claude/output-styles/alfred/` ✨ 신규
-- `.moai/memory/development-guide.md`
-- `CLAUDE.md`
+```text
+[Check 1] 명령어 파일
+  → [Glob] .claude/commands/alfred/*.md
+  → 실제 개수 확인
+  → 예상: ~10개
+  → IF 실제 < 예상: "⚠️ 명령어 파일 누락 감지"
 
-**검증 코드**:
-```typescript
-await fs.access(targetPath);  // 파일/디렉토리 존재 확인
+[Check 2] 에이전트 파일
+  → [Glob] .claude/agents/alfred/*.md
+  → 예상: ~9개
+
+[Check 3] 훅 파일
+  → [Glob] .claude/hooks/alfred/*.cjs
+  → 예상: ~4개
+
+[Check 4] Output Styles 파일 ✨
+  → [Glob] .claude/output-styles/alfred/*.md
+  → 예상: 4개
+
+[Check 5] 프로젝트 문서
+  → [Glob] .moai/project/*.md
+  → 예상: 3개
+
+[Check 6] 필수 파일 존재
+  → [Read] .moai/memory/development-guide.md
+  → [Read] CLAUDE.md
+  → IF 파일 없음: "❌ 필수 파일 누락"
 ```
 
-#### 2. 파일 개수 검증 (동적)
+**파일 개수 기준** (동적 확인):
+- 템플릿에서 기대하는 파일 개수와 실제 복사된 파일 개수 비교
+- 누락 감지 시 Phase 4 재실행 제안
 
-**예상 파일 개수**:
-- commands/alfred: ~10개
-- agents/alfred: ~9개
-- hooks/alfred: ~4개
-- output-styles/alfred: 4개 ✨ 신규
-- memory: 1개 (development-guide.md)
-- project: 3개 (product, structure, tech)
-- 루트: 1개 (CLAUDE.md)
+---
 
-**검증 로직**:
-```typescript
-const files = await fs.readdir(dirPath);
-if (files.length < expectedCount) {
-  throw new Error(`파일 누락: ${files.length}/${expectedCount}`);
-}
+#### 5.2 YAML Frontmatter 검증
+
+```text
+[Sample Check] 명령어 파일 검증
+  → [Read] .claude/commands/alfred/1-spec.md
+  → 첫 10줄 추출
+  → YAML 파싱 시도 (---로 감싸진 블록)
+  → IF 파싱 실패: "⚠️ YAML frontmatter 손상 감지"
+  → IF 파싱 성공: "✅ YAML 검증 통과"
+
+[필수 필드 확인]
+  - name: alfred:1-spec
+  - description: (내용 확인)
+  - tools: [Read, Write, ...]
 ```
 
-#### 3. 권한 검증 (Unix 계열만)
+**검증 방식**:
+- 대표 파일 1-2개 샘플링
+- YAML 구문 오류 감지
+- 손상 시 Phase 4 재실행 제안
 
-**훅 파일 실행 권한**:
+---
+
+#### 5.3 버전 정보 확인
+
+```text
+[Check 1] development-guide.md 버전
+  → [Grep] "version:" -n .moai/memory/development-guide.md
+  → 버전 추출: v{X.Y.Z}
+
+[Check 2] package.json 버전
+  → [Bash] npm list moai-adk --depth=0
+  → 출력: moai-adk@{version}
+
+[Check 3] 버전 일치 확인
+  → IF 일치: "✅ 버전 정합성 통과 (v{X.Y.Z})"
+  → IF 불일치: "⚠️ 버전 불일치 감지"
+```
+
+**버전 불일치 시**:
+- Phase 3 재실행 제안 (npm 재설치)
+- 또는 Phase 4 재실행 (템플릿 재복사)
+
+---
+
+#### 5.4 훅 파일 권한 검증 (Unix 계열만)
+
 ```bash
-ls -l .claude/hooks/alfred/*.cjs
-# 예상: -rwxr-xr-x (755)
+[Bash] ls -l .claude/hooks/alfred/*.cjs
+→ 예상 출력: -rwxr-xr-x (755)
 ```
 
-**검증 코드**:
-```typescript
-const stat = await fs.stat(hookPath);
-const mode = stat.mode & 0o777;
-if (mode !== 0o755) {
-  logger.warn(`권한 불일치: ${mode.toString(8)}`);
-}
+**권한 확인**:
+- 실행 권한 (`x`) 존재 여부 확인
+- Windows 환경은 검증 생략
+
+---
+
+**검증 실패 시 자동 복구 전략**:
+
+| 오류 유형 | 복구 조치 |
+|----------|----------|
+| 파일 누락 | Phase 4 재실행 제안 |
+| 버전 불일치 | Phase 3 재실행 제안 (npm) |
+| 내용 손상 | 백업 복원 후 재시작 제안 |
+| 권한 오류 | chmod 재실행 ([Bash] chmod +x) |
+| 디렉토리 없음 | mkdir -p 후 Phase 4 재실행 |
+
+### Phase 5.5: 품질 검증 (선택적)
+
+**조건**: `--check-quality` 옵션 제공 시에만 실행
+
+**도구**: trust-checker 에이전트
+
+**실행 절차**:
+
+```text
+[Step 1] trust-checker 호출
+  → @agent-trust-checker "Level 1 빠른 스캔 (3-5초)"
+  → 검증 항목: TRUST 5원칙
+
+[Step 2] 검증 항목
+  - **T**est: 테스트 커버리지 ≥85% 확인
+  - **R**eadable: ESLint/Biome 통과 여부
+  - **U**nified: TypeScript 타입 안전성
+  - **S**ecured: npm audit 보안 취약점 검사
+  - **T**rackable: @TAG 체인 무결성 검증
+
+[Step 3] 결과별 처리
+  ✅ **Pass**: 업데이트 성공 완료
+    → "✅ 품질 검증 통과"
+    → "- 모든 파일 정상"
+    → "- 시스템 무결성 유지"
+
+  ⚠️ **Warning**: 경고 표시 후 완료
+    → "⚠️ 품질 검증 경고"
+    → "- 일부 문서 포맷 이슈 발견"
+    → "- 권장사항 미적용 항목 존재"
+    → 사용자 확인 권장 (계속 진행 가능)
+
+  ❌ **Critical**: 롤백 제안
+    → "❌ 품질 검증 실패 (치명적)"
+    → "- 파일 손상 감지"
+    → "- 설정 불일치"
+    → 조치 선택:
+      1. "롤백" → moai restore --from={timestamp}
+      2. "무시하고 진행" → 손상된 상태로 완료 (위험)
+    → 권장: 롤백 후 재시도
 ```
 
-#### 4. 프로젝트 문서 무결성
+**실행 시간**: 추가 3-5초 (Level 1 빠른 스캔)
 
-**{{PROJECT_NAME}} 패턴 검증**:
-```typescript
-const content = await fs.readFile('product.md', 'utf-8');
-const hasPattern = content.includes('{{PROJECT_NAME}}');
+**검증 생략**:
+- `--check-quality` 옵션 없으면 Phase 5.5 건너뛰고 완료
 
-// 템플릿 상태 정상
-if (hasPattern) {
-  logger.log('템플릿 상태 정상');
-}
+---
 
-// 사용자 수정 + 백업 존재 확인
-if (!hasPattern) {
-  await fs.access(backupPath);  // 백업 확인
-  logger.log('사용자 수정 보호 정상');
-}
-```
-
-#### 5. 버전 확인 ([Bash])
-
-```bash
-npm list moai-adk --depth=0  # 새 버전 확인
-```
-
-**검증 실패 시 자동 복구**:
-- 파일 누락 → Phase 4 재실행
-- 버전 불일치 → Phase 3 재실행
-- 내용 손상 → 백업 복원 후 재시작
-- 권한 오류 → chmod 재실행
-
-## 아키텍처: Option C 하이브리드
+## 아키텍처: Alfred 중앙 오케스트레이션
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                   UpdateOrchestrator                     │
 ├─────────────────────────────────────────────────────────┤
-│ Phase 1: VersionChecker   (자동)                         │
-│ Phase 2: BackupManager    (자동)                         │
-│ Phase 3: NpmUpdater       (자동)                         │
-│ Phase 4: AlfredUpdateBridge ← Alfred 제어               │
-│ Phase 5: UpdateVerifier   (자동)                         │
+│ Phase 1: VersionChecker   (자동 - Bash)                  │
+│ Phase 2: BackupManager    (자동 - Bash)                  │
+│ Phase 3: NpmUpdater       (자동 - Bash)                  │
+│ Phase 4: ⏸️  ALFRED 직접 실행 (Claude Code 도구)        │
+│          [Glob] [Read] [Grep] [Write] [Bash]            │
+│ Phase 5: UpdateVerifier   (자동 - Alfred 직접)           │
+│          [Glob] [Read] [Grep] [Bash]                    │
+│ Phase 5.5: trust-checker  (선택 - @agent)               │
 └─────────────────────────────────────────────────────────┘
-                              ↓
-                  ┌───────────────────────┐
-                  │  AlfredUpdateBridge   │
-                  ├───────────────────────┤
-                  │ handleProjectDocs()   │
-                  │ handleHookFiles()     │
-                  │ handleOutputStyles()  │
-                  │ handleOtherFiles()    │
-                  └───────────────────────┘
 ```
 
 **핵심 원칙**:
-- Phase 1-3, 5: 자동 실행 (UpdateOrchestrator)
-- Phase 4: Alfred가 Claude Code 도구로 제어
-- 최소 침해: Alfred는 템플릿 복사만 담당
+- **Phase 1-3**: UpdateOrchestrator 자동 실행 (Bash 스크립트)
+- **Phase 4**: Alfred가 Claude Code 도구로 직접 제어 (문서 기반 지침)
+- **Phase 5**: Alfred가 Claude Code 도구로 검증
+- **Phase 5.5**: trust-checker 에이전트 선택적 호출
+- **스크립트 최소화**: 모든 로직이 지침(텍스트)으로 표현됨
+- **TypeScript 코드 없음**: Claude Code 도구만 사용
 
 ## 출력 예시
 
@@ -369,30 +513,15 @@ npm list moai-adk --depth=0  # 새 버전 확인
 
 ### --check-quality (선택)
 
-TRUST 5원칙 검증을 추가로 수행합니다.
+업데이트 후 TRUST 5원칙 품질 검증을 추가로 수행합니다.
 
 ```bash
 /alfred:9-update --check-quality
 ```
 
-**검증 항목**:
-- **T**est: 테스트 커버리지 ≥85% 확인
-- **R**eadable: ESLint/Biome 통과 여부
-- **U**nified: TypeScript 타입 안전성
-- **S**ecured: npm audit 보안 취약점 검사
-- **T**rackable: @TAG 체인 무결성 검증
-
-**실행 시간**: 추가 30-60초
-
-**출력 예시**:
-```text
-🔍 TRUST 검증 수행 중...
-   ✅ Test: 커버리지 92% (통과)
-   ✅ Readable: ESLint 0 errors (통과)
-   ✅ Unified: TypeScript 타입 안전 (통과)
-   ⚠️  Secured: 1 low severity (경고)
-   ✅ Trackable: TAG 체인 무결성 (통과)
-```
+**상세 내용**: Phase 5.5 섹션 참조
+**실행 시간**: 추가 3-5초 (Level 1 빠른 스캔)
+**검증 결과**: Pass / Warning / Critical
 
 ### --check (확인만)
 
@@ -423,7 +552,7 @@ TRUST 5원칙 검증을 추가로 수행합니다.
 - `.moai/reports/` - 동기화 리포트 보존
 
 **사용자 수정 보호** (✨ 신규):
-- `{{PROJECT_NAME}}` 패턴 검증
+- `MoAI-ADK` 패턴 검증
 - 사용자 수정 파일 자동 백업
 - 백업 경로: `{파일명}.backup-{타임스탬프}`
 
@@ -434,24 +563,139 @@ moai restore --from=2025-10-02-15-30-00  # 특정 백업 복원
 moai restore --latest                     # 최근 백업 복원
 ```
 
-## 핵심 오류 처리
+## 오류 복구 시나리오
 
-**npm install 실패**:
-- `npm cache clean --force` 후 재시도
-- 인터넷 연결 및 권한 확인
+### 시나리오 1: 파일 복사 실패
 
-**템플릿 디렉토리 없음**:
-- `npm root` 경로 확인
-- 패키지 재설치 (`npm install moai-adk@latest`)
+**상황**:
+```text
+Phase 4 실행 중...
+  → [Write] .claude/commands/alfred/1-spec.md ✅
+  → [Write] .claude/commands/alfred/2-build.md ❌ (디스크 공간 부족)
+```
 
-**파일 복사 실패**:
-- `mkdir -p {대상경로}` 디렉토리 생성
-- 디스크 용량 확인 (`df -h`)
+**복구 절차**:
+```text
+[Step 1] 오류 로그 기록
+  → "❌ 2-build.md 복사 실패: 디스크 공간 부족"
 
-**검증 실패**:
-- Phase 4 재실행 (파일 누락)
-- Phase 3 재실행 (버전 불일치)
-- 백업 복원 후 재시작 (내용 손상)
+[Step 2] 실패 파일 목록에 추가
+  → failed_files = [2-build.md]
+
+[Step 3] 나머지 파일 계속 복사
+  → Phase 4 중단 없이 진행
+  → 모든 파일 처리 완료까지 계속
+
+[Step 4] Phase 4 종료 후 실패 목록 보고
+  → "⚠️ {count}개 파일 복사 실패: [2-build.md]"
+
+[Step 5] 사용자 선택
+  → "재시도" → Phase 4 재실행 (실패한 파일만)
+  → "백업 복원" → moai restore --from={timestamp}
+  → "무시" → Phase 5로 진행 (불완전한 상태, 권장하지 않음)
+```
+
+**자동 재시도**:
+- 각 파일당 최대 2회 재시도
+- 재시도 후에도 실패 시 건너뛰고 계속 진행
+
+---
+
+### 시나리오 2: 검증 실패 (파일 누락)
+
+**상황**:
+```text
+Phase 5 검증 중...
+  → [Glob] .claude/commands/alfred/*.md → 8개 (예상: 10개)
+  → "❌ 검증 실패: 2개 파일 누락"
+```
+
+**복구 절차**:
+```text
+[Step 1] 누락 파일 파악
+  → 템플릿과 실제 파일 목록 비교
+  → 누락된 파일: [3-sync.md, 8-project.md]
+
+[Step 2] 사용자에게 선택 제안
+  → "Phase 4 재실행" → 전체 복사 다시 시도
+  → "백업 복원" → moai restore --from={timestamp}
+  → "무시하고 진행" → 불완전한 상태로 완료 (위험)
+
+[Step 3] "Phase 4 재실행" 선택 시
+  → Alfred Phase 4 절차 재실행
+  → 완료 후 Phase 5 재검증
+  → IF 재검증 통과: "✅ 검증 통과 (재시도 성공)"
+  → IF 재검증 실패: 시나리오 2 반복 (최대 3회)
+
+[Step 4] "백업 복원" 선택 시
+  → [Bash] moai restore --from={timestamp}
+  → "✅ 복원 완료, 재시도하시겠습니까?"
+  → 재시도 선택 시 처음부터 다시 실행
+```
+
+---
+
+### 시나리오 3: 버전 불일치
+
+**상황**:
+```text
+Phase 5 검증 중...
+  → [Grep] "version:" .moai/memory/development-guide.md → v0.0.1
+  → [Bash] npm list moai-adk → v0.0.2
+  → "❌ 버전 불일치 감지"
+```
+
+**복구 절차**:
+```text
+[Step 1] 사용자에게 보고
+  → "⚠️ development-guide.md 버전(v0.0.1)과 패키지 버전(v0.0.2)이 불일치합니다."
+  → "이는 템플릿 복사가 제대로 되지 않았음을 의미합니다."
+
+[Step 2] 원인 분석 안내
+  → 가능한 원인:
+    a. npm 캐시 손상
+    b. 템플릿 디렉토리 경로 오류
+    c. 파일 복사 중 네트워크 오류
+
+[Step 3] 선택 제안
+  → "Phase 3 재실행" → npm 재설치 (npm cache clean + install)
+  → "Phase 4 재실행" → 템플릿 재복사
+  → "무시" → 버전 불일치 상태로 완료 (권장하지 않음)
+
+[Step 4] 자동 복구 시도 (Phase 3 선택 시)
+  → [Bash] npm cache clean --force
+  → [Bash] npm install moai-adk@latest
+  → Phase 4 재실행
+  → Phase 5 재검증
+```
+
+---
+
+### 시나리오 4: Write 도구 실패 (디렉토리 없음)
+
+**상황**:
+```text
+[Write] .claude/commands/alfred/1-spec.md → ❌ (디렉토리 없음)
+```
+
+**자동 복구**:
+```text
+[Step 1] 오류 감지
+  → "❌ Write 실패: .claude/commands/alfred/ 디렉토리 없음"
+
+[Step 2] 디렉토리 자동 생성
+  → [Bash] mkdir -p .claude/commands/alfred
+  → "✅ 디렉토리 생성 완료"
+
+[Step 3] Write 재시도
+  → [Write] .claude/commands/alfred/1-spec.md
+  → "✅ 파일 복사 성공 (재시도)"
+```
+
+**재시도 실패 시**:
+- 디스크 공간 확인 안내
+- 권한 문제 확인 안내
+- 시나리오 1로 진행 (파일 복사 실패)
 
 ## 관련 명령어
 
