@@ -90,7 +90,7 @@ export class DoctorCommand {
     const categorizedResults = this.categorizeResults(results);
 
     return {
-      allPassed: checkSummary.passedChecks === checkSummary.totalChecks,
+      allPassed: checkSummary.allCriticalPassed, // Use allCriticalPassed (excludes optional)
       results,
       missingRequirements: categorizedResults.missing,
       versionConflicts: categorizedResults.conflicts,
