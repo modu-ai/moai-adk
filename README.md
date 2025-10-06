@@ -27,9 +27,9 @@
 - [How Alfred Works](#️-how-alfred-works---10개-ai-에이전트-팀)
 - [Output Styles](#-alfreds-output-styles)
 - [Language Support](#-universal-language-support)
-- [Future Roadmap](#-future-roadmap)
 - [CLI Reference](#-cli-reference)
 - [FAQ](#-faq)
+- [문제 해결](#-문제-해결)
 - [Support](#-support)
 
 ---
@@ -737,8 +737,19 @@ Alfred는 모든 코드에 TRUST 5원칙을 적용합니다:
 
 #### S - Secured
 
-- 입력 검증, SQL Injection 방어
-- XSS/CSRF 방어, 비밀번호 해싱
+**입력 검증**:
+- 모든 사용자 입력 검증 (정규식, 화이트리스트)
+- 파일 업로드 제한 (확장자, 크기, MIME 타입)
+
+**주요 취약점 방어**:
+- **SQL Injection**: Prepared Statement, ORM 사용
+- **XSS**: HTML 이스케이핑, CSP 헤더
+- **CSRF**: CSRF 토큰, SameSite 쿠키
+- **비밀번호**: bcrypt/argon2 해싱 (최소 10 라운드)
+
+**보안 스캐닝**:
+- 정적 분석 도구 (Snyk, OWASP Dependency-Check)
+- 환경 변수 보안 (`.env` Git 제외)
 
 #### T - Trackable
 
@@ -782,6 +793,85 @@ rg '@(SPEC|TEST|CODE|DOC):' -n
 
 # 특정 TAG 추적
 rg 'AUTH-001' -n
+```
+
+### 언어별 TAG 사용 예시
+
+#### TypeScript
+
+```typescript
+// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth.test.ts
+/**
+ * @CODE:AUTH-001: JWT 인증 서비스
+ *
+ * TDD 이력:
+ * - RED: 테스트 최초 작성
+ * - GREEN: bcrypt + JWT 구현
+ * - REFACTOR: 타입 안전성 추가
+ */
+export class AuthService {
+  // @CODE:AUTH-001:API: 인증 API 엔드포인트
+  async authenticate(username: string, password: string): Promise<AuthResult> {
+    // 구현...
+  }
+}
+```
+
+#### Python
+
+```python
+# @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/test_auth.py
+"""
+@CODE:AUTH-001: JWT 인증 서비스
+
+TDD 이력:
+- RED: pytest 테스트 작성
+- GREEN: bcrypt + PyJWT 구현
+- REFACTOR: 타입 힌트 추가
+"""
+
+class AuthService:
+    # @CODE:AUTH-001:API: 인증 API 엔드포인트
+    async def authenticate(
+        self,
+        username: str,
+        password: str
+    ) -> AuthResult:
+        # @CODE:AUTH-001:DOMAIN: 입력 검증
+        self._validate_input(username, password)
+
+        # @CODE:AUTH-001:DATA: 사용자 조회
+        user = await self.user_repo.find_by_username(username)
+
+        return self._verify_credentials(user, password)
+```
+
+#### Flutter/Dart
+
+```dart
+// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: test/auth_test.dart
+
+/// @CODE:AUTH-001: JWT 인증 서비스
+///
+/// TDD 이력:
+/// - RED: widget test 작성
+/// - GREEN: dio + flutter_secure_storage 구현
+/// - REFACTOR: Riverpod 상태 관리 통합
+class AuthService {
+  // @CODE:AUTH-001:API: 인증 API 엔드포인트
+  Future<AuthResult> authenticate({
+    required String username,
+    required String password,
+  }) async {
+    // @CODE:AUTH-001:DOMAIN: 입력 검증
+    _validateInput(username, password);
+
+    // @CODE:AUTH-001:DATA: 사용자 조회
+    final user = await userRepository.findByUsername(username);
+
+    return _verifyCredentials(user, password);
+  }
+}
 ```
 
 ---
@@ -1377,6 +1467,171 @@ bun update -g moai-adk
 
 - 💬 **질문 & 토론**: [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)
 - 🐛 **버그 리포트**: [GitHub Issues](https://github.com/modu-ai/moai-adk/issues)
+
+---
+
+## 🛠️ 문제 해결
+
+### 자주 발생하는 문제
+
+#### 1. `/alfred:2-build` 실행 시 "SPEC not found" 에러
+
+**증상**: TDD 구현 중 SPEC 파일을 찾을 수 없다는 에러 발생
+
+**원인**: `/alfred:1-spec` 단계를 건너뛰었거나, SPEC 파일 경로가 잘못됨
+
+**해결 방법**:
+
+```bash
+# 1. SPEC 파일 존재 여부 확인
+ls .moai/specs/SPEC-*.md
+
+# 2. SPEC이 없다면 먼저 작성
+/alfred:1-spec "기능 설명"
+
+# 3. SPEC ID 확인 후 재실행
+/alfred:2-build SPEC-ID
+```
+
+#### 2. 테스트 실패 시 복구
+
+**증상**: `/alfred:2-build` 실행 후 테스트가 계속 실패
+
+**원인**: 엣지 케이스 누락, 의존성 문제, 환경 변수 미설정
+
+**해결 방법**:
+
+```bash
+# 1. 테스트 수동 실행으로 정확한 에러 확인
+npm test  # 또는 bun test, pytest 등
+
+# 2. debug-helper 에이전트 호출
+@agent-debug-helper "테스트 실패 에러 메시지"
+
+# 3. 환경 변수 확인
+cat .env.example  # 필요한 환경 변수 확인
+cp .env.example .env  # 환경 변수 파일 생성
+
+# 4. 의존성 재설치
+rm -rf node_modules && npm install
+```
+
+#### 3. TAG 체인 끊어짐 경고
+
+**증상**: `/alfred:3-sync` 실행 시 "고아 TAG 발견" 경고
+
+**원인**: SPEC 없이 CODE만 작성했거나, TAG ID 불일치
+
+**해결 방법**:
+
+```bash
+# 1. 고아 TAG 찾기
+rg '@CODE:' -n src/  # CODE TAG 목록
+rg '@SPEC:' -n .moai/specs/  # SPEC TAG 목록
+
+# 2. 누락된 SPEC 작성
+/alfred:1-spec "해당 기능 설명"
+
+# 3. TAG ID 일치시키기
+# CODE와 SPEC의 ID가 동일한지 확인 (예: AUTH-001)
+
+# 4. 재검증
+/alfred:3-sync
+```
+
+#### 4. Git 브랜치 충돌
+
+**증상**: SPEC 생성 시 브랜치 생성 실패
+
+**원인**: 동일한 이름의 브랜치가 이미 존재
+
+**해결 방법**:
+
+```bash
+# 1. 기존 브랜치 확인
+git branch -a
+
+# 2. 기존 브랜치로 전환 (계속 작업하려면)
+git checkout feature/SPEC-XXX-YYY
+
+# 3. 또는 새 브랜치 강제 생성 (처음부터 다시 시작)
+git branch -D feature/SPEC-XXX-YYY
+/alfred:1-spec "기능 설명"
+```
+
+#### 5. 권한 에러 (Permission Denied)
+
+**증상**: `moai init` 또는 `/alfred:9-update` 실행 시 권한 에러
+
+**원인**: 파일 실행 권한 부족
+
+**해결 방법**:
+
+```bash
+# 1. .claude/commands/ 디렉토리 권한 확인
+ls -la .claude/commands/
+
+# 2. 실행 권한 추가
+chmod +x .claude/commands/*.md
+
+# 3. 또는 자동 수정
+/alfred:9-update --fix-permissions
+```
+
+#### 6. 테스트 커버리지 85% 미만
+
+**증상**: TRUST 검증 실패 - 테스트 커버리지 부족
+
+**원인**: 엣지 케이스 테스트 누락
+
+**해결 방법**:
+
+```bash
+# 1. 커버리지 리포트 확인
+npm test -- --coverage  # 또는 bun test --coverage
+
+# 2. 누락된 브랜치 확인
+# 커버리지 리포트에서 빨간색(미테스트) 라인 확인
+
+# 3. 엣지 케이스 테스트 추가
+# - null/undefined 입력
+# - 빈 배열/객체
+# - 경계값 (0, -1, 최대값)
+# - 에러 케이스
+
+# 4. 재실행
+/alfred:2-build SPEC-ID
+```
+
+### 로그 확인
+
+문제 원인 파악을 위한 로그 위치:
+
+```bash
+# MoAI-ADK 시스템 로그
+~/.moai/logs/moai.log
+
+# 프로젝트별 로그
+.moai/logs/
+
+# Claude Code 로그
+~/.claude/logs/
+```
+
+### 긴급 복구
+
+심각한 문제 발생 시 백업에서 복원:
+
+```bash
+# 1. 백업 목록 확인
+moai doctor -l
+
+# 2. 최신 백업으로 복원 (미리보기)
+moai restore .moai-backup-YYYY-MM-DD --dry-run
+
+# 3. 실제 복원
+moai restore .moai-backup-YYYY-MM-DD
+```
 
 ---
 
