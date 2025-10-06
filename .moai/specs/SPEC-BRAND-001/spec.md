@@ -1,17 +1,17 @@
 ---
 id: BRAND-001
-version: 1.0.0
+version: 0.1.0
 status: draft
 created: 2025-10-06
 updated: 2025-10-06
-authors: ["@goos", "@AI-Alfred"]
+author: @goos
 ---
 
 # @SPEC:BRAND-001: AI-Agent Alfred 브랜딩 일관성 통일
 
 ## HISTORY
 
-### v1.0.0 (2025-10-06)
+### v0.1.0 (2025-10-06)
 - **INITIAL**: Claude Code → AI-Agent Alfred 브랜딩 변경
 - **AUTHOR**: @goos
 - **REVIEW**: @AI-Alfred

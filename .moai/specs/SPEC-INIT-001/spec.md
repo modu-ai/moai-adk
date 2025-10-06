@@ -1,10 +1,10 @@
 ---
 id: INIT-001
-version: 0.0.1
+version: 0.1.0
 status: draft
 created: 2025-10-06
 updated: 2025-10-06
-authors: ["@goos", "@AI-Alfred"]
+author: @goos
 related_issue: "https://github.com/modu-ai/moai-adk/issues/2"
 ---
 
@@ -12,7 +12,7 @@ related_issue: "https://github.com/modu-ai/moai-adk/issues/2"
 
 ## HISTORY
 
-### v0.0.1 (2025-10-06)
+### v0.1.0 (2025-10-06)
 - **INITIAL**: moai init 비대화형 환경 지원 및 의존성 자동 설치 명세 작성
 - **AUTHOR**: @goos
 - **REVIEW**: @AI-Alfred
