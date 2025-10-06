@@ -1,7 +1,7 @@
 ---
 id: INSTALL-001
-version: 0.1.0
-status: draft
+version: 1.0.0
+status: completed
 created: 2025-10-06
 updated: 2025-10-06
 author: @Goos
@@ -17,6 +17,20 @@ priority: high
 # @SPEC:INSTALL-001: Install Prompts Redesign - Developer Name, Git Mandatory & PR Automation
 
 ## HISTORY
+
+### v1.0.0 (2025-10-06)
+- **COMPLETED**: 구현 완료 및 정식 안정화 버전 배포 (PR #4, 9bc4097)
+- **AUTHOR**: @Goos
+- **IMPLEMENTED**:
+  - 개발자 이름 프롬프트 구현 (`developer-info.ts`, Git user.name 연동)
+  - Git 필수 검증 로직 추가 (`git-validator.ts`, OS별 설치 안내)
+  - SPEC Workflow 프롬프트 구현 (`spec-workflow.ts`, Personal 모드 선택적)
+  - Auto PR/Draft PR 프롬프트 구현 (`pr-config.ts`, Team 모드 전용)
+  - Alfred 환영 메시지 구현 (`welcome-message.ts`, 페르소나 강화)
+  - Progressive Disclosure 흐름 구현 (`install-flow.ts`, 단계별 노출)
+- **TAG CHAIN**: @SPEC:INSTALL-001 → @TEST:INSTALL-001 (6파일) → @CODE:INSTALL-001 (8파일) - 완벽 추적
+- **TEST COVERAGE**: 100% (14개 파일, 32개 TAG 발생)
+- **DEPLOYMENT**: PR #4 squash merge → develop 브랜치 반영 완료
 
 ### v0.1.0 (2025-10-06)
 - **INITIAL**: Install Prompts Redesign 명세 작성

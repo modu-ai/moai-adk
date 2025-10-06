@@ -32,7 +32,8 @@ tools: Read, Write, Edit, MultiEdit, Bash(git status:*), Bash(git add:*), Bash(g
 ## 💡 사용 예시
 
 ```bash
-/alfred:3-sync                     # 자동 동기화
+/alfred:3-sync                     # 자동 동기화 (PR Ready만)
+/alfred:3-sync --auto-merge        # PR 자동 머지 + 브랜치 정리
 /alfred:3-sync force               # 강제 전체 동기화
 /alfred:3-sync status              # 동기화 상태 확인
 /alfred:3-sync project             # 통합 프로젝트 동기화
@@ -253,16 +254,41 @@ Task 2 (sonnet): 문서 구조 분석
 - Team 모드에서 PR Ready 전환
 - 리뷰어 자동 할당 (gh CLI 사용)
 
+### Phase 4: PR 머지 및 브랜치 정리 (선택적)
+
+`--auto-merge` 플래그 사용 시 `git-manager`가 추가 처리:
+
+**Team 모드 (GitFlow)**:
+1. PR 상태 확인 (CI/CD 통과 체크)
+2. PR 자동 머지 (develop 브랜치로)
+3. 원격 feature 브랜치 삭제
+4. 로컬 develop 체크아웃 및 동기화
+5. 로컬 feature 브랜치 정리
+6. 다음 작업 준비 완료 알림
+
+**Personal 모드**:
+1. 로컬 main/develop 머지
+2. feature 브랜치 삭제
+3. 베이스 브랜치 체크아웃
+4. 다음 작업 준비 완료 알림
+
 **성능 향상**: 초기 확인 단계를 병렬화하여 대기 시간 최소화
 
 ### 인수 처리
 
 - **$1 (모드)**: `$1` → `auto`(기본값)|`force`|`status`|`project`
 - **$2 (경로)**: `$2` → 동기화 대상 경로 (선택사항)
+- **플래그**:
+  - `--auto-merge`: PR 자동 머지 및 브랜치 정리 활성화 (Team 모드)
+  - `--skip-pre-check`: 사전 품질 검증 건너뛰기
+  - `--skip-quality-check`: 최종 품질 검증 건너뛰기
 
 ```bash
 # 기본 자동 동기화 (모드별 최적화)
 /alfred:3-sync
+
+# PR 자동 머지 + 브랜치 정리 (Team 모드 권장)
+/alfred:3-sync --auto-merge
 
 # 전체 강제 동기화
 /alfred:3-sync force
@@ -275,6 +301,9 @@ Task 2 (sonnet): 문서 구조 분석
 
 # 특정 경로 동기화
 /alfred:3-sync auto src/auth/
+
+# 고급 옵션 조합
+/alfred:3-sync --auto-merge --skip-pre-check  # 빠른 머지
 ```
 
 ### 에이전트 역할 분리
@@ -292,6 +321,15 @@ Task 2 (sonnet): 문서 구조 분석
 - 모든 Git 커밋 작업 (add, commit, push)
 - 모드별 동기화 전략 적용
 - PR 상태 전환 (Draft → Ready)
+- **PR 자동 머지** (--auto-merge 플래그 시)
+  - CI/CD 상태 확인
+  - 충돌 검증
+  - Squash 머지 실행
+  - 원격 브랜치 삭제
+- **브랜치 정리 및 전환**
+  - 로컬 develop 체크아웃
+  - 원격 동기화 (git pull)
+  - 로컬 feature 브랜치 삭제
 - 리뷰어 자동 할당 및 라벨링
 - GitHub CLI 연동 및 원격 동기화
 
@@ -304,8 +342,21 @@ Task 2 (sonnet): 문서 구조 분석
 
 - Living Document 완전 동기화 + @TAG 검증/보정
 - gh CLI가 설정된 경우에 한해 PR Ready 전환과 라벨링을 선택적으로 실행
+- **--auto-merge 플래그 사용 시 완전 자동화**:
+  1. 문서 동기화 완료
+  2. git push origin feature/SPEC-{ID}
+  3. gh pr ready {PR_NUMBER}
+  4. CI/CD 상태 확인 (gh pr checks)
+  5. gh pr merge --squash --delete-branch
+  6. git checkout develop && git pull origin develop
+  7. 다음 작업 준비 완료 알림
 
 **중요**: 모든 Git 작업(커밋, 동기화, PR 관리)은 git-manager 에이전트가 전담하므로, 이 커멘드에서는 Git 작업을 직접 실행하지 않습니다.
+
+**브랜치 정책**:
+- 베이스 브랜치: `develop` (GitFlow 표준)
+- 머지 후: 자동으로 `develop` 체크아웃
+- 다음 `/alfred:1-spec`은 자동으로 `develop`에서 시작
 
 ## 동기화 상세(요약)
 
@@ -349,14 +400,28 @@ Task 2 (sonnet): 문서 구조 분석
 
 ### 개발 사이클 완료
 
+**기본 모드 (PR Ready만)**:
 ```
 🔄 MoAI-ADK 3단계 워크플로우 완성:
-✅ /alfred:1-spec → EARS 명세 작성
+✅ /alfred:1-spec → EARS 명세 작성 (feature/SPEC-{ID} 브랜치)
 ✅ /alfred:2-build → TDD 구현
-✅ /alfred:3-sync → 문서 동기화
+✅ /alfred:3-sync → 문서 동기화 + PR Ready
 
-🎉 다음 기능 개발 준비 완료
-> /alfred:1-spec "다음 기능 설명"
+⏳ 다음 단계: PR 리뷰 및 수동 머지 필요
+> gh pr view (PR 확인)
+> gh pr merge --squash (리뷰 후 머지)
+```
+
+**자동 머지 모드 (권장)**:
+```
+🔄 완전 자동화된 GitFlow 워크플로우:
+✅ /alfred:1-spec → EARS 명세 작성 (from develop)
+✅ /alfred:2-build → TDD 구현
+✅ /alfred:3-sync --auto-merge → 문서 동기화 + PR 머지 + 브랜치 정리
+
+🎉 develop 브랜치로 자동 전환 완료!
+📍 현재 위치: develop (다음 작업 준비됨)
+> /alfred:1-spec "다음 기능 설명"  # develop에서 새 브랜치 생성
 ```
 
 ### 통합 프로젝트 모드

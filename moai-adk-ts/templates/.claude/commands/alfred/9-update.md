@@ -11,7 +11,51 @@ tools: Read, Write, Bash, Grep, Glob
 
 ## HISTORY
 
-### v2.0.0 (2025-10-06) - Option C 하이브리드 완성
+### v0.2.6 (TBD) - 지능형 병합 시스템 🔄
+- **ADDED**: Step 10 (CLAUDE.md) 지능형 병합 로직
+  - 기존: 사용자 수정 → 보존만 (업데이트 없음)
+  - 개선: **템플릿 최신 구조 + 프로젝트 정보 유지** 병합
+  - 추출: 프로젝트 이름, 설명, 버전, 모드
+  - 주입: 템플릿 {{변수}}에 사용자 값 삽입
+  - 결과: Alfred 최신 기능 + 사용자 프로젝트 정보 유지
+- **ADDED**: Step 11 (.moai/config.json) 스마트 딥 병합
+  - JSON 필드별 병합 전략 정의 (표 형식 문서화)
+  - `project.*` → 사용자 값 100% 유지
+  - `constitution.*` → 사용자 정책 유지, 새 필드는 템플릿 추가
+  - `git_strategy.*` → 사용자 워크플로우 완전 보존
+  - `tags.categories` → 템플릿 + 사용자 카테고리 병합
+  - `pipeline.*` → 최신 명령어 + 사용자 진행 상태 유지
+- **IMPROVED**: 데이터 보호 전략 3단계 체계화
+  1. 완전 보존 🔒: SPEC, 리포트, 프로젝트 문서
+  2. 지능형 병합 🔄: CLAUDE.md, config.json
+  3. 템플릿 교체 ✅: 시스템 파일
+- **IMPROVED**: 출력 메시지 업데이트
+  - "🔄 CLAUDE.md (템플릿 최신화 + 프로젝트 정보 유지)"
+  - "🔄 config.json (스마트 병합: 템플릿 구조 + 사용자 설정)"
+- **ADDED**: JSON 파싱 실패 시 안전 모드
+  - 백업 생성 → 템플릿으로 교체 → 수동 복구 안내
+- **PRINCIPLE**: 사용자 데이터 손실 제로, 자동 업데이트 + 수동 개입 최소화
+- **AUTHOR**: @alfred
+- **RATIONALE**: 템플릿 최신화와 사용자 데이터 보존 양립
+
+### v0.2.5 (2025-10-06) - 사용자 작업물 완전 보존 🔒
+- **IMPROVED**: Step 7-9 (프로젝트 문서) 보호 정책 강화
+  - 기존: 사용자 수정 → 백업 후 덮어쓰기 (내용 손실)
+  - 개선: 사용자 수정 → **완전 보존** (덮어쓰지 않음)
+- **IMPROVED**: Step 10 (CLAUDE.md) 보호 정책 강화
+  - `{{PROJECT_NAME}}` 패턴 없으면 사용자 작업물로 간주
+  - 보존 메시지: "⏭️ 사용자 작업물 보존"
+- **IMPROVED**: 출력 예시 업데이트
+  - 템플릿 → 최신: "✅ (템플릿 → 최신 버전)"
+  - 사용자 수정 → 보존: "⏭️ (사용자 작업물 보존)"
+  - 새로 생성: "✨ (새로 생성)"
+- **ADDED**: 최신 템플릿 참조 경로 안내
+  - 사용자가 수동으로 새 필드 추가 가능하도록 가이드
+- **PRINCIPLE**: SPEC 파일처럼 프로젝트 문서도 사용자 작업물 완전 보호
+- **AUTHOR**: @alfred
+- **RATIONALE**: 프로젝트 컨텍스트 손실 방지, 사용자 신뢰 강화
+
+### v0.2.4 (2025-10-02) - Option C 하이브리드 완성
 - **REFACTORED**: Phase 4를 Alfred가 Claude Code 도구로 직접 실행 (TypeScript 코드 제거)
 - **REFACTORED**: Phase 5 검증을 Claude Code 도구로 전환 ([Glob], [Read], [Grep])
 - **ADDED**: Phase 5.5 품질 검증 독립 섹션 (trust-checker 연동)
@@ -26,9 +70,18 @@ tools: Read, Write, Bash, Grep, Glob
 - **SPEC**: SPEC-UPDATE-REFACTOR-001
 - **REVIEW**: cc-manager 품질 점검 통과 (P0 6개, P1 3개 완료)
 
-### v1.0.0 (Initial)
+### v0.1.0 (2025-09-01) - Initial
 - **INITIAL**: /alfred:9-update 명령어 최초 작성
 - **AUTHOR**: @alfred
+
+---
+
+**버전 관리 정책**:
+- MoAI-ADK 패키지 버전을 따름 (Semantic Versioning)
+- `v0.x.y` → 개발 버전 (현재)
+- `v1.0.0+` → 정식 릴리스 (프로덕션 준비)
+- HISTORY 버전 = 해당 기능이 포함된 MoAI-ADK 릴리스 버전
+- 날짜: 실제 릴리스 날짜 또는 TBD (예정)
 
 ## 커맨드 개요
 
@@ -90,10 +143,16 @@ else
 fi
 ```
 
-### Phase 4: Alfred가 Claude Code 도구로 템플릿 복사
+### Phase 4: Alfred가 Claude Code 도구로 템플릿 복사/병합
 
 **담당**: Alfred (직접 실행, 에이전트 위임 없음)
 **도구**: [Bash], [Glob], [Read], [Grep], [Write]
+
+**처리 방식**:
+- Step 2-6: 시스템 파일 (명령어, 에이전트, 훅, 스타일, 가이드) → **전체 교체** ✅
+- Step 7-9: 프로젝트 문서 (product, structure, tech) → **사용자 수정 시 보존** 🔒
+- Step 10: CLAUDE.md → **지능형 병합** 🔄
+- Step 11: config.json → **스마트 딥 병합** 🔄
 
 **실행 절차**:
 
@@ -109,10 +168,12 @@ fi
 TEMPLATE_ROOT="{npm_root}/moai-adk/templates"
 ```
 
-**보존 대상 (절대 덮어쓰지 않음)**:
-- `.moai/specs/` - 모든 SPEC 파일
-- `.moai/reports/` - 동기화 리포트
-- `.moai/config.json` - 프로젝트 설정
+**보존/병합 대상**:
+- `.moai/specs/` - 모든 SPEC 파일 (완전 보존) 🔒
+- `.moai/reports/` - 동기화 리포트 (완전 보존) 🔒
+- `.moai/config.json` - 프로젝트 설정 (스마트 병합) 🔄
+- `.moai/project/*.md` - 프로젝트 문서 (사용자 수정 시 보존) 🔒
+- `CLAUDE.md` - 프로젝트 지침 (지능형 병합) 🔄
 
 ---
 
@@ -222,7 +283,7 @@ TEMPLATE_ROOT="{npm_root}/moai-adk/templates"
 
 ---
 
-#### Step 7-9: 프로젝트 문서 복사 (카테고리 F-H) - 지능적 보호
+#### Step 7-9: 프로젝트 문서 복사 (카테고리 F-H) - 사용자 작업물 보존
 
 **대상**:
 - `.moai/project/product.md`
@@ -239,47 +300,160 @@ TEMPLATE_ROOT="{npm_root}/moai-adk/templates"
 
 [Step 7.2] 템플릿 상태 검증
   → [Grep] "{{PROJECT_NAME}}" -n ".moai/project/product.md"
-  → IF 검색 결과 있음: 템플릿 상태 (Step 7.5로 이동)
-  → IF 검색 결과 없음: 사용자 수정 상태 (Step 7.3 진행)
+  → IF 검색 결과 있음: 템플릿 상태 (Step 7.5로 이동 - 덮어쓰기)
+  → IF 검색 결과 없음: 사용자 수정 상태 (Step 7.3 진행 - 보존)
 
-[Step 7.3] 백업 생성 (사용자 수정 시)
-  → [Read] ".moai/project/product.md"
-  → [Write] ".moai-backup/{timestamp}/.moai/project/product.md"
-  → IF 실패: "❌ 백업 실패, 복사 중단" → 사용자 확인 요청
+[Step 7.3] 사용자 작업물 보존 🔒
+  → "ℹ️  product.md는 이미 프로젝트 정보가 작성되어 있어서 건너뜁니다"
+  → "💡 최신 템플릿 참조: {npm_root}/moai-adk/templates/.moai/project/product.md"
+  → "📝 필요시 수동으로 새 필드 추가 가능"
+  → 복사하지 않고 다음 파일로 이동 (Step 7.6)
 
-[Step 7.4] 백업 로그
-  → "💾 백업 생성: .moai-backup/{timestamp}/.moai/project/product.md"
+[Step 7.4] (예비 - 현재 미사용)
 
-[Step 7.5] 새 템플릿 복사
+[Step 7.5] 새 템플릿 복사 (템플릿 상태 또는 파일 없음)
   → [Read] "{npm_root}/moai-adk/templates/.moai/project/product.md"
   → [Write] ".moai/project/product.md"
   → IF 실패: [Bash] mkdir -p .moai/project 후 재시도
 
 [Step 7.6] 완료 메시지
-  → "✅ .moai/project/product.md (백업: yes/no)"
+  → 템플릿 상태였던 경우: "✅ .moai/project/product.md (템플릿 → 최신 버전)"
+  → 사용자 수정 상태였던 경우: "⏭️  .moai/project/product.md (사용자 작업물 보존)"
+  → 새로 생성한 경우: "✨ .moai/project/product.md (새로 생성)"
 ```
 
-**보호 정책**:
+**보호 정책** (개선됨):
 - `{{PROJECT_NAME}}` 패턴 존재 → 템플릿 상태, 안전하게 덮어쓰기
-- 패턴 없음 → 사용자 수정, 백업 후 덮어쓰기
+- 패턴 없음 → **사용자 수정, 보존 (덮어쓰지 않음)** 🔒
 - 파일 없음 → 새로 생성
 
 ---
 
-#### Step 10: CLAUDE.md 복사 (카테고리 I)
+#### Step 10: CLAUDE.md 병합 (카테고리 I) - 지능형 병합
 
 **대상**: `CLAUDE.md` (프로젝트 루트)
 
+**병합 전략**: 템플릿 최신 구조 + 사용자 프로젝트 정보 유지
+
 ```text
-[Step 10.1-10.6] 카테고리 F-H와 동일 절차
-  → 경로: "./CLAUDE.md"
-  → 백업 경로: ".moai-backup/{timestamp}/CLAUDE.md"
-  → Grep 패턴: "{{PROJECT_NAME}}"
+[Step 10.1] 기존 파일 존재 확인
+  → [Read] "./CLAUDE.md"
+  → IF 파일 없음: Step 10.6으로 이동 (새로 생성)
+  → IF 파일 있음: Step 10.2 진행
+
+[Step 10.2] 템플릿 상태 검증
+  → [Grep] "{{PROJECT_NAME}}" -n "./CLAUDE.md"
+  → IF 검색 결과 있음: 템플릿 상태 (Step 10.6으로 이동 - 덮어쓰기)
+  → IF 검색 결과 없음: 사용자 수정 상태 (Step 10.3 진행 - 병합)
+
+[Step 10.3] 사용자 프로젝트 정보 추출
+  → [Grep] "^- \*\*이름\*\*:" "./CLAUDE.md" → project_name
+  → [Grep] "^- \*\*설명\*\*:" "./CLAUDE.md" → project_description
+  → [Grep] "^- \*\*버전\*\*:" "./CLAUDE.md" → project_version
+  → [Grep] "^- \*\*모드\*\*:" "./CLAUDE.md" → project_mode
+  → "📋 추출된 정보: {project_name} v{project_version} ({project_mode})"
+
+[Step 10.4] 최신 템플릿 읽기
+  → [Read] "{npm_root}/moai-adk/templates/CLAUDE.md"
+  → 템플릿 내용을 메모리에 저장
+
+[Step 10.5] 템플릿에 사용자 정보 주입 (병합)
+  → {{PROJECT_NAME}} → {project_name}
+  → {{PROJECT_DESCRIPTION}} → {project_description}
+  → {{PROJECT_VERSION}} → {project_version}
+  → {{PROJECT_MODE}} → {project_mode}
+  → [Write] "./CLAUDE.md" (병합된 내용)
+  → "🔄 CLAUDE.md 병합 완료 (템플릿 최신화 + 프로젝트 정보 유지)"
+
+[Step 10.6] 새 템플릿 복사 (템플릿 상태 또는 파일 없음)
+  → [Read] "{npm_root}/moai-adk/templates/CLAUDE.md"
+  → [Write] "./CLAUDE.md"
+
+[Step 10.7] 완료 메시지
+  → 템플릿 상태였던 경우: "✅ CLAUDE.md (템플릿 → 최신 버전)"
+  → 병합한 경우: "🔄 CLAUDE.md (템플릿 최신화 + 프로젝트 정보 유지)"
+  → 새로 생성한 경우: "✨ CLAUDE.md (새로 생성)"
 ```
 
-**특수 케이스**:
-- CLAUDE.md는 프로젝트 루트에 위치
-- 백업 경로도 타임스탬프 디렉토리 바로 아래
+**병합 정책**:
+- 템플릿 상태 → 전체 교체
+- 사용자 수정 → **지능형 병합** 🔄
+  - 템플릿 최신 구조 사용
+  - 프로젝트 정보(이름, 설명, 버전, 모드) 유지
+  - Alfred 에이전트 목록, 워크플로우 등은 최신 템플릿 반영
+- 파일 없음 → 새로 생성
+
+---
+
+#### Step 11: config.json 병합 (카테고리 J) - 스마트 병합
+
+**대상**: `.moai/config.json` (프로젝트 설정)
+
+**병합 전략**: 템플릿 최신 구조 + 사용자 설정값 유지
+
+```text
+[Step 11.1] 기존 파일 존재 확인
+  → [Read] ".moai/config.json"
+  → IF 파일 없음: Step 11.7로 이동 (새로 생성)
+  → IF 파일 있음: Step 11.2 진행
+
+[Step 11.2] 템플릿 상태 검증
+  → [Grep] "{{PROJECT_NAME}}" -n ".moai/config.json"
+  → IF 검색 결과 있음: 템플릿 상태 (Step 11.7로 이동 - 덮어쓰기)
+  → IF 검색 결과 없음: 사용자 설정 상태 (Step 11.3 진행 - 병합)
+
+[Step 11.3] 사용자 설정값 추출 (JSON 파싱)
+  → project.name → user_project_name
+  → project.description → user_project_description
+  → project.version → user_project_version
+  → project.mode → user_project_mode
+  → project.created_at → user_created_at
+  → constitution.test_coverage_target → user_test_coverage
+  → constitution.simplicity_threshold → user_simplicity_threshold
+  → git_strategy.* → user_git_strategy (전체 보존)
+  → tags.categories → user_tag_categories (사용자 추가 카테고리)
+  → pipeline.current_stage → user_current_stage
+  → "📋 추출 완료: {user_project_name} v{user_project_version}"
+
+[Step 11.4] 최신 템플릿 읽기
+  → [Read] "{npm_root}/moai-adk/templates/.moai/config.json"
+  → 템플릿 JSON을 메모리에 파싱
+
+[Step 11.5] 딥 병합 (Deep Merge)
+  → project.* → 사용자 값 우선
+  → constitution.* → 사용자 수정값 유지, 새 필드는 템플릿 기본값
+  → git_strategy.* → 사용자 설정 완전 유지
+  → tags.categories → 템플릿 + 사용자 추가 (중복 제거)
+  → pipeline.available_commands → 템플릿 최신 목록
+  → pipeline.current_stage → 사용자 값 유지
+  → _meta.* → 템플릿 최신 TAG 참조
+
+[Step 11.6] 병합 결과 저장
+  → [Write] ".moai/config.json" (병합된 JSON, 들여쓰기 2칸)
+  → "🔄 config.json 병합 완료"
+
+[Step 11.7] 새 템플릿 복사 (템플릿 상태 또는 파일 없음)
+  → [Read] "{npm_root}/moai-adk/templates/.moai/config.json"
+  → [Write] ".moai/config.json"
+
+[Step 11.8] 완료 메시지
+  → 템플릿 상태였던 경우: "✅ config.json (템플릿 → 최신 버전)"
+  → 병합한 경우: "🔄 config.json (스마트 병합: 템플릿 구조 + 사용자 설정)"
+  → 새로 생성한 경우: "✨ config.json (새로 생성)"
+```
+
+**병합 정책** (필드별):
+
+| 필드 | 병합 전략 | 이유 |
+|------|----------|------|
+| `project.*` | 사용자 값 100% 유지 | 프로젝트 식별 정보 |
+| `constitution.test_coverage_target` | 사용자 값 유지 | 팀 정책 |
+| `constitution.simplicity_threshold` | 사용자 값 유지 | 팀 정책 |
+| `git_strategy.*` | 사용자 값 100% 유지 | 워크플로우 설정 |
+| `tags.categories` | 병합 (템플릿 + 사용자) | 확장 가능 |
+| `pipeline.available_commands` | 템플릿 최신 | 시스템 명령어 |
+| `pipeline.current_stage` | 사용자 값 유지 | 진행 상태 |
+| `_meta.*` | 템플릿 최신 | TAG 참조 |
 
 ---
 
@@ -288,6 +462,7 @@ TEMPLATE_ROOT="{npm_root}/moai-adk/templates"
 - 한 파일 실패가 전체 프로세스를 중단시키지 않음
 - 실패한 파일 목록 수집하여 Phase 4 종료 후 보고
 - 디렉토리 없음 → `mkdir -p` 자동 실행 후 재시도
+- JSON 파싱 실패 → 백업 생성 후 템플릿으로 교체 (안전 모드)
 
 ### Phase 5: 업데이트 검증
 
@@ -490,15 +665,18 @@ TEMPLATE_ROOT="{npm_root}/moai-adk/templates"
    npm install moai-adk@latest
    ✅ 패키지 업데이트 완료
 
-📄 Phase 4: Alfred가 템플릿 복사 중...
-   → product.md: 템플릿 (덮어쓰기)
-   → structure.md: 사용자 수정 (백업 완료)
-   → tech.md: 새로 생성
-   → chmod +x policy-block.cjs
-   → chmod +x pre-write-guard.cjs
-   → chmod +x session-notice.cjs
-   → chmod +x tag-enforcer.cjs
-   ✅ 42개 파일 처리 완료
+📄 Phase 4: Alfred가 템플릿 복사/병합 중...
+   ✅ .claude/commands/alfred/ (~10개 파일 복사 완료)
+   ✅ .claude/agents/alfred/ (~9개 파일 복사 완료)
+   ✅ .claude/hooks/alfred/ (4개 파일 복사 + 권한 설정 완료)
+   ✅ .claude/output-styles/alfred/ (4개 파일 복사 완료)
+   ✅ .moai/memory/development-guide.md (무조건 업데이트)
+   ✅ .moai/project/product.md (템플릿 → 최신 버전)
+   ⏭️  .moai/project/structure.md (사용자 작업물 보존)
+   ✨ .moai/project/tech.md (새로 생성)
+   🔄 CLAUDE.md (템플릿 최신화 + 프로젝트 정보 유지)
+   🔄 .moai/config.json (스마트 병합: 템플릿 구조 + 사용자 설정)
+   ✅ 템플릿 파일 처리 완료
 
 🔍 검증 중...
    [Bash] npm list moai-adk@0.0.2 ✅
@@ -546,15 +724,29 @@ TEMPLATE_ROOT="{npm_root}/moai-adk/templates"
 - 백업 위치: `.moai-backup/YYYY-MM-DD-HH-mm-ss/`
 - 수동 삭제 전까지 영구 보존
 
-**충돌 방지**:
-- `.moai/specs/` - 사용자 SPEC 파일 절대 건드리지 않음
-- `.moai/config.json` - 프로젝트 설정 보존
-- `.moai/reports/` - 동기화 리포트 보존
+**데이터 보호 전략** (✨ v0.2.6):
 
-**사용자 수정 보호** (✨ 신규):
-- `MoAI-ADK` 패턴 검증
-- 사용자 수정 파일 자동 백업
-- 백업 경로: `{파일명}.backup-{타임스탬프}`
+1. **완전 보존** 🔒:
+   - `.moai/specs/` - 사용자 SPEC 파일 절대 건드리지 않음
+   - `.moai/reports/` - 동기화 리포트 보존
+   - `.moai/project/*.md` - 프로젝트 문서 (사용자 수정 시)
+
+2. **지능형 병합** 🔄:
+   - **CLAUDE.md**: 템플릿 최신 구조 + 프로젝트 정보 유지
+     - 프로젝트 이름, 설명, 버전, 모드 추출 → 템플릿 주입
+     - Alfred 에이전트 목록, 워크플로우는 최신 템플릿 반영
+
+   - **.moai/config.json**: 스마트 딥 병합
+     - `project.*` → 사용자 값 100% 유지
+     - `constitution.*` → 사용자 정책 유지, 새 필드는 템플릿 기본값
+     - `git_strategy.*` → 사용자 워크플로우 완전 보존
+     - `tags.categories` → 템플릿 + 사용자 추가 카테고리 병합
+     - `pipeline.available_commands` → 템플릿 최신 명령어
+     - `pipeline.current_stage` → 사용자 진행 상태 유지
+
+3. **템플릿 판단 기준**:
+   - `{{PROJECT_NAME}}` 패턴 존재 → 템플릿 상태 (전체 교체)
+   - 패턴 없음 → 사용자 수정 (보존 또는 병합)
 
 **롤백 지원**:
 ```bash
@@ -706,6 +898,11 @@ Phase 5 검증 중...
 
 ## 버전 호환성
 
-- **v0.0.x → v0.0.y**: 패치 업데이트 (완전 호환)
-- **v0.0.x → v0.1.x**: 마이너 업데이트 (설정 확인 권장)
-- **v0.x.x → v1.x.x**: 메이저 업데이트 (마이그레이션 가이드 필수)
+**MoAI-ADK Semantic Versioning** (`v0.x.y` 기준):
+
+- **v0.2.x → v0.2.y**: 패치 업데이트 (완전 호환, 버그 수정/문서 개선)
+- **v0.2.x → v0.3.x**: 마이너 업데이트 (신규 기능 추가, 설정 확인 권장)
+- **v0.x.x → v1.x.x**: 메이저 업데이트 (Breaking Changes, 마이그레이션 가이드 필수)
+
+**현재 버전**: v0.2.5
+**다음 릴리스**: v0.2.6 (지능형 병합 시스템)

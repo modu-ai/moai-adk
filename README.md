@@ -90,7 +90,7 @@ Alfred는 특정 언어나 프레임워크에 종속되지 않습니다. **Pytho
 
 - ✅ Bun 또는 npm 설치됨
 - ✅ Claude Code 실행 중
-- ✅ Git 설치됨 (선택사항)
+- ✅ Git 설치됨 **(필수)** - Personal/Team 모드 공통 필수 요구사항
 
 ### ⚡ 3단계로 시작하기
 
@@ -132,11 +132,26 @@ claude
 /alfred:8-project
 ```
 
-Alfred가 자동으로 수행:
+**Alfred가 자동으로 수행** (v2.0.0):
 
-- `.moai/project/` 문서 3종 생성 (product/structure/tech.md)
-- 언어별 최적 도구 체인 설정
-- 프로젝트 컨텍스트 완벽 이해
+- **프로젝트 문서 3종 자동 생성**:
+  - `.moai/project/product.md` - 제품 비전, 타겟 유저, 핵심 기능
+  - `.moai/project/structure.md` - 아키텍처, 모듈 구조, 디렉토리 레이아웃
+  - `.moai/project/tech.md` - 기술 스택, 개발 도구, 의존성 관리
+
+- **Alfred 브랜딩 경로 자동 감지**:
+  - `.claude/alfred/` 디렉토리 구조 생성
+  - Claude Code 명령어 파일 최적화 배치
+
+- **언어별 최적 도구 체인 자동 설정**:
+  - TypeScript → Vitest + Biome
+  - Python → pytest + ruff
+  - Go → go test + golint
+  - Flutter → flutter test + dart analyze
+
+- **프로젝트 컨텍스트 완벽 이해**:
+  - 프로젝트 메타데이터 v2.0.0 구조로 저장
+  - MoAI-ADK 철학 (`constitution`, `git_strategy`, `tags`, `pipeline`) 반영
 
 #### 3️⃣ 첫 기능 개발 (1분 30초)
 
@@ -157,7 +172,7 @@ Alfred가 자동으로 수행:
 
 **생성된 것들:**
 
-- ✅ `.moai/specs/SPEC-AUTH-001.md` (명세)
+- ✅ `.moai/specs/SPEC-AUTH-001/spec.md` (명세)
 - ✅ `tests/auth/login.test.ts` (테스트)
 - ✅ `src/services/auth.ts` (구현)
 - ✅ `docs/api/auth.md` (문서)
@@ -272,7 +287,7 @@ graph LR
    - v1.0.0 (2025-10-02): INITIAL - JWT 인증 SPEC 최초 작성
    ```
 
-**실제 생성되는 파일 예시** (`.moai/specs/SPEC-AUTH-001.md`):
+**실제 생성되는 파일 예시** (`.moai/specs/SPEC-AUTH-001/spec.md`):
 
 ```markdown
 ---
@@ -341,7 +356,7 @@ Alfred가 SPEC을 읽고 테스트 코드를 먼저 생성합니다 (`@TEST:AUTH
 
 ```typescript
 // tests/auth/login.test.ts
-// @TEST:AUTH-001 | SPEC: SPEC-AUTH-001.md
+// @TEST:AUTH-001 | SPEC: SPEC-AUTH-001/spec.md
 
 import { describe, it, expect } from 'vitest';
 import { loginUser } from '@/services/auth';
@@ -380,7 +395,7 @@ describe('JWT 로그인 API', () => {
 
 ```typescript
 // src/services/auth.ts
-// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth/login.test.ts
+// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001/spec.md | TEST: tests/auth/login.test.ts
 
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
@@ -424,7 +439,7 @@ export async function loginUser(email: string, password: string) {
 
 ```typescript
 // src/services/auth.ts
-// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth/login.test.ts
+// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001/spec.md | TEST: tests/auth/login.test.ts
 
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
@@ -514,7 +529,7 @@ function getJwtSecret(): string {
 1. **TAG 체인 검증**: `@SPEC:AUTH-001` → `@TEST:AUTH-001` → `@CODE:AUTH-001` 체인이 완전한지 검증합니다.
 
    ```bash
-   ✅ SPEC-AUTH-001.md에 @SPEC:AUTH-001 존재
+   ✅ SPEC-AUTH-001/spec.md에 @SPEC:AUTH-001 존재
    ✅ tests/auth/login.test.ts에 @TEST:AUTH-001 존재
    ✅ src/services/auth.ts에 @CODE:AUTH-001 존재
    ✅ TAG 체인 완전함
@@ -539,7 +554,7 @@ function getJwtSecret(): string {
 
    JWT 토큰 기반 사용자 로그인
 
-   - SPEC: SPEC-AUTH-001.md
+   - SPEC: SPEC-AUTH-001/spec.md
    - 구현: src/services/auth.ts
    - 테스트: tests/auth/login.test.ts
 
@@ -801,7 +816,7 @@ scope:
 
 ```mermaid
 graph LR
-    A["@SPEC:AUTH-001<br/>.moai/specs/SPEC-AUTH-001.md<br/>요구사항 명세"]
+    A["@SPEC:AUTH-001<br/>.moai/specs/SPEC-AUTH-001/spec.md<br/>요구사항 명세"]
     B["@TEST:AUTH-001<br/>tests/auth/login.test.ts<br/>테스트 코드"]
     C["@CODE:AUTH-001<br/>src/services/auth.ts<br/>구현 코드"]
     D["@DOC:AUTH-001<br/>docs/api/auth.md<br/>API 문서"]
@@ -839,7 +854,7 @@ rg 'AUTH-001' -n
 #### TypeScript
 
 ```typescript
-// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth.test.ts
+// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001/spec.md | TEST: tests/auth.test.ts
 /**
  * @CODE:AUTH-001: JWT 인증 서비스
  *
@@ -859,7 +874,7 @@ export class AuthService {
 #### Python
 
 ```python
-# @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/test_auth.py
+# @CODE:AUTH-001 | SPEC: SPEC-AUTH-001/spec.md | TEST: tests/test_auth.py
 """
 @CODE:AUTH-001: JWT 인증 서비스
 
@@ -888,7 +903,7 @@ class AuthService:
 #### Flutter/Dart
 
 ```dart
-// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: test/auth_test.dart
+// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001/spec.md | TEST: test/auth_test.dart
 
 /// @CODE:AUTH-001: JWT 인증 서비스
 ///
@@ -976,7 +991,7 @@ Claude Code에서 `/output-style` 명령어로 전환:
 JWT 인증 구현 시작.
 
 /alfred:1-spec "JWT 기반 사용자 인증 API"
-✅ SPEC-AUTH-001.md 생성
+✅ SPEC-AUTH-001/spec.md 생성
 ✅ feature/SPEC-AUTH-001-jwt-auth 브랜치 생성
 
 /alfred:2-build AUTH-001
@@ -1024,7 +1039,7 @@ JWT 인증 구현을 시작합니다.
 
 /alfred:1-spec "JWT 기반 사용자 인증 API"
 
-✅ .moai/specs/SPEC-AUTH-001.md 생성
+✅ .moai/specs/SPEC-AUTH-001/spec.md 생성
    → 요구사항, 제약사항, 테스트 시나리오 포함
    → 나중에 "왜 이렇게 만들었지?" 궁금할 때 참조
 
@@ -1357,6 +1372,25 @@ moai init . -b
 moai init . -f
 ```
 
+**대화형 프롬프트** (v0.2.5+):
+
+`moai init` 실행 시 다음 정보를 대화형으로 수집합니다:
+
+1. **개발자 정보**
+   - Git `user.name`, `user.email` 자동 감지
+   - 미설정 시 프롬프트로 입력받아 Git 전역 설정 및 `.moai/config.json`에 저장
+   - 용도: Git 커밋 서명 `Co-Authored-By: {name} <{email}>`
+
+2. **Git 필수 검증**
+   - Personal 모드: 체크포인트 자동화 필수
+   - Team 모드: GitFlow 전략 필수
+   - Git 미설치 시 설치 안내 후 중단
+
+3. **PR 자동화 설정** (Team 모드만)
+   - Auto PR: `/alfred:3-sync` 실행 시 PR 자동 머지 여부
+   - Draft PR: `/alfred:1-spec` 실행 시 Draft PR 생성 여부
+   - 기본값: `auto_pr: true`, `draft_pr: true`
+
 ### moai doctor
 
 시스템 진단을 실행하여 MoAI-ADK가 올바르게 설치되었는지 확인합니다.
@@ -1671,6 +1705,17 @@ moai restore .moai-backup-YYYY-MM-DD --dry-run
 # 3. 실제 복원
 moai restore .moai-backup-YYYY-MM-DD
 ```
+
+---
+
+## 🙏 Contributors
+
+MoAI-ADK 프로젝트에 기여해주신 분들께 감사드립니다:
+
+- **[@Workuul](https://github.com/Workuul)** - 심볼릭 링크 실행 문제 수정 ([PR #1](https://github.com/modu-ai/moai-adk/pull/1))
+  - `realpathSync()` 적용으로 글로벌 설치 이슈 해결
+  - REPL/eval 환경 방어 로직 추가
+  - JSDoc 문서화 개선
 
 ---
 

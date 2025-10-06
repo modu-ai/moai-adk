@@ -60,7 +60,7 @@ scope:
   - 영구 불변 (한 번 부여하면 변경 불가)
   - 3자리 숫자 사용 (001~999)
   - 도메인은 대문자, 하이픈 사용 가능
-  - 디렉토리명: `SPEC-{ID}/` (예: `SPEC-AUTH-001/`)
+  - 디렉토리명: `.moai/specs/SPEC-{ID}/` (예: `.moai/specs/SPEC-AUTH-001/`)
 
 ### 2. `version` - 버전
 - **타입**: string (Semantic Version)
@@ -271,17 +271,5 @@ labels:
 
 ---
 
-## 자동화 도구 (계획)
-
-향후 추가될 자동화 도구:
-
-1. **SPEC 린터**: 메타데이터 형식 검증
-2. **의존성 그래프 생성기**: `depends_on`, `blocks` 기반 시각화
-3. **우선순위 정렬**: `priority` 기반 작업 순서 제안
-4. **영향도 분석**: `scope` 기반 변경 영향 범위 분석
-
----
-
 **최종 업데이트**: 2025-10-06
-**작성자**: @Goos
-**참조**: [CLAUDE.md](../../CLAUDE.md), [development-guide.md](./development-guide.md)
+**작성자**: @Alfred
