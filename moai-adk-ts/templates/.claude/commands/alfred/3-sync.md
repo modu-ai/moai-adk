@@ -15,6 +15,8 @@ tools: Read, Write, Edit, MultiEdit, Bash(git status:*), Bash(git add:*), Bash(g
 
 **문서 동기화 대상**: $ARGUMENTS
 
+> **표준 2단계 워크플로우** (자세한 내용: `CLAUDE.md` - "Alfred 커맨드 실행 패턴" 참조)
+
 ## 📋 실행 흐름
 
 1. **프로젝트 상태 분석**: Git 변경사항 및 TAG 시스템 검증
@@ -77,8 +79,8 @@ tools: Read, Write, Edit, MultiEdit, Bash(git status:*), Bash(git add:*), Bash(g
 
 **실행 방식**:
 ```bash
-# 코드 변경이 많을 때 자동 실행
-@agent-trust-checker --mode=quick --pre-sync=true
+# 코드 변경이 많을 때 자동 실행 (자연어 메시지)
+@agent-trust-checker "문서 동기화 전 빠른 품질 검증을 수행해주세요"
 ```
 
 **검증 결과 처리**:
@@ -114,7 +116,7 @@ tools: Read, Write, Edit, MultiEdit, Bash(git status:*), Bash(git add:*), Bash(g
 
 ## 기능
 
-- **ULTRATHINK**: doc-syncer 에이전트가 Living Document 동기화와 @TAG 업데이트를 수행합니다. 팀 모드에서만 PR Ready 전환을 선택적으로 실행합니다.
+- **자동 문서 동기화**: doc-syncer 에이전트가 Living Document 동기화와 @TAG 업데이트를 수행합니다. 팀 모드에서만 PR Ready 전환을 선택적으로 실행합니다.
 
 ## 동기화 산출물
 
@@ -130,8 +132,8 @@ tools: Read, Write, Edit, MultiEdit, Bash(git status:*), Bash(git add:*), Bash(g
 다음을 우선적으로 실행하여 동기화 범위를 분석합니다:
 
 ```bash
-# 동기화 대상 및 범위 분석
-@agent-doc-syncer --mode=analysis --target=$ARGUMENTS
+# 동기화 대상 및 범위 분석 (자연어 메시지)
+@agent-doc-syncer "문서 동기화 대상과 범위를 분석해주세요"
 ```
 
 #### 분석 체크리스트
@@ -176,7 +178,7 @@ tools: Read, Write, Edit, MultiEdit, Bash(git status:*), Bash(git add:*), Bash(g
 - **동기화 범위**: [전체/부분/선택적]
 - **PR 처리**: [유지/Ready 전환/새 PR 생성]
 
-### 🚨 주의사항
+### ⚠️ 주의사항
 - **잠재적 충돌**: [문서 충돌 가능성]
 - **TAG 문제**: [끊어진 링크, 중복 TAG]
 - **성능 영향**: [대용량 동기화 예상시간]
@@ -199,8 +201,8 @@ tools: Read, Write, Edit, MultiEdit, Bash(git status:*), Bash(git add:*), Bash(g
 사용자가 **"진행"** 또는 **"시작"**을 선택한 경우에만 다음을 실행합니다:
 
 ```bash
-# 문서 동기화 시작
-@agent-doc-syncer --mode=sync --target=$ARGUMENTS --approved=true
+# 문서 동기화 시작 (자연어 메시지)
+@agent-doc-syncer "Living Document 동기화와 TAG 업데이트를 수행해주세요"
 ```
 
 ### 동기화 단계별 가이드
@@ -385,7 +387,7 @@ Task 2 (sonnet): 문서 구조 분석
 ```
 ⚠️ 부분 동기화 완료 (문제 발견)
 
-🔴 해결 필요한 문제:
+❌ 해결 필요한 문제:
 ├── 끊어진 링크: X개 (구체적 목록)
 ├── 중복 TAG: X개
 └── 고아 TAG: X개
@@ -462,34 +464,14 @@ Task 2 (sonnet): 문서 구조 분석
 
 ## 🧠 Context Management (컨텍스트 관리)
 
-> 본 커맨드는 **컨텍스트 엔지니어링** 원칙을 따릅니다.
-> **컨텍스트 예산/토큰 예산은 다루지 않습니다**.
+> 자세한 내용: `.moai/memory/development-guide.md` - "Context Engineering" 섹션 참조
 
-### JIT Retrieval (필요 시 로딩)
+### 이 커맨드의 핵심 전략
 
-**우선 로드** (동기화 시작 시):
-- `.moai/reports/sync-report-latest.md` - 이전 동기화 상태
+**우선 로드**: `.moai/reports/sync-report-latest.md` (이전 동기화 상태)
+**Compaction 권장**: 문서 동기화 완료 후 다음 기능 개발(1-spec) 시작 전
 
-**필요 시 로드** (TAG 검증 시):
-- `.moai/indexes/tags.db` - TAG 인덱스 (있는 경우)
-- `.moai/specs/` - SPEC 문서 목록
-
-**지연 로드** (전체 스캔 시):
-- `src/` - 전체 소스 파일 (TAG 스캔)
-- `tests/` - 전체 테스트 파일 (TAG 스캔)
-- `docs/` - 문서 파일
-
-### Compaction 권장 시점
-
-**트리거 조건**:
-- 문서 동기화 완료 후 전체 MoAI-ADK 사이클 완성
-- 다음 기능 개발(1-spec) 시작 전
-- 토큰 사용량 > 70% (140,000 / 200,000)
-
-**권장 메시지**:
-```markdown
 **권장사항**: 문서 동기화가 완료되었습니다. 전체 MoAI-ADK 사이클(1-spec → 2-build → 3-sync)이 완료되었으니, 다음 기능 개발 전 `/clear` 또는 `/new` 명령으로 새로운 대화 세션을 시작하세요.
-```
 
 ---
 

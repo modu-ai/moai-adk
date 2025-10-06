@@ -120,7 +120,7 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash, Agent
 - **예상 소요시간**: [시간 산정]
 - **우선순위 영역**: [중점적으로 다룰 영역]
 
-### 🚨 주의사항
+### ⚠️ 주의사항
 - **기존 문서**: [덮어쓰기 vs 보완 전략]
 - **언어 설정**: [자동 감지 vs 수동 설정]
 - **설정 충돌**: [기존 config.json과의 호환성]
