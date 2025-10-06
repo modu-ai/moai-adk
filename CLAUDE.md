@@ -90,6 +90,59 @@ Alfred는 효율적인 컨텍스트 관리를 위해 다음 2가지 전략을 �
 
 ---
 
+## Claude Code Hooks 설정
+
+### Hook 경로 규칙 (필수)
+
+**모든 hook 경로는 `$CLAUDE_PROJECT_DIR` 환경 변수를 사용해야 합니다:**
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/tag-enforcer.cjs",
+            "type": "command"
+          }
+        ],
+        "matcher": "Edit|Write|MultiEdit"
+      }
+    ]
+  }
+}
+```
+
+**이유**:
+- ✅ **상대 경로 문제**: CWD 변경 시 경로 오류 발생 (`/clear` 명령 등)
+- ✅ **절대 경로 문제**: 프로젝트 이동 및 다른 개발자 환경에서 작동 불가
+- ✅ **보안 (TRUST)**: 경로 주입(Path Injection) 취약점 방지
+- ✅ **공식 권장**: Claude Code 공식 문서 기준 (Context7 검증 완료)
+
+**잘못된 예시**:
+```json
+// ❌ 상대 경로 (CWD 변경 시 오류)
+"command": "node .claude/hooks/alfred/tag-enforcer.cjs"
+
+// ❌ 절대 경로 (이식성 없음)
+"command": "node /Users/user/project/.claude/hooks/alfred/tag-enforcer.cjs"
+```
+
+### Alfred Hooks 목록
+
+**PreToolUse** (Edit|Write|MultiEdit):
+- `pre-write-guard.cjs`: 보안 검증 (.env, secrets, .moai/memory/)
+- `tag-enforcer.cjs`: @TAG 규칙 자동 검증
+
+**PreToolUse** (Bash):
+- `policy-block.cjs`: 위험 명령어 차단 (sudo, rm -rf 등)
+
+**SessionStart**:
+- `session-notice.cjs`: 세션 시작 시 프로젝트 상태 표시
+
+---
+
 ## 핵심 철학
 
 - **SPEC-First**: 명세 없이는 코드 없음

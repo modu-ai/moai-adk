@@ -146,7 +146,7 @@ Alfred가 자동으로 수행:
 ### 🎉 완료!
 
 **생성된 것들:**
-- ✅ `.moai/specs/SPEC-AUTH-001.md` (명세)
+- ✅ `.moai/specs/SPEC-AUTH-001/spec.md` (명세)
 - ✅ `tests/auth/login.test.ts` (테스트)
 - ✅ `src/services/auth.ts` (구현)
 - ✅ `docs/api/auth.md` (문서)
@@ -483,7 +483,7 @@ rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/
 ### 사용 예시
 
 ```typescript
-// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth/service.test.ts
+// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001/spec.md | TEST: tests/auth/service.test.ts
 
 /**
  * @CODE:AUTH-001: JWT 인증 서비스
@@ -512,7 +512,7 @@ export class AuthService {
 #### Python
 
 ```python
-# @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/test_auth.py
+# @CODE:AUTH-001 | SPEC: SPEC-AUTH-001/spec.md | TEST: tests/test_auth.py
 """
 @CODE:AUTH-001: JWT 인증 서비스
 
@@ -541,7 +541,7 @@ class AuthService:
 #### Flutter/Dart
 
 ```dart
-// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: test/auth_test.dart
+// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001/spec.md | TEST: test/auth_test.dart
 
 /// @CODE:AUTH-001: JWT 인증 서비스
 ///
@@ -1068,9 +1068,14 @@ bun run check
 
 ---
 
-## 라이선스
+## 🙏 Contributors
 
-이 프로젝트는 [MIT License](LICENSE)를 따릅니다.
+MoAI-ADK 프로젝트에 기여해주신 분들께 감사드립니다:
+
+- **[@Workuul](https://github.com/Workuul)** - 심볼릭 링크 실행 문제 수정 ([PR #1](https://github.com/modu-ai/moai-adk/pull/1))
+  - `realpathSync()` 적용으로 글로벌 설치 이슈 해결
+  - REPL/eval 환경 방어 로직 추가
+  - JSDoc 문서화 개선
 
 ---
 
