@@ -4,7 +4,8 @@ version: 0.1.0
 status: draft
 created: 2025-10-06
 updated: 2025-10-06
-author: @goos
+author: @Goos
+reference: .moai/reports/moai-adk-redesign-masterplan.md
 ---
 
 # @SPEC:BRAND-001: AI-Agent Alfred 브랜딩 일관성 통일
@@ -13,7 +14,7 @@ author: @goos
 
 ### v0.1.0 (2025-10-06)
 - **INITIAL**: Claude Code → AI-Agent Alfred 브랜딩 변경
-- **AUTHOR**: @goos
+- **AUTHOR**: @Goos
 - **REVIEW**: @AI-Alfred
 - **SCOPE**: Git 메시지, 문서, 커밋 서명, PR/Issue 전체 업데이트
 - **CONTEXT**: 프로젝트 정체성 강화 및 브랜딩 일관성 확보

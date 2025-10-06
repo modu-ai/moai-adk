@@ -4,7 +4,8 @@ version: 0.1.0
 status: draft
 created: 2025-10-06
 updated: 2025-10-06
-author: @goos
+author: @Goos
+reference: .moai/reports/moai-adk-redesign-masterplan.md
 related_issue: "https://github.com/modu-ai/moai-adk/issues/2"
 ---
 
@@ -14,7 +15,7 @@ related_issue: "https://github.com/modu-ai/moai-adk/issues/2"
 
 ### v0.1.0 (2025-10-06)
 - **INITIAL**: moai init 비대화형 환경 지원 및 의존성 자동 설치 명세 작성
-- **AUTHOR**: @goos
+- **AUTHOR**: @Goos
 - **REVIEW**: @AI-Alfred
 - **CONTEXT**: GitHub Issue #2 기반
 - **SCOPE**: TTY 자동 감지, --yes 플래그, 의존성 자동 설치, 선택적 의존성 분리, Docker 멀티 플랫폼 테스트

@@ -4,7 +4,8 @@ version: 0.1.0
 status: draft
 created: 2025-10-06
 updated: 2025-10-06
-author: @goos
+author: @Goos
+reference: .moai/reports/moai-adk-redesign-masterplan.md
 labels:
   - refactoring
   - quality
@@ -19,7 +20,7 @@ priority: high
 
 ### v0.1.0 (2025-10-06)
 - **INITIAL**: LOC 제한 준수 리팩토링 명세 작성
-- **AUTHOR**: @goos
+- **AUTHOR**: @Goos
 - **SCOPE**:
   - phase-executor.ts (358 LOC) → <300 LOC 분리
   - template-processor.ts (371 LOC) → <300 LOC 분리

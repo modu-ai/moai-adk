@@ -4,7 +4,8 @@ version: 0.1.0
 status: draft
 created: 2025-10-06
 updated: 2025-10-06
-author: @goos
+author: @Goos
+reference: .moai/reports/moai-adk-redesign-masterplan.md
 priority: medium
 ---
 
@@ -14,7 +15,7 @@ priority: medium
 
 ### v0.1.0 (2025-10-06)
 - **INITIAL**: Installer 패키지 통합 코드 품질 개선 명세 작성
-- **AUTHOR**: @goos
+- **AUTHOR**: @Goos
 - **SCOPE**: DI 패턴 통일, 에러 처리 일관성, TAG 형식 통일, 크로스 플랫폼 개선, 매직 넘버 제거
 - **CONTEXT**: SPEC-REFACTOR-001의 후속 작업으로 코드 품질 및 유지보수성 향상
 

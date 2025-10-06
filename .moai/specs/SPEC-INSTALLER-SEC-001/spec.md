@@ -4,7 +4,8 @@ version: 0.1.0
 status: draft
 created: 2025-10-06
 updated: 2025-10-06
-author: @goos
+author: @Goos
+reference: .moai/reports/moai-adk-redesign-masterplan.md
 labels:
   - security
   - template
@@ -18,7 +19,7 @@ priority: high
 
 ### v0.1.0 (2025-10-06)
 - **INITIAL**: 템플릿 보안 검증 통합 명세 작성
-- **AUTHOR**: @goos
+- **AUTHOR**: @Goos
 - **SCOPE**:
   - template-security.ts의 보안 검증 기능을 template-processor.ts에 통합
   - 템플릿 인젝션 공격 방지

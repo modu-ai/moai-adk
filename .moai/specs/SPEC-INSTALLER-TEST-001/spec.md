@@ -4,7 +4,8 @@ version: 0.1.0
 status: draft
 created: 2025-10-06
 updated: 2025-10-06
-author: @goos
+author: @Goos
+reference: .moai/reports/moai-adk-redesign-masterplan.md
 priority: high
 ---
 
@@ -14,7 +15,7 @@ priority: high
 
 ### v0.1.0 (2025-10-06)
 - **INITIAL**: Installer 패키지 테스트 커버리지 85% 달성 명세 작성
-- **AUTHOR**: @goos
+- **AUTHOR**: @Goos
 - **SCOPE**: 12개 미테스트 파일에 대한 Vitest 기반 단위 테스트 작성
 - **CONTEXT**: SPEC-REFACTOR-001의 후속 작업으로 품질 보증 강화
 

@@ -4,7 +4,8 @@ version: 0.1.0
 status: draft
 created: 2025-10-06
 updated: 2025-10-06
-author: @goos
+author: @Goos
+reference: .moai/reports/moai-adk-redesign-masterplan.md
 priority: high
 ---
 
@@ -14,7 +15,7 @@ priority: high
 
 ### v0.1.0 (2025-10-06)
 - **INITIAL**: 설치 실패 시 자동 롤백 메커니즘 명세 작성
-- **AUTHOR**: @goos
+- **AUTHOR**: @Goos
 - **SCOPE**: 트랜잭션형 설치 프로세스 구현, 실패 시 자동 정리
 - **CONTEXT**: 안정적인 설치 경험 제공 및 부분 설치 상태 방지
 

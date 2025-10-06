@@ -4,7 +4,8 @@ version: 0.1.0
 status: draft
 created: 2025-10-06
 updated: 2025-10-06
-author: @goos
+author: @Goos
+reference: .moai/reports/moai-adk-redesign-masterplan.md
 ---
 
 # @SPEC:INIT-002: Session Notice 초기화 체크 로직 Alfred 브랜딩 정렬
@@ -15,7 +16,7 @@ author: @goos
 - **INITIAL**: Session Notice 초기화 체크 로직 Alfred 브랜딩 정렬 명세 작성
 - **CONTEXT**: `.claude/commands/moai` → `.claude/commands/alfred` 경로 변경 필요
 - **REASON**: Alfred 브랜딩 통일 및 프로젝트 인식 정확도 향상
-- **AUTHOR**: @goos
+- **AUTHOR**: @Goos
 - **REVIEW**: @AI-Alfred (spec-builder)
 
 ---

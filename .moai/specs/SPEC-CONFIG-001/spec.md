@@ -4,7 +4,8 @@ version: 0.1.0
 status: draft
 created: 2025-10-06
 updated: 2025-10-06
-author: @goos
+author: @Goos
+reference: .moai/reports/moai-adk-redesign-masterplan.md
 ---
 
 # @SPEC:CONFIG-001: config.json 스키마 통합 및 표준화
@@ -13,7 +14,7 @@ author: @goos
 
 ### v0.1.0 (2025-10-06)
 - **INITIAL**: config.json 템플릿과 TypeScript 인터페이스 스키마 통합
-- **AUTHOR**: @goos
+- **AUTHOR**: @Goos
 - **REVIEW**: Alfred (자동 검증)
 - **STATUS**: Ready (구현 완료)
 

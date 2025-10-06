@@ -4,7 +4,8 @@ version: 0.1.0
 status: draft
 created: 2025-10-06
 updated: 2025-10-06
-author: @goos
+author: @Goos
+reference: .moai/reports/moai-adk-redesign-masterplan.md
 labels:
   - cli
   - prompts
@@ -20,7 +21,7 @@ priority: high
 
 ### v0.1.0 (2025-10-06)
 - **INITIAL**: Install Prompts Redesign 명세 작성
-- **AUTHOR**: @goos
+- **AUTHOR**: @Goos
 - **SCOPE**:
   - 개발자 이름 프롬프트 추가 (Git 커밋 서명용)
   - Git 필수화 (Personal/Team 모드 모두)
