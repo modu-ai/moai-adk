@@ -16,15 +16,18 @@ import type {
 } from './types';
 
 /**
+ * @CODE:INIT-002 | SPEC: .moai/specs/SPEC-INIT-002/spec.md
  * Check if this is a MoAI project
+ *
+ * Changed from array-based check to explicit variable check for clarity.
+ * Updated path from '.claude/commands/moai' to '.claude/commands/alfred'
+ * to reflect the new branding (moai → alfred).
  */
 export function isMoAIProject(projectRoot: string): boolean {
-  const requiredPaths = [
-    path.join(projectRoot, '.moai'),
-    path.join(projectRoot, '.claude', 'commands', 'moai'),
-  ];
+  const moaiDir = path.join(projectRoot, '.moai');
+  const alfredCommands = path.join(projectRoot, '.claude', 'commands', 'alfred');
 
-  return requiredPaths.every(p => fs.existsSync(p));
+  return fs.existsSync(moaiDir) && fs.existsSync(alfredCommands);
 }
 
 /**
