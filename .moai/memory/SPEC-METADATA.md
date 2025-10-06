@@ -284,4 +284,4 @@ labels:
 
 **최종 업데이트**: 2025-10-06
 **작성자**: @Goos
-**참조**: [CLAUDE.md](../../CLAUDE.md), [development-guide.md](../memory/development-guide.md)
+**참조**: [CLAUDE.md](../../CLAUDE.md), [development-guide.md](./development-guide.md)

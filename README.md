@@ -791,7 +791,7 @@ scope:
   files: [auth-service.ts]      # 핵심 파일
 ```
 
-**상세 가이드**: [SPEC 메타데이터 가이드](.moai/docs/SPEC-METADATA.md)
+**상세 가이드**: [SPEC 메타데이터 가이드](.moai/memory/SPEC-METADATA.md)
 
 ---
 
