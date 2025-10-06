@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.0.3] - 2025-10-06
+
+### Changed (CONFIG-SCHEMA-001)
+
+- **config.json 스키마 통합 및 표준화**
+  - TypeScript 인터페이스와 템플릿 JSON 구조 통합
+  - MoAI-ADK 철학 반영: `constitution`, `git_strategy`, `tags`, `pipeline`
+  - `locale` 필드 추가 (CLI 다국어 지원)
+  - CODE-FIRST 원칙 명시적 보존 (`tags.code_scan_policy.philosophy`)
+
+### Implementation Details
+
+- `@CODE:CONFIG-STRUCTURE-001` - 템플릿 구조 정의 (`templates/.moai/config.json`)
+- `src/core/config/types.ts` - MoAIConfig 인터페이스 전면 재정의
+- `src/core/config/builders/moai-config-builder.ts` - 빌더 로직 통합
+- `src/core/project/template-processor.ts` - 프로세서 인터페이스 통합
+
+### Impact
+
+- ✅ 템플릿 ↔ TypeScript 인터페이스 100% 일치
+- ✅ 자기 문서화 config (철학/원칙 명시)
+- ✅ 타입 안전성 확보 (컴파일 에러 0개)
+- ✅ 하위 호환성 유지 (기존 config 마이그레이션 불필요)
+
+### Documentation
+
+- 스키마 분석 보고서 생성 (`.moai/reports/config-template-analysis.md`)
+- 6개 파일 수정 (+273 -51 LOC)
+
+---
+
 ## [v0.0.2] - 2025-10-06
 
 ### Added (SPEC-INIT-001)
