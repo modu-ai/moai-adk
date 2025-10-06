@@ -756,6 +756,45 @@ Alfred는 모든 코드에 TRUST 5원칙을 적용합니다:
 - CODE-FIRST @TAG 시스템
 - 완전한 추적 체인 보장
 
+### SPEC 메타데이터 구조
+
+모든 SPEC 문서는 표준화된 메타데이터 구조를 따릅니다.
+
+#### 필수 필드 (7개)
+
+```yaml
+id: AUTH-001                    # SPEC 고유 ID
+version: 0.1.0                  # Semantic Version (v0.1.0 = INITIAL)
+status: draft                   # draft|active|completed|deprecated
+created: 2025-09-15            # 생성일 (YYYY-MM-DD)
+updated: 2025-10-01            # 최종 수정일
+author: @Goos                   # 작성자 (GitHub ID)
+priority: high                  # low|medium|high|critical
+```
+
+#### 선택 필드 (의존성 그래프 & 범위)
+
+```yaml
+# 분류
+category: security              # feature|bugfix|refactor|security|docs|perf
+labels: [authentication, jwt]   # 검색 태그
+
+# 관계 (의존성 그래프)
+depends_on: [USER-001]          # 의존하는 SPEC
+blocks: [AUTH-002]              # 차단하는 SPEC
+related_specs: [TOKEN-002]      # 관련 SPEC
+related_issue: "github.com/..."  # GitHub Issue
+
+# 범위 (영향 분석)
+scope:
+  packages: [src/core/auth]     # 영향받는 패키지
+  files: [auth-service.ts]      # 핵심 파일
+```
+
+**상세 가이드**: [SPEC 메타데이터 가이드](.moai/docs/SPEC-METADATA.md)
+
+---
+
 ### @TAG 시스템
 
 모든 코드는 4가지 TAG로 완벽하게 추적됩니다:

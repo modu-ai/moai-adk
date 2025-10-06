@@ -1,6 +1,6 @@
 # SPEC 메타데이터 구조 가이드
 
-> **MoAI-ADK SPEC 메타데이터 표준 (v2.0)**
+> **MoAI-ADK SPEC 메타데이터 표준**
 >
 > 모든 SPEC 문서는 이 메타데이터 구조를 따라야 합니다.
 
@@ -282,7 +282,6 @@ labels:
 
 ---
 
-**버전**: v2.0
 **최종 업데이트**: 2025-10-06
 **작성자**: @Goos
 **참조**: [CLAUDE.md](../../CLAUDE.md), [development-guide.md](../memory/development-guide.md)
