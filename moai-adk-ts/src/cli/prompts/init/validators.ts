@@ -1,10 +1,11 @@
 /**
  * @file Validation functions for init prompts
  * @author MoAI Team
- * @tags @CODE:INIT-VALIDATORS-001 | Chain: @SPEC:INTERACTIVE-INIT-019 -> @CODE:INTERACTIVE-INIT-019
- * Related: @DOC:INTERACTIVE-INIT-019
+ * @tags @CODE:INIT-004 | SPEC: SPEC-INIT-004.md
+ * Related: @CODE:INIT-VALIDATORS-001 | Chain: @SPEC:INTERACTIVE-INIT-019 -> @CODE:INTERACTIVE-INIT-019
  */
 
+import { validateGitHubUrl as validateGitHubUrlCore } from '@/utils/git-detector';
 import { InputValidator } from '@/utils/input-validator';
 
 /**
@@ -21,14 +22,13 @@ export function validateProjectName(input: string): string | true {
 }
 
 /**
- * Validate GitHub URL format
+ * Validate GitHub URL format (integrated with git-detector)
  * @param input User input
  * @returns Validation message or true
  */
 export function validateGitHubUrl(input: string): string | true {
-  const githubRegex = /^https:\/\/github\.com\/[\w-]+\/[\w-]+$/;
-  if (!githubRegex.test(input)) {
-    return 'Please enter a valid GitHub URL (https://github.com/username/repo)';
+  if (!validateGitHubUrlCore(input)) {
+    return 'Please enter a valid GitHub URL (https://github.com/username/repo or git@github.com:username/repo)';
   }
   return true;
 }

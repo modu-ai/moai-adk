@@ -117,6 +117,11 @@ export class CLIApp {
       .option('-f, --force', 'Force overwrite existing files')
       .option('--personal', 'Initialize in personal mode (default)')
       .option('--team', 'Initialize in team mode')
+      .option(
+        '--auto-git',
+        'Automatically initialize Git without prompts (SPEC-INIT-004)'
+      )
+      .option('--locale <locale>', 'Set CLI language (ko|en) (SPEC-INIT-004)')
       .action(
         async (
           project: string | undefined,
@@ -126,11 +131,21 @@ export class CLIApp {
             force?: boolean;
             personal?: boolean;
             team?: boolean;
+            autoGit?: boolean;
+            locale?: string;
           }
         ) => {
           try {
             // Import TTY detector
             const { isTTYAvailable } = await import('@/utils/tty-detector');
+
+            // Validate locale option (SPEC-INIT-004)
+            if (options.locale && !['ko', 'en'].includes(options.locale)) {
+              logger.error(
+                chalk.red('Invalid locale. Only "ko" and "en" are supported.')
+              );
+              process.exit(1);
+            }
 
             // Determine mode: team takes precedence over personal
             const mode = options.team ? 'team' : 'personal';
@@ -140,25 +155,25 @@ export class CLIApp {
             // 2. TTY not available (Claude Code, CI/CD, Docker)
             const useNonInteractive = options.yes || !isTTYAvailable();
 
+            const initOptions = {
+              ...(project && { name: project }),
+              mode: mode as 'personal' | 'team',
+              ...(options.backup !== undefined && { backup: options.backup }),
+              ...(options.force !== undefined && { force: options.force }),
+              ...(options.autoGit !== undefined && {
+                autoGit: options.autoGit,
+              }),
+              ...(options.locale && { locale: options.locale as 'ko' | 'en' }),
+            };
+
             if (useNonInteractive) {
               // Non-interactive mode
-              const result = await this.initCommand.runNonInteractive({
-                ...(project && { name: project }),
-                mode: mode as 'personal' | 'team',
-                ...(options.backup !== undefined && { backup: options.backup }),
-                ...(options.force !== undefined && { force: options.force }),
-              });
-
+              const result =
+                await this.initCommand.runNonInteractive(initOptions);
               process.exit(result.success ? 0 : 1);
             } else {
               // Interactive mode (existing behavior)
-              const result = await this.initCommand.runInteractive({
-                ...(project && { name: project }),
-                mode: mode as 'personal' | 'team',
-                ...(options.backup !== undefined && { backup: options.backup }),
-                ...(options.force !== undefined && { force: options.force }),
-              });
-
+              const result = await this.initCommand.runInteractive(initOptions);
               process.exit(result.success ? 0 : 1);
             }
           } catch (error) {
