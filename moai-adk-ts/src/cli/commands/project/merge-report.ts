@@ -42,8 +42,9 @@ export function generateMergeReport(report: MergeReport): string {
 
   // Metadata
   const timestamp = new Date(report.timestamp);
-  const dateStr = timestamp.toISOString().split('T')[0];
-  const timeStr = timestamp.toTimeString().split(' ')[0];
+  const isoString = timestamp.toISOString();
+  const [dateStr, timeWithZ] = isoString.split('T');
+  const timeStr = timeWithZ.split('.')[0]; // Remove milliseconds and 'Z'
 
   lines.push(`**Execution Time**: ${dateStr} ${timeStr}`);
   lines.push(`**Total Files Processed**: ${getTotalFiles(report)}\n`);

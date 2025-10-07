@@ -10,6 +10,7 @@
 import { describe, test, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import * as os from 'node:os';
 import type { InitCommand } from '@/cli/commands/init/index';
 
 // Mock the prompts module which uses inquirer
@@ -71,9 +72,9 @@ describe('Init Command - Non-Interactive Mode', () => {
     originalStdin = process.stdin;
     originalStdout = process.stdout;
 
-    // Create temporary test directory inside cwd (to pass path traversal check)
+    // Create temporary test directory in OS temp dir (to avoid cwd issues)
     // Add dummy package.json (to pass MoAI package check)
-    testProjectPath = path.join(process.cwd(), '.test-project-' + Date.now());
+    testProjectPath = path.join(os.tmpdir(), '.test-project-' + Date.now());
     if (fs.existsSync(testProjectPath)) {
       fs.rmSync(testProjectPath, { recursive: true, force: true });
     }
