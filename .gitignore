@@ -33,6 +33,10 @@ lerna-debug.log*
 backup-*/
 .moai-backup/
 
+# Project-specific .moai folders (not for package distribution)
+.moai/docs/
+.moai/scripts/
+
 # Package files
 *.tgz
 *.tar.gz
