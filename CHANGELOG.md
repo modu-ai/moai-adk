@@ -7,6 +7,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.10] - 2025-10-07
+
+### Changed (INIT-003 v0.2.1)
+
+#### 백업 조건 완화 - 데이터 손실 방지 강화
+- **Before**: 3개 파일 모두 존재해야 백업 (AND 조건)
+- **After**: 1개 파일이라도 존재하면 백업 (OR 조건)
+- 부분 설치 케이스 대응 (예: `.claude/`만 있는 경우)
+
+#### 선택적 백업 로직
+- 존재하는 파일/폴더만 백업 대상 포함
+- 백업 메타데이터 `backed_up_files` 배열에 실제 백업 목록 기록
+
+#### Emergency Backup
+- `/alfred:8-project` 실행 시 메타데이터 없으면 자동 백업 생성
+- 사용자 안전성 강화 (백업 누락 방지)
+
+#### 코드 개선
+- 공통 유틸리티 `backup-utils.ts` 분리 (5개 함수)
+- Phase A/B 코드 중복 제거
+- @CODE:INIT-003:DATA 확장
+
+### Technical Details (SPEC-INIT-003 v0.2.1)
+- **신규 파일**: backup-utils.ts
+- **수정 파일**: phase-executor.ts, backup-merger.ts
+- **신규 테스트**: +14개 (v0.2.1 시나리오)
+- **TAG 추가**: +5개 (총 70개)
+- **테스트 통과**: 104/104 (100%)
+
+### Related
+- SPEC: SPEC-INIT-003 v0.2.1
+- Commits: 49c6afa (RED), da91fe8 (GREEN), 23d45ef (SPEC)
+
+---
+
+## [v0.3.0] - 2025-10-07
+
+### Added
+
+#### INIT-003: 백업 및 병합 시스템 (2단계 분리 설계)
+
+**설계 전략 변경**: 복잡한 병합 엔진을 moai init에서 제거, 2단계 분리 접근법 도입
+
+**Phase A: 백업만 수행** (`moai init`)
+- `.moai/backups/` 디렉토리 자동 생성
+- 기존 파일 백업 (.claude/, .moai/memory/)
+- 백업 메타데이터 시스템 도입 (latest.json)
+- 백업 상태 추적: `pending` → `merged` / `ignored`
+- @CODE:INIT-003:DATA - backup-metadata.ts
+- @CODE:INIT-003:BACKUP - phase-executor.ts
+
+**Phase B: 병합 선택** (`/alfred:8-project`)
+- 사용자가 백업 복원 여부 선택 UI 제공
+- 지능형 파일별 병합 전략:
+  - **JSON**: Deep Merge (lodash 스타일)
+  - **Markdown**: Section-aware 병합 (헤딩 단위)
+  - **Hooks**: 중복 제거 + 배열 병합
+- 병합 리포트 자동 생성 및 시각화
+- @CODE:INIT-003:MERGE - backup-merger.ts
+- @CODE:INIT-003:DATA - merge-strategies/*
+- @CODE:INIT-003:UI - merge-report.ts
+
+### Changed
+- `moai init` 설치 플로우 최적화 (1-2시간 → 즉시 완료)
+- 백업 생성 자동화 (사용자 개입 최소화)
+- 병합 결정 분리 (/alfred:8-project로 이동)
+
+### Technical Details
+- **TAG 추적성**: 65개 TAG, 19개 파일 (100% 무결성)
+- **테스트 커버리지**: 100% (24개 테스트)
+- **TDD 사이클**: RED → GREEN → REFACTOR 완료
+- **TRUST 5원칙**: 완벽 준수
+
+### Related
+- SPEC: @SPEC:INIT-003 (.moai/specs/SPEC-INIT-003/spec.md)
+- Commits: 90a8c1e, 58fef69, 348f825, 384c010, 072c1ec
+
+---
+
 ## [v0.2.6] - 2025-10-06
 
 ### Added (SPEC-INSTALL-001)

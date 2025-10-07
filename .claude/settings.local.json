@@ -16,7 +16,9 @@
       "Bash(do echo \"=== $dir ===\")",
       "Bash(do if ! grep -q \"^priority:\" \"$file\")",
       "Bash(then echo \"$file\")",
-      "Bash(fi)"
+      "Bash(fi)",
+      "Bash(test:*)",
+      "Bash(awk:*)"
     ]
   },
   "outputStyle": "MoAI Beginner Learning"

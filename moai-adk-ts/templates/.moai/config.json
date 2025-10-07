@@ -3,6 +3,9 @@
     "@CODE:CONFIG-STRUCTURE-001": "@DOC:JSON-CONFIG-001",
     "@SPEC:PROJECT-CONFIG-001": "@SPEC:MOAI-CONFIG-001"
   },
+  "moai": {
+    "version": "{{MOAI_VERSION}}"
+  },
   "constitution": {
     "enforce_tdd": true,
     "principles": {
@@ -48,8 +51,7 @@
     "initialized": true,
     "locale": "ko",
     "mode": "{{PROJECT_MODE}}",
-    "name": "{{PROJECT_NAME}}",
-    "version": "{{PROJECT_VERSION}}"
+    "name": "{{PROJECT_NAME}}"
   },
   "tags": {
     "auto_sync": true,
