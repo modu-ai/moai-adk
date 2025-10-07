@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.10] - 2025-10-07
+
+### Changed (INIT-003 v0.2.1)
+
+#### 백업 조건 완화 - 데이터 손실 방지 강화
+- **Before**: 3개 파일 모두 존재해야 백업 (AND 조건)
+- **After**: 1개 파일이라도 존재하면 백업 (OR 조건)
+- 부분 설치 케이스 대응 (예: `.claude/`만 있는 경우)
+
+#### 선택적 백업 로직
+- 존재하는 파일/폴더만 백업 대상 포함
+- 백업 메타데이터 `backed_up_files` 배열에 실제 백업 목록 기록
+
+#### Emergency Backup
+- `/alfred:8-project` 실행 시 메타데이터 없으면 자동 백업 생성
+- 사용자 안전성 강화 (백업 누락 방지)
+
+#### 코드 개선
+- 공통 유틸리티 `backup-utils.ts` 분리 (5개 함수)
+- Phase A/B 코드 중복 제거
+- @CODE:INIT-003:DATA 확장
+
+### Technical Details (SPEC-INIT-003 v0.2.1)
+- **신규 파일**: backup-utils.ts
+- **수정 파일**: phase-executor.ts, backup-merger.ts
+- **신규 테스트**: +14개 (v0.2.1 시나리오)
+- **TAG 추가**: +5개 (총 70개)
+- **테스트 통과**: 104/104 (100%)
+
+### Related
+- SPEC: SPEC-INIT-003 v0.2.1
+- Commits: 49c6afa (RED), da91fe8 (GREEN), 23d45ef (SPEC)
+
+---
+
 ## [v0.3.0] - 2025-10-07
 
 ### Added
