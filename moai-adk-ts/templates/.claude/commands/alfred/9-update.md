@@ -745,14 +745,10 @@ TEMPLATE_ROOT="{npm_root}/moai-adk/templates"
 # 백업 목록 확인
 ls -la .moai-backup/
 
-# 특정 백업 복원 (수동)
+# 특정 백업 복원
 moai restore .moai-backup/2025-10-02-15-30-00
 
-# 미리보기 (dry-run)
-moai restore .moai-backup/2025-10-02-15-30-00 --dry-run
-
-# 강제 덮어쓰기
-moai restore .moai-backup/2025-10-02-15-30-00 --force
+# 주의: 복원 시 기존 파일을 덮어씁니다. 신중히 선택하세요.
 ```
 
 ## 오류 복구 시나리오

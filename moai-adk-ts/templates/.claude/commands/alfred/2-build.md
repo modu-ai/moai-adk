@@ -151,7 +151,7 @@ TDD 구현 완료 후 `trust-checker` 에이전트가 **자동으로** 품질 �
 
 **실행 방식**:
 ```bash
-# 자동 실행 (자연어 메시지)
+# Alfred가 자동으로 호출 (TDD 구현 완료 시)
 @agent-trust-checker "SPEC-{ID}에 대한 빠른 품질 검증을 수행해주세요"
 ```
 
@@ -270,7 +270,12 @@ TDD 구현 완료 후 `trust-checker` 에이전트가 **자동으로** 품질 �
 2. **GREEN**: 테스트를 통과시키는 최소한의 구현만 추가합니다. 최적화는 REFACTOR 단계로 미룹니다.
 3. **REFACTOR**: 중복 제거, 명시적 네이밍, 구조화 로깅/예외 처리 보강. 필요 시 추가 커밋으로 분리합니다.
 
-> 헌법 Article I은 기본 권장치만 제공하므로, `simplicity_threshold`를 초과하는 구조가 필요하다면 SPEC 또는 ADR에 근거를 남기고 진행하세요.
+**TRUST 5원칙 연계** (상세: `development-guide.md` - "TRUST 5원칙"):
+- **T (Test First)**: RED 단계에서 SPEC 기반 테스트 작성
+- **R (Readable)**: REFACTOR 단계에서 가독성 개선 (파일≤300 LOC, 함수≤50 LOC)
+- **T (Trackable)**: 모든 단계에서 @TAG 추적성 유지
+
+> TRUST 5원칙은 기본 권장치만 제공하므로, `simplicity_threshold`를 초과하는 구조가 필요하다면 SPEC 또는 ADR에 근거를 남기고 진행하세요.
 
 ## 에이전트 역할 분리
 
