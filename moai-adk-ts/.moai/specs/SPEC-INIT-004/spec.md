@@ -2,7 +2,7 @@
 # 필수 필드 (7개)
 id: INIT-004
 version: 0.1.0
-status: draft
+status: completed
 created: 2025-10-07
 updated: 2025-10-07
 author: "@Goos"
@@ -44,6 +44,27 @@ scope:
 ## HISTORY
 
 ### v0.1.0 (2025-10-07)
+- **IMPLEMENTATION COMPLETED**: TDD 사이클 완료 (RED → GREEN → REFACTOR)
+- **AUTHOR**: @Goos
+- **SCOPE**:
+  - detectGitStatus(): .git 폴더 자동 감지 및 저장소 정보 수집
+  - detectGitHubRemote(): GitHub remote 자동 추출 (https/ssh 패턴)
+  - autoInitGit(): Git 저장소 자동 초기화 (질문 없음)
+  - validateGitHubUrl(): GitHub URL 검증 (정규식 기반)
+- **FILES**:
+  - src/utils/git-detector.ts (202 LOC)
+  - src/__tests__/utils/git-detector.test.ts (487 LOC)
+  - src/cli/prompts/init/index.ts (+88 LOC)
+  - src/cli/index.ts (+43 LOC)
+  - src/cli/prompts/init/validators.ts (+12 LOC)
+  - src/types/project.ts (+5 LOC)
+- **TEST**: 23/23 테스트 통과, 커버리지 100% Statements / 97.22% Branches
+- **COMMITS**:
+  - 67847ce: 🔴 RED - Git 자동 감지 테스트 작성
+  - 7300c9d: 🟢 GREEN - Git 자동 감지 및 초기화 구현 완료
+- **CONTEXT**: moai init 명령어 사용자 경험 개선 (질문 4~5개 → 0~2개, 초기화 3분 → 1분)
+
+### v0.0.1 (2025-10-07)
 - **INITIAL**: Git 자동 초기화 및 GitHub 자동 감지 명세 최초 작성
 - **AUTHOR**: @Goos
 - **SCOPE**: moai init 명령어 Git 워크플로우 개선
