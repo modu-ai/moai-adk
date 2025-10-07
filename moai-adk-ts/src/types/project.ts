@@ -44,7 +44,8 @@ export interface ProjectFeature {
 
 /**
  * Project initialization options
- * @tags @CODE:INIT-OPTIONS-001:DATA
+ * @tags @CODE:INIT-004 | SPEC: SPEC-INIT-004.md
+ * Related: @CODE:INIT-OPTIONS-001:DATA
  */
 export interface InitOptions {
   name?: string;
@@ -53,6 +54,8 @@ export interface InitOptions {
   force?: boolean;
   backup?: boolean;
   features?: string[];
+  autoGit?: boolean; // Skip Git prompts and auto-initialize
+  locale?: 'ko' | 'en'; // Language selection
 }
 
 /**

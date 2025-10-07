@@ -1,9 +1,9 @@
 ---
 id: DOCS-001
-version: 0.1.0
-status: draft
+version: 0.2.0
+status: completed
 created: 2025-10-06
-updated: 2025-10-06
+updated: 2025-10-07
 author: @Goos
 priority: high
 category: docs
@@ -28,6 +28,21 @@ scope:
 # @SPEC:DOCS-001: VitePress 문서 사이트 구축
 
 ## HISTORY
+
+### v0.2.0 (2025-10-07)
+- **IMPLEMENTATION COMPLETED**: VitePress Phase 1 문서 구현 완료
+- **TDD CYCLE**: RED (6fdd11b) → GREEN (134cb34) → REFACTOR (23a0b45)
+- **SCOPE**: 6개 핵심 페이지 작성 완료
+  - docs/.vitepress/config.mts (111줄)
+  - docs/index.md (99줄)
+  - docs/guide/getting-started.md (114줄)
+  - docs/guide/what-is-moai-adk.md (133줄)
+  - docs/guide/faq.md (252줄)
+  - docs/concepts/spec-first-tdd.md (253줄)
+- **COMMITS**:
+  - 6fdd11b: test(docs): Add VitePress build and link validation tests
+  - 134cb34: feat(docs): Implement VitePress Phase 1 documentation
+  - 23a0b45: refactor(docs): Improve VitePress quality and structure
 
 ### v0.1.0 (2025-10-06)
 - **INITIAL**: VitePress 문서 사이트 구축 명세 작성
