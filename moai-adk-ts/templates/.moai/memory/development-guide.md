@@ -209,53 +209,32 @@ MoAI-ADK는 Anthropic의 "Effective Context Engineering for AI Agents" 원칙을
 
 ### TAG BLOCK 템플릿
 
-**SPEC 문서 (.moai/specs/)** - **HISTORY 섹션 필수**:
-```markdown
+> **📋 SPEC 메타데이터 표준 (SSOT)**: `spec-metadata.md`
+
+**모든 SPEC 문서는 YAML Front Matter + HISTORY 섹션을 포함**해야 합니다:
+- **필수 필드 7개**: id, version, status, created, updated, author, priority
+- **선택 필드 9개**: category, labels, depends_on, blocks, related_specs, related_issue, scope
+- **HISTORY 섹션**: 모든 버전 변경 이력 기록 (필수)
+
+**전체 템플릿, 필드 상세 설명, 검증 방법**: `spec-metadata.md` 참조
+
+**간단한 참조 예시**:
+```yaml
 ---
-# 필수 필드 (7개)
-id: AUTH-001                    # SPEC 고유 ID
-version: 0.1.0                  # Semantic Version (v0.1.0 = INITIAL)
-status: draft                   # draft|active|completed|deprecated
-created: 2025-09-15            # 생성일 (YYYY-MM-DD)
-updated: 2025-10-01            # 최종 수정일 (YYYY-MM-DD)
-author: @Goos                   # 작성자 (GitHub ID, 단수형)
-priority: high                  # low|medium|high|critical
-
-# 선택 필드 - 분류/메타
-category: security              # feature|bugfix|refactor|security|docs|perf
-labels:                         # 분류 태그 (검색용)
-  - authentication
-  - jwt
-
-# 선택 필드 - 관계 (의존성 그래프)
-depends_on:                     # 의존하는 SPEC (선택)
-  - USER-001
-related_specs:                  # 관련 SPEC (선택)
-  - TOKEN-002
-related_issue: "https://github.com/modu-ai/moai-adk/issues/123"
-
-# 선택 필드 - 범위 (영향 분석)
-scope:
-  packages:                     # 영향받는 패키지
-    - src/core/auth
-  files:                        # 핵심 파일 (선택)
-    - auth-service.ts
-    - jwt-manager.ts
+id: AUTH-001
+version: 0.0.1
+status: draft
+created: 2025-09-15
+updated: 2025-09-15
+author: @Goos
+priority: high
 ---
 
 # @SPEC:AUTH-001: JWT 인증 시스템
 
 ## HISTORY
-
-### v0.1.0 (2025-09-15)
+### v0.0.1 (2025-09-15)
 - **INITIAL**: JWT 기반 인증 시스템 명세 작성
-- **AUTHOR**: @Goos
-- **SCOPE**: 토큰 발급, 검증, 갱신 로직
-- **CONTEXT**: 사용자 인증 강화 요구사항 반영
-
----
-
-## EARS 요구사항
 ...
 ```
 
@@ -287,10 +266,8 @@ scope:
   - **복합 도메인**: 하이픈으로 연결 가능 (예: `UPDATE-REFACTOR-001`)
   - **경고**: 하이픈 3개 이상 연결 시 단순화 권장
 - **TAG 내용**: 자유롭게 수정 가능 (HISTORY에 기록 필수)
-- **버전 관리**: Semantic Versioning (Major.Minor.Patch)
-  - **Major**: BREAKING 변경 (하위 호환성 깨짐)
-  - **Minor**: ADDED 기능 추가 (하위 호환성 유지)
-  - **Patch**: FIXED/CHANGED 수정 (버그 수정, 개선)
+- **버전 관리**: Semantic Versioning (v0.0.1 → v0.1.0 → v1.0.0)
+  - 상세 버전 체계: `spec-metadata.md#버전-체계` 참조
 - **새 TAG 생성 전 중복 확인**: `rg "@SPEC:{ID}" -n .moai/specs/` (필수)
 - **TAG 검증**: `rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/`
 - **SPEC 버전 일치성 확인**: `rg "SPEC-{ID}.md v" -n`

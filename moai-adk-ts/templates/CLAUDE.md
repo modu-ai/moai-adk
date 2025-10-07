@@ -162,13 +162,15 @@ git-manager는 커밋 생성 시 자동으로 `.moai/config.json`의 `project.lo
 
 ## Context Engineering 전략
 
-> 본 지침군은 **컨텍스트 엔지니어링**(JIT Retrieval, Compaction)을 핵심 원리로 한다. 아래 원칙으로 일관성/성능을 확보한다.
+> **상세 구현 가이드**: @.moai/memory/development-guide.md
+
+> 본 지침군은 **컨텍스트 엔지니어링**(JIT Retrieval, Compaction)을 핵심 원리로 한다.
 
 Alfred는 효율적인 컨텍스트 관리를 위해 다음 2가지 전략을 사용합니다:
 
 ### 1. JIT (Just-in-Time) Retrieval
 필요한 순간에만 문서를 로드하여 초기 컨텍스트 부담을 최소화:
-- 전체 문서를 선로딩하지 말고, **식별자(파일경로/링크/쿼리)**만 보유 후 필요 시 조회→요약 주입
+- 전체 문서를 선로딩하지 말고, **식별자(파일경로/링크/쿼리)**만 보유 후 필요 시 조회
 - `/alfred:1-spec` → `product.md` 참조
 - `/alfred:2-build` → `SPEC-XXX/spec.md` + `development-guide.md` 참조
 - `/alfred:3-sync` → `sync-report.md` + TAG 인덱스 참조
@@ -176,11 +178,9 @@ Alfred는 효율적인 컨텍스트 관리를 위해 다음 2가지 전략을 �
 ### 2. Compaction
 긴 세션(>70% 토큰 사용)은 요약 후 새 세션으로 재시작:
 - 대화/로그가 길어지면 **결정/제약/상태** 중심으로 요약하고 **새 컨텍스트로 재시작**
-- 핵심 결정사항 요약
-- 다음 세션에 컨텍스트 전달
 - 권장: `/clear` 또는 `/new` 명령 활용
 
-상세: `.moai/memory/development-guide.md` - "Context Engineering" 챕터 참조
+**상세 구현 방법**: `.moai/memory/development-guide.md#context-engineering` 참조
 
 **핵심 참조 문서**:
 - `CLAUDE.md` → `development-guide.md` (상세 규칙)
@@ -301,49 +301,32 @@ Alfred가 필요 시 즉시 호출하는 전문 에이전트들:
 
 ### TAG BLOCK 템플릿
 
-**SPEC 문서 (.moai/specs/)** - **HISTORY 섹션 필수**:
-```markdown
+> **📋 SPEC 메타데이터 표준 (SSOT)**: `.moai/memory/spec-metadata.md`
+
+**모든 SPEC 문서는 다음 구조를 따릅니다**:
+- **필수 필드 7개**: id, version, status, created, updated, author, priority
+- **선택 필드 9개**: category, labels, depends_on, blocks, related_specs, related_issue, scope
+- **HISTORY 섹션**: 필수 (모든 버전 변경 이력 기록)
+
+**전체 템플릿 및 필드 상세 설명**: `.moai/memory/spec-metadata.md` 참조
+
+**간단한 예시**:
+```yaml
 ---
-# 필수 필드 (7개)
-id: AUTH-001                    # SPEC 고유 ID
-version: 0.0.1                  # Semantic Version (v0.0.1 = INITIAL)
-status: draft                   # draft|active|completed|deprecated
-created: 2025-09-15            # 생성일 (YYYY-MM-DD)
-updated: 2025-09-15            # 최종 수정일 (YYYY-MM-DD)
-author: {{AUTHOR}}              # 작성자 (GitHub ID)
-priority: high                  # low|medium|high|critical
-
-# 선택 필드 - 분류/메타
-category: security              # feature|bugfix|refactor|security|docs|perf
-labels:                         # 분류 태그 (검색용)
-  - authentication
-  - jwt
-
-# 선택 필드 - 관계 (의존성 그래프)
-depends_on:                     # 의존하는 SPEC (선택)
-  - USER-001
-related_issue: "{{GITHUB_REPO}}/issues/123"
-
-# 선택 필드 - 범위 (영향 분석)
-scope:
-  packages:                     # 영향받는 패키지
-    - src/core/auth
-  files:                        # 핵심 파일 (선택)
-    - auth-service.ts
-    - jwt-manager.ts
+id: AUTH-001
+version: 0.0.1
+status: draft
+created: 2025-09-15
+updated: 2025-09-15
+author: @{{AUTHOR}}
+priority: high
 ---
 
 # @SPEC:AUTH-001: JWT 인증 시스템
 
 ## HISTORY
-
 ### v0.0.1 (2025-09-15)
 - **INITIAL**: JWT 기반 인증 시스템 명세 작성
-- **AUTHOR**: {{AUTHOR}}
-- **SCOPE**: 토큰 발급, 검증, 갱신 로직
-- **CONTEXT**: 사용자 인증 강화 요구사항 반영
-
-## EARS 요구사항
 ...
 ```
 
@@ -361,13 +344,8 @@ scope:
 
 - **TAG ID**: `<도메인>-<3자리>` (예: `AUTH-003`) - 영구 불변
 - **TAG 내용**: 자유롭게 수정 가능 (HISTORY에 기록 필수)
-- **버전 관리**: 0.x.y 기반 개발 버전 체계
-  - **v0.0.1**: INITIAL - SPEC 최초 작성 (모든 SPEC 시작 버전, status: draft)
-  - **v0.0.x**: Draft 수정/개선 (SPEC 문서 수정 시 패치 버전 증가)
-  - **v0.1.0**: TDD 구현 완료 (첫 번째 구현, status: completed)
-  - **v0.1.x**: 버그 수정, 문서 개선, 경미한 변경
-  - **v0.x.0**: 기능 추가, 주요 개선 (마이너 버전 증가)
-  - **v1.0.0**: 정식 안정화 버전 (프로덕션 준비 완료, 사용자 명시적 승인 필수)
+- **버전 관리**: Semantic Versioning (v0.0.1 → v0.1.0 → v1.0.0)
+  - 상세 버전 체계: `.moai/memory/spec-metadata.md#버전` 참조
 - **TAG 참조**: 버전 없이 파일명만 사용 (예: `SPEC-AUTH-001.md`)
 - **중복 확인**: `rg "@SPEC:AUTH" -n` 또는 `rg "AUTH-001" -n`
 - **CODE-FIRST**: TAG의 진실은 코드 자체에만 존재
@@ -403,19 +381,17 @@ rg '@SPEC:AUTH-001' -n .moai/specs/  # SPEC이 없으면 고아
 
 ## TRUST 5원칙 (범용 언어 지원)
 
+> **상세 가이드**: @.moai/memory/development-guide.md#trust-5원칙
+
 Alfred가 모든 코드에 적용하는 품질 기준:
 
-- **T**est First: 언어별 최적 도구
-  - 백엔드: Jest/Vitest, pytest, go test, cargo test, JUnit
-  - 모바일: flutter test, XCTest, JUnit + Espresso, React Native Testing Library
-- **R**eadable: 언어별 린터
-  - 백엔드: ESLint/Biome, ruff, golint, clippy
-  - 모바일: dart analyze, SwiftLint, detekt
-- **U**nified: 타입 안전성 (TypeScript, Go, Rust, Java, Dart, Swift, Kotlin) 또는 런타임 검증
+- **T**est First: 언어별 최적 도구 (Jest/Vitest, pytest, go test, cargo test, JUnit, flutter test 등)
+- **R**eadable: 언어별 린터 (ESLint/Biome, ruff, golint, clippy, dart analyze 등)
+- **U**nified: 타입 안전성 또는 런타임 검증
 - **S**ecured: 언어별 보안 도구 및 정적 분석
 - **T**rackable: CODE-FIRST @TAG 시스템 (코드 직접 스캔)
 
-상세 내용: `.moai/memory/development-guide.md` 참조
+**언어별 상세 도구 및 구현 방법**: `.moai/memory/development-guide.md#trust-5원칙` 참조
 
 ---
 
