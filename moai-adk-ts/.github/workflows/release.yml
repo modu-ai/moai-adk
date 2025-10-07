@@ -1,0 +1,123 @@
+name: 📦 Release to npm
+
+# develop → main PR이 머지되면 자동으로 릴리즈
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+jobs:
+  release:
+    # PR이 머지되고, develop 브랜치에서 왔을 때만 실행
+    if: github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'develop'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 체크아웃
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 전체 히스토리 (태그 포함)
+
+      - name: Node.js 설정
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: 의존성 설치
+        working-directory: moai-adk-ts
+        run: npm ci
+
+      - name: 품질 검증
+        working-directory: moai-adk-ts
+        run: |
+          echo "🧪 테스트 실행..."
+          npm run test
+
+          echo "🔍 린트 검사..."
+          npm run lint || npx biome check .
+
+          echo "🏗️ 빌드..."
+          npm run build
+
+          echo "🔤 타입 체크..."
+          npm run type-check
+
+      - name: 버전 정보 추출
+        id: version
+        working-directory: moai-adk-ts
+        run: |
+          VERSION=$(cat VERSION)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 릴리즈 버전: v$VERSION"
+
+      - name: 태그 생성 (아직 없으면)
+        working-directory: moai-adk-ts
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if ! git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+
+            # CHANGELOG에서 해당 버전 섹션 추출
+            CHANGELOG_SECTION=$(awk '/^## \['$VERSION'\]/,/^## \[/' CHANGELOG.md | head -n -1)
+
+            git tag -a "v$VERSION" -m "v$VERSION
+
+$CHANGELOG_SECTION
+
+Released: $(date -u +%Y-%m-%d)
+Commit: $(git rev-parse --short HEAD)"
+
+            git push origin "v$VERSION"
+            echo "✅ 태그 v$VERSION 생성 및 푸시 완료"
+          else
+            echo "ℹ️ 태그 v$VERSION 이미 존재"
+          fi
+
+      - name: npm 배포
+        working-directory: moai-adk-ts
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "📦 npm에 배포 중..."
+          npm publish --access public
+          echo "✅ npm 배포 완료: moai-adk@${{ steps.version.outputs.version }}"
+
+      - name: GitHub Release 생성
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: moai-adk-ts
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
+          # CHANGELOG에서 해당 버전 섹션 추출
+          CHANGELOG_SECTION=$(awk '/^## \['$VERSION'\]/,/^## \[/' CHANGELOG.md | head -n -1)
+
+          # GitHub Release 생성
+          gh release create "v$VERSION" \
+            --title "v$VERSION" \
+            --notes "$CHANGELOG_SECTION
+
+## 📦 Installation
+
+\`\`\`bash
+npm install -g moai-adk@$VERSION
+\`\`\`
+
+## 🔗 Links
+- npm: https://www.npmjs.com/package/moai-adk/v/$VERSION
+- Full Changelog: https://github.com/modu-ai/moai-adk/blob/main/moai-adk-ts/CHANGELOG.md
+
+🤖 Automatically released via GitHub Actions" \
+            --latest
+
+          echo "✅ GitHub Release 생성 완료"
+
+      - name: 알림
+        if: success()
+        run: |
+          echo "🎉 릴리즈 v${{ steps.version.outputs.version }} 완료!"
+          echo "📦 npm: https://www.npmjs.com/package/moai-adk/v/${{ steps.version.outputs.version }}"
+          echo "🐙 GitHub: https://github.com/modu-ai/moai-adk/releases/tag/v${{ steps.version.outputs.version }}"
