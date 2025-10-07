@@ -19,7 +19,7 @@ export interface MoAIConfig {
   mode: 'personal' | 'team';
   projectName: string;
   features: string[];
-  locale?: 'ko' | 'en'; // User's preferred CLI language
+  locale?: 'ko' | 'en' | 'ja' | 'zh'; // User's preferred CLI language
 
   // SPEC-INSTALL-001: Developer information
   developer?: {

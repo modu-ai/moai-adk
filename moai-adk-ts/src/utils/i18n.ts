@@ -6,7 +6,7 @@
  * @author MoAI Team
  */
 
-export type Locale = 'en' | 'ko';
+export type Locale = 'en' | 'ko' | 'ja' | 'zh';
 
 /**
  * Translation message structure
@@ -245,11 +245,169 @@ const ko: Messages = {
 };
 
 /**
+ * Japanese translations
+ */
+const ja: Messages = {
+  common: {
+    success: '✅ 成功',
+    error: '❌ エラー',
+    warning: '⚠️  警告',
+    info: 'ℹ️  情報',
+    version: 'v{version}',
+  },
+  init: {
+    welcome: '🗿 MoAI-ADKへようこそ',
+    selectLanguage: '言語を選択してください',
+    languagePrompt: 'CLI言語を選択:',
+    projectName: 'プロジェクト名',
+    projectType: 'プロジェクトタイプ',
+    creating: '🚀 プロジェクトを作成中...',
+    completed: '✅ プロジェクトが正常に初期化されました',
+    failed: '❌ プロジェクトの初期化に失敗しました',
+    prompts: {
+      projectInfo: 'プロジェクト情報',
+      projectNameLabel: 'プロジェクト名:',
+      projectNameTipNew: 'フォルダ名とプロジェクト識別子として使用されます',
+      projectNameTipCurrent:
+        '設定で使用される名前です（現在のディレクトリは名前が変更されません）',
+      devMode: '開発モード',
+      selectMode: 'モードを選択:',
+      modePersonal: '🧑 Personal',
+      modePersonalDesc: '.moai/specs/を使用したローカル開発',
+      modeTeam: '👥 Team',
+      modeTeamDesc: 'SPEC管理用GitHub Issues',
+      tipPersonal:
+        'Personalモード: SPECファイルがローカルに保存され、シンプルなワークフロー',
+      tipTeam: 'Teamモード: SPEC用GitHub Issues、PRベースのワークフロー',
+      versionControl: 'バージョン管理',
+      initGit: 'ローカルGitリポジトリを初期化しますか？',
+      tipGitEnabled: 'Gitが初期コミットとともに初期化されます',
+      tipGitDisabled: '後で次のコマンドでGitを初期化できます: git init',
+      github: 'GitHub連携',
+      useGithub: 'リモートリポジトリにGitHubを使用しますか？',
+      tipGithubDisabled: 'GitHub連携無効 - ローカルGitのみ使用',
+      githubRepo: 'GitHubリポジトリ',
+      githubUrl: 'GitHubリポジトリURL:',
+      tipGithubUrl: '例: https://github.com/username/project-name',
+      specWorkflow: 'SPECワークフロー',
+      workflowBranch: '🌿 ブランチ + マージ',
+      workflowBranchDesc: 'GitHub PRワークフロー（推奨）',
+      workflowCommit: '📝 ローカルコミット',
+      workflowCommitDesc: 'mainに直接コミット',
+      tipBranch: 'ブランチワークフロー: feature/*ブランチ + Pull Request',
+      tipCommit: 'コミットワークフロー: mainブランチに直接コミット',
+      remoteSyn: 'リモート同期',
+      autoPush: 'リモートリポジトリに自動pushしますか？',
+      tipAutoPushEnabled: 'コミットが自動的にGitHubにpushされます',
+      tipAutoPushDisabled: 'git pushコマンドで手動でpushする必要があります',
+    },
+  },
+  update: {
+    starting: '🔄 MoAI-ADKプロジェクトを更新中...',
+    checking: '🔍 更新を確認中...',
+    upToDate: '✅ プロジェクトは最新です (v{version})',
+    available: '⚡ 更新可能: v{from} → v{to}',
+    analyzing: '📊 {count}ファイルを分析中...',
+    backup: '💾 バックアップを作成中...',
+    applying: '🔧 更新を適用中...',
+    completed: '✅ 更新が完了しました',
+    failed: '❌ 更新に失敗しました: {error}',
+    filesChanged: '📝 {count}ファイルが更新されました',
+    duration: '⏱️  {duration}秒で完了',
+  },
+  doctor: {
+    checking: '🔍 システム診断を実行中...',
+    allGood: '✅ すべてのチェックに合格',
+    issuesFound: '⚠️  {count}件の問題が見つかりました',
+    fixSuggestion: '💡 --fixオプションで自動修復可能',
+  },
+};
+
+/**
+ * Chinese translations
+ */
+const zh: Messages = {
+  common: {
+    success: '✅ 成功',
+    error: '❌ 错误',
+    warning: '⚠️  警告',
+    info: 'ℹ️  信息',
+    version: 'v{version}',
+  },
+  init: {
+    welcome: '🗿 欢迎使用MoAI-ADK',
+    selectLanguage: '选择您的首选语言',
+    languagePrompt: '选择CLI语言:',
+    projectName: '项目名称',
+    projectType: '项目类型',
+    creating: '🚀 正在创建项目...',
+    completed: '✅ 项目初始化成功',
+    failed: '❌ 项目初始化失败',
+    prompts: {
+      projectInfo: '项目信息',
+      projectNameLabel: '项目名称:',
+      projectNameTipNew: '将用作文件夹名称和项目标识符',
+      projectNameTipCurrent: '将在配置中使用（当前目录不会重命名）',
+      devMode: '开发模式',
+      selectMode: '选择模式:',
+      modePersonal: '🧑 Personal',
+      modePersonalDesc: '使用.moai/specs/进行本地开发',
+      modeTeam: '👥 Team',
+      modeTeamDesc: '使用GitHub Issues进行SPEC管理',
+      tipPersonal: 'Personal模式: SPEC文件存储在本地，工作流程更简单',
+      tipTeam: 'Team模式: 使用GitHub Issues管理SPEC，基于PR的工作流程',
+      versionControl: '版本控制',
+      initGit: '初始化本地Git仓库？',
+      tipGitEnabled: 'Git将随初始提交一起初始化',
+      tipGitDisabled: '您可以稍后使用以下命令初始化Git: git init',
+      github: 'GitHub集成',
+      useGithub: '使用GitHub作为远程仓库？',
+      tipGithubDisabled: 'GitHub集成已禁用 - 仅使用本地Git',
+      githubRepo: 'GitHub仓库',
+      githubUrl: 'GitHub仓库URL:',
+      tipGithubUrl: '示例: https://github.com/username/project-name',
+      specWorkflow: 'SPEC工作流程',
+      workflowBranch: '🌿 分支 + 合并',
+      workflowBranchDesc: 'GitHub PR工作流程（推荐）',
+      workflowCommit: '📝 本地提交',
+      workflowCommitDesc: '直接提交到main',
+      tipBranch: '分支工作流程: feature/*分支 + Pull Request',
+      tipCommit: '提交工作流程: 直接提交到main分支',
+      remoteSyn: '远程同步',
+      autoPush: '自动推送提交到远程仓库？',
+      tipAutoPushEnabled: '提交将自动推送到GitHub',
+      tipAutoPushDisabled: '您需要使用git push手动推送',
+    },
+  },
+  update: {
+    starting: '🔄 正在更新MoAI-ADK项目...',
+    checking: '🔍 正在检查更新...',
+    upToDate: '✅ 项目已是最新版本 (v{version})',
+    available: '⚡ 可用更新: v{from} → v{to}',
+    analyzing: '📊 正在分析{count}个文件...',
+    backup: '💾 正在创建备份...',
+    applying: '🔧 正在应用更新...',
+    completed: '✅ 更新完成',
+    failed: '❌ 更新失败: {error}',
+    filesChanged: '📝 已更新{count}个文件',
+    duration: '⏱️  耗时{duration}秒',
+  },
+  doctor: {
+    checking: '🔍 正在运行系统诊断...',
+    allGood: '✅ 所有检查通过',
+    issuesFound: '⚠️  发现{count}个问题',
+    fixSuggestion: '💡 使用--fix选项自动修复',
+  },
+};
+
+/**
  * All available translations
  */
 const translations: Record<Locale, Messages> = {
   en,
   ko,
+  ja,
+  zh,
 };
 
 /**
