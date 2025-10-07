@@ -10,7 +10,20 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { BackupMerger } from '../../../../src/cli/commands/project/backup-merger.js';
+import {
+  BackupMerger,
+  createEmergencyBackup
+} from '../../../../src/cli/commands/project/backup-merger.js';
+
+// Helper function for file existence check
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 describe('BackupMerger', () => {
   let TEST_DIR: string;
@@ -253,6 +266,75 @@ console.log('current');
       // Should succeed without errors
       const report = merger.getReport();
       expect(report.errors.length).toBe(0);
+    });
+  });
+
+  // v0.2.1: Emergency backup scenarios (Integration tests)
+  describe('Emergency backup creation', () => {
+    it('should create emergency backup when metadata missing but files exist', async () => {
+      // Given: MoAI-ADK files exist but no backup metadata
+      await fs.mkdir(path.join(CURRENT_DIR, '.claude'), { recursive: true });
+      await fs.writeFile(path.join(CURRENT_DIR, '.claude', 'settings.json'), '{}');
+      await fs.writeFile(path.join(CURRENT_DIR, 'CLAUDE.md'), '# Test');
+
+      // When: Create emergency backup
+      const metadata = await createEmergencyBackup(CURRENT_DIR);
+
+      // Then: Backup should be created
+      expect(metadata).not.toBeNull();
+      expect(metadata?.backed_up_files).toContain('.claude/');
+      expect(metadata?.backed_up_files).toContain('CLAUDE.md');
+      expect(metadata?.created_by).toBe('/alfred:8-project (emergency backup)');
+
+      // And: Backup directory should exist
+      const backupPath = path.join(CURRENT_DIR, metadata!.backup_path);
+      expect(await fileExists(backupPath)).toBe(true);
+
+      // And: Metadata file should exist
+      const metadataPath = path.join(CURRENT_DIR, '.moai', 'backups', 'latest.json');
+      expect(await fileExists(metadataPath)).toBe(true);
+    });
+
+    it('should not create emergency backup when no MoAI-ADK files exist', async () => {
+      // Given: Empty directory (no MoAI-ADK files)
+
+      // When: Create emergency backup
+      const metadata = await createEmergencyBackup(CURRENT_DIR);
+
+      // Then: No backup should be created
+      expect(metadata).toBeNull();
+    });
+
+    it('should backup only existing files in emergency scenario', async () => {
+      // Given: Only .claude exists (partial installation)
+      await fs.mkdir(path.join(CURRENT_DIR, '.claude'), { recursive: true });
+      await fs.writeFile(path.join(CURRENT_DIR, '.claude', 'settings.json'), '{}');
+
+      // When: Create emergency backup
+      const metadata = await createEmergencyBackup(CURRENT_DIR);
+
+      // Then: Only .claude should be backed up
+      expect(metadata).not.toBeNull();
+      expect(metadata?.backed_up_files).toEqual(['.claude/']);
+      expect(metadata?.backed_up_files).not.toContain('.moai/');
+      expect(metadata?.backed_up_files).not.toContain('CLAUDE.md');
+    });
+
+    it('should backup all files when all MoAI-ADK files exist', async () => {
+      // Given: All MoAI-ADK files exist
+      await fs.mkdir(path.join(CURRENT_DIR, '.claude'), { recursive: true });
+      await fs.mkdir(path.join(CURRENT_DIR, '.moai'), { recursive: true });
+      await fs.writeFile(path.join(CURRENT_DIR, 'CLAUDE.md'), '# Test');
+
+      // When: Create emergency backup
+      const metadata = await createEmergencyBackup(CURRENT_DIR);
+
+      // Then: All files should be backed up
+      expect(metadata).not.toBeNull();
+      expect(metadata?.backed_up_files).toContain('.claude/');
+      expect(metadata?.backed_up_files).toContain('.moai/');
+      expect(metadata?.backed_up_files).toContain('CLAUDE.md');
+      expect(metadata?.backed_up_files.length).toBe(3);
     });
   });
 
