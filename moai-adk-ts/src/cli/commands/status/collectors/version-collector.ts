@@ -6,9 +6,9 @@
  * @author MoAI Team
  */
 
+import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
 import * as fs from 'fs-extra';
 
 /**

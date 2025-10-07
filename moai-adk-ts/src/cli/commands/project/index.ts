@@ -7,14 +7,13 @@
  * @tags @CODE:INIT-003:MERGE
  */
 
+export type { MergeReport } from './backup-merger.js';
 // Export backup merger
 export { BackupMerger } from './backup-merger.js';
-export type { MergeReport } from './backup-merger.js';
 
 // Export merge report generator
 export { generateMergeReport } from './merge-report.js';
-
+export { mergeHooks } from './merge-strategies/hooks-merger.js';
 // Export merge strategies
 export { mergeJSON } from './merge-strategies/json-merger.js';
 export { mergeMarkdown } from './merge-strategies/markdown-merger.js';
-export { mergeHooks } from './merge-strategies/hooks-merger.js';

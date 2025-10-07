@@ -117,7 +117,9 @@ function parseMarkdown(content: string): MarkdownParts {
   // Look for "## HISTORY" followed by content until next "## " or end
   const historyRegex = /## HISTORY\n([\s\S]*?)(?=\n## [^H]|\n## $|$)/;
   const historyMatch = restContent.match(historyRegex);
-  const history = historyMatch ? `## HISTORY\n${historyMatch[1].trimEnd()}` : null;
+  const history = historyMatch
+    ? `## HISTORY\n${historyMatch[1].trimEnd()}`
+    : null;
 
   return {
     frontMatter,
@@ -218,7 +220,7 @@ function extractHistoryEntries(history: string): string[] {
   // Split by ### (version markers)
   const entries = content.split(/(?=### v)/);
 
-  return entries.filter((entry) => entry.trim().length > 0);
+  return entries.filter(entry => entry.trim().length > 0);
 }
 
 /**
@@ -292,7 +294,9 @@ function reconstructMarkdown(
   });
 
   // Ensure yamlString ends without extra newline (YAML.stringify adds one)
-  const trimmedYaml = yamlString.endsWith('\n') ? yamlString.slice(0, -1) : yamlString;
+  const trimmedYaml = yamlString.endsWith('\n')
+    ? yamlString.slice(0, -1)
+    : yamlString;
 
   return `---\n${trimmedYaml}\n---\n${body}`;
 }

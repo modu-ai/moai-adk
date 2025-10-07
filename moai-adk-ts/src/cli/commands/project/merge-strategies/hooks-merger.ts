@@ -96,7 +96,7 @@ function extractVersion(content: string): string | null {
   const versionRegex = /@version\s+([\d.]+(?:-[\w.]+)?)/;
   const match = content.match(versionRegex);
 
-  if (match && match[1]) {
+  if (match?.[1]) {
     const version = match[1];
     // Validate it's a valid semver
     return semver.valid(version);
