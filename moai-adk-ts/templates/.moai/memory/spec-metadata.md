@@ -16,10 +16,10 @@ SPEC 메타데이터는 **필수 필드 7개**와 **선택 필드 9개**로 구�
 ---
 # 필수 필드 (7개)
 id: AUTH-001                    # SPEC 고유 ID
-version: 0.1.0                  # Semantic Version (v0.1.0 = INITIAL)
+version: 0.0.1                  # Semantic Version (v0.0.1 = INITIAL, draft 시작)
 status: draft                   # draft|active|completed|deprecated
 created: 2025-09-15            # 생성일 (YYYY-MM-DD)
-updated: 2025-10-01            # 최종 수정일 (YYYY-MM-DD)
+updated: 2025-09-15            # 최종 수정일 (YYYY-MM-DD, 최초에는 created와 동일)
 author: @Goos                   # 작성자 (GitHub ID, 단수형)
 priority: high                  # low|medium|high|critical
 
@@ -65,12 +65,14 @@ scope:
 ### 2. `version` - 버전
 - **타입**: string (Semantic Version)
 - **형식**: `MAJOR.MINOR.PATCH`
-- **기본값**: `0.1.0` (모든 SPEC 시작 버전)
+- **기본값**: `0.0.1` (모든 SPEC 시작 버전, status: draft)
 - **버전 체계**:
-  - **v0.1.0**: INITIAL - SPEC 최초 작성
-  - **v0.2.0~v0.9.0**: 구현 완료, 기능 추가, 주요 업데이트
-  - **v0.x.y**: 버그 수정, 문서 개선, 경미한 변경
-  - **v1.0.0**: 정식 안정화 버전 (프로덕션 준비 완료)
+  - **v0.0.1**: INITIAL - SPEC 최초 작성 (status: draft)
+  - **v0.0.x**: Draft 수정/개선 (SPEC 문서 수정 시 패치 버전 증가)
+  - **v0.1.0**: TDD 구현 완료 (status: completed, /alfred:3-sync 자동 업데이트)
+  - **v0.1.x**: 버그 수정, 문서 개선 (패치 버전)
+  - **v0.x.0**: 기능 추가, 주요 개선 (마이너 버전)
+  - **v1.0.0**: 정식 안정화 버전 (프로덕션 준비, 사용자 명시적 승인 필수)
 
 ### 3. `status` - 진행 상태
 - **타입**: enum

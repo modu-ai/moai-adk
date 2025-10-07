@@ -18,7 +18,8 @@
       "Bash(then echo \"$file\")",
       "Bash(fi)",
       "Bash(test:*)",
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "Bash(do echo \"=== SPEC-$spec ===\")"
     ]
   },
   "outputStyle": "MoAI Beginner Learning"

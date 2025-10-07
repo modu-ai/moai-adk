@@ -239,10 +239,10 @@ rg "@SPEC:{ID}" -n .moai/specs/  # 기존 TAG ID 검색
 ---
 # 필수 필드 (7개)
 id: AUTH-001                    # SPEC 고유 ID (<도메인>-<3자리>, 영구 불변)
-version: 0.1.0                  # Semantic Version (v0.1.0 = INITIAL)
+version: 0.0.1                  # Semantic Version (v0.0.1 = INITIAL, draft 시작)
 status: draft                   # draft|active|completed|deprecated
 created: 2025-09-15            # 생성일 (YYYY-MM-DD)
-updated: 2025-10-01            # 최종 수정일 (YYYY-MM-DD)
+updated: 2025-09-15            # 최종 수정일 (YYYY-MM-DD, 최초에는 created와 동일)
 author: @Goos                   # 작성자 (GitHub ID, 단수형)
 priority: high                  # low|medium|high|critical
 
@@ -276,7 +276,7 @@ scope:
   - **디렉토리명 규칙**: `.moai/specs/SPEC-{ID}/` (예: `SPEC-AUTH-001/`)
   - **ID 중복 확인**: `rg "@SPEC:{ID}" -n .moai/specs/` 로 기존 TAG 검색 필수
   - **복합 도메인**: 하이픈으로 연결 가능 (예: `UPDATE-REFACTOR-001`)
-- **version**: Semantic Version 체계 (v0.1.0 = INITIAL, v0.2.0~ = 구현 완료, v1.0.0 = 안정화)
+- **version**: Semantic Version 체계 (v0.0.1 = INITIAL draft 시작, v0.1.0 = 구현 완료, v0.x.0 = 기능 추가, v1.0.0 = 안정화)
 - **status**: `draft` (작성 중) | `active` (구현 진행) | `completed` (완료) | `deprecated` (사용 중지)
 - **created/updated**: YYYY-MM-DD 형식
 - **author**: 단수형, GitHub ID 앞에 @ 접두사 필수 (예: `@Goos`)
@@ -298,34 +298,41 @@ scope:
 
 ## HISTORY
 
-### v0.1.0 (2025-09-15)
+### v0.0.1 (2025-09-15)
 - **INITIAL**: JWT 기반 인증 시스템 명세 최초 작성
 - **AUTHOR**: @Goos
 - **SCOPE**: 토큰 발급, 검증, 갱신 로직
 - **CONTEXT**: 사용자 인증 강화 요구사항 반영
 
-### v0.2.0 (2025-09-20)
-- **ADDED**: 소셜 로그인 요구사항 추가
+### v0.0.2 (2025-09-20)
+- **ADDED**: 소셜 로그인 요구사항 추가 (Draft 수정)
 - **AUTHOR**: @Goos
 - **REVIEW**: @security-team (승인)
 - **CHANGES**:
   - OAuth2 통합 요구사항
   - Google/GitHub 로그인 지원
 
-### v0.3.0 (2025-10-01)
-- **CHANGED**: 토큰 만료 시간 15분 → 30분으로 변경
-- **ADDED**: 리프레시 토큰 자동 갱신 요구사항 추가
-- **AUTHOR**: @Goos
-- **REVIEW**: @security-team (승인)
+### v0.1.0 (2025-10-01)
+- **IMPLEMENTATION COMPLETED**: TDD 구현 완료 (status: draft → completed)
+- **TDD CYCLE**: RED → GREEN → REFACTOR
+- **COMMITS**: [구현 커밋 해시 목록]
+- **FILES**: [생성/수정된 파일 목록]
 ```
 
 **HISTORY 작성 규칙**:
-- **버전 체계**: `v0.1.0` = INITIAL (모든 SPEC 시작 버전), `v0.2.0~v0.9.0` = 구현 완료/기능 추가, `v1.0.0` = 정식 안정화
+- **버전 체계**:
+  - `v0.0.1` = INITIAL (모든 SPEC 시작 버전, status: draft)
+  - `v0.0.x` = Draft 수정/개선 (SPEC 문서 수정 시 패치 버전 증가)
+  - `v0.1.0` = TDD 구현 완료 (status: completed, /alfred:3-sync 자동 업데이트)
+  - `v0.1.x` = 버그 수정, 문서 개선 (패치 버전)
+  - `v0.x.0` = 기능 추가, 주요 개선 (마이너 버전)
+  - `v1.0.0` = 정식 안정화 (프로덕션 준비, 사용자 명시적 승인 필수)
 - **버전 순서**: 최신 버전이 위로 (역순)
 - **변경 타입** (대문자):
-  - `INITIAL` - 최초 작성 (항상 v0.1.0)
-  - `ADDED` - 새 요구사항 추가
-  - `CHANGED` - 기존 요구사항 수정
+  - `INITIAL` - 최초 작성 (항상 v0.0.1, status: draft)
+  - `ADDED` - 새 요구사항 추가 (Draft 단계)
+  - `CHANGED` - 기존 요구사항 수정 (Draft 단계)
+  - `IMPLEMENTATION COMPLETED` - TDD 구현 완료 (v0.1.0, status: completed)
   - `BREAKING` - 하위 호환성 깨는 변경 (Major 버전 증가)
   - `DEPRECATED` - 폐기 예정 표시
   - `REMOVED` - 요구사항 제거

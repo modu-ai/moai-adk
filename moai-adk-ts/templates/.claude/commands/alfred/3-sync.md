@@ -135,6 +135,22 @@ tools: Read, Write, Edit, MultiEdit, Bash(git status:*), Bash(git add:*), Bash(g
 
 사용자 승인 후 doc-syncer 에이전트가 **Living Document 동기화와 @TAG 업데이트**를 수행하고, 팀 모드에서만 PR Ready 전환을 선택적으로 실행합니다.
 
+### Phase 2.5: SPEC 완료 처리 (자동)
+
+doc-syncer 에이전트가 TDD 구현 완료 여부를 자동으로 판단하여 SPEC 메타데이터를 업데이트합니다.
+
+**자동 업데이트 조건**:
+- status가 `draft`인 SPEC
+- RED → GREEN → REFACTOR 커밋 존재
+- @TEST 및 @CODE TAG 존재
+
+**업데이트 내용**:
+- `status: draft` → `status: completed`
+- `version: 0.0.x` → `version: 0.1.0`
+- HISTORY 섹션 자동 추가
+
+**조건 미충족 시**: Phase 2.5 자동 건너뜀
+
 ## 기능
 
 - **자동 문서 동기화**: doc-syncer 에이전트가 Living Document 동기화와 @TAG 업데이트를 수행합니다. 팀 모드에서만 PR Ready 전환을 선택적으로 실행합니다.

@@ -1,11 +1,13 @@
 /**
  * @file Interactive prompts orchestrator for moai init command
  * @author MoAI Team
- * @tags @CODE:INTERACTIVE-INIT-019 | Chain: @SPEC:INTERACTIVE-INIT-019 -> @CODE:INTERACTIVE-INIT-019 -> @TEST:INTERACTIVE-INIT-019
- * Related: @DOC:INTERACTIVE-INIT-019
+ * @tags @CODE:INIT-004 | SPEC: SPEC-INIT-004.md
+ * Related: @CODE:INTERACTIVE-INIT-019 | Chain: @SPEC:INTERACTIVE-INIT-019 -> @CODE:INTERACTIVE-INIT-019 -> @TEST:INTERACTIVE-INIT-019
  */
 
+import chalk from 'chalk';
 import inquirer from 'inquirer';
+import { autoInitGit, detectGitStatus } from '@/utils/git-detector';
 import { setLocale, t } from '@/utils/i18n';
 import {
   getAutoPushPrompt,
@@ -76,21 +78,56 @@ export async function promptMode(): Promise<PartialInitAnswers> {
 }
 
 /**
- * Prompt Git config
+ * Prompt Git config with auto-detection
+ * @CODE:INIT-004 - Git automatic initialization
  */
 export async function promptGitConfig(): Promise<PartialInitAnswers> {
   displayStep(4, 4, t('init.prompts.versionControl'));
-  const answers = await inquirer.prompt(getGitConfigPrompt());
-  displayTip(
-    answers.gitEnabled
-      ? t('init.prompts.tipGitEnabled')
-      : t('init.prompts.tipGitDisabled')
-  );
-  return answers;
+
+  // Auto-detect Git repository
+  const gitStatus = await detectGitStatus(process.cwd());
+
+  if (!gitStatus.exists) {
+    // No .git directory - automatically initialize
+    console.log(chalk.blue('  Initializing Git repository...'));
+    try {
+      await autoInitGit(process.cwd());
+      console.log(chalk.green('  ✓ Git repository initialized successfully'));
+      displayTip(t('init.prompts.tipGitEnabled'));
+      return { gitEnabled: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.log(chalk.yellow(`  ⚠ Git initialization failed: ${message}`));
+      // Fall back to manual prompt
+      const answers = await inquirer.prompt(getGitConfigPrompt());
+      displayTip(
+        answers.gitEnabled
+          ? t('init.prompts.tipGitEnabled')
+          : t('init.prompts.tipGitDisabled')
+      );
+      return answers;
+    }
+  }
+
+  // Existing .git directory found
+  console.log(chalk.blue('  Existing Git repository detected'));
+  console.log(chalk.gray(`    • Commits: ${gitStatus.commits}`));
+  console.log(chalk.gray(`    • Branch: ${gitStatus.currentBranch}`));
+  if (gitStatus.remotes.length > 0) {
+    console.log(
+      chalk.gray(
+        `    • Remotes: ${gitStatus.remotes.map(r => r.name).join(', ')}`
+      )
+    );
+  }
+
+  displayTip('Git repository detected. Will use existing configuration.');
+  return { gitEnabled: true };
 }
 
 /**
- * Prompt GitHub config (team mode only)
+ * Prompt GitHub config (team mode only) with auto-detection
+ * @CODE:INIT-004 - GitHub automatic detection
  */
 export async function promptGitHubConfig(
   mode: 'personal' | 'team'
@@ -98,6 +135,35 @@ export async function promptGitHubConfig(
   if (mode !== 'team') return {};
 
   displayStep(4, 7, t('init.prompts.github'));
+
+  // Auto-detect GitHub remote
+  const gitStatus = await detectGitStatus(process.cwd());
+
+  if (gitStatus.githubUrl) {
+    // GitHub URL detected
+    console.log(chalk.green('  ✓ GitHub repository detected'));
+    console.log(chalk.gray(`    ${gitStatus.githubUrl}`));
+
+    // Ask if user wants to use detected URL
+    const useDetected = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'useDetectedUrl',
+        message: 'Use the detected GitHub repository?',
+        default: true,
+      },
+    ]);
+
+    if (useDetected.useDetectedUrl) {
+      displayTip('GitHub repository will be configured automatically.');
+      return {
+        githubEnabled: true,
+        githubUrl: gitStatus.githubUrl,
+      };
+    }
+  }
+
+  // No GitHub detected or user wants different URL
   const githubAnswers = await inquirer.prompt(getGitHubEnabledPrompt());
 
   if (!githubAnswers.githubEnabled) {
