@@ -63,6 +63,17 @@ function checkConstitutionStatus(projectRoot) {
 }
 function getMoAIVersion(projectRoot) {
   try {
+    const moaiConfigPath = path__namespace.join(projectRoot, ".moai", "config.json");
+    if (fs__namespace.existsSync(moaiConfigPath)) {
+      const configData = fs__namespace.readFileSync(moaiConfigPath, "utf-8");
+      const config = JSON.parse(configData);
+      if (config.moai?.version && !config.moai.version.includes("{{")) {
+        return config.moai.version;
+      }
+      if (config.project?.version && !config.project.version.includes("{{")) {
+        return config.project.version;
+      }
+    }
     const packageJsonPath = path__namespace.join(
       projectRoot,
       "node_modules",
@@ -74,15 +85,6 @@ function getMoAIVersion(projectRoot) {
       const packageJson = JSON.parse(packageData);
       if (packageJson.version) {
         return packageJson.version;
-      }
-    }
-    const moaiConfigPath = path__namespace.join(projectRoot, ".moai", "config.json");
-    if (fs__namespace.existsSync(moaiConfigPath)) {
-      const configData = fs__namespace.readFileSync(moaiConfigPath, "utf-8");
-      const config = JSON.parse(configData);
-      const version = config.project?.version;
-      if (version && !version.includes("{{") && !version.includes("}}")) {
-        return version;
       }
     }
   } catch (_error) {

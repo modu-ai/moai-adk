@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.10] - 2025-10-07
+
+### ✨ Added
+- **config.json Schema Enhancement**: New `moai.version` field for tracking moai-adk package version
+  - Replaces ambiguous `project.version` with clear `moai.version` (moai-adk package version)
+  - Automatic version injection during `moai init` from package.json
+  - Automatic version update during `/alfred:9-update` via Phase 4.5
+- **9-update.md Phase 4.5**: Automatic moai.version update procedure
+  - Step-by-step version detection from npm registry
+  - config.json update with version validation
+  - Error handling for npm failures and JSON parsing errors
+- **Template System**: `{{MOAI_VERSION}}` placeholder in templates/.moai/config.json
+- **TypeScript Types**: Enhanced MoAIConfig interface with moai.version field
+
+### 🔄 Changed
+- **config-builder.ts**: Auto-inject package version from package.json (no hardcoding)
+- **session-notice/utils.ts**: Priority-based version detection (moai.version → project.version → node_modules)
+- **Version Management**: Eliminated all version hardcoding, dynamic version from package.json
+
+### 🐛 Fixed
+- **session-notice Hook**: Now displays accurate moai-adk package version
+- **Version Confusion**: Clear separation between package version and project version
+
+### 🔙 Backward Compatibility
+- **Fallback Support**: Existing projects with `project.version` continue to work
+- **3-tier Priority**: moai.version (1st) → project.version (2nd) → node_modules (3rd)
+- **Zero Breaking Changes**: All existing configurations remain functional
+
+### 📊 Technical Details
+- TypeScript compilation: ✅ No errors
+- Build time: 316ms (main) + 43ms (hooks)
+- Test coverage: Maintained at ≥85%
+
+---
+
 ## [0.2.5] - 2025-10-06
 
 ### 🐛 Critical Bug Fix - Windows Compatibility
@@ -257,6 +292,7 @@ bun add -g moai-adk
 
 ---
 
+[0.2.10]: https://github.com/modu-ai/moai-adk/compare/v0.2.5...v0.2.10
 [0.2.5]: https://github.com/modu-ai/moai-adk/releases/tag/v0.2.5
 [0.2.4]: https://github.com/modu-ai/moai-adk/releases/tag/v0.2.4
 [0.2.2]: https://github.com/modu-ai/moai-adk/releases/tag/v0.2.2

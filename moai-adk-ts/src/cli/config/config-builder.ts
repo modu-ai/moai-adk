@@ -6,13 +6,16 @@
  */
 
 import type { InitAnswers } from '../prompts/init';
+import packageJson from '../../../package.json';
 
 /**
  * Enhanced MoAI configuration interface
  * Extended with SPEC-INSTALL-001 requirements
  */
 export interface MoAIConfig {
-  version: string;
+  moai: {
+    version: string; // moai-adk package version (from package.json)
+  };
   mode: 'personal' | 'team';
   projectName: string;
   features: string[];
@@ -79,7 +82,9 @@ export class ConfigBuilder {
    */
   public buildConfig(answers: InitAnswers): MoAIConfig {
     const config: MoAIConfig = {
-      version: '0.0.1',
+      moai: {
+        version: packageJson.version, // Auto-injected from package.json
+      },
       mode: answers.mode,
       projectName: answers.projectName,
       features: [],

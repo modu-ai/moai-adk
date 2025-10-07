@@ -64,35 +64,41 @@ export function checkConstitutionStatus(
 }
 
 /**
- * Get MoAI-ADK version from package.json or config.json
+ * Get MoAI-ADK package version (NOT project version)
  */
 export function getMoAIVersion(projectRoot: string): string {
   try {
+    const moaiConfigPath = path.join(projectRoot, '.moai', 'config.json');
+    if (fs.existsSync(moaiConfigPath)) {
+      const configData = fs.readFileSync(moaiConfigPath, 'utf-8');
+      const config = JSON.parse(configData) as {
+        moai?: { version?: string };
+        project?: { version?: string }; // Backward compatibility
+      };
+
+      // 1순위: moai.version (신규 스키마)
+      if (config.moai?.version && !config.moai.version.includes('{{')) {
+        return config.moai.version;
+      }
+
+      // 2순위: project.version (하위 호환 - 기존 프로젝트 지원)
+      if (config.project?.version && !config.project.version.includes('{{')) {
+        return config.project.version;
+      }
+    }
+
+    // 3순위: node_modules/moai-adk/package.json
     const packageJsonPath = path.join(
       projectRoot,
       'node_modules',
       'moai-adk',
       'package.json'
     );
-
     if (fs.existsSync(packageJsonPath)) {
       const packageData = fs.readFileSync(packageJsonPath, 'utf-8');
       const packageJson = JSON.parse(packageData) as { version?: string };
       if (packageJson.version) {
         return packageJson.version;
-      }
-    }
-
-    const moaiConfigPath = path.join(projectRoot, '.moai', 'config.json');
-    if (fs.existsSync(moaiConfigPath)) {
-      const configData = fs.readFileSync(moaiConfigPath, 'utf-8');
-      const config = JSON.parse(configData) as {
-        project?: { version?: string };
-      };
-      const version = config.project?.version;
-
-      if (version && !version.includes('{{') && !version.includes('}}')) {
-        return version;
       }
     }
   } catch (_error) {
