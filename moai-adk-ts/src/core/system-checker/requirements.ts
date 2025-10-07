@@ -48,8 +48,8 @@ export class RequirementRegistry {
             linux: 'npm install -g typescript',
             win32: 'npm install -g typescript',
           },
-          checkCommand: 'tsc --version',
-          versionCommand: 'tsc --version',
+          checkCommand: 'npx tsc --version',
+          versionCommand: 'npx tsc --version',
         });
         break;
 
