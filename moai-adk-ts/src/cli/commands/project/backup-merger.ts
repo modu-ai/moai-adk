@@ -9,15 +9,15 @@
 
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { mergeJSON } from './merge-strategies/json-merger.js';
-import { mergeMarkdown } from './merge-strategies/markdown-merger.js';
-import { mergeHooks } from './merge-strategies/hooks-merger.js';
 import {
-  hasAnyMoAIFiles as hasAnyMoAIFilesSync,
+  copyDirectoryRecursive,
   generateBackupDirName,
   getBackupTargets,
-  copyDirectoryRecursive,
+  hasAnyMoAIFiles as hasAnyMoAIFilesSync,
 } from '../../../core/installer/backup-utils.js';
+import { mergeHooks } from './merge-strategies/hooks-merger.js';
+import { mergeJSON } from './merge-strategies/json-merger.js';
+import { mergeMarkdown } from './merge-strategies/markdown-merger.js';
 
 /**
  * Merge report structure
@@ -106,13 +106,18 @@ export class BackupMerger {
       const currentContent = await fs.readFile(currentPath, 'utf-8');
 
       // Determine merge strategy based on file extension
-      const merged = this.mergeContent(relativePath, backupContent, currentContent);
+      const merged = this.mergeContent(
+        relativePath,
+        backupContent,
+        currentContent
+      );
 
       // Write merged content
       await fs.writeFile(currentPath, merged, 'utf-8');
       this.report.merged.push(relativePath);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       this.report.errors.push({
         file: relativePath,
         error: errorMessage,
@@ -150,7 +155,8 @@ export class BackupMerger {
         }
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       this.report.errors.push({
         file: relativePath,
         error: errorMessage,
@@ -176,7 +182,11 @@ export class BackupMerger {
    * @returns Merged content
    * @internal
    */
-  private mergeContent(filePath: string, backup: string, current: string): string {
+  private mergeContent(
+    filePath: string,
+    backup: string,
+    current: string
+  ): string {
     const ext = path.extname(filePath).toLowerCase();
 
     // JSON files: Deep merge

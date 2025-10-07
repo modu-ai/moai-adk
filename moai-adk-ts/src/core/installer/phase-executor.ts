@@ -12,6 +12,12 @@ import * as path from 'node:path';
 import { InstallationError } from '@/utils/errors';
 import { isInsideMoAIPackage } from '@/utils/path-validator';
 import { logger } from '@/utils/winston-logger';
+import { type BackupMetadata, saveBackupMetadata } from './backup-metadata';
+import {
+  generateBackupDirName,
+  getBackupTargets,
+  hasAnyMoAIFiles,
+} from './backup-utils';
 import type { ContextManager } from './context-manager';
 import { PhaseValidator } from './phase-validator';
 import { ResourceInstaller } from './resource-installer';
@@ -22,15 +28,6 @@ import type {
   ProgressCallback,
 } from './types';
 import { executePhase } from './utils/phase-runner.js';
-import {
-  type BackupMetadata,
-  saveBackupMetadata,
-} from './backup-metadata';
-import {
-  hasAnyMoAIFiles,
-  generateBackupDirName,
-  getBackupTargets,
-} from './backup-utils';
 
 /**
  * Executes installation phases with dependency injection

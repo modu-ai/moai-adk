@@ -7,8 +7,8 @@
  * @tags @CODE:INIT-003:UI
  */
 
-import type { MergeReport } from './backup-merger.js';
 import * as path from 'node:path';
+import type { MergeReport } from './backup-merger.js';
 
 /**
  * Generate human-readable markdown report from merge data

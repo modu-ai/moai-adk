@@ -35,10 +35,7 @@ export function hasAnyMoAIFiles(projectPath: string): boolean {
  * @returns Backup directory name (e.g., `.moai-backup-2025-10-07T05-04-03`)
  */
 export function generateBackupDirName(): string {
-  const timestamp = new Date()
-    .toISOString()
-    .replace(/[:.]/g, '-')
-    .slice(0, -5);
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
   return `.moai-backup-${timestamp}`;
 }
 

@@ -5,8 +5,8 @@
  * Related: @CODE:INTERACTIVE-INIT-019, @DOC:INSTALL-001
  */
 
-import type { InitAnswers } from '../prompts/init';
 import packageJson from '../../../package.json';
+import type { InitAnswers } from '../prompts/init';
 
 /**
  * Enhanced MoAI configuration interface
