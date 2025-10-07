@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.13] - 2025-10-07
+
+### ✨ Added
+- **SPEC-INIT-004: Git 자동 감지 및 초기화 구현**
+  - Git 저장소 자동 감지 기능 (`src/utils/git-detector.ts`)
+  - GitHub 연동 자동화 (SSH/HTTPS URL 감지)
+  - 언어 선택 간소화 (ko/en 만 지원)
+  - 23개 테스트 케이스 추가
+
+### 🐛 Fixed
+- **테스트 안정성 개선**
+  - `merge-report.ts`: UTC 시간 사용으로 타임존 독립성 확보
+  - `init-noninteractive.test.ts`: `os.tmpdir()` 사용으로 `process.cwd()` ENOENT 오류 해결
+  - 테스트 통과율: 852/905 (94.1%)
+
+### 📝 Documentation
+- README 동기화 (moai-adk-ts → 루트)
+- SPEC-INIT-004 문서 업데이트 (v0.0.1 → v0.1.0, draft → completed)
+
+### 🔧 Infrastructure
+- Biome 설정 포맷 정리 (자동 포맷 적용)
+
+---
+
 ## [0.2.12] - 2025-10-07
 
 ### 🎯 Major: SPEC Version Policy Enhancement & Auto-Completion System
