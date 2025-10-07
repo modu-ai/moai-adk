@@ -12,6 +12,12 @@ import * as path from 'node:path';
 import { mergeJSON } from './merge-strategies/json-merger.js';
 import { mergeMarkdown } from './merge-strategies/markdown-merger.js';
 import { mergeHooks } from './merge-strategies/hooks-merger.js';
+import {
+  hasAnyMoAIFiles as hasAnyMoAIFilesSync,
+  generateBackupDirName,
+  getBackupTargets,
+  copyDirectoryRecursive,
+} from '../../../core/installer/backup-utils.js';
 
 /**
  * Merge report structure
@@ -212,4 +218,78 @@ async function fileExists(filePath: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * Create emergency backup when metadata is missing but MoAI-ADK files exist
+ * @CODE:INIT-003:MERGE - v0.2.1 Emergency backup (Refactored with backup-utils)
+ *
+ * @param projectPath - Project root path
+ * @returns Backup metadata if backup was created, null otherwise
+ */
+export async function createEmergencyBackup(
+  projectPath: string
+): Promise<BackupMetadata | null> {
+  // Check if ANY MoAI-ADK files exist (OR condition) - using backup-utils
+  if (!hasAnyMoAIFilesSync(projectPath)) {
+    return null;
+  }
+
+  // Generate backup directory name - using backup-utils
+  const backupDirName = generateBackupDirName();
+  const backupPath = path.join(projectPath, backupDirName);
+
+  // Create backup directory
+  await fs.mkdir(backupPath, { recursive: true });
+
+  // Get selective backup targets - using backup-utils
+  const targets = getBackupTargets(projectPath);
+  const backedUpFiles: string[] = [];
+
+  // Backup files and directories
+  for (const target of targets) {
+    const srcPath = path.join(projectPath, target);
+    const dstPath = path.join(backupPath, target);
+
+    // Check if directory or file (async version)
+    const stats = await fs.stat(srcPath);
+    if (stats.isDirectory()) {
+      await copyDirectoryRecursive(srcPath, dstPath);
+      backedUpFiles.push(`${target}/`);
+    } else {
+      await fs.copyFile(srcPath, dstPath);
+      backedUpFiles.push(target);
+    }
+  }
+
+  // Create backup metadata
+  const metadata: BackupMetadata = {
+    timestamp: new Date().toISOString(),
+    backup_path: backupDirName,
+    backed_up_files: backedUpFiles,
+    status: 'pending',
+    created_by: '/alfred:8-project (emergency backup)',
+  };
+
+  // Save metadata
+  const metadataDir = path.join(projectPath, '.moai', 'backups');
+  await fs.mkdir(metadataDir, { recursive: true });
+  await fs.writeFile(
+    path.join(metadataDir, 'latest.json'),
+    JSON.stringify(metadata, null, 2),
+    'utf-8'
+  );
+
+  return metadata;
+}
+
+/**
+ * Backup metadata structure (aligned with Phase A)
+ */
+export interface BackupMetadata {
+  timestamp: string;
+  backup_path: string;
+  backed_up_files: string[];
+  status: 'pending' | 'merged' | 'ignored';
+  created_by: string;
 }
