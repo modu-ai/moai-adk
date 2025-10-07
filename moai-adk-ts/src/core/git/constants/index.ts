@@ -11,7 +11,17 @@ export { GitNamingRules } from './branch-constants';
 
 // Commit message templates
 export { GitCommitTemplates } from './commit-constants';
-
+// Locale-based commit messages
+export {
+  type CommitLocale,
+  CommitMessageTemplates,
+  getTDDCommitMessage,
+  getTDDCommitWithTag,
+  getValidatedLocale,
+  isValidCommitLocale,
+  type TDDCommitTemplates,
+  type TDDStage,
+} from './commit-message-locales';
 // Configuration and templates
 export {
   GitDefaults,

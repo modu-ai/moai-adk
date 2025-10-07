@@ -56,7 +56,7 @@ export interface MoAIConfig {
     description?: string;
     initialized: boolean;
     created_at: string;
-    locale?: 'ko' | 'en';
+    locale?: 'ko' | 'en' | 'ja' | 'zh';
   };
 
   constitution: {

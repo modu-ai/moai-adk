@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.11] - 2025-10-07
+
+### Changed
+
+#### 문서 일관성 및 사용자 경험 개선
+- **용어 통일**: "헌법 Article I" → "TRUST 5원칙"으로 변경 (2-build.md)
+- **문서 구조 최적화**: 중요 정보를 앞쪽으로 이동 (디렉토리 명명 규칙, 금지 사항)
+- **커맨드 우선순위 원칙**: CLAUDE.md "에이전트 협업 원칙"에 추가
+
+#### Alfred 커맨드 지침 개선 (6개 파일)
+
+**1-spec.md**:
+- 디렉토리 명명 규칙 강조 (Line 449 → Line 106)
+- EARS 예시 코드 추가 (Ubiquitous, Event-driven, State-driven 등)
+
+**2-build.md**:
+- TDD-TRUST 5원칙 연계 설명 추가
+- trust-checker 호출 주체 명확화 (Alfred가 자동 호출)
+
+**3-sync.md**:
+- `--auto-merge` 설명 위치 개선 (사용 예시 직후)
+- Phase 0.5/2.5 차이점 명확화
+- 통합 프로젝트 모드 설명 보강 (사용 시점, 산출물)
+
+**8-project.md**:
+- 금지 사항 위치 개선 (Line 507 → Line 53)
+
+**9-update.md**:
+- 백업 복원 명령어 수정 (미구현 옵션 제거: `--dry-run`, `--force`)
+
+**CLAUDE.md** (템플릿):
+- 커맨드 우선순위 원칙 추가
+- 이상 텍스트 제거 (Line 9)
+
+### Technical Details
+
+- **수정된 파일**: 6개
+- **총 변경량**: +106줄 추가, -45줄 삭제
+- **발견된 이슈**: 23개 (Critical 1, Medium 8, Low 14)
+- **수정 완료**: Critical 1, Medium 7, Low 3
+
+### Quality Improvements
+
+- **명확성 향상**: 차이점 비교, 사용 시점, 모드별 동작 설명 추가
+- **실용성 강화**: 구체적인 예시 코드 추가 (EARS)
+- **일관성 확보**: 용어 통일, 호출 주체 명확화
+
+### Related
+
+- 분석 보고서: cc-manager ULTRATHINK 모드
+- 이슈 트래커: 23개 이슈 분석 및 11개 수정 완료
+
+---
+
 ## [v0.2.10] - 2025-10-07
 
 ### Changed (INIT-003 v0.2.1)

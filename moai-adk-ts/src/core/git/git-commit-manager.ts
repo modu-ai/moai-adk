@@ -12,7 +12,9 @@ import * as fs from 'fs-extra';
 import simpleGit, { type SimpleGit, type StatusResult } from 'simple-git';
 import type { GitCommitResult, GitConfig, GitStatus } from '../../types/git';
 import { GitCommitTemplates, GitTimeouts } from './constants';
+import type { CommitLocale } from './constants/commit-message-locales';
 import { GitLockManager } from './git-lock-manager';
+import { loadLocaleFromConfig } from './utils/locale-loader';
 
 /**
  * Git 커밋 작업 전담 클래스
@@ -28,11 +30,13 @@ export class GitCommitManager {
   private config: GitConfig;
   private workingDir: string;
   private lockManager: GitLockManager;
+  private locale: CommitLocale;
 
   constructor(config: GitConfig, workingDir?: string) {
     this.validateConfig(config);
     this.config = config;
     this.workingDir = workingDir || process.cwd();
+    this.locale = loadLocaleFromConfig(this.workingDir);
 
     // 디렉토리가 존재하지 않는 경우 동기적으로 생성
     if (!fs.pathExistsSync(this.workingDir)) {
@@ -217,5 +221,26 @@ export class GitCommitManager {
     }
 
     return GitCommitTemplates.apply(this.config.commitMessageTemplate, message);
+  }
+
+  /**
+   * Get current locale for commit messages
+   */
+  public getLocale(): CommitLocale {
+    return this.locale;
+  }
+
+  /**
+   * Update locale (re-read from config)
+   */
+  public updateLocale(): void {
+    this.locale = loadLocaleFromConfig(this.workingDir);
+  }
+
+  /**
+   * Set locale manually (for testing)
+   */
+  public setLocale(locale: CommitLocale): void {
+    this.locale = locale;
   }
 }

@@ -103,6 +103,31 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 
 ## 📋 STEP 1 실행 가이드: SPEC 분석 및 계획 수립
 
+### ⚠️ 필수 규칙: 디렉토리 명명 규칙
+
+**반드시 준수해야 할 형식**: `.moai/specs/SPEC-{ID}/`
+
+**올바른 예시**:
+- ✅ `SPEC-AUTH-001/`
+- ✅ `SPEC-REFACTOR-001/`
+- ✅ `SPEC-UPDATE-REFACTOR-001/`
+
+**잘못된 예시**:
+- ❌ `AUTH-001/` (SPEC- 접두어 누락)
+- ❌ `SPEC-001-auth/` (ID 뒤 추가 텍스트)
+- ❌ `SPEC-AUTH-001-jwt/` (ID 뒤 추가 텍스트)
+
+**중복 확인 필수**:
+```bash
+rg "@SPEC:{ID}" -n .moai/specs/  # 기존 TAG ID 검색
+```
+
+**복합 도메인 규칙**:
+- ✅ 허용: `UPDATE-REFACTOR-001` (2개 도메인)
+- ⚠️ 주의: `UPDATE-REFACTOR-FIX-001` (3개 이상 도메인, 단순화 권장)
+
+---
+
 ### 1. 프로젝트 문서 분석
 
 다음을 우선적으로 실행하여 SPEC 후보를 분석합니다:
@@ -187,6 +212,21 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 3. **Response**: 행동의 결과로 나타나는 응답 정의
 4. **State**: 시스템 상태 변화 및 부작용 명시
 
+**예시** (상세 내용은 `development-guide.md` 참조):
+```markdown
+### Ubiquitous Requirements (기본 요구사항)
+- 시스템은 사용자 인증 기능을 제공해야 한다
+
+### Event-driven Requirements (이벤트 기반)
+- WHEN 사용자가 유효한 자격증명으로 로그인하면, 시스템은 JWT 토큰을 발급해야 한다
+
+### State-driven Requirements (상태 기반)
+- WHILE 토큰이 만료되지 않은 상태일 때, 시스템은 보호된 리소스에 대한 접근을 허용해야 한다
+
+### Constraints (제약사항)
+- IF 토큰이 만료되었으면, 시스템은 401 Unauthorized 응답을 반환해야 한다
+```
+
 ### 📄 SPEC 문서 템플릿
 
 #### YAML Front Matter 스키마
@@ -199,10 +239,10 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 ---
 # 필수 필드 (7개)
 id: AUTH-001                    # SPEC 고유 ID (<도메인>-<3자리>, 영구 불변)
-version: 0.1.0                  # Semantic Version (v0.1.0 = INITIAL)
+version: 0.0.1                  # Semantic Version (v0.0.1 = INITIAL, draft 시작)
 status: draft                   # draft|active|completed|deprecated
 created: 2025-09-15            # 생성일 (YYYY-MM-DD)
-updated: 2025-10-01            # 최종 수정일 (YYYY-MM-DD)
+updated: 2025-09-15            # 최종 수정일 (YYYY-MM-DD, 최초에는 created와 동일)
 author: @Goos                   # 작성자 (GitHub ID, 단수형)
 priority: high                  # low|medium|high|critical
 
@@ -236,7 +276,7 @@ scope:
   - **디렉토리명 규칙**: `.moai/specs/SPEC-{ID}/` (예: `SPEC-AUTH-001/`)
   - **ID 중복 확인**: `rg "@SPEC:{ID}" -n .moai/specs/` 로 기존 TAG 검색 필수
   - **복합 도메인**: 하이픈으로 연결 가능 (예: `UPDATE-REFACTOR-001`)
-- **version**: Semantic Version 체계 (v0.1.0 = INITIAL, v0.2.0~ = 구현 완료, v1.0.0 = 안정화)
+- **version**: Semantic Version 체계 (v0.0.1 = INITIAL draft 시작, v0.1.0 = 구현 완료, v0.x.0 = 기능 추가, v1.0.0 = 안정화)
 - **status**: `draft` (작성 중) | `active` (구현 진행) | `completed` (완료) | `deprecated` (사용 중지)
 - **created/updated**: YYYY-MM-DD 형식
 - **author**: 단수형, GitHub ID 앞에 @ 접두사 필수 (예: `@Goos`)
@@ -258,34 +298,41 @@ scope:
 
 ## HISTORY
 
-### v0.1.0 (2025-09-15)
+### v0.0.1 (2025-09-15)
 - **INITIAL**: JWT 기반 인증 시스템 명세 최초 작성
 - **AUTHOR**: @Goos
 - **SCOPE**: 토큰 발급, 검증, 갱신 로직
 - **CONTEXT**: 사용자 인증 강화 요구사항 반영
 
-### v0.2.0 (2025-09-20)
-- **ADDED**: 소셜 로그인 요구사항 추가
+### v0.0.2 (2025-09-20)
+- **ADDED**: 소셜 로그인 요구사항 추가 (Draft 수정)
 - **AUTHOR**: @Goos
 - **REVIEW**: @security-team (승인)
 - **CHANGES**:
   - OAuth2 통합 요구사항
   - Google/GitHub 로그인 지원
 
-### v0.3.0 (2025-10-01)
-- **CHANGED**: 토큰 만료 시간 15분 → 30분으로 변경
-- **ADDED**: 리프레시 토큰 자동 갱신 요구사항 추가
-- **AUTHOR**: @Goos
-- **REVIEW**: @security-team (승인)
+### v0.1.0 (2025-10-01)
+- **IMPLEMENTATION COMPLETED**: TDD 구현 완료 (status: draft → completed)
+- **TDD CYCLE**: RED → GREEN → REFACTOR
+- **COMMITS**: [구현 커밋 해시 목록]
+- **FILES**: [생성/수정된 파일 목록]
 ```
 
 **HISTORY 작성 규칙**:
-- **버전 체계**: `v0.1.0` = INITIAL (모든 SPEC 시작 버전), `v0.2.0~v0.9.0` = 구현 완료/기능 추가, `v1.0.0` = 정식 안정화
+- **버전 체계**:
+  - `v0.0.1` = INITIAL (모든 SPEC 시작 버전, status: draft)
+  - `v0.0.x` = Draft 수정/개선 (SPEC 문서 수정 시 패치 버전 증가)
+  - `v0.1.0` = TDD 구현 완료 (status: completed, /alfred:3-sync 자동 업데이트)
+  - `v0.1.x` = 버그 수정, 문서 개선 (패치 버전)
+  - `v0.x.0` = 기능 추가, 주요 개선 (마이너 버전)
+  - `v1.0.0` = 정식 안정화 (프로덕션 준비, 사용자 명시적 승인 필수)
 - **버전 순서**: 최신 버전이 위로 (역순)
 - **변경 타입** (대문자):
-  - `INITIAL` - 최초 작성 (항상 v0.1.0)
-  - `ADDED` - 새 요구사항 추가
-  - `CHANGED` - 기존 요구사항 수정
+  - `INITIAL` - 최초 작성 (항상 v0.0.1, status: draft)
+  - `ADDED` - 새 요구사항 추가 (Draft 단계)
+  - `CHANGED` - 기존 요구사항 수정 (Draft 단계)
+  - `IMPLEMENTATION COMPLETED` - TDD 구현 완료 (v0.1.0, status: completed)
   - `BREAKING` - 하위 호환성 깨는 변경 (Major 버전 증가)
   - `DEPRECATED` - 폐기 예정 표시
   - `REMOVED` - 요구사항 제거
@@ -445,22 +492,6 @@ Task 2 (sonnet): 심화 문서 분석
 - product/structure/tech 문서에 없는 정보는 새로 질문해 보완합니다.
 - Acceptance Criteria는 Given/When/Then 3단으로 최소 2개 이상 작성하도록 유도합니다.
 - TRUST 원칙 중 Readable(읽기 쉬움) 기준 완화로 인해 모듈 수가 권장치(기본 5)를 초과하는 경우, 근거를 SPEC `context` 섹션에 함께 기록하세요.
-
-## ⚠️ 디렉토리 생성 주의사항
-
-**필수 규칙**:
-1. **디렉토리명 형식**: `.moai/specs/SPEC-{ID}/` (예: `SPEC-AUTH-001/`, `SPEC-UPDATE-REFACTOR-001/`)
-   - ❌ 잘못된 예: `AUTH-001/`, `SPEC-001-auth-system/`, `SPEC-AUTH-001-jwt/`
-   - ✅ 올바른 예: `SPEC-AUTH-001/`, `SPEC-REFACTOR-001/`, `SPEC-UPDATE-REFACTOR-001/`
-
-2. **ID 중복 확인**: SPEC 생성 전 반드시 실행
-   ```bash
-   rg "@SPEC:{ID}" -n .moai/specs/  # 기존 TAG ID 검색
-   ```
-
-3. **복합 도메인**: 하이픈으로 연결 가능하나 3개 이상 연결 시 경고 권장
-   - ✅ 허용: `UPDATE-REFACTOR-001` (2개 도메인)
-   - ⚠️ 주의: `UPDATE-REFACTOR-FIX-001` (3개 도메인, 단순화 권장)
 
 ---
 

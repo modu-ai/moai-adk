@@ -15,6 +15,8 @@ SPEC 문서를 분석하여 언어별 최적화된 TDD 사이클(Red-Green-Refac
 
 **TDD 구현 대상**: $ARGUMENTS
 
+> **표준 2단계 워크플로우** (자세한 내용: `CLAUDE.md` - "Alfred 커맨드 실행 패턴" 참조)
+
 ## 📋 실행 흐름
 
 1. **SPEC 분석**: 요구사항 추출 및 복잡도 평가
@@ -149,8 +151,8 @@ TDD 구현 완료 후 `trust-checker` 에이전트가 **자동으로** 품질 �
 
 **실행 방식**:
 ```bash
-# 자동 실행
-@agent-trust-checker --mode=quick --spec=$ARGUMENTS
+# Alfred가 자동으로 호출 (TDD 구현 완료 시)
+@agent-trust-checker "SPEC-{ID}에 대한 빠른 품질 검증을 수행해주세요"
 ```
 
 **검증 결과 처리**:
@@ -190,8 +192,8 @@ TDD 구현 완료 후 `trust-checker` 에이전트가 **자동으로** 품질 �
 다음을 우선적으로 실행하여 SPEC을 분석합니다:
 
 ```bash
-# SPEC 문서 확인 및 분석
-@agent-code-builder --mode=analysis --spec=$ARGUMENTS
+# SPEC 문서 확인 및 분석 (자연어 메시지)
+@agent-code-builder "SPEC-{ID}를 분석하고 TDD 구현 계획을 수립해주세요"
 ```
 
 #### 분석 체크리스트
@@ -236,7 +238,7 @@ TDD 구현 완료 후 `trust-checker` 에이전트가 **자동으로** 품질 �
 - **TDD 접근법**: [Bottom-up/Top-down/Middle-out]
 - **핵심 모듈**: [주요 구현 대상]
 
-### 🚨 위험 요소
+### ⚠️ 위험 요소
 - **기술적 위험**: [예상 문제점]
 - **의존성 위험**: [외부 의존성 이슈]
 - **일정 위험**: [지연 가능성]
@@ -258,8 +260,8 @@ TDD 구현 완료 후 `trust-checker` 에이전트가 **자동으로** 품질 �
 사용자가 **"진행"** 또는 **"시작"**을 선택한 경우에만 다음을 실행합니다:
 
 ```bash
-# TDD 구현 시작
-@agent-code-builder --mode=implement --spec=$ARGUMENTS --approved=true
+# TDD 구현 시작 (자연어 메시지)
+@agent-code-builder "SPEC-{ID}의 TDD 구현을 시작합니다. RED-GREEN-REFACTOR 사이클을 수행해주세요"
 ```
 
 ### TDD 단계별 가이드
@@ -268,7 +270,12 @@ TDD 구현 완료 후 `trust-checker` 에이전트가 **자동으로** 품질 �
 2. **GREEN**: 테스트를 통과시키는 최소한의 구현만 추가합니다. 최적화는 REFACTOR 단계로 미룹니다.
 3. **REFACTOR**: 중복 제거, 명시적 네이밍, 구조화 로깅/예외 처리 보강. 필요 시 추가 커밋으로 분리합니다.
 
-> 헌법 Article I은 기본 권장치만 제공하므로, `simplicity_threshold`를 초과하는 구조가 필요하다면 SPEC 또는 ADR에 근거를 남기고 진행하세요.
+**TRUST 5원칙 연계** (상세: `development-guide.md` - "TRUST 5원칙"):
+- **T (Test First)**: RED 단계에서 SPEC 기반 테스트 작성
+- **R (Readable)**: REFACTOR 단계에서 가독성 개선 (파일≤300 LOC, 함수≤50 LOC)
+- **T (Trackable)**: 모든 단계에서 @TAG 추적성 유지
+
+> TRUST 5원칙은 기본 권장치만 제공하므로, `simplicity_threshold`를 초과하는 구조가 필요하다면 SPEC 또는 ADR에 근거를 남기고 진행하세요.
 
 ## 에이전트 역할 분리
 
@@ -299,33 +306,14 @@ TDD 구현 완료 후 `trust-checker` 에이전트가 **자동으로** 품질 �
 
 ## 🧠 Context Management (컨텍스트 관리)
 
-> 본 커맨드는 **컨텍스트 엔지니어링** 원칙을 따릅니다.
-> **컨텍스트 예산/토큰 예산은 다루지 않습니다**.
+> 자세한 내용: `.moai/memory/development-guide.md` - "Context Engineering" 섹션 참조
 
-### JIT Retrieval (필요 시 로딩)
+### 이 커맨드의 핵심 전략
 
-**우선 로드** (TDD 구현 시작 시):
-- `.moai/specs/SPEC-XXX/spec.md` - 구현 대상 요구사항
+**우선 로드**: `.moai/specs/SPEC-XXX/spec.md` (구현 대상 요구사항)
+**Compaction 권장**: TDD 구현 완료 후 `/alfred:3-sync` 진행 전
 
-**필요 시 로드** (복잡도 높은 구현):
-- `.moai/memory/development-guide.md` - TRUST 5원칙 참조
-- 기존 코드 파일 (의존성 확인 시)
-
-**지연 로드** (통합 테스트 시):
-- `.moai/specs/` - 관련 SPEC 검색
-- `docs/` - API 문서 참조
-
-### Compaction 권장 시점
-
-**트리거 조건**:
-- TDD 구현 완료 후 다음 단계(3-sync) 진행 전
-- 토큰 사용량 > 70% (140,000 / 200,000)
-- Red-Green-Refactor 사이클 완료 시
-
-**권장 메시지**:
-```markdown
 **권장사항**: TDD 구현이 완료되었습니다. 다음 단계(`/alfred:3-sync`) 진행 전 `/clear` 또는 `/new` 명령으로 새로운 대화 세션을 시작하면 더 나은 성능과 컨텍스트 관리를 경험할 수 있습니다.
-```
 
 ---
 

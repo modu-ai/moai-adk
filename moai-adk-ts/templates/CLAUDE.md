@@ -54,6 +54,7 @@ Alfred는 9명의 전문 에이전트를 조율합니다. 각 에이전트는 IT
 
 ### 에이전트 협업 원칙
 
+- **커맨드 우선순위**: 커맨드 지침은 에이전트 지침보다 상위이며, 충돌 시 커맨드 지침을 따릅니다.
 - **단일 책임 원칙**: 각 에이전트는 자신의 전문 영역만 담당
 - **중앙 조율**: Alfred만이 에이전트 간 작업을 조율 (에이전트 간 직접 호출 금지)
 - **품질 게이트**: 각 단계 완료 시 TRUST 원칙 및 @TAG 무결성 자동 검증
@@ -305,10 +306,10 @@ Alfred가 필요 시 즉시 호출하는 전문 에이전트들:
 ---
 # 필수 필드 (7개)
 id: AUTH-001                    # SPEC 고유 ID
-version: 0.1.0                  # Semantic Version (v0.1.0 = INITIAL)
+version: 0.0.1                  # Semantic Version (v0.0.1 = INITIAL)
 status: draft                   # draft|active|completed|deprecated
 created: 2025-09-15            # 생성일 (YYYY-MM-DD)
-updated: 2025-10-01            # 최종 수정일 (YYYY-MM-DD)
+updated: 2025-09-15            # 최종 수정일 (YYYY-MM-DD)
 author: {{AUTHOR}}              # 작성자 (GitHub ID)
 priority: high                  # low|medium|high|critical
 
@@ -336,7 +337,7 @@ scope:
 
 ## HISTORY
 
-### v0.1.0 (2025-09-15)
+### v0.0.1 (2025-09-15)
 - **INITIAL**: JWT 기반 인증 시스템 명세 작성
 - **AUTHOR**: {{AUTHOR}}
 - **SCOPE**: 토큰 발급, 검증, 갱신 로직
@@ -361,10 +362,12 @@ scope:
 - **TAG ID**: `<도메인>-<3자리>` (예: `AUTH-003`) - 영구 불변
 - **TAG 내용**: 자유롭게 수정 가능 (HISTORY에 기록 필수)
 - **버전 관리**: 0.x.y 기반 개발 버전 체계
-  - **v0.1.0**: INITIAL - SPEC 최초 작성 (모든 SPEC 시작 버전)
-  - **v0.2.0~v0.9.0**: 구현 완료, 기능 추가, 주요 업데이트
-  - **v0.x.y**: 버그 수정, 문서 개선, 경미한 변경
-  - **v1.0.0**: 정식 안정화 버전 (프로덕션 준비 완료 시에만 사용)
+  - **v0.0.1**: INITIAL - SPEC 최초 작성 (모든 SPEC 시작 버전, status: draft)
+  - **v0.0.x**: Draft 수정/개선 (SPEC 문서 수정 시 패치 버전 증가)
+  - **v0.1.0**: TDD 구현 완료 (첫 번째 구현, status: completed)
+  - **v0.1.x**: 버그 수정, 문서 개선, 경미한 변경
+  - **v0.x.0**: 기능 추가, 주요 개선 (마이너 버전 증가)
+  - **v1.0.0**: 정식 안정화 버전 (프로덕션 준비 완료, 사용자 명시적 승인 필수)
 - **TAG 참조**: 버전 없이 파일명만 사용 (예: `SPEC-AUTH-001.md`)
 - **중복 확인**: `rg "@SPEC:AUTH" -n` 또는 `rg "AUTH-001" -n`
 - **CODE-FIRST**: TAG의 진실은 코드 자체에만 존재
@@ -441,9 +444,9 @@ Alfred가 모든 코드에 적용하는 품질 기준:
 
 **1단계: SPEC 작성** (`/alfred:1-spec`)
 - [ ] `.moai/specs/SPEC-<ID>/spec.md` 생성 (디렉토리 구조)
-- [ ] YAML Front Matter 추가 (id, version, status, created)
+- [ ] YAML Front Matter 추가 (id, version: 0.0.1, status: draft, created)
 - [ ] `@SPEC:ID` TAG 포함
-- [ ] **HISTORY 섹션 작성** (v0.1.0 INITIAL 항목)
+- [ ] **HISTORY 섹션 작성** (v0.0.1 INITIAL 항목)
 - [ ] EARS 구문으로 요구사항 작성
 - [ ] 중복 ID 확인: `rg "@SPEC:<ID>" -n`
 
