@@ -1,6 +1,6 @@
 ---
 id: PRODUCT-001
-version: 1.0.0
+version: 0.1.0
 status: active
 created: 2025-10-01
 updated: 2025-10-01
@@ -11,7 +11,7 @@ authors: ["@project-owner"]
 
 ## HISTORY
 
-### v1.0.0 (2025-10-01)
+### v0.1.0 (2025-10-01)
 - **INITIAL**: 프로젝트 제품 정의 문서 작성
 - **AUTHOR**: @project-owner
 - **SECTIONS**: Mission, User, Problem, Strategy, Success, Legacy

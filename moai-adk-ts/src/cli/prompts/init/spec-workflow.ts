@@ -5,8 +5,8 @@
  * @tags @CODE:INSTALL-001:SPEC-WORKFLOW
  */
 
-import inquirer from 'inquirer';
 import type { Answers } from 'inquirer';
+import inquirer from 'inquirer';
 
 /**
  * SPEC configuration
@@ -36,7 +36,9 @@ export function getSpecWorkflowPersonalPrompt(): Answers {
  * Prompt SPEC workflow for Personal mode
  * @returns User answer for enforce_spec
  */
-export async function promptSpecWorkflowPersonal(): Promise<{ enforceSpec: boolean }> {
+export async function promptSpecWorkflowPersonal(): Promise<{
+  enforceSpec: boolean;
+}> {
   const prompts = getSpecWorkflowPersonalPrompt();
   const answers = await inquirer.prompt(prompts);
   return { enforceSpec: answers.enforceSpec };

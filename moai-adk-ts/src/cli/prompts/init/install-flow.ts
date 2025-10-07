@@ -5,10 +5,10 @@
  * @tags @CODE:INSTALL-001:INSTALL-FLOW
  */
 
-import { validateGitInstallation } from './git-validator';
 import { collectDeveloperInfo } from './developer-info';
-import { promptSpecWorkflow } from './spec-workflow';
+import { validateGitInstallation } from './git-validator';
 import { promptAutoPR, promptDraftPR } from './pr-config';
+import { promptSpecWorkflow } from './spec-workflow';
 
 /**
  * Installation flow result

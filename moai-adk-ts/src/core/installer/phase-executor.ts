@@ -1,5 +1,5 @@
 // @CODE:INST-002 |
-// Related: @CODE:INST-002:API
+// Related: @CODE:INST-002:API, @CODE:INIT-003:BACKUP
 
 /**
  * @file Installation phase execution engine
@@ -22,6 +22,15 @@ import type {
   ProgressCallback,
 } from './types';
 import { executePhase } from './utils/phase-runner.js';
+import {
+  type BackupMetadata,
+  saveBackupMetadata,
+} from './backup-metadata';
+import {
+  hasAnyMoAIFiles,
+  generateBackupDirName,
+  getBackupTargets,
+} from './backup-utils';
 
 /**
  * Executes installation phases with dependency injection
@@ -213,6 +222,7 @@ export class PhaseExecutor {
 
   /**
    * Create backup of existing project
+   * @CODE:INIT-003:BACKUP - Phase A implementation (v0.2.1: Refactored with backup-utils)
    */
   private async createBackup(config: InstallationConfig): Promise<void> {
     if (isInsideMoAIPackage(config.projectPath)) {
@@ -225,38 +235,67 @@ export class PhaseExecutor {
       );
     }
 
-    const backupDir = path.join(config.projectPath, '.moai-backup');
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const backupPath = path.join(backupDir, `backup-${timestamp}`);
-
-    if (fs.existsSync(config.projectPath)) {
-      await fs.promises.mkdir(backupPath, { recursive: true });
-
-      // Backup critical directories
-      const criticalDirs = ['.claude', '.moai'];
-      for (const dir of criticalDirs) {
-        const srcPath = path.join(config.projectPath, dir);
-        const dstPath = path.join(backupPath, dir);
-        if (fs.existsSync(srcPath)) {
-          await this.templateProcessor.copyDirectory(srcPath, dstPath);
-        }
-      }
-
-      // Backup critical files
-      const criticalFiles = ['CLAUDE.md'];
-      for (const file of criticalFiles) {
-        const srcPath = path.join(config.projectPath, file);
-        const dstPath = path.join(backupPath, file);
-        if (fs.existsSync(srcPath)) {
-          await fs.promises.copyFile(srcPath, dstPath);
-        }
-      }
-
-      logger.debug('Backup created', {
-        backupPath,
-        tag: 'SUCCESS:BACKUP-001',
+    // v0.2.1: Check if ANY MoAI-ADK files exist (OR condition) - using backup-utils
+    if (!hasAnyMoAIFiles(config.projectPath)) {
+      logger.debug('No MoAI-ADK files found, skipping backup', {
+        projectPath: config.projectPath,
+        tag: 'INFO:SKIP-BACKUP-001',
       });
+      return;
     }
+
+    // Generate backup directory name - using backup-utils
+    const backupDirName = generateBackupDirName();
+    const backupPath = path.join(config.projectPath, backupDirName);
+
+    // Create backup directory
+    await fs.promises.mkdir(backupPath, { recursive: true });
+
+    // v0.2.1: Get selective backup targets - using backup-utils
+    const targets = getBackupTargets(config.projectPath);
+    const backedUpFiles: string[] = [];
+
+    // Backup files and directories
+    for (const target of targets) {
+      const srcPath = path.join(config.projectPath, target);
+      const dstPath = path.join(backupPath, target);
+
+      if (fs.statSync(srcPath).isDirectory()) {
+        await this.templateProcessor.copyDirectory(srcPath, dstPath);
+        backedUpFiles.push(`${target}/`);
+      } else {
+        await fs.promises.copyFile(srcPath, dstPath);
+        backedUpFiles.push(target);
+      }
+    }
+
+    logger.debug('Backup created', {
+      backupPath,
+      backedUpFiles,
+      tag: 'SUCCESS:BACKUP-001',
+    });
+
+    // Save backup metadata (Phase A: SPEC-INIT-003 v0.2.1)
+    const metadata: BackupMetadata = {
+      timestamp: new Date().toISOString(),
+      backup_path: backupDirName,
+      backed_up_files: backedUpFiles,
+      status: 'pending',
+      created_by: 'moai init',
+    };
+
+    await saveBackupMetadata(config.projectPath, metadata);
+
+    logger.info('Backup metadata saved', {
+      metadataPath: path.join(
+        config.projectPath,
+        '.moai',
+        'backups',
+        'latest.json'
+      ),
+      backedUpFiles,
+      tag: 'SUCCESS:BACKUP-METADATA-001',
+    });
   }
 
   /**

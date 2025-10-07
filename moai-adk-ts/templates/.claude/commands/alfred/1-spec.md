@@ -15,6 +15,8 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 
 **SPEC 자동 제안/생성 대상**: $ARGUMENTS
 
+> **표준 2단계 워크플로우** (자세한 내용: `CLAUDE.md` - "Alfred 커맨드 실행 패턴" 참조)
+
 ## 📋 실행 흐름
 
 1. **프로젝트 분석**: product/structure/tech.md 심층 분석
@@ -25,8 +27,8 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 
 ## 🔗 연관 에이전트
 
-- **Primary**: spec-builder (🏗️ 설계자) - SPEC 문서 작성 전담
-- **Secondary**: git-manager (🌿 정원사) - Git 브랜치/PR 생성 전담
+- **Primary**: spec-builder (🏗️ 시스템 아키텍트) - SPEC 문서 작성 전담
+- **Secondary**: git-manager (🚀 릴리스 엔지니어) - Git 브랜치/PR 생성 전담
 
 ## 💡 사용 예시
 
@@ -72,7 +74,7 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 
 ## 기능
 
-- **ULTRATHINK**: `.moai/project/{product,structure,tech}.md`를 분석해 구현 후보를 제안하고 사용자 승인 후 SPEC을 생성합니다.
+- **프로젝트 문서 분석**: `.moai/project/{product,structure,tech}.md`를 분석해 구현 후보를 제안하고 사용자 승인 후 SPEC을 생성합니다.
 - **Personal 모드**: `.moai/specs/SPEC-{ID}/` 디렉터리와 템플릿 문서를 만듭니다 (**디렉토리명 형식 필수**: `SPEC-` 접두어 + TAG ID).
 - **Team 모드**: GitHub Issue(또는 Discussion)를 생성하고 브랜치 템플릿과 연결합니다.
 
@@ -151,7 +153,7 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 - **EARS 구조**: [Event-Action-Response-State 설계]
 - **Acceptance Criteria**: [Given-When-Then 시나리오]
 
-### 🚨 주의사항
+### ⚠️ 주의사항
 - **기술적 제약**: [고려해야 할 제약사항]
 - **의존성**: [다른 SPEC과의 연관성]
 - **브랜치 전략**: [Personal/Team 모드별 처리]
@@ -464,31 +466,14 @@ Task 2 (sonnet): 심화 문서 분석
 
 ## 🧠 Context Management (컨텍스트 관리)
 
-> 본 커맨드는 **컨텍스트 엔지니어링** 원칙을 따릅니다.
-> **컨텍스트 예산/토큰 예산은 다루지 않습니다**.
+> 자세한 내용: `.moai/memory/development-guide.md` - "Context Engineering" 섹션 참조
 
-### JIT Retrieval (필요 시 로딩)
+### 이 커맨드의 핵심 전략
 
-**우선 로드** (SPEC 작성 시작 시):
-- `.moai/project/product.md` - 비즈니스 요구사항 및 사용자 스토리
+**우선 로드**: `.moai/project/product.md` (비즈니스 요구사항)
+**Compaction 권장**: SPEC 작성 완료 후 `/alfred:2-build` 진행 전
 
-**필요 시 로드** (SPEC 후보 발굴 시):
-- `.moai/project/structure.md` - 시스템 아키텍처 및 모듈 설계
-- `.moai/project/tech.md` - 기술 스택 및 품질 게이트
-
-**지연 로드** (기존 SPEC 확인 필요 시):
-- `.moai/specs/` - 기존 SPEC 목록 및 의존성 분석
-
-### Compaction 권장 시점
-
-**트리거 조건**:
-- SPEC 작성 완료 후 다음 단계(2-build) 진행 전
-- 토큰 사용량 > 70% (140,000 / 200,000)
-
-**권장 메시지**:
-```markdown
 **권장사항**: SPEC 작성이 완료되었습니다. 다음 단계(`/alfred:2-build`) 진행 전 `/clear` 또는 `/new` 명령으로 새로운 대화 세션을 시작하면 더 나은 성능과 컨텍스트 관리를 경험할 수 있습니다.
-```
 
 ---
 

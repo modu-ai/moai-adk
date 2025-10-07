@@ -6,8 +6,8 @@
  */
 
 import { execa } from 'execa';
-import inquirer from 'inquirer';
 import type { Answers } from 'inquirer';
+import inquirer from 'inquirer';
 
 /**
  * Developer information

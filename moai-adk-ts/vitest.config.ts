@@ -14,6 +14,7 @@ export default defineConfig({
     include: [
       'src/**/*.{test,spec}.ts',
       '__tests__/core/git/**/*.test.ts',
+      '__tests__/core/installer/**/*.test.ts',
       '__tests__/utils/**/*.test.ts',
       '__tests__/system-checker/**/*.test.ts',
       '__tests__/cli/**/*.test.ts',

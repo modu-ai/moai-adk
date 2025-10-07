@@ -10,7 +10,7 @@
  */
 export interface ProjectStatus {
   projectName: string;
-  moaiVersion: string;
+  moaiVersion: string; // moai-adk package version (internally from config.moai.version)
   initialized: boolean;
   constitutionStatus: ConstitutionStatus;
   pipelineStage: string;

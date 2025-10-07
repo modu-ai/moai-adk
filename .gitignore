@@ -8,6 +8,8 @@ bun.lockb
 dist/
 *.tsbuildinfo
 .turbo/
+docs/.vitepress/dist/
+docs/.vitepress/cache/
 
 # Test coverage
 coverage/
@@ -30,6 +32,10 @@ lerna-debug.log*
 *.backup
 backup-*/
 .moai-backup/
+
+# Project-specific .moai folders (not for package distribution)
+.moai/docs/
+.moai/scripts/
 
 # Package files
 *.tgz

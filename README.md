@@ -1708,20 +1708,22 @@ moai restore .moai-backup-YYYY-MM-DD
 
 ---
 
-## 🙏 Contributors
+## 📞 Support & Contributing
 
-MoAI-ADK 프로젝트에 기여해주신 분들께 감사드립니다:
+### 버그 리포트 & 기능 제안
 
-- **[@Workuul](https://github.com/Workuul)** - 심볼릭 링크 실행 문제 수정 ([PR #1](https://github.com/modu-ai/moai-adk/pull/1))
-  - `realpathSync()` 적용으로 글로벌 설치 이슈 해결
-  - REPL/eval 환경 방어 로직 추가
-  - JSDoc 문서화 개선
-
----
-
-## 📞 Support
+버그를 발견하거나 새로운 기능을 제안하고 싶으신가요?
 
 - **버그 리포트**: [GitHub Issues](https://github.com/modu-ai/moai-adk/issues)
+  - 이슈 작성 전 [CONTRIBUTING.md](CONTRIBUTING.md)의 **이슈 작성 가이드**를 꼭 참고해주세요
+  - 명확한 재현 단계와 환경 정보를 포함하면 더 빠른 해결이 가능합니다
+
+- **기능 제안**: [GitHub Issues](https://github.com/modu-ai/moai-adk/issues)
+  - `[Feature Request]` 라벨과 함께 제안해주세요
+  - [CONTRIBUTING.md](CONTRIBUTING.md)의 **기능 제안 양식**을 참고하시면 도움이 됩니다
+
+### 질문 & 토론
+
 - **질문 & 토론**: [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)
 - **npm 패키지**: [moai-adk](https://www.npmjs.com/package/moai-adk)
 

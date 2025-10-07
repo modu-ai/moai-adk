@@ -10,16 +10,16 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import chalk from 'chalk';
+import { buildMoAIConfig } from '@/cli/config/config-builder';
+import { displayWelcomeBanner, promptProjectSetup } from '@/cli/prompts/init';
 import { InstallationOrchestrator } from '@/core/installer/orchestrator';
 import type { InstallationConfig } from '@/core/installer/types';
-import type { DoctorCommand } from '../doctor';
-import type { InitResult, InitOptions } from '@/types/project';
+import type { InitOptions, InitResult } from '@/types/project';
 import { printBanner } from '@/utils/banner';
 import { InputValidator } from '@/utils/input-validator';
 import { validateProjectPath } from '@/utils/path-validator';
 import { logger } from '@/utils/winston-logger.js';
-import { buildMoAIConfig } from '@/cli/config/config-builder';
-import { displayWelcomeBanner, promptProjectSetup } from '@/cli/prompts/init';
+import type { DoctorCommand } from '../doctor';
 
 /**
  * Progress callback for installation progress display

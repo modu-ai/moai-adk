@@ -11,6 +11,15 @@ tools: Read, Write, Bash, Grep, Glob
 
 ## HISTORY
 
+### v2.1.0 (2025-10-07) - moai.version 자동 업데이트
+- **ADDED**: Phase 4.5 moai.version 자동 업데이트 절차
+- **REFACTORED**: config.json 스키마 변경 (project.version → moai.version)
+- **ENHANCED**: 하위 호환성 유지 (기존 project.version 지원)
+- **ENHANCED**: npm 패키지 버전 자동 감지 및 반영
+- **PRINCIPLE**: 절대 버전 하드코딩 금지, package.json 기준 자동화
+- **AUTHOR**: @cc-manager
+- **RELATED**: config-builder.ts, session-notice/utils.ts, templates/.moai/config.json
+
 ### v2.0.0 (2025-10-06) - Option C 하이브리드 완성
 - **REFACTORED**: Phase 4를 Alfred가 Claude Code 도구로 직접 실행 (TypeScript 코드 제거)
 - **REFACTORED**: Phase 5 검증을 Claude Code 도구로 전환 ([Glob], [Read], [Grep])
@@ -288,6 +297,108 @@ TEMPLATE_ROOT="{npm_root}/moai-adk/templates"
 - 한 파일 실패가 전체 프로세스를 중단시키지 않음
 - 실패한 파일 목록 수집하여 Phase 4 종료 후 보고
 - 디렉토리 없음 → `mkdir -p` 자동 실행 후 재시도
+
+### Phase 4.5: moai.version 자동 업데이트
+
+**담당**: Alfred (직접 실행)
+**도구**: [Bash], [Read], [Write]
+
+**목적**: 설치된 moai-adk 패키지 버전을 .moai/config.json에 자동 반영
+
+**실행 절차**:
+
+#### Step 4.5.1: 설치된 패키지 버전 확인
+
+```text
+[Bash] npm list moai-adk --depth=0 | grep moai-adk
+→ 출력: moai-adk@0.3.0
+```
+
+**버전 추출**:
+- 정규식으로 버전 번호 파싱: `moai-adk@(\d+\.\d+\.\d+)`
+- 예: "moai-adk@0.3.0" → "0.3.0"
+
+**오류 처리**:
+- npm 명령 실패 시: "⚠️ 패키지 버전 확인 실패, Phase 4.5 건너뛰기"
+- 버전 파싱 실패 시: 기존 config.json 유지
+
+---
+
+#### Step 4.5.2: config.json 읽기 및 파싱
+
+```text
+[Read] .moai/config.json
+→ JSON 파싱
+→ 기존 구조 보존
+```
+
+**Fallback 처리**:
+- 파일 없음: "⚠️ config.json 없음, Phase 4.5 건너뛰기"
+- JSON 파싱 오류: "❌ config.json 손상, 백업 복원 권장"
+
+---
+
+#### Step 4.5.3: moai.version 업데이트
+
+```text
+IF config.moai 존재:
+  config.moai.version = "0.3.0"  (Step 4.5.1에서 추출한 버전)
+ELSE:
+  config.moai = { version: "0.3.0" }  (신규 생성)
+
+기존 필드 모두 보존:
+  - project.*
+  - constitution.*
+  - git_strategy.*
+  - tags.*
+```
+
+**보존 정책**:
+- 모든 기존 필드 유지
+- moai.version만 업데이트 또는 추가
+- JSON 포맷 유지 (들여쓰기 2칸)
+
+---
+
+#### Step 4.5.4: config.json 쓰기
+
+```text
+[Write] .moai/config.json
+→ JSON.stringify(config, null, 2)
+→ UTF-8 인코딩
+```
+
+**검증**:
+- 쓰기 성공 확인
+- 파일 크기 > 0 확인
+
+---
+
+#### Step 4.5.5: 업데이트 로그
+
+```text
+기존 버전 확인:
+  - config.moai?.version 또는 config.project?.version
+
+로그 출력:
+  IF 기존 버전 존재:
+    "✅ moai.version 업데이트: {old_version} → {new_version}"
+  ELSE:
+    "✅ moai.version 추가: {new_version}"
+```
+
+---
+
+**전체 오류 처리**:
+
+| 오류 유형 | 조치 |
+|----------|------|
+| npm 명령 실패 | Phase 4.5 건너뛰기, 경고 로그 |
+| config.json 없음 | Phase 4.5 건너뛰기, 정보 로그 |
+| JSON 파싱 오류 | Phase 4.5 중단, 백업 복원 제안 |
+| Write 실패 | 재시도 1회, 실패 시 치명적 오류 |
+
+**실행 시간**: 예상 1-2초
 
 ### Phase 5: 업데이트 검증
 
