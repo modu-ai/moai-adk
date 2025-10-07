@@ -41,6 +41,21 @@ tools: Read, Write, Edit, MultiEdit, Bash(git status:*), Bash(git add:*), Bash(g
 /alfred:3-sync project             # 통합 프로젝트 동기화
 ```
 
+### 🚀 완전 자동화된 GitFlow (--auto-merge)
+
+**Team 모드에서 사용 시 다음 작업을 자동으로 수행합니다**:
+1. 문서 동기화 완료
+2. PR Ready 전환
+3. CI/CD 상태 확인
+4. PR 자동 머지 (squash)
+5. develop 체크아웃 및 동기화
+6. 로컬 feature 브랜치 정리
+7. **다음 작업 준비 완료** ✅
+
+**권장 사용 시점**: TDD 구현 완료 후 한 번에 머지까지 완료하고 싶을 때
+
+**Personal 모드**: 로컬 main/develop 머지 및 브랜치 정리 자동화
+
 ## 🔍 STEP 1: 동기화 범위 분석 및 계획 수립
 
 프로젝트 상태를 분석하여 동기화 범위를 결정하고 체계적인 동기화 계획을 수립한 후 사용자 확인을 받습니다.
@@ -65,6 +80,12 @@ tools: Read, Write, Edit, MultiEdit, Bash(git status:*), Bash(git add:*), Bash(g
 ### Phase 0.5: 품질 사전 검증 (조건부 자동 실행)
 
 동기화 전 코드 품질을 빠르게 확인합니다.
+
+**Phase 2.5 (2-build)와의 차이점**:
+- **Phase 2.5**: TDD 구현 완료 후 심층 검증 (테스트 커버리지, 코드 품질, 보안)
+- **Phase 0.5**: 동기화 전 빠른 스캔 (파일 손상, Critical 이슈만)
+
+**목적**: 품질 문제가 있는 코드의 문서화 방지
 
 **실행 조건 (자동 판단)**:
 - Git diff로 코드 변경 라인 수 확인
@@ -427,6 +448,20 @@ Task 2 (sonnet): 문서 구조 분석
 ```
 
 ### 통합 프로젝트 모드
+
+**사용 시점**:
+- 여러 SPEC의 구현이 완료되어 프로젝트 전체 문서를 업데이트할 때
+- Personal 모드에서 주기적인 전체 문서 동기화가 필요할 때
+
+**Personal/Team 모드와의 차이**:
+- **Personal/Team 모드**: 특정 SPEC 관련 문서만 동기화
+- **Project 모드**: README, 아키텍처 문서, 전체 API 문서 동기화
+
+**산출물**:
+- README.md (전체 기능 목록 업데이트)
+- docs/architecture.md (시스템 설계 갱신)
+- docs/api/ (통합 API 문서)
+- .moai/indexes/ (전체 TAG 인덱스 재구성)
 
 ```
 🏢 통합 브랜치 동기화 완료!

@@ -103,6 +103,31 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 
 ## 📋 STEP 1 실행 가이드: SPEC 분석 및 계획 수립
 
+### ⚠️ 필수 규칙: 디렉토리 명명 규칙
+
+**반드시 준수해야 할 형식**: `.moai/specs/SPEC-{ID}/`
+
+**올바른 예시**:
+- ✅ `SPEC-AUTH-001/`
+- ✅ `SPEC-REFACTOR-001/`
+- ✅ `SPEC-UPDATE-REFACTOR-001/`
+
+**잘못된 예시**:
+- ❌ `AUTH-001/` (SPEC- 접두어 누락)
+- ❌ `SPEC-001-auth/` (ID 뒤 추가 텍스트)
+- ❌ `SPEC-AUTH-001-jwt/` (ID 뒤 추가 텍스트)
+
+**중복 확인 필수**:
+```bash
+rg "@SPEC:{ID}" -n .moai/specs/  # 기존 TAG ID 검색
+```
+
+**복합 도메인 규칙**:
+- ✅ 허용: `UPDATE-REFACTOR-001` (2개 도메인)
+- ⚠️ 주의: `UPDATE-REFACTOR-FIX-001` (3개 이상 도메인, 단순화 권장)
+
+---
+
 ### 1. 프로젝트 문서 분석
 
 다음을 우선적으로 실행하여 SPEC 후보를 분석합니다:
@@ -186,6 +211,21 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 2. **Action**: 이벤트에 대한 시스템의 행동 명세
 3. **Response**: 행동의 결과로 나타나는 응답 정의
 4. **State**: 시스템 상태 변화 및 부작용 명시
+
+**예시** (상세 내용은 `development-guide.md` 참조):
+```markdown
+### Ubiquitous Requirements (기본 요구사항)
+- 시스템은 사용자 인증 기능을 제공해야 한다
+
+### Event-driven Requirements (이벤트 기반)
+- WHEN 사용자가 유효한 자격증명으로 로그인하면, 시스템은 JWT 토큰을 발급해야 한다
+
+### State-driven Requirements (상태 기반)
+- WHILE 토큰이 만료되지 않은 상태일 때, 시스템은 보호된 리소스에 대한 접근을 허용해야 한다
+
+### Constraints (제약사항)
+- IF 토큰이 만료되었으면, 시스템은 401 Unauthorized 응답을 반환해야 한다
+```
 
 ### 📄 SPEC 문서 템플릿
 
@@ -445,22 +485,6 @@ Task 2 (sonnet): 심화 문서 분석
 - product/structure/tech 문서에 없는 정보는 새로 질문해 보완합니다.
 - Acceptance Criteria는 Given/When/Then 3단으로 최소 2개 이상 작성하도록 유도합니다.
 - TRUST 원칙 중 Readable(읽기 쉬움) 기준 완화로 인해 모듈 수가 권장치(기본 5)를 초과하는 경우, 근거를 SPEC `context` 섹션에 함께 기록하세요.
-
-## ⚠️ 디렉토리 생성 주의사항
-
-**필수 규칙**:
-1. **디렉토리명 형식**: `.moai/specs/SPEC-{ID}/` (예: `SPEC-AUTH-001/`, `SPEC-UPDATE-REFACTOR-001/`)
-   - ❌ 잘못된 예: `AUTH-001/`, `SPEC-001-auth-system/`, `SPEC-AUTH-001-jwt/`
-   - ✅ 올바른 예: `SPEC-AUTH-001/`, `SPEC-REFACTOR-001/`, `SPEC-UPDATE-REFACTOR-001/`
-
-2. **ID 중복 확인**: SPEC 생성 전 반드시 실행
-   ```bash
-   rg "@SPEC:{ID}" -n .moai/specs/  # 기존 TAG ID 검색
-   ```
-
-3. **복합 도메인**: 하이픈으로 연결 가능하나 3개 이상 연결 시 경고 권장
-   - ✅ 허용: `UPDATE-REFACTOR-001` (2개 도메인)
-   - ⚠️ 주의: `UPDATE-REFACTOR-FIX-001` (3개 도메인, 단순화 권장)
 
 ---
 
