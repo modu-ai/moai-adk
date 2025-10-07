@@ -1,4 +1,4 @@
-# MoAI-ADK - MoAI Agentic Development Kit
+# MoAI-ADK - MoAI-Agentic Development Kit
 
 **SPEC-First TDD Development with Alfred SuperAgent**
 
@@ -40,30 +40,129 @@ Alfred가 결과 통합 보고
 
 Alfred는 9명의 전문 에이전트를 조율합니다. 각 에이전트는 IT 전문가 직무에 매핑되어 있습니다.
 
-| 에이전트 | 페르소나 | 전문 영역 | 커맨드/호출 | 위임 시점 |
-|---------|---------|----------|------------|----------|
-| **spec-builder** 🏗️ | 시스템 아키텍트 | SPEC 작성, EARS 명세 | `/alfred:1-spec` | 명세 필요 시 |
-| **code-builder** 💎 | 수석 개발자 | TDD 구현, 코드 품질 | `/alfred:2-build` | 구현 단계 |
-| **doc-syncer** 📖 | 테크니컬 라이터 | 문서 동기화, Living Doc | `/alfred:3-sync` | 동기화 필요 시 |
-| **tag-agent** 🏷️ | 지식 관리자 | TAG 시스템, 추적성 | `@agent-tag-agent` | TAG 작업 시 |
-| **git-manager** 🚀 | 릴리스 엔지니어 | Git 워크플로우, 배포 | `@agent-git-manager` | Git 조작 시 |
-| **debug-helper** 🔬 | 트러블슈팅 전문가 | 오류 진단, 해결 | `@agent-debug-helper` | 에러 발생 시 |
-| **trust-checker** ✅ | 품질 보증 리드 | TRUST 검증, 성능/보안 | `@agent-trust-checker` | 검증 요청 시 |
-| **cc-manager** 🛠️ | 데브옵스 엔지니어 | MoAI-ADK 설정 | `@agent-cc-manager` | 설정 필요 시 |
-| **project-manager** 📋 | 프로젝트 매니저 | 프로젝트 초기화 | `/alfred:8-project` | 프로젝트 시작 |
+| 에이전트              | 페르소나          | 전문 영역               | 커맨드/호출            | 위임 시점      |
+| --------------------- | ----------------- | ----------------------- | ---------------------- | -------------- |
+| **spec-builder** 🏗️    | 시스템 아키텍트   | SPEC 작성, EARS 명세    | `/alfred:1-spec`       | 명세 필요 시   |
+| **code-builder** 💎    | 수석 개발자       | TDD 구현, 코드 품질     | `/alfred:2-build`      | 구현 단계      |
+| **doc-syncer** 📖      | 테크니컬 라이터   | 문서 동기화, Living Doc | `/alfred:3-sync`       | 동기화 필요 시 |
+| **tag-agent** 🏷️       | 지식 관리자       | TAG 시스템, 추적성      | `@agent-tag-agent`     | TAG 작업 시    |
+| **git-manager** 🚀     | 릴리스 엔지니어   | Git 워크플로우, 배포    | `@agent-git-manager`   | Git 조작 시    |
+| **debug-helper** 🔬    | 트러블슈팅 전문가 | 오류 진단, 해결         | `@agent-debug-helper`  | 에러 발생 시   |
+| **trust-checker** ✅   | 품질 보증 리드    | TRUST 검증, 성능/보안   | `@agent-trust-checker` | 검증 요청 시   |
+| **cc-manager** 🛠️      | 데브옵스 엔지니어 | Claude Code 설정        | `@agent-cc-manager`    | 설정 필요 시   |
+| **project-manager** 📋 | 프로젝트 매니저   | 프로젝트 초기화         | `/alfred:8-project`    | 프로젝트 시작  |
 
 ### 에이전트 협업 원칙
 
+- **커맨드 우선순위**: 커맨드 지침은 에이전트 지침보다 상위이며, 충돌 시 커맨드 지침을 따릅니다.
 - **단일 책임 원칙**: 각 에이전트는 자신의 전문 영역만 담당
 - **중앙 조율**: Alfred만이 에이전트 간 작업을 조율 (에이전트 간 직접 호출 금지)
 - **품질 게이트**: 각 단계 완료 시 TRUST 원칙 및 @TAG 무결성 자동 검증
+
+### Alfred 커맨드 실행 패턴 (공통)
+
+모든 Alfred 커맨드는 **2단계 워크플로우**를 따릅니다:
+
+#### Phase 1: 분석 및 계획 수립
+1. 현재 프로젝트 상태 분석 (Git, 파일, 문서 등)
+2. 작업 범위 및 전략 결정
+3. 계획 보고서 생성 및 사용자 확인 대기
+
+#### Phase 2: 실행 (사용자 승인 후)
+1. 승인된 계획에 따라 작업 수행
+2. 품질 검증 (선택적 - 커맨드별 상이)
+3. 최종 보고 및 다음 단계 안내
+
+**사용자 응답 패턴**:
+- **"진행"** 또는 **"시작"**: Phase 2로 진행
+- **"수정 [내용]"**: 계획 재수립
+- **"중단"**: 작업 취소
+
+**커맨드별 세부사항**:
+- `/alfred:1-spec`: Phase 1에서 프로젝트 문서 분석 및 SPEC 후보 제안 → Phase 2에서 SPEC 문서 작성 및 Git 작업
+- `/alfred:2-build`: Phase 1에서 SPEC 분석 및 TDD 계획 수립 → Phase 2에서 RED-GREEN-REFACTOR 구현
+- `/alfred:3-sync`: Phase 1에서 동기화 범위 분석 → Phase 2에서 Living Document 동기화 및 TAG 업데이트
+
+### 에러 메시지 표준 (공통)
+
+모든 Alfred 커맨드와 에이전트는 일관된 심각도 표시를 사용합니다:
+
+#### 심각도별 아이콘
+- **❌ Critical**: 작업 중단, 즉시 조치 필요
+- **⚠️ Warning**: 주의 필요, 계속 진행 가능
+- **ℹ️ Info**: 정보성 메시지, 참고용
+
+#### 메시지 형식
+```
+[아이콘] [컨텍스트]: [문제 설명]
+  → [권장 조치]
+```
+
+**예시**:
+```
+❌ SPEC 문서 작성 실패: .moai/specs/ 디렉토리 권한 거부
+  → chmod 755 .moai/specs 실행 후 재시도
+
+⚠️ 테스트 커버리지 부족: 현재 78% (목표 85%)
+  → 추가 테스트 케이스 작성 권장
+
+ℹ️ product.md는 이미 프로젝트 정보가 작성되어 있어서 건너뜁니다
+  → 최신 템플릿 참조: {npm_root}/moai-adk/templates/.moai/project/product.md
+```
+
+### Git 커밋 메시지 표준 (Locale 기반)
+
+git-manager 에이전트는 `.moai/config.json`의 `locale` 설정에 따라 커밋 메시지를 생성합니다.
+
+#### TDD 단계별 커밋 메시지 템플릿
+
+**한국어 (ko)**:
+```bash
+🔴 RED: [테스트 설명]
+🟢 GREEN: [구현 설명]
+♻️ REFACTOR: [개선 설명]
+📝 DOCS: [문서 설명]
+```
+
+**영어 (en)**:
+```bash
+🔴 RED: [Test description]
+🟢 GREEN: [Implementation description]
+♻️ REFACTOR: [Improvement description]
+📝 DOCS: [Documentation description]
+```
+
+**일본어 (ja)**:
+```bash
+🔴 RED: [テスト説明]
+🟢 GREEN: [実装説明]
+♻️ REFACTOR: [改善説明]
+📝 DOCS: [ドキュメント説明]
+```
+
+**중국어 (zh)**:
+```bash
+🔴 RED: [测试说明]
+🟢 GREEN: [实现说明]
+♻️ REFACTOR: [改进说明]
+📝 DOCS: [文档说明]
+```
+
+#### 커밋 메시지 구조
+```
+[아이콘] [단계]: [설명]
+
+@TAG:[SPEC-ID]-[단계]
+```
+
+**locale 자동 감지**:
+git-manager는 커밋 생성 시 자동으로 `.moai/config.json`의 `project.locale` 값을 읽어 해당 언어로 커밋 메시지를 생성합니다.
 
 ---
 
 ## Context Engineering 전략
 
-> 본 지침군은 **컨텍스트 엔지니어링**(JIT Retrieval, Compaction)을 핵심 원리로 한다.
-> **컨텍스트 예산/토큰 예산은 다루지 않는다**(명시적 관리 불필요). 대신 아래 원칙으로 일관성/성능을 확보한다.
+> 본 지침군은 **컨텍스트 엔지니어링**(JIT Retrieval, Compaction)을 핵심 원리로 한다. 아래 원칙으로 일관성/성능을 확보한다.
 
 Alfred는 효율적인 컨텍스트 관리를 위해 다음 2가지 전략을 사용합니다:
 
@@ -87,59 +186,6 @@ Alfred는 효율적인 컨텍스트 관리를 위해 다음 2가지 전략을 �
 - `CLAUDE.md` → `development-guide.md` (상세 규칙)
 - `CLAUDE.md` → `product/structure/tech.md` (프로젝트 컨텍스트)
 - `development-guide.md` ↔ `product/structure/tech.md` (상호 참조)
-
----
-
-## Claude Code Hooks 설정
-
-### Hook 경로 규칙 (필수)
-
-**모든 hook 경로는 `$CLAUDE_PROJECT_DIR` 환경 변수를 사용해야 합니다:**
-
-```json
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "hooks": [
-          {
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/tag-enforcer.cjs",
-            "type": "command"
-          }
-        ],
-        "matcher": "Edit|Write|MultiEdit"
-      }
-    ]
-  }
-}
-```
-
-**이유**:
-- ✅ **상대 경로 문제**: CWD 변경 시 경로 오류 발생 (`/clear` 명령 등)
-- ✅ **절대 경로 문제**: 프로젝트 이동 및 다른 개발자 환경에서 작동 불가
-- ✅ **보안 (TRUST)**: 경로 주입(Path Injection) 취약점 방지
-- ✅ **공식 권장**: Claude Code 공식 문서 기준 (Context7 검증 완료)
-
-**잘못된 예시**:
-```json
-// ❌ 상대 경로 (CWD 변경 시 오류)
-"command": "node .claude/hooks/alfred/tag-enforcer.cjs"
-
-// ❌ 절대 경로 (이식성 없음)
-"command": "node /Users/user/project/.claude/hooks/alfred/tag-enforcer.cjs"
-```
-
-### Alfred Hooks 목록
-
-**PreToolUse** (Edit|Write|MultiEdit):
-- `pre-write-guard.cjs`: 보안 검증 (.env, secrets, .moai/memory/)
-- `tag-enforcer.cjs`: @TAG 규칙 자동 검증
-
-**PreToolUse** (Bash):
-- `policy-block.cjs`: 위험 명령어 차단 (sudo, rm -rf 등)
-
-**SessionStart**:
-- `session-notice.cjs`: 세션 시작 시 프로젝트 상태 표시
 
 ---
 
@@ -246,12 +292,12 @@ Alfred가 필요 시 즉시 호출하는 전문 에이전트들:
 @SPEC:ID → @TEST:ID → @CODE:ID → @DOC:ID
 ```
 
-| TAG | 역할 | TDD 단계 | 위치 | 필수 |
-|-----|------|----------|------|------|
-| `@SPEC:ID` | 요구사항 명세 (EARS) | 사전 준비 | .moai/specs/ | ✅ |
-| `@TEST:ID` | 테스트 케이스 | RED | tests/ | ✅ |
-| `@CODE:ID` | 구현 코드 | GREEN + REFACTOR | src/ | ✅ |
-| `@DOC:ID` | 문서화 | REFACTOR | docs/ | ⚠️ |
+| TAG        | 역할                 | TDD 단계         | 위치         | 필수 |
+| ---------- | -------------------- | ---------------- | ------------ | ---- |
+| `@SPEC:ID` | 요구사항 명세 (EARS) | 사전 준비        | .moai/specs/ | ✅    |
+| `@TEST:ID` | 테스트 케이스        | RED              | tests/       | ✅    |
+| `@CODE:ID` | 구현 코드            | GREEN + REFACTOR | src/         | ✅    |
+| `@DOC:ID`  | 문서화               | REFACTOR         | docs/        | ⚠️    |
 
 ### TAG BLOCK 템플릿
 
@@ -260,11 +306,11 @@ Alfred가 필요 시 즉시 호출하는 전문 에이전트들:
 ---
 # 필수 필드 (7개)
 id: AUTH-001                    # SPEC 고유 ID
-version: 0.1.0                  # Semantic Version (v0.1.0 = INITIAL)
+version: 0.0.1                  # Semantic Version (v0.0.1 = INITIAL)
 status: draft                   # draft|active|completed|deprecated
 created: 2025-09-15            # 생성일 (YYYY-MM-DD)
-updated: 2025-10-01            # 최종 수정일 (YYYY-MM-DD)
-author: @Goos                   # 작성자 (GitHub ID)
+updated: 2025-09-15            # 최종 수정일 (YYYY-MM-DD)
+author: {{AUTHOR}}              # 작성자 (GitHub ID)
 priority: high                  # low|medium|high|critical
 
 # 선택 필드 - 분류/메타
@@ -276,7 +322,7 @@ labels:                         # 분류 태그 (검색용)
 # 선택 필드 - 관계 (의존성 그래프)
 depends_on:                     # 의존하는 SPEC (선택)
   - USER-001
-related_issue: "https://github.com/modu-ai/moai-adk/issues/123"
+related_issue: "{{GITHUB_REPO}}/issues/123"
 
 # 선택 필드 - 범위 (영향 분석)
 scope:
@@ -291,9 +337,9 @@ scope:
 
 ## HISTORY
 
-### v0.1.0 (2025-09-15)
+### v0.0.1 (2025-09-15)
 - **INITIAL**: JWT 기반 인증 시스템 명세 작성
-- **AUTHOR**: @Goos
+- **AUTHOR**: {{AUTHOR}}
 - **SCOPE**: 토큰 발급, 검증, 갱신 로직
 - **CONTEXT**: 사용자 인증 강화 요구사항 반영
 
@@ -316,10 +362,12 @@ scope:
 - **TAG ID**: `<도메인>-<3자리>` (예: `AUTH-003`) - 영구 불변
 - **TAG 내용**: 자유롭게 수정 가능 (HISTORY에 기록 필수)
 - **버전 관리**: 0.x.y 기반 개발 버전 체계
-  - **v0.1.0**: INITIAL - SPEC 최초 작성 (모든 SPEC 시작 버전)
-  - **v0.2.0~v0.9.0**: 구현 완료, 기능 추가, 주요 업데이트
-  - **v0.x.y**: 버그 수정, 문서 개선, 경미한 변경
-  - **v1.0.0**: 정식 안정화 버전 (프로덕션 준비 완료 시에만 사용)
+  - **v0.0.1**: INITIAL - SPEC 최초 작성 (모든 SPEC 시작 버전, status: draft)
+  - **v0.0.x**: Draft 수정/개선 (SPEC 문서 수정 시 패치 버전 증가)
+  - **v0.1.0**: TDD 구현 완료 (첫 번째 구현, status: completed)
+  - **v0.1.x**: 버그 수정, 문서 개선, 경미한 변경
+  - **v0.x.0**: 기능 추가, 주요 개선 (마이너 버전 증가)
+  - **v1.0.0**: 정식 안정화 버전 (프로덕션 준비 완료, 사용자 명시적 승인 필수)
 - **TAG 참조**: 버전 없이 파일명만 사용 (예: `SPEC-AUTH-001.md`)
 - **중복 확인**: `rg "@SPEC:AUTH" -n` 또는 `rg "AUTH-001" -n`
 - **CODE-FIRST**: TAG의 진실은 코드 자체에만 존재
@@ -396,9 +444,9 @@ Alfred가 모든 코드에 적용하는 품질 기준:
 
 **1단계: SPEC 작성** (`/alfred:1-spec`)
 - [ ] `.moai/specs/SPEC-<ID>/spec.md` 생성 (디렉토리 구조)
-- [ ] YAML Front Matter 추가 (id, version, status, created)
+- [ ] YAML Front Matter 추가 (id, version: 0.0.1, status: draft, created)
 - [ ] `@SPEC:ID` TAG 포함
-- [ ] **HISTORY 섹션 작성** (v0.1.0 INITIAL 항목)
+- [ ] **HISTORY 섹션 작성** (v0.0.1 INITIAL 항목)
 - [ ] EARS 구문으로 요구사항 작성
 - [ ] 중복 ID 확인: `rg "@SPEC:<ID>" -n`
 
@@ -423,119 +471,3 @@ Alfred가 모든 코드에 적용하는 품질 기준:
 - **버전**: 0.1.0
 - **모드**: team
 - **개발 도구**: 프로젝트 언어에 최적화된 도구 체인 자동 선택
-
----
-
-**Alfred와 함께하는 SPEC-First TDD 개발을 시작하세요!** ▶◀
----
-
-## 패키지 배포 전략 (NPM/PyPI/Maven 등)
-
-### 버전 정책 (MoAI-ADK 패키지)
-
-**연번 체계 (v0.x.y)**:
-- **v0.1.0**: INITIAL - 패키지 최초 배포
-- **v0.2.x ~ v0.9.x**: 기능 추가, 주요 업데이트 (연번으로 계속 진행)
-- **v0.x.y**: 버그 수정, 문서 개선, 경미한 변경
-- **v1.0.0**: 정식 안정화 버전 (**사용자 명시적 승인 필수**)
-
-**중요**: 메이저 버전(v1.0.0)은 절대 자동으로 올리지 않습니다. 항상 사용자 승인이 필요합니다.
-
-### AI Agent 수행 시간 기준 배포 타임라인
-
-**Phase 1: 품질 안정화** (v0.x.y → v0.x.y+1)
-- ⏱️ **예상 시간**: 2-4시간 (AI Agent 자동 처리)
-- 🤖 **담당 에이전트**:
-  - `code-builder`: 테스트 오류 수정, 코드 품질 개선
-  - `trust-checker`: TRUST 5원칙 검증
-- 📋 **작업 항목**:
-  - [ ] 테스트 안정화 (모든 테스트 통과)
-  - [ ] 린트/포맷터 통과 확인
-  - [ ] 빌드 성공 확인
-  - [ ] CHANGELOG 업데이트
-
-**Phase 2: Beta 배포** (v0.x.y-beta.1)
-- ⏱️ **예상 시간**: 1-2시간 (자동 검증 + 배포)
-- 🤖 **담당 에이전트**:
-  - `git-manager`: Git 태그 생성, 커밋 관리
-  - `trust-checker`: 배포 전 최종 검증
-- 📋 **작업 항목**:
-  - [ ] Beta 버전 태그 생성
-  - [ ] npm/PyPI/Maven 배포 (beta 태그)
-  - [ ] 설치 테스트 검증
-  - [ ] 크로스 플랫폼 호환성 테스트
-
-**Phase 3: 정식 배포** (v0.x.y)
-- ⏱️ **예상 시간**: 30분-1시간 (완전 자동화)
-- 🤖 **담당 에이전트**:
-  - `git-manager`: 릴리스 태그, GitHub Release 생성
-  - `doc-syncer`: 문서 동기화, 릴리스 노트 작성
-- 📋 **작업 항목**:
-  - [ ] 정식 버전 태그 생성
-  - [ ] npm/PyPI/Maven 배포 (latest 태그)
-  - [ ] GitHub Release 생성
-  - [ ] 문서 사이트 업데이트
-
-**총 예상 시간**: **3.5-7시간** (AI Agent 기준)
-
-### 배포 체크리스트 (자동 검증)
-
-**필수 사항** (AI Agent 자동 확인):
-- [ ] 모든 테스트 통과 (`npm test`, `pytest`, `mvn test` 등)
-- [ ] 빌드 성공 (`npm run build`, `python -m build` 등)
-- [ ] 타입 체크 통과 (TypeScript, mypy 등)
-- [ ] 린트 통과 (ESLint, Biome, ruff 등)
-- [ ] CHANGELOG 최신화
-- [ ] README 업데이트
-- [ ] LICENSE 파일 존재
-- [ ] 버전 번호 정책 준수
-
-**보안 검증** (trust-checker 자동 수행):
-- [ ] 의존성 취약점 스캔
-- [ ] 민감 정보 제외 확인
-- [ ] .npmignore/.gitignore 설정 검증
-
-### 배포 명령어 (언어별)
-
-**TypeScript/JavaScript (NPM)**:
-```bash
-# Beta 배포
-npm version 0.x.y-beta.1
-npm publish --tag beta --access public
-
-# 정식 배포
-npm version 0.x.y
-npm publish --access public
-```
-
-**Python (PyPI)**:
-```bash
-# Beta 배포
-poetry version 0.x.y-beta.1
-poetry build
-poetry publish
-
-# 정식 배포
-poetry version 0.x.y
-poetry build
-poetry publish
-```
-
-**Java (Maven Central)**:
-```bash
-# 버전 업데이트
-mvn versions:set -DnewVersion=0.x.y
-
-# 배포
-mvn clean deploy -P release
-```
-
-**Go (GitHub Releases)**:
-```bash
-# 태그 생성 및 푸시
-git tag v0.x.y
-git push origin v0.x.y
-
-# GitHub Release 자동 생성
-gh release create v0.x.y --generate-notes
-```

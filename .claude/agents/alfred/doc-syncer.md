@@ -111,6 +111,88 @@ rg '@SPEC:' .moai/specs/ -n
 - 끊어진 TAG 체인 복구
 - 새로운 TAG 관계 설정
 
+### Phase 2.5: SPEC 메타데이터 자동 업데이트 (조건부)
+
+TDD 구현 완료 후 SPEC 메타데이터를 자동으로 업데이트합니다.
+
+#### 업데이트 조건
+
+다음 조건을 **모두 만족**할 때 자동 업데이트:
+1. ✅ SPEC 파일 존재: `.moai/specs/SPEC-XXX/spec.md`
+2. ✅ 현재 status가 `draft`
+3. ✅ @TEST TAG 존재 확인: `rg '@TEST:XXX' tests/ -n`
+4. ✅ @CODE TAG 존재 확인: `rg '@CODE:XXX' src/ -n`
+5. ✅ TDD 커밋 존재 확인:
+   - RED 커밋: `git log --all --grep="RED.*XXX"`
+   - GREEN 커밋: `git log --all --grep="GREEN.*XXX"`
+   - REFACTOR 커밋: `git log --all --grep="REFACTOR.*XXX"`
+
+#### 자동 업데이트 로직
+
+**1. SPEC 상태 전환**:
+```bash
+# spec.md 업데이트 (Edit 도구 사용)
+status: draft → status: completed
+updated: [현재 날짜 YYYY-MM-DD]
+```
+
+**2. 버전 업데이트** (v0.0.x → v0.1.0):
+```bash
+# Phase 1 구현 완료 시 마이너 버전으로 전환
+version: 0.0.x → version: 0.1.0
+```
+
+**3. HISTORY 섹션 추가**:
+```markdown
+### v0.1.0 (YYYY-MM-DD)
+- **IMPLEMENTATION COMPLETED**: TDD 사이클 완료 (RED → GREEN → REFACTOR)
+- **SCOPE**: [구현된 주요 기능 자동 요약]
+- **FILES**: [생성/수정된 파일 자동 수집]
+- **COMMITS**: [관련 커밋 해시 나열]
+```
+
+#### 실행 시점
+
+`doc-syncer`의 Phase 2 (문서 동기화) 완료 후, Phase 3 (품질 검증) 전에 자동 실행:
+
+```
+Phase 1: 현황 분석 (2-3분)
+Phase 2: 문서 동기화 실행 (5-10분)
+Phase 2.5: SPEC 메타데이터 자동 업데이트 (1-2분) ← 신규
+Phase 3: 품질 검증 (3-5분)
+```
+
+#### 조건 미충족 시 동작
+
+조건을 만족하지 않으면 Phase 2.5를 건너뛰고 다음 Phase로 진행:
+- SPEC이 이미 `completed` 상태
+- TDD 커밋이 불완전 (RED/GREEN/REFACTOR 중 일부 누락)
+- @TAG가 존재하지 않음
+
+#### 사용자 알림
+
+조건 충족 시:
+```
+✅ Phase 2.5: SPEC 메타데이터 자동 업데이트
+
+📝 SPEC-XXX-001: [SPEC 제목]
+   status: draft → completed
+   version: 0.0.x → 0.1.0
+   updated: 2025-10-07
+
+📋 HISTORY 자동 추가:
+   v0.1.0 (2025-10-07) - TDD 구현 완료
+   - RED: [커밋 해시]
+   - GREEN: [커밋 해시]
+   - REFACTOR: [커밋 해시]
+```
+
+조건 미충족 시:
+```
+ℹ️ Phase 2.5: SPEC 메타데이터 업데이트 건너뜀
+   → SPEC이 이미 completed 상태이거나 TDD 구현이 불완전합니다
+```
+
 ### Phase 3: 품질 검증 (3-5분)
 
 **1. TAG 무결성 검사**

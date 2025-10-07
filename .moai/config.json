@@ -3,6 +3,9 @@
     "@CODE:CONFIG-STRUCTURE-001": "@DOC:JSON-CONFIG-001",
     "@SPEC:PROJECT-CONFIG-001": "@SPEC:MOAI-CONFIG-001"
   },
+  "moai": {
+    "version": "0.2.12"
+  },
   "project": {
     "name": "MoAI-ADK",
     "version": "0.0.3",
@@ -14,15 +17,15 @@
   },
   "constitution": {
     "enforce_tdd": true,
-    "require_tags": true,
-    "test_coverage_target": 85,
-    "simplicity_threshold": 5,
     "principles": {
       "simplicity": {
         "max_projects": 5,
         "notes": "기본 권장값. 프로젝트 규모에 따라 .moai/config.json 또는 SPEC/ADR로 근거와 함께 조정하세요."
       }
-    }
+    },
+    "require_tags": true,
+    "simplicity_threshold": 5,
+    "test_coverage_target": 85
   },
   "git_strategy": {
     "personal": {
@@ -58,7 +61,10 @@
     "code_scan_policy": {
       "no_intermediate_cache": true,
       "realtime_validation": true,
-      "scan_tools": ["rg", "grep"],
+      "scan_tools": [
+        "rg",
+        "grep"
+      ],
       "scan_command": "rg '@TAG' -n",
       "philosophy": "TAG의 진실은 코드 자체에만 존재"
     }
