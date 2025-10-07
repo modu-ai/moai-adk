@@ -15,6 +15,8 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 
 **SPEC 자동 제안/생성 대상**: $ARGUMENTS
 
+> **표준 2단계 워크플로우** (자세한 내용: `CLAUDE.md` - "Alfred 커맨드 실행 패턴" 참조)
+
 ## 📋 실행 흐름
 
 1. **프로젝트 분석**: product/structure/tech.md 심층 분석
@@ -25,8 +27,8 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 
 ## 🔗 연관 에이전트
 
-- **Primary**: spec-builder (🏗️ 설계자) - SPEC 문서 작성 전담
-- **Secondary**: git-manager (🌿 정원사) - Git 브랜치/PR 생성 전담
+- **Primary**: spec-builder (🏗️ 시스템 아키텍트) - SPEC 문서 작성 전담
+- **Secondary**: git-manager (🚀 릴리스 엔지니어) - Git 브랜치/PR 생성 전담
 
 ## 💡 사용 예시
 
@@ -72,7 +74,7 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 
 ## 기능
 
-- **ULTRATHINK**: `.moai/project/{product,structure,tech}.md`를 분석해 구현 후보를 제안하고 사용자 승인 후 SPEC을 생성합니다.
+- **프로젝트 문서 분석**: `.moai/project/{product,structure,tech}.md`를 분석해 구현 후보를 제안하고 사용자 승인 후 SPEC을 생성합니다.
 - **Personal 모드**: `.moai/specs/SPEC-{ID}/` 디렉터리와 템플릿 문서를 만듭니다 (**디렉토리명 형식 필수**: `SPEC-` 접두어 + TAG ID).
 - **Team 모드**: GitHub Issue(또는 Discussion)를 생성하고 브랜치 템플릿과 연결합니다.
 
@@ -100,6 +102,31 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 - **보완 모드**: `SPEC-ID "메모"` 형식으로 전달 → 기존 SPEC 문서/Issue를 업데이트
 
 ## 📋 STEP 1 실행 가이드: SPEC 분석 및 계획 수립
+
+### ⚠️ 필수 규칙: 디렉토리 명명 규칙
+
+**반드시 준수해야 할 형식**: `.moai/specs/SPEC-{ID}/`
+
+**올바른 예시**:
+- ✅ `SPEC-AUTH-001/`
+- ✅ `SPEC-REFACTOR-001/`
+- ✅ `SPEC-UPDATE-REFACTOR-001/`
+
+**잘못된 예시**:
+- ❌ `AUTH-001/` (SPEC- 접두어 누락)
+- ❌ `SPEC-001-auth/` (ID 뒤 추가 텍스트)
+- ❌ `SPEC-AUTH-001-jwt/` (ID 뒤 추가 텍스트)
+
+**중복 확인 필수**:
+```bash
+rg "@SPEC:{ID}" -n .moai/specs/  # 기존 TAG ID 검색
+```
+
+**복합 도메인 규칙**:
+- ✅ 허용: `UPDATE-REFACTOR-001` (2개 도메인)
+- ⚠️ 주의: `UPDATE-REFACTOR-FIX-001` (3개 이상 도메인, 단순화 권장)
+
+---
 
 ### 1. 프로젝트 문서 분석
 
@@ -151,7 +178,7 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 - **EARS 구조**: [Event-Action-Response-State 설계]
 - **Acceptance Criteria**: [Given-When-Then 시나리오]
 
-### 🚨 주의사항
+### ⚠️ 주의사항
 - **기술적 제약**: [고려해야 할 제약사항]
 - **의존성**: [다른 SPEC과의 연관성]
 - **브랜치 전략**: [Personal/Team 모드별 처리]
@@ -184,6 +211,21 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 2. **Action**: 이벤트에 대한 시스템의 행동 명세
 3. **Response**: 행동의 결과로 나타나는 응답 정의
 4. **State**: 시스템 상태 변화 및 부작용 명시
+
+**예시** (상세 내용은 `development-guide.md` 참조):
+```markdown
+### Ubiquitous Requirements (기본 요구사항)
+- 시스템은 사용자 인증 기능을 제공해야 한다
+
+### Event-driven Requirements (이벤트 기반)
+- WHEN 사용자가 유효한 자격증명으로 로그인하면, 시스템은 JWT 토큰을 발급해야 한다
+
+### State-driven Requirements (상태 기반)
+- WHILE 토큰이 만료되지 않은 상태일 때, 시스템은 보호된 리소스에 대한 접근을 허용해야 한다
+
+### Constraints (제약사항)
+- IF 토큰이 만료되었으면, 시스템은 401 Unauthorized 응답을 반환해야 한다
+```
 
 ### 📄 SPEC 문서 템플릿
 
@@ -444,51 +486,18 @@ Task 2 (sonnet): 심화 문서 분석
 - Acceptance Criteria는 Given/When/Then 3단으로 최소 2개 이상 작성하도록 유도합니다.
 - TRUST 원칙 중 Readable(읽기 쉬움) 기준 완화로 인해 모듈 수가 권장치(기본 5)를 초과하는 경우, 근거를 SPEC `context` 섹션에 함께 기록하세요.
 
-## ⚠️ 디렉토리 생성 주의사항
-
-**필수 규칙**:
-1. **디렉토리명 형식**: `.moai/specs/SPEC-{ID}/` (예: `SPEC-AUTH-001/`, `SPEC-UPDATE-REFACTOR-001/`)
-   - ❌ 잘못된 예: `AUTH-001/`, `SPEC-001-auth-system/`, `SPEC-AUTH-001-jwt/`
-   - ✅ 올바른 예: `SPEC-AUTH-001/`, `SPEC-REFACTOR-001/`, `SPEC-UPDATE-REFACTOR-001/`
-
-2. **ID 중복 확인**: SPEC 생성 전 반드시 실행
-   ```bash
-   rg "@SPEC:{ID}" -n .moai/specs/  # 기존 TAG ID 검색
-   ```
-
-3. **복합 도메인**: 하이픈으로 연결 가능하나 3개 이상 연결 시 경고 권장
-   - ✅ 허용: `UPDATE-REFACTOR-001` (2개 도메인)
-   - ⚠️ 주의: `UPDATE-REFACTOR-FIX-001` (3개 도메인, 단순화 권장)
-
 ---
 
 ## 🧠 Context Management (컨텍스트 관리)
 
-> 본 커맨드는 **컨텍스트 엔지니어링** 원칙을 따릅니다.
-> **컨텍스트 예산/토큰 예산은 다루지 않습니다**.
+> 자세한 내용: `.moai/memory/development-guide.md` - "Context Engineering" 섹션 참조
 
-### JIT Retrieval (필요 시 로딩)
+### 이 커맨드의 핵심 전략
 
-**우선 로드** (SPEC 작성 시작 시):
-- `.moai/project/product.md` - 비즈니스 요구사항 및 사용자 스토리
+**우선 로드**: `.moai/project/product.md` (비즈니스 요구사항)
+**Compaction 권장**: SPEC 작성 완료 후 `/alfred:2-build` 진행 전
 
-**필요 시 로드** (SPEC 후보 발굴 시):
-- `.moai/project/structure.md` - 시스템 아키텍처 및 모듈 설계
-- `.moai/project/tech.md` - 기술 스택 및 품질 게이트
-
-**지연 로드** (기존 SPEC 확인 필요 시):
-- `.moai/specs/` - 기존 SPEC 목록 및 의존성 분석
-
-### Compaction 권장 시점
-
-**트리거 조건**:
-- SPEC 작성 완료 후 다음 단계(2-build) 진행 전
-- 토큰 사용량 > 70% (140,000 / 200,000)
-
-**권장 메시지**:
-```markdown
 **권장사항**: SPEC 작성이 완료되었습니다. 다음 단계(`/alfred:2-build`) 진행 전 `/clear` 또는 `/new` 명령으로 새로운 대화 세션을 시작하면 더 나은 성능과 컨텍스트 관리를 경험할 수 있습니다.
-```
 
 ---
 

@@ -5,6 +5,79 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.12] - 2025-10-07
+
+### 🎯 Major: SPEC Version Policy Enhancement & Auto-Completion System
+
+#### ✨ Added
+- **New SPEC Version Policy**: Clearer lifecycle management
+  - `v0.0.1` = INITIAL (Draft 시작, status: draft)
+  - `v0.0.x` = Draft 수정/개선 (패치 버전 증가)
+  - `v0.1.0` = TDD 구현 완료 (status: completed, 자동 업데이트)
+  - `v0.1.x` = 버그 수정, 문서 개선
+  - `v0.x.0` = 기능 추가, 주요 개선
+  - `v1.0.0` = 정식 안정화 (사용자 승인 필수)
+
+- **doc-syncer Phase 2.5**: Automatic SPEC completion handling
+  - TDD 구현 완료 시 SPEC 메타데이터 자동 업데이트
+  - 5가지 조건 기반 자동 판단:
+    - ✅ SPEC 파일 존재
+    - ✅ 현재 status가 `draft`
+    - ✅ @TEST TAG 존재
+    - ✅ @CODE TAG 존재
+    - ✅ TDD 커밋 존재 (RED → GREEN → REFACTOR)
+  - 자동 업데이트 내용:
+    - `status: draft` → `status: completed`
+    - `version: 0.0.x` → `version: 0.1.0`
+    - HISTORY 섹션 자동 추가 (커밋 해시, 파일 목록)
+
+#### 🔄 Changed
+- **CLAUDE.md**: SPEC 버전 정책 전면 개정
+  - TAG BLOCK 템플릿 초기 버전: v0.1.0 → v0.0.1
+  - TDD 워크플로우 체크리스트 업데이트
+  - HISTORY 섹션 예시 개선
+
+- **1-spec.md**: SPEC 작성 커맨드 버전 정책 반영
+  - YAML Front Matter 예시: version: 0.0.1
+  - HISTORY 작성 규칙 업데이트
+  - 버전 체계 설명 상세화
+
+- **3-sync.md**: 문서 동기화 커맨드 Phase 2.5 추가
+  - SPEC 완료 처리 로직 문서화
+  - 자동 업데이트 조건 명시
+  - 조건 미충족 시 동작 안내
+
+- **spec-metadata.md**: SPEC 메타데이터 표준 개정
+  - 초기 버전 기본값: 0.1.0 → 0.0.1
+  - 버전 체계 전체 설명 개선
+  - updated 필드 초기값 규칙 명시
+
+#### 📝 Documentation
+- **SPEC-DOCS-001**: VitePress 문서 구현 완료 반영
+  - version: 0.1.0 → 0.2.0
+  - status: draft → completed
+  - HISTORY v0.2.0 추가 (TDD 커밋, 구현 파일 목록)
+
+#### 🏗️ Infrastructure
+- **Templates Sync**: 모든 템플릿 파일 동기화
+  - `templates/CLAUDE.md`: 버전 정책 동기화
+  - `templates/.claude/commands/alfred/1-spec.md`: 예시 업데이트
+  - `templates/.claude/commands/alfred/3-sync.md`: Phase 2.5 추가
+  - `templates/.moai/memory/spec-metadata.md`: 표준 개정
+
+#### 💡 Benefits
+- **명확한 개발 단계**: Draft(v0.0.x) vs 구현 완료(v0.1.0) 명확히 구분
+- **완전 자동화**: `/alfred:3-sync` 실행 시 SPEC 완료 처리 자동화
+- **일관된 버전 관리**: 모든 SPEC이 동일한 버전 정책 준수
+- **추적성 향상**: HISTORY 자동 생성으로 구현 이력 명확화
+
+#### 🔍 Technical Details
+- Updated files: 7개 (CLAUDE.md, doc-syncer.md, 1-spec.md, 3-sync.md, spec-metadata.md + templates)
+- SPEC status update: 1개 (SPEC-DOCS-001: draft → completed)
+- Backward compatibility: ✅ 기존 SPEC 파일 영향 없음 (새 정책은 앞으로 작성되는 SPEC부터 적용)
+
+---
+
 ## [0.2.10] - 2025-10-07
 
 ### ✨ Added
