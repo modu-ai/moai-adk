@@ -231,63 +231,34 @@ rg "@SPEC:{ID}" -n .moai/specs/  # 기존 TAG ID 검색
 
 #### YAML Front Matter 스키마
 
+> **📋 SPEC 메타데이터 표준 (SSOT)**: `.moai/memory/spec-metadata.md`
+
 **spec.md 파일 상단에 반드시 포함**해야 하는 메타데이터:
+- **필수 필드 7개**: id, version, status, created, updated, author, priority
+- **선택 필드 9개**: category, labels, depends_on, blocks, related_specs, related_issue, scope
 
-> **참조**: `.moai/memory/spec-metadata.md` - 필수/선택 필드 16개 정의 문서
-
+**간단한 참조 예시**:
 ```yaml
 ---
-# 필수 필드 (7개)
-id: AUTH-001                    # SPEC 고유 ID (<도메인>-<3자리>, 영구 불변)
-version: 0.0.1                  # Semantic Version (v0.0.1 = INITIAL, draft 시작)
-status: draft                   # draft|active|completed|deprecated
-created: 2025-09-15            # 생성일 (YYYY-MM-DD)
-updated: 2025-09-15            # 최종 수정일 (YYYY-MM-DD, 최초에는 created와 동일)
-author: @Goos                   # 작성자 (GitHub ID, 단수형)
-priority: high                  # low|medium|high|critical
-
-# 선택 필드 - 분류/메타
-category: security              # feature|bugfix|refactor|security|docs|perf
-labels:                         # 분류 태그 (검색용)
-  - authentication
-  - jwt
-
-# 선택 필드 - 관계 (의존성 그래프)
-depends_on:                     # 의존하는 SPEC (선택)
-  - USER-001
-blocks:                         # 차단하는 SPEC (선택)
-  - AUTH-002
-related_specs:                  # 관련 SPEC (선택)
-  - TOKEN-002
-related_issue: "https://github.com/modu-ai/moai-adk/issues/123"
-
-# 선택 필드 - 범위 (영향 분석)
-scope:
-  packages:                     # 영향받는 패키지
-    - src/core/auth
-  files:                        # 핵심 파일 (선택)
-    - auth-service.ts
-    - jwt-manager.ts
+id: AUTH-001
+version: 0.0.1
+status: draft
+created: 2025-09-15
+updated: 2025-09-15
+author: @Goos
+priority: high
 ---
 ```
 
-**필드 설명**:
+**핵심 규칙**:
 - **id**: TAG ID와 동일 (`<도메인>-<3자리>`) - 생성 후 절대 변경 금지
-  - **디렉토리명 규칙**: `.moai/specs/SPEC-{ID}/` (예: `SPEC-AUTH-001/`)
-  - **ID 중복 확인**: `rg "@SPEC:{ID}" -n .moai/specs/` 로 기존 TAG 검색 필수
-  - **복합 도메인**: 하이픈으로 연결 가능 (예: `UPDATE-REFACTOR-001`)
-- **version**: Semantic Version 체계 (v0.0.1 = INITIAL draft 시작, v0.1.0 = 구현 완료, v0.x.0 = 기능 추가, v1.0.0 = 안정화)
-- **status**: `draft` (작성 중) | `active` (구현 진행) | `completed` (완료) | `deprecated` (사용 중지)
-- **created/updated**: YYYY-MM-DD 형식
-- **author**: 단수형, GitHub ID 앞에 @ 접두사 필수 (예: `@Goos`)
-- **priority**: `critical` (즉시) | `high` (높음) | `medium` (중간) | `low` (낮음)
-- **category**: 변경 유형 (feature|bugfix|refactor|security|docs|perf)
-- **labels**: 검색/필터링용 태그 배열
-- **depends_on/blocks/related_specs**: SPEC 간 의존성 그래프
-- **related_issue**: GitHub Issue 전체 URL
-- **scope.packages/files**: 영향받는 패키지/파일 목록
+  - **디렉토리명**: `.moai/specs/SPEC-{ID}/` (예: `SPEC-AUTH-001/`)
+  - **중복 확인**: `rg "@SPEC:{ID}" -n .moai/specs/` 필수
+- **version**: v0.0.1 (INITIAL) → v0.1.0 (구현 완료) → v1.0.0 (안정화)
+- **author**: GitHub ID 앞에 @ 접두사 필수 (예: `@Goos`)
+- **priority**: critical | high | medium | low
 
-**상세 규칙**: `.moai/memory/spec-metadata.md` 참조
+**전체 필드 설명 및 검증 방법**: `.moai/memory/spec-metadata.md` 참조
 
 #### HISTORY 섹션 (필수)
 
@@ -320,25 +291,13 @@ scope:
 ```
 
 **HISTORY 작성 규칙**:
-- **버전 체계**:
-  - `v0.0.1` = INITIAL (모든 SPEC 시작 버전, status: draft)
-  - `v0.0.x` = Draft 수정/개선 (SPEC 문서 수정 시 패치 버전 증가)
-  - `v0.1.0` = TDD 구현 완료 (status: completed, /alfred:3-sync 자동 업데이트)
-  - `v0.1.x` = 버그 수정, 문서 개선 (패치 버전)
-  - `v0.x.0` = 기능 추가, 주요 개선 (마이너 버전)
-  - `v1.0.0` = 정식 안정화 (프로덕션 준비, 사용자 명시적 승인 필수)
+- **버전 체계**: v0.0.1 (INITIAL) → v0.1.0 (구현 완료) → v1.0.0 (안정화)
+  - 상세 버전 체계: `.moai/memory/spec-metadata.md#버전-체계` 참조
 - **버전 순서**: 최신 버전이 위로 (역순)
-- **변경 타입** (대문자):
-  - `INITIAL` - 최초 작성 (항상 v0.0.1, status: draft)
-  - `ADDED` - 새 요구사항 추가 (Draft 단계)
-  - `CHANGED` - 기존 요구사항 수정 (Draft 단계)
-  - `IMPLEMENTATION COMPLETED` - TDD 구현 완료 (v0.1.0, status: completed)
-  - `BREAKING` - 하위 호환성 깨는 변경 (Major 버전 증가)
-  - `DEPRECATED` - 폐기 예정 표시
-  - `REMOVED` - 요구사항 제거
-  - `FIXED` - 명세 오류 수정 (Patch 버전 증가)
+- **변경 타입 태그**: INITIAL, ADDED, CHANGED, IMPLEMENTATION COMPLETED, BREAKING, DEPRECATED, REMOVED, FIXED
+  - 상세 설명: `.moai/memory/spec-metadata.md#history-작성-가이드` 참조
 - **필수 항목**: 버전, 날짜, AUTHOR, 변경 내용
-- **선택 항목**: REVIEW (검토자), SCOPE (범위), CONTEXT (배경), MIGRATION (마이그레이션 가이드)
+- **선택 항목**: REVIEW, SCOPE, CONTEXT, MIGRATION
 
 #### SPEC 문서 전체 구조
 
