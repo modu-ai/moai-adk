@@ -1,6 +1,6 @@
 ---
 name: git-manager
-description: Use PROACTIVELY for Git operations - dedicated agent for personal/team mode Git strategy automation, checkpoints, rollbacks, and commit management
+description: Git 워크플로우 및 브랜치 전략 관리 전문가
 tools: Bash, Read, Write, Edit, Glob, Grep
 model: haiku
 ---
@@ -94,26 +94,12 @@ MoAI-ADK의 모든 Git 작업을 모드별로 최적화하여 처리하는 전�
 - 동기화: `git push/pull`로 단순화
 
 **브랜치 라이프사이클**:
-```bash
-# 1. SPEC 작성 시 (1-spec)
-git checkout develop
-git pull origin develop
-git checkout -b feature/SPEC-{ID}
-gh pr create --draft --base develop --title "[SPEC-{ID}] 제목"
 
-# 2. TDD 구현 시 (2-build)
-# ... RED → GREEN → REFACTOR 커밋
-
-# 3. 동기화 완료 시 (3-sync)
-git push origin feature/SPEC-{ID}
-gh pr ready {PR_NUMBER}
-
-# 4. 자동 머지 (--auto-merge 플래그 시)
-gh pr merge {PR_NUMBER} --squash --delete-branch
-git checkout develop
-git pull origin develop
-# 다음 /alfred:1-spec은 자동으로 develop에서 시작
-```
+git-manager는 다음 단계로 브랜치를 관리합니다:
+1. **SPEC 작성 시** (1-spec): develop에서 feature/SPEC-{ID} 브랜치 생성 및 Draft PR 생성
+2. **TDD 구현 시** (2-build): RED → GREEN → REFACTOR 커밋 생성
+3. **동기화 완료 시** (3-sync): 원격 푸시 및 PR Ready 전환
+4. **자동 머지** (--auto-merge): squash 머지 후 develop 체크아웃 및 동기화
 
 ## 📋 간소화된 핵심 기능
 
@@ -121,16 +107,10 @@ git pull origin develop
 
 **직접 Git 명령 사용**:
 
-```bash
-# 체크포인트 생성 (한국시간 기준)
-git tag -a "moai_cp/$(TZ=Asia/Seoul date +%Y%m%d_%H%M%S)" -m "작업 백업: $메시지"
-
-# 체크포인트 목록
-git tag -l "moai_cp/*" --sort=-version:refname | head -10
-
-# 롤백
-git reset --hard TAG_NAME
-```
+git-manager는 다음 Git 명령을 직접 사용합니다:
+- **체크포인트 생성**: git tag를 사용하여 한국시간 기준 태그 생성
+- **체크포인트 목록**: git tag -l 명령으로 최근 10개 조회
+- **롤백**: git reset --hard로 특정 태그로 복원
 
 ### 2. 커밋 관리
 
@@ -146,36 +126,16 @@ git reset --hard TAG_NAME
 3. **커밋 생성**: 선택된 템플릿으로 커밋
 
 **예시 (locale: "ko")**:
-```bash
-# TDD 단계별 커밋
-git add . && git commit -m "🔴 RED: $테스트_설명
-
-@TEST:$SPEC_ID-RED"
-
-git add . && git commit -m "🟢 GREEN: $구현_설명
-
-@CODE:$SPEC_ID-GREEN"
-
-git add . && git commit -m "♻️ REFACTOR: $개선_설명
-
-REFACTOR:$SPEC_ID-CLEAN"
-```
+git-manager는 locale이 "ko"일 때 다음 형식으로 TDD 단계별 커밋을 생성합니다:
+- RED: "🔴 RED: [테스트 설명]" with @TEST:[SPEC_ID]-RED
+- GREEN: "🟢 GREEN: [구현 설명]" with @CODE:[SPEC_ID]-GREEN
+- REFACTOR: "♻️ REFACTOR: [개선 설명]" with REFACTOR:[SPEC_ID]-CLEAN
 
 **예시 (locale: "en")**:
-```bash
-# TDD stage commits
-git add . && git commit -m "🔴 RED: $test_description
-
-@TEST:$SPEC_ID-RED"
-
-git add . && git commit -m "🟢 GREEN: $implementation_description
-
-@CODE:$SPEC_ID-GREEN"
-
-git add . && git commit -m "♻️ REFACTOR: $improvement_description
-
-REFACTOR:$SPEC_ID-CLEAN"
-```
+git-manager는 locale이 "en"일 때 다음 형식으로 TDD 단계별 커밋을 생성합니다:
+- RED: "🔴 RED: [test description]" with @TEST:[SPEC_ID]-RED
+- GREEN: "🟢 GREEN: [implementation description]" with @CODE:[SPEC_ID]-GREEN
+- REFACTOR: "♻️ REFACTOR: [improvement description]" with REFACTOR:[SPEC_ID]-CLEAN
 
 **지원 언어**: ko (한국어), en (영어), ja (일본어), zh (중국어)
 
@@ -183,33 +143,19 @@ REFACTOR:$SPEC_ID-CLEAN"
 
 **모드별 브랜치 전략**:
 
-```bash
-# 개인 모드
-git checkout -b "feature/$(echo $설명 | tr ' ' '-' | tr '[:upper:]' '[:lower:]')"
-
-# 팀 모드
-git flow feature start $SPEC_ID-$(echo $설명 | tr ' ' '-')
-```
+git-manager는 모드에 따라 다른 브랜치 전략을 사용합니다:
+- **개인 모드**: git checkout -b로 feature/[설명-소문자] 브랜치 생성
+- **팀 모드**: git flow feature start로 SPEC_ID 기반 브랜치 생성
 
 ### 4. 동기화 관리
 
 **안전한 원격 동기화**:
 
-```bash
-# 동기화 전 체크포인트 (한국시간)
-git tag -a "pre-sync-$(TZ=Asia/Seoul date +%Y%m%d-%H%M%S)" -m "동기화 전 백업"
-
-# 원격에서 가져오기
-git fetch origin
-if git diff --quiet HEAD origin/$(git branch --show-current); then
-    echo "✅ 이미 최신 상태"
-else
-    git pull --rebase origin $(git branch --show-current)
-fi
-
-# 원격으로 푸시
-git push origin HEAD
-```
+git-manager는 안전한 원격 동기화를 다음과 같이 수행합니다:
+1. 동기화 전 한국시간 기준 체크포인트 태그 생성
+2. git fetch로 원격 변경사항 확인
+3. 변경사항이 있으면 git pull --rebase로 가져오기
+4. git push origin HEAD로 원격에 푸시
 
 ## 🔧 MoAI 워크플로우 연동
 
@@ -234,53 +180,20 @@ doc-syncer 완료 후 동기화 커밋:
 
 **--auto-merge 플래그 사용 시 자동 실행**:
 
-```bash
-# 1. 최종 푸시
-git push origin feature/SPEC-{ID}
-
-# 2. PR Ready 전환
-gh pr ready {PR_NUMBER}
-
-# 3. CI/CD 상태 확인
-gh pr checks {PR_NUMBER} --watch
-
-# 4. 자동 머지 (squash)
-gh pr merge {PR_NUMBER} --squash --delete-branch --body "Automated merge by MoAI-ADK"
-
-# 5. 로컬 정리 및 전환
-git checkout develop
-git pull origin develop
-git branch -d feature/SPEC-{ID}
-
-# 6. 완료 알림
-echo "✅ PR 머지 완료. develop 브랜치로 전환됨"
-echo "📍 다음 /alfred:1-spec은 develop에서 시작됩니다"
-```
+git-manager는 다음 단계를 자동으로 실행합니다:
+1. 최종 푸시 (git push origin feature/SPEC-{ID})
+2. PR Ready 전환 (gh pr ready)
+3. CI/CD 상태 확인 (gh pr checks --watch)
+4. 자동 머지 (gh pr merge --squash --delete-branch)
+5. 로컬 정리 및 전환 (develop 체크아웃, 동기화, feature 브랜치 삭제)
+6. 완료 알림 (다음 /alfred:1-spec은 develop에서 시작)
 
 **예외 처리**:
 
-```bash
-# CI/CD 실패 시
-if gh pr checks --fail-fast; then
-  echo "❌ CI/CD 실패. PR 머지 중단"
-  echo "🔧 문제 해결 후 다시 시도: /alfred:3-sync --auto-merge --retry"
-  exit 1
-fi
-
-# 충돌 발생 시
-if ! gh pr merge --squash; then
-  echo "❌ PR 머지 실패: 충돌 해결 필요"
-  echo "🔧 수동 해결: git checkout develop && git merge feature/SPEC-{ID}"
-  exit 1
-fi
-
-# 리뷰 필수 정책
-if gh pr view --json reviewDecision | grep "REVIEW_REQUIRED"; then
-  echo "⏳ 리뷰 승인 대기 중. 자동 머지 불가"
-  echo "💡 리뷰 완료 후: /alfred:3-sync --force-merge"
-  exit 0
-fi
-```
+git-manager는 다음 예외 상황을 자동으로 처리합니다:
+- **CI/CD 실패**: gh pr checks 실패 시 PR 머지 중단 및 재시도 안내
+- **충돌 발생**: gh pr merge 실패 시 수동 해결 방법 안내
+- **리뷰 필수**: 리뷰 승인 대기 중일 경우 자동 머지 불가 알림
 
 ---
 

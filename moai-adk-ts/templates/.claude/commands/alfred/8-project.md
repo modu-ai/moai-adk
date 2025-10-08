@@ -1,7 +1,18 @@
 ---
 name: alfred:8-project
 description: Use PROACTIVELY for 프로젝트 문서 초기화 - product/structure/tech.md 생성 및 언어별 최적화 설정
-tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash, Agent
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - MultiEdit
+  - Grep
+  - Glob
+  - TodoWrite
+  - Bash(ls:*)
+  - Bash(find:*)
+  - Bash(cat:*)
+  - Task
 ---
 
 # 📋 MoAI-ADK 8단계: 범용 언어 지원 프로젝트 문서 초기화/갱신
@@ -26,9 +37,7 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash, Agent
 
 ## 💡 사용 예시
 
-```bash
-/alfred:8-project                  # 프로젝트 분석 및 문서 생성/갱신
-```
+사용자가 `/alfred:8-project` 커맨드를 실행하여 프로젝트 분석 및 문서 생성/갱신을 수행합니다.
 
 ## 명령어 개요
 
@@ -41,9 +50,7 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash, Agent
 
 ## 사용법
 
-```bash
-/alfred:8-project                    # 프로젝트 분석 및 문서 생성/갱신
-```
+사용자가 `/alfred:8-project` 커맨드를 실행하여 프로젝트 분석 및 문서 생성/갱신을 시작합니다.
 
 **자동 처리**:
 - 기존 `.moai/project/` 문서가 있으면 갱신 모드
@@ -77,22 +84,17 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash, Agent
 **자동 분석 항목**:
 
 1. **프로젝트 유형 감지**
-   ```bash
-   # 신규 vs 기존 프로젝트 분류
+   Alfred는 디렉토리 구조를 분석하여 신규 vs 기존 프로젝트를 분류합니다:
    - 빈 디렉토리 → 신규 프로젝트
    - 코드/문서 존재 → 기존 프로젝트
-   ```
 
-2. **언어/프레임워크 자동 감지**
-   ```bash
-   # 파일 패턴 기반 언어 감지
+2. **언어/프레임워크 자동 감지**: 파일 패턴을 기반으로 프로젝트의 주요 언어를 감지합니다
    - pyproject.toml, requirements.txt → Python
    - package.json, tsconfig.json → TypeScript/Node.js
    - pom.xml, build.gradle → Java
    - go.mod → Go
    - Cargo.toml → Rust
    - backend/ + frontend/ → 풀스택
-   ```
 
 3. **문서 현황 분석**
    - 기존 `.moai/project/*.md` 파일 상태 확인
@@ -169,16 +171,13 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash, Agent
 
 ### 2.1 project-manager 에이전트 호출
 
-```bash
-# 에이전트 호출 패턴
-@agent-project-manager 프로젝트 초기화를 시작합니다. 다음 정보를 기반으로 진행합니다:
+Alfred는 project-manager 에이전트를 호출하여 프로젝트 초기화를 시작합니다. 다음 정보를 기반으로 진행합니다:
 - 감지된 언어: [언어 목록]
 - 프로젝트 유형: [신규/기존]
 - 기존 문서 상태: [존재/부재]
 - 승인된 인터뷰 계획: [계획 요약]
 
-체계적인 인터뷰를 진행하고 product/structure/tech.md 문서를 생성/갱신해주세요.
-```
+에이전트는 체계적인 인터뷰를 진행하고 product/structure/tech.md 문서를 생성/갱신합니다.
 
 ### 2.2 프로젝트 유형별 처리 방식
 
@@ -226,13 +225,10 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash, Agent
 
 **STEP 1: 전체 프로젝트 구조 파악**
 
-```bash
-# 전체 프로젝트 구조를 먼저 파악
-tree -a -I 'node_modules|.git|dist|build|__pycache__|*.pyc|.venv'
-
-# 또는 대안 명령어 (tree가 없는 경우)
-find . -type f -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/dist/*" | head -100
-```
+Alfred는 전체 프로젝트 구조를 파악합니다:
+- tree 명령어 또는 find 명령어를 사용하여 디렉토리 구조 시각화
+- node_modules, .git, dist, build, __pycache__ 등 빌드 산출물 제외
+- 주요 소스 디렉토리 및 설정 파일 식별
 
 **산출물**:
 - 프로젝트 전체 폴더/파일 계층 구조 시각화
@@ -241,20 +237,11 @@ find . -type f -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*
 
 **STEP 2: 병렬 분석 전략 수립**
 
-```bash
-# Glob 패턴으로 파일 그룹 식별
-# 1. 설정 파일들
-*.json, *.toml, *.yaml, *.yml, *.config.js
-
-# 2. 소스 코드 파일들
-src/**/*.{ts,js,py,go,rs,java}
-
-# 3. 테스트 파일들
-tests/**/*.{ts,js,py,go,rs,java}, **/*.test.*, **/*.spec.*
-
-# 4. 문서 파일들
-*.md, docs/**/*.md, README*, CHANGELOG*
-```
+Alfred는 Glob 패턴으로 파일 그룹을 식별합니다:
+1. **설정 파일들**: *.json, *.toml, *.yaml, *.yml, *.config.js
+2. **소스 코드 파일들**: src/**/*.{ts,js,py,go,rs,java}
+3. **테스트 파일들**: tests/**/*.{ts,js,py,go,rs,java}, **/*.test.*, **/*.spec.*
+4. **문서 파일들**: *.md, docs/**/*.md, README*, CHANGELOG*
 
 **병렬 Read 전략**:
 - 여러 파일을 동시에 Read 도구로 읽어 분석 속도 향상
@@ -417,10 +404,7 @@ tests/**/*.{ts,js,py,go,rs,java}, **/*.test.*, **/*.spec.*
 - 설정 파일 유효성 검증
 
 **실행 방식**:
-```bash
-# 사용자가 명시적으로 요청한 경우에만
-@agent-trust-checker "프로젝트 초기 구조 검증"
-```
+사용자가 명시적으로 요청한 경우에만 Alfred가 trust-checker 에이전트를 호출하여 프로젝트 초기 구조 검증을 수행합니다.
 
 **검증 항목**:
 - **문서 완성도**: product/structure/tech.md 필수 섹션 존재 확인

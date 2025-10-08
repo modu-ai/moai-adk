@@ -2,7 +2,18 @@
 name: alfred:1-spec
 description: EARS 명세 작성 + 브랜치/PR 생성
 argument-hint: "제목1 제목2 ... | SPEC-ID 수정내용"
-tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - MultiEdit
+  - Grep
+  - Glob
+  - TodoWrite
+  - Bash(git:*)
+  - Bash(gh:*)
+  - Bash(rg:*)
+  - Bash(mkdir:*)
 ---
 
 # 🏗️ MoAI-ADK 1단계: EARS 명세 작성 + 브랜치/PR 생성
@@ -32,11 +43,10 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 
 ## 💡 사용 예시
 
-```bash
-/alfred:1-spec                      # 프로젝트 문서 기반 자동 제안
-/alfred:1-spec "JWT 인증 시스템"       # 단일 SPEC 수동 생성
-/alfred:1-spec SPEC-001 "보안 보강"   # 기존 SPEC 보완
-```
+사용자가 다음과 같이 커맨드를 실행할 수 있습니다:
+- `/alfred:1-spec` - 프로젝트 문서 기반 자동 제안
+- `/alfred:1-spec "JWT 인증 시스템"` - 단일 SPEC 수동 생성
+- `/alfred:1-spec SPEC-001 "보안 보강"` - 기존 SPEC 보완
 
 ## 🔍 STEP 1: SPEC 분석 및 구현 계획 수립
 
@@ -80,11 +90,10 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 
 ## 사용법
 
-```bash
-/alfred:1-spec                      # 프로젝트 문서 기반 자동 제안 (권장)
-/alfred:1-spec "JWT 인증 시스템"       # 단일 SPEC 수동 생성
-/alfred:1-spec SPEC-001 "보안 보강"   # 기존 SPEC 보완
-```
+사용자가 다음과 같은 형태로 커맨드를 실행합니다:
+- `/alfred:1-spec` - 프로젝트 문서 기반 자동 제안 (권장)
+- `/alfred:1-spec "JWT 인증 시스템"` - 단일 SPEC 수동 생성
+- `/alfred:1-spec SPEC-001 "보안 보강"` - 기존 SPEC 보완
 
 입력하지 않으면 Q&A 결과를 기반으로 우선순위 3~5건을 제안하며, 승인한 항목만 실제 SPEC으로 확정됩니다.
 
@@ -117,10 +126,7 @@ tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite, Bash
 - ❌ `SPEC-001-auth/` (ID 뒤 추가 텍스트)
 - ❌ `SPEC-AUTH-001-jwt/` (ID 뒤 추가 텍스트)
 
-**중복 확인 필수**:
-```bash
-rg "@SPEC:{ID}" -n .moai/specs/  # 기존 TAG ID 검색
-```
+**중복 확인 필수**: 새 SPEC ID를 생성하기 전에 반드시 기존 TAG ID를 검색하여 중복을 방지합니다.
 
 **복합 도메인 규칙**:
 - ✅ 허용: `UPDATE-REFACTOR-001` (2개 도메인)
@@ -130,12 +136,7 @@ rg "@SPEC:{ID}" -n .moai/specs/  # 기존 TAG ID 검색
 
 ### 1. 프로젝트 문서 분석
 
-다음을 우선적으로 실행하여 SPEC 후보를 분석합니다:
-
-```bash
-# 프로젝트 문서 기반 SPEC 분석
-@agent-spec-builder "$ARGUMENTS 분석 및 SPEC 계획 수립"
-```
+Alfred는 spec-builder 에이전트를 호출하여 프로젝트 문서 기반 SPEC 분석 및 계획 수립을 수행합니다.
 
 #### 분석 체크리스트
 
@@ -198,12 +199,7 @@ rg "@SPEC:{ID}" -n .moai/specs/  # 기존 TAG ID 검색
 
 ## 🚀 STEP 2 실행 가이드: SPEC 작성 (승인 후)
 
-사용자가 **"진행"** 또는 **"시작"**을 선택한 경우에만 다음을 실행합니다:
-
-```bash
-# SPEC 문서 작성 시작
-@agent-spec-builder "$ARGUMENTS SPEC 문서 작성 시작 (사용자 승인 완료)"
-```
+사용자가 **"진행"** 또는 **"시작"**을 선택한 경우에만 Alfred는 spec-builder 에이전트를 호출하여 SPEC 문서 작성을 시작합니다.
 
 ### EARS 명세 작성 가이드
 

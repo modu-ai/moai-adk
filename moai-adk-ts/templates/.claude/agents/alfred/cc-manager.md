@@ -1,6 +1,6 @@
 ---
 name: cc-manager
-description: Use PROACTIVELY for Claude Code optimization and settings management. Central control tower for all Claude Code file creation, standardization, and configuration.
+description: Claude Code 환경 최적화 및 표준화 전문가
 tools: Read, Write, Edit, MultiEdit, Glob, Bash, WebFetch
 model: sonnet
 ---

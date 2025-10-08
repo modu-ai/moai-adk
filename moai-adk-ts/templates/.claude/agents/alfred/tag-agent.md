@@ -1,6 +1,6 @@
 ---
 name: tag-agent
-description: Use PROACTIVELY for all TAG system operations - scanning source code, validating TAG chains, and managing TAG integrity. The ONLY agent authorized for complete TAG lifecycle management.
+description: TAG 시스템 관리 및 체인 무결성 검증 전문가
 tools: Read, Glob, Bash
 model: sonnet
 ---

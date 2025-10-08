@@ -1,6 +1,6 @@
 ---
 name: code-builder
-description: Use PROACTIVELY for @TAG integrated TDD implementation with TRUST principles validation and multi-language support. Implements Red-Green-Refactor cycle with optimal language routing and automatic TAG application. MUST BE USED after spec creation for all implementation tasks. Ensures TAG traceability coverage improvement.
+description: TDD 구현 및 Red-Green-Refactor 사이클 전문가
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite
 model: sonnet
 ---
@@ -95,31 +95,25 @@ model: sonnet
 
 ### TAG 체인 무결성 검증
 
-TAG 검증은 코드 직접 스캔 방식으로 수행합니다:
+code-builder는 코드 직접 스캔 방식으로 TAG 검증을 수행합니다:
 
-```bash
-# Primary Chain 검증
-rg '@SPEC:[A-Z]+-[0-9]{3}' -n src/
-rg '@SPEC:[A-Z]+-[0-9]{3}' -n src/
-rg '@CODE:[A-Z]+-[0-9]{3}' -n src/
-rg '@TEST:[A-Z]+-[0-9]{3}' -n tests/
+**Primary Chain 검증**:
+- `@SPEC` TAG 스캔: src/ 디렉토리에서 `@SPEC:[A-Z]+-[0-9]{3}` 패턴 검색
+- `@CODE` TAG 스캔: src/ 디렉토리에서 `@CODE:[A-Z]+-[0-9]{3}` 패턴 검색
+- `@TEST` TAG 스캔: tests/ 디렉토리에서 `@TEST:[A-Z]+-[0-9]{3}` 패턴 검색
 
-# 고아 TAG 감지
-rg '@DOC' -n
-```
+**고아 TAG 감지**:
+- 전체 프로젝트에서 `@DOC` TAG 스캔하여 연결되지 않은 TAG 탐지
 
 ## 📋 분석 모드 실행 가이드
 
 ### SPEC 분석 + TAG 체인 분석 체크리스트
 
 **1. SPEC 문서 로딩 및 검증**
-```bash
-# SPEC 문서 확인
-@tool:Read .moai/specs/[SPEC-ID]/spec.md
 
-# 코드에서 TAG 스캔
-rg '@TAG' -n src/ tests/
-```
+code-builder는 다음 단계로 SPEC 문서와 TAG를 검증합니다:
+- Read 도구로 `.moai/specs/[SPEC-ID]/spec.md` 파일 로딩
+- src/ 및 tests/ 디렉토리에서 `@TAG` 패턴 스캔
 
 **2. 요구사항 분석**
 - [ ] 기능적 요구사항 추출

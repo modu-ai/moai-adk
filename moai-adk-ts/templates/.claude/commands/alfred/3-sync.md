@@ -2,7 +2,18 @@
 name: alfred:3-sync
 description: 문서 동기화 + PR Ready 전환
 argument-hint: "모드 대상경로 - 모드: auto(기본)|force|status|project, 대상경로: 동기화 대상 경로"
-tools: Read, Write, Edit, MultiEdit, Bash(git status:*), Bash(git add:*), Bash(git diff:*), Bash(git commit:*), Bash(gh:*), Bash(python3:*), Task, Grep, Glob, TodoWrite
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - MultiEdit
+  - Bash(git:*)
+  - Bash(gh:*)
+  - Bash(python3:*)
+  - Task
+  - Grep
+  - Glob
+  - TodoWrite
 ---
 
 # 📚 MoAI-ADK 3단계: 문서 동기화(+선택적 PR Ready)
@@ -33,13 +44,12 @@ tools: Read, Write, Edit, MultiEdit, Bash(git status:*), Bash(git add:*), Bash(g
 
 ## 💡 사용 예시
 
-```bash
-/alfred:3-sync                     # 자동 동기화 (PR Ready만)
-/alfred:3-sync --auto-merge        # PR 자동 머지 + 브랜치 정리
-/alfred:3-sync force               # 강제 전체 동기화
-/alfred:3-sync status              # 동기화 상태 확인
-/alfred:3-sync project             # 통합 프로젝트 동기화
-```
+사용자가 다음과 같이 커맨드를 실행할 수 있습니다:
+- `/alfred:3-sync` - 자동 동기화 (PR Ready만)
+- `/alfred:3-sync --auto-merge` - PR 자동 머지 + 브랜치 정리
+- `/alfred:3-sync force` - 강제 전체 동기화
+- `/alfred:3-sync status` - 동기화 상태 확인
+- `/alfred:3-sync project` - 통합 프로젝트 동기화
 
 ### 🚀 완전 자동화된 GitFlow (--auto-merge)
 
@@ -99,10 +109,7 @@ tools: Read, Write, Edit, MultiEdit, Bash(git status:*), Bash(git add:*), Bash(g
 - Level 1 빠른 스캔 (3-5초)
 
 **실행 방식**:
-```bash
-# 코드 변경이 많을 때 자동 실행 (자연어 메시지)
-@agent-trust-checker "문서 동기화 전 빠른 품질 검증을 수행해주세요"
-```
+Alfred가 코드 변경이 많을 때 자동으로 trust-checker 에이전트를 호출하여 문서 동기화 전 빠른 품질 검증을 수행합니다.
 
 **검증 결과 처리**:
 
@@ -115,10 +122,7 @@ tools: Read, Write, Edit, MultiEdit, Bash(git status:*), Bash(git add:*), Bash(g
 - 사용자 선택: "수정 후 재시도" 또는 "강제 진행"
 
 **검증 생략 옵션**:
-```bash
-# 사전 검증을 건너뛰려면
-/alfred:3-sync --skip-pre-check
-```
+사전 검증을 건너뛰려면 `/alfred:3-sync --skip-pre-check` 옵션을 사용합니다.
 
 ---
 
@@ -166,12 +170,7 @@ doc-syncer 에이전트가 TDD 구현 완료 여부를 자동으로 판단하여
 
 ### 1. 프로젝트 상태 분석
 
-다음을 우선적으로 실행하여 동기화 범위를 분석합니다:
-
-```bash
-# 동기화 대상 및 범위 분석 (자연어 메시지)
-@agent-doc-syncer "문서 동기화 대상과 범위를 분석해주세요"
-```
+Alfred는 doc-syncer 에이전트를 호출하여 동기화 대상과 범위를 분석합니다.
 
 #### 분석 체크리스트
 
@@ -235,12 +234,7 @@ doc-syncer 에이전트가 TDD 구현 완료 여부를 자동으로 판단하여
 
 ## 🚀 STEP 2 실행 가이드: 문서 동기화 (승인 후)
 
-사용자가 **"진행"** 또는 **"시작"**을 선택한 경우에만 다음을 실행합니다:
-
-```bash
-# 문서 동기화 시작 (자연어 메시지)
-@agent-doc-syncer "Living Document 동기화와 TAG 업데이트를 수행해주세요"
-```
+사용자가 **"진행"** 또는 **"시작"**을 선택한 경우에만 Alfred는 doc-syncer 에이전트를 호출하여 Living Document 동기화와 TAG 업데이트를 수행합니다.
 
 ### 동기화 단계별 가이드
 
@@ -322,28 +316,14 @@ Task 2 (sonnet): 문서 구조 분석
   - `--skip-pre-check`: 사전 품질 검증 건너뛰기
   - `--skip-quality-check`: 최종 품질 검증 건너뛰기
 
-```bash
-# 기본 자동 동기화 (모드별 최적화)
-/alfred:3-sync
-
-# PR 자동 머지 + 브랜치 정리 (Team 모드 권장)
-/alfred:3-sync --auto-merge
-
-# 전체 강제 동기화
-/alfred:3-sync force
-
-# 동기화 상태 확인
-/alfred:3-sync status
-
-# 통합 프로젝트 동기화
-/alfred:3-sync project
-
-# 특정 경로 동기화
-/alfred:3-sync auto src/auth/
-
-# 고급 옵션 조합
-/alfred:3-sync --auto-merge --skip-pre-check  # 빠른 머지
-```
+**커맨드 사용 예시**:
+- `/alfred:3-sync` - 기본 자동 동기화 (모드별 최적화)
+- `/alfred:3-sync --auto-merge` - PR 자동 머지 + 브랜치 정리 (Team 모드 권장)
+- `/alfred:3-sync force` - 전체 강제 동기화
+- `/alfred:3-sync status` - 동기화 상태 확인
+- `/alfred:3-sync project` - 통합 프로젝트 동기화
+- `/alfred:3-sync auto src/auth/` - 특정 경로 동기화
+- `/alfred:3-sync --auto-merge --skip-pre-check` - 빠른 머지
 
 ### 에이전트 역할 분리
 

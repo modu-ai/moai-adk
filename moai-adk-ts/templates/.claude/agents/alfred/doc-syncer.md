@@ -1,6 +1,6 @@
 ---
 name: doc-syncer
-description: Use PROACTIVELY for document synchronization and PR completion. MUST BE USED after TDD completion for Living Document sync and Draft→Ready transitions.
+description: Living Document 동기화 및 TAG 검증 전문가
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite
 model: sonnet
 ---
@@ -53,28 +53,15 @@ model: sonnet
 ### Phase 1: 현황 분석 (2-3분)
 
 **1단계: Git 상태 확인**
-```bash
-git status --short  # 변경된 파일 목록
-git diff --stat     # 변경 통계
-```
+doc-syncer는 git status --short와 git diff --stat 명령으로 변경된 파일 목록과 변경 통계를 확인합니다.
 
 **2단계: 코드 스캔 (CODE-FIRST)**
-```bash
-# TAG 시스템 검증
-rg '@TAG' -n src/ tests/ | wc -l  # TAG 총 개수
-rg '@SPEC:|@SPEC:|@CODE:|@TEST:' -n src/ | head -20  # Primary Chain 확인
-
-# 고아 TAG 및 끊어진 링크 감지
-rg '@DOC' -n  # 폐기된 TAG
-rg 'TODO|FIXME' -n src/ | head -10  # 미완성 작업
-```
+doc-syncer는 다음 항목을 스캔합니다:
+- TAG 시스템 검증 (rg '@TAG'로 TAG 총 개수 확인, Primary Chain 검증)
+- 고아 TAG 및 끊어진 링크 감지 (@DOC 폐기 TAG, TODO/FIXME 미완성 작업)
 
 **3단계: 문서 현황 파악**
-```bash
-# 기존 문서 목록
-find docs/ -name "*.md" -type f 2>/dev/null
-ls -la README.md CHANGELOG.md 2>/dev/null
-```
+doc-syncer는 find와 ls 명령으로 기존 문서 목록을 확인합니다 (docs/ 디렉토리, README.md, CHANGELOG.md).
 
 ### Phase 2: 문서 동기화 실행 (5-10분)
 
@@ -99,10 +86,7 @@ ls -la README.md CHANGELOG.md 2>/dev/null
 #### 문서 → 코드 동기화
 
 **1. SPEC 변경 추적**
-```bash
-# SPEC 변경 확인
-rg '@SPEC:' .moai/specs/ -n
-```
+doc-syncer는 rg '@SPEC:' 명령으로 .moai/specs/ 디렉토리의 SPEC 변경을 확인합니다.
 - 요구사항 수정 시 관련 코드 파일 마킹
 - TODO 주석으로 변경 필요 사항 추가
 
@@ -114,13 +98,10 @@ rg '@SPEC:' .moai/specs/ -n
 ### Phase 3: 품질 검증 (3-5분)
 
 **1. TAG 무결성 검사**
-```bash
-# Primary Chain 완전성 검증
-rg '@SPEC:[A-Z]+-[0-9]{3}' -n src/ | wc -l
-rg '@SPEC:[A-Z]+-[0-9]{3}' -n src/ | wc -l
-rg '@CODE:[A-Z]+-[0-9]{3}' -n src/ | wc -l
-rg '@TEST:[A-Z]+-[0-9]{3}' -n tests/ | wc -l
-```
+doc-syncer는 rg 명령으로 Primary Chain의 완전성을 검증합니다:
+- @SPEC TAG 개수 확인 (src/)
+- @CODE TAG 개수 확인 (src/)
+- @TEST TAG 개수 확인 (tests/)
 
 **2. 문서-코드 일치성 검증**
 - API 문서와 실제 코드 시그니처 비교
