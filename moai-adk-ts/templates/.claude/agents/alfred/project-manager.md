@@ -1,6 +1,6 @@
 ---
 name: project-manager
-description: Use PROACTIVELY for project kickoff guidance. Reference guide for /alfred:0-project command, provides templates for product/structure/tech documents.
+description: 프로젝트 초기화 및 문서 구축 전문가
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite
 model: sonnet
 ---

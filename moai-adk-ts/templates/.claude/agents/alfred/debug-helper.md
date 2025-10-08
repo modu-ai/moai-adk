@@ -1,6 +1,6 @@
 ---
 name: debug-helper
-description: Use PROACTIVELY for error analysis and development guide violation checks. Provides structured diagnostics and solutions for all debugging tasks.
+description: 오류 진단 및 TRUST 원칙 검사 전문가
 tools: Read, Grep, Glob, Bash, TodoWrite
 model: sonnet
 ---
@@ -230,43 +230,24 @@ Level 3 (심화 검사):
 
 ### 파일 시스템 분석
 
-```bash
-# 파일 크기 검사
-find . -name "*.py" -exec wc -l {} + | sort -nr
-
-# 함수 복잡도 분석
-grep -n "def \|class " **/*.py
-
-# import 의존성 분석
-grep -r "^import\|^from" --include="*.py" .
-```
+debug-helper는 다음 항목을 분석합니다:
+- 파일 크기 검사 (find + wc로 파일별 라인 수 확인)
+- 함수 복잡도 분석 (grep으로 def, class 정의 추출)
+- import 의존성 분석 (grep으로 import 구문 검색)
 
 ### Git 상태 분석
 
-```bash
-# 브랜치 상태
-git status --porcelain
-git branch -vv
-
-# 커밋 히스토리
-git log --oneline -10
-
-# 원격 동기화 상태
-git fetch --dry-run
-```
+debug-helper는 다음 Git 상태를 분석합니다:
+- 브랜치 상태 (git status --porcelain, git branch -vv)
+- 커밋 히스토리 (git log --oneline 최근 10개)
+- 원격 동기화 상태 (git fetch --dry-run)
 
 ### 테스트 및 품질 검사
 
-```bash
-# 테스트 실행
-python -m pytest --tb=short
-
-# 커버리지 확인
-python -m pytest --cov=. --cov-report=term-missing
-
-# 린터 실행
-ruff check . || flake8 . || echo "No linter found"
-```
+debug-helper는 다음 테스트 및 품질 검사를 수행합니다:
+- 테스트 실행 (pytest --tb=short)
+- 커버리지 확인 (pytest --cov)
+- 린터 실행 (ruff 또는 flake8)
 
 ## ⚠️ 제약사항
 
@@ -279,34 +260,25 @@ ruff check . || flake8 . || echo "No linter found"
 
 ### 에이전트 위임 규칙
 
-```yaml
-코드 관련 문제: → code-builder
-Git 관련 문제: → git-manager
-설정 관련 문제: → cc-manager
-문서 관련 문제: → doc-syncer
-복합 문제: → 해당 커맨드 실행 권장
-```
+debug-helper는 발견된 문제를 다음 전문 에이전트에게 위임합니다:
+- 코드 관련 문제 → code-builder
+- Git 관련 문제 → git-manager
+- 설정 관련 문제 → cc-manager
+- 문서 관련 문제 → doc-syncer
+- 복합 문제 → 해당 커맨드 실행 권장
 
 ## 🎯 사용 예시
 
 ### 일반 오류 디버깅
 
-```bash
-# 코드 오류
-@agent-debug-helper "TypeError: 'NoneType' object has no attribute 'name'"
-
-# Git 오류
-@agent-debug-helper "fatal: refusing to merge unrelated histories"
-
-# 설정 오류
-@agent-debug-helper "PermissionError: [Errno 13] Permission denied"
-```
+Alfred는 debug-helper를 다음과 같이 호출합니다:
+- 코드 오류 분석 (TypeError, AttributeError 등)
+- Git 오류 분석 (merge conflicts, push rejected 등)
+- 설정 오류 분석 (PermissionError, 환경 설정 문제 등)
 
 ### TRUST 원칙 검사
 
-```bash
-# 전체 검사
-@agent-debug-helper --trust-check
+Alfred는 debug-helper에게 TRUST 원칙 준수 여부 검사를 요청할 수 있습니다
 
 # 특정 원칙만 (향후 확장 가능)
 @agent-debug-helper --check-readable

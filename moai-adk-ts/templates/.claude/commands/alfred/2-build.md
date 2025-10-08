@@ -2,7 +2,21 @@
 name: alfred:2-build
 description: 구현할 SPEC ID (예: SPEC-001) 또는 all로 모든 SPEC 구현: 언어별 최적화된 TDD 구현 (Red-Green-Refactor) with SQLite3 tags.db
 argument-hint: "SPEC-ID - 구현할 SPEC ID (예: SPEC-001) 또는 all로 모든 SPEC 구현"
-tools: Read, Write, Edit, MultiEdit, Bash(python3:*), Bash(pytest:*), Bash(npm:*), Bash(node:*), Task, WebFetch, Grep, Glob, TodoWrite
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - MultiEdit
+  - Bash(python3:*)
+  - Bash(pytest:*)
+  - Bash(npm:*)
+  - Bash(node:*)
+  - Bash(git:*)
+  - Task
+  - WebFetch
+  - Grep
+  - Glob
+  - TodoWrite
 ---
 
 # ⚒️ MoAI-ADK 2단계: 언어별 최적화된 TDD 구현 (Red-Green-Refactor)
@@ -33,11 +47,10 @@ SPEC 문서를 분석하여 언어별 최적화된 TDD 사이클(Red-Green-Refac
 
 ## 💡 사용 예시
 
-```bash
-/alfred:2-build SPEC-001           # 특정 SPEC 구현
-/alfred:2-build all                # 모든 SPEC 일괄 구현
-/alfred:2-build SPEC-003 --test    # 테스트만 실행
-```
+사용자가 다음과 같이 커맨드를 실행할 수 있습니다:
+- `/alfred:2-build SPEC-001` - 특정 SPEC 구현
+- `/alfred:2-build all` - 모든 SPEC 일괄 구현
+- `/alfred:2-build SPEC-003 --test` - 테스트만 실행
 
 ## 🔍 STEP 1: SPEC 분석 및 구현 계획 수립
 
@@ -149,11 +162,7 @@ TDD 구현 완료 후 `trust-checker` 에이전트가 **자동으로** 품질 �
 - **S (Secured)**: 보안 검증 (입력 검증, 로깅)
 - **T (Trackable)**: @TAG 추적성 무결성
 
-**실행 방식**:
-```bash
-# Alfred가 자동으로 호출 (TDD 구현 완료 시)
-@agent-trust-checker "SPEC-{ID}에 대한 빠른 품질 검증을 수행해주세요"
-```
+**실행 방식**: Alfred가 TDD 구현 완료 시 자동으로 trust-checker 에이전트를 호출하여 빠른 품질 검증을 수행합니다.
 
 **검증 결과 처리**:
 
@@ -170,11 +179,7 @@ TDD 구현 완료 후 `trust-checker` 에이전트가 **자동으로** 품질 �
 - 개선 필요 항목 상세 보고
 - code-builder 재호출 권장
 
-**검증 생략 옵션**:
-```bash
-# 품질 검증을 건너뛰려면
-/alfred:2-build SPEC-001 --skip-quality-check
-```
+**검증 생략 옵션**: 품질 검증을 건너뛰려면 `--skip-quality-check` 옵션을 사용합니다.
 
 ### Phase 3: Git 작업 (git-manager)
 
@@ -189,12 +194,7 @@ TDD 구현 완료 후 `trust-checker` 에이전트가 **자동으로** 품질 �
 
 ### 1. SPEC 문서 분석
 
-다음을 우선적으로 실행하여 SPEC을 분석합니다:
-
-```bash
-# SPEC 문서 확인 및 분석 (자연어 메시지)
-@agent-code-builder "SPEC-{ID}를 분석하고 TDD 구현 계획을 수립해주세요"
-```
+Alfred는 code-builder 에이전트를 호출하여 SPEC 문서를 확인하고 TDD 구현 계획을 수립합니다.
 
 #### 분석 체크리스트
 
@@ -257,12 +257,7 @@ TDD 구현 완료 후 `trust-checker` 에이전트가 **자동으로** 품질 �
 
 ## 🚀 STEP 2 실행 가이드: TDD 구현 (승인 후)
 
-사용자가 **"진행"** 또는 **"시작"**을 선택한 경우에만 다음을 실행합니다:
-
-```bash
-# TDD 구현 시작 (자연어 메시지)
-@agent-code-builder "SPEC-{ID}의 TDD 구현을 시작합니다. RED-GREEN-REFACTOR 사이클을 수행해주세요"
-```
+사용자가 **"진행"** 또는 **"시작"**을 선택한 경우에만 Alfred는 code-builder 에이전트를 호출하여 TDD 구현을 시작하고 RED-GREEN-REFACTOR 사이클을 수행합니다.
 
 ### TDD 단계별 가이드
 
