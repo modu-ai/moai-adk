@@ -43,7 +43,8 @@ export class TemplateProcessor {
    * @private
    */
   private tryPackageRelativeTemplates(currentDir: string): string | null {
-    const packageRoot = path.resolve(currentDir, '../../..');
+    // For bundled dist/cli/index.js: dist/cli -> ../.. -> package root
+    const packageRoot = path.resolve(currentDir, '../..');
     const packageTemplates = path.join(packageRoot, 'templates');
 
     if (fs.existsSync(packageTemplates)) {
@@ -67,7 +68,8 @@ export class TemplateProcessor {
    * @private
    */
   private tryDevelopmentTemplates(currentDir: string): string | null {
-    const devTemplates = path.resolve(currentDir, '../../../templates');
+    // For bundled dist/cli/index.js: dist/cli -> ../../templates
+    const devTemplates = path.resolve(currentDir, '../../templates');
 
     if (fs.existsSync(devTemplates)) {
       logger.debug('Found templates in development directory', {

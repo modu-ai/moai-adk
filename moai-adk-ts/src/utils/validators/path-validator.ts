@@ -118,9 +118,12 @@ export async function validatePath(
 
 /**
  * Check for dangerous path patterns
+ * Windows drive letters (C:, D:, etc.) are excluded from validation
  */
 function containsDangerousPathPatterns(inputPath: string): boolean {
-  return DANGEROUS_PATH_PATTERNS.some(pattern => pattern.test(inputPath));
+  // Remove Windows drive letter before checking (e.g., "C:\" -> "\")
+  const pathWithoutDrive = inputPath.replace(/^[A-Za-z]:/, '');
+  return DANGEROUS_PATH_PATTERNS.some(pattern => pattern.test(pathWithoutDrive));
 }
 
 /**

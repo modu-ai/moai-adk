@@ -8,6 +8,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /**
  * Package information interface
@@ -28,25 +29,17 @@ export interface PackageInfo {
  */
 export function getPackageInfo(): PackageInfo {
   try {
-    // Use import.meta.url to find package root
-    // Note: This is a workaround since we can't use import.meta.url in a regular function
-    // We'll search from current file location or use process.cwd() as fallback
+    // Convert import.meta.url to file path (handles Windows paths correctly)
+    const currentFilePath = fileURLToPath(import.meta.url);
+    const currentDir = path.dirname(currentFilePath);
     let packageJsonPath: string;
 
     // Try to find package root from common locations
+    // For bundled dist/cli/index.js: dist/cli -> ../.. -> package root
     const possibleRoots = [
       // Try from current module (if running from dist/ or src/)
-      path.resolve(
-        new URL('.', import.meta.url).pathname,
-        '..',
-        '..',
-        'package.json'
-      ),
-      path.resolve(
-        new URL('.', import.meta.url).pathname,
-        '..',
-        'package.json'
-      ),
+      path.resolve(currentDir, '..', '..', 'package.json'),
+      path.resolve(currentDir, '..', 'package.json'),
       // Fallback to cwd
       path.resolve(process.cwd(), 'package.json'),
     ];
