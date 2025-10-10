@@ -1345,22 +1345,33 @@ Alfred가 자동으로:
 
 MoAI-ADK는 Claude Code 플러그인 마켓플레이스를 통해 자동으로 업데이트됩니다!
 
-```text
-# Claude Code에서 플러그인 목록 확인
-/plugin list
+**방법 1: 인터랙티브 메뉴 (권장)**
+
+```bash
+# 플러그인 관리 메뉴 열기
+/plugin
 ```
 
-**새 버전이 출시되면**:
-- 🔔 Claude Code가 자동으로 알림
-- 🔄 `/plugin update moai-adk` 명령어로 간편 업데이트
-- ✅ 또는 Claude Code 재시작 시 자동 업데이트
+플러그인 메뉴에서 업데이트 가능한 플러그인을 확인하고 업데이트할 수 있습니다.
+
+**방법 2: 재설치**
+
+마켓플레이스는 Git 기반으로 자동 업데이트되므로, 재설치하면 최신 버전이 설치됩니다:
+
+```bash
+# 1. 기존 플러그인 제거
+/plugin uninstall moai-adk@moai-adk
+
+# 2. 최신 버전 설치
+/plugin install moai-adk@moai-adk
+```
 
 **현재 버전 확인**:
 
 Claude Code 세션 시작 시 자동으로 표시됩니다:
 ```
 🗿 MoAI-ADK 프로젝트: YourProject
-📦 버전: v0.3.5 (최신)
+📦 버전: v0.3.5 → ⚡ v0.3.6 업데이트 가능
 ```
 
 업데이트 후 추가 작업 없이 바로 사용 가능합니다!
