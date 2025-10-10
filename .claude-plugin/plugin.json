@@ -1,6 +1,6 @@
 {
   "name": "moai-adk",
-  "version": "0.3.0",
+  "version": "0.3.3",
   "description": "MoAI Agentic Development Kit - SPEC-First TDD Framework with Alfred SuperAgent orchestrating 9 specialized agents for systematic development",
   "author": {
     "name": "MoAI Team",
@@ -9,7 +9,6 @@
   "homepage": "https://github.com/modu-ai/moai-adk",
   "license": "MIT",
   "commands": "./commands/alfred",
-  "agents": "./agents/alfred",
   "hooks": "./hooks/hooks.json",
   "outputStyles": "./output-styles/alfred",
   "keywords": [
