@@ -406,13 +406,17 @@ rg '@SPEC:AUTH-001' -n .moai/specs/  # SPEC이 없으면 고아
 Alfred가 모든 코드에 적용하는 품질 기준:
 
 - **T**est First: 언어별 최적 도구
-  - 백엔드: Jest/Vitest, pytest, go test, cargo test, JUnit
+  - 백엔드: Jest/Vitest, pytest, go test, cargo test, JUnit, RSpec/Minitest
   - 모바일: flutter test, XCTest, JUnit + Espresso, React Native Testing Library
 - **R**eadable: 언어별 린터
-  - 백엔드: ESLint/Biome, ruff, golint, clippy
+  - 백엔드: ESLint/Biome, ruff, golint, clippy, RuboCop
   - 모바일: dart analyze, SwiftLint, detekt
-- **U**nified: 타입 안전성 (TypeScript, Go, Rust, Java, Dart, Swift, Kotlin) 또는 런타임 검증
+- **U**nified: 타입 안전성 및 일관성
+  - 정적 타입 언어: TypeScript, Go, Rust, Java, Dart, Swift, Kotlin (컴파일 타임 타입 체크)
+  - 동적 타입 언어: Python (type hints + mypy), Ruby (Sorbet/RBS + Steep) (런타임 검증 + 타입 체커)
+  - 모든 언어: 일관된 코딩 스타일, 네이밍 컨벤션, 아키텍처 패턴 적용
 - **S**ecured: 언어별 보안 도구 및 정적 분석
+  - Ruby: Brakeman (Rails), bundler-audit (의존성 취약점)
 - **T**rackable: CODE-FIRST @TAG 시스템 (코드 직접 스캔)
 
 상세 내용: `.moai/memory/development-guide.md` 참조
@@ -437,6 +441,80 @@ Alfred가 모든 코드에 적용하는 품질 기준:
 - 언어별 표준 프레임워크
 - 독립적/결정적 테스트
 - SPEC 기반 테스트 케이스
+
+### Ruby 개발 가이드
+
+**타입 시스템 및 검증**:
+- **Sorbet**: Stripe에서 개발한 강력한 타입 체커 (권장)
+  ```ruby
+  # typed: strict
+  extend T::Sig
+
+  sig { params(name: String).returns(String) }
+  def greet(name)
+    "Hello, #{name}!"
+  end
+  ```
+- **RBS (Ruby Signature)**: Ruby 3.0+ 공식 타입 정의 언어
+  ```rbs
+  class User
+    attr_reader name: String
+    def initialize: (String name) -> void
+    def greet: () -> String
+  end
+  ```
+- **Steep**: RBS 기반 타입 체커
+
+**테스트 프레임워크**:
+- **RSpec**: BDD 스타일 테스트 (행동 주도 개발)
+  ```ruby
+  # @TEST:USER-001 | SPEC: SPEC-USER-001.md
+  RSpec.describe User do
+    describe '#greet' do
+      it 'returns greeting message' do
+        user = User.new('Alice')
+        expect(user.greet).to eq('Hello, Alice!')
+      end
+    end
+  end
+  ```
+- **Minitest**: 경량 테스트 프레임워크 (Rails 기본)
+
+**코드 품질 도구**:
+- **RuboCop**: Ruby 스타일 가이드 및 린터 (필수)
+- **Reek**: 코드 스멜 감지
+- **SimpleCov**: 테스트 커버리지 측정 (≥85% 목표)
+
+**보안 도구**:
+- **Brakeman**: Rails 애플리케이션 정적 보안 분석
+- **bundler-audit**: Gem 의존성 취약점 스캔
+- **ruby-advisory-db**: 알려진 보안 취약점 데이터베이스
+
+**런타임 검증 패턴**:
+```ruby
+# @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: spec/auth_spec.rb
+class AuthService
+  extend T::Sig
+
+  sig { params(token: String).returns(T.nilable(User)) }
+  def authenticate(token)
+    # 런타임 입력 검증
+    raise ArgumentError, 'Token cannot be empty' if token.empty?
+
+    # 비즈니스 로직
+    user = User.find_by(token: token)
+
+    # 타입 안전 반환
+    T.cast(user, T.nilable(User))
+  end
+end
+```
+
+**Rails 특화 가이드**:
+- Strong Parameters로 입력 검증
+- ActiveRecord 콜백 최소화 (비즈니스 로직 분리)
+- Service Objects 패턴 적용 (복잡한 로직)
+- Concern으로 공통 로직 추출 (단, 과도한 사용 지양)
 
 ---
 
