@@ -1288,156 +1288,6 @@ MoAI-ADK는 모든 주요 언어를 지원하며, 언어별 최적 도구 체인
 
 ---
 
-## 💻 CLI Reference
-
-### 핵심 명령어
-
-```bash
-# 프로젝트 초기화
-moai init [project] [options]
-
-# 시스템 진단
-moai doctor [options]
-
-# 프로젝트 상태 확인
-moai status [options]
-
-# 백업 복원
-moai restore <backup-path> [options]
-```
-
-### Claude Code 전용 명령어
-
-```text
-# 템플릿 업데이트 (권장 ⭐)
-/alfred:9-update
-
-# 프로젝트 초기화
-/alfred:8-project
-```
-
-### moai init [project]
-
-새 MoAI-ADK 프로젝트를 초기화하거나 기존 프로젝트에 MoAI-ADK를 설치합니다.
-
-**옵션**:
-
-- `--personal`: Personal 모드로 초기화 (기본값)
-- `--team`: Team 모드로 초기화 (GitHub 통합)
-- `-b, --backup`: 설치 전 백업 생성
-- `-f, --force`: 기존 파일 강제 덮어쓰기
-
-**사용 예시**:
-
-```bash
-# 새 프로젝트 생성 (Personal 모드)
-moai init my-project
-
-# 현재 디렉토리에 설치
-moai init .
-
-# Team 모드로 초기화
-moai init my-project --team
-
-# 백업 생성 후 설치
-moai init . -b
-
-# 기존 파일 강제 덮어쓰기
-moai init . -f
-```
-
-**대화형 프롬프트** (v0.2.5+):
-
-`moai init` 실행 시 다음 정보를 대화형으로 수집합니다:
-
-1. **개발자 정보**
-   - Git `user.name`, `user.email` 자동 감지
-   - 미설정 시 프롬프트로 입력받아 Git 전역 설정 및 `.moai/config.json`에 저장
-   - 용도: Git 커밋 서명 `Co-Authored-By: {name} <{email}>`
-
-2. **Git 필수 검증**
-   - Personal 모드: 체크포인트 자동화 필수
-   - Team 모드: GitFlow 전략 필수
-   - Git 미설치 시 설치 안내 후 중단
-
-3. **PR 자동화 설정** (Team 모드만)
-   - Auto PR: `/alfred:3-sync` 실행 시 PR 자동 머지 여부
-   - Draft PR: `/alfred:1-spec` 실행 시 Draft PR 생성 여부
-   - 기본값: `auto_pr: true`, `draft_pr: true`
-
-### moai doctor
-
-시스템 진단을 실행하여 MoAI-ADK가 올바르게 설치되었는지 확인합니다.
-
-**옵션**:
-
-- `-l, --list-backups`: 사용 가능한 백업 목록 표시
-
-**사용 예시**:
-
-```bash
-# 시스템 진단 실행
-moai doctor
-
-# 백업 목록 확인
-moai doctor -l
-```
-
-### moai status
-
-MoAI-ADK 프로젝트 상태를 표시합니다.
-
-**옵션**:
-
-- `-v, --verbose`: 상세 상태 정보 표시
-- `-p, --project-path <path>`: 프로젝트 디렉토리 경로 지정 (경로 필수)
-
-**사용 예시**:
-
-```bash
-# 현재 디렉토리 상태 확인
-moai status
-
-# 상세 정보 포함
-moai status -v
-
-# 특정 경로 프로젝트 상태 확인
-moai status -p /path/to/project
-
-# 상세 정보 + 특정 경로
-moai status -v -p /path/to/project
-```
-
-### moai restore <backup-path>
-
-백업 디렉토리에서 MoAI-ADK를 복원합니다.
-
-**인자**:
-
-- `<backup-path>`: 복원할 백업 디렉토리 경로 (필수)
-
-**옵션**:
-
-- `--dry-run`: 변경 없이 복원할 내용 미리보기
-- `--force`: 기존 파일 강제 덮어쓰기
-
-**사용 예시**:
-
-```bash
-# 백업에서 복원 (미리보기)
-moai restore .moai-backup-2025-10-02 --dry-run
-
-# 실제 복원 실행
-moai restore .moai-backup-2025-10-02
-
-# 강제 복원 (기존 파일 덮어쓰기)
-moai restore .moai-backup-2025-10-02 --force
-```
-
-**참고**: MoAI-ADK 업데이트는 Claude Code에서 `/alfred:9-update` 명령어를 사용하세요.
-
----
-
 ## ❓ FAQ
 
 ### Q1: MoAI-ADK는 무료인가요?
@@ -1453,8 +1303,16 @@ moai restore .moai-backup-2025-10-02 --force
 ✅ **가능합니다!**
 
 ```bash
+# 1. 기존 프로젝트로 이동
 cd existing-project
-moai init .
+
+# 2. Claude Code 실행
+claude
+```
+
+```text
+# 3. Claude Code에서 프로젝트 초기화
+/alfred:8-project
 ```
 
 Alfred가 자동으로:
@@ -1483,30 +1341,31 @@ Alfred가 자동으로:
 
 ### Q5: 업데이트는 어떻게 하나요?
 
-✅ **방법 1: Claude Code에서 (권장)**
+✅ **Claude Code 플러그인 자동 업데이트**
 
 ```text
+# Claude Code에서 플러그인 업데이트 확인
+/plugin list
+
+# 새 버전이 있으면 자동으로 알림
+# 업데이트 명령어 실행
 /alfred:9-update
 ```
 
-**왜 이 방법을 권장하나요?**
+**자동으로 수행되는 작업**:
 
-- 자동 백업 (사용자 파일 보호)
-- 권한 자동 설정 (`chmod +x`)
-- 5단계 검증 (파일/권한/무결성)
-- 에러 발생 시 `debug-helper` 자동 지원
+- ✅ 자동 백업 (사용자 파일 보호)
+- ✅ 권한 자동 설정 (`chmod +x`)
+- ✅ 5단계 검증 (파일/권한/무결성)
+- ✅ 에러 발생 시 `debug-helper` 자동 지원
 
-✅ **방법 2: 터미널에서**
+**플러그인 버전 확인**:
 
-```bash
-# npm 사용
-npm update -g moai-adk
-
-# Bun 사용 (더 빠름)
-bun update -g moai-adk
+플러그인 설치 후 Claude Code 세션 시작 시 자동으로 버전이 표시됩니다:
 ```
-
-**참고**: 터미널 업데이트 후에는 `/alfred:9-update`를 실행하여 템플릿 파일을 최신 버전으로 동기화하세요.
+🗿 MoAI-ADK 프로젝트: YourProject
+📦 버전: v0.3.5 (최신)
+```
 
 ---
 
@@ -1548,19 +1407,16 @@ ls .moai/specs/SPEC-*.md
 
 **해결 방법**:
 
-```bash
-# 1. 테스트 수동 실행으로 정확한 에러 확인
-npm test  # 또는 bun test, pytest 등
-
-# 2. debug-helper 에이전트 호출
+```text
+# 1. Claude Code에서 debug-helper 에이전트 호출
 @agent-debug-helper "테스트 실패 에러 메시지"
 
-# 3. 환경 변수 확인
+# 2. 환경 변수 확인
 cat .env.example  # 필요한 환경 변수 확인
 cp .env.example .env  # 환경 변수 파일 생성
 
-# 4. 의존성 재설치
-rm -rf node_modules && npm install
+# 3. Alfred에게 재시도 요청
+/alfred:2-build SPEC-ID
 ```
 
 #### 3. TAG 체인 끊어짐 경고
@@ -1608,21 +1464,25 @@ git branch -D feature/SPEC-XXX-YYY
 
 #### 5. 권한 에러 (Permission Denied)
 
-**증상**: `moai init` 또는 `/alfred:9-update` 실행 시 권한 에러
+**증상**: `/alfred:9-update` 또는 Alfred 명령어 실행 시 권한 에러
 
 **원인**: 파일 실행 권한 부족
 
 **해결 방법**:
 
+```text
+# Claude Code에서 자동 수정
+/alfred:9-update --fix-permissions
+```
+
+**또는 수동으로**:
+
 ```bash
-# 1. .claude/commands/ 디렉토리 권한 확인
+# .claude/commands/ 디렉토리 권한 확인
 ls -la .claude/commands/
 
-# 2. 실행 권한 추가
+# 실행 권한 추가
 chmod +x .claude/commands/*.md
-
-# 3. 또는 자동 수정
-/alfred:9-update --fix-permissions
 ```
 
 #### 6. 테스트 커버리지 85% 미만
@@ -1633,22 +1493,20 @@ chmod +x .claude/commands/*.md
 
 **해결 방법**:
 
-```bash
-# 1. 커버리지 리포트 확인
-npm test -- --coverage  # 또는 bun test --coverage
+```text
+# 1. Claude Code에서 debug-helper로 테스트 분석
+@agent-debug-helper "테스트 커버리지 85% 미만"
 
-# 2. 누락된 브랜치 확인
-# 커버리지 리포트에서 빨간색(미테스트) 라인 확인
-
-# 3. 엣지 케이스 테스트 추가
-# - null/undefined 입력
-# - 빈 배열/객체
-# - 경계값 (0, -1, 최대값)
-# - 에러 케이스
-
-# 4. 재실행
+# 2. Alfred에게 엣지 케이스 추가 요청
 /alfred:2-build SPEC-ID
+# 명확히 요청: "null, undefined, 빈 배열, 경계값, 에러 케이스 테스트 추가"
 ```
+
+**테스트해야 할 엣지 케이스**:
+- null/undefined 입력
+- 빈 배열/객체
+- 경계값 (0, -1, 최대값)
+- 에러 케이스
 
 ### 로그 확인
 
@@ -1667,17 +1525,30 @@ npm test -- --coverage  # 또는 bun test --coverage
 
 ### 긴급 복구
 
-심각한 문제 발생 시 백업에서 복원:
+심각한 문제 발생 시 플러그인 재설치:
 
 ```bash
-# 1. 백업 목록 확인
-moai doctor -l
+# 1. Claude Code 재시작
+# 터미널에서 Ctrl+C로 종료 후 재실행
 
-# 2. 최신 백업으로 복원 (미리보기)
-moai restore .moai-backup-YYYY-MM-DD --dry-run
+# 2. 플러그인 재설치
+/plugin marketplace add modu-ai/moai-adk
+/plugin install moai-adk@moai-adk
 
-# 3. 실제 복원
-moai restore .moai-backup-YYYY-MM-DD
+# 3. 프로젝트 재초기화
+/alfred:8-project
+
+# 4. 업데이트 실행
+/alfred:9-update
+```
+
+**백업 확인**:
+```bash
+# Git 이력 확인
+git log --oneline -10
+
+# 변경사항 복원
+git checkout HEAD~1 -- <file>
 ```
 
 ---
