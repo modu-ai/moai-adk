@@ -518,6 +518,3 @@ Alfred는 Glob 패턴으로 파일 그룹을 식별합니다:
 ## 관련 명령어
 
 - `/alfred:1-spec` - SPEC 작성 시작
-- `/alfred:9-update` - MoAI-ADK 업데이트
-- `moai doctor` - 시스템 진단
-- `moai status` - 프로젝트 상태 확인

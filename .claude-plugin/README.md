@@ -52,12 +52,11 @@ hooks/
     ├── policy-block.cjs      # Bash 명령 정책 검사
     └── session-notice.cjs    # 세션 시작 알림
 
-commands/alfred/          # Alfred 커맨드 (5개)
+commands/alfred/          # Alfred 커맨드 (4개)
 ├── 1-spec.md            # SPEC 작성
 ├── 2-build.md           # TDD 구현
 ├── 3-sync.md            # 문서 동기화
-├── 8-project.md         # 프로젝트 초기화
-└── 9-update.md          # 플러그인 업데이트
+└── 8-project.md         # 프로젝트 초기화
 
 agents/alfred/            # Alfred 에이전트 (9개)
 ├── spec-builder.md      # 🏗️ SPEC 작성 전문가
@@ -211,24 +210,16 @@ MoAI-ADK는 범용 개발 프레임워크입니다:
 
 ---
 
-## 🔧 설치 및 업데이트
+## 🔧 업데이트
 
-### 플러그인 업데이트 확인
-
-```bash
-/alfred:9-update --check
-```
-
-### 자동 업데이트
+Claude Code가 플러그인 업데이트를 자동으로 관리합니다:
 
 ```bash
-/alfred:9-update --force
-```
+# 플러그인 목록 및 업데이트 확인
+/plugin list
 
-### 품질 검사
-
-```bash
-/alfred:9-update --check-quality
+# 플러그인 업데이트
+/plugin update moai-adk@moai-adk
 ```
 
 ---

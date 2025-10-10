@@ -76,7 +76,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `plugin.json` - 플러그인 매니페스트
   - `marketplace.json` - 마켓플레이스 정의 (GitHub 저장소 형식)
   - Alfred SuperAgent 및 9개 전문 에이전트
-  - 5개 Alfred 커맨드 (`/alfred:1-spec`, `/alfred:2-build`, `/alfred:3-sync`, `/alfred:8-project`, `/alfred:9-update`)
+  - 4개 Alfred 커맨드 (`/alfred:1-spec`, `/alfred:2-build`, `/alfred:3-sync`, `/alfred:8-project`)
   - 4개 보안/품질 후크 (tag-enforcer, pre-write-guard, policy-block, session-notice)
 
 ### ✨ Added
@@ -84,7 +84,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **완전한 프로젝트 템플릿 제공**
   - `templates/.claude/` - Claude Code 설정 템플릿
     - agents/alfred/ - 9개 Alfred 에이전트
-    - commands/alfred/ - 5개 Alfred 커맨드
+    - commands/alfred/ - 4개 Alfred 커맨드
     - hooks/alfred/ - 4개 보안/품질 후크
     - output-styles/alfred/ - 4개 출력 스타일 (alfred-pro, beginner-learning, pair-collab, study-deep)
     - settings.json - Claude Code 기본 설정
@@ -342,26 +342,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--yes` 플래그를 사용하여 자동화된 초기화가 가능합니다
 
 **Migration Steps**:
-1. `npm install moai-adk@latest` 실행
-2. (선택적) CI/CD 스크립트에서 `moai init --yes` 사용
-3. (선택적) `/alfred:9-update`로 템플릿 파일 업데이트
+1. Claude Code 플러그인 업데이트: `/plugin update moai-adk@moai-adk`
+2. (선택적) CI/CD 스크립트에서 `moai init --yes` 사용 (레거시)
 
 ---
 
 ## Roadmap
 
-### v0.0.3 (계획 중)
+### Future
 
-- **SPEC-UPDATE-REFACTOR-001**: `/alfred:9-update` Phase 4 리팩토링
-  - Alfred가 Claude Code 도구로 직접 템플릿 복사
-  - 프로젝트 문서 지능적 보호
-  - 품질 검증 옵션 (`--check-quality`)
-
-- **SPEC-INIT-002**: Windows 환경 지원 강화
+- **프로젝트 초기화 개선**: Windows 환경 지원 강화
   - WSL 지원 전략
   - Windows 멀티 플랫폼 테스트
-
-### Future
 
 - Living Document 자동 생성 강화
 - TAG 검색 및 네비게이션 도구
