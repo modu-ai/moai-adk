@@ -17,23 +17,30 @@ jobs:
       - name: 체크아웃
         uses: actions/checkout@v4
 
-      - name: Python 환경 설정
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.12"
-
       # Multi-language toolchains (conditional)
+      - name: Setup Python
+        if: ${{ hashFiles('requirements.txt') != '' || hashFiles('pyproject.toml') != '' || hashFiles('setup.py') != '' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
       - name: Setup Node.js
         if: ${{ hashFiles('package.json') != '' }}
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
+
+      - name: Setup Bun
+        if: ${{ hashFiles('bun.lockb') != '' }}
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "latest"
 
       - name: Setup Go
         if: ${{ hashFiles('go.mod') != '' }}
         uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
+          go-version: "1.23"
 
       - name: Setup Rust
         if: ${{ hashFiles('Cargo.toml') != '' }}
@@ -44,13 +51,40 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: "temurin"
-          java-version: "17"
+          java-version: "21"
 
       - name: Setup .NET
         if: ${{ hashFiles('**/*.sln') != '' || hashFiles('**/*.csproj') != '' }}
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
+
+      - name: Setup Ruby
+        if: ${{ hashFiles('Gemfile') != '' }}
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+
+      - name: Setup Flutter
+        if: ${{ hashFiles('pubspec.yaml') != '' }}
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.24.x"
+          channel: "stable"
+
+      - name: Setup Swift (Xcode)
+        if: ${{ hashFiles('Package.swift') != '' || hashFiles('**/*.xcodeproj') != '' || hashFiles('**/*.xcworkspace') != '' }}
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "latest-stable"
+
+      - name: Setup Kotlin
+        if: ${{ hashFiles('build.gradle.kts') != '' || hashFiles('settings.gradle.kts') != '' }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
 
       # TRUST 5원칙 자동 검증
       # Note: Validation is now handled by TypeScript-based tools
@@ -60,33 +94,131 @@ jobs:
           echo "   - @agent-trust-checker 사용"
           echo "   - TypeScript 훅 시스템 활용"
 
+      # Draft PR에서는 테스트 실패를 무시하고, Ready PR에서는 실패 시 CI 실패
       - name: Run language-aware tests
         run: |
           set -e
-          echo "🔎 Running language-aware tests if present"
-          if [ -f "package.json" ]; then
-            echo "➡️  Node.js tests"
-            npm ci --prefer-offline || npm install
-            npm test --if-present -- --coverage || true
+          ALLOW_FAILURE="${{ github.event.pull_request.draft == true }}"
+          echo "🔎 Running language-aware tests (Draft PR: allow failure = $ALLOW_FAILURE)"
+
+          # Python tests
+          if [ -f "requirements.txt" ] || [ -f "pyproject.toml" ] || [ -f "setup.py" ]; then
+            echo "➡️  Python tests"
+            pip install -q pytest pytest-cov 2>/dev/null || true
+            if [ "$ALLOW_FAILURE" = "true" ]; then
+              pytest --cov --cov-report=term-missing || true
+            else
+              pytest --cov --cov-report=term-missing
+            fi
           fi
+
+          # Node.js/Bun tests
+          if [ -f "package.json" ]; then
+            echo "➡️  Node.js/Bun tests"
+            if [ -f "bun.lockb" ]; then
+              bun install --frozen-lockfile || bun install
+              if [ "$ALLOW_FAILURE" = "true" ]; then
+                bun test || true
+              else
+                bun test
+              fi
+            else
+              npm ci --prefer-offline || npm install
+              if [ "$ALLOW_FAILURE" = "true" ]; then
+                npm test --if-present -- --coverage || true
+              else
+                npm test --if-present -- --coverage
+              fi
+            fi
+          fi
+
+          # Go tests
           if [ -f "go.mod" ]; then
             echo "➡️  Go tests"
-            go test -v -cover ./... || true
+            if [ "$ALLOW_FAILURE" = "true" ]; then
+              go test -v -cover ./... || true
+            else
+              go test -v -cover ./...
+            fi
           fi
+
+          # Rust tests
           if [ -f "Cargo.toml" ]; then
             echo "➡️  Rust tests"
-            cargo test --all --locked || cargo test || true
+            if [ "$ALLOW_FAILURE" = "true" ]; then
+              cargo test --all --locked || cargo test || true
+            else
+              cargo test --all --locked || cargo test
+            fi
           fi
+
+          # Java tests (Maven)
           if [ -f "pom.xml" ]; then
             echo "➡️  Java tests (Maven)"
-            mvn -q -DskipTests=false test || true
-          elif [ -f "build.gradle" ] || [ -f "build.gradle.kts" ]; then
-            echo "➡️  Java tests (Gradle)"
-            ./gradlew test || gradle test || true
+            if [ "$ALLOW_FAILURE" = "true" ]; then
+              mvn -q -DskipTests=false test || true
+            else
+              mvn -q -DskipTests=false test
+            fi
           fi
+
+          # Java/Kotlin tests (Gradle)
+          if [ -f "build.gradle" ] || [ -f "build.gradle.kts" ]; then
+            echo "➡️  Java/Kotlin tests (Gradle)"
+            if [ "$ALLOW_FAILURE" = "true" ]; then
+              ./gradlew test || gradle test || true
+            else
+              ./gradlew test || gradle test
+            fi
+          fi
+
+          # .NET tests
           if compgen -G "**/*.sln" > /dev/null || compgen -G "**/*.csproj" > /dev/null; then
             echo "➡️  .NET tests"
-            dotnet test || true
+            if [ "$ALLOW_FAILURE" = "true" ]; then
+              dotnet test || true
+            else
+              dotnet test
+            fi
+          fi
+
+          # Ruby tests
+          if [ -f "Gemfile" ]; then
+            echo "➡️  Ruby tests"
+            if [ "$ALLOW_FAILURE" = "true" ]; then
+              bundle exec rspec || bundle exec rake test || true
+            else
+              bundle exec rspec || bundle exec rake test
+            fi
+          fi
+
+          # Flutter tests
+          if [ -f "pubspec.yaml" ]; then
+            echo "➡️  Flutter tests"
+            flutter pub get
+            if [ "$ALLOW_FAILURE" = "true" ]; then
+              flutter test || true
+            else
+              flutter test
+            fi
+          fi
+
+          # Swift tests
+          if [ -f "Package.swift" ]; then
+            echo "➡️  Swift tests (SPM)"
+            if [ "$ALLOW_FAILURE" = "true" ]; then
+              swift test || true
+            else
+              swift test
+            fi
+          elif compgen -G "**/*.xcodeproj" > /dev/null || compgen -G "**/*.xcworkspace" > /dev/null; then
+            echo "➡️  Swift tests (Xcode)"
+            # Xcode 프로젝트는 스킴이 필요하므로 조건부 실행
+            if [ "$ALLOW_FAILURE" = "true" ]; then
+              echo "⚠️  Xcode 테스트는 스킴 설정이 필요합니다"
+            else
+              echo "⚠️  Xcode 테스트는 스킴 설정이 필요합니다"
+            fi
           fi
 
       #  TAG 시스템 검증 (코드 파일만)
