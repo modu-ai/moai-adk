@@ -1,0 +1,17 @@
+{
+  "name": "moai-adk",
+  "owner": {
+    "name": "MoAI Team",
+    "email": "contact@mo.ai.kr"
+  },
+  "plugins": [
+    {
+      "name": "moai-adk",
+      "source": "./",
+      "description": "MoAI Agentic Development Kit - SPEC-First TDD Framework with Alfred SuperAgent orchestrating 9 specialized agents for systematic development",
+      "version": "0.3.0",
+      "author": "MoAI Team",
+      "homepage": "https://github.com/modu-ai/moai-adk"
+    }
+  ]
+}
