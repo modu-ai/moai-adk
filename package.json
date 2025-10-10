@@ -1,0 +1,19 @@
+{
+  "name": "moai-adk-hooks",
+  "version": "0.3.5",
+  "private": true,
+  "description": "MoAI-ADK Claude Code Hooks Build System",
+  "type": "module",
+  "scripts": {
+    "build:hooks": "tsup --config tsup.hooks.config.ts",
+    "watch:hooks": "tsup --config tsup.hooks.config.ts --watch"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

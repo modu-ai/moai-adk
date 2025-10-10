@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.3.5] - 2025-10-10
+
+### 🏗️ Architecture
+
+- **Hooks 소스 관리 독립화**
+  - `moai-adk-ts` 패키지 제거 준비를 위한 hooks 소스 구조 재설계
+  - 새로운 디렉토리 구조: `src/hooks/` → `.claude-plugin/hooks/scripts/`
+  - TypeScript 소스를 MoAI-ADK 루트에서 직접 관리
+  - `tsup` 기반 빌드 시스템으로 CommonJS(.cjs) 파일 자동 생성
+
+### ✨ Added
+
+- **빌드 시스템**:
+  - `tsconfig.hooks.json` - Hooks 전용 TypeScript 설정
+  - `tsup.hooks.config.ts` - tsup 빌드 설정
+  - `package.json` - 빌드 의존성 (tsup, typescript, @types/node)
+  - `build-hooks.sh` - 빌드 자동화 스크립트
+
+- **Hooks 소스 디렉토리** (`src/hooks/`):
+  - `session-notice/` - 세션 시작 알림 (버전 표시 개선 포함)
+  - `tag-enforcer/` - TAG 규칙 검증
+  - `pre-write-guard/` - 파일 쓰기 보안 검증
+  - `policy-block/` - 위험 명령어 차단
+  - `types.ts` - 공통 타입 정의
+
+### 🔧 Changed
+
+- **개발 워크플로우**:
+  - Hooks 수정: `src/hooks/` 편집 → `./build-hooks.sh` 실행
+  - 빌드 결과: `.claude-plugin/hooks/scripts/*.cjs` 자동 생성
+  - 플러그인 배포: `.claude-plugin/` 폴더만 복사하면 완료
+
+### 📝 Technical Details
+
+- **독립적인 빌드 시스템**: MoAI-ADK 패키지에서 hooks 빌드 완전 분리
+- **자동화된 빌드**: `npm run build:hooks` 또는 `./build-hooks.sh`
+- **향후 계획**: `moai-adk-ts` 패키지 제거 예정
+
+---
+
 ## [v0.3.4] - 2025-10-10
 
 ### 🐛 Fixed

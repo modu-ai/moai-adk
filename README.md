@@ -103,7 +103,7 @@ MoAI-ADK는 두 가지 방법으로 사용할 수 있습니다:
 /plugin install moai-adk@moai-adk
 
 # 3. 설치 확인
-/plugin list
+/plugin 
 ```
 
 **장점**:
