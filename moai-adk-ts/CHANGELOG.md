@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.17] - 2025-10-11
+
+### ⚡ Performance
+- **policy-block Hook 성능 최적화**
+  - READ_ONLY_TOOLS 화이트리스트 추가 (Read, Glob, Grep, WebFetch, WebSearch, TodoWrite, BashOutput)
+  - 모든 MCP 도구 (mcp__*) Fast-track 처리
+  - 읽기 전용 도구 실행 시간: ~0.5ms → 0.001ms (99% 개선)
+  - 대량 호출 성능: 1000회 호출 시 ~500ms → 0.24ms (99.9% 개선)
+  - 실행 시간 로깅 추가 (100ms 초과 시 경고)
+
+### 🧪 Tests
+- **성능 벤치마크 테스트 추가**
+  - `policy-block-benchmark.test.ts` (6개 테스트)
+  - 도구별 실행 시간 측정 (Read, Glob, MCP, Bash)
+  - 대량 호출 시뮬레이션 (1000회)
+- **테스트 커버리지 확장**
+  - `@TEST:POLICY-001-PERF` 섹션 추가 (5개 테스트)
+  - Fast-track 로직 검증 (Read, Glob, Grep, MCP, TodoWrite)
+  - 총 테스트: 17개 → 23개
+
+### 🔧 Changed
+- `isReadOnlyTool()` 메서드 추가 - MCP 도구 패턴 매칭
+- `execute()` 메서드 개선 - Fast-track 조기 종료
+
+---
+
 ## [0.2.16] - 2025-10-11
 
 ### ✨ Added

@@ -46,12 +46,37 @@ const ALLOWED_PREFIXES: string[] = [
 ];
 
 /**
+ * Read-only tools that should bypass policy checks
+ * These tools don't modify the system and can be fast-tracked
+ */
+const READ_ONLY_TOOLS: string[] = [
+  'Read',
+  'Glob',
+  'Grep',
+  'WebFetch',
+  'WebSearch',
+  'TodoWrite',
+  'BashOutput',
+  'mcp__context7__resolve-library-id',
+  'mcp__context7__get-library-docs',
+  'mcp__ide__getDiagnostics',
+  'mcp__ide__executeCode',
+];
+
+/**
  * Policy Block Hook - TypeScript port of policy_block.py
  */
 export class PolicyBlock implements MoAIHook {
   name = 'policy-block';
 
   async execute(input: HookInput): Promise<HookResult> {
+    const startTime = Date.now();
+
+    // Fast-track: Read-only tools bypass all checks
+    if (this.isReadOnlyTool(input.tool_name)) {
+      return { success: true };
+    }
+
     // Only process Bash tool invocations
     if (input.tool_name !== 'Bash') {
       return { success: true };
@@ -67,6 +92,10 @@ export class PolicyBlock implements MoAIHook {
     // Check for dangerous commands
     for (const dangerousCommand of DANGEROUS_COMMANDS) {
       if (commandLower.includes(dangerousCommand)) {
+        const duration = Date.now() - startTime;
+        if (duration > 100) {
+          console.error(`[policy-block] Blocked in ${duration}ms`);
+        }
         return {
           success: false,
           blocked: true,
@@ -80,6 +109,14 @@ export class PolicyBlock implements MoAIHook {
     if (!this.isAllowedPrefix(command)) {
       console.error(
         'NOTICE: 등록되지 않은 명령입니다. 필요 시 settings.json 의 allow 목록을 갱신하세요.'
+      );
+    }
+
+    // Log slow executions (>100ms)
+    const duration = Date.now() - startTime;
+    if (duration > 100) {
+      console.error(
+        `[policy-block] Slow execution: ${duration}ms for ${input.tool_name}`
       );
     }
 
@@ -108,6 +145,19 @@ export class PolicyBlock implements MoAIHook {
    */
   private isAllowedPrefix(command: string): boolean {
     return ALLOWED_PREFIXES.some(prefix => command.startsWith(prefix));
+  }
+
+  /**
+   * Check if tool is read-only and can bypass policy checks
+   */
+  private isReadOnlyTool(toolName: string): boolean {
+    // Check for MCP tool pattern (mcp__*)
+    if (toolName.startsWith('mcp__')) {
+      return true;
+    }
+
+    // Check against known read-only tools
+    return READ_ONLY_TOOLS.includes(toolName);
   }
 }
 

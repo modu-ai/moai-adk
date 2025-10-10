@@ -134,6 +134,73 @@ describe('PolicyBlock Hook', () => {
     });
   });
 
+  describe('@TEST:POLICY-001-PERF: 성능 최적화 검증', () => {
+    it('should fast-track Read tool without processing', async () => {
+      const input: HookInput = {
+        tool_name: 'Read',
+        tool_input: {
+          file_path: '/test/file.txt',
+        },
+      };
+
+      const result = await policyBlock.execute(input);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should fast-track Glob tool without processing', async () => {
+      const input: HookInput = {
+        tool_name: 'Glob',
+        tool_input: {
+          pattern: '**/*.ts',
+        },
+      };
+
+      const result = await policyBlock.execute(input);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should fast-track Grep tool without processing', async () => {
+      const input: HookInput = {
+        tool_name: 'Grep',
+        tool_input: {
+          pattern: 'test',
+        },
+      };
+
+      const result = await policyBlock.execute(input);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should fast-track MCP tools with mcp__ prefix', async () => {
+      const input: HookInput = {
+        tool_name: 'mcp__context7__resolve-library-id',
+        tool_input: {
+          libraryName: 'react',
+        },
+      };
+
+      const result = await policyBlock.execute(input);
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should fast-track TodoWrite tool', async () => {
+      const input: HookInput = {
+        tool_name: 'TodoWrite',
+        tool_input: {
+          todos: [],
+        },
+      };
+
+      const result = await policyBlock.execute(input);
+
+      expect(result.success).toBe(true);
+    });
+  });
+
   describe('@TEST:POLICY-001-EDGE: 경계 조건 처리', () => {
     it('should handle empty command', async () => {
       const input: HookInput = {
