@@ -61,10 +61,10 @@ backup-*/
 ehthumbs.db
 Thumbs.db
 
-# moai
-AGENTS.md
-CLAUDE.md
-.moai
+# moai - 로컬 전용 파일/폴더 (루트만)
+/AGENTS.md
+/CLAUDE.md
+/.moai
 moai-adk-ts/
-.vercel/
-.claude/
+/.vercel/
+/.claude/
