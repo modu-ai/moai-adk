@@ -1,6 +1,7 @@
 # MoAI-ADK (Agentic Development Kit)
 
 [![npm version](https://img.shields.io/npm/v/moai-adk)](https://www.npmjs.com/package/moai-adk)
+[![Claude Code Plugin](https://img.shields.io/badge/Claude_Code-Plugin-blue?logo=anthropic)](https://github.com/modu-ai/moai-adk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9.2+-blue)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/node-18.0+-green)](https://nodejs.org/)
@@ -86,10 +87,56 @@ Alfred는 특정 언어나 프레임워크에 종속되지 않습니다. **Pytho
 
 ## 🚀 Quick Start (3분 실전)
 
+### 🎯 두 가지 설치 방법
+
+MoAI-ADK는 두 가지 방법으로 사용할 수 있습니다:
+
+#### 방법 1️⃣: Claude Code 플러그인 (권장) ⭐
+
+**Claude Code 사용자라면 플러그인 방식이 가장 쉽습니다!**
+
+```bash
+# 1. 마켓플레이스 추가
+/plugin marketplace add modu-ai/moai-adk
+
+# 2. 플러그인 설치
+/plugin install moai-adk@moai-adk
+
+# 3. 설치 확인
+/plugin list
+```
+
+**장점**:
+- ✅ **자동 템플릿 제공**: `.claude/`, `.moai/`, `.github/` 폴더 자동 생성
+- ✅ **즉시 사용 가능**: Alfred 커맨드 (`/alfred:1-spec`, `/alfred:2-build`, `/alfred:3-sync`) 바로 사용
+- ✅ **자동 업데이트**: 플러그인 업데이트 시 자동 반영
+- ✅ **설정 관리 불필요**: Claude Code가 모든 설정 관리
+
+**설치 후 바로 시작**:
+```bash
+# 프로젝트 초기화
+/alfred:8-project
+
+# SPEC 작성
+/alfred:1-spec "JWT 인증 시스템"
+
+# TDD 구현
+/alfred:2-build SPEC-AUTH-001
+
+# 문서 동기화
+/alfred:3-sync
+```
+
+---
+
+#### 방법 2️⃣: NPM/Bun 패키지 설치
+
+**CLI 도구로 사용하거나 커스터마이징이 필요한 경우**
+
 ### 📋 준비물
 
 - ✅ Bun 또는 npm 설치됨
-- ✅ Claude Code 실행 중
+- ✅ Claude Code 실행 중 (플러그인 방식)
 - ✅ Git 설치됨 **(필수)** - Personal/Team 모드 공통 필수 요구사항
 
 ### ⚡ 3단계로 시작하기
