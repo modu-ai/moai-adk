@@ -7,6 +7,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.3.0] - 2025-10-10
+
+### 🎉 Major Features
+
+- **Claude Code Plugin System** (SPEC-PLUGIN-001)
+  - `.claude-plugin/` 폴더 구조 추가
+  - `plugin.json` - 플러그인 매니페스트
+  - `marketplace.json` - 마켓플레이스 정의 (GitHub 저장소 형식)
+  - Alfred SuperAgent 및 9개 전문 에이전트
+  - 5개 Alfred 커맨드 (`/alfred:1-spec`, `/alfred:2-build`, `/alfred:3-sync`, `/alfred:8-project`, `/alfred:9-update`)
+  - 4개 보안/품질 후크 (tag-enforcer, pre-write-guard, policy-block, session-notice)
+
+### ✨ Added
+
+- **완전한 프로젝트 템플릿 제공**
+  - `templates/.claude/` - Claude Code 설정 템플릿
+    - agents/alfred/ - 9개 Alfred 에이전트
+    - commands/alfred/ - 5개 Alfred 커맨드
+    - hooks/alfred/ - 4개 보안/품질 후크
+    - output-styles/alfred/ - 4개 출력 스타일 (alfred-pro, beginner-learning, pair-collab, study-deep)
+    - settings.json - Claude Code 기본 설정
+  - `templates/.moai/` - MoAI-ADK 프로젝트 템플릿
+    - config.json - 프로젝트 설정
+    - memory/ - development-guide.md, spec-metadata.md
+    - project/ - product.md, structure.md, tech.md
+    - reports/, specs/ - 리포트/SPEC 저장 폴더
+  - `templates/.github/` - GitHub 템플릿
+    - workflows/moai-gitflow.yml - GitFlow 자동화
+    - PULL_REQUEST_TEMPLATE.md
+  - `templates/CLAUDE.md` - 프로젝트 지침 템플릿
+  - `templates/.gitignore` - Git 무시 목록 템플릿
+
+### 🔧 Changed
+
+- **`.gitignore` 최적화**
+  - 루트 폴더만 무시하도록 패턴 수정 (/ 접두사 추가)
+  - `/.moai`, `/.claude/`, `/AGENTS.md`, `/CLAUDE.md` - 루트만 무시
+  - `templates/.moai`, `templates/.claude` - GitHub에 포함
+  - 로컬 전용 파일/폴더 명확히 분리
+
+- **플러그인 표준 준수**
+  - `marketplace.json` - GitHub 저장소 형식으로 변경
+  - `plugin.json`, `marketplace.json` - author 필드 객체화
+  - Claude Code 공식 문서 기준 적용
+
+### 📦 Installation
+
+플러그인 마켓플레이스 등록 완료:
+
+```bash
+# 마켓플레이스 추가
+/plugin marketplace add modu-ai/moai-adk
+
+# 플러그인 설치
+/plugin install moai-adk@moai-adk
+
+# 설치 확인
+/plugin list
+```
+
+### 🎯 Breaking Changes
+
+없음 (v0.2.6 → v0.3.0 호환성 유지)
+
+---
+
 ## [v0.2.6] - 2025-10-06
 
 ### Added (SPEC-INSTALL-001)
