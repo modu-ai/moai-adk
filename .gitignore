@@ -66,3 +66,13 @@ backup-*/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Project root - local only
+AGENTS.md
+package-lock.json
+.vercel
+.moai
+.claude
+
+# docs - keep docs/public for GitHub Pages
+docs/api/
