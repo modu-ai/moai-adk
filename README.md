@@ -87,13 +87,9 @@ Alfred는 특정 언어나 프레임워크에 종속되지 않습니다. **Pytho
 
 ## 🚀 Quick Start (3분 실전)
 
-### 🎯 두 가지 설치 방법
+### 📦 Claude Code 플러그인 설치 ⭐
 
-MoAI-ADK는 두 가지 방법으로 사용할 수 있습니다:
-
-#### 방법 1️⃣: Claude Code 플러그인 (권장) ⭐
-
-**Claude Code 사용자라면 플러그인 방식이 가장 쉽습니다!**
+**Claude Code 플러그인으로 바로 시작하세요!**
 
 ```bash
 # 1. 마켓플레이스 추가
@@ -112,95 +108,26 @@ MoAI-ADK는 두 가지 방법으로 사용할 수 있습니다:
 - ✅ **자동 업데이트**: 플러그인 업데이트 시 자동 반영
 - ✅ **설정 관리 불필요**: Claude Code가 모든 설정 관리
 
-**설치 후 바로 시작**:
-```bash
-# 프로젝트 초기화
-/alfred:8-project
-
-# SPEC 작성
-/alfred:1-spec "JWT 인증 시스템"
-
-# TDD 구현
-/alfred:2-build SPEC-AUTH-001
-
-# 문서 동기화
-/alfred:3-sync
-```
-
 ---
 
-#### 방법 2️⃣: NPM/Bun 패키지 설치
+### ⚡ 2단계로 시작하기
 
-**CLI 도구로 사용하거나 커스터마이징이 필요한 경우**
+#### 1️⃣ 프로젝트 초기화 (1분)
 
-### 📋 준비물
-
-- ✅ Bun 또는 npm 설치됨
-- ✅ Claude Code 실행 중 (플러그인 방식)
-- ✅ Git 설치됨 **(필수)** - Personal/Team 모드 공통 필수 요구사항
-
-### ⚡ 3단계로 시작하기
-
-#### 1️⃣ 설치 (30초)
-
-```bash
-# Bun 권장 (5배 빠른 성능)
-curl -fsSL https://bun.sh/install | bash
-bun add -g moai-adk
-
-# 또는 npm 사용
-npm install -g moai-adk
-
-# 설치 확인
-moai --version
-# 출력: v0.x.x
-```
-
-#### 2️⃣ 초기화 (1분)
-
-**터미널에서:**
-
-```bash
-# 새 프로젝트 생성
-moai init my-project
-cd my-project
-
-# 기존 프로젝트에 설치
-cd existing-project
-moai init .
-
-# Claude Code 실행
-claude
-```
-
-**Claude Code에서** (필수):
+**설치 후 Claude Code에서:**
 
 ```text
+# 프로젝트 초기화 - 프로젝트 문서 3종 자동 생성
 /alfred:8-project
 ```
 
-**Alfred가 자동으로 수행** (v2.0.0):
+**Alfred가 자동으로 수행**:
+- `.moai/project/product.md` - 제품 비전, 타겟 유저, 핵심 기능
+- `.moai/project/structure.md` - 아키텍처, 모듈 구조, 디렉토리 레이아웃
+- `.moai/project/tech.md` - 기술 스택, 개발 도구, 의존성 관리
+- 언어별 최적 도구 체인 자동 설정 (TypeScript/Python/Go/Flutter 등)
 
-- **프로젝트 문서 3종 자동 생성**:
-  - `.moai/project/product.md` - 제품 비전, 타겟 유저, 핵심 기능
-  - `.moai/project/structure.md` - 아키텍처, 모듈 구조, 디렉토리 레이아웃
-  - `.moai/project/tech.md` - 기술 스택, 개발 도구, 의존성 관리
-
-- **Alfred 브랜딩 경로 자동 감지**:
-  - `.claude/alfred/` 디렉토리 구조 생성
-  - Claude Code 명령어 파일 최적화 배치
-
-- **언어별 최적 도구 체인 자동 설정**:
-  - TypeScript → Vitest + Biome
-  - Python → pytest + ruff
-  - Go → go test + golint
-  - Flutter → flutter test + dart analyze
-
-- **프로젝트 컨텍스트 완벽 이해**:
-  - 프로젝트 메타데이터 v2.0.0 구조로 저장
-  - MoAI-ADK 철학 (`constitution`, `git_strategy`, `tags`, `pipeline`) 반영
-
-#### 3️⃣ 첫 기능 개발 (1분 30초)
+#### 2️⃣ 첫 기능 개발 (1분 30초)
 
 **Claude Code에서 3단계 워크플로우 실행:**
 
@@ -1752,6 +1679,87 @@ moai restore .moai-backup-YYYY-MM-DD --dry-run
 # 3. 실제 복원
 moai restore .moai-backup-YYYY-MM-DD
 ```
+
+---
+
+## 🏗️ 플러그인 아키텍처 (개발자용)
+
+MoAI-ADK v0.3.5부터 hooks 소스 관리가 독립화되었습니다.
+
+### 새로운 디렉토리 구조
+
+```
+/Users/goos/MoAI/MoAI-ADK/
+├── .claude-plugin/
+│   ├── plugin.json (버전: 0.3.5)
+│   └── hooks/
+│       └── scripts/           # 배포용 .cjs 파일 (빌드 출력)
+│           ├── session-notice.cjs
+│           ├── tag-enforcer.cjs
+│           ├── pre-write-guard.cjs
+│           └── policy-block.cjs
+│
+├── src/                       # TypeScript 소스
+│   └── hooks/
+│       ├── session-notice/
+│       │   ├── index.ts
+│       │   ├── utils.ts
+│       │   ├── message-builder.ts
+│       │   └── types.ts
+│       ├── tag-enforcer/
+│       │   ├── index.ts
+│       │   ├── tag-patterns.ts
+│       │   ├── tag-validator.ts
+│       │   └── types.ts
+│       ├── pre-write-guard/
+│       │   └── index.ts
+│       ├── policy-block/
+│       │   └── index.ts
+│       └── types.ts           # 공통 타입
+│
+├── tsconfig.hooks.json        # Hooks 전용 TypeScript 설정
+├── tsup.hooks.config.ts       # tsup 빌드 설정
+├── build-hooks.sh             # 빌드 자동화 스크립트
+└── package.json               # 빌드 의존성 (tsup, typescript)
+```
+
+### 빌드 시스템
+
+**의존성**:
+- `tsup` - TypeScript를 CommonJS(.cjs)로 번들링
+- `typescript` - TypeScript 컴파일러
+- `@types/node` - Node.js 타입 정의
+
+**빌드 명령어**:
+```bash
+# Hooks 빌드
+npm run build:hooks
+# 또는
+./build-hooks.sh
+
+# Watch 모드 (개발용)
+npm run watch:hooks
+```
+
+### 개발 워크플로우
+
+1. **hooks 수정**: `src/hooks/` 디렉토리의 TypeScript 파일 편집
+2. **빌드 실행**: `./build-hooks.sh` 실행
+3. **자동 생성**: `.claude-plugin/hooks/scripts/*.cjs` 파일 자동 생성
+4. **플러그인 배포**: `.claude-plugin/` 폴더를 `~/.claude/plugins/marketplaces/moai-adk/`로 복사
+
+### 주요 변경사항 (v0.3.5)
+
+- ✅ **hooks 소스 독립화**: `moai-adk-ts` 패키지 의존성 제거
+- ✅ **MoAI-ADK 루트에서 직접 관리**: TypeScript 소스를 프로젝트 루트에서 관리
+- ✅ **자동화된 빌드 시스템**: `tsup` 기반 빌드로 CommonJS 파일 자동 생성
+- ✅ **플러그인 배포 간소화**: `.claude-plugin/` 폴더만 복사하면 배포 완료
+
+### 향후 계획
+
+- 🔜 **moai-adk-ts 패키지 완전 제거**: 독립적인 hooks 빌드 시스템 완성
+- 🔜 **CI/CD 자동화**: GitHub Actions로 플러그인 배포 자동화
+- 🔜 **테스트 자동화**: Hooks 단위 테스트 및 통합 테스트 추가
 
 ---
 
