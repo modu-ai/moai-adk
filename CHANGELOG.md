@@ -342,7 +342,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--yes` 플래그를 사용하여 자동화된 초기화가 가능합니다
 
 **Migration Steps**:
-1. Claude Code 플러그인 업데이트: `/plugin update moai-adk@moai-adk`
+1. Claude Code 플러그인 업데이트: `/plugin` 메뉴에서 업데이트 또는 재설치
 2. (선택적) CI/CD 스크립트에서 `moai init --yes` 사용 (레거시)
 
 ---

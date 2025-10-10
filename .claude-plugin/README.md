@@ -212,15 +212,18 @@ MoAI-ADK는 범용 개발 프레임워크입니다:
 
 ## 🔧 업데이트
 
-Claude Code가 플러그인 업데이트를 자동으로 관리합니다:
+Claude Code 플러그인 자동 업데이트:
 
 ```bash
-# 플러그인 목록 및 업데이트 확인
-/plugin list
+# 방법 1: 인터랙티브 메뉴 (권장)
+/plugin
 
-# 플러그인 업데이트
-/plugin update moai-adk@moai-adk
+# 방법 2: 재설치로 최신 버전 적용
+/plugin uninstall moai-adk@moai-adk
+/plugin install moai-adk@moai-adk
 ```
+
+마켓플레이스는 Git 기반으로 자동 업데이트되므로 재설치 시 최신 버전이 적용됩니다.
 
 ---
 
