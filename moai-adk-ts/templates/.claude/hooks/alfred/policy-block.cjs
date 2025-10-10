@@ -113,9 +113,26 @@ var ALLOWED_PREFIXES = [
   "make ",
   "moai "
 ];
+var READ_ONLY_TOOLS = [
+  "Read",
+  "Glob",
+  "Grep",
+  "WebFetch",
+  "WebSearch",
+  "TodoWrite",
+  "BashOutput",
+  "mcp__context7__resolve-library-id",
+  "mcp__context7__get-library-docs",
+  "mcp__ide__getDiagnostics",
+  "mcp__ide__executeCode"
+];
 var PolicyBlock = class {
   name = "policy-block";
   async execute(input) {
+    const startTime = Date.now();
+    if (this.isReadOnlyTool(input.tool_name)) {
+      return { success: true };
+    }
     if (input.tool_name !== "Bash") {
       return { success: true };
     }
@@ -126,6 +143,10 @@ var PolicyBlock = class {
     const commandLower = command.toLowerCase();
     for (const dangerousCommand of DANGEROUS_COMMANDS) {
       if (commandLower.includes(dangerousCommand)) {
+        const duration2 = Date.now() - startTime;
+        if (duration2 > 100) {
+          console.error(`[policy-block] Blocked in ${duration2}ms`);
+        }
         return {
           success: false,
           blocked: true,
@@ -137,6 +158,12 @@ var PolicyBlock = class {
     if (!this.isAllowedPrefix(command)) {
       console.error(
         "NOTICE: \uB4F1\uB85D\uB418\uC9C0 \uC54A\uC740 \uBA85\uB839\uC785\uB2C8\uB2E4. \uD544\uC694 \uC2DC settings.json \uC758 allow \uBAA9\uB85D\uC744 \uAC31\uC2E0\uD558\uC138\uC694."
+      );
+    }
+    const duration = Date.now() - startTime;
+    if (duration > 100) {
+      console.error(
+        `[policy-block] Slow execution: ${duration}ms for ${input.tool_name}`
       );
     }
     return { success: true };
@@ -159,6 +186,15 @@ var PolicyBlock = class {
    */
   isAllowedPrefix(command) {
     return ALLOWED_PREFIXES.some((prefix) => command.startsWith(prefix));
+  }
+  /**
+   * Check if tool is read-only and can bypass policy checks
+   */
+  isReadOnlyTool(toolName) {
+    if (toolName.startsWith("mcp__")) {
+      return true;
+    }
+    return READ_ONLY_TOOLS.includes(toolName);
   }
 };
 async function main() {
