@@ -7,7 +7,10 @@
   "plugins": [
     {
       "name": "moai-adk",
-      "source": "./",
+      "source": {
+        "source": "github",
+        "repo": "modu-ai/moai-adk"
+      },
       "description": "MoAI Agentic Development Kit - SPEC-First TDD Framework with Alfred SuperAgent orchestrating 9 specialized agents for systematic development",
       "version": "0.3.0",
       "author": {
