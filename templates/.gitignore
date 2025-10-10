@@ -1,0 +1,41 @@
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Cache
+__pycache__/
+.pytest_cache/
+*.pyc
+*.pyo
+node_modules/
+*.tsbuildinfo
+.tscache/
+
+# Backups
+
+# Virtual environment
+venv/
+.venv/
+env/
+.env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
