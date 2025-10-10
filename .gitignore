@@ -60,3 +60,10 @@ backup-*/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# moai
+AGENTS.md
+CLAUDE.md
+.moai
+moai-adk-ts/
+.vercel/
