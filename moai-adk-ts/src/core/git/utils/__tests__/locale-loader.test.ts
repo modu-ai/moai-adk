@@ -18,9 +18,6 @@ describe('@TEST:GIT-LOCALE-LOADER-001 - Locale Loader', () => {
   const mockWorkingDir = '/test/project';
   const mockConfigPath = path.join(mockWorkingDir, '.moai', 'config.json');
 
-  // Mock fs module
-  vi.mock('node:fs');
-
   beforeEach(() => {
     vi.clearAllMocks();
   });

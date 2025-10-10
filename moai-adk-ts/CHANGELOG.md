@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.16] - 2025-10-11
+
+### ✨ Added
+- **Ruby 지원 추가**
+  - TRUST 5원칙 Ruby 가이드 (Sorbet, RSpec, RuboCop, Brakeman)
+  - 타입 시스템 (Sorbet/RBS), 테스트 프레임워크 (RSpec/Minitest)
+  - 보안 도구 (Brakeman, bundler-audit)
+
+### 🔧 Changed
+- **templates/.github/ 개선**
+  - 다중 언어 지원: Ruby, Flutter, Swift, Kotlin, Bun
+  - CI/CD 품질 강화: Draft PR vs Ready PR 구분 (테스트 실패 처리)
+  - 언어 버전 업데이트 (Python 3.13, Node 22, Go 1.23, Java 21)
+  - PR 템플릿 개선: SPEC 품질 체크리스트, TDD 단계별 섹션
+
+### 🗑️ Removed
+- `.npmignore` 제거 (중복, package.json files 필드로 대체)
+- `scripts/` 폴더 제거 (publish.sh 사용 안 함)
+- `CLAUDE.md` Git 추적 제거 (.gitignore 추가, 로컬 전용)
+
+### 🐛 Fixed
+- `locale-loader.test.ts` 수정 (vi.mock 오류 해결, 에러 1개 → 0개)
+
+### 🔒 Security
+- docs 하위 파일 Git 추적 제거 (public만 배포)
+- 로컬 전용 디렉토리 Git 추적 제거
+
+---
+
 ## [0.2.13] - 2025-10-07
 
 ### ✨ Added
