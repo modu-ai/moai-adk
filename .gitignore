@@ -67,3 +67,4 @@ CLAUDE.md
 .moai
 moai-adk-ts/
 .vercel/
+.claude/
