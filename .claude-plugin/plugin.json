@@ -11,6 +11,7 @@
   "commands": "./commands/alfred",
   "agents": "./agents/alfred",
   "hooks": "./hooks/hooks.json",
+  "outputStyles": "./output-styles/alfred",
   "keywords": [
     "tdd",
     "spec-first",
