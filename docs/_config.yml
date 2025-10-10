@@ -1,0 +1,32 @@
+theme: jekyll-theme-minimal
+title: MoAI-ADK Documentation
+description: SPEC-First TDD Development Kit with Alfred SuperAgent
+
+# GitHub Pages settings
+baseurl: ""
+url: ""
+
+# Markdown settings
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+# Navigation
+navigation:
+  - title: Home
+    url: /
+  - title: Getting Started
+    url: /getting-started/
+  - title: Alfred
+    url: /alfred/
+  - title: Guides
+    url: /guides/
+  - title: API
+    url: /api/
+
+# Exclude from processing
+exclude:
+  - .vitepress
+  - node_modules
+  - vendor
