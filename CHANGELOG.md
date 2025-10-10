@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.3.4] - 2025-10-10
+
+### 🐛 Fixed
+
+- **Session Notice Version Display**
+  - `getMoAIVersion()` 함수가 이제 실제 설치된 MoAI-ADK 플러그인 버전을 올바르게 표시합니다
+  - 이전에는 `.moai/config.json`의 프로젝트 버전(0.0.3)을 잘못 표시했음
+  - 이제 `~/.claude/plugins/marketplaces/moai-adk/.claude-plugin/plugin.json`에서 플러그인 버전(0.3.4)을 정확히 읽어옴
+  - GitHub 최신 버전과 비교하여 업데이트 가능 여부를 올바르게 판단
+
+### 📝 Technical Details
+
+- **우선순위 체계**:
+  1. `~/.claude/plugins/marketplaces/moai-adk/.claude-plugin/plugin.json` (설치된 플러그인)
+  2. `~/.claude/plugins/cache/moai-adk/.claude-plugin/plugin.json` (캐시된 플러그인)
+  3. `node_modules/moai-adk/package.json` (npm 패키지, 개발용)
+  4. `'unknown'` (fallback)
+
+---
+
 ## [v0.3.0] - 2025-10-10
 
 ### 🎉 Major Features
