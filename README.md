@@ -1343,29 +1343,27 @@ Alfred가 자동으로:
 
 ✅ **Claude Code 플러그인 자동 업데이트**
 
-```text
-# Claude Code에서 플러그인 업데이트 확인
-/plugin list
+MoAI-ADK는 Claude Code 플러그인 마켓플레이스를 통해 자동으로 업데이트됩니다!
 
-# 새 버전이 있으면 자동으로 알림
-# 업데이트 명령어 실행
-/alfred:9-update
+```text
+# Claude Code에서 플러그인 목록 확인
+/plugin list
 ```
 
-**자동으로 수행되는 작업**:
+**새 버전이 출시되면**:
+- 🔔 Claude Code가 자동으로 알림
+- 🔄 `/plugin update moai-adk` 명령어로 간편 업데이트
+- ✅ 또는 Claude Code 재시작 시 자동 업데이트
 
-- ✅ 자동 백업 (사용자 파일 보호)
-- ✅ 권한 자동 설정 (`chmod +x`)
-- ✅ 5단계 검증 (파일/권한/무결성)
-- ✅ 에러 발생 시 `debug-helper` 자동 지원
+**현재 버전 확인**:
 
-**플러그인 버전 확인**:
-
-플러그인 설치 후 Claude Code 세션 시작 시 자동으로 버전이 표시됩니다:
+Claude Code 세션 시작 시 자동으로 표시됩니다:
 ```
 🗿 MoAI-ADK 프로젝트: YourProject
 📦 버전: v0.3.5 (최신)
 ```
+
+업데이트 후 추가 작업 없이 바로 사용 가능합니다!
 
 ---
 
@@ -1464,25 +1462,26 @@ git branch -D feature/SPEC-XXX-YYY
 
 #### 5. 권한 에러 (Permission Denied)
 
-**증상**: `/alfred:9-update` 또는 Alfred 명령어 실행 시 권한 에러
+**증상**: Alfred 명령어 실행 시 권한 에러
 
 **원인**: 파일 실행 권한 부족
 
 **해결 방법**:
-
-```text
-# Claude Code에서 자동 수정
-/alfred:9-update --fix-permissions
-```
-
-**또는 수동으로**:
 
 ```bash
 # .claude/commands/ 디렉토리 권한 확인
 ls -la .claude/commands/
 
 # 실행 권한 추가
-chmod +x .claude/commands/*.md
+chmod +x .claude/commands/alfred/*.md
+```
+
+**또는 플러그인 재설치**:
+
+```text
+# Claude Code에서
+/plugin uninstall moai-adk
+/plugin install moai-adk@moai-adk
 ```
 
 #### 6. 테스트 커버리지 85% 미만
@@ -1537,9 +1536,6 @@ chmod +x .claude/commands/*.md
 
 # 3. 프로젝트 재초기화
 /alfred:8-project
-
-# 4. 업데이트 실행
-/alfred:9-update
 ```
 
 **백업 확인**:
