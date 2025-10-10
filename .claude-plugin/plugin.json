@@ -9,7 +9,7 @@
   "homepage": "https://github.com/modu-ai/moai-adk",
   "license": "MIT",
   "commands": "./commands/alfred",
-  "agents": "./agents/alfred/",
+  "agents": "./agents/alfred",
   "hooks": "./hooks/hooks.json",
   "outputStyles": "./output-styles/alfred",
   "keywords": [
