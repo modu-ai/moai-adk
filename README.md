@@ -128,6 +128,37 @@ Alfred가 자동으로 수행:
 - 언어별 최적 도구 체인 설정
 - 프로젝트 컨텍스트 완벽 이해
 
+---
+
+### 🔄 업데이트 (기존 프로젝트)
+
+**버전별 권장 방법**:
+
+#### v0.2.17 이하 → 최신 버전
+```bash
+# 터미널에서 패키지 업데이트
+npm install -g moai-adk@latest  # 또는 bun add -g moai-adk@latest
+
+# 프로젝트 디렉토리에서 템플릿 업데이트
+cd your-project
+moai init .
+```
+
+⚠️ **주의**: v0.2.17 이하에서는 `/alfred:9-update` 사용 시 **사용자 SPEC 파일이 덮어써질 위험**이 있습니다.
+
+#### v0.2.18 이상 (현재)
+```bash
+# Claude Code에서 안전하게 업데이트
+/alfred:9-update
+```
+
+✅ **안전**: v0.2.18부터 `.moai/specs/`, `.moai/reports/` 디렉토리가 **자동 보호**됩니다.
+
+**데이터 보호 보장**:
+- 🔒 `.moai/specs/` - 사용자 SPEC 파일 절대 건드리지 않음
+- 🔒 `.moai/reports/` - 동기화 리포트 보존
+- 🔄 시스템 파일만 안전하게 업데이트
+
 #### 3️⃣ 첫 기능 개발 (1분 30초)
 
 **Claude Code에서 3단계 워크플로우 실행:**
@@ -624,12 +655,44 @@ moai restore <backup-path> [options]
 ### Claude Code 전용 명령어
 
 ```text
-# 템플릿 업데이트 (권장 ⭐)
+# 템플릿 업데이트 (v0.2.18+ 권장 ⭐)
 /alfred:9-update
 
 # 프로젝트 초기화
 /alfred:8-project
 ```
+
+### /alfred:9-update
+
+MoAI-ADK 템플릿 파일을 안전하게 업데이트합니다 (Claude Code 전용).
+
+**버전 요구사항**: v0.2.18 이상
+
+**안전 기능**:
+- 🔒 `.moai/specs/` - 사용자 SPEC 파일 자동 보호
+- 🔒 `.moai/reports/` - 동기화 리포트 자동 보호
+- 🔄 백업 자동 생성 (`.moai-backup/`)
+- ✅ 지능형 병합 (`config.json`, `CLAUDE.md`)
+
+**사용 예시**:
+
+```text
+# 기본 업데이트 (자동 백업 포함)
+/alfred:9-update
+
+# 업데이트 가능 여부만 확인
+/alfred:9-update --check
+
+# 강제 업데이트 (백업 없음, 위험)
+/alfred:9-update --force
+
+# 품질 검증 포함 업데이트
+/alfred:9-update --check-quality
+```
+
+**⚠️ v0.2.17 이하 사용자 주의**:
+- v0.2.17 이하에서는 `/alfred:9-update` 사용 시 **사용자 SPEC 파일이 덮어써질 위험**이 있습니다
+- 대신 `moai init .` 명령어를 터미널에서 사용하세요
 
 ### moai init [project]
 
@@ -660,6 +723,19 @@ moai init . -b
 # 기존 파일 강제 덮어쓰기
 moai init . -f
 ```
+
+**📌 업데이트 시 사용 (v0.2.17 이하)**:
+
+```bash
+# MoAI-ADK 패키지 업데이트
+npm install -g moai-adk@latest
+
+# 기존 프로젝트 템플릿 업데이트
+cd your-project
+moai init .
+```
+
+**⚠️ 중요**: v0.2.17 이하에서는 `moai init .`이 안전합니다. v0.2.18+부터는 Claude Code에서 `/alfred:9-update` 사용을 권장합니다.
 
 ### moai doctor
 
