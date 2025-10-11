@@ -27,11 +27,11 @@ MoAI-ADK를 사용하기 전에 다음 도구들이 설치되어 있어야 합�
 | **Node.js** | 18.0.0+ | 20.0.0+ | `node --version` |
 | **npm/pnpm/bun** | - | bun 1.2.0+ | `bun --version` |
 | **Git** | 2.0+ | 최신 | `git --version` |
+| **Claude Code** | - | 최신 | VSCode 확장 |
 
 ### 선택 요구사항
 
-- **Claude Code**: AI 에이전트 자동화 (권장)
-- **GitHub CLI**: PR 자동 생성 (`gh` 명령어)
+- **GitHub CLI**: PR 자동 생성 및 관리 (`gh` 명령어)
 
 ---
 
