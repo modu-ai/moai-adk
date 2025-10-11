@@ -168,24 +168,28 @@ export class TemplateProcessor {
    * @tags @CODE:GET-TEMPLATES-PATH-001:API
    *
    * Resolution strategies (in priority order):
-   * 1. Package-relative: Works for npm/bun install (global/local)
-   * 2. Development: moai-adk-ts/templates (for development)
-   * 3. User's node_modules: When user runs moai init
+   * 1. User's node_modules: When user runs moai init (HIGHEST PRIORITY)
+   * 2. Package-relative: Works for npm/bun install (global/local)
+   * 3. Development: moai-adk-ts/templates (for development)
    * 4. Platform-specific global paths
    *
    * Cross-platform considerations:
    * - Uses process.env.HOME (Unix) or process.env.USERPROFILE (Windows)
    * - Unix-specific paths are conditionally added only on non-Windows platforms
+   *
+   * Priority rationale:
+   * - User's node_modules takes precedence to ensure correct version is used
+   * - Prevents accidentally using development/source templates in production
    */
   getTemplatesPath(): string {
     const currentFilePath = fileURLToPath(import.meta.url);
     const currentDir = path.dirname(currentFilePath);
 
-    // Try each strategy in priority order
+    // Try each strategy in priority order (User node_modules first!)
     const strategies = [
+      () => this.tryUserNodeModulesTemplates(),
       () => this.tryPackageRelativeTemplates(currentDir),
       () => this.tryDevelopmentTemplates(currentDir),
-      () => this.tryUserNodeModulesTemplates(),
       () => this.tryGlobalInstallTemplates(),
     ];
 
