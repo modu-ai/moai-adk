@@ -1,5 +1,5 @@
 /**
- * @CODE:HOOK-002 |
+ * @CODE:HOOK-002 | @CODE:HOOKS-REFACTOR-001 |
  * Related: @CODE:HOOK-002:API, @CODE:PREWRITE-001
  *
  * Pre-Write Guard Hook
@@ -7,20 +7,12 @@
  */
 
 import type { HookInput, HookResult, MoAIHook } from '../types';
+import { PROTECTED_PATHS, SENSITIVE_KEYWORDS } from './constants';
+import { runHook } from './base';
+import { extractFilePath } from './utils';
 
 // Re-export types for test compatibility
 export type { HookInput, HookResult } from '../types';
-
-/**
- * Sensitive file patterns that should be protected
- */
-const SENSITIVE_KEYWORDS: string[] = ['.env', '/secrets', '/.git/', '/.ssh'];
-
-/**
- * Protected paths that should not be modified
- * Note: Templates in moai-adk-ts/templates/.moai/memory/ are allowed
- */
-const PROTECTED_PATHS: string[] = ['.moai/memory/'];
 
 /**
  * Pre-Write Guard Hook - TypeScript port of pre_write_guard.py
@@ -37,7 +29,7 @@ export class PreWriteGuard implements MoAIHook {
     }
 
     const toolInput = input.tool_input || {};
-    const filePath = this.extractFilePath(toolInput);
+    const filePath = extractFilePath(toolInput);
 
     if (!this.checkFileSafety(filePath || '')) {
       return {
@@ -49,13 +41,6 @@ export class PreWriteGuard implements MoAIHook {
     }
 
     return { success: true };
-  }
-
-  /**
-   * Extract file path from tool input
-   */
-  private extractFilePath(toolInput: Record<string, any>): string | null {
-    return toolInput.file_path || toolInput.filePath || toolInput.path || null;
   }
 
   /**
@@ -89,25 +74,9 @@ export class PreWriteGuard implements MoAIHook {
   }
 }
 
-/**
- * CLI entry point for Claude Code compatibility
- */
-export async function main(): Promise<void> {
-  try {
-    const { parseClaudeInput, outputResult } = await import('../index');
-    const input = await parseClaudeInput();
-    const preWriteGuard = new PreWriteGuard();
-    const result = await preWriteGuard.execute(input);
-    outputResult(result);
-  } catch (_error) {
-    // Silent failure to avoid breaking Claude Code session
-    process.exit(0);
-  }
-}
-
 // Execute if run directly
 if (require.main === module) {
-  main().catch(() => {
+  runHook(PreWriteGuard).catch(() => {
     // Silent failure to avoid breaking Claude Code session
     process.exit(0);
   });

@@ -23,6 +23,9 @@ import type { HookInput, HookResult, MoAIHook } from '../types';
 import { CODE_FIRST_PATTERNS } from './tag-enforcer/tag-patterns';
 import { TagValidator } from './tag-enforcer/tag-validator';
 import type { ImmutabilityCheck } from './tag-enforcer/types';
+import { EXCLUDED_PATHS } from './constants';
+import { runHook } from './base';
+import { extractFilePath, getAllFileExtensions } from './utils';
 
 // Re-export types for test compatibility
 export type { HookInput, HookResult } from '../types';
@@ -49,7 +52,7 @@ export class CodeFirstTAGEnforcer implements MoAIHook {
         return { success: true };
       }
 
-      const filePath = this.extractFilePath(input.tool_input || {});
+      const filePath = extractFilePath(input.tool_input || {});
       if (!filePath || !this.shouldEnforceTags(filePath)) {
         return { success: true };
       }
@@ -121,18 +124,6 @@ export class CodeFirstTAGEnforcer implements MoAIHook {
   }
 
   /**
-   * 도구 입력에서 파일 경로 추출
-   */
-  private extractFilePath(toolInput: Record<string, any>): string | null {
-    return (
-      toolInput.file_path ||
-      toolInput.filePath ||
-      toolInput.notebook_path ||
-      null
-    );
-  }
-
-  /**
    * 도구 입력에서 파일 내용 추출
    */
   private extractFileContent(toolInput: Record<string, any>): string {
@@ -149,38 +140,14 @@ export class CodeFirstTAGEnforcer implements MoAIHook {
    * TAG 검증 대상 파일인지 확인
    */
   private shouldEnforceTags(filePath: string): boolean {
-    const enforceExtensions = [
-      '.ts',
-      '.tsx',
-      '.js',
-      '.jsx',
-      '.py',
-      '.md',
-      '.go',
-      '.rs',
-      '.java',
-      '.cpp',
-      '.hpp',
-    ];
+    const enforceExtensions = getAllFileExtensions();
     const ext = path.extname(filePath);
 
-    // 테스트 파일은 제외 (다른 TAG 규칙 적용)
-    if (
-      filePath.includes('test') ||
-      filePath.includes('spec') ||
-      filePath.includes('__test__')
-    ) {
-      return false;
-    }
-
-    // node_modules, .git 등 제외
-    if (
-      filePath.includes('node_modules') ||
-      filePath.includes('.git') ||
-      filePath.includes('dist') ||
-      filePath.includes('build')
-    ) {
-      return false;
+    // 제외 경로 체크
+    for (const excludedPath of EXCLUDED_PATHS) {
+      if (filePath.includes(excludedPath)) {
+        return false;
+      }
     }
 
     return enforceExtensions.includes(ext);
@@ -313,43 +280,9 @@ export class CodeFirstTAGEnforcer implements MoAIHook {
   }
 }
 
-/**
- * CLI entry point for Claude Code compatibility
- */
-export async function main(): Promise<void> {
-  try {
-    const { parseClaudeInput } = await import('../index');
-    const input = await parseClaudeInput();
-    const enforcer = new CodeFirstTAGEnforcer();
-    const result = await enforcer.execute(input);
-
-    if (result.blocked) {
-      console.error(`BLOCKED: ${result.message}`);
-      if (result.data?.suggestions) {
-        console.error(
-          `\n📝 Code-First TAG 가이드:\n${result.data.suggestions}`
-        );
-      }
-      process.exit(2);
-    } else if (!result.success) {
-      console.error(`ERROR: ${result.message}`);
-      process.exit(result.exitCode || 1);
-    } else if (result.message) {
-      console.log(result.message);
-    }
-
-    process.exit(0);
-  } catch (error) {
-    console.error(
-      `Code-First TAG Enforcer 오류: ${error instanceof Error ? error.message : 'Unknown error'}`
-    );
-    process.exit(0); // 오류 시 블록하지 않음
-  }
-}
-
 // Execute if run directly
 if (require.main === module) {
-  main().catch(error => {
+  runHook(CodeFirstTAGEnforcer).catch(error => {
     console.error(
       `Code-First TAG Enforcer 치명적 오류: ${error instanceof Error ? error.message : 'Unknown error'}`
     );

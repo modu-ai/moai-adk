@@ -1,5 +1,5 @@
 /**
- * @CODE:SESSION-NOTICE-001 |
+ * @CODE:SESSION-NOTICE-001 | @CODE:HOOKS-REFACTOR-001 |
  * Related: @CODE:HOOK-003, @CODE:SESSION-001:UI
  *
  * Session Notice Hook
@@ -7,6 +7,8 @@
  */
 
 import * as path from 'node:path';
+import type { MoAIHook } from '../../types';
+import { runHook } from '../base';
 import { generateSessionOutput } from './message-builder';
 import type { HookInput, HookResult, ProjectStatus } from './types';
 import * as utils from './utils';
@@ -14,7 +16,7 @@ import * as utils from './utils';
 /**
  * Session notification hook
  */
-export class SessionNotifier {
+export class SessionNotifier implements MoAIHook {
   name = 'session-notice';
   private projectRoot: string;
 
@@ -68,25 +70,9 @@ export class SessionNotifier {
   checkLatestVersion = () => utils.checkLatestVersion(this.getMoAIVersion());
 }
 
-/**
- * Main entry point for hook execution
- */
-export async function main(): Promise<void> {
-  try {
-    const notifier = new SessionNotifier();
-    const result = await notifier.execute({});
-
-    if (result.message) {
-      console.log(result.message);
-    }
-  } catch (_error) {
-    // Silent failure
-  }
-}
-
 // Execute if run directly
 if (require.main === module) {
-  main().catch(() => {
+  runHook(SessionNotifier).catch(() => {
     // Silent failure
   });
 }
