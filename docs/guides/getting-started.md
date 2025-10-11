@@ -181,28 +181,71 @@ moai init .
 
 ### 2. 프로젝트 구조 확인
 
-초기화가 완료되면 다음과 같은 구조가 생성됩니다:
+초기화가 완료되면 **35개 파일**이 다음과 같은 구조로 생성됩니다:
 
 ```
 my-moai-project/
-├── .moai/
-│   ├── config.json          # 프로젝트 설정
-│   ├── specs/               # SPEC 문서 저장소
-│   ├── reports/             # 동기화 리포트
-│   ├── memory/              # 개발 가이드
-│   │   ├── development-guide.md
-│   │   └── spec-metadata.md
-│   └── project/             # 프로젝트 정보
-│       ├── product.md
-│       ├── structure.md
-│       └── tech.md
-├── .claude/
-│   ├── commands/            # Alfred 커맨드
-│   ├── agents/              # 전문 에이전트
-│   ├── hooks/               # Git 훅
-│   └── output-styles/       # 출력 스타일
-└── CLAUDE.md                # 프로젝트 지침
+├── .claude/                          # Claude Code 설정
+│   ├── agents/alfred/                # 9개 전문 에이전트
+│   │   ├── cc-manager.md
+│   │   ├── code-builder.md
+│   │   ├── debug-helper.md
+│   │   ├── doc-syncer.md
+│   │   ├── git-manager.md
+│   │   ├── project-manager.md
+│   │   ├── spec-builder.md
+│   │   ├── tag-agent.md
+│   │   └── trust-checker.md
+│   ├── commands/alfred/              # 5개 Alfred 커맨드
+│   │   ├── 0-project.md              # 프로젝트 초기화
+│   │   ├── 1-spec.md                 # SPEC 작성
+│   │   ├── 2-build.md                # TDD 구현
+│   │   ├── 3-sync.md                 # 문서 동기화
+│   │   └── 9-update.md               # 업데이트
+│   ├── hooks/alfred/                 # 4개 Git 훅
+│   │   ├── policy-block.cjs          # 정책 차단
+│   │   ├── pre-write-guard.cjs       # 쓰기 전 검증
+│   │   ├── session-notice.cjs        # 세션 알림
+│   │   └── tag-enforcer.cjs          # TAG 강제
+│   ├── logs/                         # 로그 디렉토리
+│   ├── output-styles/alfred/         # 4개 출력 스타일
+│   │   ├── alfred-pro.md
+│   │   ├── beginner-learning.md
+│   │   ├── pair-collab.md
+│   │   └── study-deep.md
+│   └── settings.json                 # Claude Code 설정
+│
+├── .moai/                            # MoAI-ADK 설정
+│   ├── config.json                   # 프로젝트 설정
+│   ├── memory/                       # 개발 가이드
+│   │   ├── development-guide.md      # 개발 규칙
+│   │   └── spec-metadata.md          # SPEC 메타데이터
+│   ├── project/                      # 프로젝트 정보
+│   │   ├── product.md                # 제품 정보
+│   │   ├── structure.md              # 프로젝트 구조
+│   │   └── tech.md                   # 기술 스택
+│   ├── reports/                      # 동기화 리포트
+│   │   └── .gitkeep
+│   └── specs/                        # SPEC 문서 저장소
+│       └── .gitkeep
+│
+└── CLAUDE.md                         # 프로젝트 지침 (루트)
 ```
+
+#### 주요 디렉토리 설명
+
+**`.claude/`** - Claude Code 통합
+- `agents/`: 9명의 전문 에이전트 (spec-builder, code-builder, doc-syncer 등)
+- `commands/`: Alfred 3단계 워크플로우 커맨드 (1-spec, 2-build, 3-sync)
+- `hooks/`: 자동화된 검증 및 정책 적용
+- `output-styles/`: 다양한 출력 스타일 (프로, 초보자, 협업 등)
+
+**`.moai/`** - MoAI-ADK 코어
+- `config.json`: 프로젝트 설정 (모드, 언어, Git 등)
+- `memory/`: 개발 가이드 및 SPEC 메타데이터 표준
+- `project/`: 제품 정보, 구조, 기술 스택 문서
+- `specs/`: SPEC 문서가 저장되는 위치 (SPEC-XXX-001/)
+- `reports/`: 동기화 리포트 및 TAG 검증 결과
 
 ### 3. 시스템 진단
 
