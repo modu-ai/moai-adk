@@ -301,7 +301,7 @@ Alfred가 필요 시 즉시 호출하는 전문 에이전트들:
 
 ### TAG BLOCK 템플릿
 
-> **📋 SPEC 메타데이터 표준 (SSOT)**: `.moai/memory/spec-metadata.md`
+> **📋 SPEC 메타데이터 표준 (SSOT)**: @.moai/memory/spec-metadata.md
 
 **모든 SPEC 문서는 다음 구조를 따릅니다**:
 - **필수 필드 7개**: id, version, status, created, updated, author, priority
@@ -345,7 +345,7 @@ priority: high
 - **TAG ID**: `<도메인>-<3자리>` (예: `AUTH-003`) - 영구 불변
 - **TAG 내용**: 자유롭게 수정 가능 (HISTORY에 기록 필수)
 - **버전 관리**: Semantic Versioning (v0.0.1 → v0.1.0 → v1.0.0)
-  - 상세 버전 체계: `.moai/memory/spec-metadata.md#버전` 참조
+  - 상세 버전 체계: @.moai/memory/spec-metadata.md#버전-체계 참조
 - **TAG 참조**: 버전 없이 파일명만 사용 (예: `SPEC-AUTH-001.md`)
 - **중복 확인**: `rg "@SPEC:AUTH" -n` 또는 `rg "AUTH-001" -n`
 - **CODE-FIRST**: TAG의 진실은 코드 자체에만 존재

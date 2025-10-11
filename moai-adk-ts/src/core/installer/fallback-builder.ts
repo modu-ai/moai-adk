@@ -136,7 +136,7 @@ export class FallbackBuilder {
 
 ## Development Workflow
 \`\`\`bash
-/alfred:8-project  # Initialize project documents
+/alfred:0-project  # Initialize project documents
 /alfred:1-spec     # Create specifications
 /alfred:2-build    # TDD implementation
 /alfred:3-sync     # Document synchronization

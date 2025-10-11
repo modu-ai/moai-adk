@@ -71,10 +71,10 @@
   font-display: swap;
 }
 
-/* Code highlight font - DungGeunMo (RoundedFixedsys) */
+/* Code highlight font - CloudSansCode (goorm-sans-code) */
 @font-face {
-  font-family: 'RoundedFixedsys';
-  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/DungGeunMo.woff') format('woff');
+  font-family: 'CloudSansCode';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408@1.0/goorm-sans-code.woff2') format('woff2');
   font-weight: normal;
   font-display: swap;
 }
@@ -97,11 +97,16 @@
   --vp-c-divider: #e9e9e7;
   --vp-c-border: #e3e2e0;
 
-  /* Brand colors - Minimal accent */
-  --vp-c-brand-1: #37352f;
-  --vp-c-brand-2: #6f6e69;
-  --vp-c-brand-3: #9b9a97;
-  --vp-c-brand-soft: #e9e9e7;
+  /* Brand colors - Blue accent for links */
+  --vp-c-brand-1: #3b82f6;
+  --vp-c-brand-2: #2563eb;
+  --vp-c-brand-3: #1d4ed8;
+  --vp-c-brand-soft: #dbeafe;
+
+  /* Link colors - Blue tone */
+  --vp-c-link: #3b82f6;
+  --vp-c-link-hover: #2563eb;
+  --vp-c-link-active: #1d4ed8;
 
   /* Background */
   --vp-c-bg: #ffffff;
@@ -124,7 +129,7 @@
   --vp-font-family-base: 'Pretendard', -apple-system, BlinkMacSystemFont,
     'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif, 'Apple Color Emoji',
     'Segoe UI Emoji';
-  --vp-font-family-mono: 'RoundedFixedsys', 'SF Mono', Monaco, 'Cascadia Code',
+  --vp-font-family-mono: 'CloudSansCode', 'SF Mono', Monaco, 'Cascadia Code',
     'Roboto Mono', Consolas, 'Courier New', monospace;
 }
 
@@ -142,10 +147,15 @@
   --vp-c-divider: #2e2e2e;
   --vp-c-border: #3a3a3a;
 
-  --vp-c-brand-1: #e3e2e0;
-  --vp-c-brand-2: #9b9a97;
-  --vp-c-brand-3: #6f6e69;
-  --vp-c-brand-soft: #373737;
+  --vp-c-brand-1: #60a5fa;
+  --vp-c-brand-2: #3b82f6;
+  --vp-c-brand-3: #2563eb;
+  --vp-c-brand-soft: #1e3a8a;
+
+  /* Link colors - Blue tone (dark mode) */
+  --vp-c-link: #60a5fa;
+  --vp-c-link-hover: #93c5fd;
+  --vp-c-link-active: #bfdbfe;
 
   --vp-c-bg: #191919;
   --vp-c-bg-alt: #1f1f1f;
@@ -331,18 +341,24 @@
 }
 
 /* ================================================
-   Links - Subtle underline on hover
+   Links - Blue tone with subtle underline on hover
    ================================================ */
 
 .vp-doc a {
-  color: var(--vp-c-text-1);
+  color: var(--vp-c-link);
   text-decoration: none;
   border-bottom: 1px solid transparent;
-  transition: border-color 0.2s ease;
+  transition: all 0.2s ease;
+  font-weight: 500;
 }
 
 .vp-doc a:hover {
-  border-bottom-color: var(--vp-c-text-2);
+  color: var(--vp-c-link-hover);
+  border-bottom-color: var(--vp-c-link-hover);
+}
+
+.vp-doc a:active {
+  color: var(--vp-c-link-active);
 }
 
 /* ================================================

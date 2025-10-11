@@ -120,7 +120,7 @@ claude-code /path/to/project-root
 
 # 기대 출력 (Session Notice)
 ⚠️  MoAI Project Not Detected
-💡 Initialize with: /alfred:8-project
+💡 Initialize with: /alfred:0-project
 ```
 
 ---
@@ -162,14 +162,14 @@ claude-code /path/to/project-root
 
 # 기대 출력 (Hard Cut 전략)
 ⚠️  MoAI Project Not Detected
-💡 Please re-initialize with: /alfred:8-project
+💡 Please re-initialize with: /alfred:0-project
 💡 Note: Legacy 'moai' commands detected. Migration required.
 ```
 
 **대응 방안**:
 ```bash
 # 사용자 조치
-/alfred:8-project
+/alfred:0-project
 
 # 결과: .claude/commands/alfred 생성됨
 ```
@@ -287,7 +287,7 @@ claude-code /path/to/moai-project
 claude-code /path/to/non-moai-project
 
 # ✅ "MoAI Project Not Detected" 메시지 표시
-# ✅ "/alfred:8-project" 안내 표시
+# ✅ "/alfred:0-project" 안내 표시
 ```
 
 ---
@@ -375,7 +375,7 @@ claude-code .
 
 ### Changed
 - **BREAKING**: Session Notice now checks `.claude/commands/alfred` instead of `.claude/commands/moai`
-- Migration: Run `/alfred:8-project` to update project structure
+- Migration: Run `/alfred:0-project` to update project structure
 
 ### Fixed
 - Project detection now aligns with Alfred branding
@@ -386,7 +386,7 @@ claude-code .
 ## Quick Start
 
 1. Initialize MoAI project:
-   `/alfred:8-project`
+   `/alfred:0-project`
 
 2. Verify `.claude/commands/alfred` exists
 

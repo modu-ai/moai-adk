@@ -51,11 +51,13 @@ Alfred 최종 보고
 **목적**: EARS 방식으로 명확한 요구사항 작성
 
 **실행**:
+
 ```bash
 /alfred:1-spec "JWT 인증 시스템"
 ```
 
 **자동 수행 작업**:
+
 1. 프로젝트 문서 분석 (product.md 등)
 2. SPEC 후보 제안 및 사용자 승인
 3. `.moai/specs/SPEC-{ID}/spec.md` 생성
@@ -64,6 +66,7 @@ Alfred 최종 보고
 6. Draft PR 생성 (Team 모드)
 
 **결과물**:
+
 ```markdown
 # .moai/specs/SPEC-AUTH-001/spec.md
 ---
@@ -88,6 +91,7 @@ status: draft
 ```
 
 **Git 상태** (Team 모드):
+
 ```bash
 $ git branch
 * feature/SPEC-AUTH-001
@@ -103,11 +107,13 @@ $ gh pr list
 **목적**: RED-GREEN-REFACTOR 사이클로 테스트 주도 구현
 
 **실행**:
+
 ```bash
 /alfred:2-build SPEC-AUTH-001
 ```
 
 **자동 수행 작업**:
+
 1. SPEC 문서 분석 및 구현 계획 수립
 2. 사용자 승인 후 TDD 구현 시작
 3. RED: 실패하는 테스트 작성
@@ -145,6 +151,7 @@ def test_should_reject_invalid_credentials():
 ```
 
 **테스트 실행**:
+
 ```bash
 $ pytest tests/auth/
 FAILED tests/auth/service.test.py::test_should_authenticate_valid_user
@@ -152,6 +159,7 @@ FAILED tests/auth/service.test.py::test_should_authenticate_valid_user
 ```
 
 **Git 커밋**:
+
 ```bash
 🔴 RED: SPEC-AUTH-001 테스트 작성 (실패 확인)
 
@@ -187,6 +195,7 @@ class AuthService:
 ```
 
 **테스트 실행**:
+
 ```bash
 $ pytest tests/auth/
 PASSED tests/auth/service.test.py::test_should_authenticate_valid_user
@@ -194,6 +203,7 @@ PASSED tests/auth/service.test.py::test_should_reject_invalid_credentials
 ```
 
 **Git 커밋**:
+
 ```bash
 🟢 GREEN: SPEC-AUTH-001 최소 구현 (테스트 통과)
 
@@ -266,6 +276,7 @@ class AuthService:
 ```
 
 **테스트 커버리지 확인**:
+
 ```bash
 $ pytest --cov=src/auth --cov-report=term-missing
 ---------- coverage: platform darwin, python 3.11 -----------
@@ -277,6 +288,7 @@ TOTAL                      28      2    93%
 ```
 
 **Git 커밋**:
+
 ```bash
 ♻️ REFACTOR: SPEC-AUTH-001 품질 개선 (커버리지 93%)
 
@@ -295,11 +307,13 @@ TOTAL                      28      2    93%
 **목적**: Living Document 생성 및 TAG 체인 검증
 
 **실행**:
+
 ```bash
 /alfred:3-sync
 ```
 
 **자동 수행 작업**:
+
 1. 코드 변경사항 분석
 2. TAG 체인 검증 (@SPEC → @TEST → @CODE)
 3. Living Document 자동 생성
@@ -307,6 +321,7 @@ TOTAL                      28      2    93%
 5. CI/CD 확인 후 자동 머지 (Team 모드, --auto-merge)
 
 **TAG 체인 검증**:
+
 ```bash
 $ rg '@(SPEC|TEST|CODE):AUTH-001' -n
 
@@ -316,6 +331,7 @@ src/auth/service.py:1:# @CODE:AUTH-001 | SPEC: .moai/specs/SPEC-AUTH-001/spec.md
 ```
 
 **Living Document 생성**:
+
 ```markdown
 # docs/features/auth/jwt-authentication.md
 <!-- @DOC:AUTH-001 | SPEC: .moai/specs/SPEC-AUTH-001/spec.md -->
@@ -334,6 +350,7 @@ src/auth/service.py:1:# @CODE:AUTH-001 | SPEC: .moai/specs/SPEC-AUTH-001/spec.md
 ```
 
 **Git 상태** (Team 모드):
+
 ```bash
 $ gh pr view 42
 #42 SPEC-AUTH-001: JWT 인증 시스템
@@ -420,6 +437,7 @@ $ 진행
 ```
 
 **생성된 SPEC**:
+
 ```markdown
 ---
 id: TODO-PRIORITY-001
@@ -447,6 +465,7 @@ status: draft
 ```
 
 **Git 상태** (Team 모드):
+
 ```bash
 $ git log --oneline -1
 a1b2c3d 🔴 RED: SPEC-TODO-PRIORITY-001 명세 작성
@@ -472,6 +491,7 @@ $ 진행
 ```
 
 **RED: 테스트 작성**:
+
 ```python
 # tests/todo/model.test.py
 # @TEST:TODO-PRIORITY-001 | SPEC: .moai/specs/SPEC-TODO-PRIORITY-001/spec.md
@@ -499,6 +519,7 @@ b2c3d4e 🔴 RED: SPEC-TODO-PRIORITY-001 테스트 작성 (실패 확인)
 ```
 
 **GREEN: 최소 구현**:
+
 ```python
 # src/todo/model.py
 # @CODE:TODO-PRIORITY-001 | SPEC: .moai/specs/SPEC-TODO-PRIORITY-001/spec.md
@@ -524,6 +545,7 @@ c3d4e5f 🟢 GREEN: SPEC-TODO-PRIORITY-001 최소 구현 (테스트 통과)
 ```
 
 **REFACTOR: 품질 개선**:
+
 ```python
 # src/todo/model.py (리팩토링)
 # @CODE:TODO-PRIORITY-001 | SPEC: .moai/specs/SPEC-TODO-PRIORITY-001/spec.md
@@ -580,6 +602,7 @@ $ /alfred:3-sync --auto-merge
 ```
 
 **최종 Git 이력**:
+
 ```bash
 $ git log --oneline --graph
 *   e5f6g7h Merge pull request #43 from feature/SPEC-TODO-PRIORITY-001
@@ -599,12 +622,14 @@ $ git log --oneline --graph
 ### SPEC 작성 시
 
 ✅ **권장사항**:
+
 - EARS 구문을 엄격히 따르기
 - 측정 가능한 기준 명시
 - 제약사항 명확히 정의
 - 관련 SPEC 참조 (related_specs)
 
 ❌ **피해야 할 것**:
+
 - 모호한 표현 ("사용자 친화적")
 - 측정 불가능한 기준 ("빠르게")
 - 주체 불명확 ("처리되어야 한다")
@@ -612,12 +637,14 @@ $ git log --oneline --graph
 ### TDD 사이클 팁
 
 ✅ **권장사항**:
+
 - RED: 테스트 먼저, 코드는 나중
 - GREEN: 최소 구현, 완벽함 추구 금지
 - REFACTOR: 품질 개선, 테스트는 그대로
 - 각 단계별 Git 커밋 (이력 보존)
 
 ❌ **피해야 할 것**:
+
 - GREEN 단계에서 과도한 최적화
 - REFACTOR 없이 다음 기능으로 이동
 - 테스트 없이 코드 수정
@@ -625,11 +652,13 @@ $ git log --oneline --graph
 ### 문서 동기화 타이밍
 
 ✅ **권장사항**:
+
 - TDD 완료 후 즉시 실행
 - PR 머지 전 TAG 체인 검증
 - CI/CD 통과 확인
 
 ❌ **피해야 할 것**:
+
 - 여러 SPEC 누적 후 한꺼번에 동기화
 - TAG 검증 없이 PR 머지
 - 실패한 테스트 그대로 두기
@@ -641,6 +670,7 @@ $ git log --oneline --graph
 ### 시나리오 1: 테스트 실패
 
 **문제**:
+
 ```bash
 $ pytest tests/
 FAILED tests/auth/service.test.py::test_authenticate
@@ -648,6 +678,7 @@ AssertionError: assert result.token is None
 ```
 
 **해결**:
+
 1. RED 단계로 돌아가기
 2. 테스트 케이스 재검토
 3. SPEC 요구사항과 테스트 일치 확인
@@ -656,6 +687,7 @@ AssertionError: assert result.token is None
 ### 시나리오 2: TAG 체인 끊김
 
 **문제**:
+
 ```bash
 $ rg '@(SPEC|TEST|CODE):AUTH-002' -n
 .moai/specs/SPEC-AUTH-002/spec.md:7:# @SPEC:AUTH-002
@@ -664,6 +696,7 @@ src/auth/oauth.py:1:# @CODE:AUTH-002
 ```
 
 **해결**:
+
 1. `/alfred:2-build SPEC-AUTH-002` 재실행
 2. RED 단계에서 테스트 작성
 3. TAG 체인 검증: `rg '@TEST:AUTH-002' -n`
@@ -671,6 +704,7 @@ src/auth/oauth.py:1:# @CODE:AUTH-002
 ### 시나리오 3: PR 충돌
 
 **문제** (Team 모드):
+
 ```bash
 $ gh pr view 43
 #43 SPEC-TODO-PRIORITY-001
@@ -678,6 +712,7 @@ $ gh pr view 43
 ```
 
 **해결**:
+
 ```bash
 # 1. develop 최신화
 $ git checkout develop

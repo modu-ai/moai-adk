@@ -292,7 +292,7 @@ THEN "✅ MoAI-ADK 설치가 완료되었습니다!" 메시지를 출력해야 �
 AND "🤖 AI-Agent Alfred가 {name}님의 개발을 도와드리겠습니다" 메시지를 출력해야 한다
 AND {name}은 Phase 2에서 입력한 개발자 이름이어야 한다
 AND 다음 명령어 안내를 제공해야 한다
-  - /alfred:8-project (프로젝트 초기화)
+  - /alfred:0-project (프로젝트 초기화)
   - /alfred:1-spec (첫 SPEC 작성)
 AND "@agent-debug-helper 호출 안내"를 포함해야 한다
 ```
@@ -308,7 +308,7 @@ npm run install
 # 🤖 AI-Agent Alfred가 홍길동님의 개발을 도와드리겠습니다.
 #
 # 다음 명령어로 시작하세요:
-#   /alfred:8-project  # 프로젝트 초기화
+#   /alfred:0-project  # 프로젝트 초기화
 #   /alfred:1-spec     # 첫 SPEC 작성
 #
 # 질문이 있으시면 언제든 @agent-debug-helper를 호출하세요.
@@ -593,7 +593,7 @@ time npm run install
 ### 기존 기능 영향 분석
 
 #### 영향 받는 기능
-1. **프로젝트 초기화** (`/alfred:8-project`)
+1. **프로젝트 초기화** (`/alfred:0-project`)
    - `.moai/config.json` 스키마 변경 (developer 필드 추가)
    - 하위 호환성 검증 필요
 

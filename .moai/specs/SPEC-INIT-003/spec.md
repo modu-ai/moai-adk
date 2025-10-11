@@ -33,10 +33,10 @@ scope:
 - **CHANGED**: 백업 조건 완화 - 3개 모두 존재 → 1개라도 존재 시 백업
 - **ADDED**: 선택적 백업 로직 - 존재하는 파일/폴더만 백업
 - **IMPROVED**: 백업 메타데이터 - `backed_up_files` 배열에 실제 백업된 파일 목록 추가
-- **ADDED**: /alfred:8-project 긴급 백업 시나리오 (백업 없을 시 자동 생성)
+- **ADDED**: /alfred:0-project 긴급 백업 시나리오 (백업 없을 시 자동 생성)
 - **IMPROVED**: 데이터 손실 방지 강화 - 부분 설치 케이스 대응
 - **AUTHOR**: @Goos
-- **CONTEXT**: moai init과 /alfred:8-project 양쪽 모두 안전성 강화
+- **CONTEXT**: moai init과 /alfred:0-project 양쪽 모두 안전성 강화
 
 ### v0.2.0 (2025-10-07)
 - **COMPLETED**: Phase A/B 구현 완료 (TDD 사이클: RED → GREEN → REFACTOR)
@@ -52,7 +52,7 @@ scope:
 - **AUTHOR**: @Goos
 - **CHANGED** (2025-10-06): 설계 전략 변경 - 2단계 분리 접근법 적용
   - SIMPLIFIED: moai init은 백업만 수행 (복잡한 병합 엔진 제거)
-  - MOVED: 병합 로직을 /alfred:8-project로 이동
+  - MOVED: 병합 로직을 /alfred:0-project로 이동
   - ADDED: 백업 메타데이터 시스템 (.moai/backups/latest.json)
   - IMPROVED: 사용자 경험 - 설치 빠르게, 선택 신중하게
   - CONTEXT: 복잡도 감소 및 책임 분리 원칙 적용
@@ -69,7 +69,7 @@ scope:
 
 ### 실행 환경
 - **Phase A (moai init)**: CLI 도구로 실행, 빠른 백업 수행 (5초 이내)
-- **Phase B (/alfred:8-project)**: Claude Code 세션, 백업 분석 및 병합 수행
+- **Phase B (/alfred:0-project)**: Claude Code 세션, 백업 분석 및 병합 수행
 - **사용자**: MoAI-ADK를 이미 사용 중이며, 최신 템플릿으로 업데이트하고자 하는 개발자
 - **도구 체인**: Bun 1.0+, TypeScript 5.0+, @clack/prompts (Phase B에서만)
 
@@ -77,7 +77,7 @@ scope:
 - **기존 (v0.1.0)**: moai init에서 복잡한 병합 엔진 실행 → 설치 시간 증가, 복잡도 높음
 - **신규 (v0.2.0)**: 2단계 분리 접근법
   - **moai init**: 백업만 수행 + 템플릿 복사 (1-2시간 구현 예상)
-  - **/alfred:8-project**: 백업 발견 시 병합 여부만 물어봄 (4-6시간 구현 예상)
+  - **/alfred:0-project**: 백업 발견 시 병합 여부만 물어봄 (4-6시간 구현 예상)
 - **장점**: 책임 분리, 복잡도 감소, 사용자 경험 개선 (설치 빠르게, 선택 신중하게)
 
 ### 백업 조건 완화 (v0.2.1)
@@ -91,7 +91,7 @@ scope:
 
 1. **책임 분리 가정**:
    - **moai init**: 백업 생성만 담당 (병합 로직 없음)
-   - **/alfred:8-project**: 백업 분석 및 병합 담당
+   - **/alfred:0-project**: 백업 분석 및 병합 담당
    - 각 단계는 독립적으로 실행 가능해야 함
 
 2. **사용자 의도 가정**:
@@ -135,7 +135,7 @@ scope:
   ```
 
 **REQ-INIT-003-U03**: 사용자 안내 메시지 출력
-- 시스템은 백업 경로와 다음 단계(Claude Code 실행 → /alfred:8-project)를 안내해야 한다
+- 시스템은 백업 경로와 다음 단계(Claude Code 실행 → /alfred:0-project)를 안내해야 한다
 
 #### Event-driven Requirements (이벤트 기반)
 
@@ -143,8 +143,8 @@ scope:
 - WHEN 백업 생성이 실패하면
 - 시스템은 설치를 즉시 중단하고 에러 메시지를 표시해야 한다
 
-**REQ-INIT-003-E07**: 긴급 백업 생성 (/alfred:8-project, v0.2.1)
-- WHEN `/alfred:8-project` 실행 시 백업 메타데이터가 없고 기존 MoAI-ADK 파일이 **1개라도** 존재하면
+**REQ-INIT-003-E07**: 긴급 백업 생성 (/alfred:0-project, v0.2.1)
+- WHEN `/alfred:0-project` 실행 시 백업 메타데이터가 없고 기존 MoAI-ADK 파일이 **1개라도** 존재하면
 - 시스템은 자동으로 긴급 백업을 생성해야 한다
 - 백업 완료 후 병합 프롬프트를 표시해야 한다
 
@@ -171,12 +171,12 @@ scope:
 
 ---
 
-### Phase B: /alfred:8-project 병합 요구사항
+### Phase B: /alfred:0-project 병합 요구사항
 
 #### Event-driven Requirements (이벤트 기반)
 
-**REQ-INIT-003-E02**: /alfred:8-project 실행 시 백업 감지
-- WHEN `/alfred:8-project` 실행 시
+**REQ-INIT-003-E02**: /alfred:0-project 실행 시 백업 감지
+- WHEN `/alfred:0-project` 실행 시
 - 시스템은 `.moai/backups/latest.json`에서 `status: pending` 백업을 감지해야 한다
 
 **REQ-INIT-003-E03**: 백업 발견 시 병합 프롬프트 표시
@@ -303,24 +303,24 @@ console.log(`   경로: ${backupPath}`);
 console.log(`   파일: ${backedUpFiles.join(', ')}`);
 console.log(`\n🚀 다음 단계:`);
 console.log(`   1. Claude Code를 실행하세요`);
-console.log(`   2. /alfred:8-project 명령을 실행하세요`);
+console.log(`   2. /alfred:0-project 명령을 실행하세요`);
 console.log(`   3. 백업 내용을 병합할지 선택하세요`);
 console.log(`\n💡 백업은 자동으로 삭제되지 않습니다.`);
 ```
 
 #### 5. 케이스별 동작 표
 
-| 상황 | .claude | .moai | CLAUDE.md | 동작 |
-|-----|---------|-------|-----------|------|
-| **Case 1** | ✅ | ✅ | ✅ | 3개 모두 백업 |
-| **Case 2** | ✅ | ❌ | ❌ | .claude만 백업 |
-| **Case 3** | ❌ | ✅ | ✅ | .moai, CLAUDE.md 백업 |
-| **Case 4** | ❌ | ❌ | ✅ | CLAUDE.md만 백업 |
-| **Case 5** | ❌ | ❌ | ❌ | 백업 생략 (신규 설치) |
+| 상황       | .claude | .moai | CLAUDE.md | 동작                  |
+| ---------- | ------- | ----- | --------- | --------------------- |
+| **Case 1** | ✅       | ✅     | ✅         | 3개 모두 백업         |
+| **Case 2** | ✅       | ❌     | ❌         | .claude만 백업        |
+| **Case 3** | ❌       | ✅     | ✅         | .moai, CLAUDE.md 백업 |
+| **Case 4** | ❌       | ❌     | ✅         | CLAUDE.md만 백업      |
+| **Case 5** | ❌       | ❌     | ❌         | 백업 생략 (신규 설치) |
 
 ---
 
-### Phase B: /alfred:8-project 병합 로직 (v0.2.1 업데이트)
+### Phase B: /alfred:0-project 병합 로직 (v0.2.1 업데이트)
 
 **구현 위치**: `moai-adk-ts/src/cli/commands/project/backup-merger.ts`
 
@@ -383,7 +383,7 @@ const metadata = {
   backup_path: backupPath,
   backed_up_files: backedUpFiles,
   status: 'pending',
-  created_by: '/alfred:8-project (emergency backup)'
+  created_by: '/alfred:0-project (emergency backup)'
 };
 
 fs.mkdirSync('.moai/backups', { recursive: true });
@@ -449,12 +449,12 @@ const choice = await select({
 
 #### 4. 병합 전략 실행
 
-| 파일 유형 | 병합 방법 |
-|----------|---------|
-| JSON | Deep merge (lodash.merge) |
-| Markdown | HISTORY 섹션 누적 |
-| Hooks | 버전 비교 후 최신 사용 |
-| Commands | 사용자 파일 보존 |
+| 파일 유형 | 병합 방법                 |
+| --------- | ------------------------- |
+| JSON      | Deep merge (lodash.merge) |
+| Markdown  | HISTORY 섹션 누적         |
+| Hooks     | 버전 비교 후 최신 사용    |
+| Commands  | 사용자 파일 보존          |
 
 **구현 예시** (JSON Deep Merge):
 ```typescript
@@ -550,7 +550,7 @@ function mergeJSON(backupFile: string, currentFile: string): object {
 - **영향**: 백업 상태 확인 불가
 - **대응**: JSON 스키마 검증, 백업 메타데이터 무결성 체크
 
-**위험 2: /alfred:8-project 미실행**
+**위험 2: /alfred:0-project 미실행**
 - **영향**: 백업 방치 (디스크 공간 낭비)
 - **대응**: moai init 완료 메시지에 명확한 다음 단계 안내
 
@@ -588,7 +588,7 @@ function mergeJSON(backupFile: string, currentFile: string): object {
 
 1. `/alfred:2-build INIT-003` → Phase A/B 순차 TDD 구현
    - Phase A (1-2시간): moai init 백업 로직 (선택적 백업)
-   - Phase B (4-6시간): /alfred:8-project 병합 로직 (긴급 백업 포함)
+   - Phase B (4-6시간): /alfred:0-project 병합 로직 (긴급 백업 포함)
 2. 구현 완료 후 `/alfred:3-sync` → 문서 동기화 및 TAG 검증
 
 ---

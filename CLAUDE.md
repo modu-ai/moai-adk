@@ -79,6 +79,8 @@ Alfred는 9명의 전문 에이전트를 조율합니다. 각 에이전트는 IT
 - **"중단"**: 작업 취소
 
 **커맨드별 세부사항**:
+- `moai init .`: CLI로 `.moai/` 기본 구조 생성 (config.json, 디렉토리 등)
+- `/alfred:0-project`: Phase 1에서 현재 프로젝트 상태 분석 → Phase 2에서 product/structure/tech.md 생성
 - `/alfred:1-spec`: Phase 1에서 프로젝트 문서 분석 및 SPEC 후보 제안 → Phase 2에서 SPEC 문서 작성 및 Git 작업
 - `/alfred:2-build`: Phase 1에서 SPEC 분석 및 TDD 계획 수립 → Phase 2에서 RED-GREEN-REFACTOR 구현
 - `/alfred:3-sync`: Phase 1에서 동기화 범위 분석 → Phase 2에서 Living Document 동기화 및 TAG 업데이트
@@ -171,6 +173,8 @@ Alfred는 효율적인 컨텍스트 관리를 위해 다음 2가지 전략을 �
 ### 1. JIT (Just-in-Time) Retrieval
 필요한 순간에만 문서를 로드하여 초기 컨텍스트 부담을 최소화:
 - 전체 문서를 선로딩하지 말고, **식별자(파일경로/링크/쿼리)**만 보유 후 필요 시 조회
+- `moai init .` → CLI로 기본 구조 생성
+- `/alfred:0-project` → 프로젝트 파일 구조 분석, 템플릿 참조
 - `/alfred:1-spec` → `product.md` 참조
 - `/alfred:2-build` → `SPEC-XXX/spec.md` + `development-guide.md` 참조
 - `/alfred:3-sync` → `sync-report.md` + TAG 인덱스 참조
@@ -200,11 +204,15 @@ Alfred는 효율적인 컨텍스트 관리를 위해 다음 2가지 전략을 �
 
 ---
 
-## 3단계 개발 워크플로우
+## 4단계 개발 워크플로우
 
 Alfred가 조율하는 핵심 개발 사이클:
 
 ```bash
+# 또는 터미널에서
+moai init .        # 프로젝트 초기화 (CLI)
+/alfred:0-project  # 초기 설정 (product/structure/tech.md 생성)
+
 /alfred:1-spec     # SPEC 작성 (EARS 방식, develop 기반 브랜치/Draft PR 생성)
 /alfred:2-build    # TDD 구현 (RED → GREEN → REFACTOR)
 /alfred:3-sync     # 문서 동기화 (PR Ready/자동 머지, TAG 체인 검증)
@@ -217,12 +225,21 @@ Alfred가 조율하는 핵심 개발 사이클:
 - **Optional**: WHERE [조건]이면, 시스템은 [동작]할 수 있다
 - **Constraints**: IF [조건]이면, 시스템은 [제약]해야 한다
 
+**프로젝트 초기화**: 0-project (최초 1회 실행)
 **반복 사이클**: 1-spec → 2-build → 3-sync → 1-spec (다음 기능)
 
 ### 완전 자동화된 GitFlow 워크플로우
 
 **Team 모드 (권장)**:
 ```bash
+# 0단계: 프로젝트 초기화 (최초 1회)
+# 또는 터미널에서
+moai init .        # 프로젝트 초기화 (CLI)
+/alfred:0-project  # 초기 설정
+→ .moai/project/ 디렉토리 생성
+→ product.md, structure.md, tech.md 생성
+→ 프로젝트 메타데이터 설정 완료
+
 # 1단계: SPEC 작성 (develop에서 분기)
 /alfred:1-spec "새 기능"
 → feature/SPEC-{ID} 브랜치 생성
@@ -244,6 +261,10 @@ Alfred가 조율하는 핵심 개발 사이클:
 
 **Personal 모드**:
 ```bash
+# 또는 터미널에서
+moai init .                  # 프로젝트 초기화 (CLI)
+/alfred:0-project            # 초기 설정 (최초 1회)
+
 /alfred:1-spec "새 기능"     # main/develop에서 분기
 /alfred:2-build SPEC-{ID}    # TDD 구현
 /alfred:3-sync               # 문서 동기화 + 로컬 머지
@@ -301,7 +322,7 @@ Alfred가 필요 시 즉시 호출하는 전문 에이전트들:
 
 ### TAG BLOCK 템플릿
 
-> **📋 SPEC 메타데이터 표준 (SSOT)**: `.moai/memory/spec-metadata.md`
+> **📋 SPEC 메타데이터 표준 (SSOT)**: @.moai/memory/spec-metadata.md
 
 **모든 SPEC 문서는 다음 구조를 따릅니다**:
 - **필수 필드 7개**: id, version, status, created, updated, author, priority
@@ -345,7 +366,7 @@ priority: high
 - **TAG ID**: `<도메인>-<3자리>` (예: `AUTH-003`) - 영구 불변
 - **TAG 내용**: 자유롭게 수정 가능 (HISTORY에 기록 필수)
 - **버전 관리**: Semantic Versioning (v0.0.1 → v0.1.0 → v1.0.0)
-  - 상세 버전 체계: `.moai/memory/spec-metadata.md#버전` 참조
+  - 상세 버전 체계: @.moai/memory/spec-metadata.md#버전-체계 참조
 - **TAG 참조**: 버전 없이 파일명만 사용 (예: `SPEC-AUTH-001.md`)
 - **중복 확인**: `rg "@SPEC:AUTH" -n` 또는 `rg "AUTH-001" -n`
 - **CODE-FIRST**: TAG의 진실은 코드 자체에만 존재
@@ -417,6 +438,15 @@ Alfred가 모든 코드에 적용하는 품질 기준:
 ---
 
 ## TDD 워크플로우 체크리스트
+
+**0단계: 프로젝트 초기화** - 최초 1회만 실행
+- [ ] `moai init .` 실행 (CLI로 프로젝트 초기화)
+- [ ] `/alfred:0-project` 실행 (초기 설정)
+- [ ] `.moai/project/` 디렉토리 생성 확인
+- [ ] `product.md` 작성 (제품 개요, 목표, 핵심 기능)
+- [ ] `structure.md` 작성 (디렉토리 구조, 모듈 설계)
+- [ ] `tech.md` 작성 (기술 스택, 언어별 도구 체인)
+- [ ] `.moai/config.json` 설정 확인 (locale, mode 등)
 
 **1단계: SPEC 작성** (`/alfred:1-spec`)
 - [ ] `.moai/specs/SPEC-<ID>/spec.md` 생성 (디렉토리 구조)

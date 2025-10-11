@@ -61,16 +61,16 @@ category: refactor
 
 **문서-구현 심각한 불일치 (Critical Misalignment)**:
 
-| 구분 | 문서 명세 | 실제 구현 | 불일치 등급 |
-|------|----------|----------|-----------|
-| **Phase 4 복사 방식** | Claude Code 도구 ([Glob] → [Read] → [Write]) | Node.js fs 모듈 자동 복사 | 🔴 P0 |
-| **Alfred 역할** | 중앙 오케스트레이터 (직접 실행) | Orchestrator에 위임 (간접 실행) | 🔴 P0 |
-| **프로젝트 문서 처리** | {{PROJECT_NAME}} 패턴 검증 → 조건부 덮어쓰기 | 무조건 덮어쓰기 | 🔴 P0 |
-| **훅 파일 권한** | chmod +x 실행 권한 부여 | 권한 처리 없음 | 🔴 P0 |
-| **Output Styles 복사** | .claude/output-styles/alfred/ 포함 | 복사 대상 누락 | 🔴 P0 |
-| **검증 로직** | 파일 개수, 내용, YAML 검증 | 기본 검증만 | 🟡 P1 |
-| **오류 복구** | 자동 재시도 및 롤백 | 에러 로그만 출력 | 🟡 P1 |
-| **품질 검증 옵션** | --check-quality (trust-checker 연동) | 미구현 | 🟡 P1 |
+| 구분                   | 문서 명세                                    | 실제 구현                       | 불일치 등급 |
+| ---------------------- | -------------------------------------------- | ------------------------------- | ----------- |
+| **Phase 4 복사 방식**  | Claude Code 도구 ([Glob] → [Read] → [Write]) | Node.js fs 모듈 자동 복사       | 🔴 P0        |
+| **Alfred 역할**        | 중앙 오케스트레이터 (직접 실행)              | Orchestrator에 위임 (간접 실행) | 🔴 P0        |
+| **프로젝트 문서 처리** | {{PROJECT_NAME}} 패턴 검증 → 조건부 덮어쓰기 | 무조건 덮어쓰기                 | 🔴 P0        |
+| **훅 파일 권한**       | chmod +x 실행 권한 부여                      | 권한 처리 없음                  | 🔴 P0        |
+| **Output Styles 복사** | .claude/output-styles/alfred/ 포함           | 복사 대상 누락                  | 🔴 P0        |
+| **검증 로직**          | 파일 개수, 내용, YAML 검증                   | 기본 검증만                     | 🟡 P1        |
+| **오류 복구**          | 자동 재시도 및 롤백                          | 에러 로그만 출력                | 🟡 P1        |
+| **품질 검증 옵션**     | --check-quality (trust-checker 연동)         | 미구현                          | 🟡 P1        |
 
 **파일 정보**:
 - 문서: `.claude/commands/alfred/9-update.md` (647 LOC)
@@ -395,17 +395,17 @@ Alfred (CLAUDE.md 컨텍스트)
 
 #### 2.1 복사 대상 디렉토리 및 파일
 
-| 번호 | 소스 경로 | 대상 경로 | 특수 처리 |
-|------|----------|----------|-----------|
-| A | .claude/commands/alfred/*.md | .claude/commands/alfred/ | - |
-| B | .claude/agents/alfred/*.md | .claude/agents/alfred/ | - |
-| C | .claude/hooks/alfred/*.cjs | .claude/hooks/alfred/ | chmod +x |
-| D | .claude/output-styles/alfred/*.md | .claude/output-styles/alfred/ | **신규 추가** |
-| E | .moai/memory/development-guide.md | .moai/memory/ | 무조건 덮어쓰기 |
-| F | .moai/project/product.md | .moai/project/ | Grep 검증 |
-| G | .moai/project/structure.md | .moai/project/ | Grep 검증 |
-| H | .moai/project/tech.md | .moai/project/ | Grep 검증 |
-| I | CLAUDE.md | ./ (루트) | Grep 검증 |
+| 번호 | 소스 경로                         | 대상 경로                     | 특수 처리       |
+| ---- | --------------------------------- | ----------------------------- | --------------- |
+| A    | .claude/commands/alfred/*.md      | .claude/commands/alfred/      | -               |
+| B    | .claude/agents/alfred/*.md        | .claude/agents/alfred/        | -               |
+| C    | .claude/hooks/alfred/*.cjs        | .claude/hooks/alfred/         | chmod +x        |
+| D    | .claude/output-styles/alfred/*.md | .claude/output-styles/alfred/ | **신규 추가**   |
+| E    | .moai/memory/development-guide.md | .moai/memory/                 | 무조건 덮어쓰기 |
+| F    | .moai/project/product.md          | .moai/project/                | Grep 검증       |
+| G    | .moai/project/structure.md        | .moai/project/                | Grep 검증       |
+| H    | .moai/project/tech.md             | .moai/project/                | Grep 검증       |
+| I    | CLAUDE.md                         | ./ (루트)                     | Grep 검증       |
 
 ---
 
@@ -721,7 +721,7 @@ Phase 5.5: 품질 검증
 
 다음 단계:
 1. Claude Code 재시작 권장
-2. /alfred:8-project로 프로젝트 검토
+2. /alfred:0-project로 프로젝트 검토
 ```
 
 **Warning (⚠️)**:
@@ -1037,16 +1037,16 @@ Phase 4 완료! (총 31개 파일 복사)
 
 ### B. 파일 개수 참고표
 
-| 디렉토리 | 파일 개수 (v0.0.2 기준) |
-|---------|------------------------|
-| .claude/commands/alfred/ | 10개 |
-| .claude/agents/alfred/ | 9개 |
-| .claude/hooks/alfred/ | 4개 |
-| .claude/output-styles/alfred/ | 4개 |
-| .moai/memory/ | 1개 (development-guide.md) |
-| .moai/project/ | 3개 (product, structure, tech) |
-| 루트 | 1개 (CLAUDE.md) |
-| **총계** | **32개** |
+| 디렉토리                      | 파일 개수 (v0.0.2 기준)        |
+| ----------------------------- | ------------------------------ |
+| .claude/commands/alfred/      | 10개                           |
+| .claude/agents/alfred/        | 9개                            |
+| .claude/hooks/alfred/         | 4개                            |
+| .claude/output-styles/alfred/ | 4개                            |
+| .moai/memory/                 | 1개 (development-guide.md)     |
+| .moai/project/                | 3개 (product, structure, tech) |
+| 루트                          | 1개 (CLAUDE.md)                |
+| **총계**                      | **32개**                       |
 
 ---
 

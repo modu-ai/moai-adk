@@ -24,7 +24,7 @@ export function getEnabledAgents(mode: string): string[] {
  */
 export function getEnabledCommands(mode: string): string[] {
   const baseCommands = [
-    '/alfred:8-project',
+    '/alfred:0-project',
     '/alfred:1-spec',
     '/alfred:2-build',
     '/alfred:3-sync',

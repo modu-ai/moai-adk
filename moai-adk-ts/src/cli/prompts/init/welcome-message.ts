@@ -23,7 +23,7 @@ export function displayWelcomeMessage(config: WelcomeConfig): void {
 🤖 AI-Agent Alfred가 ${config.developerName}님의 개발을 도와드리겠습니다.
 
 다음 명령어로 시작하세요:
-/alfred:8-project  # 프로젝트 초기화
+/alfred:0-project  # 프로젝트 초기화
 /alfred:1-spec     # 첫 SPEC 작성
 
 질문이 있으시면 언제든 @agent-debug-helper를 호출하세요.

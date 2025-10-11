@@ -284,7 +284,7 @@ console.log('current');
       expect(metadata).not.toBeNull();
       expect(metadata?.backed_up_files).toContain('.claude/');
       expect(metadata?.backed_up_files).toContain('CLAUDE.md');
-      expect(metadata?.created_by).toBe('/alfred:8-project (emergency backup)');
+      expect(metadata?.created_by).toBe('/alfred:0-project (emergency backup)');
 
       // And: Backup directory should exist
       const backupPath = path.join(CURRENT_DIR, metadata!.backup_path);

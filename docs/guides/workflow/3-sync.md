@@ -1,6 +1,6 @@
-# Stage 3: Document Synchronization
+# /alfred:3-sync
 
-`/alfred:3-sync` 커맨드를 사용하여 Living Document를 생성하고 TAG 체인을 검증합니다.
+Living Document를 생성하고 TAG 체인을 검증합니다.
 
 ## Overview
 
@@ -74,6 +74,7 @@ git rev-parse --abbrev-ref HEAD
 ```
 
 Alfred가 확인하는 항목:
+
 - **현재 브랜치**: feature/SPEC-XXX 형식인지
 - **변경사항**: staged/unstaged 파일 목록
 - **PR 상태**: Draft/Ready 여부 (Team 모드)
@@ -338,6 +339,7 @@ constructor(
 ```
 
 **Parameters**:
+
 - `userRepo`: 사용자 저장소 인터페이스
 - `jwtSecret`: JWT 서명에 사용할 비밀 키
 
@@ -348,16 +350,19 @@ constructor(
 사용자 인증 및 JWT 토큰 발급
 
 **Parameters**:
+
 - `email` (string): 사용자 이메일 (RFC 5322 형식)
 - `password` (string): 비밀번호 (최소 8자)
 
 **Returns**: `Promise<AuthResult>`
 
 **Throws**:
+
 - `Error('Invalid email format')`: 이메일 형식이 잘못됨
 - `Error('Invalid credentials')`: 자격증명이 잘못됨
 
 **Example**:
+
 ```typescript
 const result = await authService.authenticate('user@example.com', 'password123')
 ```
@@ -439,6 +444,7 @@ bun test --coverage tests/auth/
 ## Changelog
 
 ### v0.0.1 (2025-10-11)
+
 - **INITIAL**: JWT 기반 인증 시스템 구현
 - **AUTHOR**: @Goos
 
@@ -446,6 +452,7 @@ bun test --coverage tests/auth/
 
 **Last Updated**: 2025-10-11
 **TAG**: @DOC:AUTH-001
+
 ```
 
 ---
@@ -497,18 +504,21 @@ JWT 기반 사용자 인증 시스템 구현
 ```
 
 ## Files Changed
+
 - `.moai/specs/SPEC-AUTH-001/spec.md`
 - `tests/auth/service.test.ts`
 - `src/auth/service.ts`
 - `docs/features/auth/jwt-authentication.md`
 
-## Next Steps
+## Action Items
+
 - [ ] Code review
 - [ ] Merge to develop
 
 ---
 
 🤖 Generated with [MoAI-ADK](https://github.com/modu-ai/moai-adk)
+
 ```
 
 ### 2. CI/CD 확인 (Team Mode + --auto-merge)
@@ -570,6 +580,7 @@ echo "✅ Ready for next SPEC"
 ```
 
 **예시**:
+
 ```bash
 $ rg '@(SPEC|TEST|CODE):AUTH-001' -n
 
@@ -581,11 +592,13 @@ src/auth/service.ts:1:// @CODE:AUTH-001
 ### Broken Chain ❌
 
 **Case 1: TEST 누락**
+
 ```
 @SPEC:UPLOAD-003 → @CODE:UPLOAD-003 (TEST 없음)
 ```
 
 **Case 2: CODE 누락**
+
 ```
 @SPEC:PAYMENT-002 → @TEST:PAYMENT-002 (CODE 없음)
 ```
@@ -593,11 +606,13 @@ src/auth/service.ts:1:// @CODE:AUTH-001
 ### Orphan TAG ⚠️
 
 **Case 1: SPEC 없는 CODE**
+
 ```
 @CODE:REFACTOR-010 (SPEC 없음)
 ```
 
 **Case 2: SPEC 없는 TEST**
+
 ```
 @TEST:BUGFIX-005 (SPEC 없음)
 ```
@@ -725,6 +740,7 @@ Changes:
 ### 1. Sync Early, Sync Often
 
 ✅ **권장사항**:
+
 ```bash
 # 매 SPEC 구현 후 즉시 동기화
 /alfred:2-build AUTH-001
@@ -738,6 +754,7 @@ Changes:
 ### 2. Fix Broken Chains Immediately
 
 ✅ **권장사항**:
+
 ```bash
 # TAG 체인이 끊어지면 즉시 수정
 /alfred:3-sync --check  # 문제 확인
@@ -746,12 +763,14 @@ Changes:
 ```
 
 ❌ **피해야 할 것**:
+
 - 끊어진 TAG 체인을 그대로 두고 PR 머지
 - 고아 TAG를 방치
 
 ### 3. Review Sync Reports
 
 ✅ **권장사항**:
+
 ```bash
 # Sync Report 확인
 cat .moai/reports/sync-report-2025-10-11.md
@@ -763,6 +782,7 @@ cat .moai/reports/sync-report-2025-10-11.md
 ### 4. Use Auto-merge Carefully
 
 ✅ **권장사항** (Team 모드):
+
 ```bash
 # CI/CD 설정이 완벽한 경우에만 사용
 /alfred:3-sync --auto-merge
@@ -779,6 +799,7 @@ gh pr merge --squash  # 수동 머지
 ### ❌ Pitfall 1: TAG 체인 검증 없이 머지
 
 **잘못된 예**:
+
 ```bash
 # TAG 체인 확인 없이 바로 머지
 git add .
@@ -788,6 +809,7 @@ gh pr merge
 ```
 
 **올바른 예**:
+
 ```bash
 # TAG 체인 검증 후 머지
 /alfred:3-sync --check  # 먼저 검증
@@ -798,6 +820,7 @@ gh pr merge
 ### ❌ Pitfall 2: 불완전한 TRUST 검증
 
 **잘못된 예**:
+
 ```bash
 # 테스트 커버리지 60%로 머지
 $ pytest --cov
@@ -806,6 +829,7 @@ $ gh pr merge  # 그냥 머지 (비권장)
 ```
 
 **올바른 예**:
+
 ```bash
 # 커버리지 충족 확인
 $ pytest --cov
@@ -823,12 +847,14 @@ Coverage: 88%  # ✅
 ### ❌ Pitfall 3: Sync Report 무시
 
 **잘못된 예**:
+
 ```bash
 /alfred:3-sync
 # Sync Report 안 읽고 바로 머지
 ```
 
 **올바른 예**:
+
 ```bash
 /alfred:3-sync
 # Sync Report 확인
@@ -843,6 +869,7 @@ cat .moai/reports/sync-report-*.md
 ### Issue 1: TAG 체인 끊김
 
 **증상**:
+
 ```bash
 $ /alfred:3-sync
 
@@ -851,6 +878,7 @@ $ /alfred:3-sync
 ```
 
 **해결**:
+
 ```bash
 # 1. 누락된 TEST 작성
 # tests/upload/service.test.ts
@@ -866,6 +894,7 @@ $ /alfred:3-sync
 ### Issue 2: 고아 TAG 발견
 
 **증상**:
+
 ```bash
 $ /alfred:3-sync
 
@@ -874,6 +903,7 @@ $ /alfred:3-sync
 ```
 
 **해결**:
+
 ```bash
 # Option 1: SPEC 생성
 /alfred:1-spec "REFACTOR-010: 기존 코드 리팩토링"
@@ -885,6 +915,7 @@ $ /alfred:3-sync
 ### Issue 3: TRUST 검증 실패
 
 **증상**:
+
 ```bash
 $ /alfred:3-sync
 
@@ -894,6 +925,7 @@ $ /alfred:3-sync
 ```
 
 **해결**:
+
 ```bash
 # 1. 테스트 추가 (커버리지 향상)
 # tests/에 누락된 테스트 케이스 추가
@@ -911,6 +943,7 @@ biome check src/ --apply
 ### Issue 4: CI/CD 실패 (Team 모드)
 
 **증상**:
+
 ```bash
 $ /alfred:3-sync --auto-merge
 
@@ -920,6 +953,7 @@ $ /alfred:3-sync --auto-merge
 ```
 
 **해결**:
+
 ```bash
 # 1. 로컬에서 테스트 재실행
 bun test

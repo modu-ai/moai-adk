@@ -69,7 +69,7 @@ moai-adk-ts/
 3. 기존 `moai` 디렉토리는 레거시이며, `alfred`로 전환 중이다
 
 ### 비즈니스 가정
-1. 모든 사용자는 `/alfred:8-project` 실행으로 초기화를 완료한다
+1. 모든 사용자는 `/alfred:0-project` 실행으로 초기화를 완료한다
 2. Session Notice Hook은 매 세션 시작 시 자동 실행된다
 3. 프로젝트 인식 실패 시 초기화 안내 메시지를 표시한다
 
@@ -93,7 +93,7 @@ moai-adk-ts/
 
 ### State-driven Requirements (상태 기반)
 - WHILE 프로젝트가 MoAI로 인식되면, 시스템은 현재 SPEC 상태를 표시해야 한다
-- WHILE 프로젝트가 MoAI로 인식되지 않으면, 시스템은 `/alfred:8-project` 실행을 권장해야 한다
+- WHILE 프로젝트가 MoAI로 인식되지 않으면, 시스템은 `/alfred:0-project` 실행을 권장해야 한다
 
 ### Constraints (제약사항)
 - IF TypeScript 원본을 수정하면, 시스템은 반드시 `npm run build:hooks`를 실행해야 한다
@@ -182,7 +182,7 @@ npm run build:hooks
 - **SPEC-INIT-001**: 비대화형 모드 지원 (프로젝트 초기화)
 
 ### 의존성
-- **선행 조건**: `/alfred:8-project` 실행 완료 (`.moai`, `.claude/commands/alfred` 생성)
+- **선행 조건**: `/alfred:0-project` 실행 완료 (`.moai`, `.claude/commands/alfred` 생성)
 - **후속 작업**: 없음 (독립 실행 가능)
 
 ---

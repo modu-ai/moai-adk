@@ -130,7 +130,7 @@ claude-code .                         # 새 세션 시작
 
 # 기대 결과
 ✅ MoAI 프로젝트로 미인식
-✅ `/alfred:8-project` 안내 메시지 표시
+✅ `/alfred:0-project` 안내 메시지 표시
 ✅ SPEC 상태 미표시
 ```
 
@@ -233,7 +233,7 @@ export default defineConfig({
 
 **옵션 1: Hard Cut (권장)**
 - `alfred` 경로만 체크
-- 레거시 프로젝트는 `/alfred:8-project` 재실행 필요
+- 레거시 프로젝트는 `/alfred:0-project` 재실행 필요
 
 **옵션 2: Soft Migration**
 ```typescript
@@ -260,7 +260,7 @@ export function isMoAIProject(projectRoot: string): boolean {
 
 **대응**:
 1. **문서화**: CHANGELOG에 Breaking Change 명시
-2. **마이그레이션 가이드**: `/alfred:8-project` 재실행 안내
+2. **마이그레이션 가이드**: `/alfred:0-project` 재실행 안내
 3. **경고 메시지**: Session Notice에서 명확한 안내
 
 ### 리스크 2: 빌드 실패

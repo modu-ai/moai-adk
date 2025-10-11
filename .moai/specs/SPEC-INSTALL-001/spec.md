@@ -173,7 +173,7 @@ priority: high
   🤖 AI-Agent Alfred가 당신의 개발을 도와드리겠습니다.
 
   다음 명령어로 시작하세요:
-  /alfred:8-project  # 프로젝트 초기화
+  /alfred:0-project  # 프로젝트 초기화
   /alfred:1-spec     # 첫 SPEC 작성
 
   질문이 있으시면 언제든 @agent-debug-helper를 호출하세요.
@@ -360,7 +360,7 @@ console.log(`
 🤖 AI-Agent Alfred가 ${developerName}님의 개발을 도와드리겠습니다.
 
 다음 명령어로 시작하세요:
-/alfred:8-project  # 프로젝트 초기화
+/alfred:0-project  # 프로젝트 초기화
 /alfred:1-spec     # 첫 SPEC 작성
 
 질문이 있으시면 언제든 @agent-debug-helper를 호출하세요.
@@ -481,7 +481,7 @@ console.log(`
 🤖 AI-Agent Alfred가 홍길동님의 개발을 도와드리겠습니다.
 
 다음 명령어로 시작하세요:
-/alfred:8-project  # 프로젝트 초기화
+/alfred:0-project  # 프로젝트 초기화
 /alfred:1-spec     # 첫 SPEC 작성
 
 질문이 있으시면 언제든 @agent-debug-helper를 호출하세요.
@@ -641,7 +641,7 @@ GIVEN 모든 프롬프트가 완료되었을 때
 WHEN 설치가 성공하면
 THEN "✅ MoAI-ADK 설치가 완료되었습니다!" 메시지를 출력해야 한다
 AND "🤖 AI-Agent Alfred가 {name}님의 개발을 도와드리겠습니다" 메시지를 출력해야 한다
-AND 다음 단계 안내 (/alfred:8-project, /alfred:1-spec)를 제공해야 한다
+AND 다음 단계 안내 (/alfred:0-project, /alfred:1-spec)를 제공해야 한다
 ```
 
 ### AC7: Progressive Disclosure 준수

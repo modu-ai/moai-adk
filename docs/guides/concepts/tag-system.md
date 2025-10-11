@@ -41,6 +41,7 @@
 ```
 
 **예시**:
+
 - `@SPEC:AUTH-001` - 인증 도메인, 첫 번째 SPEC
 - `@TEST:UPLOAD-003` - 업로드 도메인, 세 번째 테스트
 - `@CODE:PAYMENT-042` - 결제 도메인, 42번째 코드
@@ -51,6 +52,7 @@
 - **TAG 내용은 자유롭게 수정 가능**: HISTORY 섹션에 변경 이력 기록
 
 **예시**:
+
 ```markdown
 # ❌ 잘못된 사용: TAG ID 변경
 @SPEC:AUTH-001 → @SPEC:AUTH-002  # 금지!
@@ -85,6 +87,7 @@ SPEC 디렉토리는 반드시 `SPEC-{ID}` 형식을 따라야 합니다:
 **위치**: `.moai/specs/SPEC-{ID}/spec.md`
 
 **템플릿**:
+
 ```markdown
 ---
 id: AUTH-001
@@ -109,6 +112,7 @@ priority: high
 **위치**: `tests/` 디렉토리
 
 **Python 예시**:
+
 ```python
 # @TEST:AUTH-001 | SPEC: .moai/specs/SPEC-AUTH-001/spec.md
 
@@ -123,6 +127,7 @@ def test_should_authenticate_valid_user():
 ```
 
 **TypeScript 예시**:
+
 ```typescript
 // @TEST:UPLOAD-001 | SPEC: .moai/specs/SPEC-UPLOAD-001/spec.md
 
@@ -143,6 +148,7 @@ describe('UploadService', () => {
 **위치**: `src/` 디렉토리
 
 **Python 예시**:
+
 ```python
 # @CODE:AUTH-001 | SPEC: .moai/specs/SPEC-AUTH-001/spec.md | TEST: tests/auth/service.test.py
 
@@ -155,6 +161,7 @@ class AuthService:
 ```
 
 **TypeScript 예시**:
+
 ```typescript
 // @CODE:UPLOAD-001 | SPEC: .moai/specs/SPEC-UPLOAD-001/spec.md | TEST: tests/upload/service.test.ts
 
@@ -170,6 +177,7 @@ export class UploadService {
 **위치**: `docs/` 디렉토리
 
 **예시**:
+
 ```markdown
 <!-- @DOC:AUTH-001 | SPEC: .moai/specs/SPEC-AUTH-001/spec.md -->
 
@@ -197,6 +205,7 @@ export class UploadService {
 ### 실제 코드 예시
 
 **Python (FastAPI)**:
+
 ```python
 # @CODE:AUTH-001:API - REST API 엔드포인트
 from fastapi import APIRouter
@@ -224,6 +233,7 @@ class User(BaseModel):
 ```
 
 **TypeScript (React)**:
+
 ```typescript
 // @CODE:UPLOAD-001:UI - 파일 업로드 컴포넌트
 export function FileUploader() {
@@ -302,6 +312,7 @@ done
 ### 예시 1: JWT 인증 시스템 (AUTH-001)
 
 #### SPEC 문서
+
 ```markdown
 # .moai/specs/SPEC-AUTH-001/spec.md
 ---
@@ -317,6 +328,7 @@ version: 0.0.1
 ```
 
 #### 테스트 코드
+
 ```python
 # tests/auth/service.test.py
 # @TEST:AUTH-001 | SPEC: .moai/specs/SPEC-AUTH-001/spec.md
@@ -329,6 +341,7 @@ def test_should_issue_jwt_on_valid_login():
 ```
 
 #### 구현 코드
+
 ```python
 # src/auth/service.py
 # @CODE:AUTH-001 | SPEC: .moai/specs/SPEC-AUTH-001/spec.md | TEST: tests/auth/service.test.py
@@ -356,6 +369,7 @@ class AuthService:
 ### 예시 2: 파일 업로드 기능 (UPLOAD-001)
 
 #### TAG 체인 전체
+
 ```
 @SPEC:UPLOAD-001
   ↓
@@ -369,6 +383,7 @@ class AuthService:
 ```
 
 #### 구현 예시
+
 ```typescript
 // @CODE:UPLOAD-001:UI
 export function FileUploader() {
@@ -402,6 +417,7 @@ export class S3Storage implements StorageProvider {
 ### 시나리오 1: TAG 중복 발생
 
 **문제**:
+
 ```bash
 $ rg "@SPEC:AUTH-001" -n
 .moai/specs/SPEC-AUTH-001/spec.md:26:# @SPEC:AUTH-001: JWT 인증
@@ -409,6 +425,7 @@ $ rg "@SPEC:AUTH-001" -n
 ```
 
 **해결**:
+
 ```markdown
 # 1. 잘못된 TAG 수정
 # SPEC-AUTH-002/spec.md
@@ -423,6 +440,7 @@ $ rg "@SPEC:AUTH-001" -n
 ### 시나리오 2: 고아 TAG 발생
 
 **문제**:
+
 ```bash
 $ rg '@CODE:PAYMENT-005' -n src/
 src/payment/service.py:1:# @CODE:PAYMENT-005  # CODE 존재
@@ -432,6 +450,7 @@ $ rg '@SPEC:PAYMENT-005' -n .moai/specs/
 ```
 
 **해결**:
+
 ```markdown
 # 1. SPEC 생성
 $ /alfred:1-spec "PAYMENT-005: 환불 처리 기능"
@@ -452,6 +471,7 @@ src/payment/service.py:1:# @CODE:PAYMENT-005
 ### 시나리오 3: TAG 체인 끊김
 
 **문제**:
+
 ```bash
 # SPEC과 CODE는 있는데 TEST가 없음
 $ rg '@SPEC:UPLOAD-003' -n  # ✅
@@ -460,6 +480,7 @@ $ rg '@TEST:UPLOAD-003' -n  # ❌ 없음!
 ```
 
 **해결**:
+
 ```python
 # 1. 테스트 작성
 # tests/upload/service.test.py
@@ -483,6 +504,7 @@ src/upload/service.py:1:# @CODE:UPLOAD-003
 **문제**: 리팩토링이 여러 도메인에 걸쳐 있을 때
 
 **해결**:
+
 ```markdown
 # 1. 복합 도메인 TAG 생성
 .moai/specs/SPEC-REFACTOR-AUTH-UPLOAD-001/spec.md
@@ -506,6 +528,7 @@ related_specs:
 **문제**: SPEC 버전 업데이트 시 TAG는?
 
 **해결**:
+
 ```markdown
 # TAG ID는 불변, 내용만 업데이트
 # SPEC-AUTH-001/spec.md
