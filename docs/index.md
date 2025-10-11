@@ -31,7 +31,7 @@ features:
 
   - icon: 🤖
     title: Alfred SuperAgent
-    details: 9명의 전문 에이전트를 조율하는 중앙 오케스트레이터가 개발을 자동화합니다.
+    details: 9개의 전문 에이전트를 조율하는 중앙 오케스트레이터가 개발을 자동화합니다.
 
   - icon: 🌍
     title: Universal Language Support
@@ -314,7 +314,7 @@ sequenceDiagram
 
 ## Alfred Agent Ecosystem
 
-Alfred가 조율하는 9명의 전문 에이전트:
+Alfred가 조율하는 9개의 전문 에이전트:
 
 | 에이전트 | 페르소나 | 전문 영역 | 호출 시점 |
 |---------|---------|----------|----------|

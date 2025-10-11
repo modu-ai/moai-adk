@@ -1,6 +1,6 @@
 # Alfred Agent Ecosystem
 
-Alfred가 조율하는 9명의 전문 에이전트 생태계입니다.
+Alfred가 조율하는 9개의 전문 에이전트 생태계입니다.
 
 ## Alfred: Your MoAI SuperAgent
 
@@ -60,9 +60,9 @@ Alfred가 결과 통합 보고
 
 ## 9 Specialized Agents
 
-Alfred가 조율하는 9명의 전문 에이전트. 각 에이전트는 IT 전문가 직무에 매핑되어 있습니다.
+Alfred가 조율하는 9개의 전문 에이전트. 각 에이전트는 IT 전문가 직무에 매핑되어 있습니다.
 
-### Primary Workflow Agents (3명)
+### Primary Workflow Agents (3개)
 
 핵심 3단계 워크플로우를 담당하는 에이전트들:
 
@@ -72,7 +72,7 @@ Alfred가 조율하는 9명의 전문 에이전트. 각 에이전트는 IT 전�
 | 💎 **code-builder** | 수석 개발자 | TDD 구현, 코드 품질 | `/alfred:2-build` |
 | 📖 **doc-syncer** | 테크니컬 라이터 | 문서 동기화, Living Doc | `/alfred:3-sync` |
 
-### Support Agents (4명)
+### Support Agents (4개)
 
 온디맨드로 호출되는 지원 에이전트들:
 
@@ -83,7 +83,7 @@ Alfred가 조율하는 9명의 전문 에이전트. 각 에이전트는 IT 전�
 | 🔬 **debug-helper** | 트러블슈팅 전문가 | 오류 진단, 해결 | `@agent-debug-helper` |
 | ✅ **trust-checker** | 품질 보증 리드 | TRUST 검증, 성능/보안 | `@agent-trust-checker` |
 
-### System Agents (2명)
+### System Agents (2개)
 
 시스템 관리를 담당하는 에이전트들:
 
@@ -773,5 +773,5 @@ $ /alfred:1-spec "새 기능"
 
 <div style="text-align: center; margin-top: 40px;">
   <p><strong>Alfred와 함께하는 완벽한 개발</strong> 🤖</p>
-  <p>9명의 전문 에이전트가 당신의 코드 품질을 책임집니다!</p>
+  <p>9개의 전문 에이전트가 당신의 코드 품질을 책임집니다!</p>
 </div>
