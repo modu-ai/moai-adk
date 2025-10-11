@@ -31,7 +31,6 @@ export default withMermaid(
         text: 'Getting Started',
         items: [
           { text: 'Introduction', link: '/guides/getting-started' },
-          { text: 'Installation', link: '/guides/installation' },
           { text: 'Quick Start', link: '/guides/quick-start' }
         ]
       },
@@ -86,7 +85,6 @@ export default withMermaid(
           collapsed: false,
           items: [
             { text: 'Introduction', link: '/guides/getting-started' },
-            { text: 'Installation', link: '/guides/installation' },
             { text: 'Quick Start', link: '/guides/quick-start' }
           ]
         },
