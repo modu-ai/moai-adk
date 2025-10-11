@@ -22,6 +22,21 @@ allowed-tools:
 
 MoAI-ADK npm 패키지를 최신 버전으로 업데이트하고, 템플릿 파일(`.claude`, `.moai`, `CLAUDE.md`)을 안전하게 갱신합니다. 자동 백업, 설정 파일 보존, 무결성 검증을 지원합니다.
 
+**✅ 버전 요구사항**: v0.2.18 이상
+
+**🔒 사용자 데이터 보호**:
+- v0.2.18부터 `.moai/specs/`, `.moai/reports/` 디렉토리가 **자동으로 보호**됩니다
+- 사용자가 생성한 SPEC 파일과 리포트가 **절대 덮어써지지 않습니다**
+
+**📌 v0.2.17 이하 사용자**:
+- 터미널에서 `moai init .` 명령어를 사용하세요:
+  ```bash
+  # v0.2.17 이하 권장 방법
+  npm install -g moai-adk@latest
+  cd your-project
+  moai init .
+  ```
+
 ## 실행 흐름
 
 1. **버전 확인** - 현재/최신 버전 비교
@@ -117,9 +132,17 @@ Alfred는 다음 작업을 수행합니다:
 2. **템플릿 경로 설정**: 확인된 경로를 기반으로 템플릿 루트 경로를 설정합니다 (`{npm_root}/moai-adk/templates`)
 3. **템플릿 존재 확인**: 템플릿 디렉토리가 실제로 존재하는지 확인합니다
 
+**사용자 데이터 보호 (User Data Protection)** 🔒:
+
+Alfred는 다음 디렉토리를 **절대 건드리지 않습니다**:
+- `.moai/specs/` - 사용자가 생성한 모든 SPEC 파일
+  - ❌ 읽기 금지, ❌ 수정 금지, ❌ 삭제 금지
+  - 템플릿 복사 시 자동 제외 (`excludePaths: ['specs']`)
+- `.moai/reports/` - 동기화 리포트 및 작업 이력
+  - ❌ 읽기 금지, ❌ 수정 금지, ❌ 삭제 금지
+  - 템플릿 복사 시 자동 제외 (`excludePaths: ['reports']`)
+
 **보존/병합 대상**:
-- `.moai/specs/` - 모든 SPEC 파일 (완전 보존) 🔒
-- `.moai/reports/` - 동기화 리포트 (완전 보존) 🔒
 - `.moai/config.json` - 프로젝트 설정 (스마트 병합) 🔄
 - `.moai/project/*.md` - 프로젝트 문서 (사용자 수정 시 보존) 🔒
 - `CLAUDE.md` - 프로젝트 지침 (지능형 병합) 🔄
@@ -562,12 +585,20 @@ Alfred는 다음 절차를 수행합니다:
 - 백업 위치: `.moai-backup/YYYY-MM-DD-HH-mm-ss/`
 - 수동 삭제 전까지 영구 보존
 
-**데이터 보호 전략** (✨ v0.2.6):
+**데이터 보호 전략** (✨ v0.2.18+):
 
-1. **완전 보존** 🔒:
-   - `.moai/specs/` - 사용자 SPEC 파일 절대 건드리지 않음
-   - `.moai/reports/` - 동기화 리포트 보존
-   - `.moai/project/*.md` - 프로젝트 문서 (사용자 수정 시)
+1. **완전 보존 (Never Touch)** 🔒:
+   - `.moai/specs/` - **사용자 SPEC 파일 절대 건드리지 않음**
+     - 읽기 ❌, 수정 ❌, 삭제 ❌, 덮어쓰기 ❌
+     - `moai init .` 실행 시: 자동 제외 (`excludePaths: ['specs']`)
+     - `/alfred:9-update` 실행 시: Alfred가 명시적으로 제외
+     - 백업 생성 시에도 제외 (불필요)
+   - `.moai/reports/` - **동기화 리포트 절대 건드리지 않음**
+     - 읽기 ❌, 수정 ❌, 삭제 ❌, 덮어쓰기 ❌
+     - `moai init .` 실행 시: 자동 제외 (`excludePaths: ['reports']`)
+     - `/alfred:9-update` 실행 시: Alfred가 명시적으로 제외
+   - `.moai/project/*.md` - 프로젝트 문서 (사용자 수정 시 보존)
+     - `{{PROJECT_NAME}}` 패턴 없으면 사용자 수정으로 간주
 
 2. **지능형 병합** 🔄:
    - **CLAUDE.md**: 템플릿 최신 구조 + 프로젝트 정보 유지

@@ -243,4 +243,94 @@ describe('TemplateManager - Phase 3: Refactored Integration', () => {
       expect(true).toBe(true); // 자리 표시
     });
   });
+
+  describe('@TEST:INTEGRATION-CLAUDE-001 - Claude Structure Generation', () => {
+    it('should create .claude structure with hooks and settings.json when claude-integration is enabled', async () => {
+      const config: ProjectConfig = {
+        name: 'claude-test',
+        type: ProjectType.TYPESCRIPT,
+        features: [{ name: 'claude-integration', enabled: true }],
+      };
+
+      const result = await manager.generateProject(config, tempDir);
+
+      if (!result.success) {
+        console.log('Generation failed. Errors:', result.errors);
+        console.log('Warnings:', result.warnings);
+      }
+
+      expect(result.success).toBe(true);
+
+      // Check that .claude/settings.json was created
+      expect(result.createdFiles).toContain('.claude/settings.json');
+
+      // Check that all hook files were created
+      const hookFiles = [
+        '.claude/hooks/alfred/policy-block.cjs',
+        '.claude/hooks/alfred/pre-write-guard.cjs',
+        '.claude/hooks/alfred/session-notice.cjs',
+        '.claude/hooks/alfred/tag-enforcer.cjs',
+      ];
+
+      for (const hookFile of hookFiles) {
+        expect(result.createdFiles).toContain(hookFile);
+      }
+
+      // Verify files actually exist
+      const projectPath = path.join(tempDir, config.name);
+      const settingsPath = path.join(projectPath, '.claude', 'settings.json');
+      const settingsExists = await fs
+        .access(settingsPath)
+        .then(() => true)
+        .catch(() => false);
+      expect(settingsExists).toBe(true);
+
+      // Verify at least one hook file exists
+      const policyBlockPath = path.join(
+        projectPath,
+        '.claude',
+        'hooks',
+        'alfred',
+        'policy-block.cjs'
+      );
+      const hookExists = await fs
+        .access(policyBlockPath)
+        .then(() => true)
+        .catch(() => false);
+      expect(hookExists).toBe(true);
+    });
+
+    it('should include 9-update.md in command files', async () => {
+      const config: ProjectConfig = {
+        name: 'update-cmd-test',
+        type: ProjectType.TYPESCRIPT,
+        features: [{ name: 'claude-integration', enabled: true }],
+      };
+
+      const result = await manager.generateProject(config, tempDir);
+
+      expect(result.success).toBe(true);
+      expect(result.createdFiles).toContain('.claude/commands/alfred/9-update.md');
+    });
+
+    it('should place agent and command files in alfred subdirectory', async () => {
+      const config: ProjectConfig = {
+        name: 'alfred-path-test',
+        type: ProjectType.TYPESCRIPT,
+        features: [{ name: 'claude-integration', enabled: true }],
+      };
+
+      const result = await manager.generateProject(config, tempDir);
+
+      expect(result.success).toBe(true);
+
+      // Check agent files are in .claude/agents/alfred/
+      expect(result.createdFiles).toContain('.claude/agents/alfred/spec-builder.md');
+      expect(result.createdFiles).toContain('.claude/agents/alfred/code-builder.md');
+
+      // Check command files are in .claude/commands/alfred/
+      expect(result.createdFiles).toContain('.claude/commands/alfred/0-project.md');
+      expect(result.createdFiles).toContain('.claude/commands/alfred/1-spec.md');
+    });
+  });
 });

@@ -168,24 +168,28 @@ export class TemplateProcessor {
    * @tags @CODE:GET-TEMPLATES-PATH-001:API
    *
    * Resolution strategies (in priority order):
-   * 1. Package-relative: Works for npm/bun install (global/local)
-   * 2. Development: moai-adk-ts/templates (for development)
-   * 3. User's node_modules: When user runs moai init
+   * 1. User's node_modules: When user runs moai init (HIGHEST PRIORITY)
+   * 2. Package-relative: Works for npm/bun install (global/local)
+   * 3. Development: moai-adk-ts/templates (for development)
    * 4. Platform-specific global paths
    *
    * Cross-platform considerations:
    * - Uses process.env.HOME (Unix) or process.env.USERPROFILE (Windows)
    * - Unix-specific paths are conditionally added only on non-Windows platforms
+   *
+   * Priority rationale:
+   * - User's node_modules takes precedence to ensure correct version is used
+   * - Prevents accidentally using development/source templates in production
    */
   getTemplatesPath(): string {
     const currentFilePath = fileURLToPath(import.meta.url);
     const currentDir = path.dirname(currentFilePath);
 
-    // Try each strategy in priority order
+    // Try each strategy in priority order (User node_modules first!)
     const strategies = [
+      () => this.tryUserNodeModulesTemplates(),
       () => this.tryPackageRelativeTemplates(currentDir),
       () => this.tryDevelopmentTemplates(currentDir),
-      () => this.tryUserNodeModulesTemplates(),
       () => this.tryGlobalInstallTemplates(),
     ];
 
@@ -232,15 +236,21 @@ export class TemplateProcessor {
    * @param srcDir Source template directory
    * @param dstDir Destination directory
    * @param variables Template variables
+   * @param options Optional configuration
+   * @param options.excludePaths Paths to exclude (relative to srcDir, e.g., ['specs', 'reports'])
    * @returns List of copied files
    * @tags @CODE:COPY-TEMPLATE-DIR-001:API
    */
   async copyTemplateDirectory(
     srcDir: string,
     dstDir: string,
-    variables: Record<string, any>
+    variables: Record<string, any>,
+    options?: {
+      excludePaths?: string[];
+    }
   ): Promise<string[]> {
     const copiedFiles: string[] = [];
+    const excludePaths = options?.excludePaths || [];
 
     try {
       await fs.promises.mkdir(dstDir, { recursive: true });
@@ -252,11 +262,27 @@ export class TemplateProcessor {
         const srcPath = path.join(srcDir, entry.name);
         const dstPath = path.join(dstDir, entry.name);
 
+        // Check if this path should be excluded
+        const isExcluded = excludePaths.some(excludePath => {
+          const normalizedExclude = path.normalize(excludePath).toLowerCase();
+          const normalizedEntry = entry.name.toLowerCase();
+          return normalizedEntry === normalizedExclude;
+        });
+
+        if (isExcluded) {
+          logger.info(`Skipping excluded path: ${entry.name}`, {
+            srcPath,
+            tag: 'INFO:EXCLUDE-PATH-001',
+          });
+          continue; // Skip this entry
+        }
+
         if (entry.isDirectory()) {
           const subFiles = await this.copyTemplateDirectory(
             srcPath,
             dstPath,
-            variables
+            variables,
+            options
           );
           copiedFiles.push(...subFiles);
         } else {

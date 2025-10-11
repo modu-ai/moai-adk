@@ -22,7 +22,7 @@ export interface BackupMetadata {
   backup_path: string;
   /** List of backed up files/directories */
   backed_up_files: string[];
-  /** Backup status for /alfred:8-project workflow */
+  /** Backup status for /alfred:0-project workflow */
   status: 'pending' | 'merged' | 'ignored';
   /** Source of backup creation */
   created_by: string;

@@ -272,6 +272,59 @@ var TagValidator = class {
   }
 };
 
+// src/claude/hooks/constants.ts
+var SUPPORTED_LANGUAGES = {
+  typescript: [".ts", ".tsx"],
+  javascript: [".js", ".jsx", ".mjs", ".cjs"],
+  python: [".py", ".pyi"],
+  java: [".java"],
+  go: [".go"],
+  rust: [".rs"],
+  cpp: [".cpp", ".hpp", ".cc", ".h", ".cxx", ".hxx"],
+  ruby: [".rb", ".rake", ".gemspec"],
+  php: [".php"],
+  csharp: [".cs"],
+  dart: [".dart"],
+  swift: [".swift"],
+  kotlin: [".kt", ".kts"],
+  elixir: [".ex", ".exs"],
+  markdown: [".md", ".mdx"]
+};
+var EXCLUDED_PATHS = [
+  "node_modules",
+  ".git",
+  "dist",
+  "build",
+  "test",
+  "spec",
+  "__test__",
+  "__tests__"
+];
+
+// src/claude/hooks/base.ts
+async function runHook(HookClass) {
+  try {
+    const { parseClaudeInput: parseClaudeInput2, outputResult: outputResult2 } = await Promise.resolve().then(() => (init_claude(), claude_exports));
+    const input = await parseClaudeInput2();
+    const hook = new HookClass();
+    const result = await hook.execute(input);
+    outputResult2(result);
+  } catch (error) {
+    console.error(
+      `ERROR ${HookClass.name}: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
+    process.exit(1);
+  }
+}
+
+// src/claude/hooks/utils.ts
+function extractFilePath(toolInput) {
+  return toolInput.file_path || toolInput.filePath || toolInput.path || toolInput.notebook_path || null;
+}
+function getAllFileExtensions() {
+  return Object.values(SUPPORTED_LANGUAGES).flat();
+}
+
 // src/claude/hooks/tag-enforcer.ts
 var CodeFirstTAGEnforcer = class {
   name = "tag-enforcer";
@@ -287,7 +340,7 @@ var CodeFirstTAGEnforcer = class {
       if (!this.isWriteOperation(input.tool_name)) {
         return { success: true };
       }
-      const filePath = this.extractFilePath(input.tool_input || {});
+      const filePath = extractFilePath(input.tool_input || {});
       if (!filePath || !this.shouldEnforceTags(filePath)) {
         return { success: true };
       }
@@ -342,12 +395,6 @@ var CodeFirstTAGEnforcer = class {
     return !!toolName && ["Write", "Edit", "MultiEdit", "NotebookEdit"].includes(toolName);
   }
   /**
-   * 도구 입력에서 파일 경로 추출
-   */
-  extractFilePath(toolInput) {
-    return toolInput.file_path || toolInput.filePath || toolInput.notebook_path || null;
-  }
-  /**
    * 도구 입력에서 파일 내용 추출
    */
   extractFileContent(toolInput) {
@@ -363,25 +410,12 @@ var CodeFirstTAGEnforcer = class {
    * TAG 검증 대상 파일인지 확인
    */
   shouldEnforceTags(filePath) {
-    const enforceExtensions = [
-      ".ts",
-      ".tsx",
-      ".js",
-      ".jsx",
-      ".py",
-      ".md",
-      ".go",
-      ".rs",
-      ".java",
-      ".cpp",
-      ".hpp"
-    ];
+    const enforceExtensions = getAllFileExtensions();
     const ext = path__namespace.extname(filePath);
-    if (filePath.includes("test") || filePath.includes("spec") || filePath.includes("__test__")) {
-      return false;
-    }
-    if (filePath.includes("node_modules") || filePath.includes(".git") || filePath.includes("dist") || filePath.includes("build")) {
-      return false;
+    for (const excludedPath of EXCLUDED_PATHS) {
+      if (filePath.includes(excludedPath)) {
+        return false;
+      }
     }
     return enforceExtensions.includes(ext);
   }
@@ -485,38 +519,8 @@ var CodeFirstTAGEnforcer = class {
     return suggestions.join("\n");
   }
 };
-async function main() {
-  try {
-    const { parseClaudeInput: parseClaudeInput2 } = await Promise.resolve().then(() => (init_claude(), claude_exports));
-    const input = await parseClaudeInput2();
-    const enforcer = new CodeFirstTAGEnforcer();
-    const result = await enforcer.execute(input);
-    if (result.blocked) {
-      console.error(`BLOCKED: ${result.message}`);
-      if (result.data?.suggestions) {
-        console.error(
-          `
-\u{1F4DD} Code-First TAG \uAC00\uC774\uB4DC:
-${result.data.suggestions}`
-        );
-      }
-      process.exit(2);
-    } else if (!result.success) {
-      console.error(`ERROR: ${result.message}`);
-      process.exit(result.exitCode || 1);
-    } else if (result.message) {
-      console.log(result.message);
-    }
-    process.exit(0);
-  } catch (error) {
-    console.error(
-      `Code-First TAG Enforcer \uC624\uB958: ${error instanceof Error ? error.message : "Unknown error"}`
-    );
-    process.exit(0);
-  }
-}
 if (__require.main === module) {
-  main().catch((error) => {
+  runHook(CodeFirstTAGEnforcer).catch((error) => {
     console.error(
       `Code-First TAG Enforcer \uCE58\uBA85\uC801 \uC624\uB958: ${error instanceof Error ? error.message : "Unknown error"}`
     );
@@ -525,4 +529,3 @@ if (__require.main === module) {
 }
 
 exports.CodeFirstTAGEnforcer = CodeFirstTAGEnforcer;
-exports.main = main;

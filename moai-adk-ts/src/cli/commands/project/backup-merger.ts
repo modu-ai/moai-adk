@@ -278,7 +278,7 @@ export async function createEmergencyBackup(
     backup_path: backupDirName,
     backed_up_files: backedUpFiles,
     status: 'pending',
-    created_by: '/alfred:8-project (emergency backup)',
+    created_by: '/alfred:0-project (emergency backup)',
   };
 
   // Save metadata

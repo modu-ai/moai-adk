@@ -128,6 +128,7 @@ export class TemplateProcessor {
     return {
       projectName: config.name,
       projectType: config.type || ProjectType.TYPESCRIPT,
+      projectMode: config.mode || 'personal',
       timestamp: new Date().toISOString(),
       author: config.author || 'MoAI Developer',
       description:

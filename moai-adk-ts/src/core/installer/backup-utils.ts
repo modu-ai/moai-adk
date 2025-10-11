@@ -7,7 +7,7 @@
  * @tags @CODE:INIT-003:DATA
  *
  * Common utilities for backup creation across Phase A (moai init)
- * and Phase B (/alfred:8-project emergency backup).
+ * and Phase B (/alfred:0-project emergency backup).
  */
 
 import * as fs from 'node:fs';
