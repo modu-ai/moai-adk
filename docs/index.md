@@ -200,64 +200,30 @@ graph TB
 
 MoAI-ADK가 준수하는 5가지 품질 원칙:
 
-```mermaid
-graph TB
-    TRUST[TRUST 5 Principles]
+### T - Test First (테스트 우선)
+- **SPEC 기반 테스트**: 명세(SPEC)를 기반으로 테스트 케이스 작성
+- **RED-GREEN-REFACTOR**: TDD 사이클 엄격 준수
+- **커버리지 85% 이상**: 높은 테스트 커버리지 유지
 
-    TRUST --> Row1[ ]
-    TRUST --> Row2[ ]
+### R - Readable (가독성)
+- **의도를 드러내는 이름**: 변수, 함수명으로 의도 명확히 표현
+- **가드절 우선**: Early return 패턴으로 중첩 최소화
+- **함수 50 LOC 이하**: 함수당 최대 50줄 제한
 
-    Row1 --> T[T: Test First]
-    Row1 --> R[R: Readable]
-    Row1 --> U[U: Unified]
+### U - Unified (통합 아키텍처)
+- **SPEC 기반 아키텍처**: 명세에 따른 일관된 구조
+- **복잡도 관리**: 복잡도 임계값 준수 (≤10)
+- **언어 간 추적성**: 모든 언어에서 @TAG 체계 적용
 
-    Row2 --> S[S: Secured]
-    Row2 --> Tr[T: Trackable]
+### S - Secured (보안)
+- **SPEC 보안 요구사항**: 명세에 보안 요구사항 명시
+- **입력 검증**: 모든 외부 입력 검증 및 정제
+- **감사 로깅**: 중요 작업에 대한 감사 추적
 
-    T --> T1[SPEC-based Testing]
-    T --> T2[RED-GREEN-REFACTOR]
-    T --> T3[Coverage 85%+]
-
-    R --> R1[Intention-revealing]
-    R --> R2[Guard Clauses First]
-    R --> R3[Function 50 LOC Max]
-
-    U --> U1[SPEC Architecture]
-    U --> U2[Complexity Control]
-    U --> U3[Cross-language Trace]
-
-    S --> S1[Security Requirements]
-    S --> S2[Input Validation]
-    S --> S3[Audit Logging]
-
-    Tr --> Tr1[TAG System]
-    Tr --> Tr2[SPEC Traceability]
-    Tr --> Tr3[Direct Code Scan]
-
-    style TRUST fill:#ffd700,stroke:#333,stroke-width:3px
-    style Row1 fill:none,stroke:none
-    style Row2 fill:none,stroke:none
-    style T fill:#ffe1e1,stroke:#333,stroke-width:2px
-    style R fill:#e1ffe1,stroke:#333,stroke-width:2px
-    style U fill:#e1f5ff,stroke:#333,stroke-width:2px
-    style S fill:#f0e1ff,stroke:#333,stroke-width:2px
-    style Tr fill:#fff4e1,stroke:#333,stroke-width:2px
-    style T1 fill:#ffe1e1,stroke:#333,stroke-width:1px
-    style T2 fill:#ffe1e1,stroke:#333,stroke-width:1px
-    style T3 fill:#ffe1e1,stroke:#333,stroke-width:1px
-    style R1 fill:#e1ffe1,stroke:#333,stroke-width:1px
-    style R2 fill:#e1ffe1,stroke:#333,stroke-width:1px
-    style R3 fill:#e1ffe1,stroke:#333,stroke-width:1px
-    style U1 fill:#e1f5ff,stroke:#333,stroke-width:1px
-    style U2 fill:#e1f5ff,stroke:#333,stroke-width:1px
-    style U3 fill:#e1f5ff,stroke:#333,stroke-width:1px
-    style S1 fill:#f0e1ff,stroke:#333,stroke-width:1px
-    style S2 fill:#f0e1ff,stroke:#333,stroke-width:1px
-    style S3 fill:#f0e1ff,stroke:#333,stroke-width:1px
-    style Tr1 fill:#fff4e1,stroke:#333,stroke-width:1px
-    style Tr2 fill:#fff4e1,stroke:#333,stroke-width:1px
-    style Tr3 fill:#fff4e1,stroke:#333,stroke-width:1px
-```
+### T - Trackable (추적성)
+- **TAG 시스템**: `@SPEC → @TEST → @CODE → @DOC` 체인
+- **SPEC-코드 추적성**: 모든 코드 변경을 SPEC으로 추적
+- **직접 코드 스캔**: 중간 캐시 없이 코드 직접 분석
 
 ---
 
