@@ -73,10 +73,7 @@ export default withMermaid(
           text: 'Alfred Agents',
           collapsed: true,
           items: [
-            { text: 'Overview', link: '/guides/agents/overview' },
-            { text: 'spec-builder', link: '/guides/agents/spec-builder' },
-            { text: 'code-builder', link: '/guides/agents/code-builder' },
-            { text: 'doc-syncer', link: '/guides/agents/doc-syncer' }
+            { text: 'Overview', link: '/guides/agents/overview' }
           ]
         },
         {
