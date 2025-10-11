@@ -4,14 +4,14 @@ MoAI-ADK에 오신 것을 환영합니다! 이 가이드는 5분 안에 MoAI-ADK
 
 ## What is MoAI-ADK?
 
-**MoAI-ADK (MoAI Agentic Development Kit)**는 SPEC-First TDD 방법론을 기반으로 한 범용 개발 도구입니다.
+MoAI-ADK (Modu-AI Agentic Development Kit)는 SPEC-First TDD 방법론을 기반으로 한 범용 개발 도구입니다.
 
 ### 핵심 특징
 
 - **SPEC-First**: 명세 없이는 코드 없음
 - **TDD-First**: 테스트 없이는 구현 없음
 - **Alfred SuperAgent**: 9명의 전문 에이전트를 조율하는 중앙 오케스트레이터
-- **Universal Language Support**: Python, TypeScript, Java, Go, Rust, Dart, Swift, Kotlin 등 모든 주요 언어 지원
+- **Universal Language Support**: Python, TypeScript, Java, Go, Rust, Ruby, Dart, Swift, Kotlin 등 모든 주요 언어 지원
 - **TAG Traceability**: `@SPEC → @TEST → @CODE → @DOC` 완벽한 추적성
 
 ---
@@ -89,7 +89,7 @@ yarn add -D moai-adk
 
 ```bash
 moai --version
-# Output: 0.2.17
+# Expected output: v0.2.x
 ```
 
 도움말 보기:
@@ -104,14 +104,25 @@ moai help
 
 ### 1. 프로젝트 초기화
 
-```bash
-# 새 디렉토리 생성
-mkdir my-moai-project
-cd my-moai-project
+MoAI-ADK는 두 가지 방법으로 초기화할 수 있습니다:
 
-# MoAI-ADK 초기화
+::: code-group
+
+```bash [새 프로젝트]
+# 새 프로젝트 생성 (디렉토리 자동 생성)
+moai init my-moai-project
+
+# 생성된 디렉토리로 이동
+cd my-moai-project
+```
+
+```bash [기존 프로젝트]
+# 기존 디렉토리에서 초기화
+cd existing-project
 moai init .
 ```
+
+:::
 
 대화형 프롬프트가 나타나면 다음 정보를 입력합니다:
 
