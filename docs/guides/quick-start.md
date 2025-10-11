@@ -682,10 +682,10 @@ MoAI-ADK의 철학과 원칙을 이해하세요:
 
 ### 에이전트 활용
 
-Alfred와 9명의 전문 에이전트를 활용하세요:
+Alfred와 9개의 전문 에이전트를 활용하세요:
 
 - **[Alfred SuperAgent](/guides/agents/alfred)** - 중앙 오케스트레이터
-- **[Specialized Agents](/guides/agents/overview)** - 9명의 전문 에이전트 소개
+- **[Specialized Agents](/guides/agents/overview)** - 9개의 전문 에이전트 소개
 
 ### 문제 해결
 

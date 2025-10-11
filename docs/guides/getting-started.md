@@ -10,7 +10,7 @@ MoAI-ADK (Modu-AI Agentic Development Kit)는 SPEC-First TDD 방법론을 기반
 
 - **SPEC-First**: 명세 없이는 코드 없음
 - **TDD-First**: 테스트 없이는 구현 없음
-- **Alfred SuperAgent**: 9명의 전문 에이전트를 조율하는 중앙 오케스트레이터
+- **Alfred SuperAgent**: 9개의 전문 에이전트를 조율하는 중앙 오케스트레이터
 - **Universal Language Support**: Python, TypeScript, Java, Go, Rust, Ruby, Dart, Swift, Kotlin 등 모든 주요 언어 지원
 - **TAG Traceability**: `@SPEC → @TEST → @CODE → @DOC` 완벽한 추적성
 
@@ -322,7 +322,7 @@ my-moai-project/
 
 **`.claude/`** - Claude Code 통합
 
-- `agents/`: 9명의 전문 에이전트 (spec-builder, code-builder, doc-syncer 등)
+- `agents/`: 9개의 전문 에이전트 (spec-builder, code-builder, doc-syncer 등)
 - `commands/`: 5개 Alfred 커맨드 (0-project, 1-spec, 2-build, 3-sync, 9-update)
 - `hooks/`: 4개 자동화 훅 (정책 차단, 쓰기 검증, TAG 강제 등)
 - `output-styles/`: 4개 출력 스타일 (프로, 초보자, 협업, 심층 학습)
