@@ -1,5 +1,8 @@
 import { defineConfig } from 'vitepress'
 import { withMermaid } from 'vitepress-plugin-mermaid'
+import pkg from '../../moai-adk-ts/package.json' with { type: 'json' }
+
+const version = `v${pkg.version}`
 
 // https://vitepress.dev/reference/site-config
 export default withMermaid(
@@ -59,7 +62,7 @@ export default withMermaid(
         ]
       },
       {
-        text: 'v0.2.17',
+        text: version,
         items: [
           { text: 'API Reference', link: '/api/index.html' },
           { text: 'Changelog', link: 'https://github.com/modu-ai/moai-adk/releases' },
