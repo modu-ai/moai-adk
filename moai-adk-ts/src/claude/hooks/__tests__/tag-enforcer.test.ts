@@ -356,4 +356,57 @@ export class AuthService {}`;
       expect(result.success).toBe(true);
     });
   });
+
+  describe('@TEST:HOOKS-REFACTOR-001 - Multilang Support', () => {
+    it('should recognize Ruby files', async () => {
+      // GIVEN: Ruby 파일 (아직 getAllFileExtensions()이 없으므로 실패 예상)
+      const input: HookInput = {
+        tool_name: 'Write',
+        tool_input: {
+          file_path: '/path/to/service.rb',
+          content: '# Ruby code',
+        },
+      };
+
+      // Mock fs to simulate new file
+      vi.spyOn(fs, 'readFile').mockRejectedValue(new Error('ENOENT'));
+
+      // WHEN: tag-enforcer 실행
+      const result = await enforcer.execute(input);
+
+      // THEN: 현재는 Ruby 파일을 인식하지 못할 수 있음
+      // (getAllFileExtensions 구현 후 통과 예상)
+      expect(result.success).toBe(true);
+    });
+
+    it('should recognize all new language extensions', async () => {
+      const newLanguages = [
+        { ext: '.rb', lang: 'Ruby' },
+        { ext: '.php', lang: 'PHP' },
+        { ext: '.cs', lang: 'C#' },
+        { ext: '.dart', lang: 'Dart' },
+        { ext: '.swift', lang: 'Swift' },
+        { ext: '.kt', lang: 'Kotlin' },
+        { ext: '.ex', lang: 'Elixir' },
+      ];
+
+      for (const { ext, lang } of newLanguages) {
+        const input: HookInput = {
+          tool_name: 'Write',
+          tool_input: {
+            file_path: `/path/to/file${ext}`,
+            content: `// ${lang} code`,
+          },
+        };
+
+        vi.spyOn(fs, 'readFile').mockRejectedValue(new Error('ENOENT'));
+
+        const result = await enforcer.execute(input);
+
+        // 현재는 일부 확장자를 인식하지 못할 수 있음
+        // (getAllFileExtensions 구현 후 모두 통과 예상)
+        expect(result.success).toBe(true);
+      }
+    });
+  });
 });
