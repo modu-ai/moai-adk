@@ -90,7 +90,7 @@ Alfred가 조율하는 9명의 전문 에이전트. 각 에이전트는 IT 전�
 | Agent | Persona | Expertise | Command |
 |-------|---------|-----------|---------|
 | 🛠️ **cc-manager** | 데브옵스 엔지니어 | Claude Code 설정 | `@agent-cc-manager` |
-| 📋 **project-manager** | 프로젝트 매니저 | 프로젝트 초기화 | `/alfred:8-project` |
+| 📋 **project-manager** | 프로젝트 매니저 | 프로젝트 초기화 | `/alfred:0-project` |
 
 ---
 
@@ -447,7 +447,7 @@ User → spec-builder → code-builder → User  # 직접 호출 금지
 
 **실행**:
 ```bash
-/alfred:8-project
+/alfred:0-project
 ```
 
 **워크플로우**:
@@ -504,7 +504,7 @@ User → spec-builder → code-builder → User  # 직접 호출 금지
 
 ```bash
 # 프로젝트 초기화
-/alfred:8-project
+/alfred:0-project
 
 # 설정 관리
 @agent-cc-manager "설정 확인"
@@ -516,14 +516,14 @@ User → spec-builder → code-builder → User  # 직접 호출 금지
 
 ```mermaid
 graph TD
-    User[👤 User] -->|Request| Alfred[🤖 Alfred]
+    User[User] -->|Request| Alfred[Alfred]
     Alfred -->|Analyze| Alfred
-    Alfred -->|Delegate| Agents[🏗️💎📖 Agents]
+    Alfred -->|Delegate| Agents[Agents]
     Agents -->|Execute| Agents
     Agents -->|Report| Alfred
-    Alfred -->|Verify| QualityGate[✅ Quality Gate]
+    Alfred -->|Verify| QualityGate[Quality Gate]
     QualityGate -->|Pass| User
-    QualityGate -->|Fail| DebugHelper[🔬 debug-helper]
+    QualityGate -->|Fail| DebugHelper[debug-helper]
     DebugHelper -->|Fix| Agents
 ```
 
@@ -707,7 +707,7 @@ $ /alfred:1-spec "새 기능"
 - **[Stage 1: SPEC Writing](/guides/workflow/1-spec)** - spec-builder 상세 워크플로우
 - **[Stage 2: TDD Implementation](/guides/workflow/2-build)** - code-builder 상세 워크플로우
 - **[Stage 3: Document Sync](/guides/workflow/3-sync)** - doc-syncer 상세 워크플로우
-- **[Stage 8: Project Setup](/guides/workflow/8-project)** - project-manager 상세 워크플로우
+- **[Stage 0: Project Setup](/guides/workflow/0-project)** - project-manager 상세 워크플로우
 - **[Stage 9: Update & Upgrade](/guides/workflow/9-update)** - 패키지 업데이트 가이드
 
 ### 핵심 개념

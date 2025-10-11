@@ -1,4 +1,4 @@
-# {{PROJECT_NAME}} - MoAI-Agentic Development Kit
+# MoAI-ADK - MoAI-Agentic Development Kit
 
 **SPEC-First TDD Development with Alfred SuperAgent**
 
@@ -318,7 +318,7 @@ version: 0.0.1
 status: draft
 created: 2025-09-15
 updated: 2025-09-15
-author: @{{AUTHOR}}
+author: @MoAI Developer
 priority: high
 ---
 
@@ -442,8 +442,8 @@ Alfred가 모든 코드에 적용하는 품질 기준:
 
 ## 프로젝트 정보
 
-- **이름**: {{PROJECT_NAME}}
-- **설명**: {{PROJECT_DESCRIPTION}}
-- **버전**: {{PROJECT_VERSION}}
-- **모드**: {{PROJECT_MODE}}
+- **이름**: MoAI-ADK
+- **설명**: A MoAI-ADK project built with MoAI-ADK
+- **버전**: 0.1.0
+- **모드**: personal
 - **개발 도구**: 프로젝트 언어에 최적화된 도구 체인 자동 선택
