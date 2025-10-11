@@ -817,7 +817,7 @@ Phase 3 템플릿 동기화 중...
 
 3. **나머지 파일 계속 처리**
    ```text
-   → .claude/commands/alfred/8-project.md ✅
+   → .claude/commands/alfred/0-project.md ✅
    → .claude/commands/alfred/9-update.md ✅
    ```
 
@@ -874,14 +874,14 @@ Phase 4 검증 중...
 
    # 누락된 파일
    # 3-sync.md
-   # 8-project.md
+   # 0-project.md
    ```
 
 2. **사용자 선택 제안**
    ```text
    ❌ 검증 실패: 2개 파일 누락
       - 3-sync.md
-      - 8-project.md
+      - 0-project.md
 
    선택:
    1. Phase 3 재실행 (전체 복사 재시도)
@@ -1439,7 +1439,7 @@ npm install moai-adk@latest --prefer-offline
 
 ```bash
 # 처음부터 다시 시작
-/alfred:8-project
+/alfred:0-project
 ```
 
 ### 시스템 진단
@@ -1639,7 +1639,7 @@ cp .moai-backup/2025-10-11-15-30-00/.moai/config.json .moai/
 
 업데이트 완료 후 다음 단계로 진행합니다:
 
-1. **[Stage 8: Project Init](/guides/workflow/8-project)** - 프로젝트 초기화
+1. **[Stage 0: Project Init](/guides/workflow/0-project)** - 프로젝트 초기화
 2. **[Stage 1: SPEC Writing](/guides/workflow/1-spec)** - 명세 작성
 3. **[Troubleshooting](/guides/troubleshooting)** - 문제 해결 가이드
 

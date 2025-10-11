@@ -24,14 +24,46 @@ export default withMermaid(
     // Navigation menu
     nav: [
       { text: 'Home', link: '/' },
-      { text: 'Guide', link: '/guides/getting-started' },
-      { text: 'Concepts', link: '/guides/concepts/spec-first-tdd' },
-      { text: 'API Reference', link: '/api/index.html' },
+      {
+        text: 'Getting Started',
+        items: [
+          { text: 'Introduction', link: '/guides/getting-started' },
+          { text: 'Installation', link: '/guides/installation' },
+          { text: 'Quick Start', link: '/guides/quick-start' }
+        ]
+      },
+      {
+        text: 'Workflow',
+        items: [
+          { text: '0. Project Setup', link: '/guides/workflow/0-project' },
+          { text: '1. SPEC Writing', link: '/guides/workflow/1-spec' },
+          { text: '2. TDD Implementation', link: '/guides/workflow/2-build' },
+          { text: '3. Document Sync', link: '/guides/workflow/3-sync' },
+          { text: '9. Update & Upgrade', link: '/guides/workflow/9-update' }
+        ]
+      },
+      {
+        text: 'Core Concepts',
+        items: [
+          { text: 'SPEC-First TDD', link: '/guides/concepts/spec-first-tdd' },
+          { text: 'EARS Requirements', link: '/guides/concepts/ears-guide' },
+          { text: 'TAG System', link: '/guides/concepts/tag-system' },
+          { text: 'TRUST Principles', link: '/guides/concepts/trust-principles' }
+        ]
+      },
+      {
+        text: 'Agents & Hooks',
+        items: [
+          { text: 'Alfred Agents', link: '/guides/agents/overview' },
+          { text: 'Hooks System', link: '/guides/hooks/overview' }
+        ]
+      },
       {
         text: 'v0.2.17',
         items: [
+          { text: 'API Reference', link: '/api/index.html' },
           { text: 'Changelog', link: 'https://github.com/modu-ai/moai-adk/releases' },
-          { text: 'Contributing', link: '/contributing' }
+          { text: 'GitHub', link: 'https://github.com/modu-ai/moai-adk' }
         ]
       }
     ],
@@ -62,7 +94,7 @@ export default withMermaid(
           text: 'Workflow',
           collapsed: false,
           items: [
-            { text: '8. Project Setup', link: '/guides/workflow/8-project' },
+            { text: '0. Project Setup', link: '/guides/workflow/0-project' },
             { text: '1. SPEC Writing', link: '/guides/workflow/1-spec' },
             { text: '2. TDD Implementation', link: '/guides/workflow/2-build' },
             { text: '3. Document Sync', link: '/guides/workflow/3-sync' },
@@ -94,7 +126,7 @@ export default withMermaid(
     // Footer
     footer: {
       message: 'Released under the MIT License.',
-      copyright: 'Copyright © 2025 MoAI Team'
+      copyright: 'Copyleft © 2024 MoAI-Lab'
     },
 
     // Edit link
