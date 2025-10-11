@@ -1,18 +1,28 @@
 ---
 id: DOCS-001
-version: 0.0.1
-status: draft
+version: 0.1.0
+status: completed
 created: 2025-10-11
 updated: 2025-10-11
 author: @Goos
 priority: high
 category: docs
-labels: ["documentation", "github-pages", "restructure", "vitepress-removal"]
+labels: ["documentation", "github-pages", "restructure", "vitepress-removal", "examples"]
 ---
 
 # @SPEC:DOCS-001: 문서 구조 재편 (VitePress 제거 + GitHub Pages 최적화)
 
 ## HISTORY
+
+### v0.1.0 (2025-10-11)
+- **COMPLETED**: TDD 구현 완료 (RED-GREEN-REFACTOR)
+- **ADDED**: docs/ 디렉토리 구조 완성 (9개 카테고리)
+- **ADDED**: Todo App 풀스택 실전 예제 추가
+- **VERIFIED**: @TAG 체인 검증 완료
+- **AUTHOR**: @Goos
+- **REVIEW**: doc-syncer
+- **REASON**: MoAI-ADK 전체 워크플로우 학습을 위한 실전 예제 필요
+- **RELATED**: `docs/examples/todo-app-fullstack.md`
 
 ### v0.0.1 (2025-10-11)
 - **INITIAL**: 문서 구조 재편 SPEC 작성
@@ -59,6 +69,10 @@ labels: ["documentation", "github-pages", "restructure", "vitepress-removal"]
    - 시스템은 GitHub Pages가 네이티브로 렌더링할 수 있는 마크다운 구조를 제공해야 한다
    - `docs/index.md`를 메인 문서 허브로 사용
 
+5. **Todo App 풀스택 실전 예제**
+   - 시스템은 Todo App 풀스택 실전 예제를 제공해야 한다
+   - React 19, FastAPI, SQLite3, SQLModel, Tailwind CSS 스택 사용
+
 ### 2.2 Event-driven Requirements (이벤트 기반)
 
 1. **VitePress 빌드 실패 시**
@@ -72,6 +86,9 @@ labels: ["documentation", "github-pages", "restructure", "vitepress-removal"]
 
 4. **README.md 열람 시**
    - WHEN 사용자가 README.md를 열면, 시스템은 3분 이내에 프로젝트 핵심을 이해할 수 있는 정보를 제공해야 한다
+
+5. **전체 워크플로우 학습 시**
+   - WHEN 사용자가 전체 워크플로우를 학습하려고 하면, 시스템은 8-project부터 3-sync까지 순차적 예제를 제공해야 한다
 
 ### 2.3 State-driven Requirements (상태 기반)
 
@@ -105,6 +122,9 @@ labels: ["documentation", "github-pages", "restructure", "vitepress-removal"]
 
 4. **카테고리 일관성**
    - 모든 docs 하위 문서는 9개 카테고리 중 하나에만 속해야 한다
+
+5. **예제 기술 스택**
+   - 예제는 React 19, FastAPI, SQLite3 스택을 사용해야 한다
 
 ---
 
@@ -178,6 +198,7 @@ docs/
 │   └── agent-collaboration.md    # 에이전트 협업 원칙
 ├── examples/
 │   ├── index.md                  # 예제 목차
+│   ├── todo-app-fullstack.md     # Todo App 풀스택 실전 예제
 │   ├── auth-system.md            # 인증 시스템 예제
 │   └── api-endpoint.md           # API 엔드포인트 예제
 └── contributing/
@@ -264,6 +285,20 @@ description: SPEC-First TDD Development Kit
 2. 새 템플릿으로 교체
 3. 핵심 링크 검증
 
+### Phase 5: Todo App 예제 문서 추가
+1. `docs/examples/todo-app-fullstack.md` 생성
+2. 8단계 워크플로우 상세 설명 포함
+   - 1단계: 프로젝트 초기화 (`/alfred:8-project`)
+   - 2단계: 백엔드 SPEC 작성 (`/alfred:1-spec` → SPEC-API-001)
+   - 3단계: 백엔드 TDD 구현 (`/alfred:2-build` → RED-GREEN-REFACTOR)
+   - 4단계: 프론트엔드 SPEC 작성 (SPEC-UI-001)
+   - 5단계: 프론트엔드 TDD 구현
+   - 6단계: 문서 동기화 (`/alfred:3-sync`)
+   - 7단계: 서브 에이전트 활용 (debug-helper, trust-checker, tag-agent)
+   - 8단계: 프로젝트 완성 구조
+3. 코드 예제 및 Mermaid 다이어그램 포함
+4. 학습 목표 및 포인트 정리 섹션 추가
+
 ---
 
 ## 5. Acceptance Criteria (인수 기준)
@@ -282,6 +317,13 @@ description: SPEC-First TDD Development Kit
    - `https://<username>.github.io/<repo>/docs/` 접근 가능
    - 모든 마크다운 파일 정상 렌더링
    - 내부 링크 정상 작동
+
+4. **Todo App 예제 문서 완료**
+   - `docs/examples/todo-app-fullstack.md` 파일 존재
+   - 예제가 `/alfred:8-project` → `1-spec` → `2-build` → `3-sync` 전체 워크플로우를 커버
+   - 서브 에이전트 활용 섹션 포함 (debug-helper, trust-checker, tag-agent)
+   - 코드 예제 및 Mermaid 다이어그램 포함
+   - 학습 목표 및 포인트 정리 섹션 존재
 
 ---
 
