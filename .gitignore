@@ -73,6 +73,5 @@ package-lock.json
 .moai
 .claude
 
-# docs - only deploy docs/public (GitHub Pages)
-docs/*
-!docs/public/
+# docs - GitHub Pages 배포 (VitePress 제거 후 전체 docs 추적)
+# docs/ 디렉토리 전체를 추적하여 GitHub Pages에서 마크다운 렌더링
