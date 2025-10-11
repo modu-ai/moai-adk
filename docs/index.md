@@ -201,21 +201,62 @@ graph TB
 MoAI-ADK가 준수하는 5가지 품질 원칙:
 
 ```mermaid
-graph LR
-    TRUST[TRUST<br/>5 Principles]
+graph TB
+    TRUST[TRUST 5 Principles]
 
-    TRUST --> T[Test First<br/>SPEC-based Testing<br/>RED-GREEN-REFACTOR<br/>Coverage 85%+]
-    TRUST --> R[Readable<br/>Intention-revealing Names<br/>Guard Clauses First<br/>Function 50 LOC Max]
-    TRUST --> U[Unified<br/>SPEC-based Architecture<br/>Complexity Threshold<br/>Cross-language Traceability]
-    TRUST --> S[Secured<br/>SPEC Security Requirements<br/>Input Validation<br/>Audit Logging]
-    TRUST --> Tr[Trackable<br/>TAG System<br/>SPEC-Code Traceability<br/>Direct Code Scanning]
+    TRUST --> Row1[ ]
+    TRUST --> Row2[ ]
+
+    Row1 --> T[T: Test First]
+    Row1 --> R[R: Readable]
+    Row1 --> U[U: Unified]
+
+    Row2 --> S[S: Secured]
+    Row2 --> Tr[T: Trackable]
+
+    T --> T1[SPEC-based Testing]
+    T --> T2[RED-GREEN-REFACTOR]
+    T --> T3[Coverage 85%+]
+
+    R --> R1[Intention-revealing]
+    R --> R2[Guard Clauses First]
+    R --> R3[Function 50 LOC Max]
+
+    U --> U1[SPEC Architecture]
+    U --> U2[Complexity Control]
+    U --> U3[Cross-language Trace]
+
+    S --> S1[Security Requirements]
+    S --> S2[Input Validation]
+    S --> S3[Audit Logging]
+
+    Tr --> Tr1[TAG System]
+    Tr --> Tr2[SPEC Traceability]
+    Tr --> Tr3[Direct Code Scan]
 
     style TRUST fill:#ffd700,stroke:#333,stroke-width:3px
+    style Row1 fill:none,stroke:none
+    style Row2 fill:none,stroke:none
     style T fill:#ffe1e1,stroke:#333,stroke-width:2px
     style R fill:#e1ffe1,stroke:#333,stroke-width:2px
     style U fill:#e1f5ff,stroke:#333,stroke-width:2px
     style S fill:#f0e1ff,stroke:#333,stroke-width:2px
     style Tr fill:#fff4e1,stroke:#333,stroke-width:2px
+    style T1 fill:#ffe1e1,stroke:#333,stroke-width:1px
+    style T2 fill:#ffe1e1,stroke:#333,stroke-width:1px
+    style T3 fill:#ffe1e1,stroke:#333,stroke-width:1px
+    style R1 fill:#e1ffe1,stroke:#333,stroke-width:1px
+    style R2 fill:#e1ffe1,stroke:#333,stroke-width:1px
+    style R3 fill:#e1ffe1,stroke:#333,stroke-width:1px
+    style U1 fill:#e1f5ff,stroke:#333,stroke-width:1px
+    style U2 fill:#e1f5ff,stroke:#333,stroke-width:1px
+    style U3 fill:#e1f5ff,stroke:#333,stroke-width:1px
+    style S1 fill:#f0e1ff,stroke:#333,stroke-width:1px
+    style S2 fill:#f0e1ff,stroke:#333,stroke-width:1px
+    style S3 fill:#f0e1ff,stroke:#333,stroke-width:1px
+    style Tr1 fill:#fff4e1,stroke:#333,stroke-width:1px
+    style Tr2 fill:#fff4e1,stroke:#333,stroke-width:1px
+    style Tr3 fill:#fff4e1,stroke:#333,stroke-width:1px
 ```
 
 ---
