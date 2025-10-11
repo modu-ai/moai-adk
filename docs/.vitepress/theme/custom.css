@@ -236,7 +236,10 @@
    ================================================ */
 
 .vp-doc table {
-  width: 100%;
+  width: 100% !important;
+  max-width: 100% !important;
+  display: table;
+  table-layout: auto;
   border-collapse: collapse;
   margin: 1.5rem 0;
   border-radius: 8px;
@@ -257,12 +260,21 @@
   font-size: 0.875rem;
   letter-spacing: 0.02em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .vp-doc td {
   padding: 0.75rem 1rem;
   border-top: 1px solid var(--vp-c-divider);
   color: var(--vp-c-text-2);
+}
+
+/* Force table container to use full width */
+.vp-doc .table-container,
+.vp-doc div:has(> table) {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: auto;
 }
 
 .vp-doc tr:hover {
