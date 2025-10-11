@@ -1,7 +1,7 @@
 ---
 id: DOCS-002
-version: 0.0.1
-status: draft
+version: 0.1.0
+status: completed
 created: 2025-10-11
 updated: 2025-10-11
 author: @Goos
@@ -26,6 +26,22 @@ scope:
 # @SPEC:DOCS-002: MoAI-ADK 핵심 개념 문서
 
 ## HISTORY
+
+### v0.1.0 (2025-10-11)
+- **COMPLETED**: TDD 구현 완료 (RED → GREEN → REFACTOR)
+- **AUTHOR**: @Goos
+- **REVIEW**: pending
+- **ARTIFACTS**:
+  - docs/guides/concepts/ears-guide.md (298 LOC)
+  - docs/guides/concepts/trust-principles.md (543 LOC)
+  - docs/guides/concepts/tag-system.md (622 LOC)
+  - docs/guides/concepts/spec-first-tdd.md (737 LOC)
+- **METRICS**:
+  - 총 코드 블록: 218개
+  - 상호 참조 링크: 13개
+  - SPEC 수락 기준 달성률: 100% (17/17)
+  - TRUST 원칙 준수율: 95%
+- **TAG CHAIN**: @SPEC:DOCS-002 → @CODE:DOCS-002 (8개 TAG)
 
 ### v0.0.1 (2025-10-11)
 - **INITIAL**: MoAI-ADK 핵심 개념 문서 SPEC 작성
