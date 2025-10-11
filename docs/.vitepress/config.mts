@@ -135,7 +135,9 @@ export default withMermaid(
           text: 'Alfred Agents',
           collapsed: true,
           items: [
-            { text: 'Overview', link: '/guides/agents/overview' }
+            { text: 'Overview', link: '/guides/agents/overview' },
+            { text: 'debug-helper', link: '/guides/agents/debug-helper' },
+            { text: 'trust-checker', link: '/guides/agents/trust-checker' }
           ]
         },
         {
