@@ -236,9 +236,9 @@ my-moai-project/
 
 **`.claude/`** - Claude Code 통합
 - `agents/`: 9명의 전문 에이전트 (spec-builder, code-builder, doc-syncer 등)
-- `commands/`: Alfred 3단계 워크플로우 커맨드 (1-spec, 2-build, 3-sync)
-- `hooks/`: 자동화된 검증 및 정책 적용
-- `output-styles/`: 다양한 출력 스타일 (프로, 초보자, 협업 등)
+- `commands/`: 5개 Alfred 커맨드 (0-project, 1-spec, 2-build, 3-sync, 9-update)
+- `hooks/`: 4개 자동화 훅 (정책 차단, 쓰기 검증, TAG 강제 등)
+- `output-styles/`: 4개 출력 스타일 (프로, 초보자, 협업, 심층 학습)
 
 **`.moai/`** - MoAI-ADK 코어
 - `config.json`: 프로젝트 설정 (모드, 언어, Git 등)
