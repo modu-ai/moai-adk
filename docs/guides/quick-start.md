@@ -127,12 +127,8 @@ moai doctor
 시작하기 전에 다음이 준비되었는지 확인하세요:
 
 - ✅ MoAI-ADK 설치 완료 (`moai --version`)
-- ✅ Claude Code 설치 (권장, [VSCode 확장 설치](https://marketplace.visualstudio.com/items?itemName=Anthropic.claude-code))
+- ✅ Claude Code 설치 (필수, [VSCode 확장 설치](https://marketplace.visualstudio.com/items?itemName=Anthropic.claude-code))
 - ✅ Git 설정 완료 (`git config --global user.name` 확인)
-
-::: tip Claude Code 필수?
-Claude Code는 필수가 아니지만, Alfred SuperAgent를 사용하려면 강력히 권장합니다. 없이도 CLI 명령어만으로 사용 가능합니다.
-:::
 
 ---
 
