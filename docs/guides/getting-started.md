@@ -124,14 +124,59 @@ moai init .
 
 :::
 
-대화형 프롬프트가 나타나면 다음 정보를 입력합니다:
+#### 초기화 프로세스
+
+초기화는 **3단계**로 진행됩니다:
+
+**Step 1: System Verification** (시스템 검증)
+- Git, Node.js, npm 버전 확인
+- Git LFS (선택사항) 확인
+- 모든 요구사항 자동 검증
+
+**Step 2: Interactive Configuration** (대화형 설정)
+
+4가지 질문에 답변합니다:
 
 ```
-? Project name: my-moai-project
-? Project description: My first MoAI-ADK project
-? Development mode: personal (또는 team)
-? Primary language: TypeScript (선택)
-? Initialize Git? Yes
+❓ Question [1/4] - Language Selection
+✔ Choose CLI language: 한국어 / English
+
+❓ Question [2/4] - 프로젝트 정보
+✔ 프로젝트 이름: my-moai-project
+
+❓ Question [3/4] - 개발 모드
+✔ 모드 선택: Personal / Team
+
+❓ Question [4/4] - 버전 관리
+✔ Git 저장소 자동 감지 및 설정
+```
+
+::: tip 개발 모드 선택
+- **Personal**: SPEC 파일이 로컬에 저장, 단순한 워크플로우
+- **Team**: 공유 저장소 연동, 협업 기능 활성화
+:::
+
+**Step 3: Installation** (설치)
+
+5단계 진행률이 표시됩니다:
+- Phase 1: Preparation and backup (준비 및 백업)
+- Phase 2: Creating directory structure (디렉토리 구조 생성)
+- Phase 3: Installing resources (리소스 설치)
+- Phase 4: Generating configurations (설정 파일 생성)
+- Phase 5: Validation and finalization (검증 및 완료)
+
+완료 메시지:
+```
+✅ Initialization Completed Successfully!
+
+📊 Summary:
+  📁 Location:  /path/to/my-moai-project
+  📄 Files:     35 created
+  ⏱️  Duration:  ~57ms
+
+🚀 Next Steps:
+  1. cd my-moai-project
+  2. 💡 Run "claude" to start development
 ```
 
 ### 2. 프로젝트 구조 확인
