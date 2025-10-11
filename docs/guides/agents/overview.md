@@ -700,19 +700,22 @@ $ /alfred:1-spec "새 기능"
 
 ---
 
-## Learn More
+## 관련 문서
 
-### 각 에이전트 상세 가이드
+### 워크플로우 가이드
 
-- **[spec-builder](/guides/agents/spec-builder)** - SPEC 작성 에이전트
-- **[code-builder](/guides/agents/code-builder)** - TDD 구현 에이전트
-- **[doc-syncer](/guides/agents/doc-syncer)** - 문서 동기화 에이전트
+- **[Stage 1: SPEC Writing](/guides/workflow/1-spec)** - spec-builder 상세 워크플로우
+- **[Stage 2: TDD Implementation](/guides/workflow/2-build)** - code-builder 상세 워크플로우
+- **[Stage 3: Document Sync](/guides/workflow/3-sync)** - doc-syncer 상세 워크플로우
+- **[Stage 8: Project Setup](/guides/workflow/8-project)** - project-manager 상세 워크플로우
+- **[Stage 9: Update & Upgrade](/guides/workflow/9-update)** - 패키지 업데이트 가이드
 
-### 관련 개념
+### 핵심 개념
 
 - **[SPEC-First TDD](/guides/concepts/spec-first-tdd)** - 개발 방법론
 - **[TRUST Principles](/guides/concepts/trust-principles)** - 품질 원칙
 - **[TAG System](/guides/concepts/tag-system)** - 추적성 시스템
+- **[Hooks System](/guides/hooks/overview)** - Hook 시스템 가이드
 
 ---
 

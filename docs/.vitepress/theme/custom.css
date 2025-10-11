@@ -218,7 +218,7 @@
 .vp-doc div[class*='language-'] code {
   font-family: var(--vp-font-family-mono);
   font-size: 0.875rem;
-  line-height: 1.6;
+  line-height: 1.4;
 }
 
 .vp-doc :not(pre) > code {
