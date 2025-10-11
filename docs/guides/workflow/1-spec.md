@@ -1,6 +1,6 @@
-# Stage 1: SPEC Writing
+# /alfred:1-spec
 
-`/alfred:1-spec` 커맨드를 사용하여 EARS 방식의 체계적인 요구사항 명세를 작성합니다.
+EARS 방식의 체계적인 요구사항 명세를 작성합니다.
 
 ## Overview
 
@@ -54,6 +54,7 @@ SPEC Writing은 MoAI-ADK 3단계 워크플로우의 첫 번째 단계입니다. 
 Alfred가 다음 작업을 수행합니다:
 
 1. **프로젝트 상태 분석**
+
    ```bash
    # Git 상태 확인
    git status
@@ -69,6 +70,7 @@ Alfred가 다음 작업을 수행합니다:
    - 중복 확인: `rg "@SPEC:AUTH-001" -n`
 
 3. **계획 보고서 생성**
+
    ```markdown
    📋 SPEC 작성 계획
 
@@ -91,6 +93,7 @@ Alfred가 다음 작업을 수행합니다:
 사용자가 "진행"하면 Alfred가 실행합니다:
 
 1. **Git 브랜치 생성**
+
    ```bash
    # Team mode
    git checkout develop
@@ -164,6 +167,7 @@ Alfred가 다음 작업을 수행합니다:
    ```
 
    ### Data Model
+
    ```typescript
    interface User {
      id: string
@@ -182,18 +186,22 @@ Alfred가 다음 작업을 수행합니다:
    ```
 
    ### Dependencies
+
    - bcryptjs: 비밀번호 해싱
    - jsonwebtoken: JWT 생성/검증
    - express-validator: 입력 검증
 
    ## Test Plan
+
    - Unit tests: 로그인 로직, 토큰 생성
    - Integration tests: API 엔드포인트
    - E2E tests: 로그인 플로우
 
    ## Related SPECs
+
    - SPEC-AUTH-002: 사용자 등록 기능
    - SPEC-AUTH-003: 비밀번호 재설정
+
    ```
 
 3. **Git 커밋 (Locale 기반)**

@@ -6,7 +6,7 @@
 
 ## 📋 구현 개요
 
-**목표**: 백업 생성(moai init) + 병합 선택(/alfred:8-project) 분리 구현 + 백업 조건 완화
+**목표**: 백업 생성(moai init) + 병합 선택(/alfred:0-project) 분리 구현 + 백업 조건 완화
 
 **우선순위**: High (사용자 경험 개선의 핵심 기능)
 
@@ -144,7 +144,7 @@ private showBackupCompletedMessage(metadata: BackupMetadata): void {
   console.log(`   파일: ${metadata.backed_up_files.join(', ')}`);
   console.log(`\n🚀 다음 단계:`);
   console.log(`   1. Claude Code를 실행하세요`);
-  console.log(`   2. /alfred:8-project 명령을 실행하세요`);
+  console.log(`   2. /alfred:0-project 명령을 실행하세요`);
   console.log(`   3. 백업 내용을 병합할지 선택하세요`);
   console.log(`\n💡 백업은 자동으로 삭제되지 않습니다.`);
 }
@@ -165,17 +165,17 @@ private showBackupCompletedMessage(metadata: BackupMetadata): void {
 
 ### 케이스별 동작 검증 (v0.2.1)
 
-| 케이스 | .claude | .moai | CLAUDE.md | 백업 여부 | backed_up_files |
-|--------|---------|-------|-----------|-----------|-----------------|
-| **Case 1** | ✅ | ✅ | ✅ | ✅ 백업 | `[".claude/", ".moai/", "CLAUDE.md"]` |
-| **Case 2** | ✅ | ❌ | ❌ | ✅ 백업 | `[".claude/"]` |
-| **Case 3** | ❌ | ✅ | ✅ | ✅ 백업 | `[".moai/", "CLAUDE.md"]` |
-| **Case 4** | ❌ | ❌ | ✅ | ✅ 백업 | `["CLAUDE.md"]` |
-| **Case 5** | ❌ | ❌ | ❌ | ❌ 생략 | `[]` (메타데이터 생성 안 함) |
+| 케이스     | .claude | .moai | CLAUDE.md | 백업 여부 | backed_up_files                       |
+| ---------- | ------- | ----- | --------- | --------- | ------------------------------------- |
+| **Case 1** | ✅       | ✅     | ✅         | ✅ 백업    | `[".claude/", ".moai/", "CLAUDE.md"]` |
+| **Case 2** | ✅       | ❌     | ❌         | ✅ 백업    | `[".claude/"]`                        |
+| **Case 3** | ❌       | ✅     | ✅         | ✅ 백업    | `[".moai/", "CLAUDE.md"]`             |
+| **Case 4** | ❌       | ❌     | ✅         | ✅ 백업    | `["CLAUDE.md"]`                       |
+| **Case 5** | ❌       | ❌     | ❌         | ❌ 생략    | `[]` (메타데이터 생성 안 함)          |
 
 ---
 
-## 🔀 Phase B: /alfred:8-project 병합 로직 (v0.2.1 업데이트)
+## 🔀 Phase B: /alfred:0-project 병합 로직 (v0.2.1 업데이트)
 
 ### 목표
 백업 메타데이터 감지 → 분석 → 병합 또는 새로설치 선택 + 긴급 백업 시나리오 추가
@@ -257,7 +257,7 @@ export async function handleEmergencyBackup(): Promise<BackupMetadata | null> {
     backup_path: backupPath,
     backed_up_files: backedUpFiles,
     status: 'pending',
-    created_by: '/alfred:8-project (emergency backup)'
+    created_by: '/alfred:0-project (emergency backup)'
   };
 
   fs.mkdirSync('.moai/backups', { recursive: true });
@@ -382,7 +382,7 @@ export async function promptBackupMerge(summary: BackupSummary): Promise<'merge'
 - **목표**: 주요 플로우 100% 커버
 
 **Phase B 통합**:
-- /alfred:8-project 전체 플로우 (긴급 백업 → 병합 → 리포트)
+- /alfred:0-project 전체 플로우 (긴급 백업 → 병합 → 리포트)
 - 롤백 시나리오 테스트
 - **목표**: 주요 플로우 100% 커버
 
@@ -391,12 +391,12 @@ export async function promptBackupMerge(summary: BackupSummary): Promise<'merge'
 **시나리오 1: 전체 플로우 (v0.2.1)**
 1. moai init 실행 (Case 3: .moai, CLAUDE.md만 존재)
 2. Claude Code 실행
-3. /alfred:8-project 실행
+3. /alfred:0-project 실행
 4. 병합 선택
 5. 결과 확인 (2개 파일만 백업됨)
 
 **시나리오 2: 긴급 백업 (v0.2.1 신규)**
-1. moai init 없이 /alfred:8-project 직접 실행
+1. moai init 없이 /alfred:0-project 직접 실행
 2. 기존 파일 감지 (Case 2: .claude만 존재)
 3. 긴급 백업 자동 생성
 4. 병합 프롬프트 표시
@@ -479,7 +479,7 @@ moai-adk-ts/
 - **해결**: 메타데이터에 `schema_version` 필드 추가, 하위 호환성 유지
 
 ### 3. 긴급 백업 디스크 공간 부족 (v0.2.1 신규)
-- **문제**: /alfred:8-project 긴급 백업 중 디스크 공간 부족
+- **문제**: /alfred:0-project 긴급 백업 중 디스크 공간 부족
 - **해결**: 백업 실패 시 명확한 에러 메시지, 디스크 공간 확인 로직 추가
 
 ### 4. Claude Code 컨텍스트 활용
@@ -487,7 +487,7 @@ moai-adk-ts/
 - **해결**: JIT Retrieval - 필요한 파일만 순차 로드
 
 ### 5. 백업 방치 문제
-- **문제**: /alfred:8-project 미실행 시 백업 디스크 공간 낭비
+- **문제**: /alfred:0-project 미실행 시 백업 디스크 공간 낭비
 - **해결**: moai init 완료 메시지에 명확한 다음 단계 안내
 
 ---

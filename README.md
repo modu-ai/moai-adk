@@ -131,7 +131,7 @@ claude
 
 **Claude Code에서** (필수):
 ```text
-/alfred:8-project
+/alfred:0-project
 ```
 
 Alfred가 자동으로 수행:
@@ -157,13 +157,13 @@ moai init .
 
 📌 **v0.2.17 이하**: `moai init .` 사용 권장
 
-#### v0.2.18 이상 (현재)
+#### 프로젝트 업데이트
 ```bash
-# Claude Code에서 안전하게 업데이트
-/alfred:9-update
+# 터미널에서 안전하게 업데이트
+moai init .
 ```
 
-✅ **안전**: v0.2.18부터 `.moai/specs/`, `.moai/reports/` 디렉토리가 **자동 보호**됩니다.
+✅ **안전**: `.moai/specs/`, `.moai/reports/` 디렉토리가 **자동 보호**됩니다.
 
 **데이터 보호 보장**:
 - 🔒 `.moai/specs/` - 사용자 SPEC 파일 절대 건드리지 않음
@@ -367,27 +367,27 @@ Alfred가 조율하는 전문 AI 에이전트들입니다.
 
 #### 핵심 3단계 에이전트 (자동 호출)
 
-| 에이전트 | 페르소나 | 전문 영역 | 호출 시점 |
-|---------|---------|----------|----------|
-| **spec-builder** 🏗️ | 시스템 아키텍트 | EARS 명세 작성 | `/alfred:1-spec` |
-| **code-builder** 💎 | 수석 개발자 | TDD 구현 | `/alfred:2-build` |
-| **doc-syncer** 📖 | 테크니컬 라이터 | 문서 동기화 | `/alfred:3-sync` |
+| 에이전트           | 페르소나        | 전문 영역      | 호출 시점         |
+| ------------------ | --------------- | -------------- | ----------------- |
+| **spec-builder** 🏗️ | 시스템 아키텍트 | EARS 명세 작성 | `/alfred:1-spec`  |
+| **code-builder** 💎 | 수석 개발자     | TDD 구현       | `/alfred:2-build` |
+| **doc-syncer** 📖   | 테크니컬 라이터 | 문서 동기화    | `/alfred:3-sync`  |
 
 #### 품질 보증 에이전트 (온디맨드)
 
-| 에이전트 | 페르소나 | 전문 영역 | 호출 방법 |
-|---------|---------|----------|----------|
-| **tag-agent** 🏷️ | 지식 관리자 | TAG 체인 검증 | `@agent-tag-agent` |
-| **debug-helper** 🔬 | SRE 전문가 | 오류 진단 | `@agent-debug-helper` |
-| **trust-checker** ✅ | QA 리드 | TRUST 검증 | `@agent-trust-checker` |
-| **git-manager** 🚀 | 릴리스 엔지니어 | Git 워크플로우 | `@agent-git-manager` |
+| 에이전트            | 페르소나        | 전문 영역      | 호출 방법              |
+| ------------------- | --------------- | -------------- | ---------------------- |
+| **tag-agent** 🏷️     | 지식 관리자     | TAG 체인 검증  | `@agent-tag-agent`     |
+| **debug-helper** 🔬  | SRE 전문가      | 오류 진단      | `@agent-debug-helper`  |
+| **trust-checker** ✅ | QA 리드         | TRUST 검증     | `@agent-trust-checker` |
+| **git-manager** 🚀   | 릴리스 엔지니어 | Git 워크플로우 | `@agent-git-manager`   |
 
 #### 시스템 관리 에이전트
 
-| 에이전트 | 페르소나 | 전문 영역 | 호출 방법 |
-|---------|---------|----------|----------|
-| **cc-manager** 🛠️ | 데브옵스 엔지니어 | Claude Code 설정 | `@agent-cc-manager` |
-| **project-manager** 📋 | 프로젝트 매니저 | 프로젝트 초기화 | `/alfred:8-project` |
+| 에이전트              | 페르소나          | 전문 영역        | 호출 방법           |
+| --------------------- | ----------------- | ---------------- | ------------------- |
+| **cc-manager** 🛠️      | 데브옵스 엔지니어 | Claude Code 설정 | `@agent-cc-manager` |
+| **project-manager** 📋 | 프로젝트 매니저   | 프로젝트 초기화  | `/alfred:0-project` |
 
 ### 협업 원칙
 
@@ -411,12 +411,12 @@ Alfred는 개발 상황에 따라 **4가지 대화 스타일**을 제공합니�
 
 ### 📋 제공되는 Output Styles
 
-| 스타일 이름 | 설명 |
-|-----------|------|
-| **MoAI Professional** | SPEC-First TDD 전문가를 위한 간결하고 기술적인 개발 스타일 |
-| **MoAI Beginner Learning** | 개발 초보자를 위한 상세하고 친절한 단계별 학습 가이드 (학습 전용) |
+| 스타일 이름                 | 설명                                                                     |
+| --------------------------- | ------------------------------------------------------------------------ |
+| **MoAI Professional**       | SPEC-First TDD 전문가를 위한 간결하고 기술적인 개발 스타일               |
+| **MoAI Beginner Learning**  | 개발 초보자를 위한 상세하고 친절한 단계별 학습 가이드 (학습 전용)        |
 | **MoAI Pair Collaboration** | AI와 함께 브레인스토밍, 계획 수립, 실시간 코드 리뷰를 진행하는 협업 모드 |
-| **MoAI Study Deep** | 새로운 개념, 도구, 언어, 프레임워크를 체계적으로 학습하는 심화 교육 모드 |
+| **MoAI Study Deep**         | 새로운 개념, 도구, 언어, 프레임워크를 체계적으로 학습하는 심화 교육 모드 |
 
 ### 🔄 스타일 전환 방법
 
@@ -431,12 +431,12 @@ Claude Code에서 `/output-style` 명령어로 전환:
 
 ### 🎯 스타일 선택 가이드
 
-| 상황 | 추천 스타일 | 대상 | 특징 |
-|------|-----------|------|------|
-| 실무 프로젝트 빠른 개발 | `alfred-pro` | 실무 개발자, 프로젝트 리더 | 간결, 기술적, 결과 중심 |
-| 프로그래밍 처음 배우기 | `beginner-learning` | 개발 입문자 | 친절, 상세 설명, 단계별 안내 |
-| 팀 기술 선택 & 설계 논의 | `pair-collab` | 협업 개발자, 아키텍트 | 질문 기반, 브레인스토밍 |
-| 새로운 기술 학습 | `study-deep` | 신기술 학습자 | 개념 → 실습 → 전문가 팁 |
+| 상황                     | 추천 스타일         | 대상                       | 특징                         |
+| ------------------------ | ------------------- | -------------------------- | ---------------------------- |
+| 실무 프로젝트 빠른 개발  | `alfred-pro`        | 실무 개발자, 프로젝트 리더 | 간결, 기술적, 결과 중심      |
+| 프로그래밍 처음 배우기   | `beginner-learning` | 개발 입문자                | 친절, 상세 설명, 단계별 안내 |
+| 팀 기술 선택 & 설계 논의 | `pair-collab`       | 협업 개발자, 아키텍트      | 질문 기반, 브레인스토밍      |
+| 새로운 기술 학습         | `study-deep`        | 신기술 학습자              | 개념 → 실습 → 전문가 팁      |
 
 ### 💡 모든 스타일에서 동일하게 작동
 
@@ -616,22 +616,22 @@ MoAI-ADK는 모든 주요 언어를 지원하며, 언어별 최적 도구 체인
 
 ### 웹/백엔드
 
-| 언어 | 테스트 | 린터 | 타입 | 상태 |
-|------|--------|------|------|------|
-| **TypeScript** | Vitest/Jest | Biome/ESLint | ✅ | Full |
-| **Python** | pytest | ruff/black | mypy | Full |
-| **Java** | JUnit 5 | checkstyle | ✅ | Full |
-| **Go** | go test | golint | ✅ | Full |
-| **Rust** | cargo test | clippy | ✅ | Full |
+| 언어           | 테스트      | 린터         | 타입 | 상태 |
+| -------------- | ----------- | ------------ | ---- | ---- |
+| **TypeScript** | Vitest/Jest | Biome/ESLint | ✅    | Full |
+| **Python**     | pytest      | ruff/black   | mypy | Full |
+| **Java**       | JUnit 5     | checkstyle   | ✅    | Full |
+| **Go**         | go test     | golint       | ✅    | Full |
+| **Rust**       | cargo test  | clippy       | ✅    | Full |
 
 ### 모바일
 
-| 언어/프레임워크 | 테스트 | 린터 | 상태 |
-|----------------|--------|------|------|
-| **Flutter/Dart** | flutter test | dart analyze | Full |
-| **Swift/iOS** | XCTest | SwiftLint | Full |
-| **Kotlin/Android** | JUnit + Espresso | detekt | Full |
-| **React Native** | Jest + RNTL | ESLint | Full |
+| 언어/프레임워크    | 테스트           | 린터         | 상태 |
+| ------------------ | ---------------- | ------------ | ---- |
+| **Flutter/Dart**   | flutter test     | dart analyze | Full |
+| **Swift/iOS**      | XCTest           | SwiftLint    | Full |
+| **Kotlin/Android** | JUnit + Espresso | detekt       | Full |
+| **React Native**   | Jest + RNTL      | ESLint       | Full |
 
 ### 자동 언어 감지
 
@@ -666,43 +666,9 @@ moai restore <backup-path> [options]
 ### Claude Code 전용 명령어
 
 ```text
-# 템플릿 업데이트 (v0.2.18+ 권장 ⭐)
-/alfred:9-update
-
 # 프로젝트 초기화
-/alfred:8-project
+/alfred:0-project
 ```
-
-### /alfred:9-update
-
-MoAI-ADK 템플릿 파일을 안전하게 업데이트합니다 (Claude Code 전용).
-
-**버전 요구사항**: v0.2.18 이상
-
-**안전 기능**:
-- 🔒 `.moai/specs/` - 사용자 SPEC 파일 자동 보호
-- 🔒 `.moai/reports/` - 동기화 리포트 자동 보호
-- 🔄 백업 자동 생성 (`.moai-backup/`)
-- ✅ 지능형 병합 (`config.json`, `CLAUDE.md`)
-
-**사용 예시**:
-
-```text
-# 기본 업데이트 (자동 백업 포함)
-/alfred:9-update
-
-# 업데이트 가능 여부만 확인
-/alfred:9-update --check
-
-# 강제 업데이트 (백업 없음, 위험)
-/alfred:9-update --force
-
-# 품질 검증 포함 업데이트
-/alfred:9-update --check-quality
-```
-
-**📌 v0.2.17 이하 사용자**:
-- `moai init .` 명령어를 터미널에서 사용하세요
 
 ### moai init [project]
 
@@ -734,20 +700,171 @@ moai init . -b
 moai init . -f
 ```
 
-**📌 업데이트 시 사용 (v0.2.17 이하)**:
+### 템플릿 업데이트: 2가지 방법
 
+MoAI-ADK는 템플릿 업데이트를 위해 **2가지 방법**을 제공합니다. 사용 환경과 목적에 따라 적절한 방법을 선택하세요.
+
+---
+
+#### 🔧 방법 1: `moai init .` (CLI 직접 실행)
+
+**터미널에서 직접 실행하는 표준 업데이트 방법**
+
+**특징**:
+- ✅ **빠른 실행**: 터미널에서 단일 명령어로 즉시 실행
+- ✅ **스크립트 통합**: CI/CD 파이프라인, 자동화 스크립트에 적합
+- ✅ **수동 제어**: 백업, 강제 덮어쓰기 등 옵션 직접 제어
+- ⚠️ **제한적 피드백**: 성공/실패만 표시, 상세 분석 없음
+
+**사용 시나리오**:
 ```bash
-# MoAI-ADK 패키지 업데이트
-npm install -g moai-adk@latest
-
-# 기존 프로젝트 템플릿 업데이트
-cd your-project
+# 1. 간단한 템플릿 업데이트
 moai init .
+
+# 2. CI/CD 파이프라인
+npm install -g moai-adk@latest && moai init . -f
+
+# 3. 배치 스크립트
+for project in */; do
+  cd "$project"
+  moai init .
+  cd ..
+done
 ```
 
-**📌 버전별 권장**:
-- **v0.2.17 이하**: `moai init .` 사용
-- **v0.2.18 이상**: Claude Code에서 `/alfred:9-update` 사용
+**업데이트 절차**:
+```bash
+# 1. MoAI-ADK 패키지 최신 버전 설치
+npm install -g moai-adk@latest
+
+# 2. 프로젝트 디렉토리로 이동
+cd your-project
+
+# 3. 템플릿 업데이트 (백업 자동 생성)
+moai init .
+
+# 4. 변경사항 확인
+git status
+```
+
+**옵션**:
+```bash
+# 기본 업데이트 (자동 백업 포함)
+moai init .
+
+# 백업 생성 후 업데이트 (명시적)
+moai init . -b
+
+# 강제 업데이트 (주의: 기존 파일 덮어쓰기)
+moai init . -f
+```
+
+---
+
+#### 🤖 방법 2: `/alfred:9-update` (Claude Code 전용)
+
+**Claude Code에서 Alfred가 지능형 분석과 함께 수행하는 고급 업데이트**
+
+**특징**:
+- ✅ **지능형 분석**: 프로젝트 상태 자동 진단 및 위험 평가
+- ✅ **맥락 인식**: 현재 작업 브랜치, SPEC 상태, Git 상태 고려
+- ✅ **대화형 확인**: Phase 1(분석) → Phase 2(실행) 2단계 워크플로우
+- ✅ **상세 리포트**: 업데이트 전후 비교, 영향 분석, 권장사항 제공
+- ✅ **충돌 해결**: CLAUDE.md, config.json 지능형 병합
+- ⚠️ **Claude Code 필수**: 터미널/스크립트에서 사용 불가
+
+**사용 시나리오**:
+```text
+# 1. 인터랙티브 개발 중 업데이트
+/alfred:9-update
+
+# 2. 업데이트 가능 여부만 확인 (dry-run)
+/alfred:9-update --check
+
+# 3. 강제 업데이트 (백업 없음, 위험)
+/alfred:9-update --force
+
+# 4. 품질 검증 포함 업데이트
+/alfred:9-update --check-quality
+```
+
+**2단계 워크플로우**:
+
+**Phase 1: 분석 및 계획**
+```text
+Alfred가 자동으로 분석:
+1. 현재 MoAI-ADK 버전 확인
+2. 업데이트 가능한 최신 버전 확인
+3. 프로젝트 상태 진단 (Git, SPEC, 브랜치)
+4. 업데이트 영향 분석
+5. 사용자에게 계획 보고 및 승인 대기
+```
+
+**Phase 2: 실행 (사용자 승인 후)**
+```text
+Alfred가 순차 실행:
+1. 백업 생성 (.moai-backup-YYYY-MM-DD)
+2. 템플릿 파일 업데이트
+3. config.json, CLAUDE.md 지능형 병합
+4. SPEC 파일 보호 검증
+5. Git 상태 확인 및 커밋 제안
+6. 최종 리포트 생성
+```
+
+**옵션**:
+- `--check`: 업데이트 가능 여부만 확인 (실제 변경 없음)
+- `--force`: 강제 업데이트 (백업 없음, 주의 필요)
+- `--check-quality`: TRUST 5원칙 기반 품질 검증 포함
+
+---
+
+#### 📊 비교표: `moai init .` vs `/alfred:9-update`
+
+| 기능              | `moai init .`      | `/alfred:9-update`  |
+| ----------------- | ------------------ | ------------------- |
+| **실행 환경**     | 터미널 (어디서나)  | Claude Code 전용    |
+| **실행 속도**     | ⚡ 빠름 (1-2초)     | 🐢 느림 (10-30초)    |
+| **사전 분석**     | ❌ 없음             | ✅ 자동 진단         |
+| **위험 평가**     | ❌ 없음             | ✅ 영향 분석         |
+| **사용자 확인**   | ❌ 없음 (즉시 실행) | ✅ 2단계 승인        |
+| **백업 생성**     | ✅ 자동             | ✅ 자동              |
+| **충돌 해결**     | ⚠️ 수동             | ✅ 지능형 병합       |
+| **Git 통합**      | ❌ 없음             | ✅ 커밋 제안         |
+| **리포트 생성**   | ❌ 없음             | ✅ 상세 리포트       |
+| **CI/CD 사용**    | ✅ 가능             | ❌ 불가능            |
+| **스크립트 통합** | ✅ 가능             | ❌ 불가능            |
+| **품질 검증**     | ❌ 없음             | ✅ TRUST 검증 (옵션) |
+
+---
+
+#### 🎯 권장 사용 케이스
+
+**`moai init .` 사용 추천**:
+- ✅ 빠른 템플릿 업데이트가 필요할 때
+- ✅ CI/CD 파이프라인에 통합할 때
+- ✅ 여러 프로젝트를 배치로 업데이트할 때
+- ✅ 자동화 스크립트에서 사용할 때
+- ✅ Claude Code 없이 작업할 때
+
+**`/alfred:9-update` 사용 추천**:
+- ✅ Claude Code에서 개발 중일 때
+- ✅ 업데이트 영향을 미리 파악하고 싶을 때
+- ✅ CLAUDE.md, config.json 충돌이 예상될 때
+- ✅ Git 커밋과 함께 업데이트하고 싶을 때
+- ✅ 상세한 리포트가 필요할 때
+- ✅ TRUST 5원칙 기반 품질 검증이 필요할 때
+
+---
+
+#### 🔒 공통 안전 기능
+
+두 방법 모두 다음 사항을 보장합니다:
+
+- 🔒 `.moai/specs/` - 사용자 SPEC 파일 절대 건드리지 않음
+- 🔒 `.moai/reports/` - 동기화 리포트 보존
+- 🔄 백업 자동 생성 (`.moai-backup-YYYY-MM-DD`)
+- ✅ 시스템 파일만 안전하게 업데이트
+- ✅ 지능형 병합 (`config.json`, `CLAUDE.md`)
 
 ### moai doctor
 
@@ -818,7 +935,7 @@ moai restore .moai-backup-2025-10-02
 moai restore .moai-backup-2025-10-02 --force
 ```
 
-**참고**: MoAI-ADK 업데이트는 Claude Code에서 `/alfred:9-update` 명령어를 사용하세요.
+**참고**: MoAI-ADK 템플릿 업데이트는 터미널에서 `moai init .` 명령어를 사용하세요.
 
 ---
 
@@ -1003,21 +1120,21 @@ git branch -D feature/SPEC-XXX-YYY
 
 #### 5. 권한 에러 (Permission Denied)
 
-**증상**: `moai init` 또는 `/alfred:9-update` 실행 시 권한 에러
+**증상**: `moai init` 실행 시 권한 에러
 
 **원인**: 파일 실행 권한 부족
 
 **해결 방법**:
 
 ```bash
-# 1. .claude/commands/ 디렉토리 권한 확인
-ls -la .claude/commands/
+# 1. .moai/ 디렉토리 권한 확인
+ls -la .moai/
 
 # 2. 실행 권한 추가
-chmod +x .claude/commands/*.md
+chmod -R 755 .moai/
 
-# 3. 또는 자동 수정
-/alfred:9-update --fix-permissions
+# 3. 재시도
+moai init .
 ```
 
 #### 6. 테스트 커버리지 85% 미만

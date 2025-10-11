@@ -61,14 +61,14 @@ Phase 5: Alfred 환영 메시지 (NEW)
 
 ### 2.2 Phase별 책임 분리
 
-| Phase | 파일명 | 역할 | 주요 함수 | 라인 수 |
-|-------|--------|------|----------|--------|
-| **Phase 1** | `phase1-basic.ts` | Git 검증 + 모드 선택 | `validateGitInstallation()` | ~80줄 |
-| **Phase 2** | `phase2-developer.ts` | 개발자 정보 수집 | `collectDeveloperInfo()` | ~50줄 |
-| **Phase 3** | `phase3-mode.ts` | SPEC Workflow 선택 | `selectSpecWorkflow()` | ~60줄 |
-| **Phase 4** | `phase4-git.ts` | Auto PR/Draft PR 선택 | `configurePRStrategy()` | ~70줄 |
-| **Phase 5** | `phase5-welcome.ts` | 환영 메시지 출력 | `displayWelcomeMessage()` | ~30줄 |
-| **통합** | `index.ts` | Phase 조율 | `executeInstallPrompts()` | ~100줄 |
+| Phase       | 파일명                | 역할                  | 주요 함수                   | 라인 수 |
+| ----------- | --------------------- | --------------------- | --------------------------- | ------- |
+| **Phase 1** | `phase1-basic.ts`     | Git 검증 + 모드 선택  | `validateGitInstallation()` | ~80줄   |
+| **Phase 2** | `phase2-developer.ts` | 개발자 정보 수집      | `collectDeveloperInfo()`    | ~50줄   |
+| **Phase 3** | `phase3-mode.ts`      | SPEC Workflow 선택    | `selectSpecWorkflow()`      | ~60줄   |
+| **Phase 4** | `phase4-git.ts`       | Auto PR/Draft PR 선택 | `configurePRStrategy()`     | ~70줄   |
+| **Phase 5** | `phase5-welcome.ts`   | 환영 메시지 출력      | `displayWelcomeMessage()`   | ~30줄   |
+| **통합**    | `index.ts`            | Phase 조율            | `executeInstallPrompts()`   | ~100줄  |
 
 ### 2.3 데이터 흐름 (Context 객체)
 
@@ -211,7 +211,7 @@ if (fs.existsSync('.moai/config.json')) {
 **작업**:
 - `displayWelcomeMessage()` 함수 생성
 - 개발자 이름 포함 메시지
-- 다음 명령어 안내 (/alfred:8-project, /alfred:1-spec)
+- 다음 명령어 안내 (/alfred:0-project, /alfred:1-spec)
 
 **수락 기준**:
 - "🤖 AI-Agent Alfred가 {name}님의 개발을 도와드리겠습니다" 출력
@@ -468,7 +468,7 @@ export function displayWelcomeMessage(input: Phase5Input): void {
 🤖 AI-Agent Alfred가 ${input.developerName}님의 개발을 도와드리겠습니다.
 
 다음 명령어로 시작하세요:
-  ${chalk.cyan('/alfred:8-project')}  # 프로젝트 초기화
+  ${chalk.cyan('/alfred:0-project')}  # 프로젝트 초기화
   ${chalk.cyan('/alfred:1-spec')}     # 첫 SPEC 작성
 
 질문이 있으시면 언제든 ${chalk.cyan('@agent-debug-helper')}를 호출하세요.

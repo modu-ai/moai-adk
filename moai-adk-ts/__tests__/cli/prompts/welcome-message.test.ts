@@ -54,7 +54,7 @@ describe('@TEST:INSTALL-001 - Alfred Welcome Message', () => {
       // Assert - AC6 요구사항
       const output = consoleLogSpy.mock.calls.join('\n');
       expect(output).toContain('다음 명령어로 시작하세요');
-      expect(output).toContain('/alfred:8-project');
+      expect(output).toContain('/alfred:0-project');
       expect(output).toContain('/alfred:1-spec');
     });
 

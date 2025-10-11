@@ -18,6 +18,7 @@ Claude Code → Tool Call → Hook 검증 → 승인/거부 → 실제 실행
 ```
 
 **예시**:
+
 ```typescript
 // Claude가 Write 도구를 호출하려고 할 때
 Write(".env", "API_KEY=secret123")
@@ -74,9 +75,11 @@ MoAI-ADK v0.2.18에서 **SPEC-HOOKS-REFACTOR-001**을 통해 Hook 시스템이 �
 #### 1. 코드 중복 제거 (100 LOC → 0 LOC)
 
 **Before (v0.2.17)**:
+
 - 각 Hook 파일마다 CLI Entry Point 중복 (100줄 × 4개 = 400줄)
 
 **After (v0.2.18+)**:
+
 ```typescript
 // moai-adk-ts/src/claude/hooks/base.ts
 export async function runHook(
@@ -99,6 +102,7 @@ export const TIMEOUTS = { /* 타임아웃 설정 */ };
 #### 3. 언어 지원 확대: 7개 → 15개
 
 **추가된 언어**:
+
 - Ruby, PHP, C#, Dart, Swift, Kotlin, Elixir
 - C++ 확장자 확대 (`.cc`, `.h`, `.cxx`, `.hxx`)
 
@@ -145,6 +149,7 @@ moai-adk-ts/src/claude/hooks/
 Bash 명령어 중 **시스템을 손상시킬 수 있는 위험한 명령**을 사전에 차단합니다.
 
 **차단 대상 명령어**:
+
 ```javascript
 const DANGEROUS_COMMANDS = [
   "rm -rf /",
@@ -156,6 +161,7 @@ const DANGEROUS_COMMANDS = [
 ```
 
 **허용 명령 접두사**:
+
 ```javascript
 const ALLOWED_PREFIXES = [
   "git ", "python", "pytest", "npm ", "node ", "go ",
@@ -164,6 +170,7 @@ const ALLOWED_PREFIXES = [
 ```
 
 **동작 예시**:
+
 ```bash
 # 차단
 bash -c "sudo rm -rf /tmp/dangerous"
@@ -181,6 +188,7 @@ git status
 **민감한 파일**과 **시스템 핵심 파일**의 의도치 않은 편집을 방지합니다.
 
 **보호 대상**:
+
 ```javascript
 const SENSITIVE_KEYWORDS = [
   ".env",
@@ -195,11 +203,13 @@ const PROTECTED_PATHS = [
 ```
 
 **템플릿 예외**: 템플릿 파일은 편집 허용
+
 ```javascript
 const isTemplate = filePath.includes("/templates/.moai/");
 ```
 
 **동작 예시**:
+
 ```typescript
 // 차단
 Write(".env", "API_KEY=secret123")
@@ -217,12 +227,14 @@ Write("templates/.moai/memory/template.md", "...")
 Claude Code 세션 시작 시 **프로젝트 상태를 한눈에 파악**할 수 있는 대시보드를 제공합니다.
 
 **표시 정보**:
+
 1. 프로젝트 이름 및 MoAI-ADK 버전
 2. Git 상태 (브랜치, 최신 커밋, 변경 파일)
 3. SPEC 진행률
 4. 업데이트 가능 버전 안내
 
 **출력 예시**:
+
 ```
 🗿 MoAI-ADK 프로젝트: my-awesome-app
 📦 버전: v0.2.17 (최신)
@@ -239,10 +251,12 @@ Claude Code 세션 시작 시 **프로젝트 상태를 한눈에 파악**할 수
 MoAI-ADK의 핵심인 **CODE-FIRST TAG 시스템**의 무결성을 보장합니다.
 
 **검증 대상 파일 확장자** (15개 언어):
+
 - TypeScript, JavaScript, Python, Java, Go, Rust, C++
 - Ruby, PHP, C#, Dart, Swift, Kotlin, Elixir, Markdown
 
 **TAG 블록 구조**:
+
 ```javascript
 /**
  * @DOC:FEATURE:AUTH-001
@@ -255,10 +269,12 @@ MoAI-ADK의 핵심인 **CODE-FIRST TAG 시스템**의 무결성을 보장합니�
 ```
 
 **@IMMUTABLE 불변성 보장**:
+
 - 한번 작성된 TAG는 수정할 수 없습니다
 - 기능 변경 시 **새로운 TAG를 생성**해야 합니다
 
 **동작 예시**:
+
 ```typescript
 // 차단: @IMMUTABLE TAG 수정 시도
 ❌ BLOCKED: @IMMUTABLE TAG 수정 금지
@@ -285,11 +301,13 @@ graph LR
 ```
 
 **핵심 원칙**:
+
 - ✅ **소스 코드 수정**: `moai-adk-ts/src/claude/hooks/*.ts`
 - ✅ **자동 빌드**: `bun run build` → `.cjs` 파일 생성
 - ❌ **직접 수정 금지**: `.claude/hooks/alfred/*.cjs` 파일 직접 편집
 
 **빌드 명령어**:
+
 ```bash
 cd moai-adk-ts
 bun run build  # 또는 npm run build
@@ -350,6 +368,7 @@ export const SUPPORTED_LANGUAGES = {
 ```
 
 **적용 방법**:
+
 ```bash
 cd moai-adk-ts
 bun run build
@@ -361,14 +380,17 @@ bun run build
 ## Best Practices
 
 ### 1. Hook은 빠르게
+
 - 목표: 100ms 이내 실행
 - 외부 API는 2초 타임아웃 설정
 
 ### 2. Fail-Safe 설계
+
 - Hook 오류는 작업을 차단하지 않음
 - 모든 예외는 `try-catch`로 처리
 
 ### 3. 명확한 피드백
+
 - 차단 시 **이유**와 **해결 방법** 제공
 - 심각도별 아이콘 사용:
   - **❌ Critical**: 작업 중단
@@ -376,10 +398,12 @@ bun run build
   - **ℹ️ Info**: 참고용
 
 ### 4. 성능 모니터링
+
 - 실행 시간 측정
 - 100ms 초과 시 경고 로그
 
 ### 5. 읽기 전용 도구는 바이패스
+
 - `Read`, `Grep`, `Glob` 등은 검증 불필요
 - MCP 도구(`mcp__*`)는 자동 허용
 
@@ -390,10 +414,12 @@ bun run build
 ### 문제 1: Hook이 실행되지 않음
 
 **원인**:
+
 - `.claude/settings.json`에 등록되지 않음
 - 파일 경로가 잘못됨
 
 **해결**:
+
 ```bash
 # 1. 등록 확인
 cat .claude/settings.json | grep "hooks"
@@ -405,10 +431,12 @@ ls -la .claude/hooks/alfred/
 ### 문제 2: Hook이 너무 느림
 
 **원인**:
+
 - 동기 I/O 사용
 - 외부 API 호출 타임아웃 없음
 
 **해결**:
+
 ```javascript
 // ❌ 나쁜 예
 const response = await fetch(url);
@@ -422,9 +450,11 @@ const response = await fetch(url, { signal: controller.signal });
 ### 문제 3: Hook이 정상 작업을 차단함
 
 **원인**:
+
 - 검증 로직이 너무 엄격함
 
 **해결**:
+
 ```javascript
 // ❌ 너무 엄격
 if (filePath.includes(".json")) {

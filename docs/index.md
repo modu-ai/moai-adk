@@ -56,9 +56,17 @@ features:
 
 ## Quick Start
 
+MoAI-ADK는 **명세 우선 TDD 방법론**을 기반으로 한 범용 개발 도구입니다. Alfred SuperAgent가 SPEC 작성부터 테스트, 구현, 문서화까지 자동화하여 개발자는 비즈니스 로직에만 집중할 수 있습니다. TypeScript, Python, Java, Go, Rust 등 모든 주요 언어를 지원하며, @TAG 시스템으로 코드 추적성을 보장합니다.
+
 ### Installation
 
+전역 설치로 어디서든 `moai` 명령어를 사용하세요:
+
 ::: code-group
+
+```bash [bun (권장)]
+bun add -g moai-adk
+```
 
 ```bash [npm]
 npm install -g moai-adk
@@ -66,10 +74,6 @@ npm install -g moai-adk
 
 ```bash [pnpm]
 pnpm add -g moai-adk
-```
-
-```bash [bun]
-bun add -g moai-adk
 ```
 
 ```bash [yarn]
@@ -80,22 +84,58 @@ yarn global add moai-adk
 
 ### Initialize Project
 
-```bash
-# Initialize MoAI-ADK project
-moai init .
+::: code-group
 
-# Run system diagnostics
+```bash [새 프로젝트]
+# 새 프로젝트 생성 (디렉토리 자동 생성)
+moai init my-project
+
+# 생성된 디렉토리로 이동
+cd my-project
+```
+
+```bash [기존 프로젝트]
+# 기존 프로젝트에 MoAI-ADK 설정 추가
+cd existing-project
+moai init .
+```
+
+:::
+
+### Verify Installation
+
+설치가 완료되면 시스템을 확인하세요:
+
+```bash
+# 시스템 환경 진단
 moai doctor
 
-# Check project status
-moai status
+# Claude Code 시작 (Alfred 사용)
+claude
 ```
+
+**moai doctor 출력 예시**:
+
+```
+🔍 Checking system requirements...
+
+  ⚙️  Runtime:
+    ✅ Git (2.50.1)
+    ✅ Node.js (20.19.4)
+
+  🛠️  Development:
+    ✅ npm (10.8.2)
+
+✅ All requirements satisfied!
+```
+
+이제 Claude Code에서 `/alfred:0-project` 커맨드로 프로젝트를 초기화하고 개발을 시작할 수 있습니다!
 
 ---
 
 ## 3-Stage Development Workflow
 
-MoAI-ADK의 핵심 개발 사이클을 Mermaid 차트로 시각화했습니다:
+MoAI-ADK의 핵심은 **SPEC → TDD → Sync**로 이어지는 3단계 개발 사이클입니다. 각 단계는 명확한 입력과 출력을 가지며, Alfred SuperAgent가 전체 프로세스를 자동화합니다.
 
 ```mermaid
 graph TB
@@ -135,6 +175,20 @@ graph TB
     style Stage3 fill:#f0e1ff,stroke:#333,stroke-width:3px
     style Done fill:#ffd700,stroke:#333,stroke-width:2px
 ```
+
+### 워크플로우 상세 설명
+
+MoAI-ADK의 3단계 워크플로우는 전통적인 폭포수 모델이 아닌, **반복적이고 점진적인 개발 사이클**을 구현합니다. 각 기능은 독립적인 SPEC으로 시작하여 TDD로 구현되고, 문서 동기화로 완성됩니다. Alfred SuperAgent는 사용자의 요청을 분석하여 적절한 단계로 라우팅하며, 필요시 여러 단계를 순차적으로 실행합니다.
+
+**핵심 원칙**:
+- **명세 우선**: 모든 코드는 SPEC에서 시작합니다. SPEC 없이는 구현하지 않습니다.
+- **테스트 주도**: RED(실패) → GREEN(통과) → REFACTOR(개선) 사이클을 엄격히 준수합니다.
+- **완벽한 추적성**: @TAG 시스템으로 SPEC부터 코드까지 모든 변경을 추적합니다.
+- **자동화된 품질**: TRUST 5원칙(Test, Readable, Unified, Secured, Trackable)을 자동으로 검증합니다.
+
+각 단계는 이전 단계의 출력을 입력으로 받아 명확한 결과물을 생성하며, Git 브랜치와 PR을 통해 버전 관리됩니다. 이러한 구조는 팀 협업 시 충돌을 최소화하고, 코드 리뷰를 자연스럽게 만듭니다.
+
+---
 
 ### Stage 1: SPEC Writing (`/alfred:1-spec`)
 

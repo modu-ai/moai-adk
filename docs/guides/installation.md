@@ -268,14 +268,17 @@ curl -fsSL https://bun.sh/install | bash
 
 ## Updating MoAI-ADK
 
-### CLI를 통한 업데이트 (v0.2.18+)
+### Alfred 커맨드를 통한 업데이트 (v0.2.17+)
 
 ```bash
-# Claude Code에서 실행
+# Claude Code에서 실행 (권장)
 /alfred:9-update
 
-# 또는 터미널에서
-moai update
+# 업데이트 확인만
+/alfred:9-update --check
+
+# 품질 검증 포함
+/alfred:9-update --check-quality
 ```
 
 ### 수동 업데이트

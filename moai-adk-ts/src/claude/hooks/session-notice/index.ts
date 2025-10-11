@@ -38,7 +38,7 @@ export class SessionNotifier implements MoAIHook {
       } else {
         return {
           success: true,
-          message: '💡 Run `/alfred:8-project` to initialize MoAI-ADK',
+          message: '💡 Run `/alfred:0-project` to initialize MoAI-ADK',
         };
       }
     } catch (_error) {

@@ -135,6 +135,7 @@ class AuthService:
 ### 의도를 드러내는 이름
 
 ❌ **나쁜 예**:
+
 ```typescript
 function calc(a: number, b: number): number {
   return a * b * 0.1;
@@ -142,6 +143,7 @@ function calc(a: number, b: number): number {
 ```
 
 ✅ **좋은 예**:
+
 ```typescript
 function calculateDiscountedPrice(
   originalPrice: number,
@@ -154,6 +156,7 @@ function calculateDiscountedPrice(
 ### 가드절 우선 사용
 
 ❌ **나쁜 예** (중첩 조건):
+
 ```typescript
 function processPayment(amount: number, user: User) {
   if (user.isActive) {
@@ -174,6 +177,7 @@ function processPayment(amount: number, user: User) {
 ```
 
 ✅ **좋은 예** (가드절):
+
 ```typescript
 function processPayment(amount: number, user: User) {
   // 가드절로 조기 리턴
@@ -213,6 +217,7 @@ function processPayment(amount: number, user: User) {
 각 SPEC은 복잡도 임계값을 정의합니다. 초과 시 새로운 SPEC 또는 명확한 근거가 있는 면제(Waiver)가 필요합니다.
 
 **복잡도 임계값 예시**:
+
 ```markdown
 ### Constraints (제약사항)
 - 단일 모듈의 클래스 개수는 5개를 초과하지 않아야 한다
@@ -235,6 +240,7 @@ function processPayment(amount: number, user: User) {
 ### 일관된 패턴 사용
 
 **의존성 주입 (Python)**:
+
 ```python
 # @CODE:AUTH-001:DOMAIN
 class AuthService:
@@ -243,6 +249,7 @@ class AuthService:
 ```
 
 **의존성 주입 (TypeScript)**:
+
 ```typescript
 // @CODE:AUTH-001:DOMAIN
 class AuthService {
@@ -259,6 +266,7 @@ class AuthService {
 모든 SPEC에 보안 요구사항을 명시적으로 정의합니다.
 
 **예시**:
+
 ```markdown
 ### Security Requirements
 - 시스템은 모든 비밀번호를 bcrypt(cost factor 12)로 해싱해야 한다
@@ -281,6 +289,7 @@ class AuthService {
 보안 제어는 완료 후 추가하는 것이 아니라 **TDD 단계에서 구현**합니다.
 
 **예시: 입력 검증 (RED 단계)**:
+
 ```python
 # @TEST:AUTH-001
 def test_should_reject_sql_injection_attempt():
@@ -312,6 +321,7 @@ def test_should_reject_sql_injection_attempt():
 TAG의 진실은 **코드 자체**에만 존재합니다. 중간 캐시나 데이터베이스 없이 직접 스캔합니다.
 
 **TAG 검증 명령어**:
+
 ```bash
 # 전체 TAG 스캔
 rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/

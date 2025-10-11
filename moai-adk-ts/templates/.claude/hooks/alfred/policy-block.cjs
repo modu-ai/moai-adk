@@ -86,7 +86,23 @@ var init_claude = __esm({
   }
 });
 
-// src/claude/hooks/policy-block.ts
+// src/claude/hooks/constants.ts
+var READ_ONLY_TOOLS = [
+  "Read",
+  "Glob",
+  "Grep",
+  "WebFetch",
+  "WebSearch",
+  "TodoWrite",
+  "BashOutput",
+  "mcp__context7__resolve-library-id",
+  "mcp__context7__get-library-docs",
+  "mcp__ide__getDiagnostics",
+  "mcp__ide__executeCode"
+];
+var TIMEOUTS = {
+  POLICY_BLOCK_SLOW_THRESHOLD: 100
+};
 var DANGEROUS_COMMANDS = [
   "rm -rf /",
   "rm -rf --no-preserve-root",
@@ -111,21 +127,46 @@ var ALLOWED_PREFIXES = [
   "echo ",
   "which ",
   "make ",
-  "moai "
+  "moai ",
+  "tsx ",
+  "moai-ts ",
+  "npx ",
+  "tsc ",
+  "jest ",
+  "ts-node ",
+  "alfred ",
+  "bun "
 ];
-var READ_ONLY_TOOLS = [
-  "Read",
-  "Glob",
-  "Grep",
-  "WebFetch",
-  "WebSearch",
-  "TodoWrite",
-  "BashOutput",
-  "mcp__context7__resolve-library-id",
-  "mcp__context7__get-library-docs",
-  "mcp__ide__getDiagnostics",
-  "mcp__ide__executeCode"
-];
+
+// src/claude/hooks/base.ts
+async function runHook(HookClass) {
+  try {
+    const { parseClaudeInput: parseClaudeInput2, outputResult: outputResult2 } = await Promise.resolve().then(() => (init_claude(), claude_exports));
+    const input = await parseClaudeInput2();
+    const hook = new HookClass();
+    const result = await hook.execute(input);
+    outputResult2(result);
+  } catch (error) {
+    console.error(
+      `ERROR ${HookClass.name}: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
+    process.exit(1);
+  }
+}
+
+// src/claude/hooks/utils.ts
+function extractCommand(toolInput) {
+  const raw = toolInput.command || toolInput.cmd;
+  if (Array.isArray(raw)) {
+    return raw.map(String).join(" ");
+  }
+  if (typeof raw === "string") {
+    return raw.trim();
+  }
+  return null;
+}
+
+// src/claude/hooks/policy-block.ts
 var PolicyBlock = class {
   name = "policy-block";
   async execute(input) {
@@ -136,7 +177,7 @@ var PolicyBlock = class {
     if (input.tool_name !== "Bash") {
       return { success: true };
     }
-    const command = this.extractCommand(input.tool_input || {});
+    const command = extractCommand(input.tool_input || {});
     if (!command) {
       return { success: true };
     }
@@ -144,7 +185,7 @@ var PolicyBlock = class {
     for (const dangerousCommand of DANGEROUS_COMMANDS) {
       if (commandLower.includes(dangerousCommand)) {
         const duration2 = Date.now() - startTime;
-        if (duration2 > 100) {
+        if (duration2 > TIMEOUTS.POLICY_BLOCK_SLOW_THRESHOLD) {
           console.error(`[policy-block] Blocked in ${duration2}ms`);
         }
         return {
@@ -161,25 +202,12 @@ var PolicyBlock = class {
       );
     }
     const duration = Date.now() - startTime;
-    if (duration > 100) {
+    if (duration > TIMEOUTS.POLICY_BLOCK_SLOW_THRESHOLD) {
       console.error(
         `[policy-block] Slow execution: ${duration}ms for ${input.tool_name}`
       );
     }
     return { success: true };
-  }
-  /**
-   * Extract command from tool input
-   */
-  extractCommand(toolInput) {
-    const raw = toolInput.command || toolInput.cmd;
-    if (Array.isArray(raw)) {
-      return raw.map(String).join(" ");
-    }
-    if (typeof raw === "string") {
-      return raw.trim();
-    }
-    return null;
   }
   /**
    * Check if command starts with allowed prefix
@@ -197,22 +225,8 @@ var PolicyBlock = class {
     return READ_ONLY_TOOLS.includes(toolName);
   }
 };
-async function main() {
-  try {
-    const { parseClaudeInput: parseClaudeInput2, outputResult: outputResult2 } = await Promise.resolve().then(() => (init_claude(), claude_exports));
-    const input = await parseClaudeInput2();
-    const policyBlock = new PolicyBlock();
-    const result = await policyBlock.execute(input);
-    outputResult2(result);
-  } catch (error) {
-    console.error(
-      `ERROR policy_block: ${error instanceof Error ? error.message : "Unknown error"}`
-    );
-    process.exit(1);
-  }
-}
 if (__require.main === module) {
-  main().catch((error) => {
+  runHook(PolicyBlock).catch((error) => {
     console.error(
       `ERROR policy_block: ${error instanceof Error ? error.message : "Unknown error"}`
     );
@@ -221,4 +235,3 @@ if (__require.main === module) {
 }
 
 exports.PolicyBlock = PolicyBlock;
-exports.main = main;

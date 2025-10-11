@@ -118,7 +118,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 백업 메타데이터 `backed_up_files` 배열에 실제 백업 목록 기록
 
 #### Emergency Backup
-- `/alfred:8-project` 실행 시 메타데이터 없으면 자동 백업 생성
+- `/alfred:0-project` 실행 시 메타데이터 없으면 자동 백업 생성
 - 사용자 안전성 강화 (백업 누락 방지)
 
 #### 코드 개선
@@ -155,7 +155,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - @CODE:INIT-003:DATA - backup-metadata.ts
 - @CODE:INIT-003:BACKUP - phase-executor.ts
 
-**Phase B: 병합 선택** (`/alfred:8-project`)
+**Phase B: 병합 선택** (`/alfred:0-project`)
 - 사용자가 백업 복원 여부 선택 UI 제공
 - 지능형 파일별 병합 전략:
   - **JSON**: Deep Merge (lodash 스타일)
@@ -169,7 +169,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - `moai init` 설치 플로우 최적화 (1-2시간 → 즉시 완료)
 - 백업 생성 자동화 (사용자 개입 최소화)
-- 병합 결정 분리 (/alfred:8-project로 이동)
+- 병합 결정 분리 (/alfred:0-project로 이동)
 
 ### Technical Details
 - **TAG 추적성**: 65개 TAG, 19개 파일 (100% 무결성)
@@ -370,7 +370,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `/alfred:1-spec` - EARS 명세 작성
 - `/alfred:2-build` - TDD 구현
 - `/alfred:3-sync` - 문서 동기화
-- `/alfred:8-project` - 프로젝트 초기화
+- `/alfred:0-project` - 프로젝트 초기화
 
 ### Foundation
 

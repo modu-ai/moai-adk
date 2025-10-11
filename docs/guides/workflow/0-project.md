@@ -1,6 +1,6 @@
-# Stage 0: Project Initialization
+# /alfred:0-project
 
-`/alfred:8-project` 커맨드를 사용하여 프로젝트 환경을 분석하고 product/structure/tech.md 문서를 생성합니다.
+프로젝트 환경을 분석하고 product/structure/tech.md 문서를 생성합니다.
 
 ## Overview
 
@@ -23,7 +23,7 @@ Project Initialization은 MoAI-ADK를 사용하는 **모든 프로젝트의 출�
 
 ## When to Use
 
-다음과 같은 경우 `/alfred:8-project`를 사용합니다:
+다음과 같은 경우 `/alfred:0-project`를 사용합니다:
 
 - ✅ **신규 프로젝트 시작**: 빈 디렉토리에서 프로젝트 초기화
 - ✅ **기존 프로젝트 도입**: 레거시 코드베이스에 MoAI-ADK 적용
@@ -65,13 +65,60 @@ Project Initialization은 MoAI-ADK를 사용하는 **모든 프로젝트의 출�
 
 ---
 
+## ⚡ Quick Start (5분 시작 가이드)
+
+프로젝트 초기화를 5분 안에 완료하는 최소 단계입니다.
+
+### Step 1: 커맨드 실행
+
+```bash
+/alfred:0-project
+```
+
+### Step 2: 핵심 3가지 질문 답변
+
+Alfred가 프로젝트를 분석한 후 다음 질문을 합니다:
+
+```markdown
+Q1: 이 프로젝트의 핵심 목적은?
+→ 예: "개발자를 위한 Todo 관리 앱"
+
+Q2: 주요 사용자층은?
+→ 예: "개인 개발자 (학습용)"
+
+Q3: 현재 프로젝트 단계는?
+→ 예: "초기 개발"
+```
+
+### Step 3: 문서 생성 확인
+
+초기화 완료 후 다음 파일들이 생성됩니다:
+
+```bash
+.moai/project/
+├── product.md    # 비즈니스 정의
+├── structure.md  # 시스템 아키텍처
+└── tech.md       # 기술 스택
+
+.moai/config.json # 프로젝트 설정
+```
+
+### 다음 단계
+
+```bash
+# 첫 번째 SPEC 작성
+/alfred:1-spec "Todo CRUD 기능"
+```
+
+---
+
 ## Command Syntax
 
 ### Basic Usage
 
 ```bash
 # 프로젝트 초기화 (자동 감지)
-/alfred:8-project
+/alfred:0-project
 ```
 
 ### 자동 처리 로직
@@ -209,7 +256,7 @@ Alfred가 사용자에게 제시하는 계획서:
 
 ---
 **승인 요청**: 위 계획으로 인터뷰를 진행하시겠습니까?
-("진행", "수정 [내용]", "중단" 중 선택)
+("진행", "[내용]", "중단" 중 선택)
 ```
 
 #### 1.4 사용자 확인 대기
@@ -217,11 +264,13 @@ Alfred가 사용자에게 제시하는 계획서:
 **반응에 따른 분기**:
 
 - **"진행"** 또는 **"시작"**: Phase 2로 진행
-- **"수정 [내용]"**: 계획 수정 후 재제시
+- **"[내용]"**: 계획 수정 후 재제시
+
   ```
-  예: "수정 언어를 Python으로 설정"
-  예: "수정 질문 수를 5개로 줄여주세요"
+  예: "언어를 Python으로 설정"
+  예: "질문 수를 5개로 줄여주세요"
   ```
+
 - **"중단"**: 프로젝트 초기화 중단
 
 ---
@@ -338,13 +387,11 @@ _이 문서는 `/alfred:1-spec` 실행 시 SPEC 생성의 기준이 됩니다._
 
 **마이크로서비스 아키텍처 + Event-Driven**
 
-```
 AI Code Review System
 ├── API Gateway          # REST API 엔드포인트
 ├── Review Engine        # AI 리뷰 로직 (GPT-4)
 ├── Analysis Service     # 정적 분석 (ESLint, Biome)
 └── Notification Service # Slack/Email 알림
-```
 
 **선택 이유**:
 - 스케일링 용이: Review Engine만 수평 확장 가능
@@ -636,7 +683,7 @@ cat .moai/config.json | jq .  # JSON 유효성 확인
 📋 다음 단계:
 1. 생성된 문서를 검토하세요 (특히 product.md의 미션과 사용자 정의)
 2. `/alfred:1-spec`으로 첫 번째 SPEC 작성 시작
-3. 필요 시 `/alfred:8-project` 재실행으로 문서 조정
+3. 필요 시 `/alfred:0-project` 재실행으로 문서 조정
 
 💡 권장사항:
 - 다음 단계 진행 전 `/clear` 또는 `/new` 명령으로 새로운 대화 세션을 시작하면
@@ -743,7 +790,6 @@ AI 시대의 일관성 있고 추적 가능한 코드 품질을 보장합니다.
 
 **계층형 아키텍처 + 플러그인 시스템**
 
-```
 MoAI-ADK
 ├── CLI Layer            # moai 명령어 (init, doctor, status)
 ├── Agent Layer          # Alfred + 9개 전문 에이전트
@@ -755,7 +801,6 @@ MoAI-ADK
     ├── TypeScript       # Vitest, Biome
     ├── Python           # pytest, ruff
     └── Go               # go test, gofmt
-```
 
 **선택 이유**:
 - 계층형: 명확한 책임 분리, 테스트 용이성
@@ -827,7 +872,6 @@ npm run test               # Vitest 실행 (커버리지 85% 필수)
 npm run lint               # Biome 린트 검사
 npm run type-check         # TypeScript 타입 검증
 npm run build              # 빌드 검증
-```
 ```
 
 ---
@@ -1084,7 +1128,7 @@ git add . && git commit -m "initial"
 
 # ✅ 좋은 예: 프로젝트 문서 먼저 작성
 git init
-/alfred:8-project
+/alfred:0-project
 # → product/structure/tech.md 생성 후 첫 커밋
 ```
 
@@ -1096,7 +1140,7 @@ git init
 
 ```bash
 # 프로젝트 상태 변화 시 문서 업데이트
-/alfred:8-project
+/alfred:0-project
 
 # Alfred가 기존 문서 분석 후 질문:
 "지난 3개월간 미션이 변경되었나요?"
@@ -1179,7 +1223,7 @@ npm init -y  # TypeScript
 touch pyproject.toml  # Python
 
 # 방법 2: 수동 지정
-/alfred:8-project
+/alfred:0-project
 # Alfred 질문에 직접 답변:
 Q: 주 언어는?
 A: TypeScript
@@ -1242,7 +1286,7 @@ mkdir -p .moai/project
 chmod 755 .moai .moai/project
 
 # 재시도
-/alfred:8-project
+/alfred:0-project
 ```
 
 ### 4. 인터뷰 질문이 너무 많음
@@ -1262,7 +1306,7 @@ Alfred 계획 보고서:
 "예상 질문 수: 25개..."
 
 사용자 응답:
-"수정 필수 질문만 10개로 줄여주세요"
+"필수 질문만 10개로 줄여주세요"
 
 Alfred 재계획:
 "예상 질문 수: 10개 (필수만 선택)"
@@ -1281,7 +1325,7 @@ Alfred 재계획:
 
 ```bash
 # 1) 프로젝트 유형 명확히 지정
-/alfred:8-project
+/alfred:0-project
 Q: 프로젝트 유형은?
 A: "Flutter 기반 모바일 앱"
 
@@ -1290,9 +1334,902 @@ Edit .moai/project/structure.md
 # 백엔드 레이어 → 모바일 화면 구조로 변경
 
 # 3) 재실행으로 재생성
-/alfred:8-project
+/alfred:0-project
 "기존 문서를 보완하여 모바일 앱 구조로 재작성해주세요"
 ```
+
+---
+
+## 실습 가이드: 학습용 ToDo-App 프로젝트
+
+### 개요
+
+실제 사용자가 진행한 프로젝트 초기화 과정을 단계별로 재현합니다. 이 예제를 통해 Alfred와의 인터렷 흐름, 실제 생성되는 문서, 그리고 다음 단계 안내를 확인할 수 있습니다.
+
+**프로젝트 정보**:
+
+- **목적**: MoAI-ADK SPEC-First TDD 방법론 학습
+- **유형**: 웹 애플리케이션 (풀스택)
+- **기술 스택**: Vite + React (Frontend), FastAPI + SQLModel (Backend)
+- **배포**: 로컬 Docker Compose
+
+---
+
+### Step 1: 프로젝트 초기화 실행
+
+```bash
+# 프로젝트 디렉토리로 이동
+cd /Users/goos/MoAI/test/my-moai-project
+
+# 커맨드 실행
+/alfred:0-project
+```
+
+**Alfred 응답** (Phase 1: 환경 분석 및 계획 수립):
+
+```markdown
+⏺ 프로젝트 환경을 분석하여 초기화 계획을 수립하겠습니다.
+
+📊 프로젝트 환경 분석 결과:
+- 프로젝트 유형: 기존 프로젝트 (템플릿 문서 존재)
+- 감지된 언어: 감지되지 않음 (빈 프로젝트)
+- 현재 문서 상태: 100% (product.md, structure.md, tech.md 템플릿 존재)
+- 구조 복잡도: 단순 (소스 코드 없음, 설정 파일만 존재)
+
+📁 기존 파일 현황:
+.moai/
+├── config.json (버전 0.0.1, personal 모드)
+├── project/
+│   ├── product.md (템플릿 v0.1.0)
+│   ├── structure.md (템플릿 v0.1.0)
+│   └── tech.md (템플릿 v0.1.0)
+
+🎯 인터뷰 전략:
+- 질문 카테고리: Product Discovery (신규 프로젝트 초기화)
+- 예상 질문 수: 15개 (필수 10개 + 선택 5개)
+- 예상 소요시간: 10-15분
+- 우선순위 영역:
+  a. 핵심 미션 및 비즈니스 가치
+  b. 주요 사용자층 및 시나리오
+  c. 해결할 핵심 문제
+  d. 기술 스택 선택
+  e. 품질 정책 및 배포 전략
+
+⚠️ 주의사항:
+- 기존 문서: 템플릿 상태 → 실제 정보로 갱신 필요
+- 언어 설정: 자동 감지 불가 → 인터뷰 중 확인 필요
+- 설정 충돌: config.json 기본 설정 → 언어별 최적화 필요
+
+✅ 예상 산출물:
+- product.md: 비즈니스 요구사항 문서 (실제 정보로 갱신)
+- structure.md: 시스템 아키텍처 문서 (실제 정보로 갱신)
+- tech.md: 기술 스택 및 정책 문서 (실제 정보로 갱신)
+- config.json: 프로젝트 설정 파일 (언어별 최적화 설정 추가)
+
+---
+승인 요청: 위 계획으로 인터뷰를 진행하시겠습니까?
+("진행", "[내용]", "중단" 중 선택)
+```
+
+---
+
+### Step 2: 사용자 승인 및 인터뷰 시작
+
+**사용자**:
+
+```
+진행
+```
+
+**Alfred**:
+
+```markdown
+⏺ 프로젝트 초기화를 시작하겠습니다. project-manager 에이전트가 체계적인 인터뷰를 진행합니다.
+
+현재 Phase 1: Product Discovery 단계로, 프로젝트의 핵심 목적과 비즈니스 맥락을 파악하기 위한 3가지 질문이 제시되었습니다:
+
+1. 프로젝트의 핵심 목적 (해결하려는 문제, 사용자)
+2. 프로젝트 유형 (웹/모바일/API/CLI/라이브러리 등)
+3. 현재 프로젝트 단계 (POC/초기개발/활성개발/유지보수 등)
+
+위 질문들에 답변해주시면 에이전트가 다음 단계로 진행하여 product.md, structure.md, tech.md 문서를 실제 정보로 갱신하겠습니다.
+```
+
+---
+
+### Step 3: 핵심 질문 답변
+
+**사용자**:
+
+```
+1. 프로젝트 핵심 목적:
+   - MoAI-ADK SPEC-First TDD 방법론 학습
+   - 풀스택 개발 연습을 위한 ToDo-App 예제
+
+2. 프로젝트 유형:
+   - 풀스택 웹 애플리케이션 (PC/모바일 지원)
+   - 프론트엔드: Next.js + TypeScript
+   - 백엔드: FastAPI + SQLModel + Pydantic v2
+
+3. 현재 프로젝트 단계:
+   - 초기 개발 (학습 목적)
+```
+
+**Alfred**:
+
+```markdown
+답변 감사합니다! 입력하신 정보를 project-manager 에이전트에게 전달하겠습니다.
+
+다음 단계로, 나머지 프로젝트 정보(주요 기능, 아키텍처, 품질 목표, 배포 등)에 대해 질문하거나,
+사용자가 직접 작성하실 수 있습니다.
+```
+
+---
+
+### Step 4: 나머지 정보 입력
+
+**사용자**:
+
+```
+나머지 질문들에 대한 답변:
+
+기본 정보:
+- 핵심 목적: MoAI-ADK SPEC-First TDD 방법론 학습 및 풀스택 개발 연습
+- 사용자: 개인 학습용 (본인)
+- 프로젝트 유형: 웹 애플리케이션 (풀스택: Next.js + FastAPI)
+- 현재 단계: 초기 개발
+
+기술 스택:
+- 프론트엔드: Next.js (React), TypeScript
+- 백엔드: FastAPI, SQLModel, Pydantic v2, Python
+- 데이터베이스: SQLite (개발), PostgreSQL (선택적)
+
+주요 기능:
+- 할일(Todo) CRUD 기능
+- 사용자 인증 (선택적)
+- 상태 관리 (완료/미완료)
+- 우선순위 설정
+
+아키텍처:
+- 풀스택 구조 (frontend/ + backend/ 분리)
+- REST API 기반 통신
+- 타입 안전성 (TypeScript + Pydantic)
+
+품질 목표:
+- 테스트 커버리지: 85% 이상
+- TRUST 5원칙 준수
+- @TAG 기반 추적성
+
+배포:
+- 로컬 개발 환경 우선
+- 향후 Vercel (프론트) + Railway/Fly.io (백엔드) 배포 가능
+```
+
+**Alfred**:
+
+```markdown
+상세한 정보 감사합니다! project-manager 에이전트가 이 정보를 바탕으로 문서를 작성하도록 하겠습니다.
+```
+
+---
+
+### Step 5: 기술 스택 수정 (Next.js → Vite + React)
+
+**사용자**:
+
+```
+기술 스택을 다음과 같이 변경:
+
+프론트엔드:
+- Vite + React (Next.js 대신 더 간단한 구성)
+- TypeScript 5.x
+- Tailwind CSS 추가
+- 패키지 매니저: pnpm
+
+백엔드:
+- FastAPI 유지
+- SQLModel, Pydantic v2
+- Python 3.11+
+
+데이터베이스:
+- SQLite (단일 파일)
+
+테스트:
+- 프론트: Vitest + Testing Library
+- 백엔드: pytest
+
+주요 기능 추가:
+- 상태 관리: 완료/미완료/진행중
+- 우선순위: 높음/중간/낮음
+- 필터링 및 검색 기능
+```
+
+**Alfred**:
+
+```markdown
+알겠습니다! 변경 요청사항을 반영하여 문서를 업데이트하겠습니다
+
+이 정보로 문서 작성을 진행하겠습니다!
+```
+
+---
+
+### Step 6: 배포 전략 수정 (로컬 Docker)
+
+**사용자**:
+
+```
+배포 전략:
+- 로컬 Docker Compose 환경
+- 컨테이너 구성:
+  - 프론트엔드: localhost:3000
+  - 백엔드: localhost:8000
+  - 데이터베이스: SQLite (볼륨 마운트)
+- 개발 환경 최적화 (Hot Reload 지원)
+```
+
+**Alfred**:
+
+```markdown
+완벽합니다! 모든 정보가 확정되었습니다. 이제 project-manager 에이전트가 문서를 작성하겠습니다.
+```
+
+---
+
+### Step 7: 문서 자동 생성 (실시간)
+
+**Alfred**:
+
+````markdown
+⏺ Read(.moai/project/product.md)
+  ⎿  Read 121 lines
+
+⏺ Update(.moai/project/product.md)
+  ⎿  Updated .moai/project/product.md with 9 additions and 3 removals
+
+  주요 변경사항:
+  - version: 0.1.0 → 0.2.0
+  - updated: 2025-10-01 → 2025-10-11
+  - authors: ["@project-owner"] → ["@project-owner", "@Goos"]
+  - HISTORY: v0.2.0 추가 (학습용 ToDo-App 프로젝트로 실제 정보 갱신)
+
+⏺ Update(.moai/project/product.md)
+  ⎿  핵심 미션 갱신:
+
+  ## @DOC:MISSION-001 핵심 미션
+
+  **MoAI-ADK SPEC-First TDD 방법론을 학습하고 실습하기 위한 ToDo 애플리케이션 예제 프로젝트**
+
+  이 프로젝트는 학습 목적으로 설계되었으며, 다음을 목표로 합니다:
+  - SPEC 우선 개발 프로세스 체득
+  - TDD (Red-Green-Refactor) 사이클 실습
+  - @TAG 시스템 기반 추적성 이해
+  - 풀스택 개발 경험 (TypeScript + Python)
+
+⏺ Update(.moai/project/structure.md)
+  ⎿  시스템 아키텍처 갱신:
+
+  **풀스택 모노레포 구조 (프론트엔드 + 백엔드 분리)**
+
+  ```
+  my-moai-project/
+  ├── frontend/              # React + TypeScript 프론트엔드
+  │   ├── src/
+  │   │   ├── components/   # UI 컴포넌트 (Tailwind CSS)
+  │   │   ├── api/          # 백엔드 API 호출 레이어
+  │   │   ├── types/        # TypeScript 타입 정의
+  │   │   └── tests/        # 프론트엔드 테스트
+  │   └── vite.config.ts
+  │
+  ├── backend/               # FastAPI + Python 백엔드
+  │   ├── app/
+  │   │   ├── api/          # REST API 엔드포인트
+  │   │   ├── models/       # SQLModel 데이터 모델
+  │   │   ├── schemas/      # Pydantic 스키마
+  │   │   └── services/     # 비즈니스 로직
+  │   ├── tests/            # 백엔드 테스트
+  │   └── requirements.txt
+  │
+  ├── docker-compose.yml     # 로컬 배포 설정
+  └── .moai/                # MoAI-ADK 프로젝트 문서
+  ```
+
+⏺ Update(.moai/project/tech.md)
+  ⎿  기술 스택 갱신:
+
+  ### Frontend 언어 선택
+
+  - **언어**: TypeScript
+  - **버전**: TypeScript 5.x, ES2022+
+  - **런타임**: Node.js 18+ (LTS)
+  - **선택 이유**:
+    - 타입 안전성으로 개발 시점 오류 발견
+    - React 생태계와 우수한 통합
+    - Pydantic 백엔드와 타입 계약 가능
+  - **패키지 매니저**: pnpm (빠른 설치, 디스크 효율성)
+
+  ### Backend 언어 선택
+
+  - **언어**: Python
+  - **버전**: Python 3.11+
+  - **선택 이유**:
+    - FastAPI/Pydantic의 강력한 타입 시스템
+    - SQLModel로 간결한 ORM 코드
+    - pytest 기반 우수한 테스트 환경
+  - **패키지 매니저**: pip + requirements.txt (또는 poetry)
+
+⏺ Update(.moai/project/tech.md)
+  ⎿  핵심 프레임워크 & 라이브러리 갱신:
+
+  ### 1. Frontend 주요 의존성
+
+  ```json
+  {
+    "dependencies": {
+      "react": "^18.3.0",
+      "react-dom": "^18.3.0"
+    },
+    "devDependencies": {
+      "vite": "^5.0.0",
+      "typescript": "^5.3.0",
+      "tailwindcss": "^3.4.0",
+      "@vitejs/plugin-react": "^4.2.0",
+      "vitest": "^1.0.0",
+      "@testing-library/react": "^14.0.0"
+    }
+  }
+  ```
+
+  ### 2. Backend 주요 의존성
+
+  ```txt
+  # requirements.txt
+  fastapi==0.109.0
+  uvicorn[standard]==0.27.0
+  sqlmodel==0.0.14
+  pydantic==2.5.0
+  pytest==7.4.0
+  pytest-cov==4.1.0
+  httpx==0.26.0  # 테스트용 HTTP 클라이언트
+  ```
+
+  ### 3. 빌드 시스템
+
+  **Frontend (Vite)**:
+  - **빌드 도구**: Vite 5.x (ESBuild 기반)
+  - **번들링**: Rollup (프로덕션), ESBuild (개발)
+  - **타겟**: ES2020, 모던 브라우저
+  - **성능 목표**: 개발 서버 < 500ms, 프로덕션 빌드 < 30초
+  - **HMR**: 빠른 Hot Module Replacement 지원
+
+  **Backend (FastAPI)**:
+  - **ASGI 서버**: Uvicorn (고성능 비동기)
+  - **자동 리로드**: 개발 모드에서 코드 변경 감지
+  - **OpenAPI**: 자동 API 문서 생성 (/docs)
+
+⏺ Update(.moai/project/tech.md)
+  ⎿  품질 게이트 & 정책 갱신:
+
+  ### 테스트 커버리지
+
+  - **목표**: 85% 이상 (Frontend & Backend 각각)
+  - **측정 도구**:
+    - Frontend: Vitest + @vitest/coverage-v8
+    - Backend: pytest-cov
+  - **실패 시 대응**: PR 차단, 커버리지 미달 영역 우선 수정
+
+  ### 정적 분석
+
+  | 도구 | 역할 | 설정 파일 | 실패 시 조치 |
+  |------|------|-----------|--------------|
+  | **TypeScript** | 타입 검증 | `tsconfig.json` | 타입 오류 수정 필수 |
+  | **ESLint** | 코드 품질 (TS) | `.eslintrc.json` | 린트 경고 해결 권장 |
+  | **Prettier** | 코드 포맷 (TS) | `.prettierrc` | 자동 포맷팅 적용 |
+  | **Ruff** | 린터+포매터 (Python) | `ruff.toml` | 자동 수정 가능 |
+  | **mypy** | 타입 검증 (Python) | `mypy.ini` | 타입 힌트 추가 필수 |
+
+  ### 자동화 스크립트
+
+  ```bash
+  # Frontend 품질 검사
+  cd frontend
+  pnpm test              # Vitest 테스트 실행
+  pnpm lint              # ESLint 검사
+  pnpm type-check        # TypeScript 타입 검증
+  pnpm build             # 프로덕션 빌드 검증
+
+  # Backend 품질 검사
+  cd backend
+  pytest --cov=app --cov-report=html  # 테스트 + 커버리지
+  ruff check .                        # Ruff 린트 검사
+  mypy app/                           # 타입 검증
+  ```
+
+⏺ Update(.moai/project/tech.md)
+  ⎿  보안 정책 & 운영 갱신:
+
+  ### 비밀 관리
+
+  - **정책**: 환경 변수 기반 (.env 파일, Git 제외)
+  - **도구**:
+    - Frontend: Vite 환경 변수 (`VITE_*`)
+    - Backend: python-dotenv
+  - **검증**: `.env.example` 템플릿 제공, `.gitignore`에 `.env` 포함
+
+  **보안 체크리스트**:
+  - [ ] `.env` 파일은 Git에 커밋하지 않음
+  - [ ] API 키, DB 비밀번호는 환경 변수로 관리
+  - [ ] Docker 이미지에 비밀 포함하지 않음
+
+  ### 의존성 보안
+
+  ```json
+  {
+    "security": {
+      "audit_tool_frontend": "pnpm audit",
+      "audit_tool_backend": "pip-audit",
+      "update_policy": "주간 의존성 취약점 점검",
+      "vulnerability_threshold": "Critical/High는 즉시 패치"
+    }
+  }
+  ```
+
+  **자동화**:
+  ```bash
+  # Frontend 보안 감사
+  pnpm audit
+
+  # Backend 보안 감사
+  pip-audit
+  ```
+
+  ### 로깅 정책
+
+  - **로그 수준**:
+    - 개발: DEBUG
+    - 테스트: INFO
+    - 프로덕션: WARNING
+  - **민감정보 마스킹**: 비밀번호, API 키는 로그에 출력하지 않음
+  - **보존 정책**: 로컬 개발 환경에서는 별도 보존 정책 없음 (학습용)
+
+⏺ Update(.moai/project/tech.md)
+  ⎿  배포 채널 & 전략 갱신:
+
+  ### 1. 배포 채널
+
+  - **주 채널**: 로컬 Docker Compose
+  - **릴리스 절차**:
+    1. 코드 작성 및 테스트
+    2. Docker 이미지 빌드
+    3. `docker-compose up` 실행
+    4. 브라우저에서 동작 확인
+  - **버전 정책**: Semantic Versioning (학습 단계에서는 느슨하게 적용)
+  - **rollback 전략**: Git 이전 커밋으로 복원 후 재빌드
+
+  ### 2. 개발 설치
+
+  ```bash
+  # 로컬 개발 환경 설정
+
+  # 1. Frontend 설정
+  cd frontend
+  pnpm install              # 의존성 설치
+  pnpm dev                  # 개발 서버 실행 (포트 3000)
+
+  # 2. Backend 설정
+  cd backend
+  python -m venv venv       # 가상환경 생성
+  source venv/bin/activate  # 가상환경 활성화 (Windows: venv\Scripts\activate)
+  pip install -r requirements.txt
+  uvicorn app.main:app --reload  # 개발 서버 실행 (포트 8000)
+
+  # 3. Docker Compose 실행 (통합 환경)
+  docker-compose up --build
+  ```
+
+  ### 3. Docker Compose 구성
+
+  ```yaml
+  # docker-compose.yml 개요
+  services:
+    frontend:
+      build: ./frontend
+      ports: ["3000:3000"]
+      environment:
+        - VITE_API_URL=http://localhost:8000
+
+    backend:
+      build: ./backend
+      ports: ["8000:8000"]
+      volumes:
+        - ./data:/app/data  # SQLite DB 영속화
+      environment:
+        - DATABASE_URL=sqlite:///data/todos.db
+  ```
+
+  **배포 성공 조건**:
+  - [ ] Frontend 접속 가능 (http://localhost:3000)
+  - [ ] Backend API 문서 접속 가능 (http://localhost:8000/docs)
+  - [ ] Todo CRUD 동작 확인
+
+⏺ Update(.moai/project/tech.md)
+  ⎿  환경별 설정 갱신:
+
+  ### 개발 환경 (`dev`)
+
+  ```bash
+  # Frontend (.env.development)
+  VITE_API_URL=http://localhost:8000
+  VITE_LOG_LEVEL=debug
+
+  # Backend (.env.development)
+  DATABASE_URL=sqlite:///./dev.db
+  LOG_LEVEL=DEBUG
+  CORS_ORIGINS=http://localhost:3000
+
+  # 실행
+  pnpm dev  # Frontend
+  uvicorn app.main:app --reload  # Backend
+  ```
+
+  ### 테스트 환경 (`test`)
+
+  ```bash
+  # Backend (.env.test)
+  DATABASE_URL=sqlite:///./test.db
+  LOG_LEVEL=INFO
+  TESTING=true
+
+  # 실행
+  pytest  # Backend 테스트
+  pnpm test  # Frontend 테스트
+  ```
+
+  ### Docker 환경 (`docker`)
+
+  ```bash
+  # docker-compose.yml 환경 변수 사용
+  # 실행
+  docker-compose up --build
+
+  # 로그 확인
+  docker-compose logs -f
+
+  # 중지
+  docker-compose down
+  ```
+
+⏺ Update(.moai/project/tech.md)
+  ⎿  기술 부채 관리 갱신:
+
+  ### 현재 기술 부채
+
+  **신규 프로젝트로 현재는 기술 부채 없음**
+
+  향후 발생 가능한 기술 부채 예방:
+  1. **타입 불일치** - Frontend TypeScript ↔ Backend Pydantic 스키마 자동 검증 도구 부재
+  2. **테스트 커버리지** - 초기에는 85% 목표 달성이 어려울 수 있음
+  3. **Docker 최적화** - 개발 편의성 우선, 이미지 크기 최적화는 후순위
+
+  ### 개선 계획
+
+  - **즉시 필요**:
+    - Frontend-Backend 타입 계약 자동 검증 (openapi-typescript 등)
+    - 테스트 커버리지 설정 및 모니터링
+
+  - **단계적 개선**:
+    - E2E 테스트 추가 (Playwright 등)
+    - CI/CD 파이프라인 구축 (GitHub Actions)
+
+  - **장기 고려사항**:
+    - Docker 이미지 멀티 스테이지 빌드
+    - 프로덕션 배포 전략 (Vercel + Railway/Fly.io)
+
+⏺ Update(.moai/config.json)
+  ⎿  프로젝트 설정 최적화:
+
+  ```json
+  {
+    "version": "0.2.0",
+    "mode": "personal",
+    "projectName": "my-moai-project",
+    "projectType": "fullstack",
+    "projectDescription": "MoAI-ADK SPEC-First TDD 학습용 ToDo 애플리케이션",
+    "locale": "ko",
+    "frontend": {
+      "language": "typescript",
+      "framework": "vite-react",
+      "runtime": "node",
+      "runtimeVersion": "18+",
+      "packageManager": "pnpm",
+      "testFramework": "vitest",
+      "linter": "eslint",
+      "formatter": "prettier",
+      "typeChecker": "typescript",
+      "coverageTarget": 85,
+      "buildTool": "vite",
+      "styling": "tailwindcss"
+    },
+    "backend": {
+      "language": "python",
+      "framework": "fastapi",
+      "runtime": "python",
+      "runtimeVersion": "3.11+",
+      "packageManager": "pip",
+      "testFramework": "pytest",
+      "linter": "ruff",
+      "formatter": "ruff",
+      "typeChecker": "mypy",
+      "coverageTarget": 85,
+      "orm": "sqlmodel",
+      "validation": "pydantic2"
+    },
+    "database": {
+      "type": "sqlite",
+      "location": "local"
+    },
+    "deployment": {
+      "strategy": "docker-compose",
+      "ports": {
+        "frontend": 3000,
+        "backend": 8000
+      }
+    }
+  }
+  ```
+````
+
+---
+
+### Step 8: 최종 완료 보고
+
+**Alfred**:
+
+```markdown
+✅ 프로젝트 초기화 완료!
+
+📁 생성/갱신된 문서:
+
+| 문서                         | 버전     | 크기     | 상태       |
+|----------------------------|--------|--------|----------|
+| .moai/project/product.md   | v0.2.0 | 6.8 KB | ✅ 갱신 완료  |
+| .moai/project/structure.md | v0.2.0 | 8.2 KB | ✅ 갱신 완료  |
+| .moai/project/tech.md      | v0.2.0 | 9.5 KB | ✅ 갱신 완료  |
+| .moai/config.json          | v0.2.0 | -      | ✅ 최적화 완료 |
+
+🔍 품질 검증 결과:
+
+@TAG 체계 검증 (15개 TAG 확인):
+- ✅ @DOC 태그: 9개 (MISSION, ARCHITECTURE, MODULES, INTEGRATION, TRACEABILITY, STACK, FRAMEWORK, QUALITY, SECURITY, DEPLOY, STRATEGY)
+- ✅ @SPEC 태그: 3개 (USER, PROBLEM, SUCCESS)
+- ✅ @CODE 태그: 1개 (TECH-DEBT)
+- ✅ @TODO 태그: SPEC-BACKLOG, STRUCTURE-001 포함
+
+문서 구조 검증:
+- ✅ YAML Front Matter 형식 (id, version, status, created, updated, authors)
+- ✅ HISTORY 섹션 (v0.2.0 갱신 이력 포함)
+- ✅ EARS 요구사항 작성 가이드 포함
+- ✅ config.json 유효한 JSON 형식
+
+🚀 감지된 환경 정보:
+
+프로젝트 유형: 풀스택 모노레포 (학습용 ToDo 애플리케이션)
+
+Frontend:
+- 언어: TypeScript 5.x
+- 프레임워크: Vite + React 18
+- 스타일링: Tailwind CSS
+- 테스트: Vitest + Testing Library
+- 도구: pnpm, ESLint, Prettier
+
+Backend:
+- 언어: Python 3.11+
+- 프레임워크: FastAPI
+- ORM: SQLModel
+- 검증: Pydantic v2
+- 테스트: pytest + pytest-cov
+- 도구: pip, Ruff, mypy
+
+데이터베이스: SQLite (로컬)
+
+배포: Docker Compose (로컬)
+
+📋 다음 단계 안내:
+
+프로젝트 문서 작성이 완료되었습니다. 이제 첫 번째 기능을 SPEC으로 정의하고 TDD로 구현할 준비가 되었습니다.
+
+권장 작업 순서:
+
+1. /alfred:1-spec TODO-001 - 첫 번째 SPEC 작성
+  - 제안: "Todo 항목 CRUD 기능"
+  - SPEC 문서 생성 및 브랜치 생성
+
+2. /alfred:2-build TODO-001 - TDD 구현
+  - RED: 테스트 작성
+  - GREEN: 최소 구현
+  - REFACTOR: 코드 개선
+
+3. /alfred:3-sync - 문서 동기화
+  - Living Document 생성
+  - @TAG 체인 검증
+  - PR Ready 전환
+
+다음 SPEC 후보 (product.md:133 참조):
+1. TODO-001: Todo 항목 CRUD 기능
+2. TODO-002: Todo 상태 관리
+3. TODO-003: Todo 우선순위 설정
+4. TODO-004: Todo 필터링 및 검색
+5. TODO-005: 프론트엔드 UI 컴포넌트
+6. TODO-006: Docker Compose 배포 환경
+
+📚 참고 문서 위치:
+- 비즈니스 정의: .moai/project/product.md
+- 아키텍처 설계: .moai/project/structure.md
+- 기술 스택: .moai/project/tech.md
+- 프로젝트 설정: .moai/config.json
+- 개발 가이드: .moai/memory/development-guide.md
+
+---
+프로젝트 초기화가 완료되었습니다! 이제 /alfred:1-spec TODO-001을 실행하여 첫 번째 기능을 정의하세요. 🎉
+```
+
+---
+
+### 핵심 학습 포인트
+
+#### 1. 인터랙티브한 인터뷰 방식
+
+Alfred는 다음과 같은 유연한 인터뷰 전략을 사용합니다:
+
+- ✅ **최소 질문 시작**: 핵심 3가지 질문으로 시작
+- ✅ **사용자 요청에 맞춰 조정**: 나머지 정보 자동 채우기 요청 시 합리적 추론
+- ✅ **실시간 수정 가능**: 기술 스택 변경 요청 즉시 반영 (Next.js → Vite+React)
+- ✅ **단계적 확인**: 각 수정사항을 사용자에게 재확인
+
+#### 2. 자동 추론 및 합리적 기본값
+
+사용자가 명시하지 않은 정보는 프로젝트 맥락에 맞게 자동 추론:
+
+```markdown
+예시: "학습용 ToDo-App" 프로젝트의 경우
+
+Alfred 자동 추론:
+✅ 사용자: 개인 학습용 (본인)
+✅ 현재 단계: 초기 개발
+✅ 품질 목표: 테스트 커버리지 85% (TRUST 5원칙 기본값)
+✅ 주요 기능: CRUD, 상태 관리, 우선순위 설정 (ToDo 앱 표준)
+✅ 아키텍처: 모노레포 (학습 편의성)
+```
+
+#### 3. 실시간 문서 생성 및 검증
+
+Alfred는 작업 진행 상황을 실시간으로 보고:
+
+```markdown
+⏺ Read(.moai/project/product.md) → 기존 문서 분석
+⏺ Update(.moai/project/product.md) → 실제 정보로 갱신
+⏺ Update(.moai/project/structure.md) → 아키텍처 구조 작성
+⏺ Update(.moai/project/tech.md) → 기술 스택 명시
+⏺ Update(.moai/config.json) → 언어별 최적화 설정
+⏺ 품질 검증 → @TAG 체계, YAML Front Matter, JSON 유효성
+```
+
+#### 4. 다음 단계 명확한 안내
+
+초기화 완료 후 즉시 실행 가능한 구체적 커맨드 제공:
+
+```bash
+# 1단계: SPEC 작성
+/alfred:1-spec TODO-001 "Todo 항목 CRUD 기능"
+
+# 2단계: TDD 구현
+/alfred:2-build TODO-001
+
+# 3단계: 문서 동기화
+/alfred:3-sync
+```
+
+#### 5. 생성된 문서 구조
+
+**product.md** (비즈니스 정의):
+
+```markdown
+---
+id: PRODUCT-001
+version: 0.2.0
+status: active
+---
+
+## @DOC:MISSION-001 핵심 미션
+MoAI-ADK SPEC-First TDD 방법론 학습 및 풀스택 개발 연습
+
+## @SPEC:USER-001 주요 사용자층
+- 대상: 개인 학습자
+- 핵심 니즈: TDD 방법론 실습, 풀스택 개발 경험
+
+## @SPEC:PROBLEM-001 해결하는 핵심 문제
+1. TDD 방법론 이해 부족
+2. SPEC 작성 경험 부족
+3. 추적성 관리 어려움
+
+## TODO:SPEC-BACKLOG-001 다음 단계 SPEC 후보
+1. TODO-001: Todo 항목 CRUD 기능
+2. TODO-002: Todo 상태 관리
+3. TODO-003: Todo 우선순위 설정
+...
+```
+
+**structure.md** (시스템 아키텍처):
+
+```markdown
+## @DOC:ARCHITECTURE-001 시스템 아키텍처
+
+**풀스택 모노레포 구조 (프론트엔드 + 백엔드 분리)**
+
+my-moai-project/
+├── frontend/              # Vite + React + TypeScript
+├── backend/               # FastAPI + Python
+└── docker-compose.yml     # 로컬 배포 설정
+```
+
+**tech.md** (기술 스택):
+
+```markdown
+## @DOC:STACK-001 언어 & 런타임
+
+Frontend: TypeScript 5.x, Vite, Tailwind CSS
+Backend: Python 3.11+, FastAPI, SQLModel
+
+## @DOC:QUALITY-001 품질 게이트
+- 테스트 커버리지: 85% 이상
+- 프론트: Vitest + Testing Library
+- 백엔드: pytest + pytest-cov
+```
+
+**config.json** (프로젝트 설정):
+
+```json
+{
+  "version": "0.2.0",
+  "projectType": "fullstack",
+  "locale": "ko",
+  "frontend": {
+    "language": "typescript",
+    "framework": "vite-react",
+    "styling": "tailwindcss"
+  },
+  "backend": {
+    "language": "python",
+    "framework": "fastapi",
+    "orm": "sqlmodel"
+  },
+  "deployment": {
+    "strategy": "docker-compose"
+  }
+}
+```
+
+---
+
+### 실습 완료 체크리스트
+
+프로젝트 초기화를 성공적으로 완료했다면 다음 항목을 확인하세요:
+
+- [ ] `.moai/project/` 디렉토리에 3개 문서 생성 확인
+  - [ ] `product.md` (비즈니스 정의)
+  - [ ] `structure.md` (시스템 아키텍처)
+  - [ ] `tech.md` (기술 스택)
+- [ ] `.moai/config.json` 파일 생성 및 언어별 최적화 확인
+- [ ] YAML Front Matter에 `version: 0.2.0` (또는 최신 버전) 확인
+- [ ] HISTORY 섹션에 최신 변경 이력 기록 확인
+- [ ] @DOC, @SPEC, @TODO 태그가 적절히 사용되었는지 확인
+- [ ] `TODO:SPEC-BACKLOG-001`에 다음 작업 후보 목록 확인
+
+**다음 단계 준비 확인**:
+
+- [ ] product.md의 SPEC 후보 목록 확인
+- [ ] 첫 번째 구현할 기능 결정
+- [ ] `/alfred:1-spec` 커맨드 실행 준비
 
 ---
 
@@ -1311,7 +2248,7 @@ cd ai-chatbot
 git init
 
 # 2) MoAI-ADK 초기화
-/alfred:8-project
+/alfred:0-project
 
 # 3) Alfred 인터뷰 (10분)
 Q1: 핵심 미션은?
@@ -1359,7 +2296,7 @@ ls
 # package.json, tsconfig.json, src/, tests/, README.md
 
 # 2) MoAI-ADK 초기화
-/alfred:8-project
+/alfred:0-project
 
 # 3) Alfred 환경 분석
 📊 프로젝트 환경 분석 결과:
@@ -1415,7 +2352,7 @@ npm install -D typescript @types/node
 npx tsc --init
 
 # 3) MoAI-ADK 초기화 (언어 전환 감지)
-/alfred:8-project
+/alfred:0-project
 
 # 4) Alfred 언어 감지
 감지된 언어:
@@ -1555,31 +2492,30 @@ tar -xzf moai-backup-20251011.tar.gz
 
 ### MoAI-ADK 워크플로우
 
-- [Stage 1: SPEC Writing](/Users/goos/MoAI/MoAI-ADK/docs/guides/workflow/1-spec.md)
-- [Stage 2: TDD Build](/Users/goos/MoAI/MoAI-ADK/docs/guides/workflow/2-build.md)
-- [Stage 3: Document Sync](/Users/goos/MoAI/MoAI-ADK/docs/guides/workflow/3-sync.md)
+- [Stage 1: SPEC Writing](/guides/workflow/1-spec)
+- [Stage 2: TDD Build](/guides/workflow/2-build)
+- [Stage 3: Document Sync](/guides/workflow/3-sync)
 
 ### 핵심 개념
 
-- [@TAG 시스템](/Users/goos/MoAI/MoAI-ADK/docs/concepts/tags.md)
-- [EARS 요구사항 작성법](/Users/goos/MoAI/MoAI-ADK/docs/concepts/ears.md)
-- [TRUST 5원칙](/Users/goos/MoAI/MoAI-ADK/docs/concepts/trust.md)
+- [@TAG 시스템](/guides/concepts/tag-system)
+- [EARS 요구사항 작성법](/guides/concepts/ears-guide)
+- [TRUST 5원칙](/guides/concepts/trust-principles)
 
 ### 에이전트
 
-- [project-manager 에이전트](/Users/goos/MoAI/MoAI-ADK/docs/agents/project-manager.md)
-- [Alfred SuperAgent](/Users/goos/MoAI/MoAI-ADK/docs/agents/alfred.md)
+- [Alfred Agents Overview](/guides/agents/overview)
 
 ### 설정 및 도구
 
-- [config.json 설정 가이드](/Users/goos/MoAI/MoAI-ADK/docs/reference/config.md)
-- [CLI 명령어 레퍼런스](/Users/goos/MoAI/MoAI-ADK/docs/reference/cli.md)
+- [설치 가이드](/guides/installation)
+- [빠른 시작](/guides/quick-start)
 
 ---
 
 ## 요약
 
-`/alfred:8-project`는 MoAI-ADK를 사용하는 **모든 프로젝트의 출발점**입니다:
+`/alfred:0-project`는 MoAI-ADK를 사용하는 **모든 프로젝트의 출발점**입니다:
 
 ✅ **2단계 워크플로우**: 분석 → 계획 → 승인 → 실행
 ✅ **3개 핵심 문서**: product.md, structure.md, tech.md
@@ -1591,7 +2527,7 @@ tar -xzf moai-backup-20251011.tar.gz
 
 ```bash
 # 1) 프로젝트 초기화 완료 후
-/alfred:8-project
+/alfred:0-project
 ✅ product/structure/tech.md 생성 완료
 
 # 2) 첫 번째 SPEC 작성 시작

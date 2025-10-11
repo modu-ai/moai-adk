@@ -38,11 +38,12 @@ export default withMermaid(
       {
         text: 'Workflow',
         items: [
-          { text: '0. Project Setup', link: '/guides/workflow/0-project' },
-          { text: '1. SPEC Writing', link: '/guides/workflow/1-spec' },
-          { text: '2. TDD Implementation', link: '/guides/workflow/2-build' },
-          { text: '3. Document Sync', link: '/guides/workflow/3-sync' },
-          { text: '9. Update & Upgrade', link: '/guides/workflow/9-update' }
+          { text: 'Overview', link: '/guides/workflow/overview' },
+          { text: '/alfred:0-project', link: '/guides/workflow/0-project' },
+          { text: '/alfred:1-spec', link: '/guides/workflow/1-spec' },
+          { text: '/alfred:2-build', link: '/guides/workflow/2-build' },
+          { text: '/alfred:3-sync', link: '/guides/workflow/3-sync' },
+          { text: '/alfred:9-update', link: '/guides/workflow/9-update' }
         ]
       },
       {
@@ -52,6 +53,12 @@ export default withMermaid(
           { text: 'EARS Requirements', link: '/guides/concepts/ears-guide' },
           { text: 'TAG System', link: '/guides/concepts/tag-system' },
           { text: 'TRUST Principles', link: '/guides/concepts/trust-principles' }
+        ]
+      },
+      {
+        text: 'Examples',
+        items: [
+          { text: 'Todo App Tutorial', link: '/guides/examples/todo-app/' }
         ]
       },
       {
@@ -97,11 +104,31 @@ export default withMermaid(
           text: 'Workflow',
           collapsed: false,
           items: [
-            { text: '0. Project Setup', link: '/guides/workflow/0-project' },
-            { text: '1. SPEC Writing', link: '/guides/workflow/1-spec' },
-            { text: '2. TDD Implementation', link: '/guides/workflow/2-build' },
-            { text: '3. Document Sync', link: '/guides/workflow/3-sync' },
-            { text: '9. Update & Upgrade', link: '/guides/workflow/9-update' }
+            { text: 'Overview', link: '/guides/workflow/overview' },
+            { text: '/alfred:0-project', link: '/guides/workflow/0-project' },
+            { text: '/alfred:1-spec', link: '/guides/workflow/1-spec' },
+            { text: '/alfred:2-build', link: '/guides/workflow/2-build' },
+            { text: '/alfred:3-sync', link: '/guides/workflow/3-sync' },
+            { text: '/alfred:9-update', link: '/guides/workflow/9-update' }
+          ]
+        },
+        {
+          text: 'Examples',
+          collapsed: false,
+          items: [
+            { text: 'Overview', link: '/guides/examples/' },
+            {
+              text: 'Todo App Tutorial',
+              link: '/guides/examples/todo-app/',
+              collapsed: false,
+              items: [
+                { text: 'Part 1: Project Init', link: '/guides/examples/todo-app/01-project-init' },
+                { text: 'Part 2: SPEC Writing', link: '/guides/examples/todo-app/02-spec-writing' },
+                { text: 'Part 3: Backend TDD', link: '/guides/examples/todo-app/03-backend-tdd' },
+                { text: 'Part 4: Frontend Impl', link: '/guides/examples/todo-app/04-frontend-impl' },
+                { text: 'Part 5: Sync & Deploy', link: '/guides/examples/todo-app/05-sync-deploy' }
+              ]
+            }
           ]
         },
         {

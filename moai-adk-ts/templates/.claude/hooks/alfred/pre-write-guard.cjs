@@ -86,9 +86,39 @@ var init_claude = __esm({
   }
 });
 
+// src/claude/hooks/constants.ts
+var SENSITIVE_KEYWORDS = [
+  ".env",
+  "/secrets",
+  "/.git/",
+  "/.ssh"
+];
+var PROTECTED_PATHS = [
+  ".moai/memory/"
+];
+
+// src/claude/hooks/base.ts
+async function runHook(HookClass) {
+  try {
+    const { parseClaudeInput: parseClaudeInput2, outputResult: outputResult2 } = await Promise.resolve().then(() => (init_claude(), claude_exports));
+    const input = await parseClaudeInput2();
+    const hook = new HookClass();
+    const result = await hook.execute(input);
+    outputResult2(result);
+  } catch (error) {
+    console.error(
+      `ERROR ${HookClass.name}: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
+    process.exit(1);
+  }
+}
+
+// src/claude/hooks/utils.ts
+function extractFilePath(toolInput) {
+  return toolInput.file_path || toolInput.filePath || toolInput.path || toolInput.notebook_path || null;
+}
+
 // src/claude/hooks/pre-write-guard.ts
-var SENSITIVE_KEYWORDS = [".env", "/secrets", "/.git/", "/.ssh"];
-var PROTECTED_PATHS = [".moai/memory/"];
 var PreWriteGuard = class {
   name = "pre-write-guard";
   async execute(input) {
@@ -97,7 +127,7 @@ var PreWriteGuard = class {
       return { success: true };
     }
     const toolInput = input.tool_input || {};
-    const filePath = this.extractFilePath(toolInput);
+    const filePath = extractFilePath(toolInput);
     if (!this.checkFileSafety(filePath || "")) {
       return {
         success: false,
@@ -107,12 +137,6 @@ var PreWriteGuard = class {
       };
     }
     return { success: true };
-  }
-  /**
-   * Extract file path from tool input
-   */
-  extractFilePath(toolInput) {
-    return toolInput.file_path || toolInput.filePath || toolInput.path || null;
   }
   /**
    * Check if file is safe to edit
@@ -138,22 +162,10 @@ var PreWriteGuard = class {
     return true;
   }
 };
-async function main() {
-  try {
-    const { parseClaudeInput: parseClaudeInput2, outputResult: outputResult2 } = await Promise.resolve().then(() => (init_claude(), claude_exports));
-    const input = await parseClaudeInput2();
-    const preWriteGuard = new PreWriteGuard();
-    const result = await preWriteGuard.execute(input);
-    outputResult2(result);
-  } catch (_error) {
-    process.exit(0);
-  }
-}
 if (__require.main === module) {
-  main().catch(() => {
+  runHook(PreWriteGuard).catch(() => {
     process.exit(0);
   });
 }
 
 exports.PreWriteGuard = PreWriteGuard;
-exports.main = main;
