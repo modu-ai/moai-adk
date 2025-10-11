@@ -1,5 +1,5 @@
 /**
- * @CODE:HOOK-001 |
+ * @CODE:HOOK-001 | @CODE:HOOKS-REFACTOR-001 |
  * Related: @CODE:HOOK-001:API, @CODE:POLICY-001
  *
  * Policy Blocking Hook - Steering Guard
@@ -7,61 +7,17 @@
  */
 
 import type { HookInput, HookResult, MoAIHook } from '../types';
+import {
+  ALLOWED_PREFIXES,
+  DANGEROUS_COMMANDS,
+  READ_ONLY_TOOLS,
+  TIMEOUTS,
+} from './constants';
+import { runHook } from './base';
+import { extractCommand } from './utils';
 
 // Re-export types for test compatibility
 export type { HookInput, HookResult } from '../types';
-
-/**
- * Dangerous commands that should always be blocked
- */
-const DANGEROUS_COMMANDS: string[] = [
-  'rm -rf /',
-  'rm -rf --no-preserve-root',
-  'sudo rm',
-  'dd if=/dev/zero',
-  ':(){:|:&};:',
-  'mkfs.',
-];
-
-/**
- * Command prefixes that are allowed
- */
-const ALLOWED_PREFIXES: string[] = [
-  'git ',
-  'python',
-  'pytest',
-  'npm ',
-  'node ',
-  'go ',
-  'cargo ',
-  'poetry ',
-  'pnpm ',
-  'rg ',
-  'ls ',
-  'cat ',
-  'echo ',
-  'which ',
-  'make ',
-  'moai ',
-];
-
-/**
- * Read-only tools that should bypass policy checks
- * These tools don't modify the system and can be fast-tracked
- */
-const READ_ONLY_TOOLS: string[] = [
-  'Read',
-  'Glob',
-  'Grep',
-  'WebFetch',
-  'WebSearch',
-  'TodoWrite',
-  'BashOutput',
-  'mcp__context7__resolve-library-id',
-  'mcp__context7__get-library-docs',
-  'mcp__ide__getDiagnostics',
-  'mcp__ide__executeCode',
-];
 
 /**
  * Policy Block Hook - TypeScript port of policy_block.py
@@ -82,7 +38,7 @@ export class PolicyBlock implements MoAIHook {
       return { success: true };
     }
 
-    const command = this.extractCommand(input.tool_input || {});
+    const command = extractCommand(input.tool_input || {});
     if (!command) {
       return { success: true };
     }
@@ -93,7 +49,7 @@ export class PolicyBlock implements MoAIHook {
     for (const dangerousCommand of DANGEROUS_COMMANDS) {
       if (commandLower.includes(dangerousCommand)) {
         const duration = Date.now() - startTime;
-        if (duration > 100) {
+        if (duration > TIMEOUTS.POLICY_BLOCK_SLOW_THRESHOLD) {
           console.error(`[policy-block] Blocked in ${duration}ms`);
         }
         return {
@@ -112,32 +68,15 @@ export class PolicyBlock implements MoAIHook {
       );
     }
 
-    // Log slow executions (>100ms)
+    // Log slow executions
     const duration = Date.now() - startTime;
-    if (duration > 100) {
+    if (duration > TIMEOUTS.POLICY_BLOCK_SLOW_THRESHOLD) {
       console.error(
         `[policy-block] Slow execution: ${duration}ms for ${input.tool_name}`
       );
     }
 
     return { success: true };
-  }
-
-  /**
-   * Extract command from tool input
-   */
-  private extractCommand(toolInput: Record<string, any>): string | null {
-    const raw = toolInput.command || toolInput.cmd;
-
-    if (Array.isArray(raw)) {
-      return raw.map(String).join(' ');
-    }
-
-    if (typeof raw === 'string') {
-      return raw.trim();
-    }
-
-    return null;
   }
 
   /**
@@ -161,27 +100,9 @@ export class PolicyBlock implements MoAIHook {
   }
 }
 
-/**
- * CLI entry point for Claude Code compatibility
- */
-export async function main(): Promise<void> {
-  try {
-    const { parseClaudeInput, outputResult } = await import('../index');
-    const input = await parseClaudeInput();
-    const policyBlock = new PolicyBlock();
-    const result = await policyBlock.execute(input);
-    outputResult(result);
-  } catch (error) {
-    console.error(
-      `ERROR policy_block: ${error instanceof Error ? error.message : 'Unknown error'}`
-    );
-    process.exit(1);
-  }
-}
-
 // Execute if run directly
 if (require.main === module) {
-  main().catch(error => {
+  runHook(PolicyBlock).catch(error => {
     console.error(
       `ERROR policy_block: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
