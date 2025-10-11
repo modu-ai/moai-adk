@@ -933,8 +933,8 @@ pytest tests/ -v --cov=app
 
 3. **에이전트 활용**
    - [Alfred 에이전트 개요](../../agents/overview.md)
-   - [debug-helper 사용법](../../agents/debug-helper.md)
-   - [trust-checker 사용법](../../agents/trust-checker.md)
+   - [debug-helper 사용법](../../agents/overview.md#debug-helper-트러블슈팅-전문가)
+   - [trust-checker 사용법](../../agents/overview.md#trust-checker-품질-보증-리드)
 
 ---
 
