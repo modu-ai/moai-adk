@@ -144,7 +144,7 @@ cd your-project
 moai init .
 ```
 
-⚠️ **주의**: v0.2.17 이하에서는 `/alfred:9-update` 사용 시 **사용자 SPEC 파일이 덮어써질 위험**이 있습니다.
+📌 **v0.2.17 이하**: `moai init .` 사용 권장
 
 #### v0.2.18 이상 (현재)
 ```bash
@@ -690,9 +690,8 @@ MoAI-ADK 템플릿 파일을 안전하게 업데이트합니다 (Claude Code 전
 /alfred:9-update --check-quality
 ```
 
-**⚠️ v0.2.17 이하 사용자 주의**:
-- v0.2.17 이하에서는 `/alfred:9-update` 사용 시 **사용자 SPEC 파일이 덮어써질 위험**이 있습니다
-- 대신 `moai init .` 명령어를 터미널에서 사용하세요
+**📌 v0.2.17 이하 사용자**:
+- `moai init .` 명령어를 터미널에서 사용하세요
 
 ### moai init [project]
 
@@ -735,7 +734,9 @@ cd your-project
 moai init .
 ```
 
-**⚠️ 중요**: v0.2.17 이하에서는 `moai init .`이 안전합니다. v0.2.18+부터는 Claude Code에서 `/alfred:9-update` 사용을 권장합니다.
+**📌 버전별 권장**:
+- **v0.2.17 이하**: `moai init .` 사용
+- **v0.2.18 이상**: Claude Code에서 `/alfred:9-update` 사용
 
 ### moai doctor
 
