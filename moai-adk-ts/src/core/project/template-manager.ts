@@ -342,7 +342,46 @@ export class TemplateManager {
       await this.ensureDirectory(path.join(projectPath, dir));
     }
 
-    // Agent files
+    // 1. Copy settings.json (process template variables)
+    try {
+      const settingsSource = path.join(this.templatesPath, '.claude', 'settings.json');
+      const settingsTarget = path.join(projectPath, '.claude', 'settings.json');
+
+      let settingsContent = await fs.readFile(settingsSource, 'utf-8');
+      // Replace template variables
+      settingsContent = settingsContent
+        .replace(/\{\{PROJECT_NAME\}\}/g, templateData.projectName)
+        .replace(/\{\{PROJECT_MODE\}\}/g, templateData.projectMode || 'development');
+
+      await fs.writeFile(settingsTarget, settingsContent);
+      result.createdFiles.push('.claude/settings.json');
+    } catch (error) {
+      if (!result.warnings) result.warnings = [];
+      result.warnings.push(`⚠️ Failed to copy settings.json: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+
+    // 2. Copy hook files (copy as-is, no template processing)
+    const hookFiles = [
+      'policy-block.cjs',
+      'pre-write-guard.cjs',
+      'session-notice.cjs',
+      'tag-enforcer.cjs',
+    ];
+
+    for (const hookFile of hookFiles) {
+      try {
+        const sourcePath = path.join(this.templatesPath, '.claude', 'hooks', 'alfred', hookFile);
+        const targetPath = path.join(projectPath, '.claude', 'hooks', 'alfred', hookFile);
+
+        await fs.copyFile(sourcePath, targetPath);
+        result.createdFiles.push(`.claude/hooks/alfred/${hookFile}`);
+      } catch (error) {
+        if (!result.warnings) result.warnings = [];
+        result.warnings.push(`⚠️ Failed to copy hook file ${hookFile}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+
+    // 3. Agent files
     for (const agent of [
       'spec-builder.md',
       'code-builder.md',
@@ -350,29 +389,27 @@ export class TemplateManager {
     ]) {
       const content = this.processor.generateAgentFile(agent, templateData);
       await fs.writeFile(
-        path.join(projectPath, '.claude', 'agents', 'moai', agent),
+        path.join(projectPath, '.claude', 'agents', 'alfred', agent),
         content
       );
       result.createdFiles.push(`.claude/agents/alfred/${agent}`);
     }
 
-    // Command files
+    // 4. Command files
     for (const cmd of [
-      '8-project.md',
+      '0-project.md',
       '1-spec.md',
       '2-build.md',
       '3-sync.md',
+      '9-update.md',
     ]) {
       const content = this.processor.generateCommandFile(cmd, templateData);
       await fs.writeFile(
-        path.join(projectPath, '.claude', 'commands', 'moai', cmd),
+        path.join(projectPath, '.claude', 'commands', 'alfred', cmd),
         content
       );
       result.createdFiles.push(`.claude/commands/alfred/${cmd}`);
     }
-
-    // Note: Python hooks have been replaced with TypeScript hooks
-    // See: src/claude/hooks/* for TS-based hook implementations
   }
 
   /**
