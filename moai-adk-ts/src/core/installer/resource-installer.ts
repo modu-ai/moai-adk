@@ -111,6 +111,10 @@ export class ResourceInstaller {
    * @param config Installation configuration
    * @returns List of installed files
    * @tags @CODE:INSTALL-MOAI-001:API
+   *
+   * **User Data Protection**:
+   * - `.moai/specs/` directory is NEVER touched (user's SPEC files)
+   * - `.moai/reports/` directory is NEVER touched (user's sync reports)
    */
   async installMoaiResources(config: InstallationConfig): Promise<string[]> {
     const installedFiles: string[] = [];
@@ -121,12 +125,21 @@ export class ResourceInstaller {
     const templateVars = this.templateProcessor.createTemplateVariables(config);
 
     if (fs.existsSync(moaiTemplatesPath)) {
+      // CRITICAL: Exclude user data directories to prevent accidental overwrite
       const copiedFiles = await this.templateProcessor.copyTemplateDirectory(
         moaiTemplatesPath,
         moaiDir,
-        templateVars
+        templateVars,
+        {
+          excludePaths: ['specs', 'reports'], // User SPEC files and sync reports
+        }
       );
       installedFiles.push(...copiedFiles);
+
+      logger.info('User data directories protected during installation', {
+        excluded: ['specs', 'reports'],
+        tag: 'INFO:USER-DATA-PROTECTED-001',
+      });
     } else {
       logger.warn('MoAI templates not found, creating minimal structure', {
         templatesPath: moaiTemplatesPath,

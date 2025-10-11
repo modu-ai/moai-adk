@@ -232,15 +232,21 @@ export class TemplateProcessor {
    * @param srcDir Source template directory
    * @param dstDir Destination directory
    * @param variables Template variables
+   * @param options Optional configuration
+   * @param options.excludePaths Paths to exclude (relative to srcDir, e.g., ['specs', 'reports'])
    * @returns List of copied files
    * @tags @CODE:COPY-TEMPLATE-DIR-001:API
    */
   async copyTemplateDirectory(
     srcDir: string,
     dstDir: string,
-    variables: Record<string, any>
+    variables: Record<string, any>,
+    options?: {
+      excludePaths?: string[];
+    }
   ): Promise<string[]> {
     const copiedFiles: string[] = [];
+    const excludePaths = options?.excludePaths || [];
 
     try {
       await fs.promises.mkdir(dstDir, { recursive: true });
@@ -252,11 +258,27 @@ export class TemplateProcessor {
         const srcPath = path.join(srcDir, entry.name);
         const dstPath = path.join(dstDir, entry.name);
 
+        // Check if this path should be excluded
+        const isExcluded = excludePaths.some(excludePath => {
+          const normalizedExclude = path.normalize(excludePath).toLowerCase();
+          const normalizedEntry = entry.name.toLowerCase();
+          return normalizedEntry === normalizedExclude;
+        });
+
+        if (isExcluded) {
+          logger.info(`Skipping excluded path: ${entry.name}`, {
+            srcPath,
+            tag: 'INFO:EXCLUDE-PATH-001',
+          });
+          continue; // Skip this entry
+        }
+
         if (entry.isDirectory()) {
           const subFiles = await this.copyTemplateDirectory(
             srcPath,
             dstPath,
-            variables
+            variables,
+            options
           );
           copiedFiles.push(...subFiles);
         } else {

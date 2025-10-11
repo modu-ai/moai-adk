@@ -210,4 +210,114 @@ describe('TemplateProcessor - Cross-Platform Path Resolution', () => {
       expect(typeof variables.TIMESTAMP).toBe('string');
     });
   });
+
+  describe('Phase 3: User Data Protection with excludePaths', () => {
+    /**
+     * @TEST:EXCLUDE-PATHS-001
+     * Test: copyTemplateDirectory should exclude specified paths
+     */
+    it('should exclude paths specified in excludePaths option', async () => {
+      const fs = require('node:fs');
+      const os = require('node:os');
+      const path = require('node:path');
+
+      // Create temporary directories
+      const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'moai-test-'));
+      const srcDir = path.join(tempDir, 'src');
+      const dstDir = path.join(tempDir, 'dst');
+
+      // Setup: Create source directory structure
+      fs.mkdirSync(srcDir, { recursive: true });
+      fs.mkdirSync(path.join(srcDir, 'specs'), { recursive: true });
+      fs.mkdirSync(path.join(srcDir, 'reports'), { recursive: true });
+      fs.mkdirSync(path.join(srcDir, 'other'), { recursive: true });
+
+      fs.writeFileSync(path.join(srcDir, 'specs', 'SPEC-001.md'), '# SPEC');
+      fs.writeFileSync(
+        path.join(srcDir, 'reports', 'report.md'),
+        '# Report'
+      );
+      fs.writeFileSync(path.join(srcDir, 'other', 'file.md'), '# Other');
+
+      try {
+        // Act: Copy with excludePaths
+        await processor.copyTemplateDirectory(srcDir, dstDir, {}, {
+          excludePaths: ['specs', 'reports'],
+        });
+
+        // Assert: Excluded paths should NOT exist in destination
+        expect(fs.existsSync(path.join(dstDir, 'specs'))).toBe(false);
+        expect(fs.existsSync(path.join(dstDir, 'reports'))).toBe(false);
+
+        // Assert: Non-excluded paths SHOULD exist in destination
+        expect(fs.existsSync(path.join(dstDir, 'other'))).toBe(true);
+        expect(fs.existsSync(path.join(dstDir, 'other', 'file.md'))).toBe(
+          true
+        );
+      } finally {
+        // Cleanup
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
+    });
+
+    /**
+     * @TEST:EXCLUDE-PATHS-002
+     * Test: excludePaths should be case-insensitive for Windows compatibility
+     */
+    it('should exclude paths case-insensitively', async () => {
+      const fs = require('node:fs');
+      const os = require('node:os');
+      const path = require('node:path');
+
+      const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'moai-test-'));
+      const srcDir = path.join(tempDir, 'src');
+      const dstDir = path.join(tempDir, 'dst');
+
+      fs.mkdirSync(srcDir, { recursive: true });
+      fs.mkdirSync(path.join(srcDir, 'SPECS'), { recursive: true });
+      fs.writeFileSync(path.join(srcDir, 'SPECS', 'test.md'), 'test');
+
+      try {
+        await processor.copyTemplateDirectory(srcDir, dstDir, {}, {
+          excludePaths: ['specs'], // lowercase
+        });
+
+        // Should exclude 'SPECS' even though excludePath is 'specs'
+        expect(fs.existsSync(path.join(dstDir, 'SPECS'))).toBe(false);
+      } finally {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
+    });
+
+    /**
+     * @TEST:EXCLUDE-PATHS-003
+     * Test: copyTemplateDirectory should work without excludePaths (backward compatibility)
+     */
+    it('should copy all directories when excludePaths is not provided', async () => {
+      const fs = require('node:fs');
+      const os = require('node:os');
+      const path = require('node:path');
+
+      const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'moai-test-'));
+      const srcDir = path.join(tempDir, 'src');
+      const dstDir = path.join(tempDir, 'dst');
+
+      fs.mkdirSync(srcDir, { recursive: true });
+      fs.mkdirSync(path.join(srcDir, 'specs'), { recursive: true });
+      fs.writeFileSync(path.join(srcDir, 'specs', 'test.md'), 'test');
+
+      try {
+        // No excludePaths option
+        await processor.copyTemplateDirectory(srcDir, dstDir, {});
+
+        // Should copy everything (backward compatibility)
+        expect(fs.existsSync(path.join(dstDir, 'specs'))).toBe(true);
+        expect(fs.existsSync(path.join(dstDir, 'specs', 'test.md'))).toBe(
+          true
+        );
+      } finally {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
+    });
+  });
 });
