@@ -201,33 +201,14 @@ graph TB
 MoAI-ADK가 준수하는 5가지 품질 원칙:
 
 ```mermaid
-graph TB
-    TRUST[TRUST 5 Principles]
+graph LR
+    TRUST[TRUST<br/>5 Principles]
 
-    TRUST --> T[Test First]
-    T --> T1[SPEC-based Testing]
-    T1 --> T2[RED-GREEN-REFACTOR]
-    T2 --> T3[Coverage 85%+]
-
-    T3 --> R[Readable]
-    R --> R1[Intention-revealing Names]
-    R1 --> R2[Guard Clauses First]
-    R2 --> R3[Function 50 LOC Max]
-
-    R3 --> U[Unified]
-    U --> U1[SPEC-based Architecture]
-    U1 --> U2[Complexity Threshold]
-    U2 --> U3[Cross-language Traceability]
-
-    U3 --> S[Secured]
-    S --> S1[SPEC Security Requirements]
-    S1 --> S2[Input Validation]
-    S2 --> S3[Audit Logging]
-
-    S3 --> Tr[Trackable]
-    Tr --> Tr1[TAG System]
-    Tr1 --> Tr2[SPEC-Code Traceability]
-    Tr2 --> Tr3[Direct Code Scanning]
+    TRUST --> T[Test First<br/>SPEC-based Testing<br/>RED-GREEN-REFACTOR<br/>Coverage 85%+]
+    TRUST --> R[Readable<br/>Intention-revealing Names<br/>Guard Clauses First<br/>Function 50 LOC Max]
+    TRUST --> U[Unified<br/>SPEC-based Architecture<br/>Complexity Threshold<br/>Cross-language Traceability]
+    TRUST --> S[Secured<br/>SPEC Security Requirements<br/>Input Validation<br/>Audit Logging]
+    TRUST --> Tr[Trackable<br/>TAG System<br/>SPEC-Code Traceability<br/>Direct Code Scanning]
 
     style TRUST fill:#ffd700,stroke:#333,stroke-width:3px
     style T fill:#ffe1e1,stroke:#333,stroke-width:2px
