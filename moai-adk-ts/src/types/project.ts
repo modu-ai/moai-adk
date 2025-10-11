@@ -25,6 +25,7 @@ export enum ProjectType {
 export interface ProjectConfig {
   name: string;
   type: ProjectType;
+  mode?: 'personal' | 'team';
   description?: string;
   author?: string;
   license?: string;
@@ -78,6 +79,7 @@ export interface InitResult {
 export interface TemplateData {
   projectName: string;
   projectType: ProjectType;
+  projectMode?: string;
   timestamp: string;
   author: string;
   description: string;

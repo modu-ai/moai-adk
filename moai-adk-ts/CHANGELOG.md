@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.18] - 2025-10-11
+
+### 🐛 Fixed
+- **Claude Code 훅 파일 복사 누락**
+  - `.claude/hooks/alfred/*.cjs` 4개 파일 복사 로직 추가
+  - `policy-block.cjs`, `pre-write-guard.cjs`, `session-notice.cjs`, `tag-enforcer.cjs`
+  - PreToolUse 훅 MODULE_NOT_FOUND 에러 해결
+
+- **settings.json 복사 누락**
+  - `.claude/settings.json` 복사 및 템플릿 변수 처리 추가
+  - PROJECT_NAME, PROJECT_MODE 변수 치환
+
+- **커맨드/에이전트 파일 경로 수정**
+  - `.claude/agents/moai/` → `.claude/agents/alfred/`
+  - `.claude/commands/moai/` → `.claude/commands/alfred/`
+  - 템플릿 디렉토리 구조와 일치
+
+### ✨ Added
+- **9-update.md 커맨드 파일 추가**
+  - 커맨드 파일 목록에 `9-update.md` 포함
+  - `/alfred:9-update` 커맨드 지원
+
+- **projectMode 필드 추가**
+  - `ProjectConfig.mode` 필드 추가 (personal | team)
+  - `TemplateData.projectMode` 필드 추가
+  - settings.json의 PROJECT_MODE 템플릿 변수 지원
+
+### 🧪 Tests
+- **Claude 구조 생성 테스트 추가**
+  - `@TEST:INTEGRATION-CLAUDE-001` 섹션 추가 (3개 테스트)
+  - 훅 파일 복사 검증
+  - settings.json 생성 검증
+  - 9-update.md 포함 검증
+  - alfred 하위 디렉토리 검증
+
+---
+
 ## [0.2.17] - 2025-10-11
 
 ### ⚡ Performance
@@ -412,7 +449,7 @@ MoAI-ADK (Agentic Development Kit) - TypeScript 기반 SPEC-First TDD 개발 프
 - `/alfred:1-spec` - EARS 형식 명세서 작성
 - `/alfred:2-build` - TDD 구현
 - `/alfred:3-sync` - Living Document 동기화
-- `/alfred:8-project` - 프로젝트 문서 초기화
+- `/alfred:0-project` - 프로젝트 문서 초기화
 - `/alfred:9-update` - 패키지 및 템플릿 업데이트
 
 #### 🛠️ 기술 스택
