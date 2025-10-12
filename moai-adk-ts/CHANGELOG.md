@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.29] - 2025-10-12
+
+### 🟢 Changed
+- **Hook 시스템 리팩토링 완료** (SPEC-HOOKS-REFACTOR-001)
+  - Hook 타입 안전성 개선 (HookInput optional 파라미터 지원)
+  - 공통 유틸리티 함수 추출 (`base.ts`, `constants.ts`, `utils.ts`)
+  - Session-notice, policy-block, pre-write-guard 타입 오류 수정
+  - MoAIHook 인터페이스 개선
+
+### 🐛 Fixed
+- **Claude Code Hook 경로 및 파일 복사 개선**
+  - `.cjs` 파일 올바른 경로 참조 확인
+  - 템플릿 경로 우선순위 수정 (사용자 node_modules 우선)
+  - Hook 파일 복사 로직 안정화
+
+- **코드 포맷 및 품질 개선**
+  - Biome 자동 수정 적용 (12개 파일)
+  - TypeScript 타입 오류 수정 (4개 파일)
+  - 버전 안내 메시지 간소화
+
+### 🔒 Security
+- **사용자 데이터 보호 강화**
+  - `.moai/specs/` 사용자 SPEC 파일 절대 건드리지 않음
+  - `.moai/reports/` 동기화 리포트 보존
+  - 템플릿 업데이트 시 사용자 데이터 보호 검증
+
+### ✨ Improved
+- **Alfred 커맨드 순서 최적화**
+  - `8-project` → `0-project` 이름 변경 (초기화 커맨드 앞으로)
+  - 에이전트 및 커맨드에 안정 버전 권장 지침 추가
+
+---
+
 ## [0.2.18] - 2025-10-11
 
 ### 🐛 Fixed

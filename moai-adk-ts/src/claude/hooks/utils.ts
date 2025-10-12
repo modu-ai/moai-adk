@@ -15,9 +15,7 @@ import { SUPPORTED_LANGUAGES } from './constants';
  * @param toolInput - Tool input object
  * @returns File path or null if not found
  */
-export function extractFilePath(
-  toolInput: Record<string, any>
-): string | null {
+export function extractFilePath(toolInput: Record<string, any>): string | null {
   return (
     toolInput.file_path ||
     toolInput.filePath ||
@@ -33,9 +31,7 @@ export function extractFilePath(
  * @param toolInput - Tool input object
  * @returns Command string or null if not found
  */
-export function extractCommand(
-  toolInput: Record<string, any>
-): string | null {
+export function extractCommand(toolInput: Record<string, any>): string | null {
   const raw = toolInput.command || toolInput.cmd;
 
   if (Array.isArray(raw)) {

@@ -94,9 +94,7 @@ export const SENSITIVE_KEYWORDS = [
 /**
  * Protected paths that should not be modified
  */
-export const PROTECTED_PATHS = [
-  '.moai/memory/',
-] as const;
+export const PROTECTED_PATHS = ['.moai/memory/'] as const;
 
 /**
  * Command prefixes that are allowed

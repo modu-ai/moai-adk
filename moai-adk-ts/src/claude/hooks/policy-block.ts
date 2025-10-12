@@ -7,13 +7,13 @@
  */
 
 import type { HookInput, HookResult, MoAIHook } from '../types';
+import { runHook } from './base';
 import {
   ALLOWED_PREFIXES,
   DANGEROUS_COMMANDS,
   READ_ONLY_TOOLS,
   TIMEOUTS,
 } from './constants';
-import { runHook } from './base';
 import { extractCommand } from './utils';
 
 // Re-export types for test compatibility
@@ -25,8 +25,13 @@ export type { HookInput, HookResult } from '../types';
 export class PolicyBlock implements MoAIHook {
   name = 'policy-block';
 
-  async execute(input: HookInput): Promise<HookResult> {
+  async execute(input?: HookInput): Promise<HookResult> {
     const startTime = Date.now();
+
+    // Handle missing input or tool_name
+    if (!input || !input.tool_name) {
+      return { success: true };
+    }
 
     // Fast-track: Read-only tools bypass all checks
     if (this.isReadOnlyTool(input.tool_name)) {
@@ -96,7 +101,7 @@ export class PolicyBlock implements MoAIHook {
     }
 
     // Check against known read-only tools
-    return READ_ONLY_TOOLS.includes(toolName);
+    return (READ_ONLY_TOOLS as readonly string[]).includes(toolName);
   }
 }
 
