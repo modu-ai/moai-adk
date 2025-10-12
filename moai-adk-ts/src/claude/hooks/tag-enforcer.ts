@@ -20,11 +20,11 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { HookInput, HookResult, MoAIHook } from '../types';
+import { runHook } from './base';
+import { EXCLUDED_PATHS } from './constants';
 import { CODE_FIRST_PATTERNS } from './tag-enforcer/tag-patterns';
 import { TagValidator } from './tag-enforcer/tag-validator';
 import type { ImmutabilityCheck } from './tag-enforcer/types';
-import { EXCLUDED_PATHS } from './constants';
-import { runHook } from './base';
 import { extractFilePath, getAllFileExtensions } from './utils';
 
 // Re-export types for test compatibility
@@ -45,8 +45,13 @@ export class CodeFirstTAGEnforcer implements MoAIHook {
   /**
    * 새로운 Code-First TAG 불변성 검사 실행
    */
-  async execute(input: HookInput): Promise<HookResult> {
+  async execute(input?: HookInput): Promise<HookResult> {
     try {
+      // Handle missing input or tool_name
+      if (!input || !input.tool_name) {
+        return { success: true };
+      }
+
       // 1. 파일 쓰기 작업인지 확인
       if (!this.isWriteOperation(input.tool_name)) {
         return { success: true };

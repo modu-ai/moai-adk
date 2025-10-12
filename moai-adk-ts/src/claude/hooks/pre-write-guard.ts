@@ -7,8 +7,8 @@
  */
 
 import type { HookInput, HookResult, MoAIHook } from '../types';
-import { PROTECTED_PATHS, SENSITIVE_KEYWORDS } from './constants';
 import { runHook } from './base';
+import { PROTECTED_PATHS, SENSITIVE_KEYWORDS } from './constants';
 import { extractFilePath } from './utils';
 
 // Re-export types for test compatibility
@@ -20,15 +20,15 @@ export type { HookInput, HookResult } from '../types';
 export class PreWriteGuard implements MoAIHook {
   name = 'pre-write-guard';
 
-  async execute(input: HookInput): Promise<HookResult> {
-    const toolName = input.tool_name;
+  async execute(input?: HookInput): Promise<HookResult> {
+    const toolName = input?.tool_name;
 
     // Only check write operations
     if (!toolName || !['Write', 'Edit', 'MultiEdit'].includes(toolName)) {
       return { success: true };
     }
 
-    const toolInput = input.tool_input || {};
+    const toolInput = input?.tool_input || {};
     const filePath = extractFilePath(toolInput);
 
     if (!this.checkFileSafety(filePath || '')) {

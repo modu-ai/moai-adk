@@ -41,7 +41,7 @@ export interface HookResult {
  */
 export interface MoAIHook {
   name: string;
-  execute(input: HookInput): Promise<HookResult>;
+  execute(input?: HookInput): Promise<HookResult>;
 }
 
 /**

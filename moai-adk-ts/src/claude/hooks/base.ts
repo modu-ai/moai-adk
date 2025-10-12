@@ -14,9 +14,7 @@ import type { MoAIHook } from '../types';
  *
  * @param HookClass - Hook class constructor
  */
-export async function runHook(
-  HookClass: new () => MoAIHook
-): Promise<void> {
+export async function runHook(HookClass: new () => MoAIHook): Promise<void> {
   try {
     const { parseClaudeInput, outputResult } = await import('../index');
     const input = await parseClaudeInput();

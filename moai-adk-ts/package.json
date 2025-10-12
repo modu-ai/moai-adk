@@ -1,6 +1,6 @@
 {
   "name": "moai-adk",
-  "version": "0.2.18",
+  "version": "0.2.29",
   "description": "🗿 MoAI-ADK: TypeScript-based SPEC-First TDD Development Kit with Universal Language Support",
   "type": "module",
   "main": "dist/index.cjs",
@@ -22,8 +22,7 @@
   },
   "packageManager": "bun@1.2.19",
   "scripts": {
-    "build": "tsup && bun run build:hooks",
-    "build:hooks": "tsup --config tsup.hooks.config.ts",
+    "build": "tsup",
     "build:watch": "tsup --watch",
     "dev": "tsx src/cli/index.ts",
     "test": "vitest run",

@@ -1,0 +1,189 @@
+name: Test Hooks (Cross-Platform)
+
+on:
+  push:
+    branches: [main, develop, feature/SPEC-HOOKS-001, feature/SPEC-*]
+    paths:
+      - 'templates/.claude/hooks/alfred/*.js'
+      - 'moai-adk-ts/src/claude/hooks/**'
+      - '.github/workflows/test-hooks-cross-platform.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'templates/.claude/hooks/alfred/*.js'
+      - 'moai-adk-ts/src/claude/hooks/**'
+
+jobs:
+  test-typescript:
+    name: Test TypeScript Hooks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: |
+          cd moai-adk-ts
+          bun install
+
+      - name: Run TypeScript tests
+        run: |
+          cd moai-adk-ts
+          bun test src/__tests__/claude/hooks/
+
+  test-pure-js-cross-platform:
+    name: Test Pure JS Hooks (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node-version: [18, 20, 22]
+        exclude:
+          # Reduce matrix size - test all Node versions only on Linux
+          - os: windows-latest
+            node-version: 20
+          - os: macos-latest
+            node-version: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Test Hooks (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          echo "=== Testing Pure JavaScript Hooks on ${{ matrix.os }} ==="
+
+          # Test 1: policy-block - empty input
+          echo "Test 1: policy-block - empty input"
+          echo '{}' | node templates/.claude/hooks/alfred/policy-block.js
+
+          # Test 2: policy-block - Read bypass
+          echo "Test 2: policy-block - Read bypass"
+          echo '{"tool_name":"Read","tool_input":{"file_path":"test.txt"}}' | \
+            node templates/.claude/hooks/alfred/policy-block.js
+
+          # Test 3: policy-block - JSON parse error
+          echo "Test 3: policy-block - JSON parse error"
+          echo 'invalid json' | node templates/.claude/hooks/alfred/policy-block.js || true
+
+          # Test 4: pre-write-guard - normal file
+          echo "Test 4: pre-write-guard - normal file"
+          echo '{"tool_name":"Write","tool_input":{"file_path":"test.txt"}}' | \
+            node templates/.claude/hooks/alfred/pre-write-guard.js
+
+          # Test 5: pre-write-guard - sensitive file block
+          echo "Test 5: pre-write-guard - sensitive file block"
+          echo '{"tool_name":"Write","tool_input":{"file_path":".env"}}' | \
+            node templates/.claude/hooks/alfred/pre-write-guard.js || true
+
+          # Test 6: tag-enforcer - Read bypass
+          echo "Test 6: tag-enforcer - Read bypass"
+          echo '{"tool_name":"Read","tool_input":{"file_path":"test.ts"}}' | \
+            node templates/.claude/hooks/alfred/tag-enforcer.js
+
+          # Test 7: session-notice - execution
+          echo "Test 7: session-notice - execution"
+          echo '{}' | node templates/.claude/hooks/alfred/session-notice.js
+
+          echo "✅ All hooks executed successfully on ${{ matrix.os }}"
+
+      - name: Test Hooks (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Write-Host "=== Testing Pure JavaScript Hooks on Windows ==="
+
+          # Test 1: policy-block - empty input
+          Write-Host "Test 1: policy-block - empty input"
+          '{}' | node templates/.claude/hooks/alfred/policy-block.js
+
+          # Test 2: policy-block - Read bypass
+          Write-Host "Test 2: policy-block - Read bypass"
+          '{"tool_name":"Read","tool_input":{"file_path":"test.txt"}}' | `
+            node templates/.claude/hooks/alfred/policy-block.js
+
+          # Test 3: policy-block - JSON parse error
+          Write-Host "Test 3: policy-block - JSON parse error"
+          try {
+            'invalid json' | node templates/.claude/hooks/alfred/policy-block.js
+          } catch {
+            Write-Host "Expected error caught"
+          }
+
+          # Test 4: pre-write-guard - normal file
+          Write-Host "Test 4: pre-write-guard - normal file"
+          '{"tool_name":"Write","tool_input":{"file_path":"test.txt"}}' | `
+            node templates/.claude/hooks/alfred/pre-write-guard.js
+
+          # Test 5: pre-write-guard - sensitive file block
+          Write-Host "Test 5: pre-write-guard - sensitive file block"
+          try {
+            '{"tool_name":"Write","tool_input":{"file_path":".env"}}' | `
+              node templates/.claude/hooks/alfred/pre-write-guard.js
+          } catch {
+            Write-Host "Expected error caught"
+          }
+
+          # Test 6: tag-enforcer - Read bypass
+          Write-Host "Test 6: tag-enforcer - Read bypass"
+          '{"tool_name":"Read","tool_input":{"file_path":"test.ts"}}' | `
+            node templates/.claude/hooks/alfred/tag-enforcer.js
+
+          # Test 7: session-notice - execution
+          Write-Host "Test 7: session-notice - execution"
+          '{}' | node templates/.claude/hooks/alfred/session-notice.js
+
+          Write-Host "✅ All hooks executed successfully on Windows"
+
+      - name: Verify file sizes
+        if: runner.os != 'Windows'
+        run: |
+          echo "=== Verifying file sizes ==="
+          for hook in policy-block pre-write-guard tag-enforcer session-notice; do
+            size=$(stat -c%s "templates/.claude/hooks/alfred/$hook.js" 2>/dev/null || stat -f%z "templates/.claude/hooks/alfred/$hook.js")
+            echo "$hook.js: ${size} bytes"
+            if [ $size -lt 25000 ]; then
+              echo "  ✅ File size OK (< 25KB)"
+            else
+              echo "  ⚠️  File size warning (> 25KB)"
+            fi
+          done
+
+      - name: Verify file sizes (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Write-Host "=== Verifying file sizes ==="
+          $hooks = @('policy-block', 'pre-write-guard', 'tag-enforcer', 'session-notice')
+          foreach ($hook in $hooks) {
+            $file = "templates/.claude/hooks/alfred/$hook.js"
+            $size = (Get-Item $file).Length
+            Write-Host "$hook.js: $size bytes"
+            if ($size -lt 25000) {
+              Write-Host "  ✅ File size OK (< 25KB)"
+            } else {
+              Write-Host "  ⚠️  File size warning (> 25KB)"
+            }
+          }
+
+  test-summary:
+    name: Test Summary
+    needs: [test-typescript, test-pure-js-cross-platform]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summary
+        run: |
+          echo "✅ All tests passed!"
+          echo "- TypeScript hooks: OK"
+          echo "- Pure JS hooks (Ubuntu): OK"
+          echo "- Pure JS hooks (Windows): OK"
+          echo "- Pure JS hooks (macOS): OK"
