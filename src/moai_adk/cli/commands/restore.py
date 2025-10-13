@@ -7,7 +7,6 @@
 - 백업 목록 조회
 """
 
-
 import click
 from rich.console import Console
 
