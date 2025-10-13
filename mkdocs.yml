@@ -1,0 +1,65 @@
+site_name: MoAI ADK
+site_url: https://moai-adk.vercel.app
+site_author: MoAI Team
+site_description: |
+  모두의AI 개발키트 - 에이전트 중심 개발 프레임워크
+
+theme:
+  name: material
+  language: ko
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.path
+    - content.code.copy
+    - content.tabs.link
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+
+plugins:
+  - search
+  - mermaid2
+  - glightbox
+  - git-revision-date-localized:
+      enable_creation_date: true
+
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+nav:
+  - 홈: index.md
+  - 시작하기:
+    - 개요: guides/getting-started.md
+    - 빠른 시작: guides/quick-start.md
+  - 에이전트:
+    - 개요: guides/agents/overview.md
+  - 워크플로우:
+    - 소개: guides/workflow/overview.md
+    - 0단계 - 프로젝트: guides/workflow/0-project.md
+    - 1단계 - 명세: guides/workflow/1-spec.md
+    - 2단계 - 구현: guides/workflow/2-build.md
+    - 3단계 - 동기화: guides/workflow/3-sync.md
+    - 업데이트: guides/workflow/9-update.md
+  - API 참조:
+    - 개요: api/index.md

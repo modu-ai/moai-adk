@@ -1,51 +1,46 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "cd moai-adk-ts && bun run docs:build",
-  "outputDirectory": "docs/.vitepress/dist",
-  "framework": "vitepress",
-  "devCommand": "cd moai-adk-ts && bun run docs:dev",
-  "installCommand": "cd moai-adk-ts && bun install",
-  "cleanUrls": true,
-  "trailingSlash": false,
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
+    "version": 2,
+    "builds": [
         {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
+            "src": "mkdocs.yml",
+            "use": "@vercel/python",
+            "config": {
+                "maxLambdaSize": "50mb",
+                "runtime": "python3.9",
+                "buildCommand": "pip install uv && uv pip install -r requirements.txt && mkdocs build"
+            }
+        }
+    ],
+    "routes": [
+        { "handle": "filesystem" },
+        { "src": "/(.*)", "dest": "site/$1" }
+    ],
+    "headers": [
+        {
+            "source": "/(.*)",
+            "headers": [
+                {
+                    "key": "X-Content-Type-Options",
+                    "value": "nosniff"
+                },
+                {
+                    "key": "X-Frame-Options",
+                    "value": "DENY"
+                },
+                {
+                    "key": "X-XSS-Protection",
+                    "value": "1; mode=block"
+                }
+            ]
         },
         {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        },
-        {
-          "key": "X-XSS-Protection",
-          "value": "1; mode=block"
+            "source": "/assets/(.*)",
+            "headers": [
+                {
+                    "key": "Cache-Control",
+                    "value": "public, max-age=31536000, immutable"
+                }
+            ]
         }
-      ]
-    },
-    {
-      "source": "/assets/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
-    }
-  ],
-  "redirects": [
-    {
-      "source": "/docs",
-      "destination": "/",
-      "permanent": true
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "/api/:path*"
-    }
-  ]
+    ]
 }
