@@ -334,7 +334,17 @@ export class TemplateProcessor {
 
       let processedContent: string;
       if (isTextFile) {
-        processedContent = mustache.render(content, variables);
+        try {
+          processedContent = mustache.render(content, variables);
+        } catch (mustacheError) {
+          logger.error('Mustache render error', {
+            error: mustacheError,
+            srcPath,
+            fileSize: content.length,
+            tag: 'ERROR:MUSTACHE-RENDER-001',
+          });
+          throw mustacheError;
+        }
       } else {
         processedContent = content;
       }

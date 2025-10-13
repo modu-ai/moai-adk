@@ -29,14 +29,32 @@ export function hasAnyMoAIFiles(projectPath: string): boolean {
 }
 
 /**
- * Generate backup directory name with timestamp
+ * Generate backup directory path with timestamp
  * @CODE:INIT-003:DATA
  *
- * @returns Backup directory name (e.g., `.moai-backup-2025-10-07T05-04-03`)
+ * Returns backup directory path in format: `.moai-backup/YYYY-MM-DD-HH-mm-ss/`
+ *
+ * 9-update.md 명세 준수:
+ * - Phase 2: 백업 디렉토리 생성
+ * - 백업 구조: `.moai-backup/YYYY-MM-DD-HH-mm-ss/{.claude, .moai, CLAUDE.md}`
+ *
+ * @returns Backup directory path (e.g., `.moai-backup/2025-10-07-05-04-03`)
  */
 export function generateBackupDirName(): string {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-  return `.moai-backup-${timestamp}`;
+  const now = new Date();
+
+  // YYYY-MM-DD-HH-mm-ss 형식 생성
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+
+  const timestamp = `${year}-${month}-${day}-${hours}-${minutes}-${seconds}`;
+
+  // .moai-backup/YYYY-MM-DD-HH-mm-ss 구조
+  return `.moai-backup/${timestamp}`;
 }
 
 /**
