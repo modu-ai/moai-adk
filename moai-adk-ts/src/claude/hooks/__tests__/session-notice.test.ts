@@ -65,7 +65,7 @@ describe('SessionNotifier Hook', () => {
       );
       vi.spyOn(fs, 'readdirSync').mockReturnValue([]);
 
-      const result = await notifier.execute({});
+      const result = await notifier.execute();
 
       expect(result.success).toBe(true);
       expect(result.message).toBeDefined();
@@ -74,7 +74,7 @@ describe('SessionNotifier Hook', () => {
     it('should suggest initialization for non-MoAI project', async () => {
       vi.spyOn(fs, 'existsSync').mockReturnValue(false);
 
-      const result = await notifier.execute({});
+      const result = await notifier.execute();
 
       expect(result.success).toBe(true);
       expect(result.message).toContain('/alfred:0-project');

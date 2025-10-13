@@ -86,17 +86,6 @@ var init_claude = __esm({
   }
 });
 
-// src/claude/hooks/constants.ts
-var SENSITIVE_KEYWORDS = [
-  ".env",
-  "/secrets",
-  "/.git/",
-  "/.ssh"
-];
-var PROTECTED_PATHS = [
-  ".moai/memory/"
-];
-
 // src/claude/hooks/base.ts
 async function runHook(HookClass) {
   try {
@@ -113,6 +102,15 @@ async function runHook(HookClass) {
   }
 }
 
+// src/claude/hooks/constants.ts
+var SENSITIVE_KEYWORDS = [
+  ".env",
+  "/secrets",
+  "/.git/",
+  "/.ssh"
+];
+var PROTECTED_PATHS = [".moai/memory/"];
+
 // src/claude/hooks/utils.ts
 function extractFilePath(toolInput) {
   return toolInput.file_path || toolInput.filePath || toolInput.path || toolInput.notebook_path || null;
@@ -122,11 +120,11 @@ function extractFilePath(toolInput) {
 var PreWriteGuard = class {
   name = "pre-write-guard";
   async execute(input) {
-    const toolName = input.tool_name;
+    const toolName = input?.tool_name;
     if (!toolName || !["Write", "Edit", "MultiEdit"].includes(toolName)) {
       return { success: true };
     }
-    const toolInput = input.tool_input || {};
+    const toolInput = input?.tool_input || {};
     const filePath = extractFilePath(toolInput);
     if (!this.checkFileSafety(filePath || "")) {
       return {

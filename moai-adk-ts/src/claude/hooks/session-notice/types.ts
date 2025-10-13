@@ -44,22 +44,6 @@ export interface GitInfo {
 }
 
 /**
- * Hook execution input
- */
-export interface HookInput {
-  [key: string]: unknown;
-}
-
-/**
- * Hook execution result
- */
-export interface HookResult {
-  success: boolean;
-  message?: string;
-  data?: unknown;
-}
-
-/**
  * Version check result
  */
 export interface VersionCheckResult {

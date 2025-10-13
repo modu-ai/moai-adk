@@ -344,20 +344,29 @@ export class TemplateManager {
 
     // 1. Copy settings.json (process template variables)
     try {
-      const settingsSource = path.join(this.templatesPath, '.claude', 'settings.json');
+      const settingsSource = path.join(
+        this.templatesPath,
+        '.claude',
+        'settings.json'
+      );
       const settingsTarget = path.join(projectPath, '.claude', 'settings.json');
 
       let settingsContent = await fs.readFile(settingsSource, 'utf-8');
       // Replace template variables
       settingsContent = settingsContent
         .replace(/\{\{PROJECT_NAME\}\}/g, templateData.projectName)
-        .replace(/\{\{PROJECT_MODE\}\}/g, templateData.projectMode || 'development');
+        .replace(
+          /\{\{PROJECT_MODE\}\}/g,
+          templateData.projectMode || 'development'
+        );
 
       await fs.writeFile(settingsTarget, settingsContent);
       result.createdFiles.push('.claude/settings.json');
     } catch (error) {
       if (!result.warnings) result.warnings = [];
-      result.warnings.push(`⚠️ Failed to copy settings.json: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      result.warnings.push(
+        `⚠️ Failed to copy settings.json: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
 
     // 2. Copy hook files (copy as-is, no template processing)
@@ -370,14 +379,28 @@ export class TemplateManager {
 
     for (const hookFile of hookFiles) {
       try {
-        const sourcePath = path.join(this.templatesPath, '.claude', 'hooks', 'alfred', hookFile);
-        const targetPath = path.join(projectPath, '.claude', 'hooks', 'alfred', hookFile);
+        const sourcePath = path.join(
+          this.templatesPath,
+          '.claude',
+          'hooks',
+          'alfred',
+          hookFile
+        );
+        const targetPath = path.join(
+          projectPath,
+          '.claude',
+          'hooks',
+          'alfred',
+          hookFile
+        );
 
         await fs.copyFile(sourcePath, targetPath);
         result.createdFiles.push(`.claude/hooks/alfred/${hookFile}`);
       } catch (error) {
         if (!result.warnings) result.warnings = [];
-        result.warnings.push(`⚠️ Failed to copy hook file ${hookFile}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        result.warnings.push(
+          `⚠️ Failed to copy hook file ${hookFile}: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
       }
     }
 

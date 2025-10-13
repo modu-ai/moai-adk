@@ -12,8 +12,9 @@ export default defineConfig({
   entry: {
     'policy-block': 'src/claude/hooks/policy-block.ts',
     'pre-write-guard': 'src/claude/hooks/pre-write-guard.ts',
-    'session-notice': 'src/claude/hooks/session-notice/index.ts',
-    'tag-enforcer': 'src/claude/hooks/tag-enforcer.ts'
+    'session-notice-lite': 'src/claude/hooks/session-notice/index.ts',
+    'tag-enforcer-lite': 'src/claude/hooks/tag-enforcer.ts',
+    'moai-enforcer': 'src/claude/hooks/tag-enforcer.ts'
   },
   format: ['cjs'],
   target: 'node18',

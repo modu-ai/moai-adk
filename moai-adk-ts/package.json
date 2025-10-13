@@ -1,6 +1,6 @@
 {
   "name": "moai-adk",
-  "version": "0.2.29",
+  "version": "0.2.30",
   "description": "🗿 MoAI-ADK: TypeScript-based SPEC-First TDD Development Kit with Universal Language Support",
   "type": "module",
   "main": "dist/index.cjs",
@@ -23,6 +23,7 @@
   "packageManager": "bun@1.2.19",
   "scripts": {
     "build": "tsup",
+    "build:hooks": "tsup --config tsup.hooks.config.ts",
     "build:watch": "tsup --watch",
     "dev": "tsx src/cli/index.ts",
     "test": "vitest run",
@@ -48,7 +49,7 @@
     "docs:lint:md:fix": "markdownlint-cli2 \"../docs/guides/**/*.md\" \"!../docs/api/**\" \"!../docs/node_modules/**\" --fix",
     "docs:lint:mermaid": "node ../scripts/validate-mermaid.js",
     "docs:lint": "bun run docs:lint:md && bun run docs:lint:mermaid",
-    "prepublishOnly": "bun run build && bun run check"
+    "prepublishOnly": "bun run build && bun run build:hooks && bun run check"
   },
   "dependencies": {
     "chalk": "^5.6.2",

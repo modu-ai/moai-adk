@@ -7,10 +7,10 @@
  */
 
 import * as path from 'node:path';
-import type { MoAIHook } from '../../types';
+import type { HookInput, HookResult, MoAIHook } from '../../types';
 import { runHook } from '../base';
 import { generateSessionOutput } from './message-builder';
-import type { HookInput, HookResult, ProjectStatus } from './types';
+import type { ProjectStatus } from './types';
 import * as utils from './utils';
 
 /**
@@ -24,7 +24,7 @@ export class SessionNotifier implements MoAIHook {
     this.projectRoot = projectRoot || process.cwd();
   }
 
-  async execute(_input: HookInput): Promise<HookResult> {
+  async execute(_input?: HookInput): Promise<HookResult> {
     try {
       if (utils.isMoAIProject(this.projectRoot)) {
         const status = await this.getProjectStatus();

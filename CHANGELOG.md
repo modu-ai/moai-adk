@@ -7,6 +7,187 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.30] - 2025-10-13
+
+### Fixed
+
+- **Issue #16: Bun 글로벌 설치 시 템플릿 파일 누락 문제 해결**
+  - `prepublishOnly` 스크립트에 hooks 빌드 추가
+  - `tsup.hooks.config.ts` 복원 및 `build:hooks` 스크립트 추가
+  - 빌드 프로세스: `build` → `build:hooks` → `check`
+  - 영향: `.claude/hooks/alfred/*.cjs` 파일들이 npm/bun 패키지에 포함됨
+  - 관련: https://github.com/modu-ai/moai-adk/issues/16
+  - **기여자**: @popcornsar-eddy (이슈 리포팅 및 재현 환경 제공)
+
+### Added
+
+- **build:hooks**: TypeScript hooks를 CommonJS로 컴파일하는 전용 스크립트
+  - 5개 hooks 컴파일: policy-block, pre-write-guard, session-notice-lite, tag-enforcer-lite, moai-enforcer
+  - 출력 경로: `templates/.claude/hooks/alfred/*.cjs`
+
+---
+
+## [v0.2.28] - 2025-10-12
+
+### Added
+
+- **session-notice-lite.cjs**: Unknown Project 감지 시 `/alfred:0-project` 실행 안내
+  - `getProjectName()` 결과가 "Unknown Project"일 때 프로젝트 초기화 단계 제안
+  - 프로젝트 미설정 상황에서 적절한 다음 단계 가이드 제공
+
+---
+
+## [v0.2.21] - 2025-10-12
+
+### Changed
+
+#### ⚡ Hooks v2.0 시스템 - 성능 최적화 및 통합
+
+**핵심 개선 사항**:
+- 🔄 **통합 훅**: spec-enforcer + tdd-enforcer → moai-enforcer (218줄 중복 제거)
+- ⚡ **세션 시작 최적화**: 514ms → 57ms (88.9% 성능 향상)
+- 🎯 **경고 모드**: tag-enforcer-lite (차단 → 경고, UX 개선)
+- 📊 **전체 LOC 감소**: 2,212 → 1,873 (15.3% 감소)
+- 🌍 **범용 디렉토리 지원**: src/ 제한 제거, exclude 패턴 기반 검증
+
+**신규 훅 (3개)**:
+
+1. **moai-enforcer.js** (607 LOC)
+   - SPEC + TDD 통합 검증 (단일 훅으로 통합)
+   - 공통 유틸리티 함수 공유 (extractFilePath, shouldValidate, isCodeFile)
+   - 순차 검증: SPEC 우선 → TDD 검증
+   - 디렉토리 구조 무관 검증 (lib/, pkg/, cmd/ 등 모든 구조 지원)
+
+2. **session-notice-lite.js** (349 LOC)
+   - 88.9% 성능 개선 (514ms → 57ms)
+   - 단일 Git 명령으로 통합: `git status -sb --porcelain`
+   - npm 버전 캐싱 (1일 만료)
+   - SPEC 진행률 간소화 (디렉토리 카운트만)
+
+3. **tag-enforcer-lite.js** (315 LOC)
+   - 58% LOC 감소 (757 → 315)
+   - 경고 전용 모드 (차단하지 않음, UX 개선)
+   - 간소화된 @IMMUTABLE 검증
+   - 항상 `{ success: true }` 반환
+
+**유지된 훅 (2개)**:
+- policy-block.js (345 LOC)
+- pre-write-guard.js (257 LOC)
+
+**제거된 훅 (4개 → .backup-v1/)**:
+- spec-enforcer.js (372 LOC)
+- tdd-enforcer.js (420 LOC)
+- tag-enforcer.js (757 LOC)
+- session-notice.js (663 LOC)
+
+**성능 벤치마크**:
+```
+SPEC + TDD 검증:
+  기존: 80.93ms (spec + tdd 합계)
+  신규: ~40ms (moai-enforcer 통합)
+  개선: 50% 빠름
+
+세션 시작:
+  기존: 514.62ms
+  신규: 57.16ms
+  개선: 88.9% 빠름
+
+TAG 검증:
+  기존: 28.95ms
+  신규: 27.64ms (경고 모드)
+  개선: 4.5% 빠름
+```
+
+**테스트 결과**:
+- 통합 테스트: 21/21 통과 (100%)
+- 벤치마크: 10회 반복 평균값 측정
+- 크로스 플랫폼: Mac/Windows/Linux 호환
+
+**영향**:
+- ✅ 중복 코드 218줄 제거 (DRY 원칙)
+- ✅ 세션 시작 시간 대폭 단축 (사용자 경험 개선)
+- ✅ 범용 디렉토리 구조 지원 (src/, lib/, pkg/, cmd/ 등)
+- ✅ 경고 모드로 개발자 친화성 향상
+- ✅ 전체 유지보수성 향상 (6개 훅 → 5개 훅)
+
+**Technical Details**:
+- 신규 파일 (3개): moai-enforcer.js, session-notice-lite.js, tag-enforcer-lite.js
+- 백업 디렉토리: `templates/.claude/hooks/alfred/.backup-v1/`
+- 테스트 스크립트: `/tmp/test-hooks-v2.js`, `/tmp/benchmark-hooks.js`
+- 분석 문서: `/tmp/hook-cycle-analysis.md` (561 lines, ultrathink 분석)
+- 총 변경량: -339 LOC (2,212 → 1,873)
+
+**SPEC Reference**: @SPEC:HOOKS-002
+
+---
+
+## [v0.2.20] - 2025-10-12
+
+### Changed
+
+#### 🔄 Pure JavaScript 훅 시스템으로 전환
+
+**변경 사항**:
+- TypeScript 훅을 Pure JavaScript로 재작성 (4개 파일)
+- tsup 빌드 프로세스 제거
+- 직접 실행 가능한 `.js` 파일 배포
+
+**혜택**:
+- ✅ 빌드 시간 0초 (5초 → 0초)
+- ✅ 디버깅 용이성 향상 (소스 = 배포)
+- ✅ 크로스 플랫폼 호환성 강화 (Mac/Windows/Linux)
+- ✅ 파일 크기 감소 (42KB → 53KB, JSDoc 포함)
+
+**Technical Details**:
+- 변환된 파일 (templates/.claude/hooks/alfred/):
+  - `policy-block.js` (8.6KB, 345 LOC)
+  - `pre-write-guard.js` (6.5KB, 257 LOC)
+  - `tag-enforcer.js` (21KB, 757 LOC)
+  - `session-notice.js` (17KB, 663 LOC)
+- 삭제된 파일: `moai-adk-ts/tsup.hooks.config.ts`
+- 수정된 파일: `moai-adk-ts/package.json` (build:hooks 스크립트 제거)
+- JSDoc 타입 주석으로 타입 안전성 유지
+- Node.js 내장 모듈만 사용 (fs, path, process, child_process)
+- 성능: < 100ms (기존과 동일)
+
+**SPEC Reference**: @SPEC:HOOKS-001
+
+---
+
+## [v0.2.19] - 2025-10-12
+
+### Fixed
+
+#### 🐛 템플릿 훅 경로 문제 수정 (모노레포 지원)
+
+**문제점**:
+- `templates/.claude/settings.json`의 훅 명령이 상대 경로 사용 (`node .claude/hooks/...`)
+- 서브디렉토리에서 실행 시 파일을 찾지 못하는 오류 발생
+- 모노레포 구조에서 작동하지 않음
+
+**해결 방법**:
+- Git 저장소 루트를 자동 감지하는 절대 경로 방식으로 변경
+- `bash -c 'PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd) && node "$PROJECT_ROOT/.claude/hooks/alfred/*.cjs"'`
+- Git 없는 환경에서는 현재 디렉토리 사용 (fallback)
+
+**수정된 훅 (4개)**:
+- `pre-write-guard.cjs`: Write/Edit 전 검증
+- `tag-enforcer.cjs`: TAG 규칙 강제
+- `policy-block.cjs`: 위험 명령 차단
+- `session-notice.cjs`: 세션 시작 알림
+
+**영향**:
+- ✅ 서브디렉토리에서 정상 작동
+- ✅ 모노레포 구조 지원
+- ✅ `moai init .` 실행 시 올바른 설정 복사
+
+**Technical Details**:
+- 수정된 파일: `moai-adk-ts/templates/.claude/settings.json`
+- 변경 라인: 15, 19, 28, 39
+- 패키지 버전: 0.2.18 → 0.2.19
+
+---
+
 ## [v0.2.14] - 2025-10-08
 
 ### Fixed

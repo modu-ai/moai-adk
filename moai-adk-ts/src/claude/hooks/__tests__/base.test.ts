@@ -8,8 +8,8 @@
 
 import { EventEmitter } from 'node:events';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { outputResult, parseClaudeInput } from '../../index';
 import type { HookInput, HookResult, MoAIHook } from '../../types';
-import { parseClaudeInput, outputResult } from '../../index';
 
 describe('@TEST:HOOKS-REFACTOR-001 - base.ts', () => {
   describe('runHook() 기본 실행', () => {
@@ -24,10 +24,7 @@ describe('@TEST:HOOKS-REFACTOR-001 - base.ts', () => {
 
       // WHEN: runHook 실행을 시뮬레이션
       const hook = new MockHook();
-      const result = await hook.execute({
-        tool_name: 'Test',
-        tool_input: {},
-      });
+      const result = await hook.execute();
 
       // THEN: 성공 결과 반환
       expect(result.success).toBe(true);

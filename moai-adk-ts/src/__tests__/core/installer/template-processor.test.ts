@@ -233,17 +233,19 @@ describe('TemplateProcessor - Cross-Platform Path Resolution', () => {
       fs.mkdirSync(path.join(srcDir, 'other'), { recursive: true });
 
       fs.writeFileSync(path.join(srcDir, 'specs', 'SPEC-001.md'), '# SPEC');
-      fs.writeFileSync(
-        path.join(srcDir, 'reports', 'report.md'),
-        '# Report'
-      );
+      fs.writeFileSync(path.join(srcDir, 'reports', 'report.md'), '# Report');
       fs.writeFileSync(path.join(srcDir, 'other', 'file.md'), '# Other');
 
       try {
         // Act: Copy with excludePaths
-        await processor.copyTemplateDirectory(srcDir, dstDir, {}, {
-          excludePaths: ['specs', 'reports'],
-        });
+        await processor.copyTemplateDirectory(
+          srcDir,
+          dstDir,
+          {},
+          {
+            excludePaths: ['specs', 'reports'],
+          }
+        );
 
         // Assert: Excluded paths should NOT exist in destination
         expect(fs.existsSync(path.join(dstDir, 'specs'))).toBe(false);
@@ -251,9 +253,7 @@ describe('TemplateProcessor - Cross-Platform Path Resolution', () => {
 
         // Assert: Non-excluded paths SHOULD exist in destination
         expect(fs.existsSync(path.join(dstDir, 'other'))).toBe(true);
-        expect(fs.existsSync(path.join(dstDir, 'other', 'file.md'))).toBe(
-          true
-        );
+        expect(fs.existsSync(path.join(dstDir, 'other', 'file.md'))).toBe(true);
       } finally {
         // Cleanup
         fs.rmSync(tempDir, { recursive: true, force: true });
@@ -278,9 +278,14 @@ describe('TemplateProcessor - Cross-Platform Path Resolution', () => {
       fs.writeFileSync(path.join(srcDir, 'SPECS', 'test.md'), 'test');
 
       try {
-        await processor.copyTemplateDirectory(srcDir, dstDir, {}, {
-          excludePaths: ['specs'], // lowercase
-        });
+        await processor.copyTemplateDirectory(
+          srcDir,
+          dstDir,
+          {},
+          {
+            excludePaths: ['specs'], // lowercase
+          }
+        );
 
         // Should exclude 'SPECS' even though excludePath is 'specs'
         expect(fs.existsSync(path.join(dstDir, 'SPECS'))).toBe(false);
@@ -312,9 +317,7 @@ describe('TemplateProcessor - Cross-Platform Path Resolution', () => {
 
         // Should copy everything (backward compatibility)
         expect(fs.existsSync(path.join(dstDir, 'specs'))).toBe(true);
-        expect(fs.existsSync(path.join(dstDir, 'specs', 'test.md'))).toBe(
-          true
-        );
+        expect(fs.existsSync(path.join(dstDir, 'specs', 'test.md'))).toBe(true);
       } finally {
         fs.rmSync(tempDir, { recursive: true, force: true });
       }

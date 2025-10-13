@@ -43,7 +43,13 @@ export class TemplateValidator {
   private readonly WINDOWS_UNSAFE_PATHS = ['C:\\Windows', 'C:\\Program Files'];
 
   private readonly VALID_FEATURES: Record<ProjectType, string[]> = {
-    [ProjectType.PYTHON]: ['pytest', 'mypy', 'black', 'ruff', 'claude-integration'],
+    [ProjectType.PYTHON]: [
+      'pytest',
+      'mypy',
+      'black',
+      'ruff',
+      'claude-integration',
+    ],
     [ProjectType.NODEJS]: ['jest', 'eslint', 'prettier', 'claude-integration'],
     [ProjectType.TYPESCRIPT]: [
       'typescript',
@@ -53,8 +59,22 @@ export class TemplateValidator {
       'biome',
       'claude-integration',
     ],
-    [ProjectType.FRONTEND]: ['typescript', 'react', 'vue', 'jest', 'vitest', 'claude-integration'],
-    [ProjectType.MIXED]: ['typescript', 'jest', 'pytest', 'mypy', 'react', 'claude-integration'],
+    [ProjectType.FRONTEND]: [
+      'typescript',
+      'react',
+      'vue',
+      'jest',
+      'vitest',
+      'claude-integration',
+    ],
+    [ProjectType.MIXED]: [
+      'typescript',
+      'jest',
+      'pytest',
+      'mypy',
+      'react',
+      'claude-integration',
+    ],
   };
 
   /**
