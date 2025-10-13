@@ -2,6 +2,7 @@
 
 # Dependencies
 node_modules/
+docs/node_modules/
 bun.lockb
 
 # Python dependencies
