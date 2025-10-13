@@ -5,10 +5,7 @@ config.json 읽기, 쓰기, 업데이트, 깊은 병합 기능을 검증합니�
 """
 
 import json
-import tempfile
 from pathlib import Path
-
-import pytest
 
 from moai_adk.core.template.config import ConfigManager
 

@@ -4,8 +4,6 @@
 20개 언어 템플릿 경로 매핑 및 get_language_template 함수를 검증합니다.
 """
 
-import pytest
-
 from moai_adk.core.template.languages import LANGUAGE_TEMPLATES, get_language_template
 
 
@@ -18,7 +16,7 @@ class TestLanguageMapping:
 
     def test_all_template_paths_have_correct_format(self) -> None:
         """모든 템플릿 경로가 올바른 형식"""
-        for language, path in LANGUAGE_TEMPLATES.items():
+        for _language, path in LANGUAGE_TEMPLATES.items():
             assert path.startswith(".moai/project/tech/")
             assert path.endswith(".md.j2")
 
