@@ -78,3 +78,81 @@ class TestCLIBasics:
         result = cli_runner.invoke(cli, ["invalid-command"])
         assert result.exit_code != 0
         assert "Error" in result.output or "No such command" in result.output
+
+
+class TestCLICommands:
+    """CLI 명령어 테스트 (init, doctor, status, restore)"""
+
+    def test_init_command_with_path(self, cli_runner: CliRunner):
+        """moai init . 테스트
+
+        Given: CLI 진입점
+        When: init 명령어 실행
+        Then: 프로젝트 초기화 메시지 출력
+        """
+        result = cli_runner.invoke(cli, ["init", "."])
+        assert result.exit_code == 0
+        assert "Initializing" in result.output
+        assert "successfully" in result.output or "completed" in result.output
+
+    def test_init_command_default_path(self, cli_runner: CliRunner):
+        """moai init (경로 없음) 테스트
+
+        Given: CLI 진입점
+        When: init 명령어만 실행 (기본 경로 '.')
+        Then: 프로젝트 초기화 메시지 출력
+        """
+        result = cli_runner.invoke(cli, ["init"])
+        assert result.exit_code == 0
+        assert "Initializing" in result.output
+
+    def test_doctor_command(self, cli_runner: CliRunner):
+        """moai doctor 테스트
+
+        Given: CLI 진입점
+        When: doctor 명령어 실행
+        Then: 시스템 진단 결과 출력
+        """
+        result = cli_runner.invoke(cli, ["doctor"])
+        assert result.exit_code == 0
+        assert "diagnostics" in result.output or "Running" in result.output
+        # 최소 하나의 체크 마크가 있어야 함
+        assert "✓" in result.output or "✗" in result.output
+
+    def test_status_command(self, cli_runner: CliRunner):
+        """moai status 테스트
+
+        Given: CLI 진입점
+        When: status 명령어 실행
+        Then: 프로젝트 상태 정보 출력
+        """
+        result = cli_runner.invoke(cli, ["status"])
+        assert result.exit_code == 0
+        assert "Project Status" in result.output or "Status" in result.output
+        # 최소한 mode, locale 정보 중 하나는 있어야 함
+        assert "Mode:" in result.output or "Locale:" in result.output
+
+    def test_restore_command_default(self, cli_runner: CliRunner):
+        """moai restore (옵션 없음) 테스트
+
+        Given: CLI 진입점
+        When: restore 명령어 실행 (기본: 최신 백업)
+        Then: 백업 복원 메시지 출력
+        """
+        result = cli_runner.invoke(cli, ["restore"])
+        assert result.exit_code == 0
+        assert "Restoring" in result.output
+        assert "completed" in result.output or "successfully" in result.output
+
+    def test_restore_command_with_timestamp(self, cli_runner: CliRunner):
+        """moai restore --timestamp 테스트
+
+        Given: CLI 진입점
+        When: restore 명령어 + timestamp 옵션 실행
+        Then: 특정 시점 백업 복원 메시지 출력
+        """
+        timestamp = "2025-10-14-120000"
+        result = cli_runner.invoke(cli, ["restore", "--timestamp", timestamp])
+        assert result.exit_code == 0
+        assert "Restoring" in result.output
+        assert timestamp in result.output or "completed" in result.output
