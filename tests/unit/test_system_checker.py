@@ -4,10 +4,8 @@
 시스템 요구사항 검증 기능을 검증합니다.
 """
 
-import shutil
-from unittest.mock import patch
-
-import pytest
+from typing import Any
+from unittest.mock import MagicMock, patch
 
 from moai_adk.core.project.checker import SystemChecker
 
@@ -47,7 +45,7 @@ class TestSystemChecker:
 
         result = checker.check_all()
 
-        for tool, status in result.items():
+        for _tool, status in result.items():
             assert isinstance(status, bool)
 
     def test_check_tool_returns_true_for_existing_command(self) -> None:
@@ -61,7 +59,7 @@ class TestSystemChecker:
         assert isinstance(result, bool)
 
     @patch("shutil.which")
-    def test_check_tool_returns_true_when_tool_found(self, mock_which) -> None:
+    def test_check_tool_returns_true_when_tool_found(self, mock_which: MagicMock) -> None:
         """shutil.which가 경로 반환 시 True"""
         mock_which.return_value = "/usr/bin/git"
         checker = SystemChecker()
@@ -72,7 +70,7 @@ class TestSystemChecker:
         mock_which.assert_called_once_with("git")
 
     @patch("shutil.which")
-    def test_check_tool_returns_false_when_tool_not_found(self, mock_which) -> None:
+    def test_check_tool_returns_false_when_tool_not_found(self, mock_which: MagicMock) -> None:
         """shutil.which가 None 반환 시 False"""
         mock_which.return_value = None
         checker = SystemChecker()
@@ -82,7 +80,7 @@ class TestSystemChecker:
         assert result is False
 
     @patch("shutil.which")
-    def test_check_tool_handles_exception(self, mock_which) -> None:
+    def test_check_tool_handles_exception(self, mock_which: MagicMock) -> None:
         """예외 발생 시 False 반환"""
         mock_which.side_effect = Exception("Error")
         checker = SystemChecker()
@@ -124,7 +122,7 @@ class TestSystemChecker:
             assert "--version" in command
 
     @patch("shutil.which")
-    def test_check_all_with_all_tools_available(self, mock_which) -> None:
+    def test_check_all_with_all_tools_available(self, mock_which: MagicMock) -> None:
         """모든 도구가 사용 가능한 경우"""
         mock_which.return_value = "/usr/bin/tool"
         checker = SystemChecker()
@@ -134,7 +132,7 @@ class TestSystemChecker:
         assert all(status is True for status in result.values())
 
     @patch("shutil.which")
-    def test_check_all_with_no_tools_available(self, mock_which) -> None:
+    def test_check_all_with_no_tools_available(self, mock_which: MagicMock) -> None:
         """모든 도구가 사용 불가능한 경우"""
         mock_which.return_value = None
         checker = SystemChecker()
@@ -144,10 +142,10 @@ class TestSystemChecker:
         assert all(status is False for status in result.values())
 
     @patch("shutil.which")
-    def test_check_all_with_mixed_availability(self, mock_which) -> None:
+    def test_check_all_with_mixed_availability(self, mock_which: MagicMock) -> None:
         """일부 도구만 사용 가능한 경우"""
 
-        def which_side_effect(tool):
+        def which_side_effect(tool: str) -> str | None:
             return "/usr/bin/git" if tool == "git" else None
 
         mock_which.side_effect = which_side_effect

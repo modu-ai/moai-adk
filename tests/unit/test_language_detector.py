@@ -6,8 +6,6 @@
 
 from pathlib import Path
 
-import pytest
-
 from moai_adk.core.project.detector import LanguageDetector
 
 
@@ -155,7 +153,7 @@ class TestLanguageDetector:
         """모든 언어가 패턴 리스트를 가짐"""
         detector = LanguageDetector()
 
-        for language, patterns in detector.LANGUAGE_PATTERNS.items():
+        for _language, patterns in detector.LANGUAGE_PATTERNS.items():
             assert isinstance(patterns, list)
             assert len(patterns) > 0
 
