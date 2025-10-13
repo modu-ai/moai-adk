@@ -310,7 +310,9 @@ describe('TemplateManager - Phase 3: Refactored Integration', () => {
       const result = await manager.generateProject(config, tempDir);
 
       expect(result.success).toBe(true);
-      expect(result.createdFiles).toContain('.claude/commands/alfred/9-update.md');
+      expect(result.createdFiles).toContain(
+        '.claude/commands/alfred/9-update.md'
+      );
     });
 
     it('should place agent and command files in alfred subdirectory', async () => {
@@ -325,12 +327,20 @@ describe('TemplateManager - Phase 3: Refactored Integration', () => {
       expect(result.success).toBe(true);
 
       // Check agent files are in .claude/agents/alfred/
-      expect(result.createdFiles).toContain('.claude/agents/alfred/spec-builder.md');
-      expect(result.createdFiles).toContain('.claude/agents/alfred/code-builder.md');
+      expect(result.createdFiles).toContain(
+        '.claude/agents/alfred/spec-builder.md'
+      );
+      expect(result.createdFiles).toContain(
+        '.claude/agents/alfred/code-builder.md'
+      );
 
       // Check command files are in .claude/commands/alfred/
-      expect(result.createdFiles).toContain('.claude/commands/alfred/0-project.md');
-      expect(result.createdFiles).toContain('.claude/commands/alfred/1-spec.md');
+      expect(result.createdFiles).toContain(
+        '.claude/commands/alfred/0-project.md'
+      );
+      expect(result.createdFiles).toContain(
+        '.claude/commands/alfred/1-spec.md'
+      );
     });
   });
 });

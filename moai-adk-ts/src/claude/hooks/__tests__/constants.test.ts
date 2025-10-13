@@ -7,11 +7,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import {
-  READ_ONLY_TOOLS,
-  SUPPORTED_LANGUAGES,
-  TIMEOUTS,
-} from '../constants';
+import { READ_ONLY_TOOLS, SUPPORTED_LANGUAGES, TIMEOUTS } from '../constants';
 
 describe('@TEST:HOOKS-REFACTOR-001 - constants.ts', () => {
   describe('SUPPORTED_LANGUAGES', () => {
