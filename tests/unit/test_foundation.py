@@ -34,7 +34,7 @@ class TestProjectStructure:
 
         assert project["name"] == "moai-adk", "패키지명이 moai-adk가 아닙니다"
         assert project["version"] == "0.3.0", "버전이 0.3.0이 아닙니다"
-        assert ">=3.14" in project["requires-python"], "Python 3.14+ 요구사항이 없습니다"
+        assert ">=3.13" in project["requires-python"], "Python 3.13+ 요구사항이 없습니다"
 
     def test_core_dependencies(self):
         """핵심 6개 의존성이 정의되어야 한다"""
