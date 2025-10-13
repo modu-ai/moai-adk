@@ -7,8 +7,6 @@
 import json
 from pathlib import Path
 
-import pytest
-
 from moai_adk.core.project.initializer import ProjectInitializer
 
 
