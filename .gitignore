@@ -91,11 +91,9 @@ package-lock.json
 !.moai/specs/
 .claude
 
-# docs - track source files, only deploy docs/public (GitHub Pages)
-docs/*
-!docs/.vitepress/
-!docs/guides/
-!docs/public/
-!docs/index.md
-# Ignore VitePress cache
+# MkDocs build output
+site/
+
+# docs - track all source files for MkDocs
 docs/.vitepress/cache/
+docs/.vitepress/dist/
