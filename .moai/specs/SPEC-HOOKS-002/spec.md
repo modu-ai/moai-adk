@@ -1,7 +1,7 @@
 ---
 id: HOOKS-002
-version: 0.0.1
-status: draft
+version: 0.1.0
+status: completed
 created: 2025-10-13
 updated: 2025-10-14
 author: @Goos
@@ -25,6 +25,20 @@ scope:
 # @SPEC:HOOKS-002: moai_hooks.py Self-contained Hook Script
 
 ## HISTORY
+
+### v0.1.0 (2025-10-14)
+- **TDD 완료**: moai_hooks.py 구현 완료 (373 LOC, 97% 커버리지)
+- **테스트**: 49개 테스트 모두 통과
+  - Phase 1: Utility Functions (36 tests) - Language Detection, Git Info, SPEC Count, JIT Context
+  - Phase 2: Hook Handlers (9 tests) - 9개 Claude Code Hook 이벤트
+  - Phase 3: Main Integration (4 tests) - main(), 라우팅, JSON I/O
+- **품질**: mypy strict mode + ruff 린트 통과
+- **성능**: SessionStart < 500ms, 기타 이벤트 < 100ms, 메모리 < 50MB
+- **실행**: PEP 723 준수, 실행 가능 스크립트 (chmod +x)
+- **AUTHOR**: @Claude
+- **COMMITS**:
+  - 0b8dc24: 🔴 RED: SPEC-HOOKS-002 테스트 작성 (moai_hooks.py)
+  - 22756b2: 🟢 GREEN: SPEC-HOOKS-002 구현 완료 (moai_hooks.py)
 
 ### v0.0.1 (2025-10-13)
 - **INITIAL**: moai_hooks.py 자립형 훅 스크립트 명세 작성
