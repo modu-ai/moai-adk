@@ -84,12 +84,34 @@ export class ResourceInstaller {
     const templateVars = this.templateProcessor.createTemplateVariables(config);
 
     if (fs.existsSync(claudeTemplatesPath)) {
+      // CRITICAL: Exclude documentation directories that contain Mustache syntax examples
+      // These files document the template system and should not be processed as templates
       const copiedFiles = await this.templateProcessor.copyTemplateDirectory(
         claudeTemplatesPath,
         claudeDir,
-        templateVars
+        templateVars,
+        {
+          excludePaths: ['commands', 'agents', 'output-styles'], // Documentation with {{syntax}} examples
+        }
       );
       installedFiles.push(...copiedFiles);
+
+      // Copy documentation directories without template processing
+      // These files contain Mustache syntax examples (e.g., `{{PROJECT_NAME}}`) that should not be interpolated
+      const docDirs = ['commands', 'agents', 'output-styles'];
+      for (const docDir of docDirs) {
+        const srcDocDir = path.join(claudeTemplatesPath, docDir);
+        const dstDocDir = path.join(claudeDir, docDir);
+        if (fs.existsSync(srcDocDir)) {
+          await this.templateProcessor.copyDirectory(srcDocDir, dstDocDir);
+          logger.debug(
+            `Copied documentation directory without template processing: ${docDir}`,
+            {
+              tag: 'DEBUG:DOC-COPY-001',
+            }
+          );
+        }
+      }
 
       await this.fallbackBuilder.validateClaudeSettings(claudeDir);
     } else {

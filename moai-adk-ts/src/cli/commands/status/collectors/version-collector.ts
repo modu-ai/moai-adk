@@ -52,7 +52,8 @@ export class VersionCollector {
           // Fallback to package.json
           const packageJsonPath = path.join(currentDir, '../../package.json');
           if (await fs.pathExists(packageJsonPath)) {
-            const packageJson = await fs.readJson(packageJsonPath);
+            const packageJsonContent = await readFile(packageJsonPath, 'utf8');
+            const packageJson = JSON.parse(packageJsonContent);
             packageVersion = packageJson.version || 'unknown';
           }
         }
@@ -70,7 +71,8 @@ export class VersionCollector {
         const versionFilePath = path.join(projectPath, '.moai', 'version.json');
         const versionFileExists = await fs.pathExists(versionFilePath);
         if (versionFileExists) {
-          const versionInfo = await fs.readJson(versionFilePath);
+          const versionFileContent = await readFile(versionFilePath, 'utf8');
+          const versionInfo = JSON.parse(versionFileContent);
           resourceVersion =
             versionInfo.template_version ||
             versionInfo.version ||

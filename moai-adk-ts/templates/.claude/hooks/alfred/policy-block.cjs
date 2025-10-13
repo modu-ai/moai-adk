@@ -86,6 +86,22 @@ var init_claude = __esm({
   }
 });
 
+// src/claude/hooks/base.ts
+async function runHook(HookClass) {
+  try {
+    const { parseClaudeInput: parseClaudeInput2, outputResult: outputResult2 } = await Promise.resolve().then(() => (init_claude(), claude_exports));
+    const input = await parseClaudeInput2();
+    const hook = new HookClass();
+    const result = await hook.execute(input);
+    outputResult2(result);
+  } catch (error) {
+    console.error(
+      `ERROR ${HookClass.name}: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
+    process.exit(1);
+  }
+}
+
 // src/claude/hooks/constants.ts
 var READ_ONLY_TOOLS = [
   "Read",
@@ -138,22 +154,6 @@ var ALLOWED_PREFIXES = [
   "bun "
 ];
 
-// src/claude/hooks/base.ts
-async function runHook(HookClass) {
-  try {
-    const { parseClaudeInput: parseClaudeInput2, outputResult: outputResult2 } = await Promise.resolve().then(() => (init_claude(), claude_exports));
-    const input = await parseClaudeInput2();
-    const hook = new HookClass();
-    const result = await hook.execute(input);
-    outputResult2(result);
-  } catch (error) {
-    console.error(
-      `ERROR ${HookClass.name}: ${error instanceof Error ? error.message : "Unknown error"}`
-    );
-    process.exit(1);
-  }
-}
-
 // src/claude/hooks/utils.ts
 function extractCommand(toolInput) {
   const raw = toolInput.command || toolInput.cmd;
@@ -171,6 +171,9 @@ var PolicyBlock = class {
   name = "policy-block";
   async execute(input) {
     const startTime = Date.now();
+    if (!input || !input.tool_name) {
+      return { success: true };
+    }
     if (this.isReadOnlyTool(input.tool_name)) {
       return { success: true };
     }
