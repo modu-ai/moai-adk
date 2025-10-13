@@ -1,98 +1,63 @@
-# @CODE:CORE-GIT-001 | SPEC: SPEC-CORE-GIT-001.md | TEST: tests/unit/test_git_utils.py
-"""GitHub PR 관련 함수"""
-
+# @CODE:CORE-GIT-001 | SPEC: SPEC-CORE-GIT-001.md
+"""GitHub Pull Request 유틸리티"""
+from typing import Dict, Optional
+import os
 import subprocess
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from moai_adk.core.git.manager import GitManager
-
+from pathlib import Path
 
 def create_draft_pr(
-    title: str,
-    body: str,
-    base: str = "develop",
-    head: str | None = None,
+    spec_id: str,
+    base_branch: str = 'develop',
+    title: Optional[str] = None,
+    body: Optional[str] = None
 ) -> str:
-    """GitHub Draft PR 생성 (gh CLI 사용)
-
-    Args:
-        title: PR 제목
-        body: PR 본문
-        base: 기준 브랜치 (기본값: develop)
-        head: 소스 브랜치 (None이면 현재 브랜치)
-
-    Returns:
-        생성된 PR의 URL
-
-    Raises:
-        subprocess.CalledProcessError: gh CLI 명령 실행 실패
-        FileNotFoundError: gh CLI가 설치되지 않음
-
-    Examples:
-        >>> pr_url = create_draft_pr(
-        ...     title="feat: Add new feature",
-        ...     body="This PR adds...",
-        ...     base="develop"
-        ... )
-        >>> print(pr_url)
-        'https://github.com/user/repo/pull/123'
-
-    Note:
-        - gh CLI가 사전 설치되어 있어야 함
-        - GitHub 인증이 완료되어 있어야 함
     """
-    cmd = [
-        "gh",
-        "pr",
-        "create",
-        "--title",
-        title,
-        "--body",
-        body,
-        "--base",
-        base,
-        "--draft",
-    ]
+    GitHub Draft Pull Request 생성
 
-    if head:
-        cmd.extend(["--head", head])
-
-    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-    return result.stdout.strip()
-
-
-def get_repo_status(manager: "GitManager") -> dict[str, Any]:
-    """저장소 상태 정보 반환
-
-    Args:
-        manager: GitManager 인스턴스
-
-    Returns:
-        저장소 상태를 담은 딕셔너리:
-            - is_repo: Git 저장소 여부
-            - current_branch: 현재 브랜치명
-            - is_dirty: 변경사항 여부
-            - untracked_files: 추적되지 않은 파일 목록
-            - modified_files: 수정된 파일 목록
-
-    Examples:
-        >>> manager = GitManager()
-        >>> status = get_repo_status(manager)
-        >>> print(status["current_branch"])
-        'develop'
-        >>> print(status["untracked_files"])
-        ['new_file.py']
-
-    Note:
-        - manager.is_repo()가 False면 일부 정보는 빈 값으로 반환됨
+    :param spec_id: SPEC ID (예: CORE-GIT-001)
+    :param base_branch: 기본 브랜치 (기본값: develop)
+    :param title: PR 제목 (기본값: SPEC ID 기반)
+    :param body: PR 본문 (기본값: 자동 생성)
+    :return: 생성된 PR의 URL
     """
-    return {
-        "is_repo": manager.is_repo(),
-        "current_branch": manager.current_branch(),
-        "is_dirty": manager.is_dirty(),
-        "untracked_files": manager.repo.untracked_files if manager.repo else [],
-        "modified_files": (
-            [item.a_path for item in manager.repo.index.diff(None)] if manager.repo else []
-        ),
-    }
+    title = title or f"SPEC-{spec_id} 구현"
+    body = body or f"@SPEC:{spec_id} 구현을 위한 Pull Request"
+
+    try:
+        cmd = [
+            'gh', 'pr', 'create',
+            '--draft',
+            '--base', base_branch,
+            '--title', title,
+            '--body', body
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        return result.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Draft PR 생성 실패: {e.stderr}")
+
+def get_repo_status() -> Dict[str, str]:
+    """
+    현재 Git 저장소의 상태 반환
+
+    :return: 저장소 상태 정보를 담은 딕셔너리
+    """
+    try:
+        result = subprocess.run(
+            ['git', 'status', '--porcelain', '--branch'],
+            capture_output=True, text=True, check=True
+        )
+        status = result.stdout.strip()
+
+        changes_staged = len([line for line in status.split('\n') if line.startswith('M ')])
+        changes_unstaged = len([line for line in status.split('\n') if line.startswith(' M ')])
+        untracked_files = len([line for line in status.split('\n') if line.startswith('??')])
+
+        return {
+            'branch': status.split('\n')[0].split('...')[0].replace('## ', ''),
+            'staged_changes': changes_staged,
+            'unstaged_changes': changes_unstaged,
+            'untracked_files': untracked_files
+        }
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"저장소 상태 조회 실패: {e.stderr}")
