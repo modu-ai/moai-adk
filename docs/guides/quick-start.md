@@ -661,34 +661,34 @@ cp .moai-backup/2025-10-11-15-30-00/CLAUDE.md ./
 
 다음 순서로 학습하면 MoAI-ADK를 완벽히 활용할 수 있습니다:
 
-1. **[Workflow: Project Init](/guides/workflow/0-project)** - 프로젝트 초기화 상세 가이드
-2. **[Workflow: SPEC Writing](/guides/workflow/1-spec)** - EARS 기반 명세 작성법
-3. **[Workflow: TDD Implementation](/guides/workflow/2-build)** - RED-GREEN-REFACTOR 사이클
-4. **[Workflow: Document Sync](/guides/workflow/3-sync)** - 문서 동기화 및 TAG 검증
-5. **[Workflow: Update](/guides/workflow/9-update)** - 안전한 업데이트 전략
+1. **[Workflow: Project Init](guides/workflow/0-project.md)** - 프로젝트 초기화 상세 가이드
+2. **[Workflow: SPEC Writing](guides/workflow/1-spec.md)** - EARS 기반 명세 작성법
+3. **[Workflow: TDD Implementation](guides/workflow/2-build.md)** - RED-GREEN-REFACTOR 사이클
+4. **[Workflow: Document Sync](guides/workflow/3-sync.md)** - 문서 동기화 및 TAG 검증
+5. **[Workflow: Update](guides/workflow/9-update.md)** - 안전한 업데이트 전략
 
 ### 핵심 개념 이해
 
 MoAI-ADK의 철학과 원칙을 이해하세요:
 
-- **[SPEC-First TDD](/guides/concepts/spec-first-tdd)** - 명세 주도 개발 방법론
-- **[EARS Requirements](/guides/concepts/ears-guide)** - 체계적 요구사항 작성법
-- **[TAG System](/guides/concepts/tag-system)** - 코드 추적성 시스템
-- **[TRUST Principles](/guides/concepts/trust-principles)** - 5가지 품질 원칙
+- **[SPEC-First TDD](guides/concepts/spec-first-tdd.md)** - 명세 주도 개발 방법론
+- **[EARS Requirements](guides/concepts/ears-guide.md)** - 체계적 요구사항 작성법
+- **[TAG System](guides/concepts/tag-system.md)** - 코드 추적성 시스템
+- **[TRUST Principles](guides/concepts/trust-principles.md)** - 5가지 품질 원칙
 
 ### 에이전트 활용
 
 Alfred와 9개의 전문 에이전트를 활용하세요:
 
-- **[Alfred SuperAgent](/guides/agents/alfred)** - 중앙 오케스트레이터
-- **[Specialized Agents](/guides/agents/overview)** - 9개의 전문 에이전트 소개
+- **[Alfred SuperAgent](guides/agents/alfred.md)** - 중앙 오케스트레이터
+- **[Specialized Agents](guides/agents/overview.md)** - 9개의 전문 에이전트 소개
 
 ### 문제 해결
 
 막히는 부분이 있다면:
 
-- **[Troubleshooting](/guides/troubleshooting)** - 일반적인 문제 해결
-- **[FAQ](/guides/faq)** - 자주 묻는 질문
+- **[Troubleshooting](guides/troubleshooting.md)** - 일반적인 문제 해결
+- **[FAQ](guides/faq.md)** - 자주 묻는 질문
 - **[GitHub Issues](https://github.com/modu-ai/moai-adk/issues)** - 버그 리포트 및 기능 요청
 
 ---

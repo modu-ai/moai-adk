@@ -10,16 +10,16 @@ Alfred는 10개의 워크플로우 커맨드를 제공합니다. 각 커맨드�
 
 | 커맨드 | 설명 | 목적 |
 |--------|------|------|
-| **[/alfred:0-project](/guides/workflow/0-project)** | 프로젝트 초기화 | product/structure/tech.md 생성 |
-| **[/alfred:1-spec](/guides/workflow/1-spec)** | SPEC 작성 | EARS 방식 요구사항 명세 |
-| **[/alfred:2-build](/guides/workflow/2-build)** | TDD 구현 | RED-GREEN-REFACTOR 사이클 |
-| **[/alfred:3-sync](/guides/workflow/3-sync)** | 문서 동기화 | Living Document 생성, TAG 검증 |
+| **[/alfred:0-project](guides/workflow/0-project.md)** | 프로젝트 초기화 | product/structure/tech.md 생성 |
+| **[/alfred:1-spec](guides/workflow/1-spec.md)** | SPEC 작성 | EARS 방식 요구사항 명세 |
+| **[/alfred:2-build](guides/workflow/2-build.md)** | TDD 구현 | RED-GREEN-REFACTOR 사이클 |
+| **[/alfred:3-sync](guides/workflow/3-sync.md)** | 문서 동기화 | Living Document 생성, TAG 검증 |
 
 ### 유지보수 커맨드 (9)
 
 | 커맨드 | 설명 | 목적 |
 |--------|------|------|
-| **[/alfred:9-update](/guides/workflow/9-update)** | 패키지 업데이트 | 템플릿 및 패키지 최신화 |
+| **[/alfred:9-update](guides/workflow/9-update.md)** | 패키지 업데이트 | 템플릿 및 패키지 최신화 |
 
 ---
 
@@ -168,14 +168,14 @@ graph LR
 
 ### 필수 워크플로우
 
-- **[0-project](/guides/workflow/0-project)**: 프로젝트 초기화
-- **[1-spec](/guides/workflow/1-spec)**: SPEC 작성
-- **[2-build](/guides/workflow/2-build)**: TDD 구현
-- **[3-sync](/guides/workflow/3-sync)**: 문서 동기화
+- **[0-project](guides/workflow/0-project.md)**: 프로젝트 초기화
+- **[1-spec](guides/workflow/1-spec.md)**: SPEC 작성
+- **[2-build](guides/workflow/2-build.md)**: TDD 구현
+- **[3-sync](guides/workflow/3-sync.md)**: 문서 동기화
 
 ### 유지보수
 
-- **[9-update](/guides/workflow/9-update)**: 패키지 업데이트
+- **[9-update](guides/workflow/9-update.md)**: 패키지 업데이트
 
 ---
 
@@ -215,11 +215,11 @@ RED (테스트 작성) → GREEN (구현) → REFACTOR (개선)
 
 ## Next Steps
 
-- **[0-project](/guides/workflow/0-project)** - 프로젝트 초기화 상세 가이드
-- **[1-spec](/guides/workflow/1-spec)** - SPEC 작성 가이드
-- **[2-build](/guides/workflow/2-build)** - TDD 구현 가이드
-- **[3-sync](/guides/workflow/3-sync)** - 문서 동기화 가이드
-- **[9-update](/guides/workflow/9-update)** - 패키지 업데이트 가이드
+- **[0-project](guides/workflow/0-project.md)** - 프로젝트 초기화 상세 가이드
+- **[1-spec](guides/workflow/1-spec.md)** - SPEC 작성 가이드
+- **[2-build](guides/workflow/2-build.md)** - TDD 구현 가이드
+- **[3-sync](guides/workflow/3-sync.md)** - 문서 동기화 가이드
+- **[9-update](guides/workflow/9-update.md)** - 패키지 업데이트 가이드
 
 ---
 

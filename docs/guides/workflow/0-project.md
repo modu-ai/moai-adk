@@ -2492,24 +2492,24 @@ tar -xzf moai-backup-20251011.tar.gz
 
 ### MoAI-ADK 워크플로우
 
-- [Stage 1: SPEC Writing](/guides/workflow/1-spec)
-- [Stage 2: TDD Build](/guides/workflow/2-build)
-- [Stage 3: Document Sync](/guides/workflow/3-sync)
+- [Stage 1: SPEC Writing](guides/workflow/1-spec.md)
+- [Stage 2: TDD Build](guides/workflow/2-build.md)
+- [Stage 3: Document Sync](guides/workflow/3-sync.md)
 
 ### 핵심 개념
 
-- [@TAG 시스템](/guides/concepts/tag-system)
-- [EARS 요구사항 작성법](/guides/concepts/ears-guide)
-- [TRUST 5원칙](/guides/concepts/trust-principles)
+- [@TAG 시스템](guides/concepts/tag-system.md)
+- [EARS 요구사항 작성법](guides/concepts/ears-guide.md)
+- [TRUST 5원칙](guides/concepts/trust-principles.md)
 
 ### 에이전트
 
-- [Alfred Agents Overview](/guides/agents/overview)
+- [Alfred Agents Overview](guides/agents/overview.md)
 
 ### 설정 및 도구
 
-- [설치 가이드](/guides/installation)
-- [빠른 시작](/guides/quick-start)
+- [설치 가이드](guides/installation.md)
+- [빠른 시작](guides/quick-start.md)
 
 ---
 
