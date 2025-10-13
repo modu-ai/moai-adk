@@ -1,10 +1,5 @@
 # MoAI-ADK Generated .gitignore
 
-# Dependencies
-node_modules/
-docs/node_modules/
-bun.lockb
-
 # Python dependencies
 .venv/
 __pycache__/
@@ -19,11 +14,6 @@ dist/
 build/
 uv.lock
 
-# Build outputs
-dist/
-*.tsbuildinfo
-.turbo/
-
 # Test coverage
 coverage/
 .nyc_output/
@@ -37,11 +27,6 @@ htmlcov/
 *.log
 *.tmp
 *.temp
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
 # Backup files
 *.bak

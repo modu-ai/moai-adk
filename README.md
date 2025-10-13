@@ -1,10 +1,9 @@
 # MoAI-ADK (Agentic Development Kit)
 
-[![npm version](https://img.shields.io/npm/v/moai-adk)](https://www.npmjs.com/package/moai-adk)
+[![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9.2+-blue)](https://www.typescriptlang.org/)
-[![Node.js](https://img.shields.io/badge/node-18.0+-green)](https://nodejs.org/)
-[![Bun](https://img.shields.io/badge/Bun-1.2.19+-black)](https://bun.sh/)
+[![Python](https://img.shields.io/badge/Python-3.13+-blue)](https://www.python.org/)
+[![uv](https://img.shields.io/badge/uv-package_manager-green)](https://github.com/astral-sh/uv)
 
 ## MoAI-ADK
 
@@ -101,16 +100,16 @@ MoAI-ADK를 효과적으로 사용하기 위한 핵심 개념을 학습하세요
 #### 1️⃣ 설치 (30초)
 
 ```bash
-# Bun 권장 (5배 빠른 성능)
-curl -fsSL https://bun.sh/install | bash
-bun add -g moai-adk
+# uv 권장 (빠른 Python 패키지 관리자)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv tool install moai-adk
 
-# 또는 npm 사용
-npm install -g moai-adk
+# 또는 pip 사용
+pip install moai-adk
 
 # 설치 확인
 moai --version
-# 출력: v0.x.x
+# 출력: v0.3.x
 ```
 
 #### 2️⃣ 초기화 (1분)
@@ -145,17 +144,17 @@ Alfred가 자동으로 수행:
 
 **버전별 권장 방법**:
 
-#### v0.2.17 이하 → 최신 버전
+#### v0.2.x (TypeScript) → v0.3.0 (Python)
 ```bash
 # 터미널에서 패키지 업데이트
-npm install -g moai-adk@latest  # 또는 bun add -g moai-adk@latest
+uv tool install moai-adk  # 또는 pip install moai-adk
 
 # 프로젝트 디렉토리에서 템플릿 업데이트
 cd your-project
 moai init .
 ```
 
-📌 **v0.2.17 이하**: `moai init .` 사용 권장
+📌 **v0.3.0**: Python 기반으로 완전히 재작성되었습니다
 
 #### 프로젝트 업데이트
 ```bash
