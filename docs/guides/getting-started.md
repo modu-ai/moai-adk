@@ -465,16 +465,16 @@ MoAI-ADK의 핵심 개발 사이클을 체험해보세요:
 
 ### 추천 학습 경로
 
-1. **[Installation Guide](/guides/installation)** - 상세 설치 가이드
-2. **[Quick Start Tutorial](/guides/quick-start)** - 실습 튜토리얼
-3. **[SPEC-First TDD](/guides/concepts/spec-first-tdd)** - 핵심 개념 이해
-4. **[EARS Requirements](/guides/concepts/ears-guide)** - 요구사항 작성법
-5. **[TAG System](/guides/concepts/tag-system)** - 추적성 시스템
-6. **[TRUST Principles](/guides/concepts/trust-principles)** - 품질 원칙
+1. **[Installation Guide](guides/installation.md)** - 상세 설치 가이드
+2. **[Quick Start Tutorial](guides/quick-start.md)** - 실습 튜토리얼
+3. **[SPEC-First TDD](guides/concepts/spec-first-tdd.md)** - 핵심 개념 이해
+4. **[EARS Requirements](guides/concepts/ears-guide.md)** - 요구사항 작성법
+5. **[TAG System](guides/concepts/tag-system.md)** - 추적성 시스템
+6. **[TRUST Principles](guides/concepts/trust-principles.md)** - 품질 원칙
 
 ### 유용한 링크
 
-- [API Reference](/api/index.html)
+- [API Reference](api/index.html)
 - [GitHub Repository](https://github.com/modu-ai/moai-adk)
 - [Issue Tracker](https://github.com/modu-ai/moai-adk/issues)
 - [Changelog](https://github.com/modu-ai/moai-adk/releases)
