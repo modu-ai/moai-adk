@@ -4,6 +4,20 @@
 node_modules/
 bun.lockb
 
+# Python dependencies
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+uv.lock
+
 # Build outputs
 dist/
 *.tsbuildinfo
@@ -12,6 +26,9 @@ dist/
 # Test coverage
 coverage/
 .nyc_output/
+.coverage
+htmlcov/
+.pytest_cache/
 
 # Logs and temporary files
 .claude/logs/
