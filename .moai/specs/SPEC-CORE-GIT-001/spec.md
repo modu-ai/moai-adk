@@ -1,9 +1,9 @@
 ---
 id: CORE-GIT-001
-version: 0.0.1
-status: draft
+version: 0.1.0
+status: completed
 created: 2025-10-13
-updated: 2025-10-13
+updated: 2025-10-14
 author: @Goos
 priority: high
 category: feature
@@ -25,6 +25,12 @@ scope:
 # @SPEC:CORE-GIT-001: GitPython 기반 Git 관리
 
 ## HISTORY
+
+### v0.1.0 (2025-10-14)
+- **CHANGED**: TDD 구현 완료, status를 completed로 변경
+- **AUTHOR**: @Goos
+- **REVIEW**: ✅ Green 커밋 확인 (afb9daf, 21847fe)
+- **REASON**: RED-GREEN-REFACTOR 사이클 완료, GitManager/BranchManager/CommitManager 구현 완료
 
 ### v0.0.1 (2025-10-13)
 - **INITIAL**: GitPython 기반 Git 워크플로우 관리 시스템 명세 작성

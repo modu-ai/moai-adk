@@ -86,6 +86,7 @@ GitManager를 초기화합니다.
 - `InvalidGitRepositoryError`: 지정된 경로가 Git 저장소가 아닐 경우
 
 **Example:**
+
 ```python
 # 현재 디렉토리를 Git 저장소로 초기화
 manager = GitManager()
@@ -104,6 +105,7 @@ manager = GitManager("/path/to/repo")
 - `bool`: Git 저장소이면 `True`, 아니면 `False`
 
 **Example:**
+
 ```python
 manager = GitManager()
 if manager.is_repo():
@@ -122,6 +124,7 @@ else:
 - `str`: 현재 브랜치명 (예: `"main"`, `"develop"`, `"feature/SPEC-AUTH-001"`)
 
 **Example:**
+
 ```python
 manager = GitManager()
 branch = manager.current_branch()
@@ -139,6 +142,7 @@ print(f"현재 브랜치: {branch}")
 - `bool`: 변경사항이 있으면 `True` (dirty), 없으면 `False` (clean)
 
 **Example:**
+
 ```python
 manager = GitManager()
 if manager.is_dirty():
@@ -158,6 +162,7 @@ else:
 - `from_branch` (str | None): 기준 브랜치. `None`이면 현재 브랜치 기준
 
 **Example:**
+
 ```python
 manager = GitManager()
 
@@ -183,6 +188,7 @@ print(manager.current_branch())
 - `files` (list[str] | None): 커밋할 파일 목록. `None`이면 모든 변경사항 커밋
 
 **Example:**
+
 ```python
 manager = GitManager()
 
@@ -207,6 +213,7 @@ manager.commit(message="🟢 GREEN: JWT 인증 구현")
 - `set_upstream` (bool): upstream 설정 여부. 첫 푸시 시 `True` 권장
 
 **Example:**
+
 ```python
 manager = GitManager()
 

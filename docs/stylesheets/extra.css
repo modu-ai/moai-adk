@@ -1,0 +1,745 @@
+/* @DOC:DOCS-SYSTEM-001 | SPEC: .moai/specs/SPEC-DOCS-SYSTEM-001/spec.md */
+/* MoAI-ADK Documentation Extra Styles */
+
+/* ============================================
+   1. Root Variables & Typography
+   ============================================ */
+
+:root {
+  /* Primary Colors (Notion-style: 베이지/크림) */
+  --md-primary-fg-color: #37352f;
+  --md-primary-fg-color--light: #787774;
+  --md-primary-fg-color--dark: #1f1f1f;
+
+  /* Accent Colors (Amber/Brown) */
+  --md-accent-fg-color: #d97706;
+  --md-accent-fg-color--transparent: rgba(217, 119, 6, 0.1);
+
+  /* MoAI Brand Colors (Notion-style palette) */
+  --moai-green: #0f7b6c;
+  --moai-blue: #0b6bcb;
+  --moai-purple: #7c3aed;
+  --moai-orange: #c2410c;
+
+  /* Code Block Colors */
+  --code-bg-light: #f5f7fa;
+  --code-bg-dark: #1e1e1e;
+  --code-border: #e0e0e0;
+
+  /* Typography */
+  --font-sans: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+
+  /* Spacing */
+  --spacing-unit: 0.5rem;
+}
+
+/* ============================================
+   2. Typography & Font Styling
+   ============================================ */
+
+body {
+  font-family: var(--font-sans);
+  line-height: 1.7;
+  letter-spacing: 0.01em;
+}
+
+/* Headers */
+.md-typeset h1 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  border-bottom: 3px solid var(--md-primary-fg-color);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.md-typeset h2 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  border-bottom: 2px solid var(--md-primary-fg-color--light);
+  padding-bottom: 0.3rem;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.md-typeset h3 {
+  font-weight: 600;
+  color: var(--md-primary-fg-color);
+  margin-top: 1.5rem;
+}
+
+/* Code Blocks */
+.md-typeset code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background-color: var(--code-bg-light);
+  border: 1px solid var(--code-border);
+  border-radius: 4px;
+  padding: 0.2em 0.4em;
+}
+
+[data-md-color-scheme="slate"] .md-typeset code {
+  background-color: var(--code-bg-dark);
+  border-color: #2d2d2d;
+}
+
+.md-typeset pre > code {
+  border: none;
+  padding: 1rem;
+  display: block;
+  overflow-x: auto;
+}
+
+/* ============================================
+   3. Alfred SuperAgent Branding
+   ============================================ */
+
+/* Alfred Logo/Icon */
+.alfred-icon {
+  display: inline-block;
+  font-size: 1.2em;
+  font-weight: 700;
+  color: var(--md-primary-fg-color);
+}
+
+.alfred-icon::before {
+  content: '▶◀';
+  margin-right: 0.5rem;
+}
+
+/* Alfred Quote Block */
+blockquote.alfred-quote {
+  border-left: 4px solid var(--moai-blue);
+  background-color: rgba(41, 121, 255, 0.05);
+  padding: 1rem 1.5rem;
+  margin: 1.5rem 0;
+  border-radius: 4px;
+}
+
+blockquote.alfred-quote::before {
+  content: '▶◀ Alfred says:';
+  display: block;
+  font-weight: 600;
+  color: var(--moai-blue);
+  margin-bottom: 0.5rem;
+}
+
+/* ============================================
+   4. Agent Profile Cards
+   ============================================ */
+
+.agent-card {
+  border: 2px solid var(--md-primary-fg-color--light);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+  background: linear-gradient(135deg, rgba(63, 81, 181, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.agent-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(63, 81, 181, 0.15);
+}
+
+.agent-card-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.agent-card-icon {
+  font-size: 2rem;
+  margin-right: 1rem;
+}
+
+.agent-card-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--md-primary-fg-color);
+  margin: 0;
+}
+
+.agent-card-role {
+  font-size: 0.9rem;
+  color: var(--md-default-fg-color--light);
+  margin-top: 0.2rem;
+}
+
+/* ============================================
+   5. TDD Workflow Visualization (무채색)
+   ============================================ */
+
+.tdd-badge {
+  display: inline-block;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.85em;
+  margin: 0 0.3rem;
+}
+
+.tdd-badge.red {
+  background-color: #607d8b;
+  color: white;
+}
+
+.tdd-badge.green {
+  background-color: #78909c;
+  color: white;
+}
+
+.tdd-badge.refactor {
+  background-color: #90a4ae;
+  color: white;
+}
+
+/* TDD Flow Diagram - 무채색 */
+.tdd-flow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2rem 1rem;
+  background: linear-gradient(90deg, rgba(96, 125, 139, 0.1) 0%, rgba(120, 144, 156, 0.1) 50%, rgba(144, 164, 174, 0.1) 100%);
+  border-radius: 8px;
+  margin: 2rem 0;
+}
+
+.tdd-flow-step {
+  flex: 1;
+  text-align: center;
+  position: relative;
+}
+
+.tdd-flow-step::after {
+  content: '→';
+  position: absolute;
+  right: -1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 2rem;
+  color: var(--md-default-fg-color--light);
+}
+
+.tdd-flow-step:last-child::after {
+  content: '';
+}
+
+/* ============================================
+   6. TAG System Styling (무채색)
+   ============================================ */
+
+.tag-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  font-weight: 600;
+  margin: 0.2rem;
+  border: 1px solid;
+}
+
+.tag-badge.spec {
+  background-color: rgba(117, 117, 117, 0.1);
+  color: #757575;
+  border-color: #757575;
+}
+
+.tag-badge.test {
+  background-color: rgba(96, 125, 139, 0.1);
+  color: #607d8b;
+  border-color: #607d8b;
+}
+
+.tag-badge.code {
+  background-color: rgba(120, 144, 156, 0.1);
+  color: #78909c;
+  border-color: #78909c;
+}
+
+.tag-badge.doc {
+  background-color: rgba(144, 164, 174, 0.1);
+  color: #90a4ae;
+  border-color: #90a4ae;
+}
+
+/* TAG Chain Visualization - 무채색 */
+.tag-chain {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  background-color: rgba(117, 117, 117, 0.05);
+  border-radius: 8px;
+  margin: 1rem 0;
+  font-family: var(--font-mono);
+}
+
+.tag-chain-arrow {
+  margin: 0 1rem;
+  font-size: 1.5rem;
+  color: var(--md-default-fg-color--light);
+}
+
+/* ============================================
+   7. Admonition Customizations (무채색)
+   ============================================ */
+
+/* Alfred Tip */
+.md-typeset .admonition.tip > .admonition-title::before {
+  content: '▶◀';
+  margin-right: 0.5rem;
+}
+
+/* Success (Quality Gate) - 무채색 */
+.md-typeset .admonition.success {
+  border-left-color: #78909c;
+  background-color: rgba(120, 144, 156, 0.1);
+}
+
+.md-typeset .admonition.success > .admonition-title {
+  background-color: rgba(120, 144, 156, 0.2);
+}
+
+/* Danger (Problem) - 무채색 */
+.md-typeset .admonition.danger {
+  border-left-color: #607d8b;
+  background-color: rgba(96, 125, 139, 0.1);
+}
+
+.md-typeset .admonition.danger > .admonition-title {
+  background-color: rgba(96, 125, 139, 0.2);
+}
+
+/* Info (Alfred Says) - 무채색 */
+.md-typeset .admonition.info {
+  border-left-color: #90a4ae;
+  background-color: rgba(144, 164, 174, 0.1);
+}
+
+.md-typeset .admonition.info > .admonition-title {
+  background-color: rgba(144, 164, 174, 0.2);
+}
+
+/* Warning (Caution) - 무채색 */
+.md-typeset .admonition.warning {
+  border-left-color: #757575;
+  background-color: rgba(117, 117, 117, 0.1);
+}
+
+.md-typeset .admonition.warning > .admonition-title {
+  background-color: rgba(117, 117, 117, 0.2);
+}
+
+/* Example (Code Sample) - 무채색 */
+.md-typeset .admonition.example {
+  border-left-color: #9e9e9e;
+  background-color: rgba(158, 158, 158, 0.1);
+}
+
+.md-typeset .admonition.example > .admonition-title {
+  background-color: rgba(158, 158, 158, 0.2);
+}
+
+/* Question - 무채색 */
+.md-typeset .admonition.question {
+  border-left-color: #78909c;
+  background-color: rgba(120, 144, 156, 0.1);
+}
+
+.md-typeset .admonition.question > .admonition-title {
+  background-color: rgba(120, 144, 156, 0.2);
+}
+
+/* Tip - 무채색 */
+.md-typeset .admonition.tip {
+  border-left-color: #90a4ae;
+  background-color: rgba(144, 164, 174, 0.1);
+}
+
+.md-typeset .admonition.tip > .admonition-title {
+  background-color: rgba(144, 164, 174, 0.2);
+}
+
+/* Note - 무채색 */
+.md-typeset .admonition.note {
+  border-left-color: #9e9e9e;
+  background-color: rgba(158, 158, 158, 0.1);
+}
+
+.md-typeset .admonition.note > .admonition-title {
+  background-color: rgba(158, 158, 158, 0.2);
+}
+
+/* Abstract - 무채색 */
+.md-typeset .admonition.abstract {
+  border-left-color: #757575;
+  background-color: rgba(117, 117, 117, 0.1);
+}
+
+.md-typeset .admonition.abstract > .admonition-title {
+  background-color: rgba(117, 117, 117, 0.2);
+}
+
+/* ============================================
+   8. Tables Enhancement
+   ============================================ */
+
+.md-typeset table:not([class]) {
+  border: 2px solid var(--md-primary-fg-color--light);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.md-typeset table:not([class]) thead {
+  background-color: var(--md-primary-fg-color);
+  color: white;
+}
+
+.md-typeset table:not([class]) thead th {
+  border-bottom: none;
+  font-weight: 600;
+}
+
+.md-typeset table:not([class]) tbody tr:hover {
+  background-color: rgba(63, 81, 181, 0.05);
+}
+
+/* Agent Table */
+.agent-table td:first-child {
+  font-weight: 600;
+  color: var(--md-primary-fg-color);
+}
+
+/* ============================================
+   9. Mermaid Diagram Styling
+   ============================================ */
+
+.mermaid {
+  text-align: center;
+  background-color: rgba(63, 81, 181, 0.02);
+  border-radius: 8px;
+  padding: 2rem;
+  margin: 2rem 0;
+}
+
+/* ============================================
+   10. Button & Link Styling
+   ============================================ */
+
+/* Primary Button */
+.md-button--primary {
+  background-color: var(--md-primary-fg-color);
+  border-radius: 20px;
+  padding: 0.6rem 1.5rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.md-button--primary:hover {
+  background-color: var(--md-primary-fg-color--dark);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(63, 81, 181, 0.3);
+}
+
+/* Link Styling */
+.md-typeset a {
+  color: var(--moai-blue);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s ease;
+}
+
+.md-typeset a:hover {
+  border-bottom-color: var(--moai-blue);
+}
+
+/* ============================================
+   11. Badge & Pill Components
+   ============================================ */
+
+.version-badge {
+  display: inline-block;
+  background-color: var(--moai-green);
+  color: white;
+  padding: 0.2rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.8em;
+  font-weight: 600;
+  margin-left: 0.5rem;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.2rem 0.8rem;
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: 600;
+  margin: 0.2rem;
+}
+
+.status-badge.active {
+  background-color: rgba(0, 200, 83, 0.1);
+  color: var(--moai-green);
+  border: 1px solid var(--moai-green);
+}
+
+.status-badge.deprecated {
+  background-color: rgba(239, 83, 80, 0.1);
+  color: #ef5350;
+  border: 1px solid #ef5350;
+}
+
+/* ============================================
+   12. Command Line Examples
+   ============================================ */
+
+.md-typeset pre.command-line {
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  border-left: 4px solid var(--moai-green);
+  padding: 1.5rem;
+  border-radius: 4px;
+}
+
+.md-typeset pre.command-line::before {
+  content: '$';
+  color: var(--moai-green);
+  margin-right: 0.5rem;
+  font-weight: 700;
+}
+
+/* ============================================
+   13. Responsive Design
+   ============================================ */
+
+@media screen and (max-width: 768px) {
+  .tdd-flow {
+    flex-direction: column;
+  }
+
+  .tdd-flow-step::after {
+    content: '↓';
+    position: static;
+    display: block;
+    margin: 1rem 0;
+  }
+
+  .tdd-flow-step:last-child::after {
+    display: none;
+  }
+
+  .agent-card {
+    padding: 1rem;
+  }
+
+  .tag-chain {
+    flex-direction: column;
+  }
+
+  .tag-chain-arrow {
+    transform: rotate(90deg);
+    margin: 0.5rem 0;
+  }
+}
+
+/* ============================================
+   14. Dark Mode Adjustments
+   ============================================ */
+
+[data-md-color-scheme="slate"] {
+  --code-bg-light: #2d2d2d;
+  --code-border: #404040;
+}
+
+[data-md-color-scheme="slate"] .agent-card {
+  background: linear-gradient(135deg, rgba(124, 77, 255, 0.1) 0%, rgba(0, 0, 0, 0) 100%);
+}
+
+[data-md-color-scheme="slate"] .tdd-flow {
+  background: linear-gradient(90deg, rgba(239, 83, 80, 0.15) 0%, rgba(102, 187, 106, 0.15) 50%, rgba(66, 165, 245, 0.15) 100%);
+}
+
+[data-md-color-scheme="slate"] .mermaid {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* ============================================
+   15. Print Styles
+   ============================================ */
+
+@media print {
+  .agent-card,
+  .tdd-flow,
+  .tag-chain {
+    page-break-inside: avoid;
+  }
+
+  .md-typeset code {
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+  }
+
+  a {
+    text-decoration: underline;
+    color: #000;
+  }
+}
+
+/* ============================================
+   16. Utility Classes
+   ============================================ */
+
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.mt-1 { margin-top: calc(var(--spacing-unit) * 1); }
+.mt-2 { margin-top: calc(var(--spacing-unit) * 2); }
+.mt-3 { margin-top: calc(var(--spacing-unit) * 3); }
+.mt-4 { margin-top: calc(var(--spacing-unit) * 4); }
+
+.mb-1 { margin-bottom: calc(var(--spacing-unit) * 1); }
+.mb-2 { margin-bottom: calc(var(--spacing-unit) * 2); }
+.mb-3 { margin-bottom: calc(var(--spacing-unit) * 3); }
+.mb-4 { margin-bottom: calc(var(--spacing-unit) * 4); }
+
+.p-1 { padding: calc(var(--spacing-unit) * 1); }
+.p-2 { padding: calc(var(--spacing-unit) * 2); }
+.p-3 { padding: calc(var(--spacing-unit) * 3); }
+.p-4 { padding: calc(var(--spacing-unit) * 4); }
+
+/* ============================================
+   17. Animation & Transitions
+   ============================================ */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+/* Smooth Scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ============================================
+   18. Footer Customization
+   ============================================ */
+
+.md-footer-meta {
+  background-color: var(--md-primary-fg-color--dark);
+}
+
+.md-footer-copyright {
+  font-size: 0.85rem;
+}
+
+.md-footer-copyright::before {
+  content: 'Made with MoAI\'s 🪿';
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+/* ============================================
+   19. Notion-style Theme
+   ============================================ */
+
+/* Light mode: 베이지/크림 배경 */
+[data-md-color-scheme="default"] {
+  --md-default-bg-color: #faf9f7;
+  --md-default-fg-color: #37352f;
+  --md-default-fg-color--light: #787774;
+  --md-code-bg-color: #f7f6f3;
+  --md-code-fg-color: #37352f;
+}
+
+/* 사이드바 및 헤더 배경 (Light mode) */
+[data-md-color-scheme="default"] .md-header {
+  background-color: #ffffff;
+  box-shadow: 0 0 0.2rem rgba(0, 0, 0, 0.1);
+}
+
+[data-md-color-scheme="default"] .md-sidebar {
+  background-color: #ffffff;
+}
+
+[data-md-color-scheme="default"] .md-nav__link--active {
+  color: #d97706;
+  font-weight: 600;
+}
+
+/* Dark mode: Notion-style 다크 그레이 */
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: #191919;
+  --md-default-fg-color: #e3e2e0;
+  --md-default-fg-color--light: #9b9a97;
+  --md-code-bg-color: #2f3437;
+  --md-code-fg-color: #e3e2e0;
+}
+
+[data-md-color-scheme="slate"] .md-header {
+  background-color: #1f1f1f;
+  box-shadow: 0 0 0.2rem rgba(255, 255, 255, 0.1);
+}
+
+[data-md-color-scheme="slate"] .md-sidebar {
+  background-color: #1f1f1f;
+}
+
+[data-md-color-scheme="slate"] .md-nav__link--active {
+  color: #fbbf24;
+  font-weight: 600;
+}
+
+/* Notion-style 부드러운 경계선 */
+.md-typeset hr {
+  border-bottom: 1px solid rgba(55, 53, 47, 0.09);
+}
+
+[data-md-color-scheme="slate"] .md-typeset hr {
+  border-bottom: 1px solid rgba(227, 226, 224, 0.09);
+}
+
+/* Notion-style 테이블 */
+.md-typeset table:not([class]) {
+  border: 1px solid rgba(55, 53, 47, 0.09);
+  border-radius: 3px;
+}
+
+.md-typeset table:not([class]) thead {
+  background-color: #f7f6f3;
+  color: #37352f;
+}
+
+[data-md-color-scheme="slate"] .md-typeset table:not([class]) thead {
+  background-color: #2f3437;
+  color: #e3e2e0;
+}
+
+.md-typeset table:not([class]) tbody tr:hover {
+  background-color: rgba(55, 53, 47, 0.03);
+}
+
+[data-md-color-scheme="slate"] .md-typeset table:not([class]) tbody tr:hover {
+  background-color: rgba(227, 226, 224, 0.03);
+}
+
+/* ============================================
+   End of Stylesheet
+   ============================================ */

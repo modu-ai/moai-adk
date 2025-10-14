@@ -1,9 +1,9 @@
 ---
 id: CORE-TEMPLATE-001
-version: 0.0.1
-status: draft
+version: 0.1.0
+status: completed
 created: 2025-10-13
-updated: 2025-10-13
+updated: 2025-10-14
 author: @Goos
 priority: high
 category: feature
@@ -24,6 +24,12 @@ scope:
 # @SPEC:CORE-TEMPLATE-001: Jinja2 템플릿 및 Config 관리
 
 ## HISTORY
+
+### v0.1.0 (2025-10-14)
+- **CHANGED**: TDD 구현 완료, status를 completed로 변경
+- **AUTHOR**: @Goos
+- **REVIEW**: ✅ Green 커밋 확인 (97f88e0, 741d8d4)
+- **REASON**: RED-GREEN-REFACTOR 사이클 완료, TemplateProcessor/ConfigManager 구현 완료
 
 ### v0.0.1 (2025-10-13)
 - **INITIAL**: Jinja2 기반 템플릿 프로세서 및 config.json 관리 시스템 명세 작성

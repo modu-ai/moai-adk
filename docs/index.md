@@ -18,19 +18,19 @@
 
 ## 목차
 
-- [Meet Alfred](#-meet-alfred---your-ai-development-partner)
-- [Quick Start](#-quick-start-3분-실전)
-- [The Problem](#-the-problem---바이브-코딩의-한계)
-- [The Solution](#-the-solution---3단계-워크플로우)
-- [How Alfred Works](#️-how-alfred-works---10개-ai-에이전트-팀)
-- [Output Styles](#-alfreds-output-styles)
-- [Language Support](#-universal-language-support)
-- [SPEC Metadata](#-spec-메타데이터-구조)
-- [TAG System](#-tag-시스템)
-- [CLI Reference](#-cli-reference)
-- [TRUST 5원칙](#-trust-5원칙)
-- [문제 해결](#-문제-해결)
-- [Support](#-문서-및-지원)
+- [Meet Alfred](#meet-alfred-your-ai-development-partner)
+- [Quick Start](#quick-start-3분-실전)
+- [The Problem](#the-problem-바이브-코딩의-한계)
+- [The Solution](#the-solution-3단계-워크플로우)
+- [How Alfred Works](#how-alfred-works-10개-ai-에이전트-팀)
+- [Output Styles](#alfreds-output-styles)
+- [Language Support](#universal-language-support)
+- [SPEC Metadata](#spec-메타데이터-구조)
+- [TAG System](#tag-시스템)
+- [CLI Reference](#cli-reference)
+- [TRUST 5원칙](#trust-5원칙)
+- [문제 해결](#문제-해결)
+- [Support](#문서-및-지원)
 
 ---
 

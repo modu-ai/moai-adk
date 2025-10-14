@@ -72,6 +72,7 @@ MoAI-ADK를 사용하려면 다음 소프트웨어가 **반드시** 설치되어
 #### 1. uv 설치
 
 **macOS/Linux:**
+
 ```bash
 # 공식 설치 스크립트 (권장)
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -81,6 +82,7 @@ brew install uv
 ```
 
 **Windows (PowerShell):**
+
 ```powershell
 # 공식 설치 스크립트
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
@@ -128,6 +130,7 @@ uv python list
 #### 1. Python 설치
 
 **macOS:**
+
 ```bash
 # Homebrew 사용 (권장)
 brew install python@3.13
@@ -138,6 +141,7 @@ python3.13 --version
 ```
 
 **Ubuntu/Debian:**
+
 ```bash
 # APT 사용
 sudo apt update
@@ -151,9 +155,11 @@ python3.13 --version
 1. [Python 공식 웹사이트](https://www.python.org/downloads/)에서 Python 3.13 다운로드
 2. 설치 시 "Add Python to PATH" 체크 ✅
 3. 터미널에서 확인:
+  
    ```powershell
-   python --version
-   # 출력 예시: Python 3.13.0
+python --version
+# 출력 예시: Python 3.13.0
+
    ```
 
 #### 2. pip 업그레이드
@@ -169,13 +175,14 @@ pip --version
 
 ---
 
-### Option C: pyenv로 Python 버전 관리
+## Option C: pyenv로 Python 버전 관리
 
 여러 Python 버전을 사용하는 개발자에게 권장합니다.
 
-#### 1. pyenv 설치
+### 1. pyenv 설치
 
 **macOS/Linux:**
+
 ```bash
 # pyenv 설치
 curl https://pyenv.run | bash
@@ -191,6 +198,7 @@ source ~/.bashrc
 ```
 
 **Windows:**
+
 ```powershell
 # pyenv-win 설치
 Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/pyenv-win/pyenv-win/master/pyenv-win/install-pyenv-win.ps1" -OutFile "./install-pyenv-win.ps1"; &"./install-pyenv-win.ps1"
@@ -281,6 +289,7 @@ moai --version
 ```
 
 **개발 환경 명령어**:
+
 ```bash
 # 테스트 실행
 pytest
@@ -312,6 +321,7 @@ MoAI-ADK는 **Claude Code** 환경에서 **필수적으로** 사용해야 합니
 3. 설치 후 실행
 
 **버전 확인**:
+
 ```bash
 # Claude Code 버전 확인
 claude --version
@@ -337,6 +347,7 @@ moai init .
 ```
 
 **`moai init .` 실행 결과**:
+
 ```
 ✅ MoAI-ADK 프로젝트 초기화 완료
 📁 생성된 파일 및 디렉토리:
@@ -364,6 +375,7 @@ claude
 ```
 
 **Claude Code 내에서**:
+
 ```text
 /alfred:0-project
 ```
@@ -378,6 +390,7 @@ claude
    - `tech.md` (기술 스택, 도구 체인)
 
 **실행 결과 예시**:
+
 ```
 📖 Alfred가 프로젝트를 분석하고 있습니다...
 
@@ -422,11 +435,13 @@ moai doctor
 `moai doctor` 명령어는 시스템 환경을 진단하고, 필수 요구사항이 충족되었는지 확인합니다.
 
 **실행 예시**:
+
 ```bash
 moai doctor
 ```
 
 **정상 출력 예시**:
+
 ```
 🔍 MoAI-ADK 시스템 진단 시작...
 
@@ -461,6 +476,7 @@ moai doctor
 ```
 
 **경고/에러 출력 예시**:
+
 ```
 ⚠️ 경고 발견:
 
@@ -509,6 +525,7 @@ claude
 ```
 
 **Claude Code 내에서**:
+
 ```text
 # 명령어 목록 확인 (/ 입력 시 자동완성)
 /alfred:0-project   ✓
@@ -524,6 +541,7 @@ claude
 ### 문제 1: `moai: command not found`
 
 **증상**:
+
 ```bash
 moai --version
 # zsh: command not found: moai
@@ -568,6 +586,7 @@ moai --version
 ### 문제 2: Python 버전 부족 (3.13 미만)
 
 **증상**:
+
 ```bash
 moai doctor
 # ❌ Python 버전: 3.12.5 (3.13.0+ 필요)
@@ -603,11 +622,13 @@ python --version
 #### C. 시스템 Python 업그레이드
 
 **macOS**:
+
 ```bash
 brew upgrade python@3.13
 ```
 
 **Ubuntu**:
+
 ```bash
 sudo apt update
 sudo apt install python3.13
@@ -618,6 +639,7 @@ sudo apt install python3.13
 ### 문제 3: 권한 에러 (Permission Denied)
 
 **증상**:
+
 ```bash
 pip install moai-adk
 # ERROR: Could not install packages due to an EnvironmentError: [Errno 13] Permission denied
@@ -660,6 +682,7 @@ pip install moai-adk
 ### 문제 4: Claude Code가 에이전트를 인식하지 못함
 
 **증상**:
+
 ```text
 # Claude Code에서
 /alfred:0-project
@@ -694,6 +717,7 @@ claude
 ### 문제 5: 의존성 충돌
 
 **증상**:
+
 ```bash
 pip install moai-adk
 # ERROR: pip's dependency resolver does not currently take into account all the packages that are installed.
@@ -736,6 +760,7 @@ pip install moai-adk
 ### 문제 6: Windows에서 설치 실패
 
 **증상**:
+
 ```powershell
 pip install moai-adk
 # ERROR: Microsoft Visual C++ 14.0 is required

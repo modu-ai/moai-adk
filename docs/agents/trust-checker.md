@@ -379,6 +379,7 @@ rg "\"language\":" .moai/config.json
 ```
 
 **출력 예시**:
+
 ```json
 {
   "project": {
@@ -423,6 +424,7 @@ pytest --cov=src --cov-report=term-missing --cov-fail-under=85
 ```
 
 **보고서 생성**:
+
 ```markdown
 ### T - Test First: ⚠️ Warning
 
@@ -447,6 +449,7 @@ radon cc src/ -a -nb --total-average
 ```
 
 **보고서 생성**:
+
 ```markdown
 ### R - Readable: ✅ Pass
 
@@ -470,6 +473,7 @@ pydeps src/ --max-bacon 2
 ```
 
 **보고서 생성**:
+
 ```markdown
 ### U - Unified: ✅ Pass
 
@@ -489,6 +493,7 @@ pip-audit
 ```
 
 **보고서 생성**:
+
 ```markdown
 ### S - Secured: ❌ Critical
 
@@ -512,6 +517,7 @@ rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/
 ```
 
 **보고서 생성**:
+
 ```markdown
 ### T - Trackable: ✅ Pass
 

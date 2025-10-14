@@ -1,7 +1,7 @@
 ---
 id: DOCS-003
-version: 0.0.1
-status: draft
+version: 0.1.0
+status: completed
 created: 2025-10-14
 updated: 2025-10-14
 author: @Goos
@@ -28,6 +28,13 @@ scope:
 # @SPEC:DOCS-003: VitePress → MkDocs Material 마이그레이션
 
 ## HISTORY
+
+### v0.1.0 (2025-10-14)
+- **CHANGED**: 마이그레이션 완료, status를 completed로 변경
+- **AUTHOR**: @Goos
+- **REVIEW**: ✅ Green 커밋 확인 (76c0bbd, bf3befc)
+- **REASON**: MkDocs Material 설정 완료, 링크 변환 완료
+
 ### v0.0.1 (2025-10-14)
 - **INITIAL**: VitePress → MkDocs Material 마이그레이션 명세 작성
 - **AUTHOR**: @Goos

@@ -331,6 +331,42 @@ Alfred가 필요 시 즉시 호출하는 전문 에이전트들:
 
 **전체 템플릿 및 필드 상세 설명**: `.moai/memory/spec-metadata.md` 참조
 
+#### YAML Front Matter 작성 규칙
+
+**중요**: YAML Front Matter는 값과 주석을 명확히 분리해야 합니다.
+
+**❌ 잘못된 예** (파서 오류 발생 가능):
+```yaml
+---
+version: 0.1.0  # 주석 (공백 부족 시 오류)
+status: completed  # 주석
+---
+```
+
+**✅ 올바른 예 1** (주석 제거 - 가장 안전):
+```yaml
+---
+id: AUTH-001
+version: 0.0.1
+status: draft
+created: 2025-09-15
+updated: 2025-09-15
+author: @Goos
+priority: high
+---
+```
+
+**✅ 올바른 예 2** (별도 줄 주석):
+```yaml
+---
+# SPEC 고유 ID
+id: AUTH-001
+# Semantic Version
+version: 0.0.1
+status: draft
+---
+```
+
 **간단한 예시**:
 ```yaml
 ---

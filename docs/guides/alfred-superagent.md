@@ -185,6 +185,7 @@ Alfred는 9개의 전문 에이전트를 조율합니다. 각 에이전트는 IT
 - Draft PR 생성
 
 **예시**:
+
 ```bash
 /alfred:1-spec "JWT 기반 사용자 인증 시스템 구현"
 
@@ -209,6 +210,7 @@ Alfred는 9개의 전문 에이전트를 조율합니다. 각 에이전트는 IT
 - TDD 사이클별 커밋 생성
 
 **예시**:
+
 ```bash
 /alfred:2-build AUTH-001
 
@@ -237,6 +239,7 @@ Alfred는 9개의 전문 에이전트를 조율합니다. 각 에이전트는 IT
 - PR 상태 전환 (Draft → Ready)
 
 **예시**:
+
 ```bash
 /alfred:3-sync --auto-merge
 
@@ -263,6 +266,7 @@ Alfred는 9개의 전문 에이전트를 조율합니다. 각 에이전트는 IT
 - TAG 인덱스 생성
 
 **예시**:
+
 ```bash
 @agent-tag-agent "AUTH 도메인 TAG 목록 조회"
 
@@ -288,6 +292,7 @@ Alfred는 9개의 전문 에이전트를 조율합니다. 각 에이전트는 IT
 - 태그 생성
 
 **예시**:
+
 ```bash
 @agent-git-manager "체크포인트 생성"
 
@@ -312,6 +317,7 @@ Alfred는 9개의 전문 에이전트를 조율합니다. 각 에이전트는 IT
 - TRUST 원칙 준수 여부 확인
 
 **예시**:
+
 ```bash
 @agent-debug-helper "TypeError: 'NoneType' object has no attribute 'name'"
 
@@ -336,6 +342,7 @@ Alfred는 9개의 전문 에이전트를 조율합니다. 각 에이전트는 IT
 - 보안 취약점 스캔
 
 **예시**:
+
 ```bash
 @agent-trust-checker "AUTH-001 품질 검증"
 
@@ -362,6 +369,7 @@ Alfred는 9개의 전문 에이전트를 조율합니다. 각 에이전트는 IT
 - 템플릿 설정
 
 **예시**:
+
 ```bash
 @agent-cc-manager "새 에이전트 등록: ml-trainer"
 
@@ -387,6 +395,7 @@ Alfred는 9개의 전문 에이전트를 조율합니다. 각 에이전트는 IT
 - .moai/config.json 초기화
 
 **예시**:
+
 ```bash
 moai init .               # CLI로 기본 구조 생성
 /alfred:0-project         # 초기 설정 (product/structure/tech.md 생성)
@@ -533,6 +542,7 @@ Alfred와 9개 전문 에이전트는 다음 원칙을 준수합니다.
 충돌 시 커맨드 지침을 따릅니다.
 
 **예시**:
+
 ```yaml
 # .claude/commands/spec.yaml
 command: /alfred:1-spec
@@ -553,6 +563,7 @@ description: SPEC 작성 전문가 (에이전트 지침)
 에이전트는 다른 에이전트의 영역에 간섭하지 않습니다.
 
 **예시**:
+
 ```python
 # ✅ 올바른 예시
 # spec-builder는 SPEC 작성만 수행
@@ -576,6 +587,7 @@ def spec_builder(spec_id: str) -> None:
 에이전트 간 직접 호출은 금지됩니다.
 
 **예시**:
+
 ```python
 # ✅ 올바른 예시
 # Alfred가 에이전트를 순차적으로 호출
@@ -598,6 +610,7 @@ def spec_builder(spec_id: str) -> None:
 Alfred는 모든 에이전트 작업 후 품질 게이트를 실행합니다.
 
 **예시**:
+
 ```python
 def alfred_quality_gate(spec_id: str) -> bool:
     # TRUST 5원칙 검증
@@ -976,6 +989,7 @@ moai init .
 **원인**: Context 토큰 부족
 
 **해결**:
+
 ```bash
 # 1. 세션 요약 확인
 /summary
@@ -991,6 +1005,7 @@ moai init .
 **원인**: 에이전트 YAML 파일 누락
 
 **해결**:
+
 ```bash
 # 에이전트 목록 확인
 ls .claude/agents/
@@ -1004,6 +1019,7 @@ ls .claude/agents/
 **원인**: TRUST 원칙 위반
 
 **해결**:
+
 ```bash
 # 1. 품질 검증 수동 실행
 @agent-trust-checker "AUTH-001 품질 검증"

@@ -4,6 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.13+-blue)](https://www.python.org/)
 [![uv](https://img.shields.io/badge/uv-package_manager-green)](https://github.com/astral-sh/uv)
+[![Documentation](https://img.shields.io/badge/docs-online-brightgreen)](https://moai-adk.vercel.app/)
 
 ## MoAI-ADK
 
@@ -96,7 +97,7 @@ Alfred는 특정 언어나 프레임워크에 종속되지 않습니다. **Pytho
 
 ### 📋 준비물
 
-- ✅ Bun 또는 npm 설치됨
+- ✅ Python 3.13+ 설치됨
 - ✅ Claude Code 실행 중
 - ✅ Git 설치됨 (선택사항)
 
@@ -114,26 +115,17 @@ pip install moai-adk
 
 # 설치 확인
 moai --version
-# 출력: v0.3.x
+# 출력: ▶◀ MoAI-ADK v0.3.0
 ```
 
-#### 2️⃣ 초기화 (1분)
+#### 2️⃣ Claude Code 실행 (1분)
 
-**터미널에서:**
 ```bash
-# 새 프로젝트 생성
-moai init my-project
-cd my-project
-
-# 기존 프로젝트에 설치
-cd existing-project
-moai init .
-
 # Claude Code 실행
 claude
 ```
 
-**Claude Code에서** (필수):
+**Claude Code에서**:
 ```text
 /alfred:0-project
 ```
@@ -142,37 +134,6 @@ Alfred가 자동으로 수행:
 - `.moai/project/` 문서 3종 생성 (product/structure/tech.md)
 - 언어별 최적 도구 체인 설정
 - 프로젝트 컨텍스트 완벽 이해
-
----
-
-### 🔄 업데이트 (기존 프로젝트)
-
-**버전별 권장 방법**:
-
-#### v0.2.x (TypeScript) → v0.3.0 (Python)
-```bash
-# 터미널에서 패키지 업데이트
-uv tool install moai-adk  # 또는 pip install moai-adk
-
-# 프로젝트 디렉토리에서 템플릿 업데이트
-cd your-project
-moai init .
-```
-
-📌 **v0.3.0**: Python 기반으로 완전히 재작성되었습니다
-
-#### 프로젝트 업데이트
-```bash
-# 터미널에서 안전하게 업데이트
-moai init .
-```
-
-✅ **안전**: `.moai/specs/`, `.moai/reports/` 디렉토리가 **자동 보호**됩니다.
-
-**데이터 보호 보장**:
-- 🔒 `.moai/specs/` - 사용자 SPEC 파일 절대 건드리지 않음
-- 🔒 `.moai/reports/` - 동기화 리포트 보존
-- 🔄 시스템 파일만 안전하게 업데이트
 
 #### 3️⃣ 첫 기능 개발 (1분 30초)
 
@@ -193,8 +154,8 @@ moai init .
 
 **생성된 것들:**
 - ✅ `.moai/specs/SPEC-AUTH-001/spec.md` (명세)
-- ✅ `tests/auth/login.test.ts` (테스트)
-- ✅ `src/services/auth.ts` (구현)
+- ✅ `tests/auth/login_test.py` (테스트)
+- ✅ `src/services/auth.py` (구현)
 - ✅ `docs/api/auth.md` (문서)
 - ✅ `@SPEC → @TEST → @CODE → @DOC` TAG 체인
 
@@ -286,68 +247,6 @@ Alfred는 Agentic AI 시대의 코드 품질 문제를 **체계적인 3단계 �
 - 고아 TAG 자동 탐지
 - Living Document 자동 생성
 - PR 상태 전환 (Draft → Ready)
-
----
-
-## 시스템 요구사항
-
-### 🔴 필수 요구사항
-
-- **Node.js**: 18.0 이상
-- **Git**: 2.30.0 이상
-- **npm**: 8.0.0 이상 (또는 **Bun 1.2.0 이상 강력 추천**)
-- **Claude Code**: v1.2.0 이상 (에이전트 시스템 완전 통합용)
-
-### 🌍 지원 운영체제
-
-- **Windows**: 10/11 (PowerShell 5.1+)
-- **macOS**: 12 Monterey 이상 (M1/M2 네이티브 지원)
-- **Linux**: Ubuntu 20.04+, CentOS 8+, Debian 11+, Arch Linux
-
----
-
-## 설치
-
-### Option A: Bun 설치 (최적 성능, 강력 추천) 🔥
-
-```bash
-# Bun 설치 (아직 없는 경우)
-curl -fsSL https://bun.sh/install | bash  # macOS/Linux
-# 또는
-powershell -c "iwr bun.sh/install.ps1|iex"  # Windows
-
-# MoAI-ADK 전역 설치
-bun add -g moai-adk
-```
-
-### Option B: npm 설치 (표준 옵션)
-
-```bash
-npm install -g moai-adk
-```
-
-### Option C: 개발자 설치 (로컬 개발용)
-
-```bash
-git clone https://github.com/modu-ai/moai-adk.git
-cd moai-adk/moai-adk-ts
-bun install  # 또는 npm install
-bun run build
-npm link
-```
-
-### 설치 확인
-
-```bash
-# 버전 확인
-moai --version
-
-# 시스템 진단
-moai doctor
-
-# 도움말
-moai help
-```
 
 ---
 
@@ -655,249 +554,45 @@ MoAI-ADK는 모든 주요 언어를 지원하며, 언어별 최적 도구 체인
 
 ```bash
 # 프로젝트 초기화
-moai init [project] [options]
+moai init [project]
 
 # 시스템 진단
-moai doctor [options]
+moai doctor
 
 # 프로젝트 상태 확인
-moai status [options]
+moai status
 
 # 백업 복원
-moai restore <backup-path> [options]
-```
-
-### Claude Code 전용 명령어
-
-```text
-# 프로젝트 초기화
-/alfred:0-project
+moai restore <backup-path>
 ```
 
 ### moai init [project]
 
 새 MoAI-ADK 프로젝트를 초기화하거나 기존 프로젝트에 MoAI-ADK를 설치합니다.
 
-**옵션**:
-
-- `--personal`: Personal 모드로 초기화 (기본값)
-- `--team`: Team 모드로 초기화 (GitHub 통합)
-- `-b, --backup`: 설치 전 백업 생성
-- `-f, --force`: 기존 파일 강제 덮어쓰기
-
 **사용 예시**:
 
 ```bash
-# 새 프로젝트 생성 (Personal 모드)
+# 새 프로젝트 생성
 moai init my-project
 
 # 현재 디렉토리에 설치
 moai init .
-
-# Team 모드로 초기화
-moai init my-project --team
-
-# 백업 생성 후 설치
-moai init . -b
-
-# 기존 파일 강제 덮어쓰기
-moai init . -f
 ```
 
-### 템플릿 업데이트: 2가지 방법
-
-MoAI-ADK는 템플릿 업데이트를 위해 **2가지 방법**을 제공합니다. 사용 환경과 목적에 따라 적절한 방법을 선택하세요.
-
----
-
-#### 🔧 방법 1: `moai init .` (CLI 직접 실행)
-
-**터미널에서 직접 실행하는 표준 업데이트 방법**
-
-**특징**:
-- ✅ **빠른 실행**: 터미널에서 단일 명령어로 즉시 실행
-- ✅ **스크립트 통합**: CI/CD 파이프라인, 자동화 스크립트에 적합
-- ✅ **수동 제어**: 백업, 강제 덮어쓰기 등 옵션 직접 제어
-- ⚠️ **제한적 피드백**: 성공/실패만 표시, 상세 분석 없음
-
-**사용 시나리오**:
-```bash
-# 1. 간단한 템플릿 업데이트
-moai init .
-
-# 2. CI/CD 파이프라인
-npm install -g moai-adk@latest && moai init . -f
-
-# 3. 배치 스크립트
-for project in */; do
-  cd "$project"
-  moai init .
-  cd ..
-done
-```
-
-**업데이트 절차**:
-```bash
-# 1. MoAI-ADK 패키지 최신 버전 설치
-npm install -g moai-adk@latest
-
-# 2. 프로젝트 디렉토리로 이동
-cd your-project
-
-# 3. 템플릿 업데이트 (백업 자동 생성)
-moai init .
-
-# 4. 변경사항 확인
-git status
-```
-
-**옵션**:
-```bash
-# 기본 업데이트 (자동 백업 포함)
-moai init .
-
-# 백업 생성 후 업데이트 (명시적)
-moai init . -b
-
-# 강제 업데이트 (주의: 기존 파일 덮어쓰기)
-moai init . -f
-```
-
----
-
-#### 🤖 방법 2: `/alfred:9-update` (Claude Code 전용)
-
-**Claude Code에서 Alfred가 지능형 분석과 함께 수행하는 고급 업데이트**
-
-**특징**:
-- ✅ **지능형 분석**: 프로젝트 상태 자동 진단 및 위험 평가
-- ✅ **맥락 인식**: 현재 작업 브랜치, SPEC 상태, Git 상태 고려
-- ✅ **대화형 확인**: Phase 1(분석) → Phase 2(실행) 2단계 워크플로우
-- ✅ **상세 리포트**: 업데이트 전후 비교, 영향 분석, 권장사항 제공
-- ✅ **충돌 해결**: CLAUDE.md, config.json 지능형 병합
-- ⚠️ **Claude Code 필수**: 터미널/스크립트에서 사용 불가
-
-**사용 시나리오**:
-```text
-# 1. 인터랙티브 개발 중 업데이트
-/alfred:9-update
-
-# 2. 업데이트 가능 여부만 확인 (dry-run)
-/alfred:9-update --check
-
-# 3. 강제 업데이트 (백업 없음, 위험)
-/alfred:9-update --force
-
-# 4. 품질 검증 포함 업데이트
-/alfred:9-update --check-quality
-```
-
-**2단계 워크플로우**:
-
-**Phase 1: 분석 및 계획**
-```text
-Alfred가 자동으로 분석:
-1. 현재 MoAI-ADK 버전 확인
-2. 업데이트 가능한 최신 버전 확인
-3. 프로젝트 상태 진단 (Git, SPEC, 브랜치)
-4. 업데이트 영향 분석
-5. 사용자에게 계획 보고 및 승인 대기
-```
-
-**Phase 2: 실행 (사용자 승인 후)**
-```text
-Alfred가 순차 실행:
-1. 백업 생성 (.moai-backup-YYYY-MM-DD)
-2. 템플릿 파일 업데이트
-3. config.json, CLAUDE.md 지능형 병합
-4. SPEC 파일 보호 검증
-5. Git 상태 확인 및 커밋 제안
-6. 최종 리포트 생성
-```
-
-**옵션**:
-- `--check`: 업데이트 가능 여부만 확인 (실제 변경 없음)
-- `--force`: 강제 업데이트 (백업 없음, 주의 필요)
-- `--check-quality`: TRUST 5원칙 기반 품질 검증 포함
-
----
-
-#### 📊 비교표: `moai init .` vs `/alfred:9-update`
-
-| 기능              | `moai init .`      | `/alfred:9-update`  |
-| ----------------- | ------------------ | ------------------- |
-| **실행 환경**     | 터미널 (어디서나)  | Claude Code 전용    |
-| **실행 속도**     | ⚡ 빠름 (1-2초)     | 🐢 느림 (10-30초)    |
-| **사전 분석**     | ❌ 없음             | ✅ 자동 진단         |
-| **위험 평가**     | ❌ 없음             | ✅ 영향 분석         |
-| **사용자 확인**   | ❌ 없음 (즉시 실행) | ✅ 2단계 승인        |
-| **백업 생성**     | ✅ 자동             | ✅ 자동              |
-| **충돌 해결**     | ⚠️ 수동             | ✅ 지능형 병합       |
-| **Git 통합**      | ❌ 없음             | ✅ 커밋 제안         |
-| **리포트 생성**   | ❌ 없음             | ✅ 상세 리포트       |
-| **CI/CD 사용**    | ✅ 가능             | ❌ 불가능            |
-| **스크립트 통합** | ✅ 가능             | ❌ 불가능            |
-| **품질 검증**     | ❌ 없음             | ✅ TRUST 검증 (옵션) |
-
----
-
-#### 🎯 권장 사용 케이스
-
-**`moai init .` 사용 추천**:
-- ✅ 빠른 템플릿 업데이트가 필요할 때
-- ✅ CI/CD 파이프라인에 통합할 때
-- ✅ 여러 프로젝트를 배치로 업데이트할 때
-- ✅ 자동화 스크립트에서 사용할 때
-- ✅ Claude Code 없이 작업할 때
-
-**`/alfred:9-update` 사용 추천**:
-- ✅ Claude Code에서 개발 중일 때
-- ✅ 업데이트 영향을 미리 파악하고 싶을 때
-- ✅ CLAUDE.md, config.json 충돌이 예상될 때
-- ✅ Git 커밋과 함께 업데이트하고 싶을 때
-- ✅ 상세한 리포트가 필요할 때
-- ✅ TRUST 5원칙 기반 품질 검증이 필요할 때
-
----
-
-#### 🔒 공통 안전 기능
-
-두 방법 모두 다음 사항을 보장합니다:
-
-- 🔒 `.moai/specs/` - 사용자 SPEC 파일 절대 건드리지 않음
-- 🔒 `.moai/reports/` - 동기화 리포트 보존
-- 🔄 백업 자동 생성 (`.moai-backup-YYYY-MM-DD`)
-- ✅ 시스템 파일만 안전하게 업데이트
-- ✅ 지능형 병합 (`config.json`, `CLAUDE.md`)
+**참고**: 초기화 후 Claude Code에서 `/alfred:0-project` 커맨드를 실행하여 프로젝트 문서를 완성하세요.
 
 ### moai doctor
 
 시스템 진단을 실행하여 MoAI-ADK가 올바르게 설치되었는지 확인합니다.
 
-**옵션**:
-
-- `-l, --list-backups`: 사용 가능한 백업 목록 표시
-
-**사용 예시**:
-
 ```bash
-# 시스템 진단 실행
 moai doctor
-
-# 백업 목록 확인
-moai doctor -l
 ```
 
 ### moai status
 
 MoAI-ADK 프로젝트 상태를 표시합니다.
-
-**옵션**:
-
-- `-v, --verbose`: 상세 상태 정보 표시
-- `-p, --project-path <path>`: 프로젝트 디렉토리 경로 지정 (경로 필수)
-
-**사용 예시**:
 
 ```bash
 # 현재 디렉토리 상태 확인
@@ -908,76 +603,26 @@ moai status -v
 
 # 특정 경로 프로젝트 상태 확인
 moai status -p /path/to/project
-
-# 상세 정보 + 특정 경로
-moai status -v -p /path/to/project
 ```
 
 ### moai restore <backup-path>
 
 백업 디렉토리에서 MoAI-ADK를 복원합니다.
 
-**인자**:
-
-- `<backup-path>`: 복원할 백업 디렉토리 경로 (필수)
-
-**옵션**:
-
-- `--dry-run`: 변경 없이 복원할 내용 미리보기
-- `--force`: 기존 파일 강제 덮어쓰기
-
-**사용 예시**:
-
 ```bash
-# 백업에서 복원 (미리보기)
-moai restore .moai-backup-2025-10-02 --dry-run
-
-# 실제 복원 실행
-moai restore .moai-backup-2025-10-02
-
-# 강제 복원 (기존 파일 덮어쓰기)
-moai restore .moai-backup-2025-10-02 --force
+# 백업에서 복원
+moai restore .moai-backup-2025-10-14
 ```
 
-**참고**: MoAI-ADK 템플릿 업데이트는 터미널에서 `moai init .` 명령어를 사용하세요.
+### Claude Code 전용 명령어
 
----
+MoAI-ADK의 핵심 워크플로우는 Claude Code의 Alfred 커맨드를 통해 사용합니다:
 
-## 프로그래매틱 API
-
-### 기본 사용
-
-```typescript
-import { CLIApp, SystemChecker, TemplateManager } from 'moai-adk';
-
-// CLI 앱 초기화
-const app = new CLIApp();
-await app.run();
-
-// 시스템 체크
-const checker = new SystemChecker();
-const result = await checker.checkSystem();
-
-// 템플릿 관리
-const templateManager = new TemplateManager();
-await templateManager.copyTemplates(projectPath);
-```
-
-### 설정 파일 (.moai/config.json)
-
-```json
-{
-  "project": {
-    "name": "my-project",
-    "mode": "personal",
-    "language": "typescript"
-  },
-  "workflow": {
-    "enableAutoSync": true,
-    "gitIntegration": true
-  }
-}
-```
+- `/alfred:0-project` - 프로젝트 문서 초기화 (product/structure/tech.md)
+- `/alfred:1-spec` - SPEC 작성 (EARS 방식)
+- `/alfred:2-build` - TDD 구현 (RED → GREEN → REFACTOR)
+- `/alfred:3-sync` - 문서 동기화 (Living Document, TAG 검증)
+- `/alfred:9-update` - MoAI-ADK 템플릿 업데이트
 
 ---
 
@@ -1066,7 +711,9 @@ ls .moai/specs/SPEC-*.md
 
 ```bash
 # 1. 테스트 수동 실행으로 정확한 에러 확인
-npm test  # 또는 bun test, pytest 등
+pytest  # Python
+# npm test  # TypeScript/JavaScript
+# go test  # Go
 
 # 2. debug-helper 에이전트 호출
 @agent-debug-helper "테스트 실패 에러 메시지"
@@ -1075,8 +722,11 @@ npm test  # 또는 bun test, pytest 등
 cat .env.example  # 필요한 환경 변수 확인
 cp .env.example .env  # 환경 변수 파일 생성
 
-# 4. 의존성 재설치
-rm -rf node_modules && npm install
+# 4. 의존성 재설치 (언어별)
+# Python
+pip install -r requirements.txt
+# TypeScript/JavaScript
+# rm -rf node_modules && npm install
 ```
 
 #### 3. TAG 체인 끊어짐 경고
@@ -1124,7 +774,7 @@ git branch -D feature/SPEC-XXX-YYY
 
 #### 5. 권한 에러 (Permission Denied)
 
-**증상**: `moai init` 실행 시 권한 에러
+**증상**: 파일 접근 권한 에러
 
 **원인**: 파일 실행 권한 부족
 
@@ -1137,8 +787,8 @@ ls -la .moai/
 # 2. 실행 권한 추가
 chmod -R 755 .moai/
 
-# 3. 재시도
-moai init .
+# 3. Claude Code에서 재시도
+/alfred:0-project
 ```
 
 #### 6. 테스트 커버리지 85% 미만
@@ -1150,8 +800,12 @@ moai init .
 **해결 방법**:
 
 ```bash
-# 1. 커버리지 리포트 확인
-npm test -- --coverage  # 또는 bun test --coverage
+# 1. 커버리지 리포트 확인 (언어별)
+# Python
+pytest --cov=src tests/
+
+# TypeScript/JavaScript
+# npm test -- --coverage
 
 # 2. 누락된 브랜치 확인
 # 커버리지 리포트에서 빨간색(미테스트) 라인 확인
@@ -1170,13 +824,17 @@ npm test -- --coverage  # 또는 bun test --coverage
 
 **권한 문제:**
 ```bash
-sudo npm install -g moai-adk
+# pip/uv 권한 문제
+pip install --user moai-adk
+# 또는
+uv tool install moai-adk
 ```
 
 **캐시 문제:**
 ```bash
-npm cache clean --force
-npm install -g moai-adk
+# pip 캐시 정리
+pip cache purge
+pip install moai-adk
 ```
 
 #### 8. 명령어 인식 안 됨
@@ -1184,7 +842,7 @@ npm install -g moai-adk
 **PATH 확인:**
 ```bash
 echo $PATH
-npm list -g --depth=0
+which moai
 ```
 
 **셸 재시작:**
@@ -1222,14 +880,11 @@ source ~/.zshrc   # zsh
 심각한 문제 발생 시 백업에서 복원:
 
 ```bash
-# 1. 백업 목록 확인
-moai doctor -l
+# Claude Code에서 Alfred에게 문의
+/alfred:9-update --help
 
-# 2. 최신 백업으로 복원 (미리보기)
-moai restore .moai-backup-YYYY-MM-DD --dry-run
-
-# 3. 실제 복원
-moai restore .moai-backup-YYYY-MM-DD
+# 또는 debug-helper 호출
+@agent-debug-helper "심각한 문제 설명"
 ```
 
 ---
@@ -1244,34 +899,10 @@ moai restore .moai-backup-YYYY-MM-DD
 4. 브랜치 푸시 (`git push origin feature/new-feature`)
 5. Pull Request 생성
 
-### 개발 환경 설정
-
-```bash
-# 저장소 클론
-git clone https://github.com/modu-ai/moai-adk.git
-cd moai-adk/moai-adk-ts
-
-# 의존성 설치 (Bun 권장)
-bun install
-
-# 개발 모드 실행
-bun run dev
-
-# 빌드
-bun run build
-
-# 테스트
-bun test
-
-# 코드 품질 검사
-bun run check
-```
-
 ### 코딩 규칙
 
 - TRUST 5원칙 준수
 - @TAG 시스템 적용
-- TypeScript strict 모드 사용
 - ≤50 LOC per function
 - Test coverage ≥85%
 
@@ -1290,9 +921,10 @@ MoAI-ADK 프로젝트에 기여해주신 분들께 감사드립니다:
 
 ## 문서 및 지원
 
+- **📚 온라인 문서**: [https://moai-adk.vercel.app](https://moai-adk.vercel.app)
 - **🐛 Issues**: [GitHub Issues](https://github.com/modu-ai/moai-adk/issues)
 - **💬 Discussions**: [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)
-- **📦 npm Package**: [moai-adk](https://www.npmjs.com/package/moai-adk)
+- **📦 PyPI Package**: [moai-adk](https://pypi.org/project/moai-adk/)
 
 ---
 

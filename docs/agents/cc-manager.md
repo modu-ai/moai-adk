@@ -422,6 +422,7 @@ ls Cargo.toml 2>/dev/null
 ```
 
 **결과**:
+
 ```json
 {
   "detected_language": "python",
@@ -513,6 +514,7 @@ rg "^(agent_name|description|icon|persona|invocation):" .claude/agents/*.md
 ```
 
 **검증 결과**:
+
 ```markdown
 ✅ spec-builder.md: 필수 필드 모두 존재
 ✅ code-builder.md: 필수 필드 모두 존재

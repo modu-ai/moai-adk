@@ -8,21 +8,21 @@
 
 ## 목차
 
-- [1. SPEC 시스템이란?](#1-spec-시스템이란)
-- [2. SPEC-First TDD 철학](#2-spec-first-tdd-철학)
-- [3. SPEC 워크플로우](#3-spec-워크플로우)
-- [4. @TAG 시스템 통합](#4-tag-시스템-통합)
-- [5. EARS 요구사항 작성법](#5-ears-요구사항-작성법)
-- [6. SPEC 문서 구조](#6-spec-문서-구조)
-- [7. 실전 SPEC 작성 예시](#7-실전-spec-작성-예시)
-- [8. SPEC 품질 기준](#8-spec-품질-기준)
-- [9. SPEC 검증 및 추적](#9-spec-검증-및-추적)
-- [10. SPEC 라이프사이클](#10-spec-라이프사이클)
-- [11. 자주 묻는 질문 (FAQ)](#11-자주-묻는-질문-faq)
+- [1 SPEC 시스템이란?](#1-spec-시스템이란)
+- [2 SPEC-First TDD 철학](#2-spec-first-tdd-철학)
+- [3 SPEC 워크플로우](#3-spec-워크플로우)
+- [4 @TAG 시스템 통합](#4-tag-시스템-통합)
+- [5 EARS 요구사항 작성법](#5-ears-요구사항-작성법)
+- [6 SPEC 문서 구조](#6-spec-문서-구조)
+- [7 실전 SPEC 작성 예시](#7-실전-spec-작성-예시)
+- [8 SPEC 품질 기준](#8-spec-품질-기준)
+- [9 SPEC 검증 및 추적](#9-spec-검증-및-추적)
+- [10 SPEC 라이프사이클](#10-spec-라이프사이클)
+- [11 자주 묻는 질문 (FAQ)](#11-자주-묻는-질문-faq)
 
 ---
 
-## 1. SPEC 시스템이란?
+## 1 SPEC 시스템이란?
 
 ### 1.1. 정의
 
@@ -94,13 +94,14 @@ id: AUTH-001  # 영구 불변, 절대 변경 금지
 
 ---
 
-## 2. SPEC-First TDD 철학
+## 2 SPEC-First TDD 철학
 
 ### 2.1. "명세 없으면 코드 없다"
 
 MoAI-ADK의 핵심 철학은 **"명세 없으면 코드 없다"**입니다. 이는 다음을 의미합니다:
 
 #### 모든 코드는 SPEC에서 시작
+
 ```
 아이디어 → SPEC 작성 → 테스트 작성 → 코드 구현
 ```
@@ -160,7 +161,7 @@ SPEC은 개발자, 리뷰어, 사용자 간의 명확한 계약입니다. 구현
 
 ---
 
-## 3. SPEC 워크플로우
+## 3 SPEC 워크플로우
 
 ### 3.1. SPEC 생성 워크플로우
 
@@ -182,6 +183,7 @@ rg "@SPEC:AUTH" -n .moai/specs/
 - 복합 도메인 가능 (예: `UPDATE-REFACTOR-001`)
 
 **디렉토리 명명 규칙** (필수):
+
 ```
 .moai/specs/SPEC-{ID}/
 ```
@@ -263,12 +265,14 @@ JWT 토큰 기반 사용자 인증 시스템을 구현한다.
 ### 3.2. SPEC 브랜치 전략
 
 #### Personal 모드
+
 ```bash
 # main에서 직접 작업
 git checkout main
 ```
 
 #### Team 모드 (권장)
+
 ```bash
 # develop에서 feature 브랜치 생성
 git checkout develop
@@ -294,6 +298,7 @@ gh pr create --title "SPEC-AUTH-001: JWT 인증 시스템" \
 - [ ] 성공 기준 명시
 
 #### 리뷰 승인 후
+
 ```bash
 # SPEC 승인 상태 변경
 status: active
@@ -307,7 +312,7 @@ status: active
 
 ---
 
-## 4. @TAG 시스템 통합
+## 4 @TAG 시스템 통합
 
 ### 4.1. TAG 체계 개요
 
@@ -394,11 +399,13 @@ class JWTService:
 ### 4.4. TAG 검증
 
 #### 전체 TAG 스캔
+
 ```bash
 rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/
 ```
 
 #### 특정 ID 검증
+
 ```bash
 rg "@SPEC:AUTH-001" -n .moai/specs/
 rg "@TEST:AUTH-001" -n tests/
@@ -407,6 +414,7 @@ rg "@DOC:AUTH-001" -n docs/
 ```
 
 #### 고아 TAG 탐지
+
 ```bash
 # CODE는 있는데 SPEC이 없으면 고아
 rg '@CODE:AUTH-001' -n src/
@@ -415,7 +423,7 @@ rg '@SPEC:AUTH-001' -n .moai/specs/
 
 ---
 
-## 5. EARS 요구사항 작성법
+## 5 EARS 요구사항 작성법
 
 ### 5.1. EARS 방법론 소개
 
@@ -430,6 +438,7 @@ rg '@SPEC:AUTH-001' -n .moai/specs/
 **언제 사용**: 항상 참인 필수 기능
 
 **예시**:
+
 ```markdown
 ### Ubiquitous Requirements
 - 시스템은 사용자 인증 기능을 제공해야 한다
@@ -445,6 +454,7 @@ rg '@SPEC:AUTH-001' -n .moai/specs/
 **언제 사용**: 특정 이벤트 발생 시 동작
 
 **예시**:
+
 ```markdown
 ### Event-driven Requirements
 - WHEN 사용자가 유효한 자격증명으로 로그인하면, 시스템은 JWT 토큰을 발급해야 한다
@@ -460,6 +470,7 @@ rg '@SPEC:AUTH-001' -n .moai/specs/
 **언제 사용**: 특정 상태가 유지되는 동안의 동작
 
 **예시**:
+
 ```markdown
 ### State-driven Requirements
 - WHILE 사용자가 인증된 상태일 때, 시스템은 보호된 리소스 접근을 허용해야 한다
@@ -474,6 +485,7 @@ rg '@SPEC:AUTH-001' -n .moai/specs/
 **언제 사용**: 필수가 아닌 선택적 기능
 
 **예시**:
+
 ```markdown
 ### Optional Features
 - WHERE 리프레시 토큰이 제공되면, 시스템은 새로운 액세스 토큰을 발급할 수 있다
@@ -488,6 +500,7 @@ rg '@SPEC:AUTH-001' -n .moai/specs/
 **언제 사용**: 시스템의 제한 사항 및 경계 조건
 
 **예시**:
+
 ```markdown
 ### Constraints
 - IF 잘못된 토큰이 제공되면, 시스템은 접근을 거부해야 한다
@@ -500,6 +513,7 @@ rg '@SPEC:AUTH-001' -n .moai/specs/
 ### 5.3. EARS 작성 모범 사례
 
 #### 명확성 우선
+
 ```markdown
 ❌ 나쁜 예:
 - 시스템은 안전해야 한다
@@ -510,6 +524,7 @@ rg '@SPEC:AUTH-001' -n .moai/specs/
 ```
 
 #### 검증 가능성
+
 ```markdown
 ❌ 나쁜 예:
 - 시스템은 빠르게 응답해야 한다
@@ -519,6 +534,7 @@ rg '@SPEC:AUTH-001' -n .moai/specs/
 ```
 
 #### 모호함 제거
+
 ```markdown
 ❌ 나쁜 예:
 - 시스템은 적절한 에러를 반환해야 한다
@@ -539,7 +555,7 @@ rg '@SPEC:AUTH-001' -n .moai/specs/
 
 ---
 
-## 6. SPEC 문서 구조
+## 6 SPEC 문서 구조
 
 ### 6.1. 표준 SPEC 템플릿
 
@@ -619,7 +635,7 @@ scope:
 
 ---
 
-## Traceability (추적성)
+**Traceability (추적성)**
 
 - **SPEC ID**: @SPEC:AUTH-001
 - **Depends on**: USER-001
@@ -672,6 +688,7 @@ JWT 토큰 기반 사용자 인증 시스템을 구현한다. 기존 세션 기�
 ### 6.3. 선택적 섹션
 
 #### Assumptions (가정)
+
 ```markdown
 ## Assumptions (가정)
 1. Redis는 항상 사용 가능하다고 가정
@@ -680,6 +697,7 @@ JWT 토큰 기반 사용자 인증 시스템을 구현한다. 기존 세션 기�
 ```
 
 #### Success Criteria (성공 기준)
+
 ```markdown
 ## Success Criteria (성공 기준)
 
@@ -698,6 +716,7 @@ JWT 토큰 기반 사용자 인증 시스템을 구현한다. 기존 세션 기�
 ```
 
 #### Risk Analysis (리스크 분석)
+
 ```markdown
 ## Risk Analysis (리스크 분석)
 
@@ -712,7 +731,7 @@ JWT 토큰 기반 사용자 인증 시스템을 구현한다. 기존 세션 기�
 
 ---
 
-## 7. 실전 SPEC 작성 예시
+## 7 실전 SPEC 작성 예시
 
 ### 7.1. 간단한 SPEC 예시: CLI 명령어
 
@@ -799,9 +818,11 @@ def init(path: str):
 
 ---
 
-## Traceability (추적성)
+**Traceability (추적성)**
+
 - **SPEC ID**: @SPEC:CLI-INIT-001
 - **TAG 체인**: @SPEC:CLI-INIT-001 → @TEST:CLI-INIT-001 → @CODE:CLI-INIT-001
+
 ```
 
 ### 7.2. 복잡한 SPEC 예시: 인증 시스템
@@ -1066,7 +1087,7 @@ class AccountLockedError(AuthenticationError):
 
 ---
 
-## Traceability (추적성)
+**Traceability (추적성)**
 
 - **SPEC ID**: @SPEC:AUTH-001
 - **Depends on**: USER-001, SESSION-001
@@ -1076,7 +1097,7 @@ class AccountLockedError(AuthenticationError):
 
 ---
 
-## Success Criteria (성공 기준)
+**Success Criteria (성공 기준)**
 
 ### 기능 완성도
 - [ ] JWT 토큰 발급 구현
@@ -1103,7 +1124,7 @@ class AccountLockedError(AuthenticationError):
 
 ---
 
-## Risk Analysis (리스크 분석)
+**Risk Analysis (리스크 분석)**
 
 ### 높은 리스크
 1. **Redis 장애 시 인증 불가**
@@ -1125,7 +1146,7 @@ class AccountLockedError(AuthenticationError):
 
 ---
 
-## Implementation Notes (구현 참고사항)
+**Implementation Notes (구현 참고사항)**
 
 ### 단계별 구현
 1. **Phase 1**: JWTService 기본 구현 (발급/검증)
@@ -1148,11 +1169,12 @@ class AccountLockedError(AuthenticationError):
 - 시크릿 키 보안 관리
 - 로깅 민감 정보 제외
 - 타입 힌트 완전성
+
 ```
 
 ---
 
-## 8. SPEC 품질 기준
+## 8 SPEC 품질 기준
 
 ### 8.1. 필수 품질 체크리스트
 
@@ -1210,7 +1232,7 @@ class AccountLockedError(AuthenticationError):
 
 ---
 
-## 9. SPEC 검증 및 추적
+## 9 SPEC 검증 및 추적
 
 ### 9.1. SPEC 검증 명령어
 
@@ -1224,6 +1246,7 @@ rg -L "^priority:" .moai/specs/SPEC-*/spec.md
 ```
 
 #### 형식 검증
+
 ```bash
 # author 필드 형식 확인 (@Username)
 rg "^author: @[A-Z]" .moai/specs/SPEC-*/spec.md
@@ -1236,6 +1259,7 @@ rg "## HISTORY" .moai/specs/SPEC-*/spec.md
 ```
 
 #### 중복 ID 확인
+
 ```bash
 # 특정 ID 중복 확인
 rg "@SPEC:AUTH-001" -n .moai/specs/
@@ -1247,12 +1271,14 @@ rg "^id: " .moai/specs/SPEC-*/spec.md | sort
 ### 9.2. TAG 체인 검증
 
 #### 전체 TAG 스캔
+
 ```bash
 # 모든 TAG 출력
 rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/
 ```
 
 #### SPEC별 TAG 추적
+
 ```bash
 # AUTH-001 TAG 전체 추적
 echo "=== @SPEC:AUTH-001 ==="
@@ -1269,6 +1295,7 @@ rg '@DOC:AUTH-001' -n docs/
 ```
 
 #### 고아 TAG 탐지
+
 ```bash
 # CODE는 있는데 SPEC이 없는 경우
 for code_tag in $(rg '@CODE:' -no-filename src/ | sort -u); do
@@ -1282,12 +1309,14 @@ done
 ### 9.3. SPEC 의존성 그래프
 
 #### depends_on 추출
+
 ```bash
 # 모든 SPEC 의존성 출력
 rg "^depends_on:" -A 5 .moai/specs/SPEC-*/spec.md
 ```
 
 #### 의존성 시각화 (dot 파일 생성)
+
 ```bash
 # SPEC 의존성 그래프 생성 (수동)
 # 1. 모든 SPEC ID와 depends_on 추출
@@ -1297,7 +1326,7 @@ rg "^depends_on:" -A 5 .moai/specs/SPEC-*/spec.md
 
 ---
 
-## 10. SPEC 라이프사이클
+## 10 SPEC 라이프사이클
 
 ### 10.1. SPEC 상태 전이
 
@@ -1343,6 +1372,7 @@ draft → active → completed → deprecated
 ### 10.3. SPEC 업데이트 프로세스
 
 #### 1단계: 변경 필요성 확인
+
 ```bash
 # 관련 SPEC 읽기
 cat .moai/specs/SPEC-AUTH-001/spec.md
@@ -1352,6 +1382,7 @@ rg -A 20 "## HISTORY" .moai/specs/SPEC-AUTH-001/spec.md
 ```
 
 #### 2단계: SPEC 수정
+
 ```markdown
 # updated 날짜 변경
 updated: 2025-10-14
@@ -1369,6 +1400,7 @@ version: 0.0.2
 ```
 
 #### 3단계: 영향 분석
+
 ```bash
 # 관련 코드 확인
 rg '@CODE:AUTH-001' -n src/
@@ -1383,6 +1415,7 @@ rg '@TEST:AUTH-001' -n tests/
 - TDD 사이클 재실행
 
 #### 5단계: 문서 동기화
+
 ```bash
 # /alfred:3-sync 실행
 # Living Document 자동 업데이트
@@ -1391,7 +1424,7 @@ rg '@TEST:AUTH-001' -n tests/
 
 ---
 
-## 11. 자주 묻는 질문 (FAQ)
+## 11 자주 묻는 질문 (FAQ)
 
 ### Q1. SPEC ID는 어떻게 결정하나요?
 
@@ -1401,6 +1434,7 @@ rg '@TEST:AUTH-001' -n tests/
 - **번호**: 001부터 시작하는 3자리 숫자
 
 **중복 확인 필수**:
+
 ```bash
 rg "@SPEC:AUTH" -n .moai/specs/
 ```
@@ -1432,6 +1466,7 @@ SPEC 없는 코드는:
 - 의존성 관계 명시
 
 예시:
+
 ```
 AUTH-001: JWT 토큰 발급
 AUTH-002: 토큰 검증
@@ -1493,6 +1528,7 @@ rg '@(SPEC|TEST|CODE|DOC):AUTH-001' -n
 **A**: 이 문서의 [6. SPEC 문서 구조](#6-spec-문서-구조)를 참조하세요.
 
 또는 기존 SPEC 예시를 복사하여 시작:
+
 ```bash
 cp .moai/specs/SPEC-CLI-001/spec.md .moai/specs/SPEC-NEW-001/spec.md
 ```
