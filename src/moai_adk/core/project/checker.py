@@ -1,10 +1,12 @@
-# @CODE:CORE-PROJECT-001 | SPEC: SPEC-CORE-PROJECT-001.md | TEST: tests/unit/test_system_checker.py
+# @CODE:CLI-001 | SPEC: SPEC-CLI-001.md | TEST: tests/unit/test_cli_commands.py
 """시스템 요구사항 검증 모듈
 
 필수 및 선택 도구의 설치 여부를 확인합니다.
 """
 
 import shutil
+import sys
+from pathlib import Path
 
 
 class SystemChecker:
@@ -57,3 +59,17 @@ class SystemChecker:
             return shutil.which(tool_name) is not None
         except Exception:
             return False
+
+
+def check_environment() -> dict[str, bool]:
+    """전체 환경 검증 (CLI doctor 명령어용)
+
+    Returns:
+        각 체크 항목의 결과 딕셔너리
+    """
+    return {
+        "Python >= 3.13": sys.version_info >= (3, 13),
+        "Git installed": shutil.which("git") is not None,
+        "Project structure (.moai/)": Path(".moai").exists(),
+        "Config file (.moai/config.json)": Path(".moai/config.json").exists(),
+    }

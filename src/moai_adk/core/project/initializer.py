@@ -102,3 +102,13 @@ class ProjectInitializer:
         config_path = self.path / ".moai" / "config.json"
         with open(config_path, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=2, ensure_ascii=False)
+
+
+def initialize_project(project_path: Path) -> None:
+    """프로젝트 초기화 (CLI 명령어용)
+
+    Args:
+        project_path: 프로젝트 디렉토리 경로
+    """
+    initializer = ProjectInitializer(project_path)
+    initializer.initialize()

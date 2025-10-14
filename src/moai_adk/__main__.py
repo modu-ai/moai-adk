@@ -1,4 +1,4 @@
-# @CODE:PY314-001 | SPEC: SPEC-PY314-001.md | TEST: tests/unit/test_cli.py
+# @CODE:CLI-001 | SPEC: SPEC-CLI-001.md | TEST: tests/unit/test_cli_commands.py
 """MoAI-ADK CLI Entry Point
 
 CLI 진입점 구현:
@@ -6,6 +6,7 @@ CLI 진입점 구현:
 - Rich console 터미널 출력
 - ASCII 로고 출력
 - --version, --help 옵션
+- 4개 핵심 명령어: init, doctor, status, restore
 """
 
 import sys
@@ -36,6 +37,18 @@ def cli(ctx: click.Context) -> None:
         console.print(
             "[yellow]Tip:[/yellow] Run [cyan]moai --help[/cyan] to see available commands"
         )
+
+
+# 명령어 등록
+from moai_adk.cli.commands.doctor import doctor
+from moai_adk.cli.commands.init import init
+from moai_adk.cli.commands.restore import restore
+from moai_adk.cli.commands.status import status
+
+cli.add_command(init)
+cli.add_command(doctor)
+cli.add_command(status)
+cli.add_command(restore)
 
 
 def main() -> int:
