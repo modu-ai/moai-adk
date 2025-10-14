@@ -1,14 +1,14 @@
 ---
 id: PY314-001
-version: 0.0.1
-status: draft
+version: 0.1.0
+status: completed
 created: 2025-10-13
-updated: 2025-10-13
+updated: 2025-10-14
 author: @Goos
 priority: critical
 category: feature
 labels:
-  - python-3.14
+  - python-3.13
   - build-system
   - foundation
   - migration
@@ -21,16 +21,25 @@ blocks:
   - HOOKS-002
 scope:
   packages:
-    - moai-adk-py/
+    - src/moai_adk/
   files:
     - pyproject.toml
-    - uv.lock
-    - README.md
+    - src/moai_adk/cli/main.py
+    - src/moai_adk/core/template/config.py
+    - src/moai_adk/core/template/processor.py
 ---
 
-# @SPEC:PY314-001: Python 3.14 Foundation & Build System
+# @SPEC:PY314-001: Python 3.13 Foundation & Build System
 
 ## HISTORY
+
+### v0.1.0 (2025-10-14)
+- **GREEN**: TDD 구현 완료 (cli/main.py, template/config.py, template/processor.py)
+- **REFACTOR**: ruff 린터, mypy strict mode 통과
+- **TEST**: ConfigManager 8/8 통과, TemplateProcessor 11/11 통과
+- **CHANGED**: Python 3.14 → 3.13 (3.14는 Alpha 단계, 3.13 Stable 사용)
+- **COVERAGE**: 30% (Foundation only, CLI-001 구현 후 85% 목표)
+- **AUTHOR**: @Goos
 
 ### v0.0.1 (2025-10-13)
 - **INITIAL**: Python 3.14 기반 프로젝트 구조 및 uv 빌드 시스템 명세 작성
