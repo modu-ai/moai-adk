@@ -4,6 +4,8 @@
 .moai/ 디렉토리 구조를 생성하고 config.json을 작성합니다.
 """
 
+# REFACTOR: Improve type hints and docstrings for better readability
+
 import json
 from pathlib import Path
 
