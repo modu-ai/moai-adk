@@ -20,6 +20,8 @@ coverage/
 .coverage
 htmlcov/
 .pytest_cache/
+
+# Linter and type checker cache
 .mypy_cache/
 .ruff_cache/
 
