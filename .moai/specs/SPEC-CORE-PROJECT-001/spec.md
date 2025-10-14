@@ -1,9 +1,9 @@
 ---
 id: CORE-PROJECT-001
-version: 0.0.1
-status: draft
+version: 0.1.0
+status: completed
 created: 2025-10-13
-updated: 2025-10-13
+updated: 2025-10-14
 author: @Goos
 priority: high
 category: feature
@@ -26,6 +26,17 @@ scope:
 # @SPEC:CORE-PROJECT-001: 프로젝트 초기화 및 언어 감지
 
 ## HISTORY
+
+### v0.1.0 (2025-10-14)
+- **IMPLEMENTED**: TDD 구현 완료 (RED-GREEN-REFACTOR)
+- **AUTHOR**: @Goos
+- **MODULES**: detector.py (92 LOC), languages.py (44 LOC), checker.py (59 LOC), initializer.py (102 LOC)
+- **TESTS**: 79/79 passed, 100% coverage (75/75 statements)
+- **QUALITY**: ruff ✓, mypy --strict ✓, TRUST 5원칙 준수
+- **COMMITS**:
+  - bb60d78 🔴 RED: 테스트 작성
+  - 0d10504 🟢 GREEN: 구현 완료
+  - c504618 ♻️ REFACTOR: 품질 개선
 
 ### v0.0.1 (2025-10-13)
 - **INITIAL**: 프로젝트 초기화, 20개 언어 감지, 시스템 체커 명세 작성
