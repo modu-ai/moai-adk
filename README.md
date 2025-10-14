@@ -81,7 +81,7 @@ Alfred는 특정 언어나 프레임워크에 종속되지 않습니다. **Pytho
 
 ### 📋 준비물
 
-- ✅ Bun 또는 npm 설치됨
+- ✅ Python 3.13+ 또는 uv 설치됨
 - ✅ Claude Code 실행 중
 - ✅ Git 설치됨 (선택사항)
 
@@ -90,12 +90,12 @@ Alfred는 특정 언어나 프레임워크에 종속되지 않습니다. **Pytho
 #### 1️⃣ 설치 (30초)
 
 ```bash
-# Bun 권장 (5배 빠른 성능)
-curl -fsSL https://bun.sh/install | bash
-bun add -g moai-adk
+# uv 권장 (빠른 성능)
+pip install uv
+uv pip install moai-adk
 
-# 또는 npm 사용
-npm install -g moai-adk
+# 또는 pip 사용
+pip install moai-adk
 
 # 설치 확인
 moai --version
@@ -247,9 +247,9 @@ Alfred는 Agentic AI 시대의 코드 품질 문제를 **체계적인 3단계 �
 
 ### 🔴 필수 요구사항
 
-- **Node.js**: 18.0 이상
+- **Python**: 3.13.0 이상
 - **Git**: 2.30.0 이상
-- **npm**: 8.0.0 이상 (또는 **Bun 1.2.0 이상 강력 추천**)
+- **pip**: 24.0 이상 (또는 **uv 0.5.0 이상 강력 추천**)
 - **Claude Code**: v1.2.0 이상 (에이전트 시스템 완전 통합용)
 
 ### 🌍 지원 운영체제
@@ -262,45 +262,43 @@ Alfred는 Agentic AI 시대의 코드 품질 문제를 **체계적인 3단계 �
 
 ## 설치
 
-### Option A: Bun 설치 (최적 성능, 강력 추천) 🔥
+### Option A: uv 설치 (최적 성능, 강력 추천) 🔥
 
 ```bash
-# Bun 설치 (아직 없는 경우)
-curl -fsSL https://bun.sh/install | bash  # macOS/Linux
+# uv 설치 (아직 없는 경우)
+curl -LsSf https://astral.sh/uv/install.sh | sh  # macOS/Linux
 # 또는
-powershell -c "iwr bun.sh/install.ps1|iex"  # Windows
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"  # Windows
 
 # MoAI-ADK 전역 설치
-bun add -g moai-adk
+uv pip install moai-adk
 ```
 
-### Option B: npm 설치 (표준 옵션)
+### Option B: pip 설치 (표준 옵션)
 
 ```bash
-npm install -g moai-adk
+pip install moai-adk
 ```
 
 ### Option C: 개발자 설치 (로컬 개발용)
 
 ```bash
 git clone https://github.com/modu-ai/moai-adk.git
-cd moai-adk/moai-adk-ts
-bun install  # 또는 npm install
-bun run build
-npm link
+cd moai-adk
+uv pip install -e .  # 또는 pip install -e .
 ```
 
 ### 설치 확인
 
 ```bash
 # 버전 확인
-moai --version
+python -m moai_adk --version
 
 # 시스템 진단
-moai doctor
+python -m moai_adk doctor
 
 # 도움말
-moai help
+python -m moai_adk --help
 ```
 
 ---
@@ -738,20 +736,17 @@ moai restore .moai-backup-2025-10-02 --force
 
 ### 기본 사용
 
-```typescript
-import { CLIApp, SystemChecker, TemplateManager } from 'moai-adk';
+```python
+from moai_adk.cli.main import CLIApp
+from moai_adk.core.project.checker import SystemChecker
 
-// CLI 앱 초기화
-const app = new CLIApp();
-await app.run();
+# CLI 앱 초기화
+app = CLIApp()
+app.run()
 
-// 시스템 체크
-const checker = new SystemChecker();
-const result = await checker.checkSystem();
-
-// 템플릿 관리
-const templateManager = new TemplateManager();
-await templateManager.copyTemplates(projectPath);
+# 시스템 체크
+checker = SystemChecker()
+result = checker.check_system()
 ```
 
 ### 설정 파일 (.moai/config.json)
@@ -1040,29 +1035,27 @@ moai restore .moai-backup-YYYY-MM-DD
 ```bash
 # 저장소 클론
 git clone https://github.com/modu-ai/moai-adk.git
-cd moai-adk/moai-adk-ts
+cd moai-adk
 
-# 의존성 설치 (Bun 권장)
-bun install
+# 의존성 설치 (uv 권장)
+uv pip install -e ".[dev]"
 
 # 개발 모드 실행
-bun run dev
-
-# 빌드
-bun run build
+python -m moai_adk
 
 # 테스트
-bun test
+pytest
 
 # 코드 품질 검사
-bun run check
+ruff check .
+mypy src/
 ```
 
 ### 코딩 규칙
 
 - TRUST 5원칙 준수
 - @TAG 시스템 적용
-- TypeScript strict 모드 사용
+- Python 타입 힌트 필수 (mypy strict)
 - ≤50 LOC per function
 - Test coverage ≥85%
 
