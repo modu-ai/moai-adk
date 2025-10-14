@@ -20,6 +20,8 @@ coverage/
 .coverage
 htmlcov/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # Logs and temporary files
 .claude/logs/
