@@ -76,14 +76,19 @@ Alfred는 특정 언어나 프레임워크에 종속되지 않습니다. **Pytho
 
 ---
 
-## 📚 핵심 개념 문서
+## 📚 문서
 
-MoAI-ADK를 효과적으로 사용하기 위한 핵심 개념을 학습하세요.
+### 공식 문서 사이트
 
-- **[EARS 요구사항 작성 가이드](docs/guides/concepts/ears-guide.md)** - 명확하고 구조화된 요구사항 작성 방법
-- **[TRUST 5원칙](docs/guides/concepts/trust-principles.md)** - AI 시대의 코드 품질 기준
-- **[TAG 시스템](docs/guides/concepts/tag-system.md)** - 코드 추적성 보장 방법
-- **[SPEC-First TDD 워크플로우](docs/guides/concepts/spec-first-tdd.md)** - 3단계 개발 사이클 완벽 가이드
+**[https://moai-adk.vercel.app](https://moai-adk.vercel.app)** - 전체 문서 및 가이드
+
+### 핵심 개념
+
+- **[Getting Started](https://moai-adk.vercel.app/getting-started/installation/)** - 설치 및 시작 가이드
+- **[Alfred SuperAgent](https://moai-adk.vercel.app/guides/alfred-superagent/)** - Alfred의 모든 기능
+- **[SPEC-First TDD](https://moai-adk.vercel.app/guides/spec-first-tdd/)** - SPEC 우선 개발 방법론
+- **[TAG System](https://moai-adk.vercel.app/guides/tag-system/)** - 코드 추적성 보장 방법
+- **[TRUST Principles](https://moai-adk.vercel.app/guides/trust-principles/)** - AI 시대의 코드 품질 기준
 
 ---
 

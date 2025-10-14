@@ -1,65 +1,176 @@
-site_name: MoAI ADK
-site_url: https://moai-adk.vercel.app
-site_author: MoAI Team
-site_description: |
-  모두의AI 개발키트 - 에이전트 중심 개발 프레임워크
+# @DOC:DOCS-SYSTEM-001 | SPEC: .moai/specs/SPEC-DOCS-SYSTEM-001/spec.md
+# MkDocs Material Configuration for MoAI-ADK v0.3.0
 
+site_name: MoAI-ADK
+site_description: MoAI Agentic Development Kit - SPEC-First TDD Framework with Alfred SuperAgent
+site_url: https://moai-adk.vercel.app
+repo_url: https://github.com/modu-ai/moai-adk
+repo_name: modu-ai/moai-adk
+edit_uri: edit/main/docs/
+
+# Copyright
+copyright: Copyright &copy; 2025 MoAI Team
+
+# Theme Configuration
 theme:
   name: material
   language: ko
-  features:
-    - navigation.tabs
-    - navigation.sections
-    - navigation.top
-    - navigation.path
-    - content.code.copy
-    - content.tabs.link
   palette:
-    - media: "(prefers-color-scheme)"
-      toggle:
-        icon: material/brightness-auto
-        name: Switch to light mode
+    # Light mode
     - media: "(prefers-color-scheme: light)"
       scheme: default
+      primary: indigo
+      accent: indigo
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
+    # Dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
+      primary: indigo
+      accent: indigo
       toggle:
         icon: material/brightness-4
-        name: Switch to system preference
+        name: Switch to light mode
 
+  font:
+    text: Noto Sans KR
+    code: JetBrains Mono
+
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.indexes
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - content.action.edit
+    - content.action.view
+
+  icon:
+    repo: fontawesome/brands/github
+    edit: material/pencil
+    view: material/eye
+
+# Plugins
 plugins:
-  - search
-  - mermaid2
-  - glightbox
+  - search:
+      lang:
+        - ko
+        - en
   - git-revision-date-localized:
       enable_creation_date: true
+      type: timeago
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            show_category_heading: true
+            members_order: source
 
+# Markdown Extensions
 markdown_extensions:
-  - pymdownx.highlight
+  # Python Markdown
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+      toc_depth: 3
+
+  # Python Markdown Extensions
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
   - pymdownx.inlinehilite
-  - pymdownx.snippets
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
 
+# Navigation
 nav:
-  - 홈: index.md
-  - 시작하기:
-    - 개요: guides/getting-started.md
-    - 빠른 시작: guides/quick-start.md
-  - 에이전트:
-    - 개요: guides/agents/overview.md
-  - 워크플로우:
-    - 소개: guides/workflow/overview.md
-    - 0단계 - 프로젝트: guides/workflow/0-project.md
-    - 1단계 - 명세: guides/workflow/1-spec.md
-    - 2단계 - 구현: guides/workflow/2-build.md
-    - 3단계 - 동기화: guides/workflow/3-sync.md
-    - 업데이트: guides/workflow/9-update.md
-  - API 참조:
-    - 개요: api/index.md
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quick-start.md
+    - Your First Project: getting-started/first-project.md
+
+  - Guides:
+    - SPEC-First TDD: guides/spec-first-tdd.md
+    - Alfred SuperAgent: guides/alfred-superagent.md
+    - 3-Stage Workflow: guides/workflow.md
+    - TAG System: guides/tag-system.md
+    - TRUST Principles: guides/trust-principles.md
+
+  - Agents:
+    - Overview: agents/overview.md
+    - spec-builder: agents/spec-builder.md
+    - code-builder: agents/code-builder.md
+    - doc-syncer: agents/doc-syncer.md
+    - tag-agent: agents/tag-agent.md
+    - git-manager: agents/git-manager.md
+    - debug-helper: agents/debug-helper.md
+    - trust-checker: agents/trust-checker.md
+    - cc-manager: agents/cc-manager.md
+    - project-manager: agents/project-manager.md
+
+  - Commands:
+    - CLI Reference: commands/cli-reference.md
+    - /alfred:0-project: commands/0-project.md
+    - /alfred:1-spec: commands/1-spec.md
+    - /alfred:2-build: commands/2-build.md
+    - /alfred:3-sync: commands/3-sync.md
+
+  - API Reference:
+    - Core: api/core.md
+    - CLI: api/cli.md
+    - Templates: api/templates.md
+
+  - SPEC Documents:
+    - Overview: specs/overview.md
+    - Metadata Standard: specs/metadata.md
+
+# Extra
+extra:
+  version:
+    provider: mike
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/modu-ai/moai-adk
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/moai-adk/
+
+# Extra CSS
+extra_css:
+  - stylesheets/extra.css

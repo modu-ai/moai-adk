@@ -1,0 +1,255 @@
+name: MoAI-ADK GitFlow 자동화
+
+# MoAI-ADK  3단계 파이프라인: spec → build → sync
+# GitFlow 완전 투명성 - 개발자가 Git을 몰라도 되는 자동화
+
+on:
+  push:
+    branches: [develop, "feature/**"]
+  pull_request:
+    types: [opened, ready_for_review, converted_to_draft]
+
+jobs:
+  moai-pipeline:
+    name: 🗿 MoAI-ADK 파이프라인
+    runs-on: ubuntu-latest
+    steps:
+      - name: 체크아웃
+        uses: actions/checkout@v4
+
+      # Multi-language toolchains (conditional)
+      - name: Setup Python
+        if: ${{ hashFiles('requirements.txt') != '' || hashFiles('pyproject.toml') != '' || hashFiles('setup.py') != '' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Setup Node.js
+        if: ${{ hashFiles('package.json') != '' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup Bun
+        if: ${{ hashFiles('bun.lockb') != '' }}
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "latest"
+
+      - name: Setup Go
+        if: ${{ hashFiles('go.mod') != '' }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - name: Setup Rust
+        if: ${{ hashFiles('Cargo.toml') != '' }}
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Java
+        if: ${{ hashFiles('pom.xml') != '' || hashFiles('build.gradle') != '' || hashFiles('build.gradle.kts') != '' }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Setup .NET
+        if: ${{ hashFiles('**/*.sln') != '' || hashFiles('**/*.csproj') != '' }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Setup Ruby
+        if: ${{ hashFiles('Gemfile') != '' }}
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+
+      - name: Setup Flutter
+        if: ${{ hashFiles('pubspec.yaml') != '' }}
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.24.x"
+          channel: "stable"
+
+      - name: Setup Swift (Xcode)
+        if: ${{ hashFiles('Package.swift') != '' || hashFiles('**/*.xcodeproj') != '' || hashFiles('**/*.xcworkspace') != '' }}
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "latest-stable"
+
+      - name: Setup Kotlin
+        if: ${{ hashFiles('build.gradle.kts') != '' || hashFiles('settings.gradle.kts') != '' }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      # TRUST 5원칙 자동 검증
+      # Note: Validation is now handled by TypeScript-based tools
+      - name: 🧭 TRUST 5원칙 검증
+        run: |
+          echo "✅ TRUST 원칙 검증은 TypeScript 기반 도구로 수행됩니다"
+          echo "   - @agent-trust-checker 사용"
+          echo "   - TypeScript 훅 시스템 활용"
+
+      # Draft PR에서는 테스트 실패를 무시하고, Ready PR에서는 실패 시 CI 실패
+      - name: Run language-aware tests
+        run: |
+          set -e
+          ALLOW_FAILURE="${{ github.event.pull_request.draft == true }}"
+          echo "🔎 Running language-aware tests (Draft PR: allow failure = $ALLOW_FAILURE)"
+
+          # Python tests
+          if [ -f "requirements.txt" ] || [ -f "pyproject.toml" ] || [ -f "setup.py" ]; then
+            echo "➡️  Python tests"
+            pip install -q pytest pytest-cov 2>/dev/null || true
+            if [ "$ALLOW_FAILURE" = "true" ]; then
+              pytest --cov --cov-report=term-missing || true
+            else
+              pytest --cov --cov-report=term-missing
+            fi
+          fi
+
+          # Node.js/Bun tests
+          if [ -f "package.json" ]; then
+            echo "➡️  Node.js/Bun tests"
+            if [ -f "bun.lockb" ]; then
+              bun install --frozen-lockfile || bun install
+              if [ "$ALLOW_FAILURE" = "true" ]; then
+                bun test || true
+              else
+                bun test
+              fi
+            else
+              npm ci --prefer-offline || npm install
+              if [ "$ALLOW_FAILURE" = "true" ]; then
+                npm test --if-present -- --coverage || true
+              else
+                npm test --if-present -- --coverage
+              fi
+            fi
+          fi
+
+          # Go tests
+          if [ -f "go.mod" ]; then
+            echo "➡️  Go tests"
+            if [ "$ALLOW_FAILURE" = "true" ]; then
+              go test -v -cover ./... || true
+            else
+              go test -v -cover ./...
+            fi
+          fi
+
+          # Rust tests
+          if [ -f "Cargo.toml" ]; then
+            echo "➡️  Rust tests"
+            if [ "$ALLOW_FAILURE" = "true" ]; then
+              cargo test --all --locked || cargo test || true
+            else
+              cargo test --all --locked || cargo test
+            fi
+          fi
+
+          # Java tests (Maven)
+          if [ -f "pom.xml" ]; then
+            echo "➡️  Java tests (Maven)"
+            if [ "$ALLOW_FAILURE" = "true" ]; then
+              mvn -q -DskipTests=false test || true
+            else
+              mvn -q -DskipTests=false test
+            fi
+          fi
+
+          # Java/Kotlin tests (Gradle)
+          if [ -f "build.gradle" ] || [ -f "build.gradle.kts" ]; then
+            echo "➡️  Java/Kotlin tests (Gradle)"
+            if [ "$ALLOW_FAILURE" = "true" ]; then
+              ./gradlew test || gradle test || true
+            else
+              ./gradlew test || gradle test
+            fi
+          fi
+
+          # .NET tests
+          if compgen -G "**/*.sln" > /dev/null || compgen -G "**/*.csproj" > /dev/null; then
+            echo "➡️  .NET tests"
+            if [ "$ALLOW_FAILURE" = "true" ]; then
+              dotnet test || true
+            else
+              dotnet test
+            fi
+          fi
+
+          # Ruby tests
+          if [ -f "Gemfile" ]; then
+            echo "➡️  Ruby tests"
+            if [ "$ALLOW_FAILURE" = "true" ]; then
+              bundle exec rspec || bundle exec rake test || true
+            else
+              bundle exec rspec || bundle exec rake test
+            fi
+          fi
+
+          # Flutter tests
+          if [ -f "pubspec.yaml" ]; then
+            echo "➡️  Flutter tests"
+            flutter pub get
+            if [ "$ALLOW_FAILURE" = "true" ]; then
+              flutter test || true
+            else
+              flutter test
+            fi
+          fi
+
+          # Swift tests
+          if [ -f "Package.swift" ]; then
+            echo "➡️  Swift tests (SPM)"
+            if [ "$ALLOW_FAILURE" = "true" ]; then
+              swift test || true
+            else
+              swift test
+            fi
+          elif compgen -G "**/*.xcodeproj" > /dev/null || compgen -G "**/*.xcworkspace" > /dev/null; then
+            echo "➡️  Swift tests (Xcode)"
+            # Xcode 프로젝트는 스킴이 필요하므로 조건부 실행
+            if [ "$ALLOW_FAILURE" = "true" ]; then
+              echo "⚠️  Xcode 테스트는 스킴 설정이 필요합니다"
+            else
+              echo "⚠️  Xcode 테스트는 스킴 설정이 필요합니다"
+            fi
+          fi
+
+      #  TAG 시스템 검증 (코드 파일만)
+      - name: 🏷️ TAG 시스템 검증
+        run: |
+          echo "✅ TAG 검증은 tag_validator.py Hook에서 자동 처리됨"
+
+      # 브랜치별 단계 실행
+      - name: 📝 SPEC 단계 (feature 브랜치)
+        if: startsWith(github.ref, 'refs/heads/feature/')
+        run: |
+          echo "🌿 Feature 브랜치: SPEC 검증 단계"
+          echo "- spec-builder 에이전트가 EARS 명세 작성"
+          echo "- Draft PR 자동 생성"
+
+      - name: 🔴🟢🔄 BUILD 단계 (Draft PR)
+        if: github.event.pull_request.draft == true
+        run: |
+          echo "📝 Draft PR: TDD 구현 단계"
+          echo "- code-builder 에이전트가 RED-GREEN-REFACTOR"
+          echo "- TRUST 5원칙 준수 검증"
+
+      - name: 📚 SYNC 단계 (Ready PR)
+        if: github.event.pull_request.draft == false && github.event.action == 'ready_for_review'
+        run: |
+          echo "✅ Ready PR: 문서 동기화 단계"
+          echo "- doc-syncer 에이전트가 Living Document 동기화"
+          echo "- PR 리뷰 준비 완료"
+
+      # 최종 결과 리포트
+      - name: 📊 MoAI 파이프라인 완료
+        run: |
+          echo "🗿 MoAI-ADK GitFlow 자동화 완료"
+          echo "✨ Git을 몰라도 프로페셔널 워크플로우 구현"

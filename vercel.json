@@ -1,46 +1,6 @@
 {
-    "version": 2,
-    "builds": [
-        {
-            "src": "mkdocs.yml",
-            "use": "@vercel/python",
-            "config": {
-                "maxLambdaSize": "50mb",
-                "runtime": "python3.9",
-                "buildCommand": "pip install uv && uv pip install -r requirements.txt && mkdocs build"
-            }
-        }
-    ],
-    "routes": [
-        { "handle": "filesystem" },
-        { "src": "/(.*)", "dest": "site/$1" }
-    ],
-    "headers": [
-        {
-            "source": "/(.*)",
-            "headers": [
-                {
-                    "key": "X-Content-Type-Options",
-                    "value": "nosniff"
-                },
-                {
-                    "key": "X-Frame-Options",
-                    "value": "DENY"
-                },
-                {
-                    "key": "X-XSS-Protection",
-                    "value": "1; mode=block"
-                }
-            ]
-        },
-        {
-            "source": "/assets/(.*)",
-            "headers": [
-                {
-                    "key": "Cache-Control",
-                    "value": "public, max-age=31536000, immutable"
-                }
-            ]
-        }
-    ]
+  "buildCommand": "pip install mkdocs-material mkdocstrings[python] mkdocs-git-revision-date-localized-plugin && mkdocs build",
+  "outputDirectory": "site",
+  "installCommand": "pip install --upgrade pip",
+  "framework": null
 }
