@@ -57,13 +57,21 @@ test = [
     "pytest-cov>=4.1.0",
 ]
 
+# 문서 빌드
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocstrings[python]>=0.24.0",
+    "mkdocs-git-revision-date-localized-plugin>=1.2.0",
+]
+
 # 진입점
 [project.scripts]
 moai = "moai_adk.__main__:main"
 
 [project.urls]
 Homepage = "https://github.com/modu-ai/moai-adk"
-Documentation = "https://moai-adk.dev"
+Documentation = "https://moai-adk.vercel.app"
 Repository = "https://github.com/modu-ai/moai-adk"
 Issues = "https://github.com/modu-ai/moai-adk/issues"
 Changelog = "https://github.com/modu-ai/moai-adk/blob/main/CHANGELOG.md"
@@ -74,7 +82,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["moai-adk-py/src/moai_adk"]
+packages = ["src/moai_adk"]
 
 # Ruff 설정
 [tool.ruff]
