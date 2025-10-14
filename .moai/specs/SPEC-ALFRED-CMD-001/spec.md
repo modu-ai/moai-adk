@@ -1,7 +1,7 @@
 ---
 id: ALFRED-CMD-001
-version: 0.0.1
-status: draft
+version: 0.1.0
+status: completed
 created: 2025-10-14
 updated: 2025-10-14
 author: @Goos
@@ -26,6 +26,11 @@ scope:
 # @SPEC:ALFRED-CMD-001: Alfred 커맨드 명명 통일
 
 ## HISTORY
+### v0.1.0 (2025-10-14)
+- **CHANGED**: 구현 완료 - 템플릿 본문 "8단계" → "0단계" 수정
+- **AUTHOR**: @Goos
+- **RELATED**: 커밋 0320ee9 (REFACTOR: Alfred 커맨드 템플릿 명명 통일)
+
 ### v0.0.1 (2025-10-14)
 - **INITIAL**: /alfred:0-project vs /alfred:8-project 명명 통일
 - **AUTHOR**: @Goos
