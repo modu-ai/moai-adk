@@ -1,7 +1,7 @@
 ---
 id: TEST-COVERAGE-001
-version: 0.0.1
-status: draft
+version: 0.1.0
+status: completed
 created: 2025-10-15
 updated: 2025-10-15
 author: @Goos
@@ -25,6 +25,25 @@ scope:
 # @SPEC:TEST-COVERAGE-001: CLI 및 Git 모듈 테스트 커버리지 85% 달성
 
 ## HISTORY
+
+### v0.1.0 (2025-10-15)
+- **COMPLETED**: TDD 구현 완료 (RED-GREEN-REFACTOR)
+- **AUTHOR**: @Goos
+- **ACHIEVEMENT**:
+  - 272 tests 작성 (19 test files)
+  - 85.61% coverage 달성 (726/848 statements)
+  - 0 test failures
+  - 0 linter warnings
+- **TDD COMMITS**:
+  - d74cd76: 🔴 RED - 테스트 인프라 구축
+  - 9886550: 🟢 GREEN - 단위 테스트 (52% coverage)
+  - 08aa938: 🟢 GREEN - 통합 테스트 (85.61% coverage)
+  - 478729d: ♻️ REFACTOR - Ruff 린터 개선
+- **TEST BREAKDOWN**:
+  - Unit tests: 148 tests (17 files)
+  - Integration tests: 124 tests (2 files)
+  - 100% coverage modules: banner, git utils, template config, initializer
+- **TOOLS**: pytest 8.4.2, pytest-cov 7.0.0, Click CliRunner, uv package manager
 
 ### v0.0.1 (2025-10-15)
 - **INITIAL**: 테스트 커버리지 85% 달성 명세 최초 작성
