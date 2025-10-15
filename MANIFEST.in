@@ -1,0 +1,12 @@
+# Include template directories (including hidden dirs starting with .)
+recursive-include src/moai_adk/templates *
+recursive-include src/moai_adk/templates/.claude *
+recursive-include src/moai_adk/templates/.moai *
+recursive-include src/moai_adk/templates/.github *
+
+# Include documentation
+include README.md
+include LICENSE
+
+# Include configuration
+include pyproject.toml

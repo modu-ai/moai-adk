@@ -25,12 +25,14 @@ jobs:
       - name: Run pip-audit (dependency vulnerability scan)
         run: |
           echo "🔍 Scanning dependencies for known vulnerabilities..."
-          pip-audit || {
+          pip-audit --ignore-vuln GHSA-4xh5-x5gv-qwph || {
             echo "⚠️ pip-audit detected vulnerabilities"
             echo "Please review the vulnerabilities above and update dependencies"
             exit 1
           }
         continue-on-error: false
+        # Note: GHSA-4xh5-x5gv-qwph (pip 25.2 tarfile extraction vulnerability)
+        # is ignored as the fix is planned for pip 25.3 (not yet released)
 
       - name: Run bandit (code security scan)
         run: |
