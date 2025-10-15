@@ -1,10 +1,11 @@
 # MoAI-ADK (Agentic Development Kit)
 
-[![npm version](https://img.shields.io/npm/v/moai-adk)](https://www.npmjs.com/package/moai-adk)
+[![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9.2+-blue)](https://www.typescriptlang.org/)
-[![Node.js](https://img.shields.io/badge/node-18.0+-green)](https://nodejs.org/)
-[![Bun](https://img.shields.io/badge/Bun-1.2.19+-black)](https://bun.sh/)
+[![Python](https://img.shields.io/badge/Python-3.13+-blue)](https://www.python.org/)
+[![Tests](https://github.com/modu-ai/moai-adk/actions/workflows/moai-gitflow.yml/badge.svg)](https://github.com/modu-ai/moai-adk/actions/workflows/moai-gitflow.yml)
+[![codecov](https://codecov.io/gh/modu-ai/moai-adk/branch/develop/graph/badge.svg)](https://codecov.io/gh/modu-ai/moai-adk)
+[![Coverage](https://img.shields.io/badge/coverage-85.61%25-brightgreen)](https://github.com/modu-ai/moai-adk)
 
 ## MoAI-ADK
 
