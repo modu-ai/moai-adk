@@ -1,0 +1,50 @@
+[project]
+name = "moai-adk"
+version = "0.2.18"
+description = "MoAI Agentic Development Kit - SPEC-First TDD with Alfred SuperAgent"
+requires-python = ">=3.13"
+dependencies = [
+    "click>=8.1.0",
+    "rich>=13.0.0",
+    "pyfiglet>=1.0.2",
+    "questionary>=2.0.0",
+    "gitpython>=3.1.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+    "pytest-xdist>=3.8.0",
+    "ruff>=0.1.0",
+    "mypy>=1.7.0"
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --cov=src/moai_adk --cov-report=html --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["src/moai_adk"]
+omit = ["tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+fail_under = 85
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N"]
+ignore = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
