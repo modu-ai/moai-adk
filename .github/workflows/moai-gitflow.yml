@@ -31,6 +31,13 @@ jobs:
         run: |
           uv pip install --system -e ".[dev]"
 
+      - name: 템플릿 파일 존재 확인 (디버그)
+        run: |
+          echo "📂 Checking template files..."
+          ls -la src/moai_adk/templates/.claude/ || echo "❌ .claude directory not found"
+          ls -la src/moai_adk/templates/.moai/ || echo "❌ .moai directory not found"
+          ls -la src/moai_adk/templates/.github/ || echo "❌ .github directory not found"
+
       # Multi-language toolchains (conditional)
       - name: Setup Node.js
         if: ${{ hashFiles('package.json') != '' }}
