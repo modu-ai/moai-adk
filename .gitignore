@@ -12,6 +12,8 @@ dist/
 # Test coverage
 coverage/
 .nyc_output/
+.coverage
+coverage.json
 
 # Logs and temporary files
 .claude/logs/
@@ -76,3 +78,23 @@ package-lock.json
 # docs - only deploy docs/public (GitHub Pages)
 docs/*
 !docs/public/
+site/
+*.egg
+.pytest_cache/
+__pycache__/
+# Build artifacts
+# Backups
+logs/
+env/
+# Logs
+.venv/
+.tscache/
+# Virtual environment
+build/
+.env/
+# Temporary files
+*.egg-info/
+venv/
+*.pyo
+# OS
+*.pyc
