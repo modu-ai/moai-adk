@@ -4,23 +4,10 @@
 Selective Backup 전략:
 - 필요한 파일만 백업 (OR 조건)
 - 백업 경로: .moai/backups/{timestamp}/ (v0.3.0)
-- 백업 메타데이터 저장
 """
 
-import json
 from datetime import datetime
 from pathlib import Path
-from typing import TypedDict
-
-
-class BackupMetadata(TypedDict):
-    """백업 메타데이터 구조"""
-
-    timestamp: str
-    backup_path: str
-    backed_up_files: list[str]
-    status: str  # pending, completed, failed
-    created_by: str
 
 
 # 백업 대상 파일/디렉토리 (OR 조건 - 하나라도 있으면 백업)
@@ -28,7 +15,6 @@ BACKUP_TARGETS = [
     ".moai/config.json",
     ".moai/project/",
     ".moai/memory/",
-    ".moai/backup/",
     ".claude/",
     "CLAUDE.md",
 ]
@@ -82,23 +68,6 @@ def generate_backup_dir_name() -> str:
     """
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     return timestamp
-
-
-def save_backup_metadata(
-    project_path: Path, metadata: BackupMetadata
-) -> None:
-    """백업 메타데이터 저장
-
-    Args:
-        project_path: 프로젝트 경로
-        metadata: 백업 메타데이터
-    """
-    backup_dir = project_path / ".moai" / "backup"
-    backup_dir.mkdir(parents=True, exist_ok=True)
-
-    metadata_path = backup_dir / "latest.json"
-    with open(metadata_path, "w", encoding="utf-8") as f:
-        json.dump(metadata, f, indent=2, ensure_ascii=False)
 
 
 def is_protected_path(rel_path: Path) -> bool:
