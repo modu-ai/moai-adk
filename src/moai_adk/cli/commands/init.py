@@ -1,4 +1,6 @@
-# @CODE:CLI-001 | @CODE:INIT-003:CLI | SPEC: SPEC-CLI-001.md, SPEC-INIT-003.md | TEST: tests/unit/test_cli_commands.py, tests/unit/test_init_reinit.py
+# @CODE:CLI-001 | @CODE:INIT-003:CLI
+# SPEC: SPEC-CLI-001.md, SPEC-INIT-003.md
+# TEST: tests/unit/test_cli_commands.py, tests/unit/test_init_reinit.py
 """moai init command
 
 Project initialization command (interactive/non-interactive):
@@ -7,10 +9,11 @@ Project initialization command (interactive/non-interactive):
 """
 
 from pathlib import Path
+from typing import Sequence
 
 import click
 from rich.console import Console
-from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
+from rich.progress import BarColumn, Progress, SpinnerColumn, TaskID, TextColumn
 from rich.prompt import Confirm
 
 from moai_adk.cli.prompts import prompt_project_setup
@@ -20,7 +23,7 @@ from moai_adk.utils.banner import print_banner, print_welcome_message
 console = Console()
 
 
-def create_progress_callback(progress: Progress, task_ids: list[int]):
+def create_progress_callback(progress: Progress, task_ids: Sequence[TaskID]):
     """Create progress callback
 
     Args:
@@ -127,7 +130,7 @@ def init(
             language = answers["language"]
             project_name = answers["project_name"]
 
-            console.print(f"\n[cyan]🚀 Starting installation...[/cyan]\n")
+            console.print("\n[cyan]🚀 Starting installation...[/cyan]\n")
 
         # 4. Check for reinitialization (SPEC-INIT-003 v0.3.0)
         initializer = ProjectInitializer(project_path)
@@ -137,7 +140,7 @@ def init(
                 # Non-interactive mode (without force): Reject reinitialization
                 console.print("\n[yellow]⚠ Project already initialized[/yellow]")
                 console.print(f"[dim]  Location: {project_path}/.moai/[/dim]")
-                console.print(f"[dim]  Use --force to reinitialize or interactive mode[/dim]\n")
+                console.print("[dim]  Use --force to reinitialize or interactive mode[/dim]\n")
                 raise click.Abort()
 
             if force:
@@ -204,7 +207,7 @@ def init(
                 "\n[green bold]✅ Initialization Completed Successfully![/green bold]"
             )
             console.print(separator)
-            console.print(f"\n[cyan]📊 Summary:[/cyan]")
+            console.print("\n[cyan]📊 Summary:[/cyan]")
             console.print(f"  [dim]📁 Location:[/dim]  {result.project_path}")
             console.print(f"  [dim]🌐 Language:[/dim]  {result.language}")
             console.print(f"  [dim]🔧 Mode:[/dim]      {result.mode}")
@@ -249,7 +252,7 @@ def init(
     except FileExistsError as e:
         console.print("\n[yellow]⚠ Project already initialized[/yellow]")
         console.print(
-            f"[dim]  Use 'moai-adk status' to check configuration[/dim]\n"
+            "[dim]  Use 'moai-adk status' to check configuration[/dim]\n"
         )
         raise click.Abort() from e
     except Exception as e:

@@ -1,9 +1,11 @@
 """업데이트 명령어"""
-import click
 from pathlib import Path
+
+import click
 from rich.console import Console
-from moai_adk.core.template.processor import TemplateProcessor
+
 from moai_adk import __version__
+from moai_adk.core.template.processor import TemplateProcessor
 
 console = Console()
 
