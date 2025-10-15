@@ -641,9 +641,31 @@ python -m moai_adk init . --force
 
 ```bash
 python -m moai_adk doctor
+python -m moai_adk doctor --verbose          # 언어별 도구 + 버전 표시
+python -m moai_adk doctor --fix              # 누락 도구 설치 제안
+python -m moai_adk doctor --export report.json  # JSON 파일 저장
+python -m moai_adk doctor --check pytest     # 특정 도구만 검증
 ```
 
-`core.project.checker.check_environment()` 결과를 Rich 테이블로 출력합니다. Python ≥ 3.13, Git 설치 여부, `.moai/` 구조 유무를 확인합니다.
+**기능**:
+- 시스템 진단: Python ≥ 3.13, Git 설치 여부, `.moai/` 구조 유무 확인
+- **20개 언어별 도구 체인 검증**: Python, TypeScript, JavaScript, Java, Go, Rust, Dart, Swift, Kotlin, C#, PHP, Ruby, Elixir, Scala, Clojure, Haskell, C, C++, Lua, OCaml
+- 언어 감지 자동화: 프로젝트 구조 기반 언어 자동 감지 및 필수 도구 검증
+
+**옵션**:
+- `--verbose`: 모든 선택 도구 및 버전 정보 표시
+- `--fix`: 누락된 도구에 대한 설치 명령어 제안 및 사용자 승인 후 실행
+- `--export <file>`: 진단 결과를 JSON 파일로 저장
+- `--check <tool>`: 특정 도구만 검증 (예: `pytest`, `vitest`)
+
+**언어별 도구 체인 예시**:
+- **Python**: pytest, mypy, ruff, black
+- **TypeScript**: vitest, biome, typescript, eslint
+- **Java**: maven, gradle, junit
+- **Go**: golangci-lint, gofmt, go test
+- **Rust**: rustfmt, clippy, cargo test
+
+**@CODE TAG**: `@CODE:CLI-001`
 
 #### `status`
 

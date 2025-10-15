@@ -1,7 +1,7 @@
 ---
 id: CLI-001
-version: 0.0.1
-status: draft
+version: 0.1.0
+status: completed
 created: 2025-10-15
 updated: 2025-10-15
 author: @Goos
@@ -29,6 +29,19 @@ scope:
 # @SPEC:CLI-001: CLI 명령어 고도화 - doctor/status/restore 개선
 
 ## HISTORY
+
+### v0.1.0 (2025-10-15)
+- **COMPLETED**: doctor 명령어 고도화 (20개 언어 도구 체인 검증) 구현 완료
+- **AUTHOR**: @Goos
+- **REVIEW**: N/A (Personal implementation)
+- **CHANGES**:
+  - Phase 1: 언어별 도구 체인 매핑 (LANGUAGE_TOOLS 상수, checker.py 431 LOC)
+  - Phase 2: doctor --verbose, --fix, --export, --check 옵션 추가
+  - 50개 테스트 100% 통과, 커버리지 91.58% (doctor.py)
+  - 지원 언어: Python, TypeScript, JavaScript, Java, Go, Rust, Dart, Swift, Kotlin, C#, PHP, Ruby, Elixir, Scala, Clojure, Haskell, C, C++, Lua, OCaml (20개)
+- **RELATED**:
+  - RED 커밋: 4568654 (doctor 언어별 도구 체인 검증 테스트 추가)
+  - GREEN 커밋: bc0074a (20개 언어 도구 체인 검증 구현 완료)
 
 ### v0.0.1 (2025-10-15)
 - **INITIAL**: CLI 명령어 고도화 명세 최초 작성
