@@ -1,20 +1,20 @@
-# SPEC 메타데이터 구조 가이드
+# SPEC Metadata Structure Guide
 
-> **MoAI-ADK SPEC 메타데이터 표준**
+> **MoAI-ADK SPEC Metadata Standard**
 >
-> 모든 SPEC 문서는 이 메타데이터 구조를 따라야 합니다.
+> Every SPEC document MUST follow this metadata structure.
 
 ---
 
-## 📋 메타데이터 구조 개요
+## 📋 Metadata Structure Overview
 
-SPEC 메타데이터는 **필수 필드 7개**와 **선택 필드 9개**로 구성됩니다.
+SPEC metadata consists of **7 required fields** and **9 optional fields**.
 
-### 전체 구조 예시
+### Full Structure Example
 
 ```yaml
 ---
-# 필수 필드 (7개)
+# Required fields (7)
 id: AUTH-001
 version: 0.0.1
 status: draft
@@ -23,13 +23,13 @@ updated: 2025-09-15
 author: @Goos
 priority: high
 
-# 선택 필드 - 분류/메타
+# Optional fields - classification/meta
 category: security
 labels:
   - authentication
   - jwt
 
-# 선택 필드 - 관계 (의존성 그래프)
+# Optional fields - relationships (dependency graph)
 depends_on:
   - USER-001
 blocks:
@@ -38,7 +38,7 @@ related_specs:
   - TOKEN-002
 related_issue: "https://github.com/modu-ai/moai-adk/issues/123"
 
-# 선택 필드 - 범위 (영향 분석)
+# Optional fields - scope (impact analysis)
 scope:
   packages:
     - src/core/auth
@@ -50,85 +50,85 @@ scope:
 
 ---
 
-## 필수 필드 (Required Fields)
+## Required Fields
 
-### 1. `id` - SPEC 고유 ID
-- **타입**: string
-- **형식**: `<DOMAIN>-<NUMBER>`
-- **예시**: `AUTH-001`, `INSTALLER-SEC-001`
-- **규칙**:
-  - 영구 불변 (한 번 부여하면 변경 불가)
-  - 3자리 숫자 사용 (001~999)
-  - 도메인은 대문자, 하이픈 사용 가능
-  - 디렉토리명: `.moai/specs/SPEC-{ID}/` (예: `.moai/specs/SPEC-AUTH-001/`)
+### 1. `id` - Unique SPEC ID
+- **Type**: string
+- **Format**: `<DOMAIN>-<NUMBER>`
+- **Examples**: `AUTH-001`, `INSTALLER-SEC-001`
+- **Rules**:
+  - Permanent identifier (cannot change once assigned)
+  - Use three digits (001-999)
+  - Domain is uppercase; hyphens allowed
+  - Directory name: `.moai/specs/SPEC-{ID}/` (e.g., `.moai/specs/SPEC-AUTH-001/`)
 
-### 2. `version` - 버전
-- **타입**: string (Semantic Version)
-- **형식**: `MAJOR.MINOR.PATCH`
-- **기본값**: `0.0.1` (모든 SPEC 시작 버전, status: draft)
-- **버전 체계**:
-  - **v0.0.1**: INITIAL - SPEC 최초 작성 (status: draft)
-  - **v0.0.x**: Draft 수정/개선 (SPEC 문서 수정 시 패치 버전 증가)
-  - **v0.1.0**: TDD 구현 완료 (status: completed, 수동 또는 /alfred:3-sync 자동 업데이트)
-  - **v0.1.x**: 버그 수정, 문서 개선 (패치 버전)
-  - **v0.x.0**: 기능 추가, 주요 개선 (마이너 버전)
-  - **v1.0.0**: 정식 안정화 버전 (프로덕션 준비, 사용자 명시적 승인 필수)
+### 2. `version` - Version
+- **Type**: string (Semantic Version)
+- **Format**: `MAJOR.MINOR.PATCH`
+- **Default**: `0.0.1` (starting point for all SPECs, status: draft)
+- **Version scheme**:
+  - **v0.0.1**: INITIAL - first draft of the SPEC (status: draft)
+  - **v0.0.x**: Draft revisions/improvements (increment patch for document updates)
+  - **v0.1.0**: TDD implementation complete (status: completed, updated manually or via `/alfred:3-sync`)
+  - **v0.1.x**: Bug fixes, documentation improvements (patch version)
+  - **v0.x.0**: Feature additions, major enhancements (minor version)
+  - **v1.0.0**: Stable release (production ready, explicit user approval required)
 
-### 3. `status` - 진행 상태
-- **타입**: enum
-- **가능한 값**:
-  - `draft`: 초안 작성 중
-  - `active`: 구현 진행 중
-  - `completed`: 구현 완료
-  - `deprecated`: 사용 중지 예정
+### 3. `status` - Progress State
+- **Type**: enum
+- **Values**:
+  - `draft`: authoring in progress
+  - `active`: implementation in progress
+  - `completed`: implementation finished
+  - `deprecated`: scheduled for retirement
 
-### 4. `created` - 생성일
-- **타입**: date (string)
-- **형식**: `YYYY-MM-DD`
-- **예시**: `2025-10-06`
+### 4. `created` - Created Date
+- **Type**: date (string)
+- **Format**: `YYYY-MM-DD`
+- **Example**: `2025-10-06`
 
-### 5. `updated` - 최종 수정일
-- **타입**: date (string)
-- **형식**: `YYYY-MM-DD`
-- **규칙**: SPEC 내용 수정 시마다 업데이트
+### 5. `updated` - Last Updated Date
+- **Type**: date (string)
+- **Format**: `YYYY-MM-DD`
+- **Rule**: Update whenever the SPEC content changes.
 
-### 6. `author` - 작성자
-- **타입**: string
-- **형식**: `@{GitHub ID}`
-- **예시**: `@Goos`
-- **규칙**:
-  - 단수형 사용 (~~authors 배열 사용하지 않음~~)
-  - GitHub ID 앞에 @ 접두사 필수
-  - 복수 작성자는 HISTORY 섹션에 기록
+### 6. `author` - Author
+- **Type**: string
+- **Format**: `@{GitHub ID}`
+- **Example**: `@Goos`
+- **Rules**:
+  - Use a single author (do not use an `authors` array)
+  - Prepend the GitHub ID with `@`
+  - Record additional contributors in the HISTORY section
 
-### 7. `priority` - 우선순위
-- **타입**: enum
-- **가능한 값**:
-  - `critical`: 즉시 처리 필요 (보안, 중대 버그)
-  - `high`: 높은 우선순위 (주요 기능)
-  - `medium`: 중간 우선순위 (개선사항)
-  - `low`: 낮은 우선순위 (최적화, 문서)
+### 7. `priority` - Priority
+- **Type**: enum
+- **Values**:
+  - `critical`: Immediate action required (security, critical bugs)
+  - `high`: High priority (major features)
+  - `medium`: Medium priority (enhancements)
+  - `low`: Low priority (optimisation, docs)
 
 ---
 
-## 선택 필드 (Optional Fields)
+## Optional Fields
 
-### 분류/메타 필드
+### Classification / Meta Fields
 
-#### 8. `category` - 변경 유형
-- **타입**: enum
-- **가능한 값**:
-  - `feature`: 새 기능 추가
-  - `bugfix`: 버그 수정
-  - `refactor`: 리팩토링
-  - `security`: 보안 개선
-  - `docs`: 문서화
-  - `perf`: 성능 최적화
+#### 8. `category` - Change Type
+- **Type**: enum
+- **Values**:
+  - `feature`: New feature
+  - `bugfix`: Bug fix
+  - `refactor`: Refactoring
+  - `security`: Security improvement
+  - `docs`: Documentation
+  - `perf`: Performance optimisation
 
-#### 9. `labels` - 분류 태그
-- **타입**: array of string
-- **용도**: 검색, 필터링, 그루핑
-- **예시**:
+#### 9. `labels` - Tags
+- **Type**: array of string
+- **Purpose**: Searching, filtering, grouping
+- **Example**:
   ```yaml
   labels:
     - installer
@@ -136,52 +136,52 @@ scope:
     - security
   ```
 
-### 관계 필드 (Dependency Graph)
+### Relationship Fields (Dependency Graph)
 
-#### 10. `depends_on` - 의존 SPEC
-- **타입**: array of string
-- **의미**: 이 SPEC이 완료되려면 먼저 완료되어야 하는 SPEC 목록
-- **예시**:
+#### 10. `depends_on` - Prerequisite SPECs
+- **Type**: array of string
+- **Meaning**: SPECs that must be completed before this one
+- **Example**:
   ```yaml
   depends_on:
     - USER-001
     - AUTH-001
   ```
-- **활용**: 작업 순서 결정, 병렬 작업 가능 여부 판단
+- **Use case**: Determine execution order and parallelism
 
-#### 11. `blocks` - 차단 SPEC
-- **타입**: array of string
-- **의미**: 이 SPEC으로 인해 차단된 SPEC 목록
-- **예시**:
+#### 11. `blocks` - Blocked SPECs
+- **Type**: array of string
+- **Meaning**: SPECs that cannot proceed until this one is complete
+- **Example**:
   ```yaml
   blocks:
     - PAYMENT-003
   ```
 
-#### 12. `related_specs` - 관련 SPEC
-- **타입**: array of string
-- **의미**: 직접적 의존성은 없지만 관련된 SPEC 목록
-- **예시**:
+#### 12. `related_specs` - Related SPECs
+- **Type**: array of string
+- **Meaning**: SPECs without direct dependencies but contextually related
+- **Example**:
   ```yaml
   related_specs:
     - TOKEN-002
     - SESSION-001
   ```
 
-#### 13. `related_issue` - 관련 GitHub Issue
-- **타입**: string (URL)
-- **형식**: GitHub Issue 전체 URL
-- **예시**:
+#### 13. `related_issue` - Related GitHub Issue
+- **Type**: string (URL)
+- **Format**: Full GitHub Issue URL
+- **Example**:
   ```yaml
   related_issue: "https://github.com/modu-ai/moai-adk/issues/123"
   ```
 
-### 범위 필드 (Scope/Impact)
+### Scope / Impact Fields
 
-#### 14. `scope.packages` - 영향받는 패키지
-- **타입**: array of string
-- **의미**: 이 SPEC이 영향을 주는 패키지/모듈 경로
-- **예시**:
+#### 14. `scope.packages` - Affected Packages
+- **Type**: array of string
+- **Meaning**: Packages/modules impacted by the SPEC
+- **Example**:
   ```yaml
   scope:
     packages:
@@ -189,10 +189,10 @@ scope:
       - moai-adk-ts/src/core/git
   ```
 
-#### 15. `scope.files` - 핵심 파일
-- **타입**: array of string
-- **의미**: 주요 변경 대상 파일 (참고용)
-- **예시**:
+#### 15. `scope.files` - Key Files
+- **Type**: array of string
+- **Meaning**: Reference list of key files to change
+- **Example**:
   ```yaml
   scope:
     files:
@@ -202,43 +202,43 @@ scope:
 
 ---
 
-## 메타데이터 검증
+## Metadata Validation
 
-### 필수 필드 검증
+### Required Field Checks
 ```bash
-# 모든 SPEC 파일에 필수 필드가 있는지 확인
+# Verify that every SPEC file includes all required fields
 rg "^(id|version|status|created|updated|author|priority):" .moai/specs/SPEC-*/spec.md
 
-# priority 필드 누락 확인
+# Detect SPECs missing the priority field
 rg -L "^priority:" .moai/specs/SPEC-*/spec.md
 ```
 
-### 형식 검증
+### Format Checks
 ```bash
-# author 필드 형식 확인 (@Goos 형식)
+# Validate the author field format (e.g., @Goos)
 rg "^author: @[A-Z]" .moai/specs/SPEC-*/spec.md
 
-# version 필드 형식 확인 (0.x.y)
-rg "^version: 0\.\d+\.\d+" .moai/specs/SPEC-*/spec.md
+# Validate the version field format (0.x.y)
+rg "^version: 0\\.\d+\\.\d+" .moai/specs/SPEC-*/spec.md
 ```
 
 ---
 
-## 마이그레이션 가이드
+## Migration Guide
 
-### 기존 SPEC 업데이트
+### Updating Existing SPECs
 
-#### 1. priority 필드 추가
-기존 SPEC에 priority 필드가 없다면 추가:
+#### 1. Add the priority field
+Add `priority` if the SPEC does not already include it:
 ```yaml
-priority: medium  # 또는 low|high|critical
+priority: medium  # or low|high|critical
 ```
 
-#### 2. author 필드 표준화
+#### 2. Standardise the author field
 - `authors: ["@goos"]` → `author: @Goos`
-- 소문자 → 대문자로 변경
+- Convert lowercase IDs to capitalised forms
 
-#### 3. 선택 필드 추가 (권장)
+#### 3. Add optional fields (recommended)
 ```yaml
 category: refactor
 labels:
@@ -248,30 +248,30 @@ labels:
 
 ---
 
-## 설계 원칙
+## Design Principles
 
 ### 1. DRY (Don't Repeat Yourself)
-- ❌ **제거**: `reference` 필드 (모든 SPEC이 같은 masterplan 참조 → 중복)
-- ✅ **대안**: README.md에 프로젝트 레벨 문서 명시
+- ❌ **Remove**: The `reference` field (every SPEC referenced the same masterplan → redundant)
+- ✅ **Alternative**: Document project-level references in README.md
 
 ### 2. Context-Aware
-- 필요한 컨텍스트만 포함
-- 선택 필드는 실제 필요할 때만 사용
+- Include only the context that is needed
+- Use optional fields only when they add value
 
 ### 3. Traceable
-- `depends_on`, `blocks`, `related_specs`로 SPEC 간 의존성 명시
-- 자동화 도구로 순환 의존성 검증 가능
+- Use `depends_on`, `blocks`, and `related_specs` to express SPEC relationships
+- Allow automation to detect circular dependencies
 
 ### 4. Maintainable
-- 모든 필드는 자동화 도구로 검증 가능
-- 일관된 형식으로 파싱 용이
+- Ensure every field can be validated by tooling
+- Keep formats consistent for easier parsing
 
 ### 5. Simple First
-- 복잡도 최소화
-- 필수 7개 + 선택 9개로 제한
-- 점진적 확장 가능
+- Minimise complexity
+- Limit the structure to 7 required + 9 optional fields
+- Expand incrementally when necessary
 
 ---
 
-**최종 업데이트**: 2025-10-06
-**작성자**: @Alfred
+**Last Updated**: 2025-10-06
+**Author**: @Alfred

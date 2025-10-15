@@ -30,6 +30,7 @@
 - [Language Support](#-universal-language-support)
 - [CLI Reference](#-cli-reference)
 - [Security Scanning](#-보안-스캔)
+- [Checkpoint](#-checkpoint---개발-현황-스냅샷)
 - [API Reference](#-프로그래매틱-api)
 - [TRUST 5원칙](#-trust-5원칙)
 - [문제 해결](#-문제-해결)
@@ -805,6 +806,104 @@ GitHub Actions 워크플로우가 자동으로 보안 스캔을 실행합니다:
 3. 코드 수정 또는 정당한 사유가 있으면 `# nosec` 주석 추가
 
 **@CODE TAG**: `@CODE:SECURITY-001`
+
+---
+
+## 🏁 Checkpoint - 개발 현황 스냅샷
+
+> **마지막 업데이트**: 2025-10-15
+> **현재 버전**: v0.3.1
+> **프로젝트 상태**: CLI-001 완료 (doctor 20개 언어 도구 체인 검증)
+
+### 📊 주요 지표
+
+| 항목 | 현재 상태 | 목표 | 상태 |
+|------|----------|------|------|
+| **테스트 커버리지** | 85.61% | 85%+ | ✅ |
+| **SPEC 문서** | 18개 | - | ✅ |
+| **지원 언어** | 20개 | 10+ | ✅ |
+| **CLI 명령어** | 8개 | - | ✅ |
+| **AI 에이전트** | 10개 | - | ✅ |
+
+### 🎯 최근 완료된 작업 (SPEC-CLI-001)
+
+**SPEC-CLI-001: CLI 명령어 고도화 - doctor/status/restore 개선**
+- **버전**: v0.1.0 (completed)
+- **완료일**: 2025-10-15
+- **주요 성과**:
+  - ✅ doctor 명령어 고도화: 20개 언어 도구 체인 검증 구현
+  - ✅ 옵션 추가: `--verbose`, `--fix`, `--export`, `--check`
+  - ✅ 테스트 100% 통과 (50개 테스트)
+  - ✅ 커버리지 91.58% (doctor.py)
+  - ✅ 지원 언어 확장: Python, TypeScript, JavaScript, Java, Go, Rust, Dart, Swift, Kotlin, C#, PHP, Ruby, Elixir, Scala, Clojure, Haskell, C, C++, Lua, OCaml
+
+**TDD 이력**:
+- 🔴 RED: 커밋 4568654 (doctor 언어별 도구 체인 검증 테스트 추가)
+- 🟢 GREEN: 커밋 bc0074a (20개 언어 도구 체인 검증 구현 완료)
+
+### 📦 현재 기능 목록
+
+#### 핵심 3단계 워크플로우
+- ✅ `/alfred:1-spec` - EARS 명세 작성
+- ✅ `/alfred:2-build` - TDD 구현 (RED-GREEN-REFACTOR)
+- ✅ `/alfred:3-sync` - 문서 동기화 및 TAG 검증
+
+#### CLI 명령어
+- ✅ `moai init` - 프로젝트 초기화 (5 Phase 파이프라인)
+- ✅ `moai doctor` - 환경 진단 (20개 언어 도구 체인 검증) 🆕
+- ✅ `moai status` - 프로젝트 현황 요약
+- ✅ `moai backup` - 프로젝트 백업
+- ✅ `moai restore` - 백업 복원
+- ✅ `moai update` - 템플릿 업데이트
+
+#### AI 에이전트 생태계
+- ✅ Alfred (SuperAgent) - 중앙 오케스트레이터
+- ✅ spec-builder - SPEC 작성 전문가
+- ✅ code-builder - TDD 구현 전문가
+- ✅ doc-syncer - 문서 동기화 전문가
+- ✅ tag-agent - TAG 시스템 관리자
+- ✅ debug-helper - 디버깅 전문가
+- ✅ trust-checker - 품질 검증 전문가
+- ✅ git-manager - Git 워크플로우 관리자
+- ✅ cc-manager - Claude Code 설정 관리자
+- ✅ project-manager - 프로젝트 초기화 관리자
+
+### 🚀 다음 단계
+
+**우선순위 높음**:
+1. status 명령어 고도화 (TAG 체인 무결성, 커버리지 표시)
+2. restore 명령어 선택적 복원 기능
+3. 프로젝트 템플릿 최적화
+
+**우선순위 중간**:
+4. 추가 언어 지원 (Zig, Nim, Crystal)
+5. CI/CD GitHub Actions 워크플로우 개선
+6. 성능 최적화 (doctor 실행 시간 단축)
+
+**우선순위 낮음**:
+7. GUI 인터페이스 프로토타입
+8. 플러그인 시스템 설계
+9. 원격 진단 기능
+
+### 📈 성장 지표
+
+**프로젝트 성숙도**:
+- 코드 품질: 85.61% 테스트 커버리지, TRUST 5원칙 준수
+- 문서화: 18개 SPEC, README.md, development-guide.md 완비
+- 자동화: 10개 AI 에이전트, 8개 CLI 명령어
+- 언어 지원: 20개 주요 프로그래밍 언어
+
+**커뮤니티**:
+- GitHub Stars: 진행 중
+- Contributors: 2명 ([@Goos](https://github.com/Goos), [@Workuul](https://github.com/Workuul))
+- Issues: 활발한 피드백 수집 중
+
+### 🔗 참고 링크
+
+- **SPEC 문서**: [.moai/specs/SPEC-CLI-001/spec.md](/.moai/specs/SPEC-CLI-001/spec.md)
+- **개발 가이드**: [.moai/memory/development-guide.md](/.moai/memory/development-guide.md)
+- **SPEC 메타데이터 표준**: [.moai/memory/spec-metadata.md](/.moai/memory/spec-metadata.md)
+- **GitHub Repository**: [modu-ai/moai-adk](https://github.com/modu-ai/moai-adk)
 
 ---
 
