@@ -7,6 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.2.18] - 2025-10-15
+
+### Changed
+
+#### 🐍 TypeScript → Python 완전 전환
+
+**핵심 변경사항**:
+- ✨ **언어 전환 완료**: TypeScript (moai-adk-ts/) → Python (src/moai_adk/)
+- 🔧 **Python 3.13.1 기반**: 최신 Python 표준 준수
+- 📦 **패키지 구조**: src-layout 방식, uv 패키지 관리
+- 🎯 **CLI 표준화**: `python -m moai_adk` 실행 방식
+
+**삭제된 파일 (262개)**:
+- TypeScript 소스 코드 전체 제거 (moai-adk-ts/)
+- Node.js 의존성 파일 (package.json, tsconfig.json, bun.lock 등)
+- TypeScript 테스트 파일 (Vitest 기반)
+
+**추가된 파일 (32개)**:
+- Python 소스 코드 (src/moai_adk/)
+  - CLI 모듈 (commands, prompts)
+  - Core 모듈 (git, project, template)
+  - Utils 모듈 (banner)
+- Python 템플릿 파일 (src/moai_adk/templates/)
+
+**주요 구현 모듈**:
+- `cli/`: 명령어 인터페이스 (init, doctor, status, restore, backup, update)
+- `core/git/`: Git 관리 (manager, branch, commit)
+- `core/project/`: 프로젝트 관리 (initializer, detector, validator, checker)
+- `core/template/`: 템플릿 처리 (processor, config, languages)
+
+**Claude Code 설정 최적화**:
+- `.claude/settings.json` 업데이트: `python3` → `uv run` (Python 3.13.1 명시)
+- 개발 가이드 동기화 완료
+
+**테스트 커버리지 목표**:
+- 현재 상태: Python 기본 구조 완성
+- 목표: SPEC-TEST-COVERAGE-001 (85% 달성)
+
+### Impact
+
+- ✅ Python 생태계 완전 통합
+- ✅ 단일 언어 기반 유지보수 용이성 확보
+- ✅ uv 패키지 관리로 빠른 설치/실행
+- ⏳ 테스트 커버리지 구축 필요 (다음 단계)
+
+### Migration Guide
+
+**사용자 영향**:
+- 기존 npm/bun 설치 → pip/uv 설치로 전환
+- 명령어 변경: `moai` → `python -m moai_adk`
+- 기능은 동일하게 유지
+
+**개발자 영향**:
+- TypeScript → Python 코드베이스
+- Vitest → pytest 테스트 프레임워크
+- Biome/ESLint → ruff/mypy 린터
+
+### Technical Details
+
+- **변경량**: +49,411줄 (TS 262개 삭제 + Python 32개 추가)
+- **브랜치**: feature/SPEC-TEST-COVERAGE-001
+- **커밋**: SPEC 초안 작성 (v0.0.1)
+- **Python 버전**: 3.13.1
+- **패키지 관리**: uv (권장), pip (표준)
+
+### Related
+
+- SPEC: @SPEC:TEST-COVERAGE-001 (.moai/specs/SPEC-TEST-COVERAGE-001/spec.md)
+- Issue: TypeScript → Python 전환 전략
+
+---
+
 ## [v0.2.14] - 2025-10-08
 
 ### Fixed

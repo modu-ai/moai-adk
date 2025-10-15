@@ -20,7 +20,16 @@ jobs:
       - name: Python 환경 설정
         uses: actions/setup-python@v4
         with:
-          python-version: "3.12"
+          python-version: "3.13"
+
+      - name: uv 설치 (Python 패키지 관리자)
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Python 의존성 설치
+        run: |
+          uv pip install --system -e ".[dev]"
 
       # Multi-language toolchains (conditional)
       - name: Setup Node.js
@@ -64,6 +73,13 @@ jobs:
         run: |
           set -e
           echo "🔎 Running language-aware tests if present"
+
+          # Python tests (pytest)
+          if [ -f "pyproject.toml" ] && grep -q "pytest" pyproject.toml; then
+            echo "➡️  Python tests (pytest)"
+            uv run pytest --cov --cov-report=term-missing --cov-report=xml --cov-fail-under=85
+          fi
+
           if [ -f "package.json" ]; then
             echo "➡️  Node.js tests"
             npm ci --prefer-offline || npm install
@@ -88,6 +104,16 @@ jobs:
             echo "➡️  .NET tests"
             dotnet test || true
           fi
+
+      - name: Upload coverage to Codecov
+        if: ${{ hashFiles('coverage.xml') != '' }}
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          flags: unittests
+          name: moai-adk-coverage
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       #  TAG 시스템 검증 (코드 파일만)
       - name: 🏷️ TAG 시스템 검증
