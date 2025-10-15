@@ -17,12 +17,10 @@ from pathlib import Path
 from rich.console import Console
 
 from moai_adk.core.project.backup_utils import (
-    BackupMetadata,
     generate_backup_dir_name,
     get_backup_targets,
     has_any_moai_files,
     is_protected_path,
-    save_backup_metadata,
 )
 from moai_adk.core.project.validator import ProjectValidator
 
@@ -50,7 +48,7 @@ class PhaseExecutor:
         ".moai/specs/",
         ".moai/reports/",
         ".moai/memory/",
-        ".moai/backup/",
+        ".moai/backups/",
         ".claude/",
         ".claude/logs/",
     ]
@@ -228,16 +226,6 @@ class PhaseExecutor:
                 dst_path.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(src_path, dst_path)
                 backed_up_files.append(target)
-
-        # 백업 메타데이터 저장 (v0.3.0)
-        metadata: BackupMetadata = {
-            "timestamp": timestamp,  # YYYYMMDD-HHMMSS
-            "backup_path": timestamp,  # v0.3.0: 순수 타임스탬프
-            "backed_up_files": backed_up_files,
-            "status": "completed",
-            "created_by": "moai init",
-        }
-        save_backup_metadata(project_path, metadata)
 
         # Progress Bar 충돌 방지를 위해 메시지 제거
         # (Phase 1 진행상황 메시지로 충분)
