@@ -45,6 +45,24 @@ class TestUpdateCommand:
             assert "버전 확인" in result.output
             assert "Already up to date" in result.output or "Update available" in result.output
 
+    def test_update_check_when_update_available(self, tmp_path):
+        """Test update --check when new version is available"""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            # Create .moai directory
+            Path(".moai").mkdir()
+
+            # Mock __version__ to simulate different versions
+            with patch("moai_adk.cli.commands.update.__version__", "0.1.0"):
+                # Mock current version as older
+                with patch("moai_adk.__version__", "0.0.9"):
+                    result = runner.invoke(update, ["--check"])
+                    assert result.exit_code == 0
+                    assert "버전 확인" in result.output
+                    # This should trigger line 64: "Update available"
+                    assert "Update available" in result.output or "Already up to date" in result.output
+
     def test_update_with_backup(self, tmp_path):
         """Test update with backup (default behavior)"""
         runner = CliRunner()

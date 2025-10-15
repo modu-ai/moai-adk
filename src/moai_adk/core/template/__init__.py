@@ -1,5 +1,8 @@
+# @CODE:TEMPLATE-001 | SPEC: SPEC-INIT-003.md | Chain: TEMPLATE-001
 """템플릿 관리 모듈."""
 
+from moai_adk.core.template.backup import TemplateBackup
+from moai_adk.core.template.merger import TemplateMerger
 from moai_adk.core.template.processor import TemplateProcessor
 
-__all__ = ["TemplateProcessor"]
+__all__ = ["TemplateProcessor", "TemplateBackup", "TemplateMerger"]
