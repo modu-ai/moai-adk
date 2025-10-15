@@ -20,14 +20,22 @@
   },
   "git_strategy": {
     "personal": {
-      "auto_checkpoint": true,
+      "auto_checkpoint": "event-driven",
+      "checkpoint_events": [
+        "delete",
+        "refactor",
+        "merge",
+        "script",
+        "critical-file"
+      ],
+      "checkpoint_type": "local-branch",
+      "max_checkpoints": 10,
+      "cleanup_days": 7,
+      "push_to_remote": false,
       "auto_commit": true,
       "branch_prefix": "feature/",
-      "checkpoint_interval": 300,
-      "cleanup_days": 7,
       "develop_branch": "develop",
-      "main_branch": "main",
-      "max_checkpoints": 50
+      "main_branch": "main"
     },
     "team": {
       "auto_pr": true,

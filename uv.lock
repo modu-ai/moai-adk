@@ -322,7 +322,7 @@ security = [
 requires-dist = [
     { name = "bandit", marker = "extra == 'security'", specifier = ">=1.8.0" },
     { name = "click", specifier = ">=8.1.0" },
-    { name = "gitpython", specifier = ">=3.1.0" },
+    { name = "gitpython", specifier = ">=3.1.45" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.7.0" },
     { name = "pip-audit", marker = "extra == 'security'", specifier = ">=2.7.0" },
     { name = "pyfiglet", specifier = ">=1.0.2" },
