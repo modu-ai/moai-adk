@@ -173,6 +173,30 @@ def init(
         # 5. Initialize project (Progress Bar with 5 phases)
         is_reinit = initializer.is_initialized()
 
+        # Reinit 모드: config.json optimized를 false로 설정 (v0.3.1+)
+        if is_reinit:
+            config_path = project_path / ".moai" / "config.json"
+            if config_path.exists():
+                import json
+                from moai_adk import __version__
+
+                try:
+                    with open(config_path, "r", encoding="utf-8") as f:
+                        config_data = json.load(f)
+
+                    # 버전 및 최적화 상태 업데이트
+                    if "project" not in config_data:
+                        config_data["project"] = {}
+
+                    config_data["project"]["moai_adk_version"] = __version__
+                    config_data["project"]["optimized"] = False
+
+                    with open(config_path, "w", encoding="utf-8") as f:
+                        json.dump(config_data, f, indent=2, ensure_ascii=False)
+                except Exception:
+                    # config.json 읽기/쓰기 실패 시 무시 (초기화 프로세스에서 다시 생성됨)
+                    pass
+
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),

@@ -130,6 +130,49 @@ Alfred가 자동으로 수행:
 - 언어별 최적 도구 체인 설정
 - 프로젝트 컨텍스트 완벽 이해
 
+---
+
+### ⬆️ MoAI-ADK 업데이트 (기존 프로젝트)
+
+**v0.3.0 이하 → v0.3.1+ 업데이트 방법**:
+
+```bash
+# 1단계: 패키지 업데이트
+pip install --upgrade moai-adk
+# 또는 uv 사용
+uv pip install --upgrade moai-adk
+
+# 2단계: 프로젝트 템플릿 업데이트
+cd your-project
+moai init .
+
+# 백업 자동 생성: .moai/backups/{timestamp}/
+# 최신 템플릿 복사 완료
+```
+
+**3단계: Claude Code에서 최적화**:
+
+```text
+# Claude Code 실행
+claude
+
+# Alfred가 자동으로 버전 불일치 감지 및 알림
+# "/alfred:0-project 실행하시겠습니까?" 메시지 표시
+
+# 최적화 실행
+/alfred:0-project
+
+# 백업 병합 여부 선택
+# - "예" 또는 "병합": 기존 product/structure/tech.md 내용 보존
+# - "아니오": 새로 시작 (백업은 보존됨)
+```
+
+**업데이트 후 확인**:
+- `.moai/config.json`의 `project.moai_adk_version` 최신 버전 확인
+- `.moai/config.json`의 `project.optimized: true` 확인
+
+---
+
 #### 3️⃣ 첫 기능 개발 (1분 30초)
 
 **Claude Code에서 3단계 워크플로우 실행:**
@@ -965,7 +1008,7 @@ git branch -D feature/SPEC-XXX-YYY
 
 #### 5. 권한 에러 (Permission Denied)
 
-**증상**: `moai init` 또는 `/alfred:9-update` 실행 시 권한 에러
+**증상**: `moai-adk init` 실행 시 권한 에러
 
 **원인**: 파일 실행 권한 부족
 
@@ -978,8 +1021,8 @@ ls -la .claude/commands/
 # 2. 실행 권한 추가
 chmod +x .claude/commands/*.md
 
-# 3. 또는 자동 수정
-/alfred:9-update --fix-permissions
+# 3. 또는 재초기화
+moai-adk init . --force
 ```
 
 #### 6. 테스트 커버리지 85% 미만

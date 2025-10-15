@@ -61,7 +61,9 @@
     "initialized": true,
     "locale": "ko",
     "mode": "{{PROJECT_MODE}}",
-    "name": "{{PROJECT_NAME}}"
+    "name": "{{PROJECT_NAME}}",
+    "moai_adk_version": "{{MOAI_VERSION}}",
+    "optimized": false
   },
   "tags": {
     "auto_sync": true,

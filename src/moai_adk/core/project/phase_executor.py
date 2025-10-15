@@ -166,6 +166,11 @@ class PhaseExecutor:
         )
 
         import json
+        from moai_adk import __version__
+
+        # config에 버전 정보 추가 (v0.3.1+)
+        config["moai_adk_version"] = __version__
+        config["optimized"] = False  # 초기값
 
         # config.json 생성
         config_path = project_path / ".moai" / "config.json"
