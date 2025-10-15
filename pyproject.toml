@@ -19,6 +19,10 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.7.0"
 ]
+security = [
+    "pip-audit>=2.7.0",
+    "bandit>=1.8.0"
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

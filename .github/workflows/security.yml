@@ -1,0 +1,44 @@
+# @CODE:SECURITY-001 | 보안 스캔 워크플로우
+name: Security Scan
+
+on:
+  push:
+    branches: [main, develop, feature/**]
+  pull_request:
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install security tools
+        run: |
+          pip install pip-audit bandit
+
+      - name: Run pip-audit (dependency vulnerability scan)
+        run: |
+          echo "🔍 Scanning dependencies for known vulnerabilities..."
+          pip-audit || {
+            echo "⚠️ pip-audit detected vulnerabilities"
+            echo "Please review the vulnerabilities above and update dependencies"
+            exit 1
+          }
+        continue-on-error: false
+
+      - name: Run bandit (code security scan)
+        run: |
+          echo "🔍 Scanning code for security issues..."
+          bandit -r src/ -ll
+        continue-on-error: false
+
+      - name: Security scan summary
+        if: success()
+        run: |
+          echo "✅ All security scans passed!"

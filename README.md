@@ -29,6 +29,7 @@
 - [Output Styles](#-alfreds-output-styles)
 - [Language Support](#-universal-language-support)
 - [CLI Reference](#-cli-reference)
+- [Security Scanning](#-보안-스캔)
 - [API Reference](#-프로그래매틱-api)
 - [TRUST 5원칙](#-trust-5원칙)
 - [문제 해결](#-문제-해결)
@@ -604,167 +605,198 @@ MoAI-ADK는 모든 주요 언어를 지원하며, 언어별 최적 도구 체인
 
 ## 💻 CLI Reference
 
-### 핵심 명령어
+MoAI-ADK provides a Click 기반 CLI. 현재 패키지에는 `console_scripts` 엔트리포인트가 없으므로 아래처럼 `python -m moai_adk` 형태로 실행하는 것이 가장 확실합니다.
 
 ```bash
-# 프로젝트 초기화
-moai init [project] [options]
-
-# 시스템 진단
-moai doctor [options]
-
-# 프로젝트 상태 확인
-moai status [options]
-
-# 백업 복원
-moai restore <backup-path> [options]
+python -m moai_adk --help
+python -m moai_adk init --help
 ```
 
-### Claude Code 전용 명령어
+### 사용 가능한 명령어
 
-```text
-# 템플릿 업데이트 (권장 ⭐)
-/alfred:9-update
+| Command | 설명 | 주요 옵션 |
+| --- | --- | --- |
+| `init [PATH]` | 5단계 Phase 파이프라인으로 프로젝트를 초기화/재초기화 | `--non-interactive/-y`, `--mode {personal|team}`, `--locale {ko|en|ja|zh}`, `--language`, `--force` |
+| `doctor` | Python, Git, 프로젝트 구조를 점검하는 환경 진단 | _없음_ |
+| `status` | `.moai/config.json`과 SPEC 개수, Git 상태를 요약 | _없음_ |
+| `backup` | `.moai`/`.claude`/`CLAUDE.md`를 선택적으로 백업 | `--path` |
+| `restore` | `.moai/backups/`에 저장된 스냅샷 복원 (현재는 미완성) | `--timestamp` |
+| `update` | 번들된 템플릿으로 프로젝트 리소스를 업데이트 | `--path`, `--force`, `--check` |
 
-# 프로젝트 초기화
-/alfred:8-project
-```
+### 명령어 상세
 
-### moai init [project]
-
-새 MoAI-ADK 프로젝트를 초기화하거나 기존 프로젝트에 MoAI-ADK를 설치합니다.
-
-**옵션**:
-
-- `--personal`: Personal 모드로 초기화 (기본값)
-- `--team`: Team 모드로 초기화 (GitHub 통합)
-- `-b, --backup`: 설치 전 백업 생성
-- `-f, --force`: 기존 파일 강제 덮어쓰기
-
-**사용 예시**:
+#### `init [PATH]`
 
 ```bash
-# 새 프로젝트 생성 (Personal 모드)
-moai init my-project
-
-# 현재 디렉토리에 설치
-moai init .
-
-# Team 모드로 초기화
-moai init my-project --team
-
-# 백업 생성 후 설치
-moai init . -b
-
-# 기존 파일 강제 덮어쓰기
-moai init . -f
+python -m moai_adk init .
+python -m moai_adk init my-project --non-interactive --mode team --locale en
+python -m moai_adk init . --force
 ```
 
-### moai doctor
+- 기본 동작은 대화형 모드이며, `--non-interactive/-y` 옵션을 사용하면 질문 없이 진행됩니다.
+- `PhaseExecutor`가 5단계(Preparation → Directory → Resource → Configuration → Validation)를 순차 실행하며, 재초기화 시 `.moai/backups/<timestamp>/` 백업을 생성합니다.
+- `LanguageDetector`가 프로젝트 루트를 스캔하여 언어를 자동 감지합니다 (`--language`로 오버라이드 가능).
 
-시스템 진단을 실행하여 MoAI-ADK가 올바르게 설치되었는지 확인합니다.
-
-**옵션**:
-
-- `-l, --list-backups`: 사용 가능한 백업 목록 표시
-
-**사용 예시**:
+#### `doctor`
 
 ```bash
-# 시스템 진단 실행
-moai doctor
-
-# 백업 목록 확인
-moai doctor -l
+python -m moai_adk doctor
 ```
 
-### moai status
+`core.project.checker.check_environment()` 결과를 Rich 테이블로 출력합니다. Python ≥ 3.13, Git 설치 여부, `.moai/` 구조 유무를 확인합니다.
 
-MoAI-ADK 프로젝트 상태를 표시합니다.
-
-**옵션**:
-
-- `-v, --verbose`: 상세 상태 정보 표시
-- `-p, --project-path <path>`: 프로젝트 디렉토리 경로 지정 (경로 필수)
-
-**사용 예시**:
+#### `status`
 
 ```bash
-# 현재 디렉토리 상태 확인
-moai status
-
-# 상세 정보 포함
-moai status -v
-
-# 특정 경로 프로젝트 상태 확인
-moai status -p /path/to/project
-
-# 상세 정보 + 특정 경로
-moai status -v -p /path/to/project
+python -m moai_adk status
 ```
 
-### moai restore <backup-path>
+현재 디렉토리의 `.moai/config.json`을 읽고, SPEC 문서 개수를 집계하며, GitPython을 통해 브랜치/dirty 여부를 보고합니다. 설정 파일이 없으면 실행을 중단하고 `init`을 안내합니다.
 
-백업 디렉토리에서 MoAI-ADK를 복원합니다.
-
-**인자**:
-
-- `<backup-path>`: 복원할 백업 디렉토리 경로 (필수)
-
-**옵션**:
-
-- `--dry-run`: 변경 없이 복원할 내용 미리보기
-- `--force`: 기존 파일 강제 덮어쓰기
-
-**사용 예시**:
+#### `backup`
 
 ```bash
-# 백업에서 복원 (미리보기)
-moai restore .moai-backup-2025-10-02 --dry-run
-
-# 실제 복원 실행
-moai restore .moai-backup-2025-10-02
-
-# 강제 복원 (기존 파일 덮어쓰기)
-moai restore .moai-backup-2025-10-02 --force
+python -m moai_adk backup
+python -m moai_adk backup --path /path/to/project
 ```
 
-**참고**: MoAI-ADK 업데이트는 Claude Code에서 `/alfred:9-update` 명령어를 사용하세요.
+`TemplateProcessor.create_backup()`을 사용해 `.moai-backup/<timestamp>/`에 백업을 생성합니다. SPEC/보고서는 보호 경로로 간주되어 제외됩니다.
+
+#### `restore`
+
+```bash
+python -m moai_adk restore
+python -m moai_adk restore --timestamp 20250301-130500
+```
+
+가장 최근 백업 혹은 지정한 타임스탬프를 찾아 복원 절차를 안내합니다. 현재 구현은 경로만 안내하며 실질적인 파일 복원은 TODO 상태입니다.
+
+#### `update`
+
+```bash
+python -m moai_adk update
+python -m moai_adk update --check
+python -m moai_adk update --force
+```
+
+템플릿을 재적용하여 `.claude/`, `.moai/`, `CLAUDE.md`, `.gitignore`를 동기화합니다. `--check`는 버전 비교만 수행하며, `--force`는 백업 생성을 건너뜁니다.
+
+### 종료 코드
+
+- 정상 종료: `0`
+- 사용자가 `Ctrl+C` 등으로 중단: `130`
+- `click.ClickException`/예상 가능한 오류: 해당 exit code (기본 1)
+- 알 수 없는 예외: `1`
+
+---
+
+## 🔒 보안 스캔
+
+MoAI-ADK는 코드 보안을 위해 두 가지 도구를 제공합니다:
+
+### 보안 도구
+
+- **pip-audit**: 의존성 패키지의 알려진 취약점 검사
+- **bandit**: Python 소스 코드의 보안 이슈 검사
+
+### 로컬 보안 스캔 실행
+
+**자동화 스크립트 사용 (권장)**:
+```bash
+./scripts/security-scan.sh
+```
+
+**개별 도구 실행**:
+```bash
+# 보안 도구 설치
+pip install pip-audit bandit
+
+# 의존성 취약점 스캔
+pip-audit
+
+# 코드 보안 스캔 (Low severity 제외)
+bandit -r src/ -ll
+```
+
+### CI/CD 통합
+
+GitHub Actions 워크플로우가 자동으로 보안 스캔을 실행합니다:
+- `main`, `develop`, `feature/**` 브랜치 push 시
+- Pull Request 생성/업데이트 시
+
+워크플로우 파일: `.github/workflows/security.yml`
+
+### 취약점 해결
+
+**pip-audit 취약점 발견 시**:
+1. 출력된 `Fix Versions` 확인
+2. `pyproject.toml`에서 해당 패키지 버전 업데이트
+3. `pip install -e ".[security]"` 재설치
+4. 다시 `pip-audit` 실행하여 확인
+
+**bandit 보안 이슈 발견 시**:
+1. 파일 위치로 이동
+2. bandit 권장사항 확인
+3. 코드 수정 또는 정당한 사유가 있으면 `# nosec` 주석 추가
+
+**@CODE TAG**: `@CODE:SECURITY-001`
 
 ---
 
 ## 프로그래매틱 API
 
-### 기본 사용
+CLI 없이도 `moai_adk.core` 모듈을 직접 사용할 수 있습니다.
+
+### ProjectInitializer
 
 ```python
-from moai_adk.cli.main import CLIApp
-from moai_adk.core.project.checker import SystemChecker
+from pathlib import Path
+from moai_adk.core.project.initializer import ProjectInitializer
 
-# CLI 앱 초기화
-app = CLIApp()
-app.run()
+initializer = ProjectInitializer(Path("./demo"))
+result = initializer.initialize(mode="team", locale="en", backup_enabled=True)
 
-# 시스템 체크
+if result.success:
+    print("created", result.created_files)
+else:
+    print("errors", result.errors)
+```
+
+### TemplateProcessor
+
+```python
+from pathlib import Path
+from moai_adk.core.template.processor import TemplateProcessor
+
+processor = TemplateProcessor(Path("./demo"))
+processor.copy_templates(backup=True, silent=False)
+config = processor.merge_config(detected_language="python")
+```
+
+### Environment Checks
+
+```python
+from moai_adk.core.project.checker import SystemChecker, check_environment
+
 checker = SystemChecker()
-result = checker.check_system()
+tools = checker.check_all()
+diagnostics = check_environment()
 ```
 
-### 설정 파일 (.moai/config.json)
+### ConfigManager
 
-```json
-{
-  "project": {
-    "name": "my-project",
-    "mode": "personal",
-    "language": "typescript"
-  },
-  "workflow": {
-    "enableAutoSync": true,
-    "gitIntegration": true
-  }
-}
+```python
+from pathlib import Path
+from moai_adk.core.template.config import ConfigManager
+
+config_path = Path("./demo/.moai/config.json")
+manager = ConfigManager(config_path)
+config = manager.load()
+config["mode"] = "team"
+manager.save(config)
 ```
+
+이러한 빌딩 블록을 조합하면 CI 파이프라인이나 맞춤형 워크플로우에서 MoAI-ADK의 핵심 기능을 재사용할 수 있습니다.
 
 ---
 

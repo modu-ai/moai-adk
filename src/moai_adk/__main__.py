@@ -16,6 +16,12 @@ import pyfiglet
 from rich.console import Console
 
 from moai_adk import __version__
+from moai_adk.cli.commands.backup import backup
+from moai_adk.cli.commands.doctor import doctor
+from moai_adk.cli.commands.init import init
+from moai_adk.cli.commands.restore import restore
+from moai_adk.cli.commands.status import status
+from moai_adk.cli.commands.update import update
 
 console = Console()
 
@@ -48,15 +54,6 @@ def cli(ctx: click.Context) -> None:
     # 하위 명령어 없이 실행되면 로고 출력
     if ctx.invoked_subcommand is None:
         show_logo()
-
-
-# 명령어 등록
-from moai_adk.cli.commands.backup import backup
-from moai_adk.cli.commands.doctor import doctor
-from moai_adk.cli.commands.init import init
-from moai_adk.cli.commands.restore import restore
-from moai_adk.cli.commands.status import status
-from moai_adk.cli.commands.update import update
 
 cli.add_command(init)
 cli.add_command(doctor)

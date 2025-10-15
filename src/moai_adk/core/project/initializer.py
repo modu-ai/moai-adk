@@ -1,4 +1,6 @@
-# @CODE:CORE-PROJECT-001 | @CODE:INIT-003:INIT | SPEC: SPEC-CORE-PROJECT-001.md, SPEC-INIT-003.md | TEST: tests/unit/test_project_initializer.py, tests/unit/test_init_reinit.py
+# @CODE:CORE-PROJECT-001 | @CODE:INIT-003:INIT
+# SPEC: SPEC-CORE-PROJECT-001.md, SPEC-INIT-003.md
+# TEST: tests/unit/test_project_initializer.py, tests/unit/test_init_reinit.py
 """Project Initialization Module
 
 Phase-based 5-step initialization process:
@@ -11,7 +13,6 @@ Phase-based 5-step initialization process:
 
 import time
 from pathlib import Path
-from typing import Callable
 
 from moai_adk.core.project.detector import LanguageDetector
 from moai_adk.core.project.phase_executor import PhaseExecutor, ProgressCallback
