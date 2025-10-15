@@ -52,3 +52,11 @@ ignore = []
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/moai_adk"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/moai_adk/templates/.claude" = "moai_adk/templates/.claude"
+"src/moai_adk/templates/.moai" = "moai_adk/templates/.moai"
+"src/moai_adk/templates/.github" = "moai_adk/templates/.github"
