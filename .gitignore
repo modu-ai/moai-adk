@@ -72,7 +72,11 @@ AGENTS.md
 CLAUDE.md
 package-lock.json
 .vercel
-.moai
+.moai/*
+!.moai/specs/
+!.moai/project/
+!.moai/memory/
+!.moai/config.json
 .claude
 
 # docs - only deploy docs/public (GitHub Pages)
