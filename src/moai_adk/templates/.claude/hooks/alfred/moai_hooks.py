@@ -396,16 +396,244 @@ def get_jit_context(prompt: str, cwd: str) -> list[str]:
     return context_files
 
 
+def detect_risky_operation(tool_name: str, tool_args: dict[str, Any], cwd: str) -> tuple[bool, str]:
+    """위험한 작업 감지 (Event-Driven Checkpoint용)
+
+    Claude Code tool 사용 전 위험한 작업을 자동으로 감지합니다.
+    위험 감지 시 자동으로 checkpoint를 생성하여 롤백 가능하게 합니다.
+
+    Args:
+        tool_name: Claude Code tool 이름 (Bash, Edit, Write, MultiEdit)
+        tool_args: Tool 인자 딕셔너리
+        cwd: 프로젝트 루트 디렉토리 경로
+
+    Returns:
+        (is_risky, operation_type) 튜플
+        - is_risky: 위험한 작업 여부 (bool)
+        - operation_type: 작업 유형 (str: delete, merge, script, critical-file, refactor)
+
+    Risky Operations:
+        - Bash tool: rm -rf, git merge, git reset --hard, git rebase
+        - Edit/Write tool: CLAUDE.md, config.json, .moai/memory/*.md
+        - MultiEdit tool: ≥10개 파일 동시 수정
+
+    Examples:
+        >>> detect_risky_operation("Bash", {"command": "rm -rf src/"}, ".")
+        (True, 'delete')
+        >>> detect_risky_operation("Edit", {"file_path": "CLAUDE.md"}, ".")
+        (True, 'critical-file')
+        >>> detect_risky_operation("Read", {"file_path": "test.py"}, ".")
+        (False, '')
+
+    Notes:
+        - False Positive 최소화: 안전한 작업은 무시
+        - 성능: 가벼운 문자열 매칭 (< 1ms)
+        - 확장성: patterns 딕셔너리로 쉽게 추가 가능
+
+    @TAG:CHECKPOINT-EVENT-001
+    """
+    # Bash tool: 위험한 명령어 감지
+    if tool_name == "Bash":
+        command = tool_args.get("command", "")
+
+        # 대규모 삭제
+        if any(pattern in command for pattern in ["rm -rf", "git rm"]):
+            return (True, "delete")
+
+        # Git 병합/리셋/리베이스
+        if any(pattern in command for pattern in ["git merge", "git reset --hard", "git rebase"]):
+            return (True, "merge")
+
+        # 외부 스크립트 실행 (파괴적 가능성)
+        if any(command.startswith(prefix) for prefix in ["python ", "node ", "bash ", "sh "]):
+            return (True, "script")
+
+    # Edit/Write tool: 중요 파일 감지
+    if tool_name in ("Edit", "Write"):
+        file_path = tool_args.get("file_path", "")
+
+        critical_files = [
+            "CLAUDE.md",
+            "config.json",
+            ".moai/memory/development-guide.md",
+            ".moai/memory/spec-metadata.md",
+            ".moai/config.json",
+        ]
+
+        if any(cf in file_path for cf in critical_files):
+            return (True, "critical-file")
+
+    # MultiEdit tool: 대규모 수정 감지
+    if tool_name == "MultiEdit":
+        edits = tool_args.get("edits", [])
+        if len(edits) >= 10:
+            return (True, "refactor")
+
+    return (False, "")
+
+
+def create_checkpoint(cwd: str, operation_type: str) -> str:
+    """Checkpoint 생성 (Git local branch)
+
+    위험한 작업 전 자동으로 checkpoint를 생성합니다.
+    Git local branch로 생성하여 원격 저장소 오염을 방지합니다.
+
+    Args:
+        cwd: 프로젝트 루트 디렉토리 경로
+        operation_type: 작업 유형 (delete, merge, script 등)
+
+    Returns:
+        checkpoint_branch: 생성된 브랜치명
+        실패 시 "checkpoint-failed" 반환
+
+    Branch Naming:
+        before-{operation}-{YYYYMMDD-HHMMSS}
+        예: before-delete-20251015-143000
+
+    Examples:
+        >>> create_checkpoint(".", "delete")
+        'before-delete-20251015-143000'
+
+    Notes:
+        - Local branch만 생성 (원격 push 안 함)
+        - Git 오류 시 fallback (무시하고 계속 진행)
+        - Dirty working directory 체크 안 함 (커밋 안 된 변경사항 허용)
+        - Checkpoint 로그 자동 기록 (.moai/checkpoints.log)
+
+    @TAG:CHECKPOINT-EVENT-001
+    """
+    from datetime import datetime
+
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    branch_name = f"before-{operation_type}-{timestamp}"
+
+    try:
+        # 현재 브랜치에서 새 local branch 생성 (체크아웃 안 함)
+        result = subprocess.run(
+            ["git", "branch", branch_name],
+            cwd=cwd,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+
+        # Checkpoint 로그 기록
+        log_checkpoint(cwd, branch_name, operation_type)
+
+        return branch_name
+
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+        # Git 오류 시 fallback (무시)
+        return "checkpoint-failed"
+
+
+def log_checkpoint(cwd: str, branch_name: str, operation_type: str) -> None:
+    """Checkpoint 로그 기록 (.moai/checkpoints.log)
+
+    Checkpoint 생성 이력을 JSON Lines 형식으로 기록합니다.
+    SessionStart에서 이 로그를 읽어 checkpoint 목록을 표시합니다.
+
+    Args:
+        cwd: 프로젝트 루트 디렉토리 경로
+        branch_name: 생성된 checkpoint 브랜치명
+        operation_type: 작업 유형
+
+    Log Format (JSON Lines):
+        {"timestamp": "2025-10-15T14:30:00", "branch": "before-delete-...", "operation": "delete"}
+
+    Examples:
+        >>> log_checkpoint(".", "before-delete-20251015-143000", "delete")
+        # .moai/checkpoints.log에 1줄 추가
+
+    Notes:
+        - 파일 없으면 자동 생성
+        - append 모드로 기록 (기존 로그 보존)
+        - 실패 시 무시 (critical하지 않음)
+
+    @TAG:CHECKPOINT-EVENT-001
+    """
+    from datetime import datetime
+
+    log_file = Path(cwd) / ".moai" / "checkpoints.log"
+
+    try:
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+
+        log_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "branch": branch_name,
+            "operation": operation_type,
+        }
+
+        with log_file.open("a") as f:
+            f.write(json.dumps(log_entry) + "\n")
+
+    except (OSError, PermissionError):
+        # 로그 실패는 무시 (critical하지 않음)
+        pass
+
+
+def list_checkpoints(cwd: str, max_count: int = 10) -> list[dict[str, str]]:
+    """Checkpoint 목록 조회 (.moai/checkpoints.log 파싱)
+
+    최근 생성된 checkpoint 목록을 반환합니다.
+    SessionStart, /alfred:0-project restore 커맨드에서 사용합니다.
+
+    Args:
+        cwd: 프로젝트 루트 디렉토리 경로
+        max_count: 반환할 최대 개수 (기본 10개)
+
+    Returns:
+        Checkpoint 목록 (최신순)
+        [{"timestamp": "...", "branch": "...", "operation": "..."}, ...]
+
+    Examples:
+        >>> list_checkpoints(".")
+        [
+            {"timestamp": "2025-10-15T14:30:00", "branch": "before-delete-...", "operation": "delete"},
+            {"timestamp": "2025-10-15T14:25:00", "branch": "before-merge-...", "operation": "merge"},
+        ]
+
+    Notes:
+        - 로그 파일 없으면 빈 리스트 반환
+        - JSON 파싱 실패한 줄은 무시
+        - 최신 max_count개만 반환
+
+    @TAG:CHECKPOINT-EVENT-001
+    """
+    log_file = Path(cwd) / ".moai" / "checkpoints.log"
+
+    if not log_file.exists():
+        return []
+
+    checkpoints = []
+
+    try:
+        with log_file.open("r") as f:
+            for line in f:
+                try:
+                    checkpoints.append(json.loads(line.strip()))
+                except json.JSONDecodeError:
+                    # 파싱 실패한 줄 무시
+                    pass
+    except (OSError, PermissionError):
+        return []
+
+    # 최근 max_count개만 반환 (최신순)
+    return checkpoints[-max_count:]
+
+
 # ============================================================================
 # Hook Handlers
 # ============================================================================
 
 
 def handle_session_start(payload: HookPayload) -> HookResult:
-    """SessionStart 이벤트 핸들러
+    """SessionStart 이벤트 핸들러 (Checkpoint 목록 포함)
 
     Claude Code 세션 시작 시 프로젝트 상태를 요약하여 표시합니다.
-    언어, Git 상태, SPEC 진행도를 한눈에 확인할 수 있습니다.
+    언어, Git 상태, SPEC 진행도, Checkpoint 목록을 한눈에 확인할 수 있습니다.
 
     Args:
         payload: Claude Code 이벤트 페이로드 (cwd 키 필수)
@@ -419,16 +647,20 @@ def handle_session_start(payload: HookPayload) -> HookResult:
            Branch: {브랜치} ({커밋 해시})
            Changes: {변경 파일 수}
            SPEC Progress: {완료}/{전체} ({퍼센트}%)
+           Checkpoints: {개수} available (최신 3개 표시)
 
     TDD History:
         - RED: 세션 시작 메시지 형식 테스트
         - GREEN: helper 함수 조합하여 상태 메시지 생성
-        - REFACTOR: 메시지 포맷 개선, 가독성 향상
+        - REFACTOR: 메시지 포맷 개선, 가독성 향상, checkpoint 목록 추가
+
+    @TAG:CHECKPOINT-EVENT-001
     """
     cwd = payload.get("cwd", ".")
     language = detect_language(cwd)
     git_info = get_git_info(cwd)
     specs = count_specs(cwd)
+    checkpoints = list_checkpoints(cwd, max_count=10)
 
     branch = git_info.get("branch", "N/A")
     commit = git_info.get("commit", "N/A")[:7]
@@ -442,6 +674,14 @@ def handle_session_start(payload: HookPayload) -> HookResult:
         f"   Changes: {changes}\n"
         f"   SPEC Progress: {spec_progress} ({specs['percentage']}%)"
     )
+
+    # Checkpoint 목록 추가 (최신 3개만 표시)
+    if checkpoints:
+        message += f"\n   Checkpoints: {len(checkpoints)} available"
+        for cp in reversed(checkpoints[-3:]):  # 최신 3개
+            branch_short = cp["branch"].replace("before-", "")
+            message += f"\n      - {branch_short}"
+        message += "\n   Restore: /alfred:0-project restore"
 
     return HookResult(message=message)
 
@@ -525,7 +765,57 @@ def handle_session_end(payload: HookPayload) -> HookResult:
 
 
 def handle_pre_tool_use(payload: HookPayload) -> HookResult:
-    """PreToolUse 이벤트 핸들러 (기본 구현)"""
+    """PreToolUse 이벤트 핸들러 (Event-Driven Checkpoint 통합)
+
+    위험한 작업 전 자동으로 checkpoint를 생성합니다.
+    Claude Code tool 사용 전에 호출되며, 위험 감지 시 사용자에게 알립니다.
+
+    Args:
+        payload: Claude Code 이벤트 페이로드
+                 (tool, arguments, cwd 키 포함)
+
+    Returns:
+        HookResult(
+            message=checkpoint 생성 알림 (위험 감지 시),
+            blocked=False (항상 작업 계속 진행)
+        )
+
+    Checkpoint Triggers:
+        - Bash: rm -rf, git merge, git reset --hard
+        - Edit/Write: CLAUDE.md, config.json
+        - MultiEdit: ≥10 files
+
+    Examples:
+        Bash tool (rm -rf) 감지:
+        → "🛡️ Checkpoint created: before-delete-20251015-143000"
+
+    Notes:
+        - 위험 감지 후에도 blocked=False 반환 (작업 계속)
+        - Checkpoint 실패 시에도 작업 진행 (무시)
+        - 투명한 백그라운드 동작
+
+    @TAG:CHECKPOINT-EVENT-001
+    """
+    tool_name = payload.get("tool", "")
+    tool_args = payload.get("arguments", {})
+    cwd = payload.get("cwd", ".")
+
+    # 위험한 작업 감지
+    is_risky, operation_type = detect_risky_operation(tool_name, tool_args, cwd)
+
+    # 위험 감지 시 checkpoint 생성
+    if is_risky:
+        checkpoint_branch = create_checkpoint(cwd, operation_type)
+
+        if checkpoint_branch != "checkpoint-failed":
+            message = (
+                f"🛡️ Checkpoint created: {checkpoint_branch}\n"
+                f"   Operation: {operation_type}\n"
+                f"   Restore: /alfred:0-project restore"
+            )
+
+            return HookResult(message=message, blocked=False)
+
     return HookResult(blocked=False)
 
 
