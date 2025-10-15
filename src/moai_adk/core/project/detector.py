@@ -90,3 +90,16 @@ class LanguageDetector:
                     return True
 
         return False
+
+
+def detect_project_language(path: str | Path = ".") -> str | None:
+    """프로젝트 언어 감지 (헬퍼 함수)
+
+    Args:
+        path: 검사할 디렉토리 경로 (기본값: 현재 디렉토리)
+
+    Returns:
+        감지된 언어 이름 (소문자) 또는 None
+    """
+    detector = LanguageDetector()
+    return detector.detect(path)
