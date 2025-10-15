@@ -1,26 +1,27 @@
+# @CODE:TEMPLATE-001 | SPEC: SPEC-INIT-003.md | Chain: TEMPLATE-001
 """템플릿 복사 및 백업 프로세서 (SPEC-INIT-003 v0.3.0: 사용자 콘텐츠 보존)."""
 
 from __future__ import annotations
 
-import json
 import shutil
-from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 from rich.console import Console
+
+from moai_adk.core.template.backup import TemplateBackup
+from moai_adk.core.template.merger import TemplateMerger
 
 console = Console()
 
 
 class TemplateProcessor:
-    """템플릿 복사 및 백업 관리 클래스."""
+    """템플릿 복사 및 백업 관리 클래스 (메인 오케스트레이터)."""
 
     # 사용자 데이터 보호 경로 (절대 건드리지 않음) - SPEC-INIT-003 v0.3.0
     PROTECTED_PATHS = [
-        ".moai/specs/",       # 사용자 SPEC 문서
-        ".moai/reports/",     # 사용자 리포트
-        ".moai/project/",     # 사용자 프로젝트 문서 (product/structure/tech.md)
+        ".moai/specs/",  # 사용자 SPEC 문서
+        ".moai/reports/",  # 사용자 리포트
+        ".moai/project/",  # 사용자 프로젝트 문서 (product/structure/tech.md)
         ".moai/config.json",  # 사용자 설정 (병합은 /alfred:9-update에서)
     ]
 
@@ -35,6 +36,8 @@ class TemplateProcessor:
         """
         self.target_path = target_path.resolve()
         self.template_root = self._get_template_root()
+        self.backup = TemplateBackup(self.target_path)
+        self.merger = TemplateMerger(self.target_path)
 
     def _get_template_root(self) -> Path:
         """템플릿 루트 경로 반환.
@@ -73,7 +76,7 @@ class TemplateProcessor:
             console.print("✅ 템플릿 복사 완료")
 
     def _has_existing_files(self) -> bool:
-        """기존 프로젝트 파일 존재 여부 확인.
+        """기존 프로젝트 파일 존재 여부 확인 (백업 필요 여부).
 
         백업 정책:
         - .moai/, .claude/, CLAUDE.md 중 **1개라도 존재하면 백업 생성**
@@ -89,37 +92,15 @@ class TemplateProcessor:
         Returns:
             True if 백업 필요 (파일 1개 이상 존재)
         """
-        return any(
-            (self.target_path / item).exists()
-            for item in [".moai", ".claude", "CLAUDE.md"]
-        )
+        return self.backup.has_existing_files()
 
     def create_backup(self) -> Path:
-        """타임스탬프 기반 백업 생성.
+        """타임스탬프 기반 백업 생성 (위임).
 
         Returns:
             백업 경로
         """
-        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        backup_path = self.target_path / ".moai-backup" / timestamp
-        backup_path.mkdir(parents=True, exist_ok=True)
-
-        for item in [".moai", ".claude", "CLAUDE.md"]:
-            src = self.target_path / item
-            if not src.exists():
-                continue
-
-            dst = backup_path / item
-
-            if item == ".moai":
-                # PROTECTED_PATHS 제외하고 복사
-                self._copy_exclude_protected(src, dst)
-            elif src.is_dir():
-                shutil.copytree(src, dst, dirs_exist_ok=True)
-            else:
-                shutil.copy2(src, dst)
-
-        return backup_path
+        return self.backup.create_backup()
 
     def _copy_exclude_protected(self, src: Path, dst: Path) -> None:
         """보호 경로를 제외하고 복사 (SPEC-INIT-003 v0.3.0: 기존 파일 보존).
@@ -232,36 +213,13 @@ class TemplateProcessor:
                 console.print("   ✅ CLAUDE.md 복사 완료")
 
     def _merge_claude_md(self, src: Path, dst: Path) -> None:
-        """CLAUDE.md 스마트 병합.
+        """CLAUDE.md 스마트 병합 (위임).
 
         Args:
             src: 템플릿 CLAUDE.md
             dst: 프로젝트 CLAUDE.md
         """
-        # 기존 프로젝트 정보 섹션 추출
-        dst_content = dst.read_text(encoding="utf-8")
-        project_info_start = dst_content.find("## 프로젝트 정보")
-        project_info = ""
-        if project_info_start != -1:
-            # EOF까지 추출
-            project_info = dst_content[project_info_start:]
-
-        # 템플릿 내용 가져오기
-        src_content = src.read_text(encoding="utf-8")
-
-        # 프로젝트 정보가 있으면 병합
-        if project_info:
-            # 템플릿에서 프로젝트 정보 제거
-            template_project_start = src_content.find("## 프로젝트 정보")
-            if template_project_start != -1:
-                src_content = src_content[:template_project_start].rstrip()
-
-            # 병합
-            merged_content = f"{src_content}\n\n{project_info}"
-            dst.write_text(merged_content, encoding="utf-8")
-        else:
-            # 프로젝트 정보 없으면 템플릿 그대로 복사
-            shutil.copy2(src, dst)
+        self.merger.merge_claude_md(src, dst)
 
     def _copy_gitignore(self, silent: bool = False) -> None:
         """.gitignore 복사 (선택)."""
@@ -282,24 +240,16 @@ class TemplateProcessor:
                 console.print("   ✅ .gitignore 복사 완료")
 
     def _merge_gitignore(self, src: Path, dst: Path) -> None:
-        """.gitignore 병합.
+        """.gitignore 병합 (위임).
 
         Args:
             src: 템플릿 .gitignore
             dst: 프로젝트 .gitignore
         """
-        src_lines = set(src.read_text(encoding="utf-8").splitlines())
-        dst_lines = dst.read_text(encoding="utf-8").splitlines()
-
-        # 중복 제거하고 병합
-        merged_lines = dst_lines + [
-            line for line in src_lines if line not in dst_lines
-        ]
-
-        dst.write_text("\n".join(merged_lines) + "\n", encoding="utf-8")
+        self.merger.merge_gitignore(src, dst)
 
     def merge_config(self, detected_language: str | None = None) -> dict[str, str]:
-        """config.json 스마트 병합.
+        """config.json 스마트 병합 (위임).
 
         Args:
             detected_language: 감지된 언어
@@ -307,24 +257,4 @@ class TemplateProcessor:
         Returns:
             병합된 config
         """
-        config_path = self.target_path / ".moai" / "config.json"
-
-        # 기존 config 읽기
-        existing_config: dict[str, Any] = {}
-        if config_path.exists():
-            with open(config_path, encoding="utf-8") as f:
-                existing_config = json.load(f)
-
-        # 새 config 생성
-        new_config: dict[str, str] = {
-            "projectName": existing_config.get(
-                "projectName", self.target_path.name
-            ),
-            "mode": existing_config.get("mode", "personal"),
-            "locale": existing_config.get("locale", "ko"),
-            "language": existing_config.get(
-                "language", detected_language or "generic"
-            ),
-        }
-
-        return new_config
+        return self.merger.merge_config(detected_language)
