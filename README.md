@@ -31,7 +31,7 @@
 
 - **Hooks 역할 명확화**: Hooks(가드레일), Agents(분석), Commands(워크플로우)의 역할을 명확히 분리하고, Context Engineering(JIT Retrieval + Compaction) 전략을 완성했습니다.
 
-- **Claude Sonnet 4.5 ↔ Haiku 4.5 하이브리드 운영**: Sonnet 4.5가 계획과 검증을 담당하고, Haiku 4.5가 서브 에이전트를 수행해 토큰 비용을 최대 67% 절감하고(입력·출력 모두 $3/$15 → $1/$5 per 1M tokens) 지연 시간을 50~80% 단축합니다[^haiku][^sonnet].
+- **AI 모델 선택 전략**: `/model haiku` (빠른 모드)와 `/model sonnet` (가장 스마트한 모드)를 작업 특성에 맞게 선택할 수 있습니다. 각 sub-agent마다 목적에 맞는 AI 모델을 지정하여 토큰 비용을 최대 67% 절감하고(입력·출력 모두 $3/$15 → $1/$5 per 1M tokens) 지연 시간을 50~80% 단축합니다[^haiku][^sonnet].
 
 ### 아키텍처 & 도구 개선
 
@@ -1136,7 +1136,7 @@ GitHub Actions 워크플로우가 자동으로 보안 스캔을 실행합니다:
 
 ### 토큰 비용 최적화
 
-MoAI-ADK는 Sonnet 4.5와 Haiku 4.5의 하이브리드 전략으로 비용을 절감합니다.
+MoAI-ADK는 작업별 AI 모델 선택 전략으로 비용을 절감합니다. `/model haiku` (빠른 모드)와 `/model sonnet` (가장 스마트한 모드)를 사용하여 각 sub-agent마다 목적에 맞는 모델을 지정할 수 있습니다.
 
 | 모델 조합 | 입력 토큰 비용 | 출력 토큰 비용 | 실제 비용 (중형 기능) | 절감율 |
 |---------|-------------|-------------|------------------|--------|
@@ -1148,17 +1148,23 @@ MoAI-ADK는 Sonnet 4.5와 Haiku 4.5의 하이브리드 전략으로 비용을 �
 - 입력 토큰: ~1,200,000 (SPEC + 컨텍스트)
 - 출력 토큰: ~600,000 (CODE + 문서)
 
-**하이브리드 전략 예시**:
+**Sub-agent별 모델 선택 전략**:
 ```
-Sonnet 4.5 (30%):
-- spec-builder: SPEC 작성 (300K 입력, 100K 출력)
-- code-builder: 복잡한 TDD 구현 (300K 입력, 200K 출력)
+/model sonnet (가장 스마트한 모드 - 30%):
+- spec-builder: 복잡한 SPEC 작성 (300K 입력, 100K 출력)
+- code-builder: 까다로운 TDD 구현 (300K 입력, 200K 출력)
 
-Haiku 4.5 (70%):
+/model haiku (빠른 모드 - 70%):
 - doc-syncer: 문서 동기화 (200K 입력, 100K 출력)
 - tag-agent: TAG 검증 (150K 입력, 50K 출력)
 - trust-checker: 품질 검증 (250K 입력, 150K 출력)
+- git-manager: Git 작업 (100K 입력, 50K 출력)
+- debug-helper: 오류 분석 (200K 입력, 100K 출력)
 ```
+
+**모델 선택 가이드**:
+- **Sonnet 모드**: 복잡한 로직, 아키텍처 설계, 중요한 의사결정
+- **Haiku 모드**: 반복 작업, 문서 동기화, 검증, Git 작업
 
 ### 응답 속도
 
