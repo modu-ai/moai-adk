@@ -34,8 +34,10 @@
   --code-border: var(--slate-200);
 
   /* Typography */
-  --font-sans: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  --font-sans: "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", "Consolas",
+    monospace;
 
   /* Spacing */
   --spacing-unit: 0.5rem;
@@ -194,7 +196,7 @@ body {
 }
 
 .alfred-icon::before {
-  content: '▶◀';
+  content: "🎩";
   margin-right: 0.5rem;
 }
 
@@ -208,7 +210,7 @@ blockquote.alfred-quote {
 }
 
 blockquote.alfred-quote::before {
-  content: '▶◀ Alfred says:';
+  content: "🎩 Alfred says:";
   display: block;
   font-weight: 600;
   color: var(--slate-700);
@@ -224,7 +226,11 @@ blockquote.alfred-quote::before {
   border-radius: 8px;
   padding: 1.5rem;
   margin: 1rem 0;
-  background: linear-gradient(135deg, rgba(148, 163, 184, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(148, 163, 184, 0.05) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -291,7 +297,12 @@ blockquote.alfred-quote::before {
   justify-content: space-between;
   align-items: center;
   padding: 2rem 1rem;
-  background: linear-gradient(90deg, rgba(100, 116, 139, 0.1) 0%, rgba(148, 163, 184, 0.1) 50%, rgba(203, 213, 225, 0.1) 100%);
+  background: linear-gradient(
+    90deg,
+    rgba(100, 116, 139, 0.1) 0%,
+    rgba(148, 163, 184, 0.1) 50%,
+    rgba(203, 213, 225, 0.1) 100%
+  );
   border-radius: 8px;
   margin: 2rem 0;
 }
@@ -303,7 +314,7 @@ blockquote.alfred-quote::before {
 }
 
 .tdd-flow-step::after {
-  content: '→';
+  content: "→";
   position: absolute;
   right: -1rem;
   top: 50%;
@@ -313,7 +324,7 @@ blockquote.alfred-quote::before {
 }
 
 .tdd-flow-step:last-child::after {
-  content: '';
+  content: "";
 }
 
 /* ============================================
@@ -378,7 +389,7 @@ blockquote.alfred-quote::before {
 
 /* Alfred Tip */
 .md-typeset .admonition.tip > .admonition-title::before {
-  content: '▶◀';
+  content: "🎩";
   margin-right: 0.5rem;
 }
 
@@ -679,7 +690,7 @@ blockquote.alfred-quote::before {
 }
 
 .md-typeset pre.command-line::before {
-  content: '$';
+  content: "$";
   color: var(--slate-400);
   margin-right: 0.5rem;
   font-weight: 700;
@@ -695,7 +706,7 @@ blockquote.alfred-quote::before {
   }
 
   .tdd-flow-step::after {
-    content: '↓';
+    content: "↓";
     position: static;
     display: block;
     margin: 1rem 0;
@@ -729,11 +740,20 @@ blockquote.alfred-quote::before {
 }
 
 [data-md-color-scheme="slate"] .agent-card {
-  background: linear-gradient(135deg, rgba(100, 116, 139, 0.1) 0%, rgba(0, 0, 0, 0) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(100, 116, 139, 0.1) 0%,
+    rgba(0, 0, 0, 0) 100%
+  );
 }
 
 [data-md-color-scheme="slate"] .tdd-flow {
-  background: linear-gradient(90deg, rgba(71, 85, 105, 0.15) 0%, rgba(100, 116, 139, 0.15) 50%, rgba(148, 163, 184, 0.15) 100%);
+  background: linear-gradient(
+    90deg,
+    rgba(71, 85, 105, 0.15) 0%,
+    rgba(100, 116, 139, 0.15) 50%,
+    rgba(148, 163, 184, 0.15) 100%
+  );
 }
 
 [data-md-color-scheme="slate"] .mermaid {
@@ -774,20 +794,44 @@ blockquote.alfred-quote::before {
   text-align: right;
 }
 
-.mt-1 { margin-top: calc(var(--spacing-unit) * 1); }
-.mt-2 { margin-top: calc(var(--spacing-unit) * 2); }
-.mt-3 { margin-top: calc(var(--spacing-unit) * 3); }
-.mt-4 { margin-top: calc(var(--spacing-unit) * 4); }
+.mt-1 {
+  margin-top: calc(var(--spacing-unit) * 1);
+}
+.mt-2 {
+  margin-top: calc(var(--spacing-unit) * 2);
+}
+.mt-3 {
+  margin-top: calc(var(--spacing-unit) * 3);
+}
+.mt-4 {
+  margin-top: calc(var(--spacing-unit) * 4);
+}
 
-.mb-1 { margin-bottom: calc(var(--spacing-unit) * 1); }
-.mb-2 { margin-bottom: calc(var(--spacing-unit) * 2); }
-.mb-3 { margin-bottom: calc(var(--spacing-unit) * 3); }
-.mb-4 { margin-bottom: calc(var(--spacing-unit) * 4); }
+.mb-1 {
+  margin-bottom: calc(var(--spacing-unit) * 1);
+}
+.mb-2 {
+  margin-bottom: calc(var(--spacing-unit) * 2);
+}
+.mb-3 {
+  margin-bottom: calc(var(--spacing-unit) * 3);
+}
+.mb-4 {
+  margin-bottom: calc(var(--spacing-unit) * 4);
+}
 
-.p-1 { padding: calc(var(--spacing-unit) * 1); }
-.p-2 { padding: calc(var(--spacing-unit) * 2); }
-.p-3 { padding: calc(var(--spacing-unit) * 3); }
-.p-4 { padding: calc(var(--spacing-unit) * 4); }
+.p-1 {
+  padding: calc(var(--spacing-unit) * 1);
+}
+.p-2 {
+  padding: calc(var(--spacing-unit) * 2);
+}
+.p-3 {
+  padding: calc(var(--spacing-unit) * 3);
+}
+.p-4 {
+  padding: calc(var(--spacing-unit) * 4);
+}
 
 /* ============================================
    17. Animation & Transitions
@@ -826,7 +870,7 @@ html {
 }
 
 .md-footer-copyright::before {
-  content: 'Made with MoAI\'s 🪿';
+  content: "Made with MoAI's 🪿";
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 600;
@@ -976,7 +1020,11 @@ html {
   color: var(--slate-300) !important;
 }
 
-[data-md-color-scheme="slate"] .md-typeset table.full-width-table tbody tr:hover {
+[data-md-color-scheme="slate"]
+  .md-typeset
+  table.full-width-table
+  tbody
+  tr:hover {
   background-color: var(--slate-900) !important;
 }
 
