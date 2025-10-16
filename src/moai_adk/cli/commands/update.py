@@ -22,7 +22,7 @@ def get_latest_version() -> str:
         import urllib.error
 
         url = "https://pypi.org/pypi/moai-adk/json"
-        with urllib.request.urlopen(url, timeout=5) as response:
+        with urllib.request.urlopen(url, timeout=5) as response:  # nosec B310 - URL is hardcoded HTTPS to PyPI API, no user input
             data = json.loads(response.read().decode("utf-8"))
             return data["info"]["version"]
     except (urllib.error.URLError, json.JSONDecodeError, KeyError, TimeoutError):
