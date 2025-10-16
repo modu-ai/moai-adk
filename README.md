@@ -256,15 +256,15 @@ Alfred는 **작업 특성**에 따라 각 에이전트에 최적 모델을 할�
 
 ### 📋 준비물
 
-- ✅ Python 3.13+ 또는 uv 설치
+- ✅ Python 3.13+
 - ✅ Claude Code 실행 중
 - ✅ Git 설치 (선택사항)
 
-### ⚡ 3단계로 시작하기
+### ⚡ 4단계로 시작하기
 
-#### 1️⃣ 설치 (30초)
+#### 0️⃣ uv 설치 (권장, 선택사항)
 
-**옵션 A: uv 사용 (권장 - 빠른 성능)**
+**uv는 pip보다 10-100배 빠른 Python 패키지 관리자입니다** (Rust 기반).
 
 ```bash
 # macOS/Linux
@@ -273,19 +273,25 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # Windows (PowerShell)
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 
-# 설치 후 moai-adk 설치
-uv pip install moai-adk
-
 # 설치 확인
+uv --version
+```
+
+**uv를 건너뛰고 pip만 사용해도 괜찮습니다.**
+
+#### 1️⃣ moai-adk 설치 (30초)
+
+**uv 설치 완료한 경우:**
+
+```bash
+uv pip install moai-adk
 moai-adk --version
 ```
 
-**옵션 B: pip 사용 (모든 환경)**
+**pip 사용:**
 
 ```bash
 pip install moai-adk
-
-# 설치 확인
 moai-adk --version
 ```
 
