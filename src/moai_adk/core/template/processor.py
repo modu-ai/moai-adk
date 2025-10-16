@@ -119,6 +119,7 @@ class TemplateProcessor:
 
         Strategy:
         - Alfred folders (commands/agents/hooks/output-styles/alfred) → copy wholesale (delete & overwrite)
+          * Creates individual backup before deletion for safety
         - Other files/folders → copy individually (preserve existing)
         """
         src = self.template_root / ".claude"
@@ -140,15 +141,17 @@ class TemplateProcessor:
             "agents/alfred",
         ]
 
-        # 1. Copy Alfred folders wholesale (delete existing & copy new)
+        # 1. Copy Alfred folders wholesale (backup before delete & overwrite)
         for folder in alfred_folders:
             src_folder = src / folder
             dst_folder = dst / folder
 
             if src_folder.exists():
-                # Delete existing folder and copy new one
+                # Backup this folder before deletion (safety measure)
                 if dst_folder.exists():
+                    self._backup_alfred_folder(dst_folder, folder)
                     shutil.rmtree(dst_folder)
+
                 # Create parent directory if needed
                 dst_folder.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copytree(src_folder, dst_folder)
@@ -175,6 +178,31 @@ class TemplateProcessor:
 
         if not silent:
             console.print("   ✅ .claude/ copy complete (alfred folders overwritten, others preserved)")
+
+    def _backup_alfred_folder(self, folder_path: Path, folder_name: str) -> None:
+        """Backup an Alfred folder before overwriting (safety measure).
+
+        Args:
+            folder_path: Path to the folder to backup.
+            folder_name: Name of the folder (e.g., "hooks/alfred").
+        """
+        if not folder_path.exists():
+            return
+
+        # Create backup directory in .moai-backups/.claude-backups/{timestamp}/
+        backup_base = self.target_path / ".moai-backups" / ".claude-backups"
+        backup_base.mkdir(parents=True, exist_ok=True)
+
+        # Generate timestamp-based backup directory
+        from moai_adk.core.project.backup_utils import generate_backup_dir_name
+
+        timestamp = generate_backup_dir_name()
+        backup_dir = backup_base / timestamp
+
+        # Backup this specific folder
+        backup_folder = backup_dir / folder_name
+        backup_folder.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(folder_path, backup_folder)
 
     def _copy_moai(self, silent: bool = False) -> None:
         """.moai/ directory copy (excludes protected paths)."""
