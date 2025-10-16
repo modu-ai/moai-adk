@@ -56,13 +56,18 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-# Only include Python packages, exclude templates from automatic detection
+# Include Python packages and templates
 packages = ["src/moai_adk"]
-exclude = ["src/moai_adk/templates"]
 
-# Force include ALL template files (including hidden directories)
-[tool.hatch.build.targets.wheel.force-include]
-"src/moai_adk/templates" = "moai_adk/templates"
+# Ensure template files are included in both wheel and editable installs
+[tool.hatch.build]
+include = [
+    "src/moai_adk/**/*.py",
+    "src/moai_adk/templates/**/*",
+    "src/moai_adk/templates/.claude/**/*",
+    "src/moai_adk/templates/.moai/**/*",
+    "src/moai_adk/templates/.github/**/*"
+]
 
 [project.scripts]
 moai-adk = "moai_adk.__main__:main"
