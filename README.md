@@ -21,11 +21,30 @@
 
 ## 🆕 2025년 10월 업데이트 하이라이트 (v0.3.0)
 
+### 핵심 개선사항
+
 - **TRUST 원칙 자동 검증 시스템**: `TrustChecker` 클래스가 Test Coverage(85%+), Code Constraints(≤300 LOC), TAG Chain 무결성을 자동으로 검증합니다. `/alfred:3-sync` 실행 시 TRUST 5원칙 준수 여부를 즉시 확인할 수 있습니다. (SPEC-TRUST-001 v0.1.0 완료)
+
 - **크로스 플랫폼 지원 강화**: Windows/macOS/Linux에서 동일하게 작동하는 보안 스캔 스크립트(Python + PowerShell), GitHub Actions 크로스 플랫폼 워크플로우, 플랫폼별 에러 메시지 제공으로 Windows 환경 완벽 지원을 실현했습니다.
+
 - **Event-Driven Checkpoint 파이프라인**: `SessionStart`·`PreToolUse`·`PostToolUse` 훅이 자동으로 체크포인트를 생성하고, `.moai-backups/{timestamp}/` 최신본을 탐지해 `product/structure/tech.md`를 지능형 병합합니다. (SPEC-INIT-003 v0.3.1)
+
 - **Hooks 역할 명확화**: Hooks(가드레일), Agents(분석), Commands(워크플로우)의 역할을 명확히 분리하고, Context Engineering(JIT Retrieval + Compaction) 전략을 완성했습니다.
+
 - **Claude Sonnet 4.5 ↔ Haiku 4.5 하이브리드 운영**: Sonnet 4.5가 계획과 검증을 담당하고, Haiku 4.5가 서브 에이전트를 수행해 토큰 비용을 최대 67% 절감하고(입력·출력 모두 $3/$15 → $1/$5 per 1M tokens) 지연 시간을 50~80% 단축합니다[^haiku][^sonnet].
+
+### 아키텍처 & 도구 개선
+
+- **Template Processor 선택적 복사 전략**: Alfred 시스템 폴더(`.claude/commands/alfred`, `.claude/agents/alfred`, `.claude/hooks/alfred`, `.claude/output-styles/alfred`)는 업데이트 시 자동으로 덮어쓰되, 사용자 커스터마이징 파일은 기존 설정을 보존하는 지능형 복사 로직으로 개선했습니다. 또한 백업 기능 추가로 안전성을 강화했습니다.
+
+- **Claude Code 출력 스타일 통합**: 4개의 서로 다른 출력 형식을 3개의 표준 스타일(기본/상세/미니멀)로 재구성하여 일관성 있는 사용자 경험을 제공합니다.
+
+- **프로젝트 파일 정리 및 관리**: .gitignore 업데이트, 불필요한 파일 정리, rm -rf 권한 정책 개선으로 안전하고 깔끔한 프로젝트 구조를 유지합니다.
+
+### 문서 & 지침 강화
+
+- **Explore 에이전트 코드 분석 지침**: 대규모 코드베이스 탐색 시 Explore 에이전트 활용 방법, 분석 권장 상황, thoroughness 레벨별 사용법을 상세히 문서화했습니다.
+
 
 ## 목차
 
