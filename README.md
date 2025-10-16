@@ -484,10 +484,10 @@ moai-adk --help
 
 | 커맨드 | 에이전트 | 모델 | 작업 특성 | 예상 시간 |
 |-------|----------|------|----------|----------|
-| `/alfred:0-project` | project-manager 📋 | **Sonnet** | 프로젝트 전략 수립, 복잡한 의사결정 | 1~2분 |
-| `/alfred:1-spec` | spec-builder 🏗️ | **Sonnet** | EARS 명세 설계, 요구사항 분석 | 2~3분 |
-| `/alfred:2-build` | code-builder 💎 | **Sonnet** | TDD 구현, 아키텍처 설계 | 3~5분 |
-| `/alfred:3-sync` | doc-syncer 📖 | **Haiku** | Living Document 동기화, 패턴 기반 | 30초~1분 |
+| `/alfred:0-project` | project-manager 📋 | 세션 기본 모델 | 프로젝트 전략 수립, 복잡한 의사결정 | 1~2분 |
+| `/alfred:1-spec` | spec-builder 🏗️ | 세션 기본 모델 | EARS 명세 설계, 요구사항 분석 | 2~3분 |
+| `/alfred:2-build` | code-builder 💎 | 세션 기본 모델 | TDD 구현, 아키텍처 설계 | 3~5분 |
+| `/alfred:3-sync` | doc-syncer 📖 | **Haiku 지정** | Living Document 동기화, 패턴 기반 | 30초~1분 |
 
 #### 온디맨드 에이전트 호출
 
@@ -510,16 +510,22 @@ moai-adk --help
 
 #### 모델별 성능 비교
 
-| 작업 유형 | Haiku (패스트) | Sonnet (스마트) | 권장 |
-|---------|---------------|----------------|------|
-| **SPEC 작성** | 1분 | 2~3분 | Sonnet (품질 우선) |
-| **TDD 구현** | 2분 | 3~5분 | Sonnet (설계 필요) |
-| **문서 동기화** | 30초 | 1~2분 | Haiku (패턴화) |
-| **TAG 검증** | 10초 | 30초 | Haiku (반복 검색) |
-| **Git 작업** | 5초 | 15초 | Haiku (정형화) |
-| **디버깅** | 1분 | 2~3분 | Sonnet (분석 필요) |
+| 작업 유형 | Haiku (패스트) | Sonnet (스마트) | 실제 적용 |
+|---------|---------------|----------------|----------|
+| **SPEC 작성** | 1분 | 2~3분 | 세션 기본 모델 사용 |
+| **TDD 구현** | 2분 | 3~5분 | 세션 기본 모델 사용 |
+| **문서 동기화** | 30초 | 1~2분 | ✅ Haiku 지정 (3-sync) |
+| **TAG 검증** | 10초 | 30초 | ✅ Haiku 지정 (tag-agent) |
+| **Git 작업** | 5초 | 15초 | ✅ Haiku 지정 (git-manager) |
+| **디버깅** | 1분 | 2~3분 | 세션 기본 모델 사용 |
 
-**결론**: Alfred는 이미 **작업별 최적 모델을 자동 선택**하므로, 사용자는 `/model` 명령어 없이도 최상의 성능을 경험할 수 있습니다.
+**핵심 설계**:
+- `/alfred:0-project`, `/alfred:1-spec`, `/alfred:2-build`: **사용자가 선택한 세션 기본 모델** 사용
+  - `/model sonnet` (기본값): 높은 품질, 복잡한 판단
+  - `/model haiku`: 빠른 속도, 반복 작업
+- `/alfred:3-sync` 및 Haiku 에이전트: **자동으로 Haiku 모델** 사용 (패턴화된 작업)
+
+**사용자 제어**: `/model` 명령어로 0~2번 커맨드의 품질과 속도를 자유롭게 조절할 수 있습니다.
 
 ---
 
