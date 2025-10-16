@@ -68,6 +68,29 @@ allowed-tools:
 
 프로젝트 상태를 분석하여 동기화 범위를 결정하고 체계적인 동기화 계획을 수립한 후 사용자 확인을 받습니다.
 
+### 🔍 TAG 체인 탐색 (선택사항)
+
+**TAG 체인이 복잡하거나 광범위한 경우** Explore 에이전트를 먼저 활용합니다:
+
+```
+Task tool 호출 (Explore 에이전트):
+- subagent_type: "Explore"
+- description: "TAG 시스템 전체 스캔"
+- prompt: "프로젝트 전체에서 @TAG 시스템을 스캔해주세요:
+          - @SPEC TAG 위치 (.moai/specs/)
+          - @TEST TAG 위치 (tests/)
+          - @CODE TAG 위치 (src/)
+          - @DOC TAG 위치 (docs/)
+          - 고아 TAG 및 끊어진 참조 탐지
+          thoroughness 레벨: very thorough"
+```
+
+**Explore 에이전트 사용 시점**:
+- ✅ 대규모 프로젝트 (100개 이상 파일)
+- ✅ TAG 체인 무결성 검증이 필요한 경우
+- ✅ 여러 SPEC에 걸친 변경사항
+- ❌ 단일 SPEC의 간단한 변경
+
 ### ⚙️ 에이전트 호출 방법
 
 **STEP 1에서는 Task tool을 사용하여 doc-syncer와 tag-agent를 호출합니다**:
@@ -78,13 +101,15 @@ allowed-tools:
    - description: "TAG 시스템 검증"
    - prompt: "전체 TAG 체인 무결성을 검증해주세요.
              @SPEC, @TEST, @CODE, @DOC TAG의 완전성과
-             고아 TAG를 확인해주세요."
+             고아 TAG를 확인해주세요.
+             (선택) Explore 결과: $EXPLORE_RESULTS"
 
 2. doc-syncer 호출 (동기화 계획):
    - subagent_type: "doc-syncer"
    - description: "문서 동기화 계획 수립"
    - prompt: "Git 변경사항을 분석하여 문서 동기화 계획을 수립해주세요.
-             $ARGUMENTS"
+             $ARGUMENTS
+             (선택) TAG 검증 결과: $TAG_VALIDATION_RESULTS"
 ```
 
 ### 동기화 분석 진행
@@ -92,7 +117,8 @@ allowed-tools:
 1. **프로젝트 상태 확인**
    - Git 상태 및 변경된 파일 목록
    - 코드-문서 일치성 검사
-   - @TAG 시스템 검증
+   - @TAG 시스템 검증 (tag-agent 또는 Explore 활용)
+   - (선택) Explore 결과 기반 광범위한 TAG 스캔
 
 2. **동기화 범위 결정**
    - Living Document 업데이트 필요 영역

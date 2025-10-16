@@ -21,9 +21,10 @@
 
 ## 🆕 2025년 10월 업데이트 하이라이트 (v0.3.0)
 
-- **Event-Driven Checkpoint 파이프라인**: `SessionStart`·`PreToolUse`·`PostToolUse` 훅이 자동으로 체크포인트를 생성하고, `.moai-backups/{timestamp}/` 최신본을 탐지해 `product/structure/tech.md`를 지능형 병합합니다. (commit 3b8c7bc 외)
-- **버전 감시 & 재최적화 감지**: `config.json`에 `moai_adk_version`, `optimized` 필드를 기록해 `python -m moai_adk init .` 재실행 시 버전 불일치와 최적화 여부를 안내합니다.
-- **SPEC 메타데이터 & 개발 가이드 개편**: `.moai/memory/development-guide.md`와 `templates/.moai/memory/spec-metadata.md`가 SPEC-First TDD·EARS·@TAG 표준을 최신 상태로 설명합니다.
+- **TRUST 원칙 자동 검증 시스템**: `TrustChecker` 클래스가 Test Coverage(85%+), Code Constraints(≤300 LOC), TAG Chain 무결성을 자동으로 검증합니다. `/alfred:3-sync` 실행 시 TRUST 5원칙 준수 여부를 즉시 확인할 수 있습니다. (SPEC-TRUST-001 v0.1.0 완료)
+- **크로스 플랫폼 지원 강화**: Windows/macOS/Linux에서 동일하게 작동하는 보안 스캔 스크립트(Python + PowerShell), GitHub Actions 크로스 플랫폼 워크플로우, 플랫폼별 에러 메시지 제공으로 Windows 환경 완벽 지원을 실현했습니다.
+- **Event-Driven Checkpoint 파이프라인**: `SessionStart`·`PreToolUse`·`PostToolUse` 훅이 자동으로 체크포인트를 생성하고, `.moai-backups/{timestamp}/` 최신본을 탐지해 `product/structure/tech.md`를 지능형 병합합니다. (SPEC-INIT-003 v0.3.1)
+- **Hooks 역할 명확화**: Hooks(가드레일), Agents(분석), Commands(워크플로우)의 역할을 명확히 분리하고, Context Engineering(JIT Retrieval + Compaction) 전략을 완성했습니다.
 - **Claude Sonnet 4.5 ↔ Haiku 4.5 하이브리드 운영**: Sonnet 4.5가 계획과 검증을 담당하고, Haiku 4.5가 서브 에이전트를 수행해 토큰 비용을 최대 67% 절감하고(입력·출력 모두 $3/$15 → $1/$5 per 1M tokens) 지연 시간을 50~80% 단축합니다[^haiku][^sonnet].
 
 ## 목차
@@ -490,27 +491,39 @@ Alfred가 조율하는 전문 AI 에이전트들입니다.
 
 #### 핵심 3단계 에이전트 (자동 호출)
 
-| 에이전트 | 페르소나 | 전문 영역 | 호출 시점 |
-|---------|---------|----------|----------|
-| **spec-builder** 🏗️ | 시스템 아키텍트 | EARS 명세 작성 | `/alfred:1-spec` |
-| **code-builder** 💎 | 수석 개발자 | TDD 구현 | `/alfred:2-build` |
-| **doc-syncer** 📖 | 테크니컬 라이터 | 문서 동기화 | `/alfred:3-sync` |
+| 에이전트 | 모델 | 페르소나 | 전문 영역 | 호출 시점 |
+|---------|------|---------|----------|----------|
+| **spec-builder** 🏗️ | Sonnet 4.5 | 시스템 아키텍트 | EARS 명세 작성 | `/alfred:1-spec` |
+| **code-builder** 💎 | Sonnet 4.5 | 수석 개발자 | TDD 구현 | `/alfred:2-build` |
+| **doc-syncer** 📖 | Haiku 4.5 | 테크니컬 라이터 | 문서 동기화 | `/alfred:3-sync` |
 
 #### 품질 보증 에이전트 (온디맨드)
 
-| 에이전트 | 페르소나 | 전문 영역 | 호출 방법 |
-|---------|---------|----------|----------|
-| **tag-agent** 🏷️ | 지식 관리자 | TAG 체인 검증 | `@agent-tag-agent` |
-| **debug-helper** 🔬 | SRE 전문가 | 오류 진단 | `@agent-debug-helper` |
-| **trust-checker** ✅ | QA 리드 | TRUST 검증 | `@agent-trust-checker` |
-| **git-manager** 🚀 | 릴리스 엔지니어 | Git 워크플로우 | `@agent-git-manager` |
+| 에이전트 | 모델 | 페르소나 | 전문 영역 | 호출 방법 |
+|---------|------|---------|----------|----------|
+| **tag-agent** 🏷️ | Haiku 4.5 | 지식 관리자 | TAG 체인 검증 | `@agent-tag-agent` |
+| **debug-helper** 🔬 | Sonnet 4.5 | SRE 전문가 | 오류 진단 | `@agent-debug-helper` |
+| **trust-checker** ✅ | Haiku 4.5 | QA 리드 | TRUST 검증 | `@agent-trust-checker` |
+| **git-manager** 🚀 | Haiku 4.5 | 릴리스 엔지니어 | Git 워크플로우 | `@agent-git-manager` |
 
 #### 시스템 관리 에이전트
 
-| 에이전트 | 페르소나 | 전문 영역 | 호출 방법 |
-|---------|---------|----------|----------|
-| **cc-manager** 🛠️ | 데브옵스 엔지니어 | Claude Code 설정 | `@agent-cc-manager` |
-| **project-manager** 📋 | 프로젝트 매니저 | 프로젝트 초기화 | `/alfred:8-project` |
+| 에이전트 | 모델 | 페르소나 | 전문 영역 | 호출 방법 |
+|---------|------|---------|----------|----------|
+| **cc-manager** 🛠️ | Sonnet 4.5 | 데브옵스 엔지니어 | Claude Code 설정 | `@agent-cc-manager` |
+| **project-manager** 📋 | Sonnet 4.5 | 프로젝트 매니저 | 프로젝트 초기화 | `/alfred:0-project` |
+
+#### Built-in 에이전트 (Claude Code 제공)
+
+| 에이전트 | 모델 | 전문 영역 | 호출 방법 | 사용 시점 |
+|---------|------|----------|----------|----------|
+| **Explore** 🔍 | Haiku 4.5 | 코드베이스 탐색, 파일 검색 | `Task(subagent_type="Explore")` | 코드베이스 탐색 필요 시 |
+
+**Explore 에이전트 활용**:
+- ✅ 특정 키워드/패턴 검색 (예: "API endpoints", "인증 로직")
+- ✅ 파일 위치 탐색 (예: "src/components/**/*.tsx")
+- ✅ 코드베이스 구조 파악 (예: "프로젝트 아키텍처 설명")
+- ✅ 다중 파일 검색 (Glob + Grep 조합)
 
 ### 협업 원칙
 
@@ -525,6 +538,29 @@ Alfred가 조율하는 전문 AI 에이전트들입니다.
 **품질 게이트 (Quality Gates)**:
 - 각 단계 완료 시 TRUST 원칙 자동 검증
 - TAG 무결성 자동 확인
+
+### 모델 선택 전략
+
+Alfred는 작업 특성에 따라 최적의 모델을 선택합니다:
+
+**Sonnet 4.5 사용 (복잡한 판단, 계획, 설계)**:
+- ✅ SPEC 작성 및 아키텍처 설계 (spec-builder)
+- ✅ TDD 전략 수립 및 복잡한 구현 (code-builder)
+- ✅ 오류 원인 분석 및 디버깅 (debug-helper)
+- ✅ Claude Code 설정 최적화 (cc-manager)
+- ✅ 프로젝트 초기화 및 의사결정 (project-manager)
+
+**Haiku 4.5 사용 (반복 작업, 빠른 처리)**:
+- ✅ 문서 동기화 및 Living Document 갱신 (doc-syncer)
+- ✅ TAG 스캔 및 패턴 매칭 (tag-agent)
+- ✅ TRUST 원칙 검증 (trust-checker)
+- ✅ Git 명령어 실행 및 PR 관리 (git-manager)
+- ✅ 코드베이스 탐색 및 파일 검색 (Explore)
+
+**비용 및 성능 최적화**:
+- 💰 Haiku 4.5는 Sonnet 4.5 대비 **비용 67% 절감** (입력/출력 토큰 모두)
+- ⚡ Haiku 4.5는 Sonnet 4.5 대비 **응답 속도 2~5배 향상**
+- 🎯 작업에 따라 자동으로 최적 모델 선택하여 **품질과 비용 효율 동시 확보**
 
 ---
 
@@ -925,42 +961,43 @@ GitHub Actions 워크플로우가 자동으로 보안 스캔을 실행합니다:
 
 ## 🏁 Checkpoint - 개발 현황 스냅샷
 
-> **마지막 업데이트**: 2025-10-15
-> **현재 버전**: v0.3.1
-> **프로젝트 상태**: INIT-003 v0.3.1 완료 (Event-Driven Checkpoint 자동화)
+> **마지막 업데이트**: 2025-10-16
+> **현재 버전**: v0.3.0
+> **프로젝트 상태**: SPEC-TRUST-001 v0.1.0 완료 (TRUST 원칙 자동 검증 시스템)
 
 ### 📊 주요 지표
 
 | 항목 | 현재 상태 | 목표 | 상태 |
 |------|----------|------|------|
 | **테스트 커버리지** | 85.61% | 85%+ | ✅ |
-| **SPEC 문서** | 18개 | - | ✅ |
+| **SPEC 문서** | 22개 | - | ✅ |
 | **지원 언어** | 20개 | 10+ | ✅ |
 | **CLI 명령어** | 8개 | - | ✅ |
 | **AI 에이전트** | 10개 | - | ✅ |
 
-### 🎯 최근 완료된 작업 (SPEC-INIT-003 v0.3.1)
+### 🎯 최근 완료된 작업 (SPEC-TRUST-001 v0.1.0)
 
-**SPEC-INIT-003: Event-Driven Checkpoint 시스템**
-- **버전**: v0.3.1 (active)
-- **완료일**: 2025-10-15
+**SPEC-TRUST-001: TRUST 원칙 자동 검증 시스템**
+- **버전**: v0.1.0 (completed)
+- **완료일**: 2025-10-16
 - **주요 성과**:
-  - ✅ Claude Code Hooks 통합 (SessionStart, PreToolUse, PostToolUse)
-  - ✅ BackupMerger 클래스 구현 (백업 병합 기능)
-  - ✅ 버전 추적 시스템 (config.json에 moai_adk_version, optimized 필드)
-  - ✅ 자동 최적화 감지 (Claude 접속 시 버전 불일치 알림)
-  - ✅ 변경량: +1,180줄 추가, -2,076줄 삭제
+  - ✅ TrustChecker 메인 클래스 구현 (442 LOC)
+  - ✅ BaseValidator 추상 클래스 구현 (검증 프레임워크)
+  - ✅ 20개 Acceptance Criteria 기반 테스트 (474 LOC)
+  - ✅ 테스트 커버리지: 89.13% (목표 85% 초과)
+  - ✅ Test Pass Rate: 100% (20/20 통과)
 
 **TDD 이력**:
-- 🟢 GREEN: 커밋 3b8c7bc (Claude Code Hooks 기반 Checkpoint 자동화 구현 완료)
-- 📝 DOCS: 커밋 c3c48ac (CHECKPOINT-EVENT-001 문서 동기화 완료)
-- 📝 DOCS: 커밋 1714724 (SPEC-INIT-003 v0.3.1 작성 완료)
+- 🔴 RED: 커밋 7d8d114 (SPEC-TRUST-001 TRUST 원칙 자동 검증 명세 작성)
+- 🔴 RED: 커밋 4c66076 (TRUST-001 20개 테스트 케이스 작성)
+- 🟢 GREEN: 커밋 34e1bd9 (TRUST-001 TrustChecker 구현 완료)
+- ♻️ REFACTOR: 커밋 1dec08f (TRUST-001 품질 개선 완료)
+- 📝 DOCS: 커밋 3e05706 (SPEC-TRUST-001 v0.1.0 문서 동기화 완료)
 
-**이전 완료 작업 (SPEC-CLI-001)**:
-- ✅ doctor 명령어 고도화: 20개 언어 도구 체인 검증 구현
-- ✅ 옵션 추가: `--verbose`, `--fix`, `--export`, `--check`
-- ✅ 테스트 100% 통과 (50개 테스트)
-- ✅ 커버리지 91.58% (doctor.py)
+**이전 완료 작업**:
+- **SPEC-INIT-003 v0.3.1**: Event-Driven Checkpoint 시스템 (Claude Code Hooks 통합)
+- **Windows 호환성 강화**: 크로스 플랫폼 보안 스캔(Python + PowerShell), GitHub Actions 워크플로우
+- **SPEC-CLI-001**: doctor 명령어 고도화 (20개 언어 도구 체인 검증)
 
 ### 📦 현재 기능 목록
 
@@ -1047,6 +1084,32 @@ else:
     print("errors", result.errors)
 ```
 
+### TrustChecker (🆕 v0.3.0)
+
+```python
+from pathlib import Path
+from moai_adk.core.quality.trust_checker import TrustChecker
+
+# TRUST 5원칙 자동 검증
+checker = TrustChecker(Path("./my-project"))
+result = checker.check_all()
+
+if result.passed:
+    print(f"✅ TRUST 검증 통과: {result.summary}")
+else:
+    print(f"❌ TRUST 검증 실패: {len(result.violations)}개 위반")
+    for violation in result.violations:
+        print(f"  - {violation.rule}: {violation.message}")
+        print(f"    위치: {violation.file}:{violation.line}")
+```
+
+**검증 항목**:
+- ✅ Test Coverage ≥85%
+- ✅ Code Constraints (파일 ≤300 LOC, 함수 ≤50 LOC)
+- ✅ TAG Chain 무결성 (@SPEC → @TEST → @CODE)
+- ✅ Linting 통과 (ruff, biome)
+- ✅ Type Safety (mypy, TypeScript)
+
 ### TemplateProcessor
 
 ```python
@@ -1083,11 +1146,39 @@ manager.save(config)
 
 이러한 빌딩 블록을 조합하면 CI 파이프라인이나 맞춤형 워크플로우에서 MoAI-ADK의 핵심 기능을 재사용할 수 있습니다.
 
+**@CODE TAG**: `@CODE:TRUST-001` (TrustChecker API)
+
 ---
 
 ## TRUST 5원칙
 
-모든 개발 과정에서 TRUST 원칙을 준수합니다:
+모든 개발 과정에서 TRUST 원칙을 준수합니다. **SPEC-TRUST-001 v0.1.0**부터 `TrustChecker` 클래스가 TRUST 5원칙 준수 여부를 자동으로 검증합니다.
+
+### 🤖 자동 검증 시스템
+
+`/alfred:3-sync` 실행 시 다음 항목이 자동으로 검증됩니다:
+
+| 항목 | 검증 내용 | 기준 | 자동 수정 |
+|------|----------|------|----------|
+| **Test Coverage** | pytest/vitest 커버리지 확인 | ≥85% | ❌ (수동) |
+| **Code Constraints** | LOC, 복잡도, 매개변수 수 | 파일 ≤300, 함수 ≤50, 매개변수 ≤5 | ❌ (경고) |
+| **TAG Chain** | @SPEC → @TEST → @CODE 연결 | 고아 TAG 없음 | ✅ (자동 연결) |
+| **Linting** | ruff, biome, eslint | 위반 사항 0건 | ✅ (ruff --fix) |
+| **Type Safety** | mypy, TypeScript strict | 타입 에러 0건 | ❌ (수동) |
+
+**사용 예시**:
+```bash
+# 1. SPEC 작성
+/alfred:1-spec "JWT 기반 사용자 인증"
+
+# 2. TDD 구현
+/alfred:2-build AUTH-001
+
+# 3. TRUST 자동 검증 + 문서 동기화
+/alfred:3-sync
+# → TrustChecker가 자동으로 실행되어 TRUST 5원칙 준수 여부 확인
+# → 위반 사항 발견 시 상세한 보고서와 해결 방법 제시
+```
 
 ### T - Test First (테스트 우선)
 
@@ -1097,6 +1188,8 @@ manager.save(config)
 - **GREEN**: `@CODE` TAG - 최소 구현으로 테스트 통과
 - **REFACTOR**: `@CODE` TAG - 코드 품질 개선
 
+**자동 검증**: `TrustChecker`가 테스트 커버리지 85% 이상 확인
+
 ### R - Readable (가독성)
 
 **코드 제약**:
@@ -1105,12 +1198,16 @@ manager.save(config)
 - 매개변수 ≤5개
 - 복잡도 ≤10
 
+**자동 검증**: `TrustChecker`가 모든 파일의 LOC, 함수 크기, 매개변수 수를 검사하고 위반 시 경고
+
 ### U - Unified (통합성)
 
 **SPEC 기반 아키텍처**:
 - 모듈 간 명확한 책임 분리
-- 타입 안전성 보장
+- 타입 안전성 보장 (mypy, TypeScript strict)
 - 언어별 경계를 SPEC이 정의
+
+**자동 검증**: `TrustChecker`가 mypy/TypeScript 타입 체크 실행, 타입 에러 0건 확인
 
 ### S - Secured (보안성)
 
@@ -1125,8 +1222,11 @@ manager.save(config)
 - **비밀번호**: bcrypt/argon2 해싱 (최소 10 라운드)
 
 **보안 스캐닝**:
-- 정적 분석 도구 (Snyk, OWASP Dependency-Check)
+- 정적 분석 도구 (pip-audit, bandit, Snyk)
 - 환경 변수 보안 (`.env` Git 제외)
+- 크로스 플랫폼 보안 스캔 (Python + PowerShell)
+
+**자동 검증**: `TrustChecker`가 보안 스캔 도구(pip-audit, bandit) 실행, 취약점 0건 확인
 
 ### T - Trackable (추적성)
 
@@ -1134,6 +1234,10 @@ manager.save(config)
 - `@SPEC` → `@TEST` → `@CODE` → `@DOC` 체인
 - 코드 직접 스캔으로 무결성 검증
 - 고아 TAG 자동 탐지
+
+**자동 검증**: `TrustChecker`가 TAG 체인 무결성 검사, 고아 TAG 및 끊어진 참조 자동 탐지
+
+**SPEC 참조**: [SPEC-TRUST-001](/.moai/specs/SPEC-TRUST-001/spec.md)
 
 ---
 
