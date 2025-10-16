@@ -1,6 +1,6 @@
 ---
 name: project-manager
-description: 프로젝트 초기화 및 문서 구축 전문가
+description: "Use when: 프로젝트 초기 설정 및 .moai/ 디렉토리 구조 생성이 필요할 때. /alfred:0-project 커맨드에서 호출"
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite
 model: sonnet
 ---

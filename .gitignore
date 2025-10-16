@@ -1,50 +1,25 @@
-# MoAI-ADK Generated .gitignore
-
-# Dependencies
-node_modules/
-bun.lockb
-
-# Build outputs
+# Build artifacts
+build/
 dist/
+*.egg-info/
+*.egg
+
+# Cache
+__pycache__/
+.pytest_cache/
+*.pyc
+*.pyo
+node_modules/
 *.tsbuildinfo
-.turbo/
+.tscache/
 
-# Test coverage
-coverage/
-.nyc_output/
-.coverage
-coverage.json
+# Backups
 
-# Logs and temporary files
-.claude/logs/
-.moai/logs/
-*.log
-*.tmp
-*.temp
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-# Backup files
-*.bak
-*.backup
-backup-*/
-.moai-backup/
-
-# Project-specific .moai folders (not for package distribution)
-.moai/docs/
-.moai/scripts/
-
-# Package files
-*.tgz
-*.tar.gz
-
-# Environment variables
-.env
-.env.local
-.env.*.local
+# Virtual environment
+venv/
+.venv/
+env/
+.env/
 
 # IDE
 .vscode/
@@ -52,53 +27,15 @@ backup-*/
 *.swp
 *.swo
 *~
-.vscode-test/
 
-# Cache
-.cache/
-.vitest/
-
-# OS generated files
+# OS
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 
-# Project root - local only
-AGENTS.md
-CLAUDE.md
-package-lock.json
-.vercel
-.moai/*
-!.moai/specs/
-!.moai/project/
-!.moai/memory/
-!.moai/config.json
-.claude
-
-# docs - only deploy docs/public (GitHub Pages)
-docs/*
-!docs/public/
-site/
-*.egg
-.pytest_cache/
-__pycache__/
-# Build artifacts
-# Backups
-logs/
-env/
 # Logs
-.venv/
-.tscache/
-# Virtual environment
-build/
-.env/
+*.log
+logs/
+
 # Temporary files
-*.egg-info/
-venv/
-*.pyo
-# OS
-*.pyc
+*.tmp
+*.temp

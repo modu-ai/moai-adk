@@ -181,7 +181,7 @@ scope:
 1. **백업 메타데이터 확장**:
    - 현재: 타임스탬프만 기록
    - 개선: 백업 ID, 타임스탬프, 파일 목록, 변경 사항
-   - 포맷: `.moai/backups/<backup-id>/metadata.json`
+   - 포맷: `.moai/backups/latest.json` (메타데이터), `.moai-backups/<backup-id>/` (백업 내용)
 
 2. **restore 명령어 옵션**:
    - `--list`: 사용 가능한 백업 목록 표시

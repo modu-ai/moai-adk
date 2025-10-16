@@ -73,7 +73,7 @@ Error: Cannot find module '...'
 
 ## 🔄 재현 단계
 
-1. `moai init` 실행하여 프로젝트 초기화
+1. `python -m moai_adk init .` 명령으로 프로젝트 초기화
 2. `/alfred:1-spec "사용자 인증"` 실행하여 SPEC 생성
 3. `/alfred:2-build SPEC-AUTH-001` 실행
 4. TAG 검증 단계에서 오류 발생
@@ -123,7 +123,7 @@ Error: TAG validation failed
 **예상 사용 방법**:
 ```bash
 # 명령어 예시
-moai new-feature --option
+python -m moai_adk new-feature --option
 ```
 
 ## 🔄 대안 고려
@@ -149,15 +149,15 @@ SPEC 문서를 자동으로 PDF로 내보내는 기능
 
 ## ✨ 제안하는 해결 방법
 
-`moai export` 명령어로 SPEC 문서를 PDF로 내보낼 수 있습니다.
+`python -m moai_adk export` 명령어로 SPEC 문서를 PDF로 내보낼 수 있도록 제안합니다.
 
 **예상 사용 방법**:
 ```bash
 # 특정 SPEC을 PDF로 내보내기
-moai export SPEC-AUTH-001 --format pdf
+python -m moai_adk export SPEC-AUTH-001 --format pdf
 
 # 모든 SPEC을 PDF로 내보내기
-moai export --all --format pdf --output ./exports
+python -m moai_adk export --all --format pdf --output ./exports
 ```
 
 ## 🔄 대안 고려
@@ -213,27 +213,32 @@ cd moai-adk
 ### 2. 의존성 설치
 
 ```bash
-npm install
+# uv 권장 (빠른 설치)
+uv pip install -e ".[dev]"
+
+# 또는 표준 pip 사용
+pip install -e ".[dev]"
 ```
 
 ### 3. 로컬에서 MoAI-ADK 사용
 
 ```bash
-# TypeScript 소스 빌드
-npm run build
+# CLI 버전 확인
+python -m moai_adk --version
 
-# 로컬 링크 생성
-npm link
-
-# 테스트
-moai --version
+# 도움말 확인
+python -m moai_adk --help
 ```
 
 ### 4. 개발 모드 실행
 
 ```bash
-# TypeScript 파일 자동 감시 및 빌드
-npm run dev
+# 테스트 실행
+uv run pytest -n auto
+
+# 코드 품질 검사
+uv run ruff check
+uv run mypy src
 ```
 
 ---

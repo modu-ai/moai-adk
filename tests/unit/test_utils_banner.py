@@ -6,8 +6,7 @@ Tests for ASCII banner and welcome message printing.
 
 from unittest.mock import patch
 
-
-from moai_adk.utils.banner import print_banner, print_welcome_message, MOAI_BANNER
+from moai_adk.utils.banner import MOAI_BANNER, print_banner, print_welcome_message
 
 
 class TestBannerConstants:

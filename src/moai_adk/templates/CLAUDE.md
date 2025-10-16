@@ -40,17 +40,59 @@ Alfred가 결과 통합 보고
 
 Alfred는 9명의 전문 에이전트를 조율합니다. 각 에이전트는 IT 전문가 직무에 매핑되어 있습니다.
 
-| 에이전트              | 페르소나          | 전문 영역               | 커맨드/호출            | 위임 시점      |
-| --------------------- | ----------------- | ----------------------- | ---------------------- | -------------- |
-| **spec-builder** 🏗️    | 시스템 아키텍트   | SPEC 작성, EARS 명세    | `/alfred:1-spec`       | 명세 필요 시   |
-| **code-builder** 💎    | 수석 개발자       | TDD 구현, 코드 품질     | `/alfred:2-build`      | 구현 단계      |
-| **doc-syncer** 📖      | 테크니컬 라이터   | 문서 동기화, Living Doc | `/alfred:3-sync`       | 동기화 필요 시 |
-| **tag-agent** 🏷️       | 지식 관리자       | TAG 시스템, 추적성      | `@agent-tag-agent`     | TAG 작업 시    |
-| **git-manager** 🚀     | 릴리스 엔지니어   | Git 워크플로우, 배포    | `@agent-git-manager`   | Git 조작 시    |
-| **debug-helper** 🔬    | 트러블슈팅 전문가 | 오류 진단, 해결         | `@agent-debug-helper`  | 에러 발생 시   |
-| **trust-checker** ✅   | 품질 보증 리드    | TRUST 검증, 성능/보안   | `@agent-trust-checker` | 검증 요청 시   |
-| **cc-manager** 🛠️      | 데브옵스 엔지니어 | Claude Code 설정        | `@agent-cc-manager`    | 설정 필요 시   |
-| **project-manager** 📋 | 프로젝트 매니저   | 프로젝트 초기화         | `/alfred:0-project`    | 프로젝트 시작  |
+| 에이전트              | 모델   | 페르소나          | 전문 영역               | 커맨드/호출            | 위임 시점      |
+| --------------------- | ------ | ----------------- | ----------------------- | ---------------------- | -------------- |
+| **spec-builder** 🏗️    | Sonnet | 시스템 아키텍트   | SPEC 작성, EARS 명세    | `/alfred:1-spec`       | 명세 필요 시   |
+| **code-builder** 💎    | Sonnet | 수석 개발자       | TDD 구현, 코드 품질     | `/alfred:2-build`      | 구현 단계      |
+| **doc-syncer** 📖      | Haiku  | 테크니컬 라이터   | 문서 동기화, Living Doc | `/alfred:3-sync`       | 동기화 필요 시 |
+| **tag-agent** 🏷️       | Haiku  | 지식 관리자       | TAG 시스템, 추적성      | `@agent-tag-agent`     | TAG 작업 시    |
+| **git-manager** 🚀     | Haiku  | 릴리스 엔지니어   | Git 워크플로우, 배포    | `@agent-git-manager`   | Git 조작 시    |
+| **debug-helper** 🔬    | Sonnet | 트러블슈팅 전문가 | 오류 진단, 해결         | `@agent-debug-helper`  | 에러 발생 시   |
+| **trust-checker** ✅   | Haiku  | 품질 보증 리드    | TRUST 검증, 성능/보안   | `@agent-trust-checker` | 검증 요청 시   |
+| **cc-manager** 🛠️      | Sonnet | 데브옵스 엔지니어 | Claude Code 설정        | `@agent-cc-manager`    | 설정 필요 시   |
+| **project-manager** 📋 | Sonnet | 프로젝트 매니저   | 프로젝트 초기화         | `/alfred:0-project`    | 프로젝트 시작  |
+
+### Built-in 에이전트 (Claude Code 제공)
+
+Claude Code가 기본 제공하는 전문 에이전트들입니다. Alfred는 필요 시 이들을 활용합니다.
+
+| 에이전트              | 모델   | 전문 영역               | 호출 방법              | 사용 시점          |
+| --------------------- | ------ | ----------------------- | ---------------------- | ------------------ |
+| **Explore** 🔍         | Haiku  | 코드베이스 탐색, 파일 검색 | `@agent-Explore`       | 코드베이스 탐색 시 |
+| **general-purpose**   | Sonnet | 범용 작업 처리          | (자동)                 | 범용 작업          |
+
+#### Explore 에이전트 활용 가이드
+
+**Explore 에이전트**는 대규모 코드베이스를 효율적으로 탐색하는 데 특화되어 있습니다.
+
+**사용 시나리오**:
+- ✅ 특정 키워드/패턴 검색 (예: "API endpoints", "인증 로직")
+- ✅ 파일 위치 탐색 (예: "src/components/**/*.tsx")
+- ✅ 코드베이스 구조 파악 (예: "프로젝트 아키텍처 설명")
+- ✅ 다중 파일 검색 (Glob + Grep 조합)
+
+**사용 예시**:
+```python
+# Task tool을 통한 호출 (커맨드 내부에서)
+Task(
+    subagent_type="Explore",
+    description="AUTH 도메인 관련 파일 탐색",
+    prompt="""프로젝트에서 AUTH 도메인 관련 모든 파일을 찾아주세요:
+    - SPEC 문서, 테스트 코드, 구현 코드, 문서
+    thoroughness 레벨: medium"""
+)
+
+# 사용자의 자연어 질문 (Alfred가 자동 위임)
+사용자: "이 프로젝트에서 JWT 인증은 어디에 구현되어 있나요?"
+→ Alfred가 Explore 에이전트에 자동 위임
+→ 관련 파일 목록 반환
+→ Alfred가 필요한 파일만 Read
+```
+
+**thoroughness 레벨** (프롬프트 내부에 텍스트로 명시):
+- `quick`: 빠른 검색 (기본 패턴만)
+- `medium`: 중간 탐색 (여러 위치 + 명명 규칙) - **권장**
+- `very thorough`: 심층 분석 (전체 코드베이스 스캔)
 
 ### 에이전트 협업 원칙
 
@@ -58,6 +100,37 @@ Alfred는 9명의 전문 에이전트를 조율합니다. 각 에이전트는 IT
 - **단일 책임 원칙**: 각 에이전트는 자신의 전문 영역만 담당
 - **중앙 조율**: Alfred만이 에이전트 간 작업을 조율 (에이전트 간 직접 호출 금지)
 - **품질 게이트**: 각 단계 완료 시 TRUST 원칙 및 @TAG 무결성 자동 검증
+
+### 에이전트 모델 선택 가이드
+
+**Sonnet 4.5 (복잡한 판단, 계획, 설계)**:
+- ✅ **spec-builder**: SPEC 작성, EARS 구조 설계, 복잡한 요구사항 분석
+- ✅ **code-builder**: TDD 전략 수립, 아키텍처 설계, 복잡한 리팩토링
+- ✅ **debug-helper**: 오류 원인 분석, 복잡한 디버깅, 해결 방법 도출
+- ✅ **cc-manager**: Claude Code 설정 최적화, 복잡한 워크플로우 설계
+- ✅ **project-manager**: 프로젝트 초기화 전략, 복잡한 의사결정
+
+**비용 대비 효과**: 복잡한 판단이 필요한 작업에만 Sonnet 사용 → 품질 보장
+
+**Haiku 4.5 (반복 작업, 빠른 처리, 대량 데이터)**:
+- ✅ **doc-syncer**: 문서 동기화, Living Document 갱신 (패턴화된 작업)
+- ✅ **git-manager**: Git 명령어 실행, 브랜치/PR 생성 (정형화된 작업)
+- ✅ **tag-agent**: TAG 스캔, 패턴 매칭 (반복적 검색)
+- ✅ **trust-checker**: TRUST 원칙 검증, 체크리스트 확인 (규칙 기반)
+- ✅ **Explore**: 코드베이스 탐색, 파일 검색 (대량 스캔)
+
+**비용 대비 효과**: 빠른 응답이 필요하고 패턴화된 작업 → **비용 67% 절감, 속도 2~5배**
+
+**모델 선택 결정 트리**:
+```
+작업이 복잡한 판단/설계/창의성이 필요한가?
+├─ YES → Sonnet 4.5
+│   ├─ 예: "SPEC 설계", "아키텍처 결정", "오류 원인 분석"
+│   └─ 목표: 높은 품질, 정확한 판단
+└─ NO → Haiku 4.5
+    ├─ 예: "문서 동기화", "TAG 스캔", "Git 명령 실행"
+    └─ 목표: 빠른 속도, 비용 절감
+```
 
 ### Alfred 커맨드 실행 패턴 (공통)
 
@@ -175,6 +248,38 @@ Alfred는 효율적인 컨텍스트 관리를 위해 다음 2가지 전략을 �
 - `/alfred:2-build` → `SPEC-XXX/spec.md` + `development-guide.md` 참조
 - `/alfred:3-sync` → `sync-report.md` + TAG 인덱스 참조
 
+#### Explore 에이전트를 활용한 효율적 탐색
+
+**대규모 코드베이스나 불명확한 요청의 경우** Explore 에이전트를 활용하여 JIT Retrieval을 최적화합니다:
+
+```
+기존 방식 (비효율):
+❌ Glob + Grep + Read를 여러 번 반복
+❌ Alfred가 직접 파일 하나하나 탐색
+❌ 컨텍스트 비용 증가
+
+Explore 방식 (효율):
+✅ Explore 에이전트에 위임 (1회 호출)
+✅ 관련 파일 목록만 반환받음
+✅ 필요한 파일만 선택적 Read
+✅ 컨텍스트 비용 절감
+```
+
+**활용 예시**:
+```python
+# 사용자: "JWT 인증 관련 코드 어디 있어?"
+# Alfred → Explore 에이전트 위임
+Task(
+    subagent_type="Explore",
+    description="JWT 인증 관련 파일 탐색",
+    prompt="""JWT 인증 관련 모든 파일을 찾아주세요.
+    thoroughness 레벨: medium"""
+)
+→ 결과: ["src/auth/jwt.py", "tests/test_auth.py", ...]
+→ Alfred는 결과 기반으로 필요한 파일만 Read
+→ 컨텍스트 비용 최소화
+```
+
 ### 2. Compaction
 긴 세션(>70% 토큰 사용)은 요약 후 새 세션으로 재시작:
 - 대화/로그가 길어지면 **결정/제약/상태** 중심으로 요약하고 **새 컨텍스트로 재시작**
@@ -186,6 +291,154 @@ Alfred는 효율적인 컨텍스트 관리를 위해 다음 2가지 전략을 �
 - `CLAUDE.md` → `development-guide.md` (상세 규칙)
 - `CLAUDE.md` → `product/structure/tech.md` (프로젝트 컨텍스트)
 - `development-guide.md` ↔ `product/structure/tech.md` (상호 참조)
+
+---
+
+## Hooks vs Agents vs Commands 역할 분리
+
+MoAI-ADK는 세 가지 실행 메커니즘을 명확히 분리하여 **역할별 최적 실행 전략**을 제공합니다.
+
+### Hooks (가드레일 + 알림 + 컨텍스트)
+
+**실행 특성**:
+- 실행 시점: Claude Code 생명주기의 특정 지점 (SessionStart, PreToolUse 등)
+- 실행 방식: Bash 명령어 (stdin/stdout JSON)
+- 실행 속도: 빠름 (<100ms 권장)
+- 차단 가능: blocked=true로 작업 차단 가능
+
+**핵심 역할**:
+- ✅ **가드레일**: 위험한 작업 차단 (rm -rf, git push --force, 프로덕션 파일 수정)
+- ✅ **자동 백업**: 위험 작업 전 Checkpoint 자동 생성
+- ✅ **JIT Context**: 필요한 문서 경로 추천 (파일 경로만, Alfred가 Read)
+- ✅ **Compaction 경고**: 토큰 사용량 >70% 시 /clear 권장
+- ✅ **상태 알림**: 세션 시작 시 프로젝트 정보, Git 상태, SPEC 진행도 표시
+
+**구현 원칙**:
+- 가벼운 로직 (≤50 LOC per handler)
+- 복잡한 분석/검증은 Agents로 위임
+- 사용자 상호작용 최소화 (차단 메시지만)
+
+**예시**:
+```python
+# ✅ 올바른 Hooks 사용
+def handle_pre_tool_use(payload):
+    if "rm -rf" in payload.get("command", ""):
+        create_checkpoint()  # 빠른 백업
+        return HookResult(blocked=True, message="위험한 작업 차단")
+    return HookResult(blocked=False)
+
+# ❌ 잘못된 Hooks 사용 (너무 무거움)
+def handle_pre_tool_use(payload):
+    validate_spec_metadata()  # 복잡한 검증 → Agent로!
+    check_trust_compliance()   # 시간 소요 → Agent로!
+    generate_report()          # 보고서 생성 → Agent로!
+```
+
+---
+
+### Agents (분석 + 검증 + 보고)
+
+**실행 특성**:
+- 실행 시점: 사용자 명시적 호출 또는 Alfred 위임
+- 실행 방식: Claude Code Agent (Task tool)
+- 실행 속도: 느림 (수 초 ~ 수 분)
+- 사용자 상호작용: 질문/확인/보고서 제공
+
+**핵심 역할**:
+- ✅ **상세 분석**: SPEC 메타데이터 검증, EARS 구문 검증
+- ✅ **품질 검증**: TRUST 5원칙 준수 확인, 테스트 커버리지 분석
+- ✅ **TAG 관리**: TAG 체인 완전성 검증, 고아 TAG 탐지
+- ✅ **디버깅**: 오류 원인 분석, 해결 방법 제시
+- ✅ **보고서 생성**: 상세한 분석 결과 및 권장사항 제공
+
+**구현 원칙**:
+- 복잡한 로직 허용 (≤300 LOC per agent)
+- 사용자와 대화형 상호작용
+- 여러 도구(Read, Grep, Bash) 조합 사용
+
+**예시**:
+```bash
+# ✅ 올바른 Agents 사용
+@agent-trust-checker "현재 프로젝트의 TRUST 원칙 준수도 확인"
+→ 테스트 커버리지 87%, 코드 제약 45/45 파일 준수, TAG 체인 2개 고아 발견
+
+@agent-spec-builder "AUTH-001 SPEC의 메타데이터 검증"
+→ 필수 필드 7개 모두 존재, HISTORY 섹션 확인, EARS 구문 적용률 80%
+
+@agent-debug-helper "TypeError: 'NoneType' 오류 해결"
+→ project.py:142 라인에서 config가 None, .moai/config.json 누락 확인
+```
+
+---
+
+### Commands (워크플로우 오케스트레이션)
+
+**실행 특성**:
+- 실행 시점: 사용자 명시적 호출 (slash command)
+- 실행 방식: Phase 1 (계획) → Phase 2 (실행)
+- 실행 속도: 중간 (수 초 ~ 수 분)
+- 사용자 상호작용: 계획 승인 → 실행
+
+**핵심 역할**:
+- ✅ **워크플로우 관리**: 여러 단계를 순차/병렬 실행
+- ✅ **Agent 조율**: 적절한 Agent를 호출하여 작업 위임
+- ✅ **Git 통합**: 브랜치 생성, PR 생성, 커밋 자동화
+- ✅ **문서 동기화**: SPEC ↔ CODE ↔ DOC 일관성 유지
+
+**구현 원칙**:
+- 2단계 워크플로우 (Phase 1 계획 → Phase 2 실행)
+- 복잡한 로직은 Agent로 위임
+- Git 작업은 사용자 확인 필수
+
+**예시**:
+```bash
+# ✅ 올바른 Commands 사용
+/alfred:1-spec "사용자 인증 기능"
+→ Phase 1: 프로젝트 분석, SPEC 후보 제안
+→ 사용자 승인
+→ Phase 2: SPEC 문서 작성, 브랜치 생성, Draft PR 생성
+
+/alfred:2-build AUTH-001
+→ Phase 1: SPEC 분석, TDD 계획 수립
+→ 사용자 승인
+→ Phase 2: RED → GREEN → REFACTOR 구현
+
+/alfred:3-sync
+→ Phase 1: 동기화 범위 분석
+→ 사용자 승인
+→ Phase 2: 문서 업데이트, TAG 검증, PR Ready 전환
+```
+
+---
+
+### 역할 분리 결정 트리
+
+작업을 어디에 구현할지 결정할 때 다음 기준을 사용하세요:
+
+```
+┌─────────────────────────────────────┐
+│ 작업이 <100ms 안에 완료되는가?      │
+│ AND 차단/경고/알림만 필요한가?       │
+└─────────────────────────────────────┘
+         ↓ YES                    ↓ NO
+    ┌─────────┐              ┌──────────────┐
+    │ Hooks   │              │ 사용자와      │
+    └─────────┘              │ 상호작용이    │
+                              │ 필요한가?     │
+                              └──────────────┘
+                                   ↓ YES          ↓ NO
+                              ┌──────────┐   ┌────────────┐
+                              │ Agents   │   │ Commands   │
+                              └──────────┘   └────────────┘
+```
+
+**예시 질문**:
+- Q: "SPEC 메타데이터 검증을 어디에 구현?"
+  - A: Agent (`@agent-spec-builder`) - 복잡한 검증, 보고서 생성 필요
+- Q: "rm -rf 명령 차단을 어디에 구현?"
+  - A: Hook (PreToolUse) - 빠른 차단, 간단한 로직
+- Q: "TDD 워크플로우를 어디에 구현?"
+  - A: Command (`/alfred:2-build`) - 여러 단계 오케스트레이션
 
 ---
 
@@ -268,11 +521,22 @@ Alfred가 필요 시 즉시 호출하는 전문 에이전트들:
 @agent-tag-agent "고아 TAG 및 끊어진 링크 감지"
 ```
 
-### Git 작업 (특수 케이스)
+### Checkpoint 관리 (자동 백업/복구)
 ```bash
-@agent-git-manager "체크포인트 생성"
-@agent-git-manager "특정 커밋으로 롤백"
+# 수동 checkpoint 생성
+/alfred:9-checkpoint create --name "refactor-start"
+
+# Checkpoint 목록 조회
+/alfred:9-checkpoint list
+
+# Checkpoint 복구
+/alfred:9-checkpoint restore <ID>
+
+# 오래된 checkpoint 정리
+/alfred:9-checkpoint clean
 ```
+
+**자동 checkpoint**: 위험한 작업 전 자동 생성 (삭제, 병합, 스크립트 실행 등)
 
 **Git 브랜치 정책**: 모든 브랜치 생성/머지는 사용자 확인 필수
 

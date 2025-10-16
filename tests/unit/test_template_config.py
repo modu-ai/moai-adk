@@ -7,7 +7,6 @@ Tests for ConfigManager class.
 import json
 from pathlib import Path
 
-
 from moai_adk.core.template.config import ConfigManager
 
 

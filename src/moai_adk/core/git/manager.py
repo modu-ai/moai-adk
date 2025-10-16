@@ -1,6 +1,6 @@
 # @CODE:CORE-GIT-001 | SPEC: SPEC-CORE-GIT-001.md | TEST: tests/unit/test_git.py
 """
-GitPython 기반 Git 저장소 관리.
+Git repository management built on GitPython.
 
 SPEC: .moai/specs/SPEC-CORE-GIT-001/spec.md
 """
@@ -9,27 +9,27 @@ from git import InvalidGitRepositoryError, Repo
 
 
 class GitManager:
-    """Git 저장소 관리 클래스."""
+    """Manage interactions with a Git repository."""
 
     def __init__(self, repo_path: str = "."):
         """
-        GitManager 초기화.
+        Initialize the GitManager.
 
         Args:
-            repo_path: Git 저장소 경로 (기본값: 현재 디렉토리)
+            repo_path: Path to the Git repository (default: current directory)
 
         Raises:
-            InvalidGitRepositoryError: Git 저장소가 아닐 경우
+            InvalidGitRepositoryError: Raised when the path is not a Git repository.
         """
         self.repo = Repo(repo_path)
         self.git = self.repo.git
 
     def is_repo(self) -> bool:
         """
-        Git 저장소 여부 확인.
+        Check whether the path points to a Git repository.
 
         Returns:
-            Git 저장소이면 True, 아니면 False
+            True when the location is a Git repository, otherwise False.
 
         Examples:
             >>> manager = GitManager("/path/to/repo")
@@ -44,10 +44,10 @@ class GitManager:
 
     def current_branch(self) -> str:
         """
-        현재 브랜치명 반환.
+        Return the active branch name.
 
         Returns:
-            현재 활성 브랜치명
+            Name of the currently checked-out branch.
 
         Examples:
             >>> manager = GitManager()
@@ -58,10 +58,10 @@ class GitManager:
 
     def is_dirty(self) -> bool:
         """
-        작업 디렉토리 변경사항 확인.
+        Check whether the working tree has uncommitted changes.
 
         Returns:
-            변경사항이 있으면 True (dirty), 없으면 False (clean)
+            True when the worktree is dirty, otherwise False.
 
         Examples:
             >>> manager = GitManager()
@@ -72,11 +72,11 @@ class GitManager:
 
     def create_branch(self, branch_name: str, from_branch: str | None = None) -> None:
         """
-        새 브랜치 생성 및 전환.
+        Create and switch to a new branch.
 
         Args:
-            branch_name: 생성할 브랜치명
-            from_branch: 기준 브랜치 (기본값: None = 현재 브랜치)
+            branch_name: Name of the branch to create.
+            from_branch: Base branch (default: current branch).
 
         Examples:
             >>> manager = GitManager()
@@ -91,11 +91,11 @@ class GitManager:
 
     def commit(self, message: str, files: list[str] | None = None) -> None:
         """
-        파일 스테이징 및 커밋.
+        Stage files and create a commit.
 
         Args:
-            message: 커밋 메시지
-            files: 커밋할 파일 목록 (기본값: None = 모든 변경사항)
+            message: Commit message.
+            files: Optional list of files to commit (default: all changes).
 
         Examples:
             >>> manager = GitManager()
@@ -110,11 +110,11 @@ class GitManager:
 
     def push(self, branch: str | None = None, set_upstream: bool = False) -> None:
         """
-        원격 저장소에 푸시.
+        Push commits to the remote repository.
 
         Args:
-            branch: 푸시할 브랜치 (기본값: None = 현재 브랜치)
-            set_upstream: upstream 설정 여부
+            branch: Branch to push (default: current branch).
+            set_upstream: Whether to set the upstream tracking branch.
 
         Examples:
             >>> manager = GitManager()

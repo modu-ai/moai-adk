@@ -1,15 +1,15 @@
 # @CODE:INIT-003:BACKUP | SPEC: .moai/specs/SPEC-INIT-003/spec.md | TEST: tests/unit/test_backup_utils.py
-"""백업 유틸리티 모듈 (SPEC-INIT-003 v0.3.0)
+"""Backup utility module (SPEC-INIT-003 v0.3.0)
 
-Selective Backup 전략:
-- 필요한 파일만 백업 (OR 조건)
-- 백업 경로: .moai/backups/{timestamp}/ (v0.3.0)
+Selective backup strategy:
+- Back up only the required files (OR condition)
+- Backup path: .moai-backups/{timestamp}/ (v0.3.0)
 """
 
 from datetime import datetime
 from pathlib import Path
 
-# 백업 대상 파일/디렉토리 (OR 조건 - 하나라도 있으면 백업)
+# Backup targets (OR condition - back up when any exist)
 BACKUP_TARGETS = [
     ".moai/config.json",
     ".moai/project/",
@@ -18,7 +18,7 @@ BACKUP_TARGETS = [
     "CLAUDE.md",
 ]
 
-# 사용자 데이터 보호 경로 (백업에서 제외)
+# User data protection paths (excluded from backups)
 PROTECTED_PATHS = [
     ".moai/specs/",
     ".moai/reports/",
@@ -26,13 +26,13 @@ PROTECTED_PATHS = [
 
 
 def has_any_moai_files(project_path: Path) -> bool:
-    """MoAI-ADK 파일 존재 여부 확인 (OR 조건)
+    """Check whether any MoAI-ADK files exist (OR condition).
 
     Args:
-        project_path: 프로젝트 경로
+        project_path: Project path.
 
     Returns:
-        하나라도 존재하면 True
+        True when any backup target exists.
     """
     for target in BACKUP_TARGETS:
         target_path = project_path / target
@@ -42,13 +42,13 @@ def has_any_moai_files(project_path: Path) -> bool:
 
 
 def get_backup_targets(project_path: Path) -> list[str]:
-    """백업 대상 파일/디렉토리 목록 반환
+    """Return existing backup targets.
 
     Args:
-        project_path: 프로젝트 경로
+        project_path: Project path.
 
     Returns:
-        존재하는 백업 대상 목록
+        List of backup targets that exist.
     """
     targets: list[str] = []
     for target in BACKUP_TARGETS:
@@ -59,24 +59,24 @@ def get_backup_targets(project_path: Path) -> list[str]:
 
 
 def generate_backup_dir_name() -> str:
-    """타임스탬프 기반 백업 디렉토리명 생성 (v0.3.0)
+    """Generate a timestamp-based backup directory name (v0.3.0).
 
     Returns:
-        YYYYMMDD-HHMMSS 형식 (순수 타임스탬프)
-        Note: .moai/backups/ 경로는 호출자가 추가
+        Timestamp formatted as YYYYMMDD-HHMMSS.
+        Note: callers use .moai-backups/{timestamp}/ format.
     """
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     return timestamp
 
 
 def is_protected_path(rel_path: Path) -> bool:
-    """보호 경로 여부 확인
+    """Check whether the path is protected.
 
     Args:
-        rel_path: 상대 경로
+        rel_path: Relative path.
 
     Returns:
-        보호 경로이면 True
+        True when the path should be excluded from backups.
     """
     rel_str = str(rel_path).replace("\\", "/")
     return any(

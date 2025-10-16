@@ -1,0 +1,19 @@
+# @CODE:TRUST-001:VALIDATOR | SPEC: SPEC-TRUST-001.md
+"""Base validator class and validation result"""
+
+from dataclasses import dataclass
+from typing import Any
+
+
+@dataclass
+class ValidationResult:
+    """검증 결과 데이터 클래스"""
+
+    passed: bool
+    message: str
+    details: str = ""
+    metadata: dict[str, Any] | None = None
+
+    def __post_init__(self):
+        if self.metadata is None:
+            self.metadata = {}

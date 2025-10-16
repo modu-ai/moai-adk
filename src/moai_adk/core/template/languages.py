@@ -1,7 +1,7 @@
 # @CODE:CORE-PROJECT-001 | SPEC: SPEC-CORE-PROJECT-001.md | TEST: tests/unit/test_language_mapping.py
-"""언어별 템플릿 매핑
+"""Template mapping by language.
 
-20개 프로그래밍 언어의 템플릿 경로를 정의합니다.
+Defines template paths for 20 programming languages.
 """
 
 LANGUAGE_TEMPLATES: dict[str, str] = {
@@ -29,13 +29,13 @@ LANGUAGE_TEMPLATES: dict[str, str] = {
 
 
 def get_language_template(language: str) -> str:
-    """언어별 템플릿 경로 반환 (case-insensitive)
+    """Return the template path for a language (case-insensitive).
 
     Args:
-        language: 언어 이름 (대소문자 무관)
+        language: Language name (case-insensitive).
 
     Returns:
-        템플릿 파일 경로 (알 수 없는 언어는 default.md.j2)
+        Template path; defaults to default.md.j2 for unknown languages.
     """
     if not language:
         return ".moai/project/tech/default.md.j2"

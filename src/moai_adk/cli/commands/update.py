@@ -1,4 +1,5 @@
-"""업데이트 명령어"""
+"""Update command"""
+import json
 from pathlib import Path
 
 import click
@@ -10,80 +11,122 @@ from moai_adk.core.template.processor import TemplateProcessor
 console = Console()
 
 
+def get_latest_version() -> str:
+    """Get the latest version from PyPI.
+
+    Returns:
+        Latest version string, or current version if fetch fails.
+    """
+    try:
+        import urllib.request
+        import urllib.error
+
+        url = "https://pypi.org/pypi/moai-adk/json"
+        with urllib.request.urlopen(url, timeout=5) as response:  # nosec B310 - URL is hardcoded HTTPS to PyPI API, no user input
+            data = json.loads(response.read().decode("utf-8"))
+            return data["info"]["version"]
+    except (urllib.error.URLError, json.JSONDecodeError, KeyError, TimeoutError):
+        # Fallback to current version if PyPI check fails
+        return __version__
+
+
 @click.command()
 @click.option(
     "--path",
     type=click.Path(exists=True),
     default=".",
-    help="프로젝트 경로 (기본: 현재 디렉토리)"
+    help="Project path (default: current directory)"
 )
 @click.option(
     "--force",
     is_flag=True,
-    help="백업 생략하고 강제 업데이트"
+    help="Skip backup and force the update"
 )
 @click.option(
     "--check",
     is_flag=True,
-    help="버전 확인만 수행 (업데이트하지 않음)"
+    help="Only check version (do not update)"
 )
 def update(path: str, force: bool, check: bool) -> None:
-    """템플릿 파일을 최신 버전으로 업데이트합니다.
+    """Update template files to the latest version.
 
-    업데이트 내용:
-    - .claude/ (전체 교체)
-    - .moai/ (specs, reports 보존)
-    - CLAUDE.md (병합)
-    - config.json (스마트 병합)
+    Updates include:
+    - .claude/ (fully replaced)
+    - .moai/ (preserve specs and reports)
+    - CLAUDE.md (merged)
+    - config.json (smart merge)
 
-    예시:
-        moai-adk update              # 백업 후 업데이트
-        moai-adk update --force      # 백업 없이 업데이트
-        moai-adk update --check      # 버전만 확인
+    Examples:
+        python -m moai_adk update              # update with backup
+        python -m moai_adk update --force      # update without backup
+        python -m moai_adk update --check      # check version only
     """
     try:
         project_path = Path(path).resolve()
 
-        # 프로젝트 초기화 확인
+        # Verify the project is initialized
         if not (project_path / ".moai").exists():
             console.print("[yellow]⚠ Project not initialized[/yellow]")
             raise click.Abort()
 
-        # Phase 1: 버전 확인
-        console.print("[cyan]🔍 버전 확인 중...[/cyan]")
+        # Phase 1: check versions
+        console.print("[cyan]🔍 Checking versions...[/cyan]")
         current_version = __version__
-        latest_version = __version__
-        console.print(f"   현재 버전: {current_version}")
-        console.print(f"   최신 버전: {latest_version}")
+        latest_version = get_latest_version()
+        console.print(f"   Current version: {current_version}")
+        console.print(f"   Latest version:  {latest_version}")
 
         if check:
-            # --check 옵션이면 여기서 종료
+            # Exit early when --check is provided
             if current_version == latest_version:
                 console.print("[green]✓ Already up to date[/green]")
             else:
                 console.print("[yellow]⚠ Update available[/yellow]")
             return
 
-        # Phase 2: 백업 (--force 없으면)
+        # Check if update is needed (version + optimized status) - skip with --force
+        if not force and current_version == latest_version:
+            # Check optimized status in config.json
+            config_path = project_path / ".moai" / "config.json"
+            if config_path.exists():
+                try:
+                    config_data = json.loads(config_path.read_text())
+                    is_optimized = config_data.get("project", {}).get("optimized", False)
+
+                    if is_optimized:
+                        # Already up to date and optimized - exit silently
+                        return
+                    else:
+                        console.print("[yellow]⚠ Optimization needed[/yellow]")
+                        console.print("[dim]Use /alfred:0-project update for template optimization[/dim]")
+                        return
+                except (json.JSONDecodeError, KeyError):
+                    # If config.json is invalid, proceed with update
+                    pass
+            else:
+                console.print("[green]✓ Already up to date[/green]")
+                return
+
+        # Phase 2: create a backup unless --force
         if not force:
-            console.print("\n[cyan]💾 백업 생성 중...[/cyan]")
+            console.print("\n[cyan]💾 Creating backup...[/cyan]")
             processor = TemplateProcessor(project_path)
             backup_path = processor.create_backup()
-            console.print(f"[green]✓ 백업 완료: {backup_path.relative_to(project_path)}[/green]")
+            console.print(f"[green]✓ Backup completed: {backup_path.relative_to(project_path)}[/green]")
         else:
-            console.print("\n[yellow]⚠ 백업 생략 (--force)[/yellow]")
+            console.print("\n[yellow]⚠ Skipping backup (--force)[/yellow]")
 
-        # Phase 3: 템플릿 업데이트
-        console.print("\n[cyan]📄 템플릿 업데이트 중...[/cyan]")
+        # Phase 3: update templates
+        console.print("\n[cyan]📄 Updating templates...[/cyan]")
         processor = TemplateProcessor(project_path)
-        processor.copy_templates(backup=False, silent=True)  # 이미 백업했으므로
+        processor.copy_templates(backup=False, silent=True)  # Backup already handled
 
-        console.print("   [green]✅ .claude/ 업데이트 완료[/green]")
-        console.print("   [green]✅ .moai/ 업데이트 완료 (specs/reports 보존)[/green]")
-        console.print("   [green]🔄 CLAUDE.md 병합 완료[/green]")
-        console.print("   [green]🔄 config.json 병합 완료[/green]")
+        console.print("   [green]✅ .claude/ update complete[/green]")
+        console.print("   [green]✅ .moai/ update complete (specs/reports preserved)[/green]")
+        console.print("   [green]🔄 CLAUDE.md merge complete[/green]")
+        console.print("   [green]🔄 config.json merge complete[/green]")
 
-        console.print("\n[green]✓ 업데이트 완료![/green]")
+        console.print("\n[green]✓ Update complete![/green]")
 
     except Exception as e:
         console.print(f"[red]✗ Update failed: {e}[/red]")

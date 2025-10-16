@@ -50,12 +50,52 @@ allowed-tools:
 
 프로젝트 문서를 분석하여 SPEC 후보를 제안하고 구현 전략을 수립한 후 사용자 확인을 받습니다.
 
+### 🔍 코드베이스 탐색 (선택사항)
+
+**사용자 요청이 불명확하거나 기존 코드 파악이 필요한 경우** Explore 에이전트를 먼저 활용합니다:
+
+```
+Task tool 호출 (Explore 에이전트):
+- subagent_type: "Explore"
+- description: "코드베이스에서 관련 파일 탐색"
+- prompt: "다음 키워드와 관련된 모든 파일을 찾아주세요: $ARGUMENTS
+          - 파일 위치 (src/, tests/, docs/)
+          - 관련 SPEC 문서 (.moai/specs/)
+          - 기존 구현 코드
+          thoroughness 레벨: medium"
+```
+
+**Explore 에이전트 사용 기준**:
+- ✅ 사용자가 "어디에 있는지", "찾아줘" 등의 키워드 사용
+- ✅ 기존 코드 구조 파악이 필요한 경우
+- ✅ 여러 파일에 걸쳐있는 기능 조사
+- ❌ 명확한 SPEC 제목이 주어진 경우 (바로 spec-builder로)
+
+### ⚙️ 에이전트 호출 방법
+
+**STEP 1에서는 Task tool을 사용하여 spec-builder 에이전트를 호출합니다**:
+
+```
+Task tool 호출:
+- subagent_type: "spec-builder"
+- description: "SPEC 분석 및 작성 계획 수립"
+- prompt: "프로젝트 문서를 분석하여 SPEC 후보를 제안해주세요.
+          분석 모드로 실행하며, 다음을 포함해야 합니다:
+          1. product/structure/tech.md 심층 분석
+          2. SPEC 후보 발굴 및 우선순위 결정
+          3. EARS 구조 설계
+          4. 사용자 승인 대기
+          사용자 입력: $ARGUMENTS
+          (선택) Explore 결과: $EXPLORE_RESULTS"
+```
+
 ### SPEC 분석 진행
 
 1. **프로젝트 문서 분석**
    - product/structure/tech.md 심층 분석
-   - 기존 SPEC 목록 및 우선순위 검토
+   - 기존 SPEC 목록 및 우선순위 검토 (.moai/specs/ 스캔)
    - 구현 가능성 및 복잡도 평가
+   - (선택) Explore 결과 반영하여 기존 코드 구조 파악
 
 2. **SPEC 후보 발굴**
    - 핵심 비즈니스 요구사항 추출
@@ -78,7 +118,22 @@ allowed-tools:
 
 ## 🚀 STEP 2: SPEC 문서 작성 실행 (사용자 승인 후)
 
-사용자 승인 후 spec-builder 에이전트가 **EARS 방식의 구조화된 명세서 작성**과 **모드별 브랜치/PR 생성**을 수행합니다.
+사용자 승인 후 **Task tool을 사용하여 spec-builder와 git-manager 에이전트를 호출**합니다.
+
+### ⚙️ 에이전트 호출 방법
+
+```
+1. spec-builder 호출 (SPEC 작성):
+   - subagent_type: "spec-builder"
+   - description: "SPEC 문서 작성"
+   - prompt: "STEP 1에서 승인된 계획에 따라 SPEC 문서를 작성해주세요.
+             EARS 구조의 명세서를 생성합니다."
+
+2. git-manager 호출 (Git 작업):
+   - subagent_type: "git-manager"
+   - description: "Git 브랜치/PR 생성"
+   - prompt: "SPEC 작성 완료 후 브랜치와 Draft PR을 생성해주세요."
+```
 
 ## 기능
 

@@ -1,14 +1,14 @@
 # @CODE:CORE-PROJECT-001 | SPEC: SPEC-CORE-PROJECT-001.md | TEST: tests/unit/test_language_detector.py
-"""언어 감지기 모듈
+"""Language detector module.
 
-20개 프로그래밍 언어를 자동으로 감지합니다.
+Automatically detects 20 programming languages.
 """
 
 from pathlib import Path
 
 
 class LanguageDetector:
-    """20개 프로그래밍 언어 자동 감지"""
+    """Automatically detect up to 20 programming languages."""
 
     LANGUAGE_PATTERNS = {
         "python": ["*.py", "pyproject.toml", "requirements.txt", "setup.py"],
@@ -34,17 +34,17 @@ class LanguageDetector:
     }
 
     def detect(self, path: str | Path = ".") -> str | None:
-        """단일 언어 감지 (우선순위 순)
+        """Detect a single language (in priority order).
 
         Args:
-            path: 검사할 디렉토리 경로
+            path: Directory to inspect.
 
         Returns:
-            감지된 언어 이름 (소문자) 또는 None
+            Detected language name (lowercase) or None.
         """
         path = Path(path)
 
-        # 각 언어에 대해 우선순위 순서로 검사
+        # Inspect each language in priority order
         for language, patterns in self.LANGUAGE_PATTERNS.items():
             if self._check_patterns(path, patterns):
                 return language
@@ -52,13 +52,13 @@ class LanguageDetector:
         return None
 
     def detect_multiple(self, path: str | Path = ".") -> list[str]:
-        """멀티 언어 감지
+        """Detect multiple languages.
 
         Args:
-            path: 검사할 디렉토리 경로
+            path: Directory to inspect.
 
         Returns:
-            감지된 모든 언어 이름 리스트
+            List of all detected language names.
         """
         path = Path(path)
         detected = []
@@ -70,21 +70,21 @@ class LanguageDetector:
         return detected
 
     def _check_patterns(self, path: Path, patterns: list[str]) -> bool:
-        """패턴 리스트 중 하나라도 매칭되는지 확인
+        """Check whether any pattern matches.
 
         Args:
-            path: 검사할 디렉토리
-            patterns: glob 패턴 리스트
+            path: Directory to inspect.
+            patterns: List of glob patterns.
 
         Returns:
-            하나 이상의 패턴이 매칭되면 True
+            True when any pattern matches.
         """
         for pattern in patterns:
-            # 확장자 패턴 (예: *.py)
+            # Extension pattern (e.g., *.py)
             if pattern.startswith("*."):
                 if list(path.rglob(pattern)):
                     return True
-            # 특정 파일명 (예: pyproject.toml)
+            # Specific file name (e.g., pyproject.toml)
             else:
                 if (path / pattern).exists():
                     return True
@@ -93,13 +93,13 @@ class LanguageDetector:
 
 
 def detect_project_language(path: str | Path = ".") -> str | None:
-    """프로젝트 언어 감지 (헬퍼 함수)
+    """Detect the project language (helper).
 
     Args:
-        path: 검사할 디렉토리 경로 (기본값: 현재 디렉토리)
+        path: Directory to inspect (default: current directory).
 
     Returns:
-        감지된 언어 이름 (소문자) 또는 None
+        Detected language name (lowercase) or None.
     """
     detector = LanguageDetector()
     return detector.detect(path)

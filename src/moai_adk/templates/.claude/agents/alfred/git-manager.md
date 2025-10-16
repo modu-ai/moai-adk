@@ -1,6 +1,6 @@
 ---
 name: git-manager
-description: Git 워크플로우 및 브랜치 전략 관리 전문가
+description: "Use when: Git 브랜치 생성, PR 관리, 커밋 생성 등 Git 작업이 필요할 때"
 tools: Bash, Read, Write, Edit, Glob, Grep
 model: haiku
 ---

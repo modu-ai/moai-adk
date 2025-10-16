@@ -100,10 +100,12 @@ class TestPreparationPhase:
 
         executor.execute_preparation_phase(tmp_path, backup_enabled=True)
 
-        # Backup should be created
-        backup_dir = tmp_path / ".moai" / "backups"
+        # Backup should be created in .moai-backups/ directory
+        backup_dir = tmp_path / ".moai-backups"
         assert backup_dir.exists()
-        assert len(list(backup_dir.iterdir())) > 0
+        backup_timestamps = list(backup_dir.iterdir())
+        assert len(backup_timestamps) > 0
+        assert backup_timestamps[0].is_dir()
 
     def test_preparation_phase_skips_backup_when_disabled(
         self, executor: PhaseExecutor, tmp_path: Path
@@ -379,10 +381,12 @@ class TestCreateBackup:
 
         executor._create_backup(tmp_path)
 
-        # Backup directory should exist
-        backup_root = tmp_path / ".moai" / "backups"
-        assert backup_root.exists()
-        assert len(list(backup_root.iterdir())) > 0
+        # Backup directory should exist in .moai-backups/
+        backup_dir = tmp_path / ".moai-backups"
+        assert backup_dir.exists()
+        backup_timestamps = list(backup_dir.iterdir())
+        assert len(backup_timestamps) > 0
+        assert backup_timestamps[0].is_dir()
 
     def test_create_backup_excludes_protected_paths(
         self, executor: PhaseExecutor, tmp_path: Path
@@ -398,8 +402,8 @@ class TestCreateBackup:
 
         executor._create_backup(tmp_path)
 
-        # Find backup directory
-        backup_root = tmp_path / ".moai" / "backups"
+        # Find backup directory in .moai-backups/
+        backup_root = tmp_path / ".moai-backups"
         backup_dirs = list(backup_root.iterdir())
         assert len(backup_dirs) > 0
 

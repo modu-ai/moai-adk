@@ -1,5 +1,5 @@
 # @CODE:TEMPLATE-001 | SPEC: SPEC-INIT-003.md | Chain: TEMPLATE-001
-"""템플릿 복사 및 백업 프로세서 (SPEC-INIT-003 v0.3.0: 사용자 콘텐츠 보존)."""
+"""Template copy and backup processor (SPEC-INIT-003 v0.3.0: preserve user content)."""
 
 from __future__ import annotations
 
@@ -15,24 +15,24 @@ console = Console()
 
 
 class TemplateProcessor:
-    """템플릿 복사 및 백업 관리 클래스 (메인 오케스트레이터)."""
+    """Orchestrate template copying and backups."""
 
-    # 사용자 데이터 보호 경로 (절대 건드리지 않음) - SPEC-INIT-003 v0.3.0
+    # User data protection paths (never touch) - SPEC-INIT-003 v0.3.0
     PROTECTED_PATHS = [
-        ".moai/specs/",  # 사용자 SPEC 문서
-        ".moai/reports/",  # 사용자 리포트
-        ".moai/project/",  # 사용자 프로젝트 문서 (product/structure/tech.md)
-        ".moai/config.json",  # 사용자 설정 (병합은 /alfred:9-update에서)
+        ".moai/specs/",  # User SPEC documents
+        ".moai/reports/",  # User reports
+        ".moai/project/",  # User project documents (product/structure/tech.md)
+        ".moai/config.json",  # User configuration (merged via /alfred:9-update flow)
     ]
 
-    # 백업 제외 경로
+    # Paths excluded from backups
     BACKUP_EXCLUDE = PROTECTED_PATHS
 
     def __init__(self, target_path: Path) -> None:
-        """초기화.
+        """Initialize the processor.
 
         Args:
-            target_path: 프로젝트 경로
+            target_path: Project path.
         """
         self.target_path = target_path.resolve()
         self.template_root = self._get_template_root()
@@ -40,32 +40,28 @@ class TemplateProcessor:
         self.merger = TemplateMerger(self.target_path)
 
     def _get_template_root(self) -> Path:
-        """템플릿 루트 경로 반환.
-
-        Returns:
-            템플릿 루트 경로
-        """
+        """Return the template root path."""
         # src/moai_adk/core/template/processor.py → src/moai_adk/templates/
         current_file = Path(__file__).resolve()
         package_root = current_file.parent.parent.parent
         return package_root / "templates"
 
     def copy_templates(self, backup: bool = True, silent: bool = False) -> None:
-        """템플릿 파일을 프로젝트에 복사.
+        """Copy template files into the project.
 
         Args:
-            backup: 백업 생성 여부
-            silent: 조용한 모드 (로그 출력 최소화)
+            backup: Whether to create a backup.
+            silent: Reduce log output when True.
         """
-        # 1. 백업 생성 (기존 파일 있으면)
+        # 1. Create a backup when existing files are present
         if backup and self._has_existing_files():
             backup_path = self.create_backup()
             if not silent:
-                console.print(f"💾 백업 생성: {backup_path.name}")
+                console.print(f"💾 Backup created: {backup_path.name}")
 
-        # 2. 템플릿 복사
+        # 2. Copy templates
         if not silent:
-            console.print("📄 템플릿 복사 중...")
+            console.print("📄 Copying templates...")
 
         self._copy_claude(silent)
         self._copy_moai(silent)
@@ -73,46 +69,27 @@ class TemplateProcessor:
         self._copy_gitignore(silent)
 
         if not silent:
-            console.print("✅ 템플릿 복사 완료")
+            console.print("✅ Templates copied successfully")
 
     def _has_existing_files(self) -> bool:
-        """기존 프로젝트 파일 존재 여부 확인 (백업 필요 여부).
-
-        백업 정책:
-        - .moai/, .claude/, CLAUDE.md 중 **1개라도 존재하면 백업 생성**
-        - 백업 경로: .moai-backup/YYYYMMDD-HHMMSS/
-        - 보호 경로: .moai/specs/, .moai/reports/ (백업 제외)
-
-        덮어쓰기 정책:
-        - 동일 파일명은 **복사 시 덮어쓰기**
-        - .claude/ → 전체 삭제 후 재복사
-        - .moai/ → 보호 경로 제외하고 복사 (덮어쓰기)
-        - CLAUDE.md → 스마트 병합 (프로젝트 정보 유지)
-
-        Returns:
-            True if 백업 필요 (파일 1개 이상 존재)
-        """
+        """Determine whether project files exist (backup decision helper)."""
         return self.backup.has_existing_files()
 
     def create_backup(self) -> Path:
-        """타임스탬프 기반 백업 생성 (위임).
-
-        Returns:
-            백업 경로
-        """
+        """Create a timestamped backup (delegated)."""
         return self.backup.create_backup()
 
     def _copy_exclude_protected(self, src: Path, dst: Path) -> None:
-        """보호 경로를 제외하고 복사 (SPEC-INIT-003 v0.3.0: 기존 파일 보존).
+        """Copy content while excluding protected paths.
 
         Args:
-            src: 소스 디렉토리
-            dst: 대상 디렉토리
+            src: Source directory.
+            dst: Destination directory.
         """
         dst.mkdir(parents=True, exist_ok=True)
 
-        # PROTECTED_PATHS: specs/, reports/만 템플릿 복사 제외
-        # project/, config.json은 기존 파일 존재 시에만 보존
+        # PROTECTED_PATHS: only specs/ and reports/ are excluded during copying
+        # project/ and config.json are preserved only when they already exist
         template_protected_paths = [
             "specs",
             "reports",
@@ -122,14 +99,14 @@ class TemplateProcessor:
             rel_path = item.relative_to(src)
             rel_path_str = str(rel_path)
 
-            # 템플릿 복사 제외 경로 (specs/, reports/)
+            # Skip template copy for specs/ and reports/
             if any(rel_path_str.startswith(p) for p in template_protected_paths):
                 continue
 
             dst_item = dst / rel_path
             if item.is_file():
-                # v0.3.0: 기존 파일이 존재하면 건너뛰기 (사용자 콘텐츠 보존)
-                # 이렇게 하면 project/, config.json도 자동 보호됨
+                # Preserve user content by skipping existing files (v0.3.0)
+                # This automatically protects project/ and config.json
                 if dst_item.exists():
                     continue
                 dst_item.parent.mkdir(parents=True, exist_ok=True)
@@ -138,50 +115,50 @@ class TemplateProcessor:
                 dst_item.mkdir(parents=True, exist_ok=True)
 
     def _copy_claude(self, silent: bool = False) -> None:
-        """.claude/ 디렉토리 복사."""
+        """.claude/ directory copy."""
         src = self.template_root / ".claude"
         dst = self.target_path / ".claude"
 
         if not src.exists():
             if not silent:
-                console.print("⚠️ .claude/ 템플릿 없음")
+                console.print("⚠️ .claude/ template not found")
             return
 
-        # 전체 복사 (덮어쓰기)
+        # Copy the directory wholesale (overwrite)
         if dst.exists():
             shutil.rmtree(dst)
         shutil.copytree(src, dst)
         if not silent:
-            console.print("   ✅ .claude/ 복사 완료")
+            console.print("   ✅ .claude/ copy complete")
 
     def _copy_moai(self, silent: bool = False) -> None:
-        """.moai/ 디렉토리 복사 (보호 경로 제외, SPEC-INIT-003 v0.3.0)."""
+        """.moai/ directory copy (excludes protected paths)."""
         src = self.template_root / ".moai"
         dst = self.target_path / ".moai"
 
         if not src.exists():
             if not silent:
-                console.print("⚠️ .moai/ 템플릿 없음")
+                console.print("⚠️ .moai/ template not found")
             return
 
-        # 템플릿 복사 제외 경로 (specs/, reports/)
+        # Paths excluded from template copying (specs/, reports/)
         template_protected_paths = [
             "specs",
             "reports",
         ]
 
-        # 보호 경로 제외하고 복사
+        # Copy while skipping protected paths
         for item in src.rglob("*"):
             rel_path = item.relative_to(src)
             rel_path_str = str(rel_path)
 
-            # 템플릿 복사 제외 (specs/, reports/)
+            # Skip specs/ and reports/
             if any(rel_path_str.startswith(p) for p in template_protected_paths):
                 continue
 
             dst_item = dst / rel_path
             if item.is_file():
-                # v0.3.0: 기존 파일이 존재하면 건너뛰기 (사용자 콘텐츠 보존)
+                # Skip existing files to preserve user content (v0.3.0)
                 if dst_item.exists():
                     continue
                 dst_item.parent.mkdir(parents=True, exist_ok=True)
@@ -190,71 +167,71 @@ class TemplateProcessor:
                 dst_item.mkdir(parents=True, exist_ok=True)
 
         if not silent:
-            console.print("   ✅ .moai/ 복사 완료 (user content preserved)")
+            console.print("   ✅ .moai/ copy complete (user content preserved)")
 
     def _copy_claude_md(self, silent: bool = False) -> None:
-        """CLAUDE.md 복사 (스마트 병합)."""
+        """Copy CLAUDE.md with smart merging."""
         src = self.template_root / "CLAUDE.md"
         dst = self.target_path / "CLAUDE.md"
 
         if not src.exists():
             if not silent:
-                console.print("⚠️ CLAUDE.md 템플릿 없음")
+                console.print("⚠️ CLAUDE.md template not found")
             return
 
-        # 기존 파일 있으면 프로젝트 정보 유지
+        # Preserve project information when the file exists
         if dst.exists():
             self._merge_claude_md(src, dst)
             if not silent:
-                console.print("   🔄 CLAUDE.md 병합 (프로젝트 정보 유지)")
+                console.print("   🔄 CLAUDE.md merged (project information preserved)")
         else:
             shutil.copy2(src, dst)
             if not silent:
-                console.print("   ✅ CLAUDE.md 복사 완료")
+                console.print("   ✅ CLAUDE.md copy complete")
 
     def _merge_claude_md(self, src: Path, dst: Path) -> None:
-        """CLAUDE.md 스마트 병합 (위임).
+        """Delegate the smart merge for CLAUDE.md.
 
         Args:
-            src: 템플릿 CLAUDE.md
-            dst: 프로젝트 CLAUDE.md
+            src: Template CLAUDE.md.
+            dst: Project CLAUDE.md.
         """
         self.merger.merge_claude_md(src, dst)
 
     def _copy_gitignore(self, silent: bool = False) -> None:
-        """.gitignore 복사 (선택)."""
+        """.gitignore copy (optional)."""
         src = self.template_root / ".gitignore"
         dst = self.target_path / ".gitignore"
 
         if not src.exists():
             return
 
-        # 기존 .gitignore 있으면 병합
+        # Merge with the existing .gitignore when present
         if dst.exists():
             self._merge_gitignore(src, dst)
             if not silent:
-                console.print("   🔄 .gitignore 병합")
+                console.print("   🔄 .gitignore merged")
         else:
             shutil.copy2(src, dst)
             if not silent:
-                console.print("   ✅ .gitignore 복사 완료")
+                console.print("   ✅ .gitignore copy complete")
 
     def _merge_gitignore(self, src: Path, dst: Path) -> None:
-        """.gitignore 병합 (위임).
+        """Delegate the .gitignore merge.
 
         Args:
-            src: 템플릿 .gitignore
-            dst: 프로젝트 .gitignore
+            src: Template .gitignore.
+            dst: Project .gitignore.
         """
         self.merger.merge_gitignore(src, dst)
 
     def merge_config(self, detected_language: str | None = None) -> dict[str, str]:
-        """config.json 스마트 병합 (위임).
+        """Delegate the smart merge for config.json.
 
         Args:
-            detected_language: 감지된 언어
+            detected_language: Detected language.
 
         Returns:
-            병합된 config
+            Merged configuration dictionary.
         """
         return self.merger.merge_config(detected_language)

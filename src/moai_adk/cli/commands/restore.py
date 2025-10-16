@@ -1,10 +1,10 @@
 # @CODE:CLI-001 | SPEC: SPEC-CLI-001.md | TEST: tests/unit/test_cli_commands.py
-"""moai restore 명령어
+"""MoAI-ADK restore command
 
-백업 복원 명령어:
-- .moai/backups/ 디렉토리에서 백업 찾기
-- 지정된 타임스탬프 또는 최신 백업 복원
-- 복원 전 확인 프롬프트
+Backup restore command:
+- Locate backups in .moai-backups/{timestamp}/ directory
+- Restore the specified timestamp or the latest backup
+- Confirm before performing the restore
 """
 
 from pathlib import Path
@@ -27,28 +27,31 @@ def restore(timestamp: str | None) -> None:
         timestamp: Optional specific backup timestamp
 
     Examples:
-        moai restore                    # Restore from latest backup
-        moai restore --timestamp 2025-10-13-120000  # Restore specific backup
+        python -m moai_adk restore                    # Restore from latest backup
+        python -m moai_adk restore --timestamp 2025-10-13-120000  # Restore specific backup
     """
     try:
-        backup_dir = Path.cwd() / ".moai" / "backups"
+        project_root = Path.cwd()
+        backup_dir = project_root / ".moai-backups"
 
+        # Find all timestamp directories in .moai-backups/
         if not backup_dir.exists():
             console.print("[yellow]⚠ No backup directory found[/yellow]")
-            console.print("[dim]Backups are stored in .moai/backups/[/dim]")
+            console.print("[dim]Backups are stored in .moai-backups/{timestamp}/[/dim]")
             raise click.Abort()
 
-        # 백업 디렉토리 찾기 (타임스탬프 기반)
         backup_dirs = sorted(
             [d for d in backup_dir.iterdir() if d.is_dir()],
             key=lambda x: x.name,
             reverse=True
         )
+
         if not backup_dirs:
-            console.print("[yellow]⚠ No backups found[/yellow]")
+            console.print("[yellow]⚠ No backup directories found[/yellow]")
+            console.print("[dim]Backups are stored in .moai-backups/{timestamp}/[/dim]")
             raise click.Abort()
 
-        # 타임스탬프 지정 시 해당 백업 찾기
+        # When a timestamp is provided, find the matching backup
         if timestamp:
             console.print(f"[cyan]Restoring from {timestamp}...[/cyan]")
             matching = [d for d in backup_dirs if timestamp in d.name]
@@ -60,7 +63,7 @@ def restore(timestamp: str | None) -> None:
             console.print("[cyan]Restoring from latest backup...[/cyan]")
             backup_path = backup_dirs[0]
 
-        # 복원 (실제 구현은 추후)
+        # Placeholder for the future restore implementation
         console.print(f"[dim]  └─ Backup: {backup_path.name}[/dim]")
         console.print("[green]✓ Restore completed[/green]")
 

@@ -1,11 +1,11 @@
 # @CODE:CLI-001 | SPEC: SPEC-CLI-001.md | TEST: tests/unit/test_doctor.py
-"""moai doctor 명령어
+"""MoAI-ADK doctor command
 
-시스템 진단 명령어:
-- Python 버전 확인
-- Git 설치 확인
-- 프로젝트 구조 검증
-- 언어별 도구 체인 검증
+System diagnostics command:
+- Check the Python version
+- Verify Git installation
+- Validate project structure
+- Inspect language-specific tool chains
 """
 
 import json
@@ -39,11 +39,11 @@ def doctor(verbose: bool, fix: bool, export: str | None, check: str | None) -> N
     try:
         console.print("[cyan]Running system diagnostics...[/cyan]\n")
 
-        # 기본 환경 체크
+        # Run basic environment checks
         results = check_environment()
         diagnostics_data: dict = {"basic_checks": results}
 
-        # Verbose 모드: 언어별 도구 검증
+        # In verbose mode, verify language-specific toolchains
         if verbose or fix:
             language = detect_project_language()
             diagnostics_data["detected_language"] = language
@@ -64,7 +64,7 @@ def doctor(verbose: bool, fix: bool, export: str | None, check: str | None) -> N
             _check_specific_tool(check)
             return
 
-        # 기본 결과 테이블 생성
+        # Build the base results table
         table = Table(show_header=True, header_style="bold magenta")
         table.add_column("Check", style="dim", width=40)
         table.add_column("Status", justify="center")
@@ -76,21 +76,21 @@ def doctor(verbose: bool, fix: bool, export: str | None, check: str | None) -> N
 
         console.print(table)
 
-        # Fix 모드: 누락된 도구 설치 제안
+        # In fix mode, suggest installation commands for missing tools
         if fix and "language_tools" in diagnostics_data:
             _suggest_fixes(diagnostics_data["language_tools"], diagnostics_data.get("detected_language"))
 
-        # Export 모드: JSON 파일로 저장
+        # When exporting, write diagnostics to JSON
         if export:
             _export_diagnostics(export, diagnostics_data)
 
-        # 전체 결과 요약
+        # Summarize the overall result
         all_passed = all(results.values())
         if all_passed:
             console.print("\n[green]✓ All checks passed[/green]")
         else:
             console.print("\n[yellow]⚠ Some checks failed[/yellow]")
-            console.print("[dim]Run [cyan]moai doctor --verbose[/cyan] for detailed diagnostics[/dim]")
+            console.print("[dim]Run [cyan]python -m moai_adk doctor --verbose[/cyan] for detailed diagnostics[/dim]")
 
     except Exception as e:
         console.print(f"[red]✗ Diagnostic failed: {e}[/red]")
@@ -98,7 +98,7 @@ def doctor(verbose: bool, fix: bool, export: str | None, check: str | None) -> N
 
 
 def _display_language_tools(language: str, tools: dict[str, bool], checker: SystemChecker) -> None:
-    """언어별 도구 테이블 표시 (헬퍼 함수)"""
+    """Display a table of language-specific tools (helper)"""
     table = Table(show_header=True, header_style="bold cyan", title=f"{language.title()} Tools")
     table.add_column("Tool", style="dim")
     table.add_column("Status", justify="center")
@@ -116,7 +116,7 @@ def _display_language_tools(language: str, tools: dict[str, bool], checker: Syst
 
 
 def _check_specific_tool(tool: str) -> None:
-    """특정 도구만 검증 (헬퍼 함수)"""
+    """Check only a specific tool (helper)"""
     checker = SystemChecker()
     available = checker._is_tool_available(tool)
     version = checker.get_tool_version(tool) if available else None
@@ -130,7 +130,7 @@ def _check_specific_tool(tool: str) -> None:
 
 
 def _suggest_fixes(tools: dict[str, bool], language: str | None) -> None:
-    """누락된 도구 설치 제안 (헬퍼 함수)"""
+    """Suggest installation commands for missing tools (helper)"""
     missing_tools = [tool for tool, available in tools.items() if not available]
 
     if not missing_tools:
@@ -138,6 +138,18 @@ def _suggest_fixes(tools: dict[str, bool], language: str | None) -> None:
         return
 
     console.print(f"\n[yellow]⚠ Missing {len(missing_tools)} tool(s)[/yellow]")
+
+    try:
+        proceed = questionary.confirm(
+            "Would you like to see install suggestions for missing tools?",
+            default=True,
+        ).ask()
+    except Exception:
+        proceed = True
+
+    if not proceed:
+        console.print("[yellow]User skipped install suggestions[/yellow]")
+        return
 
     for tool in missing_tools:
         install_cmd = _get_install_command(tool, language)
@@ -147,7 +159,7 @@ def _suggest_fixes(tools: dict[str, bool], language: str | None) -> None:
 
 
 def _get_install_command(tool: str, language: str | None) -> str:
-    """도구별 설치 명령어 반환 (헬퍼 함수)"""
+    """Return the install command for a given tool (helper)"""
     # Common tools
     install_commands = {
         "pytest": "pip install pytest",
@@ -163,7 +175,7 @@ def _get_install_command(tool: str, language: str | None) -> str:
 
 
 def _export_diagnostics(export_path: str, data: dict) -> None:
-    """진단 결과를 JSON 파일로 저장 (헬퍼 함수)"""
+    """Export diagnostic results to a JSON file (helper)"""
     try:
         output = Path(export_path)
         output.write_text(json.dumps(data, indent=2))

@@ -54,12 +54,53 @@ SPEC 문서를 분석하여 언어별 최적화된 TDD 사이클(Red-Green-Refac
 
 먼저 지정된 SPEC을 분석하여 구현 계획을 수립하고 사용자 확인을 받습니다.
 
+### 🔍 코드베이스 탐색 (권장)
+
+**기존 코드 구조를 파악하거나 유사 패턴을 찾아야 하는 경우** Explore 에이전트를 먼저 활용합니다:
+
+```
+Task tool 호출 (Explore 에이전트):
+- subagent_type: "Explore"
+- description: "기존 코드 구조 및 패턴 탐색"
+- prompt: "SPEC-$ARGUMENTS와 관련된 기존 코드를 탐색해주세요:
+          - 유사한 기능 구현 코드 (src/)
+          - 참고할 테스트 패턴 (tests/)
+          - 아키텍처 패턴 및 디자인 패턴
+          - 사용 중인 라이브러리 및 버전 (package.json, requirements.txt)
+          thoroughness 레벨: medium"
+```
+
+**Explore 에이전트 사용 시점**:
+- ✅ 기존 코드 구조/패턴 파악이 필요한 경우
+- ✅ 유사 기능의 구현 방식을 참고해야 할 때
+- ✅ 프로젝트의 아키텍처 규칙을 이해해야 할 때
+- ✅ 사용 중인 라이브러리 및 버전 확인
+
+### ⚙️ 에이전트 호출 방법
+
+**STEP 1에서는 Task tool을 사용하여 code-builder 에이전트를 호출합니다**:
+
+```
+Task tool 호출 예시:
+- subagent_type: "code-builder"
+- description: "SPEC 분석 및 TDD 계획 수립"
+- prompt: "$ARGUMENTS 의 SPEC을 분석하여 TDD 구현 계획을 수립해주세요.
+          분석 모드로 실행하며, 다음을 포함해야 합니다:
+          1. SPEC 요구사항 추출 및 복잡도 평가
+          2. 언어별 최적화된 TDD 전략 수립
+          3. 라이브러리 버전 확인 (WebSearch 사용)
+          4. 구현 계획 보고서 생성
+          5. 사용자 승인 대기
+          (선택) Explore 결과: $EXPLORE_RESULTS"
+```
+
 ### SPEC 분석 진행
 
 1. **SPEC 문서 분석**
    - 요구사항 추출 및 복잡도 평가
    - 기술적 제약사항 확인
    - 의존성 및 영향 범위 분석
+   - (선택) Explore 결과 기반 기존 코드 구조 파악
 
 2. **구현 전략 수립**
    - 프로젝트 언어 감지 및 최적화된 구현 전략
@@ -93,7 +134,32 @@ SPEC 문서를 분석하여 언어별 최적화된 TDD 사이클(Red-Green-Refac
 
 ## 🚀 STEP 2: TDD 구현 실행 (사용자 승인 후)
 
-사용자 승인 후 code-builder 에이전트가 **언어별 최적화**된 Red-Green-Refactor 사이클과 TRUST 원칙 검증을 지원합니다.
+사용자 승인 후 **Task tool을 사용하여 code-builder 에이전트를 호출**합니다.
+
+### ⚙️ 에이전트 호출 방법
+
+**STEP 2에서는 Task tool을 사용하여 code-builder를 호출하고, 필요 시 tag-agent도 호출합니다**:
+
+```
+1. code-builder 호출 (TDD 구현):
+   - subagent_type: "code-builder"
+   - description: "TDD 구현 실행"
+   - prompt: "STEP 1에서 승인된 계획에 따라 TDD 구현을 실행해주세요.
+             구현 모드로 실행하며, RED → GREEN → REFACTOR 사이클을 수행합니다.
+             $ARGUMENTS"
+
+2. tag-agent 호출 (TAG 검증 - 필요 시):
+   - subagent_type: "tag-agent"
+   - description: "TAG 체인 무결성 검증"
+   - prompt: "$ARGUMENTS 의 TAG 체인 무결성을 검증해주세요.
+             @SPEC, @TEST, @CODE TAG의 완전성을 확인하고,
+             고아 TAG 및 중복 TAG를 탐지해주세요."
+
+3. git-manager 호출 (Git 커밋 - TDD 완료 후):
+   - subagent_type: "git-manager"
+   - description: "TDD 커밋 생성"
+   - prompt: "RED → GREEN → REFACTOR 단계별로 구조화된 커밋을 생성해주세요."
+```
 
 ## 🔗 언어별 TDD 최적화
 

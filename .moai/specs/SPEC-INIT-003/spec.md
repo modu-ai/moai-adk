@@ -1,33 +1,54 @@
 ---
 id: INIT-003
-version: 0.2.1
-status: completed
+version: 0.3.1
+status: active
 created: 2025-10-06
-updated: 2025-10-07
+updated: 2025-10-15
 author: @Goos
 priority: high
 category: feature
 labels:
-  - init
   - backup
+  - template-update
+  - version-tracking
   - merge
-  - user-experience
 depends_on:
   - INIT-001
+related_specs:
+  - TEMPLATE-001
 scope:
   packages:
-    - moai-adk-ts/src/cli/commands/init
-    - moai-adk-ts/src/cli/commands/project
-    - moai-adk-ts/src/core/installer
+    - src/moai_adk/core/project
+    - src/moai_adk/cli/commands
   files:
-    - phase-executor.ts
-    - backup-metadata.ts
-    - backup-merger.ts
+    - backup_merger.py
+    - phase_executor.py
+    - init.py
 ---
 
 # @SPEC:INIT-003: Init 백업 및 병합 옵션
 
 ## HISTORY
+
+### v0.3.1 (2025-10-15)
+- **ADDED**: 백업 병합 기능 (BackupMerger 클래스)
+- **ADDED**: 버전 추적 시스템 (config.json에 moai_adk_version, optimized 필드)
+- **ADDED**: Claude 접속 시 자동 최적화 감지 (optimized: false 시 /alfred:0-project 제안)
+- **ADDED**: Phase 0 - 버전 확인 및 백업 병합 안내
+- **CHANGED**: 구현 언어 변경 (TypeScript → Python)
+- **SCOPE**:
+  - 최근 백업 경로 자동 탐지 (.moai-backups/{timestamp}/)
+  - product/structure/tech.md 지능형 병합
+  - 템플릿 상태 감지 로직 ({{PROJECT_NAME}} 패턴)
+- **FILES**:
+  - src/moai_adk/core/project/backup_merger.py (신규)
+  - src/moai_adk/core/project/phase_executor.py (Phase 4 수정)
+  - src/moai_adk/cli/commands/init.py (reinit 로직 추가)
+  - src/moai_adk/templates/.moai/config.json (버전 필드 추가)
+  - tests/unit/test_backup_merger.py (신규)
+- **AUTHOR**: @Goos
+- **REASON**: v0.3.0 이하 → v0.3.1+ 업데이트 시 사용자 작업물 보존 및 자동 버전 추적
+- **CONTEXT**: moai-adk init . 실행 후 /alfred:0-project에서 백업 병합 여부 선택 가능
 
 ### v0.2.1 (2025-10-07)
 - **CHANGED**: 백업 조건 완화 - 3개 모두 존재 → 1개라도 존재 시 백업
@@ -68,44 +89,53 @@ scope:
 ## Environment (환경 및 전제)
 
 ### 실행 환경
-- **Phase A (moai init)**: CLI 도구로 실행, 빠른 백업 수행 (5초 이내)
-- **Phase B (/alfred:8-project)**: Claude Code 세션, 백업 분석 및 병합 수행
-- **사용자**: MoAI-ADK를 이미 사용 중이며, 최신 템플릿으로 업데이트하고자 하는 개발자
-- **도구 체인**: Bun 1.0+, TypeScript 5.0+, @clack/prompts (Phase B에서만)
+- **Phase A (moai-adk init)**: Python CLI 도구로 실행, 백업 및 템플릿 복사 (5초 이내)
+- **Phase B (/alfred:0-project)**: Claude Code 세션, 버전 확인 및 백업 병합 수행
+- **사용자**: MoAI-ADK를 이미 사용 중(v0.3.0 이하)이며, 최신 템플릿(v0.3.1+)으로 업데이트하고자 하는 개발자
+- **도구 체인**: Python 3.10+, pathlib, json, rich (Phase B 출력)
 
-### 설계 철학 변경 (v0.1.0 → v0.2.0)
+### 설계 철학 변경 (v0.1.0 → v0.2.0 → v0.3.1)
 - **기존 (v0.1.0)**: moai init에서 복잡한 병합 엔진 실행 → 설치 시간 증가, 복잡도 높음
-- **신규 (v0.2.0)**: 2단계 분리 접근법
-  - **moai init**: 백업만 수행 + 템플릿 복사 (1-2시간 구현 예상)
-  - **/alfred:8-project**: 백업 발견 시 병합 여부만 물어봄 (4-6시간 구현 예상)
-- **장점**: 책임 분리, 복잡도 감소, 사용자 경험 개선 (설치 빠르게, 선택 신중하게)
-
-### 백업 조건 완화 (v0.2.1)
-- **기존 (v0.2.0)**: 3개 파일/폴더 모두 존재해야 백업 (`.claude/`, `.moai/`, `CLAUDE.md`)
-- **신규 (v0.2.1)**: **1개라도 존재하면** 백업 생성
-- **이유**: 부분 설치 케이스 대응 (예: `.claude/`만 있는 경우) → 데이터 손실 방지
+- **v0.2.0**: 2단계 분리 접근법
+  - **moai init**: 백업만 수행 + 템플릿 복사
+  - **/alfred:8-project**: 백업 발견 시 병합 여부만 물어봄
+  - **장점**: 책임 분리, 복잡도 감소
+- **v0.2.1**: 백업 조건 완화
+  - **1개 파일이라도** 존재하면 백업 생성 (`.claude/`, `.moai/`, `CLAUDE.md`)
+  - 부분 설치 케이스 대응 → 데이터 손실 방지
+- **v0.3.1 (신규)**: 버전 추적 및 자동 감지
+  - **moai-adk init .**: 백업 생성 (.moai-backups/{timestamp}/) + config.json 버전 업데이트
+  - **/alfred:0-project**: 버전 불일치 감지 → Phase 0 (백업 병합 안내) 자동 실행
+  - **장점**:
+    - 자동 버전 추적 (config.json에 moai_adk_version 기록)
+    - Claude 접속 시 최적화 필요 자동 감지
+    - 백업 병합으로 사용자 작업물 보존
 
 ---
 
 ## Assumptions (가정사항)
 
-1. **책임 분리 가정**:
-   - **moai init**: 백업 생성만 담당 (병합 로직 없음)
-   - **/alfred:8-project**: 백업 분석 및 병합 담당
+1. **책임 분리 가정** (v0.3.1):
+   - **moai-adk init .**: 백업 생성 + 템플릿 복사 + config.json 버전 업데이트
+   - **/alfred:0-project**: 버전 확인 + 백업 병합 안내 + 프로젝트 최적화
    - 각 단계는 독립적으로 실행 가능해야 함
 
 2. **사용자 의도 가정**:
-   - moai init은 빠르게 실행되어야 함 (5초 이내)
+   - moai-adk init .은 빠르게 실행되어야 함 (5초 이내)
    - 병합은 충분한 정보와 함께 선택할 수 있어야 함 (Claude Code 컨텍스트)
+   - 사용자는 Claude 접속 시 자동으로 최적화 필요 여부를 알림받아야 함
 
-3. **기술적 가정**:
-   - 백업 메타데이터(.moai/backups/latest.json)로 Phase A/B 연결
-   - **백업은 선택적 생성** (v0.2.1): 존재하는 파일만 백업
+3. **기술적 가정** (v0.3.1):
+   - config.json에 moai_adk_version, optimized 필드 존재
+   - 백업 경로: .moai-backups/{timestamp}/ (v0.3.0 표준)
+   - **백업은 선택적 생성**: 존재하는 파일만 백업
    - 병합 실패 시 백업에서 복원 가능해야 함
+   - Python pathlib 기반 파일 시스템 조작
 
 4. **위험 관리 가정**:
    - 백업 생성 실패 시 설치 중단 필수
-   - 백업 메타데이터 손상 시 백업 상태 확인 불가 → 수동 처리 필요
+   - 버전 불일치 감지 실패 시 수동 확인 필요
+   - 백업 경로가 없을 때 신규 설치로 판단
 
 ---
 
@@ -117,7 +147,7 @@ scope:
 
 **REQ-INIT-003-U01**: 백업 필수 생성 (조건부, v0.2.1)
 - 시스템은 `.claude/`, `.moai/`, `CLAUDE.md` 중 **1개라도 존재하면** 백업을 생성해야 한다
-- 백업 경로: `.moai-backup-{timestamp}/`
+- 백업 경로: `.moai-backups/{timestamp}/`
 - 존재하는 파일/폴더만 선택적으로 백업한다
 - 백업 메타데이터에 실제 백업된 파일 목록을 기록한다
 
@@ -127,7 +157,7 @@ scope:
   ```json
   {
     "timestamp": "2025-10-07T14:30:00.000Z",
-    "backup_path": ".moai-backup-20251007-143000",
+    "backup_path": ".moai-backups/20251007-143000",
     "backed_up_files": [".claude/", ".moai/", "CLAUDE.md"],
     "status": "pending",
     "created_by": "moai init"
@@ -212,6 +242,84 @@ scope:
 **REQ-INIT-003-C02**: 병합 오류 시 복원 메커니즘 필수
 - IF 병합 중 치명적 오류 발생하면
 - 시스템은 백업에서 자동 복원해야 한다
+
+---
+
+### Phase C: /alfred:0-project 백업 병합 요구사항 (v0.3.1 신규)
+
+#### Ubiquitous Requirements (필수 기능)
+
+**REQ-INIT-003-U04**: 최근 백업 자동 탐지
+- 시스템은 프로젝트 루트에서 `.moai-backups/*` 디렉토리를 자동으로 찾아야 한다
+- 백업 경로 형식: `.moai-backups/YYYYMMDD-HHMMSS/`
+- 타임스탬프 기준 역순 정렬로 최신 백업 선택
+
+**REQ-INIT-003-U05**: 백업 문서 병합
+- 시스템은 백업의 `product.md`, `structure.md`, `tech.md`를 현재 템플릿과 병합해야 한다
+- 병합 경로: `.moai/project/`
+
+**REQ-INIT-003-U06**: 템플릿 상태 감지
+- 시스템은 템플릿 상태(`{{PROJECT_NAME}}` 존재 여부)를 자동으로 감지해야 한다
+- 템플릿 상태 파일은 병합 건너뛰기
+
+#### Event-driven Requirements (이벤트 기반)
+
+**REQ-INIT-003-E09**: /alfred:0-project 실행 시 버전 확인
+- WHEN `/alfred:0-project` 실행 시
+- 시스템은 config.json의 `project.moai_adk_version`과 패키지 버전을 비교해야 한다
+- 버전 불일치 감지 시 Phase 0 (백업 병합 안내)를 자동 실행해야 한다
+
+**REQ-INIT-003-E10**: 백업 폴더 존재 시 병합 프롬프트
+- WHEN 백업 폴더(`.moai-backups/*`)가 존재하면
+- 시스템은 최근 백업 경로를 표시하고 병합 여부를 사용자에게 확인해야 한다
+- 옵션: "예/병합", "아니오/새로시작", "나중에"
+
+**REQ-INIT-003-E11**: 병합 선택 시 문서 병합 실행
+- WHEN 사용자가 "예" 또는 "병합"을 선택하면
+- 시스템은 `product/structure/tech.md`를 지능형 병합해야 한다
+- 사용자 작성 내용 보존 우선
+
+**REQ-INIT-003-E12**: 최적화 완료 표시
+- WHEN Phase 1-5 완료 후
+- 시스템은 config.json의 `project.optimized`를 `true`로 설정해야 한다
+
+#### State-driven Requirements (상태 기반)
+
+**REQ-INIT-003-S03**: 백업 파일 템플릿 상태 처리
+- WHILE 백업 파일이 템플릿 상태일 때
+- 시스템은 병합을 건너뛰고 새로 시작해야 한다
+- 메시지: "템플릿 상태 - 새로 생성"
+
+**REQ-INIT-003-S04**: 사용자 작성 내용 병합
+- WHILE 사용자 작성 내용이 존재할 때
+- 시스템은 기존 내용을 보존하면서 병합해야 한다
+- 병합 전략: 백업 내용 우선 사용 (간단한 병합)
+
+#### Optional Features (선택 기능)
+
+**REQ-INIT-003-O01**: 백업 여러 개 존재 시 최신 선택
+- WHERE 백업이 여러 개 존재하면
+- 시스템은 최신 타임스탬프 기준으로 자동 선택할 수 있다
+
+**REQ-INIT-003-O02**: "나중에" 선택 시 Phase 0 건너뛰기
+- WHERE 사용자가 "나중에" 선택하면
+- 시스템은 Phase 0를 건너뛰고 백업 경로만 안내할 수 있다
+
+#### Constraints (제약사항)
+
+**REQ-INIT-003-C05**: 백업 폴더 없을 시 Phase 0 건너뛰기
+- IF 백업 폴더가 없으면
+- 시스템은 Phase 0를 건너뛰고 Phase 1로 직접 진행해야 한다
+- 판단: 신규 설치 케이스
+
+**REQ-INIT-003-C06**: 백업 파일 읽기 실패 시 건너뛰기
+- IF 백업 파일 읽기에 실패하면
+- 시스템은 오류를 기록하고 해당 파일은 건너뛰어야 한다
+- 메시지: "백업 없음 - 건너뛰기"
+
+**REQ-INIT-003-C07**: 백업 경로 형식 검증
+- 백업 경로는 `.moai-backups/YYYYMMDD-HHMMSS/` 형식을 따라야 한다
+- 형식 불일치 시 무시
 
 ---
 
@@ -478,7 +586,7 @@ function mergeJSON(backupFile: string, currentFile: string): object {
 
 **실행 시각**: 2025-10-07 14:30:00
 **실행 모드**: merge
-**백업 경로**: .moai-backup-20251007-143000/
+**백업 경로**: .moai-backups/20251007-143000/
 
 ---
 
@@ -506,22 +614,372 @@ function mergeJSON(backupFile: string, currentFile: string): object {
 
 ---
 
+### Phase C: /alfred:0-project 백업 병합 로직 (v0.3.1 신규, Python 구현)
+
+**구현 위치**: `src/moai_adk/core/project/backup_merger.py` (신규)
+
+#### 1. BackupMerger 클래스 설계
+
+```python
+# @CODE:INIT-003:MERGE | SPEC: .moai/specs/SPEC-INIT-003/spec.md
+"""백업 병합 모듈 (SPEC-INIT-003 v0.3.1)
+
+백업의 프로젝트 문서를 현재 템플릿에 지능형 병합.
+"""
+
+from pathlib import Path
+from rich.console import Console
+
+console = Console()
+
+
+class BackupMerger:
+    """백업 병합 관리 클래스 (SPEC-INIT-003 v0.3.1)"""
+
+    def __init__(self, project_path: Path) -> None:
+        """초기화
+
+        Args:
+            project_path: 프로젝트 경로
+        """
+        self.project_path = project_path
+        self.backup_dir = project_path / ".moai" / "backups"
+
+    def get_latest_backup(self) -> Path | None:
+        """최근 백업 경로 반환
+
+        Returns:
+            최근 백업 경로 또는 None
+
+        Example:
+            >>> merger = BackupMerger(Path("/project"))
+            >>> backup = merger.get_latest_backup()
+            >>> print(backup)
+            /project/.moai-backups/20251015-143000
+        """
+        if not self.backup_dir.exists():
+            return None
+
+        # 타임스탬프 기준 역순 정렬 (최신 우선)
+        backups = sorted(self.backup_dir.iterdir(), reverse=True)
+        return backups[0] if backups else None
+
+    def merge_project_docs(self, backup_path: Path) -> None:
+        """프로젝트 문서 병합
+
+        Args:
+            backup_path: 백업 경로
+
+        Raises:
+            FileNotFoundError: 백업 경로가 존재하지 않을 때
+        """
+        for doc_name in ["product.md", "structure.md", "tech.md"]:
+            self._merge_single_doc(backup_path, doc_name)
+
+    def _merge_single_doc(self, backup_path: Path, doc_name: str) -> None:
+        """단일 문서 병합
+
+        Args:
+            backup_path: 백업 경로
+            doc_name: 문서명
+        """
+        backup_doc = backup_path / ".moai" / "project" / doc_name
+        current_doc = self.project_path / ".moai" / "project" / doc_name
+
+        # 백업 파일 없음
+        if not backup_doc.exists():
+            console.print(f"⏭️ {doc_name} 백업 없음 - 건너뛰기")
+            return
+
+        backup_content = backup_doc.read_text(encoding="utf-8")
+
+        # 템플릿 상태 확인
+        if self._is_template_state(backup_content):
+            console.print(f"ℹ️ {doc_name}는 템플릿 상태 - 새로 생성")
+            return
+
+        # 지능형 병합
+        console.print(f"🔄 {doc_name} 병합 중...")
+
+        template_content = current_doc.read_text(encoding="utf-8")
+        merged_content = self._smart_merge(template_content, backup_content)
+
+        current_doc.write_text(merged_content, encoding="utf-8")
+        console.print(f"✅ {doc_name} 병합 완료")
+
+    def _is_template_state(self, content: str) -> bool:
+        """템플릿 상태 감지
+
+        Args:
+            content: 파일 내용
+
+        Returns:
+            템플릿 상태 여부 ({{PROJECT_NAME}} 존재 시 True)
+        """
+        return "{{PROJECT_NAME}}" in content
+
+    def _smart_merge(self, template: str, backup: str) -> str:
+        """지능형 병합 (템플릿 구조 + 백업 내용)
+
+        Args:
+            template: 템플릿 내용
+            backup: 백업 내용
+
+        Returns:
+            병합된 내용
+
+        Note:
+            간단한 병합 전략: 백업 내용 우선 사용
+            향후 섹션별 병합으로 개선 가능
+        """
+        return backup
+```
+
+#### 2. 사용 예시 (/alfred:0-project Phase 0)
+
+```python
+# Phase 0: 버전 확인 및 백업 병합 안내
+
+from pathlib import Path
+from moai_adk.core.project.backup_merger import BackupMerger
+
+# 1. 버전 확인
+config_path = Path(".moai/config.json")
+config = json.loads(config_path.read_text())
+
+config_version = config.get("project", {}).get("moai_adk_version", "unknown")
+package_version = "0.3.1"  # moai_adk.__version__
+optimized = config.get("project", {}).get("optimized", False)
+
+# 2. 버전 불일치 감지
+if config_version != package_version or not optimized:
+    # 3. 백업 병합 확인
+    merger = BackupMerger(Path.cwd())
+    latest_backup = merger.get_latest_backup()
+
+    if latest_backup is None:
+        # 백업 없음 → 신규 설치
+        console.print("ℹ️ 백업 없음 - 신규 프로젝트로 진행")
+        # → Phase 1로 진행
+    else:
+        # 백업 있음 → 병합 프롬프트
+        console.print(f"""
+⚠️ 버전 불일치 감지
+
+현재 상태:
+- 패키지 버전: {package_version}
+- 프로젝트 설정: {config_version}
+- 최적화 상태: {optimized}
+
+최근 백업 발견: {latest_backup}
+
+💡 이전 설정을 병합하시겠습니까?
+
+옵션:
+1. "예" 또는 "병합": product/structure/tech.md 내용 병합
+2. "아니오" 또는 "새로시작": 백업 보존, 템플릿 기본값 사용
+3. "나중에": Phase 0 건너뛰기
+        """)
+
+        # 사용자 입력 대기
+        choice = input("선택: ").strip().lower()
+
+        if choice in ["예", "병합", "yes", "merge"]:
+            # 병합 실행
+            merger.merge_project_docs(latest_backup)
+            console.print("✅ 백업 병합 완료")
+        elif choice in ["아니오", "새로시작", "no", "reinstall"]:
+            console.print("ℹ️ 백업 보존, 새로 시작")
+        else:
+            console.print("⏭️ Phase 0 건너뛰기")
+```
+
+#### 3. 테스트 케이스 설계
+
+**파일**: `tests/unit/test_backup_merger.py`
+
+```python
+# @TEST:INIT-003:MERGE | SPEC: .moai/specs/SPEC-INIT-003/spec.md
+"""백업 병합 테스트 (SPEC-INIT-003 v0.3.1)"""
+
+import pytest
+from pathlib import Path
+from moai_adk.core.project.backup_merger import BackupMerger
+
+
+def test_get_latest_backup_returns_most_recent(tmp_path):
+    """최신 백업 경로 반환 테스트"""
+    # Arrange
+    backup_dir = tmp_path / ".moai" / "backups"
+    backup_dir.mkdir(parents=True)
+
+    (backup_dir / "20251014-120000").mkdir()
+    (backup_dir / "20251015-143000").mkdir()  # 최신
+    (backup_dir / "20251015-100000").mkdir()
+
+    merger = BackupMerger(tmp_path)
+
+    # Act
+    latest = merger.get_latest_backup()
+
+    # Assert
+    assert latest == backup_dir / "20251015-143000"
+
+
+def test_get_latest_backup_returns_none_when_no_backups(tmp_path):
+    """백업 없을 때 None 반환 테스트"""
+    # Arrange
+    merger = BackupMerger(tmp_path)
+
+    # Act
+    latest = merger.get_latest_backup()
+
+    # Assert
+    assert latest is None
+
+
+def test_is_template_state_detects_placeholder(tmp_path):
+    """템플릿 상태 감지 테스트"""
+    # Arrange
+    merger = BackupMerger(tmp_path)
+    content = "# {{PROJECT_NAME}}\n\nThis is a template."
+
+    # Act
+    is_template = merger._is_template_state(content)
+
+    # Assert
+    assert is_template is True
+
+
+def test_is_template_state_false_for_user_content(tmp_path):
+    """사용자 작성 내용 감지 테스트"""
+    # Arrange
+    merger = BackupMerger(tmp_path)
+    content = "# My Project\n\nUser content here."
+
+    # Act
+    is_template = merger._is_template_state(content)
+
+    # Assert
+    assert is_template is False
+
+
+def test_merge_single_doc_skips_template_state(tmp_path, capsys):
+    """템플릿 상태 파일 병합 건너뛰기 테스트"""
+    # Arrange
+    backup_path = tmp_path / "backup"
+    backup_doc = backup_path / ".moai" / "project"
+    backup_doc.mkdir(parents=True)
+
+    (backup_doc / "product.md").write_text("# {{PROJECT_NAME}}")
+
+    current_doc = tmp_path / ".moai" / "project"
+    current_doc.mkdir(parents=True)
+    (current_doc / "product.md").write_text("# Template")
+
+    merger = BackupMerger(tmp_path)
+
+    # Act
+    merger._merge_single_doc(backup_path, "product.md")
+
+    # Assert
+    captured = capsys.readouterr()
+    assert "템플릿 상태 - 새로 생성" in captured.out
+
+
+def test_merge_single_doc_preserves_user_content(tmp_path):
+    """사용자 작성 내용 병합 테스트"""
+    # Arrange
+    backup_path = tmp_path / "backup"
+    backup_doc = backup_path / ".moai" / "project"
+    backup_doc.mkdir(parents=True)
+
+    user_content = "# My Project\n\nUser content preserved."
+    (backup_doc / "product.md").write_text(user_content)
+
+    current_doc = tmp_path / ".moai" / "project"
+    current_doc.mkdir(parents=True)
+    (current_doc / "product.md").write_text("# Template")
+
+    merger = BackupMerger(tmp_path)
+
+    # Act
+    merger._merge_single_doc(backup_path, "product.md")
+
+    # Assert
+    merged = (current_doc / "product.md").read_text()
+    assert merged == user_content
+```
+
+#### 4. Acceptance Criteria (Given-When-Then)
+
+**Scenario 1: 최근 백업 탐지**
+
+```
+Given: 프로젝트 루트에 여러 백업이 존재할 때
+  .moai-backups/20251014-120000/
+  .moai-backups/20251015-143000/  ← 최신
+  └── 20251015-100000/
+
+When: get_latest_backup() 메서드를 호출하면
+
+Then:
+- 최신 백업 경로 20251015-143000/를 반환한다
+- 타임스탬프 기준 역순 정렬을 사용한다
+```
+
+**Scenario 2: 템플릿 상태 감지**
+
+```
+Given: 백업 파일 product.md에 {{PROJECT_NAME}} 패턴이 존재할 때
+
+When: _is_template_state() 메서드로 확인하면
+
+Then:
+- True를 반환한다
+- 병합을 건너뛰고 새로 시작한다
+```
+
+**Scenario 3: 사용자 작성 내용 병합**
+
+```
+Given:
+- 백업 파일 product.md에 사용자 작성 내용이 있을 때
+- 현재 템플릿 product.md가 존재할 때
+
+When: merge_project_docs() 메서드를 호출하면
+
+Then:
+- 백업 내용을 현재 템플릿에 복사한다
+- 파일별 병합 완료 메시지를 출력한다
+- 3개 파일 (product/structure/tech.md) 모두 처리한다
+```
+
+---
+
 ## Traceability (추적성)
 
 ### TAG 체계
 
 **이 SPEC의 TAG**: `@SPEC:INIT-003`
 
-**Phase A 구현 위치**:
-- `@CODE:INIT-003:BACKUP` → `moai-adk-ts/src/core/installer/phase-executor.ts`
-- `@CODE:INIT-003:DATA` → `moai-adk-ts/src/core/installer/backup-metadata.ts`
-- `@TEST:INIT-003:BACKUP` → `moai-adk-ts/__tests__/core/installer/phase-executor.test.ts`
+**Phase A 구현 위치** (v0.2.1까지, TypeScript):
+- `@CODE:INIT-003:BACKUP` → `moai-adk-ts/src/core/installer/phase-executor.ts` (deprecated)
+- `@CODE:INIT-003:DATA` → `moai-adk-ts/src/core/installer/backup-metadata.ts` (deprecated)
+- `@TEST:INIT-003:BACKUP` → `moai-adk-ts/__tests__/core/installer/phase-executor.test.ts` (deprecated)
 
-**Phase B 구현 위치**:
-- `@CODE:INIT-003:MERGE` → `moai-adk-ts/src/cli/commands/project/backup-merger.ts`
-- `@CODE:INIT-003:DATA` → `moai-adk-ts/src/cli/commands/project/merge-strategies/`
-- `@CODE:INIT-003:UI` → `moai-adk-ts/src/cli/commands/project/merge-report.ts`
-- `@TEST:INIT-003:MERGE` → `moai-adk-ts/__tests__/cli/commands/project/backup-merger.test.ts`
+**Phase B 구현 위치** (v0.2.1까지, TypeScript):
+- `@CODE:INIT-003:MERGE` → `moai-adk-ts/src/cli/commands/project/backup-merger.ts` (deprecated)
+- `@CODE:INIT-003:DATA` → `moai-adk-ts/src/cli/commands/project/merge-strategies/` (deprecated)
+- `@CODE:INIT-003:UI` → `moai-adk-ts/src/cli/commands/project/merge-report.ts` (deprecated)
+- `@TEST:INIT-003:MERGE` → `moai-adk-ts/__tests__/cli/commands/project/backup-merger.test.ts` (deprecated)
+
+**Phase C 구현 위치** (v0.3.1, Python, 신규):
+- `@CODE:INIT-003:MERGE` → `src/moai_adk/core/project/backup_merger.py`
+- `@CODE:INIT-003:CONFIG` → `src/moai_adk/core/project/phase_executor.py` (Phase 4 수정)
+- `@CODE:INIT-003:REINIT` → `src/moai_adk/cli/commands/init.py` (reinit 로직)
+- `@CODE:INIT-003:TEMPLATE` → `src/moai_adk/templates/.moai/config.json`
+- `@TEST:INIT-003:MERGE` → `tests/unit/test_backup_merger.py`
 
 ### 의존성 체인
 
@@ -544,21 +1002,40 @@ function mergeJSON(backupFile: string, currentFile: string): object {
 - ✅ **부분 설치 케이스 대응**: 1개 파일만 있어도 백업 → 데이터 손실 방지
 - ✅ **백업 메타데이터 없는 경우**: 긴급 백업 자동 생성 → 사용자 안전성 강화
 
-### 새로운 위험 요소
+### 감소된 위험 요소 (v0.2.1 → v0.3.1)
+- ✅ **자동 버전 추적**: config.json에 moai_adk_version 기록 → 버전 불일치 자동 감지
+- ✅ **최적화 상태 관리**: optimized 플래그로 최적화 필요 여부 자동 판단
+- ✅ **백업 병합 안내**: Claude 접속 시 자동으로 백업 병합 여부 확인 → 사용자 작업물 보존
+
+### 새로운 위험 요소 (v0.3.1)
+
+**위험 5: config.json 버전 필드 누락**
+- **영향**: 버전 불일치 감지 실패 → 수동 확인 필요
+- **대응**: init.py에서 reinit 시 자동으로 버전 필드 추가
+
+**위험 6: 백업 경로 타임스탬프 충돌**
+- **영향**: 동일 초에 여러 백업 생성 시 덮어쓰기
+- **대응**: 타임스탬프에 밀리초 추가 또는 순차 번호 접미사
+
+**위험 7: 병합 중 사용자 중단**
+- **영향**: 부분 병합 상태로 남음
+- **대응**: 병합 시작 전 확인 메시지, 백업 보존 보장
+
+### 기존 위험 요소 (v0.2.1 이전)
 
 **위험 1: 백업 메타데이터 손상**
 - **영향**: 백업 상태 확인 불가
 - **대응**: JSON 스키마 검증, 백업 메타데이터 무결성 체크
 
-**위험 2: /alfred:8-project 미실행**
+**위험 2: /alfred:0-project 미실행** (v0.3.1: /alfred:8-project → /alfred:0-project)
 - **영향**: 백업 방치 (디스크 공간 낭비)
-- **대응**: moai init 완료 메시지에 명확한 다음 단계 안내
+- **대응**: moai-adk init 완료 메시지에 명확한 다음 단계 안내, Claude 접속 시 자동 알림
 
-**위험 3: Phase A/B 버전 불일치**
+**위험 3: Phase 버전 불일치**
 - **영향**: 백업 메타데이터 형식 불일치
-- **대응**: 메타데이터 버전 필드 추가, 하위 호환성 유지
+- **대응**: config.json 버전 필드로 추적, 하위 호환성 유지
 
-**위험 4: 긴급 백업 중 디스크 공간 부족** (v0.2.1 추가)
+**위험 4: 긴급 백업 중 디스크 공간 부족**
 - **영향**: 백업 실패 시 설치 중단
 - **대응**: 백업 실패 시 사용자에게 명확한 에러 메시지, 디스크 공간 확인 로직 추가 권장
 
@@ -582,14 +1059,25 @@ function mergeJSON(backupFile: string, currentFile: string): object {
 5. ✅ 병합 리포트가 정확하게 생성되는가?
 6. ✅ 병합 실패 시 롤백이 작동하는가?
 
+**Phase C 주요 기준** (v0.3.1 신규):
+1. ⏳ 최근 백업 경로가 정확하게 반환되는가?
+2. ⏳ 백업 없을 때 None을 반환하는가?
+3. ⏳ 템플릿 상태가 정확하게 감지되는가?
+4. ⏳ 사용자 작성 내용이 보존되면서 병합되는가?
+5. ⏳ 백업 파일 읽기 실패 시 건너뛰기가 작동하는가?
+6. ⏳ 병합 완료 메시지가 정확하게 출력되는가?
+7. ⏳ config.json의 optimized 필드가 true로 설정되는가?
+
 ---
 
 ## Next Steps
 
-1. `/alfred:2-build INIT-003` → Phase A/B 순차 TDD 구현
-   - Phase A (1-2시간): moai init 백업 로직 (선택적 백업)
-   - Phase B (4-6시간): /alfred:8-project 병합 로직 (긴급 백업 포함)
+1. `/alfred:2-build INIT-003` → Phase C TDD 구현 (Python)
+   - Phase C (2-3시간): backup_merger.py 구현 (백업 병합 기능)
+   - TDD 사이클: RED (테스트 작성) → GREEN (구현) → REFACTOR (품질 개선)
+   - 테스트 8개: 최근 백업 탐지, 템플릿 상태 감지, 사용자 내용 병합 등
 2. 구현 완료 후 `/alfred:3-sync` → 문서 동기화 및 TAG 검증
+3. 버전 증가: v0.3.1 (PATCH) → 백업 병합 기능 추가
 
 ---
 
