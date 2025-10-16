@@ -113,7 +113,8 @@
       "Bash(uv remove:*)",
       "Bash(pip install:*)",
       "Bash(pip3 install:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(rm -rf:*)"
     ],
     "deny": [
       "Read(./.env)",
@@ -123,7 +124,10 @@
       "Read(~/.aws/**)",
       "Read(~/.config/gcloud/**)",
       "Bash(sudo:*)",
-      "Bash(rm -rf:*)",
+      "Bash(rm -rf /:*)",
+      "Bash(rm -rf ~:*)",
+      "Bash(rm -rf /*:*)",
+      "Bash(rm -rf ~/*:*)",
       "Bash(chmod -R 777:*)",
       "Bash(dd:*)",
       "Bash(mkfs:*)",
