@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.3.3] - 2025-10-17
+
+### Changed
+
+#### 🧪 테스트 및 문서 개선
+
+**핵심 변경사항**:
+- 🧪 **test_update.py 개선**: PyPI 버전 모킹 추가로 테스트 안정성 향상
+- 📝 **README.md 통일**: 버전 표기를 v0.3.x로 통일하여 일관성 확보
+- 📝 **문서 동기화**: Git 추적 제외 항목 정리 및 .gitignore 적용
+- 🔧 **릴리즈 프로세스 개선**: 자동화된 릴리즈 워크플로우 정립
+
+**구현 상세**:
+- `tests/integration/test_update.py`: PyPI API 모킹 로직 추가
+- `README.md`: 버전 표기 규칙 통일
+- `.gitignore`: 사용자별 Claude Code 파일 제외 설정
+- 릴리즈 자동화: uv publish + gh release 통합
+
+### Technical Details
+
+- **커밋**: 5d47556 🔖 RELEASE: v0.3.3
+- **변경 파일**: 2개 (pyproject.toml, __init__.py)
+- **PyPI 배포**: ✅ https://pypi.org/project/moai-adk/0.3.3/
+- **GitHub Release**: ✅ https://github.com/modu-ai/moai-adk/releases/tag/v0.3.3
+- **빌드 산출물**:
+  - moai_adk-0.3.3-py3-none-any.whl (85.7KB)
+  - moai_adk-0.3.3.tar.gz (72.6KB)
+
+---
+
 ## [v0.3.2] - 2025-10-17
 
 ### Changed
