@@ -557,7 +557,7 @@ Alfred SuperAgent가 9개 전문 에이전트를 조율하여 빠른 개발과 �
 - SPEC 우선: 모든 작업은 @SPEC:ID부터 시작
 - TAG 무결성: `rg` 스캔 기반 실시간 검증
 - TRUST 준수: 5원칙 자동 검증 및 품질 게이트
-- 다중 언어: 8개 언어 지원 (TypeScript, Python, Go, Rust, Java, Dart, Swift, Kotlin)
+- 다중 언어: 10개 언어 지원 (Python, TypeScript, JavaScript, Java, Go, Rust, Dart, Swift, Kotlin, React Native)
 
 **사용**:
 ```text
