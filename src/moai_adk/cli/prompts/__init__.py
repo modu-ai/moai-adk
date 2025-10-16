@@ -1,4 +1,4 @@
-"""대화형 프롬프트 모듈"""
+"""Interactive prompt module"""
 
 from moai_adk.cli.prompts.init_prompts import prompt_project_setup
 

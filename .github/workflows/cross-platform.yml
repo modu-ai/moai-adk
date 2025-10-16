@@ -1,0 +1,112 @@
+name: Cross-Platform Tests
+
+# Windows, macOS, Linux에서 MoAI-ADK 테스트
+
+on:
+  push:
+    branches: [develop, main, "feature/**"]
+  pull_request:
+    types: [opened, ready_for_review, synchronize]
+
+jobs:
+  test-matrix:
+    name: Test on ${{ matrix.os }} - Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.13"]
+
+    steps:
+      - name: 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Python ${{ matrix.python-version }} 설정
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # ripgrep 설치 (모든 플랫폼)
+      - name: Install ripgrep (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ripgrep
+
+      - name: Install ripgrep (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ripgrep
+
+      - name: Install ripgrep (Windows)
+        if: runner.os == 'Windows'
+        run: choco install ripgrep -y
+
+      # uv 설치 (크로스 플랫폼)
+      - name: Install uv (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install uv (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          irm https://astral.sh/uv/install.ps1 | iex
+          echo "$env:USERPROFILE\.cargo\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      # 의존성 설치
+      - name: Install dependencies (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          uv pip install --system -e ".[dev]"
+
+      - name: Install dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          uv pip install --system -e ".[dev]"
+
+      # 시스템 진단
+      - name: Run system diagnostics
+        run: python -m moai_adk doctor --verbose
+
+      # 테스트 실행
+      - name: Run tests
+        run: |
+          python -m pytest -v --cov --cov-report=term-missing --cov-report=xml
+
+      # 커버리지 업로드
+      - name: Upload coverage to Codecov
+        if: matrix.os == 'ubuntu-latest'
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          flags: cross-platform-${{ matrix.os }}
+          name: moai-adk-${{ matrix.os }}
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  summary:
+    name: Cross-Platform Summary
+    needs: test-matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: always()
+
+    steps:
+      - name: Check test results
+        run: |
+          echo "🌍 Cross-Platform Test Results"
+          echo "=============================="
+          echo "Windows: ${{ needs.test-matrix.result }}"
+          echo "macOS: ${{ needs.test-matrix.result }}"
+          echo "Linux: ${{ needs.test-matrix.result }}"
+
+          if [ "${{ needs.test-matrix.result }}" == "success" ]; then
+            echo "✅ All platforms passed!"
+          else
+            echo "❌ Some platforms failed"
+            exit 1
+          fi

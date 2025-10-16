@@ -6,7 +6,6 @@ Tests for LanguageDetector class.
 
 from pathlib import Path
 
-
 from moai_adk.core.project.detector import LanguageDetector
 
 

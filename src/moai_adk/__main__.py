@@ -1,12 +1,12 @@
 # @CODE:CLI-001 | SPEC: SPEC-CLI-001.md | TEST: tests/unit/test_cli_commands.py
 """MoAI-ADK CLI Entry Point
 
-CLI 진입점 구현:
-- Click 기반 CLI 프레임워크
-- Rich console 터미널 출력
-- ASCII 로고 출력
-- --version, --help 옵션
-- 4개 핵심 명령어: init, doctor, status, restore
+Implements the CLI entry point:
+- Click-based CLI framework
+- Rich console terminal output
+- ASCII logo rendering
+- --version and --help options
+- Six core commands: init, doctor, status, backup, restore, update
 """
 
 import sys
@@ -27,11 +27,11 @@ console = Console()
 
 
 def show_logo() -> None:
-    """MoAI-ADK ASCII 로고 출력 (Pyfiglet)"""
-    # Pyfiglet으로 "MoAI-ADK" 텍스트 생성 (ansi_shadow 폰트 사용)
+    """Render the MoAI-ADK ASCII logo with Pyfiglet"""
+    # Generate the "MoAI-ADK" banner using the ansi_shadow font
     logo = pyfiglet.figlet_format("MoAI-ADK", font="ansi_shadow")
 
-    # Rich로 스타일 적용하여 출력
+    # Print with Rich styling
     console.print(logo, style="cyan bold", highlight=False)
     console.print("  Modu-AI's Agentic Development Kit w/ SuperAgent 🎩 Alfred", style="yellow bold")
     console.print()
@@ -39,7 +39,7 @@ def show_logo() -> None:
     console.print(__version__, style="cyan bold")
     console.print()
     console.print("  Tip: Run ", style="yellow", end="")
-    console.print("moai-adk --help", style="cyan", end="")
+    console.print("python -m moai_adk --help", style="cyan", end="")
     console.print(" to see available commands", style="yellow")
 
 
@@ -51,7 +51,7 @@ def cli(ctx: click.Context) -> None:
 
     SPEC-First TDD Framework with Alfred SuperAgent
     """
-    # 하위 명령어 없이 실행되면 로고 출력
+    # Display the logo when no subcommand is invoked
     if ctx.invoked_subcommand is None:
         show_logo()
 
@@ -64,12 +64,12 @@ cli.add_command(update)
 
 
 def main() -> int:
-    """CLI 진입점"""
+    """CLI entry point"""
     try:
         cli(standalone_mode=False)
         return 0
     except click.Abort:
-        # 사용자가 Ctrl+C로 취소
+        # User cancelled with Ctrl+C
         return 130
     except click.ClickException as e:
         e.show()
@@ -78,7 +78,7 @@ def main() -> int:
         console.print(f"[red]Error:[/red] {e}")
         return 1
     finally:
-        # 출력 버퍼 명시적 flush
+        # Flush the output buffer explicitly
         console.file.flush()
 
 

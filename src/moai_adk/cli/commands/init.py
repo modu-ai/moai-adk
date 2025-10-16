@@ -1,13 +1,14 @@
 # @CODE:CLI-001 | @CODE:INIT-003:CLI
 # SPEC: SPEC-CLI-001.md, SPEC-INIT-003.md
 # TEST: tests/unit/test_cli_commands.py, tests/unit/test_init_reinit.py
-"""moai init command
+"""MoAI-ADK init command
 
 Project initialization command (interactive/non-interactive):
 - Interactive Mode: Ask user for project settings
 - Non-Interactive Mode: Use defaults or CLI options
 """
 
+import json
 from pathlib import Path
 from typing import Sequence
 
@@ -16,6 +17,7 @@ from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskID, TextColumn
 from rich.prompt import Confirm
 
+from moai_adk import __version__
 from moai_adk.cli.prompts import prompt_project_setup
 from moai_adk.core.project.initializer import ProjectInitializer
 from moai_adk.utils.banner import print_banner, print_welcome_message
@@ -152,7 +154,7 @@ def init(
                 console.print(f"   Location: {project_path}/.moai/\n")
 
                 console.print("[cyan]This will:[/cyan]")
-                console.print("  ✓ Backup existing files to .moai/backups/{timestamp}/")
+                console.print("  ✓ Backup existing files to .moai-backups/{timestamp}/")
                 console.print("    • CLAUDE.md")
                 console.print("    • .claude/ (settings, commands, hooks)")
                 console.print("    • .moai/ (all configurations and specs)")
@@ -172,6 +174,27 @@ def init(
 
         # 5. Initialize project (Progress Bar with 5 phases)
         is_reinit = initializer.is_initialized()
+
+        # Reinit mode: set config.json optimized to false (v0.3.1+)
+        if is_reinit:
+            config_path = project_path / ".moai" / "config.json"
+            if config_path.exists():
+                try:
+                    with open(config_path, "r", encoding="utf-8") as f:
+                        config_data = json.load(f)
+
+                    # Update version and optimization flags
+                    if "project" not in config_data:
+                        config_data["project"] = {}
+
+                    config_data["project"]["moai_adk_version"] = __version__
+                    config_data["project"]["optimized"] = False
+
+                    with open(config_path, "w", encoding="utf-8") as f:
+                        json.dump(config_data, f, indent=2, ensure_ascii=False)
+                except Exception:
+                    # Ignore read/write failures; config.json is regenerated during initialization
+                    pass
 
         with Progress(
             SpinnerColumn(),
@@ -251,9 +274,7 @@ def init(
         raise click.Abort()
     except FileExistsError as e:
         console.print("\n[yellow]⚠ Project already initialized[/yellow]")
-        console.print(
-            "[dim]  Use 'moai-adk status' to check configuration[/dim]\n"
-        )
+        console.print("[dim]  Use 'python -m moai_adk status' to check configuration[/dim]\n")
         raise click.Abort() from e
     except Exception as e:
         console.print(f"\n[red]✗ Initialization failed: {e}[/red]\n")

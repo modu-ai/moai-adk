@@ -1,6 +1,6 @@
 ---
 name: spec-builder
-description: SPEC 문서 작성 및 EARS 명세 설계 전문가
+description: "Use when: EARS 방식의 SPEC 문서 작성이 필요할 때. /alfred:1-spec 커맨드에서 호출"
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch
 model: sonnet
 ---

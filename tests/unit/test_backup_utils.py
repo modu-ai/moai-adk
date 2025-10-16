@@ -6,7 +6,6 @@ Tests for backup utility functions.
 
 from pathlib import Path
 
-
 from moai_adk.core.project.backup_utils import (
     BACKUP_TARGETS,
     PROTECTED_PATHS,

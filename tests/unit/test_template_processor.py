@@ -12,7 +12,6 @@ import json
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-
 from moai_adk.core.template.processor import TemplateProcessor
 
 
@@ -58,8 +57,8 @@ class TestCopyTemplates:
         processor = TemplateProcessor(tmp_path)
         processor.copy_templates(backup=True, silent=True)
 
-        # Should create backup directory
-        backup_dir = tmp_path / ".moai-backup"
+        # Should create backup directory (.moai-backups/{timestamp}/)
+        backup_dir = tmp_path / ".moai-backups"
         assert backup_dir.exists()
 
     @patch("moai_adk.core.template.processor.Console")
@@ -105,7 +104,7 @@ class TestCreateBackup:
     """Test backup creation"""
 
     def test_create_backup_creates_directory(self, tmp_path: Path) -> None:
-        """Should create timestamped backup directory"""
+        """Should create timestamped backup directory (.moai-backups/{timestamp}/)"""
         (tmp_path / ".moai").mkdir()
         (tmp_path / ".moai" / "config.json").write_text("{}")
 
@@ -113,7 +112,7 @@ class TestCreateBackup:
         backup_path = processor.create_backup()
 
         assert backup_path.exists()
-        assert backup_path.parent.name == ".moai-backup"
+        assert backup_path.parent.name == ".moai-backups"
         assert len(backup_path.name) == 15  # YYYYMMDD-HHMMSS
 
     def test_create_backup_copies_moai_directory(self, tmp_path: Path) -> None:

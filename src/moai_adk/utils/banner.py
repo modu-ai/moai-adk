@@ -1,7 +1,7 @@
 # @CODE:UTILS-001 | SPEC: SPEC-CLI-001.md
-"""ASCII 배너 모듈
+"""ASCII banner module
 
-MoAI-ADK ASCII 아트 배너 출력
+Render the MoAI-ADK ASCII art banner
 """
 
 from rich.console import Console
@@ -19,10 +19,10 @@ MOAI_BANNER = """
 
 
 def print_banner(version: str = "0.3.0") -> None:
-    """MoAI-ADK 배너 출력
+    """Print the MoAI-ADK banner
 
     Args:
-        version: MoAI-ADK 버전
+        version: MoAI-ADK version
     """
     console.print(f"[cyan]{MOAI_BANNER}[/cyan]")
     console.print(
@@ -32,7 +32,7 @@ def print_banner(version: str = "0.3.0") -> None:
 
 
 def print_welcome_message() -> None:
-    """환영 메시지 출력"""
+    """Print the welcome message"""
     console.print("[cyan bold]🚀 Welcome to MoAI-ADK Project Initialization![/cyan bold]\n")
     console.print(
         "[dim]This wizard will guide you through setting up your MoAI-ADK project.[/dim]"

@@ -1,8 +1,8 @@
 ---
 name: doc-syncer
-description: Living Document 동기화 및 TAG 검증 전문가
+description: "Use when: 코드 변경사항 기반 문서 자동 동기화가 필요할 때. /alfred:3-sync 커맨드에서 호출"
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite
-model: sonnet
+model: haiku
 ---
 
 # Doc Syncer - 문서 관리/동기화 전문가

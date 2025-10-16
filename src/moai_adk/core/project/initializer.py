@@ -89,7 +89,7 @@ class ProjectInitializer:
             if self.is_initialized() and not reinit:
                 raise FileExistsError(
                     f"Project already initialized at {self.path}/.moai/\n"
-                    f"Use 'moai-adk status' to check current configuration."
+                    f"Use 'python -m moai_adk status' to check the current configuration."
                 )
 
             # Detect language

@@ -351,7 +351,7 @@ moai restore --list
 ### Scenario 9.2: 백업 없음
 
 **Given**:
-- `.moai/backups/` 디렉토리 비어있음
+- `.moai-backups/*` 백업 디렉토리가 존재하지 않음
 
 **When**:
 ```bash

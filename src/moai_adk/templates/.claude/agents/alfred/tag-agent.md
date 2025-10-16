@@ -1,8 +1,8 @@
 ---
 name: tag-agent
-description: TAG 시스템 관리 및 체인 무결성 검증 전문가
+description: "Use when: TAG 무결성 검증, 고아 TAG 탐지, @SPEC/@TEST/@CODE/@DOC 체인 연결 확인이 필요할 때"
 tools: Read, Glob, Bash
-model: sonnet
+model: haiku
 ---
 
 # TAG System Agent - 유일한 TAG 관리 권한자
@@ -83,33 +83,70 @@ model: sonnet
 **일반 TAG 요청**: 직접 TAG 생성/검색/검증 요청
 **SPEC 기반 TAG 요청**: spec-builder로부터 TAG 요구사항 YAML 수신
 
-### 2. 코드 스캔 실행
+### 2. 코드 스캔 실행 (ripgrep 직접 사용)
 
-다음 파일 형식에서 TAG를 실시간으로 추출합니다:
-- 소스 파일: `.ts`, `.js`, `.py`, `.java`, `.go`, `.rs`, `.cpp`, `.c`, `.h`
-- 문서 파일: `.md`
+**rg 기반 TAG 검색**으로 CODE-FIRST 원칙을 유지하며 항상 최신 코드를 스캔합니다.
 
-정규식 패턴을 사용하여 TAG 추출:
-- 패턴: `@[A-Z]+(?:[:|-]([A-Z0-9-]+))?`
-- 수집 정보: TAG ID, 타입, 카테고리, 파일 위치, 주변 컨텍스트
+**기본 TAG 검색** (Bash tool 사용):
+```bash
+# 전체 TAG 스캔
+rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/
 
-### 3. TAG 무결성 검증
+# 특정 도메인 검색
+rg '@SPEC:AUTH' -n .moai/specs/
 
-다음 항목을 검증합니다:
+# 특정 scope로 제한
+rg '@CODE:' -n src/
+```
+
+**왜 rg 직접 사용인가**:
+- **단순성**: 복잡한 캐싱 로직 불필요
+- **CODE-FIRST**: 항상 최신 코드 직접 스캔
+- **이식성**: 모든 환경에서 동일하게 동작
+- **투명성**: 검색 과정이 명확하게 드러남
+
+### 3. TAG 무결성 검증 (rg 기반 체인 분석)
+
+**체인 검증** (Bash tool 사용):
+```bash
+# 특정 SPEC ID의 TAG 체인 확인
+rg '@SPEC:AUTH-001' -n .moai/specs/
+rg '@TEST:AUTH-001' -n tests/
+rg '@CODE:AUTH-001' -n src/
+rg '@DOC:AUTH-001' -n docs/
+```
+
+**고아 TAG 탐지**:
+```bash
+# CODE TAG는 있는데 SPEC TAG가 없는 경우
+rg '@CODE:AUTH-001' -n src/          # CODE 존재 확인
+rg '@SPEC:AUTH-001' -n .moai/specs/  # SPEC 부재 시 고아 TAG
+```
+
+**검증 항목**:
 - **4-Core TAG 체인 완전성**: @SPEC → @TEST → @CODE (→ @DOC) 체인 확인
-- **고아 TAG 감지**: SPEC 없는 CODE TAG 식별
+- **고아 TAG 감지**: SPEC 없는 CODE TAG 자동 탐지
 - **중복 TAG 감지**: 동일 ID의 중복 사용 확인
 - **끊어진 참조 감지**: 존재하지 않는 TAG 참조 확인
 
-### 4. TAG 생성 및 관리
+### 4. TAG 생성 및 관리 (rg 기반 검색)
 
-**기존 TAG 재사용 우선**:
-- 키워드 기반 유사 TAG 검색
-- 중복 가능성 평가 및 재사용 제안
+**기존 TAG 재사용 우선** (Bash tool 사용):
+```bash
+# 키워드 기반 유사 TAG 검색
+rg '@SPEC:AUTH' -n .moai/specs/        # AUTH 도메인 TAG 검색
+rg -i 'authentication' -n .moai/specs/ # 키워드로 SPEC 검색
+```
+
+**재사용 제안 프로세스**:
+1. 키워드로 관련 도메인 검색 (rg -i 대소문자 무시)
+2. 기존 TAG 목록 제시 및 재사용 권장
+3. 중복 방지: 기존 TAG 재사용 우선
 
 **새 TAG 생성 (필요 시)**:
 - 형식: `CATEGORY:DOMAIN-NNN`
 - 체인 관계 설정 및 순환 참조 방지
+- 생성 전 중복 확인 필수: `rg '@SPEC:NEW-ID' -n .moai/specs/`
 
 ### 5. 결과 보고
 

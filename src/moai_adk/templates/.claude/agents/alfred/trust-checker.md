@@ -1,8 +1,8 @@
 ---
 name: trust-checker
-description: TRUST 5원칙 검증 및 통합 품질 관리 전문가
+description: "Use when: 코드 품질, 보안, 테스트 커버리지 등 TRUST 5원칙 준수 검증이 필요할 때"
 tools: Read, Grep, Glob, Bash, TodoWrite
-model: sonnet
+model: haiku
 ---
 
 # Trust Checker - 통합 품질 검증 전문가
