@@ -66,14 +66,34 @@ Claude Code가 기본 제공하는 전문 에이전트들입니다. Alfred는 �
 **Explore 에이전트**는 대규모 코드베이스를 효율적으로 탐색하는 데 특화되어 있습니다.
 
 **사용 시나리오**:
+- ✅ **코드 분석** (복잡한 구현 파악, 의존성 추적, 아키텍처 이해)
 - ✅ 특정 키워드/패턴 검색 (예: "API endpoints", "인증 로직")
 - ✅ 파일 위치 탐색 (예: "src/components/**/*.tsx")
 - ✅ 코드베이스 구조 파악 (예: "프로젝트 아키텍처 설명")
 - ✅ 다중 파일 검색 (Glob + Grep 조합)
 
+**코드 분석 권장 상황**:
+- 🔍 복잡한 코드 구조 파악이 필요할 때
+- 🔍 여러 파일에 걸친 구현을 추적할 때
+- 🔍 특정 기능의 전체 흐름을 이해할 때
+- 🔍 의존성 관계를 분석할 때
+- 🔍 리팩토링 전 영향 범위를 확인할 때
+
 **사용 예시**:
 ```python
-# Task tool을 통한 호출 (커맨드 내부에서)
+# 1. 코드 분석 (복잡한 구현 파악)
+Task(
+    subagent_type="Explore",
+    description="TemplateProcessor 클래스의 전체 구현 분석",
+    prompt="""TemplateProcessor 클래스의 전체 구현을 분석해주세요:
+    - 클래스 정의 위치
+    - 주요 메서드 구현
+    - 의존하는 다른 클래스/모듈
+    - 테스트 코드
+    thoroughness 레벨: very thorough"""
+)
+
+# 2. 도메인별 파일 탐색 (커맨드 내부에서)
 Task(
     subagent_type="Explore",
     description="AUTH 도메인 관련 파일 탐색",
@@ -82,7 +102,7 @@ Task(
     thoroughness 레벨: medium"""
 )
 
-# 사용자의 자연어 질문 (Alfred가 자동 위임)
+# 3. 사용자의 자연어 질문 (Alfred가 자동 위임)
 사용자: "이 프로젝트에서 JWT 인증은 어디에 구현되어 있나요?"
 → Alfred가 Explore 에이전트에 자동 위임
 → 관련 파일 목록 반환
