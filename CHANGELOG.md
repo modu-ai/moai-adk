@@ -7,6 +7,132 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.3.1] - 2025-10-15
+
+### Added
+
+#### Event-Driven Checkpoint 시스템 (SPEC-INIT-003 v0.3.1)
+
+**핵심 변경사항**:
+- ✨ **Claude Code Hooks 통합**: SessionStart, PreToolUse, PostToolUse 훅 기반 자동 checkpoint 생성
+- 🔧 **BackupMerger 클래스**: 백업 병합 기능 구현 (`backup_merger.py`)
+- 📦 **버전 추적 시스템**: `config.json`에 `moai_adk_version`, `optimized` 필드 추가
+- 🎯 **자동 최적화 감지**: Claude 접속 시 버전 불일치 감지 및 `/alfred:0-project` 제안
+
+**구현 모듈**:
+- `src/moai_adk/core/project/backup_merger.py` (신규) - 백업 병합 로직
+- `src/moai_adk/core/project/phase_executor.py` (수정) - Phase 4 버전 추적 통합
+- `src/moai_adk/cli/commands/init.py` (수정) - reinit 로직 추가
+- `src/moai_adk/templates/.moai/config.json` (수정) - 버전 필드 추가
+- `tests/unit/test_backup_merger.py` (신규) - 백업 병합 테스트
+
+**Phase C 구현 (백업 병합)**:
+- 최근 백업 자동 탐지 (`.moai-backups/{timestamp}/` 타임스탬프 역순 정렬, 최신 1개만 유지)
+- 템플릿 상태 감지 (`{{PROJECT_NAME}}` 패턴 검사)
+- `product/structure/tech.md` 지능형 병합
+- 사용자 작성 내용 보존 우선
+
+**Claude Code Hooks**:
+- `SessionStart`: 버전 불일치 시 자동 알림
+- `PreToolUse`: 위험 작업 전 자동 checkpoint 생성
+- `PostToolUse`: 작업 완료 후 checkpoint 업데이트
+
+### Impact
+
+- ✅ 자동 버전 추적 및 최적화 감지
+- ✅ 백업 병합으로 사용자 작업물 보존
+- ✅ Claude 접속 시 자동 안내
+- ✅ Event-Driven Checkpoint 자동화
+
+### Technical Details
+
+- **변경량**: +1,180줄 추가, -2,076줄 삭제
+- **브랜치**: feature/SPEC-INIT-003-v0.3.1
+- **커밋**:
+  - 3b8c7bc: 🟢 GREEN: Claude Code Hooks 기반 Checkpoint 자동화 구현 완료
+  - c3c48ac: 📝 DOCS: CHECKPOINT-EVENT-001 문서 동기화 완료
+  - 1714724: 📝 DOCS: SPEC-INIT-003 v0.3.1 작성 완료
+- **TAG 추적성**: `@CODE:INIT-003:MERGE`, `@CODE:INIT-003:CONFIG`, `@CODE:INIT-003:REINIT`
+
+### Related
+
+- SPEC: @SPEC:INIT-003 (.moai/specs/SPEC-INIT-003/spec.md v0.3.1)
+- Issue: v0.3.0 → v0.3.1+ 업데이트 시 사용자 작업물 보존
+
+---
+
+## [v0.2.18] - 2025-10-15
+
+### Changed
+
+#### 🐍 TypeScript → Python 완전 전환
+
+**핵심 변경사항**:
+- ✨ **언어 전환 완료**: TypeScript (moai-adk-ts/) → Python (src/moai_adk/)
+- 🔧 **Python 3.13.1 기반**: 최신 Python 표준 준수
+- 📦 **패키지 구조**: src-layout 방식, uv 패키지 관리
+- 🎯 **CLI 표준화**: `python -m moai_adk` 실행 방식
+
+**삭제된 파일 (262개)**:
+- TypeScript 소스 코드 전체 제거 (moai-adk-ts/)
+- Node.js 의존성 파일 (package.json, tsconfig.json, bun.lock 등)
+- TypeScript 테스트 파일 (Vitest 기반)
+
+**추가된 파일 (32개)**:
+- Python 소스 코드 (src/moai_adk/)
+  - CLI 모듈 (commands, prompts)
+  - Core 모듈 (git, project, template)
+  - Utils 모듈 (banner)
+- Python 템플릿 파일 (src/moai_adk/templates/)
+
+**주요 구현 모듈**:
+- `cli/`: 명령어 인터페이스 (init, doctor, status, restore, backup, update)
+- `core/git/`: Git 관리 (manager, branch, commit)
+- `core/project/`: 프로젝트 관리 (initializer, detector, validator, checker)
+- `core/template/`: 템플릿 처리 (processor, config, languages)
+
+**Claude Code 설정 최적화**:
+- `.claude/settings.json` 업데이트: `python3` → `uv run` (Python 3.13.1 명시)
+- 개발 가이드 동기화 완료
+
+**테스트 커버리지 목표**:
+- 현재 상태: Python 기본 구조 완성
+- 목표: SPEC-TEST-COVERAGE-001 (85% 달성)
+
+### Impact
+
+- ✅ Python 생태계 완전 통합
+- ✅ 단일 언어 기반 유지보수 용이성 확보
+- ✅ uv 패키지 관리로 빠른 설치/실행
+- ⏳ 테스트 커버리지 구축 필요 (다음 단계)
+
+### Migration Guide
+
+**사용자 영향**:
+- 기존 npm/bun 설치 → pip/uv 설치로 전환
+- 명령어 변경: `moai` → `python -m moai_adk`
+- 기능은 동일하게 유지
+
+**개발자 영향**:
+- TypeScript → Python 코드베이스
+- Vitest → pytest 테스트 프레임워크
+- Biome/ESLint → ruff/mypy 린터
+
+### Technical Details
+
+- **변경량**: +49,411줄 (TS 262개 삭제 + Python 32개 추가)
+- **브랜치**: feature/SPEC-TEST-COVERAGE-001
+- **커밋**: SPEC 초안 작성 (v0.0.1)
+- **Python 버전**: 3.13.1
+- **패키지 관리**: uv (권장), pip (표준)
+
+### Related
+
+- SPEC: @SPEC:TEST-COVERAGE-001 (.moai/specs/SPEC-TEST-COVERAGE-001/spec.md)
+- Issue: TypeScript → Python 전환 전략
+
+---
+
 ## [v0.2.14] - 2025-10-08
 
 ### Fixed
@@ -148,7 +274,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **설계 전략 변경**: 복잡한 병합 엔진을 moai init에서 제거, 2단계 분리 접근법 도입
 
 **Phase A: 백업만 수행** (`moai init`)
-- `.moai/backups/` 디렉토리 자동 생성
+- `.moai-backups/{timestamp}/` 디렉토리 자동 생성 (최신 1개만 유지)
 - 기존 파일 백업 (.claude/, .moai/memory/)
 - 백업 메타데이터 시스템 도입 (latest.json)
 - 백업 상태 추적: `pending` → `merged` / `ignored`

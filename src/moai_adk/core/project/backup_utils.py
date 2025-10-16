@@ -1,0 +1,84 @@
+# @CODE:INIT-003:BACKUP | SPEC: .moai/specs/SPEC-INIT-003/spec.md | TEST: tests/unit/test_backup_utils.py
+"""Backup utility module (SPEC-INIT-003 v0.3.0)
+
+Selective backup strategy:
+- Back up only the required files (OR condition)
+- Backup path: .moai-backups/{timestamp}/ (v0.3.0)
+"""
+
+from datetime import datetime
+from pathlib import Path
+
+# Backup targets (OR condition - back up when any exist)
+BACKUP_TARGETS = [
+    ".moai/config.json",
+    ".moai/project/",
+    ".moai/memory/",
+    ".claude/",
+    "CLAUDE.md",
+]
+
+# User data protection paths (excluded from backups)
+PROTECTED_PATHS = [
+    ".moai/specs/",
+    ".moai/reports/",
+]
+
+
+def has_any_moai_files(project_path: Path) -> bool:
+    """Check whether any MoAI-ADK files exist (OR condition).
+
+    Args:
+        project_path: Project path.
+
+    Returns:
+        True when any backup target exists.
+    """
+    for target in BACKUP_TARGETS:
+        target_path = project_path / target
+        if target_path.exists():
+            return True
+    return False
+
+
+def get_backup_targets(project_path: Path) -> list[str]:
+    """Return existing backup targets.
+
+    Args:
+        project_path: Project path.
+
+    Returns:
+        List of backup targets that exist.
+    """
+    targets: list[str] = []
+    for target in BACKUP_TARGETS:
+        target_path = project_path / target
+        if target_path.exists():
+            targets.append(target)
+    return targets
+
+
+def generate_backup_dir_name() -> str:
+    """Generate a timestamp-based backup directory name (v0.3.0).
+
+    Returns:
+        Timestamp formatted as YYYYMMDD-HHMMSS.
+        Note: callers use .moai-backups/{timestamp}/ format.
+    """
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    return timestamp
+
+
+def is_protected_path(rel_path: Path) -> bool:
+    """Check whether the path is protected.
+
+    Args:
+        rel_path: Relative path.
+
+    Returns:
+        True when the path should be excluded from backups.
+    """
+    rel_str = str(rel_path).replace("\\", "/")
+    return any(
+        rel_str.startswith(p.lstrip("./").rstrip("/")) for p in PROTECTED_PATHS
+    )
