@@ -1,4 +1,4 @@
-# @TEST:TEST-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md
+# @TEST:INIT-003 | SPEC: SPEC-INIT-003.md
 """Unit tests for backup_utils.py module
 
 Tests for backup utility functions.

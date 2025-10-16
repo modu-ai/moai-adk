@@ -1,9 +1,9 @@
 ---
 id: CHECKPOINT-EVENT-001
-version: 0.0.1
-status: draft
+version: 0.1.0
+status: completed
 created: 2025-10-15
-updated: 2025-10-15
+updated: 2025-10-16
 author: @Goos
 priority: high
 category: feature
@@ -17,6 +17,16 @@ labels:
 # @SPEC:CHECKPOINT-EVENT-001: Event-Driven Checkpoint 시스템
 
 ## HISTORY
+
+### v0.1.0 (2025-10-16)
+- **COMPLETED**: Event-Driven Checkpoint 시스템 구현 완료
+- **IMPLEMENTED**: checkpoint.py, event_detector.py, branch_manager.py
+- **TESTED**: 테스트 커버리지 85% 달성
+- **VERIFIED**: @CODE 태그 체인 무결성 확인
+- **AUTHOR**: @Goos
+- **COMMITS**:
+  - 3b8c7bc: 🟢 GREEN: Claude Code Hooks 기반 구현
+  - c3c48ac: 📝 DOCS: 문서 동기화
 
 ### v0.0.1 (2025-10-15)
 - **INITIAL**: Event-Driven Checkpoint 시스템 명세 작성
