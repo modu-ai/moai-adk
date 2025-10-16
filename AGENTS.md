@@ -3,7 +3,7 @@
 ## Project Structure & Module Organization
 - `src/moai_adk/` contains the CLI entrypoint plus modular subpackages; commands live in `cli/commands`, shared services in `core/` and `utils/`.
 - Tests split between `tests/unit/` for fast specs and `tests/e2e/` for full Alfred workflows; keep generated artifacts in `.moai/` (notably `specs/`, `memory/`, and `reports/`).
-- Published docs and images sit in `docs/`; helper scripts such as `security-scan.sh` stay under `scripts/`; build outputs land in `dist/` when packaging locally.
+- Published docs and images sit in `docs/`; build outputs land in `dist/` when packaging locally.
 
 ## Build, Test, and Development Commands
 - `uv pip install -e ".[dev]"` sets up an editable install with pytest, ruff, and mypy aligned to `pyproject.toml`.
@@ -26,7 +26,7 @@
 - Link issues with `Closes #123` syntax, request at least one maintainer review, and note any `.moai/` artifact refresh that reviewers should pull locally.
 
 ## Security & Maintenance
-- `bash scripts/security-scan.sh` wraps `pip-audit` and `bandit`; run it before tagging a release or merging dependency updates.
+- Run `pip-audit` and `bandit -r src/ -ll` before tagging a release or merging dependency updates (see `docs/security-scanning.md`).
 - Redact secrets from `.moai/memory` or generated reports prior to committing them.
 - Regenerate `uv.lock` only when dependencies shift and highlight the change in commit and PR notes.
 

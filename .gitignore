@@ -47,6 +47,11 @@ env/
 *.swo
 *~
 
+# Claude Code (user-specific)
+AGENTS.md
+CLAUDE.md
+.claude/
+
 # OS
 .DS_Store
 Thumbs.db
