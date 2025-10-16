@@ -11,20 +11,6 @@ MoAI-ADK는 두 가지 보안 스캔 도구를 사용합니다:
 
 ## 로컬 보안 스캔 실행
 
-### 방법 1: 자동화 스크립트 사용 (권장)
-
-```bash
-./scripts/security-scan.sh
-```
-
-이 스크립트는 다음을 자동으로 수행합니다:
-- 보안 도구 설치 확인
-- pip-audit 실행
-- bandit 실행
-- 결과 요약 출력
-
-### 방법 2: 개별 도구 실행
-
 **보안 도구 설치**:
 ```bash
 pip install pip-audit bandit

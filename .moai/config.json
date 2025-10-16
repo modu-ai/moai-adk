@@ -62,8 +62,8 @@
     "locale": "ko",
     "mode": "personal",
     "name": "MoAI-ADK",
-    "moai_adk_version": "0.3.0",
-    "optimized": true
+    "moai_adk_version": "0.3.1",
+    "optimized": false
   },
   "tags": {
     "auto_sync": true,
@@ -81,7 +81,10 @@
     "code_scan_policy": {
       "no_intermediate_cache": true,
       "realtime_validation": true,
-      "scan_tools": ["rg", "grep"],
+      "scan_tools": [
+        "rg",
+        "grep"
+      ],
       "scan_command": "rg '@TAG' -n",
       "philosophy": "TAG의 진실은 코드 자체에만 존재"
     }
