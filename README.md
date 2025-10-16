@@ -64,13 +64,9 @@
 ```bash
 # 새 프로젝트 생성
 moai-adk init project-name
-# 또는
-python -m moai_adk init project-name
 
 # 기존 프로젝트에 설치
 moai-adk init .
-# 또는
-python -m moai_adk init .
 
 # 상태 확인
 moai-adk status
@@ -178,20 +174,13 @@ pip install moai-adk
 
 # 설치 확인
 moai-adk --version
-# 또는
-python -m moai_adk --version
 ```
 
 #### 2️⃣ 초기화 (1분)
 
 **새 프로젝트 생성:**
 ```bash
-# 방법 1: moai-adk 명령어
 moai-adk init my-project
-cd my-project
-
-# 방법 2: python -m moai_adk
-python -m moai_adk init my-project
 cd my-project
 
 # Claude Code 실행
@@ -201,12 +190,7 @@ claude
 **기존 프로젝트에 설치:**
 ```bash
 cd existing-project
-
-# 방법 1: moai-adk 명령어
 moai-adk init .
-
-# 방법 2: python -m moai_adk
-python -m moai_adk init .
 
 # Claude Code 실행
 claude
@@ -263,12 +247,7 @@ uv pip install --upgrade moai-adk
 
 ```bash
 cd your-project
-
-# 방법 1: moai-adk 명령어
 moai-adk update
-
-# 방법 2: python -m moai_adk
-python -m moai_adk update
 ```
 
 **자동 백업**: 업데이트 전 `.moai-backups/{timestamp}/`에 자동 백업 생성
@@ -357,31 +336,24 @@ Alfred의 핵심은 **체계적인 3단계 워크플로우**입니다.
 ```bash
 # 새 프로젝트 생성
 moai-adk init project-name
-python -m moai_adk init project-name
 
 # 기존 프로젝트에 설치
 moai-adk init .
-python -m moai_adk init .
 
 # 프로젝트 상태 확인
 moai-adk status
-python -m moai_adk status
 
 # 프로젝트 업데이트
 moai-adk update
-python -m moai_adk update
 
 # 시스템 진단
 moai-adk doctor
-python -m moai_adk doctor
 
 # 버전 확인
 moai-adk --version
-python -m moai_adk --version
 
 # 도움말
 moai-adk --help
-python -m moai_adk --help
 ```
 
 ### Alfred 커맨드 (Claude Code 내)
@@ -602,11 +574,11 @@ ls -la .claude/commands/alfred/
 
 #### 에러: "moai-adk: command not found"
 ```bash
-# PATH 확인
-python -m moai_adk --version
-
-# 또는 전체 경로 사용
+# PATH 확인 및 전체 경로 사용
 ~/.local/bin/moai-adk --version
+
+# 또는 pip로 재설치
+pip install --force-reinstall moai-adk
 ```
 
 #### 에러: ".moai/ 디렉토리를 찾을 수 없습니다"
