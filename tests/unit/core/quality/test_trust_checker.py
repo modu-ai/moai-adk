@@ -15,9 +15,9 @@ Given-When-Then 구조를 따르는 20개의 테스트 케이스:
 - AC-010: 언어별 도구 선택 (2개: python/typescript)
 """
 
-import pytest
 from pathlib import Path
-from typing import Dict, Any
+
+import pytest
 
 
 class TestTrustChecker:
