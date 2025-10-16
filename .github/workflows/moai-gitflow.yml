@@ -13,6 +13,7 @@ jobs:
   moai-pipeline:
     name: 🗿 MoAI-ADK 파이프라인
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: 체크아웃
         uses: actions/checkout@v4
@@ -20,20 +21,42 @@ jobs:
       - name: Python 환경 설정
         uses: actions/setup-python@v4
         with:
-          python-version: "3.12"
+          python-version: "3.13"
+
+      - name: uv 설치 (Python 패키지 관리자)
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Python 의존성 설치
+        run: |
+          uv pip install --system -e ".[dev]"
+
+      - name: 템플릿 파일 존재 확인 (디버그)
+        run: |
+          echo "📂 Checking template files..."
+          ls -la src/moai_adk/templates/.claude/ || echo "❌ .claude directory not found"
+          ls -la src/moai_adk/templates/.moai/ || echo "❌ .moai directory not found"
+          ls -la src/moai_adk/templates/.github/ || echo "❌ .github directory not found"
 
       # Multi-language toolchains (conditional)
       - name: Setup Node.js
         if: ${{ hashFiles('package.json') != '' }}
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
+
+      - name: Setup Bun
+        if: ${{ hashFiles('bun.lockb') != '' }}
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "latest"
 
       - name: Setup Go
         if: ${{ hashFiles('go.mod') != '' }}
         uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
+          go-version: "1.23"
 
       - name: Setup Rust
         if: ${{ hashFiles('Cargo.toml') != '' }}
@@ -64,6 +87,13 @@ jobs:
         run: |
           set -e
           echo "🔎 Running language-aware tests if present"
+
+          # Python tests (pytest)
+          if [ -f "pyproject.toml" ] && grep -q "pytest" pyproject.toml; then
+            echo "➡️  Python tests (pytest)"
+            uv run pytest --cov --cov-report=term-missing --cov-report=xml --cov-fail-under=85
+          fi
+
           if [ -f "package.json" ]; then
             echo "➡️  Node.js tests"
             npm ci --prefer-offline || npm install
@@ -88,6 +118,16 @@ jobs:
             echo "➡️  .NET tests"
             dotnet test || true
           fi
+
+      - name: Upload coverage to Codecov
+        if: ${{ hashFiles('coverage.xml') != '' }}
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          flags: unittests
+          name: moai-adk-coverage
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       #  TAG 시스템 검증 (코드 파일만)
       - name: 🏷️ TAG 시스템 검증

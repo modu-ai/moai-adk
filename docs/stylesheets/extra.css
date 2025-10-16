@@ -1,0 +1,994 @@
+/* @DOC:DOCS-SYSTEM-001 | SPEC: .moai/specs/SPEC-DOCS-SYSTEM-001/spec.md */
+/* MoAI-ADK Documentation Extra Styles */
+
+/* ============================================
+   1. Root Variables & Typography
+   ============================================ */
+
+:root {
+  /* shadcn ui Slate 팔레트 - Light Mode */
+  --slate-50: #f8fafc;
+  --slate-100: #f1f5f9;
+  --slate-200: #e2e8f0;
+  --slate-300: #cbd5e1;
+  --slate-400: #94a3b8;
+  --slate-500: #64748b;
+  --slate-600: #475569;
+  --slate-700: #334155;
+  --slate-800: #1e293b;
+  --slate-900: #0f172a;
+  --slate-950: #020617;
+
+  /* Primary Colors (shadcn ui 무채색) */
+  --md-primary-fg-color: var(--slate-900);
+  --md-primary-fg-color--light: var(--slate-600);
+  --md-primary-fg-color--dark: var(--slate-950);
+
+  /* Accent Colors (shadcn ui 무채색) */
+  --md-accent-fg-color: var(--slate-700);
+  --md-accent-fg-color--transparent: rgba(71, 85, 105, 0.1);
+
+  /* Code Block Colors */
+  --code-bg-light: var(--slate-50);
+  --code-bg-dark: var(--slate-950);
+  --code-border: var(--slate-200);
+
+  /* Typography */
+  --font-sans: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+
+  /* Spacing */
+  --spacing-unit: 0.5rem;
+
+  /* MkDocs Material Admonition 색상 오버라이드 (무채색) */
+  --md-admonition-fg-color: var(--slate-700);
+  --md-admonition-bg-color: var(--slate-50);
+
+  /* Note/Info - 슬레이트 그레이 */
+  --md-typeset-color-note: var(--slate-500);
+  --md-typeset-a-color--note: var(--slate-600);
+
+  /* Abstract - 다크 그레이 */
+  --md-typeset-color-abstract: var(--slate-600);
+  --md-typeset-a-color--abstract: var(--slate-700);
+
+  /* Tip - 중간 그레이 */
+  --md-typeset-color-tip: var(--slate-500);
+  --md-typeset-a-color--tip: var(--slate-600);
+
+  /* Success - 중간 그레이 */
+  --md-typeset-color-success: var(--slate-600);
+  --md-typeset-a-color--success: var(--slate-700);
+
+  /* Question - 슬레이트 그레이 */
+  --md-typeset-color-question: var(--slate-500);
+  --md-typeset-a-color--question: var(--slate-600);
+
+  /* Warning - 다크 그레이 */
+  --md-typeset-color-warning: var(--slate-600);
+  --md-typeset-a-color--warning: var(--slate-700);
+
+  /* Failure/Danger - 다크 슬레이트 */
+  --md-typeset-color-failure: var(--slate-700);
+  --md-typeset-a-color--failure: var(--slate-800);
+
+  /* Danger - 다크 슬레이트 */
+  --md-typeset-color-danger: var(--slate-700);
+  --md-typeset-a-color--danger: var(--slate-800);
+
+  /* Bug - 다크 그레이 */
+  --md-typeset-color-bug: var(--slate-700);
+  --md-typeset-a-color--bug: var(--slate-800);
+
+  /* Example - 밝은 그레이 */
+  --md-typeset-color-example: var(--slate-400);
+  --md-typeset-a-color--example: var(--slate-500);
+
+  /* Quote - 슬레이트 그레이 */
+  --md-typeset-color-quote: var(--slate-500);
+  --md-typeset-a-color--quote: var(--slate-600);
+}
+
+/* ============================================
+   2. Typography & Font Styling
+   ============================================ */
+
+body {
+  font-family: var(--font-sans);
+  line-height: 1.7;
+  letter-spacing: 0.01em;
+}
+
+/* Headers - 무채색 강제 적용 */
+.md-typeset h1 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--slate-900) !important;
+  border-bottom: 3px solid var(--slate-600);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.md-typeset h2 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--slate-800) !important;
+  border-bottom: 2px solid var(--slate-400);
+  padding-bottom: 0.3rem;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.md-typeset h3 {
+  font-weight: 600;
+  color: var(--slate-700) !important;
+  margin-top: 1.5rem;
+}
+
+.md-typeset h4 {
+  font-weight: 600;
+  color: var(--slate-700) !important;
+  margin-top: 1.2rem;
+}
+
+.md-typeset h5,
+.md-typeset h6 {
+  font-weight: 600;
+  color: var(--slate-600) !important;
+  margin-top: 1rem;
+}
+
+/* Dark mode heading colors */
+[data-md-color-scheme="slate"] .md-typeset h1 {
+  color: var(--slate-200) !important;
+  border-bottom-color: var(--slate-600);
+}
+
+[data-md-color-scheme="slate"] .md-typeset h2 {
+  color: var(--slate-300) !important;
+  border-bottom-color: var(--slate-700);
+}
+
+[data-md-color-scheme="slate"] .md-typeset h3,
+[data-md-color-scheme="slate"] .md-typeset h4 {
+  color: var(--slate-300) !important;
+}
+
+[data-md-color-scheme="slate"] .md-typeset h5,
+[data-md-color-scheme="slate"] .md-typeset h6 {
+  color: var(--slate-400) !important;
+}
+
+/* Code Blocks */
+.md-typeset code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background-color: var(--code-bg-light);
+  border: 1px solid var(--code-border);
+  border-radius: 4px;
+  padding: 0.2em 0.4em;
+}
+
+[data-md-color-scheme="slate"] .md-typeset code {
+  background-color: var(--code-bg-dark);
+  border-color: #2d2d2d;
+}
+
+.md-typeset pre > code {
+  border: none;
+  padding: 1rem;
+  display: block;
+  overflow-x: auto;
+}
+
+/* ============================================
+   3. Alfred SuperAgent Branding
+   ============================================ */
+
+/* Alfred Logo/Icon */
+.alfred-icon {
+  display: inline-block;
+  font-size: 1.2em;
+  font-weight: 700;
+  color: var(--md-primary-fg-color);
+}
+
+.alfred-icon::before {
+  content: '▶◀';
+  margin-right: 0.5rem;
+}
+
+/* Alfred Quote Block */
+blockquote.alfred-quote {
+  border-left: 4px solid var(--slate-600);
+  background-color: rgba(100, 116, 139, 0.05);
+  padding: 1rem 1.5rem;
+  margin: 1.5rem 0;
+  border-radius: 4px;
+}
+
+blockquote.alfred-quote::before {
+  content: '▶◀ Alfred says:';
+  display: block;
+  font-weight: 600;
+  color: var(--slate-700);
+  margin-bottom: 0.5rem;
+}
+
+/* ============================================
+   4. Agent Profile Cards
+   ============================================ */
+
+.agent-card {
+  border: 2px solid var(--slate-200);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+  background: linear-gradient(135deg, rgba(148, 163, 184, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.agent-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(100, 116, 139, 0.15);
+}
+
+.agent-card-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.agent-card-icon {
+  font-size: 2rem;
+  margin-right: 1rem;
+}
+
+.agent-card-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--md-primary-fg-color);
+  margin: 0;
+}
+
+.agent-card-role {
+  font-size: 0.9rem;
+  color: var(--md-default-fg-color--light);
+  margin-top: 0.2rem;
+}
+
+/* ============================================
+   5. TDD Workflow Visualization (무채색)
+   ============================================ */
+
+.tdd-badge {
+  display: inline-block;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.85em;
+  margin: 0 0.3rem;
+}
+
+.tdd-badge.red {
+  background-color: var(--slate-600);
+  color: white;
+}
+
+.tdd-badge.green {
+  background-color: var(--slate-500);
+  color: white;
+}
+
+.tdd-badge.refactor {
+  background-color: var(--slate-400);
+  color: white;
+}
+
+/* TDD Flow Diagram - 무채색 */
+.tdd-flow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2rem 1rem;
+  background: linear-gradient(90deg, rgba(100, 116, 139, 0.1) 0%, rgba(148, 163, 184, 0.1) 50%, rgba(203, 213, 225, 0.1) 100%);
+  border-radius: 8px;
+  margin: 2rem 0;
+}
+
+.tdd-flow-step {
+  flex: 1;
+  text-align: center;
+  position: relative;
+}
+
+.tdd-flow-step::after {
+  content: '→';
+  position: absolute;
+  right: -1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 2rem;
+  color: var(--md-default-fg-color--light);
+}
+
+.tdd-flow-step:last-child::after {
+  content: '';
+}
+
+/* ============================================
+   6. TAG System Styling (무채색)
+   ============================================ */
+
+.tag-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  font-weight: 600;
+  margin: 0.2rem;
+  border: 1px solid;
+}
+
+.tag-badge.spec {
+  background-color: rgba(71, 85, 105, 0.1);
+  color: var(--slate-700);
+  border-color: var(--slate-700);
+}
+
+.tag-badge.test {
+  background-color: rgba(100, 116, 139, 0.1);
+  color: var(--slate-600);
+  border-color: var(--slate-600);
+}
+
+.tag-badge.code {
+  background-color: rgba(148, 163, 184, 0.1);
+  color: var(--slate-500);
+  border-color: var(--slate-500);
+}
+
+.tag-badge.doc {
+  background-color: rgba(203, 213, 225, 0.1);
+  color: var(--slate-400);
+  border-color: var(--slate-400);
+}
+
+/* TAG Chain Visualization - 무채색 */
+.tag-chain {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  background-color: rgba(148, 163, 184, 0.05);
+  border-radius: 8px;
+  margin: 1rem 0;
+  font-family: var(--font-mono);
+}
+
+.tag-chain-arrow {
+  margin: 0 1rem;
+  font-size: 1.5rem;
+  color: var(--md-default-fg-color--light);
+}
+
+/* ============================================
+   7. Admonition Customizations (무채색)
+   ============================================ */
+
+/* Alfred Tip */
+.md-typeset .admonition.tip > .admonition-title::before {
+  content: '▶◀';
+  margin-right: 0.5rem;
+}
+
+/* Success (Quality Gate) - 무채색 */
+.md-typeset .admonition.success {
+  border-left-color: var(--slate-600) !important;
+  background-color: rgba(100, 116, 139, 0.05) !important;
+}
+
+.md-typeset .admonition.success > .admonition-title {
+  background-color: rgba(100, 116, 139, 0.1) !important;
+  color: var(--slate-700) !important;
+}
+
+/* Danger (Problem) - 무채색 */
+.md-typeset .admonition.danger {
+  border-left-color: var(--slate-700) !important;
+  background-color: rgba(71, 85, 105, 0.05) !important;
+}
+
+.md-typeset .admonition.danger > .admonition-title {
+  background-color: rgba(71, 85, 105, 0.1) !important;
+  color: var(--slate-700) !important;
+}
+
+/* Info (Alfred Says) - 무채색 */
+.md-typeset .admonition.info {
+  border-left-color: var(--slate-500) !important;
+  background-color: rgba(148, 163, 184, 0.05) !important;
+}
+
+.md-typeset .admonition.info > .admonition-title {
+  background-color: rgba(148, 163, 184, 0.1) !important;
+  color: var(--slate-700) !important;
+}
+
+/* Warning (Caution) - 무채색 */
+.md-typeset .admonition.warning {
+  border-left-color: var(--slate-600) !important;
+  background-color: rgba(100, 116, 139, 0.05) !important;
+}
+
+.md-typeset .admonition.warning > .admonition-title {
+  background-color: rgba(100, 116, 139, 0.1) !important;
+  color: var(--slate-700) !important;
+}
+
+/* Example (Code Sample) - 무채색 */
+.md-typeset .admonition.example {
+  border-left-color: var(--slate-400) !important;
+  background-color: rgba(203, 213, 225, 0.05) !important;
+}
+
+.md-typeset .admonition.example > .admonition-title {
+  background-color: rgba(203, 213, 225, 0.1) !important;
+  color: var(--slate-700) !important;
+}
+
+/* Question - 무채색 */
+.md-typeset .admonition.question {
+  border-left-color: var(--slate-500) !important;
+  background-color: rgba(148, 163, 184, 0.05) !important;
+}
+
+.md-typeset .admonition.question > .admonition-title {
+  background-color: rgba(148, 163, 184, 0.1) !important;
+  color: var(--slate-700) !important;
+}
+
+/* Tip - 무채색 */
+.md-typeset .admonition.tip {
+  border-left-color: var(--slate-500) !important;
+  background-color: rgba(148, 163, 184, 0.05) !important;
+}
+
+.md-typeset .admonition.tip > .admonition-title {
+  background-color: rgba(148, 163, 184, 0.1) !important;
+  color: var(--slate-700) !important;
+}
+
+/* Note - 무채색 */
+.md-typeset .admonition.note {
+  border-left-color: var(--slate-400) !important;
+  background-color: rgba(203, 213, 225, 0.05) !important;
+}
+
+.md-typeset .admonition.note > .admonition-title {
+  background-color: rgba(203, 213, 225, 0.1) !important;
+  color: var(--slate-700) !important;
+}
+
+/* Abstract - 무채색 */
+.md-typeset .admonition.abstract {
+  border-left-color: var(--slate-600) !important;
+  background-color: rgba(100, 116, 139, 0.05) !important;
+}
+
+.md-typeset .admonition.abstract > .admonition-title {
+  background-color: rgba(100, 116, 139, 0.1) !important;
+  color: var(--slate-700) !important;
+}
+
+/* 모든 admonition 타입 강제 무채색 오버라이드 */
+.md-typeset .admonition {
+  border-left-width: 0.2rem !important;
+  filter: grayscale(100%) !important;
+}
+
+/* 모든 admonition 제목 아이콘 색상 강제 변경 */
+.md-typeset .admonition > .admonition-title::before {
+  background-color: var(--slate-600) !important;
+}
+
+/* 각 타입별 아이콘 색상 무채색 강제 적용 */
+.md-typeset .admonition.note > .admonition-title::before,
+.md-typeset .admonition.info > .admonition-title::before {
+  background-color: var(--slate-500) !important;
+}
+
+.md-typeset .admonition.abstract > .admonition-title::before,
+.md-typeset .admonition.summary > .admonition-title::before,
+.md-typeset .admonition.tldr > .admonition-title::before {
+  background-color: var(--slate-600) !important;
+}
+
+.md-typeset .admonition.tip > .admonition-title::before,
+.md-typeset .admonition.hint > .admonition-title::before,
+.md-typeset .admonition.important > .admonition-title::before {
+  background-color: var(--slate-500) !important;
+}
+
+.md-typeset .admonition.success > .admonition-title::before,
+.md-typeset .admonition.check > .admonition-title::before,
+.md-typeset .admonition.done > .admonition-title::before {
+  background-color: var(--slate-600) !important;
+}
+
+.md-typeset .admonition.question > .admonition-title::before,
+.md-typeset .admonition.help > .admonition-title::before,
+.md-typeset .admonition.faq > .admonition-title::before {
+  background-color: var(--slate-500) !important;
+}
+
+.md-typeset .admonition.warning > .admonition-title::before,
+.md-typeset .admonition.caution > .admonition-title::before,
+.md-typeset .admonition.attention > .admonition-title::before {
+  background-color: var(--slate-600) !important;
+}
+
+.md-typeset .admonition.failure > .admonition-title::before,
+.md-typeset .admonition.fail > .admonition-title::before,
+.md-typeset .admonition.missing > .admonition-title::before {
+  background-color: var(--slate-700) !important;
+}
+
+.md-typeset .admonition.danger > .admonition-title::before,
+.md-typeset .admonition.error > .admonition-title::before {
+  background-color: var(--slate-700) !important;
+}
+
+.md-typeset .admonition.bug > .admonition-title::before {
+  background-color: var(--slate-700) !important;
+}
+
+.md-typeset .admonition.example > .admonition-title::before {
+  background-color: var(--slate-400) !important;
+}
+
+.md-typeset .admonition.quote > .admonition-title::before,
+.md-typeset .admonition.cite > .admonition-title::before {
+  background-color: var(--slate-500) !important;
+}
+
+/* ============================================
+   8. Tables Enhancement
+   ============================================ */
+
+.md-typeset table:not([class]) {
+  width: 100% !important;
+  max-width: 100% !important;
+  display: table !important;
+  border: 2px solid var(--md-primary-fg-color--light);
+  border-radius: 8px;
+  overflow: hidden;
+  border-collapse: collapse !important;
+  table-layout: auto !important;
+}
+
+.md-typeset table:not([class]) thead {
+  background-color: var(--md-primary-fg-color);
+  color: white;
+}
+
+.md-typeset table:not([class]) thead th {
+  border-bottom: none;
+  font-weight: 600;
+}
+
+.md-typeset table:not([class]) tbody tr:hover {
+  background-color: rgba(148, 163, 184, 0.05);
+}
+
+/* Agent Table */
+.agent-table td:first-child {
+  font-weight: 600;
+  color: var(--md-primary-fg-color);
+}
+
+/* ============================================
+   9. Mermaid Diagram Styling
+   ============================================ */
+
+.mermaid {
+  text-align: center;
+  background-color: rgba(148, 163, 184, 0.02);
+  border-radius: 8px;
+  padding: 2rem;
+  margin: 2rem 0;
+}
+
+/* ============================================
+   10. Button & Link Styling
+   ============================================ */
+
+/* Primary Button */
+.md-button--primary {
+  background-color: var(--md-primary-fg-color);
+  border-radius: 20px;
+  padding: 0.6rem 1.5rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.md-button--primary:hover {
+  background-color: var(--md-primary-fg-color--dark);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(100, 116, 139, 0.3);
+}
+
+/* Link Styling */
+.md-typeset a {
+  color: var(--slate-700);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s ease;
+}
+
+.md-typeset a:hover {
+  border-bottom-color: var(--slate-700);
+}
+
+/* ============================================
+   11. Badge & Pill Components
+   ============================================ */
+
+.version-badge {
+  display: inline-block;
+  background-color: var(--slate-700);
+  color: white;
+  padding: 0.2rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.8em;
+  font-weight: 600;
+  margin-left: 0.5rem;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.2rem 0.8rem;
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: 600;
+  margin: 0.2rem;
+}
+
+.status-badge.active {
+  background-color: rgba(100, 116, 139, 0.1);
+  color: var(--slate-600);
+  border: 1px solid var(--slate-600);
+}
+
+.status-badge.deprecated {
+  background-color: rgba(71, 85, 105, 0.1);
+  color: var(--slate-700);
+  border: 1px solid var(--slate-700);
+}
+
+/* ============================================
+   12. Command Line Examples
+   ============================================ */
+
+.md-typeset pre.command-line {
+  background-color: var(--slate-950);
+  color: var(--slate-300);
+  border-left: 4px solid var(--slate-500);
+  padding: 1.5rem;
+  border-radius: 4px;
+}
+
+.md-typeset pre.command-line::before {
+  content: '$';
+  color: var(--slate-400);
+  margin-right: 0.5rem;
+  font-weight: 700;
+}
+
+/* ============================================
+   13. Responsive Design
+   ============================================ */
+
+@media screen and (max-width: 768px) {
+  .tdd-flow {
+    flex-direction: column;
+  }
+
+  .tdd-flow-step::after {
+    content: '↓';
+    position: static;
+    display: block;
+    margin: 1rem 0;
+  }
+
+  .tdd-flow-step:last-child::after {
+    display: none;
+  }
+
+  .agent-card {
+    padding: 1rem;
+  }
+
+  .tag-chain {
+    flex-direction: column;
+  }
+
+  .tag-chain-arrow {
+    transform: rotate(90deg);
+    margin: 0.5rem 0;
+  }
+}
+
+/* ============================================
+   14. Dark Mode Adjustments
+   ============================================ */
+
+[data-md-color-scheme="slate"] {
+  --code-bg-light: #2d2d2d;
+  --code-border: #404040;
+}
+
+[data-md-color-scheme="slate"] .agent-card {
+  background: linear-gradient(135deg, rgba(100, 116, 139, 0.1) 0%, rgba(0, 0, 0, 0) 100%);
+}
+
+[data-md-color-scheme="slate"] .tdd-flow {
+  background: linear-gradient(90deg, rgba(71, 85, 105, 0.15) 0%, rgba(100, 116, 139, 0.15) 50%, rgba(148, 163, 184, 0.15) 100%);
+}
+
+[data-md-color-scheme="slate"] .mermaid {
+  background-color: rgba(148, 163, 184, 0.05);
+}
+
+/* ============================================
+   15. Print Styles
+   ============================================ */
+
+@media print {
+  .agent-card,
+  .tdd-flow,
+  .tag-chain {
+    page-break-inside: avoid;
+  }
+
+  .md-typeset code {
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+  }
+
+  a {
+    text-decoration: underline;
+    color: #000;
+  }
+}
+
+/* ============================================
+   16. Utility Classes
+   ============================================ */
+
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.mt-1 { margin-top: calc(var(--spacing-unit) * 1); }
+.mt-2 { margin-top: calc(var(--spacing-unit) * 2); }
+.mt-3 { margin-top: calc(var(--spacing-unit) * 3); }
+.mt-4 { margin-top: calc(var(--spacing-unit) * 4); }
+
+.mb-1 { margin-bottom: calc(var(--spacing-unit) * 1); }
+.mb-2 { margin-bottom: calc(var(--spacing-unit) * 2); }
+.mb-3 { margin-bottom: calc(var(--spacing-unit) * 3); }
+.mb-4 { margin-bottom: calc(var(--spacing-unit) * 4); }
+
+.p-1 { padding: calc(var(--spacing-unit) * 1); }
+.p-2 { padding: calc(var(--spacing-unit) * 2); }
+.p-3 { padding: calc(var(--spacing-unit) * 3); }
+.p-4 { padding: calc(var(--spacing-unit) * 4); }
+
+/* ============================================
+   17. Animation & Transitions
+   ============================================ */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+/* Smooth Scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ============================================
+   18. Footer Customization
+   ============================================ */
+
+.md-footer-meta {
+  background-color: var(--md-primary-fg-color--dark);
+}
+
+.md-footer-copyright {
+  font-size: 0.85rem;
+}
+
+.md-footer-copyright::before {
+  content: 'Made with MoAI\'s 🪿';
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+/* ============================================
+   19. Notion-style Theme
+   ============================================ */
+
+/* Light mode: shadcn ui 스타일 */
+[data-md-color-scheme="default"] {
+  --md-default-bg-color: #ffffff;
+  --md-default-fg-color: var(--slate-900);
+  --md-default-fg-color--light: var(--slate-600);
+  --md-code-bg-color: var(--slate-50);
+  --md-code-fg-color: var(--slate-900);
+}
+
+/* 사이드바 및 헤더 배경 (Light mode) */
+[data-md-color-scheme="default"] .md-header {
+  background-color: #ffffff;
+  box-shadow: 0 0 0.2rem rgba(0, 0, 0, 0.1);
+}
+
+[data-md-color-scheme="default"] .md-sidebar {
+  background-color: #ffffff;
+}
+
+[data-md-color-scheme="default"] .md-nav__link--active {
+  color: var(--slate-700);
+  font-weight: 600;
+}
+
+/* Dark mode: shadcn ui 스타일 */
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: var(--slate-950);
+  --md-default-fg-color: var(--slate-200);
+  --md-default-fg-color--light: var(--slate-400);
+  --md-code-bg-color: var(--slate-900);
+  --md-code-fg-color: var(--slate-200);
+}
+
+[data-md-color-scheme="slate"] .md-header {
+  background-color: var(--slate-900);
+  box-shadow: 0 0 0.2rem rgba(255, 255, 255, 0.1);
+}
+
+[data-md-color-scheme="slate"] .md-sidebar {
+  background-color: var(--slate-900);
+}
+
+[data-md-color-scheme="slate"] .md-nav__link--active {
+  color: var(--slate-300);
+  font-weight: 600;
+}
+
+/* shadcn ui 스타일 부드러운 경계선 */
+.md-typeset hr {
+  border-bottom: 1px solid var(--slate-200);
+}
+
+[data-md-color-scheme="slate"] .md-typeset hr {
+  border-bottom: 1px solid var(--slate-800);
+}
+
+/* shadcn ui 스타일 테이블 */
+.md-typeset table:not([class]) {
+  width: 100% !important;
+  max-width: 100% !important;
+  display: table !important;
+  border: 1px solid var(--slate-200);
+  border-radius: 3px;
+  border-collapse: collapse !important;
+  table-layout: auto !important;
+}
+
+.md-typeset table:not([class]) thead {
+  background-color: var(--slate-100);
+  color: var(--slate-900);
+}
+
+[data-md-color-scheme="slate"] .md-typeset table:not([class]) thead {
+  background-color: var(--slate-800);
+  color: var(--slate-200);
+}
+
+.md-typeset table:not([class]) tbody tr:hover {
+  background-color: var(--slate-50);
+}
+
+[data-md-color-scheme="slate"] .md-typeset table:not([class]) tbody tr:hover {
+  background-color: var(--slate-900);
+}
+
+/* ============================================
+   20. 100% Width Tables (Language Support)
+   ============================================ */
+
+/* 100% 가로폭 테이블 - Material 테마 기본 스타일 오버라이드 */
+.md-typeset table.full-width-table {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 100% !important;
+  display: table !important; /* inline-block 오버라이드 */
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  border-collapse: collapse !important;
+  table-layout: auto !important;
+  overflow: visible !important; /* Material의 overflow: auto 오버라이드 */
+}
+
+/* 테이블 헤더 스타일 (무채색) */
+.md-typeset table.full-width-table thead {
+  background-color: var(--slate-100) !important;
+}
+
+.md-typeset table.full-width-table thead th {
+  color: var(--slate-900) !important;
+  font-weight: 600 !important;
+  padding: 12px !important;
+  border: 1px solid #ddd !important;
+  text-align: left !important;
+}
+
+/* 테이블 바디 스타일 */
+.md-typeset table.full-width-table tbody td {
+  padding: 12px !important;
+  border: 1px solid #ddd !important;
+  color: var(--slate-700) !important;
+}
+
+/* 테이블 호버 효과 */
+.md-typeset table.full-width-table tbody tr:hover {
+  background-color: var(--slate-50) !important;
+}
+
+/* 다크 모드 */
+[data-md-color-scheme="slate"] .md-typeset table.full-width-table thead {
+  background-color: var(--slate-800) !important;
+}
+
+[data-md-color-scheme="slate"] .md-typeset table.full-width-table thead th {
+  color: var(--slate-200) !important;
+}
+
+[data-md-color-scheme="slate"] .md-typeset table.full-width-table tbody td {
+  color: var(--slate-300) !important;
+}
+
+[data-md-color-scheme="slate"] .md-typeset table.full-width-table tbody tr:hover {
+  background-color: var(--slate-900) !important;
+}
+
+/* 반응형: 작은 화면에서 스크롤 가능하도록 */
+@media screen and (max-width: 768px) {
+  .md-typeset table.full-width-table {
+    display: block !important;
+    overflow-x: auto !important;
+    width: 100% !important;
+  }
+}
+
+/* ============================================
+   End of Stylesheet
+   ============================================ */

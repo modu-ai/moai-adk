@@ -1,79 +1,254 @@
 # MoAI-ADK (Agentic Development Kit)
 
-[![npm version](https://img.shields.io/npm/v/moai-adk)](https://www.npmjs.com/package/moai-adk)
+[![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9.2+-blue)](https://www.typescriptlang.org/)
-[![Node.js](https://img.shields.io/badge/node-18.0+-green)](https://nodejs.org/)
-[![Bun](https://img.shields.io/badge/Bun-1.2.19+-black)](https://bun.sh/)
+[![Python](https://img.shields.io/badge/Python-3.13+-blue)](https://www.python.org/)
+[![Tests](https://github.com/modu-ai/moai-adk/actions/workflows/moai-gitflow.yml/badge.svg)](https://github.com/modu-ai/moai-adk/actions/workflows/moai-gitflow.yml)
+[![codecov](https://codecov.io/gh/modu-ai/moai-adk/branch/develop/graph/badge.svg)](https://codecov.io/gh/modu-ai/moai-adk)
+[![Coverage](https://img.shields.io/badge/coverage-87.66%25-brightgreen)](https://github.com/modu-ai/moai-adk)
 
-## MoAI-ADK
+## MoAI-ADK: 모두의AI 에이전틱 코딩 개발 프레임워크
 
-### 모두의AI 에이전틱 코딩 개발 프레임워크
-
-**안내:** MoAI-ADK는 모두의AI 연구실에서 집필 중인 "(가칭) 에이전틱 코딩" 서적의 별책 부록 오픈 소스 프로젝트 임을 밝혀 둡니다.
+**안내**: MoAI-ADK는 모두의AI 연구실에서 집필 중인 "(가칭) 에이전틱 코딩" 서적의 별책 부록 오픈 소스 프로젝트입니다.
 
 ![MoAI-ADK CLI Interface](https://github.com/modu-ai/moai-adk/raw/main/docs/public/moai-tui_screen-light.png)
 
-> "SPEC이 없으면 CODE도 없다."
+> **"SPEC이 없으면 CODE도 없다."**
 
 ---
 
 ## 목차
 
-- [Meet Alfred](#-meet-alfred---your-ai-development-partner)
+- [v0.3.0 주요 개선사항](#-v030-주요-개선사항)
+- [Meet Alfred](#-meet-alfred---10개-ai-에이전트-팀)
+- [AI 모델 선택 가이드](#-ai-모델-선택-가이드)
 - [Quick Start](#-quick-start-3분-실전)
-- [The Problem](#-the-problem---바이브-코딩의-한계)
-- [The Solution](#-the-solution---3단계-워크플로우)
-- [How Alfred Works](#️-how-alfred-works---10개-ai-에이전트-팀)
-- [Output Styles](#-alfreds-output-styles)
-- [Language Support](#-universal-language-support)
+- [3단계 워크플로우](#-3단계-워크플로우)
 - [CLI Reference](#-cli-reference)
-- [API Reference](#-프로그래매틱-api)
+- [출력 스타일](#-alfreds-output-styles)
+- [언어 지원](#-universal-language-support)
 - [TRUST 5원칙](#-trust-5원칙)
+- [FAQ](#-faq)
 - [문제 해결](#-문제-해결)
-- [Support](#-문서-및-지원)
 
 ---
 
-## Meet ▶◀ Alfred - Your AI Development Partner
+## 🆕 v0.3.0 주요 개선사항
 
-안녕하세요, 모두의AI SuperAgent **AI ▶◀ Alfred**입니다!
+### 🚀 핵심 기능 강화
+
+#### 1. Template Processor 개선 - 안전한 업데이트 시스템
+- **Alfred 폴더 자동 백업**: 업데이트 전 `.moai-backups/alfred-{timestamp}/` 폴더에 자동 백업
+- **선택적 복사 전략**: Alfred 시스템 폴더만 덮어쓰고, 사용자 커스터마이징 파일 보존
+- **지능형 병합**: `product/structure/tech.md` 등 프로젝트 문서를 BackupMerger가 자동으로 병합
+- **롤백 지원**: 문제 발생 시 백업에서 복구 가능
+
+#### 2. Event-Driven Checkpoint 시스템
+- **자동 백업**: 위험한 작업(`rm -rf`, 병합, 스크립트 실행) 전 자동 checkpoint 생성
+- **Hooks 통합**: `SessionStart`, `PreToolUse`, `PostToolUse` 훅이 실시간 감지
+- **최대 10개 유지**: FIFO + 7일 보존 정책으로 디스크 효율 관리
+- **투명한 동작**: 백그라운드 자동 생성, 사용자에게 알림
+
+#### 3. Hooks vs Agents vs Commands 역할 분리
+- **Hooks** (가드레일): 위험 차단, 자동 백업, JIT Context (<100ms)
+- **Agents** (분석): SPEC 검증, TRUST 원칙 확인, TAG 관리 (수 초)
+- **Commands** (워크플로우): 여러 단계 오케스트레이션 (수 분)
+
+#### 4. Context Engineering 전략 완성
+- **JIT Retrieval**: 필요한 순간에만 문서 로드 (초기 컨텍스트 최소화)
+- **Compaction**: 토큰 사용량 >70% 시 요약 후 새 세션 시작 권장
+- **Explore 에이전트**: 대규모 코드베이스 효율적 탐색 가이드 추가
+
+#### 5. AI 모델 최적화 - Haiku/Sonnet 전략적 배치
+- **Haiku 에이전트 적용** (5개): doc-syncer, tag-agent, git-manager, trust-checker, Explore
+  - 빠른 응답 속도 (2~5배 향상)
+  - 비용 67% 절감
+  - 반복 작업 및 패턴 매칭에 최적화
+- **Sonnet 에이전트 유지** (5개): spec-builder, code-builder, debug-helper, cc-manager, project-manager
+  - 복잡한 판단 및 설계에 집중
+  - 높은 품질 보장
+- **/model 명령어 지원**:
+  - `/model haiku` → **패스트 모드** (빠른 응답, 반복 작업)
+  - `/model sonnet` → **스마트 모드** (복잡한 판단, 설계)
+
+### 🛠️ 도구 & 명령어 개선
+
+#### CLI 명령어 표준화
+```bash
+# 새 프로젝트 생성
+moai-adk init project-name
+
+# 기존 프로젝트에 설치
+moai-adk init .
+
+# 상태 확인
+moai-adk status
+
+# 업데이트
+moai-adk update
+```
+
+#### Alfred 커맨드 단계별 커밋 지침 추가
+- **0-project**: 문서 생성 완료 시 커밋
+- **1-spec**: SPEC 작성 + Git 브랜치/PR 생성 시 커밋
+- **2-build**: TDD 전체 사이클(RED→GREEN→REFACTOR) 완료 시 1회 커밋
+- **3-sync**: 문서 동기화 완료 시 커밋
+
+#### PyPI 배포 자동화
+- GitHub Actions 워크플로우 추가 (`.github/workflows/publish-pypi.yml`)
+- 템플릿 프로젝트에도 배포 워크플로우 제공
+- 버전 관리 및 자동 배포 지원
+
+### 📚 문서 강화
+
+#### SPEC 메타데이터 표준 (SSOT)
+- **필수 필드 7개**: id, version, status, created, updated, author, priority
+- **선택 필드 9개**: category, labels, depends_on, blocks, related_specs, related_issue, scope
+- **HISTORY 섹션**: 모든 버전 변경 이력 기록 (필수)
+- `.moai/memory/spec-metadata.md`에 전체 가이드 문서화
+
+#### Explore 에이전트 활용 가이드
+- 코드 분석 권장 상황 명확화
+- thoroughness 레벨별 사용법 (quick/medium/very thorough)
+- JIT Retrieval 최적화 전략
+
+### 🔒 보안 & 안정성
+
+#### 크로스 플랫폼 지원 강화
+- Windows/macOS/Linux 동일 동작 보장
+- 플랫폼별 에러 메시지 제공
+- PowerShell + Python 보안 스캔 스크립트
+
+#### .gitignore 및 프로젝트 정리
+- 로컬 설정 파일 자동 제외 (`.claude/settings.local.json`)
+- 임시 테스트 파일 제외 (`*-test-report.md`)
+- 불필요한 파일 자동 정리
+
+### 🎨 출력 스타일 개선
+
+#### 3가지 표준 스타일
+- **MoAI Beginner Learning**: 개발 입문자를 위한 친절한 가이드
+- **MoAI Professional**: 전문 개발자를 위한 효율적인 출력
+- **MoAI Alfred (기본)**: 균형잡힌 AI 협업 스타일
+
+---
+
+## ▶◀ Meet Alfred - 10개 AI 에이전트 팀
+
+안녕하세요, 모두의AI SuperAgent **▶◀ Alfred**입니다!
 
 ![Alfred Logo](https://github.com/modu-ai/moai-adk/raw/main/docs/public/alfred_logo.png)
 
-저는 MoAI-ADK(모두의AI Agentic Development Kit)의 SuperAgent이자 중앙 오케스트레이터(Central Orchestrator) AI, Alfred입니다. MoAI-ADK는 Alfred를 포함하여 **총 10개의 AI 에이전트로 구성된 에이전틱 코딩 AI 팀**입니다. 저는 9개의 전문 에이전트(spec-builder, code-builder, doc-syncer 등)를 조율하여 여러분의 Claude Code 환경 속에서 공동 개발 작업을 완벽하게 지원합니다.
-
-**Alfred라는 이름의 유래**: 배트맨 영화에 나오는 충실한 집사 Alfred Pennyworth에서 영감을 받아 지었다고 합니다. 집사 Alfred가 배트맨(Bruce Wayne)을 위해 모든 준비를 완벽하게 갖추고, 위험에 처했을 때 즉각적인 지원을 제공하며, 항상 한 걸음 앞서 생각하듯이, 저 또한 여러분의 개발 과정 속에서 필요한 모든 것을 미리 준비하고, 문제가 발생하면 즉시 해결책을 제시하며, 언제나 여러분이 창의적인 문제 해결에만 집중할 수 있도록 뒷받침합니다. 여러분은 코드의 "**왜(Why)**"에 집중하시고, "**어떻게(How)**"는 제가 책임지겠습니다.
+저는 MoAI-ADK의 SuperAgent이자 중앙 오케스트레이터 AI입니다. **10개의 AI 에이전트 팀**(Alfred + 9개 전문 에이전트)을 조율하여 Claude Code 환경에서 완벽한 개발 지원을 제공합니다.
 
 ### 🌟 흥미로운 사실: AI가 만든 AI 개발 도구
 
-이 프로젝트의 모든 코드는 **100% AI에 의해 작성**되었습니다. AI가 직접 설계하고 구현한 AI 개발 프레임워크입니다.
+이 프로젝트의 모든 코드는 **100% AI에 의해 작성**되었습니다.
 
-**설계 단계부터 AI 협업**: 초기 아키텍처 설계 단계부터 **GPT-5 Pro**와 **Claude 4.1 Opus** 두 AI 모델이 함께 참여했습니다. 두 AI가 서로 다른 관점에서 설계를 검토하고 토론하며, 더 나은 방향을 제시하고, 최적의 아키텍처를 함께 만들어냈습니다. GPT-5 Pro는 폭넓은 사례 분석을, Claude 4.1 Opus는 깊이 있는 코드 구조 설계를 담당하며 서로 보완했습니다.
-
-**Agentic Coding 방법론의 실제 적용**: **모두의AI**팀이 Claude Code와 Agentic Coding 방법론을 활용하여 개발했습니다. 전통적인 방식처럼 사람이 키보드 앞에 앉아 모든 코드를 직접 타이핑하는 대신, AI 에이전트들이 SPEC을 읽고 이해하고, 테스트를 먼저 작성하고(TDD Red), 구현 코드를 만들고(TDD Green), 리팩토링하고(TDD Refactor), 문서를 동기화하는 전 과정을 **자율적으로** 수행했습니다. 저 Alfred와 9개 전문 에이전트로 구성된 **10개 AI 에이전트 팀**이 직접 `.moai/specs/` 폴더에 SPEC 문서를 작성하고, `tests/` 폴더에 테스트 코드를 만들고, `src/` 폴더에 구현 코드를 작성했습니다.
-
-**100% AI 생성 코드의 진실**: 이 프로젝트는 100% AI로 만들어진 오픈소스이기 때문에, 코드베이스에서 다소 정리되지 않은 부분이나 개선이 필요한 영역이 보일 수 있습니다. 하지만 이것이 이 프로젝트의 핵심 철학입니다.
-
-**투명성과 지속적 개선**: 완벽하지 않은 코드를 숨기는 대신, AI 개발 도구가 실제로 어떻게 만들어지는지 그대로 보여주고, 커뮤니티와 함께 더 나은 방향으로 발전시켜 나가고자 합니다. 여러분의 사용 경험과 피드백이 이 프로젝트를 더욱 강력하게 만듭니다. [GitHub Issues](https://github.com/modu-ai/moai-adk/issues)나 [Discussions](https://github.com/modu-ai/moai-adk/discussions)에 피드백을 남겨주시면, **최대한 빠르게 업데이트하고 배포할 것을 약속드립니다**. AI가 만든 도구를 함께 더 나은 도구로 만들어가는 여정에 동참해주세요!
+- **AI 협업 설계**: GPT-5 Pro와 Claude 4.1 Opus가 함께 아키텍처를 설계
+- **Agentic Coding 적용**: 10개 AI 에이전트 팀이 자율적으로 SPEC 작성, TDD 구현, 문서 동기화 수행
+- **투명성**: 완벽하지 않은 부분을 숨기지 않고, 커뮤니티와 함께 개선해나가는 오픈소스
 
 ### ▶◀ Alfred가 제공하는 4가지 핵심 가치
 
-#### 1️⃣ 일관성(Consistency): 플랑켄슈타인 코드를 방지하는 3단계 파이프라인
+#### 1️⃣ 일관성 (Consistency)
+**SPEC → TDD → Sync** 3단계 파이프라인으로 플랑켄슈타인 코드 방지
 
-Alfred는 모든 개발 작업을 **SPEC → TDD → Sync**라는 3단계 파이프라인으로 표준화합니다. 월요일에 ChatGPT로 만든 코드, 수요일에 Claude로 만든 코드, 금요일에 Gemini로 만든 코드가 서로 다른 스타일, 네이밍 규칙, 아키텍처 패턴을 가지는 "플랑켄슈타인 코드"의 문제를 **원천적으로 차단**합니다.
+#### 2️⃣ 품질 (Quality)
+**TRUST 5원칙** 자동 적용 및 검증 (Test First, Readable, Unified, Secured, Trackable)
 
-#### 2️⃣ 품질(Quality): TRUST 5원칙으로 자동 보장되는 코드 품질
+#### 3️⃣ 추적성 (Traceability)
+**@TAG 시스템**으로 `@SPEC → @TEST → @CODE → @DOC` 완벽 연결
 
-Alfred는 모든 코드에 **TRUST 5원칙**(Test First, Readable, Unified, Secured, Trackable)을 자동으로 적용하고 검증합니다. 사람이 일일이 체크리스트를 들고 확인할 필요가 없습니다.
+#### 4️⃣ 범용성 (Universality)
+**모든 주요 언어 지원** (Python, TypeScript, Java, Go, Rust, Dart, Swift, Kotlin 등)
 
-#### 3️⃣ 추적성(Traceability): 6개월 후에도 "왜"를 찾을 수 있는 @TAG 시스템
+---
 
-Alfred의 **@TAG 시스템**은 모든 코드 조각을 `@SPEC:ID → @TEST:ID → @CODE:ID → @DOC:ID`로 완벽하게 연결합니다. 6개월 후 누군가 "왜 이 함수는 이렇게 복잡하게 구현했나요?"라고 물어보면, **@TAG를 따라가면 답을 찾을 수 있습니다**.
+## 🧠 AI 모델 선택 가이드
 
-#### 4️⃣ 범용성(Universality): 한 번 배우면 어디서나 쓸 수 있는 워크플로우
+MoAI-ADK는 **Haiku 4.5**와 **Sonnet 4.5** 두 가지 AI 모델을 전략적으로 활용하여 **최적의 성능과 비용 효율**을 제공합니다.
 
-Alfred는 특정 언어나 프레임워크에 종속되지 않습니다. **Python, TypeScript, Java, Go, Rust, Dart, Swift, Kotlin** 등 모든 주요 프로그래밍 언어를 지원하며, 각 언어에 최적화된 도구 체인을 자동으로 선택합니다.
+### 패스트 모드 vs 스마트 모드
+
+Claude Code에서 `/model` 명령어로 전체 세션의 기본 모델을 변경할 수 있습니다:
+
+```text
+# 패스트 모드 (빠른 응답, 반복 작업)
+/model haiku
+
+# 스마트 모드 (복잡한 판단, 설계)
+/model sonnet
+```
+
+### 10개 에이전트의 모델 배치 전략
+
+Alfred는 **작업 특성**에 따라 각 에이전트에 최적 모델을 할당합니다:
+
+#### 🚀 Haiku 에이전트 (5개) - 패스트 모드
+
+**빠른 응답이 필요한 반복 작업 및 패턴 매칭**
+
+| 에이전트 | 역할 | 왜 Haiku? |
+|---------|------|-----------|
+| **doc-syncer** 📖 | 문서 동기화 | 패턴화된 문서 업데이트, Living Document 생성 |
+| **tag-agent** 🏷️ | TAG 시스템 관리 | 반복적 패턴 매칭, TAG 체인 검증 |
+| **git-manager** 🚀 | Git 워크플로우 | 정형화된 Git 명령어 실행, 브랜치/PR 생성 |
+| **trust-checker** ✅ | TRUST 원칙 검증 | 규칙 기반 체크리스트 확인 |
+| **Explore** 🔍 | 코드베이스 탐색 | 대량 파일 스캔, 키워드 검색 |
+
+**장점**:
+- ⚡ **속도 2~5배 향상**: 실시간 응답 (수 초 → 1초 이내)
+- 💰 **비용 67% 절감**: 반복 작업이 많은 프로젝트에 효과적
+- 🎯 **높은 정확도**: 패턴화된 작업에서 Sonnet과 동등한 품질
+
+#### 🧠 Sonnet 에이전트 (5개) - 스마트 모드
+
+**복잡한 판단과 창의적 설계가 필요한 작업**
+
+| 에이전트 | 역할 | 왜 Sonnet? |
+|---------|------|-----------|
+| **spec-builder** 🏗️ | SPEC 작성 | EARS 구조 설계, 복잡한 요구사항 분석 |
+| **code-builder** 💎 | TDD 구현 | 아키텍처 설계, 복잡한 리팩토링 |
+| **debug-helper** 🔬 | 디버깅 | 오류 원인 분석, 해결 방법 도출 |
+| **cc-manager** 🛠️ | Claude Code 설정 | 워크플로우 최적화, 복잡한 설정 |
+| **project-manager** 📋 | 프로젝트 초기화 | 전략 수립, 복잡한 의사결정 |
+
+**장점**:
+- 🎯 **높은 품질**: 복잡한 코드 품질 보장
+- 🧠 **깊은 이해**: 맥락 파악 및 창의적 해결책 제시
+- 🏆 **정확한 판단**: 아키텍처 결정, 설계 선택
+
+### 사용 시나리오별 권장 모델
+
+| 시나리오 | 권장 모델 | 이유 |
+|---------|----------|------|
+| 🆕 **새 프로젝트 시작** | Sonnet | SPEC 설계, 아키텍처 결정 필요 |
+| 🔄 **반복 개발** | Haiku | 이미 정해진 패턴 반복 구현 |
+| 🐛 **버그 수정** | Sonnet | 원인 분석 및 해결 방법 도출 |
+| 📝 **문서 작성** | Haiku | Living Document 동기화 |
+| 🔍 **코드 탐색** | Haiku | 파일 검색, TAG 조회 |
+| ♻️ **리팩토링** | Sonnet | 구조 개선, 복잡한 변경 |
+
+### 모델 전환 팁
+
+```text
+# 새 기능 설계 시작
+/model sonnet
+/alfred:1-spec "사용자 인증 시스템"
+
+# SPEC 승인 후 TDD 구현
+/alfred:2-build AUTH-001
+
+# 구현 완료 후 문서 동기화 (자동으로 Haiku 사용)
+/alfred:3-sync
+
+# 다음 기능 설계
+/model sonnet
+/alfred:1-spec "결제 시스템"
+```
+
+**Pro Tip**: Alfred는 각 에이전트를 호출할 때 자동으로 최적 모델을 사용하므로, **세션 전체 모델 변경은 선택사항**입니다. 기본 설정(Sonnet)으로도 충분히 효율적입니다.
 
 ---
 
@@ -81,57 +256,59 @@ Alfred는 특정 언어나 프레임워크에 종속되지 않습니다. **Pytho
 
 ### 📋 준비물
 
-- ✅ Bun 또는 npm 설치됨
+- ✅ Python 3.13+ 또는 uv 설치
 - ✅ Claude Code 실행 중
-- ✅ Git 설치됨 (선택사항)
+- ✅ Git 설치 (선택사항)
 
 ### ⚡ 3단계로 시작하기
 
 #### 1️⃣ 설치 (30초)
 
 ```bash
-# Bun 권장 (5배 빠른 성능)
-curl -fsSL https://bun.sh/install | bash
-bun add -g moai-adk
+# uv 권장 (빠른 성능)
+pip install uv
+uv pip install moai-adk
 
-# 또는 npm 사용
-npm install -g moai-adk
+# 또는 pip 사용
+pip install moai-adk
 
 # 설치 확인
-moai --version
-# 출력: v0.x.x
+moai-adk --version
 ```
 
 #### 2️⃣ 초기화 (1분)
 
-**터미널에서:**
+**새 프로젝트 생성:**
 ```bash
-# 새 프로젝트 생성
-moai init my-project
+moai-adk init my-project
 cd my-project
-
-# 기존 프로젝트에 설치
-cd existing-project
-moai init .
 
 # Claude Code 실행
 claude
 ```
 
-**Claude Code에서** (필수):
-```text
-/alfred:8-project
+**기존 프로젝트에 설치:**
+```bash
+cd existing-project
+moai-adk init .
+
+# Claude Code 실행
+claude
 ```
 
-Alfred가 자동으로 수행:
+**Claude Code에서 프로젝트 초기화 (필수):**
+```text
+/alfred:0-project
+```
+
+Alfred가 자동으로:
 - `.moai/project/` 문서 3종 생성 (product/structure/tech.md)
 - 언어별 최적 도구 체인 설정
 - 프로젝트 컨텍스트 완벽 이해
 
 #### 3️⃣ 첫 기능 개발 (1분 30초)
 
-**Claude Code에서 3단계 워크플로우 실행:**
-
+**Claude Code에서 3단계 워크플로우:**
 ```text
 # SPEC 작성
 /alfred:1-spec "JWT 기반 사용자 로그인 API"
@@ -147,950 +324,694 @@ Alfred가 자동으로 수행:
 
 **생성된 것들:**
 - ✅ `.moai/specs/SPEC-AUTH-001/spec.md` (명세)
-- ✅ `tests/auth/login.test.ts` (테스트)
-- ✅ `src/services/auth.ts` (구현)
+- ✅ `tests/test_auth_login.py` (테스트)
+- ✅ `src/auth/service.py` (구현)
 - ✅ `docs/api/auth.md` (문서)
 - ✅ `@SPEC → @TEST → @CODE → @DOC` TAG 체인
 
 ---
 
-## 🚨 The Problem - 바이브 코딩의 한계
+## ⬆️ 업그레이드 가이드 (v0.2.x → v0.3.0)
 
-AI 도구(Codex, Claude, Gemini)로 빠르게 코딩하는 시대가 열렸습니다. 개발 속도는 확실히 빨라졌지만, **새로운 종류의 문제**들이 생겨났습니다.
+### 1단계: 패키지 업데이트
 
-### 1. 아름답지만 작동하지 않는 코드
+```bash
+# pip
+pip install --upgrade moai-adk
 
-**문제 상황**: AI가 생성한 코드는 문법적으로 완벽하고 구조도 우아합니다. 하지만 실제로 실행해보면...
+# uv 권장
+uv pip install --upgrade moai-adk
+```
 
-- 컴파일은 되지만 런타임에 `undefined` 에러
-- 엣지 케이스 처리 부족 (빈 배열, null 값, 네트워크 타임아웃)
-- 성능 문제 (`O(n³)` 복잡도)
-- 의존성 지옥 및 보안 취약점
+### 2단계: 프로젝트 업데이트
 
-### 2. 플랑켄슈타인 코드의 탄생
+```bash
+cd your-project
+moai-adk update
+```
 
-**문제 상황**: 여러 AI 도구를 번갈아 사용하거나, 같은 AI라도 다른 세션에서 코드를 생성하다 보면 일관성 없는 코드베이스가 만들어집니다.
+**자동 백업**: 업데이트 전 `.moai-backups/{timestamp}/`에 자동 백업 생성
 
-- 일관성 없는 코딩 스타일 (함수형, 객체지향, 절차형 혼재)
-- 중복 로직 난무 (`validateEmail()`, `checkEmailFormat()`, `isEmailValid()`)
-- 아키텍처 붕괴 (MVC, Hexagonal, Clean Architecture 혼재)
+### 3단계: Claude Code 최적화
 
-### 3. 디버깅 지옥
+```text
+claude
+/alfred:0-project
+```
 
-**문제 상황**: 프로덕션에서 버그가 발생했을 때, 원인을 찾는 것이 거의 불가능합니다.
+병합 프롬프트에서 **Merge** 선택 → 기존 문서 유지 + 새 템플릿 추가
 
-- 원인 추적 불가 (AI 채팅 히스토리 삭제됨)
-- 사이드 이펙트 파악 불가 (테스트 부재)
-- 문서 없음 (outdated 상태)
+### 검증 체크리스트
 
-### 4. 요구사항 추적성 상실
+```bash
+# 상태 확인
+moai-adk status
 
-**문제 상황**: 시간이 지날수록 "왜 이 코드를 이렇게 만들었는지" 맥락을 잃어버립니다.
-
-- "왜"를 잃어버림 (비즈니스 로직 배경 모름)
-- 변경 이력 부재 (Git 커밋 메시지: "fix bug")
-- 의사결정 근거 사라짐
-
-### 5. 팀 협업 붕괴
-
-**문제 상황**: 여러 개발자가 각자 AI를 사용하면서 협업이 무너집니다.
-
-- 스파게티 코드 양산
-- 코드 리뷰 불가
-- 온보딩 악몽
-- 기술 부채 폭발
-
-### 💔 바이브 코딩의 역설
-
-**속도와 품질의 트레이드오프**: AI가 코드를 빠르게 생성해주지만, 그 코드는 **유지보수할 수 없는 블랙박스**가 됩니다. 1주일 만에 만든 프로토타입이 3개월 동안 기술 부채를 만들어냅니다.
-
-**해결책의 필요성**: 이 문제를 해결하려면, AI의 속도는 유지하면서도 코드의 **일관성, 품질, 추적성**을 보장하는 체계적인 방법론이 필요합니다. 바로 여기서 **Alfred와 MoAI-ADK**가 등장합니다.
+# 확인 항목
+# ✅ .moai/config.json → project.moai_adk_version: "0.3.x"
+# ✅ .moai/config.json → project.optimized: true
+# ✅ 모든 커맨드 정상 작동
+```
 
 ---
 
-## ✨ The Solution - 3단계 워크플로우
+## 🔄 3단계 워크플로우
 
-Alfred는 Agentic AI 시대의 코드 품질 문제를 **체계적인 3단계 워크플로우**로 해결합니다.
+Alfred의 핵심은 **체계적인 3단계 워크플로우**입니다.
 
 ### 1️⃣ SPEC - 명세 작성
 
 **명령어**: `/alfred:1-spec "JWT 기반 사용자 로그인 API"`
 
-**Alfred가 자동으로 수행**:
+**Alfred가 자동 수행:**
 - EARS 형식 명세 자동 생성
 - `@SPEC:ID` TAG 부여
-- Git 브랜치 자동 생성
+- Git 브랜치 자동 생성 (Team 모드)
+- Draft PR 생성 (Team 모드)
 - HISTORY 섹션 자동 추가
+
+**산출물:**
+- `.moai/specs/SPEC-AUTH-001/spec.md`
+- `.moai/specs/SPEC-AUTH-001/plan.md`
+- `.moai/specs/SPEC-AUTH-001/acceptance.md`
 
 ### 2️⃣ BUILD - TDD 구현
 
 **명령어**: `/alfred:2-build AUTH-001`
 
-**TDD 사이클**:
-- 🔴 **RED**: 실패하는 테스트 작성 (`@TEST:AUTH-001`)
-- 🟢 **GREEN**: 최소 구현으로 테스트 통과 (`@CODE:AUTH-001`)
-- 🔵 **REFACTOR**: 코드 품질 개선
+**Alfred가 자동 수행:**
+- **RED**: 실패하는 테스트 작성
+- **GREEN**: 최소 구현으로 테스트 통과
+- **REFACTOR**: 코드 품질 개선
+- TRUST 5원칙 자동 검증
+- 단계별 Git 커밋 (TDD 완료 시 1회)
+
+**산출물:**
+- `tests/test_auth_login.py` (테스트 코드)
+- `src/auth/service.py` (구현 코드)
+- `@TEST:AUTH-001` → `@CODE:AUTH-001` TAG 체인
 
 ### 3️⃣ SYNC - 문서 동기화
 
 **명령어**: `/alfred:3-sync`
 
-**Alfred가 자동으로 수행**:
-- TAG 체인 검증: `@SPEC` → `@TEST` → `@CODE` → `@DOC`
-- 고아 TAG 자동 탐지
-- Living Document 자동 생성
-- PR 상태 전환 (Draft → Ready)
+**Alfred가 자동 수행:**
+- Living Document 업데이트
+- TAG 시스템 무결성 검증
+- sync-report.md 생성
+- PR Ready 전환 (Team 모드)
+- 선택적 자동 머지 (`--auto-merge`)
+
+**산출물:**
+- `docs/api/auth.md` (API 문서)
+- `.moai/reports/sync-report.md`
+- `@DOC:AUTH-001` TAG 추가
 
 ---
 
-## 시스템 요구사항
+## 🛠️ CLI Reference
 
-### 🔴 필수 요구사항
-
-- **Node.js**: 18.0 이상
-- **Git**: 2.30.0 이상
-- **npm**: 8.0.0 이상 (또는 **Bun 1.2.0 이상 강력 추천**)
-- **Claude Code**: v1.2.0 이상 (에이전트 시스템 완전 통합용)
-
-### 🌍 지원 운영체제
-
-- **Windows**: 10/11 (PowerShell 5.1+)
-- **macOS**: 12 Monterey 이상 (M1/M2 네이티브 지원)
-- **Linux**: Ubuntu 20.04+, CentOS 8+, Debian 11+, Arch Linux
-
----
-
-## 설치
-
-### Option A: Bun 설치 (최적 성능, 강력 추천) 🔥
+### 프로젝트 관리
 
 ```bash
-# Bun 설치 (아직 없는 경우)
-curl -fsSL https://bun.sh/install | bash  # macOS/Linux
-# 또는
-powershell -c "iwr bun.sh/install.ps1|iex"  # Windows
+# 새 프로젝트 생성
+moai-adk init project-name
 
-# MoAI-ADK 전역 설치
-bun add -g moai-adk
-```
+# 기존 프로젝트에 설치
+moai-adk init .
 
-### Option B: npm 설치 (표준 옵션)
+# 프로젝트 상태 확인
+moai-adk status
 
-```bash
-npm install -g moai-adk
-```
-
-### Option C: 개발자 설치 (로컬 개발용)
-
-```bash
-git clone https://github.com/modu-ai/moai-adk.git
-cd moai-adk/moai-adk-ts
-bun install  # 또는 npm install
-bun run build
-npm link
-```
-
-### 설치 확인
-
-```bash
-# 버전 확인
-moai --version
+# 프로젝트 업데이트
+moai-adk update
 
 # 시스템 진단
-moai doctor
+moai-adk doctor
+
+# 버전 확인
+moai-adk --version
 
 # 도움말
-moai help
+moai-adk --help
 ```
 
----
+### Alfred 커맨드 (Claude Code 내)
 
-## 🏗️ How Alfred Works - 10개 AI 에이전트 팀
+#### 기본 커맨드
 
-MoAI-ADK는 **Alfred (SuperAgent) + 9개 전문 에이전트 = 총 10개 AI 에이전트**로 구성된 에이전틱 코딩 팀입니다.
+```text
+# 프로젝트 초기화
+/alfred:0-project
 
-### ▶◀ Alfred - SuperAgent (1번째 에이전트)
+# SPEC 작성
+/alfred:1-spec "기능 설명"
+/alfred:1-spec SPEC-001 "수정 내용"
 
-**역할**: 중앙 오케스트레이터 (Central Orchestrator)
+# TDD 구현
+/alfred:2-build SPEC-001
+/alfred:2-build all
 
-**책임**:
-- 사용자 요청 분석 및 작업 분해
-- 적절한 전문 에이전트 선택 및 조율
-- 에이전트 간 협업 관리
-- 품질 게이트 검증 및 결과 통합
+# 문서 동기화
+/alfred:3-sync
+/alfred:3-sync --auto-merge
+/alfred:3-sync force
+```
 
-### 전문가 AI 서브 에이전트
+#### 커맨드별 에이전트 & 모델 매핑
 
-Alfred가 조율하는 전문 AI 에이전트들입니다.
+각 Alfred 커맨드는 적절한 에이전트를 호출하며, **자동으로 최적 모델**을 사용합니다:
 
-#### 핵심 3단계 에이전트 (자동 호출)
+| 커맨드 | 에이전트 | 모델 | 작업 특성 | 예상 시간 |
+|-------|----------|------|----------|----------|
+| `/alfred:0-project` | project-manager 📋 | 세션 기본 모델 | 프로젝트 전략 수립, 복잡한 의사결정 | 1~2분 |
+| `/alfred:1-spec` | spec-builder 🏗️ | 세션 기본 모델 | EARS 명세 설계, 요구사항 분석 | 2~3분 |
+| `/alfred:2-build` | code-builder 💎 | 세션 기본 모델 | TDD 구현, 아키텍처 설계 | 3~5분 |
+| `/alfred:3-sync` | doc-syncer 📖 | **Haiku 지정** | Living Document 동기화, 패턴 기반 | 30초~1분 |
 
-| 에이전트 | 페르소나 | 전문 영역 | 호출 시점 |
-|---------|---------|----------|----------|
-| **spec-builder** 🏗️ | 시스템 아키텍트 | EARS 명세 작성 | `/alfred:1-spec` |
-| **code-builder** 💎 | 수석 개발자 | TDD 구현 | `/alfred:2-build` |
-| **doc-syncer** 📖 | 테크니컬 라이터 | 문서 동기화 | `/alfred:3-sync` |
+#### 온디맨드 에이전트 호출
 
-#### 품질 보증 에이전트 (온디맨드)
+특정 에이전트를 직접 호출할 수도 있습니다:
 
-| 에이전트 | 페르소나 | 전문 영역 | 호출 방법 |
-|---------|---------|----------|----------|
-| **tag-agent** 🏷️ | 지식 관리자 | TAG 체인 검증 | `@agent-tag-agent` |
-| **debug-helper** 🔬 | SRE 전문가 | 오류 진단 | `@agent-debug-helper` |
-| **trust-checker** ✅ | QA 리드 | TRUST 검증 | `@agent-trust-checker` |
-| **git-manager** 🚀 | 릴리스 엔지니어 | Git 워크플로우 | `@agent-git-manager` |
+```text
+# Haiku 에이전트 (빠른 작업)
+@agent-tag-agent "AUTH 도메인 TAG 목록 조회"
+@agent-git-manager "브랜치 생성 및 PR 생성"
+@agent-trust-checker "TRUST 원칙 준수 여부 확인"
 
-#### 시스템 관리 에이전트
+# Sonnet 에이전트 (복잡한 작업)
+@agent-debug-helper "TypeError 오류 원인 분석"
+@agent-spec-builder "SPEC-AUTH-001 메타데이터 검증"
+@agent-cc-manager "Claude Code 설정 최적화"
 
-| 에이전트 | 페르소나 | 전문 영역 | 호출 방법 |
-|---------|---------|----------|----------|
-| **cc-manager** 🛠️ | 데브옵스 엔지니어 | Claude Code 설정 | `@agent-cc-manager` |
-| **project-manager** 📋 | 프로젝트 매니저 | 프로젝트 초기화 | `/alfred:8-project` |
+# Explore 에이전트 (Haiku, 코드 탐색)
+@agent-Explore "JWT 인증 관련 코드 위치 탐색"
+```
 
-### 협업 원칙
+#### 모델별 성능 비교
 
-**단일 책임 (Single Responsibility)**:
-- 각 에이전트는 자신의 전문 영역만 담당
-- 다른 에이전트의 영역을 침범하지 않음
+| 작업 유형 | Haiku (패스트) | Sonnet (스마트) | 실제 적용 |
+|---------|---------------|----------------|----------|
+| **SPEC 작성** | 1분 | 2~3분 | 세션 기본 모델 사용 |
+| **TDD 구현** | 2분 | 3~5분 | 세션 기본 모델 사용 |
+| **문서 동기화** | 30초 | 1~2분 | ✅ Haiku 지정 (3-sync) |
+| **TAG 검증** | 10초 | 30초 | ✅ Haiku 지정 (tag-agent) |
+| **Git 작업** | 5초 | 15초 | ✅ Haiku 지정 (git-manager) |
+| **디버깅** | 1분 | 2~3분 | 세션 기본 모델 사용 |
 
-**중앙 조율 (Central Orchestration)**:
-- Alfred만이 에이전트 간 작업을 조율
-- 에이전트끼리 직접 호출 금지
+**핵심 설계**:
+- `/alfred:0-project`, `/alfred:1-spec`, `/alfred:2-build`: **사용자가 선택한 세션 기본 모델** 사용
+  - `/model sonnet` (기본값): 높은 품질, 복잡한 판단
+  - `/model haiku`: 빠른 속도, 반복 작업
+- `/alfred:3-sync` 및 Haiku 에이전트: **자동으로 Haiku 모델** 사용 (패턴화된 작업)
 
-**품질 게이트 (Quality Gates)**:
-- 각 단계 완료 시 TRUST 원칙 자동 검증
-- TAG 무결성 자동 확인
+**사용자 제어**: `/model` 명령어로 0~2번 커맨드의 품질과 속도를 자유롭게 조절할 수 있습니다.
 
 ---
 
 ## 🎨 Alfred's Output Styles
 
-Alfred는 개발 상황에 따라 **4가지 대화 스타일**을 제공합니다. Claude Code에서 `/output-style` 명령어로 언제든 전환할 수 있습니다.
+Alfred는 작업 특성과 사용자 경험 수준에 따라 **3가지 출력 스타일**을 제공합니다. Claude Code에서 `/output-style` 명령어로 언제든지 전환할 수 있습니다.
 
-### 📋 제공되는 Output Styles
+### 3가지 표준 스타일
 
-| 스타일 이름 | 설명 |
-|-----------|------|
-| **MoAI Professional** | SPEC-First TDD 전문가를 위한 간결하고 기술적인 개발 스타일 |
-| **MoAI Beginner Learning** | 개발 초보자를 위한 상세하고 친절한 단계별 학습 가이드 (학습 전용) |
-| **MoAI Pair Collaboration** | AI와 함께 브레인스토밍, 계획 수립, 실시간 코드 리뷰를 진행하는 협업 모드 |
-| **MoAI Study Deep** | 새로운 개념, 도구, 언어, 프레임워크를 체계적으로 학습하는 심화 교육 모드 |
+#### 1. Agentic Coding (기본값) ⚡🤝
 
-### 🔄 스타일 전환 방법
+**대상**: 실무 개발자, 팀 리더, 아키텍트
 
-Claude Code에서 `/output-style` 명령어로 전환:
+Alfred SuperAgent가 9개 전문 에이전트를 조율하여 빠른 개발과 협업을 자동으로 전환하는 통합 코딩 모드입니다.
 
-```bash
-/output-style alfred-pro           # MoAI Professional (기본값)
-/output-style beginner-learning    # MoAI Beginner Learning
-/output-style pair-collab          # MoAI Pair Collaboration
-/output-style study-deep           # MoAI Study Deep
-```
-
-### 🎯 스타일 선택 가이드
-
-| 상황 | 추천 스타일 | 대상 | 특징 |
-|------|-----------|------|------|
-| 실무 프로젝트 빠른 개발 | `alfred-pro` | 실무 개발자, 프로젝트 리더 | 간결, 기술적, 결과 중심 |
-| 프로그래밍 처음 배우기 | `beginner-learning` | 개발 입문자 | 친절, 상세 설명, 단계별 안내 |
-| 팀 기술 선택 & 설계 논의 | `pair-collab` | 협업 개발자, 아키텍트 | 질문 기반, 브레인스토밍 |
-| 새로운 기술 학습 | `study-deep` | 신기술 학습자 | 개념 → 실습 → 전문가 팁 |
-
-### 💡 모든 스타일에서 동일하게 작동
-
-- ✅ 10개 AI 에이전트 팀 조율
-- ✅ SPEC-First TDD 워크플로우
-- ✅ TRUST 5원칙 자동 검증
-- ✅ @TAG 추적성 보장
-
-**차이점은 오직 설명 방식**:
-- 📝 간결 vs 상세
-- 🎓 빠른 구현 vs 개념 학습
-- 💬 기술적 vs 친절 vs 협업적 vs 교육적
-
----
-
-## SPEC 메타데이터 구조
-
-모든 SPEC 문서는 표준화된 메타데이터 구조를 따릅니다.
-
-### 필수 필드 (7개)
-
-```yaml
-id: AUTH-001                    # SPEC 고유 ID
-version: 0.1.0                  # Semantic Version (v0.1.0 = INITIAL)
-status: draft                   # draft|active|completed|deprecated
-created: 2025-09-15            # 생성일 (YYYY-MM-DD)
-updated: 2025-10-01            # 최종 수정일
-author: @Goos                   # 작성자 (GitHub ID)
-priority: high                  # low|medium|high|critical
-```
-
-### 선택 필드 (의존성 그래프 & 범위)
-
-```yaml
-# 분류
-category: security              # feature|bugfix|refactor|security|docs|perf
-labels: [authentication, jwt]   # 검색 태그
-
-# 관계 (의존성 그래프)
-depends_on: [USER-001]          # 의존하는 SPEC
-blocks: [AUTH-002]              # 차단하는 SPEC
-related_specs: [TOKEN-002]      # 관련 SPEC
-related_issue: "github.com/..."  # GitHub Issue
-
-# 범위 (영향 분석)
-scope:
-  packages: [src/core/auth]     # 영향받는 패키지
-  files: [auth-service.ts]      # 핵심 파일
-```
-
-**상세 가이드**: [SPEC 메타데이터 가이드](../.moai/memory/spec-metadata.md)
-
----
-
-## @TAG 시스템
-
-### TAG 체계 철학
-
-```
-@SPEC:ID → @TEST:ID → @CODE:ID → @DOC:ID
-```
+**두 가지 작업 방식**:
+- **⚡ Fast Mode (기본)**: 빠른 개발, 구현 위주 작업
+  - SPEC → TDD → SYNC 자동화
+  - 간결한 기술 커뮤니케이션
+  - 최소 설명, 최대 효율
+  - TRUST 5원칙 자동 검증
+- **🤝 Collab Mode (자동 전환)**: "협업", "브레인스토밍", "설계", "리뷰" 키워드 감지 시
+  - 질문 기반 대화
+  - 트레이드오프 분석
+  - 아키텍처 다이어그램 제공
+  - 실시간 코드 리뷰
 
 **핵심 원칙**:
-1. **단순성**: 4개의 핵심 TAG만 사용
-2. **TDD 완벽 정렬**: RED (TEST) → GREEN (CODE) → REFACTOR (DOC)
-3. **CODE-FIRST**: TAG는 코드 자체에만 존재 (정규식 패턴으로 직접 스캔)
-4. **무결성**: 고아 TAG 자동 탐지, 끊어진 참조 검증
+- SPEC 우선: 모든 작업은 @SPEC:ID부터 시작
+- TAG 무결성: `rg` 스캔 기반 실시간 검증
+- TRUST 준수: 5원칙 자동 검증 및 품질 게이트
+- 다중 언어: 17개 언어 지원 (Python, TypeScript, JavaScript, Java, Go, Rust, Dart, Swift, Kotlin, PHP, Ruby, C++, C, C#, Haskell, Shell, Lua)
 
-### TAG 사용 규칙
-
-**TAG ID 형식**: `<도메인>-<3자리>` (예: AUTH-003)
-
-**중복 방지**:
-```bash
-# 새 TAG 생성 전 기존 TAG 검색
-rg "@SPEC:AUTH" -n          # SPEC 문서에서 AUTH 도메인 검색
-rg "@CODE:AUTH-001" -n      # 특정 ID 검색
+**사용**:
+```text
+/output-style agentic-coding
 ```
 
-**TAG 체인 검증**:
-```bash
-# /alfred:3-sync 실행 시 자동 스캔
-rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/
+---
+
+#### 2. MoAI ADK Learning 📚
+
+**대상**: MoAI-ADK를 처음 사용하는 개발자
+
+MoAI-ADK의 핵심 개념과 3단계 워크플로우를 친절하게 설명하여 빠르게 익힐 수 있도록 돕는 학습 모드입니다.
+
+**핵심 철학**: "명세 없으면 코드 없다, 테스트 없으면 구현 없다"
+
+**3가지 핵심 개념**:
+1. **SPEC-First**: 코드 작성 전 명세를 먼저 작성
+   - EARS 구문 (5가지 패턴)으로 요구사항 작성
+   - Ubiquitous, Event-driven, State-driven, Optional, Constraints
+2. **@TAG 추적성**: 모든 코드를 SPEC과 연결
+   - `@SPEC → @TEST → @CODE → @DOC` 체계
+   - CODE-FIRST 원칙 (코드 직접 스캔)
+3. **TRUST 품질**: 5가지 원칙으로 코드 품질 보장
+   - Test First, Readable, Unified, Secured, Trackable
+
+**학습 내용**:
+- 각 개념을 실생활 비유로 쉽게 설명
+- 3단계 워크플로우 단계별 학습
+- 실제 예시로 SPEC 작성 연습
+- FAQ로 자주 묻는 질문 해결
+
+**사용**:
+```text
+/output-style moai-adk-learning
 ```
 
-### 사용 예시
+---
 
-```typescript
-// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001/spec.md | TEST: tests/auth/service.test.ts
+#### 3. Study with Alfred 🎓
 
-/**
- * @CODE:AUTH-001: JWT 인증 서비스
- *
- * TDD 이력:
- * - RED: tests/auth/service.test.ts 작성
- * - GREEN: 최소 구현 (bcrypt, JWT)
- * - REFACTOR: 타입 안전성 추가
- */
-export class AuthService {
-  // @CODE:AUTH-001:API: 인증 API 엔드포인트
-  async authenticate(username: string, password: string): Promise<AuthResult> {
-    // @CODE:AUTH-001:DOMAIN: 입력 검증
-    this.validateInput(username, password);
+**대상**: 새로운 기술/언어/프레임워크를 배우려는 개발자
 
-    // @CODE:AUTH-001:DATA: 사용자 조회
-    const user = await this.userRepository.findByUsername(username);
+Alfred가 함께 배우는 친구처럼 새로운 기술을 쉽게 설명하고, 실습을 도와주는 학습 모드입니다.
 
-    return this.verifyCredentials(user, password);
-  }
-}
+**학습 4단계**:
+
+1. **What (이게 뭐야?)** → 기본 개념 이해
+   - 한 줄 요약
+   - 실생활 비유
+   - 핵심 개념 3가지
+
+2. **Why (왜 필요해?)** → 사용 이유와 장점
+   - 문제 상황
+   - 해결 방법
+   - 실제 사용 사례
+
+3. **How (어떻게 써?)** → 실습 중심 학습
+   - 최소 예제 (Hello World)
+   - 실용적 예제 (CRUD API)
+   - 자주 묻는 질문
+
+4. **Practice (실전 적용)** → MoAI-ADK와 통합
+   - SPEC → TEST → CODE 흐름으로 실습
+   - Alfred가 단계별 안내
+   - 완성된 코드 품질 검증
+
+**특징**:
+- 복잡한 개념을 쉽게 풀어서 설명
+- 실생활 비유로 이해도 향상
+- 단계별로 함께 실습
+- 자주 묻는 질문에 답변
+
+**사용**:
+```text
+/output-style study-with-alfred
 ```
 
-### 언어별 TAG 사용 예시
+---
 
-#### Python
+### 스타일 전환 가이드
 
-```python
-# @CODE:AUTH-001 | SPEC: SPEC-AUTH-001/spec.md | TEST: tests/test_auth.py
-"""
-@CODE:AUTH-001: JWT 인증 서비스
+**언제 전환할까요?**
 
-TDD 이력:
-- RED: pytest 테스트 작성
-- GREEN: bcrypt + PyJWT 구현
-- REFACTOR: 타입 힌트 추가
-"""
+| 상황 | 권장 스타일 | 이유 |
+|------|------------|------|
+| 🚀 **실무 개발** | Agentic Coding | Fast/Collab 자동 전환, 효율 중심 |
+| 📚 **MoAI-ADK 학습** | MoAI ADK Learning | SPEC-First, TAG, TRUST 개념 이해 |
+| 🎓 **새 기술 학습** | Study with Alfred | What-Why-How-Practice 4단계 |
+| 🔄 **반복 작업** | Agentic Coding (Fast) | 최소 설명, 빠른 실행 |
+| 🤝 **팀 협업** | Agentic Coding (Collab) | 트레이드오프 분석, 브레인스토밍 |
 
-class AuthService:
-    # @CODE:AUTH-001:API: 인증 API 엔드포인트
-    async def authenticate(
-        self,
-        username: str,
-        password: str
-    ) -> AuthResult:
-        # @CODE:AUTH-001:DOMAIN: 입력 검증
-        self._validate_input(username, password)
+**스타일 전환 예시**:
+```text
+# MoAI-ADK 처음 시작 시
+/output-style moai-adk-learning
 
-        # @CODE:AUTH-001:DATA: 사용자 조회
-        user = await self.user_repo.find_by_username(username)
+# 새로운 프레임워크 배울 때
+/output-style study-with-alfred
+"FastAPI를 배우고 싶어요"
 
-        return self._verify_credentials(user, password)
-```
-
-#### Flutter/Dart
-
-```dart
-// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001/spec.md | TEST: test/auth_test.dart
-
-/// @CODE:AUTH-001: JWT 인증 서비스
-///
-/// TDD 이력:
-/// - RED: widget test 작성
-/// - GREEN: dio + flutter_secure_storage 구현
-/// - REFACTOR: Riverpod 상태 관리 통합
-class AuthService {
-  // @CODE:AUTH-001:API: 인증 API 엔드포인트
-  Future<AuthResult> authenticate({
-    required String username,
-    required String password,
-  }) async {
-    // @CODE:AUTH-001:DOMAIN: 입력 검증
-    _validateInput(username, password);
-
-    // @CODE:AUTH-001:DATA: 사용자 조회
-    final user = await userRepository.findByUsername(username);
-
-    return _verifyCredentials(user, password);
-  }
-}
+# 실무 개발 시작
+/output-style agentic-coding
+/alfred:1-spec "사용자 인증 시스템"
 ```
 
 ---
 
 ## 🌍 Universal Language Support
 
-MoAI-ADK는 모든 주요 언어를 지원하며, 언어별 최적 도구 체인을 자동으로 선택합니다.
+Alfred는 **17개 주요 프로그래밍 언어**를 지원하며, 각 언어에 최적화된 도구 체인을 자동으로 선택합니다.
 
-### 웹/백엔드
+### 지원 언어 & 도구 (17개 언어)
 
-| 언어 | 테스트 | 린터 | 타입 | 상태 |
-|------|--------|------|------|------|
-| **TypeScript** | Vitest/Jest | Biome/ESLint | ✅ | Full |
-| **Python** | pytest | ruff/black | mypy | Full |
-| **Java** | JUnit 5 | checkstyle | ✅ | Full |
-| **Go** | go test | golint | ✅ | Full |
-| **Rust** | cargo test | clippy | ✅ | Full |
+#### 백엔드 & 시스템 (8개)
 
-### 모바일
+| 언어 | 테스트 프레임워크 | 린터/포매터 | 빌드 도구 | 타입 시스템 |
+|------|------------------|-------------|----------|------------|
+| **Python** | pytest | ruff, black | uv, pip | mypy |
+| **TypeScript** | Vitest, Jest | Biome, ESLint | npm, pnpm, bun | Built-in |
+| **Java** | JUnit | Checkstyle | Maven, Gradle | Built-in |
+| **Go** | go test | gofmt, golint | go build | Built-in |
+| **Rust** | cargo test | rustfmt, clippy | cargo | Built-in |
+| **Kotlin** | JUnit | ktlint | Gradle | Built-in |
+| **PHP** | PHPUnit | PHP CS Fixer | Composer | PHPStan |
+| **Ruby** | RSpec | RuboCop | Bundler | Sorbet |
 
-| 언어/프레임워크 | 테스트 | 린터 | 상태 |
-|----------------|--------|------|------|
-| **Flutter/Dart** | flutter test | dart analyze | Full |
-| **Swift/iOS** | XCTest | SwiftLint | Full |
-| **Kotlin/Android** | JUnit + Espresso | detekt | Full |
-| **React Native** | Jest + RNTL | ESLint | Full |
+#### 모바일 & 프론트엔드 (3개)
+
+| 언어/프레임워크 | 테스트 프레임워크 | 린터/포매터 | 빌드 도구 | 플랫폼 |
+|-----------------|------------------|-------------|----------|--------|
+| **Dart (Flutter)** | flutter test | dart analyze | flutter | iOS, Android, Web |
+| **Swift** | XCTest | SwiftLint | xcodebuild | iOS, macOS |
+| **JavaScript** | Jest, Vitest | ESLint, Prettier | webpack, Vite | Web, Node.js |
+
+#### 시스템 & 스크립트 (6개)
+
+| 언어 | 테스트 프레임워크 | 린터/포매터 | 빌드 도구 | 특징 |
+|------|------------------|-------------|----------|------|
+| **C++** | Google Test | clang-format | CMake | 고성능 시스템 |
+| **C** | CUnit | clang-format | Make, CMake | 임베디드, 시스템 |
+| **C#** | NUnit, xUnit | StyleCop | MSBuild, dotnet | .NET 생태계 |
+| **Haskell** | HUnit | stylish-haskell | Cabal, Stack | 함수형 프로그래밍 |
+| **Shell** | Bats | shellcheck | - | 자동화 스크립트 |
+| **Lua** | busted | luacheck | - | 임베디드 스크립팅 |
 
 ### 자동 언어 감지
 
-시스템이 프로젝트를 스캔하여 자동으로 감지:
+Alfred는 프로젝트 루트의 설정 파일을 자동으로 감지하여 언어와 도구 체인을 선택합니다:
 
-- `package.json` → TypeScript/JavaScript
-- `requirements.txt` → Python
-- `go.mod` → Go
-- `Cargo.toml` → Rust
-- `pubspec.yaml` → Flutter/Dart
+| 감지 파일 | 언어 | 추가 감지 |
+|----------|------|----------|
+| `pyproject.toml`, `requirements.txt` | Python | `setup.py`, `poetry.lock` |
+| `package.json` + `tsconfig.json` | TypeScript | `yarn.lock`, `pnpm-lock.yaml` |
+| `package.json` (tsconfig 없음) | JavaScript | `webpack.config.js`, `vite.config.js` |
+| `pom.xml`, `build.gradle` | Java | `settings.gradle`, `build.gradle.kts` |
+| `go.mod` | Go | `go.sum` |
+| `Cargo.toml` | Rust | `Cargo.lock` |
+| `pubspec.yaml` | Dart/Flutter | `flutter/packages/` |
+| `Package.swift` | Swift | `Podfile`, `Cartfile` |
+| `build.gradle.kts` + `kotlin` | Kotlin | `settings.gradle.kts` |
+| `composer.json` | PHP | `composer.lock` |
+| `Gemfile` | Ruby | `Gemfile.lock` |
+| `CMakeLists.txt` | C++ | `conanfile.txt` |
+| `Makefile` | C | `*.c`, `*.h` |
+| `*.csproj` | C# | `*.sln` |
+| `*.cabal` | Haskell | `stack.yaml` |
+| `*.sh` | Shell | `.bashrc`, `.zshrc` |
+| `*.lua` | Lua | `luarocks` |
 
----
+### 언어별 TRUST 5원칙 적용
 
-## 💻 CLI Reference
+모든 언어는 동일한 TRUST 5원칙을 따르며, 언어별 최적 도구를 자동 사용합니다:
 
-### 핵심 명령어
+#### 주요 언어 TRUST 도구
 
-```bash
-# 프로젝트 초기화
-moai init [project] [options]
+| 원칙 | Python | TypeScript | Java | Go | Rust | Ruby |
+|------|--------|------------|------|-----|------|------|
+| **T**est First | pytest | Vitest/Jest | JUnit | go test | cargo test | RSpec |
+| **R**eadable | ruff, black | Biome, ESLint | Checkstyle | gofmt | rustfmt | RuboCop |
+| **U**nified | mypy | Built-in | Built-in | Built-in | Built-in | Sorbet |
+| **S**ecured | bandit | eslint-plugin-security | SpotBugs | gosec | cargo-audit | Brakeman |
+| **T**rackable | @TAG | @TAG | @TAG | @TAG | @TAG | @TAG |
 
-# 시스템 진단
-moai doctor [options]
+#### 추가 언어 TRUST 도구
 
-# 프로젝트 상태 확인
-moai status [options]
+| 원칙 | PHP | C++ | C# |
+|------|-----|-----|-----|
+| **T**est First | PHPUnit | Google Test | NUnit |
+| **R**eadable | PHP CS Fixer | clang-format | StyleCop |
+| **U**nified | PHPStan | Built-in | Built-in |
+| **S**ecured | RIPS | cppcheck | Security Code Scan |
+| **T**rackable | @TAG | @TAG | @TAG |
 
-# 백업 복원
-moai restore <backup-path> [options]
-```
+**공통 원칙**:
+- 모든 언어는 `@TAG 시스템`으로 SPEC→TEST→CODE→DOC 추적성 보장
+- 언어별 표준 도구 체인을 자동 감지 및 적용
+- TRUST 5원칙은 모든 프로젝트에 일관되게 적용
 
-### Claude Code 전용 명령어
+### 다중 언어 프로젝트 지원
+
+**Monorepo 및 혼합 언어 프로젝트**도 완벽 지원:
 
 ```text
-# 템플릿 업데이트 (권장 ⭐)
-/alfred:9-update
-
-# 프로젝트 초기화
-/alfred:8-project
+my-project/
+├── backend/          # Python (FastAPI)
+│   ├── pyproject.toml
+│   └── src/
+├── frontend/         # TypeScript (React)
+│   ├── package.json
+│   └── src/
+└── mobile/           # Dart (Flutter)
+    ├── pubspec.yaml
+    └── lib/
 ```
 
-### moai init [project]
-
-새 MoAI-ADK 프로젝트를 초기화하거나 기존 프로젝트에 MoAI-ADK를 설치합니다.
-
-**옵션**:
-
-- `--personal`: Personal 모드로 초기화 (기본값)
-- `--team`: Team 모드로 초기화 (GitHub 통합)
-- `-b, --backup`: 설치 전 백업 생성
-- `-f, --force`: 기존 파일 강제 덮어쓰기
-
-**사용 예시**:
-
-```bash
-# 새 프로젝트 생성 (Personal 모드)
-moai init my-project
-
-# 현재 디렉토리에 설치
-moai init .
-
-# Team 모드로 초기화
-moai init my-project --team
-
-# 백업 생성 후 설치
-moai init . -b
-
-# 기존 파일 강제 덮어쓰기
-moai init . -f
-```
-
-### moai doctor
-
-시스템 진단을 실행하여 MoAI-ADK가 올바르게 설치되었는지 확인합니다.
-
-**옵션**:
-
-- `-l, --list-backups`: 사용 가능한 백업 목록 표시
-
-**사용 예시**:
-
-```bash
-# 시스템 진단 실행
-moai doctor
-
-# 백업 목록 확인
-moai doctor -l
-```
-
-### moai status
-
-MoAI-ADK 프로젝트 상태를 표시합니다.
-
-**옵션**:
-
-- `-v, --verbose`: 상세 상태 정보 표시
-- `-p, --project-path <path>`: 프로젝트 디렉토리 경로 지정 (경로 필수)
-
-**사용 예시**:
-
-```bash
-# 현재 디렉토리 상태 확인
-moai status
-
-# 상세 정보 포함
-moai status -v
-
-# 특정 경로 프로젝트 상태 확인
-moai status -p /path/to/project
-
-# 상세 정보 + 특정 경로
-moai status -v -p /path/to/project
-```
-
-### moai restore <backup-path>
-
-백업 디렉토리에서 MoAI-ADK를 복원합니다.
-
-**인자**:
-
-- `<backup-path>`: 복원할 백업 디렉토리 경로 (필수)
-
-**옵션**:
-
-- `--dry-run`: 변경 없이 복원할 내용 미리보기
-- `--force`: 기존 파일 강제 덮어쓰기
-
-**사용 예시**:
-
-```bash
-# 백업에서 복원 (미리보기)
-moai restore .moai-backup-2025-10-02 --dry-run
-
-# 실제 복원 실행
-moai restore .moai-backup-2025-10-02
-
-# 강제 복원 (기존 파일 덮어쓰기)
-moai restore .moai-backup-2025-10-02 --force
-```
-
-**참고**: MoAI-ADK 업데이트는 Claude Code에서 `/alfred:9-update` 명령어를 사용하세요.
+Alfred는 각 디렉토리의 언어를 자동 감지하고 적절한 도구 체인을 사용합니다.
 
 ---
 
-## 프로그래매틱 API
+## 🛡️ TRUST 5원칙
 
-### 기본 사용
-
-```typescript
-import { CLIApp, SystemChecker, TemplateManager } from 'moai-adk';
-
-// CLI 앱 초기화
-const app = new CLIApp();
-await app.run();
-
-// 시스템 체크
-const checker = new SystemChecker();
-const result = await checker.checkSystem();
-
-// 템플릿 관리
-const templateManager = new TemplateManager();
-await templateManager.copyTemplates(projectPath);
-```
-
-### 설정 파일 (.moai/config.json)
-
-```json
-{
-  "project": {
-    "name": "my-project",
-    "mode": "personal",
-    "language": "typescript"
-  },
-  "workflow": {
-    "enableAutoSync": true,
-    "gitIntegration": true
-  }
-}
-```
-
----
-
-## TRUST 5원칙
-
-모든 개발 과정에서 TRUST 원칙을 준수합니다:
+Alfred가 모든 코드에 자동으로 적용하는 품질 기준입니다.
 
 ### T - Test First (테스트 우선)
-
-**SPEC → Test → Code 사이클**:
-- **@SPEC**: EARS 형식 명세서 우선 작성
-- **RED**: `@TEST` TAG - 실패하는 테스트 작성
-- **GREEN**: `@CODE` TAG - 최소 구현으로 테스트 통과
-- **REFACTOR**: `@CODE` TAG - 코드 품질 개선
+- SPEC 기반 테스트 케이스 작성
+- TDD RED → GREEN → REFACTOR 사이클
+- 테스트 커버리지 ≥ 85%
 
 ### R - Readable (가독성)
+- 파일 ≤ 300 LOC
+- 함수 ≤ 50 LOC
+- 매개변수 ≤ 5개
+- 복잡도 ≤ 10
 
-**코드 제약**:
-- 파일당 ≤300 LOC
-- 함수당 ≤50 LOC
-- 매개변수 ≤5개
-- 복잡도 ≤10
+### U - Unified (통일성)
+- 타입 안전성 또는 런타임 검증
+- 아키텍처 일관성
+- 코딩 스타일 통일
 
-### U - Unified (통합성)
-
-**SPEC 기반 아키텍처**:
-- 모듈 간 명확한 책임 분리
-- 타입 안전성 보장
-- 언어별 경계를 SPEC이 정의
-
-### S - Secured (보안성)
-
-**입력 검증**:
-- 모든 사용자 입력 검증 (정규식, 화이트리스트)
-- 파일 업로드 제한 (확장자, 크기, MIME 타입)
-
-**주요 취약점 방어**:
-- **SQL Injection**: Prepared Statement, ORM 사용
-- **XSS**: HTML 이스케이핑, CSP 헤더
-- **CSRF**: CSRF 토큰, SameSite 쿠키
-- **비밀번호**: bcrypt/argon2 해싱 (최소 10 라운드)
-
-**보안 스캐닝**:
-- 정적 분석 도구 (Snyk, OWASP Dependency-Check)
-- 환경 변수 보안 (`.env` Git 제외)
+### S - Secured (보안)
+- 입력 검증
+- 로깅 및 감사
+- 비밀 관리
+- 정적 분석
 
 ### T - Trackable (추적성)
+- `@SPEC → @TEST → @CODE → @DOC` TAG 체인
+- CODE-FIRST 원칙 (코드 직접 스캔)
+- HISTORY 섹션 기록
 
-**@TAG 시스템으로 완전한 추적성**:
-- `@SPEC` → `@TEST` → `@CODE` → `@DOC` 체인
-- 코드 직접 스캔으로 무결성 검증
-- 고아 TAG 자동 탐지
+### 자동 검증
 
----
+```text
+# TDD 구현 완료 후 자동 실행
+/alfred:2-build AUTH-001
 
-## 문제 해결
-
-### 자주 발생하는 문제
-
-#### 1. `/alfred:2-build` 실행 시 "SPEC not found" 에러
-
-**증상**: TDD 구현 중 SPEC 파일을 찾을 수 없다는 에러 발생
-
-**원인**: `/alfred:1-spec` 단계를 건너뛰었거나, SPEC 파일 경로가 잘못됨
-
-**해결 방법**:
-
-```bash
-# 1. SPEC 파일 존재 여부 확인
-ls .moai/specs/SPEC-*.md
-
-# 2. SPEC이 없다면 먼저 작성
-/alfred:1-spec "기능 설명"
-
-# 3. SPEC ID 확인 후 재실행
-/alfred:2-build SPEC-ID
-```
-
-#### 2. 테스트 실패 시 복구
-
-**증상**: `/alfred:2-build` 실행 후 테스트가 계속 실패
-
-**원인**: 엣지 케이스 누락, 의존성 문제, 환경 변수 미설정
-
-**해결 방법**:
-
-```bash
-# 1. 테스트 수동 실행으로 정확한 에러 확인
-npm test  # 또는 bun test, pytest 등
-
-# 2. debug-helper 에이전트 호출
-@agent-debug-helper "테스트 실패 에러 메시지"
-
-# 3. 환경 변수 확인
-cat .env.example  # 필요한 환경 변수 확인
-cp .env.example .env  # 환경 변수 파일 생성
-
-# 4. 의존성 재설치
-rm -rf node_modules && npm install
-```
-
-#### 3. TAG 체인 끊어짐 경고
-
-**증상**: `/alfred:3-sync` 실행 시 "고아 TAG 발견" 경고
-
-**원인**: SPEC 없이 CODE만 작성했거나, TAG ID 불일치
-
-**해결 방법**:
-
-```bash
-# 1. 고아 TAG 찾기
-rg '@CODE:' -n src/  # CODE TAG 목록
-rg '@SPEC:' -n .moai/specs/  # SPEC TAG 목록
-
-# 2. 누락된 SPEC 작성
-/alfred:1-spec "해당 기능 설명"
-
-# 3. TAG ID 일치시키기
-# CODE와 SPEC의 ID가 동일한지 확인 (예: AUTH-001)
-
-# 4. 재검증
+# 또는 수동 실행
 /alfred:3-sync
-```
 
-#### 4. Git 브랜치 충돌
-
-**증상**: SPEC 생성 시 브랜치 생성 실패
-
-**원인**: 동일한 이름의 브랜치가 이미 존재
-
-**해결 방법**:
-
-```bash
-# 1. 기존 브랜치 확인
-git branch -a
-
-# 2. 기존 브랜치로 전환 (계속 작업하려면)
-git checkout feature/SPEC-XXX-YYY
-
-# 3. 또는 새 브랜치 강제 생성 (처음부터 다시 시작)
-git branch -D feature/SPEC-XXX-YYY
-/alfred:1-spec "기능 설명"
-```
-
-#### 5. 권한 에러 (Permission Denied)
-
-**증상**: `moai init` 또는 `/alfred:9-update` 실행 시 권한 에러
-
-**원인**: 파일 실행 권한 부족
-
-**해결 방법**:
-
-```bash
-# 1. .claude/commands/ 디렉토리 권한 확인
-ls -la .claude/commands/
-
-# 2. 실행 권한 추가
-chmod +x .claude/commands/*.md
-
-# 3. 또는 자동 수정
-/alfred:9-update --fix-permissions
-```
-
-#### 6. 테스트 커버리지 85% 미만
-
-**증상**: TRUST 검증 실패 - 테스트 커버리지 부족
-
-**원인**: 엣지 케이스 테스트 누락
-
-**해결 방법**:
-
-```bash
-# 1. 커버리지 리포트 확인
-npm test -- --coverage  # 또는 bun test --coverage
-
-# 2. 누락된 브랜치 확인
-# 커버리지 리포트에서 빨간색(미테스트) 라인 확인
-
-# 3. 엣지 케이스 테스트 추가
-# - null/undefined 입력
-# - 빈 배열/객체
-# - 경계값 (0, -1, 최대값)
-# - 에러 케이스
-
-# 4. 재실행
-/alfred:2-build SPEC-ID
-```
-
-#### 7. 설치 실패
-
-**권한 문제:**
-```bash
-sudo npm install -g moai-adk
-```
-
-**캐시 문제:**
-```bash
-npm cache clean --force
-npm install -g moai-adk
-```
-
-#### 8. 명령어 인식 안 됨
-
-**PATH 확인:**
-```bash
-echo $PATH
-npm list -g --depth=0
-```
-
-**셸 재시작:**
-```bash
-source ~/.bashrc  # bash
-source ~/.zshrc   # zsh
-```
-
-#### 9. Claude Code 연동 문제
-
-- `.claude/settings.json` 파일 확인
-- Claude Code 최신 버전 사용 확인
-- 에이전트 파일 권한 확인
-
-### 로그 확인
-
-문제 원인 파악을 위한 로그 위치:
-
-```bash
-# MoAI-ADK 시스템 로그
-~/.moai/logs/moai.log
-
-# 에러 로그
-~/.moai/logs/error.log
-
-# 프로젝트별 로그
-.moai/logs/
-
-# Claude Code 로그
-~/.claude/logs/
-```
-
-### 긴급 복구
-
-심각한 문제 발생 시 백업에서 복원:
-
-```bash
-# 1. 백업 목록 확인
-moai doctor -l
-
-# 2. 최신 백업으로 복원 (미리보기)
-moai restore .moai-backup-YYYY-MM-DD --dry-run
-
-# 3. 실제 복원
-moai restore .moai-backup-YYYY-MM-DD
+# trust-checker 에이전트가 자동으로 검증:
+# ✅ Test Coverage: 87% (목표: 85%)
+# ✅ Code Constraints: 모든 파일 300 LOC 이하
+# ✅ TAG Chain: 무결성 확인 완료
 ```
 
 ---
 
-## 개발 참여
+## ❓ FAQ
 
-### 기여 방법
+### Q1: MoAI-ADK는 어떤 프로젝트에 적합한가요?
 
-1. Repository Fork
-2. 기능 브랜치 생성 (`git checkout -b feature/new-feature`)
-3. 변경사항 커밋 (`git commit -am 'Add new feature'`)
-4. 브랜치 푸시 (`git push origin feature/new-feature`)
-5. Pull Request 생성
+**A**: 다음과 같은 프로젝트에 적합합니다:
+- ✅ 새로운 프로젝트 (그린필드)
+- ✅ 기존 프로젝트 (레거시 도입)
+- ✅ 개인 프로젝트 (Personal 모드)
+- ✅ 팀 프로젝트 (Team 모드, GitFlow 지원)
+- ✅ 모든 주요 프로그래밍 언어
 
-### 개발 환경 설정
+### Q2: Claude Code가 필수인가요?
+
+**A**: 네, MoAI-ADK는 Claude Code 환경에서 동작하도록 설계되었습니다. Claude Code는 Anthropic의 공식 CLI 도구로, AI 에이전트 시스템을 완벽하게 지원합니다.
+
+### Q3: 기존 프로젝트에 도입할 수 있나요?
+
+**A**: 네, `moai-adk init .` 명령으로 기존 프로젝트에 안전하게 설치할 수 있습니다. Alfred는 기존 코드 구조를 분석하여 `.moai/` 폴더에 문서와 설정만 추가합니다.
+
+### Q4: Personal 모드와 Team 모드의 차이는?
+
+**A**:
+- **Personal 모드**: 로컬 작업 중심, 체크포인트만 생성
+- **Team 모드**: GitFlow 지원, Draft PR 자동 생성, develop 브랜치 기반
+
+### Q5: SPEC 메타데이터는 어떻게 관리하나요?
+
+**A**: `.moai/memory/spec-metadata.md`에 전체 가이드가 있습니다.
+- **필수 7개**: id, version, status, created, updated, author, priority
+- **선택 9개**: category, labels, depends_on, blocks, related_specs, related_issue, scope
+- **HISTORY 섹션**: 모든 변경 이력 기록 (필수)
+
+### Q6: TDD 단계별로 커밋하나요?
+
+**A**: 아니요, v0.3.0부터 **TDD 전체 사이클(RED→GREEN→REFACTOR) 완료 후 1회만 커밋**합니다. 이전처럼 각 단계별로 3번 커밋하지 않습니다.
+
+### Q7: Context Engineering이란?
+
+**A**:
+- **JIT Retrieval**: 필요한 순간에만 문서 로드 (초기 컨텍스트 최소화)
+- **Compaction**: 토큰 사용량 >70% 시 요약 후 새 세션 권장
+- **Explore 에이전트**: 대규모 코드베이스 효율적 탐색
+
+### Q8: 자동 백업은 어떻게 작동하나요?
+
+**A**:
+- **Template Processor**: 업데이트 전 `.moai-backups/alfred-{timestamp}/` 자동 백업
+- **Event-Driven Checkpoint**: 위험한 작업 전 자동 checkpoint 생성
+- **보존 정책**: 최대 10개 유지, 7일 후 자동 정리
+
+### Q9: /model 명령어를 사용해야 하나요?
+
+**A**: **선택사항**입니다. Alfred는 이미 각 에이전트에 최적 모델을 할당했으므로:
+- ✅ **기본 설정 유지** (권장): Alfred가 자동으로 작업별 최적 모델 사용
+- ⚡ **패스트 모드**: `/model haiku` - 반복 작업 시 전체 세션을 Haiku로
+- 🧠 **스마트 모드**: `/model sonnet` - 복잡한 판단이 계속 필요할 때
+
+**Pro Tip**: 기본 설정으로도 Haiku/Sonnet이 혼합 사용되므로 성능과 비용이 이미 최적화되어 있습니다.
+
+### Q10: Haiku와 Sonnet의 비용 차이는?
+
+**A**:
+- **Haiku**: $1 / 1M 입력 토큰, $5 / 1M 출력 토큰
+- **Sonnet**: $3 / 1M 입력 토큰, $15 / 1M 출력 토큰
+- **절감 효과**: Haiku 에이전트 사용 시 **비용 67% 절감**
+
+**예시 (100만 토큰 기준)**:
+- 100% Sonnet: $18 (입력 + 출력)
+- MoAI-ADK (혼합): $6~$9 (작업 특성에 따라)
+- **절감액**: $9~$12 (50~67%)
+
+---
+
+## 🔧 문제 해결
+
+### 설치 문제
 
 ```bash
-# 저장소 클론
-git clone https://github.com/modu-ai/moai-adk.git
-cd moai-adk/moai-adk-ts
+# Python 버전 확인 (3.13+ 필요)
+python --version
 
-# 의존성 설치 (Bun 권장)
-bun install
+# uv 설치 (권장)
+pip install uv
 
-# 개발 모드 실행
-bun run dev
-
-# 빌드
-bun run build
-
-# 테스트
-bun test
-
-# 코드 품질 검사
-bun run check
+# 캐시 정리 후 재설치
+pip cache purge
+uv pip install moai-adk --force-reinstall
 ```
 
-### 코딩 규칙
+### 초기화 문제
 
-- TRUST 5원칙 준수
-- @TAG 시스템 적용
-- TypeScript strict 모드 사용
-- ≤50 LOC per function
-- Test coverage ≥85%
+```bash
+# 프로젝트 상태 확인
+moai-adk status
+
+# 시스템 진단
+moai-adk doctor
+
+# 강제 재초기화
+moai-adk init . --force
+```
+
+### Claude Code 문제
+
+```text
+# 설정 확인
+ls -la .claude/
+
+# Alfred 커맨드 확인
+ls -la .claude/commands/alfred/
+
+# 출력 스타일 확인
+/output-style agentic-coding
+```
+
+### 일반적인 에러
+
+#### 에러: "moai-adk: command not found"
+```bash
+# PATH 확인 및 전체 경로 사용
+~/.local/bin/moai-adk --version
+
+# 또는 pip로 재설치
+pip install --force-reinstall moai-adk
+```
+
+#### 에러: ".moai/ 디렉토리를 찾을 수 없습니다"
+```bash
+# 초기화 실행
+moai-adk init .
+
+# 또는 Claude Code에서
+/alfred:0-project
+```
+
+#### 에러: "SPEC ID 중복"
+```bash
+# 기존 SPEC 확인
+rg "@SPEC:" -n .moai/specs/
+
+# 새로운 ID 사용
+/alfred:1-spec "새 기능 설명"
+```
 
 ---
 
-## 🙏 Contributors
+## 📚 문서 및 지원
 
-MoAI-ADK 프로젝트에 기여해주신 분들께 감사드립니다:
+### 공식 문서
+- **GitHub Repository**: https://github.com/modu-ai/moai-adk
+- **PyPI Package**: https://pypi.org/project/moai-adk/
+- **Issue Tracker**: https://github.com/modu-ai/moai-adk/issues
+- **Discussions**: https://github.com/modu-ai/moai-adk/discussions
 
-- **[@Workuul](https://github.com/Workuul)** - 심볼릭 링크 실행 문제 수정 ([PR #1](https://github.com/modu-ai/moai-adk/pull/1))
-  - `realpathSync()` 적용으로 글로벌 설치 이슈 해결
-  - REPL/eval 환경 방어 로직 추가
-  - JSDoc 문서화 개선
+### 커뮤니티
+- **GitHub Discussions**: 질문, 아이디어, 피드백 공유
+- **Issue Tracker**: 버그 리포트, 기능 요청
+- **Email**: support@moduai.kr
+
+### 기여하기
+
+MoAI-ADK는 오픈소스 프로젝트입니다. 여러분의 기여를 환영합니다!
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+### 라이선스
+
+MIT License - 자유롭게 사용하실 수 있습니다.
 
 ---
 
-## 문서 및 지원
+## 🙏 감사의 말
 
-- **🐛 Issues**: [GitHub Issues](https://github.com/modu-ai/moai-adk/issues)
-- **💬 Discussions**: [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)
-- **📦 npm Package**: [moai-adk](https://www.npmjs.com/package/moai-adk)
+MoAI-ADK는 다음 프로젝트와 커뮤니티의 도움으로 만들어졌습니다:
+
+- **Anthropic Claude Code**: AI 에이전트 시스템의 기반
+- **OpenAI GPT Models**: 초기 설계 협업
+- **Python & TypeScript Communities**: 언어 지원 및 도구 체인
+- **모두의AI Community**: 지속적인 피드백과 개선 아이디어
 
 ---
 
-Made with MoAI's 🪿
+**Made with ❤️ by MoAI Team**
 
----
-
-## 라이선스
-
-이 프로젝트는 [MIT License](LICENSE)를 따릅니다.
+**▶◀ Alfred**: "여러분의 개발 여정을 함께하겠습니다!"
