@@ -135,7 +135,7 @@ moai-adk update
 
 ## ▶◀ Meet Alfred - 10개 AI 에이전트 팀
 
-안녕하세요, 모두의AI SuperAgent **▶◀ Alfred**입니다!
+안녕하세요, 모두의AI SuperAgent **🎩 Alfred**입니다!
 
 ![Alfred Logo](https://github.com/modu-ai/moai-adk/raw/main/docs/public/alfred_logo.png)
 
@@ -149,7 +149,7 @@ moai-adk update
 - **Agentic Coding 적용**: 10개 AI 에이전트 팀이 자율적으로 SPEC 작성, TDD 구현, 문서 동기화 수행
 - **투명성**: 완벽하지 않은 부분을 숨기지 않고, 커뮤니티와 함께 개선해나가는 오픈소스
 
-### ▶◀ Alfred가 제공하는 4가지 핵심 가치
+### 🎩 Alfred가 제공하는 4가지 핵심 가치
 
 #### 1️⃣ 일관성 (Consistency)
 **SPEC → TDD → Sync** 3단계 파이프라인으로 플랑켄슈타인 코드 방지
@@ -189,13 +189,13 @@ Alfred는 **작업 특성**에 따라 각 에이전트에 최적 모델을 할�
 
 **빠른 응답이 필요한 반복 작업 및 패턴 매칭**
 
-| 에이전트 | 역할 | 왜 Haiku? |
-|---------|------|-----------|
-| **doc-syncer** 📖 | 문서 동기화 | 패턴화된 문서 업데이트, Living Document 생성 |
-| **tag-agent** 🏷️ | TAG 시스템 관리 | 반복적 패턴 매칭, TAG 체인 검증 |
-| **git-manager** 🚀 | Git 워크플로우 | 정형화된 Git 명령어 실행, 브랜치/PR 생성 |
-| **trust-checker** ✅ | TRUST 원칙 검증 | 규칙 기반 체크리스트 확인 |
-| **Explore** 🔍 | 코드베이스 탐색 | 대량 파일 스캔, 키워드 검색 |
+| 에이전트            | 역할            | 왜 Haiku?                                    |
+| ------------------- | --------------- | -------------------------------------------- |
+| **doc-syncer** 📖    | 문서 동기화     | 패턴화된 문서 업데이트, Living Document 생성 |
+| **tag-agent** 🏷️     | TAG 시스템 관리 | 반복적 패턴 매칭, TAG 체인 검증              |
+| **git-manager** 🚀   | Git 워크플로우  | 정형화된 Git 명령어 실행, 브랜치/PR 생성     |
+| **trust-checker** ✅ | TRUST 원칙 검증 | 규칙 기반 체크리스트 확인                    |
+| **Explore** 🔍       | 코드베이스 탐색 | 대량 파일 스캔, 키워드 검색                  |
 
 **장점**:
 - ⚡ **속도 2~5배 향상**: 실시간 응답 (수 초 → 1초 이내)
@@ -206,13 +206,13 @@ Alfred는 **작업 특성**에 따라 각 에이전트에 최적 모델을 할�
 
 **복잡한 판단과 창의적 설계가 필요한 작업**
 
-| 에이전트 | 역할 | 왜 Sonnet? |
-|---------|------|-----------|
-| **spec-builder** 🏗️ | SPEC 작성 | EARS 구조 설계, 복잡한 요구사항 분석 |
-| **code-builder** 💎 | TDD 구현 | 아키텍처 설계, 복잡한 리팩토링 |
-| **debug-helper** 🔬 | 디버깅 | 오류 원인 분석, 해결 방법 도출 |
-| **cc-manager** 🛠️ | Claude Code 설정 | 워크플로우 최적화, 복잡한 설정 |
-| **project-manager** 📋 | 프로젝트 초기화 | 전략 수립, 복잡한 의사결정 |
+| 에이전트              | 역할             | 왜 Sonnet?                           |
+| --------------------- | ---------------- | ------------------------------------ |
+| **spec-builder** 🏗️    | SPEC 작성        | EARS 구조 설계, 복잡한 요구사항 분석 |
+| **code-builder** 💎    | TDD 구현         | 아키텍처 설계, 복잡한 리팩토링       |
+| **debug-helper** 🔬    | 디버깅           | 오류 원인 분석, 해결 방법 도출       |
+| **cc-manager** 🛠️      | Claude Code 설정 | 워크플로우 최적화, 복잡한 설정       |
+| **project-manager** 📋 | 프로젝트 초기화  | 전략 수립, 복잡한 의사결정           |
 
 **장점**:
 - 🎯 **높은 품질**: 복잡한 코드 품질 보장
@@ -221,14 +221,14 @@ Alfred는 **작업 특성**에 따라 각 에이전트에 최적 모델을 할�
 
 ### 사용 시나리오별 권장 모델
 
-| 시나리오 | 권장 모델 | 이유 |
-|---------|----------|------|
-| 🆕 **새 프로젝트 시작** | Sonnet | SPEC 설계, 아키텍처 결정 필요 |
-| 🔄 **반복 개발** | Haiku | 이미 정해진 패턴 반복 구현 |
-| 🐛 **버그 수정** | Sonnet | 원인 분석 및 해결 방법 도출 |
-| 📝 **문서 작성** | Haiku | Living Document 동기화 |
-| 🔍 **코드 탐색** | Haiku | 파일 검색, TAG 조회 |
-| ♻️ **리팩토링** | Sonnet | 구조 개선, 복잡한 변경 |
+| 시나리오               | 권장 모델 | 이유                          |
+| ---------------------- | --------- | ----------------------------- |
+| 🆕 **새 프로젝트 시작** | Sonnet    | SPEC 설계, 아키텍처 결정 필요 |
+| 🔄 **반복 개발**        | Haiku     | 이미 정해진 패턴 반복 구현    |
+| 🐛 **버그 수정**        | Sonnet    | 원인 분석 및 해결 방법 도출   |
+| 📝 **문서 작성**        | Haiku     | Living Document 동기화        |
+| 🔍 **코드 탐색**        | Haiku     | 파일 검색, TAG 조회           |
+| ♻️ **리팩토링**         | Sonnet    | 구조 개선, 복잡한 변경        |
 
 ### 모델 전환 팁
 
@@ -264,12 +264,25 @@ Alfred는 **작업 특성**에 따라 각 에이전트에 최적 모델을 할�
 
 #### 1️⃣ 설치 (30초)
 
+**옵션 A: uv 사용 (권장 - 빠른 성능)**
+
 ```bash
-# uv 권장 (빠른 성능)
-pip install uv
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows (PowerShell)
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# 설치 후 moai-adk 설치
 uv pip install moai-adk
 
-# 또는 pip 사용
+# 설치 확인
+moai-adk --version
+```
+
+**옵션 B: pip 사용 (모든 환경)**
+
+```bash
 pip install moai-adk
 
 # 설치 확인
@@ -482,12 +495,12 @@ moai-adk --help
 
 각 Alfred 커맨드는 적절한 에이전트를 호출하며, **자동으로 최적 모델**을 사용합니다:
 
-| 커맨드 | 에이전트 | 모델 | 작업 특성 | 예상 시간 |
-|-------|----------|------|----------|----------|
-| `/alfred:0-project` | project-manager 📋 | 세션 기본 모델 | 프로젝트 전략 수립, 복잡한 의사결정 | 1~2분 |
-| `/alfred:1-spec` | spec-builder 🏗️ | 세션 기본 모델 | EARS 명세 설계, 요구사항 분석 | 2~3분 |
-| `/alfred:2-build` | code-builder 💎 | 세션 기본 모델 | TDD 구현, 아키텍처 설계 | 3~5분 |
-| `/alfred:3-sync` | doc-syncer 📖 | **Haiku 지정** | Living Document 동기화, 패턴 기반 | 30초~1분 |
+| 커맨드              | 에이전트          | 모델           | 작업 특성                           | 예상 시간 |
+| ------------------- | ----------------- | -------------- | ----------------------------------- | --------- |
+| `/alfred:0-project` | project-manager 📋 | 세션 기본 모델 | 프로젝트 전략 수립, 복잡한 의사결정 | 1~2분     |
+| `/alfred:1-spec`    | spec-builder 🏗️    | 세션 기본 모델 | EARS 명세 설계, 요구사항 분석       | 2~3분     |
+| `/alfred:2-build`   | code-builder 💎    | 세션 기본 모델 | TDD 구현, 아키텍처 설계             | 3~5분     |
+| `/alfred:3-sync`    | doc-syncer 📖      | **Haiku 지정** | Living Document 동기화, 패턴 기반   | 30초~1분  |
 
 #### 온디맨드 에이전트 호출
 
@@ -510,14 +523,14 @@ moai-adk --help
 
 #### 모델별 성능 비교
 
-| 작업 유형 | Haiku (패스트) | Sonnet (스마트) | 실제 적용 |
-|---------|---------------|----------------|----------|
-| **SPEC 작성** | 1분 | 2~3분 | 세션 기본 모델 사용 |
-| **TDD 구현** | 2분 | 3~5분 | 세션 기본 모델 사용 |
-| **문서 동기화** | 30초 | 1~2분 | ✅ Haiku 지정 (3-sync) |
-| **TAG 검증** | 10초 | 30초 | ✅ Haiku 지정 (tag-agent) |
-| **Git 작업** | 5초 | 15초 | ✅ Haiku 지정 (git-manager) |
-| **디버깅** | 1분 | 2~3분 | 세션 기본 모델 사용 |
+| 작업 유형       | Haiku (패스트) | Sonnet (스마트) | 실제 적용                  |
+| --------------- | -------------- | --------------- | -------------------------- |
+| **SPEC 작성**   | 1분            | 2~3분           | 세션 기본 모델 사용        |
+| **TDD 구현**    | 2분            | 3~5분           | 세션 기본 모델 사용        |
+| **문서 동기화** | 30초           | 1~2분           | ✅ Haiku 지정 (3-sync)      |
+| **TAG 검증**    | 10초           | 30초            | ✅ Haiku 지정 (tag-agent)   |
+| **Git 작업**    | 5초            | 15초            | ✅ Haiku 지정 (git-manager) |
+| **디버깅**      | 1분            | 2~3분           | 세션 기본 모델 사용        |
 
 **핵심 설계**:
 - `/alfred:0-project`, `/alfred:1-spec`, `/alfred:2-build`: **사용자가 선택한 세션 기본 모델** 사용
@@ -642,13 +655,13 @@ Alfred가 함께 배우는 친구처럼 새로운 기술을 쉽게 설명하고,
 
 **언제 전환할까요?**
 
-| 상황 | 권장 스타일 | 이유 |
-|------|------------|------|
-| 🚀 **실무 개발** | Agentic Coding | Fast/Collab 자동 전환, 효율 중심 |
-| 📚 **MoAI-ADK 학습** | MoAI ADK Learning | SPEC-First, TAG, TRUST 개념 이해 |
-| 🎓 **새 기술 학습** | Study with Alfred | What-Why-How-Practice 4단계 |
-| 🔄 **반복 작업** | Agentic Coding (Fast) | 최소 설명, 빠른 실행 |
-| 🤝 **팀 협업** | Agentic Coding (Collab) | 트레이드오프 분석, 브레인스토밍 |
+| 상황                | 권장 스타일             | 이유                             |
+| ------------------- | ----------------------- | -------------------------------- |
+| 🚀 **실무 개발**     | Agentic Coding          | Fast/Collab 자동 전환, 효율 중심 |
+| 📚 **MoAI-ADK 학습** | MoAI ADK Learning       | SPEC-First, TAG, TRUST 개념 이해 |
+| 🎓 **새 기술 학습**  | Study with Alfred       | What-Why-How-Practice 4단계      |
+| 🔄 **반복 작업**     | Agentic Coding (Fast)   | 최소 설명, 빠른 실행             |
+| 🤝 **팀 협업**       | Agentic Coding (Collab) | 트레이드오프 분석, 브레인스토밍  |
 
 **스타일 전환 예시**:
 ```text
@@ -674,59 +687,59 @@ Alfred는 **17개 주요 프로그래밍 언어**를 지원하며, 각 언어에
 
 #### 백엔드 & 시스템 (8개)
 
-| 언어 | 테스트 프레임워크 | 린터/포매터 | 빌드 도구 | 타입 시스템 |
-|------|------------------|-------------|----------|------------|
-| **Python** | pytest | ruff, black | uv, pip | mypy |
-| **TypeScript** | Vitest, Jest | Biome, ESLint | npm, pnpm, bun | Built-in |
-| **Java** | JUnit | Checkstyle | Maven, Gradle | Built-in |
-| **Go** | go test | gofmt, golint | go build | Built-in |
-| **Rust** | cargo test | rustfmt, clippy | cargo | Built-in |
-| **Kotlin** | JUnit | ktlint | Gradle | Built-in |
-| **PHP** | PHPUnit | PHP CS Fixer | Composer | PHPStan |
-| **Ruby** | RSpec | RuboCop | Bundler | Sorbet |
+| 언어           | 테스트 프레임워크 | 린터/포매터     | 빌드 도구      | 타입 시스템 |
+| -------------- | ----------------- | --------------- | -------------- | ----------- |
+| **Python**     | pytest            | ruff, black     | uv, pip        | mypy        |
+| **TypeScript** | Vitest, Jest      | Biome, ESLint   | npm, pnpm, bun | Built-in    |
+| **Java**       | JUnit             | Checkstyle      | Maven, Gradle  | Built-in    |
+| **Go**         | go test           | gofmt, golint   | go build       | Built-in    |
+| **Rust**       | cargo test        | rustfmt, clippy | cargo          | Built-in    |
+| **Kotlin**     | JUnit             | ktlint          | Gradle         | Built-in    |
+| **PHP**        | PHPUnit           | PHP CS Fixer    | Composer       | PHPStan     |
+| **Ruby**       | RSpec             | RuboCop         | Bundler        | Sorbet      |
 
 #### 모바일 & 프론트엔드 (3개)
 
-| 언어/프레임워크 | 테스트 프레임워크 | 린터/포매터 | 빌드 도구 | 플랫폼 |
-|-----------------|------------------|-------------|----------|--------|
-| **Dart (Flutter)** | flutter test | dart analyze | flutter | iOS, Android, Web |
-| **Swift** | XCTest | SwiftLint | xcodebuild | iOS, macOS |
-| **JavaScript** | Jest, Vitest | ESLint, Prettier | webpack, Vite | Web, Node.js |
+| 언어/프레임워크    | 테스트 프레임워크 | 린터/포매터      | 빌드 도구     | 플랫폼            |
+| ------------------ | ----------------- | ---------------- | ------------- | ----------------- |
+| **Dart (Flutter)** | flutter test      | dart analyze     | flutter       | iOS, Android, Web |
+| **Swift**          | XCTest            | SwiftLint        | xcodebuild    | iOS, macOS        |
+| **JavaScript**     | Jest, Vitest      | ESLint, Prettier | webpack, Vite | Web, Node.js      |
 
 #### 시스템 & 스크립트 (6개)
 
-| 언어 | 테스트 프레임워크 | 린터/포매터 | 빌드 도구 | 특징 |
-|------|------------------|-------------|----------|------|
-| **C++** | Google Test | clang-format | CMake | 고성능 시스템 |
-| **C** | CUnit | clang-format | Make, CMake | 임베디드, 시스템 |
-| **C#** | NUnit, xUnit | StyleCop | MSBuild, dotnet | .NET 생태계 |
-| **Haskell** | HUnit | stylish-haskell | Cabal, Stack | 함수형 프로그래밍 |
-| **Shell** | Bats | shellcheck | - | 자동화 스크립트 |
-| **Lua** | busted | luacheck | - | 임베디드 스크립팅 |
+| 언어        | 테스트 프레임워크 | 린터/포매터     | 빌드 도구       | 특징              |
+| ----------- | ----------------- | --------------- | --------------- | ----------------- |
+| **C++**     | Google Test       | clang-format    | CMake           | 고성능 시스템     |
+| **C**       | CUnit             | clang-format    | Make, CMake     | 임베디드, 시스템  |
+| **C#**      | NUnit, xUnit      | StyleCop        | MSBuild, dotnet | .NET 생태계       |
+| **Haskell** | HUnit             | stylish-haskell | Cabal, Stack    | 함수형 프로그래밍 |
+| **Shell**   | Bats              | shellcheck      | -               | 자동화 스크립트   |
+| **Lua**     | busted            | luacheck        | -               | 임베디드 스크립팅 |
 
 ### 자동 언어 감지
 
 Alfred는 프로젝트 루트의 설정 파일을 자동으로 감지하여 언어와 도구 체인을 선택합니다:
 
-| 감지 파일 | 언어 | 추가 감지 |
-|----------|------|----------|
-| `pyproject.toml`, `requirements.txt` | Python | `setup.py`, `poetry.lock` |
-| `package.json` + `tsconfig.json` | TypeScript | `yarn.lock`, `pnpm-lock.yaml` |
-| `package.json` (tsconfig 없음) | JavaScript | `webpack.config.js`, `vite.config.js` |
-| `pom.xml`, `build.gradle` | Java | `settings.gradle`, `build.gradle.kts` |
-| `go.mod` | Go | `go.sum` |
-| `Cargo.toml` | Rust | `Cargo.lock` |
-| `pubspec.yaml` | Dart/Flutter | `flutter/packages/` |
-| `Package.swift` | Swift | `Podfile`, `Cartfile` |
-| `build.gradle.kts` + `kotlin` | Kotlin | `settings.gradle.kts` |
-| `composer.json` | PHP | `composer.lock` |
-| `Gemfile` | Ruby | `Gemfile.lock` |
-| `CMakeLists.txt` | C++ | `conanfile.txt` |
-| `Makefile` | C | `*.c`, `*.h` |
-| `*.csproj` | C# | `*.sln` |
-| `*.cabal` | Haskell | `stack.yaml` |
-| `*.sh` | Shell | `.bashrc`, `.zshrc` |
-| `*.lua` | Lua | `luarocks` |
+| 감지 파일                            | 언어         | 추가 감지                             |
+| ------------------------------------ | ------------ | ------------------------------------- |
+| `pyproject.toml`, `requirements.txt` | Python       | `setup.py`, `poetry.lock`             |
+| `package.json` + `tsconfig.json`     | TypeScript   | `yarn.lock`, `pnpm-lock.yaml`         |
+| `package.json` (tsconfig 없음)       | JavaScript   | `webpack.config.js`, `vite.config.js` |
+| `pom.xml`, `build.gradle`            | Java         | `settings.gradle`, `build.gradle.kts` |
+| `go.mod`                             | Go           | `go.sum`                              |
+| `Cargo.toml`                         | Rust         | `Cargo.lock`                          |
+| `pubspec.yaml`                       | Dart/Flutter | `flutter/packages/`                   |
+| `Package.swift`                      | Swift        | `Podfile`, `Cartfile`                 |
+| `build.gradle.kts` + `kotlin`        | Kotlin       | `settings.gradle.kts`                 |
+| `composer.json`                      | PHP          | `composer.lock`                       |
+| `Gemfile`                            | Ruby         | `Gemfile.lock`                        |
+| `CMakeLists.txt`                     | C++          | `conanfile.txt`                       |
+| `Makefile`                           | C            | `*.c`, `*.h`                          |
+| `*.csproj`                           | C#           | `*.sln`                               |
+| `*.cabal`                            | Haskell      | `stack.yaml`                          |
+| `*.sh`                               | Shell        | `.bashrc`, `.zshrc`                   |
+| `*.lua`                              | Lua          | `luarocks`                            |
 
 ### 언어별 TRUST 5원칙 적용
 
@@ -734,23 +747,23 @@ Alfred는 프로젝트 루트의 설정 파일을 자동으로 감지하여 언�
 
 #### 주요 언어 TRUST 도구
 
-| 원칙 | Python | TypeScript | Java | Go | Rust | Ruby |
-|------|--------|------------|------|-----|------|------|
-| **T**est First | pytest | Vitest/Jest | JUnit | go test | cargo test | RSpec |
-| **R**eadable | ruff, black | Biome, ESLint | Checkstyle | gofmt | rustfmt | RuboCop |
-| **U**nified | mypy | Built-in | Built-in | Built-in | Built-in | Sorbet |
-| **S**ecured | bandit | eslint-plugin-security | SpotBugs | gosec | cargo-audit | Brakeman |
-| **T**rackable | @TAG | @TAG | @TAG | @TAG | @TAG | @TAG |
+| 원칙           | Python      | TypeScript             | Java       | Go       | Rust        | Ruby     |
+| -------------- | ----------- | ---------------------- | ---------- | -------- | ----------- | -------- |
+| **T**est First | pytest      | Vitest/Jest            | JUnit      | go test  | cargo test  | RSpec    |
+| **R**eadable   | ruff, black | Biome, ESLint          | Checkstyle | gofmt    | rustfmt     | RuboCop  |
+| **U**nified    | mypy        | Built-in               | Built-in   | Built-in | Built-in    | Sorbet   |
+| **S**ecured    | bandit      | eslint-plugin-security | SpotBugs   | gosec    | cargo-audit | Brakeman |
+| **T**rackable  | @TAG        | @TAG                   | @TAG       | @TAG     | @TAG        | @TAG     |
 
 #### 추가 언어 TRUST 도구
 
-| 원칙 | PHP | C++ | C# |
-|------|-----|-----|-----|
-| **T**est First | PHPUnit | Google Test | NUnit |
-| **R**eadable | PHP CS Fixer | clang-format | StyleCop |
-| **U**nified | PHPStan | Built-in | Built-in |
-| **S**ecured | RIPS | cppcheck | Security Code Scan |
-| **T**rackable | @TAG | @TAG | @TAG |
+| 원칙           | PHP          | C++          | C#                 |
+| -------------- | ------------ | ------------ | ------------------ |
+| **T**est First | PHPUnit      | Google Test  | NUnit              |
+| **R**eadable   | PHP CS Fixer | clang-format | StyleCop           |
+| **U**nified    | PHPStan      | Built-in     | Built-in           |
+| **S**ecured    | RIPS         | cppcheck     | Security Code Scan |
+| **T**rackable  | @TAG         | @TAG         | @TAG               |
 
 **공통 원칙**:
 - 모든 언어는 `@TAG 시스템`으로 SPEC→TEST→CODE→DOC 추적성 보장
@@ -907,12 +920,16 @@ Alfred가 모든 코드에 자동으로 적용하는 품질 기준입니다.
 # Python 버전 확인 (3.13+ 필요)
 python --version
 
-# uv 설치 (권장)
-pip install uv
-
-# 캐시 정리 후 재설치
-pip cache purge
+# uv가 설치되어 있다면
 uv pip install moai-adk --force-reinstall
+
+# pip 사용 시
+pip cache purge
+pip install moai-adk --force-reinstall
+
+# uv가 없다면 설치 (선택사항)
+# macOS/Linux: curl -LsSf https://astral.sh/uv/install.sh | sh
+# Windows: powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
 ### 초기화 문제
@@ -983,7 +1000,7 @@ rg "@SPEC:" -n .moai/specs/
 ### 커뮤니티
 - **GitHub Discussions**: 질문, 아이디어, 피드백 공유
 - **Issue Tracker**: 버그 리포트, 기능 요청
-- **Email**: support@moduai.kr
+- **Email**: email@mo.ai.kr
 
 ### 기여하기
 
@@ -1014,4 +1031,4 @@ MoAI-ADK는 다음 프로젝트와 커뮤니티의 도움으로 만들어졌습�
 
 **Made with ❤️ by MoAI Team**
 
-**▶◀ Alfred**: "여러분의 개발 여정을 함께하겠습니다!"
+**🎩 Alfred**: "여러분의 개발 여정을 함께하겠습니다!"
