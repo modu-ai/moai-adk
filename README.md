@@ -557,7 +557,7 @@ Alfred SuperAgent가 9개 전문 에이전트를 조율하여 빠른 개발과 �
 - SPEC 우선: 모든 작업은 @SPEC:ID부터 시작
 - TAG 무결성: `rg` 스캔 기반 실시간 검증
 - TRUST 준수: 5원칙 자동 검증 및 품질 게이트
-- 다중 언어: 10개 언어 지원 (Python, TypeScript, JavaScript, Java, Go, Rust, Dart, Swift, Kotlin, React Native)
+- 다중 언어: 20개 언어 지원 (Python, TypeScript, JavaScript, Java, Go, Rust, Dart, Swift, Kotlin, PHP, Ruby, Elixir, Scala, Clojure, C++, C, C#, Haskell, Shell, Lua)
 
 **사용**:
 ```text
@@ -668,11 +668,11 @@ Alfred가 함께 배우는 친구처럼 새로운 기술을 쉽게 설명하고,
 
 ## 🌍 Universal Language Support
 
-Alfred는 **모든 주요 프로그래밍 언어**를 지원하며, 각 언어에 최적화된 도구 체인을 자동으로 선택합니다.
+Alfred는 **20개 주요 프로그래밍 언어**를 지원하며, 각 언어에 최적화된 도구 체인을 자동으로 선택합니다.
 
-### 지원 언어 & 도구 (10개 언어)
+### 지원 언어 & 도구 (20개 언어)
 
-#### 백엔드 & 시스템
+#### 백엔드 & 시스템 (11개)
 
 | 언어 | 테스트 프레임워크 | 린터/포매터 | 빌드 도구 | 타입 시스템 |
 |------|------------------|-------------|----------|------------|
@@ -682,15 +682,30 @@ Alfred는 **모든 주요 프로그래밍 언어**를 지원하며, 각 언어�
 | **Go** | go test | gofmt, golint | go build | Built-in |
 | **Rust** | cargo test | rustfmt, clippy | cargo | Built-in |
 | **Kotlin** | JUnit | ktlint | Gradle | Built-in |
+| **PHP** | PHPUnit | PHP CS Fixer | Composer | PHPStan |
+| **Ruby** | RSpec | RuboCop | Bundler | Sorbet |
+| **Elixir** | ExUnit | mix format | mix | Dialyzer |
+| **Scala** | ScalaTest | Scalafmt | sbt | Built-in |
+| **Clojure** | clojure.test | cljfmt | Leiningen | Typed Clojure |
 
-#### 모바일 & 프론트엔드
+#### 모바일 & 프론트엔드 (3개)
 
 | 언어/프레임워크 | 테스트 프레임워크 | 린터/포매터 | 빌드 도구 | 플랫폼 |
 |-----------------|------------------|-------------|----------|--------|
 | **Dart (Flutter)** | flutter test | dart analyze | flutter | iOS, Android, Web |
 | **Swift** | XCTest | SwiftLint | xcodebuild | iOS, macOS |
-| **React Native** | Jest | ESLint, Prettier | Metro | iOS, Android |
 | **JavaScript** | Jest, Vitest | ESLint, Prettier | webpack, Vite | Web, Node.js |
+
+#### 시스템 & 스크립트 (6개)
+
+| 언어 | 테스트 프레임워크 | 린터/포매터 | 빌드 도구 | 특징 |
+|------|------------------|-------------|----------|------|
+| **C++** | Google Test | clang-format | CMake | 고성능 시스템 |
+| **C** | CUnit | clang-format | Make, CMake | 임베디드, 시스템 |
+| **C#** | NUnit, xUnit | StyleCop | MSBuild, dotnet | .NET 생태계 |
+| **Haskell** | HUnit | stylish-haskell | Cabal, Stack | 함수형 프로그래밍 |
+| **Shell** | Bats | shellcheck | - | 자동화 스크립트 |
+| **Lua** | busted | luacheck | - | 임베디드 스크립팅 |
 
 ### 자동 언어 감지
 
@@ -705,21 +720,48 @@ Alfred는 프로젝트 루트의 설정 파일을 자동으로 감지하여 언�
 | `go.mod` | Go | `go.sum` |
 | `Cargo.toml` | Rust | `Cargo.lock` |
 | `pubspec.yaml` | Dart/Flutter | `flutter/packages/` |
-| `*.xcodeproj`, `Package.swift` | Swift | `Podfile`, `Cartfile` |
+| `Package.swift` | Swift | `Podfile`, `Cartfile` |
 | `build.gradle.kts` + `kotlin` | Kotlin | `settings.gradle.kts` |
-| `android/`, `ios/` + `package.json` | React Native | `metro.config.js` |
+| `composer.json` | PHP | `composer.lock` |
+| `Gemfile` | Ruby | `Gemfile.lock` |
+| `mix.exs` | Elixir | `mix.lock` |
+| `build.sbt` | Scala | `project/` |
+| `project.clj` | Clojure | `deps.edn` |
+| `CMakeLists.txt` | C++ | `conanfile.txt` |
+| `Makefile` | C | `*.c`, `*.h` |
+| `*.csproj` | C# | `*.sln` |
+| `*.cabal` | Haskell | `stack.yaml` |
+| `*.sh` | Shell | `.bashrc`, `.zshrc` |
+| `*.lua` | Lua | `luarocks` |
 
 ### 언어별 TRUST 5원칙 적용
 
 모든 언어는 동일한 TRUST 5원칙을 따르며, 언어별 최적 도구를 자동 사용합니다:
 
-| 원칙 | Python | TypeScript | Java | Go | Rust |
-|------|--------|------------|------|-----|------|
-| **T**est First | pytest | Vitest/Jest | JUnit | go test | cargo test |
-| **R**eadable | ruff, black | Biome, ESLint | Checkstyle | gofmt | rustfmt |
-| **U**nified | mypy | Built-in | Built-in | Built-in | Built-in |
-| **S**ecured | bandit | eslint-plugin-security | SpotBugs | gosec | cargo-audit |
-| **T**rackable | @TAG 시스템 | @TAG 시스템 | @TAG 시스템 | @TAG 시스템 | @TAG 시스템 |
+#### 주요 언어 TRUST 도구
+
+| 원칙 | Python | TypeScript | Java | Go | Rust | Ruby |
+|------|--------|------------|------|-----|------|------|
+| **T**est First | pytest | Vitest/Jest | JUnit | go test | cargo test | RSpec |
+| **R**eadable | ruff, black | Biome, ESLint | Checkstyle | gofmt | rustfmt | RuboCop |
+| **U**nified | mypy | Built-in | Built-in | Built-in | Built-in | Sorbet |
+| **S**ecured | bandit | eslint-plugin-security | SpotBugs | gosec | cargo-audit | Brakeman |
+| **T**rackable | @TAG | @TAG | @TAG | @TAG | @TAG | @TAG |
+
+#### 추가 언어 TRUST 도구
+
+| 원칙 | PHP | Elixir | Scala | C++ | C# |
+|------|-----|--------|-------|-----|-----|
+| **T**est First | PHPUnit | ExUnit | ScalaTest | Google Test | NUnit |
+| **R**eadable | PHP CS Fixer | mix format | Scalafmt | clang-format | StyleCop |
+| **U**nified | PHPStan | Dialyzer | Built-in | Built-in | Built-in |
+| **S**ecured | RIPS | Sobelow | - | cppcheck | Security Code Scan |
+| **T**rackable | @TAG | @TAG | @TAG | @TAG | @TAG |
+
+**공통 원칙**:
+- 모든 언어는 `@TAG 시스템`으로 SPEC→TEST→CODE→DOC 추적성 보장
+- 언어별 표준 도구 체인을 자동 감지 및 적용
+- TRUST 5원칙은 모든 프로젝트에 일관되게 적용
 
 ### 다중 언어 프로젝트 지원
 
