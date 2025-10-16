@@ -360,6 +360,114 @@ uv run ruff check
 uv run mypy src
 ```
 
+### 🪟 Windows 환경 설정
+
+MoAI-ADK는 Windows 10/11을 완벽하게 지원합니다. 아래 가이드를 따라 필수 도구를 설치하세요.
+
+#### 필수 도구 설치
+
+**1. Git for Windows**
+```powershell
+# Chocolatey 사용 (권장)
+choco install git
+
+# 또는 직접 다운로드
+# https://git-scm.com/download/win
+```
+
+**2. Python 3.13+**
+```powershell
+# Chocolatey 사용
+choco install python
+
+# 또는 Microsoft Store에서 설치
+# 또는 직접 다운로드: https://www.python.org/downloads/
+```
+
+**3. ripgrep (필수)**
+```powershell
+# Scoop 사용 (권장)
+scoop install ripgrep
+
+# 또는 Chocolatey 사용
+choco install ripgrep
+
+# 또는 직접 다운로드
+# https://github.com/BurntSushi/ripgrep/releases
+```
+
+#### 권장 도구
+
+**Windows Package Manager**
+```powershell
+# Scoop 설치 (권장)
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+irm get.scoop.sh | iex
+
+# 또는 Chocolatey 설치
+Set-ExecutionPolicy Bypass -Scope Process -Force
+[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+```
+
+#### Windows 환경 검증
+
+```powershell
+# Python 버전 확인
+python --version
+
+# Git 설치 확인
+git --version
+
+# ripgrep 설치 확인
+rg --version
+
+# MoAI-ADK 시스템 진단
+python -m moai_adk doctor
+```
+
+#### Windows 특정 기능
+
+**보안 스캔 실행**
+```powershell
+# PowerShell 버전 사용
+.\scripts\security-scan.ps1
+
+# 또는 Python 버전 사용 (크로스 플랫폼)
+python scripts/security-scan.py
+```
+
+**PATH 환경변수 추가** (수동 설치 시)
+```powershell
+# ripgrep PATH 추가 예시
+$env:Path += ";C:\Program Files\ripgrep"
+```
+
+#### 문제 해결
+
+**PowerShell 실행 정책 오류**
+```powershell
+# 현재 사용자에 대해 실행 정책 변경
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+**경로 인식 문제**
+- MoAI-ADK는 `pathlib`를 사용하여 Windows/Unix 경로를 자동으로 처리합니다.
+- 경로 구분자 (`\` vs `/`)는 자동 변환되므로 별도 조치가 필요하지 않습니다.
+
+**WSL (Windows Subsystem for Linux) 사용**
+```powershell
+# WSL 2 설치 (Windows 10 2004 이상)
+wsl --install
+
+# Ubuntu 설치
+wsl --install -d Ubuntu
+
+# WSL에서 MoAI-ADK 사용
+wsl
+python3 -m pip install moai-adk
+```
+
 ---
 
 ## 🏗️ How Alfred Works - 10개 AI 에이전트 팀

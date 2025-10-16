@@ -4,6 +4,7 @@
 Checks whether required and optional tools are installed.
 """
 
+import platform
 import shutil
 import subprocess
 import sys
@@ -264,3 +265,38 @@ def check_environment() -> dict[str, bool]:
         "Project structure (.moai/)": Path(".moai").exists(),
         "Config file (.moai/config.json)": Path(".moai/config.json").exists(),
     }
+
+
+def get_platform_specific_message(unix_message: str, windows_message: str) -> str:
+    """Return platform-specific message.
+
+    Args:
+        unix_message: Message for Unix/Linux/macOS.
+        windows_message: Message for Windows.
+
+    Returns:
+        Platform-appropriate message.
+
+    Examples:
+        >>> get_platform_specific_message("chmod 755 .moai", "Check directory permissions")
+        'chmod 755 .moai'  # on Unix/Linux/macOS
+        >>> get_platform_specific_message("chmod 755 .moai", "Check directory permissions")
+        'Check directory permissions'  # on Windows
+    """
+    if platform.system() == "Windows":
+        return windows_message
+    return unix_message
+
+
+def get_permission_fix_message(path: str) -> str:
+    """Get platform-specific permission fix message.
+
+    Args:
+        path: Path to fix permissions for.
+
+    Returns:
+        Platform-specific fix instructions.
+    """
+    if platform.system() == "Windows":
+        return f"관리자 권한으로 실행하거나 '{path}' 디렉토리 속성에서 권한을 확인하세요"
+    return f"chmod 755 {path} 실행 후 재시도하세요"
