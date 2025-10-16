@@ -1,15 +1,16 @@
 ---
 id: INSTALLER-REFACTOR-001
 version: 0.1.0
-status: draft
+status: deprecated
 created: 2025-10-06
-updated: 2025-10-06
+updated: 2025-10-16
 author: @Goos
 labels:
   - refactoring
   - quality
   - installer
   - code-structure
+  - deprecated-typescript
 priority: high
 ---
 
@@ -17,18 +18,16 @@ priority: high
 
 ## HISTORY
 
-### v0.1.0 (2025-10-06)
-- **INITIAL**: LOC 제한 준수 리팩토링 명세 작성
+### v0.1.0 (2025-10-16)
+- **DEPRECATED**: TypeScript 프로젝트용 SPEC, Python 프로젝트에는 적용 불가
 - **AUTHOR**: @Goos
-- **SCOPE**:
-  - phase-executor.ts (358 LOC) → <300 LOC 분리
-  - template-processor.ts (371 LOC) → <300 LOC 분리
-  - 단일 책임 원칙(SRP) 적용
-  - 테스트 용이성 향상
-- **BACKGROUND**:
-  - TRUST 원칙 중 Readable (가독성) 준수 필요
-  - 현재 2개 파일이 300 LOC 제한 위반
-  - 복잡도 증가로 유지보수 어려움
+- **REASON**: MoAI-ADK가 Python 프로젝트로 전환됨에 따라 TypeScript installer 리팩토링 SPEC 불필요
+- **ALTERNATIVE**: Python 프로젝트는 이미 TRUST 원칙 준수 (파일 ≤300 LOC, 함수 ≤50 LOC)
+
+### v0.0.1 (2025-10-06)
+- **INITIAL**: LOC 제한 준수 리팩토링 명세 작성 (TypeScript용)
+- **AUTHOR**: @Goos
+- **SCOPE**: TypeScript installer 파일들의 LOC 제한 준수
 
 ---
 

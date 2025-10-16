@@ -1,9 +1,9 @@
 ---
 id: INSTALLER-TEST-001
 version: 0.1.0
-status: draft
+status: deprecated
 created: 2025-10-06
-updated: 2025-10-06
+updated: 2025-10-16
 author: @Goos
 priority: high
 ---
@@ -12,11 +12,16 @@ priority: high
 
 ## HISTORY
 
-### v0.1.0 (2025-10-06)
-- **INITIAL**: Installer 패키지 테스트 커버리지 85% 달성 명세 작성
+### v0.1.0 (2025-10-16)
+- **DEPRECATED**: TypeScript 프로젝트용 SPEC, Python 프로젝트에는 적용 불가
 - **AUTHOR**: @Goos
-- **SCOPE**: 12개 미테스트 파일에 대한 Vitest 기반 단위 테스트 작성
-- **CONTEXT**: SPEC-REFACTOR-001의 후속 작업으로 품질 보증 강화
+- **REASON**: MoAI-ADK가 Python 프로젝트로 전환됨에 따라 TypeScript 테스트 SPEC 불필요
+- **ALTERNATIVE**: Python 프로젝트는 이미 425개 pytest 테스트로 85% 커버리지 달성
+
+### v0.0.1 (2025-10-06)
+- **INITIAL**: Installer 패키지 테스트 커버리지 85% 달성 명세 작성 (TypeScript용)
+- **AUTHOR**: @Goos
+- **SCOPE**: TypeScript installer 패키지 테스트
 
 ## 1. 개요
 
