@@ -1,14 +1,15 @@
 ---
 id: INSTALLER-SEC-001
 version: 0.1.0
-status: draft
+status: deprecated
 created: 2025-10-06
-updated: 2025-10-06
+updated: 2025-10-16
 author: @Goos
 labels:
   - security
   - template
   - installer
+  - deprecated-typescript
 priority: high
 ---
 
@@ -16,17 +17,16 @@ priority: high
 
 ## HISTORY
 
-### v0.1.0 (2025-10-06)
-- **INITIAL**: 템플릿 보안 검증 통합 명세 작성
+### v0.1.0 (2025-10-16)
+- **DEPRECATED**: TypeScript 프로젝트용 SPEC, Python 프로젝트에는 적용 불가
 - **AUTHOR**: @Goos
-- **SCOPE**:
-  - template-security.ts의 보안 검증 기능을 template-processor.ts에 통합
-  - 템플릿 인젝션 공격 방지
-  - 위험한 패턴 자동 탐지 및 차단
-- **BACKGROUND**:
-  - 현재 template-security.ts가 정의되어 있으나 실제로 사용되지 않음
-  - sanitizeTemplateContext(), validateTemplateContent() 함수 미사용
-  - 템플릿 인젝션 공격 위험 존재
+- **REASON**: MoAI-ADK가 Python 프로젝트로 전환됨에 따라 TypeScript template 보안 SPEC 불필요
+- **ALTERNATIVE**: Python 프로젝트는 Jinja2 템플릿 사용, 별도 보안 메커니즘 적용
+
+### v0.0.1 (2025-10-06)
+- **INITIAL**: 템플릿 보안 검증 통합 명세 작성 (TypeScript용)
+- **AUTHOR**: @Goos
+- **SCOPE**: TypeScript template-security.ts 통합
 
 ---
 

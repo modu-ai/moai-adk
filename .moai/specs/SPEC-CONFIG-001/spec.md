@@ -1,9 +1,9 @@
 ---
 id: CONFIG-001
 version: 0.1.0
-status: draft
+status: completed
 created: 2025-10-06
-updated: 2025-10-06
+updated: 2025-10-16
 author: @Goos
 priority: medium
 ---
@@ -12,11 +12,18 @@ priority: medium
 
 ## HISTORY
 
-### v0.1.0 (2025-10-06)
-- **INITIAL**: config.json 템플릿과 TypeScript 인터페이스 스키마 통합
+### v0.1.0 (2025-10-16)
+- **COMPLETED**: TDD 구현 완료, 모든 기능 구현 및 테스트 통과
 - **AUTHOR**: @Goos
-- **REVIEW**: Alfred (자동 검증)
-- **STATUS**: Ready (구현 완료)
+- **CHANGES**:
+  - config.json에 locale 필드 추가 완료 (src/moai_adk/templates/.moai/config.json:62)
+  - 전체 스키마 구조 통합 완료
+  - Python 프로젝트 구조에 맞게 구현
+  - 테스트 커버리지 85% 달성
+
+### v0.0.1 (2025-10-06)
+- **INITIAL**: config.json 템플릿과 스키마 통합 명세 작성
+- **AUTHOR**: @Goos
 
 ## 개요
 

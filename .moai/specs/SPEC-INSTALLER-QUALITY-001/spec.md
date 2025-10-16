@@ -1,9 +1,9 @@
 ---
 id: INSTALLER-QUALITY-001
 version: 0.1.0
-status: draft
+status: deprecated
 created: 2025-10-06
-updated: 2025-10-06
+updated: 2025-10-16
 author: @Goos
 priority: medium
 ---
@@ -12,11 +12,16 @@ priority: medium
 
 ## HISTORY
 
-### v0.1.0 (2025-10-06)
-- **INITIAL**: Installer 패키지 통합 코드 품질 개선 명세 작성
+### v0.1.0 (2025-10-16)
+- **DEPRECATED**: TypeScript 프로젝트용 SPEC, Python 프로젝트에는 적용 불가
 - **AUTHOR**: @Goos
-- **SCOPE**: DI 패턴 통일, 에러 처리 일관성, TAG 형식 통일, 크로스 플랫폼 개선, 매직 넘버 제거
-- **CONTEXT**: SPEC-REFACTOR-001의 후속 작업으로 코드 품질 및 유지보수성 향상
+- **REASON**: MoAI-ADK가 Python 프로젝트로 전환됨에 따라 TypeScript installer 품질 SPEC 불필요
+- **ALTERNATIVE**: Python 프로젝트는 trust_checker.py로 TRUST 5원칙 검증 (85% 커버리지, LOC 제한 등)
+
+### v0.0.1 (2025-10-06)
+- **INITIAL**: Installer 패키지 통합 코드 품질 개선 명세 작성 (TypeScript용)
+- **AUTHOR**: @Goos
+- **SCOPE**: TypeScript installer 패키지 품질 개선
 
 ## 1. 개요
 

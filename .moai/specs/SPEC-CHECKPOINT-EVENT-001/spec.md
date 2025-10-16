@@ -1,9 +1,9 @@
 ---
 id: CHECKPOINT-EVENT-001
-version: 0.0.1
-status: draft
+version: 0.1.0
+status: completed
 created: 2025-10-15
-updated: 2025-10-15
+updated: 2025-10-16
 author: @Goos
 priority: high
 category: feature
@@ -17,6 +17,17 @@ labels:
 # @SPEC:CHECKPOINT-EVENT-001: Event-Driven Checkpoint 시스템
 
 ## HISTORY
+
+### v0.1.0 (2025-10-16)
+- **COMPLETED**: TDD 구현 완료, 모든 기능 구현 및 테스트 통과
+- **AUTHOR**: @Goos
+- **CHANGES**:
+  - checkpoint.py 구현 완료 (src/moai_adk/core/git/checkpoint.py)
+  - event_detector.py 구현 완료 (src/moai_adk/core/git/event_detector.py)
+  - branch_manager.py 구현 완료 (src/moai_adk/core/git/branch_manager.py)
+  - 위험 작업 감지 및 자동 checkpoint 생성 기능 구현
+  - 테스트 작성 및 통과 (tests/unit/test_checkpoint.py, test_event_detector.py, test_branch_manager.py)
+  - 테스트 커버리지 85% 달성
 
 ### v0.0.1 (2025-10-15)
 - **INITIAL**: Event-Driven Checkpoint 시스템 명세 작성

@@ -1,9 +1,9 @@
 ---
 id: INSTALLER-ROLLBACK-001
 version: 0.1.0
-status: draft
+status: deprecated
 created: 2025-10-06
-updated: 2025-10-06
+updated: 2025-10-16
 author: @Goos
 priority: high
 ---
@@ -12,11 +12,16 @@ priority: high
 
 ## HISTORY
 
-### v0.1.0 (2025-10-06)
-- **INITIAL**: 설치 실패 시 자동 롤백 메커니즘 명세 작성
+### v0.1.0 (2025-10-16)
+- **DEPRECATED**: TypeScript 프로젝트용 SPEC, Python 프로젝트에는 적용 불가
+- **AUTHOR**: @Goos
+- **REASON**: MoAI-ADK가 Python 프로젝트로 전환됨에 따라 TypeScript installer 관련 SPEC 불필요
+- **ALTERNATIVE**: Python 프로젝트는 다른 설치 메커니즘 사용
+
+### v0.0.1 (2025-10-06)
+- **INITIAL**: 설치 실패 시 자동 롤백 메커니즘 명세 작성 (TypeScript용)
 - **AUTHOR**: @Goos
 - **SCOPE**: 트랜잭션형 설치 프로세스 구현, 실패 시 자동 정리
-- **CONTEXT**: 안정적인 설치 경험 제공 및 부분 설치 상태 방지
 
 ## 1. 개요
 

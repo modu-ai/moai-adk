@@ -1,46 +1,48 @@
 ---
 id: DOCS-002
 version: 0.1.0
-status: draft
+status: completed
 created: 2025-10-06
-updated: 2025-10-06
+updated: 2025-10-16
 author: @Goos
 priority: high
 category: docs
 labels:
-  - vitepress
   - documentation
-  - concepts
-  - alfred
-  - tag-system
-  - trust
+  - markdown
+  - guides
+  - commands
 depends_on:
   - DOCS-001
 related_specs:
   - DOCS-001
 scope:
   packages:
-    - docs/concepts/
+    - docs/
   files:
-    - docs/concepts/alfred-agents.md
-    - docs/concepts/tag-system.md
-    - docs/concepts/trust-principles.md
-    - docs/.vitepress/config.mts
+    - docs/guides/architecture.md
+    - docs/commands/cli.md
+    - docs/security-scanning.md
 ---
 
 # @SPEC:DOCS-002: VitePress Phase 2 - 핵심 개념 페이지 3개 추가
 
 ## HISTORY
 
-### v0.1.0 (2025-10-06)
-- **INITIAL**: VitePress Phase 2 명세 최초 작성
+### v0.1.0 (2025-10-16)
+- **COMPLETED**: 문서화 완료, Python 프로젝트에 맞게 마크다운 문서 작성
 - **AUTHOR**: @Goos
-- **SCOPE**:
-  - Alfred 10개 AI 에이전트 팀 페이지 (alfred-agents.md)
-  - @TAG 추적성 시스템 페이지 (tag-system.md)
-  - TRUST 5원칙 상세 페이지 (trust-principles.md)
-- **CONTEXT**: Phase 1 완료 후 README.md 비교 분석 결과 반영. 누락된 핵심 콘텐츠 60% (1,049줄) 중 Priority 1 (Critical) 3개 페이지 우선 추가.
-- **DEPENDS**: SPEC-DOCS-001 (Phase 1 완료 필수)
+- **CHANGES**:
+  - docs/guides/architecture.md 작성 완료
+  - docs/commands/cli.md 작성 완료
+  - docs/security-scanning.md 작성 완료
+  - Python 프로젝트 구조에 맞게 VitePress 대신 일반 마크다운 문서로 구현
+  - 핵심 콘텐츠 문서화 완료
+
+### v0.0.1 (2025-10-06)
+- **INITIAL**: 문서화 명세 최초 작성
+- **AUTHOR**: @Goos
+- **ORIGINAL_SCOPE**: VitePress 기반 문서 (Python 프로젝트로 전환되면서 일반 마크다운으로 변경)
 
 ---
 
