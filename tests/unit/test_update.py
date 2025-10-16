@@ -257,10 +257,15 @@ class TestUpdateCommand:
             import json
             (moai_dir / "config.json").write_text(json.dumps(config_data))
 
-            result = runner.invoke(update)
-            assert result.exit_code == 0
-            assert "Optimization needed" in result.output
-            assert "alfred:0-project update" in result.output
+            # Mock get_latest_version to return same version as current
+            with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
+                with patch("moai_adk.cli.commands.update.__version__", "0.3.2"):
+                    mock_get_version.return_value = "0.3.2"
+
+                    result = runner.invoke(update)
+                    assert result.exit_code == 0
+                    assert "Optimization needed" in result.output
+                    assert "alfred:0-project update" in result.output
 
     def test_update_proceeds_when_config_missing(self, tmp_path):
         """Test update shows already up to date when config.json missing"""
@@ -271,6 +276,11 @@ class TestUpdateCommand:
             moai_dir = Path(".moai")
             moai_dir.mkdir()
 
-            result = runner.invoke(update)
-            assert result.exit_code == 0
-            assert "Already up to date" in result.output
+            # Mock get_latest_version to return same version as current
+            with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
+                with patch("moai_adk.cli.commands.update.__version__", "0.3.2"):
+                    mock_get_version.return_value = "0.3.2"
+
+                    result = runner.invoke(update)
+                    assert result.exit_code == 0
+                    assert "Already up to date" in result.output
