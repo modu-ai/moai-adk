@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.3.2] - 2025-10-17
+
+### Changed
+
+#### 📝 문서 동기화 및 템플릿 병합
+
+**핵심 변경사항**:
+- 📝 **v0.3.1 문서 동기화 완료**: CODE-FIRST 원칙 강화, tags.db 참조 제거
+- 📝 **템플릿 파일 병합**: src/moai_adk/templates 최신화
+- 🔧 **Python 버전 고정**: .python-version 파일 추가 (3.13.1)
+- 🔧 **uv 설치 개선**: UV_SYSTEM_PYTHON 환경 변수 이슈 해결
+- 📝 **보안 스캔 정리**: 불필요한 스크립트 제거
+
+**구현 상세**:
+- `.moai/memory/development-guide.md`: "TAG 인덱스" → "TAG 체인 검증 (`rg` 스캔)" 용어 변경
+- `.moai/project/structure.md`: 프로젝트 구조 정보 업데이트
+- `.moai/config.json`: description 개선
+- `~/.zshrc`: UV_SYSTEM_PYTHON 환경 변수 제거
+
+### Fixed
+
+- ⚠️ **uv pip 오류 해결**: UV_SYSTEM_PYTHON 환경 변수 설정 오류 수정
+- 🔧 **템플릿 일관성**: 로컬과 템플릿 파일 동기화 완료
+
+### Technical Details
+
+- **커밋**: cc6cd0c 🔖 RELEASE: v0.3.2
+- **변경 파일**: 4개 (pyproject.toml, __init__.py, config.json, structure.md)
+- **PyPI 배포**: ✅ https://pypi.org/project/moai-adk/0.3.2/
+- **GitHub Release**: ✅ https://github.com/modu-ai/moai-adk/releases/tag/v0.3.2
+
+---
+
 ## [v0.3.1] - 2025-10-17
 
 ### Added
