@@ -1,6 +1,6 @@
 [project]
 name = "moai-adk"
-version = "0.2.18"
+version = "0.3.0"
 description = "MoAI Agentic Development Kit - SPEC-First TDD with Alfred SuperAgent"
 requires-python = ">=3.13"
 dependencies = [
@@ -34,6 +34,8 @@ addopts = "-v --cov=src/moai_adk --cov-report=html --cov-report=term-missing"
 [tool.coverage.run]
 source = ["src/moai_adk"]
 omit = ["tests/*", "*/__pycache__/*"]
+parallel = true
+concurrency = ["multiprocessing"]
 
 [tool.coverage.report]
 precision = 2
@@ -61,3 +63,6 @@ exclude = ["src/moai_adk/templates"]
 # Force include ALL template files (including hidden directories)
 [tool.hatch.build.targets.wheel.force-include]
 "src/moai_adk/templates" = "moai_adk/templates"
+
+[project.scripts]
+moai-adk = "moai_adk.__main__:main"

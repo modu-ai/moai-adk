@@ -2,7 +2,7 @@
 """
 Git management module.
 
-GitPython 기반 Git 워크플로우 관리 시스템.
+Manage Git workflows using GitPython.
 
 SPEC: .moai/specs/SPEC-CORE-GIT-001/spec.md
 """

@@ -37,7 +37,7 @@ scope:
 - **ADDED**: Phase 0 - 버전 확인 및 백업 병합 안내
 - **CHANGED**: 구현 언어 변경 (TypeScript → Python)
 - **SCOPE**:
-  - 최근 백업 경로 자동 탐지 (.moai/backups/)
+  - 최근 백업 경로 자동 탐지 (.moai-backups/{timestamp}/)
   - product/structure/tech.md 지능형 병합
   - 템플릿 상태 감지 로직 ({{PROJECT_NAME}} 패턴)
 - **FILES**:
@@ -104,7 +104,7 @@ scope:
   - **1개 파일이라도** 존재하면 백업 생성 (`.claude/`, `.moai/`, `CLAUDE.md`)
   - 부분 설치 케이스 대응 → 데이터 손실 방지
 - **v0.3.1 (신규)**: 버전 추적 및 자동 감지
-  - **moai-adk init .**: 백업 생성 (.moai/backups/) + config.json 버전 업데이트
+  - **moai-adk init .**: 백업 생성 (.moai-backups/{timestamp}/) + config.json 버전 업데이트
   - **/alfred:0-project**: 버전 불일치 감지 → Phase 0 (백업 병합 안내) 자동 실행
   - **장점**:
     - 자동 버전 추적 (config.json에 moai_adk_version 기록)
@@ -127,7 +127,7 @@ scope:
 
 3. **기술적 가정** (v0.3.1):
    - config.json에 moai_adk_version, optimized 필드 존재
-   - 백업 경로: .moai/backups/{timestamp}/ (v0.2.1 이후 표준)
+   - 백업 경로: .moai-backups/{timestamp}/ (v0.3.0 표준)
    - **백업은 선택적 생성**: 존재하는 파일만 백업
    - 병합 실패 시 백업에서 복원 가능해야 함
    - Python pathlib 기반 파일 시스템 조작
@@ -147,7 +147,7 @@ scope:
 
 **REQ-INIT-003-U01**: 백업 필수 생성 (조건부, v0.2.1)
 - 시스템은 `.claude/`, `.moai/`, `CLAUDE.md` 중 **1개라도 존재하면** 백업을 생성해야 한다
-- 백업 경로: `.moai-backup-{timestamp}/`
+- 백업 경로: `.moai-backups/{timestamp}/`
 - 존재하는 파일/폴더만 선택적으로 백업한다
 - 백업 메타데이터에 실제 백업된 파일 목록을 기록한다
 
@@ -157,7 +157,7 @@ scope:
   ```json
   {
     "timestamp": "2025-10-07T14:30:00.000Z",
-    "backup_path": ".moai-backup-20251007-143000",
+    "backup_path": ".moai-backups/20251007-143000",
     "backed_up_files": [".claude/", ".moai/", "CLAUDE.md"],
     "status": "pending",
     "created_by": "moai init"
@@ -250,8 +250,8 @@ scope:
 #### Ubiquitous Requirements (필수 기능)
 
 **REQ-INIT-003-U04**: 최근 백업 자동 탐지
-- 시스템은 `.moai/backups/` 디렉토리에서 최근 백업을 자동으로 찾아야 한다
-- 백업 경로 형식: `YYYYMMDD-HHMMSS`
+- 시스템은 프로젝트 루트에서 `.moai-backups/*` 디렉토리를 자동으로 찾아야 한다
+- 백업 경로 형식: `.moai-backups/YYYYMMDD-HHMMSS/`
 - 타임스탬프 기준 역순 정렬로 최신 백업 선택
 
 **REQ-INIT-003-U05**: 백업 문서 병합
@@ -270,7 +270,7 @@ scope:
 - 버전 불일치 감지 시 Phase 0 (백업 병합 안내)를 자동 실행해야 한다
 
 **REQ-INIT-003-E10**: 백업 폴더 존재 시 병합 프롬프트
-- WHEN 백업 폴더(`.moai/backups/`)가 존재하면
+- WHEN 백업 폴더(`.moai-backups/*`)가 존재하면
 - 시스템은 최근 백업 경로를 표시하고 병합 여부를 사용자에게 확인해야 한다
 - 옵션: "예/병합", "아니오/새로시작", "나중에"
 
@@ -318,7 +318,7 @@ scope:
 - 메시지: "백업 없음 - 건너뛰기"
 
 **REQ-INIT-003-C07**: 백업 경로 형식 검증
-- 백업 경로는 `.moai/backups/YYYYMMDD-HHMMSS/` 형식을 따라야 한다
+- 백업 경로는 `.moai-backups/YYYYMMDD-HHMMSS/` 형식을 따라야 한다
 - 형식 불일치 시 무시
 
 ---
@@ -586,7 +586,7 @@ function mergeJSON(backupFile: string, currentFile: string): object {
 
 **실행 시각**: 2025-10-07 14:30:00
 **실행 모드**: merge
-**백업 경로**: .moai-backup-20251007-143000/
+**백업 경로**: .moai-backups/20251007-143000/
 
 ---
 
@@ -655,7 +655,7 @@ class BackupMerger:
             >>> merger = BackupMerger(Path("/project"))
             >>> backup = merger.get_latest_backup()
             >>> print(backup)
-            /project/.moai/backups/20251015-143000
+            /project/.moai-backups/20251015-143000
         """
         if not self.backup_dir.exists():
             return None
@@ -916,10 +916,9 @@ def test_merge_single_doc_preserves_user_content(tmp_path):
 **Scenario 1: 최근 백업 탐지**
 
 ```
-Given: .moai/backups/ 디렉토리에 여러 백업이 존재할 때
-  .moai/backups/
-  ├── 20251014-120000/
-  ├── 20251015-143000/  ← 최신
+Given: 프로젝트 루트에 여러 백업이 존재할 때
+  .moai-backups/20251014-120000/
+  .moai-backups/20251015-143000/  ← 최신
   └── 20251015-100000/
 
 When: get_latest_backup() 메서드를 호출하면

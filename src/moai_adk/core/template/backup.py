@@ -1,7 +1,7 @@
 # @CODE:TEMPLATE-001 | SPEC: SPEC-INIT-003.md | Chain: TEMPLATE-001
-"""템플릿 백업 관리 클래스 (SPEC-INIT-003 v0.3.0).
+"""Template backup manager (SPEC-INIT-003 v0.3.0).
 
-템플릿 업데이트 시 사용자 데이터를 보호하기 위한 백업 생성 및 관리.
+Creates and manages backups to protect user data during template updates.
 """
 
 from __future__ import annotations
@@ -12,31 +12,27 @@ from pathlib import Path
 
 
 class TemplateBackup:
-    """템플릿 백업 생성 및 관리."""
+    """Create and manage template backups."""
 
-    # 백업 제외 경로 (사용자 데이터 보호)
+    # Paths excluded from backups (protect user data)
     BACKUP_EXCLUDE_DIRS = [
-        "specs",  # 사용자 SPEC 문서
-        "reports",  # 사용자 리포트
+        "specs",  # User SPEC documents
+        "reports",  # User reports
     ]
 
     def __init__(self, target_path: Path) -> None:
-        """초기화.
+        """Initialize the backup manager.
 
         Args:
-            target_path: 프로젝트 경로 (절대 경로)
+            target_path: Project path (absolute).
         """
         self.target_path = target_path.resolve()
 
     def has_existing_files(self) -> bool:
-        """백업 필요한 기존 파일 존재 여부 확인.
-
-        백업 정책:
-        - .moai/, .claude/, CLAUDE.md 중 **1개라도 존재하면 백업 생성**
-        - 백업 경로: .moai-backup/YYYYMMDD-HHMMSS/
+        """Check whether backup-worthy files already exist.
 
         Returns:
-            True if 백업 필요 (파일 1개 이상 존재)
+            True when any tracked file exists.
         """
         return any(
             (self.target_path / item).exists()
@@ -44,21 +40,16 @@ class TemplateBackup:
         )
 
     def create_backup(self) -> Path:
-        """타임스탬프 기반 백업 생성.
-
-        백업 대상:
-        - .moai/ (specs/, reports/ 제외)
-        - .claude/
-        - CLAUDE.md
+        """Create a timestamped backup.
 
         Returns:
-            백업 경로 (예: .moai-backup/20250110-143025/)
+            Backup path (for example, .moai-backups/20250110-143025/).
         """
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        backup_path = self.target_path / ".moai-backup" / timestamp
+        backup_path = self.target_path / ".moai-backups" / timestamp
         backup_path.mkdir(parents=True, exist_ok=True)
 
-        # 백업 대상 복사
+        # Copy backup targets
         for item in [".moai", ".claude", "CLAUDE.md"]:
             src = self.target_path / item
             if not src.exists():
@@ -67,7 +58,7 @@ class TemplateBackup:
             dst = backup_path / item
 
             if item == ".moai":
-                # 보호 경로 제외하고 복사
+                # Copy while skipping protected paths
                 self._copy_exclude_protected(src, dst)
             elif src.is_dir():
                 shutil.copytree(src, dst, dirs_exist_ok=True)
@@ -77,15 +68,11 @@ class TemplateBackup:
         return backup_path
 
     def _copy_exclude_protected(self, src: Path, dst: Path) -> None:
-        """보호 경로를 제외하고 백업 복사.
-
-        백업 제외 경로:
-        - .moai/specs/ (사용자 SPEC)
-        - .moai/reports/ (사용자 리포트)
+        """Copy backup content while excluding protected paths.
 
         Args:
-            src: 소스 디렉토리
-            dst: 대상 디렉토리
+            src: Source directory.
+            dst: Destination directory.
         """
         dst.mkdir(parents=True, exist_ok=True)
 
@@ -93,7 +80,7 @@ class TemplateBackup:
             rel_path = item.relative_to(src)
             rel_path_str = str(rel_path)
 
-            # 백업 제외 경로 검사
+            # Skip excluded paths
             if any(
                 rel_path_str.startswith(exclude_dir)
                 for exclude_dir in self.BACKUP_EXCLUDE_DIRS

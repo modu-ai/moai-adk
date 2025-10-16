@@ -50,6 +50,23 @@ allowed-tools:
 
 프로젝트 문서를 분석하여 SPEC 후보를 제안하고 구현 전략을 수립한 후 사용자 확인을 받습니다.
 
+### ⚙️ 에이전트 호출 방법
+
+**STEP 1에서는 Task tool을 사용하여 spec-builder 에이전트를 호출합니다**:
+
+```
+Task tool 호출:
+- subagent_type: "spec-builder"
+- description: "SPEC 분석 및 작성 계획 수립"
+- prompt: "프로젝트 문서를 분석하여 SPEC 후보를 제안해주세요.
+          분석 모드로 실행하며, 다음을 포함해야 합니다:
+          1. product/structure/tech.md 심층 분석
+          2. SPEC 후보 발굴 및 우선순위 결정
+          3. EARS 구조 설계
+          4. 사용자 승인 대기
+          사용자 입력: $ARGUMENTS"
+```
+
 ### SPEC 분석 진행
 
 1. **프로젝트 문서 분석**
@@ -78,7 +95,22 @@ allowed-tools:
 
 ## 🚀 STEP 2: SPEC 문서 작성 실행 (사용자 승인 후)
 
-사용자 승인 후 spec-builder 에이전트가 **EARS 방식의 구조화된 명세서 작성**과 **모드별 브랜치/PR 생성**을 수행합니다.
+사용자 승인 후 **Task tool을 사용하여 spec-builder와 git-manager 에이전트를 호출**합니다.
+
+### ⚙️ 에이전트 호출 방법
+
+```
+1. spec-builder 호출 (SPEC 작성):
+   - subagent_type: "spec-builder"
+   - description: "SPEC 문서 작성"
+   - prompt: "STEP 1에서 승인된 계획에 따라 SPEC 문서를 작성해주세요.
+             EARS 구조의 명세서를 생성합니다."
+
+2. git-manager 호출 (Git 작업):
+   - subagent_type: "git-manager"
+   - description: "Git 브랜치/PR 생성"
+   - prompt: "SPEC 작성 완료 후 브랜치와 Draft PR을 생성해주세요."
+```
 
 ## 기능
 

@@ -1,4 +1,4 @@
-"""백업 명령어"""
+"""Backup command"""
 from pathlib import Path
 
 import click
@@ -14,40 +14,40 @@ console = Console()
     "--path",
     type=click.Path(exists=True),
     default=".",
-    help="프로젝트 경로 (기본: 현재 디렉토리)"
+    help="Project path (default: current directory)"
 )
 def backup(path: str) -> None:
-    """현재 프로젝트를 백업합니다.
+    """Create a backup of the current project.
 
-    백업 내용:
-    - .claude/ (전체)
-    - .moai/ (specs, reports 제외)
+    Includes:
+    - .claude/ (entire directory)
+    - .moai/ (excluding specs and reports)
     - CLAUDE.md
 
-    백업 위치: .moai-backup/YYYYMMDD-HHMMSS/
+    Backup location: .moai-backup/YYYYMMDD-HHMMSS/
     """
     try:
         project_path = Path(path).resolve()
 
-        # 프로젝트 초기화 확인
+        # Verify the project has been initialized
         if not (project_path / ".moai").exists():
             console.print("[yellow]⚠ Project not initialized[/yellow]")
             raise click.Abort()
 
-        # 백업 생성
-        console.print("[cyan]💾 백업 생성 중...[/cyan]")
+        # Create the backup
+        console.print("[cyan]💾 Creating backup...[/cyan]")
         processor = TemplateProcessor(project_path)
         backup_path = processor.create_backup()
 
-        # 성공 메시지
-        console.print(f"[green]✓ 백업 완료: {backup_path.relative_to(project_path)}[/green]")
+        # Success message
+        console.print(f"[green]✓ Backup completed: {backup_path.relative_to(project_path)}[/green]")
 
-        # 백업 내용 표시
+        # Show backup contents
         backup_items = list(backup_path.iterdir())
         for item in backup_items:
             if item.is_dir():
                 file_count = len(list(item.rglob("*")))
-                console.print(f"   ├─ {item.name}/ ({file_count}개 파일)")
+                console.print(f"   ├─ {item.name}/ ({file_count} files)")
             else:
                 console.print(f"   └─ {item.name}")
 

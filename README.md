@@ -19,6 +19,13 @@
 
 ---
 
+## 🆕 2025년 10월 업데이트 하이라이트 (v0.3.0)
+
+- **Event-Driven Checkpoint 파이프라인**: `SessionStart`·`PreToolUse`·`PostToolUse` 훅이 자동으로 체크포인트를 생성하고, `.moai-backups/{timestamp}/` 최신본을 탐지해 `product/structure/tech.md`를 지능형 병합합니다. (commit 3b8c7bc 외)
+- **버전 감시 & 재최적화 감지**: `config.json`에 `moai_adk_version`, `optimized` 필드를 기록해 `python -m moai_adk init .` 재실행 시 버전 불일치와 최적화 여부를 안내합니다.
+- **SPEC 메타데이터 & 개발 가이드 개편**: `.moai/memory/development-guide.md`와 `templates/.moai/memory/spec-metadata.md`가 SPEC-First TDD·EARS·@TAG 표준을 최신 상태로 설명합니다.
+- **Claude Sonnet 4.5 ↔ Haiku 4.5 하이브리드 운영**: Sonnet 4.5가 계획과 검증을 담당하고, Haiku 4.5가 서브 에이전트를 수행해 토큰 비용을 최대 67% 절감하고(입력·출력 모두 $3/$15 → $1/$5 per 1M tokens) 지연 시간을 50~80% 단축합니다[^haiku][^sonnet].
+
 ## 목차
 
 - [Meet Alfred](#-meet-alfred---your-ai-development-partner)
@@ -101,7 +108,7 @@ uv pip install moai-adk
 pip install moai-adk
 
 # 설치 확인
-moai --version
+python -m moai_adk --version
 # 출력: v0.x.x
 ```
 
@@ -110,12 +117,12 @@ moai --version
 **터미널에서:**
 ```bash
 # 새 프로젝트 생성
-moai init my-project
+python -m moai_adk init my-project
 cd my-project
 
 # 기존 프로젝트에 설치
 cd existing-project
-moai init .
+python -m moai_adk init .
 
 # Claude Code 실행
 claude
@@ -133,44 +140,35 @@ Alfred가 자동으로 수행:
 
 ---
 
-### ⬆️ MoAI-ADK 업데이트 (기존 프로젝트)
-
-**v0.3.0 이하 → v0.3.1+ 업데이트 방법**:
+### ⬆️ MoAI-ADK 업그레이드 (v0.2.x → v0.3.0)
 
 ```bash
-# 1단계: 패키지 업데이트
-pip install --upgrade moai-adk
-# 또는 uv 사용
-uv pip install --upgrade moai-adk
+# 1단계: 패키지 교체
+pip install --upgrade moai-adk         # pip
+uv pip install --upgrade moai-adk      # uv 권장
 
-# 2단계: 프로젝트 템플릿 업데이트
+# 2단계: 프로젝트 재초기화(재실행 안전)
 cd your-project
-moai init .
-
-# 백업 자동 생성: .moai/backups/{timestamp}/
-# 최신 템플릿 복사 완료
+python -m moai_adk init .
 ```
 
-**3단계: Claude Code에서 최적화**:
+- `init` 실행 시 **`.moai-backups/{timestamp}/`**에 최신 스냅샷이 생성되고, `BackupMerger`가 `product/structure/tech.md`를 보존한 채 템플릿만 덮어씁니다.
+- `config.json`에 `project.moai_adk_version`과 `project.optimized`가 추가되며, 재실행 시 버전 불일치가 자동 감지됩니다.
 
 ```text
-# Claude Code 실행
+# 3단계: Claude Code 최적화 루틴
 claude
-
-# Alfred가 자동으로 버전 불일치 감지 및 알림
-# "/alfred:0-project 실행하시겠습니까?" 메시지 표시
-
-# 최적화 실행
-/alfred:0-project
-
-# 백업 병합 여부 선택
-# - "예" 또는 "병합": 기존 product/structure/tech.md 내용 보존
-# - "아니오": 새로 시작 (백업은 보존됨)
+/alfred:0-project             # 버전 감지 시 Alfred가 실행 안내
 ```
 
-**업데이트 후 확인**:
-- `.moai/config.json`의 `project.moai_adk_version` 최신 버전 확인
-- `.moai/config.json`의 `project.optimized: true` 확인
+1. `/alfred:0-project`는 최신 `.moai/templates`를 적용하면서 `.moai-backups/{timestamp}/` 경로를 병합 소스로 사용합니다.
+2. 병합 프롬프트에서 **Merge**를 선택하면 기존 project 문서가 유지되고 새 템플릿만 추가됩니다.
+
+**검증 체크리스트**
+
+- `.moai/config.json` → `project.moai_adk_version`이 `0.3.x`로 업데이트되었는가?
+- `.moai/config.json` → `project.optimized`가 `true`인가?
+- `python -m moai_adk status` 명령으로 버전, 체크포인트 상태, Git clean 여부를 확인한다.
 
 ---
 
@@ -191,10 +189,17 @@ claude
 
 ### 🎉 완료!
 
+### ⚡ Claude 4.5 Multi-Model Strategy
+
+- **오케스트레이션**: Sonnet 4.5가 SPEC 분해·계획·검증을 담당하고, Haiku 4.5가 코드 작성/리팩터링/테스트 서브에이전트를 병렬로 수행합니다.
+- **비용 절감**: Haiku 4.5는 Sonnet 4 계열 대비 입력/출력 토큰 단가가 1/3이므로, 서브에이전트를 Haiku로 전환하면 토큰 비용을 **최대 67%**까지 낮출 수 있습니다[^haiku][^sonnet].
+- **시간 단축**: Anthropic 발표 기준 Haiku 4.5는 Sonnet 4 대비 **2배 이상 빠르고**, Sonnet 4.5 대비 **최대 4~5배 빠른** 응답성을 제공합니다. 복수 서브에이전트를 Haiku로 구성하면 실제 워크플로우에서도 **50~80%**의 벽시계 시간을 절감합니다.
+- **추천 구성**: `spec-builder`, `code-builder`, `doc-syncer` 등 반복 호출되는 에이전트는 Haiku 4.5로, `trust-checker`·`project-manager`처럼 판단이 중요한 에이전트는 Sonnet 4.5로 유지하면 안정적인 품질과 비용 효율을 동시에 확보할 수 있습니다.
+
 **생성된 것들:**
 - ✅ `.moai/specs/SPEC-AUTH-001/spec.md` (명세)
-- ✅ `tests/auth/login.test.ts` (테스트)
-- ✅ `src/services/auth.ts` (구현)
+- ✅ `tests/test_auth_login.py` (테스트)
+- ✅ `src/auth/service.py` (구현)
 - ✅ `docs/api/auth.md` (문서)
 - ✅ `@SPEC → @TEST → @CODE → @DOC` TAG 체인
 
@@ -331,7 +336,7 @@ pip install moai-adk
 ```bash
 git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk
-uv pip install -e .  # 또는 pip install -e .
+uv pip install -e ".[dev]"  # 또는 pip install -e ".[dev]"
 ```
 
 ### 설치 확인
@@ -345,6 +350,14 @@ python -m moai_adk doctor
 
 # 도움말
 python -m moai_adk --help
+```
+
+### 개발자 검증 (권장)
+
+```bash
+uv run pytest -n auto
+uv run ruff check
+uv run mypy src
 ```
 
 ---
@@ -486,7 +499,7 @@ related_issue: "github.com/..."  # GitHub Issue
 # 범위 (영향 분석)
 scope:
   packages: [src/core/auth]     # 영향받는 패키지
-  files: [auth-service.ts]      # 핵심 파일
+  files: [src/core/auth/service.py]  # 핵심 파일
 ```
 
 **상세 가이드**: [SPEC 메타데이터 가이드](../.moai/memory/spec-metadata.md)
@@ -524,36 +537,7 @@ rg "@CODE:AUTH-001" -n      # 특정 ID 검색
 rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/
 ```
 
-### 사용 예시
-
-```typescript
-// @CODE:AUTH-001 | SPEC: SPEC-AUTH-001/spec.md | TEST: tests/auth/service.test.ts
-
-/**
- * @CODE:AUTH-001: JWT 인증 서비스
- *
- * TDD 이력:
- * - RED: tests/auth/service.test.ts 작성
- * - GREEN: 최소 구현 (bcrypt, JWT)
- * - REFACTOR: 타입 안전성 추가
- */
-export class AuthService {
-  // @CODE:AUTH-001:API: 인증 API 엔드포인트
-  async authenticate(username: string, password: string): Promise<AuthResult> {
-    // @CODE:AUTH-001:DOMAIN: 입력 검증
-    this.validateInput(username, password);
-
-    // @CODE:AUTH-001:DATA: 사용자 조회
-    const user = await this.userRepository.findByUsername(username);
-
-    return this.verifyCredentials(user, password);
-  }
-}
-```
-
-### 언어별 TAG 사용 예시
-
-#### Python
+### 사용 예시 (Python)
 
 ```python
 # @CODE:AUTH-001 | SPEC: SPEC-AUTH-001/spec.md | TEST: tests/test_auth.py
@@ -581,6 +565,8 @@ class AuthService:
 
         return self._verify_credentials(user, password)
 ```
+
+### 언어별 TAG 사용 예시
 
 #### Flutter/Dart
 
@@ -637,13 +623,33 @@ MoAI-ADK는 모든 주요 언어를 지원하며, 언어별 최적 도구 체인
 
 ### 자동 언어 감지
 
-시스템이 프로젝트를 스캔하여 자동으로 감지:
+시스템이 프로젝트를 스캔하여 자동으로 언어를 감지하고 최적의 도구 체인을 선택합니다:
 
-- `package.json` → TypeScript/JavaScript
-- `requirements.txt` → Python
-- `go.mod` → Go
-- `Cargo.toml` → Rust
-- `pubspec.yaml` → Flutter/Dart
+#### 웹/백엔드
+
+| 감지 파일 | 언어/프레임워크 | 상태 |
+|-----------|----------------|------|
+| `package.json` | TypeScript/JavaScript | ✅ Full |
+| `pyproject.toml`, `requirements.txt` | Python | ✅ Full |
+| `pom.xml`, `build.gradle` | Java | ✅ Full |
+| `go.mod` | Go | ✅ Full |
+| `Cargo.toml` | Rust | ✅ Full |
+| `*.csproj`, `*.sln` | C# | ✅ Full |
+| `CMakeLists.txt`, `Makefile` | C/C++ | ✅ Full |
+| `composer.json` | PHP | ✅ Full |
+| `Gemfile`, `*.gemspec` | Ruby | ✅ Full |
+| `build.sbt` | Scala | ✅ Full |
+| `mix.exs` | Elixir | ✅ Full |
+
+#### 모바일
+
+| 감지 파일 | 언어/프레임워크 | 상태 |
+|-----------|----------------|------|
+| `pubspec.yaml` | Flutter/Dart | ✅ Full |
+| `*.xcodeproj`, `Package.swift` | Swift/iOS | ✅ Full |
+| `build.gradle` (Android) | Kotlin/Android | ✅ Full |
+| `package.json` + `react-native` | React Native | ✅ Full |
+| `*.xcodeproj` (Objective-C) | Objective-C/iOS | ✅ Full |
 
 ---
 
@@ -661,10 +667,10 @@ python -m moai_adk init --help
 | Command | 설명 | 주요 옵션 |
 | --- | --- | --- |
 | `init [PATH]` | 5단계 Phase 파이프라인으로 프로젝트를 초기화/재초기화 | `--non-interactive/-y`, `--mode {personal|team}`, `--locale {ko|en|ja|zh}`, `--language`, `--force` |
-| `doctor` | Python, Git, 프로젝트 구조를 점검하는 환경 진단 | _없음_ |
+| `doctor` | Python, Git, 프로젝트 구조를 점검하는 환경 진단 | `--verbose`, `--fix`, `--export`, `--check` |
 | `status` | `.moai/config.json`과 SPEC 개수, Git 상태를 요약 | _없음_ |
 | `backup` | `.moai`/`.claude`/`CLAUDE.md`를 선택적으로 백업 | `--path` |
-| `restore` | `.moai/backups/`에 저장된 스냅샷 복원 (현재는 미완성) | `--timestamp` |
+| `restore` | `.moai-backups/{timestamp}/`에 저장된 스냅샷 복원 (현재는 미완성) | `--timestamp` |
 | `update` | 번들된 템플릿으로 프로젝트 리소스를 업데이트 | `--path`, `--force`, `--check` |
 
 ### 명령어 상세
@@ -678,7 +684,7 @@ python -m moai_adk init . --force
 ```
 
 - 기본 동작은 대화형 모드이며, `--non-interactive/-y` 옵션을 사용하면 질문 없이 진행됩니다.
-- `PhaseExecutor`가 5단계(Preparation → Directory → Resource → Configuration → Validation)를 순차 실행하며, 재초기화 시 `.moai/backups/<timestamp>/` 백업을 생성합니다.
+- `PhaseExecutor`가 5단계(Preparation → Directory → Resource → Configuration → Validation)를 순차 실행하며, 재초기화 시 `.moai-backups/{timestamp}/` 백업을 생성합니다 (최신 1개만 유지).
 - `LanguageDetector`가 프로젝트 루트를 스캔하여 언어를 자동 감지합니다 (`--language`로 오버라이드 가능).
 
 #### `doctor`
@@ -813,7 +819,7 @@ GitHub Actions 워크플로우가 자동으로 보안 스캔을 실행합니다:
 
 > **마지막 업데이트**: 2025-10-15
 > **현재 버전**: v0.3.1
-> **프로젝트 상태**: CLI-001 완료 (doctor 20개 언어 도구 체인 검증)
+> **프로젝트 상태**: INIT-003 v0.3.1 완료 (Event-Driven Checkpoint 자동화)
 
 ### 📊 주요 지표
 
@@ -825,21 +831,28 @@ GitHub Actions 워크플로우가 자동으로 보안 스캔을 실행합니다:
 | **CLI 명령어** | 8개 | - | ✅ |
 | **AI 에이전트** | 10개 | - | ✅ |
 
-### 🎯 최근 완료된 작업 (SPEC-CLI-001)
+### 🎯 최근 완료된 작업 (SPEC-INIT-003 v0.3.1)
 
-**SPEC-CLI-001: CLI 명령어 고도화 - doctor/status/restore 개선**
-- **버전**: v0.1.0 (completed)
+**SPEC-INIT-003: Event-Driven Checkpoint 시스템**
+- **버전**: v0.3.1 (active)
 - **완료일**: 2025-10-15
 - **주요 성과**:
-  - ✅ doctor 명령어 고도화: 20개 언어 도구 체인 검증 구현
-  - ✅ 옵션 추가: `--verbose`, `--fix`, `--export`, `--check`
-  - ✅ 테스트 100% 통과 (50개 테스트)
-  - ✅ 커버리지 91.58% (doctor.py)
-  - ✅ 지원 언어 확장: Python, TypeScript, JavaScript, Java, Go, Rust, Dart, Swift, Kotlin, C#, PHP, Ruby, Elixir, Scala, Clojure, Haskell, C, C++, Lua, OCaml
+  - ✅ Claude Code Hooks 통합 (SessionStart, PreToolUse, PostToolUse)
+  - ✅ BackupMerger 클래스 구현 (백업 병합 기능)
+  - ✅ 버전 추적 시스템 (config.json에 moai_adk_version, optimized 필드)
+  - ✅ 자동 최적화 감지 (Claude 접속 시 버전 불일치 알림)
+  - ✅ 변경량: +1,180줄 추가, -2,076줄 삭제
 
 **TDD 이력**:
-- 🔴 RED: 커밋 4568654 (doctor 언어별 도구 체인 검증 테스트 추가)
-- 🟢 GREEN: 커밋 bc0074a (20개 언어 도구 체인 검증 구현 완료)
+- 🟢 GREEN: 커밋 3b8c7bc (Claude Code Hooks 기반 Checkpoint 자동화 구현 완료)
+- 📝 DOCS: 커밋 c3c48ac (CHECKPOINT-EVENT-001 문서 동기화 완료)
+- 📝 DOCS: 커밋 1714724 (SPEC-INIT-003 v0.3.1 작성 완료)
+
+**이전 완료 작업 (SPEC-CLI-001)**:
+- ✅ doctor 명령어 고도화: 20개 언어 도구 체인 검증 구현
+- ✅ 옵션 추가: `--verbose`, `--fix`, `--export`, `--check`
+- ✅ 테스트 100% 통과 (50개 테스트)
+- ✅ 커버리지 91.58% (doctor.py)
 
 ### 📦 현재 기능 목록
 
@@ -849,12 +862,12 @@ GitHub Actions 워크플로우가 자동으로 보안 스캔을 실행합니다:
 - ✅ `/alfred:3-sync` - 문서 동기화 및 TAG 검증
 
 #### CLI 명령어
-- ✅ `moai init` - 프로젝트 초기화 (5 Phase 파이프라인)
-- ✅ `moai doctor` - 환경 진단 (20개 언어 도구 체인 검증) 🆕
-- ✅ `moai status` - 프로젝트 현황 요약
-- ✅ `moai backup` - 프로젝트 백업
-- ✅ `moai restore` - 백업 복원
-- ✅ `moai update` - 템플릿 업데이트
+- ✅ `python -m moai_adk init` - 프로젝트 초기화 (5 Phase 파이프라인)
+- ✅ `python -m moai_adk doctor` - 환경 진단 (20개 언어 도구 체인 검증) 🆕
+- ✅ `python -m moai_adk status` - 프로젝트 현황 요약
+- ✅ `python -m moai_adk backup` - 프로젝트 백업
+- ✅ `python -m moai_adk restore` - 백업 복원
+- ✅ `python -m moai_adk update` - 템플릿 업데이트
 
 #### AI 에이전트 생태계
 - ✅ Alfred (SuperAgent) - 중앙 오케스트레이터
@@ -1206,13 +1219,13 @@ source ~/.zshrc   # zsh
 
 ```bash
 # 1. 백업 목록 확인
-moai doctor -l
+python -m moai_adk status
 
-# 2. 최신 백업으로 복원 (미리보기)
-moai restore .moai-backup-YYYY-MM-DD --dry-run
+# 2. 최신 백업으로 복원
+python -m moai_adk restore
 
-# 3. 실제 복원
-moai restore .moai-backup-YYYY-MM-DD
+# 3. 특정 백업으로 복원
+python -m moai_adk restore --timestamp YYYY-MM-DD-HHMMSS
 ```
 
 ---
@@ -1258,6 +1271,12 @@ mypy src/
 
 ---
 
+## 문서 및 지원
+
+- **🐛 Issues**: [GitHub Issues](https://github.com/modu-ai/moai-adk/issues)
+- **💬 Discussions**: [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)
+- **📦 npm Package**: [moai-adk](https://www.npmjs.com/package/moai-adk)
+
 ## 🙏 Contributors
 
 MoAI-ADK 프로젝트에 기여해주신 분들께 감사드립니다:
@@ -1267,13 +1286,8 @@ MoAI-ADK 프로젝트에 기여해주신 분들께 감사드립니다:
   - REPL/eval 환경 방어 로직 추가
   - JSDoc 문서화 개선
 
----
-
-## 문서 및 지원
-
-- **🐛 Issues**: [GitHub Issues](https://github.com/modu-ai/moai-adk/issues)
-- **💬 Discussions**: [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions)
-- **📦 npm Package**: [moai-adk](https://www.npmjs.com/package/moai-adk)
+[^haiku]: [Anthropic — Introducing Claude Haiku 4.5 (2025-10-15)](https://www.anthropic.com/news/claude-haiku-4-5)
+[^sonnet]: [Anthropic — Introducing Claude Sonnet 4.5 (2025-09-29)](https://www.anthropic.com/news/claude-sonnet-4-5)
 
 ---
 

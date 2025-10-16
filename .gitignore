@@ -31,7 +31,7 @@ lerna-debug.log*
 *.bak
 *.backup
 backup-*/
-.moai-backup/
+.moai-backups/
 
 # Project-specific .moai folders (not for package distribution)
 .moai/docs/

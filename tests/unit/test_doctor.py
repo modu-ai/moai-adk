@@ -6,9 +6,8 @@ Tests for --verbose, --fix, --export options.
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
 from click.testing import CliRunner
 
 from moai_adk.cli.commands.doctor import doctor
@@ -108,6 +107,7 @@ class TestDoctorExportOption:
 
             # Should not fail with unknown option
             assert "no such option" not in result.output.lower()
+            assert result.exit_code == 0
 
     def test_export_creates_json_file(self):
         """Should create JSON report file"""
@@ -133,6 +133,7 @@ class TestDoctorExportOption:
                 # Should be valid JSON
                 data = json.loads(report_file.read_text())
                 assert isinstance(data, dict)
+            assert result.exit_code == 0
 
 
 class TestDoctorCheckOption:
@@ -184,3 +185,4 @@ class TestDoctorPerformance:
 
         # Should complete within 5 seconds even with verbose
         assert elapsed < 5.0, f"Doctor --verbose took {elapsed:.2f}s (should be < 5s)"
+        assert result.exit_code == 0

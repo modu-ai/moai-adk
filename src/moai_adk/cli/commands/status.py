@@ -1,10 +1,10 @@
 # @CODE:CLI-001 | SPEC: SPEC-CLI-001.md | TEST: tests/unit/test_cli_commands.py
-"""moai status 명령어
+"""MoAI-ADK status command
 
-프로젝트 상태 표시 명령어:
-- config.json에서 프로젝트 정보 읽기
-- SPEC 문서 개수 표시
-- Git 상태 요약
+Project status display:
+- Read project information from config.json
+- Show the number of SPEC documents
+- Summarize the Git status
 """
 
 import json
@@ -29,21 +29,21 @@ def status() -> None:
     - Git branch and status
     """
     try:
-        # config.json 읽기
+        # Read config.json
         config_path = Path.cwd() / ".moai" / "config.json"
         if not config_path.exists():
             console.print("[yellow]⚠ No .moai/config.json found[/yellow]")
-            console.print("[dim]Run [cyan]moai init .[/cyan] to initialize project[/dim]")
+            console.print("[dim]Run [cyan]python -m moai_adk init .[/cyan] to initialize the project[/dim]")
             raise click.Abort()
 
         with open(config_path) as f:
             config = json.load(f)
 
-        # SPEC 문서 개수 세기
+        # Count SPEC documents
         specs_dir = Path.cwd() / ".moai" / "specs"
         spec_count = len(list(specs_dir.glob("SPEC-*/spec.md"))) if specs_dir.exists() else 0
 
-        # 상태 정보 테이블
+        # Build the status table
         table = Table(show_header=False, box=None, padding=(0, 2))
         table.add_column("Key", style="cyan")
         table.add_column("Value", style="bold")
@@ -52,7 +52,7 @@ def status() -> None:
         table.add_row("Locale", config.get("locale", "unknown"))
         table.add_row("SPECs", str(spec_count))
 
-        # Git 정보 추가 (선택적)
+        # Optionally include Git information
         try:
             from git import Repo
 
@@ -62,7 +62,7 @@ def status() -> None:
         except Exception:
             pass
 
-        # 패널로 출력
+        # Render as a panel
         panel = Panel(
             table,
             title="[bold]Project Status[/bold]",

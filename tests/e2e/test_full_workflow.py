@@ -2,11 +2,11 @@
 """E2E Test: Full MoAI-ADK Workflow
 
 Tests the complete workflow:
-1. Project initialization (moai init)
-2. Status check (moai status)
-3. System diagnostics (moai doctor)
-4. Backup creation (moai backup)
-5. Restore (moai restore)
+1. Project initialization (`python -m moai_adk init`)
+2. Status check (`python -m moai_adk status`)
+3. System diagnostics (`python -m moai_adk doctor`)
+4. Backup creation (`python -m moai_adk backup`)
+5. Restore (`python -m moai_adk restore`)
 """
 
 from pathlib import Path

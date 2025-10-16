@@ -1,6 +1,6 @@
 # @CODE:CORE-GIT-001 | SPEC: SPEC-CORE-GIT-001.md | TEST: tests/unit/test_git.py
 """
-브랜치 네이밍 유틸리티.
+Branch naming utilities.
 
 SPEC: .moai/specs/SPEC-CORE-GIT-001/spec.md
 """
@@ -8,13 +8,13 @@ SPEC: .moai/specs/SPEC-CORE-GIT-001/spec.md
 
 def generate_branch_name(spec_id: str) -> str:
     """
-    SPEC ID로부터 브랜치명 생성.
+    Generate a branch name from a SPEC ID.
 
     Args:
-        spec_id: SPEC ID (예: "AUTH-001")
+        spec_id: SPEC identifier (e.g., "AUTH-001").
 
     Returns:
-        feature/SPEC-XXX 형식의 브랜치명
+        Branch name in the feature/SPEC-XXX format.
 
     Examples:
         >>> generate_branch_name("AUTH-001")

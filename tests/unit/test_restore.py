@@ -6,7 +6,6 @@ Tests for restore command with various scenarios.
 
 from pathlib import Path
 
-import pytest
 from click.testing import CliRunner
 
 from moai_adk.cli.commands.restore import restore
@@ -23,7 +22,7 @@ class TestRestoreCommand:
         assert "Restore from backup" in result.output
 
     def test_restore_no_backup_directory(self, tmp_path):
-        """Test restore when .moai/backups/ does not exist"""
+        """Test restore when .moai-backups/ does not exist"""
         runner = CliRunner()
 
         with runner.isolated_filesystem(temp_dir=tmp_path):
@@ -32,66 +31,62 @@ class TestRestoreCommand:
             assert "No backup directory found" in result.output
 
     def test_restore_empty_backup_directory(self, tmp_path):
-        """Test restore when .moai/backups/ exists but is empty"""
+        """Test restore when .moai-backups/ exists but is empty"""
         runner = CliRunner()
 
         with runner.isolated_filesystem(temp_dir=tmp_path):
             # Create empty backup directory
-            backup_dir = Path(".moai/backups")
-            backup_dir.mkdir(parents=True)
+            backup_dir = Path(".moai-backups")
+            backup_dir.mkdir()
 
             result = runner.invoke(restore)
             assert result.exit_code != 0
-            assert "No backups found" in result.output
+            assert "No backup directories found" in result.output
 
     def test_restore_from_latest_backup(self, tmp_path):
         """Test restore from latest backup"""
         runner = CliRunner()
 
         with runner.isolated_filesystem(temp_dir=tmp_path):
-            # Create backup directory with dummy backups
-            backup_dir = Path(".moai/backups")
-            backup_dir.mkdir(parents=True)
-
-            # Create multiple backup directories
-            (backup_dir / "2025-10-13-120000").mkdir()
-            (backup_dir / "2025-10-14-130000").mkdir()
-            (backup_dir / "2025-10-15-140000").mkdir()  # Latest
+            # Create backup directory with multiple backups
+            backup_dir = Path(".moai-backups")
+            backup_dir.mkdir()
+            (backup_dir / "20251013-120000").mkdir()
+            (backup_dir / "20251014-130000").mkdir()
+            (backup_dir / "20251015-140000").mkdir()  # Latest
 
             result = runner.invoke(restore)
             assert result.exit_code == 0
             assert "Restoring from latest backup" in result.output
-            assert "2025-10-15-140000" in result.output
+            assert "20251015-140000" in result.output
 
     def test_restore_with_specific_timestamp(self, tmp_path):
         """Test restore with specific timestamp"""
         runner = CliRunner()
 
         with runner.isolated_filesystem(temp_dir=tmp_path):
-            # Create backup directory with dummy backups
-            backup_dir = Path(".moai/backups")
-            backup_dir.mkdir(parents=True)
+            # Create backup directory with multiple backups
+            backup_dir = Path(".moai-backups")
+            backup_dir.mkdir()
+            (backup_dir / "20251013-120000").mkdir()
+            (backup_dir / "20251014-130000").mkdir()
 
-            # Create backups
-            (backup_dir / "2025-10-13-120000").mkdir()
-            (backup_dir / "2025-10-14-130000").mkdir()
-
-            result = runner.invoke(restore, ["--timestamp", "2025-10-14"])
+            result = runner.invoke(restore, ["--timestamp", "20251014"])
             assert result.exit_code == 0
-            assert "Restoring from 2025-10-14" in result.output
-            assert "2025-10-14-130000" in result.output
+            assert "Restoring from 20251014" in result.output
+            assert "20251014-130000" in result.output
 
     def test_restore_with_nonexistent_timestamp(self, tmp_path):
         """Test restore with non-existent timestamp"""
         runner = CliRunner()
 
         with runner.isolated_filesystem(temp_dir=tmp_path):
-            # Create backup directory with dummy backups
-            backup_dir = Path(".moai/backups")
-            backup_dir.mkdir(parents=True)
-            (backup_dir / "2025-10-13-120000").mkdir()
+            # Create backup directory with one backup
+            backup_dir = Path(".moai-backups")
+            backup_dir.mkdir()
+            (backup_dir / "20251013-120000").mkdir()
 
-            result = runner.invoke(restore, ["--timestamp", "2025-12-31"])
+            result = runner.invoke(restore, ["--timestamp", "20251231"])
             assert result.exit_code != 0
             assert "Backup not found" in result.output
 
@@ -100,10 +95,10 @@ class TestRestoreCommand:
         runner = CliRunner()
 
         with runner.isolated_filesystem(temp_dir=tmp_path):
-            # Create backup directory with dummy backup
-            backup_dir = Path(".moai/backups")
-            backup_dir.mkdir(parents=True)
-            (backup_dir / "2025-10-15-140000").mkdir()
+            # Create backup directory with one backup
+            backup_dir = Path(".moai-backups")
+            backup_dir.mkdir()
+            (backup_dir / "20251015-140000").mkdir()
 
             result = runner.invoke(restore)
             assert result.exit_code == 0
@@ -119,8 +114,9 @@ class TestRestoreCommand:
         monkeypatch.setattr(Path, "iterdir", mock_iterdir_error)
 
         with runner.isolated_filesystem(temp_dir=tmp_path):
-            backup_dir = Path(".moai/backups")
-            backup_dir.mkdir(parents=True)
+            # Create backup directory to trigger iterdir
+            backup_dir = Path(".moai-backups")
+            backup_dir.mkdir()
 
             result = runner.invoke(restore)
             assert result.exit_code != 0

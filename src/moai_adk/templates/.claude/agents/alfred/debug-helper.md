@@ -1,6 +1,6 @@
 ---
 name: debug-helper
-description: 오류 진단 및 TRUST 원칙 검사 전문가
+description: "Use when: 에러 발생 시 원인 분석 및 해결 방법 제시가 필요할 때. TRUST 원칙 위반 검사 포함"
 tools: Read, Grep, Glob, Bash, TodoWrite
 model: sonnet
 ---

@@ -189,6 +189,154 @@ Alfred는 효율적인 컨텍스트 관리를 위해 다음 2가지 전략을 �
 
 ---
 
+## Hooks vs Agents vs Commands 역할 분리
+
+MoAI-ADK는 세 가지 실행 메커니즘을 명확히 분리하여 **역할별 최적 실행 전략**을 제공합니다.
+
+### Hooks (가드레일 + 알림 + 컨텍스트)
+
+**실행 특성**:
+- 실행 시점: Claude Code 생명주기의 특정 지점 (SessionStart, PreToolUse 등)
+- 실행 방식: Bash 명령어 (stdin/stdout JSON)
+- 실행 속도: 빠름 (<100ms 권장)
+- 차단 가능: blocked=true로 작업 차단 가능
+
+**핵심 역할**:
+- ✅ **가드레일**: 위험한 작업 차단 (rm -rf, git push --force, 프로덕션 파일 수정)
+- ✅ **자동 백업**: 위험 작업 전 Checkpoint 자동 생성
+- ✅ **JIT Context**: 필요한 문서 경로 추천 (파일 경로만, Alfred가 Read)
+- ✅ **Compaction 경고**: 토큰 사용량 >70% 시 /clear 권장
+- ✅ **상태 알림**: 세션 시작 시 프로젝트 정보, Git 상태, SPEC 진행도 표시
+
+**구현 원칙**:
+- 가벼운 로직 (≤50 LOC per handler)
+- 복잡한 분석/검증은 Agents로 위임
+- 사용자 상호작용 최소화 (차단 메시지만)
+
+**예시**:
+```python
+# ✅ 올바른 Hooks 사용
+def handle_pre_tool_use(payload):
+    if "rm -rf" in payload.get("command", ""):
+        create_checkpoint()  # 빠른 백업
+        return HookResult(blocked=True, message="위험한 작업 차단")
+    return HookResult(blocked=False)
+
+# ❌ 잘못된 Hooks 사용 (너무 무거움)
+def handle_pre_tool_use(payload):
+    validate_spec_metadata()  # 복잡한 검증 → Agent로!
+    check_trust_compliance()   # 시간 소요 → Agent로!
+    generate_report()          # 보고서 생성 → Agent로!
+```
+
+---
+
+### Agents (분석 + 검증 + 보고)
+
+**실행 특성**:
+- 실행 시점: 사용자 명시적 호출 또는 Alfred 위임
+- 실행 방식: Claude Code Agent (Task tool)
+- 실행 속도: 느림 (수 초 ~ 수 분)
+- 사용자 상호작용: 질문/확인/보고서 제공
+
+**핵심 역할**:
+- ✅ **상세 분석**: SPEC 메타데이터 검증, EARS 구문 검증
+- ✅ **품질 검증**: TRUST 5원칙 준수 확인, 테스트 커버리지 분석
+- ✅ **TAG 관리**: TAG 체인 완전성 검증, 고아 TAG 탐지
+- ✅ **디버깅**: 오류 원인 분석, 해결 방법 제시
+- ✅ **보고서 생성**: 상세한 분석 결과 및 권장사항 제공
+
+**구현 원칙**:
+- 복잡한 로직 허용 (≤300 LOC per agent)
+- 사용자와 대화형 상호작용
+- 여러 도구(Read, Grep, Bash) 조합 사용
+
+**예시**:
+```bash
+# ✅ 올바른 Agents 사용
+@agent-trust-checker "현재 프로젝트의 TRUST 원칙 준수도 확인"
+→ 테스트 커버리지 87%, 코드 제약 45/45 파일 준수, TAG 체인 2개 고아 발견
+
+@agent-spec-builder "AUTH-001 SPEC의 메타데이터 검증"
+→ 필수 필드 7개 모두 존재, HISTORY 섹션 확인, EARS 구문 적용률 80%
+
+@agent-debug-helper "TypeError: 'NoneType' 오류 해결"
+→ project.py:142 라인에서 config가 None, .moai/config.json 누락 확인
+```
+
+---
+
+### Commands (워크플로우 오케스트레이션)
+
+**실행 특성**:
+- 실행 시점: 사용자 명시적 호출 (slash command)
+- 실행 방식: Phase 1 (계획) → Phase 2 (실행)
+- 실행 속도: 중간 (수 초 ~ 수 분)
+- 사용자 상호작용: 계획 승인 → 실행
+
+**핵심 역할**:
+- ✅ **워크플로우 관리**: 여러 단계를 순차/병렬 실행
+- ✅ **Agent 조율**: 적절한 Agent를 호출하여 작업 위임
+- ✅ **Git 통합**: 브랜치 생성, PR 생성, 커밋 자동화
+- ✅ **문서 동기화**: SPEC ↔ CODE ↔ DOC 일관성 유지
+
+**구현 원칙**:
+- 2단계 워크플로우 (Phase 1 계획 → Phase 2 실행)
+- 복잡한 로직은 Agent로 위임
+- Git 작업은 사용자 확인 필수
+
+**예시**:
+```bash
+# ✅ 올바른 Commands 사용
+/alfred:1-spec "사용자 인증 기능"
+→ Phase 1: 프로젝트 분석, SPEC 후보 제안
+→ 사용자 승인
+→ Phase 2: SPEC 문서 작성, 브랜치 생성, Draft PR 생성
+
+/alfred:2-build AUTH-001
+→ Phase 1: SPEC 분석, TDD 계획 수립
+→ 사용자 승인
+→ Phase 2: RED → GREEN → REFACTOR 구현
+
+/alfred:3-sync
+→ Phase 1: 동기화 범위 분석
+→ 사용자 승인
+→ Phase 2: 문서 업데이트, TAG 검증, PR Ready 전환
+```
+
+---
+
+### 역할 분리 결정 트리
+
+작업을 어디에 구현할지 결정할 때 다음 기준을 사용하세요:
+
+```
+┌─────────────────────────────────────┐
+│ 작업이 <100ms 안에 완료되는가?      │
+│ AND 차단/경고/알림만 필요한가?       │
+└─────────────────────────────────────┘
+         ↓ YES                    ↓ NO
+    ┌─────────┐              ┌──────────────┐
+    │ Hooks   │              │ 사용자와      │
+    └─────────┘              │ 상호작용이    │
+                              │ 필요한가?     │
+                              └──────────────┘
+                                   ↓ YES          ↓ NO
+                              ┌──────────┐   ┌────────────┐
+                              │ Agents   │   │ Commands   │
+                              └──────────┘   └────────────┘
+```
+
+**예시 질문**:
+- Q: "SPEC 메타데이터 검증을 어디에 구현?"
+  - A: Agent (`@agent-spec-builder`) - 복잡한 검증, 보고서 생성 필요
+- Q: "rm -rf 명령 차단을 어디에 구현?"
+  - A: Hook (PreToolUse) - 빠른 차단, 간단한 로직
+- Q: "TDD 워크플로우를 어디에 구현?"
+  - A: Command (`/alfred:2-build`) - 여러 단계 오케스트레이션
+
+---
+
 ## 핵심 철학
 
 - **SPEC-First**: 명세 없이는 코드 없음
@@ -268,11 +416,22 @@ Alfred가 필요 시 즉시 호출하는 전문 에이전트들:
 @agent-tag-agent "고아 TAG 및 끊어진 링크 감지"
 ```
 
-### Git 작업 (특수 케이스)
+### Checkpoint 관리 (자동 백업/복구)
 ```bash
-@agent-git-manager "체크포인트 생성"
-@agent-git-manager "특정 커밋으로 롤백"
+# 수동 checkpoint 생성
+/alfred:9-checkpoint create --name "refactor-start"
+
+# Checkpoint 목록 조회
+/alfred:9-checkpoint list
+
+# Checkpoint 복구
+/alfred:9-checkpoint restore <ID>
+
+# 오래된 checkpoint 정리
+/alfred:9-checkpoint clean
 ```
+
+**자동 checkpoint**: 위험한 작업 전 자동 생성 (삭제, 병합, 스크립트 실행 등)
 
 **Git 브랜치 정책**: 모든 브랜치 생성/머지는 사용자 확인 필수
 

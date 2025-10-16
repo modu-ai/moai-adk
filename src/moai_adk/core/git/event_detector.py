@@ -1,6 +1,6 @@
 # @CODE:CHECKPOINT-EVENT-001 | SPEC: SPEC-CHECKPOINT-EVENT-001.md | TEST: tests/unit/test_event_detector.py
 """
-Event Detector - 위험한 작업 감지.
+Event Detector - Identify risky operations.
 
 SPEC: .moai/specs/SPEC-CHECKPOINT-EVENT-001/spec.md
 """
@@ -9,9 +9,9 @@ from pathlib import Path
 
 
 class EventDetector:
-    """위험한 작업을 감지하는 이벤트 감지기."""
+    """Detect potentially risky operations."""
 
-    # @CODE:CHECKPOINT-EVENT-001:DOMAIN - 중요 파일 목록
+    # @CODE:CHECKPOINT-EVENT-001:DOMAIN - Critical file list
     CRITICAL_FILES = {
         "CLAUDE.md",
         "config.json",
@@ -24,56 +24,56 @@ class EventDetector:
 
     def is_risky_deletion(self, deleted_files: list[str]) -> bool:
         """
-        대규모 파일 삭제 감지.
+        Detect large-scale file deletions.
 
-        SPEC 요구사항: 10개 이상 파일 삭제 시 위험 작업으로 판단
+        SPEC requirement: deleting 10 or more files counts as risky.
 
         Args:
-            deleted_files: 삭제될 파일 목록
+            deleted_files: Files slated for deletion.
 
         Returns:
-            10개 이상이면 True, 아니면 False
+            True when 10 or more files are deleted, otherwise False.
         """
         return len(deleted_files) >= 10
 
     def is_risky_refactoring(self, renamed_files: list[tuple[str, str]]) -> bool:
         """
-        복잡한 리팩토링 감지.
+        Detect large-scale refactoring.
 
-        SPEC 요구사항: 10개 이상 파일 이름 변경 시 위험 작업으로 판단
+        SPEC requirement: renaming 10 or more files counts as risky.
 
         Args:
-            renamed_files: (old_name, new_name) 튜플 목록
+            renamed_files: List of (old_name, new_name) pairs.
 
         Returns:
-            10개 이상이면 True, 아니면 False
+            True when 10 or more files are renamed, otherwise False.
         """
         return len(renamed_files) >= 10
 
     def is_critical_file(self, file_path: Path) -> bool:
         """
-        중요 파일 수정 감지.
+        Determine whether the file is critical.
 
-        SPEC 요구사항: CLAUDE.md, config.json, .moai/memory/*.md 수정 시 위험 작업
+        SPEC requirement: modifying CLAUDE.md, config.json, or .moai/memory/*.md is risky.
 
         Args:
-            file_path: 확인할 파일 경로
+            file_path: File path to inspect.
 
         Returns:
-            중요 파일이면 True, 아니면 False
+            True when the file is critical, otherwise False.
         """
-        # 파일명이 중요 파일 목록에 있는지 확인
+        # Check whether the file name is in the critical list
         if file_path.name in self.CRITICAL_FILES:
             return True
 
-        # 경로 문자열로 변환하여 확인
+        # Convert to string for further checks
         path_str = str(file_path)
 
-        # .moai/config.json 확인
+        # Detect .moai/config.json paths
         if ".moai/config.json" in path_str or ".moai\\config.json" in path_str:
             return True
 
-        # .moai/memory/ 디렉토리 내 파일 확인
+        # Detect files inside the .moai/memory/ directory
         for critical_dir in self.CRITICAL_DIRS:
             if critical_dir in path_str or critical_dir.replace("/", "\\") in path_str:
                 return True

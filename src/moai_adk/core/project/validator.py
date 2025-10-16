@@ -1,7 +1,7 @@
 # @CODE:CORE-PROJECT-003 | SPEC: SPEC-CORE-PROJECT-001.md
-"""프로젝트 초기화 검증 모듈
+"""Project initialization validation module.
 
-시스템 요구사항 및 설치 결과 검증
+Validates system requirements and installation results.
 """
 
 import shutil
@@ -9,15 +9,15 @@ from pathlib import Path
 
 
 class ValidationError(Exception):
-    """검증 실패 예외"""
+    """Raised when validation fails."""
 
     pass
 
 
 class ProjectValidator:
-    """프로젝트 초기화 검증"""
+    """Validate project initialization."""
 
-    # 필수 디렉토리 구조
+    # Required directory structure
     REQUIRED_DIRECTORIES = [
         ".moai/",
         ".moai/project/",
@@ -26,23 +26,23 @@ class ProjectValidator:
         ".claude/",
     ]
 
-    # 필수 파일
+    # Required files
     REQUIRED_FILES = [
         ".moai/config.json",
         "CLAUDE.md",
     ]
 
     def validate_system_requirements(self) -> None:
-        """시스템 요구사항 검증
+        """Verify system requirements.
 
         Raises:
-            ValidationError: 요구사항 미충족 시
+            ValidationError: Raised when requirements are not satisfied.
         """
-        # Git 설치 확인
+        # Ensure Git is installed
         if not shutil.which("git"):
             raise ValidationError("Git is not installed")
 
-        # Python 버전 확인 (3.10+)
+        # Check Python version (3.10+)
         import sys
 
         if sys.version_info < (3, 10):
@@ -51,59 +51,59 @@ class ProjectValidator:
             )
 
     def validate_project_path(self, project_path: Path) -> None:
-        """프로젝트 경로 검증
+        """Verify the project path.
 
         Args:
-            project_path: 프로젝트 경로
+            project_path: Project path.
 
         Raises:
-            ValidationError: 경로가 유효하지 않은 경우
+            ValidationError: Raised when the path is invalid.
         """
-        # 절대 경로 확인
+        # Must be an absolute path
         if not project_path.is_absolute():
             raise ValidationError(f"Project path must be absolute: {project_path}")
 
-        # 부모 디렉토리 존재 확인
+        # Parent directory must exist
         if not project_path.parent.exists():
             raise ValidationError(f"Parent directory does not exist: {project_path.parent}")
 
-        # MoAI-ADK 패키지 내부 확인
+        # Prevent initialization inside the MoAI-ADK package
         if self._is_inside_moai_package(project_path):
             raise ValidationError(
                 "Cannot initialize inside MoAI-ADK package directory"
             )
 
     def validate_installation(self, project_path: Path) -> None:
-        """설치 결과 검증
+        """Validate installation results.
 
         Args:
-            project_path: 프로젝트 경로
+            project_path: Project path.
 
         Raises:
-            ValidationError: 설치가 완료되지 않은 경우
+            ValidationError: Raised when installation was incomplete.
         """
-        # 필수 디렉토리 확인
+        # Verify required directories
         for directory in self.REQUIRED_DIRECTORIES:
             dir_path = project_path / directory
             if not dir_path.exists():
                 raise ValidationError(f"Required directory not found: {directory}")
 
-        # 필수 파일 확인
+        # Verify required files
         for file in self.REQUIRED_FILES:
             file_path = project_path / file
             if not file_path.exists():
                 raise ValidationError(f"Required file not found: {file}")
 
     def _is_inside_moai_package(self, project_path: Path) -> bool:
-        """MoAI-ADK 패키지 내부 경로 여부 확인
+        """Determine whether the path is inside the MoAI-ADK package.
 
         Args:
-            project_path: 확인할 경로
+            project_path: Path to check.
 
         Returns:
-            패키지 내부이면 True
+            True when the path resides within the package.
         """
-        # pyproject.toml에 moai-adk가 있으면 패키지 루트
+        # The package root contains a pyproject.toml referencing moai-adk
         current = project_path.resolve()
         while current != current.parent:
             pyproject = current / "pyproject.toml"

@@ -4,8 +4,6 @@
 Tests for LANGUAGE_TOOLS dictionary and language-specific tool detection.
 """
 
-import pytest
-
 from moai_adk.core.project.checker import SystemChecker
 
 

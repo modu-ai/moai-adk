@@ -11,7 +11,7 @@
       {
         "hooks": [
           {
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/moai_hooks.py SessionStart",
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/alfred_hooks.py SessionStart",
             "type": "command"
           }
         ],
@@ -22,7 +22,7 @@
       {
         "hooks": [
           {
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/moai_hooks.py UserPromptSubmit",
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/alfred_hooks.py UserPromptSubmit",
             "type": "command"
           }
         ],
@@ -33,7 +33,7 @@
       {
         "hooks": [
           {
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/moai_hooks.py PreCompact",
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/alfred_hooks.py PreCompact",
             "type": "command"
           }
         ],
@@ -44,7 +44,7 @@
       {
         "hooks": [
           {
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/moai_hooks.py PreToolUse",
+            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/alfred_hooks.py PreToolUse",
             "type": "command"
           }
         ],

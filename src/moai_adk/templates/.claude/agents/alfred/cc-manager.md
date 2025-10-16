@@ -1,6 +1,6 @@
 ---
 name: cc-manager
-description: Claude Code 환경 최적화 및 표준화 전문가
+description: "Use when: Claude Code 커맨드/에이전트/설정 파일 생성 및 최적화가 필요할 때"
 tools: Read, Write, Edit, MultiEdit, Glob, Bash, WebFetch
 model: sonnet
 ---

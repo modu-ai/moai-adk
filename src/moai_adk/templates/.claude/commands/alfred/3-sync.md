@@ -68,6 +68,25 @@ allowed-tools:
 
 프로젝트 상태를 분석하여 동기화 범위를 결정하고 체계적인 동기화 계획을 수립한 후 사용자 확인을 받습니다.
 
+### ⚙️ 에이전트 호출 방법
+
+**STEP 1에서는 Task tool을 사용하여 doc-syncer와 tag-agent를 호출합니다**:
+
+```
+1. tag-agent 호출 (TAG 검증):
+   - subagent_type: "tag-agent"
+   - description: "TAG 시스템 검증"
+   - prompt: "전체 TAG 체인 무결성을 검증해주세요.
+             @SPEC, @TEST, @CODE, @DOC TAG의 완전성과
+             고아 TAG를 확인해주세요."
+
+2. doc-syncer 호출 (동기화 계획):
+   - subagent_type: "doc-syncer"
+   - description: "문서 동기화 계획 수립"
+   - prompt: "Git 변경사항을 분석하여 문서 동기화 계획을 수립해주세요.
+             $ARGUMENTS"
+```
+
 ### 동기화 분석 진행
 
 1. **프로젝트 상태 확인**
