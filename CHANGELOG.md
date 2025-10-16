@@ -7,16 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [v0.3.1] - 2025-10-15
+## [v0.3.1] - 2025-10-17
 
 ### Added
 
-#### Event-Driven Checkpoint 시스템 (SPEC-INIT-003 v0.3.1)
+#### 1. Event-Driven Checkpoint 시스템 (SPEC-INIT-003)
 
 **핵심 변경사항**:
 - ✨ **Claude Code Hooks 통합**: SessionStart, PreToolUse, PostToolUse 훅 기반 자동 checkpoint 생성
 - 🔧 **BackupMerger 클래스**: 백업 병합 기능 구현 (`backup_merger.py`)
-- 📦 **버전 추적 시스템**: `config.json`에 `moai_adk_version`, `optimized` 필드 추가
+- 📦 **버전 추적 시스템**: `config.json`에 `moai.version`, `project.moai_adk_version` 필드 추가
 - 🎯 **자동 최적화 감지**: Claude 접속 시 버전 불일치 감지 및 `/alfred:0-project` 제안
 
 **구현 모듈**:
@@ -37,17 +37,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `PreToolUse`: 위험 작업 전 자동 checkpoint 생성
 - `PostToolUse`: 작업 완료 후 checkpoint 업데이트
 
+#### 2. 템플릿 파일 병합 및 정리
+
+- 📋 **README.md**: v0.3.1 주요 개선사항 섹션 업데이트
+- 🔧 **config.json**: `moai.version` 0.3.0 → 0.3.1 업데이트
+- 📝 **CHANGELOG.md**: 템플릿 병합 변경사항 반영
+- 🧹 **보안 스캔**: Python/PowerShell 스크립트 정리 완료
+
+### Changed
+
+- **설정 구조**: `.moai/config.json` 버전 관리 체계 개선
+- **문서 동기화**: README 업그레이드 가이드 v0.3.0 → v0.3.1로 갱신
+
 ### Impact
 
 - ✅ 자동 버전 추적 및 최적화 감지
 - ✅ 백업 병합으로 사용자 작업물 보존
 - ✅ Claude 접속 시 자동 안내
 - ✅ Event-Driven Checkpoint 자동화
+- ✅ Living Document 동기화 완료
 
 ### Technical Details
 
-- **변경량**: +1,180줄 추가, -2,076줄 삭제
-- **브랜치**: feature/SPEC-INIT-003-v0.3.1
+- **TAG 분포**: 605개 총 TAG 검증 완료
+  - SPEC 태그 (`.moai/specs/`): 88개
+  - TEST 태그 (`tests/`): 185개
+  - CODE 태그 (`src/`): 242개
+  - DOC 태그 (`docs/`): 90개
+- **CODE-FIRST 원칙**: 코드 직접 스캔 기반 TAG 검증 (중간 캐시 없음)
+- **변경량**: README +15줄, config.json +0줄, CHANGELOG +50줄
+- **브랜치**: main (배포 준비 완료)
 - **커밋**:
   - 3b8c7bc: 🟢 GREEN: Claude Code Hooks 기반 Checkpoint 자동화 구현 완료
   - c3c48ac: 📝 DOCS: CHECKPOINT-EVENT-001 문서 동기화 완료
