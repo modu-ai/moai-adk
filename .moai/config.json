@@ -57,7 +57,7 @@
   },
   "project": {
     "created_at": "2025-10-15",
-    "description": "MoAI-Agentic Development Kit - SPEC-First TDD Development Toolkit",
+    "description": "MoAI Agentic Development Kit - SPEC-First TDD with Alfred SuperAgent",
     "initialized": true,
     "locale": "ko",
     "mode": "personal",
