@@ -557,7 +557,7 @@ Alfred SuperAgent가 9개 전문 에이전트를 조율하여 빠른 개발과 �
 - SPEC 우선: 모든 작업은 @SPEC:ID부터 시작
 - TAG 무결성: `rg` 스캔 기반 실시간 검증
 - TRUST 준수: 5원칙 자동 검증 및 품질 게이트
-- 다중 언어: 20개 언어 지원 (Python, TypeScript, JavaScript, Java, Go, Rust, Dart, Swift, Kotlin, PHP, Ruby, Elixir, Scala, Clojure, C++, C, C#, Haskell, Shell, Lua)
+- 다중 언어: 17개 언어 지원 (Python, TypeScript, JavaScript, Java, Go, Rust, Dart, Swift, Kotlin, PHP, Ruby, C++, C, C#, Haskell, Shell, Lua)
 
 **사용**:
 ```text
@@ -668,11 +668,11 @@ Alfred가 함께 배우는 친구처럼 새로운 기술을 쉽게 설명하고,
 
 ## 🌍 Universal Language Support
 
-Alfred는 **20개 주요 프로그래밍 언어**를 지원하며, 각 언어에 최적화된 도구 체인을 자동으로 선택합니다.
+Alfred는 **17개 주요 프로그래밍 언어**를 지원하며, 각 언어에 최적화된 도구 체인을 자동으로 선택합니다.
 
-### 지원 언어 & 도구 (20개 언어)
+### 지원 언어 & 도구 (17개 언어)
 
-#### 백엔드 & 시스템 (11개)
+#### 백엔드 & 시스템 (8개)
 
 | 언어 | 테스트 프레임워크 | 린터/포매터 | 빌드 도구 | 타입 시스템 |
 |------|------------------|-------------|----------|------------|
@@ -684,9 +684,6 @@ Alfred는 **20개 주요 프로그래밍 언어**를 지원하며, 각 언어에
 | **Kotlin** | JUnit | ktlint | Gradle | Built-in |
 | **PHP** | PHPUnit | PHP CS Fixer | Composer | PHPStan |
 | **Ruby** | RSpec | RuboCop | Bundler | Sorbet |
-| **Elixir** | ExUnit | mix format | mix | Dialyzer |
-| **Scala** | ScalaTest | Scalafmt | sbt | Built-in |
-| **Clojure** | clojure.test | cljfmt | Leiningen | Typed Clojure |
 
 #### 모바일 & 프론트엔드 (3개)
 
@@ -724,9 +721,6 @@ Alfred는 프로젝트 루트의 설정 파일을 자동으로 감지하여 언�
 | `build.gradle.kts` + `kotlin` | Kotlin | `settings.gradle.kts` |
 | `composer.json` | PHP | `composer.lock` |
 | `Gemfile` | Ruby | `Gemfile.lock` |
-| `mix.exs` | Elixir | `mix.lock` |
-| `build.sbt` | Scala | `project/` |
-| `project.clj` | Clojure | `deps.edn` |
 | `CMakeLists.txt` | C++ | `conanfile.txt` |
 | `Makefile` | C | `*.c`, `*.h` |
 | `*.csproj` | C# | `*.sln` |
@@ -750,13 +744,13 @@ Alfred는 프로젝트 루트의 설정 파일을 자동으로 감지하여 언�
 
 #### 추가 언어 TRUST 도구
 
-| 원칙 | PHP | Elixir | Scala | C++ | C# |
-|------|-----|--------|-------|-----|-----|
-| **T**est First | PHPUnit | ExUnit | ScalaTest | Google Test | NUnit |
-| **R**eadable | PHP CS Fixer | mix format | Scalafmt | clang-format | StyleCop |
-| **U**nified | PHPStan | Dialyzer | Built-in | Built-in | Built-in |
-| **S**ecured | RIPS | Sobelow | - | cppcheck | Security Code Scan |
-| **T**rackable | @TAG | @TAG | @TAG | @TAG | @TAG |
+| 원칙 | PHP | C++ | C# |
+|------|-----|-----|-----|
+| **T**est First | PHPUnit | Google Test | NUnit |
+| **R**eadable | PHP CS Fixer | clang-format | StyleCop |
+| **U**nified | PHPStan | Built-in | Built-in |
+| **S**ecured | RIPS | cppcheck | Security Code Scan |
+| **T**rackable | @TAG | @TAG | @TAG |
 
 **공통 원칙**:
 - 모든 언어는 `@TAG 시스템`으로 SPEC→TEST→CODE→DOC 추적성 보장
