@@ -525,22 +525,138 @@ moai-adk --help
 
 ## 🎨 Alfred's Output Styles
 
+Alfred는 작업 특성과 사용자 경험 수준에 따라 **3가지 출력 스타일**을 제공합니다. Claude Code에서 `/output-style` 명령어로 언제든지 전환할 수 있습니다.
+
 ### 3가지 표준 스타일
 
-#### 1. MoAI Beginner Learning (학습 전용)
-- **대상**: 개발 입문자, 프로그래밍 초보자
-- **특징**: 친절한 설명, 단계별 안내, 격려와 응원
-- **사용**: `/output-style beginner-learning`
+#### 1. Agentic Coding (기본값) ⚡🤝
 
-#### 2. MoAI Professional (실무 전용)
-- **대상**: 시니어 개발자, 프로덕션 환경
-- **특징**: 간결한 출력, 빠른 의사결정, 효율 중심
-- **사용**: `/output-style alfred-pro`
+**대상**: 실무 개발자, 팀 리더, 아키텍트
 
-#### 3. MoAI Alfred (기본)
-- **대상**: 일반 개발자, 균형잡힌 협업
-- **특징**: 체계적인 보고, 명확한 구조, 검증 중심
-- **사용**: `/output-style agentic-coding` (기본값)
+Alfred SuperAgent가 9개 전문 에이전트를 조율하여 빠른 개발과 협업을 자동으로 전환하는 통합 코딩 모드입니다.
+
+**두 가지 작업 방식**:
+- **⚡ Fast Mode (기본)**: 빠른 개발, 구현 위주 작업
+  - SPEC → TDD → SYNC 자동화
+  - 간결한 기술 커뮤니케이션
+  - 최소 설명, 최대 효율
+  - TRUST 5원칙 자동 검증
+- **🤝 Collab Mode (자동 전환)**: "협업", "브레인스토밍", "설계", "리뷰" 키워드 감지 시
+  - 질문 기반 대화
+  - 트레이드오프 분석
+  - 아키텍처 다이어그램 제공
+  - 실시간 코드 리뷰
+
+**핵심 원칙**:
+- SPEC 우선: 모든 작업은 @SPEC:ID부터 시작
+- TAG 무결성: `rg` 스캔 기반 실시간 검증
+- TRUST 준수: 5원칙 자동 검증 및 품질 게이트
+- 다중 언어: 8개 언어 지원 (TypeScript, Python, Go, Rust, Java, Dart, Swift, Kotlin)
+
+**사용**:
+```text
+/output-style agentic-coding
+```
+
+---
+
+#### 2. MoAI ADK Learning 📚
+
+**대상**: MoAI-ADK를 처음 사용하는 개발자
+
+MoAI-ADK의 핵심 개념과 3단계 워크플로우를 친절하게 설명하여 빠르게 익힐 수 있도록 돕는 학습 모드입니다.
+
+**핵심 철학**: "명세 없으면 코드 없다, 테스트 없으면 구현 없다"
+
+**3가지 핵심 개념**:
+1. **SPEC-First**: 코드 작성 전 명세를 먼저 작성
+   - EARS 구문 (5가지 패턴)으로 요구사항 작성
+   - Ubiquitous, Event-driven, State-driven, Optional, Constraints
+2. **@TAG 추적성**: 모든 코드를 SPEC과 연결
+   - `@SPEC → @TEST → @CODE → @DOC` 체계
+   - CODE-FIRST 원칙 (코드 직접 스캔)
+3. **TRUST 품질**: 5가지 원칙으로 코드 품질 보장
+   - Test First, Readable, Unified, Secured, Trackable
+
+**학습 내용**:
+- 각 개념을 실생활 비유로 쉽게 설명
+- 3단계 워크플로우 단계별 학습
+- 실제 예시로 SPEC 작성 연습
+- FAQ로 자주 묻는 질문 해결
+
+**사용**:
+```text
+/output-style moai-adk-learning
+```
+
+---
+
+#### 3. Study with Alfred 🎓
+
+**대상**: 새로운 기술/언어/프레임워크를 배우려는 개발자
+
+Alfred가 함께 배우는 친구처럼 새로운 기술을 쉽게 설명하고, 실습을 도와주는 학습 모드입니다.
+
+**학습 4단계**:
+
+1. **What (이게 뭐야?)** → 기본 개념 이해
+   - 한 줄 요약
+   - 실생활 비유
+   - 핵심 개념 3가지
+
+2. **Why (왜 필요해?)** → 사용 이유와 장점
+   - 문제 상황
+   - 해결 방법
+   - 실제 사용 사례
+
+3. **How (어떻게 써?)** → 실습 중심 학습
+   - 최소 예제 (Hello World)
+   - 실용적 예제 (CRUD API)
+   - 자주 묻는 질문
+
+4. **Practice (실전 적용)** → MoAI-ADK와 통합
+   - SPEC → TEST → CODE 흐름으로 실습
+   - Alfred가 단계별 안내
+   - 완성된 코드 품질 검증
+
+**특징**:
+- 복잡한 개념을 쉽게 풀어서 설명
+- 실생활 비유로 이해도 향상
+- 단계별로 함께 실습
+- 자주 묻는 질문에 답변
+
+**사용**:
+```text
+/output-style study-with-alfred
+```
+
+---
+
+### 스타일 전환 가이드
+
+**언제 전환할까요?**
+
+| 상황 | 권장 스타일 | 이유 |
+|------|------------|------|
+| 🚀 **실무 개발** | Agentic Coding | Fast/Collab 자동 전환, 효율 중심 |
+| 📚 **MoAI-ADK 학습** | MoAI ADK Learning | SPEC-First, TAG, TRUST 개념 이해 |
+| 🎓 **새 기술 학습** | Study with Alfred | What-Why-How-Practice 4단계 |
+| 🔄 **반복 작업** | Agentic Coding (Fast) | 최소 설명, 빠른 실행 |
+| 🤝 **팀 협업** | Agentic Coding (Collab) | 트레이드오프 분석, 브레인스토밍 |
+
+**스타일 전환 예시**:
+```text
+# MoAI-ADK 처음 시작 시
+/output-style moai-adk-learning
+
+# 새로운 프레임워크 배울 때
+/output-style study-with-alfred
+"FastAPI를 배우고 싶어요"
+
+# 실무 개발 시작
+/output-style agentic-coding
+/alfred:1-spec "사용자 인증 시스템"
+```
 
 ---
 
@@ -548,28 +664,75 @@ moai-adk --help
 
 Alfred는 **모든 주요 프로그래밍 언어**를 지원하며, 각 언어에 최적화된 도구 체인을 자동으로 선택합니다.
 
-### 지원 언어 & 도구
+### 지원 언어 & 도구 (10개 언어)
 
-| 언어 | 테스트 프레임워크 | 린터/포매터 | 빌드 도구 |
-|------|------------------|-------------|----------|
-| **Python** | pytest, mypy | ruff, black | uv, pip |
-| **TypeScript** | Vitest, Jest | Biome, ESLint | npm, pnpm |
-| **Java** | JUnit | Checkstyle | Maven, Gradle |
-| **Go** | go test | gofmt, golint | go build |
-| **Rust** | cargo test | rustfmt, clippy | cargo |
-| **Dart** | flutter test | dart analyze | flutter |
-| **Swift** | XCTest | SwiftLint | xcodebuild |
-| **Kotlin** | JUnit | ktlint | Gradle |
+#### 백엔드 & 시스템
+
+| 언어 | 테스트 프레임워크 | 린터/포매터 | 빌드 도구 | 타입 시스템 |
+|------|------------------|-------------|----------|------------|
+| **Python** | pytest | ruff, black | uv, pip | mypy |
+| **TypeScript** | Vitest, Jest | Biome, ESLint | npm, pnpm, bun | Built-in |
+| **Java** | JUnit | Checkstyle | Maven, Gradle | Built-in |
+| **Go** | go test | gofmt, golint | go build | Built-in |
+| **Rust** | cargo test | rustfmt, clippy | cargo | Built-in |
+| **Kotlin** | JUnit | ktlint | Gradle | Built-in |
+
+#### 모바일 & 프론트엔드
+
+| 언어/프레임워크 | 테스트 프레임워크 | 린터/포매터 | 빌드 도구 | 플랫폼 |
+|-----------------|------------------|-------------|----------|--------|
+| **Dart (Flutter)** | flutter test | dart analyze | flutter | iOS, Android, Web |
+| **Swift** | XCTest | SwiftLint | xcodebuild | iOS, macOS |
+| **React Native** | Jest | ESLint, Prettier | Metro | iOS, Android |
+| **JavaScript** | Jest, Vitest | ESLint, Prettier | webpack, Vite | Web, Node.js |
 
 ### 자동 언어 감지
 
-Alfred는 다음 파일을 자동으로 감지합니다:
-- `pyproject.toml`, `requirements.txt` → Python
-- `package.json`, `tsconfig.json` → TypeScript
-- `pom.xml`, `build.gradle` → Java
-- `go.mod` → Go
-- `Cargo.toml` → Rust
-- `pubspec.yaml` → Dart
+Alfred는 프로젝트 루트의 설정 파일을 자동으로 감지하여 언어와 도구 체인을 선택합니다:
+
+| 감지 파일 | 언어 | 추가 감지 |
+|----------|------|----------|
+| `pyproject.toml`, `requirements.txt` | Python | `setup.py`, `poetry.lock` |
+| `package.json` + `tsconfig.json` | TypeScript | `yarn.lock`, `pnpm-lock.yaml` |
+| `package.json` (tsconfig 없음) | JavaScript | `webpack.config.js`, `vite.config.js` |
+| `pom.xml`, `build.gradle` | Java | `settings.gradle`, `build.gradle.kts` |
+| `go.mod` | Go | `go.sum` |
+| `Cargo.toml` | Rust | `Cargo.lock` |
+| `pubspec.yaml` | Dart/Flutter | `flutter/packages/` |
+| `*.xcodeproj`, `Package.swift` | Swift | `Podfile`, `Cartfile` |
+| `build.gradle.kts` + `kotlin` | Kotlin | `settings.gradle.kts` |
+| `android/`, `ios/` + `package.json` | React Native | `metro.config.js` |
+
+### 언어별 TRUST 5원칙 적용
+
+모든 언어는 동일한 TRUST 5원칙을 따르며, 언어별 최적 도구를 자동 사용합니다:
+
+| 원칙 | Python | TypeScript | Java | Go | Rust |
+|------|--------|------------|------|-----|------|
+| **T**est First | pytest | Vitest/Jest | JUnit | go test | cargo test |
+| **R**eadable | ruff, black | Biome, ESLint | Checkstyle | gofmt | rustfmt |
+| **U**nified | mypy | Built-in | Built-in | Built-in | Built-in |
+| **S**ecured | bandit | eslint-plugin-security | SpotBugs | gosec | cargo-audit |
+| **T**rackable | @TAG 시스템 | @TAG 시스템 | @TAG 시스템 | @TAG 시스템 | @TAG 시스템 |
+
+### 다중 언어 프로젝트 지원
+
+**Monorepo 및 혼합 언어 프로젝트**도 완벽 지원:
+
+```text
+my-project/
+├── backend/          # Python (FastAPI)
+│   ├── pyproject.toml
+│   └── src/
+├── frontend/         # TypeScript (React)
+│   ├── package.json
+│   └── src/
+└── mobile/           # Dart (Flutter)
+    ├── pubspec.yaml
+    └── lib/
+```
+
+Alfred는 각 디렉토리의 언어를 자동 감지하고 적절한 도구 체인을 사용합니다.
 
 ---
 
