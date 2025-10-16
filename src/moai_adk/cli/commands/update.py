@@ -18,8 +18,8 @@ def get_latest_version() -> str:
         Latest version string, or current version if fetch fails.
     """
     try:
-        import urllib.request
         import urllib.error
+        import urllib.request
 
         url = "https://pypi.org/pypi/moai-adk/json"
         with urllib.request.urlopen(url, timeout=5) as response:  # nosec B310 - URL is hardcoded HTTPS to PyPI API, no user input

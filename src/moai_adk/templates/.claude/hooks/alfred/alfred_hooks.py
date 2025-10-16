@@ -67,7 +67,7 @@ TDD History:
 
 import json
 
-from core import HookPayload, HookResult
+from core import HookResult
 from handlers import (
     handle_notification,
     handle_post_tool_use,
