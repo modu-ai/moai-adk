@@ -257,12 +257,13 @@ Alfred는 **작업 특성**에 따라 각 에이전트에 최적 모델을 할�
 ### 📋 준비물
 
 - ✅ Python 3.13+
+- ✅ **uv** (필수 - pip보다 10-100배 빠름)
 - ✅ Claude Code 실행 중
 - ✅ Git 설치 (선택사항)
 
-### ⚡ 4단계로 시작하기
+### ⚡ 3단계로 시작하기
 
-#### 0️⃣ uv 설치 (권장, 선택사항)
+#### 1️⃣ uv 설치 (필수)
 
 **uv는 pip보다 10-100배 빠른 Python 패키지 관리자입니다** (Rust 기반).
 
@@ -277,65 +278,40 @@ powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 uv --version
 ```
 
-**uv를 건너뛰고 pip만 사용해도 괜찮습니다.**
-
-#### 1️⃣ moai-adk 설치 (30초)
-
-**uv 설치 완료한 경우:**
+#### 2️⃣ moai-adk 설치 (10초)
 
 ```bash
 uv pip install moai-adk
+
+# 설치 확인
 moai-adk --version
 ```
 
-**pip 사용:**
+#### 3️⃣ 프로젝트 시작 (1분)
 
-```bash
-pip install moai-adk
-moai-adk --version
-```
-
-#### 2️⃣ 초기화 (1분)
-
-**새 프로젝트 생성:**
+**새 프로젝트:**
 ```bash
 moai-adk init my-project
 cd my-project
-
-# Claude Code 실행
 claude
 ```
 
-**기존 프로젝트에 설치:**
+**기존 프로젝트:**
 ```bash
 cd existing-project
 moai-adk init .
-
-# Claude Code 실행
 claude
 ```
 
-**Claude Code에서 프로젝트 초기화 (필수):**
+**Claude Code에서 초기화:**
 ```text
 /alfred:0-project
 ```
 
-Alfred가 자동으로:
-- `.moai/project/` 문서 3종 생성 (product/structure/tech.md)
-- 언어별 최적 도구 체인 설정
-- 프로젝트 컨텍스트 완벽 이해
-
-#### 3️⃣ 첫 기능 개발 (1분 30초)
-
-**Claude Code에서 3단계 워크플로우:**
+**첫 기능 개발:**
 ```text
-# SPEC 작성
-/alfred:1-spec "JWT 기반 사용자 로그인 API"
-
-# TDD 구현
+/alfred:1-spec "사용자 인증 기능"
 /alfred:2-build AUTH-001
-
-# 문서 동기화
 /alfred:3-sync
 ```
 
@@ -355,10 +331,6 @@ Alfred가 자동으로:
 ### 1단계: 패키지 업데이트
 
 ```bash
-# pip
-pip install --upgrade moai-adk
-
-# uv 권장
 uv pip install --upgrade moai-adk
 ```
 
@@ -926,16 +898,18 @@ Alfred가 모든 코드에 자동으로 적용하는 품질 기준입니다.
 # Python 버전 확인 (3.13+ 필요)
 python --version
 
-# uv가 설치되어 있다면
+# uv 설치 확인
+uv --version
+
+# uv가 없다면 먼저 설치 (필수)
+# macOS/Linux:
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows:
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# moai-adk 재설치
 uv pip install moai-adk --force-reinstall
-
-# pip 사용 시
-pip cache purge
-pip install moai-adk --force-reinstall
-
-# uv가 없다면 설치 (선택사항)
-# macOS/Linux: curl -LsSf https://astral.sh/uv/install.sh | sh
-# Windows: powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
 ### 초기화 문제
