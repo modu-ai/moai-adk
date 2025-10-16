@@ -115,7 +115,12 @@ class TemplateProcessor:
                 dst_item.mkdir(parents=True, exist_ok=True)
 
     def _copy_claude(self, silent: bool = False) -> None:
-        """.claude/ directory copy."""
+        """.claude/ directory copy (selective with alfred folder overwrite).
+
+        Strategy:
+        - Alfred folders (commands/agents/hooks/output-styles/alfred) → copy wholesale (delete & overwrite)
+        - Other files/folders → copy individually (preserve existing)
+        """
         src = self.template_root / ".claude"
         dst = self.target_path / ".claude"
 
@@ -124,12 +129,52 @@ class TemplateProcessor:
                 console.print("⚠️ .claude/ template not found")
             return
 
-        # Copy the directory wholesale (overwrite)
-        if dst.exists():
-            shutil.rmtree(dst)
-        shutil.copytree(src, dst)
+        # Create .claude directory if not exists
+        dst.mkdir(parents=True, exist_ok=True)
+
+        # Alfred folders to copy wholesale (overwrite)
+        alfred_folders = [
+            "hooks/alfred",
+            "commands/alfred",
+            "output-styles/alfred",
+            "agents/alfred",
+        ]
+
+        # 1. Copy Alfred folders wholesale (delete existing & copy new)
+        for folder in alfred_folders:
+            src_folder = src / folder
+            dst_folder = dst / folder
+
+            if src_folder.exists():
+                # Delete existing folder and copy new one
+                if dst_folder.exists():
+                    shutil.rmtree(dst_folder)
+                # Create parent directory if needed
+                dst_folder.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copytree(src_folder, dst_folder)
+                if not silent:
+                    console.print(f"   ✅ .claude/{folder}/ overwritten")
+
+        # 2. Copy other files/folders individually (preserve existing)
+        for item in src.iterdir():
+            rel_path = item.relative_to(src)
+            dst_item = dst / rel_path
+
+            # Skip Alfred parent folders (already handled above)
+            if item.is_dir() and item.name in ["hooks", "commands", "output-styles", "agents"]:
+                continue
+
+            if item.is_file():
+                # Copy file, skip if exists (preserve user modifications)
+                if not dst_item.exists():
+                    shutil.copy2(item, dst_item)
+            elif item.is_dir():
+                # Copy directory recursively (preserve existing files)
+                if not dst_item.exists():
+                    shutil.copytree(item, dst_item)
+
         if not silent:
-            console.print("   ✅ .claude/ copy complete")
+            console.print("   ✅ .claude/ copy complete (alfred folders overwritten, others preserved)")
 
     def _copy_moai(self, silent: bool = False) -> None:
         """.moai/ directory copy (excludes protected paths)."""

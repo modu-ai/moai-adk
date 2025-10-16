@@ -235,20 +235,58 @@ class TestCopyClaude:
         assert claude_dir.exists()
 
     @patch("moai_adk.core.template.processor.Console")
-    def test_copy_claude_overwrites_existing(
+    def test_copy_claude_overwrites_alfred_folders(
         self, mock_console: Mock, tmp_path: Path
     ) -> None:
-        """Should overwrite existing .claude directory"""
-        # Create existing .claude
+        """Should overwrite Alfred folders but preserve other files"""
+        # Create existing .claude with old file and Alfred folder
         old_claude = tmp_path / ".claude"
         old_claude.mkdir()
         (old_claude / "old.txt").write_text("old content")
 
+        # Create old Alfred folder content
+        alfred_hooks = old_claude / "hooks" / "alfred"
+        alfred_hooks.mkdir(parents=True)
+        (alfred_hooks / "old_hook.py").write_text("# old hook")
+
         processor = TemplateProcessor(tmp_path)
         processor._copy_claude(silent=True)
 
-        # Old file should be removed
-        assert not (tmp_path / ".claude" / "old.txt").exists()
+        # Alfred folders should be overwritten (old_hook.py removed)
+        assert not (tmp_path / ".claude" / "hooks" / "alfred" / "old_hook.py").exists()
+
+        # Other files should be preserved (old.txt still exists)
+        assert (tmp_path / ".claude" / "old.txt").exists()
+        assert (tmp_path / ".claude" / "old.txt").read_text() == "old content"
+
+    @patch("moai_adk.core.template.processor.Console")
+    def test_copy_claude_all_alfred_folders_overwritten(
+        self, mock_console: Mock, tmp_path: Path
+    ) -> None:
+        """Should overwrite all 4 Alfred folders"""
+        # Create existing .claude with all Alfred folders containing old files
+        old_claude = tmp_path / ".claude"
+        old_claude.mkdir()
+
+        alfred_folders = [
+            "hooks/alfred",
+            "commands/alfred",
+            "output-styles/alfred",
+            "agents/alfred",
+        ]
+
+        for folder in alfred_folders:
+            folder_path = old_claude / folder
+            folder_path.mkdir(parents=True)
+            (folder_path / "old_file.txt").write_text(f"old content in {folder}")
+
+        processor = TemplateProcessor(tmp_path)
+        processor._copy_claude(silent=True)
+
+        # All Alfred folder old files should be removed
+        for folder in alfred_folders:
+            old_file = tmp_path / ".claude" / folder / "old_file.txt"
+            assert not old_file.exists(), f"Old file in {folder} should be removed"
 
 
 class TestCopyMoai:
