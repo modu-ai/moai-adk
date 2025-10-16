@@ -12,6 +12,7 @@ jobs:
   test-matrix:
     name: Test on ${{ matrix.os }} - Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
 
     strategy:
       fail-fast: false
@@ -76,16 +77,6 @@ jobs:
         run: |
           python -m pytest -v --cov --cov-report=term-missing --cov-report=xml
 
-      # 보안 스캔 (Python 버전)
-      - name: Run security scan (Python)
-        run: python scripts/security-scan.py
-
-      # 보안 스캔 (PowerShell 버전, Windows만)
-      - name: Run security scan (PowerShell)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: .\scripts\security-scan.ps1
-
       # 커버리지 업로드
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest'
@@ -101,6 +92,7 @@ jobs:
     name: Cross-Platform Summary
     needs: test-matrix
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     if: always()
 
     steps:

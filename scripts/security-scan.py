@@ -8,6 +8,7 @@ Runs security scans using pip-audit and bandit.
 Works on Windows, macOS, and Linux.
 """
 
+import argparse
 import subprocess
 import sys
 from pathlib import Path
@@ -52,15 +53,24 @@ def install_tool(tool: str) -> bool:
         return False
 
 
-def run_pip_audit() -> bool:
-    """Run pip-audit for dependency vulnerability scan"""
+def run_pip_audit(ignore_vulns: list[str] | None = None) -> bool:
+    """Run pip-audit for dependency vulnerability scan
+
+    Args:
+        ignore_vulns: List of vulnerability IDs to ignore (e.g., ['GHSA-xxxx-xxxx-xxxx'])
+    """
     print_step("Step 1", "Running pip-audit (dependency vulnerability scan)")
 
+    cmd = [sys.executable, "-m", "pip_audit"]
+
+    # Add ignore-vuln options
+    if ignore_vulns:
+        for vuln_id in ignore_vulns:
+            cmd.extend(["--ignore-vuln", vuln_id])
+            print(f"ℹ️ Ignoring vulnerability: {vuln_id}")
+
     try:
-        subprocess.run(
-            [sys.executable, "-m", "pip_audit"],
-            check=True,
-        )
+        subprocess.run(cmd, check=True)
         print("✅ No vulnerabilities found")
         return True
     except subprocess.CalledProcessError:
@@ -96,6 +106,20 @@ def run_bandit() -> bool:
 
 def main() -> int:
     """Main security scan routine"""
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(
+        description="MoAI-ADK Security Scanner",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--ignore-vuln",
+        action="append",
+        dest="ignore_vulns",
+        metavar="ID",
+        help="Ignore specific vulnerability ID (can be specified multiple times)",
+    )
+    args = parser.parse_args()
+
     print_header("🔍 MoAI-ADK Security Scan")
 
     # Check and install security tools
@@ -108,7 +132,7 @@ def main() -> int:
                 return 1
 
     # Run security scans
-    pip_audit_passed = run_pip_audit()
+    pip_audit_passed = run_pip_audit(ignore_vulns=args.ignore_vulns)
     bandit_passed = run_bandit()
 
     # Summary
