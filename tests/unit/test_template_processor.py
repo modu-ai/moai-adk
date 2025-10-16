@@ -288,6 +288,35 @@ class TestCopyClaude:
             old_file = tmp_path / ".claude" / folder / "old_file.txt"
             assert not old_file.exists(), f"Old file in {folder} should be removed"
 
+    @patch("moai_adk.core.template.processor.Console")
+    def test_copy_claude_backups_alfred_folders_before_overwrite(
+        self, mock_console: Mock, tmp_path: Path
+    ) -> None:
+        """Should backup Alfred folders before overwriting them"""
+        # Create existing .claude with Alfred folder
+        old_claude = tmp_path / ".claude"
+        old_claude.mkdir()
+
+        alfred_hooks = old_claude / "hooks" / "alfred"
+        alfred_hooks.mkdir(parents=True)
+        (alfred_hooks / "important_hook.py").write_text("# important")
+
+        processor = TemplateProcessor(tmp_path)
+        processor._copy_claude(silent=True)
+
+        # Should create backup in .moai-backups/.claude-backups/{timestamp}/
+        backup_base = tmp_path / ".moai-backups" / ".claude-backups"
+        assert backup_base.exists(), "Backup directory should be created"
+
+        # Find the backup timestamp directory
+        backup_timestamps = list(backup_base.iterdir())
+        assert len(backup_timestamps) > 0, "At least one timestamp backup should exist"
+
+        # Check that hooks/alfred was backed up
+        backup_hooks = backup_timestamps[0] / "hooks" / "alfred"
+        assert backup_hooks.exists(), "hooks/alfred should be backed up"
+        assert (backup_hooks / "important_hook.py").exists(), "Hook files should be in backup"
+
 
 class TestCopyMoai:
     """Test .moai directory copying"""
