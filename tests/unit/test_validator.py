@@ -1,7 +1,13 @@
 # @TEST:TEST-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md
+# @TEST:INIT-004:VALIDATION | Chain: SPEC-INIT-004 -> CODE-INIT-004 -> TEST-INIT-004
 """Unit tests for validator.py module
 
 Tests for ProjectValidator class and ValidationError.
+
+SPEC-INIT-004 Tests:
+- Alfred command files validation
+- Missing files reporting
+- Phase 5 verification logic
 """
 
 import sys
@@ -148,11 +154,97 @@ class TestValidateInstallation:
         for file in ProjectValidator.REQUIRED_FILES:
             (tmp_project_dir / file).write_text("# Test")
 
+        # Create all Alfred command files (SPEC-INIT-004)
+        alfred_dir = tmp_project_dir / ".claude" / "commands" / "alfred"
+        alfred_dir.mkdir(parents=True, exist_ok=True)
+        for cmd in ProjectValidator.REQUIRED_ALFRED_COMMANDS:
+            (alfred_dir / cmd).write_text("# Alfred Command")
+
         # Should not raise
         try:
             validator.validate_installation(tmp_project_dir)
         except ValidationError:
             pytest.fail("validate_installation raised ValidationError unexpectedly")
+
+
+class TestValidateAlfredCommands:
+    """Test Alfred command files validation (SPEC-INIT-004)"""
+
+    def test_validate_installation_checks_alfred_command_files(self, tmp_project_dir: Path):
+        """Should verify all required Alfred command files exist"""
+        validator = ProjectValidator()
+
+        # Create all required directories
+        for directory in ProjectValidator.REQUIRED_DIRECTORIES:
+            (tmp_project_dir / directory).mkdir(parents=True, exist_ok=True)
+
+        # Create all required files
+        for file in ProjectValidator.REQUIRED_FILES:
+            (tmp_project_dir / file).write_text("# Test")
+
+        # Create .claude/commands/alfred directory
+        alfred_dir = tmp_project_dir / ".claude" / "commands" / "alfred"
+        alfred_dir.mkdir(parents=True, exist_ok=True)
+
+        # Missing Alfred command files
+        with pytest.raises(ValidationError, match="Alfred command"):
+            validator.validate_installation(tmp_project_dir)
+
+    def test_validate_installation_succeeds_with_all_alfred_commands(
+        self, tmp_project_dir: Path
+    ):
+        """Should pass when all Alfred command files exist"""
+        validator = ProjectValidator()
+
+        # Create all required directories
+        for directory in ProjectValidator.REQUIRED_DIRECTORIES:
+            (tmp_project_dir / directory).mkdir(parents=True, exist_ok=True)
+
+        # Create all required files
+        for file in ProjectValidator.REQUIRED_FILES:
+            (tmp_project_dir / file).write_text("# Test")
+
+        # Create all Alfred command files
+        alfred_dir = tmp_project_dir / ".claude" / "commands" / "alfred"
+        alfred_dir.mkdir(parents=True, exist_ok=True)
+
+        required_commands = ["0-project.md", "1-spec.md", "2-build.md", "3-sync.md"]
+        for cmd in required_commands:
+            (alfred_dir / cmd).write_text("# Alfred Command")
+
+        # Should not raise
+        try:
+            validator.validate_installation(tmp_project_dir)
+        except ValidationError:
+            pytest.fail("validate_installation raised ValidationError unexpectedly")
+
+    def test_validate_installation_reports_missing_command_files(
+        self, tmp_project_dir: Path
+    ):
+        """Should report which command files are missing"""
+        validator = ProjectValidator()
+
+        # Create all required directories
+        for directory in ProjectValidator.REQUIRED_DIRECTORIES:
+            (tmp_project_dir / directory).mkdir(parents=True, exist_ok=True)
+
+        # Create all required files
+        for file in ProjectValidator.REQUIRED_FILES:
+            (tmp_project_dir / file).write_text("# Test")
+
+        # Create Alfred directory but only some files
+        alfred_dir = tmp_project_dir / ".claude" / "commands" / "alfred"
+        alfred_dir.mkdir(parents=True, exist_ok=True)
+        (alfred_dir / "0-project.md").write_text("# Command")
+        (alfred_dir / "1-spec.md").write_text("# Command")
+        # Missing: 2-build.md, 3-sync.md
+
+        with pytest.raises(ValidationError) as exc_info:
+            validator.validate_installation(tmp_project_dir)
+
+        error_message = str(exc_info.value)
+        assert "2-build.md" in error_message
+        assert "3-sync.md" in error_message
 
 
 class TestIsInsideMoaiPackage:

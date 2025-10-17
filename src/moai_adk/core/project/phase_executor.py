@@ -13,6 +13,7 @@ import json
 import shutil
 import subprocess
 from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 
 from rich.console import Console
@@ -115,12 +116,14 @@ class PhaseExecutor:
     def execute_resource_phase(
         self,
         project_path: Path,
+        config: dict[str, str] | None = None,
         progress_callback: ProgressCallback | None = None,
     ) -> list[str]:
-        """Phase 3: install resources.
+        """Phase 3: install resources with variable substitution.
 
         Args:
             project_path: Project path.
+            config: Configuration dictionary for template variable substitution.
             progress_callback: Optional progress callback.
 
         Returns:
@@ -135,6 +138,20 @@ class PhaseExecutor:
         from moai_adk.core.template import TemplateProcessor
 
         processor = TemplateProcessor(project_path)
+
+        # Set template variable context (if provided)
+        if config:
+            context = {
+                "MOAI_VERSION": __version__,
+                "CREATION_TIMESTAMP": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "PROJECT_NAME": config.get("name", "unknown"),
+                "PROJECT_DESCRIPTION": config.get("description", ""),
+                "PROJECT_MODE": config.get("mode", "personal"),
+                "PROJECT_VERSION": config.get("version", "0.1.0"),
+                "AUTHOR": config.get("author", "@user"),
+            }
+            processor.set_context(context)
+
         processor.copy_templates(backup=False, silent=True)  # Avoid progress bar conflicts
 
         # Return a simplified list of generated assets

@@ -1,7 +1,6 @@
 {
   "env": {
     "MOAI_RUNTIME": "python",
-    "MOAI_PROJECT_PATH": "./{{PROJECT_NAME}}",
     "MOAI_AUTO_ROUTING": "true",
     "MOAI_PERFORMANCE_MONITORING": "true",
     "PYTHON_ENV": "{{PROJECT_MODE}}"
@@ -11,7 +10,7 @@
       {
         "hooks": [
           {
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/alfred_hooks.py SessionStart",
+            "command": "uv run .claude/hooks/alfred/alfred_hooks.py SessionStart",
             "type": "command"
           }
         ],
@@ -22,7 +21,7 @@
       {
         "hooks": [
           {
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/alfred_hooks.py UserPromptSubmit",
+            "command": "uv run .claude/hooks/alfred/alfred_hooks.py UserPromptSubmit",
             "type": "command"
           }
         ],
@@ -33,7 +32,7 @@
       {
         "hooks": [
           {
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/alfred_hooks.py PreCompact",
+            "command": "uv run .claude/hooks/alfred/alfred_hooks.py PreCompact",
             "type": "command"
           }
         ],
@@ -44,7 +43,7 @@
       {
         "hooks": [
           {
-            "command": "uv run $CLAUDE_PROJECT_DIR/.claude/hooks/alfred/alfred_hooks.py PreToolUse",
+            "command": "uv run .claude/hooks/alfred/alfred_hooks.py PreToolUse",
             "type": "command"
           }
         ],
