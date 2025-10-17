@@ -295,6 +295,12 @@ class TestValidationPhase:
         (tmp_path / "CLAUDE.md").write_text("# Project")
         (tmp_path / ".moai" / "config.json").write_text("{}")
 
+        # Create Alfred command files (SPEC-INIT-004)
+        alfred_dir = tmp_path / ".claude" / "commands" / "alfred"
+        alfred_dir.mkdir(parents=True, exist_ok=True)
+        for cmd in ["0-project.md", "1-spec.md", "2-build.md", "3-sync.md"]:
+            (alfred_dir / cmd).write_text("# Command")
+
         executor.execute_validation_phase(tmp_path, mode="personal")
         assert executor.current_phase == 5
 
@@ -309,6 +315,12 @@ class TestValidationPhase:
             (tmp_path / directory).mkdir(parents=True, exist_ok=True)
         (tmp_path / "CLAUDE.md").write_text("# Project")
         (tmp_path / ".moai" / "config.json").write_text("{}")
+
+        # Create Alfred command files (SPEC-INIT-004)
+        alfred_dir = tmp_path / ".claude" / "commands" / "alfred"
+        alfred_dir.mkdir(parents=True, exist_ok=True)
+        for cmd in ["0-project.md", "1-spec.md", "2-build.md", "3-sync.md"]:
+            (alfred_dir / cmd).write_text("# Command")
 
         executor.execute_validation_phase(
             tmp_path, mode="personal", progress_callback=callback
@@ -343,6 +355,12 @@ class TestValidationPhase:
         (tmp_path / "CLAUDE.md").write_text("# Project")
         (tmp_path / ".moai" / "config.json").write_text("{}")
 
+        # Create Alfred command files (SPEC-INIT-004)
+        alfred_dir = tmp_path / ".claude" / "commands" / "alfred"
+        alfred_dir.mkdir(parents=True, exist_ok=True)
+        for cmd in ["0-project.md", "1-spec.md", "2-build.md", "3-sync.md"]:
+            (alfred_dir / cmd).write_text("# Command")
+
         executor.execute_validation_phase(tmp_path, mode="team")
 
         # Git init should be called
@@ -361,6 +379,12 @@ class TestValidationPhase:
             (tmp_path / directory).mkdir(parents=True, exist_ok=True)
         (tmp_path / "CLAUDE.md").write_text("# Project")
         (tmp_path / ".moai" / "config.json").write_text("{}")
+
+        # Create Alfred command files (SPEC-INIT-004)
+        alfred_dir = tmp_path / ".claude" / "commands" / "alfred"
+        alfred_dir.mkdir(parents=True, exist_ok=True)
+        for cmd in ["0-project.md", "1-spec.md", "2-build.md", "3-sync.md"]:
+            (alfred_dir / cmd).write_text("# Command")
 
         executor.execute_validation_phase(tmp_path, mode="personal")
 
