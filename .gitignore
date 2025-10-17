@@ -33,14 +33,9 @@ docs/_build/
 docs/*
 !docs/public/
 
-# MoAI Project (user-specific, except templates)
-/.moai/
-!src/moai_adk/templates/.moai/
-
-# Reports (legacy - covered by /.moai/)
-# .moai/reports/*.md
-# .moai/reports/*.json
-# .moai/reports/*.html
+# MoAI Project - 모두 공개
+# /.moai/ - 공개로 전환
+# !src/moai_adk/templates/.moai/ - 이미 공개
 
 # Virtual environment
 venv/
@@ -55,11 +50,11 @@ env/
 *.swo
 *~
 
-# Claude Code (user-specific)
+# Claude Code - 모두 공개
 AGENTS.md
-CLAUDE.md
-/.claude/
-!src/moai_adk/templates/.claude/
+# CLAUDE.md - 공개로 전환
+# /.claude/ - 공개로 전환
+# !src/moai_adk/templates/.claude/ - 이미 공개
 
 # OS
 .DS_Store
