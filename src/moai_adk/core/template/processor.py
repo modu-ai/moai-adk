@@ -305,31 +305,6 @@ class TemplateProcessor:
         if not silent:
             console.print("   ✅ .claude/ copy complete (variables substituted)")
 
-    def _backup_alfred_folder(self, folder_path: Path, folder_name: str) -> None:
-        """Backup an Alfred folder before overwriting (safety measure).
-
-        Args:
-            folder_path: Path to the folder to backup.
-            folder_name: Name of the folder (e.g., "hooks/alfred").
-        """
-        if not folder_path.exists():
-            return
-
-        # Create backup directory in .moai-backups/.claude-backups/{timestamp}/
-        backup_base = self.target_path / ".moai-backups" / ".claude-backups"
-        backup_base.mkdir(parents=True, exist_ok=True)
-
-        # Generate timestamp-based backup directory
-        from moai_adk.core.project.backup_utils import generate_backup_dir_name
-
-        timestamp = generate_backup_dir_name()
-        backup_dir = backup_base / timestamp
-
-        # Backup this specific folder
-        backup_folder = backup_dir / folder_name
-        backup_folder.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copytree(folder_path, backup_folder)
-
     def _copy_moai(self, silent: bool = False) -> None:
         """.moai/ directory copy with variable substitution (excludes protected paths)."""
         src = self.template_root / ".moai"
