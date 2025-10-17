@@ -11,9 +11,10 @@ TEST-DOCS-003-BUILD-001: MkDocs 빌드 검증 테스트
 - 필수 페이지 생성 확인
 """
 
-import pytest
 import subprocess
 from pathlib import Path
+
+import pytest
 
 
 # TEST-HAPPY-BUILD-001: 정상 동작 - MkDocs 빌드 성공
@@ -42,7 +43,7 @@ class TestMkDocsBuild:
 
         # 빌드 성공 확인
         if result.returncode != 0:
-            error_msg = f"\nMkDocs 빌드 실패:\n"
+            error_msg = "\nMkDocs 빌드 실패:\n"
             error_msg += f"Return Code: {result.returncode}\n"
             error_msg += f"STDOUT:\n{result.stdout}\n"
             error_msg += f"STDERR:\n{result.stderr}\n"

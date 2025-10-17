@@ -120,7 +120,7 @@ class ProjectInitializer:
             )
 
             # Phase 4: Configuration (generate config.json)
-            config_data = {
+            config_data: dict[str, str | bool] = {
                 "projectName": self.path.name,
                 "mode": mode,
                 "locale": locale,

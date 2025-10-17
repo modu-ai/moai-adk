@@ -11,10 +11,11 @@ TEST-DOCS-003-LINKS-001: 문서 내부 링크 유효성 검증 테스트
 - 깨진 링크 (404) 감지
 """
 
-import pytest
 import re
 from pathlib import Path
 from typing import List, Tuple
+
+import pytest
 
 
 # TEST-HAPPY-LINKS-001: 정상 동작 - 내부 링크 유효성 검증
