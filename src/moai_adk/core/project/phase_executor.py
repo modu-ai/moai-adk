@@ -165,7 +165,7 @@ class PhaseExecutor:
     def execute_configuration_phase(
         self,
         project_path: Path,
-        config: dict[str, str],
+        config: dict[str, str | bool],
         progress_callback: ProgressCallback | None = None,
     ) -> list[str]:
         """Phase 4: generate configuration.
@@ -202,6 +202,10 @@ class PhaseExecutor:
     ) -> None:
         """Phase 5: validation and wrap-up.
 
+        @CODE:INIT-004:PHASE5 | Phase 5 verification logic
+        @REQ:VALIDATION-001 | SPEC-INIT-004: Verify required files after initialization completion
+        @CODE:INIT-004:PHASE5-INTEGRATION | Integration of validation in Phase 5
+
         Args:
             project_path: Project path.
             mode: Project mode (personal/team).
@@ -212,7 +216,10 @@ class PhaseExecutor:
             "Phase 5: Validation and finalization...", progress_callback
         )
 
-        # Validate installation results
+        # @CODE:INIT-004:VERIFY-001 | Validate installation results
+        # @CODE:INIT-004:VALIDATION-CHECK | Comprehensive installation validation
+        # Verifies all required files including 4 Alfred command files:
+        # - 0-project.md, 1-spec.md, 2-build.md, 3-sync.md
         self.validator.validate_installation(project_path)
 
         # Initialize Git for team mode

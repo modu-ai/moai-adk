@@ -2,8 +2,6 @@
 # @TEST:test_template_substitution
 """Unit tests for template variable substitution (processor.py)"""
 
-import pytest
-from pathlib import Path
 
 from moai_adk.core.template.processor import TemplateProcessor
 
@@ -154,7 +152,7 @@ class TestFileOperations:
 
         # Copy
         dst = tmp_path / "output.bin"
-        warnings = processor._copy_file_with_substitution(src, dst)
+        processor._copy_file_with_substitution(src, dst)
 
         # Verify binary content unchanged
         assert dst.read_bytes() == b'\x89PNG\r\n\x1a\n'
