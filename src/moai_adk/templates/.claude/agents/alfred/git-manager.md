@@ -109,7 +109,6 @@ git-manager는 pre-push hook을 통해 GitFlow best practice를 **권장**하지
 - ✅ **유연성 제공**: 사용자가 상황에 따라 판단하여 진행 가능
 
 **자세한 정책**: `.moai/memory/gitflow-protection-policy.md` 참조
-**Hook 샘플**: `.moai/hooks/pre-push.sample` 참조 (Git hooks 디렉토리에 복사하여 사용)
 
 #### 🔄 기능 개발 워크플로우 (feature/*)
 
