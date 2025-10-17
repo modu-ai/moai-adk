@@ -300,6 +300,7 @@ source = { editable = "." }
 dependencies = [
     { name = "click" },
     { name = "gitpython" },
+    { name = "packaging" },
     { name = "pyfiglet" },
     { name = "questionary" },
     { name = "rich" },
@@ -324,6 +325,7 @@ requires-dist = [
     { name = "click", specifier = ">=8.1.0" },
     { name = "gitpython", specifier = ">=3.1.45" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.7.0" },
+    { name = "packaging", specifier = ">=21.0" },
     { name = "pip-audit", marker = "extra == 'security'", specifier = ">=2.7.0" },
     { name = "pyfiglet", specifier = ">=1.0.2" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.4.2" },
