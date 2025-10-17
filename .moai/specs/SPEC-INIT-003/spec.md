@@ -1,9 +1,9 @@
 ---
 id: INIT-003
-version: 0.3.1
-status: active
+version: 0.3.2
+status: completed
 created: 2025-10-06
-updated: 2025-10-15
+updated: 2025-10-17
 author: @Goos
 priority: high
 category: feature
@@ -29,6 +29,17 @@ scope:
 # @SPEC:INIT-003: Init 백업 및 병합 옵션
 
 ## HISTORY
+
+### v0.3.2 (2025-10-17)
+- **COMPLETED**: 구현 완료 (v0.3.1)로 status 변경
+- **VERIFIED**: 모든 Phase C 요구사항 구현 및 테스트 통과
+- **FILES**:
+  - src/moai_adk/core/project/backup_merger.py (검증 완료)
+  - src/moai_adk/core/project/phase_executor.py (검증 완료)
+  - src/moai_adk/cli/commands/init.py (검증 완료)
+  - tests/unit/test_backup_merger.py (427 passed)
+- **AUTHOR**: @Goos
+- **REASON**: v0.3.1 구현 완료 확정, SPEC 상태 업데이트
 
 ### v0.3.1 (2025-10-15)
 - **ADDED**: 백업 병합 기능 (BackupMerger 클래스)
