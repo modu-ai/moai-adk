@@ -1,7 +1,12 @@
-# @CODE:CORE-PROJECT-003 | SPEC: SPEC-CORE-PROJECT-001.md
+# @CODE:CORE-PROJECT-003 | SPEC: SPEC-CORE-PROJECT-001.md, SPEC-INIT-004.md
+# @CODE:INIT-004:VALIDATION | Chain: SPEC-INIT-004 -> CODE-INIT-004 -> TEST-INIT-004
 """Project initialization validation module.
 
 Validates system requirements and installation results.
+
+SPEC-INIT-004 Enhancement:
+- Alfred command files validation (Phase 5)
+- Explicit missing files reporting
 """
 
 import shutil
@@ -30,6 +35,14 @@ class ProjectValidator:
     REQUIRED_FILES = [
         ".moai/config.json",
         "CLAUDE.md",
+    ]
+
+    # Required Alfred command files (SPEC-INIT-004)
+    REQUIRED_ALFRED_COMMANDS = [
+        "0-project.md",
+        "1-spec.md",
+        "2-build.md",
+        "3-sync.md",
     ]
 
     def validate_system_requirements(self) -> None:
@@ -93,6 +106,20 @@ class ProjectValidator:
             file_path = project_path / file
             if not file_path.exists():
                 raise ValidationError(f"Required file not found: {file}")
+
+        # Verify required Alfred command files (SPEC-INIT-004)
+        alfred_dir = project_path / ".claude" / "commands" / "alfred"
+        missing_commands = []
+        for cmd in self.REQUIRED_ALFRED_COMMANDS:
+            cmd_path = alfred_dir / cmd
+            if not cmd_path.exists():
+                missing_commands.append(cmd)
+
+        if missing_commands:
+            missing_list = ", ".join(missing_commands)
+            raise ValidationError(
+                f"Required Alfred command files not found: {missing_list}"
+            )
 
     def _is_inside_moai_package(self, project_path: Path) -> bool:
         """Determine whether the path is inside the MoAI-ADK package.
