@@ -4,6 +4,10 @@
 
 Git 워크플로우 전략 모듈입니다.
 
+## API Reference
+
+::: moai_adk.core.git
+
 ## 주요 모듈
 
 ### moai_adk.core.git.manager
