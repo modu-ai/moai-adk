@@ -392,9 +392,9 @@
 - `/alfred:9-update --check-quality` 실행
 
 **Then**:
-- Phase 5.5 실행:
+- Phase 6 실행:
   ```text
-  Phase 5.5: 품질 검증
+  Phase 6: 품질 검증
     → [Alfred] 업데이트 후 품질 검증을 시작합니다...
     → [Alfred] @agent-trust-checker "Level 1 빠른 스캔 (3-5초)"
     → [trust-checker] 검증 중...
@@ -409,7 +409,7 @@
   ```
 
 **검증 방법**:
-- [ ] Phase 5.5 실행 로그 출력
+- [ ] Phase 6 실행 로그 출력
 - [ ] trust-checker 호출 확인 (`@agent-trust-checker` 로그)
 - [ ] Pass 결과 메시지 출력
 - [ ] 다음 단계 안내 (Claude Code 재시작 권장)
@@ -561,9 +561,9 @@
 - trust-checker 응답 시간: 3초 이내
 
 **검증 방법**:
-- [ ] Phase 5.5 실행 시간 측정
+- [ ] Phase 6 실행 시간 측정
 - [ ] 5초 이내 완료
-- [ ] 전체 업데이트 시간: 25-30초 이내 (Phase 1-5.5)
+- [ ] 전체 업데이트 시간: 25-30초 이내 (Phase 1-6)
 
 ---
 
@@ -644,7 +644,7 @@ npm run test -- update-orchestrator.test.ts
 - 9-update.md 문서 리뷰:
   - [ ] Phase 4 상세 명세 (A-I 카테고리)
   - [ ] Phase 5 검증 로직 강화
-  - [ ] Phase 5.5 품질 검증 옵션
+  - [ ] Phase 6 품질 검증 옵션
   - [ ] 오류 복구 시나리오 (1-3)
 
 **통과 조건**:

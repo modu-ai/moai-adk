@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.3.6] - 2025-01-17
+
+### 📚 Documentation
+
+#### README.md 입문자 중심 대폭 개선
+- 🆕 "이런 문제 겪고 계신가요?" 섹션 추가 (AI 코딩 문제점 제시)
+- 🆕 "5분 만에 이해하는 핵심 개념" 섹션 추가 (SPEC-First, @TAG, TRUST)
+- 🆕 "첫 번째 프로젝트: Todo API" 튜토리얼 추가 (15분 완성)
+- 🆕 "실전 시나리오" 섹션 추가 (Hotfix/Feature/Release)
+- 🆕 "코드 품질 가이드" 섹션 추가 (3회 반복 규칙, 변수 역할)
+
+#### Mermaid 다이어그램 강화
+- 🎨 6개 Mermaid 다이어그램 추가 (flowchart, mindmap, graph, stateDiagram-v2)
+- 🌗 라이트/다크 테마 자동 전환 지원 (하드코딩된 색상 제거)
+
+#### 개발 가이드 개선
+- 📝 development-guide.md TAG 체인 설명 개선
+- 📝 SPEC 문서 명세 업데이트 (SPEC-HOOKS-001, SPEC-UPDATE-REFACTOR-001)
+
+#### Hooks 시스템 정리
+- 🗑️ handlers/compact.py 제거 (미사용 핸들러)
+- ♻️ alfred_hooks.py 간소화
+
+### 🔧 Configuration
+
+#### Git 배포 설정
+- 🛡️ docs/ 디렉토리 배포 제한 (docs/public/ 만 추적)
+
+---
+
 ## [v0.3.4] - 2025-10-17
 
 ### Added
@@ -337,7 +367,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **3-sync.md**:
 - `--auto-merge` 설명 위치 개선 (사용 예시 직후)
-- Phase 0.5/2.5 차이점 명확화
+- Phase 번호 정리 (1~4 범위로 통일)
 - 통합 프로젝트 모드 설명 보강 (사용 시점, 산출물)
 
 **8-project.md**:

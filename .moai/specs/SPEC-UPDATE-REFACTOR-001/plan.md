@@ -33,7 +33,7 @@
 **범위**:
 - Phase 4 Section 전면 재작성 (A-I 카테고리 상세화)
 - Phase 5 검증 로직 강화
-- Phase 5.5 품질 검증 옵션 추가
+- Phase 6 품질 검증 옵션 추가
 - 오류 복구 시나리오 추가
 
 **완료 조건**:
@@ -240,13 +240,13 @@ return {
 
 ---
 
-#### Phase 5.5 품질 검증 옵션 추가
+#### Phase 6 품질 검증 옵션 추가
 
 **실행 조건**: `--check-quality` 플래그 제공 시
 
 **실행 흐름**:
 ```text
-Phase 5.5: 품질 검증
+Phase 6: 품질 검증
   → [Alfred] @agent-trust-checker "Level 1 빠른 스캔"
   → 결과: Pass / Warning / Critical
   → 결과별 조치:
@@ -391,7 +391,7 @@ Phase 5.5: 품질 검증
 - `/alfred:9-update --check-quality` 실행
 
 **Then**:
-- Phase 5.5 실행:
+- Phase 6 실행:
   - [Alfred] @agent-trust-checker "Level 1" 호출
   - 결과: Pass / Warning / Critical
   - 결과별 조치 실행

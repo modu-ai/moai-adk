@@ -55,7 +55,6 @@
 │ Handler Layer: handlers/*.py (이벤트 처리)               │
 │ - session.py: SessionStart, SessionEnd                  │
 │ - user.py: UserPromptSubmit                             │
-│ - compact.py: PreCompact                                │
 │ - tool.py: PreToolUse, PostToolUse                      │
 │ - notification.py: Notification, Stop, SubagentStop     │
 └─────────────────────────────────────────────────────────┘
@@ -71,7 +70,6 @@
 | `tags.py` | TAG 검색, 검증, 캐싱 | 244 | 7 tests |
 | `session.py` | SessionStart/End 핸들링 | ~80 | Manual (integration) |
 | `user.py` | UserPromptSubmit 핸들링 | ~60 | Manual (integration) |
-| `compact.py` | PreCompact 핸들링 | ~50 | Manual (integration) |
 | `tool.py` | PreToolUse/PostToolUse 핸들링 | ~90 | Manual (integration) |
 | `notification.py` | Notification/Stop 핸들링 | ~40 | Manual (stub) |
 
@@ -176,12 +174,7 @@ tests/unit/test_alfred_hooks_core_tags.py::test_version_ttl ✅
   - `@agent-tag-agent` → `spec-metadata.md`
   - `context` 필드로 문서 경로 반환
 
-#### 2.3. compact.py
-- ✅ `handle_pre_compact()`: Compaction 권장 메시지
-  - 토큰 사용량 >70% 감지
-  - `/clear` 또는 `/new` 안내
-
-#### 2.4. tool.py
+#### 2.3. tool.py
 - ✅ `handle_pre_tool_use()`: 위험 작업 감지 + Checkpoint 자동 생성
 - ✅ `handle_post_tool_use()`: 후처리 작업 (stub)
 
@@ -222,7 +215,6 @@ EVENT_HANDLERS = {
     "UserPromptSubmit": handle_user_prompt_submit,
     "PreToolUse": handle_pre_tool_use,
     "PostToolUse": handle_post_tool_use,
-    "PreCompact": handle_pre_compact,
     "Notification": handle_notification,
     "Stop": handle_stop,
     "SubagentStop": handle_subagent_stop,
@@ -241,12 +233,6 @@ EVENT_HANDLERS = {
   - 프롬프트 패턴 분석 → 관련 문서 경로만 반환
   - Alfred가 `Read` 도구로 실제 로드 (Hooks는 경로만 제공)
 - ✅ **효과**: 초기 컨텍스트 부담 최소화
-
-#### 2. Compaction
-- ✅ **원칙**: 긴 세션(>70% 토큰)은 요약 후 재시작
-- ✅ **구현**: `handle_pre_compact()` 함수
-  - 토큰 사용량 감지 → `/clear` 또는 `/new` 권장
-- ✅ **효과**: 장기 세션 성능 유지
 
 ### CODE-FIRST TAG 시스템
 
@@ -371,7 +357,7 @@ Alfred Hooks 시스템은 **SPEC-First TDD 원칙에 따라 설계되었어야 �
 
 1. ✅ **명확한 책임 분리**: 3계층 아키텍처로 유지보수 용이
 2. ✅ **높은 테스트 커버리지**: 22개 테스트로 품질 보증
-3. ✅ **Context Engineering**: JIT Retrieval + Compaction 적용
+3. ✅ **Context Engineering**: JIT Retrieval 적용
 4. ✅ **CODE-FIRST**: ripgrep 기반 TAG 직접 스캔
 
 ### 개선 필요 사항

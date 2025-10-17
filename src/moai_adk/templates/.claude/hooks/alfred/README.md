@@ -23,7 +23,6 @@ Alfred Hooks는 Claude Code의 이벤트 시스템과 통합되어 프로젝트 
     ├── __init__.py         # Handler exports
     ├── session.py          # SessionStart, SessionEnd
     ├── user.py             # UserPromptSubmit
-    ├── compact.py          # PreCompact
     ├── tool.py             # PreToolUse, PostToolUse
     └── notification.py     # Notification, Stop, SubagentStop
 ```
@@ -135,13 +134,6 @@ set_library_version(library: str, version: str)
 
 - JIT Context 추천 문서 리스트 반환
 - 사용자 프롬프트 패턴 분석 및 관련 문서 로드
-
-### `handlers/compact.py`
-
-**PreCompact 핸들러**
-
-- 세션 요약 트리거 (>70% 토큰 사용)
-- Compaction 권장 메시지 생성
 
 ### `handlers/tool.py`
 

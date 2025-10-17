@@ -1591,9 +1591,9 @@ moai status
 │          파일 개수, YAML, 버전, 권한 검증                 │
 │          Glob, Read, Grep, Bash                          │
 │                                                          │
-│ Phase 5.5: QualityCheck   (trust-checker @agent)         │
-│            --check-quality 옵션 시에만 실행               │
-│            TRUST 5원칙 검증 (3-5초)                       │
+│ Phase 6: QualityCheck     (trust-checker @agent)         │
+│          --check-quality 옵션 시에만 실행                 │
+│          TRUST 5원칙 검증 (3-5초)                         │
 └─────────────────────────────────────────────────────────┘
 ```
 

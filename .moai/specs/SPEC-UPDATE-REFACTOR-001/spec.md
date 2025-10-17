@@ -27,7 +27,7 @@ category: refactor
   - `moai-adk-ts/templates/.claude/commands/alfred/9-update.md`: 동기화 완료
   - Phase 4: 10단계 카테고리별 절차 (A-I) 구현
   - Phase 5: Claude Code 도구 기반 검증 로직 강화
-  - Phase 5.5: trust-checker 연동 독립 섹션 신설
+  - Phase 6: trust-checker 연동 독립 섹션 신설
 - **QUALITY**: cc-manager 검증 통과 (P0 6개 + P1 3개 해결)
 - **CHANGES**:
   - TypeScript 코드 (AlfredUpdateBridge) 완전 제거
@@ -131,6 +131,7 @@ category: refactor
 - Phase 1-3: UpdateOrchestrator에 위임 (Bash 도구 활용)
 - Phase 4: Claude Code 도구로 직접 템플릿 복사 실행
 - Phase 5: UpdateVerifier에 검증 위임 (Glob 도구 활용)
+- Phase 6: trust-checker 연동 품질 검증
 
 **제약**:
 - IF Phase 4 실행 중 오류가 발생하면, Alfred는 백업에서 복원을 제안해야 한다
@@ -294,7 +295,7 @@ category: refactor
 
 **실행 방식**:
 ```text
-Phase 5.5: 품질 검증
+Phase 6: 품질 검증
   → [Alfred] @agent-trust-checker "Level 1 빠른 스캔"
   → 결과: Pass / Warning / Critical
 ```
@@ -370,7 +371,7 @@ Alfred (CLAUDE.md 컨텍스트)
         ├─ [Read] YAML frontmatter 파싱
         └─ [Grep] 버전 정보 확인
 
-    (선택) Phase 5.5: --check-quality
+    (선택) Phase 6: --check-quality
         └─ [Alfred] @agent-trust-checker "Level 1"
 ```
 
@@ -694,7 +695,7 @@ Phase 5 검증 중...
 
 [Phase 1-5 정상 완료 후]
 
-Phase 5.5: 품질 검증
+Phase 6: 품질 검증
   → [Alfred] "업데이트 후 품질 검증을 시작합니다..."
   → [Alfred] @agent-trust-checker "Level 1 빠른 스캔 (3-5초)"
 
@@ -860,7 +861,7 @@ Phase 5.5: 품질 검증
    - YAML frontmatter 검증
    - 버전 정보 확인
 
-3. Phase 5.5 품질 검증 옵션 추가:
+3. Phase 6 품질 검증 옵션 추가:
    - --check-quality 플래그 설명
    - trust-checker 연동 절차
 

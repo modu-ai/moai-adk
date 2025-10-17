@@ -148,10 +148,9 @@ MoAI-ADK는 **SPEC-First TDD 방법론**을 통해 플랑켄슈타인 코드를 
 
 #### 4. Context Engineering 전략
 
-- **차별점**: JIT Retrieval + Compaction으로 효율적인 컨텍스트 관리
+- **차별점**: JIT Retrieval로 효율적인 컨텍스트 관리
 - **발휘 시나리오**:
   - JIT: 필요한 순간에만 문서 로드 (초기 컨텍스트 최소화)
-  - Compaction: 토큰 사용량 >70% 시 요약 후 새 세션 시작 권장
   - Haiku/Sonnet 전략적 배치로 응답 속도 2~5배 향상 + 비용 67% 절감
 
 #### 5. 완전 자동화된 GitFlow 워크플로우

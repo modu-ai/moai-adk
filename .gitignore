@@ -29,6 +29,10 @@ htmlcov/
 site/
 docs/_build/
 
+# Documentation source (only docs/public/ is tracked)
+docs/*
+!docs/public/
+
 # Reports (keep .gitkeep)
 .moai/reports/*.md
 .moai/reports/*.json

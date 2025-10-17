@@ -205,21 +205,6 @@ model: sonnet
 - **필수 로드**: product.md, config.json, .moai/memory/spec-metadata.md
 - **조건부 로드**: structure.md는 아키텍처 질문이 나올 때만, tech.md는 기술 스택 관련 질문이 나올 때만 로드
 
-### Compaction 권장 시점
-
-**트리거 조건**:
-- SPEC 파일 3개(spec.md, plan.md, acceptance.md) 생성 완료 후
-- 사용자와의 요구사항 논의가 5회 이상 반복된 경우
-- 다음 SPEC 작성을 시작하기 전
-
-**권장 메시지** (Alfred에게 보고 시):
-```markdown
-SPEC-XXX 작성이 완료되었습니다.
-
-다음 SPEC 작성 전 세션을 정리하시겠습니까?
-- 현재 SPEC 핵심 결정사항 요약 완료
-- `/clear` 또는 `/new` 명령으로 새 세션 시작 권장
-```
 
 ## ⚠️ 중요 제약사항
 
