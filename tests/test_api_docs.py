@@ -65,7 +65,17 @@ class TestApiDocs:
         """TEST-API-002: API 문서는 mkdocstrings 문법을 사용해야 함"""
         files_without_mkdocstrings = []
 
+        # 예외 파일: 실제 Python 모듈이 아닌 문서
+        exceptions = {
+            "agents.md",  # Claude Code 에이전트 설정 (Python 모듈 아님)
+            "core-tag.md",  # 주석 기반 TAG 시스템 (Python 모듈 아님)
+        }
+
         for md_file in api_docs_dir.glob("*.md"):
+            # 예외 파일 스킵
+            if md_file.name in exceptions:
+                continue
+
             references = self.extract_mkdocstrings_references(md_file)
 
             # mkdocstrings 참조가 없는 파일 기록
