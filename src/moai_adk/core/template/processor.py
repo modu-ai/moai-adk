@@ -231,10 +231,12 @@ class TemplateProcessor:
 
         @CODE:INIT-004:ALFRED-001 | Copy all 4 Alfred command files from templates
         @REQ:COMMAND-GENERATION-001 | SPEC-INIT-004: Automatic generation of Alfred command files
+        @SPEC:TEMPLATE-PROCESSING-001 | Template processor integration for Alfred command files
 
         Strategy:
         - Alfred folders (commands/agents/hooks/output-styles/alfred) → copy wholesale (delete & overwrite)
           * Creates individual backup before deletion for safety
+          * Commands: 0-project.md, 1-spec.md, 2-build.md, 3-sync.md
         - Other files/folders → copy individually (preserve existing)
         """
         src = self.template_root / ".claude"
@@ -249,6 +251,7 @@ class TemplateProcessor:
         dst.mkdir(parents=True, exist_ok=True)
 
         # @CODE:INIT-004:ALFRED-002 | Alfred command files must always be overwritten
+        # @CODE:INIT-004:ALFRED-COPY | Copy all 4 Alfred command files from templates
         # Alfred folders to copy wholesale (overwrite)
         alfred_folders = [
             "hooks/alfred",
