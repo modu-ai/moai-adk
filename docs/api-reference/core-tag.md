@@ -4,9 +4,9 @@
 
 TAG 시스템 핵심 모듈입니다.
 
-## API Reference
+MoAI-ADK의 TAG 시스템은 주석 기반으로 구현되어 있으며, 별도의 Python 모듈이 아닌 코드 주석 패턴입니다. TAG는 `@SPEC:ID`, `@TEST:ID`, `@CODE:ID`, `@DOC:ID` 형식으로 소스 코드와 문서에 직접 작성됩니다.
 
-::: moai_adk.core.tag
+자세한 TAG 시스템 사용법은 [TAG System Guide](../guides/concepts/tag-system.md)를 참조하세요.
 
 ## TAG 체인 구조
 
