@@ -229,6 +229,9 @@ class TemplateProcessor:
     def _copy_claude(self, silent: bool = False) -> None:
         """.claude/ directory copy with variable substitution (selective with alfred folder overwrite).
 
+        @CODE:INIT-004:ALFRED-001 | Copy all 4 Alfred command files from templates
+        @REQ:COMMAND-GENERATION-001 | SPEC-INIT-004: Automatic generation of Alfred command files
+
         Strategy:
         - Alfred folders (commands/agents/hooks/output-styles/alfred) → copy wholesale (delete & overwrite)
           * Creates individual backup before deletion for safety
@@ -245,10 +248,11 @@ class TemplateProcessor:
         # Create .claude directory if not exists
         dst.mkdir(parents=True, exist_ok=True)
 
+        # @CODE:INIT-004:ALFRED-002 | Alfred command files must always be overwritten
         # Alfred folders to copy wholesale (overwrite)
         alfred_folders = [
             "hooks/alfred",
-            "commands/alfred",
+            "commands/alfred",  # Contains 0-project.md, 1-spec.md, 2-build.md, 3-sync.md
             "output-styles/alfred",
             "agents/alfred",
         ]
@@ -294,7 +298,7 @@ class TemplateProcessor:
 
         # Print warnings if any
         if all_warnings and not silent:
-            console.print(f"[yellow]⚠️ Template warnings:[/yellow]")
+            console.print("[yellow]⚠️ Template warnings:[/yellow]")
             for warning in set(all_warnings):  # Deduplicate
                 console.print(f"   {warning}")
 
@@ -367,7 +371,7 @@ class TemplateProcessor:
 
         # Print warnings if any
         if all_warnings and not silent:
-            console.print(f"[yellow]⚠️ Template warnings:[/yellow]")
+            console.print("[yellow]⚠️ Template warnings:[/yellow]")
             for warning in set(all_warnings):  # Deduplicate
                 console.print(f"   {warning}")
 
