@@ -204,6 +204,7 @@ class PhaseExecutor:
 
         @CODE:INIT-004:PHASE5 | Phase 5 verification logic
         @REQ:VALIDATION-001 | SPEC-INIT-004: Verify required files after initialization completion
+        @CODE:INIT-004:PHASE5-INTEGRATION | Integration of validation in Phase 5
 
         Args:
             project_path: Project path.
@@ -216,7 +217,9 @@ class PhaseExecutor:
         )
 
         # @CODE:INIT-004:VERIFY-001 | Validate installation results
-        # Verifies all required files including 4 Alfred command files
+        # @CODE:INIT-004:VALIDATION-CHECK | Comprehensive installation validation
+        # Verifies all required files including 4 Alfred command files:
+        # - 0-project.md, 1-spec.md, 2-build.md, 3-sync.md
         self.validator.validate_installation(project_path)
 
         # Initialize Git for team mode

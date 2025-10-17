@@ -99,6 +99,7 @@ class ProjectValidator:
 
         @CODE:INIT-004:VERIFY-001 | Verification of all required files upon successful completion
         @SPEC:VERIFICATION-001 | SPEC-INIT-004: Verification checklist implementation
+        @REQ:VALIDATION-001 | UR-003: All required files verified after init completes
 
         Args:
             project_path: Project path.
@@ -107,12 +108,14 @@ class ProjectValidator:
             ValidationError: Raised when installation was incomplete.
         """
         # Verify required directories
+        # @CODE:INIT-004:VALIDATION-001 | Core project structure validation
         for directory in self.REQUIRED_DIRECTORIES:
             dir_path = project_path / directory
             if not dir_path.exists():
                 raise ValidationError(f"Required directory not found: {directory}")
 
         # Verify required files
+        # @CODE:INIT-004:VALIDATION-002 | Required configuration files validation
         for file in self.REQUIRED_FILES:
             file_path = project_path / file
             if not file_path.exists():
@@ -120,6 +123,7 @@ class ProjectValidator:
 
         # @CODE:INIT-004:VERIFY-002 | Verify required Alfred command files (SPEC-INIT-004)
         # @REQ:COMMAND-GENERATION-001 | All 4 Alfred command files must be created
+        # @CODE:INIT-004:ALFRED-VALIDATION | Alfred command file integrity check
         alfred_dir = project_path / ".claude" / "commands" / "alfred"
         missing_commands = []
         for cmd in self.REQUIRED_ALFRED_COMMANDS:
@@ -130,6 +134,7 @@ class ProjectValidator:
         if missing_commands:
             missing_list = ", ".join(missing_commands)
             # @SPEC:ERROR-HANDLING-001 | Clear error messages upon missing files
+            # @CODE:INIT-004:ERROR-MESSAGE | Clear reporting of missing Alfred command files
             raise ValidationError(
                 f"Required Alfred command files not found: {missing_list}"
             )
