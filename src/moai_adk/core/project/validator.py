@@ -1,5 +1,7 @@
 # @CODE:CORE-PROJECT-003 | SPEC: SPEC-CORE-PROJECT-001.md, SPEC-INIT-004.md
 # @CODE:INIT-004:VALIDATION | Chain: SPEC-INIT-004 -> CODE-INIT-004 -> TEST-INIT-004
+# @REQ:VALIDATION-001 | SPEC-INIT-004: Initial verification after installation completion
+# @SPEC:VERIFICATION-001 | SPEC-INIT-004: Verification logic implementation
 """Project initialization validation module.
 
 Validates system requirements and installation results.
@@ -7,6 +9,12 @@ Validates system requirements and installation results.
 SPEC-INIT-004 Enhancement:
 - Alfred command files validation (Phase 5)
 - Explicit missing files reporting
+- Required files verification checklist
+
+TAG Chain:
+  SPEC-INIT-004 (spec.md)
+    └─> @CODE:INIT-004:VALIDATION (this file)
+        └─> @TEST:INIT-004:VALIDATION (test_validator.py)
 """
 
 import shutil
@@ -89,6 +97,9 @@ class ProjectValidator:
     def validate_installation(self, project_path: Path) -> None:
         """Validate installation results.
 
+        @CODE:INIT-004:VERIFY-001 | Verification of all required files upon successful completion
+        @SPEC:VERIFICATION-001 | SPEC-INIT-004: Verification checklist implementation
+
         Args:
             project_path: Project path.
 
@@ -107,7 +118,8 @@ class ProjectValidator:
             if not file_path.exists():
                 raise ValidationError(f"Required file not found: {file}")
 
-        # Verify required Alfred command files (SPEC-INIT-004)
+        # @CODE:INIT-004:VERIFY-002 | Verify required Alfred command files (SPEC-INIT-004)
+        # @REQ:COMMAND-GENERATION-001 | All 4 Alfred command files must be created
         alfred_dir = project_path / ".claude" / "commands" / "alfred"
         missing_commands = []
         for cmd in self.REQUIRED_ALFRED_COMMANDS:
@@ -117,6 +129,7 @@ class ProjectValidator:
 
         if missing_commands:
             missing_list = ", ".join(missing_commands)
+            # @SPEC:ERROR-HANDLING-001 | Clear error messages upon missing files
             raise ValidationError(
                 f"Required Alfred command files not found: {missing_list}"
             )
