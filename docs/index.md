@@ -321,7 +321,7 @@ Alfred가 조율하는 9개의 전문 에이전트:
 
 ## What's Next?
 
-- **[Getting Started](/guides/getting-started)** - 5분 안에 시작하기
-- **[SPEC-First TDD](/guides/concepts/spec-first-tdd)** - 핵심 개념 이해하기
-- **[API Reference](/api/index.html)** - API 문서 살펴보기
+- **[Getting Started](getting-started/installation.md)** - 5분 안에 시작하기
+- **[SPEC-First TDD](guides/concepts/spec-first-tdd.md)** - 핵심 개념 이해하기
+- **[API Reference](api-reference/agents.md)** - API 문서 살펴보기
 - **[GitHub](https://github.com/modu-ai/moai-adk)** - 소스코드 및 이슈 트래커
