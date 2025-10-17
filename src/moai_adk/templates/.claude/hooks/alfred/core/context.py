@@ -1,15 +1,10 @@
 #!/usr/bin/env python3
 """Context Engineering utilities
 
-JIT (Just-in-Time) Retrieval 및 워크플로우 컨텍스트 관리
+JIT (Just-in-Time) Retrieval
 """
 
-import time
 from pathlib import Path
-from typing import Any
-
-# Workflow context shared across phases
-_workflow_context: dict[str, Any] = {}
 
 
 def get_jit_context(prompt: str, cwd: str) -> list[str]:
@@ -69,42 +64,4 @@ def get_jit_context(prompt: str, cwd: str) -> list[str]:
     return context_files
 
 
-def save_phase_context(phase: str, data: dict):
-    """Store per-phase workflow context data.
-
-    Args:
-        phase: ``"analysis"``, ``"implementation"`` or ``"verification"``.
-        data: Payload to share with later phases.
-
-    Notes:
-        - Enables reuse of expensive analysis across phases.
-        - Entries expire after 10 minutes to avoid stale data.
-    """
-    _workflow_context[phase] = {"data": data, "timestamp": time.time()}
-
-
-def load_phase_context(phase: str) -> dict | None:
-    """Load previously stored workflow context for a phase.
-
-    Returns:
-        Stored context data or ``None`` when expired or missing.
-    """
-    if phase in _workflow_context:
-        ctx = _workflow_context[phase]
-        # Only accept entries that are younger than 10 minutes
-        if time.time() - ctx["timestamp"] < 600:
-            return ctx["data"]
-    return None
-
-
-def clear_workflow_context():
-    """Clear all cached workflow context (call at workflow end)."""
-    _workflow_context.clear()
-
-
-__all__ = [
-    "get_jit_context",
-    "save_phase_context",
-    "load_phase_context",
-    "clear_workflow_context",
-]
+__all__ = ["get_jit_context"]
