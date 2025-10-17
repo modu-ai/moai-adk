@@ -2,9 +2,9 @@
 
 MoAI-ADK 에이전트 시스템의 API 참조 문서입니다.
 
-## Core Agent System
+MoAI-ADK의 에이전트는 Claude Code의 Agent 시스템을 통해 구현됩니다. 각 에이전트는 `.claude/agents/` 디렉토리에 YAML 파일로 정의되며, Python 모듈이 아닌 Claude Code 설정입니다.
 
-::: moai_adk.agents
+자세한 에이전트 사용법은 [Agent Ecosystem Guide](../guides/agents/overview.md)를 참조하세요.
 
 ## Agent Types
 
