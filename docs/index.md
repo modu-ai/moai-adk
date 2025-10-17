@@ -4,6 +4,8 @@
 
 **Universal Language Support with Alfred SuperAgent**
 
+**Last Updated**: 2025-10-17 | **Status**: SPEC-DOCS-003 완료 (v0.1.0)
+
 MoAI-ADK는 **명세 우선 TDD 방법론**을 기반으로 한 범용 개발 도구입니다. Alfred SuperAgent가 SPEC 작성부터 테스트, 구현, 문서화까지 자동화하여 개발자는 비즈니스 로직에만 집중할 수 있습니다.
 
 ---
