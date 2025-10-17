@@ -78,28 +78,143 @@ MoAI-ADK의 모든 Git 작업을 모드별로 최적화하여 처리하는 전�
 
 ### 팀 모드 (Team Mode)
 
-**철학: "체계적 협업, 완전 자동화된 GitFlow"**
+**철학: "체계적 협업, 표준 GitFlow 완전 자동화"**
+
+#### 📊 표준 GitFlow 브랜치 구조
+
+```
+main (production)
+  ├─ hotfix/*      # 긴급 버그 수정 (main 기반)
+  └─ release/*     # 릴리즈 준비 (develop 기반)
+
+develop (development)
+  └─ feature/*     # 새 기능 개발 (develop 기반)
+```
+
+**브랜치 역할**:
+- **main**: 프로덕션 배포 브랜치 (항상 안정 상태)
+- **develop**: 개발 통합 브랜치 (다음 릴리즈 준비)
+- **feature/**: 새 기능 개발 (develop → develop)
+- **release/**: 릴리즈 준비 (develop → main + develop)
+- **hotfix/**: 긴급 수정 (main → main + develop)
+
+#### 🔄 기능 개발 워크플로우 (feature/*)
+
+git-manager는 다음 단계로 기능 개발을 관리합니다:
+
+**1. SPEC 작성 시** (`/alfred:1-spec`):
+```bash
+# develop에서 feature 브랜치 생성
+git checkout develop
+git checkout -b feature/SPEC-{ID}
+
+# Draft PR 생성 (feature → develop)
+gh pr create --draft --base develop --head feature/SPEC-{ID}
+```
+
+**2. TDD 구현 시** (`/alfred:2-build`):
+```bash
+# RED → GREEN → REFACTOR 커밋 생성
+git commit -m "🔴 RED: [테스트 설명]"
+git commit -m "🟢 GREEN: [구현 설명]"
+git commit -m "♻️ REFACTOR: [개선 설명]"
+```
+
+**3. 동기화 완료 시** (`/alfred:3-sync`):
+```bash
+# 원격 푸시 및 PR Ready 전환
+git push origin feature/SPEC-{ID}
+gh pr ready
+
+# --auto-merge 플래그 시 자동 머지
+gh pr merge --squash --delete-branch
+git checkout develop
+git pull origin develop
+```
+
+#### 🚀 릴리즈 워크플로우 (release/*)
+
+**릴리즈 브랜치 생성** (develop → release):
+```bash
+# develop에서 release 브랜치 생성
+git checkout develop
+git pull origin develop
+git checkout -b release/v{VERSION}
+
+# 버전 업데이트 (pyproject.toml, __init__.py 등)
+# 릴리즈 노트 작성
+git commit -m "chore: Bump version to {VERSION}"
+git push origin release/v{VERSION}
+```
+
+**릴리즈 완료** (release → main + develop):
+```bash
+# 1. main에 머지 및 태그
+git checkout main
+git pull origin main
+git merge --no-ff release/v{VERSION}
+git tag -a v{VERSION} -m "Release v{VERSION}"
+git push origin main --tags
+
+# 2. develop에 역머지 (버전 업데이트 동기화)
+git checkout develop
+git merge --no-ff release/v{VERSION}
+git push origin develop
+
+# 3. release 브랜치 삭제
+git branch -d release/v{VERSION}
+git push origin --delete release/v{VERSION}
+```
+
+#### 🔥 긴급 수정 워크플로우 (hotfix/*)
+
+**hotfix 브랜치 생성** (main → hotfix):
+```bash
+# main에서 hotfix 브랜치 생성
+git checkout main
+git pull origin main
+git checkout -b hotfix/v{VERSION}
+
+# 버그 수정
+git commit -m "🔥 HOTFIX: [수정 설명]"
+git push origin hotfix/v{VERSION}
+```
+
+**hotfix 완료** (hotfix → main + develop):
+```bash
+# 1. main에 머지 및 태그
+git checkout main
+git merge --no-ff hotfix/v{VERSION}
+git tag -a v{VERSION} -m "Hotfix v{VERSION}"
+git push origin main --tags
+
+# 2. develop에 역머지 (수정사항 동기화)
+git checkout develop
+git merge --no-ff hotfix/v{VERSION}
+git push origin develop
+
+# 3. hotfix 브랜치 삭제
+git branch -d hotfix/v{VERSION}
+git push origin --delete hotfix/v{VERSION}
+```
+
+#### 📋 브랜치 라이프사이클 요약
+
+| 작업 유형 | 기반 브랜치 | 대상 브랜치 | 머지 방식 | 역머지 |
+|----------|-----------|-----------|----------|-------|
+| 기능 개발 (feature) | develop | develop | squash | N/A |
+| 릴리즈 (release) | develop | main | --no-ff | develop |
+| 긴급 수정 (hotfix) | main | main | --no-ff | develop |
 
 **팀 모드 핵심 기능**:
-- **GitFlow 표준**: **항상 `develop`에서 분기** (feature/SPEC-{ID})
+- **GitFlow 표준 준수**: 표준 브랜치 구조 및 워크플로우
 - 구조화 커밋: 단계별 이모지와 @TAG 자동 생성
 - **PR 자동화**:
   - Draft PR 생성: `gh pr create --draft --base develop`
   - PR Ready 전환: `gh pr ready`
-  - **자동 머지**: `gh pr merge --squash --delete-branch` (--auto-merge 플래그 시)
-- **브랜치 정리**:
-  - 로컬 develop 체크아웃
-  - 원격 동기화: `git pull origin develop`
-  - feature 브랜치 삭제
-- 동기화: `git push/pull`로 단순화
-
-**브랜치 라이프사이클**:
-
-git-manager는 다음 단계로 브랜치를 관리합니다:
-1. **SPEC 작성 시** (1-spec): develop에서 feature/SPEC-{ID} 브랜치 생성 및 Draft PR 생성
-2. **TDD 구현 시** (2-build): RED → GREEN → REFACTOR 커밋 생성
-3. **동기화 완료 시** (3-sync): 원격 푸시 및 PR Ready 전환
-4. **자동 머지** (--auto-merge): squash 머지 후 develop 체크아웃 및 동기화
+  - **자동 머지**: `gh pr merge --squash --delete-branch` (feature만)
+- **브랜치 정리**: feature 브랜치 자동 삭제 및 develop 동기화
+- **릴리즈/Hotfix**: 표준 GitFlow 프로세스 준수 (main + develop 동시 업데이트)
 
 ## 📋 간소화된 핵심 기능
 

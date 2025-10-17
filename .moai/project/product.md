@@ -1,6 +1,6 @@
 ---
 id: PRODUCT-001
-version: 0.1.1
+version: 0.1.2
 status: active
 created: 2025-10-01
 updated: 2025-10-17
@@ -11,6 +11,11 @@ priority: high
 # MoAI-ADK Product Definition
 
 ## HISTORY
+
+### v0.1.2 (2025-10-17)
+- **UPDATED**: 에이전트 수 갱신 (9개 → 11개, v0.3.4 반영)
+- **AUTHOR**: @Alfred
+- **SECTIONS**: Mission (Alfred SuperAgent 팀 구성 업데이트)
 
 ### v0.1.1 (2025-10-17)
 - **UPDATED**: 템플릿 기본값을 실제 MoAI-ADK 프로젝트 내용으로 갱신
@@ -41,13 +46,15 @@ MoAI-ADK는 **SPEC-First TDD 방법론**을 통해 플랑켄슈타인 코드를 
 
 #### Alfred SuperAgent
 
-**Alfred**는 10개 AI 에이전트 팀 (Alfred + 9개 전문 에이전트)을 조율하는 중앙 오케스트레이터입니다:
+**Alfred**는 12개 AI 에이전트 팀 (Alfred + 11개 전문 에이전트)을 조율하는 중앙 오케스트레이터입니다:
 - **spec-builder** 🏗️: SPEC 작성 (EARS 방식)
-- **code-builder** 💎: TDD 구현 (RED → GREEN → REFACTOR)
+- **implementation-planner** 📋: SPEC 분석 및 구현 전략 수립
+- **tdd-implementer** 🔬: TDD RED-GREEN-REFACTOR 전문 구현
+- **quality-gate** 🛡️: TRUST 원칙 통합 검증
 - **doc-syncer** 📖: 문서 동기화 (Living Document)
 - **tag-agent** 🏷️: TAG 시스템 관리
 - **git-manager** 🚀: Git 워크플로우 자동화
-- **debug-helper** 🔬: 오류 진단 및 해결
+- **debug-helper** 🔬: 런타임 오류 진단
 - **trust-checker** ✅: TRUST 원칙 검증
 - **cc-manager** 🛠️: Claude Code 설정 관리
 - **project-manager** 📋: 프로젝트 초기화

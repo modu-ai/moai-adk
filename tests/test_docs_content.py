@@ -7,9 +7,10 @@ SPEC-DOCS-003: 문서 내용 품질 검증 테스트
 이 테스트는 문서 내용의 품질과 일관성을 검증합니다.
 """
 
-import pytest
-from pathlib import Path
 import re
+from pathlib import Path
+
+import pytest
 
 
 class TestDocumentContent:
@@ -29,7 +30,9 @@ class TestDocumentContent:
         keywords = ["플랑켄슈타인", "추적성", "품질"]
         found_keywords = sum(1 for kw in keywords if kw in content)
 
-        assert found_keywords >= 2, f"Introduction에 핵심 문제 키워드가 충분히 포함되어야 합니다 (발견: {found_keywords}/3)"
+        assert found_keywords >= 2, (
+            f"Introduction에 핵심 문제 키워드가 충분히 포함되어야 합니다 (발견: {found_keywords}/3)"
+        )
 
     def test_getting_started_has_commands(self, docs_dir):
         """TEST-START-CONTENT-001: Getting Started에 핵심 명령어 포함 확인"""
