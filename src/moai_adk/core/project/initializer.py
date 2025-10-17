@@ -103,20 +103,31 @@ class ProjectInitializer:
             # Phase 2: Directory (create directories)
             self.executor.execute_directory_phase(self.path, progress_callback)
 
-            # Phase 3: Resource (copy templates)
+            # Prepare config for template variable substitution (Phase 3)
+            config = {
+                "name": self.path.name,
+                "mode": mode,
+                "locale": locale,
+                "language": detected_language,
+                "description": "",
+                "version": "0.1.0",
+                "author": "@user",
+            }
+
+            # Phase 3: Resource (copy templates with variable substitution)
             resource_files = self.executor.execute_resource_phase(
-                self.path, progress_callback
+                self.path, config, progress_callback
             )
 
-            # Phase 4: Configuration (generate config)
-            config = {
+            # Phase 4: Configuration (generate config.json)
+            config_data = {
                 "projectName": self.path.name,
                 "mode": mode,
                 "locale": locale,
                 "language": detected_language,
             }
             config_files = self.executor.execute_configuration_phase(
-                self.path, config, progress_callback
+                self.path, config_data, progress_callback
             )
 
             # Phase 5: Validation (verify and finalize)
