@@ -565,7 +565,6 @@ src/todo/routes.py              # @CODE:TODO-001:API
   "created_at": "2025-10-17T10:00:00Z"
 }
 ```
-```
 
 ---
 
@@ -730,22 +729,6 @@ git pull origin develop
 # → PR 자동 머지 (squash)
 # → develop 체크아웃
 # → 다음 작업 준비 완료 ✅
-```
-
----
-
-### 시나리오 3: Release 준비
-
-```bash
-# 표준 방식 (권장):
-git checkout develop
-gh pr create --base main --head develop --title "Release v1.0.0"
-
-# 직접 push 방식 (허용):
-git checkout develop
-git push origin main  # ⚠️ Advisory 경고 표시되지만 진행됨
-git tag -a v1.0.0 -m "Release v1.0.0"
-git push origin v1.0.0
 ```
 
 ---

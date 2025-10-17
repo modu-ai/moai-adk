@@ -1,6 +1,6 @@
 ---
 id: PRODUCT-001
-version: 0.1.2
+version: 0.1.3
 status: active
 created: 2025-10-01
 updated: 2025-10-17
@@ -11,6 +11,13 @@ priority: high
 # MoAI-ADK Product Definition
 
 ## HISTORY
+
+### v0.1.3 (2025-10-17)
+- **UPDATED**: 전체 프로젝트 검토 및 갱신 (v0.3.7 반영)
+- **AUTHOR**: @Alfred
+- **SECTIONS**: Mission (12개 에이전트 최종 확인: Alfred + 11개 전문 에이전트)
+  - implementation-planner, tdd-implementer, quality-gate 추가
+  - code-builder → implementation-planner + tdd-implementer + quality-gate 분해
 
 ### v0.1.2 (2025-10-17)
 - **UPDATED**: 에이전트 수 갱신 (9개 → 11개, v0.3.4 반영)
@@ -47,17 +54,17 @@ MoAI-ADK는 **SPEC-First TDD 방법론**을 통해 플랑켄슈타인 코드를 
 #### Alfred SuperAgent
 
 **Alfred**는 12개 AI 에이전트 팀 (Alfred + 11개 전문 에이전트)을 조율하는 중앙 오케스트레이터입니다:
-- **spec-builder** 🏗️: SPEC 작성 (EARS 방식)
-- **implementation-planner** 📋: SPEC 분석 및 구현 전략 수립
-- **tdd-implementer** 🔬: TDD RED-GREEN-REFACTOR 전문 구현
-- **quality-gate** 🛡️: TRUST 원칙 통합 검증
-- **doc-syncer** 📖: 문서 동기화 (Living Document)
-- **tag-agent** 🏷️: TAG 시스템 관리
-- **git-manager** 🚀: Git 워크플로우 자동화
-- **debug-helper** 🔬: 런타임 오류 진단
-- **trust-checker** ✅: TRUST 원칙 검증
-- **cc-manager** 🛠️: Claude Code 설정 관리
-- **project-manager** 📋: 프로젝트 초기화
+- **spec-builder** 🏗️: SPEC 작성 (EARS 방식) - Sonnet
+- **implementation-planner** 📋: SPEC 분석 및 구현 전략 수립 - Sonnet
+- **tdd-implementer** 🔬: TDD RED-GREEN-REFACTOR 전문 구현 - Sonnet
+- **quality-gate** 🛡️: TRUST 원칙 통합 검증 - Haiku
+- **doc-syncer** 📖: 문서 동기화 (Living Document) - Haiku
+- **tag-agent** 🏷️: TAG 시스템 관리 - Haiku
+- **git-manager** 🚀: Git 워크플로우 자동화 - Haiku
+- **debug-helper** 🔍: 런타임 오류 진단 - Sonnet
+- **trust-checker** ✅: TRUST 원칙 검증 - Haiku
+- **cc-manager** 🛠️: Claude Code 설정 관리 - Sonnet
+- **project-manager** 📂: 프로젝트 초기화 - Sonnet
 
 ## @SPEC:USER-001 주요 사용자층
 
@@ -119,12 +126,14 @@ MoAI-ADK는 **SPEC-First TDD 방법론**을 통해 플랑켄슈타인 코드를 
 
 ### 경쟁 솔루션 대비 강점
 
-#### 1. Alfred SuperAgent - 10개 AI 에이전트 팀
+#### 1. Alfred SuperAgent - 12개 AI 에이전트 팀 (Alfred + 11개)
 
 - **차별점**: 단일 AI가 아닌 전문 에이전트 팀이 역할별 최적화된 작업 수행
 - **발휘 시나리오**:
   - spec-builder는 EARS 방식 명세 작성에 특화
-  - code-builder는 TDD 구현에 특화
+  - implementation-planner는 SPEC 분석 및 라이브러리 선정에 특화
+  - tdd-implementer는 RED-GREEN-REFACTOR TDD 구현에 특화
+  - quality-gate는 TRUST 원칙 통합 검증에 특화
   - doc-syncer는 Living Document 생성에 특화
   - 각 에이전트가 IT 전문가 직무에 매핑되어 전문성 극대화
 
