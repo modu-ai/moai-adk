@@ -17,28 +17,6 @@
         "matcher": "*"
       }
     ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "command": "uv run .claude/hooks/alfred/alfred_hooks.py UserPromptSubmit",
-            "type": "command"
-          }
-        ],
-        "matcher": "*"
-      }
-    ],
-    "PreCompact": [
-      {
-        "hooks": [
-          {
-            "command": "uv run .claude/hooks/alfred/alfred_hooks.py PreCompact",
-            "type": "command"
-          }
-        ],
-        "matcher": "*"
-      }
-    ],
     "PreToolUse": [
       {
         "hooks": [
@@ -71,7 +49,6 @@
       "Bash(git:*)",
       "Bash(rg:*)",
       "Bash(ls:*)",
-      "Bash(cat:*)",
       "Bash(echo:*)",
       "Bash(which:*)",
       "Bash(make:*)",
@@ -91,7 +68,6 @@
       "Bash(gh pr merge:*)",
       "Bash(gh repo view:*)",
       "Bash(gh issue:*)",
-      "Bash(find:*)",
       "Bash(mkdir:*)",
       "Bash(touch:*)",
       "Bash(cp:*)",
@@ -100,9 +76,7 @@
       "Bash(diff:*)",
       "Bash(wc:*)",
       "Bash(sort:*)",
-      "Bash(uniq:*)",
-      "Bash(head:*)",
-      "Bash(tail:*)"
+      "Bash(uniq:*)"
     ],
     "ask": [
       "Bash(git push:*)",
