@@ -513,10 +513,10 @@ Write(".env", "DATABASE_URL=postgresql://...")
 
 ## 관련 문서
 
-- **[SPEC-First TDD](/guides/concepts/spec-first-tdd)** - 개발 방법론
-- **[TAG System](/guides/concepts/tag-system)** - TAG 시스템 상세
-- **[TRUST Principles](/guides/concepts/trust-principles)** - 품질 원칙
-- **[Alfred Agents](/guides/agents/overview)** - Alfred 에이전트 생태계
+- **[SPEC-First TDD](../concepts/spec-first-tdd.md)** - 개발 방법론
+- **[TAG System](../concepts/tag-system.md)** - TAG 시스템 상세
+- **[TRUST Principles](../concepts/trust-principles.md)** - 품질 원칙
+- **[Alfred Agents](../agents/overview.md)** - Alfred 에이전트 생태계
 
 ---
 

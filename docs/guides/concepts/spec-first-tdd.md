@@ -762,8 +762,8 @@ $ /alfred:3-sync --auto-merge
 - [EARS 요구사항 작성 가이드](./ears-guide.md)
 - [TRUST 5원칙 가이드](./trust-principles.md)
 - [TAG 시스템 가이드](./tag-system.md)
-- [개발 가이드](../../.moai/memory/development-guide.md)
-- [Alfred SuperAgent 가이드](../../../CLAUDE.md)
+- 개발 가이드
+- Alfred SuperAgent 가이드
 
 ---
 

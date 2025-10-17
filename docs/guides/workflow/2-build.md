@@ -1316,9 +1316,9 @@ export class TodoManager {
 
 TDD 구현이 완료되면 다음 단계로 진행합니다:
 
-1. **[Stage 3: Document Sync](/guides/workflow/3-sync)** - `/alfred:3-sync` 실행
-2. **[TRUST Principles](/guides/concepts/trust-principles)** - 품질 원칙 상세
-3. **[TAG System](/guides/concepts/tag-system)** - 추적성 시스템 심화
+1. **[Stage 3: Document Sync](3-sync.md)** - `/alfred:3-sync` 실행
+2. **[TRUST Principles](../concepts/trust-principles.md)** - 품질 원칙 상세
+3. **[TAG System](../concepts/tag-system.md)** - 추적성 시스템 심화
 
 ---
 

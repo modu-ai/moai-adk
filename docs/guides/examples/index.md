@@ -40,8 +40,8 @@ MoAI-ADK를 사용하여 학습용 ToDo 애플리케이션을 처음부터 끝�
 
 처음 MoAI-ADK를 사용하신다면 다음 순서로 학습하세요:
 
-1. **[설치 가이드](../installation.md)** - MoAI-ADK 설치
-2. **[빠른 시작](../quick-start.md)** - 5분 만에 시작하기
+1. **[설치 가이드](../../getting-started/installation.md)** - MoAI-ADK 설치
+2. **[빠른 시작](../../getting-started/quick-start.md)** - 5분 만에 시작하기
 3. **[ToDo 앱 튜토리얼](./todo-app/index.md)** - 실전 프로젝트 완성
 4. **[워크플로우 가이드](../workflow/overview.md)** - 심화 학습
 

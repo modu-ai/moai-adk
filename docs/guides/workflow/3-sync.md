@@ -436,8 +436,8 @@ bun test --coverage tests/auth/
 
 ## Related SPECs
 
-- [SPEC-AUTH-002: 사용자 등록](/specs/SPEC-AUTH-002)
-- [SPEC-AUTH-003: 비밀번호 재설정](/specs/SPEC-AUTH-003)
+- SPEC-AUTH-002: 사용자 등록 (예시)
+- SPEC-AUTH-003: 비밀번호 재설정 (예시)
 
 ---
 
@@ -1148,10 +1148,10 @@ src/todo/model.py:1:# @CODE:TODO-PRIORITY-001
 
 ### Related Guides
 
-- **[Stage 1: SPEC Writing](/guides/workflow/1-spec)** - SPEC 작성 가이드
-- **[Stage 2: TDD Implementation](/guides/workflow/2-build)** - TDD 구현 가이드
-- **[TAG System](/guides/concepts/tag-system)** - TAG 시스템 상세
-- **[TRUST Principles](/guides/concepts/trust-principles)** - 품질 원칙 상세
+- **[Stage 1: SPEC Writing](1-spec.md)** - SPEC 작성 가이드
+- **[Stage 2: TDD Implementation](2-build.md)** - TDD 구현 가이드
+- **[TAG System](../concepts/tag-system.md)** - TAG 시스템 상세
+- **[TRUST Principles](../concepts/trust-principles.md)** - 품질 원칙 상세
 
 ---
 

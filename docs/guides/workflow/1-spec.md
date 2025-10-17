@@ -423,9 +423,9 @@ interface LoginData {
 
 SPEC 작성이 완료되면 다음 단계로 진행합니다:
 
-1. **[Stage 2: TDD Implementation](/guides/workflow/2-build)** - `/alfred:2-build` 실행
-2. **[EARS Guide](/guides/concepts/ears-guide)** - EARS 작성법 상세
-3. **[SPEC Metadata](/guides/concepts/spec-metadata)** - 메타데이터 필드 상세
+1. **[Stage 2: TDD Implementation](2-build.md)** - `/alfred:2-build` 실행
+2. **[EARS Guide](../concepts/ears-guide.md)** - EARS 작성법 상세
+3. **[SPEC Metadata](../concepts/ears-guide.md#spec-메타데이터)** - 메타데이터 필드 상세
 
 ---
 
