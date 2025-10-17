@@ -11,10 +11,11 @@ TEST-DOCS-003-API-001: API 문서 자동 생성 검증 테스트
 - Python docstring 파싱 가능 여부
 """
 
-import pytest
 import re
 from pathlib import Path
 from typing import List
+
+import pytest
 
 
 # TEST-HAPPY-API-001: 정상 동작 - API 문서 자동 생성 확인

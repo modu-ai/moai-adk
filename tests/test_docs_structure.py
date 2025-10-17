@@ -7,8 +7,9 @@ SPEC-DOCS-003: 문서 구조 및 네비게이션 검증 테스트
 이 테스트는 11단계 사용자 여정 기반 문서 구조를 검증합니다.
 """
 
-import pytest
 from pathlib import Path
+
+import pytest
 import yaml
 
 
