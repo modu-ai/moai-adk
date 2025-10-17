@@ -63,3 +63,5 @@ logs/
 # Temporary files
 *.tmp
 *.temp
+
+.claudeignore
