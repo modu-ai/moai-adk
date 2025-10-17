@@ -33,10 +33,14 @@ docs/_build/
 docs/*
 !docs/public/
 
-# Reports (keep .gitkeep)
-.moai/reports/*.md
-.moai/reports/*.json
-.moai/reports/*.html
+# MoAI Project (user-specific, except templates)
+/.moai/
+!src/moai_adk/templates/.moai/
+
+# Reports (legacy - covered by /.moai/)
+# .moai/reports/*.md
+# .moai/reports/*.json
+# .moai/reports/*.html
 
 # Virtual environment
 venv/
@@ -54,7 +58,8 @@ env/
 # Claude Code (user-specific)
 AGENTS.md
 CLAUDE.md
-.claude/
+/.claude/
+!src/moai_adk/templates/.claude/
 
 # OS
 .DS_Store

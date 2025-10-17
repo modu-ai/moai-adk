@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.3.7] - 2025-01-17
+
+### 🐛 Bug Fixes
+
+#### ❌ Critical: .claude 템플릿 누락 문제 해결
+- 🔧 .gitignore 수정: 루트 `.claude/`만 무시, 템플릿은 포함
+- ✅ Alfred SuperAgent 9개 에이전트 포함 (cc-manager, debug-helper, doc-syncer, git-manager, implementation-planner, project-manager, quality-gate, spec-builder, tag-agent, tdd-implementer, trust-checker)
+- ✅ Alfred 커맨드 포함 (/alfred:0-project, /alfred:1-spec, /alfred:2-build, /alfred:3-sync)
+- ✅ Alfred Hooks 시스템 포함 (SessionStart, PreToolUse 등)
+- ✅ 패키지 파일 수: 58개 → 94개 (36개 파일 추가)
+
+**영향**: v0.3.6 사용자는 핵심 기능(Alfred 에이전트, 커맨드, Hooks) 사용 불가 → v0.3.7로 업그레이드 필수
+
+### 📚 Documentation
+
+#### PyPI 토큰 설정 가이드 추가
+- 📝 `/awesome:release-new.md`에 PyPI 인증 방법 추가
+- 환경 변수 방식 (UV_PUBLISH_TOKEN) 상세 설명
+- .pypirc 파일 방식 추가
+- 배포 실패 시 트러블슈팅 개선
+
+---
+
 ## [v0.3.6] - 2025-01-17
 
 ### 📚 Documentation
