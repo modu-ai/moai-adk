@@ -4,6 +4,10 @@
 
 템플릿 처리 모듈입니다.
 
+## API Reference
+
+::: moai_adk.core.template
+
 ## 주요 모듈
 
 ### moai_adk.core.template.processor

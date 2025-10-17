@@ -4,6 +4,10 @@
 
 MoAI-ADK 설치 및 프로젝트 초기화 모듈입니다.
 
+## API Reference
+
+::: moai_adk.core.project
+
 ## 주요 모듈
 
 ### moai_adk.core.project.initializer

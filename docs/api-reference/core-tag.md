@@ -4,6 +4,10 @@
 
 TAG 시스템 핵심 모듈입니다.
 
+## API Reference
+
+::: moai_adk.core.tag
+
 ## TAG 체인 구조
 
 ### @SPEC → @TEST → @CODE → @DOC
