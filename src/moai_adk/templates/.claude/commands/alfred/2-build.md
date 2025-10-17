@@ -416,7 +416,6 @@ Alfred는 implementation-planner 에이전트를 호출하여 SPEC 문서를 확
 ### 이 커맨드의 핵심 전략
 
 **우선 로드**: `.moai/specs/SPEC-XXX/spec.md` (구현 대상 요구사항)
-**Compaction 권장**: TDD 구현 완료 후 `/alfred:3-sync` 진행 전
 
 **권장사항**: TDD 구현이 완료되었습니다. 다음 단계(`/alfred:3-sync`) 진행 전 `/clear` 또는 `/new` 명령으로 새로운 대화 세션을 시작하면 더 나은 성능과 컨텍스트 관리를 경험할 수 있습니다.
 

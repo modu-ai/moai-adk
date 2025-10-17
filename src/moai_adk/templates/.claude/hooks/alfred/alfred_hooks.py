@@ -31,7 +31,6 @@ Architecture:
 ├─────────────────────────────────────────────────────────────┤
 │ - session.py: SessionStart, SessionEnd                      │
 │ - user.py: UserPromptSubmit                                 │
-│ - compact.py: PreCompact                                    │
 │ - tool.py: PreToolUse, PostToolUse                          │
 │ - notification.py: Notification, Stop, SubagentStop         │
 └─────────────────────────────────────────────────────────────┘
@@ -51,7 +50,6 @@ Usage:
 Supported Events:
     - SessionStart: 세션 시작 (프로젝트 상태 표시)
     - UserPromptSubmit: 프롬프트 제출 (JIT 문서 로딩)
-    - PreCompact: 컨텍스트 초과 경고 (새 세션 제안)
     - PreToolUse: Tool 사용 전 (Checkpoint 자동 생성)
     - SessionEnd, PostToolUse, Notification, Stop, SubagentStop
 
@@ -71,7 +69,6 @@ from core import HookResult
 from handlers import (
     handle_notification,
     handle_post_tool_use,
-    handle_pre_compact,
     handle_pre_tool_use,
     handle_session_end,
     handle_session_start,
@@ -93,7 +90,6 @@ def main() -> None:
     Supported Events:
         - SessionStart: 세션 시작 (프로젝트 상태 표시)
         - UserPromptSubmit: 프롬프트 제출 (JIT 문서 로딩)
-        - PreCompact: 컨텍스트 초과 경고 (새 세션 제안)
         - SessionEnd, PreToolUse, PostToolUse, Notification, Stop, SubagentStop
 
     Exit Codes:
@@ -133,7 +129,6 @@ def main() -> None:
         handlers = {
             "SessionStart": handle_session_start,
             "UserPromptSubmit": handle_user_prompt_submit,
-            "PreCompact": handle_pre_compact,
             "SessionEnd": handle_session_end,
             "PreToolUse": handle_pre_tool_use,
             "PostToolUse": handle_post_tool_use,

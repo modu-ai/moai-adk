@@ -257,9 +257,9 @@ git-manager는 커밋 생성 시 자동으로 `.moai/config.json`의 `project.lo
 
 > **상세 구현 가이드**: @.moai/memory/development-guide.md
 
-> 본 지침군은 **컨텍스트 엔지니어링**(JIT Retrieval, Compaction)을 핵심 원리로 한다.
+> 본 지침군은 **컨텍스트 엔지니어링**(JIT Retrieval)을 핵심 원리로 한다.
 
-Alfred는 효율적인 컨텍스트 관리를 위해 다음 2가지 전략을 사용합니다:
+Alfred는 효율적인 컨텍스트 관리를 위해 다음 전략을 사용합니다:
 
 ### 1. JIT (Just-in-Time) Retrieval
 필요한 순간에만 문서를 로드하여 초기 컨텍스트 부담을 최소화:
@@ -300,11 +300,6 @@ Task(
 → 컨텍스트 비용 최소화
 ```
 
-### 2. Compaction
-긴 세션(>70% 토큰 사용)은 요약 후 새 세션으로 재시작:
-- 대화/로그가 길어지면 **결정/제약/상태** 중심으로 요약하고 **새 컨텍스트로 재시작**
-- 권장: `/clear` 또는 `/new` 명령 활용
-
 **상세 구현 방법**: `.moai/memory/development-guide.md#context-engineering` 참조
 
 **핵심 참조 문서**:
@@ -330,7 +325,6 @@ MoAI-ADK는 세 가지 실행 메커니즘을 명확히 분리하여 **역할별
 - ✅ **가드레일**: 위험한 작업 차단 (rm -rf, git push --force, 프로덕션 파일 수정)
 - ✅ **자동 백업**: 위험 작업 전 Checkpoint 자동 생성
 - ✅ **JIT Context**: 필요한 문서 경로 추천 (파일 경로만, Alfred가 Read)
-- ✅ **Compaction 경고**: 토큰 사용량 >70% 시 /clear 권장
 - ✅ **상태 알림**: 세션 시작 시 프로젝트 정보, Git 상태, SPEC 진행도 표시
 
 **구현 원칙**:

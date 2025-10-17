@@ -53,7 +53,7 @@ scope:
 
 ### 실행 환경
 
-- **Claude Code Hooks API**: 9개 이벤트 지원 (SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, PreCompact, Notification, Stop, SessionEnd, SubagentStop)
+- **Claude Code Hooks API**: 8개 이벤트 지원 (SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Notification, Stop, SessionEnd, SubagentStop)
 - **Python 버전**: Python 3.9 이상
 - **운영체제**: macOS, Linux, Windows (교차 플랫폼)
 - **필수 도구**:
@@ -94,9 +94,9 @@ scope:
 
 시스템은 다음 핵심 기능을 제공해야 한다:
 
-1. **9개 이벤트 핸들링**: Claude Code의 모든 생명주기 이벤트 지원
+1. **8개 이벤트 핸들링**: Claude Code의 생명주기 이벤트 지원
    - SessionStart, SessionEnd, UserPromptSubmit, PreToolUse, PostToolUse
-   - PreCompact, Notification, Stop, SubagentStop
+   - Notification, Stop, SubagentStop
 
 2. **JSON I/O 통신**: stdin/stdout을 통한 JSON 기반 입출력
    - 입력: `HookPayload` (eventType, payload)
@@ -139,10 +139,6 @@ scope:
      - MultiEdit: 10개 이상 파일 동시 수정
    - 위험한 작업 감지 시, 시스템은 자동으로 Git checkpoint를 생성해야 한다
    - 시스템은 `blocked=true`로 작업을 차단하고 경고 메시지를 반환할 수 있다
-
-4. **PreCompact 이벤트 발생 시**:
-   - 시스템은 토큰 사용량 >70% 시 Compaction 권장 메시지를 생성해야 한다
-   - 시스템은 `/clear` 또는 `/new` 명령 사용을 안내해야 한다
 
 ### State-driven Requirements (상태 기반)
 
@@ -338,27 +334,7 @@ def handle_user_prompt_submit(payload: dict) -> HookResult
 - 관련 문서 경로 리스트 반환 (`context` 필드)
 - Alfred가 `Read` 도구로 문서 로드 (JIT Retrieval)
 
-#### 8. `handlers/compact.py`
-```python
-# @CODE:HOOKS-001:HANDLER:COMPACT | SPEC: SPEC-HOOKS-001/spec.md | TEST: N/A
-
-def handle_pre_compact(payload: dict) -> HookResult
-```
-
-**Compaction 메시지**:
-```
-⚠️ Token usage > 70% - Compaction 권장
-
-새 세션 시작을 권장합니다:
-- /clear: 현재 대화 정리
-- /new: 새로운 대화 시작
-
-현재 세션 요약:
-- 완료: SPEC-HOOKS-001 구현
-- 다음: /alfred:3-sync 실행
-```
-
-#### 9. `handlers/tool.py`
+#### 8. `handlers/tool.py`
 ```python
 # @CODE:HOOKS-001:HANDLER:TOOL | SPEC: SPEC-HOOKS-001/spec.md | TEST: N/A
 

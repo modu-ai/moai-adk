@@ -196,7 +196,7 @@ MoAI-ADK Architecture
 **주요 기능**:
 1. **SessionStart**: 프로젝트 정보, Git 상태, SPEC 진행도 표시
 2. **PreToolUse**: 위험 작업 (`rm -rf`, 병합, 스크립트 실행) 차단, 자동 checkpoint
-3. **PostToolUse**: TAG 동기화, 토큰 사용량 >70% 시 Compaction 권장
+3. **PostToolUse**: TAG 동기화
 
 ### GitHub API 연동
 

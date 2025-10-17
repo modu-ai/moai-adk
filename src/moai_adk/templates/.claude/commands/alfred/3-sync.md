@@ -36,7 +36,7 @@ allowed-tools:
 
 ## 🔗 연관 에이전트
 
-- **Phase 0.5**: quality-gate (🛡️ 품질 보증 엔지니어) - 동기화 전 품질 검증 (조건부)
+- **Phase 1**: quality-gate (🛡️ 품질 보증 엔지니어) - 동기화 전 품질 검증 (조건부)
 - **Primary**: doc-syncer (📖 테크니컬 라이터) - 문서 동기화 전담
 - **Secondary**: git-manager (🚀 릴리스 엔지니어) - Git 커밋/PR 전담
 
@@ -544,7 +544,6 @@ Task 2 (sonnet): 문서 구조 분석
 ### 이 커맨드의 핵심 전략
 
 **우선 로드**: `.moai/reports/sync-report-latest.md` (이전 동기화 상태)
-**Compaction 권장**: 문서 동기화 완료 후 다음 기능 개발(1-spec) 시작 전
 
 **권장사항**: 문서 동기화가 완료되었습니다. 전체 MoAI-ADK 사이클(1-spec → 2-build → 3-sync)이 완료되었으니, 다음 기능 개발 전 `/clear` 또는 `/new` 명령으로 새로운 대화 세션을 시작하세요.
 

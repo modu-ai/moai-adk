@@ -353,23 +353,6 @@ Python, TypeScript, JavaScript, Java, Go, Rust, Dart, Swift, Kotlin, Ruby, PHP, 
 
 ---
 
-### E2E-4: PreCompact → Compaction 권장
-**Given**: 토큰 사용량이 70%를 초과했을 때
-**When**: PreCompact 이벤트가 발생하면
-**Then**: 사용자에게 다음 메시지가 표시되어야 한다:
-```
-⚠️ Token usage > 70% - Compaction 권장
-
-새 세션 시작을 권장합니다:
-- /clear: 현재 대화 정리
-- /new: 새로운 대화 시작
-```
-
-**검증 방법**: Manual (장기 세션 중 확인)
-**상태**: ⚠️ 미확인 (토큰 70% 도달 시점 테스트 필요)
-
----
-
 ## 품질 게이트
 
 ### 1. 테스트 커버리지
@@ -428,7 +411,6 @@ Average complexity: A (≤10) ✅
 SessionStart: 45ms ✅
 UserPromptSubmit: 30ms ✅
 PreToolUse: 60ms ✅ (checkpoint 생성 포함)
-PreCompact: 10ms ✅
 ```
 
 **결과**: ✅ 통과 (평균 <50ms, 목표 대비 50% 개선)
@@ -528,7 +510,7 @@ PreCompact: 10ms ✅
 
 1. ✅ **명확한 책임 분리**: 3계층 아키텍처로 유지보수 용이
 2. ✅ **높은 테스트 커버리지**: 22개 테스트로 품질 보증
-3. ✅ **Context Engineering 적용**: JIT Retrieval + Compaction
+3. ✅ **Context Engineering 적용**: JIT Retrieval
 4. ✅ **CODE-FIRST 원칙**: ripgrep 기반 TAG 직접 스캔
 
 ### 개선 필요 (Problem)
