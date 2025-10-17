@@ -1,15 +1,33 @@
 ---
 id: PRODUCT-001
-version: 0.1.0
+version: 0.1.3
 status: active
 created: 2025-10-01
-updated: 2025-10-01
-authors: ["@project-owner"]
+updated: 2025-10-17
+author: @project-owner
+priority: high
 ---
 
 # {{PROJECT_NAME}} Product Definition
 
 ## HISTORY
+
+### v0.1.3 (2025-10-17)
+- **UPDATED**: 템플릿 버전 동기화 (v0.3.8)
+- **AUTHOR**: @Alfred
+- **SECTIONS**: Mission (12개 에이전트 최종 확인: Alfred + 11개 전문 에이전트)
+  - implementation-planner, tdd-implementer, quality-gate 추가
+  - code-builder → implementation-planner + tdd-implementer + quality-gate 분해
+
+### v0.1.2 (2025-10-17)
+- **UPDATED**: 에이전트 수 갱신 (9개 → 11개)
+- **AUTHOR**: @Alfred
+- **SECTIONS**: Mission (Alfred SuperAgent 팀 구성 업데이트)
+
+### v0.1.1 (2025-10-17)
+- **UPDATED**: 템플릿 기본값을 실제 MoAI-ADK 프로젝트 내용으로 갱신
+- **AUTHOR**: @Alfred
+- **SECTIONS**: Mission, User, Problem, Strategy, Success 실제 내용 반영
 
 ### v0.1.0 (2025-10-01)
 - **INITIAL**: 프로젝트 제품 정의 문서 작성
@@ -20,11 +38,33 @@ authors: ["@project-owner"]
 
 ## @DOC:MISSION-001 핵심 미션
 
-**[프로젝트의 핵심 미션과 목표를 정의하세요]**
+> **"SPEC이 없으면 CODE도 없다."**
+
+{{PROJECT_NAME}}는 **SPEC-First TDD 방법론**을 통해 플랑켄슈타인 코드를 근본적으로 방지하는 프로젝트입니다.
 
 ### 핵심 가치 제안
 
-[이 프로젝트가 제공하는 핵심 가치를 설명하세요]
+#### 4가지 핵심 가치
+
+1. **일관성 (Consistency)**: SPEC → TDD → Sync 3단계 파이프라인으로 개발 품질 보장
+2. **품질 (Quality)**: TRUST 5원칙 (Test First, Readable, Unified, Secured, Trackable) 자동 적용
+3. **추적성 (Traceability)**: @TAG 시스템 (`@SPEC → @TEST → @CODE → @DOC`)으로 완벽한 이력 추적
+4. **범용성 (Universality)**: 다양한 언어 및 프레임워크 지원
+
+#### Alfred SuperAgent
+
+**Alfred**는 12개 AI 에이전트 팀 (Alfred + 11개 전문 에이전트)을 조율하는 중앙 오케스트레이터입니다:
+- **spec-builder** 🏗️: SPEC 작성 (EARS 방식) - Sonnet
+- **implementation-planner** 📋: SPEC 분석 및 구현 전략 수립 - Sonnet
+- **tdd-implementer** 🔬: TDD RED-GREEN-REFACTOR 전문 구현 - Sonnet
+- **quality-gate** 🛡️: TRUST 원칙 통합 검증 - Haiku
+- **doc-syncer** 📖: 문서 동기화 (Living Document) - Haiku
+- **tag-agent** 🏷️: TAG 시스템 관리 - Haiku
+- **git-manager** 🚀: Git 워크플로우 자동화 - Haiku
+- **debug-helper** 🔍: 런타임 오류 진단 - Sonnet
+- **trust-checker** ✅: TRUST 원칙 검증 - Haiku
+- **cc-manager** 🛠️: Claude Code 설정 관리 - Sonnet
+- **project-manager** 📂: 프로젝트 초기화 - Sonnet
 
 ## @SPEC:USER-001 주요 사용자층
 

@@ -1,15 +1,21 @@
 ---
 id: STRUCTURE-001
-version: 0.1.0
+version: 0.1.1
 status: active
 created: 2025-10-01
-updated: 2025-10-01
-authors: ["@architect"]
+updated: 2025-10-17
+author: @architect
+priority: medium
 ---
 
 # {{PROJECT_NAME}} Structure Design
 
 ## HISTORY
+
+### v0.1.1 (2025-10-17)
+- **UPDATED**: 템플릿 버전 동기화 (v0.3.8)
+- **AUTHOR**: @Alfred
+- **SECTIONS**: 메타데이터 표준화 (author 필드 단수형, priority 추가)
 
 ### v0.1.0 (2025-10-01)
 - **INITIAL**: 프로젝트 구조 설계 문서 작성
