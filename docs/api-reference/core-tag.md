@@ -4,8 +4,16 @@
 
 TAG 시스템 핵심 모듈입니다.
 
-## moai_adk.core.tag_system
+## TAG 체인 구조
 
-::: moai_adk.core.tag_system
-    options:
-      show_source: true
+### @SPEC → @TEST → @CODE → @DOC
+MoAI-ADK의 TAG 시스템은 코드 추적성을 보장하는 핵심 메커니즘입니다.
+
+### TAG 형식
+```
+@SPEC:ID | @TEST:ID | @CODE:ID | @DOC:ID
+```
+
+### 관련 에이전트
+- **tag-agent**: TAG 무결성 검증 및 체인 분석
+- **doc-syncer**: TAG 기반 문서 동기화
