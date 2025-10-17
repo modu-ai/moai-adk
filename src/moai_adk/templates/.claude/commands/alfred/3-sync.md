@@ -36,7 +36,7 @@ allowed-tools:
 
 ## 🔗 연관 에이전트
 
-- **Pre-Validator**: trust-checker (✅ 품질 보증 리드) - 동기화 전 검증 (조건부)
+- **Phase 0.5**: quality-gate (🛡️ 품질 보증 엔지니어) - 동기화 전 품질 검증 (조건부)
 - **Primary**: doc-syncer (📖 테크니컬 라이터) - 문서 동기화 전담
 - **Secondary**: git-manager (🚀 릴리스 엔지니어) - Git 커밋/PR 전담
 
@@ -135,8 +135,8 @@ Task tool 호출 (Explore 에이전트):
 동기화 전 코드 품질을 빠르게 확인합니다.
 
 **Phase 2.5 (2-build)와의 차이점**:
-- **Phase 2.5**: TDD 구현 완료 후 심층 검증 (테스트 커버리지, 코드 품질, 보안)
-- **Phase 0.5**: 동기화 전 빠른 스캔 (파일 손상, Critical 이슈만)
+- **Phase 2.5**: TDD 구현 완료 후 전체 검증 (Pass/Warning/Critical 3단계)
+- **Phase 0.5**: 동기화 전 빠른 검증 (변경 파일만 대상)
 
 **목적**: 품질 문제가 있는 코드의 문서화 방지
 
@@ -146,21 +146,22 @@ Task tool 호출 (Explore 에이전트):
 - 변경 라인 ≤ 50줄: 건너뛰기
 - 문서만 변경: 건너뛰기
 
-**사전 검증 목적**:
-- 품질 문제가 있는 코드의 문서화 방지
-- 동기화 전 Critical 이슈 조기 발견
-- Level 1 빠른 스캔 (3-5초)
+**검증 항목**:
+- **변경 파일만 검증**: Git diff로 확인된 파일 대상
+- **TRUST 원칙 검증**: trust-checker 스크립트 실행
+- **코드 스타일**: 린터 실행 (변경 파일만)
+- **TAG 체인**: 변경된 TAG 무결성 확인
 
 **실행 방식**:
-Alfred가 코드 변경이 많을 때 자동으로 trust-checker 에이전트를 호출하여 문서 동기화 전 빠른 품질 검증을 수행합니다.
+Alfred가 코드 변경이 많을 때 자동으로 quality-gate 에이전트를 호출하여 문서 동기화 전 빠른 품질 검증을 수행합니다.
 
 **검증 결과 처리**:
 
-✅ **Pass**: 동기화 진행
+✅ **PASS (Critical 0개)**: 동기화 진행
 
-⚠️ **Warning**: 경고 표시 후 동기화 진행
+⚠️ **WARNING (Critical 0개, Warning 있음)**: 경고 표시 후 동기화 진행
 
-❌ **Critical**: 동기화 중단, 수정 권장
+❌ **CRITICAL (Critical 1개 이상)**: 동기화 중단, 수정 권장
 - Critical 이슈 발견: 동기화 중단, 수정 권장
 - 사용자 선택: "수정 후 재시도" 또는 "강제 진행"
 

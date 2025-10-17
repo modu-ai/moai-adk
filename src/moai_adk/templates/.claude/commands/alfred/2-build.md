@@ -39,9 +39,10 @@ SPEC 문서를 분석하여 언어별 최적화된 TDD 사이클(Red-Green-Refac
 
 ## 🔗 연관 에이전트
 
-- **Primary**: code-builder (💎 수석 개발자) - TDD 구현 전담
-- **Quality Gate**: trust-checker (✅ 품질 보증 리드) - TRUST 원칙 검증 (자동)
-- **Secondary**: git-manager (🚀 릴리스 엔지니어) - Git 커밋 전담
+- **Phase 1**: implementation-planner (📋 테크니컬 아키텍트) - SPEC 분석 및 구현 전략 수립
+- **Phase 2**: tdd-implementer (🔬 시니어 개발자) - TDD 구현 전담
+- **Phase 2.5**: quality-gate (🛡️ 품질 보증 엔지니어) - TRUST 원칙 검증 (자동)
+- **Phase 3**: git-manager (🚀 릴리스 엔지니어) - Git 커밋 전담
 
 ## 💡 사용 예시
 
@@ -78,19 +79,20 @@ Task tool 호출 (Explore 에이전트):
 
 ### ⚙️ 에이전트 호출 방법
 
-**STEP 1에서는 Task tool을 사용하여 code-builder 에이전트를 호출합니다**:
+**STEP 1에서는 Task tool을 사용하여 implementation-planner 에이전트를 호출합니다**:
 
 ```
 Task tool 호출 예시:
-- subagent_type: "code-builder"
-- description: "SPEC 분석 및 TDD 계획 수립"
-- prompt: "$ARGUMENTS 의 SPEC을 분석하여 TDD 구현 계획을 수립해주세요.
-          분석 모드로 실행하며, 다음을 포함해야 합니다:
+- subagent_type: "implementation-planner"
+- description: "SPEC 분석 및 구현 전략 수립"
+- prompt: "$ARGUMENTS 의 SPEC을 분석하여 구현 계획을 수립해주세요.
+          다음을 포함해야 합니다:
           1. SPEC 요구사항 추출 및 복잡도 평가
-          2. 언어별 최적화된 TDD 전략 수립
-          3. 라이브러리 버전 확인 (WebSearch 사용)
-          4. 구현 계획 보고서 생성
-          5. 사용자 승인 대기
+          2. 라이브러리 및 도구 선정 (WebFetch 사용)
+          3. TAG 체인 설계
+          4. 단계별 구현 계획
+          5. 리스크 및 대응 방안
+          6. 구현 계획서 작성 및 사용자 승인 대기
           (선택) Explore 결과: $EXPLORE_RESULTS"
 ```
 
@@ -134,38 +136,32 @@ Task tool 호출 예시:
 
 ## 🚀 STEP 2: TDD 구현 실행 (사용자 승인 후)
 
-사용자 승인 후 **Task tool을 사용하여 code-builder 에이전트를 호출**합니다.
+사용자 승인 후 **Task tool을 사용하여 tdd-implementer 에이전트를 호출**합니다.
 
 ### ⚙️ 에이전트 호출 방법
 
-**STEP 2에서는 Task tool을 사용하여 code-builder를 호출하고, 필요 시 tag-agent도 호출합니다**:
+**STEP 2에서는 Task tool을 사용하여 tdd-implementer를 호출합니다**:
 
 ```
-1. code-builder 호출 (TDD 구현):
-   - subagent_type: "code-builder"
-   - description: "TDD 구현 실행"
-   - prompt: "STEP 1에서 승인된 계획에 따라 TDD 구현을 실행해주세요.
-             구현 모드로 실행하며, RED → GREEN → REFACTOR 사이클을 수행합니다.
-             $ARGUMENTS"
+Task tool 호출 예시:
+- subagent_type: "tdd-implementer"
+- description: "TDD 구현 실행"
+- prompt: "STEP 1에서 승인된 계획에 따라 TDD 구현을 실행해주세요.
+          RED → GREEN → REFACTOR 사이클을 수행하며,
+          각 TAG별로 다음을 수행합니다:
+          1. RED Phase: @TEST:ID 태그로 실패하는 테스트 작성
+          2. GREEN Phase: @CODE:ID 태그로 최소 구현
+          3. REFACTOR Phase: 코드 품질 개선
+          4. TAG 완료 조건 검증 및 다음 TAG로 진행
 
-2. tag-agent 호출 (TAG 검증 - 필요 시):
-   - subagent_type: "tag-agent"
-   - description: "TAG 체인 무결성 검증"
-   - prompt: "$ARGUMENTS 의 TAG 체인 무결성을 검증해주세요.
-             @SPEC, @TEST, @CODE TAG의 완전성을 확인하고,
-             고아 TAG 및 중복 TAG를 탐지해주세요."
-
-3. git-manager 호출 (Git 커밋 - TDD 완료 후):
-   - subagent_type: "git-manager"
-   - description: "TDD 커밋 생성"
-   - prompt: "RED → GREEN → REFACTOR 단계별로 구조화된 커밋을 생성해주세요."
+          구현 대상: $ARGUMENTS"
 ```
 
 ## 🔗 언어별 TDD 최적화
 
 ### 프로젝트 언어 감지 및 최적 라우팅
 
-`@agent-code-builder`는 프로젝트의 언어를 자동으로 감지하여 최적의 TDD 도구와 워크플로우를 선택합니다:
+`tdd-implementer`는 프로젝트의 언어를 자동으로 감지하여 최적의 TDD 도구와 워크플로우를 선택합니다:
 
 - **언어 감지**: 프로젝트 파일(package.json, pyproject.toml, go.mod 등) 분석
 - **도구 선택**: 언어별 최적 테스트 프레임워크 자동 선택
@@ -195,64 +191,70 @@ Task tool 호출 예시:
 
 ## 🚀 최적화된 에이전트 협업 구조
 
-- **Phase 1**: `code-builder` 에이전트가 전체 TDD 사이클(Red-Green-Refactor)을 일괄 처리합니다.
-- **Phase 2**: `git-manager` 에이전트가 TDD 완료 후 모든 커밋을 한 번에 처리합니다.
-- **단일 책임 원칙**: code-builder는 전체 TDD 구현, git-manager는 Git 작업 일괄 처리
-- **배치 처리**: 단계별 중단 없이 연속적인 TDD 사이클 실행
+- **Phase 1**: `implementation-planner` 에이전트가 SPEC 분석 및 구현 전략 수립
+- **Phase 2**: `tdd-implementer` 에이전트가 전체 TDD 사이클(Red-Green-Refactor)을 일괄 처리
+- **Phase 2.5**: `quality-gate` 에이전트가 TRUST 원칙 검증 및 품질 검증 (자동)
+- **Phase 3**: `git-manager` 에이전트가 TDD 완료 후 모든 커밋을 한 번에 처리
+- **단일 책임 원칙**: 각 에이전트는 자신의 전문 영역만 담당
 - **에이전트 간 호출 금지**: 각 에이전트는 독립적으로 실행, 커맨드 레벨에서만 순차 호출
 
 ## 🔄 2단계 워크플로우 실행 순서
 
 ### Phase 1: 분석 및 계획 단계
 
-**SPEC 분석기**가 다음을 수행:
+`implementation-planner` 에이전트가 다음을 수행:
 
-1. **SPEC 문서 로딩**: 지정된 SPEC ID 또는 all 모드에 따른 문서 분석
-2. **복잡도 평가**: 구현 범위, 기술적 제약사항, 의존성 분석
-3. **언어별 구현 전략**: 프로젝트 언어별 최적화 방안 제시
-4. **구현 계획 생성**: 단계별 TDD 접근 방식 및 예상 작업량 산정
-5. **사용자 승인 대기**: 계획 검토 및 피드백 수집
+1. **SPEC 문서 분석**: 지정된 SPEC ID의 요구사항 추출 및 복잡도 평가
+2. **라이브러리 선정**: WebFetch를 통한 최신 안정 버전 확인 및 호환성 검증
+3. **TAG 체인 설계**: TAG 순서 및 의존성 결정
+4. **구현 전략 수립**: 단계별 구현 계획 및 리스크 식별
+5. **구현 계획서 작성**: 구조화된 계획서 생성 및 사용자 승인 대기
 
 ### Phase 2: TDD 구현 단계 (승인 후)
 
-`code-builder` 에이전트가 사용자 승인 후 **연속적으로** 수행:
+`tdd-implementer` 에이전트가 사용자 승인 후 **TAG 단위로** 수행:
 
-1. **RED**: 실패하는 테스트 작성 및 확인
-2. **GREEN**: 최소 구현으로 테스트 통과 확인
-3. **REFACTOR**: 코드 품질 개선 및 TRUST 원칙 검증
-4. **품질 검증**: 린터, 테스트 커버리지, 보안 검사 일괄 실행
+1. **RED Phase**: 실패하는 테스트 작성 (@TEST:ID 태그 추가) 및 실패 확인
+2. **GREEN Phase**: 테스트를 통과하는 최소한의 코드 작성 (@CODE:ID 태그 추가)
+3. **REFACTOR Phase**: 코드 품질 개선 (기능 변경 없이)
+4. **TAG 완료 확인**: 각 TAG의 완료 조건 검증 및 다음 TAG로 진행
 
 ### Phase 2.5: 품질 검증 게이트 (자동 실행)
 
-TDD 구현 완료 후 `trust-checker` 에이전트가 **자동으로** 품질 검증을 수행합니다.
+TDD 구현 완료 후 `quality-gate` 에이전트가 **자동으로** 품질 검증을 수행합니다.
 
 **자동 실행 조건**:
 - TDD 구현 완료 시 자동 호출
 - 사용자 요청 시 수동 호출 가능
 
 **검증 항목**:
-- **T (Test First)**: 테스트 커버리지 ≥ 85%
-- **R (Readable)**: 코드 가독성 (파일≤300 LOC, 함수≤50 LOC, 복잡도≤10)
-- **U (Unified)**: 아키텍처 통합성 (모듈 의존성 검증)
-- **S (Secured)**: 보안 검증 (입력 검증, 로깅)
-- **T (Trackable)**: @TAG 추적성 무결성
+- **TRUST 원칙 검증**: trust-checker 스크립트 실행 및 결과 파싱
+  - T (Testable): 테스트 커버리지 ≥ 85%
+  - R (Readable): 코드 가독성 (파일≤300 LOC, 함수≤50 LOC, 복잡도≤10)
+  - U (Unified): 아키텍처 통합성
+  - S (Secured): 보안 취약점 없음
+  - T (Traceable): @TAG 체인 무결성
+- **코드 스타일**: 린터(ESLint/Pylint) 실행 및 검증
+- **테스트 커버리지**: 언어별 커버리지 도구 실행 및 목표 달성 확인
+- **TAG 체인 검증**: 고아 TAG, 누락된 TAG 확인
+- **의존성 검증**: 보안 취약점 확인
 
-**실행 방식**: Alfred가 TDD 구현 완료 시 자동으로 trust-checker 에이전트를 호출하여 빠른 품질 검증을 수행합니다.
+**실행 방식**: Alfred가 TDD 구현 완료 시 자동으로 quality-gate 에이전트를 호출하여 품질 검증을 수행합니다.
 
 **검증 결과 처리**:
 
-✅ **Pass (모든 기준 충족)**:
+✅ **PASS (Critical 0개, Warning 5개 이하)**:
 - Phase 3 (Git 작업)로 진행
 - 품질 리포트 생성
 
-⚠️ **Warning (일부 기준 미달)**:
+⚠️ **WARNING (Critical 0개, Warning 6개 이상)**:
 - 경고 표시
 - 사용자 선택: "계속 진행" 또는 "수정 후 재검증"
 
-❌ **Critical (필수 기준 미달)**:
+❌ **CRITICAL (Critical 1개 이상)**:
 - Git 커밋 차단
-- 개선 필요 항목 상세 보고
-- code-builder 재호출 권장
+- 개선 필요 항목 상세 보고 (파일:라인 정보 포함)
+- tdd-implementer 재호출 권장
 
 **검증 생략 옵션**: 품질 검증을 건너뛰려면 `--skip-quality-check` 옵션을 사용합니다.
 
@@ -269,7 +271,7 @@ TDD 구현 완료 후 `trust-checker` 에이전트가 **자동으로** 품질 �
 
 ### 1. SPEC 문서 분석
 
-Alfred는 code-builder 에이전트를 호출하여 SPEC 문서를 확인하고 TDD 구현 계획을 수립합니다.
+Alfred는 implementation-planner 에이전트를 호출하여 SPEC 문서를 확인하고 구현 계획을 수립합니다.
 
 #### 분석 체크리스트
 
@@ -349,7 +351,7 @@ Alfred는 code-builder 에이전트를 호출하여 SPEC 문서를 확인하고 
 
 ## 🚀 STEP 2 실행 가이드: TDD 구현 (승인 후)
 
-사용자가 **"진행"** 또는 **"시작"**을 선택한 경우에만 Alfred는 code-builder 에이전트를 호출하여 TDD 구현을 시작하고 RED-GREEN-REFACTOR 사이클을 수행합니다.
+사용자가 **"진행"** 또는 **"시작"**을 선택한 경우에만 Alfred는 tdd-implementer 에이전트를 호출하여 TDD 구현을 시작하고 RED-GREEN-REFACTOR 사이클을 수행합니다.
 
 ### TDD 단계별 가이드
 
@@ -366,13 +368,29 @@ Alfred는 code-builder 에이전트를 호출하여 SPEC 문서를 확인하고 
 
 ## 에이전트 역할 분리
 
-### code-builder 전담 영역
+### implementation-planner 전담 영역
+
+- SPEC 문서 분석 및 요구사항 추출
+- 라이브러리 선정 및 버전 관리
+- TAG 체인 설계 및 순서 결정
+- 구현 전략 수립 및 리스크 식별
+- 구현 계획서 작성
+
+### tdd-implementer 전담 영역
 
 - TDD Red-Green-Refactor 코드 구현
 - 테스트 작성 및 실행
-- TRUST 5원칙 검증
-- 코드 품질 체크
+- TAG 주석 추가 및 관리
+- 코드 품질 개선 (리팩토링)
 - 언어별 린터/포매터 실행
+
+### quality-gate 전담 영역
+
+- TRUST 원칙 검증
+- 코드 스타일 검증
+- 테스트 커버리지 확인
+- TAG 체인 무결성 검증
+- 의존성 보안 검증
 
 ### git-manager 전담 영역
 

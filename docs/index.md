@@ -1,57 +1,42 @@
+# MoAI-ADK
+
+## SPEC-First TDD Development Kit
+
+**Universal Language Support with Alfred SuperAgent**
+
+MoAI-ADK는 **명세 우선 TDD 방법론**을 기반으로 한 범용 개발 도구입니다. Alfred SuperAgent가 SPEC 작성부터 테스트, 구현, 문서화까지 자동화하여 개발자는 비즈니스 로직에만 집중할 수 있습니다.
+
 ---
-layout: home
 
-hero:
-  name: MoAI-ADK
-  text: SPEC-First TDD Development Kit
-  tagline: Universal Language Support with Alfred SuperAgent
-  image:
-    src: /alfred_logo.png
-    alt: Alfred Logo
-  actions:
-    - theme: brand
-      text: Get Started
-      link: /guides/getting-started
-    - theme: alt
-      text: View on GitHub
-      link: https://github.com/modu-ai/moai-adk
+## ✨ 주요 기능
 
-features:
-  - icon: 📝
-    title: SPEC-First Development
-    details: 명세 없이는 코드 없음. EARS 방식의 체계적인 요구사항 작성으로 시작합니다.
+### 📝 SPEC-First Development
+명세 없이는 코드 없음. EARS 방식의 체계적인 요구사항 작성으로 시작합니다.
 
-  - icon: 🧪
-    title: Test-Driven Development
-    details: RED → GREEN → REFACTOR 사이클로 품질을 보장하는 TDD 구현을 지원합니다.
+### 🧪 Test-Driven Development
+RED → GREEN → REFACTOR 사이클로 품질을 보장하는 TDD 구현을 지원합니다.
 
-  - icon: 🏷️
-    title: TAG Traceability System
-    details: "'@SPEC → @TEST → @CODE → @DOC' 체인으로 완벽한 추적성을 제공합니다."
+### 🏷️ TAG Traceability System
+`@SPEC → @TEST → @CODE → @DOC` 체인으로 완벽한 추적성을 제공합니다.
 
-  - icon: 🤖
-    title: Alfred SuperAgent
-    details: 9개의 전문 에이전트를 조율하는 중앙 오케스트레이터가 개발을 자동화합니다.
+### 🤖 Alfred SuperAgent
+9개의 전문 에이전트를 조율하는 중앙 오케스트레이터가 개발을 자동화합니다.
 
-  - icon: 🌍
-    title: Universal Language Support
-    details: Python, TypeScript, Java, Go, Rust, Dart, Swift, Kotlin 등 모든 주요 언어를 지원합니다.
+### 🌍 Universal Language Support
+Python, TypeScript, Java, Go, Rust, Dart, Swift, Kotlin 등 모든 주요 언어를 지원합니다.
 
-  - icon: ⚡
-    title: 3-Stage Workflow
-    details: /alfred:1-spec → /alfred:2-build → /alfred:3-sync 단 3단계로 완성합니다.
+### ⚡ 3-Stage Workflow
+`/alfred:1-spec` → `/alfred:2-build` → `/alfred:3-sync` 단 3단계로 완성합니다.
 
-  - icon: 🔒
-    title: TRUST Principles
-    details: Test, Readable, Unified, Secured, Trackable 5가지 품질 원칙을 준수합니다.
+### 🔒 TRUST Principles
+Test, Readable, Unified, Secured, Trackable 5가지 품질 원칙을 준수합니다.
 
-  - icon: 📚
-    title: Living Documentation
-    details: 코드와 문서가 자동 동기화되는 Living Document 시스템을 제공합니다.
+### 📚 Living Documentation
+코드와 문서가 자동 동기화되는 Living Document 시스템을 제공합니다.
 
-  - icon: 🚀
-    title: GitFlow Automation
-    details: 브랜치 생성, PR 관리, 문서 동기화까지 완전 자동화된 워크플로우를 지원합니다.
+### 🚀 GitFlow Automation
+브랜치 생성, PR 관리, 문서 동기화까지 완전 자동화된 워크플로우를 지원합니다.
+
 ---
 
 ## Quick Start
@@ -60,47 +45,51 @@ MoAI-ADK는 **명세 우선 TDD 방법론**을 기반으로 한 범용 개발 �
 
 ### Installation
 
-전역 설치로 어디서든 `moai` 명령어를 사용하세요:
+전역 설치로 어디서든 `moai-adk` 명령어를 사용하세요:
 
-::: code-group
+=== "bun (권장)"
 
-```bash [bun (권장)]
-bun add -g moai-adk
-```
+    ```bash
+    bun add -g moai-adk
+    ```
 
-```bash [npm]
-npm install -g moai-adk
-```
+=== "npm"
 
-```bash [pnpm]
-pnpm add -g moai-adk
-```
+    ```bash
+    npm install -g moai-adk
+    ```
 
-```bash [yarn]
-yarn global add moai-adk
-```
+=== "pnpm"
 
-:::
+    ```bash
+    pnpm add -g moai-adk
+    ```
+
+=== "yarn"
+
+    ```bash
+    yarn global add moai-adk
+    ```
 
 ### Initialize Project
 
-::: code-group
+=== "새 프로젝트"
 
-```bash [새 프로젝트]
-# 새 프로젝트 생성 (디렉토리 자동 생성)
-moai init my-project
+    ```bash
+    # 새 프로젝트 생성 (디렉토리 자동 생성)
+    moai-adk init my-project
 
-# 생성된 디렉토리로 이동
-cd my-project
-```
+    # 생성된 디렉토리로 이동
+    cd my-project
+    ```
 
-```bash [기존 프로젝트]
-# 기존 프로젝트에 MoAI-ADK 설정 추가
-cd existing-project
-moai init .
-```
+=== "기존 프로젝트"
 
-:::
+    ```bash
+    # 기존 프로젝트에 MoAI-ADK 설정 추가
+    cd existing-project
+    moai-adk init .
+    ```
 
 ### Verify Installation
 
@@ -108,13 +97,13 @@ moai init .
 
 ```bash
 # 시스템 환경 진단
-moai doctor
+moai-adk doctor
 
 # Claude Code 시작 (Alfred 사용)
 claude
 ```
 
-**moai doctor 출력 예시**:
+**moai-adk doctor 출력 예시**:
 
 ```
 🔍 Checking system requirements...
