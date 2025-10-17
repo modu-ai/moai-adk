@@ -304,7 +304,7 @@ priority: high|medium|low
 - [TRUST 5원칙 가이드](./trust-principles.md)
 - [TAG 시스템 가이드](./tag-system.md)
 - [SPEC-First TDD 워크플로우](./spec-first-tdd.md)
-- [개발 가이드](../../.moai/memory/development-guide.md)
+- 개발 가이드
 
 ---
 

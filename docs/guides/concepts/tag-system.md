@@ -636,7 +636,7 @@ echo "=== 검증 완료 ==="
 - [EARS 요구사항 작성 가이드](./ears-guide.md)
 - [TRUST 5원칙 가이드](./trust-principles.md)
 - [SPEC-First TDD 워크플로우](./spec-first-tdd.md)
-- [개발 가이드](../../.moai/memory/development-guide.md)
+- 개발 가이드
 
 ---
 

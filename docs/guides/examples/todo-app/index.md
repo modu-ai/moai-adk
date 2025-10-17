@@ -346,8 +346,8 @@ A: 네! Part 1-4는 로컬 환경에서 실습 가능합니다. Part 5의 Docker
 
 ### 추가 도움말
 
-- [설치 가이드](../../installation.md)
-- [빠른 시작](../../quick-start.md)
+- [설치 가이드](../../../getting-started/installation.md)
+- [빠른 시작](../../../getting-started/quick-start.md)
 - [워크플로우 가이드](../../workflow/overview.md)
 - [GitHub Issues](https://github.com/modu-ai/moai-adk/issues)
 

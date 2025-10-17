@@ -1702,9 +1702,9 @@ cp .moai-backup/2025-10-11-15-30-00/.moai/config.json .moai/
 
 업데이트 완료 후 다음 단계로 진행합니다:
 
-1. **[Stage 0: Project Init](/guides/workflow/0-project)** - 프로젝트 초기화
-2. **[Stage 1: SPEC Writing](/guides/workflow/1-spec)** - 명세 작성
-3. **[Troubleshooting](/guides/troubleshooting)** - 문제 해결 가이드
+1. **[Stage 0: Project Init](0-project.md)** - 프로젝트 초기화
+2. **[Stage 1: SPEC Writing](1-spec.md)** - 명세 작성
+3. **Troubleshooting** - 문제 해결 가이드
 
 ---
 

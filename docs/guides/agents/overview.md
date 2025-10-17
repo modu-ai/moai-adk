@@ -167,7 +167,7 @@ User → spec-builder → code-builder → User  # 직접 호출 금지
 - Git 브랜치: `feature/SPEC-{ID}`
 - Draft PR (Team 모드)
 
-**관련 문서**: [Stage 1: SPEC Writing](/guides/workflow/1-spec)
+**관련 문서**: [Stage 1: SPEC Writing](../workflow/1-spec.md)
 
 ---
 
@@ -207,7 +207,7 @@ User → spec-builder → code-builder → User  # 직접 호출 금지
 - **Go**: go test, golangci-lint
 - **Rust**: cargo test, clippy
 
-**관련 문서**: [Stage 2: TDD Implementation](/guides/workflow/2-build)
+**관련 문서**: [Stage 2: TDD Implementation](../workflow/2-build.md)
 
 ---
 
@@ -246,7 +246,7 @@ User → spec-builder → code-builder → User  # 직접 호출 금지
 - `docs/features/` 디렉토리: Feature Document (선택)
 - PR 상태 업데이트 (Team 모드)
 
-**관련 문서**: [Stage 3: Document Sync](/guides/workflow/3-sync)
+**관련 문서**: [Stage 3: Document Sync](../workflow/3-sync.md)
 
 ---
 
@@ -282,7 +282,7 @@ User → spec-builder → code-builder → User  # 직접 호출 금지
 - TAG 체인 검증: `@SPEC → @TEST → @CODE → @DOC`
 - 고아 TAG 탐지: SPEC 없는 CODE/TEST 발견
 
-**관련 문서**: [TAG System](/guides/concepts/tag-system)
+**관련 문서**: [TAG System](../concepts/tag-system.md)
 
 ---
 
@@ -429,7 +429,7 @@ User → spec-builder → code-builder → User  # 직접 호출 금지
    - TAG 체인 무결성 확인
    - 고아 TAG 없음
 
-**관련 문서**: [TRUST Principles](/guides/concepts/trust-principles)
+**관련 문서**: [TRUST Principles](../concepts/trust-principles.md)
 
 ---
 
@@ -683,18 +683,18 @@ $ /alfred:1-spec "새 기능"
 
 ### 워크플로우 가이드
 
-- **[Stage 1: SPEC Writing](/guides/workflow/1-spec)** - spec-builder 상세 워크플로우
-- **[Stage 2: TDD Implementation](/guides/workflow/2-build)** - code-builder 상세 워크플로우
-- **[Stage 3: Document Sync](/guides/workflow/3-sync)** - doc-syncer 상세 워크플로우
-- **[Stage 0: Project Setup](/guides/workflow/0-project)** - project-manager 상세 워크플로우
-- **[Stage 9: Update & Upgrade](/guides/workflow/9-update)** - 패키지 업데이트 가이드
+- **[Stage 1: SPEC Writing](../workflow/1-spec.md)** - spec-builder 상세 워크플로우
+- **[Stage 2: TDD Implementation](../workflow/2-build.md)** - code-builder 상세 워크플로우
+- **[Stage 3: Document Sync](../workflow/3-sync.md)** - doc-syncer 상세 워크플로우
+- **[Stage 0: Project Setup](../workflow/0-project.md)** - project-manager 상세 워크플로우
+- **[Stage 9: Update & Upgrade](../workflow/9-update.md)** - 패키지 업데이트 가이드
 
 ### 핵심 개념
 
-- **[SPEC-First TDD](/guides/concepts/spec-first-tdd)** - 개발 방법론
-- **[TRUST Principles](/guides/concepts/trust-principles)** - 품질 원칙
-- **[TAG System](/guides/concepts/tag-system)** - 추적성 시스템
-- **[Hooks System](/guides/hooks/overview)** - Hook 시스템 가이드
+- **[SPEC-First TDD](../concepts/spec-first-tdd.md)** - 개발 방법론
+- **[TRUST Principles](../concepts/trust-principles.md)** - 품질 원칙
+- **[TAG System](../concepts/tag-system.md)** - 추적성 시스템
+- **[Hooks System](../hooks/overview.md)** - Hook 시스템 가이드
 
 ---
 

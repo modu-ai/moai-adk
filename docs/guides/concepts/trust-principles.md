@@ -544,7 +544,7 @@ jobs:
 - [EARS 요구사항 작성 가이드](./ears-guide.md)
 - [TAG 시스템 가이드](./tag-system.md)
 - [SPEC-First TDD 워크플로우](./spec-first-tdd.md)
-- [개발 가이드](../../.moai/memory/development-guide.md)
+- 개발 가이드
 
 ---
 
