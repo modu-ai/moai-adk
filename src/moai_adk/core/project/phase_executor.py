@@ -165,7 +165,7 @@ class PhaseExecutor:
     def execute_configuration_phase(
         self,
         project_path: Path,
-        config: dict[str, str],
+        config: dict[str, str | bool],
         progress_callback: ProgressCallback | None = None,
     ) -> list[str]:
         """Phase 4: generate configuration.

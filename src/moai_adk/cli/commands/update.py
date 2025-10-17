@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 
 import click
+from packaging import version
 from rich.console import Console
 
 from moai_adk import __version__
@@ -11,11 +12,11 @@ from moai_adk.core.template.processor import TemplateProcessor
 console = Console()
 
 
-def get_latest_version() -> str:
+def get_latest_version() -> str | None:
     """Get the latest version from PyPI.
 
     Returns:
-        Latest version string, or current version if fetch fails.
+        Latest version string, or None if fetch fails.
     """
     try:
         import urllib.error
@@ -26,8 +27,8 @@ def get_latest_version() -> str:
             data = json.loads(response.read().decode("utf-8"))
             return data["info"]["version"]
     except (urllib.error.URLError, json.JSONDecodeError, KeyError, TimeoutError):
-        # Fallback to current version if PyPI check fails
-        return __version__
+        # Return None if PyPI check fails
+        return None
 
 
 @click.command()
@@ -73,39 +74,57 @@ def update(path: str, force: bool, check: bool) -> None:
         console.print("[cyan]🔍 Checking versions...[/cyan]")
         current_version = __version__
         latest_version = get_latest_version()
-        console.print(f"   Current version: {current_version}")
-        console.print(f"   Latest version:  {latest_version}")
+
+        # Handle PyPI fetch failure
+        if latest_version is None:
+            console.print(f"   Current version: {current_version}")
+            console.print("   Latest version:  [yellow]Unable to fetch from PyPI[/yellow]")
+            if not force:
+                console.print("[yellow]⚠ Cannot check for updates. Use --force to update anyway.[/yellow]")
+                return
+        else:
+            console.print(f"   Current version: {current_version}")
+            console.print(f"   Latest version:  {latest_version}")
 
         if check:
             # Exit early when --check is provided
-            if current_version == latest_version:
-                console.print("[green]✓ Already up to date[/green]")
-            else:
+            if latest_version is None:
+                console.print("[yellow]⚠ Unable to check for updates[/yellow]")
+            elif version.parse(current_version) < version.parse(latest_version):
                 console.print("[yellow]⚠ Update available[/yellow]")
+            elif version.parse(current_version) > version.parse(latest_version):
+                console.print("[green]✓ Development version (newer than PyPI)[/green]")
+            else:
+                console.print("[green]✓ Already up to date[/green]")
             return
 
         # Check if update is needed (version + optimized status) - skip with --force
-        if not force and current_version == latest_version:
-            # Check optimized status in config.json
-            config_path = project_path / ".moai" / "config.json"
-            if config_path.exists():
-                try:
-                    config_data = json.loads(config_path.read_text())
-                    is_optimized = config_data.get("project", {}).get("optimized", False)
+        if not force and latest_version is not None:
+            current_ver = version.parse(current_version)
+            latest_ver = version.parse(latest_version)
 
-                    if is_optimized:
-                        # Already up to date and optimized - exit silently
-                        return
-                    else:
-                        console.print("[yellow]⚠ Optimization needed[/yellow]")
-                        console.print("[dim]Use /alfred:0-project update for template optimization[/dim]")
-                        return
-                except (json.JSONDecodeError, KeyError):
-                    # If config.json is invalid, proceed with update
-                    pass
-            else:
-                console.print("[green]✓ Already up to date[/green]")
-                return
+            # Don't update if current version is newer or equal
+            if current_ver >= latest_ver:
+                # Check optimized status in config.json
+                config_path = project_path / ".moai" / "config.json"
+                if config_path.exists():
+                    try:
+                        config_data = json.loads(config_path.read_text())
+                        is_optimized = config_data.get("project", {}).get("optimized", False)
+
+                        if is_optimized:
+                            # Already up to date and optimized - exit silently
+                            return
+                        else:
+                            console.print("[yellow]⚠ Optimization needed[/yellow]")
+                            console.print("[dim]Use /alfred:0-project update for template optimization[/dim]")
+                            return
+                    except (json.JSONDecodeError, KeyError):
+                        # If config.json is invalid, proceed with update
+                        pass
+                else:
+                    console.print("[green]✓ Already up to date[/green]")
+                    return
 
         # Phase 2: create a backup unless --force
         if not force:
