@@ -64,6 +64,7 @@
 ### MoAI-ADK는 이렇게 해결합니다
 
 ```mermaid
+%%{init: {'theme':'neutral'}}%%
 flowchart TD
     Problem["■ 문제: 플랑켄슈타인 코드"] --> Solution["MoAI-ADK"]
     Solution --> SPEC["SPEC 우선<br/>명세 없으면 코드 없다"]
@@ -81,25 +82,26 @@ flowchart TD
 
 ---
 
-## ■ Meet Alfred - 12개 AI 에이전트 팀
+## ■ Meet Alfred - AI 에이전트 팀
 
 안녕하세요, 모두의AI SuperAgent **Alfred**입니다!
 
 ![Alfred Logo](https://github.com/modu-ai/moai-adk/raw/main/docs/public/alfred_logo.png)
 
-저는 MoAI-ADK의 SuperAgent이자 중앙 오케스트레이터 AI입니다. **12개의 AI 에이전트 팀**(Alfred + 11개 전문 에이전트)을 조율하여 Claude Code 환경에서 완벽한 개발 지원을 제공합니다.
+저는 MoAI-ADK의 SuperAgent이자 중앙 오케스트레이터 AI입니다. **AI 에이전트 팀**(Alfred + 다수 전문 에이전트)을 조율하여 Claude Code 환경에서 완벽한 개발 지원을 제공합니다.
 
 ### ▶ 흥미로운 사실: AI가 만든 AI 개발 도구
 
 이 프로젝트의 모든 코드는 **100% AI에 의해 작성**되었습니다.
 
 - **AI 협업 설계**: GPT-5 Pro와 Claude 4.1 Opus가 함께 아키텍처를 설계
-- **Agentic Coding 적용**: 12개 AI 에이전트 팀(Alfred + 11개 전문 에이전트)이 자율적으로 SPEC 작성, TDD 구현, 문서 동기화 수행
+- **Agentic Coding 적용**: AI 에이전트 팀(Alfred + 다수 전문 에이전트)이 자율적으로 SPEC 작성, TDD 구현, 문서 동기화 수행
 - **투명성**: 완벽하지 않은 부분을 숨기지 않고, 커뮤니티와 함께 개선해나가는 오픈소스
 
 ### Alfred가 제공하는 4가지 핵심 가치
 
 ```mermaid
+%%{init: {'theme':'neutral'}}%%
 mindmap
   root((Alfred))
     일관성
@@ -145,6 +147,7 @@ mindmap
 **비유**: 집을 짓기 전에 설계도를 그리듯이, 코드를 쓰기 전에 SPEC을 작성합니다.
 
 ```mermaid
+%%{init: {'theme':'neutral'}}%%
 graph LR
     A["SPEC 작성<br/>(설계도)"] --> B["RED<br/>(실패하는 테스트)"]
     B --> C["GREEN<br/>(최소 구현)"]
@@ -196,6 +199,7 @@ graph LR
 **비유**: 책의 색인처럼, 모든 코드를 SPEC과 연결합니다.
 
 ```mermaid
+%%{init: {'theme':'neutral'}}%%
 graph TD
     SPEC["@SPEC:AUTH-001<br/>.moai/specs/SPEC-AUTH-001/spec.md"] --> TEST["@TEST:AUTH-001<br/>tests/test_auth_login.py"]
     TEST --> CODE["@CODE:AUTH-001<br/>src/auth/service.py"]
@@ -249,6 +253,7 @@ rg '@SPEC:AUTH-001' -n .moai/specs/  # SPEC 있는지 확인
 **비유**: 자동차 안전검사처럼, 코드도 5가지 기준으로 검사합니다.
 
 ```mermaid
+%%{init: {'theme':'neutral'}}%%
 mindmap
   root((TRUST 5원칙))
     Test First
@@ -460,6 +465,7 @@ priority: high
 **Alfred의 3단계 TDD 프로세스**:
 
 ```mermaid
+%%{init: {'theme':'neutral'}}%%
 stateDiagram-v2
     [*] --> Phase1: SPEC 분석
     Phase1 --> Phase2: 계획 수립
@@ -594,6 +600,7 @@ cat docs/api/todo.md
 Alfred의 핵심은 **체계적인 3단계 워크플로우**입니다.
 
 ```mermaid
+%%{init: {'theme':'neutral'}}%%
 graph TD
     Start([사용자 요청]) --> Spec[1. SPEC 작성<br/>/alfred:1-spec]
     Spec --> Build[2. TDD 구현<br/>/alfred:2-build]
