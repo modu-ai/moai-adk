@@ -98,6 +98,19 @@ develop (development)
 - **release/**: 릴리즈 준비 (develop → main + develop)
 - **hotfix/**: 긴급 수정 (main → main + develop)
 
+#### ⚠️ GitFlow Advisory Policy (v0.3.5+)
+
+**정책 모드**: Advisory (권장사항, 강제 아님)
+
+git-manager는 pre-push hook을 통해 GitFlow best practice를 **권장**하지만, 사용자의 판단을 존중합니다:
+
+- ⚠️ **develop → main 권장**: develop 외 브랜치에서 main 푸시 시 경고 표시 (하지만 허용)
+- ⚠️ **force-push 경고**: 강제 푸시 시 경고 표시 (하지만 허용)
+- ✅ **유연성 제공**: 사용자가 상황에 따라 판단하여 진행 가능
+
+**자세한 정책**: `.moai/memory/gitflow-protection-policy.md` 참조
+**Hook 샘플**: `.moai/hooks/pre-push.sample` 참조 (Git hooks 디렉토리에 복사하여 사용)
+
 #### 🔄 기능 개발 워크플로우 (feature/*)
 
 git-manager는 다음 단계로 기능 개발을 관리합니다:

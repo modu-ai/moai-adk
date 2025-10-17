@@ -57,14 +57,14 @@
 - **에러 처리 강화**: 템플릿 복사 실패 시 명확한 에러 메시지
 - **검증 로직 추가**: 초기화 완료 후 필수 파일 존재 여부 자동 확인
 
-### 🛡️ GitFlow Main 브랜치 보호 정책
+### 🛡️ GitFlow 권장 정책 (Advisory)
 
-#### 실수 방지 자동화
-- **develop만 main으로 머지 가능**: Feature 브랜치는 항상 develop으로 PR 생성
-- **직접 push 차단**: pre-push hook으로 main 브랜치 직접 push 자동 차단
-- **강제 push 불가**: 어떤 경우에도 main 브랜치에 강제 push 불가
-- **모든 변경사항 추적 가능**: 모든 main 변경은 develop을 거쳐 이력 남음
-- **문서화**: `.moai/GITFLOW_PROTECTION_POLICY.md` 정책 문서 추가
+#### Best Practice 권장 + 유연성
+- **develop 기반 워크플로우 권장**: Feature 브랜치는 develop에서 분기하고 develop으로 PR 생성 (권장)
+- **Advisory 모드**: pre-push hook이 경고 표시하지만 차단하지 않음
+- **강제 push 허용**: 경고 표시 후 허용 (신중하게 사용)
+- **사용자 판단 존중**: Best practice 제시하지만 강제하지 않음
+- **문서화**: `.moai/memory/gitflow-protection-policy.md` 정책 문서 (권장사항)
 
 ### 📊 통계
 
@@ -416,7 +416,7 @@ moai-adk status
 # 확인 항목
 # ✅ .moai/config.json → moai.version: "0.3.5"
 # ✅ .moai/config.json → project.moai_adk_version: "0.3.5"
-# ✅ .moai/GITFLOW_PROTECTION_POLICY.md 존재 확인
+# ✅ .moai/memory/gitflow-protection-policy.md 존재 확인
 # ✅ docs/ 디렉토리 42개 문서 확인
 # ✅ 모든 커맨드 정상 작동
 # ✅ 템플릿 파일 병합 완료
