@@ -36,9 +36,19 @@ plugins:
   - glightbox
   - git-revision-date-localized:
       enable_creation_date: true
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_source: true
+            show_root_heading: true
+            show_signature_annotations: true
 
 markdown_extensions:
-  - pymdownx.highlight
+  - admonition
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
   - pymdownx.inlinehilite
   - pymdownx.snippets
   - pymdownx.superfences:
@@ -46,20 +56,60 @@ markdown_extensions:
         - name: mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
 
 nav:
   - 홈: index.md
-  - 시작하기:
-    - 개요: guides/getting-started.md
-    - 빠른 시작: guides/quick-start.md
-  - 에이전트:
-    - 개요: guides/agents/overview.md
-  - 워크플로우:
-    - 소개: guides/workflow/overview.md
-    - 0단계 - 프로젝트: guides/workflow/0-project.md
-    - 1단계 - 명세: guides/workflow/1-spec.md
-    - 2단계 - 구현: guides/workflow/2-build.md
-    - 3단계 - 동기화: guides/workflow/3-sync.md
-    - 업데이트: guides/workflow/9-update.md
-  - API 참조:
-    - 개요: api/index.md
+  - Introduction: introduction.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quick-start.md
+    - First Project: getting-started/first-project.md
+  - Configuration:
+    - config.json: configuration/config-json.md
+    - Personal vs Team: configuration/personal-vs-team.md
+    - Advanced Settings: configuration/advanced-settings.md
+  - Workflow: workflow.md
+  - Commands:
+    - CLI Reference: commands/cli-reference.md
+    - Alfred Commands: commands/alfred-commands.md
+    - Agent Commands: commands/agent-commands.md
+  - Agents:
+    - spec-builder: agents/spec-builder.md
+    - code-builder: agents/code-builder.md
+    - doc-syncer: agents/doc-syncer.md
+    - tag-agent: agents/tag-agent.md
+    - git-manager: agents/git-manager.md
+    - debug-helper: agents/debug-helper.md
+    - trust-checker: agents/trust-checker.md
+    - cc-manager: agents/cc-manager.md
+    - project-manager: agents/project-manager.md
+  - Hooks:
+    - Overview: hooks/overview.md
+    - SessionStartHook: hooks/session-start-hook.md
+    - PreToolUseHook: hooks/pre-tool-use-hook.md
+    - PostToolUseHook: hooks/post-tool-use-hook.md
+    - Custom Hooks: hooks/custom-hooks.md
+  - API Reference:
+    - Core Installer: api-reference/core-installer.md
+    - Core Git: api-reference/core-git.md
+    - Core TAG: api-reference/core-tag.md
+    - Core Template: api-reference/core-template.md
+    - Agents: api-reference/agents.md
+  - Contributing:
+    - Overview: contributing/overview.md
+    - Development Setup: contributing/development-setup.md
+    - Code Style: contributing/code-style.md
+    - Testing: contributing/testing.md
+    - Pull Request Process: contributing/pull-request-process.md
+  - Security:
+    - Overview: security/overview.md
+    - Template Security: security/template-security.md
+    - Best Practices: security/best-practices.md
+    - Checklist: security/checklist.md
+  - Troubleshooting:
+    - Common Errors: troubleshooting/common-errors.md
+    - Debugging Guide: troubleshooting/debugging-guide.md
+    - FAQ: troubleshooting/faq.md

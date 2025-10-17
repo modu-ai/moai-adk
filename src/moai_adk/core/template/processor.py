@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import re
 import shutil
 from pathlib import Path
 
@@ -38,6 +39,7 @@ class TemplateProcessor:
         self.template_root = self._get_template_root()
         self.backup = TemplateBackup(self.target_path)
         self.merger = TemplateMerger(self.target_path)
+        self.context: dict[str, str] = {}  # Template variable substitution context
 
     def _get_template_root(self) -> Path:
         """Return the template root path."""
@@ -45,6 +47,116 @@ class TemplateProcessor:
         current_file = Path(__file__).resolve()
         package_root = current_file.parent.parent.parent
         return package_root / "templates"
+
+    def set_context(self, context: dict[str, str]) -> None:
+        """Set variable substitution context.
+
+        Args:
+            context: Dictionary of template variables.
+        """
+        self.context = context
+
+    def _substitute_variables(self, content: str) -> tuple[str, list[str]]:
+        """Substitute template variables in content.
+
+        Returns:
+            Tuple of (substituted_content, warnings_list)
+        """
+        warnings = []
+
+        # Perform variable substitution
+        for key, value in self.context.items():
+            placeholder = f"{{{{{key}}}}}"  # {{KEY}}
+            if placeholder in content:
+                safe_value = self._sanitize_value(value)
+                content = content.replace(placeholder, safe_value)
+
+        # Detect unsubstituted variables
+        remaining = re.findall(r'\{\{([A-Z_]+)\}\}', content)
+        if remaining:
+            unique_remaining = sorted(set(remaining))
+            warnings.append(f"Unsubstituted variables: {', '.join(unique_remaining)}")
+
+        return content, warnings
+
+    def _sanitize_value(self, value: str) -> str:
+        """Sanitize value to prevent recursive substitution and control characters.
+
+        Args:
+            value: Value to sanitize.
+
+        Returns:
+            Sanitized value.
+        """
+        # Remove control characters (keep printable and whitespace)
+        value = ''.join(c for c in value if c.isprintable() or c in '\n\r\t')
+        # Prevent recursive substitution by removing placeholder patterns
+        value = value.replace('{{', '').replace('}}', '')
+        return value
+
+    def _is_text_file(self, file_path: Path) -> bool:
+        """Check if file is text-based (not binary).
+
+        Args:
+            file_path: File path to check.
+
+        Returns:
+            True if file is text-based.
+        """
+        text_extensions = {
+            '.md', '.json', '.txt', '.py', '.ts', '.js',
+            '.yaml', '.yml', '.toml', '.xml', '.sh', '.bash'
+        }
+        return file_path.suffix.lower() in text_extensions
+
+    def _copy_file_with_substitution(self, src: Path, dst: Path) -> list[str]:
+        """Copy file with variable substitution for text files.
+
+        Args:
+            src: Source file path.
+            dst: Destination file path.
+
+        Returns:
+            List of warnings.
+        """
+        warnings = []
+
+        # Text files: read, substitute, write
+        if self._is_text_file(src) and self.context:
+            try:
+                content = src.read_text(encoding='utf-8')
+                content, file_warnings = self._substitute_variables(content)
+                dst.write_text(content, encoding='utf-8')
+                warnings.extend(file_warnings)
+            except UnicodeDecodeError:
+                # Binary file fallback
+                shutil.copy2(src, dst)
+        else:
+            # Binary file or no context: simple copy
+            shutil.copy2(src, dst)
+
+        return warnings
+
+    def _copy_dir_with_substitution(self, src: Path, dst: Path) -> None:
+        """Recursively copy directory with variable substitution for text files.
+
+        Args:
+            src: Source directory path.
+            dst: Destination directory path.
+        """
+        dst.mkdir(parents=True, exist_ok=True)
+
+        for item in src.rglob("*"):
+            rel_path = item.relative_to(src)
+            dst_item = dst / rel_path
+
+            if item.is_file():
+                # Create parent directory if needed
+                dst_item.parent.mkdir(parents=True, exist_ok=True)
+                # Copy with variable substitution
+                self._copy_file_with_substitution(item, dst_item)
+            elif item.is_dir():
+                dst_item.mkdir(parents=True, exist_ok=True)
 
     def copy_templates(self, backup: bool = True, silent: bool = False) -> None:
         """Copy template files into the project.
@@ -115,7 +227,7 @@ class TemplateProcessor:
                 dst_item.mkdir(parents=True, exist_ok=True)
 
     def _copy_claude(self, silent: bool = False) -> None:
-        """.claude/ directory copy (selective with alfred folder overwrite).
+        """.claude/ directory copy with variable substitution (selective with alfred folder overwrite).
 
         Strategy:
         - Alfred folders (commands/agents/hooks/output-styles/alfred) → copy wholesale (delete & overwrite)
@@ -158,7 +270,8 @@ class TemplateProcessor:
                 if not silent:
                     console.print(f"   ✅ .claude/{folder}/ overwritten")
 
-        # 2. Copy other files/folders individually (preserve existing)
+        # 2. Copy other files/folders individually (preserve existing, with substitution)
+        all_warnings = []
         for item in src.iterdir():
             rel_path = item.relative_to(src)
             dst_item = dst / rel_path
@@ -170,14 +283,23 @@ class TemplateProcessor:
             if item.is_file():
                 # Copy file, skip if exists (preserve user modifications)
                 if not dst_item.exists():
-                    shutil.copy2(item, dst_item)
+                    # Copy with variable substitution for text files
+                    warnings = self._copy_file_with_substitution(item, dst_item)
+                    all_warnings.extend(warnings)
             elif item.is_dir():
                 # Copy directory recursively (preserve existing files)
                 if not dst_item.exists():
-                    shutil.copytree(item, dst_item)
+                    # Recursively copy directory with substitution
+                    self._copy_dir_with_substitution(item, dst_item)
+
+        # Print warnings if any
+        if all_warnings and not silent:
+            console.print(f"[yellow]⚠️ Template warnings:[/yellow]")
+            for warning in set(all_warnings):  # Deduplicate
+                console.print(f"   {warning}")
 
         if not silent:
-            console.print("   ✅ .claude/ copy complete (alfred folders overwritten, others preserved)")
+            console.print("   ✅ .claude/ copy complete (variables substituted)")
 
     def _backup_alfred_folder(self, folder_path: Path, folder_name: str) -> None:
         """Backup an Alfred folder before overwriting (safety measure).
@@ -205,7 +327,7 @@ class TemplateProcessor:
         shutil.copytree(folder_path, backup_folder)
 
     def _copy_moai(self, silent: bool = False) -> None:
-        """.moai/ directory copy (excludes protected paths)."""
+        """.moai/ directory copy with variable substitution (excludes protected paths)."""
         src = self.template_root / ".moai"
         dst = self.target_path / ".moai"
 
@@ -219,6 +341,8 @@ class TemplateProcessor:
             "specs",
             "reports",
         ]
+
+        all_warnings = []
 
         # Copy while skipping protected paths
         for item in src.rglob("*"):
@@ -235,15 +359,23 @@ class TemplateProcessor:
                 if dst_item.exists():
                     continue
                 dst_item.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(item, dst_item)
+                # Copy with variable substitution
+                warnings = self._copy_file_with_substitution(item, dst_item)
+                all_warnings.extend(warnings)
             elif item.is_dir():
                 dst_item.mkdir(parents=True, exist_ok=True)
 
+        # Print warnings if any
+        if all_warnings and not silent:
+            console.print(f"[yellow]⚠️ Template warnings:[/yellow]")
+            for warning in set(all_warnings):  # Deduplicate
+                console.print(f"   {warning}")
+
         if not silent:
-            console.print("   ✅ .moai/ copy complete (user content preserved)")
+            console.print("   ✅ .moai/ copy complete (variables substituted)")
 
     def _copy_claude_md(self, silent: bool = False) -> None:
-        """Copy CLAUDE.md with smart merging."""
+        """Copy CLAUDE.md with smart merging and variable substitution."""
         src = self.template_root / "CLAUDE.md"
         dst = self.target_path / "CLAUDE.md"
 
@@ -258,7 +390,8 @@ class TemplateProcessor:
             if not silent:
                 console.print("   🔄 CLAUDE.md merged (project information preserved)")
         else:
-            shutil.copy2(src, dst)
+            # Copy with variable substitution
+            self._copy_file_with_substitution(src, dst)
             if not silent:
                 console.print("   ✅ CLAUDE.md copy complete")
 
