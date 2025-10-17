@@ -19,44 +19,44 @@
 
 ## 목차
 
-- [이런 문제 겪고 계신가요?](#-이런-문제-겪고-계신가요)
-- [Meet Alfred](#-meet-alfred---12개-ai-에이전트-팀)
-- [5분 만에 이해하는 핵심 개념](#-5분-만에-이해하는-핵심-개념)
-- [Quick Start](#-quick-start-3분-실전)
-- [첫 번째 프로젝트: Todo API](#-첫-번째-프로젝트-todo-api-만들기)
-- [3단계 워크플로우](#-3단계-워크플로우)
-- [실전 시나리오](#-실전-시나리오)
-- [AI 모델 선택 가이드](#-ai-모델-선택-가이드)
-- [CLI Reference](#-cli-reference)
-- [출력 스타일](#-alfreds-output-styles)
-- [언어 지원](#-universal-language-support)
-- [TRUST 5원칙](#-trust-5원칙)
-- [코드 품질 가이드](#-코드-품질-가이드)
-- [FAQ](#-faq)
-- [문제 해결](#-문제-해결)
+- [이런 문제 겪고 계신가요?](#이런-문제-겪고-계신가요)
+- [Meet Alfred](#meet-alfred---12개-ai-에이전트-팀)
+- [5분 만에 이해하는 핵심 개념](#5분-만에-이해하는-핵심-개념)
+- [Quick Start](#quick-start-3분-실전)
+- [첫 번째 프로젝트: Todo API](#첫-번째-프로젝트-todo-api-만들기)
+- [3단계 워크플로우](#3단계-워크플로우)
+- [실전 시나리오](#실전-시나리오)
+- [AI 모델 선택 가이드](#ai-모델-선택-가이드)
+- [CLI Reference](#cli-reference)
+- [출력 스타일](#alfreds-output-styles)
+- [언어 지원](#universal-language-support)
+- [TRUST 5원칙](#trust-5원칙)
+- [코드 품질 가이드](#코드-품질-가이드)
+- [FAQ](#faq)
+- [문제 해결](#문제-해결)
 
 ---
 
-## 🚨 이런 문제 겪고 계신가요?
+## ■ 이런 문제 겪고 계신가요?
 
 ### AI 코딩의 현실
 
-- 💥 **"AI가 만든 코드, 나중에 유지보수 불가능..."**
+- **"AI가 만든 코드, 나중에 유지보수 불가능..."**
   - 같은 기능을 매번 다르게 구현
   - 코드 스타일이 파일마다 제각각
   - 테스트 코드는 없고 버그는 많음
 
-- 🔄 **"같은 질문 반복해도 매번 다른 답변..."**
+- **"같은 질문 반복해도 매번 다른 답변..."**
   - 이전 대화 내용을 기억하지 못함
   - 일관된 아키텍처를 유지하기 어려움
   - 프로젝트 전체 맥락을 놓침
 
-- 📚 **"코드는 많은데 문서는 없고, 추적 불가능..."**
+- **"코드는 많은데 문서는 없고, 추적 불가능..."**
   - 왜 이렇게 만들었는지 알 수 없음
   - 코드 변경 이력 추적 불가
   - 요구사항과 코드가 따로 놈
 
-- 🤯 **"프롬프트 엔지니어링에만 하루가 다 갔어요..."**
+- **"프롬프트 엔지니어링에만 하루가 다 갔어요..."**
   - 완벽한 프롬프트를 찾기 위해 수십 번 시도
   - AI에게 매번 같은 제약사항을 반복 설명
   - 코드 품질을 수동으로 검증
@@ -65,31 +65,31 @@
 
 ```mermaid
 flowchart TD
-    Problem["😫 문제: 플랑켄슈타인 코드"] --> Solution["✨ MoAI-ADK"]
-    Solution --> SPEC["📋 SPEC 우선<br/>명세 없으면 코드 없다"]
-    Solution --> TDD["🔴🟢♻️ TDD 강제<br/>테스트 없으면 구현 없다"]
-    Solution --> TAG["🏷️ @TAG 추적<br/>모든 코드가 SPEC과 연결"]
+    Problem["■ 문제: 플랑켄슈타인 코드"] --> Solution["MoAI-ADK"]
+    Solution --> SPEC["SPEC 우선<br/>명세 없으면 코드 없다"]
+    Solution --> TDD["TDD 강제<br/>테스트 없으면 구현 없다"]
+    Solution --> TAG["@TAG 추적<br/>모든 코드가 SPEC과 연결"]
 
-    SPEC --> Result["🎉 결과"]
+    SPEC --> Result["결과"]
     TDD --> Result
     TAG --> Result
 
-    Result --> Quality["✅ 높은 품질<br/>TRUST 5원칙 자동 검증"]
-    Result --> Track["📊 완벽한 추적성<br/>SPEC→TEST→CODE→DOC"]
-    Result --> Maintain["🔧 쉬운 유지보수<br/>코드 변경 이력 완전 기록"]
+    Result --> Quality["높은 품질<br/>TRUST 5원칙 자동 검증"]
+    Result --> Track["완벽한 추적성<br/>SPEC→TEST→CODE→DOC"]
+    Result --> Maintain["쉬운 유지보수<br/>코드 변경 이력 완전 기록"]
 ```
 
 ---
 
-## 🎩 Meet Alfred - 12개 AI 에이전트 팀
+## ■ Meet Alfred - 12개 AI 에이전트 팀
 
-안녕하세요, 모두의AI SuperAgent **🎩 Alfred**입니다!
+안녕하세요, 모두의AI SuperAgent **Alfred**입니다!
 
 ![Alfred Logo](https://github.com/modu-ai/moai-adk/raw/main/docs/public/alfred_logo.png)
 
 저는 MoAI-ADK의 SuperAgent이자 중앙 오케스트레이터 AI입니다. **12개의 AI 에이전트 팀**(Alfred + 11개 전문 에이전트)을 조율하여 Claude Code 환경에서 완벽한 개발 지원을 제공합니다.
 
-### 🌟 흥미로운 사실: AI가 만든 AI 개발 도구
+### ▶ 흥미로운 사실: AI가 만든 AI 개발 도구
 
 이 프로젝트의 모든 코드는 **100% AI에 의해 작성**되었습니다.
 
@@ -120,36 +120,36 @@ mindmap
       모바일 Flutter Swift
 ```
 
-#### 1️⃣ 일관성 (Consistency)
+#### 1. 일관성 (Consistency)
 
 **SPEC → TDD → Sync** 3단계 파이프라인으로 플랑켄슈타인 코드 방지
 
-#### 2️⃣ 품질 (Quality)
+#### 2. 품질 (Quality)
 
 **TRUST 5원칙** 자동 적용 및 검증 (Test First, Readable, Unified, Secured, Trackable)
 
-#### 3️⃣ 추적성 (Traceability)
+#### 3. 추적성 (Traceability)
 
 **@TAG 시스템**으로 `@SPEC → @TEST → @CODE → @DOC` 완벽 연결
 
-#### 4️⃣ 범용성 (Universality)
+#### 4. 범용성 (Universality)
 
 **모든 주요 언어 지원** (Python, TypeScript, Java, Go, Rust, Dart, Swift, Kotlin 등)
 
 ---
 
-## 📚 5분 만에 이해하는 핵심 개념
+## ■ 5분 만에 이해하는 핵심 개념
 
-### 1️⃣ SPEC-First: 설계도 먼저 그리기
+### 1. SPEC-First: 설계도 먼저 그리기
 
 **비유**: 집을 짓기 전에 설계도를 그리듯이, 코드를 쓰기 전에 SPEC을 작성합니다.
 
 ```mermaid
 graph LR
-    A["🏗️ SPEC 작성<br/>(설계도)"] --> B["🔴 RED<br/>(실패하는 테스트)"]
-    B --> C["🟢 GREEN<br/>(최소 구현)"]
-    C --> D["♻️ REFACTOR<br/>(품질 개선)"]
-    D --> E["📖 SYNC<br/>(문서화)"]
+    A["SPEC 작성<br/>(설계도)"] --> B["RED<br/>(실패하는 테스트)"]
+    B --> C["GREEN<br/>(최소 구현)"]
+    C --> D["REFACTOR<br/>(품질 개선)"]
+    D --> E["SYNC<br/>(문서화)"]
 ```
 
 #### EARS 구문으로 명세 작성 (실제 예시)
@@ -191,15 +191,15 @@ graph LR
 
 ---
 
-### 2️⃣ @TAG 추적: 코드와 문서를 실로 엮기
+### 2. @TAG 추적: 코드와 문서를 실로 엮기
 
 **비유**: 책의 색인처럼, 모든 코드를 SPEC과 연결합니다.
 
 ```mermaid
 graph TD
-    SPEC["📋 @SPEC:AUTH-001<br/>.moai/specs/SPEC-AUTH-001/spec.md"] --> TEST["🔴 @TEST:AUTH-001<br/>tests/test_auth_login.py"]
-    TEST --> CODE["🟢 @CODE:AUTH-001<br/>src/auth/service.py"]
-    CODE --> DOC["📖 @DOC:AUTH-001<br/>docs/api/auth.md"]
+    SPEC["@SPEC:AUTH-001<br/>.moai/specs/SPEC-AUTH-001/spec.md"] --> TEST["@TEST:AUTH-001<br/>tests/test_auth_login.py"]
+    TEST --> CODE["@CODE:AUTH-001<br/>src/auth/service.py"]
+    CODE --> DOC["@DOC:AUTH-001<br/>docs/api/auth.md"]
 ```
 
 #### 실제 코드 예시
@@ -244,7 +244,7 @@ rg '@SPEC:AUTH-001' -n .moai/specs/  # SPEC 있는지 확인
 
 ---
 
-### 3️⃣ TRUST 품질: 5가지 원칙으로 코드 품질 보장
+### 3. TRUST 품질: 5가지 원칙으로 코드 품질 보장
 
 **비유**: 자동차 안전검사처럼, 코드도 5가지 기준으로 검사합니다.
 
@@ -324,18 +324,18 @@ def create_user_with_profile_and_settings_and_notifications(
 
 ---
 
-## 🚀 Quick Start (3분 실전)
+## ■ Quick Start (3분 실전)
 
-### 📋 준비물
+### ▶ 준비물
 
 - ✅ Python 3.13+
 - ✅ **uv** (필수 - pip보다 10-100배 빠름)
 - ✅ Claude Code 실행 중
 - ✅ Git 설치 (선택사항)
 
-### ⚡ 3단계로 시작하기
+### ▶ 3단계로 시작하기
 
-#### 1️⃣ uv 설치 (필수)
+#### 1. uv 설치 (필수)
 
 **uv는 pip보다 10-100배 빠른 Python 패키지 관리자입니다** (Rust 기반).
 
@@ -350,7 +350,7 @@ powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 uv --version
 ```
 
-#### 2️⃣ moai-adk 설치 (10초)
+#### 2. moai-adk 설치 (10초)
 
 ```bash
 uv pip install moai-adk
@@ -359,7 +359,7 @@ uv pip install moai-adk
 moai-adk --version
 ```
 
-#### 3️⃣ 프로젝트 시작 (1분)
+#### 3. 프로젝트 시작 (1분)
 
 **새 프로젝트:**
 
@@ -391,7 +391,7 @@ claude
 /alfred:3-sync
 ```
 
-### 🎉 완료!
+### ▶ 완료!
 
 **생성된 것들:**
 
@@ -403,7 +403,7 @@ claude
 
 ---
 
-## 🎓 첫 번째 프로젝트: Todo API 만들기
+## ■ 첫 번째 프로젝트: Todo API 만들기
 
 ### Step 1: SPEC 작성 (5분)
 
@@ -472,25 +472,25 @@ stateDiagram-v2
     Phase3 --> [*]: 완료
 
     note right of RED
-        🔴 RED
+        RED
         - 실패하는 테스트 작성
         - @TEST:TODO-001 TAG 추가
     end note
 
     note right of GREEN
-        🟢 GREEN
+        GREEN
         - 최소 구현으로 테스트 통과
         - @CODE:TODO-001 TAG 추가
     end note
 
     note right of REFACTOR
-        ♻️ REFACTOR
+        REFACTOR
         - 코드 품질 개선
         - 중복 제거, 가독성 향상
     end note
 
     note right of Phase3
-        ✅ 품질 게이트
+        품질 게이트
         - TRUST 5원칙 검증
         - 테스트 커버리지 확인
     end note
@@ -564,7 +564,7 @@ src/todo/routes.py              # @CODE:TODO-001:API
 
 ---
 
-### 🎉 완료! 15분 만에 Todo API 완성
+### ▶ 완료! 15분 만에 Todo API 완성
 
 **생성된 것들**:
 
@@ -589,20 +589,20 @@ cat docs/api/todo.md
 
 ---
 
-## 🔄 3단계 워크플로우
+## ■ 3단계 워크플로우
 
 Alfred의 핵심은 **체계적인 3단계 워크플로우**입니다.
 
 ```mermaid
 graph TD
-    Start([사용자 요청]) --> Spec[1️⃣ SPEC 작성<br/>/alfred:1-spec]
-    Spec --> Build[2️⃣ TDD 구현<br/>/alfred:2-build]
-    Build --> Sync[3️⃣ 문서 동기화<br/>/alfred:3-sync]
+    Start([사용자 요청]) --> Spec[1. SPEC 작성<br/>/alfred:1-spec]
+    Spec --> Build[2. TDD 구현<br/>/alfred:2-build]
+    Build --> Sync[3. 문서 동기화<br/>/alfred:3-sync]
     Sync --> End([완료])
     Sync -.-> Spec
 ```
 
-### 1️⃣ SPEC - 명세 작성
+### 1. SPEC - 명세 작성
 
 **명령어**: `/alfred:1-spec "JWT 기반 사용자 로그인 API"`
 
@@ -620,7 +620,7 @@ graph TD
 - `.moai/specs/SPEC-AUTH-001/plan.md`
 - `.moai/specs/SPEC-AUTH-001/acceptance.md`
 
-### 2️⃣ BUILD - TDD 구현
+### 2. BUILD - TDD 구현
 
 **명령어**: `/alfred:2-build AUTH-001`
 
@@ -641,7 +641,7 @@ graph TD
 - `@TEST:AUTH-001` → `@CODE:AUTH-001` TAG 체인
 - 품질 검증 리포트
 
-### 3️⃣ SYNC - 문서 동기화
+### 3. SYNC - 문서 동기화
 
 **명령어**: `/alfred:3-sync`
 
@@ -661,7 +661,7 @@ graph TD
 
 ---
 
-## 🔥 실전 시나리오
+## ■ 실전 시나리오
 
 ### 시나리오 1: 긴급 버그 수정 (Hotfix)
 
@@ -744,7 +744,7 @@ git push origin v1.0.0
 
 ---
 
-## 🧠 AI 모델 선택 가이드
+## ■ AI 모델 선택 가이드
 
 MoAI-ADK는 **Haiku 4.5**와 **Sonnet 4.5** 두 가지 AI 모델을 전략적으로 활용하여 **최적의 성능과 비용 효율**을 제공합니다.
 
@@ -764,7 +764,7 @@ Claude Code에서 `/model` 명령어로 전체 세션의 기본 모델을 변경
 
 Alfred는 **작업 특성**에 따라 각 에이전트에 최적 모델을 할당합니다:
 
-#### 🚀 Haiku 에이전트 (6개) - 패스트 모드
+#### ▶ Haiku 에이전트 (6개) - 패스트 모드
 
 **빠른 응답이 필요한 반복 작업 및 패턴 매칭**
 
@@ -779,11 +779,11 @@ Alfred는 **작업 특성**에 따라 각 에이전트에 최적 모델을 할�
 
 **장점**:
 
-- ⚡ **속도 2~5배 향상**: 실시간 응답 (수 초 → 1초 이내)
-- 💰 **비용 67% 절감**: 반복 작업이 많은 프로젝트에 효과적
-- 🎯 **높은 정확도**: 패턴화된 작업에서 Sonnet과 동등한 품질
+- **속도 2~5배 향상**: 실시간 응답 (수 초 → 1초 이내)
+- **비용 67% 절감**: 반복 작업이 많은 프로젝트에 효과적
+- **높은 정확도**: 패턴화된 작업에서 Sonnet과 동등한 품질
 
-#### 🧠 Sonnet 에이전트 (6개) - 스마트 모드
+#### ▶ Sonnet 에이전트 (6개) - 스마트 모드
 
 **복잡한 판단과 창의적 설계가 필요한 작업**
 
@@ -798,20 +798,20 @@ Alfred는 **작업 특성**에 따라 각 에이전트에 최적 모델을 할�
 
 **장점**:
 
-- 🎯 **높은 품질**: 복잡한 코드 품질 보장
-- 🧠 **깊은 이해**: 맥락 파악 및 창의적 해결책 제시
-- 🏆 **정확한 판단**: 아키텍처 결정, 설계 선택
+- **높은 품질**: 복잡한 코드 품질 보장
+- **깊은 이해**: 맥락 파악 및 창의적 해결책 제시
+- **정확한 판단**: 아키텍처 결정, 설계 선택
 
 ### 사용 시나리오별 권장 모델
 
-| 시나리오               | 권장 모델 | 이유                          |
-| ---------------------- | --------- | ----------------------------- |
-| 🆕 **새 프로젝트 시작** | Sonnet    | SPEC 설계, 아키텍처 결정 필요 |
-| 🔄 **반복 개발**        | Haiku     | 이미 정해진 패턴 반복 구현    |
-| 🐛 **버그 수정**        | Sonnet    | 원인 분석 및 해결 방법 도출   |
-| 📝 **문서 작성**        | Haiku     | Living Document 동기화        |
-| 🔍 **코드 탐색**        | Haiku     | 파일 검색, TAG 조회           |
-| ♻️ **리팩토링**         | Sonnet    | 구조 개선, 복잡한 변경        |
+| 시나리오           | 권장 모델 | 이유                          |
+| ------------------ | --------- | ----------------------------- |
+| **새 프로젝트 시작** | Sonnet    | SPEC 설계, 아키텍처 결정 필요 |
+| **반복 개발**      | Haiku     | 이미 정해진 패턴 반복 구현    |
+| **버그 수정**      | Sonnet    | 원인 분석 및 해결 방법 도출   |
+| **문서 작성**      | Haiku     | Living Document 동기화        |
+| **코드 탐색**      | Haiku     | 파일 검색, TAG 조회           |
+| **리팩토링**       | Sonnet    | 구조 개선, 복잡한 변경        |
 
 ### 모델 전환 팁
 
@@ -835,7 +835,7 @@ Alfred는 **작업 특성**에 따라 각 에이전트에 최적 모델을 할�
 
 ---
 
-## 🛠️ CLI Reference
+## ■ CLI Reference
 
 ### 프로젝트 관리
 
@@ -937,13 +937,13 @@ moai-adk --help
 
 ---
 
-## 🎨 Alfred's Output Styles
+## ■ Alfred's Output Styles
 
 Alfred는 작업 특성과 사용자 경험 수준에 따라 **3가지 출력 스타일**을 제공합니다. Claude Code에서 `/output-style` 명령어로 언제든지 전환할 수 있습니다.
 
 ### 3가지 표준 스타일
 
-#### 1. Agentic Coding (기본값) ⚡🤝
+#### 1. Agentic Coding (기본값)
 
 **대상**: 실무 개발자, 팀 리더, 아키텍트
 
@@ -951,12 +951,12 @@ Alfred SuperAgent가 11개 전문 에이전트를 조율하여 빠른 개발과 
 
 **두 가지 작업 방식**:
 
-- **⚡ Fast Mode (기본)**: 빠른 개발, 구현 위주 작업
+- **Fast Mode (기본)**: 빠른 개발, 구현 위주 작업
   - SPEC → TDD → SYNC 자동화
   - 간결한 기술 커뮤니케이션
   - 최소 설명, 최대 효율
   - TRUST 5원칙 자동 검증
-- **🤝 Collab Mode (자동 전환)**: "협업", "브레인스토밍", "설계", "리뷰" 키워드 감지 시
+- **Collab Mode (자동 전환)**: "협업", "브레인스토밍", "설계", "리뷰" 키워드 감지 시
   - 질문 기반 대화
   - 트레이드오프 분석
   - 아키텍처 다이어그램 제공
@@ -977,7 +977,7 @@ Alfred SuperAgent가 11개 전문 에이전트를 조율하여 빠른 개발과 
 
 ---
 
-#### 2. MoAI ADK Learning 📚
+#### 2. MoAI ADK Learning
 
 **대상**: MoAI-ADK를 처음 사용하는 개발자
 
@@ -1011,7 +1011,7 @@ MoAI-ADK의 핵심 개념과 3단계 워크플로우를 친절하게 설명하�
 
 ---
 
-#### 3. Study with Alfred 🎓
+#### 3. Study with Alfred
 
 **대상**: 새로운 기술/언어/프레임워크를 배우려는 개발자
 
@@ -1060,11 +1060,11 @@ Alfred가 함께 배우는 친구처럼 새로운 기술을 쉽게 설명하고,
 
 | 상황                | 권장 스타일             | 이유                             |
 | ------------------- | ----------------------- | -------------------------------- |
-| 🚀 **실무 개발**     | Agentic Coding          | Fast/Collab 자동 전환, 효율 중심 |
-| 📚 **MoAI-ADK 학습** | MoAI ADK Learning       | SPEC-First, TAG, TRUST 개념 이해 |
-| 🎓 **새 기술 학습**  | Study with Alfred       | What-Why-How-Practice 4단계      |
-| 🔄 **반복 작업**     | Agentic Coding (Fast)   | 최소 설명, 빠른 실행             |
-| 🤝 **팀 협업**       | Agentic Coding (Collab) | 트레이드오프 분석, 브레인스토밍  |
+| **실무 개발**       | Agentic Coding          | Fast/Collab 자동 전환, 효율 중심 |
+| **MoAI-ADK 학습**   | MoAI ADK Learning       | SPEC-First, TAG, TRUST 개념 이해 |
+| **새 기술 학습**    | Study with Alfred       | What-Why-How-Practice 4단계      |
+| **반복 작업**       | Agentic Coding (Fast)   | 최소 설명, 빠른 실행             |
+| **팀 협업**         | Agentic Coding (Collab) | 트레이드오프 분석, 브레인스토밍  |
 
 **스타일 전환 예시**:
 
@@ -1083,7 +1083,7 @@ Alfred가 함께 배우는 친구처럼 새로운 기술을 쉽게 설명하고,
 
 ---
 
-## 🌍 Universal Language Support
+## ■ Universal Language Support
 
 Alfred는 **17개 주요 프로그래밍 언어**를 지원하며, 각 언어에 최적화된 도구 체인을 자동으로 선택합니다.
 
@@ -1196,7 +1196,7 @@ Alfred는 각 디렉토리의 언어를 자동 감지하고 적절한 도구 체
 
 ---
 
-## 🛡️ TRUST 5원칙
+## ■ TRUST 5원칙
 
 Alfred가 모든 코드에 자동으로 적용하는 품질 기준입니다.
 
@@ -1249,7 +1249,7 @@ Alfred가 모든 코드에 자동으로 적용하는 품질 기준입니다.
 
 ---
 
-## 📐 코드 품질 가이드
+## ■ 코드 품질 가이드
 
 ### 리팩토링 규칙: 3회 반복 규칙
 
@@ -1320,7 +1320,7 @@ def find_max(data):
 
 ---
 
-## ⬆️ 업그레이드 가이드
+## ■ 업그레이드 가이드
 
 ### 1단계: 패키지 업데이트
 
@@ -1383,7 +1383,7 @@ Running system diagnostics...
 
 ---
 
-## ❓ FAQ
+## ■ FAQ
 
 ### Q1: MoAI-ADK는 어떤 프로젝트에 적합한가요?
 
@@ -1463,7 +1463,7 @@ Running system diagnostics...
 
 ---
 
-## 🔧 문제 해결
+## ■ 문제 해결
 
 ### 설치 문제
 
@@ -1576,7 +1576,7 @@ rg "@SPEC:" -n .moai/specs/
 
 ---
 
-## 📚 문서 및 지원
+## ■ 문서 및 지원
 
 ### 공식 문서
 
@@ -1606,7 +1606,7 @@ MIT License - 자유롭게 사용하실 수 있습니다.
 
 ---
 
-## 🙏 감사의 말
+## ■ 감사의 말
 
 MoAI-ADK는 다음 프로젝트와 커뮤니티의 도움으로 만들어졌습니다:
 
