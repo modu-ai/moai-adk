@@ -69,7 +69,7 @@ MoAI-ADK는 Anthropic의 "Effective Context Engineering for AI Agents" 원칙을
 |--------|----------|------------|------------|
 | `/alfred:1-spec` | product.md | structure.md, tech.md | SPEC 후보 발굴 시 |
 | `/alfred:2-build` | SPEC-XXX/spec.md | development-guide.md | TDD 구현 시작 시 |
-| `/alfred:3-sync` | sync-report.md | TAG 인덱스 | 문서 동기화 시 |
+| `/alfred:3-sync` | sync-report.md | TAG 체인 검증 (`rg` 스캔) | 문서 동기화 시 |
 
 **구현 방법**:
 - Alfred는 커맨드 실행 시점에 필요한 문서만 `Read` 도구로 로드
