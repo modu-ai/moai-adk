@@ -1,6 +1,6 @@
 ---
 id: STRUCTURE-001
-version: 0.1.1
+version: 0.1.2
 status: active
 created: 2025-10-01
 updated: 2025-10-17
@@ -11,6 +11,11 @@ priority: high
 # MoAI-ADK Structure Design
 
 ## HISTORY
+
+### v0.1.2 (2025-10-17)
+- **UPDATED**: 에이전트 수 갱신 (9개 → 11개, v0.3.4 반영)
+- **AUTHOR**: @Alfred
+- **SECTIONS**: Architecture (Agent Layer 팀 구성 업데이트)
 
 ### v0.1.1 (2025-10-17)
 - **UPDATED**: 템플릿 기본값을 실제 MoAI-ADK 아키텍처 내용으로 갱신
@@ -43,11 +48,13 @@ MoAI-ADK Architecture
 ├── Agent Layer                  # AI 에이전트 시스템
 │   ├── Alfred (Orchestrator)   # 중앙 조율자
 │   ├── spec-builder            # SPEC 작성
-│   ├── code-builder            # TDD 구현
+│   ├── implementation-planner  # 구현 전략 수립
+│   ├── tdd-implementer         # TDD 전문 구현
+│   ├── quality-gate            # TRUST 통합 검증
 │   ├── doc-syncer              # 문서 동기화
 │   ├── tag-agent               # TAG 관리
 │   ├── git-manager             # Git 워크플로우
-│   ├── debug-helper            # 오류 진단
+│   ├── debug-helper            # 런타임 오류 진단
 │   ├── trust-checker           # TRUST 검증
 │   ├── cc-manager              # Claude Code 설정
 │   └── project-manager         # 프로젝트 초기화

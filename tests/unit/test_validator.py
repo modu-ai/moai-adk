@@ -1,13 +1,28 @@
 # @TEST:TEST-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md
 # @TEST:INIT-004:VALIDATION | Chain: SPEC-INIT-004 -> CODE-INIT-004 -> TEST-INIT-004
+# @TEST:INIT-004:VERIFY-001 | Test verification of all required files upon successful completion
+# @TEST:INIT-004:VERIFY-002 | Test Alfred command files validation
+# @TEST:INIT-004:ALFRED-TEST | Test all 4 Alfred command files validation
 """Unit tests for validator.py module
 
 Tests for ProjectValidator class and ValidationError.
 
 SPEC-INIT-004 Tests:
-- Alfred command files validation
-- Missing files reporting
+- Alfred command files validation (4 required commands: 0-project.md, 1-spec.md, 2-build.md, 3-sync.md)
+- Missing files reporting with clear error messages
 - Phase 5 verification logic
+- Integration with phase_executor
+- Comprehensive validation coverage (directories, files, Alfred commands)
+
+TAG Chain:
+  SPEC-INIT-004 (spec.md)
+    └─> @CODE:INIT-004:VALIDATION (validator.py)
+        └─> @TEST:INIT-004:VALIDATION (this file)
+
+Test Categories:
+  @TEST:INIT-004:VALIDATION-001 - Directory structure validation
+  @TEST:INIT-004:VALIDATION-002 - Configuration file validation
+  @TEST:INIT-004:VALIDATION-003 - Alfred command file validation
 """
 
 import sys
@@ -168,10 +183,19 @@ class TestValidateInstallation:
 
 
 class TestValidateAlfredCommands:
-    """Test Alfred command files validation (SPEC-INIT-004)"""
+    """Test Alfred command files validation (SPEC-INIT-004)
+
+    @TEST:INIT-004:ALFRED-001 | Test all 4 Alfred command files are copied
+    @TEST:INIT-004:ALFRED-002 | Test Alfred command files are always overwritten
+    @TEST:INIT-004:ALFRED-VALIDATION | Comprehensive Alfred command validation
+    """
 
     def test_validate_installation_checks_alfred_command_files(self, tmp_project_dir: Path):
-        """Should verify all required Alfred command files exist"""
+        """Should verify all required Alfred command files exist
+
+        @TEST:INIT-004:VERIFY-002 | Missing Alfred command validation
+        @TEST:INIT-004:VALIDATION-003 | Alfred command file structure validation
+        """
         validator = ProjectValidator()
 
         # Create all required directories

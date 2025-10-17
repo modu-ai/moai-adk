@@ -33,11 +33,53 @@
 
 ---
 
-## 🆕 v0.3.x 주요 개선사항
+## 🆕 v0.3.5 주요 개선사항 (최신)
+
+### 📚 문서 체계 전면 개선 (SPEC-DOCS-003)
+
+#### 11단계 사용자 여정 기반 문서 재구성
+- **42개 필수 문서 100% 완성**: Introduction → Getting Started → Configuration → Workflow → Commands → Agents → Hooks → API Reference → Contributing → Security → Troubleshooting
+- **TAG 커버리지 100%**: 모든 문서에 @DOC TAG 추가, 완벽한 추적성 보장
+- **MkDocs 빌드 성공**: 에러 0개, 4.20초 빌드 시간
+- **품질 게이트 4/4 통과**: 구조 검증, TAG 무결성, 내용 품질, 빌드 성공
+
+#### 주요 산출물
+- **API Reference**: agents.md (5,441 bytes), 9개 에이전트 API 문서 완성
+- **Hooks**: pre-tool-use-hook.md, post-tool-use-hook.md 내용 대폭 보강
+- **Security**: 4계층 보안 구조 상세 문서화
+- **Workflow & Guides**: 7개 파일 링크 수정 및 개선
+
+### 🔧 Alfred 커맨드 검증 강화 (SPEC-INIT-004)
+
+#### init 명령어 안정성 개선
+- **CLAUDE.md 의존성 제거**: 신규 설치 시 자동 생성
+- **Alfred 커맨드 검증**: 0-project.md, 1-spec.md, 2-build.md, 3-sync.md 자동 생성 확인
+- **에러 처리 강화**: 템플릿 복사 실패 시 명확한 에러 메시지
+- **검증 로직 추가**: 초기화 완료 후 필수 파일 존재 여부 자동 확인
+
+### 🛡️ GitFlow Main 브랜치 보호 정책
+
+#### 실수 방지 자동화
+- **develop만 main으로 머지 가능**: Feature 브랜치는 항상 develop으로 PR 생성
+- **직접 push 차단**: pre-push hook으로 main 브랜치 직접 push 자동 차단
+- **강제 push 불가**: 어떤 경우에도 main 브랜치에 강제 push 불가
+- **모든 변경사항 추적 가능**: 모든 main 변경은 develop을 거쳐 이력 남음
+- **문서화**: `.moai/GITFLOW_PROTECTION_POLICY.md` 정책 문서 추가
+
+### 📊 통계
+
+- **총 커밋**: 18개 (v0.3.4 이후)
+- **변경 파일**: 40+ 개
+- **테스트 추가**: 문서 구조/내용 검증 테스트
+- **코드 개선**: validator, phase_executor, processor
+
+---
+
+## 🆕 v0.3.x 주요 개선사항 (이전 버전)
 
 ### 🚀 핵심 기능 강화
 
-#### 1. 에이전트 구조 개선 - 명확한 책임 분리 (v0.3.4+)
+#### 1. 에이전트 구조 개선 - 명확한 책임 분리 (v0.3.4)
 - **9개 → 11개 전문 에이전트**: code-builder를 3개 전문 에이전트로 분리
   - `implementation-planner` (📋 Sonnet): SPEC 분석 및 구현 전략 수립
   - `tdd-implementer` (🔬 Sonnet): RED-GREEN-REFACTOR TDD 전문 구현
@@ -339,7 +381,7 @@ claude
 
 ---
 
-## ⬆️ 업그레이드 가이드 (v0.3.0 → v0.3.x)
+## ⬆️ 업그레이드 가이드 (v0.3.4 → v0.3.5)
 
 ### 1단계: 패키지 업데이트
 
@@ -372,17 +414,20 @@ claude
 moai-adk status
 
 # 확인 항목
-# ✅ .moai/config.json → moai.version: "0.3.x"
-# ✅ .moai/config.json → project.moai_adk_version: "0.3.x"
+# ✅ .moai/config.json → moai.version: "0.3.5"
+# ✅ .moai/config.json → project.moai_adk_version: "0.3.5"
+# ✅ .moai/GITFLOW_PROTECTION_POLICY.md 존재 확인
+# ✅ docs/ 디렉토리 42개 문서 확인
 # ✅ 모든 커맨드 정상 작동
 # ✅ 템플릿 파일 병합 완료
 
-### v0.3.x 시리즈 주요 개선사항
+### v0.3.5 주요 개선사항
 
-- **Event-Driven Checkpoint**: 위험한 작업 전 자동 백업
-- **BackupMerger**: 스마트 백업 병합 (사용자 파일 보존)
-- **버전 추적**: 자동 버전 감지 및 최적화 안내
-- **Claude Code Hooks 통합**: SessionStart, PreToolUse, PostToolUse 훅
+- **문서 체계 개선**: 11단계 사용자 여정, 42개 문서 100% 완성, TAG 커버리지 100%
+- **init 명령어 안정성**: CLAUDE.md 의존성 제거, Alfred 커맨드 자동 검증
+- **GitFlow 보호**: main 브랜치 직접 push 차단, develop 기반 워크플로우 강제
+- **API 문서 강화**: agents.md 등 9개 에이전트 API 문서 완성
+- **문서 링크 수정**: 깨진 링크 대규모 수정, mkdocstrings 참조 개선
 ```
 
 ---

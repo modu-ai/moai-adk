@@ -1,0 +1,17 @@
+# Claude Code 커맨드 스캔 제외
+src/moai_adk/templates/.claude/
+
+# 빌드 산출물
+build/
+dist/
+*.egg-info/
+
+# 캐시
+__pycache__/
+.pytest_cache/
+node_modules/
+
+# 백업
+.moai-backups/
+*.backup
+*.bak
