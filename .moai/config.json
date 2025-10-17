@@ -62,7 +62,7 @@
     "locale": "ko",
     "mode": "personal",
     "name": "MoAI-ADK",
-    "moai_adk_version": "0.3.1",
+    "moai_adk_version": "0.3.3",
     "optimized": false
   },
   "tags": {
