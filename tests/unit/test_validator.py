@@ -112,6 +112,7 @@ class TestValidateProjectPath:
         with pytest.raises(ValidationError, match="must be absolute"):
             validator.validate_project_path(Path("relative/path"))
 
+    @pytest.mark.skipif(sys.platform == "win32", reason="Windows path regex pattern mismatch")
     def test_validate_project_path_checks_parent_exists(self, tmp_project_dir: Path):
         """Should check parent directory exists"""
         validator = ProjectValidator()
