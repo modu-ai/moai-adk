@@ -1,7 +1,7 @@
 ---
 id: WINDOWS-HOOKS-001
-version: 0.0.1
-status: draft
+version: 0.1.0
+status: completed
 created: 2025-10-18
 updated: 2025-10-18
 author: @Goos
@@ -23,6 +23,26 @@ scope:
 # @SPEC:WINDOWS-HOOKS-001: Windows 환경에서 Claude Code 훅 stdin 처리 개선
 
 ## HISTORY
+
+### v0.1.0 (2025-10-18)
+- **COMPLETED**: TDD 구현 완료 (RED → GREEN → REFACTOR)
+- **TESTED**: 4/4 테스트 통과 (Windows/macOS/Linux 크로스 플랫폼)
+- **CODE**: Iterator 패턴으로 stdin 읽기 개선
+  - alfred_hooks.py:125 - `sys.stdin.read()` → `for line in sys.stdin`
+  - 빈 stdin 처리: `{}` 기본값 반환
+- **VERIFIED**: 모든 SPEC 요구사항 충족
+  - Windows/macOS/Linux stdin 안정적 읽기 ✓
+  - 빈 stdin 처리 ✓
+  - JSON 파싱 에러 처리 ✓
+  - 크로스 플랫폼 호환성 ✓
+- **COMMITS**:
+  - 31097b3 - 🔴 RED: Windows stdin 처리 테스트 작성
+  - 711bf44 - 🟢 GREEN: Iterator 패턴으로 stdin 읽기 구현
+- **FILES**:
+  - tests/hooks/test_alfred_hooks_stdin.py (155줄 추가)
+  - .claude/hooks/alfred/alfred_hooks.py (17줄 변경)
+- **AUTHOR**: @Goos
+- **FIXES**: #25, #31 (GitHub Issues)
 
 ### v0.0.1 (2025-10-18)
 - **INITIAL**: Windows 환경에서 stdin 읽기 개선 명세 작성
