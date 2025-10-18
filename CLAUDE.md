@@ -461,7 +461,7 @@ def handle_pre_tool_use(payload):
 - **SPEC-First**: 명세 없이는 코드 없음
 - **TDD-First**: 테스트 없이는 구현 없음
 - **GitFlow 지원**: Git 작업 자동화, Living Document 동기화, @TAG 추적성
-- **다중 언어 지원**: Python, TypeScript, Java, Go, Rust, Dart, Swift, Kotlin 등 모든 주요 언어
+- **다중 언어 지원**: Python, TypeScript, Java, Go, Rust, Ruby, Dart, Swift, Kotlin 등 20개 주요 언어
 - **모바일 지원**: Flutter, React Native, iOS (Swift), Android (Kotlin)
 - **CODE-FIRST @TAG**: 코드 직접 스캔 방식 (중간 캐시 없음)
 
