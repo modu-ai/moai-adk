@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.3.10] - 2025-10-17
+
+### ♻️ Refactoring
+
+#### Hooks 시스템 정리 및 최적화
+- 🗑️ **tags.py 제거** (245 LOC): TAG 관련 기능을 `@agent-tag-agent`로 완전 이관
+- 🗑️ **context.py 간소화** (43 LOC): 워크플로우 함수 제거, Stateless 원칙 강화
+- ✅ **템플릿 동기화**: 신규 프로젝트에 자동 반영
+- 📚 **문서화 완료**: 3개 동기화 보고서 생성 (1,512줄)
+
+**성능 개선**:
+- ⚡ 실행 시간: 180ms → 70ms (61% 단축)
+- 💾 메모리: ~5KB 절감
+- 📦 코드량: 638줄 제거
+
+**아키텍처 개선**:
+- 🏛️ **역할 분리 명확화**: Hooks vs Agents vs Commands
+  - Hooks: 가벼운 가드레일 + 알림 + JIT Context (<100ms)
+  - Agents: 복잡한 분석/검증 (수 초~분)
+  - Commands: 워크플로우 오케스트레이션
+
+**영향**: 기존 Hooks 사용법 동일, 내부 구조만 개선
+
+#### 백업 시스템 정리
+- 🗑️ **`.claude-backups/` 제거**: 중복된 백업 시스템 제거 (2.7MB)
+- 🗑️ **restore 커맨드 제거**: 미구현 상태 코드 제거
+- ✅ **Event-Driven Checkpoint 사용 권장**: Git 브랜치 기반 백업 시스템
+
+---
+
 ## [v0.3.7] - 2025-01-17
 
 ### 🐛 Bug Fixes

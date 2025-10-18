@@ -15,7 +15,6 @@ from typing import Sequence
 import click
 from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskID, TextColumn
-from rich.prompt import Confirm
 
 from moai_adk import __version__
 from moai_adk.cli.prompts import prompt_project_setup
@@ -134,45 +133,20 @@ def init(
 
             console.print("\n[cyan]🚀 Starting installation...[/cyan]\n")
 
-        # 4. Check for reinitialization (SPEC-INIT-003 v0.3.0)
+        # 4. Check for reinitialization (SPEC-INIT-003 v0.3.0) - DEFAULT TO FORCE MODE
         initializer = ProjectInitializer(project_path)
 
         if initializer.is_initialized():
-            if non_interactive and not force:
-                # Non-interactive mode (without force): Reject reinitialization
-                console.print("\n[yellow]⚠ Project already initialized[/yellow]")
-                console.print(f"[dim]  Location: {project_path}/.moai/[/dim]")
-                console.print("[dim]  Use --force to reinitialize or interactive mode[/dim]\n")
-                raise click.Abort()
-
-            if force:
-                # Force mode: Reinitialize without confirmation
-                console.print("\n[green]🔄 Force reinitializing project...[/green]\n")
+            # Always reinitialize without confirmation (force mode by default)
+            if non_interactive:
+                console.print("\n[green]🔄 Reinitializing project (force mode)...[/green]\n")
             else:
-                # Interactive mode: Reinitialization prompt
-                console.print("\n⚠️  [yellow]Project already initialized[/yellow]")
-                console.print(f"   Location: {project_path}/.moai/\n")
-
-                console.print("[cyan]This will:[/cyan]")
-                console.print("  ✓ Backup existing files to .moai-backups/{timestamp}/")
-                console.print("    • CLAUDE.md")
-                console.print("    • .claude/ (settings, commands, hooks)")
-                console.print("    • .moai/ (all configurations and specs)")
-                console.print("  ✓ Update template files from moai-adk v0.3.0")
-                console.print("    • .claude/ → Latest Alfred commands")
-                console.print("    • .moai/memory/ → Latest development guides")
-                console.print("    • CLAUDE.md → Latest project documentation")
-                console.print("  ✓ Preserve your content")
-                console.print("    • .moai/project/ (product/structure/tech.md)")
-                console.print("    • .moai/specs/ (all SPEC documents)\n")
-
-                if not Confirm.ask("Would you like to update the project templates?", default=True):
-                    console.print("\n[yellow]Reinit cancelled.[/yellow]\n")
-                    raise click.Abort()
-
-                console.print("\n[green]🔄 Starting reinit process...[/green]\n")
+                # Interactive mode: Simple notification
+                console.print("\n[cyan]🔄 Reinitializing project...[/cyan]")
+                console.print("   Backup will be created at .moai-backups/{timestamp}/\n")
 
         # 5. Initialize project (Progress Bar with 5 phases)
+        # Always allow reinit (force mode by default)
         is_reinit = initializer.is_initialized()
 
         # Reinit mode: set config.json optimized to false (v0.3.1+)
@@ -220,7 +194,7 @@ def init(
                 language=language,
                 backup_enabled=True,
                 progress_callback=callback,
-                reinit=is_reinit,  # SPEC-INIT-003 v0.3.0
+                reinit=True,  # Always allow reinit (force mode by default)
             )
 
         # 6. Output results
@@ -241,7 +215,25 @@ def init(
                 f"  [dim]📄 Files:[/dim]     {len(result.created_files)} created"
             )
             console.print(f"  [dim]⏱️  Duration:[/dim]  {result.duration}ms")
+
+            # Show backup info if reinitialized
+            if is_reinit:
+                backup_dir = project_path / ".moai-backups"
+                if backup_dir.exists():
+                    latest_backup = max(backup_dir.iterdir(), key=lambda p: p.stat().st_mtime)
+                    console.print(f"  [dim]💾 Backup:[/dim]    {latest_backup.name}/")
+
             console.print(f"\n{separator}")
+
+            # Show config merge notice if reinitialized
+            if is_reinit:
+                console.print("\n[yellow]⚠️  Configuration Notice:[/yellow]")
+                console.print("  All template files have been [bold]force overwritten[/bold]")
+                console.print("  Previous files are backed up in [cyan].moai-backups/{timestamp}/[/cyan]")
+                console.print("\n  [cyan]To merge your previous config:[/cyan]")
+                console.print("  Run [bold]/alfred:0-project[/bold] command in Claude Code")
+                console.print("  It will merge backup config when [dim]optimized=false[/dim]\n")
+
             console.print("\n[cyan]🚀 Next Steps:[/cyan]")
             if not is_current_dir:
                 console.print(

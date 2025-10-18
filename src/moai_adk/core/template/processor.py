@@ -23,7 +23,8 @@ class TemplateProcessor:
         ".moai/specs/",  # User SPEC documents
         ".moai/reports/",  # User reports
         ".moai/project/",  # User project documents (product/structure/tech.md)
-        ".moai/config.json",  # User configuration (merged via /alfred:9-update flow)
+        # config.json is now FORCE OVERWRITTEN (backup in .moai-backups/)
+        # Merge via /alfred:0-project when optimized=false
     ]
 
     # Paths excluded from backups
@@ -277,7 +278,7 @@ class TemplateProcessor:
                 if not silent:
                     console.print(f"   ✅ .claude/{folder}/ overwritten")
 
-        # 2. Copy other files/folders individually (preserve existing, with substitution)
+        # 2. Copy other files/folders individually (FORCE OVERWRITE all files)
         all_warnings = []
         for item in src.iterdir():
             rel_path = item.relative_to(src)
@@ -288,16 +289,12 @@ class TemplateProcessor:
                 continue
 
             if item.is_file():
-                # Copy file, skip if exists (preserve user modifications)
-                if not dst_item.exists():
-                    # Copy with variable substitution for text files
-                    warnings = self._copy_file_with_substitution(item, dst_item)
-                    all_warnings.extend(warnings)
+                # FORCE OVERWRITE: Always copy files (no skip)
+                warnings = self._copy_file_with_substitution(item, dst_item)
+                all_warnings.extend(warnings)
             elif item.is_dir():
-                # Copy directory recursively (preserve existing files)
-                if not dst_item.exists():
-                    # Recursively copy directory with substitution
-                    self._copy_dir_with_substitution(item, dst_item)
+                # FORCE OVERWRITE: Always copy directories (no skip)
+                self._copy_dir_with_substitution(item, dst_item)
 
         # Print warnings if any
         if all_warnings and not silent:
@@ -307,31 +304,6 @@ class TemplateProcessor:
 
         if not silent:
             console.print("   ✅ .claude/ copy complete (variables substituted)")
-
-    def _backup_alfred_folder(self, folder_path: Path, folder_name: str) -> None:
-        """Backup an Alfred folder before overwriting (safety measure).
-
-        Args:
-            folder_path: Path to the folder to backup.
-            folder_name: Name of the folder (e.g., "hooks/alfred").
-        """
-        if not folder_path.exists():
-            return
-
-        # Create backup directory in .moai-backups/.claude-backups/{timestamp}/
-        backup_base = self.target_path / ".moai-backups" / ".claude-backups"
-        backup_base.mkdir(parents=True, exist_ok=True)
-
-        # Generate timestamp-based backup directory
-        from moai_adk.core.project.backup_utils import generate_backup_dir_name
-
-        timestamp = generate_backup_dir_name()
-        backup_dir = backup_base / timestamp
-
-        # Backup this specific folder
-        backup_folder = backup_dir / folder_name
-        backup_folder.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copytree(folder_path, backup_folder)
 
     def _copy_moai(self, silent: bool = False) -> None:
         """.moai/ directory copy with variable substitution (excludes protected paths)."""
@@ -362,9 +334,7 @@ class TemplateProcessor:
 
             dst_item = dst / rel_path
             if item.is_file():
-                # Skip existing files to preserve user content (v0.3.0)
-                if dst_item.exists():
-                    continue
+                # FORCE OVERWRITE: Always copy files (no skip)
                 dst_item.parent.mkdir(parents=True, exist_ok=True)
                 # Copy with variable substitution
                 warnings = self._copy_file_with_substitution(item, dst_item)
@@ -382,7 +352,7 @@ class TemplateProcessor:
             console.print("   ✅ .moai/ copy complete (variables substituted)")
 
     def _copy_claude_md(self, silent: bool = False) -> None:
-        """Copy CLAUDE.md with smart merging and variable substitution."""
+        """Copy CLAUDE.md with FORCE OVERWRITE."""
         src = self.template_root / "CLAUDE.md"
         dst = self.target_path / "CLAUDE.md"
 
@@ -391,16 +361,10 @@ class TemplateProcessor:
                 console.print("⚠️ CLAUDE.md template not found")
             return
 
-        # Preserve project information when the file exists
-        if dst.exists():
-            self._merge_claude_md(src, dst)
-            if not silent:
-                console.print("   🔄 CLAUDE.md merged (project information preserved)")
-        else:
-            # Copy with variable substitution
-            self._copy_file_with_substitution(src, dst)
-            if not silent:
-                console.print("   ✅ CLAUDE.md copy complete")
+        # FORCE OVERWRITE: Always copy template (backup already created in Phase 1)
+        self._copy_file_with_substitution(src, dst)
+        if not silent:
+            console.print("   ✅ CLAUDE.md overwritten (backup available in .moai-backups/)")
 
     def _merge_claude_md(self, src: Path, dst: Path) -> None:
         """Delegate the smart merge for CLAUDE.md.

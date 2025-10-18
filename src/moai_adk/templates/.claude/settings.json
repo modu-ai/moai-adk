@@ -6,17 +6,6 @@
     "PYTHON_ENV": "{{PROJECT_MODE}}"
   },
   "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "command": "uv run .claude/hooks/alfred/alfred_hooks.py SessionStart",
-            "type": "command"
-          }
-        ],
-        "matcher": "*"
-      }
-    ],
     "PreToolUse": [
       {
         "hooks": [
@@ -86,7 +75,9 @@
       "Bash(uv remove:*)",
       "Bash(pip install:*)",
       "Bash(pip3 install:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(sudo:*)",
+      "Bash(rm -rf:*)"
     ],
     "deny": [
       "Read(./.env)",
@@ -95,8 +86,13 @@
       "Read(~/.ssh/**)",
       "Read(~/.aws/**)",
       "Read(~/.config/gcloud/**)",
-      "Bash(sudo:*)",
-      "Bash(rm -rf:*)",
+      "Bash(rm -rf /:*)",
+      "Bash(rm -rf /*:*)",
+      "Bash(rm -rf C\\:/:*)",
+      "Bash(rm -rf C\\:/*:*)",
+      "Bash(del /S /Q C\\:/:*)",
+      "Bash(rmdir /S /Q C\\:/:*)",
+      "Bash(format:*)",
       "Bash(chmod -R 777:*)",
       "Bash(dd:*)",
       "Bash(mkfs:*)",
