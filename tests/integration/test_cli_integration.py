@@ -13,12 +13,14 @@ from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import click
+import pytest
 from click.testing import CliRunner
 
 from moai_adk.__main__ import cli, main, show_logo
 from moai_adk.cli.commands.backup import backup
 from moai_adk.cli.commands.doctor import doctor
 from moai_adk.cli.commands.init import create_progress_callback, init
+# from moai_adk.cli.commands.restore import restore  # Not implemented - handled by checkpoint system
 from moai_adk.cli.commands.status import status
 from moai_adk.cli.commands.update import update
 
@@ -372,36 +374,17 @@ class TestRestoreCommand:
     @pytest.mark.skip(reason="restore command not implemented - handled by checkpoint system")
     def test_restore_help(self):
         """Test restore --help"""
-        runner = CliRunner()
-        result = runner.invoke(restore, ["--help"])
-        assert result.exit_code == 0
-        assert "restore" in result.output.lower()
+        pass
 
     @pytest.mark.skip(reason="restore command not implemented - handled by checkpoint system")
     def test_restore_no_backups(self, tmp_path):
         """Test restore with no backups"""
-        runner = CliRunner()
-
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            result = runner.invoke(restore)
-            assert result.exit_code != 0 or "backup" in result.output.lower()
+        pass
 
     @pytest.mark.skip(reason="restore command not implemented - handled by checkpoint system")
     def test_restore_with_backup_file(self, tmp_path):
         """Test restore with specific backup file"""
-        runner = CliRunner()
-
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            # Create dummy backup
-            backup_dir = Path(".moai-backups")
-            backup_dir.mkdir()
-            backup_file = backup_dir / "backup-2025-01-01.tar.gz"
-            backup_file.touch()
-
-            # Try to restore (may fail due to invalid archive, but should attempt)
-            result = runner.invoke(restore, [str(backup_file)])
-            # Command should at least try to process the file
-            assert "backup" in result.output.lower() or result.exit_code is not None
+        pass
 
 
 class TestUpdateCommand:
@@ -454,13 +437,13 @@ class TestCLICommandIntegration:
         assert "status" in result.output
         assert "doctor" in result.output
         assert "backup" in result.output
-        assert "restore" in result.output
+        # assert "restore" in result.output  # Not implemented - handled by checkpoint system
         assert "update" in result.output
 
     def test_commands_have_help(self):
         """Test all commands have --help"""
         runner = CliRunner()
-        commands = [init, status, doctor, backup, restore, update]
+        commands = [init, status, doctor, backup, update]  # restore removed - not implemented
 
         for cmd in commands:
             result = runner.invoke(cmd, ["--help"])

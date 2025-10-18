@@ -10,10 +10,12 @@
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+import pytest
 from click.testing import CliRunner
 
 from moai_adk.cli.commands.backup import backup
 from moai_adk.cli.commands.init import init
+# from moai_adk.cli.commands.restore import restore  # Not implemented - handled by checkpoint system
 from moai_adk.cli.commands.status import status
 
 
@@ -71,28 +73,7 @@ class TestBackupRestore:
     @pytest.mark.skip(reason="restore command not implemented - handled by checkpoint system")
     def test_restore_interactive_selection(self, tmp_path):
         """Test restore with interactive backup selection"""
-        runner = CliRunner()
-
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            # Create backup directory with dummy file
-            backup_dir = Path(".moai-backups")
-            backup_dir.mkdir()
-
-            # Create mock backup file
-            import tarfile
-
-            backup_file = backup_dir / "backup-2025-01-01-000000.tar.gz"
-
-            # Create actual tar.gz file
-            with tarfile.open(backup_file, "w:gz"):
-                # Add dummy content
-                pass
-
-            # Try to restore (select option 0 to cancel)
-            result = runner.invoke(restore, input="0\n")
-
-            # Should handle input
-            assert result.exit_code is not None
+        pass
 
 
 class TestStatusEdgeCases:
