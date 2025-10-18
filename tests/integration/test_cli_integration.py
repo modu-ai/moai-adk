@@ -20,6 +20,7 @@ from moai_adk.__main__ import cli, main, show_logo
 from moai_adk.cli.commands.backup import backup
 from moai_adk.cli.commands.doctor import doctor
 from moai_adk.cli.commands.init import create_progress_callback, init
+
 # from moai_adk.cli.commands.restore import restore  # Not implemented - handled by checkpoint system
 from moai_adk.cli.commands.status import status
 from moai_adk.cli.commands.update import update

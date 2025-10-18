@@ -15,7 +15,6 @@ from typing import Sequence
 import click
 from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskID, TextColumn
-from rich.prompt import Confirm
 
 from moai_adk import __version__
 from moai_adk.cli.prompts import prompt_project_setup
