@@ -6,7 +6,7 @@ Implements the CLI entry point:
 - Rich console terminal output
 - ASCII logo rendering
 - --version and --help options
-- Six core commands: init, doctor, status, backup, restore, update
+- Five core commands: init, doctor, status, backup, update
 """
 
 import sys
@@ -19,7 +19,6 @@ from moai_adk import __version__
 from moai_adk.cli.commands.backup import backup
 from moai_adk.cli.commands.doctor import doctor
 from moai_adk.cli.commands.init import init
-from moai_adk.cli.commands.restore import restore
 from moai_adk.cli.commands.status import status
 from moai_adk.cli.commands.update import update
 
@@ -58,7 +57,6 @@ def cli(ctx: click.Context) -> None:
 cli.add_command(init)
 cli.add_command(doctor)
 cli.add_command(status)
-cli.add_command(restore)
 cli.add_command(backup)
 cli.add_command(update)
 
