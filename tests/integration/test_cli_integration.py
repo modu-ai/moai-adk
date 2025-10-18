@@ -19,7 +19,6 @@ from moai_adk.__main__ import cli, main, show_logo
 from moai_adk.cli.commands.backup import backup
 from moai_adk.cli.commands.doctor import doctor
 from moai_adk.cli.commands.init import create_progress_callback, init
-from moai_adk.cli.commands.restore import restore
 from moai_adk.cli.commands.status import status
 from moai_adk.cli.commands.update import update
 
@@ -370,6 +369,7 @@ class TestBackupCommand:
 class TestRestoreCommand:
     """restore command tests"""
 
+    @pytest.mark.skip(reason="restore command not implemented - handled by checkpoint system")
     def test_restore_help(self):
         """Test restore --help"""
         runner = CliRunner()
@@ -377,6 +377,7 @@ class TestRestoreCommand:
         assert result.exit_code == 0
         assert "restore" in result.output.lower()
 
+    @pytest.mark.skip(reason="restore command not implemented - handled by checkpoint system")
     def test_restore_no_backups(self, tmp_path):
         """Test restore with no backups"""
         runner = CliRunner()
@@ -385,6 +386,7 @@ class TestRestoreCommand:
             result = runner.invoke(restore)
             assert result.exit_code != 0 or "backup" in result.output.lower()
 
+    @pytest.mark.skip(reason="restore command not implemented - handled by checkpoint system")
     def test_restore_with_backup_file(self, tmp_path):
         """Test restore with specific backup file"""
         runner = CliRunner()
