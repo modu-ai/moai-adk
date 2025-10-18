@@ -1,6 +1,6 @@
 ---
 name: alfred:2-build
-description: 구현할 SPEC ID (예: SPEC-001) 또는 all로 모든 SPEC 구현: 언어별 최적화된 TDD 구현 (Red-Green-Refactor) with SQLite3 tags.db
+description: "구현할 SPEC ID (예: SPEC-001) 또는 all로 모든 SPEC 구현 - 언어별 최적화된 TDD 구현 (Red-Green-Refactor) with SQLite3 tags.db"
 argument-hint: "SPEC-ID - 구현할 SPEC ID (예: SPEC-001) 또는 all로 모든 SPEC 구현"
 allowed-tools:
   - Read
