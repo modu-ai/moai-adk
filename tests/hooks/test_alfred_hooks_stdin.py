@@ -12,11 +12,9 @@ TDD History:
 import json
 import subprocess
 import sys
-from io import StringIO
 from pathlib import Path
 
 import pytest
-
 
 # Path to alfred_hooks.py
 HOOKS_SCRIPT = Path(__file__).parent.parent.parent / ".claude" / "hooks" / "alfred" / "alfred_hooks.py"
