@@ -301,19 +301,19 @@ class TestCopyClaude:
         alfred_hooks.mkdir(parents=True)
         (alfred_hooks / "important_hook.py").write_text("# important")
 
+        # Create backup first (simulating Phase 2 of copy_templates)
         processor = TemplateProcessor(tmp_path)
+        backup_path = processor.create_backup()
+
+        # Now copy .claude (which should find the backup)
         processor._copy_claude(silent=True)
 
-        # Should create backup in .moai-backups/.claude-backups/{timestamp}/
-        backup_base = tmp_path / ".moai-backups" / ".claude-backups"
-        assert backup_base.exists(), "Backup directory should be created"
-
-        # Find the backup timestamp directory
-        backup_timestamps = list(backup_base.iterdir())
-        assert len(backup_timestamps) > 0, "At least one timestamp backup should exist"
+        # Backup should exist at .moai-backups/{timestamp}/.claude/
+        backup_claude = backup_path / ".claude"
+        assert backup_claude.exists(), "Backup .claude directory should be created"
 
         # Check that hooks/alfred was backed up
-        backup_hooks = backup_timestamps[0] / "hooks" / "alfred"
+        backup_hooks = backup_claude / "hooks" / "alfred"
         assert backup_hooks.exists(), "hooks/alfred should be backed up"
         assert (backup_hooks / "important_hook.py").exists(), "Hook files should be in backup"
 
