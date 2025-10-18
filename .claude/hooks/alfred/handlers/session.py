@@ -29,13 +29,25 @@ def handle_session_start(payload: HookPayload) -> HookResult:
            SPEC Progress: {완료}/{전체} ({퍼센트}%)
            Checkpoints: {개수} available (최신 3개 표시)
 
+    Note:
+        - Claude Code는 SessionStart를 여러 단계로 처리 (clear → compact)
+        - 중복 출력 방지를 위해 "compact" 단계에서만 메시지 표시
+        - "clear" 단계는 빈 결과 반환 (사용자에게 보이지 않음)
+
     TDD History:
         - RED: 세션 시작 메시지 형식 테스트
         - GREEN: helper 함수 조합하여 상태 메시지 생성
         - REFACTOR: 메시지 포맷 개선, 가독성 향상, checkpoint 목록 추가
+        - FIX: clear 단계 중복 출력 방지 (compact 단계만 표시)
 
     @TAG:CHECKPOINT-EVENT-001
     """
+    # Claude Code SessionStart는 여러 단계로 실행됨 (clear, compact 등)
+    # "clear" 단계는 무시하고 "compact" 단계에서만 메시지 출력
+    event_phase = payload.get("phase", "")
+    if event_phase == "clear":
+        return HookResult()  # 빈 결과 반환 (중복 출력 방지)
+
     cwd = payload.get("cwd", ".")
     language = detect_language(cwd)
     git_info = get_git_info(cwd)
