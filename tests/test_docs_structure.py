@@ -26,7 +26,9 @@ class TestDocumentStructure:
         """MkDocs 설정 파일 로드"""
         config_path = Path(__file__).parent.parent / "mkdocs.yml"
         with open(config_path, 'r', encoding='utf-8') as f:
-            return yaml.safe_load(f)
+            # Skip Python object tags (pymdownx.superfences.fence_code_format)
+            # to avoid ConstructorError in CI/CD environments
+            return yaml.safe_load(f.read().replace('!!python/name:', '#!!python/name:'))
 
     def test_introduction_exists(self, docs_dir):
         """TEST-INTRO-001: Introduction 파일 존재 확인"""
