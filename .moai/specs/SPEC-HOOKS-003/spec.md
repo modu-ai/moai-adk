@@ -1,9 +1,9 @@
 ---
 id: HOOKS-003
-version: 0.0.1
-status: draft
+version: 0.1.0
+status: completed
 created: 2025-10-16
-updated: 2025-10-16
+updated: 2025-10-18
 author: @Goos
 priority: high
 category: feature
@@ -30,6 +30,11 @@ scope:
 # @SPEC:HOOKS-003: TRUST 원칙 자동 검증 (PostToolUse 통합)
 
 ## HISTORY
+
+### v0.1.0 (2025-10-18)
+- **CHANGED**: TDD 구현 완료, status를 completed로 변경
+- **AUTHOR**: @Goos
+- **REVIEW**: 구현 검증 완료
 
 ### v0.0.1 (2025-10-16)
 - **INITIAL**: `/alfred:2-build` 완료 후 TRUST 검증 자동 실행 명세 작성
@@ -445,6 +450,6 @@ def format_validation_result(result: dict) -> str:
 
 ---
 
-**Last Updated**: 2025-10-16
+**Last Updated**: 2025-10-18
 **Author**: @Goos
-**Status**: Draft (v0.0.1)
+**Status**: Completed (v0.1.0)
