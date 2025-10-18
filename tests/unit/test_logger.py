@@ -9,7 +9,10 @@ SPEC 요구사항:
 """
 
 import logging
+import sys
 from pathlib import Path
+
+import pytest
 
 from moai_adk.utils.logger import SensitiveDataFilter, setup_logger
 
@@ -220,6 +223,7 @@ class TestSensitiveDataFilterClass:
 class TestDefaultLogDirectory:
     """기본 로그 디렉토리 테스트"""
 
+    @pytest.mark.skipif(sys.platform == "win32", reason="Windows file locking issue")
     def test_default_log_directory(self, monkeypatch):
         """TEST-LOGGING-001-18: log_dir 미지정 시 .moai/logs 사용"""
         import tempfile
