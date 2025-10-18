@@ -106,6 +106,7 @@ MoAI-ADK는 Anthropic의 "Effective Context Engineering for AI Agents" 원칙을
 - **Java**: JUnit + SPEC 어노테이션 (행동 주도 테스트)
 - **Go**: go test + SPEC 테이블 주도 테스트 (인터페이스 준수)
 - **Rust**: cargo test + SPEC 문서 테스트 (trait 검증)
+- **Ruby**: RSpec + SPEC 기반 BDD 테스트 (행동 명세 우선)
 
 각 테스트는 @TEST:ID → @CODE:ID 참조를 통해 특정 SPEC 요구사항과 연결한다.
 
@@ -125,6 +126,7 @@ MoAI-ADK는 Anthropic의 "Effective Context Engineering for AI Agents" 원칙을
 - **Java**: SPEC 구성요소 구현 클래스 + 강한 타이핑
 - **Go**: SPEC 요구사항 충족 인터페이스 + gofmt
 - **Rust**: SPEC 안전 요구사항을 구현하는 타입 + rustfmt
+- **Ruby**: SPEC 행동을 반영하는 duck typing + RuboCop 검증
 
 모든 코드 요소는 @TAG 주석을 통해 SPEC까지 추적 가능하다.
 
@@ -320,6 +322,7 @@ rg "### v[0-9]" .moai/specs/SPEC-AUTH-001.md | head -3
 - **Java**: JUnit (테스트), Maven/Gradle (빌드)
 - **Go**: go test (테스트), gofmt (포맷)
 - **Rust**: cargo test (테스트), rustfmt (포맷)
+- **Ruby**: RSpec (테스트), RuboCop (린터+포맷), Bundler (패키지 관리)
 
 ## 변수 역할 참고
 
