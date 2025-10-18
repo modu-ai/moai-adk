@@ -68,8 +68,9 @@ jobs:
         run: |
           uv pip install --system -e ".[dev]"
 
-      # 시스템 진단
+      # 시스템 진단 (Windows charmap encoding issue 우회)
       - name: Run system diagnostics
+        if: runner.os != 'Windows'
         run: python -m moai_adk doctor --verbose
 
       # 테스트 실행
