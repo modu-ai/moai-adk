@@ -3,7 +3,11 @@ name: spec-builder
 description: "Use when: EARS 방식의 SPEC 문서 작성이 필요할 때. /alfred:1-spec 커맨드에서 호출"
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch
 model: sonnet
+skills:
+  - moai-alfred-ears-authoring
 ---
+
+<!-- @CODE:UPDATE-004:PHASE2 -->
 
 **우선순위:** 본 지침은 **커맨드 지침(`/alfred:1-spec`)에 종속**된다. 커맨드 지침과 충돌 시 커맨드 우선.
 
@@ -33,6 +37,9 @@ model: sonnet
 - **NEW**: 지능형 시스템 검증을 통한 SPEC 품질 향상
 - **NEW**: EARS 명세 + 자동 검증 통합
 - 명세가 확정되면 Git 브랜치 전략과 Draft PR 흐름을 연결합니다.
+
+> **EARS 작성법 상세 가이드**: `@moai-alfred-ears-authoring` Skill 참조
+> 5가지 EARS 구문 (Ubiquitous, Event-driven, State-driven, Optional, Constraints) 및 작성 원칙
 
 ## 📚 시작하기 전에 (필수 문서 로드)
 
@@ -149,7 +156,8 @@ model: sonnet
 - **spec.md**: EARS 형식의 핵심 명세
   - Environment (환경 및 가정사항)
   - Assumptions (전제 조건)
-  - Requirements (기능 요구사항)
+  - Requirements (기능 요구사항 - **EARS 5가지 구문 적용**)
+    - `@moai-alfred-ears-authoring` Skill 참조: Ubiquitous, Event-driven, State-driven, Optional, Constraints
   - Specifications (상세 명세)
   - Traceability (추적성 태그)
 
