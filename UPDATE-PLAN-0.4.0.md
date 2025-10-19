@@ -290,17 +290,181 @@ Claude: (uses this skill + other-skill together)
 - scripts/helper.sh
 ```
 
+### 1.5 공식 문서 심층 분석 및 검증
+
+#### 1.5.1 "Effectively Unbounded Context" 공식 용어 확인
+
+**출처**: [Anthropic Engineering Blog - Equipping agents for the real world with Agent Skills](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)
+
+**공식 인용**:
+> "With progressive disclosure, skills can provide **effectively unbounded context** to Claude without overwhelming the model's attention."
+
+**핵심 의미**:
+- ❌ **오해**: 무제한 컨텍스트 윈도우 크기
+- ✅ **실제**: Progressive Disclosure로 **사실상 제한 없이** 정보를 제공할 수 있음
+- ✅ **메커니즘**: 필요한 정보만 선택적으로 로드하여 컨텍스트 효율성 극대화
+
+**v0.3.x 문서 수정 이력**:
+- ❌ "효율적 컨텍스트 관리"로 과도하게 보수적으로 수정했던 것 → 공식 용어 확인 후 복원
+- ✅ "Effectively Unbounded Context"는 **Anthropic 공식 기술 용어**임을 확인
+
+#### 1.5.2 Custom Skills vs API Skills (Claude Code 한정)
+
+**공식 문서**: [Claude Code Skills - Overview](https://docs.claude.com/en/docs/agents-and-tools/agent-skills/overview)
+
+**Claude Code의 Skills 지원**:
+```
+┌─────────────────────────────────────────┐
+│ Custom Skills (Claude Code 지원) ✅      │
+│ - 파일시스템 기반 (.claude/skills/)    │
+│ - SKILL.md + 추가 리소스                │
+│ - 프로젝트별/전역 설치 가능             │
+│ - 자동 감지 및 로드                     │
+└─────────────────────────────────────────┘
+
+┌─────────────────────────────────────────┐
+│ API Skills (Claude.ai 전용) ❌           │
+│ - API를 통해 업로드                     │
+│ - claude.ai 웹 인터페이스 전용          │
+│ - Claude Code는 미지원                  │
+└─────────────────────────────────────────┘
+```
+
+**MoAI-ADK 설계 원칙**:
+- ✅ **Custom Skills만 사용**: 모든 Skills는 파일시스템 기반
+- ✅ **로컬 우선**: API 업로드 불필요, 버전 관리 용이
+- ✅ **Git 통합**: Skills도 코드처럼 관리
+
+#### 1.5.3 Automatic Loading 메커니즘 상세
+
+**공식 설명**: Claude가 자동으로 관련성을 판단하여 Skills를 로드합니다.
+
+**자동 로딩 프로세스**:
+```
+1. Claude가 사용자 메시지 분석
+   ↓
+2. 설치된 모든 Skills의 Metadata (name + description) 스캔
+   - Layer 1: 최소 토큰만 소비
+   ↓
+3. 관련성 판단 (Claude의 추론 능력)
+   - description이 현재 작업과 관련 있는가?
+   - tags가 매칭되는가?
+   ↓
+4. 관련 Skills의 SKILL.md 로드
+   - Layer 2: 필요한 Skills만 전체 내용 로드
+   ↓
+5. 필요 시 추가 리소스 로드
+   - Layer 3: templates/, scripts/ 등
+   ↓
+6. Skills 기반 응답 생성
+```
+
+**최적화 팁**:
+- ✅ **명확한 description**: Claude가 쉽게 관련성 판단할 수 있도록
+- ✅ **구체적인 tags**: 자동 매칭 확률 증가
+- ✅ **<500 words**: SKILL.md는 간결하게 (공식 권장사항)
+- ✅ **명확한 use cases**: "When to use" 섹션 필수
+
+#### 1.5.4 SKILL.md 실제 예시 (moai-ears-authoring)
+
+**파일 위치**: `.claude/skills/moai-ears-authoring/SKILL.md`
+
+```markdown
+---
+name: moai-ears-authoring
+description: EARS 방식 요구사항 작성 가이드 (Ubiquitous/Event/State/Optional/Constraints 5가지 구문)
+version: 0.1.0
+author: @MoAI-ADK
+tags:
+  - spec
+  - requirements
+  - ears
 ---
 
-## Part 2: Skills vs Agents vs Commands
+# MoAI EARS Authoring Guide
+
+## What it does
+EARS (Easy Approach to Requirements Syntax) 방식으로 명확하고 검증 가능한 요구사항을 작성합니다.
+
+## When to use
+- SPEC 문서 작성 시
+- 요구사항 정리 필요 시
+- 모호한 요구사항 명확화 시
+
+## EARS 5가지 구문
+
+### 1. Ubiquitous (기본 요구사항)
+**형식**: 시스템은 [기능]을 제공해야 한다
+
+**예시**:
+- 시스템은 사용자 인증 기능을 제공해야 한다
+- 시스템은 데이터 백업 기능을 제공해야 한다
+
+### 2. Event-driven (이벤트 기반)
+**형식**: WHEN [조건]이면, 시스템은 [동작]해야 한다
+
+**예시**:
+- WHEN 사용자가 유효한 자격증명으로 로그인하면, 시스템은 JWT 토큰을 발급해야 한다
+- WHEN 토큰이 만료되면, 시스템은 401 에러를 반환해야 한다
+
+### 3. State-driven (상태 기반)
+**형식**: WHILE [상태]일 때, 시스템은 [동작]해야 한다
+
+**예시**:
+- WHILE 사용자가 인증된 상태일 때, 시스템은 보호된 리소스 접근을 허용해야 한다
+
+### 4. Optional (선택적 기능)
+**형식**: WHERE [조건]이면, 시스템은 [동작]할 수 있다
+
+**예시**:
+- WHERE 리프레시 토큰이 제공되면, 시스템은 새로운 액세스 토큰을 발급할 수 있다
+
+### 5. Constraints (제약사항)
+**형식**: IF [조건]이면, 시스템은 [제약]해야 한다
+
+**예시**:
+- IF 잘못된 토큰이 제공되면, 시스템은 접근을 거부해야 한다
+- 액세스 토큰 만료시간은 15분을 초과하지 않아야 한다
+
+## Works well with
+- moai-spec-metadata-validation
+- moai-tag-scanning
+```
+
+**핵심 설계 원칙**:
+- ✅ **간결성**: 500 단어 이하 (실제 340 단어)
+- ✅ **구체적 예시**: 각 구문마다 실제 사용 예시 포함
+- ✅ **명확한 트리거**: "When to use" 섹션으로 자동 로딩 최적화
+- ✅ **조합 가능**: "Works well with" 섹션으로 다른 Skills와 연계
+
+#### 1.5.5 공식 문서 출처 정리
+
+| 주제 | 공식 문서 URL | 핵심 내용 |
+|------|--------------|----------|
+| **Agent Skills 개요** | https://docs.claude.com/en/docs/agents-and-tools/agent-skills/overview | Progressive Disclosure, Automatic Loading |
+| **Effectively Unbounded Context** | https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills | 공식 기술 블로그, 용어 출처 |
+| **SKILL.md 구조** | https://docs.claude.com/en/docs/claude-code/skills | YAML frontmatter, 권장 구조 |
+| **Custom Skills** | https://docs.claude.com/en/docs/claude-code/skills#creating-skills | 파일시스템 기반, Claude Code 전용 |
+| **Sub-agents** | https://docs.claude.com/en/docs/claude-code/sub-agents | Task tool 호출, 독립 컨텍스트 |
+
+**검증 완료 사항**:
+- ✅ "Effectively Unbounded Context"는 공식 용어
+- ✅ Progressive Disclosure는 3-Layer 메커니즘
+- ✅ Claude Code는 Custom Skills만 지원 (API Skills 미지원)
+- ✅ Automatic Loading은 Claude의 추론 기반
+- ✅ <500 words는 공식 권장사항
+
+---
+
+## Part 2: Skills vs Sub-agents vs Commands
 
 ### 2.1 핵심 차이점 비교표
 
-| 차원 | **Skills** | **Agents** | **Commands** |
+| 차원 | **Skills** | **Sub-agents** | **Commands** |
 |------|-----------|-----------|--------------|
 | **호출 방식** | Model-Invoked (Claude 자동 판단) | Delegated (Alfred 위임) | User-Invoked (사용자 명시) |
 | **컨텍스트 전략** | Progressive Disclosure (3-Layer) | Isolated Context Window | Always Loaded |
-| **컨텍스트 한계** | **Unbounded** (무제한) | Limited (격리됨) | Limited (항상 로드) |
+| **컨텍스트 한계** | **Effectively Unbounded** | Limited (격리됨) | Limited (항상 로드) |
 | **조합 가능성** | **Composable** (자동 조합) | Sequential (순차 실행) | None (단일 실행) |
 | **범위** | Global (~/.claude/skills/) | Project (.claude/agents/) | Project (.claude/commands/) |
 | **재사용성** | **모든 프로젝트** | 프로젝트 전용 | 프로젝트 전용 |
@@ -320,7 +484,7 @@ Claude: (uses this skill + other-skill together)
 
 **예시**: moai-spec-writer, moai-tdd-guide, moai-tag-validator
 
-#### Use Agents when:
+#### Use Sub-agents when:
 
 ✅ **복잡한 추론 필요**: 다단계 분석, 의사결정
 ✅ **격리된 컨텍스트**: 메인 대화와 분리
