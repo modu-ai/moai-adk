@@ -25,6 +25,7 @@
 - [Quick Start](#quick-start-3분-실전)
 - [첫 번째 프로젝트: Todo API](#첫-번째-프로젝트-todo-api-만들기)
 - [3단계 워크플로우](#3단계-워크플로우)
+- [v0.4.0: Skills Revolution (계획 중)](#v040-skills-revolution-계획-중)
 - [실전 시나리오](#실전-시나리오)
 - [AI 모델 선택 가이드](#ai-모델-선택-가이드)
 - [CLI Reference](#cli-reference)
@@ -667,6 +668,202 @@ graph TD
 - `docs/api/auth.md` (API 문서)
 - `.moai/reports/sync-report.md`
 - `@DOC:AUTH-001` TAG 추가
+
+---
+
+## ■ v0.4.0: Skills Revolution (계획 중)
+
+> **⚠️ 현재 계획 단계**: 이 섹션은 v0.4.0 업데이트 계획을 미리 소개합니다. 자세한 내용은 [UPDATE-PLAN-0.4.0.md](UPDATE-PLAN-0.4.0.md)를 참고하세요.
+
+MoAI-ADK v0.4.0은 **Claude Code Skills** 시스템을 도입하여 개발자 경험을 혁신합니다.
+
+### ▶ Skills-First 아키텍처
+
+```mermaid
+%%{init: {'theme':'neutral'}}%%
+graph TD
+    User([사용자]) --> Commands[Commands<br/>워크플로우 오케스트레이션]
+    Commands --> Agents[Agents<br/>복잡한 판단 & 분석]
+    Agents --> Skills[Skills<br/>재사용 가능한 능력 조각]
+    Skills --> Hooks[Hooks<br/>가드레일 & 컨텍스트]
+
+    Commands -.-> Skills
+
+    style Skills fill:#e1f5ff,stroke:#0066cc,stroke-width:3px
+    style Commands fill:#fff4e1,stroke:#cc6600
+    style Agents fill:#f0e1ff,stroke:#6600cc
+    style Hooks fill:#e1ffe1,stroke:#00cc66
+```
+
+### ▶ 기존 vs Skills 기반 워크플로우
+
+**기존 방식 (Commands + Agents)**:
+
+```text
+사용자: "FastAPI 기반 사용자 인증 API SPEC 작성해줘"
+→ /alfred:1-spec 실행
+→ spec-builder 에이전트 호출
+→ SPEC 문서 작성 (2~3분)
+```
+
+**Skills 기반 (v0.4.0)**:
+
+```text
+사용자: "FastAPI 기반 사용자 인증 API SPEC 작성해줘"
+→ Alfred가 자동으로 3개 Skills 조합:
+  - moai-spec-writer (SPEC 작성)
+  - python-expert (Python 베스트 프랙티스)
+  - web-api-expert (REST API 설계)
+→ 대화형으로 Skills 추가/제거 가능
+→ SPEC 문서 작성 (1~2분, 60% 단축)
+```
+
+### ▶ 3가지 핵심 이점
+
+#### 1. Progressive Disclosure (점진적 컨텍스트 로딩)
+
+**기존**: 에이전트가 시작할 때 모든 문서를 한 번에 로드 → 컨텍스트 과부하
+
+**Skills**: 3-Layer 로딩 메커니즘
+1. **Metadata** (YAML frontmatter) - 즉시 로드 (≈50 토큰)
+2. **SKILL.md** (핵심 지침) - 필요 시 로드 (≈500 토큰)
+3. **Additional Files** (상세 문서) - 필요 시 로드 (가변)
+
+**효과**: 컨텍스트 사용량 **80% 감소**, 응답 속도 **2배 향상**
+
+#### 2. Composability (레고 블록처럼 조립)
+
+**기존**: 에이전트 간 협업은 Alfred가 명시적으로 조율해야 함
+
+**Skills**: 자동 조합 (Lego-like Assembly)
+
+```text
+# 예시: 모바일 앱 개발
+사용자: "Flutter로 Todo 앱 만들어줘"
+→ Alfred가 자동 조합:
+  - moai-spec-writer
+  - dart-expert
+  - mobile-app-expert
+  - moai-tdd-orchestrator
+
+# 대화형으로 Skill 추가
+사용자: "Firebase 인증도 추가해줘"
+→ firebase-expert Skill 자동 추가 ✅
+```
+
+#### 3. Zero Learning Curve (학습 불필요)
+
+**기존**: 사용자가 커맨드 이름을 외워야 함 (`/alfred:1-spec`, `/alfred:2-build`)
+
+**Skills**: 자연어 대화만으로 충분
+
+```text
+# 커맨드 몰라도 됨
+사용자: "JWT 인증 시스템 SPEC 만들어줘"
+→ Alfred: moai-spec-writer + web-api-expert 조합
+
+사용자: "TDD로 구현해줘"
+→ Alfred: moai-tdd-orchestrator 자동 호출
+
+사용자: "문서 업데이트"
+→ Alfred: moai-doc-syncer 자동 호출
+```
+
+### ▶ Skills 카탈로그 (총 45개)
+
+#### Foundation Skills (15개) - 핵심 워크플로우
+
+| Skill                    | 역할                 | 기존 대응            |
+| ------------------------ | -------------------- | -------------------- |
+| `moai-spec-writer`       | EARS 명세 작성       | spec-builder 일부    |
+| `moai-tdd-orchestrator`  | TDD 오케스트레이션   | tdd-implementer 일부 |
+| `moai-tag-validator`     | TAG 무결성 검증      | tag-agent 일부       |
+| `moai-doc-syncer`        | Living Document 동기 | doc-syncer 일부      |
+| `moai-git-flow`          | GitFlow 자동화       | git-manager 일부     |
+| `moai-quality-gate`      | TRUST 5원칙 검증     | trust-checker 일부   |
+| `moai-debug-assistant`   | 오류 진단 및 해결    | debug-helper 일부    |
+| `moai-refactoring-coach` | 리팩토링 가이드      | (신규)               |
+| ... 총 15개              |                      |                      |
+
+#### Language Skills (20개) - 언어별 전문가
+
+| Skill               | 언어           | 기능                     |
+| ------------------- | -------------- | ------------------------ |
+| `python-expert`     | Python         | pytest, mypy, ruff       |
+| `typescript-expert` | TypeScript     | Vitest, Biome            |
+| `java-expert`       | Java           | JUnit, Maven             |
+| `go-expert`         | Go             | go test, gofmt           |
+| `rust-expert`       | Rust           | cargo test, clippy       |
+| `dart-expert`       | Dart/Flutter   | flutter test             |
+| `swift-expert`      | Swift          | XCTest, SwiftLint        |
+| `ruby-expert`       | Ruby           | RSpec, RuboCop           |
+| ... 총 20개         |                |                          |
+
+#### Domain Skills (10개) - 도메인별 전문가
+
+| Skill              | 도메인        | 기능                  |
+| ------------------ | ------------- | --------------------- |
+| `web-api-expert`   | REST/GraphQL  | API 설계, 보안        |
+| `mobile-app-expert` | 모바일        | iOS, Android, Flutter |
+| `database-expert`  | 데이터베이스  | 스키마, 마이그레이션  |
+| `security-expert`  | 보안          | OWASP, 암호화         |
+| `performance-expert` | 성능 최적화   | 프로파일링, 캐싱      |
+| ... 총 10개        |               |                       |
+
+### ▶ Before/After 개발 시간 비교
+
+| 작업                | 기존 (Commands + Agents) | Skills 기반 (v0.4.0) | 개선율 |
+| ------------------- | ------------------------ | -------------------- | ------ |
+| **SPEC 작성**       | 2~3분                    | 1~2분                | 40%↓   |
+| **TDD 구현**        | 5~7분                    | 3~4분                | 43%↓   |
+| **문서 동기화**     | 1~2분                    | 30초~1분             | 50%↓   |
+| **전체 사이클**     | 8~12분                   | 4.5~7분              | **44%↓** |
+| **학습 곡선**       | 3개 커맨드 + 12개 에이전트 | 자연어만             | **90%↓** |
+
+**실제 개발자 경험**:
+
+```text
+# 기존: 커맨드 이름 외우기
+개발자: "/alfred:1-spec 뭐였더라... /alfred:0-project? 아니면 /alfred:1-spec?"
+→ 커맨드 참조 → 실행 (학습 부담)
+
+# Skills: 그냥 말하기
+개발자: "사용자 인증 SPEC 작성해줘"
+→ Alfred: "moai-spec-writer + web-api-expert 조합하겠습니다"
+→ 즉시 실행 (학습 불필요)
+```
+
+### ▶ 마이그레이션 로드맵
+
+MoAI-ADK는 **점진적 마이그레이션**을 지원합니다. 기존 커맨드와 에이전트는 **계속 유지**됩니다.
+
+#### Phase 1: v0.4.0 (2025 Q1) - MVP 출시
+
+- **3개 핵심 Skills**: moai-spec-writer, moai-tdd-orchestrator, moai-doc-syncer
+- **기존 커맨드 유지**: `/alfred:1-spec`, `/alfred:2-build`, `/alfred:3-sync` 동일하게 작동
+- **하위 호환성**: 100% (기존 프로젝트 영향 없음)
+
+#### Phase 2: v0.5.0 (2025 Q2) - Language Skills
+
+- **20개 언어 Skills**: python-expert, typescript-expert, java-expert 등
+- **자동 Skills 조합**: 자연어 요청 시 자동으로 Language Skills 추가
+
+#### Phase 3: v0.6.0 (2025 Q3) - Domain Skills
+
+- **10개 도메인 Skills**: web-api-expert, mobile-app-expert 등
+- **Skills 마켓플레이스 오픈**: 커뮤니티 Skills 공유
+
+#### Phase 4: v0.7.0 (2025 Q4) - Full Skills Ecosystem
+
+- **Community Skills**: GitHub에서 Skills 다운로드/공유
+- **Enterprise Skills**: 프라이빗 Skills 저장소 지원
+- **Skills CLI**: `moai-adk skills install <skill-name>`
+
+### ▶ 자세한 정보
+
+v0.4.0 전체 계획, 아키텍처 설계, 마이그레이션 전략은 다음 문서를 참고하세요:
+
+📖 **[UPDATE-PLAN-0.4.0.md](UPDATE-PLAN-0.4.0.md)** - 전체 200KB 분석 문서
 
 ---
 
