@@ -865,6 +865,113 @@ moai-adk update
 
 ---
 
+## 🚀 STEP 3: 프로젝트 맞춤형 최적화 (선택적)
+
+**실행 조건**:
+- Phase 2 (프로젝트 초기화) 완료 후
+- 또는 Phase 1.1 (백업 병합) 완료 후
+- 사용자가 명시적으로 요청하거나 Alfred가 자동 판단
+
+**목적**: 프로젝트 특성에 맞는 Commands, Agents, Skills만 선택하여 경량화 (37개 스킬 → 3~5개)
+
+### 3.1 Feature Selection 자동 실행
+
+**Alfred는 moai-alfred-feature-selector 스킬을 자동 호출**합니다:
+
+**스킬 입력**:
+- `.moai/project/product.md` (프로젝트 카테고리 힌트)
+- `.moai/project/tech.md` (주 언어, 프레임워크)
+- `.moai/config.json` (프로젝트 설정)
+
+**스킬 출력**:
+```json
+{
+  "category": "web-api",
+  "language": "python",
+  "framework": "fastapi",
+  "commands": ["1-spec", "2-build", "3-sync"],
+  "agents": ["spec-builder", "code-builder", "doc-syncer", "git-manager", "debug-helper"],
+  "skills": ["moai-lang-python", "moai-domain-web-api", "moai-domain-backend"],
+  "excluded_skills_count": 34,
+  "optimization_rate": "87%"
+}
+```
+
+**실행 방법**:
+```
+Alfred: Skill("moai-alfred-feature-selector")
+```
+
+---
+
+### 3.2 Template Generation 자동 실행
+
+**Alfred는 moai-alfred-template-generator 스킬을 자동 호출**합니다:
+
+**스킬 입력**:
+- `.moai/.feature-selection.json` (feature-selector 출력)
+- `CLAUDE.md` 템플릿
+- 전체 commands/agents/skills 파일
+
+**스킬 출력**:
+- `CLAUDE.md` (맞춤형 에이전트 테이블 - 선택된 에이전트만)
+- `.claude/commands/` (선택된 commands만)
+- `.claude/agents/` (선택된 agents만)
+- `.claude/skills/` (선택된 skills만)
+- `.moai/config.json` (`optimized: true` 업데이트)
+
+**실행 방법**:
+```
+Alfred: Skill("moai-alfred-template-generator")
+```
+
+---
+
+### 3.3 최적화 완료 보고
+
+**보고 형식**:
+```markdown
+✅ 프로젝트 맞춤형 최적화 완료!
+
+📊 최적화 결과:
+- **프로젝트**: {{PROJECT_NAME}}
+- **카테고리**: web-api
+- **주 언어**: python
+- **프레임워크**: fastapi
+
+🎯 선택된 기능:
+- Commands: 4개 (0-project, 1-spec, 2-build, 3-sync)
+- Agents: 5개 (spec-builder, code-builder, doc-syncer, git-manager, debug-helper)
+- Skills: 3개 (moai-lang-python, moai-domain-web-api, moai-domain-backend)
+
+💡 경량화 효과:
+- 제외된 스킬: 34개
+- 경량화: 87%
+- CLAUDE.md: 맞춤형 에이전트 테이블 생성
+
+📋 다음 단계:
+1. CLAUDE.md 파일 확인 (5개 에이전트만 표시)
+2. /alfred:1-spec "첫 기능" 실행
+3. MoAI-ADK 워크플로우 시작
+```
+
+---
+
+### 3.4 Phase 3 건너뛰기 (선택적)
+
+**사용자는 Phase 3를 건너뛸 수 있습니다**:
+
+**건너뛰기 조건**:
+- 사용자가 명시적으로 "건너뛰기" 선택
+- Alfred 자동 판단 시 "간단한 프로젝트" (기본 기능만 필요)
+
+**건너뛰기 효과**:
+- 전체 37개 스킬 유지 (경량화 없음)
+- CLAUDE.md 템플릿 기본 9개 에이전트 유지
+- config.json의 `optimized: false` 유지
+
+---
+
 ## 다음 단계
 
 **권장사항**: 다음 단계 진행 전 `/clear` 또는 `/new` 명령으로 새로운 대화 세션을 시작하면 더 나은 성능과 컨텍스트 관리를 경험할 수 있습니다.
