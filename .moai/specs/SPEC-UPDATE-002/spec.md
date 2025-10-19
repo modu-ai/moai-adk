@@ -1,7 +1,7 @@
 ---
 id: UPDATE-002
-version: 0.0.1
-status: draft
+version: 0.1.0
+status: completed
 created: 2025-10-19
 updated: 2025-10-19
 author: @Goos
@@ -23,13 +23,30 @@ scope:
   files:
     - update.py
     - merger.py
-    - config.py
+    - processor.py
     - 0-project.md
+    - project-manager.md
 ---
 
 # @SPEC:UPDATE-002: 스마트 템플릿 업데이트 및 병합 시스템
 
 ## HISTORY
+
+### v0.1.0 (2025-10-19)
+- **COMPLETED**: 스마트 템플릿 업데이트 및 병합 시스템 구현 완료
+- **AUTHOR**: @Goos
+- **CHANGES**:
+  - processor.py: CLAUDE.md 스마트 병합 로직 적용 (`_copy_claude_md()` 수정)
+  - processor.py: settings.json 스마트 병합 로직 적용 (`_copy_claude()` 수정)
+  - processor.py: `_merge_settings_json()` 위임 메서드 추가
+  - 0-project.md: update 서브커맨드 섹션 추가 (Phase 1/2 워크플로우)
+  - project-manager.md: update 로직 가이드 및 운영 체크리스트 추가
+- **RESULT**:
+  - CLAUDE.md "## 프로젝트 정보" 섹션 보존
+  - settings.json env 변수 및 permissions.allow 병합
+  - `/alfred:0-project update` 서브커맨드 완전 구현
+- **TAG**: @SPEC:UPDATE-002 → @CODE:UPDATE-002 (processor.py, 0-project.md, project-manager.md)
+- **REVIEW**: Alfred (코드 검증 완료)
 
 ### v0.0.1 (2025-10-19)
 - **INITIAL**: 스마트 템플릿 업데이트 및 병합 시스템 명세 작성
