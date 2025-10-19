@@ -16,7 +16,9 @@ Provides Ruby-specific expertise for TDD development, including RSpec BDD testin
 
 ## When to use
 
-- "Ruby 테스트 작성", "RSpec 사용법", "Rails 패턴"
+- "Ruby 테스트 작성", "RSpec 사용법", "Rails 패턴", "웹 애플리케이션", "프로토타입", "자동화 스크립트"
+- "Rails", "Sinatra", "Hanami", "Rack"
+- "DevOps 자동화", "Chef", "Puppet", "CLI 도구"
 - Automatically invoked when working with Ruby/Rails projects
 - Ruby SPEC implementation (`/alfred:2-build`)
 

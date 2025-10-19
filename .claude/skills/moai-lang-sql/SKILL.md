@@ -16,7 +16,9 @@ Provides SQL-specific expertise for database development, including SQL testing 
 
 ## When to use
 
-- "SQL 테스트 작성", "쿼리 최적화", "마이그레이션 관리"
+- "SQL 테스트 작성", "쿼리 최적화", "마이그레이션 관리", "데이터 분석", "리포팅", "데이터 웨어하우스"
+- "PostgreSQL", "MySQL", "SQL Server", "Oracle", "SQLite"
+- "NoSQL 쿼리", "데이터 모델링", "데이터 정규화"
 - Automatically invoked when working with database projects
 - SQL SPEC implementation (`/alfred:2-build`)
 

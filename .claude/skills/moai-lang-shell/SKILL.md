@@ -16,7 +16,9 @@ Provides shell scripting expertise for TDD development, including bats testing f
 
 ## When to use
 
-- "Shell 스크립트 작성", "bats 테스트", "POSIX 호환성"
+- "Shell 스크립트 작성", "bats 테스트", "POSIX 호환성", "시스템 자동화", "DevOps", "CI/CD 파이프라인"
+- "Bash 스크립팅", "Docker 엔트리포인트", "시스템 관리", "배포 자동화"
+- "Git 훅", "Cron 작업", "시스템 모니터링", "로그 처리"
 - Automatically invoked when working with shell script projects
 - Shell SPEC implementation (`/alfred:2-build`)
 
