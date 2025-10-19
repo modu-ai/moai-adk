@@ -1,7 +1,7 @@
 ---
 id: LANG-DETECT-001
-version: 0.0.1
-status: draft
+version: 0.1.0
+status: completed
 created: 2025-10-19
 updated: 2025-10-19
 author: @Alfred
@@ -23,6 +23,16 @@ scope:
 # @SPEC:LANG-DETECT-001: PHP/Laravel 언어 감지 개선
 
 ## HISTORY
+
+### v0.1.0 (2025-10-19)
+- **TDD COMPLETED**: RED-GREEN-REFACTOR 구현 완료
+- **TESTS**: 4개 Laravel 감지 테스트 추가 (24/24 통과)
+- **COVERAGE**: detector.py 88.89% → 92.59% 향상
+- **COMMITS**:
+  - 7c69624: 🐛 FIX: Laravel 프로젝트 PHP 언어 감지 개선
+  - b6b82a9: 📝 SPEC: Laravel PHP 언어 감지 개선 명세 작성
+- **CHANGED**: LANGUAGE_PATTERNS에 Laravel 특화 파일 3개 추가 (artisan, app/, bootstrap/laravel.php)
+- **REVIEW**: GitHub Issue #36 답변 완료
 
 ### v0.0.1 (2025-10-19)
 - **INITIAL**: Laravel 프로젝트 PHP 언어 감지 오류 수정 명세 작성
