@@ -20,7 +20,7 @@ Automatically detects project's primary language and framework by scanning confi
 ## When to use
 
 - "언어 감지", "프로젝트 언어 확인", "테스트 도구 추천"
-- Automatically invoked by `/alfred:0-init`, `/alfred:2-run`
+- Automatically invoked by `/alfred:0-project`, `/alfred:2-run`
 - Setting up new project
 
 ## How it works
@@ -57,7 +57,7 @@ Automatically detects project's primary language and framework by scanning confi
 ## Examples
 
 ### Example 1: Auto-detect project language
-User: "/alfred:0-init"
+User: "/alfred:0-project"
 Claude: (scans config files, detects Python, recommends pytest + ruff + black)
 
 ### Example 2: Manual detection
