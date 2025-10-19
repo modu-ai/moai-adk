@@ -4,8 +4,8 @@ description: Database design, schema optimization, indexing strategies, and migr
 allowed-tools:
   - Read
   - Bash
-tier: 4
-auto-load: "false"
+tier: 2
+auto-load: "true"
 ---
 
 # Database Expert
@@ -15,6 +15,11 @@ auto-load: "false"
 Provides expertise in database design, schema normalization, indexing strategies, query optimization, and safe migration management for SQL and NoSQL databases.
 
 ## When to use
+
+- "데이터베이스 설계", "스키마 최적화", "인덱스 전략", "마이그레이션", "정규화", "쿼리 최적화", "N+1 문제", "트랜잭션", "제약조건"
+- "Database design", "Schema optimization", "Indexing strategy", "Migration", "Query optimization", "Normalization"
+- Automatically invoked when working with database projects
+- Database SPEC implementation (`/alfred:2-run`)
 
 - "데이터베이스 설계", "스키마 최적화", "인덱스 전략", "마이그레이션"
 - Automatically invoked when working with database projects

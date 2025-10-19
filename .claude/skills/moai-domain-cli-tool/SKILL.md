@@ -4,8 +4,8 @@ description: CLI tool development with argument parsing, POSIX compliance, and u
 allowed-tools:
   - Read
   - Bash
-tier: 4
-auto-load: "false"
+tier: 2
+auto-load: "true"
 ---
 
 # CLI Tool Expert
@@ -15,6 +15,11 @@ auto-load: "false"
 Provides expertise in developing command-line interface tools with proper argument parsing, POSIX compliance, intuitive help messages, and standard exit codes.
 
 ## When to use
+
+- "CLI 도구 개발", "명령줄 파싱", "POSIX 호환성", "서브커맨드", "자동완성", "설정 파일", "옵션 파싱", "셸 스크립트"
+- "CLI tool development", "Command-line parsing", "POSIX compliance", "Shell completion", "Argument parsing"
+- Automatically invoked when working with CLI projects
+- CLI tool SPEC implementation (`/alfred:2-run`)
 
 - "CLI 도구 개발", "명령줄 파싱", "POSIX 호환성"
 - Automatically invoked when working with CLI projects

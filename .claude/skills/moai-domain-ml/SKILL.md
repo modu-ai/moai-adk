@@ -4,8 +4,8 @@ description: Machine learning model training, evaluation, deployment, and MLOps 
 allowed-tools:
   - Read
   - Bash
-tier: 4
-auto-load: "false"
+tier: 2
+auto-load: "true"
 ---
 
 # ML Expert
@@ -15,6 +15,11 @@ auto-load: "false"
 Provides expertise in machine learning model development, training, evaluation, hyperparameter tuning, deployment, and MLOps workflows for production ML systems.
 
 ## When to use
+
+- "머신러닝 모델 개발", "모델 학습", "모델 배포", "MLOps", "하이퍼파라미터 튜닝", "교차 검증", "scikit-learn", "TensorFlow", "PyTorch", "모델 평가"
+- "Machine learning", "Model training", "Model deployment", "MLOps", "Hyperparameter tuning", "Cross-validation"
+- Automatically invoked when working with ML projects
+- ML SPEC implementation (`/alfred:2-run`)
 
 - "머신러닝 모델 개발", "모델 학습", "모델 배포", "MLOps"
 - Automatically invoked when working with ML projects

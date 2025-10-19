@@ -4,8 +4,8 @@ description: CI/CD pipelines, Docker containerization, Kubernetes orchestration,
 allowed-tools:
   - Read
   - Bash
-tier: 4
-auto-load: "false"
+tier: 2
+auto-load: "true"
 ---
 
 # DevOps Expert
@@ -15,6 +15,11 @@ auto-load: "false"
 Provides expertise in continuous integration/deployment (CI/CD), Docker containerization, Kubernetes orchestration, and infrastructure as code (IaC) for automated deployment workflows.
 
 ## When to use
+
+- "CI/CD 파이프라인", "Docker 컨테이너화", "Kubernetes 배포", "인프라 코드", "IaC", "Terraform", "자동화", "모니터링", "GitHub Actions"
+- "CI/CD pipelines", "Docker containerization", "Kubernetes orchestration", "Infrastructure as code", "Terraform", "Automation"
+- Automatically invoked when working with DevOps projects
+- DevOps SPEC implementation (`/alfred:2-run`)
 
 - "CI/CD 파이프라인", "Docker 컨테이너화", "Kubernetes 배포", "인프라 코드"
 - Automatically invoked when working with DevOps projects

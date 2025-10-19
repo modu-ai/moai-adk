@@ -4,8 +4,8 @@ description: REST API and GraphQL design patterns with authentication, versionin
 allowed-tools:
   - Read
   - Bash
-tier: 4
-auto-load: "false"
+tier: 2
+auto-load: "true"
 ---
 
 # Web API Expert
@@ -15,6 +15,11 @@ auto-load: "false"
 Provides expertise in designing and implementing RESTful APIs and GraphQL services, including authentication mechanisms (JWT, OAuth2), API versioning strategies, and OpenAPI documentation.
 
 ## When to use
+
+- "API 설계", "REST API 패턴", "GraphQL 스키마", "JWT 인증", "OAuth2", "API 버전관리", "OpenAPI", "문서화", "HATEOAS", "N+1 문제"
+- "API design", "REST API", "GraphQL", "JWT authentication", "OAuth2", "API versioning", "OpenAPI documentation"
+- Automatically invoked when working with API projects
+- Web API SPEC implementation (`/alfred:2-run`)
 
 - "API 설계", "REST API 패턴", "GraphQL 스키마", "JWT 인증"
 - Automatically invoked when working with API projects

@@ -4,8 +4,8 @@ description: Server architecture, API design, caching strategies, and scalabilit
 allowed-tools:
   - Read
   - Bash
-tier: 4
-auto-load: "false"
+tier: 2
+auto-load: "true"
 ---
 
 # Backend Expert
@@ -15,6 +15,11 @@ auto-load: "false"
 Provides expertise in backend server architecture, RESTful API design, caching strategies, database optimization, and horizontal/vertical scalability patterns.
 
 ## When to use
+
+- "백엔드 아키텍처", "API 설계", "캐싱 전략", "확장성", "마이크로서비스", "로드 밸런싱", "데이터베이스 최적화", "메시지 큐", "비동기 처리"
+- "Backend architecture", "API design", "Caching strategy", "Scalability", "Microservices", "Load balancing"
+- Automatically invoked when working with backend projects
+- Backend SPEC implementation (`/alfred:2-run`)
 
 - "백엔드 아키텍처", "API 설계", "캐싱 전략", "확장성"
 - Automatically invoked when working with backend projects

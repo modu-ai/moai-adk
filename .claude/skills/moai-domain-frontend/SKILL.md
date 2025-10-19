@@ -4,8 +4,8 @@ description: React/Vue/Angular development with state management, performance op
 allowed-tools:
   - Read
   - Bash
-tier: 4
-auto-load: "false"
+tier: 2
+auto-load: "true"
 ---
 
 # Frontend Expert
@@ -15,6 +15,11 @@ auto-load: "false"
 Provides expertise in modern frontend development using React, Vue, or Angular, including state management patterns, performance optimization techniques, and accessibility (a11y) best practices.
 
 ## When to use
+
+- "프론트엔드 개발", "React 컴포넌트", "상태 관리", "성능 최적화", "Hook", "Redux", "Vue", "Angular", "접근성", "반응형 디자인"
+- "Frontend development", "React", "State management", "Performance optimization", "Component design", "Accessibility"
+- Automatically invoked when working with frontend projects
+- Frontend SPEC implementation (`/alfred:2-run`)
 
 - "프론트엔드 개발", "React 컴포넌트", "상태 관리", "성능 최적화"
 - Automatically invoked when working with frontend projects

@@ -4,8 +4,8 @@ description: Data analysis, visualization, statistical modeling, and reproducibl
 allowed-tools:
   - Read
   - Bash
-tier: 4
-auto-load: "false"
+tier: 2
+auto-load: "true"
 ---
 
 # Data Science Expert
@@ -15,6 +15,11 @@ auto-load: "false"
 Provides expertise in data analysis workflows, statistical modeling, data visualization, and reproducible research practices using Python (pandas, scikit-learn) or R (tidyverse).
 
 ## When to use
+
+- "데이터 분석", "시각화", "통계 모델링", "재현 가능한 연구", "EDA", "회귀 분석", "시계열 분석", "가설 검정", "pandas", "scikit-learn"
+- "Data analysis", "Visualization", "Statistical modeling", "Exploratory data analysis", "Regression", "Time series"
+- Automatically invoked when working with data science projects
+- Data science SPEC implementation (`/alfred:2-run`)
 
 - "데이터 분석", "시각화", "통계 모델링", "재현 가능한 연구"
 - Automatically invoked when working with data science projects

@@ -4,8 +4,8 @@ description: Mobile app development with Flutter and React Native, state managem
 allowed-tools:
   - Read
   - Bash
-tier: 4
-auto-load: "false"
+tier: 2
+auto-load: "true"
 ---
 
 # Mobile App Expert
@@ -15,6 +15,11 @@ auto-load: "false"
 Provides expertise in cross-platform mobile app development using Flutter (Dart) and React Native (TypeScript), including state management patterns and native module integration.
 
 ## When to use
+
+- "모바일 앱 개발", "Flutter 위젯", "React Native 컴포넌트", "상태 관리", "BLoC", "네이티브 모듈", "반응형 레이아웃", "크로스 플랫폼"
+- "Mobile app development", "Flutter", "React Native", "State management", "Native integration", "Cross-platform"
+- Automatically invoked when working with mobile app projects
+- Mobile app SPEC implementation (`/alfred:2-run`)
 
 - "모바일 앱 개발", "Flutter 위젯", "React Native 컴포넌트", "상태 관리"
 - Automatically invoked when working with mobile app projects

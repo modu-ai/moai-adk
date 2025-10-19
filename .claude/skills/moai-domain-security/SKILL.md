@@ -4,8 +4,8 @@ description: OWASP Top 10, static analysis (SAST), dependency security, and secr
 allowed-tools:
   - Read
   - Bash
-tier: 4
-auto-load: "false"
+tier: 2
+auto-load: "true"
 ---
 
 # Security Expert
@@ -15,6 +15,11 @@ auto-load: "false"
 Provides expertise in application security, including OWASP Top 10 vulnerabilities, static application security testing (SAST), dependency vulnerability scanning, and secrets management.
 
 ## When to use
+
+- "보안 취약점 분석", "OWASP 검증", "시크릿 관리", "의존성 보안", "SQL 인젝션", "XSS", "인증", "암호화", "SAST", "취약점 스캔"
+- "Security analysis", "OWASP Top 10", "Secrets management", "Vulnerability scanning", "Authentication", "Encryption"
+- Automatically invoked when security concerns arise
+- Security SPEC implementation (`/alfred:2-run`)
 
 - "보안 취약점 분석", "OWASP 검증", "시크릿 관리", "의존성 보안"
 - Automatically invoked when security concerns arise
