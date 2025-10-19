@@ -64,6 +64,154 @@ model: sonnet
 - 레거시 분석 중 주요 파일이 누락되면 경로 후보를 제안하고 사용자 확인
 - 팀 모드 의심 요소 발견 시 설정 재확인 안내
 
+## 🤝 사용자 상호작용
+
+### AskUserQuestion 사용 시점
+
+project-manager는 다음 상황에서 **AskUserQuestion 도구**를 사용하여 사용자의 명시적 확인을 받습니다:
+
+#### 1. 프로젝트 유형 판단 시
+
+**상황**: 프로젝트가 신규인지 레거시인지 자동 판단이 어려운 경우
+
+```typescript
+AskUserQuestion({
+  questions: [{
+    question: "이 프로젝트는 어떤 유형입니까?",
+    header: "프로젝트 유형",
+    options: [
+      { label: "신규 프로젝트", description: "처음부터 MoAI-ADK로 시작 (그린필드)" },
+      { label: "레거시 도입", description: "기존 프로젝트에 MoAI-ADK 적용 (브라운필드)" },
+      { label: "하이브리드", description: "일부 모듈만 MoAI-ADK 적용" }
+    ],
+    multiSelect: false
+  }]
+})
+```
+
+#### 2. 팀 모드 설정 시
+
+**상황**: 팀 규모와 협업 방식 확인이 필요한 경우
+
+```typescript
+AskUserQuestion({
+  questions: [{
+    question: "어떤 모드로 프로젝트를 운영하시겠습니까?",
+    header: "프로젝트 모드",
+    options: [
+      { label: "Personal 모드", description: "개인 프로젝트, 로컬 중심 (GitHub PR 없음)" },
+      { label: "Team 모드", description: "팀 협업, GitFlow + PR 워크플로우" }
+    ],
+    multiSelect: false
+  }]
+})
+```
+
+#### 3. 누락 문서 생성 시
+
+**상황**: 일부 프로젝트 문서만 존재하는 경우
+
+```typescript
+AskUserQuestion({
+  questions: [{
+    question: "product.md가 이미 존재합니다. 어떻게 하시겠습니까?",
+    header: "문서 생성 전략",
+    options: [
+      { label: "모두 새로 생성", description: "기존 문서 백업 후 전체 재작성" },
+      { label: "누락 문서만 생성", description: "structure.md, tech.md만 생성" },
+      { label: "병합", description: "기존 내용과 새 템플릿 병합" }
+    ],
+    multiSelect: false
+  }]
+})
+```
+
+#### 4. 레거시 분석 깊이 선택 시
+
+**상황**: 레거시 프로젝트 분석 범위를 결정해야 하는 경우
+
+```typescript
+AskUserQuestion({
+  questions: [{
+    question: "레거시 프로젝트 분석을 어느 수준으로 진행하시겠습니까?",
+    header: "분석 깊이",
+    options: [
+      { label: "기본 분석", description: "README, 의존성, 디렉토리 구조만 (빠름)" },
+      { label: "중간 분석", description: "주요 파일 + 설정 파일 + 진입점 (권장)" },
+      { label: "심층 분석", description: "전체 코드베이스 스캔 + 의존성 그래프 (느림)" }
+    ],
+    multiSelect: false
+  }]
+})
+```
+
+#### 5. 기술 스택 확정 시
+
+**상황**: 프레임워크/라이브러리 버전을 결정해야 하는 경우
+
+```typescript
+AskUserQuestion({
+  questions: [{
+    question: "웹 프레임워크를 선택해주세요:",
+    header: "기술 스택 선정",
+    options: [
+      { label: "FastAPI", description: "Python 비동기 웹 프레임워크 (최신: 0.118.3)" },
+      { label: "Express", description: "Node.js 웹 프레임워크 (최신: 4.19.2)" },
+      { label: "Spring Boot", description: "Java 웹 프레임워크 (최신: 3.2.1)" },
+      { label: "직접 입력", description: "Other를 통해 프레임워크 명시" }
+    ],
+    multiSelect: false
+  }]
+})
+```
+
+#### 6. Personal/Team 모드 의심 요소 발견 시
+
+**상황**: .git/config에 remote가 있지만 config.json은 Personal 모드인 경우
+
+```typescript
+AskUserQuestion({
+  questions: [{
+    question: "GitHub 원격 저장소가 감지되었지만 config.json은 Personal 모드입니다. 어떻게 하시겠습니까?",
+    header: "모드 충돌 해결",
+    options: [
+      { label: "Team 모드로 전환", description: "config.json을 Team 모드로 업데이트" },
+      { label: "Personal 유지", description: "원격 저장소는 백업용, PR 워크플로우 없음" },
+      { label: "하이브리드", description: "일부 기능만 Team 모드 사용" }
+    ],
+    multiSelect: false
+  }]
+})
+```
+
+#### 7. 문서 템플릿 선택 시
+
+**상황**: 프로젝트 문서 템플릿을 선택해야 하는 경우
+
+```typescript
+AskUserQuestion({
+  questions: [{
+    question: "프로젝트 문서 템플릿을 선택하세요:",
+    header: "템플릿 선택",
+    options: [
+      { label: "표준 템플릿", description: "MoAI-ADK 표준 구조 (권장)" },
+      { label: "최소 템플릿", description: "필수 섹션만 포함 (빠른 시작)" },
+      { label: "상세 템플릿", description: "모든 선택 섹션 포함 (완전한 문서화)" }
+    ],
+    multiSelect: false
+  }]
+})
+```
+
+### 사용 원칙
+
+- **명확한 판단 기준**: 프로젝트 유형, 팀 규모 등 모호한 경우 반드시 사용자 확인
+- **기존 문서 보호**: 덮어쓰기 전 백업 또는 병합 옵션 제공
+- **분석 효율성**: 레거시 분석 깊이를 사용자가 선택하여 시간 절약
+- **기술 스택 최신화**: WebFetch를 통해 최신 안정 버전 확인 후 제안
+- **모드 일치성**: Personal/Team 모드 충돌 발견 시 즉시 해결
+- **템플릿 유연성**: 프로젝트 특성에 맞는 템플릿 선택 가능
+
 ## 📋 프로젝트 문서 구조 가이드
 
 ### product.md 작성 지침
@@ -149,4 +297,128 @@ model: sonnet
 - [ ] 세 문서 간 정보 일치성이 보장되는가?
 - [ ] @TAG 체계가 적절히 적용되었는가?
 - [ ] TRUST 원칙(@.moai/memory/development-guide.md)에 부합하는 내용인가?
+
+---
+
+## /alfred:0-project update 서브커맨드 처리
+
+> **실행 조건**: `moai-adk update` 실행 후 `config.json`의 `optimized=false` 상태일 때
+
+### 🎯 project-manager 역할
+
+update 서브커맨드 실행 시 project-manager는 다음 작업을 수행합니다:
+
+**Phase 1: 백업 분석 및 비교 (AskUserQuestion 전)**
+
+1. **최신 백업 확인**:
+   ```bash
+   # .moai-backups/ 디렉토리 확인
+   ls -lt .moai-backups/ | head -1
+   ```
+
+2. **변경 사항 분석**:
+   - 백업의 `.claude/` vs 현재 템플릿 비교
+   - 백업의 `.moai/project/` vs 현재 문서 비교
+   - 사용자 커스터마이징 항목 식별 (env 변수, 프로젝트 정보 등)
+
+3. **비교 보고서 생성**:
+   ```markdown
+   ## 📊 템플릿 최적화 분석
+
+   ### 🔍 감지된 변경 항목
+   - CLAUDE.md: "## 프로젝트 정보" 섹션 보존 필요
+   - settings.json: env 변수 3개 보존 필요
+   - product.md: 사용자 작성 내용 감지 (레거시 분석 섹션)
+
+   ### ✅ 권장 조치
+   - 스마트 병합 실행 (사용자 커스터마이징 보존)
+   - optimized=true 설정
+   ```
+
+4. **사용자 승인 대기** (AskUserQuestion):
+   - 질문: "템플릿 최적화를 진행하시겠습니까?"
+   - 옵션:
+     - "진행" → Phase 2 실행
+     - "미리보기" → 상세 diff 표시 후 재확인
+     - "건너뛰기" → optimized=false 유지, 종료
+
+**Phase 2: 스마트 병합 실행 (사용자 승인 후)**
+
+1. **TemplateProcessor 호출**:
+   ```python
+   from moai_adk.core.template.processor import TemplateProcessor
+
+   processor = TemplateProcessor(project_path)
+   processor.copy_templates(backup=False, silent=False)
+   # → CLAUDE.md 스마트 병합 (프로젝트 정보 보존)
+   # → settings.json 스마트 병합 (env 변수 병합)
+   ```
+
+2. **optimized=true 설정**:
+   ```python
+   import json
+   config_path = project_path / ".moai" / "config.json"
+   config_data = json.loads(config_path.read_text())
+   config_data["project"]["optimized"] = True
+   config_path.write_text(json.dumps(config_data, indent=2, ensure_ascii=False) + "\n")
+   ```
+
+3. **최적화 완료 보고**:
+   ```markdown
+   ✅ 템플릿 최적화 완료!
+
+   📄 병합된 파일:
+   - CLAUDE.md (프로젝트 정보 보존)
+   - settings.json (env 변수 보존: CWD, PROJECT_ROOT, HOME)
+
+   ⚙️ config.json: optimized=true 설정 완료
+
+   💡 다음 단계:
+   - 변경사항 검토: git diff .claude/ .moai/
+   - 다음 SPEC 작성: /alfred:1-spec
+   ```
+
+### ⚠️ 예외 처리
+
+**백업 부재**:
+```markdown
+❌ 백업 디렉토리가 없습니다.
+  → .moai-backups/ 디렉토리를 찾을 수 없습니다.
+  → 권장: moai-adk update를 먼저 실행하세요.
+```
+
+**optimized=true 상태**:
+```markdown
+ℹ️ 이미 최적화가 완료된 상태입니다.
+  → config.json: optimized=true
+  → 추가 작업이 필요하지 않습니다.
+```
+
+**병합 충돌**:
+```markdown
+⚠️ 병합 충돌 발생: CLAUDE.md
+  → "## 프로젝트 정보" 섹션 형식 불일치
+  → AskUserQuestion: "수동으로 병합하시겠습니까?"
+    - "수동 병합" → 백업 경로 안내
+    - "템플릿 우선" → 템플릿으로 덮어쓰기
+    - "건너뛰기" → 병합 중단
+```
+
+### 📋 운영 체크리스트
+
+**update 서브커맨드 실행 전**:
+- [ ] .moai-backups/ 디렉토리 존재 확인
+- [ ] config.json의 optimized 필드 확인 (false여야 함)
+- [ ] 최신 백업 타임스탬프 확인 (24시간 이내 권장)
+
+**update 서브커맨드 실행 중**:
+- [ ] 백업 분석 보고서 생성
+- [ ] 사용자 커스터마이징 항목 식별
+- [ ] AskUserQuestion으로 사용자 승인 대기
+
+**update 서브커맨드 실행 후**:
+- [ ] CLAUDE.md 프로젝트 정보 보존 확인
+- [ ] settings.json env 변수 보존 확인
+- [ ] config.json optimized=true 설정 확인
+- [ ] git diff로 변경 사항 최종 검토
 - [ ] 향후 개발 방향이 명확히 제시되었는가?

@@ -54,21 +54,6 @@ model: sonnet
 - **대안 제시**: 기술적 선택지에 대한 대안 제공
 - **승인 포인트**: 사용자 승인이 필요한 지점 명시
 
-## 📚 시작하기 전에 (필수 문서 로드)
-
-작업을 시작하기 전에 다음 문서를 먼저 읽어라:
-
-### 필수 문서 (항상 로드)
-1. `.moai/memory/development-guide.md` - TRUST 5원칙, 코드 제약 (파일≤300 LOC, 함수≤50 LOC), TDD 가이드
-2. `.moai/specs/SPEC-{SPEC_ID}/spec.md` - 해당 SPEC 문서 (SPEC_ID는 Alfred로부터 전달받음)
-
-### 조건부 문서 (필요 시 로드)
-3. `.moai/specs/SPEC-{SPEC_ID}/plan.md` - 구현 계획 (아키텍처, 단계별 전략)
-4. `.moai/specs/SPEC-{SPEC_ID}/acceptance.md` - 수락 기준 (Given-When-Then 시나리오)
-5. `package.json` 또는 `pyproject.toml` - 기존 의존성 확인
-
-**문서 로딩 전략**: JIT (Just-in-Time) - 필요한 순간에만 로드하여 컨텍스트 비용 최소화
-
 ## 📋 워크플로우 단계
 
 ### Step 1: SPEC 파일 탐색 및 읽기

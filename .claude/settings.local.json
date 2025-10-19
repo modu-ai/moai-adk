@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/goos/.claude/**)"
+    ],
+    "deny": [],
+    "ask": []
+  },
+  "outputStyle": "Agentic Coding"
+}

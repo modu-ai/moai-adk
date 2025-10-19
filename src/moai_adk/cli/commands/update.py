@@ -21,14 +21,38 @@ def get_latest_version() -> str | None:
     try:
         import urllib.error
         import urllib.request
+        from typing import cast
 
         url = "https://pypi.org/pypi/moai-adk/json"
         with urllib.request.urlopen(url, timeout=5) as response:  # nosec B310 - URL is hardcoded HTTPS to PyPI API, no user input
             data = json.loads(response.read().decode("utf-8"))
-            return data["info"]["version"]
+            version_str: str = cast(str, data["info"]["version"])
+            return version_str
     except (urllib.error.URLError, json.JSONDecodeError, KeyError, TimeoutError):
         # Return None if PyPI check fails
         return None
+
+
+def set_optimized_false(project_path: Path) -> None:
+    """Set config.json's optimized field to false.
+
+    Args:
+        project_path: Project path (absolute).
+    """
+    config_path = project_path / ".moai" / "config.json"
+    if not config_path.exists():
+        return
+
+    try:
+        config_data = json.loads(config_path.read_text(encoding="utf-8"))
+        config_data.setdefault("project", {})["optimized"] = False
+        config_path.write_text(
+            json.dumps(config_data, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8"
+        )
+    except (json.JSONDecodeError, KeyError):
+        # Ignore errors if config.json is invalid
+        pass
 
 
 @click.command()
@@ -98,14 +122,18 @@ def update(path: str, force: bool, check: bool) -> None:
                 console.print("[green]✓ Already up to date[/green]")
             return
 
-        # Check if update is needed (version + optimized status) - skip with --force
+        # Check if update is needed (version only) - skip with --force
         if not force and latest_version is not None:
             current_ver = version.parse(current_version)
             latest_ver = version.parse(latest_version)
 
-            # Don't update if current version is newer or equal
-            if current_ver >= latest_ver:
-                # Check optimized status in config.json
+            # Don't update if current version is newer
+            if current_ver > latest_ver:
+                console.print("[green]✓ Development version (newer than PyPI)[/green]")
+                return
+            # If versions are equal, check if we need to proceed
+            elif current_ver == latest_ver:
+                # Check if optimized=false (need to update templates)
                 config_path = project_path / ".moai" / "config.json"
                 if config_path.exists():
                     try:
@@ -116,9 +144,8 @@ def update(path: str, force: bool, check: bool) -> None:
                             # Already up to date and optimized - exit silently
                             return
                         else:
-                            console.print("[yellow]⚠ Optimization needed[/yellow]")
-                            console.print("[dim]Use /alfred:0-project update for template optimization[/dim]")
-                            return
+                            # Proceed with template update (optimized=false)
+                            console.print("[yellow]⚠ Template optimization needed[/yellow]")
                     except (json.JSONDecodeError, KeyError):
                         # If config.json is invalid, proceed with update
                         pass
@@ -145,7 +172,12 @@ def update(path: str, force: bool, check: bool) -> None:
         console.print("   [green]🔄 CLAUDE.md merge complete[/green]")
         console.print("   [green]🔄 config.json merge complete[/green]")
 
+        # Phase 4: set optimized=false
+        set_optimized_false(project_path)
+        console.print("   [yellow]⚙️  Set optimized=false (optimization needed)[/yellow]")
+
         console.print("\n[green]✓ Update complete![/green]")
+        console.print("\n[cyan]ℹ️  Next step: Run /alfred:0-project update to optimize template changes[/cyan]")
 
     except Exception as e:
         console.print(f"[red]✗ Update failed: {e}[/red]")

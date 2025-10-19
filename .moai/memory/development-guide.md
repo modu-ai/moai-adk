@@ -55,6 +55,314 @@ MoAI-ADK 범용 개발 툴킷을 사용하는 모든 에이전트와 개발자�
 
 ---
 
+## MoAI-ADK 아키텍처
+
+MoAI-ADK는 **계층화된 책임 분리 아키텍처**를 기반으로 설계되었습니다.
+
+### 아키텍처 레이어 개요
+
+```
+┌─────────────────────────────────────────────────┐
+│ Layer 1: 사용자 (User)                           │
+│  - 최종 승인 권한                                 │
+│  - AskUserQuestion으로 상호작용                   │
+└──────────────┬──────────────────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────────────────┐
+│ Layer 2: Alfred (SuperAgent)                     │
+│  - 전략적 의사결정                                │
+│  - Skills 자동 선택                               │
+│  - 순차/병렬 실행 판단                            │
+│  - 커맨드 해석 및 실행                            │
+└──────────────┬──────────────────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────────────────┐
+│ Layer 3: Commands (워크플로우 템플릿)             │
+│  - 절차적 지침 (What + How)                      │
+│  - Phase 구조 정의                                │
+│  - 의존성 힌트 제공                               │
+│  - AskUserQuestion 호출 (Phase 승인)              │
+└──────────────┬──────────────────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────────────────┐
+│ Layer 4: Sub-agents (전문 에이전트)               │
+│  - 전술적 의사결정                                │
+│  - 단일 업무 수행                                 │
+│  - AskUserQuestion 호출 (세부 확인)               │
+│  - Skills 활용                                    │
+└──────────────┬──────────────────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────────────────┐
+│ Layer 5: Skills (재사용 가능 기능 모듈)           │
+│  - 도메인 로직 캡슐화                             │
+│  - 패턴화된 작업 수행                             │
+│  - Alfred가 자동 선택/호출                        │
+└──────────────┬──────────────────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────────────────┐
+│ Layer 6: Tools (Claude Code 기본 도구)           │
+│  - Read, Write, Edit (파일 조작)                 │
+│  - Bash (명령 실행)                               │
+│  - Grep, Glob (검색)                              │
+│  - AskUserQuestion (상호작용)                     │
+└─────────────────────────────────────────────────┘
+```
+
+### 각 레이어의 책임과 경계
+
+#### Layer 1: 사용자 (User)
+
+**책임**:
+- 최종 의사결정 (Phase 승인, 세부 작업 확인)
+- 요구사항 제공
+- 결과 검토 및 피드백
+
+**의사결정 범위**:
+- 전체 워크플로우 진행 여부 (커맨드 레벨)
+- 위험한 작업 승인 여부 (Sub-agent 레벨)
+
+**인터페이스**:
+- 입력: 자연어 명령 (`/alfred:1-plan "새 기능"`)
+- 출력: AskUserQuestion 응답 ("진행", "수정", "중단")
+
+---
+
+#### Layer 2: Alfred (SuperAgent)
+
+**책임**:
+- **전략적 의사결정**: 어떤 Sub-agent를 호출할지, 어떤 Skills를 사용할지
+- **커맨드 해석**: 커맨드 파일을 읽고 워크플로우 실행
+- **자동 판단**: Skills 선택, 순차/병렬 실행 결정
+- **결과 통합**: 여러 에이전트의 결과를 취합하여 사용자에게 보고
+
+**의사결정 범위**:
+- Skills 자동 선택 (CLAUDE.md의 "Alfred 지능형 오케스트레이션" 참조)
+- 순차/병렬 실행 판단 (의존성 분석 기반)
+- 에이전트 간 작업 조율
+
+**인터페이스**:
+- 입력: 커맨드 지침, 사용자 요청
+- 출력: Sub-agent 호출 (Task tool), Skills 호출 (Skill tool)
+
+**핵심 원칙**:
+- **중앙 조율**: Alfred만이 에이전트 간 작업을 조율 (에이전트 간 직접 호출 금지)
+- **자동 판단**: 명시적 지침이 없어도 상황 기반 최적 선택
+- **투명성**: 모든 의사결정을 사용자에게 보고
+
+---
+
+#### Layer 3: Commands (워크플로우 템플릿)
+
+**책임**:
+- **절차 정의**: Phase 구조 및 단계별 작업 명시
+- **의존성 힌트**: Alfred에게 실행 순서 힌트 제공
+- **AskUserQuestion 호출**: Phase 전환 시 사용자 승인
+- **예시 제공**: 구체적인 코드 예시 및 사용법
+
+**의사결정 범위**:
+- 워크플로우 구조 (Phase 1 → Phase 2)
+- Sub-agent 호출 순서 제안
+- Skills 자동 활성화 조건 힌트
+
+**인터페이스**:
+- 입력: 사용자 명령 (slash command)
+- 출력: Alfred에게 주는 지침 (Markdown 문서)
+
+**핵심 원칙**:
+- **선언적 + 절차적**: What (목표) + How (방법) 모두 명시
+- **커맨드 우선순위**: 커맨드 지침은 에이전트 지침보다 상위
+- **상세 가이드**: 예시 코드 및 상세 설명 포함
+
+---
+
+#### Layer 4: Sub-agents (전문 에이전트)
+
+**책임**:
+- **전술적 의사결정**: 어떻게 구현할지 (구체적 방법)
+- **단일 업무 수행**: 자신의 전문 영역만 담당
+- **AskUserQuestion 호출**: 세부 작업 확인 (파일 덮어쓰기 등)
+- **Skills 활용**: Alfred가 제공한 Skills 사용
+
+**의사결정 범위**:
+- 구현 세부사항 (파일 구조, 코드 스타일 등)
+- 위험한 작업 확인 (덮어쓰기, 삭제 등)
+- 작업 완료 여부 판단
+
+**인터페이스**:
+- 입력: Alfred의 Task 호출 (prompt)
+- 출력: 작업 결과 보고 (output)
+
+**핵심 원칙**:
+- **단일 책임**: 각 에이전트는 자신의 전문 영역만 담당
+- **자율성**: 내부 구현은 에이전트가 자율적으로 결정
+- **협업 금지**: 에이전트 간 직접 호출 금지 (Alfred 경유)
+
+---
+
+#### Layer 5: Skills (재사용 가능 기능 모듈)
+
+**책임**:
+- **도메인 로직 캡슐화**: TAG 스캔, TRUST 검증 등
+- **패턴화된 작업 수행**: 반복적이고 규칙 기반 작업
+- **빠른 실행**: Haiku 모델 사용 (비용 절감, 속도 향상)
+
+**의사결정 범위**:
+- 검증 기준 판단 (TRUST 5원칙 준수 여부 등)
+- 결과 심각도 판정 (PASS, WARNING, CRITICAL)
+
+**인터페이스**:
+- 입력: Alfred의 Skill 호출
+- 출력: 검증 결과 (JSON 또는 Markdown 보고서)
+
+**핵심 원칙**:
+- **자동 활성화**: Alfred가 상황 기반 자동 선택
+- **경량화**: Agent보다 가볍고 빠름
+- **재사용성**: 여러 커맨드/에이전트에서 공통 사용
+
+---
+
+#### Layer 6: Tools (Claude Code 기본 도구)
+
+**책임**:
+- 파일 시스템 조작 (Read, Write, Edit)
+- 명령 실행 (Bash)
+- 검색 (Grep, Glob)
+- 사용자 상호작용 (AskUserQuestion)
+
+**핵심 원칙**:
+- 모든 레이어가 사용 가능
+- 부작용 최소화 (readonly 우선)
+
+---
+
+### 정보 흐름 (Information Flow)
+
+#### 순방향 흐름 (Top-Down)
+
+```
+사용자 요청: "/alfred:1-plan 새 기능"
+    ↓
+Alfred 분석:
+    - 커맨드: /alfred:1-plan 파일 읽기
+    - 의도: SPEC 작성 요청
+    ↓
+커맨드 지침 해석:
+    - Phase 1: 의도 파악 (AskUserQuestion)
+    - Phase 2: spec-builder 호출
+    ↓
+AskUserQuestion (Layer 1):
+    - "어떤 기능을 만드시겠습니까?"
+    - 사용자 응답: "인증 기능"
+    ↓
+Alfred 실행 판단:
+    - spec-builder 호출 (Task tool)
+    - 입력: "인증 기능 SPEC 작성"
+    ↓
+spec-builder 실행:
+    - .moai/project/ 문서 분석
+    - SPEC 초안 작성
+    - AskUserQuestion: "파일 덮어쓸까요?"
+    ↓
+Alfred Skills 자동 선택:
+    - 조건: SPEC 파일 생성됨
+    - 선택: moai-alfred-spec-metadata
+    - 실행: Skill 호출
+    ↓
+결과 반환
+```
+
+#### 역방향 흐름 (Bottom-Up)
+
+```
+Skills 실행 결과:
+    - moai-alfred-spec-metadata: "7개 필수 필드 모두 존재"
+    ↓
+Sub-agent 결과 통합:
+    - spec-builder: "SPEC 작성 완료 + 검증 통과"
+    ↓
+Alfred 결과 통합:
+    - SPEC 파일 경로: .moai/specs/SPEC-AUTH-001/spec.md
+    - 검증 결과: PASS
+    - 다음 단계: /alfred:2-run AUTH-001
+    ↓
+사용자에게 보고:
+    - 작업 완료 요약
+    - 다음 단계 제안
+```
+
+---
+
+### 의사결정 경계 (Decision Boundary)
+
+각 레이어의 의사결정 범위를 명확히 구분하여 책임을 분리합니다.
+
+| 의사결정 유형 | 레이어 | 예시 |
+|--------------|-------|------|
+| **최종 승인** | User | "Phase 2 진행할까요?", "파일 덮어쓸까요?" |
+| **전략적 판단** | Alfred | "어떤 Skills를 호출할까?", "순차/병렬 실행?" |
+| **워크플로우 구조** | Commands | "Phase 1 → Phase 2 순서", "의존성 힌트" |
+| **전술적 판단** | Sub-agents | "어떤 파일 구조?", "어떤 코드 스타일?" |
+| **검증 판단** | Skills | "TRUST 원칙 준수?", "TAG 체인 무결성?" |
+
+**핵심 원칙**:
+1. **상위 레이어 우선**: 충돌 시 상위 레이어 의사결정 우선
+2. **명확한 경계**: 각 레이어는 자신의 범위 내에서만 판단
+3. **위임 금지**: 자신의 책임을 다른 레이어에 위임 금지
+
+---
+
+### 실전 예시: /alfred:1-plan 실행 흐름
+
+```
+1. User → Alfred
+   사용자: "/alfred:1-plan 새 기능"
+
+2. Alfred → Commands
+   Alfred: /alfred:1-plan.md 읽기
+
+3. Commands → Alfred
+   커맨드 지침: "Phase 1에서 AskUserQuestion으로 의도 파악"
+
+4. Alfred → User (AskUserQuestion)
+   Alfred: "어떤 기능을 만드시겠습니까?"
+   User: "인증 기능"
+
+5. Alfred → Sub-agent
+   Alfred: Task(spec-builder, prompt="인증 기능 SPEC 작성")
+
+6. Sub-agent → User (AskUserQuestion)
+   spec-builder: "기존 파일 덮어쓸까요?"
+   User: "덮어쓰기"
+
+7. Sub-agent → Tools
+   spec-builder: Write(.moai/specs/SPEC-AUTH-001/spec.md)
+
+8. Alfred → Skills (자동 판단)
+   Alfred: 조건 체크 → SPEC 생성됨
+   Alfred: Skill(moai-alfred-spec-metadata)
+
+9. Skills → Alfred
+   moai-alfred-spec-metadata: "검증 PASS"
+
+10. Alfred → User
+    Alfred: "작업 완료 보고 + 다음 단계 제안"
+```
+
+**각 레이어의 역할**:
+- **User**: 승인 (2회)
+- **Alfred**: 조율 (커맨드 해석, Sub-agent 호출, Skills 자동 선택)
+- **Commands**: 절차 제공 (Phase 구조, AskUserQuestion 타이밍)
+- **Sub-agent**: 전문 작업 (SPEC 작성)
+- **Skills**: 검증 (메타데이터 확인)
+- **Tools**: 실행 (파일 쓰기)
+
+---
+
 ## Context Engineering (컨텍스트 엔지니어링)
 
 MoAI-ADK는 Anthropic의 "Effective Context Engineering for AI Agents" 원칙을 기반으로 효율적인 컨텍스트 관리를 구현합니다.
