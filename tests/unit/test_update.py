@@ -216,12 +216,12 @@ class TestUpdateCommand:
                 assert "config.json merge complete" in result.output
                 assert result.exit_code == 0
 
-    def test_update_skips_when_same_version_and_optimized(self, tmp_path):
-        """Test update skips silently when version is same and already optimized"""
+    def test_update_skips_when_same_version(self, tmp_path):
+        """Test update skips when version is same"""
         runner = CliRunner()
 
         with runner.isolated_filesystem(temp_dir=tmp_path):
-            # Create .moai structure with optimized=true
+            # Create .moai structure
             moai_dir = Path(".moai")
             moai_dir.mkdir()
             config_data = {
@@ -236,38 +236,9 @@ class TestUpdateCommand:
 
             result = runner.invoke(update)
             assert result.exit_code == 0
-            # Should exit silently when optimized=true and versions match
+            # Should show "Already up to date" when versions match
             assert "Checking versions" in result.output
-            assert "Current version" in result.output
-            assert "Latest version" in result.output
-
-    def test_update_suggests_alfred_when_same_version_not_optimized(self, tmp_path):
-        """Test update suggests /alfred:0-project when version same but not optimized"""
-        runner = CliRunner()
-
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            # Create .moai structure with optimized=false
-            moai_dir = Path(".moai")
-            moai_dir.mkdir()
-            config_data = {
-                "project": {
-                    "optimized": False,
-                    "name": "test",
-                    "mode": "personal"
-                }
-            }
-            import json
-            (moai_dir / "config.json").write_text(json.dumps(config_data))
-
-            # Mock get_latest_version to return same version as current
-            with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
-                with patch("moai_adk.cli.commands.update.__version__", "0.3.2"):
-                    mock_get_version.return_value = "0.3.2"
-
-                    result = runner.invoke(update)
-                    assert result.exit_code == 0
-                    assert "Template optimization needed" in result.output
-                    assert "alfred:0-project update" in result.output
+            assert "Already up to date" in result.output
 
     def test_update_proceeds_when_config_missing(self, tmp_path):
         """Test update shows already up to date when config.json missing"""

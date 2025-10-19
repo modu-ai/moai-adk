@@ -127,31 +127,10 @@ def update(path: str, force: bool, check: bool) -> None:
             current_ver = version.parse(current_version)
             latest_ver = version.parse(latest_version)
 
-            # Don't update if current version is newer
-            if current_ver > latest_ver:
-                console.print("[green]✓ Development version (newer than PyPI)[/green]")
+            # Don't update if current version is newer or equal
+            if current_ver >= latest_ver:
+                console.print("[green]✓ Already up to date[/green]")
                 return
-            # If versions are equal, check if we need to proceed
-            elif current_ver == latest_ver:
-                # Check if optimized=false (need to update templates)
-                config_path = project_path / ".moai" / "config.json"
-                if config_path.exists():
-                    try:
-                        config_data = json.loads(config_path.read_text())
-                        is_optimized = config_data.get("project", {}).get("optimized", False)
-
-                        if is_optimized:
-                            # Already up to date and optimized - exit silently
-                            return
-                        else:
-                            # Proceed with template update (optimized=false)
-                            console.print("[yellow]⚠ Template optimization needed[/yellow]")
-                    except (json.JSONDecodeError, KeyError):
-                        # If config.json is invalid, proceed with update
-                        pass
-                else:
-                    console.print("[green]✓ Already up to date[/green]")
-                    return
 
         # Phase 2: create a backup unless --force
         if not force:
