@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.3.14] - 2025-10-20
+
+### 🐛 Hotfix
+
+**중요 버그 수정** (#30):
+- `AttributeError: 'TemplateProcessor' object has no attribute '_backup_alfred_folder'` 수정
+- v0.3.12/v0.3.13에서 발생한 초기화 실패 문제 해결
+- `moai-adk init .` 실행 시 Initialization Failed 오류 수정
+
+**원인**:
+- processor.py:272 라인에서 존재하지 않는 `_backup_alfred_folder()` 메서드 호출
+- 백업 시스템 리팩토링 과정에서 메서드 정의는 제거되었으나 호출 코드는 남아있었음
+
+**해결**:
+- `_backup_alfred_folder()` 메서드 호출 제거
+- 백업은 `update.py`의 `create_backup()` 메서드로 통합 처리
+
+**영향**:
+- v0.3.12, v0.3.13 사용자는 `uv pip install --upgrade moai-adk` 실행 필요
+- 초기화 실패 문제 완전 해결
+
+**관련 이슈**: GitHub Discussion #30
+
+---
+
 ## [v0.4.0] - 2025-10-20 (Phase 1 완료, 진행 중)
 
 > **📍 현재 진행 상태**: Skills 표준화 Phase 1 완료 (SPEC-SKILLS-REDESIGN-001 v0.1.0)
