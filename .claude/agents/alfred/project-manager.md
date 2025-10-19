@@ -297,4 +297,128 @@ AskUserQuestion({
 - [ ] 세 문서 간 정보 일치성이 보장되는가?
 - [ ] @TAG 체계가 적절히 적용되었는가?
 - [ ] TRUST 원칙(@.moai/memory/development-guide.md)에 부합하는 내용인가?
+
+---
+
+## /alfred:0-project update 서브커맨드 처리
+
+> **실행 조건**: `moai-adk update` 실행 후 `config.json`의 `optimized=false` 상태일 때
+
+### 🎯 project-manager 역할
+
+update 서브커맨드 실행 시 project-manager는 다음 작업을 수행합니다:
+
+**Phase 1: 백업 분석 및 비교 (AskUserQuestion 전)**
+
+1. **최신 백업 확인**:
+   ```bash
+   # .moai-backups/ 디렉토리 확인
+   ls -lt .moai-backups/ | head -1
+   ```
+
+2. **변경 사항 분석**:
+   - 백업의 `.claude/` vs 현재 템플릿 비교
+   - 백업의 `.moai/project/` vs 현재 문서 비교
+   - 사용자 커스터마이징 항목 식별 (env 변수, 프로젝트 정보 등)
+
+3. **비교 보고서 생성**:
+   ```markdown
+   ## 📊 템플릿 최적화 분석
+
+   ### 🔍 감지된 변경 항목
+   - CLAUDE.md: "## 프로젝트 정보" 섹션 보존 필요
+   - settings.json: env 변수 3개 보존 필요
+   - product.md: 사용자 작성 내용 감지 (레거시 분석 섹션)
+
+   ### ✅ 권장 조치
+   - 스마트 병합 실행 (사용자 커스터마이징 보존)
+   - optimized=true 설정
+   ```
+
+4. **사용자 승인 대기** (AskUserQuestion):
+   - 질문: "템플릿 최적화를 진행하시겠습니까?"
+   - 옵션:
+     - "진행" → Phase 2 실행
+     - "미리보기" → 상세 diff 표시 후 재확인
+     - "건너뛰기" → optimized=false 유지, 종료
+
+**Phase 2: 스마트 병합 실행 (사용자 승인 후)**
+
+1. **TemplateProcessor 호출**:
+   ```python
+   from moai_adk.core.template.processor import TemplateProcessor
+
+   processor = TemplateProcessor(project_path)
+   processor.copy_templates(backup=False, silent=False)
+   # → CLAUDE.md 스마트 병합 (프로젝트 정보 보존)
+   # → settings.json 스마트 병합 (env 변수 병합)
+   ```
+
+2. **optimized=true 설정**:
+   ```python
+   import json
+   config_path = project_path / ".moai" / "config.json"
+   config_data = json.loads(config_path.read_text())
+   config_data["project"]["optimized"] = True
+   config_path.write_text(json.dumps(config_data, indent=2, ensure_ascii=False) + "\n")
+   ```
+
+3. **최적화 완료 보고**:
+   ```markdown
+   ✅ 템플릿 최적화 완료!
+
+   📄 병합된 파일:
+   - CLAUDE.md (프로젝트 정보 보존)
+   - settings.json (env 변수 보존: CWD, PROJECT_ROOT, HOME)
+
+   ⚙️ config.json: optimized=true 설정 완료
+
+   💡 다음 단계:
+   - 변경사항 검토: git diff .claude/ .moai/
+   - 다음 SPEC 작성: /alfred:1-spec
+   ```
+
+### ⚠️ 예외 처리
+
+**백업 부재**:
+```markdown
+❌ 백업 디렉토리가 없습니다.
+  → .moai-backups/ 디렉토리를 찾을 수 없습니다.
+  → 권장: moai-adk update를 먼저 실행하세요.
+```
+
+**optimized=true 상태**:
+```markdown
+ℹ️ 이미 최적화가 완료된 상태입니다.
+  → config.json: optimized=true
+  → 추가 작업이 필요하지 않습니다.
+```
+
+**병합 충돌**:
+```markdown
+⚠️ 병합 충돌 발생: CLAUDE.md
+  → "## 프로젝트 정보" 섹션 형식 불일치
+  → AskUserQuestion: "수동으로 병합하시겠습니까?"
+    - "수동 병합" → 백업 경로 안내
+    - "템플릿 우선" → 템플릿으로 덮어쓰기
+    - "건너뛰기" → 병합 중단
+```
+
+### 📋 운영 체크리스트
+
+**update 서브커맨드 실행 전**:
+- [ ] .moai-backups/ 디렉토리 존재 확인
+- [ ] config.json의 optimized 필드 확인 (false여야 함)
+- [ ] 최신 백업 타임스탬프 확인 (24시간 이내 권장)
+
+**update 서브커맨드 실행 중**:
+- [ ] 백업 분석 보고서 생성
+- [ ] 사용자 커스터마이징 항목 식별
+- [ ] AskUserQuestion으로 사용자 승인 대기
+
+**update 서브커맨드 실행 후**:
+- [ ] CLAUDE.md 프로젝트 정보 보존 확인
+- [ ] settings.json env 변수 보존 확인
+- [ ] config.json optimized=true 설정 확인
+- [ ] git diff로 변경 사항 최종 검토
 - [ ] 향후 개발 방향이 명확히 제시되었는가?
