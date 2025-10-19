@@ -4,7 +4,7 @@
     "@SPEC:PROJECT-CONFIG-001": "@SPEC:MOAI-CONFIG-001"
   },
   "moai": {
-    "version": "0.3.1"
+    "version": "{{MOAI_VERSION}}"
   },
   "constitution": {
     "enforce_tdd": true,
@@ -56,13 +56,13 @@
     "current_stage": "initialized"
   },
   "project": {
-    "created_at": "2025-10-15",
-    "description": "MoAI Agentic Development Kit - SPEC-First TDD with Alfred SuperAgent",
+    "created_at": "{{CREATION_TIMESTAMP}}",
+    "description": "{{PROJECT_DESCRIPTION}}",
     "initialized": true,
     "locale": "ko",
-    "mode": "personal",
-    "name": "MoAI-ADK",
-    "moai_adk_version": "0.3.7",
+    "mode": "{{PROJECT_MODE}}",
+    "name": "{{PROJECT_NAME}}",
+    "moai_adk_version": "{{MOAI_VERSION}}",
     "optimized": false
   },
   "tags": {

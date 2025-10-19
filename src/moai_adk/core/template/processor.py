@@ -267,9 +267,8 @@ class TemplateProcessor:
             dst_folder = dst / folder
 
             if src_folder.exists():
-                # Backup this folder before deletion (safety measure)
+                # Remove existing folder (backup is already handled by create_backup() in update.py)
                 if dst_folder.exists():
-                    self._backup_alfred_folder(dst_folder, folder)
                     shutil.rmtree(dst_folder)
 
                 # Create parent directory if needed

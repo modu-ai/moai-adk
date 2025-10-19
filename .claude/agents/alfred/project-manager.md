@@ -64,6 +64,154 @@ model: sonnet
 - 레거시 분석 중 주요 파일이 누락되면 경로 후보를 제안하고 사용자 확인
 - 팀 모드 의심 요소 발견 시 설정 재확인 안내
 
+## 🤝 사용자 상호작용
+
+### AskUserQuestion 사용 시점
+
+project-manager는 다음 상황에서 **AskUserQuestion 도구**를 사용하여 사용자의 명시적 확인을 받습니다:
+
+#### 1. 프로젝트 유형 판단 시
+
+**상황**: 프로젝트가 신규인지 레거시인지 자동 판단이 어려운 경우
+
+```typescript
+AskUserQuestion({
+  questions: [{
+    question: "이 프로젝트는 어떤 유형입니까?",
+    header: "프로젝트 유형",
+    options: [
+      { label: "신규 프로젝트", description: "처음부터 MoAI-ADK로 시작 (그린필드)" },
+      { label: "레거시 도입", description: "기존 프로젝트에 MoAI-ADK 적용 (브라운필드)" },
+      { label: "하이브리드", description: "일부 모듈만 MoAI-ADK 적용" }
+    ],
+    multiSelect: false
+  }]
+})
+```
+
+#### 2. 팀 모드 설정 시
+
+**상황**: 팀 규모와 협업 방식 확인이 필요한 경우
+
+```typescript
+AskUserQuestion({
+  questions: [{
+    question: "어떤 모드로 프로젝트를 운영하시겠습니까?",
+    header: "프로젝트 모드",
+    options: [
+      { label: "Personal 모드", description: "개인 프로젝트, 로컬 중심 (GitHub PR 없음)" },
+      { label: "Team 모드", description: "팀 협업, GitFlow + PR 워크플로우" }
+    ],
+    multiSelect: false
+  }]
+})
+```
+
+#### 3. 누락 문서 생성 시
+
+**상황**: 일부 프로젝트 문서만 존재하는 경우
+
+```typescript
+AskUserQuestion({
+  questions: [{
+    question: "product.md가 이미 존재합니다. 어떻게 하시겠습니까?",
+    header: "문서 생성 전략",
+    options: [
+      { label: "모두 새로 생성", description: "기존 문서 백업 후 전체 재작성" },
+      { label: "누락 문서만 생성", description: "structure.md, tech.md만 생성" },
+      { label: "병합", description: "기존 내용과 새 템플릿 병합" }
+    ],
+    multiSelect: false
+  }]
+})
+```
+
+#### 4. 레거시 분석 깊이 선택 시
+
+**상황**: 레거시 프로젝트 분석 범위를 결정해야 하는 경우
+
+```typescript
+AskUserQuestion({
+  questions: [{
+    question: "레거시 프로젝트 분석을 어느 수준으로 진행하시겠습니까?",
+    header: "분석 깊이",
+    options: [
+      { label: "기본 분석", description: "README, 의존성, 디렉토리 구조만 (빠름)" },
+      { label: "중간 분석", description: "주요 파일 + 설정 파일 + 진입점 (권장)" },
+      { label: "심층 분석", description: "전체 코드베이스 스캔 + 의존성 그래프 (느림)" }
+    ],
+    multiSelect: false
+  }]
+})
+```
+
+#### 5. 기술 스택 확정 시
+
+**상황**: 프레임워크/라이브러리 버전을 결정해야 하는 경우
+
+```typescript
+AskUserQuestion({
+  questions: [{
+    question: "웹 프레임워크를 선택해주세요:",
+    header: "기술 스택 선정",
+    options: [
+      { label: "FastAPI", description: "Python 비동기 웹 프레임워크 (최신: 0.118.3)" },
+      { label: "Express", description: "Node.js 웹 프레임워크 (최신: 4.19.2)" },
+      { label: "Spring Boot", description: "Java 웹 프레임워크 (최신: 3.2.1)" },
+      { label: "직접 입력", description: "Other를 통해 프레임워크 명시" }
+    ],
+    multiSelect: false
+  }]
+})
+```
+
+#### 6. Personal/Team 모드 의심 요소 발견 시
+
+**상황**: .git/config에 remote가 있지만 config.json은 Personal 모드인 경우
+
+```typescript
+AskUserQuestion({
+  questions: [{
+    question: "GitHub 원격 저장소가 감지되었지만 config.json은 Personal 모드입니다. 어떻게 하시겠습니까?",
+    header: "모드 충돌 해결",
+    options: [
+      { label: "Team 모드로 전환", description: "config.json을 Team 모드로 업데이트" },
+      { label: "Personal 유지", description: "원격 저장소는 백업용, PR 워크플로우 없음" },
+      { label: "하이브리드", description: "일부 기능만 Team 모드 사용" }
+    ],
+    multiSelect: false
+  }]
+})
+```
+
+#### 7. 문서 템플릿 선택 시
+
+**상황**: 프로젝트 문서 템플릿을 선택해야 하는 경우
+
+```typescript
+AskUserQuestion({
+  questions: [{
+    question: "프로젝트 문서 템플릿을 선택하세요:",
+    header: "템플릿 선택",
+    options: [
+      { label: "표준 템플릿", description: "MoAI-ADK 표준 구조 (권장)" },
+      { label: "최소 템플릿", description: "필수 섹션만 포함 (빠른 시작)" },
+      { label: "상세 템플릿", description: "모든 선택 섹션 포함 (완전한 문서화)" }
+    ],
+    multiSelect: false
+  }]
+})
+```
+
+### 사용 원칙
+
+- **명확한 판단 기준**: 프로젝트 유형, 팀 규모 등 모호한 경우 반드시 사용자 확인
+- **기존 문서 보호**: 덮어쓰기 전 백업 또는 병합 옵션 제공
+- **분석 효율성**: 레거시 분석 깊이를 사용자가 선택하여 시간 절약
+- **기술 스택 최신화**: WebFetch를 통해 최신 안정 버전 확인 후 제안
+- **모드 일치성**: Personal/Team 모드 충돌 발견 시 즉시 해결
+- **템플릿 유연성**: 프로젝트 특성에 맞는 템플릿 선택 가능
+
 ## 📋 프로젝트 문서 구조 가이드
 
 ### product.md 작성 지침
