@@ -7,9 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [v0.4.0] - 2025-Q1 (계획 중)
+## [v0.4.0] - 2025-10-20 (Phase 1 완료, 진행 중)
 
-> **⚠️ 현재 계획 단계**: 이 버전은 아직 릴리즈되지 않았습니다. 자세한 내용은 [UPDATE-PLAN-0.4.0.md](UPDATE-PLAN-0.4.0.md)를 참고하세요.
+> **📍 현재 진행 상태**: Skills 표준화 Phase 1 완료 (SPEC-SKILLS-REDESIGN-001 v0.1.0)
+>
+> Phase 1 완료: 모든 44개 Skills 재구성, 4-Tier 아키텍처 구현, Progressive Disclosure 메커니즘 활성화
+>
+> 다음 단계: 로컬 템플릿 업데이트 및 최종 검증 (Phase 2 예정)
 
 ### 🎯 Skills Revolution - 개발자 경험 혁신
 
