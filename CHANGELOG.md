@@ -83,28 +83,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 → SPEC 작성 (1~2분, 40% 단축)
 ```
 
-### 🔄 마이그레이션 전략
-
-**점진적 마이그레이션 (4단계)**:
-
-#### Phase 1: v0.4.0 (2025 Q1) - MVP
-- 3개 핵심 Skills (moai-spec-writer, moai-tdd-orchestrator, moai-doc-syncer)
-- 기존 커맨드 100% 하위 호환성 유지
-- `/alfred:1-spec`, `/alfred:2-build`, `/alfred:3-sync` 동일하게 작동
-
-#### Phase 2: v0.5.0 (2025 Q2) - Language Skills
-- 20개 언어 Skills 추가
-- 자동 Skills 조합 기능
-
-#### Phase 3: v0.6.0 (2025 Q3) - Domain Skills
-- 10개 도메인 Skills 추가
-- Skills 마켓플레이스 오픈
-
-#### Phase 4: v0.7.0 (2025 Q4) - Full Ecosystem
-- Community Skills 지원
-- Enterprise Skills 저장소
-- `moai-adk skills` CLI 추가
-
 ### 🎯 개발자 경험 개선
 
 **학습 곡선 90% 감소**:

@@ -833,32 +833,6 @@ graph TD
 → 즉시 실행 (학습 불필요)
 ```
 
-### ▶ 마이그레이션 로드맵
-
-MoAI-ADK는 **점진적 마이그레이션**을 지원합니다. 기존 커맨드와 에이전트는 **계속 유지**됩니다.
-
-#### Phase 1: v0.4.0 (2025 Q1) - MVP 출시
-
-- **3개 핵심 Skills**: moai-spec-writer, moai-tdd-orchestrator, moai-doc-syncer
-- **기존 커맨드 유지**: `/alfred:1-spec`, `/alfred:2-build`, `/alfred:3-sync` 동일하게 작동
-- **하위 호환성**: 100% (기존 프로젝트 영향 없음)
-
-#### Phase 2: v0.5.0 (2025 Q2) - Language Skills
-
-- **20개 언어 Skills**: python-expert, typescript-expert, java-expert 등
-- **자동 Skills 조합**: 자연어 요청 시 자동으로 Language Skills 추가
-
-#### Phase 3: v0.6.0 (2025 Q3) - Domain Skills
-
-- **10개 도메인 Skills**: web-api-expert, mobile-app-expert 등
-- **Skills 마켓플레이스 오픈**: 커뮤니티 Skills 공유
-
-#### Phase 4: v0.7.0 (2025 Q4) - Full Skills Ecosystem
-
-- **Community Skills**: GitHub에서 Skills 다운로드/공유
-- **Enterprise Skills**: 프라이빗 Skills 저장소 지원
-- **Skills CLI**: `moai-adk skills install <skill-name>`
-
 ### ▶ 자세한 정보
 
 v0.4.0 전체 계획, 아키텍처 설계, 마이그레이션 전략은 다음 문서를 참고하세요:
