@@ -1,4 +1,4 @@
-# @CODE:CLI-001 | SPEC: SPEC-CLI-001.md | TEST: tests/unit/test_cli_commands.py
+# @CODE:CLI-001 | SPEC: SPEC-CLI-001/spec.md | TEST: tests/unit/test_cli_commands.py
 """MoAI-ADK CLI Entry Point
 
 Implements the CLI entry point:

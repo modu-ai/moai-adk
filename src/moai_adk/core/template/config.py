@@ -93,3 +93,27 @@ class ConfigManager:
                 result[key] = value
 
         return result
+
+    @staticmethod
+    def set_optimized(config_path: Path, value: bool) -> None:
+        """Set the optimized field in config.json.
+
+        Args:
+            config_path: Path to config.json.
+            value: Value to set (True or False).
+        """
+        if not config_path.exists():
+            return
+
+        try:
+            with open(config_path, encoding="utf-8") as f:
+                config = json.load(f)
+
+            config.setdefault("project", {})["optimized"] = value
+
+            with open(config_path, "w", encoding="utf-8") as f:
+                json.dump(config, f, ensure_ascii=False, indent=2)
+                f.write("\n")  # Add trailing newline
+        except (json.JSONDecodeError, KeyError, OSError):
+            # Ignore errors if config.json is invalid or inaccessible
+            pass

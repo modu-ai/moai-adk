@@ -176,6 +176,159 @@ Task(
 - `/alfred:2-build`: Phase 1에서 SPEC 분석 및 TDD 계획 수립 → Phase 2에서 RED-GREEN-REFACTOR 구현
 - `/alfred:3-sync`: Phase 1에서 동기화 범위 분석 → Phase 2에서 Living Document 동기화 및 TAG 업데이트
 
+---
+
+### Alfred 다음 단계 제안 원칙
+
+**CRITICAL**: Alfred는 작업 완료 후 다음 단계를 제안할 때 **반드시 현재 상태를 확인**해야 합니다.
+
+#### 제안 전 필수 체크리스트
+
+```python
+# 다음 단계 제안 전 체크 (의사코드)
+def suggest_next_step():
+    # 1. SPEC 상태 확인
+    spec_exists = check_spec_file_exists()  # .moai/specs/SPEC-{ID}/spec.md
+    spec_version = get_spec_version()       # YAML Front Matter의 version
+    spec_status = get_spec_status()         # draft|active|completed|deprecated
+
+    # 2. 구현 상태 확인
+    tests_exist = check_test_files()        # tests/**/*test*.py|ts|...
+    code_exists = check_code_files()        # src/**/*.py|ts|...
+    tests_passing = check_test_results()    # pytest, vitest 등 실행 결과
+
+    # 3. 문서 상태 확인
+    docs_synced = check_sync_status()       # @TAG 체인 완전성
+
+    # 4. Git 상태 확인
+    branch_name = get_current_branch()
+    pr_status = get_pr_status()             # draft|ready|merged
+
+    # 5. 현재 상태 기반 다음 단계 결정
+    if not spec_exists:
+        return "SPEC 작성: /alfred:1-spec"
+    elif spec_status == "draft" and not code_exists:
+        return "TDD 구현: /alfred:2-build SPEC-{ID}"
+    elif code_exists and not tests_passing:
+        return "테스트 수정: 실패한 테스트 확인"
+    elif tests_passing and not docs_synced:
+        return "문서 동기화: /alfred:3-sync"
+    elif pr_status == "ready":
+        return "PR 머지 대기 또는 다음 SPEC 작성"
+    else:
+        return "Git 커밋 또는 다음 작업"
+```
+
+#### 잘못된 제안 예시 (❌)
+
+```markdown
+# 시나리오: Alfred가 SPEC을 작성하고, 구현하고, 테스트까지 완료한 상태
+
+❌ 잘못된 제안:
+"다음 단계:
+1. SPEC 검토        # ← SPEC은 이미 Alfred가 작성했음
+2. 테스트 실행      # ← 테스트는 이미 실행되었음
+3. Git 커밋"
+
+✅ 올바른 제안:
+"다음 단계:
+1. Git 커밋 (변경 사항 커밋)  # ← 실제 필요한 작업
+2. 통합 테스트 (수동)         # ← 실제 동작 확인 필요"
+```
+
+#### 올바른 제안 예시 (✅)
+
+**시나리오 1: SPEC만 작성 완료**
+```markdown
+✅ 다음 단계:
+- /alfred:2-build SPEC-{ID} 실행하여 TDD 구현 시작
+```
+
+**시나리오 2: SPEC + 구현 완료, 테스트 통과**
+```markdown
+✅ 다음 단계:
+1. Git 커밋 (RED → GREEN → REFACTOR 커밋)
+2. /alfred:3-sync 실행하여 문서 동기화
+```
+
+**시나리오 3: SPEC + 구현 + 동기화 완료**
+```markdown
+✅ 다음 단계:
+1. Git 커밋 (문서 동기화 커밋)
+2. PR 상태 확인 (Draft → Ready 전환)
+3. 다음 SPEC 작성 (/alfred:1-spec)
+```
+
+**시나리오 4: 모든 작업 완료 (Git 커밋만 남음)**
+```markdown
+✅ 다음 단계:
+- Git 커밋 (변경 사항 커밋)
+
+Note: SPEC, 구현, 테스트, 문서는 모두 완료되었으므로 별도 검토 불필요
+```
+
+#### 제안 금지 사항
+
+Alfred는 다음과 같은 **불필요한 제안을 하지 않아야** 합니다:
+
+1. ❌ **자신이 작성한 문서 검토**: "SPEC-{ID}/spec.md 검토"
+   - Alfred가 SPEC을 작성했다면 이미 완료된 작업
+   - 사용자가 명시적으로 검토 요청하지 않는 한 불필요
+
+2. ❌ **이미 실행한 테스트 재실행**: "테스트 실행"
+   - Alfred가 이미 pytest/vitest를 실행하고 결과를 확인했다면 완료
+   - 실패한 테스트가 있을 때만 재실행 제안
+
+3. ❌ **이미 확인한 상태 재확인**: "Git 상태 확인"
+   - Alfred가 이미 git status를 실행했다면 불필요
+   - 새로운 변경사항이 있을 때만 재확인 제안
+
+4. ❌ **완료된 작업 반복**: "코드 품질 확인"
+   - mypy, ruff 검사를 이미 통과했다면 완료
+   - 새로운 코드 추가 시에만 재검사 제안
+
+#### 제안 우선순위
+
+Alfred는 다음 순서로 다음 단계를 제안합니다:
+
+1. **필수 작업** (반드시 수행해야 함)
+   - SPEC 없음 → SPEC 작성
+   - 테스트 실패 → 테스트 수정
+   - Git 커밋 필요 → Git 커밋
+
+2. **권장 작업** (수행하면 좋음)
+   - 문서 동기화 필요 → /alfred:3-sync
+   - PR 상태 변경 필요 → Draft → Ready 전환
+   - 다음 기능 개발 → 다음 SPEC 작성
+
+3. **선택 작업** (사용자 요청 시에만)
+   - 수동 통합 테스트
+   - 성능 테스트
+   - 보안 검사
+
+#### 상태 확인 명령어
+
+Alfred는 다음 명령어로 현재 상태를 확인합니다:
+
+```bash
+# SPEC 존재 확인
+ls .moai/specs/SPEC-*/spec.md
+
+# SPEC 버전 및 상태 확인
+grep "^version:" .moai/specs/SPEC-*/spec.md
+grep "^status:" .moai/specs/SPEC-*/spec.md
+
+# 테스트 파일 확인
+find tests/ -name "*test*.py" -o -name "*test*.ts"
+
+# Git 상태 확인
+git status --short
+git branch --show-current
+
+# PR 상태 확인 (GitHub CLI)
+gh pr list --head $(git branch --show-current)
+```
+
 ### 에러 메시지 표준 (공통)
 
 모든 Alfred 커맨드와 에이전트는 일관된 심각도 표시를 사용합니다:
