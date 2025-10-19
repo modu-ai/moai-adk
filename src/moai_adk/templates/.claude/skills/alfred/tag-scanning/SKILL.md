@@ -1,5 +1,5 @@
 ---
-name: alfred-tag-scanning
+name: tag-scanning
 description: Scans all @TAG markers directly from code and generates TAG inventory (CODE-FIRST principle - no intermediate cache)
 version: 0.1.0
 author: MoAI Skill Factory

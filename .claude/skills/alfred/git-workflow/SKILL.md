@@ -1,5 +1,5 @@
 ---
-name: alfred-git-workflow
+name: git-workflow
 description: Automates Git operations with MoAI-ADK conventions (feature branch, locale-based TDD commits, Draft PR, PR Ready transition)
 version: 0.1.0
 author: MoAI Skill Factory

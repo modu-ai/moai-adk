@@ -251,6 +251,202 @@ git-manager 에이전트는 `.moai/config.json`의 `locale` 설정에 따라 커
 **locale 자동 감지**:
 git-manager는 커밋 생성 시 자동으로 `.moai/config.json`의 `project.locale` 값을 읽어 해당 언어로 커밋 메시지를 생성합니다.
 
+### Alfred 다음 단계 제안 원칙
+
+**CRITICAL**: Alfred는 작업 완료 후 다음 단계를 제안할 때 **반드시 현재 상태를 확인**해야 합니다.
+
+#### 제안 전 필수 체크리스트
+
+```python
+def suggest_next_step():
+    # 1. SPEC 상태 확인
+    spec_exists = check_spec_file_exists()
+    spec_version = get_spec_version()
+    spec_status = get_spec_status()
+
+    # 2. 구현 상태 확인
+    tests_exist = check_test_files()
+    code_exists = check_code_files()
+    tests_passing = check_test_results()
+
+    # 3. 문서 상태 확인
+    docs_synced = check_sync_status()
+
+    # 4. Git 상태 확인
+    branch_name = get_current_branch()
+    pr_status = get_pr_status()
+
+    # 5. 현재 상태 기반 다음 단계 결정
+    if not spec_exists:
+        return "SPEC 작성: /alfred:1-spec"
+    elif spec_status == "draft" and not code_exists:
+        return "TDD 구현: /alfred:2-build SPEC-{ID}"
+    elif code_exists and tests_passing and not docs_synced:
+        return "문서 동기화: /alfred:3-sync"
+    elif all_done:
+        return "작업 완료. 다음 SPEC 작성 또는 브랜치 머지 준비"
+    else:
+        return specific_next_action_based_on_state()
+```
+
+#### 잘못된 제안 예시 (❌)
+
+**시나리오 1**: Alfred가 SPEC-UPDATE-002/spec.md를 작성한 직후
+```
+❌ 잘못된 제안: "SPEC-UPDATE-002/spec.md 검토"
+✅ 올바른 제안: "TDD 구현: /alfred:2-build UPDATE-002"
+
+이유: Alfred 자신이 작성한 문서를 검토하라고 제안하는 것은 불필요
+```
+
+**시나리오 2**: 모든 테스트가 통과한 직후
+```
+❌ 잘못된 제안: "테스트 실행"
+✅ 올바른 제안: "문서 동기화: /alfred:3-sync"
+
+이유: 방금 실행한 테스트를 다시 실행하라고 제안하는 것은 중복
+```
+
+**시나리오 3**: Git 상태를 확인한 직후
+```
+❌ 잘못된 제안: "Git 상태 확인"
+✅ 올바른 제안: (상태 기반) "브랜치 푸시: git push -u origin feature/..."
+
+이유: 방금 확인한 상태를 다시 확인하라는 것은 불필요
+```
+
+**시나리오 4**: 코드 품질 검사 (mypy, ruff)를 완료한 직후
+```
+❌ 잘못된 제안: "코드 품질 확인"
+✅ 올바른 제안: "커밋 생성 또는 다음 작업"
+
+이유: 이미 완료된 검사를 반복하라는 것은 비효율적
+```
+
+#### 올바른 제안 예시 (✅)
+
+**시나리오 1**: SPEC 작성 완료, 구현 시작 전
+```python
+# 상태 확인
+spec_exists = True
+spec_status = "draft"
+code_exists = False
+
+# 제안
+"다음 단계: TDD 구현
+→ /alfred:2-build UPDATE-002
+→ RED-GREEN-REFACTOR 사이클 시작"
+```
+
+**시나리오 2**: TDD 구현 완료, 문서 동기화 전
+```python
+# 상태 확인
+tests_passing = True
+code_committed = True
+docs_synced = False
+
+# 제안
+"다음 단계: 문서 동기화
+→ /alfred:3-sync
+→ Living Document 업데이트 및 TAG 체인 검증"
+```
+
+**시나리오 3**: 모든 작업 완료, PR 준비
+```python
+# 상태 확인
+all_tests_pass = True
+docs_synced = True
+pr_status = "draft"
+
+# 제안
+"다음 단계: PR Ready 전환
+→ 현재 PR 상태를 Draft에서 Ready로 변경
+→ 또는 /alfred:3-sync --auto-merge로 자동 머지"
+```
+
+**시나리오 4**: 패키지 업데이트 완료, 최적화 필요
+```python
+# 상태 확인
+package_updated = True
+optimized = False
+
+# 제안
+"다음 단계: 템플릿 최적화
+→ /alfred:0-project update
+→ 백업과 신규 템플릿 비교 및 병합"
+```
+
+#### 제안 금지 사항
+
+다음과 같은 제안은 **절대 하지 않습니다**:
+
+1. ❌ **자신이 작성한 문서 검토**: "SPEC-{ID}/spec.md 검토"
+   - Alfred가 작성한 문서는 이미 완성된 것으로 간주
+   - 사용자가 명시적으로 요청하지 않는 한 검토 불필요
+
+2. ❌ **이미 실행한 테스트 재실행**: "테스트 실행"
+   - 방금 실행하고 통과한 테스트를 다시 실행하라고 제안하지 않음
+   - 테스트 실패 시에만 재실행 권장
+
+3. ❌ **이미 확인한 상태 재확인**: "Git 상태 확인"
+   - 방금 확인한 상태를 다시 확인하라고 제안하지 않음
+   - 상태 기반으로 다음 액션 제안
+
+4. ❌ **완료된 작업 반복**: "코드 품질 확인"
+   - mypy, ruff 등이 이미 통과했다면 재확인 불필요
+   - 새 코드 작성 시에만 품질 검사 권장
+
+#### 제안 우선순위
+
+**필수 (MUST)**: 워크플로우 진행에 반드시 필요한 단계
+- SPEC → TDD 구현
+- 테스트 실패 → 수정
+- 구현 완료 → 문서 동기화
+
+**권장 (SHOULD)**: 품질 향상을 위한 단계
+- 코드 리뷰
+- 추가 테스트 케이스 작성
+- 성능 최적화
+
+**선택 (MAY)**: 필요 시 수행하는 단계
+- 리팩토링
+- 문서 보완
+- 예제 코드 추가
+
+#### 상태 확인 명령어
+
+Alfred가 제안하기 전에 사용하는 상태 확인 명령어:
+
+```bash
+# 1. SPEC 파일 존재 확인
+ls .moai/specs/SPEC-{ID}/spec.md
+
+# 2. SPEC 상태 확인 (YAML front matter)
+rg "^status:" .moai/specs/SPEC-{ID}/spec.md
+
+# 3. 테스트 파일 존재 확인
+rg "@TEST:{ID}" tests/
+
+# 4. 구현 코드 존재 확인
+rg "@CODE:{ID}" src/
+
+# 5. 테스트 결과 확인 (최근 실행 로그 또는 직접 실행)
+pytest tests/  # or relevant test command
+
+# 6. Git 브랜치 확인
+git branch --show-current
+
+# 7. PR 상태 확인
+gh pr view --json state,isDraft
+```
+
+**제안 생성 프로세스**:
+1. 위 명령어로 현재 상태 파악
+2. 워크플로우 단계 확인 (SPEC → TDD → SYNC)
+3. 누락되거나 실패한 단계 식별
+4. 다음 논리적 단계만 제안
+5. 이미 완료된 단계는 제안하지 않음
+
 ---
 
 ## Context Engineering 전략

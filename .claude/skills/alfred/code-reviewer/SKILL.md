@@ -1,5 +1,5 @@
 ---
-name: alfred-code-reviewer
+name: code-reviewer
 description: Automated code review with language-specific best practices, SOLID principles, and actionable improvement suggestions
 version: 0.1.0
 author: MoAI Skill Factory
