@@ -1071,8 +1071,11 @@ moai-adk init .
 # 프로젝트 상태 확인
 moai-adk status
 
-# 프로젝트 업데이트
+# 패키지 업그레이드 (자동 감지)
 moai-adk update
+
+# 템플릿 업데이트
+moai-adk init .
 
 # 시스템 진단
 moai-adk doctor
@@ -1473,19 +1476,39 @@ Alfred가 모든 코드에 자동으로 적용하는 품질 기준입니다.
 
 ## ■ 업그레이드 가이드
 
-### 1단계: 패키지 업데이트
+> ⚠️ **v0.4.0 Breaking Change**: `moai-adk update`의 목적이 변경되었습니다!
+>
+> - ✅ **패키지 업그레이드**: `moai-adk update` (자동 감지)
+> - ✅ **템플릿 업데이트**: `moai-adk init .`
+
+### 1단계: 패키지 업그레이드
 
 ```bash
+# 자동 감지 및 업그레이드 (권장)
 moai-adk update
 
-# 또는 (tool 모드 - 권장)
-uv tool upgrade moai-adk
-
-# 또는 (pip 모드 - 레거시)
-uv pip install --upgrade moai-adk
+# 버전 확인만
+moai-adk update --check
 ```
 
-### 2단계: 프로젝트 업데이트
+**자동 감지 기능**:
+- ✅ `uv tool install moai-adk` → `uv tool upgrade moai-adk` 자동 실행
+- ✅ `uv pip install moai-adk` → `uv pip install --upgrade moai-adk` 자동 실행
+- ✅ `pip install moai-adk` → `pip install --upgrade moai-adk` 자동 실행
+
+**수동 업그레이드** (자동 실패 시에만):
+```bash
+# uv tool (권장)
+uv tool upgrade moai-adk
+
+# uv pip
+uv pip install --upgrade moai-adk
+
+# pip (레거시)
+pip install --upgrade moai-adk
+```
+
+### 2단계: 템플릿 업데이트
 
 ```bash
 cd your-project
@@ -1506,6 +1529,9 @@ $ claude
 ### 검증 체크리스트
 
 ```bash
+# 패키지 버전 확인
+moai-adk --version  # v0.4.0 확인
+
 # 상태 확인
 moai-adk status
 
