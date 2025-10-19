@@ -1,5 +1,5 @@
 ---
-name: alfred-performance-optimizer
+name: performance-optimizer
 description: Performance analysis and optimization suggestions with profiling, bottleneck detection, and language-specific optimizations
 version: 0.1.0
 author: MoAI Skill Factory

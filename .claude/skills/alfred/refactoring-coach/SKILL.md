@@ -1,5 +1,5 @@
 ---
-name: alfred-refactoring-coach
+name: refactoring-coach
 description: Refactoring guidance with design patterns, code smells detection, and step-by-step improvement plans
 version: 0.1.0
 author: MoAI Skill Factory

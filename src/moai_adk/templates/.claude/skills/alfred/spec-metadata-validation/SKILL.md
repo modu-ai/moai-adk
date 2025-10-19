@@ -1,5 +1,5 @@
 ---
-name: alfred-spec-metadata-validation
+name: spec-metadata-validation
 description: Validates SPEC YAML frontmatter (7 required fields) and HISTORY section compliance
 version: 0.1.0
 author: MoAI Skill Factory

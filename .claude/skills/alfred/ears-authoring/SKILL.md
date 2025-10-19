@@ -1,5 +1,5 @@
 ---
-name: alfred-ears-authoring
+name: ears-authoring
 description: EARS (Easy Approach to Requirements Syntax) authoring guide with 5 statement patterns for clear, testable requirements
 version: 0.1.0
 author: MoAI Skill Factory

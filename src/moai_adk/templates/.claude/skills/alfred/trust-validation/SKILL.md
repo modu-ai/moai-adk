@@ -1,5 +1,5 @@
 ---
-name: alfred-trust-validation
+name: trust-validation
 description: Validates TRUST 5-principles compliance (Test coverage 85%+, Code constraints, Architecture unity, Security, TAG trackability)
 version: 0.1.0
 author: MoAI Skill Factory
