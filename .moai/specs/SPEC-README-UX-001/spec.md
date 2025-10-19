@@ -1,7 +1,7 @@
 ---
 id: README-UX-001
-version: 0.0.1
-status: draft
+version: 0.1.0
+status: completed
 created: 2025-10-19
 updated: 2025-10-19
 author: @Alfred
@@ -21,6 +21,17 @@ scope:
 # @SPEC:README-UX-001: README.md uv 설치 방법 개선
 
 ## HISTORY
+
+### v0.1.0 (2025-10-19)
+- **DOCS COMPLETED**: README.md 수정 완료
+- **CHANGED**: 3개 위치에서 `uv tool install` 권장, `uv pip install` 대안 병기
+  - Quick Start (라인 360): uv tool install 추가
+  - 업그레이드 (라인 1249): uv tool upgrade 추가
+  - 재설치 (라인 1403): uv tool uninstall/install 추가
+- **COMMITS**:
+  - c04bb3d: 📝 DOCS: README.md uv 설치 방법을 tool 모드로 개선
+  - bd8dcc8: 📝 SPEC: README.md uv 설치 방법 개선 명세 작성
+- **REVIEW**: GitHub Issue #35 답변 완료
 
 ### v0.0.1 (2025-10-19)
 - **INITIAL**: README.md 설치 방법을 uv 권장 방식으로 개선하는 명세 작성
