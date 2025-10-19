@@ -20,7 +20,7 @@ Provides Dart-specific expertise for TDD development, including flutter test fra
 - "Material Design", "Cupertino", "상태 관리", "네비게이션"
 - "Provider", "GetX", "Riverpod", "BLoC", "MobX"
 - Automatically invoked when working with Dart/Flutter projects
-- Dart SPEC implementation (`/alfred:2-build`)
+- Dart SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -154,7 +154,7 @@ flutter:
 ## Examples
 
 ### Example 1: TDD with flutter test
-User: "/alfred:2-build UI-001"
+User: "/alfred:2-run UI-001"
 Claude: (creates RED widget test, GREEN implementation, REFACTOR with const)
 
 ### Example 2: Static analysis

@@ -20,7 +20,7 @@ Provides Python-specific expertise for TDD development, including pytest testing
 - "FastAPI", "Django", "Flask", "Django REST Framework"
 - "pandas", "NumPy", "scikit-learn", "TensorFlow", "PyTorch"
 - Automatically invoked when working with Python projects
-- Python SPEC implementation (`/alfred:2-build`)
+- Python SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -135,7 +135,7 @@ poetry publish  # Publish to PyPI
 ## Examples
 
 ### Example 1: TDD with pytest
-User: "/alfred:2-build AUTH-001"
+User: "/alfred:2-run AUTH-001"
 Claude: (creates RED test with pytest, GREEN implementation, REFACTOR with type hints)
 
 ### Example 2: Type checking validation

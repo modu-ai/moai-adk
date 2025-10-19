@@ -18,7 +18,7 @@ Provides Kotlin-specific expertise for TDD development, including JUnit testing,
 
 - "Kotlin 테스트 작성", "코루틴 사용법", "Android 패턴"
 - Automatically invoked when working with Kotlin/Android projects
-- Kotlin SPEC implementation (`/alfred:2-build`)
+- Kotlin SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -54,7 +54,7 @@ Provides Kotlin-specific expertise for TDD development, including JUnit testing,
 ## Examples
 
 ### Example 1: TDD with coroutines
-User: "/alfred:2-build API-001"
+User: "/alfred:2-run API-001"
 Claude: (creates RED test with runTest, GREEN implementation with suspend functions, REFACTOR)
 
 ### Example 2: ktlint check

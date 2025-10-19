@@ -18,7 +18,7 @@ Provides expertise in designing and implementing RESTful APIs and GraphQL servic
 
 - "API 설계", "REST API 패턴", "GraphQL 스키마", "JWT 인증"
 - Automatically invoked when working with API projects
-- Web API SPEC implementation (`/alfred:2-build`)
+- Web API SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 

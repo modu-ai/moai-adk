@@ -18,7 +18,7 @@ Provides expertise in continuous integration/deployment (CI/CD), Docker containe
 
 - "CI/CD 파이프라인", "Docker 컨테이너화", "Kubernetes 배포", "인프라 코드"
 - Automatically invoked when working with DevOps projects
-- DevOps SPEC implementation (`/alfred:2-build`)
+- DevOps SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 

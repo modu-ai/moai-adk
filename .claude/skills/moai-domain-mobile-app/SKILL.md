@@ -18,7 +18,7 @@ Provides expertise in cross-platform mobile app development using Flutter (Dart)
 
 - "모바일 앱 개발", "Flutter 위젯", "React Native 컴포넌트", "상태 관리"
 - Automatically invoked when working with mobile app projects
-- Mobile app SPEC implementation (`/alfred:2-build`)
+- Mobile app SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 

@@ -20,7 +20,7 @@ Provides SQL-specific expertise for database development, including SQL testing 
 - "PostgreSQL", "MySQL", "SQL Server", "Oracle", "SQLite"
 - "NoSQL 쿼리", "데이터 모델링", "데이터 정규화"
 - Automatically invoked when working with database projects
-- SQL SPEC implementation (`/alfred:2-build`)
+- SQL SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -57,7 +57,7 @@ Provides SQL-specific expertise for database development, including SQL testing 
 ## Examples
 
 ### Example 1: TDD with pgTAP
-User: "/alfred:2-build SCHEMA-001"
+User: "/alfred:2-run SCHEMA-001"
 Claude: (creates RED test with pgTAP, GREEN schema implementation, REFACTOR with indices)
 
 ### Example 2: Query optimization

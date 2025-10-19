@@ -18,7 +18,7 @@ Provides expertise in application security, including OWASP Top 10 vulnerabiliti
 
 - "보안 취약점 분석", "OWASP 검증", "시크릿 관리", "의존성 보안"
 - Automatically invoked when security concerns arise
-- Security SPEC implementation (`/alfred:2-build`)
+- Security SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 

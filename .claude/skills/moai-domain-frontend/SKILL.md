@@ -18,7 +18,7 @@ Provides expertise in modern frontend development using React, Vue, or Angular, 
 
 - "프론트엔드 개발", "React 컴포넌트", "상태 관리", "성능 최적화"
 - Automatically invoked when working with frontend projects
-- Frontend SPEC implementation (`/alfred:2-build`)
+- Frontend SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 

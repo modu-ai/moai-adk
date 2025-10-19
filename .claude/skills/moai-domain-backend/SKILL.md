@@ -18,7 +18,7 @@ Provides expertise in backend server architecture, RESTful API design, caching s
 
 - "백엔드 아키텍처", "API 설계", "캐싱 전략", "확장성"
 - Automatically invoked when working with backend projects
-- Backend SPEC implementation (`/alfred:2-build`)
+- Backend SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 

@@ -20,7 +20,7 @@ Provides Ruby-specific expertise for TDD development, including RSpec BDD testin
 - "Rails", "Sinatra", "Hanami", "Rack"
 - "DevOps 자동화", "Chef", "Puppet", "CLI 도구"
 - Automatically invoked when working with Ruby/Rails projects
-- Ruby SPEC implementation (`/alfred:2-build`)
+- Ruby SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -56,7 +56,7 @@ Provides Ruby-specific expertise for TDD development, including RSpec BDD testin
 ## Examples
 
 ### Example 1: TDD with RSpec
-User: "/alfred:2-build USER-001"
+User: "/alfred:2-run USER-001"
 Claude: (creates RED test with RSpec BDD style, GREEN implementation, REFACTOR)
 
 ### Example 2: RuboCop check

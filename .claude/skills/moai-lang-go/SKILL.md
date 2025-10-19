@@ -20,7 +20,7 @@ Provides Go-specific expertise for TDD development, including go test framework,
 - "gRPC", "REST API", "CLI 도구", "Docker", "Kubernetes", "웹 서버"
 - "gin", "Echo", "Beego", "Fiber"
 - Automatically invoked when working with Go projects
-- Go SPEC implementation (`/alfred:2-build`)
+- Go SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -128,7 +128,7 @@ go run ./cmd/cli
 ## Examples
 
 ### Example 1: TDD with table-driven tests
-User: "/alfred:2-build PARSE-001"
+User: "/alfred:2-run PARSE-001"
 Claude: (creates RED test with table-driven approach, GREEN implementation, REFACTOR)
 
 ### Example 2: Coverage check

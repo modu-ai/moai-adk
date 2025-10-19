@@ -18,7 +18,7 @@ Provides expertise in developing command-line interface tools with proper argume
 
 - "CLI 도구 개발", "명령줄 파싱", "POSIX 호환성"
 - Automatically invoked when working with CLI projects
-- CLI tool SPEC implementation (`/alfred:2-build`)
+- CLI tool SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
