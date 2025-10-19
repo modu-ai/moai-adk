@@ -958,309 +958,1200 @@ See [patterns/property-based-testing.md](./patterns/property-based-testing.md)
 
 ---
 
-**⚠️ 아래는 v0.3.x 시절의 구 내용입니다. v0.4.0 릴리스 전 삭제 및 재작성 필요**
+#### 1. alfred-trust-validation
 
-#### 1. alfred-ears-authoring
-
-**목적**: EARS 방식 요구사항 작성 가이드
-
-**이전 이름**: alfred-spec-writer (역할 명확화를 위해 분리)
+**목적**: TRUST 5원칙 (Test/Readable/Unified/Secured/Trackable) 준수도 검증
 
 ```yaml
 ---
-name: alfred-spec-writer
-description: Creates EARS-based SPEC documents with YAML frontmatter and HISTORY section
+name: alfred-trust-validation
+description: Validates TRUST 5-principles compliance (Test coverage 85%+, Code constraints, Architecture unity, Security, TAG trackability)
 version: 0.1.0
+author: MoAI Skill Factory
+license: MIT
 tags:
-  - spec
-  - ears
-  - documentation
+  - trust
+  - quality
+  - validation
+  - tdd
 ---
 ```
 
 **트리거 조건**:
-- "SPEC 작성", "명세서 만들어줘", "requirements 문서 생성"
-- "EARS로 작성", "요구사항 정리해줘"
+- "TRUST 원칙 확인", "품질 검증", "코드 품질 체크"
+- "/alfred:3-sync" 실행 시 자동 호출
+- "테스트 커버리지 확인", "코드 제약 검증"
 
-**주요 기능**:
-1. SPEC ID 자동 생성 (도메인 추출)
-2. YAML Front Matter 생성 (7개 필수 필드)
-3. EARS 5가지 구문으로 요구사항 분류
-4. HISTORY 섹션 자동 추가 (v0.0.1 INITIAL)
-5. .moai/specs/SPEC-{ID}/spec.md 생성
+**검증 항목**:
+
+**1. T - Test First**:
+```bash
+# 테스트 커버리지 확인
+pytest --cov=src --cov-report=term-missing
+# 목표: 85% 이상
+```
+
+**2. R - Readable**:
+- 파일당 ≤300 LOC
+- 함수당 ≤50 LOC
+- 매개변수 ≤5개
+- 순환 복잡도 ≤10
+
+**3. U - Unified**:
+- SPEC 기반 아키텍처 일관성
+- 모듈 간 명확한 경계
+- 언어별 표준 구조 준수
+
+**4. S - Secured**:
+- 입력 검증 구현 여부
+- 비밀 정보 하드코딩 금지
+- 접근 제어 적용
+
+**5. T - Trackable**:
+- TAG 체인 무결성 (@SPEC → @TEST → @CODE → @DOC)
+- 고아 TAG 없음
+- SPEC ID 중복 없음
+
+**Works well with**:
+- alfred-tag-scanning (TAG 추적성 검증)
+- alfred-code-reviewer (코드 품질 분석)
 
 **파일 구조**:
 ```
-alfred-spec-writer/
+alfred-trust-validation/
 ├── SKILL.md
 ├── templates/
-│   ├── spec-template.md
-│   └── ears-examples.md
+│   └── trust-report-template.md
 └── scripts/
-    └── validate-spec-id.sh
+    ├── check-coverage.sh
+    └── validate-constraints.sh
 ```
 
-#### 2. alfred-spec-id-generator
+---
 
-**목적**: SPEC ID 생성 및 중복 확인
+#### 2. alfred-tag-scanning
+
+**목적**: @TAG 전체 스캔 및 인벤토리 생성 (CODE-FIRST 원칙)
 
 ```yaml
 ---
-name: alfred-spec-id-generator
-description: Generates unique SPEC IDs and validates against duplicates
+name: alfred-tag-scanning
+description: Scans all @TAG markers directly from code and generates TAG inventory (CODE-FIRST principle - no intermediate cache)
 version: 0.1.0
----
-```
-
-**주요 기능**:
-1. 요청에서 도메인 자동 추출
-2. 3자리 숫자 자동 할당
-3. `rg "@SPEC:{ID}" -n` 중복 확인
-4. 디렉토리명 생성 (SPEC-{ID}/)
-
-#### 3. alfred-spec-validator
-
-**목적**: SPEC 메타데이터 및 구조 검증
-
-```yaml
----
-name: alfred-spec-validator
-description: Validates SPEC metadata, YAML frontmatter, and HISTORY section
-version: 0.1.0
----
-```
-
-**검증 항목**:
-- YAML Front Matter 7개 필수 필드
-- HISTORY 섹션 존재 여부
-- EARS 구문 적용률
-- TAG 체인 무결성
-
-#### 4. alfred-tdd-orchestrator
-
-**목적**: RED-GREEN-REFACTOR TDD 사이클 가이드
-
-```yaml
----
-name: alfred-tdd-orchestrator
-description: Guides RED-GREEN-REFACTOR TDD cycle with real-time feedback
-version: 0.1.0
+author: MoAI Skill Factory
+license: MIT
 tags:
-  - tdd
-  - testing
-  - workflow
+  - tag
+  - tracking
+  - code-first
+  - spec
 ---
 ```
 
-**주요 기능**:
-1. **RED 단계**: @TEST:ID 작성, 실패 확인
-2. **GREEN 단계**: @CODE:ID 작성, 테스트 통과
-3. **REFACTOR 단계**: 코드 품질 개선
-4. 각 단계별 커밋 자동 생성
-
-**Works well with**:
-- python-expert, typescript-expert (언어별 테스트)
-- alfred-git-manager (커밋 자동화)
-
-#### 5. alfred-tag-scanner
-
-**목적**: @TAG 전체 스캔 및 목록 생성
-
-```yaml
----
-name: alfred-tag-scanner
-description: Scans all @TAG markers and generates TAG inventory
-version: 0.1.0
----
-```
+**트리거 조건**:
+- "TAG 스캔", "TAG 목록", "TAG 인벤토리"
+- "/alfred:3-sync" 실행 시 자동 호출
+- "고아 TAG 찾아줘", "TAG 체인 확인"
 
 **주요 기능**:
+
+**1. CODE-FIRST 스캔**:
 ```bash
+# 중간 캐시 없이 코드 직접 스캔
 rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/
 ```
 
-#### 6. alfred-tag-validator
+**2. TAG 인벤토리 생성**:
+```
+TAG 인벤토리 (2025-10-19)
+=========================
+@SPEC:AUTH-001 → .moai/specs/SPEC-AUTH-001/spec.md:12
+@TEST:AUTH-001 → tests/auth/test_service.py:5
+@CODE:AUTH-001 → src/auth/service.py:10
+@DOC:AUTH-001  → docs/auth/service.md:3
 
-**목적**: TAG 체인 무결성 검증
+고아 TAG: 없음 ✅
+중복 ID: 없음 ✅
+```
+
+**3. TAG 체인 검증**:
+- @SPEC → @TEST → @CODE → @DOC 연결 확인
+- 끊어진 링크 탐지
+- 고아 TAG (orphaned TAG) 경고
+
+**Works well with**:
+- alfred-trust-validation (TAG 추적성 검증)
+- alfred-spec-metadata-validation (SPEC ID 검증)
+
+**파일 구조**:
+```
+alfred-tag-scanning/
+├── SKILL.md
+├── templates/
+│   └── tag-inventory-template.md
+└── scripts/
+    └── scan-tags.sh
+```
+
+---
+
+#### 3. alfred-spec-metadata-validation
+
+**목적**: SPEC 메타데이터 구조 검증 (YAML Front Matter + HISTORY)
 
 ```yaml
 ---
-name: alfred-tag-validator
-description: Validates TAG chain integrity and detects orphaned TAGs
+name: alfred-spec-metadata-validation
+description: Validates SPEC YAML frontmatter (7 required fields) and HISTORY section compliance
 version: 0.1.0
+author: MoAI Skill Factory
+license: MIT
+tags:
+  - spec
+  - metadata
+  - validation
+  - yaml
 ---
 ```
+
+**트리거 조건**:
+- "SPEC 검증", "메타데이터 확인", "SPEC 구조 체크"
+- "/alfred:1-plan" 실행 시 자동 호출
+- "YAML 필드 확인", "HISTORY 섹션 검증"
 
 **검증 항목**:
-- TAG 체인 연결 (@SPEC → @TEST → @CODE → @DOC)
-- 고아 TAG 탐지
-- 중복 ID 확인
 
-#### 7. alfred-git-manager
+**1. YAML Front Matter (7개 필수 필드)**:
+```yaml
+---
+id: AUTH-001              # ✅ 필수
+version: 0.0.1            # ✅ 필수 (Semantic Version)
+status: draft             # ✅ 필수 (draft|active|completed|deprecated)
+created: 2025-10-19       # ✅ 필수 (YYYY-MM-DD)
+updated: 2025-10-19       # ✅ 필수 (YYYY-MM-DD)
+author: @Goos             # ✅ 필수 (@{GitHub ID})
+priority: high            # ✅ 필수 (low|medium|high|critical)
+---
+```
 
-**목적**: Git 작업 자동화
+**2. HISTORY 섹션**:
+```markdown
+## HISTORY
+### v0.0.1 (2025-10-19)
+- **INITIAL**: JWT 기반 인증 시스템 명세 작성
+- **AUTHOR**: @Goos
+```
+
+**3. 형식 검증**:
+- version: `x.y.z` (Semantic Versioning)
+- created/updated: `YYYY-MM-DD`
+- author: `@{GitHub ID}`
+- id: `<DOMAIN>-<NUMBER>`
+
+**검증 명령어**:
+```bash
+# 필수 필드 존재 여부
+rg "^(id|version|status|created|updated|author|priority):" .moai/specs/SPEC-*/spec.md
+
+# HISTORY 섹션 확인
+rg "^## HISTORY" .moai/specs/SPEC-*/spec.md
+
+# version 형식 확인
+rg "^version: \d+\.\d+\.\d+" .moai/specs/SPEC-*/spec.md
+```
+
+**Works well with**:
+- alfred-ears-authoring (SPEC 작성 가이드)
+- alfred-tag-scanning (SPEC ID 중복 확인)
+
+**참조 문서**: `.moai/memory/spec-metadata.md` (SSOT - Single Source of Truth)
+
+**파일 구조**:
+```
+alfred-spec-metadata-validation/
+├── SKILL.md
+├── templates/
+│   └── validation-report-template.md
+└── scripts/
+    └── validate-metadata.sh
+```
+
+---
+
+#### 4. alfred-ears-authoring
+
+**목적**: EARS 방식 요구사항 작성 가이드 (Ubiquitous/Event/State/Optional/Constraints)
 
 ```yaml
 ---
-name: alfred-git-manager
-description: Automates Git operations (branch, commit, PR)
+name: alfred-ears-authoring
+description: EARS (Easy Approach to Requirements Syntax) authoring guide with 5 statement patterns for clear, testable requirements
 version: 0.1.0
+author: MoAI Skill Factory
+license: MIT
+tags:
+  - spec
+  - ears
+  - requirements
+  - authoring
 ---
 ```
+
+**트리거 조건**:
+- "SPEC 작성", "요구사항 정리", "EARS 구문"
+- "/alfred:1-plan" 실행 시 자동 호출
+- "명세서 작성 도와줘", "요구사항 명확화"
+
+**EARS 5가지 구문**:
+
+**1. Ubiquitous (기본 요구사항)**:
+- **형식**: 시스템은 [기능]을 제공해야 한다
+- **예시**:
+  - 시스템은 사용자 인증 기능을 제공해야 한다
+  - 시스템은 데이터 백업 기능을 제공해야 한다
+
+**2. Event-driven (이벤트 기반)**:
+- **형식**: WHEN [조건]이면, 시스템은 [동작]해야 한다
+- **예시**:
+  - WHEN 사용자가 유효한 자격증명으로 로그인하면, 시스템은 JWT 토큰을 발급해야 한다
+  - WHEN 토큰이 만료되면, 시스템은 401 에러를 반환해야 한다
+
+**3. State-driven (상태 기반)**:
+- **형식**: WHILE [상태]일 때, 시스템은 [동작]해야 한다
+- **예시**:
+  - WHILE 사용자가 인증된 상태일 때, 시스템은 보호된 리소스 접근을 허용해야 한다
+
+**4. Optional (선택적 기능)**:
+- **형식**: WHERE [조건]이면, 시스템은 [동작]할 수 있다
+- **예시**:
+  - WHERE 리프레시 토큰이 제공되면, 시스템은 새로운 액세스 토큰을 발급할 수 있다
+
+**5. Constraints (제약사항)**:
+- **형식**: IF [조건]이면, 시스템은 [제약]해야 한다
+- **예시**:
+  - IF 잘못된 토큰이 제공되면, 시스템은 접근을 거부해야 한다
+  - 액세스 토큰 만료시간은 15분을 초과하지 않아야 한다
+
+**EARS 작성 팁**:
+- ✅ 구체적이고 측정 가능한 표현 사용
+- ✅ 모호한 표현 금지 ("적절한", "충분한", "빠른" 등)
+- ✅ 하나의 문장에 하나의 요구사항만
+- ✅ 테스트 가능한 조건 명시
+
+**Works well with**:
+- alfred-spec-metadata-validation (SPEC 구조 검증)
+- alfred-trust-validation (SPEC 품질 확인)
+
+**참조 문서**: `.moai/memory/development-guide.md#ears-요구사항-작성법`
+
+**파일 구조**:
+```
+alfred-ears-authoring/
+├── SKILL.md
+└── templates/
+    ├── ears-examples.md
+    └── spec-template.md
+```
+
+---
+
+#### 5. alfred-git-workflow
+
+**목적**: Git 작업 자동화 (브랜치/커밋/PR 생성, TDD 커밋 표준)
+
+```yaml
+---
+name: alfred-git-workflow
+description: Automates Git operations with MoAI-ADK conventions (feature branch, locale-based TDD commits, Draft PR, PR Ready transition)
+version: 0.1.0
+author: MoAI Skill Factory
+license: MIT
+tags:
+  - git
+  - workflow
+  - automation
+  - tdd
+  - pr
+---
+```
+
+**트리거 조건**:
+- "브랜치 생성", "PR 만들어줘", "커밋 생성"
+- "/alfred:1-plan", "/alfred:2-run", "/alfred:3-sync" 실행 시 자동 호출
+- "Draft PR 전환", "PR Ready로 변경"
 
 **주요 기능**:
-1. 브랜치 생성 (feature/SPEC-{ID})
-2. locale 기반 커밋 메시지 생성
-3. Draft PR 생성
 
-#### 8. alfred-branch-creator
-
-**목적**: 브랜치 네이밍 규칙 적용
-
-```yaml
----
-name: alfred-branch-creator
-description: Creates Git branches with MoAI naming conventions
-version: 0.1.0
----
+**1. 브랜치 생성**:
+```bash
+# develop/main에서 분기
+git checkout develop
+git pull origin develop
+git checkout -b feature/SPEC-AUTH-001
 ```
 
-**네이밍 규칙**:
-- feature/SPEC-{ID}
-- fix/SPEC-{ID}
-- refactor/SPEC-{ID}
+**2. TDD 커밋 자동화** (locale 기반):
 
-#### 9. alfred-pr-creator
+**한국어 (ko) - 기본**:
+```bash
+git commit -m "🔴 RED: JWT 토큰 검증 테스트 작성
 
-**목적**: Draft PR 자동 생성
+@TAG:AUTH-001-RED
+"
 
-```yaml
----
-name: alfred-pr-creator
-description: Creates Draft PRs with SPEC-based description
-version: 0.1.0
----
+git commit -m "🟢 GREEN: JWT 토큰 검증 구현
+
+@TAG:AUTH-001-GREEN
+"
+
+git commit -m "♻️ REFACTOR: 토큰 검증 로직 함수 분리
+
+@TAG:AUTH-001-REFACTOR
+"
 ```
 
-**PR 템플릿**:
-```markdown
+**영어 (en)**:
+```bash
+git commit -m "🔴 RED: Write JWT token validation test
+
+@TAG:AUTH-001-RED
+"
+```
+
+**일본어 (ja)**:
+```bash
+git commit -m "🔴 RED: JWTトークン検証テスト作成
+
+@TAG:AUTH-001-RED
+"
+```
+
+**중국어 (zh)**:
+```bash
+git commit -m "🔴 RED: 编写JWT令牌验证测试
+
+@TAG:AUTH-001-RED
+"
+```
+
+**3. Draft PR 생성**:
+```bash
+gh pr create --title "SPEC-AUTH-001: JWT 인증 시스템" --draft \
+  --body "$(cat <<EOF
 ## Summary
-@SPEC:{ID} 기반 자동 생성
-
-## Changes
-- SPEC 문서: .moai/specs/SPEC-{ID}/spec.md
-- 테스트: tests/...
-- 구현: src/...
+- SPEC: .moai/specs/SPEC-AUTH-001/spec.md
+- Phase: Draft (TDD 진행 중)
 
 ## Test Plan
-- [ ] 테스트 통과
-- [ ] 코드 품질 검증
-- [ ] TAG 체인 확인
+- [ ] RED 완료
+- [ ] GREEN 완료
+- [ ] REFACTOR 완료
+
+## Related
+- SPEC-AUTH-001
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Alfred <noreply@moai-adk.com>
+EOF
+)"
 ```
 
-#### 10. alfred-doc-generator
+**4. PR Ready 전환** (/alfred:3-sync 시):
+```bash
+# Draft → Ready
+gh pr ready
 
-**목적**: Living Document 자동 생성
+# PR 설명 업데이트
+gh pr edit --body "$(cat <<EOF
+## Summary
+- SPEC: .moai/specs/SPEC-AUTH-001/spec.md
+- Phase: ✅ Completed
+
+## Implemented
+- [x] RED: JWT 토큰 검증 테스트
+- [x] GREEN: JWT 토큰 검증 구현
+- [x] REFACTOR: 코드 개선 완료
+
+## Quality Gate
+- [x] TRUST 5원칙 준수
+- [x] TAG 체인 검증 완료
+- [x] 문서 동기화 완료
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Alfred <noreply@moai-adk.com>
+EOF
+)"
+```
+
+**Locale 설정**: `.moai/config.json`
+```json
+{
+  "project": {
+    "locale": "ko"
+  }
+}
+```
+
+**Works well with**:
+- alfred-ears-authoring (SPEC ID 기반 브랜치명)
+- alfred-trust-validation (PR Ready 전 품질 검증)
+
+**파일 구조**:
+```
+alfred-git-workflow/
+├── SKILL.md
+├── templates/
+│   ├── pr-draft-template.md
+│   └── pr-ready-template.md
+└── scripts/
+    ├── create-branch.sh
+    ├── create-pr.sh
+    └── tdd-commit.sh
+```
+
+---
+
+#### 6. alfred-language-detection
+
+**목적**: 프로젝트 주 언어 및 프레임워크 자동 감지
 
 ```yaml
 ---
-name: alfred-doc-generator
-description: Generates Living Documents from SPEC and CODE
+name: alfred-language-detection
+description: Detects project primary language and framework based on config files, recommends appropriate testing tools and linters
 version: 0.1.0
+author: MoAI Skill Factory
+license: MIT
+tags:
+  - language
+  - detection
+  - framework
+  - toolchain
 ---
 ```
 
-**생성 문서**:
-- docs/specs/overview.md
-- docs/api/README.md
-- TAG 추적성 다이어그램 (Mermaid)
-
-#### 11. alfred-api-doc-gen
-
-**목적**: API 문서 자동 생성
-
-```yaml
----
-name: alfred-api-doc-gen
-description: Generates API documentation from @CODE:API markers
-version: 0.1.0
----
-```
-
-**기능**:
-- @CODE:ID:API 스캔
-- 엔드포인트 목록 생성
-- OpenAPI/Swagger 스펙 생성 (선택)
-
-#### 12. alfred-readme-updater
-
-**목적**: README.md 자동 업데이트
-
-```yaml
----
-name: alfred-readme-updater
-description: Updates README.md with SPEC-based feature list
-version: 0.1.0
----
-```
-
-**업데이트 내용**:
-- 주요 기능 목록 (@SPEC 기반)
-- 개발 진행도 (완료율)
-- TAG 추적성 다이어그램
-
-#### 13. alfred-project-analyzer
-
-**목적**: 프로젝트 구조 분석
-
-```yaml
----
-name: alfred-project-analyzer
-description: Analyzes project structure and suggests optimizations
-version: 0.1.0
----
-```
-
-**분석 항목**:
-- product.md, structure.md, tech.md
-- 기존 SPEC 목록
-- 언어 감지
-
-#### 14. alfred-lang-detector
-
-**목적**: 프로젝트 언어 자동 감지
-
-```yaml
----
-name: alfred-lang-detector
-description: Detects project programming language from files
-version: 0.1.0
----
-```
+**트리거 조건**:
+- "언어 감지", "프로젝트 언어 확인", "테스트 도구 추천"
+- "/alfred:0-init", "/alfred:2-run" 실행 시 자동 호출
+- "이 프로젝트는 무슨 언어?", "테스트 프레임워크 뭐 쓸까?"
 
 **감지 방법**:
-- pyproject.toml → Python
-- package.json → TypeScript/JavaScript
-- go.mod → Go
-- Cargo.toml → Rust
 
-#### 15. alfred-boilerplate-gen
+**1. 설정 파일 스캔**:
 
-**목적**: 언어별 보일러플레이트 생성
+| 설정 파일 | 언어 | 테스트 프레임워크 | 린터 | 포매터 |
+|-----------|------|-------------------|------|--------|
+| `package.json` | TypeScript/JavaScript | Jest/Vitest | ESLint/Biome | Prettier/Biome |
+| `pyproject.toml` | Python | pytest | ruff | black |
+| `Cargo.toml` | Rust | cargo test | clippy | rustfmt |
+| `go.mod` | Go | go test | golint | gofmt |
+| `Gemfile` | Ruby | RSpec | RuboCop | RuboCop |
+| `pubspec.yaml` | Dart/Flutter | flutter test | dart analyze | dart format |
+| `build.gradle` | Java/Kotlin | JUnit | Checkstyle | Google Java Format |
+| `Package.swift` | Swift | XCTest | SwiftLint | swift-format |
+| `pom.xml` | Java | JUnit/TestNG | PMD | Checkstyle |
+| `composer.json` | PHP | PHPUnit | PHP_CodeSniffer | PHP-CS-Fixer |
+
+**2. 도구 체인 추천**:
+```json
+{
+  "language": "Python",
+  "version": "3.11",
+  "test_framework": "pytest",
+  "linter": "ruff",
+  "formatter": "black",
+  "type_checker": "mypy",
+  "package_manager": "uv",
+  "build_tool": "setuptools"
+}
+```
+
+**3. 프레임워크 감지**:
+
+**Python**:
+- FastAPI: `from fastapi import`
+- Django: `django.conf`
+- Flask: `from flask import`
+
+**TypeScript**:
+- React: `"react"` in package.json
+- Next.js: `"next"` in package.json
+- Vue: `"vue"` in package.json
+
+**Java**:
+- Spring Boot: `spring-boot-starter` in build.gradle
+- Quarkus: `quarkus-*` dependencies
+
+**4. 자동 설정 생성**:
+```python
+# pyproject.toml 자동 생성 예시
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--cov=src --cov-report=term-missing --cov-report=html"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+```
+
+**Works well with**:
+- alfred-trust-validation (언어별 도구 검증)
+- alfred-code-reviewer (언어별 코드 리뷰 기준)
+
+**지원 언어**: Python, TypeScript, Java, Go, Rust, Ruby, Dart, Swift, Kotlin, PHP, C#, C++, Elixir, Scala, Clojure 등 20개
+
+**파일 구조**:
+```
+alfred-language-detection/
+├── SKILL.md
+├── templates/
+│   ├── python-toolchain.json
+│   ├── typescript-toolchain.json
+│   ├── rust-toolchain.json
+│   └── ... (언어별 템플릿)
+└── scripts/
+    └── detect-language.sh
+```
+
+---
+
+**Foundation Skills 6개 요약**:
+
+| Skill | 역할 | 호출 타이밍 | 출력 |
+|-------|------|------------|------|
+| alfred-trust-validation | TRUST 5원칙 검증 | /alfred:3-sync | 품질 보고서 |
+| alfred-tag-scanning | TAG 인벤토리 생성 | /alfred:3-sync | TAG 목록 + 고아 TAG |
+| alfred-spec-metadata-validation | SPEC 메타데이터 검증 | /alfred:1-plan | 검증 보고서 |
+| alfred-ears-authoring | EARS 요구사항 작성 | /alfred:1-plan | SPEC 문서 |
+| alfred-git-workflow | Git 작업 자동화 | 모든 Commands | 브랜치/커밋/PR |
+| alfred-language-detection | 언어/도구 감지 | /alfred:0-init, /alfred:2-run | 도구 체인 추천 |
+
+---
+
+### 4.2 Developer Essentials Skills (4개)
+
+> **선정 기준**: 일상 개발 작업에 필수적인 실용 도구
+>
+> **v0.4.0 Developer Essentials 4개**: 코드 품질, 디버깅, 리팩토링, 성능 최적화
+
+#### 1. alfred-code-reviewer
+
+**목적**: 코드 리뷰 자동화 및 품질 개선 제안
 
 ```yaml
 ---
-name: alfred-boilerplate-gen
-description: Generates language-specific project boilerplate
+name: alfred-code-reviewer
+description: Automated code review with language-specific best practices, SOLID principles, and actionable improvement suggestions
 version: 0.1.0
+author: MoAI Skill Factory
+license: MIT
+tags:
+  - code-review
+  - quality
+  - best-practices
+  - solid
 ---
 ```
 
-**지원 언어**: 20개 (Language Skills와 연동)
+**트리거 조건**:
+- "코드 리뷰해줘", "이 코드 개선점은?", "코드 품질 확인"
+- "/alfred:3-sync" 실행 후 자동 호출 (선택)
+- "SOLID 원칙 준수 확인", "코드 스멜 찾아줘"
+
+**리뷰 항목**:
+
+**1. 코드 제약 준수**:
+- 파일당 ≤300 LOC
+- 함수당 ≤50 LOC
+- 매개변수 ≤5개
+- 순환 복잡도 ≤10
+
+**2. SOLID 원칙**:
+- **S**ingle Responsibility: 단일 책임 위반 탐지
+- **O**pen/Closed: 확장 가능한 설계 확인
+- **L**iskov Substitution: 상속 관계 검증
+- **I**nterface Segregation: 인터페이스 분리 확인
+- **D**ependency Inversion: 의존성 주입 패턴 확인
+
+**3. 코드 스멜 탐지**:
+- Long Method (긴 메서드)
+- Large Class (거대한 클래스)
+- Duplicate Code (중복 코드)
+- Dead Code (사용하지 않는 코드)
+- Magic Numbers (매직 넘버)
+
+**4. 언어별 Best Practice**:
+
+**Python**:
+```python
+# ❌ 나쁜 예
+def process_data(data):
+    result = []
+    for item in data:
+        if item > 0:
+            result.append(item * 2)
+    return result
+
+# ✅ 좋은 예
+def process_positive_data(data: list[int]) -> list[int]:
+    """양수 데이터만 2배로 변환"""
+    return [item * 2 for item in data if item > 0]
+```
+
+**TypeScript**:
+```typescript
+// ❌ 나쁜 예
+function getData(id) {
+    return fetch(`/api/data/${id}`).then(r => r.json());
+}
+
+// ✅ 좋은 예
+async function getData(id: string): Promise<Data> {
+    const response = await fetch(`/api/data/${id}`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return response.json();
+}
+```
+
+**리뷰 보고서 예시**:
+```markdown
+## Code Review Report
+
+### 🔴 Critical Issues (3)
+1. **src/auth/service.py:45** - Function too long (85 LOC > 50 LOC limit)
+   - Suggestion: Extract validation logic to separate function
+
+2. **src/api/handler.ts:120** - Missing error handling
+   - Suggestion: Add try-catch block or use Result type
+
+3. **src/db/repository.java:200** - Magic number
+   - Suggestion: Define constant `MAX_RETRY_COUNT = 3`
+
+### ⚠️ Warnings (5)
+1. **src/utils/helper.py:30** - Unused import `datetime`
+2. **src/models/user.ts:15** - Type could be more specific
+
+### ✅ Good Practices Found
+- Comprehensive test coverage (92%)
+- Consistent naming conventions
+- Clear function documentation
+```
+
+**Works well with**:
+- alfred-trust-validation (품질 기준 일치)
+- alfred-refactoring-coach (개선 제안 연계)
+
+**파일 구조**:
+```
+alfred-code-reviewer/
+├── SKILL.md
+├── templates/
+│   └── review-report-template.md
+└── rules/
+    ├── python-rules.yaml
+    ├── typescript-rules.yaml
+    └── java-rules.yaml
+```
 
 ---
 
-### 4.2 Language Skills (20개)
+#### 2. alfred-debugger-pro
+
+**목적**: 고급 디버깅 지원 및 오류 원인 분석
+
+```yaml
+---
+name: alfred-debugger-pro
+description: Advanced debugging support with stack trace analysis, error pattern detection, and fix suggestions
+version: 0.1.0
+author: MoAI Skill Factory
+license: MIT
+tags:
+  - debugging
+  - error-analysis
+  - troubleshooting
+  - stack-trace
+---
+```
+
+**트리거 조건**:
+- "에러 해결해줘", "이 오류 원인은?", "스택 트레이스 분석"
+- 런타임 에러 발생 시 자동 호출 (debug-helper Sub-agent 위임)
+- "왜 안 돼?", "NullPointerException 해결"
+
+**디버깅 기능**:
+
+**1. 스택 트레이스 분석**:
+```python
+# 에러 예시
+Traceback (most recent call last):
+  File "src/auth/service.py", line 142, in validate_token
+    payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+  File "/usr/lib/python3.11/site-packages/jwt/api_jwt.py", line 168, in decode
+    decoded = self._jwt_decode(jwt_string, key, algorithms, options, **kwargs)
+jwt.exceptions.ExpiredSignatureError: Signature has expired
+
+# Alfred 분석
+📍 Error Location: src/auth/service.py:142
+🔍 Root Cause: JWT token has expired
+💡 Fix Suggestion:
+   1. Implement token refresh logic
+   2. Check token expiration before validation
+   3. Handle ExpiredSignatureError gracefully
+
+🔧 Recommended Code:
+try:
+    payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+except jwt.ExpiredSignatureError:
+    raise HTTPException(status_code=401, detail="Token expired")
+```
+
+**2. 일반적인 오류 패턴 탐지**:
+
+| 오류 유형 | 패턴 | 해결책 |
+|----------|------|--------|
+| `NullPointerException` | 널 체크 누락 | Optional 사용, 가드절 추가 |
+| `IndexError` | 배열 범위 초과 | 경계 조건 확인 |
+| `KeyError` | 딕셔너리 키 없음 | `.get()` 사용, 기본값 제공 |
+| `TypeError` | 타입 불일치 | 타입 힌트 추가, 입력 검증 |
+| `ConnectionError` | 네트워크 오류 | 재시도 로직, 타임아웃 설정 |
+
+**3. 디버깅 체크리스트**:
+```markdown
+## Debugging Checklist
+
+### 🔍 Information Gathering
+- [ ] 재현 가능한가?
+- [ ] 로그 메시지는?
+- [ ] 입력 데이터는?
+- [ ] 환경 설정은?
+
+### 🎯 Hypothesis Testing
+- [ ] 가장 가능성 높은 원인은?
+- [ ] 최근 변경사항은?
+- [ ] 의존성 버전은?
+
+### ✅ Solution Verification
+- [ ] 수정 후 테스트 통과?
+- [ ] 부작용 없는가?
+- [ ] 로그 추가했는가?
+```
+
+**4. 언어별 디버깅 팁**:
+
+**Python**:
+```python
+# Logging 추가
+import logging
+logger = logging.getLogger(__name__)
+
+def validate_token(token: str) -> dict:
+    logger.debug(f"Validating token: {token[:10]}...")
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY)
+        logger.info(f"Token validated for user: {payload['user_id']}")
+        return payload
+    except jwt.ExpiredSignatureError:
+        logger.warning("Token expired")
+        raise
+```
+
+**TypeScript**:
+```typescript
+// Type Guards 사용
+function isUser(data: unknown): data is User {
+    return (
+        typeof data === 'object' &&
+        data !== null &&
+        'id' in data &&
+        'email' in data
+    );
+}
+
+// 안전한 호출
+if (isUser(response.data)) {
+    console.log(response.data.email); // ✅ 타입 안전
+}
+```
+
+**Works well with**:
+- alfred-code-reviewer (코드 품질 개선)
+- alfred-trust-validation (보안 취약점 확인)
+
+**파일 구조**:
+```
+alfred-debugger-pro/
+├── SKILL.md
+├── templates/
+│   └── debug-report-template.md
+└── patterns/
+    ├── common-errors.yaml
+    └── fix-suggestions.yaml
+```
+
+---
+
+#### 3. alfred-refactoring-coach
+
+**목적**: 리팩토링 가이드 및 코드 개선 제안
+
+```yaml
+---
+name: alfred-refactoring-coach
+description: Refactoring guidance with design patterns, code smells detection, and step-by-step improvement plans
+version: 0.1.0
+author: MoAI Skill Factory
+license: MIT
+tags:
+  - refactoring
+  - design-patterns
+  - code-improvement
+  - clean-code
+---
+```
+
+**트리거 조건**:
+- "리팩토링 도와줘", "이 코드 개선 방법은?", "디자인 패턴 적용"
+- "코드 정리", "중복 제거", "함수 분리"
+
+**리팩토링 기법**:
+
+**1. Extract Method (메서드 추출)**:
+```python
+# Before
+def process_order(order):
+    # 할인 계산
+    discount = 0
+    if order.customer.is_premium:
+        discount = order.total * 0.1
+    elif order.total > 100:
+        discount = order.total * 0.05
+
+    # 최종 금액 계산
+    final_amount = order.total - discount
+
+    # 이메일 발송
+    subject = f"Order #{order.id} Confirmed"
+    body = f"Thank you! Total: ${final_amount}"
+    send_email(order.customer.email, subject, body)
+
+# After
+def process_order(order):
+    discount = calculate_discount(order)
+    final_amount = order.total - discount
+    send_order_confirmation_email(order, final_amount)
+
+def calculate_discount(order):
+    if order.customer.is_premium:
+        return order.total * 0.1
+    elif order.total > 100:
+        return order.total * 0.05
+    return 0
+
+def send_order_confirmation_email(order, amount):
+    subject = f"Order #{order.id} Confirmed"
+    body = f"Thank you! Total: ${amount}"
+    send_email(order.customer.email, subject, body)
+```
+
+**2. Replace Conditional with Polymorphism**:
+```typescript
+// Before
+class PaymentProcessor {
+    process(payment: Payment) {
+        if (payment.type === 'credit_card') {
+            // Credit card logic
+        } else if (payment.type === 'paypal') {
+            // PayPal logic
+        } else if (payment.type === 'bank_transfer') {
+            // Bank transfer logic
+        }
+    }
+}
+
+// After
+interface PaymentMethod {
+    process(amount: number): Promise<void>;
+}
+
+class CreditCardPayment implements PaymentMethod {
+    async process(amount: number) {
+        // Credit card logic
+    }
+}
+
+class PayPalPayment implements PaymentMethod {
+    async process(amount: number) {
+        // PayPal logic
+    }
+}
+
+class PaymentProcessor {
+    constructor(private paymentMethod: PaymentMethod) {}
+
+    async process(amount: number) {
+        await this.paymentMethod.process(amount);
+    }
+}
+```
+
+**3. 디자인 패턴 적용 제안**:
+
+| 문제 상황 | 추천 패턴 | 효과 |
+|----------|----------|------|
+| 복잡한 객체 생성 | Builder Pattern | 가독성 향상 |
+| 타입별 다른 동작 | Strategy Pattern | 조건문 제거 |
+| 전역 상태 관리 | Singleton Pattern | 일관성 보장 |
+| 호환되지 않는 인터페이스 | Adapter Pattern | 재사용성 향상 |
+| 객체 생성 지연 | Factory Pattern | 유연성 향상 |
+
+**4. 리팩토링 체크리스트**:
+```markdown
+## Refactoring Checklist
+
+### 준비 단계
+- [ ] 기존 테스트 모두 통과
+- [ ] 코드 스멜 식별 완료
+- [ ] 리팩토링 목표 명확
+
+### 실행 단계
+- [ ] 한 번에 하나씩 변경
+- [ ] 각 변경 후 테스트 실행
+- [ ] 커밋 자주 하기
+
+### 완료 단계
+- [ ] 모든 테스트 통과
+- [ ] 코드 리뷰 완료
+- [ ] 문서 업데이트
+```
+
+**5. 3회 반복 규칙**:
+```
+1회: 그냥 구현
+2회: 비슷한 코드 발견 (아직 그대로)
+3회: 패턴 확인 → 리팩토링 시작! 🔧
+```
+
+**Works well with**:
+- alfred-code-reviewer (코드 품질 분석)
+- alfred-trust-validation (리팩토링 전후 품질 비교)
+
+**파일 구조**:
+```
+alfred-refactoring-coach/
+├── SKILL.md
+├── templates/
+│   └── refactoring-plan-template.md
+└── patterns/
+    ├── design-patterns.yaml
+    └── refactoring-techniques.yaml
+```
+
+---
+
+#### 4. alfred-performance-optimizer
+
+**목적**: 성능 최적화 분석 및 개선 제안
+
+```yaml
+---
+name: alfred-performance-optimizer
+description: Performance analysis and optimization suggestions with profiling, bottleneck detection, and language-specific optimizations
+version: 0.1.0
+author: MoAI Skill Factory
+license: MIT
+tags:
+  - performance
+  - optimization
+  - profiling
+  - benchmarking
+---
+```
+
+**트리거 조건**:
+- "성능 개선해줘", "느린 부분 찾아줘", "최적화 방법은?"
+- "프로파일링", "병목 지점", "메모리 누수"
+
+**성능 분석 기법**:
+
+**1. 프로파일링 도구**:
+
+| 언어 | 도구 | 사용법 |
+|------|------|--------|
+| Python | cProfile, memory_profiler | `python -m cProfile script.py` |
+| TypeScript | Chrome DevTools, clinic.js | Performance tab 사용 |
+| Java | JProfiler, VisualVM | `java -agentlib:hprof` |
+| Go | pprof | `import _ "net/http/pprof"` |
+| Rust | flamegraph, criterion | `cargo flamegraph` |
+
+**2. 일반적인 성능 문제**:
+
+**N+1 Query Problem**:
+```python
+# ❌ Bad: N+1 queries
+users = User.query.all()
+for user in users:
+    user.orders  # N additional queries!
+
+# ✅ Good: 1 query with join
+users = User.query.options(
+    joinedload(User.orders)
+).all()
+```
+
+**Inefficient Loop**:
+```typescript
+// ❌ Bad: O(n²)
+function findDuplicates(arr: number[]): number[] {
+    const duplicates = [];
+    for (let i = 0; i < arr.length; i++) {
+        for (let j = i + 1; j < arr.length; j++) {
+            if (arr[i] === arr[j]) duplicates.push(arr[i]);
+        }
+    }
+    return duplicates;
+}
+
+// ✅ Good: O(n)
+function findDuplicates(arr: number[]): number[] {
+    const seen = new Set();
+    const duplicates = new Set();
+    for (const num of arr) {
+        if (seen.has(num)) duplicates.add(num);
+        else seen.add(num);
+    }
+    return Array.from(duplicates);
+}
+```
+
+**Memory Leak**:
+```javascript
+// ❌ Bad: 메모리 누수
+class EventManager {
+    listeners = [];
+
+    addListener(fn) {
+        this.listeners.push(fn);
+    }
+}
+
+// ✅ Good: 정리 메서드 제공
+class EventManager {
+    listeners = [];
+
+    addListener(fn) {
+        this.listeners.push(fn);
+        return () => this.removeListener(fn);
+    }
+
+    removeListener(fn) {
+        const index = this.listeners.indexOf(fn);
+        if (index > -1) this.listeners.splice(index, 1);
+    }
+}
+```
+
+**3. 최적화 체크리스트**:
+```markdown
+## Performance Optimization Checklist
+
+### 측정
+- [ ] 현재 성능 벤치마크 수립
+- [ ] 병목 지점 식별
+- [ ] 프로파일링 데이터 수집
+
+### 최적화
+- [ ] 알고리즘 복잡도 개선 (O(n²) → O(n))
+- [ ] 불필요한 연산 제거
+- [ ] 캐싱 적용
+- [ ] 비동기 처리 도입
+
+### 검증
+- [ ] 최적화 후 벤치마크
+- [ ] 개선율 측정
+- [ ] 부작용 확인
+```
+
+**4. 언어별 최적화 팁**:
+
+**Python**:
+```python
+# List Comprehension (빠름)
+squares = [x**2 for x in range(1000)]
+
+# Generator (메모리 효율)
+squares_gen = (x**2 for x in range(1000))
+
+# Caching
+from functools import lru_cache
+
+@lru_cache(maxsize=128)
+def fibonacci(n):
+    if n < 2: return n
+    return fibonacci(n-1) + fibonacci(n-2)
+```
+
+**TypeScript**:
+```typescript
+// Memoization
+const memoize = <T>(fn: (...args: any[]) => T) => {
+    const cache = new Map();
+    return (...args: any[]) => {
+        const key = JSON.stringify(args);
+        if (cache.has(key)) return cache.get(key);
+        const result = fn(...args);
+        cache.set(key, result);
+        return result;
+    };
+};
+
+// Lazy Loading
+const LazyComponent = React.lazy(() => import('./HeavyComponent'));
+```
+
+**5. 성능 목표**:
+- API 응답 시간: <200ms (P95)
+- 페이지 로드 시간: <2초
+- 메모리 사용량: <512MB
+- CPU 사용률: <70%
+
+**Works well with**:
+- alfred-code-reviewer (성능 영향 코드 식별)
+- alfred-debugger-pro (성능 이슈 디버깅)
+
+**파일 구조**:
+```
+alfred-performance-optimizer/
+├── SKILL.md
+├── templates/
+│   └── performance-report-template.md
+└── benchmarks/
+    ├── python-benchmarks.py
+    └── typescript-benchmarks.ts
+```
+
+---
+
+**Developer Essentials Skills 4개 요약**:
+
+| Skill | 역할 | 주요 기능 | 출력 |
+|-------|------|----------|------|
+| alfred-code-reviewer | 코드 리뷰 자동화 | SOLID 원칙, 코드 스멜 탐지 | 리뷰 보고서 |
+| alfred-debugger-pro | 고급 디버깅 | 스택 트레이스 분석, 오류 패턴 탐지 | 디버그 보고서 |
+| alfred-refactoring-coach | 리팩토링 가이드 | 디자인 패턴 적용, 코드 개선 | 리팩토링 계획 |
+| alfred-performance-optimizer | 성능 최적화 | 프로파일링, 병목 지점 탐지 | 성능 보고서 |
+
+---
+### 4.4 Language Skills (20개)
 
 각 Language Skill은 다음 구조를 따릅니다:
 
@@ -1367,7 +2258,7 @@ tags:
 
 ---
 
-### 4.3 Domain Skills (10개)
+### 4.4 Domain Skills (10개)
 
 #### 1. web-api-expert
 
