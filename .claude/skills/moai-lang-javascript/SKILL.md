@@ -20,7 +20,7 @@ Provides JavaScript-specific expertise for TDD development, including Jest testi
 - "DOM", "AJAX", "Promise", "async/await", "Fetch API"
 - "jQuery", "Axios", "Lodash", "D3.js", "Three.js"
 - Automatically invoked when working with JavaScript projects
-- JavaScript SPEC implementation (`/alfred:2-build`)
+- JavaScript SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -127,7 +127,7 @@ pnpm run dev
 ## Examples
 
 ### Example 1: TDD with Jest
-User: "/alfred:2-build API-001"
+User: "/alfred:2-run API-001"
 Claude: (creates RED test with Jest, GREEN implementation, REFACTOR with JSDoc)
 
 ### Example 2: Linting

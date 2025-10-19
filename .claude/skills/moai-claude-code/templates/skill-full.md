@@ -43,7 +43,7 @@ Alfred는 다음 조건에서 이 스킬을 자동으로 활성화합니다:
 ### 워크플로우 위치
 
 ```
-/alfred:1-spec → /alfred:2-build → /alfred:3-sync
+/alfred:1-spec → /alfred:2-run → /alfred:3-sync
                                         ↑
                                   이 스킬 자동 활성화
                                   ({when activated})

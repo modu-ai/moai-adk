@@ -18,7 +18,7 @@ Provides expertise in machine learning model development, training, evaluation, 
 
 - "머신러닝 모델 개발", "모델 학습", "모델 배포", "MLOps"
 - Automatically invoked when working with ML projects
-- ML SPEC implementation (`/alfred:2-build`)
+- ML SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 

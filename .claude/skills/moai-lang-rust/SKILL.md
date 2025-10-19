@@ -20,7 +20,7 @@ Provides Rust-specific expertise for TDD development, including cargo test, clip
 - "WebAssembly", "임베디드 시스템", "네트워크 프로그래밍", "CLI 도구", "데이터베이스"
 - "tokio", "Actix", "Axum", "Tauri", "Bevy"
 - Automatically invoked when working with Rust projects
-- Rust SPEC implementation (`/alfred:2-build`)
+- Rust SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -152,7 +152,7 @@ lto = true  # Link-time optimization
 ## Examples
 
 ### Example 1: TDD with cargo test
-User: "/alfred:2-build PARSER-001"
+User: "/alfred:2-run PARSER-001"
 Claude: (creates RED test, GREEN implementation with Result<T, E>, REFACTOR with lifetimes)
 
 ### Example 2: Clippy check

@@ -20,7 +20,7 @@ Provides C#-specific expertise for TDD development, including xUnit testing, .NE
 - "ASP.NET", ".NET Core", "Entity Framework", "Blazor", "Unity"
 - ".NET 마이크로서비스", "WPF", "Windows Forms"
 - Automatically invoked when working with .NET projects
-- C# SPEC implementation (`/alfred:2-build`)
+- C# SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -135,7 +135,7 @@ dotnet restore
 ## Examples
 
 ### Example 1: TDD with xUnit
-User: "/alfred:2-build SERVICE-001"
+User: "/alfred:2-run SERVICE-001"
 Claude: (creates RED test with xUnit, GREEN implementation with async/await, REFACTOR)
 
 ### Example 2: LINQ query optimization

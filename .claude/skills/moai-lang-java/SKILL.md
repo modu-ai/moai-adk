@@ -20,7 +20,7 @@ Provides Java-specific expertise for TDD development, including JUnit testing, M
 - "Spring", "Spring Data", "Hibernate", "Jakarta EE"
 - "Maven", "Gradle", "Quarkus", "Vert.x", "Micronaut"
 - Automatically invoked when working with Java projects
-- Java SPEC implementation (`/alfred:2-build`)
+- Java SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -159,7 +159,7 @@ mvn idea:idea  # IntelliJ
 ## Examples
 
 ### Example 1: TDD with JUnit
-User: "/alfred:2-build SERVICE-001"
+User: "/alfred:2-run SERVICE-001"
 Claude: (creates RED test with JUnit 5, GREEN implementation, REFACTOR with interfaces)
 
 ### Example 2: Build execution

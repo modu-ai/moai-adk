@@ -18,7 +18,7 @@ Provides expertise in data analysis workflows, statistical modeling, data visual
 
 - "데이터 분석", "시각화", "통계 모델링", "재현 가능한 연구"
 - Automatically invoked when working with data science projects
-- Data science SPEC implementation (`/alfred:2-build`)
+- Data science SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 

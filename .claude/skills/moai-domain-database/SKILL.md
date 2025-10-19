@@ -18,7 +18,7 @@ Provides expertise in database design, schema normalization, indexing strategies
 
 - "데이터베이스 설계", "스키마 최적화", "인덱스 전략", "마이그레이션"
 - Automatically invoked when working with database projects
-- Database SPEC implementation (`/alfred:2-build`)
+- Database SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 

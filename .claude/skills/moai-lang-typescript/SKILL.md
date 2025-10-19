@@ -20,7 +20,7 @@ Provides TypeScript-specific expertise for TDD development, including Vitest tes
 - "React", "Vue.js", "Angular", "Express.js", "NestJS", "Fastify"
 - "Next.js", "SvelteKit", "Astro", "Remix"
 - Automatically invoked when working with TypeScript projects
-- TypeScript SPEC implementation (`/alfred:2-build`)
+- TypeScript SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -148,7 +148,7 @@ yarn dev
 ## Examples
 
 ### Example 1: TDD with Vitest
-User: "/alfred:2-build USER-001"
+User: "/alfred:2-run USER-001"
 Claude: (creates RED test with Vitest, GREEN implementation with strict types, REFACTOR)
 
 ### Example 2: Type checking
