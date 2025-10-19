@@ -357,6 +357,10 @@ uv --version
 #### 2. moai-adk 설치 (10초)
 
 ```bash
+# 권장: uv tool 모드 (샌드박스 격리, 전역 접근)
+uv tool install moai-adk
+
+# 대안: 현재 가상 환경에 설치
 uv pip install moai-adk
 
 # 설치 확인
@@ -1245,7 +1249,10 @@ Alfred가 모든 코드에 자동으로 적용하는 품질 기준입니다.
 ```bash
 moai-adk update
 
-# 또는
+# 또는 (tool 모드 - 권장)
+uv tool upgrade moai-adk
+
+# 또는 (pip 모드 - 레거시)
 uv pip install --upgrade moai-adk
 ```
 
@@ -1399,7 +1406,11 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # Windows:
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 
-# moai-adk 재설치
+# moai-adk 재설치 (tool 모드 - 권장)
+uv tool uninstall moai-adk
+uv tool install moai-adk
+
+# 또는 (pip 모드 - 레거시)
 uv pip install moai-adk --force-reinstall
 ```
 
