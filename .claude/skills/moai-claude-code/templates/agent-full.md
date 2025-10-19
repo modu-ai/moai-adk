@@ -269,7 +269,7 @@ AskUserQuestion({
 ### MoAI-ADK 워크플로우 위치
 
 ```
-/alfred:1-spec → /alfred:2-run → /alfred:3-sync
+/alfred:1-spec → /alfred:2-build → /alfred:3-sync
       ↑                ↑                ↑
   {Where this agent fits in the workflow}
 ```

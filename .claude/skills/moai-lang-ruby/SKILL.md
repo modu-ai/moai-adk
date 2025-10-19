@@ -16,11 +16,9 @@ Provides Ruby-specific expertise for TDD development, including RSpec BDD testin
 
 ## When to use
 
-- "Ruby 테스트 작성", "RSpec 사용법", "Rails 패턴", "웹 애플리케이션", "프로토타입", "자동화 스크립트"
-- "Rails", "Sinatra", "Hanami", "Rack"
-- "DevOps 자동화", "Chef", "Puppet", "CLI 도구"
+- "Ruby 테스트 작성", "RSpec 사용법", "Rails 패턴"
 - Automatically invoked when working with Ruby/Rails projects
-- Ruby SPEC implementation (`/alfred:2-run`)
+- Ruby SPEC implementation (`/alfred:2-build`)
 
 ## How it works
 
@@ -56,7 +54,7 @@ Provides Ruby-specific expertise for TDD development, including RSpec BDD testin
 ## Examples
 
 ### Example 1: TDD with RSpec
-User: "/alfred:2-run USER-001"
+User: "/alfred:2-build USER-001"
 Claude: (creates RED test with RSpec BDD style, GREEN implementation, REFACTOR)
 
 ### Example 2: RuboCop check

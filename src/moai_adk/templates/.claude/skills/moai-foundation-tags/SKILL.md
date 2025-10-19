@@ -2,6 +2,8 @@
 name: moai-foundation-tags
 description: Scans @TAG markers directly from code and generates inventory (CODE-FIRST)
 allowed-tools:
+tier: 0
+auto-load: "true"
   - Read
   - Bash
   - Write

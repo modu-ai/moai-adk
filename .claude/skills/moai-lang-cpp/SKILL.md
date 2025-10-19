@@ -18,7 +18,7 @@ Provides C++-specific expertise for TDD development, including Google Test frame
 
 - "C++ 테스트 작성", "Google Test 사용법", "모던 C++"
 - Automatically invoked when working with C++ projects
-- C++ SPEC implementation (`/alfred:2-run`)
+- C++ SPEC implementation (`/alfred:2-build`)
 
 ## How it works
 
@@ -57,7 +57,7 @@ Provides C++-specific expertise for TDD development, including Google Test frame
 ## Examples
 
 ### Example 1: TDD with Google Test
-User: "/alfred:2-run CACHE-001"
+User: "/alfred:2-build CACHE-001"
 Claude: (creates RED test with gtest, GREEN implementation with smart pointers, REFACTOR)
 
 ### Example 2: Modern C++ refactoring

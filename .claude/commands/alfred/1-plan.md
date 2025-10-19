@@ -140,29 +140,12 @@ Task tool 호출:
    - 예상 작업 범위 및 의존성 분석
    - EARS 구조 및 Acceptance Criteria 설계
 
-### 1.4 사용자 승인 대기 (AskUserQuestion)
+### 사용자 확인 단계
 
-Alfred는 spec-builder의 계획 보고서를 받은 후, **AskUserQuestion 도구를 호출하여 사용자 승인을 받습니다**:
-
-```typescript
-AskUserQuestion({
-  questions: [{
-    question: "spec-builder가 제시한 계획으로 SPEC 작성을 진행하시겠습니까?",
-    header: "Phase 2 승인",
-    options: [
-      { label: "진행", description: "승인된 계획대로 SPEC 작성 시작" },
-      { label: "수정", description: "계획 재수립 (Phase 1 반복)" },
-      { label: "중단", description: "작업 취소" }
-    ],
-    multiSelect: false
-  }]
-})
-```
-
-**응답 처리**:
-- **"진행"** (`answers["0"] === "진행"`) → Phase 2 실행
-- **"수정"** (`answers["0"] === "수정"`) → Phase 1 반복 (spec-builder 재호출)
-- **"중단"** (`answers["0"] === "중단"`) → 작업 종료
+구현 계획 검토 후 다음 중 선택하세요:
+- **"진행"** 또는 **"시작"**: 계획대로 계획 작성 시작
+- **"수정 [내용]"**: 계획 수정 요청
+- **"중단"**: 계획 작성 중단
 
 ---
 
@@ -184,83 +167,6 @@ AskUserQuestion({
    - description: "Git 브랜치/PR 생성"
    - prompt: "계획 작성 완료 후 브랜치와 Draft PR을 생성해주세요."
 ```
-
-### 2.1 Alfred Skills 자동 활성화
-
-spec-builder가 SPEC 문서를 작성 완료한 후, **Alfred는 자동으로 상황을 분석하여 적절한 Skills를 호출합니다**.
-
-**자동 활성화 조건** (CLAUDE.md - "Alfred 지능형 오케스트레이션" 참조):
-
-| 조건 | 자동 선택 Skill | 목적 |
-|------|----------------|------|
-| SPEC 파일 생성됨 | moai-alfred-spec-metadata | 필수 필드 7개 + 선택 필드 9개 검증 |
-| SPEC 작성 중 | moai-alfred-ears-authoring | EARS 구문 참조 (검증만) |
-
-**실행 흐름**:
-```
-1. spec-builder 완료
-    ↓
-2. Alfred 조건 체크:
-   - ✅ SPEC 문서 생성됨? (.moai/specs/SPEC-*/spec.md)
-    ↓
-3. Alfred 자동 실행:
-   - Skill("moai-alfred-spec-metadata")
-    ↓
-4. 검증 결과 처리:
-   - ✅ PASS → git-manager 호출
-   - ⚠️ WARNING → 사용자 알림 (계속 진행 가능)
-   - ❌ CRITICAL → 수정 권장
-```
-
-**참고**: Skills 호출은 Alfred가 자동으로 수행하므로, 커맨드는 "자동 활성화 조건"만 명시합니다.
-
-### 2.2 Sub-agent AskUserQuestion (Nested)
-
-**spec-builder 에이전트는 내부적으로 AskUserQuestion을 호출**하여 세부 작업을 확인할 수 있습니다.
-
-**호출 시점**:
-- 기존 SPEC 파일 덮어쓰기 전
-- 중요한 메타데이터 변경 시
-- 복잡한 EARS 구조 선택 시
-
-**예시** (spec-builder 내부):
-```typescript
-AskUserQuestion({
-  questions: [{
-    question: "기존 SPEC-AUTH-001.md 파일이 존재합니다. 어떻게 처리하시겠습니까?",
-    header: "파일 덮어쓰기 확인",
-    options: [
-      { label: "덮어쓰기", description: "기존 파일 백업 후 새 내용으로 교체" },
-      { label: "병합", description: "기존 내용과 새 내용 병합" },
-      { label: "건너뛰기", description: "기존 파일 유지" }
-    ],
-    multiSelect: false
-  }]
-})
-```
-
-**Nested 패턴**:
-- **커맨드 레벨** (Phase 승인): Alfred가 호출 → "Phase 2 진행할까요?"
-- **Sub-agent 레벨** (세부 확인): spec-builder가 호출 → "파일 덮어쓸까요?"
-
-### 2.3 순차 실행 의존성
-
-Alfred는 다음 순서로 **순차 실행**합니다 (병렬 실행 불가):
-
-**작업 순서**:
-```
-1. spec-builder (SPEC 작성)
-   ↓ (의존성: SPEC 파일 필요)
-2. moai-alfred-spec-metadata (검증)
-   ↓ (의존성: 검증 완료 후)
-3. git-manager (브랜치/PR 생성)
-```
-
-**이유**: 각 단계가 이전 단계의 결과에 의존하므로 순차 실행 필수
-
-**참고**: Alfred가 의존성을 자동 분석하여 실행 순서를 결정합니다 (CLAUDE.md - "Alfred 지능형 오케스트레이션" 참조).
-
----
 
 ## 기능
 

@@ -154,29 +154,12 @@ Task tool 호출 예시:
    - 품질 게이트 체크포인트 설정
    - **라이브러리 버전 명시 (필수)**
 
-### 사용자 승인 대기 (AskUserQuestion)
+### 사용자 확인 단계
 
-Alfred는 implementation-planner의 실행 계획 보고서를 받은 후, **AskUserQuestion 도구를 호출하여 사용자 승인을 받습니다**:
-
-```typescript
-AskUserQuestion({
-  questions: [{
-    question: "implementation-planner가 제시한 실행 계획으로 작업을 진행하시겠습니까?",
-    header: "Phase 2 승인",
-    options: [
-      { label: "진행", description: "승인된 계획대로 TDD 구현 시작" },
-      { label: "수정", description: "계획 재수립 (Phase 1 반복)" },
-      { label: "중단", description: "작업 취소" }
-    ],
-    multiSelect: false
-  }]
-})
-```
-
-**응답 처리**:
-- **"진행"** (`answers["0"] === "진행"`) → Phase 2 실행
-- **"수정"** (`answers["0"] === "수정"`) → Phase 1 반복 (implementation-planner 재호출)
-- **"중단"** (`answers["0"] === "중단"`) → 작업 종료
+실행 계획 검토 후 다음 중 선택하세요:
+- **"진행"** 또는 **"시작"**: 계획대로 작업 실행 시작
+- **"수정 [내용]"**: 계획 수정 요청
+- **"중단"**: 작업 중단
 
 ---
 
@@ -203,82 +186,6 @@ Task tool 호출 예시:
 
           실행 대상: $ARGUMENTS"
 ```
-
-### 2.1 Alfred Skills 자동 활성화
-
-tdd-implementer가 구현을 완료한 후, **Alfred는 자동으로 상황을 분석하여 적절한 Skills를 호출합니다**.
-
-**자동 활성화 조건** (CLAUDE.md - "Alfred 지능형 오케스트레이션" 참조):
-
-| 조건 | 자동 선택 Skill | 목적 |
-|------|----------------|------|
-| 구현 완료 (자동) | moai-alfred-trust-validation | TRUST 5원칙 검증 (Level 2 중간 스캔) |
-
-**실행 흐름** (자동):
-```
-1. tdd-implementer 완료
-    ↓
-2. Alfred 조건 체크:
-   - ✅ 코드 작성 완료? (src/, tests/ 파일 생성/수정)
-    ↓
-3. Alfred 자동 실행:
-   - Skill("moai-alfred-trust-validation", level=2)
-    ↓
-4. 검증 결과 처리:
-   - ✅ PASS → git-manager 호출
-   - ⚠️ WARNING → 사용자 알림 (계속 진행 가능)
-   - ❌ CRITICAL → 수정 권장
-```
-
-**참고**: `/alfred:2-run`에서는 TRUST 검증이 자동으로 실행됩니다 (품질 게이트).
-
-### 2.2 Sub-agent AskUserQuestion (Nested)
-
-**tdd-implementer 에이전트는 내부적으로 AskUserQuestion을 호출**하여 세부 작업을 확인할 수 있습니다.
-
-**호출 시점**:
-- 기존 코드 파일 덮어쓰기 전
-- 중요한 아키텍처 결정 시
-- 테스트 실패 지속 시 (5회 이상)
-
-**예시** (tdd-implementer 내부):
-```typescript
-AskUserQuestion({
-  questions: [{
-    question: "테스트가 5회 이상 실패했습니다. 어떻게 처리하시겠습니까?",
-    header: "테스트 실패 처리",
-    options: [
-      { label: "계속 시도", description: "다른 접근 방법으로 재시도" },
-      { label: "건너뛰기", description: "현재 테스트 건너뛰고 다음 진행" },
-      { label: "중단", description: "작업 중단 및 사용자 개입" }
-    ],
-    multiSelect: false
-  }]
-})
-```
-
-**Nested 패턴**:
-- **커맨드 레벨** (Phase 승인): Alfred가 호출 → "Phase 2 진행할까요?"
-- **Sub-agent 레벨** (세부 확인): tdd-implementer가 호출 → "테스트 실패 어떻게 할까요?"
-
-### 2.3 순차 실행 의존성
-
-Alfred는 다음 순서로 **순차 실행**합니다 (병렬 실행 불가):
-
-**작업 순서**:
-```
-1. tdd-implementer (TDD 구현)
-   ↓ (의존성: 코드 파일 필요)
-2. moai-alfred-trust-validation (검증)
-   ↓ (의존성: 검증 완료 후)
-3. git-manager (커밋 생성)
-```
-
-**이유**: 각 단계가 이전 단계의 결과에 의존하므로 순차 실행 필수
-
-**참고**: Alfred가 의존성을 자동 분석하여 실행 순서를 결정합니다 (CLAUDE.md - "Alfred 지능형 오케스트레이션" 참조).
-
----
 
 ## 🔗 언어별 TDD 최적화
 

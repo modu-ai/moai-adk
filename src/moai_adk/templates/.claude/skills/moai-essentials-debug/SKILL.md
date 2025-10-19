@@ -2,6 +2,8 @@
 name: moai-essentials-debug
 description: Advanced debugging with stack trace analysis, error pattern detection, and fix suggestions
 allowed-tools:
+tier: 1
+auto-load: "true"
   - Read
   - Bash
   - Write

@@ -172,29 +172,12 @@ Alfred가 코드 변경이 많을 때 자동으로 quality-gate 에이전트를 
 
 ---
 
-### 사용자 승인 대기 (AskUserQuestion)
+### 사용자 확인 단계
 
-Alfred는 doc-syncer의 동기화 계획 보고서를 받은 후, **AskUserQuestion 도구를 호출하여 사용자 승인을 받습니다**:
-
-```typescript
-AskUserQuestion({
-  questions: [{
-    question: "doc-syncer가 제시한 동기화 계획으로 작업을 진행하시겠습니까?",
-    header: "Phase 2 승인",
-    options: [
-      { label: "진행", description: "승인된 계획대로 Living Document 동기화 시작" },
-      { label: "수정", description: "계획 재수립 (Phase 1 반복)" },
-      { label: "중단", description: "동기화 작업 중단" }
-    ],
-    multiSelect: false
-  }]
-})
-```
-
-**응답 처리**:
-- **"진행"** (`answers["0"] === "진행"`) → Phase 2 실행
-- **"수정"** (`answers["0"] === "수정"`) → Phase 1 반복 (doc-syncer 재호출)
-- **"중단"** (`answers["0"] === "중단"`) → 작업 종료
+동기화 계획 검토 후 다음 중 선택하세요:
+- **"진행"** 또는 **"시작"**: 계획대로 동기화 시작
+- **"수정 [내용]"**: 동기화 계획 수정 요청
+- **"중단"**: 동기화 작업 중단
 
 ---
 
@@ -217,84 +200,6 @@ doc-syncer 에이전트가 TDD 구현 완료 여부를 자동으로 판단하여
 - HISTORY 섹션 자동 추가
 
 **조건 미충족 시**: Phase 2 세부 작업 자동 건너뜀
-
-### 2.1 Alfred Skills 자동 활성화
-
-doc-syncer가 동기화를 완료한 후, **Alfred는 자동으로 상황을 분석하여 적절한 Skills를 호출합니다**.
-
-**자동 활성화 조건** (CLAUDE.md - "Alfred 지능형 오케스트레이션" 참조):
-
-| 조건 | 자동 선택 Skill | 목적 |
-|------|----------------|------|
-| 동기화 시작 전 (자동) | moai-alfred-tag-scanning | TAG 체인 검증, 고아 TAG 탐지 |
-| 동기화 완료 후 (선택) | moai-alfred-trust-validation | TRUST 5원칙 검증 (Level 1 빠른 스캔) |
-
-**실행 흐름**:
-```
-1. Phase 1 사전 검증 (자동):
-   - Skill("moai-alfred-tag-scanning")
-   - 전체 TAG 스캔, 고아 TAG 탐지
-    ↓
-2. doc-syncer 실행 (Living Document 동기화)
-    ↓
-3. 동기화 완료 후 (선택):
-   - 사용자 요청 시 → Skill("moai-alfred-trust-validation", level=1)
-    ↓
-4. 검증 결과 처리:
-   - ✅ PASS → git-manager 호출 (PR Ready 전환)
-   - ⚠️ WARNING → 사용자 알림
-   - ❌ CRITICAL → 수정 권장
-```
-
-**참고**: `/alfred:3-sync`에서는 TAG 스캔이 자동으로 실행되며, TRUST 검증은 선택사항입니다.
-
-### 2.2 Sub-agent AskUserQuestion (Nested)
-
-**doc-syncer 에이전트는 내부적으로 AskUserQuestion을 호출**하여 세부 작업을 확인할 수 있습니다.
-
-**호출 시점**:
-- 문서 파일 덮어쓰기 전
-- PR Ready 전환 시 (--auto-merge 미사용)
-- TAG 불일치 발견 시
-
-**예시** (doc-syncer 내부):
-```typescript
-AskUserQuestion({
-  questions: [{
-    question: "고아 TAG가 2개 발견되었습니다. 어떻게 처리하시겠습니까?",
-    header: "고아 TAG 처리",
-    options: [
-      { label: "자동 제거", description: "고아 TAG를 문서에서 자동 제거" },
-      { label: "수동 확인", description: "고아 TAG 목록 보고 후 사용자 수동 처리" },
-      { label: "무시", description: "경고만 표시하고 계속 진행" }
-    ],
-    multiSelect: false
-  }]
-})
-```
-
-**Nested 패턴**:
-- **커맨드 레벨** (Phase 승인): Alfred가 호출 → "Phase 2 진행할까요?"
-- **Sub-agent 레벨** (세부 확인): doc-syncer가 호출 → "고아 TAG 어떻게 할까요?"
-
-### 2.3 순차 실행 의존성
-
-Alfred는 다음 순서로 **순차 실행**합니다 (병렬 실행 불가):
-
-**작업 순서**:
-```
-1. moai-alfred-tag-scanning (TAG 검증)
-   ↓ (의존성: 검증 결과 필요)
-2. doc-syncer (문서 동기화)
-   ↓ (의존성: 동기화 완료 후)
-3. git-manager (PR Ready 전환, 선택적)
-```
-
-**이유**: 각 단계가 이전 단계의 결과에 의존하므로 순차 실행 필수
-
-**참고**: Alfred가 의존성을 자동 분석하여 실행 순서를 결정합니다 (CLAUDE.md - "Alfred 지능형 오케스트레이션" 참조).
-
----
 
 ## 기능
 

@@ -18,7 +18,7 @@ Provides PHP-specific expertise for TDD development, including PHPUnit testing, 
 
 - "PHP 테스트 작성", "PHPUnit 사용법", "PSR 표준"
 - Automatically invoked when working with PHP projects
-- PHP SPEC implementation (`/alfred:2-run`)
+- PHP SPEC implementation (`/alfred:2-build`)
 
 ## How it works
 
@@ -53,7 +53,7 @@ Provides PHP-specific expertise for TDD development, including PHPUnit testing, 
 ## Examples
 
 ### Example 1: TDD with PHPUnit
-User: "/alfred:2-run SERVICE-001"
+User: "/alfred:2-build SERVICE-001"
 Claude: (creates RED test with PHPUnit, GREEN implementation, REFACTOR with types)
 
 ### Example 2: PSR compliance

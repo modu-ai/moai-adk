@@ -18,7 +18,7 @@ Provides C-specific expertise for TDD development, including Unity test framewor
 
 - "C 테스트 작성", "Unity 테스트 프레임워크", "임베디드 C"
 - Automatically invoked when working with C projects
-- C SPEC implementation (`/alfred:2-run`)
+- C SPEC implementation (`/alfred:2-build`)
 
 ## How it works
 
@@ -55,7 +55,7 @@ Provides C-specific expertise for TDD development, including Unity test framewor
 ## Examples
 
 ### Example 1: TDD with Unity
-User: "/alfred:2-run DRIVER-001"
+User: "/alfred:2-build DRIVER-001"
 Claude: (creates RED test with Unity, GREEN implementation, REFACTOR with error handling)
 
 ### Example 2: Memory leak check

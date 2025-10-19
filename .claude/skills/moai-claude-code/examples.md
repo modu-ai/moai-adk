@@ -186,7 +186,7 @@ allowed-tools:
 
 ## 📋 다음 단계
 
-- `/alfred:2-run SPEC-{ID}` - TDD 구현 시작
+- `/alfred:2-build SPEC-{ID}` - TDD 구현 시작
 ```
 
 ### 예제 2: /deploy-api (배포 커맨드)

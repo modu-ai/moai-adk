@@ -18,7 +18,7 @@ Provides Clojure-specific expertise for TDD development, including clojure.test 
 
 - "Clojure 테스트 작성", "clojure.test 사용법", "불변 데이터 구조"
 - Automatically invoked when working with Clojure projects
-- Clojure SPEC implementation (`/alfred:2-run`)
+- Clojure SPEC implementation (`/alfred:2-build`)
 
 ## How it works
 
@@ -55,7 +55,7 @@ Provides Clojure-specific expertise for TDD development, including clojure.test 
 ## Examples
 
 ### Example 1: TDD with clojure.test
-User: "/alfred:2-run TRANSFORM-001"
+User: "/alfred:2-build TRANSFORM-001"
 Claude: (creates RED test with clojure.test, GREEN implementation with threading macros, REFACTOR)
 
 ### Example 2: Property testing
