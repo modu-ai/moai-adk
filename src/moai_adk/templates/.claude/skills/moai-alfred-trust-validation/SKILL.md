@@ -1,14 +1,12 @@
 ---
 name: moai-alfred-trust-validation
 description: Validates TRUST 5-principles compliance (Test coverage 85%+, Code constraints, Architecture unity, Security, TAG trackability)
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - trust
-  - quality
-  - validation
-  - tdd
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Bash
+  - TodoWrite
 ---
 
 # Alfred TRUST Validation

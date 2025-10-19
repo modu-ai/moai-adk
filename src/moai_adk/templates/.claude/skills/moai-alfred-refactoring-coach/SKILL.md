@@ -1,14 +1,12 @@
 ---
 name: moai-alfred-refactoring-coach
 description: Refactoring guidance with design patterns, code smells detection, and step-by-step improvement plans
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - refactoring
-  - design-patterns
-  - code-improvement
-  - clean-code
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Bash
+  - TodoWrite
 ---
 
 # Alfred Refactoring Coach

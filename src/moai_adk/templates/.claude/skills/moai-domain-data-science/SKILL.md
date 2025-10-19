@@ -1,14 +1,9 @@
 ---
 name: moai-domain-data-science
 description: Data analysis, visualization, statistical modeling, and reproducible research workflows
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - data-science
-  - analysis
-  - visualization
-  - statistics
+allowed-tools:
+  - Read
+  - Bash
 ---
 
 # Data Science Expert

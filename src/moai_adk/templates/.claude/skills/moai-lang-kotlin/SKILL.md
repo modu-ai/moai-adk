@@ -1,15 +1,9 @@
 ---
 name: moai-lang-kotlin
 description: Kotlin best practices with JUnit, Gradle, ktlint, coroutines, and extension functions
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - kotlin
-  - testing
-  - best-practices
-  - android
-  - coroutines
+allowed-tools:
+  - Read
+  - Bash
 ---
 
 # Kotlin Expert

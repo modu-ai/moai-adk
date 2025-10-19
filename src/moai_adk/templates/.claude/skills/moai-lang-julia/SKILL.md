@@ -1,14 +1,9 @@
 ---
 name: moai-lang-julia
 description: Julia best practices with Test stdlib, Pkg manager, and scientific computing patterns
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - julia
-  - testing
-  - best-practices
-  - scientific-computing
+allowed-tools:
+  - Read
+  - Bash
 ---
 
 # Julia Expert

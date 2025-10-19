@@ -1,14 +1,12 @@
 ---
 name: moai-alfred-debugger-pro
 description: Advanced debugging support with stack trace analysis, error pattern detection, and fix suggestions
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - debugging
-  - error-analysis
-  - troubleshooting
-  - stack-trace
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Bash
+  - TodoWrite
 ---
 
 # Alfred Debugger Pro

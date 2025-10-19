@@ -1,14 +1,12 @@
 ---
 name: moai-alfred-spec-metadata-validation
 description: Validates SPEC YAML frontmatter (7 required fields) and HISTORY section compliance
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - spec
-  - metadata
-  - validation
-  - yaml
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Bash
+  - TodoWrite
 ---
 
 # Alfred SPEC Metadata Validation

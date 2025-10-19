@@ -1,14 +1,9 @@
 ---
 name: moai-lang-r
 description: R best practices with testthat, lintr, and data analysis patterns
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - r
-  - testing
-  - best-practices
-  - data-analysis
+allowed-tools:
+  - Read
+  - Bash
 ---
 
 # R Expert

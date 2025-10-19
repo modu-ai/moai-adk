@@ -1,14 +1,9 @@
 ---
 name: moai-domain-cli-tool
 description: CLI tool development with argument parsing, POSIX compliance, and user-friendly help messages
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - cli
-  - command-line
-  - terminal
-  - posix
+allowed-tools:
+  - Read
+  - Bash
 ---
 
 # CLI Tool Expert

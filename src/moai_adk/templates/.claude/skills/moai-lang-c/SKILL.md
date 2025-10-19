@@ -1,14 +1,9 @@
 ---
 name: moai-lang-c
 description: C best practices with Unity test framework, cppcheck, and Make build system
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - c
-  - testing
-  - best-practices
-  - embedded
+allowed-tools:
+  - Read
+  - Bash
 ---
 
 # C Expert

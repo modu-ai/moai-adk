@@ -1,14 +1,9 @@
 ---
 name: moai-lang-lua
 description: Lua best practices with busted, luacheck, and embedded scripting patterns
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - lua
-  - testing
-  - best-practices
-  - scripting
+allowed-tools:
+  - Read
+  - Bash
 ---
 
 # Lua Expert

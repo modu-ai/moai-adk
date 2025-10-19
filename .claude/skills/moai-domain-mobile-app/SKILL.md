@@ -1,14 +1,9 @@
 ---
 name: moai-domain-mobile-app
 description: Mobile app development with Flutter and React Native, state management, and native integration
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - mobile
-  - flutter
-  - react-native
-  - state-management
+allowed-tools:
+  - Read
+  - Bash
 ---
 
 # Mobile App Expert
