@@ -4,6 +4,8 @@ description: Dart best practices with flutter test, dart analyze, and Flutter wi
 allowed-tools:
   - Read
   - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # Dart Expert

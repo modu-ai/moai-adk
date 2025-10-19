@@ -4,6 +4,8 @@ description: Go best practices with go test, golint, gofmt, and standard library
 allowed-tools:
   - Read
   - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # Go Expert

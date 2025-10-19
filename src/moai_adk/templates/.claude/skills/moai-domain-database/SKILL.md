@@ -4,6 +4,8 @@ description: Database design, schema optimization, indexing strategies, and migr
 allowed-tools:
   - Read
   - Bash
+tier: 4
+auto-load: "false"
 ---
 
 # Database Expert

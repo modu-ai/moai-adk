@@ -4,6 +4,8 @@ description: Shell scripting best practices with bats, shellcheck, and POSIX com
 allowed-tools:
   - Read
   - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # Shell Expert

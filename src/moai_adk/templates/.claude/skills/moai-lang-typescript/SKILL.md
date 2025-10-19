@@ -4,6 +4,8 @@ description: TypeScript best practices with Vitest, Biome, strict typing, and np
 allowed-tools:
   - Read
   - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # TypeScript Expert

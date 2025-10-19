@@ -4,6 +4,8 @@ description: Rust best practices with cargo test, clippy, rustfmt, and ownership
 allowed-tools:
   - Read
   - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # Rust Expert

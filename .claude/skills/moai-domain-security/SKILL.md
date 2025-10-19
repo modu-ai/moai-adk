@@ -4,6 +4,8 @@ description: OWASP Top 10, static analysis (SAST), dependency security, and secr
 allowed-tools:
   - Read
   - Bash
+tier: 4
+auto-load: "false"
 ---
 
 # Security Expert

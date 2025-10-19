@@ -4,6 +4,8 @@ description: R best practices with testthat, lintr, and data analysis patterns
 allowed-tools:
   - Read
   - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # R Expert

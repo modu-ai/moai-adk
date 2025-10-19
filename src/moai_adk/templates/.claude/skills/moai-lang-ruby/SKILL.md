@@ -4,6 +4,8 @@ description: Ruby best practices with RSpec, RuboCop, Bundler, and Rails pattern
 allowed-tools:
   - Read
   - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # Ruby Expert

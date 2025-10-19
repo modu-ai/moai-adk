@@ -4,6 +4,8 @@ description: Kotlin best practices with JUnit, Gradle, ktlint, coroutines, and e
 allowed-tools:
   - Read
   - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # Kotlin Expert
