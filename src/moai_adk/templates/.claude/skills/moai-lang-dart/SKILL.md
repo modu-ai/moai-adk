@@ -1,11 +1,10 @@
 ---
 name: moai-lang-dart
-description: Dart best practices with flutter test, dart analyze, and Flutter widget patterns
+description: Dart best practices with flutter test, dart analyze, and Flutter widget
+  patterns
 allowed-tools:
-  - Read
-  - Bash
-tier: 3
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # Dart Expert

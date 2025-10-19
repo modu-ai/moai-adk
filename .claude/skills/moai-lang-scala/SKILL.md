@@ -1,11 +1,10 @@
 ---
 name: moai-lang-scala
-description: Scala best practices with ScalaTest, sbt, and functional programming patterns
+description: Scala best practices with ScalaTest, sbt, and functional programming
+  patterns
 allowed-tools:
-  - Read
-  - Bash
-tier: 3
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # Scala Expert

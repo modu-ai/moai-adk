@@ -2,10 +2,8 @@
 name: moai-lang-ruby
 description: Ruby best practices with RSpec, RuboCop, Bundler, and Rails patterns
 allowed-tools:
-  - Read
-  - Bash
-tier: 3
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # Ruby Expert

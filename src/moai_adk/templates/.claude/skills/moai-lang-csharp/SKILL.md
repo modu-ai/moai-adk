@@ -2,10 +2,8 @@
 name: moai-lang-csharp
 description: C# best practices with xUnit, .NET tooling, LINQ, and async/await patterns
 allowed-tools:
-  - Read
-  - Bash
-tier: 3
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # C# Expert

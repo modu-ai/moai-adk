@@ -1,11 +1,10 @@
 ---
 name: moai-lang-rust
-description: Rust best practices with cargo test, clippy, rustfmt, and ownership/borrow checker mastery
+description: Rust best practices with cargo test, clippy, rustfmt, and ownership/borrow
+  checker mastery
 allowed-tools:
-  - Read
-  - Bash
-tier: 3
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # Rust Expert

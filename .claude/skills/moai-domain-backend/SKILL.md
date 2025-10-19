@@ -1,11 +1,10 @@
 ---
 name: moai-domain-backend
-description: Server architecture, API design, caching strategies, and scalability patterns
+description: Server architecture, API design, caching strategies, and scalability
+  patterns
 allowed-tools:
-  - Read
-  - Bash
-tier: 2
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # Backend Expert

@@ -1,14 +1,13 @@
 ---
 name: moai-essentials-review
-description: Automated code review with SOLID principles, code smells, and language-specific best practices
+description: Automated code review with SOLID principles, code smells, and language-specific
+  best practices
 allowed-tools:
-tier: 1
-auto-load: "true"
-  - Read
-  - Bash
-  - Write
-  - Edit
-  - TodoWrite
+- Read
+- Bash
+- Write
+- Edit
+- TodoWrite
 ---
 
 # Alfred Code Reviewer

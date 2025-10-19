@@ -2,10 +2,8 @@
 name: moai-domain-ml
 description: Machine learning model training, evaluation, deployment, and MLOps workflows
 allowed-tools:
-  - Read
-  - Bash
-tier: 2
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # ML Expert

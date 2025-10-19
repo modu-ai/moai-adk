@@ -2,13 +2,11 @@
 name: moai-foundation-specs
 description: Validates SPEC YAML frontmatter (7 required fields) and HISTORY section
 allowed-tools:
-tier: 0
-auto-load: "true"
-  - Read
-  - Bash
-  - Write
-  - Edit
-  - TodoWrite
+- Read
+- Bash
+- Write
+- Edit
+- TodoWrite
 ---
 
 # Alfred SPEC Metadata Validation

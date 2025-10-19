@@ -1,11 +1,10 @@
 ---
 name: moai-domain-database
-description: Database design, schema optimization, indexing strategies, and migration management
+description: Database design, schema optimization, indexing strategies, and migration
+  management
 allowed-tools:
-  - Read
-  - Bash
-tier: 2
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # Database Expert

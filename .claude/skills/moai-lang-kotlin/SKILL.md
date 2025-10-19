@@ -1,11 +1,10 @@
 ---
 name: moai-lang-kotlin
-description: Kotlin best practices with JUnit, Gradle, ktlint, coroutines, and extension functions
+description: Kotlin best practices with JUnit, Gradle, ktlint, coroutines, and extension
+  functions
 allowed-tools:
-  - Read
-  - Bash
-tier: 3
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # Kotlin Expert

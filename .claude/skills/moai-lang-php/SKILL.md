@@ -2,10 +2,8 @@
 name: moai-lang-php
 description: PHP best practices with PHPUnit, Composer, and PSR standards
 allowed-tools:
-  - Read
-  - Bash
-tier: 3
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # PHP Expert

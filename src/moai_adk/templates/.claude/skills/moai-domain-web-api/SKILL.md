@@ -1,11 +1,10 @@
 ---
 name: moai-domain-web-api
-description: REST API and GraphQL design patterns with authentication, versioning, and OpenAPI documentation
+description: REST API and GraphQL design patterns with authentication, versioning,
+  and OpenAPI documentation
 allowed-tools:
-  - Read
-  - Bash
-tier: 2
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # Web API Expert

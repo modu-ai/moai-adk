@@ -1,11 +1,10 @@
 ---
 name: moai-lang-java
-description: Java best practices with JUnit, Maven/Gradle, Checkstyle, and Spring Boot patterns
+description: Java best practices with JUnit, Maven/Gradle, Checkstyle, and Spring
+  Boot patterns
 allowed-tools:
-  - Read
-  - Bash
-tier: 3
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # Java Expert

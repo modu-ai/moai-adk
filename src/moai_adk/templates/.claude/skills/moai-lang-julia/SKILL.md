@@ -1,11 +1,10 @@
 ---
 name: moai-lang-julia
-description: Julia best practices with Test stdlib, Pkg manager, and scientific computing patterns
+description: Julia best practices with Test stdlib, Pkg manager, and scientific computing
+  patterns
 allowed-tools:
-  - Read
-  - Bash
-tier: 3
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # Julia Expert

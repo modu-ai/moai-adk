@@ -1,11 +1,10 @@
 ---
 name: moai-domain-data-science
-description: Data analysis, visualization, statistical modeling, and reproducible research workflows
+description: Data analysis, visualization, statistical modeling, and reproducible
+  research workflows
 allowed-tools:
-  - Read
-  - Bash
-tier: 2
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # Data Science Expert

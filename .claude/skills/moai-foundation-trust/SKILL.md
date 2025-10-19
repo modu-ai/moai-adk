@@ -1,14 +1,13 @@
 ---
 name: moai-foundation-trust
-description: Validates TRUST 5-principles (Test 85%+, Readable, Unified, Secured, Trackable)
+description: Validates TRUST 5-principles (Test 85%+, Readable, Unified, Secured,
+  Trackable)
 allowed-tools:
-tier: 0
-auto-load: "true"
-  - Read
-  - Write
-  - Edit
-  - Bash
-  - TodoWrite
+- Read
+- Write
+- Edit
+- Bash
+- TodoWrite
 ---
 
 # Foundation: TRUST Validation

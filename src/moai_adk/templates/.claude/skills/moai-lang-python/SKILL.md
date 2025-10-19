@@ -1,11 +1,10 @@
 ---
 name: moai-lang-python
-description: Python best practices with pytest, mypy, ruff, black, and uv package management
+description: Python best practices with pytest, mypy, ruff, black, and uv package
+  management
 allowed-tools:
-  - Read
-  - Bash
-tier: 3
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # Python Expert

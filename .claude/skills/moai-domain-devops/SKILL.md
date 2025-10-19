@@ -1,11 +1,10 @@
 ---
 name: moai-domain-devops
-description: CI/CD pipelines, Docker containerization, Kubernetes orchestration, and infrastructure as code
+description: CI/CD pipelines, Docker containerization, Kubernetes orchestration, and
+  infrastructure as code
 allowed-tools:
-  - Read
-  - Bash
-tier: 2
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # DevOps Expert

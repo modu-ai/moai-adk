@@ -2,10 +2,8 @@
 name: moai-lang-haskell
 description: Haskell best practices with HUnit, Stack/Cabal, and pure functional programming
 allowed-tools:
-  - Read
-  - Bash
-tier: 3
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # Haskell Expert

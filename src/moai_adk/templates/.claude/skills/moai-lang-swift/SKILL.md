@@ -1,11 +1,10 @@
 ---
 name: moai-lang-swift
-description: Swift best practices with XCTest, SwiftLint, and iOS/macOS development patterns
+description: Swift best practices with XCTest, SwiftLint, and iOS/macOS development
+  patterns
 allowed-tools:
-  - Read
-  - Bash
-tier: 3
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # Swift Expert

@@ -1,11 +1,10 @@
 ---
 name: moai-domain-security
-description: OWASP Top 10, static analysis (SAST), dependency security, and secrets management
+description: OWASP Top 10, static analysis (SAST), dependency security, and secrets
+  management
 allowed-tools:
-  - Read
-  - Bash
-tier: 2
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # Security Expert

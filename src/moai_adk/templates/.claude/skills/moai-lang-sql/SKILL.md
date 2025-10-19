@@ -1,11 +1,10 @@
 ---
 name: moai-lang-sql
-description: SQL best practices with testing frameworks, query optimization, and migration management
+description: SQL best practices with testing frameworks, query optimization, and migration
+  management
 allowed-tools:
-  - Read
-  - Bash
-tier: 3
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # SQL Expert

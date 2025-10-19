@@ -1,11 +1,10 @@
 ---
 name: moai-domain-frontend
-description: React/Vue/Angular development with state management, performance optimization, and accessibility
+description: React/Vue/Angular development with state management, performance optimization,
+  and accessibility
 allowed-tools:
-  - Read
-  - Bash
-tier: 2
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # Frontend Expert

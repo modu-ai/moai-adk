@@ -1,11 +1,10 @@
 ---
 name: moai-lang-typescript
-description: TypeScript best practices with Vitest, Biome, strict typing, and npm/pnpm package management
+description: TypeScript best practices with Vitest, Biome, strict typing, and npm/pnpm
+  package management
 allowed-tools:
-  - Read
-  - Bash
-tier: 3
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # TypeScript Expert

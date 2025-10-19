@@ -1,11 +1,10 @@
 ---
 name: moai-lang-c
-description: C best practices with Unity test framework, cppcheck, and Make build system
+description: C best practices with Unity test framework, cppcheck, and Make build
+  system
 allowed-tools:
-  - Read
-  - Bash
-tier: 3
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # C Expert

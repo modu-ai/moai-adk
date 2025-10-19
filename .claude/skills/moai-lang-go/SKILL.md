@@ -2,10 +2,8 @@
 name: moai-lang-go
 description: Go best practices with go test, golint, gofmt, and standard library utilization
 allowed-tools:
-  - Read
-  - Bash
-tier: 3
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # Go Expert

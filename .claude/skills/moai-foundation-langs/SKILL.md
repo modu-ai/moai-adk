@@ -1,14 +1,13 @@
 ---
 name: moai-foundation-langs
-description: Auto-detects project language and framework (package.json, pyproject.toml, etc)
+description: Auto-detects project language and framework (package.json, pyproject.toml,
+  etc)
 allowed-tools:
-tier: 0
-auto-load: "true"
-  - Read
-  - Bash
-  - Write
-  - Edit
-  - TodoWrite
+- Read
+- Bash
+- Write
+- Edit
+- TodoWrite
 ---
 
 # Alfred Language Detection

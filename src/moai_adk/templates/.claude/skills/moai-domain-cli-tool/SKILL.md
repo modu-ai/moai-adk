@@ -1,11 +1,10 @@
 ---
 name: moai-domain-cli-tool
-description: CLI tool development with argument parsing, POSIX compliance, and user-friendly help messages
+description: CLI tool development with argument parsing, POSIX compliance, and user-friendly
+  help messages
 allowed-tools:
-  - Read
-  - Bash
-tier: 2
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # CLI Tool Expert

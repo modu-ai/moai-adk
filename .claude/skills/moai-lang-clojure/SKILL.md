@@ -1,11 +1,10 @@
 ---
 name: moai-lang-clojure
-description: Clojure best practices with clojure.test, Leiningen, and immutable data structures
+description: Clojure best practices with clojure.test, Leiningen, and immutable data
+  structures
 allowed-tools:
-  - Read
-  - Bash
-tier: 3
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # Clojure Expert

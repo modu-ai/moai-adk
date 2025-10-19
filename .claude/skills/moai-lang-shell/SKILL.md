@@ -2,10 +2,8 @@
 name: moai-lang-shell
 description: Shell scripting best practices with bats, shellcheck, and POSIX compliance
 allowed-tools:
-  - Read
-  - Bash
-tier: 3
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # Shell Expert

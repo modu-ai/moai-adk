@@ -2,10 +2,8 @@
 name: moai-lang-cpp
 description: C++ best practices with Google Test, clang-format, and modern C++ (C++17/20)
 allowed-tools:
-  - Read
-  - Bash
-tier: 3
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # C++ Expert

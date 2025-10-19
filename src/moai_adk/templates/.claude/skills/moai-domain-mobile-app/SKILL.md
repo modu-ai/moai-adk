@@ -1,11 +1,10 @@
 ---
 name: moai-domain-mobile-app
-description: Mobile app development with Flutter and React Native, state management, and native integration
+description: Mobile app development with Flutter and React Native, state management,
+  and native integration
 allowed-tools:
-  - Read
-  - Bash
-tier: 2
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # Mobile App Expert

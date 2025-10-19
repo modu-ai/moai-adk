@@ -2,10 +2,8 @@
 name: moai-lang-lua
 description: Lua best practices with busted, luacheck, and embedded scripting patterns
 allowed-tools:
-  - Read
-  - Bash
-tier: 3
-auto-load: "true"
+- Read
+- Bash
 ---
 
 # Lua Expert

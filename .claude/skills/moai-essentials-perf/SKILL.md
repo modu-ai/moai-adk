@@ -1,14 +1,13 @@
 ---
 name: moai-essentials-perf
-description: Performance optimization with profiling, bottleneck detection, and tuning strategies
+description: Performance optimization with profiling, bottleneck detection, and tuning
+  strategies
 allowed-tools:
-tier: 1
-auto-load: "true"
-  - Read
-  - Bash
-  - Write
-  - Edit
-  - TodoWrite
+- Read
+- Bash
+- Write
+- Edit
+- TodoWrite
 ---
 
 # Alfred Performance Optimizer

@@ -2,13 +2,11 @@
 name: moai-foundation-ears
 description: EARS requirement authoring guide (Ubiquitous/Event/State/Optional/Constraints)
 allowed-tools:
-tier: 0
-auto-load: "true"
-  - Read
-  - Bash
-  - Write
-  - Edit
-  - TodoWrite
+- Read
+- Bash
+- Write
+- Edit
+- TodoWrite
 ---
 
 # Alfred EARS Authoring Guide
