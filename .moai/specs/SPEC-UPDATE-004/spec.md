@@ -1,7 +1,7 @@
 ---
 id: UPDATE-004
-version: 0.0.1
-status: draft
+version: 0.1.0
+status: completed
 created: 2025-10-19
 updated: 2025-10-19
 author: @Goos
@@ -30,6 +30,18 @@ scope:
 # @SPEC:UPDATE-004: Sub-agents를 Skills로 통합
 
 ## HISTORY
+### v0.1.0 (2025-10-19)
+- **COMPLETED**: Sub-agents Skills 통합 + AskUserQuestion 섹션 통합 완료
+- **AUTHOR**: @Goos
+- **CHANGES**:
+  - Phase 1: tag-agent, trust-checker → Skills 통합 (06a9da2)
+  - Phase 2: spec-builder EARS 가이드 분리 (cf8ce97)
+  - Phase 3: 호환성 테스트 및 검증 (577a413)
+  - Phase 3-extra: Commands/Agents AskUserQuestion 섹션 추가 (a2fff92)
+  - Sync: 문서 동기화 및 보고서 생성 (b331f59)
+- **RESULT**: Agent 프롬프트 1,200 LOC 감소 (40% 이상), DRY 원칙 준수
+- **TAG**: @SPEC:UPDATE-004 → @CODE:UPDATE-004 (Agent/Skills 파일)
+
 ### v0.0.1 (2025-10-19)
 - **INITIAL**: Sub-agents와 Skills의 명확한 역할 분리 및 중복 프롬프트 제거 명세 작성
 - **AUTHOR**: @Goos
