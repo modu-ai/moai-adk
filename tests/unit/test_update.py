@@ -1,15 +1,156 @@
 # @TEST:TEST-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md
 """Unit tests for update.py command
 
-Tests for update command with various scenarios.
+Tests for package upgrade functionality (not template updates).
 """
 
-from pathlib import Path
 from unittest.mock import Mock, patch
 
 from click.testing import CliRunner
 
-from moai_adk.cli.commands.update import update
+from moai_adk.cli.commands.update import detect_install_method, get_latest_version, update, upgrade_package
+
+
+class TestGetLatestVersion:
+    """Test get_latest_version function"""
+
+    def test_get_latest_version_success(self):
+        """Test successful PyPI version fetch"""
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            mock_response = Mock()
+            mock_response.read.return_value = b'{"info": {"version": "0.4.0"}}'
+            mock_response.__enter__ = Mock(return_value=mock_response)
+            mock_response.__exit__ = Mock(return_value=False)
+            mock_urlopen.return_value = mock_response
+
+            version = get_latest_version()
+            assert version == "0.4.0"
+
+    def test_get_latest_version_timeout(self):
+        """Test PyPI fetch timeout"""
+        with patch("urllib.request.urlopen", side_effect=TimeoutError):
+            version = get_latest_version()
+            assert version is None
+
+    def test_get_latest_version_network_error(self):
+        """Test PyPI fetch network error"""
+        import urllib.error
+
+        with patch("urllib.request.urlopen", side_effect=urllib.error.URLError("Network error")):
+            version = get_latest_version()
+            assert version is None
+
+    def test_get_latest_version_invalid_json(self):
+        """Test PyPI fetch with invalid JSON response"""
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            mock_response = Mock()
+            mock_response.read.return_value = b"invalid json"
+            mock_response.__enter__ = Mock(return_value=mock_response)
+            mock_response.__exit__ = Mock(return_value=False)
+            mock_urlopen.return_value = mock_response
+
+            version = get_latest_version()
+            assert version is None
+
+
+class TestDetectInstallMethod:
+    """Test detect_install_method function"""
+
+    def test_detect_uv_tool(self):
+        """Test detection of uv tool installation"""
+        with patch("subprocess.run") as mock_run:
+            # First call: uv tool list (success with moai-adk in output)
+            mock_run.return_value = Mock(returncode=0, stdout="moai-adk v0.3.13")
+            method = detect_install_method()
+            assert method == "uv-tool"
+
+    def test_detect_uv_pip(self):
+        """Test detection of uv pip installation"""
+        with patch("subprocess.run") as mock_run:
+            # First call: uv tool list (fails or no moai-adk)
+            # Second call: uv --version (success)
+            def side_effect(*args, **kwargs):
+                cmd = args[0]
+                if "tool" in cmd:
+                    return Mock(returncode=1, stdout="")
+                elif "--version" in cmd:
+                    return Mock(returncode=0, stdout="uv 0.1.0")
+                return Mock(returncode=1)
+
+            mock_run.side_effect = side_effect
+            method = detect_install_method()
+            assert method == "uv-pip"
+
+    def test_detect_pip(self):
+        """Test detection of pip installation (fallback)"""
+        with patch("subprocess.run", side_effect=FileNotFoundError):
+            method = detect_install_method()
+            assert method == "pip"
+
+    def test_detect_uv_tool_timeout(self):
+        """Test uv tool detection with timeout"""
+        import subprocess
+
+        with patch("subprocess.run", side_effect=subprocess.TimeoutExpired("uv", 5)):
+            method = detect_install_method()
+            # Should fallback to pip
+            assert method == "pip"
+
+
+class TestUpgradePackage:
+    """Test upgrade_package function"""
+
+    def test_upgrade_uv_tool_success(self):
+        """Test successful upgrade via uv tool"""
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
+            success = upgrade_package("uv-tool", "0.4.0")
+            assert success is True
+            mock_run.assert_called_once()
+            assert "uv" in mock_run.call_args[0][0]
+            assert "tool" in mock_run.call_args[0][0]
+            assert "upgrade" in mock_run.call_args[0][0]
+
+    def test_upgrade_uv_pip_success(self):
+        """Test successful upgrade via uv pip"""
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
+            success = upgrade_package("uv-pip", "0.4.0")
+            assert success is True
+            mock_run.assert_called_once()
+            assert "uv" in mock_run.call_args[0][0]
+            assert "pip" in mock_run.call_args[0][0]
+            assert "install" in mock_run.call_args[0][0]
+
+    def test_upgrade_pip_success(self):
+        """Test successful upgrade via pip"""
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
+            success = upgrade_package("pip", "0.4.0")
+            assert success is True
+            mock_run.assert_called_once()
+            assert "pip" in mock_run.call_args[0][0]
+            assert "install" in mock_run.call_args[0][0]
+
+    def test_upgrade_failure(self):
+        """Test failed upgrade"""
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(returncode=1, stdout="", stderr="Error message")
+            success = upgrade_package("pip", "0.4.0")
+            assert success is False
+
+    def test_upgrade_timeout(self):
+        """Test upgrade timeout"""
+        import subprocess
+
+        with patch("subprocess.run", side_effect=subprocess.TimeoutExpired("pip", 120)):
+            success = upgrade_package("pip", "0.4.0")
+            assert success is False
+
+    def test_upgrade_invalid_method(self):
+        """Test upgrade with invalid install method"""
+        success = upgrade_package("invalid-method", "0.4.0")
+        assert success is False
 
 
 class TestUpdateCommand:
@@ -20,339 +161,189 @@ class TestUpdateCommand:
         runner = CliRunner()
         result = runner.invoke(update, ["--help"])
         assert result.exit_code == 0
-        assert "Update template files to the latest version" in result.output
+        assert "Upgrade moai-adk package" in result.output
+        assert "--check" in result.output
 
-    def test_update_not_initialized(self, tmp_path):
-        """Test update when project is not initialized"""
-        runner = CliRunner()
-
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            result = runner.invoke(update)
-            assert result.exit_code != 0
-            assert "not initialized" in result.output
-
-    def test_update_check_only(self, tmp_path):
-        """Test update --check flag"""
-        runner = CliRunner()
-
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            # Create .moai directory
-            Path(".moai").mkdir()
-
-            result = runner.invoke(update, ["--check"])
-            assert result.exit_code == 0
-            assert "Checking versions" in result.output
-            # Could be any of these messages depending on version comparison
-            assert ("Already up to date" in result.output or
-                    "Update available" in result.output or
-                    "Development version" in result.output)
-
-    def test_update_check_when_update_available(self, tmp_path):
+    def test_update_check_update_available(self):
         """Test update --check when new version is available"""
         runner = CliRunner()
 
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            # Create .moai directory
-            Path(".moai").mkdir()
-
-            # Mock get_latest_version to return a newer version
-            with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
-                with patch("moai_adk.cli.commands.update.__version__", "0.3.0"):
-                    mock_get_version.return_value = "0.3.5"  # Newer version available
-                    result = runner.invoke(update, ["--check"])
-                    assert result.exit_code == 0
-                    assert "Checking versions" in result.output
-                    assert "Update available" in result.output
-
-    def test_update_with_backup(self, tmp_path):
-        """Test update with backup (default behavior) - uses --force to skip version check"""
-        runner = CliRunner()
-
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            # Create .moai structure
-            moai_dir = Path(".moai")
-            moai_dir.mkdir()
-            import json
-            config_data = {"project": {"optimized": True}, "mode": "personal"}
-            (moai_dir / "config.json").write_text(json.dumps(config_data))
-
-            # Mock TemplateProcessor
-            with patch("moai_adk.cli.commands.update.TemplateProcessor") as mock_processor:
-                mock_instance = Mock()
-                # Return absolute path instead of relative
-                mock_instance.create_backup.return_value = Path.cwd() / ".moai-backups/backup-2025-10-15"
-                mock_instance.copy_templates.return_value = None  # Mock copy_templates
-                mock_processor.return_value = mock_instance
-
-                # Use --force to skip version check and test backup process
-                result = runner.invoke(update, ["--force"])
-                # Should show skip backup message with --force, but still show updating templates
-                assert "Skipping backup (--force)" in result.output
-                assert "Updating templates" in result.output
-                assert result.exit_code == 0
-
-    def test_update_with_force_flag(self, tmp_path):
-        """Test update --force flag (skip backup)"""
-        runner = CliRunner()
-
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            # Create .moai structure
-            moai_dir = Path(".moai")
-            moai_dir.mkdir()
-            (moai_dir / "config.json").write_text('{"mode": "personal"}')
-
-            # Mock TemplateProcessor
-            with patch("moai_adk.cli.commands.update.TemplateProcessor") as mock_processor:
-                mock_instance = Mock()
-                mock_instance.copy_templates.return_value = None  # Mock copy_templates
-                mock_processor.return_value = mock_instance
-
-                result = runner.invoke(update, ["--force"])
-                assert "Skipping backup (--force)" in result.output
-                assert "Updating templates" in result.output
-                # create_backup should NOT be called with --force
-                mock_instance.create_backup.assert_not_called()
-                assert result.exit_code == 0
-
-    def test_update_with_custom_path(self, tmp_path):
-        """Test update with custom --path - uses --force to skip version check"""
-        runner = CliRunner()
-
-        # Create project directory
-        project_dir = tmp_path / "my-project"
-        project_dir.mkdir()
-        (project_dir / ".moai").mkdir()
-        import json
-        config_data = {"project": {"optimized": True}, "mode": "personal"}
-        (project_dir / ".moai" / "config.json").write_text(json.dumps(config_data))
-
-        # Mock TemplateProcessor
-        with patch("moai_adk.cli.commands.update.TemplateProcessor") as mock_processor:
-            mock_instance = Mock()
-            mock_instance.create_backup.return_value = project_dir / ".moai-backups/backup"
-            mock_processor.return_value = mock_instance
-
-            # Use --force to skip version check
-            result = runner.invoke(update, ["--path", str(project_dir), "--force"])
-            assert result.exit_code == 0
-            assert "Update complete" in result.output
-
-    def test_update_shows_version_info(self, tmp_path):
-        """Test that update shows version information"""
-        runner = CliRunner()
-
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            Path(".moai").mkdir()
-
-            result = runner.invoke(update, ["--check"])
-            assert result.exit_code == 0
-            assert "Current version" in result.output
-            assert "Latest version" in result.output
-
-    def test_update_template_processor_called(self, tmp_path):
-        """Test that TemplateProcessor methods are called correctly - uses --force"""
-        runner = CliRunner()
-
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            moai_dir = Path(".moai")
-            moai_dir.mkdir()
-            import json
-            config_data = {"project": {"optimized": True}, "mode": "personal"}
-            (moai_dir / "config.json").write_text(json.dumps(config_data))
-
-            with patch("moai_adk.cli.commands.update.TemplateProcessor") as mock_processor:
-                mock_instance = Mock()
-                mock_instance.create_backup.return_value = Path.cwd() / ".moai-backups/backup"
-                mock_instance.copy_templates.return_value = None  # Mock copy_templates
-                mock_processor.return_value = mock_instance
-
-                # Use --force to skip version check and backup
-                result = runner.invoke(update, ["--force"])
-
-                # Verify methods were called (backup NOT called with --force)
-                mock_instance.create_backup.assert_not_called()
-                mock_instance.copy_templates.assert_called_once_with(backup=False, silent=True)
-                assert result.exit_code == 0
-
-    def test_update_handles_exception(self, tmp_path):
-        """Test update handles exceptions - uses --force to skip version check"""
-        runner = CliRunner()
-
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            moai_dir = Path(".moai")
-            moai_dir.mkdir()
-
-            # Mock TemplateProcessor to raise exception
-            with patch("moai_adk.cli.commands.update.TemplateProcessor") as mock_processor:
-                mock_processor.side_effect = RuntimeError("Mock error")
-
-                # Use --force to skip version check
-                result = runner.invoke(update, ["--force"])
-                assert result.exit_code != 0
-                assert "Update failed" in result.output
-
-    def test_update_shows_update_details(self, tmp_path):
-        """Test that update shows detailed update information - uses --force"""
-        runner = CliRunner()
-
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            moai_dir = Path(".moai")
-            moai_dir.mkdir()
-            import json
-            config_data = {"project": {"optimized": True}, "mode": "personal"}
-            (moai_dir / "config.json").write_text(json.dumps(config_data))
-
-            with patch("moai_adk.cli.commands.update.TemplateProcessor") as mock_processor:
-                mock_instance = Mock()
-                mock_instance.create_backup.return_value = Path.cwd() / ".moai-backups/backup"
-                mock_instance.copy_templates.return_value = None  # Mock copy_templates
-                mock_processor.return_value = mock_instance
-
-                # Use --force to skip version check and backup
-                result = runner.invoke(update, ["--force"])
-                assert ".claude/ update complete" in result.output
-                assert ".moai/ update complete" in result.output
-                assert "CLAUDE.md merge complete" in result.output
-                assert "config.json merge complete" in result.output
-                assert result.exit_code == 0
-
-    def test_update_skips_when_same_version(self, tmp_path):
-        """Test update skips when version is same"""
-        runner = CliRunner()
-
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            # Create .moai structure
-            moai_dir = Path(".moai")
-            moai_dir.mkdir()
-            config_data = {
-                "project": {
-                    "optimized": True,
-                    "name": "test",
-                    "mode": "personal"
-                }
-            }
-            import json
-            (moai_dir / "config.json").write_text(json.dumps(config_data))
-
-            # Mock get_latest_version to return same version as current
-            with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
-                with patch("moai_adk.cli.commands.update.__version__", "0.3.13"):
-                    mock_get_version.return_value = "0.3.13"  # Same version
-                    result = runner.invoke(update)
-                    assert result.exit_code == 0
-                    # Should show "Already up to date" when versions match
-                    assert "Checking versions" in result.output
-                    assert "Already up to date" in result.output
-
-    def test_update_proceeds_when_config_missing(self, tmp_path):
-        """Test update shows already up to date when config.json missing"""
-        runner = CliRunner()
-
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            # Create .moai directory without config.json
-            moai_dir = Path(".moai")
-            moai_dir.mkdir()
-
-            # Mock get_latest_version to return same version as current
-            with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
-                with patch("moai_adk.cli.commands.update.__version__", "0.3.2"):
-                    mock_get_version.return_value = "0.3.2"
-
-                    result = runner.invoke(update)
-                    assert result.exit_code == 0
-                    assert "Already up to date" in result.output
-
-    def test_update_check_when_local_version_newer(self, tmp_path):
-        """Test update --check when local version is newer than PyPI (development version)"""
-        runner = CliRunner()
-
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            # Create .moai directory
-            Path(".moai").mkdir()
-
-            # Mock get_latest_version to return an older version
-            with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
-                with patch("moai_adk.cli.commands.update.__version__", "0.4.0"):
-                    mock_get_version.return_value = "0.3.3"  # Older version on PyPI
-                    result = runner.invoke(update, ["--check"])
-                    assert result.exit_code == 0
-                    assert "Checking versions" in result.output
-                    assert "Development version" in result.output
-
-    def test_update_skips_when_local_version_newer(self, tmp_path):
-        """Test update skips when local version is newer than PyPI"""
-        runner = CliRunner()
-
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            # Create .moai directory
-            moai_dir = Path(".moai")
-            moai_dir.mkdir()
-            config_data = {"project": {"optimized": True}, "mode": "personal"}
-            import json
-            (moai_dir / "config.json").write_text(json.dumps(config_data))
-
-            # Mock get_latest_version to return an older version
-            with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
-                with patch("moai_adk.cli.commands.update.__version__", "0.4.0"):
-                    mock_get_version.return_value = "0.3.3"  # Older version on PyPI
-                    result = runner.invoke(update)
-                    assert result.exit_code == 0
-                    # Should exit silently when local version is newer and optimized
-
-    def test_update_handles_pypi_fetch_failure(self, tmp_path):
-        """Test update handles PyPI fetch failure gracefully"""
-        runner = CliRunner()
-
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            # Create .moai directory
-            Path(".moai").mkdir()
-
-            # Mock get_latest_version to return None (failure)
-            with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
-                mock_get_version.return_value = None
+        with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
+            with patch("moai_adk.cli.commands.update.__version__", "0.3.0"):
+                mock_get_version.return_value = "0.4.0"
                 result = runner.invoke(update, ["--check"])
                 assert result.exit_code == 0
-                assert "Unable to fetch from PyPI" in result.output or "Unable to check for updates" in result.output
+                assert "Checking versions" in result.output
+                assert "0.3.0" in result.output
+                assert "0.4.0" in result.output
+                assert "Update available" in result.output
 
-    def test_update_proceeds_with_force_when_pypi_fails(self, tmp_path):
-        """Test update proceeds with --force even when PyPI fetch fails"""
+    def test_update_check_already_up_to_date(self):
+        """Test update --check when already up to date"""
         runner = CliRunner()
 
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            # Create .moai directory
-            moai_dir = Path(".moai")
-            moai_dir.mkdir()
+        with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
+            with patch("moai_adk.cli.commands.update.__version__", "0.4.0"):
+                mock_get_version.return_value = "0.4.0"
+                result = runner.invoke(update, ["--check"])
+                assert result.exit_code == 0
+                assert "Already up to date" in result.output
 
-            # Mock get_latest_version to return None (failure)
-            with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
-                with patch("moai_adk.cli.commands.update.TemplateProcessor") as mock_processor:
-                    mock_get_version.return_value = None
-                    mock_instance = Mock()
-                    mock_instance.copy_templates.return_value = None
-                    mock_processor.return_value = mock_instance
-
-                    result = runner.invoke(update, ["--force"])
-                    assert result.exit_code == 0
-                    assert "Updating templates" in result.output
-
-    def test_update_shows_upgrade_message_when_new_version_available(self, tmp_path):
-        """Test update shows package upgrade instructions when new version is available"""
+    def test_update_check_development_version(self):
+        """Test update --check when local version is newer (development)"""
         runner = CliRunner()
 
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            # Create .moai directory
-            moai_dir = Path(".moai")
-            moai_dir.mkdir()
+        with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
+            with patch("moai_adk.cli.commands.update.__version__", "0.5.0"):
+                mock_get_version.return_value = "0.4.0"
+                result = runner.invoke(update, ["--check"])
+                assert result.exit_code == 0
+                assert "Development version" in result.output
 
-            # Mock get_latest_version to return a newer version
-            with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
-                with patch("moai_adk.cli.commands.update.__version__", "0.3.9"):
-                    mock_get_version.return_value = "0.3.13"  # Newer version
-                    result = runner.invoke(update)
-                    assert result.exit_code == 0
-                    assert "New version available: 0.3.13" in result.output
-                    assert "Please upgrade the package first" in result.output
-                    assert "Recommended (uv tool)" in result.output
-                    assert "uv tool upgrade moai-adk" in result.output
-                    assert "uv pip install --upgrade moai-adk" in result.output
-                    assert "pip install --upgrade moai-adk" in result.output
+    def test_update_check_pypi_failure(self):
+        """Test update --check when PyPI fetch fails"""
+        runner = CliRunner()
+
+        with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
+            mock_get_version.return_value = None
+            result = runner.invoke(update, ["--check"])
+            assert result.exit_code == 0
+            assert "Unable to fetch from PyPI" in result.output
+            assert "Cannot check for updates" in result.output
+
+    def test_update_already_up_to_date(self):
+        """Test update when already up to date (no upgrade needed)"""
+        runner = CliRunner()
+
+        with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
+            with patch("moai_adk.cli.commands.update.__version__", "0.4.0"):
+                mock_get_version.return_value = "0.4.0"
+                result = runner.invoke(update)
+                assert result.exit_code == 0
+                assert "Already up to date" in result.output
+
+    def test_update_successful_upgrade_uv_tool(self):
+        """Test successful upgrade via uv tool"""
+        runner = CliRunner()
+
+        with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
+            with patch("moai_adk.cli.commands.update.__version__", "0.3.0"):
+                with patch("moai_adk.cli.commands.update.detect_install_method") as mock_detect:
+                    with patch("moai_adk.cli.commands.update.upgrade_package") as mock_upgrade:
+                        mock_get_version.return_value = "0.4.0"
+                        mock_detect.return_value = "uv-tool"
+                        mock_upgrade.return_value = True
+
+                        result = runner.invoke(update)
+                        assert result.exit_code == 0
+                        assert "Detected installation method: uv-tool" in result.output
+                        assert "Update complete" in result.output
+                        assert "For template updates, run: moai-adk init ." in result.output
+
+    def test_update_successful_upgrade_uv_pip(self):
+        """Test successful upgrade via uv pip"""
+        runner = CliRunner()
+
+        with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
+            with patch("moai_adk.cli.commands.update.__version__", "0.3.0"):
+                with patch("moai_adk.cli.commands.update.detect_install_method") as mock_detect:
+                    with patch("moai_adk.cli.commands.update.upgrade_package") as mock_upgrade:
+                        mock_get_version.return_value = "0.4.0"
+                        mock_detect.return_value = "uv-pip"
+                        mock_upgrade.return_value = True
+
+                        result = runner.invoke(update)
+                        assert result.exit_code == 0
+                        assert "Detected installation method: uv-pip" in result.output
+                        assert "Update complete" in result.output
+
+    def test_update_successful_upgrade_pip(self):
+        """Test successful upgrade via pip"""
+        runner = CliRunner()
+
+        with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
+            with patch("moai_adk.cli.commands.update.__version__", "0.3.0"):
+                with patch("moai_adk.cli.commands.update.detect_install_method") as mock_detect:
+                    with patch("moai_adk.cli.commands.update.upgrade_package") as mock_upgrade:
+                        mock_get_version.return_value = "0.4.0"
+                        mock_detect.return_value = "pip"
+                        mock_upgrade.return_value = True
+
+                        result = runner.invoke(update)
+                        assert result.exit_code == 0
+                        assert "Detected installation method: pip" in result.output
+                        assert "Update complete" in result.output
+
+    def test_update_failed_upgrade_uv_tool(self):
+        """Test failed upgrade via uv tool (shows manual instructions)"""
+        runner = CliRunner()
+
+        with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
+            with patch("moai_adk.cli.commands.update.__version__", "0.3.0"):
+                with patch("moai_adk.cli.commands.update.detect_install_method") as mock_detect:
+                    with patch("moai_adk.cli.commands.update.upgrade_package") as mock_upgrade:
+                        mock_get_version.return_value = "0.4.0"
+                        mock_detect.return_value = "uv-tool"
+                        mock_upgrade.return_value = False
+
+                        result = runner.invoke(update)
+                        assert result.exit_code == 1
+                        assert "Upgrade failed" in result.output
+                        assert "uv tool upgrade moai-adk" in result.output
+
+    def test_update_failed_upgrade_uv_pip(self):
+        """Test failed upgrade via uv pip (shows manual instructions)"""
+        runner = CliRunner()
+
+        with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
+            with patch("moai_adk.cli.commands.update.__version__", "0.3.0"):
+                with patch("moai_adk.cli.commands.update.detect_install_method") as mock_detect:
+                    with patch("moai_adk.cli.commands.update.upgrade_package") as mock_upgrade:
+                        mock_get_version.return_value = "0.4.0"
+                        mock_detect.return_value = "uv-pip"
+                        mock_upgrade.return_value = False
+
+                        result = runner.invoke(update)
+                        assert result.exit_code == 1
+                        assert "Upgrade failed" in result.output
+                        assert "uv pip install --upgrade moai-adk" in result.output
+
+    def test_update_failed_upgrade_pip(self):
+        """Test failed upgrade via pip (shows manual instructions)"""
+        runner = CliRunner()
+
+        with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
+            with patch("moai_adk.cli.commands.update.__version__", "0.3.0"):
+                with patch("moai_adk.cli.commands.update.detect_install_method") as mock_detect:
+                    with patch("moai_adk.cli.commands.update.upgrade_package") as mock_upgrade:
+                        mock_get_version.return_value = "0.4.0"
+                        mock_detect.return_value = "pip"
+                        mock_upgrade.return_value = False
+
+                        result = runner.invoke(update)
+                        assert result.exit_code == 1
+                        assert "Upgrade failed" in result.output
+                        assert "pip install --upgrade moai-adk" in result.output
+
+    def test_update_pypi_failure_returns_early(self):
+        """Test update returns early when PyPI fetch fails"""
+        runner = CliRunner()
+
+        with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
+            with patch("moai_adk.cli.commands.update.detect_install_method") as mock_detect:
+                mock_get_version.return_value = None
+
+                result = runner.invoke(update)
+                assert result.exit_code == 0
+                assert "Unable to fetch from PyPI" in result.output
+                # Should NOT call detect_install_method
+                mock_detect.assert_not_called()
+
+    def test_update_exception_handling(self):
+        """Test update handles unexpected exceptions"""
+        runner = CliRunner()
+
+        with patch("moai_adk.cli.commands.update.get_latest_version", side_effect=RuntimeError("Test error")):
+            result = runner.invoke(update)
+            assert result.exit_code != 0
+            assert "Update failed" in result.output
