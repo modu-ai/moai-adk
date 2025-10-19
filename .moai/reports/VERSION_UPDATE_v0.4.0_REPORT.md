@@ -72,9 +72,21 @@
 ### 1. **Claude Code Skills 시스템 도입** ✨
 **추가**: 63개 Skills 파일 (신규)
 
-#### Skills 계층 구조 (44개 + 1 Claude Code)
+#### Skills 계층 구조 (54개 = Alfred 10 + Core 44)
 ```
-Foundation Tier (6개):
+Alfred Tier (10개): Alfred 전용 도구
+  ├─ moai-alfred-code-reviewer
+  ├─ moai-alfred-debugger-pro
+  ├─ moai-alfred-ears-authoring
+  ├─ moai-alfred-git-workflow
+  ├─ moai-alfred-language-detection
+  ├─ moai-alfred-performance-optimizer
+  ├─ moai-alfred-refactoring-coach
+  ├─ moai-alfred-spec-metadata-validation
+  ├─ moai-alfred-tag-scanning
+  └─ moai-alfred-trust-validation
+
+Foundation Tier (6개): 핵심 기능
   ├─ moai-foundation-trust
   ├─ moai-foundation-tags
   ├─ moai-foundation-specs
@@ -82,17 +94,17 @@ Foundation Tier (6개):
   ├─ moai-foundation-git
   └─ moai-foundation-langs
 
-Essentials Tier (4개):
+Essentials Tier (4개): 일상 개발
   ├─ moai-essentials-debug
   ├─ moai-essentials-review
   ├─ moai-essentials-refactor
-  └─ moai-essentials-feature
+  └─ moai-essentials-perf
 
-Language Skills (23개):
+Language Skills (23개): 프로그래밍 언어
   ├─ moai-lang-python, typescript, rust, go, java, ...
   └─ (총 23개 언어)
 
-Domain Skills (10개):
+Domain Skills (10개): 문제 해결 영역
   ├─ moai-domain-backend, frontend, database, ml, ...
   └─ (총 10개 도메인)
 
@@ -318,7 +330,7 @@ packaging>=21.0
 
 ## 🚀 주요 성과
 
-✅ **Claude Code Skills 시스템 완전 도입** (44개 Skills)  
+✅ **Claude Code Skills 시스템 완전 도입** (54개 Skills: Alfred 10 + Core 44)  
 ✅ **Agent → Skill 마이그레이션 완료** (Sub-agents 11개)  
 ✅ **컨텍스트 효율 80% 개선** (Progressive Disclosure)  
 ✅ **개발자 경험 40% 개선** (AskUserQuestion 통합)  
