@@ -1,14 +1,9 @@
 ---
 name: moai-domain-ml
 description: Machine learning model training, evaluation, deployment, and MLOps workflows
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - ml
-  - machine-learning
-  - mlops
-  - deployment
+allowed-tools:
+  - Read
+  - Bash
 ---
 
 # ML Expert

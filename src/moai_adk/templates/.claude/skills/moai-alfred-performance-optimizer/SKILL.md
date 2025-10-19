@@ -1,14 +1,12 @@
 ---
 name: moai-alfred-performance-optimizer
 description: Performance analysis and optimization suggestions with profiling, bottleneck detection, and language-specific optimizations
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - performance
-  - optimization
-  - profiling
-  - benchmarking
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Bash
+  - TodoWrite
 ---
 
 # Alfred Performance Optimizer

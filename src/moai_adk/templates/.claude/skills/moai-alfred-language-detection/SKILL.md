@@ -1,14 +1,12 @@
 ---
 name: moai-alfred-language-detection
 description: Detects project primary language and framework based on config files, recommends appropriate testing tools and linters
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - language
-  - detection
-  - framework
-  - toolchain
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Bash
+  - TodoWrite
 ---
 
 # Alfred Language Detection

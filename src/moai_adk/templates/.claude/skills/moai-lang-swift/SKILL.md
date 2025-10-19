@@ -1,15 +1,9 @@
 ---
 name: moai-lang-swift
 description: Swift best practices with XCTest, SwiftLint, and iOS/macOS development patterns
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - swift
-  - testing
-  - best-practices
-  - ios
-  - macos
+allowed-tools:
+  - Read
+  - Bash
 ---
 
 # Swift Expert

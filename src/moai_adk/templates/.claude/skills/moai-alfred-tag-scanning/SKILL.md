@@ -1,14 +1,12 @@
 ---
 name: moai-alfred-tag-scanning
 description: Scans all @TAG markers directly from code and generates TAG inventory (CODE-FIRST principle - no intermediate cache)
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - tag
-  - tracking
-  - code-first
-  - spec
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Bash
+  - TodoWrite
 ---
 
 # Alfred TAG Scanning

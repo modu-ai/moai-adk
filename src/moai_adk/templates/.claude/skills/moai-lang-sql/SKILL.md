@@ -1,14 +1,9 @@
 ---
 name: moai-lang-sql
 description: SQL best practices with testing frameworks, query optimization, and migration management
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - sql
-  - database
-  - testing
-  - best-practices
+allowed-tools:
+  - Read
+  - Bash
 ---
 
 # SQL Expert

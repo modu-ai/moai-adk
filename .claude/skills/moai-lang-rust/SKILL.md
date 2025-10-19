@@ -1,14 +1,9 @@
 ---
 name: moai-lang-rust
 description: Rust best practices with cargo test, clippy, rustfmt, and ownership/borrow checker mastery
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - rust
-  - testing
-  - best-practices
-  - memory-safety
+allowed-tools:
+  - Read
+  - Bash
 ---
 
 # Rust Expert

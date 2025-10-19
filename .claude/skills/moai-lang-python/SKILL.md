@@ -1,14 +1,9 @@
 ---
 name: moai-lang-python
 description: Python best practices with pytest, mypy, ruff, black, and uv package management
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - python
-  - testing
-  - best-practices
-  - type-safety
+allowed-tools:
+  - Read
+  - Bash
 ---
 
 # Python Expert

@@ -1,14 +1,12 @@
 ---
 name: moai-alfred-code-reviewer
 description: Automated code review with language-specific best practices, SOLID principles, and actionable improvement suggestions
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - code-review
-  - quality
-  - best-practices
-  - solid
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Bash
+  - TodoWrite
 ---
 
 # Alfred Code Reviewer

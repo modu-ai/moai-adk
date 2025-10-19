@@ -1,14 +1,9 @@
 ---
 name: moai-lang-haskell
 description: Haskell best practices with HUnit, Stack/Cabal, and pure functional programming
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - haskell
-  - testing
-  - best-practices
-  - functional-programming
+allowed-tools:
+  - Read
+  - Bash
 ---
 
 # Haskell Expert

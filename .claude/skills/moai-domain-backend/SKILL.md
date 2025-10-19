@@ -1,14 +1,9 @@
 ---
 name: moai-domain-backend
 description: Server architecture, API design, caching strategies, and scalability patterns
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - backend
-  - server
-  - api
-  - scalability
+allowed-tools:
+  - Read
+  - Bash
 ---
 
 # Backend Expert
