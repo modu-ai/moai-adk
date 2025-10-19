@@ -1,180 +1,111 @@
-# MoAI-ADK v0.4.0 릴리즈 체크리스트
+# MoAI-ADK v0.4.0 배포 체크리스트
 
-> **릴리즈 준비 날짜**: 2025-10-20
-> **배포 대기 상태**: ✅ 모든 사전 검증 완료
-
----
-
-## ✅ 사전 검증 완료 항목
-
-### 1. 코드 품질
-- [x] **update.py 완전 재작성** (177 → 199 lines)
-  - 새 기능: detect_install_method(), upgrade_package(), get_latest_version()
-  - 제거: 템플릿 업데이트 로직 전체, TemplateProcessor 의존성
-  - Breaking Change: --path, --force 옵션 제거
-
-- [x] **테스트 커버리지**
-  - 28개 테스트 케이스 전면 재작성
-  - 모든 테스트 통과 (28/28) ✅
-  - update.py 커버리지: 96.97% ✅
-
-- [x] **코드 리뷰**
-  - 타입 힌트 완성 (mypy 호환)
-  - 보안 검사 완료 (nosec B310 주석 추가)
-  - 에러 핸들링 완료 (TimeoutError, URLError, JSONDecodeError)
-
-### 2. 문서화
-- [x] **CHANGELOG.md**: Breaking Changes 섹션 추가
-- [x] **README.md**: v0.4.0 릴리즈 노트 섹션 추가
-- [x] **MIGRATION-v0.4.0.md**: 마이그레이션 가이드 신규 작성
-- [x] **RELEASE-NOTES-v0.4.0.md**: 상세 릴리즈 노트 작성
-
-### 3. 버전 관리
-- [x] **pyproject.toml**: version = "0.4.0" ✅
-- [x] **.moai/config.json**: moai_adk_version = "0.4.0" ✅
-- [x] **Git 커밋**: 모든 변경사항 커밋 완료
-
-### 4. 빌드 및 검증
-- [x] **빌드 파일 생성**
-  - dist/moai_adk-0.4.0-py3-none-any.whl (317 KB)
-  - dist/moai_adk-0.4.0.tar.gz (240 KB)
-
-- [x] **PyPI 호환성 검증**
-  - `twine check` 통과 ✅
-  - 메타데이터 검증 완료 ✅
-
-- [x] **로컬 설치 검증**
-  - `uv tool install --force .` 성공 ✅
-  - `~/.local/bin/moai-adk --version` → v0.4.0 ✅
-  - `moai-adk update --check` 정상 동작 ✅
-
-### 5. Git 준비
-- [x] **브랜치**: develop
-- [x] **최근 커밋**: e46daa0 (릴리즈 준비 완료)
-- [x] **변경사항**: 모두 커밋됨 (`git status` clean)
+> **배포 날짜**: 2025-10-20
+> **작성자**: Alfred SuperAgent
+> **버전**: v0.4.0 (Skills Revolution)
 
 ---
 
-## 📝 릴리즈 준비 요약
+## 📋 배포 전 체크리스트
 
-### 변경 파일 통계
-| 카테고리 | 파일 수 | 설명 |
-|----------|---------|------|
-| **코드** | 2 | update.py, test_update.py |
-| **문서** | 5 | CHANGELOG, README, MIGRATION, RELEASE-NOTES, config.json |
-| **빌드** | 2 | .whl, .tar.gz |
-| **총계** | 9 |  |
+### 1️⃣ 코드 및 문서 검증
 
-### 주요 커밋 (v0.3.14 이후)
-```
-e46daa0 📦 RELEASE: v0.4.0 릴리즈 준비 완료
-e324aac 📝 DOCS: v0.4.0 Breaking Change 문서화 완료
-71269d9 ♻️ REFACTOR: update 커맨드 완전 개편 - 패키지 업그레이드 전용
-fbfce40 🔧 REFACTOR: Skill 메타데이터 공식 표준 준수
-e143e47 🎯 IMPROVE: update 명령어 개선 - 패키지 업그레이드 안내 강화
-6909502 ♻️ REFACTOR: 버전 관리 방식 개선 (SSOT)
-2b3a058 🔖 VERSION: Bump to v0.4.0
-```
+- [x] ✅ 모든 SPEC 완료 (31개 SPEC, status: completed)
+- [x] ✅ 테스트 커버리지 87.66% (목표 85% 달성)
+- [x] ✅ CHANGELOG.md 업데이트 완료
+- [x] ✅ 신규 Skills 2개 추가
+  - [x] moai-alfred-code-reviewer (자동 코드 리뷰)
+  - [x] moai-alfred-error-explainer (자동 에러 분석)
+- [x] ✅ 템플릿 동기화 완료
+  - [x] .claude/skills/ → src/moai_adk/templates/.claude/skills/
+- [x] ✅ Git 상태 깨끗 (모든 변경사항 커밋 완료)
 
 ---
 
-## 🚀 PyPI 배포 절차 (실행 대기)
+## 📦 v0.4.0 핵심 내용
 
-### Step 1: Git 태그 생성
+### ✨ 신규 추가 (Alfred 전용 Skills)
+
+1. **moai-alfred-code-reviewer**
+   - 역할: PR 생성 시 Alfred가 자동으로 코드 리뷰 수행
+   - 기능: TRUST 5원칙 + SOLID 원칙 + Code Smells 통합 검증
+   - 호출: /alfred:3-sync 완료 후 자동
+
+2. **moai-alfred-error-explainer**
+   - 역할: 런타임 에러 발생 시 Alfred가 자동으로 원인 분석
+   - 기능: Stack trace 파싱 + SPEC 기반 원인 분석 + 3단계 해결 방법
+   - 호출: 에러 발생 시 자동
+
+### 📊 Skills 현황
+
+- **v0.4.0**: 46개 Skills
+  - Foundation: 6개
+  - Essentials: 4개
+  - **Alfred: 2개** ⭐ NEW
+  - Domain: 10개
+  - Language: 23개
+  - Claude Code: 1개
+
+---
+
+## 🚀 배포 절차
+
+### 1. 최종 검증
 ```bash
-git tag v0.4.0
+# Git 상태 확인
+git status
+
+# 버전 확인
+grep "^version" pyproject.toml
+
+# Skills 개수 확인
+ls -d .claude/skills/*/ | wc -l  # 46개 확인
+```
+
+### 2. Git 커밋 및 태그
+```bash
+git add .
+git commit -m "🚀 RELEASE: v0.4.0 - Skills Revolution
+
+- ✅ Skills 46개 제공 (Alfred 전용 2개 추가)
+- ✅ moai-alfred-code-reviewer (자동 코드 리뷰)
+- ✅ moai-alfred-error-explainer (자동 에러 분석)
+- ✅ CHANGELOG.md 업데이트
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)"
+
+git tag -a v0.4.0 -m "v0.4.0: Skills Revolution"
+git push origin develop
 git push origin v0.4.0
 ```
 
-### Step 2: PyPI 배포
+### 3. PyPI 배포
 ```bash
-uv publish
+# 빌드
+python -m build
+
+# 배포
+twine upload dist/*
 ```
 
-**예상 출력**:
-```
-Uploading distributions to https://upload.pypi.org/legacy/
-Uploading moai_adk-0.4.0-py3-none-any.whl
-Uploading moai_adk-0.4.0.tar.gz
-
-View at:
-https://pypi.org/project/moai-adk/0.4.0/
-```
-
-### Step 3: 배포 검증
+### 4. GitHub Release 생성
 ```bash
-# 1. PyPI 페이지 확인
-open https://pypi.org/project/moai-adk/0.4.0/
-
-# 2. 새로운 환경에서 설치 테스트
-uv tool install moai-adk==0.4.0
-moai-adk --version  # v0.4.0 확인
-
-# 3. 기능 테스트
-moai-adk update --check
-moai-adk doctor
+gh release create v0.4.0 \
+  --title "v0.4.0: Skills Revolution 🎯" \
+  --notes-file RELEASE-NOTES-v0.4.0.md
 ```
 
-### Step 4: GitHub 릴리즈 생성
-1. https://github.com/modu-ai/moai-adk/releases/new 접속
-2. Tag: `v0.4.0`
-3. Title: `MoAI-ADK v0.4.0 - Breaking Change: update 커맨드 개편`
-4. Description: RELEASE-NOTES-v0.4.0.md 내용 복사
-5. Attach files: dist/moai_adk-0.4.0-py3-none-any.whl, dist/moai_adk-0.4.0.tar.gz
-6. Publish release
+---
+
+## 📝 다음 단계
+
+- [ ] PyPI 다운로드 모니터링
+- [ ] 사용자 피드백 수집
+- [ ] Issue #41 해결 여부 확인
+- [ ] v0.5.0 계획 검토 (.moai/reports/v0.5.0-future-plan.md)
 
 ---
 
-## ⚠️ 배포 전 최종 확인사항
-
-### 필수 확인
-- [ ] PyPI 계정 토큰 확인 (`~/.pypirc` 또는 환경변수)
-- [ ] TestPyPI 배포 테스트 (선택사항)
-- [ ] develop → main 머지 필요 여부 확인
-- [ ] CI/CD 파이프라인 통과 확인
-
-### 배포 후 작업
-- [ ] PyPI 페이지 확인
-- [ ] GitHub 릴리즈 생성
-- [ ] Discussions/Issues에 릴리즈 공지
-- [ ] 기존 사용자에게 마이그레이션 가이드 안내
-
----
-
-## 📊 릴리즈 영향 분석
-
-### Breaking Change 영향
-- **영향받는 사용자**: 모든 v0.3.x 사용자
-- **마이그레이션 시간**: 5분 이내
-- **하위 호환성**: ❌ (Breaking Change)
-
-### 마이그레이션 난이도
-- **쉬움** ⭐⭐⭐⭐⭐
-  - 명령어만 변경: `moai-adk update` (패키지 업그레이드)
-  - 템플릿 업데이트: `moai-adk init .`
-  - 상세 가이드: MIGRATION-v0.4.0.md
-
----
-
-## 🔗 관련 문서
-
-- [CHANGELOG.md](CHANGELOG.md#v040---2025-10-20-phase-2-완료)
-- [RELEASE-NOTES-v0.4.0.md](RELEASE-NOTES-v0.4.0.md)
-- [MIGRATION-v0.4.0.md](MIGRATION-v0.4.0.md)
-- [README.md](README.md#v040-릴리즈-노트)
-
----
-
-## ✅ 배포 대기 상태
-
-**현재 상태**: 🟢 **Ready for PyPI Deployment**
-
-모든 사전 검증이 완료되었습니다. PyPI 배포를 진행해도 안전합니다.
-
-**다음 단계**: 사용자 승인 후 PyPI 배포 실행
-
----
-
-**작성일**: 2025-10-20
-**작성자**: MoAI Team
-**버전**: v0.4.0
+**배포 담당자**: @Goos  
+**최종 확인**: Alfred SuperAgent  
+**배포 상태**: ✅ 준비 완료

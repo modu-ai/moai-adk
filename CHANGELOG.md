@@ -115,10 +115,11 @@ moai-adk init .        # 템플릿 파일 업데이트 (새로운 방법)
 **핵심 변경사항**:
 - ✨ **Claude Code Skills 시스템**: 재사용 가능한 능력 조각 (Lego-like Assembly)
 - 🏗️ **4-Tier 아키텍처**: Foundation (T0) → Essentials (T1) → Domain (T2) → Language (T3)
-- 📚 **43개 Skills 제공**: Foundation 6개 + Essentials 4개 + Domain 10개 + Language 23개
+- 📚 **46개 Skills 제공**: Foundation 6개 + Essentials 4개 + **Alfred 2개** + Domain 10개 + Language 23개 + Claude Code 1개
 - 🔄 **Progressive Disclosure**: tier 기반 자동 로딩 (auto-load: "true")
 - 🧩 **Composability**: 자동 Skill 조합 (자연어 요청만으로 실행)
 - 🎓 **Zero Learning Curve**: 커맨드 암기 불필요, 자연어 대화로 모든 작업 수행
+- 🤖 **Alfred 자동화**: 에이전트가 자동으로 호출하는 전용 Skills 추가
 
 **성능 개선**:
 - ⚡ 개발 시간 단축: 8~12분 → 4.5~7분 (**44% 단축**)
@@ -143,6 +144,12 @@ moai-adk init .        # 템플릿 파일 업데이트 (새로운 방법)
 - `moai-essentials-perf` - 성능 최적화 (프로파일링, 캐싱)
 - `moai-essentials-refactor` - 리팩토링 가이드 (디자인 패턴)
 - `moai-essentials-review` - 코드 리뷰 (SOLID, 코드 스멜, 보안)
+
+#### 🆕 Alfred 전용 Skills (2개)
+
+Alfred 에이전트 자동화:
+- `moai-alfred-code-reviewer` - 자동 코드 리뷰 (TRUST 5원칙 + SPEC 준수 통합 검증, PR 생성 시 자동 호출)
+- `moai-alfred-error-explainer` - 자동 에러 분석 (Stack trace 파싱 + SPEC 기반 원인 분석, 런타임 에러 발생 시 자동 호출)
 
 #### Tier 2: Domain Skills (10개)
 
