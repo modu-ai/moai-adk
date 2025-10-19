@@ -4,6 +4,8 @@ description: Clojure best practices with clojure.test, Leiningen, and immutable 
 allowed-tools:
   - Read
   - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # Clojure Expert

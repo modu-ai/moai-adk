@@ -4,6 +4,8 @@ description: Data analysis, visualization, statistical modeling, and reproducibl
 allowed-tools:
   - Read
   - Bash
+tier: 4
+auto-load: "false"
 ---
 
 # Data Science Expert

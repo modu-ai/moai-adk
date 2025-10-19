@@ -4,6 +4,8 @@ description: CI/CD pipelines, Docker containerization, Kubernetes orchestration,
 allowed-tools:
   - Read
   - Bash
+tier: 4
+auto-load: "false"
 ---
 
 # DevOps Expert

@@ -4,6 +4,8 @@ description: C# best practices with xUnit, .NET tooling, LINQ, and async/await p
 allowed-tools:
   - Read
   - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # C# Expert

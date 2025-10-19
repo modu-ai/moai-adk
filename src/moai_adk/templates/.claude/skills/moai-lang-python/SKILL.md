@@ -4,6 +4,8 @@ description: Python best practices with pytest, mypy, ruff, black, and uv packag
 allowed-tools:
   - Read
   - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # Python Expert

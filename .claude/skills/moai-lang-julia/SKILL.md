@@ -4,6 +4,8 @@ description: Julia best practices with Test stdlib, Pkg manager, and scientific 
 allowed-tools:
   - Read
   - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # Julia Expert

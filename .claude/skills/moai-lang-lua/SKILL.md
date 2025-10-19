@@ -4,6 +4,8 @@ description: Lua best practices with busted, luacheck, and embedded scripting pa
 allowed-tools:
   - Read
   - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # Lua Expert

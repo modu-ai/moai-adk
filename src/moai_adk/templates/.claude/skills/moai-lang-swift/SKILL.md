@@ -4,6 +4,8 @@ description: Swift best practices with XCTest, SwiftLint, and iOS/macOS developm
 allowed-tools:
   - Read
   - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # Swift Expert

@@ -4,6 +4,8 @@ description: Elixir best practices with ExUnit, Mix, and OTP patterns
 allowed-tools:
   - Read
   - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # Elixir Expert

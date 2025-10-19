@@ -4,6 +4,8 @@ description: JavaScript best practices with Jest, ESLint, Prettier, and npm pack
 allowed-tools:
   - Read
   - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # JavaScript Expert

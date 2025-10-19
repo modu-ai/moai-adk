@@ -4,6 +4,8 @@ description: React/Vue/Angular development with state management, performance op
 allowed-tools:
   - Read
   - Bash
+tier: 4
+auto-load: "false"
 ---
 
 # Frontend Expert

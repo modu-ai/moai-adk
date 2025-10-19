@@ -4,6 +4,8 @@ description: C++ best practices with Google Test, clang-format, and modern C++ (
 allowed-tools:
   - Read
   - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # C++ Expert

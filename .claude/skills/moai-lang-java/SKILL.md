@@ -4,6 +4,8 @@ description: Java best practices with JUnit, Maven/Gradle, Checkstyle, and Sprin
 allowed-tools:
   - Read
   - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # Java Expert

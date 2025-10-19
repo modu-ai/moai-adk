@@ -4,6 +4,8 @@ description: C best practices with Unity test framework, cppcheck, and Make buil
 allowed-tools:
   - Read
   - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # C Expert

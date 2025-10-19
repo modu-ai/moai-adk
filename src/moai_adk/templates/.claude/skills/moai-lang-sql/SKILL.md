@@ -4,6 +4,8 @@ description: SQL best practices with testing frameworks, query optimization, and
 allowed-tools:
   - Read
   - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # SQL Expert

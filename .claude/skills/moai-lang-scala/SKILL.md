@@ -4,6 +4,8 @@ description: Scala best practices with ScalaTest, sbt, and functional programmin
 allowed-tools:
   - Read
   - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # Scala Expert

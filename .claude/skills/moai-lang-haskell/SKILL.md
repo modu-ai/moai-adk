@@ -4,6 +4,8 @@ description: Haskell best practices with HUnit, Stack/Cabal, and pure functional
 allowed-tools:
   - Read
   - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # Haskell Expert
