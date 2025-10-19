@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🐛 Hotfix
 
-**중요 버그 수정** (#30):
+**중요 버그 수정 #1** (#30):
 - `AttributeError: 'TemplateProcessor' object has no attribute '_backup_alfred_folder'` 수정
 - v0.3.12/v0.3.13에서 발생한 초기화 실패 문제 해결
 - `moai-adk init .` 실행 시 Initialization Failed 오류 수정
@@ -32,13 +32,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [v0.4.0] - 2025-10-20 (Phase 1 완료, 진행 중)
+**중요 버그 수정 #2**:
+- `AttributeError: 'TemplateBackup' object has no attribute 'backup_dir'` 수정
+- `moai-adk update` 실행 시 템플릿 업데이트 실패 문제 해결
 
-> **📍 현재 진행 상태**: Skills 표준화 Phase 1 완료 (SPEC-SKILLS-REDESIGN-001 v0.1.0)
+**원인**:
+- processor.py:398 라인에서 `self.backup.backup_dir` 참조하지만 속성 없음
+- TemplateBackup 클래스에 backup_dir 속성이 정의되지 않음
+
+**해결**:
+- `TemplateBackup.__init__()`에 `self.backup_dir = self.target_path / ".moai-backups"` 추가
+- 백업 디렉토리 경로 일관성 보장
+
+**영향**:
+- `moai-adk update` 정상 동작
+- 템플릿 업데이트 및 백업 생성 완전 해결
+
+---
+
+## [v0.4.0] - 2025-10-20 (Phase 2 완료)
+
+> **📍 현재 진행 상태**: Skills 표준화 완료 (SPEC-UPDATE-004 v0.1.0)
 >
-> Phase 1 완료: 모든 44개 Skills 재구성, 4-Tier 아키텍처 구현, Progressive Disclosure 메커니즘 활성화
+> ✅ Phase 1 완료: 43개 Skills 재구성, 4-Tier 아키텍처 구현, Progressive Disclosure 활성화
 >
-> 다음 단계: 로컬 템플릿 업데이트 및 최종 검증 (Phase 2 예정)
+> ✅ Phase 2 완료: 로컬 템플릿 동기화 완료, Domain Tier 표준화 완료
+>
+> 다음 단계: PR 머지 및 v0.4.0 릴리스
 
 ### 🎯 Skills Revolution - 개발자 경험 혁신
 
@@ -46,9 +66,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **핵심 변경사항**:
 - ✨ **Claude Code Skills 시스템**: 재사용 가능한 능력 조각 (Lego-like Assembly)
-- 🏗️ **4-Layer 아키텍처**: Commands → Agents → Skills → Hooks
-- 📚 **45개 Skills 제공**: Foundation 15개 + Language 20개 + Domain 10개
-- 🔄 **Progressive Disclosure**: 3-Layer 컨텍스트 로딩 (Metadata → SKILL.md → Additional Files)
+- 🏗️ **4-Tier 아키텍처**: Foundation (T0) → Essentials (T1) → Domain (T2) → Language (T3)
+- 📚 **43개 Skills 제공**: Foundation 6개 + Essentials 4개 + Domain 10개 + Language 23개
+- 🔄 **Progressive Disclosure**: tier 기반 자동 로딩 (auto-load: "true")
 - 🧩 **Composability**: 자동 Skill 조합 (자연어 요청만으로 실행)
 - 🎓 **Zero Learning Curve**: 커맨드 암기 불필요, 자연어 대화로 모든 작업 수행
 
@@ -58,59 +78,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 🚀 응답 속도: **2배 향상**
 - 📚 학습 부담: 커맨드 15개 → 자연어 대화 (**90% 감소**)
 
-#### Foundation Skills (15개)
+#### Tier 0: Foundation Skills (6개)
 
-새로운 Skills 시스템으로 핵심 워크플로우 자동화:
+핵심 워크플로우 자동화:
+- `moai-foundation-ears` - EARS 요구사항 작성 가이드
+- `moai-foundation-git` - Git 워크플로우 자동화 (브랜치, PR, 커밋)
+- `moai-foundation-langs` - 언어/프레임워크 자동 감지
+- `moai-foundation-specs` - SPEC 메타데이터 검증 (YAML Front Matter)
+- `moai-foundation-tags` - @TAG 체인 무결성 검증
+- `moai-foundation-trust` - TRUST 5원칙 검증 (Test 85%+, Readable, Unified, Secured, Trackable)
 
-| Skill                    | 역할                 | 기존 대응            |
-| ------------------------ | -------------------- | -------------------- |
-| `moai-spec-writer`       | EARS 명세 작성       | spec-builder 일부    |
-| `moai-tdd-orchestrator`  | TDD 오케스트레이션   | tdd-implementer 일부 |
-| `moai-tag-validator`     | TAG 무결성 검증      | tag-agent 일부       |
-| `moai-doc-syncer`        | Living Document 동기 | doc-syncer 일부      |
-| `moai-git-flow`          | GitFlow 자동화       | git-manager 일부     |
-| `moai-quality-gate`      | TRUST 5원칙 검증     | trust-checker 일부   |
-| `moai-debug-assistant`   | 오류 진단 및 해결    | debug-helper 일부    |
-| `moai-refactoring-coach` | 리팩토링 가이드      | (신규)               |
-| ... 총 15개              |                      |                      |
+#### Tier 1: Essentials Skills (4개)
 
-#### Language Skills (20개)
+코드 품질 및 개선:
+- `moai-essentials-debug` - 오류 진단 및 해결
+- `moai-essentials-perf` - 성능 최적화 (프로파일링, 캐싱)
+- `moai-essentials-refactor` - 리팩토링 가이드 (디자인 패턴)
+- `moai-essentials-review` - 코드 리뷰 (SOLID, 코드 스멜, 보안)
 
-언어별 전문가 Skills로 모든 주요 언어 지원:
-- `python-expert`, `typescript-expert`, `java-expert`, `go-expert`, `rust-expert`
-- `dart-expert`, `swift-expert`, `kotlin-expert`, `ruby-expert`, `php-expert`
-- `cpp-expert`, `csharp-expert`, `haskell-expert`, `lua-expert`, `shell-expert`
-- ... 총 20개
+#### Tier 2: Domain Skills (10개)
 
-#### Domain Skills (10개)
+도메인별 전문성:
+- `moai-domain-backend` - 백엔드 아키텍처, API 설계, 캐싱, 확장성
+- `moai-domain-cli-tool` - CLI 도구 개발, POSIX 호환성
+- `moai-domain-data-science` - 데이터 분석, 시각화, 통계 모델링
+- `moai-domain-database` - DB 설계, 스키마 최적화, 인덱싱
+- `moai-domain-devops` - CI/CD, Docker, Kubernetes, IaC
+- `moai-domain-frontend` - React, 상태 관리, 성능 최적화
+- `moai-domain-ml` - 머신러닝, 모델 학습, MLOps
+- `moai-domain-mobile-app` - Flutter, React Native, 크로스 플랫폼
+- `moai-domain-security` - OWASP, 시크릿 관리, 취약점 스캔
+- `moai-domain-web-api` - REST, GraphQL, JWT 인증
 
-도메인별 전문가 Skills로 특화된 작업 지원:
-- `web-api-expert` (REST/GraphQL API 설계)
-- `mobile-app-expert` (iOS, Android, Flutter)
-- `database-expert` (스키마, 마이그레이션)
-- `security-expert` (OWASP, 암호화)
-- `performance-expert` (프로파일링, 캐싱)
-- `devops-expert` (CI/CD, 인프라)
-- ... 총 10개
+#### Tier 3: Language Skills (23개)
 
-### 📊 Before/After 비교
+언어별 전문성 (TDD, 린터, 패키지 관리):
+- `moai-lang-python`, `moai-lang-typescript`, `moai-lang-java`, `moai-lang-go`, `moai-lang-rust`
+- `moai-lang-dart`, `moai-lang-swift`, `moai-lang-kotlin`, `moai-lang-ruby`, `moai-lang-php`
+- `moai-lang-cpp`, `moai-lang-csharp`, `moai-lang-haskell`, `moai-lang-lua`, `moai-lang-shell`
+- `moai-lang-elixir`, `moai-lang-clojure`, `moai-lang-scala`, `moai-lang-julia`, `moai-lang-r`
+- `moai-lang-c`, `moai-lang-sql`, `moai-lang-javascript`
 
-**기존 방식 (Commands + Agents)**:
-```text
-개발자: "/alfred:1-spec 사용자 인증"
-→ spec-builder 에이전트 호출
-→ SPEC 작성 (2~3분)
-```
+### 📦 템플릿 동기화 완료
 
-**Skills 기반 (v0.4.0)**:
-```text
-개발자: "FastAPI 사용자 인증 SPEC 작성해줘"
-→ Alfred가 3개 Skills 자동 조합:
-  - moai-spec-writer
-  - python-expert
-  - web-api-expert
-→ SPEC 작성 (1~2분, 40% 단축)
-```
+**Domain Tier (T2) 표준화**:
+- ✅ 10개 skills 메타데이터 업데이트
+  - tier: 4 → 2 (정확한 Domain Tier 분류)
+  - auto-load: "false" → "true" (Progressive Disclosure 활성화)
+- ✅ "When to use" 섹션 확장 (6~10개 한국어 + 영어 키워드 추가)
+- ✅ 로컬 ↔ 템플릿 동기화 완료
+
+**전체 동기화 상태**:
+- ✅ Foundation Tier (T0): 6개 skills 동기화됨
+- ✅ Essentials Tier (T1): 4개 skills 동기화됨
+- ✅ Domain Tier (T2): 10개 skills 동기화됨
+- ✅ Language Tier (T3): 23개 skills 동기화됨
+- ✅ Commands: 6개 commands 동기화됨 (/alfred:2-run 포함)
 
 ### 🎯 개발자 경험 개선
 
