@@ -7,6 +7,8 @@ allowed-tools:
   - Write
   - Edit
   - TodoWrite
+tier: 0
+auto-load: "true"
 ---
 
 # Alfred TAG Scanning
@@ -17,9 +19,10 @@ Scans all @TAG markers (SPEC/TEST/CODE/DOC) directly from codebase and generates
 
 ## When to use
 
-- "TAG 스캔", "TAG 목록", "TAG 인벤토리"
+- "TAG 스캔", "TAG 목록", "TAG 인벤토리", "고아 TAG 찾아줘", "TAG 체인 확인", "추적성 검증"
+- "TAG scan", "TAG inventory", "Orphan detection", "TAG chain", "Code-first", "Traceability"
 - Automatically invoked by `/alfred:3-sync`
-- "고아 TAG 찾아줘", "TAG 체인 확인"
+- When verifying TAG integrity
 
 ## How it works
 

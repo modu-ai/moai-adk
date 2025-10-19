@@ -7,6 +7,8 @@ allowed-tools:
   - Write
   - Edit
   - TodoWrite
+tier: 1
+auto-load: "true"
 ---
 
 # Alfred Performance Optimizer
@@ -17,8 +19,11 @@ Performance analysis and optimization with profiling tools, bottleneck detection
 
 ## When to use
 
-- "성능 개선해줘", "느린 부분 찾아줘", "최적화 방법은?"
-- "프로파일링", "병목 지점", "메모리 누수"
+- "성능 개선해줘", "느린 부분 찾아줘", "최적화 방법은?", "속도 향상", "응답 시간 단축", "병목 찾기"
+- "프로파일링", "병목 지점", "메모리 누수", "CPU 사용률", "쿼리 최적화", "N+1 문제"
+- "Performance tuning", "Profiling", "Bottleneck analysis", "Optimization", "Memory leak", "N+1 query"
+- When application is slow or resource-intensive
+- Before production release or scaling
 
 ## How it works
 

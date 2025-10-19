@@ -7,6 +7,8 @@ allowed-tools:
   - Write
   - Edit
   - TodoWrite
+tier: 1
+auto-load: "true"
 ---
 
 # Alfred Code Reviewer
@@ -17,9 +19,12 @@ Automated code review with language-specific best practices, SOLID principles ve
 
 ## When to use
 
-- "코드 리뷰해줘", "이 코드 개선점은?", "코드 품질 확인"
+- "코드 리뷰해줘", "이 코드 개선점은?", "코드 품질 확인", "리뷰 부탁해", "문제점 찾아줘", "개선 제안"
+- "SOLID 원칙", "베스트 프랙티스", "코드 스멜", "안티패턴", "보안 취약점", "디자인 패턴"
+- "Code review", "Quality check", "Best practices", "Security audit", "SOLID principles", "Code smells"
 - Optionally invoked after `/alfred:3-sync`
-- Before merging PR
+- Before merging PR or releasing
+- During peer code review
 
 ## How it works
 

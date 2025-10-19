@@ -7,6 +7,8 @@ allowed-tools:
   - Write
   - Edit
   - TodoWrite
+tier: 0
+auto-load: "true"
 ---
 
 # Alfred SPEC Metadata Validation
@@ -17,7 +19,8 @@ Validates SPEC document structure including YAML frontmatter (7 required fields)
 
 ## When to use
 
-- "SPEC 검증", "메타데이터 확인", "SPEC 구조 체크"
+- "SPEC 검증", "메타데이터 확인", "SPEC 구조 체크", "SPEC 유효성 검사", "필드 누락 확인"
+- "SPEC validation", "Metadata check", "Structure validation", "Required fields", "HISTORY check"
 - Automatically invoked by `/alfred:1-plan`
 - Before creating SPEC document
 

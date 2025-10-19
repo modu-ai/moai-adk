@@ -7,6 +7,8 @@ allowed-tools:
   - Write
   - Edit
   - TodoWrite
+tier: 0
+auto-load: "true"
 ---
 
 # Alfred Git Workflow
@@ -17,7 +19,8 @@ Automates Git operations following MoAI-ADK conventions: branch creation, locale
 
 ## When to use
 
-- "브랜치 생성", "PR 만들어줘", "커밋 생성"
+- "브랜치 생성", "PR 만들어줘", "커밋 생성", "Git 워크플로우", "TDD 커밋", "풀 리퀘스트"
+- "Create branch", "Pull request", "Git workflow", "TDD commits", "Locale-based commits"
 - Automatically invoked by `/alfred:1-plan`, `/alfred:2-run`, `/alfred:3-sync`
 - Git workflow automation needed
 
