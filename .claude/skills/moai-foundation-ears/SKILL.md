@@ -7,6 +7,8 @@ allowed-tools:
   - Write
   - Edit
   - TodoWrite
+tier: 0
+auto-load: "true"
 ---
 
 # Alfred EARS Authoring Guide
@@ -17,7 +19,8 @@ EARS (Easy Approach to Requirements Syntax) authoring guide for writing clear, t
 
 ## When to use
 
-- "SPEC 작성", "요구사항 정리", "EARS 구문"
+- "SPEC 작성", "요구사항 정리", "EARS 구문", "요구사항 분석", "명세 작성", "기능 정의"
+- "Requirements", "Specification", "EARS syntax", "Feature requirements", "User story"
 - Automatically invoked by `/alfred:1-plan`
 - When writing or refining SPEC documents
 

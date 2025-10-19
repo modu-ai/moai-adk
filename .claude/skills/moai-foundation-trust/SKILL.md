@@ -7,6 +7,8 @@ allowed-tools:
   - Edit
   - Bash
   - TodoWrite
+tier: 0
+auto-load: "true"
 ---
 
 # Foundation: TRUST Validation
@@ -17,7 +19,8 @@ Validates MoAI-ADK's TRUST 5-principles compliance to ensure code quality, testa
 
 ## When to use
 
-- "TRUST 원칙 확인", "품질 검증", "코드 품질 체크"
+- "TRUST 원칙 확인", "품질 검증", "코드 품질 체크", "TRUST 5원칙", "품질 게이트", "테스트 커버리지"
+- "Quality gate", "Code quality check", "TRUST validation", "Test coverage", "Production ready"
 - Automatically invoked by `/alfred:3-sync`
 - Before merging PR or releasing
 

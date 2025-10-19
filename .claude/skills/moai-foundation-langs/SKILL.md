@@ -7,6 +7,8 @@ allowed-tools:
   - Write
   - Edit
   - TodoWrite
+tier: 0
+auto-load: "true"
 ---
 
 # Alfred Language Detection
@@ -17,7 +19,8 @@ Automatically detects project's primary language and framework by scanning confi
 
 ## When to use
 
-- "언어 감지", "프로젝트 언어 확인", "테스트 도구 추천"
+- "언어 감지", "프로젝트 언어 확인", "테스트 도구 추천", "프레임워크 감지", "도구 체인 추천"
+- "Language detection", "Framework detection", "Toolchain recommendation", "Auto-detect language"
 - Automatically invoked by `/alfred:0-project`, `/alfred:2-run`
 - Setting up new project
 

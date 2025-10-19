@@ -7,6 +7,8 @@ allowed-tools:
   - Write
   - Edit
   - TodoWrite
+tier: 1
+auto-load: "true"
 ---
 
 # Alfred Refactoring Coach
@@ -17,8 +19,11 @@ Refactoring guidance with design pattern recommendations, code smell detection, 
 
 ## When to use
 
-- "리팩토링 도와줘", "이 코드 개선 방법은?", "디자인 패턴 적용"
-- "코드 정리", "중복 제거", "함수 분리"
+- "리팩토링 도와줘", "이 코드 개선 방법은?", "디자인 패턴 적용", "코드 정리", "구조 개선", "중복 제거"
+- "함수 분리", "클래스 분리", "코드 스멜 제거", "복잡도 낮추기", "패턴 적용", "3회 반복 규칙"
+- "Refactoring", "Design patterns", "Code cleanup", "Extract method", "DRY principle", "3-strike rule"
+- When code becomes hard to maintain
+- Before adding new features to legacy code
 
 ## How it works
 

@@ -7,6 +7,8 @@ allowed-tools:
   - Write
   - Edit
   - TodoWrite
+tier: 1
+auto-load: "true"
 ---
 
 # Alfred Debugger Pro
@@ -17,9 +19,11 @@ Advanced debugging support with stack trace analysis, common error pattern detec
 
 ## When to use
 
-- "에러 해결해줘", "이 오류 원인은?", "스택 트레이스 분석"
+- "에러 해결해줘", "이 오류 원인은?", "스택 트레이스 분석", "버그 찾아줘", "디버깅 도와줘", "왜 안 돼?"
+- "NullPointerException 해결", "런타임 에러", "예외 처리", "타입 에러", "연결 오류", "메모리 누수"
+- "Error analysis", "Exception handling", "Bug fixing", "Root cause analysis", "Stack trace", "Runtime error"
 - Automatically invoked on runtime errors (via debug-helper sub-agent)
-- "왜 안 돼?", "NullPointerException 해결"
+- When tests fail or unexpected behavior occurs
 
 ## How it works
 
