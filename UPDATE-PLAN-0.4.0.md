@@ -39,7 +39,7 @@ MoAI-ADK v0.4.0은 Claude Code의 **Skills 기능**을 핵심 실행 계층으�
 | **실행 방식** | 명령어 명시 (/alfred:*) | **자연어 대화** |
 | **컨텍스트 전략** | Always Loaded | **Progressive Disclosure** |
 | **재사용성** | 프로젝트 전용 | **전역 (모든 프로젝트)** |
-| **확장성** | 제한적 (컨텍스트 한계) | **무한 (Unbounded Context)** |
+| **확장성** | 제한적 (컨텍스트 한계) | **효율적 (Progressive Disclosure)** |
 | **조합 가능성** | 없음 (단독 실행) | **Composable (자동 조합)** |
 | **학습 곡선** | 높음 (10+ 명령어) | **제로 (자연어)** |
 
@@ -70,8 +70,8 @@ MoAI-ADK v0.4.0은 Claude Code의 **Skills 기능**을 핵심 실행 계층으�
              ↓
 ┌─────────────────────────────────────────────┐
 │ 2. Progressive Disclosure (점진적 공개)     │
-│    - Layer 1: Metadata (수십 토큰)          │
-│    - Layer 2: SKILL.md (수백 토큰)          │
+│    - Layer 1: Metadata (최소 토큰)          │
+│    - Layer 2: SKILL.md (필요 시 로드)       │
 │    - Layer 3: Additional Files (필요 시)    │
 └─────────────────────────────────────────────┘
              ↓
@@ -96,14 +96,14 @@ MoAI-ADK v0.4.0은 Claude Code의 **Skills 기능**을 핵심 실행 계층으�
 ┌──────────────────────────────────────────────┐
 │ Layer 1: Metadata (Startup)                 │
 │ - name + description만 사전 로드            │
-│ - 각 Skill당 수십 토큰만 소비               │
-│ - 수백 개 Skills도 부담 없음                │
+│ - 각 Skill당 최소한의 토큰만 소비           │
+│ - 다수의 Skills 설치 시에도 부담 적음       │
 └──────────────────────────────────────────────┘
               ↓ Claude가 관련성 판단
 ┌──────────────────────────────────────────────┐
 │ Layer 2: SKILL.md (On-Demand)               │
 │ - 관련 있는 Skill만 전체 내용 로드          │
-│ - 수백~수천 토큰                            │
+│ - 필요 시에만 로드하여 컨텍스트 효율화      │
 │ - 여러 Skills 동시 로드 가능                │
 └──────────────────────────────────────────────┘
               ↓ 추가 정보 필요 시
@@ -111,35 +111,37 @@ MoAI-ADK v0.4.0은 Claude Code의 **Skills 기능**을 핵심 실행 계층으�
 │ Layer 3: Additional Files (Lazy Loading)    │
 │ - templates/, scripts/, resources/          │
 │ - 필요한 파일만 선택적 로드                 │
-│ - Unbounded context 가능                    │
+│ - 대용량 참고 자료를 효율적으로 관리        │
 └──────────────────────────────────────────────┘
 ```
 
 **혁신적인 이유**:
 
-✅ **Unbounded Context**: 이론상 무한한 정보를 Skill에 담을 수 있음
-✅ **Cost-Efficient**: 사용하지 않는 Skills는 토큰 소비 없음 (메타데이터만)
-✅ **Scalable**: 수백 개 Skills를 설치해도 성능 저하 없음
+✅ **효율적 컨텍스트 관리**: Progressive Disclosure로 대용량 정보를 필요 시에만 로드하여 컨텍스트 윈도우를 효율적으로 사용
+✅ **Cost-Efficient**: 사용하지 않는 Skills는 최소한의 토큰만 소비 (메타데이터만)
+✅ **Scalable**: 다수의 Skills를 설치해도 성능 저하 없음
 ✅ **Automatic**: Claude가 자동으로 필요한 Skills 판단 및 로드
 
 ### 1.3 Composability - 레고식 조립
 
-**실제 사례** (Anthropic 공식 예시):
+**Skills 조합 예시** (개념 설명용 시나리오):
 
 ```
-사용자: "Crabacadabra 회사의 피치덱을 만들어줘"
+사용자: "회사 브랜드 가이드라인에 맞는 피치덱을 만들어줘"
 
-Claude의 사고 과정:
-1. "Crabacadabra" 감지 → brand-guidelines Skill 로드
-2. "피치덱" 감지 → powerpoint Skill 로드
-3. 두 Skill을 자동 조합하여 브랜드에 맞는 PPT 생성
+Claude의 자동 Skills 조합:
+1. "브랜드 가이드라인" 감지 → brand-guidelines Skill 로드
+2. "피치덱" 감지 → presentation Skill 로드
+3. 두 Skill을 자동 조합하여 일관된 결과물 생성
 
 사용자: "이제 포스터도 만들어줘"
 
-Claude의 사고 과정:
-4. brand-guidelines Skill (이미 로드됨)
+Claude의 자동 Skills 조합:
+4. brand-guidelines Skill (이미 로드됨, 재사용)
 5. poster-design Skill (새로 로드)
 6. 조합하여 브랜드에 맞는 포스터 생성
+
+NOTE: 실제 Skill 이름과 동작은 구현에 따라 다를 수 있음
 ```
 
 **조합 원리**:
@@ -345,7 +347,7 @@ Claude: (uses this skill + other-skill together)
 │ Domain Skills (10개)                                 │
 │                                                       │
 │ 변경사항: Skills가 핵심 실행 계층                    │
-│          Progressive Disclosure로 Unbounded Context  │
+│          Progressive Disclosure로 효율적 컨텍스트 관리 │
 │          Composable하여 레고처럼 자동 조합           │
 └──────────────────────────────────────────────────────┘
                        ↓ 검증
