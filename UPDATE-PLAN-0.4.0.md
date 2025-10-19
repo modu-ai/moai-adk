@@ -27,28 +27,113 @@
 
 ### 🎯 핵심 비전
 
-> **"Commands는 진입점, Skills는 능력, Agents는 두뇌"**
+> **"Commands는 진입점, Skills는 능력, Sub-agents는 두뇌"**
 
-MoAI-ADK v0.4.0은 Claude Code의 **Skills 기능**을 핵심 실행 계층으로 도입하여, 개발자가 명령어를 암기하지 않고 **자연어 대화**만으로 **레고 블록처럼 조립 가능한 개발 워크플로우**를 제공합니다.
+MoAI-ADK v0.4.0은 Claude Code의 **Agent Skills 기능**을 핵심 실행 계층으로 도입하여 **4-Layer 아키텍처**로 전환합니다. Progressive Disclosure 메커니즘으로 **Effectively Unbounded Context**를 실현하며, 개발자는 명령어를 암기하지 않고 **자연어 대화**만으로 **레고 블록처럼 조립 가능한 개발 워크플로우**를 경험합니다.
 
 ### 🔑 핵심 변경사항
 
 | 변경 사항 | Before (v0.3.x) | After (v0.4.0) |
 |-----------|-----------------|----------------|
-| **아키텍처** | 3-Layer (Commands/Agents/Hooks) | **4-Layer (+Skills)** |
-| **실행 방식** | 명령어 명시 (/alfred:*) | **자연어 대화** |
-| **컨텍스트 전략** | Always Loaded | **Progressive Disclosure** |
-| **재사용성** | 프로젝트 전용 | **전역 (모든 프로젝트)** |
-| **확장성** | 제한적 (컨텍스트 한계) | **효율적 (Progressive Disclosure)** |
-| **조합 가능성** | 없음 (단독 실행) | **Composable (자동 조합)** |
-| **학습 곡선** | 높음 (10+ 명령어) | **제로 (자연어)** |
+| **아키텍처** | 3-Layer (Commands/Sub-agents/Hooks) | **4-Layer (Commands/Sub-agents/Skills/Hooks)** |
+| **용어** | "Agents" (혼동) | **"Sub-agents" (Claude Code 표준)** |
+| **Skills 시스템** | 없음 | **10개 Skills (Foundation 6 + Dev Essentials 4)** |
+| **컨텍스트 전략** | Always Loaded | **Progressive Disclosure (Effectively Unbounded)** |
+| **재사용성** | 프로젝트 전용 | **전역 (모든 프로젝트 공유)** |
+| **Hooks 성능** | SessionStart 220ms | **<100ms (50% 단축)** |
+| **조합 가능성** | 없음 (단독 실행) | **Composable (Skills 자동 조합)** |
+| **일관성** | Sub-agent별 상이 | **Skills 공유로 100% 일관성** |
+
+### 🔍 공식 문서 검증 완료
+
+**출처**: [Agent Skills - Claude Docs](https://docs.claude.com/en/docs/agents-and-tools/agent-skills/overview), [Anthropic Engineering Blog](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)
+
+- ✅ **Effectively Unbounded Context**: Progressive Disclosure로 컨텍스트가 사실상 무제한 (공식 표현)
+- ✅ **SKILL.md 구조**: `.claude/skills/` 디렉토리, 파일시스템 기반
+- ✅ **Automatic Loading**: Claude가 자동으로 관련성 판단하여 Skills 로드
+- ✅ **Custom Skills Only**: Claude Code는 Custom Skills만 지원 (API 업로드 불필요)
 
 ### 📊 예상 효과
 
-- ⏱️ **시간 절감**: 60% (명령어 입력 → 자연어)
-- 📚 **학습 부담**: -80% (명령어 암기 불필요)
+- ⏱️ **컨텍스트 효율**: 30% 토큰 절감 (Skills 재사용)
+- 🚀 **응답 속도**: 50% 시간 단축 (Hooks 경량화: 220ms→100ms)
 - 🔄 **재사용성**: +300% (전역 Skills)
-- 🚀 **개발 생산성**: +150%
+- 🎯 **일관성**: 100% (모든 Sub-agents가 동일한 Skills 참조)
+- ⚡ **확장성**: Effectively Unbounded (Progressive Disclosure)
+- 📈 **개발 생산성**: +150% (전체 워크플로우 최적화)
+
+### 🏗️ 4-Layer 아키텍처 확정
+
+```
+┌──────────────────────────────────────────┐
+│ Layer 1: Commands (워크플로우 진입점)    │
+│ - /alfred:0-init   (프로젝트 초기화)     │
+│ - /alfred:1-plan   (계획 수립) ⭐ NEW    │
+│ - /alfred:2-build  (TDD 구현)            │
+│ - /alfred:3-sync   (문서 동기화)         │
+│ - 2-Phase 패턴 (Plan → Execute)          │
+└──────────────┬───────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────────────────┐
+│ Layer 2: Sub-agents (복잡한 추론)        │
+│ - spec-builder, tdd-implementer 등       │
+│ - Task tool 호출, 독립 컨텍스트          │
+│ - Skills 참조하여 일관성 보장            │
+└──────────────┬───────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────────────────┐
+│ Layer 3: Skills (재사용 가능한 지식) ⭐  │
+│ - Foundation 6개 + Dev Essentials 4개    │
+│ - <500 words, Progressive Disclosure     │
+│ - Effectively Unbounded Context          │
+└──────────────┬───────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────────────────┐
+│ Layer 4: Hooks (가드레일 + JIT Context)  │
+│ - SessionStart <100ms (경량화)           │
+│ - PreToolUse <50ms (위험 작업 차단만)    │
+└──────────────────────────────────────────┘
+```
+
+### 💡 Commands 명칭 변경 철학
+
+#### `/alfred:0-project` → `/alfred:0-init`
+- **이유**: "init(초기화)"이 더 간결하고 보편적인 명령어 스타일
+- **기능**: 프로젝트 문서 구조 및 언어별 최적화 설정 생성
+
+#### `/alfred:1-spec` → `/alfred:1-plan` ⭐ 핵심 변경
+- **철학적 배경**:
+  - **"항상 계획을 먼저 세우고 진행한다"** - 계획 우선 원칙 강조
+  - SPEC 문서 생성뿐만 아니라 **브레인스토밍 모드**로 확장
+  - 아이디어 구상, 요구사항 정리, 설계 논의 등 **계획 수립 전반** 지원
+
+- **사용 시나리오**:
+  ```bash
+  # 시나리오 1: SPEC 문서 생성 (기존 방식)
+  /alfred:1-plan "JWT 인증 시스템"
+  → SPEC-AUTH-001 생성, EARS 구문, 브랜치/PR
+
+  # 시나리오 2: 브레인스토밍 모드 (신규)
+  /alfred:1-plan "프로젝트 아키텍처 설계 논의"
+  → Alfred와 대화형 브레인스토밍
+  → 아이디어 정리 → SPEC 후보 도출
+
+  # 시나리오 3: 기술 선택 논의 (신규)
+  /alfred:1-plan "인증 방식 비교 (JWT vs Session)"
+  → 장단점 분석 → 의사결정 지원 → SPEC 문서화
+  ```
+
+- **핵심 가치**:
+  - ✅ **Think First, Code Later** (생각 먼저, 코딩 나중)
+  - ✅ **Collaborative Planning** (Alfred와 함께 계획 수립)
+  - ✅ **SPEC-First 유지** (최종적으로 SPEC 문서 생성)
+
+#### `/alfred:3-sync` - 유지
+- **이유**: "sync(동기화)"가 문서-코드-TAG 동기화 의미를 정확히 전달
+- **기능**: Living Document 갱신, TAG 체인 검증, PR Ready 전환
 
 ---
 
@@ -247,11 +332,11 @@ Claude: (uses this skill + other-skill together)
 #### Use Commands when:
 
 ✅ **워크플로우 진입점**: 명확한 시작 지점
-✅ **사용자 의도 명확**: /alfred:1-spec처럼 명시적
+✅ **사용자 의도 명확**: /alfred:1-plan처럼 명시적
 ✅ **Phase 기반 실행**: 계획 → 승인 → 실행
 ✅ **Git 통합**: 브랜치 생성, PR 관리
 
-**예시**: /alfred:1-spec, /alfred:2-build, /alfred:3-sync
+**예시**: /alfred:0-init, /alfred:1-plan, /alfred:2-build, /alfred:3-sync
 
 ### 2.3 역할 재정의
 
@@ -261,17 +346,20 @@ Claude: (uses this skill + other-skill together)
 **신규**: Skills와 Agents를 조율
 
 ```markdown
-# /alfred:1-spec 예시 (v0.4.0)
+# /alfred:1-plan 예시 (v0.4.0)
 
-## Phase 1: 분석 (Skills 활용)
+## Phase 1: 분석 및 브레인스토밍 (Skills 활용)
 1. moai-project-analyzer Skill 자동 호출
    - product.md 분석
    - 기존 SPEC 목록 스캔
 2. moai-spec-id-generator Skill 자동 호출
    - 도메인 추출
    - SPEC ID 중복 확인
+3. 브레인스토밍 모드 (선택적)
+   - Alfred와 대화형 계획 수립
+   - 아이디어 정리 및 의사결정 지원
 
-## Phase 2: 실행 (Skills + Agents)
+## Phase 2: 실행 (Skills + Sub-agents)
 1. moai-spec-writer Skill로 SPEC 초안 생성
 2. spec-builder Agent로 복잡한 검증 (순환 의존성)
 3. moai-git-manager Skill로 브랜치/PR 생성
@@ -317,17 +405,17 @@ Claude: (uses this skill + other-skill together)
 │ Layer 1: Commands (Workflow Entry Points)           │
 │ Role: 워크플로우 진입점 및 오케스트레이터            │
 ├──────────────────────────────────────────────────────┤
-│ /alfred:0-project  → 프로젝트 초기화                 │
-│ /alfred:1-spec     → SPEC 작성 워크플로우            │
+│ /alfred:0-init     → 프로젝트 초기화                 │
+│ /alfred:1-plan     → 계획 수립 및 SPEC 작성 ⭐       │
 │ /alfred:2-build    → TDD 구현 워크플로우             │
 │ /alfred:3-sync     → 문서 동기화 워크플로우          │
 │                                                       │
 │ 변경사항: Commands는 직접 로직 수행하지 않음         │
-│          Skills와 Agents를 조율만 함                 │
+│          Skills와 Sub-agents를 조율만 함             │
 └──────────────────────────────────────────────────────┘
                        ↓ 위임
 ┌──────────────────────────────────────────────────────┐
-│ Layer 2: Agents (Complex Reasoning)                 │
+│ Layer 2: Sub-agents (Complex Reasoning)             │
 │ Role: Skills로 해결 불가능한 복잡한 추론 담당        │
 ├──────────────────────────────────────────────────────┤
 │ spec-builder       → SPEC 복잡 검증 (순환 의존성)   │
@@ -1037,25 +1125,25 @@ version: 0.2.0
 
 #### 시나리오: "새 기능 구현"
 
-**Before (v0.3.x - Commands + Agents)**:
+**Before (v0.3.x - Commands + Sub-agents)**:
 
 ```
 개발자: "사용자 인증 기능 구현해줘"
 
 1. 개발자가 명령어 학습 필요
-   → /alfred:1-spec "사용자 인증" 입력
+   → /alfred:1-spec "사용자 인증" 입력 (구 명령어)
 
 2. Command가 모든 로직 수행
-   → spec-builder Agent 호출
+   → spec-builder Sub-agent 호출
    → SPEC 문서 생성
 
 3. TDD 구현
    → /alfred:2-build AUTH-001 입력
-   → tdd-implementer Agent 호출
+   → tdd-implementer Sub-agent 호출
 
 4. 문서 동기화
    → /alfred:3-sync 입력
-   → doc-syncer Agent 호출
+   → doc-syncer Sub-agent 호출
 
 학습 곡선: 높음 (/alfred:*, @agent-* 모두 학습)
 사용자 개입: 많음 (매 단계 명령어 입력)
@@ -1543,36 +1631,43 @@ Week 3-4: Marketplace 구축
 **기존 기능 유지**:
 
 ```
-v0.4.0 (Skills 도입)
-├── Commands (유지)
-│   ├── /alfred:0-project
-│   ├── /alfred:1-spec
-│   ├── /alfred:2-build
-│   └── /alfred:3-sync
+v0.4.0 (Skills 도입 + Commands 명칭 변경)
+├── Commands (명칭 변경)
+│   ├── /alfred:0-init      (구 0-project)
+│   ├── /alfred:1-plan      (구 1-spec) ⭐
+│   ├── /alfred:2-build     (유지)
+│   └── /alfred:3-sync      (유지)
 │
-├── Agents (유지, 역할 축소)
+├── Sub-agents (용어 정확화, 역할 축소)
 │   ├── spec-builder (복잡한 검증)
 │   ├── debug-helper (오류 추론)
 │   └── trust-checker (TRUST 검증)
 │
 ├── Skills (신규) ⭐
-│   ├── Foundation Skills (15개)
-│   ├── Language Skills (20개)
-│   └── Domain Skills (10개)
+│   ├── Foundation Skills (6개)
+│   ├── Language Skills (20개) [v0.5.0]
+│   ├── Domain Skills (10개) [v0.5.0]
+│   └── Developer Essentials Skills (4개)
 │
-└── Hooks (유지)
-    ├── SessionStart
-    ├── PreToolUse
+└── Hooks (경량화)
+    ├── SessionStart (<100ms)
+    ├── PreToolUse (<50ms)
     └── PostToolUse
 ```
 
+**마이그레이션 지원**:
+- v0.3.x 명령어: `/alfred:1-spec` → 자동으로 `/alfred:1-plan` 리다이렉트
+- 기존 프로젝트: 자동 호환 (Deprecation 경고만 표시)
+- v0.6.0: 구 명령어 완전 제거
+
 **사용자 선택**:
-- v0.3.x 방식: `/alfred:1-spec` 계속 사용 가능
-- v0.4.0 방식: 자연어 대화로 Skills 자동 활용
+- v0.4.0 Commands: `/alfred:1-plan` 사용 (브레인스토밍 모드 지원)
+- v0.4.0 Skills: 자연어 대화로 Skills 자동 활용
 
 **점진적 전환**:
-- v0.4.0~v0.6.0: 병행 사용 (Commands + Skills)
-- v0.7.0: Skills 우선 권장
+- v0.4.0: Commands 명칭 변경 + Skills 10개
+- v0.5.0: Language/Domain Skills 추가
+- v0.6.0: 구 명령어 제거, Skills 우선
 - v1.0.0: Commands는 진입점만, Skills가 핵심
 
 ---
