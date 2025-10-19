@@ -115,3 +115,60 @@ class TemplateMerger:
         }
 
         return new_config
+
+    def merge_settings_json(self, template_path: Path, existing_path: Path, backup_path: Path | None = None) -> None:
+        """Smart merge for .claude/settings.json.
+
+        Rules:
+        - env: shallow merge (user variables preserved)
+        - permissions.allow: array merge (deduplicated)
+        - permissions.deny: template priority (security)
+        - hooks: template priority
+
+        Args:
+            template_path: Template settings.json.
+            existing_path: Existing settings.json.
+            backup_path: Backup settings.json (optional, for user settings extraction).
+        """
+        # Load template
+        template_data = json.loads(template_path.read_text(encoding="utf-8"))
+
+        # Load backup or existing for user settings
+        user_data: dict[str, Any] = {}
+        if backup_path and backup_path.exists():
+            user_data = json.loads(backup_path.read_text(encoding="utf-8"))
+        elif existing_path.exists():
+            user_data = json.loads(existing_path.read_text(encoding="utf-8"))
+
+        # Merge env (shallow merge, user variables preserved)
+        merged_env = {**template_data.get("env", {}), **user_data.get("env", {})}
+
+        # Merge permissions.allow (deduplicated array merge)
+        template_allow = set(template_data.get("permissions", {}).get("allow", []))
+        user_allow = set(user_data.get("permissions", {}).get("allow", []))
+        merged_allow = sorted(template_allow | user_allow)
+
+        # permissions.deny: template priority (security)
+        merged_deny = template_data.get("permissions", {}).get("deny", [])
+
+        # permissions.ask: template priority + user additions
+        template_ask = set(template_data.get("permissions", {}).get("ask", []))
+        user_ask = set(user_data.get("permissions", {}).get("ask", []))
+        merged_ask = sorted(template_ask | user_ask)
+
+        # Build final merged settings
+        merged = {
+            "env": merged_env,
+            "hooks": template_data.get("hooks", {}),  # Template priority
+            "permissions": {
+                "defaultMode": template_data.get("permissions", {}).get("defaultMode", "default"),
+                "allow": merged_allow,
+                "ask": merged_ask,
+                "deny": merged_deny
+            }
+        }
+
+        existing_path.write_text(
+            json.dumps(merged, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8"
+        )
