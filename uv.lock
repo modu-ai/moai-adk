@@ -302,6 +302,7 @@ dependencies = [
     { name = "gitpython" },
     { name = "packaging" },
     { name = "pyfiglet" },
+    { name = "pyyaml" },
     { name = "questionary" },
     { name = "rich" },
 ]
@@ -331,6 +332,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.4.2" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=7.0.0" },
     { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3.8.0" },
+    { name = "pyyaml", specifier = ">=6.0.0" },
     { name = "questionary", specifier = ">=2.0.0" },
     { name = "rich", specifier = ">=13.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
