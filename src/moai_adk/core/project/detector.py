@@ -1,4 +1,5 @@
 # @CODE:CORE-PROJECT-001 | SPEC: SPEC-CORE-PROJECT-001.md | TEST: tests/unit/test_language_detector.py
+# @CODE:LANG-DETECT-001 | SPEC: SPEC-LANG-DETECT-001.md | TEST: tests/unit/test_detector.py
 """Language detector module.
 
 Automatically detects 20 programming languages.
@@ -8,9 +9,21 @@ from pathlib import Path
 
 
 class LanguageDetector:
-    """Automatically detect up to 20 programming languages."""
+    """Automatically detect up to 20 programming languages.
+
+    Prioritizes framework-specific files (e.g., Laravel, Django) over
+    generic language files to improve accuracy in mixed-language projects.
+    """
 
     LANGUAGE_PATTERNS = {
+        # PHP moved to top for priority (Laravel detection)
+        "php": [
+            "*.php",
+            "composer.json",
+            "artisan",                # Laravel: CLI tool (unique identifier)
+            "app/",                   # Laravel: application directory
+            "bootstrap/laravel.php"   # Laravel: bootstrap file
+        ],
         "python": ["*.py", "pyproject.toml", "requirements.txt", "setup.py"],
         "typescript": ["*.ts", "tsconfig.json"],
         "javascript": ["*.js", "package.json"],
@@ -21,7 +34,6 @@ class LanguageDetector:
         "swift": ["*.swift", "Package.swift"],
         "kotlin": ["*.kt", "build.gradle.kts"],
         "csharp": ["*.cs", "*.csproj"],
-        "php": ["*.php", "composer.json"],
         "ruby": ["*.rb", "Gemfile"],
         "elixir": ["*.ex", "mix.exs"],
         "scala": ["*.scala", "build.sbt"],
