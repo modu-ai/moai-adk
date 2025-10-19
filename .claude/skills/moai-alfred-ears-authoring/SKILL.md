@@ -23,7 +23,9 @@ EARS (Easy Approach to Requirements Syntax) authoring guide for writing clear, t
 - Automatically invoked by `/alfred:1-plan`
 - When writing or refining SPEC documents
 
-## EARS 5 Statement Patterns
+## How it works
+
+EARS provides 5 statement patterns for structured requirements:
 
 ### 1. Ubiquitous (기본 요구사항)
 **Format**: 시스템은 [기능]을 제공해야 한다
