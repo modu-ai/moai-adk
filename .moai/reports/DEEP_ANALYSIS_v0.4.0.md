@@ -90,17 +90,29 @@ pyproject.toml: v0.3.13
 - v0.3.13 태그 미생성
 - v0.4.0 계획 불명확
 
-#### 📦 Skills 개수 불일치
+#### 📦 Skills 개수 불일치 ✅ 해결됨
 ```
-보고서: 44개 Skills
-실제: 54개 SKILL.md 파일
-차이: +10개 (22% 차이)
+보고서: 44개 Skills (Core Skills만)
+실제: 54개 SKILL.md 파일 (Alfred 10 + Core 44)
+차이: +10개 (Alfred Tier 누락)
 ```
 
-**원인 추정**:
-1. Claude Code 기본 Skills 포함 여부 차이
-2. 보고서 작성 후 추가 개발
-3. 카운팅 기준 불일치 (디렉토리 vs 파일)
+**원인 확인** (P0-4에서 조사):
+1. ✅ **Alfred Tier 누락**: 보고서에서 Alfred 전용 Skills (10개) 미포함
+2. ✅ **카운팅 기준 명확화**: Core Skills (44개) vs 전체 Skills (54개)
+3. ✅ **보고서 수정 완료**: VERSION_UPDATE_v0.4.0_REPORT.md 업데이트
+
+**Alfred Tier Skills (10개)**:
+- moai-alfred-code-reviewer
+- moai-alfred-debugger-pro
+- moai-alfred-ears-authoring
+- moai-alfred-git-workflow
+- moai-alfred-language-detection
+- moai-alfred-performance-optimizer
+- moai-alfred-refactoring-coach
+- moai-alfred-spec-metadata-validation
+- moai-alfred-tag-scanning
+- moai-alfred-trust-validation
 
 #### 🔴 미완료 작업
 ```
