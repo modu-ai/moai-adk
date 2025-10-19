@@ -1,14 +1,11 @@
 ---
 name: moai-lang-clojure
 description: Clojure best practices with clojure.test, Leiningen, and immutable data structures
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - clojure
-  - testing
-  - best-practices
-  - functional-programming
+allowed-tools:
+  - Read
+  - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # Clojure Expert

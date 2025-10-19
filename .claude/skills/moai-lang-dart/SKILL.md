@@ -1,14 +1,11 @@
 ---
 name: moai-lang-dart
 description: Dart best practices with flutter test, dart analyze, and Flutter widget patterns
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - dart
-  - flutter
-  - testing
-  - best-practices
+allowed-tools:
+  - Read
+  - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # Dart Expert

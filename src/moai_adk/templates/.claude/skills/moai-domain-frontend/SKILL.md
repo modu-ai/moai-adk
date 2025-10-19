@@ -1,15 +1,11 @@
 ---
 name: moai-domain-frontend
 description: React/Vue/Angular development with state management, performance optimization, and accessibility
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - frontend
-  - react
-  - vue
-  - angular
-  - performance
+allowed-tools:
+  - Read
+  - Bash
+tier: 4
+auto-load: "false"
 ---
 
 # Frontend Expert

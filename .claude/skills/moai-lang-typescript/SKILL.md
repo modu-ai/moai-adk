@@ -1,14 +1,11 @@
 ---
 name: moai-lang-typescript
 description: TypeScript best practices with Vitest, Biome, strict typing, and npm/pnpm package management
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - typescript
-  - testing
-  - best-practices
-  - type-safety
+allowed-tools:
+  - Read
+  - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # TypeScript Expert

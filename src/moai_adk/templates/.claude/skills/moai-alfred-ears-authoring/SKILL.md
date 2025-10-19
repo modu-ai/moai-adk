@@ -1,14 +1,12 @@
 ---
 name: moai-alfred-ears-authoring
 description: EARS (Easy Approach to Requirements Syntax) authoring guide with 5 statement patterns for clear, testable requirements
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - spec
-  - ears
-  - requirements
-  - authoring
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Bash
+  - TodoWrite
 ---
 
 # Alfred EARS Authoring Guide

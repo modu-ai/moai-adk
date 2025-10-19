@@ -1,14 +1,11 @@
 ---
 name: moai-lang-java
 description: Java best practices with JUnit, Maven/Gradle, Checkstyle, and Spring Boot patterns
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - java
-  - testing
-  - best-practices
-  - spring-boot
+allowed-tools:
+  - Read
+  - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # Java Expert

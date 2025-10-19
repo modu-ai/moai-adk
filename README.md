@@ -671,9 +671,13 @@ graph TD
 
 ---
 
-## ■ v0.4.0: Skills Revolution (계획 중)
+## ■ v0.4.0: Skills Revolution (진행 중)
 
-> **⚠️ 현재 계획 단계**: 이 섹션은 v0.4.0 업데이트 계획을 미리 소개합니다. 자세한 내용은 [UPDATE-PLAN-0.4.0.md](UPDATE-PLAN-0.4.0.md)를 참고하세요.
+> **📍 현재 진행 상태**: v0.4.0 Skills 표준화 Phase 1 완료, SPEC-SKILLS-REDESIGN-001 v0.1.0 완료
+>
+> 모든 44개 Skills 재구성 완료, 4-Tier 아키텍처 구현 완료, Progressive Disclosure 메커니즘 활성화
+>
+> 상세 진행도는 [UPDATE-PLAN-0.4.0.md](UPDATE-PLAN-0.4.0.md) 및 [SPEC-SKILLS-REDESIGN-001](.moai/specs/SPEC-SKILLS-REDESIGN-001/spec.md)를 참고하세요.
 
 MoAI-ADK v0.4.0은 **Claude Code Skills** 시스템을 도입하여 개발자 경험을 혁신합니다.
 

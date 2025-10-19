@@ -1,15 +1,11 @@
 ---
 name: moai-domain-devops
 description: CI/CD pipelines, Docker containerization, Kubernetes orchestration, and infrastructure as code
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - devops
-  - ci-cd
-  - docker
-  - kubernetes
-  - iac
+allowed-tools:
+  - Read
+  - Bash
+tier: 4
+auto-load: "false"
 ---
 
 # DevOps Expert

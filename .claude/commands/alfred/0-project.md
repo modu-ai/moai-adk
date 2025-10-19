@@ -79,7 +79,183 @@ allowed-tools:
 
 프로젝트 환경을 분석하고 체계적인 인터뷰 계획을 수립합니다.
 
-### 1.1 프로젝트 환경 분석 실행
+### 1.0 백업 디렉토리 확인 (최우선)
+
+**moai-adk init 재초기화 후 백업 파일 처리**
+
+Alfred는 먼저 `.moai-backups/` 디렉토리를 확인합니다:
+
+```bash
+# 최신 백업 타임스탬프 확인
+ls -t .moai-backups/ | head -1
+
+# config.json의 optimized 플래그 확인
+grep "optimized" .moai/config.json
+```
+
+**백업 존재 조건**:
+- `.moai-backups/` 디렉토리 존재
+- 최신 백업 폴더에 `.moai/project/*.md` 파일 존재
+- `config.json`의 `optimized: false` (재초기화 직후)
+
+**백업 존재 시 사용자 선택 (AskUserQuestion)**:
+
+```typescript
+AskUserQuestion({
+  questions: [{
+    question: "백업 파일(.moai-backups/{timestamp}/)이 발견되었습니다. 어떻게 처리하시겠습니까?",
+    header: "백업 처리 방식",
+    options: [
+      {
+        label: "병합",
+        description: "백업 파일의 사용자 커스터마이징을 최신 템플릿에 병합 (권장)"
+      },
+      {
+        label: "새로 작성",
+        description: "백업 무시하고 새로운 인터뷰 시작 (처음부터 다시 작성)"
+      },
+      {
+        label: "건너뛰기",
+        description: "현재 파일 유지 (변경 없음, 작업 종료)"
+      }
+    ],
+    multiSelect: false
+  }]
+})
+```
+
+**응답 처리**:
+- **"병합"** → Phase 1.1 (백업 병합 워크플로우)로 진행
+- **"새로 작성"** → Phase 1.2 (프로젝트 환경 분석)로 진행 (기존 프로세스)
+- **"건너뛰기"** → 작업 종료
+
+**백업 없음 또는 optimized: true**:
+- Phase 1.2 (프로젝트 환경 분석)로 바로 진행
+
+---
+
+### 1.1 백업 병합 워크플로우 (사용자가 "병합" 선택 시)
+
+**목적**: 최신 템플릿 구조를 유지하면서 사용자 커스터마이징 내용만 복원
+
+**STEP 1: 백업 파일 읽기**
+
+Alfred는 최신 백업 디렉토리에서 파일을 읽습니다:
+```bash
+# 최신 백업 디렉토리 경로
+BACKUP_DIR=.moai-backups/$(ls -t .moai-backups/ | head -1)
+
+# 백업 파일 읽기
+Read $BACKUP_DIR/.moai/project/product.md
+Read $BACKUP_DIR/.moai/project/structure.md
+Read $BACKUP_DIR/.moai/project/tech.md
+Read $BACKUP_DIR/CLAUDE.md
+```
+
+**STEP 2: 템플릿 기본값 탐지**
+
+다음 패턴은 "템플릿 기본값"으로 간주 (병합하지 않음):
+- "주요 사용자층을 정의하세요"
+- "해결하려는 핵심 문제를 설명하세요"
+- "프로젝트의 강점과 차별점을 나열하세요"
+- "{{PROJECT_NAME}}", "{{PROJECT_DESCRIPTION}}" 등 변수 형식
+- "예시:", "샘플:", "Example:" 등 가이드 문구
+
+**STEP 3: 사용자 커스터마이징 추출**
+
+백업 파일에서 **템플릿 기본값이 아닌 내용**만 추출:
+- `product.md`:
+  - USER 섹션의 실제 사용자층 정의
+  - PROBLEM 섹션의 실제 문제 설명
+  - STRATEGY 섹션의 실제 차별점
+  - SUCCESS 섹션의 실제 성공 지표
+- `structure.md`:
+  - ARCHITECTURE 섹션의 실제 설계
+  - MODULES 섹션의 실제 모듈 구조
+  - INTEGRATION 섹션의 실제 통합 계획
+- `tech.md`:
+  - STACK 섹션의 실제 기술 스택
+  - FRAMEWORK 섹션의 실제 프레임워크
+  - QUALITY 섹션의 실제 품질 정책
+- `HISTORY` 섹션: **전체 보존** (모든 파일)
+
+**STEP 4: 병합 전략**
+
+```markdown
+최신 템플릿 구조 (v0.4.0+)
+    ↓
+사용자 커스터마이징 삽입 (백업 파일에서 추출)
+    ↓
+HISTORY 섹션 업데이트
+    ↓
+버전 업데이트 (v0.1.x → v0.1.x+1)
+```
+
+**병합 원칙**:
+- ✅ 템플릿 구조는 최신 버전 유지 (섹션 순서, 헤더, @TAG 형식)
+- ✅ 사용자 커스터마이징만 삽입 (실제 작성한 내용)
+- ✅ HISTORY 섹션 누적 보존 (기존 이력 + 병합 이력)
+- ❌ 템플릿 기본값은 최신 버전으로 교체
+
+**STEP 5: HISTORY 섹션 업데이트**
+
+병합 완료 후 각 파일의 HISTORY 섹션에 이력 추가:
+```yaml
+### v0.1.x+1 (2025-10-19)
+- **UPDATED**: 백업 파일 병합 (자동 최적화)
+- AUTHOR: @Alfred
+- BACKUP: .moai-backups/20251018-003638/
+- REASON: moai-adk init 재초기화 후 사용자 커스터마이징 복원
+```
+
+**STEP 6: config.json 업데이트**
+
+병합 완료 후 최적화 플래그 설정:
+```json
+{
+  "project": {
+    "optimized": true,
+    "last_merge": "2025-10-19T12:34:56+09:00",
+    "backup_source": ".moai-backups/20251018-003638/"
+  }
+}
+```
+
+**STEP 7: 완료 보고**
+
+```markdown
+✅ 백업 병합 완료!
+
+📁 병합된 파일:
+- .moai/project/product.md (v0.1.4 → v0.1.5)
+- .moai/project/structure.md (v0.1.1 → v0.1.2)
+- .moai/project/tech.md (v0.1.1 → v0.1.2)
+- .moai/config.json (optimized: false → true)
+
+🔍 병합 내역:
+- USER 섹션: 백업 파일의 사용자 정의 내용 복원
+- PROBLEM 섹션: 백업 파일의 문제 설명 복원
+- STRATEGY 섹션: 백업 파일의 차별점 복원
+- HISTORY 섹션: 병합 이력 추가 (누적 보존)
+
+💾 백업 파일 위치:
+- 원본 백업: .moai-backups/20251018-003638/
+- 보존 기간: 영구 (수동 삭제 전까지)
+
+📋 다음 단계:
+1. 병합된 문서를 검토하세요
+2. 필요 시 추가 수정
+3. /alfred:1-spec으로 첫 번째 SPEC 작성
+
+---
+**작업 완료: /alfred:0-project 종료**
+```
+
+**병합 후 작업 종료**: 인터뷰 없이 바로 완료
+
+---
+
+### 1.2 프로젝트 환경 분석 실행 (사용자가 "새로 작성" 선택 시 또는 백업 없음)
 
 **자동 분석 항목**:
 
@@ -106,7 +282,7 @@ allowed-tools:
    - 단일 언어 vs 하이브리드 vs 마이크로서비스
    - 코드 기반 크기 추정
 
-### 1.2 인터뷰 전략 수립
+### 1.3 인터뷰 전략 수립 (사용자가 "새로 작성" 선택 시)
 
 **프로젝트 유형별 질문 트리 선택**:
 
@@ -121,7 +297,7 @@ allowed-tools:
 - **기술 질문**: 언어/프레임워크, 품질 정책, 배포 전략
 - **거버넌스**: 보안 요구사항, 추적성 전략 (선택적)
 
-### 1.3 인터뷰 계획 보고서 생성
+### 1.4 인터뷰 계획 보고서 생성 (사용자가 "새로 작성" 선택 시)
 
 **사용자에게 제시할 계획서 포맷**:
 
@@ -156,7 +332,7 @@ allowed-tools:
 ("진행", "수정 [내용]", "중단" 중 선택)
 ```
 
-### 1.4 사용자 승인 대기 (AskUserQuestion)
+### 1.5 사용자 승인 대기 (AskUserQuestion) (사용자가 "새로 작성" 선택 시)
 
 Alfred는 project-manager의 인터뷰 계획 보고서를 받은 후, **AskUserQuestion 도구를 호출하여 사용자 승인을 받습니다**:
 
@@ -182,11 +358,16 @@ AskUserQuestion({
 
 ---
 
-## 🚀 STEP 2: 프로젝트 초기화 실행 (사용자 승인 후)
+## 🚀 STEP 2: 프로젝트 초기화 실행 (사용자 "새로 작성" 승인 후)
+
+**주의**: 이 단계는 사용자가 **"새로 작성"을 선택한 경우**에만 실행됩니다.
+- "병합" 선택 시: Phase 1.1 (백업 병합)에서 작업 종료
+- "건너뛰기" 선택 시: 작업 종료
+- "새로 작성" 선택 시: 아래 프로세스 진행
 
 사용자 승인 후 project-manager 에이전트가 초기화를 수행합니다.
 
-### 2.1 project-manager 에이전트 호출
+### 2.1 project-manager 에이전트 호출 (사용자가 "새로 작성" 선택 시)
 
 Alfred는 project-manager 에이전트를 호출하여 프로젝트 초기화를 시작합니다. 다음 정보를 기반으로 진행합니다:
 - 감지된 언어: [언어 목록]
@@ -572,6 +753,225 @@ Alfred는 Glob 패턴으로 파일 그룹을 식별합니다:
 해결: 파일 권한 확인 (chmod 644) 또는 수동으로 config.json 생성
 ```
 
+---
+
+## /alfred:0-project update: 템플릿 최적화 (서브커맨드)
+
+> **목적**: moai-adk update 실행 후 백업과 신규 템플릿을 비교하여 사용자 커스터마이징을 보존하면서 템플릿을 최적화합니다.
+
+### 실행 조건
+
+이 서브커맨드는 다음 조건에서 실행됩니다:
+
+1. **moai-adk update 실행 후**: `config.json`의 `optimized=false` 상태
+2. **템플릿 업데이트 필요**: 백업과 신규 템플릿 간 차이가 있을 때
+3. **사용자 명시적 요청**: 사용자가 직접 `/alfred:0-project update` 실행
+
+### 실행 흐름
+
+#### Phase 1: 백업 분석 및 비교
+
+1. **최신 백업 확인**:
+   ```bash
+   # .moai-backups/ 디렉토리에서 최신 백업 탐색
+   ls -lt .moai-backups/ | head -1
+   ```
+
+2. **변경 사항 분석**:
+   - 백업의 `.claude/` 디렉토리와 현재 템플릿 비교
+   - 백업의 `.moai/project/` 문서와 현재 문서 비교
+   - 사용자 커스터마이징 항목 식별
+
+3. **비교 보고서 생성**:
+   ```markdown
+   ## 📊 템플릿 최적화 분석
+
+   ### 변경 항목
+   - CLAUDE.md: "## 프로젝트 정보" 섹션 보존 필요
+   - settings.json: env 변수 3개 보존 필요
+   - product.md: 사용자 작성 내용 있음
+
+   ### 권장 조치
+   - 스마트 병합 실행
+   - 사용자 커스터마이징 보존
+   - optimized=true 설정
+   ```
+
+4. **사용자 승인 대기** (AskUserQuestion):
+   - 질문: "템플릿 최적화를 진행하시겠습니까?"
+   - 옵션:
+     - "진행" → Phase 2 실행
+     - "미리보기" → 상세 변경 내역 표시 후 재확인
+     - "건너뛰기" → optimized=false 유지
+
+#### Phase 2: 스마트 병합 실행 (사용자 승인 후)
+
+1. **스마트 병합 로직 실행**:
+   - `TemplateProcessor.copy_templates()` 실행
+   - CLAUDE.md: "## 프로젝트 정보" 섹션 보존
+   - settings.json: env 변수 및 permissions.allow 병합
+
+2. **optimized=true 설정**:
+   ```python
+   # config.json 업데이트
+   config_data["project"]["optimized"] = True
+   ```
+
+3. **최적화 완료 보고**:
+   ```markdown
+   ✅ 템플릿 최적화 완료!
+
+   📄 병합된 파일:
+   - CLAUDE.md (프로젝트 정보 보존)
+   - settings.json (env 변수 보존)
+
+   ⚙️ config.json: optimized=true 설정 완료
+   ```
+
+### Alfred 자동화 전략
+
+**Alfred 자동 판단**:
+- project-manager 에이전트 자동 호출
+- 백업 최신성 확인 (24시간 이내)
+- 변경 사항 자동 분석
+
+**Skills 자동 활성화**:
+- moai-alfred-tag-scanning: TAG 체인 검증
+- moai-alfred-trust-validation: TRUST 원칙 준수 확인
+
+### 실행 예시
+
+```bash
+# moai-adk update 실행 후
+moai-adk update
+
+# 출력:
+# ✓ Update complete!
+# ℹ️  Next step: Run /alfred:0-project update to optimize template changes
+
+# Alfred 실행
+/alfred:0-project update
+
+# → Phase 1: 백업 분석 및 비교 보고서 생성
+# → 사용자 승인 대기
+# → Phase 2: 스마트 병합 실행, optimized=true 설정
+```
+
+### 주의사항
+
+- **백업 필수**: `.moai-backups/` 디렉토리에 백업이 없으면 실행 불가
+- **수동 검토 권장**: 중요한 커스터마이징이 있다면 미리보기 확인 필수
+- **충돌 해결**: 병합 충돌 발생 시 사용자 선택 요청
+
+---
+
+## 🚀 STEP 3: 프로젝트 맞춤형 최적화 (선택적)
+
+**실행 조건**:
+- Phase 2 (프로젝트 초기화) 완료 후
+- 또는 Phase 1.1 (백업 병합) 완료 후
+- 사용자가 명시적으로 요청하거나 Alfred가 자동 판단
+
+**목적**: 프로젝트 특성에 맞는 Commands, Agents, Skills만 선택하여 경량화 (37개 스킬 → 3~5개)
+
+### 3.1 Feature Selection 자동 실행
+
+**Alfred는 moai-alfred-feature-selector 스킬을 자동 호출**합니다:
+
+**스킬 입력**:
+- `.moai/project/product.md` (프로젝트 카테고리 힌트)
+- `.moai/project/tech.md` (주 언어, 프레임워크)
+- `.moai/config.json` (프로젝트 설정)
+
+**스킬 출력**:
+```json
+{
+  "category": "web-api",
+  "language": "python",
+  "framework": "fastapi",
+  "commands": ["1-spec", "2-build", "3-sync"],
+  "agents": ["spec-builder", "code-builder", "doc-syncer", "git-manager", "debug-helper"],
+  "skills": ["moai-lang-python", "moai-domain-web-api", "moai-domain-backend"],
+  "excluded_skills_count": 34,
+  "optimization_rate": "87%"
+}
+```
+
+**실행 방법**:
+```
+Alfred: Skill("moai-alfred-feature-selector")
+```
+
+---
+
+### 3.2 Template Generation 자동 실행
+
+**Alfred는 moai-alfred-template-generator 스킬을 자동 호출**합니다:
+
+**스킬 입력**:
+- `.moai/.feature-selection.json` (feature-selector 출력)
+- `CLAUDE.md` 템플릿
+- 전체 commands/agents/skills 파일
+
+**스킬 출력**:
+- `CLAUDE.md` (맞춤형 에이전트 테이블 - 선택된 에이전트만)
+- `.claude/commands/` (선택된 commands만)
+- `.claude/agents/` (선택된 agents만)
+- `.claude/skills/` (선택된 skills만)
+- `.moai/config.json` (`optimized: true` 업데이트)
+
+**실행 방법**:
+```
+Alfred: Skill("moai-alfred-template-generator")
+```
+
+---
+
+### 3.3 최적화 완료 보고
+
+**보고 형식**:
+```markdown
+✅ 프로젝트 맞춤형 최적화 완료!
+
+📊 최적화 결과:
+- **프로젝트**: {{PROJECT_NAME}}
+- **카테고리**: web-api
+- **주 언어**: python
+- **프레임워크**: fastapi
+
+🎯 선택된 기능:
+- Commands: 4개 (0-project, 1-spec, 2-build, 3-sync)
+- Agents: 5개 (spec-builder, code-builder, doc-syncer, git-manager, debug-helper)
+- Skills: 3개 (moai-lang-python, moai-domain-web-api, moai-domain-backend)
+
+💡 경량화 효과:
+- 제외된 스킬: 34개
+- 경량화: 87%
+- CLAUDE.md: 맞춤형 에이전트 테이블 생성
+
+📋 다음 단계:
+1. CLAUDE.md 파일 확인 (5개 에이전트만 표시)
+2. /alfred:1-spec "첫 기능" 실행
+3. MoAI-ADK 워크플로우 시작
+```
+
+---
+
+### 3.4 Phase 3 건너뛰기 (선택적)
+
+**사용자는 Phase 3를 건너뛸 수 있습니다**:
+
+**건너뛰기 조건**:
+- 사용자가 명시적으로 "건너뛰기" 선택
+- Alfred 자동 판단 시 "간단한 프로젝트" (기본 기능만 필요)
+
+**건너뛰기 효과**:
+- 전체 37개 스킬 유지 (경량화 없음)
+- CLAUDE.md 템플릿 기본 9개 에이전트 유지
+- config.json의 `optimized: false` 유지
+
+---
+
 ## 다음 단계
 
 **권장사항**: 다음 단계 진행 전 `/clear` 또는 `/new` 명령으로 새로운 대화 세션을 시작하면 더 나은 성능과 컨텍스트 관리를 경험할 수 있습니다.
@@ -580,7 +980,8 @@ Alfred는 Glob 패턴으로 파일 그룹을 식별합니다:
 
 - **신규 프로젝트**: `/alfred:1-spec`을 실행해 설계 기반 SPEC 백로그 생성
 - **레거시 프로젝트**: product/structure/tech 문서의 @CODE/@CODE/TODO 항목 검토 후 우선순위 확정
-- **설정 변경**: `/alfred:8-project`를 다시 실행하여 문서 갱신
+- **설정 변경**: `/alfred:0-project`를 다시 실행하여 문서 갱신
+- **템플릿 최적화**: `moai-adk update` 후 `/alfred:0-project update` 실행
 
 ## 관련 명령어
 

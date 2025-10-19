@@ -1,14 +1,11 @@
 ---
 name: moai-domain-web-api
 description: REST API and GraphQL design patterns with authentication, versioning, and OpenAPI documentation
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - api
-  - rest
-  - graphql
-  - authentication
+allowed-tools:
+  - Read
+  - Bash
+tier: 4
+auto-load: "false"
 ---
 
 # Web API Expert

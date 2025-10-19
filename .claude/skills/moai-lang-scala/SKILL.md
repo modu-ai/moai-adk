@@ -1,14 +1,11 @@
 ---
 name: moai-lang-scala
 description: Scala best practices with ScalaTest, sbt, and functional programming patterns
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - scala
-  - testing
-  - best-practices
-  - functional-programming
+allowed-tools:
+  - Read
+  - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # Scala Expert

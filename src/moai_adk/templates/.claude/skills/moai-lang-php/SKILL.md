@@ -1,14 +1,11 @@
 ---
 name: moai-lang-php
 description: PHP best practices with PHPUnit, Composer, and PSR standards
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - php
-  - testing
-  - best-practices
-  - psr
+allowed-tools:
+  - Read
+  - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # PHP Expert

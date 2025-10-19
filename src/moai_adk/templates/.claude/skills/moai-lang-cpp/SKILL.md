@@ -1,15 +1,11 @@
 ---
 name: moai-lang-cpp
 description: C++ best practices with Google Test, clang-format, and modern C++ (C++17/20)
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - cpp
-  - c++
-  - testing
-  - best-practices
-  - modern-cpp
+allowed-tools:
+  - Read
+  - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # C++ Expert

@@ -1,14 +1,11 @@
 ---
 name: moai-lang-ruby
 description: Ruby best practices with RSpec, RuboCop, Bundler, and Rails patterns
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - ruby
-  - testing
-  - best-practices
-  - rails
+allowed-tools:
+  - Read
+  - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # Ruby Expert
