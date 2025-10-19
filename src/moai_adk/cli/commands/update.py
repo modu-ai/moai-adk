@@ -132,6 +132,19 @@ def update(path: str, force: bool, check: bool) -> None:
                 console.print("[green]✓ Already up to date[/green]")
                 return
 
+            # If new version available, guide user to upgrade package first
+            if current_ver < latest_ver:
+                console.print(f"\n[yellow]⚠ New version available: {latest_version}[/yellow]")
+                console.print("[yellow]📦 Please upgrade the package first:[/yellow]")
+                console.print("\n   [cyan]# Recommended (uv tool):[/cyan]")
+                console.print("   uv tool upgrade moai-adk")
+                console.print("\n   [cyan]# Alternative (uv pip):[/cyan]")
+                console.print("   uv pip install --upgrade moai-adk")
+                console.print("\n   [cyan]# Alternative (pip):[/cyan]")
+                console.print("   pip install --upgrade moai-adk")
+                console.print(f"\n[dim]💡 After upgrade, run 'moai-adk update' again to update templates.[/dim]")
+                return
+
         # Phase 2: create a backup unless --force
         if not force:
             console.print("\n[cyan]💾 Creating backup...[/cyan]")

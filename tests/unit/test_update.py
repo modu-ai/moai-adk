@@ -234,11 +234,15 @@ class TestUpdateCommand:
             import json
             (moai_dir / "config.json").write_text(json.dumps(config_data))
 
-            result = runner.invoke(update)
-            assert result.exit_code == 0
-            # Should show "Already up to date" when versions match
-            assert "Checking versions" in result.output
-            assert "Already up to date" in result.output
+            # Mock get_latest_version to return same version as current
+            with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
+                with patch("moai_adk.cli.commands.update.__version__", "0.3.13"):
+                    mock_get_version.return_value = "0.3.13"  # Same version
+                    result = runner.invoke(update)
+                    assert result.exit_code == 0
+                    # Should show "Already up to date" when versions match
+                    assert "Checking versions" in result.output
+                    assert "Already up to date" in result.output
 
     def test_update_proceeds_when_config_missing(self, tmp_path):
         """Test update shows already up to date when config.json missing"""
@@ -330,3 +334,25 @@ class TestUpdateCommand:
                     result = runner.invoke(update, ["--force"])
                     assert result.exit_code == 0
                     assert "Updating templates" in result.output
+
+    def test_update_shows_upgrade_message_when_new_version_available(self, tmp_path):
+        """Test update shows package upgrade instructions when new version is available"""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            # Create .moai directory
+            moai_dir = Path(".moai")
+            moai_dir.mkdir()
+
+            # Mock get_latest_version to return a newer version
+            with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
+                with patch("moai_adk.cli.commands.update.__version__", "0.3.9"):
+                    mock_get_version.return_value = "0.3.13"  # Newer version
+                    result = runner.invoke(update)
+                    assert result.exit_code == 0
+                    assert "New version available: 0.3.13" in result.output
+                    assert "Please upgrade the package first" in result.output
+                    assert "Recommended (uv tool)" in result.output
+                    assert "uv tool upgrade moai-adk" in result.output
+                    assert "uv pip install --upgrade moai-adk" in result.output
+                    assert "pip install --upgrade moai-adk" in result.output
