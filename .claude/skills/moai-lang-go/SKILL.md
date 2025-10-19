@@ -16,7 +16,9 @@ Provides Go-specific expertise for TDD development, including go test framework,
 
 ## When to use
 
-- "Go 테스트 작성", "go test 사용법", "Go 표준 라이브러리"
+- "Go 테스트 작성", "go test 사용법", "Go 표준 라이브러리", "마이크로서비스", "네트워크 프로그래밍", "시스템 도구"
+- "gRPC", "REST API", "CLI 도구", "Docker", "Kubernetes", "웹 서버"
+- "gin", "Echo", "Beego", "Fiber"
 - Automatically invoked when working with Go projects
 - Go SPEC implementation (`/alfred:2-build`)
 
@@ -51,6 +53,77 @@ Provides Go-specific expertise for TDD development, including go test framework,
 - Exported names start with capital letters
 - Error handling: `if err != nil { return err }`
 - Avoid naked returns in large functions
+
+## Modern Go (1.21+)
+
+**Recommended Version**: Go 1.21+ for production, 1.20+ for legacy support
+
+**Modern Features**:
+- **Range over integers** (1.22+): `for i := range 10`
+- **Range over functions** (1.22+): `for v := range generator()`
+- **Clear built-in** (1.21+): `clear(map)`
+- **Iterators** (1.22+): Custom iteration patterns
+- **slog package** (1.21+): Structured logging
+- **unsafe.String/SliceData** (1.20+): Safe unsafe operations
+
+**Version Check**:
+```bash
+go version  # Check Go version
+go env GOVERSION
+```
+
+## Package Management Commands
+
+### Using go mod (Built-in - Recommended)
+```bash
+# Initialize module
+go mod init github.com/user/project
+
+# Add dependencies
+go get github.com/gin-gonic/gin
+go get github.com/stretchr/testify
+
+# Tidy dependencies (remove unused, add missing)
+go mod tidy
+
+# Upgrade dependencies
+go get -u ./...
+go get -u github.com/gin-gonic/gin@latest
+
+# Show dependency graph
+go mod graph
+go mod why
+
+# Vendor dependencies
+go mod vendor
+
+# Run tests
+go test ./...
+go test -v ./...
+go test -cover ./...
+
+# Download cached modules
+go mod download
+```
+
+### Common Development Commands
+```bash
+# Format code
+go fmt ./...
+gofmt -w .
+
+# Lint
+golangci-lint run ./...
+staticcheck ./...
+
+# Build
+go build -o myapp
+go build -ldflags "-s -w" -o myapp
+
+# Run directly
+go run main.go
+go run ./cmd/cli
+```
 
 ## Examples
 
