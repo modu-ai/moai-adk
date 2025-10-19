@@ -4,8 +4,8 @@ description: Mobile app development with Flutter and React Native, state managem
 allowed-tools:
   - Read
   - Bash
-tier: 4
-auto-load: "false"
+tier: 2
+auto-load: "true"
 ---
 
 # Mobile App Expert

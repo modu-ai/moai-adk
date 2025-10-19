@@ -4,8 +4,8 @@ description: REST API and GraphQL design patterns with authentication, versionin
 allowed-tools:
   - Read
   - Bash
-tier: 4
-auto-load: "false"
+tier: 2
+auto-load: "true"
 ---
 
 # Web API Expert

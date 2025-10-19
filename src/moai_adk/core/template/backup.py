@@ -27,6 +27,7 @@ class TemplateBackup:
             target_path: Project path (absolute).
         """
         self.target_path = target_path.resolve()
+        self.backup_dir = self.target_path / ".moai-backups"
 
     def has_existing_files(self) -> bool:
         """Check whether backup-worthy files already exist.

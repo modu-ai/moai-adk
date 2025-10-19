@@ -4,8 +4,8 @@ description: Server architecture, API design, caching strategies, and scalabilit
 allowed-tools:
   - Read
   - Bash
-tier: 4
-auto-load: "false"
+tier: 2
+auto-load: "true"
 ---
 
 # Backend Expert

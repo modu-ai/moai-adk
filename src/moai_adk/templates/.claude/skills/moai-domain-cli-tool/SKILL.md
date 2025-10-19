@@ -4,8 +4,8 @@ description: CLI tool development with argument parsing, POSIX compliance, and u
 allowed-tools:
   - Read
   - Bash
-tier: 4
-auto-load: "false"
+tier: 2
+auto-load: "true"
 ---
 
 # CLI Tool Expert

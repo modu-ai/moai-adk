@@ -4,8 +4,8 @@ description: Machine learning model training, evaluation, deployment, and MLOps 
 allowed-tools:
   - Read
   - Bash
-tier: 4
-auto-load: "false"
+tier: 2
+auto-load: "true"
 ---
 
 # ML Expert
