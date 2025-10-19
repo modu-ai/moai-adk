@@ -156,12 +156,29 @@ allowed-tools:
 ("진행", "수정 [내용]", "중단" 중 선택)
 ```
 
-### 1.4 사용자 확인 대기
+### 1.4 사용자 승인 대기 (AskUserQuestion)
 
-**반응에 따른 분기**:
-- **"진행"** 또는 **"시작"**: STEP 2로 진행
-- **"수정 [내용]"**: 계획 수정 후 재제시
-- **"중단"**: 프로젝트 초기화 중단
+Alfred는 project-manager의 인터뷰 계획 보고서를 받은 후, **AskUserQuestion 도구를 호출하여 사용자 승인을 받습니다**:
+
+```typescript
+AskUserQuestion({
+  questions: [{
+    question: "project-manager가 제시한 인터뷰 계획으로 프로젝트 초기화를 진행하시겠습니까?",
+    header: "Phase 2 승인",
+    options: [
+      { label: "진행", description: "승인된 계획대로 인터뷰 및 문서 생성 시작" },
+      { label: "수정", description: "계획 재수립 (Phase 1 반복)" },
+      { label: "중단", description: "프로젝트 초기화 중단" }
+    ],
+    multiSelect: false
+  }]
+})
+```
+
+**응답 처리**:
+- **"진행"** (`answers["0"] === "진행"`) → Phase 2 실행
+- **"수정"** (`answers["0"] === "수정"`) → Phase 1 반복 (project-manager 재호출)
+- **"중단"** (`answers["0"] === "중단"`) → 작업 종료
 
 ---
 
@@ -179,7 +196,57 @@ Alfred는 project-manager 에이전트를 호출하여 프로젝트 초기화를
 
 에이전트는 체계적인 인터뷰를 진행하고 product/structure/tech.md 문서를 생성/갱신합니다.
 
-### 2.2 프로젝트 유형별 처리 방식
+### 2.2 Alfred Skills 자동 활성화 (선택적)
+
+project-manager가 문서를 생성 완료한 후, **Alfred는 선택적으로 Skills를 호출할 수 있습니다** (사용자 요청 시).
+
+**자동 활성화 조건** (선택적):
+
+| 조건 | 자동 선택 Skill | 목적 |
+|------|----------------|------|
+| 사용자 "품질 검증" 요청 | moai-alfred-trust-validation | 초기 프로젝트 구조 검증 |
+
+**실행 흐름** (선택적):
+```
+1. project-manager 완료
+    ↓
+2. 사용자 선택:
+   - "품질 검증 필요" → moai-alfred-trust-validation (Level 1 빠른 스캔)
+   - "건너뛰기" → 바로 완료
+```
+
+**참고**: 프로젝트 초기화 단계에서는 품질 검증이 선택사항입니다.
+
+### 2.3 Sub-agent AskUserQuestion (Nested)
+
+**project-manager 에이전트는 내부적으로 AskUserQuestion을 호출**하여 세부 작업을 확인할 수 있습니다.
+
+**호출 시점**:
+- 기존 프로젝트 문서 덮어쓰기 전
+- 언어/프레임워크 선택 시
+- 중요한 설정 변경 시
+
+**예시** (project-manager 내부):
+```typescript
+AskUserQuestion({
+  questions: [{
+    question: "기존 product.md 파일이 존재합니다. 어떻게 처리하시겠습니까?",
+    header: "파일 덮어쓰기 확인",
+    options: [
+      { label: "덮어쓰기", description: "기존 파일 백업 후 새 내용으로 교체" },
+      { label: "병합", description: "기존 내용과 새 내용 병합" },
+      { label: "건너뛰기", description: "기존 파일 유지" }
+    ],
+    multiSelect: false
+  }]
+})
+```
+
+**Nested 패턴**:
+- **커맨드 레벨** (Phase 승인): Alfred가 호출 → "Phase 2 진행할까요?"
+- **Sub-agent 레벨** (세부 확인): project-manager가 호출 → "파일 덮어쓸까요?"
+
+### 2.4 프로젝트 유형별 처리 방식
 
 #### A. 신규 프로젝트 (그린필드)
 
@@ -483,135 +550,6 @@ Alfred는 Glob 패턴으로 파일 그룹을 식별합니다:
 - 해결 계획 → @CODE:MIGRATION-XXX, TODO:SPEC-BACKLOG-XXX
 - 품질 개선 → TODO:TEST-COVERAGE-XXX, TODO:DOCS-SYNC-XXX
 
-## 🚀 STEP 3: 템플릿 최적화 (update 서브커맨드)
-
-사용자가 `/alfred:0-project update` 명령을 실행하여 `moai-adk update` 이후 변경된 템플릿을 프로젝트에 최적화합니다.
-
-### 3.1 최적화 필요 여부 확인
-
-Alfred는 `.moai/config.json`의 `optimized` 필드를 확인합니다:
-- `optimized=false` → 템플릿 최적화 진행
-- `optimized=true` → "이미 최적화 완료" 메시지 출력 후 종료
-
-### 3.2 백업과 신규 템플릿 비교
-
-Alfred는 최근 백업 디렉토리를 탐색하여 다음 파일들을 비교합니다:
-
-**비교 대상 파일**:
-1. `CLAUDE.md` (루트)
-2. `.moai/config.json`
-3. `.claude/settings.json`
-4. `.moai/memory/development-guide.md`
-
-**비교 로직**:
-- 백업 파일에서 사용자 커스텀 내용 추출
-- 신규 템플릿과 차이점 분석
-- 각 파일별 병합 전략 결정
-
-### 3.3 병합 계획 생성 및 사용자 확인
-
-Alfred는 다음 형식의 병합 계획을 생성합니다:
-
-```markdown
-## 📊 템플릿 최적화 계획
-
-### 변경된 파일 분석
-
-**1. CLAUDE.md (루트)**
-- 백업: "프로젝트 정보" 섹션 포함
-- 신규 템플릿: 최신 Alfred 가이드 구조
-- 병합 전략: 프로젝트 정보 보존 + 템플릿 구조 적용
-
-**2. .moai/config.json**
-- 백업: mode=personal, locale=ko, custom_field=value
-- 신규 템플릿: 최신 스키마 + 기본값
-- 병합 전략: 사용자 설정 보존 (스마트 깊은 병합)
-
-**3. .claude/settings.json**
-- 백업: env.CUSTOM_VAR="my_value", permissions.allow 추가 권한
-- 신규 템플릿: 최신 hooks, permissions
-- 병합 전략: 사용자 환경 변수 + 권한 보존
-
-**4. .moai/memory/development-guide.md**
-- 백업: 사용자 커스텀 규칙 3개 추가
-- 신규 템플릿: 최신 TRUST 원칙
-- 병합 전략: 커스텀 규칙 병합 필요 (사용자 확인)
-
-### ✅ 병합 전략 요약
-- **자동 병합**: config.json, settings.json (스마트 병합)
-- **사용자 확인 필요**: CLAUDE.md, development-guide.md (2개)
-- **템플릿 우선**: .claude/commands/*.md (완전 대체)
-
----
-**승인 요청**: 위 계획으로 최적화를 진행하시겠습니까?
-("진행", "파일별 선택", "중단" 중 선택)
-```
-
-### 3.4 병합 실행 (사용자 승인 후)
-
-#### 자동 병합
-Alfred는 다음 파일들을 자동으로 병합합니다:
-
-**config.json (깊은 병합)**:
-```python
-existing_config = load_backup("config.json")
-new_template = load_template("config.json")
-merged = deep_merge(new_template, existing_config)
-# 사용자 설정 보존: mode, locale, project.*, custom_fields
-```
-
-**settings.json (스마트 병합)**:
-```python
-# env: shallow merge (사용자 환경 변수 우선)
-# permissions.allow: 배열 병합 (중복 제거)
-# permissions.deny: 템플릿 우선 (보안)
-# hooks: 템플릿 우선
-```
-
-#### 사용자 확인 병합
-Alfred는 각 파일별로 사용자에게 병합 방법을 선택하도록 요청합니다:
-
-```
-❓ CLAUDE.md 병합 방법을 선택하세요:
-1. 스마트 병합 (프로젝트 정보만 보존, 템플릿 구조 적용) - 권장
-2. 백업 우선 (신규 템플릿 무시, 기존 유지)
-3. 템플릿 우선 (기존 커스텀 내용 삭제)
-4. 수동 병합 (diff 확인 후 결정)
-5. 건너뛰기
-
-> 1
-
-✓ CLAUDE.md: 스마트 병합 완료
-  - "프로젝트 정보" 섹션 보존
-  - Alfred 가이드 업데이트 적용
-```
-
-### 3.5 최적화 완료
-
-Alfred는 병합 완료 후 다음을 수행합니다:
-
-1. `.moai/config.json`의 `optimized=true` 설정
-2. 완료 보고서 출력
-
-```markdown
-✅ Optimization complete!
-
-📁 Merged files:
-- CLAUDE.md (smart merge)
-- .moai/memory/development-guide.md (smart merge)
-- .moai/config.json (deep merge)
-- .claude/settings.json (smart merge)
-
-📁 Replaced files:
-- .claude/commands/alfred/*.md (2 files)
-
-⚙️ Set optimized=true
-
-🎉 Next step: /alfred:1-spec to start SPEC-First TDD!
-```
-
----
-
 ## 오류 처리
 
 ### 일반적인 오류 및 해결 방법
@@ -632,18 +570,6 @@ Alfred는 병합 완료 후 다음을 수행합니다:
 ```
 증상: JSON 구문 오류 또는 권한 거부
 해결: 파일 권한 확인 (chmod 644) 또는 수동으로 config.json 생성
-```
-
-**오류 4**: 백업 디렉토리 없음
-```
-증상: "백업을 찾을 수 없습니다" 메시지 (update 서브커맨드)
-해결: 백업 없이 신규 템플릿 그대로 복사, optimized=true 설정
-```
-
-**오류 5**: settings.json 병합 실패
-```
-증상: JSON 구문 오류 또는 파일 손상
-해결: 템플릿 우선 복사, 사용자에게 수동 복원 안내
 ```
 
 ## 다음 단계

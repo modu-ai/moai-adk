@@ -677,138 +677,192 @@ graph TD
 
 MoAI-ADK v0.4.0은 **Claude Code Skills** 시스템을 도입하여 개발자 경험을 혁신합니다.
 
-### ▶ Skills-First 아키텍처
+### 🎯 핵심 비전
+
+> **"Commands는 진입점, Skills는 능력, Sub-agents는 두뇌"**
+
+v0.4.0은 Claude Code의 **Agent Skills 기능**을 핵심 실행 계층으로 도입하여 **4-Layer 아키텍처**로 전환합니다. Progressive Disclosure 메커니즘으로 **Effectively Unbounded Context**를 실현하며, 개발자는 명령어를 암기하지 않고 **자연어 대화**만으로 **레고 블록처럼 조립 가능한 개발 워크플로우**를 경험합니다.
+
+### 🔑 핵심 변경사항
+
+| 변경 사항 | Before (v0.3.x) | After (v0.4.0) |
+|-----------|-----------------|----------------|
+| **아키텍처** | 3-Layer (Commands/Agents/Hooks) | **4-Layer (Commands/Sub-agents/Skills/Hooks)** |
+| **용어** | "Agents" (혼동) | **"Sub-agents" (Claude Code 표준)** |
+| **컨텍스트 전략** | Always Loaded | **Progressive Disclosure (Effectively Unbounded)** |
+| **재사용성** | 프로젝트 전용 | **전역 (모든 프로젝트 공유)** |
+| **Hooks 성능** | SessionStart 220ms | **<100ms (50% 단축)** |
+| **조합 가능성** | 없음 (단독 실행) | **Composable (Skills 자동 조합)** |
+
+### 🏗️ 4-Layer 아키텍처
 
 ```mermaid
 %%{init: {'theme':'neutral'}}%%
 graph TD
-    User([사용자]) --> Commands[Commands<br/>워크플로우 오케스트레이션]
-    Commands --> Agents[Agents<br/>복잡한 판단 & 분석]
-    Agents --> Skills[Skills<br/>재사용 가능한 능력 조각]
-    Skills --> Hooks[Hooks<br/>가드레일 & 컨텍스트]
+    User([사용자]) --> L1[Layer 1: Commands<br/>워크플로우 진입점]
+    L1 --> L2[Layer 2: Sub-agents<br/>복잡한 추론 & 판단]
+    L2 --> L3[Layer 3: Skills ⭐<br/>재사용 가능한 지식]
+    L3 --> L4[Layer 4: Hooks<br/>가드레일 & JIT Context]
 
-    Commands -.-> Skills
+    L1 -.직접 참조.-> L3
 
-    style Skills fill:#e1f5ff,stroke:#0066cc,stroke-width:3px
-    style Commands fill:#fff4e1,stroke:#cc6600
-    style Agents fill:#f0e1ff,stroke:#6600cc
-    style Hooks fill:#e1ffe1,stroke:#00cc66
+    style L3 fill:#e1f5ff,stroke:#0066cc,stroke-width:3px
+    style L1 fill:#fff4e1,stroke:#cc6600
+    style L2 fill:#f0e1ff,stroke:#6600cc
+    style L4 fill:#e1ffe1,stroke:#00cc66
 ```
 
-### ▶ 기존 vs Skills 기반 워크플로우
+**4-Layer 상세**:
 
-**기존 방식 (Commands + Agents)**:
+| Layer | 역할 | 예시 | 특징 |
+|-------|------|------|------|
+| **Layer 1: Commands** | 워크플로우 진입점 | `/alfred:1-plan`, `/alfred:2-run` | 사용자 요청 해석, Skills/Sub-agents 조율 |
+| **Layer 2: Sub-agents** | 복잡한 추론 & 판단 | spec-builder, tdd-implementer | Task tool 호출, 독립 컨텍스트 |
+| **Layer 3: Skills ⭐** | 재사용 가능한 지식 | moai-spec-writer, python-expert | Progressive Disclosure, 전역 재사용 |
+| **Layer 4: Hooks** | 가드레일 & JIT Context | SessionStart, PreToolUse | 위험 작업 차단, 빠른 실행 (<100ms) |
+
+### ▶ Progressive Disclosure - 게임 체인저
+
+**3-Layer 로딩 메커니즘**:
 
 ```text
-사용자: "FastAPI 기반 사용자 인증 API SPEC 작성해줘"
-→ /alfred:1-spec 실행
-→ spec-builder 에이전트 호출
-→ SPEC 문서 작성 (2~3분)
+┌──────────────────────────────────────────────┐
+│ Layer 1: Metadata (Startup)                 │
+│ - name + description만 사전 로드            │
+│ - 각 Skill당 ≈50 토큰만 소비               │
+│ - 다수의 Skills 설치 시에도 부담 적음       │
+└──────────────────────────────────────────────┘
+              ↓ Claude가 관련성 판단
+┌──────────────────────────────────────────────┐
+│ Layer 2: SKILL.md (On-Demand)               │
+│ - 관련 있는 Skill만 전체 내용 로드          │
+│ - 필요 시에만 로드 (≈500 토큰)             │
+│ - 여러 Skills 동시 로드 가능                │
+└──────────────────────────────────────────────┘
+              ↓ 추가 정보 필요 시
+┌──────────────────────────────────────────────┐
+│ Layer 3: Additional Files (Lazy Loading)    │
+│ - templates/, scripts/, resources/          │
+│ - 필요한 파일만 선택적 로드                 │
+│ - 대용량 참고 자료를 효율적으로 관리        │
+└──────────────────────────────────────────────┘
 ```
 
-**Skills 기반 (v0.4.0)**:
+**효과**:
+- ✅ **Effectively Unbounded Context** (Anthropic 공식 표현)
+- ✅ **컨텍스트 사용량 30% 절감** (Skills 재사용)
+- ✅ **응답 속도 50% 단축** (Hooks 경량화: 220ms→100ms)
+
+### ▶ Composability - 레고 블록처럼 조립
+
+Claude가 자동으로 필요한 Skills를 식별하고 조합합니다.
+
+**예시: 모바일 앱 개발**
 
 ```text
-사용자: "FastAPI 기반 사용자 인증 API SPEC 작성해줘"
-→ Alfred가 자동으로 3개 Skills 조합:
-  - moai-spec-writer (SPEC 작성)
-  - python-expert (Python 베스트 프랙티스)
-  - web-api-expert (REST API 설계)
-→ 대화형으로 Skills 추가/제거 가능
-→ SPEC 문서 작성 (1~2분, 60% 단축)
-```
-
-### ▶ 3가지 핵심 이점
-
-#### 1. Progressive Disclosure (점진적 컨텍스트 로딩)
-
-**기존**: 에이전트가 시작할 때 모든 문서를 한 번에 로드 → 컨텍스트 과부하
-
-**Skills**: 3-Layer 로딩 메커니즘
-1. **Metadata** (YAML frontmatter) - 즉시 로드 (≈50 토큰)
-2. **SKILL.md** (핵심 지침) - 필요 시 로드 (≈500 토큰)
-3. **Additional Files** (상세 문서) - 필요 시 로드 (가변)
-
-**효과**: 컨텍스트 사용량 **80% 감소**, 응답 속도 **2배 향상**
-
-#### 2. Composability (레고 블록처럼 조립)
-
-**기존**: 에이전트 간 협업은 Alfred가 명시적으로 조율해야 함
-
-**Skills**: 자동 조합 (Lego-like Assembly)
-
-```text
-# 예시: 모바일 앱 개발
 사용자: "Flutter로 Todo 앱 만들어줘"
-→ Alfred가 자동 조합:
-  - moai-spec-writer
-  - dart-expert
-  - mobile-app-expert
-  - moai-tdd-orchestrator
 
-# 대화형으로 Skill 추가
+Alfred가 자동 조합:
+  ✅ moai-spec-writer (SPEC 작성)
+  ✅ dart-expert (Dart 베스트 프랙티스)
+  ✅ mobile-app-expert (iOS/Android 설계)
+  ✅ moai-tdd-orchestrator (TDD 구현)
+
 사용자: "Firebase 인증도 추가해줘"
-→ firebase-expert Skill 자동 추가 ✅
+
+Alfred가 자동 조합:
+  ✅ firebase-expert (새로 추가)
+  ✅ dart-expert (이미 로드됨, 재사용)
+  ✅ security-expert (자동 추가)
 ```
 
-#### 3. Zero Learning Curve (학습 불필요)
+**조합 원리**:
+- **Automatic Coordination**: Claude가 자동으로 필요한 Skills 식별
+- **No Explicit Reference**: Skills는 서로를 명시적으로 참조하지 않아도 됨
+- **Multiple Skills Together**: 동시에 여러 Skills 활성화 가능
 
-**기존**: 사용자가 커맨드 이름을 외워야 함 (`/alfred:1-spec`, `/alfred:2-build`)
+### ▶ Commands 명칭 변경 철학
 
-**Skills**: 자연어 대화만으로 충분
+#### `/alfred:1-spec` → `/alfred:1-plan` ⭐ 핵심 변경
 
-```text
-# 커맨드 몰라도 됨
-사용자: "JWT 인증 시스템 SPEC 만들어줘"
-→ Alfred: moai-spec-writer + web-api-expert 조합
+**철학적 배경**:
+- **"항상 계획을 먼저 세우고 진행한다"** - 계획 우선 원칙 강조
+- SPEC 문서 생성뿐만 아니라 **브레인스토밍 모드**로 확장
+- 아이디어 구상, 요구사항 정리, 설계 논의 등 **계획 수립 전반** 지원
 
-사용자: "TDD로 구현해줘"
-→ Alfred: moai-tdd-orchestrator 자동 호출
+**사용 시나리오**:
 
-사용자: "문서 업데이트"
-→ Alfred: moai-doc-syncer 자동 호출
+```bash
+# 시나리오 1: SPEC 문서 생성 (기존 방식)
+/alfred:1-plan "JWT 인증 시스템"
+→ SPEC-AUTH-001 생성, EARS 구문, 브랜치/PR
+
+# 시나리오 2: 브레인스토밍 모드 (신규)
+/alfred:1-plan "프로젝트 아키텍처 설계 논의"
+→ Alfred와 대화형 브레인스토밍
+→ 아이디어 정리 → SPEC 후보 도출
+
+# 시나리오 3: 기술 선택 논의 (신규)
+/alfred:1-plan "인증 방식 비교 (JWT vs Session)"
+→ 장단점 분석 → 의사결정 지원 → SPEC 문서화
 ```
 
-### ▶ Skills 카탈로그 (총 45개)
+**핵심 가치**:
+- ✅ **Think First, Code Later** (생각 먼저, 코딩 나중)
+- ✅ **Collaborative Planning** (Alfred와 함께 계획 수립)
+- ✅ **SPEC-First 유지** (최종적으로 SPEC 문서 생성)
 
-#### Foundation Skills (15개) - 핵심 워크플로우
+#### `/alfred:2-build` → `/alfred:2-run` ⭐ 핵심 변경
 
-| Skill                    | 역할                 | 기존 대응            |
-| ------------------------ | -------------------- | -------------------- |
-| `moai-spec-writer`       | EARS 명세 작성       | spec-builder 일부    |
-| `moai-tdd-orchestrator`  | TDD 오케스트레이션   | tdd-implementer 일부 |
-| `moai-tag-validator`     | TAG 무결성 검증      | tag-agent 일부       |
-| `moai-doc-syncer`        | Living Document 동기 | doc-syncer 일부      |
-| `moai-git-flow`          | GitFlow 자동화       | git-manager 일부     |
-| `moai-quality-gate`      | TRUST 5원칙 검증     | trust-checker 일부   |
-| `moai-debug-assistant`   | 오류 진단 및 해결    | debug-helper 일부    |
-| `moai-refactoring-coach` | 리팩토링 가이드      | (신규)               |
-| ... 총 15개              |                      |                      |
+**철학적 배경**:
+- **"계획(Plan) → 실행(Run) → 동기화(Sync)"** - 명확한 워크플로우
+- "build"는 코드 빌드만을 의미하지만, 실제로는 **계획 수행 전반** 지원
+- TDD 구현, 테스트 실행, 리팩토링, 문서 초안 등 **다양한 실행 작업**
 
-#### Language Skills (20개) - 언어별 전문가
+**사용 시나리오**:
 
-| Skill               | 언어           | 기능                     |
-| ------------------- | -------------- | ------------------------ |
-| `python-expert`     | Python         | pytest, mypy, ruff       |
-| `typescript-expert` | TypeScript     | Vitest, Biome            |
-| `java-expert`       | Java           | JUnit, Maven             |
-| `go-expert`         | Go             | go test, gofmt           |
-| `rust-expert`       | Rust           | cargo test, clippy       |
-| `dart-expert`       | Dart/Flutter   | flutter test             |
-| `swift-expert`      | Swift          | XCTest, SwiftLint        |
-| `ruby-expert`       | Ruby           | RSpec, RuboCop           |
-| ... 총 20개         |                |                          |
+```bash
+# 시나리오 1: TDD 구현 (주 사용 방식)
+/alfred:2-run SPEC-AUTH-001
+→ RED → GREEN → REFACTOR
 
-#### Domain Skills (10개) - 도메인별 전문가
+# 시나리오 2: 프로토타입 제작
+/alfred:2-run SPEC-PROTO-001
+→ 빠른 검증을 위한 프로토타입 구현
 
-| Skill              | 도메인        | 기능                  |
-| ------------------ | ------------- | --------------------- |
-| `web-api-expert`   | REST/GraphQL  | API 설계, 보안        |
-| `mobile-app-expert` | 모바일        | iOS, Android, Flutter |
-| `database-expert`  | 데이터베이스  | 스키마, 마이그레이션  |
-| `security-expert`  | 보안          | OWASP, 암호화         |
-| `performance-expert` | 성능 최적화   | 프로파일링, 캐싱      |
-| ... 총 10개        |               |                       |
+# 시나리오 3: 문서화 작업
+/alfred:2-run SPEC-DOCS-001
+→ 문서 작성 및 샘플 코드 생성
+```
+
+**핵심 가치**:
+- ✅ **Plan First, Run Next** (계획 먼저, 실행 나중)
+- ✅ **Flexible Execution** (TDD뿐 아니라 다양한 실행 작업)
+- ✅ **SPEC-Driven** (SPEC 기반 실행)
+
+#### `/alfred:3-sync` - 유지
+
+- **이유**: "sync(동기화)"가 문서-코드-TAG 동기화 의미를 정확히 전달
+- **기능**: Living Document 갱신, TAG 체인 검증, PR Ready 전환
+
+### ▶ 10개 Foundation Skills
+
+v0.4.0 Phase 1에서 도입되는 핵심 Skills:
+
+| Skill | 역할 | 기존 대응 | 특징 |
+|-------|------|----------|------|
+| `moai-spec-writer` | EARS 명세 작성 | spec-builder 일부 | SPEC 문서 생성, EARS 구문 |
+| `moai-tdd-orchestrator` | TDD 오케스트레이션 | tdd-implementer 일부 | RED-GREEN-REFACTOR 사이클 |
+| `moai-tag-validator` | TAG 무결성 검증 | tag-agent 일부 | TAG 체인 검증, 고아 TAG 탐지 |
+| `moai-doc-syncer` | Living Document 동기 | doc-syncer 일부 | 문서 자동 업데이트 |
+| `moai-git-flow` | GitFlow 자동화 | git-manager 일부 | 브랜치/PR 생성, 커밋 자동화 |
+| `moai-quality-gate` | TRUST 5원칙 검증 | trust-checker 일부 | 품질 게이트, 자동 검증 |
+| `python-expert` | Python 전문가 | (신규) | pytest, mypy, ruff |
+| `typescript-expert` | TypeScript 전문가 | (신규) | Vitest, Biome |
+| `web-api-expert` | REST/GraphQL 전문가 | (신규) | API 설계, 보안 |
+| `mobile-app-expert` | 모바일 전문가 | (신규) | iOS, Android, Flutter |
+
+**Phase 2 이후**: 추가 35개 Skills (Language 18개 + Domain 8개 + Advanced 9개)
 
 ### ▶ Before/After 개발 시간 비교
 
@@ -837,7 +891,7 @@ graph TD
 
 v0.4.0 전체 계획, 아키텍처 설계, 마이그레이션 전략은 다음 문서를 참고하세요:
 
-📖 **[UPDATE-PLAN-0.4.0.md](UPDATE-PLAN-0.4.0.md)** - 전체 200KB 분석 문서
+📖 **[UPDATE-PLAN-0.4.0.md](UPDATE-PLAN-0.4.0.md)** - 전체 상세 분석 문서
 
 ---
 

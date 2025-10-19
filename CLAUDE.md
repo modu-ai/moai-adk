@@ -36,63 +36,21 @@ Alfred 분석 (요청 본질 파악)
 Alfred가 결과 통합 보고
 ```
 
-<!-- @DOC:UPDATE-004:PHASE1 | SPEC: .moai/specs/SPEC-UPDATE-004/spec.md -->
+### 9개 전문 에이전트 생태계
 
-### 7개 전문 에이전트 생태계
-
-Alfred는 7명의 전문 에이전트를 조율합니다. 각 에이전트는 IT 전문가 직무에 매핑되어 있습니다.
+Alfred는 9명의 전문 에이전트를 조율합니다. 각 에이전트는 IT 전문가 직무에 매핑되어 있습니다.
 
 | 에이전트              | 모델   | 페르소나          | 전문 영역               | 커맨드/호출            | 위임 시점      |
 | --------------------- | ------ | ----------------- | ----------------------- | ---------------------- | -------------- |
 | **spec-builder** 🏗️    | Sonnet | 시스템 아키텍트   | SPEC 작성, EARS 명세    | `/alfred:1-spec`       | 명세 필요 시   |
 | **code-builder** 💎    | Sonnet | 수석 개발자       | TDD 구현, 코드 품질     | `/alfred:2-build`      | 구현 단계      |
 | **doc-syncer** 📖      | Haiku  | 테크니컬 라이터   | 문서 동기화, Living Doc | `/alfred:3-sync`       | 동기화 필요 시 |
+| **tag-agent** 🏷️       | Haiku  | 지식 관리자       | TAG 시스템, 추적성      | `@agent-tag-agent`     | TAG 작업 시    |
 | **git-manager** 🚀     | Haiku  | 릴리스 엔지니어   | Git 워크플로우, 배포    | `@agent-git-manager`   | Git 조작 시    |
 | **debug-helper** 🔬    | Sonnet | 트러블슈팅 전문가 | 오류 진단, 해결         | `@agent-debug-helper`  | 에러 발생 시   |
+| **trust-checker** ✅   | Haiku  | 품질 보증 리드    | TRUST 검증, 성능/보안   | `@agent-trust-checker` | 검증 요청 시   |
 | **cc-manager** 🛠️      | Sonnet | 데브옵스 엔지니어 | Claude Code 설정        | `@agent-cc-manager`    | 설정 필요 시   |
 | **project-manager** 📋 | Sonnet | 프로젝트 매니저   | 프로젝트 초기화         | `/alfred:0-project`    | 프로젝트 시작  |
-
-**Deprecated (Skills로 이전됨)**:
-- ~~**tag-agent** 🏷️~~ → **moai-alfred-tag-scanning** Skill (TAG 스캔, 검증, 무결성 확인)
-- ~~**trust-checker** ✅~~ → **moai-alfred-trust-validation** Skill (TRUST 5원칙 검증, 품질 게이트)
-
-### Alfred Skills (재사용 가능한 기능 모듈)
-
-Alfred는 **Skills** 시스템을 통해 반복적이고 패턴화된 작업을 효율적으로 처리합니다. Skills는 Agent보다 가볍고 빠르며, Alfred가 필요 시 자동으로 활성화합니다.
-
-**핵심 차이점**:
-- **Agent**: 복잡한 판단, 다단계 작업, 사용자 상호작용 필요 시
-- **Skill**: 단순 반복 작업, 즉시 실행 가능, 자동 트리거
-
-**주요 Skills**:
-
-| Skill                               | 버전  | 설명                                           | 자동 활성화 조건                    |
-| ----------------------------------- | ----- | ---------------------------------------------- | ----------------------------------- |
-| **moai-alfred-tag-scanning** 🏷️     | 0.2.0 | TAG 스캔, 고아 TAG 탐지, TAG 체인 무결성 검증 | "TAG 스캔", `/alfred:3-sync`        |
-| **moai-alfred-trust-validation** ✅ | 0.2.0 | TRUST 5원칙 검증 (3-Level 차등 스캔)           | "TRUST 확인", `/alfred:3-sync`      |
-| **moai-alfred-spec-metadata** 📋    | 0.1.0 | SPEC 메타데이터 검증 (7개 필수 + 9개 선택)     | SPEC 작성/수정 시                   |
-| **moai-alfred-git-commits** 🚀      | 0.1.0 | Conventional Commits, locale 기반 커밋 메시지  | Git 커밋 생성 시                    |
-| **moai-alfred-ears-authoring** 📝   | 0.1.0 | EARS 구문 작성 가이드 (5가지 요구사항 패턴)    | SPEC 작성 시                        |
-| **moai-alfred-code-reviewer** 🔍    | 0.1.0 | 코드 리뷰 자동화 (TRUST 기준)                  | PR 생성/리뷰 요청 시                |
-
-**Skills 사용 방법**:
-- **자동 활성화**: Alfred가 요청 패턴을 감지하여 자동으로 해당 Skill 실행
-- **명시적 호출**: "TAG 스캔해줘", "TRUST 원칙 확인" 등 자연어로 직접 요청
-
-**예시**:
-```bash
-# 자동 활성화 (Alfred가 Skills 자동 선택)
-User: "TAG 전체 스캔해줘"
-→ moai-alfred-tag-scanning Skill 실행
-
-# 커맨드 내 자동 통합
-/alfred:3-sync
-→ moai-alfred-tag-scanning + moai-alfred-trust-validation 자동 실행
-
-# 자연어 요청
-User: "TRUST 원칙 준수도 확인"
-→ moai-alfred-trust-validation Skill 실행 (Level 3 심화 스캔)
-```
 
 ### Built-in 에이전트 (Claude Code 제공)
 
@@ -177,11 +135,9 @@ Task(
 **Haiku 4.5 (반복 작업, 빠른 처리, 대량 데이터)**:
 - ✅ **doc-syncer**: 문서 동기화, Living Document 갱신 (패턴화된 작업)
 - ✅ **git-manager**: Git 명령어 실행, 브랜치/PR 생성 (정형화된 작업)
+- ✅ **tag-agent**: TAG 스캔, 패턴 매칭 (반복적 검색)
+- ✅ **trust-checker**: TRUST 원칙 검증, 체크리스트 확인 (규칙 기반)
 - ✅ **Explore**: 코드베이스 탐색, 파일 검색 (대량 스캔)
-
-**Skills (경량화된 반복 작업)**:
-- ✅ **moai-alfred-tag-scanning**: TAG 스캔, 패턴 매칭 (반복적 검색)
-- ✅ **moai-alfred-trust-validation**: TRUST 원칙 검증, 체크리스트 확인 (규칙 기반)
 
 **비용 대비 효과**: 빠른 응답이 필요하고 패턴화된 작업 → **비용 67% 절감, 속도 2~5배**
 
@@ -219,6 +175,159 @@ Task(
 - `/alfred:1-spec`: Phase 1에서 프로젝트 문서 분석 및 SPEC 후보 제안 → Phase 2에서 SPEC 문서 작성 및 Git 작업
 - `/alfred:2-build`: Phase 1에서 SPEC 분석 및 TDD 계획 수립 → Phase 2에서 RED-GREEN-REFACTOR 구현
 - `/alfred:3-sync`: Phase 1에서 동기화 범위 분석 → Phase 2에서 Living Document 동기화 및 TAG 업데이트
+
+---
+
+### Alfred 다음 단계 제안 원칙
+
+**CRITICAL**: Alfred는 작업 완료 후 다음 단계를 제안할 때 **반드시 현재 상태를 확인**해야 합니다.
+
+#### 제안 전 필수 체크리스트
+
+```python
+# 다음 단계 제안 전 체크 (의사코드)
+def suggest_next_step():
+    # 1. SPEC 상태 확인
+    spec_exists = check_spec_file_exists()  # .moai/specs/SPEC-{ID}/spec.md
+    spec_version = get_spec_version()       # YAML Front Matter의 version
+    spec_status = get_spec_status()         # draft|active|completed|deprecated
+
+    # 2. 구현 상태 확인
+    tests_exist = check_test_files()        # tests/**/*test*.py|ts|...
+    code_exists = check_code_files()        # src/**/*.py|ts|...
+    tests_passing = check_test_results()    # pytest, vitest 등 실행 결과
+
+    # 3. 문서 상태 확인
+    docs_synced = check_sync_status()       # @TAG 체인 완전성
+
+    # 4. Git 상태 확인
+    branch_name = get_current_branch()
+    pr_status = get_pr_status()             # draft|ready|merged
+
+    # 5. 현재 상태 기반 다음 단계 결정
+    if not spec_exists:
+        return "SPEC 작성: /alfred:1-spec"
+    elif spec_status == "draft" and not code_exists:
+        return "TDD 구현: /alfred:2-build SPEC-{ID}"
+    elif code_exists and not tests_passing:
+        return "테스트 수정: 실패한 테스트 확인"
+    elif tests_passing and not docs_synced:
+        return "문서 동기화: /alfred:3-sync"
+    elif pr_status == "ready":
+        return "PR 머지 대기 또는 다음 SPEC 작성"
+    else:
+        return "Git 커밋 또는 다음 작업"
+```
+
+#### 잘못된 제안 예시 (❌)
+
+```markdown
+# 시나리오: Alfred가 SPEC을 작성하고, 구현하고, 테스트까지 완료한 상태
+
+❌ 잘못된 제안:
+"다음 단계:
+1. SPEC 검토        # ← SPEC은 이미 Alfred가 작성했음
+2. 테스트 실행      # ← 테스트는 이미 실행되었음
+3. Git 커밋"
+
+✅ 올바른 제안:
+"다음 단계:
+1. Git 커밋 (변경 사항 커밋)  # ← 실제 필요한 작업
+2. 통합 테스트 (수동)         # ← 실제 동작 확인 필요"
+```
+
+#### 올바른 제안 예시 (✅)
+
+**시나리오 1: SPEC만 작성 완료**
+```markdown
+✅ 다음 단계:
+- /alfred:2-build SPEC-{ID} 실행하여 TDD 구현 시작
+```
+
+**시나리오 2: SPEC + 구현 완료, 테스트 통과**
+```markdown
+✅ 다음 단계:
+1. Git 커밋 (RED → GREEN → REFACTOR 커밋)
+2. /alfred:3-sync 실행하여 문서 동기화
+```
+
+**시나리오 3: SPEC + 구현 + 동기화 완료**
+```markdown
+✅ 다음 단계:
+1. Git 커밋 (문서 동기화 커밋)
+2. PR 상태 확인 (Draft → Ready 전환)
+3. 다음 SPEC 작성 (/alfred:1-spec)
+```
+
+**시나리오 4: 모든 작업 완료 (Git 커밋만 남음)**
+```markdown
+✅ 다음 단계:
+- Git 커밋 (변경 사항 커밋)
+
+Note: SPEC, 구현, 테스트, 문서는 모두 완료되었으므로 별도 검토 불필요
+```
+
+#### 제안 금지 사항
+
+Alfred는 다음과 같은 **불필요한 제안을 하지 않아야** 합니다:
+
+1. ❌ **자신이 작성한 문서 검토**: "SPEC-{ID}/spec.md 검토"
+   - Alfred가 SPEC을 작성했다면 이미 완료된 작업
+   - 사용자가 명시적으로 검토 요청하지 않는 한 불필요
+
+2. ❌ **이미 실행한 테스트 재실행**: "테스트 실행"
+   - Alfred가 이미 pytest/vitest를 실행하고 결과를 확인했다면 완료
+   - 실패한 테스트가 있을 때만 재실행 제안
+
+3. ❌ **이미 확인한 상태 재확인**: "Git 상태 확인"
+   - Alfred가 이미 git status를 실행했다면 불필요
+   - 새로운 변경사항이 있을 때만 재확인 제안
+
+4. ❌ **완료된 작업 반복**: "코드 품질 확인"
+   - mypy, ruff 검사를 이미 통과했다면 완료
+   - 새로운 코드 추가 시에만 재검사 제안
+
+#### 제안 우선순위
+
+Alfred는 다음 순서로 다음 단계를 제안합니다:
+
+1. **필수 작업** (반드시 수행해야 함)
+   - SPEC 없음 → SPEC 작성
+   - 테스트 실패 → 테스트 수정
+   - Git 커밋 필요 → Git 커밋
+
+2. **권장 작업** (수행하면 좋음)
+   - 문서 동기화 필요 → /alfred:3-sync
+   - PR 상태 변경 필요 → Draft → Ready 전환
+   - 다음 기능 개발 → 다음 SPEC 작성
+
+3. **선택 작업** (사용자 요청 시에만)
+   - 수동 통합 테스트
+   - 성능 테스트
+   - 보안 검사
+
+#### 상태 확인 명령어
+
+Alfred는 다음 명령어로 현재 상태를 확인합니다:
+
+```bash
+# SPEC 존재 확인
+ls .moai/specs/SPEC-*/spec.md
+
+# SPEC 버전 및 상태 확인
+grep "^version:" .moai/specs/SPEC-*/spec.md
+grep "^status:" .moai/specs/SPEC-*/spec.md
+
+# 테스트 파일 확인
+find tests/ -name "*test*.py" -o -name "*test*.ts"
+
+# Git 상태 확인
+git status --short
+git branch --show-current
+
+# PR 상태 확인 (GitHub CLI)
+gh pr list --head $(git branch --show-current)
+```
 
 ### 에러 메시지 표준 (공통)
 
@@ -294,202 +403,6 @@ git-manager 에이전트는 `.moai/config.json`의 `locale` 설정에 따라 커
 
 **locale 자동 감지**:
 git-manager는 커밋 생성 시 자동으로 `.moai/config.json`의 `project.locale` 값을 읽어 해당 언어로 커밋 메시지를 생성합니다.
-
-### Alfred 다음 단계 제안 원칙
-
-**CRITICAL**: Alfred는 작업 완료 후 다음 단계를 제안할 때 **반드시 현재 상태를 확인**해야 합니다.
-
-#### 제안 전 필수 체크리스트
-
-```python
-def suggest_next_step():
-    # 1. SPEC 상태 확인
-    spec_exists = check_spec_file_exists()
-    spec_version = get_spec_version()
-    spec_status = get_spec_status()
-
-    # 2. 구현 상태 확인
-    tests_exist = check_test_files()
-    code_exists = check_code_files()
-    tests_passing = check_test_results()
-
-    # 3. 문서 상태 확인
-    docs_synced = check_sync_status()
-
-    # 4. Git 상태 확인
-    branch_name = get_current_branch()
-    pr_status = get_pr_status()
-
-    # 5. 현재 상태 기반 다음 단계 결정
-    if not spec_exists:
-        return "SPEC 작성: /alfred:1-spec"
-    elif spec_status == "draft" and not code_exists:
-        return "TDD 구현: /alfred:2-build SPEC-{ID}"
-    elif code_exists and tests_passing and not docs_synced:
-        return "문서 동기화: /alfred:3-sync"
-    elif all_done:
-        return "작업 완료. 다음 SPEC 작성 또는 브랜치 머지 준비"
-    else:
-        return specific_next_action_based_on_state()
-```
-
-#### 잘못된 제안 예시 (❌)
-
-**시나리오 1**: Alfred가 SPEC-UPDATE-002/spec.md를 작성한 직후
-```
-❌ 잘못된 제안: "SPEC-UPDATE-002/spec.md 검토"
-✅ 올바른 제안: "TDD 구현: /alfred:2-build UPDATE-002"
-
-이유: Alfred 자신이 작성한 문서를 검토하라고 제안하는 것은 불필요
-```
-
-**시나리오 2**: 모든 테스트가 통과한 직후
-```
-❌ 잘못된 제안: "테스트 실행"
-✅ 올바른 제안: "문서 동기화: /alfred:3-sync"
-
-이유: 방금 실행한 테스트를 다시 실행하라고 제안하는 것은 중복
-```
-
-**시나리오 3**: Git 상태를 확인한 직후
-```
-❌ 잘못된 제안: "Git 상태 확인"
-✅ 올바른 제안: (상태 기반) "브랜치 푸시: git push -u origin feature/..."
-
-이유: 방금 확인한 상태를 다시 확인하라는 것은 불필요
-```
-
-**시나리오 4**: 코드 품질 검사 (mypy, ruff)를 완료한 직후
-```
-❌ 잘못된 제안: "코드 품질 확인"
-✅ 올바른 제안: "커밋 생성 또는 다음 작업"
-
-이유: 이미 완료된 검사를 반복하라는 것은 비효율적
-```
-
-#### 올바른 제안 예시 (✅)
-
-**시나리오 1**: SPEC 작성 완료, 구현 시작 전
-```python
-# 상태 확인
-spec_exists = True
-spec_status = "draft"
-code_exists = False
-
-# 제안
-"다음 단계: TDD 구현
-→ /alfred:2-build UPDATE-002
-→ RED-GREEN-REFACTOR 사이클 시작"
-```
-
-**시나리오 2**: TDD 구현 완료, 문서 동기화 전
-```python
-# 상태 확인
-tests_passing = True
-code_committed = True
-docs_synced = False
-
-# 제안
-"다음 단계: 문서 동기화
-→ /alfred:3-sync
-→ Living Document 업데이트 및 TAG 체인 검증"
-```
-
-**시나리오 3**: 모든 작업 완료, PR 준비
-```python
-# 상태 확인
-all_tests_pass = True
-docs_synced = True
-pr_status = "draft"
-
-# 제안
-"다음 단계: PR Ready 전환
-→ 현재 PR 상태를 Draft에서 Ready로 변경
-→ 또는 /alfred:3-sync --auto-merge로 자동 머지"
-```
-
-**시나리오 4**: 패키지 업데이트 완료, 최적화 필요
-```python
-# 상태 확인
-package_updated = True
-optimized = False
-
-# 제안
-"다음 단계: 템플릿 최적화
-→ /alfred:0-project update
-→ 백업과 신규 템플릿 비교 및 병합"
-```
-
-#### 제안 금지 사항
-
-다음과 같은 제안은 **절대 하지 않습니다**:
-
-1. ❌ **자신이 작성한 문서 검토**: "SPEC-{ID}/spec.md 검토"
-   - Alfred가 작성한 문서는 이미 완성된 것으로 간주
-   - 사용자가 명시적으로 요청하지 않는 한 검토 불필요
-
-2. ❌ **이미 실행한 테스트 재실행**: "테스트 실행"
-   - 방금 실행하고 통과한 테스트를 다시 실행하라고 제안하지 않음
-   - 테스트 실패 시에만 재실행 권장
-
-3. ❌ **이미 확인한 상태 재확인**: "Git 상태 확인"
-   - 방금 확인한 상태를 다시 확인하라고 제안하지 않음
-   - 상태 기반으로 다음 액션 제안
-
-4. ❌ **완료된 작업 반복**: "코드 품질 확인"
-   - mypy, ruff 등이 이미 통과했다면 재확인 불필요
-   - 새 코드 작성 시에만 품질 검사 권장
-
-#### 제안 우선순위
-
-**필수 (MUST)**: 워크플로우 진행에 반드시 필요한 단계
-- SPEC → TDD 구현
-- 테스트 실패 → 수정
-- 구현 완료 → 문서 동기화
-
-**권장 (SHOULD)**: 품질 향상을 위한 단계
-- 코드 리뷰
-- 추가 테스트 케이스 작성
-- 성능 최적화
-
-**선택 (MAY)**: 필요 시 수행하는 단계
-- 리팩토링
-- 문서 보완
-- 예제 코드 추가
-
-#### 상태 확인 명령어
-
-Alfred가 제안하기 전에 사용하는 상태 확인 명령어:
-
-```bash
-# 1. SPEC 파일 존재 확인
-ls .moai/specs/SPEC-{ID}/spec.md
-
-# 2. SPEC 상태 확인 (YAML front matter)
-rg "^status:" .moai/specs/SPEC-{ID}/spec.md
-
-# 3. 테스트 파일 존재 확인
-rg "@TEST:{ID}" tests/
-
-# 4. 구현 코드 존재 확인
-rg "@CODE:{ID}" src/
-
-# 5. 테스트 결과 확인 (최근 실행 로그 또는 직접 실행)
-pytest tests/  # or relevant test command
-
-# 6. Git 브랜치 확인
-git branch --show-current
-
-# 7. PR 상태 확인
-gh pr view --json state,isDraft
-```
-
-**제안 생성 프로세스**:
-1. 위 명령어로 현재 상태 파악
-2. 워크플로우 단계 확인 (SPEC → TDD → SYNC)
-3. 누락되거나 실패한 단계 식별
-4. 다음 논리적 단계만 제안
-5. 이미 완료된 단계는 제안하지 않음
 
 ---
 
@@ -613,16 +526,14 @@ def handle_pre_tool_use(payload):
 **예시**:
 ```bash
 # ✅ 올바른 Agents 사용
+@agent-trust-checker "현재 프로젝트의 TRUST 원칙 준수도 확인"
+→ 테스트 커버리지 87%, 코드 제약 45/45 파일 준수, TAG 체인 2개 고아 발견
+
 @agent-spec-builder "AUTH-001 SPEC의 메타데이터 검증"
 → 필수 필드 7개 모두 존재, HISTORY 섹션 확인, EARS 구문 적용률 80%
 
 @agent-debug-helper "TypeError: 'NoneType' 오류 해결"
 → project.py:142 라인에서 config가 None, .moai/config.json 누락 확인
-
-# ✅ 올바른 Skills 사용 (Alfred가 자동 활성화)
-User: "TRUST 원칙 준수도 확인해줘"
-→ moai-alfred-trust-validation Skill 실행
-→ 테스트 커버리지 87%, 코드 제약 45/45 파일 준수, TAG 체인 2개 고아 발견
 ```
 
 ---
@@ -767,19 +678,14 @@ Alfred가 필요 시 즉시 호출하는 전문 에이전트들:
 ### 디버깅 & 분석
 ```bash
 @agent-debug-helper "TypeError: 'NoneType' object has no attribute 'name'"
+@agent-debug-helper "TAG 체인 검증을 수행해주세요"
+@agent-debug-helper "TRUST 원칙 준수 여부 확인"
 ```
 
-### TAG 시스템 관리 (Skills 자동 활성화)
+### TAG 시스템 관리
 ```bash
-User: "TAG 체인 검증을 수행해주세요"
-→ moai-alfred-tag-scanning Skill 실행
-→ 전체 TAG 스캔, 고아 TAG 탐지, 무결성 확인
-
-User: "AUTH 도메인 TAG 목록 조회"
-→ moai-alfred-tag-scanning Skill 실행 (도메인 필터)
-
-User: "TRUST 원칙 준수 여부 확인"
-→ moai-alfred-trust-validation Skill 실행 (Level 3 심화 스캔)
+@agent-tag-agent "AUTH 도메인 TAG 목록 조회"
+@agent-tag-agent "고아 TAG 및 끊어진 링크 감지"
 ```
 
 ### Checkpoint 관리 (자동 백업/복구)
