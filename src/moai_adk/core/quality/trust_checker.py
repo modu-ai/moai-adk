@@ -1,4 +1,4 @@
-# @CODE:TRUST-001 | SPEC: SPEC-TRUST-001.md | TEST: tests/unit/core/quality/test_trust_checker.py
+# @CODE:TRUST-001 | SPEC: SPEC-TRUST-001/spec.md | TEST: tests/unit/core/quality/test_trust_checker.py
 """
 TRUST 원칙 통합 검증 시스템
 

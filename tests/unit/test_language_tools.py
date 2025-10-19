@@ -1,4 +1,4 @@
-# @TEST:CLI-001 | SPEC: SPEC-CLI-001.md
+# @TEST:CLI-001 | SPEC: SPEC-CLI-001/spec.md
 """Unit tests for language tool chain mapping
 
 Tests for LANGUAGE_TOOLS dictionary and language-specific tool detection.

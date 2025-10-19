@@ -1,4 +1,4 @@
-# @CODE:TEMPLATE-001 | SPEC: SPEC-INIT-003.md | Chain: TEMPLATE-001
+# @CODE:TEMPLATE-001 | SPEC: SPEC-INIT-003/spec.md | Chain: TEMPLATE-001
 """Template copy and backup processor (SPEC-INIT-003 v0.3.0: preserve user content)."""
 
 from __future__ import annotations
