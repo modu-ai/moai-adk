@@ -62,7 +62,7 @@
     "locale": "ko",
     "mode": "{{PROJECT_MODE}}",
     "name": "{{PROJECT_NAME}}",
-    "moai_adk_version": "{{MOAI_VERSION}}",
+    "moai_adk_version": "0.4.0",
     "optimized": false
   },
   "tags": {

@@ -25,7 +25,7 @@
 - [Quick Start](#quick-start-3분-실전)
 - [첫 번째 프로젝트: Todo API](#첫-번째-프로젝트-todo-api-만들기)
 - [3단계 워크플로우](#3단계-워크플로우)
-- [v0.4.0: Skills Revolution (계획 중)](#v040-skills-revolution-계획-중)
+- [v0.4.0 릴리즈 노트](#v040-릴리즈-노트)
 - [실전 시나리오](#실전-시나리오)
 - [AI 모델 선택 가이드](#ai-모델-선택-가이드)
 - [CLI Reference](#cli-reference)
@@ -671,32 +671,49 @@ graph TD
 
 ---
 
-## ■ v0.4.0: Skills Revolution (진행 중)
+## ■ v0.4.0 릴리즈 노트
 
-> **📍 현재 진행 상태**: v0.4.0 Skills 표준화 Phase 1 완료, SPEC-SKILLS-REDESIGN-001 v0.1.0 완료
+> **🎉 릴리즈 날짜**: 2025-10-20
 >
-> 모든 44개 Skills 재구성 완료, 4-Tier 아키텍처 구현 완료, Progressive Disclosure 메커니즘 활성화
+> **주요 변경사항**: Breaking Change - `moai-adk update` 커맨드 완전 개편
 >
-> 상세 진행도는 [UPDATE-PLAN-0.4.0.md](UPDATE-PLAN-0.4.0.md) 및 [SPEC-SKILLS-REDESIGN-001](.moai/specs/SPEC-SKILLS-REDESIGN-001/spec.md)를 참고하세요.
+> 상세 내용은 [RELEASE-NOTES-v0.4.0.md](RELEASE-NOTES-v0.4.0.md) 및 [MIGRATION-v0.4.0.md](MIGRATION-v0.4.0.md)를 참고하세요.
 
-MoAI-ADK v0.4.0은 **Claude Code Skills** 시스템을 도입하여 개발자 경험을 혁신합니다.
+MoAI-ADK v0.4.0은 **패키지 업그레이드 자동화** 및 **Skills 표준화**를 완료하여 사용자 경험을 혁신합니다.
 
-### 🎯 핵심 비전
+### 🚨 Breaking Change: `moai-adk update` 커맨드
 
-> **"Commands는 진입점, Skills는 능력, Sub-agents는 두뇌"**
+**변경 전 (v0.3.x)**:
+```bash
+moai-adk update  # 템플릿 파일 업데이트
+```
 
-v0.4.0은 Claude Code의 **Agent Skills 기능**을 핵심 실행 계층으로 도입하여 **4-Layer 아키텍처**로 전환합니다. Progressive Disclosure 메커니즘으로 **Effectively Unbounded Context**를 실현하며, 개발자는 명령어를 암기하지 않고 **자연어 대화**만으로 **레고 블록처럼 조립 가능한 개발 워크플로우**를 경험합니다.
+**변경 후 (v0.4.0)**:
+```bash
+moai-adk update        # 패키지 자체 업그레이드 (자동 감지)
+moai-adk update --check  # 버전 확인만
+moai-adk init .        # 템플릿 파일 업데이트
+```
 
-### 🔑 핵심 변경사항
+**새로운 기능**:
+- ✅ **자동 감지**: uv-tool, uv-pip, pip 설치 방법 자동 인식
+- ✅ **자동 업그레이드**: PyPI 최신 버전 확인 및 자동 업그레이드
+- ✅ **버전 확인**: `--check` 옵션으로 업그레이드 가능 여부만 확인
+- ✅ **Development 버전 감지**: 로컬 버전이 PyPI보다 최신인 경우 감지
+
+**마이그레이션**:
+- 📖 [MIGRATION-v0.4.0.md](MIGRATION-v0.4.0.md) - 상세 전환 가이드
+- 📝 [RELEASE-NOTES-v0.4.0.md](RELEASE-NOTES-v0.4.0.md) - 전체 릴리즈 노트
+
+### 🔑 핵심 개선사항
 
 | 변경 사항 | Before (v0.3.x) | After (v0.4.0) |
 |-----------|-----------------|----------------|
-| **아키텍처** | 3-Layer (Commands/Agents/Hooks) | **4-Layer (Commands/Sub-agents/Skills/Hooks)** |
-| **용어** | "Agents" (혼동) | **"Sub-agents" (Claude Code 표준)** |
-| **컨텍스트 전략** | Always Loaded | **Progressive Disclosure (Effectively Unbounded)** |
-| **재사용성** | 프로젝트 전용 | **전역 (모든 프로젝트 공유)** |
-| **Hooks 성능** | SessionStart 220ms | **<100ms (50% 단축)** |
-| **조합 가능성** | 없음 (단독 실행) | **Composable (Skills 자동 조합)** |
+| **패키지 업그레이드** | 수동 (`uv tool upgrade moai-adk`) | **자동** (`moai-adk update`) |
+| **템플릿 업데이트** | `moai-adk update` | `moai-adk init .` |
+| **설치 방법 감지** | ❌ 없음 | ✅ 자동 감지 (uv-tool, uv-pip, pip) |
+| **버전 확인** | ❌ 없음 | ✅ `moai-adk update --check` |
+| **Skills 메타데이터** | 비표준 | **Anthropic 공식 표준 100% 준수** |
 
 ### 🏗️ 4-Layer 아키텍처
 
