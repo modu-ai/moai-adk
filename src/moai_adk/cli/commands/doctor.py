@@ -1,5 +1,5 @@
-# @CODE:CLI-001 | SPEC: SPEC-CLI-001.md | TEST: tests/unit/test_doctor.py
-# @CODE:CLAUDE-COMMANDS-001:CLI | SPEC: SPEC-CLAUDE-COMMANDS-001.md | TEST: tests/unit/test_slash_commands.py
+# @CODE:CLI-001 | SPEC: SPEC-CLI-001/spec.md | TEST: tests/unit/test_doctor.py
+# @CODE:CLAUDE-COMMANDS-001:CLI | SPEC: SPEC-CLAUDE-COMMANDS-001/spec.md | TEST: tests/unit/test_slash_commands.py
 """MoAI-ADK doctor command
 
 System diagnostics command:

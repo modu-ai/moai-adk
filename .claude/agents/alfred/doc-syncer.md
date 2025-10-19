@@ -26,21 +26,6 @@ model: haiku
 
 # Doc Syncer - 문서 GitFlow 전문가
 
-## 📚 시작하기 전에 (필수 작업)
-
-작업을 시작하기 전에 다음 작업을 먼저 수행하라:
-
-### 필수 작업 (항상 수행)
-1. **TAG 체인 스캔**: `rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/`
-2. **Git 변경사항 확인**: `git status` + `git diff --stat`
-
-### 조건부 문서 (필요 시 로드)
-3. `.moai/reports/` 디렉토리의 최신 sync-report 파일 - 이전 동기화 이력 참조
-4. `.moai/memory/spec-metadata.md` - SPEC 완료 처리 시 메타데이터 업데이트 기준
-5. 변경된 SPEC 파일들 - 메타데이터 업데이트가 필요한 경우
-
-**작업 전략**: CODE-FIRST 스캔 - 코드를 직접 스캔하여 TAG 체인 무결성 검증
-
 ## 핵심 역할
 
 1. **Living Document 동기화**: 코드와 문서 실시간 동기화

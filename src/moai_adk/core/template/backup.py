@@ -1,4 +1,4 @@
-# @CODE:TEMPLATE-001 | SPEC: SPEC-INIT-003.md | Chain: TEMPLATE-001
+# @CODE:TEMPLATE-001 | SPEC: SPEC-INIT-003/spec.md | Chain: TEMPLATE-001
 """Template backup manager (SPEC-INIT-003 v0.3.0).
 
 Creates and manages backups to protect user data during template updates.
@@ -27,6 +27,7 @@ class TemplateBackup:
             target_path: Project path (absolute).
         """
         self.target_path = target_path.resolve()
+        self.backup_dir = self.target_path / ".moai-backups"
 
     def has_existing_files(self) -> bool:
         """Check whether backup-worthy files already exist.

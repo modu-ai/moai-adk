@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# ruff: noqa: E402
 # @CODE:HOOKS-REFACTOR-001 | SPEC: SPEC-HOOKS-REFACTOR-001.md
 """Alfred Hooks - Main entry point for MoAI-ADK Claude Code Hooks
 
@@ -103,16 +102,14 @@ def main() -> None:
 
     Notes:
         - Claude Code가 자동으로 호출 (사용자 직접 실행 불필요)
-        - stdin/stdout으로 JSON I/O 처리 (Iterator 패턴, 크로스 플랫폼 호환)
-        - Windows/macOS/Linux 모든 환경에서 안정적 동작 (@CODE:WINDOWS-HOOKS-001)
-        - 빈 stdin 처리: 빈 객체 {}로 자동 변환
+        - stdin/stdout으로 JSON I/O 처리
         - stderr로 에러 메시지 출력
         - UserPromptSubmit은 특별한 출력 스키마 사용 (hookEventName + additionalContext)
 
     TDD History:
         - RED: 이벤트 라우팅, JSON I/O, 에러 처리 테스트
-        - GREEN: 핸들러 맵 기반 라우팅 구현, Iterator 패턴으로 stdin 읽기 개선
-        - REFACTOR: 에러 메시지 명확화, exit code 표준화, UserPromptSubmit 스키마 분리, Windows 호환성 개선
+        - GREEN: 핸들러 맵 기반 라우팅 구현
+        - REFACTOR: 에러 메시지 명확화, exit code 표준화, UserPromptSubmit 스키마 분리
     """
     # Check for event argument
     if len(sys.argv) < 2:
@@ -122,17 +119,8 @@ def main() -> None:
     event_name = sys.argv[1]
 
     try:
-        # @CODE:WINDOWS-HOOKS-001 | SPEC: SPEC-WINDOWS-HOOKS-001.md | TEST: tests/hooks/test_alfred_hooks_stdin.py
-        # Read JSON from stdin using Iterator pattern (cross-platform compatible)
-        # Windows에서 sys.stdin.read()는 EOF 처리가 불확실하므로 Iterator 패턴 사용
-        input_data = ""
-        for line in sys.stdin:
-            input_data += line
-
-        # Handle empty stdin (return empty dict instead of raising JSONDecodeError)
-        if not input_data.strip():
-            input_data = "{}"
-
+        # Read JSON from stdin
+        input_data = sys.stdin.read()
         data = json.loads(input_data)
 
         cwd = data.get("cwd", ".")

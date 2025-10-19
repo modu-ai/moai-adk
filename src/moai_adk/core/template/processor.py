@@ -1,4 +1,4 @@
-# @CODE:TEMPLATE-001 | SPEC: SPEC-INIT-003.md | Chain: TEMPLATE-001
+# @CODE:TEMPLATE-001 | SPEC: SPEC-INIT-003/spec.md | Chain: TEMPLATE-001
 """Template copy and backup processor (SPEC-INIT-003 v0.3.0: preserve user content)."""
 
 from __future__ import annotations
@@ -267,9 +267,8 @@ class TemplateProcessor:
             dst_folder = dst / folder
 
             if src_folder.exists():
-                # Backup this folder before deletion (safety measure)
+                # Remove existing folder (backup is already handled by create_backup() in update.py)
                 if dst_folder.exists():
-                    self._backup_alfred_folder(dst_folder, folder)
                     shutil.rmtree(dst_folder)
 
                 # Create parent directory if needed
@@ -278,7 +277,7 @@ class TemplateProcessor:
                 if not silent:
                     console.print(f"   ✅ .claude/{folder}/ overwritten")
 
-        # 2. Copy other files/folders individually (FORCE OVERWRITE all files)
+        # 2. Copy other files/folders individually (smart merge for settings.json)
         all_warnings = []
         for item in src.iterdir():
             rel_path = item.relative_to(src)
@@ -289,9 +288,15 @@ class TemplateProcessor:
                 continue
 
             if item.is_file():
-                # FORCE OVERWRITE: Always copy files (no skip)
-                warnings = self._copy_file_with_substitution(item, dst_item)
-                all_warnings.extend(warnings)
+                # Smart merge for settings.json
+                if item.name == "settings.json":
+                    self._merge_settings_json(item, dst_item)
+                    if not silent:
+                        console.print("   🔄 settings.json merged (env variables preserved)")
+                else:
+                    # FORCE OVERWRITE: Always copy other files (no skip)
+                    warnings = self._copy_file_with_substitution(item, dst_item)
+                    all_warnings.extend(warnings)
             elif item.is_dir():
                 # FORCE OVERWRITE: Always copy directories (no skip)
                 self._copy_dir_with_substitution(item, dst_item)
@@ -352,7 +357,7 @@ class TemplateProcessor:
             console.print("   ✅ .moai/ copy complete (variables substituted)")
 
     def _copy_claude_md(self, silent: bool = False) -> None:
-        """Copy CLAUDE.md with FORCE OVERWRITE."""
+        """Copy CLAUDE.md with smart merge (preserves "## 프로젝트 정보" section)."""
         src = self.template_root / "CLAUDE.md"
         dst = self.target_path / "CLAUDE.md"
 
@@ -361,10 +366,16 @@ class TemplateProcessor:
                 console.print("⚠️ CLAUDE.md template not found")
             return
 
-        # FORCE OVERWRITE: Always copy template (backup already created in Phase 1)
-        self._copy_file_with_substitution(src, dst)
-        if not silent:
-            console.print("   ✅ CLAUDE.md overwritten (backup available in .moai-backups/)")
+        # Smart merge: preserve existing "## 프로젝트 정보" section
+        if dst.exists():
+            self._merge_claude_md(src, dst)
+            if not silent:
+                console.print("   🔄 CLAUDE.md merged (프로젝트 정보 preserved)")
+        else:
+            # First time: just copy
+            self._copy_file_with_substitution(src, dst)
+            if not silent:
+                console.print("   ✅ CLAUDE.md created")
 
     def _merge_claude_md(self, src: Path, dst: Path) -> None:
         """Delegate the smart merge for CLAUDE.md.
@@ -374,6 +385,24 @@ class TemplateProcessor:
             dst: Project CLAUDE.md.
         """
         self.merger.merge_claude_md(src, dst)
+
+    def _merge_settings_json(self, src: Path, dst: Path) -> None:
+        """Delegate the smart merge for settings.json.
+
+        Args:
+            src: Template settings.json.
+            dst: Project settings.json.
+        """
+        # Find the latest backup for user settings extraction
+        backup_path = None
+        if self.backup.backup_dir.exists():
+            backups = sorted(self.backup.backup_dir.iterdir(), reverse=True)
+            if backups:
+                backup_settings = backups[0] / ".claude" / "settings.json"
+                if backup_settings.exists():
+                    backup_path = backup_settings
+
+        self.merger.merge_settings_json(src, dst, backup_path)
 
     def _copy_gitignore(self, silent: bool = False) -> None:
         """.gitignore copy (optional)."""

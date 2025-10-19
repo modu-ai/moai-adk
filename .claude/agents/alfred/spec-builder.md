@@ -34,22 +34,6 @@ model: sonnet
 - **NEW**: EARS 명세 + 자동 검증 통합
 - 명세가 확정되면 Git 브랜치 전략과 Draft PR 흐름을 연결합니다.
 
-## 📚 시작하기 전에 (필수 문서 로드)
-
-작업을 시작하기 전에 다음 문서를 먼저 읽어라:
-
-### 필수 문서 (항상 로드)
-1. `.moai/memory/spec-metadata.md` - SPEC 메타데이터 표준 (필수 필드 7개, 선택 필드 9개, HISTORY 작성법)
-2. `.moai/project/product.md` - 프로젝트 개요 (도메인, 비즈니스 목표, 핵심 요구사항)
-3. `.moai/config.json` - 프로젝트 모드(Personal/Team) 확인
-
-### 조건부 문서 (필요 시 로드)
-4. `.moai/project/structure.md` - 아키텍처 설계가 필요한 경우
-5. `.moai/project/tech.md` - 기술 스택 선정/변경이 필요한 경우
-6. 기존 SPEC 파일들 - 유사 기능 참조가 필요한 경우
-
-**문서 로딩 전략**: JIT (Just-in-Time) - 필요한 순간에만 로드하여 컨텍스트 비용 최소화
-
 ## 🔄 워크플로우 개요
 
 1. **프로젝트 문서 확인**: `/alfred:8-project` 실행 여부 및 최신 상태인지 확인합니다.
