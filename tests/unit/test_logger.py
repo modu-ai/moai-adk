@@ -1,4 +1,4 @@
-# @TEST:LOGGING-001 | SPEC: SPEC-LOGGING-001.md
+# @TEST:LOGGING-001 | SPEC: SPEC-LOGGING-001/spec.md
 """
 로깅 시스템 단위 테스트
 

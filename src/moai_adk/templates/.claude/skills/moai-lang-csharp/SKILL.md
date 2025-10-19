@@ -1,14 +1,11 @@
 ---
 name: moai-lang-csharp
 description: C# best practices with xUnit, .NET tooling, LINQ, and async/await patterns
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - csharp
-  - testing
-  - best-practices
-  - dotnet
+allowed-tools:
+  - Read
+  - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # C# Expert

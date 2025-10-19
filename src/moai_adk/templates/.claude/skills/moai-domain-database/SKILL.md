@@ -1,14 +1,11 @@
 ---
 name: moai-domain-database
 description: Database design, schema optimization, indexing strategies, and migration management
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - database
-  - schema
-  - optimization
-  - migration
+allowed-tools:
+  - Read
+  - Bash
+tier: 4
+auto-load: "false"
 ---
 
 # Database Expert

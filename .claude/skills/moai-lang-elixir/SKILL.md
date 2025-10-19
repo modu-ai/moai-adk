@@ -1,14 +1,11 @@
 ---
 name: moai-lang-elixir
 description: Elixir best practices with ExUnit, Mix, and OTP patterns
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - elixir
-  - testing
-  - best-practices
-  - otp
+allowed-tools:
+  - Read
+  - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # Elixir Expert

@@ -1,14 +1,11 @@
 ---
 name: moai-domain-security
 description: OWASP Top 10, static analysis (SAST), dependency security, and secrets management
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - security
-  - owasp
-  - sast
-  - secrets
+allowed-tools:
+  - Read
+  - Bash
+tier: 4
+auto-load: "false"
 ---
 
 # Security Expert

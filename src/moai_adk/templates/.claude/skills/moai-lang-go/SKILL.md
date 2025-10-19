@@ -1,14 +1,11 @@
 ---
 name: moai-lang-go
 description: Go best practices with go test, golint, gofmt, and standard library utilization
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - go
-  - testing
-  - best-practices
-  - standard-library
+allowed-tools:
+  - Read
+  - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # Go Expert

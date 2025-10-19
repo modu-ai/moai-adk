@@ -1,15 +1,11 @@
 ---
 name: moai-lang-shell
 description: Shell scripting best practices with bats, shellcheck, and POSIX compliance
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - shell
-  - bash
-  - testing
-  - best-practices
-  - posix
+allowed-tools:
+  - Read
+  - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # Shell Expert

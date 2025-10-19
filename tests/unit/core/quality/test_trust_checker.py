@@ -1,4 +1,4 @@
-# @TEST:TRUST-001 | SPEC: SPEC-TRUST-001.md
+# @TEST:TRUST-001 | SPEC: SPEC-TRUST-001/spec.md
 """
 TRUST 원칙 통합 검증 테스트
 

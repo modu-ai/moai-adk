@@ -1,14 +1,11 @@
 ---
 name: moai-lang-javascript
 description: JavaScript best practices with Jest, ESLint, Prettier, and npm package management
-version: 0.1.0
-author: MoAI Skill Factory
-license: MIT
-tags:
-  - javascript
-  - testing
-  - best-practices
-  - es6
+allowed-tools:
+  - Read
+  - Bash
+tier: 3
+auto-load: "true"
 ---
 
 # JavaScript Expert
