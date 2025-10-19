@@ -14,7 +14,7 @@
 - [Executive Summary](#executive-summary)
 - [Part 1: Claude Skills 심층 분석](#part-1-claude-skills-심층-분석)
 - [Part 2: Skills vs Agents vs Commands](#part-2-skills-vs-agents-vs-commands)
-- [Part 3: MoAI-ADK v0.4.0 아키텍처](#part-3-moai-adk-v040-아키텍처)
+- [Part 3: MoAI-ADK v0.4.0 아키텍처](#part-3-alfred-adk-v040-아키텍처)
 - [Part 4: Skills 45개 상세 설계](#part-4-skills-45개-상세-설계)
 - [Part 5: 개발자 경험 최적화](#part-5-개발자-경험-최적화)
 - [Part 6: Skills 마켓플레이스](#part-6-skills-마켓플레이스)
@@ -69,9 +69,9 @@ MoAI-ADK v0.4.0은 Claude Code의 **Agent Skills 기능**을 핵심 실행 계�
 │ Layer 1: Commands (워크플로우 진입점)    │
 │ - /alfred:0-init   (프로젝트 초기화)     │
 │ - /alfred:1-plan   (계획 수립) ⭐ NEW    │
-│ - /alfred:2-build  (TDD 구현)            │
+│ - /alfred:2-run    (계획 실행) ⭐ NEW    │
 │ - /alfred:3-sync   (문서 동기화)         │
-│ - 2-Phase 패턴 (Plan → Execute)          │
+│ - 워크플로우: Plan → Run → Sync          │
 └──────────────┬───────────────────────────┘
                │
                ▼
@@ -130,6 +130,32 @@ MoAI-ADK v0.4.0은 Claude Code의 **Agent Skills 기능**을 핵심 실행 계�
   - ✅ **Think First, Code Later** (생각 먼저, 코딩 나중)
   - ✅ **Collaborative Planning** (Alfred와 함께 계획 수립)
   - ✅ **SPEC-First 유지** (최종적으로 SPEC 문서 생성)
+
+#### `/alfred:2-build` → `/alfred:2-run` ⭐ 핵심 변경
+- **철학적 배경**:
+  - **"계획(Plan) → 실행(Run) → 동기화(Sync)"** - 명확한 워크플로우
+  - "build"는 코드 빌드만을 의미하지만, 실제로는 **계획 수행 전반** 지원
+  - TDD 구현, 테스트 실행, 리팩토링, 문서 초안 등 **다양한 실행 작업**
+
+- **사용 시나리오**:
+  ```bash
+  # 시나리오 1: TDD 구현 (주 사용 방식)
+  /alfred:2-run SPEC-AUTH-001
+  → RED → GREEN → REFACTOR
+
+  # 시나리오 2: 프로토타입 제작
+  /alfred:2-run SPEC-PROTO-001
+  → 빠른 검증을 위한 프로토타입 구현
+
+  # 시나리오 3: 문서화 작업
+  /alfred:2-run SPEC-DOCS-001
+  → 문서 작성 및 샘플 코드 생성
+  ```
+
+- **핵심 가치**:
+  - ✅ **Plan First, Run Next** (계획 먼저, 실행 나중)
+  - ✅ **Flexible Execution** (TDD뿐 아니라 다양한 실행 작업)
+  - ✅ **SPEC-Driven** (SPEC 기반 실행)
 
 #### `/alfred:3-sync` - 유지
 - **이유**: "sync(동기화)"가 문서-코드-TAG 동기화 의미를 정확히 전달
@@ -365,13 +391,13 @@ Claude: (uses this skill + other-skill together)
 - ✅ **<500 words**: SKILL.md는 간결하게 (공식 권장사항)
 - ✅ **명확한 use cases**: "When to use" 섹션 필수
 
-#### 1.5.4 SKILL.md 실제 예시 (moai-ears-authoring)
+#### 1.5.4 SKILL.md 실제 예시 (alfred-ears-authoring)
 
-**파일 위치**: `.claude/skills/moai-ears-authoring/SKILL.md`
+**파일 위치**: `.claude/skills/alfred-ears-authoring/SKILL.md`
 
 ```markdown
 ---
-name: moai-ears-authoring
+name: alfred-ears-authoring
 description: EARS 방식 요구사항 작성 가이드 (Ubiquitous/Event/State/Optional/Constraints 5가지 구문)
 version: 0.1.0
 author: @MoAI-ADK
@@ -427,8 +453,8 @@ EARS (Easy Approach to Requirements Syntax) 방식으로 명확하고 검증 가
 - 액세스 토큰 만료시간은 15분을 초과하지 않아야 한다
 
 ## Works well with
-- moai-spec-metadata-validation
-- moai-tag-scanning
+- alfred-spec-metadata-validation
+- alfred-tag-scanning
 ```
 
 **핵심 설계 원칙**:
@@ -482,7 +508,7 @@ EARS (Easy Approach to Requirements Syntax) 방식으로 명확하고 검증 가
 ✅ **자동 감지 원함**: 사용자가 명시하지 않아도 작동
 ✅ **조합 가능**: 다른 Skills와 함께 사용
 
-**예시**: moai-spec-writer, moai-tdd-guide, moai-tag-validator
+**예시**: alfred-spec-writer, alfred-tdd-guide, alfred-tag-validator
 
 #### Use Sub-agents when:
 
@@ -500,7 +526,7 @@ EARS (Easy Approach to Requirements Syntax) 방식으로 명확하고 검증 가
 ✅ **Phase 기반 실행**: 계획 → 승인 → 실행
 ✅ **Git 통합**: 브랜치 생성, PR 관리
 
-**예시**: /alfred:0-init, /alfred:1-plan, /alfred:2-build, /alfred:3-sync
+**예시**: /alfred:0-init, /alfred:1-plan, /alfred:2-run, /alfred:3-sync
 
 ### 2.3 역할 재정의
 
@@ -513,10 +539,10 @@ EARS (Easy Approach to Requirements Syntax) 방식으로 명확하고 검증 가
 # /alfred:1-plan 예시 (v0.4.0)
 
 ## Phase 1: 분석 및 브레인스토밍 (Skills 활용)
-1. moai-project-analyzer Skill 자동 호출
+1. alfred-project-analyzer Skill 자동 호출
    - product.md 분석
    - 기존 SPEC 목록 스캔
-2. moai-spec-id-generator Skill 자동 호출
+2. alfred-spec-id-generator Skill 자동 호출
    - 도메인 추출
    - SPEC ID 중복 확인
 3. 브레인스토밍 모드 (선택적)
@@ -524,9 +550,9 @@ EARS (Easy Approach to Requirements Syntax) 방식으로 명확하고 검증 가
    - 아이디어 정리 및 의사결정 지원
 
 ## Phase 2: 실행 (Skills + Sub-agents)
-1. moai-spec-writer Skill로 SPEC 초안 생성
+1. alfred-spec-writer Skill로 SPEC 초안 생성
 2. spec-builder Agent로 복잡한 검증 (순환 의존성)
-3. moai-git-manager Skill로 브랜치/PR 생성
+3. alfred-git-manager Skill로 브랜치/PR 생성
 
 → Command는 "언제 무엇을"만 결정, 실제 작업은 Skills가 수행
 ```
@@ -545,9 +571,9 @@ EARS (Easy Approach to Requirements Syntax) 방식으로 명확하고 검증 가
 - SPEC 우선순위 자동 결정 (복잡한 알고리즘)
 
 ## What NOT to use (Skills로 이동)
-- ❌ EARS 템플릿 적용 → moai-spec-writer Skill
-- ❌ SPEC ID 중복 확인 → moai-spec-id-generator Skill
-- ❌ Git 작업 → moai-git-manager Skill
+- ❌ EARS 템플릿 적용 → alfred-spec-writer Skill
+- ❌ SPEC ID 중복 확인 → alfred-spec-id-generator Skill
+- ❌ Git 작업 → alfred-git-manager Skill
 ```
 
 #### Skills → **Domain Experts** (도메인 전문가) ⭐ 핵심
@@ -571,7 +597,7 @@ EARS (Easy Approach to Requirements Syntax) 방식으로 명확하고 검증 가
 ├──────────────────────────────────────────────────────┤
 │ /alfred:0-init     → 프로젝트 초기화                 │
 │ /alfred:1-plan     → 계획 수립 및 SPEC 작성 ⭐       │
-│ /alfred:2-build    → TDD 구현 워크플로우             │
+│ /alfred:2-run    → 계획 실행 워크플로우             │
 │ /alfred:3-sync     → 문서 동기화 워크플로우          │
 │                                                       │
 │ 변경사항: Commands는 직접 로직 수행하지 않음         │
@@ -628,7 +654,7 @@ EARS (Easy Approach to Requirements Syntax) 방식으로 명확하고 검증 가
 
 Claude의 자동 Skills 조합:
 ┌─────────────────────────────────────────┐
-│ 1️⃣ moai-spec-writer (Foundation)       │
+│ 1️⃣ alfred-spec-writer (Foundation)       │
 │    → EARS 구조, YAML Front Matter      │
 └─────────────────────────────────────────┘
               +
@@ -643,7 +669,7 @@ Claude의 자동 Skills 조합:
 └─────────────────────────────────────────┘
               ↓
 생성된 SPEC:
-- EARS 구문으로 구조화됨 (moai-spec-writer)
+- EARS 구문으로 구조화됨 (alfred-spec-writer)
 - FastAPI 라우팅 패턴 고려 (python-expert)
 - OAuth2/JWT 보안 요구사항 포함 (web-api-expert)
 - pytest 테스트 전략 명시 (python-expert)
@@ -653,13 +679,13 @@ Claude의 자동 Skills 조합:
 
 #### 1. Single Responsibility (단일 책임)
 
-❌ **안 좋은 예**: mega-moai-helper (모든 것 포함)
+❌ **안 좋은 예**: mega-alfred-helper (모든 것 포함)
 ✅ **좋은 예**: 작은 여러 Skills로 분리
 
 ```
-moai-spec-writer      # SPEC 생성만
-moai-spec-validator   # SPEC 검증만
-moai-spec-id-gen      # ID 생성만
+alfred-spec-writer      # SPEC 생성만
+alfred-spec-validator   # SPEC 검증만
+alfred-spec-id-gen      # ID 생성만
 ```
 
 #### 2. Composable by Default (기본적으로 조합 가능)
@@ -668,16 +694,16 @@ moai-spec-id-gen      # ID 생성만
 
 ```yaml
 ---
-name: moai-spec-writer
+name: alfred-spec-writer
 description: Creates EARS-based SPEC documents with YAML frontmatter
 ---
 
 # MoAI SPEC Writer
 
 ## Works well with
-- moai-spec-id-gen: Auto-generates unique SPEC IDs
+- alfred-spec-id-gen: Auto-generates unique SPEC IDs
 - python-expert: Adds Python-specific requirements
-- moai-git-manager: Auto-creates feature branch
+- alfred-git-manager: Auto-creates feature branch
 ```
 
 #### 3. Progressive Disclosure (점진적 공개)
@@ -686,7 +712,7 @@ description: Creates EARS-based SPEC documents with YAML frontmatter
 
 ```markdown
 ---
-name: moai-tdd-orchestrator
+name: alfred-tdd-orchestrator
 description: Guides RED-GREEN-REFACTOR TDD cycle with language-specific tools
 ---
 
@@ -737,7 +763,7 @@ See [patterns/property-based-testing.md](./patterns/property-based-testing.md)
 │                                          │
 │ 5️⃣ 학습 곡선 ❌                         │
 │   - 사용자가 Commands 명령어 암기 필요 │
-│   - /alfred:1-spec, /alfred:2-build 등 │
+│   - /alfred:1-spec, /alfred:2-run 등 │
 │   - 자연어 대화 불가능                  │
 └─────────────────────────────────────────┘
 ```
@@ -900,15 +926,49 @@ See [patterns/property-based-testing.md](./patterns/property-based-testing.md)
 
 ## Part 4: Skills 10개 상세 설계 (v0.4.0 범위)
 
-### 4.1 Foundation Skills (15개)
+> **📦 Alfred Skill Pack**
+>
+> - **Skill Pack 이름**: Alfred Skill Pack
+> - **제작사**: MoAI Skill Factory
+> - **버전**: v0.4.0
+> - **라이선스**: MIT
+> - **명명 규칙**: `alfred-*` (예: alfred-ears-authoring, alfred-trust-validation)
+>
+> **v0.4.0 범위**: Foundation 6개 + Developer Essentials 4개 = 총 10개
+>
+> **v0.5.0+ 확장 계획**: Language Skills 20개 + Domain Skills 10개 (Part 4.3, 4.4 참조)
 
-#### 1. moai-spec-writer
+### 4.1 Foundation Skills (6개)
 
-**목적**: EARS 기반 SPEC 문서 자동 생성
+> **⚠️ UPDATE REQUIRED**: 이 섹션은 v0.4.0 범위로 재작성이 필요합니다.
+>
+> **현재 상태**: v0.3.x 시절의 15개 Skills 나열 (line 913-1211)
+>
+> **v0.4.0 정확한 Foundation 6개**:
+> 1. **trust-validation** - TRUST 5원칙 검증
+> 2. **tag-scanning** - TAG 인벤토리 생성 (CODE-FIRST)
+> 3. **spec-metadata-validation** - SPEC 메타데이터 검증
+> 4. **ears-authoring** - EARS 요구사항 작성 가이드
+> 5. **git-workflow** - Git 작업 자동화 (브랜치/커밋/PR)
+> 6. **language-detection** - 언어/프레임워크 자동 감지
+>
+> **출처**: Section 3.4.3 "마이그레이션 전략" 참조
+>
+> **작업 계획**: Part 1-4 후속 작업으로 아래 15개 Skills를 위 6개로 재구성 및 상세 설명 추가 필요
+
+---
+
+**⚠️ 아래는 v0.3.x 시절의 구 내용입니다. v0.4.0 릴리스 전 삭제 및 재작성 필요**
+
+#### 1. alfred-ears-authoring
+
+**목적**: EARS 방식 요구사항 작성 가이드
+
+**이전 이름**: alfred-spec-writer (역할 명확화를 위해 분리)
 
 ```yaml
 ---
-name: moai-spec-writer
+name: alfred-spec-writer
 description: Creates EARS-based SPEC documents with YAML frontmatter and HISTORY section
 version: 0.1.0
 tags:
@@ -931,7 +991,7 @@ tags:
 
 **파일 구조**:
 ```
-moai-spec-writer/
+alfred-spec-writer/
 ├── SKILL.md
 ├── templates/
 │   ├── spec-template.md
@@ -940,13 +1000,13 @@ moai-spec-writer/
     └── validate-spec-id.sh
 ```
 
-#### 2. moai-spec-id-generator
+#### 2. alfred-spec-id-generator
 
 **목적**: SPEC ID 생성 및 중복 확인
 
 ```yaml
 ---
-name: moai-spec-id-generator
+name: alfred-spec-id-generator
 description: Generates unique SPEC IDs and validates against duplicates
 version: 0.1.0
 ---
@@ -958,13 +1018,13 @@ version: 0.1.0
 3. `rg "@SPEC:{ID}" -n` 중복 확인
 4. 디렉토리명 생성 (SPEC-{ID}/)
 
-#### 3. moai-spec-validator
+#### 3. alfred-spec-validator
 
 **목적**: SPEC 메타데이터 및 구조 검증
 
 ```yaml
 ---
-name: moai-spec-validator
+name: alfred-spec-validator
 description: Validates SPEC metadata, YAML frontmatter, and HISTORY section
 version: 0.1.0
 ---
@@ -976,13 +1036,13 @@ version: 0.1.0
 - EARS 구문 적용률
 - TAG 체인 무결성
 
-#### 4. moai-tdd-orchestrator
+#### 4. alfred-tdd-orchestrator
 
 **목적**: RED-GREEN-REFACTOR TDD 사이클 가이드
 
 ```yaml
 ---
-name: moai-tdd-orchestrator
+name: alfred-tdd-orchestrator
 description: Guides RED-GREEN-REFACTOR TDD cycle with real-time feedback
 version: 0.1.0
 tags:
@@ -1000,15 +1060,15 @@ tags:
 
 **Works well with**:
 - python-expert, typescript-expert (언어별 테스트)
-- moai-git-manager (커밋 자동화)
+- alfred-git-manager (커밋 자동화)
 
-#### 5. moai-tag-scanner
+#### 5. alfred-tag-scanner
 
 **목적**: @TAG 전체 스캔 및 목록 생성
 
 ```yaml
 ---
-name: moai-tag-scanner
+name: alfred-tag-scanner
 description: Scans all @TAG markers and generates TAG inventory
 version: 0.1.0
 ---
@@ -1019,13 +1079,13 @@ version: 0.1.0
 rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/
 ```
 
-#### 6. moai-tag-validator
+#### 6. alfred-tag-validator
 
 **목적**: TAG 체인 무결성 검증
 
 ```yaml
 ---
-name: moai-tag-validator
+name: alfred-tag-validator
 description: Validates TAG chain integrity and detects orphaned TAGs
 version: 0.1.0
 ---
@@ -1036,13 +1096,13 @@ version: 0.1.0
 - 고아 TAG 탐지
 - 중복 ID 확인
 
-#### 7. moai-git-manager
+#### 7. alfred-git-manager
 
 **목적**: Git 작업 자동화
 
 ```yaml
 ---
-name: moai-git-manager
+name: alfred-git-manager
 description: Automates Git operations (branch, commit, PR)
 version: 0.1.0
 ---
@@ -1053,13 +1113,13 @@ version: 0.1.0
 2. locale 기반 커밋 메시지 생성
 3. Draft PR 생성
 
-#### 8. moai-branch-creator
+#### 8. alfred-branch-creator
 
 **목적**: 브랜치 네이밍 규칙 적용
 
 ```yaml
 ---
-name: moai-branch-creator
+name: alfred-branch-creator
 description: Creates Git branches with MoAI naming conventions
 version: 0.1.0
 ---
@@ -1070,13 +1130,13 @@ version: 0.1.0
 - fix/SPEC-{ID}
 - refactor/SPEC-{ID}
 
-#### 9. moai-pr-creator
+#### 9. alfred-pr-creator
 
 **목적**: Draft PR 자동 생성
 
 ```yaml
 ---
-name: moai-pr-creator
+name: alfred-pr-creator
 description: Creates Draft PRs with SPEC-based description
 version: 0.1.0
 ---
@@ -1098,13 +1158,13 @@ version: 0.1.0
 - [ ] TAG 체인 확인
 ```
 
-#### 10. moai-doc-generator
+#### 10. alfred-doc-generator
 
 **목적**: Living Document 자동 생성
 
 ```yaml
 ---
-name: moai-doc-generator
+name: alfred-doc-generator
 description: Generates Living Documents from SPEC and CODE
 version: 0.1.0
 ---
@@ -1115,13 +1175,13 @@ version: 0.1.0
 - docs/api/README.md
 - TAG 추적성 다이어그램 (Mermaid)
 
-#### 11. moai-api-doc-gen
+#### 11. alfred-api-doc-gen
 
 **목적**: API 문서 자동 생성
 
 ```yaml
 ---
-name: moai-api-doc-gen
+name: alfred-api-doc-gen
 description: Generates API documentation from @CODE:API markers
 version: 0.1.0
 ---
@@ -1132,13 +1192,13 @@ version: 0.1.0
 - 엔드포인트 목록 생성
 - OpenAPI/Swagger 스펙 생성 (선택)
 
-#### 12. moai-readme-updater
+#### 12. alfred-readme-updater
 
 **목적**: README.md 자동 업데이트
 
 ```yaml
 ---
-name: moai-readme-updater
+name: alfred-readme-updater
 description: Updates README.md with SPEC-based feature list
 version: 0.1.0
 ---
@@ -1149,13 +1209,13 @@ version: 0.1.0
 - 개발 진행도 (완료율)
 - TAG 추적성 다이어그램
 
-#### 13. moai-project-analyzer
+#### 13. alfred-project-analyzer
 
 **목적**: 프로젝트 구조 분석
 
 ```yaml
 ---
-name: moai-project-analyzer
+name: alfred-project-analyzer
 description: Analyzes project structure and suggests optimizations
 version: 0.1.0
 ---
@@ -1166,13 +1226,13 @@ version: 0.1.0
 - 기존 SPEC 목록
 - 언어 감지
 
-#### 14. moai-lang-detector
+#### 14. alfred-lang-detector
 
 **목적**: 프로젝트 언어 자동 감지
 
 ```yaml
 ---
-name: moai-lang-detector
+name: alfred-lang-detector
 description: Detects project programming language from files
 version: 0.1.0
 ---
@@ -1184,13 +1244,13 @@ version: 0.1.0
 - go.mod → Go
 - Cargo.toml → Rust
 
-#### 15. moai-boilerplate-gen
+#### 15. alfred-boilerplate-gen
 
 **목적**: 언어별 보일러플레이트 생성
 
 ```yaml
 ---
-name: moai-boilerplate-gen
+name: alfred-boilerplate-gen
 description: Generates language-specific project boilerplate
 version: 0.1.0
 ---
@@ -1497,7 +1557,7 @@ version: 0.2.0
    → SPEC 문서 생성
 
 3. TDD 구현
-   → /alfred:2-build AUTH-001 입력
+   → /alfred:2-run AUTH-001 입력
    → tdd-implementer Sub-agent 호출
 
 4. 문서 동기화
@@ -1515,24 +1575,24 @@ version: 0.2.0
 개발자: "사용자 인증 기능 구현해줘"
 
 1. Claude가 자동으로 Skills 조합
-   ✅ moai-spec-writer (SPEC 생성)
-   ✅ moai-spec-id-gen (AUTH-001 자동 생성)
-   ✅ moai-git-manager (feature/AUTH-001 브랜치 자동 생성)
+   ✅ alfred-spec-writer (SPEC 생성)
+   ✅ alfred-spec-id-gen (AUTH-001 자동 생성)
+   ✅ alfred-git-manager (feature/AUTH-001 브랜치 자동 생성)
    → SPEC 문서 완성
 
 2. 개발자: "테스트부터 작성해줘"
-   ✅ moai-tdd-orchestrator (RED 단계 가이드)
+   ✅ alfred-tdd-orchestrator (RED 단계 가이드)
    ✅ python-expert (pytest 테스트 생성)
    → 테스트 파일 생성
 
 3. 개발자: "구현해줘"
-   ✅ moai-tdd-orchestrator (GREEN 단계)
+   ✅ alfred-tdd-orchestrator (GREEN 단계)
    ✅ python-expert (FastAPI 코드 생성)
    → 구현 완료
 
 4. 개발자: "문서 업데이트"
-   ✅ moai-doc-generator (자동 동기화)
-   ✅ moai-tag-scanner (TAG 검증)
+   ✅ alfred-doc-generator (자동 동기화)
+   ✅ alfred-tag-scanner (TAG 검증)
    → Living Document 업데이트
 
 학습 곡선: 낮음 (자연어만 사용)
@@ -1567,7 +1627,7 @@ Claude: (python-expert Skill 자동 로드)
 Claude: (web-api-expert Skill 자동 추가)
 "FastAPI 기반 REST API 프로젝트를 생성합니다.
 활성화된 Skills:
-- moai-lang-boilerplate (Python 구조)
+- alfred-lang-boilerplate (Python 구조)
 - python-expert (FastAPI best practice)
 - web-api-expert (REST API 설계)
 
@@ -1581,7 +1641,7 @@ Claude: (web-api-expert Skill 자동 추가)
 Claude: (auth-patterns Skill 자동 추가)
 "JWT 인증이 추가되었습니다.
 활성화된 Skills:
-✅ moai-lang-boilerplate
+✅ alfred-lang-boilerplate
 ✅ python-expert
 ✅ web-api-expert
 ✅ auth-patterns (JWT)
@@ -1604,7 +1664,7 @@ Claude: (auth-patterns Skill 자동 추가)
 대화형으로 새 Skill 생성
 
 ```
-개발자: "moai-spec-writer Skill 만들어줘"
+개발자: "alfred-spec-writer Skill 만들어줘"
 
 skill-creator:
 "Skill 생성을 시작합니다. 몇 가지 질문드리겠습니다.
@@ -1619,7 +1679,7 @@ Q3. 필요한 템플릿이나 스크립트가 있나요?
 A: spec-template.md, validate-spec-id.sh
 
 ✅ Skill 구조 생성 완료!
-~/.claude/skills/moai-spec-writer/
+~/.claude/skills/alfred-spec-writer/
 ├── SKILL.md
 ├── templates/
 │   └── spec-template.md
@@ -1628,18 +1688,18 @@ A: spec-template.md, validate-spec-id.sh
 "
 ```
 
-#### 2. moai-skill-tester
+#### 2. alfred-skill-tester
 
 Skills 테스트 자동화
 
 ```
-개발자: "moai-spec-writer 테스트해줘"
+개발자: "alfred-spec-writer 테스트해줘"
 
-moai-skill-tester:
+alfred-skill-tester:
 "테스트 시작...
 
 Test 1: Metadata Loading
-✅ name: moai-spec-writer
+✅ name: alfred-spec-writer
 ✅ description: Creates EARS-based SPEC documents
 
 Test 2: Trigger Detection
@@ -1652,30 +1712,30 @@ Test 3: Output Validation
 ✅ SPEC ID 중복 확인됨
 
 Test 4: Composition
-✅ moai-git-manager와 조합 가능
+✅ alfred-git-manager와 조합 가능
 ✅ python-expert와 조합 가능
 
 모든 테스트 통과! ✅
 "
 ```
 
-#### 3. moai-skills-manager
+#### 3. alfred-skills-manager
 
 모든 Skills 관리 및 모니터링
 
 ```
 개발자: "현재 활성화된 Skills 보여줘"
 
-moai-skills-manager:
+alfred-skills-manager:
 "
 📦 활성화된 Skills (5개):
 
 Foundation Skills:
-✅ moai-spec-writer (v0.2.0)
+✅ alfred-spec-writer (v0.2.0)
    - 로드됨: 2회
    - 마지막 사용: 5분 전
 
-✅ moai-tdd-orchestrator (v0.1.5)
+✅ alfred-tdd-orchestrator (v0.1.5)
    - 로드됨: 1회
    - 마지막 사용: 1시간 전
 
@@ -1694,8 +1754,8 @@ Domain Skills:
    - 마지막 사용: 20분 전
 
 💡 제안:
-- moai-doc-generator 업데이트 가능 (v0.1.0 → v0.2.0)
-- 새 Skill 추천: moai-api-doc-gen (API 문서 자동 생성)
+- alfred-doc-generator 업데이트 가능 (v0.1.0 → v0.2.0)
+- 새 Skill 추천: alfred-api-doc-gen (API 문서 자동 생성)
 "
 ```
 
@@ -1711,7 +1771,7 @@ Domain Skills:
 │ ~/.claude/skills/moai/ (자동 설치)                   │
 ├──────────────────────────────────────────────────────┤
 │ Foundation Skills (15개)                             │
-│ - moai-spec-writer, moai-tdd-orchestrator...        │
+│ - alfred-spec-writer, alfred-tdd-orchestrator...        │
 │                                                       │
 │ Language Skills (20개)                               │
 │ - python-expert, typescript-expert...               │
@@ -1722,7 +1782,7 @@ Domain Skills:
                          ↓
 ┌──────────────────────────────────────────────────────┐
 │ Community Skills (오픈소스)                          │
-│ GitHub: modu-ai/moai-skills-marketplace              │
+│ GitHub: modu-ai/alfred-skills-marketplace              │
 ├──────────────────────────────────────────────────────┤
 │ Framework Skills                                     │
 │ - django-expert, nextjs-expert, vue-expert...       │
@@ -1750,7 +1810,7 @@ Domain Skills:
 
 ```bash
 # 1. Skills 검색
-moai-adk skills search "react"
+alfred-adk skills search "react"
 
 → 출력:
 🔍 검색 결과 (3개):
@@ -1766,7 +1826,7 @@ Community Skills:
   - Download: 3,456 / Month: 456
 
 # 2. Skills 설치
-moai-adk skills install react-expert
+alfred-adk skills install react-expert
 
 → 진행 과정:
 📦 Downloading react-expert v1.2.0...
@@ -1776,14 +1836,14 @@ moai-adk skills install react-expert
 🎉 react-expert is ready!
 
 # 3. Skills 목록 조회
-moai-adk skills list
+alfred-adk skills list
 
 → 출력:
 📦 Installed Skills (23개):
 
 Foundation (6):
-  ✅ moai-spec-writer v0.2.0
-  ✅ moai-tdd-orchestrator v0.1.5
+  ✅ alfred-spec-writer v0.2.0
+  ✅ alfred-tdd-orchestrator v0.1.5
   ... (생략)
 
 Language (5):
@@ -1792,13 +1852,13 @@ Language (5):
   ... (생략)
 
 # 4. Skills 업데이트
-moai-adk skills update
+alfred-adk skills update
 
 → 출력:
 🔄 Checking for updates...
 
 Updates available (3):
-  moai-spec-writer: 0.2.0 → 0.3.0
+  alfred-spec-writer: 0.2.0 → 0.3.0
   python-expert: 1.0.0 → 1.1.0
   web-api-expert: 0.3.0 → 0.4.0
 
@@ -1815,7 +1875,7 @@ Update all? (y/n): y
 │ 🏅 Official MoAI Skill                  │
 │ - MoAI 팀이 직접 개발 및 유지보수      │
 │ - 품질 보증, 자동 업데이트              │
-│ - 예: moai-spec-writer                  │
+│ - 예: alfred-spec-writer                  │
 └─────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────┐
@@ -1884,26 +1944,26 @@ jobs:
 ```
 Week 1-2: 인프라
   ✅ Skills 디렉토리 구조 생성
-  ✅ moai-adk skills CLI 명령어
+  ✅ alfred-adk skills CLI 명령어
   ✅ 자동 설치 로직
   ✅ SessionStart Hook 업데이트
 
 Week 3-4: Foundation Skills 개발
-  ✅ moai-spec-writer
-  ✅ moai-spec-id-generator
-  ✅ moai-spec-validator
-  ✅ moai-tdd-orchestrator
-  ✅ moai-tag-scanner
-  ✅ moai-tag-validator
-  ✅ moai-git-manager
-  ✅ moai-branch-creator
-  ✅ moai-pr-creator
-  ✅ moai-doc-generator
-  ✅ moai-api-doc-gen
-  ✅ moai-readme-updater
-  ✅ moai-project-analyzer
-  ✅ moai-lang-detector
-  ✅ moai-boilerplate-gen
+  ✅ alfred-spec-writer
+  ✅ alfred-spec-id-generator
+  ✅ alfred-spec-validator
+  ✅ alfred-tdd-orchestrator
+  ✅ alfred-tag-scanner
+  ✅ alfred-tag-validator
+  ✅ alfred-git-manager
+  ✅ alfred-branch-creator
+  ✅ alfred-pr-creator
+  ✅ alfred-doc-generator
+  ✅ alfred-api-doc-gen
+  ✅ alfred-readme-updater
+  ✅ alfred-project-analyzer
+  ✅ alfred-lang-detector
+  ✅ alfred-boilerplate-gen
 
 Week 5: 테스트 및 문서화
   ✅ 통합 테스트
@@ -1912,7 +1972,7 @@ Week 5: 테스트 및 문서화
 ```
 
 **검증 기준**:
-- [ ] moai-adk skills install 정상 작동
+- [ ] alfred-adk skills install 정상 작동
 - [ ] Foundation Skills 15개 정상 동작
 - [ ] SessionStart에 Skills 활성화 메시지 표시
 - [ ] 문서 완성도 90% 이상
@@ -1964,7 +2024,7 @@ Week 1-2: Domain Skills 10개
   ✅ security-expert
 
 Week 3-4: Marketplace 구축
-  ✅ GitHub 저장소 생성 (modu-ai/moai-skills-marketplace)
+  ✅ GitHub 저장소 생성 (modu-ai/alfred-skills-marketplace)
   ✅ CI/CD 파이프라인
   ✅ 품질 인증 시스템
   ✅ 커뮤니티 기여 가이드
@@ -1994,7 +2054,7 @@ v0.4.0 (Skills 도입 + Commands 명칭 변경)
 ├── Commands (명칭 변경)
 │   ├── /alfred:0-init      (구 0-project)
 │   ├── /alfred:1-plan      (구 1-spec) ⭐
-│   ├── /alfred:2-build     (유지)
+│   ├── /alfred:2-run     (유지)
 │   └── /alfred:3-sync      (유지)
 │
 ├── Sub-agents (용어 정확화, 역할 축소)
@@ -2039,7 +2099,7 @@ v0.4.0 (Skills 도입 + Commands 명칭 변경)
 
 **최소 기능 제품 (Proof of Concept)**:
 
-1. **moai-spec-writer** (5일)
+1. **alfred-spec-writer** (5일)
    - SKILL.md 작성
    - EARS 템플릿 생성
    - SPEC ID 중복 확인 스크립트
@@ -2050,7 +2110,7 @@ v0.4.0 (Skills 도입 + Commands 명칭 변경)
    - pytest 테스트 가이드
    - mypy 타입 힌트
 
-3. **moai-git-manager** (2일)
+3. **alfred-git-manager** (2일)
    - 브랜치 생성 자동화
    - Draft PR 생성
    - Commit 메시지 자동 생성
@@ -2066,9 +2126,9 @@ v0.4.0 (Skills 도입 + Commands 명칭 변경)
 사용자: "Python FastAPI 프로젝트의 사용자 인증 SPEC 작성해줘"
 
 예상 결과:
-✅ moai-spec-writer가 SPEC 문서 생성
+✅ alfred-spec-writer가 SPEC 문서 생성
 ✅ python-expert가 FastAPI 패턴 추가
-✅ moai-git-manager가 feature/SPEC-AUTH-001 브랜치 생성
+✅ alfred-git-manager가 feature/SPEC-AUTH-001 브랜치 생성
 ✅ Draft PR 자동 생성
 ```
 
@@ -2076,7 +2136,7 @@ v0.4.0 (Skills 도입 + Commands 명칭 변경)
 
 #### Phase 1 (v0.4.0)
 - [ ] Skills 설치 성공률: 95% 이상
-- [ ] moai-spec-writer 사용 만족도: 4.5/5.0 이상
+- [ ] alfred-spec-writer 사용 만족도: 4.5/5.0 이상
 - [ ] 문서 완성도: 90% 이상
 
 #### Phase 2 (v0.5.0)
@@ -2131,7 +2191,7 @@ v0.4.0 (Skills 도입 + Commands 명칭 변경)
 
 ### 다음 단계
 
-1. **즉시 시작**: moai-spec-writer, python-expert, moai-git-manager (MVP)
+1. **즉시 시작**: alfred-spec-writer, python-expert, alfred-git-manager (MVP)
 2. **검증**: 3개 Skills 자동 조합 테스트
 3. **확장**: Foundation 15개 → Language 20개 → Domain 10개
 4. **생태계**: Marketplace 구축, 커뮤니티 참여
@@ -2140,4 +2200,4 @@ v0.4.0 (Skills 도입 + Commands 명칭 변경)
 
 **작성 완료일**: 2025-10-19
 **다음 리뷰**: Phase 1 완료 후 (예정: 2025-11-19)
-**문의**: GitHub Issues (modu-ai/moai-adk)
+**문의**: GitHub Issues (modu-ai/alfred-adk)
