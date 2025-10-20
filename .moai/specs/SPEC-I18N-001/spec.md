@@ -1,7 +1,7 @@
 ---
 id: I18N-001
-version: 0.1.0
-status: active
+version: 0.0.1
+status: draft
 created: 2025-10-20
 updated: 2025-10-20
 author: @Goos
@@ -9,39 +9,24 @@ priority: high
 category: feature
 labels:
   - i18n
-  - internationalization
+  - template
   - multilingual
-  - localization
 scope:
   packages:
-    - src/moai_adk/i18n
-    - .claude/hooks/alfred
-    - src/moai_adk/cli
-    - docs
+    - src/moai_adk/templates/
+    - src/moai_adk/core/init/
+    - src/moai_adk/core/template/
 ---
 
-# @SPEC:I18N-001: 5개 언어 다국어 지원 시스템 (i18n)
+# @SPEC:I18N-001: 다국어 템플릿 시스템 (한/영)
 
 ## HISTORY
 
-### v0.1.0 (2025-10-20)
-- **COMPLETED**: 5개 언어 다국어 지원 시스템 TDD 구현 완료
-- **AUTHOR**: @Goos
-- **TEST_COVERAGE**: test_i18n.py + integration tests (85%+)
-- **RELATED**:
-  - Hook 메시지 적용: `.claude/hooks/alfred/handlers/session.py`
-  - CLI 메시지 적용: `src/moai_adk/cli/commands/init.py`
-  - i18n 로더: `src/moai_adk/i18n.py`
-  - README 다국어: `README.{ko,ja,zh,th}.md`
-- **CHANGES**:
-  - 버전 관리 SSOT 원칙 적용 (pyproject.toml ← 단일 진실의 출처)
-  - `src/moai_adk/core/template/config.py`, `utils/banner.py` 동적 버전 로딩
-
 ### v0.0.1 (2025-10-20)
-- **INITIAL**: 5개 언어(ko, en, ja, zh, th) 다국어 지원 시스템 명세 작성
+- **INITIAL**: 2개 언어(한국어/영어) 템플릿 시스템 명세 작성
 - **AUTHOR**: @Goos
-- **REASON**: 글로벌 오픈소스 프로젝트로 확장하기 위한 다국어 지원 필요
-- **SCOPE**: Hook 메시지, CLI 출력, 문서, Git 커밋, TodoWrite 메시지
+- **REASON**: 템플릿만 다국어화하여 프로젝트 초기화 시 선택한 언어로 문서 제공
+- **SCOPE**: CLI는 영어 유지, 템플릿만 한/영 분리, README.md 한국어 메인
 
 ---
 
@@ -49,29 +34,27 @@ scope:
 
 ### 목적 (Purpose)
 
-MoAI-ADK를 **글로벌 오픈소스 프로젝트**로 확장하기 위해 5개 언어를 지원하는 다국어 시스템을 구축합니다.
+MoAI-ADK 템플릿을 한국어와 영어로 분리하여, 사용자가 프로젝트 초기화 시 원하는 언어의 템플릿을 선택할 수 있도록 합니다.
 
-**지원 언어**:
-- 🇰🇷 한국어 (ko) - 기본값
-- 🇺🇸 영어 (en) - 글로벌 표준
-- 🇯🇵 일본어 (ja) - 아시아 시장
-- 🇨🇳 중국어 간체 (zh) - 중화권 시장
-- 🇹🇭 태국어 (th) - 동남아시아 시장
+**핵심 원칙**:
+- **CLI/코드는 영어 유지**: 모든 명령어, 코드, 로그는 영어로 유지
+- **템플릿만 다국어화**: `.moai/`, `.claude/` 등 프로젝트 템플릿 파일만 다국어 제공
+- **간단한 구조**: 2개 언어만 지원 (한국어, 영어)
+- **사용자 선택**: `moai-adk init` 실행 시 언어 선택
 
 ### 범위 (Scope)
 
 **포함 사항**:
-- ✅ i18n 메시지 파일 (docs/i18n/{ko,en,ja,zh,th}.json)
-- ✅ i18n 로더 모듈 (src/moai_adk/i18n.py)
-- ✅ Hook 메시지 다국어화 (SessionStart, Checkpoint, Context)
-- ✅ CLI 출력 메시지 다국어화
-- ✅ 템플릿 문서 locale 변수 처리
-- ✅ README 다국어 분리 (README.{locale}.md)
+- ✅ 템플릿 디렉토리 분리 (`.claude/`, `.claude-en/`, `.claude-ko/`)
+- ✅ init.py 수정 (locale 선택 ko/en만)
+- ✅ processor.py 수정 (언어별 템플릿 복사)
+- ✅ README.md 구조 변경 (메인: 한국어, 영어는 README.en.md)
 
 **제외 사항**:
-- ❌ 코드 내부 변수명/함수명 (영어 고정)
-- ❌ 자동 번역 도구 (수동 번역)
-- ❌ 실시간 언어 전환 UI (향후 확장)
+- ❌ CLI 메시지 다국어화 (영어 고정)
+- ❌ 코드 주석 번역 (영어 유지)
+- ❌ 런타임 다국어 전환 (향후 확장)
+- ❌ 3개 이상 언어 지원 (v0.1.0 범위 외)
 
 ---
 
@@ -79,450 +62,329 @@ MoAI-ADK를 **글로벌 오픈소스 프로젝트**로 확장하기 위해 5개 
 
 ### Ubiquitous Requirements (기본 요구사항)
 
-1. **시스템은 5개 언어(ko, en, ja, zh, th)를 지원해야 한다**
-   - 각 언어별 메시지 파일을 제공해야 한다
-   - locale 설정에 따라 자동으로 메시지를 선택해야 한다
+1. **시스템은 2개 언어(한국어, 영어) 템플릿을 제공해야 한다**
+   - 한국어 템플릿: `.claude-ko/`
+   - 영어 템플릿: `.claude-en/`
+   - 구조는 동일하고 내용만 번역
 
-2. **시스템은 `.moai/config.json`의 `project.locale` 값을 기반으로 언어를 결정해야 한다**
-   - locale 값이 없으면 "ko"를 기본값으로 사용해야 한다
-   - 지원하지 않는 locale은 "en"으로 대체해야 한다
+2. **시스템은 CLI 명령어 및 코드를 영어로 유지해야 한다**
+   - 모든 명령어: `moai-adk init`, `moai-adk doctor` 등
+   - 모든 로그 및 에러 메시지: 영어
+   - 코드 내부 주석: 영어
 
-3. **시스템은 i18n 메시지 로더를 제공해야 한다**
-   - LRU 캐시를 사용하여 성능을 최적화해야 한다
-   - JSON 파싱 오류 시 명확한 에러 메시지를 제공해야 한다
+3. **시스템은 README.md를 한국어로 작성하고 영어는 별도 파일로 제공해야 한다**
+   - 메인: `README.md` (한국어)
+   - 영어: `README.en.md` (링크 제공)
 
 ### Event-driven Requirements (이벤트 기반)
 
-1. **WHEN SessionStart 이벤트가 발생하면, 시스템은 locale 기반 세션 시작 메시지를 표시해야 한다**
-   - "🚀 MoAI-ADK 세션 시작" (ko)
-   - "🚀 MoAI-ADK Session Started" (en)
-   - "🚀 MoAI-ADKセッション開始" (ja)
-   - "🚀 MoAI-ADK 会话开始" (zh)
-   - "🚀 MoAI-ADK เซสชันเริ่มต้น" (th)
+1. **WHEN 사용자가 `moai-adk init` 실행 시, 시스템은 언어 선택 프롬프트를 표시해야 한다**
+   - 선택지: "Korean (한국어)" / "English"
+   - 기본값: Korean (한국어)
 
-2. **WHEN Checkpoint가 생성되면, 시스템은 locale 기반 생성 메시지를 표시해야 한다**
-   - "🛡️ 체크포인트 생성: {name}" (ko)
-   - "🛡️ Checkpoint created: {name}" (en)
-   - "🛡️ チェックポイント作成: {name}" (ja)
-   - "🛡️ 检查点已创建: {name}" (zh)
-   - "🛡️ สร้างจุดตรวจสอบ: {name}" (th)
+2. **WHEN 사용자가 언어를 선택하면, 시스템은 해당 템플릿 디렉토리를 복사해야 한다**
+   - 한국어 선택: `.claude-ko/` → `.claude/`
+   - 영어 선택: `.claude-en/` → `.claude/`
 
-3. **WHEN CLI 명령어가 실행되면, 시스템은 locale 기반 출력 메시지를 표시해야 한다**
-   - 성공 메시지, 오류 메시지, 도움말 메시지 모두 locale 적용
-
-4. **WHEN TodoWrite가 호출되면, 시스템은 locale 기반 작업 설명을 제공해야 한다**
-   - `content`와 `activeForm` 모두 locale 기반 메시지 사용
+3. **WHEN 템플릿이 복사되면, 시스템은 `.moai/config.json`에 locale 값을 저장해야 한다**
+   - `{ "project": { "locale": "ko" | "en" } }`
 
 ### State-driven Requirements (상태 기반)
 
-1. **WHILE 프로젝트가 초기화되지 않았을 때, 시스템은 locale 선택 프롬프트를 표시해야 한다**
-   - `moai-adk init` 실행 시 5개 언어 중 선택 가능
-   - 선택한 locale은 `.moai/config.json`에 저장
+1. **WHILE 템플릿 복사 중일 때, 시스템은 영어 메시지만 출력해야 한다**
+   - "Copying template files..."
+   - "Template initialization complete"
 
-2. **WHILE 개발 모드일 때, 시스템은 누락된 번역 키를 경고해야 한다**
-   - 디버그 로그에 "Missing translation: {key}" 출력
-   - 누락된 키는 영어 메시지로 대체
-
-### Optional Features (선택적 기능)
-
-1. **WHERE 커뮤니티 기여가 있으면, 시스템은 추가 언어를 쉽게 확장할 수 있어야 한다**
-   - 새 언어 추가는 JSON 파일 하나만 추가하면 됨
-   - 번역 가이드 문서 제공 (CONTRIBUTING.md)
-
-2. **WHERE 사용자가 요청하면, 시스템은 실시간으로 locale을 변경할 수 있어야 한다**
-   - `moai-adk config set locale en` 명령어
-   - 다음 세션부터 적용
+2. **WHILE CLI가 실행 중일 때, 시스템은 항상 영어 메시지를 사용해야 한다**
+   - 로그, 에러, 경고 모두 영어
 
 ### Constraints (제약사항)
 
-1. **IF locale이 지원되지 않으면, 시스템은 영어(en)로 대체해야 한다**
-   - 대체 시 경고 메시지 표시: "Locale 'xx' not supported, falling back to English"
+1. **IF 지원되지 않는 locale이 제공되면, 시스템은 영어(en)로 대체해야 한다**
+   - 예: `locale: "ja"` → 영어로 대체 + 경고 메시지
 
-2. **메시지 파일 크기는 50KB를 초과하지 않아야 한다**
-   - 너무 긴 메시지는 별도 문서로 분리
+2. **템플릿 구조는 동일해야 한다**
+   - `.claude-ko/`와 `.claude-en/`는 파일 이름, 디렉토리 구조가 동일
+   - 내용만 번역
 
-3. **i18n 로더는 100ms 이내에 메시지를 로드해야 한다**
-   - LRU 캐시 활용으로 성능 보장
+3. **CLI 명령어는 변경하지 않아야 한다**
+   - `moai-adk init`, `moai-adk doctor` 등 모두 영어 유지
 
 ---
 
 ## 3. 아키텍처 (Architecture)
 
-### 언어 계층 구조 (Language Layers)
+### 템플릿 디렉토리 구조
 
 ```
-┌─────────────────────────────────────────┐
-│ Layer 1: Code (영어 고정)               │
-│  - 변수명, 함수명, 클래스명             │
-│  - Docstring: 영어 + 한국어 병기         │
-└─────────────────────────────────────────┘
-         ↓
-┌─────────────────────────────────────────┐
-│ Layer 2: Documentation (다국어)         │
-│  - README.{locale}.md                    │
-│  - CLAUDE.{locale}.md (템플릿)          │
-└─────────────────────────────────────────┘
-         ↓
-┌─────────────────────────────────────────┐
-│ Layer 3: User-Facing (locale 기반)     │
-│  - Hook 메시지 (SessionStart, etc)      │
-│  - CLI 출력 메시지                       │
-│  - Git 커밋 메시지                       │
-│  - TodoWrite 메시지                      │
-└─────────────────────────────────────────┘
+src/moai_adk/templates/
+├── .claude/              # ❌ 제거: 기존 통합 템플릿
+├── .claude-en/           # ✅ 신규: 영어 템플릿
+│   ├── commands/
+│   │   ├── 1-spec.md
+│   │   ├── 2-build.md
+│   │   └── 3-sync.md
+│   ├── agents/
+│   │   ├── spec-builder.md
+│   │   ├── code-builder.md
+│   │   └── doc-syncer.md
+│   └── README.md         # English agent docs
+│
+├── .claude-ko/           # ✅ 신규: 한국어 템플릿 (기존 .claude/ 이동)
+│   ├── commands/
+│   │   ├── 1-spec.md
+│   │   ├── 2-build.md
+│   │   └── 3-sync.md
+│   ├── agents/
+│   │   ├── spec-builder.md
+│   │   ├── code-builder.md
+│   │   └── doc-syncer.md
+│   └── README.md         # 한국어 에이전트 문서
+│
+└── .moai/
+    ├── config.json       # locale: "ko" | "en" 추가
+    ├── project/
+    │   ├── product.md    # 템플릿 (변수 치환)
+    │   ├── structure.md
+    │   └── tech.md
+    └── memory/
+        ├── development-guide.md
+        └── spec-metadata.md
 ```
 
-### 파일 구조 (File Structure)
+### 워크플로우
 
 ```
-MoAI-ADK/
-├── docs/
-│   ├── i18n/
-│   │   ├── en.json          # 영어 메시지
-│   │   ├── ko.json          # 한국어 메시지
-│   │   ├── ja.json          # 일본어 메시지
-│   │   ├── zh.json          # 중국어 메시지
-│   │   └── th.json          # 태국어 메시지
-│   │
-│   ├── README.md            # 영어 (기본)
-│   ├── README.ko.md         # 한국어
-│   ├── README.ja.md         # 일본어
-│   ├── README.zh.md         # 중국어
-│   └── README.th.md         # 태국어
-│
-├── src/
-│   └── moai_adk/
-│       ├── i18n.py          # i18n 로더 모듈 (NEW)
-│       └── cli/
-│           └── main.py      # CLI 메시지 i18n 적용
-│
-├── .claude/
-│   └── hooks/
-│       └── alfred/
-│           ├── handlers/
-│           │   ├── session.py      # SessionStart i18n
-│           │   ├── checkpoint.py   # Checkpoint i18n
-│           │   └── context.py      # Context i18n
-│           └── core/
-│               └── project.py      # locale 읽기 유틸
-│
-└── src/moai_adk/templates/
-    ├── CLAUDE.md            # locale 변수 템플릿
-    └── .moai/
-        ├── config.json      # project.locale 필드
-        └── memory/
-            └── development-guide.md  # locale 변수 템플릿
+사용자: moai-adk init
+    ↓
+CLI: "Select language: [Korean (한국어) / English]"
+    ↓
+사용자 선택: "Korean (한국어)"
+    ↓
+TemplateProcessor:
+    1. 선택: .claude-ko/
+    2. 복사: .claude-ko/ → .claude/
+    3. 저장: .moai/config.json { locale: "ko" }
+    ↓
+CLI: "✅ Project initialized with Korean template"
 ```
 
 ---
 
-## 4. 인터페이스 설계 (Interface Design)
+## 4. 구현 계획 (Implementation Plan)
 
-### 4.1 i18n 로더 API
+### Phase 1: 템플릿 분리
 
-```python
-# src/moai_adk/i18n.py
+**작업 항목**:
+1. 기존 `.claude/` → `.claude-ko/`로 이동
+2. `.claude-en/` 생성 및 영어 번역
+3. 템플릿 구조 동일성 검증
 
-from functools import lru_cache
-from pathlib import Path
-import json
+**검증 기준**:
+- 디렉토리 구조 일치 확인
+- 파일 개수 일치 확인
+- 필수 파일 존재 확인
 
-@lru_cache(maxsize=5)
-def load_messages(locale: str = "ko") -> dict:
-    """
-    Load i18n messages for the specified locale.
+### Phase 2: init.py 수정
 
-    지정된 locale의 i18n 메시지를 로드합니다.
+**작업 항목**:
+1. locale 선택 프롬프트 추가 (ko/en만)
+2. 선택된 locale 저장 로직 추가
+3. 기본값: "ko"
 
-    Args:
-        locale: Language code (ko, en, ja, zh, th)
+**변경 파일**:
+- `src/moai_adk/core/init/commands.py`
 
-    Returns:
-        Dictionary of translated messages
+**검증 기준**:
+- 언어 선택 프롬프트 표시 확인
+- 선택 후 `.moai/config.json` 저장 확인
 
-    Raises:
-        FileNotFoundError: If message file not found
-        json.JSONDecodeError: If JSON parsing fails
+### Phase 3: processor.py 수정
 
-    Example:
-        >>> messages = load_messages("en")
-        >>> messages["session_start"]
-        "🚀 MoAI-ADK Session Started"
-    """
-    # Supported locales
-    supported = ["ko", "en", "ja", "zh", "th"]
-    if locale not in supported:
-        locale = "en"  # Fallback to English
+**작업 항목**:
+1. locale 기반 템플릿 경로 선택 로직 추가
+2. `.claude-{locale}/` → `.claude/` 복사
+3. 에러 처리 (템플릿 누락 시)
 
-    # Load message file
-    i18n_dir = Path(__file__).parent.parent / "docs" / "i18n"
-    message_file = i18n_dir / f"{locale}.json"
+**변경 파일**:
+- `src/moai_adk/core/template/processor.py`
 
-    if not message_file.exists():
-        raise FileNotFoundError(f"Message file not found: {message_file}")
+**검증 기준**:
+- 한국어 선택 시 `.claude-ko/` 복사 확인
+- 영어 선택 시 `.claude-en/` 복사 확인
+- 템플릿 누락 시 명확한 에러 메시지 확인
 
-    return json.loads(message_file.read_text(encoding="utf-8"))
+### Phase 4: README.md 구조 변경
 
-def t(key: str, locale: str = "ko", **kwargs) -> str:
-    """
-    Translate a message key.
+**작업 항목**:
+1. 기존 `README.md` → 한국어로 작성
+2. 영어 번역 → `README.en.md`
+3. 메인 README에 영어 링크 추가
 
-    메시지 키를 번역합니다.
+**검증 기준**:
+- README.md 한국어 완성도 확인
+- README.en.md 영어 완성도 확인
+- 링크 유효성 확인
 
-    Args:
-        key: Message key (e.g., "session_start")
-        locale: Language code
-        **kwargs: Format variables for message interpolation
+---
 
-    Returns:
-        Translated and formatted message
+## 5. 인터페이스 설계 (Interface Design)
 
-    Example:
-        >>> t("session_start", "en")
-        "🚀 MoAI-ADK Session Started"
+### 5.1 CLI 언어 선택 프롬프트
 
-        >>> t("checkpoint_created", "ko", name="before-merge")
-        "🛡️ 체크포인트 생성: before-merge"
-    """
-    messages = load_messages(locale)
-    message = messages.get(key, key)  # Fallback to key itself
+```bash
+$ moai-adk init
 
-    # Format with variables
-    if kwargs:
-        return message.format(**kwargs)
-    return message
+? Select your preferred language for project templates:
+  > Korean (한국어)
+    English
 
-def get_supported_locales() -> list[str]:
-    """
-    Get list of supported locales.
-
-    지원되는 locale 목록을 반환합니다.
-
-    Returns:
-        List of locale codes
-
-    Example:
-        >>> get_supported_locales()
-        ['ko', 'en', 'ja', 'zh', 'th']
-    """
-    return ["ko", "en", "ja", "zh", "th"]
+# 선택 후
+✅ Project initialized with Korean template
+✅ Template files copied to .claude/
 ```
 
-### 4.2 메시지 파일 스키마
+### 5.2 config.json 스키마
 
 ```json
-// docs/i18n/en.json (Example)
 {
-  // Session messages
-  "session_start": "🚀 MoAI-ADK Session Started",
-  "language": "Language",
-  "branch": "Branch",
-  "changes": "Changes",
-  "spec_progress": "SPEC Progress",
-  "checkpoints": "Checkpoints",
-  "restore_hint": "Restore: /alfred:0-project restore",
-
-  // Checkpoint messages
-  "checkpoint_created": "🛡️ Checkpoint created: {name}",
-  "checkpoint_operation": "Operation",
-  "checkpoint_list": "Available checkpoints",
-
-  // Context messages
-  "context_loaded": "📎 Loaded {count} context file(s)",
-  "context_recommendation": "💡 Recommended documents",
-
-  // Todo messages
-  "todo": {
-    "analyzing_docs": "Analyzing project documents",
-    "proposing_specs": "Proposing SPEC candidates",
-    "writing_spec": "Writing SPEC document",
-    "creating_branch": "Creating Git branch",
-    "creating_pr": "Creating Draft PR",
-    "running_tests": "Running tests",
-    "implementing_code": "Implementing code",
-    "syncing_docs": "Syncing documentation"
-  },
-
-  // Error messages
-  "error": {
-    "no_git": "❌ Not a Git repository",
-    "no_config": "❌ .moai/config.json not found",
-    "permission_denied": "❌ Permission denied: {path}",
-    "locale_not_supported": "⚠️ Locale '{locale}' not supported, falling back to English",
-    "missing_translation": "⚠️ Missing translation: {key}"
-  },
-
-  // CLI messages
-  "cli": {
-    "init_start": "Initializing MoAI-ADK project...",
-    "init_success": "✅ Project '{name}' initialized successfully",
-    "init_select_locale": "Select your preferred language:",
-    "doctor_checking": "Checking system requirements...",
-    "doctor_passed": "✅ All checks passed",
-    "status_summary": "Project Status Summary"
+  "project": {
+    "name": "my-project",
+    "description": "Project description",
+    "version": "0.1.0",
+    "mode": "personal",
+    "locale": "ko"  // ← NEW: "ko" | "en"
   }
 }
 ```
 
----
+### 5.3 TemplateProcessor API 변경
 
-## 5. 구현 계획 (Implementation Plan)
+```python
+# src/moai_adk/core/template/processor.py
 
-### Phase 1: 기반 구축 (Foundation)
+class TemplateProcessor:
+    def copy_claude_template(self, locale: str = "ko") -> None:
+        """
+        Copy Claude Code template based on locale.
 
-**작업 항목**:
-1. ✅ i18n 메시지 파일 생성 (docs/i18n/{ko,en,ja,zh,th}.json)
-2. ✅ i18n 로더 모듈 구현 (src/moai_adk/i18n.py)
-3. ✅ 단위 테스트 작성 (tests/test_i18n.py)
+        Args:
+            locale: Language code ("ko" or "en")
 
-**검증 기준**:
-- 모든 locale에서 메시지 로드 성공
-- LRU 캐시 동작 확인
-- Fallback 로직 검증 (지원되지 않는 locale → en)
+        Raises:
+            FileNotFoundError: If template directory not found
+        """
+        # Select template directory
+        if locale not in ["ko", "en"]:
+            logger.warning(f"Unsupported locale '{locale}', falling back to 'en'")
+            locale = "en"
 
-### Phase 2: Hook 메시지 적용 (Hook Integration)
+        template_dir = self.template_root / f".claude-{locale}"
+        if not template_dir.exists():
+            raise FileNotFoundError(f"Template directory not found: {template_dir}")
 
-**작업 항목**:
-1. ✅ SessionStart 핸들러 i18n 적용 (.claude/hooks/alfred/handlers/session.py)
-2. ✅ Checkpoint 핸들러 i18n 적용 (.claude/hooks/alfred/handlers/checkpoint.py)
-3. ✅ Context 핸들러 i18n 적용 (.claude/hooks/alfred/handlers/context.py)
-
-**검증 기준**:
-- 각 locale에서 Hook 메시지 정상 출력
-- locale 변경 후 메시지 변경 확인
-
-### Phase 3: CLI 메시지 적용 (CLI Integration)
-
-**작업 항목**:
-1. ✅ `moai-adk init` 명령어 i18n 적용
-2. ✅ `moai-adk doctor` 명령어 i18n 적용
-3. ✅ `moai-adk status` 명령어 i18n 적용
-
-**검증 기준**:
-- CLI 출력 메시지 locale 적용 확인
-- 에러 메시지 locale 적용 확인
-
-### Phase 4: 문서 다국어화 (Documentation)
-
-**작업 항목**:
-1. ✅ README.md (영어) 작성
-2. ✅ README.{ko,ja,zh,th}.md 작성
-3. ✅ 템플릿 CLAUDE.md locale 변수 처리
-4. ✅ development-guide.md locale 변수 처리
-
-**검증 기준**:
-- 각 언어별 README 품질 확인
-- 링크 유효성 검증
-- 템플릿 변수 치환 확인
-
-### Phase 5: 통합 테스트 (Integration Test)
-
-**작업 항목**:
-1. ✅ 전체 워크플로우 테스트 (각 locale별)
-2. ✅ locale 전환 테스트
-3. ✅ 에러 처리 테스트
+        # Copy to .claude/
+        dest_dir = self.project_root / ".claude"
+        shutil.copytree(template_dir, dest_dir, dirs_exist_ok=True)
+        logger.info(f"✅ Template copied: .claude-{locale}/ → .claude/")
+```
 
 ---
 
 ## 6. 테스트 전략 (Test Strategy)
 
-### 6.1 단위 테스트 (Unit Tests)
+### 6.1 단위 테스트
 
 ```python
-# tests/test_i18n.py
+# tests/test_i18n_template.py
 
 # @TEST:I18N-001 | SPEC: SPEC-I18N-001.md
 
 import pytest
-from moai_adk.i18n import load_messages, t, get_supported_locales
+from moai_adk.core.template.processor import TemplateProcessor
 
-def test_load_messages_ko():
-    """한국어 메시지 로드 테스트"""
-    messages = load_messages("ko")
-    assert messages["session_start"] == "🚀 MoAI-ADK 세션 시작"
+def test_copy_claude_template_korean(tmp_path):
+    """한국어 템플릿 복사 테스트"""
+    processor = TemplateProcessor(tmp_path)
+    processor.copy_claude_template("ko")
 
-def test_load_messages_en():
-    """영어 메시지 로드 테스트"""
-    messages = load_messages("en")
-    assert messages["session_start"] == "🚀 MoAI-ADK Session Started"
+    # 검증
+    claude_dir = tmp_path / ".claude"
+    assert claude_dir.exists()
+    assert (claude_dir / "commands" / "1-spec.md").exists()
 
-def test_load_messages_unsupported_locale():
+def test_copy_claude_template_english(tmp_path):
+    """영어 템플릿 복사 테스트"""
+    processor = TemplateProcessor(tmp_path)
+    processor.copy_claude_template("en")
+
+    # 검증
+    claude_dir = tmp_path / ".claude"
+    assert claude_dir.exists()
+    assert (claude_dir / "commands" / "1-spec.md").exists()
+
+def test_copy_claude_template_fallback_to_english(tmp_path):
     """지원되지 않는 locale은 영어로 대체"""
-    messages = load_messages("fr")  # 프랑스어 (미지원)
-    assert messages["session_start"] == "🚀 MoAI-ADK Session Started"
+    processor = TemplateProcessor(tmp_path)
+    processor.copy_claude_template("ja")  # 일본어 (미지원)
 
-def test_translate_with_format():
-    """변수 포함 번역 테스트"""
-    result = t("checkpoint_created", "ko", name="before-merge")
-    assert "before-merge" in result
-    assert "체크포인트" in result
-
-def test_get_supported_locales():
-    """지원 언어 목록 테스트"""
-    locales = get_supported_locales()
-    assert locales == ["ko", "en", "ja", "zh", "th"]
+    # 검증: 영어 템플릿 복사됨
+    claude_dir = tmp_path / ".claude"
+    assert claude_dir.exists()
 ```
 
-### 6.2 통합 테스트 (Integration Tests)
+### 6.2 통합 테스트
 
 ```python
-# tests/integration/test_i18n_hooks.py
+# tests/integration/test_init_i18n.py
 
 # @TEST:I18N-001 | SPEC: SPEC-I18N-001.md
 
-def test_session_start_hook_ko(tmp_path):
-    """SessionStart Hook 한국어 메시지 테스트"""
-    # Setup
-    create_test_project(tmp_path, locale="ko")
+def test_init_with_korean_locale(cli_runner, tmp_path):
+    """moai-adk init 한국어 선택 통합 테스트"""
+    result = cli_runner.invoke(["init", "--locale", "ko"], cwd=str(tmp_path))
 
-    # Execute
-    result = run_hook("SessionStart", cwd=str(tmp_path))
+    # 검증
+    assert result.exit_code == 0
+    assert "Korean template" in result.output
 
-    # Verify
-    assert "세션 시작" in result.systemMessage
-    assert "개발 언어" in result.systemMessage
+    config = (tmp_path / ".moai" / "config.json").read_text()
+    assert '"locale": "ko"' in config
 
-def test_session_start_hook_en(tmp_path):
-    """SessionStart Hook 영어 메시지 테스트"""
-    create_test_project(tmp_path, locale="en")
-    result = run_hook("SessionStart", cwd=str(tmp_path))
-    assert "Session Started" in result.systemMessage
-    assert "Language" in result.systemMessage
+def test_init_with_english_locale(cli_runner, tmp_path):
+    """moai-adk init 영어 선택 통합 테스트"""
+    result = cli_runner.invoke(["init", "--locale", "en"], cwd=str(tmp_path))
+
+    # 검증
+    assert result.exit_code == 0
+    assert "English template" in result.output
+
+    config = (tmp_path / ".moai" / "config.json").read_text()
+    assert '"locale": "en"' in config
 ```
 
 ---
 
-## 7. 문서화 (Documentation)
+## 7. 마이그레이션 계획 (Migration Plan)
 
-### 7.1 사용자 가이드
+### 기존 코드 영향 (Impact)
 
-**위치**: `docs/guides/i18n-guide.md`
+**변경 필요**:
+- ✅ `src/moai_adk/core/init/commands.py` (locale 선택 프롬프트)
+- ✅ `src/moai_adk/core/template/processor.py` (템플릿 경로 로직)
+- ✅ `src/moai_adk/templates/.claude/` → `src/moai_adk/templates/.claude-ko/`
 
-**내용**:
-- 언어 변경 방법
-- 지원 언어 목록
-- 번역 기여 방법
-- 문제 해결 (Troubleshooting)
+**변경 불필요**:
+- ✅ CLI 명령어 (영어 유지)
+- ✅ 핵심 비즈니스 로직
+- ✅ 테스트 프레임워크
 
-### 7.2 개발자 가이드
+### 마이그레이션 단계
 
-**위치**: `docs/guides/i18n-development.md`
-
-**내용**:
-- i18n 로더 API 사용법
-- 새 메시지 추가 방법
-- 새 언어 추가 방법
-- 테스트 방법
-
-### 7.3 번역 기여 가이드
-
-**위치**: `CONTRIBUTING.md` (i18n 섹션)
-
-**내용**:
-- 번역 표준 및 규칙
-- Pull Request 프로세스
-- 번역 검토 기준
-- 번역 품질 보증
+1. **Phase 1**: 템플릿 분리 (기존 사용자 영향 없음)
+2. **Phase 2**: init.py 수정 (새 프로젝트만 영향)
+3. **Phase 3**: processor.py 수정 (새 프로젝트만 영향)
+4. **Phase 4**: README.md 구조 변경 (문서만)
 
 ---
 
@@ -530,95 +392,58 @@ def test_session_start_hook_en(tmp_path):
 
 ### 의존성 (Dependencies)
 
-- **Python 표준 라이브러리**: json, pathlib, functools
-- **외부 의존성**: 없음 (pure Python)
+- **Python 표준 라이브러리**: shutil, pathlib
+- **외부 의존성**: 없음
 
 ### 제약사항 (Constraints)
 
-- **성능**: 메시지 로드 ≤100ms (LRU 캐시로 보장)
-- **메모리**: 메시지 파일 캐시 ≤500KB (5개 locale)
-- **파일 크기**: 각 메시지 파일 ≤50KB
+- **지원 언어**: 한국어(ko), 영어(en) 2개만
+- **CLI 언어**: 영어 고정
+- **템플릿 구조**: 양쪽 동일 유지
 - **호환성**: Python 3.10 이상
 
 ---
 
-## 9. 보안 고려사항 (Security Considerations)
-
-### 입력 검증 (Input Validation)
-
-- locale 값은 화이트리스트 검증 (ko, en, ja, zh, th만 허용)
-- JSON 파싱 오류 시 안전한 fallback
-
-### 파일 접근 제어 (File Access Control)
-
-- 메시지 파일은 읽기 전용으로 접근
-- 사용자 입력으로 파일 경로 조작 불가
-
----
-
-## 10. 마이그레이션 계획 (Migration Plan)
-
-### 기존 코드 영향 (Impact)
-
-**변경 필요**:
-- ✅ Hook 핸들러 (session.py, checkpoint.py, context.py)
-- ✅ CLI 명령어 (main.py)
-
-**변경 불필요**:
-- ✅ 핵심 비즈니스 로직 (installer, template processor 등)
-- ✅ 테스트 코드 (새 테스트만 추가)
-
-### 마이그레이션 단계
-
-1. **Phase 1**: i18n 시스템 구축 (영향 없음)
-2. **Phase 2**: Hook 메시지 전환 (점진적 적용)
-3. **Phase 3**: CLI 메시지 전환 (점진적 적용)
-4. **Phase 4**: 문서 분리 (새 파일 생성)
-
----
-
-## 11. 성공 지표 (Success Criteria)
+## 9. 성공 지표 (Success Criteria)
 
 ### 필수 조건 (Must Have)
 
-- ✅ 5개 언어 메시지 파일 완성도 100%
-- ✅ 모든 Hook 메시지 i18n 적용
-- ✅ 모든 CLI 메시지 i18n 적용
-- ✅ README 5개 언어 버전 완성
-- ✅ 단위 테스트 커버리지 ≥85%
+- ✅ 2개 언어 템플릿 완성 (구조 동일)
+- ✅ init 실행 시 언어 선택 프롬프트 표시
+- ✅ 선택한 언어 템플릿 정상 복사
+- ✅ CLI 메시지 영어 유지
+- ✅ README.md 한국어 메인, 영어 링크 제공
 
 ### 측정 지표 (Metrics)
 
-- **번역 커버리지**: 메시지 키 100% 번역 (5개 언어)
-- **성능**: 메시지 로드 시간 ≤100ms
-- **사용자 만족도**: GitHub Discussions 피드백 긍정적 평가 ≥80%
+- **번역 커버리지**: 템플릿 파일 100% 번역
+- **CLI 영어 유지**: 모든 명령어 및 로그 영어
+- **사용자 만족도**: GitHub Issues 피드백 긍정적 평가
 
 ---
 
-## 12. 향후 확장 (Future Enhancements)
+## 10. 향후 확장 (Future Enhancements)
 
 ### v0.1.0 (현재 SPEC)
-- ✅ 5개 언어 지원 (ko, en, ja, zh, th)
-- ✅ 정적 메시지 파일
+- ✅ 2개 언어 지원 (ko, en)
+- ✅ 템플릿만 다국어화
 
 ### v0.2.0 (향후 계획)
-- 🔮 동적 언어 전환 API
-- 🔮 번역 자동화 도구 (AI 기반)
-- 🔮 웹 기반 번역 관리 도구
+- 🔮 3개 이상 언어 추가 (ja, zh 등)
+- 🔮 CLI 메시지 다국어화
+- 🔮 런타임 locale 전환 API
 
 ### v1.0.0 (장기 비전)
-- 🔮 10개 이상 언어 지원
 - 🔮 커뮤니티 번역 플랫폼
-- 🔮 실시간 번역 품질 검증
+- 🔮 자동 번역 도구 (AI 기반)
 
 ---
 
 ## 참고 문서 (References)
 
-- [Anthropic Claude Code Documentation](https://docs.claude.com/)
-- [i18n Best Practices](https://www.w3.org/International/questions/qa-i18n)
-- [Python gettext Documentation](https://docs.python.org/3/library/gettext.html)
-- [JSON Schema for i18n](https://json-schema.org/)
+- [MoAI-ADK 프로젝트 구조](../../README.md)
+- [TemplateProcessor API](../../src/moai_adk/core/template/processor.py)
+- [init 명령어 구현](../../src/moai_adk/core/init/commands.py)
 
 ---
 
