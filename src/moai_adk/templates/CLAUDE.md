@@ -64,7 +64,7 @@ Alfred는 18명의 전문 에이전트를 조율합니다. 각 에이전트는 I
 | **backup-merger** 📦        | Sonnet | 데이터 엔지니어       | 백업 파일 스마트 병합          | `@agent-backup-merger`         | 재초기화 후 병합    |
 | **project-interviewer** 💬  | Sonnet | 비즈니스 분석가       | 요구사항 수집                  | `@agent-project-interviewer`   | 프로젝트 인터뷰     |
 | **document-generator** 📝   | Haiku  | 테크니컬 라이터       | 문서 자동 생성                 | `@agent-document-generator`    | 문서 작성 시        |
-| **feature-selector** 🎯     | Haiku  | 아키텍트              | 49개 스킬 중 3~9개 선택        | `@agent-feature-selector`      | 경량화 필요 시      |
+| **feature-selector** 🎯     | Haiku  | 아키텍트              | 46개 스킬 중 3~9개 선택        | `@agent-feature-selector`      | 경량화 필요 시      |
 | **template-optimizer** ⚙️   | Haiku  | 데브옵스 엔지니어     | 템플릿 최적화, 파일 정리       | `@agent-template-optimizer`    | 템플릿 정리 시      |
 
 ### Built-in 에이전트 (Claude Code 제공)
@@ -301,7 +301,7 @@ message = MESSAGES["session_start"][locale]
 **AskUserQuestion 사용 시나리오**:
 - ✅ **프로젝트 초기화**: 언어, 프레임워크, 모드, locale 선택
 - ✅ **설정 변경**: 여러 옵션 동시 수정
-- ✅ **기능 선택**: 49개 스킬 중 3~9개 선택
+- ✅ **기능 선택**: 46개 스킬 중 3~9개 선택
 - ✅ **구현 방법**: 여러 기술 스택 중 선택
 - ❌ **단일 질문**: 일반 텍스트 질문 사용
 
@@ -353,9 +353,9 @@ AskUserQuestion({
             "header": "스킬 선택",
             "multiSelect": true,  # 다중 선택
             "options": [
-                {"label": "언어별 스킬", "description": "Python, TypeScript, Java 등 (28개)"},
+                {"label": "언어별 스킬", "description": "Python, TypeScript, Java 등 (23개)"},
                 {"label": "도메인 스킬", "description": "Backend, Frontend, Mobile 등 (10개)"},
-                {"label": "Alfred 스킬", "description": "Git, Debug, Refactor 등 (11개)"}
+                {"label": "Alfred 스킬", "description": "Foundation, Essentials, Alfred 등 (13개)"}
             ]
         }
     ]
@@ -814,7 +814,7 @@ def handle_pre_tool_use(payload):
 - **SPEC-First**: 명세 없이는 코드 없음
 - **TDD-First**: 테스트 없이는 구현 없음
 - **GitFlow 지원**: Git 작업 자동화, Living Document 동기화, @TAG 추적성
-- **다중 언어 지원**: Python, TypeScript, Java, Go, Rust, Ruby, Dart, Swift, Kotlin 등 20개 주요 언어
+- **다중 언어 지원**: Python, TypeScript, Java, Go, Rust, Ruby, Dart, Swift, Kotlin 등 23개 주요 언어
 - **모바일 지원**: Flutter, React Native, iOS (Swift), Android (Kotlin)
 - **CODE-FIRST @TAG**: 코드 직접 스캔 방식 (중간 캐시 없음)
 
