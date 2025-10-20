@@ -228,7 +228,7 @@ class TemplateProcessor:
                 dst_item.mkdir(parents=True, exist_ok=True)
 
     def _copy_claude(self, silent: bool = False) -> None:
-        """.claude/ directory copy with variable substitution (selective with alfred folder overwrite).
+        """.claude/ directory copy with variable substitution (wholesale overwrite for template folders).
 
         @CODE:INIT-004:ALFRED-001 | Copy all 4 Alfred command files from templates
         @REQ:COMMAND-GENERATION-001 | SPEC-INIT-004: Automatic generation of Alfred command files
@@ -237,8 +237,11 @@ class TemplateProcessor:
         Strategy:
         - Alfred folders (commands/agents/hooks/output-styles/alfred) → copy wholesale (delete & overwrite)
           * Creates individual backup before deletion for safety
-          * Commands: 0-project.md, 1-spec.md, 2-build.md, 3-sync.md
-        - Other files/folders → copy individually (preserve existing)
+          * Commands: 0-project.md, 1-plan.md, 2-run.md, 3-sync.md
+        - Skills folders → each skill folder is individually overwritten (delete & overwrite)
+          * Each of 49 skill folders is completely replaced
+          * Top-level files (README.md, SKILL.md, examples.md) are copied with variable substitution
+        - Other files/folders → copy individually (smart merge for settings.json)
         """
         src = self.template_root / ".claude"
         dst = self.target_path / ".claude"
@@ -253,10 +256,10 @@ class TemplateProcessor:
 
         # @CODE:INIT-004:ALFRED-002 | Alfred command files must always be overwritten
         # @CODE:INIT-004:ALFRED-COPY | Copy all 4 Alfred command files from templates
-        # Alfred folders to copy wholesale (overwrite)
+        # Alfred folders to copy wholesale (delete & overwrite)
         alfred_folders = [
             "hooks/alfred",
-            "commands/alfred",  # Contains 0-project.md, 1-spec.md, 2-build.md, 3-sync.md
+            "commands/alfred",  # Contains 0-project.md, 1-plan.md, 2-run.md, 3-sync.md
             "output-styles/alfred",
             "agents/alfred",
         ]
@@ -277,14 +280,42 @@ class TemplateProcessor:
                 if not silent:
                     console.print(f"   ✅ .claude/{folder}/ overwritten")
 
-        # 2. Copy other files/folders individually (smart merge for settings.json)
+        # 2. Copy skills folders individually (each skill folder is completely overwritten)
+        skills_src = src / "skills"
+        skills_dst = dst / "skills"
+        if skills_src.exists():
+            skills_dst.mkdir(parents=True, exist_ok=True)
+
+            # Copy each skill folder completely (delete & overwrite)
+            for skill_folder in skills_src.iterdir():
+                if skill_folder.is_dir() and not skill_folder.name.startswith('.'):
+                    dst_skill = skills_dst / skill_folder.name
+
+                    # Remove existing skill folder
+                    if dst_skill.exists():
+                        shutil.rmtree(dst_skill)
+
+                    # Copy skill folder from template
+                    shutil.copytree(skill_folder, dst_skill)
+
+            # Copy top-level files in skills/ with variable substitution
+            for item in skills_src.iterdir():
+                if item.is_file():
+                    dst_item = skills_dst / item.name
+                    self._copy_file_with_substitution(item, dst_item)
+
+            if not silent:
+                skill_count = len([f for f in skills_src.iterdir() if f.is_dir()])
+                console.print(f"   ✅ .claude/skills/ ({skill_count} skills overwritten)")
+
+        # 3. Copy other files/folders individually (smart merge for settings.json)
         all_warnings = []
         for item in src.iterdir():
             rel_path = item.relative_to(src)
             dst_item = dst / rel_path
 
-            # Skip Alfred parent folders (already handled above)
-            if item.is_dir() and item.name in ["hooks", "commands", "output-styles", "agents"]:
+            # Skip folders already handled above (wholesale copy)
+            if item.is_dir() and item.name in ["hooks", "commands", "output-styles", "agents", "skills"]:
                 continue
 
             if item.is_file():
