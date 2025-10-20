@@ -276,9 +276,54 @@ def get_project_language(cwd: str) -> str:
     return detect_language(cwd)
 
 
+def get_project_locale(cwd: str) -> str:
+    """Get project locale from .moai/config.json.
+
+    프로젝트의 locale 설정을 읽어옵니다.
+    i18n 메시지 시스템에서 사용자에게 표시할 언어를 결정합니다.
+
+    Args:
+        cwd: Project root directory path
+
+    Returns:
+        Locale code string (ko, en, ja, zh, th).
+        Defaults to "ko" if not configured.
+
+    Examples:
+        >>> get_project_locale("/path/to/project")
+        'ko'
+        >>> get_project_locale("/path/to/english/project")
+        'en'
+
+    Notes:
+        - Reads ``.moai/config.json`` → project.locale
+        - Fallback: "ko" (Korean)
+        - Supported locales: ko, en, ja, zh, th
+    """
+    config_path = Path(cwd) / ".moai" / "config.json"
+
+    if not config_path.exists():
+        return "ko"  # Default to Korean
+
+    try:
+        config = json.loads(config_path.read_text())
+        locale = config.get("project", {}).get("locale", "ko")
+
+        # Validate locale (must be one of the supported locales)
+        supported = {"ko", "en", "ja", "zh", "th"}
+        if locale not in supported:
+            return "ko"  # Fallback to Korean for unsupported locales
+
+        return locale
+
+    except (OSError, json.JSONDecodeError):
+        return "ko"  # Default on error
+
+
 __all__ = [
     "detect_language",
     "get_git_info",
     "count_specs",
     "get_project_language",
+    "get_project_locale",
 ]

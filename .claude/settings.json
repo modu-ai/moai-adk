@@ -6,6 +6,17 @@
     "PYTHON_ENV": "{{PROJECT_MODE}}"
   },
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "uv run .claude/hooks/alfred/alfred_hooks.py SessionStart",
+            "type": "command"
+          }
+        ],
+        "matcher": "*"
+      }
+    ],
     "PreToolUse": [
       {
         "hooks": [
