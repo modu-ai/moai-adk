@@ -2,6 +2,7 @@
 name: moai-domain-mobile-app
 description: Mobile app development with Flutter and React Native, state management,
 and native integration
+tier: 3
 ---
 
 # Mobile App Expert

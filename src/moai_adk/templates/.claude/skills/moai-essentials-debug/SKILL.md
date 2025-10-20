@@ -2,6 +2,7 @@
 name: moai-essentials-debug
 description: Advanced debugging with stack trace analysis, error pattern detection,
 and fix suggestions
+tier: 4
 ---
 
 # Alfred Debugger Pro

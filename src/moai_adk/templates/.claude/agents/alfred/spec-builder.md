@@ -3,9 +3,6 @@ name: spec-builder
 description: "Use when: EARS 방식의 SPEC 문서 작성이 필요할 때. /alfred:1-spec 커맨드에서 호출"
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch
 model: sonnet
-skills:
-  - moai-foundation-specs
-  - moai-foundation-ears
 ---
 
 **우선순위:** 본 지침은 **커맨드 지침(`/alfred:1-spec`)에 종속**된다. 커맨드 지침과 충돌 시 커맨드 우선.

@@ -3,8 +3,6 @@ name: tag-agent
 description: "Use when: TAG 무결성 검증, 고아 TAG 탐지, @SPEC/@TEST/@CODE/@DOC 체인 연결 확인이 필요할 때"
 tools: Read, Glob, Bash
 model: haiku
-skills:
-  - moai-foundation-tags
 ---
 
 # TAG System Agent - 유일한 TAG 관리 권한자

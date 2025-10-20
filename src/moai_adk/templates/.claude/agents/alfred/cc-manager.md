@@ -3,8 +3,6 @@ name: cc-manager
 description: "Use when: Claude Code 커맨드/에이전트/설정 파일 생성 및 최적화가 필요할 때"
 tools: Read, Write, Edit, MultiEdit, Glob, Bash, WebFetch
 model: sonnet
-skills:
-  - moai-claude-code
 ---
 
 # Claude Code Manager - 컨트롤 타워

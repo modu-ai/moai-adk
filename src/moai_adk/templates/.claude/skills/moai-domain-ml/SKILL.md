@@ -1,6 +1,7 @@
 ---
 name: moai-domain-ml
 description: Machine learning model training, evaluation, deployment, and MLOps workflows
+tier: 3
 ---
 
 # ML Expert

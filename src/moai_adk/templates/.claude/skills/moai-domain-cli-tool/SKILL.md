@@ -2,6 +2,7 @@
 name: moai-domain-cli-tool
 description: CLI tool development with argument parsing, POSIX compliance, and user-friendly
 help messages
+tier: 3
 ---
 
 # CLI Tool Expert

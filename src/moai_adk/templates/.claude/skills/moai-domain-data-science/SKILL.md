@@ -2,6 +2,7 @@
 name: moai-domain-data-science
 description: Data analysis, visualization, statistical modeling, and reproducible
 research workflows
+tier: 3
 ---
 
 # Data Science Expert

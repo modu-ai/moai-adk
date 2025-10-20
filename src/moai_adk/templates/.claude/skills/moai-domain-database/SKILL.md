@@ -2,6 +2,7 @@
 name: moai-domain-database
 description: Database design, schema optimization, indexing strategies, and migration
 management
+tier: 3
 ---
 
 # Database Expert

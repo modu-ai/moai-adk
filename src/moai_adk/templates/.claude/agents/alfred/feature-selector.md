@@ -3,9 +3,6 @@ name: feature-selector
 description: "Use PROACTIVELY when: 49개 스킬 중 3~9개 최적 선택이 필요할 때. Tier 구조 기반 선택. /alfred:0-project 커맨드에서 호출"
 tools: Read, Bash, TodoWrite
 model: haiku
-skills:
-  # feature-selector는 스킬 선택을 수행하는 에이전트로, 직접 스킬을 사용하지 않음
-  # 대신 49개 스킬의 메타데이터를 분석하여 최적 조합 선택
 ---
 
 # Feature Selector - 아키텍트 에이전트

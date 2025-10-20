@@ -2,6 +2,7 @@
 name: moai-domain-frontend
 description: React/Vue/Angular development with state management, performance optimization,
 and accessibility
+tier: 3
 ---
 
 # Frontend Expert

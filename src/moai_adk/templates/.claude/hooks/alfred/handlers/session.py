@@ -6,7 +6,8 @@ SessionStart, SessionEnd 이벤트 처리
 
 from core import HookPayload, HookResult
 from core.checkpoint import list_checkpoints
-from core.project import count_specs, detect_language, get_git_info
+from core.project import count_specs, detect_language, get_git_info, get_project_locale
+from core.i18n import t
 
 
 def handle_session_start(payload: HookPayload) -> HookResult:
@@ -49,6 +50,13 @@ def handle_session_start(payload: HookPayload) -> HookResult:
         return HookResult()  # 빈 결과 반환 (중복 출력 방지)
 
     cwd = payload.get("cwd", ".")
+
+    # Get project locale for i18n messages
+    # i18n 메시지용 프로젝트 locale 읽기
+    locale = get_project_locale(cwd)
+
+    # Collect project metadata
+    # 프로젝트 메타데이터 수집
     language = detect_language(cwd)
     git_info = get_git_info(cwd)
     specs = count_specs(cwd)
@@ -59,21 +67,24 @@ def handle_session_start(payload: HookPayload) -> HookResult:
     changes = git_info.get("changes", 0)
     spec_progress = f"{specs['completed']}/{specs['total']}"
 
-    # systemMessage: 사용자에게 직접 표시
+    # systemMessage: Localized messages for the user
+    # systemMessage: 사용자 locale 기반 메시지
     lines = [
-        "🚀 MoAI-ADK 세션 시작",
-        f"   개발 언어: {language}",
-        f"   브랜치: {branch} ({commit})",
-        f"   변경사항: {changes}",
-        f"   SPEC 진행도: {spec_progress} ({specs['percentage']}%)",
+        t("session_start", locale),
+        f"   {t('language', locale)}: {language}",
+        f"   {t('branch', locale)}: {branch} ({commit})",
+        f"   {t('changes', locale)}: {changes}",
+        f"   {t('spec_progress', locale)}: {spec_progress} ({specs['percentage']}%)",
     ]
 
+    # Checkpoint list (show latest 3)
     # Checkpoint 목록 추가 (최신 3개만 표시)
     if checkpoints:
-        lines.append(f"   체크포인트: {len(checkpoints)} available")
+        lines.append(f"   {t('checkpoints', locale)}: {len(checkpoints)} available")
         for cp in reversed(checkpoints[-3:]):  # 최신 3개
             branch_short = cp["branch"].replace("before-", "")
             lines.append(f"      - {branch_short}")
+        lines.append(f"   {t('restore_hint', locale)}")
 
     system_message = "\n".join(lines)
 

@@ -2,6 +2,7 @@
 name: moai-domain-security
 description: OWASP Top 10, static analysis (SAST), dependency security, and secrets
 management
+tier: 3
 ---
 
 # Security Expert

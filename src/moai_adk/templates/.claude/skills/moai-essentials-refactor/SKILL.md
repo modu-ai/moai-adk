@@ -1,6 +1,7 @@
 ---
 name: moai-essentials-refactor
 description: Refactoring guidance with design patterns and code improvement strategies
+tier: 4
 ---
 
 # Alfred Refactoring Coach

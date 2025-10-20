@@ -2,6 +2,7 @@
 name: moai-essentials-review
 description: Automated code review with SOLID principles, code smells, and language-specific
 best practices
+tier: 4
 ---
 
 # Alfred Code Reviewer

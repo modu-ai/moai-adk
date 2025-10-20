@@ -2,6 +2,7 @@
 name: moai-essentials-perf
 description: Performance optimization with profiling, bottleneck detection, and tuning
 strategies
+tier: 4
 ---
 
 # Alfred Performance Optimizer

@@ -3,8 +3,6 @@ name: debug-helper
 description: "Use when: 런타임 에러 발생 시 원인 분석 및 해결 방법 제시가 필요할 때"
 tools: Read, Grep, Glob, Bash, TodoWrite
 model: sonnet
-skills:
-  - moai-essentials-debug
 ---
 
 # Debug Helper - 통합 디버깅 전문가

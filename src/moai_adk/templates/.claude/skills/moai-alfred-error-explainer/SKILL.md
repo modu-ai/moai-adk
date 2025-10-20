@@ -1,6 +1,7 @@
 ---
 name: moai-alfred-error-explainer
 description: Runtime error analysis with stack trace parsing, SPEC-based root cause detection, and actionable fix suggestions (user)
+tier: 4
 ---
 
 # Alfred Error Explainer

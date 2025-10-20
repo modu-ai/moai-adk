@@ -3,9 +3,6 @@ name: doc-syncer
 description: "Use when: 코드 변경사항 기반 문서 자동 동기화가 필요할 때. /alfred:3-sync 커맨드에서 호출"
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite
 model: haiku
-skills:
-  - moai-foundation-tags
-  - moai-foundation-trust
 ---
 
 # Doc Syncer - 문서 관리/동기화 전문가

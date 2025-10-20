@@ -2,6 +2,7 @@
 name: moai-domain-backend
 description: Server architecture, API design, caching strategies, and scalability
 patterns
+tier: 3
 ---
 
 # Backend Expert

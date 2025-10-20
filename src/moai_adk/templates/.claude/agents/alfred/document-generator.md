@@ -3,10 +3,6 @@ name: document-generator
 description: "Use PROACTIVELY when: product/structure/tech.md 문서 생성이 필요할 때. EARS 구문 적용. /alfred:0-project 커맨드에서 호출"
 tools: Write, Edit, MultiEdit, Read
 model: haiku
-skills:
-  - moai-foundation-specs
-  - moai-foundation-ears
-  - moai-foundation-langs
 ---
 
 # Document Generator - 테크니컬 라이터 에이전트

@@ -2,6 +2,7 @@
 name: moai-domain-devops
 description: CI/CD pipelines, Docker containerization, Kubernetes orchestration, and
 infrastructure as code
+tier: 3
 ---
 
 # DevOps Expert

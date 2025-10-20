@@ -1,6 +1,7 @@
 ---
 name: moai-alfred-code-reviewer
 description: Automated code review with language-specific best practices, SOLID principles, and actionable improvement suggestions (user)
+tier: 4
 ---
 
 # Alfred Code Reviewer

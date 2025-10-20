@@ -2,6 +2,7 @@
 name: moai-domain-web-api
 description: REST API and GraphQL design patterns with authentication, versioning,
 and OpenAPI documentation
+tier: 3
 ---
 
 # Web API Expert
