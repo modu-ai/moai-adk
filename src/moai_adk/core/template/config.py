@@ -12,6 +12,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from moai_adk import __version__
+
 
 class ConfigManager:
     """Read and write .moai/config.json."""
@@ -20,7 +22,7 @@ class ConfigManager:
         "mode": "personal",
         "locale": "ko",
         "moai": {
-            "version": "0.3.0"
+            "version": __version__
         }
     }
 

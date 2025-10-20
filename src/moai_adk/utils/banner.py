@@ -6,6 +6,8 @@ Render the MoAI-ADK ASCII art banner
 
 from rich.console import Console
 
+from moai_adk import __version__
+
 console = Console()
 
 MOAI_BANNER = """
@@ -18,12 +20,14 @@ MOAI_BANNER = """
 """
 
 
-def print_banner(version: str = "0.3.0") -> None:
+def print_banner(version: str | None = None) -> None:
     """Print the MoAI-ADK banner
 
     Args:
-        version: MoAI-ADK version
+        version: MoAI-ADK version (defaults to __version__)
     """
+    if version is None:
+        version = __version__
     console.print(f"[cyan]{MOAI_BANNER}[/cyan]")
     console.print(
         "[dim]  Modu-AI's Agentic Development Kit w/ SuperAgent 🎩 Alfred[/dim]\n"
