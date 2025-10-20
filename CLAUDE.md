@@ -25,7 +25,7 @@ Alfred 분석 (요청 본질 파악)
 작업 분해 및 라우팅
     ├─→ 직접 처리 (간단한 조회, 파일 읽기)
     ├─→ Single Agent (단일 전문가 위임)
-    ├─→ Sequential (순차 실행: 1-spec → 2-build → 3-sync)
+    ├─→ Sequential (순차 실행: 1-plan → 2-run → 3-sync)
     └─→ Parallel (병렬 실행: 테스트 + 린트 + 빌드)
     ↓
 품질 게이트 검증
@@ -36,14 +36,17 @@ Alfred 분석 (요청 본질 파악)
 Alfred가 결과 통합 보고
 ```
 
-### 9개 전문 에이전트 생태계
+### 17개 전문 에이전트 생태계
 
-Alfred는 9명의 전문 에이전트를 조율합니다. 각 에이전트는 IT 전문가 직무에 매핑되어 있습니다.
+Alfred는 17개의 전문 에이전트를 조율합니다. 각 에이전트는 IT 전문가 직무에 매핑되어 있습니다.
+
+**Tier 1 (핵심 9개)**: 주요 워크플로우 담당
+**Tier 2 (추가 8개)**: 특정 작업 특화
 
 | 에이전트              | 모델   | 페르소나          | 전문 영역               | 커맨드/호출            | 위임 시점      |
 | --------------------- | ------ | ----------------- | ----------------------- | ---------------------- | -------------- |
-| **spec-builder** 🏗️    | Sonnet | 시스템 아키텍트   | SPEC 작성, EARS 명세    | `/alfred:1-spec`       | 명세 필요 시   |
-| **code-builder** 💎    | Sonnet | 수석 개발자       | TDD 구현, 코드 품질     | `/alfred:2-build`      | 구현 단계      |
+| **spec-builder** 🏗️    | Sonnet | 시스템 아키텍트   | SPEC 작성, EARS 명세    | `/alfred:1-plan`       | 명세 필요 시   |
+| **tdd-implementer** 🔬    | Sonnet | 시니어 개발자       | TDD 구현, 테스트 작성     | `/alfred:2-run`      | 구현 단계      |
 | **doc-syncer** 📖      | Haiku  | 테크니컬 라이터   | 문서 동기화, Living Doc | `/alfred:3-sync`       | 동기화 필요 시 |
 | **tag-agent** 🏷️       | Haiku  | 지식 관리자       | TAG 시스템, 추적성      | `@agent-tag-agent`     | TAG 작업 시    |
 | **git-manager** 🚀     | Haiku  | 릴리스 엔지니어   | Git 워크플로우, 배포    | `@agent-git-manager`   | Git 조작 시    |
@@ -51,6 +54,21 @@ Alfred는 9명의 전문 에이전트를 조율합니다. 각 에이전트는 IT
 | **trust-checker** ✅   | Haiku  | 품질 보증 리드    | TRUST 검증, 성능/보안   | `@agent-trust-checker` | 검증 요청 시   |
 | **cc-manager** 🛠️      | Sonnet | 데브옵스 엔지니어 | Claude Code 설정        | `@agent-cc-manager`    | 설정 필요 시   |
 | **project-manager** 📋 | Sonnet | 프로젝트 매니저   | 프로젝트 초기화         | `/alfred:0-project`    | 프로젝트 시작  |
+
+### 추가 프로젝트 전용 에이전트 (Tier 2)
+
+Alfred는 핵심 9개 에이전트 외에도 특정 작업에 특화된 8개의 추가 에이전트를 조율합니다.
+
+| 에이전트 | 모델 | 페르소나 | 전문 영역 | 호출 방법 | 위임 시점 |
+| --------------------- | ------ | ----------------- | ----------------------- | ---------------------- | ------------------ |
+| **implementation-planner** 📋 | Sonnet | 테크니컬 아키텍트 | SPEC 분석, 실행 전략 수립 | `/alfred:2-run` Phase 1 | 구현 계획 시 |
+| **quality-gate** 🛡️ | Haiku | 품질 보증 엔지니어 | TRUST 검증, 품질 검증 | `/alfred:2-run` Phase 2.5 | 구현 완료 후 |
+| **backup-merger** 💾 | Haiku | 시스템 관리자 | 백업 병합, 복구 | `@agent-backup-merger` | 백업 작업 시 |
+| **language-detector** 🔍 | Haiku | 언어 분석가 | 프로젝트 언어 감지 | `/alfred:0-project` | 프로젝트 초기화 |
+| **feature-selector** 🎯 | Haiku | 프로덕트 매니저 | 기능 선택 최적화 | `/alfred:0-project` | 기능 선택 시 |
+| **document-generator** 📝 | Sonnet | 테크니컬 라이터 | 프로젝트 문서 생성 | `/alfred:0-project` | 문서 생성 시 |
+| **project-interviewer** 🗣️ | Sonnet | 비즈니스 애널리스트 | 요구사항 인터뷰 | `/alfred:0-project` | 프로젝트 인터뷰 |
+| **template-optimizer** ⚙️ | Haiku | 데브옵스 엔지니어 | 템플릿 최적화 | `/alfred:0-project` | 템플릿 작업 시 |
 
 ### Built-in 에이전트 (Claude Code 제공)
 
@@ -125,7 +143,7 @@ Task(
 
 **Sonnet 4.5 (복잡한 판단, 계획, 설계)**:
 - ✅ **spec-builder**: SPEC 작성, EARS 구조 설계, 복잡한 요구사항 분석
-- ✅ **code-builder**: TDD 전략 수립, 아키텍처 설계, 복잡한 리팩토링
+- ✅ **tdd-implementer**: TDD 사이클 실행, 테스트 작성, 코드 품질 관리
 - ✅ **debug-helper**: 오류 원인 분석, 복잡한 디버깅, 해결 방법 도출
 - ✅ **cc-manager**: Claude Code 설정 최적화, 복잡한 워크플로우 설계
 - ✅ **project-manager**: 프로젝트 초기화 전략, 복잡한 의사결정
@@ -172,8 +190,8 @@ Task(
 - **"중단"**: 작업 취소
 
 **커맨드별 세부사항**:
-- `/alfred:1-spec`: Phase 1에서 프로젝트 문서 분석 및 SPEC 후보 제안 → Phase 2에서 SPEC 문서 작성 및 Git 작업
-- `/alfred:2-build`: Phase 1에서 SPEC 분석 및 TDD 계획 수립 → Phase 2에서 RED-GREEN-REFACTOR 구현
+- `/alfred:1-plan`: Phase 1에서 프로젝트 문서 분석 및 SPEC 후보 제안 → Phase 2에서 SPEC 문서 작성 및 Git 작업
+- `/alfred:2-run`: Phase 1에서 SPEC 분석 및 실행 계획 수립 → Phase 2에서 TDD 구현, 프로토타입 제작, 또는 문서화 작업
 - `/alfred:3-sync`: Phase 1에서 동기화 범위 분석 → Phase 2에서 Living Document 동기화 및 TAG 업데이트
 
 ---
@@ -206,9 +224,9 @@ def suggest_next_step():
 
     # 5. 현재 상태 기반 다음 단계 결정
     if not spec_exists:
-        return "SPEC 작성: /alfred:1-spec"
+        return "SPEC 작성: /alfred:1-plan"
     elif spec_status == "draft" and not code_exists:
-        return "TDD 구현: /alfred:2-build SPEC-{ID}"
+        return "TDD 구현: /alfred:2-run SPEC-{ID}"
     elif code_exists and not tests_passing:
         return "테스트 수정: 실패한 테스트 확인"
     elif tests_passing and not docs_synced:
@@ -241,7 +259,7 @@ def suggest_next_step():
 **시나리오 1: SPEC만 작성 완료**
 ```markdown
 ✅ 다음 단계:
-- /alfred:2-build SPEC-{ID} 실행하여 TDD 구현 시작
+- /alfred:2-run SPEC-{ID} 실행하여 TDD 구현 시작
 ```
 
 **시나리오 2: SPEC + 구현 완료, 테스트 통과**
@@ -256,7 +274,7 @@ def suggest_next_step():
 ✅ 다음 단계:
 1. Git 커밋 (문서 동기화 커밋)
 2. PR 상태 확인 (Draft → Ready 전환)
-3. 다음 SPEC 작성 (/alfred:1-spec)
+3. 다음 SPEC 작성 (/alfred:1-plan)
 ```
 
 **시나리오 4: 모든 작업 완료 (Git 커밋만 남음)**
@@ -417,8 +435,8 @@ Alfred는 효율적인 컨텍스트 관리를 위해 다음 전략을 사용합�
 ### 1. JIT (Just-in-Time) Retrieval
 필요한 순간에만 문서를 로드하여 초기 컨텍스트 부담을 최소화:
 - 전체 문서를 선로딩하지 말고, **식별자(파일경로/링크/쿼리)**만 보유 후 필요 시 조회
-- `/alfred:1-spec` → `product.md` 참조
-- `/alfred:2-build` → `SPEC-XXX/spec.md` + `development-guide.md` 참조
+- `/alfred:1-plan` → `product.md` 참조
+- `/alfred:2-run` → `SPEC-XXX/spec.md` + `development-guide.md` 참조
 - `/alfred:3-sync` → `sync-report.md` + TAG 인덱스 참조
 
 #### Explore 에이전트를 활용한 효율적 탐색
@@ -560,15 +578,15 @@ def handle_pre_tool_use(payload):
 **예시**:
 ```bash
 # ✅ 올바른 Commands 사용
-/alfred:1-spec "사용자 인증 기능"
+/alfred:1-plan "사용자 인증 기능"
 → Phase 1: 프로젝트 분석, SPEC 후보 제안
 → 사용자 승인
 → Phase 2: SPEC 문서 작성, 브랜치 생성, Draft PR 생성
 
-/alfred:2-build AUTH-001
-→ Phase 1: SPEC 분석, TDD 계획 수립
+/alfred:2-run AUTH-001
+→ Phase 1: SPEC 분석, 실행 계획 수립
 → 사용자 승인
-→ Phase 2: RED → GREEN → REFACTOR 구현
+→ Phase 2: TDD 구현, 프로토타입 제작, 또는 문서화 작업
 
 /alfred:3-sync
 → Phase 1: 동기화 범위 분석
@@ -605,7 +623,7 @@ def handle_pre_tool_use(payload):
 - Q: "rm -rf 명령 차단을 어디에 구현?"
   - A: Hook (PreToolUse) - 빠른 차단, 간단한 로직
 - Q: "TDD 워크플로우를 어디에 구현?"
-  - A: Command (`/alfred:2-build`) - 여러 단계 오케스트레이션
+  - A: Command (`/alfred:2-run`) - 여러 단계 오케스트레이션
 
 ---
 
@@ -625,8 +643,8 @@ def handle_pre_tool_use(payload):
 Alfred가 조율하는 핵심 개발 사이클:
 
 ```bash
-/alfred:1-spec     # SPEC 작성 (EARS 방식, develop 기반 브랜치/Draft PR 생성)
-/alfred:2-build    # TDD 구현 (RED → GREEN → REFACTOR)
+/alfred:1-plan     # 계획 수립 (SPEC 작성, EARS 방식, develop 기반 브랜치/Draft PR 생성)
+/alfred:2-run      # 계획 실행 (TDD 구현, 프로토타입 제작, 문서화 작업)
 /alfred:3-sync     # 문서 동기화 (PR Ready/자동 머지, TAG 체인 검증)
 ```
 
@@ -637,20 +655,20 @@ Alfred가 조율하는 핵심 개발 사이클:
 - **Optional**: WHERE [조건]이면, 시스템은 [동작]할 수 있다
 - **Constraints**: IF [조건]이면, 시스템은 [제약]해야 한다
 
-**반복 사이클**: 1-spec → 2-build → 3-sync → 1-spec (다음 기능)
+**반복 사이클**: 1-plan → 2-run → 3-sync → 1-plan (다음 기능)
 
 ### 완전 자동화된 GitFlow 워크플로우
 
 **Team 모드 (권장)**:
 ```bash
-# 1단계: SPEC 작성 (develop에서 분기)
-/alfred:1-spec "새 기능"
+# 1단계: 계획 수립 (develop에서 분기)
+/alfred:1-plan "새 기능"
 → feature/SPEC-{ID} 브랜치 생성
 → Draft PR 생성 (feature → develop)
 
-# 2단계: TDD 구현
-/alfred:2-build SPEC-{ID}
-→ RED → GREEN → REFACTOR 커밋
+# 2단계: 계획 실행
+/alfred:2-run SPEC-{ID}
+→ TDD 구현 (RED → GREEN → REFACTOR) 또는 프로토타입/문서화
 
 # 3단계: 문서 동기화 + 자동 머지
 /alfred:3-sync --auto-merge
@@ -664,8 +682,8 @@ Alfred가 조율하는 핵심 개발 사이클:
 
 **Personal 모드**:
 ```bash
-/alfred:1-spec "새 기능"     # main/develop에서 분기
-/alfred:2-build SPEC-{ID}    # TDD 구현
+/alfred:1-plan "새 기능"     # main/develop에서 분기, 계획 수립
+/alfred:2-run SPEC-{ID}      # TDD 구현, 프로토타입, 문서화
 /alfred:3-sync               # 문서 동기화 + 로컬 머지
 ```
 
@@ -849,7 +867,7 @@ Alfred가 모든 코드에 적용하는 품질 기준:
 
 ## TDD 워크플로우 체크리스트
 
-**1단계: SPEC 작성** (`/alfred:1-spec`)
+**1단계: 계획 수립** (`/alfred:1-plan`)
 - [ ] `.moai/specs/SPEC-<ID>/spec.md` 생성 (디렉토리 구조)
 - [ ] YAML Front Matter 추가 (id, version: 0.0.1, status: draft, created)
 - [ ] `@SPEC:ID` TAG 포함
@@ -857,10 +875,10 @@ Alfred가 모든 코드에 적용하는 품질 기준:
 - [ ] EARS 구문으로 요구사항 작성
 - [ ] 중복 ID 확인: `rg "@SPEC:<ID>" -n`
 
-**2단계: TDD 구현** (`/alfred:2-build`)
-- [ ] **RED**: `tests/` 디렉토리에 `@TEST:ID` 작성 및 실패 확인
-- [ ] **GREEN**: `src/` 디렉토리에 `@CODE:ID` 작성 및 테스트 통과
-- [ ] **REFACTOR**: 코드 품질 개선, TDD 이력 주석 추가
+**2단계: 계획 실행** (`/alfred:2-run`)
+- [ ] **RED**: `tests/` 디렉토리에 `@TEST:ID` 작성 및 실패 확인 (TDD 시나리오)
+- [ ] **GREEN**: `src/` 디렉토리에 `@CODE:ID` 작성 및 테스트 통과 (TDD 시나리오)
+- [ ] **REFACTOR**: 코드 품질 개선, TDD 이력 주석 추가 (TDD 시나리오)
 - [ ] TAG BLOCK에 SPEC/TEST 파일 경로 명시
 
 **3단계: 문서 동기화** (`/alfred:3-sync`)
