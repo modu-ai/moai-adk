@@ -5,9 +5,6 @@
     "MOAI_PERFORMANCE_MONITORING": "true",
     "PYTHON_ENV": "{{PROJECT_MODE}}"
   },
-  "customCommands": {
-    "path": ".claude/commands/alfred"
-  },
   "hooks": {
     "PreToolUse": [
       {
