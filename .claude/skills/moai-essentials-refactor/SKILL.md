@@ -1,5 +1,6 @@
 ---
 name: moai-essentials-refactor
+tier: 4
 description: Refactoring guidance with design patterns and code improvement strategies
 allowed-tools:
 - Read

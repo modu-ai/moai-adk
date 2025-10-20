@@ -1,9 +1,9 @@
 ---
 id: PRODUCT-001
-version: 0.1.3
+version: 0.1.4
 status: active
 created: 2025-10-01
-updated: 2025-10-17
+updated: 2025-10-20
 author: @project-owner
 priority: high
 ---
@@ -11,6 +11,14 @@ priority: high
 # {{PROJECT_NAME}} Product Definition
 
 ## HISTORY
+### v0.1.4 (2025-10-20)
+- **UPDATED**: 에이전트 생태계 확장 (12개 → 18개 총 에이전트)
+- **AUTHOR**: @Alfred
+- **SECTIONS**: Mission (18개 에이전트: Alfred + 15개 MoAI 에이전트 + 2개 Built-in)
+  - NEW: 6개 0-project Sub-agents 추가
+  - Skills 재구조화: Tier 1~4 구조, LanguageInterface 표준
+
+
 
 ### v0.1.3 (2025-10-17)
 - **UPDATED**: 템플릿 버전 동기화 (v0.3.8)
@@ -53,18 +61,30 @@ priority: high
 
 #### Alfred SuperAgent
 
-**Alfred**는 12개 AI 에이전트 팀 (Alfred + 11개 전문 에이전트)을 조율하는 중앙 오케스트레이터입니다:
+**Alfred**는 18개 AI 에이전트 생태계 (Alfred + 15개 MoAI 에이전트 + 2개 Built-in)를 조율하는 중앙 오케스트레이터입니다:
+
+**Core Agents (9개)**:
 - **spec-builder** 🏗️: SPEC 작성 (EARS 방식) - Sonnet
-- **implementation-planner** 📋: SPEC 분석 및 구현 전략 수립 - Sonnet
-- **tdd-implementer** 🔬: TDD RED-GREEN-REFACTOR 전문 구현 - Sonnet
-- **quality-gate** 🛡️: TRUST 원칙 통합 검증 - Haiku
+- **code-builder** 💎: TDD 구현, 코드 품질 - Sonnet
 - **doc-syncer** 📖: 문서 동기화 (Living Document) - Haiku
 - **tag-agent** 🏷️: TAG 시스템 관리 - Haiku
 - **git-manager** 🚀: Git 워크플로우 자동화 - Haiku
-- **debug-helper** 🔍: 런타임 오류 진단 - Sonnet
+- **debug-helper** 🔬: 런타임 오류 진단 - Sonnet
 - **trust-checker** ✅: TRUST 원칙 검증 - Haiku
 - **cc-manager** 🛠️: Claude Code 설정 관리 - Sonnet
-- **project-manager** 📂: 프로젝트 초기화 - Sonnet
+- **project-manager** 📋: 프로젝트 초기화 조율 - Sonnet
+
+**0-project Sub-agents (6개, NEW in v0.4.0)**:
+- **language-detector** 🔍: 언어/프레임워크 감지 - Haiku
+- **backup-merger** 📦: 백업 파일 스마트 병합 - Sonnet
+- **project-interviewer** 💬: 요구사항 수집 - Sonnet
+- **document-generator** 📝: 문서 자동 생성 - Haiku
+- **feature-selector** 🎯: 49개 스킬 중 3~9개 선택 - Haiku
+- **template-optimizer** ⚙️: 템플릿 최적화, 파일 정리 - Haiku
+
+**Built-in Agents (2개, Claude Code 제공)**:
+- **Explore** 🔍: 코드베이스 탐색, 파일 검색 - Haiku
+- **general-purpose**: 범용 작업 처리 - Sonnet
 
 ## @SPEC:USER-001 주요 사용자층
 

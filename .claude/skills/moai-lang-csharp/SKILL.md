@@ -1,5 +1,7 @@
 ---
 name: moai-lang-csharp
+tier: 2
+depends_on: moai-foundation-langs
 description: C# best practices with xUnit, .NET tooling, LINQ, and async/await patterns
 allowed-tools:
 - Read

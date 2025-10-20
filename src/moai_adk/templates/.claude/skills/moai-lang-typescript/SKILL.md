@@ -1,5 +1,7 @@
 ---
 name: moai-lang-typescript
+tier: 2
+depends_on: moai-foundation-langs
 description: TypeScript best practices with Vitest, Biome, strict typing, and npm/pnpm
   package management
 allowed-tools:

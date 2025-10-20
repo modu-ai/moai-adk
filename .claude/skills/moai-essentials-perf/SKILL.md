@@ -1,5 +1,6 @@
 ---
 name: moai-essentials-perf
+tier: 4
 description: Performance optimization with profiling, bottleneck detection, and tuning
   strategies
 allowed-tools:

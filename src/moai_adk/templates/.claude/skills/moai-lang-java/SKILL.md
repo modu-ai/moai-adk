@@ -1,5 +1,7 @@
 ---
 name: moai-lang-java
+tier: 2
+depends_on: moai-foundation-langs
 description: Java best practices with JUnit, Maven/Gradle, Checkstyle, and Spring
   Boot patterns
 allowed-tools:

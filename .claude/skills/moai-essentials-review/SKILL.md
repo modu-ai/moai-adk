@@ -1,5 +1,6 @@
 ---
 name: moai-essentials-review
+tier: 4
 description: Automated code review with SOLID principles, code smells, and language-specific
   best practices
 allowed-tools:

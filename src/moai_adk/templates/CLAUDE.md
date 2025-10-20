@@ -36,9 +36,13 @@ Alfred 분석 (요청 본질 파악)
 Alfred가 결과 통합 보고
 ```
 
-### 9개 전문 에이전트 생태계
+### 18개 전문 에이전트 생태계 (v0.4.0+)
 
-Alfred는 9명의 전문 에이전트를 조율합니다. 각 에이전트는 IT 전문가 직무에 매핑되어 있습니다.
+Alfred는 18명의 전문 에이전트를 조율합니다. 각 에이전트는 IT 전문가 직무에 매핑되어 있습니다.
+
+**NEW in v0.4.0**: 6개 0-project Sub-agents 추가 (총 9개 → 15개 MoAI 에이전트 + 3개 Built-in)
+
+#### Core Agents (9개)
 
 | 에이전트              | 모델   | 페르소나          | 전문 영역               | 커맨드/호출            | 위임 시점      |
 | --------------------- | ------ | ----------------- | ----------------------- | ---------------------- | -------------- |
@@ -50,7 +54,18 @@ Alfred는 9명의 전문 에이전트를 조율합니다. 각 에이전트는 IT
 | **debug-helper** 🔬    | Sonnet | 트러블슈팅 전문가 | 오류 진단, 해결         | `@agent-debug-helper`  | 에러 발생 시   |
 | **trust-checker** ✅   | Haiku  | 품질 보증 리드    | TRUST 검증, 성능/보안   | `@agent-trust-checker` | 검증 요청 시   |
 | **cc-manager** 🛠️      | Sonnet | 데브옵스 엔지니어 | Claude Code 설정        | `@agent-cc-manager`    | 설정 필요 시   |
-| **project-manager** 📋 | Sonnet | 프로젝트 매니저   | 프로젝트 초기화         | `/alfred:0-project`    | 프로젝트 시작  |
+| **project-manager** 📋 | Sonnet | 프로젝트 매니저   | 프로젝트 초기화 조율     | `/alfred:0-project`    | 프로젝트 시작  |
+
+#### 0-project Sub-agents (6개, NEW in v0.4.0)
+
+| 에이전트                   | 모델   | 페르소나              | 전문 영역                      | 호출 방법                      | 위임 시점           |
+| -------------------------- | ------ | --------------------- | ------------------------------ | ------------------------------ | ------------------- |
+| **language-detector** 🔍    | Haiku  | 기술 분석가           | 언어/프레임워크 감지           | `@agent-language-detector`     | 프로젝트 환경 분석  |
+| **backup-merger** 📦        | Sonnet | 데이터 엔지니어       | 백업 파일 스마트 병합          | `@agent-backup-merger`         | 재초기화 후 병합    |
+| **project-interviewer** 💬  | Sonnet | 비즈니스 분석가       | 요구사항 수집                  | `@agent-project-interviewer`   | 프로젝트 인터뷰     |
+| **document-generator** 📝   | Haiku  | 테크니컬 라이터       | 문서 자동 생성                 | `@agent-document-generator`    | 문서 작성 시        |
+| **feature-selector** 🎯     | Haiku  | 아키텍트              | 49개 스킬 중 3~9개 선택        | `@agent-feature-selector`      | 경량화 필요 시      |
+| **template-optimizer** ⚙️   | Haiku  | 데브옵스 엔지니어     | 템플릿 최적화, 파일 정리       | `@agent-template-optimizer`    | 템플릿 정리 시      |
 
 ### Built-in 에이전트 (Claude Code 제공)
 
@@ -175,6 +190,191 @@ Task(
 - `/alfred:1-spec`: Phase 1에서 프로젝트 문서 분석 및 SPEC 후보 제안 → Phase 2에서 SPEC 문서 작성 및 Git 작업
 - `/alfred:2-build`: Phase 1에서 SPEC 분석 및 TDD 계획 수립 → Phase 2에서 RED-GREEN-REFACTOR 구현
 - `/alfred:3-sync`: Phase 1에서 동기화 범위 분석 → Phase 2에서 Living Document 동기화 및 TAG 업데이트
+
+---
+
+### Alfred 작업 추적 원칙
+
+**CRITICAL**: Alfred는 복잡한 작업 진행 시 사용자에게 투명한 진행 상황을 제공해야 합니다.
+
+#### TodoWrite 필수 사용 조건
+
+**2개 이상의 작업(task) 존재 시 반드시 TodoWrite 도구를 사용**해야 합니다.
+
+```python
+# 예시: /alfred:1-spec 실행 시
+TodoWrite({
+    "todos": [
+        {"content": "프로젝트 문서 분석", "status": "in_progress", "activeForm": "프로젝트 문서 분석 중"},
+        {"content": "SPEC 후보 제안", "status": "pending", "activeForm": "SPEC 후보 제안 중"},
+        {"content": "SPEC 문서 작성", "status": "pending", "activeForm": "SPEC 문서 작성 중"},
+        {"content": "Git 브랜치 생성", "status": "pending", "activeForm": "Git 브랜치 생성 중"},
+        {"content": "Draft PR 생성", "status": "pending", "activeForm": "Draft PR 생성 중"}
+    ]
+})
+```
+
+**TodoWrite 사용 규칙**:
+- ✅ **작업 시작 전**: 전체 작업 목록 생성 (모두 `pending`)
+- ✅ **작업 시작 시**: 해당 작업을 `in_progress`로 변경
+- ✅ **작업 완료 시**: 해당 작업을 `completed`로 변경 (즉시!)
+- ✅ **실시간 업데이트**: 각 작업 완료 시마다 TodoWrite 호출
+- ❌ **배치 업데이트 금지**: 여러 작업을 한 번에 완료 처리하지 않음
+
+**단일 작업은 TodoWrite 불필요**:
+- 간단한 조회 (파일 읽기, Git 상태 확인)
+- 단일 명령 실행 (테스트 실행, 린트 검사)
+
+---
+
+### Alfred 다국어 지원 원칙
+
+**CRITICAL**: Alfred의 모든 메시지는 사용자의 언어 설정을 존중해야 합니다.
+
+#### Locale 기반 메시지 생성
+
+**모든 시스템 메시지는 `.moai/config.json`의 `project.locale` 값을 기반으로 생성**합니다.
+
+**지원 언어**:
+- `ko`: 한국어 (기본값)
+- `en`: 영어
+- `ja`: 일본어
+- `zh`: 중국어 (간체)
+
+**적용 범위**:
+- ✅ **커맨드 메시지**: `/alfred:1-spec`, `/alfred:2-build`, `/alfred:3-sync` 실행 메시지
+- ✅ **에이전트 메시지**: 모든 에이전트의 상태 메시지, 에러 메시지
+- ✅ **Hook 메시지**: SessionStart, Checkpoint 생성, JIT Context 등
+- ✅ **Git 커밋 메시지**: TDD 단계별 커밋 메시지 (이미 구현됨)
+- ✅ **TodoWrite 메시지**: 작업 설명 (`content`, `activeForm`)
+
+**구현 방법**:
+```python
+# 1. Locale 읽기
+def get_project_locale(cwd: str) -> str:
+    config = read_config(cwd)
+    return config.get("project", {}).get("locale", "ko")
+
+# 2. 메시지 딕셔너리
+MESSAGES = {
+    "session_start": {
+        "ko": "🚀 MoAI-ADK 세션 시작",
+        "en": "🚀 MoAI-ADK Session Started",
+        "ja": "🚀 MoAI-ADK セッション開始",
+        "zh": "🚀 MoAI-ADK 会话开始"
+    },
+    "spec_progress": {
+        "ko": "SPEC 진행도",
+        "en": "SPEC Progress",
+        "ja": "SPEC 進捗",
+        "zh": "SPEC 进度"
+    }
+}
+
+# 3. 메시지 생성
+locale = get_project_locale(cwd)
+message = MESSAGES["session_start"][locale]
+```
+
+**템플릿 변수 치환**:
+- `moai-adk init` 또는 `/alfred:0-project` 실행 시
+- `{{LOCALE}}` 변수를 사용자 선택 언어로 치환
+- CLAUDE.md 및 config.json에 반영
+
+**예시**:
+```markdown
+<!-- CLAUDE.md 템플릿 -->
+- **기본 언어**: {{LOCALE}}
+- **에러 메시지**: {{LOCALE}} 기반 생성
+```
+
+---
+
+### Alfred 사용자 상호작용 원칙
+
+**CRITICAL**: Alfred는 사용자에게 여러 질문이 필요할 때 최적의 UX를 제공해야 합니다.
+
+#### AskUserQuestion 필수 사용 조건
+
+**2개 이상의 질문이 필요한 경우 반드시 AskUserQuestion 도구를 사용**합니다.
+
+**AskUserQuestion 사용 시나리오**:
+- ✅ **프로젝트 초기화**: 언어, 프레임워크, 모드, locale 선택
+- ✅ **설정 변경**: 여러 옵션 동시 수정
+- ✅ **기능 선택**: 49개 스킬 중 3~9개 선택
+- ✅ **구현 방법**: 여러 기술 스택 중 선택
+- ❌ **단일 질문**: 일반 텍스트 질문 사용
+
+**사용 예시**:
+
+```python
+# 예시 1: 프로젝트 초기화
+AskUserQuestion({
+    "questions": [
+        {
+            "question": "프로젝트 개발 언어를 선택해주세요",
+            "header": "언어 선택",
+            "multiSelect": false,
+            "options": [
+                {"label": "Python", "description": "pytest, mypy, black 기반"},
+                {"label": "TypeScript", "description": "Vitest, Biome 기반"},
+                {"label": "Java", "description": "JUnit, Maven/Gradle 기반"},
+                {"label": "Go", "description": "go test, gofmt 기반"}
+            ]
+        },
+        {
+            "question": "프로젝트 모드를 선택해주세요",
+            "header": "모드",
+            "multiSelect": false,
+            "options": [
+                {"label": "Personal", "description": "개인 프로젝트, 로컬 Git"},
+                {"label": "Team", "description": "팀 프로젝트, GitFlow, PR 자동화"}
+            ]
+        },
+        {
+            "question": "기본 언어를 선택해주세요",
+            "header": "Locale",
+            "multiSelect": false,
+            "options": [
+                {"label": "한국어 (ko)", "description": "한국어 메시지 및 문서"},
+                {"label": "English (en)", "description": "English messages and docs"},
+                {"label": "日本語 (ja)", "description": "日本語メッセージとドキュメント"},
+                {"label": "中文 (zh)", "description": "中文消息和文档"}
+            ]
+        }
+    ]
+})
+
+# 예시 2: 기능 선택
+AskUserQuestion({
+    "questions": [
+        {
+            "question": "어떤 스킬팩을 활성화할까요? (3-9개 권장)",
+            "header": "스킬 선택",
+            "multiSelect": true,  # 다중 선택
+            "options": [
+                {"label": "언어별 스킬", "description": "Python, TypeScript, Java 등 (28개)"},
+                {"label": "도메인 스킬", "description": "Backend, Frontend, Mobile 등 (10개)"},
+                {"label": "Alfred 스킬", "description": "Git, Debug, Refactor 등 (11개)"}
+            ]
+        }
+    ]
+})
+```
+
+**TUI/UX 최적화 가이드**:
+- **질문 개수**: 1-4개 (한 화면에 표시 가능)
+- **선택지 개수**: 2-4개 (너무 많으면 분할)
+- **헤더 길이**: 최대 12자 (간결하게)
+- **라벨 길이**: 1-5 단어 (한눈에 파악)
+- **설명 길이**: 1-2 문장 (명확하고 구체적으로)
+- **다중 선택**: `multiSelect: true` (복수 선택 가능 시)
+
+**단일 질문 예외**:
+```markdown
+<!-- 일반 텍스트 질문 사용 -->
+다음 SPEC ID를 입력해주세요 (예: AUTH-001):
+```
 
 ---
 

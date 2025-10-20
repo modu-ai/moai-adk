@@ -1,5 +1,7 @@
 ---
 name: moai-domain-web-api
+tier: 3
+depends_on: moai-foundation-specs
 description: REST API and GraphQL design patterns with authentication, versioning,
   and OpenAPI documentation
 allowed-tools:

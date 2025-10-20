@@ -1,5 +1,7 @@
 ---
 name: moai-lang-cpp
+tier: 2
+depends_on: moai-foundation-langs
 description: C++ best practices with Google Test, clang-format, and modern C++ (C++17/20)
 allowed-tools:
 - Read

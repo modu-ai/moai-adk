@@ -64,6 +64,13 @@ Thumbs.db
 *.log
 logs/
 
+# Release planning documents
+MIGRATION-v*.md
+RELEASE-CHECKLIST-v*.md
+RELEASE-NOTES-v*.md
+SKILLPACK-EXPANSION-STRATEGY.md
+UPDATE-PLAN-*.md
+
 # Temporary files
 *.tmp
 *.temp

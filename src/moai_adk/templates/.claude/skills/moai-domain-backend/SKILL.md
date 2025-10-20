@@ -1,5 +1,7 @@
 ---
 name: moai-domain-backend
+tier: 3
+depends_on: moai-foundation-specs
 description: Server architecture, API design, caching strategies, and scalability
   patterns
 allowed-tools:

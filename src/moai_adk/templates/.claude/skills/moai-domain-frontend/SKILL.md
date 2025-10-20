@@ -1,5 +1,7 @@
 ---
 name: moai-domain-frontend
+tier: 3
+depends_on: moai-foundation-specs
 description: React/Vue/Angular development with state management, performance optimization,
   and accessibility
 allowed-tools:

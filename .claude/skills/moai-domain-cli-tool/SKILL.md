@@ -1,5 +1,7 @@
 ---
 name: moai-domain-cli-tool
+tier: 3
+depends_on: moai-foundation-specs
 description: CLI tool development with argument parsing, POSIX compliance, and user-friendly
   help messages
 allowed-tools:

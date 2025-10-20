@@ -1,5 +1,7 @@
 ---
 name: moai-lang-ruby
+tier: 2
+depends_on: moai-foundation-langs
 description: Ruby best practices with RSpec, RuboCop, Bundler, and Rails patterns
 allowed-tools:
 - Read
