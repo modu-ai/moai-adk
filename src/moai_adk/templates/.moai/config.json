@@ -49,8 +49,8 @@
   "pipeline": {
     "available_commands": [
       "/alfred:0-project",
-      "/alfred:1-spec",
-      "/alfred:2-build",
+      "/alfred:1-plan",
+      "/alfred:2-run",
       "/alfred:3-sync"
     ],
     "current_stage": "initialized"

@@ -10,8 +10,8 @@ MoAI-ADK 범용 개발 툴킷을 사용하는 모든 에이전트와 개발자�
 
 ### 핵심 개발 루프 (3단계)
 
-1. **SPEC 작성** (`/alfred:1-spec`) → 명세 없이는 코드 없음
-2. **TDD 구현** (`/alfred:2-build`) → 테스트 없이는 구현 없음
+1. **계획 수립** (`/alfred:1-plan`) → 명세 없이는 코드 없음
+2. **계획 실행** (`/alfred:2-run`) → 테스트 없이는 구현 없음
 3. **문서 동기화** (`/alfred:3-sync`) → 추적성 없이는 완성 없음
 
 ### 온디맨드 지원
@@ -67,8 +67,8 @@ MoAI-ADK는 Anthropic의 "Effective Context Engineering for AI Agents" 원칙을
 
 | 커맨드 | 필수 로드 | 선택적 로드 | 로드 타이밍 |
 |--------|----------|------------|------------|
-| `/alfred:1-spec` | product.md | structure.md, tech.md | SPEC 후보 발굴 시 |
-| `/alfred:2-build` | SPEC-XXX/spec.md | development-guide.md | TDD 구현 시작 시 |
+| `/alfred:1-plan` | product.md | structure.md, tech.md | SPEC 후보 발굴 시 |
+| `/alfred:2-run` | SPEC-XXX/spec.md | development-guide.md | TDD 구현 시작 시 |
 | `/alfred:3-sync` | sync-report.md | TAG 체인 검증 (`rg` 스캔) | 문서 동기화 시 |
 
 **구현 방법**:
@@ -151,8 +151,8 @@ MoAI-ADK는 Anthropic의 "Effective Context Engineering for AI Agents" 원칙을
 
 - **SPEC-코드 추적성**: 모든 코드 변경은 @TAG 시스템을 통해 SPEC ID와 특정 요구사항을 참조한다.
 - **3단계 워크플로우 추적**:
-  - `/alfred:1-spec`: `@SPEC:ID` 태그로 SPEC 작성 (.moai/specs/)
-  - `/alfred:2-build`: `@TEST:ID` (tests/) → `@CODE:ID` (src/) TDD 구현
+  - `/alfred:1-plan`: `@SPEC:ID` 태그로 SPEC 작성 (.moai/specs/)
+  - `/alfred:2-run`: `@TEST:ID` (tests/) → `@CODE:ID` (src/) TDD 구현
   - `/alfred:3-sync`: `@DOC:ID` (docs/) 문서 동기화, 전체 TAG 검증
 - **코드 스캔 기반 추적성**: 중간 캐시 없이 `rg '@(SPEC|TEST|CODE|DOC):' -n`으로 코드를 직접 스캔하여 TAG 추적성 보장한다.
 
@@ -166,8 +166,8 @@ MoAI-ADK는 Anthropic의 "Effective Context Engineering for AI Agents" 원칙을
 
 ## SPEC-TDD 워크플로우
 
-1. **SPEC 우선**: 코드 작성 전에 SPEC을 생성하거나 참조한다. `/alfred:1-spec`을 사용하여 요구사항, 설계, 작업을 명확히 정의한다.
-2. **TDD 구현**: Red-Green-Refactor를 엄격히 따른다. 언어별 적절한 테스트 프레임워크와 함께 `/alfred:2-build`를 사용한다.
+1. **SPEC 우선**: 코드 작성 전에 SPEC을 생성하거나 참조한다. `/alfred:1-plan`을 사용하여 요구사항, 설계, 작업을 명확히 정의한다.
+2. **TDD 구현**: Red-Green-Refactor를 엄격히 따른다. 언어별 적절한 테스트 프레임워크와 함께 `/alfred:2-run`을 사용한다.
 3. **추적성 동기화**: `/alfred:3-sync`를 실행하여 문서를 업데이트하고 SPEC과 코드 간 @TAG 관계를 유지한다.
 
 ## @TAG 시스템
