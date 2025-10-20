@@ -219,7 +219,7 @@ class PhaseExecutor:
         # @CODE:INIT-004:VERIFY-001 | Validate installation results
         # @CODE:INIT-004:VALIDATION-CHECK | Comprehensive installation validation
         # Verifies all required files including 4 Alfred command files:
-        # - 0-project.md, 1-spec.md, 2-build.md, 3-sync.md
+        # - 0-project.md, 1-plan.md, 2-run.md, 3-sync.md
         self.validator.validate_installation(project_path)
 
         # Initialize Git for team mode

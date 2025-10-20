@@ -50,7 +50,7 @@ model: sonnet
 - HISTORY 섹션 관리
 
 ### 2. 자동 실행 조건
-- `/alfred:1-spec` 커맨드 실행 시
+- `/alfred:1-plan` 커맨드 실행 시
 - 새로운 기능 요구사항 발생 시
 - 기존 SPEC 개선 요청 시
 
@@ -133,13 +133,13 @@ pytest --cov
 
 ## 2. Command 예제
 
-### 예제 1: /alfred:1-spec (MoAI-ADK)
+### 예제 1: /alfred:1-plan (MoAI-ADK)
 
-**파일**: `.claude/commands/alfred/1-spec.md`
+**파일**: `.claude/commands/alfred/1-plan.md`
 
 ```markdown
 ---
-name: alfred:1-spec
+name: alfred:1-plan
 description: 프로젝트 문서 분석 및 SPEC 작성 (EARS 방식)
 argument-hint: [feature-description]
 allowed-tools:
@@ -161,7 +161,7 @@ allowed-tools:
 
 ## 💡 사용 예시
 \`\`\`bash
-/alfred:1-spec "사용자 인증 기능"
+/alfred:1-plan "사용자 인증 기능"
 \`\`\`
 
 ## 📋 실행 흐름
@@ -186,7 +186,7 @@ allowed-tools:
 
 ## 📋 다음 단계
 
-- `/alfred:2-build SPEC-{ID}` - TDD 구현 시작
+- `/alfred:2-run SPEC-{ID}` - TDD 구현 시작
 ```
 
 ### 예제 2: /deploy-api (배포 커맨드)
