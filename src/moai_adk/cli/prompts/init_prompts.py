@@ -18,7 +18,7 @@ class ProjectSetupAnswers(TypedDict):
 
     project_name: str
     mode: str  # personal | team
-    locale: str  # ko | en | ja | zh
+    locale: str  # ko | en (SPEC-I18N-001: limited to 2 languages)
     language: str | None
     author: str
 
@@ -89,14 +89,13 @@ def prompt_project_setup(
             raise KeyboardInterrupt
         answers["mode"] = result
 
-        # 3. Locale
+        # @CODE:I18N-001 | SPEC: SPEC-I18N-001.md | TEST: tests/unit/test_i18n_template.py
+        # 3. Locale (Limited to ko/en only per SPEC-I18N-001)
         result = questionary.select(
             "🌐 Preferred Language:",
             choices=[
-                questionary.Choice("Korean", value="ko"),
+                questionary.Choice("Korean (한국어)", value="ko"),
                 questionary.Choice("English", value="en"),
-                questionary.Choice("Japanese", value="ja"),
-                questionary.Choice("Chinese", value="zh"),
             ],
             default="ko",
         ).ask()

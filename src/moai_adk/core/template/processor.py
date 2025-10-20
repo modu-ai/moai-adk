@@ -227,6 +227,43 @@ class TemplateProcessor:
             elif item.is_dir():
                 dst_item.mkdir(parents=True, exist_ok=True)
 
+    def copy_claude_template(self, locale: str = "ko") -> None:
+        """Copy Claude Code template based on locale.
+
+        @CODE:I18N-001 | SPEC: SPEC-I18N-001.md
+        @SPEC:I18N-001 | Multi-language template system (Korean/English)
+
+        Args:
+            locale: Language code ("ko" or "en"). Defaults to "ko".
+
+        Raises:
+            FileNotFoundError: If template directory not found.
+
+        Note:
+            This method is used by `moai-adk init` to copy the appropriate
+            language template. Unsupported locales fallback to English ("en").
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        # Validate and fallback to English for unsupported locales
+        if locale not in ["ko", "en"]:
+            logger.warning(f"Unsupported locale '{locale}', falling back to 'en'")
+            locale = "en"
+
+        # Select template directory based on locale
+        template_dir = self.template_root / f".claude-{locale}"
+        if not template_dir.exists():
+            raise FileNotFoundError(f"Template directory not found: {template_dir}")
+
+        # Copy template to .claude/
+        dest_dir = self.target_path / ".claude"
+        if dest_dir.exists():
+            shutil.rmtree(dest_dir)
+        shutil.copytree(template_dir, dest_dir)
+
+        logger.info(f"Template copied: .claude-{locale}/ → .claude/")
+
     def _copy_claude(self, silent: bool = False) -> None:
         """.claude/ directory copy with variable substitution (wholesale overwrite for template folders).
 
