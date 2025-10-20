@@ -230,8 +230,7 @@ class TemplateProcessor:
     def copy_claude_template(self, locale: str = "ko") -> None:
         """Copy Claude Code template based on locale.
 
-        @CODE:I18N-001 | SPEC: SPEC-I18N-001.md
-        @SPEC:I18N-001 | Multi-language template system (Korean/English)
+        @CODE:I18N-001 | SPEC: SPEC-I18N-001.md | TEST: tests/unit/test_i18n_template.py
 
         Args:
             locale: Language code ("ko" or "en"). Defaults to "ko".

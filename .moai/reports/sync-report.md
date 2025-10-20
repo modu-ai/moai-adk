@@ -1,6 +1,113 @@
 # MoAI-ADK 문서 동기화 보고서
 
-## 최근 동기화: SPEC-CLAUDE-COMMANDS-001
+## 최근 동기화: SPEC-I18N-001
+
+**동기화 일시**: 2025-10-20
+**SPEC ID**: I18N-001
+**제목**: 다국어 템플릿 시스템 (한/영) TDD 구현 완료
+
+### 동기화 요약
+
+| 항목 | 상태 | 비고 |
+|------|------|------|
+| SPEC 버전 업데이트 | ✅ | v0.0.1 → v0.1.0 |
+| 상태 전환 | ✅ | draft → completed |
+| HISTORY 섹션 | ✅ | v0.1.0 항목 추가 |
+| TAG 체인 검증 | ✅ | PRIMARY CHAIN 100% 연결 |
+| 테스트 통과 | ✅ | 100% (5개 시나리오) |
+| 코드 구현 | ✅ | 모든 요구사항 충족 |
+
+### TAG 체인 (PRIMARY CHAIN)
+
+```
+@SPEC:I18N-001 (.moai/specs/SPEC-I18N-001/spec.md:1)
+  ├─ @TEST:I18N-001 (tests/test_i18n.py, tests/test_session_i18n_simple.py, tests/unit/test_i18n_template.py)
+  ├─ @CODE:I18N-001 (src/moai_adk/i18n.py, src/moai_adk/cli/prompts/init_prompts.py, src/moai_adk/core/template/processor.py)
+```
+
+**완전성**: 100% (모든 @TEST와 @CODE가 @SPEC으로 연결)
+
+### 구현 내용
+
+**기능**: 2개 언어(한국어/영어) 템플릿 시스템 완성
+
+- 템플릿 분리: `.claude-ko/`, `.claude-en/` 생성
+- init 프롬프트: 언어 선택 기능 추가
+- TemplateProcessor: locale 기반 템플릿 복사 구현
+- 폴백 로직: 미지원 locale → en으로 자동 대체
+
+**테스트 검증**:
+- test_copy_claude_template_korean: PASSED
+- test_copy_claude_template_english: PASSED
+- test_copy_claude_template_fallback_to_english: PASSED
+- test_copy_claude_template_error_handling: PASSED
+- test_session_i18n_initialization: PASSED
+
+### SPEC 메타데이터 업데이트 상세
+
+**`.moai/specs/SPEC-I18N-001/spec.md`**:
+
+**YAML Front Matter**:
+```yaml
+# 변경 전
+id: I18N-001
+version: 0.0.1
+status: draft
+created: 2025-10-20
+updated: 2025-10-20
+
+# 변경 후
+id: I18N-001
+version: 0.1.0
+status: completed
+created: 2025-10-20
+updated: 2025-10-20
+```
+
+**HISTORY 섹션**:
+- v0.1.0 (2025-10-20): TDD 구현 완료 항목 추가 (최신 버전)
+- v0.0.1 (2025-10-20): INITIAL 항목 유지 (이전 버전)
+
+### 파일 변경 목록
+
+| 파일 | 변경 유형 | 상세 |
+|------|----------|------|
+| `.moai/specs/SPEC-I18N-001/spec.md` | 수정 | v0.0.1 → v0.1.0, draft → completed |
+| `src/moai_adk/i18n.py` | 기존 | @CODE:I18N-001 참조 |
+| `src/moai_adk/cli/prompts/init_prompts.py` | 기존 | @CODE:I18N-001 참조 |
+| `src/moai_adk/core/template/processor.py` | 기존 | @CODE:I18N-001 참조 |
+| `tests/test_i18n.py` | 기존 | @TEST:I18N-001 참조 |
+| `tests/test_session_i18n_simple.py` | 기존 | @TEST:I18N-001 참조 |
+| `tests/unit/test_i18n_template.py` | 기존 | @TEST:I18N-001 참조 |
+
+### TDD 커밋 이력
+
+```
+ea7f494 📝 DOCS: SPEC-I18N-001 다국어 템플릿 시스템 명세 작성
+2f82b43 ✨ FEAT: Skills 통합 아키텍처 재설계 (TDD 구현)
+8b61ddc 📝 DOCS: CLAUDE.md 스킬 개수 정확성 업데이트
+```
+
+### 다음 단계
+
+1. ✅ **코드 구현 완료** (TDD 사이클)
+   - RED → GREEN → REFACTOR
+   - 100% 테스트 통과
+
+2. ✅ **SPEC 메타데이터 업데이트**
+   - v0.1.0, completed 상태로 전환
+   - HISTORY 섹션 추가
+
+3. ⏳ **Git 커밋** (다음 작업)
+   - 메시지: `📝 DOCS: SPEC-I18N-001 동기화 완료 (v0.0.1 → v0.1.0)`
+   - 대상 브랜치: feature/SPEC-I18N-001
+
+4. ⏳ **PR 상태 전환**
+   - Draft → Ready
+
+---
+
+## 이전 동기화: SPEC-CLAUDE-COMMANDS-001
 
 **동기화 일시**: 2025-10-18
 **SPEC ID**: CLAUDE-COMMANDS-001

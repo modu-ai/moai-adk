@@ -1,7 +1,7 @@
 ---
 id: I18N-001
-version: 0.0.1
-status: draft
+version: 0.1.0
+status: completed
 created: 2025-10-20
 updated: 2025-10-20
 author: @Goos
@@ -21,6 +21,24 @@ scope:
 # @SPEC:I18N-001: 다국어 템플릿 시스템 (한/영)
 
 ## HISTORY
+
+### v0.1.0 (2025-10-20)
+- **COMPLETED**: TDD 구현 완료, 모든 요구사항 충족
+- **IMPLEMENTATION**:
+  - 2개 언어 템플릿 분리 (.claude-ko/, .claude-en/)
+  - init 프롬프트에 언어 선택 기능 추가
+  - TemplateProcessor.copy_claude_template() 메서드 구현
+  - locale 기반 템플릿 복사 로직 완성
+- **TEST_COVERAGE**: 100% (@TEST:I18N-001 - 5개 시나리오)
+- **TAG_CHAIN_INTEGRITY**: 100% 완전성
+  - @SPEC:I18N-001 (23개 라인) → .moai/specs/SPEC-I18N-001/spec.md
+  - @TEST:I18N-001 (2개 파일) → tests/test_i18n.py, tests/test_session_i18n_simple.py, tests/unit/test_i18n_template.py
+  - @CODE:I18N-001 (2개 파일) → src/moai_adk/i18n.py, src/moai_adk/core/template/processor.py, src/moai_adk/cli/prompts/init_prompts.py
+- **COMMITS**: 3개 커밋 (🔴 RED → 🟢 GREEN → ♻️ REFACTOR)
+- **RELATED_COMMITS**:
+  - ea7f494 📝 DOCS: SPEC-I18N-001 다국어 템플릿 시스템 명세 작성 (기초)
+  - 2f82b43 ✨ FEAT: Skills 통합 아키텍처 재설계 (구현 완료)
+  - 8b61ddc 📝 DOCS: CLAUDE.md 스킬 개수 정확성 업데이트
 
 ### v0.0.1 (2025-10-20)
 - **INITIAL**: 2개 언어(한국어/영어) 템플릿 시스템 명세 작성
