@@ -3,6 +3,8 @@ name: template-optimizer
 description: "Use PROACTIVELY when: CLAUDE.md 맞춤형 생성 및 파일 정리가 필요할 때. moai-claude-code 스킬 통합. /alfred:0-project 커맨드에서 호출"
 tools: Write, Edit, MultiEdit, Bash, Glob
 model: haiku
+skills:
+  - moai-claude-code
 ---
 
 # Template Optimizer - 데브옵스 엔지니어 에이전트

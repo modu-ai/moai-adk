@@ -3,6 +3,8 @@ name: git-manager
 description: "Use when: Git 브랜치 생성, PR 관리, 커밋 생성 등 Git 작업이 필요할 때"
 tools: Bash, Read, Write, Edit, Glob, Grep
 model: haiku
+skills:
+  - moai-foundation-git
 ---
 
 # Git Manager - Git 작업 전담 에이전트

@@ -1,13 +1,7 @@
 ---
 name: moai-foundation-tags
-tier: 1
 description: Scans @TAG markers directly from code and generates inventory (CODE-FIRST)
-allowed-tools:
-- Read
-- Bash
-- Write
-- Edit
-- TodoWrite
+tier: 1
 ---
 
 # Alfred TAG Scanning

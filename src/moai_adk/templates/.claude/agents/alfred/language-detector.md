@@ -3,6 +3,8 @@ name: language-detector
 description: "Use PROACTIVELY when: 프로젝트 언어 자동 감지 및 도구 체인 추천이 필요할 때. /alfred:0-project 커맨드에서 호출"
 tools: Read, Bash, Grep, Glob
 model: haiku
+skills:
+  - moai-foundation-langs
 ---
 
 # Language Detector - 기술 분석가 에이전트

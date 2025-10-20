@@ -1,12 +1,8 @@
 ---
 name: moai-lang-dart
-tier: 2
-depends_on: moai-foundation-langs
 description: Dart best practices with flutter test, dart analyze, and Flutter widget
-  patterns
-allowed-tools:
-- Read
-- Bash
+patterns
+tier: 2
 ---
 
 # Dart Expert

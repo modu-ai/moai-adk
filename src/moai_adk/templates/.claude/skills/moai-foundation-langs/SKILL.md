@@ -1,13 +1,7 @@
 ---
 name: moai-foundation-langs
-tier: 1
 description: Auto-detects project language and framework (package.json, pyproject.toml, etc) and provides LanguageInterface standard
-allowed-tools:
-- Read
-- Bash
-- Write
-- Edit
-- TodoWrite
+tier: 1
 ---
 
 # Alfred Language Detection & LanguageInterface

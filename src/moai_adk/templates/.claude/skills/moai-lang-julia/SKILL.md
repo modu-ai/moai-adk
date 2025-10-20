@@ -1,12 +1,8 @@
 ---
 name: moai-lang-julia
-tier: 2
-depends_on: moai-foundation-langs
 description: Julia best practices with Test stdlib, Pkg manager, and scientific computing
-  patterns
-allowed-tools:
-- Read
-- Bash
+patterns
+tier: 2
 ---
 
 # Julia Expert

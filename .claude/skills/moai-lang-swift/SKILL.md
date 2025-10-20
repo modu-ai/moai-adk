@@ -1,12 +1,7 @@
 ---
 name: moai-lang-swift
-tier: 2
-depends_on: moai-foundation-langs
 description: Swift best practices with XCTest, SwiftLint, and iOS/macOS development
-  patterns
-allowed-tools:
-- Read
-- Bash
+patterns
 ---
 
 # Swift Expert

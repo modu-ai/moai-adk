@@ -1,12 +1,8 @@
 ---
 name: moai-lang-rust
-tier: 2
-depends_on: moai-foundation-langs
 description: Rust best practices with cargo test, clippy, rustfmt, and ownership/borrow
-  checker mastery
-allowed-tools:
-- Read
-- Bash
+checker mastery
+tier: 2
 ---
 
 # Rust Expert

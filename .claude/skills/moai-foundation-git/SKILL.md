@@ -1,13 +1,6 @@
 ---
 name: moai-foundation-git
-tier: 1
 description: Git workflow automation (branching, TDD commits, PR management)
-allowed-tools:
-- Read
-- Bash
-- Write
-- Edit
-- TodoWrite
 ---
 
 # Alfred Git Workflow

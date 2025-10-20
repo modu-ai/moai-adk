@@ -1,13 +1,7 @@
 ---
 name: moai-foundation-specs
-tier: 1
 description: Validates SPEC YAML frontmatter (7 required fields) and HISTORY section
-allowed-tools:
-- Read
-- Bash
-- Write
-- Edit
-- TodoWrite
+tier: 1
 ---
 
 # Alfred SPEC Metadata Validation

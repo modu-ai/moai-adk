@@ -3,6 +3,9 @@ name: tdd-implementer
 description: "Use when: TDD RED-GREEN-REFACTOR 구현이 필요할 때. /alfred:2-build Phase 2에서 호출"
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite
 model: sonnet
+skills:
+  # 언어별 스킬은 런타임에 프로젝트 언어에 따라 자동 선택
+  # moai-lang-python, moai-lang-typescript, moai-lang-java, moai-lang-go 등
 ---
 
 # TDD Implementer - TDD 실행 전문가

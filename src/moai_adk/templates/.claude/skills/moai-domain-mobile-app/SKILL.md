@@ -1,12 +1,7 @@
 ---
 name: moai-domain-mobile-app
-tier: 3
-depends_on: moai-foundation-specs
 description: Mobile app development with Flutter and React Native, state management,
-  and native integration
-allowed-tools:
-- Read
-- Bash
+and native integration
 ---
 
 # Mobile App Expert

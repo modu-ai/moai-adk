@@ -1,12 +1,8 @@
 ---
 name: moai-lang-python
-tier: 2
-depends_on: moai-foundation-langs
 description: Python best practices with pytest, mypy, ruff, black, and uv package
-  management
-allowed-tools:
-- Read
-- Bash
+management
+tier: 2
 ---
 
 # Python Expert

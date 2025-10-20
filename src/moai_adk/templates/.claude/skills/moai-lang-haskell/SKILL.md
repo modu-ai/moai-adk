@@ -1,11 +1,7 @@
 ---
 name: moai-lang-haskell
-tier: 2
-depends_on: moai-foundation-langs
 description: Haskell best practices with HUnit, Stack/Cabal, and pure functional programming
-allowed-tools:
-- Read
-- Bash
+tier: 2
 ---
 
 # Haskell Expert

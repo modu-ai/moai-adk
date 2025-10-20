@@ -1,13 +1,6 @@
 ---
 name: moai-essentials-refactor
-tier: 4
 description: Refactoring guidance with design patterns and code improvement strategies
-allowed-tools:
-- Read
-- Bash
-- Write
-- Edit
-- TodoWrite
 ---
 
 # Alfred Refactoring Coach

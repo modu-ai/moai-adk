@@ -1,12 +1,7 @@
 ---
 name: moai-domain-security
-tier: 3
-depends_on: moai-foundation-specs
 description: OWASP Top 10, static analysis (SAST), dependency security, and secrets
-  management
-allowed-tools:
-- Read
-- Bash
+management
 ---
 
 # Security Expert

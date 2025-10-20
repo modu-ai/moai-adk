@@ -1,11 +1,6 @@
 ---
 name: moai-lang-shell
-tier: 2
-depends_on: moai-foundation-langs
 description: Shell scripting best practices with bats, shellcheck, and POSIX compliance
-allowed-tools:
-- Read
-- Bash
 ---
 
 # Shell Expert

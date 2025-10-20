@@ -1,11 +1,7 @@
 ---
 name: moai-lang-lua
-tier: 2
-depends_on: moai-foundation-langs
 description: Lua best practices with busted, luacheck, and embedded scripting patterns
-allowed-tools:
-- Read
-- Bash
+tier: 2
 ---
 
 # Lua Expert

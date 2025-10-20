@@ -1,12 +1,7 @@
 ---
 name: moai-domain-database
-tier: 3
-depends_on: moai-foundation-specs
 description: Database design, schema optimization, indexing strategies, and migration
-  management
-allowed-tools:
-- Read
-- Bash
+management
 ---
 
 # Database Expert

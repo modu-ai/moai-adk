@@ -1,12 +1,7 @@
 ---
 name: moai-lang-c
-tier: 2
-depends_on: moai-foundation-langs
 description: C best practices with Unity test framework, cppcheck, and Make build
-  system
-allowed-tools:
-- Read
-- Bash
+system
 ---
 
 # C Expert

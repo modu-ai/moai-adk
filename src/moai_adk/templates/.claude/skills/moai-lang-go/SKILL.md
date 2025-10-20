@@ -1,11 +1,7 @@
 ---
 name: moai-lang-go
-tier: 2
-depends_on: moai-foundation-langs
 description: Go best practices with go test, golint, gofmt, and standard library utilization
-allowed-tools:
-- Read
-- Bash
+tier: 2
 ---
 
 # Go Expert

@@ -1,12 +1,8 @@
 ---
 name: moai-claude-code
-tier: 1
 description: Claude Code 5가지 컴포넌트 생성 및 관리 - Agent, Command, Skill, Plugin, Settings
-  템플릿 기반 정확한 파일 생성
-allowed-tools:
-- Read
-- Write
-- Edit
+템플릿 기반 정확한 파일 생성
+tier: 1
 ---
 
 # MoAI Claude Code Manager

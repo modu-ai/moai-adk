@@ -1,12 +1,7 @@
 ---
 name: moai-domain-data-science
-tier: 3
-depends_on: moai-foundation-specs
 description: Data analysis, visualization, statistical modeling, and reproducible
-  research workflows
-allowed-tools:
-- Read
-- Bash
+research workflows
 ---
 
 # Data Science Expert

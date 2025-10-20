@@ -1,12 +1,8 @@
 ---
 name: moai-lang-clojure
-tier: 2
-depends_on: moai-foundation-langs
 description: Clojure best practices with clojure.test, Leiningen, and immutable data
-  structures
-allowed-tools:
-- Read
-- Bash
+structures
+tier: 2
 ---
 
 # Clojure Expert

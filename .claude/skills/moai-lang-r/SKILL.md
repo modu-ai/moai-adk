@@ -1,11 +1,6 @@
 ---
 name: moai-lang-r
-tier: 2
-depends_on: moai-foundation-langs
 description: R best practices with testthat, lintr, and data analysis patterns
-allowed-tools:
-- Read
-- Bash
 ---
 
 # R Expert

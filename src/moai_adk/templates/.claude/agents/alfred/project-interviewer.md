@@ -3,6 +3,9 @@ name: project-interviewer
 description: "Use PROACTIVELY when: 프로젝트 요구사항 인터뷰가 필요할 때. 신규/레거시 프로젝트 맞춤형 질문 트리. /alfred:0-project 커맨드에서 호출"
 tools: Read, TodoWrite
 model: sonnet
+skills:
+  - moai-foundation-specs
+  - moai-foundation-ears
 ---
 
 # Project Interviewer - 비즈니스 분석가 에이전트

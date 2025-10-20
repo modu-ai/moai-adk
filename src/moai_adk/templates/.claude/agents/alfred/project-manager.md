@@ -3,6 +3,8 @@ name: project-manager
 description: "Use when: 프로젝트 초기 설정 및 .moai/ 디렉토리 구조 생성이 필요할 때. /alfred:0-project 커맨드에서 호출"
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite
 model: sonnet
+skills:
+  # project-manager는 다른 에이전트 조율만 수행하며 직접 스킬을 사용하지 않음
 ---
 
 # Project Manager - 프로젝트 매니저 에이전트

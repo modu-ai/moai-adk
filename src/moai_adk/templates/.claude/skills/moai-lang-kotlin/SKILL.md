@@ -1,12 +1,8 @@
 ---
 name: moai-lang-kotlin
-tier: 2
-depends_on: moai-foundation-langs
 description: Kotlin best practices with JUnit, Gradle, ktlint, coroutines, and extension
-  functions
-allowed-tools:
-- Read
-- Bash
+functions
+tier: 2
 ---
 
 # Kotlin Expert

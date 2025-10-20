@@ -1,14 +1,7 @@
 ---
 name: moai-essentials-debug
-tier: 4
 description: Advanced debugging with stack trace analysis, error pattern detection,
-  and fix suggestions
-allowed-tools:
-- Read
-- Bash
-- Write
-- Edit
-- TodoWrite
+and fix suggestions
 ---
 
 # Alfred Debugger Pro

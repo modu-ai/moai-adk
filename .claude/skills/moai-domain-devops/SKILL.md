@@ -1,12 +1,7 @@
 ---
 name: moai-domain-devops
-tier: 3
-depends_on: moai-foundation-specs
 description: CI/CD pipelines, Docker containerization, Kubernetes orchestration, and
-  infrastructure as code
-allowed-tools:
-- Read
-- Bash
+infrastructure as code
 ---
 
 # DevOps Expert

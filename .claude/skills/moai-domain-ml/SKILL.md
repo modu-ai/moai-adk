@@ -1,11 +1,6 @@
 ---
 name: moai-domain-ml
-tier: 3
-depends_on: moai-foundation-specs
 description: Machine learning model training, evaluation, deployment, and MLOps workflows
-allowed-tools:
-- Read
-- Bash
 ---
 
 # ML Expert

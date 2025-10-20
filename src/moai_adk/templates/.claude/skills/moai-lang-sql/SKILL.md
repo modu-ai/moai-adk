@@ -1,12 +1,8 @@
 ---
 name: moai-lang-sql
-tier: 2
-depends_on: moai-foundation-langs
 description: SQL best practices with testing frameworks, query optimization, and migration
-  management
-allowed-tools:
-- Read
-- Bash
+management
+tier: 2
 ---
 
 # SQL Expert

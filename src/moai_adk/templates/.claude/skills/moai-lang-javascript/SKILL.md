@@ -1,10 +1,8 @@
 ---
 name: moai-lang-javascript
 description: JavaScript best practices with Jest, ESLint, Prettier, and npm package
-  management
-allowed-tools:
-- Read
-- Bash
+management
+tier: 2
 ---
 
 # JavaScript Expert

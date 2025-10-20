@@ -1,12 +1,7 @@
 ---
 name: moai-lang-scala
-tier: 2
-depends_on: moai-foundation-langs
 description: Scala best practices with ScalaTest, sbt, and functional programming
-  patterns
-allowed-tools:
-- Read
-- Bash
+patterns
 ---
 
 # Scala Expert

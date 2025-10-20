@@ -1,11 +1,7 @@
 ---
 name: moai-lang-php
-tier: 2
-depends_on: moai-foundation-langs
 description: PHP best practices with PHPUnit, Composer, and PSR standards
-allowed-tools:
-- Read
-- Bash
+tier: 2
 ---
 
 # PHP Expert

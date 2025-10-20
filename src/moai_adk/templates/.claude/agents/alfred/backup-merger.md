@@ -3,6 +3,9 @@ name: backup-merger
 description: "Use PROACTIVELY when: .moai-backups/ 백업 파일과 최신 템플릿 병합이 필요할 때. /alfred:0-project 커맨드에서 호출"
 tools: Read, Write, Edit, MultiEdit, Bash
 model: sonnet
+skills:
+  - moai-foundation-specs
+  # 백업 병합 시 SPEC 메타데이터 표준 준수 필요
 ---
 
 # Backup Merger - 데이터 엔지니어 에이전트

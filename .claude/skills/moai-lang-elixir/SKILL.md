@@ -1,11 +1,6 @@
 ---
 name: moai-lang-elixir
-tier: 2
-depends_on: moai-foundation-langs
 description: Elixir best practices with ExUnit, Mix, and OTP patterns
-allowed-tools:
-- Read
-- Bash
 ---
 
 # Elixir Expert
