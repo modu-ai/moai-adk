@@ -30,7 +30,8 @@ def load_messages(locale: str = "ko") -> dict:
         locale = "ko"  # Fallback to Korean
 
     # Find docs/i18n/{locale}.json from hook location
-    repo_root = Path(__file__).parent.parent.parent.parent
+    # Path: .claude/hooks/alfred/core/i18n.py → repo_root
+    repo_root = Path(__file__).parent.parent.parent.parent.parent
     message_file = repo_root / "docs" / "i18n" / f"{locale}.json"
 
     if not message_file.exists():
