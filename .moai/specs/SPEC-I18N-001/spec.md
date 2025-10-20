@@ -1,7 +1,7 @@
 ---
 id: I18N-001
-version: 0.0.1
-status: draft
+version: 0.1.0
+status: active
 created: 2025-10-20
 updated: 2025-10-20
 author: @Goos
@@ -23,6 +23,19 @@ scope:
 # @SPEC:I18N-001: 5개 언어 다국어 지원 시스템 (i18n)
 
 ## HISTORY
+
+### v0.1.0 (2025-10-20)
+- **COMPLETED**: 5개 언어 다국어 지원 시스템 TDD 구현 완료
+- **AUTHOR**: @Goos
+- **TEST_COVERAGE**: test_i18n.py + integration tests (85%+)
+- **RELATED**:
+  - Hook 메시지 적용: `.claude/hooks/alfred/handlers/session.py`
+  - CLI 메시지 적용: `src/moai_adk/cli/commands/init.py`
+  - i18n 로더: `src/moai_adk/i18n.py`
+  - README 다국어: `README.{ko,ja,zh,th}.md`
+- **CHANGES**:
+  - 버전 관리 SSOT 원칙 적용 (pyproject.toml ← 단일 진실의 출처)
+  - `src/moai_adk/core/template/config.py`, `utils/banner.py` 동적 버전 로딩
 
 ### v0.0.1 (2025-10-20)
 - **INITIAL**: 5개 언어(ko, en, ja, zh, th) 다국어 지원 시스템 명세 작성
