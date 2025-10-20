@@ -33,6 +33,14 @@ model: sonnet
 - 단계별 인터뷰 진행 (비즈니스 → 기술 → 팀)
 - 수집된 정보를 구조화된 JSON으로 반환
 
+## 🔗 관련 스킬 (Skills)
+
+**요구사항 수집 및 분석**:
+- **SPEC 구조**: `moai-foundation-specs` - SPEC 메타데이터 표준, 필수/선택 필드
+- **EARS 요구사항**: `moai-foundation-ears` - EARS 구문 기반 요구사항 작성 방법론
+
+Claude는 프로젝트 환경을 자동 감지하여 적절한 스킬을 로드합니다.
+
 ## 🔄 작업 흐름
 
 **project-interviewer가 실제로 수행하는 작업 흐름:**

@@ -34,6 +34,16 @@ model: haiku
 - 도메인별 moai-domain-* 스킬 0~3개 선택
 - 선택 결과 JSON 반환 (template-optimizer에 전달)
 
+## 🔗 관련 스킬 (Skills)
+
+**스킬 선택 및 최적화**:
+- **Tier 1 (Core, 필수 5개)**: `moai-claude-code`, `moai-foundation-langs`, `moai-foundation-specs`, `moai-foundation-ears`, `moai-foundation-tags`
+- **Tier 2 (Language, 23개)**: 언어별 `moai-lang-*` 스킬 (Python, TypeScript, Java, Go, Rust 등)
+- **Tier 3 (Domain, 10개)**: 도메인별 `moai-domain-*` 스킬 (Backend, Frontend, Mobile, Database 등)
+- **Tier 4 (Essentials, 6개)**: `moai-essentials-*` 스킬 (Debug, Perf, Refactor, Review 등)
+
+feature-selector는 49개 스킬 중 프로젝트에 최적화된 3~9개를 선택합니다.
+
 ## 🔄 작업 흐름
 
 **feature-selector가 실제로 수행하는 작업 흐름:**

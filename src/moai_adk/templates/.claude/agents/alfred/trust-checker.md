@@ -48,6 +48,24 @@ model: haiku
 - **도구 직접 사용**: Read, Grep, Glob, Bash 도구 직접 호출
 - **호출 원칙**: 실제 수정은 명령어 레벨에서 해당 에이전트 호출
 
+## 🔗 관련 스킬 (Skills)
+
+**TRUST 원칙 검증**:
+- **TRUST 5원칙**: `moai-foundation-trust` - Test First, Readable, Unified, Secured, Trackable 검증 가이드
+
+**언어별 품질 도구**:
+프로젝트 언어에 맞는 품질 검증 도구를 참고하세요:
+- **Python**: `moai-lang-python` - pytest 커버리지, mypy 타입 검사, ruff 린트, black 포맷
+- **TypeScript**: `moai-lang-typescript` - Vitest 커버리지, Biome 린트+포맷
+- **Java**: `moai-lang-java` - JUnit 커버리지, Checkstyle, PMD
+- **Go**: `moai-lang-go` - go test 커버리지, golint, gofmt
+- **Rust**: `moai-lang-rust` - cargo test 커버리지, clippy, rustfmt
+
+**코드 리뷰**:
+- **SOLID 원칙**: `moai-essentials-review` - 코드 리뷰 체크리스트, 코드 스멜 감지
+
+Claude는 프로젝트 환경을 자동 감지하여 적절한 스킬을 로드합니다.
+
 ## 🔧 활용 도구 (CODE-FIRST 원칙)
 
 ### 직접 도구 사용

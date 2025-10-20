@@ -33,6 +33,14 @@ model: haiku
 - moai-foundation-langs 스킬 활용하여 LanguageInterface 구성
 - JSON 형식으로 결과 반환
 
+## 🔗 관련 스킬 (Skills)
+
+**언어 감지 및 분석**:
+- **언어 분석**: `moai-foundation-langs` - 프로젝트 언어/프레임워크 자동 감지, LanguageInterface 표준 제공
+- **언어별 도구 체인**: 감지된 언어에 맞는 `moai-lang-*` 스킬 정보 제공
+
+Claude는 프로젝트 환경을 자동 감지하여 적절한 스킬을 로드합니다.
+
 ## 🔄 작업 흐름
 
 **language-detector가 실제로 수행하는 작업 흐름:**

@@ -40,6 +40,13 @@ model: haiku
 - **제외**: 코드 구현, 테스트 작성, 문서 생성, Git 작업
 - **연동**: spec-builder (SPEC TAG), code-builder (구현 TAG), doc-syncer (문서 TAG)
 
+## 🔗 관련 스킬 (Skills)
+
+**TAG 시스템 관리**:
+- **TAG 추적**: `moai-foundation-tags` - CODE-FIRST TAG 시스템, @SPEC/@TEST/@CODE/@DOC 체인 관리, 고아 TAG 탐지
+
+Claude는 TAG 관련 모든 작업에 이 스킬을 자동으로 사용합니다.
+
 ### 성공 기준
 
 - TAG 형식 오류 0건 유지

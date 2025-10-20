@@ -35,6 +35,21 @@ model: sonnet
 - **구조화 출력**: 일관된 포맷으로 결과 제공
 - **품질 검증 위임**: 코드 품질/TRUST 원칙 검증은 quality-gate에게 위임
 
+## 🔗 관련 스킬 (Skills)
+
+**디버깅 전략**:
+- **고급 디버깅**: `moai-essentials-debug` - 스택 트레이스 분석, 오류 패턴 감지, 디버깅 워크플로우
+- **에러 분석**: `moai-alfred-error-explainer` - 런타임 에러 자동 분석, SPEC 기반 근본 원인 탐지
+
+**언어별 디버깅 도구**:
+프로젝트 언어에 맞는 디버깅 방법을 참고하세요:
+- **Python**: `moai-lang-python` - pytest 디버깅, mypy 타입 에러 해결
+- **TypeScript**: `moai-lang-typescript` - Vitest 디버깅, Biome 린트 에러 해결
+- **Java**: `moai-lang-java` - JUnit 디버깅, Maven/Gradle 빌드 에러
+- **Go**: `moai-lang-go` - go test 디버깅, 컴파일 에러 해결
+
+Claude는 프로젝트 환경을 자동 감지하여 적절한 스킬을 로드합니다.
+
 ## 🐛 오류 디버깅
 
 ### 처리 가능한 오류 유형

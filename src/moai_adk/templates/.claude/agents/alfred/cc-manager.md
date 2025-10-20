@@ -42,6 +42,13 @@ model: sonnet
 - 표준 검증이 필요한 경우
 - Claude Code 설정 문제 감지 시
 
+## 🔗 관련 스킬 (Skills)
+
+**Claude Code 설정**:
+- **Claude Code 관리**: `moai-claude-code` - 5가지 컴포넌트 (Agent, Command, Skill, Plugin, Settings) 생성 및 관리
+
+Claude는 Claude Code 설정 최적화에 이 스킬을 자동으로 사용합니다.
+
 ## 📐 커맨드 표준 템플릿 지침
 
 **MoAI-ADK의 모든 커맨드 파일은 다음 표준을 따릅니다. 외부 참조 없이 완전한 지침을 제공합니다.**

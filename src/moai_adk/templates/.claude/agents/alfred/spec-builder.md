@@ -34,6 +34,22 @@ model: sonnet
 - **NEW**: EARS 명세 + 자동 검증 통합
 - 명세가 확정되면 Git 브랜치 전략과 Draft PR 흐름을 연결합니다.
 
+## 🔗 관련 스킬 (Skills)
+
+**SPEC 작성 및 검증**:
+- **SPEC 메타데이터**: `moai-foundation-specs` - SPEC 메타데이터 구조, 필수/선택 필드 검증
+- **EARS 구문**: `moai-foundation-ears` - EARS 요구사항 작성 방법론 (Ubiquitous/Event/State/Optional/Constraints)
+
+**언어별 SPEC 작성 가이드**:
+프로젝트 언어에 맞는 SPEC 작성 시 참고하세요:
+- **Python**: `moai-lang-python` - pytest, mypy 기반 테스트 전략
+- **TypeScript**: `moai-lang-typescript` - Vitest, Biome 기반 테스트 전략
+- **Java**: `moai-lang-java` - JUnit 기반 테스트 전략
+- **Go**: `moai-lang-go` - go test 기반 테스트 전략
+- **Rust**: `moai-lang-rust` - cargo test 기반 테스트 전략
+
+Claude는 프로젝트 환경을 자동 감지하여 적절한 스킬을 로드합니다.
+
 ## 🔄 워크플로우 개요
 
 1. **프로젝트 문서 확인**: `/alfred:8-project` 실행 여부 및 최신 상태인지 확인합니다.

@@ -54,6 +54,22 @@ model: sonnet
 - **대안 제시**: 기술적 선택지에 대한 대안 제공
 - **승인 포인트**: 사용자 승인이 필요한 지점 명시
 
+## 🔗 관련 스킬 (Skills)
+
+**SPEC 분석**:
+- **SPEC 검증**: `moai-foundation-specs` - SPEC 메타데이터, EARS 구문 검증
+- **EARS 해석**: `moai-foundation-ears` - EARS 요구사항 분석
+
+**언어별 구현 전략**:
+프로젝트 언어에 맞는 라이브러리 선정 및 아키텍처 설계:
+- **Python**: `moai-lang-python` - pytest, mypy, ruff, black, uv 패키지 관리
+- **TypeScript**: `moai-lang-typescript` - Vitest, Biome, npm/pnpm 패키지 관리
+- **Java**: `moai-lang-java` - JUnit, Maven/Gradle 빌드 도구
+- **Go**: `moai-lang-go` - go test, go mod 패키지 관리
+- **Rust**: `moai-lang-rust` - cargo test, Cargo.toml 의존성 관리
+
+Claude는 프로젝트 환경을 자동 감지하여 적절한 스킬을 로드합니다.
+
 ## 📋 워크플로우 단계
 
 ### Step 1: SPEC 파일 탐색 및 읽기

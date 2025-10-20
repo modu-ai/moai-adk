@@ -34,6 +34,14 @@ model: haiku
 - EARS 구문으로 요구사항 구조화
 - YAML Front Matter + HISTORY 섹션 자동 생성
 
+## 🔗 관련 스킬 (Skills)
+
+**문서 작성 및 구조화**:
+- **SPEC 메타데이터**: `moai-foundation-specs` - SPEC 메타데이터 표준, YAML Front Matter, HISTORY 섹션
+- **EARS 구문**: `moai-foundation-ears` - EARS 5가지 구문 (Ubiquitous, Event-driven, State-driven, Optional, Constraints)
+
+Claude는 프로젝트 환경을 자동 감지하여 적절한 스킬을 로드합니다.
+
 ## 🔄 작업 흐름
 
 **document-generator가 실제로 수행하는 작업 흐름:**

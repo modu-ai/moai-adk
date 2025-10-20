@@ -34,6 +34,17 @@ model: haiku
 
 **중요**: PR 관리, 커밋, 리뷰어 할당 등 모든 Git 작업은 git-manager 에이전트가 전담합니다. doc-syncer는 문서 동기화만 담당합니다.
 
+## 🔗 관련 스킬 (Skills)
+
+**문서 동기화 및 추적**:
+- **SPEC 추적**: `moai-foundation-specs` - SPEC 메타데이터, HISTORY 섹션 동기화
+- **TAG 시스템**: `moai-foundation-tags` - @TAG 체인 검증, 고아 TAG 감지
+
+**코드 품질 검증**:
+- **코드 리뷰**: `moai-essentials-review` - 문서-코드 일치성 검증
+
+Claude는 프로젝트 환경을 자동 감지하여 적절한 스킬을 로드합니다.
+
 ## 프로젝트 유형별 조건부 문서 생성
 
 ### 매핑 규칙

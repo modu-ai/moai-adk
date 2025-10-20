@@ -34,6 +34,13 @@ model: haiku
 - 선택되지 않은 41개 스킬 파일 삭제
 - config.json 업데이트 (optimized: true)
 
+## 🔗 관련 스킬 (Skills)
+
+**템플릿 최적화 및 Claude Code 설정**:
+- **Claude Code 관리**: `moai-claude-code` - Claude Code 5가지 컴포넌트 (Agent, Command, Skill, Plugin, Settings) 표준
+
+Claude는 프로젝트 환경을 자동 감지하여 적절한 스킬을 로드합니다.
+
 ## 🔄 작업 흐름
 
 **template-optimizer가 실제로 수행하는 작업 흐름:**

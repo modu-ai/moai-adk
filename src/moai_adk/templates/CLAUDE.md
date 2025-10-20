@@ -136,6 +136,61 @@ Task(
 - **중앙 조율**: Alfred만이 에이전트 간 작업을 조율 (에이전트 간 직접 호출 금지)
 - **품질 게이트**: 각 단계 완료 시 TRUST 원칙 및 @TAG 무결성 자동 검증
 
+### Skills 통합 가이드 (공식 Claude Code 아키텍처)
+
+**MoAI-ADK의 3계층 아키텍처**:
+```
+Commands (Layer 1) → Sub-agents (Layer 2) → Skills (Layer 3)
+```
+
+#### Skills란?
+
+**Skills**는 Claude가 필요 시 자동으로 로드하는 전문 지식 모듈입니다:
+- **.claude/skills/** 디렉토리에 위치
+- **YAML frontmatter**: `name`, `description` 필드 (필수)
+- **Description-driven discovery**: Claude가 description을 읽고 자동 판단
+- **JIT (Just-in-Time) Loading**: 필요한 순간에만 전체 내용 로드
+- **Model-invoked**: Claude가 자율적으로 사용 시점 결정
+
+#### Sub-agents와 Skills 연동 방법
+
+**올바른 패턴** (공식 Claude Code 표준):
+- ✅ Sub-agents는 **시스템 프롬프트 텍스트**에서 Skills 언급
+- ✅ Claude가 Skills description 기반으로 자동 로드
+- ✅ YAML frontmatter에는 `skills:` 필드 없음 (공식 스펙)
+
+**잘못된 패턴**:
+- ❌ YAML frontmatter에 `skills: [moai-lang-python]` 필드 추가 (비표준)
+- ❌ Sub-agents가 Skills를 직접 호출 (Skills는 Model-invoked)
+
+**올바른 Skills 언급 예시**:
+```markdown
+## 🔗 관련 스킬 (Skills)
+
+**언어별 TDD 구현 가이드**:
+프로젝트 언어에 맞는 TDD 전략을 참고하세요:
+- **Python**: `moai-lang-python` - pytest, mypy, ruff, black 사용법
+- **TypeScript**: `moai-lang-typescript` - Vitest, Biome 사용법
+
+Claude는 프로젝트 환경을 자동 감지하여 적절한 스킬을 로드합니다.
+```
+
+#### Skills 계층 구조
+
+**Tier 1 (Foundation, 7개)**: 모든 프로젝트 필수
+- `moai-claude-code`, `moai-foundation-langs`, `moai-foundation-specs`, `moai-foundation-ears`, `moai-foundation-tags`, `moai-foundation-trust`, `moai-foundation-git`
+
+**Tier 2 (Language, 23개)**: 프로젝트 언어별 선택
+- `moai-lang-python`, `moai-lang-typescript`, `moai-lang-java`, `moai-lang-go`, `moai-lang-rust` 등
+
+**Tier 3 (Domain, 10개)**: 프로젝트 도메인별 선택
+- `moai-domain-backend`, `moai-domain-frontend`, `moai-domain-mobile-app`, `moai-domain-database` 등
+
+**Tier 4 (Essentials, 6개)**: 선택적 기능
+- `moai-essentials-debug`, `moai-essentials-perf`, `moai-essentials-refactor`, `moai-essentials-review` 등
+
+**경량화 전략**: feature-selector 에이전트가 49개 스킬 중 3~9개를 프로젝트에 최적화하여 선택
+
 ### 에이전트 모델 선택 가이드
 
 **Sonnet 4.5 (복잡한 판단, 계획, 설계)**:

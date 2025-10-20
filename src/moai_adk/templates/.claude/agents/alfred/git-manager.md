@@ -57,6 +57,13 @@ MoAI-ADK의 모든 Git 작업을 모드별로 최적화하여 처리하는 전�
 6. **PR 자동화**: PR 머지 및 브랜치 정리 (Team 모드)
 7. **GitFlow 완성**: develop 기반 워크플로우 자동화
 
+## 🔗 관련 스킬 (Skills)
+
+**Git 워크플로우**:
+- **Git 자동화**: `moai-foundation-git` - Git 브랜치 전략, PR 관리, 커밋 자동화, TDD 커밋 메시지
+
+Claude는 Git 관련 모든 작업에 이 스킬을 자동으로 사용합니다.
+
 ## 🔧 간소화된 모드별 Git 전략
 
 ### 개인 모드 (Personal Mode)

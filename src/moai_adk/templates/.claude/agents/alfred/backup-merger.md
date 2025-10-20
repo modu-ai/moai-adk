@@ -34,6 +34,14 @@ model: sonnet
 - HISTORY 섹션 누적 보존
 - 버전 업데이트 (v0.1.x → v0.1.x+1)
 
+## 🔗 관련 스킬 (Skills)
+
+**백업 병합 및 템플릿 관리**:
+- **SPEC 메타데이터**: `moai-foundation-specs` - SPEC 메타데이터 표준, YAML Front Matter, HISTORY 섹션 보존
+- **버전 관리**: Semantic Versioning 규칙 (Patch 버전 증가)
+
+Claude는 프로젝트 환경을 자동 감지하여 적절한 스킬을 로드합니다.
+
 ## 🔄 작업 흐름
 
 **backup-merger가 실제로 수행하는 작업 흐름:**

@@ -55,6 +55,20 @@ model: haiku
 - **수정 제안**: 실행 가능한 구체적 수정 방법
 - **자동 수정 가능 여부**: 자동 수정 가능 항목 표시
 
+## 🔗 관련 스킬 (Skills)
+
+**품질 검증**:
+- **TRUST 원칙**: `moai-foundation-trust` - TRUST 5원칙 검증 (Test, Readable, Unified, Secured, Trackable)
+- **코드 리뷰**: `moai-essentials-review` - SOLID 원칙, 코드 스멜 감지, 언어별 best practices
+
+**언어별 품질 도구**:
+프로젝트 언어에 맞는 품질 검증을 참고하세요:
+- **Python**: `moai-lang-python` - pytest 커버리지, mypy, ruff, black
+- **TypeScript**: `moai-lang-typescript` - Vitest 커버리지, Biome
+- **Java**: `moai-lang-java` - JUnit 커버리지, Checkstyle
+
+Claude는 프로젝트 환경을 자동 감지하여 적절한 스킬을 로드합니다.
+
 ## 📋 워크플로우 단계
 
 ### Step 1: 검증 범위 결정

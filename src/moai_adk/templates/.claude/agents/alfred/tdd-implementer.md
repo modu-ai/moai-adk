@@ -54,6 +54,26 @@ model: sonnet
 - **통합 테스트**: 필요 시 통합 테스트 추가
 - **테스트 실행**: pytest/jest로 테스트 실행 및 검증
 
+## 🔗 관련 스킬 (Skills)
+
+**언어별 TDD 구현 가이드**:
+프로젝트 언어에 맞는 TDD 전략을 참고하세요:
+- **Python**: `moai-lang-python` - pytest, mypy, ruff, black 사용법
+- **TypeScript**: `moai-lang-typescript` - Vitest, Biome 사용법
+- **Java**: `moai-lang-java` - JUnit, Maven/Gradle 사용법
+- **Go**: `moai-lang-go` - go test, gofmt 사용법
+- **Rust**: `moai-lang-rust` - cargo test, clippy, rustfmt 사용법
+- **Ruby**: `moai-lang-ruby` - RSpec, RuboCop 사용법
+- **Swift**: `moai-lang-swift` - XCTest, SwiftLint 사용법
+- **Kotlin**: `moai-lang-kotlin` - JUnit, Gradle, ktlint 사용법
+
+**코드 품질 스킬**:
+- **리팩토링**: `moai-essentials-refactor` - 디자인 패턴, 코드 개선 전략
+- **코드 리뷰**: `moai-essentials-review` - SOLID 원칙, 코드 스멜 감지
+- **디버깅**: `moai-essentials-debug` - 스택 트레이스 분석, 오류 패턴 감지
+
+Claude는 프로젝트 환경을 자동 감지하여 적절한 스킬을 로드합니다.
+
 ## 📋 워크플로우 단계
 
 ### Step 1: 구현 계획 확인
