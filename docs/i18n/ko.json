@@ -1,0 +1,44 @@
+{
+  "session_start": "🚀 MoAI-ADK 세션 시작",
+  "language": "개발 언어",
+  "branch": "브랜치",
+  "changes": "변경사항",
+  "spec_progress": "SPEC 진행도",
+  "checkpoints": "체크포인트",
+  "restore_hint": "복구: /alfred:0-project restore",
+
+  "checkpoint_created": "🛡️ 체크포인트 생성: {name}",
+  "checkpoint_operation": "작업",
+  "checkpoint_list": "사용 가능한 체크포인트",
+
+  "context_loaded": "📎 {count}개의 컨텍스트 파일 로드됨",
+  "context_recommendation": "💡 권장 문서",
+
+  "todo": {
+    "analyzing_docs": "프로젝트 문서 분석",
+    "proposing_specs": "SPEC 후보 제안",
+    "writing_spec": "SPEC 문서 작성",
+    "creating_branch": "Git 브랜치 생성",
+    "creating_pr": "Draft PR 생성",
+    "running_tests": "테스트 실행",
+    "implementing_code": "코드 구현",
+    "syncing_docs": "문서 동기화"
+  },
+
+  "error": {
+    "no_git": "❌ Git 리포지토리가 아닙니다",
+    "no_config": "❌ .moai/config.json 파일을 찾을 수 없습니다",
+    "permission_denied": "❌ 권한 거부: {path}",
+    "locale_not_supported": "⚠️ 언어 '{locale}'는 지원되지 않습니다. 영어로 대체합니다",
+    "missing_translation": "⚠️ 번역 누락: {key}"
+  },
+
+  "cli": {
+    "init_start": "MoAI-ADK 프로젝트 초기화 중...",
+    "init_success": "✅ 프로젝트 '{name}' 초기화 완료",
+    "init_select_locale": "사용할 언어를 선택하세요:",
+    "doctor_checking": "시스템 요구사항 확인 중...",
+    "doctor_passed": "✅ 모든 검사 통과",
+    "status_summary": "프로젝트 상태 요약"
+  }
+}

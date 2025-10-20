@@ -1,0 +1,44 @@
+{
+  "session_start": "🚀 MoAI-ADK セッション開始",
+  "language": "開発言語",
+  "branch": "ブランチ",
+  "changes": "変更",
+  "spec_progress": "SPEC進捗",
+  "checkpoints": "チェックポイント",
+  "restore_hint": "復元: /alfred:0-project restore",
+
+  "checkpoint_created": "🛡️ チェックポイント作成: {name}",
+  "checkpoint_operation": "操作",
+  "checkpoint_list": "利用可能なチェックポイント",
+
+  "context_loaded": "📎 {count}個のコンテキストファイルを読み込みました",
+  "context_recommendation": "💡 推奨ドキュメント",
+
+  "todo": {
+    "analyzing_docs": "プロジェクトドキュメント分析中",
+    "proposing_specs": "SPEC候補提案中",
+    "writing_spec": "SPECドキュメント作成中",
+    "creating_branch": "Gitブランチ作成中",
+    "creating_pr": "Draft PR作成中",
+    "running_tests": "テスト実行中",
+    "implementing_code": "コード実装中",
+    "syncing_docs": "ドキュメント同期中"
+  },
+
+  "error": {
+    "no_git": "❌ Gitリポジトリではありません",
+    "no_config": "❌ .moai/config.jsonが見つかりません",
+    "permission_denied": "❌ アクセス拒否: {path}",
+    "locale_not_supported": "⚠️ 言語'{locale}'はサポートされていません。英語にフォールバックします",
+    "missing_translation": "⚠️ 翻訳が見つかりません: {key}"
+  },
+
+  "cli": {
+    "init_start": "MoAI-ADKプロジェクト初期化中...",
+    "init_success": "✅ プロジェクト'{name}'の初期化が完了しました",
+    "init_select_locale": "使用する言語を選択してください:",
+    "doctor_checking": "システム要件を確認中...",
+    "doctor_passed": "✅ すべてのチェックに合格しました",
+    "status_summary": "プロジェクトステータスサマリー"
+  }
+}

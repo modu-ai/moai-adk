@@ -1,0 +1,44 @@
+{
+  "session_start": "🚀 MoAI-ADK 会话开始",
+  "language": "开发语言",
+  "branch": "分支",
+  "changes": "更改",
+  "spec_progress": "SPEC进度",
+  "checkpoints": "检查点",
+  "restore_hint": "恢复: /alfred:0-project restore",
+
+  "checkpoint_created": "🛡️ 检查点已创建: {name}",
+  "checkpoint_operation": "操作",
+  "checkpoint_list": "可用的检查点",
+
+  "context_loaded": "📎 已加载{count}个上下文文件",
+  "context_recommendation": "💡 推荐文档",
+
+  "todo": {
+    "analyzing_docs": "分析项目文档",
+    "proposing_specs": "提出SPEC候选",
+    "writing_spec": "编写SPEC文档",
+    "creating_branch": "创建Git分支",
+    "creating_pr": "创建Draft PR",
+    "running_tests": "运行测试",
+    "implementing_code": "实现代码",
+    "syncing_docs": "同步文档"
+  },
+
+  "error": {
+    "no_git": "❌ 不是Git仓库",
+    "no_config": "❌ 未找到.moai/config.json",
+    "permission_denied": "❌ 权限被拒绝: {path}",
+    "locale_not_supported": "⚠️ 不支持语言'{locale}'，回退到英语",
+    "missing_translation": "⚠️ 缺少翻译: {key}"
+  },
+
+  "cli": {
+    "init_start": "正在初始化MoAI-ADK项目...",
+    "init_success": "✅ 项目'{name}'初始化成功",
+    "init_select_locale": "选择您的首选语言:",
+    "doctor_checking": "正在检查系统要求...",
+    "doctor_passed": "✅ 所有检查通过",
+    "status_summary": "项目状态摘要"
+  }
+}

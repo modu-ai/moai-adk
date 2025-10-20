@@ -1,0 +1,44 @@
+{
+  "session_start": "🚀 MoAI-ADK Session Started",
+  "language": "Language",
+  "branch": "Branch",
+  "changes": "Changes",
+  "spec_progress": "SPEC Progress",
+  "checkpoints": "Checkpoints",
+  "restore_hint": "Restore: /alfred:0-project restore",
+
+  "checkpoint_created": "🛡️ Checkpoint created: {name}",
+  "checkpoint_operation": "Operation",
+  "checkpoint_list": "Available checkpoints",
+
+  "context_loaded": "📎 Loaded {count} context file(s)",
+  "context_recommendation": "💡 Recommended documents",
+
+  "todo": {
+    "analyzing_docs": "Analyzing project documents",
+    "proposing_specs": "Proposing SPEC candidates",
+    "writing_spec": "Writing SPEC document",
+    "creating_branch": "Creating Git branch",
+    "creating_pr": "Creating Draft PR",
+    "running_tests": "Running tests",
+    "implementing_code": "Implementing code",
+    "syncing_docs": "Syncing documentation"
+  },
+
+  "error": {
+    "no_git": "❌ Not a Git repository",
+    "no_config": "❌ .moai/config.json not found",
+    "permission_denied": "❌ Permission denied: {path}",
+    "locale_not_supported": "⚠️ Locale '{locale}' not supported, falling back to English",
+    "missing_translation": "⚠️ Missing translation: {key}"
+  },
+
+  "cli": {
+    "init_start": "Initializing MoAI-ADK project...",
+    "init_success": "✅ Project '{name}' initialized successfully",
+    "init_select_locale": "Select your preferred language:",
+    "doctor_checking": "Checking system requirements...",
+    "doctor_passed": "✅ All checks passed",
+    "status_summary": "Project Status Summary"
+  }
+}
