@@ -61,20 +61,19 @@ def handle_session_start(payload: HookPayload) -> HookResult:
 
     # systemMessage: 사용자에게 직접 표시
     lines = [
-        "🚀 MoAI-ADK Session Started",
-        f"   Language: {language}",
-        f"   Branch: {branch} ({commit})",
-        f"   Changes: {changes}",
-        f"   SPEC Progress: {spec_progress} ({specs['percentage']}%)",
+        "🚀 MoAI-ADK 세션 시작",
+        f"   개발 언어: {language}",
+        f"   브랜치: {branch} ({commit})",
+        f"   변경사항: {changes}",
+        f"   SPEC 진행도: {spec_progress} ({specs['percentage']}%)",
     ]
 
     # Checkpoint 목록 추가 (최신 3개만 표시)
     if checkpoints:
-        lines.append(f"   Checkpoints: {len(checkpoints)} available")
+        lines.append(f"   체크포인트: {len(checkpoints)} available")
         for cp in reversed(checkpoints[-3:]):  # 최신 3개
             branch_short = cp["branch"].replace("before-", "")
             lines.append(f"      - {branch_short}")
-        lines.append("   Restore: /alfred:0-project restore")
 
     system_message = "\n".join(lines)
 
