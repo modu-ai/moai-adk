@@ -376,7 +376,7 @@ class TemplateProcessor:
             console.print("   ✅ .github/ copy complete (variables substituted)")
 
     def _copy_claude_md(self, silent: bool = False) -> None:
-        """Copy CLAUDE.md with smart merge (preserves \"## 프로젝트 정보\" section)."""
+        """Copy CLAUDE.md with smart merge (preserves \"## Project Information\" section)."""
         src = self.template_root / "CLAUDE.md"
         dst = self.target_path / "CLAUDE.md"
 
@@ -385,11 +385,11 @@ class TemplateProcessor:
                 console.print("⚠️ CLAUDE.md template not found")
             return
 
-        # Smart merge: preserve existing "## 프로젝트 정보" section
+        # Smart merge: preserve existing "## Project Information" section
         if dst.exists():
             self._merge_claude_md(src, dst)
             if not silent:
-                console.print("   🔄 CLAUDE.md merged (프로젝트 정보 preserved)")
+                console.print("   🔄 CLAUDE.md merged (project information preserved)")
         else:
             # First time: just copy
             self._copy_file_with_substitution(src, dst)

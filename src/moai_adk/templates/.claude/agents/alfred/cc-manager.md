@@ -24,7 +24,8 @@ model: sonnet
 - `Skill("moai-foundation-specs")` – Always checks the command/agent document structure.
 
 **Conditional Skill Logic**
-- `Skill("moai-alfred-tag-scanning")`: Called when a diff or `agent_skill_plan` contains a TAG influence.If the result is “Rules need to be updated”, we subsequently chain `Skill("moai-foundation-tags")`.
+- `Skill("moai-alfred-language-detection")`: Always called first to detect project language/framework, which gates the activation of language-specific skills.
+- `Skill("moai-alfred-tag-scanning")`: Called when a diff or `agent_skill_plan` contains a TAG influence.If the result is "Rules need to be updated", we subsequently chain `Skill("moai-foundation-tags")`.
 - `Skill("moai-foundation-tags")`: Executed only when TAG naming reordering or traceability matrix update is confirmed.
 - `Skill("moai-foundation-trust")`: Rechecks the latest guide when a TRUST policy/version update is detected or requested.
 - `Skill("moai-alfred-trust-validation")`: Called when it is necessary to actually verify whether there is a standard violation based on the quality gate.
@@ -32,7 +33,9 @@ model: sonnet
 - `Skill("moai-alfred-spec-metadata-validation")`: Only the relevant file is verified when a new command/agent document is created or the meta field is modified.
 - Domain skills: When the brief includes CLI/Data Science/Database/DevOps/ML/Mobile/Security needs, add the corresponding item among `Skill("moai-domain-cli-tool")`, `Skill("moai-domain-data-science")`, `Skill("moai-domain-database")`, `Skill("moai-domain-devops")`, `Skill("moai-domain-ml")`, `Skill("moai-domain-mobile-app")`, `Skill("moai-domain-security")`.  
 - `Skill("moai-alfred-refactoring-coach")`: Called when the brief includes refactoring/TODO cleanup and a technical debt remediation plan is needed.
-- Language skills: Based on the result of `Skill("moai-alfred-language-detection")`, activate the relevant one(s) among `Skill("moai-lang-python")`, `Skill("moai-lang-typescript")`, `Skill("moai-lang-javascript")`, `Skill("moai-lang-java")`, `Skill("moai-lang-go")`, `Skill("moai-lang-rust")`, `Skill("moai-lang-csharp")`, `Skill("moai-lang-cpp")`, `Skill("moai-lang-c")`, `Skill("moai-lang-clojure")`, `Skill("moai-lang-dart")`, `Skill("moai-lang-elixir")`, `Skill("moai-lang-haskell")`, `Skill("moai-lang-julia")`, `Skill("moai-lang-kotlin")`, `Skill("moai-lang-lua")`, `Skill("moai-lang-php")`, `Skill("moai-lang-r")`, `Skill("moai-lang-ruby")`, `Skill("moai-lang-scala")`, `Skill("moai-lang-shell")`, `Skill("moai-lang-sql")`, `Skill("moai-lang-swift")`.  
+- **Language skills** (23 available): Based on the result of `Skill("moai-alfred-language-detection")`, activate the relevant language skill(s) from the Language Tier:
+  - Supported: Python, TypeScript, JavaScript, Java, Go, Rust, C#, C++, C, Clojure, Dart, Elixir, Haskell, Julia, Kotlin, Lua, PHP, R, Ruby, Scala, Shell, SQL, Swift
+  - Called as: `Skill("moai-lang-{language-name}")` (e.g., `Skill("moai-lang-python")`)
 - `Skill("moai-claude-code")`: Used to customize the Claude Code output format or reorganize the code example template.
 - `Skill("moai-alfred-tui-survey")`: Provides an interactive survey when changes to operating policies or introduction of standards need to be confirmed with user approval.
 

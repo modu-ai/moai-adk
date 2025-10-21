@@ -1,8 +1,8 @@
 # @CODE:INIT-003:PHASE | SPEC: .moai/specs/SPEC-INIT-003/spec.md | TEST: tests/unit/test_init_reinit.py
-"""Phase-based installation executor (SPEC-INIT-003 v0.3.0)
+"""Phase-based installation executor (SPEC-INIT-003 v0.4.2)
 
 Runs the project initialization across five phases:
-- Phase 1: Preparation (create backup at .moai-backups/{timestamp}/, keep only latest)
+- Phase 1: Preparation (create single backup at .moai-backups/backup/)
 - Phase 2: Directory (build directory structure)
 - Phase 3: Resource (copy templates while preserving user content)
 - Phase 4: Configuration (generate configuration files)
@@ -20,7 +20,6 @@ from rich.console import Console
 
 from moai_adk import __version__
 from moai_adk.core.project.backup_utils import (
-    generate_backup_dir_name,
     get_backup_targets,
     has_any_moai_files,
     is_protected_path,
@@ -229,25 +228,21 @@ class PhaseExecutor:
             self._initialize_git(project_path)
 
     def _create_backup(self, project_path: Path) -> None:
-        """Create a selective backup (v0.3.0).
+        """Create a single backup (v0.4.2).
 
-        Keep only the latest backup in .moai-backups/{timestamp}/.
+        Maintains only one backup at .moai-backups/backup/.
 
         Args:
             project_path: Project path.
         """
         # Define backup directory
         backups_dir = project_path / ".moai-backups"
+        backup_path = backups_dir / "backup"
 
-        # Remove all existing backups (keep only latest)
-        if backups_dir.exists():
-            for item in backups_dir.iterdir():
-                if item.is_dir():
-                    shutil.rmtree(item)
+        # Remove existing backup if present
+        if backup_path.exists():
+            shutil.rmtree(backup_path)
 
-        # Create new backup directory (.moai-backups/{timestamp}/)
-        timestamp = generate_backup_dir_name()
-        backup_path = backups_dir / timestamp
         backup_path.mkdir(parents=True, exist_ok=True)
 
         # Collect backup targets
