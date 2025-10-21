@@ -180,6 +180,91 @@ Task(
 
 ---
 
+### Project Language Selection Workflow
+
+**Purpose**: Allow users to select their preferred language during project initialization, and automatically switch all MoAI-ADK communications and outputs accordingly.
+
+**What language selection affects**:
+1. **Communication language** (`project.language`): All Alfred and agent responses
+2. **Output style** (`ALFRED_OUTPUT_STYLE`): Automatically activated after initialization
+3. **Commit messages** (locale): Language used when generating Git commits
+4. **SPEC documents**: EARS pattern explanations and examples use selected language
+5. **Configuration files**: Settings stored in `.moai/config.json` and `.claude/settings.json`
+
+#### Language selection timing
+
+**Stage 1: Project initialization** (when `/alfred:0-project` is executed)
+- New project or immediately after reinitialization (optimized: false)
+- Alfred automatically displays **language selection TUI**
+- User selects preferred language (Korean or English)
+
+**Stage 2: Settings saved**
+```json
+{
+  "project": {
+    "language": "ko",
+    "language_selected_at": "2025-10-21T22:30:00+09:00",
+    "language_confirmed": true
+  }
+}
+```
+
+**Stage 3: Output-style automatically switched**
+| Language | Code | Output-Style | Purpose |
+|----------|------|--------------|---------|
+| Korean   | ko   | study-with-alfred | Educational approach for Korean developers |
+| English  | en   | agentic-coding | Agile coding approach for international teams |
+
+#### How to change language
+
+**Method 1: Re-run `/alfred:0-project`**
+```bash
+/alfred:0-project
+# → Reselect language in Phase 1.0.5
+```
+
+**Method 2: Manual configuration change**
+```json
+# Edit project.language in .moai/config.json
+"project": {
+  "language": "en",
+  "language_confirmed": true
+}
+```
+
+**Method 3: Change output-style only**
+```bash
+/output-style
+# → Keep communication language, change output-style only
+```
+
+#### Alfred's language processing rules
+
+1. **config.json takes priority**: If `project.language_confirmed === true`, use saved language
+2. **Default value**: Use `ko` (Korean) if no language is configured
+3. **Consistency**: Maintain selected language throughout entire project lifecycle
+4. **Explicit switching only**: Never auto-switch language without user request
+
+#### Developer experience (DX)
+
+**Workflow for Korean developers**:
+```
+1. Run /alfred:0-project
+2. Select language: "Korean (한국어)"
+3. ✅ Start communication in Korean
+4. All SPEC/commits/docs use Korean
+```
+
+**Workflow for English teams**:
+```
+1. Run /alfred:0-project
+2. Select language: "English"
+3. ✅ Start communication in English
+4. All SPEC/commits/docs use English
+```
+
+---
+
 ### Alfred 다음 단계 제안 원칙
 
 **CRITICAL**: Alfred는 작업 완료 후 다음 단계를 제안할 때 **반드시 현재 상태를 확인**해야 합니다.

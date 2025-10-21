@@ -3,20 +3,12 @@
     "MOAI_RUNTIME": "python",
     "MOAI_AUTO_ROUTING": "true",
     "MOAI_PERFORMANCE_MONITORING": "true",
-    "PYTHON_ENV": "{{PROJECT_MODE}}"
+    "PYTHON_ENV": "{{PROJECT_MODE}}",
+    "ALFRED_LANGUAGE": "{{PROJECT_LANGUAGE}}",
+    "ALFRED_LANGUAGE_CONFIRMED": "{{LANGUAGE_CONFIRMED}}",
+    "ALFRED_OUTPUT_STYLE": "{{LANGUAGE_OUTPUT_STYLE}}"
   },
   "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "command": "uv run .claude/hooks/alfred/alfred_hooks.py SessionStart",
-            "type": "command"
-          }
-        ],
-        "matcher": "*"
-      }
-    ],
     "PreToolUse": [
       {
         "hooks": [

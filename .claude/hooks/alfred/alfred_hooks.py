@@ -4,7 +4,7 @@
 
 A main entry point that routes Claude Code events to the appropriate handlers.
 
-Architecture:
+🏗️ Architecture:
 ┌─────────────────────────────────────────────────────────────┐
 │ alfred_hooks.py (Router)                                    │
 ├─────────────────────────────────────────────────────────────┤
@@ -31,20 +31,20 @@ Architecture:
 │ - tags.py: TAG search/verification, library version cache   │
 └─────────────────────────────────────────────────────────────┘
 
-Usage:
+🛠️ Usage:
     python alfred_hooks.py <event_name> < payload.json
 
-Supported Events:
+📣 Supported Events:
     - SessionStart: Start Session (display project status)
     - UserPromptSubmit: Prompt submission (JIT document loading)
     - PreToolUse: Before using the tool (automatically creates checkpoint)
     - SessionEnd, PostToolUse, Notification, Stop, SubagentStop
 
-Exit Codes:
+🚦 Exit Codes:
     - 0: Success
     - 1: Error (no arguments, JSON parsing failure, exception thrown)
 
-TDD History:
+🧪 TDD History:
     - RED: Module separation design, event routing test
     - GREEN: 1233 LOC → 9 items Module separation implementation (SRP compliance)
     - REFACTOR: Import optimization, enhanced error handling
@@ -80,29 +80,29 @@ def main() -> None:
     Receives the event name as a CLI argument and reads the JSON payload through stdin.
     Calls the handler appropriate for the event and outputs the results to stdout as JSON.
 
-    Usage:
+    🛠️ Usage:
         python alfred_hooks.py <event_name> < payload.json
 
-    Supported Events:
+    📣 Supported Events:
         - SessionStart: Start Session (display project status)
         - UserPromptSubmit: Prompt submission (JIT document loading)
         - SessionEnd, PreToolUse, PostToolUse, Notification, Stop, SubagentStop
 
-    Exit Codes:
+    🚦 Exit Codes:
         - 0: Success
         - 1: Error (no arguments, JSON parsing failure, exception thrown)
 
-    Examples:
+    📝 Examples:
         $ echo '{"cwd": "."}' | python alfred_hooks.py SessionStart
         {"message": "🚀 MoAI-ADK Session Started\\n...", ...}
 
-    Notes:
+    🗒️ Notes:
         - Claude Code is automatically called (no need for direct user execution)
         - JSON I/O processing through stdin/stdout
         - Print error message to stderr
         - UserPromptSubmit uses a special output schema (hookEventName + additionalContext)
 
-    TDD History:
+    🧪 TDD History:
         - RED: Event routing, JSON I/O, error handling testing
         - GREEN: Handler map-based routing implementation
         - REFACTOR: Error message clarification, exit code standardization, UserPromptSubmit schema separation

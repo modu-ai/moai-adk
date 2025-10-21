@@ -65,6 +65,15 @@ Analyze SPEC documents to execute planned tasks. It supports not only TDD implem
 4. **Execute work**: Perform work according to the approved plan
 5. **Git Operations**: Creating step-by-step commits with git-manager
 
+## 🧠 Skill Loadout Overview
+
+| Agent | Auto core skill | Conditional skills |
+| ----- | ---------------- | ------------------ |
+| implementation-planner | Skill("moai-alfred-language-detection") | Skill("moai-foundation-langs"), Skill("moai-alfred-performance-optimizer"), Skill("moai-alfred-tag-scanning"), Detected domain skill (예: Skill("moai-domain-backend")), Skill("moai-alfred-trust-validation"), Skill("moai-alfred-tui-survey") |
+| tdd-implementer | Skill("moai-essentials-debug") | Detected language skill (예: Skill("moai-lang-python")), Skill("moai-essentials-refactor"), Skill("moai-alfred-git-workflow"), Skill("moai-essentials-perf"), Skill("moai-alfred-performance-optimizer"), Skill("moai-alfred-tui-survey") |
+| quality-gate | Skill("moai-alfred-trust-validation") | Skill("moai-alfred-tag-scanning"), Skill("moai-alfred-code-reviewer"), Skill("moai-essentials-review"), Skill("moai-essentials-perf"), Skill("moai-alfred-performance-optimizer"), Skill("moai-foundation-trust"), Skill("moai-alfred-tui-survey") |
+| git-manager | Skill("moai-alfred-git-workflow") | Skill("moai-foundation-git"), Skill("moai-alfred-trust-validation"), Skill("moai-alfred-tag-scanning"), Skill("moai-alfred-tui-survey") |
+
 ## 🔗 Associated Agent
 
 - **Phase 1**: implementation-planner (📋 technical architect) - SPEC analysis and establishment of execution strategy

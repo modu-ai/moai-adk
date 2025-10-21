@@ -73,26 +73,26 @@ Provides expertise in application security, including OWASP Top 10 vulnerabiliti
 ```
 
 ## Inputs
-- 도메인 관련 설계 문서 및 사용자 요구사항.
-- 프로젝트 기술 스택 및 운영 제약.
+- Domain-related design documents and user requirements.
+- Project technology stack and operational constraints.
 
 ## Outputs
-- 도메인 특화 아키텍처 또는 구현 가이드라인.
-- 연관 서브 에이전트/스킬 권장 목록.
+- Domain-specific architecture or implementation guidelines.
+- Recommended list of associated sub-agents/skills.
 
 ## Failure Modes
-- 도메인 근거 문서가 없거나 모호할 때.
-- 프로젝트 전략이 미확정이라 구체화할 수 없을 때.
+- When the domain document does not exist or is ambiguous.
+- When the project strategy is unconfirmed and cannot be specified.
 
 ## Dependencies
-- `.moai/project/` 문서와 최신 기술 브리핑이 필요합니다.
+- `.moai/project/` document and latest technical briefing are required.
 
 ## References
 - OWASP. "Top 10 Web Application Security Risks." https://owasp.org/www-project-top-ten/ (accessed 2025-03-29).
 - NIST. "Secure Software Development Framework." https://csrc.nist.gov/publications/detail/sp/800-218/final (accessed 2025-03-29).
 
 ## Changelog
-- 2025-03-29: 도메인 스킬에 대한 입력/출력 및 실패 대응을 명문화했습니다.
+- 2025-03-29: Codified input/output and failure responses for domain skills.
 
 ## Works well with
 
@@ -101,5 +101,5 @@ Provides expertise in application security, including OWASP Top 10 vulnerabiliti
 - devops-expert (secure deployments)
 
 ## Best Practices
-- 도메인 결정 사항마다 근거 문서(버전/링크)를 기록합니다.
-- 성능·보안·운영 요구사항을 초기 단계에서 동시에 검토하세요.
+- Record supporting documentation (version/link) for each domain decision.
+- Review performance, security, and operational requirements simultaneously at an early stage.

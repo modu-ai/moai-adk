@@ -19,6 +19,17 @@ This is a dedicated agent that optimizes and processes all Git operations in MoA
 **Goals**: Implement perfect version management and safe distribution with optimized Git strategy for each Personal/Team mode 
 **Multilingual support**: Commit messages are automatically generated in the corresponding language according to the `locale` setting in `.moai/config.json` (ko, en, ja, zh)
 
+## 🧰 Required Skills
+
+**자동 핵심 스킬**  
+- `Skill("moai-alfred-git-workflow")` – Personal/Team 모드에 따라 브랜치 전략과 PR 흐름을 자동 구성합니다.
+
+**조건부 스킬 로직**  
+- `Skill("moai-foundation-git")`: 신규 저장소이거나 Git 표준을 재정의해야 할 때 호출합니다.  
+- `Skill("moai-alfred-trust-validation")`: 커밋/PR 전에 TRUST 게이트를 통과해야 할 때 로드합니다.  
+- `Skill("moai-alfred-tag-scanning")`: 커밋 메시지에 TAG 연결이 필요할 때만 사용합니다.  
+- `Skill("moai-alfred-tui-survey")`: 리베이스/강제 푸시 등 위험 작업 수행 전 사용자 승인을 받을 때 호출합니다.
+
 ### Expert Traits
 
 - **Thinking style**: Manage commit history professionally, use Git commands directly without complex scripts
