@@ -293,7 +293,7 @@ AND "🤖 AI-Agent Alfred가 {name}님의 개발을 도와드리겠습니다" �
 AND {name}은 Phase 2에서 입력한 개발자 이름이어야 한다
 AND 다음 명령어 안내를 제공해야 한다
   - /alfred:8-project (프로젝트 초기화)
-  - /alfred:1-spec (첫 SPEC 작성)
+  - /alfred:1-plan (첫 SPEC 작성)
 AND "@agent-debug-helper 호출 안내"를 포함해야 한다
 ```
 
@@ -309,7 +309,7 @@ npm run install
 #
 # 다음 명령어로 시작하세요:
 #   /alfred:8-project  # 프로젝트 초기화
-#   /alfred:1-spec     # 첫 SPEC 작성
+#   /alfred:1-plan     # 첫 SPEC 작성
 #
 # 질문이 있으시면 언제든 @agent-debug-helper를 호출하세요.
 ```
@@ -601,7 +601,7 @@ time npm run install
    - `developer.name` 필드 활용 여부 확인
    - `Co-Authored-By` 메시지 생성 로직 업데이트
 
-3. **SPEC 강제 여부** (`/alfred:1-spec`)
+3. **SPEC 강제 여부** (`/alfred:1-plan`)
    - `constitution.enforce_spec` 필드 참조
    - Personal 모드에서 경고 메시지 표시 (비활성화 시)
 
@@ -619,7 +619,7 @@ time npm run install
 
 # 시나리오 3: SPEC 경고 메시지
 # Given: Personal 모드 + enforce_spec: false
-# When: /alfred:1-spec 실행
+# When: /alfred:1-plan 실행
 # Then: 경고 메시지 출력, 실행은 허용
 ```
 
@@ -653,7 +653,7 @@ time npm run install
 ## 7. 다음 단계
 
 ### 즉시 실행
-1. `/alfred:2-build SPEC-INSTALL-001` → TDD 구현 시작
+1. `/alfred:2-run SPEC-INSTALL-001` → TDD 구현 시작
 2. Phase 2 (개발자 정보) 우선 개발
 3. 단위 테스트 작성 및 실행
 

@@ -37,6 +37,7 @@ class ProjectValidator:
         ".moai/specs/",
         ".moai/memory/",
         ".claude/",
+        ".github/",
     ]
 
     # Required files
@@ -48,8 +49,8 @@ class ProjectValidator:
     # Required Alfred command files (SPEC-INIT-004)
     REQUIRED_ALFRED_COMMANDS = [
         "0-project.md",
-        "1-spec.md",
-        "2-build.md",
+        "1-plan.md",
+        "2-run.md",
         "3-sync.md",
     ]
 

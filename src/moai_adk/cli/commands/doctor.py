@@ -1,4 +1,5 @@
-# @CODE:CLI-001 | SPEC: SPEC-CLI-001.md | TEST: tests/unit/test_doctor.py
+# @CODE:CLI-001 | SPEC: SPEC-CLI-001/spec.md | TEST: tests/unit/test_doctor.py
+# @CODE:CLAUDE-COMMANDS-001:CLI | SPEC: SPEC-CLAUDE-COMMANDS-001/spec.md | TEST: tests/unit/test_slash_commands.py
 """MoAI-ADK doctor command
 
 System diagnostics command:
@@ -6,6 +7,7 @@ System diagnostics command:
 - Verify Git installation
 - Validate project structure
 - Inspect language-specific tool chains
+- Diagnose slash command loading issues (--check-commands)
 """
 
 import json
@@ -27,7 +29,8 @@ console = Console()
 @click.option("--fix", is_flag=True, help="Suggest fixes for missing tools")
 @click.option("--export", type=click.Path(), help="Export diagnostics to JSON file")
 @click.option("--check", type=str, help="Check specific tool only")
-def doctor(verbose: bool, fix: bool, export: str | None, check: str | None) -> None:
+@click.option("--check-commands", is_flag=True, help="Diagnose slash command loading issues")
+def doctor(verbose: bool, fix: bool, export: str | None, check: str | None, check_commands: bool) -> None:
     """Check system requirements and project health
 
     Verifies:
@@ -37,6 +40,11 @@ def doctor(verbose: bool, fix: bool, export: str | None, check: str | None) -> N
     - Language-specific tool chains (20+ languages)
     """
     try:
+        # Handle --check-commands option first
+        if check_commands:
+            _check_slash_commands()
+            return
+
         console.print("[cyan]Running system diagnostics...[/cyan]\n")
 
         # Run basic environment checks
@@ -182,3 +190,45 @@ def _export_diagnostics(export_path: str, data: dict) -> None:
         console.print(f"\n[green]✓ Diagnostics exported to {export_path}[/green]")
     except Exception as e:
         console.print(f"\n[red]✗ Failed to export diagnostics: {e}[/red]")
+
+
+def _check_slash_commands() -> None:
+    """Check slash command loading issues (helper)"""
+    from moai_adk.core.diagnostics.slash_commands import diagnose_slash_commands
+
+    console.print("[cyan]Running slash command diagnostics...[/cyan]\n")
+
+    result = diagnose_slash_commands()
+
+    # Handle error case
+    if "error" in result:
+        console.print(f"[red]✗ {result['error']}[/red]")
+        return
+
+    # Build results table
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("Command File", style="dim", width=40)
+    table.add_column("Status", justify="center", width=10)
+    table.add_column("Issues", style="yellow")
+
+    for detail in result["details"]:
+        icon = "✓" if detail["valid"] else "✗"
+        color = "green" if detail["valid"] else "red"
+        issues = ", ".join(detail["errors"]) if detail["errors"] else "-"
+
+        table.add_row(detail["file"], f"[{color}]{icon}[/{color}]", issues)
+
+    console.print(table)
+    console.print()
+
+    # Summary
+    total = result["total_files"]
+    valid = result["valid_commands"]
+
+    if valid == total and total > 0:
+        console.print(f"[green]✓ {valid}/{total} command files are valid[/green]")
+    elif total == 0:
+        console.print("[yellow]⚠ No command files found in .claude/commands/[/yellow]")
+    else:
+        console.print(f"[yellow]⚠ Only {valid}/{total} command files are valid[/yellow]")
+        console.print("[dim]Fix the issues above to enable slash commands[/dim]")

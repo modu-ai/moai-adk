@@ -8,26 +8,26 @@ from pathlib import Path
 
 
 def get_jit_context(prompt: str, cwd: str) -> list[str]:
-    """프롬프트 기반 JIT Context Retrieval
+    """JIT Context Retrieval based on prompt.
 
-    사용자 프롬프트를 분석하여 관련 문서를 자동으로 추천합니다.
-    Alfred 커맨드, 키워드 기반 패턴 매칭으로 필요한 문서만 로드합니다.
+    Analyze user prompts and automatically recommend relevant documents.
+    Alfred commands and keyword-based pattern matching load only the documents you need.
 
     Args:
-        prompt: 사용자 입력 프롬프트 (대소문자 무관)
-        cwd: 프로젝트 루트 디렉토리 경로
+        prompt: Prompt for user input (case is irrelevant)
+        cwd: Project root directory path
 
     Returns:
-        추천 문서 경로 리스트 (상대 경로).
-        매칭되는 패턴이 없거나 파일이 없으면 빈 리스트 []
+        List of recommended document paths (relative paths).
+        If there is no matching pattern or file, an empty list []
 
     Patterns:
-        - "/alfred:1-spec" → .moai/memory/spec-metadata.md
-        - "/alfred:2-build" → .moai/memory/development-guide.md
-        - "test" → tests/ (디렉토리가 존재하는 경우)
+        - "/alfred:1-plan" → .moai/memory/spec-metadata.md
+        - "/alfred:2-run" → .moai/memory/development-guide.md
+        - "test" → tests/ (if directory exists)
 
     Examples:
-        >>> get_jit_context("/alfred:1-spec", "/project")
+        >>> get_jit_context("/alfred:1-plan", "/project")
         ['.moai/memory/spec-metadata.md']
         >>> get_jit_context("implement test", "/project")
         ['tests/']
@@ -35,22 +35,22 @@ def get_jit_context(prompt: str, cwd: str) -> list[str]:
         []
 
     Notes:
-        - Context Engineering: JIT Retrieval 원칙 준수
-        - 필요한 문서만 로드하여 초기 컨텍스트 부담 최소화
-        - 파일 존재 여부 확인 후 반환
+        - Context Engineering: Compliance with JIT Retrieval principles
+        - Minimize initial context burden by loading only necessary documents
+        - Return after checking whether file exists
 
     TDD History:
-        - RED: 18개 시나리오 테스트 (커맨드 매칭, 키워드, 빈 결과)
-        - GREEN: 패턴 매칭 딕셔너리 기반 구현
-        - REFACTOR: 확장 가능한 패턴 구조, 파일 존재 검증 추가
+        - RED: 18 items scenario testing (command matching, keywords, empty results)
+        - GREEN: Pattern matching dictionary-based implementation
+        - REFACTOR: Expandable pattern structure, file existence validation added
     """
     context_files = []
     cwd_path = Path(cwd)
 
     # Pattern matching
     patterns = {
-        "/alfred:1-spec": [".moai/memory/spec-metadata.md"],
-        "/alfred:2-build": [".moai/memory/development-guide.md"],
+        "/alfred:1-plan": [".moai/memory/spec-metadata.md"],
+        "/alfred:2-run": [".moai/memory/development-guide.md"],
         "test": ["tests/"],
     }
 

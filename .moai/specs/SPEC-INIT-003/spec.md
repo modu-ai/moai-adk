@@ -429,13 +429,13 @@ console.log(`\n💡 백업은 자동으로 삭제되지 않습니다.`);
 
 #### 5. 케이스별 동작 표
 
-| 상황 | .claude | .moai | CLAUDE.md | 동작 |
-|-----|---------|-------|-----------|------|
-| **Case 1** | ✅ | ✅ | ✅ | 3개 모두 백업 |
-| **Case 2** | ✅ | ❌ | ❌ | .claude만 백업 |
-| **Case 3** | ❌ | ✅ | ✅ | .moai, CLAUDE.md 백업 |
-| **Case 4** | ❌ | ❌ | ✅ | CLAUDE.md만 백업 |
-| **Case 5** | ❌ | ❌ | ❌ | 백업 생략 (신규 설치) |
+| 상황       | .claude | .moai | CLAUDE.md | 동작                  |
+| ---------- | ------- | ----- | --------- | --------------------- |
+| **Case 1** | ✅       | ✅     | ✅         | 3개 모두 백업         |
+| **Case 2** | ✅       | ❌     | ❌         | .claude만 백업        |
+| **Case 3** | ❌       | ✅     | ✅         | .moai, CLAUDE.md 백업 |
+| **Case 4** | ❌       | ❌     | ✅         | CLAUDE.md만 백업      |
+| **Case 5** | ❌       | ❌     | ❌         | 백업 생략 (신규 설치) |
 
 ---
 
@@ -568,12 +568,12 @@ const choice = await select({
 
 #### 4. 병합 전략 실행
 
-| 파일 유형 | 병합 방법 |
-|----------|---------|
-| JSON | Deep merge (lodash.merge) |
-| Markdown | HISTORY 섹션 누적 |
-| Hooks | 버전 비교 후 최신 사용 |
-| Commands | 사용자 파일 보존 |
+| 파일 유형 | 병합 방법                 |
+| --------- | ------------------------- |
+| JSON      | Deep merge (lodash.merge) |
+| Markdown  | HISTORY 섹션 누적         |
+| Hooks     | 버전 비교 후 최신 사용    |
+| Commands  | 사용자 파일 보존          |
 
 **구현 예시** (JSON Deep Merge):
 ```typescript
@@ -1083,7 +1083,7 @@ Then:
 
 ## Next Steps
 
-1. `/alfred:2-build INIT-003` → Phase C TDD 구현 (Python)
+1. `/alfred:2-run INIT-003` → Phase C TDD 구현 (Python)
    - Phase C (2-3시간): backup_merger.py 구현 (백업 병합 기능)
    - TDD 사이클: RED (테스트 작성) → GREEN (구현) → REFACTOR (품질 개선)
    - 테스트 8개: 최근 백업 탐지, 템플릿 상태 감지, 사용자 내용 병합 등

@@ -13,215 +13,215 @@ priority: medium
 ## HISTORY
 
 ### v0.1.1 (2025-10-17)
-- **UPDATED**: 템플릿 버전 동기화 (v0.3.8)
+- **UPDATED**: Template version synced (v0.3.8)
 - **AUTHOR**: @Alfred
-- **SECTIONS**: 메타데이터 표준화 (author 필드 단수형, priority 추가)
+- **SECTIONS**: Metadata standardization (single `author` field, added `priority`)
 
 ### v0.1.0 (2025-10-01)
-- **INITIAL**: 프로젝트 기술 스택 문서 작성
+- **INITIAL**: Authored the technology stack document
 - **AUTHOR**: @tech-lead
 - **SECTIONS**: Stack, Framework, Quality, Security, Deploy
 
 ---
 
-## @DOC:STACK-001 언어 & 런타임
+## @DOC:STACK-001 Languages & Runtimes
 
-### 주 언어 선택
+### Primary Language
 
-- **언어**: [선택한 주 언어]
-- **버전**: [지원 버전 범위]
-- **선택 이유**: [선택 근거와 트레이드오프]
-- **패키지 매니저**: [사용할 패키지 매니저]
+- **Language**: [Chosen primary language]
+- **Version Range**: [Supported versions]
+- **Rationale**: [Justification and trade-offs]
+- **Package Manager**: [Tool used to manage dependencies]
 
-### 멀티 플랫폼 지원
+### Multi-Platform Support
 
-| 플랫폼 | 지원 상태 | 검증 도구 | 주요 제약 |
-|--------|-----------|-----------|-----------|
-| **Windows** | [지원여부] | [검증방법] | [제약사항] |
-| **macOS** | [지원여부] | [검증방법] | [제약사항] |
-| **Linux** | [지원여부] | [검증방법] | [제약사항] |
+| Platform    | Support Level | Validation Tooling  | Key Constraints |
+| ----------- | ------------- | ------------------- | --------------- |
+| **Windows** | [Supported?]  | [Validation method] | [Constraints]   |
+| **macOS**   | [Supported?]  | [Validation method] | [Constraints]   |
+| **Linux**   | [Supported?]  | [Validation method] | [Constraints]   |
 
-## @DOC:FRAMEWORK-001 핵심 프레임워크 & 라이브러리
+## @DOC:FRAMEWORK-001 Core Frameworks & Libraries
 
-### 1. 주요 의존성
+### 1. Runtime Dependencies
 
 ```json
 {
   "dependencies": {
-    "[라이브러리1]": "[버전]",
-    "[라이브러리2]": "[버전]",
-    "[라이브러리3]": "[버전]"
+    "[library1]": "[version]",
+    "[library2]": "[version]",
+    "[library3]": "[version]"
   }
 }
 ```
 
-### 2. 개발 도구
+### 2. Development Tooling
 
 ```json
 {
   "devDependencies": {
-    "[개발도구1]": "[버전]",
-    "[개발도구2]": "[버전]",
-    "[개발도구3]": "[버전]"
+    "[dev-tool1]": "[version]",
+    "[dev-tool2]": "[version]",
+    "[dev-tool3]": "[version]"
   }
 }
 ```
 
-### 3. 빌드 시스템
+### 3. Build System
 
-- **빌드 도구**: [선택한 빌드 도구]
-- **번들링**: [번들러와 설정]
-- **타겟**: [빌드 타겟 (브라우저, Node.js 등)]
-- **성능 목표**: [빌드 시간 목표]
+- **Build Tool**: [Selected build tool]
+- **Bundling**: [Bundler and configuration]
+- **Targets**: [Build targets such as browser, Node.js, etc.]
+- **Performance Goals**: [Desired build duration]
 
-## @DOC:QUALITY-001 품질 게이트 & 정책
+## @DOC:QUALITY-001 Quality Gates & Policies
 
-### 테스트 커버리지
+### Test Coverage
 
-- **목표**: [커버리지 목표 %]
-- **측정 도구**: [사용할 도구]
-- **실패 시 대응**: [커버리지 미달 시 처리]
+- **Target**: [Coverage percentage goal]
+- **Measurement Tool**: [Tooling used]
+- **Failure Response**: [Actions when coverage falls short]
 
-### 정적 분석
+### Static Analysis
 
-| 도구 | 역할 | 설정 파일 | 실패 시 조치 |
-|------|------|-----------|--------------|
-| [린터] | [역할] | [설정파일] | [조치방법] |
-| [포매터] | [역할] | [설정파일] | [조치방법] |
-| [타입체커] | [역할] | [설정파일] | [조치방법] |
+| Tool           | Role      | Config File   | Failure Handling |
+| -------------- | --------- | ------------- | ---------------- |
+| [linter]       | [Purpose] | [config file] | [Action]         |
+| [formatter]    | [Purpose] | [config file] | [Action]         |
+| [type-checker] | [Purpose] | [config file] | [Action]         |
 
-### 자동화 스크립트
+### Automation Scripts
 
 ```bash
-# 품질 검사 파이프라인
-[테스트명령어]                    # 테스트 실행
-[린트명령어]                     # 코드 품질 검사
-[타입체크명령어]                 # 타입 검증
-[빌드명령어]                     # 빌드 검증
+# Quality gate pipeline
+[test-command]                    # Run tests
+[lint-command]                    # Enforce code quality
+[type-check-command]              # Validate types
+[build-command]                   # Verify builds
 ```
 
-## @DOC:SECURITY-001 보안 정책 & 운영
+## @DOC:SECURITY-001 Security Policy & Operations
 
-### 비밀 관리
+### Secret Management
 
-- **정책**: [비밀 관리 방식]
-- **도구**: [사용할 도구나 서비스]
-- **검증**: [자동 검증 방법]
+- **Policy**: [Approach to handling secrets]
+- **Tooling**: [Services or tools in use]
+- **Verification**: [Automation to validate compliance]
 
-### 의존성 보안
+### Dependency Security
 
 ```json
 {
   "security": {
-    "audit_tool": "[보안감사도구]",
-    "update_policy": "[업데이트정책]",
-    "vulnerability_threshold": "[허용수준]"
+    "audit_tool": "[security-audit-tool]",
+    "update_policy": "[update-policy]",
+    "vulnerability_threshold": "[allowed-threshold]"
   }
 }
 ```
 
-### 로깅 정책
+### Logging Policy
 
-- **로그 수준**: [로그 레벨 정의]
-- **민감정보 마스킹**: [마스킹 규칙]
-- **보존 정책**: [로그 보존 기간]
+- **Log Levels**: [Define log levels]
+- **Sensitive Data Masking**: [Masking rules]
+- **Retention Policy**: [Log retention period]
 
-## @DOC:DEPLOY-001 배포 채널 & 전략
+## @DOC:DEPLOY-001 Release Channels & Strategy
 
-### 1. 배포 채널
+### 1. Distribution Channels
 
-- **주 채널**: [주요 배포 경로]
-- **릴리스 절차**: [배포 프로세스]
-- **버전 정책**: [버전 관리 전략]
-- **rollback 전략**: [롤백 방법]
+- **Primary Channel**: [Main release path]
+- **Release Procedure**: [Deployment process]
+- **Versioning Policy**: [Version management strategy]
+- **Rollback Strategy**: [Rollback plan]
 
-### 2. 개발 설치
+### 2. Developer Setup
 
 ```bash
-# 개발자 모드 설정
-[로컬설치명령어]
-[의존성설치명령어]
-[개발환경구축명령어]
+# Developer mode setup
+[local-install-command]
+[dependency-install-command]
+[dev-environment-command]
 ```
 
-### 3. CI/CD 파이프라인
+### 3. CI/CD Pipeline
 
-| 단계 | 목적 | 사용 도구 | 성공 조건 |
-|------|------|-----------|-----------|
-| [단계1] | [목적] | [도구] | [조건] |
-| [단계2] | [목적] | [도구] | [조건] |
-| [단계3] | [목적] | [도구] | [조건] |
+| Stage     | Objective   | Tooling | Success Criteria |
+| --------- | ----------- | ------- | ---------------- |
+| [Stage 1] | [Objective] | [Tool]  | [Condition]      |
+| [Stage 2] | [Objective] | [Tool]  | [Condition]      |
+| [Stage 3] | [Objective] | [Tool]  | [Condition]      |
 
-## 환경별 설정
+## Environment Profiles
 
-### 개발 환경 (`dev`)
+### Development (`dev`)
 
 ```bash
 export PROJECT_MODE=development
 export LOG_LEVEL=debug
-[개발환경명령어]
+[dev-env-command]
 ```
 
-### 테스트 환경 (`test`)
+### Test (`test`)
 
 ```bash
 export PROJECT_MODE=test
 export LOG_LEVEL=info
-[테스트환경명령어]
+[test-env-command]
 ```
 
-### 프로덕션 환경 (`production`)
+### Production (`production`)
 
 ```bash
 export PROJECT_MODE=production
 export LOG_LEVEL=warning
-[프로덕션명령어]
+[prod-env-command]
 ```
 
-## @CODE:TECH-DEBT-001 기술 부채 관리
+## @CODE:TECH-DEBT-001 Technical Debt Management
 
-### 현재 기술 부채
+### Current Debt
 
-1. **[기술부채1]** - [설명과 우선순위]
-2. **[기술부채2]** - [설명과 우선순위]
-3. **[기술부채3]** - [설명과 우선순위]
+1. **[debt-item-1]** – [Description and priority]
+2. **[debt-item-2]** – [Description and priority]
+3. **[debt-item-3]** – [Description and priority]
 
-### 개선 계획
+### Remediation Plan
 
-- **단기 (1개월)**: [즉시 해결할 항목]
-- **중기 (3개월)**: [점진적 개선 항목]
-- **장기 (6개월+)**: [장기적 업그레이드 계획]
+- **Short term (1 month)**: [Immediate fixes]
+- **Mid term (3 months)**: [Progressive improvements]
+- **Long term (6+ months)**: [Strategic upgrades]
 
-## EARS 기술 요구사항 작성법
+## EARS Technical Requirements Guide
 
-### 기술 스택에서의 EARS 활용
+### Using EARS for the Stack
 
-기술적 의사결정과 품질 게이트 설정 시 EARS 구문을 활용하여 명확한 기술 요구사항을 정의하세요:
+Apply EARS patterns when documenting technical decisions and quality gates:
 
-#### 기술 스택 EARS 예시
+#### Technology Stack EARS Example
 ```markdown
-### Ubiquitous Requirements (기본 기술 요구사항)
-- 시스템은 TypeScript 타입 안전성을 보장해야 한다
-- 시스템은 크로스 플랫폼 호환성을 제공해야 한다
+### Ubiquitous Requirements (Baseline)
+- The system shall guarantee TypeScript type safety.
+- The system shall provide cross-platform compatibility.
 
-### Event-driven Requirements (이벤트 기반 기술)
-- WHEN 코드가 커밋되면, 시스템은 자동으로 테스트를 실행해야 한다
-- WHEN 빌드가 실패하면, 시스템은 개발자에게 즉시 알림을 보내야 한다
+### Event-driven Requirements
+- WHEN code is committed, the system shall run tests automatically.
+- WHEN a build fails, the system shall notify developers immediately.
 
-### State-driven Requirements (상태 기반 기술)
-- WHILE 개발 모드일 때, 시스템은 hot-reload를 제공해야 한다
-- WHILE 프로덕션 모드일 때, 시스템은 최적화된 빌드를 생성해야 한다
+### State-driven Requirements
+- WHILE in development mode, the system shall offer hot reloading.
+- WHILE in production mode, the system shall produce optimized builds.
 
-### Optional Features (선택적 기술)
-- WHERE Docker 환경이면, 시스템은 컨테이너 기반 배포를 지원할 수 있다
-- WHERE CI/CD가 구성되면, 시스템은 자동 배포를 수행할 수 있다
+### Optional Features
+- WHERE Docker is available, the system may support container-based deployment.
+- WHERE CI/CD is configured, the system may execute automated deployments.
 
-### Constraints (기술적 제약사항)
-- IF 의존성에 보안 취약점이 발견되면, 시스템은 빌드를 중단해야 한다
-- 테스트 커버리지는 85% 이상을 유지해야 한다
-- 빌드 시간은 5분을 초과하지 않아야 한다
+### Constraints
+- IF a dependency vulnerability is detected, the system shall halt the build.
+- Test coverage shall remain at or above 85%.
+- Build time shall not exceed 5 minutes.
 ```
 
 ---
 
-_이 기술 스택은 `/alfred:2-build` 실행 시 TDD 도구 선택과 품질 게이트 적용의 기준이 됩니다._
+_This technology stack guides tool selection and quality gates when `/alfred:2-run` runs._

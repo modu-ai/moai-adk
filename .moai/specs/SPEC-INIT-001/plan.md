@@ -457,7 +457,7 @@ GitHub Issue #2의 문제를 근본적으로 해결하면서 기존 대화형 �
 
 ### 즉시 실행
 ```bash
-/alfred:2-build INIT-001  # TDD 구현 시작
+/alfred:2-run INIT-001  # TDD 구현 시작
 ```
 
 ### 구현 후

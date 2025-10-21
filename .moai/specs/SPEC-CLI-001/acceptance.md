@@ -139,7 +139,7 @@ moai status --detail
 **Then**:
 - "TAG Chain: ⚠ 50% (0 orphans, 1 broken)" 표시
 - 끊어진 TAG 상세: "AUTH-001: CODE exists but SPEC missing"
-- 수정 가이드: "Run `/alfred:1-spec AUTH-001` to create missing SPEC"
+- 수정 가이드: "Run `/alfred:1-plan AUTH-001` to create missing SPEC"
 - Exit code: 0 (경고지만 실행 성공)
 
 ### Scenario 4.3: 고아 TAG 감지
@@ -156,7 +156,7 @@ moai status --detail
 **Then**:
 - "TAG Chain: ⚠ 50% (1 orphan, 0 broken)" 표시
 - 고아 TAG 상세: "AUTH-001: SPEC exists but CODE not implemented"
-- 수정 가이드: "Run `/alfred:2-build AUTH-001` to implement"
+- 수정 가이드: "Run `/alfred:2-run AUTH-001` to implement"
 
 ---
 

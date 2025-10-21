@@ -69,13 +69,13 @@ Error: Cannot find module '...'
 ```markdown
 ## 🐛 버그 설명
 
-`/alfred:2-build` 명령 실행 시 TAG 검증 단계에서 오류가 발생합니다.
+`/alfred:2-run` 명령 실행 시 TAG 검증 단계에서 오류가 발생합니다.
 
 ## 🔄 재현 단계
 
 1. `python -m moai_adk init .` 명령으로 프로젝트 초기화
-2. `/alfred:1-spec "사용자 인증"` 실행하여 SPEC 생성
-3. `/alfred:2-build SPEC-AUTH-001` 실행
+2. `/alfred:1-plan "사용자 인증"` 실행하여 Plan & SPEC 생성
+3. `/alfred:2-run SPEC-AUTH-001` 실행
 4. TAG 검증 단계에서 오류 발생
 
 ## 💥 예상 동작 vs 실제 동작
@@ -178,8 +178,8 @@ Pull Request를 제출하기 전에 다음 사항을 확인해주세요:
 
 ### PR 제출 체크리스트
 
-- [ ] **SPEC 작성**: 변경 사항에 대한 SPEC 문서가 있습니까? (`/alfred:1-spec`)
-- [ ] **TDD 완료**: RED-GREEN-REFACTOR 사이클을 완료했습니까? (`/alfred:2-build`)
+- [ ] **SPEC 작성**: 변경 사항에 대한 SPEC 문서가 있습니까? (`/alfred:1-plan`)
+- [ ] **TDD 완료**: RED-GREEN-REFACTOR 사이클을 완료했습니까? (`/alfred:2-run`)
 - [ ] **문서 동기화**: Living Document가 업데이트되었습니까? (`/alfred:3-sync`)
 - [ ] **@TAG 추적성**: 모든 코드에 @TAG가 올바르게 적용되었습니까?
 - [ ] **TRUST 5원칙 준수**:
@@ -249,20 +249,20 @@ uv run mypy src
 
 MoAI-ADK는 **SPEC-First TDD** 방법론을 따릅니다. 모든 코드 변경은 다음 단계를 거쳐야 합니다:
 
-#### 1단계: SPEC 작성 (`/alfred:1-spec`)
+#### 1단계: Plan & SPEC 작성 (`/alfred:1-plan`)
 
 ```bash
-/alfred:1-spec "기여하려는 기능 설명"
+/alfred:1-plan "기여하려는 기능 설명"
 ```
 
 - EARS 방식으로 요구사항 작성
 - `.moai/specs/SPEC-{ID}/spec.md` 생성
 - feature 브랜치 자동 생성
 
-#### 2단계: TDD 구현 (`/alfred:2-build`)
+#### 2단계: TDD 실행 (`/alfred:2-run`)
 
 ```bash
-/alfred:2-build SPEC-{ID}
+/alfred:2-run SPEC-{ID}
 ```
 
 - **RED**: 실패하는 테스트 작성 (`@TEST:ID`)

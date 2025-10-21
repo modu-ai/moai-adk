@@ -309,41 +309,41 @@
 ### Unit Test 커버리지
 
 **Phase A 모듈**:
-| 모듈 | 테스트 케이스 수 | 커버리지 목표 | 상태 |
-|------|-----------------|--------------|------|
-| `phase-executor.ts` (백업) | 7 (Case 2~5 추가) | ≥90% | ⏳ |
-| `backup-metadata.ts` | 5 (`backed_up_files` 추가) | ≥90% | ⏳ |
+| 모듈                       | 테스트 케이스 수           | 커버리지 목표 | 상태 |
+| -------------------------- | -------------------------- | ------------- | ---- |
+| `phase-executor.ts` (백업) | 7 (Case 2~5 추가)          | ≥90%          | ⏳    |
+| `backup-metadata.ts`       | 5 (`backed_up_files` 추가) | ≥90%          | ⏳    |
 
 **Phase B 모듈**:
-| 모듈 | 테스트 케이스 수 | 커버리지 목표 | 상태 |
-|------|-----------------|--------------|------|
-| `backup-merger.ts` | 8 (긴급 백업 추가) | ≥85% | ⏳ |
-| `json-merger.ts` | 8 | ≥90% | ⏳ |
-| `markdown-merger.ts` | 6 | ≥90% | ⏳ |
-| `hooks-merger.ts` | 5 | ≥85% | ⏳ |
-| `merge-orchestrator.ts` | 10 | ≥85% | ⏳ |
-| `merge-report.ts` | 4 | ≥85% | ⏳ |
+| 모듈                    | 테스트 케이스 수   | 커버리지 목표 | 상태 |
+| ----------------------- | ------------------ | ------------- | ---- |
+| `backup-merger.ts`      | 8 (긴급 백업 추가) | ≥85%          | ⏳    |
+| `json-merger.ts`        | 8                  | ≥90%          | ⏳    |
+| `markdown-merger.ts`    | 6                  | ≥90%          | ⏳    |
+| `hooks-merger.ts`       | 5                  | ≥85%          | ⏳    |
+| `merge-orchestrator.ts` | 10                 | ≥85%          | ⏳    |
+| `merge-report.ts`       | 4                  | ≥85%          | ⏳    |
 
 ### Integration Test
 
-| 통합 시나리오 | 검증 항목 | 상태 |
-|--------------|----------|------|
-| Phase A 전체 | moai init → 선택적 백업 + 메타데이터 | ⏳ |
-| Phase B 전체 | 백업 감지 → 긴급 백업 → 병합 → 리포트 | ⏳ |
+| 통합 시나리오 | 검증 항목                             | 상태 |
+| ------------- | ------------------------------------- | ---- |
+| Phase A 전체  | moai init → 선택적 백업 + 메타데이터  | ⏳    |
+| Phase B 전체  | 백업 감지 → 긴급 백업 → 병합 → 리포트 | ⏳    |
 
 ### E2E Test
 
-| E2E 시나리오 | 테스트 파일 | 상태 |
-|-------------|------------|------|
-| AC-INIT-003-01 (Phase A) | `phase-executor.e2e.test.ts` | ⏳ |
-| AC-INIT-003-02 (백업 감지) | `backup-merger.e2e.test.ts` | ⏳ |
-| AC-INIT-003-03 (병합) | `merge-mode.e2e.test.ts` | ⏳ |
-| AC-INIT-003-04 (새로설치) | `reinstall-mode.e2e.test.ts` | ⏳ |
-| AC-INIT-003-05 (부분 백업) | `selective-backup.test.ts` | ⏳ |
-| AC-INIT-003-06 (긴급 백업) | `emergency-backup.test.ts` | ⏳ |
-| AC-INIT-003-07 (신규 설치) | `fresh-install.test.ts` | ⏳ |
-| AC-INIT-003-08 (백업 실패) | `backup-failure.test.ts` | ⏳ |
-| AC-INIT-003-09 (롤백) | `merge-rollback.test.ts` | ⏳ |
+| E2E 시나리오               | 테스트 파일                  | 상태 |
+| -------------------------- | ---------------------------- | ---- |
+| AC-INIT-003-01 (Phase A)   | `phase-executor.e2e.test.ts` | ⏳    |
+| AC-INIT-003-02 (백업 감지) | `backup-merger.e2e.test.ts`  | ⏳    |
+| AC-INIT-003-03 (병합)      | `merge-mode.e2e.test.ts`     | ⏳    |
+| AC-INIT-003-04 (새로설치)  | `reinstall-mode.e2e.test.ts` | ⏳    |
+| AC-INIT-003-05 (부분 백업) | `selective-backup.test.ts`   | ⏳    |
+| AC-INIT-003-06 (긴급 백업) | `emergency-backup.test.ts`   | ⏳    |
+| AC-INIT-003-07 (신규 설치) | `fresh-install.test.ts`      | ⏳    |
+| AC-INIT-003-08 (백업 실패) | `backup-failure.test.ts`     | ⏳    |
+| AC-INIT-003-09 (롤백)      | `merge-rollback.test.ts`     | ⏳    |
 
 ---
 
@@ -426,22 +426,22 @@ bun test backup-metadata
 ### 실행 시간 목표
 
 **Phase A (moai init)**:
-| 작업 | 목표 시간 | 측정 방법 |
-|------|----------|----------|
-| 백업 조건 감지 (OR) | < 50ms | `fs.existsSync()` 3회 |
-| 선택적 백업 생성 | < 1초 | 실제 파일 크기 기준 |
-| 메타데이터 저장 | < 100ms | `performance.now()` |
-| 전체 Phase A | < 2초 | 일반 프로젝트 기준 |
+| 작업                | 목표 시간 | 측정 방법             |
+| ------------------- | --------- | --------------------- |
+| 백업 조건 감지 (OR) | < 50ms    | `fs.existsSync()` 3회 |
+| 선택적 백업 생성    | < 1초     | 실제 파일 크기 기준   |
+| 메타데이터 저장     | < 100ms   | `performance.now()`   |
+| 전체 Phase A        | < 2초     | 일반 프로젝트 기준    |
 
 **Phase B (/alfred:8-project)**:
-| 작업 | 목표 시간 | 측정 방법 |
-|------|----------|----------|
-| 백업 감지 | < 100ms | `performance.now()` |
-| 긴급 백업 생성 | < 3초 | 실제 파일 크기 기준 |
-| 백업 분석 | < 500ms | 파일 읽기 기준 |
-| JSON 병합 | < 500ms | 파일당 평균 |
-| Markdown 병합 | < 500ms | 파일당 평균 |
-| 전체 Phase B | < 5초 | 10개 파일 기준 |
+| 작업           | 목표 시간 | 측정 방법           |
+| -------------- | --------- | ------------------- |
+| 백업 감지      | < 100ms   | `performance.now()` |
+| 긴급 백업 생성 | < 3초     | 실제 파일 크기 기준 |
+| 백업 분석      | < 500ms   | 파일 읽기 기준      |
+| JSON 병합      | < 500ms   | 파일당 평균         |
+| Markdown 병합  | < 500ms   | 파일당 평균         |
+| 전체 Phase B   | < 5초     | 10개 파일 기준      |
 
 ### 메모리 사용량 목표
 
@@ -528,4 +528,4 @@ bun test backup-metadata
 
 ---
 
-_이 인수 기준은 `/alfred:2-build INIT-003` 구현 중 Phase A → Phase B 순차적으로 검증되어야 합니다._
+_이 인수 기준은 `/alfred:2-run INIT-003` 구현 중 Phase A → Phase B 순차적으로 검증되어야 합니다._

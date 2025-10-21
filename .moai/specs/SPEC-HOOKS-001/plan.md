@@ -62,16 +62,16 @@
 
 ### 모듈별 책임 분리
 
-| 모듈 | 책임 | LOC | 테스트 |
-|------|------|-----|--------|
-| `project.py` | 프로젝트 메타데이터, 언어 감지 | 284 | 6 tests |
-| `context.py` | JIT Retrieval, 워크플로우 컨텍스트 | 110 | 5 tests |
-| `checkpoint.py` | 위험 작업 감지, Git checkpoint | 244 | 4 tests (implied) |
-| `tags.py` | TAG 검색, 검증, 캐싱 | 244 | 7 tests |
-| `session.py` | SessionStart/End 핸들링 | ~80 | Manual (integration) |
-| `user.py` | UserPromptSubmit 핸들링 | ~60 | Manual (integration) |
-| `tool.py` | PreToolUse/PostToolUse 핸들링 | ~90 | Manual (integration) |
-| `notification.py` | Notification/Stop 핸들링 | ~40 | Manual (stub) |
+| 모듈              | 책임                               | LOC | 테스트               |
+| ----------------- | ---------------------------------- | --- | -------------------- |
+| `project.py`      | 프로젝트 메타데이터, 언어 감지     | 284 | 6 tests              |
+| `context.py`      | JIT Retrieval, 워크플로우 컨텍스트 | 110 | 5 tests              |
+| `checkpoint.py`   | 위험 작업 감지, Git checkpoint     | 244 | 4 tests (implied)    |
+| `tags.py`         | TAG 검색, 검증, 캐싱               | 244 | 7 tests              |
+| `session.py`      | SessionStart/End 핸들링            | ~80 | Manual (integration) |
+| `user.py`         | UserPromptSubmit 핸들링            | ~60 | Manual (integration) |
+| `tool.py`         | PreToolUse/PostToolUse 핸들링      | ~90 | Manual (integration) |
+| `notification.py` | Notification/Stop 핸들링           | ~40 | Manual (stub)        |
 
 ---
 
@@ -169,8 +169,8 @@ tests/unit/test_alfred_hooks_core_tags.py::test_version_ttl ✅
 
 #### 2.2. user.py
 - ✅ `handle_user_prompt_submit()`: JIT Context 추천
-  - `/alfred:1-spec` → `spec-metadata.md`
-  - `/alfred:2-build` → `development-guide.md`
+  - `/alfred:1-plan` → `spec-metadata.md`
+  - `/alfred:2-run` → `development-guide.md`
   - `@agent-tag-agent` → `spec-metadata.md`
   - `context` 필드로 문서 경로 반환
 
@@ -345,7 +345,7 @@ tests/unit/test_alfred_hooks_core_checkpoint.py ✅ 4/4
 
 6. **TAG 체인 자동 복구**
    - 고아 TAG 발견 시 자동 SPEC 생성 제안
-   - `/alfred:1-spec` 워크플로우 연결
+   - `/alfred:1-plan` 워크플로우 연결
 
 ---
 

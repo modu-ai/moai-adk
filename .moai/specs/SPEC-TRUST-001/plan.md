@@ -147,10 +147,10 @@
 
 ---
 
-## Phase 4: /alfred:2-build 통합 (우선순위: High)
+## Phase 4: /alfred:2-run 통합 (우선순위: High)
 
 ### 목표
-- `/alfred:2-build` 완료 후 자동 실행
+- `/alfred:2-run` 완료 후 자동 실행
 - 커밋 차단 메커니즘 구현
 
 ### 작업 항목
@@ -167,7 +167,7 @@
   - `--skip`: 특정 검증 건너뛰기 (예: --skip=security)
 - **테스트**: `tests/core/quality/test_trust_checker.py`
 
-#### 4.2 /alfred:2-build 통합
+#### 4.2 /alfred:2-run 통합
 - **파일**: `src/commands/alfred-2-build.ts`
 - **기능**:
   - GREEN 단계 커밋 직후 trust-checker 자동 실행
@@ -185,7 +185,7 @@
 
 ### 완료 기준
 - [ ] trust-checker CLI 정상 동작
-- [ ] /alfred:2-build 통합 확인
+- [ ] /alfred:2-run 통합 확인
 - [ ] 커밋 차단 메커니즘 동작 확인
 
 ---
@@ -247,18 +247,18 @@
 
 ## 마일스톤
 
-| 단계    | 목표                          | 완료 기준                     |
-| ------- | ----------------------------- | ----------------------------- |
-| Phase 1 | Core 검증 로직 구현           | 5개 검증기 완료, 테스트 통과  |
-| Phase 2 | TAG 시스템 통합               | TAG 체인 검증 100%            |
-| Phase 3 | 보고서 생성                   | Markdown/JSON 보고서 생성     |
-| Phase 4 | /alfred:2-build 통합          | 자동 실행 및 커밋 차단 동작   |
+| 단계    | 목표                | 완료 기준                    |
+| ------- | ------------------- | ---------------------------- |
+| Phase 1 | Core 검증 로직 구현 | 5개 검증기 완료, 테스트 통과 |
+| Phase 2 | TAG 시스템 통합     | TAG 체인 검증 100%           |
+| Phase 3 | 보고서 생성         | Markdown/JSON 보고서 생성    |
+| Phase 4 | /alfred:2-run 통합  | 자동 실행 및 커밋 차단 동작  |
 
 ---
 
 ## 다음 단계
 
-1. `/alfred:2-build TRUST-001` 실행 (TDD 구현 시작)
+1. `/alfred:2-run TRUST-001` 실행 (TDD 구현 시작)
 2. Phase 1 완료 후 Phase 2로 진행
 3. Phase 4 완료 후 `/alfred:3-sync` 실행
 

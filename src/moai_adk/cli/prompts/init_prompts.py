@@ -1,4 +1,4 @@
-# @CODE:CLI-PROMPTS-001 | SPEC: SPEC-CLI-001.md
+# @CODE:CLI-PROMPTS-001 | SPEC: SPEC-CLI-001/spec.md
 """Project initialization prompts
 
 Collect interactive project settings
@@ -18,7 +18,7 @@ class ProjectSetupAnswers(TypedDict):
 
     project_name: str
     mode: str  # personal | team
-    locale: str  # ko | en | ja | zh
+    locale: str  # ko | en
     language: str | None
     author: str
 
@@ -27,6 +27,7 @@ def prompt_project_setup(
     project_name: str | None = None,
     is_current_dir: bool = False,
     project_path: Path | None = None,
+    initial_locale: str | None = None,
 ) -> ProjectSetupAnswers:
     """Project setup prompt
 
@@ -34,6 +35,7 @@ def prompt_project_setup(
         project_name: Project name (asks when None)
         is_current_dir: Whether the current directory is being used
         project_path: Project path (used to derive the name)
+        initial_locale: Preferred locale provided via CLI (optional)
 
     Returns:
         Project setup answers
@@ -88,23 +90,17 @@ def prompt_project_setup(
         if result is None:
             raise KeyboardInterrupt
         answers["mode"] = result
+        answers["locale"] = initial_locale or "en"
+        if initial_locale:
+            console.print(
+                f"[cyan]🌐 Preferred Language:[/cyan] {answers['locale']} (specified via CLI option)"
+            )
+        else:
+            console.print(
+                "[cyan]🌐 Preferred Language:[/cyan] en (default, changeable in /alfred:0-project)"
+            )
 
-        # 3. Locale
-        result = questionary.select(
-            "🌐 Preferred Language:",
-            choices=[
-                questionary.Choice("Korean", value="ko"),
-                questionary.Choice("English", value="en"),
-                questionary.Choice("Japanese", value="ja"),
-                questionary.Choice("Chinese", value="zh"),
-            ],
-            default="ko",
-        ).ask()
-        if result is None:
-            raise KeyboardInterrupt
-        answers["locale"] = result
-
-        # 4. Programming language (auto-detect or manual)
+        # 3. Programming language (auto-detect or manual)
         result = questionary.confirm(
             "🔍 Auto-detect programming language?",
             default=True,
@@ -123,9 +119,20 @@ def prompt_project_setup(
                     "Java",
                     "Go",
                     "Rust",
+                    "Ruby",
                     "Dart",
                     "Swift",
                     "Kotlin",
+                    "PHP",
+                    "C#",
+                    "C",
+                    "C++",
+                    "Elixir",
+                    "Scala",
+                    "Clojure",
+                    "Haskell",
+                    "Lua",
+                    "OCaml",
                     "Generic",
                 ],
             ).ask()
@@ -133,7 +140,7 @@ def prompt_project_setup(
                 raise KeyboardInterrupt
             answers["language"] = result
 
-        # 5. Author information (optional)
+        # 4. Author information (optional)
         result = questionary.confirm(
             "👤 Add author information? (optional)",
             default=False,

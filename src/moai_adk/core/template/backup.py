@@ -1,4 +1,4 @@
-# @CODE:TEMPLATE-001 | SPEC: SPEC-INIT-003.md | Chain: TEMPLATE-001
+# @CODE:TEMPLATE-001 | SPEC: SPEC-INIT-003/spec.md | Chain: TEMPLATE-001
 """Template backup manager (SPEC-INIT-003 v0.3.0).
 
 Creates and manages backups to protect user data during template updates.
@@ -7,7 +7,6 @@ Creates and manages backups to protect user data during template updates.
 from __future__ import annotations
 
 import shutil
-from datetime import datetime
 from pathlib import Path
 
 
@@ -28,6 +27,15 @@ class TemplateBackup:
         """
         self.target_path = target_path.resolve()
 
+    @property
+    def backup_dir(self) -> Path:
+        """Get the backup directory path.
+
+        Returns:
+            Path to .moai-backups directory.
+        """
+        return self.target_path / ".moai-backups"
+
     def has_existing_files(self) -> bool:
         """Check whether backup-worthy files already exist.
 
@@ -36,21 +44,27 @@ class TemplateBackup:
         """
         return any(
             (self.target_path / item).exists()
-            for item in [".moai", ".claude", "CLAUDE.md"]
+            for item in [".moai", ".claude", ".github", "CLAUDE.md"]
         )
 
     def create_backup(self) -> Path:
-        """Create a timestamped backup.
+        """Create a single backup (always at .moai-backups/backup/).
+
+        Existing backups are overwritten to maintain only one backup copy.
 
         Returns:
-            Backup path (for example, .moai-backups/20250110-143025/).
+            Backup path (always .moai-backups/backup/).
         """
-        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        backup_path = self.target_path / ".moai-backups" / timestamp
+        backup_path = self.target_path / ".moai-backups" / "backup"
+
+        # Remove existing backup if present
+        if backup_path.exists():
+            shutil.rmtree(backup_path)
+
         backup_path.mkdir(parents=True, exist_ok=True)
 
         # Copy backup targets
-        for item in [".moai", ".claude", "CLAUDE.md"]:
+        for item in [".moai", ".claude", ".github", "CLAUDE.md"]:
             src = self.target_path / item
             if not src.exists():
                 continue

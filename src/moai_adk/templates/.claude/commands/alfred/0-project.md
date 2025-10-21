@@ -1,6 +1,6 @@
 ---
 name: alfred:0-project
-description: 프로젝트 문서 초기화 - product/structure/tech.md 생성 및 언어별 최적화 설정
+description: Initialize project document - create product/structure/tech.md and set optimization for each language
 allowed-tools:
   - Read
   - Write
@@ -15,197 +15,489 @@ allowed-tools:
   - Task
 ---
 
-# 📋 MoAI-ADK 0단계: 범용 언어 지원 프로젝트 문서 초기화/갱신
+# 📋 MoAI-ADK Step 0: Initialize/Update Universal Language Support Project Documentation
+> Interactive prompts rely on `Skill("moai-alfred-tui-survey")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
 
-## 🎯 커맨드 목적
+## 🎯 Command Purpose
 
-프로젝트 환경을 자동 분석하여 product/structure/tech.md 문서를 생성/갱신하고 언어별 최적화 설정을 구성합니다.
+Automatically analyzes the project environment to create/update product/structure/tech.md documents and configure language-specific optimization settings.
 
-## 📋 실행 흐름
+## 📋 Execution flow
 
-1. **환경 분석**: 프로젝트 유형(신규/레거시) 및 언어 자동 감지
-2. **인터뷰 전략 수립**: 프로젝트 특성에 맞는 질문 트리 선택
-3. **사용자 확인**: 인터뷰 계획 검토 및 승인
-4. **프로젝트 문서 작성**: product/structure/tech.md 생성
-5. **설정 파일 생성**: config.json 자동 구성
+0. **Conversation Language Selection**: User selects the language for all dialogs and documentation
+1. **Environment Analysis**: Automatically detect project type (new/legacy) and codebase language
+2. **Establishment of interview strategy**: Select question tree suited to project characteristics
+3. **User Verification**: Review and approve interview plan
+4. **Create project documentation**: Create product/structure/tech.md in the selected language
+5. **Create configuration file**: config.json auto-configuration
 
-## 🔗 연관 에이전트
+## 🧠 Skill Loadout Overview
 
-- **Primary**: project-manager (📋 기획자) - 프로젝트 초기화 전담
-- **Quality Check**: trust-checker (✅ 품질 보증 리드) - 초기 구조 검증 (선택적)
-- **Secondary**: None (독립 실행)
+| Agent | Auto core skill | Conditional skills |
+| ----- | ---------------- | ------------------ |
+| project-manager | Skill("moai-alfred-language-detection") | Skill("moai-foundation-ears"), Skill("moai-foundation-langs"), Detected domain skill (e.g., Skill("moai-domain-backend")), Skill("moai-alfred-tag-scanning"), Skill("moai-alfred-trust-validation"), Skill("moai-alfred-tui-survey") |
+| trust-checker | Skill("moai-alfred-trust-validation") | Skill("moai-alfred-tag-scanning"), Skill("moai-foundation-trust"), Skill("moai-alfred-code-reviewer"), Skill("moai-alfred-performance-optimizer"), Skill("moai-alfred-tui-survey") |
 
-## 💡 사용 예시
+## 🔗 Associated Agent
 
-사용자가 `/alfred:8-project` 커맨드를 실행하여 프로젝트 분석 및 문서 생성/갱신을 수행합니다.
+- **Primary**: project-manager (📋 planner) - Dedicated to project initialization
+- **Quality Check**: trust-checker (✅ Quality assurance lead) - Initial structural verification (optional)
+- **Secondary**: None (standalone execution)
 
-## 명령어 개요
+## 💡 Example of use
 
-프로젝트 환경을 분석하고 product/structure/tech.md 문서를 생성/갱신하는 체계적인 초기화 시스템입니다.
+The user executes the `/alfred:8-project` command to analyze the project and create/update documents.
 
-- **언어 자동 감지**: Python, TypeScript, Java, Go, Rust 등 자동 인식
-- **프로젝트 유형 분류**: 신규 vs 기존 프로젝트 자동 판단
-- **고성능 초기화**: TypeScript 기반 CLI로 0.18초 초기화 달성
-- **2단계 워크플로우**: 1) 분석 및 계획 → 2) 사용자 승인 후 실행
+## Command Overview
 
-## 사용법
+It is a systematic initialization system that analyzes the project environment and creates/updates product/structure/tech.md documents.
 
-사용자가 `/alfred:8-project` 커맨드를 실행하여 프로젝트 분석 및 문서 생성/갱신을 시작합니다.
+- **Automatically detect language**: Automatically recognize Python, TypeScript, Java, Go, Rust, etc.
+- **Project type classification**: Automatically determine new vs. existing projects
+- **High-performance initialization**: Achieve 0.18 second initialization with TypeScript-based CLI
+- **2-step workflow**: 1) Analysis and planning → 2) Execution after user approval
 
-**자동 처리**:
-- 기존 `.moai/project/` 문서가 있으면 갱신 모드
-- 문서가 없으면 신규 생성 모드
-- 언어 및 프로젝트 유형은 자동 감지
+## How to use
 
-## ⚠️ 금지 사항
+The user executes the `/alfred:8-project` command to start analyzing the project and creating/updating documents.
 
-**절대 하지 말아야 할 작업**:
+**Automatic processing**:
+- Update mode if there is an existing `.moai/project/` document
+- New creation mode if there is no document
+- Automatic detection of language and project type
 
-- ❌ `.claude/memory/` 디렉토리에 파일 생성
-- ❌ `.claude/commands/alfred/*.json` 파일 생성
-- ❌ 기존 문서 불필요한 덮어쓰기
-- ❌ 날짜와 수치 예측 ("3개월 내", "50% 단축" 등)
-- ❌ 가상의 시나리오, 예상 시장 규모, 미래 기술 트렌드 예측
+## ⚠️ Prohibitions
 
-**사용해야 할 표현**:
+**What you should never do**:
 
-- ✅ "우선순위 높음/중간/낮음"
-- ✅ "즉시 필요", "단계적 개선"
-- ✅ 현재 확인 가능한 사실
-- ✅ 기존 기술 스택
-- ✅ 실제 문제점
+- ❌ Create a file in the `.claude/memory/` directory
+- ❌ Create a file `.claude/commands/alfred/*.json`
+- ❌ Unnecessary overwriting of existing documents
+- ❌ Date and numerical prediction (“within 3 months”, “50% reduction”) etc.)
+- ❌ Hypothetical scenarios, expected market size, future technology trend predictions
 
-## 🚀 STEP 1: 환경 분석 및 인터뷰 계획 수립
+**Expressions to use**:
 
-프로젝트 환경을 분석하고 체계적인 인터뷰 계획을 수립합니다.
+- ✅ "High/medium/low priority"
+- ✅ "Immediately needed", "step-by-step improvements"
+- ✅ Current facts
+- ✅ Existing technology stack
+- ✅ Real problems
 
-### 1.1 프로젝트 환경 분석 실행
+---
 
-**자동 분석 항목**:
+## 🚀 STEP 0: Conversation Language Selection (NEW in v0.4.2)
 
-1. **프로젝트 유형 감지**
-   Alfred는 디렉토리 구조를 분석하여 신규 vs 기존 프로젝트를 분류합니다:
-   - 빈 디렉토리 → 신규 프로젝트
-   - 코드/문서 존재 → 기존 프로젝트
+**Purpose**: Establish the conversation language before project initialization begins. This selection applies to all Alfred prompts, interview questions, and generated documentation.
 
-2. **언어/프레임워크 자동 감지**: 파일 패턴을 기반으로 프로젝트의 주요 언어를 감지합니다
+### 0.1 Display Language Selection Menu
+
+Alfred displays a language selection menu as the **very first interaction** using `Skill("moai-alfred-tui-survey")`:
+
+**Question**:
+```
+Which language would you like to use for the project initialization and documentation?
+```
+
+**Options** (AskUserQuestion with moai-alfred-tui-survey):
+- **English** (en) — All dialogs and documentation in English
+- **한국어** (ko) — All dialogs and documentation in Korean
+- **日本語** (ja) — All dialogs and documentation in Japanese
+- **中文** (zh) — All dialogs and documentation in Chinese
+- **Other** — User can specify custom language (e.g., "Español", "Français", "Deutsch")
+
+### 0.2 Store Language Preference
+
+Alfred records the selected language:
+
+```json
+{
+  "conversation_language": "ko",
+  "conversation_language_name": "한국어",
+  "selected_at": "2025-10-22T12:34:56Z"
+}
+```
+
+This language preference is:
+- Passed to all sub-agents as a context parameter
+- Stored in `.moai/config.json` under `language` field
+- Used to generate all documentation in the selected language
+- Displayed in CLAUDE.md under "## Project Information"
+
+### 0.3 Transition to STEP 1
+
+After language selection, all subsequent interactions proceed in the selected language:
+- Alfred's prompts are translated
+- project-manager sub-agent receives language parameter
+- Interview questions are in the selected language
+- Generated documents (product.md, structure.md, tech.md) are in the selected language
+- CLAUDE.md displays the selected language prominently
+
+**Example output for Korean selection**:
+```markdown
+✅ 언어 선택 완료: 한국어 (ko)
+
+이제 프로젝트 환경 분석으로 진행하겠습니다...
+```
+
+---
+
+## 🚀 STEP 1: Environmental analysis and interview plan development
+
+Analyze the project environment and develop a systematic interview plan.
+
+### 1.0 Check backup directory (highest priority)
+
+**Processing backup files after moai-adk init reinitialization**
+
+Alfred first checks the `.moai-backups/` directory:
+
+```bash
+# Check latest backup timestamp
+ls -t .moai-backups/ | head -1
+
+# Check the optimized flag in config.json
+grep "optimized" .moai/config.json
+```
+
+**Backup existence conditions**:
+- `.moai-backups/` directory exists
+- `.moai/project/*.md` file exists in the latest backup folder
+- `optimized: false` in `config.json` (immediately after reinitialization)
+
+**Select user if backup exists**  
+Call `Skill("moai-alfred-tui-survey")` to display a TUI with the following options:
+- **Merge**: Merge backup contents and latest template (recommended)
+- **New**: Ignore the backup and start a new interview
+- **Skip**: Keep current file (terminate task)
+
+**Response processing**:
+- **"Merge"** → Proceed to Phase 1.1 (backup merge workflow)
+- **"Create new"** → Proceed to Phase 1.2 (Project environment analysis) (existing process)
+- **"Skip"** → End task
+
+**No backup or optimized: true**:
+- Proceed directly to Phase 1.2 (project environment analysis)
+
+---
+
+### 1.1 Backup merge workflow (when user selects “Merge”)
+
+**Purpose**: Restore only user customizations while maintaining the latest template structure.
+
+**STEP 1: Read backup file**
+
+Alfred reads files from the latest backup directory:
+```bash
+# Latest backup directory path
+BACKUP_DIR=.moai-backups/$(ls -t .moai-backups/ | head -1)
+
+# Read backup file
+Read $BACKUP_DIR/.moai/project/product.md
+Read $BACKUP_DIR/.moai/project/structure.md
+Read $BACKUP_DIR/.moai/project/tech.md
+Read $BACKUP_DIR/CLAUDE.md
+```
+
+**STEP 2: Detect template defaults**
+
+The following patterns are considered "template defaults" (not merged):
+- "Define your key user base"
+- "Describe the core problem you are trying to solve"
+- "List the strengths and differences of your project"
+- "{{PROJECT_NAME}}", "{{PROJECT_DESCRIPTION}}", etc. Variable format
+- Guide phrases such as "Example:", "Sample:", "Example:", etc.
+
+**STEP 3: Extract user customization**
+
+Extract only **non-template default content** from the backup file:
+- `product.md`:
+- Define your actual user base in the USER section
+ - Describe the actual problem in the PROBLEM section
+ - Real differences in the STRATEGY section
+ - Actual success metrics in the SUCCESS section
+- `structure.md`:
+- Actual design in the ARCHITECTURE section
+ - Actual module structure in the MODULES section
+ - Actual integration plan in the INTEGRATION section
+- `tech.md`:
+- The actual technology stack
+ in the STACK section - The actual framework
+ in the FRAMEWORK section - The actual quality policy
+ in the QUALITY section - `HISTORY` section: **Full Preservation** (all files)
+
+**STEP 4: Merge Strategy**
+
+```markdown
+Latest template structure (v0.4.0+)
+    ↓
+Insert user customization (extracted from backup file)
+    ↓
+HISTORY section updates
+    ↓
+Version update (v0.1.x → v0.1.x+1)
+```
+
+**Merge Principle**:
+- ✅ Maintain the latest version of the template structure (section order, header, @TAG format)
+- ✅ Insert only user customization (actual content written)
+- ✅ Cumulative preservation of the HISTORY section (existing history + merge history)
+- ❌ Replace template default values ​​with the latest version
+
+**STEP 5: HISTORY Section Update**
+
+After the merge is complete, add history to the HISTORY section of each file:
+```yaml
+### v0.1.x+1 (2025-10-19)
+- **UPDATED**: Merge backup files (automatic optimization)
+- AUTHOR: @Alfred
+- BACKUP: .moai-backups/20251018-003638/
+- REASON: Restoring user customization after moai-adk init reinitialization
+```
+
+**STEP 6: Update config.json**
+
+Set optimization flags after the merge is complete:
+```json
+{
+  "project": {
+    "optimized": true,
+    "last_merge": "2025-10-19T12:34:56+09:00",
+    "backup_source": ".moai-backups/20251018-003638/"
+  }
+}
+```
+
+**STEP 7: Completion Report**
+
+```markdown
+✅ Backup merge completed!
+
+📁 Merged files:
+- .moai/project/product.md (v0.1.4 → v0.1.5)
+- .moai/project/structure.md (v0.1.1 → v0.1.2)
+- .moai/project/tech.md (v0.1.1 → v0.1.2)
+- .moai/config.json (optimized: false → true)
+
+🔍 Merge history:
+- USER section: Restore customized contents of backup file
+- PROBLEM section: Restore problem description of backup file
+- STRATEGY section: Restore differentials of backup file
+- HISTORY section: Add merge history (cumulative retention)
+
+💾 Backup file location:
+- Original backup: .moai-backups/20251018-003638/
+- Retention period: Permanent (until manual deletion)
+
+📋 Next steps:
+1. Review the merged document
+2. Additional modifications if necessary
+3. Create your first SPEC with /alfred:1-plan
+
+---
+**Task completed: /alfred:0-project terminated**
+```
+
+**Finish work after merge**: Complete immediately without interview
+
+---
+
+### 1.2 Run project environment analysis (when user selects "New" or no backup)
+
+**Automatically analyzed items**:
+
+1. **Project Type Detection**
+ Alfred classifies new vs existing projects by analyzing the directory structure:
+ - Empty directory → New project
+ - Code/documentation present → Existing project
+
+2. **Auto-detect language/framework**: Detects the main language of your project based on file patterns
    - pyproject.toml, requirements.txt → Python
    - package.json, tsconfig.json → TypeScript/Node.js
    - pom.xml, build.gradle → Java
    - go.mod → Go
    - Cargo.toml → Rust
-   - backend/ + frontend/ → 풀스택
+- backend/ + frontend/ → full stack
 
-3. **문서 현황 분석**
-   - 기존 `.moai/project/*.md` 파일 상태 확인
-   - 부족한 정보 영역 식별
-   - 보완 필요 항목 정리
+3. **Document status analysis**
+ - Check the status of existing `.moai/project/*.md` files
+ - Identify areas of insufficient information
+ - Organize items that need supplementation
 
-4. **프로젝트 구조 평가**
-   - 디렉토리 구조 복잡도
-   - 단일 언어 vs 하이브리드 vs 마이크로서비스
-   - 코드 기반 크기 추정
+4. **Project structure evaluation**
+ - Directory structure complexity
+ - Monolingual vs. hybrid vs. microservice
+ - Code base size estimation
 
-### 1.2 인터뷰 전략 수립
+### 1.3 Establish interview strategy (when user selects “New”)
 
-**프로젝트 유형별 질문 트리 선택**:
+**Select question tree by project type**:
 
-| 프로젝트 유형 | 질문 카테고리 | 중점 영역 |
-|-------------|-------------|----------|
-| **신규 프로젝트** | Product Discovery | 미션, 사용자, 해결 문제 |
-| **기존 프로젝트** | Legacy Analysis | 코드 기반, 기술 부채, 통합점 |
-| **TypeScript 전환** | Migration Strategy | 기존 프로젝트의 TypeScript 전환 |
+| Project Type              | Question Category  | Focus Areas                                   |
+| ------------------------- | ------------------ | --------------------------------------------- |
+| **New Project**           | Product Discovery  | Mission, Users, Problems Solved               |
+| **Existing Project**      | Legacy Analysis    | Code Base, Technical Debt, Integration Points |
+| **TypeScript conversion** | Migration Strategy | TypeScript conversion for existing projects   |
 
-**질문 우선순위**:
-- **필수 질문**: 핵심 비즈니스 가치, 주요 사용자층 (모든 프로젝트)
-- **기술 질문**: 언어/프레임워크, 품질 정책, 배포 전략
-- **거버넌스**: 보안 요구사항, 추적성 전략 (선택적)
+**Question Priority**:
+- **Essential Questions**: Core Business Value, Key User Bases (all projects)
+- **Technical Questions**: Language/Framework, Quality Policy, Deployment Strategy
+- **Governance**: Security Requirements, Traceability Strategy (Optional)
 
-### 1.3 인터뷰 계획 보고서 생성
+### 1.4 Generate Interview Plan Report (when user selects “Create New”)
 
-**사용자에게 제시할 계획서 포맷**:
+**Format of plan to be presented to users**:
 
 ```markdown
-## 📊 프로젝트 초기화 계획: [PROJECT-NAME]
+## 📊 Project initialization plan: [PROJECT-NAME]
 
-### 환경 분석 결과
-- **프로젝트 유형**: [신규/기존/하이브리드]
-- **감지된 언어**: [언어 목록]
-- **현재 문서 상태**: [완성도 평가 0-100%]
-- **구조 복잡도**: [단순/중간/복잡]
+### Environmental Analysis Results
+- **Project Type**: [New/Existing/Hybrid]
+- **Languages ​​Detected**: [Language List]
+- **Current Document Status**: [Completeness Rating 0-100%]
+- **Structure Complexity**: [Simple/Medium/Complex]
 
-### 🎯 인터뷰 전략
-- **질문 카테고리**: Product Discovery / Structure / Tech
-- **예상 질문 수**: [N개 (필수 M개 + 선택 K개)]
-- **예상 소요시간**: [시간 산정]
-- **우선순위 영역**: [중점적으로 다룰 영역]
+### 🎯 Interview strategy
+- **Question category**: Product Discovery / Structure / Tech
+- **Expected number of questions**: [N (M required + K optional)]
+- **Estimated time required**: [Time estimation]
+- **Priority area**: [Focus on Areas to be covered]
 
-### ⚠️ 주의사항
-- **기존 문서**: [덮어쓰기 vs 보완 전략]
-- **언어 설정**: [자동 감지 vs 수동 설정]
-- **설정 충돌**: [기존 config.json과의 호환성]
+### ⚠️ Notes
+- **Existing document**: [Overwrite vs supplementation strategy]
+- **Language settings**: [Automatic detection vs manual setting]
+- **Configuration conflicts**: [Compatibility with existing config.json]
 
-### ✅ 예상 산출물
-- **product.md**: [비즈니스 요구사항 문서]
-- **structure.md**: [시스템 아키텍처 문서]
-- **tech.md**: [기술 스택 및 정책 문서]
-- **config.json**: [프로젝트 설정 파일]
+### ✅ Expected deliverables
+- **product.md**: [Business requirements document]
+- **structure.md**: [System architecture document]
+- **tech.md**: [Technology stack and policy document]
+- **config.json**: [Project configuration file]
 
 ---
-**승인 요청**: 위 계획으로 인터뷰를 진행하시겠습니까?
-("진행", "수정 [내용]", "중단" 중 선택)
+**Approval Request**: Would you like to proceed with the interview using the above plan?
+ (Choose “Proceed,” “Modify [Content],” or “Abort”)
 ```
 
-### 1.4 사용자 확인 대기
+### 1.5 Wait for user approval (moai-alfred-tui-survey) (when user selects "New")
 
-**반응에 따른 분기**:
-- **"진행"** 또는 **"시작"**: STEP 2로 진행
-- **"수정 [내용]"**: 계획 수정 후 재제시
-- **"중단"**: 프로젝트 초기화 중단
+After Alfred receives the project-manager's interview plan report, calls `Skill("moai-alfred-tui-survey")` and asks whether Phase 2 is approved.
+- **Proceed**: Interview conducted according to approved plan
+- **Modify**: Re-establish the plan (re-execute Phase 1)
+- **Stop**: Stop initialization
+
+**Response processing**:
+- **"Progress"** (`answers["0"] === "Progress"`) → Execute Phase 2
+- **"Modify"** (`answers["0"] === "Modify"`) → Repeat Phase 1 (recall project-manager)
+- **"Abort"** (`answers["0"] === "Abort"`) → End task
 
 ---
 
-## 🚀 STEP 2: 프로젝트 초기화 실행 (사용자 승인 후)
+## 🚀 STEP 2: Execute project initialization (after user approves “New”)
 
-사용자 승인 후 project-manager 에이전트가 초기화를 수행합니다.
+**Note**: This step will only be executed if the user selects **"New"**.
+- When selecting "Merge": End the task in Phase 1.1 (Merge Backups)
+- When selecting "Skip": End the task
+- When selecting "New": Proceed with the process below
 
-### 2.1 project-manager 에이전트 호출
+After user approval, the project-manager agent performs initialization.
 
-Alfred는 project-manager 에이전트를 호출하여 프로젝트 초기화를 시작합니다. 다음 정보를 기반으로 진행합니다:
-- 감지된 언어: [언어 목록]
-- 프로젝트 유형: [신규/기존]
-- 기존 문서 상태: [존재/부재]
-- 승인된 인터뷰 계획: [계획 요약]
+### 2.1 Call project-manager agent (when user selects "New")
 
-에이전트는 체계적인 인터뷰를 진행하고 product/structure/tech.md 문서를 생성/갱신합니다.
+Alfred starts project initialization by calling the project-manager agent with the following parameters:
 
-### 2.2 프로젝트 유형별 처리 방식
+**Parameters passed to project-manager**:
+- **conversation_language** (from STEP 0): Language code selected by user (e.g., "ko", "en", "ja", "zh")
+- **language_name** (from STEP 0): Display name of selected language (e.g., "Korean", "English")
+- Detected Languages: [Language List from codebase detection]
+- Project Type: [New/Existing]
+- Existing Document Status: [Existence/Absence]
+- Approved Interview Plan: [Plan Summary]
 
-#### A. 신규 프로젝트 (그린필드)
+**Execution**:
+```bash
+# Pseudo-code showing parameter flow
+Task(
+    subagent_type="project-manager",
+    description="Initialize project with conversation language support",
+    prompt=f"""You are project-manager. Initialize project with these parameters:
+    - conversation_language: "{conversation_language}"  # e.g., "ko"
+    - language_name: "{language_name}"  # e.g., "Korean"
+    - project_type: "{project_type}"  # e.g., "new"
+    - detected_languages: {detected_languages}
 
-**인터뷰 흐름**:
+    All interviews and documentation must be generated in the conversation_language.
+    Update .moai/config.json with these language parameters.
+    """
+)
+```
 
-1. **Product Discovery** (product.md 작성)
-   - 핵심 미션 정의 (@DOC:MISSION-001)
-   - 주요 사용자층 파악 (@SPEC:USER-001)
-   - 해결할 핵심 문제 식별 (@SPEC:PROBLEM-001)
-   - 차별점 및 강점 정리 (@DOC:STRATEGY-001)
-   - 성공 지표 설정 (@SPEC:SUCCESS-001)
+**Outcome**: The project-manager agent conducts structured interviews entirely in the selected language and creates/updates product/structure/tech.md documents in that language.
 
-2. **Structure Blueprint** (structure.md 작성)
-   - 아키텍처 전략 선택 (@DOC:ARCHITECTURE-001)
-   - 모듈별 책임 구분 (@DOC:MODULES-001)
-   - 외부 시스템 통합 계획 (@DOC:INTEGRATION-001)
-   - 추적성 전략 정의 (@DOC:TRACEABILITY-001)
+### 2.2 Automatic activation of Alfred Skills (optional)
 
-3. **Tech Stack Mapping** (tech.md 작성)
-   - 언어 & 런타임 선택 (@DOC:STACK-001)
-   - 핵심 프레임워크 결정 (@DOC:FRAMEWORK-001)
-   - 품질 게이트 설정 (@DOC:QUALITY-001)
-   - 보안 정책 정의 (@DOC:SECURITY-001)
-   - 배포 채널 계획 (@DOC:DEPLOY-001)
+After the project-manager has finished creating the document, **Alfred can optionally call Skills** (upon user request).
 
-**config.json 자동 생성**:
+**Automatic activation conditions** (optional):
+
+| Conditions                           | Automatic selection Skill    | Purpose                                |
+| ------------------------------------ | ---------------------------- | -------------------------------------- |
+| User Requests “Quality Verification” | moai-alfred-trust-validation | Initial project structure verification |
+
+**Execution flow** (optional):
+```
+1. project-manager completion
+    ↓
+2. User selection:
+ - "Quality verification required" → moai-alfred-trust-validation (Level 1 quick scan)
+ - "Skip" → Complete immediately
+```
+
+**Note**: Quality verification is optional during the project initialization phase.
+
+### 2.3 Sub-agent moai-alfred-tui-survey (Nested)
+
+**The project-manager agent can internally call the TUI survey skill** to check the details of the task.
+
+**When to call**:
+- Before overwriting existing project documents
+- When selecting language/framework
+- When changing important settings
+
+**Example** (inside project-manager): Ask whether to "overwrite file" with `Skill("moai-alfred-tui-survey")`,
+- Allows you to choose between **Overwrite** / **Merge** / **Skip**.
+
+**Nested pattern**:
+- **Command level** (Phase approval): Called by Alfred → "Shall we proceed with Phase 2?"
+- **Sub-agent level** (Detailed confirmation): Called by project-manager → "Shall we overwrite the file?"
+
+### 2.4 Processing method by project type
+
+#### A. New project (Greenfield)
+
+**Interview Flow**:
+
+1. **Product Discovery** (create product.md)
+ - Define core mission (@DOC:MISSION-001)
+ - Identify key user base (@SPEC:USER-001)
+ - Identify key problems to solve (@SPEC:PROBLEM-001)
+ - Summary of differences and strengths (@DOC:STRATEGY-001)
+ - Setting success indicators (@SPEC:SUCCESS-001)
+
+2. **Structure Blueprint** (create structure.md)
+ - Selection of architecture strategy (@DOC:ARCHITECTURE-001)
+ - Division of responsibilities by module (@DOC:MODULES-001)
+ - External system integration plan (@DOC:INTEGRATION-001)
+ - Define traceability strategy (@DOC:TRACEABILITY-001)
+
+3. **Tech Stack Mapping** (written by tech.md)
+ - Select language & runtime (@DOC:STACK-001)
+ - Determine core framework (@DOC:FRAMEWORK-001)
+ - Set quality gate (@DOC:QUALITY-001)
+   - Define security policy (@DOC:SECURITY-001)
+ - Plan distribution channels (@DOC:DEPLOY-001)
+
+**Automatically generate config.json**:
 ```json
 {
   "project_name": "detected-name",
@@ -219,305 +511,595 @@ Alfred는 project-manager 에이전트를 호출하여 프로젝트 초기화를
 }
 ```
 
-#### B. 기존 프로젝트 (레거시 도입)
+#### B. Existing project (legacy introduction)
 
 **Legacy Snapshot & Alignment**:
 
-**STEP 1: 전체 프로젝트 구조 파악**
+**STEP 1: Identify the overall project structure**
 
-Alfred는 전체 프로젝트 구조를 파악합니다:
-- tree 명령어 또는 find 명령어를 사용하여 디렉토리 구조 시각화
-- node_modules, .git, dist, build, __pycache__ 등 빌드 산출물 제외
-- 주요 소스 디렉토리 및 설정 파일 식별
+Alfred identifies the entire project structure:
+- Visualize the directory structure using the tree or find commands
+- Exclude build artifacts such as node_modules, .git, dist, build, __pycache__, etc.
+- Identify key source directories and configuration files.
 
-**산출물**:
-- 프로젝트 전체 폴더/파일 계층 구조 시각화
-- 주요 디렉토리 식별 (src/, tests/, docs/, config/ 등)
-- 언어/프레임워크 힌트 파일 확인 (package.json, pyproject.toml, go.mod 등)
+**Output**:
+- Visualize the entire folder/file hierarchy of the project
+- Identify major directories (src/, tests/, docs/, config/, etc.)
+- Check language/framework hint files (package.json, pyproject.toml, go.mod, etc.)
 
-**STEP 2: 병렬 분석 전략 수립**
+**STEP 2: Establish parallel analysis strategy**
 
-Alfred는 Glob 패턴으로 파일 그룹을 식별합니다:
-1. **설정 파일들**: *.json, *.toml, *.yaml, *.yml, *.config.js
-2. **소스 코드 파일들**: src/**/*.{ts,js,py,go,rs,java}
-3. **테스트 파일들**: tests/**/*.{ts,js,py,go,rs,java}, **/*.test.*, **/*.spec.*
-4. **문서 파일들**: *.md, docs/**/*.md, README*, CHANGELOG*
+Alfred identifies groups of files by the Glob pattern:
+1. **Configuration files**: *.json, *.toml, *.yaml, *.yml, *.config.js
+2. **Source code files**: src/**/*.{ts,js,py,go,rs,java}
+3. **Test files**: tests/**/*.{ts,js,py,go,rs,java}, **/*.test.*, **/*.spec.*
+4. **Documentation files**: *.md, docs/**/*.md, README*, CHANGELOG*
 
-**병렬 Read 전략**:
-- 여러 파일을 동시에 Read 도구로 읽어 분석 속도 향상
-- 각 파일 그룹별로 배치 처리
-- 우선순위: 설정 파일 → 핵심 소스 → 테스트 → 문서
+**Parallel Read Strategy**:
+- Speed ​​up analysis by reading multiple files simultaneously with the Read tool
+- Batch processing for each file group
+- Priority: Configuration file → Core source → Test → Document
 
-**STEP 3: 파일별 특성 분석 및 보고**
+**STEP 3: Analysis and reporting of characteristics for each file**
 
-각 파일을 읽으면서 다음 정보를 수집:
+As each file is read, the following information is collected:
 
-1. **설정 파일 분석**
-   - 프로젝트 메타데이터 (이름, 버전, 설명)
-   - 의존성 목록 및 버전
-   - 빌드/테스트 스크립트
-   - 언어/프레임워크 확정
+1. **Configuration file analysis**
+ - Project metadata (name, version, description)
+ - Dependency list and versions
+ - Build/test script
+ - Confirm language/framework
 
-2. **소스 코드 분석**
-   - 주요 모듈 및 클래스 식별
-   - 아키텍처 패턴 추론 (MVC, 클린 아키텍처, 마이크로서비스 등)
-   - 외부 API 호출 및 통합점 파악
-   - 도메인 로직 핵심 영역
+2. **Source code analysis**
+ - Identify major modules and classes
+ - Architectural pattern inference (MVC, clean architecture, microservice, etc.)
+ - Identify external API calls and integration points
+ - Key areas of domain logic
 
-3. **테스트 코드 분석**
-   - 테스트 프레임워크 확인
-   - 커버리지 설정 파악
-   - 주요 테스트 시나리오 식별
-   - TDD 준수 여부 평가
+3. **Test code analysis**
+ - Check test framework
+ - Identify coverage settings
+ - Identify key test scenarios
+ - Evaluate TDD compliance
 
-4. **문서 분석**
-   - 기존 README 내용
-   - 아키텍처 문서 존재 여부
-   - API 문서 현황
-   - 설치/배포 가이드 완성도
+4. **Document analysis**
+ - Existing README contents
+ - Existence of architecture document
+ - API document status
+ - Installation/deployment guide completeness
 
-**보고 형식**:
+**Report Format**:
 ```markdown
-## 파일별 분석 결과
+## Analysis results for each file
 
-### 설정 파일
-- package.json: Node.js 18+, TypeScript 5.x, Vitest 테스트
-- tsconfig.json: strict 모드, ESNext 타겟
-- biome.json: 린터/포매터 설정 존재
+### Configuration file
+- package.json: Node.js 18+, TypeScript 5.x, Vitest test
+- tsconfig.json: strict mode, ESNext target
+- biome.json: Linter/formatter settings exist
 
-### 소스 코드 (src/)
-- src/core/: 핵심 비즈니스 로직 (3개 모듈)
-- src/api/: REST API 엔드포인트 (5개 라우터)
-- src/utils/: 유틸리티 함수 (로깅, 검증 등)
-- 아키텍처: 계층형 (controller → service → repository)
+### Source code (src/)
+- src/core/: Core business logic (3 modules)
+- src/api/: REST API endpoints (5 routers)
+- src/utils/: Utility functions (logging, verification, etc.)
+- Architecture: Hierarchical (controller) → service → repository)
 
-### 테스트 (tests/)
-- Vitest + @testing-library 사용
-- 유닛 테스트 커버리지 약 60% 추정
-- E2E 테스트 미비
+### Tests (tests/)
+- Vitest + @testing-library used
+- Unit test coverage estimated at about 60%
+- E2E testing lacking
 
-### 문서
-- README.md: 설치 가이드만 존재
-- API 문서 부재
-- 아키텍처 문서 부재
+### Documentation
+- README.md: Only installation guide
+- Absence of API documentation
+- Absence of architecture document
 ```
 
-**STEP 4: 종합 분석 및 product/structure/tech 반영**
+**STEP 4: Comprehensive analysis and product/structure/tech reflection**
 
-수집된 정보를 바탕으로 3대 문서에 반영:
+Based on the collected information, it is reflected in three major documents:
 
-1. **product.md 반영 내용**
-   - 기존 README/문서에서 추출한 프로젝트 미션
-   - 코드에서 추론한 주요 사용자층 및 시나리오
-   - 해결하는 핵심 문제 역추적
-   - 기존 자산을 "Legacy Context"에 보존
+1. Contents reflected in **product.md**
+ - Project mission extracted from existing README/document
+ - Main user base and scenario inferred from code
+ - Backtracking of core problem to be solved
+ - Preservation of existing assets in “Legacy Context”
 
-2. **structure.md 반영 내용**
-   - 파악된 실제 디렉토리 구조
-   - 모듈별 책임 분석 결과
-   - 외부 시스템 통합점 (API 호출, DB 연결 등)
-   - 기술 부채 항목 (@CODE 태그로 표기)
+2. Contents reflected in **structure.md**
+ - Identified actual directory structure
+ - Responsibility analysis results for each module
+ - External system integration points (API calls, DB connections, etc.)
+ - Technical debt items (marked with @CODE tag)
 
-3. **tech.md 반영 내용**
-   - 실제 사용 중인 언어/프레임워크/라이브러리
-   - 기존 빌드/테스트 파이프라인
-   - 품질 게이트 현황 (린터, 포매터, 테스트 커버리지)
-   - 보안/배포 정책 파악
-   - 개선 필요 항목 (TODO 태그로 표기)
+3. **tech.md reflection content**
+ - Languages/frameworks/libraries actually in use
+ - Existing build/test pipeline
+ - Status of quality gates (linter, formatter, test coverage)
+ - Identification of security/distribution policy
+ - Items requiring improvement (marked with TODO tags)
 
-**보존 정책**:
-- 기존 문서를 덮어쓰지 않고 부족한 부분만 보완
-- 충돌하는 내용은 "Legacy Context" 섹션에 보존
-- @CODE, TODO 태그로 개선 필요 항목 표시
+**Preservation Policy**:
+- Supplement only the missing parts without overwriting existing documents
+- Preserve conflicting content in the “Legacy Context” section
+- Mark items needing improvement with @CODE and TODO tags
 
-**최종 보고서 예시**:
+**Example Final Report**:
 ```markdown
-## 기존 프로젝트 분석 완료
+## Complete analysis of existing project
 
-### 환경 정보
-- **언어**: TypeScript 5.x (Node.js 18+)
-- **프레임워크**: Express.js
-- **테스트**: Vitest (커버리지 ~60%)
-- **린터/포매터**: Biome
+### Environment Information
+- **Language**: TypeScript 5.x (Node.js 18+)
+- **Framework**: Express.js
+- **Test**: Vitest (coverage ~60%)
+- **Linter/Formatter**: Biome
 
-### 주요 발견사항
-1. **강점**:
-   - 타입 안전성 높음 (strict 모드)
-   - 모듈 구조 명확 (core/api/utils 분리)
+### Main findings
+1. **Strengths**:
+ - High type safety (strict mode)
+ - Clear module structure (separation of core/api/utils)
 
-2. **개선 필요**:
-   - 테스트 커버리지 85% 미달 (TODO:TEST-COVERAGE-001)
-   - API 문서 부재 (TODO:DOCS-API-001)
-   - E2E 테스트 미비 (@CODE:TEST-E2E-001)
+2. **Needs improvement**:
+ - Test coverage below 85% (TODO:TEST-COVERAGE-001)
+ - Absence of API documentation (TODO:DOCS-API-001)
+ - Insufficient E2E testing (@CODE:TEST-E2E-001)
 
-### 다음 단계
-1. product/structure/tech.md 생성 완료
-2. @CODE/TODO 항목 우선순위 확정
-3. /alfred:1-spec으로 개선 SPEC 작성 시작
+### Next step
+1. product/structure/tech.md creation completed
+2. @CODE/TODO item priority confirmation
+3. /alfred:Start writing an improvement SPEC with 1-spec
 ```
 
-### 2.3 문서 생성 및 검증
+### 2.3 Document creation and verification
 
-**산출물**:
-- `.moai/project/product.md` (비즈니스 요구사항)
-- `.moai/project/structure.md` (시스템 아키텍처)
-- `.moai/project/tech.md` (기술 스택 및 정책)
-- `.moai/config.json` (프로젝트 설정)
+**Output**:
+- `.moai/project/product.md` (Business Requirements)
+- `.moai/project/structure.md` (System Architecture)
+- `.moai/project/tech.md` (Technology Stack and policy)
+- `.moai/config.json` (project settings)
 
-**품질 검증**:
-- [ ] 모든 필수 @TAG 섹션 존재 확인
-- [ ] EARS 구문 형식 준수 확인
-- [ ] config.json 구문 유효성 검증
-- [ ] 문서 간 일관성 검증
+**Quality Verification**:
+- [ ] Verify existence of all required @TAG sections
+- [ ] Verify compliance with EARS syntax format
+- [ ] Verify config.json syntax validity
+- [ ] Verify cross-document consistency
 
-### 2.4 완료 보고
+### 2.4 Completion Report
 
 ```markdown
-✅ 프로젝트 초기화 완료!
+✅ Project initialization complete!
 
-📁 생성된 문서:
-- .moai/project/product.md (비즈니스 정의)
-- .moai/project/structure.md (아키텍처 설계)
-- .moai/project/tech.md (기술 스택)
-- .moai/config.json (프로젝트 설정)
+📁 Documents generated:
+- .moai/project/product.md (Business Definition)
+- .moai/project/structure.md (Architecture Design)
+- .moai/project/tech.md (Technology Stack)
+- .moai/config.json (project settings)
 
-🔍 감지된 환경:
-- 언어: [언어 목록]
-- 프레임워크: [프레임워크 목록]
-- 테스트 도구: [도구 목록]
+🔍 Detected environments:
+- Language: [List of languages]
+- Frameworks: [List of frameworks]
+- Test tools: [List of tools]
 
-📋 다음 단계:
-1. 생성된 문서를 검토하세요
-2. /alfred:1-spec으로 첫 번째 SPEC 작성
-3. 필요 시 /alfred:8-project update로 재조정
+📋 Next steps:
+1. Review the generated document
+2. Create your first SPEC with /alfred:1-plan
+3. If necessary, readjust with /alfred:8-project update
 ```
 
-### 2.5: 초기 구조 검증 (선택적)
+### 2.5: Initial structural verification (optional)
 
-프로젝트 초기화 완료 후 선택적으로 품질 검증을 실행할 수 있습니다.
+After project initialization is complete, you can optionally run quality verification.
 
-**실행 조건**: 사용자가 명시적으로 요청한 경우에만
+**Execution Conditions**: Only when explicitly requested by the user.
 
-**검증 목적**:
-- 프로젝트 문서와 설정 파일 기본 검증
-- 초기 구조의 TRUST 원칙 준수 확인
-- 설정 파일 유효성 검증
+**Verification Purpose**:
+- Basic verification of project documentation and configuration files
+- Verification of compliance with the TRUST principles of the initial structure
+- Validation of configuration files
 
-**실행 방식**:
-사용자가 명시적으로 요청한 경우에만 Alfred가 trust-checker 에이전트를 호출하여 프로젝트 초기 구조 검증을 수행합니다.
+**How ​​it works**:
+Alfred only calls the trust-checker agent to perform project initial structural verification if explicitly requested by the user.
 
-**검증 항목**:
-- **문서 완성도**: product/structure/tech.md 필수 섹션 존재 확인
-- **설정 유효성**: config.json JSON 구문 및 필수 필드 검증
-- **TAG 체계**: 문서 내 @TAG 형식 준수 확인
-- **EARS 구문**: SPEC 작성 시 사용할 EARS 템플릿 검증
+**Verification items**:
+- **Document completeness**: Check existence of required sections in product/structure/tech.md
+- **Settings validity**: Verify config.json JSON syntax and required fields
+- **TAG scheme**: Check compliance with @TAG format in document
+- **EARS syntax**: Validation of the EARS template to be used when writing SPECs
 
-**검증 실행**: Level 1 빠른 스캔 (3-5초)
+**Run Verification**: Level 1 quick scan (3-5 seconds)
 
-**검증 결과 처리**:
+**Handling verification results**:
 
-✅ **Pass**: 다음 단계 진행 가능
-- 문서와 설정 모두 정상
+✅ **Pass**: Can proceed to next step
+- Documents and settings are all normal
 
-⚠️ **Warning**: 경고 표시 후 진행
-- 일부 선택적 섹션 누락
-- 권장사항 미적용
+⚠️ **Warning**: Proceed after warning
+- Some optional sections are missing
+- Recommendations not applied
 
-❌ **Critical**: 수정 필요
-- 필수 섹션 누락
-- config.json 구문 오류
-- 사용자 선택: "수정 후 재검증" 또는 "건너뛰기"
+❌ **Critical**: Needs fix
+- Required section missing
+- config.json syntax error
+- User choice: “Revalidate after fix” or “Skip”
 
-**검증 건너뛰기**:
-- 기본적으로 검증은 실행되지 않음
-- 사용자가 명시적으로 요청할 때만 실행
+**Skip verification**:
+- Verification is not run by default
+- Run only when explicitly requested by the user
 
+### 2.6: Agent & Skill Tailoring (Project Optimization)
 
-## 프로젝트 유형별 인터뷰 가이드
+Based on the results of the interviews and initial analysis, we recommend and activate sub-agents and skills that should be immediately utilized in the project.
+Before actual application, user confirmation is received with `Skill("moai-alfred-tui-survey")`, and selected items are recorded in `CLAUDE.md` and `.moai/config.json`.
 
-### 신규 프로젝트 인터뷰 영역
+#### 2.6.0 Create cc-manager briefing
+
+Once the document creation is complete, **read all three documents (product/structure/tech.md)** and summarize the following information to create a text called `cc_manager_briefing`.
+
+- `product.md`: Organize the mission, key users, problems to be solved, success indicators, and backlog (TODO) with a quotation from the original text or a one-line summary.
+- `structure.md`: Records architecture type, module boundaries and scope of responsibility, external integration, traceability strategy, and TODO contents.
+- `tech.md`: Organizes language/framework version, build/test/deployment procedures, quality/security policy, operation/monitoring method, and TODO items.
+
+Be sure to include the source (e.g. `product.md@SPEC:SUCCESS-001`) for each item so that cc-manager can understand the basis.
+
+#### 2.6.1 cc-manager judgment guide
+
+cc-manager selects the required sub-agents and skills based on the briefing.The table below is a reference guide to help you make a decision, and when making an actual call, the supporting sentences from the relevant document are also delivered.
+
+|Project requirements (document basis) |Recommended sub-agent/skill |Purpose |
+| -------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------ |
+|High quality and coverage goals (`product.md@SPEC:SUCCESS-001`) |`tdd-implementer`, `moai-essentials-debug`, `moai-essentials-review` |Establishment of RED·GREEN·REFACTOR workflow |
+|Traceability/TAG improvement request (`structure.md@DOC:TRACEABILITY-001`) |`doc-syncer`, `moai-alfred-tag-scanning`, `moai-alfred-trust-validation` |Enhanced TAG traceability and document/code synchronization |
+|Deployment automation/branch strategy required (`structure.md` Architecture/TODO) |`git-manager`, `moai-alfred-git-workflow`, `moai-foundation-git` |Branch Strategy·Commit Policy·PR Automation |
+|Refactoring legacy modules (`product.md` BACKLOG, `tech.md` TODO) |`implementation-planner`, `moai-alfred-refactoring-coach`, `moai-essentials-refactor` |Technical Debt Diagnosis and Refactoring Roadmap |
+|Strengthening regulatory/security compliance (`tech.md@DOC:SECURITY-001`) |`quality-gate`, `moai-alfred-trust-validation`, `moai-foundation-trust`, `moai-domain-security` |TRUST S (Secured) and Trackable Compliance, Security Consulting |
+|CLI Automation/Tooling Requirements (`tech.md` BUILD/CLI section) |`implementation-planner`, `moai-domain-cli-tool`, detected language skills (e.g. `moai-lang-python`) |CLI command design, input/output standardization |
+|Data analysis/reporting needs (`product.md` DATA, `tech.md` ANALYTICS) |`implementation-planner`, `moai-domain-data-science`, detected language skills |Data Pipeline·Notebook Job Definition |
+|Improved database structure (`structure.md` DB, `tech.md` STORAGE) |`doc-syncer`, `moai-domain-database`, `moai-alfred-tag-scanning` |Strengthening schema documentation and TAG-DB mapping |
+|DevOps/Infrastructure automation required (`tech.md` DEVOPS, `structure.md` CI/CD) |`implementation-planner`, `moai-domain-devops`, `moai-alfred-git-workflow` |Establishing a deployment pipeline and IaC strategy |
+|Introduction of ML/AI functions (`product.md` AI, `tech.md` MODEL) |`implementation-planner`, `moai-domain-ml`, detected language skills |Model training/inference pipeline definition |
+|Mobile app strategy (`product.md` MOBILE, `structure.md` CLIENT) |`implementation-planner`, `moai-domain-mobile-app`, detected language skills (e.g. `moai-lang-dart`, `moai-lang-swift`) |Mobile client structure design |
+|Strengthening coding standards/review process (`tech.md` REVIEW) |`quality-gate`, `moai-essentials-review`, `moai-alfred-code-reviewer` |Strengthening review checklist and quality reporting |
+|Requires onboarding/training mode (`tech.md` STACK description, etc.) |`moai-alfred-tui-survey`, `moai-adk-learning`, `agentic-coding` Output style |Enhanced interview TUI and automatically provided onboarding materials |
+
+> **Language/Domain Skill Selection Rules**
+> - Select and add one relevant language skill (`moai-lang-python`, `moai-lang-java`, …) based on the `moai-alfred-language-detection` results or the stack recorded in the Tech section of the briefing.
+> - Skills listed in the domain row are automatically included by cc-manager in the `selected_skills` list when the conditions are met.
+> - The skill directory is always copied in its entirety, and only actual activation is recorded in `skill_pack` and `CLAUDE.md`.
+
+If multiple conditions are met, the candidates are merged without duplicates and organized into sets of `candidate_agents`, `candidate_skills`, and `candidate_styles`.
+
+#### 2.6.2 User confirmation flow
+
+`Skill("moai-alfred-tui-survey")` asks “whether to enable recommended items.”
+- Provides three options: **Install all** / **Install selectively** / **Do not install**.
+Selecting “Selective Install” presents the list of candidates again as multiple choices, allowing the user to select only the items they need.
+
+#### 2.6.3 Activation and Recording Steps
+
+1. **Preparing briefing**: Organize the results of user selection (install all/install selectively) and the full text of `cc_manager_briefing`.
+2. **Call the cc-manager agent**:
+- Call `subagent_type: "cc-manager"` with the `Task` tool and include a briefing and user selections in the prompt.
+- cc-manager determines the necessary sub-agents and skills based on the briefing, and copies and updates `CLAUDE.md`, `.claude/agents/alfred/*.md`, and `.claude/skills/*.md` as customized for the project.
+3. **Check for configuration updates**: Review the results reflected by cc-manager.
+- Sub-Agents: Keep the `.claude/agents/alfred/` template active and list it in the `CLAUDE.md` “Agents” section.
+- Skills: Check the `.claude/skills/` document and add it to the `CLAUDE.md` “Skills” section.
+- Output style: Apply `.claude/output-styles/alfred/` and record the activation in `CLAUDE.md` “Output Styles”.
+4. **Update config.json**
+   ```json
+   {
+     "project": {
+       "optimized": true,
+       "agent_pack": ["tdd-implementer", "doc-syncer"],
+       "skill_pack": ["moai-alfred-git-workflow", "moai-alfred-tag-scanning"],
+       "output_styles": ["moai-adk-learning"]
+     }
+   }
+   ```
+Merge existing properties, if any.
+5. **Final Report**: Add a list of “Activated Sub-Agents/Skills/Style” and a `cc_manager_briefing` summary at the top of the Completion Report, and reflect the same contents in the `CLAUDE.md` table so that they are automatically searched in subsequent commands.
+
+## Interview guide by project type
+
+### New project interview area
 
 **Product Discovery** (product.md)
-- 핵심 미션 및 가치 제안
-- 주요 사용자층 및 니즈
-- 해결할 핵심 문제 3가지
-- 경쟁 솔루션 대비 차별점
-- 측정 가능한 성공 지표
+- Core mission and value proposition 
+ - Key user bases and needs 
+ - 3 key problems to solve 
+ - Differentiation compared to competing solutions 
+ - Measurable indicators of success
 
 **Structure Blueprint** (structure.md)
-- 시스템 아키텍처 전략
-- 모듈 분리 및 책임 구분
-- 외부 시스템 통합 계획
-- @TAG 기반 추적성 전략
+- System architecture strategy
+- Separation of modules and division of responsibilities
+- External system integration plan
+- @TAG-based traceability strategy
 
 **Tech Stack Mapping** (tech.md)
-- 언어/런타임 선택 및 버전
-- 프레임워크 및 라이브러리
-- 품질 게이트 정책 (커버리지, 린터)
-- 보안 정책 및 배포 채널
+- Language/runtime selection and version
+- Framework and libraries
+- Quality gate policy (coverage, linter)
+- Security policy and distribution channel
 
-### 기존 프로젝트 인터뷰 영역
+### Existing project interview area
 
 **Legacy Analysis**
-- 현재 코드 구조 및 모듈 파악
-- 빌드/테스트 파이프라인 현황
-- 기술 부채 및 제약사항 식별
-- 외부 연동 및 인증 방식
-- MoAI-ADK 전환 우선순위 계획
+- Identify current code structure and modules
+- Status of build/test pipeline
+- Identify technical debt and constraints
+- External integration and authentication methods
+- MoAI-ADK transition priority plan
 
-**보존 정책**: 기존 문서는 "Legacy Context" 섹션에 보존하고 @CODE/TODO 태그로 개선 필요 항목 표시
+**Retention Policy**: Preserve existing documents in the "Legacy Context" section and mark items needing improvement with @CODE/TODO tags
 
-## 🏷️ TAG 시스템 적용 규칙
+## 🏷️ TAG system application rules
 
-**섹션별 @TAG 자동 생성**:
+**Automatically create @TAGs per section**:
 
-- 미션/비전 → @DOC:MISSION-XXX, @DOC:STRATEGY-XXX
-- 사용자 정의 → @SPEC:USER-XXX, @SPEC:PERSONA-XXX
-- 문제 분석 → @SPEC:PROBLEM-XXX, @SPEC:SOLUTION-XXX
-- 아키텍처 → @DOC:ARCHITECTURE-XXX, @SPEC:PATTERN-XXX
-- 기술 스택 → @DOC:STACK-XXX, @DOC:FRAMEWORK-XXX
+- Mission/Vision → @DOC:MISSION-XXX, @DOC:STRATEGY-XXX
+- Customization → @SPEC:USER-XXX, @SPEC:PERSONA-XXX
+- Problem analysis → @SPEC:PROBLEM-XXX, @SPEC:SOLUTION-XXX
+- Architecture → @DOC:ARCHITECTURE-XXX, @SPEC:PATTERN-XXX
+- Technology Stack → @DOC:STACK-XXX, @DOC:FRAMEWORK-XXX
 
-**레거시 프로젝트 태그**:
+**Legacy Project Tags**:
 
-- 기술 부채 → @CODE:REFACTOR-XXX, @CODE:TEST-XXX, @CODE:MIGRATION-XXX
-- 해결 계획 → @CODE:MIGRATION-XXX, TODO:SPEC-BACKLOG-XXX
-- 품질 개선 → TODO:TEST-COVERAGE-XXX, TODO:DOCS-SYNC-XXX
+- Technical debt → @CODE:REFACTOR-XXX, @CODE:TEST-XXX, @CODE:MIGRATION-XXX
+- Resolution plan → @CODE:MIGRATION-XXX, TODO:SPEC-BACKLOG-XXX
+- Quality improvement → TODO:TEST-COVERAGE-XXX, TODO:DOCS-SYNC-XXX
 
-## 오류 처리
+## Error handling
 
-### 일반적인 오류 및 해결 방법
+### Common errors and solutions
 
-**오류 1**: 프로젝트 언어 감지 실패
+**Error 1**: Project language detection failed
 ```
-증상: "언어를 감지할 수 없습니다" 메시지
-해결: 수동으로 언어 지정 또는 언어별 설정 파일 생성
-```
-
-**오류 2**: 기존 문서와 충돌
-```
-증상: product.md가 이미 존재하며 내용이 다름
-해결: "Legacy Context" 섹션에 기존 내용 보존 후 새 내용 추가
+Symptom: “Language not detected” message
+Solution: Specify language manually or create language-specific settings file
 ```
 
-**오류 3**: config.json 작성 실패
+**Error 2**: Conflict with existing document
 ```
-증상: JSON 구문 오류 또는 권한 거부
-해결: 파일 권한 확인 (chmod 644) 또는 수동으로 config.json 생성
+Symptom: product.md already exists and has different contents
+Solution: Preserve existing contents and add new contents in “Legacy Context” section
 ```
 
-## 다음 단계
+**Error 3**: Failed to create config.json
+```
+Symptom: JSON syntax error or permission denied
+Solution: Check file permissions (chmod 644) or create config.json manually
+```
 
-**권장사항**: 다음 단계 진행 전 `/clear` 또는 `/new` 명령으로 새로운 대화 세션을 시작하면 더 나은 성능과 컨텍스트 관리를 경험할 수 있습니다.
+---
 
-초기화 완료 후:
+## /alfred:0-project update: Template optimization (subcommand)
 
-- **신규 프로젝트**: `/alfred:1-spec`을 실행해 설계 기반 SPEC 백로그 생성
-- **레거시 프로젝트**: product/structure/tech 문서의 @CODE/@CODE/TODO 항목 검토 후 우선순위 확정
-- **설정 변경**: `/alfred:8-project`를 다시 실행하여 문서 갱신
+> **Purpose**: After running moai-adk update, compare the backup and new template to optimize the template while preserving user customization.
 
-## 관련 명령어
+### Execution conditions
 
-- `/alfred:1-spec` - SPEC 작성 시작
-- `/alfred:9-update` - MoAI-ADK 업데이트
-- `moai doctor` - 시스템 진단
-- `moai status` - 프로젝트 상태 확인
+This subcommand is executed under the following conditions:
+
+1. **After executing moai-adk update**: `optimized=false` status in `config.json`
+2. **Template update required**: When there is a difference between the backup and the new template
+3. **User explicit request**: User directly executes `/alfred:0-project update`
+
+### Execution flow
+
+#### Phase 1: Backup analysis and comparison
+
+1. **Make sure you have the latest backup**:
+   ```bash
+# Browse the latest backups in the .moai-backups/ directory
+   ls -lt .moai-backups/ | head -1
+   ```
+
+2. **Change Analysis**:
+ - Compare `.claude/` directory from backup with current template
+ - Compare `.moai/project/` document from backup with current document
+ - Identify user customization items
+
+3. **Create Comparison Report**:
+   ```markdown
+## 📊 Template optimization analysis
+
+### Changed items
+ - CLAUDE.md: "## Project Information" section needs to be preserved
+ - settings.json: 3 env variables need to be preserved
+ - product.md: Has user-written content
+
+### Recommended Action
+ - Run Smart Merge
+ - Preserve User Customizations
+ - Set optimized=true
+   ```
+
+4. **Waiting for user approval**  
+`Skill("moai-alfred-tui-survey")` asks “Do you want to proceed with template optimization?” and provides the following options.
+- **Proceed** → Phase 2 execution
+- **Preview** → Display change details and recheck
+- **Skip** → keep optimized=false
+
+#### Phase 2: Run smart merge (after user approval)
+
+1. **Execute smart merge logic**:
+ - Run `TemplateProcessor.copy_templates()`
+ - CLAUDE.md: Preserve "## Project Information" section
+ - settings.json: env variables and permissions.allow merge
+
+2. Set **optimized=true**:
+   ```python
+   # update config.json
+   config_data["project"]["optimized"] = True
+   ```
+
+3. **Optimization completion report**:
+   ```markdown
+✅ Template optimization completed!
+
+📄 Merged files:
+ - CLAUDE.md (preserves project information)
+ - settings.json (preserves env variables)
+
+⚙️ config.json: optimized=true Configuration complete
+   ```
+
+### Alfred Automation Strategy
+
+**Alfred automatic decision**:
+- Automatically call project-manager agent
+- Check backup freshness (within 24 hours)
+- Automatically analyze changes
+
+**Auto-activation of Skills**:
+- moai-alfred-tag-scanning: TAG chain verification
+- moai-alfred-trust-validation: Verification of compliance with TRUST principles
+
+### Running example
+
+```bash
+# After running moai-adk update
+moai-adk update
+
+# Output:
+# ✓ Update complete!
+# ℹ️  Next step: Run /alfred:0-project update to optimize template changes
+
+# Run Alfred
+/alfred:0-project update
+
+# → Phase 1: Generate backup analysis and comparison report
+# → Wait for user approval
+# → Phase 2: Run smart merge, set optimized=true
+```
+
+### caution
+
+- **Backup required**: Cannot run without backup in `.moai-backups/` directory
+- **Manual review recommended**: Preview is required if there are important customizations
+- **Conflict resolution**: Request user selection in case of merge conflict
+
+---
+
+## 🚀 STEP 3: Project Custom Optimization (Optional)
+
+**Execution conditions**:
+- After completion of Phase 2 (project initialization)
+- or after completion of Phase 1.1 (backup merge)
+- Explicitly requested by the user or automatically determined by Alfred
+
+**Purpose**: Lightweight by selecting only Commands, Agents, and Skills that fit the project characteristics (37 skills → 3~5)
+
+### 3.1 Automatic execution of Feature Selection
+
+**Alfred automatically calls the moai-alfred-feature-selector skill**:
+
+**Skill Entry**:
+- `.moai/project/product.md` (project category hint)
+- `.moai/project/tech.md` (main language, framework)
+- `.moai/config.json` (project settings)
+
+**Skill Output**:
+```json
+{
+  "category": "web-api",
+  "language": "python",
+  "framework": "fastapi",
+  "commands": ["1-spec", "2-build", "3-sync"],
+  "agents": ["spec-builder", "code-builder", "doc-syncer", "git-manager", "debug-helper"],
+  "skills": ["moai-lang-python", "moai-domain-web-api", "moai-domain-backend"],
+  "excluded_skills_count": 34,
+  "optimization_rate": "87%"
+}
+```
+
+**How ​​to Run**:
+```
+Alfred: Skill("moai-alfred-feature-selector")
+```
+
+---
+
+### 3.2 Automatic execution of Template Generation
+
+**Alfred automatically calls the moai-alfred-template-generator skill**:
+
+**Skill input**:
+- `.moai/.feature-selection.json` (feature-selector output)
+- `CLAUDE.md` template
+- Entire commands/agents/skills file
+
+**Skill Output**:
+- `CLAUDE.md` (custom agent table - selected agents only)
+- `.claude/commands/` (selected commands only)
+- `.claude/agents/` (selected agents only)
+- `.claude/skills/` (selected skills only)
+- `.moai/config.json` (updates `optimized: true`)
+
+**How ​​to Run**:
+```
+Alfred: Skill("moai-alfred-template-generator")
+```
+
+---
+
+### 3.3 Optimization completion report
+
+**Report Format**:
+```markdown
+✅ Project customized optimization completed!
+
+📊 Optimization results:
+- **Project**: {{PROJECT_NAME}}
+- **Category**: web-api
+- **Main language**: python
+- **Framework**: fastapi
+
+🎯 Selected capabilities:
+- Commands: 4 items (0-project, 1-spec, 2-build, 3-sync)
+- Agents: 5 items (spec-builder, code-builder, doc-syncer, git-manager, debug-helper)
+- Skills: 3 items (moai-lang-python, moai-domain-web-api, moai-domain-backend)
+
+💡 Lightweight effect:
+- Skills excluded: 34
+- Lightweight: 87%
+- CLAUDE.md: Create custom agent table
+
+📋 Next steps:
+1. Check the CLAUDE.md file (only 5 agents are displayed)
+2. Run /alfred:1-plan "first function"
+3. Start the MoAI-ADK workflow
+```
+
+---
+
+### 3.4 Skip Phase 3 (optional)
+
+**Users can skip Phase 3**:
+
+**Skip condition**:
+- User explicitly selects “Skip”
+- “Simple project” when Alfred automatically determines (only basic features required)
+
+**Skip effect**:
+- Maintain all 37 skills (no lightweighting)
+- Maintain default 9 agents in CLAUDE.md template
+- Maintain `optimized: false` in config.json
+
+---
+
+## Next steps
+
+**Recommendation**: For better performance and context management, start a new chat session with the `/clear` or `/new` command before proceeding to the next step.
+
+After initialization is complete:
+
+- **New project**: Run `/alfred:1-plan` to create design-based SPEC backlog
+- **Legacy project**: Review @CODE/@CODE/TODO items in product/structure/tech document and confirm priority
+- **Set Change**: Run `/alfred:0-project` again to update document
+- **Template optimization**: Run `/alfred:0-project update` after `moai-adk update`
+
+## Related commands
+
+- `/alfred:1-plan` - Start writing SPEC
+- `/alfred:9-update` - MoAI-ADK update
+- `moai doctor` - System diagnosis
+- `moai status` - Check project status

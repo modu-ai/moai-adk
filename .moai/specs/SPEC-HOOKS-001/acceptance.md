@@ -103,8 +103,8 @@ Python, TypeScript, JavaScript, Java, Go, Rust, Dart, Swift, Kotlin, Ruby, PHP, 
 
 ### Core Module: context.py (5 Tests)
 
-#### AC-2.1: JIT Context 추천 (/alfred:1-spec)
-**Given**: 사용자가 `/alfred:1-spec "새 기능"` 프롬프트를 입력했을 때
+#### AC-2.1: JIT Context 추천 (/alfred:1-plan)
+**Given**: 사용자가 `/alfred:1-plan "새 기능"` 프롬프트를 입력했을 때
 **When**: `get_jit_context(prompt, cwd)` 함수를 호출하면
 **Then**: 다음 문서 경로를 포함한 리스트를 반환해야 한다:
 - `.moai/memory/spec-metadata.md`
@@ -114,8 +114,8 @@ Python, TypeScript, JavaScript, Java, Go, Rust, Dart, Swift, Kotlin, Ruby, PHP, 
 
 ---
 
-#### AC-2.2: JIT Context 추천 (/alfred:2-build)
-**Given**: 사용자가 `/alfred:2-build AUTH-001` 프롬프트를 입력했을 때
+#### AC-2.2: JIT Context 추천 (/alfred:2-run)
+**Given**: 사용자가 `/alfred:2-run AUTH-001` 프롬프트를 입력했을 때
 **When**: `get_jit_context(prompt, cwd)` 함수를 호출하면
 **Then**: 다음 문서 경로를 포함한 리스트를 반환해야 한다:
 - `.moai/memory/development-guide.md`
@@ -329,7 +329,7 @@ Python, TypeScript, JavaScript, Java, Go, Rust, Dart, Swift, Kotlin, Ruby, PHP, 
 ---
 
 ### E2E-2: UserPromptSubmit → JIT Context 추천
-**Given**: 사용자가 `/alfred:1-spec "새 기능"` 입력했을 때
+**Given**: 사용자가 `/alfred:1-plan "새 기능"` 입력했을 때
 **When**: UserPromptSubmit 이벤트가 발생하면
 **Then**: `context` 필드에 다음 문서 경로가 포함되어야 한다:
 - `.moai/memory/spec-metadata.md`
