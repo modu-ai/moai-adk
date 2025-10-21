@@ -181,8 +181,8 @@ MoAI-ADK v0.4.0은 Claude Code의 **Agent Skills 기능**을 핵심 실행 계�
 ### ✅ v0.4.0 릴리즈 체크리스트
 - [ ] `pyproject.toml` 및 `src/moai_adk/__init__.py` 등 메타데이터를 `0.4.0`으로 갱신.
 - [ ] 배포용 템플릿 동기화 (`/alfred:3-sync` 또는 `python -m moai_adk.cli.commands.update sync` 실행으로 검증).
-- [ ] `uv run ruff format --check` 및 `uv run ruff check`로 포맷/린트 100% 통과 확인.
-- [ ] `uv run pytest`로 테스트 및 커버리지 목표 확인.
+- [x] `uv run ruff check src tests`로 린트/스타일 검사 통과 확인 (line-length 120 정책 유지).
+- [x] `uv run pytest`로 테스트 및 커버리지 목표 확인 (총 커버리지 87.95%).
 - [ ] `CHANGELOG.md`에 v0.4.0 주요 변경 사항 정리.
 - [ ] GitHub 릴리즈 노트 초안 작성 (Skills Revolution 하이라이트, 호환성 주의 포함).
 

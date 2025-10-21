@@ -343,7 +343,10 @@ def update(path: str, force: bool, check: bool) -> None:
 
         console.print("\n[green]✓ Update complete![/green]")
         if latest_version and version.parse(current_version) < version.parse(latest_version):
-            console.print("[yellow]⚠ Python package still on older version. Run 'pip install --upgrade moai-adk' to upgrade the CLI package.[/yellow]")
+            console.print(
+                "[yellow]⚠ Python package still on older version. "
+                "Run 'pip install --upgrade moai-adk' to upgrade the CLI package.[/yellow]"
+            )
         console.print("\n[cyan]ℹ️  Next step: Run /alfred:0-project update to optimize template changes[/cyan]")
 
     except Exception as e:

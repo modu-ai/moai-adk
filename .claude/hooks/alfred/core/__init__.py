@@ -26,11 +26,11 @@ class HookResult:
     """Hook execution result"""
 
     message: str | None = None
-    systemMessage: str | None = None # Message displayed directly to the user
+    systemMessage: str | None = None  # Message displayed directly to the user  # noqa: N815
     blocked: bool = False
-    contextFiles: list[str] = field(default_factory=list)
+    contextFiles: list[str] = field(default_factory=list)  # noqa: N815
     suggestions: list[str] = field(default_factory=list)
-    exitCode: int = 0
+    exitCode: int = 0  # noqa: N815
 
     def to_dict(self) -> dict[str, Any]:
         """Dictionary conversion for general Hook"""
