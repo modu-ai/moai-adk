@@ -101,7 +101,7 @@ def init(
     """
     try:
         # 1. Print banner
-        print_banner()
+        print_banner(__version__)
 
         # 2. Check current directory mode
         is_current_dir = path == "."
