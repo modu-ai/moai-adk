@@ -340,40 +340,61 @@ Refs: @TAG-ID (if applicable)
 
 **Root cause**: AI must *guess* user intent without explicit guidance.
 
-### Solution: Interactive Question Tool
+### Solution: Interactive Question Tool + TUI Survey Skill
 
-Claude Code now features an **Interactive Question Tool** that transforms vague requests into precise, contextual specifications through guided clarification. Instead of AI making assumptions, the tool actively:
+Claude Code now features an **Interactive Question Tool** powered by the `moai-alfred-tui-survey` Skill that transforms vague requests into precise, contextual specifications through guided clarification. Instead of AI making assumptions, the tool actively:
 
 1. **Analyzes** existing code and project context
 2. **Identifies** ambiguity and competing approaches
-3. **Presents** concrete options with clear trade-offs
-4. **Captures** explicit user choices
+3. **Presents** concrete options with clear trade-offs via **TUI menu**
+4. **Captures** explicit user choices (arrow keys, enter)
 5. **Executes** with certainty based on confirmed intent
+
+**Implementation**: The `moai-alfred-tui-survey` Skill provides interactive survey menus that render as terminal UI elements, allowing users to navigate options with arrow keys and confirm with enter.
 
 ### How It Works
 
-When you provide a high-level request, Alfred may invoke the Interactive Question Tool to clarify implementation details:
+When you provide a high-level request, Alfred may invoke the `moai-alfred-tui-survey` Skill to clarify implementation details through structured TUI menus:
 
 ```
 User: "Add a completion page for the competition."
          ↓
-AI analyzes codebase & context
+Alfred analyzes codebase & context
          ↓
 [QUESTION 1] How should the completion page be implemented?
-  • Option A: Modify existing page structure
-  • Option B: Create a new public page
-  • Option C: Use environment-based gating
+┌─────────────────────────────────────────────────────┐
+│ ▶ Create a new public page                          │  ← arrow keys to select
+│   Modify existing page structure                    │
+│   Use environment-based gating                      │
+│                                                     │
+│ (press ↑↓ to navigate, enter to confirm)           │
+└─────────────────────────────────────────────────────┘
          ↓
 [QUESTION 2] Who should see the completion page?
-  • Option A: Only participants (authenticated users)
-  • Option B: All visitors (public)
-  • Option C: Based on time window
+┌─────────────────────────────────────────────────────┐
+│   Only participants (authenticated users)           │
+│ ▶ All visitors (public)                             │
+│   Based on time window                              │
+│                                                     │
+│ (press ↑↓ to navigate, enter to confirm)           │
+└─────────────────────────────────────────────────────┘
          ↓
 [REVIEW] Summary of your selections
-  ✓ Ready to submit or modify answers
+┌─────────────────────────────────────────────────────┐
+│ ✓ Implementation: New public page                   │
+│ ✓ User experience: All visitors (public)            │
+│                                                     │
+│ Ready to submit?                                    │
+│  [Submit answers] [← Go back]                       │
+└─────────────────────────────────────────────────────┘
          ↓
 Execution with confirmed specifications
 ```
+
+**Where it's used**:
+- Sub-agents (spec-builder, code-builder pipeline) invoke this skill when ambiguity is detected
+- Alfred commands may trigger interactive surveys during Plan/Run/Sync phases
+- User approvals and architectural decisions benefit most from TUI-based selection
 
 ### Key Benefits
 
@@ -426,53 +447,100 @@ Execution with confirmed specifications
    - Reference existing code patterns ("like the auth flow in `/src/auth.ts`")
    - Mention constraints or non-negotiables upfront
 
-### Example: Competition Completion Page
+### Example: Competition Completion Page (TUI Survey)
 
-**Request**: "Competition is over. Add a completion page."
+**User Request**: "Competition is over. Add a completion page."
 
-**Question 1: Implementation Approach**
+**Step 1: Code Analysis**
+Alfred scans the codebase and detects:
+- Existing `/end` page (auth required, shows results)
+- Need for clarification on scope and user behavior
+
+**Step 2: Interactive Survey (moai-alfred-tui-survey activated)**
+
 ```
-How should the completion page be implemented?
+────────────────────────────────────────────────────────────────
+ALFRED: How should the completion page be implemented?
+────────────────────────────────────────────────────────────────
 
-1. Create a new public page
-   New unguarded route (e.g., /competition-closed)
-   visible to all visitors, no authentication required
+┌─ IMPLEMENTATION APPROACH ────────────────────────────────────┐
+│                                                              │
+│ ▶ Create a new public page (/competition-closed)            │
+│   • Unguarded route, visible to all visitors                │
+│   • No authentication required                              │
+│                                                              │
+│   Modify existing /end page with conditional logic          │
+│   • Check if competition is active before showing results   │
+│                                                              │
+│   Use environment-based gating                              │
+│   • Set NEXT_PUBLIC_COMPETITION_CLOSED=true                │
+│   • Redirect all traffic to completion screen               │
+│                                                              │
+│ Use ↑↓ arrows to navigate, ENTER to select                 │
+│ Type custom answer or press ESC to cancel                   │
+└──────────────────────────────────────────────────────────────┘
 
-2. Modify existing page
-   Update current /end page with conditional logic
-   check if competition is active before showing results
-
-3. Use environment gating
-   Set NEXT_PUBLIC_COMPETITION_CLOSED=true to redirect
-   all traffic to a completion screen
-```
-→ Choose: **Option 1** (New public page)
-
-**Question 2: User Behavior**
-```
-For logged-in participants accessing the new page:
-
-1. Show submission history
-   Redirect to existing /end page
-   display their results and timeline
-
-2. Show simple completion message
-   Display "Competition concluded" notice only
-   no historical data
-
-3. Different treatment
-   Custom behavior based on user role or time
-```
-→ Choose: **Option 2** (Simple message)
-
-**Summary**
-```
-✓ Implementation: New public completion page (/competition-closed)
-✓ User experience: Logged-in users see completion notice (no history)
-✓ Ready to proceed?
+→ Selection: Create a new public page (/competition-closed)
 ```
 
-**Result**: Clean, intentional implementation that exactly matches the confirmed specifications.
+```
+────────────────────────────────────────────────────────────────
+ALFRED: For logged-in participants accessing the new page?
+────────────────────────────────────────────────────────────────
+
+┌─ USER BEHAVIOR ──────────────────────────────────────────────┐
+│                                                              │
+│   Show submission history                                   │
+│   • Redirect to /end page, display results & timeline       │
+│                                                              │
+│ ▶ Show simple completion message only                       │
+│   • Display "Competition concluded" notice                  │
+│   • No historical data shown                                │
+│                                                              │
+│   Custom behavior based on user role                        │
+│   • Different experience per role type                      │
+│                                                              │
+│ Use ↑↓ arrows to navigate, ENTER to select                 │
+│ Type custom answer or press ESC to cancel                   │
+└──────────────────────────────────────────────────────────────┘
+
+→ Selection: Show simple completion message only
+```
+
+**Step 3: Review & Confirmation**
+
+```
+────────────────────────────────────────────────────────────────
+ALFRED: Review your answers
+────────────────────────────────────────────────────────────────
+
+┌─ SUMMARY ────────────────────────────────────────────────────┐
+│                                                              │
+│ ✓ Implementation approach:                                  │
+│   Create a new public page (/competition-closed)            │
+│                                                              │
+│ ✓ User behavior:                                            │
+│   Show simple completion message only                       │
+│                                                              │
+│ Ready to submit these answers?                              │
+│                                                              │
+│  [✓ Submit answers]  [← Go back and modify]                │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+
+→ Action: Submit answers (enter)
+```
+
+**Step 4: Execution**
+
+Alfred now executes with **confirmed specifications**:
+- ✅ Creates `/app/competition-closed/page.tsx` (public route)
+- ✅ Implements simple "Competition concluded" message
+- ✅ Handles authenticated users appropriately
+- ✅ Generates with SPEC → TDD → Sync flow
+
+**Result**: Clean, intentional implementation that exactly matches confirmed specifications.
+No guessing. No ambiguity. Direct execution. 🎯
 
 ## Commands · Sub-agents · Skills · Hooks
 
