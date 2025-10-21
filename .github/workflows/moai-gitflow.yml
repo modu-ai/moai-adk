@@ -105,6 +105,8 @@ jobs:
           if [ -f "requirements.txt" ] || [ -f "pyproject.toml" ] || [ -f "setup.py" ]; then
             echo "➡️  Python tests"
             pip install -q pytest pytest-cov 2>/dev/null || true
+            # Install package with all dependencies
+            pip install -e . 2>/dev/null || true
             if [ "$ALLOW_FAILURE" = "true" ]; then
               pytest --cov --cov-report=term-missing || true
             else
