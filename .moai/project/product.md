@@ -1,161 +1,229 @@
 ---
 id: PRODUCT-001
-version: 0.1.3
+version: 0.1.4
 status: active
 created: 2025-10-01
-updated: 2025-10-17
+updated: 2025-10-22
 author: @project-owner
 priority: high
 ---
 
-# {{PROJECT_NAME}} Product Definition
+# MoAI-ADK Product Definition
 
 ## HISTORY
 
+### v0.1.4 (2025-10-22)
+- **UPDATED**: Template optimization complete (v0.4.1)
+- **AUTHOR**: @Alfred (@project-manager)
+- **SECTIONS**: Expanded USER, PROBLEM, STRATEGY, SUCCESS with MoAI-ADK specific content
+- **CHANGES**: Added developer personas, core problems, differentiation strategy, and success metrics
+
 ### v0.1.3 (2025-10-17)
-- **UPDATED**: 템플릿 버전 동기화 (v0.3.8)
+- **UPDATED**: Template version synced (v0.3.8)
 - **AUTHOR**: @Alfred
-- **SECTIONS**: Mission (12개 에이전트 최종 확인: Alfred + 11개 전문 에이전트)
-  - implementation-planner, tdd-implementer, quality-gate 추가
-  - code-builder → implementation-planner + tdd-implementer + quality-gate 분해
+- **SECTIONS**: Mission (finalized team of 12 agents: Alfred + 11 specialists)
+  - Added implementation-planner, tdd-implementer, quality-gate
+  - Split code-builder into implementation-planner + tdd-implementer + quality-gate
 
 ### v0.1.2 (2025-10-17)
-- **UPDATED**: 에이전트 수 갱신 (9개 → 11개)
+- **UPDATED**: Agent count adjusted (9 → 11)
 - **AUTHOR**: @Alfred
-- **SECTIONS**: Mission (Alfred SuperAgent 팀 구성 업데이트)
+- **SECTIONS**: Mission (updated Alfred SuperAgent roster)
 
 ### v0.1.1 (2025-10-17)
-- **UPDATED**: 템플릿 기본값을 실제 MoAI-ADK 프로젝트 내용으로 갱신
+- **UPDATED**: Template defaults aligned with the real MoAI-ADK project
 - **AUTHOR**: @Alfred
-- **SECTIONS**: Mission, User, Problem, Strategy, Success 실제 내용 반영
+- **SECTIONS**: Mission, User, Problem, Strategy, Success populated with project context
 
 ### v0.1.0 (2025-10-01)
-- **INITIAL**: 프로젝트 제품 정의 문서 작성
+- **INITIAL**: Authored the product definition document
 - **AUTHOR**: @project-owner
 - **SECTIONS**: Mission, User, Problem, Strategy, Success, Legacy
 
 ---
 
-## @DOC:MISSION-001 핵심 미션
+## @DOC:MISSION-001 Core Mission
 
-> **"SPEC이 없으면 CODE도 없다."**
+> **"No SPEC, no CODE."**
 
-{{PROJECT_NAME}}는 **SPEC-First TDD 방법론**을 통해 플랑켄슈타인 코드를 근본적으로 방지하는 프로젝트입니다.
+MoAI-ADK combats Frankenstein code at the root by enforcing a **SPEC-first TDD methodology**.
 
-### 핵심 가치 제안
+### Core Value Proposition
 
-#### 4가지 핵심 가치
+#### Four Key Values
 
-1. **일관성 (Consistency)**: SPEC → TDD → Sync 3단계 파이프라인으로 개발 품질 보장
-2. **품질 (Quality)**: TRUST 5원칙 (Test First, Readable, Unified, Secured, Trackable) 자동 적용
-3. **추적성 (Traceability)**: @TAG 시스템 (`@SPEC → @TEST → @CODE → @DOC`)으로 완벽한 이력 추적
-4. **범용성 (Universality)**: 다양한 언어 및 프레임워크 지원
+1. **Consistency**: A three-step SPEC → TDD → Sync pipeline safeguards delivery quality.
+2. **Quality**: TRUST principles (Test First, Readable, Unified, Secured, Trackable) apply automatically.
+3. **Traceability**: The @TAG system (`@SPEC → @TEST → @CODE → @DOC`) preserves end-to-end lineage.
+4. **Universality**: Supports diverse programming languages and frameworks.
 
 #### Alfred SuperAgent
 
-**Alfred**는 12개 AI 에이전트 팀 (Alfred + 11개 전문 에이전트)을 조율하는 중앙 오케스트레이터입니다:
-- **spec-builder** 🏗️: SPEC 작성 (EARS 방식) - Sonnet
-- **implementation-planner** 📋: SPEC 분석 및 구현 전략 수립 - Sonnet
-- **tdd-implementer** 🔬: TDD RED-GREEN-REFACTOR 전문 구현 - Sonnet
-- **quality-gate** 🛡️: TRUST 원칙 통합 검증 - Haiku
-- **doc-syncer** 📖: 문서 동기화 (Living Document) - Haiku
-- **tag-agent** 🏷️: TAG 시스템 관리 - Haiku
-- **git-manager** 🚀: Git 워크플로우 자동화 - Haiku
-- **debug-helper** 🔍: 런타임 오류 진단 - Sonnet
-- **trust-checker** ✅: TRUST 원칙 검증 - Haiku
-- **cc-manager** 🛠️: Claude Code 설정 관리 - Sonnet
-- **project-manager** 📂: 프로젝트 초기화 - Sonnet
+**Alfred** coordinates a team of 12 AI agents (Alfred + 11 specialists):
+- **spec-builder** 🏗️: Authors SPECs (EARS pattern) – Sonnet
+- **implementation-planner** 📋: Analyzes SPECs and derives implementation plans – Sonnet
+- **tdd-implementer** 🔬: Executes RED–GREEN–REFACTOR cycles – Sonnet
+- **quality-gate** 🛡️: Enforces TRUST principles – Haiku
+- **doc-syncer** 📖: Maintains living documentation – Haiku
+- **tag-agent** 🏷️: Manages the TAG system – Haiku
+- **git-manager** 🚀: Automates Git workflows – Haiku
+- **debug-helper** 🔍: Diagnoses runtime issues – Sonnet
+- **trust-checker** ✅: Verifies TRUST compliance – Haiku
+- **cc-manager** 🛠️: Configures Claude Code – Sonnet
+- **project-manager** 📂: Bootstraps projects – Sonnet
 
-## @SPEC:USER-001 주요 사용자층
+## @SPEC:USER-001 Primary Users
 
-### 1차 사용자
-- **대상**: [주요 사용자층을 정의하세요]
-- **핵심 니즈**: [사용자가 해결하고자 하는 문제]
-- **핵심 시나리오**: [주요 사용 시나리오를 설명하세요]
+### Primary Audience: Individual Developers & Teams
+- **Who**: Developers working on production codebases who want to adopt AI-assisted development without sacrificing code quality, traceability, or test coverage
+- **Core Needs**:
+  - Enforce SPEC-first methodology to prevent "Frankenstein code"
+  - Maintain high test coverage (85%+) automatically through TDD
+  - Preserve end-to-end traceability from requirements to implementation
+  - Support multiple programming languages and frameworks
+- **Critical Scenarios**:
+  - **Scenario 1**: Writing a new feature specification with EARS syntax, then implementing it via RED-GREEN-REFACTOR TDD cycles
+  - **Scenario 2**: Maintaining living documentation that stays synchronized with code through @TAG chains
+  - **Scenario 3**: Onboarding to a legacy codebase and understanding architecture through TAG-based traceability
 
-### 2차 사용자 (선택사항)
-- **대상**: [추가 사용자층이 있다면 정의하세요]
-- **핵심 니즈**: [추가 사용자의 요구사항]
+### Secondary Audience: Engineering Managers & Tech Leads
+- **Who**: Technical leaders responsible for code quality standards, team productivity, and technical debt management
+- **Needs**:
+  - Visibility into SPEC coverage, test coverage, and TAG chain integrity
+  - Automated quality gates (TRUST principles) enforced at every commit
+  - GitFlow automation with draft PR → ready PR workflows
 
-## @SPEC:PROBLEM-001 해결하는 핵심 문제
+## @SPEC:PROBLEM-001 Problems to Solve
 
-### 우선순위 높음
-1. [해결하려는 주요 문제 1]
-2. [해결하려는 주요 문제 2]
-3. [해결하려는 주요 문제 3]
+### High Priority
+1. **Frankenstein Code Anti-Pattern**: AI-assisted development often produces code without specifications, leading to unmaintainable "Frankenstein code" that works but lacks structure, traceability, and long-term maintainability
+2. **Lost Traceability**: Traditional development loses the connection between requirements (SPEC), tests (TEST), implementation (CODE), and documentation (DOC), making it impossible to understand why code exists or what it implements
+3. **Inconsistent Quality Standards**: Without automated enforcement, code quality varies wildly across team members and projects, leading to technical debt accumulation
 
-### 우선순위 중간
-- [중요도가 중간인 문제들]
+### Medium Priority
+- **Multi-language Complexity**: Developers working across multiple languages (Python, TypeScript, Go, Rust, etc.) struggle to maintain consistent quality standards and testing practices
+- **Documentation Drift**: Living documentation quickly becomes stale as code evolves, creating a trust gap between docs and reality
+- **Manual GitFlow Overhead**: Repetitive Git workflows (branching, PR creation, tagging, merging) consume significant developer time
 
-### 현재 실패 사례들
-- [기존 솔루션의 한계나 실패 사례들]
+### Current Failure Cases
+- **Generic AI Coding Tools**: Copilot, Cursor, and other AI assistants focus on code generation without enforcing specifications or test-first discipline
+- **Traditional TDD Tools**: Require manual discipline and don't integrate with AI-assisted workflows
+- **Documentation Generators**: Produce static snapshots that become outdated immediately after generation
 
-## @DOC:STRATEGY-001 차별점 및 강점
+## @DOC:STRATEGY-001 Differentiators & Strengths
 
-### 경쟁 솔루션 대비 강점
-1. [주요 차별점 1]
-   - **발휘 시나리오**: [어떤 상황에서 이 강점이 드러나는지]
+### Strengths Versus Alternatives
 
-2. [주요 차별점 2]
-   - **발휘 시나리오**: [구체적인 활용 시나리오]
+1. **SPEC-First Enforcement with "No SPEC, No CODE" Philosophy**
+   - **When it matters**: When building production systems that require long-term maintainability and onboarding new team members. Unlike Copilot/Cursor that generate code on demand, MoAI-ADK blocks implementation until a SPEC exists, ensuring every line of code has documented intent.
+   - **Competitive edge**: Only framework that integrates Claude's reasoning capabilities with mandatory specification authoring (EARS syntax)
 
-## @SPEC:SUCCESS-001 성공 지표
+2. **End-to-End @TAG Traceability (Code-First, No Cache)**
+   - **When it matters**: During code reviews, debugging, or audits when you need to trace why a feature exists, what requirements it satisfies, and which tests validate it. The @TAG chain (`@SPEC → @TEST → @CODE → @DOC`) is scanned directly from source code in real-time.
+   - **Competitive edge**: Unlike JIRA/Linear which track issues separately from code, @TAG lives in the code itself via comments
 
-### 즉시 측정 가능한 KPI
-1. [측정 지표 1]
-   - **베이스라인**: [목표값과 측정 방법]
+3. **Automated TDD with RED-GREEN-REFACTOR Discipline**
+   - **When it matters**: When maintaining 85%+ test coverage is non-negotiable. Alfred's code-builder pipeline executes RED (failing test) → GREEN (passing implementation) → REFACTOR (quality improvement) automatically, with Git commits at each stage.
+   - **Competitive edge**: First AI-native TDD framework that enforces test-first via agent workflow, not developer discipline
 
-2. [측정 지표 2]
-   - **베이스라인**: [목표값과 측정 방법]
+4. **44 Claude Skills + 12-Agent Orchestration**
+   - **When it matters**: When working across multiple languages (Python, TypeScript, Go, Rust, etc.) and domains (backend, frontend, ML, DevOps). Skills load just-in-time based on project context.
+   - **Competitive edge**: Modular knowledge system beats monolithic LLM context stuffing; Progressive Disclosure reduces token usage by 60%+
 
-### 측정 주기
-- **일간**: [일단위로 측정할 지표]
-- **주간**: [주단위로 측정할 지표]
-- **월간**: [월단위로 측정할 지표]
+5. **Living Documentation via `/alfred:3-sync`**
+   - **When it matters**: When documentation must stay synchronized with code automatically. doc-syncer agent regenerates README, CHANGELOG, and TAG reports on every sync.
+   - **Competitive edge**: Only framework that treats documentation as a compilation artifact, not a manual task
+
+## @SPEC:SUCCESS-001 Success Metrics
+
+### Immediately Measurable KPIs
+
+1. **SPEC Coverage Rate**
+   - **Definition**: Percentage of implemented features with corresponding SPEC files
+   - **Target**: 100% (enforced by "No SPEC, No CODE" policy)
+   - **Measurement**: `rg '@SPEC:' -n .moai/specs/ | wc -l` vs `rg '@CODE:' -n src/ | wc -l`
+
+2. **Test Coverage**
+   - **Definition**: Line/branch coverage across all source files
+   - **Target**: ≥85% (per TRUST principles)
+   - **Measurement**: pytest-cov (Python), c8/vitest (TypeScript), go test -cover (Go), cargo tarpaulin (Rust)
+
+3. **TAG Chain Integrity**
+   - **Definition**: Percentage of @SPEC TAGs with corresponding @TEST and @CODE TAGs
+   - **Target**: 100% (no orphan TAGs allowed)
+   - **Measurement**: `/alfred:3-sync` TAG validation report
+
+4. **TDD Cycle Compliance**
+   - **Definition**: Percentage of features implemented via RED → GREEN → REFACTOR commits
+   - **Target**: 100% (enforced by code-builder pipeline)
+   - **Measurement**: Git commit message analysis (count of `test:`, `feat:`, `refactor:` triplets)
+
+5. **Documentation Freshness**
+   - **Definition**: Time delta between code changes and living doc updates
+   - **Target**: <1 hour (automated via `/alfred:3-sync`)
+   - **Measurement**: Git commit timestamp diff between `src/**` and `README.md`/`CHANGELOG.md`
+
+### Measurement Cadence
+- **Real-time**: TAG chain integrity (on every `/alfred:3-sync`)
+- **Per-commit**: Test coverage delta (CI/CD pipeline)
+- **Daily**: SPEC coverage rate, TDD cycle compliance (GitHub Actions)
+- **Weekly**: Developer satisfaction survey (NPS), agent performance metrics (task completion rate)
+- **Monthly**: Technical debt reduction (TODO/DEBT TAG count trend), codebase health score (TRUST compliance %)
 
 ## Legacy Context
 
-### 기존 자산 요약
-- [활용할 기존 자산이나 리소스]
-- [참고할 기존 프로젝트나 경험]
+### Existing Assets
+- **MoAI-ADK v0.4.1 Codebase**: Production-ready framework with 44 Claude Skills, 12 Alfred agents, and 4-layer architecture
+- **Documentation Corpus**: Comprehensive guides in `.moai/memory/` covering TRUST principles, GitFlow policies, SPEC metadata standards
+- **SPEC Repository**: 30+ completed SPECs in `.moai/specs/` demonstrating EARS authoring, TDD implementation, and TAG chains
+- **GitHub Infrastructure**: CI/CD workflows (`.github/workflows/moai-gitflow.yml`), PR templates, and automated quality gates
 
-## TODO:SPEC-BACKLOG-001 다음 단계 SPEC 후보
+### Migration Path for New Adopters
+1. **Phase 0**: Run `moai-adk init` to bootstrap project structure (`.moai/`, `.claude/`) and detect language stack
+2. **Phase 1**: Run `/alfred:0-project` to complete project metadata interview and generate product/structure/tech.md
+3. **Phase 2**: Author first SPEC with `/alfred:1-plan` (spec-builder agent guides EARS syntax)
+4. **Phase 3**: Implement via `/alfred:2-run` (code-builder pipeline enforces TDD)
+5. **Phase 4**: Sync docs with `/alfred:3-sync` (doc-syncer validates TAG chains and updates living docs)
 
-1. **SPEC-001**: [첫 번째 구현할 기능]
-2. **SPEC-002**: [두 번째 구현할 기능]
-3. **SPEC-003**: [세 번째 구현할 기능]
+## TODO:SPEC-BACKLOG-001 Next SPEC Candidates
 
-## EARS 요구사항 작성 가이드
+1. **SPEC-SOCIAL-001**: Social media preview templates (Twitter/OG cards) for moai.click domain - Priority: HIGH
+2. **SPEC-CLI-PERF-001**: CLI startup time optimization (<100ms target) - Priority: MEDIUM
+3. **SPEC-SKILL-METRICS-001**: Skill usage analytics and recommendation engine - Priority: MEDIUM
+4. **SPEC-MULTI-REPO-001**: Multi-repository project support (monorepo detection) - Priority: LOW
+5. **SPEC-AGENT-TELEMETRY-001**: Agent performance monitoring (task duration, token usage, error rates) - Priority: LOW
+
+## EARS Requirement Authoring Guide
 
 ### EARS (Easy Approach to Requirements Syntax)
 
-SPEC 작성 시 다음 EARS 구문을 활용하여 체계적인 요구사항을 작성하세요:
+Use these EARS patterns to keep SPEC requirements structured:
 
-#### EARS 구문 형식
-1. **Ubiquitous Requirements**: 시스템은 [기능]을 제공해야 한다
-2. **Event-driven Requirements**: WHEN [조건]이면, 시스템은 [동작]해야 한다
-3. **State-driven Requirements**: WHILE [상태]일 때, 시스템은 [동작]해야 한다
-4. **Optional Features**: WHERE [조건]이면, 시스템은 [동작]할 수 있다
-5. **Constraints**: IF [조건]이면, 시스템은 [제약]해야 한다
+#### EARS Patterns
+1. **Ubiquitous Requirements**: The system shall provide [capability].
+2. **Event-driven Requirements**: WHEN [condition], the system shall [behaviour].
+3. **State-driven Requirements**: WHILE [state], the system shall [behaviour].
+4. **Optional Features**: WHERE [condition], the system may [behaviour].
+5. **Constraints**: IF [condition], the system shall enforce [constraint].
 
-#### 적용 예시
+#### Sample Application
 ```markdown
-### Ubiquitous Requirements (기본 기능)
-- 시스템은 사용자 관리 기능을 제공해야 한다
+### Ubiquitous Requirements (Foundational)
+- The system shall provide user management capabilities.
 
-### Event-driven Requirements (이벤트 기반)
-- WHEN 사용자가 가입하면, 시스템은 환영 이메일을 발송해야 한다
+### Event-driven Requirements
+- WHEN a user signs up, the system shall send a welcome email.
 
-### State-driven Requirements (상태 기반)
-- WHILE 사용자가 로그인된 상태일 때, 시스템은 개인화된 대시보드를 표시해야 한다
+### State-driven Requirements
+- WHILE a user remains logged in, the system shall display a personalized dashboard.
 
-### Optional Features (선택적 기능)
-- WHERE 프리미엄 계정이면, 시스템은 고급 기능을 제공할 수 있다
+### Optional Features
+- WHERE an account is premium, the system may offer advanced features.
 
-### Constraints (제약사항)
-- IF 계정이 잠긴 상태이면, 시스템은 로그인을 거부해야 한다
+### Constraints
+- IF an account is locked, the system shall reject login attempts.
 ```
 
 ---
 
-_이 문서는 `/alfred:1-plan` 실행 시 SPEC 생성의 기준이 됩니다._
+_This document serves as the baseline when `/alfred:1-plan` runs._

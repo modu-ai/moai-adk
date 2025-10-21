@@ -505,4 +505,16 @@ Alfred enforces these quality gates on every change:
 - **Description**: {{PROJECT_DESCRIPTION}}
 - **Version**: {{PROJECT_VERSION}}
 - **Mode**: {{PROJECT_MODE}}
+- **Conversation Language**: {{CONVERSATION_LANGUAGE}} ({{CONVERSATION_LANGUAGE_NAME}})
+- **Codebase Language**: {{CODEBASE_LANGUAGE}}
 - **Toolchain**: Automatically selects the best tools for the chosen language
+
+### Language Configuration
+
+- **Conversation Language** (`{{CONVERSATION_LANGUAGE}}`): All Alfred dialogs, documentation, and project interviews conducted in this language
+- **Codebase Language** (`{{CODEBASE_LANGUAGE}}`): Primary programming language(s) detected in this project
+- **Documentation**: Generated in the conversation language ({{CONVERSATION_LANGUAGE_NAME}})
+
+---
+
+**Note**: The conversation language is selected at the beginning of `/alfred:0-project` and applies to all subsequent project initialization steps. All generated documentation (product.md, structure.md, tech.md) will be created in the selected language.

@@ -7,7 +7,7 @@ from typing import Any
 
 @dataclass
 class ValidationResult:
-    """검증 결과 데이터 클래스"""
+    """Validation result data class"""
 
     passed: bool
     message: str
