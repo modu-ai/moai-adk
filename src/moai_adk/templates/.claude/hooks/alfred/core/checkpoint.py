@@ -150,7 +150,7 @@ def create_checkpoint(cwd: str, operation_type: str) -> str:
 
     try:
         # Create a new local branch from the current branch (without checking out)
-        result = subprocess.run(
+        subprocess.run(
             ["git", "branch", branch_name],
             cwd=cwd,
             check=True,

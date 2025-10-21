@@ -66,9 +66,9 @@ def create_progress_callback(progress: Progress, task_ids: Sequence[TaskID]):
 )
 @click.option(
     "--locale",
-    type=click.Choice(["ko", "en", "ja", "zh"]),
-    default="ko",
-    help="Preferred language",
+    type=click.Choice(["ko", "en"]),
+    default=None,
+    help="Preferred language (default: en)",
 )
 @click.option(
     "--language",
@@ -95,7 +95,7 @@ def init(
         path: Project directory path (default: current directory)
         non_interactive: Skip prompts and use defaults
         mode: Project mode (personal/team)
-        locale: Preferred language (ko/en/ja/zh)
+        locale: Preferred language (ko/en). When omitted, defaults to en.
         language: Programming language
         force: Force reinitialize without confirmation
     """
@@ -114,6 +114,7 @@ def init(
                 f"\n[cyan]🚀 Initializing project at {project_path}...[/cyan]\n"
             )
             project_name = project_path.name if is_current_dir else path
+            locale = locale or "en"
         else:
             # Interactive Mode
             print_welcome_message()
@@ -123,6 +124,7 @@ def init(
                 project_name=None if is_current_dir else path,
                 is_current_dir=is_current_dir,
                 project_path=project_path,
+                initial_locale=locale,
             )
 
             # Override with prompt answers
@@ -132,6 +134,9 @@ def init(
             project_name = answers["project_name"]
 
             console.print("\n[cyan]🚀 Starting installation...[/cyan]\n")
+
+            if locale is None:
+                locale = answers["locale"]
 
         # 4. Check for reinitialization (SPEC-INIT-003 v0.3.0) - DEFAULT TO FORCE MODE
         initializer = ProjectInitializer(project_path)
