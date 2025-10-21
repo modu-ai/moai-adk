@@ -19,6 +19,16 @@ allowed-tools:
 # 📚 MoAI-ADK Step 3: Document Synchronization (+Optional PR Ready)
 > Interactive prompts rely on `Skill("moai-alfred-tui-survey")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
 
+## 🚀 START HERE
+
+**CRITICAL**: Load the TUI Survey Skill FIRST before any user interaction:
+
+```
+Skill("moai-alfred-tui-survey")
+```
+
+This Skill MUST be loaded at the very beginning to enable TUI menu rendering for AskUserQuestion calls throughout this workflow.
+
 ## 🎯 Command Purpose
 
 Synchronize code changes to Living Documents and verify @TAG system to ensure complete traceability.
@@ -29,11 +39,20 @@ Synchronize code changes to Living Documents and verify @TAG system to ensure co
 
 ## 📋 Execution flow
 
+**Phase 0: Skill Loading** (IMMEDIATE)
+- Load `Skill("moai-alfred-tui-survey")` at the very start
+- This enables TUI menu rendering for all user interactions
+
+**Phase 1: Analysis & Planning**
 1. **Project status analysis**: Git changes and TAG system verification
 2. **Determine the scope of synchronization**: Full/partial/selective synchronization strategy
-3. **User Confirmation**: Review and approve synchronization plan
-4. **Document Synchronization**: Living Document updates and TAG integrity guaranteed
-5. **Git operations**: Commit and PR state transitions via git-manager
+3. **User Confirmation**: Review and approve synchronization plan via AskUserQuestion (TUI menu)
+
+**Phase 2: Conditional Execution** (based on user choice)
+4. **Document Synchronization**: Living Document updates and TAG integrity guaranteed (IF user selects "Proceed")
+5. **Git operations**: Commit and PR state transitions via git-manager (IF user selects "Proceed")
+   - OR abort workflow (IF user selects "Abort")
+   - OR revise plan (IF user selects "Modify")
 
 ## 🧠 Skill Loadout Overview
 

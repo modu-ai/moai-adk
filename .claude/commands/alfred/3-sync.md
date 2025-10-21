@@ -19,6 +19,16 @@ allowed-tools:
 # 📚 MoAI-ADK Step 3: Document Synchronization (+Optional PR Ready)
 > Interactive prompts rely on `Skill("moai-alfred-tui-survey")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
 
+## 🚀 START HERE
+
+**CRITICAL**: Load the TUI Survey Skill FIRST before any user interaction:
+
+```
+Skill("moai-alfred-tui-survey")
+```
+
+This Skill MUST be loaded at the very beginning to enable TUI menu rendering for AskUserQuestion calls throughout this workflow.
+
 ## 🎯 Command Purpose
 
 Synchronize code changes to Living Documents and verify @TAG system to ensure complete traceability.
@@ -29,11 +39,20 @@ Synchronize code changes to Living Documents and verify @TAG system to ensure co
 
 ## 📋 Execution flow
 
+**Phase 0: Skill Loading** (IMMEDIATE)
+- Load `Skill("moai-alfred-tui-survey")` at the very start
+- This enables TUI menu rendering for all user interactions
+
+**Phase 1: Analysis & Planning**
 1. **Project status analysis**: Git changes and TAG system verification
 2. **Determine the scope of synchronization**: Full/partial/selective synchronization strategy
-3. **User Confirmation**: Review and approve synchronization plan
-4. **Document Synchronization**: Living Document updates and TAG integrity guaranteed
-5. **Git operations**: Commit and PR state transitions via git-manager
+3. **User Confirmation**: Review and approve synchronization plan via AskUserQuestion (TUI menu)
+
+**Phase 2: Conditional Execution** (based on user choice)
+4. **Document Synchronization**: Living Document updates and TAG integrity guaranteed (IF user selects "Proceed")
+5. **Git operations**: Commit and PR state transitions via git-manager (IF user selects "Proceed")
+   - OR abort workflow (IF user selects "Abort")
+   - OR revise plan (IF user selects "Modify")
 
 ## 🧠 Skill Loadout Overview
 
@@ -184,16 +203,47 @@ To skip pre-verification, use the `/alfred:3-sync --skip-pre-check` option.
 
 ### User verification steps
 
-After reviewing your sync plan, `Skill("moai-alfred-tui-survey")` presents the following options for user decision:
-- **"Proceed"** or **"Start"**: Start synchronization as planned
-- **"Modify [Contents]"**: Request modifications to your sync plan
-- **"Abort"**: Abort the sync operation
+**STEP 1: Ensure Skill is Loaded**
+The `Skill("moai-alfred-tui-survey")` MUST have been loaded in Phase 0 (at the very start of this command).
+
+**STEP 2: Present Synchronization Plan**
+After reviewing your sync plan, present it to the user in a clear, structured format (see template below).
+
+**STEP 3: Call AskUserQuestion**
+Now that the Skill is loaded, call AskUserQuestion to display the TUI menu:
+
+```
+AskUserQuestion({
+  question: "Do you want to proceed with the synchronization plan?",
+  options: [
+    {
+      label: "Proceed",
+      description: "Start synchronization as planned"
+    },
+    {
+      label: "Modify",
+      description: "Request modifications to the sync plan"
+    },
+    {
+      label: "Abort",
+      description: "Cancel the sync operation"
+    }
+  ]
+})
+```
+
+**STEP 4: Execute Based on Choice**
+- **IF "Proceed"**: Continue to Phase 2 (document sync + git operations)
+- **IF "Modify"**: Ask for clarifications and regenerate the plan
+- **IF "Abort"**: Exit workflow and report cancellation
 
 ---
 
-## 🚀 STEP 2: Execute document synchronization (after user approval)
+## 🚀 STEP 2: Execute document synchronization (ONLY IF user selected "Proceed")
 
-After user approval (collected via `Skill("moai-alfred-tui-survey")`), the doc-syncer agent performs **Living Document synchronization and @TAG updates**, and optionally executes PR Ready transitions only in team mode.
+**CRITICAL: This step runs ONLY if the user selected "Proceed" in the AskUserQuestion menu.**
+
+After user approval (collected via AskUserQuestion with TUI menu powered by `Skill("moai-alfred-tui-survey")`), the doc-syncer agent performs **Living Document synchronization and @TAG updates**, and optionally executes PR Ready transitions only in team mode.
 
 ### Phase 2 Details: SPEC Completion Processing (Automatic)
 
@@ -224,6 +274,15 @@ The doc-syncer agent automatically determines whether TDD implementation is comp
 
 ## 📋 STEP 1 Implementation Guide: Analyzing the scope of synchronization and establishing a plan
 
+**🎬 Phase 0 Entry Point**
+At the very start of STEP 1, execute:
+```
+Skill("moai-alfred-tui-survey")
+```
+Display confirmation message: "✅ TUI Survey Skill loaded - AskUserQuestion menus ready"
+
+**Phase 1a: Analysis**
+
 ### 1. Project status analysis
 
 Alfred calls the doc-syncer agent to analyze synchronization targets and scopes.
@@ -253,6 +312,8 @@ Alfred calls the doc-syncer agent to analyze synchronization targets and scopes.
 - **Sync report**: `.moai/reports/sync-report.md`
 - **PR status**: Draft → Ready for Review transition
 
+**Phase 1b: Plan Presentation**
+
 ### 3. Generate synchronization plan report
 
 Present your plan in the following format:
@@ -281,16 +342,49 @@ Present your plan in the following format:
 - **Living Documents**: [Updated document list]
 - **PR Status**: [PR transition in team mode]
 
----
-**Approval Request**: Do you want to proceed with synchronization using the above plan?
- (select “Proceed”, “Modify [Content]”, or “Abort”)
 ```
+
+**Phase 1c: User Approval Gate**
+
+At this point, the Skill has already been loaded (Phase 0) and the plan has been presented (Phase 1b).
+
+Now call AskUserQuestion to display the TUI approval menu:
+
+```
+AskUserQuestion({
+  question: "Do you want to proceed with synchronization using the above plan?",
+  options: [
+    {
+      label: "Proceed",
+      description: "Start synchronization as planned"
+    },
+    {
+      label: "Modify",
+      description: "Request modifications to the sync plan"
+    },
+    {
+      label: "Abort",
+      description: "Cancel the sync operation"
+    }
+  ]
+})
+```
+
+**Phase 1d: Branch Logic**
+- IF user selects "Proceed" → Continue to Phase 2 (STEP 2 execution)
+- IF user selects "Modify" → Return to Phase 1a with user feedback
+- IF user selects "Abort" → Exit workflow gracefully
 
 ---
 
 ## 🚀 STEP 2 Implementation Guide: Document Synchronization (After Approval)
 
-Only when the user selects **"Proceed"** or **"Start"** will Alfred call the doc-syncer agent to perform Living Document synchronization and TAG updates.
+**🎬 Phase 2 Entry Point**
+This phase ONLY executes if user selected "Proceed" in Phase 1c.
+
+Display start message: "▶️ Phase 2: Executing document synchronization..."
+
+Only when the user selects **"Proceed"** will Alfred call the doc-syncer agent to perform Living Document synchronization and TAG updates.
 
 ### Sync step-by-step guide
 
