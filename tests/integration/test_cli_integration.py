@@ -1,10 +1,10 @@
 # @TEST:TEST-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md
-"""CLI Integration Tests
+"""CLI integration tests
 
-CLI 명령어 통합 테스트:
-- Click CliRunner를 사용한 CLI 테스트
-- __main__.py entry point 테스트
-- 모든 CLI 명령어 기본 실행 테스트
+Command coverage objectives:
+- Exercise CLI via Click CliRunner
+- Validate the __main__.py entry point
+- Smoke-test each CLI command
 """
 
 import json
@@ -410,7 +410,7 @@ class TestUpdateCommand:
             result = runner.invoke(update, ["--check"])
             # Should check for updates without installing
             assert result.exit_code == 0
-            assert "버전" in result.output or "version" in result.output.lower()
+            assert "version" in result.output.lower()
 
     def test_update_execution(self, tmp_path):
         """Test update command execution"""

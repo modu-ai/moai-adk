@@ -1,68 +1,68 @@
-# GitFlow 권장 정책 (Advisory Policy)
+# GitFlow Advisory Policy
 
-**문서 ID**: @DOC:GITFLOW-POLICY-001
-**작성일**: 2025-10-17
-**상태**: Advisory (권장 사항, 강제 아님)
-**적용 범위**: Personal/Team 모드 모두
+**Document ID**: @DOC:GITFLOW-POLICY-001  
+**Published**: 2025-10-17  
+**Status**: Advisory (recommended, not enforced)  
+**Scope**: Personal and Team modes
 
 ---
 
-## 개요
+## Overview
 
-MoAI-ADK는 GitFlow 전략을 **권장**합니다. 이 정책은 best practice를 제시하지만, 사용자의 판단에 따라 유연하게 적용할 수 있습니다.
+MoAI-ADK **recommends** a GitFlow-inspired workflow. This policy shares best practices while letting teams adapt them as needed.
 
-## 핵심 권장사항
+## Key Recommendations
 
-### 1. Main 브랜치 접근 제어 (권장)
+### 1. Main Branch Access (Recommended)
 
-| 권장사항 | 설명 | 적용 방식 |
-|---------|------|----------|
-| **Develop 기반 Merge** | develop 브랜치에서 main으로 머지 권장 | Advisory ⚠️ |
-| **Feature는 Develop** | Feature 브랜치는 develop에서 분기하고 develop으로 PR 생성 | Advisory ⚠️ |
-| **Release 프로세스** | Release: develop -> main (Release Engineer 권장) | Advisory ⚠️ |
-| **강제 Push** | Force-push 시 경고, 하지만 허용 | Warning ⚠️ |
-| **직접 Push** | main 직접 push 시 경고, 하지만 허용 | Warning ⚠️ |
+| Recommendation | Summary | Enforcement |
+|----------------|---------|-------------|
+| **Merge via develop** | Prefer merging `develop` into `main` | Advisory ⚠️ |
+| **Feature branches off develop** | Branch from `develop` and raise PRs back to `develop` | Advisory ⚠️ |
+| **Release process** | Release flow: `develop` → `main` (release engineer encouraged) | Advisory ⚠️ |
+| **Force push** | Warn when force-pushing, but allow it | Warning ⚠️ |
+| **Direct push** | Warn on direct pushes to `main`, but allow them | Warning ⚠️ |
 
-### 2. Git Workflow (권장)
+### 2. Git Workflow (Recommended)
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                RECOMMENDED GITFLOW                      │
 └─────────────────────────────────────────────────────────┘
 
-        develop (권장 기본 브랜치)
+        develop (recommended base branch)
           ↑     ↓
     ┌─────────────────┐
     │                 │
-    │ (개발자가 작업)  │
+    │   developer work │
     │                 │
     ↓                 ↑
 feature/SPEC-{ID}   [PR: feature -> develop]
-                     [코드 리뷰 + 승인]
+                     [code review + approval]
                      [Merge to develop]
 
-    develop (안정적)
+    develop (stable)
          ↓
-         │ (Release Manager가 준비)
+         │   (release manager prepares)
          ↓
     [PR: develop -> main]
-    [CI/CD 검증]
-    [태그 생성]
+    [CI/CD validation]
+    [tag creation]
          ↓
-       main (릴리스)
+       main (release)
 ```
 
-**유연성**: 프로젝트 상황에 따라 직접 main 푸시도 가능하지만, 위 워크플로우를 권장합니다.
+**Flexibility**: Direct pushes to `main` are still possible, but the workflow above is preferred.
 
-## 기술 구현
+## Technical Implementation
 
 ### Pre-push Hook (Advisory Mode)
 
-**위치**: `.git/hooks/pre-push`
-**기능**: Main 브랜치 작업 시 경고 표시 (차단 안 함)
+**Location**: `.git/hooks/pre-push`  
+**Purpose**: Warn on `main` branch pushes without blocking them
 
 ```bash
-# main으로 push 시도 시:
+# When attempting to push to main:
 ⚠️  ADVISORY: Non-standard GitFlow detected
 
 Current branch: feature/SPEC-123
@@ -78,7 +78,7 @@ Recommended GitFlow workflow:
 ✓ Push will proceed (flexibility mode enabled)
 ```
 
-### 강제 Push Advisory
+### Force Push Advisory
 
 ```bash
 ⚠️  ADVISORY: Force-push to main branch detected
@@ -92,95 +92,95 @@ Recommended approach:
 
 ---
 
-## 사용 사례별 워크플로우
+## Workflow Examples
 
-### 사례 1: 표준 Feature 개발 (권장)
+### Scenario 1: Standard Feature Development (Recommended)
 
 ```bash
-# 1. develop에서 최신 코드 받기
+# 1. Sync latest code from develop
 git checkout develop
 git pull origin develop
 
-# 2. feature 브랜치 생성 (develop에서)
+# 2. Create a feature branch (from develop)
 git checkout -b feature/SPEC-001-new-feature
 
-# 3. 작업 진행
-# ... 코드 작성 및 테스트 ...
+# 3. Implement the change
+# ... write code and tests ...
 
-# 4. 커밋
+# 4. Commit
 git add .
 git commit -m "..."
 
 # 5. Push
 git push origin feature/SPEC-001-new-feature
 
-# 6. GitHub에서 PR 생성: feature/SPEC-001-new-feature -> develop
+# 6. Open a PR: feature/SPEC-001-new-feature -> develop
 
-# 7. 코드 리뷰 및 승인 후 머지 (develop으로)
+# 7. Merge into develop after review and approval
 ```
 
-### 사례 2: 빠른 Hotfix (유연한 방식)
+### Scenario 2: Fast Hotfix (Flexible)
 
 ```bash
-# 긴급 수정이 필요한 경우:
+# When an urgent fix is required:
 
-# 옵션 1: 권장 방식 (develop 기반)
+# Option 1: Recommended (via develop)
 git checkout develop
 git checkout -b hotfix/critical-bug
-# ... 수정 ...
+# ... apply fix ...
 git push origin hotfix/critical-bug
-# PR 생성: hotfix -> develop -> main
+# Open PRs: hotfix -> develop -> main
 
-# 옵션 2: 직접 main 수정 (허용되지만 권장하지 않음)
+# Option 2: Direct fix on main (allowed, not recommended)
 git checkout main
-# ... 수정 ...
+# ... apply fix ...
 git commit -m "Fix critical bug"
-git push origin main  # ⚠️ Advisory 경고 표시되지만 진행됨
+git push origin main  # ⚠️ Advisory warning appears but push continues
 ```
 
-### 사례 3: Release (표준 또는 유연)
+### Scenario 3: Release (Standard or Flexible)
 
 ```bash
-# 표준 방식 (권장):
+# Standard approach (recommended):
 git checkout develop
 gh pr create --base main --head develop --title "Release v1.0.0"
 
-# 직접 push 방식 (허용):
+# Direct push (allowed):
 git checkout develop
-git push origin main  # ⚠️ Advisory 경고 표시되지만 진행됨
+git push origin main  # ⚠️ Advisory warning appears but push continues
 git tag -a v1.0.0 -m "Release v1.0.0"
 git push origin v1.0.0
 ```
 
 ---
 
-## 정책 모드 비교
+## Policy Modes
 
-### Strict Mode (이전 방식, 현재 비활성)
+### Strict Mode (Legacy, Currently Disabled)
 
-- ❌ main 직접 push 차단
-- ❌ force-push 차단
-- ❌ develop 외 브랜치에서 main 머지 차단
+- ❌ Block direct pushes to `main`
+- ❌ Block force pushes
+- ❌ Block merges into `main` from any branch other than `develop`
 
-### Advisory Mode (현재 활성, v0.3.5+)
+### Advisory Mode (Active, v0.3.5+)
 
-- ⚠️ main 직접 push 시 경고 + 허용
-- ⚠️ force-push 시 경고 + 허용
-- ⚠️ best practice 권장 + 유연성 제공
-- ✅ 사용자 판단 존중
+- ⚠️ Warn but allow direct pushes to `main`
+- ⚠️ Warn but allow force pushes
+- ⚠️ Recommend best practices while preserving flexibility
+- ✅ Respect user judgment
 
 ---
 
-## 권장 체크리스트
+## Recommended Checklist
 
-프로젝트에 참여하는 모든 팀원은 다음을 권장합니다:
+Every contributor should ensure:
 
-- [ ] `.git/hooks/pre-push` 파일 존재 및 실행 가능 (755 권한)
-- [ ] develop 브랜치에서 feature 분기 (권장)
-- [ ] PR 생성 시 대상이 develop (권장)
-- [ ] Release는 develop -> main (권장)
+- [ ] `.git/hooks/pre-push` exists and is executable (755)
+- [ ] Feature branches fork from `develop`
+- [ ] Pull requests target `develop`
+- [ ] Releases merge `develop` → `main`
 
-**검증 명령**:
+**Verification Commands**:
 ```bash
 ls -la .git/hooks/pre-push
 git branch -vv
@@ -190,31 +190,31 @@ git branch -vv
 
 ## FAQ
 
-**Q: develop -> main이 아닌 다른 경로로 머지할 수 있나요?**
-A: 가능합니다. Advisory 경고가 표시되지만 진행됩니다. 단, develop -> main을 권장합니다.
+**Q: Can we merge into `main` from branches other than `develop`?**  
+A: Yes. You will see an advisory warning, but the merge proceeds. The recommended path remains `develop` → `main`.
 
-**Q: Force-push를 할 수 있나요?**
-A: 가능합니다. 경고가 표시되지만 허용됩니다. 단, 신중하게 사용하세요.
+**Q: Are force pushes allowed?**  
+A: Yes. You receive a warning, but the push succeeds. Use with caution.
 
-**Q: Main으로 직접 commit/push할 수 있나요?**
-A: 가능합니다. Advisory 경고가 표시되지만 진행됩니다.
+**Q: Can we commit/push directly to `main`?**  
+A: Yes. Expect an advisory warning, yet the push continues.
 
-**Q: Hook을 완전히 비활성화할 수 있나요?**
-A: 가능합니다. `.git/hooks/pre-push` 파일을 삭제하거나 실행 권한을 제거하세요.
+**Q: Can I disable the hook entirely?**  
+A: Yes. Remove `.git/hooks/pre-push` or strip its execute permission.
 
-**Q: 왜 Advisory Mode로 변경했나요?**
-A: 사용자의 유연성과 판단을 존중하면서도 best practice를 권장하기 위해서입니다.
+**Q: Why switch to Advisory Mode?**  
+A: To promote best practices while respecting contributor flexibility and judgment.
 
 ---
 
-## 정책 업데이트 이력
+## Policy Change Log
 
-| 날짜 | 내용 | 담당자 |
+| Date       | Change                                           | Owner        |
 |------|------|--------|
-| 2025-10-17 | 초기 정책 수립 (Strict Mode) | git-manager |
-| 2025-10-17 | Advisory Mode로 전환 (경고만, 차단 안 함) | git-manager |
+| 2025-10-17 | Initial policy drafted (Strict Mode)             | git-manager  |
+| 2025-10-17 | Switched to Advisory Mode (warnings only)        | git-manager  |
 
 ---
 
-**이 정책은 권장사항이며, 사용자의 판단에 따라 유연하게 적용할 수 있습니다.**
-**질문이나 제안사항은 팀 리드 또는 Release Engineer와 협의하세요.**
+**This policy is advisory—adapt it to fit your project needs.**  
+**Reach out to the team lead or release engineer for questions or suggestions.**

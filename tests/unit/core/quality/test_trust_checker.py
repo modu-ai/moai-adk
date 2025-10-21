@@ -1,18 +1,18 @@
 # @TEST:TRUST-001 | SPEC: SPEC-TRUST-001/spec.md
 """
-TRUST 원칙 통합 검증 테스트
+Integrated TRUST principle validation tests
 
-Given-When-Then 구조를 따르는 20개의 테스트 케이스:
-- AC-001: 테스트 커버리지 ≥85% (2개: pass/fail)
-- AC-002: 파일 ≤300 LOC (2개: pass/fail)
-- AC-003: 함수 ≤50 LOC (2개: pass/fail)
-- AC-004: 매개변수 ≤5개 (2개: pass/fail)
-- AC-005: 순환 복잡도 ≤10 (2개: pass/fail)
-- AC-006: @TAG 체인 완전성 (2개: pass/fail)
-- AC-007: 고아 TAG 탐지 (2개: detected/none)
-- AC-008: 보고서 생성 (2개: markdown/json)
-- AC-009: 오류 메시지 (2개: specific/generic)
-- AC-010: 언어별 도구 선택 (2개: python/typescript)
+20 Given-When-Then-style test cases:
+- AC-001: Test coverage ≥85% (2 cases: pass/fail)
+- AC-002: File ≤300 LOC (2 cases: pass/fail)
+- AC-003: Function ≤50 LOC (2 cases: pass/fail)
+- AC-004: Parameters ≤5 (2 cases: pass/fail)
+- AC-005: Cyclomatic complexity ≤10 (2 cases: pass/fail)
+- AC-006: @TAG chain completeness (2 cases: pass/fail)
+- AC-007: Orphan TAG detection (2 cases: detected/none)
+- AC-008: Report generation (2 cases: markdown/json)
+- AC-009: Error messaging (2 cases: specific/generic)
+- AC-010: Tool selection per language (2 cases: python/typescript)
 """
 
 from pathlib import Path
@@ -21,17 +21,17 @@ import pytest
 
 
 class TestTrustChecker:
-    """@TEST:TRUST-001: TRUST 원칙 통합 검증"""
+    """@TEST:TRUST-001: Integrated TRUST principle validation"""
 
     @pytest.fixture
     def trust_checker(self):
-        """TrustChecker 인스턴스 생성"""
+        """Create a TrustChecker instance"""
         from moai_adk.core.quality.trust_checker import TrustChecker
         return TrustChecker()
 
     @pytest.fixture
     def sample_project_path(self, tmp_path: Path) -> Path:
-        """테스트용 샘플 프로젝트 디렉토리"""
+        """Create a sample project directory for tests"""
         project = tmp_path / "sample_project"
         project.mkdir()
         (project / "src").mkdir()
@@ -40,13 +40,13 @@ class TestTrustChecker:
         return project
 
     # ========================================
-    # AC-001: 테스트 커버리지 ≥85% 검증
+    # AC-001: Validate test coverage ≥85%
     # ========================================
 
     def test_should_pass_when_coverage_above_85_percent(self, trust_checker, sample_project_path):
         """
-        Given: 프로젝트의 테스트 커버리지가 87%
-        When: trust_checker.validate_coverage() 실행
+        Given: Project test coverage equals 87%
+        When: trust_checker.validate_coverage() runs
         Then: ValidationResult.passed = True
         """
         # Arrange
@@ -61,9 +61,9 @@ class TestTrustChecker:
 
     def test_should_fail_when_coverage_below_85_percent(self, trust_checker, sample_project_path):
         """
-        Given: 프로젝트의 테스트 커버리지가 78%
-        When: trust_checker.validate_coverage() 실행
-        Then: ValidationResult.passed = False, 미달 파일 목록 포함
+        Given: Project test coverage equals 78%
+        When: trust_checker.validate_coverage() runs
+        Then: ValidationResult.passed = False and includes low-coverage files
         """
         # Arrange
         coverage_data = {
@@ -83,13 +83,13 @@ class TestTrustChecker:
         assert "src/utils/helper.py" in result.details
 
     # ========================================
-    # AC-002: 파일 ≤300 LOC 검증
+    # AC-002: Validate file size ≤300 LOC
     # ========================================
 
     def test_should_pass_when_all_files_within_300_loc(self, trust_checker, sample_project_path):
         """
-        Given: 모든 소스 파일이 300 LOC 이하
-        When: trust_checker.validate_file_size() 실행
+        Given: All source files stay within 300 LOC
+        When: trust_checker.validate_file_size() runs
         Then: ValidationResult.passed = True
         """
         # Arrange
@@ -104,9 +104,9 @@ class TestTrustChecker:
 
     def test_should_fail_when_file_exceeds_300_loc(self, trust_checker, sample_project_path):
         """
-        Given: 파일이 342 LOC로 300 LOC 초과
-        When: trust_checker.validate_file_size() 실행
-        Then: ValidationResult.passed = False, 위반 파일 목록 포함
+        Given: A file has 342 LOC, exceeding the 300 LOC limit
+        When: trust_checker.validate_file_size() runs
+        Then: ValidationResult.passed = False and cites violating files
         """
         # Arrange
         large_file = sample_project_path / "src" / "large.py"
@@ -121,13 +121,13 @@ class TestTrustChecker:
         assert "342 LOC" in result.details
 
     # ========================================
-    # AC-003: 함수 ≤50 LOC 검증
+    # AC-003: Validate function size ≤50 LOC
     # ========================================
 
     def test_should_pass_when_all_functions_within_50_loc(self, trust_checker, sample_project_path):
         """
-        Given: 모든 함수가 50 LOC 이하
-        When: trust_checker.validate_function_size() 실행
+        Given: Every function stays within 50 LOC
+        When: trust_checker.validate_function_size() runs
         Then: ValidationResult.passed = True
         """
         # Arrange
@@ -146,9 +146,9 @@ def small_function():
 
     def test_should_fail_when_function_exceeds_50_loc(self, trust_checker, sample_project_path):
         """
-        Given: 함수가 58 LOC로 50 LOC 초과
-        When: trust_checker.validate_function_size() 실행
-        Then: ValidationResult.passed = False, 위반 함수 목록 포함
+        Given: A function has 58 LOC, exceeding the 50 LOC limit
+        When: trust_checker.validate_function_size() runs
+        Then: ValidationResult.passed = False and lists violating functions
         """
         # Arrange
         code = """
@@ -163,16 +163,16 @@ def large_function():
         # Assert
         assert result.passed is False
         assert "large_function" in result.details
-        assert " LOC" in result.details  # 실제 LOC가 60이 될 수 있음 (헤더 + 본문)
+        assert " LOC" in result.details  # Actual LOC may reach 60 (header + body)
 
     # ========================================
-    # AC-004: 매개변수 ≤5개 검증
+    # AC-004: Validate parameters ≤5
     # ========================================
 
     def test_should_pass_when_all_params_within_5(self, trust_checker, sample_project_path):
         """
-        Given: 모든 함수의 매개변수가 5개 이하
-        When: trust_checker.validate_param_count() 실행
+        Given: Every function declares at most 5 parameters
+        When: trust_checker.validate_param_count() runs
         Then: ValidationResult.passed = True
         """
         # Arrange
@@ -191,9 +191,9 @@ def function_with_4_params(a, b, c, d):
 
     def test_should_fail_when_params_exceed_5(self, trust_checker, sample_project_path):
         """
-        Given: 함수의 매개변수가 7개로 5개 초과
-        When: trust_checker.validate_param_count() 실행
-        Then: ValidationResult.passed = False, 위반 함수 목록 포함
+        Given: A function declares 7 parameters, exceeding the limit of 5
+        When: trust_checker.validate_param_count() runs
+        Then: ValidationResult.passed = False and lists violating functions
         """
         # Arrange
         code = """
@@ -211,13 +211,13 @@ def function_with_7_params(a, b, c, d, e, f, g):
         assert "7 parameters" in result.details
 
     # ========================================
-    # AC-005: 순환 복잡도 ≤10 검증
+    # AC-005: Validate cyclomatic complexity ≤10
     # ========================================
 
     def test_should_pass_when_complexity_within_10(self, trust_checker, sample_project_path):
         """
-        Given: 모든 함수의 순환 복잡도가 10 이하
-        When: trust_checker.validate_complexity() 실행
+        Given: Every function has cyclomatic complexity ≤10
+        When: trust_checker.validate_complexity() runs
         Then: ValidationResult.passed = True
         """
         # Arrange
@@ -238,11 +238,11 @@ def simple_function(x):
 
     def test_should_fail_when_complexity_exceeds_10(self, trust_checker, sample_project_path):
         """
-        Given: 함수의 순환 복잡도가 15로 10 초과
-        When: trust_checker.validate_complexity() 실행
-        Then: ValidationResult.passed = False, 위반 함수 목록 포함
+        Given: A function reports cyclomatic complexity 15, exceeding the limit of 10
+        When: trust_checker.validate_complexity() runs
+        Then: ValidationResult.passed = False and lists violating functions
         """
-        # Arrange - 중첩된 if문 12개로 복잡도 13 생성
+        # Arrange - create complexity 13 with 12 nested if statements
         code = """
 def complex_function(x):
     if x > 0:
@@ -271,13 +271,13 @@ def complex_function(x):
         assert "complexity" in result.details.lower()
 
     # ========================================
-    # AC-006: @TAG 체인 완전성 검증
+    # AC-006: Validate @TAG chain completeness
     # ========================================
 
     def test_should_pass_when_tag_chain_complete(self, trust_checker, sample_project_path):
         """
-        Given: @SPEC, @CODE, @TEST TAG가 모두 연결됨
-        When: trust_checker.validate_tag_chain() 실행
+        Given: @SPEC, @CODE, and @TEST TAGs are all connected
+        When: trust_checker.validate_tag_chain() runs
         Then: ValidationResult.passed = True
         """
         # Arrange
@@ -295,9 +295,9 @@ def complex_function(x):
 
     def test_should_fail_when_tag_chain_broken(self, trust_checker, sample_project_path):
         """
-        Given: @CODE:AUTH-001은 있으나 @SPEC:AUTH-001이 없음
-        When: trust_checker.validate_tag_chain() 실행
-        Then: ValidationResult.passed = False, 끊어진 체인 표시
+        Given: @CODE:AUTH-001 exists but @SPEC:AUTH-001 is missing
+        When: trust_checker.validate_tag_chain() runs
+        Then: ValidationResult.passed = False and highlights broken chains
         """
         # Arrange
         (sample_project_path / "src" / "auth.py").write_text("# @CODE:AUTH-001")
@@ -307,18 +307,18 @@ def complex_function(x):
 
         # Assert
         assert result.passed is False
-        assert "auth-001" in result.details.lower()  # 소문자로 변환되므로 소문자로 검색
+        assert "auth-001" in result.details.lower()  # Compare in lowercase
         assert "broken" in result.details.lower()
 
     # ========================================
-    # AC-007: 고아 TAG 탐지
+    # AC-007: Detect orphan TAGs
     # ========================================
 
     def test_should_detect_orphan_tags(self, trust_checker, sample_project_path):
         """
-        Given: @CODE:USER-005는 있으나 @SPEC:USER-005가 없음 (고아 TAG)
-        When: trust_checker.detect_orphan_tags() 실행
-        Then: 고아 TAG 목록 반환
+        Given: @CODE:USER-005 exists but @SPEC:USER-005 is missing (orphan TAG)
+        When: trust_checker.detect_orphan_tags() runs
+        Then: Returns the orphan TAG list
         """
         # Arrange
         (sample_project_path / "src" / "user.py").write_text("# @CODE:USER-005")
@@ -332,9 +332,9 @@ def complex_function(x):
 
     def test_should_return_empty_when_no_orphan_tags(self, trust_checker, sample_project_path):
         """
-        Given: 모든 TAG가 올바르게 연결됨
-        When: trust_checker.detect_orphan_tags() 실행
-        Then: 빈 목록 반환
+        Given: All TAGs are properly connected
+        When: trust_checker.detect_orphan_tags() runs
+        Then: Returns an empty list
         """
         # Arrange
         (sample_project_path / ".moai" / "specs").mkdir(parents=True)
@@ -348,14 +348,14 @@ def complex_function(x):
         assert len(orphans) == 0
 
     # ========================================
-    # AC-008: 검증 결과 보고서 생성
+    # AC-008: Generate validation reports
     # ========================================
 
     def test_should_generate_markdown_report(self, trust_checker, sample_project_path):
         """
-        Given: TRUST 검증 완료
-        When: trust_checker.generate_report(format="markdown") 실행
-        Then: Markdown 형식 보고서 생성
+        Given: TRUST validation completed
+        When: trust_checker.generate_report(format="markdown") runs
+        Then: Produces a markdown report
         """
         # Arrange
         results = {"coverage": {"passed": True, "value": 87}}
@@ -370,9 +370,9 @@ def complex_function(x):
 
     def test_should_generate_json_report(self, trust_checker, sample_project_path):
         """
-        Given: TRUST 검증 완료
-        When: trust_checker.generate_report(format="json") 실행
-        Then: JSON 형식 보고서 생성
+        Given: TRUST validation completed
+        When: trust_checker.generate_report(format="json") runs
+        Then: Produces a JSON report
         """
         # Arrange
         results = {"coverage": {"passed": True, "value": 87}}
@@ -389,14 +389,14 @@ def complex_function(x):
         assert report["coverage"]["value"] == 87
 
     # ========================================
-    # AC-009: 검증 실패 시 구체적 오류 메시지
+    # AC-009: Provide detailed error messages on failure
     # ========================================
 
     def test_should_provide_specific_error_message(self, trust_checker, sample_project_path):
         """
-        Given: 테스트 커버리지 78% (미달)
-        When: trust_checker.validate_coverage() 실행
-        Then: 구체적 오류 메시지 포함 (현재 커버리지, 미달 파일, 권장 조치)
+        Given: Test coverage is 78% (below the threshold)
+        When: trust_checker.validate_coverage() runs
+        Then: Includes detailed guidance (coverage, low files, recommended action)
         """
         # Arrange
         coverage_data = {
@@ -410,33 +410,33 @@ def complex_function(x):
         # Assert
         assert "78.0%" in result.message
         assert "helper.py" in result.details
-        assert "recommended" in result.details.lower() or "권장" in result.details
+        assert "recommended" in result.details.lower()
 
     def test_should_provide_generic_error_when_no_details(self, trust_checker, sample_project_path):
         """
-        Given: 검증 실패했으나 상세 정보 없음
-        When: trust_checker.validate() 실행
-        Then: 일반적 오류 메시지 반환
+        Given: Validation fails but no extra details are provided
+        When: trust_checker.validate_coverage() runs
+        Then: Returns a generic error message
         """
         # Arrange
-        # (상세 정보 없는 실패 상황 시뮬레이션)
+        # Simulate a failure without detailed information
 
         # Act
         result = trust_checker.validate_coverage(sample_project_path, {"total_coverage": 70.0})
 
         # Assert
         assert result.passed is False
-        assert "coverage" in result.message.lower() or "커버리지" in result.message
+        assert "coverage" in result.message.lower()
 
     # ========================================
-    # AC-010: 언어별 도구 자동 선택
+    # AC-010: Automatically select tools per language
     # ========================================
 
     def test_should_select_python_tools(self, trust_checker, sample_project_path):
         """
-        Given: .moai/config.json에 project.language: "python" 정의
-        When: trust_checker.select_tools() 실행
-        Then: pytest, coverage.py, mypy, ruff 선택
+        Given: .moai/config.json defines project.language as \"python\"
+        When: trust_checker.select_tools() runs
+        Then: Select pytest, coverage.py, mypy, and ruff
         """
         # Arrange
         config = {"project": {"language": "python"}}
@@ -455,9 +455,9 @@ def complex_function(x):
 
     def test_should_select_typescript_tools(self, trust_checker, sample_project_path):
         """
-        Given: .moai/config.json에 project.language: "typescript" 정의
-        When: trust_checker.select_tools() 실행
-        Then: Vitest, Biome, tsc 선택
+        Given: .moai/config.json defines project.language as \"typescript\"
+        When: trust_checker.select_tools() runs
+        Then: Select Vitest, Biome, and tsc
         """
         # Arrange
         config = {"project": {"language": "typescript"}}

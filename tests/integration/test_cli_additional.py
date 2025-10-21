@@ -1,10 +1,10 @@
 # @TEST:TEST-COVERAGE-001 | SPEC: SPEC-TEST-COVERAGE-001.md
-"""Additional CLI Tests for Coverage
+"""Additional CLI tests for coverage
 
-추가 CLI 테스트로 85% 커버리지 달성:
-- init 명령어 interactive 시나리오
-- backup/restore 실제 실행 경로
-- prompts 모듈 커버리지
+Supplementary CLI scenarios to reach 85% coverage:
+- init command interactive workflows
+- backup/restore real execution path
+- prompts module coverage
 """
 
 from pathlib import Path
@@ -21,7 +21,7 @@ from moai_adk.cli.commands.status import status
 
 
 class TestInitInteractive:
-    """init 명령어 interactive 시나리오 테스트"""
+    """Interactive init command scenarios"""
 
     def test_init_force_reinit(self, tmp_path):
         """Test init with --force flag on existing project"""
@@ -50,7 +50,7 @@ class TestInitInteractive:
 
 
 class TestBackupRestore:
-    """backup/restore 명령어 실제 실행 테스트"""
+    """Exercise backup/restore execution paths"""
 
     def test_backup_with_moai_directory(self, tmp_path):
         """Test backup creates archive successfully"""
@@ -78,7 +78,7 @@ class TestBackupRestore:
 
 
 class TestStatusEdgeCases:
-    """status 명령어 edge case 테스트"""
+    """Status command edge cases"""
 
     def test_status_exception_handling(self, tmp_path):
         """Test status handles exceptions gracefully"""
@@ -97,7 +97,7 @@ class TestStatusEdgeCases:
 
 
 class TestCLIMainModule:
-    """cli/main.py 모듈 테스트"""
+    """cli/main.py module tests"""
 
     def test_cli_main_import(self):
         """Test cli main module can be imported"""
@@ -108,7 +108,7 @@ class TestCLIMainModule:
 
 
 class TestPromptsFunctions:
-    """cli/prompts 모듈 함수 테스트"""
+    """cli/prompts helper function tests"""
 
     def test_prompt_project_setup_mock(self):
         """Test prompt_project_setup with mocked input"""
@@ -144,7 +144,7 @@ class TestPromptsFunctions:
 
 
 class TestInitEdgeCases:
-    """init 명령어 edge cases"""
+    """Init command edge cases"""
 
     def test_init_with_language_flag(self, tmp_path):
         """Test init with explicit language flag"""
