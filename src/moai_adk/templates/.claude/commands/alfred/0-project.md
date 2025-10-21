@@ -31,12 +31,14 @@ Automatically analyzes the project environment to create/update product/structur
 4. **Create project documentation**: Create product/structure/tech.md in the selected language
 5. **Create configuration file**: config.json auto-configuration
 
-## 🧠 Skill Loadout Overview
+## 🧠 Associated Skills & Agents
 
-| Agent | Auto core skill | Conditional skills |
-| ----- | ---------------- | ------------------ |
-| project-manager | Skill("moai-alfred-language-detection") | Skill("moai-foundation-ears"), Skill("moai-foundation-langs"), Detected domain skill (e.g., Skill("moai-domain-backend")), Skill("moai-alfred-tag-scanning"), Skill("moai-alfred-trust-validation"), Skill("moai-alfred-tui-survey") |
-| trust-checker | Skill("moai-alfred-trust-validation") | Skill("moai-alfred-tag-scanning"), Skill("moai-foundation-trust"), Skill("moai-alfred-code-reviewer"), Skill("moai-alfred-performance-optimizer"), Skill("moai-alfred-tui-survey") |
+| Agent | Core Skill | Purpose |
+| ----- | -------- | ------- |
+| project-manager | `moai-alfred-language-detection` | Initialize project and interview requirements |
+| trust-checker | `moai-alfred-trust-validation` | Verify initial project structure (optional) |
+
+**Note**: TUI Survey Skill is used for user confirmations during project initialization and is shared across all interactive prompts.
 
 ## 🔗 Associated Agent
 

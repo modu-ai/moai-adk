@@ -68,11 +68,12 @@ allowed-tools:
 
 ## 🧠 Skill Loadout Overview
 
-| Agent | Auto core skill | Conditional skills |
-| ----- | ---------------- | ------------------ |
-| implementation-planner | Skill("moai-alfred-language-detection") | Skill("moai-foundation-langs"), Skill("moai-alfred-performance-optimizer"), Skill("moai-alfred-tag-scanning"), Detected domain skill (e.g., Skill("moai-domain-backend")), Skill("moai-alfred-trust-validation"), Skill("moai-alfred-tui-survey") |
-| spec-builder | Skill("moai-foundation-ears") | Skill("moai-alfred-ears-authoring"), Skill("moai-foundation-specs"), Skill("moai-alfred-spec-metadata-validation"), Skill("moai-alfred-tag-scanning"), Skill("moai-foundation-trust"), Skill("moai-alfred-trust-validation"), Skill("moai-alfred-tui-survey") |
-| git-manager | Skill("moai-alfred-git-workflow") | Skill("moai-foundation-git"), Skill("moai-alfred-trust-validation"), Skill("moai-alfred-tag-scanning"), Skill("moai-alfred-tui-survey") |
+| Agent | Core Skill | Purpose |
+| ----- | -------- | ------- |
+| spec-builder | `moai-foundation-ears` | Write SPEC with EARS syntax |
+| git-manager | `moai-alfred-git-workflow` | Create branch and PR |
+
+**Note**: TUI Survey Skill is used for user confirmations during the plan phase and is shared across all interactive prompts.
 
 ## 🔗 Associated Agent
 
