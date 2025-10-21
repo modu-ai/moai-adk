@@ -54,14 +54,16 @@ Synchronize code changes to Living Documents and verify @TAG system to ensure co
    - OR abort workflow (IF user selects "Abort")
    - OR revise plan (IF user selects "Modify")
 
-## 🧠 Skill Loadout Overview
+## 🧠 Associated Skills & Agents
 
-| Agent | Auto core skill | Conditional skills |
-| ----- | ---------------- | ------------------ |
-| tag-agent | Skill("moai-alfred-tag-scanning") | Skill("moai-foundation-tags"), Skill("moai-alfred-trust-validation"), Skill("moai-foundation-specs"), Skill("moai-alfred-tui-survey") |
-| quality-gate | Skill("moai-alfred-trust-validation") | Skill("moai-alfred-tag-scanning"), Skill("moai-alfred-code-reviewer"), Skill("moai-essentials-review"), Skill("moai-essentials-perf"), Skill("moai-alfred-performance-optimizer"), Skill("moai-foundation-trust"), Skill("moai-alfred-tui-survey") |
-| doc-syncer | Skill("moai-alfred-tag-scanning") | Skill("moai-foundation-tags"), Skill("moai-alfred-trust-validation"), Skill("moai-foundation-specs"), Skill("moai-alfred-git-workflow"), Skill("moai-alfred-code-reviewer"), Skill("moai-alfred-tui-survey") |
-| git-manager | Skill("moai-alfred-git-workflow") | Skill("moai-foundation-git"), Skill("moai-alfred-trust-validation"), Skill("moai-alfred-tag-scanning"), Skill("moai-alfred-tui-survey") |
+| Agent | Core Skill | Purpose |
+| ----- | -------- | ------- |
+| tag-agent | `moai-alfred-tag-scanning` | Verify TAG system integrity |
+| quality-gate | `moai-alfred-trust-validation` | Check code quality before sync |
+| doc-syncer | `moai-alfred-tag-scanning` | Synchronize Living Documents |
+| git-manager | `moai-alfred-git-workflow` | Handle Git operations |
+
+**Note**: TUI Survey Skill is loaded once at Phase 0 and reused throughout all user interactions.
 
 ## 🔗 Associated Agent
 
