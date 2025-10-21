@@ -3,10 +3,9 @@
 
 Selective backup strategy:
 - Back up only the required files (OR condition)
-- Backup path: .moai-backups/{timestamp}/ (v0.3.0)
+- Backup path: .moai-backups/backup/ (v0.4.2)
 """
 
-from datetime import datetime
 from pathlib import Path
 
 # Backup targets (OR condition - back up when any exist)
@@ -59,15 +58,6 @@ def get_backup_targets(project_path: Path) -> list[str]:
     return targets
 
 
-def generate_backup_dir_name() -> str:
-    """Generate a timestamp-based backup directory name (v0.3.0).
-
-    Returns:
-        Timestamp formatted as YYYYMMDD-HHMMSS.
-        Note: callers use .moai-backups/{timestamp}/ format.
-    """
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    return timestamp
 
 
 def is_protected_path(rel_path: Path) -> bool:

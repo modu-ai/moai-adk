@@ -7,7 +7,6 @@ Creates and manages backups to protect user data during template updates.
 from __future__ import annotations
 
 import shutil
-from datetime import datetime
 from pathlib import Path
 
 
@@ -49,13 +48,19 @@ class TemplateBackup:
         )
 
     def create_backup(self) -> Path:
-        """Create a timestamped backup.
+        """Create a single backup (always at .moai-backups/backup/).
+
+        Existing backups are overwritten to maintain only one backup copy.
 
         Returns:
-            Backup path (for example, .moai-backups/20250110-143025/).
+            Backup path (always .moai-backups/backup/).
         """
-        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        backup_path = self.target_path / ".moai-backups" / timestamp
+        backup_path = self.target_path / ".moai-backups" / "backup"
+
+        # Remove existing backup if present
+        if backup_path.exists():
+            shutil.rmtree(backup_path)
+
         backup_path.mkdir(parents=True, exist_ok=True)
 
         # Copy backup targets
