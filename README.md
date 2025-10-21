@@ -1,5 +1,7 @@
 # MoAI-ADK (Agentic Development Kit)
 
+[한국어](README.md) | [English](README.en.md) | [ไทย](README.th.md) | [日本語](README.ja.md) | [中文](README.zh.md) | [हिन्दी](README.hi.md)
+
 [![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.13+-blue)](https://www.python.org/)
@@ -56,23 +58,87 @@ MoAI-ADK(MoAI Agentic Development Kit)는 **AI가 개발 과정 전체를 도와
 # 1. (선택) uv 설치 — pip보다 훨씬 빠른 Python 패키지 관리자
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# 2. 가상환경 생성 (권장)
-uv venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-
-# 3. MoAI-ADK 설치 (tool 모드: 전역-격리 실행)
+# 2. MoAI-ADK 설치 (tool 모드: 전역-격리 실행)
 uv tool install moai-adk
 
-# 4. 새 프로젝트 시작
+# 3. 새 프로젝트 시작
 moai-adk init my-project
 cd my-project
 
-# 5. Claude Code(또는 CLI)에서 Alfred 호출
+# 4. Claude Code(또는 CLI)에서 Alfred 호출
 claude  # Claude Code 실행 후 아래 명령 사용
 /alfred:0-project "프로젝트 이름"
 ```
 
 > 🔍 확인용 명령: `moai-adk doctor` — Python/uv 버전, `.moai/` 구조, 에이전트/Skills 구성이 모두 준비됐는지 점검합니다.
+
+---
+
+## MoAI-ADK 최신 버전 유지하기
+
+### 버전 확인
+```bash
+# 현재 설치된 버전 확인
+moai-adk --version
+
+# PyPI에서 최신 버전 확인
+uv tool list  # moai-adk의 현재 버전 확인
+```
+
+### 업그레이드 하기
+
+#### 방법 1: moai-adk 자체 업데이트 명령어 (가장 간단)
+```bash
+# MoAI-ADK 자체 업데이트 명령어 - 에이전트/Skills 템플릿도 함께 업데이트
+moai-adk update
+
+# 업데이트 후 프로젝트에 새 템플릿 적용 (선택)
+moai-adk init .
+```
+
+#### 방법 2: uv tool 명령어로 업그레이드
+
+**특정 도구만 업그레이드 (권장)**
+```bash
+# moai-adk만 최신 버전으로 업그레이드
+uv tool upgrade moai-adk
+```
+
+**모든 설치된 도구 업그레이드**
+```bash
+# 모든 uv tool 도구를 최신 버전으로 업그레이트
+uv tool update
+```
+
+**특정 버전으로 설치**
+```bash
+# 특정 버전으로 재설치 (예: 0.4.2)
+uv tool install moai-adk==0.4.2
+```
+
+### 업데이트 후 확인
+```bash
+# 1. 설치된 버전 확인
+moai-adk --version
+
+# 2. 프로젝트 정상 작동 확인
+moai-adk doctor
+
+# 3. 기존 프로젝트에 새 템플릿 적용 (필요한 경우)
+cd your-project
+moai-adk init .  # 기존 코드는 유지, .moai/ 구조와 템플릿만 업데이트
+
+# 4. Alfred에서 업데이트된 기능 확인
+cd your-project
+claude
+/alfred:0-project  # 새로운 언어 선택 기능 등을 확인
+```
+
+> 💡 **Tip**:
+> - `moai-adk update`: MoAI-ADK 패키지 버전 업데이트 + 에이전트/Skills 템플릿 동기화
+> - `moai-adk init .`: 기존 프로젝트에 새 템플릿 적용 (코드는 안전하게 유지)
+> - 두 명령을 함께 실행하면 완전한 업데이트가 완료됩니다.
+> - 주요 업데이트(minor/major)가 나오면 위 절차를 실행하여 새로운 에이전트/Skills를 활용할 수 있습니다.
 
 ---
 
