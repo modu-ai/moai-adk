@@ -295,6 +295,221 @@ Refs: @TAG-ID (if applicable)
 - Use `/alfred:3-sync` to update Living Docs and TAG references.
 - Record rationale for deviations from the SPEC.
 
+## Clarification & Interactive Prompting
+
+### The "Vibe Coding" Challenge
+
+**Vibe Coding** refers to requesting AI assistance with minimal context, expecting the AI to infer intent from incomplete instructions. While this approach works for experienced developers with high-context understanding of their codebase, it often results in:
+
+- ❌ Ambiguous or conflicting implementations
+- ❌ Unnecessary modifications to existing code
+- ❌ Multiple rounds of back-and-forth refinement
+- ❌ Wasted time clarifying intent
+
+**Root cause**: AI must *guess* user intent without explicit guidance.
+
+### Solution: Interactive Question Tool + TUI Survey Skill
+
+Claude Code now features an **Interactive Question Tool** powered by the `moai-alfred-tui-survey` Skill that transforms vague requests into precise, contextual specifications through guided clarification. Instead of AI making assumptions, the tool actively:
+
+1. **Analyzes** existing code and project context
+2. **Identifies** ambiguity and competing approaches
+3. **Presents** concrete options with clear trade-offs via **TUI menu**
+4. **Captures** explicit user choices (arrow keys, enter)
+5. **Executes** with certainty based on confirmed intent
+
+**Implementation**: The `moai-alfred-tui-survey` Skill provides interactive survey menus that render as terminal UI elements, allowing users to navigate options with arrow keys and confirm with enter.
+
+### How It Works
+
+When you provide a high-level request, Alfred may invoke the `moai-alfred-tui-survey` Skill to clarify implementation details through structured TUI menus:
+
+```
+User: "Add a completion page for the competition."
+         ↓
+Alfred analyzes codebase & context
+         ↓
+[QUESTION 1] How should the completion page be implemented?
+┌─────────────────────────────────────────────────────┐
+│ ▶ Create a new public page                          │  ← arrow keys to select
+│   Modify existing page structure                    │
+│   Use environment-based gating                      │
+│                                                     │
+│ (press ↑↓ to navigate, enter to confirm)           │
+└─────────────────────────────────────────────────────┘
+         ↓
+[QUESTION 2] Who should see the completion page?
+┌─────────────────────────────────────────────────────┐
+│   Only participants (authenticated users)           │
+│ ▶ All visitors (public)                             │
+│   Based on time window                              │
+│                                                     │
+│ (press ↑↓ to navigate, enter to confirm)           │
+└─────────────────────────────────────────────────────┘
+         ↓
+[REVIEW] Summary of your selections
+┌─────────────────────────────────────────────────────┐
+│ ✓ Implementation: New public page                   │
+│ ✓ User experience: All visitors (public)            │
+│                                                     │
+│ Ready to submit?                                    │
+│  [Submit answers] [← Go back]                       │
+└─────────────────────────────────────────────────────┘
+         ↓
+Execution with confirmed specifications
+```
+
+**Where it's used**:
+- Sub-agents (spec-builder, code-builder pipeline) invoke this skill when ambiguity is detected
+- Alfred commands may trigger interactive surveys during Plan/Run/Sync phases
+- User approvals and architectural decisions benefit most from TUI-based selection
+
+### Key Benefits
+
+| Benefit | Impact |
+| --- | --- |
+| **Reduced ambiguity** | AI asks before acting; eliminates guess work |
+| **Faster iteration** | Choices are presented upfront, not discovered after implementation |
+| **Higher quality** | Implementation matches intent precisely |
+| **Lower communication cost** | Answering 3-5 specific questions beats endless refinement |
+| **Active collaboration** | AI becomes a partner, not just a code generator |
+
+### When to Use Interactive Questions
+
+**Ideal for**:
+- 🎯 Complex features with multiple valid approaches
+- 🎯 Architectural decisions with trade-offs
+- 🎯 Ambiguous or high-level requirements
+- 🎯 Requests that affect multiple existing components
+- 🎯 Decisions involving user experience or data flow
+
+**Example triggers**:
+- "Add a dashboard" → needs clarification on layout, data sources, authentication
+- "Refactor the auth system" → needs clarification on scope, backwards compatibility, migration strategy
+- "Optimize performance" → needs clarification on which bottleneck, acceptable trade-offs
+- "Add multi-language support" → needs clarification on scope, default language, i18n library
+
+### Best Practices for Interactive Prompting
+
+1. **Provide initial context** (even if vague)
+   - ✅ "Add a competition results page"
+   - ❌ "Do something"
+
+2. **Trust the guided questions**
+   - AI will ask if it detects ambiguity
+   - Answer each question honestly, don't over-explain
+   - Use "Other" option to provide custom input if preset options don't fit
+
+3. **Review before submission**
+   - The summary step lets you verify all choices
+   - Use "back" to revise any answer
+   - Only submit when you're confident in the selections
+
+4. **Iterative refinement is OK**
+   - If implementation doesn't match intent, re-run with clearer guidance
+   - Your answers inform Alfred's future prompting
+   - This feedback loop improves collaboration quality
+
+5. **Combine with Context Engineering**
+   - Provide high-level intent + let interactive questions fill in details
+   - Reference existing code patterns ("like the auth flow in `/src/auth.ts`")
+   - Mention constraints or non-negotiables upfront
+
+### Example: Competition Completion Page (TUI Survey)
+
+**User Request**: "Competition is over. Add a completion page."
+
+**Step 1: Code Analysis**
+Alfred scans the codebase and detects:
+- Existing `/end` page (auth required, shows results)
+- Need for clarification on scope and user behavior
+
+**Step 2: Interactive Survey (moai-alfred-tui-survey activated)**
+
+```
+────────────────────────────────────────────────────────────────
+ALFRED: How should the completion page be implemented?
+────────────────────────────────────────────────────────────────
+
+┌─ IMPLEMENTATION APPROACH ────────────────────────────────────┐
+│                                                              │
+│ ▶ Create a new public page (/competition-closed)            │
+│   • Unguarded route, visible to all visitors                │
+│   • No authentication required                              │
+│                                                              │
+│   Modify existing /end page with conditional logic          │
+│   • Check if competition is active before showing results   │
+│                                                              │
+│   Use environment-based gating                              │
+│   • Set NEXT_PUBLIC_COMPETITION_CLOSED=true                │
+│   • Redirect all traffic to completion screen               │
+│                                                              │
+│ Use ↑↓ arrows to navigate, ENTER to select                 │
+│ Type custom answer or press ESC to cancel                   │
+└──────────────────────────────────────────────────────────────┘
+
+→ Selection: Create a new public page (/competition-closed)
+```
+
+```
+────────────────────────────────────────────────────────────────
+ALFRED: For logged-in participants accessing the new page?
+────────────────────────────────────────────────────────────────
+
+┌─ USER BEHAVIOR ──────────────────────────────────────────────┐
+│                                                              │
+│   Show submission history                                   │
+│   • Redirect to /end page, display results & timeline       │
+│                                                              │
+│ ▶ Show simple completion message only                       │
+│   • Display "Competition concluded" notice                  │
+│   • No historical data shown                                │
+│                                                              │
+│   Custom behavior based on user role                        │
+│   • Different experience per role type                      │
+│                                                              │
+│ Use ↑↓ arrows to navigate, ENTER to select                 │
+│ Type custom answer or press ESC to cancel                   │
+└──────────────────────────────────────────────────────────────┘
+
+→ Selection: Show simple completion message only
+```
+
+**Step 3: Review & Confirmation**
+
+```
+────────────────────────────────────────────────────────────────
+ALFRED: Review your answers
+────────────────────────────────────────────────────────────────
+
+┌─ SUMMARY ────────────────────────────────────────────────────┐
+│                                                              │
+│ ✓ Implementation approach:                                  │
+│   Create a new public page (/competition-closed)            │
+│                                                              │
+│ ✓ User behavior:                                            │
+│   Show simple completion message only                       │
+│                                                              │
+│ Ready to submit these answers?                              │
+│                                                              │
+│  [✓ Submit answers]  [← Go back and modify]                │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+
+→ Action: Submit answers (enter)
+```
+
+**Step 4: Execution**
+
+Alfred now executes with **confirmed specifications**:
+- ✅ Creates `/app/competition-closed/page.tsx` (public route)
+- ✅ Implements simple "Competition concluded" message
+- ✅ Handles authenticated users appropriately
+- ✅ Generates with SPEC → TDD → Sync flow
+
+**Result**: Clean, intentional implementation that exactly matches confirmed specifications.
+No guessing. No ambiguity. Direct execution. 🎯
+
 ## Commands · Sub-agents · Skills · Hooks
 
 MoAI-ADK assigns every responsibility to a dedicated execution layer.
@@ -505,4 +720,16 @@ Alfred enforces these quality gates on every change:
 - **Description**: {{PROJECT_DESCRIPTION}}
 - **Version**: {{PROJECT_VERSION}}
 - **Mode**: {{PROJECT_MODE}}
+- **Conversation Language**: {{CONVERSATION_LANGUAGE}} ({{CONVERSATION_LANGUAGE_NAME}})
+- **Codebase Language**: {{CODEBASE_LANGUAGE}}
 - **Toolchain**: Automatically selects the best tools for the chosen language
+
+### Language Configuration
+
+- **Conversation Language** (`{{CONVERSATION_LANGUAGE}}`): All Alfred dialogs, documentation, and project interviews conducted in this language
+- **Codebase Language** (`{{CODEBASE_LANGUAGE}}`): Primary programming language(s) detected in this project
+- **Documentation**: Generated in the conversation language ({{CONVERSATION_LANGUAGE_NAME}})
+
+---
+
+**Note**: The conversation language is selected at the beginning of `/alfred:0-project` and applies to all subsequent project initialization steps. All generated documentation (product.md, structure.md, tech.md) will be created in the selected language.

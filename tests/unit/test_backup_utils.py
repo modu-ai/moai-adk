@@ -9,7 +9,6 @@ from pathlib import Path
 from moai_adk.core.project.backup_utils import (
     BACKUP_TARGETS,
     PROTECTED_PATHS,
-    generate_backup_dir_name,
     get_backup_targets,
     has_any_moai_files,
     is_protected_path,
@@ -117,45 +116,6 @@ class TestGetBackupTargets:
         assert ".moai/memory/" in result
         assert ".github/" in result
 
-
-class TestGenerateBackupDirName:
-    """Test generate_backup_dir_name function"""
-
-    def test_generates_timestamp_format(self):
-        """Should generate timestamp in YYYYMMDD-HHMMSS format"""
-        result = generate_backup_dir_name()
-
-        # Check format: YYYYMMDD-HHMMSS
-        assert len(result) == 15  # 8 digits + hyphen + 6 digits
-        assert result[8] == "-"
-        assert result[:8].isdigit()  # YYYYMMDD
-        assert result[9:].isdigit()  # HHMMSS
-
-    def test_generates_unique_timestamps(self):
-        """Should generate different timestamps for successive calls"""
-        import time
-
-        result1 = generate_backup_dir_name()
-        time.sleep(0.01)  # Small delay
-        result2 = generate_backup_dir_name()
-
-        # Usually same unless called at second boundary
-        # Just verify both are valid formats
-        assert len(result1) == 15
-        assert len(result2) == 15
-
-    def test_timestamp_is_recent(self):
-        """Generated timestamp should be recent"""
-        from datetime import datetime
-
-        result = generate_backup_dir_name()
-
-        # Extract year from result
-        year = int(result[:4])
-        current_year = datetime.now().year
-
-        # Should be current year
-        assert year == current_year
 
 
 class TestIsProtectedPath:
