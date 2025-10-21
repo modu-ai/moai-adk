@@ -4,5 +4,5 @@
 SPEC-First TDD Framework with Alfred SuperAgent
 """
 
-__version__ = "0.3.13"
+__version__ = "0.4.0"
 __all__ = ["__version__"]

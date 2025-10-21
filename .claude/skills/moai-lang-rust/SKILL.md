@@ -16,9 +16,9 @@ Provides Rust-specific expertise for TDD development, including cargo test, clip
 
 ## When to use
 
-- "Rust 테스트 작성", "cargo test 사용법", "소유권 규칙"
+- “Writing Rust tests”, “How to use cargo tests”, “Ownership rules”
 - Automatically invoked when working with Rust projects
-- Rust SPEC implementation (`/alfred:2-build`)
+- Rust SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -55,11 +55,11 @@ Provides Rust-specific expertise for TDD development, including cargo test, clip
 ## Examples
 
 ### Example 1: TDD with cargo test
-User: "/alfred:2-build PARSER-001"
+User: "/alfred:2-run PARSER-001"
 Claude: (creates RED test, GREEN implementation with Result<T, E>, REFACTOR with lifetimes)
 
 ### Example 2: Clippy check
-User: "clippy 린트 실행"
+User: "Run clippy lint"
 Claude: (runs cargo clippy -- -D warnings and reports issues)
 
 ## Works well with

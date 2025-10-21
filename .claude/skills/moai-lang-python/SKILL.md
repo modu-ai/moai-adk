@@ -16,9 +16,9 @@ Provides Python-specific expertise for TDD development, including pytest testing
 
 ## When to use
 
-- "Python 테스트 작성", "pytest 사용법", "Python 타입 힌트"
+- “Writing Python tests”, “How to use pytest”, “Python type hints”
 - Automatically invoked when working with Python projects
-- Python SPEC implementation (`/alfred:2-build`)
+- Python SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -51,11 +51,11 @@ Provides Python-specific expertise for TDD development, including pytest testing
 ## Examples
 
 ### Example 1: TDD with pytest
-User: "/alfred:2-build AUTH-001"
+User: "/alfred:2-run AUTH-001"
 Claude: (creates RED test with pytest, GREEN implementation, REFACTOR with type hints)
 
 ### Example 2: Type checking validation
-User: "mypy 타입 체크 실행"
+User: "Run mypy type check"
 Claude: (runs mypy --strict and reports type errors)
 
 ## Works well with

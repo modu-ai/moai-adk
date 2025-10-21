@@ -1,13 +1,10 @@
 ---
 name: {skill-name}
-description: {Comprehensive description under 200 characters - must clearly indicate when Claude should autonomously invoke this skill}
-model: haiku
-allowed-tools:
+description: {Capability + trigger phrases (<=1024 chars, aim for <=200)}
+allowed-tools:                     # optional; remove if full tool access is acceptable
   - Read
-  - Write
-  - Grep
-  - Glob
   - Bash
+  - Write
 ---
 
 # {Skill Title}
@@ -16,7 +13,7 @@ allowed-tools:
 
 ---
 
-## 🎯 이 스킬의 목적
+## 🎯 Purpose of this skill
 
 {Comprehensive explanation covering:
 - Problem statement and context
@@ -24,45 +21,45 @@ allowed-tools:
 - Unique value proposition
 - Integration with broader workflows}
 
-**문제**: {Detailed problem description with examples}
-**해결**: {Comprehensive solution approach}
-**효과**: {Measurable benefits and improvements}
+**Problem**: {Detailed problem description with examples}
+**Solution**: {Comprehensive solution approach}
+**Impact**: {Measurable benefits and improvements}
 
 ---
 
-## 🏗️ MoAI-ADK 통합
+## 🏗️ MoAI-ADK integration
 
-### Alfred 자동 선택 조건
+### Alfred auto-selection conditions
 
-Alfred는 다음 조건에서 이 스킬을 자동으로 활성화합니다:
+Alfred automatically activates this skill under the following conditions:
 
 - {Specific automatic trigger condition 1 with context}
 - {Specific automatic trigger condition 2 with keywords}
 - {Specific automatic trigger condition 3 with workflow state}
 
-### 워크플로우 위치
+### Workflow location
 
 ```
-/alfred:1-spec → /alfred:2-build → /alfred:3-sync
+/alfred:1-plan → /alfred:2-run → /alfred:3-sync
                                         ↑
-                                  이 스킬 자동 활성화
+Automatically activate this skill
                                   ({when activated})
 ```
 
-**통합 시점**:
+**Integration Point**:
 - **Phase**: {Which phase of MoAI-ADK workflow}
-- **트리거**: {What triggers automatic invocation}
-- **역할**: {What this skill contributes to the workflow}
+- **Trigger**: {What triggers automatic invocation}
+- **Role**: {What this skill contributes to the workflow}
 
 ---
 
-## 📋 핵심 기능
+## 📋 Core features
 
 ### 1. {Major Feature 1 Name}
 
 {Detailed multi-paragraph description of this feature}
 
-**구현 방법**:
+**How ​​to implement**:
 ```{language}
 # {Implementation detail 1}
 {code-example-1}
@@ -71,12 +68,12 @@ Alfred는 다음 조건에서 이 스킬을 자동으로 활성화합니다:
 {code-example-2}
 ```
 
-**산출물**:
+**Output**:
 - **{Output 1}**: {Detailed description with format}
 - **{Output 2}**: {Description with validation criteria}
 - **{Output 3}**: {Description with usage notes}
 
-**검증**:
+**verification**:
 ```bash
 # {Verification method}
 {verification-command}
@@ -88,12 +85,12 @@ Alfred는 다음 조건에서 이 스킬을 자동으로 활성화합니다:
 
 {Comprehensive feature description}
 
-**알고리즘**:
+**Algorithm**:
 1. {Step 1 of algorithm}
 2. {Step 2 with details}
 3. {Step 3 and expected outcome}
 
-**구현 예시**:
+**Implementation example**:
 ```{language}
 {detailed-code-example}
 ```
@@ -104,67 +101,67 @@ Alfred는 다음 조건에서 이 스킬을 자동으로 활성화합니다:
 
 {Feature description with use cases}
 
-**사용 시나리오**:
+**Use Scenario**:
 - **{Scenario A}**: {When and why to use}
 - **{Scenario B}**: {Alternative use case}
 
 ---
 
-## 💡 사용 패턴
+## 💡 Usage Pattern
 
-### 패턴 1: 수동 호출
+### Pattern 1: Manual call
 
-**사용자 요청 예시**:
+**Example User Request**:
 ```
-"{skill-name} 실행해주세요"
+"Please execute {skill-name}"
 "{natural-language-trigger-phrase}"
 ```
 
-**Alfred 동작**:
+**Alfred Action**:
 1. {What Alfred does in step 1}
 2. {What Alfred does in step 2}
 3. {Final action and result}
 
 ---
 
-### 패턴 2: 자동 활성화
+### Pattern 2: Automatic activation
 
-**트리거 조건**: {When automatic activation occurs}
+**Trigger condition**: {When automatic activation occurs}
 
-**Alfred 감지 시나리오**:
+**Alfred detection scenario**:
 ```
-사용자: "{example-user-request}"
-→ Alfred 분석: {how Alfred recognizes this needs the skill}
-→ 자동 실행: {what happens automatically}
-→ 결과: {what user receives}
+User: "{example-user-request}"
+→ Alfred Analysis: {how Alfred recognizes this needs the skill}
+→ Autoplay: {what happens automatically}
+→ Result: {what user receives}
 ```
 
 ---
 
-### 패턴 3: 커맨드 통합
+### Pattern 3: Command integration
 
-**연관 커맨드**: `/{command-name}`
+**Related command**: `/{command-name}`
 
-**통합 흐름**:
+**Integrated Flow**:
 ```
-/{command-name} 실행
+Run /{command-name}
   ↓
 {When skill is invoked during command}
   ↓
-이 스킬 자동 호출
+Automatically call this skill
   ↓
 {What skill contributes}
   ↓
-커맨드 계속 진행
+Continue command
 ```
 
 ---
 
-## ⚙️ 설정 및 구성
+## ⚙️ Settings and configuration
 
-### 설정 파일 위치
+### Configuration file location
 
-`.moai/config.json`에서 설정:
+Configure in `.moai/config.json`:
 
 ```json
 {
@@ -179,15 +176,15 @@ Alfred는 다음 조건에서 이 스킬을 자동으로 활성화합니다:
 }
 ```
 
-### 설정 옵션 상세
+### Setting option details
 
-| 옵션 | 타입 | 기본값 | 필수 | 설명 |
-|-----|------|-------|------|------|
-| `{option1}` | {type} | `{default}` | ✅/⚠️ | {Comprehensive description} |
-| `{option2}` | {type} | `{default}` | ⚠️ | {What this controls} |
-| `{option3}` | {type} | `{default}` | ⚠️ | {Usage notes} |
+| Options     | Type   | default     | Required | Description                 |
+| ----------- | ------ | ----------- | -------- | --------------------------- |
+| `{option1}` | {type} | `{default}` | ✅/⚠️      | {Comprehensive description} |
+| `{option2}` | {type} | `{default}` | ⚠️        | {What this controls}        |
+| `{option3}` | {type} | `{default}` | ⚠️        | {Usage notes}               |
 
-### 환경변수 (선택적)
+### Environment variables (optional)
 
 ```bash
 # {Environment variable 1}
@@ -199,22 +196,22 @@ export {VAR_NAME_2}="{value}"
 
 ---
 
-## 📁 디렉토리 구조
+## 📁 Directory Structure
 
 ```
 .claude/skills/{skill-name}/
-├── SKILL.md                # 메인 스킬 정의 (this file)
-├── reference.md            # 상세 참조 문서
-├── examples.md             # 실전 예제 모음
-├── scripts/                # 유틸리티 스크립트
+├── SKILL.md # Main skill definition (this file)
+├── reference.md # Detailed reference document
+├── examples.md # Collection of practical examples
+├── scripts/ # Utility script
 │   ├── {helper-1}.py
 │   └── {helper-2}.py
-└── templates/              # 템플릿 파일
+└── templates/ # template file
     ├── {template-1}.txt
     └── {template-2}.json
 ```
 
-### 추가 파일 설명
+### Additional file descriptions
 
 - **reference.md**: {What additional documentation it contains}
 - **examples.md**: {What examples are provided}
@@ -223,22 +220,22 @@ export {VAR_NAME_2}="{value}"
 
 ---
 
-## ✅ 검증 체크리스트
+## ✅ Verification Checklist
 
-### 실행 전 검증
+### Validation before execution
 
 - [ ] {Pre-execution check 1}
 - [ ] {Pre-execution check 2}
 - [ ] {Pre-execution check 3}
 
-### 실행 후 검증
+### Verify after execution
 
 - [ ] {Post-execution validation 1 with criteria}
 - [ ] {Post-execution validation 2 with expected state}
 - [ ] {Post-execution validation 3 with deliverable}
-- [ ] {MoAI-ADK 워크플로우 통합 확인}
+- [ ] {Check MoAI-ADK workflow integration}
 
-### 검증 명령어
+### Verification command
 
 ```bash
 # {Validation script 1}
@@ -253,19 +250,19 @@ uv run .claude/skills/{skill-name}/scripts/validate.py
 
 ---
 
-## 🚨 에러 처리
+## 🚨 Error handling
 
-### 에러 분류
+### Error classification
 
 #### 1. {Error Category 1}
 
-**증상**: {How this error manifests}
+**Symptom**: {How this error manifests}
 
-**원인**:
+**cause**:
 - {Possible cause 1}
 - {Possible cause 2}
 
-**해결 방법**:
+**Solution**:
 ```bash
 # {Solution step 1}
 {command-1}
@@ -278,31 +275,31 @@ uv run .claude/skills/{skill-name}/scripts/validate.py
 
 #### 2. {Error Category 2}
 
-**증상**: {Error description}
+**Symptom**: {Error description}
 
-**디버깅**:
+**Debugging**:
 ```bash
 # {How to debug}
 {debug-command}
 ```
 
-**수정**:
+**correction**:
 1. {Fix step 1}
 2. {Fix step 2}
 
 ---
 
-### 로깅 및 디버깅
+### Logging and Debugging
 
-**로그 위치**: `{log-file-path}`
+**Log Location**: `{log-file-path}`
 
-**로그 레벨 설정**:
+**Log level settings**:
 ```bash
 # {How to enable debug logging}
 {logging-config-command}
 ```
 
-**로그 확인**:
+**Check log**:
 ```bash
 # {How to view logs}
 tail -f {log-file-path}
@@ -310,35 +307,35 @@ tail -f {log-file-path}
 
 ---
 
-## 🔗 연관 에이전트/커맨드
+## 🔗 Related agents/commands
 
-### 연관 커맨드
+### Related commands
 
 - **/{command-1}** - {How this skill supports the command}
 - **/{command-2}** - {Integration point}
 
-### 연관 에이전트
+### Associated Agent
 
 - **@agent-{agent-1}** - {How they work together}
 - **@agent-{agent-2}** - {Collaboration scenario}
 
-### 연관 스킬
+### Related skills
 
 - **{skill-1}** - {Complementary functionality}
 - **{skill-2}** - {When to use together}
 
 ---
 
-## 📊 성능 및 메트릭
+## 📊 Performance and Metrics
 
-### 성능 특성
+### Performance characteristics
 
-- **실행 시간**: {Typical execution time}
-- **메모리 사용**: {Expected memory usage}
-- **디스크 I/O**: {File operations count}
-- **네트워크**: {External API calls if any}
+- **Execution time**: {Typical execution time}
+- **Memory usage**: {Expected memory usage}
+- **Disk I/O**: {File operations count}
+- **Network**: {External API calls if any}
 
-### 최적화 팁
+### Optimization tips
 
 1. **{Optimization 1}**: {How to improve performance}
 2. **{Optimization 2}**: {Configuration tweak}
@@ -346,31 +343,31 @@ tail -f {log-file-path}
 
 ---
 
-## 🎓 베스트 프랙티스
+## 🎓 Best Practices
 
 ### 1. {Practice Category 1}
 
-**권장 사항**:
+**Recommendation**:
 ```{language}
 # {Good practice example}
 {recommended-code}
 ```
 
-**피해야 할 사항**:
+**What to avoid**:
 ```{language}
 # {Anti-pattern example}
 {avoid-this-code}
 ```
 
-**이유**: {Why this is best practice}
+**Reason**: {Why this is best practice}
 
 ---
 
 ### 2. {Practice Category 2}
 
-**팁**: {Helpful tip}
+**Tip**: {Helpful tip}
 
-**예시**:
+**example**:
 ```bash
 {example-of-best-practice}
 ```
@@ -379,73 +376,73 @@ tail -f {log-file-path}
 
 ### 3. {Practice Category 3}
 
-**주의사항**: {Important consideration}
+**Caution**: {Important consideration}
 
 ---
 
-## 📖 실전 예제
+## 📖 Practical examples
 
-### 예제 1: {Common Use Case}
+### Example 1: {Common Use Case}
 
-**목적**: {What this example demonstrates}
+**Purpose**: {What this example demonstrates}
 
-**입력**:
+**input**:
 ```{format}
 {example-input}
 ```
 
-**실행**:
+**execution**:
 ```bash
 {commands-to-run}
 ```
 
-**출력**:
+**output of power**:
 ```{format}
 {example-output}
 ```
 
-**설명**: {What happened and why}
+**Explanation**: {What happened and why}
 
 ---
 
-### 예제 2: {Advanced Use Case}
+### Example 2: {Advanced Use Case}
 
-**목적**: {Advanced scenario}
+**Purpose**: {Advanced scenario}
 
-**시나리오**: {Detailed scenario description}
+**Scenario**: {Detailed scenario description}
 
-**구현**:
+**avatar**:
 ```{language}
 {implementation-code}
 ```
 
-**결과**: {What you achieve}
+**Result**: {What you achieve}
 
 ---
 
-### 예제 3: {Edge Case}
+### Example 3: {Edge Case}
 
-**상황**: {Unusual but important scenario}
+**Scenario**: {Unusual but important scenario}
 
-**처리 방법**: {How skill handles this}
+**How ​​to handle**: {How skill handles this}
 
 ---
 
-## 🔧 커스터마이제이션
+## 🔧 Customization
 
-### 확장 포인트
+### Extension points
 
-이 스킬을 프로젝트에 맞게 커스터마이즈할 수 있는 영역:
+Areas where you can customize this skill to fit your project:
 
 1. **{Extension Point 1}**
-   - 파일: `{file-to-modify}`
-   - 수정 방법: {How to customize}
+- File: `{file-to-modify}`
+ - How to modify: {How to customize}
 
 2. **{Extension Point 2}**
-   - 설정: `{config-key}`
-   - 옵션: {Available options}
+- Settings: `{config-key}`
+ - Options: {Available options}
 
-### 플러그인 시스템 (고급)
+### Plugin system (advanced)
 
 ```python
 # {How to create plugins for this skill}
@@ -454,23 +451,23 @@ tail -f {log-file-path}
 
 ---
 
-## 📚 참고 자료
+## 📚 References
 
-### 공식 문서
+### Official Documentation
 - **Claude Code Skills**: https://docs.claude.com/en/docs/claude-code/skills
 - **{Related Doc}**: {URL}
 
-### MoAI-ADK 리소스
-- **개발 가이드**: `.moai/memory/development-guide.md`
-- **SPEC 메타데이터**: `.moai/memory/spec-metadata.md`
+### MoAI-ADK Resources
+- **Development Guide**: `.moai/memory/development-guide.md`
+- **SPEC Metadata**: `.moai/memory/spec-metadata.md`
 
-### 커뮤니티
+### Community
 - **GitHub Issues**: {Link}
-- **디스커션**: {Link}
+- **Discussion**: {Link}
 
 ---
 
-## 🔄 업데이트 로그
+## 🔄 Update log
 
 ### v1.0.0 (Initial)
 - {Feature 1 introduced}
@@ -482,12 +479,12 @@ tail -f {log-file-path}
 **Template Level**: Full
 **Best For**: Production MoAI-ADK integration, enterprise workflows
 **Features**:
-- Alfred 자동 선택
-- 워크플로우 통합
-- 상세 설정
-- 검증 자동화
-- 에러 처리
-- 성능 최적화
+- Alfred auto-selection
+- Workflow integration
+- Detailed settings
+- Verification automation
+- Error handling
+- Performance optimization
 
 **Directory Structure**: Full (SKILL.md + reference.md + examples.md + scripts/ + templates/)
 **Estimated Setup Time**: 45-60 minutes
@@ -496,4 +493,4 @@ tail -f {log-file-path}
 
 ---
 
-이 스킬은 {domain}에서 최고 수준의 자동화를 제공합니다.
+This skill provides the highest level of automation in {domain}.

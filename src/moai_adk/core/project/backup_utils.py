@@ -15,6 +15,7 @@ BACKUP_TARGETS = [
     ".moai/project/",
     ".moai/memory/",
     ".claude/",
+    ".github/",
     "CLAUDE.md",
 ]
 

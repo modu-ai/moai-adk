@@ -1,24 +1,24 @@
 #!/usr/bin/env python3
 """Notification and control handlers
 
-Notification, Stop, SubagentStop 이벤트 처리
+Notification, Stop, SubagentStop event handling
 """
 
 from core import HookPayload, HookResult
 
 
 def handle_notification(payload: HookPayload) -> HookResult:
-    """Notification 이벤트 핸들러 (기본 구현)"""
+    """Notification event handler (default implementation)"""
     return HookResult()
 
 
 def handle_stop(payload: HookPayload) -> HookResult:
-    """Stop 이벤트 핸들러 (기본 구현)"""
+    """Stop event handler (default implementation)"""
     return HookResult()
 
 
 def handle_subagent_stop(payload: HookPayload) -> HookResult:
-    """SubagentStop 이벤트 핸들러 (기본 구현)"""
+    """SubagentStop event handler (default implementation)"""
     return HookResult()
 
 

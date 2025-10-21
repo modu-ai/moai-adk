@@ -120,7 +120,7 @@ pytest --cov --cov-report=term
 
 #### Scenario 6: EARS 구문 자동 적용
 ```gherkin
-Given 사용자가 "/alfred:1-spec '새 기능'" 실행
+Given 사용자가 "/alfred:1-plan '새 기능'" 실행
 When spec-builder가 moai-alfred-ears-authoring Skill을 JIT 로드
 Then SPEC 문서에 EARS 5가지 구문이 모두 적용되어야 함
 ```
@@ -128,7 +128,7 @@ Then SPEC 문서에 EARS 5가지 구문이 모두 적용되어야 함
 **검증 방법**:
 ```bash
 # SPEC 작성
-/alfred:1-spec "사용자 인증 기능"
+/alfred:1-plan "사용자 인증 기능"
 
 # 생성된 SPEC 확인
 cat .moai/specs/SPEC-AUTH-001/spec.md
@@ -403,7 +403,7 @@ cp .backup/agents/spec-builder.md .claude/agents/alfred/
 # 3. 기능 테스트
 @agent-tag-agent "AUTH 도메인 TAG 목록 조회"
 @agent-trust-checker "현재 프로젝트 TRUST 원칙 준수도 확인"
-/alfred:1-spec "테스트 기능"
+/alfred:1-plan "테스트 기능"
 
 # 4. 결과 확인
 # 예상: 모든 기능이 마이그레이션 전과 동일하게 동작

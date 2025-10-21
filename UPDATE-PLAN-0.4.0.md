@@ -12,6 +12,7 @@
 ## 📋 Table of Contents
 
 - [Executive Summary](#executive-summary)
+- [Part 0: 릴리즈 범위 및 체크리스트](#part-0-릴리즈-범위-및-체크리스트)
 - [Part 1: Claude Skills 심층 분석](#part-1-claude-skills-심층-분석)
 - [Part 2: Skills vs Agents vs Commands](#part-2-skills-vs-agents-vs-commands)
 - [Part 3: MoAI-ADK v0.4.0 아키텍처](#part-3-alfred-adk-v040-아키텍처)
@@ -160,6 +161,30 @@ MoAI-ADK v0.4.0은 Claude Code의 **Agent Skills 기능**을 핵심 실행 계�
 #### `/alfred:3-sync` - 유지
 - **이유**: "sync(동기화)"가 문서-코드-TAG 동기화 의미를 정확히 전달
 - **기능**: Living Document 갱신, TAG 체인 검증, PR Ready 전환
+
+---
+
+## Part 0: 릴리즈 범위 및 체크리스트
+
+### 🔍 v0.3.13 → v0.4.0 변경 범위 요약
+- **Skills 시스템 전면 재정의**: Foundation 6개 + Essentials 4개 Alfred Skill Pack 구축, 34개 언어/도메인 Skills를 `moai-*` 표준 이름으로 재배치하고 예제·레퍼런스 템플릿을 패키지에 포함.
+- **Commands 플로우 정비**: `/alfred:1-spec`→`/alfred:1-plan`, `/alfred:2-build`→`/alfred:2-run`으로 명칭과 UX를 재구성하고 모든 템플릿/문서를 새 구조로 동기화.
+- **템플릿 & 패키징 업데이트**: `.claude` 템플릿, `.moai` 프로젝트 문서, 배포 템플릿에 Skills Revolution 아키텍처를 반영하고 표준화 스크립트 및 검증 도구를 추가.
+- **Hook 안정성 개선**: `alfred_hooks.py`가 빈 stdin 입력을 안전하게 처리하고 SessionStart 출력 문서화 품질을 향상.
+- **운영 문서 확장**: Skills 도입 배경 분석, 품질 보고서, 마이그레이션 가이드 등 운영 문서 세트를 보강하여 팀 온보딩 속도를 가속.
+
+### ⚠️ 중요 호환성 사항
+- **명령어 변경**: 자동화 스크립트, 문서, 튜토리얼에서 `/alfred:1-plan` 및 `/alfred:2-run`을 사용하도록 전면 업데이트 필요.
+- **Skills 스키마 표준화**: 모든 커스텀 Skills는 `metadata`, `capabilities`, `usage` 구조와 500 word Progressive Disclosure 가이드를 준수해야 하며, 중첩 폴더 없이 루트에 배치해야 함.
+- **템플릿 싱크 절차 변경**: `moai-adk templates sync` 플로우 및 `/alfred:3-sync` 실행 시 새 Skills 패키지 구조를 반영하도록 점검 필요.
+
+### ✅ v0.4.0 릴리즈 체크리스트
+- [ ] `pyproject.toml` 및 `src/moai_adk/__init__.py` 등 메타데이터를 `0.4.0`으로 갱신.
+- [ ] 배포용 템플릿 동기화 (`/alfred:3-sync` 또는 `python -m moai_adk.cli.commands.update sync` 실행으로 검증).
+- [ ] `uv run ruff format --check` 및 `uv run ruff check`로 포맷/린트 100% 통과 확인.
+- [ ] `uv run pytest`로 테스트 및 커버리지 목표 확인.
+- [ ] `CHANGELOG.md`에 v0.4.0 주요 변경 사항 정리.
+- [ ] GitHub 릴리즈 노트 초안 작성 (Skills Revolution 하이라이트, 호환성 주의 포함).
 
 ---
 

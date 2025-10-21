@@ -16,9 +16,9 @@ Provides Julia-specific expertise for TDD development, including Test standard l
 
 ## When to use
 
-- "Julia 테스트 작성", "Test stdlib 사용법", "과학 컴퓨팅"
+- "Writing Julia tests", "How to use Test stdlib", "Scientific computing"
 - Automatically invoked when working with Julia projects
-- Julia SPEC implementation (`/alfred:2-build`)
+- Julia SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -53,11 +53,11 @@ Provides Julia-specific expertise for TDD development, including Test standard l
 ## Examples
 
 ### Example 1: TDD with Test stdlib
-User: "/alfred:2-build COMPUTE-001"
+User: "/alfred:2-run COMPUTE-001"
 Claude: (creates RED test with @testset, GREEN implementation with type stability, REFACTOR)
 
 ### Example 2: Performance optimization
-User: "Julia 성능 최적화"
+User: "Optimize Julia performance"
 Claude: (profiles code and suggests type-stable refactoring)
 
 ## Works well with

@@ -54,7 +54,7 @@ scope:
 
 ### 영향
 
-- `/alfred:0-project`, `/alfred:1-spec`, `/alfred:2-build`, `/alfred:3-sync` 등 모든 Alfred 커맨드 사용 불가
+- `/alfred:0-project`, `/alfred:1-plan`, `/alfred:2-run`, `/alfred:3-sync` 등 모든 Alfred 커맨드 사용 불가
 - MoAI-ADK 핵심 워크플로우 완전 차단
 - 사용자는 수동으로 에이전트를 호출해야 하는 불편함
 
@@ -182,11 +182,11 @@ def validate_command_file(file_path: Path) -> dict:
 
 ## RISKS & MITIGATIONS
 
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Claude Code 버전 비호환 | High | 최신 버전으로 업데이트 권장 |
-| 파일 권한 문제 | Medium | chmod 644 적용 |
-| 인코딩 문제 | Low | UTF-8 BOM 제거 |
+| Risk                    | Impact | Mitigation                  |
+| ----------------------- | ------ | --------------------------- |
+| Claude Code 버전 비호환 | High   | 최신 버전으로 업데이트 권장 |
+| 파일 권한 문제          | Medium | chmod 644 적용              |
+| 인코딩 문제             | Low    | UTF-8 BOM 제거              |
 
 ---
 

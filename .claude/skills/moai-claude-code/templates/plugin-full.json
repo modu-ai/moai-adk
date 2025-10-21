@@ -2,12 +2,14 @@
   "_comment": "Full Plugin Template - MoAI-ADK Production Integration",
   "_usage": "Complete MCP server configuration for MoAI-ADK workflows",
   "_docs": "https://modelcontextprotocol.io/",
-  "_moai_integration": "Optimized for /alfred:0-project → /alfred:1-spec → /alfred:2-build → /alfred:3-sync",
-
+  "_moai_integration": "Optimized for /alfred:0-project → /alfred:1-plan → /alfred:2-run → /alfred:3-sync",
   "mcpServers": {
     "github": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
       },
@@ -17,7 +19,11 @@
         "alfred_2_build": "Create feature branches, commit with TDD messages",
         "alfred_3_sync": "Update PR description, transition Draft → Ready, auto-merge"
       },
-      "_required_scopes": ["repo", "read:org", "workflow"],
+      "_required_scopes": [
+        "repo",
+        "read:org",
+        "workflow"
+      ],
       "_workflow_automation": [
         "Automatic branch creation from SPEC ID (feature/SPEC-AUTH-001)",
         "Draft PR creation with SPEC template",
@@ -25,7 +31,6 @@
         "Auto-merge after CI/CD passes"
       ]
     },
-
     "filesystem": {
       "command": "npx",
       "args": [
@@ -50,10 +55,12 @@
       },
       "_best_practice": "Use environment variable for project root to support multiple projects"
     },
-
     "brave-search": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-brave-search"
+      ],
       "env": {
         "BRAVE_API_KEY": "${BRAVE_API_KEY}"
       },
@@ -68,10 +75,12 @@
       "_signup": "https://brave.com/search/api/"
     }
   },
-
   "_moai_adk_workflow_integration": {
     "alfred_0_project": {
-      "plugins_used": ["brave-search", "filesystem"],
+      "plugins_used": [
+        "brave-search",
+        "filesystem"
+      ],
       "tasks": [
         "Search for latest framework docs (brave-search)",
         "Read existing product.md if present (filesystem)",
@@ -79,7 +88,10 @@
       ]
     },
     "alfred_1_spec": {
-      "plugins_used": ["github", "filesystem"],
+      "plugins_used": [
+        "github",
+        "filesystem"
+      ],
       "tasks": [
         "Read product.md for context (filesystem)",
         "Write SPEC-{ID}/spec.md (filesystem)",
@@ -89,7 +101,10 @@
       ]
     },
     "alfred_2_build": {
-      "plugins_used": ["filesystem", "github"],
+      "plugins_used": [
+        "filesystem",
+        "github"
+      ],
       "tasks": [
         "Read SPEC-{ID}/spec.md (filesystem)",
         "Write test files @TEST:ID (filesystem)",
@@ -98,7 +113,10 @@
       ]
     },
     "alfred_3_sync": {
-      "plugins_used": ["filesystem", "github"],
+      "plugins_used": [
+        "filesystem",
+        "github"
+      ],
       "tasks": [
         "Scan @TAG chain with rg (filesystem)",
         "Update Living Documents (filesystem)",
@@ -108,7 +126,6 @@
       ]
     }
   },
-
   "_environment_variables_template": {
     "bash_zsh": [
       "# MoAI-ADK Plugin Configuration",
@@ -150,11 +167,13 @@
       "# Allow: direnv allow ."
     ]
   },
-
   "_team_collaboration": {
     "shared_config": {
       "_approach": "Commit mcpServers config, use .env for secrets",
-      "_gitignore": [".env", ".claude/settings.local.json"],
+      "_gitignore": [
+        ".env",
+        ".claude/settings.local.json"
+      ],
       "_shared_file": ".claude/settings.json (commit)",
       "_local_file": ".claude/settings.local.json (gitignore)",
       "_merge_strategy": "settings.local.json overrides settings.json"
@@ -175,7 +194,6 @@
       }
     }
   },
-
   "_ci_cd_integration": {
     "github_actions": {
       "secrets_setup": [
@@ -186,14 +204,16 @@
       ],
       "workflow_example": {
         "name": "MoAI-ADK CI",
-        "on": ["push", "pull_request"],
+        "on": [
+          "push",
+          "pull_request"
+        ],
         "env": {
           "GITHUB_PERSONAL_ACCESS_TOKEN": "${{ secrets.GITHUB_PERSONAL_ACCESS_TOKEN }}"
         }
       }
     }
   },
-
   "_advanced_configuration": {
     "rate_limiting": {
       "_note": "Prevent API quota exhaustion",
@@ -211,7 +231,6 @@
       "_useful_for": "Troubleshooting connection issues, API errors"
     }
   },
-
   "_security_hardening": {
     "token_rotation": {
       "frequency": "Quarterly or after team member departure",
@@ -233,7 +252,6 @@
       "api_usage": "Check Brave Search API dashboard for anomalies"
     }
   },
-
   "_performance_optimization": {
     "startup_time": {
       "baseline": "Each MCP server adds ~500ms to startup",
@@ -251,7 +269,6 @@
       "timeout_settings": "MCP servers have 30s default timeout"
     }
   },
-
   "_monitoring_and_alerts": {
     "health_checks": [
       "Verify: All plugins load successfully at startup",
@@ -271,7 +288,6 @@
       "_notification": "Set up OS notifications for critical errors (advanced)"
     }
   },
-
   "_troubleshooting_guide": {
     "common_issues": {
       "plugin_not_loading": {
@@ -316,7 +332,6 @@
       }
     }
   },
-
   "_validation_checklist": [
     "✅ settings.json is valid JSON (no syntax errors)",
     "✅ All environment variables are set (printenv | grep -E 'GITHUB|BRAVE|MOAI')",
@@ -329,7 +344,6 @@
     "✅ Claude Code restarts successfully",
     "✅ All plugins load without errors"
   ],
-
   "_template_level": "full",
   "_best_for": "MoAI-ADK production workflows, team collaboration, CI/CD",
   "_features": [

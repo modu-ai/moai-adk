@@ -1,6 +1,7 @@
 ---
+
 name: moai-claude-code
-description: Claude Code 5가지 컴포넌트 생성 및 관리 - Agent, Command, Skill, Plugin, Settings 템플릿 기반 정확한 파일 생성
+description: Scaffolds and audits Claude Code agents, commands, skills, plugins, and settings with production templates. Use when configuring or reviewing Claude Code automation inside MoAI workflows.
 allowed-tools:
   - Read
   - Write
@@ -9,58 +10,85 @@ allowed-tools:
 
 # MoAI Claude Code Manager
 
-Claude Code의 5가지 핵심 컴포넌트를 공식 표준에 맞게 생성하고 관리합니다.
+## Skill Metadata
+| Field | Value |
+| ----- | ----- |
+| Allowed tools | Read (read_file), Write (write_file), Edit (edit_file) |
+| Auto-load | SessionStart (Claude Code bootstrap) |
+| Trigger cues | Agent/command/skill/plugin/settings authoring, Claude Code environment setup. |
 
-## 지원 컴포넌트
+Create and manage Claude Code's five core components according to official standards.
 
-1. **Agent** (.claude/agents/) - 전문 에이전트
-2. **Command** (.claude/commands/) - 슬래시 커맨드
-3. **Skill** (.claude/skills/) - 재사용 기능 모듈
-4. **Plugin** (settings.json의 mcpServers) - MCP 서버 통합
-5. **Settings** (.claude/settings.json) - 권한 및 훅 설정
+## Components covered
 
-## 템플릿 특징
+- **Agents** `.claude/agents/` — Persona, tools, and workflow definition
+- **Commands** `.claude/commands/` — Slash command entry points
+- **Skills** `.claude/skills/` — Reusable instruction capsules
+- **Plugins** `settings.json › mcpServers` — MCP integrations
+- **Settings** `.claude/settings.json` — Tool permissions, hooks, session defaults
 
-MoAI-ADK 통합 프로덕션급 템플릿 (5개)
+## Reference files
 
-- 완전 상세 (완전하고 실무 사용 가능)
-- MoAI-ADK 워크플로우 통합
-- 복사-붙여넣기 즉시 사용
-- 검증 및 트러블슈팅 가이드 포함
+- `reference.md` — 작성 가이드와 체크리스트
+- `examples.md` — 완성된 아티팩트 샘플
+- `templates/` — 다섯 구성요소용 마크다운/JSON 골격
+- `scripts/` — settings 검증 및 템플릿 무결성 검사 스크립트
 
-## 사용법
+## Workflow
 
-### Agent 생성
-"spec-builder Agent를 생성해주세요"
+1. 사용자 요청을 분석해 필요한 구성요소(Agent/Command/Skill/Plugin/Settings)를 결정합니다.
+2. `templates/`에서 해당 스텁을 복사하고 프로젝트 맥락에 맞춰 placeholder를 교체합니다.
+3. 필요 시 `scripts/` 검증기를 실행해 필수 필드·권한·후속 링크를 확인합니다.
 
-### Settings 최적화
-"Python 프로젝트용 settings.json을 생성해주세요"
+## Guardrails
 
-### 전체 검증
-"모든 Claude Code 설정을 검증해주세요"
+- Anthropic 공식 가이드라인에 맞춰 최소 권한과 progressive disclosure를 유지합니다.
+- 템플릿을 직접 수정하기보다 reference.md에서 안내한 hook/field만 업데이트합니다.
+- 생성된 파일과 settings.json은 Git 버전 관리에 포함시키고 변경 이력을 남깁니다.
 
-## 상세 문서
+**Official documentation**: https://docs.claude.com/en/docs/claude-code/skills  
+**Version**: 1.0.0
 
-- **reference.md**: 컴포넌트별 작성 가이드
-- **examples.md**: 실전 예제 모음
-- **templates/**: 5개 프로덕션급 템플릿
-- **scripts/**: Python 검증 스크립트 (선택적)
+## Examples
+```markdown
+- 새 프로젝트에서 spec-builder 에이전트와 /alfred 명령 세트를 생성합니다.
+- 기존 settings.json을 검토해 허용 도구와 훅 구성을 업데이트합니다.
+```
 
-## 작동 방식
+## Best Practices
+- 출력 템플릿은 재적용 시에도 안전하도록 idempotent하게 설계합니다.
+- 자세한 절차는 reference.md(작성 가이드)와 examples.md(샘플 아티팩트)로 분리해 필요할 때만 로드합니다.
 
-1. 사용자 요청 분석 → 컴포넌트 유형 파악
-2. 적절한 템플릿 선택 (templates/ 디렉토리)
-3. 플레이스홀더 치환 및 파일 생성
-4. 자동 검증 (선택적, scripts/ 실행)
+## When to use
+- Activates when someone asks to scaffold or audit Claude Code components.
+- 새 프로젝트에 Claude Code 구성을 부트스트랩할 때.
+- 기존 에이전트/커맨드/스킬/플러그인을 표준에 맞게 재검토할 때.
+- `/alfred:0-project` 등의 초기화 워크플로우에서 설정 검증이 필요할 때.
 
-## 핵심 원칙
+## What it does
+- 다섯 핵심 구성요소를 공식 템플릿으로 생성·갱신합니다.
+- 허용 도구, 모델 선택, progressive disclosure 링크를 검증합니다.
+- templates/·scripts/ 리소스를 통해 재사용 가능한 스텁과 검증 절차를 제공합니다.
 
-- **공식 표준 준수**: Anthropic 가이드라인 완벽 준수
-- **할루시네이션 방지**: 검증된 템플릿만 사용
-- **최소 권한**: 필요한 도구만 명시
-- **보안 우선**: 민감 정보 환경변수 관리
+## Inputs
+- 사용자의 구성 요청(예: “새 커맨드 추가”, “settings.json 검토”)과 현재 `.claude/` 디렉터리 상태.
+- 프로젝트별 템플릿 요구사항 또는 보안/권한 정책.
 
----
+## Outputs
+- `.claude/agents|commands|skills/` 하위에 정식 마크다운 정의 파일.
+- 최신 설정이 반영된 `.claude/settings.json`과 허용 도구·후속 TODO가 정리된 요약본.
 
-**공식 문서**: https://docs.claude.com/en/docs/claude-code/skills
-**버전**: 1.0.0
+## Failure Modes
+- 템플릿 경로나 placeholder가 최신 버전과 어긋나 결과물이 손상될 수 있습니다.
+- settings.json 권한 정책이 프로젝트 규칙과 충돌하거나 검증 스크립트 실행이 차단될 수 있습니다.
+
+## Dependencies
+- cc-manager, doc-syncer, moai-foundation-git과 함께 사용하면 생성→검증→배포 흐름이 완성됩니다.
+- templates/ 및 scripts/ 디렉터리에 버전 관리된 리소스가 있어야 자동화가 정상 작동합니다.
+
+## References
+- Anthropic. "Claude Code Style Guide." https://docs.claude.com/ (accessed 2025-03-29).
+- Prettier. "Opinionated Code Formatter." https://prettier.io/docs/en/ (accessed 2025-03-29).
+
+## Changelog
+- 2025-03-29: Claude 코드 포맷 스킬에 베스트 프랙티스 구조를 추가했습니다.

@@ -16,9 +16,9 @@ Provides R-specific expertise for TDD development, including testthat testing fr
 
 ## When to use
 
-- "R 테스트 작성", "testthat 사용법", "데이터 분석 패턴"
+- “Writing R tests”, “How to use testthat”, “Data analysis patterns”
 - Automatically invoked when working with R projects
-- R SPEC implementation (`/alfred:2-build`)
+- R SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -54,11 +54,11 @@ Provides R-specific expertise for TDD development, including testthat testing fr
 ## Examples
 
 ### Example 1: TDD with testthat
-User: "/alfred:2-build ANALYSIS-001"
+User: "/alfred:2-run ANALYSIS-001"
 Claude: (creates RED test with testthat, GREEN implementation, REFACTOR with tidyverse)
 
 ### Example 2: Linting check
-User: "lintr 실행"
+User: "Run lintr"
 Claude: (runs lintr::lint_package() and reports style issues)
 
 ## Works well with

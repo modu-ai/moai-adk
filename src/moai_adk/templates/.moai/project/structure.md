@@ -13,144 +13,144 @@ priority: medium
 ## HISTORY
 
 ### v0.1.1 (2025-10-17)
-- **UPDATED**: 템플릿 버전 동기화 (v0.3.8)
+- **UPDATED**: Template version synced (v0.3.8)
 - **AUTHOR**: @Alfred
-- **SECTIONS**: 메타데이터 표준화 (author 필드 단수형, priority 추가)
+- **SECTIONS**: Metadata standardization (single `author` field, added `priority`)
 
 ### v0.1.0 (2025-10-01)
-- **INITIAL**: 프로젝트 구조 설계 문서 작성
+- **INITIAL**: Authored the structure design document
 - **AUTHOR**: @architect
 - **SECTIONS**: Architecture, Modules, Integration, Traceability
 
 ---
 
-## @DOC:ARCHITECTURE-001 시스템 아키텍처
+## @DOC:ARCHITECTURE-001 System Architecture
 
-### 아키텍처 전략
+### Architectural Strategy
 
-**[프로젝트의 전체 아키텍처 접근법을 설명하세요]**
+**[Describe the end-to-end architectural approach for the project]**
 
 ```
 Project Architecture
-├── [Layer 1]          # [역할 설명]
-├── [Layer 2]          # [역할 설명]
-├── [Layer 3]          # [역할 설명]
-└── [Layer 4]          # [역할 설명]
+- [Layer 1]          # [Describe its responsibilities]
+- [Layer 2]          # [Describe its responsibilities]
+- [Layer 3]          # [Describe its responsibilities]
+- [Layer 4]          # [Describe its responsibilities]
 ```
 
-**선택 이유**: [아키텍처 선택의 근거와 트레이드오프]
+**Rationale**: [Explain the trade-offs behind the chosen architecture]
 
-## @DOC:MODULES-001 모듈별 책임 구분
+## @DOC:MODULES-001 Module Responsibilities
 
-### 1. [주요 모듈 1]
+### 1. [Primary Module 1]
 
-- **책임**: [모듈의 주요 책임]
-- **입력**: [처리하는 입력 데이터]
-- **처리**: [수행하는 주요 처리 과정]
-- **출력**: [생성하는 결과물]
+- **Responsibilities**: [Key duties of the module]
+- **Inputs**: [Data it consumes]
+- **Processing**: [Core processing steps]
+- **Outputs**: [Produced artifacts]
 
-| 컴포넌트 | 역할 | 주요 기능 |
-|----------|------|-----------|
-| [컴포넌트1] | [역할] | [기능 목록] |
-| [컴포넌트2] | [역할] | [기능 목록] |
+| Component     | Role   | Key Capabilities |
+| ------------- | ------ | ---------------- |
+| [Component 1] | [Role] | [Feature list]   |
+| [Component 2] | [Role] | [Feature list]   |
 
-### 2. [주요 모듈 2]
+### 2. [Primary Module 2]
 
-- **책임**: [모듈의 주요 책임]
-- **입력**: [처리하는 입력 데이터]
-- **처리**: [수행하는 주요 처리 과정]
-- **출력**: [생성하는 결과물]
+- **Responsibilities**: [Key duties of the module]
+- **Inputs**: [Data it consumes]
+- **Processing**: [Core processing steps]
+- **Outputs**: [Produced artifacts]
 
-## @DOC:INTEGRATION-001 외부 시스템 통합
+## @DOC:INTEGRATION-001 External Integrations
 
-### [외부 시스템 1] 연동
+### [External System 1] Integration
 
-- **인증 방식**: [인증 방법]
-- **데이터 교환**: [데이터 형식과 프로토콜]
-- **장애 시 대체**: [fallback 전략]
-- **위험도**: [리스크 수준과 완화 방안]
+- **Authentication**: [Method used]
+- **Data Exchange**: [Formats and protocols]
+- **Failure Handling**: [Fallback strategy]
+- **Risk Level**: [Risk profile and mitigation]
 
-### [외부 시스템 2] 연동
+### [External System 2] Integration
 
-- **용도**: [사용 목적]
-- **의존성 수준**: [의존도와 대안]
-- **성능 요구사항**: [응답 시간, 처리량 등]
+- **Purpose**: [Why it is used]
+- **Dependency Level**: [Degree of reliance and alternatives]
+- **Performance Requirements**: [Latency, throughput, etc.]
 
-## @DOC:TRACEABILITY-001 추적성 전략
+## @DOC:TRACEABILITY-001 Traceability Strategy
 
-### TAG 체계 적용
+### Applying the TAG Framework
 
-**TDD 완벽 정렬**: SPEC → 테스트 → 구현 → 문서
-- `@SPEC:ID` (.moai/specs/) → `@TEST:ID` (tests/) → `@CODE:ID` (src/) → `@DOC:ID` (docs/)
+**Full TDD Alignment**: SPEC → Tests → Implementation → Documentation
+- `@SPEC:ID` (`.moai/specs/`) → `@TEST:ID` (`tests/`) → `@CODE:ID` (`src/`) → `@DOC:ID` (`docs/`)
 
-**구현 세부사항**: @CODE:ID 내부 주석 레벨
-- `@CODE:ID:API` - REST API, GraphQL 엔드포인트
-- `@CODE:ID:UI` - 컴포넌트, 뷰, 화면
-- `@CODE:ID:DATA` - 데이터 모델, 스키마, 타입
-- `@CODE:ID:DOMAIN` - 비즈니스 로직, 도메인 규칙
-- `@CODE:ID:INFRA` - 인프라, 데이터베이스, 외부 연동
+**Implementation Detail Levels**: Annotation within `@CODE:ID`
+- `@CODE:ID:API` – REST APIs, GraphQL endpoints
+- `@CODE:ID:UI` – Components, views, screens
+- `@CODE:ID:DATA` – Data models, schemas, types
+- `@CODE:ID:DOMAIN` – Business logic, domain rules
+- `@CODE:ID:INFRA` – Infrastructure, databases, integrations
 
-### TAG 추적성 관리 (코드 스캔 방식)
+### Managing TAG Traceability (Code-Scan Approach)
 
-- **검증 방법**: `/alfred:3-sync` 실행 시 `rg '@(SPEC|TEST|CODE|DOC):' -n`으로 코드 전체 스캔
-- **추적 범위**: 프로젝트 전체 소스코드 (.moai/specs/, tests/, src/, docs/)
-- **유지 주기**: 코드 변경 시점마다 실시간 검증
-- **CODE-FIRST 원칙**: TAG의 진실은 코드 자체에만 존재
+- **Verification**: Run `/alfred:3-sync`, which scans with `rg '@(SPEC|TEST|CODE|DOC):' -n`
+- **Coverage**: Full project source (`.moai/specs/`, `tests/`, `src/`, `docs/`)
+- **Cadence**: Validate whenever the code changes
+- **Code-First Principle**: TAG truth lives in the source itself
 
 ## Legacy Context
 
-### 기존 시스템 현황
+### Current System Snapshot
 
-**[현재 시스템이나 기존 자산에 대한 설명]**
+**[Describe the existing system or assets]**
 
 ```
-기존 구조/
-├── [기존 컴포넌트1]/     # [현재 상태]
-├── [기존 컴포넌트2]/     # [현재 상태]
-└── [기존 컴포넌트3]/     # [현재 상태]
+Current System/
+├── [Component 1]/     # [Current state]
+├── [Component 2]/     # [Current state]
+└── [Component 3]/     # [Current state]
 ```
 
-### 마이그레이션 고려사항
+### Migration Considerations
 
-1. **[마이그레이션 항목 1]** - [계획과 우선순위]
-2. **[마이그레이션 항목 2]** - [계획과 우선순위]
-3. **[마이그레이션 항목 3]** - [계획과 우선순위]
+1. **[Migration item 1]** – [Plan and priority]
+2. **[Migration item 2]** – [Plan and priority]
+3. **[Migration item 3]** – [Plan and priority]
 
-## TODO:STRUCTURE-001 구조 개선 계획
+## TODO:STRUCTURE-001 Structural Improvements
 
-1. **모듈 간 인터페이스 정의** - [계획 내용]
-2. **의존성 관리 전략** - [계획 내용]
-3. **확장성 확보 방안** - [계획 내용]
+1. **Define module interfaces** – [Plan details]
+2. **Dependency management strategy** – [Plan details]
+3. **Scalability roadmap** – [Plan details]
 
-## EARS 아키텍처 요구사항 작성법
+## EARS for Architectural Requirements
 
-### 구조 설계에서의 EARS 활용
+### Applying EARS to Architecture
 
-아키텍처와 모듈 설계 시 EARS 구문을 활용하여 명확한 요구사항을 정의하세요:
+Use EARS patterns to write clear architectural requirements:
 
-#### 시스템 아키텍처 EARS 예시
+#### Architectural EARS Example
 ```markdown
-### Ubiquitous Requirements (아키텍처 기본 요구사항)
-- 시스템은 계층형 아키텍처를 채택해야 한다
-- 시스템은 모듈 간 느슨한 결합을 유지해야 한다
+### Ubiquitous Requirements (Baseline Architecture)
+- The system shall adopt a layered architecture.
+- The system shall maintain loose coupling across modules.
 
-### Event-driven Requirements (이벤트 기반 구조)
-- WHEN 외부 API 호출이 실패하면, 시스템은 fallback 로직을 실행해야 한다
-- WHEN 데이터 변경 이벤트가 발생하면, 시스템은 관련 모듈에 통지해야 한다
+### Event-driven Requirements
+- WHEN an external API call fails, the system shall execute fallback logic.
+- WHEN a data change event occurs, the system shall notify dependent modules.
 
-### State-driven Requirements (상태 기반 구조)
-- WHILE 시스템이 확장 모드일 때, 새로운 모듈을 동적으로 로드할 수 있어야 한다
-- WHILE 개발 모드일 때, 시스템은 상세한 디버그 정보를 제공해야 한다
+### State-driven Requirements
+- WHILE the system operates in scale-out mode, it shall load new modules dynamically.
+- WHILE in development mode, the system shall provide verbose debug information.
 
-### Optional Features (선택적 구조)
-- WHERE 클라우드 환경이면, 시스템은 분산 캐시를 활용할 수 있다
-- WHERE 고성능이 요구되면, 시스템은 메모리 캐싱을 적용할 수 있다
+### Optional Features
+- WHERE the deployment runs in the cloud, the system may use distributed caching.
+- WHERE high performance is required, the system may apply in-memory caching.
 
-### Constraints (구조적 제약사항)
-- IF 보안 레벨이 높으면, 시스템은 모든 모듈 간 통신을 암호화해야 한다
-- 각 모듈의 복잡도는 15를 초과하지 않아야 한다
+### Constraints
+- IF the security level is elevated, the system shall encrypt all inter-module communication.
+- Each module shall keep cyclomatic complexity under 15.
 ```
 
 ---
 
-_이 구조는 `/alfred:2-build` 실행 시 TDD 구현의 가이드라인이 됩니다._
+_This structure informs the TDD implementation when `/alfred:2-run` runs._

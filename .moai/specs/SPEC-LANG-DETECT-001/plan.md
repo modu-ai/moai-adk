@@ -331,11 +331,11 @@ pytest tests/unit/test_detector.py --durations=10
 
 ## 다음 단계
 
-1. `/alfred:2-build SPEC-LANG-DETECT-001` 실행
+1. `/alfred:2-run SPEC-LANG-DETECT-001` 실행
 2. TDD 사이클 진행 (RED → GREEN → REFACTOR)
 3. `/alfred:3-sync` 실행하여 문서 동기화 및 TAG 검증
 4. GitHub Issue #36 종료
 
 ---
 
-_이 계획은 `/alfred:2-build SPEC-LANG-DETECT-001` 실행 시 참조됩니다._
+_이 계획은 `/alfred:2-run SPEC-LANG-DETECT-001` 실행 시 참조됩니다._

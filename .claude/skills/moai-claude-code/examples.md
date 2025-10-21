@@ -1,84 +1,84 @@
-# Claude Code 실전 예제 모음
+# Claude Code collection of practical examples
 
-> **실제 동작하는 예제 코드**
+> **Actual working example code**
 >
-> 복사하여 바로 사용 가능한 검증된 예제
+> Proven examples that can be copied and used immediately
 
 ---
 
-## 📋 목차
+## 📋 Table of Contents
 
-1. [Agent 예제](#1-agent-예제)
-2. [Command 예제](#2-command-예제)
-3. [Skill 예제](#3-skill-예제)
-4. [Plugin 예제](#4-plugin-예제)
-5. [Settings 예제](#5-settings-예제)
+1. [Agent example](#1-agent-example)
+2. [Command example](#2-command-example)
+3. [Skill example](#3-skill-example)
+4. [Plugin example](#4-plugin-example)
+5. [Settings example](#5-settings-example)
 
 ---
 
-## 1. Agent 예제
+## 1. Agent example
 
-### 예제 1: spec-builder (MoAI-ADK)
+### Example 1: spec-builder (MoAI-ADK)
 
-**파일**: `.claude/agents/alfred/spec-builder.md`
+**File**: `.claude/agents/alfred/spec-builder.md`
 
 ```markdown
 ---
 name: spec-builder
-description: "Use when: SPEC 작성, EARS 명세, 요구사항 분석이 필요할 때"
+description: "Use when: When writing SPEC, EARS specification, and requirements analysis are necessary."
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, Bash, TodoWrite
 model: sonnet
 ---
 
-# SPEC Builder 🏗️ - 시스템 아키텍트
+# SPEC Builder 🏗️ - System Architect
 
-**MoAI-ADK SPEC 작성 전문가**
+**MoAI-ADK SPEC writing expert**
 
-## 🎭 에이전트 페르소나
+## 🎭 Agent Persona
 
-**아이콘**: 🏗️
-**직무**: 시스템 아키텍트
-**전문 영역**: SPEC 작성, EARS 명세, 요구사항 분석
-**역할**: 비즈니스 요구사항을 체계적인 SPEC으로 변환
-**목표**: 명확하고 테스트 가능한 SPEC 문서 작성
+**Icon**: 🏗️
+**Job**: System Architect
+**Area of ​​Expertise**: SPEC writing, EARS specification, requirements analysis
+**Role**: Convert business requirements into structured SPECs
+**Goal**: Create clear and testable SPEC documents.
 
-## 🎯 핵심 역할
+## 🎯 Key Role
 
-### 1. SPEC 문서 작성
-- EARS 5가지 구문 적용
-- YAML Front Matter 7개 필수 필드
-- HISTORY 섹션 관리
+### 1. Create SPEC document
+- Apply EARS 5 syntax
+- YAML Front Matter 7 required fields
+- HISTORY section management
 
-### 2. 자동 실행 조건
-- `/alfred:1-spec` 커맨드 실행 시
-- 새로운 기능 요구사항 발생 시
-- 기존 SPEC 개선 요청 시
+### 2. Auto-execution conditions
+- When executing the `/alfred:1-plan` command
+- When a new function requirement occurs
+- When requesting improvement of the existing SPEC
 
-## 📐 워크플로우
+## 📐 Workflow
 
-### STEP 1: 프로젝트 문서 분석
+### STEP 1: Project document analysis
 \`\`\`bash
-# product.md 읽기
+# read product.md
 Read .moai/project/product.md
 
-# 기존 SPEC 확인
+# Check existing SPEC
 ls .moai/specs/SPEC-*/spec.md
 \`\`\`
 
-### STEP 2: SPEC 초안 작성
+### STEP 2: Draft SPEC
 \`\`\`bash
 Write .moai/specs/SPEC-{ID}/spec.md
 \`\`\`
 
-## 💡 사용 가이드
+## 💡 User Guide
 \`\`\`bash
-@agent-spec-builder "사용자 인증 기능 SPEC 작성"
+@agent-spec-builder "Create a user authentication function SPEC"
 \`\`\`
 ```
 
-### 예제 2: code-analyzer (간단한 분석 에이전트)
+### Example 2: code-analyzer (simple analysis agent)
 
-**파일**: `.claude/agents/code-analyzer.md`
+**File**: `.claude/agents/code-analyzer.md`
 
 ```markdown
 ---
@@ -88,59 +88,59 @@ tools: Read, Grep, Bash(rg:*)
 model: haiku
 ---
 
-# Code Analyzer 🔍 - 품질 관리자
+# Code Analyzer 🔍 - Quality Manager
 
-코드 품질 지표를 분석하고 개선 제안을 제공합니다.
+Analyze code quality metrics and provide improvement suggestions.
 
-## 🎭 에이전트 페르소나
+## 🎭 Agent Persona
 
-**아이콘**: 🔍
-**직무**: 품질 관리자
-**전문 영역**: 코드 품질 분석, 린팅, 테스트 커버리지
-**역할**: 코드 품질 지표 측정 및 개선 제안
-**목표**: 높은 코드 품질 유지
+**Icon**: 🔍
+**Job**: Quality Manager
+**Area of ​​Expertise**: Code quality analysis, linting, test coverage
+**Role**: Measure code quality metrics and suggest improvements
+**Goal**: Maintain high code quality
 
-## 🎯 핵심 역할
+## 🎯 Key Role
 
-### 1. 품질 지표 수집
-- 테스트 커버리지 확인
-- 린팅 오류 검출
-- 복잡도 분석
+### 1. Collect quality indicators
+- Check test coverage
+- Detect linting errors
+- Complexity analysis
 
-### 2. 자동 실행 조건
-- 커밋 전 품질 검증 요청 시
-- PR 생성 전 자동 검증
+### 2. Conditions for automatic execution
+- When quality verification is requested before commit
+- Automatic verification before creating PR
 
-## 📐 워크플로우
+## 📐 Workflow
 
-### STEP 1: 코드 스캔
+### STEP 1: Scan code
 \`\`\`bash
 rg "@TEST:" -n tests/
 pytest --cov
 \`\`\`
 
-### STEP 2: 보고서 생성
-- 커버리지: {percentage}%
-- 린팅 오류: {count}개
+### STEP 2: Generate report
+- Coverage: {percentage}%
+- Linting errors: {count}
 
-## 💡 사용 가이드
+## 💡 User Guide
 \`\`\`bash
-@agent-code-analyzer "현재 프로젝트 품질 분석"
+@agent-code-analyzer "Analyze current project quality"
 \`\`\`
 ```
 
 ---
 
-## 2. Command 예제
+## 2. Command example
 
-### 예제 1: /alfred:1-spec (MoAI-ADK)
+### Example 1: /alfred:1-plan (MoAI-ADK)
 
-**파일**: `.claude/commands/alfred/1-spec.md`
+**File**: `.claude/commands/alfred/1-spec.md`
 
 ```markdown
 ---
 name: alfred:1-spec
-description: 프로젝트 문서 분석 및 SPEC 작성 (EARS 방식)
+description: Project document analysis and SPEC creation (EARS method)
 argument-hint: [feature-description]
 allowed-tools:
   - Read
@@ -153,50 +153,50 @@ allowed-tools:
   - Bash(git:*)
 ---
 
-# 📋 MoAI-ADK 1단계: SPEC 작성
+# 📋 MoAI-ADK Step 1: Write SPEC
 
-## 🎯 커맨드 목적
+## 🎯 Command Purpose
 
-프로젝트 문서를 분석하여 EARS 방식으로 SPEC 문서를 작성하고 Git 브랜치를 생성합니다.
+Analyze project documents, create SPEC documents using the EARS method, and create Git branches.
 
-## 💡 사용 예시
+## 💡 Example of use
 \`\`\`bash
-/alfred:1-spec "사용자 인증 기능"
+/alfred:1-plan "User authentication function"
 \`\`\`
 
-## 📋 실행 흐름
+## 📋 Execution flow
 
-1. **Phase 1**: 프로젝트 문서 분석
-   - product.md 읽기
-   - 기존 SPEC 확인
+1. **Phase 1**: Analyze project document
+ - Read product.md
+ - Check existing SPEC
 
-2. **Phase 2**: SPEC 작성
-   - EARS 방식 명세
-   - Git 브랜치 생성
+2. **Phase 2**: SPEC creation
+ - EARS method specification
+ - Git branch creation
 
-## 🔗 연관 에이전트
+## 🔗 Associated Agent
 
-- **Primary**: spec-builder (🏗️ 시스템 아키텍트)
-- **Secondary**: git-manager (🚀 릴리스 엔지니어)
+- **Primary**: spec-builder (🏗️ System Architect)
+- **Secondary**: git-manager (🚀 Release Engineer)
 
-## ⚠️ 주의사항
+## ⚠️ Precautions
 
-- SPEC ID 중복 확인 필수
-- EARS 5가지 구문 준수
+- SPEC ID duplication check required
+- Compliance with EARS 5 phrases
 
-## 📋 다음 단계
+## 📋 Next steps
 
-- `/alfred:2-build SPEC-{ID}` - TDD 구현 시작
+- `/alfred:2-run SPEC-{ID}` - Start TDD implementation
 ```
 
-### 예제 2: /deploy-api (배포 커맨드)
+### Example 2: /deploy-api (deploy command)
 
-**파일**: `.claude/commands/deploy-api.md`
+**File**: `.claude/commands/deploy-api.md`
 
 ```markdown
 ---
 name: deploy-api
-description: API 서버를 프로덕션 환경에 배포
+description: Deploy API server to production environment
 argument-hint: [environment]
 allowed-tools:
   - Read
@@ -204,86 +204,86 @@ allowed-tools:
   - Bash(npm:*)
 ---
 
-# 🚀 API 배포 커맨드
+# 🚀 API deployment command
 
-API 서버를 지정된 환경에 배포합니다.
+Deploys the API server to the specified environment.
 
-## 🎯 커맨드 목적
+## 🎯 Command Purpose
 
-Git 태그 생성 및 환경별 배포 자동화
+Automate Git tag creation and deployment by environment
 
-## 💡 사용 예시
+## 💡 Example of use
 \`\`\`bash
 /deploy-api production
 /deploy-api staging
 \`\`\`
 
-## 📋 실행 흐름
+## 📋 Execution flow
 
-1. **Phase 1**: Git 상태 확인
-   - 현재 브랜치 확인 (main 필수)
-   - 버전 태그 생성
+1. **Phase 1**: Check Git status
+ - Check current branch (main required)
+ - Create version tag
 
-2. **Phase 2**: 배포 실행
+2. **Phase 2**: Deployment execution
    - npm run build
-   - 환경별 배포 스크립트 실행
+- Execute deployment script for each environment
 
-## ⚠️ 주의사항
+## ⚠️ Precautions
 
-- main 브랜치에서만 실행 가능
-- 모든 테스트 통과 필수
+- Can only be run from the main branch
+- Must pass all tests
 ```
 
 ---
 
-## 3. Skill 예제
+## 3. Skill example
 
-### 예제 1: moai-alfred-tag-scanning
+### Example 1: moai-alfred-tag-scanning
 
-**파일**: `.claude/skills/moai-alfred-tag-scanning/SKILL.md`
+**File**: `.claude/skills/moai-alfred-tag-scanning/SKILL.md`
 
 ```markdown
 ---
 name: moai-alfred-tag-scanning
-description: TAG 마커 직접 스캔 및 인벤토리 생성 (CODE-FIRST 원칙)
+description: Directly scan TAG markers and create inventory (CODE-FIRST principle)
 model: haiku
 allowed-tools:
   - Grep
   - Read
 ---
 
-# TAG 스캐너
+# TAG scanner
 
-> CODE-FIRST 원칙: 중간 캐시 없이 코드를 직접 스캔
+> CODE-FIRST principle: scan code directly without intermediate cache
 
-## 🎯 목적
+## 🎯 Purpose
 
-`@SPEC`, `@TEST`, `@CODE`, `@DOC` TAG를 코드에서 직접 스캔합니다.
+Scan `@SPEC`, `@TEST`, `@CODE`, and `@DOC` TAGs directly from your code.
 
-## 💡 사용법
+## 💡 How to use
 
-"AUTH 도메인 TAG 목록 조회"
+“Check AUTH domain TAG list”
 
-## 📋 스캔 방법
+## 📋 How to scan
 
 \`\`\`bash
 rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/
 \`\`\`
 
-## ✅ 검증
+## ✅ Verification
 
-- 모든 `@CODE` TAG는 대응하는 `@SPEC`이 있는가?
-- 고아 TAG 없음
+- Does every `@CODE` TAG have a corresponding `@SPEC`?
+- No orphan TAGs
 ```
 
-### 예제 2: moai-alfred-feature-selector
+### Example 2: moai-alfred-feature-selector
 
-**파일**: `.claude/skills/moai-alfred-feature-selector/SKILL.md`
+**File**: `.claude/skills/moai-alfred-feature-selector/SKILL.md`
 
 ```markdown
 ---
 name: moai-alfred-feature-selector
-description: 프로젝트 유형별 최적 기능 선택 (37개 스킬 → 3~5개 자동 필터링)
+description: Select optimal functions for each project type (37 skills → automatically filter 3 to 5)
 model: haiku
 allowed-tools:
   - Read
@@ -291,34 +291,34 @@ allowed-tools:
 
 # MoAI Alfred Feature Selector
 
-> 프로젝트 특성에 맞는 MoAI-ADK 기능 자동 선택
+> Automatic selection of MoAI-ADK functions suitable for project characteristics
 
-## 🎯 목적
+## 🎯 Purpose
 
-프로젝트 유형을 분석하여 필요한 기능만 선택합니다.
+Analyze your project type and select only the features you need.
 
-## 📋 프로젝트 분류
+## 📋 Project classification
 
-### 언어별
+### By language
 - **Python**: pytest, mypy, ruff
 - **TypeScript**: Vitest, Biome
 
-### 도메인별
-- **CLI Tool**: 인자 파싱, POSIX 준수
-- **Web API**: REST/GraphQL, 인증
+### Domain-specific
+- **CLI Tool**: Argument parsing, POSIX compliance
+- **Web API**: REST/GraphQL, authentication
 
-## 💡 사용법
+## 💡 How to use
 
-"/alfred:0-project 실행 시 자동 호출"
+"Automatically called when running /alfred:0-project"
 ```
 
 ---
 
-## 4. Plugin 예제
+## 4. Plugin example
 
-### 예제 1: GitHub + Filesystem (기본)
+### Example 1: GitHub + Filesystem (default)
 
-**파일**: `.claude/settings.json` (mcpServers 섹션)
+**FILE**: `.claude/settings.json` (mcpServers section)
 
 ```json
 {
@@ -343,7 +343,7 @@ allowed-tools:
 }
 ```
 
-### 예제 2: MoAI-ADK 완전 구성
+### Example 2: Fully configured MoAI-ADK
 
 ```json
 {
@@ -379,11 +379,11 @@ allowed-tools:
 
 ---
 
-## 5. Settings 예제
+## 5. Settings example
 
-### 예제 1: Python 프로젝트
+### Example 1: Python project
 
-**파일**: `.claude/settings.json`
+**File**: `.claude/settings.json`
 
 ```json
 {
@@ -414,7 +414,7 @@ allowed-tools:
 }
 ```
 
-### 예제 2: TypeScript 프로젝트
+### Example 2: TypeScript project
 
 ```json
 {
@@ -446,7 +446,7 @@ allowed-tools:
 }
 ```
 
-### 예제 3: MoAI-ADK 프로젝트 (훅 포함)
+### Example 3: MoAI-ADK project (with hooks)
 
 ```json
 {
@@ -509,5 +509,5 @@ allowed-tools:
 
 ---
 
-**최종 업데이트**: 2025-10-19
-**작성자**: @Alfred
+**Last update**: 2025-10-19
+**Author**: @Alfred

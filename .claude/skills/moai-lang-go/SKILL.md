@@ -16,9 +16,9 @@ Provides Go-specific expertise for TDD development, including go test framework,
 
 ## When to use
 
-- "Go 테스트 작성", "go test 사용법", "Go 표준 라이브러리"
+- “Writing Go tests”, “How to use go tests”, “Go standard library”
 - Automatically invoked when working with Go projects
-- Go SPEC implementation (`/alfred:2-build`)
+- Go SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -55,11 +55,11 @@ Provides Go-specific expertise for TDD development, including go test framework,
 ## Examples
 
 ### Example 1: TDD with table-driven tests
-User: "/alfred:2-build PARSE-001"
+User: "/alfred:2-run PARSE-001"
 Claude: (creates RED test with table-driven approach, GREEN implementation, REFACTOR)
 
 ### Example 2: Coverage check
-User: "go test 커버리지 확인"
+User: "go test check coverage"
 Claude: (runs go test -cover ./... and reports coverage)
 
 ## Works well with

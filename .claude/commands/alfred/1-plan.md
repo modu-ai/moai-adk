@@ -1,7 +1,7 @@
 ---
 name: alfred:1-plan
-description: 계획 수립 (브레인스토밍, 계획 작성, 설계 논의) + 브랜치/PR 생성
-argument-hint: "제목1 제목2 ... | SPEC-ID 수정내용"
+description: Planning (brainstorming, plan writing, design discussion) + Branch/PR creation
+argument-hint: "Title 1 Title 2 ... | SPEC-ID modifications"
 allowed-tools:
   - Read
   - Write
@@ -16,411 +16,318 @@ allowed-tools:
   - Bash(mkdir:*)
 ---
 
-# 🏗️ MoAI-ADK 1단계: 계획 수립 (Plan) - 항상 계획을 먼저 세우고 진행한다
+# 🏗️ MoAI-ADK Step 1: Establish a plan (Plan) - Always make a plan first and then proceed.
+> Interactive prompts rely on `Skill("moai-alfred-tui-survey")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
 
-## 🎯 커맨드 목적
+## 🎯 Command Purpose
 
-**"계획(Plan) → 실행(Run) → 동기화(Sync)"** 워크플로우의 첫 단계로, 아이디어 구상부터 계획 작성까지 계획 수립 전반을 지원합니다.
+**"Plan → Run → Sync"** As the first step in the workflow, it supports the entire planning process from ideation to plan creation.
 
-**계획 수립 대상**: $ARGUMENTS
+**Plan for**: $ARGUMENTS
 
-## 💡 계획 철학: "항상 계획을 먼저 세우고 진행한다"
+## 💡 Planning philosophy: “Always make a plan first and then proceed.”
 
-`/alfred:1-plan`은 단순히 SPEC 문서를 "작성"하는 것이 아니라, **계획을 수립**하는 범용 커맨드입니다.
+`/alfred:1-plan` is a general-purpose command that **creates a plan**, rather than simply “creating” a SPEC document.
 
-### 3가지 주요 시나리오
+### 3 main scenarios
 
-#### 시나리오 1: 계획 작성 (주 사용 방식) ⭐
+#### Scenario 1: Creating a Plan (Primary Method) ⭐
 ```bash
-/alfred:1-plan "사용자 인증 기능"
-→ 아이디어 구체화
-→ EARS 구문으로 요구사항 명세
-→ feature/SPEC-XXX 브랜치 생성
-→ Draft PR 생성
+/alfred:1-plan "User authentication function"
+→ Refine idea
+→ Requirements specification using EARS syntax
+→ Create feature/SPEC-XXX branch
+→ Create Draft PR
 ```
 
-#### 시나리오 2: 브레인스토밍
+#### Scenario 2: Brainstorming
 ```bash
-/alfred:1-plan "결제 시스템 개선 아이디어"
-→ 아이디어 정리 및 구조화
-→ 요구사항 후보 도출
-→ 기술적 검토 및 리스크 분석
+/alfred:1-plan "Payment system improvement idea"
+→ Organizing and structuring ideas
+→ Deriving requirements candidates
+→ Technical review and risk analysis
 ```
 
-#### 시나리오 3: 기존 SPEC 개선
+#### Scenario 3: Improve existing SPEC
 ```bash
-/alfred:1-plan "SPEC-AUTH-001 보안 강화"
-→ 기존 계획 분석
-→ 개선 방향 수립
-→ 새 버전 계획 작성
+/alfred:1-plan "SPEC-AUTH-001 Security Enhancement"
+→ Analyze existing plan
+→ Establish improvement direction
+→ Create new version plan
 ```
 
-> **표준 2단계 워크플로우** (자세한 내용: `CLAUDE.md` - "Alfred 커맨드 실행 패턴" 참조)
+> **Standard two-step workflow** (see `CLAUDE.md` - "Alfred Command Execution Pattern" for details)
 
-## 📋 실행 흐름
+## 📋 Execution flow
 
-1. **프로젝트 분석**: product/structure/tech.md 심층 분석
-2. **SPEC 후보 발굴**: 비즈니스 요구사항 기반 우선순위 결정
-3. **사용자 확인**: 작성 계획 검토 및 승인
-4. **계획 작성**: EARS 구조의 명세서 생성 (spec.md, plan.md, acceptance.md)
-5. **Git 작업**: git-manager를 통한 브랜치/PR 생성
+1. **Project Analysis**: In-depth analysis of product/structure/tech.md
+2. **SPEC candidate discovery**: Prioritization based on business requirements
+3. **User Verification**: Review and approve writing plan
+4. **Plan creation**: Generate specifications of EARS structure (spec.md, plan.md, acceptance.md)
+5. **Git operations**: Create branches/PRs via git-manager
 
-## 🔗 연관 에이전트
+## 🔗 Associated Agent
 
-- **Primary**: spec-builder (🏗️ 시스템 아키텍트) - SPEC 문서 작성 전담
-- **Secondary**: git-manager (🚀 릴리스 엔지니어) - Git 브랜치/PR 생성 전담
+- **Primary**: spec-builder (🏗️ System Architect) - Dedicated to writing SPEC documents
+- **Secondary**: git-manager (🚀 Release Engineer) - Dedicated to creating Git branches/PRs
 
-## 💡 사용 예시
+## 💡 Example of use
 
-사용자가 다음과 같이 커맨드를 실행할 수 있습니다:
-- `/alfred:1-plan` - 프로젝트 문서 기반 자동 제안
-- `/alfred:1-plan "JWT 인증 시스템"` - 단일 SPEC 수동 생성
-- `/alfred:1-plan SPEC-001 "보안 보강"` - 기존 SPEC 보완
+Users can run commands like this:
+- `/alfred:1-plan` - Auto-suggestion based on project documents
+- `/alfred:1-plan "JWT authentication system"` - Manually create a single SPEC
+- `/alfred:1-plan SPEC-001 "Security hardening"` - Supplementation of existing SPEC
 
-## 🔍 STEP 1: 프로젝트 분석 및 계획 수립
+## 🔍 STEP 1: Project analysis and planning
 
-프로젝트 문서를 분석하여 SPEC 후보를 제안하고 구현 전략을 수립한 후 사용자 확인을 받습니다.
+Analyze project documents to propose SPEC candidates, establish implementation strategies, and receive user confirmation.
 
-**spec-builder 에이전트가 자동으로 필요한 문서를 로드하여 분석합니다.**
+**The spec-builder agent automatically loads and analyzes the required documents.**
 
-### 🔍 코드베이스 탐색 (선택사항)
+### 🔍 Explore the codebase (optional)
 
-**사용자 요청이 불명확하거나 기존 코드 파악이 필요한 경우** Explore 에이전트를 먼저 활용합니다:
+**If the user request is unclear or requires understanding of existing code** Use the Explore agent first:
 
 ```
-Task tool 호출 (Explore 에이전트):
+Invoking the Task tool (Explore agent):
 - subagent_type: "Explore"
-- description: "코드베이스에서 관련 파일 탐색"
-- prompt: "다음 키워드와 관련된 모든 파일을 찾아주세요: $ARGUMENTS
-          - 파일 위치 (src/, tests/, docs/)
-          - 관련 SPEC 문서 (.moai/specs/)
-          - 기존 구현 코드
-          thoroughness 레벨: medium"
+- description: "Explore related files in the codebase"
+- prompt: "Please find all files related to the following keywords: $ARGUMENTS
+ - File location (src/, tests/, docs/)
+ - Relevant SPEC document (.moai/specs/)
+ - Existing implementation code
+          thoroughness level: medium"
 ```
 
-**Explore 에이전트 사용 기준**:
-- ✅ 사용자가 "어디에 있는지", "찾아줘" 등의 키워드 사용
-- ✅ 기존 코드 구조 파악이 필요한 경우
-- ✅ 여러 파일에 걸쳐있는 기능 조사
-- ❌ 명확한 SPEC 제목이 주어진 경우 (바로 spec-builder로)
+**Criteria for using the Explore Agent**:
+- ✅ Users use keywords like “where am”, “find me”, etc.
+- ✅ Need to understand existing code structure
+- ✅ Investigate features across multiple files
+- ❌ Given a clear SPEC title (straight into spec-builder)
 
-### ⚙️ 에이전트 호출 방법
+### ⚙️ How to call an agent
 
-**STEP 1에서는 Task tool을 사용하여 spec-builder 에이전트를 호출합니다**:
+**STEP 1 calls the spec-builder agent using the Task tool**:
 
 ```
-Task tool 호출:
+Call the Task tool:
 - subagent_type: "spec-builder"
-- description: "계획 분석 및 작성 계획 수립"
-- prompt: "프로젝트 문서를 분석하여 SPEC 후보를 제안해주세요.
-          분석 모드로 실행하며, 다음을 포함해야 합니다:
-          1. product/structure/tech.md 심층 분석
-          2. SPEC 후보 발굴 및 우선순위 결정
-          3. EARS 구조 설계
-          4. 사용자 승인 대기
-          사용자 입력: $ARGUMENTS
-          (선택) Explore 결과: $EXPLORE_RESULTS"
+- description: "Analyze the plan and establish a plan"
+- prompt: "Please analyze the project document and suggest SPEC candidates.
+ Run in analysis mode, and must include the following:
+ 1. In-depth analysis of product/structure/tech.md
+ 2. Identify SPEC candidates and Determine priorities
+ 3. Design EARS structure
+ 4. Wait for user approval
+ User input: $ARGUMENTS
+ (Optional) Explore results: $EXPLORE_RESULTS"
 ```
 
-### 계획 분석 진행
+### Plan analysis progress
 
-1. **프로젝트 문서 분석**
-   - product/structure/tech.md 심층 분석
-   - 기존 SPEC 목록 및 우선순위 검토 (.moai/specs/ 스캔)
-   - 구현 가능성 및 복잡도 평가
-   - (선택) Explore 결과 반영하여 기존 코드 구조 파악
+1. **Project document analysis**
+ - In-depth analysis of product/structure/tech.md
+ - Review existing SPEC list and priorities (.moai/specs/ scan)
+ - Evaluate implementation feasibility and complexity
+ - (Optional) Identify existing code structure by reflecting the Explore results
 
-2. **SPEC 후보 발굴**
-   - 핵심 비즈니스 요구사항 추출
-   - 기술적 제약사항 반영
-   - 우선순위별 SPEC 후보 리스트 생성
+2. **Discovering SPEC candidates**
+ - Extracting core business requirements
+ - Reflecting technical constraints
+ - Creating a list of SPEC candidates by priority
 
-3. **구현 계획 보고**
-   - 단계별 계획 작성 계획 제시
-   - 예상 작업 범위 및 의존성 분석
-   - EARS 구조 및 Acceptance Criteria 설계
+3. **Implementation plan report**
+ - Present step-by-step plan creation plan
+ - Estimated scope of work and dependency analysis
+ - Design EARS structure and Acceptance Criteria
 
-### 1.4 사용자 승인 대기 (AskUserQuestion)
+### User verification steps
 
-Alfred는 spec-builder의 계획 보고서를 받은 후, **AskUserQuestion 도구를 호출하여 사용자 승인을 받습니다**:
-
-```typescript
-AskUserQuestion({
-  questions: [{
-    question: "spec-builder가 제시한 계획으로 SPEC 작성을 진행하시겠습니까?",
-    header: "Phase 2 승인",
-    options: [
-      { label: "진행", description: "승인된 계획대로 SPEC 작성 시작" },
-      { label: "수정", description: "계획 재수립 (Phase 1 반복)" },
-      { label: "중단", description: "작업 취소" }
-    ],
-    multiSelect: false
-  }]
-})
-```
-
-**응답 처리**:
-- **"진행"** (`answers["0"] === "진행"`) → Phase 2 실행
-- **"수정"** (`answers["0"] === "수정"`) → Phase 1 반복 (spec-builder 재호출)
-- **"중단"** (`answers["0"] === "중단"`) → 작업 종료
+After reviewing your implementation plan, Alfred invokes `Skill("moai-alfred-tui-survey")` to present the following options:
+- **"Go"** or **"Start"**: Start writing the plan as planned
+- **"Modify [Content]"**: Request modifications to the plan
+- **"Stop"**: Stop writing the plan
 
 ---
 
-## 🚀 STEP 2: 계획 문서 작성 (사용자 승인 후)
+## 🚀 STEP 2: Create plan document (after user approval)
 
-사용자 승인 후 **Task tool을 사용하여 spec-builder와 git-manager 에이전트를 호출**합니다.
+After user approval (collected via `Skill("moai-alfred-tui-survey")`), call the spec-builder and git-manager agents using the **Task tool**.
 
-### ⚙️ 에이전트 호출 방법
+### ⚙️ How to call an agent
 
 ```
-1. spec-builder 호출 (계획 작성):
+1. Call spec-builder (create plan):
    - subagent_type: "spec-builder"
-   - description: "SPEC 문서 작성"
-   - prompt: "STEP 1에서 승인된 계획에 따라 SPEC 문서를 작성해주세요.
-             EARS 구조의 명세서를 생성합니다."
+- description: "Create SPEC document"
+ - prompt: "Please fill out the SPEC document according to the plan approved in STEP 1.
+ Create a specification for the EARS structure."
 
-2. git-manager 호출 (Git 작업):
+2. Invoke git-manager (Git task):
    - subagent_type: "git-manager"
-   - description: "Git 브랜치/PR 생성"
-   - prompt: "계획 작성 완료 후 브랜치와 Draft PR을 생성해주세요."
+- description: "Create Git branch/PR"
+ - prompt: "After completing the plan, please create a branch and Draft PR."
 ```
 
-### 2.1 Alfred Skills 자동 활성화
+## function
 
-spec-builder가 SPEC 문서를 작성 완료한 후, **Alfred는 자동으로 상황을 분석하여 적절한 Skills를 호출합니다**.
+- **Project document analysis**: Analyzes `.moai/project/{product,structure,tech}.md` to suggest implementation candidates and generates SPEC after user approval.
+- **Personal mode**: Create a `.moai/specs/SPEC-{ID}/` directory and a template document (**Directory name format required**: `SPEC-` prefix + TAG ID).
+- **Team mode**: Create a GitHub Issue (or Discussion) Associate it with a branch template.
 
-**자동 활성화 조건** (CLAUDE.md - "Alfred 지능형 오케스트레이션" 참조):
+## How to use
 
-| 조건 | 자동 선택 Skill | 목적 |
-|------|----------------|------|
-| SPEC 파일 생성됨 | moai-alfred-spec-metadata | 필수 필드 7개 + 선택 필드 9개 검증 |
-| SPEC 작성 중 | moai-alfred-ears-authoring | EARS 구문 참조 (검증만) |
+The user executes the command in the form:
+- `/alfred:1-plan` - Auto-suggestion based on project documents (recommended)
+- `/alfred:1-plan "JWT Authentication System"` - Manually create a single SPEC
+- `/alfred:1-plan SPEC-001 "Security Reinforcement"` - Supplementation of existing SPEC
 
-**실행 흐름**:
-```
-1. spec-builder 완료
-    ↓
-2. Alfred 조건 체크:
-   - ✅ SPEC 문서 생성됨? (.moai/specs/SPEC-*/spec.md)
-    ↓
-3. Alfred 자동 실행:
-   - Skill("moai-alfred-spec-metadata")
-    ↓
-4. 검증 결과 처리:
-   - ✅ PASS → git-manager 호출
-   - ⚠️ WARNING → 사용자 알림 (계속 진행 가능)
-   - ❌ CRITICAL → 수정 권장
-```
+If not entered, 3 to 5 priorities will be suggested based on the Q&A results, and only the approved items will be confirmed as actual SPECs.
 
-**참고**: Skills 호출은 Alfred가 자동으로 수행하므로, 커맨드는 "자동 활성화 조건"만 명시합니다.
+## Summary of processing by mode
 
-### 2.2 Sub-agent AskUserQuestion (Nested)
+| mode     | output                                                                     | Branch Strategy                                     | Additional Actions                                  |
+| -------- | -------------------------------------------------------------------------- | --------------------------------------------------- | --------------------------------------------------- |
+| Personal | Templates `.moai/specs/SPEC-XXX/spec.md`, `plan.md`, `acceptance.md`, etc. | Branch from `main` or `develop` (based on settings) | git-manager agent automatically creates checkpoints |
+| Team     | GitHub Issue (`[SPEC-XXX] Title`), Draft PR (optional)                     | **Always branch from `develop`** (GitFlow standard) | `gh` CLI stay logged in, Draft PR → develop created |
 
-**spec-builder 에이전트는 내부적으로 AskUserQuestion을 호출**하여 세부 작업을 확인할 수 있습니다.
+## Input options
 
-**호출 시점**:
-- 기존 SPEC 파일 덮어쓰기 전
-- 중요한 메타데이터 변경 시
-- 복잡한 EARS 구조 선택 시
+- **Automatic suggestion**: `/alfred:1-plan` → Create a list of candidates based on the core bullet of the project document
+- **Manual creation**: Pass the title as an argument → Create only 1 case, Acceptance template is supplemented after reply
+- **Supplementation mode**: `SPEC-ID Delivered in “memo” format → Update existing SPEC document/Issue
 
-**예시** (spec-builder 내부):
-```typescript
-AskUserQuestion({
-  questions: [{
-    question: "기존 SPEC-AUTH-001.md 파일이 존재합니다. 어떻게 처리하시겠습니까?",
-    header: "파일 덮어쓰기 확인",
-    options: [
-      { label: "덮어쓰기", description: "기존 파일 백업 후 새 내용으로 교체" },
-      { label: "병합", description: "기존 내용과 새 내용 병합" },
-      { label: "건너뛰기", description: "기존 파일 유지" }
-    ],
-    multiSelect: false
-  }]
-})
-```
+## 📋 STEP 1 Execution Guide: Project Analysis and Planning
 
-**Nested 패턴**:
-- **커맨드 레벨** (Phase 승인): Alfred가 호출 → "Phase 2 진행할까요?"
-- **Sub-agent 레벨** (세부 확인): spec-builder가 호출 → "파일 덮어쓸까요?"
+### ⚠️ Essential rules: Directory naming convention
 
-### 2.3 순차 실행 의존성
+**Format that must be followed**: `.moai/specs/SPEC-{ID}/`
 
-Alfred는 다음 순서로 **순차 실행**합니다 (병렬 실행 불가):
-
-**작업 순서**:
-```
-1. spec-builder (SPEC 작성)
-   ↓ (의존성: SPEC 파일 필요)
-2. moai-alfred-spec-metadata (검증)
-   ↓ (의존성: 검증 완료 후)
-3. git-manager (브랜치/PR 생성)
-```
-
-**이유**: 각 단계가 이전 단계의 결과에 의존하므로 순차 실행 필수
-
-**참고**: Alfred가 의존성을 자동 분석하여 실행 순서를 결정합니다 (CLAUDE.md - "Alfred 지능형 오케스트레이션" 참조).
-
----
-
-## 기능
-
-- **프로젝트 문서 분석**: `.moai/project/{product,structure,tech}.md`를 분석해 구현 후보를 제안하고 사용자 승인 후 SPEC을 생성합니다.
-- **Personal 모드**: `.moai/specs/SPEC-{ID}/` 디렉터리와 템플릿 문서를 만듭니다 (**디렉토리명 형식 필수**: `SPEC-` 접두어 + TAG ID).
-- **Team 모드**: GitHub Issue(또는 Discussion)를 생성하고 브랜치 템플릿과 연결합니다.
-
-## 사용법
-
-사용자가 다음과 같은 형태로 커맨드를 실행합니다:
-- `/alfred:1-plan` - 프로젝트 문서 기반 자동 제안 (권장)
-- `/alfred:1-plan "JWT 인증 시스템"` - 단일 SPEC 수동 생성
-- `/alfred:1-plan SPEC-001 "보안 보강"` - 기존 SPEC 보완
-
-입력하지 않으면 Q&A 결과를 기반으로 우선순위 3~5건을 제안하며, 승인한 항목만 실제 SPEC으로 확정됩니다.
-
-## 모드별 처리 요약
-
-| 모드     | 산출물                                                               | 브랜치 전략                                     | 추가 작업                                       |
-| -------- | -------------------------------------------------------------------- | ----------------------------------------------- | ----------------------------------------------- |
-| Personal | `.moai/specs/SPEC-XXX/spec.md`, `plan.md`, `acceptance.md` 등 템플릿 | `main` 또는 `develop`에서 분기 (설정 기준)      | git-manager 에이전트가 자동으로 체크포인트 생성 |
-| Team     | GitHub Issue(`[SPEC-XXX] 제목`), Draft PR(옵션)                      | **항상 `develop`에서 분기** (GitFlow 표준)      | `gh` CLI 로그인 유지, Draft PR → develop 생성   |
-
-## 입력 옵션
-
-- **자동 제안**: `/alfred:1-plan` → 프로젝트 문서 핵심 bullet을 기반으로 후보 리스트 작성
-- **수동 생성**: 제목을 인수로 전달 → 1건만 생성, Acceptance 템플릿은 회신 후 보완
-- **보완 모드**: `SPEC-ID "메모"` 형식으로 전달 → 기존 SPEC 문서/Issue를 업데이트
-
-## 📋 STEP 1 실행 가이드: 프로젝트 분석 및 계획 수립
-
-### ⚠️ 필수 규칙: 디렉토리 명명 규칙
-
-**반드시 준수해야 할 형식**: `.moai/specs/SPEC-{ID}/`
-
-**올바른 예시**:
+**Correct Example**:
 - ✅ `SPEC-AUTH-001/`
 - ✅ `SPEC-REFACTOR-001/`
 - ✅ `SPEC-UPDATE-REFACTOR-001/`
 
-**잘못된 예시**:
-- ❌ `AUTH-001/` (SPEC- 접두어 누락)
-- ❌ `SPEC-001-auth/` (ID 뒤 추가 텍스트)
-- ❌ `SPEC-AUTH-001-jwt/` (ID 뒤 추가 텍스트)
+**Incorrect example**:
+- ❌ `AUTH-001/` (missing SPEC- prefix)
+- ❌ `SPEC-001-auth/` (additional text after ID)
+- ❌ `SPEC-AUTH-001-jwt/` (additional text after ID)
 
-**중복 확인 필수**: 새 SPEC ID를 생성하기 전에 반드시 기존 TAG ID를 검색하여 중복을 방지합니다.
+**Duplicate check required**: Before creating a new SPEC ID, be sure to search the existing TAG ID to prevent duplication.
 
-**복합 도메인 규칙**:
-- ✅ 허용: `UPDATE-REFACTOR-001` (2개 도메인)
-- ⚠️ 주의: `UPDATE-REFACTOR-FIX-001` (3개 이상 도메인, 단순화 권장)
+**Composite Domain Rules**:
+- ✅ Allow: `UPDATE-REFACTOR-001` (2 domains)
+- ⚠️ Caution: `UPDATE-REFACTOR-FIX-001` (3+ domains, simplification recommended)
 
 ---
 
-### 1. 프로젝트 문서 분석
+### 1. Analysis of project documents
 
-Alfred는 spec-builder 에이전트를 호출하여 프로젝트 문서 기반 계획 분석 및 계획 수립을 수행합니다.
+Alfred calls the spec-builder agent to perform project document-based planning analysis and planning.
 
-#### 분석 체크리스트
+#### Analysis Checklist
 
-- [ ] **요구사항 추출**: product.md의 핵심 비즈니스 요구사항 파악
-- [ ] **아키텍처 제약**: structure.md의 시스템 설계 제약사항 확인
-- [ ] **기술적 제약**: tech.md의 기술 스택 및 품질 정책
-- [ ] **기존 SPEC**: 현재 SPEC 목록 및 우선순위 검토
+- [ ] **Requirements extraction**: Identify key business requirements in product.md
+- [ ] **Architectural constraints**: Identify system design constraints in structure.md
+- [ ] **Technical constraints**: Technology stack and quality policy in tech.md
+- [ ] **Existing SPEC**: Review current SPEC list and priorities
 
-### 2. SPEC 후보 발굴 전략
+### 2. SPEC candidate discovery strategy
 
-#### 우선순위 결정 기준
+#### Prioritization criteria
 
-| 우선순위 | 기준 | SPEC 후보 유형 |
-|---------|------|----------------|
-| **높음** | 핵심 비즈니스 가치 | 사용자 핵심 기능, API 설계 |
-| **중간** | 시스템 안정성 | 인증/보안, 데이터 관리 |
-| **낮음** | 개선 및 확장 | UI/UX 개선, 성능 최적화 |
+| Priority   | standards                   | SPEC Candidate Type                         |
+| ---------- | --------------------------- | ------------------------------------------- |
+| **High**   | Core Business Values ​​     | User core functions, API design             |
+| **Medium** | System Stability            | Authentication/Security, Data Management    |
+| **Low**    | Improvements and expansions | UI/UX improvement, performance optimization |
 
-#### SPEC 타입별 접근법
+#### Approach by SPEC type
 
-- **API/백엔드**: 엔드포인트 설계, 데이터 모델, 인증
-- **프론트엔드**: 사용자 인터페이스, 상태 관리, 라우팅
-- **인프라**: 배포, 모니터링, 보안 정책
-- **품질**: 테스트 전략, 성능 기준, 문서화
+- **API/Backend**: Endpoint design, data model, authentication
+- **Frontend**: User interface, state management, routing
+- **Infrastructure**: Deployment, monitoring, security policy
+- **Quality**: Test strategy, performance criteria, documentation
 
-### 3. 계획 작성 계획 보고서 생성
+### 3. Create a plan Create a plan report
 
-다음 형식으로 계획을 제시합니다:
+Present your plan in the following format:
 
 ```
-## 계획 작성 계획 보고서: [TARGET]
+## Plan Creation Plan Report: [TARGET]
 
-### 📊 분석 결과
-- **발굴된 SPEC 후보**: [개수 및 카테고리]
-- **우선순위 높음**: [핵심 SPEC 목록]
-- **예상 작업시간**: [시간 산정]
+### 📊 Analysis Results
+- **Discovered SPEC Candidates**: [Number and Category]
+- **High Priority**: [List of Core SPECs]
+- **Estimated Work Time**: [Time Estimation]
 
-### 🎯 작성 전략
-- **선택된 SPEC**: [작성할 SPEC ID 및 제목]
-- **EARS 구조**: [Event-Action-Response-State 설계]
-- **Acceptance Criteria**: [Given-When-Then 시나리오]
+### 🎯 Writing Strategy
+- **Selected SPEC**: [SPEC ID and Title to Write]
+- **EARS Structure**: [Event-Action-Response-State Design]
+- **Acceptance Criteria**: [Given-When-Then Scenario]
 
-### 📦 기술 스택 및 라이브러리 버전 (선택사항)
-**기술 스택이 계획 작성 단계에서 결정되는 경우에만 포함**:
-- **웹 검색**: `WebSearch`를 통해 사용할 주요 라이브러리의 최신 안정 버전 확인
-- **버전 명시**: 라이브러리별 정확한 버전 명시 (예: `fastapi>=0.118.3`)
-- **안정성 우선**: 베타/알파 버전 제외, 프로덕션 안정 버전만 선택
-- **참고**: 상세 버전은 `/alfred:2-build` 단계에서 최종 확정
+### 📦 Technology stack and library versions (optional)
+**Included only if technology stack is determined during planning stage**:
+- **Web search**: Use `WebSearch` to find the latest stable versions of key libraries to use
+- **Specify versions**: Specify exact versions for each library, e.g. `fastapi>=0.118.3`)
+- **Stability priority**: Exclude beta/alpha versions, select only production stable versions
+- **Note**: Detailed version is finalized in `/alfred:2-run` stage
 
-### ⚠️ 주의사항
-- **기술적 제약**: [고려해야 할 제약사항]
-- **의존성**: [다른 SPEC과의 연관성]
-- **브랜치 전략**: [Personal/Team 모드별 처리]
+### ⚠️ Precautions
+- **Technical constraints**: [Restraints to consider]
+- **Dependency**: [Relevance with other SPECs]
+- **Branch strategy**: [Processing by Personal/Team mode]
 
-### ✅ 예상 산출물
-- **spec.md**: [EARS 구조의 핵심 명세]
-- **plan.md**: [구현 계획서]
-- **acceptance.md**: [인수 기준]
-- **브랜치/PR**: [모드별 Git 작업]
+### ✅ Expected deliverables
+- **spec.md**: [Core specifications of the EARS structure]
+- **plan.md**: [Implementation plan]
+- **acceptance.md**: [Acceptance criteria]
+- **Branches/PR**: [Git operations by mode]
 
 ---
-**승인 요청**: 위 계획으로 계획 작성을 진행하시겠습니까?
-("진행", "수정 [내용]", "중단" 중 선택)
+**Approval Request**: Would you like to proceed with creating a plan with the above plan?
+ (Choose between “Proceed,” “Modify [Content],” or “Abort”)
 ```
 
 ---
 
-## 🚀 STEP 2 실행 가이드: 계획 작성 (승인 후)
+## 🚀 STEP 2 Implementation Guide: Create a Plan (After Approval)
 
-사용자가 **"진행"** 또는 **"시작"**을 선택한 경우에만 Alfred는 spec-builder 에이전트를 호출하여 SPEC 문서 작성을 시작합니다.
+Only if the user selects **"Proceed"** or **"Start"** will Alfred call the spec-builder agent to begin building the SPEC document.
 
-### EARS 명세 작성 가이드
+### EARS specification writing guide
 
-1. **Event**: 시스템에 발생하는 트리거 이벤트 정의
-2. **Action**: 이벤트에 대한 시스템의 행동 명세
-3. **Response**: 행동의 결과로 나타나는 응답 정의
-4. **State**: 시스템 상태 변화 및 부작용 명시
+1. **Event**: Define trigger events that occur in the system
+2. **Action**: Specification of the system's action for an event
+3. **Response**: Defining a response as a result of an action
+4. **State**: Specifies system state changes and side effects
 
-**예시** (상세 내용은 `development-guide.md` 참조):
+**Example** (see `development-guide.md` for details):
 ```markdown
-### Ubiquitous Requirements (기본 요구사항)
-- 시스템은 사용자 인증 기능을 제공해야 한다
+### Ubiquitous Requirements
+- The system must provide user authentication functionality
 
-### Event-driven Requirements (이벤트 기반)
-- WHEN 사용자가 유효한 자격증명으로 로그인하면, 시스템은 JWT 토큰을 발급해야 한다
+### Event-driven Requirements
+- WHEN the user logs in with valid credentials, the system must issue a JWT token
 
-### State-driven Requirements (상태 기반)
-- WHILE 토큰이 만료되지 않은 상태일 때, 시스템은 보호된 리소스에 대한 접근을 허용해야 한다
+### State-driven Requirements
+- When the WHILE token is in an unexpired state, the system must allow access to the protected resource.
 
-### Constraints (제약사항)
-- IF 토큰이 만료되었으면, 시스템은 401 Unauthorized 응답을 반환해야 한다
+### Constraints
+- If the IF token has expired, the system must return a 401 Unauthorized response.
 ```
 
-### 📄 SPEC 문서 템플릿
+### 📄 SPEC Document Template
 
-#### YAML Front Matter 스키마
+#### YAML Front Matter Schema
 
-> **📋 SPEC 메타데이터 표준 (SSOT)**: `.moai/memory/spec-metadata.md`
+> **📋 SPEC Metadata Standard (SSOT)**: `.moai/memory/spec-metadata.md`
 
-**spec.md 파일 상단에 반드시 포함**해야 하는 메타데이터:
-- **필수 필드 7개**: id, version, status, created, updated, author, priority
-- **선택 필드 9개**: category, labels, depends_on, blocks, related_specs, related_issue, scope
+**Metadata that must be included** at the top of the spec.md file:
+- **7 required fields**: id, version, status, created, updated, author, priority
+- **9 optional fields**: category, labels, depends_on, blocks, related_specs, related_issue, scope
 
-**간단한 참조 예시**:
+**Simple reference example**:
 ```yaml
 ---
 id: AUTH-001
@@ -433,56 +340,56 @@ priority: high
 ---
 ```
 
-**핵심 규칙**:
-- **id**: TAG ID와 동일 (`<도메인>-<3자리>`) - 생성 후 절대 변경 금지
-  - **디렉토리명**: `.moai/specs/SPEC-{ID}/` (예: `SPEC-AUTH-001/`)
-  - **중복 확인**: `rg "@SPEC:{ID}" -n .moai/specs/` 필수
-- **version**: v0.0.1 (INITIAL) → v0.1.0 (구현 완료) → v1.0.0 (안정화)
-- **author**: GitHub ID 앞에 @ 접두사 필수 (예: `@Goos`)
+**Core rules**:
+- **id**: Same as TAG ID (`<domain>-<3 digits>`) - Never change after creation
+ - **Directory name**: `.moai/specs/SPEC-{ID}/` (e.g. `SPEC-AUTH-001/`)
+  - **Duplicate Check**: `rg "@SPEC:{ID}" -n .moai/specs/` Required
+- **version**: v0.0.1 (INITIAL) → v0.1.0 (Implementation Completed) → v1.0.0 (Stable)
+- **author**: GitHub @ prefix is required before ID (e.g. `@Goos`)
 - **priority**: critical | high | medium | low
 
-**전체 필드 설명 및 검증 방법**: `.moai/memory/spec-metadata.md` 참조
+**Full field description and validation methods**: see `.moai/memory/spec-metadata.md`
 
-#### HISTORY 섹션 (필수)
+#### HISTORY section (required)
 
-**YAML Front Matter 직후**에 반드시 HISTORY 섹션을 포함해야 합니다:
+You must include a HISTORY section **right after the YAML Front Matter**:
 
 ```markdown
-# @SPEC:AUTH-001: JWT 기반 인증 시스템
+# @SPEC:AUTH-001: JWT-based authentication system
 
 ## HISTORY
 
 ### v0.0.1 (2025-09-15)
-- **INITIAL**: JWT 기반 인증 시스템 명세 최초 작성
+- **INITIAL**: Initial creation of JWT-based authentication system specification
 - **AUTHOR**: @Goos
-- **SCOPE**: 토큰 발급, 검증, 갱신 로직
-- **CONTEXT**: 사용자 인증 강화 요구사항 반영
+- **SCOPE**: Token issuance, verification, and renewal logic
+- **CONTEXT**: Reflects requirements for strengthening user authentication
 
 ### v0.0.2 (2025-09-20)
-- **ADDED**: 소셜 로그인 요구사항 추가 (Draft 수정)
+- **ADDED**: Added social login requirements (Draft modification)
 - **AUTHOR**: @Goos
-- **REVIEW**: @security-team (승인)
+- **REVIEW**: @security-team (approved)
 - **CHANGES**:
-  - OAuth2 통합 요구사항
-  - Google/GitHub 로그인 지원
+- OAuth2 integration requirements
+ - Google/GitHub login support
 
 ### v0.1.0 (2025-10-01)
-- **IMPLEMENTATION COMPLETED**: TDD 구현 완료 (status: draft → completed)
+- **IMPLEMENTATION COMPLETED**: TDD implementation completed (status: draft → completed)
 - **TDD CYCLE**: RED → GREEN → REFACTOR
-- **COMMITS**: [구현 커밋 해시 목록]
-- **FILES**: [생성/수정된 파일 목록]
+- **COMMITS**: [Implementation commit hash list]
+- **FILES**: [Created/modified file list]
 ```
 
-**HISTORY 작성 규칙**:
-- **버전 체계**: v0.0.1 (INITIAL) → v0.1.0 (구현 완료) → v1.0.0 (안정화)
-  - 상세 버전 체계: `.moai/memory/spec-metadata.md#버전-체계` 참조
-- **버전 순서**: 최신 버전이 위로 (역순)
-- **변경 타입 태그**: INITIAL, ADDED, CHANGED, IMPLEMENTATION COMPLETED, BREAKING, DEPRECATED, REMOVED, FIXED
-  - 상세 설명: `.moai/memory/spec-metadata.md#history-작성-가이드` 참조
-- **필수 항목**: 버전, 날짜, AUTHOR, 변경 내용
-- **선택 항목**: REVIEW, SCOPE, CONTEXT, MIGRATION
+**HISTORY writing rules**:
+- **Version system**: v0.0.1 (INITIAL) → v0.1.0 (implementation complete) → v1.0.0 (stabilization)
+ - Detailed version system: See `.moai/memory/spec-metadata.md#version-system`
+- **Version order**: Latest version on top (reverse order)
+- **Change type tag**: INITIAL, ADDED, CHANGED, IMPLEMENTATION COMPLETED, BREAKING, DEPRECATED, REMOVED, FIXED
+ - Detailed description: See `.moai/memory/spec-metadata.md#history-writing-guide`
+- **Required items**: Version, date, AUTHOR, changes
+- **Optional items**: REVIEW, SCOPE, CONTEXT, MIGRATION
 
-#### SPEC 문서 전체 구조
+#### SPEC document overall structure
 
 ```markdown
 ---
@@ -494,32 +401,32 @@ updated: 2025-09-15
 author: @username
 ---
 
-# @SPEC:AUTH-001: [SPEC 제목]
+# @SPEC:AUTH-001: [SPEC title]
 
 ## HISTORY
-[버전별 변경 이력 - 위 예시 참조]
+[Change history by version – see example above]
 
-## Environment (환경)
-[시스템 환경 및 전제 조건]
+## Environment
+[System environment and prerequisites]
 
-## Assumptions (가정)
-[설계 가정 사항]
+## Assumptions
+[Design assumptions]
 
-## Requirements (요구사항)
-### Ubiquitous (필수 기능)
-- 시스템은 [기능]을 제공해야 한다
+## Requirements
+### Ubiquitous
+- The system must provide [feature]
 
-### Event-driven (이벤트 기반)
-- WHEN [조건]이면, 시스템은 [동작]해야 한다
+### Event-driven (event-driven)
+- WHEN [condition], the system must [operate]
 
-### State-driven (상태 기반)
-- WHILE [상태]일 때, 시스템은 [동작]해야 한다
+### State-driven
+- WHILE When in [state], the system must [operate]
 
-### Optional (선택 기능)
-- WHERE [조건]이면, 시스템은 [동작]할 수 있다
+### Optional (Optional function)
+- If WHERE [condition], the system can [operate]
 
-### Constraints (제약사항)
-- IF [조건]이면, 시스템은 [제약]해야 한다
+### Constraints
+- IF [condition], the system must be [constrained]
 
 ## Traceability (@TAG)
 - **SPEC**: @SPEC:AUTH-001
@@ -528,130 +435,130 @@ author: @username
 - **DOC**: docs/api/authentication.md
 ```
 
-### 에이전트 협업 구조
+### Agent collaboration structure
 
-- **1단계**: `spec-builder` 에이전트가 프로젝트 문서 분석 및 SPEC 문서 작성을 전담합니다.
-- **2단계**: `git-manager` 에이전트가 브랜치 생성, GitHub Issue/PR 생성을 전담합니다.
-- **단일 책임 원칙**: spec-builder는 계획 작성만, git-manager는 Git/GitHub 작업만 수행합니다.
-- **순차 실행**: spec-builder → git-manager 순서로 실행하여 명확한 의존성을 유지합니다.
-- **에이전트 간 호출 금지**: 각 에이전트는 다른 에이전트를 직접 호출하지 않고, 커맨드 레벨에서만 순차 실행합니다.
+- **Step 1**: The `spec-builder` agent is dedicated to analyzing project documents and creating SPEC documents.
+- **Step 2**: The `git-manager` agent is dedicated to branch creation and GitHub Issue/PR creation.
+- **Single Responsibility Principle**: spec-builder only writes plans, git-manager only performs Git/GitHub operations. 
+- **Sequential execution**: Executes in the order spec-builder → git-manager to maintain clear dependencies.
+- **No inter-agent calls**: Each agent calls the other agents. It is not called directly, but is executed sequentially only at the command level.
 
-## 🚀 최적화된 워크플로우 실행 순서
+## 🚀 Optimized workflow execution order
 
-### Phase 1: 병렬 프로젝트 분석 (성능 최적화)
+### Phase 1: Parallel project analysis (performance optimization)
 
-**동시에 수행**:
+**Perform simultaneously**:
 
 ```
-Task 1 (haiku): 프로젝트 구조 스캔
-├── 언어/프레임워크 감지
-├── 기존 SPEC 목록 수집
-└── 우선순위 백로그 초안
+Task 1 (haiku): Scan project structure
+├── Detect languages/frameworks
+├── Collect list of existing SPECs
+└── Draft priority backlog
 
-Task 2 (sonnet): 심화 문서 분석
-├── product.md 요구사항 추출
-├── structure.md 아키텍처 분석
-└── tech.md 기술적 제약사항
+Task 2 (sonnet): In-depth document analysis
+├── product.md requirements extraction
+├── structure.md architecture analysis
+└── tech.md technical constraints
 ```
 
-**성능 향상**: 기본 스캔과 심화 분석을 병렬 처리하여 대기 시간 최소화
+**Performance improvements**: Parallelize basic scans and deep analysis to minimize latency
 
-### Phase 2: SPEC 문서 통합 작성
+### Phase 2: Create SPEC document integration
 
-`spec-builder` 에이전트(sonnet)가 병렬 분석 결과를 통합하여:
+The `spec-builder` agent (sonnet) integrates the results of the parallel analysis:
 
-- 프로젝트 문서 기반 기능 후보 제안
-- 사용자 승인 후 SPEC 문서 작성 (MultiEdit 활용)
-- 3개 파일 동시 생성 (spec.md, plan.md, acceptance.md)
+- Proposal of function candidates based on project document
+- Creation of SPEC document after user approval (using MultiEdit)
+- Simultaneous creation of 3 files (spec.md, plan.md, acceptance.md)
 
-### Phase 3: Git 작업 처리
+### Phase 3: Git task processing
 
-`git-manager` 에이전트(haiku)가 최종 처리:
+Final processing by the `git-manager` agent (haiku):
 
-- **브랜치 생성**: 모드별 전략 적용
-  - **Personal 모드**: `main` 또는 `develop`에서 분기 (프로젝트 설정 기준)
-  - **Team 모드**: **항상 `develop`에서 분기** (GitFlow 표준)
-  - 브랜치명: `feature/SPEC-{ID}` 형식
-- **GitHub Issue 생성**: Team 모드에서 SPEC Issue 생성
-- **Draft PR 생성**: Team 모드에서 `feature/SPEC-{ID}` → `develop` PR 생성
-- **초기 커밋**: SPEC 문서 커밋 및 태그 생성
+- **Branch creation**: Apply strategy for each mode
+ - **Personal mode**: Branch from `main` or `develop` (based on project settings)
+ - **Team mode**: **Always branch from `develop`** (GitFlow standard)
+ - Branch name: `feature/SPEC-{ID}` format
+- **Create GitHub Issue**: Create SPEC Issue in Team mode
+- **Create Draft PR**: `feature/SPEC-{ID}` → `develop` in Team mode Create PR
+- **Initial Commit**: Commit SPEC document and create tags
 
-**중요**: 각 에이전트는 독립적으로 실행되며, 에이전트 간 직접 호출은 금지됩니다.
+**Important**: Each agent runs independently, and direct calls between agents are prohibited.
 
-## 에이전트 역할 분리
+## Agent role separation
 
-### spec-builder 전담 영역
+### spec-builder dedicated area
 
-- 프로젝트 문서 분석 및 SPEC 후보 발굴
-- EARS 구조의 명세서 작성
-- Acceptance Criteria 작성 (Given-When-Then)
-- SPEC 문서 품질 검증
-- @TAG 시스템 적용
+- Analysis of project documents and discovery of SPEC candidates
+- Preparation of EARS structure specifications
+- Preparation of Acceptance Criteria (Given-When-Then)
+- Verification of SPEC document quality
+- Application of @TAG system
 
-### git-manager 전담 영역
+### git-manager dedicated area
 
-- 모든 Git 브랜치 생성 및 관리
-- **모드별 브랜치 전략 적용**
-  - Personal: `main` 또는 `develop`에서 분기
-  - Team: **항상 `develop`에서 분기** (GitFlow)
-- GitHub Issue/PR 생성
-  - Team 모드: Draft PR 생성 (`feature/SPEC-{ID}` → `develop`)
-- 초기 커밋 및 태그 생성
-- 원격 동기화 처리
+- Create and manage all Git branches
+- **Apply branch strategy for each mode**
+ - Personal: Branch from `main` or `develop`
+ - Team: **Always branch from `develop`** (GitFlow)
+- Create GitHub Issue/PR
+ - Team Mode: Create Draft PR (`feature/SPEC-{ID}` → `develop`)
+- Create initial commit and tags
+- Handle remote synchronization
 
-## 2단계 워크플로우 실행 순서
+## Step 2 workflow execution sequence
 
-### Phase 1: 분석 및 계획 단계
+### Phase 1: Analysis and planning phase
 
-**계획 분석기**가 다음을 수행:
+**Plan Analyzer** does the following:
 
-1. **프로젝트 문서 로딩**: product/structure/tech.md 심층 분석
-2. **SPEC 후보 발굴**: 비즈니스 요구사항 기반 우선순위 결정
-3. **구현 전략 수립**: EARS 구조 및 Acceptance 설계
-4. **작성 계획 생성**: 단계별 계획 작성 접근 방식 제시
-5. **사용자 승인 대기**: 계획 검토 및 피드백 수집
+1. **Loading project document**: In-depth analysis of product/structure/tech.md
+2. **SPEC candidate discovery**: Prioritization based on business requirements
+3. **Establishment of implementation strategy**: EARS structure and acceptance design
+4. **Creating a Writing Plan**: Presents a step-by-step approach to writing a plan
+5. **Awaiting user approval**: Review plan and gather feedback
 
-### Phase 2: 계획 작성 단계 (승인 후)
+### Phase 2: Plan preparation phase (after approval)
 
-`spec-builder` 에이전트가 사용자 승인 후 **연속적으로** 수행:
+The `spec-builder` agent **continuously** performs after user approval:
 
-1. **EARS 명세 작성**: Event-Action-Response-State 구조화
-2. **Acceptance Criteria**: Given-When-Then 시나리오 작성
-3. **문서 품질 검증**: TRUST 원칙 및 @TAG 적용
-4. **템플릿 생성**: spec.md, plan.md, acceptance.md 동시 생성
+1. **Writing EARS specification**: Event-Action-Response-State structuring
+2. **Acceptance Criteria**: Given-When-Then Scenario Writing
+3. **Document quality verification**: Apply TRUST principles and @TAG
+4. **Template creation**: Simultaneous creation of spec.md, plan.md, acceptance.md
 
-### Phase 3: Git 작업 (git-manager)
+### Phase 3: Git operations (git-manager)
 
-`git-manager` 에이전트가 SPEC 완료 후 **한 번에** 수행:
+The `git-manager` agent does **all at once** after the SPEC is complete:
 
-1. **브랜치 생성**: 모드별 브랜치 전략 적용
-2. **GitHub Issue**: Team 모드에서 SPEC Issue 생성
-3. **초기 커밋**: SPEC 문서 커밋 및 태그 생성
-4. **원격 동기화**: 모드별 동기화 전략 적용
+1. **Create branch**: Apply branch strategy for each mode
+2. **GitHub Issue**: Create SPEC Issue in Team mode
+3. **Initial commit**: Commit SPEC document and create tags
+4. **Remote Sync**: Apply synchronization strategy for each mode
 
-## 작성 팁
+## Writing Tips
 
-- product/structure/tech 문서에 없는 정보는 새로 질문해 보완합니다.
-- Acceptance Criteria는 Given/When/Then 3단으로 최소 2개 이상 작성하도록 유도합니다.
-- TRUST 원칙 중 Readable(읽기 쉬움) 기준 완화로 인해 모듈 수가 권장치(기본 5)를 초과하는 경우, 근거를 SPEC `context` 섹션에 함께 기록하세요.
+- Information that is not in the product/structure/tech document is supplemented by asking a new question. 
+- Acceptance Criteria is encouraged to be written at least 2 times in 3 columns Given/When/Then. 
+- The number of modules is reduced due to the relaxation of the Readable standard among the TRUST principles. If the recommended value (default 5) is exceeded, please include justification in the SPEC `context` section.
 
 ---
 
-## 🧠 Context Management (컨텍스트 관리)
+## 🧠 Context Management
 
-> 자세한 내용: `.moai/memory/development-guide.md` - "Context Engineering" 섹션 참조
+> For more information: `.moai/memory/development-guide.md` - see section "Context Engineering"
 
-### 이 커맨드의 핵심 전략
+### Core strategy of this command
 
-**우선 로드**: `.moai/project/product.md` (비즈니스 요구사항)
+**Load first**: `.moai/project/product.md` (business requirement)
 
-**권장사항**: 계획 작성이 완료되었습니다. 다음 단계(`/alfred:2-build`) 진행 전 `/clear` 또는 `/new` 명령으로 새로운 대화 세션을 시작하면 더 나은 성능과 컨텍스트 관리를 경험할 수 있습니다.
+**Recommendation**: The plan is complete. You can experience better performance and context management by starting a new chat session with the `/clear` or `/new` command before proceeding to the next step (`/alfred:2-run`).
 
 ---
 
-## 다음 단계
+## Next steps
 
-**권장사항**: 다음 단계 진행 전 `/clear` 또는 `/new` 명령으로 새로운 대화 세션을 시작하면 더 나은 성능과 컨텍스트 관리를 경험할 수 있습니다.
+**Recommendation**: For better performance and context management, start a new chat session with the `/clear` or `/new` command before proceeding to the next step.
 
-- `/alfred:2-build SPEC-XXX`로 TDD 구현 시작
-- 팀 모드: Issue 생성 후 git-manager 에이전트가 자동으로 브랜치 생성
+- Start implementing TDD with `/alfred:2-run SPEC-XXX`
+- Team mode: After creating an issue, the git-manager agent automatically creates a branch.

@@ -28,6 +28,15 @@ class TemplateBackup:
         """
         self.target_path = target_path.resolve()
 
+    @property
+    def backup_dir(self) -> Path:
+        """Get the backup directory path.
+
+        Returns:
+            Path to .moai-backups directory.
+        """
+        return self.target_path / ".moai-backups"
+
     def has_existing_files(self) -> bool:
         """Check whether backup-worthy files already exist.
 
@@ -36,7 +45,7 @@ class TemplateBackup:
         """
         return any(
             (self.target_path / item).exists()
-            for item in [".moai", ".claude", "CLAUDE.md"]
+            for item in [".moai", ".claude", ".github", "CLAUDE.md"]
         )
 
     def create_backup(self) -> Path:
@@ -50,7 +59,7 @@ class TemplateBackup:
         backup_path.mkdir(parents=True, exist_ok=True)
 
         # Copy backup targets
-        for item in [".moai", ".claude", "CLAUDE.md"]:
+        for item in [".moai", ".claude", ".github", "CLAUDE.md"]:
             src = self.target_path / item
             if not src.exists():
                 continue

@@ -16,9 +16,9 @@ Provides JavaScript-specific expertise for TDD development, including Jest testi
 
 ## When to use
 
-- "JavaScript 테스트 작성", "Jest 사용법", "ES6+ 문법"
+- "Writing JavaScript tests", "How to use Jest", "ES6+ grammar"
 - Automatically invoked when working with JavaScript projects
-- JavaScript SPEC implementation (`/alfred:2-build`)
+- JavaScript SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -51,11 +51,11 @@ Provides JavaScript-specific expertise for TDD development, including Jest testi
 ## Examples
 
 ### Example 1: TDD with Jest
-User: "/alfred:2-build API-001"
+User: "/alfred:2-run API-001"
 Claude: (creates RED test with Jest, GREEN implementation, REFACTOR with JSDoc)
 
 ### Example 2: Linting
-User: "ESLint 실행"
+User: "Run ESLint"
 Claude: (runs eslint . and reports linting errors)
 
 ## Works well with

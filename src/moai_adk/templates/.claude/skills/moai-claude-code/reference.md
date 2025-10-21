@@ -1,192 +1,191 @@
-# Claude Code 컴포넌트 작성 가이드
+# Claude Code component writing guide
 
-> **5가지 컴포넌트의 완벽한 작성 가이드**
+> **A complete guide to writing 5 components**
 >
 > Agent, Command, Skill, Plugin, Settings
 
 ---
 
-## 📋 목차
+## 📋 Table of Contents
 
-1. [Agent 작성 가이드](#1-agent-작성-가이드)
-2. [Command 작성 가이드](#2-command-작성-가이드)
-3. [Skill 작성 가이드](#3-skill-작성-가이드)
-4. [Plugin 설정 가이드](#4-plugin-설정-가이드)
-5. [Settings 설정 가이드](#5-settings-설정-가이드)
+1. [Agent writing guide](#1-agent-writing-guide)
+2. [Command writing guide](#2-command-writing-guide)
+3. [Skill writing guide](#3-skill-writing-guide)
+4. [Plugin setting guide](#4-plugin-setting-guide)
+5. [Settings settings guide](#5-settings-settings-guide)
 
 ---
 
-## 1. Agent 작성 가이드
+## 1. Agent writing guide
 
-### 📐 파일 구조
+### 📐 File Structure
 
-**위치**: `.claude/agents/{agent-name}.md`
+**Location**: `.claude/agents/{agent-name}.md`
 
-**YAML Frontmatter** (필수):
+**YAML Frontmatter** (required):
 ```yaml
 ---
 name: {agent-name}              # kebab-case
-description: "Use when: {trigger}"  # "Use when:" 패턴 필수
-tools: Read, Write, Edit        # 필요한 도구만
+description: "Use when: {trigger}" # "Use when:" pattern required
+tools: Read, Write, Edit # Only necessary tools
 model: sonnet                   # sonnet|haiku
 ---
 ```
 
-### 🎭 에이전트 페르소나
+### 🎭 Agent Persona
 
-**필수 요소**:
-- **아이콘**: 시각적 식별자 (emoji)
-- **직무**: IT 전문 직무 (System Architect, QA Lead 등)
-- **전문 영역**: 구체적 전문 분야
-- **역할**: 에이전트 책임
-- **목표**: 달성하려는 목표
+**Required elements**:
+- **Icon**: Visual identifier (emoji)
+- **Duties**: IT professional duties (System Architect, QA Lead, etc.)
+- **Area of ​​expertise**: Specific area of ​​expertise
+- **Role**: Agent responsibilities
+- **Goals**: what you want to achieve
 
-**예시**:
+**example**:
 ```markdown
-## 🎭 에이전트 페르소나
+## 🎭 Agent Persona
 
-**아이콘**: 🏗️
-**직무**: 시스템 아키텍트 (System Architect)
-**전문 영역**: SPEC 작성, EARS 명세, 요구사항 분석
-**역할**: 비즈니스 요구사항을 체계적인 SPEC으로 변환
-**목표**: 명확하고 테스트 가능한 SPEC 문서 작성
+**Icon**: 🏗️
+**Job**: System Architect
+**Area of ​​Expertise**: SPEC writing, EARS specification, requirements analysis
+**Role**: Convert business requirements into systematic SPEC
+**Goal**: Clear and testable SPEC Write a document
 ```
 
-### ⚙️ 모델 선택 가이드
+### ⚙️ Model selection guide
 
-| 모델 | 사용 시점 | 예시 |
+| model | When to use | Example |
 |------|----------|------|
-| **sonnet** | 복잡한 판단, 설계, 창의성 | SPEC 작성, TDD 전략, 디버깅 |
-| **haiku** | 빠른 처리, 패턴 기반 작업 | 문서 동기화, TAG 스캔, 린팅 |
+| **sonnet** | Complex judgment, design, creativity | SPEC writing, TDD strategy, debugging |
+| **haiku** | Fast processing, pattern-based operation | Document synchronization, TAG scanning, linting |
 
-### 🛠️ 도구 선택 가이드
+### 🛠️ Tool Selection Guide
 
-| 작업 유형 | 필수 도구 |
+| Job type | Essential Tools |
 |----------|----------|
-| **분석** | Read, Grep, Glob |
-| **문서 작성** | Read, Write, Edit |
-| **코드 구현** | Read, Write, Edit, MultiEdit |
-| **Git 작업** | Read, Bash(git:*) |
-| **검증** | Read, Grep, Bash |
+| **Analysis** | Read, Grep, Glob |
+| **Create Document** | Read, Write, Edit |
+| **Code Implementation** | Read, Write, Edit, MultiEdit |
+| **Git Operations** | Read, Bash(git:*) |
+| **Verification** | Read, Grep, Bash |
 
-### ✅ 검증 체크리스트
+### ✅ Verification Checklist
 
-- [ ] YAML frontmatter 존재
+- [ ] YAML frontmatter exists
 - [ ] `name`: kebab-case
-- [ ] `description`: "Use when:" 패턴 포함
-- [ ] `tools`: 필요한 도구만
-- [ ] `model`: sonnet 또는 haiku
-- [ ] 에이전트 페르소나 섹션 포함
-- [ ] 워크플로우 구체적 단계 포함
+- [ ] `description`: Contains the “Use when:” pattern
+- [ ] `tools`: Only the tools you need
+- [ ] `model`: sonnet or haiku
+- [ ] Contains the agent persona section
+- [ ] Contains workflow specific steps
 
 ---
 
-## 2. Command 작성 가이드
+## 2. Command writing guide
 
-### 📐 파일 구조
+### 📐 File Structure
 
-**위치**: `.claude/commands/{command-name}.md`
+**Location**: `.claude/commands/{command-name}.md`
 
-**YAML Frontmatter** (필수):
+**YAML Frontmatter** (required):
 ```yaml
 ---
 name: {command-name}            # kebab-case
-description: {한 줄 설명}        # 명확한 목적
-argument-hint: [{param}]        # 선택적
-allowed-tools:                  # 필요한 도구만
+description: {one-line description} # Clear purpose
+argument-hint: [{param}] # Optional
+allowed-tools: # Only the tools you need
   - Read
   - Write
   - Task
 ---
 ```
 
-### 🔧 명명 규칙
+### 🔧 Naming Conventions
 
-- **kebab-case** 사용
-- **동사로 시작** (run, check, deploy, create)
-- **명확하고 구체적**
+- Use **kebab-case**
+- **Start with a verb** (run, check, deploy, create)
+- **Clear and specific**
 
-**올바른 예시**:
+**Correct Example**:
 - ✅ `deploy-production`
 - ✅ `run-tests`
 - ✅ `alfred:1-spec`
 
-**잘못된 예시**:
+**Incorrect example**:
 - ❌ `doSomething` (camelCase)
-- ❌ `cmd1` (불명확)
+- ❌ `cmd1` (unclear)
 
-### 📋 표준 섹션 구조
+### 📋 Standard section structure
 
 ```markdown
 # {Command Title}
 
 {Brief description}
 
-## 🎯 커맨드 목적
+## 🎯 Command Purpose
 {Detailed purpose}
 
-## 💡 사용 예시
+## 💡 Example of use
 \`\`\`bash
 /{command-name} {example-args}
 \`\`\`
 
-## 📋 실행 흐름
+## 📋 Execution flow
 1. **Phase 1**: {Planning}
 2. **Phase 2**: {Execution}
 
-## 🔗 연관 에이전트
+## 🔗 Associated Agent
 - **Primary**: {agent-name} - {role}
 
-## ⚠️ 주의사항
+## ⚠️ Precautions
 - {Warning 1}
 
-## 📋 다음 단계
+## 📋 Next steps
 - {Next step}
 ```
 
-### ✅ 검증 체크리스트
+### ✅ Verification Checklist
 
-- [ ] YAML frontmatter 존재
+- [ ] YAML frontmatter exists
 - [ ] `name`: kebab-case
-- [ ] `description`: 한 줄 설명
-- [ ] `allowed-tools`: 배열 형식
-- [ ] Bash 도구 사용 시 구체적 패턴 (`Bash(git:*)`)
-- [ ] 사용 예시 포함
-- [ ] 실행 흐름 명시
+- [ ] `description`: One-line description
+- [ ] `allowed-tools`: Array format
+- [ ] Specific patterns when using Bash tools (`Bash(git:*)`)
+- [ ] Include usage examples
+- [ ] Specify execution flow
 
 ---
 
-## 3. Skill 작성 가이드
+## 3. Skill creation guide
 
-### 📐 파일 구조
+### 📐 File Structure
 
-**위치**: `.claude/skills/{skill-name}/SKILL.md`
+**Location**: `.claude/skills/{skill-name}/SKILL.md`
 
-**YAML Frontmatter** (필수):
+**YAML Frontmatter** (required fields + optional `allowed-tools`):
 ```yaml
 ---
-name: {skill-name}              # kebab-case
-description: {한 줄 설명}        # 동사로 시작, 200자 이하
-model: haiku                    # haiku|sonnet
-allowed-tools:                  # 최소 권한
-  - Read
-  - Write
+name: {skill-name}              # kebab-case, ≤64 chars
+description: {What it does + when to use (≤1024 chars)}
+allowed-tools:
+  - Read                       # optional, enforce least privilege
+  - Bash
 ---
 ```
 
-### 🎯 description 작성법
+### 🎯 How to write a description
 
-**중요**: Claude가 언제 스킬을 호출할지 결정하는 핵심 필드 (200자 이하)
+**Important**: Key field that determines when Claude will call the skill (<=1024 chars; aim for ≤200 for clarity)
 
-**좋은 예시**:
-- ✅ "TAG 마커 직접 스캔 및 인벤토리 생성 (CODE-FIRST 원칙)"
-- ✅ "프로젝트 유형별 최적 기능 선택 (37개 스킬 → 3~5개 자동 필터링)"
+**Good example**:
+- ✅ "Directly scan TAG markers and create inventory (CODE-FIRST principle)"
+- ✅ "Select optimal features by project type (37 skills → automatically filter 3-5)"
 
-**나쁜 예시**:
-- ❌ "스킬입니다" (너무 모호)
-- ❌ "This skill does something" (비구체적)
+**Bad example**:
+- ❌ “This skill does something” (too vague)
+- ❌ “This skill does something” (non-specific)
 
-### 📁 선택적 파일 구조
+### 📁 Optional file structure
 
 ```
 .claude/skills/{skill-name}/
@@ -199,25 +198,40 @@ allowed-tools:                  # 최소 권한
     └── template.txt
 ```
 
-### ✅ 검증 체크리스트
+### ✅ Verification Checklist
 
-- [ ] YAML frontmatter 존재
-- [ ] `name`: kebab-case
-- [ ] `description`: 200자 이하, 구체적
-- [ ] `model`: haiku 또는 sonnet
-- [ ] `allowed-tools`: 최소 권한 원칙
-- [ ] 제목 (# {Skill Title}) 존재
-- [ ] 목적 섹션 포함
+- [ ] YAML frontmatter exists
+- [ ] `name`: kebab-case, ≤64 chars, gerund style preferred
+- [ ] `description`: Explains capability + trigger keywords
+- [ ] `allowed-tools`: Lists only tools required by the workflow
+- [ ] Title (# {Skill Title}) exists
+- [ ] Include purpose section
+
+### ✨ Anthropic best practices (2024-12)
+
+- **Stay concise**: Keep SKILL.md lean so Claude reads only what it needs. Move lengthy procedures into referenced files and keep body <500 lines.  
+  Source: [Skill authoring best practices](https://docs.claude.com/en/docs/agents-and-tools/agent-skills/best-practices)
+- **Progressive disclosure**: Link reference files (reference.md, examples.md, scripts/) directly from SKILL.md and avoid multi-hop chains. Claude loads each file on demand.
+- **Right-sized guidance**: Match specificity to risk—high-level checklists for flexible tasks, prescriptive scripts for fragile flows.
+- **Consistent naming**: Use gerund or action-oriented names (“Processing PDFs”) and include trigger phrases in descriptions to improve discovery.
+- **Test across models**: Validate behavior with the models you plan to run (Haiku, Sonnet, Opus) to ensure instructions are neither too sparse nor verbose.
+- **Security posture**: Audit bundled scripts, restrict `allowed-tools`, and document any prerequisites or packages.
+
+### 📂 Discovery rules
+
+- Personal skills live in `~/.claude/skills/{skill-name}/SKILL.md`
+- Project skills live in `.claude/skills/{skill-name}/SKILL.md` and should be committed to git
+- Claude expects each skill as a first-level directory under `skills/`; nested categories like `.claude/skills/domain/backend/SKILL.md` are **not** auto-discovered (per [Agent Skills - Claude Docs](https://docs.claude.com/en/docs/claude-code/skills))
 
 ---
 
-## 4. Plugin 설정 가이드
+## 4. Plugin setup guide
 
-### 📐 파일 구조
+### 📐 File Structure
 
-**위치**: `.claude/settings.json` (mcpServers 섹션)
+**Location**: `.claude/settings.json` (mcpServers section)
 
-**기본 구조**:
+**Basic structure**:
 ```json
 {
   "mcpServers": {
@@ -232,37 +246,37 @@ allowed-tools:                  # 최소 권한
 }
 ```
 
-### 🌟 추천 Plugin
+### 🌟 Recommended Plugin
 
-| Plugin | 용도 | MoAI-ADK 활용 |
+| Plugin | Use | Utilizing MoAI-ADK |
 |--------|------|--------------|
-| **@modelcontextprotocol/server-github** | GitHub API | PR/Issue 자동 생성 |
-| **@modelcontextprotocol/server-filesystem** | 파일 시스템 | `.moai/` 안전 접근 |
-| **@modelcontextprotocol/server-brave-search** | 웹 검색 | 기술 문서 참조 |
+| **@modelcontextprotocol/server-github** | GitHub API | Automatically generate PR/Issue |
+| **@modelcontextprotocol/server-filesystem** | file system | `.moai/` safe access |
+| **@modelcontextprotocol/server-brave-search** | web search | See technical documentation |
 
-### 🔒 보안 원칙
+### 🔒 Security Principles
 
-#### 필수 체크리스트
-- [ ] 환경변수 사용 (하드코딩 금지)
-- [ ] 경로 제한 (Filesystem MCP)
-- [ ] 최소 권한
-- [ ] 민감 정보 차단 (`.env`, `secrets/`)
-- [ ] 출처 신뢰성 (공식 또는 검증된 Plugin)
+#### Essential checklist
+- [ ] Use of environment variables (no hardcoding)
+- [ ] Restrict paths (Filesystem MCP)
+- [ ] Minimum privileges
+- [ ] Block sensitive information (`.env`, `secrets/`)
+- [ ] Source reliability (official or verified plugin)
 
-#### 안전한 설정
+#### Secure settings
 ```json
 {
   "mcpServers": {
     "github": {
       "env": {
-        "GITHUB_TOKEN": "${GITHUB_TOKEN}"  // ✅ 환경변수
+"GITHUB_TOKEN": "${GITHUB_TOKEN}" // ✅ Environment variable
       }
     },
     "filesystem": {
       "args": [
         "-y",
         "@modelcontextprotocol/server-filesystem",
-        "${CLAUDE_PROJECT_DIR}/.moai",  // ✅ 제한된 경로
+"${CLAUDE_PROJECT_DIR}/.moai", // ✅ Restricted path
         "${CLAUDE_PROJECT_DIR}/src"
       ]
     }
@@ -270,22 +284,22 @@ allowed-tools:                  # 최소 권한
 }
 ```
 
-### ✅ 검증 체크리스트
+### ✅ Verification Checklist
 
-- [ ] JSON 구문 오류 없음
-- [ ] 환경변수 사용 (하드코딩 금지)
-- [ ] 파일 시스템 경로 제한
-- [ ] 필요한 환경변수 설정 완료
+- [ ] No JSON syntax errors
+- [ ] Use of environment variables (no hard coding)
+- [ ] Restrictions on file system path
+- [ ] Completed setting of necessary environment variables
 
 ---
 
-## 5. Settings 설정 가이드
+## 5. Settings Setting Guide
 
-### 📐 파일 구조
+### 📐 File Structure
 
-**위치**: `.claude/settings.json`
+**Location**: `.claude/settings.json`
 
-**주요 섹션**:
+**Main sections**:
 ```json
 {
   "permissions": {
@@ -302,10 +316,10 @@ allowed-tools:                  # 최소 권한
 }
 ```
 
-### 🔒 3단계 권한 관리
+### 🔒 3-level permission management
 
-#### 1. `allow` - 자동 승인
-안전하고 필수적인 도구만 허용:
+#### 1. `allow` - Automatic approval
+Allow only safe and essential tools:
 ```json
 "allow": [
   "Read",
@@ -318,8 +332,8 @@ allowed-tools:                  # 최소 권한
 ]
 ```
 
-#### 2. `ask` - 사용자 확인
-중요하거나 변경 가능성이 있는 작업:
+#### 2. `ask` - User confirmation
+Important or potentially changeable actions:
 ```json
 "ask": [
   "Bash(git push:*)",
@@ -328,8 +342,8 @@ allowed-tools:                  # 최소 권한
 ]
 ```
 
-#### 3. `deny` - 절대 금지
-위험하거나 민감한 작업 차단:
+#### 3. `deny` - Absolutely prohibited
+Block dangerous or sensitive operations:
 ```json
 "deny": [
   "Read(./.env)",
@@ -339,10 +353,10 @@ allowed-tools:                  # 최소 권한
 ]
 ```
 
-### 🪝 훅 시스템
+### 🪝 Hook system
 
-#### SessionStart 훅
-세션 시작 시 프로젝트 정보 표시:
+#### SessionStart hook
+Display project information when session starts:
 ```json
 {
   "hooks": {
@@ -361,8 +375,8 @@ allowed-tools:                  # 최소 권한
 }
 ```
 
-#### PreToolUse 훅
-도구 실행 전 검증 및 차단:
+#### PreToolUse hook
+Verify and block before executing the tool:
 ```json
 {
   "hooks": {
@@ -381,39 +395,39 @@ allowed-tools:                  # 최소 권한
 }
 ```
 
-### ✅ 검증 체크리스트
+### ✅ Verification Checklist
 
-- [ ] JSON 구문 오류 없음
-- [ ] `allow`: 필수 도구만
-- [ ] `ask`: 중요한 작업
-- [ ] `deny`: 민감한 파일/명령
-- [ ] Bash 패턴 구체화 (`Bash(git:*)`)
-- [ ] 훅 파일 존재 및 실행 권한
-
----
-
-## 📊 베스트 프랙티스
-
-### 공통 원칙
-
-1. **최소 권한 원칙**
-   - 필요한 도구만 명시
-   - Bash 사용 시 구체적 패턴
-
-2. **공식 표준 준수**
-   - YAML frontmatter 필수 필드
-   - 파일명 규칙 (kebab-case)
-
-3. **보안 우선**
-   - 민감 정보 환경변수로 관리
-   - 위험한 작업 차단
-
-4. **문서화**
-   - 명확한 설명
-   - 구체적 예시
-   - 검증 방법
+- [ ] No JSON syntax errors
+- [ ] `allow`: Only essential tools
+- [ ] `ask`: Critical tasks
+- [ ] `deny`: Sensitive files/commands
+- [ ] Bash pattern refinement (`Bash(git:*)`)
+- [ ] Hook file existence and execution permissions
 
 ---
 
-**최종 업데이트**: 2025-10-19
-**작성자**: @Alfred
+## 📊 Best Practices
+
+### Common principles
+
+1. **Principle of least privilege**
+ - Specify only necessary tools
+ - Specific patterns when using Bash
+
+2. **Compliant with official standards**
+ - YAML frontmatter required fields
+ - Filename convention (kebab-case)
+
+3. **Security priority**
+ - Manage sensitive information as environmental variable
+ - Block dangerous operations
+
+4. **Documentation**
+ - Clear explanation
+ - Concrete examples
+ - Verification methods
+
+---
+
+**Last update**: 2025-10-19
+**Author**: @Alfred

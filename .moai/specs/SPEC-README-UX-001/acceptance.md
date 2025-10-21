@@ -208,4 +208,4 @@ grep "uv pip install -e" README.md
 
 ---
 
-_이 인수 기준은 `/alfred:2-build SPEC-README-UX-001` 또는 직접 수정 후 검증됩니다._
+_이 인수 기준은 `/alfred:2-run SPEC-README-UX-001` 또는 직접 수정 후 검증됩니다._

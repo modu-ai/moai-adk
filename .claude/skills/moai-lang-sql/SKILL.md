@@ -16,9 +16,9 @@ Provides SQL-specific expertise for database development, including SQL testing 
 
 ## When to use
 
-- "SQL 테스트 작성", "쿼리 최적화", "마이그레이션 관리"
+- “Writing SQL tests”, “Query optimization”, “Migration management”
 - Automatically invoked when working with database projects
-- SQL SPEC implementation (`/alfred:2-build`)
+- SQL SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -55,11 +55,11 @@ Provides SQL-specific expertise for database development, including SQL testing 
 ## Examples
 
 ### Example 1: TDD with pgTAP
-User: "/alfred:2-build SCHEMA-001"
+User: "/alfred:2-run SCHEMA-001"
 Claude: (creates RED test with pgTAP, GREEN schema implementation, REFACTOR with indices)
 
 ### Example 2: Query optimization
-User: "쿼리 성능 분석"
+User: "Query performance analysis"
 Claude: (runs EXPLAIN ANALYZE and suggests optimization)
 
 ## Works well with

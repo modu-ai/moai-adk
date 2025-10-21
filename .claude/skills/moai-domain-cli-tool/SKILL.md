@@ -16,9 +16,9 @@ Provides expertise in developing command-line interface tools with proper argume
 
 ## When to use
 
-- "CLI 도구 개발", "명령줄 파싱", "POSIX 호환성"
+- “CLI tool development”, “command line parsing”, “POSIX compatibility”
 - Automatically invoked when working with CLI projects
-- CLI tool SPEC implementation (`/alfred:2-build`)
+- CLI tool SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -51,11 +51,11 @@ Provides expertise in developing command-line interface tools with proper argume
 ## Examples
 
 ### Example 1: CLI tool with subcommands
-User: "/alfred:2-build CLI-001"
+User: "/alfred:2-run CLI-001"
 Claude: (creates RED CLI test, GREEN implementation with click, REFACTOR)
 
 ### Example 2: POSIX compliance check
-User: "POSIX 호환성 확인"
+User: "Check POSIX compatibility"
 Claude: (validates exit codes, option formats, stderr usage)
 
 ## Works well with

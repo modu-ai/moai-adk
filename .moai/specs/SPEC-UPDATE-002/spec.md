@@ -371,4 +371,4 @@ env:
 
 ---
 
-**다음 단계**: `/alfred:2-build UPDATE-002` 실행하여 TDD 구현 시작
+**다음 단계**: `/alfred:2-run UPDATE-002` 실행하여 TDD 구현 시작

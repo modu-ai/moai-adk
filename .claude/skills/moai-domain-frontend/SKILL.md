@@ -16,9 +16,9 @@ Provides expertise in modern frontend development using React, Vue, or Angular, 
 
 ## When to use
 
-- "프론트엔드 개발", "React 컴포넌트", "상태 관리", "성능 최적화"
+- “Front-end development”, “React components”, “state management”, “performance optimization”
 - Automatically invoked when working with frontend projects
-- Frontend SPEC implementation (`/alfred:2-build`)
+- Frontend SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -55,11 +55,11 @@ Provides expertise in modern frontend development using React, Vue, or Angular, 
 ## Examples
 
 ### Example 1: React component with performance optimization
-User: "/alfred:2-build UI-001"
+User: "/alfred:2-run UI-001"
 Claude: (creates RED component test, GREEN implementation with React.memo, REFACTOR)
 
 ### Example 2: Accessibility audit
-User: "접근성 검사"
+User: "Accessibility Check"
 Claude: (runs axe-core or Lighthouse and reports issues)
 
 ## Works well with

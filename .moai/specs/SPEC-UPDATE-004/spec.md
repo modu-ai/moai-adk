@@ -388,7 +388,7 @@ category: guidance
 3. **SPEC 작성 테스트**:
    ```bash
    # 사용자 호출
-   /alfred:1-spec "새 기능"
+   /alfred:1-plan "새 기능"
 
    # 예상 동작
    1. spec-builder 실행

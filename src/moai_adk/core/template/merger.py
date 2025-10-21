@@ -15,6 +15,11 @@ from typing import Any
 class TemplateMerger:
     """Encapsulate template merging logic."""
 
+    PROJECT_INFO_HEADERS = (
+        "## 프로젝트 정보",
+        "## Project Information",
+    )
+
     def __init__(self, target_path: Path) -> None:
         """Initialize the merger.
 
@@ -34,9 +39,9 @@ class TemplateMerger:
             template_path: Template CLAUDE.md.
             existing_path: Existing CLAUDE.md.
         """
-        # Extract the existing "## 프로젝트 정보" section
+        # Extract the existing project information section
         existing_content = existing_path.read_text(encoding="utf-8")
-        project_info_start = existing_content.find("## 프로젝트 정보")
+        project_info_start, _ = self._find_project_info_section(existing_content)
         project_info = ""
         if project_info_start != -1:
             # Extract until EOF
@@ -48,7 +53,7 @@ class TemplateMerger:
         # Merge when project info exists
         if project_info:
             # Remove the project info section from the template
-            template_project_start = template_content.find("## 프로젝트 정보")
+            template_project_start, _ = self._find_project_info_section(template_content)
             if template_project_start != -1:
                 template_content = template_content[:template_project_start].rstrip()
 
@@ -58,6 +63,14 @@ class TemplateMerger:
         else:
             # No project info; copy the template as-is
             shutil.copy2(template_path, existing_path)
+
+    def _find_project_info_section(self, content: str) -> tuple[int, str | None]:
+        """Find the project information header in the given content."""
+        for header in self.PROJECT_INFO_HEADERS:
+            index = content.find(header)
+            if index != -1:
+                return index, header
+        return -1, None
 
     def merge_gitignore(self, template_path: Path, existing_path: Path) -> None:
         """.gitignore merge.

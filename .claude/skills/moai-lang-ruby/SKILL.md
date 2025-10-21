@@ -16,9 +16,9 @@ Provides Ruby-specific expertise for TDD development, including RSpec BDD testin
 
 ## When to use
 
-- "Ruby 테스트 작성", "RSpec 사용법", "Rails 패턴"
+- “Writing Ruby tests”, “How to use RSpec”, “Rails patterns”
 - Automatically invoked when working with Ruby/Rails projects
-- Ruby SPEC implementation (`/alfred:2-build`)
+- Ruby SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -54,11 +54,11 @@ Provides Ruby-specific expertise for TDD development, including RSpec BDD testin
 ## Examples
 
 ### Example 1: TDD with RSpec
-User: "/alfred:2-build USER-001"
+User: "/alfred:2-run USER-001"
 Claude: (creates RED test with RSpec BDD style, GREEN implementation, REFACTOR)
 
 ### Example 2: RuboCop check
-User: "RuboCop 실행"
+User: "Run RuboCop"
 Claude: (runs rubocop and reports style violations)
 
 ## Works well with

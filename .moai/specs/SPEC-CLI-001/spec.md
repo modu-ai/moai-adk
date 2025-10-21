@@ -297,7 +297,7 @@ scope:
 - **Then**:
   - TAG 체인 무결성: "⚠ 1 broken chain"
   - 끊어진 TAG 목록 표시: "AUTH-001: CODE exists but SPEC missing"
-  - 수정 가이드: `/alfred:1-spec AUTH-001` 실행 안내
+  - 수정 가이드: `/alfred:1-plan AUTH-001` 실행 안내
 
 ### AC-12: restore Git dirty state 경고
 

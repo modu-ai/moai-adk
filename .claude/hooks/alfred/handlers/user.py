@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """User interaction handlers
 
-UserPromptSubmit 이벤트 처리
+Handling the UserPromptSubmit event
 """
 
 from core import HookPayload, HookResult
@@ -9,25 +9,25 @@ from core.context import get_jit_context
 
 
 def handle_user_prompt_submit(payload: HookPayload) -> HookResult:
-    """UserPromptSubmit 이벤트 핸들러
+    """UserPromptSubmit event handler
 
-    사용자 프롬프트를 분석하여 관련 문서를 자동으로 컨텍스트에 추가합니다.
-    JIT (Just-in-Time) Retrieval 원칙에 따라 필요한 문서만 로드합니다.
+    Analyze user prompts and automatically add relevant documents into context.
+    Follow the just-in-time (JIT) retrieval principle to load only the documents you need.
 
     Args:
-        payload: Claude Code 이벤트 페이로드
-                 (userPrompt, cwd 키 포함)
+        payload: Claude Code event payload
+                 (includes userPrompt, cwd keys)
 
     Returns:
         HookResult(
-            message=로드된 파일 수 (또는 None),
-            contextFiles=추천 문서 경로 리스트
+            message=Number of Files loaded (or None),
+            contextFiles=Recommended document path list
         )
 
     TDD History:
-        - RED: JIT 문서 로딩 시나리오 테스트
-        - GREEN: get_jit_context() 호출하여 문서 추천
-        - REFACTOR: 메시지 조건부 표시 (파일 있을 때만)
+        - RED: JIT document loading scenario testing
+        - GREEN: Recommend documents by calling get_jit_context()
+        - REFACTOR: Message conditional display (only when there is a file)
     """
     user_prompt = payload.get("userPrompt", "")
     cwd = payload.get("cwd", ".")

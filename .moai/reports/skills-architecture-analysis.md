@@ -57,12 +57,12 @@
 
 ### 카테고리별 분포
 
-| 카테고리 | 개수 | 평균 크기 | 상호 배타성 | Progressive Disclosure | 평가 |
-|---------|------|----------|------------|----------------------|------|
-| **Language Skills** | 24개 | ~64줄 | ✅ 높음 (Python ≠ Java) | ✅ 우수 | ✅ 최적 |
-| **Domain Skills** | 9개 | ~68줄 | ✅ 중간 (일부 중복) | ✅ 양호 | ✅ 적절 |
-| **Alfred Skills** | 12개 | ~68줄 | ❌ 낮음 (함께 사용) | ⚠️ 보통 | ⚠️ 개선 필요 |
-| **Claude Code** | 1개 | ~67줄 | N/A | N/A | ✅ 통합 완료 |
+| 카테고리            | 개수 | 평균 크기 | 상호 배타성            | Progressive Disclosure | 평가        |
+| ------------------- | ---- | --------- | ---------------------- | ---------------------- | ----------- |
+| **Language Skills** | 24개 | ~64줄     | ✅ 높음 (Python ≠ Java) | ✅ 우수                 | ✅ 최적      |
+| **Domain Skills**   | 9개  | ~68줄     | ✅ 중간 (일부 중복)     | ✅ 양호                 | ✅ 적절      |
+| **Alfred Skills**   | 12개 | ~68줄     | ❌ 낮음 (함께 사용)     | ⚠️ 보통                 | ⚠️ 개선 필요 |
+| **Claude Code**     | 1개  | ~67줄     | N/A                    | N/A                    | ✅ 통합 완료 |
 
 ### Language Skills (24개) - ✅ 최적 구조
 
@@ -82,7 +82,7 @@ moai-lang-java         (junit, maven, checkstyle)
 
 **예시**:
 ```
-사용자: "/alfred:2-build AUTH-001"
+사용자: "/alfred:2-run AUTH-001"
 Alfred: (Python 프로젝트 감지)
         → moai-lang-python만 로드
         → 다른 23개 언어 스킬은 로드하지 않음
@@ -179,7 +179,7 @@ moai-domain-mobile-app    (Flutter, React Native)
 - ~~moai-alfred-git-workflow~~ → development
 
 **크기 예상**: ~340줄 (5 × 68줄)
-**사용 시점**: `/alfred:2-build` 및 코드 작성 중
+**사용 시점**: `/alfred:2-run` 및 코드 작성 중
 **장점**: 개발 관련 모든 기능을 한 번에 로드
 
 **결과**:

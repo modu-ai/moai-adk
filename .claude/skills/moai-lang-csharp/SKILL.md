@@ -16,9 +16,9 @@ Provides C#-specific expertise for TDD development, including xUnit testing, .NE
 
 ## When to use
 
-- "C# 테스트 작성", "xUnit 사용법", "LINQ 쿼리"
+- "Writing C# tests", "How to use xUnit", "LINQ queries"
 - Automatically invoked when working with .NET projects
-- C# SPEC implementation (`/alfred:2-build`)
+- C# SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -55,11 +55,11 @@ Provides C#-specific expertise for TDD development, including xUnit testing, .NE
 ## Examples
 
 ### Example 1: TDD with xUnit
-User: "/alfred:2-build SERVICE-001"
+User: "/alfred:2-run SERVICE-001"
 Claude: (creates RED test with xUnit, GREEN implementation with async/await, REFACTOR)
 
 ### Example 2: LINQ query optimization
-User: "LINQ 쿼리 최적화"
+User: "LINQ Query Optimization"
 Claude: (analyzes LINQ queries and suggests IEnumerable vs IQueryable optimizations)
 
 ## Works well with

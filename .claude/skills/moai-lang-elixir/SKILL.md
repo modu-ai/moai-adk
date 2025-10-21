@@ -16,9 +16,9 @@ Provides Elixir-specific expertise for TDD development, including ExUnit testing
 
 ## When to use
 
-- "Elixir 테스트 작성", "ExUnit 사용법", "OTP 패턴"
+- "Writing Elixir tests", "How to use ExUnit", "OTP patterns"
 - Automatically invoked when working with Elixir/Phoenix projects
-- Elixir SPEC implementation (`/alfred:2-build`)
+- Elixir SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -54,11 +54,11 @@ Provides Elixir-specific expertise for TDD development, including ExUnit testing
 ## Examples
 
 ### Example 1: TDD with ExUnit
-User: "/alfred:2-build SERVER-001"
+User: "/alfred:2-run SERVER-001"
 Claude: (creates RED test with ExUnit, GREEN GenServer implementation, REFACTOR)
 
 ### Example 2: Credo analysis
-User: "Credo 분석 실행"
+User: "Run Credo Analysis"
 Claude: (runs mix credo --strict and reports issues)
 
 ## Works well with

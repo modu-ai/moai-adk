@@ -16,9 +16,9 @@ Provides expertise in backend server architecture, RESTful API design, caching s
 
 ## When to use
 
-- "백엔드 아키텍처", "API 설계", "캐싱 전략", "확장성"
+- “Backend architecture”, “API design”, “Caching strategy”, “Scalability”
 - Automatically invoked when working with backend projects
-- Backend SPEC implementation (`/alfred:2-build`)
+- Backend SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -55,11 +55,11 @@ Provides expertise in backend server architecture, RESTful API design, caching s
 ## Examples
 
 ### Example 1: Layered architecture implementation
-User: "/alfred:2-build BACKEND-001"
+User: "/alfred:2-run BACKEND-001"
 Claude: (creates RED API test, GREEN layered implementation, REFACTOR with caching)
 
 ### Example 2: Redis caching integration
-User: "Redis 캐싱 추가"
+User: "Add Redis caching"
 Claude: (implements cache-aside pattern with Redis)
 
 ## Works well with

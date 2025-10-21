@@ -11,24 +11,24 @@
 
 ### 변경 통계
 
-| 항목 | 값 |
-|------|-----|
-| 변경 파일 | 29개 |
+| 항목      | 값     |
+| --------- | ------ |
+| 변경 파일 | 29개   |
 | 추가 라인 | +3,728 |
 | 삭제 라인 | -2,187 |
-| 순 증가 | +1,541 |
+| 순 증가   | +1,541 |
 
 ### 파일 유형별 분포
 
-| 유형 | 개수 | 주요 파일 |
-|------|------|----------|
-| Commands | 4 | 0-project, 1-plan, 2-run, 3-sync |
-| Agents | 9 | 7개 업데이트 + 2개 신규 (tag-agent, trust-checker) |
-| Skills | 3 | ears-authoring, tag-scanning, trust-validation |
-| 프로젝트 문서 | 3 | product.md, structure.md, tech.md |
-| 설정 | 2 | settings.json, config.json |
-| Hooks | 1 | alfred_hooks.py |
-| 기타 | 7 | CLAUDE.md, README.md, development-guide.md 등 |
+| 유형          | 개수 | 주요 파일                                          |
+| ------------- | ---- | -------------------------------------------------- |
+| Commands      | 4    | 0-project, 1-plan, 2-run, 3-sync                   |
+| Agents        | 9    | 7개 업데이트 + 2개 신규 (tag-agent, trust-checker) |
+| Skills        | 3    | ears-authoring, tag-scanning, trust-validation     |
+| 프로젝트 문서 | 3    | product.md, structure.md, tech.md                  |
+| 설정          | 2    | settings.json, config.json                         |
+| Hooks         | 1    | alfred_hooks.py                                    |
+| 기타          | 7    | CLAUDE.md, README.md, development-guide.md 등      |
 
 ---
 
@@ -36,12 +36,12 @@
 
 ### TAG 통계
 
-| TAG 유형 | 개수 | 위치 |
-|---------|------|------|
-| @SPEC | 175 | .moai/specs/ (29개 SPEC) |
-| @CODE | 82 | src/ |
-| @TEST | 51 | tests/ |
-| @DOC | 0 | (미사용) |
+| TAG 유형 | 개수 | 위치                     |
+| -------- | ---- | ------------------------ |
+| @SPEC    | 175  | .moai/specs/ (29개 SPEC) |
+| @CODE    | 82   | src/                     |
+| @TEST    | 51   | tests/                   |
+| @DOC     | 0    | (미사용)                 |
 
 ### TAG 체인 분석
 
@@ -242,12 +242,12 @@
 
 ### Phase 완료 현황
 
-| Phase | 작업 | 상태 | 커밋 |
-|-------|------|------|------|
-| Phase 1 | Sub-agents를 Skills로 통합 | ✅ 완료 | 06a9da2 |
-| Phase 2 | spec-builder EARS 가이드 분리 | ✅ 완료 | cf8ce97 |
-| Phase 3 | 호환성 테스트 및 검증 | ✅ 완료 | 577a413 |
-| Phase 3-extra | AskUserQuestion 섹션 추가 | ✅ 완료 | a2fff92 |
+| Phase         | 작업                          | 상태   | 커밋    |
+| ------------- | ----------------------------- | ------ | ------- |
+| Phase 1       | Sub-agents를 Skills로 통합    | ✅ 완료 | 06a9da2 |
+| Phase 2       | spec-builder EARS 가이드 분리 | ✅ 완료 | cf8ce97 |
+| Phase 3       | 호환성 테스트 및 검증         | ✅ 완료 | 577a413 |
+| Phase 3-extra | AskUserQuestion 섹션 추가     | ✅ 완료 | a2fff92 |
 
 ### SPEC-UPDATE-004 목표 달성도
 
@@ -287,7 +287,7 @@
 
 4. **다음 SPEC 작성**:
    ```bash
-   /alfred:1-spec "다음 기능 설명"
+   /alfred:1-plan "다음 기능 설명"
    ```
 
 ---

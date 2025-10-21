@@ -16,9 +16,9 @@ Provides Scala-specific expertise for TDD development, including ScalaTest frame
 
 ## When to use
 
-- "Scala 테스트 작성", "ScalaTest 사용법", "함수형 프로그래밍"
+- “Writing Scala tests”, “How to use ScalaTest”, “Functional programming”
 - Automatically invoked when working with Scala projects
-- Scala SPEC implementation (`/alfred:2-build`)
+- Scala SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -55,11 +55,11 @@ Provides Scala-specific expertise for TDD development, including ScalaTest frame
 ## Examples
 
 ### Example 1: TDD with ScalaTest
-User: "/alfred:2-build PARSER-001"
+User: "/alfred:2-run PARSER-001"
 Claude: (creates RED test with ScalaTest, GREEN implementation with immutability, REFACTOR)
 
 ### Example 2: Property testing
-User: "ScalaCheck 속성 테스트 작성"
+User: "Write a ScalaCheck property test"
 Claude: (creates property-based tests for edge cases)
 
 ## Works well with

@@ -1,14 +1,21 @@
 ---
+
 name: moai-domain-database
-description: Database design, schema optimization, indexing strategies, and migration management
+description: Database design, schema optimization, indexing strategies, and migration management. Use when working on database integration tasks scenarios.
 allowed-tools:
   - Read
   - Bash
-tier: 4
-auto-load: "false"
 ---
 
 # Database Expert
+
+## Skill Metadata
+| Field | Value |
+| ----- | ----- |
+| Allowed tools | Read (read_file), Bash (terminal) |
+| Auto-load | On demand for data layer design |
+| Trigger cues | Schema modeling, migration planning, query optimization, indexing strategy. |
+| Tier | 4 |
 
 ## What it does
 
@@ -16,9 +23,10 @@ Provides expertise in database design, schema normalization, indexing strategies
 
 ## When to use
 
-- "데이터베이스 설계", "스키마 최적화", "인덱스 전략", "마이그레이션"
+- Engages when the conversation focuses on database design or tuning.
+- “Database design”, “Schema optimization”, “Index strategy”, “Migration”
 - Automatically invoked when working with database projects
-- Database SPEC implementation (`/alfred:2-build`)
+- Database SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -54,17 +62,39 @@ Provides expertise in database design, schema normalization, indexing strategies
 - **NewSQL**: CockroachDB, Vitess
 
 ## Examples
+```bash
+$ alembic upgrade head
+$ psql -f audits/verify_constraints.sql
+```
 
-### Example 1: Schema design with normalization
-User: "/alfred:2-build DB-SCHEMA-001"
-Claude: (creates RED schema test, GREEN implementation with constraints, REFACTOR with indices)
+## Inputs
+- 도메인 관련 설계 문서 및 사용자 요구사항.
+- 프로젝트 기술 스택 및 운영 제약.
 
-### Example 2: Query optimization
-User: "쿼리 성능 개선"
-Claude: (analyzes EXPLAIN output and suggests index creation)
+## Outputs
+- 도메인 특화 아키텍처 또는 구현 가이드라인.
+- 연관 서브 에이전트/스킬 권장 목록.
+
+## Failure Modes
+- 도메인 근거 문서가 없거나 모호할 때.
+- 프로젝트 전략이 미확정이라 구체화할 수 없을 때.
+
+## Dependencies
+- `.moai/project/` 문서와 최신 기술 브리핑이 필요합니다.
+
+## References
+- Fowler, Martin. "Evolutionary Database Design." https://martinfowler.com/articles/evodb.html (accessed 2025-03-29).
+- AWS. "Database Tuning Best Practices." https://aws.amazon.com/blogs/database/ (accessed 2025-03-29).
+
+## Changelog
+- 2025-03-29: 도메인 스킬에 대한 입력/출력 및 실패 대응을 명문화했습니다.
 
 ## Works well with
 
 - alfred-trust-validation (migration testing)
 - sql-expert (SQL implementation)
 - backend-expert (ORM integration)
+
+## Best Practices
+- 도메인 결정 사항마다 근거 문서(버전/링크)를 기록합니다.
+- 성능·보안·운영 요구사항을 초기 단계에서 동시에 검토하세요.

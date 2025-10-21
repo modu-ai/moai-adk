@@ -49,8 +49,8 @@
   "pipeline": {
     "available_commands": [
       "/alfred:0-project",
-      "/alfred:1-spec",
-      "/alfred:2-build",
+      "/alfred:1-plan",
+      "/alfred:2-run",
       "/alfred:3-sync"
     ],
     "current_stage": "initialized"
@@ -63,7 +63,9 @@
     "mode": "{{PROJECT_MODE}}",
     "name": "{{PROJECT_NAME}}",
     "moai_adk_version": "{{MOAI_VERSION}}",
-    "optimized": false
+    "optimized": true,
+    "last_merge": "2025-10-21T00:00:00",
+    "backup_source": ".moai-backups/20251020-011755/"
   },
   "tags": {
     "auto_sync": true,
