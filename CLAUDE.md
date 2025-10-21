@@ -327,6 +327,153 @@ Refs: @TAG-ID (if applicable)
 - Use `/alfred:3-sync` to update Living Docs and TAG references.
 - Record rationale for deviations from the SPEC.
 
+## Clarification & Interactive Prompting
+
+### The "Vibe Coding" Challenge
+
+**Vibe Coding** refers to requesting AI assistance with minimal context, expecting the AI to infer intent from incomplete instructions. While this approach works for experienced developers with high-context understanding of their codebase, it often results in:
+
+- ❌ Ambiguous or conflicting implementations
+- ❌ Unnecessary modifications to existing code
+- ❌ Multiple rounds of back-and-forth refinement
+- ❌ Wasted time clarifying intent
+
+**Root cause**: AI must *guess* user intent without explicit guidance.
+
+### Solution: Interactive Question Tool
+
+Claude Code now features an **Interactive Question Tool** that transforms vague requests into precise, contextual specifications through guided clarification. Instead of AI making assumptions, the tool actively:
+
+1. **Analyzes** existing code and project context
+2. **Identifies** ambiguity and competing approaches
+3. **Presents** concrete options with clear trade-offs
+4. **Captures** explicit user choices
+5. **Executes** with certainty based on confirmed intent
+
+### How It Works
+
+When you provide a high-level request, Alfred may invoke the Interactive Question Tool to clarify implementation details:
+
+```
+User: "Add a completion page for the competition."
+         ↓
+AI analyzes codebase & context
+         ↓
+[QUESTION 1] How should the completion page be implemented?
+  • Option A: Modify existing page structure
+  • Option B: Create a new public page
+  • Option C: Use environment-based gating
+         ↓
+[QUESTION 2] Who should see the completion page?
+  • Option A: Only participants (authenticated users)
+  • Option B: All visitors (public)
+  • Option C: Based on time window
+         ↓
+[REVIEW] Summary of your selections
+  ✓ Ready to submit or modify answers
+         ↓
+Execution with confirmed specifications
+```
+
+### Key Benefits
+
+| Benefit | Impact |
+| --- | --- |
+| **Reduced ambiguity** | AI asks before acting; eliminates guess work |
+| **Faster iteration** | Choices are presented upfront, not discovered after implementation |
+| **Higher quality** | Implementation matches intent precisely |
+| **Lower communication cost** | Answering 3-5 specific questions beats endless refinement |
+| **Active collaboration** | AI becomes a partner, not just a code generator |
+
+### When to Use Interactive Questions
+
+**Ideal for**:
+- 🎯 Complex features with multiple valid approaches
+- 🎯 Architectural decisions with trade-offs
+- 🎯 Ambiguous or high-level requirements
+- 🎯 Requests that affect multiple existing components
+- 🎯 Decisions involving user experience or data flow
+
+**Example triggers**:
+- "Add a dashboard" → needs clarification on layout, data sources, authentication
+- "Refactor the auth system" → needs clarification on scope, backwards compatibility, migration strategy
+- "Optimize performance" → needs clarification on which bottleneck, acceptable trade-offs
+- "Add multi-language support" → needs clarification on scope, default language, i18n library
+
+### Best Practices for Interactive Prompting
+
+1. **Provide initial context** (even if vague)
+   - ✅ "Add a competition results page"
+   - ❌ "Do something"
+
+2. **Trust the guided questions**
+   - AI will ask if it detects ambiguity
+   - Answer each question honestly, don't over-explain
+   - Use "Other" option to provide custom input if preset options don't fit
+
+3. **Review before submission**
+   - The summary step lets you verify all choices
+   - Use "back" to revise any answer
+   - Only submit when you're confident in the selections
+
+4. **Iterative refinement is OK**
+   - If implementation doesn't match intent, re-run with clearer guidance
+   - Your answers inform Alfred's future prompting
+   - This feedback loop improves collaboration quality
+
+5. **Combine with Context Engineering**
+   - Provide high-level intent + let interactive questions fill in details
+   - Reference existing code patterns ("like the auth flow in `/src/auth.ts`")
+   - Mention constraints or non-negotiables upfront
+
+### Example: Competition Completion Page
+
+**Request**: "Competition is over. Add a completion page."
+
+**Question 1: Implementation Approach**
+```
+How should the completion page be implemented?
+
+1. Create a new public page
+   New unguarded route (e.g., /competition-closed)
+   visible to all visitors, no authentication required
+
+2. Modify existing page
+   Update current /end page with conditional logic
+   check if competition is active before showing results
+
+3. Use environment gating
+   Set NEXT_PUBLIC_COMPETITION_CLOSED=true to redirect
+   all traffic to a completion screen
+```
+→ Choose: **Option 1** (New public page)
+
+**Question 2: User Behavior**
+```
+For logged-in participants accessing the new page:
+
+1. Show submission history
+   Redirect to existing /end page
+   display their results and timeline
+
+2. Show simple completion message
+   Display "Competition concluded" notice only
+   no historical data
+
+3. Different treatment
+   Custom behavior based on user role or time
+```
+→ Choose: **Option 2** (Simple message)
+
+**Summary**
+```
+✓ Implementation: New public completion page (/competition-closed)
+✓ User experience: Logged-in users see completion notice (no history)
+✓ Ready to proceed?
+```
+
+**Result**: Clean, intentional implementation that exactly matches the confirmed specifications.
+
 ## Commands · Sub-agents · Skills · Hooks
 
 MoAI-ADK assigns every responsibility to a dedicated execution layer.
@@ -531,10 +678,10 @@ Alfred enforces these quality gates on every change:
 
 ---
 
-## 프로젝트 정보
+## Project Information
 
-- **이름**: MoAI-ADK
-- **설명**: 
-- **버전**: 0.1.0
-- **모드**: personal
-- **개발 도구**: 프로젝트 언어에 최적화된 도구 체인 자동 선택
+- **Name**: MoAI-ADK
+- **Description**: 
+- **Version**: 0.1.0
+- **Mode**: personal
+- **Tooling**: Automatically selects the toolchain optimized for the project language
