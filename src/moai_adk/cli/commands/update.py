@@ -315,7 +315,7 @@ def update(path: str, force: bool, check: bool) -> None:
             console.print("\n[cyan]💾 Creating backup...[/cyan]")
             processor = TemplateProcessor(project_path)
             backup_path = processor.create_backup()
-            console.print(f"[green]✓ Backup completed: {backup_path.relative_to(project_path)}[/green]")
+            console.print(f"[green]✓ Backup completed: {backup_path.relative_to(project_path)}/[/green]")
         else:
             console.print("\n[yellow]⚠ Skipping backup (--force)[/yellow]")
 
