@@ -64,7 +64,7 @@ scope:
 ### 통합 포인트
 
 - **Claude Code 생명주기**: Alfred Hooks는 Claude Code의 이벤트 시스템과 통합
-- **MoAI-ADK 워크플로우**: `/alfred:1-spec`, `/alfred:2-build`, `/alfred:3-sync` 명령어 지원
+- **MoAI-ADK 워크플로우**: `/alfred:1-plan`, `/alfred:2-run`, `/alfred:3-sync` 명령어 지원
 - **JIT Context System**: Anthropic Context Engineering 원칙 준수
 
 ---
@@ -128,8 +128,8 @@ scope:
 
 2. **UserPromptSubmit 이벤트 발생 시**:
    - 시스템은 사용자 프롬프트를 분석하여 관련 문서를 추천해야 한다
-   - `/alfred:1-spec` 감지 시 → `spec-metadata.md` 추천
-   - `/alfred:2-build` 감지 시 → `development-guide.md` 추천
+   - `/alfred:1-plan` 감지 시 → `spec-metadata.md` 추천
+   - `/alfred:2-run` 감지 시 → `development-guide.md` 추천
    - 시스템은 `context` 필드로 문서 경로 목록을 반환해야 한다
 
 3. **PreToolUse 이벤트 발생 시**:
@@ -263,8 +263,8 @@ def clear_workflow_context()
 ```
 
 **JIT 문서 매핑**:
-- `/alfred:1-spec` → `.moai/memory/spec-metadata.md`
-- `/alfred:2-build` → `.moai/memory/development-guide.md`
+- `/alfred:1-plan` → `.moai/memory/spec-metadata.md`
+- `/alfred:2-run` → `.moai/memory/development-guide.md`
 - `/alfred:3-sync` → `.moai/memory/sync-report.md` (생성 시)
 - `@agent-tag-agent` → `.moai/memory/spec-metadata.md`
 - `@agent-debug-helper` → `.moai/memory/development-guide.md`
@@ -330,7 +330,7 @@ def handle_user_prompt_submit(payload: dict) -> HookResult
 ```
 
 **컨텍스트 추천 로직**:
-- 프롬프트 패턴 매칭 (`/alfred:1-spec`, `@agent-*`)
+- 프롬프트 패턴 매칭 (`/alfred:1-plan`, `@agent-*`)
 - 관련 문서 경로 리스트 반환 (`context` 필드)
 - Alfred가 `Read` 도구로 문서 로드 (JIT Retrieval)
 

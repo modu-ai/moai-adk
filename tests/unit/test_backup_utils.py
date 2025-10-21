@@ -28,6 +28,7 @@ class TestBackupConstants:
         """Should contain key MoAI files"""
         assert ".moai/config.json" in BACKUP_TARGETS
         assert "CLAUDE.md" in BACKUP_TARGETS
+        assert ".github/" in BACKUP_TARGETS
 
     def test_protected_paths_is_list(self):
         """PROTECTED_PATHS should be a list"""
@@ -71,6 +72,14 @@ class TestHasAnyMoaiFiles:
         result = has_any_moai_files(tmp_project_dir)
         assert result is True
 
+    def test_returns_true_for_github_directory(self, tmp_project_dir: Path):
+        """Should return True when .github/ directory exists"""
+        github_dir = tmp_project_dir / ".github"
+        github_dir.mkdir(parents=True, exist_ok=True)
+
+        result = has_any_moai_files(tmp_project_dir)
+        assert result is True
+
 
 class TestGetBackupTargets:
     """Test get_backup_targets function"""
@@ -100,10 +109,13 @@ class TestGetBackupTargets:
         """Should include directories in targets"""
         moai_memory = tmp_project_dir / ".moai" / "memory"
         moai_memory.mkdir(parents=True, exist_ok=True)
+        github_dir = tmp_project_dir / ".github"
+        github_dir.mkdir(parents=True, exist_ok=True)
 
         result = get_backup_targets(tmp_project_dir)
 
         assert ".moai/memory/" in result
+        assert ".github/" in result
 
 
 class TestGenerateBackupDirName:

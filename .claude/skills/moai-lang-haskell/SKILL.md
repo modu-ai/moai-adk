@@ -16,9 +16,9 @@ Provides Haskell-specific expertise for TDD development, including HUnit testing
 
 ## When to use
 
-- "Haskell 테스트 작성", "HUnit 사용법", "순수 함수형 프로그래밍"
+- “Writing Haskell tests”, “How to use HUnit”, “Pure functional programming”
 - Automatically invoked when working with Haskell projects
-- Haskell SPEC implementation (`/alfred:2-build`)
+- Haskell SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -55,11 +55,11 @@ Provides Haskell-specific expertise for TDD development, including HUnit testing
 ## Examples
 
 ### Example 1: TDD with HUnit
-User: "/alfred:2-build PARSE-001"
+User: "/alfred:2-run PARSE-001"
 Claude: (creates RED test with HUnit, GREEN implementation with pure functions, REFACTOR)
 
 ### Example 2: Property testing
-User: "QuickCheck 속성 테스트"
+User: "Test QuickCheck properties"
 Claude: (creates property-based tests for invariants)
 
 ## Works well with

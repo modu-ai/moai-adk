@@ -1,10 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Read(//Users/goos/.claude/**)"
+      "Read(//Users/goos/.claude/**)",
+      "Skill(moai-alfred-tui-survey)"
     ],
     "deny": [],
     "ask": []
   },
-  "outputStyle": "Agentic Coding"
+  "outputStyle": "Study with Alfred"
 }

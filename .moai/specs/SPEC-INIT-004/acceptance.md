@@ -408,7 +408,7 @@ $ moai-adk init
 Next steps:
 1. Review .moai/config.json for project settings
 2. Start with: /alfred:0-project (initialize project metadata)
-3. Create your first SPEC: /alfred:1-spec
+3. Create your first SPEC: /alfred:1-plan
 ```
 
 ---
@@ -453,4 +453,4 @@ Next steps:
 
 ---
 
-_이 수락 기준은 `/alfred:2-build SPEC-INIT-004` 실행 시 검증됩니다._
+_이 수락 기준은 `/alfred:2-run SPEC-INIT-004` 실행 시 검증됩니다._

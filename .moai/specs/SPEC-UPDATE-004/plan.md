@@ -398,7 +398,7 @@ priority: {low|medium|high|critical}
 #### 테스트 시나리오 3: SPEC 작성
 ```bash
 # 사용자 호출
-/alfred:1-spec "새 기능"
+/alfred:1-plan "새 기능"
 
 # 예상 동작
 1. spec-builder가 @moai-alfred-ears-authoring Skill JIT 로드
@@ -449,9 +449,9 @@ time rg "@moai-alfred-tag-scanning" .claude/skills/
 ```markdown
 # 9개 전문 에이전트 생태계 (수정)
 
-| 에이전트 | 페르소나 | 전문 영역 | 호출 |
-|---------|---------|----------|------|
-| ~~tag-agent~~ | ~~지식 관리자~~ | ~~TAG 시스템~~ | ~~@agent-tag-agent~~ |
+| 에이전트          | 페르소나           | 전문 영역      | 호출                     |
+| ----------------- | ------------------ | -------------- | ------------------------ |
+| ~~tag-agent~~     | ~~지식 관리자~~    | ~~TAG 시스템~~ | ~~@agent-tag-agent~~     |
 | ~~trust-checker~~ | ~~품질 보증 리드~~ | ~~TRUST 검증~~ | ~~@agent-trust-checker~~ |
 
 # Skills 참조 가이드 (추가)
@@ -592,7 +592,7 @@ tags:
 ### 8.1 구현 시작
 ```bash
 # Phase 1 시작
-/alfred:2-build UPDATE-004
+/alfred:2-run UPDATE-004
 
 # 예상 작업
 1. tag-agent.md 분석
@@ -608,7 +608,7 @@ tags:
 # 기능 테스트
 @agent-tag-agent "AUTH 도메인 TAG 목록 조회"
 @agent-trust-checker "현재 프로젝트 TRUST 원칙 준수도 확인"
-/alfred:1-spec "테스트 기능"
+/alfred:1-plan "테스트 기능"
 
 # LOC 측정
 wc -l .claude/agents/alfred/{tag-agent,trust-checker,spec-builder}.md

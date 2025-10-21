@@ -116,8 +116,8 @@
 - `docs/cli-reference/restore.md` - 프로젝트 복원
 - `docs/cli-reference/help.md` - 도움말 표시
 - `docs/cli-reference/version.md` - 버전 확인
-- `docs/cli-reference/alfred-1-spec.md` - /alfred:1-spec 명령어
-- `docs/cli-reference/alfred-2-build.md` - /alfred:2-build 명령어
+- `docs/cli-reference/alfred-1-spec.md` - /alfred:1-plan 명령어
+- `docs/cli-reference/alfred-2-build.md` - /alfred:2-run 명령어
 - `docs/cli-reference/alfred-3-sync.md` - /alfred:3-sync 명령어
 
 **콘텐츠 소스**:
@@ -307,7 +307,7 @@
 ## 다음 단계 안내
 
 SPEC-DOCS-001 작성 완료 후:
-1. `/alfred:2-build DOCS-001` - VitePress 설정 및 Phase 1 페이지 작성
+1. `/alfred:2-run DOCS-001` - VitePress 설정 및 Phase 1 페이지 작성
 2. `/alfred:3-sync` - 문서 동기화 및 TAG 체인 검증
 3. 반복 사이클: Phase 2-4 순차 진행
 

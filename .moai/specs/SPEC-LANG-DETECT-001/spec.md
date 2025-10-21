@@ -196,4 +196,4 @@ LANGUAGE_PATTERNS = {
 
 ---
 
-_이 SPEC은 `/alfred:2-build SPEC-LANG-DETECT-001`로 TDD 구현됩니다._
+_이 SPEC은 `/alfred:2-run SPEC-LANG-DETECT-001`로 TDD 구현됩니다._

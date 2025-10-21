@@ -19,7 +19,7 @@ allowed-tools:
 
 {Comprehensive 2-3 sentence description of command's purpose, integration with MoAI-ADK workflow, and key benefits}
 
-## 🎯 커맨드 목적
+## 🎯 Command Purpose
 
 {Detailed multi-paragraph explanation covering:
 - What problem this command solves
@@ -27,13 +27,13 @@ allowed-tools:
 - When to use this command vs alternatives
 - What makes this command unique/valuable}
 
-## 📋 실행 흐름 (2-Phase 구조)
+## 📋 Execution flow (2-Phase structure)
 
-### ⚙️ Phase 0: 환경 분석 (선택적)
+### ⚙️ Phase 0: Environmental Analysis (Optional)
 
-**목적**: {Pre-execution analysis purpose}
+**Purpose**: {Pre-execution analysis purpose}
 
-**실행**:
+**execution**:
 ```bash
 # {Environment check description}
 {command-1}
@@ -42,7 +42,7 @@ allowed-tools:
 {command-2}
 ```
 
-**검증**:
+**verification**:
 - [ ] {Prerequisite 1 checked}
 - [ ] {Prerequisite 2 verified}
 
@@ -50,14 +50,14 @@ allowed-tools:
 
 ### 📊 Phase 1: {Planning/Analysis Phase}
 
-**목적**: {Detailed purpose of planning phase}
+**Purpose**: {Detailed purpose of planning phase}
 
-**자동 처리**:
+**Automatic processing**:
 - {Auto-task 1 that happens without user input}
 - {Auto-task 2 that system handles}
 - {Auto-task 3 performed automatically}
 
-**실행 단계**:
+**Execution Steps**:
 
 #### 1.1 {First Sub-Step}
 ```bash
@@ -65,7 +65,7 @@ allowed-tools:
 {command-or-action}
 ```
 
-**산출물**:
+**Output**:
 - {Output 1 with format specification}
 - {Output 2 with expected structure}
 
@@ -74,30 +74,30 @@ allowed-tools:
 {commands}
 ```
 
-**산출물**:
+**Output**:
 - {Intermediate output description}
 
-#### 1.3 {사용자 확인}
+#### 1.3 {User Confirmation}
 
-**AskUserQuestion 시점**: {When user confirmation is needed}
+**AskUserQuestion timing**: {When user confirmation is needed}
 
-**확인 내용**:
+**Confirmation**:
 ```typescript
 AskUserQuestion({
   questions: [{
     question: "{What to ask user}?",
     header: "{Short header}",
     options: [
-      { label: "진행", description: "Phase 2 실행" },
-      { label: "수정", description: "{What modification means}" },
-      { label: "중단", description: "작업 취소" }
+{ label: "Proceed", description: "Execute Phase 2" },
+ { label: "Modify", description: "{What modification means}" },
+ { label: "Abort", description: "Cancel operation" }
     ],
     multiSelect: false
   }]
 })
 ```
 
-**Phase 1 산출물 (최종)**:
+**Phase 1 deliverable (final)**:
 - {Complete output 1 from planning}
 - {Complete output 2 ready for execution}
 - {User-approved plan}
@@ -106,14 +106,14 @@ AskUserQuestion({
 
 ### 🚀 Phase 2: {Execution Phase}
 
-**목적**: {Detailed purpose of execution phase}
+**Purpose**: {Detailed purpose of execution phase}
 
-**사전 조건**:
-- [ ] Phase 1 완료 및 사용자 승인
+**Prerequisites**:
+- [ ] Phase 1 completed and user approved
 - [ ] {Additional precondition 1}
 - [ ] {Additional precondition 2}
 
-**실행 단계**:
+**Execution Steps**:
 
 #### 2.1 {First Execution Step}
 ```bash
@@ -124,7 +124,7 @@ AskUserQuestion({
 {execution-command-2}
 ```
 
-**실시간 진행 상황**:
+**Real-time progress**:
 ```
 {Progress indicator format}
 [▓▓▓▓▓▓▓░░░] {percentage}% - {current-action}
@@ -135,7 +135,7 @@ AskUserQuestion({
 {commands-with-explanations}
 ```
 
-#### 2.3 {품질 검증}
+#### 2.3 {Quality Verification}
 ```bash
 # {Validation check 1}
 {validation-command-1}
@@ -144,36 +144,36 @@ AskUserQuestion({
 {validation-command-2}
 ```
 
-**검증 기준**:
+**Verification Criteria**:
 - [ ] {Quality criterion 1 with threshold}
 - [ ] {Quality criterion 2 with expected value}
 - [ ] {Quality criterion 3 with pass/fail}
 
-**Phase 2 최종 산출물**:
+**Phase 2 final output**:
 ```{format}
 {example-final-output-structure}
 ```
 
-## 🔗 연관 에이전트
+## 🔗 Associated Agent
 
 ### Primary Agent
 - **{agent-name}** ({Icon} {Persona})
-  - **전문 영역**: {Expertise}
-  - **호출 시점**: {When invoked}
-  - **역할**: {What agent does in this command}
+- **Expertise**: {Expertise}
+ - **When invoked**: {When invoked}
+ - **Role**: {What agent does in this command}
 
 ### Secondary Agents
 - **{agent-2}** ({Icon} {Role}) - {Integration scenario}
 - **{agent-3}** ({Icon} {Role}) - {When used}
 
-## 💡 사용 예시
+## 💡 Example of use
 
-### 기본 사용
+### Default Enabled
 ```bash
 /{command-name} {basic-example}
 ```
 
-### 고급 사용
+### Advanced Use
 ```bash
 # {Advanced use case 1}
 /{command-name} {param1} --{option1}={value1}
@@ -182,9 +182,9 @@ AskUserQuestion({
 /{command-name} {param1} {param2} --{flag}
 ```
 
-### 실전 시나리오
+### Real-world scenarios
 
-#### 시나리오 1: {Common Workflow}
+#### Scenario 1: {Common Workflow}
 ```bash
 # Step 1: {What user does first}
 /{command-name} "{example-input}"
@@ -193,7 +193,7 @@ AskUserQuestion({
 # Next: {What to do next}
 ```
 
-#### 시나리오 2: {Edge Case}
+#### Scenario 2: {Edge Case}
 ```bash
 # When {special condition}
 /{command-name} {special-params}
@@ -201,57 +201,57 @@ AskUserQuestion({
 # Handles: {How command adapts}
 ```
 
-## 명령어 인수 상세
+## Command argument details
 
-| 인수/옵션 | 타입 | 필수 | 기본값 | 설명 |
+| Arguments/Options | Type | Required | default | Description |
 |----------|------|------|--------|------|
 | `{param1}` | {type} | ✅ | - | {Detailed description of param1} |
 | `{param2}` | {type} | ⚠️ | {default} | {Detailed description of param2} |
 | `--{option1}` | {type} | ⚠️ | {default} | {What this option controls} |
 | `--{flag}` | boolean | ⚠️ | false | {When to use this flag} |
 
-**인수 검증**:
+**Argument Validation**:
 - {Validation rule 1}
 - {Validation rule 2}
 
-## ⚠️ 금지 사항
+## ⚠️ Prohibitions
 
-**절대 하지 말아야 할 작업**:
+**What you should never do**:
 
 - ❌ {Prohibited action 1 with explanation}
 - ❌ {Prohibited action 2 with reason}
 - ❌ {Prohibited action 3 with alternative}
 
-**사용해야 할 표현**:
+**Expressions to use**:
 
 - ✅ {Recommended practice 1}
 - ✅ {Recommended practice 2}
 
-## 🚨 에러 처리
+## 🚨 Error handling
 
-### 일반적인 오류
+### Common errors
 
-| 에러 메시지 | 원인 | 해결 방법 |
+| error message | Cause | Solution |
 |-----------|------|----------|
 | `{Error 1}` | {Root cause} | {Step-by-step solution} |
 | `{Error 2}` | {What triggers it} | {How to fix} |
 | `{Error 3}` | {Condition} | {Resolution} |
 
-### 복구 절차
+### Recovery Procedure
 
 1. **{Recovery Step 1}**: {What to do first}
 2. **{Recovery Step 2}**: {Next action}
 3. **{Fallback}**: {Last resort if all fails}
 
-## ✅ 성공 기준
+## ✅ Success Criteria
 
-**커맨드 실행 후 확인 사항**:
+**Check points after executing the command**:
 
 - [ ] {Success criterion 1 with verification method}
 - [ ] {Success criterion 2 with expected outcome}
 - [ ] {Success criterion 3 with deliverable}
 
-**품질 게이트**:
+**Quality Gate**:
 ```bash
 # {Quality check 1}
 {verification-command-1}
@@ -260,21 +260,21 @@ AskUserQuestion({
 {verification-command-2}
 ```
 
-## 📋 다음 단계
+## 📋 Next steps
 
-**권장 워크플로우**:
+**Recommended Workflow**:
 
-1. **즉시 실행**: {What to do right after command completes}
-2. **검증**: {How to verify results}
-3. **다음 커맨드**: `/{next-command}` - {Why this is next}
+1. **Execute immediately**: {What to do right after command completes}
+2. **Verification**: {How to verify results}
+3. **Next command**: `/{next-command}` - {Why this is next}
 
-**대안 경로**:
+**Alternative Path**:
 - {Alternative path 1 if condition X}
 - {Alternative path 2 if condition Y}
 
-## 🔄 통합 워크플로우
+## 🔄 Integrated Workflow
 
-### MoAI-ADK 워크플로우 위치
+### MoAI-ADK workflow location
 
 ```
 /{prev-command} → /{command-name} → /{next-command}
@@ -282,31 +282,31 @@ AskUserQuestion({
                 {Connected agents/tasks}
 ```
 
-### 다른 커맨드와의 관계
+### Relationship with other commands
 
-| 커맨드 | 관계 | 실행 순서 |
+| command | relationship | Execution order |
 |--------|------|----------|
 | `/{related-1}` | {Relationship} | {Before/After/Parallel} |
 | `/{related-2}` | {Relationship} | {Sequence} |
 
-## 📊 성능 메트릭
+## 📊 Performance Metrics
 
-- **평균 실행 시간**: {Expected duration}
-- **메모리 사용량**: {Expected memory}
-- **생성 파일 수**: {Expected file count}
-- **API 호출**: {Expected external calls}
+- **Average execution time**: {Expected duration}
+- **Memory usage**: {Expected memory}
+- **Number of files created**: {Expected file count}
+- **API calls**: {Expected external calls}
 
-## 🎓 베스트 프랙티스
+## 🎓 Best Practices
 
 ### 1. {Practice Category 1}
 
-**권장**:
+**Recommended**:
 ```bash
 # {Good example}
 /{command-name} {recommended-usage}
 ```
 
-**비권장**:
+**Not recommended**:
 ```bash
 # {Bad example - why to avoid}
 /{command-name} {anti-pattern}
@@ -314,61 +314,61 @@ AskUserQuestion({
 
 ### 2. {Practice Category 2}
 
-**팁**: {Helpful tip or trick}
+**Tip**: {Helpful tip or trick}
 
 ### 3. {Practice Category 3}
 
-**주의**: {Important consideration}
+**Caution**: {Important consideration}
 
-## 🔗 관련 리소스
+## 🔗 Related Resources
 
-### 관련 커맨드
+### Related commands
 - `/{command-1}` - {Description and relation}
 - `/{command-2}` - {Description and when to use}
 
-### 관련 에이전트
+### Related Agents
 - `@agent-{agent-1}` - {How it supports this command}
 - `@agent-{agent-2}` - {Integration point}
 
-### 문서
+### document
 - **SPEC**: {Link to specification}
-- **가이드**: {Link to detailed guide}
-- **예제**: {Link to examples}
+- **Guide**: {Link to detailed guide}
+- **Examples**: {Link to examples}
 
-## 📝 커맨드 출력 예시
+## 📝 Command output example
 
-**성공 케이스**:
+**Success Case**:
 ```
-✅ {Command Name} 완료
+✅ {Command Name} completed
 
-📊 실행 결과:
+📊 Execution result:
 - {Result metric 1}: {value}
 - {Result metric 2}: {value}
 - {Result metric 3}: {value}
 
-📁 생성된 파일:
+📁 Files generated:
 - {File 1}: {Description}
 - {File 2}: {Description}
 
-📋 다음 단계:
+📋 Next steps:
 - {Next step 1}
 - {Next step 2}
 ```
 
-**에러 케이스**:
+**Error Case**:
 ```
-❌ {Command Name} 실패
+❌ {Command Name} failed
 
-🔍 에러 상세:
-- 유형: {Error type}
-- 위치: {Where error occurred}
-- 메시지: {Error message}
+🔍 Error details:
+- Type: {Error type}
+- Location: {Where error occurred}
+- Message: {Error message}
 
-💡 해결 방법:
+💡 Solution:
 1. {Solution step 1}
 2. {Solution step 2}
 
-📞 추가 도움: {Where to get help}
+📞 Additional help: {Where to get help}
 ```
 
 ---
@@ -381,4 +381,4 @@ AskUserQuestion({
 
 ---
 
-이 커맨드는 {workflow-domain}의 표준 자동화를 제공합니다.
+This command provides standard automation for {workflow-domain}.

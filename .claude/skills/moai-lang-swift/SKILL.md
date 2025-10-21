@@ -16,9 +16,9 @@ Provides Swift-specific expertise for TDD development, including XCTest framewor
 
 ## When to use
 
-- "Swift 테스트 작성", "XCTest 사용법", "iOS 패턴"
+- “Writing Swift tests”, “How to use XCTest”, “iOS patterns”
 - Automatically invoked when working with Swift/iOS projects
-- Swift SPEC implementation (`/alfred:2-build`)
+- Swift SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -54,11 +54,11 @@ Provides Swift-specific expertise for TDD development, including XCTest framewor
 ## Examples
 
 ### Example 1: TDD with XCTest
-User: "/alfred:2-build AUTH-001"
+User: "/alfred:2-run AUTH-001"
 Claude: (creates RED test with XCTest, GREEN implementation with optionals, REFACTOR)
 
 ### Example 2: SwiftLint check
-User: "SwiftLint 실행"
+User: "Run SwiftLint"
 Claude: (runs swiftlint and reports style violations)
 
 ## Works well with

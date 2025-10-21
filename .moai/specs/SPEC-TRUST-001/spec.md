@@ -67,13 +67,13 @@ scope:
 - **INITIAL**: TRUST 5원칙 자동 검증 시스템 명세 최초 작성
 - **AUTHOR**: @Goos
 - **SCOPE**: Test First, Readable, Unified, Secured, Trackable 자동 검증
-- **CONTEXT**: /alfred:2-build 완료 후 품질 게이트 자동화
+- **CONTEXT**: /alfred:2-run 완료 후 품질 게이트 자동화
 - **DEPENDS_ON**: SPEC-VALID-001 (메타데이터 검증)
 
 ## Environment (환경)
 
 **실행 컨텍스트**:
-- **실행 시점**: `/alfred:2-build` TDD 구현 완료 후 자동 실행
+- **실행 시점**: `/alfred:2-run` TDD 구현 완료 후 자동 실행
 - **실행 에이전트**: `@agent-trust-checker` (Alfred가 호출)
 - **실행 위치**: 프로젝트 루트 디렉토리
 
@@ -139,7 +139,7 @@ scope:
 
 ### Event-driven (이벤트 기반)
 
-4. **R-004**: WHEN `/alfred:2-build` 완료 후, 시스템은 TRUST 검증을 자동 실행해야 한다
+4. **R-004**: WHEN `/alfred:2-run` 완료 후, 시스템은 TRUST 검증을 자동 실행해야 한다
    - GREEN 단계 커밋 직후 실행
    - 검증 실패 시 REFACTOR 단계 진입 차단
 
@@ -206,7 +206,7 @@ scope:
 ### S-001: TRUST 검증 흐름
 
 ```
-/alfred:2-build 완료
+/alfred:2-run 완료
     ↓
 @agent-trust-checker 호출
     ↓
@@ -226,13 +226,13 @@ scope:
 
 ### S-002: 언어별 도구 매핑
 
-| 언어       | 테스트 도구   | 커버리지 도구 | 린터        | 타입 체커      |
-| ---------- | ------------- | ------------- | ----------- | -------------- |
-| TypeScript | Vitest        | Vitest        | Biome       | tsc            |
-| Python     | pytest        | coverage.py   | ruff        | mypy           |
-| Java       | JUnit         | JaCoCo        | SpotBugs    | javac          |
-| Go         | go test       | go test       | staticcheck | go build       |
-| Rust       | cargo test    | cargo tarpaulin | clippy    | rustc          |
+| 언어       | 테스트 도구 | 커버리지 도구   | 린터        | 타입 체커 |
+| ---------- | ----------- | --------------- | ----------- | --------- |
+| TypeScript | Vitest      | Vitest          | Biome       | tsc       |
+| Python     | pytest      | coverage.py     | ruff        | mypy      |
+| Java       | JUnit       | JaCoCo          | SpotBugs    | javac     |
+| Go         | go test     | go test         | staticcheck | go build  |
+| Rust       | cargo test  | cargo tarpaulin | clippy      | rustc     |
 
 ### S-003: TAG 체인 검증 알고리즘
 
@@ -407,13 +407,13 @@ scope:
 
 ## TRUST Mapping
 
-| TRUST 원칙 | 관련 AC              | 검증 내용                  |
-| ---------- | -------------------- | -------------------------- |
-| **T** est  | AC-001               | 테스트 커버리지 ≥85%       |
-| **R** ead  | AC-002, AC-003, AC-004, AC-005 | 코드 제약 (LOC, 복잡도) |
-| **U** nify | AC-010               | 언어별 도구 통합           |
-| **S** ecure| AC-013 (R-013)       | 보안 취약점 스캔           |
-| **T** race | AC-006, AC-007       | TAG 체인 검증, 고아 TAG    |
+| TRUST 원칙  | 관련 AC                        | 검증 내용               |
+| ----------- | ------------------------------ | ----------------------- |
+| **T** est   | AC-001                         | 테스트 커버리지 ≥85%    |
+| **R** ead   | AC-002, AC-003, AC-004, AC-005 | 코드 제약 (LOC, 복잡도) |
+| **U** nify  | AC-010                         | 언어별 도구 통합        |
+| **S** ecure | AC-013 (R-013)                 | 보안 취약점 스캔        |
+| **T** race  | AC-006, AC-007                 | TAG 체인 검증, 고아 TAG |
 
 ## Technical Approach
 
@@ -458,4 +458,4 @@ scope:
 ---
 
 **Last Updated**: 2025-10-16
-**Next Steps**: `/alfred:2-build TRUST-001`로 TDD 구현 시작
+**Next Steps**: `/alfred:2-run TRUST-001`로 TDD 구현 시작

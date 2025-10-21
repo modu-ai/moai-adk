@@ -37,7 +37,7 @@ scope:
 - **REVIEW**: 구현 검증 완료
 
 ### v0.0.1 (2025-10-16)
-- **INITIAL**: `/alfred:2-build` 완료 후 TRUST 검증 자동 실행 명세 작성
+- **INITIAL**: `/alfred:2-run` 완료 후 TRUST 검증 자동 실행 명세 작성
 - **AUTHOR**: @Goos
 - **CONTEXT**: validation-logic-migration.md Phase 1 구현
 - **DEPENDS_ON**: HOOKS-001 (Hooks 시스템 마스터플랜), TRUST-001 (검증 시스템)
@@ -54,8 +54,8 @@ scope:
 - **Runtime**: Python 3.10+, subprocess를 통한 비동기 프로세스 실행
 
 **Alfred 3-Stage 컨텍스트**:
-- **Stage 1**: `/alfred:1-spec` → SPEC 문서 작성 (TRUST 검증 불필요)
-- **Stage 2**: `/alfred:2-build` → TDD 구현 (RED-GREEN-REFACTOR)
+- **Stage 1**: `/alfred:1-plan` → SPEC 문서 작성 (TRUST 검증 불필요)
+- **Stage 2**: `/alfred:2-run` → TDD 구현 (RED-GREEN-REFACTOR)
 - **Stage 3**: `/alfred:3-sync` → 문서 동기화 및 TAG 검증
 
 **TRUST-001 검증 시스템**:
@@ -412,7 +412,7 @@ def format_validation_result(result: dict) -> str:
 ### 통합 테스트
 
 1. **End-to-End 시나리오**:
-   - `/alfred:2-build SPEC-XXX` 실행
+   - `/alfred:2-run SPEC-XXX` 실행
    - REFACTOR 커밋 생성
    - PostToolUse 트리거
    - 검증 결과 알림 확인
@@ -445,7 +445,7 @@ def format_validation_result(result: dict) -> str:
 
 **단계**:
 1. **SPEC 작성** (현재 문서)
-2. **TDD 구현** (`/alfred:2-build HOOKS-003`)
+2. **TDD 구현** (`/alfred:2-run HOOKS-003`)
 3. **Alfred 통합** (handlers/tool.py 확장)
 
 ---

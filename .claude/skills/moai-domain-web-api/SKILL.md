@@ -16,9 +16,9 @@ Provides expertise in designing and implementing RESTful APIs and GraphQL servic
 
 ## When to use
 
-- "API 설계", "REST API 패턴", "GraphQL 스키마", "JWT 인증"
+- “API design”, “REST API pattern”, “GraphQL schema”, “JWT authentication”
 - Automatically invoked when working with API projects
-- Web API SPEC implementation (`/alfred:2-build`)
+- Web API SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -53,11 +53,11 @@ Provides expertise in designing and implementing RESTful APIs and GraphQL servic
 ## Examples
 
 ### Example 1: REST API with JWT
-User: "/alfred:2-build API-AUTH-001"
+User: "/alfred:2-run API-AUTH-001"
 Claude: (creates RED API test, GREEN implementation with JWT middleware, REFACTOR)
 
 ### Example 2: GraphQL schema design
-User: "GraphQL 스키마 설계"
+User: "GraphQL schema design"
 Claude: (designs schema with proper types and resolvers)
 
 ## Works well with

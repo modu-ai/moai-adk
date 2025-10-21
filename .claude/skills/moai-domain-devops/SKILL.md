@@ -16,9 +16,9 @@ Provides expertise in continuous integration/deployment (CI/CD), Docker containe
 
 ## When to use
 
-- "CI/CD 파이프라인", "Docker 컨테이너화", "Kubernetes 배포", "인프라 코드"
+- “CI/CD pipeline”, “Docker containerization”, “Kubernetes deployment”, “infrastructure code”
 - Automatically invoked when working with DevOps projects
-- DevOps SPEC implementation (`/alfred:2-build`)
+- DevOps SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -56,11 +56,11 @@ Provides expertise in continuous integration/deployment (CI/CD), Docker containe
 ## Examples
 
 ### Example 1: GitHub Actions CI/CD
-User: "/alfred:2-build CICD-001"
+User: "/alfred:2-run CICD-001"
 Claude: (creates RED workflow test, GREEN GitHub Actions workflow, REFACTOR)
 
 ### Example 2: Kubernetes deployment
-User: "Kubernetes 배포 설정"
+User: "Kubernetes Deployment Settings"
 Claude: (creates deployment.yaml, service.yaml, ingress.yaml)
 
 ## Works well with

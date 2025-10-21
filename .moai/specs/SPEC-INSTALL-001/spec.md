@@ -80,7 +80,7 @@ priority: high
    - 설치 시 Git 미설치 사용자는 에러 안내 후 중단
 
 2. **SPEC Workflow 가정**:
-   - Team 모드는 `/alfred:1-spec` → 브랜치 → PR 흐름 필수
+   - Team 모드는 `/alfred:1-plan` → 브랜치 → PR 흐름 필수
    - Personal 모드는 SPEC 선택적 (간단한 프로토타입용)
 
 3. **개발자 이름 가정**:
@@ -174,7 +174,7 @@ priority: high
 
   다음 명령어로 시작하세요:
   /alfred:8-project  # 프로젝트 초기화
-  /alfred:1-spec     # 첫 SPEC 작성
+  /alfred:1-plan     # 첫 SPEC 작성
 
   질문이 있으시면 언제든 @agent-debug-helper를 호출하세요.
   ```
@@ -234,7 +234,7 @@ priority: high
 - **동작**: `developer` 필드 누락 시 경고만 출력 (설치 차단 X)
 - **마이그레이션**: 향후 `/alfred:upgrade` 명령 제공
 
-**C-003**: IF Personal 모드에서 SPEC을 비활성화하면, `/alfred:1-spec` 명령은 경고를 출력해야 한다
+**C-003**: IF Personal 모드에서 SPEC을 비활성화하면, `/alfred:1-plan` 명령은 경고를 출력해야 한다
 - **조건**: `mode: personal`, `enforce_spec: false`
 - **경고**: "SPEC Workflow가 비활성화되어 있습니다. 활성화하려면 `.moai/config.json`에서 `enforce_spec: true`로 변경하세요."
 - **동작**: 명령 실행은 허용 (제약 아님)
@@ -361,7 +361,7 @@ console.log(`
 
 다음 명령어로 시작하세요:
 /alfred:8-project  # 프로젝트 초기화
-/alfred:1-spec     # 첫 SPEC 작성
+/alfred:1-plan     # 첫 SPEC 작성
 
 질문이 있으시면 언제든 @agent-debug-helper를 호출하세요.
 `);
@@ -482,7 +482,7 @@ console.log(`
 
 다음 명령어로 시작하세요:
 /alfred:8-project  # 프로젝트 초기화
-/alfred:1-spec     # 첫 SPEC 작성
+/alfred:1-plan     # 첫 SPEC 작성
 
 질문이 있으시면 언제든 @agent-debug-helper를 호출하세요.
 ```
@@ -641,7 +641,7 @@ GIVEN 모든 프롬프트가 완료되었을 때
 WHEN 설치가 성공하면
 THEN "✅ MoAI-ADK 설치가 완료되었습니다!" 메시지를 출력해야 한다
 AND "🤖 AI-Agent Alfred가 {name}님의 개발을 도와드리겠습니다" 메시지를 출력해야 한다
-AND 다음 단계 안내 (/alfred:8-project, /alfred:1-spec)를 제공해야 한다
+AND 다음 단계 안내 (/alfred:8-project, /alfred:1-plan)를 제공해야 한다
 ```
 
 ### AC7: Progressive Disclosure 준수
@@ -722,7 +722,7 @@ rg '@(SPEC|TEST|CODE|DOC):INSTALL-001' -n
 5. Git 미설치 에러 처리
 
 ### 동기화 단계
-1. `/alfred:2-build SPEC-INSTALL-001` 실행 (TDD 구현)
+1. `/alfred:2-run SPEC-INSTALL-001` 실행 (TDD 구현)
 2. `/alfred:3-sync` 실행 (문서 동기화 + TAG 체인 검증)
 3. Living Document 생성
 

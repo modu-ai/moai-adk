@@ -16,9 +16,9 @@ Provides expertise in machine learning model development, training, evaluation, 
 
 ## When to use
 
-- "머신러닝 모델 개발", "모델 학습", "모델 배포", "MLOps"
+- “Machine learning model development”, “model training”, “model deployment”, “MLOps”
 - Automatically invoked when working with ML projects
-- ML SPEC implementation (`/alfred:2-build`)
+- ML SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -55,11 +55,11 @@ Provides expertise in machine learning model development, training, evaluation, 
 ## Examples
 
 ### Example 1: Model training with scikit-learn
-User: "/alfred:2-build ML-001"
+User: "/alfred:2-run ML-001"
 Claude: (creates RED model test, GREEN training pipeline, REFACTOR with cross-validation)
 
 ### Example 2: Model deployment
-User: "모델 API 배포"
+User: "Deploy Model API"
 Claude: (creates FastAPI endpoint with model serving)
 
 ## Works well with

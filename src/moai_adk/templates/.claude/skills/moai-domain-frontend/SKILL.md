@@ -1,14 +1,21 @@
 ---
+
 name: moai-domain-frontend
-description: React/Vue/Angular development with state management, performance optimization, and accessibility
+description: React/Vue/Angular development with state management, performance optimization, and accessibility. Use when working on frontend interfaces scenarios.
 allowed-tools:
   - Read
   - Bash
-tier: 4
-auto-load: "false"
 ---
 
 # Frontend Expert
+
+## Skill Metadata
+| Field | Value |
+| ----- | ----- |
+| Allowed tools | Read (read_file), Bash (terminal) |
+| Auto-load | On demand for frontend delivery |
+| Trigger cues | Component architecture, design systems, accessibility, performance budgets. |
+| Tier | 4 |
 
 ## What it does
 
@@ -16,9 +23,10 @@ Provides expertise in modern frontend development using React, Vue, or Angular, 
 
 ## When to use
 
-- "프론트엔드 개발", "React 컴포넌트", "상태 관리", "성능 최적화"
+- Engages when building or reviewing UI/front-end experiences.
+- “Front-end development”, “React components”, “state management”, “performance optimization”
 - Automatically invoked when working with frontend projects
-- Frontend SPEC implementation (`/alfred:2-build`)
+- Frontend SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -53,17 +61,39 @@ Provides expertise in modern frontend development using React, Vue, or Angular, 
 - **Screen reader support**: Alt text, aria-live
 
 ## Examples
+```bash
+$ npm run lint && npm run test
+$ npm run build -- --profiling
+```
 
-### Example 1: React component with performance optimization
-User: "/alfred:2-build UI-001"
-Claude: (creates RED component test, GREEN implementation with React.memo, REFACTOR)
+## Inputs
+- 도메인 관련 설계 문서 및 사용자 요구사항.
+- 프로젝트 기술 스택 및 운영 제약.
 
-### Example 2: Accessibility audit
-User: "접근성 검사"
-Claude: (runs axe-core or Lighthouse and reports issues)
+## Outputs
+- 도메인 특화 아키텍처 또는 구현 가이드라인.
+- 연관 서브 에이전트/스킬 권장 목록.
+
+## Failure Modes
+- 도메인 근거 문서가 없거나 모호할 때.
+- 프로젝트 전략이 미확정이라 구체화할 수 없을 때.
+
+## Dependencies
+- `.moai/project/` 문서와 최신 기술 브리핑이 필요합니다.
+
+## References
+- Google. "Web.dev Performance Guidelines." https://web.dev/fast/ (accessed 2025-03-29).
+- W3C. "Web Content Accessibility Guidelines (WCAG) 2.2." https://www.w3.org/TR/WCAG22/ (accessed 2025-03-29).
+
+## Changelog
+- 2025-03-29: 도메인 스킬에 대한 입력/출력 및 실패 대응을 명문화했습니다.
 
 ## Works well with
 
 - alfred-trust-validation (frontend testing)
 - typescript-expert (type-safe React/Vue)
 - alfred-performance-optimizer (performance profiling)
+
+## Best Practices
+- 도메인 결정 사항마다 근거 문서(버전/링크)를 기록합니다.
+- 성능·보안·운영 요구사항을 초기 단계에서 동시에 검토하세요.

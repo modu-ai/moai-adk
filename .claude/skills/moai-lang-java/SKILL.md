@@ -16,9 +16,9 @@ Provides Java-specific expertise for TDD development, including JUnit testing, M
 
 ## When to use
 
-- "Java 테스트 작성", "JUnit 사용법", "Spring Boot 패턴"
+- “Writing Java tests”, “How to use JUnit”, “Spring Boot patterns”
 - Automatically invoked when working with Java projects
-- Java SPEC implementation (`/alfred:2-build`)
+- Java SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -53,11 +53,11 @@ Provides Java-specific expertise for TDD development, including JUnit testing, M
 ## Examples
 
 ### Example 1: TDD with JUnit
-User: "/alfred:2-build SERVICE-001"
+User: "/alfred:2-run SERVICE-001"
 Claude: (creates RED test with JUnit 5, GREEN implementation, REFACTOR with interfaces)
 
 ### Example 2: Build execution
-User: "Maven 빌드 실행"
+User: "Run Maven build"
 Claude: (runs mvn clean test and reports results)
 
 ## Works well with

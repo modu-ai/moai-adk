@@ -1,7 +1,7 @@
 ---
 name: alfred:2-run
-description: "구현할 SPEC ID (예: SPEC-001) 또는 all로 모든 SPEC 구현 - 계획된 작업 실행 (TDD 구현, 프로토타입, 문서화 등)"
-argument-hint: "SPEC-ID - 구현할 SPEC ID (예: SPEC-001) 또는 all로 모든 SPEC 구현"
+description: "Implement all SPECs with SPEC ID to implement (e.g. SPEC-001) or all - Execute planned work (TDD implementation, prototyping, documentation, etc.)" 
+argument-hint: "SPEC-ID - All with SPEC ID to implement (e.g. SPEC-001) or all “SPEC Implementation”
 allowed-tools:
   - Read
   - Write
@@ -19,535 +19,443 @@ allowed-tools:
   - TodoWrite
 ---
 
-# ⚒️ MoAI-ADK 2단계: 계획 실행 (Run) - 유연한 구현 전략
+# ⚒️ MoAI-ADK Phase 2: Run the plan - Flexible implementation strategy
+> Interactive prompts rely on `Skill("moai-alfred-tui-survey")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
 
-## 🎯 커맨드 목적
+## 🎯 Command Purpose
 
-SPEC 문서를 분석하여 계획된 작업을 실행합니다. TDD 구현뿐만 아니라 프로토타입 제작, 문서화 작업 등 다양한 실행 시나리오를 지원합니다.
+Analyze SPEC documents to execute planned tasks. It supports not only TDD implementation but also various execution scenarios such as prototyping and documentation work.
 
-**실행 대상**: $ARGUMENTS
+**Run on**: $ARGUMENTS
 
-## 💡 실행 철학: "계획(Plan) → 실행(Run) → 동기화(Sync)"
+## 💡 Execution philosophy: “Plan → Run → Sync”
 
-`/alfred:2-run`은 단순히 코드를 "빌드"하는 것이 아니라, **계획된 작업을 수행**하는 범용 커맨드입니다.
+`/alfred:2-run` is a general-purpose command that does not simply "build" code, but **performs** a planned task.
 
-### 3가지 주요 시나리오
+### 3 main scenarios
 
-#### 시나리오 1: TDD 구현 (주 사용 방식) ⭐
+#### Scenario 1: TDD implementation (main method) ⭐
 ```bash
 /alfred:2-run SPEC-AUTH-001
 → RED → GREEN → REFACTOR
-→ 테스트 주도 개발로 고품질 코드 구현
+→ Implement high-quality code through test-driven development
 ```
 
-#### 시나리오 2: 프로토타입 제작
+#### Scenario 2: Prototyping
 ```bash
 /alfred:2-run SPEC-PROTO-001
-→ 빠른 검증을 위한 프로토타입 구현
-→ 최소한의 테스트로 신속한 피드백
+→ Prototype implementation for quick verification
+→ Quick feedback with minimal testing
 ```
 
-#### 시나리오 3: 문서화 작업
+#### Scenario 3: Documentation tasks
 ```bash
 /alfred:2-run SPEC-DOCS-001
-→ 문서 작성 및 샘플 코드 생성
-→ API 문서, 튜토리얼, 가이드 등
+→ Writing documentation and generating sample code
+→ API documentation, tutorials, guides, etc.
 ```
 
-> **표준 2단계 워크플로우** (자세한 내용: `CLAUDE.md` - "Alfred 커맨드 실행 패턴" 참조)
+> **Standard two-step workflow** (see `CLAUDE.md` - "Alfred Command Execution Pattern" for details)
 
-## 📋 실행 흐름
+## 📋 Execution flow
 
-1. **SPEC 분석**: 요구사항 추출 및 복잡도 평가
-2. **실행 전략 수립**: 언어별 최적화된 접근법 결정 (TDD, 프로토타입, 문서화 등)
-3. **사용자 확인**: 실행 계획 검토 및 승인
-4. **작업 실행**: 승인된 계획에 따라 작업 수행
-5. **Git 작업**: git-manager를 통한 단계별 커밋 생성
+1. **SPEC Analysis**: Requirements extraction and complexity assessment
+2. **Establishment of implementation strategy**: Determine the optimized approach for each language (TDD, prototype, documentation, etc.)
+3. **User Confirmation**: Review and approve action plan
+4. **Execute work**: Perform work according to the approved plan
+5. **Git Operations**: Creating step-by-step commits with git-manager
 
-## 🔗 연관 에이전트
+## 🔗 Associated Agent
 
-- **Phase 1**: implementation-planner (📋 테크니컬 아키텍트) - SPEC 분석 및 실행 전략 수립
-- **Phase 2**: tdd-implementer (🔬 시니어 개발자) - 실행 작업 전담
-- **Phase 2.5**: quality-gate (🛡️ 품질 보증 엔지니어) - TRUST 원칙 검증 (자동)
-- **Phase 3**: git-manager (🚀 릴리스 엔지니어) - Git 커밋 전담
+- **Phase 1**: implementation-planner (📋 technical architect) - SPEC analysis and establishment of execution strategy
+- **Phase 2**: tdd-implementer (🔬 senior developer) - Dedicated to execution work
+- **Phase 2.5**: quality-gate (🛡️ Quality Assurance Engineer) - TRUST principle verification (automatically)
+- **Phase 3**: git-manager (🚀 Release Engineer) - Dedicated to Git commits
 
-## 💡 사용 예시
+## 💡 Example of use
 
-사용자가 다음과 같이 커맨드를 실행할 수 있습니다:
-- `/alfred:2-run SPEC-001` - 특정 SPEC 실행
-- `/alfred:2-run all` - 모든 SPEC 일괄 실행
-- `/alfred:2-run SPEC-003 --test` - 테스트만 실행
+Users can run commands as follows:
+- `/alfred:2-run SPEC-001` - Run a specific SPEC
+- `/alfred:2-run all` - Run all SPECs in batches
+- `/alfred:2-run SPEC-003 --test` - Run only tests
 
-## 🔍 STEP 1: SPEC 분석 및 실행 계획 수립
+## 🔍 STEP 1: SPEC analysis and execution plan establishment
 
-먼저 지정된 SPEC을 분석하여 실행 계획을 수립하고 사용자 확인을 받습니다.
+First, the specified SPEC is analyzed to establish an action plan and receive user confirmation.
 
-**implementation-planner 에이전트가 자동으로 필요한 문서를 로드하여 분석합니다.**
+**The implementation-planner agent automatically loads and analyzes the required documents.**
 
-### 🔍 코드베이스 탐색 (권장)
+### 🔍 Browse the code base (recommended)
 
-**기존 코드 구조를 파악하거나 유사 패턴을 찾아야 하는 경우** Explore 에이전트를 먼저 활용합니다:
+**If you need to understand existing code structure or find similar patterns** Use the Explore agent first:
 
 ```
-Task tool 호출 (Explore 에이전트):
+Invoking the Task tool (Explore agent):
 - subagent_type: "Explore"
-- description: "기존 코드 구조 및 패턴 탐색"
-- prompt: "SPEC-$ARGUMENTS와 관련된 기존 코드를 탐색해주세요:
-          - 유사한 기능 구현 코드 (src/)
-          - 참고할 테스트 패턴 (tests/)
-          - 아키텍처 패턴 및 디자인 패턴
-          - 사용 중인 라이브러리 및 버전 (package.json, requirements.txt)
-          thoroughness 레벨: medium"
+- description: "Explore existing code structures and patterns"
+- prompt: "Please explore existing code related to SPEC-$ARGUMENTS:
+ - Similar function implementation code (src/)
+ - Test patterns for reference (tests/)
+ - Architectural patterns and design patterns
+ - Use Current libraries and versions (package.json, requirements.txt)
+ thoroughness level: medium"
 ```
 
-**Explore 에이전트 사용 시점**:
-- ✅ 기존 코드 구조/패턴 파악이 필요한 경우
-- ✅ 유사 기능의 구현 방식을 참고해야 할 때
-- ✅ 프로젝트의 아키텍처 규칙을 이해해야 할 때
-- ✅ 사용 중인 라이브러리 및 버전 확인
+**When to use the Explore Agent**:
+- ✅ When you need to understand the existing code structure/pattern
+- ✅ When you need to refer to how a similar function is implemented
+- ✅ When you need to understand the architectural rules of the project
+- ✅ Check the library and version being used
 
-### ⚙️ 에이전트 호출 방법
+### ⚙️ How to call an agent
 
-**STEP 1에서는 Task tool을 사용하여 implementation-planner 에이전트를 호출합니다**:
+**In STEP 1, we call the implementation-planner agent using the Task tool**:
 
 ```
-Task tool 호출 예시:
+Task tool call example:
 - subagent_type: "implementation-planner"
-- description: "SPEC 분석 및 실행 전략 수립"
-- prompt: "$ARGUMENTS 의 SPEC을 분석하여 실행 계획을 수립해주세요.
-          다음을 포함해야 합니다:
-          1. SPEC 요구사항 추출 및 복잡도 평가
-          2. 라이브러리 및 도구 선정 (WebFetch 사용)
-          3. TAG 체인 설계
-          4. 단계별 실행 계획
-          5. 리스크 및 대응 방안
-          6. 실행 계획서 작성 및 사용자 승인 대기
-          (선택) Explore 결과: $EXPLORE_RESULTS"
+- description: "SPEC analysis and establishment of execution strategy"
+- prompt: "Please analyze the SPEC of $ARGUMENTS and establish an execution plan.
+ It must include the following:
+ 1. SPEC requirements extraction and complexity assessment
+ 2. Library and tool selection (using WebFetch)
+          3. TAG chain design
+ 4. Step-by-step execution plan
+ 5. Risks and response plans
+6. Create action plan and use `Skill("moai-alfred-tui-survey")` to confirm the next action with the user
+ (Optional) Explore results: $EXPLORE_RESULTS"
 ```
 
-### SPEC 분석 진행
+### SPEC analysis in progress
 
-1. **SPEC 문서 분석**
-   - 요구사항 추출 및 복잡도 평가
-   - 기술적 제약사항 확인
-   - 의존성 및 영향 범위 분석
-   - (선택) Explore 결과 기반 기존 코드 구조 파악
+1. **SPEC document analysis**
+ - Requirements extraction and complexity assessment
+ - Check technical constraints
+ - Dependency and impact scope analysis
+ - (Optional) Identify existing code structure based on Explore results
 
-2. **실행 전략 수립**
-   - 프로젝트 언어 감지 및 최적화된 실행 전략
-   - 접근 방식 결정 (TDD, 프로토타입, 문서화 등)
-   - 예상 작업 범위 및 시간 산정
+2. **Establish execution strategy**
+ - Detect project language and optimize execution strategy
+ - Determine approach (TDD, prototyping, documentation, etc.)
+ - Estimate expected work scope and time
 
-3. **라이브러리 버전 확인 및 명시 (필수)**
-   - **웹 검색**: `WebSearch`를 통해 사용할 모든 라이브러리의 최신 안정 버전 확인
-   - **버전 명시**: 구현 계획 보고서에 라이브러리별 정확한 버전 명시 (예: `fastapi>=0.118.3`)
-   - **안정성 우선**: 베타/알파 버전 제외, 프로덕션 안정 버전만 선택
-   - **호환성 확인**: 라이브러리 간 버전 호환성 검증
-   - **검색 키워드 예시**:
+3. **Check and specify library versions (required)**
+ - **Web search**: Check the latest stable versions of all libraries to be used through `WebSearch`
+ - **Specify versions**: Specify the exact version for each library in the implementation plan report (e.g. `fastapi>=0.118.3`)
+ - **Stability priority**: Exclude beta/alpha versions, select only production stable versions
+ - **Check compatibility**: Verify version compatibility between libraries
+ - **Search keyword examples**:
      - `"FastAPI latest stable version 2025"`
      - `"SQLAlchemy 2.0 latest stable version 2025"`
      - `"React 18 latest stable version 2025"`
 
-4. **실행 계획 보고**
-   - 단계별 실행 계획 제시
-   - 잠재적 위험 요소 식별
-   - 품질 게이트 체크포인트 설정
-   - **라이브러리 버전 명시 (필수)**
+4. **Report action plan**
+ - Present step-by-step action plan
+ - Identify potential risk factors
+ - Set quality gate checkpoints
+ - **Specify library version (required)**
 
-### 사용자 승인 대기 (AskUserQuestion)
+### User verification steps
 
-Alfred는 implementation-planner의 실행 계획 보고서를 받은 후, **AskUserQuestion 도구를 호출하여 사용자 승인을 받습니다**:
-
-```typescript
-AskUserQuestion({
-  questions: [{
-    question: "implementation-planner가 제시한 실행 계획으로 작업을 진행하시겠습니까?",
-    header: "Phase 2 승인",
-    options: [
-      { label: "진행", description: "승인된 계획대로 TDD 구현 시작" },
-      { label: "수정", description: "계획 재수립 (Phase 1 반복)" },
-      { label: "중단", description: "작업 취소" }
-    ],
-    multiSelect: false
-  }]
-})
-```
-
-**응답 처리**:
-- **"진행"** (`answers["0"] === "진행"`) → Phase 2 실행
-- **"수정"** (`answers["0"] === "수정"`) → Phase 1 반복 (implementation-planner 재호출)
-- **"중단"** (`answers["0"] === "중단"`) → 작업 종료
+After reviewing the action plan, select one of the following:
+- **"Proceed"** or **"Start"**: Start executing the task as planned
+- **"Modify [Content]"**: Request a plan modification
+- **"Abort"**: Stop the task
 
 ---
 
-## 🚀 STEP 2: 작업 실행 (사용자 승인 후)
+## 🚀 STEP 2: Execute task (after user approval)
 
-사용자 승인 후 **Task tool을 사용하여 tdd-implementer 에이전트를 호출**합니다.
+After user approval (gathered through `Skill("moai-alfred-tui-survey")`), **call the tdd-implementer agent using the Task tool**.
 
-### ⚙️ 에이전트 호출 방법
+### ⚙️ How to call an agent
 
-**STEP 2에서는 Task tool을 사용하여 tdd-implementer를 호출합니다**:
+**STEP 2 calls tdd-implementer using the Task tool**:
 
 ```
-Task tool 호출 예시:
+Task tool call example:
 - subagent_type: "tdd-implementer"
-- description: "작업 실행"
-- prompt: "STEP 1에서 승인된 계획에 따라 작업을 실행해주세요.
-          TDD 시나리오의 경우:
-          - RED → GREEN → REFACTOR 사이클을 수행하며,
-          각 TAG별로 다음을 수행합니다:
-          1. RED Phase: @TEST:ID 태그로 실패하는 테스트 작성
-          2. GREEN Phase: @CODE:ID 태그로 최소 구현
-          3. REFACTOR Phase: 코드 품질 개선
-          4. TAG 완료 조건 검증 및 다음 TAG로 진행
+- description: "Execute task"
+- prompt: "Please execute the task according to the plan approved in STEP 1.
+ For TDD scenario:
+ - Perform RED → GREEN → REFACTOR cycle,
+ Perform the following for each TAG:
+ 1. RED Phase: Write a test that fails with the @TEST:ID tag
+ 2. GREEN Phase: Minimal implementation with the @CODE:ID tag
+ 3. REFACTOR Phase: Improve code quality
+ 4. Verify TAG completion conditions and proceed to the next TAG
 
-          실행 대상: $ARGUMENTS"
+Execute on: $ARGUMENTS"
 ```
 
-### 2.1 Alfred Skills 자동 활성화
+## 🔗 TDD optimization for each language
 
-tdd-implementer가 구현을 완료한 후, **Alfred는 자동으로 상황을 분석하여 적절한 Skills를 호출합니다**.
+### Project language detection and optimal routing
 
-**자동 활성화 조건** (CLAUDE.md - "Alfred 지능형 오케스트레이션" 참조):
+`tdd-implementer` automatically detects the language of your project and selects the optimal TDD tools and workflow:
 
-| 조건 | 자동 선택 Skill | 목적 |
-|------|----------------|------|
-| 구현 완료 (자동) | moai-alfred-trust-validation | TRUST 5원칙 검증 (Level 2 중간 스캔) |
+- **Language detection**: Analyze project files (package.json, pyproject.toml, go.mod, etc.)
+- **Tool selection**: Automatically select the optimal test framework for each language
+- **TAG application**: Write @TAG annotations directly in code files
+- **Run cycle**: RED → GREEN → REFACTOR sequential process
 
-**실행 흐름** (자동):
-```
-1. tdd-implementer 완료
-    ↓
-2. Alfred 조건 체크:
-   - ✅ 코드 작성 완료? (src/, tests/ 파일 생성/수정)
-    ↓
-3. Alfred 자동 실행:
-   - Skill("moai-alfred-trust-validation", level=2)
-    ↓
-4. 검증 결과 처리:
-   - ✅ PASS → git-manager 호출
-   - ⚠️ WARNING → 사용자 알림 (계속 진행 가능)
-   - ❌ CRITICAL → 수정 권장
-```
+### TDD tool mapping
 
-**참고**: `/alfred:2-run`에서는 TRUST 검증이 자동으로 실행됩니다 (품질 게이트).
+#### Backend/System
 
-### 2.2 Sub-agent AskUserQuestion (Nested)
-
-**tdd-implementer 에이전트는 내부적으로 AskUserQuestion을 호출**하여 세부 작업을 확인할 수 있습니다.
-
-**호출 시점**:
-- 기존 코드 파일 덮어쓰기 전
-- 중요한 아키텍처 결정 시
-- 테스트 실패 지속 시 (5회 이상)
-
-**예시** (tdd-implementer 내부):
-```typescript
-AskUserQuestion({
-  questions: [{
-    question: "테스트가 5회 이상 실패했습니다. 어떻게 처리하시겠습니까?",
-    header: "테스트 실패 처리",
-    options: [
-      { label: "계속 시도", description: "다른 접근 방법으로 재시도" },
-      { label: "건너뛰기", description: "현재 테스트 건너뛰고 다음 진행" },
-      { label: "중단", description: "작업 중단 및 사용자 개입" }
-    ],
-    multiSelect: false
-  }]
-})
-```
-
-**Nested 패턴**:
-- **커맨드 레벨** (Phase 승인): Alfred가 호출 → "Phase 2 진행할까요?"
-- **Sub-agent 레벨** (세부 확인): tdd-implementer가 호출 → "테스트 실패 어떻게 할까요?"
-
-### 2.3 순차 실행 의존성
-
-Alfred는 다음 순서로 **순차 실행**합니다 (병렬 실행 불가):
-
-**작업 순서**:
-```
-1. tdd-implementer (TDD 구현)
-   ↓ (의존성: 코드 파일 필요)
-2. moai-alfred-trust-validation (검증)
-   ↓ (의존성: 검증 완료 후)
-3. git-manager (커밋 생성)
-```
-
-**이유**: 각 단계가 이전 단계의 결과에 의존하므로 순차 실행 필수
-
-**참고**: Alfred가 의존성을 자동 분석하여 실행 순서를 결정합니다 (CLAUDE.md - "Alfred 지능형 오케스트레이션" 참조).
-
----
-
-## 🔗 언어별 TDD 최적화
-
-### 프로젝트 언어 감지 및 최적 라우팅
-
-`tdd-implementer`는 프로젝트의 언어를 자동으로 감지하여 최적의 TDD 도구와 워크플로우를 선택합니다:
-
-- **언어 감지**: 프로젝트 파일(package.json, pyproject.toml, go.mod 등) 분석
-- **도구 선택**: 언어별 최적 테스트 프레임워크 자동 선택
-- **TAG 적용**: 코드 파일에 @TAG 주석 직접 작성
-- **사이클 실행**: RED → GREEN → REFACTOR 순차 진행
-
-### TDD 도구 매핑
-
-#### 백엔드/시스템
-
-| SPEC 타입 | 구현 언어 | 테스트 프레임워크 | 성능 목표 | 커버리지 목표 |
+| SPEC Type | Implementation language | Test Framework | Performance Goals | Coverage Goals |
 |-----------|-----------|-------------------|-----------|---------------|
-| **CLI/시스템** | TypeScript | Jest + ts-node | < 18ms | 95%+ |
-| **API/백엔드** | TypeScript | Jest + SuperTest | < 50ms | 90%+ |
-| **프론트엔드** | TypeScript | Jest + Testing Library | < 100ms | 85%+ |
-| **데이터 처리** | TypeScript | Jest + Mock | < 200ms | 85%+ |
-| **Python 프로젝트** | Python | pytest + mypy | 사용자 정의 | 85%+ |
+| **CLI/System** | TypeScript | jest + ts-node | < 18ms | 95%+ |
+| **API/Backend** | TypeScript | Jest + SuperTest | < 50ms | 90%+ |
+| **Frontend** | TypeScript | Jest + Testing Library | < 100ms | 85%+ |
+| **Data Processing** | TypeScript | Jest + Mock | < 200ms | 85%+ |
+| **Python Project** | Python | pytest + mypy | Custom | 85%+ |
 
-#### 모바일 프레임워크
+#### Mobile Framework
 
-| SPEC 타입 | 구현 언어 | 테스트 프레임워크 | 성능 목표 | 커버리지 목표 |
+| SPEC Type | Implementation language | Test Framework | Performance Goals | Coverage Goals |
 |-----------|-----------|-------------------|-----------|---------------|
-| **Flutter 앱** | Dart | flutter test + widget test | < 100ms | 85%+ |
+| **Flutter App** | Dart | flutter test + widget test | < 100ms | 85%+ |
 | **React Native** | TypeScript | Jest + RN Testing Library | < 100ms | 85%+ |
-| **iOS 앱** | Swift | XCTest + XCUITest | < 150ms | 80%+ |
-| **Android 앱** | Kotlin | JUnit + Espresso | < 150ms | 80%+ |
+| **iOS App** | Swift | XCTest + XCUITest | < 150ms | 80%+ |
+| **Android App** | Kotlin | JUnit + Espresso | < 150ms | 80%+ |
 
-## 🚀 최적화된 에이전트 협업 구조
+## 🚀 Optimized agent collaboration structure
 
-- **Phase 1**: `implementation-planner` 에이전트가 SPEC 분석 및 실행 전략 수립
-- **Phase 2**: `tdd-implementer` 에이전트가 작업 실행 (TDD 사이클, 프로토타입, 문서화 등)
-- **Phase 2.5**: `quality-gate` 에이전트가 TRUST 원칙 검증 및 품질 검증 (자동)
-- **Phase 3**: `git-manager` 에이전트가 작업 완료 후 모든 커밋을 한 번에 처리
-- **단일 책임 원칙**: 각 에이전트는 자신의 전문 영역만 담당
-- **에이전트 간 호출 금지**: 각 에이전트는 독립적으로 실행, 커맨드 레벨에서만 순차 호출
+- **Phase 1**: `implementation-planner` agent analyzes SPEC and establishes execution strategy
+- **Phase 2**: `tdd-implementer` agent executes tasks (TDD cycle, prototyping, documentation, etc.)
+- **Phase 2.5**: `quality-gate` agent verifies TRUST principle and quality verification (automatically)
+- **Phase 3**: `git-manager` agent processes all commits at once after task completion
+- **Single responsibility principle**: Each agent is responsible only for its own area of expertise
+- **Inter-agent call prohibited**: Each agent runs independently, sequential calls are made only at the command level
 
-## 🔄 2단계 워크플로우 실행 순서
+## 🔄 Step 2 Workflow Execution Order
 
-### Phase 1: 분석 및 계획 단계
+### Phase 1: Analysis and planning phase
 
-`implementation-planner` 에이전트가 다음을 수행:
+The `implementation-planner` agent does the following:
 
-1. **SPEC 문서 분석**: 지정된 SPEC ID의 요구사항 추출 및 복잡도 평가
-2. **라이브러리 선정**: WebFetch를 통한 최신 안정 버전 확인 및 호환성 검증
-3. **TAG 체인 설계**: TAG 순서 및 의존성 결정
-4. **실행 전략 수립**: 단계별 실행 계획 및 리스크 식별
-5. **실행 계획서 작성**: 구조화된 계획서 생성 및 사용자 승인 대기
+1. **SPEC document analysis**: Requirements extraction and complexity assessment of specified SPEC ID
+2. **Library selection**: Check the latest stable version and verify compatibility through WebFetch
+3. **TAG chain design**: Determine TAG order and dependency
+4. **Establishment of implementation strategy**: Step-by-step implementation plan and risk identification
+5. **Create action plan**: Create a structured plan and, via `Skill("moai-alfred-tui-survey")`, collect user approval before proceeding
 
-### Phase 2: 작업 실행 단계 (승인 후)
+### Phase 2: Task execution phase (after approval)
 
-`tdd-implementer` 에이전트가 사용자 승인 후 **TAG 단위로** 수행 (TDD 시나리오 기준):
+The `tdd-implementer` agent performs **TAG-by-TAG** after user approval (based on TDD scenario):
 
-1. **RED Phase**: 실패하는 테스트 작성 (@TEST:ID 태그 추가) 및 실패 확인
-2. **GREEN Phase**: 테스트를 통과하는 최소한의 코드 작성 (@CODE:ID 태그 추가)
-3. **REFACTOR Phase**: 코드 품질 개선 (기능 변경 없이)
-4. **TAG 완료 확인**: 각 TAG의 완료 조건 검증 및 다음 TAG로 진행
+1. **RED Phase**: Write a failing test (add @TEST:ID tag) and check for failure
+2. **GREEN Phase**: Write minimal code that passes the test (add @CODE:ID tag)
+3. **REFACTOR Phase**: Improve code quality (without changing functionality)
+4. **TAG completion confirmation**: Verify the completion conditions of each TAG and proceed to the next TAG
 
-### Phase 2.5: 품질 검증 게이트 (자동 실행)
+### Phase 2.5: Quality verification gate (automatic execution)
 
-작업 실행 완료 후 `quality-gate` 에이전트가 **자동으로** 품질 검증을 수행합니다.
+After the job execution is complete, the `quality-gate` agent **automatically** performs quality verification.
 
-**자동 실행 조건**:
-- 작업 실행 완료 시 자동 호출
-- 사용자 요청 시 수동 호출 가능
+**Automatic execution conditions**:
+- Automatically invoked upon completion of task execution
+- Manually invoked upon user request
 
-**검증 항목**:
-- **TRUST 원칙 검증**: trust-checker 스크립트 실행 및 결과 파싱
-  - T (Testable): 테스트 커버리지 ≥ 85%
-  - R (Readable): 코드 가독성 (파일≤300 LOC, 함수≤50 LOC, 복잡도≤10)
-  - U (Unified): 아키텍처 통합성
-  - S (Secured): 보안 취약점 없음
-  - T (Traceable): @TAG 체인 무결성
-- **코드 스타일**: 린터(ESLint/Pylint) 실행 및 검증
-- **테스트 커버리지**: 언어별 커버리지 도구 실행 및 목표 달성 확인
-- **TAG 체인 검증**: 고아 TAG, 누락된 TAG 확인
-- **의존성 검증**: 보안 취약점 확인
+**Verification items**:
+- **TRUST principle verification**: Trust-checker script execution and result parsing
+ - T (Testable): Test coverage ≥ 85%
+ - R (Readable): Code readability (file≤300 LOC, function≤50 LOC, Complexity≤10)
+ - U (Unified): Architectural integrity
+ - S (Secured): No security vulnerabilities
+ - T (Traceable): @TAG chain integrity
+- **Code style**: Run and verify linter (ESLint/Pylint)
+- **Test Coverage**: Run language-specific coverage tools and verify goal achievement
+- **TAG chain verification**: Check orphan TAGs, missing TAGs
+- **Dependency verification**: Check security vulnerabilities
 
-**실행 방식**: Alfred가 작업 실행 완료 시 자동으로 quality-gate 에이전트를 호출하여 품질 검증을 수행합니다.
+**How ​​it works**: When Alfred completes job execution, it automatically calls the quality-gate agent to perform quality verification.
 
-**검증 결과 처리**:
+**Handling verification results**:
 
-✅ **PASS (Critical 0개, Warning 5개 이하)**:
-- Phase 3 (Git 작업)로 진행
-- 품질 리포트 생성
+✅ **PASS (0 Critical, 5 or less Warnings)**:
+- Proceed to Phase 3 (Git work)
+- Create a quality report
 
-⚠️ **WARNING (Critical 0개, Warning 6개 이상)**:
-- 경고 표시
-- 사용자 선택: "계속 진행" 또는 "수정 후 재검증"
+⚠️ **WARNING (0 Critical, 6 or more Warnings)**:
+- Display warning
+- User choice: "Continue" or "Re-verify after modification"
 
-❌ **CRITICAL (Critical 1개 이상)**:
-- Git 커밋 차단
-- 개선 필요 항목 상세 보고 (파일:라인 정보 포함)
-- tdd-implementer 재호출 권장
+❌ **CRITICAL (1 or more Critical)**:
+- Block Git commits
+- Detailed report on items requiring improvement (including file: line information)
+- Recommended tdd-implementer re-invocation
 
-**검증 생략 옵션**: 품질 검증을 건너뛰려면 `--skip-quality-check` 옵션을 사용합니다.
+**Skip verification option**: To skip quality verification, use the `--skip-quality-check` option.
 
-### Phase 3: Git 작업 (git-manager)
+### Phase 3: Git operations (git-manager)
 
-`git-manager` 에이전트가 작업 완료 후 **한 번에** 수행:
+After the `git-manager` agent completes the task **at once**:
 
-1. **체크포인트 생성**: 작업 시작 전 백업 포인트
-2. **구조화된 커밋**: 단계별 커밋 생성 (TDD의 경우 RED→GREEN→REFACTOR)
-3. **최종 동기화**: 모드별 Git 전략 적용 및 원격 동기화
+1. **Create checkpoint**: Backup point before starting work
+2. **Structured Commit**: Step-by-step commit creation (RED→GREEN→REFACTOR for TDD)
+3. **Final synchronization**: Apply Git strategy for each mode and remote synchronization
 
 
-## 📋 STEP 1 실행 가이드: SPEC 분석 및 계획 수립
+## 📋 STEP 1 Execution Guide: SPEC Analysis and Planning
 
-### 1. SPEC 문서 분석
+### 1. SPEC document analysis
 
-Alfred는 implementation-planner 에이전트를 호출하여 SPEC 문서를 확인하고 실행 계획을 수립합니다.
+Alfred calls the implementation-planner agent to check the SPEC document and create an execution plan.
 
-#### 분석 체크리스트
+#### Analysis Checklist
 
-- [ ] **요구사항 명확성**: SPEC의 기능 요구사항이 구체적인가?
-- [ ] **기술적 제약**: 성능, 호환성, 보안 요구사항 확인
-- [ ] **의존성 분석**: 기존 코드와의 연결점 및 영향 범위
-- [ ] **복잡도 평가**: 구현 난이도 및 예상 작업량
+- [ ] **Requirements clarity**: Are the functional requirements in the SPEC specific?
+- [ ] **Technical constraints**: Check performance, compatibility, and security requirements
+- [ ] **Dependency analysis**: Connection points with existing code and scope of impact
+- [ ] **Complexity assessment**: Implementation difficulty and expected workload
 
-### 2. 실행 전략 결정
+### 2. Determine implementation strategy
 
-#### TypeScript 실행 기준
+#### TypeScript execution criteria
 
-| SPEC 특성 | 실행 언어 | 이유 |
+| SPEC characteristics | execution language | Reason |
 |-----------|-----------|------|
-| CLI/시스템 도구 | TypeScript | 고성능 (18ms), 타입 안전성, SQLite3 통합 |
-| API/백엔드 | TypeScript | Node.js 생태계, Express/Fastify 호환성 |
-| 프론트엔드 | TypeScript | React/Vue 네이티브 지원 |
-| 데이터 처리 | TypeScript | 고성능 비동기 처리, 타입 안전성 |
-| 사용자 Python 프로젝트 | Python 도구 지원 | MoAI-ADK가 Python 프로젝트 개발 도구 제공 |
+| CLI/System Tools | TypeScript | High performance (18ms), type safety, SQLite3 integration |
+| API/Backend | TypeScript | Node.js ecosystem, Express/Fastify compatibility |
+| Frontend | TypeScript | React/Vue native support |
+| data processing | TypeScript | High-performance asynchronous processing, type safety |
+| User Python Project | Python tool support | MoAI-ADK provides Python project development tools |
 
-#### 접근 방식
+#### Approach
 
-- **Bottom-up**: 유틸리티 → 서비스 → API
-- **Top-down**: API → 서비스 → 유틸리티
-- **Middle-out**: 핵심 로직 → 양방향 확장
+- **Bottom-up**: Utility → Service → API
+- **Top-down**: API → Service → Utility
+- **Middle-out**: Core logic → Bidirectional expansion
 
-### 3. 실행 계획 보고서 생성
+### 3. Generate action plan report
 
-다음 형식으로 계획을 제시합니다:
+Present your plan in the following format:
 
 ```
-## 실행 계획 보고서: [SPEC-ID]
+## Execution Plan Report: [SPEC-ID]
 
-### 📊 분석 결과
-- **복잡도**: [낮음/중간/높음]
-- **예상 작업시간**: [시간 산정]
-- **주요 기술 도전**: [기술적 어려움]
+### 📊 Analysis Results
+- **Complexity**: [Low/Medium/High]
+- **Estimated Work Time**: [Time Estimation]
+- **Key Technical Challenges**: [Technical Difficulties]
 
-### 🎯 실행 전략
-- **선택 언어**: [Python/TypeScript + 이유]
-- **접근법**: [Bottom-up/Top-down/Middle-out 또는 프로토타입/문서화]
-- **핵심 모듈**: [주요 작업 대상]
+### 🎯 Execution Strategy
+- **Language of choice**: [Python/TypeScript + Reason]
+- **Approach**: [Bottom-up/Top-down/Middle-out or Prototype/Documentation]
+- **Core module**: [Major work target]
 
-### 📦 라이브러리 버전 (필수 - 웹 검색 기반)
-**백엔드 의존성** (예시):
-| 패키지 | 최신 안정 버전 | 설치 명령 |
+### 📦 Library version (required - based on web search)
+**Backend dependencies** (example):
+| package | Latest stable version | installation command |
 |--------|--------------|----------|
 | FastAPI | 0.118.3 | fastapi>=0.118.3 |
 | SQLAlchemy | 2.0.43 | sqlalchemy>=2.0.43 |
 
-**프론트엔드 의존성** (예시):
-| 패키지 | 최신 안정 버전 | 설치 명령 |
+**Frontend dependency** (example):
+| package | Latest stable version | installation command |
 |--------|--------------|----------|
 | React | 18.3.1 | react@^18.3.1 |
 | Vite | 7.1.9 | vite@^7.1.9 |
 
-**중요 호환성 정보**:
-- [특정 버전 요구사항]
-- [알려진 호환성 이슈]
+**Important Compatibility Information**:
+- [Specific Version Requirements]
+- [Known Compatibility Issues]
 
-### ⚠️ 위험 요소
-- **기술적 위험**: [예상 문제점]
-- **의존성 위험**: [외부 의존성 이슈]
-- **일정 위험**: [지연 가능성]
+### ⚠️ Risk Factors
+- **Technical Risk**: [Expected Issues]
+- **Dependency Risk**: [External Dependency Issues]
+- **Schedule Risk**: [Possible Delay]
 
-### ✅ 품질 게이트
-- **테스트 커버리지**: [목표 %]
-- **성능 목표**: [구체적 지표]
-- **보안 체크포인트**: [검증 항목]
+### ✅ Quality Gates
+- **Test Coverage**: [Goal %]
+- **Performance Goals**: [Specific Metrics]
+- **Security Checkpoints**: [Verification Items]
 
 ---
-**승인 요청**: 위 계획으로 진행하시겠습니까?
-("진행", "수정 [내용]", "중단" 중 선택)
+**Approval Request**: Do you want to proceed with the above plan?
+ (Choose between “Proceed,” “Modify [Content],” or “Abort”)
 ```
 
 ---
 
-## 🚀 STEP 2 실행 가이드: 작업 실행 (승인 후)
+## 🚀 STEP 2 Execution Guide: Execute Task (After Approval)
 
-사용자가 **"진행"** 또는 **"시작"**을 선택한 경우에만 Alfred는 tdd-implementer 에이전트를 호출하여 작업을 시작합니다.
+Only if the user selects **"Proceed"** or **"Start"** will Alfred call the tdd-implementer agent to start the task.
 
-### TDD 단계별 가이드
+### TDD step-by-step guide
 
-1. **RED**: Given/When/Then 구조로 실패 테스트 작성. 언어별 테스트 파일 규칙을 따르고, 실패 로그를 간단히 기록합니다.
-2. **GREEN**: 테스트를 통과시키는 최소한의 구현만 추가합니다. 최적화는 REFACTOR 단계로 미룹니다.
-3. **REFACTOR**: 중복 제거, 명시적 네이밍, 구조화 로깅/예외 처리 보강. 필요 시 추가 커밋으로 분리합니다.
+1. **RED**: Writing failure tests with Given/When/Then structure. Follow test file rules for each language and simply record failure logs. 
+2. **GREEN**: Add only the minimal implementation that makes the tests pass. Optimization is postponed to the REFACTOR stage.
+3. **REFACTOR**: Removal of duplication, explicit naming, structured logging/exception handling enhancements. Split into additional commits if necessary.
 
-**TRUST 5원칙 연계** (상세: `development-guide.md` - "TRUST 5원칙"):
-- **T (Test First)**: RED 단계에서 SPEC 기반 테스트 작성
-- **R (Readable)**: REFACTOR 단계에서 가독성 개선 (파일≤300 LOC, 함수≤50 LOC)
-- **T (Trackable)**: 모든 단계에서 @TAG 추적성 유지
+**TRUST 5 Principles Linkage** (Details: `development-guide.md` - "TRUST 5 Principles"):
+- **T (Test First)**: Writing SPEC-based tests in the RED stage
+- **R (Readable)**: Readability in the REFACTOR stage Improvement (file≤300 LOC, function≤50 LOC)
+- **T (Trackable)**: Maintain @TAG traceability at all stages.
 
-> TRUST 5원칙은 기본 권장치만 제공하므로, `simplicity_threshold`를 초과하는 구조가 필요하다면 SPEC 또는 ADR에 근거를 남기고 진행하세요.
+> TRUST 5 principles provide only basic recommendations, so if you need a structure that exceeds `simplicity_threshold`, proceed with the basis in SPEC or ADR.
 
-## 에이전트 역할 분리
+## Agent role separation
 
-### implementation-planner 전담 영역
+### implementation-planner dedicated area
 
-- SPEC 문서 분석 및 요구사항 추출
-- 라이브러리 선정 및 버전 관리
-- TAG 체인 설계 및 순서 결정
-- 실행 전략 수립 및 리스크 식별
-- 실행 계획서 작성
+- SPEC document analysis and requirements extraction
+- Library selection and version management
+- TAG chain design and sequence decision
+- Establishment of implementation strategy and identification of risks
+- Creation of execution plan
 
-### tdd-implementer 전담 영역
+### tdd-implementer dedicated area
 
-- 작업 실행 (TDD, 프로토타입, 문서화 등)
-- 테스트 작성 및 실행 (TDD 시나리오)
-- TAG 주석 추가 및 관리
-- 코드 품질 개선 (리팩토링)
-- 언어별 린터/포매터 실행
+- Execute tasks (TDD, prototyping, documentation, etc.) 
+ - Write and run tests (TDD scenarios) 
+ - Add and manage TAG comments 
+ - Improve code quality (refactoring) 
+ - Run language-specific linters/formatters
 
-### quality-gate 전담 영역
+### Quality-gate dedicated area
 
-- TRUST 원칙 검증
-- 코드 스타일 검증
-- 테스트 커버리지 확인
-- TAG 체인 무결성 검증
-- 의존성 보안 검증
+- TRUST principle verification
+- Code style verification
+- Test coverage verification
+- TAG chain integrity verification
+- Dependency security verification
 
-### git-manager 전담 영역
+### git-manager dedicated area
 
-- 모든 Git 커밋 작업 (add, commit, push)
-- 작업 단계별 체크포인트 생성
-- 모드별 커밋 전략 적용
-- 깃 브랜치/태그 관리
-- 원격 동기화 처리
+- All Git commit operations (add, commit, push)
+- Checkpoint creation for each task stage
+- Apply commit strategy for each mode
+- Git branch/tag management
+- Remote synchronization processing
 
-## 품질 게이트 체크리스트
+## Quality Gate Checklist
 
-- 테스트 커버리지 ≥ `.moai/config.json.test_coverage_target` (기본 85%)
-- 린터/포매터 통과 (`ruff`, `eslint --fix`, `gofmt` 등)
-- 구조화 로깅 또는 관측 도구 호출 존재 확인
-- @TAG 업데이트 필요 변경 사항 메모 (다음 단계에서 doc-syncer가 사용)
-
----
-
-## 🧠 Context Management (컨텍스트 관리)
-
-> 자세한 내용: `.moai/memory/development-guide.md` - "Context Engineering" 섹션 참조
-
-### 이 커맨드의 핵심 전략
-
-**우선 로드**: `.moai/specs/SPEC-XXX/spec.md` (구현 대상 요구사항)
-
-**권장사항**: 작업 실행이 완료되었습니다. 다음 단계(`/alfred:3-sync`) 진행 전 `/clear` 또는 `/new` 명령으로 새로운 대화 세션을 시작하면 더 나은 성능과 컨텍스트 관리를 경험할 수 있습니다.
+- Test coverage ≥ `.moai/config.json.test_coverage_target` (default 85%)
+- Pass linter/formatter (`ruff`, `eslint --fix`, `gofmt`, etc.)
+- Check presence of structured logging or observation tool call
+- @TAG update needed changes note (used by doc-syncer in next step)
 
 ---
 
-## 다음 단계
+## 🧠 Context Management
 
-**권장사항**: 다음 단계 진행 전 `/clear` 또는 `/new` 명령으로 새로운 대화 세션을 시작하면 더 나은 성능과 컨텍스트 관리를 경험할 수 있습니다.
+> For more information: `.moai/memory/development-guide.md` - see section "Context Engineering"
 
-- 작업 실행 완료 후 `/alfred:3-sync`로 문서 동기화 진행
-- 모든 Git 작업은 git-manager 에이전트가 전담하여 일관성 보장
-- 에이전트 간 직접 호출 없이 커맨드 레벨 오케스트레이션만 사용
+### Core strategy of this command
+
+**Load first**: `.moai/specs/SPEC-XXX/spec.md` (implementation target requirement)
+
+**Recommendation**: Job execution completed successfully. You can experience better performance and context management by starting a new chat session with the `/clear` or `/new` command before proceeding to the next step (`/alfred:3-sync`).
+
+---
+
+## Next steps
+
+**Recommendation**: For better performance and context management, start a new chat session with the `/clear` or `/new` command before proceeding to the next step.
+
+- After task execution is complete, document synchronization proceeds with `/alfred:3-sync`
+- All Git operations are dedicated to the git-manager agent to ensure consistency
+- Only command-level orchestration is used without direct calls between agents

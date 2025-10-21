@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
 """
-Skills 표준화 통합 스크립트
-- YAML 필드 정리 (version, author, license, tags, model 제거)
-- allowed-tools 추가 (누락된 스킬에만)
+Skills standardization unified script
+- YAML field cleanup (remove version, author, license, tags, model)
+- Add allowed-tools (only when missing)
 """
 
 import sys
 import re
 from pathlib import Path
 
-# Alfred 에이전트 도구
+# Alfred agent tools
 ALFRED_TOOLS = ["Read", "Write", "Edit", "Bash", "TodoWrite"]
-# Lang 스킬 도구
+# Language skill tools
 LANG_TOOLS = ["Read", "Bash"]
-# Domain 스킬 도구
+# Domain skill tools
 DOMAIN_TOOLS = ["Read", "Bash"]
 
 def parse_yaml_frontmatter(content):
-    """YAML frontmatter 파싱 (간단한 파서)"""
+    """Parse YAML frontmatter (simple parser)"""
     if not content.startswith('---'):
         return None, content
     
@@ -28,7 +28,7 @@ def parse_yaml_frontmatter(content):
     yaml_str = parts[1]
     body = parts[2]
     
-    # YAML 파싱 (딕셔너리로)
+    # Parse YAML into a dictionary
     data = {}
     current_key = None
     in_list = False
@@ -37,20 +37,20 @@ def parse_yaml_frontmatter(content):
         if not line.strip():
             continue
         
-        # 리스트 아이템
+        # list items
         if line.strip().startswith('-'):
             if in_list and current_key:
                 if isinstance(data[current_key], list):
                     data[current_key].append(line.strip()[1:].strip())
             continue
         
-        # 키-값 쌍
+        # key-value pairs
         if ':' in line:
             key, value = line.split(':', 1)
             key = key.strip()
             value = value.strip()
             
-            if not value:  # 리스트 시작
+            if not value: # start of list
                 in_list = True
                 current_key = key
                 data[key] = []
@@ -62,7 +62,7 @@ def parse_yaml_frontmatter(content):
     return data, body
 
 def build_yaml_frontmatter(data):
-    """딕셔너리를 YAML frontmatter로 변환"""
+    """Convert dictionary to YAML frontmatter"""
     lines = []
     for key, value in data.items():
         if isinstance(value, list):
@@ -75,7 +75,7 @@ def build_yaml_frontmatter(data):
     return '\n'.join(lines)
 
 def standardize_skill(skill_file):
-    """스킬 파일 표준화"""
+    """Standardize skill file"""
     content = skill_file.read_text()
     
     data, body = parse_yaml_frontmatter(content)
@@ -84,7 +84,7 @@ def standardize_skill(skill_file):
         print(f"⚠️  No YAML frontmatter: {skill_file}")
         return False
     
-    # 보존할 필드만 추출
+    # Extract only fields to keep
     preserved = {}
     
     if 'name' in data:
@@ -92,12 +92,12 @@ def standardize_skill(skill_file):
     if 'description' in data:
         preserved['description'] = data['description']
     
-    # allowed-tools 처리
+    # Handle allowed-tools
     if 'allowed-tools' in data:
-        # 이미 있으면 유지
+        # Keep if already present
         preserved['allowed-tools'] = data['allowed-tools']
     else:
-        # 없으면 스킬 유형별로 추가
+        # Add based on skill type if missing
         name = data.get('name', '')
         
         if 'alfred' in name:
@@ -107,16 +107,16 @@ def standardize_skill(skill_file):
         elif 'domain' in name:
             tools = DOMAIN_TOOLS
         elif 'claude-code' in name:
-            # moai-claude-code는 이미 allowed-tools 있음 (건너뛰기)
+            # moai-claude-code already has allowed-tools (skip)
             tools = None
         else:
-            # 기본값
+            # Default
             tools = ["Read"]
         
         if tools:
             preserved['allowed-tools'] = tools
     
-    # 파일 재작성
+    # Rewrite file
     new_yaml = build_yaml_frontmatter(preserved)
     new_content = f"---\n{new_yaml}\n---{body}"
     
@@ -125,7 +125,7 @@ def standardize_skill(skill_file):
     return True
 
 def main():
-    """메인 함수"""
+    """Main function"""
     base_dir = Path("/Users/goos/MoAI/MoAI-ADK")
     
     # .claude/skills/

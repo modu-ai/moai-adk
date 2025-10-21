@@ -291,4 +291,4 @@ uv tool install moai-adk
 
 ---
 
-_이 계획은 `/alfred:2-build SPEC-README-UX-001` 또는 직접 수정으로 구현됩니다._
+_이 계획은 `/alfred:2-run SPEC-README-UX-001` 또는 직접 수정으로 구현됩니다._

@@ -7,11 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [v0.4.0] - 2025-10-20 (Phase 1 완료, 진행 중)
+## [v0.4.0] - 2025-10-21 (Skills Revolution Release)
 
-> **📍 현재 진행 상태**: Skills 표준화 Phase 1 완료 (SPEC-SKILLS-REDESIGN-001 v0.1.0)
+> **📍 현재 상태**: Skills 표준화 Phase 1 완료 (SPEC-SKILLS-REDESIGN-001 v0.1.0)
 >
-> Phase 1 완료: 모든 44개 Skills 재구성, 4-Tier 아키텍처 구현, Progressive Disclosure 메커니즘 활성화
+> Phase 1 완료: 모든 44개 Skills 재구성, 4-Layer 아키텍처 구현, Progressive Disclosure 메커니즘 활성화
 >
 > 다음 단계: 로컬 템플릿 업데이트 및 최종 검증 (Phase 2 예정)
 
@@ -72,7 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **기존 방식 (Commands + Agents)**:
 ```text
-개발자: "/alfred:1-spec 사용자 인증"
+개발자: "/alfred:1-plan 사용자 인증"
 → spec-builder 에이전트 호출
 → SPEC 작성 (2~3분)
 ```

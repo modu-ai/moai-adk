@@ -16,9 +16,9 @@ Provides Dart-specific expertise for TDD development, including flutter test fra
 
 ## When to use
 
-- "Dart 테스트 작성", "Flutter 위젯 패턴", "flutter test 사용법"
+- “Writing Dart tests”, “Flutter widget patterns”, “How to use flutter tests”
 - Automatically invoked when working with Dart/Flutter projects
-- Dart SPEC implementation (`/alfred:2-build`)
+- Dart SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -53,11 +53,11 @@ Provides Dart-specific expertise for TDD development, including flutter test fra
 ## Examples
 
 ### Example 1: TDD with flutter test
-User: "/alfred:2-build UI-001"
+User: "/alfred:2-run UI-001"
 Claude: (creates RED widget test, GREEN implementation, REFACTOR with const)
 
 ### Example 2: Static analysis
-User: "dart analyze 실행"
+User: "Run dart analyze"
 Claude: (runs dart analyze and reports issues)
 
 ## Works well with

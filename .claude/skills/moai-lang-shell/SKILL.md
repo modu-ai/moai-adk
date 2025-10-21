@@ -16,9 +16,9 @@ Provides shell scripting expertise for TDD development, including bats testing f
 
 ## When to use
 
-- "Shell 스크립트 작성", "bats 테스트", "POSIX 호환성"
+- "Writing shell scripts", "bats testing", "POSIX compatibility"
 - Automatically invoked when working with shell script projects
-- Shell SPEC implementation (`/alfred:2-build`)
+- Shell SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -55,11 +55,11 @@ Provides shell scripting expertise for TDD development, including bats testing f
 ## Examples
 
 ### Example 1: TDD with bats
-User: "/alfred:2-build DEPLOY-001"
+User: "/alfred:2-run DEPLOY-001"
 Claude: (creates RED test with bats, GREEN implementation, REFACTOR with error handling)
 
 ### Example 2: Shellcheck validation
-User: "shellcheck 실행"
+User: "Run shellcheck"
 Claude: (runs shellcheck *.sh and reports issues)
 
 ## Works well with

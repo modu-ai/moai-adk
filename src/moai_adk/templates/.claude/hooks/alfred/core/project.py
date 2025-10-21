@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Project metadata utilities
 
-프로젝트 정보 조회 (언어, Git, SPEC 진행도 등)
+Project information inquiry (language, Git, SPEC progress, etc.)
 """
 
 import json
@@ -11,18 +11,18 @@ from typing import Any
 
 
 def detect_language(cwd: str) -> str:
-    """프로젝트 언어 감지 (20개 언어 지원)
+    """Detect project language (supports 20 items languages)
 
-    파일 시스템을 탐색하여 프로젝트의 주 개발 언어를 감지합니다.
-    pyproject.toml, tsconfig.json 등의 설정 파일을 우선 검사하며,
-    TypeScript 우선 원칙을 적용합니다 (tsconfig.json 존재 시).
+    Browse the File system to detect your project's main development language.
+    First, check configuration files such as pyproject.toml and tsconfig.json.
+    Apply TypeScript first principles (if tsconfig.json exists).
 
     Args:
-        cwd: 프로젝트 루트 디렉토리 경로 (절대/상대 경로 모두 가능)
+        cwd: Project root directory path (both absolute and relative paths are possible)
 
     Returns:
-        감지된 언어명 (소문자). 감지 실패 시 "Unknown Language" 반환.
-        지원 언어: python, typescript, javascript, java, go, rust,
+        Detected language name (lowercase). If detection fails, "Unknown Language" is returned.
+        Supported languages: python, typescript, javascript, java, go, rust,
                   dart, swift, kotlin, php, ruby, elixir, scala,
                   clojure, cpp, c, csharp, haskell, shell, lua
 
@@ -35,9 +35,9 @@ def detect_language(cwd: str) -> str:
         'Unknown Language'
 
     TDD History:
-        - RED: 21개 언어 감지 테스트 작성 (20개 언어 + 1개 unknown)
-        - GREEN: 20개 언어 + unknown 구현, 모든 테스트 통과
-        - REFACTOR: 파일 검사 순서 최적화, TypeScript 우선 원칙 적용
+        - RED: Write a 21 items language detection test (20 items language + 1 items unknown)
+        - GREEN: 20 items language + unknown implementation, all tests passed
+        - REFACTOR: Optimize file inspection order, apply TypeScript priority principle
     """
     cwd_path = Path(cwd)
 
@@ -89,22 +89,22 @@ def detect_language(cwd: str) -> str:
 
 
 def _run_git_command(args: list[str], cwd: str, timeout: int = 2) -> str:
-    """Git 명령어 실행 헬퍼 함수
+    """Git command execution helper function
 
-    Git 명령어를 안전하게 실행하고 출력을 반환합니다.
-    코드 중복을 제거하고 일관된 에러 처리를 제공합니다.
+    Safely execute Git commands and return output.
+    Eliminates code duplication and provides consistent error handling.
 
     Args:
-        args: Git 명령어 인자 리스트 (git은 자동 추가)
-        cwd: 실행 디렉토리 경로
-        timeout: 타임아웃 (초, 기본 2초)
+        args: Git command argument list (git adds automatically)
+        cwd: Execution directory path
+        timeout: Timeout (seconds, default 2 seconds)
 
     Returns:
-        Git 명령어 출력 (stdout, 앞뒤 공백 제거)
+        Git command output (stdout, removing leading and trailing spaces)
 
     Raises:
-        subprocess.TimeoutExpired: 타임아웃 초과
-        subprocess.CalledProcessError: Git 명령어 실패
+        subprocess.TimeoutExpired: Timeout exceeded
+        subprocess.CalledProcessError: Git command failed
 
     Examples:
         >>> _run_git_command(["branch", "--show-current"], ".")
@@ -122,22 +122,22 @@ def _run_git_command(args: list[str], cwd: str, timeout: int = 2) -> str:
 
 
 def get_git_info(cwd: str) -> dict[str, Any]:
-    """Git 리포지토리 정보 수집
+    """Gather Git repository information
 
-    Git 리포지토리의 현재 상태를 조회합니다.
-    브랜치명, 커밋 해시, 변경사항 개수를 반환하며,
-    Git 리포지토리가 아닌 경우 빈 딕셔너리를 반환합니다.
+    View the current status of a Git repository.
+    Returns the branch name, commit hash, and number of changes.
+    If it is not a Git repository, it returns an empty dictionary.
 
     Args:
-        cwd: 프로젝트 루트 디렉토리 경로
+        cwd: Project root directory path
 
     Returns:
-        Git 정보 딕셔너리. 다음 키를 포함:
-        - branch: 현재 브랜치명 (str)
-        - commit: 현재 커밋 해시 (str, full hash)
-        - changes: 변경된 파일 개수 (int, staged + unstaged)
+        Git information dictionary. Includes the following keys:
+        - branch: Current branch name (str)
+        - commit: Current commit hash (str, full hash)
+        - changes: Number of changed files (int, staged + unstaged)
 
-        Git 리포지토리가 아니거나 조회 실패 시 빈 딕셔너리 {}
+        Empty dictionary {} if it is not a Git repository or the query fails.
 
     Examples:
         >>> get_git_info("/path/to/git/repo")
@@ -146,14 +146,14 @@ def get_git_info(cwd: str) -> dict[str, Any]:
         {}
 
     Notes:
-        - 타임아웃: 각 Git 명령어 2초
-        - 보안: subprocess.run(shell=False)로 안전한 실행
-        - 에러 처리: 모든 예외 시 빈 딕셔너리 반환
+        - Timeout: 2 seconds for each Git command
+        - Security: Safe execution with subprocess.run(shell=False)
+        - Error handling: Returns an empty dictionary in case of all exceptions
 
     TDD History:
-        - RED: 3개 시나리오 테스트 (Git 리포, 비 Git, 에러)
-        - GREEN: subprocess 기반 Git 명령어 실행 구현
-        - REFACTOR: 타임아웃 추가 (2초), 예외 처리 강화, 헬퍼 함수로 중복 제거
+        - RED: 3 items scenario test (Git repo, non-Git, error)
+        - GREEN: Implementation of subprocess-based Git command execution
+        - REFACTOR: Add timeout (2 seconds), strengthen exception handling, remove duplicates with helper function
     """
     try:
         # Check if it's a git repository
@@ -176,21 +176,21 @@ def get_git_info(cwd: str) -> dict[str, Any]:
 
 
 def count_specs(cwd: str) -> dict[str, int]:
-    """SPEC 파일 카운트 및 진행도 계산
+    """SPEC File count and progress calculation
 
-    .moai/specs/ 디렉토리를 탐색하여 SPEC 파일 개수와
-    완료 상태(status: completed)인 SPEC 개수를 집계합니다.
+    Browse the .moai/specs/ directory to find the number of SPEC Files and
+    Counts the number of SPECs with status: completed.
 
     Args:
-        cwd: 프로젝트 루트 디렉토리 경로
+        cwd: Project root directory path
 
     Returns:
-        SPEC 진행도 딕셔너리. 다음 키를 포함:
-        - completed: 완료된 SPEC 개수 (int)
-        - total: 전체 SPEC 개수 (int)
-        - percentage: 완료율 (int, 0~100)
+        SPEC progress dictionary. Includes the following keys:
+        - completed: Number of completed SPECs (int)
+        - total: total number of SPECs (int)
+        - percentage: completion percentage (int, 0~100)
 
-        .moai/specs/ 디렉토리가 없으면 모두 0
+        All 0 if .moai/specs/ directory does not exist
 
     Examples:
         >>> count_specs("/path/to/project")
@@ -199,14 +199,14 @@ def count_specs(cwd: str) -> dict[str, int]:
         {'completed': 0, 'total': 0, 'percentage': 0}
 
     Notes:
-        - SPEC 파일 위치: .moai/specs/SPEC-{ID}/spec.md
-        - 완료 조건: YAML front matter에 "status: completed" 포함
-        - 파싱 실패 시 해당 SPEC은 미완료로 간주
+        - SPEC File Location: .moai/specs/SPEC-{ID}/spec.md
+        - Completion condition: Include “status: completed” in YAML front matter
+        - If parsing fails, the SPEC is considered incomplete.
 
     TDD History:
-        - RED: 5개 시나리오 테스트 (0/0, 2/5, 5/5, 디렉토리 없음, 파싱 에러)
-        - GREEN: Path.iterdir()로 SPEC 탐색, YAML 파싱 구현
-        - REFACTOR: 예외 처리 강화, 퍼센트 계산 안전성 개선
+        - RED: 5 items scenario test (0/0, 2/5, 5/5, no directory, parsing error)
+        - GREEN: SPEC search with Path.iterdir(), YAML parsing implementation
+        - REFACTOR: Strengthened exception handling, improved percentage calculation safety
     """
     specs_dir = Path(cwd) / ".moai" / "specs"
 
@@ -236,7 +236,7 @@ def count_specs(cwd: str) -> dict[str, int]:
                     if "status: completed" in yaml_content:
                         completed += 1
         except (OSError, UnicodeDecodeError):
-            # 파일 읽기 실패 또는 인코딩 오류 - 미완료로 간주
+            # File read failure or encoding error - considered incomplete
             pass
 
     percentage = int(completed / total * 100) if total > 0 else 0

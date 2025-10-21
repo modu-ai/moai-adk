@@ -1,6 +1,6 @@
 ---
 name: moai-claude-code
-description: Claude Code 5가지 컴포넌트 생성 및 관리 - Agent, Command, Skill, Plugin, Settings 템플릿 기반 정확한 파일 생성
+description: Claude Code Creation and management of 5 components - Agent, Command, Skill, Plugin, Settings Precise file creation based on template
 allowed-tools:
   - Read
   - Write
@@ -9,58 +9,66 @@ allowed-tools:
 
 # MoAI Claude Code Manager
 
-Claude Code의 5가지 핵심 컴포넌트를 공식 표준에 맞게 생성하고 관리합니다.
+Create and manage Claude Code's five core components according to official standards.
 
-## 지원 컴포넌트
+## Support components
 
-1. **Agent** (.claude/agents/) - 전문 에이전트
-2. **Command** (.claude/commands/) - 슬래시 커맨드
-3. **Skill** (.claude/skills/) - 재사용 기능 모듈
-4. **Plugin** (settings.json의 mcpServers) - MCP 서버 통합
-5. **Settings** (.claude/settings.json) - 권한 및 훅 설정
+1. **Agent** (.claude/agents/) - Professional agent
+2. **Command** (.claude/commands/) - Slash command
+3. **Skill** (.claude/skills/) - Reusable function module
+4. **Plugin** (mcpServers in settings.json) - MCP server integration
+5. **Settings** (.claude/settings.json) - Permissions and hook settings
 
-## 템플릿 특징
+## Template Features
 
-MoAI-ADK 통합 프로덕션급 템플릿 (5개)
+MoAI-ADK integrated production-grade templates (5)
 
-- 완전 상세 (완전하고 실무 사용 가능)
-- MoAI-ADK 워크플로우 통합
-- 복사-붙여넣기 즉시 사용
-- 검증 및 트러블슈팅 가이드 포함
+- Fully detailed (complete and practical for use)
+- MoAI-ADK workflow integration
+- Copy-paste out of the box
+- Includes verification and troubleshooting guide
 
-## 사용법
+## How to use
 
-### Agent 생성
-"spec-builder Agent를 생성해주세요"
+### Create Agent
+"Please create a spec-builder Agent"
 
-### Settings 최적화
-"Python 프로젝트용 settings.json을 생성해주세요"
+### Settings optimization
+"Please create settings.json for Python project"
 
-### 전체 검증
-"모든 Claude Code 설정을 검증해주세요"
+### Full Verification
+"Please verify all Claude Code settings"
 
-## 상세 문서
+## Detailed Documentation
 
-- **reference.md**: 컴포넌트별 작성 가이드
-- **examples.md**: 실전 예제 모음
-- **templates/**: 5개 프로덕션급 템플릿
-- **scripts/**: Python 검증 스크립트 (선택적)
+- **reference.md**: Component-specific writing guide
+- **examples.md**: Collection of practical examples
+- **templates/**: 5 production-grade templates
+- **scripts/**: Python verification script (optional)
 
-## 작동 방식
+## How it works
 
-1. 사용자 요청 분석 → 컴포넌트 유형 파악
-2. 적절한 템플릿 선택 (templates/ 디렉토리)
-3. 플레이스홀더 치환 및 파일 생성
-4. 자동 검증 (선택적, scripts/ 실행)
+1. Analyzing user requests → Identify component types
+2. Select an appropriate template (templates/ directory)
+3. Placeholder substitution and file creation
+4. Automatic verification (optional, run scripts/)
 
-## 핵심 원칙
+## Core principles
 
-- **공식 표준 준수**: Anthropic 가이드라인 완벽 준수
-- **할루시네이션 방지**: 검증된 템플릿만 사용
-- **최소 권한**: 필요한 도구만 명시
-- **보안 우선**: 민감 정보 환경변수 관리
+- **Compliance with official standards**: Full compliance with Anthropic guidelines
+- **Avoid hallucination**: Use only verified templates
+- **Minimum privileges**: Specify only necessary tools
+- **Security priority**: Manage sensitive information environment variables
+
+## Official best practices (2024-12)
+
+- Keep `SKILL.md` concise and push optional materials into referenced files (reference.md, examples.md, scripts/) so Claude loads only what it needs.
+- Include trigger phrases in `description` (≤1024 chars) and use gerund/action names to improve automatic discovery.
+- Link reference files directly from `SKILL.md` and avoid multi-hop references; aim for ≤1 depth for progressive disclosure.
+- Test skills with Haiku, Sonnet, and any target models to confirm instruction density is appropriate.
+- Store each skill as `.claude/skills/{skill-name}/SKILL.md`; Claude scans only first-level directories under `skills/`.
 
 ---
 
-**공식 문서**: https://docs.claude.com/en/docs/claude-code/skills
-**버전**: 1.0.0
+**Official Documentation**: https://docs.claude.com/en/docs/claude-code/skills
+**Version**: 1.0.0

@@ -16,9 +16,9 @@ Provides expertise in database design, schema normalization, indexing strategies
 
 ## When to use
 
-- "데이터베이스 설계", "스키마 최적화", "인덱스 전략", "마이그레이션"
+- “Database design”, “Schema optimization”, “Index strategy”, “Migration”
 - Automatically invoked when working with database projects
-- Database SPEC implementation (`/alfred:2-build`)
+- Database SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -56,11 +56,11 @@ Provides expertise in database design, schema normalization, indexing strategies
 ## Examples
 
 ### Example 1: Schema design with normalization
-User: "/alfred:2-build DB-SCHEMA-001"
+User: "/alfred:2-run DB-SCHEMA-001"
 Claude: (creates RED schema test, GREEN implementation with constraints, REFACTOR with indices)
 
 ### Example 2: Query optimization
-User: "쿼리 성능 개선"
+User: "Improve query performance"
 Claude: (analyzes EXPLAIN output and suggests index creation)
 
 ## Works well with

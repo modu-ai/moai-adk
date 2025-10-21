@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Event-Driven Checkpoint system
 
-위험한 작업 감지 및 자동 Checkpoint 생성
+Detect risky tasks and create automatic checkpoints
 @TAG:CHECKPOINT-EVENT-001
 """
 
@@ -12,7 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-# MoAI-ADK 지원 언어별 스크립트 실행 패턴
+# Script execution pattern for each language supported by MoAI-ADK
 # Python, TypeScript, Java, Go, Rust, Dart, Swift, Kotlin + Shell
 SCRIPT_EXECUTION_PATTERN = re.compile(
     r"\b("
@@ -39,25 +39,25 @@ SCRIPT_EXECUTION_PATTERN = re.compile(
 
 
 def detect_risky_operation(tool_name: str, tool_args: dict[str, Any], cwd: str) -> tuple[bool, str]:
-    """위험한 작업 감지 (Event-Driven Checkpoint용)
+    """Risk task detection (for Event-Driven Checkpoint)
 
-    Claude Code tool 사용 전 위험한 작업을 자동으로 감지합니다.
-    위험 감지 시 자동으로 checkpoint를 생성하여 롤백 가능하게 합니다.
+    Claude Code tool automatically detects dangerous tasks before use.
+    When a risk is detected, a checkpoint is automatically created to enable rollback.
 
     Args:
-        tool_name: Claude Code tool 이름 (Bash, Edit, Write, MultiEdit)
-        tool_args: Tool 인자 딕셔너리
-        cwd: 프로젝트 루트 디렉토리 경로
+        tool_name: Name of the Claude Code tool (Bash, Edit, Write, MultiEdit)
+        tool_args: Tool argument dictionary
+        cwd: Project root directory path
 
     Returns:
-        (is_risky, operation_type) 튜플
-        - is_risky: 위험한 작업 여부 (bool)
-        - operation_type: 작업 유형 (str: delete, merge, script, critical-file, refactor)
+        (is_risky, operation_type) tuple
+        - is_risky: Whether the operation is dangerous (bool)
+        - operation_type: operation type (str: delete, merge, script, critical-file, refactor)
 
     Risky Operations:
         - Bash tool: rm -rf, git merge, git reset --hard, git rebase, script execution
         - Edit/Write tool: CLAUDE.md, config.json, .moai/memory/*.md
-        - MultiEdit tool: ≥10개 파일 동시 수정
+        - MultiEdit tool: Edit ≥10 items File simultaneously
         - Script execution: Python, Node, Java, Go, Rust, Dart, Swift, Kotlin, Shell scripts
 
     Examples:
@@ -69,29 +69,29 @@ def detect_risky_operation(tool_name: str, tool_args: dict[str, Any], cwd: str) 
         (False, '')
 
     Notes:
-        - False Positive 최소화: 안전한 작업은 무시
-        - 성능: 가벼운 문자열 매칭 (< 1ms)
-        - 확장성: patterns 딕셔너리로 쉽게 추가 가능
+        - Minimize false positives: ignore safe operations
+        - Performance: lightweight string matching (< 1ms)
+        - Extensibility: Easily added to the patterns dictionary
 
     @TAG:CHECKPOINT-EVENT-001
     """
-    # Bash tool: 위험한 명령어 감지
+    # Bash tool: Detect dangerous commands
     if tool_name == "Bash":
         command = tool_args.get("command", "")
 
-        # 대규모 삭제
+        # Mass Delete
         if any(pattern in command for pattern in ["rm -rf", "git rm"]):
             return (True, "delete")
 
-        # Git 병합/리셋/리베이스
+        # Git merge/reset/rebase
         if any(pattern in command for pattern in ["git merge", "git reset --hard", "git rebase"]):
             return (True, "merge")
 
-        # 외부 스크립트 실행 (파괴적 가능성)
+        # Execute external script (potentially destructive)
         if any(command.startswith(prefix) for prefix in ["python ", "node ", "bash ", "sh "]):
             return (True, "script")
 
-    # Edit/Write tool: 중요 파일 감지
+    # Edit/Write tool: Detect important files
     if tool_name in ("Edit", "Write"):
         file_path = tool_args.get("file_path", "")
 
@@ -106,7 +106,7 @@ def detect_risky_operation(tool_name: str, tool_args: dict[str, Any], cwd: str) 
         if any(cf in file_path for cf in critical_files):
             return (True, "critical-file")
 
-    # MultiEdit tool: 대규모 수정 감지
+    # MultiEdit tool: Detect large edits
     if tool_name == "MultiEdit":
         edits = tool_args.get("edits", [])
         if len(edits) >= 10:
@@ -116,32 +116,32 @@ def detect_risky_operation(tool_name: str, tool_args: dict[str, Any], cwd: str) 
 
 
 def create_checkpoint(cwd: str, operation_type: str) -> str:
-    """Checkpoint 생성 (Git local branch)
+    """Create checkpoint (Git local branch)
 
-    위험한 작업 전 자동으로 checkpoint를 생성합니다.
-    Git local branch로 생성하여 원격 저장소 오염을 방지합니다.
+    Automatically creates checkpoints before dangerous operations.
+    Prevent remote repository contamination by creating a Git local branch.
 
     Args:
-        cwd: 프로젝트 루트 디렉토리 경로
-        operation_type: 작업 유형 (delete, merge, script 등)
+        cwd: Project root directory path
+        operation_type: operation type (delete, merge, script, etc.)
 
     Returns:
-        checkpoint_branch: 생성된 브랜치명
-        실패 시 "checkpoint-failed" 반환
+        checkpoint_branch: Created branch name
+        Returns "checkpoint-failed" on failure
 
     Branch Naming:
         before-{operation}-{YYYYMMDD-HHMMSS}
-        예: before-delete-20251015-143000
+        Example: before-delete-20251015-143000
 
     Examples:
         >>> create_checkpoint(".", "delete")
         'before-delete-20251015-143000'
 
     Notes:
-        - Local branch만 생성 (원격 push 안 함)
-        - Git 오류 시 fallback (무시하고 계속 진행)
-        - Dirty working directory 체크 안 함 (커밋 안 된 변경사항 허용)
-        - Checkpoint 로그 자동 기록 (.moai/checkpoints.log)
+        - Create only local branch (no remote push)
+        - Fallback in case of Git error (ignore and continue)
+        - Do not check dirty working directory (allow uncommitted changes)
+        - Automatically record checkpoint logs (.moai/checkpoints.log)
 
     @TAG:CHECKPOINT-EVENT-001
     """
@@ -149,7 +149,7 @@ def create_checkpoint(cwd: str, operation_type: str) -> str:
     branch_name = f"before-{operation_type}-{timestamp}"
 
     try:
-        # 현재 브랜치에서 새 local branch 생성 (체크아웃 안 함)
+        # Create a new local branch from the current branch (without checking out)
         result = subprocess.run(
             ["git", "branch", branch_name],
             cwd=cwd,
@@ -159,38 +159,38 @@ def create_checkpoint(cwd: str, operation_type: str) -> str:
             timeout=2,
         )
 
-        # Checkpoint 로그 기록
+        # Checkpoint log records
         log_checkpoint(cwd, branch_name, operation_type)
 
         return branch_name
 
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
-        # Git 오류 시 fallback (무시)
+        # Fallback (ignore) in case of Git error
         return "checkpoint-failed"
 
 
 def log_checkpoint(cwd: str, branch_name: str, operation_type: str) -> None:
-    """Checkpoint 로그 기록 (.moai/checkpoints.log)
+    """Checkpoint log records (.moai/checkpoints.log)
 
-    Checkpoint 생성 이력을 JSON Lines 형식으로 기록합니다.
-    SessionStart에서 이 로그를 읽어 checkpoint 목록을 표시합니다.
+    Checkpoint creation history is recorded in JSON Lines format.
+    SessionStart reads this log to display a list of checkpoints.
 
     Args:
-        cwd: 프로젝트 루트 디렉토리 경로
-        branch_name: 생성된 checkpoint 브랜치명
-        operation_type: 작업 유형
+        cwd: Project root directory path
+        branch_name: Created checkpoint branch name
+        operation_type: operation type
 
     Log Format (JSON Lines):
         {"timestamp": "2025-10-15T14:30:00", "branch": "before-delete-...", "operation": "delete"}
 
     Examples:
         >>> log_checkpoint(".", "before-delete-20251015-143000", "delete")
-        # .moai/checkpoints.log에 1줄 추가
+        # Add 1 line to .moai/checkpoints.log
 
     Notes:
-        - 파일 없으면 자동 생성
-        - append 모드로 기록 (기존 로그 보존)
-        - 실패 시 무시 (critical하지 않음)
+        - If the file does not exist, it is automatically created.
+        - Record in append mode (preserve existing logs)
+        - Ignored in case of failure (not critical)
 
     @TAG:CHECKPOINT-EVENT-001
     """
@@ -209,22 +209,22 @@ def log_checkpoint(cwd: str, branch_name: str, operation_type: str) -> None:
             f.write(json.dumps(log_entry) + "\n")
 
     except (OSError, PermissionError):
-        # 로그 실패는 무시 (critical하지 않음)
+        # Ignore log failures (not critical)
         pass
 
 
 def list_checkpoints(cwd: str, max_count: int = 10) -> list[dict[str, str]]:
-    """Checkpoint 목록 조회 (.moai/checkpoints.log 파싱)
+    """Checkpoint list (parsing .moai/checkpoints.log)
 
-    최근 생성된 checkpoint 목록을 반환합니다.
-    SessionStart, /alfred:0-project restore 커맨드에서 사용합니다.
+    Returns a list of recently created checkpoints.
+    Used in the SessionStart, /alfred:0-project restore command.
 
     Args:
-        cwd: 프로젝트 루트 디렉토리 경로
-        max_count: 반환할 최대 개수 (기본 10개)
+        cwd: Project root directory path
+        max_count: Maximum number to return (default 10 items)
 
     Returns:
-        Checkpoint 목록 (최신순)
+        Checkpoint list (most recent)
         [{"timestamp": "...", "branch": "...", "operation": "..."}, ...]
 
     Examples:
@@ -235,9 +235,9 @@ def list_checkpoints(cwd: str, max_count: int = 10) -> list[dict[str, str]]:
         ]
 
     Notes:
-        - 로그 파일 없으면 빈 리스트 반환
-        - JSON 파싱 실패한 줄은 무시
-        - 최신 max_count개만 반환
+        - If there is no log file, an empty list is returned.
+        - Ignore lines where JSON parsing fails
+        - Return only the latest max_count
 
     @TAG:CHECKPOINT-EVENT-001
     """
@@ -254,12 +254,12 @@ def list_checkpoints(cwd: str, max_count: int = 10) -> list[dict[str, str]]:
                 try:
                     checkpoints.append(json.loads(line.strip()))
                 except json.JSONDecodeError:
-                    # 파싱 실패한 줄 무시
+                    # Ignore lines where parsing failed
                     pass
     except (OSError, PermissionError):
         return []
 
-    # 최근 max_count개만 반환 (최신순)
+    # Return only the most recent max_count items (in order of latest)
     return checkpoints[-max_count:]
 
 

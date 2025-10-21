@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Event handlers for Alfred Hooks
 
-Claude Code 이벤트 핸들러들
+Claude Code Event Handlers
 """
 
 from .notification import handle_notification, handle_stop, handle_subagent_stop

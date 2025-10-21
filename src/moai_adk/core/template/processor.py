@@ -178,6 +178,7 @@ class TemplateProcessor:
 
         self._copy_claude(silent)
         self._copy_moai(silent)
+        self._copy_github(silent)
         self._copy_claude_md(silent)
         self._copy_gitignore(silent)
 
@@ -237,7 +238,7 @@ class TemplateProcessor:
         Strategy:
         - Alfred folders (commands/agents/hooks/output-styles/alfred) → copy wholesale (delete & overwrite)
           * Creates individual backup before deletion for safety
-          * Commands: 0-project.md, 1-spec.md, 2-build.md, 3-sync.md
+          * Commands: 0-project.md, 1-plan.md, 2-run.md, 3-sync.md
         - Other files/folders → copy individually (preserve existing)
         """
         src = self.template_root / ".claude"
@@ -256,7 +257,7 @@ class TemplateProcessor:
         # Alfred folders to copy wholesale (overwrite)
         alfred_folders = [
             "hooks/alfred",
-            "commands/alfred",  # Contains 0-project.md, 1-spec.md, 2-build.md, 3-sync.md
+            "commands/alfred",  # Contains 0-project.md, 1-plan.md, 2-run.md, 3-sync.md
             "output-styles/alfred",
             "agents/alfred",
         ]
@@ -356,8 +357,26 @@ class TemplateProcessor:
         if not silent:
             console.print("   ✅ .moai/ copy complete (variables substituted)")
 
+    def _copy_github(self, silent: bool = False) -> None:
+        """.github/ directory copy with variable substitution."""
+        src = self.template_root / ".github"
+        dst = self.target_path / ".github"
+
+        if not src.exists():
+            if not silent:
+                console.print("⚠️ .github/ template not found")
+            return
+
+        if dst.exists():
+            shutil.rmtree(dst)
+
+        self._copy_dir_with_substitution(src, dst)
+
+        if not silent:
+            console.print("   ✅ .github/ copy complete (variables substituted)")
+
     def _copy_claude_md(self, silent: bool = False) -> None:
-        """Copy CLAUDE.md with smart merge (preserves "## 프로젝트 정보" section)."""
+        """Copy CLAUDE.md with smart merge (preserves \"## 프로젝트 정보\" section)."""
         src = self.template_root / "CLAUDE.md"
         dst = self.target_path / "CLAUDE.md"
 

@@ -62,21 +62,34 @@ markdown_extensions:
 
 nav:
   - 홈: index.md
-  - Introduction: introduction.md
-  - Getting Started:
-    - Installation: getting-started/installation.md
-    - Quick Start: getting-started/quick-start.md
-    - First Project: getting-started/first-project.md
-  - Configuration:
-    - config.json: configuration/config-json.md
-    - Personal vs Team: configuration/personal-vs-team.md
-    - Advanced Settings: configuration/advanced-settings.md
-  - Workflow: workflow.md
-  - Commands:
-    - CLI Reference: commands/cli-reference.md
-    - Alfred Commands: commands/alfred-commands.md
-    - Agent Commands: commands/agent-commands.md
-  - Agents:
+  - 소개:
+    - 제품 개요: introduction.md
+    - 4-Layer 아키텍처: guides/architecture.md
+    - TRUST 5원칙: guides/concepts/trust-principles.md
+    - Skills Revolution: guides/concepts/skills-revolution.md
+  - 시작하기:
+    - 설치: getting-started/installation.md
+    - 빠른 시작: getting-started/quick-start.md
+    - 첫 프로젝트: getting-started/first-project.md
+  - 핵심 개념:
+    - SPEC-First 개발: guides/concepts/spec-first-tdd.md
+    - EARS 요구사항 가이드: guides/concepts/ears-guide.md
+    - "@TAG 추적 시스템": guides/concepts/tag-system.md
+  - 워크플로우:
+    - 워크플로우 개요: workflow.md
+    - 프로젝트 초기화: guides/workflow/0-project.md
+    - Plan 단계: guides/workflow/1-plan.md
+    - Run 단계: guides/workflow/2-run.md
+    - Sync 단계: guides/workflow/3-sync.md
+    - 업데이트 모드: guides/workflow/9-update.md
+  - Skills 시스템:
+    - Skills 개요: skills/overview.md
+    - Foundation Tier: skills/foundation-tier.md
+    - Essentials Tier: skills/essentials-tier.md
+    - Domain Tier: skills/domain-tier.md
+    - Language Tier: skills/language-tier.md
+  - Sub-agents:
+    - 개요: agents/overview.md
     - spec-builder: agents/spec-builder.md
     - code-builder: agents/code-builder.md
     - doc-syncer: agents/doc-syncer.md
@@ -86,30 +99,42 @@ nav:
     - trust-checker: agents/trust-checker.md
     - cc-manager: agents/cc-manager.md
     - project-manager: agents/project-manager.md
+  - "명령어 & CLI":
+    - CLI 레퍼런스: commands/cli-reference.md
+    - Alfred 명령어: commands/alfred-commands.md
+    - Agent 명령어: commands/agent-commands.md
+    - CLI 사용 가이드: commands/cli.md
+  - 설정:
+    - config.json: configuration/config-json.md
+    - Personal vs Team: configuration/personal-vs-team.md
+    - 고급 설정: configuration/advanced-settings.md
   - Hooks:
-    - Overview: hooks/overview.md
+    - 개요: hooks/overview.md
     - SessionStartHook: hooks/session-start-hook.md
     - PreToolUseHook: hooks/pre-tool-use-hook.md
     - PostToolUseHook: hooks/post-tool-use-hook.md
     - Custom Hooks: hooks/custom-hooks.md
-  - API Reference:
+  - API 레퍼런스:
     - Core Installer: api-reference/core-installer.md
     - Core Git: api-reference/core-git.md
     - Core TAG: api-reference/core-tag.md
     - Core Template: api-reference/core-template.md
     - Agents: api-reference/agents.md
-  - Contributing:
-    - Overview: contributing/overview.md
-    - Development Setup: contributing/development-setup.md
-    - Code Style: contributing/code-style.md
-    - Testing: contributing/testing.md
-    - Pull Request Process: contributing/pull-request-process.md
-  - Security:
-    - Overview: security/overview.md
-    - Template Security: security/template-security.md
-    - Best Practices: security/best-practices.md
-    - Checklist: security/checklist.md
-  - Troubleshooting:
-    - Common Errors: troubleshooting/common-errors.md
-    - Debugging Guide: troubleshooting/debugging-guide.md
+  - 보안:
+    - 개요: security/overview.md
+    - 템플릿 보안: security/template-security.md
+    - 베스트 프랙티스: security/best-practices.md
+    - 체크리스트: security/checklist.md
+    - 보안 스캐닝: security-scanning.md
+  - 문제 해결:
     - FAQ: troubleshooting/faq.md
+    - 일반 오류: troubleshooting/common-errors.md
+    - 디버깅 가이드: troubleshooting/debugging-guide.md
+  - 기여하기:
+    - 개요: contributing/overview.md
+    - 개발 환경 설정: contributing/development-setup.md
+    - 코드 스타일: contributing/code-style.md
+    - 테스트: contributing/testing.md
+    - PR 프로세스: contributing/pull-request-process.md
+  - 상태/부록:
+    - 동기화 보고서: status/sync-report.md

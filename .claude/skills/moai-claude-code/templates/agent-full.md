@@ -9,22 +9,22 @@ model: sonnet
 
 **{Comprehensive 2-3 sentence description of agent's role, expertise, and unique value proposition}**
 
-## 🎭 에이전트 페르소나 (전문 개발자 직무)
+## 🎭 Agent Persona (Professional Developer Job)
 
-**아이콘**: {emoji}
-**직무**: {job-title-kr} ({job-title-en})
-**전문 영역**: {detailed-expertise-description}
-**역할**: {comprehensive-role-and-responsibilities}
-**목표**: {specific-measurable-goals}
+**Icon**: {emoji}
+**Job**: {job-title-kr} ({job-title-en})
+**Expertise**: {detailed-expertise-description}
+**Role**: {comprehensive-role-and-responsibilities}
+**Goals**: {specific-measurable-goals}
 
-### 전문가 특성
+### Expert Traits
 
-- **사고 방식**: {how-this-agent-approaches-problems}
-- **의사결정 기준**: {what-principles-guide-decisions}
-- **커뮤니케이션 스타일**: {how-agent-interacts-with-users}
-- **전문 분야**: {specific-technical-domains-1}, {domain-2}, {domain-3}
+- **Thinking style**: {how-this-agent-approaches-problems}
+- **Decision-making criteria**: {what-principles-guide-decisions}
+- **Communication style**: {how-agent-interacts-with-users}
+- **Areas of expertise**: {specific-technical-domains-1}, {domain-2}, {domain-3}
 
-## 🎯 핵심 역할
+## 🎯 Key Role
 
 ### 1. {Primary Responsibility Area}
 
@@ -32,19 +32,19 @@ model: sonnet
 - **{Sub-responsibility 2}**: {detailed-description-with-examples}
 - **{Sub-responsibility 3}**: {description-and-expected-outcomes}
 
-### 2. 자동 실행 조건
+### 2. Autorun conditions
 
 - {Specific trigger situation 1 with context}
 - {Specific trigger situation 2 with context}
 - {Specific trigger situation 3 with context}
 
-## 📐 워크플로우 (상세)
+## 📐 Workflow (detailed)
 
 ### STEP 1: {First Major Step Title}
 
-**목적**: {Clear statement of what this step accomplishes}
+**Purpose**: {Clear statement of what this step accomplishes}
 
-**실행**:
+**execution**:
 ```bash
 # {Command description}
 {command-1}
@@ -56,12 +56,12 @@ model: sonnet
 {command-3}
 ```
 
-**산출물**:
+**Output**:
 - {Detailed output 1 with format/structure}
 - {Detailed output 2 with expected values}
 - {Detailed output 3 with validation criteria}
 
-**검증**:
+**verification**:
 - [ ] {Validation criterion 1 - what to check}
 - [ ] {Validation criterion 2 - expected result}
 - [ ] {Validation criterion 3 - error conditions}
@@ -70,20 +70,20 @@ model: sonnet
 
 ### STEP 2: {Second Major Step Title}
 
-**목적**: {Clear statement of purpose}
+**Purpose**: {Clear statement of purpose}
 
-**실행**:
+**execution**:
 ```bash
 # {Detailed command explanation}
 {command}
 ```
 
-**산출물**:
+**Output**:
 ```{format}
 {example-output-structure}
 ```
 
-**검증**:
+**verification**:
 - [ ] {Validation 1}
 - [ ] {Validation 2}
 
@@ -91,27 +91,27 @@ model: sonnet
 
 ### STEP 3: {Third Major Step Title}
 
-**목적**: {Purpose statement}
+**Purpose**: {Purpose statement}
 
-**실행**:
+**execution**:
 ```bash
 {commands}
 ```
 
-**산출물**:
+**Output**:
 - {Output description}
 
-## 🤝 사용자 상호작용
+## 🤝 User Interaction
 
-### AskUserQuestion 사용 시점
+### When to use AskUserQuestion
 
-{agent-name}는 다음 상황에서 **AskUserQuestion 도구**를 사용합니다:
+{agent-name} uses the **AskUserQuestion tool** in the following situations:
 
 #### 1. {Situation 1 Title}
 
-**상황**: {Detailed description of when this occurs}
+**Scenario**: {Detailed description of when this occurs}
 
-**예시 질문**:
+**Example Questions**:
 ```typescript
 AskUserQuestion({
   questions: [{
@@ -136,7 +136,7 @@ AskUserQuestion({
 })
 ```
 
-**처리 로직**:
+**Processing Logic**:
 ```typescript
 // Based on user response
 if (answer === "Option 1") {
@@ -150,9 +150,9 @@ if (answer === "Option 1") {
 
 #### 2. {Situation 2 Title}
 
-**상황**: {When this interaction is needed}
+**Scenario**: {When this interaction is needed}
 
-**예시 질문**:
+**Example Questions**:
 ```typescript
 AskUserQuestion({
   questions: [{
@@ -167,59 +167,59 @@ AskUserQuestion({
 })
 ```
 
-## ⚠️ 제약사항
+## ⚠️ Restrictions
 
-### 금지 사항
+### Prohibitions
 
 - ❌ {Prohibited action 1 with explanation why}
 - ❌ {Prohibited action 2 with security/safety reason}
 - ❌ {Prohibited action 3 with alternative approach}
 
-### 위임 규칙
+### Delegation Rules
 
 - **{Agent/Tool 1}** → {When to delegate to this agent}
 - **{Agent/Tool 2}** → {When to use this instead}
 - **{Agent/Tool 3}** → {Delegation condition}
 
-### 권한 제한
+### Permission restrictions
 
-- 파일 접근: {List allowed directories/patterns}
-- 명령 실행: {List allowed bash patterns}
-- 외부 리소스: {List allowed external resources}
+- File access: {List allowed directories/patterns}
+- Command execution: {List allowed bash patterns}
+- External resources: {List allowed external resources}
 
-## ✅ 품질 게이트
+## ✅ Quality Gate
 
-### 완료 기준
+### Completion criteria
 
 - [ ] {Completion criterion 1 with measurable target}
 - [ ] {Completion criterion 2 with validation method}
 - [ ] {Completion criterion 3 with expected state}
 - [ ] {Completion criterion 4 with deliverable}
 
-### 에러 처리
+### Error handling
 
-**일반적인 오류 및 해결책**:
+**Common errors and solutions**:
 
-| 오류 유형 | 원인 | 해결 방법 |
-|----------|------|----------|
-| {Error Type 1} | {Root cause} | {Step-by-step solution} |
-| {Error Type 2} | {What causes it} | {How to fix it} |
-| {Error Type 3} | {Trigger condition} | {Resolution steps} |
+| Error Type     | Cause               | Solution                |
+| -------------- | ------------------- | ----------------------- |
+| {Error Type 1} | {Root cause}        | {Step-by-step solution} |
+| {Error Type 2} | {What causes it}    | {How to fix it}         |
+| {Error Type 3} | {Trigger condition} | {Resolution steps}      |
 
-**에러 복구 프로세스**:
+**Error Recovery Process**:
 1. {First recovery step}
 2. {Second recovery step}
 3. {Fallback procedure}
 
-### 성능 기준
+### Performance criteria
 
-- **실행 시간**: {Expected duration}
-- **메모리 사용**: {Expected resource usage}
-- **출력 크기**: {Expected output size}
+- **Running time**: {Expected duration}
+- **Memory usage**: {Expected resource usage}
+- **Output size**: {Expected output size}
 
-## 💡 사용 가이드
+## 💡 User Guide
 
-### 직접 호출
+### Direct call
 
 ```bash
 # Basic usage
@@ -232,13 +232,13 @@ AskUserQuestion({
 @agent-{agent-name} "{task}" --option1 value1 --option2 value2
 ```
 
-### 자동 실행 조건
+### Autorun conditions
 
 - {Auto-trigger condition 1 with example}
 - {Auto-trigger condition 2 with keyword pattern}
 - {Auto-trigger condition 3 with context requirement}
 
-### 베스트 프랙티스
+### Best practices
 
 1. **{Practice 1 Title}**
    - {Detailed explanation}
@@ -253,71 +253,71 @@ AskUserQuestion({
    - {Best approach}
    - When to apply: {Specific scenarios}
 
-## 🔗 통합 및 협업
+## 🔗 Integration and Collaboration
 
-### 연관 에이전트
+### Associated Agent
 
 - **{Agent 1}** ({Icon} {Role}): {How they collaborate}
 - **{Agent 2}** ({Icon} {Role}): {Handoff scenarios}
 - **{Agent 3}** ({Icon} {Role}): {Integration points}
 
-### 커맨드 통합
+### Command integration
 
 - **{Command 1}** - {When this command invokes this agent}
 - **{Command 2}** - {Integration scenario}
 
-### MoAI-ADK 워크플로우 위치
+### MoAI-ADK workflow location
 
 ```
-/alfred:1-spec → /alfred:2-build → /alfred:3-sync
+/alfred:1-plan → /alfred:2-run → /alfred:3-sync
       ↑                ↑                ↑
   {Where this agent fits in the workflow}
 ```
 
-## 📊 예제 시나리오
+## 📊 Example scenario
 
-### 시나리오 1: {Common Use Case Title}
+### Scenario 1: {Common Use Case Title}
 
-**입력**:
+**input**:
 ```
 {Example user request}
 ```
 
-**실행 과정**:
+**Running Process**:
 1. {What agent does in step 1}
 2. {What agent does in step 2}
 3. {What agent does in step 3}
 
-**출력**:
+**output of power**:
 ```{format}
 {example-output}
 ```
 
-**검증 결과**:
+**Verification results**:
 - ✅ {Verification 1 passed}
 - ✅ {Verification 2 passed}
 
 ---
 
-### 시나리오 2: {Edge Case Title}
+### Scenario 2: {Edge Case Title}
 
-**입력**:
+**input**:
 ```
 {Complex user request}
 ```
 
-**처리**:
+**treatment**:
 - {How agent handles complexity}
 - {Special considerations}
 
-**출력**:
+**output of power**:
 - {Result description}
 
-## 📚 참고 자료
+## 📚 References
 
-- **공식 문서**: {Link to relevant documentation}
-- **관련 스킬**: {Link to complementary skills}
-- **MoAI-ADK 가이드**: {Link to internal guide}
+- **Official Documentation**: {Link to relevant documentation}
+- **Related Skills**: {Link to complementary skills}
+- **MoAI-ADK Guide**: {Link to internal guide}
 
 ---
 
@@ -329,4 +329,4 @@ AskUserQuestion({
 
 ---
 
-이 {agent-name}는 {expertise-domain}의 최고 표준을 제공합니다.
+This {agent-name} provides the highest standards for {expertise-domain}.

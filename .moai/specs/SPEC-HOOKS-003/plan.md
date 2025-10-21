@@ -9,7 +9,7 @@
 ## 📋 구현 개요
 
 ### 목표
-- `/alfred:2-build` 완료 후 TRUST 원칙 검증 자동 실행
+- `/alfred:2-run` 완료 후 TRUST 원칙 검증 자동 실행
 - PostToolUse Hook을 통한 비동기 검증 트리거
 - 검증 결과를 사용자에게 알림 메시지로 전달
 
@@ -340,13 +340,13 @@ def format_validation_result(result: dict) -> str:
 
 ## 📊 성능 목표
 
-| 항목 | 목표 | 측정 방법 |
-|------|------|-----------|
-| Git 로그 파싱 | <10ms | `time git log -5 --pretty=format:%s` |
-| PostToolUse 핸들러 | <100ms | Hooks 시스템 타이머 |
-| 검증 프로세스 시작 | <50ms | `subprocess.Popen()` 호출 시간 |
-| 전체 비동기 실행 | <100ms | PostToolUse 시작 → 반환 시간 |
-| 검증 완료 | <30초 | 백그라운드 프로세스 종료 시간 |
+| 항목               | 목표   | 측정 방법                            |
+| ------------------ | ------ | ------------------------------------ |
+| Git 로그 파싱      | <10ms  | `time git log -5 --pretty=format:%s` |
+| PostToolUse 핸들러 | <100ms | Hooks 시스템 타이머                  |
+| 검증 프로세스 시작 | <50ms  | `subprocess.Popen()` 호출 시간       |
+| 전체 비동기 실행   | <100ms | PostToolUse 시작 → 반환 시간         |
+| 검증 완료          | <30초  | 백그라운드 프로세스 종료 시간        |
 
 ---
 
@@ -354,28 +354,28 @@ def format_validation_result(result: dict) -> str:
 
 ### 단위 테스트 (15개 이상, ≥85% 커버리지)
 
-| 테스트 케이스 | 대상 함수 | 시나리오 |
-|---------------|-----------|----------|
-| test_detect_green_commit | detect_tdd_completion() | GREEN 커밋 감지 성공 |
-| test_detect_refactor_commit | detect_tdd_completion() | REFACTOR 커밋 감지 성공 |
-| test_ignore_red_commit | detect_tdd_completion() | RED 커밋 무시 |
-| test_no_git_repo | detect_tdd_completion() | Git 저장소 없음 처리 |
-| test_alfred_build_detection | is_alfred_build_command() | alfred:2-build 명령 감지 |
-| test_trigger_validation | trigger_trust_validation() | 프로세스 시작 성공 |
-| test_save_load_pid | save_validation_pid() | PID 영속화 |
-| test_collect_result_success | collect_validation_result() | JSON 파싱 성공 (통과) |
-| test_collect_result_failure | collect_validation_result() | JSON 파싱 성공 (실패) |
-| test_format_passed_message | format_validation_result() | 통과 메시지 포맷 |
-| test_format_failed_message | format_validation_result() | 실패 메시지 포맷 |
-| test_handler_performance | handle_post_tool_use() | <100ms 반환 확인 |
-| test_handler_no_validation_tool | handle_post_tool_use() | 도구 없음 처리 |
-| test_handler_duplicate_trigger | handle_post_tool_use() | 중복 실행 방지 |
-| test_notification_collect_pending | collect_pending_validation_results() | 대기 결과 수집 |
+| 테스트 케이스                     | 대상 함수                            | 시나리오                 |
+| --------------------------------- | ------------------------------------ | ------------------------ |
+| test_detect_green_commit          | detect_tdd_completion()              | GREEN 커밋 감지 성공     |
+| test_detect_refactor_commit       | detect_tdd_completion()              | REFACTOR 커밋 감지 성공  |
+| test_ignore_red_commit            | detect_tdd_completion()              | RED 커밋 무시            |
+| test_no_git_repo                  | detect_tdd_completion()              | Git 저장소 없음 처리     |
+| test_alfred_build_detection       | is_alfred_build_command()            | alfred:2-build 명령 감지 |
+| test_trigger_validation           | trigger_trust_validation()           | 프로세스 시작 성공       |
+| test_save_load_pid                | save_validation_pid()                | PID 영속화               |
+| test_collect_result_success       | collect_validation_result()          | JSON 파싱 성공 (통과)    |
+| test_collect_result_failure       | collect_validation_result()          | JSON 파싱 성공 (실패)    |
+| test_format_passed_message        | format_validation_result()           | 통과 메시지 포맷         |
+| test_format_failed_message        | format_validation_result()           | 실패 메시지 포맷         |
+| test_handler_performance          | handle_post_tool_use()               | <100ms 반환 확인         |
+| test_handler_no_validation_tool   | handle_post_tool_use()               | 도구 없음 처리           |
+| test_handler_duplicate_trigger    | handle_post_tool_use()               | 중복 실행 방지           |
+| test_notification_collect_pending | collect_pending_validation_results() | 대기 결과 수집           |
 
 ### 통합 테스트 (3개)
 
 1. **End-to-End 시나리오**:
-   - `/alfred:2-build SPEC-XXX` 실행
+   - `/alfred:2-run SPEC-XXX` 실행
    - REFACTOR 커밋 생성
    - PostToolUse 트리거 확인
    - 검증 결과 알림 확인

@@ -16,9 +16,9 @@ Provides expertise in cross-platform mobile app development using Flutter (Dart)
 
 ## When to use
 
-- "모바일 앱 개발", "Flutter 위젯", "React Native 컴포넌트", "상태 관리"
+- “Mobile app development”, “Flutter widgets”, “React Native components”, “state management”
 - Automatically invoked when working with mobile app projects
-- Mobile app SPEC implementation (`/alfred:2-build`)
+- Mobile app SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -49,11 +49,11 @@ Provides expertise in cross-platform mobile app development using Flutter (Dart)
 ## Examples
 
 ### Example 1: Flutter app with BLoC
-User: "/alfred:2-build MOBILE-001"
+User: "/alfred:2-run MOBILE-001"
 Claude: (creates RED widget test, GREEN implementation with BLoC, REFACTOR)
 
 ### Example 2: React Native state management
-User: "React Native Redux 설정"
+User: "React Native Redux Settings"
 Claude: (sets up Redux with TypeScript and async actions)
 
 ## Works well with

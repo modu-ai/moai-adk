@@ -2,21 +2,8 @@
 # @CODE:HOOKS-REFACTOR-001 | SPEC: SPEC-HOOKS-REFACTOR-001.md
 """Alfred Hooks - Main entry point for MoAI-ADK Claude Code Hooks
 
-Claude Code 이벤트를 적절한 핸들러로 라우팅하는 메인 진입점
+A main entry point that routes Claude Code events to the appropriate handlers.
 
-Setup sys.path for package imports
-"""
-import sys
-from pathlib import Path
-
-# Add the hooks directory to sys.path to enable package imports
-HOOKS_DIR = Path(__file__).parent
-if str(HOOKS_DIR) not in sys.path:
-    sys.path.insert(0, str(HOOKS_DIR))
-
-# Now we can import from the package
-
-"""
 Architecture:
 ┌─────────────────────────────────────────────────────────────┐
 │ alfred_hooks.py (Router)                                    │
@@ -48,22 +35,26 @@ Usage:
     python alfred_hooks.py <event_name> < payload.json
 
 Supported Events:
-    - SessionStart: 세션 시작 (프로젝트 상태 표시)
-    - UserPromptSubmit: 프롬프트 제출 (JIT 문서 로딩)
-    - PreToolUse: Tool 사용 전 (Checkpoint 자동 생성)
+    - SessionStart: Start Session (display project status)
+    - UserPromptSubmit: Prompt submission (JIT document loading)
+    - PreToolUse: Before using the tool (automatically creates checkpoint)
     - SessionEnd, PostToolUse, Notification, Stop, SubagentStop
 
 Exit Codes:
-    - 0: 성공
-    - 1: 에러 (인수 없음, JSON 파싱 실패, 예외 발생)
+    - 0: Success
+    - 1: Error (no arguments, JSON parsing failure, exception thrown)
 
 TDD History:
-    - RED: 모듈 분리 설계, 이벤트 라우팅 테스트
-    - GREEN: 1233 LOC → 9개 모듈 분리 구현 (SRP 준수)
-    - REFACTOR: Import 최적화, 에러 처리 강화
+    - RED: Module separation design, event routing test
+    - GREEN: 1233 LOC → 9 items Module separation implementation (SRP compliance)
+    - REFACTOR: Import optimization, enhanced error handling
+
+Setup sys.path for package imports
 """
 
 import json
+import sys
+from pathlib import Path
 
 from core import HookResult
 from handlers import (
@@ -77,39 +68,44 @@ from handlers import (
     handle_user_prompt_submit,
 )
 
+# Add the hooks directory to sys.path to enable package imports
+HOOKS_DIR = Path(__file__).parent
+if str(HOOKS_DIR) not in sys.path:
+    sys.path.insert(0, str(HOOKS_DIR))
+
 
 def main() -> None:
-    """메인 진입점 - Claude Code Hook 스크립트
+    """Main entry point - Claude Code Hook script
 
-    CLI 인수로 이벤트명을 받고, stdin으로 JSON 페이로드를 읽습니다.
-    이벤트에 맞는 핸들러를 호출하고, 결과를 JSON으로 stdout에 출력합니다.
+    Receives the event name as a CLI argument and reads the JSON payload through stdin.
+    Calls the handler appropriate for the event and outputs the results to stdout as JSON.
 
     Usage:
         python alfred_hooks.py <event_name> < payload.json
 
     Supported Events:
-        - SessionStart: 세션 시작 (프로젝트 상태 표시)
-        - UserPromptSubmit: 프롬프트 제출 (JIT 문서 로딩)
+        - SessionStart: Start Session (display project status)
+        - UserPromptSubmit: Prompt submission (JIT document loading)
         - SessionEnd, PreToolUse, PostToolUse, Notification, Stop, SubagentStop
 
     Exit Codes:
-        - 0: 성공
-        - 1: 에러 (인수 없음, JSON 파싱 실패, 예외 발생)
+        - 0: Success
+        - 1: Error (no arguments, JSON parsing failure, exception thrown)
 
     Examples:
         $ echo '{"cwd": "."}' | python alfred_hooks.py SessionStart
         {"message": "🚀 MoAI-ADK Session Started\\n...", ...}
 
     Notes:
-        - Claude Code가 자동으로 호출 (사용자 직접 실행 불필요)
-        - stdin/stdout으로 JSON I/O 처리
-        - stderr로 에러 메시지 출력
-        - UserPromptSubmit은 특별한 출력 스키마 사용 (hookEventName + additionalContext)
+        - Claude Code is automatically called (no need for direct user execution)
+        - JSON I/O processing through stdin/stdout
+        - Print error message to stderr
+        - UserPromptSubmit uses a special output schema (hookEventName + additionalContext)
 
     TDD History:
-        - RED: 이벤트 라우팅, JSON I/O, 에러 처리 테스트
-        - GREEN: 핸들러 맵 기반 라우팅 구현
-        - REFACTOR: 에러 메시지 명확화, exit code 표준화, UserPromptSubmit 스키마 분리
+        - RED: Event routing, JSON I/O, error handling testing
+        - GREEN: Handler map-based routing implementation
+        - REFACTOR: Error message clarification, exit code standardization, UserPromptSubmit schema separation
     """
     # Check for event argument
     if len(sys.argv) < 2:
@@ -121,9 +117,7 @@ def main() -> None:
     try:
         # Read JSON from stdin
         input_data = sys.stdin.read()
-
-        # Handle empty stdin gracefully (return empty dict)
-        if not input_data or input_data.strip() == "":
+        if not input_data.strip():
             data = {}
         else:
             data = json.loads(input_data)
@@ -145,7 +139,7 @@ def main() -> None:
         handler = handlers.get(event_name)
         result = handler({"cwd": cwd, **data}) if handler else HookResult()
 
-        # UserPromptSubmit은 특별한 출력 스키마 사용
+        # UserPromptSubmit uses a special output schema
         if event_name == "UserPromptSubmit":
             print(json.dumps(result.to_user_prompt_submit_dict()))
         else:

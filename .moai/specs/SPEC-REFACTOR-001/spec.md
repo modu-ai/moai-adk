@@ -396,7 +396,7 @@ __tests__/core/git/
 
 ## 다음 단계
 
-1. `/alfred:2-build SPEC-001` - TDD 구현 시작
+1. `/alfred:2-run SPEC-001` - TDD 구현 시작
 2. Phase별 순차 진행 (Branch → Commit → PR)
 3. 각 Phase 완료 후 테스트 검증
 4. `/alfred:3-sync` - 문서 동기화 및 TAG 검증

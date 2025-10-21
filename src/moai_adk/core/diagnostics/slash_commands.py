@@ -11,7 +11,7 @@ Functions:
 
 from pathlib import Path
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 
 def validate_command_file(file_path: Path) -> dict:

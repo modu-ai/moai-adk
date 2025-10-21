@@ -16,9 +16,9 @@ Provides TypeScript-specific expertise for TDD development, including Vitest tes
 
 ## When to use
 
-- "TypeScript 테스트 작성", "Vitest 사용법", "타입 안전성"
+- "Writing TypeScript tests", "How to use Vitest", "Type safety"
 - Automatically invoked when working with TypeScript projects
-- TypeScript SPEC implementation (`/alfred:2-build`)
+- TypeScript SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -51,11 +51,11 @@ Provides TypeScript-specific expertise for TDD development, including Vitest tes
 ## Examples
 
 ### Example 1: TDD with Vitest
-User: "/alfred:2-build USER-001"
+User: "/alfred:2-run USER-001"
 Claude: (creates RED test with Vitest, GREEN implementation with strict types, REFACTOR)
 
 ### Example 2: Type checking
-User: "TypeScript 타입 오류 확인"
+User: "Check TypeScript type errors"
 Claude: (runs tsc --noEmit and reports type errors)
 
 ## Works well with

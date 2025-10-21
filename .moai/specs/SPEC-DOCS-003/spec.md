@@ -234,7 +234,7 @@ MoAI-ADK 문서를 **사용자 여정 기반**으로 전면 재구성하여 다�
 - **TAG**: `@DOC:CONFIG-001`
 
 #### 4. Workflow (docs/workflow.md)
-- **내용**: 3단계 워크플로우 (`/alfred:1-spec` → `/alfred:2-build` → `/alfred:3-sync`)
+- **내용**: 3단계 워크플로우 (`/alfred:1-plan` → `/alfred:2-run` → `/alfred:3-sync`)
 - **유지**: 기존 workflow.md
 - **TAG**: `@DOC:WORKFLOW-001`
 

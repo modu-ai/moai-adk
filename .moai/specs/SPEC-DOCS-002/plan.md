@@ -21,17 +21,17 @@ Phase 2는 VitePress 문서 사이트에 **핵심 개념 3개 페이지**를 추
    - 9개 전문 에이전트 조율
 
 2. **9개 전문 에이전트 표** (100 LOC)
-   | 에이전트 | 페르소나 | 전문 영역 | 커맨드 | 위임 시점 |
-   |---------|---------|----------|--------|----------|
-   | spec-builder | 시스템 아키텍트 | SPEC 작성 | `/alfred:1-spec` | 명세 필요 시 |
-   | code-builder | 수석 개발자 | TDD 구현 | `/alfred:2-build` | 구현 단계 |
-   | doc-syncer | 테크니컬 라이터 | 문서 동기화 | `/alfred:3-sync` | 동기화 필요 시 |
-   | tag-agent | 지식 관리자 | TAG 시스템 | `@agent-tag-agent` | TAG 작업 시 |
-   | git-manager | 릴리스 엔지니어 | Git 워크플로우 | `@agent-git-manager` | Git 조작 시 |
-   | debug-helper | 트러블슈팅 전문가 | 오류 진단 | `@agent-debug-helper` | 에러 발생 시 |
-   | trust-checker | 품질 보증 리드 | TRUST 검증 | `@agent-trust-checker` | 검증 요청 시 |
-   | cc-manager | 데브옵스 엔지니어 | Claude Code 설정 | `@agent-cc-manager` | 설정 필요 시 |
-   | project-manager | 프로젝트 매니저 | 프로젝트 초기화 | `/alfred:8-project` | 프로젝트 시작 |
+   | 에이전트        | 페르소나          | 전문 영역        | 커맨드                 | 위임 시점      |
+   | --------------- | ----------------- | ---------------- | ---------------------- | -------------- |
+   | spec-builder    | 시스템 아키텍트   | SPEC 작성        | `/alfred:1-plan`       | 명세 필요 시   |
+   | code-builder    | 수석 개발자       | TDD 구현         | `/alfred:2-run`        | 구현 단계      |
+   | doc-syncer      | 테크니컬 라이터   | 문서 동기화      | `/alfred:3-sync`       | 동기화 필요 시 |
+   | tag-agent       | 지식 관리자       | TAG 시스템       | `@agent-tag-agent`     | TAG 작업 시    |
+   | git-manager     | 릴리스 엔지니어   | Git 워크플로우   | `@agent-git-manager`   | Git 조작 시    |
+   | debug-helper    | 트러블슈팅 전문가 | 오류 진단        | `@agent-debug-helper`  | 에러 발생 시   |
+   | trust-checker   | 품질 보증 리드    | TRUST 검증       | `@agent-trust-checker` | 검증 요청 시   |
+   | cc-manager      | 데브옵스 엔지니어 | Claude Code 설정 | `@agent-cc-manager`    | 설정 필요 시   |
+   | project-manager | 프로젝트 매니저   | 프로젝트 초기화  | `/alfred:8-project`    | 프로젝트 시작  |
 
 3. **Mermaid 오케스트레이션 다이어그램** (50 LOC)
    ```mermaid
@@ -129,12 +129,12 @@ Phase 2는 VitePress 문서 사이트에 **핵심 개념 3개 페이지**를 추
 
 **Phase 2 목표**: README 60% + dev-guide 30% + 신규 10%
 
-| 페이지 | README | dev-guide | 신규 | 합계 |
-|--------|--------|-----------|------|------|
-| alfred-agents.md | 270 LOC (90%) | 0 | 30 LOC (10%) | 300 LOC |
-| tag-system.md | 180 LOC (72%) | 20 LOC (8%) | 50 LOC (20%) | 250 LOC |
-| trust-principles.md | 50 LOC (25%) | 120 LOC (60%) | 30 LOC (15%) | 200 LOC |
-| **합계** | 500 LOC (67%) | 140 LOC (19%) | 110 LOC (14%) | 750 LOC |
+| 페이지              | README        | dev-guide     | 신규          | 합계    |
+| ------------------- | ------------- | ------------- | ------------- | ------- |
+| alfred-agents.md    | 270 LOC (90%) | 0             | 30 LOC (10%)  | 300 LOC |
+| tag-system.md       | 180 LOC (72%) | 20 LOC (8%)   | 50 LOC (20%)  | 250 LOC |
+| trust-principles.md | 50 LOC (25%)  | 120 LOC (60%) | 30 LOC (15%)  | 200 LOC |
+| **합계**            | 500 LOC (67%) | 140 LOC (19%) | 110 LOC (14%) | 750 LOC |
 
 **결과**: README 67% (목표 60% 초과 달성) ✅
 
@@ -177,15 +177,15 @@ Phase 2는 VitePress 문서 사이트에 **핵심 개념 3개 페이지**를 추
 
 ## 예상 일정
 
-| 작업 | 예상 시간 | 담당 에이전트 |
-|------|----------|---------------|
-| Sidebar 설정 확장 | 15분 | code-builder |
-| alfred-agents.md 작성 | 30분 | code-builder |
-| tag-system.md 작성 | 25분 | code-builder |
-| trust-principles.md 작성 | 20분 | code-builder |
-| 테스트 작성 및 검증 | 20분 | code-builder |
-| 빌드 확인 및 품질 검증 | 10분 | trust-checker |
-| **합계** | **2시간** | |
+| 작업                     | 예상 시간 | 담당 에이전트 |
+| ------------------------ | --------- | ------------- |
+| Sidebar 설정 확장        | 15분      | code-builder  |
+| alfred-agents.md 작성    | 30분      | code-builder  |
+| tag-system.md 작성       | 25분      | code-builder  |
+| trust-principles.md 작성 | 20분      | code-builder  |
+| 테스트 작성 및 검증      | 20분      | code-builder  |
+| 빌드 확인 및 품질 검증   | 10분      | trust-checker |
+| **합계**                 | **2시간** |               |
 
 ---
 

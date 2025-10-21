@@ -210,4 +210,4 @@ pytest tests/unit/test_detector.py --cov=src/moai_adk/core/project/detector --co
 
 ---
 
-_이 인수 기준은 `/alfred:2-build SPEC-LANG-DETECT-001` TDD 구현 시 검증됩니다._
+_이 인수 기준은 `/alfred:2-run SPEC-LANG-DETECT-001` TDD 구현 시 검증됩니다._

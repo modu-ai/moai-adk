@@ -16,9 +16,9 @@ Provides expertise in application security, including OWASP Top 10 vulnerabiliti
 
 ## When to use
 
-- "보안 취약점 분석", "OWASP 검증", "시크릿 관리", "의존성 보안"
+- “Security vulnerability analysis”, “OWASP verification”, “Secret management”, “Dependency security”
 - Automatically invoked when security concerns arise
-- Security SPEC implementation (`/alfred:2-build`)
+- Security SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -61,11 +61,11 @@ Provides expertise in application security, including OWASP Top 10 vulnerabiliti
 ## Examples
 
 ### Example 1: OWASP compliance check
-User: "/alfred:2-build SEC-001"
+User: "/alfred:2-run SEC-001"
 Claude: (creates RED security test, GREEN implementation with input validation, REFACTOR)
 
 ### Example 2: Dependency vulnerability scan
-User: "의존성 보안 스캔"
+User: "Dependency Security Scan"
 Claude: (runs npm audit or snyk test and reports vulnerabilities)
 
 ## Works well with

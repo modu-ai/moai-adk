@@ -2,8 +2,7 @@
   "_comment": "MoAI-ADK Full Settings Template - Complete Production Configuration",
   "_usage": "Complete Claude Code settings for MoAI-ADK workflows with hooks and Python-specific permissions",
   "_docs": "https://docs.claude.com/en/docs/claude-code/settings",
-  "_moai_workflow": "/alfred:0-project → /alfred:1-spec → /alfred:2-build → /alfred:3-sync",
-
+  "_moai_workflow": "/alfred:0-project → /alfred:1-plan → /alfred:2-run → /alfred:3-sync",
   "permissions": {
     "allow": [
       "Read(**)",
@@ -72,13 +71,12 @@
       "Edit(**/*.secret)"
     ]
   },
-
   "hooks": {
     "SessionStart": {
       "command": "bash",
       "args": [
         "-c",
-        "echo '▶◀ MoAI-ADK Session Started' && echo '' && echo '📊 Git Status:' && git status --short && echo '' && echo '🌿 Branch: '$(git branch --show-current) && echo '' && echo '📋 Recent SPECs:' && ls -1 .moai/specs/ 2>/dev/null | head -3 || echo 'No SPECs yet' && echo '' && echo '💡 Quick Commands:' && echo '  /alfred:1-spec \"기능명\" - SPEC 작성' && echo '  /alfred:2-build SPEC-ID - TDD 구현' && echo '  /alfred:3-sync - 문서 동기화'"
+        "echo '▶◀ MoAI-ADK Session Started' && echo '' && echo '📊 Git Status:' && git status --short && echo '' && echo '🌿 Branch: '$(git branch --show-current) && echo '' && echo '📋 Recent SPECs:' && ls -1 .moai/specs/ 2>/dev/null | head -3 || echo 'No SPECs yet' && echo '' && echo '💡 Quick Commands:' && echo '  /alfred:1-plan \"feature name\" - SPEC authoring' && echo '  /alfred:2-run SPEC-ID - TDD implementation' && echo '  /alfred:3-sync - documentation sync'"
       ]
     },
     "PreToolUse": {
@@ -89,33 +87,67 @@
       ]
     }
   },
-
   "_moai_adk_integration": {
     "workflow_permissions": {
       "alfred_0_project": {
-        "needs": ["Write(.moai/project/**)", "Bash(mkdir:.moai/**)", "Read(**)", "Grep(**)", "Glob(**)"],
+        "needs": [
+          "Write(.moai/project/**)",
+          "Bash(mkdir:.moai/**)",
+          "Read(**)",
+          "Grep(**)",
+          "Glob(**)"
+        ],
         "rationale": "Project initialization requires writing metadata files"
       },
       "alfred_1_spec": {
-        "needs": ["Write(.moai/specs/**)", "Bash(git:branch:**)", "Bash(gh:pr:create:**)", "Read(.moai/project/**)"],
+        "needs": [
+          "Write(.moai/specs/**)",
+          "Bash(git:branch:**)",
+          "Bash(gh:pr:create:**)",
+          "Read(.moai/project/**)"
+        ],
         "rationale": "SPEC creation, feature branch, Draft PR"
       },
       "alfred_2_build": {
-        "needs": ["Write(tests/**)", "Write(src/**)", "Edit(**)", "Bash(pytest:**)", "Bash(mypy:**)", "Bash(git:commit:**)"],
+        "needs": [
+          "Write(tests/**)",
+          "Write(src/**)",
+          "Edit(**)",
+          "Bash(pytest:**)",
+          "Bash(mypy:**)",
+          "Bash(git:commit:**)"
+        ],
         "rationale": "TDD implementation with RED → GREEN → REFACTOR commits"
       },
       "alfred_3_sync": {
-        "needs": ["Write(docs/**)", "Edit(**)", "Bash(rg:**)", "Bash(gh:pr:**)", "Grep(**)", "Glob(**)"],
+        "needs": [
+          "Write(docs/**)",
+          "Edit(**)",
+          "Bash(rg:**)",
+          "Bash(gh:pr:**)",
+          "Grep(**)",
+          "Glob(**)"
+        ],
         "rationale": "Living Document sync, TAG validation, PR Ready transition"
       }
     },
     "tag_system_permissions": {
-      "tag_scanning": ["Grep(**)", "Bash(rg:@(SPEC|TEST|CODE|DOC):**)"],
-      "tag_validation": ["Read(.moai/specs/**)", "Read(tests/**)", "Read(src/**)", "Read(docs/**)"],
-      "tag_reporting": ["Write(.moai/reports/**)", "Write(docs/**)"]
+      "tag_scanning": [
+        "Grep(**)",
+        "Bash(rg:@(SPEC|TEST|CODE|DOC):**)"
+      ],
+      "tag_validation": [
+        "Read(.moai/specs/**)",
+        "Read(tests/**)",
+        "Read(src/**)",
+        "Read(docs/**)"
+      ],
+      "tag_reporting": [
+        "Write(.moai/reports/**)",
+        "Write(docs/**)"
+      ]
     }
   },
-
   "_python_moai_adk_patterns": {
     "testing": {
       "allow": [
@@ -125,14 +157,14 @@
         "Bash(coverage:report)**",
         "Bash(coverage:html)**"
       ],
-      "rationale": "TRUST 원칙 - Test First (85% 커버리지 목표)"
+      "rationale": "TRUST Principle - Test First (85% coverage goal)"
     },
     "type_checking": {
       "allow": [
         "Bash(mypy:**)",
         "Bash(mypy:--strict:**)"
       ],
-      "rationale": "TRUST 원칙 - Unified (타입 안전성)"
+      "rationale": "TRUST Principle - Unified (Type Safety)"
     },
     "linting": {
       "allow": [
@@ -140,7 +172,7 @@
         "Bash(ruff:format:**)",
         "Bash(black:**)"
       ],
-      "rationale": "TRUST 원칙 - Readable (코드 품질)"
+      "rationale": "TRUST Principle - Readable (Code Quality)"
     },
     "package_management": {
       "allow": [
@@ -154,10 +186,9 @@
         "Bash(uv:build)**",
         "Bash(uv:publish)**"
       ],
-      "rationale": "읽기 작업은 허용, 의존성 변경은 확인 필요"
+      "rationale": "Read operations are allowed, dependency changes require confirmation"
     }
   },
-
   "_git_workflow_moai": {
     "safe_read_operations": {
       "allow": [
@@ -167,7 +198,7 @@
         "Bash(git:show:**)",
         "Bash(git:branch:**)"
       ],
-      "description": "Repository 읽기 전용 - 항상 허용"
+      "description": "Repository read-only - always allowed"
     },
     "tdd_commit_pattern": {
       "ask": [
@@ -175,12 +206,12 @@
         "Bash(git:commit:**)"
       ],
       "example_messages": [
-        "🔴 RED: SPEC-AUTH-001 JWT 인증 테스트 작성",
-        "🟢 GREEN: SPEC-AUTH-001 JWT 인증 구현",
-        "♻️ REFACTOR: SPEC-AUTH-001 코드 품질 개선",
-        "📝 DOCS: SPEC-AUTH-001 문서 동기화"
+        "🔴 RED: Writing a SPEC-AUTH-001 JWT authentication test",
+        "🟢 GREEN: SPEC-AUTH-001 JWT authentication implementation",
+        "♻️ REFACTOR: Improve SPEC-AUTH-001 code quality",
+        "📝 DOCS: SPEC-AUTH-001 document synchronization"
       ],
-      "description": "TDD 단계별 커밋 - 사용자 확인 필요"
+      "description": "TDD phased commit - requires user confirmation"
     },
     "branch_and_pr": {
       "ask": [
@@ -190,13 +221,13 @@
         "Bash(gh:pr:merge:**)"
       ],
       "workflow": [
-        "1. feature/SPEC-{ID} 브랜치 생성 (git checkout -b)",
-        "2. Draft PR 생성 (gh pr create --draft)",
-        "3. TDD 구현 및 커밋",
-        "4. PR Ready 전환 (gh pr ready)",
-        "5. PR 머지 (gh pr merge --squash)"
+        "1. Create feature/SPEC-{ID} branch (git checkout -b)",
+        "2. Create Draft PR (gh pr create --draft)",
+        "3. Implement and commit TDD",
+        "4. Mark PR Ready (gh pr ready)",
+        "5. PR merge (gh pr merge --squash)"
       ],
-      "description": "Git 브랜치/PR 작업 - 항상 확인"
+      "description": "Working with Git branches/PRs - always check"
     },
     "dangerous_operations": {
       "deny": [
@@ -204,10 +235,9 @@
         "Bash(git:reset:--hard)**",
         "Bash(git:clean:-fd)**"
       ],
-      "description": "데이터 손실 위험 - 절대 차단"
+      "description": "Risk of Data Loss - Absolutely Blocked"
     }
   },
-
   "_security_hardening": {
     "secrets_protection": {
       "deny": [
@@ -220,7 +250,7 @@
         "Bash(cat:.env)",
         "Bash(cat:**/*.secret)"
       ],
-      "description": "비밀 정보 파일 접근 차단"
+      "description": "Block access to confidential information files"
     },
     "system_protection": {
       "deny": [
@@ -230,7 +260,7 @@
         "Bash(dd:**)",
         "Bash(mkfs:**)"
       ],
-      "description": "시스템 레벨 명령 차단"
+      "description": "System level command blocking"
     },
     "data_loss_prevention": {
       "deny": [
@@ -238,40 +268,38 @@
         "Bash(git:reset:--hard)**",
         "Bash(git:clean:-fd)**"
       ],
-      "description": "데이터 손실 위험 명령 차단"
+      "description": "Block commands at risk of data loss"
     }
   },
-
   "_hook_implementation_details": {
     "SessionStart": {
-      "purpose": "MoAI-ADK 세션 시작 시 프로젝트 컨텍스트 제공",
+      "purpose": "Provide project context when starting a MoAI-ADK session",
       "output_sections": [
-        "▶◀ MoAI-ADK Session Started - 세션 시작 표시",
-        "📊 Git Status - 변경된 파일 목록 (git status --short)",
-        "🌿 Branch - 현재 작업 브랜치",
-        "📋 Recent SPECs - 최근 생성된 SPEC 3개",
-        "💡 Quick Commands - 자주 사용하는 Alfred 커맨드"
+        "▶◀ MoAI-ADK Session Started - Shows session start",
+        "📊 Git Status - list of changed files (git status --short)",
+        "🌿 Branch - Current working branch",
+        "📋 Recent SPECs - 3 recently created SPECs",
+        "💡 Quick Commands - Frequently used Alfred commands"
       ],
-      "execution_time": "~200ms (빠른 실행)",
-      "error_handling": "SPEC 디렉토리 없으면 'No SPECs yet' 표시",
-      "customization": "프로젝트별 정보 추가 가능 (product.md 요약 등)"
+      "execution_time": "~200ms (fast execution)",
+      "error_handling": "If there is no SPEC directory, 'No SPECs yet' is displayed.",
+      "customization": "Project-specific information can be added (product.md summary, etc.)"
     },
     "PreToolUse": {
-      "purpose": "위험한 작업 사전 차단 (데이터 손실, 보안 위험)",
+      "purpose": "Preemptively block risky operations (data loss, security risks)",
       "stdin_format": "JSON: {tool: string, parameters: object}",
       "stdout_format": "JSON: {blocked: boolean, message: string}",
       "blocked_patterns": [
-        "rm -rf - 데이터 손실 위험",
-        "git push --force - 히스토리 손상 위험",
-        "sudo - 보안 위험",
-        ".env 파일 접근 - 비밀 정보 노출"
+        "rm -rf - risk of data loss",
+        "git push --force - risk of history corruption",
+        "sudo - security risk",
+        "Accessing .env files - exposing confidential information"
       ],
-      "implementation": "Python3 inline script (외부 의존성 없음)",
-      "performance": "~50ms (JSON 파싱 + 패턴 매칭)",
-      "extensibility": "새로운 차단 패턴 추가 용이"
+      "implementation": "Python3 inline script (no external dependencies)",
+      "performance": "~50ms (JSON parsing + pattern matching)",
+      "extensibility": "Easy to add new blocking patterns"
     }
   },
-
   "_testing_and_validation": {
     "permission_tests": {
       "test_allow": [
@@ -308,7 +336,6 @@
       "permission_check": "grep -E '^\\s*(allow|ask|deny):' .claude/settings.json"
     }
   },
-
   "_troubleshooting": {
     "hooks_not_running": {
       "symptom": "SessionStart output not visible, PreToolUse not blocking",
@@ -366,7 +393,6 @@
       ]
     }
   },
-
   "_best_practices": {
     "permission_design": {
       "principles": [
@@ -424,18 +450,24 @@
       ]
     }
   },
-
   "_moai_adk_specific": {
     "spec_protection": {
-      "description": "SPEC 파일은 중요한 요구사항 문서 - 실수 삭제 방지",
+      "description": "SPEC files are important requirements documents - prevent accidental deletion",
       "permissions": {
-        "allow": ["Read(.moai/specs/**)"],
-        "ask": ["Write(.moai/specs/**)", "Edit(.moai/specs/**)"],
-        "deny": ["Bash(rm:.moai/specs/**)"]
+        "allow": [
+          "Read(.moai/specs/**)"
+        ],
+        "ask": [
+          "Write(.moai/specs/**)",
+          "Edit(.moai/specs/**)"
+        ],
+        "deny": [
+          "Bash(rm:.moai/specs/**)"
+        ]
       }
     },
     "tag_system": {
-      "description": "@TAG 추적성 유지 - 코드 스캔 허용",
+      "description": "@TAG Maintain traceability – allow code scanning",
       "permissions": {
         "allow": [
           "Bash(rg:@(SPEC|TEST|CODE|DOC):**)",
@@ -448,28 +480,42 @@
     },
     "trust_principles": {
       "Test_First": {
-        "allow": ["Bash(pytest:**)", "Bash(coverage:**)"],
+        "allow": [
+          "Bash(pytest:**)",
+          "Bash(coverage:**)"
+        ],
         "goal": "85% test coverage"
       },
       "Readable": {
-        "allow": ["Bash(ruff:**)", "Bash(black:**)", "Bash(mypy:**)"],
+        "allow": [
+          "Bash(ruff:**)",
+          "Bash(black:**)",
+          "Bash(mypy:**)"
+        ],
         "goal": "Clean, typed code"
       },
       "Unified": {
-        "allow": ["Bash(mypy:--strict:**)"],
+        "allow": [
+          "Bash(mypy:--strict:**)"
+        ],
         "goal": "Type safety"
       },
       "Secured": {
-        "deny": ["Write(.env)", "Bash(cat:.env)"],
+        "deny": [
+          "Write(.env)",
+          "Bash(cat:.env)"
+        ],
         "goal": "Secrets protection"
       },
       "Trackable": {
-        "allow": ["Bash(rg:@TAG:**)", "Grep(@TAG:**)"],
+        "allow": [
+          "Bash(rg:@TAG:**)",
+          "Grep(@TAG:**)"
+        ],
         "goal": "Complete traceability"
       }
     }
   },
-
   "_performance_considerations": {
     "startup_time": {
       "baseline": "Hooks add ~200-500ms to startup",
@@ -485,7 +531,6 @@
       "optimization": "Use Python (faster than Bash for complex logic)"
     }
   },
-
   "_validation_checklist": [
     "✅ Valid JSON syntax (python -m json.tool)",
     "✅ All dangerous operations in 'deny'",
@@ -503,7 +548,6 @@
     "✅ TRUST principles enforced",
     "✅ Team collaboration considered"
   ],
-
   "_real_world_usage": {
     "team_setup": [
       "1. Commit this settings.json to repository",
@@ -520,12 +564,11 @@
     ],
     "ci_cd_integration": [
       "1. CI環境では hooks を無効化 (hooks: null)",
-      "2. Permissions는 more restrictive (deny more operations)",
-      "3. Environment variables로 secrets 관리",
+      "2. Permissions are more restrictive (deny more operations)",
+      "3. Manage secrets with environment variables",
       "4. Test before deploy"
     ]
   },
-
   "_template_metadata": {
     "template_level": "full",
     "best_for": "MoAI-ADK production workflows, Python projects, team collaboration",

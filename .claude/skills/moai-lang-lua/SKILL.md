@@ -16,9 +16,9 @@ Provides Lua-specific expertise for TDD development, including busted testing fr
 
 ## When to use
 
-- "Lua 테스트 작성", "busted 사용법", "임베디드 스크립팅"
+- "Writing Lua tests", "How to use busted", "Embedded scripting"
 - Automatically invoked when working with Lua projects
-- Lua SPEC implementation (`/alfred:2-build`)
+- Lua SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -53,11 +53,11 @@ Provides Lua-specific expertise for TDD development, including busted testing fr
 ## Examples
 
 ### Example 1: TDD with busted
-User: "/alfred:2-build CONFIG-001"
+User: "/alfred:2-run CONFIG-001"
 Claude: (creates RED test with busted, GREEN implementation, REFACTOR with metatables)
 
 ### Example 2: Linting check
-User: "luacheck 실행"
+User: "Run luacheck"
 Claude: (runs luacheck and reports style violations)
 
 ## Works well with

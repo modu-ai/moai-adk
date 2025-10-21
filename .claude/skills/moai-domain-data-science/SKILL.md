@@ -16,9 +16,9 @@ Provides expertise in data analysis workflows, statistical modeling, data visual
 
 ## When to use
 
-- "데이터 분석", "시각화", "통계 모델링", "재현 가능한 연구"
+- “Data analysis”, “Visualization”, “Statistical modeling”, “Reproducible research”
 - Automatically invoked when working with data science projects
-- Data science SPEC implementation (`/alfred:2-build`)
+- Data science SPEC implementation (`/alfred:2-run`)
 
 ## How it works
 
@@ -54,11 +54,11 @@ Provides expertise in data analysis workflows, statistical modeling, data visual
 ## Examples
 
 ### Example 1: Exploratory data analysis
-User: "/alfred:2-build ANALYSIS-001"
+User: "/alfred:2-run ANALYSIS-001"
 Claude: (creates RED analysis test, GREEN pandas implementation, REFACTOR with visualizations)
 
 ### Example 2: Statistical modeling
-User: "회귀 분석 모델 구축"
+User: "Building a regression analysis model"
 Claude: (implements linear regression with hypothesis testing)
 
 ## Works well with
