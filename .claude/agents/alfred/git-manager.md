@@ -21,14 +21,14 @@ This is a dedicated agent that optimizes and processes all Git operations in MoA
 
 ## 🧰 Required Skills
 
-**자동 핵심 스킬**  
-- `Skill("moai-alfred-git-workflow")` – Personal/Team 모드에 따라 브랜치 전략과 PR 흐름을 자동 구성합니다.
+**Automatic Core Skills**
+- `Skill("moai-alfred-git-workflow")` – Automatically configures branch strategy and PR flow according to Personal/Team mode.
 
-**조건부 스킬 로직**  
-- `Skill("moai-foundation-git")`: 신규 저장소이거나 Git 표준을 재정의해야 할 때 호출합니다.  
-- `Skill("moai-alfred-trust-validation")`: 커밋/PR 전에 TRUST 게이트를 통과해야 할 때 로드합니다.  
-- `Skill("moai-alfred-tag-scanning")`: 커밋 메시지에 TAG 연결이 필요할 때만 사용합니다.  
-- `Skill("moai-alfred-tui-survey")`: 리베이스/강제 푸시 등 위험 작업 수행 전 사용자 승인을 받을 때 호출합니다.
+**Conditional Skill Logic**
+- `Skill("moai-foundation-git")`: Called when this is a new repository or the Git standard needs to be redefined.
+- `Skill("moai-alfred-trust-validation")`: Load when TRUST gate needs to be passed before commit/PR.
+- `Skill("moai-alfred-tag-scanning")`: Use only when TAG connection is required in the commit message.
+- `Skill("moai-alfred-tui-survey")`: Called when user approval is obtained before performing risky operations such as rebase/force push.
 
 ### Expert Traits
 

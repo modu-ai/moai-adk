@@ -1,13 +1,13 @@
 # @CODE:TRUST-001 | SPEC: SPEC-TRUST-001/spec.md | TEST: tests/unit/core/quality/test_trust_checker.py
 """
-TRUST 원칙 통합 검증 시스템
+Integrated TRUST principle validation system
 
-TRUST 5원칙:
-- T: Test First (테스트 커버리지 ≥85%)
-- R: Readable (파일 ≤300 LOC, 함수 ≤50 LOC, 매개변수 ≤5개)
-- U: Unified (타입 안전성)
-- S: Secured (보안 취약점 스캔)
-- T: Trackable (TAG 체인 무결성)
+TRUST 5 principles:
+- T: Test First (test coverage ≥85%)
+- R: Readable (file ≤300 LOC, function ≤50 LOC, parameters ≤5)
+- U: Unified (type safety)
+- S: Secured (vulnerability scanning)
+- T: Trackable (TAG chain integrity)
 """
 
 import ast
@@ -18,7 +18,7 @@ from typing import Any
 from moai_adk.core.quality.validators.base_validator import ValidationResult
 
 # ========================================
-# 상수 정의 (의도를 드러내는 이름)
+# Constants (descriptive names)
 # ========================================
 MIN_TEST_COVERAGE_PERCENT = 85
 MAX_FILE_LINES_OF_CODE = 300
@@ -26,20 +26,20 @@ MAX_FUNCTION_LINES_OF_CODE = 50
 MAX_FUNCTION_PARAMETERS = 5
 MAX_CYCLOMATIC_COMPLEXITY = 10
 
-# 파일 인코딩
+# File encoding
 DEFAULT_FILE_ENCODING = "utf-8"
 
-# TAG 접두사
+# TAG prefixes
 TAG_PREFIX_SPEC = "@SPEC:"
 TAG_PREFIX_CODE = "@CODE:"
 TAG_PREFIX_TEST = "@TEST:"
 
 
 class TrustChecker:
-    """TRUST 원칙 통합 검증기"""
+    """Integrated TRUST principle validator"""
 
     def __init__(self):
-        """TrustChecker 초기화"""
+        """Initialize TrustChecker"""
         self.results: dict[str, ValidationResult] = {}
 
     # ========================================
@@ -48,14 +48,14 @@ class TrustChecker:
 
     def validate_coverage(self, project_path: Path, coverage_data: dict[str, Any]) -> ValidationResult:
         """
-        테스트 커버리지 검증 (≥85%)
+        Validate test coverage (≥85%)
 
         Args:
-            project_path: 프로젝트 경로
-            coverage_data: 커버리지 데이터 (total_coverage, low_coverage_files)
+            project_path: Project path
+            coverage_data: Coverage data (total_coverage, low_coverage_files)
 
         Returns:
-            ValidationResult: 검증 결과
+            ValidationResult: Validation result
         """
         total_coverage = coverage_data.get("total_coverage", 0)
 
@@ -64,7 +64,7 @@ class TrustChecker:
                 passed=True, message=f"Test coverage: {total_coverage}% (Target: {MIN_TEST_COVERAGE_PERCENT}%)"
             )
 
-        # 실패 시 상세 정보 생성
+        # Generate detailed information on failure
         low_files = coverage_data.get("low_coverage_files", [])
         details = f"Current coverage: {total_coverage}% (Target: {MIN_TEST_COVERAGE_PERCENT}%)\n"
         details += "Low coverage files:\n"
@@ -84,15 +84,15 @@ class TrustChecker:
 
     def validate_file_size(self, src_path: Path) -> ValidationResult:
         """
-        파일 크기 검증 (≤300 LOC)
+        Validate file size (≤300 LOC)
 
         Args:
-            src_path: 소스 코드 디렉토리 경로
+            src_path: Source code directory path
 
         Returns:
-            ValidationResult: 검증 결과
+            ValidationResult: Validation result
         """
-        # 입력 검증 (보안 강화)
+        # Input validation (security)
         if not src_path.exists():
             return ValidationResult(passed=False, message=f"Source path does not exist: {src_path}", details="")
 
@@ -102,7 +102,7 @@ class TrustChecker:
         violations = []
 
         for py_file in src_path.rglob("*.py"):
-            # 가드절 적용 (가독성 향상)
+            # Apply guard clause (improves readability)
             if py_file.name.startswith("test_"):
                 continue
 
@@ -113,7 +113,7 @@ class TrustChecker:
                 if loc > MAX_FILE_LINES_OF_CODE:
                     violations.append(f"{py_file.name}: {loc} LOC (Limit: {MAX_FILE_LINES_OF_CODE})")
             except (UnicodeDecodeError, PermissionError):
-                # 보안: 파일 접근 오류 처리
+                # Security: handle file access errors
                 continue
 
         if not violations:
@@ -126,13 +126,13 @@ class TrustChecker:
 
     def validate_function_size(self, src_path: Path) -> ValidationResult:
         """
-        함수 크기 검증 (≤50 LOC)
+        Validate function size (≤50 LOC)
 
         Args:
-            src_path: 소스 코드 디렉토리 경로
+            src_path: Source code directory path
 
         Returns:
-            ValidationResult: 검증 결과
+            ValidationResult: Validation result
         """
         violations = []
 
@@ -147,11 +147,11 @@ class TrustChecker:
 
                 for node in ast.walk(tree):
                     if isinstance(node, ast.FunctionDef):
-                        # AST 라인 번호는 1-based
+                        # AST line numbers are 1-based
                         start_line = node.lineno
                         end_line = node.end_lineno if node.end_lineno else start_line  # type: ignore
 
-                        # 실제 함수 라인 수 계산 (데코레이터 제외)
+                        # Compute actual function lines of code (decorators excluded)
                         func_lines = lines[start_line - 1:end_line]
                         func_loc = len(func_lines)
 
@@ -172,13 +172,13 @@ class TrustChecker:
 
     def validate_param_count(self, src_path: Path) -> ValidationResult:
         """
-        매개변수 개수 검증 (≤5개)
+        Validate parameter count (≤5)
 
         Args:
-            src_path: 소스 코드 디렉토리 경로
+            src_path: Source code directory path
 
         Returns:
-            ValidationResult: 검증 결과
+            ValidationResult: Validation result
         """
         violations = []
 
@@ -211,13 +211,13 @@ class TrustChecker:
 
     def validate_complexity(self, src_path: Path) -> ValidationResult:
         """
-        순환 복잡도 검증 (≤10)
+        Validate cyclomatic complexity (≤10)
 
         Args:
-            src_path: 소스 코드 디렉토리 경로
+            src_path: Source code directory path
 
         Returns:
-            ValidationResult: 검증 결과
+            ValidationResult: Validation result
         """
         violations = []
 
@@ -250,23 +250,23 @@ class TrustChecker:
 
     def _calculate_complexity(self, node: ast.FunctionDef) -> int:
         """
-        순환 복잡도 계산 (McCabe complexity)
+        Calculate cyclomatic complexity (McCabe complexity)
 
         Args:
-            node: 함수 AST 노드
+            node: Function AST node
 
         Returns:
-            int: 순환 복잡도
+            int: Cyclomatic complexity
         """
         complexity = 1
         for child in ast.walk(node):
-            # 분기문마다 +1
+            # Add 1 for each branching statement
             if isinstance(child, (ast.If, ast.While, ast.For, ast.ExceptHandler, ast.With)):
                 complexity += 1
-            # and/or 연산자마다 +1
+            # Add 1 for each and/or operator
             elif isinstance(child, ast.BoolOp):
                 complexity += len(child.values) - 1
-            # elif는 이미 ast.If로 카운트되므로 별도 처리 불필요
+            # elif is already counted as ast.If, no extra handling needed
         return complexity
 
     # ========================================
@@ -275,22 +275,22 @@ class TrustChecker:
 
     def validate_tag_chain(self, project_path: Path) -> ValidationResult:
         """
-        TAG 체인 완전성 검증
+        Validate TAG chain completeness
 
         Args:
-            project_path: 프로젝트 경로
+            project_path: Project path
 
         Returns:
-            ValidationResult: 검증 결과
+            ValidationResult: Validation result
         """
         specs_dir = project_path / ".moai" / "specs"
         src_dir = project_path / "src"
 
-        # TAG 스캔
+        # Scan for TAGs
         spec_tags = self._scan_tags(specs_dir, "@SPEC:")
         code_tags = self._scan_tags(src_dir, "@CODE:")
 
-        # 체인 검증
+        # Validate the chain
         broken_chains = []
         for code_tag in code_tags:
             tag_id = code_tag.split(":")[-1]
@@ -307,13 +307,13 @@ class TrustChecker:
 
     def detect_orphan_tags(self, project_path: Path) -> list[str]:
         """
-        고아 TAG 탐지
+        Detect orphan TAGs
 
         Args:
-            project_path: 프로젝트 경로
+            project_path: Project path
 
         Returns:
-            list[str]: 고아 TAG 목록
+            list[str]: List of orphan TAGs
         """
         specs_dir = project_path / ".moai" / "specs"
         src_dir = project_path / "src"
@@ -331,14 +331,14 @@ class TrustChecker:
 
     def _scan_tags(self, directory: Path, tag_prefix: str) -> list[str]:
         """
-        디렉토리에서 TAG 스캔
+        Scan for TAGs in a directory
 
         Args:
-            directory: 스캔할 디렉토리
-            tag_prefix: TAG 접두사 (예: "@SPEC:", "@CODE:")
+            directory: Directory to scan
+            tag_prefix: TAG prefix (for example, "@SPEC:", "@CODE:")
 
         Returns:
-            list[str]: 발견된 TAG 목록
+            list[str]: List of discovered TAGs
         """
         if not directory.exists():
             return []
@@ -362,25 +362,25 @@ class TrustChecker:
 
     def generate_report(self, results: dict[str, Any], format: str = "markdown") -> str:
         """
-        검증 결과 보고서 생성
+        Generate validation report
 
         Args:
-            results: 검증 결과 딕셔너리
-            format: 보고서 형식 ("markdown" 또는 "json")
+            results: Validation result dictionary
+            format: Report format ("markdown" or "json")
 
         Returns:
-            str: 보고서 문자열
+            str: Report string
         """
         if format == "json":
             return json.dumps(results, indent=2)
 
-        # Markdown 형식
+        # Markdown format
         report = "# TRUST Validation Report\n\n"
 
         for category, result in results.items():
             status = "✅ PASS" if result.get("passed", False) else "❌ FAIL"
             value = result.get('value', 'N/A')
-            # 숫자인 경우 % 기호 추가
+            # Add % suffix when the value is numeric
             if isinstance(value, (int, float)):
                 value_str = f"{value}%"
             else:
@@ -398,13 +398,13 @@ class TrustChecker:
 
     def select_tools(self, project_path: Path) -> dict[str, str]:
         """
-        언어별 도구 자동 선택
+        Automatically select tools by language
 
         Args:
-            project_path: 프로젝트 경로
+            project_path: Project path
 
         Returns:
-            dict[str, str]: 선택된 도구 딕셔너리
+            dict[str, str]: Selected tool dictionary
         """
         config_path = project_path / ".moai" / "config.json"
         if not config_path.exists():
@@ -432,7 +432,7 @@ class TrustChecker:
                 "type_checker": "tsc",
             }
 
-        # 기본값 (Python)
+        # Default (Python)
         return {
             "test_framework": "pytest",
             "coverage_tool": "coverage.py",
