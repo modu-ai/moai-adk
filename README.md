@@ -7,7 +7,7 @@
 [![Python](https://img.shields.io/badge/Python-3.13+-blue)](https://www.python.org/)
 [![Tests](https://github.com/modu-ai/moai-adk/actions/workflows/moai-gitflow.yml/badge.svg)](https://github.com/modu-ai/moai-adk/actions/workflows/moai-gitflow.yml)
 [![codecov](https://codecov.io/gh/modu-ai/moai-adk/branch/develop/graph/badge.svg)](https://codecov.io/gh/modu-ai/moai-adk)
-[![Coverage](https://img.shields.io/badge/coverage-87.66%25-brightgreen)](https://github.com/modu-ai/moai-adk)
+[![Coverage](https://img.shields.io/badge/coverage-87.84%25-brightgreen)](https://github.com/modu-ai/moai-adk)
 
 > **MoAI-ADK는 AI와 함께 명세(SPEC) → 테스트(TDD) → 코드 → 문서를 자연스럽게 잇는 개발 워크플로우를 제공합니다.**
 
@@ -37,7 +37,7 @@ MoAI-ADK(MoAI Agentic Development Kit)는 **AI가 개발 과정 전체를 도와
 2. **테스트 먼저 작성(TDD)** 후 코드를 채운다.
 3. **문서/README/CHANGELOG**까지 자동으로 맞춰 둔다.
 
-이 과정을 `/alfred` 명령 네 가지로 반복하면 전체 프로젝트가 일관되게 정리됩니다.
+이 과정을 `/alfred` 명령 3 가지로 반복하면 전체 프로젝트가 일관되게 정리됩니다.
 
 ---
 
@@ -61,9 +61,13 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # 2. MoAI-ADK 설치 (tool 모드: 전역-격리 실행)
 uv tool install moai-adk
 
-# 3. 새 프로젝트 시작
+# 3-1. 새 프로젝트 시작
 moai-adk init my-project
 cd my-project
+
+# 3-2. 기존의 프로젝트에서 시작 (신규파일 업데이트)
+cd my-project
+moai-adk init .
 
 # 4. Claude Code(또는 CLI)에서 Alfred 호출
 claude  # Claude Code 실행 후 아래 명령 사용
@@ -255,7 +259,7 @@ graph TD
 
 ## Sub-agent & Skills 개요
 
-Alfred는 **19명의 팀**(SuperAgent 1 + Core Sub-agent 10 + 0-project Sub-agent 6 + Built-in 2)과 **44개의 Claude Skills**를 조합해 작업합니다.
+Alfred는 **19명의 팀**(SuperAgent 1 + Core Sub-agent 10 + 0-project Sub-agent 6 + Built-in 2)과 **55개의 Claude Skills**를 조합해 작업합니다.
 
 ### Core Sub-agents (Plan → Run → Sync)
 
@@ -272,14 +276,15 @@ Alfred는 **19명의 팀**(SuperAgent 1 + Core Sub-agent 10 + 0-project Sub-agen
 | quality-gate 🛡️ | Haiku | 커버리지 변화 및 릴리스 차단 조건 검토 |
 | cc-manager 🛠️ | Sonnet | Claude Code 세션 최적화, Skill 배포 |
 
-### Skills (Progressive Disclosure)
+### Skills (Progressive Disclosure - v0.4 신규!)
 - **Foundation (6)**: TRUST, TAG, SPEC, EARS, Git, Language 감지
 - **Essentials (4)**: Debug, Refactor, Review, Performance
-- **Domain (10)**: Backend, Web API, Security, Data, Mobile 등
-- **Language (23)**: Python, TypeScript, Go, Rust, Java, Swift 등 주요 언어 패키지
+- **Alfred (11)**: Code Reviewer, Debugger Pro, EARS Authoring, Git Workflow, Language Detection, Performance Optimizer, Refactoring Coach, Spec Validation, TAG Scanning, TRUST Validation, TUI Survey
+- **Domain (10)**: Backend, Web API, Security, Data, Mobile, CLI, Database, DevOps, Data Science, ML
+- **Language (23)**: Python, TypeScript, Go, Rust, Java, Swift, Kotlin, C/C++, C#, Scala, Haskell, Elixir, Clojure, Lua, Ruby, PHP, JavaScript, SQL, Shell, Julia, R, Dart 등
 - **Claude Code Ops (1)**: 세션 설정, Output Style 관리
 
-> Skills는 `.claude/skills/` 디렉터리에 저장된 500단어 이하 가이드입니다. 필요할 때만 로드되어 컨텍스트 비용을 줄입니다.
+> **v0.4 신기능**: 55개의 Claude Skills가 4-tier 아키텍처로 구성되었습니다. 각 Skill은 `.claude/skills/` 디렉터리에 저장된 500단어 이하 가이드로, 필요할 때만 로드되어 컨텍스트 비용을 줄입니다. Progressive Disclosure를 통해 관련 Skill만 Just-In-Time 로드됩니다.
 
 ---
 
@@ -308,23 +313,61 @@ Alfred는 **19명의 팀**(SuperAgent 1 + Core Sub-agent 10 + 0-project Sub-agen
 
 ---
 
+## v0.4 Series 업데이트 (신규!)
+
+| 버전 | 주요 기능 | 날짜 |
+| --- | --- | --- |
+| **v0.4.5** | ✅ CI/CD 수정 + 다국어 README + 배포 정리 | 2025-10-22 |
+| **v0.4.4** | 한국어 언어 지원 | 2025-10-21 |
+| **v0.4.3** | 대화형 질문 도구 (TUI 메뉴) | 2025-10-21 |
+| **v0.4.1** | Skills 지역화 | 2025-10-21 |
+| **v0.4.0** | **55개 Claude Skills** + 19명 AI 팀 + 4단계 워크플로우 | 2025-10-21 |
+
+> 📦 **지금 바로 설치**: `pip install moai-adk==0.4.5` 또는 `uv tool install moai-adk==0.4.5`
+
+---
+
 ## 추가 자료
 
 | 목적 | 리소스 |
 | --- | --- |
-| Skills 세부 구조 | `docs/skills/overview.md` 및 Tier별 문서 |
-| Sub-agent 상세 | `docs/agents/overview.md` |
-| 워크플로우 가이드 | `docs/guides/workflow/` (Plan/Run/Sync) |
+| Skills 세부 구조 | `.claude/skills/` 디렉터리 (55개 Skill) |
+| Sub-agent 상세 | `.claude/agents/alfred/` 디렉터리 |
+| 워크플로우 가이드 | `.claude/commands/alfred/` (0-3 명령) |
 | 개발 가드라인 | `.moai/memory/development-guide.md`, `.moai/memory/spec-metadata.md` |
-| 업데이트 계획 | `CHANGELOG.md`, `UPDATE-PLAN-0.4.0.md` |
+| 릴리즈 노트 | GitHub Releases: https://github.com/modu-ai/moai-adk/releases |
 
 ---
 
 ## 커뮤니티 & 지원
 
-- GitHub Repo: <https://github.com/modu-ai/moai-adk>
-- Issues & Discussions: 버그, 기능 요청, 아이디어 공유 환영합니다.
-- PyPI: <https://pypi.org/project/moai-adk/>
-- 문의: 프로젝트 내 `CONTRIBUTING.md` 가이드를 참고하세요.
+| 채널 | 링크 |
+| --- | --- |
+| **GitHub Repository** | https://github.com/modu-ai/moai-adk |
+| **Issues & Discussions** | https://github.com/modu-ai/moai-adk/issues |
+| **PyPI Package** | https://pypi.org/project/moai-adk/ (최신: v0.4.5) |
+| **Latest Release** | https://github.com/modu-ai/moai-adk/releases/tag/v0.4.5 |
+| **Documentation** | 프로젝트 내 `.moai/`, `.claude/`, `docs/` 참고 |
 
-> 🙌 “SPEC 없이는 CODE도 없다” — Alfred와 함께 일관된 AI 개발 문화를 경험해 보세요.
+---
+
+## 🚀 MoAI-ADK의 철학
+
+> **"SPEC 없이는 CODE도 없다"**
+
+MoAI-ADK는 단순히 코드를 생성하는 도구가 아닙니다. Alfred SuperAgent와 19명의 팀, 55개의 Claude Skills가 함께 다음을 보장합니다:
+
+- ✅ **명세(SPEC) → 테스트(TDD) → 코드(CODE) → 문서(DOC) 일관성**
+- ✅ **@TAG 시스템으로 전체 히스토리 추적 가능**
+- ✅ **커버리지 87.84% 이상 보증**
+- ✅ **4단계 워크플로우(0-project → 1-plan → 2-run → 3-sync)로 반복 개발**
+- ✅ **AI와 협력하되, 투명하고 추적 가능한 개발 문화**
+
+Alfred와 함께 **신뢰할 수 있는 AI 개발**의 새로운 경험을 시작하세요! 🤖
+
+---
+
+**MoAI-ADK v0.4.5** — SPEC-First TDD with AI SuperAgent
+- 📦 PyPI: https://pypi.org/project/moai-adk/
+- 🏠 GitHub: https://github.com/modu-ai/moai-adk
+- 📝 License: MIT
