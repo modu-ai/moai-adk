@@ -61,36 +61,36 @@ Refactoring guidance with design pattern recommendations, code smell detection, 
 
 ## Examples
 ```markdown
-- 현재 diff를 점검하고 즉시 수정 가능한 항목을 나열합니다.
-- 후속 작업은 TodoWrite로 예약합니다.
+- Checks the current diff and lists items that can be modified immediately.
+- Schedule follow-up tasks with TodoWrite.
 ```
 
 ## Inputs
-- 현재 작업 중인 코드/테스트/문서 스냅샷.
-- 진행 중인 에이전트 상태 정보.
+- A snapshot of the code/tests/documentation you are currently working on.
+- Ongoing agent status information.
 
 ## Outputs
-- 즉시 실행 가능한 체크리스트 또는 개선 제안.
-- 다음 단계 실행 여부에 대한 권장 사항.
+- Immediately actionable checklists or improvement suggestions.
+- Recommendations on whether to take next steps or not.
 
 ## Failure Modes
-- 필요한 파일이나 테스트 결과를 찾지 못한 경우.
-- 작업 범위가 과도하게 넓어 간단한 지원만으로 해결할 수 없을 때.
+- If you cannot find the required files or test results.
+- When the scope of work is excessively large and cannot be resolved with simple support.
 
 ## Dependencies
-- 주로 `tdd-implementer`, `quality-gate` 등과 연계해 사용합니다.
+- Mainly used in conjunction with `tdd-implementer`, `quality-gate`, etc.
 
 ## References
 - Fowler, Martin. "Refactoring: Improving the Design of Existing Code." Addison-Wesley, 2018.
 - IEEE Software. "Managing Technical Debt." IEEE Software, 2021.
 
 ## Changelog
-- 2025-03-29: Essentials 스킬의 입력/출력 정의를 정비했습니다.
+- 2025-03-29: Overhauled input/output definitions for Essentials skills.
 
 ## Works well with
 
 - moai-essentials-review
 
 ## Best Practices
-- 간단한 개선이라도 결과를 기록해 추적 가능성을 높입니다.
-- 사람 검토가 필요한 항목을 명확히 표시하여 자동화와 구분합니다.
+- Record results, even for simple improvements, to increase traceability.
+- Clearly mark items that require human review to distinguish them from automation.

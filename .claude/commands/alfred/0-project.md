@@ -118,11 +118,104 @@ grep "optimized" .moai/config.json
 - **"Skip"** → End task
 
 **No backup or optimized: true**:
-- Proceed directly to Phase 1.2 (project environment analysis)
+- Proceed directly to Phase 1.0.5 (language selection)
 
 ---
 
-### 1.1 Backup merge workflow (when user selects “Merge”)
+### 1.0.5 Language Selection (New Session)
+
+**Purpose**: Let the user choose which language to use for communication during project initialization and throughout MoAI-ADK workflows.
+
+**When to run**:
+- First-time project initialization (new project)
+- After reinitialization (optimized: false)
+- User explicitly requests language change
+
+**STEP 1: Display language selection TUI**
+
+Call `Skill("moai-alfred-tui-survey")` to show language selection menu:
+
+```
+Header: "Which language would you like to use?"
+Type: Single Select (not multiSelect)
+
+Options:
+1. Korean (한국어)
+2. English
+```
+
+**Supported languages and codes**:
+- `ko` - Korean ✅ Recommended for Korean users
+- `en` - English ✅ Recommended for international teams
+
+**STEP 2: Store language selection in config.json**
+
+After user selects language, store it in project config:
+
+```json
+{
+  "project": {
+    "language": "ko",
+    "language_selected_at": "2025-10-21T22:30:00+09:00",
+    "language_confirmed": true
+  }
+}
+```
+
+**STEP 3: Set output-style based on language**
+
+Map language to corresponding output-style:
+
+| Language | Code | Output-Style | Purpose |
+|----------|------|--------------|---------|
+| Korean   | ko   | study-with-alfred | Educational approach for Korean developers |
+| English  | en   | agentic-coding | Agile coding approach for international teams |
+
+Update `.claude/settings.json`:
+```json
+{
+  "env": {
+    "ALFRED_LANGUAGE": "ko",
+    "ALFRED_OUTPUT_STYLE": "study-with-alfred"
+  }
+}
+```
+
+**STEP 4: Confirmation message**
+
+Display confirmation to user in their selected language:
+
+```
+✅ Language setup complete
+
+For Korean users:
+- Communication language: Korean
+- Output style: study-with-alfred
+- Settings saved: .moai/config.json, .claude/settings.json
+
+---
+
+✅ Language setup complete
+
+For English users:
+- Communication language: English
+- Output style: agentic-coding
+- Settings saved: .moai/config.json, .claude/settings.json
+```
+
+**STEP 5: Proceed to next phase**
+
+- If no backup or optimized: true → Continue to Phase 1.2 (project environment analysis)
+- If backup exists and optimized: false → Continue to Phase 1.1 (backup merge workflow)
+
+**Note**: Language can be changed anytime by:
+1. Editing `.moai/config.json` manually
+2. Running `/alfred:0-project` again and selecting a different language
+3. Running `/output-style` to change display style independently
+
+---
+
+### 1.1 Backup merge workflow (when user selects "Merge")
 
 **Purpose**: Restore only user customizations while maintaining the latest template structure.
 

@@ -1,14 +1,21 @@
 ---
+
 name: moai-domain-security
-description: OWASP Top 10, static analysis (SAST), dependency security, and secrets management
+description: OWASP Top 10, static analysis (SAST), dependency security, and secrets management. Use when working on security and compliance reviews scenarios.
 allowed-tools:
   - Read
   - Bash
-tier: 4
-auto-load: "false"
 ---
 
 # Security Expert
+
+## Skill Metadata
+| Field | Value |
+| ----- | ----- |
+| Allowed tools | Read (read_file), Bash (terminal) |
+| Auto-load | On demand when security keywords appear |
+| Trigger cues | Threat modeling, OWASP findings, secrets management, compliance reviews. |
+| Tier | 4 |
 
 ## What it does
 
@@ -16,6 +23,7 @@ Provides expertise in application security, including OWASP Top 10 vulnerabiliti
 
 ## When to use
 
+- Engages when the team asks about security posture or mitigation steps.
 - “Security vulnerability analysis”, “OWASP verification”, “Secret management”, “Dependency security”
 - Automatically invoked when security concerns arise
 - Security SPEC implementation (`/alfred:2-run`)
@@ -59,17 +67,39 @@ Provides expertise in application security, including OWASP Top 10 vulnerabiliti
 - HTTPS enforcement
 
 ## Examples
+```markdown
+- Run SAST/DAST tools and attach findings summary.
+- Update risk matrix with severity/owner/ETA.
+```
 
-### Example 1: OWASP compliance check
-User: "/alfred:2-run SEC-001"
-Claude: (creates RED security test, GREEN implementation with input validation, REFACTOR)
+## Inputs
+- 도메인 관련 설계 문서 및 사용자 요구사항.
+- 프로젝트 기술 스택 및 운영 제약.
 
-### Example 2: Dependency vulnerability scan
-User: "Dependency Security Scan"
-Claude: (runs npm audit or snyk test and reports vulnerabilities)
+## Outputs
+- 도메인 특화 아키텍처 또는 구현 가이드라인.
+- 연관 서브 에이전트/스킬 권장 목록.
+
+## Failure Modes
+- 도메인 근거 문서가 없거나 모호할 때.
+- 프로젝트 전략이 미확정이라 구체화할 수 없을 때.
+
+## Dependencies
+- `.moai/project/` 문서와 최신 기술 브리핑이 필요합니다.
+
+## References
+- OWASP. "Top 10 Web Application Security Risks." https://owasp.org/www-project-top-ten/ (accessed 2025-03-29).
+- NIST. "Secure Software Development Framework." https://csrc.nist.gov/publications/detail/sp/800-218/final (accessed 2025-03-29).
+
+## Changelog
+- 2025-03-29: 도메인 스킬에 대한 입력/출력 및 실패 대응을 명문화했습니다.
 
 ## Works well with
 
 - alfred-trust-validation (security validation)
 - web-api-expert (API security)
 - devops-expert (secure deployments)
+
+## Best Practices
+- 도메인 결정 사항마다 근거 문서(버전/링크)를 기록합니다.
+- 성능·보안·운영 요구사항을 초기 단계에서 동시에 검토하세요.

@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 def get_jit_context(prompt: str, cwd: str) -> list[str]:
-    """JIT context retrieval based on the prompt.
+    """JIT Context Retrieval based on prompt.
 
     Analyze user prompts and automatically recommend relevant documents.
     Alfred commands and keyword-based pattern matching load only the documents you need.

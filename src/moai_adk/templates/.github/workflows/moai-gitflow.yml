@@ -1,7 +1,7 @@
-name: MoAI-ADK GitFlow 자동화
+name: MoAI-ADK GitFlow Automation
 
-# MoAI-ADK  3단계 파이프라인: spec → build → sync
-# GitFlow 완전 투명성 - 개발자가 Git을 몰라도 되는 자동화
+# MoAI-ADK 3-stage pipeline: spec → build → sync
+# Full GitFlow transparency — no Git expertise needed
 
 on:
   push:
@@ -11,10 +11,10 @@ on:
 
 jobs:
   moai-pipeline:
-    name: 🗿 MoAI-ADK 파이프라인
+    name: 🗿 MoAI-ADK Pipeline
     runs-on: ubuntu-latest
     steps:
-      - name: 체크아웃
+      - name: Checkout
         uses: actions/checkout@v4
 
       # Multi-language toolchains (conditional)
@@ -86,15 +86,15 @@ jobs:
           distribution: "temurin"
           java-version: "21"
 
-      # TRUST 5원칙 자동 검증
-      # Note: Validation is now handled by TypeScript-based tools
-      - name: 🧭 TRUST 5원칙 검증
+      # TRUST 5 Principles — automated validation
+      # Note: Validation is handled by TypeScript-based tools
+      - name: 🧭 TRUST 5 Principles Check
         run: |
-          echo "✅ TRUST 원칙 검증은 TypeScript 기반 도구로 수행됩니다"
-          echo "   - @agent-trust-checker 사용"
-          echo "   - TypeScript 훅 시스템 활용"
+          echo "✅ TRUST validation is performed by TypeScript-based tools"
+          echo "   - Uses @agent-trust-checker"
+          echo "   - Leverages TypeScript hook system"
 
-      # Draft PR에서는 테스트 실패를 무시하고, Ready PR에서는 실패 시 CI 실패
+      # Ignore test failures on Draft PRs; fail CI on Ready PRs
       - name: Run language-aware tests
         run: |
           set -e
@@ -213,43 +213,44 @@ jobs:
             fi
           elif compgen -G "**/*.xcodeproj" > /dev/null || compgen -G "**/*.xcworkspace" > /dev/null; then
             echo "➡️  Swift tests (Xcode)"
-            # Xcode 프로젝트는 스킴이 필요하므로 조건부 실행
+            # Xcode projects require a scheme; run conditionally
             if [ "$ALLOW_FAILURE" = "true" ]; then
-              echo "⚠️  Xcode 테스트는 스킴 설정이 필요합니다"
+              echo "⚠️  Xcode tests require a configured scheme"
             else
-              echo "⚠️  Xcode 테스트는 스킴 설정이 필요합니다"
+              echo "⚠️  Xcode tests require a configured scheme"
             fi
           fi
 
-      #  TAG 시스템 검증 (코드 파일만)
-      - name: 🏷️ TAG 시스템 검증
+      # TAG system validation (code files only)
+      - name: 🏷️ TAG System Validation
         run: |
-          echo "✅ TAG 검증은 tag_validator.py Hook에서 자동 처리됨"
+          echo "✅ TAG validation is handled automatically in the tag_validator.py hook"
 
-      # 브랜치별 단계 실행
-      - name: 📝 SPEC 단계 (feature 브랜치)
+      # Run per-branch stages
+      - name: 📝 SPEC Stage (feature branch)
         if: startsWith(github.ref, 'refs/heads/feature/')
         run: |
-          echo "🌿 Feature 브랜치: SPEC 검증 단계"
-          echo "- spec-builder 에이전트가 EARS 명세 작성"
-          echo "- Draft PR 자동 생성"
+          echo "🌿 Feature branch: SPEC validation stage"
+          echo "- spec-builder agent authors EARS spec"
+          echo "- Draft PR is created automatically"
 
-      - name: 🔴🟢🔄 BUILD 단계 (Draft PR)
+      - name: 🔴🟢🔄 BUILD Stage (Draft PR)
         if: github.event.pull_request.draft == true
         run: |
-          echo "📝 Draft PR: TDD 구현 단계"
-          echo "- code-builder 에이전트가 RED-GREEN-REFACTOR"
-          echo "- TRUST 5원칙 준수 검증"
+          echo "📝 Draft PR: TDD implementation stage"
+          echo "- code-builder agent runs RED-GREEN-REFACTOR"
+          echo "- Validate TRUST 5 Principles compliance"
 
-      - name: 📚 SYNC 단계 (Ready PR)
+      - name: 📚 SYNC Stage (Ready PR)
         if: github.event.pull_request.draft == false && github.event.action == 'ready_for_review'
         run: |
-          echo "✅ Ready PR: 문서 동기화 단계"
-          echo "- doc-syncer 에이전트가 Living Document 동기화"
-          echo "- PR 리뷰 준비 완료"
+          echo "✅ Ready PR: documentation sync stage"
+          echo "- doc-syncer agent synchronizes Living Documents"
+          echo "- PR is ready for review"
 
-      # 최종 결과 리포트
-      - name: 📊 MoAI 파이프라인 완료
+      # Final result report
+      - name: 📊 MoAI Pipeline Complete
         run: |
-          echo "🗿 MoAI-ADK GitFlow 자동화 완료"
-          echo "✨ Git을 몰라도 프로페셔널 워크플로우 구현"
+          echo "🗿 MoAI-ADK GitFlow automation complete"
+          echo "✨ Professional workflow without needing to know Git"
+

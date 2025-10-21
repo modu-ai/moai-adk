@@ -11,7 +11,7 @@
     "principles": {
       "simplicity": {
         "max_projects": 5,
-        "notes": "기본 권장값. 프로젝트 규모에 따라 .moai/config.json 또는 SPEC/ADR로 근거와 함께 조정하세요."
+        "notes": "Default recommended value. Adjust with rationale in .moai/config.json or SPEC/ADR based on project scale."
       }
     },
     "require_tags": true,
@@ -59,11 +59,14 @@
     "created_at": "{{CREATION_TIMESTAMP}}",
     "description": "{{PROJECT_DESCRIPTION}}",
     "initialized": true,
+    "language": "ko",
+    "language_selected_at": "{{CREATION_TIMESTAMP}}",
+    "language_confirmed": false,
     "locale": "ko",
     "mode": "{{PROJECT_MODE}}",
     "name": "{{PROJECT_NAME}}",
-    "moai_adk_version": "{{MOAI_VERSION}}",
-    "optimized": true,
+    "moai_adk_version": "0.4.0",
+    "optimized": false,
     "last_merge": "2025-10-21T00:00:00",
     "backup_source": ".moai-backups/20251020-011755/"
   },
@@ -88,7 +91,7 @@
         "grep"
       ],
       "scan_command": "rg '@TAG' -n",
-      "philosophy": "TAG의 진실은 코드 자체에만 존재"
+      "philosophy": "The truth of TAG exists only in the code itself"
     }
   }
 }

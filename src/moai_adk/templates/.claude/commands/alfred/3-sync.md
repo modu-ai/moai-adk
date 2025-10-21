@@ -184,7 +184,7 @@ To skip pre-verification, use the `/alfred:3-sync --skip-pre-check` option.
 
 ### User verification steps
 
-After reviewing your sync plan, `Skill("moai-alfred-tui-survey")`로 다음 옵션을 제시해 사용자 결정을 받습니다:
+After reviewing your sync plan, `Skill("moai-alfred-tui-survey")` presents the following options for user decision:
 - **"Proceed"** or **"Start"**: Start synchronization as planned
 - **"Modify [Contents]"**: Request modifications to your sync plan
 - **"Abort"**: Abort the sync operation
@@ -193,7 +193,7 @@ After reviewing your sync plan, `Skill("moai-alfred-tui-survey")`로 다음 옵�
 
 ## 🚀 STEP 2: Execute document synchronization (after user approval)
 
-After user approval( `Skill("moai-alfred-tui-survey")`로 수집), the doc-syncer agent performs **Living Document synchronization and @TAG updates**, and optionally executes PR Ready transitions only in team mode.
+After user approval (collected via `Skill("moai-alfred-tui-survey")`), the doc-syncer agent performs **Living Document synchronization and @TAG updates**, and optionally executes PR Ready transitions only in team mode.
 
 ### Phase 2 Details: SPEC Completion Processing (Automatic)
 

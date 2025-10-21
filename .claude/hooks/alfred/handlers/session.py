@@ -74,6 +74,7 @@ def handle_session_start(payload: HookPayload) -> HookResult:
         for cp in reversed(checkpoints[-3:]):  # Latest 3 items
             branch_short = cp["branch"].replace("before-", "")
             lines.append(f"      - {branch_short}")
+        lines.append("   Restore: /alfred:0-project restore")
 
     system_message = "\n".join(lines)
 

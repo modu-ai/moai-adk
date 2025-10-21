@@ -217,7 +217,7 @@ def list_checkpoints(cwd: str, max_count: int = 10) -> list[dict[str, str]]:
     """Checkpoint list (parsing .moai/checkpoints.log)
 
     Returns a list of recently created checkpoints.
-    Used by the SessionStart handler and other checkpoint UIs.
+    Used in the SessionStart, /alfred:0-project restore command.
 
     Args:
         cwd: Project root directory path

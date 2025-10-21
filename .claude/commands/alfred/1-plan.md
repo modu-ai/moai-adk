@@ -66,6 +66,14 @@ allowed-tools:
 4. **Plan creation**: Generate specifications of EARS structure (spec.md, plan.md, acceptance.md)
 5. **Git operations**: Create branches/PRs via git-manager
 
+## 🧠 Skill Loadout Overview
+
+| Agent | Auto core skill | Conditional skills |
+| ----- | ---------------- | ------------------ |
+| implementation-planner | Skill("moai-alfred-language-detection") | Skill("moai-foundation-langs"), Skill("moai-alfred-performance-optimizer"), Skill("moai-alfred-tag-scanning"), Detected domain skill (예: Skill("moai-domain-backend")), Skill("moai-alfred-trust-validation"), Skill("moai-alfred-tui-survey") |
+| spec-builder | Skill("moai-foundation-ears") | Skill("moai-alfred-ears-authoring"), Skill("moai-foundation-specs"), Skill("moai-alfred-spec-metadata-validation"), Skill("moai-alfred-tag-scanning"), Skill("moai-foundation-trust"), Skill("moai-alfred-trust-validation"), Skill("moai-alfred-tui-survey") |
+| git-manager | Skill("moai-alfred-git-workflow") | Skill("moai-foundation-git"), Skill("moai-alfred-trust-validation"), Skill("moai-alfred-tag-scanning"), Skill("moai-alfred-tui-survey") |
+
 ## 🔗 Associated Agent
 
 - **Primary**: spec-builder (🏗️ System Architect) - Dedicated to writing SPEC documents
