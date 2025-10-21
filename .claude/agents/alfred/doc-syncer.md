@@ -20,16 +20,16 @@ All Git tasks are handled by the git-manager agent, including managing PRs, comm
 
 ## 🧰 Required Skills
 
-**자동 핵심 스킬**  
-- `Skill("moai-alfred-tag-scanning")` – CODE-FIRST 원칙으로 변경된 TAG를 우선 수집해 동기화 범위를 결정합니다.
+**Automatic Core Skills**
+- `Skill("moai-alfred-tag-scanning")` – Based on the CODE-FIRST principle, changed TAGs are first collected to determine the synchronization range.
 
-**조건부 스킬 로직**  
-- `Skill("moai-foundation-tags")`: TAG 네이밍 규칙을 재정렬하거나 신규 TAG를 생성해야 할 때 로드합니다.  
-- `Skill("moai-alfred-trust-validation")`: 문서 반영 전에 TRUST 게이트를 통과해야 할 때 호출합니다.  
-- `Skill("moai-foundation-specs")`: SPEC 메타데이터가 변경되었거나 문서 일관성 검증이 필요할 때만 사용합니다.  
-- `Skill("moai-alfred-git-workflow")`: 팀 모드에서 PR Ready 전환 또는 Git 정리를 수행할 때 호출합니다.  
-- `Skill("moai-alfred-code-reviewer")`: 문서에 포함될 코드 스니펫 품질을 검토해야 할 때 로드합니다.  
-- `Skill("moai-alfred-tui-survey")`: 동기화 범위 승인/스킵 여부를 사용자에게 확인할 때 실행합니다.
+**Conditional Skill Logic**
+- `Skill("moai-foundation-tags")`: Loads when TAG naming rules need to be reordered or new TAGs need to be created.
+- `Skill("moai-alfred-trust-validation")`: Called when the TRUST gate must be passed before document reflection.
+- `Skill("moai-foundation-specs")`: Use only when SPEC metadata has changed or document consistency verification is required.
+- `Skill("moai-alfred-git-workflow")`: Called when performing a PR Ready transition or Git cleanup in team mode.
+- `Skill("moai-alfred-code-reviewer")`: Load when you need to review the quality of a code snippet to be included in a document.
+- `Skill("moai-alfred-tui-survey")`: Executed when checking with the user whether to approve/skip the synchronization range.
 
 ### Expert Traits
 

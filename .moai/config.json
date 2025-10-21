@@ -4,14 +4,14 @@
     "@SPEC:PROJECT-CONFIG-001": "@SPEC:MOAI-CONFIG-001"
   },
   "moai": {
-    "version": "{{MOAI_VERSION}}"
+    "version": "0.4.1"
   },
   "constitution": {
     "enforce_tdd": true,
     "principles": {
       "simplicity": {
         "max_projects": 5,
-        "notes": "Default recommended value. Adjust with rationale in .moai/config.json or SPEC/ADR based on project scale."
+        "notes": "Default recommendation. Adjust in .moai/config.json or via SPEC/ADR with documented rationale based on project size."
       }
     },
     "require_tags": true,
@@ -56,19 +56,15 @@
     "current_stage": "initialized"
   },
   "project": {
-    "created_at": "{{CREATION_TIMESTAMP}}",
-    "description": "{{PROJECT_DESCRIPTION}}",
+    "created_at": "2025-10-21 23:59:19",
+    "description": "",
     "initialized": true,
-    "language": "ko",
-    "language_selected_at": "{{CREATION_TIMESTAMP}}",
-    "language_confirmed": false,
     "locale": "ko",
-    "mode": "{{PROJECT_MODE}}",
-    "name": "{{PROJECT_NAME}}",
-    "moai_adk_version": "0.4.0",
+    "mode": "personal",
+    "name": "MoAI-ADK",
+    "moai_adk_version": "0.4.1",
     "optimized": false,
-    "last_merge": "2025-10-21T00:00:00",
-    "backup_source": ".moai-backups/20251020-011755/"
+    "language": "ko"
   },
   "tags": {
     "auto_sync": true,
@@ -91,7 +87,7 @@
         "grep"
       ],
       "scan_command": "rg '@TAG' -n",
-      "philosophy": "The truth of TAG exists only in the code itself"
+      "philosophy": "The source of truth for TAGs lives in the code itself"
     }
   }
 }

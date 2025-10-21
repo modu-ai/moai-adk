@@ -146,7 +146,7 @@ class TestCreateBackup:
     """Test backup creation"""
 
     def test_create_backup_creates_directory(self, tmp_path: Path) -> None:
-        """Should create timestamped backup directory (.moai-backups/{timestamp}/)"""
+        """Should create single backup directory (.moai-backups/backup/)"""
         (tmp_path / ".moai").mkdir()
         (tmp_path / ".moai" / "config.json").write_text("{}")
 
@@ -155,7 +155,7 @@ class TestCreateBackup:
 
         assert backup_path.exists()
         assert backup_path.parent.name == ".moai-backups"
-        assert len(backup_path.name) == 15  # YYYYMMDD-HHMMSS
+        assert backup_path.name == "backup"  # Single backup folder (SSOT)
 
     def test_create_backup_copies_moai_directory(self, tmp_path: Path) -> None:
         """Should backup .moai directory"""

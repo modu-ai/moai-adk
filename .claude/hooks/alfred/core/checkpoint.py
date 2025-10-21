@@ -154,8 +154,8 @@ def create_checkpoint(cwd: str, operation_type: str) -> str:
             ["git", "branch", branch_name],
             cwd=cwd,
             check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
             timeout=2,
         )
 

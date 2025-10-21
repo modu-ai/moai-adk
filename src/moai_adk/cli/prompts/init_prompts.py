@@ -93,11 +93,11 @@ def prompt_project_setup(
         answers["locale"] = initial_locale or "en"
         if initial_locale:
             console.print(
-                f"[cyan]🌐 Preferred Language:[/cyan] {answers['locale']} (CLI 옵션으로 지정됨)"
+                f"[cyan]🌐 Preferred Language:[/cyan] {answers['locale']} (specified via CLI option)"
             )
         else:
             console.print(
-                "[cyan]🌐 Preferred Language:[/cyan] en (기본값, /alfred:0-project에서 변경 가능)"
+                "[cyan]🌐 Preferred Language:[/cyan] en (default, changeable in /alfred:0-project)"
             )
 
         # 3. Programming language (auto-detect or manual)

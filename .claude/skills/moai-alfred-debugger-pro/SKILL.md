@@ -66,36 +66,36 @@ jwt.exceptions.ExpiredSignatureError: Signature has expired
 - **Java**: Optional, try-with-resources
 
 ## Best Practices
-- 사용자에게 보여주는 문구는 TUI/보고서용 표현으로 작성합니다.
-- 도구 실행 시 명령과 결과 요약을 함께 기록합니다.
+- The text shown to the user is written using TUI/report expressions.
+- When running the tool, a summary of commands and results are recorded.
 
 ## Examples
 ```markdown
-- /alfred 커맨드 내부에서 이 스킬을 호출해 보고서를 생성합니다.
-- Completion Report에 요약을 추가합니다.
+- Call this skill inside the /alfred command to generate a report.
+- Add summary to Completion Report.
 ```
 
 ## Inputs
-- MoAI-ADK 프로젝트 맥락 (`.moai/project/`, `.claude/` 템플릿 등).
-- 사용자 명령 또는 상위 커맨드에서 전달한 파라미터.
+- MoAI-ADK project context (`.moai/project/`, `.claude/` templates, etc.).
+- Parameters passed from user commands or higher commands.
 
 ## Outputs
-- Alfred 워크플로우에 필요한 보고서, 체크리스트 또는 추천 항목.
-- 후속 서브 에이전트 호출을 위한 구조화된 데이터.
+- Reports, checklists or recommendations for your Alfred workflow.
+- Structured data for subsequent subagent calls.
 
 ## Failure Modes
-- 필수 입력 문서가 없거나 권한이 제한된 경우.
-- 사용자 승인 없이 파괴적인 변경이 요구될 때.
+- When required input documents are missing or permissions are limited.
+- When disruptive changes are required without user approval.
 
 ## Dependencies
-- cc-manager, project-manager 등 상위 에이전트와 협력이 필요합니다.
+- Cooperation with higher-level agents such as cc-manager and project-manager is required.
 
 ## References
 - Microsoft. "Debugging Techniques." https://learn.microsoft.com/visualstudio/debugger/ (accessed 2025-03-29).
 - JetBrains. "Debugging Code." https://www.jetbrains.com/help/idea/debugging-code.html (accessed 2025-03-29).
 
 ## Changelog
-- 2025-03-29: Alfred 전용 스킬에 입력/출력/실패 대응을 추가했습니다.
+- 2025-03-29: Added input/output/failure response to Alfred-specific skills.
 
 ## Works well with
 

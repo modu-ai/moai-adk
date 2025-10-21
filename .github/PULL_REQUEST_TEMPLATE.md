@@ -1,41 +1,69 @@
 # MoAI-ADK GitFlow PR
 
-> 🗿 **GitFlow 완전 투명성** - 에이전트가 자동으로 정보를 채웁니다
+> 🗿 Full GitFlow Transparency — the agent auto-fills information
 
-## 📝 SPEC 정보
+## 📝 SPEC Info
 
-- **관련 SPEC**: `SPEC-XXX` (spec-builder가 자동 생성)
-- **@TAG 연결**: @SPEC:XXX @CODE:XXX (자동 태깅)
+- Related SPEC: `SPEC-AUTH-001` (e.g., JWT authentication system)
+- Directory: `.moai/specs/SPEC-AUTH-001/`
+- @TAG Links: @SPEC:AUTH-001 @CODE:AUTH-001 (auto-tagging)
 
-## 🤖 자동 검증 상태 (에이전트가 채움)
+## ✅ SPEC Quality Checks
 
-- [ ] **spec-builder**: EARS 명세 완성 및 feature 브랜치 생성
-- [ ] **code-builder**: TDD RED-GREEN-REFACTOR 완료
-- [ ] **doc-syncer**: Living Document 동기화 및 PR Ready
+- [ ] YAML Front Matter: 7 required fields (id, version, status, created, updated, author, priority)
+- [ ] HISTORY Section: Record versioned change log (include v0.0.1 INITIAL)
+- [ ] EARS Requirements: Ubiquitous, Event-driven, State-driven, Optional, Constraints
+- [ ] @SPEC:ID TAG: Include TAG in doc and check duplicates (`rg "@SPEC:<ID>" -n`)
 
-## 📊 품질 지표 (자동 계산)
+## 🤖 Automated Validation Status
 
-- **TRUST 5원칙**: ✅ 준수
-- **테스트 커버리지**: XX% (85% 이상 목표)
-- ** TAG 추적성**: 100%
+<!-- The checklist below is auto-updated by the agent -->
+<!-- /alfred:1-plan → create feature branch → Draft PR -->
+<!-- /alfred:2-run → implement via TDD → auto-check checkboxes -->
+<!-- /alfred:3-sync → synchronize documents → Ready for Review -->
 
-## 🎯 변경 사항
+- [ ] spec-builder: Complete EARS spec and create feature branch
+- [ ] code-builder: Finish TDD RED-GREEN-REFACTOR
+- [ ] doc-syncer: Sync Living Documents and mark PR Ready
 
-<!-- code-builder가 TDD 결과를 자동으로 채움 -->
+## 📊 Quality Metrics (auto-calculated)
 
-- **구현 완료**: [기능 설명]
-- **테스트 추가**: [테스트 설명]
+- TRUST 5 Principles: ✅ Compliant
+- Test Coverage: XX% (target ≥ 85%)
+- @TAG Traceability: 100%
 
-## 📚 문서 동기화
+## 🌍 Locale Settings
 
-<!-- doc-syncer가 자동으로 채움 -->
+- Project Language: <!-- ko/en/ja/zh -->
+- Commit Messages: <!-- generated automatically according to locale -->
 
-- [ ] README 업데이트
-- [ ] API 문서 동기화
-- [ ] TAG 인덱스 업데이트
+## 🎯 Changes
+
+<!-- code-builder auto-fills TDD results -->
+
+### 🔴 RED (Test Authoring)
+- Test File: `tests/auth/service.test.ts`
+- Test Description: [describe the failing test]
+
+### 🟢 GREEN (Implementation)
+- Implementation File: `src/auth/service.ts`
+- Implementation Done: [describe functionality]
+
+### ♻️ REFACTOR (Improvements)
+- Refactoring Details: [code quality improvements]
+
+## 📚 Documentation Sync
+
+<!-- auto-filled by doc-syncer -->
+
+- [ ] Update README
+- [ ] Sync API docs
+- [ ] Update TAG index
+- [ ] Update HISTORY section (SPEC docs)
 
 ---
 
-🚀 **MoAI-ADK **: 3단계 파이프라인으로 Git 명령어 없이도 프로페셔널 개발!
+🚀 MoAI-ADK: Professional development without Git commands via a 3-stage pipeline!
 
-**리뷰어**: TRUST 5원칙 준수 여부만 확인하면 됩니다.
+Reviewers: Check TRUST 5 compliance and SPEC metadata completeness only.
+

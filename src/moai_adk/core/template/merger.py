@@ -15,10 +15,7 @@ from typing import Any
 class TemplateMerger:
     """Encapsulate template merging logic."""
 
-    PROJECT_INFO_HEADERS = (
-        "## 프로젝트 정보",
-        "## Project Information",
-    )
+    PROJECT_INFO_HEADERS = ("## Project Information", "## 프로젝트 정보")
 
     def __init__(self, target_path: Path) -> None:
         """Initialize the merger.
@@ -33,7 +30,7 @@ class TemplateMerger:
 
         Rules:
         - Use the latest template structure/content.
-        - Preserve the existing "## 프로젝트 정보" section.
+        - Preserve the existing "## Project Information" section.
 
         Args:
             template_path: Template CLAUDE.md.

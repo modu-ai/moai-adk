@@ -24,10 +24,11 @@ Automatically analyzes the project environment to create/update product/structur
 
 ## 📋 Execution flow
 
-1. **Environment Analysis**: Automatically detect project type (new/legacy) and language
+0. **Conversation Language Selection**: User selects the language for all dialogs and documentation
+1. **Environment Analysis**: Automatically detect project type (new/legacy) and codebase language
 2. **Establishment of interview strategy**: Select question tree suited to project characteristics
 3. **User Verification**: Review and approve interview plan
-4. **Create project documentation**: Create product/structure/tech.md
+4. **Create project documentation**: Create product/structure/tech.md in the selected language
 5. **Create configuration file**: config.json auto-configuration
 
 ## 🧠 Skill Loadout Overview
@@ -77,11 +78,69 @@ The user executes the `/alfred:8-project` command to start analyzing the project
 
 **Expressions to use**:
 
-- ✅ “High/medium/low priority”
-- ✅ “Immediately needed”, “step-by-step improvements”
+- ✅ "High/medium/low priority"
+- ✅ "Immediately needed", "step-by-step improvements"
 - ✅ Current facts
 - ✅ Existing technology stack
 - ✅ Real problems
+
+---
+
+## 🚀 STEP 0: Conversation Language Selection (NEW in v0.4.2)
+
+**Purpose**: Establish the conversation language before project initialization begins. This selection applies to all Alfred prompts, interview questions, and generated documentation.
+
+### 0.1 Display Language Selection Menu
+
+Alfred displays a language selection menu as the **very first interaction** using `Skill("moai-alfred-tui-survey")`:
+
+**Question**:
+```
+Which language would you like to use for the project initialization and documentation?
+```
+
+**Options** (AskUserQuestion with moai-alfred-tui-survey):
+- **English** (en) — All dialogs and documentation in English
+- **한국어** (ko) — All dialogs and documentation in Korean
+- **日本語** (ja) — All dialogs and documentation in Japanese
+- **中文** (zh) — All dialogs and documentation in Chinese
+- **Other** — User can specify custom language (e.g., "Español", "Français", "Deutsch")
+
+### 0.2 Store Language Preference
+
+Alfred records the selected language:
+
+```json
+{
+  "conversation_language": "ko",
+  "conversation_language_name": "한국어",
+  "selected_at": "2025-10-22T12:34:56Z"
+}
+```
+
+This language preference is:
+- Passed to all sub-agents as a context parameter
+- Stored in `.moai/config.json` under `language` field
+- Used to generate all documentation in the selected language
+- Displayed in CLAUDE.md under "## Project Information"
+
+### 0.3 Transition to STEP 1
+
+After language selection, all subsequent interactions proceed in the selected language:
+- Alfred's prompts are translated
+- project-manager sub-agent receives language parameter
+- Interview questions are in the selected language
+- Generated documents (product.md, structure.md, tech.md) are in the selected language
+- CLAUDE.md displays the selected language prominently
+
+**Example output for Korean selection**:
+```markdown
+✅ 언어 선택 완료: 한국어 (ko)
+
+이제 프로젝트 환경 분석으로 진행하겠습니다...
+```
+
+---
 
 ## 🚀 STEP 1: Environmental analysis and interview plan development
 
@@ -343,15 +402,37 @@ After Alfred receives the project-manager's interview plan report, calls `Skill(
 
 After user approval, the project-manager agent performs initialization.
 
-### 2.1 Call project-manager agent (when user selects “New”)
+### 2.1 Call project-manager agent (when user selects "New")
 
-Alfred starts project initialization by calling the project-manager agent. We will proceed based on the following information:
-- Detected Languages: [Language List]
+Alfred starts project initialization by calling the project-manager agent with the following parameters:
+
+**Parameters passed to project-manager**:
+- **conversation_language** (from STEP 0): Language code selected by user (e.g., "ko", "en", "ja", "zh")
+- **language_name** (from STEP 0): Display name of selected language (e.g., "Korean", "English")
+- Detected Languages: [Language List from codebase detection]
 - Project Type: [New/Existing]
 - Existing Document Status: [Existence/Absence]
 - Approved Interview Plan: [Plan Summary]
 
-Agents conduct structured interviews and create/update product/structure/tech.md documents.
+**Execution**:
+```bash
+# Pseudo-code showing parameter flow
+Task(
+    subagent_type="project-manager",
+    description="Initialize project with conversation language support",
+    prompt=f"""You are project-manager. Initialize project with these parameters:
+    - conversation_language: "{conversation_language}"  # e.g., "ko"
+    - language_name: "{language_name}"  # e.g., "Korean"
+    - project_type: "{project_type}"  # e.g., "new"
+    - detected_languages: {detected_languages}
+
+    All interviews and documentation must be generated in the conversation_language.
+    Update .moai/config.json with these language parameters.
+    """
+)
+```
+
+**Outcome**: The project-manager agent conducts structured interviews entirely in the selected language and creates/updates product/structure/tech.md documents in that language.
 
 ### 2.2 Automatic activation of Alfred Skills (optional)
 

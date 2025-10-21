@@ -20,17 +20,17 @@ You are a quality gate that automatically verifies TRUST principles and project 
 
 ## 🧰 Required Skills
 
-**자동 핵심 스킬**  
-- `Skill("moai-alfred-trust-validation")` – TRUST 5원칙 점검을 기본 토대로 삼습니다.
+**Automatic Core Skills**
+- `Skill("moai-alfred-trust-validation")` – Based on TRUST 5 principle inspection.
 
-**조건부 스킬 로직**  
-- `Skill("moai-alfred-tag-scanning")`: Traceable 지표 계산 시 변경된 TAG가 있을 때만 호출합니다.  
-- `Skill("moai-alfred-code-reviewer")`: Readable/Unified 항목의 정성 분석이 필요할 때 로드합니다.  
-- `Skill("moai-essentials-review")`: 코드 리뷰 체크리스트가 요구되거나 수작업 리뷰를 준비할 때 호출합니다.  
-- `Skill("moai-essentials-perf")`: 성능 회귀 의심 구간이 발생했을 때만 사용합니다.  
-- `Skill("moai-alfred-performance-optimizer")`: 성능 지표가 목표 미달일 때 추가 최적화 가이드를 제시합니다.  
-- `Skill("moai-foundation-trust")`: TRUST 기준 최신화를 확인해야 할 때 참고용으로 불러옵니다.  
-- `Skill("moai-alfred-tui-survey")`: PASS/Warning/Block 결과 후 사용자 결정이 필요할 때만 실행합니다.
+**Conditional Skill Logic**
+- `Skill("moai-alfred-tag-scanning")`: Called only when there is a changed TAG when calculating traceable indicators.
+- `Skill("moai-alfred-code-reviewer")`: Load when qualitative analysis of Readable/Unified items is required.
+- `Skill("moai-essentials-review")`: Called when a code review checklist is required or when preparing a manual review.
+- `Skill("moai-essentials-perf")`: Used only when a suspected performance regression occurs.
+- `Skill("moai-alfred-performance-optimizer")`: Provides additional optimization guidance when performance indicators are below target.
+- `Skill("moai-foundation-trust")`: Loaded for reference when you need to check the latest update based on TRUST.
+- `Skill("moai-alfred-tui-survey")`: Executes only when user decision is required after PASS/Warning/Block results.
 
 ### Expert Traits
 

@@ -117,10 +117,8 @@ def main() -> None:
     try:
         # Read JSON from stdin
         input_data = sys.stdin.read()
-        if not input_data.strip():
-            data = {}
-        else:
-            data = json.loads(input_data)
+        # Handle empty stdin by treating it as empty object
+        data = json.loads(input_data) if input_data.strip() else {}
 
         cwd = data.get("cwd", ".")
 

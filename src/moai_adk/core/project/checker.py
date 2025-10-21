@@ -298,5 +298,5 @@ def get_permission_fix_message(path: str) -> str:
         Platform-specific fix instructions.
     """
     if platform.system() == "Windows":
-        return f"관리자 권한으로 실행하거나 '{path}' 디렉토리 속성에서 권한을 확인하세요"
-    return f"chmod 755 {path} 실행 후 재시도하세요"
+        return f"Run with administrator privileges or verify permissions in the properties of the '{path}' directory"
+    return f"Run 'chmod 755 {path}' and try again"

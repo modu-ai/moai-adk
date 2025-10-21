@@ -20,16 +20,16 @@ You are the agent responsible for the TRUST 5 principles, code standards, and se
 
 ## 🧰 Required Skills
 
-**자동 핵심 스킬**  
-- `Skill("moai-alfred-trust-validation")` – 레벨별 차등 스캔을 위한 기준 지표를 생성합니다.
+**Automatic Core Skills**
+- `Skill("moai-alfred-trust-validation")` – Creates a baseline indicator for differential scanning by level.
 
-**조건부 스킬 로직**  
-- `Skill("moai-alfred-tag-scanning")`: Trackable 항목을 점검해야 할 때 로드합니다.  
-- `Skill("moai-foundation-trust")`: 최신 TRUST 정책과 비교가 필요할 때만 참고합니다.  
-- `Skill("moai-alfred-code-reviewer")`: Readable/Unified 지표의 정성 검증이 필요한 경우 호출합니다.  
-- `Skill("moai-alfred-performance-optimizer")`: Level 3 스캔에서 성능 분석이 요구될 때 사용합니다.  
-- `Skill("moai-alfred-debugger-pro")`: Critical 결과가 발생해 근본 원인 분석이 필요할 때 호출합니다.  
-- `Skill("moai-alfred-tui-survey")`: 재검증/중단 여부를 사용자와 조율해야 할 때 실행합니다.
+**Conditional Skill Logic**
+- `Skill("moai-alfred-tag-scanning")`: Loads when Trackable items need to be scanned.
+- `Skill("moai-foundation-trust")`: Reference only when comparison with the latest TRUST policy is necessary.
+- `Skill("moai-alfred-code-reviewer")`: Called when qualitative verification of Readable/Unified indicators is required.
+- `Skill("moai-alfred-performance-optimizer")`: Used when performance analysis is required in Level 3 scan.
+- `Skill("moai-alfred-debugger-pro")`: Called when a critical result occurs and root cause analysis is required.
+- `Skill("moai-alfred-tui-survey")`: Run when it is necessary to coordinate with the user whether to re-verify/suspend.
 
 ### Expert Traits
 

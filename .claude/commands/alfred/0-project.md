@@ -24,17 +24,18 @@ Automatically analyzes the project environment to create/update product/structur
 
 ## 📋 Execution flow
 
-1. **Environment Analysis**: Automatically detect project type (new/legacy) and language
+0. **Conversation Language Selection**: User selects the language for all dialogs and documentation
+1. **Environment Analysis**: Automatically detect project type (new/legacy) and codebase language
 2. **Establishment of interview strategy**: Select question tree suited to project characteristics
 3. **User Verification**: Review and approve interview plan
-4. **Create project documentation**: Create product/structure/tech.md
+4. **Create project documentation**: Create product/structure/tech.md in the selected language
 5. **Create configuration file**: config.json auto-configuration
 
 ## 🧠 Skill Loadout Overview
 
 | Agent | Auto core skill | Conditional skills |
 | ----- | ---------------- | ------------------ |
-| project-manager | Skill("moai-alfred-language-detection") | Skill("moai-foundation-ears"), Skill("moai-foundation-langs"), Detected domain skill (예: Skill("moai-domain-backend")), Skill("moai-alfred-tag-scanning"), Skill("moai-alfred-trust-validation"), Skill("moai-alfred-tui-survey") |
+| project-manager | Skill("moai-alfred-language-detection") | Skill("moai-foundation-ears"), Skill("moai-foundation-langs"), Detected domain skill (e.g., Skill("moai-domain-backend")), Skill("moai-alfred-tag-scanning"), Skill("moai-alfred-trust-validation"), Skill("moai-alfred-tui-survey") |
 | trust-checker | Skill("moai-alfred-trust-validation") | Skill("moai-alfred-tag-scanning"), Skill("moai-foundation-trust"), Skill("moai-alfred-code-reviewer"), Skill("moai-alfred-performance-optimizer"), Skill("moai-alfred-tui-survey") |
 
 ## 🔗 Associated Agent
@@ -83,6 +84,57 @@ The user executes the `/alfred:8-project` command to start analyzing the project
 - ✅ Existing technology stack
 - ✅ Real problems
 
+---
+
+## 🚀 STEP 0: Conversation Language Selection (NEW in v0.4.2)
+
+**Purpose**: Establish the conversation language before project initialization begins. This selection applies to all Alfred prompts, interview questions, and generated documentation.
+
+### 0.1 Display Language Selection Menu
+
+Alfred displays a language selection menu as the **very first interaction** using `Skill("moai-alfred-tui-survey")`:
+
+**Question**:
+```
+Which language would you like to use for the project initialization and documentation?
+```
+
+**Options** (AskUserQuestion with moai-alfred-tui-survey):
+- **English** (en) — All dialogs and documentation in English
+- **한국어** (ko) — All dialogs and documentation in Korean
+- **日本語** (ja) — All dialogs and documentation in Japanese
+- **中文** (zh) — All dialogs and documentation in Chinese
+- **Other** — User can specify custom language (e.g., "Español", "Français", "Deutsch")
+
+### 0.2 Store Language Preference
+
+Alfred records the selected language:
+
+```json
+{
+  "conversation_language": "ko",
+  "conversation_language_name": "Korean",
+  "selected_at": "2025-10-22T12:34:56Z"
+}
+```
+
+This language preference is:
+- Passed to all sub-agents as a context parameter
+- Stored in `.moai/config.json` under the project settings
+- Used to generate all documentation in the selected language
+- Displayed in CLAUDE.md under "## Project Information"
+
+### 0.3 Transition to STEP 1
+
+After language selection, all subsequent interactions proceed in the selected language:
+- Alfred's prompts are translated
+- project-manager sub-agent receives language parameter
+- Interview questions are in the selected language
+- Generated documents (product.md, structure.md, tech.md) are in the selected language
+- CLAUDE.md displays the selected language prominently
+
+---
+
 ## 🚀 STEP 1: Environmental analysis and interview plan development
 
 Analyze the project environment and develop a systematic interview plan.
@@ -107,10 +159,10 @@ grep "optimized" .moai/config.json
 - `optimized: false` in `config.json` (immediately after reinitialization)
 
 **Select user if backup exists**  
-`Skill("moai-alfred-tui-survey")`를 호출해 다음 옵션이 포함된 TUI를 표시합니다.
-- **Merge**: 백업 내용과 최신 템플릿을 병합 (권장)
-- **New**: 백업을 무시하고 새 인터뷰 시작
-- **Skip**: 현재 파일 유지(작업 종료)
+Call `Skill("moai-alfred-tui-survey")` to display a TUI with the following options:
+- **Merge**: Merge backup contents and latest template (recommended)
+- **New**: Ignore the backup and start a new interview
+- **Skip**: Keep current file (terminate task)
 
 **Response processing**:
 - **"Merge"** → Proceed to Phase 1.1 (backup merge workflow)
@@ -118,104 +170,11 @@ grep "optimized" .moai/config.json
 - **"Skip"** → End task
 
 **No backup or optimized: true**:
-- Proceed directly to Phase 1.0.5 (language selection)
+- Proceed directly to Phase 1.2 (project environment analysis)
 
 ---
 
-### 1.0.5 Language Selection (New Session)
-
-**Purpose**: Let the user choose which language to use for communication during project initialization and throughout MoAI-ADK workflows.
-
-**When to run**:
-- First-time project initialization (new project)
-- After reinitialization (optimized: false)
-- User explicitly requests language change
-
-**STEP 1: Display language selection TUI**
-
-Call `Skill("moai-alfred-tui-survey")` to show language selection menu:
-
-```
-Header: "Which language would you like to use?"
-Type: Single Select (not multiSelect)
-
-Options:
-1. Korean (한국어)
-2. English
-```
-
-**Supported languages and codes**:
-- `ko` - Korean ✅ Recommended for Korean users
-- `en` - English ✅ Recommended for international teams
-
-**STEP 2: Store language selection in config.json**
-
-After user selects language, store it in project config:
-
-```json
-{
-  "project": {
-    "language": "ko",
-    "language_selected_at": "2025-10-21T22:30:00+09:00",
-    "language_confirmed": true
-  }
-}
-```
-
-**STEP 3: Set output-style based on language**
-
-Map language to corresponding output-style:
-
-| Language | Code | Output-Style | Purpose |
-|----------|------|--------------|---------|
-| Korean   | ko   | study-with-alfred | Educational approach for Korean developers |
-| English  | en   | agentic-coding | Agile coding approach for international teams |
-
-Update `.claude/settings.json`:
-```json
-{
-  "env": {
-    "ALFRED_LANGUAGE": "ko",
-    "ALFRED_OUTPUT_STYLE": "study-with-alfred"
-  }
-}
-```
-
-**STEP 4: Confirmation message**
-
-Display confirmation to user in their selected language:
-
-```
-✅ Language setup complete
-
-For Korean users:
-- Communication language: Korean
-- Output style: study-with-alfred
-- Settings saved: .moai/config.json, .claude/settings.json
-
----
-
-✅ Language setup complete
-
-For English users:
-- Communication language: English
-- Output style: agentic-coding
-- Settings saved: .moai/config.json, .claude/settings.json
-```
-
-**STEP 5: Proceed to next phase**
-
-- If no backup or optimized: true → Continue to Phase 1.2 (project environment analysis)
-- If backup exists and optimized: false → Continue to Phase 1.1 (backup merge workflow)
-
-**Note**: Language can be changed anytime by:
-1. Editing `.moai/config.json` manually
-2. Running `/alfred:0-project` again and selecting a different language
-3. Running `/output-style` to change display style independently
-
----
-
-### 1.1 Backup merge workflow (when user selects "Merge")
+### 1.1 Backup merge workflow (when user selects “Merge”)
 
 **Purpose**: Restore only user customizations while maintaining the latest template structure.
 
@@ -415,10 +374,10 @@ Set optimization flags after the merge is complete:
 
 ### 1.5 Wait for user approval (moai-alfred-tui-survey) (when user selects "New")
 
-After Alfred receives the project-manager's interview plan report, `Skill("moai-alfred-tui-survey")`를 호출해 Phase 2 승인 여부를 묻습니다.
-- **Proceed**: 승인된 계획대로 인터뷰 진행
-- **Modify**: 계획 재수립 (Phase 1 재실행)
-- **Stop**: 초기화 중단
+After Alfred receives the project-manager's interview plan report, calls `Skill("moai-alfred-tui-survey")` and asks whether Phase 2 is approved.
+- **Proceed**: Interview conducted according to approved plan
+- **Modify**: Re-establish the plan (re-execute Phase 1)
+- **Stop**: Stop initialization
 
 **Response processing**:
 - **"Progress"** (`answers["0"] === "Progress"`) → Execute Phase 2
@@ -436,15 +395,37 @@ After Alfred receives the project-manager's interview plan report, `Skill("moai-
 
 After user approval, the project-manager agent performs initialization.
 
-### 2.1 Call project-manager agent (when user selects “New”)
+### 2.1 Call project-manager agent (when user selects "New")
 
-Alfred starts project initialization by calling the project-manager agent. We will proceed based on the following information:
-- Detected Languages: [Language List]
+Alfred starts project initialization by calling the project-manager agent with the following parameters:
+
+**Parameters passed to project-manager**:
+- **conversation_language** (from STEP 0): Language code selected by user (e.g., "ko", "en", "ja", "zh")
+- **language_name** (from STEP 0): Display name of selected language (e.g., "Korean", "English")
+- Detected Languages: [Language List from codebase detection]
 - Project Type: [New/Existing]
 - Existing Document Status: [Existence/Absence]
 - Approved Interview Plan: [Plan Summary]
 
-Agents conduct structured interviews and create/update product/structure/tech.md documents.
+**Execution**:
+```bash
+# Pseudo-code showing parameter flow
+Task(
+    subagent_type="project-manager",
+    description="Initialize project with conversation language support",
+    prompt=f"""You are project-manager. Initialize project with these parameters:
+    - conversation_language: "{conversation_language}"  # e.g., "ko"
+    - language_name: "{language_name}"  # e.g., "Korean"
+    - project_type: "{project_type}"  # e.g., "new"
+    - detected_languages: {detected_languages}
+
+    All interviews and documentation must be generated in the conversation_language.
+    Update .moai/config.json with these language parameters.
+    """
+)
+```
+
+**Outcome**: The project-manager agent conducts structured interviews entirely in the selected language and creates/updates product/structure/tech.md documents in that language.
 
 ### 2.2 Automatic activation of Alfred Skills (optional)
 
@@ -476,8 +457,8 @@ After the project-manager has finished creating the document, **Alfred can optio
 - When selecting language/framework
 - When changing important settings
 
-**Example** (inside project-manager): `Skill("moai-alfred-tui-survey")`로 "파일 덮어쓰기" 여부를 묻고,
-- **Overwrite** / **Merge** / **Skip** 중 선택하게 합니다.
+**Example** (inside project-manager): Ask whether to "overwrite file" with `Skill("moai-alfred-tui-survey")`,
+- Allows you to choose between **Overwrite** / **Merge** / **Skip**.
 
 **Nested pattern**:
 - **Command level** (Phase approval): Called by Alfred → "Shall we proceed with Phase 2?"
@@ -738,63 +719,63 @@ Alfred only calls the trust-checker agent to perform project initial structural 
 
 ### 2.6: Agent & Skill Tailoring (Project Optimization)
 
-인터뷰와 초기 분석 결과를 바탕으로 프로젝트에서 즉시 활용해야 할 서브 에이전트와 스킬을 추천·활성화합니다.  
-실제 적용 전에 `Skill("moai-alfred-tui-survey")`로 사용자 확인을 받고, 선택된 항목은 `CLAUDE.md`와 `.moai/config.json`에 기록합니다.
+Based on the results of the interviews and initial analysis, we recommend and activate sub-agents and skills that should be immediately utilized in the project.
+Before actual application, user confirmation is received with `Skill("moai-alfred-tui-survey")`, and selected items are recorded in `CLAUDE.md` and `.moai/config.json`.
 
-#### 2.6.0 cc-manager 브리핑 작성
+#### 2.6.0 Create cc-manager briefing
 
-문서 생성이 완료되면 **세 문서(product/structure/tech.md)를 모두 읽고** 다음 정보를 요약해 `cc_manager_briefing`이라는 텍스트를 만듭니다.
+Once the document creation is complete, **read all three documents (product/structure/tech.md)** and summarize the following information to create a text called `cc_manager_briefing`.
 
-- `product.md`: 미션, 핵심 사용자, 해결해야 할 문제, 성공 지표, 백로그(TODO)를 원문 인용 또는 1줄 요약으로 정리합니다.
-- `structure.md`: 아키텍처 유형, 모듈 경계와 담당 범위, 외부 연동, Traceability 전략, TODO 내용을 기록합니다.
-- `tech.md`: 언어·프레임워크 버전, 빌드/테스트/배포 절차, 품질·보안 정책, 운영·모니터링 방식, TODO 항목을 정리합니다.
+- `product.md`: Organize the mission, key users, problems to be solved, success indicators, and backlog (TODO) with a quotation from the original text or a one-line summary.
+- `structure.md`: Records architecture type, module boundaries and scope of responsibility, external integration, traceability strategy, and TODO contents.
+- `tech.md`: Organizes language/framework version, build/test/deployment procedures, quality/security policy, operation/monitoring method, and TODO items.
 
-각 항목에는 반드시 출처(예: `product.md@SPEC:SUCCESS-001`)를 함께 적어 cc-manager가 근거를 파악할 수 있도록 합니다.
+Be sure to include the source (e.g. `product.md@SPEC:SUCCESS-001`) for each item so that cc-manager can understand the basis.
 
-#### 2.6.1 cc-manager 판단 가이드
+#### 2.6.1 cc-manager judgment guide
 
-cc-manager는 브리핑을 바탕으로 필요한 서브 에이전트와 스킬을 선택합니다. 아래 표는 판단을 돕기 위한 참고용 가이드이며, 실제 호출 시에는 해당 문서의 근거 문장을 함께 전달합니다.
+cc-manager selects the required sub-agents and skills based on the briefing.The table below is a reference guide to help you make a decision, and when making an actual call, the supporting sentences from the relevant document are also delivered.
 
-| 프로젝트 요구 상황 (문서 근거)      | 권장 서브 에이전트·스킬                                                    | 목적                                             |
+|Project requirements (document basis) |Recommended sub-agent/skill |Purpose |
 | -------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------ |
-| 품질·커버리지 목표가 높음 (`product.md@SPEC:SUCCESS-001`) | `tdd-implementer`, `moai-essentials-debug`, `moai-essentials-review`      | RED·GREEN·REFACTOR 워크플로우 정착               |
-| Traceability/TAG 개선 요구 (`structure.md@DOC:TRACEABILITY-001`) | `doc-syncer`, `moai-alfred-tag-scanning`, `moai-alfred-trust-validation`  | TAG 추적성 강화 및 문서/코드 동기화              |
-| 배포 자동화/브랜치 전략 필요 (`structure.md` Architecture/TODO) | `git-manager`, `moai-alfred-git-workflow`, `moai-foundation-git`          | 브랜치 전략·커밋 정책·PR 자동화                  |
-| 레거시 모듈 리팩터링 (`product.md` BACKLOG, `tech.md` TODO) | `implementation-planner`, `moai-alfred-refactoring-coach`, `moai-essentials-refactor` | 기술 부채 진단 및 리팩터링 로드맵               |
-| 규제/보안 준수 강화 (`tech.md@DOC:SECURITY-001`) | `quality-gate`, `moai-alfred-trust-validation`, `moai-foundation-trust`, `moai-domain-security` | TRUST S(Secured) 및 Trackable 준수, 보안 컨설팅 |
-| CLI 자동화/툴링 요구 (`tech.md` BUILD/CLI 섹션) | `implementation-planner`, `moai-domain-cli-tool`, 감지된 언어 스킬(예: `moai-lang-python`) | CLI 명령 설계, 입력/출력 표준화                 |
-| 데이터 분석/리포팅 요구 (`product.md` DATA, `tech.md` ANALYTICS) | `implementation-planner`, `moai-domain-data-science`, 감지된 언어 스킬     | 데이터 파이프라인·노트북 작업 정의              |
-| 데이터베이스 구조 개선 (`structure.md` DB, `tech.md` STORAGE) | `doc-syncer`, `moai-domain-database`, `moai-alfred-tag-scanning`          | 스키마 문서화 및 TAG-DB 매핑 강화               |
-| DevOps/인프라 자동화 필요 (`tech.md` DEVOPS, `structure.md` CI/CD) | `implementation-planner`, `moai-domain-devops`, `moai-alfred-git-workflow` | 배포 파이프라인 및 IaC 전략 수립                |
-| ML/AI 기능 도입 (`product.md` AI, `tech.md` MODEL) | `implementation-planner`, `moai-domain-ml`, 감지된 언어 스킬              | 모델 학습/추론 파이프라인 정의                  |
-| 모바일 앱 전략 (`product.md` MOBILE, `structure.md` CLIENT) | `implementation-planner`, `moai-domain-mobile-app`, 감지된 언어 스킬(예: `moai-lang-dart`, `moai-lang-swift`) | 모바일 클라이언트 구조 설계                     |
-| 코딩 표준/리뷰 프로세스 강화 (`tech.md` REVIEW) | `quality-gate`, `moai-essentials-review`, `moai-alfred-code-reviewer`     | 리뷰 체크리스트 및 품질 보고 강화               |
-| 온보딩/교육 모드 필요 (`tech.md` STACK 설명 등) | `moai-alfred-tui-survey`, `moai-adk-learning`, `agentic-coding` Output style | 인터뷰 TUI 강화 및 온보딩 자료 자동 제공      |
+|High quality and coverage goals (`product.md@SPEC:SUCCESS-001`) |`tdd-implementer`, `moai-essentials-debug`, `moai-essentials-review` |Establishment of RED·GREEN·REFACTOR workflow |
+|Traceability/TAG improvement request (`structure.md@DOC:TRACEABILITY-001`) |`doc-syncer`, `moai-alfred-tag-scanning`, `moai-alfred-trust-validation` |Enhanced TAG traceability and document/code synchronization |
+|Deployment automation/branch strategy required (`structure.md` Architecture/TODO) |`git-manager`, `moai-alfred-git-workflow`, `moai-foundation-git` |Branch Strategy·Commit Policy·PR Automation |
+|Refactoring legacy modules (`product.md` BACKLOG, `tech.md` TODO) |`implementation-planner`, `moai-alfred-refactoring-coach`, `moai-essentials-refactor` |Technical Debt Diagnosis and Refactoring Roadmap |
+|Strengthening regulatory/security compliance (`tech.md@DOC:SECURITY-001`) |`quality-gate`, `moai-alfred-trust-validation`, `moai-foundation-trust`, `moai-domain-security` |TRUST S (Secured) and Trackable Compliance, Security Consulting |
+|CLI Automation/Tooling Requirements (`tech.md` BUILD/CLI section) |`implementation-planner`, `moai-domain-cli-tool`, detected language skills (e.g. `moai-lang-python`) |CLI command design, input/output standardization |
+|Data analysis/reporting needs (`product.md` DATA, `tech.md` ANALYTICS) |`implementation-planner`, `moai-domain-data-science`, detected language skills |Data Pipeline·Notebook Job Definition |
+|Improved database structure (`structure.md` DB, `tech.md` STORAGE) |`doc-syncer`, `moai-domain-database`, `moai-alfred-tag-scanning` |Strengthening schema documentation and TAG-DB mapping |
+|DevOps/Infrastructure automation required (`tech.md` DEVOPS, `structure.md` CI/CD) |`implementation-planner`, `moai-domain-devops`, `moai-alfred-git-workflow` |Establishing a deployment pipeline and IaC strategy |
+|Introduction of ML/AI functions (`product.md` AI, `tech.md` MODEL) |`implementation-planner`, `moai-domain-ml`, detected language skills |Model training/inference pipeline definition |
+|Mobile app strategy (`product.md` MOBILE, `structure.md` CLIENT) |`implementation-planner`, `moai-domain-mobile-app`, detected language skills (e.g. `moai-lang-dart`, `moai-lang-swift`) |Mobile client structure design |
+|Strengthening coding standards/review process (`tech.md` REVIEW) |`quality-gate`, `moai-essentials-review`, `moai-alfred-code-reviewer` |Strengthening review checklist and quality reporting |
+|Requires onboarding/training mode (`tech.md` STACK description, etc.) |`moai-alfred-tui-survey`, `moai-adk-learning`, `agentic-coding` Output style |Enhanced interview TUI and automatically provided onboarding materials |
 
-> **언어/도메인 스킬 선택 규칙**  
-> - `moai-alfred-language-detection` 결과 또는 브리핑의 Tech 섹션에 기록된 스택을 기반으로 해당 언어 스킬(`moai-lang-python`, `moai-lang-java`, …) 한 개를 선택해 추가합니다.  
-> - 도메인 행에 나열된 스킬은 상황이 충족될 때 cc-manager가 자동으로 `selected_skills` 목록에 포함시킵니다.  
-> - 스킬 디렉터리는 항상 전체 복사되며, 실제 활성화 여부만 `skill_pack` 및 `CLAUDE.md`에 기록됩니다.
+> **Language/Domain Skill Selection Rules**
+> - Select and add one relevant language skill (`moai-lang-python`, `moai-lang-java`, …) based on the `moai-alfred-language-detection` results or the stack recorded in the Tech section of the briefing.
+> - Skills listed in the domain row are automatically included by cc-manager in the `selected_skills` list when the conditions are met.
+> - The skill directory is always copied in its entirety, and only actual activation is recorded in `skill_pack` and `CLAUDE.md`.
 
-복수 조건이 충족되면 후보를 중복 없이 병합해 `candidate_agents`, `candidate_skills`, `candidate_styles` 집합으로 정리합니다.
+If multiple conditions are met, the candidates are merged without duplicates and organized into sets of `candidate_agents`, `candidate_skills`, and `candidate_styles`.
 
-#### 2.6.2 사용자 확인 흐름
+#### 2.6.2 User confirmation flow
 
-`Skill("moai-alfred-tui-survey")`로 “추천 항목 활성화 여부”를 묻습니다.
-- **모두 설치** / **선택 설치** / **설치 안 함** 세 가지 옵션을 제공하며,  
-  “선택 설치”를 고르면 후보 목록을 다중 선택으로 다시 제시해 사용자가 필요한 항목만 고르도록 합니다.
+`Skill("moai-alfred-tui-survey")` asks “whether to enable recommended items.”
+- Provides three options: **Install all** / **Install selectively** / **Do not install**.
+Selecting “Selective Install” presents the list of candidates again as multiple choices, allowing the user to select only the items they need.
 
-#### 2.6.3 활성화 및 기록 단계
+#### 2.6.3 Activation and Recording Steps
 
-1. **브리핑 준비**: 사용자 선택(모두 설치/선택 설치) 결과와 `cc_manager_briefing` 전문을 정리합니다.  
-2. **cc-manager 에이전트 호출**:  
-   - `Task` 툴로 `subagent_type: "cc-manager"`를 호출하고, 브리핑과 사용자 선택 항목을 프롬프트에 포함합니다.  
-   - cc-manager는 브리핑을 근거로 필요한 서브 에이전트와 스킬을 결정하고, `CLAUDE.md`, `.claude/agents/alfred/*.md`, `.claude/skills/*.md`를 프로젝트 맞춤형으로 복사·갱신합니다.
-3. **구성 업데이트 확인**: cc-manager가 반영한 결과를 검토합니다.  
-   - 서브 에이전트: `.claude/agents/alfred/` 템플릿을 활성 상태로 유지하고 `CLAUDE.md` “Agents” 섹션에 기재합니다.  
-   - 스킬: `.claude/skills/` 문서를 확인한 뒤 `CLAUDE.md` “Skills” 섹션에 추가합니다.  
-   - Output style: `.claude/output-styles/alfred/`를 적용하고 `CLAUDE.md` “Output Styles”에 활성화 사실을 기록합니다.  
-4. **config.json 갱신**  
+1. **Preparing briefing**: Organize the results of user selection (install all/install selectively) and the full text of `cc_manager_briefing`.
+2. **Call the cc-manager agent**:
+- Call `subagent_type: "cc-manager"` with the `Task` tool and include a briefing and user selections in the prompt.
+- cc-manager determines the necessary sub-agents and skills based on the briefing, and copies and updates `CLAUDE.md`, `.claude/agents/alfred/*.md`, and `.claude/skills/*.md` as customized for the project.
+3. **Check for configuration updates**: Review the results reflected by cc-manager.
+- Sub-Agents: Keep the `.claude/agents/alfred/` template active and list it in the `CLAUDE.md` “Agents” section.
+- Skills: Check the `.claude/skills/` document and add it to the `CLAUDE.md` “Skills” section.
+- Output style: Apply `.claude/output-styles/alfred/` and record the activation in `CLAUDE.md` “Output Styles”.
+4. **Update config.json**
    ```json
    {
      "project": {
@@ -805,8 +786,8 @@ cc-manager는 브리핑을 바탕으로 필요한 서브 에이전트와 스킬�
      }
    }
    ```
-   기존 속성이 있을 경우 병합합니다.
-5. **최종 보고**: Completion Report 상단에 “활성화된 서브 에이전트/스킬/스타일” 목록과 `cc_manager_briefing` 요약을 추가하고, 동일 내용을 `CLAUDE.md` 표에도 반영해 후속 명령에서 자동 탐색되도록 합니다.
+Merge existing properties, if any.
+5. **Final Report**: Add a list of “Activated Sub-Agents/Skills/Style” and a `cc_manager_briefing` summary at the top of the Completion Report, and reflect the same contents in the `CLAUDE.md` table so that they are automatically searched in subsequent commands.
 
 ## Interview guide by project type
 
@@ -925,10 +906,10 @@ This subcommand is executed under the following conditions:
    ```
 
 4. **Waiting for user approval**  
-   `Skill("moai-alfred-tui-survey")`로 “템플릿 최적화를 진행할까요?”를 묻고 다음 옵션을 제공한다.
-   - **Proceed** → Phase 2 실행
-   - **Preview** → 변경 내역을 표시 후 재확인
-   - **Skip** → optimized=false 유지
+`Skill("moai-alfred-tui-survey")` asks “Do you want to proceed with template optimization?” and provides the following options.
+- **Proceed** → Phase 2 execution
+- **Preview** → Display change details and recheck
+- **Skip** → keep optimized=false
 
 #### Phase 2: Run smart merge (after user approval)
 

@@ -22,16 +22,16 @@ You are a SPEC expert agent responsible for SPEC document creation and intellige
 
 ## 🧰 Required Skills
 
-**자동 핵심 스킬**  
-- `Skill("moai-foundation-ears")` – SPEC 작성 전 과정에서 EARS 패턴을 기본 틀로 유지합니다.
+**Automatic Core Skills**
+- `Skill("moai-foundation-ears")` – Maintains the EARS pattern as the basic framework throughout the entire SPEC writing process.
 
-**조건부 스킬 로직**  
-- `Skill("moai-alfred-ears-authoring")`: 세부 요구 문장을 자동 확장해야 할 때 호출합니다.  
-- `Skill("moai-foundation-specs")`: 신규 SPEC 디렉터리를 만들거나 규격 검증이 필요할 때만 로드합니다.  
-- `Skill("moai-alfred-spec-metadata-validation")`: ID·버전·상태를 점검하거나 계승 SPEC을 업데이트할 때 호출합니다.  
-- `Skill("moai-alfred-tag-scanning")`: 기존 TAG 체인을 참조해 추적성을 확보해야 할 때만 사용합니다.  
-- `Skill("moai-foundation-trust")` + `Skill("moai-alfred-trust-validation")`: 사용자 요청 또는 품질 게이트 이전 선제 검증이 필요할 때 순차 호출합니다.  
-- `Skill("moai-alfred-tui-survey")`: 사용자 승인/수정 옵션을 수집해야 할 때 실행합니다.
+**Conditional Skill Logic**
+- `Skill("moai-alfred-ears-authoring")`: Called when the detailed request sentence needs to be auto-expanded.
+- `Skill("moai-foundation-specs")`: Load only when creating a new SPEC directory or when spec verification is required.
+- `Skill("moai-alfred-spec-metadata-validation")`: Called when checking ID/version/status or updating inherited SPEC.
+- `Skill("moai-alfred-tag-scanning")`: Used only when traceability must be secured by referencing the existing TAG chain.
+- `Skill("moai-foundation-trust")` + `Skill("moai-alfred-trust-validation")`: Sequentially called when preemptive verification is required before user request or quality gate.
+- `Skill("moai-alfred-tui-survey")`: Run when user approval/modification options need to be collected.
 
 ### Expert Traits
 
