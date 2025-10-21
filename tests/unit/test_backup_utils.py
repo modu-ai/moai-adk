@@ -9,7 +9,6 @@ from pathlib import Path
 from moai_adk.core.project.backup_utils import (
     BACKUP_TARGETS,
     PROTECTED_PATHS,
-    generate_backup_dir_name,
     get_backup_targets,
     has_any_moai_files,
     is_protected_path,
@@ -28,6 +27,7 @@ class TestBackupConstants:
         """Should contain key MoAI files"""
         assert ".moai/config.json" in BACKUP_TARGETS
         assert "CLAUDE.md" in BACKUP_TARGETS
+        assert ".github/" in BACKUP_TARGETS
 
     def test_protected_paths_is_list(self):
         """PROTECTED_PATHS should be a list"""
@@ -71,6 +71,14 @@ class TestHasAnyMoaiFiles:
         result = has_any_moai_files(tmp_project_dir)
         assert result is True
 
+    def test_returns_true_for_github_directory(self, tmp_project_dir: Path):
+        """Should return True when .github/ directory exists"""
+        github_dir = tmp_project_dir / ".github"
+        github_dir.mkdir(parents=True, exist_ok=True)
+
+        result = has_any_moai_files(tmp_project_dir)
+        assert result is True
+
 
 class TestGetBackupTargets:
     """Test get_backup_targets function"""
@@ -100,50 +108,14 @@ class TestGetBackupTargets:
         """Should include directories in targets"""
         moai_memory = tmp_project_dir / ".moai" / "memory"
         moai_memory.mkdir(parents=True, exist_ok=True)
+        github_dir = tmp_project_dir / ".github"
+        github_dir.mkdir(parents=True, exist_ok=True)
 
         result = get_backup_targets(tmp_project_dir)
 
         assert ".moai/memory/" in result
+        assert ".github/" in result
 
-
-class TestGenerateBackupDirName:
-    """Test generate_backup_dir_name function"""
-
-    def test_generates_timestamp_format(self):
-        """Should generate timestamp in YYYYMMDD-HHMMSS format"""
-        result = generate_backup_dir_name()
-
-        # Check format: YYYYMMDD-HHMMSS
-        assert len(result) == 15  # 8 digits + hyphen + 6 digits
-        assert result[8] == "-"
-        assert result[:8].isdigit()  # YYYYMMDD
-        assert result[9:].isdigit()  # HHMMSS
-
-    def test_generates_unique_timestamps(self):
-        """Should generate different timestamps for successive calls"""
-        import time
-
-        result1 = generate_backup_dir_name()
-        time.sleep(0.01)  # Small delay
-        result2 = generate_backup_dir_name()
-
-        # Usually same unless called at second boundary
-        # Just verify both are valid formats
-        assert len(result1) == 15
-        assert len(result2) == 15
-
-    def test_timestamp_is_recent(self):
-        """Generated timestamp should be recent"""
-        from datetime import datetime
-
-        result = generate_backup_dir_name()
-
-        # Extract year from result
-        year = int(result[:4])
-        current_year = datetime.now().year
-
-        # Should be current year
-        assert year == current_year
 
 
 class TestIsProtectedPath:

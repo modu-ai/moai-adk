@@ -15,6 +15,7 @@ from click.testing import CliRunner
 
 from moai_adk.cli.commands.backup import backup
 from moai_adk.cli.commands.init import init
+
 # from moai_adk.cli.commands.restore import restore  # Not implemented - handled by checkpoint system
 from moai_adk.cli.commands.status import status
 

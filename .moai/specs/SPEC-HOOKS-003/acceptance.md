@@ -221,11 +221,11 @@ pytest --cov=.claude/hooks/alfred/handlers/tool \
 
 ### 2. 성능 기준
 
-| 항목 | 목표 | 측정 방법 |
-|------|------|-----------|
-| Git 로그 파싱 | <10ms | `time git log -5 --pretty=format:%s` |
-| PostToolUse 핸들러 | <100ms | Hooks 시스템 타이머 |
-| 검증 프로세스 시작 | <50ms | `subprocess.Popen()` 호출 시간 |
+| 항목               | 목표   | 측정 방법                            |
+| ------------------ | ------ | ------------------------------------ |
+| Git 로그 파싱      | <10ms  | `time git log -5 --pretty=format:%s` |
+| PostToolUse 핸들러 | <100ms | Hooks 시스템 타이머                  |
+| 검증 프로세스 시작 | <50ms  | `subprocess.Popen()` 호출 시간       |
 
 **측정 코드**:
 ```python
@@ -316,10 +316,10 @@ pytest tests/integration/test_hooks_error_scenarios.py -v
 
 ```bash
 # 1. 새 SPEC 생성
-/alfred:1-spec "테스트 기능"
+/alfred:1-plan "테스트 기능"
 
 # 2. TDD 구현
-/alfred:2-build TEST-001
+/alfred:2-run TEST-001
 
 # 3. REFACTOR 커밋 생성 (수동)
 git add src/ tests/

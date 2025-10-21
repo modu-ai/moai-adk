@@ -1,4 +1,4 @@
-# @CODE:CORE-GIT-001 | SPEC: SPEC-CORE-GIT-001.md | TEST: tests/unit/test_git.py
+# @CODE:CORE-GIT-001 | SPEC: SPEC-CORE-GIT-001/spec.md | TEST: tests/unit/test_git.py
 """
 Branch naming utilities.
 

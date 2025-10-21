@@ -166,6 +166,7 @@ class TestDirectoryPhase:
         assert (tmp_path / ".moai" / "reports").exists()
         assert (tmp_path / ".moai" / "memory").exists()
         assert (tmp_path / ".claude" / "logs").exists()
+        assert (tmp_path / ".github").exists()
 
 
 class TestResourcePhase:
@@ -196,6 +197,7 @@ class TestResourcePhase:
         assert len(created_files) > 0
         assert ".claude/" in created_files
         assert ".moai/" in created_files
+        assert ".github/" in created_files
         assert "CLAUDE.md" in created_files
 
     def test_resource_phase_copies_template_files(
@@ -212,6 +214,7 @@ class TestResourcePhase:
         # Key template directories/files should be listed
         assert any(".claude" in f for f in created_files)
         assert any(".moai" in f for f in created_files)
+        assert any(".github" in f for f in created_files)
         assert any("CLAUDE.md" in f for f in created_files)
 
 
@@ -298,7 +301,7 @@ class TestValidationPhase:
         # Create Alfred command files (SPEC-INIT-004)
         alfred_dir = tmp_path / ".claude" / "commands" / "alfred"
         alfred_dir.mkdir(parents=True, exist_ok=True)
-        for cmd in ["0-project.md", "1-spec.md", "2-build.md", "3-sync.md"]:
+        for cmd in ["0-project.md", "1-plan.md", "2-run.md", "3-sync.md"]:
             (alfred_dir / cmd).write_text("# Command")
 
         executor.execute_validation_phase(tmp_path, mode="personal")
@@ -319,7 +322,7 @@ class TestValidationPhase:
         # Create Alfred command files (SPEC-INIT-004)
         alfred_dir = tmp_path / ".claude" / "commands" / "alfred"
         alfred_dir.mkdir(parents=True, exist_ok=True)
-        for cmd in ["0-project.md", "1-spec.md", "2-build.md", "3-sync.md"]:
+        for cmd in ["0-project.md", "1-plan.md", "2-run.md", "3-sync.md"]:
             (alfred_dir / cmd).write_text("# Command")
 
         executor.execute_validation_phase(
@@ -358,7 +361,7 @@ class TestValidationPhase:
         # Create Alfred command files (SPEC-INIT-004)
         alfred_dir = tmp_path / ".claude" / "commands" / "alfred"
         alfred_dir.mkdir(parents=True, exist_ok=True)
-        for cmd in ["0-project.md", "1-spec.md", "2-build.md", "3-sync.md"]:
+        for cmd in ["0-project.md", "1-plan.md", "2-run.md", "3-sync.md"]:
             (alfred_dir / cmd).write_text("# Command")
 
         executor.execute_validation_phase(tmp_path, mode="team")
@@ -383,7 +386,7 @@ class TestValidationPhase:
         # Create Alfred command files (SPEC-INIT-004)
         alfred_dir = tmp_path / ".claude" / "commands" / "alfred"
         alfred_dir.mkdir(parents=True, exist_ok=True)
-        for cmd in ["0-project.md", "1-spec.md", "2-build.md", "3-sync.md"]:
+        for cmd in ["0-project.md", "1-plan.md", "2-run.md", "3-sync.md"]:
             (alfred_dir / cmd).write_text("# Command")
 
         executor.execute_validation_phase(tmp_path, mode="personal")

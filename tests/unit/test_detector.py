@@ -201,3 +201,75 @@ class TestLanguageDetectorCheckPatterns:
         result = detector._check_patterns(tmp_project_dir, ["*.py"])
 
         assert result is True
+
+
+# @TEST:LANG-DETECT-001 | SPEC: SPEC-LANG-DETECT-001.md
+class TestLanguageDetectorLaravel:
+    """Test Laravel project detection"""
+
+    def test_detect_laravel_from_artisan_file(self, tmp_project_dir: Path):
+        """Should detect Laravel project as PHP from artisan file"""
+        # Given: Laravel artisan file
+        (tmp_project_dir / "artisan").write_text("#!/usr/bin/env php")
+        (tmp_project_dir / "composer.json").write_text('{"require": {"laravel/framework": "^11.0"}}')
+
+        # When: detect language
+        detector = LanguageDetector()
+        result = detector.detect(tmp_project_dir)
+
+        # Then: should return "php", not "python"
+        assert result == "php"
+
+    def test_detect_laravel_from_directory_structure(self, tmp_project_dir: Path):
+        """Should detect Laravel from app/ and bootstrap/ directories"""
+        # Given: Laravel directory structure
+        (tmp_project_dir / "app").mkdir()
+        (tmp_project_dir / "bootstrap").mkdir()
+        (tmp_project_dir / "bootstrap" / "laravel.php").write_text("<?php")
+        (tmp_project_dir / "composer.json").write_text('{}')
+
+        # When
+        detector = LanguageDetector()
+        result = detector.detect(tmp_project_dir)
+
+        # Then
+        assert result == "php"
+
+    def test_detect_php_over_python_in_mixed_project(self, tmp_project_dir: Path):
+        """Should prioritize PHP when both Python and PHP exist"""
+        # Given: Mixed Python + PHP project with Laravel markers
+        (tmp_project_dir / "deploy.py").write_text("import os")
+        (tmp_project_dir / "index.php").write_text("<?php")
+        (tmp_project_dir / "artisan").write_text("#!/usr/bin/env php")
+        (tmp_project_dir / "composer.json").write_text('{}')
+
+        # When
+        detector = LanguageDetector()
+        result = detector.detect(tmp_project_dir)
+
+        # Then: PHP should be detected first
+        assert result == "php"
+
+        # Bonus: check multiple languages
+        multiple = detector.detect_multiple(tmp_project_dir)
+        assert multiple[0] == "php"
+
+    def test_detect_php_from_composer_laravel_dependency(self, tmp_project_dir: Path):
+        """Should detect PHP from composer.json with laravel/framework"""
+        # Given
+        import json
+        composer_content = {
+            "require": {
+                "php": "^8.2",
+                "laravel/framework": "^11.0"
+            }
+        }
+        (tmp_project_dir / "composer.json").write_text(json.dumps(composer_content))
+        (tmp_project_dir / "index.php").write_text("<?php")
+
+        # When
+        detector = LanguageDetector()
+        result = detector.detect(tmp_project_dir)
+
+        # Then
+        assert result == "php"

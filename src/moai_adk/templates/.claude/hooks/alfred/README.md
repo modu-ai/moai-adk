@@ -2,7 +2,7 @@
 
 **Event-Driven Context Management for MoAI-ADK**
 
-Alfred Hooks는 Claude Code의 이벤트 시스템과 통합되어 프로젝트 컨텍스트를 자동으로 관리하고, 위험한 작업 전에 checkpoint를 생성하며, JIT (Just-in-Time) 문서 로딩을 제공합니다.
+Alfred Hooks integrates with Claude Code's event system to automatically manage project context, create checkpoints before risky operations, and provide just-in-time (JIT) document loading.
 
 ---
 
@@ -29,10 +29,10 @@ Alfred Hooks는 Claude Code의 이벤트 시스템과 통합되어 프로젝트 
 
 ### Design Principles
 
-- **Single Responsibility**: 각 모듈은 하나의 명확한 책임
-- **Separation of Concerns**: core (비즈니스 로직) vs handlers (이벤트 처리)
-- **CODE-FIRST**: 중간 캐시 없이 코드 직접 스캔 (mtime 기반 무효화)
-- **Context Engineering**: JIT Retrieval로 초기 컨텍스트 부담 최소화
+- **Single Responsibility**: Each module has one clear responsibility
+- **Separation of Concerns**: core (business logic) vs handlers (event processing)
+- **CODE-FIRST**: Scan code directly without intermediate cache (mtime Based invalidation)
+- **Context Engineering**: Minimize initial context burden with JIT Retrieval
 
 ---
 
@@ -40,7 +40,7 @@ Alfred Hooks는 Claude Code의 이벤트 시스템과 통합되어 프로젝트 
 
 ### `core/project.py` (284 LOC)
 
-**프로젝트 메타데이터 및 언어 감지**
+**Project metadata and language detection**
 
 ```python
 # Public API
@@ -51,14 +51,14 @@ count_specs(cwd: str) -> dict[str, int]
 ```
 
 **Features**:
-- 20개 언어 자동 감지 (Python, TypeScript, Java, Go, Rust, etc.)
-- `.moai/config.json` 우선, fallback to auto-detection
-- Git 정보 조회 (branch, commit, changes)
-- SPEC 진행도 계산 (total, completed, percentage)
+- Automatic detection of 20 languages ​​(Python, TypeScript, Java, Go, Rust, etc.)
+- `.moai/config.json` First, fallback to auto-detection
+- Check Git information (branch, commit, changes)
+- SPEC progress calculation (total, completed, percentage)
 
 ### `core/context.py` (110 LOC)
 
-**JIT Context Retrieval 및 워크플로우 관리**
+**JIT Context Retrieval and Workflow Management**
 
 ```python
 # Public API
@@ -69,15 +69,15 @@ clear_workflow_context()
 ```
 
 **Features**:
-- 프롬프트 분석 기반 문서 자동 추천
-  - `/alfred:1-spec` → `spec-metadata.md`
-  - `/alfred:2-build` → `development-guide.md`
-- 워크플로우 단계별 컨텍스트 캐싱 (TTL 10분)
-- Anthropic Context Engineering 원칙 준수
+- Automatically recommend documents based on prompt analysis
+  - `/alfred:1-plan` → `spec-metadata.md`
+  - `/alfred:2-run` → `development-guide.md`
+- Context caching for each workflow step (TTL 10 minutes)
+- Compliance with Anthropic Context Engineering principles
 
 ### `core/checkpoint.py` (244 LOC)
 
-**Event-Driven Checkpoint 자동화**
+**Event-Driven Checkpoint Automation**
 
 ```python
 # Public API
@@ -88,16 +88,16 @@ list_checkpoints(cwd: str, max_count: int = 10) -> list[dict]
 ```
 
 **Features**:
-- 위험한 작업 자동 감지:
+- Automatic detection of dangerous tasks:
   - Bash: `rm -rf`, `git merge`, `git reset --hard`
   - Edit/Write: `CLAUDE.md`, `config.json`
   - MultiEdit: ≥10 files
-- Git checkpoint 자동 생성: `checkpoint/before-{operation}-{timestamp}`
-- checkpoint 이력 관리 및 복구 가이드
+- Automatic creation of Git checkpoint: `checkpoint/before-{operation}-{timestamp}`
+- Checkpoint history management and recovery guide
 
 ### `core/tags.py` (244 LOC)
 
-**CODE-FIRST TAG 시스템**
+**CODE-FIRST TAG SYSTEM**
 
 ```python
 # Public API
@@ -110,10 +110,10 @@ set_library_version(library: str, version: str)
 ```
 
 **Features**:
-- ripgrep 기반 TAG 검색 (JSON 출력 파싱)
-- mtime 기반 캐시 무효화 (CODE-FIRST 보장)
-- TAG 체인 검증 (@SPEC → @TEST → @CODE 완전성 확인)
-- 라이브러리 버전 캐싱 (TTL 24시간)
+- ripgrep-based TAG search (parsing JSON output)
+- mtime-based cache invalidation (CODE-FIRST guaranteed)
+- TAG chain verification (@SPEC → @TEST → @CODE completeness check)
+- Library version caching (TTL 24 hours)
 
 ---
 
@@ -121,32 +121,32 @@ set_library_version(library: str, version: str)
 
 ### `handlers/session.py`
 
-**SessionStart, SessionEnd 핸들러**
+**SessionStart, SessionEnd handlers**
 
-- **SessionStart**: 프로젝트 정보 표시
-  - 언어, Git 상태, SPEC 진행도, 최근 checkpoint
-  - `systemMessage` 필드로 사용자에게 직접 표시
-- **SessionEnd**: 정리 작업 (stub)
+- **SessionStart**: Display project information
+ - Language, Git status, SPEC progress, recent checkpoint
+ - Display directly to user with `systemMessage` field
+- **SessionEnd**: Cleanup task (stub)
 
 ### `handlers/user.py`
 
-**UserPromptSubmit 핸들러**
+**UserPromptSubmit Handler**
 
-- JIT Context 추천 문서 리스트 반환
-- 사용자 프롬프트 패턴 분석 및 관련 문서 로드
+- Return list of JIT Context recommended documents
+- Analyze user prompt patterns and load related documents
 
 ### `handlers/tool.py`
 
-**PreToolUse, PostToolUse 핸들러**
+**PreToolUse, PostToolUse handlers**
 
-- **PreToolUse**: 위험한 작업 감지 시 자동 checkpoint 생성
-- **PostToolUse**: 후처리 작업 (stub)
+- **PreToolUse**: Automatic checkpoint creation when dangerous operation is detected
+- **PostToolUse**: Post-processing operation (stub)
 
 ### `handlers/notification.py`
 
-**Notification, Stop, SubagentStop 핸들러**
+**Notification, Stop, SubagentStop handlers**
 
-- 기본 구현 (stub, 향후 확장 가능)
+- Basic implementation (stub, can be expanded in the future)
 
 ---
 
@@ -166,9 +166,9 @@ uv run pytest tests/unit/test_alfred_hooks_core_project.py -v
 
 ### Test Coverage (18 tests)
 
-- ✅ **tags.py**: 7 tests (캐시, TAG 검증, 버전 관리)
-- ✅ **context.py**: 5 tests (JIT, 워크플로우 컨텍스트)
-- ✅ **project.py**: 6 tests (언어 감지, Git, SPEC 카운트)
+- ✅ **tags.py**: 7 tests (cache, TAG verification, version management)
+- ✅ **context.py**: 5 tests (JIT, workflow context)
+- ✅ **project.py**: 6 tests (language detection, Git, SPEC count)
 
 ### Test Structure
 
@@ -192,22 +192,22 @@ def _load_{module}_module(module_name: str):
 
 - **1 file**: 1233 LOC
 - **Issues**: 
-  - 모든 기능이 하나의 파일에 집중
-  - 테스트 어려움, 유지보수 복잡
-  - 책임 분리 불명확
+- All functions concentrated in one file
+ - Difficult to test, complex to maintain
+ - Unclear separation of responsibilities
 
 ### After (Modular)
 
 - **9 files**: ≤284 LOC each
 - **Benefits**:
-  - 명확한 책임 분리 (SRP)
-  - 독립적인 모듈 테스트 가능
-  - 확장 용이, 유지보수 간편
-  - Context Engineering 원칙 준수
+- Clear separation of responsibilities (SRP)
+ - Independent module testing possible
+ - Easy to expand, easy to maintain
+ - Compliance with Context Engineering principles
 
 ### Breaking Changes
 
-**없음** - 외부 API는 동일하게 유지됩니다.
+**None** - External APIs remain the same.
 
 ---
 
@@ -215,9 +215,9 @@ def _load_{module}_module(module_name: str):
 
 ### Internal Documents
 
-- **CLAUDE.md**: MoAI-ADK 사용자 가이드
-- **.moai/memory/development-guide.md**: SPEC-First TDD 워크플로우
-- **.moai/memory/spec-metadata.md**: SPEC 메타데이터 표준
+- **CLAUDE.md**: MoAI-ADK User Guide
+- **.moai/memory/development-guide.md**: SPEC-First TDD Workflow
+- **.moai/memory/spec-metadata.md**: SPEC metadata standard
 
 ### External Resources
 

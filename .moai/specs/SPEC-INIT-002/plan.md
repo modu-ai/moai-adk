@@ -291,7 +291,7 @@ export function isMoAIProject(projectRoot: string): boolean {
 2. ✅ **plan.md** 작성 완료
 3. ⏳ **acceptance.md** 작성 대기
 
-### 구현 단계 (`/alfred:2-build INIT-002`)
+### 구현 단계 (`/alfred:2-run INIT-002`)
 1. `utils.ts` 수정 및 TAG 추가
 2. `npm run build:hooks` 실행
 3. 배포 파일 검증

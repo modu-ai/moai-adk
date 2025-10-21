@@ -257,11 +257,11 @@ class DependencyInstaller {
 ```
 
 **플랫폼별 설치 전략**:
-| 플랫폼 | Git 설치 | Node.js 설치 |
-|--------|----------|-------------|
-| macOS | `brew install git` | `nvm install --lts` → `brew install node` |
-| Ubuntu | `sudo apt install git -y` | `nvm install --lts` → `sudo apt install nodejs -y` |
-| Windows | `winget install Git.Git` | `nvm install lts` → 수동 가이드 |
+| 플랫폼  | Git 설치                  | Node.js 설치                                       |
+| ------- | ------------------------- | -------------------------------------------------- |
+| macOS   | `brew install git`        | `nvm install --lts` → `brew install node`          |
+| Ubuntu  | `sudo apt install git -y` | `nvm install --lts` → `sudo apt install nodejs -y` |
+| Windows | `winget install Git.Git`  | `nvm install lts` → 수동 가이드                    |
 
 **타임아웃**: 5분 (300,000ms)
 
@@ -496,7 +496,7 @@ rg '@(SPEC|TEST|CODE|DOC):INIT-001' -n
 ## 다음 단계
 
 ### 구현 단계
-1. `/alfred:2-build INIT-001` 실행 (TDD 구현)
+1. `/alfred:2-run INIT-001` 실행 (TDD 구현)
 2. RED: 테스트 작성 및 실패 확인
 3. GREEN: 구현 및 테스트 통과
 4. REFACTOR: 코드 품질 개선

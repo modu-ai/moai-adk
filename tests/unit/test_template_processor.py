@@ -47,6 +47,9 @@ class TestCopyTemplates:
 
         # Should create .moai directory
         assert (tmp_path / ".moai").exists()
+        # Should copy .github workflow templates
+        assert (tmp_path / ".github").exists()
+        assert (tmp_path / ".github" / "workflows").exists()
 
     @patch("moai_adk.core.template.processor.Console")
     def test_copy_templates_with_backup(
@@ -56,6 +59,7 @@ class TestCopyTemplates:
         # Create existing files
         (tmp_path / ".moai").mkdir()
         (tmp_path / ".moai" / "config.json").write_text("{}")
+        (tmp_path / ".github").mkdir()
 
         processor = TemplateProcessor(tmp_path)
         processor.copy_templates(backup=True, silent=True)
@@ -74,6 +78,35 @@ class TestCopyTemplates:
 
         # Console.print should not be called in silent mode
         mock_console.return_value.print.assert_not_called()
+
+    def test_copy_github_overwrites_existing_directory(self, tmp_path: Path) -> None:
+        """Should replace existing .github directory with template version"""
+        github_dir = tmp_path / ".github"
+        workflows_dir = github_dir / "workflows"
+        workflows_dir.mkdir(parents=True)
+        # create stale file
+        stale = workflows_dir / "old.yml"
+        stale.write_text("# old workflow")
+
+        processor = TemplateProcessor(tmp_path)
+        processor._copy_github(silent=True)
+
+        assert not stale.exists()
+        assert (github_dir / "workflows" / "moai-gitflow.yml").exists()
+
+
+class TestClaudeTemplate:
+    """Test CLAUDE.md template copying"""
+
+    def test_copy_claude_md_uses_english_template(self, tmp_path: Path) -> None:
+        """Should copy English CLAUDE.md template by default"""
+        processor = TemplateProcessor(tmp_path)
+        processor._copy_claude_md(silent=True)
+
+        content = (tmp_path / "CLAUDE.md").read_text(encoding="utf-8")
+        assert "Meet Alfred: Your MoAI SuperAgent" in content
+        assert "Project Information" in content
+        assert "페르소나" not in content
 
 
 class TestHasExistingFiles:
@@ -97,6 +130,12 @@ class TestHasExistingFiles:
         processor = TemplateProcessor(tmp_path)
         assert processor._has_existing_files() is True
 
+    def test_has_existing_files_with_github(self, tmp_path: Path) -> None:
+        """Should return True when .github exists"""
+        (tmp_path / ".github").mkdir()
+        processor = TemplateProcessor(tmp_path)
+        assert processor._has_existing_files() is True
+
     def test_has_existing_files_with_none(self, tmp_path: Path) -> None:
         """Should return False when no existing files"""
         processor = TemplateProcessor(tmp_path)
@@ -107,7 +146,7 @@ class TestCreateBackup:
     """Test backup creation"""
 
     def test_create_backup_creates_directory(self, tmp_path: Path) -> None:
-        """Should create timestamped backup directory (.moai-backups/{timestamp}/)"""
+        """Should create single backup directory (.moai-backups/backup/)"""
         (tmp_path / ".moai").mkdir()
         (tmp_path / ".moai" / "config.json").write_text("{}")
 
@@ -116,7 +155,7 @@ class TestCreateBackup:
 
         assert backup_path.exists()
         assert backup_path.parent.name == ".moai-backups"
-        assert len(backup_path.name) == 15  # YYYYMMDD-HHMMSS
+        assert backup_path.name == "backup"  # Single backup folder (SSOT)
 
     def test_create_backup_copies_moai_directory(self, tmp_path: Path) -> None:
         """Should backup .moai directory"""
@@ -159,6 +198,18 @@ class TestCreateBackup:
         backed_up_md = backup_path / "CLAUDE.md"
         assert backed_up_md.exists()
         assert "Project Doc" in backed_up_md.read_text()
+
+    def test_create_backup_copies_github_directory(self, tmp_path: Path) -> None:
+        """Should backup .github directory"""
+        workflows_dir = tmp_path / ".github" / "workflows"
+        workflows_dir.mkdir(parents=True, exist_ok=True)
+        (workflows_dir / "custom.yml").write_text("# workflow")
+
+        processor = TemplateProcessor(tmp_path)
+        backup_path = processor.create_backup()
+
+        backed_up_workflow = backup_path / ".github" / "workflows" / "custom.yml"
+        assert backed_up_workflow.exists()
 
 
 class TestCopyExcludeProtected:
@@ -392,6 +443,27 @@ class TestMergeClaudeMd:
         assert "Content" in merged
         assert "My Project" in merged
         assert "Version: 1.0.0" in merged
+        assert "Template Project" not in merged
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="Windows charmap encoding issue")
+    def test_merge_claude_md_preserves_project_info_en(self, tmp_path: Path) -> None:
+        """Should preserve project info section for English templates"""
+        template = tmp_path / "template.md"
+        template.write_text(
+            "# Template\n\nContent\n\n## Project Information\n\n- Template Project"
+        )
+
+        existing = tmp_path / "existing.md"
+        existing.write_text(
+            "# Old Template\n\n## Project Information\n\n- My Project\n- Version: 1.0.0"
+        )
+
+        processor = TemplateProcessor(tmp_path)
+        processor._merge_claude_md(template, existing)
+
+        merged = existing.read_text()
+        assert "Project Information" in merged
+        assert "My Project" in merged
         assert "Template Project" not in merged
 
     def test_merge_claude_md_without_project_info(self, tmp_path: Path) -> None:

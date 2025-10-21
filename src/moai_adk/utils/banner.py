@@ -1,4 +1,4 @@
-# @CODE:UTILS-001 | SPEC: SPEC-CLI-001.md
+# @CODE:UTILS-001 | SPEC: SPEC-CLI-001/spec.md
 """ASCII banner module
 
 Render the MoAI-ADK ASCII art banner

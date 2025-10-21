@@ -1,4 +1,4 @@
-# @CODE:LOGGING-001 | SPEC: SPEC-LOGGING-001.md | TEST: tests/unit/test_logger.py
+# @CODE:LOGGING-001 | SPEC: SPEC-LOGGING-001/spec.md | TEST: tests/unit/test_logger.py
 """
 Logging system built on Python's logging module
 

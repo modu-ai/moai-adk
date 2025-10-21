@@ -1,0 +1,595 @@
+{
+  "_comment": "MoAI-ADK Full Settings Template - Complete Production Configuration",
+  "_usage": "Complete Claude Code settings for MoAI-ADK workflows with hooks and Python-specific permissions",
+  "_docs": "https://docs.claude.com/en/docs/claude-code/settings",
+  "_moai_workflow": "/alfred:0-project → /alfred:1-plan → /alfred:2-run → /alfred:3-sync",
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "Grep(**)",
+      "Glob(**)",
+      "Bash(ls:**)",
+      "Bash(cat:**)",
+      "Bash(echo:**)",
+      "Bash(which:**)",
+      "Bash(find:**)",
+      "Bash(tree:**)",
+      "Bash(git:status)",
+      "Bash(git:log:**)",
+      "Bash(git:diff:**)",
+      "Bash(git:branch:**)",
+      "Bash(git:show:**)",
+      "Bash(python:**)",
+      "Bash(python3:**)",
+      "Bash(uv:**)",
+      "Bash(pytest:**)",
+      "Bash(mypy:**)",
+      "Bash(ruff:**)",
+      "Bash(black:**)",
+      "Bash(coverage:**)",
+      "Bash(moai-adk:**)",
+      "Bash(alfred:**)",
+      "Bash(gh:pr:view:**)",
+      "Bash(gh:pr:list:**)",
+      "Bash(gh:issue:**)",
+      "Bash(gh:repo:view:**)"
+    ],
+    "ask": [
+      "Write(**)",
+      "Edit(**)",
+      "MultiEdit(**)",
+      "Bash(rm:**)",
+      "Bash(mv:**)",
+      "Bash(cp:**)",
+      "Bash(mkdir:**)",
+      "Bash(touch:**)",
+      "Bash(git:add:**)",
+      "Bash(git:commit:**)",
+      "Bash(git:push:**)",
+      "Bash(git:merge:**)",
+      "Bash(git:checkout:**)",
+      "Bash(git:rebase:**)",
+      "Bash(gh:pr:create:**)",
+      "Bash(gh:pr:merge:**)",
+      "Bash(uv:add:**)",
+      "Bash(uv:remove:**)"
+    ],
+    "deny": [
+      "Bash(rm:-rf:**)",
+      "Bash(git:push:--force)**",
+      "Bash(git:reset:--hard)**",
+      "Bash(git:clean:-fd)**",
+      "Bash(sudo:**)",
+      "Bash(chmod:**)",
+      "Bash(chown:**)",
+      "Bash(dd:**)",
+      "Bash(mkfs:**)",
+      "Write(.env)",
+      "Write(**/*.secret)",
+      "Write(**/id_rsa)**",
+      "Edit(.env)",
+      "Edit(**/*.secret)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": {
+      "command": "bash",
+      "args": [
+        "-c",
+        "echo '▶◀ MoAI-ADK Session Started' && echo '' && echo '📊 Git Status:' && git status --short && echo '' && echo '🌿 Branch: '$(git branch --show-current) && echo '' && echo '📋 Recent SPECs:' && ls -1 .moai/specs/ 2>/dev/null | head -3 || echo 'No SPECs yet' && echo '' && echo '💡 Quick Commands:' && echo '  /alfred:1-plan \"feature name\" - SPEC authoring' && echo '  /alfred:2-run SPEC-ID - TDD implementation' && echo '  /alfred:3-sync - documentation sync'"
+      ]
+    },
+    "PreToolUse": {
+      "command": "python3",
+      "args": [
+        "-c",
+        "import json, sys, os; data = json.load(sys.stdin); tool = data.get('tool', ''); params = data.get('parameters', {}); blocked = False; message = ''; \nif tool == 'Bash':\n    cmd = params.get('command', '')\n    if 'rm -rf' in cmd or 'rm-rf' in cmd:\n        blocked = True; message = '❌ CRITICAL: rm -rf blocked (data loss risk)'\n    elif 'git push --force' in cmd or 'git push -f' in cmd:\n        blocked = True; message = '❌ CRITICAL: Force push blocked (history corruption risk)'\n    elif 'sudo' in cmd:\n        blocked = True; message = '❌ CRITICAL: sudo blocked (security risk)'\n    elif '.env' in cmd and ('rm' in cmd or 'cat' in cmd):\n        blocked = True; message = '⚠️ WARNING: .env file access blocked (secrets protection)'\nelif tool == 'Write' or tool == 'Edit':\n    path = params.get('file_path', '')\n    if '.env' in path or '.secret' in path or 'id_rsa' in path:\n        blocked = True; message = '❌ CRITICAL: Writing secrets file blocked'\nprint(json.dumps({'blocked': blocked, 'message': message}))"
+      ]
+    }
+  },
+  "_moai_adk_integration": {
+    "workflow_permissions": {
+      "alfred_0_project": {
+        "needs": [
+          "Write(.moai/project/**)",
+          "Bash(mkdir:.moai/**)",
+          "Read(**)",
+          "Grep(**)",
+          "Glob(**)"
+        ],
+        "rationale": "Project initialization requires writing metadata files"
+      },
+      "alfred_1_spec": {
+        "needs": [
+          "Write(.moai/specs/**)",
+          "Bash(git:branch:**)",
+          "Bash(gh:pr:create:**)",
+          "Read(.moai/project/**)"
+        ],
+        "rationale": "SPEC creation, feature branch, Draft PR"
+      },
+      "alfred_2_build": {
+        "needs": [
+          "Write(tests/**)",
+          "Write(src/**)",
+          "Edit(**)",
+          "Bash(pytest:**)",
+          "Bash(mypy:**)",
+          "Bash(git:commit:**)"
+        ],
+        "rationale": "TDD implementation with RED → GREEN → REFACTOR commits"
+      },
+      "alfred_3_sync": {
+        "needs": [
+          "Write(docs/**)",
+          "Edit(**)",
+          "Bash(rg:**)",
+          "Bash(gh:pr:**)",
+          "Grep(**)",
+          "Glob(**)"
+        ],
+        "rationale": "Living Document sync, TAG validation, PR Ready transition"
+      }
+    },
+    "tag_system_permissions": {
+      "tag_scanning": [
+        "Grep(**)",
+        "Bash(rg:@(SPEC|TEST|CODE|DOC):**)"
+      ],
+      "tag_validation": [
+        "Read(.moai/specs/**)",
+        "Read(tests/**)",
+        "Read(src/**)",
+        "Read(docs/**)"
+      ],
+      "tag_reporting": [
+        "Write(.moai/reports/**)",
+        "Write(docs/**)"
+      ]
+    }
+  },
+  "_python_moai_adk_patterns": {
+    "testing": {
+      "allow": [
+        "Bash(pytest:**)",
+        "Bash(pytest:--cov:**)",
+        "Bash(pytest:-v:**)",
+        "Bash(coverage:report)**",
+        "Bash(coverage:html)**"
+      ],
+      "rationale": "TRUST Principle - Test First (85% coverage goal)"
+    },
+    "type_checking": {
+      "allow": [
+        "Bash(mypy:**)",
+        "Bash(mypy:--strict:**)"
+      ],
+      "rationale": "TRUST Principle - Unified (Type Safety)"
+    },
+    "linting": {
+      "allow": [
+        "Bash(ruff:check:**)",
+        "Bash(ruff:format:**)",
+        "Bash(black:**)"
+      ],
+      "rationale": "TRUST Principle - Readable (Code Quality)"
+    },
+    "package_management": {
+      "allow": [
+        "Bash(uv:sync)",
+        "Bash(uv:lock)",
+        "Bash(uv:tree)"
+      ],
+      "ask": [
+        "Bash(uv:add:**)",
+        "Bash(uv:remove:**)",
+        "Bash(uv:build)**",
+        "Bash(uv:publish)**"
+      ],
+      "rationale": "Read operations are allowed, dependency changes require confirmation"
+    }
+  },
+  "_git_workflow_moai": {
+    "safe_read_operations": {
+      "allow": [
+        "Bash(git:status)",
+        "Bash(git:log:**)",
+        "Bash(git:diff:**)",
+        "Bash(git:show:**)",
+        "Bash(git:branch:**)"
+      ],
+      "description": "Repository read-only - always allowed"
+    },
+    "tdd_commit_pattern": {
+      "ask": [
+        "Bash(git:add:**)",
+        "Bash(git:commit:**)"
+      ],
+      "example_messages": [
+        "🔴 RED: Writing a SPEC-AUTH-001 JWT authentication test",
+        "🟢 GREEN: SPEC-AUTH-001 JWT authentication implementation",
+        "♻️ REFACTOR: Improve SPEC-AUTH-001 code quality",
+        "📝 DOCS: SPEC-AUTH-001 document synchronization"
+      ],
+      "description": "TDD phased commit - requires user confirmation"
+    },
+    "branch_and_pr": {
+      "ask": [
+        "Bash(git:checkout:-b:**)",
+        "Bash(git:push:**)",
+        "Bash(gh:pr:create:**)",
+        "Bash(gh:pr:merge:**)"
+      ],
+      "workflow": [
+        "1. Create feature/SPEC-{ID} branch (git checkout -b)",
+        "2. Create Draft PR (gh pr create --draft)",
+        "3. Implement and commit TDD",
+        "4. Mark PR Ready (gh pr ready)",
+        "5. PR merge (gh pr merge --squash)"
+      ],
+      "description": "Working with Git branches/PRs - always check"
+    },
+    "dangerous_operations": {
+      "deny": [
+        "Bash(git:push:--force)**",
+        "Bash(git:reset:--hard)**",
+        "Bash(git:clean:-fd)**"
+      ],
+      "description": "Risk of Data Loss - Absolutely Blocked"
+    }
+  },
+  "_security_hardening": {
+    "secrets_protection": {
+      "deny": [
+        "Write(.env)",
+        "Write(**/*.secret)",
+        "Write(**/id_rsa)**",
+        "Write(**/credentials.json)",
+        "Edit(.env)",
+        "Edit(**/*.secret)",
+        "Bash(cat:.env)",
+        "Bash(cat:**/*.secret)"
+      ],
+      "description": "Block access to confidential information files"
+    },
+    "system_protection": {
+      "deny": [
+        "Bash(sudo:**)",
+        "Bash(chmod:**)",
+        "Bash(chown:**)",
+        "Bash(dd:**)",
+        "Bash(mkfs:**)"
+      ],
+      "description": "System level command blocking"
+    },
+    "data_loss_prevention": {
+      "deny": [
+        "Bash(rm:-rf:**)",
+        "Bash(git:reset:--hard)**",
+        "Bash(git:clean:-fd)**"
+      ],
+      "description": "Block commands at risk of data loss"
+    }
+  },
+  "_hook_implementation_details": {
+    "SessionStart": {
+      "purpose": "Provide project context when starting a MoAI-ADK session",
+      "output_sections": [
+        "▶◀ MoAI-ADK Session Started - Shows session start",
+        "📊 Git Status - list of changed files (git status --short)",
+        "🌿 Branch - Current working branch",
+        "📋 Recent SPECs - 3 recently created SPECs",
+        "💡 Quick Commands - Frequently used Alfred commands"
+      ],
+      "execution_time": "~200ms (fast execution)",
+      "error_handling": "If there is no SPEC directory, 'No SPECs yet' is displayed.",
+      "customization": "Project-specific information can be added (product.md summary, etc.)"
+    },
+    "PreToolUse": {
+      "purpose": "Preemptively block risky operations (data loss, security risks)",
+      "stdin_format": "JSON: {tool: string, parameters: object}",
+      "stdout_format": "JSON: {blocked: boolean, message: string}",
+      "blocked_patterns": [
+        "rm -rf - risk of data loss",
+        "git push --force - risk of history corruption",
+        "sudo - security risk",
+        "Accessing .env files - exposing confidential information"
+      ],
+      "implementation": "Python3 inline script (no external dependencies)",
+      "performance": "~50ms (JSON parsing + pattern matching)",
+      "extensibility": "Easy to add new blocking patterns"
+    }
+  },
+  "_testing_and_validation": {
+    "permission_tests": {
+      "test_allow": [
+        "Read(.moai/project/product.md) - Should execute without prompt",
+        "Bash(git:status) - Should execute without prompt",
+        "Bash(pytest:tests/) - Should execute without prompt"
+      ],
+      "test_ask": [
+        "Write(.moai/specs/SPEC-NEW-001/spec.md) - Should prompt for confirmation",
+        "Bash(git:commit:-m:\"test\") - Should prompt for confirmation",
+        "Bash(uv:add:requests) - Should prompt for confirmation"
+      ],
+      "test_deny": [
+        "Bash(rm:-rf:/tmp/test) - Should be blocked immediately",
+        "Write(.env) - Should be blocked immediately",
+        "Bash(sudo:ls) - Should be blocked immediately"
+      ]
+    },
+    "hook_tests": {
+      "test_session_start": {
+        "trigger": "Start new Claude Code session",
+        "expected_output": "Git status, branch name, recent SPECs, quick commands",
+        "verify": "Output contains '▶◀ MoAI-ADK Session Started'"
+      },
+      "test_pre_tool_use": {
+        "trigger": "Try dangerous command (rm -rf)",
+        "expected_output": "{\"blocked\": true, \"message\": \"❌ CRITICAL: rm -rf blocked\"}",
+        "verify": "Command is blocked before execution"
+      }
+    },
+    "validation_commands": {
+      "json_syntax": "python -m json.tool .claude/settings.json",
+      "hook_test": "echo '{\"tool\": \"Bash\", \"parameters\": {\"command\": \"rm -rf /tmp/test\"}}' | python3 -c '<PreToolUse script>'",
+      "permission_check": "grep -E '^\\s*(allow|ask|deny):' .claude/settings.json"
+    }
+  },
+  "_troubleshooting": {
+    "hooks_not_running": {
+      "symptom": "SessionStart output not visible, PreToolUse not blocking",
+      "checks": [
+        "Is Python3 installed? (python3 --version)",
+        "Is Bash available? (which bash)",
+        "Is settings.json valid? (python -m json.tool)",
+        "Are hooks properly formatted? (check args array)",
+        "Did you restart Claude Code?"
+      ],
+      "debug": [
+        "Run SessionStart command manually: bash -c '<command>'",
+        "Test PreToolUse: echo '{...}' | python3 -c '<script>'",
+        "Check Claude Code logs: ~/.claude/logs/"
+      ]
+    },
+    "permission_denied_unexpectedly": {
+      "symptom": "Operation blocked when it should be allowed",
+      "checks": [
+        "Is pattern in 'deny' list? (grep <pattern> .claude/settings.json)",
+        "Is pattern syntax correct? (wildcards ** vs *)",
+        "Does 'deny' override 'allow'? (deny has higher priority)",
+        "Is there a typo in permission pattern?"
+      ],
+      "solution": [
+        "Remove from 'deny' list if safe",
+        "Adjust pattern to be more specific",
+        "Restart Claude Code after changes"
+      ]
+    },
+    "too_many_prompts": {
+      "symptom": "Getting prompted for every operation",
+      "checks": [
+        "Are read operations in 'allow'? (Read, Grep, Glob)",
+        "Are test commands in 'allow'? (pytest, mypy)",
+        "Are git read commands in 'allow'? (git status, git log)"
+      ],
+      "solution": [
+        "Move common read operations to 'allow'",
+        "Keep only write operations in 'ask'",
+        "Balance security vs usability"
+      ]
+    },
+    "hook_json_parse_error": {
+      "symptom": "PreToolUse hook fails with JSON error",
+      "checks": [
+        "Is Python script valid? (test manually)",
+        "Does script always output valid JSON? (test edge cases)",
+        "Are single/double quotes escaped properly?"
+      ],
+      "solution": [
+        "Test script with various inputs",
+        "Ensure json.dumps() always returns valid JSON",
+        "Add error handling in Python script"
+      ]
+    }
+  },
+  "_best_practices": {
+    "permission_design": {
+      "principles": [
+        "Start restrictive, relax based on workflow (fail-safe approach)",
+        "Group related commands (all git:read, all python:test)",
+        "Use wildcards thoughtfully (** for recursive, * for single level)",
+        "Document rationale in _comment fields"
+      ],
+      "patterns": [
+        "Read operations → allow (safe, no side effects)",
+        "Write operations → ask (user review needed)",
+        "Dangerous operations → deny (prevent data loss)",
+        "Language tools (pytest, mypy) → allow (development workflow)",
+        "Package management (uv add) → ask (dependency changes)"
+      ]
+    },
+    "hook_design": {
+      "principles": [
+        "Keep SessionStart fast (<500ms)",
+        "PreToolUse must return valid JSON always",
+        "Test hooks independently before integration",
+        "Use absolute paths or environment variables"
+      ],
+      "session_start_tips": [
+        "Show only essential context (git status, branch)",
+        "Limit output to ~10 lines (avoid clutter)",
+        "Include quick command reminders for new users",
+        "Handle missing directories gracefully (|| echo 'N/A')"
+      ],
+      "pre_tool_use_tips": [
+        "Use Python for complex logic (better than bash if/else)",
+        "Always output JSON even on errors",
+        "Provide clear block messages (why operation is dangerous)",
+        "Test with edge cases (empty input, malformed JSON)"
+      ]
+    },
+    "maintenance": {
+      "quarterly_review": [
+        "Review 'allow' list - remove unused permissions",
+        "Review 'deny' list - add new dangerous patterns",
+        "Update hooks - improve context or add new checks",
+        "Test with latest Claude Code version"
+      ],
+      "version_control": [
+        "Commit settings.json to repository (team shared config)",
+        "Use settings.local.json for personal overrides (.gitignore)",
+        "Document changes in commit messages",
+        "Review PRs that modify permissions carefully"
+      ],
+      "security_audits": [
+        "Monthly: Review denied operations log",
+        "Quarterly: Test all dangerous operation blocks",
+        "Annually: Full permission audit with security team",
+        "After incidents: Add new deny patterns"
+      ]
+    }
+  },
+  "_moai_adk_specific": {
+    "spec_protection": {
+      "description": "SPEC files are important requirements documents - prevent accidental deletion",
+      "permissions": {
+        "allow": [
+          "Read(.moai/specs/**)"
+        ],
+        "ask": [
+          "Write(.moai/specs/**)",
+          "Edit(.moai/specs/**)"
+        ],
+        "deny": [
+          "Bash(rm:.moai/specs/**)"
+        ]
+      }
+    },
+    "tag_system": {
+      "description": "@TAG Maintain traceability – allow code scanning",
+      "permissions": {
+        "allow": [
+          "Bash(rg:@(SPEC|TEST|CODE|DOC):**)",
+          "Grep(@SPEC:**)",
+          "Grep(@TEST:**)",
+          "Grep(@CODE:**)",
+          "Grep(@DOC:**)"
+        ]
+      }
+    },
+    "trust_principles": {
+      "Test_First": {
+        "allow": [
+          "Bash(pytest:**)",
+          "Bash(coverage:**)"
+        ],
+        "goal": "85% test coverage"
+      },
+      "Readable": {
+        "allow": [
+          "Bash(ruff:**)",
+          "Bash(black:**)",
+          "Bash(mypy:**)"
+        ],
+        "goal": "Clean, typed code"
+      },
+      "Unified": {
+        "allow": [
+          "Bash(mypy:--strict:**)"
+        ],
+        "goal": "Type safety"
+      },
+      "Secured": {
+        "deny": [
+          "Write(.env)",
+          "Bash(cat:.env)"
+        ],
+        "goal": "Secrets protection"
+      },
+      "Trackable": {
+        "allow": [
+          "Bash(rg:@TAG:**)",
+          "Grep(@TAG:**)"
+        ],
+        "goal": "Complete traceability"
+      }
+    }
+  },
+  "_performance_considerations": {
+    "startup_time": {
+      "baseline": "Hooks add ~200-500ms to startup",
+      "optimization": [
+        "Keep SessionStart command simple",
+        "Avoid expensive operations (large file scans)",
+        "Cache results if possible (not implemented yet)"
+      ]
+    },
+    "runtime_overhead": {
+      "PreToolUse": "~50ms per tool invocation",
+      "impact": "Negligible for interactive use",
+      "optimization": "Use Python (faster than Bash for complex logic)"
+    }
+  },
+  "_validation_checklist": [
+    "✅ Valid JSON syntax (python -m json.tool)",
+    "✅ All dangerous operations in 'deny'",
+    "✅ Read operations in 'allow'",
+    "✅ Write operations in 'ask'",
+    "✅ SessionStart executes in <500ms",
+    "✅ PreToolUse returns valid JSON",
+    "✅ PreToolUse blocks rm -rf",
+    "✅ PreToolUse blocks force push",
+    "✅ PreToolUse blocks .env access",
+    "✅ Python/uv commands properly configured",
+    "✅ Git workflow matches MoAI-ADK",
+    "✅ SPEC files protected from deletion",
+    "✅ TAG system commands allowed",
+    "✅ TRUST principles enforced",
+    "✅ Team collaboration considered"
+  ],
+  "_real_world_usage": {
+    "team_setup": [
+      "1. Commit this settings.json to repository",
+      "2. Each developer copies to .claude/settings.json",
+      "3. Create .claude/settings.local.json for personal overrides",
+      "4. Add .claude/settings.local.json to .gitignore",
+      "5. Team lead reviews permission changes in PRs"
+    ],
+    "personal_project": [
+      "1. Copy to .claude/settings.json",
+      "2. Adjust 'ask' list based on workflow",
+      "3. Test with real operations",
+      "4. Iterate based on experience"
+    ],
+    "ci_cd_integration": [
+      "1. CI環境では hooks を無効化 (hooks: null)",
+      "2. Permissions are more restrictive (deny more operations)",
+      "3. Manage secrets with environment variables",
+      "4. Test before deploy"
+    ]
+  },
+  "_template_metadata": {
+    "template_level": "full",
+    "best_for": "MoAI-ADK production workflows, Python projects, team collaboration",
+    "features": [
+      "Complete MoAI-ADK workflow integration (/alfred:0-1-2-3)",
+      "Python/uv package management",
+      "TRUST 5-principles enforcement",
+      "TDD workflow permissions (RED-GREEN-REFACTOR)",
+      "Git workflow automation (feature branch, Draft PR, auto-merge)",
+      "@TAG system support",
+      "SPEC protection",
+      "Security hardening (secrets, sudo, force push)",
+      "SessionStart hook (project context)",
+      "PreToolUse hook (danger prevention)",
+      "Comprehensive troubleshooting",
+      "Performance optimized",
+      "Team collaboration ready"
+    ],
+    "estimated_setup_time": "45-60 minutes (full configuration + testing)",
+    "maintenance_effort": "Quarterly review (15 minutes), continuous monitoring",
+    "support_level": "Full MoAI-ADK integration support",
+    "documentation": "Complete with examples, tests, troubleshooting"
+  }
+}

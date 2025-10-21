@@ -1,0 +1,363 @@
+{
+  "_comment": "Full Plugin Template - MoAI-ADK Production Integration",
+  "_usage": "Complete MCP server configuration for MoAI-ADK workflows",
+  "_docs": "https://modelcontextprotocol.io/",
+  "_moai_integration": "Optimized for /alfred:0-project → /alfred:1-plan → /alfred:2-run → /alfred:3-sync",
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+      },
+      "disabled": false,
+      "_integration_points": {
+        "alfred_1_spec": "Create issues for new SPECs, link SPEC to GitHub issue",
+        "alfred_2_build": "Create feature branches, commit with TDD messages",
+        "alfred_3_sync": "Update PR description, transition Draft → Ready, auto-merge"
+      },
+      "_required_scopes": [
+        "repo",
+        "read:org",
+        "workflow"
+      ],
+      "_workflow_automation": [
+        "Automatic branch creation from SPEC ID (feature/SPEC-AUTH-001)",
+        "Draft PR creation with SPEC template",
+        "PR description sync with SPEC changes",
+        "Auto-merge after CI/CD passes"
+      ]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "${MOAI_PROJECT_ROOT}",
+        "${MOAI_PROJECT_ROOT}/.moai",
+        "${MOAI_PROJECT_ROOT}/src",
+        "${MOAI_PROJECT_ROOT}/tests",
+        "${MOAI_PROJECT_ROOT}/docs"
+      ],
+      "disabled": false,
+      "_security_model": "Principle of least privilege - only project directories",
+      "_moai_directories": {
+        ".moai/specs": "SPEC documents (@SPEC:ID)",
+        ".moai/project": "Project metadata (product.md, structure.md, tech.md)",
+        ".moai/memory": "Development guides and context",
+        ".moai/reports": "Sync reports and validation results",
+        "src/": "Implementation code (@CODE:ID)",
+        "tests/": "Test files (@TEST:ID)",
+        "docs/": "Documentation (@DOC:ID)"
+      },
+      "_best_practice": "Use environment variable for project root to support multiple projects"
+    },
+    "brave-search": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-brave-search"
+      ],
+      "env": {
+        "BRAVE_API_KEY": "${BRAVE_API_KEY}"
+      },
+      "disabled": false,
+      "_use_cases": [
+        "Research latest framework versions during /alfred:0-project",
+        "Find documentation for unknown libraries",
+        "Search for security best practices",
+        "Discover MCP servers in registry"
+      ],
+      "_api_limits": "Free tier: 2000 queries/month, Rate limit: 1 req/sec",
+      "_signup": "https://brave.com/search/api/"
+    }
+  },
+  "_moai_adk_workflow_integration": {
+    "alfred_0_project": {
+      "plugins_used": [
+        "brave-search",
+        "filesystem"
+      ],
+      "tasks": [
+        "Search for latest framework docs (brave-search)",
+        "Read existing product.md if present (filesystem)",
+        "Write project metadata files (filesystem)"
+      ]
+    },
+    "alfred_1_spec": {
+      "plugins_used": [
+        "github",
+        "filesystem"
+      ],
+      "tasks": [
+        "Read product.md for context (filesystem)",
+        "Write SPEC-{ID}/spec.md (filesystem)",
+        "Create GitHub issue (github)",
+        "Create feature branch (github)",
+        "Create Draft PR (github)"
+      ]
+    },
+    "alfred_2_build": {
+      "plugins_used": [
+        "filesystem",
+        "github"
+      ],
+      "tasks": [
+        "Read SPEC-{ID}/spec.md (filesystem)",
+        "Write test files @TEST:ID (filesystem)",
+        "Write implementation @CODE:ID (filesystem)",
+        "Commit with TDD messages (github)"
+      ]
+    },
+    "alfred_3_sync": {
+      "plugins_used": [
+        "filesystem",
+        "github"
+      ],
+      "tasks": [
+        "Scan @TAG chain with rg (filesystem)",
+        "Update Living Documents (filesystem)",
+        "Update PR description (github)",
+        "Transition PR Draft → Ready (github)",
+        "Auto-merge if --auto-merge flag (github)"
+      ]
+    }
+  },
+  "_environment_variables_template": {
+    "bash_zsh": [
+      "# MoAI-ADK Plugin Configuration",
+      "# Add to ~/.bashrc or ~/.zshrc",
+      "",
+      "# GitHub Integration",
+      "export GITHUB_PERSONAL_ACCESS_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "",
+      "# Brave Search API",
+      "export BRAVE_API_KEY=BSAxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "",
+      "# MoAI Project Root (adjust per project)",
+      "export MOAI_PROJECT_ROOT=\"$HOME/projects/my-moai-project\"",
+      "",
+      "# Optional: Multiple projects",
+      "# alias moai-project-a='export MOAI_PROJECT_ROOT=\"$HOME/projects/project-a\"'",
+      "# alias moai-project-b='export MOAI_PROJECT_ROOT=\"$HOME/projects/project-b\"'",
+      "",
+      "# Reload: source ~/.bashrc"
+    ],
+    "fish": [
+      "# MoAI-ADK Plugin Configuration",
+      "# Add to ~/.config/fish/config.fish",
+      "",
+      "set -x GITHUB_PERSONAL_ACCESS_TOKEN ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "set -x BRAVE_API_KEY BSAxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "set -x MOAI_PROJECT_ROOT \"$HOME/projects/my-moai-project\"",
+      "",
+      "# Reload: source ~/.config/fish/config.fish"
+    ],
+    "direnv": [
+      "# Project-specific .envrc (auto-loads when cd into directory)",
+      "# Install direnv: https://direnv.net/",
+      "",
+      "export MOAI_PROJECT_ROOT=$(pwd)",
+      "export GITHUB_PERSONAL_ACCESS_TOKEN=ghp_xxx",
+      "export BRAVE_API_KEY=BSA_xxx",
+      "",
+      "# Allow: direnv allow ."
+    ]
+  },
+  "_team_collaboration": {
+    "shared_config": {
+      "_approach": "Commit mcpServers config, use .env for secrets",
+      "_gitignore": [
+        ".env",
+        ".claude/settings.local.json"
+      ],
+      "_shared_file": ".claude/settings.json (commit)",
+      "_local_file": ".claude/settings.local.json (gitignore)",
+      "_merge_strategy": "settings.local.json overrides settings.json"
+    },
+    "example_gitignore": [
+      ".env",
+      ".env.local",
+      ".claude/settings.local.json",
+      "**/*.secret"
+    ],
+    "example_settings_local": {
+      "mcpServers": {
+        "github": {
+          "env": {
+            "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+          }
+        }
+      }
+    }
+  },
+  "_ci_cd_integration": {
+    "github_actions": {
+      "secrets_setup": [
+        "1. Go to repository Settings → Secrets and variables → Actions",
+        "2. Add GITHUB_PERSONAL_ACCESS_TOKEN (for automated PRs)",
+        "3. Add BRAVE_API_KEY (if needed in CI)",
+        "4. Reference in workflow: ${{ secrets.GITHUB_PERSONAL_ACCESS_TOKEN }}"
+      ],
+      "workflow_example": {
+        "name": "MoAI-ADK CI",
+        "on": [
+          "push",
+          "pull_request"
+        ],
+        "env": {
+          "GITHUB_PERSONAL_ACCESS_TOKEN": "${{ secrets.GITHUB_PERSONAL_ACCESS_TOKEN }}"
+        }
+      }
+    }
+  },
+  "_advanced_configuration": {
+    "rate_limiting": {
+      "_note": "Prevent API quota exhaustion",
+      "_implementation": "MCP servers handle rate limiting internally",
+      "_monitoring": "Check server logs for 429 responses"
+    },
+    "caching": {
+      "_strategy": "MCP servers cache responses where applicable",
+      "_filesystem_cache": "Node modules cache MCP protocol responses",
+      "_invalidation": "Restart Claude Code to clear cache"
+    },
+    "logging": {
+      "_enable_debug": "Set DEBUG=mcp:* environment variable",
+      "_log_location": "~/.claude/logs/ (check Claude Code docs)",
+      "_useful_for": "Troubleshooting connection issues, API errors"
+    }
+  },
+  "_security_hardening": {
+    "token_rotation": {
+      "frequency": "Quarterly or after team member departure",
+      "process": [
+        "1. Generate new GitHub token with same scopes",
+        "2. Update environment variable",
+        "3. Restart Claude Code",
+        "4. Revoke old token after verification"
+      ]
+    },
+    "least_privilege": {
+      "github_scopes": "Only enable 'repo', 'read:org' (not 'admin:org')",
+      "filesystem_paths": "Only project directories (not $HOME)",
+      "disabled_when_unused": "Set disabled: true for inactive plugins"
+    },
+    "audit_trail": {
+      "github_activity": "Review GitHub token activity log monthly",
+      "filesystem_access": "Monitor Claude Code file access logs",
+      "api_usage": "Check Brave Search API dashboard for anomalies"
+    }
+  },
+  "_performance_optimization": {
+    "startup_time": {
+      "baseline": "Each MCP server adds ~500ms to startup",
+      "recommendation": "Enable only essential plugins (3-5 max)",
+      "deferred_loading": "Disable rarely used plugins, enable on-demand"
+    },
+    "memory_usage": {
+      "per_server": "~50-100MB per active MCP server",
+      "monitoring": "Use Activity Monitor (macOS) or Task Manager (Windows)",
+      "optimization": "Restart Claude Code if memory usage exceeds 2GB"
+    },
+    "network_latency": {
+      "api_calls": "GitHub/Brave APIs add network latency",
+      "local_first": "Filesystem server has no network overhead",
+      "timeout_settings": "MCP servers have 30s default timeout"
+    }
+  },
+  "_monitoring_and_alerts": {
+    "health_checks": [
+      "Verify: All plugins load successfully at startup",
+      "Verify: GitHub API calls return 200 (not 401/403)",
+      "Verify: Brave Search API quota not exhausted",
+      "Verify: Filesystem paths are accessible"
+    ],
+    "error_patterns": {
+      "401_unauthorized": "Token expired or invalid scopes",
+      "403_forbidden": "Rate limit exceeded or insufficient permissions",
+      "404_not_found": "Repository or file path incorrect",
+      "500_server_error": "External API issue, retry later"
+    },
+    "alerting": {
+      "_approach": "Monitor Claude Code logs for errors",
+      "_log_parsing": "grep 'ERROR' ~/.claude/logs/latest.log",
+      "_notification": "Set up OS notifications for critical errors (advanced)"
+    }
+  },
+  "_troubleshooting_guide": {
+    "common_issues": {
+      "plugin_not_loading": {
+        "symptom": "MCP server not available in Claude",
+        "checks": [
+          "Is npx installed? (node -v, npm -v)",
+          "Is package name exact? (check registry)",
+          "Is settings.json valid JSON? (python -m json.tool)",
+          "Are environment variables set? (echo $GITHUB_PERSONAL_ACCESS_TOKEN)",
+          "Did you restart Claude Code after changes?"
+        ],
+        "solution": "Restart Claude Code, check logs in ~/.claude/logs/"
+      },
+      "github_authentication_failed": {
+        "symptom": "401 Unauthorized when accessing GitHub",
+        "checks": [
+          "Is token valid? (check https://github.com/settings/tokens)",
+          "Does token have required scopes? (repo, read:org)",
+          "Is environment variable name correct? (exact match)",
+          "Is token properly exported? (printenv | grep GITHUB)"
+        ],
+        "solution": "Regenerate token with correct scopes, update .bashrc, source it"
+      },
+      "filesystem_permission_denied": {
+        "symptom": "Cannot read/write files via MCP",
+        "checks": [
+          "Is directory path absolute? (/Users/... not ~/...)",
+          "Is directory listed in args? (exact match)",
+          "Does directory exist? (ls -la /path/to/dir)",
+          "Do you have read/write permissions? (ls -la)"
+        ],
+        "solution": "Use absolute paths, verify permissions, add directory to args"
+      },
+      "brave_search_quota_exceeded": {
+        "symptom": "429 Too Many Requests from Brave API",
+        "checks": [
+          "Check API dashboard: https://brave.com/search/api/",
+          "Current usage vs quota (Free: 2000/month)",
+          "Rate limit: 1 request/second"
+        ],
+        "solution": "Wait for quota reset, upgrade plan, or disable plugin temporarily"
+      }
+    }
+  },
+  "_validation_checklist": [
+    "✅ settings.json is valid JSON (no syntax errors)",
+    "✅ All environment variables are set (printenv | grep -E 'GITHUB|BRAVE|MOAI')",
+    "✅ GitHub token has correct scopes (repo, read:org)",
+    "✅ Brave API key is active (check dashboard)",
+    "✅ Filesystem paths are absolute and exist",
+    "✅ Unused plugins are disabled (disabled: true)",
+    "✅ Secrets are not hardcoded (only ${ENV_VAR})",
+    "✅ .env files are in .gitignore",
+    "✅ Claude Code restarts successfully",
+    "✅ All plugins load without errors"
+  ],
+  "_template_level": "full",
+  "_best_for": "MoAI-ADK production workflows, team collaboration, CI/CD",
+  "_features": [
+    "Complete MoAI-ADK integration",
+    "GitHub workflow automation",
+    "Security hardening",
+    "Performance optimization",
+    "Team collaboration setup",
+    "CI/CD integration",
+    "Monitoring and alerts",
+    "Comprehensive troubleshooting"
+  ],
+  "_directory_structure": "Works with MoAI-ADK .moai/ structure",
+  "_estimated_time": "45-60 minutes for full setup",
+  "_maintenance": "Monthly review of tokens, quarterly rotation, continuous monitoring",
+  "_support": "Full MoAI-ADK workflow integration support"
+}

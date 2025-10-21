@@ -8,7 +8,7 @@
 Tests for ProjectValidator class and ValidationError.
 
 SPEC-INIT-004 Tests:
-- Alfred command files validation (4 required commands: 0-project.md, 1-spec.md, 2-build.md, 3-sync.md)
+- Alfred command files validation (4 required commands: 0-project.md, 1-plan.md, 2-run.md, 3-sync.md)
 - Missing files reporting with clear error messages
 - Phase 5 verification logic
 - Integration with phase_executor
@@ -57,6 +57,7 @@ class TestProjectValidatorConstants:
         assert hasattr(ProjectValidator, "REQUIRED_DIRECTORIES")
         assert isinstance(ProjectValidator.REQUIRED_DIRECTORIES, list)
         assert ".moai/" in ProjectValidator.REQUIRED_DIRECTORIES
+        assert ".github/" in ProjectValidator.REQUIRED_DIRECTORIES
 
     def test_has_required_files(self):
         """Should define required files"""
@@ -233,7 +234,7 @@ class TestValidateAlfredCommands:
         alfred_dir = tmp_project_dir / ".claude" / "commands" / "alfred"
         alfred_dir.mkdir(parents=True, exist_ok=True)
 
-        required_commands = ["0-project.md", "1-spec.md", "2-build.md", "3-sync.md"]
+        required_commands = ["0-project.md", "1-plan.md", "2-run.md", "3-sync.md"]
         for cmd in required_commands:
             (alfred_dir / cmd).write_text("# Alfred Command")
 
@@ -261,14 +262,14 @@ class TestValidateAlfredCommands:
         alfred_dir = tmp_project_dir / ".claude" / "commands" / "alfred"
         alfred_dir.mkdir(parents=True, exist_ok=True)
         (alfred_dir / "0-project.md").write_text("# Command")
-        (alfred_dir / "1-spec.md").write_text("# Command")
-        # Missing: 2-build.md, 3-sync.md
+        (alfred_dir / "1-plan.md").write_text("# Command")
+        # Missing: 2-run.md, 3-sync.md
 
         with pytest.raises(ValidationError) as exc_info:
             validator.validate_installation(tmp_project_dir)
 
         error_message = str(exc_info.value)
-        assert "2-build.md" in error_message
+        assert "2-run.md" in error_message
         assert "3-sync.md" in error_message
 
 

@@ -91,7 +91,7 @@
 - [ ] **첫 SPEC 작성 가이드**:
   - `/alfred:0-project` 실행 방법
   - product/structure/tech 문서 이해
-  - `/alfred:1-spec` 실행 및 SPEC 생성 확인
+  - `/alfred:1-plan` 실행 및 SPEC 생성 확인
 
 - [ ] **실행 가능한 예제**:
   - TODO 앱 첫 프로젝트 예제 (`first-project.md`)
@@ -110,7 +110,7 @@
    # 핵심 명령어 포함 확인
    grep -q "pip install moai-adk" docs/getting-started/installation.md
    grep -q "moai-adk init" docs/getting-started/quick-start.md
-   grep -q "/alfred:1-spec" docs/getting-started/first-project.md
+   grep -q "/alfred:1-plan" docs/getting-started/first-project.md
    ```
 
 2. **수동 검증**:
@@ -137,14 +137,14 @@
   - 목표: RED → GREEN → REFACTOR 사이클 완벽 구현
 
 - [ ] **호출 방법 명확**:
-  - Alfred 명령어: `/alfred:2-build SPEC-XXX`
+  - Alfred 명령어: `/alfred:2-run SPEC-XXX`
   - 직접 호출: `@agent-code-builder`
   - 파라미터 설명 (SPEC ID, TDD 옵션)
 
 - [ ] **실제 예제 포함**:
   ```markdown
   # 예시
-  /alfred:2-build SPEC-AUTH-001
+  /alfred:2-run SPEC-AUTH-001
 
   # 실행 로그
   [code-builder] 🔴 RED: test_user_login_success 작성 중...

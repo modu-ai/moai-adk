@@ -435,10 +435,10 @@
 
 ## 통합 시나리오
 
-### IS-001: /alfred:2-build 완료 후 자동 실행
+### IS-001: /alfred:2-run 완료 후 자동 실행
 
 **Given**:
-- `/alfred:2-build AUTH-001` 실행
+- `/alfred:2-run AUTH-001` 실행
 - GREEN 단계 커밋 완료
 
 **When**:
@@ -521,7 +521,7 @@
 - [ ] 통합 시나리오 2개 통과
 - [ ] 성능 벤치마크 충족 (≤10초)
 - [ ] 보고서 생성 확인 (Markdown + JSON)
-- [ ] /alfred:2-build 통합 확인
+- [ ] /alfred:2-run 통합 확인
 - [ ] 커밋 차단 메커니즘 동작 확인
 
 ---

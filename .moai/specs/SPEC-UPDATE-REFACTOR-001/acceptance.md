@@ -766,14 +766,14 @@ npm run test -- update-orchestrator.test.ts
 **승인 날짜**: 2025-10-06
 
 **구현 완료 상태**:
-- ✅ `/alfred:2-build UPDATE-REFACTOR-001` 완료 (문서 리팩토링)
+- ✅ `/alfred:2-run UPDATE-REFACTOR-001` 완료 (문서 리팩토링)
 - ✅ 9-update.md 업데이트 (468 LOC → 711 LOC)
 - ✅ 템플릿 동기화 완료
 - ✅ Git 커밋 완료 (15 files, +2920/-465)
 - ✅ cc-manager 품질 검증 통과 (P0 6개 + P1 3개)
 
 **다음 단계**:
-1. ~~`/alfred:2-build UPDATE-REFACTOR-001` (TDD 구현)~~ ✅ 완료
+1. ~~`/alfred:2-run UPDATE-REFACTOR-001` (TDD 구현)~~ ✅ 완료
 2. `/alfred:3-sync` (Living Document 생성) - **진행 중**
 3. npm 패키지 배포 (v0.0.3 or v0.1.0) - 보류
 

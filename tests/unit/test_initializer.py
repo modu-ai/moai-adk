@@ -214,8 +214,19 @@ class TestInitialize:
         # Required directories should exist
         assert (tmp_path / ".moai").exists()
         assert (tmp_path / ".claude").exists()
+        assert (tmp_path / ".github").exists()
         assert (tmp_path / "CLAUDE.md").exists()
         assert (tmp_path / ".moai" / "config.json").exists()
+
+    def test_initialize_creates_english_claude_template(self, tmp_path: Path) -> None:
+        """Should copy English CLAUDE.md template by default"""
+        initializer = ProjectInitializer(tmp_path)
+        result = initializer.initialize()
+
+        assert result.success is True
+        claude_content = (tmp_path / "CLAUDE.md").read_text(encoding="utf-8")
+        assert "Meet Alfred: Your MoAI SuperAgent" in claude_content
+        assert "페르소나" not in claude_content
 
     def test_initialize_measures_duration(self, tmp_path: Path) -> None:
         """Should measure initialization duration"""
@@ -233,9 +244,8 @@ class TestInitialize:
 
         assert result.success is True, f"Initialization failed with errors: {result.errors}"
         assert len(result.created_files) > 0
-        assert ".moai/" in result.created_files or any(
-            ".moai" in f for f in result.created_files
-        )
+        assert any(".moai" in f for f in result.created_files)
+        assert any(".github" in f for f in result.created_files)
 
     def test_initialize_handles_errors_gracefully(self, tmp_path: Path) -> None:
         """Should handle errors and return failure result"""

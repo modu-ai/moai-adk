@@ -4,14 +4,14 @@
     "@SPEC:PROJECT-CONFIG-001": "@SPEC:MOAI-CONFIG-001"
   },
   "moai": {
-    "version": "0.3.1"
+    "version": "0.4.1"
   },
   "constitution": {
     "enforce_tdd": true,
     "principles": {
       "simplicity": {
         "max_projects": 5,
-        "notes": "기본 권장값. 프로젝트 규모에 따라 .moai/config.json 또는 SPEC/ADR로 근거와 함께 조정하세요."
+        "notes": "Default recommendation. Adjust in .moai/config.json or via SPEC/ADR with documented rationale based on project size."
       }
     },
     "require_tags": true,
@@ -49,21 +49,22 @@
   "pipeline": {
     "available_commands": [
       "/alfred:0-project",
-      "/alfred:1-spec",
-      "/alfred:2-build",
+      "/alfred:1-plan",
+      "/alfred:2-run",
       "/alfred:3-sync"
     ],
     "current_stage": "initialized"
   },
   "project": {
-    "created_at": "2025-10-15",
-    "description": "MoAI Agentic Development Kit - SPEC-First TDD with Alfred SuperAgent",
+    "created_at": "2025-10-21 23:59:19",
+    "description": "",
     "initialized": true,
     "locale": "ko",
     "mode": "personal",
     "name": "MoAI-ADK",
-    "moai_adk_version": "0.3.7",
-    "optimized": false
+    "moai_adk_version": "0.4.1",
+    "optimized": false,
+    "language": "ko"
   },
   "tags": {
     "auto_sync": true,
@@ -86,7 +87,7 @@
         "grep"
       ],
       "scan_command": "rg '@TAG' -n",
-      "philosophy": "TAG의 진실은 코드 자체에만 존재"
+      "philosophy": "The source of truth for TAGs lives in the code itself"
     }
   }
 }

@@ -1,9 +1,9 @@
 ---
 id: INSTALLER-TEST-001
-version: 0.1.0
-status: deprecated
+version: 0.2.0
+status: completed
 created: 2025-10-06
-updated: 2025-10-16
+updated: 2025-10-18
 author: @Goos
 priority: high
 ---
@@ -11,6 +11,11 @@ priority: high
 # @SPEC:INSTALLER-TEST-001: Test Coverage 85% Achievement
 
 ## HISTORY
+
+### v0.2.0 (2025-10-18)
+- **CHANGED**: deprecated → completed (TypeScript 프로젝트 아카이브)
+- **AUTHOR**: @Goos
+- **REASON**: TypeScript 프로젝트에서 구현 완료된 기능, Python 전환으로 deprecated 처리했으나 실제로는 완료된 것으로 간주
 
 ### v0.1.0 (2025-10-16)
 - **DEPRECATED**: TypeScript 프로젝트용 SPEC, Python 프로젝트에는 적용 불가

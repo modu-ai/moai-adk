@@ -1,4 +1,4 @@
-# @TEST:CLI-001 | SPEC: SPEC-CLI-001.md
+# @TEST:CLI-001 | SPEC: SPEC-CLI-001/spec.md
 """Unit tests for language tool chain mapping
 
 Tests for LANGUAGE_TOOLS dictionary and language-specific tool detection.
@@ -67,6 +67,23 @@ class TestLanguageToolsMapping:
         tools = SystemChecker.LANGUAGE_TOOLS["typescript"]["recommended"]
         assert "vitest" in tools
         assert "biome" in tools
+
+    def test_ruby_required_tools(self):
+        """Ruby should have ruby and gem as required"""
+        tools = SystemChecker.LANGUAGE_TOOLS["ruby"]["required"]
+        assert "ruby" in tools
+        assert "gem" in tools
+
+    def test_ruby_recommended_tools(self):
+        """Ruby should have bundler and rspec as recommended"""
+        tools = SystemChecker.LANGUAGE_TOOLS["ruby"]["recommended"]
+        assert "bundler" in tools
+        assert "rspec" in tools
+
+    def test_ruby_optional_tools(self):
+        """Ruby should have rubocop as optional"""
+        tools = SystemChecker.LANGUAGE_TOOLS["ruby"]["optional"]
+        assert "rubocop" in tools
 
     def test_all_languages_have_required_field(self):
         """All languages should have 'required' field"""

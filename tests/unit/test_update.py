@@ -266,7 +266,7 @@ class TestUpdateCommand:
 
                     result = runner.invoke(update)
                     assert result.exit_code == 0
-                    assert "Optimization needed" in result.output
+                    assert "Template optimization needed" in result.output
                     assert "alfred:0-project update" in result.output
 
     def test_update_proceeds_when_config_missing(self, tmp_path):
