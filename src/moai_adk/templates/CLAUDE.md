@@ -755,6 +755,7 @@ Alfred enforces these quality gates on every change:
 - **설명 | Description**: {{PROJECT_DESCRIPTION}}
 - **버전 | Version**: {{PROJECT_VERSION}}
 - **모드 | Mode**: {{PROJECT_MODE}}
+- **프로젝트 담당자 | Project Owner**: {{USER_NICKNAME}}
 - **대화 언어 | Conversation Language**: {{CONVERSATION_LANGUAGE}} ({{CONVERSATION_LANGUAGE_NAME}})
 - **코드 언어 | Codebase Language**: {{CODEBASE_LANGUAGE}}
 - **도구 | Toolchain**: 선택된 언어에 최적화된 도구 자동 선택 | Automatically selects the best tools for the chosen language
