@@ -65,9 +65,12 @@
     "moai_adk_version": "0.4.1",
     "optimized": true,
     "optimized_at": "2025-10-22T12:45:00Z",
-    "language": "ko",
+    "language": "python",
     "conversation_language": "ko",
     "conversation_language_name": "한국어"
+  },
+  "user": {
+    "nickname": "GOOS오라버니"
   },
   "tags": {
     "auto_sync": true,

@@ -108,32 +108,59 @@ Which language would you like to use for the project initialization and document
 - **中文** (zh) — All dialogs and documentation in Chinese
 - **Other** — User can specify custom language (e.g., "Español", "Français", "Deutsch")
 
-### 0.2 Store Language Preference
+### 0.2 User Nickname Selection (NEW in v0.4.6)
 
-Alfred records the selected language:
+**Purpose**: Personalize the Alfred experience by capturing the user's preferred nickname.
+
+After language selection, Alfred prompts for the user's nickname using `Skill("moai-alfred-interactive-questions")`:
+
+**Question** (in the selected conversation language):
+```
+대화 언어가 한국어일 때:
+"어떤 닉네임으로 불러드릴까요? (예: GOOS오라버니)"
+
+For English:
+"What nickname would you like to be called? (e.g., JohnDev)"
+```
+
+**Input Method**:
+- Free text input field
+- Default suggestion: User's system username (from `$USER` or `whoami`)
+- Examples shown based on conversation language
+
+**Validation**:
+- Nickname length: 1-50 characters
+- No validation on special characters (allow emoji, spaces, etc.)
+- If empty, use system username as fallback
+
+### 0.3 Store Language and User Preferences
+
+Alfred records the selected language and user nickname:
 
 ```json
 {
   "conversation_language": "ko",
-  "conversation_language_name": "Korean",
-  "selected_at": "2025-10-22T12:34:56Z"
+  "conversation_language_name": "한국어",
+  "selected_at": "2025-10-22T12:34:56Z",
+  "user_nickname": "GOOS오라버니"
 }
 ```
 
-This language preference is:
-- Passed to all sub-agents as a context parameter
-- Stored in `.moai/config.json` under the project settings
+These preferences are:
+- Passed to all sub-agents as context parameters
+- Stored in `.moai/config.json` under the `project` and `user` sections
 - Used to generate all documentation in the selected language
-- Displayed in CLAUDE.md under "## Project Information"
+- Used to personalize Alfred's communication style
+- Displayed in CLAUDE.md under "## 프로젝트 정보 | Project Information"
 
-### 0.3 Transition to STEP 1
+### 0.4 Transition to STEP 1
 
-After language selection, all subsequent interactions proceed in the selected language:
-- Alfred's prompts are translated
-- project-manager sub-agent receives language parameter
+After language and nickname selection, all subsequent interactions proceed with personalization:
+- Alfred addresses the user by their chosen nickname (e.g., "안녕하세요, GOOS오라버니님!")
+- project-manager sub-agent receives both language and nickname parameters
 - Interview questions are in the selected language
 - Generated documents (product.md, structure.md, tech.md) are in the selected language
-- CLAUDE.md displays the selected language prominently
+- CLAUDE.md displays both language and nickname prominently
 
 ---
 
@@ -401,8 +428,9 @@ After user approval, the project-manager agent performs initialization.
 Alfred starts project initialization by calling the project-manager agent with the following parameters:
 
 **Parameters passed to project-manager**:
-- **conversation_language** (from STEP 0): Language code selected by user (e.g., "ko", "en", "ja", "zh")
-- **language_name** (from STEP 0): Display name of selected language (e.g., "Korean", "English")
+- **conversation_language** (from STEP 0.1): Language code selected by user (e.g., "ko", "en", "ja", "zh")
+- **language_name** (from STEP 0.1): Display name of selected language (e.g., "한국어", "English")
+- **user_nickname** (from STEP 0.2): User's chosen nickname (e.g., "GOOS오라버니", "JohnDev")
 - Detected Languages: [Language List from codebase detection]
 - Project Type: [New/Existing]
 - Existing Document Status: [Existence/Absence]
@@ -413,20 +441,22 @@ Alfred starts project initialization by calling the project-manager agent with t
 # Pseudo-code showing parameter flow
 Task(
     subagent_type="project-manager",
-    description="Initialize project with conversation language support",
+    description="Initialize project with conversation language and user personalization",
     prompt=f"""You are project-manager. Initialize project with these parameters:
     - conversation_language: "{conversation_language}"  # e.g., "ko"
-    - language_name: "{language_name}"  # e.g., "Korean"
+    - language_name: "{language_name}"  # e.g., "한국어"
+    - user_nickname: "{user_nickname}"  # e.g., "GOOS오라버니"
     - project_type: "{project_type}"  # e.g., "new"
     - detected_languages: {detected_languages}
 
     All interviews and documentation must be generated in the conversation_language.
-    Update .moai/config.json with these language parameters.
+    Address the user by their nickname throughout all interactions.
+    Update .moai/config.json with language and user parameters.
     """
 )
 ```
 
-**Outcome**: The project-manager agent conducts structured interviews entirely in the selected language and creates/updates product/structure/tech.md documents in that language.
+**Outcome**: The project-manager agent conducts structured interviews entirely in the selected language, addresses the user by their nickname, and creates/updates product/structure/tech.md documents in that language.
 
 ### 2.2 Automatic activation of Alfred Skills (optional)
 
