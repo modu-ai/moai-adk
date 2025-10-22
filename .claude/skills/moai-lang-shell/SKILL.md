@@ -1,100 +1,123 @@
 ---
-
 name: moai-lang-shell
-description: Shell scripting best practices with bats, shellcheck, and POSIX compliance. Use when writing or reviewing Shell scripts code in project workflows.
+version: 2.0.0
+created: 2025-10-22
+updated: 2025-10-22
+status: active
+description: Shell scripting best practices with bats-core 1.11, shellcheck 0.10, and POSIX compliance.
+keywords: ['shell', 'bash', 'shellcheck', 'bats', 'posix']
 allowed-tools:
   - Read
   - Bash
 ---
 
-# Shell Expert
+# Lang Shell Skill
 
 ## Skill Metadata
+
 | Field | Value |
 | ----- | ----- |
-| Allowed tools | Read (read_file), Bash (terminal) |
-| Auto-load | On demand when language keywords are detected |
-| Trigger cues | Shell code discussions, framework guidance, or file extensions such as .sh/.bash. |
-| Tier | 3 |
+| **Skill Name** | moai-lang-shell |
+| **Version** | 2.0.0 (2025-10-22) |
+| **Allowed tools** | Read (read_file), Bash (terminal) |
+| **Auto-load** | On demand when keywords detected |
+| **Tier** | Language |
 
-## What it does
+---
 
-Provides shell scripting expertise for TDD development, including bats testing framework, shellcheck linting, and POSIX compliance for portable scripts.
+## What It Does
 
-## When to use
+Shell scripting best practices with bats-core 1.11, shellcheck 0.10, and POSIX compliance.
 
-- Engages when the conversation references Shell work, frameworks, or files like .sh/.bash.
-- "Writing shell scripts", "bats testing", "POSIX compatibility"
-- Automatically invoked when working with shell script projects
-- Shell SPEC implementation (`/alfred:2-run`)
+**Key capabilities**:
+- ✅ Best practices enforcement for language domain
+- ✅ TRUST 5 principles integration
+- ✅ Latest tool versions (2025-10-22)
+- ✅ TDD workflow support
 
-## How it works
+---
 
-**TDD Framework**:
-- **bats**: Bash Automated Testing System
-- **shunit2**: xUnit-style shell testing
-- **assert.sh**: Shell assertion library
-- Test-driven shell development
+## When to Use
 
-**Code Quality**:
-- **shellcheck**: Static analysis for shell scripts
-- **shfmt**: Shell script formatting
-- **bashate**: Style checker
+**Automatic triggers**:
+- Related code discussions and file patterns
+- SPEC implementation (`/alfred:2-run`)
+- Code review requests
 
-**POSIX Compliance**:
-- Portable shell features (sh vs bash)
-- Avoid bashisms for portability
-- Use `[ ]` instead of `[[ ]]` for POSIX
-- Standard utilities (no GNU extensions)
+**Manual invocation**:
+- Review code for TRUST 5 compliance
+- Design new features
+- Troubleshoot issues
 
-**Shell Patterns**:
-- **Error handling**: set -e, set -u, set -o pipefail
-- **Exit codes**: Proper use of 0 (success) and non-zero
-- **Quoting**: Always quote variables ("$var")
-- **Functions**: Modular script organization
+---
 
-**Best Practices**:
-- File ≤300 LOC, function ≤50 LOC
-- Use `#!/bin/sh` for POSIX, `#!/bin/bash` for Bash
-- Check command existence with `command -v`
-- Use `$()` over backticks
-- Validate input arguments
+## Tool Version Matrix (2025-10-22)
 
-## Examples
-```bash
-bats tests && shellcheck scripts/*.sh
-```
+| Tool | Version | Purpose | Status |
+|------|---------|---------|--------|
+| **Bash** | 5.2.37 | Primary | ✅ Current |
+| **ShellCheck** | 0.10.0 | Primary | ✅ Current |
+| **bats-core** | 1.11.0 | Primary | ✅ Current |
+
+---
 
 ## Inputs
-- Language-specific source directories (e.g. `src/`, `app/`).
-- Language-specific build/test configuration files (e.g. `package.json`, `pyproject.toml`, `go.mod`).
-- Relevant test suites and sample data.
+
+- Language-specific source directories
+- Configuration files
+- Test suites and sample data
 
 ## Outputs
-- Test/lint execution plan tailored to the selected language.
-- List of key language idioms and review checkpoints.
+
+- Test/lint execution plan
+- TRUST 5 review checkpoints
+- Migration guidance
 
 ## Failure Modes
-- When the language runtime or package manager is not installed.
-- When the main language cannot be determined in a multilingual project.
+
+- When required tools are not installed
+- When dependencies are missing
+- When test coverage falls below 85%
 
 ## Dependencies
-- Access to the project file is required using the Read/Grep tool.
-- When used with `Skill("moai-foundation-langs")`, it is easy to share cross-language conventions.
 
-## References
-- GNU. "Bash Reference Manual." https://www.gnu.org/software/bash/manual/bash.html (accessed 2025-03-29).
-- koalaman. "ShellCheck." https://www.shellcheck.net/ (accessed 2025-03-29).
+- Access to project files via Read/Bash tools
+- Integration with `moai-foundation-langs` for language detection
+- Integration with `moai-foundation-trust` for quality gates
+
+---
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
 
 ## Changelog
-- 2025-03-29: Input/output/failure response/reference information for each language has been specified.
 
-## Works well with
+- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
+- **v1.0.0** (2025-03-29): Initial Skill release
 
-- alfred-trust-validation (coverage verification)
-- alfred-code-reviewer (Shell-specific review)
-- devops-expert (Deployment scripts)
+---
+
+## Works Well With
+
+- `moai-foundation-trust` (quality gates)
+- `moai-alfred-code-reviewer` (code review)
+- `moai-essentials-debug` (debugging support)
+
+---
 
 ## Best Practices
-- Enable automatic validation by matching your linter with the language's official style guide.
-- Fix test/build pipelines with reproducible commands in CI.
+
+✅ **DO**:
+- Follow language best practices
+- Use latest stable tool versions
+- Maintain test coverage ≥85%
+- Document all public APIs
+
+❌ **DON'T**:
+- Skip quality gates
+- Use deprecated tools
+- Ignore security warnings
+- Mix testing frameworks

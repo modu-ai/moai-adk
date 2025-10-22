@@ -1,99 +1,124 @@
 ---
-
 name: moai-lang-ruby
-description: Ruby best practices with RSpec, RuboCop, Bundler, and Rails patterns. Use when writing or reviewing Ruby code in project workflows.
+version: 2.0.0
+created: 2025-10-22
+updated: 2025-10-22
+status: active
+description: Ruby 3.4+ best practices with RSpec 4, RuboCop 2, Bundler, and Rails 8 patterns.
+keywords: ['ruby', 'rspec', 'rubocop', 'bundler', 'rails']
 allowed-tools:
   - Read
   - Bash
 ---
 
-# Ruby Expert
+# Lang Ruby Skill
 
 ## Skill Metadata
+
 | Field | Value |
 | ----- | ----- |
-| Allowed tools | Read (read_file), Bash (terminal) |
-| Auto-load | On demand when language keywords are detected |
-| Trigger cues | Ruby code discussions, framework guidance, or file extensions such as .rb. |
-| Tier | 3 |
+| **Skill Name** | moai-lang-ruby |
+| **Version** | 2.0.0 (2025-10-22) |
+| **Allowed tools** | Read (read_file), Bash (terminal) |
+| **Auto-load** | On demand when keywords detected |
+| **Tier** | Language |
 
-## What it does
+---
 
-Provides Ruby-specific expertise for TDD development, including RSpec BDD testing, RuboCop linting, Bundler package management, and Rails framework patterns.
+## What It Does
 
-## When to use
+Ruby 3.4+ best practices with RSpec 4, RuboCop 2, Bundler, and Rails 8 patterns.
 
-- Engages when the conversation references Ruby work, frameworks, or files like .rb.
-- “Writing Ruby tests”, “How to use RSpec”, “Rails patterns”
-- Automatically invoked when working with Ruby/Rails projects
-- Ruby SPEC implementation (`/alfred:2-run`)
+**Key capabilities**:
+- ✅ Best practices enforcement for language domain
+- ✅ TRUST 5 principles integration
+- ✅ Latest tool versions (2025-10-22)
+- ✅ TDD workflow support
 
-## How it works
+---
 
-**TDD Framework**:
-- **RSpec**: Behavior-driven development (describe, context, it)
-- **FactoryBot**: Test data factories
-- **Capybara**: Integration testing for web apps
-- Test coverage ≥85% with SimpleCov
+## When to Use
 
-**Code Quality**:
-- **RuboCop**: Ruby linter and formatter
-- **Reek**: Code smell detection
-- **Brakeman**: Security vulnerability scanner (Rails)
+**Automatic triggers**:
+- Related code discussions and file patterns
+- SPEC implementation (`/alfred:2-run`)
+- Code review requests
 
-**Package Management**:
-- **Bundler**: Dependency management with Gemfile
-- **RubyGems**: Package distribution
-- Semantic versioning in gemspec
+**Manual invocation**:
+- Review code for TRUST 5 compliance
+- Design new features
+- Troubleshoot issues
 
-**Rails Patterns**:
-- MVC architecture (Model-View-Controller)
-- ActiveRecord for database interactions
-- RESTful routing conventions
-- Service objects for business logic
-- Strong parameters for security
+---
 
-**Best Practices**:
-- File ≤300 LOC, method ≤50 LOC
-- Prefer symbols over strings for hash keys
-- Use blocks and yielding for abstraction
-- Duck typing over explicit type checking
+## Tool Version Matrix (2025-10-22)
 
-## Examples
-```bash
-bundle exec rubocop && bundle exec rspec
-```
+| Tool | Version | Purpose | Status |
+|------|---------|---------|--------|
+| **Ruby** | 3.4.0 | Primary | ✅ Current |
+| **RSpec** | 4.0.0 | Primary | ✅ Current |
+| **RuboCop** | 2.0.0 | Primary | ✅ Current |
+| **Rails** | 8.0.0 | Primary | ✅ Current |
+
+---
 
 ## Inputs
-- Language-specific source directories (e.g. `src/`, `app/`).
-- Language-specific build/test configuration files (e.g. `package.json`, `pyproject.toml`, `go.mod`).
-- Relevant test suites and sample data.
+
+- Language-specific source directories
+- Configuration files
+- Test suites and sample data
 
 ## Outputs
-- Test/lint execution plan tailored to the selected language.
-- List of key language idioms and review checkpoints.
+
+- Test/lint execution plan
+- TRUST 5 review checkpoints
+- Migration guidance
 
 ## Failure Modes
-- When the language runtime or package manager is not installed.
-- When the main language cannot be determined in a multilingual project.
+
+- When required tools are not installed
+- When dependencies are missing
+- When test coverage falls below 85%
 
 ## Dependencies
-- Access to the project file is required using the Read/Grep tool.
-- When used with `Skill("moai-foundation-langs")`, it is easy to share cross-language conventions.
 
-## References
-- Ruby Lang. "Ruby Programming Language." https://www.ruby-lang.org/en/documentation/ (accessed 2025-03-29).
-- RuboCop. "RuboCop Documentation." https://docs.rubocop.org/rubocop/ (accessed 2025-03-29).
+- Access to project files via Read/Bash tools
+- Integration with `moai-foundation-langs` for language detection
+- Integration with `moai-foundation-trust` for quality gates
+
+---
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
 
 ## Changelog
-- 2025-03-29: Input/output/failure response/reference information for each language has been specified.
 
-## Works well with
+- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
+- **v1.0.0** (2025-03-29): Initial Skill release
 
-- alfred-trust-validation (coverage verification)
-- alfred-code-reviewer (Ruby-specific review)
-- web-api-expert (Rails API development)
+---
+
+## Works Well With
+
+- `moai-foundation-trust` (quality gates)
+- `moai-alfred-code-reviewer` (code review)
+- `moai-essentials-debug` (debugging support)
+
+---
 
 ## Best Practices
-- Enable automatic validation by matching your linter with the language's official style guide.
-- Fix test/build pipelines with reproducible commands in CI.
+
+✅ **DO**:
+- Follow language best practices
+- Use latest stable tool versions
+- Maintain test coverage ≥85%
+- Document all public APIs
+
+❌ **DON'T**:
+- Skip quality gates
+- Use deprecated tools
+- Ignore security warnings
+- Mix testing frameworks

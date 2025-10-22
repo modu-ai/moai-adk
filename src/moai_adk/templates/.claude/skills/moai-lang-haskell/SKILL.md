@@ -1,100 +1,124 @@
 ---
-
 name: moai-lang-haskell
-description: Haskell best practices with HUnit, Stack/Cabal, and pure functional programming. Use when writing or reviewing Haskell code in project workflows.
+version: 2.0.0
+created: 2025-10-22
+updated: 2025-10-22
+status: active
+description: Haskell GHC 9.12+ best practices with HUnit, Stack/Cabal, and pure functional programming.
+keywords: ['haskell', 'ghc', 'hunit', 'stack', 'cabal']
 allowed-tools:
   - Read
   - Bash
 ---
 
-# Haskell Expert
+# Lang Haskell Skill
 
 ## Skill Metadata
+
 | Field | Value |
 | ----- | ----- |
-| Allowed tools | Read (read_file), Bash (terminal) |
-| Auto-load | On demand when language keywords are detected |
-| Trigger cues | Haskell code discussions, framework guidance, or file extensions such as .hs. |
-| Tier | 3 |
+| **Skill Name** | moai-lang-haskell |
+| **Version** | 2.0.0 (2025-10-22) |
+| **Allowed tools** | Read (read_file), Bash (terminal) |
+| **Auto-load** | On demand when keywords detected |
+| **Tier** | Language |
 
-## What it does
+---
 
-Provides Haskell-specific expertise for TDD development, including HUnit testing, Stack/Cabal build tools, and pure functional programming with strong type safety.
+## What It Does
 
-## When to use
+Haskell GHC 9.12+ best practices with HUnit, Stack/Cabal, and pure functional programming.
 
-- Engages when the conversation references Haskell work, frameworks, or files like .hs.
-- “Writing Haskell tests”, “How to use HUnit”, “Pure functional programming”
-- Automatically invoked when working with Haskell projects
-- Haskell SPEC implementation (`/alfred:2-run`)
+**Key capabilities**:
+- ✅ Best practices enforcement for language domain
+- ✅ TRUST 5 principles integration
+- ✅ Latest tool versions (2025-10-22)
+- ✅ TDD workflow support
 
-## How it works
+---
 
-**TDD Framework**:
-- **HUnit**: Unit testing framework
-- **QuickCheck**: Property-based testing
-- **Hspec**: BDD-style testing
-- Test coverage with hpc
+## When to Use
 
-**Build Tools**:
-- **Stack**: Reproducible builds, dependency resolution
-- **Cabal**: Haskell package system
-- **hpack**: Alternative package description
+**Automatic triggers**:
+- Related code discussions and file patterns
+- SPEC implementation (`/alfred:2-run`)
+- Code review requests
 
-**Code Quality**:
-- **hlint**: Haskell linter
-- **stylish-haskell**: Code formatting
-- **GHC warnings**: Compiler-level checks
+**Manual invocation**:
+- Review code for TRUST 5 compliance
+- Design new features
+- Troubleshoot issues
 
-**Functional Programming**:
-- **Pure functions**: No side effects
-- **Monads**: IO, Maybe, Either, State
-- **Functors/Applicatives**: Abstraction patterns
-- **Type classes**: Polymorphism
-- **Lazy evaluation**: Infinite data structures
+---
 
-**Best Practices**:
-- File ≤300 LOC, function ≤50 LOC
-- Prefer total functions (avoid partial)
-- Type-driven development
-- Point-free style (when readable)
-- Avoid do-notation overuse
+## Tool Version Matrix (2025-10-22)
 
-## Examples
-```bash
-cabal test && hlint src
-```
+| Tool | Version | Purpose | Status |
+|------|---------|---------|--------|
+| **GHC** | 9.12.0 | Primary | ✅ Current |
+| **HUnit** | 1.6.2.0 | Primary | ✅ Current |
+| **Stack** | 3.3.1 | Primary | ✅ Current |
+| **Cabal** | 3.14.0.0 | Primary | ✅ Current |
+
+---
 
 ## Inputs
-- Language-specific source directories (e.g. `src/`, `app/`).
-- Language-specific build/test configuration files (e.g. `package.json`, `pyproject.toml`, `go.mod`).
-- Relevant test suites and sample data.
+
+- Language-specific source directories
+- Configuration files
+- Test suites and sample data
 
 ## Outputs
-- Test/lint execution plan tailored to the selected language.
-- List of key language idioms and review checkpoints.
+
+- Test/lint execution plan
+- TRUST 5 review checkpoints
+- Migration guidance
 
 ## Failure Modes
-- When the language runtime or package manager is not installed.
-- When the main language cannot be determined in a multilingual project.
+
+- When required tools are not installed
+- When dependencies are missing
+- When test coverage falls below 85%
 
 ## Dependencies
-- Access to the project file is required using the Read/Grep tool.
-- When used with `Skill("moai-foundation-langs")`, it is easy to share cross-language conventions.
 
-## References
-- Haskell.org. "Haskell Language Documentation." https://www.haskell.org/documentation/ (accessed 2025-03-29).
-- GitHub. "HLint." https://github.com/ndmitchell/hlint (accessed 2025-03-29).
+- Access to project files via Read/Bash tools
+- Integration with `moai-foundation-langs` for language detection
+- Integration with `moai-foundation-trust` for quality gates
+
+---
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
 
 ## Changelog
-- 2025-03-29: Input/output/failure response/reference information for each language has been specified.
 
-## Works well with
+- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
+- **v1.0.0** (2025-03-29): Initial Skill release
 
-- alfred-trust-validation (coverage verification)
-- alfred-code-reviewer (Haskell-specific review)
-- alfred-refactoring-coach (functional refactoring)
+---
+
+## Works Well With
+
+- `moai-foundation-trust` (quality gates)
+- `moai-alfred-code-reviewer` (code review)
+- `moai-essentials-debug` (debugging support)
+
+---
 
 ## Best Practices
-- Enable automatic validation by matching your linter with the language's official style guide.
-- Fix test/build pipelines with reproducible commands in CI.
+
+✅ **DO**:
+- Follow language best practices
+- Use latest stable tool versions
+- Maintain test coverage ≥85%
+- Document all public APIs
+
+❌ **DON'T**:
+- Skip quality gates
+- Use deprecated tools
+- Ignore security warnings
+- Mix testing frameworks

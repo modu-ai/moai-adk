@@ -1,9 +1,19 @@
 ---
-name: Intelligent Skill Factory with Research Integration
+name: moai-skill-factory
+version: 2.0.0
+created: 2025-10-22
+updated: 2025-10-22
+status: active
 description: Create and maintain high-quality Claude Code Skills through interactive discovery, web research, and continuous updates. Use when building new Skills, researching latest best practices, updating existing Skills with current information, or generating Skill packages backed by official documentation and real-world examples.
-allowed-tools: Read, Write, Glob, Bash(mkdir:*), Bash(touch:*), WebFetch, WebSearch
+keywords: [skill-creation, claude-skills, best-practices, web-research, interactive-discovery, skill-updates]
+allowed-tools:
+  - Read
+  - Write
+  - Glob
+  - Bash
+  - WebFetch
+  - WebSearch
 ---
-
 # Generating High-Quality Claude Code Skills
 
 > **Quick Reference**: See `METADATA.md` for metadata authoring, `STRUCTURE.md` for file organization, `EXAMPLES.md` for real-world case studies, and `CHECKLIST.md` for validation.

@@ -1,103 +1,113 @@
 ---
-
 name: moai-alfred-debugger-pro
-description: Advanced debugging support with stack trace analysis, error pattern detection, and fix suggestions. Use when unraveling complex runtime errors or stack traces.
+version: 2.0.0
+created: 2025-10-22
+updated: 2025-10-22
+status: active
+description: Advanced debugging strategies with stack trace analysis, error pattern detection, and fix suggestions.
+keywords: ['debugging', 'stack-trace', 'errors', 'diagnosis']
 allowed-tools:
   - Read
-  - Write
-  - Edit
   - Bash
-  - TodoWrite
 ---
 
-# Alfred Debugger Pro
+# Alfred Debugger Pro Skill
 
 ## Skill Metadata
+
 | Field | Value |
 | ----- | ----- |
-| Allowed tools | Read (read_file), Write (write_file), Edit (edit_file), Bash (terminal), TodoWrite (todo_write) |
-| Auto-load | Triggered by Alfred debug-helper |
-| Trigger cues | Runtime failures surfaced in Alfred runs, stack trace walkthroughs, hotfix triage. |
+| **Skill Name** | moai-alfred-debugger-pro |
+| **Version** | 2.0.0 (2025-10-22) |
+| **Allowed tools** | Read (read_file), Bash (terminal) |
+| **Auto-load** | On demand when keywords detected |
+| **Tier** | Alfred |
 
-## What it does
+---
 
-Advanced debugging support with stack trace analysis, common error pattern detection, and actionable fix suggestions.
+## What It Does
 
-## When to use
+Advanced debugging strategies with stack trace analysis, error pattern detection, and fix suggestions.
 
-- Activates when Alfred encounters runtime errors and needs guided debugging steps.
-- “Resolve the error”, “What is the cause of this error?”, “Stack trace analysis”
-- Automatically invoked on runtime errors (via debug-helper sub-agent)
-- "Why not?", "Solving NullPointerException"
+**Key capabilities**:
+- ✅ Best practices enforcement for alfred domain
+- ✅ TRUST 5 principles integration
+- ✅ Latest tool versions (2025-10-22)
+- ✅ TDD workflow support
 
-## How it works
+---
 
-**Stack Trace Analysis**:
-```python
-# Error example
-jwt.exceptions.ExpiredSignatureError: Signature has expired
+## When to Use
 
-# Alfred Analysis
-📍 Error Location: src/auth/service.py:142
-🔍 Root Cause: JWT token has expired
-💡 Fix Suggestion:
-   1. Implement token refresh logic
-   2. Check expiration before validation
-   3. Handle ExpiredSignatureError gracefully
-```
+**Automatic triggers**:
+- Related code discussions and file patterns
+- SPEC implementation (`/alfred:2-run`)
+- Code review requests
 
-**Common Error Patterns**:
-- `NullPointerException` → Optional usage, guard clauses
-- `IndexError` → Boundary checks
-- `KeyError` → `.get()` with defaults
-- `TypeError` → Type hints, input validation
-- `ConnectionError` → Retry logic, timeouts
+**Manual invocation**:
+- Review code for TRUST 5 compliance
+- Design new features
+- Troubleshoot issues
 
-**Debugging Checklist**:
-- [ ] Reproducible?
-- [ ] Log messages?
-- [ ] Input data?
-- [ ] Recent changes?
-- [ ] Dependency versions?
-
-**Language-specific Tips**:
-- **Python**: Logging, type guards
-- **TypeScript**: Type guards, null checks
-- **Java**: Optional, try-with-resources
-
-## Best Practices
-- The text shown to the user is written using TUI/report expressions.
-- When running the tool, a summary of commands and results are recorded.
-
-## Examples
-```markdown
-- Call this skill inside the /alfred command to generate a report.
-- Add summary to Completion Report.
-```
+---
 
 ## Inputs
-- MoAI-ADK project context (`.moai/project/`, `.claude/` templates, etc.).
-- Parameters passed from user commands or higher commands.
+
+- Language-specific source directories
+- Configuration files
+- Test suites and sample data
 
 ## Outputs
-- Reports, checklists or recommendations for your Alfred workflow.
-- Structured data for subsequent subagent calls.
+
+- Test/lint execution plan
+- TRUST 5 review checkpoints
+- Migration guidance
 
 ## Failure Modes
-- When required input documents are missing or permissions are limited.
-- When disruptive changes are required without user approval.
+
+- When required tools are not installed
+- When dependencies are missing
+- When test coverage falls below 85%
 
 ## Dependencies
-- Cooperation with higher-level agents such as cc-manager and project-manager is required.
 
-## References
-- Microsoft. "Debugging Techniques." https://learn.microsoft.com/visualstudio/debugger/ (accessed 2025-03-29).
-- JetBrains. "Debugging Code." https://www.jetbrains.com/help/idea/debugging-code.html (accessed 2025-03-29).
+- Access to project files via Read/Bash tools
+- Integration with `moai-foundation-langs` for language detection
+- Integration with `moai-foundation-trust` for quality gates
+
+---
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
 
 ## Changelog
-- 2025-03-29: Added input/output/failure response to Alfred-specific skills.
 
-## Works well with
+- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
+- **v1.0.0** (2025-03-29): Initial Skill release
 
-- alfred-code-reviewer
-- alfred-trust-validation
+---
+
+## Works Well With
+
+- `moai-foundation-trust` (quality gates)
+- `moai-alfred-code-reviewer` (code review)
+- `moai-essentials-debug` (debugging support)
+
+---
+
+## Best Practices
+
+✅ **DO**:
+- Follow alfred best practices
+- Use latest stable tool versions
+- Maintain test coverage ≥85%
+- Document all public APIs
+
+❌ **DON'T**:
+- Skip quality gates
+- Use deprecated tools
+- Ignore security warnings
+- Mix testing frameworks

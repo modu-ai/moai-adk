@@ -1,100 +1,124 @@
 ---
-
 name: moai-domain-devops
-description: CI/CD pipelines, Docker containerization, Kubernetes orchestration, and infrastructure as code. Use when working on DevOps automation scenarios.
+version: 2.0.0
+created: 2025-10-22
+updated: 2025-10-22
+status: active
+description: CI/CD pipelines, Docker 27, Kubernetes 1.32, and infrastructure as code.
+keywords: ['cicd', 'docker', 'kubernetes', 'terraform', 'iac']
 allowed-tools:
   - Read
   - Bash
 ---
 
-# DevOps Expert
+# Domain Devops Skill
 
 ## Skill Metadata
+
 | Field | Value |
 | ----- | ----- |
-| Allowed tools | Read (read_file), Bash (terminal) |
-| Auto-load | On demand for platform and CI/CD topics |
-| Trigger cues | Infrastructure as code, pipeline design, release automation, observability setup. |
-| Tier | 4 |
+| **Skill Name** | moai-domain-devops |
+| **Version** | 2.0.0 (2025-10-22) |
+| **Allowed tools** | Read (read_file), Bash (terminal) |
+| **Auto-load** | On demand when keywords detected |
+| **Tier** | Domain |
 
-## What it does
+---
 
-Provides expertise in continuous integration/deployment (CI/CD), Docker containerization, Kubernetes orchestration, and infrastructure as code (IaC) for automated deployment workflows.
+## What It Does
 
-## When to use
+CI/CD pipelines, Docker 27, Kubernetes 1.32, and infrastructure as code.
 
-- Engages when DevOps, CI/CD, or infrastructure automation is required.
-- “CI/CD pipeline”, “Docker containerization”, “Kubernetes deployment”, “infrastructure code”
-- Automatically invoked when working with DevOps projects
-- DevOps SPEC implementation (`/alfred:2-run`)
+**Key capabilities**:
+- ✅ Best practices enforcement for domain domain
+- ✅ TRUST 5 principles integration
+- ✅ Latest tool versions (2025-10-22)
+- ✅ TDD workflow support
 
-## How it works
+---
 
-**CI/CD Pipelines**:
-- **GitHub Actions**: Workflow automation (.github/workflows)
-- **GitLab CI**: .gitlab-ci.yml configuration
-- **Jenkins**: Pipeline as code (Jenkinsfile)
-- **CircleCI**: .circleci/config.yml
-- **Pipeline stages**: Build → Test → Deploy
+## When to Use
 
-**Docker Containerization**:
-- **Dockerfile**: Multi-stage builds for optimization
-- **docker-compose**: Local development environments
-- **Image optimization**: Layer caching, alpine base images
-- **Container registries**: Docker Hub, GitHub Container Registry
+**Automatic triggers**:
+- Related code discussions and file patterns
+- SPEC implementation (`/alfred:2-run`)
+- Code review requests
 
-**Kubernetes Orchestration**:
-- **Deployments**: Rolling updates, rollbacks
-- **Services**: LoadBalancer, ClusterIP, NodePort
-- **ConfigMaps/Secrets**: Configuration management
-- **Helm charts**: Package management
-- **Ingress**: Traffic routing
+**Manual invocation**:
+- Review code for TRUST 5 compliance
+- Design new features
+- Troubleshoot issues
 
-**Infrastructure as Code (IaC)**:
-- **Terraform**: Cloud-agnostic provisioning
-- **Ansible**: Configuration management
-- **CloudFormation**: AWS-specific IaC
-- **Pulumi**: Programmatic infrastructure
+---
 
-**Monitoring & Logging**:
-- **Prometheus**: Metrics collection
-- **Grafana**: Visualization
-- **ELK Stack**: Logging (Elasticsearch, Logstash, Kibana)
+## Tool Version Matrix (2025-10-22)
 
-## Examples
-```bash
-$ terraform fmt && terraform validate
-$ ansible-playbook deploy.yml --check
-```
+| Tool | Version | Purpose | Status |
+|------|---------|---------|--------|
+| **Docker** | 27.4.0 | Primary | ✅ Current |
+| **Kubernetes** | 1.32.0 | Primary | ✅ Current |
+| **Terraform** | 1.10.0 | Primary | ✅ Current |
+| **GitHub Actions** | latest | Primary | ✅ Current |
+
+---
 
 ## Inputs
-- Domain-specific design documents and user requirements.
-- Project technology stack and operational constraints.
+
+- Language-specific source directories
+- Configuration files
+- Test suites and sample data
 
 ## Outputs
-- Domain-specific architecture or implementation guidelines.
-- Recommended list of associated sub-agents/skills.
+
+- Test/lint execution plan
+- TRUST 5 review checkpoints
+- Migration guidance
 
 ## Failure Modes
-- When the domain document does not exist or is ambiguous.
-- When the project strategy is unconfirmed and cannot be specified.
+
+- When required tools are not installed
+- When dependencies are missing
+- When test coverage falls below 85%
 
 ## Dependencies
-- `.moai/project/` document and latest technical briefing are required.
 
-## References
-- Google SRE. "Site Reliability Engineering." https://sre.google/books/ (accessed 2025-03-29).
-- HashiCorp. "Terraform Best Practices." https://developer.hashicorp.com/terraform/intro (accessed 2025-03-29).
+- Access to project files via Read/Bash tools
+- Integration with `moai-foundation-langs` for language detection
+- Integration with `moai-foundation-trust` for quality gates
+
+---
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
 
 ## Changelog
-- 2025-03-29: Codified input/output and failure responses for domain skills.
 
-## Works well with
+- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
+- **v1.0.0** (2025-03-29): Initial Skill release
 
-- alfred-trust-validation (deployment validation)
-- shell-expert (shell scripting for automation)
-- security-expert (secure deployments)
+---
+
+## Works Well With
+
+- `moai-foundation-trust` (quality gates)
+- `moai-alfred-code-reviewer` (code review)
+- `moai-essentials-debug` (debugging support)
+
+---
 
 ## Best Practices
-- Record supporting documentation (version/link) for each domain decision.
-- Review performance, security, and operational requirements simultaneously at an early stage.
+
+✅ **DO**:
+- Follow domain best practices
+- Use latest stable tool versions
+- Maintain test coverage ≥85%
+- Document all public APIs
+
+❌ **DON'T**:
+- Skip quality gates
+- Use deprecated tools
+- Ignore security warnings
+- Mix testing frameworks

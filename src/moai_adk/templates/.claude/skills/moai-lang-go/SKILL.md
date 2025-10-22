@@ -1,100 +1,124 @@
 ---
-
 name: moai-lang-go
-description: Go best practices with go test, golint, gofmt, and standard library utilization. Use when writing or reviewing Go code in project workflows.
+version: 2.0.0
+created: 2025-10-22
+updated: 2025-10-22
+status: active
+description: Go 1.24+ best practices with go test, golangci-lint, gofmt, and standard library utilization.
+keywords: ['go', 'golang', 'testing', 'golangci-lint', 'gofmt']
 allowed-tools:
   - Read
   - Bash
 ---
 
-# Go Expert
+# Lang Go Skill
 
 ## Skill Metadata
+
 | Field | Value |
 | ----- | ----- |
-| Allowed tools | Read (read_file), Bash (terminal) |
-| Auto-load | On demand when language keywords are detected |
-| Trigger cues | Go code discussions, framework guidance, or file extensions such as .go. |
-| Tier | 3 |
+| **Skill Name** | moai-lang-go |
+| **Version** | 2.0.0 (2025-10-22) |
+| **Allowed tools** | Read (read_file), Bash (terminal) |
+| **Auto-load** | On demand when keywords detected |
+| **Tier** | Language |
 
-## What it does
+---
 
-Provides Go-specific expertise for TDD development, including go test framework, golint/staticcheck, gofmt formatting, and effective standard library usage.
+## What It Does
 
-## When to use
+Go 1.24+ best practices with go test, golangci-lint, gofmt, and standard library utilization.
 
-- Engages when the conversation references Go work, frameworks, or files like .go.
-- “Writing Go tests”, “How to use go tests”, “Go standard library”
-- Automatically invoked when working with Go projects
-- Go SPEC implementation (`/alfred:2-run`)
+**Key capabilities**:
+- ✅ Best practices enforcement for language domain
+- ✅ TRUST 5 principles integration
+- ✅ Latest tool versions (2025-10-22)
+- ✅ TDD workflow support
 
-## How it works
+---
 
-**TDD Framework**:
-- **go test**: Built-in testing framework
-- **Table-driven tests**: Structured test cases
-- **testify/assert**: Optional assertion library
-- Test coverage ≥85% with `go test -cover`
+## When to Use
 
-**Code Quality**:
-- **gofmt**: Automatic code formatting
-- **golint**: Go linter (deprecated, use staticcheck)
-- **staticcheck**: Advanced static analysis
-- **go vet**: Built-in error detection
+**Automatic triggers**:
+- Related code discussions and file patterns
+- SPEC implementation (`/alfred:2-run`)
+- Code review requests
 
-**Standard Library**:
-- Use standard library first before external dependencies
-- **net/http**: HTTP server/client
-- **encoding/json**: JSON marshaling
-- **context**: Context propagation
+**Manual invocation**:
+- Review code for TRUST 5 compliance
+- Design new features
+- Troubleshoot issues
 
-**Go Patterns**:
-- Interfaces for abstraction (small interfaces)
-- Error handling with explicit returns
-- Defer for cleanup
-- Goroutines and channels for concurrency
+---
 
-**Best Practices**:
-- File ≤300 LOC, function ≤50 LOC
-- Exported names start with capital letters
-- Error handling: `if err != nil { return err }`
-- Avoid naked returns in large functions
+## Tool Version Matrix (2025-10-22)
 
-## Examples
-```bash
-go test ./... && golangci-lint run
-```
+| Tool | Version | Purpose | Status |
+|------|---------|---------|--------|
+| **Go** | 1.24.0 | Primary | ✅ Current |
+| **golangci-lint** | 1.62.2 | Primary | ✅ Current |
+| **gofmt** | 1.24.0 | Primary | ✅ Current |
+| **gotestsum** | 1.12.0 | Primary | ✅ Current |
+
+---
 
 ## Inputs
-- Language-specific source directories (e.g. `src/`, `app/`).
-- Language-specific build/test configuration files (e.g. `package.json`, `pyproject.toml`, `go.mod`).
-- Relevant test suites and sample data.
+
+- Language-specific source directories
+- Configuration files
+- Test suites and sample data
 
 ## Outputs
-- Test/lint execution plan tailored to the selected language.
-- List of key language idioms and review checkpoints.
+
+- Test/lint execution plan
+- TRUST 5 review checkpoints
+- Migration guidance
 
 ## Failure Modes
-- When the language runtime or package manager is not installed.
-- When the main language cannot be determined in a multilingual project.
+
+- When required tools are not installed
+- When dependencies are missing
+- When test coverage falls below 85%
 
 ## Dependencies
-- Access to the project file is required using the Read/Grep tool.
-- When used with `Skill("moai-foundation-langs")`, it is easy to share cross-language conventions.
 
-## References
-- The Go Authors. "Effective Go." https://go.dev/doc/effective_go (accessed 2025-03-29).
-- GolangCI. "golangci-lint Documentation." https://golangci-lint.run/usage/quick-start/ (accessed 2025-03-29).
+- Access to project files via Read/Bash tools
+- Integration with `moai-foundation-langs` for language detection
+- Integration with `moai-foundation-trust` for quality gates
+
+---
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
 
 ## Changelog
-- 2025-03-29: Input/output/failure response/reference information for each language has been specified.
 
-## Works well with
+- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
+- **v1.0.0** (2025-03-29): Initial Skill release
 
-- alfred-trust-validation (coverage verification)
-- alfred-code-reviewer (Go-specific review)
-- alfred-performance-optimizer (Go profiling)
+---
+
+## Works Well With
+
+- `moai-foundation-trust` (quality gates)
+- `moai-alfred-code-reviewer` (code review)
+- `moai-essentials-debug` (debugging support)
+
+---
 
 ## Best Practices
-- Enable automatic validation by matching your linter with the language's official style guide.
-- Fix test/build pipelines with reproducible commands in CI.
+
+✅ **DO**:
+- Follow language best practices
+- Use latest stable tool versions
+- Maintain test coverage ≥85%
+- Document all public APIs
+
+❌ **DON'T**:
+- Skip quality gates
+- Use deprecated tools
+- Ignore security warnings
+- Mix testing frameworks

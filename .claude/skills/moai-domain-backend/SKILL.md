@@ -13,9 +13,10 @@ allowed-tools:
 | ----- | ----- |
 | Version | 2.0.0 |
 | Created | 2025-10-22 |
+| Updated | 2025-10-22 |
 | Allowed tools | Read (read_file), Bash (terminal) |
 | Auto-load | On demand for backend architecture requests |
-| Trigger cues | Service layering, API orchestration, caching, background job design, cloud-native patterns, observability. |
+| Trigger cues | Service layering, API orchestration, caching, background job design, cloud-native patterns, Kubernetes, Istio, observability, microservices, serverless, event-driven architecture. |
 | Tier | 4 |
 
 ## What it does
@@ -65,7 +66,7 @@ Provides expertise in backend server architecture, RESTful API design, caching s
 - **CQRS**: Command Query Responsibility Segregation
 - **Event Sourcing**: Immutable event logs
 - **Apache Kafka 3.7.x**: Distributed streaming platform
-- **RabbitMQ 3.12.x**: Message broker
+- **RabbitMQ 3.13.x**: Message broker
 - **Event versioning**: Schema evolution strategies
 
 ### API Design
@@ -223,7 +224,7 @@ Provides expertise in backend server architecture, RESTful API design, caching s
 
 **Async Processing**:
 - **Apache Kafka 3.7.x**: Event streaming
-- **RabbitMQ 3.12.x**: Task queues
+- **RabbitMQ 3.13.x**: Task queues
 - **Celery**: Python task queue
 - **Bull/BullMQ**: Node.js job queues
 

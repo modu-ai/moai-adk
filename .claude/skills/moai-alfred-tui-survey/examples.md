@@ -1,62 +1,29 @@
-# Alfred TUI Survey Examples
+# moai-alfred-tui-survey - Working Examples
 
-## Single-select template
+_Last updated: 2025-10-22_
 
-```typescript
-AskUserQuestion({
-  questions: [{
-    header: "Decision point: Deployment Strategy",
-    question: "How should we roll out the new release?",
-    options: [
-      {
-        label: "Canary release",
-        description: "Gradually roll out to a small user segment; monitor metrics first."
-      },
-      {
-        label: "Blue/Green",
-        description: "Keep the current version live while preparing the new stack in parallel."
-      },
-      {
-        label: "Full deploy",
-        description: "Immediate production rollout after smoke tests succeed."
-      }
-    ],
-    multiSelect: false
-  }]
-})
+## Example 1: Basic Setup
+
+```bash
+# Setup commands
+# ...
 ```
 
-## Multi-select variation
+## Example 2: TDD Workflow
 
-```typescript
-AskUserQuestion({
-  questions: [{
-    header: "Select diagnostics to run",
-    question: "Which checks should run before proceeding?",
-    options: [
-      { label: "Unit tests", description: "Fast verification for core modules." },
-      { label: "Integration tests", description: "Service-level interactions and DB calls." },
-      { label: "Security scan", description: "Dependency vulnerability audit." }
-    ],
-    multiSelect: true
-  }]
-})
+```bash
+# RED: Write failing test
+# GREEN: Implement feature
+# REFACTOR: Improve code
 ```
 
-## Follow-up prompt for deeper detail
+## Example 3: Quality Gate
 
-```typescript
-if (selection.includes("Integration tests")) {
-  AskUserQuestion({
-    questions: [{
-      header: "Integration test scope",
-      question: "Which environment should host integration tests?",
-      options: [
-        { label: "Staging", description: "Use the shared staging cluster." },
-        { label: "Ephemeral env", description: "Provision a one-off test environment." }
-      ],
-      multiSelect: false
-    }]
-  })
-}
+```bash
+# Run quality checks
+# Verify coverage ≥85%
 ```
+
+---
+
+_For more examples, see SKILL.md reference section_

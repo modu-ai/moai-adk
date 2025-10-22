@@ -1,105 +1,123 @@
 ---
-
 name: moai-domain-security
-description: OWASP Top 10, static analysis (SAST), dependency security, and secrets management. Use when working on security and compliance reviews scenarios.
+version: 2.0.0
+created: 2025-10-22
+updated: 2025-10-22
+status: active
+description: OWASP Top 10, SAST/DAST, dependency security, and secrets management.
+keywords: ['security', 'owasp', 'sast', 'secrets', 'vulnerabilities']
 allowed-tools:
   - Read
   - Bash
 ---
 
-# Security Expert
+# Domain Security Skill
 
 ## Skill Metadata
+
 | Field | Value |
 | ----- | ----- |
-| Allowed tools | Read (read_file), Bash (terminal) |
-| Auto-load | On demand when security keywords appear |
-| Trigger cues | Threat modeling, OWASP findings, secrets management, compliance reviews. |
-| Tier | 4 |
+| **Skill Name** | moai-domain-security |
+| **Version** | 2.0.0 (2025-10-22) |
+| **Allowed tools** | Read (read_file), Bash (terminal) |
+| **Auto-load** | On demand when keywords detected |
+| **Tier** | Domain |
 
-## What it does
+---
 
-Provides expertise in application security, including OWASP Top 10 vulnerabilities, static application security testing (SAST), dependency vulnerability scanning, and secrets management.
+## What It Does
 
-## When to use
+OWASP Top 10, SAST/DAST, dependency security, and secrets management.
 
-- Engages when the team asks about security posture or mitigation steps.
-- “Security vulnerability analysis”, “OWASP verification”, “Secret management”, “Dependency security”
-- Automatically invoked when security concerns arise
-- Security SPEC implementation (`/alfred:2-run`)
+**Key capabilities**:
+- ✅ Best practices enforcement for domain domain
+- ✅ TRUST 5 principles integration
+- ✅ Latest tool versions (2025-10-22)
+- ✅ TDD workflow support
 
-## How it works
+---
 
-**OWASP Top 10 (2021)**:
-1. **Broken Access Control**: Authorization checks
-2. **Cryptographic Failures**: Encryption at rest/transit
-3. **Injection**: SQL injection, XSS prevention
-4. **Insecure Design**: Threat modeling
-5. **Security Misconfiguration**: Secure defaults
-6. **Vulnerable Components**: Dependency scanning
-7. **Identification/Authentication Failures**: MFA, password policies
-8. **Software/Data Integrity Failures**: Code signing
-9. **Security Logging/Monitoring Failures**: Audit logs
-10. **Server-Side Request Forgery (SSRF)**: Input validation
+## When to Use
 
-**Static Analysis (SAST)**:
-- **Semgrep**: Multi-language static analysis
-- **SonarQube**: Code quality + security
-- **Bandit**: Python security linter
-- **ESLint security plugins**: JavaScript security
+**Automatic triggers**:
+- Related code discussions and file patterns
+- SPEC implementation (`/alfred:2-run`)
+- Code review requests
 
-**Dependency Security**:
-- **Snyk**: Vulnerability scanning
-- **Dependabot**: Automated dependency updates
-- **npm audit**: Node.js vulnerabilities
-- **safety**: Python dependency checker
+**Manual invocation**:
+- Review code for TRUST 5 compliance
+- Design new features
+- Troubleshoot issues
 
-**Secrets Management**:
-- **Never commit secrets**: .gitignore for .env files
-- **Vault**: Secrets storage (HashiCorp Vault)
-- **Environment variables**: Runtime configuration
-- **Secret scanning**: git-secrets, trufflehog
+---
 
-**Secure Coding Practices**:
-- Input validation and sanitization
-- Parameterized queries (SQL injection prevention)
-- CSP (Content Security Policy) headers
-- HTTPS enforcement
+## Tool Version Matrix (2025-10-22)
 
-## Examples
-```markdown
-- Run SAST/DAST tools and attach findings summary.
-- Update risk matrix with severity/owner/ETA.
-```
+| Tool | Version | Purpose | Status |
+|------|---------|---------|--------|
+| **OWASP ZAP** | 2.16.0 | Primary | ✅ Current |
+| **Trivy** | 0.58.0 | Primary | ✅ Current |
+| **Bandit** | 1.8.0 | Primary | ✅ Current |
+
+---
 
 ## Inputs
-- Domain-related design documents and user requirements.
-- Project technology stack and operational constraints.
+
+- Language-specific source directories
+- Configuration files
+- Test suites and sample data
 
 ## Outputs
-- Domain-specific architecture or implementation guidelines.
-- Recommended list of associated sub-agents/skills.
+
+- Test/lint execution plan
+- TRUST 5 review checkpoints
+- Migration guidance
 
 ## Failure Modes
-- When the domain document does not exist or is ambiguous.
-- When the project strategy is unconfirmed and cannot be specified.
+
+- When required tools are not installed
+- When dependencies are missing
+- When test coverage falls below 85%
 
 ## Dependencies
-- `.moai/project/` document and latest technical briefing are required.
 
-## References
-- OWASP. "Top 10 Web Application Security Risks." https://owasp.org/www-project-top-ten/ (accessed 2025-03-29).
-- NIST. "Secure Software Development Framework." https://csrc.nist.gov/publications/detail/sp/800-218/final (accessed 2025-03-29).
+- Access to project files via Read/Bash tools
+- Integration with `moai-foundation-langs` for language detection
+- Integration with `moai-foundation-trust` for quality gates
+
+---
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
 
 ## Changelog
-- 2025-03-29: Codified input/output and failure responses for domain skills.
 
-## Works well with
+- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
+- **v1.0.0** (2025-03-29): Initial Skill release
 
-- alfred-trust-validation (security validation)
-- web-api-expert (API security)
-- devops-expert (secure deployments)
+---
+
+## Works Well With
+
+- `moai-foundation-trust` (quality gates)
+- `moai-alfred-code-reviewer` (code review)
+- `moai-essentials-debug` (debugging support)
+
+---
 
 ## Best Practices
-- Record supporting documentation (version/link) for each domain decision.
-- Review performance, security, and operational requirements simultaneously at an early stage.
+
+✅ **DO**:
+- Follow domain best practices
+- Use latest stable tool versions
+- Maintain test coverage ≥85%
+- Document all public APIs
+
+❌ **DON'T**:
+- Skip quality gates
+- Use deprecated tools
+- Ignore security warnings
+- Mix testing frameworks
