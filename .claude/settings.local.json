@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Read(//Users/goos/.claude/**)",
-      "Skill(moai-alfred-tui-survey)"
+      "Skill(moai-alfred-tui-survey)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []
