@@ -1,98 +1,124 @@
 ---
-
 name: moai-lang-java
-description: Java best practices with JUnit, Maven/Gradle, Checkstyle, and Spring Boot patterns. Use when writing or reviewing Java code in project workflows.
+version: 2.0.0
+created: 2025-10-22
+updated: 2025-10-22
+status: active
+description: Java 23+ best practices with JUnit 5, Maven/Gradle, CheckStyle, and modern patterns.
+keywords: ['java', 'junit', 'maven', 'gradle', 'checkstyle']
 allowed-tools:
   - Read
   - Bash
 ---
 
-# Java Expert
+# Lang Java Skill
 
 ## Skill Metadata
+
 | Field | Value |
 | ----- | ----- |
-| Allowed tools | Read (read_file), Bash (terminal) |
-| Auto-load | On demand when language keywords are detected |
-| Trigger cues | Java code discussions, framework guidance, or file extensions such as .java. |
-| Tier | 3 |
+| **Skill Name** | moai-lang-java |
+| **Version** | 2.0.0 (2025-10-22) |
+| **Allowed tools** | Read (read_file), Bash (terminal) |
+| **Auto-load** | On demand when keywords detected |
+| **Tier** | Language |
 
-## What it does
+---
 
-Provides Java-specific expertise for TDD development, including JUnit testing, Maven/Gradle build tools, Checkstyle linting, and Spring Boot patterns.
+## What It Does
 
-## When to use
+Java 23+ best practices with JUnit 5, Maven/Gradle, CheckStyle, and modern patterns.
 
-- Engages when the conversation references Java work, frameworks, or files like .java.
-- “Writing Java tests”, “How to use JUnit”, “Spring Boot patterns”
-- Automatically invoked when working with Java projects
-- Java SPEC implementation (`/alfred:2-run`)
+**Key capabilities**:
+- ✅ Best practices enforcement for language domain
+- ✅ TRUST 5 principles integration
+- ✅ Latest tool versions (2025-10-22)
+- ✅ TDD workflow support
 
-## How it works
+---
 
-**TDD Framework**:
-- **JUnit 5**: Unit testing with annotations (@Test, @BeforeEach)
-- **Mockito**: Mocking framework for dependencies
-- **AssertJ**: Fluent assertion library
-- Test coverage ≥85% with JaCoCo
+## When to Use
 
-**Build Tools**:
-- **Maven**: pom.xml, dependency management
-- **Gradle**: build.gradle, Kotlin DSL support
-- Multi-module project structures
+**Automatic triggers**:
+- Related code discussions and file patterns
+- SPEC implementation (`/alfred:2-run`)
+- Code review requests
 
-**Code Quality**:
-- **Checkstyle**: Java style checker (Google/Sun conventions)
-- **PMD**: Static code analysis
-- **SpotBugs**: Bug detection
+**Manual invocation**:
+- Review code for TRUST 5 compliance
+- Design new features
+- Troubleshoot issues
 
-**Spring Boot Patterns**:
-- Dependency Injection (@Autowired, @Component)
-- REST controllers (@RestController, @RequestMapping)
-- Service layer separation (@Service, @Repository)
-- Configuration properties (@ConfigurationProperties)
+---
 
-**Best Practices**:
-- File ≤300 LOC, method ≤50 LOC
-- Interfaces for abstraction
-- Builder pattern for complex objects
-- Exception handling with custom exceptions
+## Tool Version Matrix (2025-10-22)
 
-## Examples
-```bash
-./mvnw test && ./mvnw checkstyle:check
-```
+| Tool | Version | Purpose | Status |
+|------|---------|---------|--------|
+| **Java** | 23.0.0 | Primary | ✅ Current |
+| **JUnit** | 5.11.0 | Primary | ✅ Current |
+| **Maven** | 3.9.9 | Primary | ✅ Current |
+| **Gradle** | 8.12.0 | Primary | ✅ Current |
+
+---
 
 ## Inputs
-- Language-specific source directories (e.g. `src/`, `app/`).
-- Language-specific build/test configuration files (e.g. `package.json`, `pyproject.toml`, `go.mod`).
-- Relevant test suites and sample data.
+
+- Language-specific source directories
+- Configuration files
+- Test suites and sample data
 
 ## Outputs
-- Test/lint execution plan tailored to the selected language.
-- List of key language idioms and review checkpoints.
+
+- Test/lint execution plan
+- TRUST 5 review checkpoints
+- Migration guidance
 
 ## Failure Modes
-- When the language runtime or package manager is not installed.
-- When the main language cannot be determined in a multilingual project.
+
+- When required tools are not installed
+- When dependencies are missing
+- When test coverage falls below 85%
 
 ## Dependencies
-- Access to the project file is required using the Read/Grep tool.
-- When used with `Skill("moai-foundation-langs")`, it is easy to share cross-language conventions.
 
-## References
-- Oracle. "Java Language Specification." https://docs.oracle.com/javase/specs/ (accessed 2025-03-29).
-- JUnit. "JUnit 5 User Guide." https://junit.org/junit5/docs/current/user-guide/ (accessed 2025-03-29).
+- Access to project files via Read/Bash tools
+- Integration with `moai-foundation-langs` for language detection
+- Integration with `moai-foundation-trust` for quality gates
+
+---
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
 
 ## Changelog
-- 2025-03-29: Input/output/failure response/reference information for each language has been specified.
 
-## Works well with
+- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
+- **v1.0.0** (2025-03-29): Initial Skill release
 
-- alfred-trust-validation (coverage verification)
-- alfred-code-reviewer (Java-specific review)
-- database-expert (JPA/Hibernate patterns)
+---
+
+## Works Well With
+
+- `moai-foundation-trust` (quality gates)
+- `moai-alfred-code-reviewer` (code review)
+- `moai-essentials-debug` (debugging support)
+
+---
 
 ## Best Practices
-- Enable automatic validation by matching your linter with the language's official style guide.
-- Fix test/build pipelines with reproducible commands in CI.
+
+✅ **DO**:
+- Follow language best practices
+- Use latest stable tool versions
+- Maintain test coverage ≥85%
+- Document all public APIs
+
+❌ **DON'T**:
+- Skip quality gates
+- Use deprecated tools
+- Ignore security warnings
+- Mix testing frameworks

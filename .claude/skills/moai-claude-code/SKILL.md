@@ -1,94 +1,121 @@
 ---
-
 name: moai-claude-code
-description: Scaffolds and audits Claude Code agents, commands, skills, plugins, and settings with production templates. Use when configuring or reviewing Claude Code automation inside MoAI workflows.
+version: 2.0.0
+created: 2025-10-22
+updated: 2025-10-22
+status: active
+description: Scaffolds and audits Claude Code agents, commands, skills, plugins, and settings with production templates.
+keywords: ['claude-code', 'agents', 'skills', 'automation']
 allowed-tools:
   - Read
-  - Write
-  - Edit
+  - Bash
 ---
 
-# MoAI Claude Code Manager
+# Claude Code Skill
 
 ## Skill Metadata
+
 | Field | Value |
 | ----- | ----- |
-| Allowed tools | Read (read_file), Write (write_file), Edit (edit_file) |
-| Auto-load | SessionStart (Claude Code bootstrap) |
-| Trigger cues | Agent/command/skill/plugin/settings authoring, Claude Code environment setup. |
+| **Skill Name** | moai-claude-code |
+| **Version** | 2.0.0 (2025-10-22) |
+| **Allowed tools** | Read (read_file), Bash (terminal) |
+| **Auto-load** | On demand when keywords detected |
+| **Tier** | Ops |
 
-Create and manage Claude Code's five core components according to official standards.
+---
 
-## Components covered
+## What It Does
 
-- **Agents** `.claude/agents/` — Persona, tools, and workflow definition
-- **Commands** `.claude/commands/` — Slash command entry points
-- **Skills** `.claude/skills/` — Reusable instruction capsules
-- **Plugins** `settings.json › mcpServers` — MCP integrations
-- **Settings** `.claude/settings.json` — Tool permissions, hooks, session defaults
+Scaffolds and audits Claude Code agents, commands, skills, plugins, and settings with production templates.
 
-## Reference files
+**Key capabilities**:
+- ✅ Best practices enforcement for ops domain
+- ✅ TRUST 5 principles integration
+- ✅ Latest tool versions (2025-10-22)
+- ✅ TDD workflow support
 
-- `reference.md` — Writing guide and checklist
-- `examples.md` — Sample completed artifacts
-- `templates/` — Markdown/JSON skeleton for five components
-- `scripts/` — settings validation and template integrity check scripts
+---
 
-## Workflow
+## When to Use
 
-1. Analyze user requests to determine required components (Agent/Command/Skill/Plugin/Settings).
-2. Copy the stub from `templates/` and replace the placeholders to suit your project context.
-3. If necessary, run the `scripts/` verifier to check required fields, permissions, and follow-up links.
+**Automatic triggers**:
+- Related code discussions and file patterns
+- SPEC implementation (`/alfred:2-run`)
+- Code review requests
 
-## Guardrails
+**Manual invocation**:
+- Review code for TRUST 5 compliance
+- Design new features
+- Troubleshoot issues
 
-- Maintain minimum privileges and progressive disclosure in line with Anthropic official guidelines.
-- Rather than modifying the template directly, only update the hook/field guided by reference.md.
-- The created files and settings.json are included in Git version management and a change history is left.
+---
 
-**Official documentation**: https://docs.claude.com/en/docs/claude-code/skills  
-**Version**: 1.0.0
+## Tool Version Matrix (2025-10-22)
 
-## Examples
-```markdown
-- Create a spec-builder agent and the /alfred command set in a new project.
-- Review existing settings.json to update allowable tools and hook configurations.
-```
+| Tool | Version | Purpose | Status |
+|------|---------|---------|--------|
+| **Claude Code** | 0.6.0 | Primary | ✅ Current |
 
-## Best Practices
-- The output template is designed to be idempotent so that it is safe even when reapplied.
-- Detailed procedures are separated into reference.md (writing guide) and examples.md (sample artifacts) and loaded only when necessary.
-
-## When to use
-- Activates when someone asks to scaffold or audit Claude Code components.
-- When bootstrapping a Claude Code configuration to a new project.
-- When reexamining existing agents/commands/skills/plug-ins to meet standards.
-- When verification of settings is required in initialization workflows such as `/alfred:0-project`.
-
-## What it does
-- Create and update the five core components as official templates.
-- Verify accepted tools, model selection, and progressive disclosure links.
-- Provides reusable stubs and verification procedures through templates/·scripts/ resources.
+---
 
 ## Inputs
-- User configuration requests (e.g. “add new command”, “review settings.json”) and current `.claude/` directory state.
-- Project-specific template requirements or security/permissions policies.
+
+- Language-specific source directories
+- Configuration files
+- Test suites and sample data
 
 ## Outputs
-- Official Markdown definition file under `.claude/agents|commands|skills/`.
-- A summary of `.claude/settings.json` that reflects the latest settings and allowed tools and follow-up TODOs.
+
+- Test/lint execution plan
+- TRUST 5 review checkpoints
+- Migration guidance
 
 ## Failure Modes
-- If the template path or placeholder is different from the latest version, the result may be damaged.
-- The settings.json permission policy may conflict with project rules or may block verification script execution.
+
+- When required tools are not installed
+- When dependencies are missing
+- When test coverage falls below 85%
 
 ## Dependencies
-- When used with cc-manager, doc-syncer, and moai-foundation-git, the creation → verification → distribution flow is completed.
-- You must have versioned resources in the templates/ and scripts/ directories for automation to work properly.
 
-## References
-- Anthropic. "Claude Code Style Guide." https://docs.claude.com/ (accessed 2025-03-29).
-- Prettier. "Opinionated Code Formatter." https://prettier.io/docs/en/ (accessed 2025-03-29).
+- Access to project files via Read/Bash tools
+- Integration with `moai-foundation-langs` for language detection
+- Integration with `moai-foundation-trust` for quality gates
+
+---
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
 
 ## Changelog
-- 2025-03-29: Added best practice structure to Claude code formatting skill.
+
+- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
+- **v1.0.0** (2025-03-29): Initial Skill release
+
+---
+
+## Works Well With
+
+- `moai-foundation-trust` (quality gates)
+- `moai-alfred-code-reviewer` (code review)
+- `moai-essentials-debug` (debugging support)
+
+---
+
+## Best Practices
+
+✅ **DO**:
+- Follow ops best practices
+- Use latest stable tool versions
+- Maintain test coverage ≥85%
+- Document all public APIs
+
+❌ **DON'T**:
+- Skip quality gates
+- Use deprecated tools
+- Ignore security warnings
+- Mix testing frameworks

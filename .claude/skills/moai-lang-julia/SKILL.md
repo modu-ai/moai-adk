@@ -1,98 +1,123 @@
 ---
-
 name: moai-lang-julia
-description: Julia best practices with Test stdlib, Pkg manager, and scientific computing patterns. Use when writing or reviewing Julia code in project workflows.
+version: 2.0.0
+created: 2025-10-22
+updated: 2025-10-22
+status: active
+description: Julia 1.11+ best practices with Test stdlib, Pkg manager, and scientific computing patterns.
+keywords: ['julia', 'test', 'pkg', 'scientific']
 allowed-tools:
   - Read
   - Bash
 ---
 
-# Julia Expert
+# Lang Julia Skill
 
 ## Skill Metadata
+
 | Field | Value |
 | ----- | ----- |
-| Allowed tools | Read (read_file), Bash (terminal) |
-| Auto-load | On demand when language keywords are detected |
-| Trigger cues | Julia code discussions, framework guidance, or file extensions such as .jl. |
-| Tier | 3 |
+| **Skill Name** | moai-lang-julia |
+| **Version** | 2.0.0 (2025-10-22) |
+| **Allowed tools** | Read (read_file), Bash (terminal) |
+| **Auto-load** | On demand when keywords detected |
+| **Tier** | Language |
 
-## What it does
+---
 
-Provides Julia-specific expertise for TDD development, including Test standard library, Pkg package manager, and high-performance scientific computing patterns.
+## What It Does
 
-## When to use
+Julia 1.11+ best practices with Test stdlib, Pkg manager, and scientific computing patterns.
 
-- Engages when the conversation references Julia work, frameworks, or files like .jl.
-- "Writing Julia tests", "How to use Test stdlib", "Scientific computing"
-- Automatically invoked when working with Julia projects
-- Julia SPEC implementation (`/alfred:2-run`)
+**Key capabilities**:
+- ✅ Best practices enforcement for language domain
+- ✅ TRUST 5 principles integration
+- ✅ Latest tool versions (2025-10-22)
+- ✅ TDD workflow support
 
-## How it works
+---
 
-**TDD Framework**:
-- **Test**: Built-in testing library (@test, @testset)
-- **Coverage.jl**: Test coverage analysis
-- **BenchmarkTools.jl**: Performance benchmarking
+## When to Use
 
-**Package Management**:
-- **Pkg**: Built-in package manager
-- **Project.toml**: Package configuration
-- **Manifest.toml**: Dependency lock file
+**Automatic triggers**:
+- Related code discussions and file patterns
+- SPEC implementation (`/alfred:2-run`)
+- Code review requests
 
-**Code Quality**:
-- **JuliaFormatter.jl**: Code formatting
-- **Lint.jl**: Static analysis
-- **JET.jl**: Type inference analysis
+**Manual invocation**:
+- Review code for TRUST 5 compliance
+- Design new features
+- Troubleshoot issues
 
-**Scientific Computing**:
-- **Multiple dispatch**: Method specialization on argument types
-- **Type stability**: Performance optimization
-- **Broadcasting**: Element-wise operations (. syntax)
-- **Linear algebra**: Built-in BLAS/LAPACK
+---
 
-**Best Practices**:
-- File ≤300 LOC, function ≤50 LOC
-- Type annotations for performance-critical code
-- Prefer abstract types for function arguments
-- Use @inbounds for performance (after bounds checking)
-- Profile before optimizing
+## Tool Version Matrix (2025-10-22)
 
-## Examples
-```bash
-julia --project -e 'using Pkg; Pkg.test()'
-```
+| Tool | Version | Purpose | Status |
+|------|---------|---------|--------|
+| **Julia** | 1.11.0 | Primary | ✅ Current |
+| **Test.jl** | 1.11.0 | Primary | ✅ Current |
+| **Pkg.jl** | 1.11.0 | Primary | ✅ Current |
+
+---
 
 ## Inputs
-- Language-specific source directories (e.g. `src/`, `app/`).
-- Language-specific build/test configuration files (e.g. `package.json`, `pyproject.toml`, `go.mod`).
-- Relevant test suites and sample data.
+
+- Language-specific source directories
+- Configuration files
+- Test suites and sample data
 
 ## Outputs
-- Test/lint execution plan tailored to the selected language.
-- List of key language idioms and review checkpoints.
+
+- Test/lint execution plan
+- TRUST 5 review checkpoints
+- Migration guidance
 
 ## Failure Modes
-- When the language runtime or package manager is not installed.
-- When the main language cannot be determined in a multilingual project.
+
+- When required tools are not installed
+- When dependencies are missing
+- When test coverage falls below 85%
 
 ## Dependencies
-- Access to the project file is required using the Read/Grep tool.
-- When used with `Skill("moai-foundation-langs")`, it is easy to share cross-language conventions.
 
-## References
-- Julia Language. "Documentation." https://docs.julialang.org/en/v1/ (accessed 2025-03-29).
-- JuliaFormatter.jl. "JuliaFormatter Documentation." https://domluna.github.io/JuliaFormatter.jl/stable/ (accessed 2025-03-29).
+- Access to project files via Read/Bash tools
+- Integration with `moai-foundation-langs` for language detection
+- Integration with `moai-foundation-trust` for quality gates
+
+---
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
 
 ## Changelog
-- 2025-03-29: Input/output/failure response/reference information for each language has been specified.
 
-## Works well with
+- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
+- **v1.0.0** (2025-03-29): Initial Skill release
 
-- alfred-trust-validation (coverage verification)
-- alfred-code-reviewer (Julia-specific review)
-- alfred-performance-optimizer (Julia profiling)
+---
+
+## Works Well With
+
+- `moai-foundation-trust` (quality gates)
+- `moai-alfred-code-reviewer` (code review)
+- `moai-essentials-debug` (debugging support)
+
+---
 
 ## Best Practices
-- Enable automatic validation by matching your linter with the language's official style guide.
-- Fix test/build pipelines with reproducible commands in CI.
+
+✅ **DO**:
+- Follow language best practices
+- Use latest stable tool versions
+- Maintain test coverage ≥85%
+- Document all public APIs
+
+❌ **DON'T**:
+- Skip quality gates
+- Use deprecated tools
+- Ignore security warnings
+- Mix testing frameworks

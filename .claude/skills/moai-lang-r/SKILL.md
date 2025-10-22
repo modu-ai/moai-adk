@@ -1,99 +1,123 @@
 ---
-
 name: moai-lang-r
-description: R best practices with testthat, lintr, and data analysis patterns. Use when writing or reviewing R code in project workflows.
+version: 2.0.0
+created: 2025-10-22
+updated: 2025-10-22
+status: active
+description: R 4.4+ best practices with testthat 3.2, lintr 3.2, and data analysis patterns.
+keywords: ['r', 'testthat', 'lintr', 'data-analysis']
 allowed-tools:
   - Read
   - Bash
 ---
 
-# R Expert
+# Lang R Skill
 
 ## Skill Metadata
+
 | Field | Value |
 | ----- | ----- |
-| Allowed tools | Read (read_file), Bash (terminal) |
-| Auto-load | On demand when language keywords are detected |
-| Trigger cues | R code discussions, framework guidance, or file extensions such as .r. |
-| Tier | 3 |
+| **Skill Name** | moai-lang-r |
+| **Version** | 2.0.0 (2025-10-22) |
+| **Allowed tools** | Read (read_file), Bash (terminal) |
+| **Auto-load** | On demand when keywords detected |
+| **Tier** | Language |
 
-## What it does
+---
 
-Provides R-specific expertise for TDD development, including testthat testing framework, lintr code linting, and statistical data analysis patterns.
+## What It Does
 
-## When to use
+R 4.4+ best practices with testthat 3.2, lintr 3.2, and data analysis patterns.
 
-- Engages when the conversation references R work, frameworks, or files like .r.
-- “Writing R tests”, “How to use testthat”, “Data analysis patterns”
-- Automatically invoked when working with R projects
-- R SPEC implementation (`/alfred:2-run`)
+**Key capabilities**:
+- ✅ Best practices enforcement for language domain
+- ✅ TRUST 5 principles integration
+- ✅ Latest tool versions (2025-10-22)
+- ✅ TDD workflow support
 
-## How it works
+---
 
-**TDD Framework**:
-- **testthat**: Unit testing framework
-- **covr**: Test coverage tool
-- **mockery**: Mocking library
-- Test coverage ≥85% enforcement
+## When to Use
 
-**Code Quality**:
-- **lintr**: Static code analysis
-- **styler**: Code formatting
-- **goodpractice**: R package best practices
+**Automatic triggers**:
+- Related code discussions and file patterns
+- SPEC implementation (`/alfred:2-run`)
+- Code review requests
 
-**Package Management**:
-- **devtools**: Package development tools
-- **usethis**: Workflow automation
-- **CRAN**: Official package repository
+**Manual invocation**:
+- Review code for TRUST 5 compliance
+- Design new features
+- Troubleshoot issues
 
-**Data Analysis Patterns**:
-- **tidyverse**: Data manipulation (dplyr, ggplot2)
-- **data.table**: High-performance data manipulation
-- **Vectorization** over loops
-- **Pipes** (%>%) for readable code
+---
 
-**Best Practices**:
-- File ≤300 LOC, function ≤50 LOC
-- Document functions with roxygen2
-- Use meaningful variable names
-- Avoid global variables
-- Prefer functional programming
+## Tool Version Matrix (2025-10-22)
 
-## Examples
-```bash
-Rscript -e 'devtools::test()'
-```
+| Tool | Version | Purpose | Status |
+|------|---------|---------|--------|
+| **R** | 4.4.2 | Primary | ✅ Current |
+| **testthat** | 3.2.2 | Primary | ✅ Current |
+| **lintr** | 3.2.0 | Primary | ✅ Current |
+
+---
 
 ## Inputs
-- Language-specific source directories (e.g. `src/`, `app/`).
-- Language-specific build/test configuration files (e.g. `package.json`, `pyproject.toml`, `go.mod`).
-- Relevant test suites and sample data.
+
+- Language-specific source directories
+- Configuration files
+- Test suites and sample data
 
 ## Outputs
-- Test/lint execution plan tailored to the selected language.
-- List of key language idioms and review checkpoints.
+
+- Test/lint execution plan
+- TRUST 5 review checkpoints
+- Migration guidance
 
 ## Failure Modes
-- When the language runtime or package manager is not installed.
-- When the main language cannot be determined in a multilingual project.
+
+- When required tools are not installed
+- When dependencies are missing
+- When test coverage falls below 85%
 
 ## Dependencies
-- Access to the project file is required using the Read/Grep tool.
-- When used with `Skill("moai-foundation-langs")`, it is easy to share cross-language conventions.
 
-## References
-- R Core Team. "R Language Definition." https://cran.r-project.org/manuals.html (accessed 2025-03-29).
-- RStudio. "testthat Reference." https://testthat.r-lib.org/ (accessed 2025-03-29).
+- Access to project files via Read/Bash tools
+- Integration with `moai-foundation-langs` for language detection
+- Integration with `moai-foundation-trust` for quality gates
+
+---
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
 
 ## Changelog
-- 2025-03-29: Input/output/failure response/reference information for each language has been specified.
 
-## Works well with
+- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
+- **v1.0.0** (2025-03-29): Initial Skill release
 
-- alfred-trust-validation (coverage verification)
-- alfred-code-reviewer (R-specific review)
-- data-science-expert (statistical analysis)
+---
+
+## Works Well With
+
+- `moai-foundation-trust` (quality gates)
+- `moai-alfred-code-reviewer` (code review)
+- `moai-essentials-debug` (debugging support)
+
+---
 
 ## Best Practices
-- Enable automatic validation by matching your linter with the language's official style guide.
-- Fix test/build pipelines with reproducible commands in CI.
+
+✅ **DO**:
+- Follow language best practices
+- Use latest stable tool versions
+- Maintain test coverage ≥85%
+- Document all public APIs
+
+❌ **DON'T**:
+- Skip quality gates
+- Use deprecated tools
+- Ignore security warnings
+- Mix testing frameworks

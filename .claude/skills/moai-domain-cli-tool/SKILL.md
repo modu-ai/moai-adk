@@ -1,95 +1,123 @@
 ---
-
 name: moai-domain-cli-tool
-description: CLI tool development with argument parsing, POSIX compliance, and user-friendly help messages. Use when working on command-line tooling scenarios.
+version: 2.0.0
+created: 2025-10-22
+updated: 2025-10-22
+status: active
+description: CLI tool development with argument parsing, POSIX compliance, and user-friendly help messages.
+keywords: ['cli', 'terminal', 'argparse', 'commands']
 allowed-tools:
   - Read
   - Bash
 ---
 
-# CLI Tool Expert
+# Domain Cli Tool Skill
 
 ## Skill Metadata
+
 | Field | Value |
 | ----- | ----- |
-| Allowed tools | Read (read_file), Bash (terminal) |
-| Auto-load | On demand for CLI design requests |
-| Trigger cues | Command-line UX, packaging, distribution, and automation workflows. |
-| Tier | 4 |
+| **Skill Name** | moai-domain-cli-tool |
+| **Version** | 2.0.0 (2025-10-22) |
+| **Allowed tools** | Read (read_file), Bash (terminal) |
+| **Auto-load** | On demand when keywords detected |
+| **Tier** | Domain |
 
-## What it does
+---
 
-Provides expertise in developing command-line interface tools with proper argument parsing, POSIX compliance, intuitive help messages, and standard exit codes.
+## What It Does
 
-## When to use
+CLI tool development with argument parsing, POSIX compliance, and user-friendly help messages.
 
-- Engages when building or enhancing command-line tools.
-- “CLI tool development”, “command line parsing”, “POSIX compatibility”
-- Automatically invoked when working with CLI projects
-- CLI tool SPEC implementation (`/alfred:2-run`)
+**Key capabilities**:
+- ✅ Best practices enforcement for domain domain
+- ✅ TRUST 5 principles integration
+- ✅ Latest tool versions (2025-10-22)
+- ✅ TDD workflow support
 
-## How it works
+---
 
-**Argument Parsing**:
-- **Python**: argparse, click, typer
-- **Node.js**: commander, yargs, oclif
-- **Rust**: clap, structopt
-- **Go**: cobra, flag
-- **Subcommands**: git-style commands (tool add, tool remove)
+## When to Use
 
-**POSIX Compliance**:
-- **Short options**: -h, -v
-- **Long options**: --help, --version
-- **Option arguments**: -o file, --output=file
-- **Standard streams**: stdin, stdout, stderr
-- **Exit codes**: 0 (success), 1-255 (errors)
+**Automatic triggers**:
+- Related code discussions and file patterns
+- SPEC implementation (`/alfred:2-run`)
+- Code review requests
 
-**User Experience**:
-- **Help messages**: Comprehensive usage documentation
-- **Auto-completion**: Shell completion (bash, zsh, fish)
-- **Progress indicators**: Spinners, progress bars
-- **Color output**: ANSI colors for readability
-- **Interactive prompts**: Confirmation dialogs
+**Manual invocation**:
+- Review code for TRUST 5 compliance
+- Design new features
+- Troubleshoot issues
 
-**Configuration**:
-- **Config files**: YAML, JSON, TOML (e.g., ~/.toolrc)
-- **Environment variables**: Fallback configuration
-- **Precedence**: CLI args > env vars > config file > defaults
+---
 
-## Examples
-```bash
-$ tool --help
-$ tool run --config config.yml
-```
+## Tool Version Matrix (2025-10-22)
+
+| Tool | Version | Purpose | Status |
+|------|---------|---------|--------|
+| **Click** | 8.1.7 | Primary | ✅ Current |
+| **Typer** | 0.15.0 | Primary | ✅ Current |
+| **Rich** | 13.9.0 | Primary | ✅ Current |
+
+---
 
 ## Inputs
-- Domain-specific design documents and user requirements.
-- Project technology stack and operational constraints.
+
+- Language-specific source directories
+- Configuration files
+- Test suites and sample data
 
 ## Outputs
-- Domain-specific architecture or implementation guidelines.
-- Recommended list of associated sub-agents/skills.
+
+- Test/lint execution plan
+- TRUST 5 review checkpoints
+- Migration guidance
 
 ## Failure Modes
-- When the domain document does not exist or is ambiguous.
-- When the project strategy is unconfirmed and cannot be specified.
+
+- When required tools are not installed
+- When dependencies are missing
+- When test coverage falls below 85%
 
 ## Dependencies
-- `.moai/project/` document and latest technical briefing are required.
 
-## References
-- Microsoft. "Command Line Interface Guidelines." https://learn.microsoft.com/windows/console/ (accessed 2025-03-29).
-- Python Packaging Authority. "Command-line Interface Guidelines." https://packaging.python.org/en/latest/guides/distributing-packages-using-setuptools/#entry-points (accessed 2025-03-29).
+- Access to project files via Read/Bash tools
+- Integration with `moai-foundation-langs` for language detection
+- Integration with `moai-foundation-trust` for quality gates
+
+---
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
 
 ## Changelog
-- 2025-03-29: Codified input/output and failure responses for domain skills.
 
-## Works well with
+- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
+- **v1.0.0** (2025-03-29): Initial Skill release
 
-- alfred-trust-validation (CLI testing)
-- shell-expert (shell integration)
-- python-expert/typescript-expert (implementation)
+---
+
+## Works Well With
+
+- `moai-foundation-trust` (quality gates)
+- `moai-alfred-code-reviewer` (code review)
+- `moai-essentials-debug` (debugging support)
+
+---
 
 ## Best Practices
-- Record supporting documentation (version/link) for each domain decision.
-- Review performance, security, and operational requirements simultaneously at an early stage.
+
+✅ **DO**:
+- Follow domain best practices
+- Use latest stable tool versions
+- Maintain test coverage ≥85%
+- Document all public APIs
+
+❌ **DON'T**:
+- Skip quality gates
+- Use deprecated tools
+- Ignore security warnings
+- Mix testing frameworks

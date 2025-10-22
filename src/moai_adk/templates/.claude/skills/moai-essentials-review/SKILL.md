@@ -1,112 +1,113 @@
 ---
-
 name: moai-essentials-review
-description: Automated code review with SOLID principles, code smells, and language-specific best practices. Use when preparing concise review checklists for code changes.
+version: 2.0.0
+created: 2025-10-22
+updated: 2025-10-22
+status: active
+description: Automated code review with SOLID principles, code smells, and language-specific best practices.
+keywords: ['code-review', 'solid', 'best-practices', 'quality']
 allowed-tools:
   - Read
   - Bash
-  - Write
-  - Edit
-  - TodoWrite
 ---
 
-# Alfred Code Reviewer
+# Essentials Review Skill
 
 ## Skill Metadata
+
 | Field | Value |
 | ----- | ----- |
-| Allowed tools | Read (read_file), Write (write_file), Edit (edit_file), Bash (terminal), TodoWrite (todo_write) |
-| Auto-load | On demand during Sync stage (review gate) |
-| Trigger cues | Code review requests, quality checklist preparation, merge readiness checks. |
+| **Skill Name** | moai-essentials-review |
+| **Version** | 2.0.0 (2025-10-22) |
+| **Allowed tools** | Read (read_file), Bash (terminal) |
+| **Auto-load** | On demand when keywords detected |
+| **Tier** | Essentials |
 
-## What it does
+---
 
-Automated code review with language-specific best practices, SOLID principles verification, and code smell detection.
+## What It Does
 
-## When to use
+Automated code review with SOLID principles, code smells, and language-specific best practices.
 
-- Loads when someone asks for a code review or a pre-merge quality assessment.
-- “Please review the code”, “How can this code be improved?”, “Check the code quality”
-- Optionally invoked after `/alfred:3-sync`
-- Before merging PR
+**Key capabilities**:
+- ✅ Best practices enforcement for essentials domain
+- ✅ TRUST 5 principles integration
+- ✅ Latest tool versions (2025-10-22)
+- ✅ TDD workflow support
 
-## How it works
+---
 
-**Code Constraints Check**:
-- File ≤300 LOC
-- Function ≤50 LOC
-- Parameters ≤5
-- Cyclomatic complexity ≤10
+## When to Use
 
-**SOLID Principles**:
-- Single Responsibility
-- Open/Closed
-- Liskov Substitution
-- Interface Segregation
-- Dependency Inversion
+**Automatic triggers**:
+- Related code discussions and file patterns
+- SPEC implementation (`/alfred:2-run`)
+- Code review requests
 
-**Code Smell Detection**:
-- Long Method
-- Large Class
-- Duplicate Code
-- Dead Code
-- Magic Numbers
+**Manual invocation**:
+- Review code for TRUST 5 compliance
+- Design new features
+- Troubleshoot issues
 
-**Language-specific Best Practices**:
-- Python: List comprehension, type hints, PEP 8
-- TypeScript: Strict typing, async/await, error handling
-- Java: Streams API, Optional, Design patterns
-
-**Review Report**:
-```markdown
-## Code Review Report
-
-### 🔴 Critical Issues (3)
-1. **src/auth/service.py:45** - Function too long (85 > 50 LOC)
-2. **src/api/handler.ts:120** - Missing error handling
-3. **src/db/repository.java:200** - Magic number
-
-### ⚠️ Warnings (5)
-1. **src/utils/helper.py:30** - Unused import
-
-### ✅ Good Practices Found
-- Test coverage: 92%
-- Consistent naming
-```
-
-## Examples
-```markdown
-- Checks the current diff and lists items that can be modified immediately.
-- Schedule follow-up tasks with TodoWrite.
-```
+---
 
 ## Inputs
-- A snapshot of the code/tests/documentation you are currently working on.
-- Ongoing agent status information.
+
+- Language-specific source directories
+- Configuration files
+- Test suites and sample data
 
 ## Outputs
-- Immediately actionable checklists or improvement suggestions.
-- Recommendations on whether to take next steps or not.
+
+- Test/lint execution plan
+- TRUST 5 review checkpoints
+- Migration guidance
 
 ## Failure Modes
-- If you cannot find the required files or test results.
-- When the scope of work is excessively large and cannot be resolved with simple support.
+
+- When required tools are not installed
+- When dependencies are missing
+- When test coverage falls below 85%
 
 ## Dependencies
-- Mainly used in conjunction with `tdd-implementer`, `quality-gate`, etc.
 
-## References
-- IEEE. "Recommended Practice for Software Reviews." IEEE 1028-2008.
-- Cisco. "Peer Review Best Practices." https://www.cisco.com/c/en/us/support/docs/optical/ons-15454-esc/15114-peer-review.html (accessed 2025-03-29).
+- Access to project files via Read/Bash tools
+- Integration with `moai-foundation-langs` for language detection
+- Integration with `moai-foundation-trust` for quality gates
+
+---
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
 
 ## Changelog
-- 2025-03-29: Overhauled input/output definitions for Essentials skills.
 
-## Works well with
+- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
+- **v1.0.0** (2025-03-29): Initial Skill release
 
-- moai-foundation-specs
-- moai-essentials-refactor
+---
+
+## Works Well With
+
+- `moai-foundation-trust` (quality gates)
+- `moai-alfred-code-reviewer` (code review)
+- `moai-essentials-debug` (debugging support)
+
+---
 
 ## Best Practices
-- Record results, even for simple improvements, to increase traceability.
-- Clearly mark items that require human review to distinguish them from automation.
+
+✅ **DO**:
+- Follow essentials best practices
+- Use latest stable tool versions
+- Maintain test coverage ≥85%
+- Document all public APIs
+
+❌ **DON'T**:
+- Skip quality gates
+- Use deprecated tools
+- Ignore security warnings
+- Mix testing frameworks

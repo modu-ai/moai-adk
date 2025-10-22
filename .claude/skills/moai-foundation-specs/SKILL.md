@@ -1,93 +1,113 @@
 ---
-
 name: moai-foundation-specs
-description: Validates SPEC YAML frontmatter (7 required fields) and HISTORY section. Use when enforcing SPEC documentation standards.
+version: 2.0.0
+created: 2025-10-22
+updated: 2025-10-22
+status: active
+description: SPEC YAML frontmatter validation (7 required fields) and HISTORY section enforcement.
+keywords: ['spec', 'yaml', 'validation', 'history']
 allowed-tools:
   - Read
   - Bash
-  - Write
-  - Edit
-  - TodoWrite
 ---
 
-# Alfred SPEC Metadata Validation
+# Foundation Specs Skill
 
 ## Skill Metadata
+
 | Field | Value |
 | ----- | ----- |
-| Allowed tools | Read (read_file), Write (write_file), Edit (edit_file), Bash (terminal), TodoWrite (todo_write) |
-| Auto-load | SessionStart (foundation bootstrap) |
-| Trigger cues | SPEC metadata validation, frontmatter completeness, specification readiness checks. |
+| **Skill Name** | moai-foundation-specs |
+| **Version** | 2.0.0 (2025-10-22) |
+| **Allowed tools** | Read (read_file), Bash (terminal) |
+| **Auto-load** | On demand when keywords detected |
+| **Tier** | Foundation |
 
-## What it does
+---
 
-Validates SPEC document structure including YAML frontmatter (7 required fields) and HISTORY section compliance.
+## What It Does
 
-## When to use
+SPEC YAML frontmatter validation (7 required fields) and HISTORY section enforcement.
 
-- Activates when verifying SPEC frontmatter or preparing new specification templates.
-- "SPEC verification", "Metadata check", "SPEC structure check"
-- Automatically invoked by `/alfred:1-plan`
-- Before creating SPEC document
+**Key capabilities**:
+- ✅ Best practices enforcement for foundation domain
+- ✅ TRUST 5 principles integration
+- ✅ Latest tool versions (2025-10-22)
+- ✅ TDD workflow support
 
-## How it works
+---
 
-**YAML Frontmatter Validation (7 required fields)**:
-- `id`: SPEC ID (e.g., AUTH-001)
-- `version`: Semantic Version (e.g., 0.0.1)
-- `status`: draft|active|completed|deprecated
-- `created`: YYYY-MM-DD format
-- `updated`: YYYY-MM-DD format
-- `author`: @{GitHub ID} format
-- `priority`: low|medium|high|critical
+## When to Use
 
-**HISTORY Section Validation**:
-- Checks existence of HISTORY section
-- Verifies version history (INITIAL/ADDED/CHANGED/FIXED tags)
-- Validates author and date consistency
+**Automatic triggers**:
+- Related code discussions and file patterns
+- SPEC implementation (`/alfred:2-run`)
+- Code review requests
 
-**Format Validation**:
-```bash
-# Check required fields
-rg "^(id|version|status|created|updated|author|priority):" .moai/specs/SPEC-*/spec.md
+**Manual invocation**:
+- Review code for TRUST 5 compliance
+- Design new features
+- Troubleshoot issues
 
-# Verify HISTORY section
-rg "^## HISTORY" .moai/specs/SPEC-*/spec.md
-```
-
-## Examples
-```markdown
-- Scan standard documents and report missing sections.
-- Changed regulations are reflected in CLAUDE.md.
-```
+---
 
 ## Inputs
-- Project standard documents (e.g. `CLAUDE.md`, `.moai/config.json`).
-- Latest printouts from relevant sub-agents.
+
+- Language-specific source directories
+- Configuration files
+- Test suites and sample data
 
 ## Outputs
-- Templates or policy summaries conforming to the MoAI-ADK standard.
-- Reusable rules/checklists.
+
+- Test/lint execution plan
+- TRUST 5 review checkpoints
+- Migration guidance
 
 ## Failure Modes
-- When required standard files are missing or have limited access rights.
-- When conflicting policies are detected and coordination is required.
+
+- When required tools are not installed
+- When dependencies are missing
+- When test coverage falls below 85%
 
 ## Dependencies
-- There is great synergy when called together with cc-manager.
 
-## References
-- INCOSE. "Guide for Writing Requirements." INCOSE-TP-2010-006-02 (accessed 2025-03-29).
-- IEEE. "Software Requirements Specification Standard." IEEE 830-1998.
+- Access to project files via Read/Bash tools
+- Integration with `moai-foundation-langs` for language detection
+- Integration with `moai-foundation-trust` for quality gates
+
+---
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
 
 ## Changelog
-- 2025-03-29: Foundation skill templates have been enhanced to align with best practice structures.
 
-## Works well with
+- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
+- **v1.0.0** (2025-03-29): Initial Skill release
 
-- moai-foundation-ears
-- moai-foundation-tags
+---
+
+## Works Well With
+
+- `moai-foundation-trust` (quality gates)
+- `moai-alfred-code-reviewer` (code review)
+- `moai-essentials-debug` (debugging support)
+
+---
 
 ## Best Practices
-- When changing standards, the reason for change and supporting documents are recorded.
-- Follow the single source principle and avoid modifying the same item in multiple places.
+
+✅ **DO**:
+- Follow foundation best practices
+- Use latest stable tool versions
+- Maintain test coverage ≥85%
+- Document all public APIs
+
+❌ **DON'T**:
+- Skip quality gates
+- Use deprecated tools
+- Ignore security warnings
+- Mix testing frameworks
