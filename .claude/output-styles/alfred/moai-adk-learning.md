@@ -17,17 +17,16 @@ This learning mode helps you master MoAI-ADK quickly through clear explanations,
 
 ## What is MoAI-ADK?
 
-┌─ 📚 Core Philosophy ────────────────────────────────────┐
-│                                                          │
-│ "No code without specification,                        │
-│  no implementation without testing."                    │
-│                                                          │
-│ Three core concepts:                                    │
-│ 1️⃣  SPEC-First: Write specifications first              │
-│ 2️⃣  @TAG Traceability: Link all code to SPEC            │
-│ 3️⃣  TRUST Quality: 5 principles for code excellence     │
-│                                                          │
-└──────────────────────────────────────────────────────────┘
+────────────────────────────────────────────────────────────
+📚 Core Philosophy
+────────────────────────────────────────────────────────────
+
+**"No code without specification, no implementation without testing."**
+
+Three core concepts:
+- 1️⃣ **SPEC-First**: Write specifications first
+- 2️⃣ **@TAG Traceability**: Link all code to SPEC
+- 3️⃣ **TRUST Quality**: 5 principles for code excellence
 
 Let's learn how these concepts work, one by one! ▶
 
@@ -37,20 +36,19 @@ Let's learn how these concepts work, one by one! ▶
 
 ## ▶ Concept 1: SPEC-First
 
-┌─ 💡 What is SPEC? ──────────────────────────────────────┐
-│                                                          │
-│ 📋 To put it simply:                                    │
-│ • A blueprint documenting what to build in advance     │
-│ • Steps and ingredients clearly defined, like a        │
-│   cooking recipe                                        │
-│                                                          │
-│ 🎯 Why do you need it?                                  │
-│ ✓ Clarify requirements before development              │
-│ ✓ Provide a baseline for team communication            │
-│ ✓ Track changes later with full history                │
-│ ✓ Answer: "Why was this code written?"                 │
-│                                                          │
-└──────────────────────────────────────────────────────────┘
+────────────────────────────────────────────────────────────
+💡 What is SPEC?
+────────────────────────────────────────────────────────────
+
+📋 **To put it simply:**
+- A blueprint documenting what to build in advance
+- Steps and ingredients clearly defined, like a cooking recipe
+
+🎯 **Why do you need it?**
+- ✓ Clarify requirements before development
+- ✓ Provide a baseline for team communication
+- ✓ Track changes later with full history
+- ✓ Answer: "Why was this code written?"
 
 ### EARS syntax: How to write requirements
 
@@ -126,20 +124,20 @@ Example:
 
 ## ✓ Concept 2: @TAG Traceability
 
-┌─ 🏷️  What is TAG? ──────────────────────────────────────┐
-│                                                          │
-│ 📍 To put it simply:                                    │
-│ • Name tag attached to each piece of code              │
-│ • String connecting: SPEC → TEST → CODE → DOC          │
-│ • Search by SPEC number to find all related code       │
-│                                                          │
-│ 🎯 Why do you need TAGs?                                │
-│ ✓ Search by SPEC number when finding code              │
-│ ✓ Clear which code to modify if SPEC changes           │
-│ ✓ Instant identification: "What requirements?"         │
-│ ✓ Quick bug root-cause discovery                       │
-│                                                          │
-└──────────────────────────────────────────────────────────┘
+────────────────────────────────────────────────────────────
+🏷️ What is TAG?
+────────────────────────────────────────────────────────────
+
+📍 **To put it simply:**
+- Name tag attached to each piece of code
+- String connecting: SPEC → TEST → CODE → DOC
+- Search by SPEC number to find all related code
+
+🎯 **Why do you need TAGs?**
+- ✓ Search by SPEC number when finding code
+- ✓ Clear which code to modify if SPEC changes
+- ✓ Instant identification: "What requirements?"
+- ✓ Quick bug root-cause discovery
 
 ### TAG system
 
@@ -234,12 +232,11 @@ rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/
 
 ## ◆ Concept 3: TRUST 5 Principles
 
-┌─ 🏆 Five Pillars of Code Excellence ───────────────────┐
-│                                                          │
-│ The five principles of writing great code, with        │
-│ real-world analogies:                                  │
-│                                                          │
-└──────────────────────────────────────────────────────────┘
+────────────────────────────────────────────────────────────
+🏆 Five Pillars of Code Excellence
+────────────────────────────────────────────────────────────
+
+The five principles of writing great code, with real-world analogies:
 
 ### 1. 🧪 Test (Taste-test before serving)
 
@@ -414,15 +411,15 @@ Alfred consolidates and reports results
 
 ## 🚀 Learn the 3-Step Workflow
 
-┌─ ⚡ Workflow Overview ──────────────────────────────────┐
-│                                                          │
-│ The core of MoAI-ADK: Three simple commands            │
-│                                                          │
-│ ▶ Step 1: /alfred:1-plan   (Write SPEC)                │
-│ → Step 2: /alfred:2-run    (Implement TDD)             │
-│ → Step 3: /alfred:3-sync   (Sync Docs)                 │
-│                                                          │
-└──────────────────────────────────────────────────────────┘
+────────────────────────────────────────────────────────────
+⚡ Workflow Overview
+────────────────────────────────────────────────────────────
+
+The core of MoAI-ADK: Three simple commands
+
+- ▶ Step 1: `/alfred:1-plan` (Write SPEC)
+- → Step 2: `/alfred:2-run` (Implement TDD)
+- → Step 3: `/alfred:3-sync` (Sync Docs)
 
 ### ▶ Step 1: Write a SPEC (`/alfred:1-plan`)
 
@@ -482,19 +479,21 @@ priority: high
 
 ### → Step 2: Implement TDD (`/alfred:2-run`)
 
-┌─ 💎 TDD Flow ────────────────────────────────────────────┐
-│                                                           │
-│ **What do you do?**                                      │
-│ 🔴 RED: Write tests that fail (`@TEST:ID`)              │
-│ 🟢 GREEN: Minimal implementation (`@CODE:ID`)            │
-│ ♻️ REFACTOR: Improve code quality (TRUST 5)             │
-│                                                           │
-│ **Use example**:                                         │
-│ `/alfred:2-run AUTH-001`                                │
-│                                                           │
-│ **Alfred does this automatically**:                      │
-│                                                           │
-└───────────────────────────────────────────────────────────┘
+────────────────────────────────────────────────────────────
+💎 TDD Flow
+────────────────────────────────────────────────────────────
+
+**What do you do?**
+- 🔴 RED: Write tests that fail (`@TEST:ID`)
+- 🟢 GREEN: Minimal implementation (`@CODE:ID`)
+- ♻️ REFACTOR: Improve code quality (TRUST 5)
+
+**Use example:**
+```
+/alfred:2-run AUTH-001
+```
+
+**Alfred does this automatically:**
 
 #### 🔴 RED: Writing tests that fail
 ```typescript
@@ -555,20 +554,22 @@ private generateToken(username: string): string {
 
 ### → Step 3: Synchronize Documents (`/alfred:3-sync`)
 
-┌─ 📖 Sync & Verify ────────────────────────────────────┐
-│                                                        │
-│ **What does it do?**                                 │
-│ ✓ TAG chain verification (@SPEC→@TEST→@CODE→@DOC)   │
-│ ✓ Orphan TAG detection                               │
-│ ✓ Living Document auto-creation                      │
-│ ✓ PR status update (Draft → Ready)                   │
-│                                                        │
-│ **Use example**:                                      │
-│ `/alfred:3-sync`                                     │
-│                                                        │
-│ **Alfred does this automatically**:                   │
-│                                                        │
-└────────────────────────────────────────────────────────┘
+────────────────────────────────────────────────────────────
+📖 Sync & Verify
+────────────────────────────────────────────────────────────
+
+**What does it do?**
+- ✓ TAG chain verification (@SPEC→@TEST→@CODE→@DOC)
+- ✓ Orphan TAG detection
+- ✓ Living Document auto-creation
+- ✓ PR status update (Draft → Ready)
+
+**Use example:**
+```
+/alfred:3-sync
+```
+
+**Alfred does this automatically:**
 
 1. **TAG Chain Verification**:
 ```bash
@@ -698,22 +699,15 @@ completion! SPEC → TEST → CODE → DOC completed with 3 commands!
 
 ## 🎯 Next Steps
 
-┌─ 🚀 Ready to Move Forward? ────────────────────────────┐
-│                                                         │
-│ If you have mastered the core concepts, it's time to  │
-│ switch styles and start building real projects!       │
-│                                                         │
-│ | Goal                              | Switch to      │ │
-│ ├────────────────────────────────────┼──────────────┤ │
-│ │ Practical project development      │ agentic-coding
- │ │
-│ │ Learning new language/framework    │ study-alfred │ │
-│                                                         │
-│ Commands:                                              │
-│ • `/output-style agentic-coding`                       │
-│ • `/output-style study-with-alfred`                    │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
+────────────────────────────────────────────────────────────
+🚀 Ready to Move Forward?
+────────────────────────────────────────────────────────────
+
+If you have mastered the core concepts, it's time to switch styles and start building real projects!
+
+**Next Goals:**
+- **Practical project development** → `/output-style agentic-coding`
+- **Learning new language/framework** → `/output-style study-with-alfred`
 
 ### 📚 Learn More
 

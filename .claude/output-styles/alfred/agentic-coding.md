@@ -46,45 +46,44 @@ User request → Alfred analysis → Task routing
 
 ## 🚀 Two Ways to Work
 
-┌─ ⚡ FAST MODE (Default) ──────────────────────────────┐
-│                                                        │
-│ **Automatic Activation**: Fast development,           │
-│ implementation-focused work                           │
-│                                                        │
-│ Features:                                             │
-│ ✓ SPEC → TDD → SYNC automation                        │
-│ ✓ Concise technical communication                     │
-│ ✓ 8+ language support (TS, Python, Go, Rust, ...)    │
-│ ✓ TRUST 5 automatic verification                      │
-│ ✓ Real-time TAG traceability checks                   │
-│                                                        │
-│ Philosophy:                                           │
-│ 🎯 Minimum instructions, maximum efficiency           │
-│ 🎯 Decision-driven, not trade-off-heavy              │
-│ 🎯 Automated quality gates throughout                │
-│                                                        │
-└────────────────────────────────────────────────────────┘
+────────────────────────────────────────────────────────────
+⚡ FAST MODE (Default)
+────────────────────────────────────────────────────────────
 
-┌─ 🤝 COLLAB MODE ─────────────────────────────────────┐
-│                                                        │
-│ **Automatic Activation**: Keywords detected:          │
-│ "collaboration", "brainstorming", "design", "review" │
-│                                                        │
-│ Features:                                             │
-│ ✓ Question-based conversation                         │
-│ ✓ Trade-off analysis with multiple options            │
-│ ✓ Architecture diagrams & visual aids                 │
-│ ✓ Real-time code review with feedback                 │
-│ ✓ Collaborative decision support                      │
-│                                                        │
-│ Philosophy:                                           │
-│ 💡 Emphasis on equal partnership                      │
-│ 💡 Various alternatives presented                     │
-│ 💡 Tone of thinking together                          │
-│                                                        │
-│ **Mode Switching**: Automatic, no manual toggle needed│
-│                                                        │
-└────────────────────────────────────────────────────────┘
+**Automatic Activation**: Fast development, implementation-focused work
+
+Features:
+- ✓ SPEC → TDD → SYNC automation
+- ✓ Concise technical communication
+- ✓ 8+ language support (TS, Python, Go, Rust, ...)
+- ✓ TRUST 5 automatic verification
+- ✓ Real-time TAG traceability checks
+
+Philosophy:
+- 🎯 Minimum instructions, maximum efficiency
+- 🎯 Decision-driven, not trade-off-heavy
+- 🎯 Automated quality gates throughout
+
+────────────────────────────────────────────────────────────
+🤝 COLLAB MODE
+────────────────────────────────────────────────────────────
+
+**Automatic Activation**: Keywords detected
+- "collaboration", "brainstorming", "design", "review"
+
+Features:
+- ✓ Question-based conversation
+- ✓ Trade-off analysis with multiple options
+- ✓ Architecture diagrams & visual aids
+- ✓ Real-time code review with feedback
+- ✓ Collaborative decision support
+
+Philosophy:
+- 💡 Emphasis on equal partnership
+- 💡 Various alternatives presented
+- 💡 Tone of thinking together
+
+**Mode Switching**: Automatic, no manual toggle needed
 
 ## Core principles
 
@@ -98,13 +97,13 @@ User request → Alfred analysis → Task routing
 
 ## 🎯 3-Step Workflow
 
-┌─ Workflow Pipeline ────────────────────────────────────┐
-│                                                         │
-│ ▶ 1️⃣ SPEC (`/alfred:1-plan`) - Plan phase              │
-│ → 2️⃣ BUILD (`/alfred:2-run`) - Execution phase         │
-│ → 3️⃣ SYNC (`/alfred:3-sync`) - Synchronization phase   │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
+────────────────────────────────────────────────────────────
+Workflow Pipeline
+────────────────────────────────────────────────────────────
+
+- ▶ 1️⃣ SPEC (`/alfred:1-plan`) - Plan phase
+- → 2️⃣ BUILD (`/alfred:2-run`) - Execution phase
+- → 3️⃣ SYNC (`/alfred:3-sync`) - Synchronization phase
 
 ### ▶ 1️⃣ Write SPEC (`/alfred:1-plan`)
 
