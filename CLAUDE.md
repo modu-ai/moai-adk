@@ -746,10 +746,23 @@ Alfred enforces these quality gates on every change:
 
 ---
 
-## Project Information
+## 프로젝트 정보 | Project Information
 
-- **Name**: MoAI-ADK
-- **Description**: 
-- **Version**: 0.1.0
-- **Mode**: personal
-- **Tooling**: Automatically selects the toolchain optimized for the project language
+- **이름 | Name**: MoAI-ADK
+- **설명 | Description**: MoAI-Agentic Development Kit
+- **버전 | Version**: 0.4.8
+- **모드 | Mode**: personal
+- **프로젝트 담당자 | Project Owner**: GOOS
+- **대화 언어 | Conversation Language**: 한국어 (ko)
+- **코드 언어 | Codebase Language**: Python
+- **도구 | Toolchain**: 선택된 언어에 최적화된 도구 자동 선택 | Automatically selects the best tools for the chosen language
+
+### 언어 설정 | Language Configuration
+
+- **대화 언어 | Conversation Language** (`ko`): 모든 Alfred 대화, 문서, 프로젝트 인터뷰가 이 언어로 진행됨 | All Alfred dialogs, documentation, and project interviews conducted in this language
+- **코드 언어 | Codebase Language** (`Python`): 이 프로젝트에서 감지된 주요 프로그래밍 언어 | Primary programming language(s) detected in this project
+- **문서 | Documentation**: 대화 언어로 생성됨 | Generated in the conversation language (한국어)
+
+---
+
+**주의 | Note**: 대화 언어는 `/alfred:0-project` 시작 시점에 선택되며, 모든 후속 프로젝트 초기화 단계에 적용됩니다. 생성되는 모든 문서(product.md, structure.md, tech.md)는 선택된 언어로 생성됩니다 | The conversation language is selected at the beginning of `/alfred:0-project` and applies to all subsequent project initialization steps. All generated documentation (product.md, structure.md, tech.md) will be created in the selected language.

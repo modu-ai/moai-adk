@@ -3,7 +3,11 @@
 **SPEC-First TDD Development with Alfred SuperAgent**
 
 > **문서 언어 | Document Language**: {{CONVERSATION_LANGUAGE_NAME}} ({{CONVERSATION_LANGUAGE}})
+> **프로젝트 담당자 | Project Owner**: {{USER_NICKNAME}}
 > **설정 파일 | Config**: `.moai/config.json` → `project.conversation_language`
+>
+> 💡 **Alfred와의 모든 상호작용에서 `Skill("moai-alfred-interactive-questions")`를 통해 TUI 메뉴로 응답할 수 있습니다.**
+> All interactions with Alfred can use `Skill("moai-alfred-interactive-questions")` for TUI-based responses.
 
 ---
 
@@ -756,7 +760,7 @@ Alfred enforces these quality gates on every change:
 - **버전 | Version**: {{PROJECT_VERSION}}
 - **모드 | Mode**: {{PROJECT_MODE}}
 - **프로젝트 담당자 | Project Owner**: {{USER_NICKNAME}}
-- **대화 언어 | Conversation Language**: {{CONVERSATION_LANGUAGE}} ({{CONVERSATION_LANGUAGE_NAME}})
+- **대화 언어 | Conversation Language**: {{CONVERSATION_LANGUAGE_NAME}} ({{CONVERSATION_LANGUAGE}})
 - **코드 언어 | Codebase Language**: {{CODEBASE_LANGUAGE}}
 - **도구 | Toolchain**: 선택된 언어에 최적화된 도구 자동 선택 | Automatically selects the best tools for the chosen language
 
