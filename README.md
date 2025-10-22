@@ -29,6 +29,7 @@ If you've **already installed it and want to understand the concepts**, we recom
 | What do Plan/Run/Sync commands do? | [Command Cheat Sheet](#command-cheat-sheet)                  |
 | What are SPEC, TDD, TAG?           | [5 Key Concepts](#5-key-concepts)                            |
 | Tell me about agents/Skills        | [Sub-agents & Skills Overview](#sub-agents--skills-overview) |
+| How do Claude Code Hooks work?     | [Claude Code Hooks Guide](#claude-code-hooks-guide)          |
 | Want to dive deeper?               | [Additional Resources](#additional-resources)                |
 
 ---
@@ -74,7 +75,7 @@ A single `/alfred:3-sync` command **synchronizes** all code, tests, and document
 Every piece of code, test, and documentation gets a `@TAG:ID`. When requirements change later, one command—`rg "@SPEC:AUTH-001"`—**finds all related tests, implementations, and docs**. You gain confidence during refactoring.
 
 **5️⃣ Alfred Remembers Context**
-19 AI agents (1 Alfred SuperAgent + 10 Core Sub-agents + 6 Zero-project Specialists + 2 Built-in Agents) collaborate to **remember** your project's structure, decision rationale, and work history. No need to repeat the same questions.
+A team of AI agents collaborate to **remember** your project's structure, decision rationale, and work history. No need to repeat the same questions.
 
 ### MoAI-ADK's 3 Core Promises
 
@@ -179,9 +180,9 @@ my-project/
 │   ├── specs/               # SPEC files
 │   └── reports/             # Analysis reports
 ├── .claude/                 # Claude Code automation
-│   ├── agents/              # 19-member AI team
+│   ├── agents/              # AI team
 │   ├── commands/            # /alfred commands
-│   ├── skills/              # 56 Claude Skills
+│   ├── skills/              # Claude Skills
 │   └── settings.json
 ├── src/                     # Implementation code
 ├── tests/                   # Test code
@@ -208,7 +209,7 @@ This command performs:
 
 1. **Collect Project Info**: "Project name?", "Goals?", "Main language?"
 2. **Auto-detect Tech Stack**: Automatically recognizes Python/JavaScript/Go, etc.
-3. **Deploy Skill Packs**: Prepares necessary Skills from the 56 available
+3. **Deploy Skill Packs**: Prepares necessary Skills for your project
 4. **Generate Initial Report**: Project structure, suggested next steps
 
 ### Step 5: Write First SPEC (about 1 minute)
@@ -919,7 +920,7 @@ Result:
 
 ## Sub-agents & Skills Overview
 
-Alfred works by combining **19 agents** (1 SuperAgent + 10 Core Sub-agents + 6 0-project Sub-agents + 2 Built-in) with **56 Claude Skills**.
+Alfred works by combining multiple specialized agents with Claude Skills.
 
 ### Core Sub-agents (Plan → Run → Sync)
 
@@ -938,21 +939,21 @@ Alfred works by combining **19 agents** (1 SuperAgent + 10 Core Sub-agents + 6 0
 
 ### Skills (Progressive Disclosure - v0.4 New!)
 
-Alfred organizes **56 Claude Skills** in a 4-tier architecture using **Progressive Disclosure** to load Just-In-Time only when needed. Each Skill is a production-grade guide of 1,000+ lines stored in `.claude/skills/` directory.
+Alfred organizes Claude Skills in a 4-tier architecture using **Progressive Disclosure** to load Just-In-Time only when needed. Each Skill is a production-grade guide stored in `.claude/skills/` directory.
 
-#### Foundation Tier (6)
+#### Foundation Tier
 Core skills containing fundamental TRUST/TAG/SPEC/Git/EARS/Language principles
 
 | Skill                   | Description                                                                        |
 | ----------------------- | ---------------------------------------------------------------------------------- |
 | `moai-foundation-trust` | TRUST 5-principles (Test 85%+, Readable, Unified, Secured, Trackable) verification |
 | `moai-foundation-tags`  | @TAG markers scan and inventory generation (CODE-FIRST principle)                  |
-| `moai-foundation-specs` | SPEC YAML frontmatter (7 required fields) and HISTORY section validation           |
+| `moai-foundation-specs` | SPEC YAML frontmatter validation and HISTORY section management                   |
 | `moai-foundation-ears`  | EARS (Easy Approach to Requirements Syntax) requirements writing guide             |
 | `moai-foundation-git`   | Git workflow automation (branching, TDD commits, PR management)                    |
 | `moai-foundation-langs` | Project language/framework auto-detection (package.json, pyproject.toml, etc.)     |
 
-#### Essentials Tier (4)
+#### Essentials Tier
 Core tools needed for daily development work
 
 | Skill                      | Description                                                            |
@@ -962,24 +963,24 @@ Core tools needed for daily development work
 | `moai-essentials-refactor` | Refactoring guide, design patterns, code improvement strategies        |
 | `moai-essentials-review`   | Automated code review, SOLID principles, code smell detection          |
 
-#### Alfred Tier (11)
+#### Alfred Tier
 MoAI-ADK internal workflow orchestration skills
 
 | Skill                                  | Description                                                                                            |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | `moai-alfred-code-reviewer`            | Automated code review with language-specific best practices, SOLID principles, improvement suggestions |
 | `moai-alfred-debugger-pro`             | Stack trace analysis, error pattern detection, complex runtime error interpretation                    |
-| `moai-alfred-ears-authoring`           | EARS syntax validation, 5 requirement pattern guide                                                    |
+| `moai-alfred-ears-authoring`           | EARS syntax validation and requirement pattern guidance                                                |
 | `moai-alfred-git-workflow`             | MoAI-ADK conventions (feature branch, TDD commits, Draft PR) automation                                |
-| `moai-alfred-language-detection`       | Project language/runtime detection, default test tool recommendations                                  |
+| `moai-alfred-language-detection`       | Project language/runtime detection and test tool recommendations                                       |
 | `moai-alfred-performance-optimizer`    | Performance profiling, bottleneck detection, language-specific optimization                            |
 | `moai-alfred-refactoring-coach`        | Refactoring guide, design patterns, step-by-step improvement plan                                      |
-| `moai-alfred-spec-metadata-validation` | SPEC YAML frontmatter (7 fields) and HISTORY section consistency validation                            |
+| `moai-alfred-spec-metadata-validation` | SPEC YAML frontmatter and HISTORY section consistency validation                                       |
 | `moai-alfred-tag-scanning`             | Complete @TAG marker scan and inventory generation (CODE-FIRST principle)                              |
-| `moai-alfred-trust-validation`         | TRUST 5-principles compliance verification (Test 85%+, constraints, security, trackability)            |
+| `moai-alfred-trust-validation`         | TRUST 5-principles compliance verification                                                             |
 | `moai-alfred-interactive-questions`    | Claude Code Tools AskUserQuestion TUI menu standardization                                             |
 
-#### Domain Tier (10)
+#### Domain Tier
 Specialized domain expertise
 
 | Skill                      | Description                                                                              |
@@ -995,7 +996,7 @@ Specialized domain expertise
 | `moai-domain-security`     | OWASP Top 10, static analysis (SAST), dependency security, secrets management            |
 | `moai-domain-web-api`      | REST API, GraphQL design patterns, authentication, versioning, OpenAPI documentation     |
 
-#### Language Tier (24)
+#### Language Tier
 Programming language-specific best practices
 
 | Skill                  | Description                                               |
@@ -1023,16 +1024,15 @@ Programming language-specific best practices
 | `moai-lang-lua`        | busted, luacheck, embedded scripting patterns             |
 | `moai-lang-julia`      | Test stdlib, Pkg manager, scientific computing patterns   |
 | `moai-lang-r`          | testthat, lintr, data analysis patterns                   |
-| `moai-lang-kotlin`     | JUnit, Gradle, ktlint, coroutines, extension functions    |
 
-#### Claude Code Ops (1)
+#### Claude Code Ops
 Claude Code session management
 
 | Skill              | Description                                                                        |
 | ------------------ | ---------------------------------------------------------------------------------- |
 | `moai-claude-code` | Claude Code agents, commands, skills, plugins, settings scaffolding and monitoring |
 
-> **v0.4.6 New Feature**: 56 Claude Skills organized in 4-tier architecture (100% complete in v0.4.6). Each Skill loads via Progressive Disclosure only when needed to minimize context cost. Organized in Foundation → Essentials → Alfred → Domain/Language/Ops tiers, with all skills including 1,000+ lines of official documentation and 300+ executable TDD examples.
+> **v0.4.6 New Feature**: Claude Skills organized in 4-tier architecture (100% complete in v0.4.6). Each Skill loads via Progressive Disclosure only when needed to minimize context cost. Organized in Foundation → Essentials → Alfred → Domain/Language/Ops tiers, with all skills including production-grade documentation and executable TDD examples.
 
 ---
 
@@ -1045,6 +1045,133 @@ Claude Code session management
 
 - Start with Haiku for patterned tasks; switch to Sonnet when complex judgment is needed.
 - If you manually change models, noting "why switched" in logs helps collaboration.
+
+---
+
+## Claude Code Hooks Guide
+
+MoAI-ADK provides 4 main **Claude Code Hooks** that seamlessly integrate with your development workflow. These hooks enable automatic checkpoints, JIT context loading, and session monitoring—all happening transparently in the background.
+
+### What Are Hooks?
+
+Hooks are **event-driven** scripts that trigger automatically at specific points in your Claude Code session. Think of them as safety guardrails and productivity boosters that work behind the scenes without interrupting your flow.
+
+### Installed Hooks
+
+#### 1. SessionStart (Session Initialization)
+
+**Triggers**: When you start a Claude Code session in your project
+**Purpose**: Display project status at a glance
+
+**What You See**:
+```
+🚀 MoAI-ADK Session Started
+   Language: Python
+   Branch: develop
+   Changes: 2 files
+   SPEC Progress: 12/25 (48%)
+```
+
+**Why It Matters**: Instantly understand your project's current state without running multiple commands.
+
+#### 2. PreToolUse (Before Tool Execution)
+
+**Triggers**: Before executing file edits, Bash commands, or MultiEdit operations
+**Purpose**: Detect risky operations and automatically create safety checkpoints
+
+**Protection Against**:
+- `rm -rf` (file deletion)
+- `git merge`, `git reset --hard` (Git dangerous operations)
+- Editing critical files (`CLAUDE.md`, `config.json`)
+- Mass edits (10+ files at once via MultiEdit)
+
+**What You See**:
+```
+🛡️ Checkpoint created: before-delete-20251023-143000
+   Operation: delete
+```
+
+**Why It Matters**: Prevents data loss from mistakes. You can always restore from the checkpoint if something goes wrong.
+
+#### 3. UserPromptSubmit (Prompt Input)
+
+**Triggers**: When you submit a prompt to Claude
+**Purpose**: JIT (Just-In-Time) context loading—automatically add relevant files
+
+**How It Works**:
+- You type: "Fix AUTH bug"
+- Hook scans for AUTH-related files
+- Auto-loads: SPEC, tests, implementation, docs related to AUTH
+- Claude receives full context without you manually specifying files
+
+**Why It Matters**: Saves time and ensures Claude has all the relevant context for your request.
+
+#### 4. SessionEnd (Session Cleanup)
+
+**Triggers**: When you close your Claude Code session
+**Purpose**: Cleanup tasks and state preservation
+
+**Why It Matters**: Ensures clean session transitions and proper state management.
+
+### Technical Details
+
+- **Location**: `.claude/hooks/alfred/`
+- **Environment Variable**: `$CLAUDE_PROJECT_DIR` (dynamically references project root)
+- **Performance**: Each hook executes in <100ms
+- **Logging**: Errors output to stderr (stdout reserved for JSON payloads)
+
+### How to Disable Hooks
+
+If you need to temporarily disable hooks, edit `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "SessionStart": [],     // Disabled
+    "PreToolUse": [...]     // Still active
+  }
+}
+```
+
+### Troubleshooting
+
+**Problem: Hook doesn't execute**
+- ✅ Verify `.claude/settings.json` is properly configured
+- ✅ Check `uv` is installed: `which uv`
+- ✅ Ensure hook script has execute permissions: `chmod +x .claude/hooks/alfred/alfred_hooks.py`
+
+**Problem: Performance degradation**
+- ✅ Check if any hook exceeds 100ms execution time
+- ✅ Disable unnecessary hooks
+- ✅ Review error messages in stderr output
+
+**Problem: Too many checkpoints created**
+- ✅ Review PreToolUse trigger conditions
+- ✅ Adjust detection thresholds in `core/checkpoint.py` if needed
+
+### Installed Hooks (5 total)
+
+| Hook | Status | Feature |
+|------|--------|---------|
+| **SessionStart** | ✅ Active | Project status summary (language, Git, SPEC progress, checkpoints) |
+| **PreToolUse** | ✅ Active | Risk detection + auto checkpoint (critical-delete, delete, merge, script) |
+| **UserPromptSubmit** | ✅ Active | JIT context loading (auto-load related SPEC, tests, code, docs) |
+| **PostToolUse** | ✅ Active | Auto-run tests after code changes (9 languages: Python, TS, JS, Go, Rust, Java, Kotlin, Swift, Dart) |
+| **SessionEnd** | ✅ Active | Session cleanup and state saving |
+
+### Future Enhancements
+
+- **Notification**: Important event alerts (logging, notifications)
+- **Stop/SubagentStop**: Cleanup when agents terminate
+- Advanced security: `dd` commands, supply chain checks
+
+### Learn More
+
+- Comprehensive analysis: `.moai/reports/hooks-analysis-and-implementation.md`
+- PostToolUse implementation: `.moai/reports/phase3-posttool-implementation-complete.md`
+- Security enhancements: `.moai/reports/security-enhancement-critical-delete.md`
+- Hook implementation: `.claude/hooks/alfred/`
+- Hook tests: `tests/hooks/`
 
 ---
 
@@ -1065,12 +1192,12 @@ Claude Code session management
 
 | Version    | Key Features                                                                         | Date       |
 | ---------- | ------------------------------------------------------------------------------------ | ---------- |
-| **v0.4.6** | 🎉 Complete Skills v2.0 (56/56 100%) + 85,000 lines official docs + 300+ TDD examples | 2025-10-22 |
+| **v0.4.6** | 🎉 Complete Skills v2.0 (100% Production-Ready) + 85,000 lines official docs + 300+ TDD examples | 2025-10-22 |
 | **v0.4.5** | ✅ CI/CD fixes + Multi-language README + Deployment cleanup                           | 2025-10-22 |
 | **v0.4.4** | Korean language support                                                              | 2025-10-21 |
 | **v0.4.3** | Interactive question tool (TUI menu)                                                 | 2025-10-21 |
 | **v0.4.1** | Skills localization                                                                  | 2025-10-21 |
-| **v0.4.0** | **56 Claude Skills** + 19-member AI team + 4-stage workflow                          | 2025-10-21 |
+| **v0.4.0** | Claude Skills + AI team + 4-stage workflow                                          | 2025-10-21 |
 
 > 📦 **Install Now**: `pip install moai-adk==0.4.6` or `uv tool install moai-adk==0.4.6`
 
