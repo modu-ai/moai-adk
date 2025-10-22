@@ -306,13 +306,12 @@ Set optimization flags after the merge is complete:
  - Empty directory → New project
  - Code/documentation present → Existing project
 
-2. **Auto-detect language/framework**: Detects the main language of your project based on file patterns
-   - pyproject.toml, requirements.txt → Python
-   - package.json, tsconfig.json → TypeScript/Node.js
-   - pom.xml, build.gradle → Java
-   - go.mod → Go
-   - Cargo.toml → Rust
-- backend/ + frontend/ → full stack
+2. **Context-aware language detection** (Performed by project-manager in STEP 1):
+   - Uses Glob/Grep to search for language-specific markers (Gemfile, pyproject.toml, package.json, go.mod, Cargo.toml, etc.)
+   - Calculates confidence scores for each detected language
+   - Presents results via TUI menu for user confirmation
+   - Stores confirmed language in `.moai/config.json` with full metadata
+   - **Advantage**: Eliminates Ruby→PHP misidentification via context analysis (not just directory patterns)
 
 3. **Document status analysis**
  - Check the status of existing `.moai/project/*.md` files

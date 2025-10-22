@@ -9,6 +9,6 @@ from importlib.metadata import PackageNotFoundError, version
 try:
     __version__ = version("moai-adk")
 except PackageNotFoundError:
-    __version__ = "0.5.0-dev"
+    __version__ = "0.4.6-dev"
 
 __all__ = ["__version__"]
