@@ -52,17 +52,24 @@ def detect_risky_operation(tool_name: str, tool_args: dict[str, Any], cwd: str) 
     Returns:
         (is_risky, operation_type) tuple
         - is_risky: Whether the operation is dangerous (bool)
-        - operation_type: operation type (str: delete, merge, script, critical-file, refactor)
+        - operation_type: operation type (str: critical-delete, delete, merge, script, critical-file, refactor)
 
     Risky Operations:
-        - Bash tool: rm -rf, git merge, git reset --hard, git rebase, script execution
-        - Edit/Write tool: CLAUDE.md, config.json, .moai/memory/*.md
-        - MultiEdit tool: Edit ≥10 items File simultaneously
-        - Script execution: Python, Node, Java, Go, Rust, Dart, Swift, Kotlin, Shell scripts
+        - Bash tool:
+            * critical-delete: rm -rf /, rm -rf /home, rm -rf /Users, etc. (system-level)
+            * delete: rm -rf (project-level), git rm
+            * merge: git merge, git reset --hard, git rebase
+            * script: Python, Node, Bash, Shell execution
+        - Edit/Write tool: CLAUDE.md, config.json, .moai/memory/*.md (critical-file)
+        - MultiEdit tool: Edit ≥10 items File simultaneously (refactor)
 
     Examples:
+        >>> detect_risky_operation("Bash", {"command": "rm -rf /"}, ".")
+        (True, 'critical-delete')
         >>> detect_risky_operation("Bash", {"command": "rm -rf src/"}, ".")
         (True, 'delete')
+        >>> detect_risky_operation("Bash", {"command": "git merge feature"}, ".")
+        (True, 'merge')
         >>> detect_risky_operation("Edit", {"file_path": "CLAUDE.md"}, ".")
         (True, 'critical-file')
         >>> detect_risky_operation("Read", {"file_path": "test.py"}, ".")
@@ -79,7 +86,23 @@ def detect_risky_operation(tool_name: str, tool_args: dict[str, Any], cwd: str) 
     if tool_name == "Bash":
         command = tool_args.get("command", "")
 
-        # Mass Delete
+        # Critical: System-level deletion (rm -rf /, rm -rf /home, rm -rf /Users, etc.)
+        # Use word boundary to avoid false positives like "rm -rf /project"
+        critical_delete_patterns = [
+            "rm -rf / ",  # Space after / ensures we catch "rm -rf / something"
+            "rm -rf /home",
+            "rm -rf /root",
+            "rm -rf /Users",
+            "rm -rf /var",
+            "rm -rf /etc",
+            "rm -rf /boot",
+        ]
+
+        # Also check for "rm -rf /" at end of command (no trailing space)
+        if command.rstrip().endswith("rm -rf /") or any(pattern in command for pattern in critical_delete_patterns):
+            return (True, "critical-delete")
+
+        # Mass Delete (project-level)
         if any(pattern in command for pattern in ["rm -rf", "git rm"]):
             return (True, "delete")
 
@@ -123,7 +146,13 @@ def create_checkpoint(cwd: str, operation_type: str) -> str:
 
     Args:
         cwd: Project root directory path
-        operation_type: operation type (delete, merge, script, etc.)
+        operation_type: operation type
+            - critical-delete: System-level deletion (rm -rf /, rm -rf /home, etc.)
+            - delete: Project-level deletion (rm -rf src/, etc.)
+            - merge: Git operations (git merge, git reset --hard)
+            - script: Script execution (Python, Node, Bash)
+            - critical-file: Critical file editing (CLAUDE.md, config.json)
+            - refactor: Large-scale edits (MultiEdit ≥10 files)
 
     Returns:
         checkpoint_branch: Created branch name
@@ -131,9 +160,11 @@ def create_checkpoint(cwd: str, operation_type: str) -> str:
 
     Branch Naming:
         before-{operation}-{YYYYMMDD-HHMMSS}
-        Example: before-delete-20251015-143000
+        Example: before-critical-delete-20251015-143000 or before-delete-20251015-143000
 
     Examples:
+        >>> create_checkpoint(".", "critical-delete")
+        'before-critical-delete-20251015-143000'
         >>> create_checkpoint(".", "delete")
         'before-delete-20251015-143000'
 

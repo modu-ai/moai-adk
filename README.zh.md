@@ -29,6 +29,8 @@ MoAI-ADK 通过三个核心原则革新 AI 协作开发。使用下面的导航�
 | Plan / Run / Sync 命令做什么？ | [核心命令摘要](#核心命令摘要)                      |
 | SPEC·TDD·TAG 是什么？          | [轻松理解核心概念](#轻松理解核心概念)              |
 | Agent/Skills 是什么？          | [Sub-agent & Skills 概述](#sub-agent--skills-概述) |
+| Claude Code Hooks 如何运作？   | [Claude Code Hooks 指南](#claude-code-hooks-指南) |
+| 想做一个 4 周实战项目           | [第二个实战：Mini Kanban Board](#第二个实战-mini-kanban-board) |
 | 想深入学习                     | [更多资源](#更多资源)                              |
 
 ---
@@ -977,6 +979,52 @@ MoAI-ADK 内部工作流程编排技能
 | `moai-alfred-spec-metadata-validation` | SPEC YAML frontmatter（7个字段）和 HISTORY 部分一致性验证        |
 | `moai-alfred-tag-scanning`             | @TAG 标记完整扫描和清单生成（CODE-FIRST 原则）                   |
 | `moai-alfred-trust-validation`         | TRUST 5-principles 合规性验证（Test 85%+、约束、安全、可追踪性） |
+
+---
+
+## Claude Code Hooks 指南
+
+MoAI-ADK 提供 5 个与开发流程无缝集成的 Claude Code Hooks。它们在会话开始/结束、工具执行前后、提交提示词时自动触发，完成检查点、JIT 上下文加载、会话管理等任务。
+
+### 什么是 Hook？
+
+Hook 是在 Claude Code 会话关键事件上自动触发的事件驱动脚本，在不打断工作流的情况下提供安全与效率。
+
+### 已安装的 Hooks（共 5 个）
+
+| Hook | 状态 | 功能 |
+|------|------|------|
+| SessionStart | ✅ 启用 | 项目状态摘要（语言、Git、SPEC 进度、检查点） |
+| PreToolUse | ✅ 启用 | 风险检测 + 自动检查点（删除/合并/批量编辑/关键文件） |
+| UserPromptSubmit | ✅ 启用 | JIT 上下文加载（自动加载相关 SPEC/测试/代码/文档） |
+| PostToolUse | ✅ 启用 | 代码更改后自动运行测试（Python/TS/JS/Go/Rust/Java 等） |
+| SessionEnd | ✅ 启用 | 会话清理与状态保存 |
+
+### 技术细节
+
+- 位置: `.claude/hooks/alfred/`
+- 环境变量: `$CLAUDE_PROJECT_DIR`（动态指向项目根目录）
+- 性能: 每个 Hook 执行 <100ms
+- 日志: 错误输出至 stderr（stdout 仅用于 JSON 载荷）
+
+### 如何禁用
+
+在 `.claude/settings.json` 中按需禁用：
+
+```json
+{
+  "hooks": {
+    "SessionStart": [],
+    "PreToolUse": ["risk-detector", "checkpoint-maker"]
+  }
+}
+```
+
+### 故障排查
+
+- 未执行: 检查 `.claude/settings.json`、确认安装 `uv`、给予执行权限 `chmod +x .claude/hooks/alfred/alfred_hooks.py`
+- 性能下降: 检查是否超过 100ms、禁用不必要 Hook、查看 stderr 错误
+- 检查点过多: 调整 PreToolUse 触发条件与阈值（`core/checkpoint.py`）
 | `moai-alfred-interactive-questions`    | Claude Code Tools AskUserQuestion TUI 菜单标准化                 |
 
 #### Domain Tier（10）
@@ -1076,6 +1124,362 @@ Claude Code 会话管理
 
 ---
 
+## 第二个实战：Mini Kanban Board
+
+## 第二个实战：Mini Kanban Board
+
+本节超越第一个 Todo API 示例，带你完成一个为期 4 周的完整全栈项目。
+
+我们将一起构建一个 Mini Kanban Board Web 应用，专为系统化掌握 MoAI‑ADK 而设计。该项目覆盖 SPEC‑First TDD 的每一步。
+
+### 项目概览
+
+- 后端：FastAPI + Pydantic v2 + uv + WebSocket（Python）
+- 前端：React 19 + TypeScript 5.9 + Vite + Zustand + TanStack Query
+- 实时：通过 WebSocket 进行多客户端同步
+- 存储：本地文件系统（.moai/specs/）
+- DevOps：Docker Compose + GitHub Actions CI/CD + Playwright E2E
+
+### 4 周时间表
+
+```mermaid
+gantt
+    title Mini Kanban Board — 4 周计划
+    dateFormat YYYY-MM-DD
+
+    section 阶段 1：后端基础
+    CH07: 定义 SPEC-001~004           :active, ch07-spec, 2025-11-03, 1d
+    CH07: 实现 SpecScanner（TDD）     :active, ch07-impl, 2025-11-04, 1d
+
+    section 阶段 2：后端进阶
+    CH08: 实现 REST API               :active, ch08-api, 2025-11-05, 1d
+    CH08: WebSocket + 文件监听        :active, ch08-ws, 2025-11-06, 1d
+
+    section 阶段 3：前端基础
+    CH09: React 初始化 + SPEC-009~012 :active, ch09-spec, 2025-11-10, 1d
+    CH09: 看板页面（TDD）             :active, ch09-impl, 2025-11-11, 1d
+
+    section 阶段 4：高级 + 部署
+    CH10: E2E + CI/CD                 :active, ch10-e2e, 2025-11-12, 1d
+    CH10: Docker Compose + 优化       :active, ch10-deploy, 2025-11-13, 1d
+```
+
+### 16 个 SPEC 路线图
+
+| 阶段 | SPEC | 标题 | 技术栈 | 预估 | 状态 |
+|------|------|------|--------|------|------|
+| 后端基础 | SPEC-001 | SPEC 文件扫描 | FastAPI + pathlib + YAML | 1h | 📋 |
+|  | SPEC-002 | YAML 元数据解析 | Pydantic v2 校验 | 1h | 📋 |
+|  | SPEC-003 | GET /api/specs（列表） | FastAPI 路由 | 0.5h | 📋 |
+|  | SPEC-004 | GET /api/specs/{id}（详情） | FastAPI 路由 | 0.5h | 📋 |
+| 后端进阶 | SPEC-005 | PATCH /api/specs/{id}/status | FastAPI + 更新 | 1h | 📋 |
+|  | SPEC-006 | GET /api/specs/summary | 聚合统计 | 0.5h | 📋 |
+|  | SPEC-007 | 文件监听 | watchdog + 异步 | 1h | 📋 |
+|  | SPEC-008 | WebSocket 事件 | FastAPI WebSocket | 1.5h | 📋 |
+| 前端基础 | SPEC-009 | 看板布局 | React + CSS Grid | 1.5h | 📋 |
+|  | SPEC-010 | SPEC 卡片组件 | React + TypeScript | 1h | 📋 |
+|  | SPEC-011 | 集成 TanStack Query | useQuery + useMutation | 1.5h | 📋 |
+|  | SPEC-012 | 拖拽放置 | React Beautiful DnD | 1.5h | 📋 |
+| 高级 + 部署 | SPEC-013 | E2E 自动化测试 | Playwright | 1.5h | 📋 |
+|  | SPEC-014 | GitHub Actions CI/CD | 测试 + 发布 | 1h | 📋 |
+|  | SPEC-015 | Docker Compose 部署 | 多容器 | 1h | 📋 |
+|  | SPEC-016 | 性能优化 + 功能扩展 | 缓存 + WS 调优 | 1.5h | 📋 |
+|  |  | 合计 |  | 20h |  |
+
+### 系统架构
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                  Mini Kanban Board — 架构                    │
+└─────────────────────────────────────────────────────────────┘
+
+┌──────────────────────┐         ┌────────────────────────┐
+│   📱 前端            │         │   🖥️ 后端服务         │
+│  (React 19 + Vite)   │◄───────►│ (FastAPI + Pydantic)   │
+│                      │  REST   │                        │
+│ ┌──────────────────┐ │ API +   │ ┌──────────────────┐   │
+│ │ DashboardHeader  │ │WebSocket│ │ GET /api/specs   │   │
+│ ├──────────────────┤ │         │ ├──────────────────┤   │
+│ │ KanbanBoard      │ │         │ │ PATCH /api/specs/{id}││
+│ │ ┌──────────────┐ │ │         │ │ /status          │   │
+│ │ │ Column: Draft│ │ │         │ ├──────────────────┤   │
+│ │ │ Column: Active││ │         │ │ WebSocket        │   │
+│ │ │ Column: Done │ │ │         │ │ /ws              │   │
+│ │ └──────────────┘ │ │         │ │                  │   │
+│ ├──────────────────┤ │         │ ├──────────────────┤   │
+│ │ SpecCard (DnD)   │ │         │ │ SpecScanner      │   │
+│ ├──────────────────┤ │         │ │ (.moai/specs/)   │   │
+│ │ SearchBar        │ │         │ ├──────────────────┤   │
+│ └──────────────────┘ │         │ │ YAML Parser      │   │
+│                      │         │ │ (Pydantic v2)    │   │
+│ Zustand 存储:        │         │ └──────────────────┘   │
+│ • filterStore        │         │                        │
+│ • uiStore            │         │ 文件系统:               │
+│                      │         │ .moai/specs/           │
+│ TanStack Query:      │         │ SPEC-001/              │
+│ • useQuery           │         │ SPEC-002/              │
+│ • useMutation        │         │ ...                    │
+└──────────────────────┘         └────────────────────────┘
+         │                                    │
+         │            WebSocket               │
+         └────────────────────────────────────┘
+              (实时同步)
+```
+
+### 分阶段详解
+
+#### 阶段 1：后端基础（SPEC-001~004）
+
+目标：使用 FastAPI + Pydantic v2 + uv 搭建核心数据扫描服务
+
+```bash
+# 1）项目初始化
+/alfred:0-project
+# → 创建 .moai/, backend/, frontend/
+# → 配置 .moai/config.json
+
+# 2）编写 SPEC（SPEC-001~004）
+/alfred:1-plan
+# → SPEC-001: SPEC 文件扫描
+# → SPEC-002: YAML 元数据解析
+# → SPEC-003: GET /api/specs 端点
+# → SPEC-004: GET /api/specs/{id} 端点
+
+# 3）TDD（RED → GREEN → REFACTOR）
+/alfred:2-run SPEC-001
+/alfred:2-run SPEC-002
+/alfred:2-run SPEC-003
+/alfred:2-run SPEC-004
+```
+
+要点：
+- FastAPI 项目结构
+- Pydantic v2 校验
+- YAML Front Matter 解析
+- 依赖注入（DI）
+- 完成首个 TDD 循环
+
+#### 阶段 2：后端进阶（SPEC-005~008）
+
+目标：实现文件监听与 WebSocket 实时事件
+
+```bash
+# REST 端点
+/alfred:2-run SPEC-005  # PATCH /api/specs/{id}/status
+/alfred:2-run SPEC-006  # GET /api/specs/summary
+
+# WebSocket + 文件监听
+/alfred:2-run SPEC-007  # 文件监听（watchdog）
+/alfred:2-run SPEC-008  # WebSocket 广播
+
+# TRUST 5 验证
+/alfred:3-sync          # 验证所有原则
+```
+
+要点：
+- 文件系统监控（watchdog）
+- FastAPI WebSocket 端点
+- 异步事件广播
+- TRUST 5 自动验证
+
+#### 阶段 3：前端基础（SPEC-009~012）
+
+目标：使用 React 19 + TypeScript + Vite 构建看板 UI
+
+```bash
+# 初始化 React + Vite
+cd frontend
+npm create vite@latest . -- --template react-ts
+
+# 安装 TanStack Query + Zustand
+npm install @tanstack/react-query zustand
+
+# SPEC
+/alfred:1-plan SPEC-009  # 布局
+/alfred:1-plan SPEC-010  # 卡片组件
+/alfred:1-plan SPEC-011  # 集成 TanStack Query
+/alfred:1-plan SPEC-012  # 拖拽放置
+
+# TDD
+/alfred:2-run SPEC-009
+/alfred:2-run SPEC-010
+/alfred:2-run SPEC-011
+/alfred:2-run SPEC-012
+```
+
+要点：
+- React 19 Hooks（useState, useEffect, useContext）
+- TypeScript 5.9 严格模式
+- TanStack Query（useQuery, useMutation）
+- Zustand 状态管理
+- React Beautiful DnD 拖拽
+
+#### 阶段 4：高级 + 部署（SPEC-013~016）
+
+目标：E2E 测试、CI/CD、Docker 部署、性能优化
+
+```bash
+# E2E 测试（Playwright）
+/alfred:2-run SPEC-013
+
+# GitHub Actions CI/CD
+/alfred:2-run SPEC-014
+
+# Docker Compose 部署
+/alfred:2-run SPEC-015
+
+# 性能优化
+/alfred:2-run SPEC-016
+```
+
+要点：
+- Playwright E2E 自动化
+- GitHub Actions 工作流
+- Docker 多阶段构建
+- 生产性能优化
+
+### 快速开始指南
+
+#### 第 1 步：项目初始化
+
+```bash
+# 安装 MoAI-ADK
+pip install moai-adk==0.4.6
+
+# 创建项目
+mkdir mini-kanban-board && cd mini-kanban-board
+git init
+
+# 使用 Alfred 初始化
+/alfred:0-project
+```
+
+#### 第 2 步：编写 SPEC
+
+```bash
+# 开始规划
+/alfred:1-plan
+
+# 回答问题：
+# - 项目名称：Mini Kanban Board
+# - 技术栈：FastAPI + React 19
+# - 周期：4 周实战项目
+```
+
+#### 第 3 步：开始 TDD
+
+```bash
+# 阶段 1（后端基础）
+/alfred:2-run SPEC-001  # 首个 TDD 循环
+
+# 阶段 2（后端进阶）
+/alfred:2-run SPEC-005
+/alfred:2-run SPEC-006
+/alfred:2-run SPEC-007
+/alfred:2-run SPEC-008
+
+# 阶段 3（前端基础）
+cd frontend
+/alfred:2-run SPEC-009
+/alfred:2-run SPEC-010
+/alfred:2-run SPEC-011
+/alfred:2-run SPEC-012
+
+# 阶段 4（高级 + 部署）
+/alfred:2-run SPEC-013
+/alfred:2-run SPEC-014
+/alfred:2-run SPEC-015
+/alfred:2-run SPEC-016
+```
+
+### 项目搭建
+
+#### 1）初始化项目
+
+```bash
+moai-adk init mini-kanban
+cd mini-kanban
+
+# （可选）预建前后端目录
+mkdir -p backend frontend
+```
+
+#### 2）编写 SPEC
+
+```bash
+# 进入规划阶段
+/alfred:1-plan
+
+# 回答问题：
+# - 项目名称：Mini Kanban Board
+# - 技术栈：FastAPI + React 19
+# - 周期：4 周实战项目
+```
+
+#### 3）开始 TDD
+
+```bash
+# 阶段 1（后端基础）
+/alfred:2-run SPEC-001
+
+# 阶段 2（后端进阶）
+/alfred:2-run SPEC-005
+/alfred:2-run SPEC-006
+/alfred:2-run SPEC-007
+/alfred:2-run SPEC-008
+
+# 阶段 3（前端基础）
+cd frontend
+/alfred:2-run SPEC-009
+/alfred:2-run SPEC-010
+/alfred:2-run SPEC-011
+/alfred:2-run SPEC-012
+
+# 阶段 4（高级 + 部署）
+/alfred:2-run SPEC-013
+/alfred:2-run SPEC-014
+/alfred:2-run SPEC-015
+/alfred:2-run SPEC-016
+```
+
+#### 4）同步文档与部署
+
+```bash
+# 同步所有变更
+/alfred:3-sync
+
+# 通过 Docker 运行
+docker-compose up -d
+
+# 浏览器打开
+open http://localhost:3000
+```
+
+### TRUST 5 原则
+
+| 原则 | 标准 | 在本项目中的实践 |
+|------|------|------------------|
+| Test First | 覆盖率 ≥ 85% | pytest（后端）、Vitest（前端）+ 自动 TRUST 校验 |
+| Readable | 300 LOC/文件、50 LOC/函数 | ruff format + Biome 自动格式化 |
+| Unified | 类型安全 | mypy --strict（后端）、TypeScript strict（前端） |
+| Secured | 输入校验 + 静态分析 | Pydantic 校验 + eslint‑plugin‑security |
+| Trackable | 代码全链路 @TAG | @SPEC:001~016 → @TEST → @CODE → @DOC 完整关联 |
+
+### 学习收获
+
+- SPEC‑First TDD 方法论
+- 使用 FastAPI + Pydantic v2 设计后端 API
+- 使用 React 19 + TypeScript + Vite 构建前端
+- 基于 WebSocket 的实时同步
+- 使用 Playwright 进行 E2E 测试
+- 使用 GitHub Actions 构建 CI/CD
+- 使用 Docker Compose 进行多容器部署
+- 基于 @TAG 系统实现完整可追踪性
+- 自动化 TRUST 5 校验
+- 与 19 名 AI 代理协作
+
+---
+
 ## 更多资源
 
 | 目的            | 资源                                                                 |
@@ -1121,3 +1525,5 @@ MoAI-ADK 不仅仅是生成代码的工具。Alfred SuperAgent 和19人团队、
 - 🏠 GitHub: https://github.com/modu-ai/moai-adk
 - 📝 License: MIT
 - ⭐ Skills: 56/56 Complete（100% 生产就绪）
+
+---
