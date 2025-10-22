@@ -4,8 +4,8 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: Haskell GHC 9.12+ best practices with HUnit, Stack/Cabal, and pure functional programming.
-keywords: ['haskell', 'ghc', 'hunit', 'stack', 'cabal']
+description: Haskell GHC 9.10+ best practices with HUnit, Stack/Cabal, pure functional programming patterns.
+keywords: ['haskell', 'ghc', 'hunit', 'stack', 'cabal', 'functional']
 allowed-tools:
   - Read
   - Bash
@@ -27,7 +27,7 @@ allowed-tools:
 
 ## What It Does
 
-Haskell GHC 9.12+ best practices with HUnit, Stack/Cabal, and pure functional programming.
+Haskell GHC 9.10+ best practices with HUnit, Stack/Cabal, pure functional programming patterns.
 
 **Key capabilities**:
 - ✅ Best practices enforcement for language domain
@@ -55,10 +55,10 @@ Haskell GHC 9.12+ best practices with HUnit, Stack/Cabal, and pure functional pr
 
 | Tool | Version | Purpose | Status |
 |------|---------|---------|--------|
-| **GHC** | 9.12.0 | Primary | ✅ Current |
-| **HUnit** | 1.6.2.0 | Primary | ✅ Current |
-| **Stack** | 3.3.1 | Primary | ✅ Current |
-| **Cabal** | 3.14.0.0 | Primary | ✅ Current |
+| **GHC** | 9.10.3 | Compiler | ✅ Current |
+| **Stack** | 3.7.1 | Build Tool | ✅ Current |
+| **Cabal** | 3.12.0 | Package Manager | ✅ Current |
+| **HUnit** | 1.6.2 | Testing | ✅ Current |
 
 ---
 
@@ -112,13 +112,13 @@ _Documentation links updated 2025-10-22_
 ## Best Practices
 
 ✅ **DO**:
-- Follow language best practices
-- Use latest stable tool versions
+- Follow pure functional programming principles
+- Use type-driven development
 - Maintain test coverage ≥85%
-- Document all public APIs
+- Leverage type safety and immutability
 
 ❌ **DON'T**:
 - Skip quality gates
-- Use deprecated tools
-- Ignore security warnings
-- Mix testing frameworks
+- Use partial functions without guards
+- Ignore compiler warnings
+- Mix IO and pure functions

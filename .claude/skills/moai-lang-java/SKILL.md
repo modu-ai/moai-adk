@@ -4,8 +4,8 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: Java 23+ best practices with JUnit 5, Maven/Gradle, CheckStyle, and modern patterns.
-keywords: ['java', 'junit', 'maven', 'gradle', 'checkstyle']
+description: Java 23+ best practices with JUnit 5, Maven/Gradle, Spring patterns.
+keywords: ['java', 'junit', 'maven', 'gradle', 'spring']
 allowed-tools:
   - Read
   - Bash
@@ -27,7 +27,7 @@ allowed-tools:
 
 ## What It Does
 
-Java 23+ best practices with JUnit 5, Maven/Gradle, CheckStyle, and modern patterns.
+Java 23+ best practices with JUnit 5, Maven/Gradle, Spring patterns.
 
 **Key capabilities**:
 - ✅ Best practices enforcement for language domain
@@ -55,10 +55,10 @@ Java 23+ best practices with JUnit 5, Maven/Gradle, CheckStyle, and modern patte
 
 | Tool | Version | Purpose | Status |
 |------|---------|---------|--------|
-| **Java** | 23.0.0 | Primary | ✅ Current |
-| **JUnit** | 5.11.0 | Primary | ✅ Current |
-| **Maven** | 3.9.9 | Primary | ✅ Current |
-| **Gradle** | 8.12.0 | Primary | ✅ Current |
+| **Java** | 23.0.0 | Runtime | ✅ Current |
+| **JUnit** | 5.11.0 | Testing | ✅ Current |
+| **Maven** | 3.9.9 | Build Tool | ✅ Current |
+| **Gradle** | 8.12.0 | Build Tool | ✅ Current |
 
 ---
 
@@ -112,13 +112,13 @@ _Documentation links updated 2025-10-22_
 ## Best Practices
 
 ✅ **DO**:
-- Follow language best practices
-- Use latest stable tool versions
+- Follow OOP principles and SOLID design
+- Use JUnit 5 for testing
 - Maintain test coverage ≥85%
-- Document all public APIs
+- Leverage Spring Boot for enterprise apps
 
 ❌ **DON'T**:
 - Skip quality gates
-- Use deprecated tools
+- Use deprecated APIs
 - Ignore security warnings
 - Mix testing frameworks
