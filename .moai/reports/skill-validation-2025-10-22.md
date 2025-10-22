@@ -27,27 +27,27 @@
 
 ### Skills Exceeding Threshold (19 skills)
 
-| Skill | Examples (lines) | Reference (lines) | Status |
-|-------|-----------------|-------------------|--------|
-| moai-claude-code | 1317 | 984 | ✅ Excellent |
-| moai-domain-backend | 1633 | 660 | ✅ Excellent |
-| moai-essentials-debug | 1107 | 1533 | ✅ Excellent |
-| moai-essentials-refactor | 919 | 737 | ✅ Excellent |
-| moai-essentials-review | 1076 | 836 | ✅ Excellent |
-| moai-foundation-trust | 835 | 1099 | ✅ Excellent |
-| moai-lang-sql | 841 | 744 | ✅ Excellent |
-| moai-lang-cpp | 663 | 487 | ✅ Good |
-| moai-lang-csharp | 712 | 556 | ✅ Good |
-| moai-lang-python | 624 | 316 | ✅ Good |
-| moai-lang-swift | 565 | 656 | ✅ Good |
-| moai-lang-lua | 536 | 408 | ✅ Good |
-| moai-lang-shell | 472 | 396 | ✅ Good |
-| moai-domain-cli-tool | 511 | 227 | ✅ Good |
-| moai-domain-data-science | 775 | 777 | ✅ Good |
-| moai-lang-kotlin | 495 | 609 | ✅ Good |
-| moai-lang-clojure | 415 | 314 | ✅ Good |
-| moai-foundation-git | 389 | 357 | ✅ Good |
-| moai-foundation-ears | 336 | 305 | ✅ Good |
+| Skill                    | Examples (lines) | Reference (lines) | Status      |
+| ------------------------ | ---------------- | ----------------- | ----------- |
+| moai-claude-code         | 1317             | 984               | ✅ Excellent |
+| moai-domain-backend      | 1633             | 660               | ✅ Excellent |
+| moai-essentials-debug    | 1107             | 1533              | ✅ Excellent |
+| moai-essentials-refactor | 919              | 737               | ✅ Excellent |
+| moai-essentials-review   | 1076             | 836               | ✅ Excellent |
+| moai-foundation-trust    | 835              | 1099              | ✅ Excellent |
+| moai-lang-sql            | 841              | 744               | ✅ Excellent |
+| moai-lang-cpp            | 663              | 487               | ✅ Good      |
+| moai-lang-csharp         | 712              | 556               | ✅ Good      |
+| moai-lang-python         | 624              | 316               | ✅ Good      |
+| moai-lang-swift          | 565              | 656               | ✅ Good      |
+| moai-lang-lua            | 536              | 408               | ✅ Good      |
+| moai-lang-shell          | 472              | 396               | ✅ Good      |
+| moai-domain-cli-tool     | 511              | 227               | ✅ Good      |
+| moai-domain-data-science | 775              | 777               | ✅ Good      |
+| moai-lang-kotlin         | 495              | 609               | ✅ Good      |
+| moai-lang-clojure        | 415              | 314               | ✅ Good      |
+| moai-foundation-git      | 389              | 357               | ✅ Good      |
+| moai-foundation-ears     | 336              | 305               | ✅ Good      |
 
 ### Skills Partially Complete (37 skills)
 
@@ -62,7 +62,7 @@
 - moai-alfred-spec-metadata-validation: 218 / 243 (needs examples boost)
 - moai-alfred-tag-scanning: 195 / 216 (needs examples boost)
 - moai-alfred-trust-validation: 39 / 319 (needs major examples boost)
-- moai-alfred-tui-survey: 29 / 28 (needs major content)
+- moai-alfred-interactive-questions: 29 / 28 (needs major content)
 
 **Foundation Tier (3 skills)**:
 - moai-foundation-langs: 60 / 275 (needs examples boost)
@@ -186,34 +186,34 @@ allowed-tools:
 ## Tool Version Matrix (2025-10-22)
 
 ### Testing Frameworks
-| Language | Framework | Version | Status |
-|----------|-----------|---------|--------|
-| Python | pytest | 8.4.2 | ✅ Latest |
-| TypeScript/JS | Vitest | 2.0.5 | ✅ Latest |
-| JavaScript | Jest | 29.x | ✅ Current |
-| Go | testing | 1.23 | ✅ Latest |
-| Rust | cargo test | 1.82.0 | ✅ Latest |
-| Java/Kotlin | JUnit | 5.10.x | ✅ Current |
-| C/C++ | GoogleTest | 1.14.0 | ✅ Latest |
-| Swift | XCTest | Xcode 16 | ✅ Latest |
+| Language      | Framework  | Version  | Status    |
+| ------------- | ---------- | -------- | --------- |
+| Python        | pytest     | 8.4.2    | ✅ Latest  |
+| TypeScript/JS | Vitest     | 2.0.5    | ✅ Latest  |
+| JavaScript    | Jest       | 29.x     | ✅ Current |
+| Go            | testing    | 1.23     | ✅ Latest  |
+| Rust          | cargo test | 1.82.0   | ✅ Latest  |
+| Java/Kotlin   | JUnit      | 5.10.x   | ✅ Current |
+| C/C++         | GoogleTest | 1.14.0   | ✅ Latest  |
+| Swift         | XCTest     | Xcode 16 | ✅ Latest  |
 
 ### Linters/Formatters
-| Language | Tool | Version | Status |
-|----------|------|---------|--------|
-| Python | ruff | 0.13.1 | ✅ Latest |
-| TypeScript/JS | Biome | 1.9.4 | ✅ Latest |
-| Go | golangci-lint | 1.61.0 | ✅ Latest |
-| Rust | clippy | 1.82.0 | ✅ Latest |
-| SQL | sqlfluff | 3.2 | ✅ Latest |
-| C++ | clang-format | 19.x | ✅ Latest |
+| Language      | Tool          | Version | Status   |
+| ------------- | ------------- | ------- | -------- |
+| Python        | ruff          | 0.13.1  | ✅ Latest |
+| TypeScript/JS | Biome         | 1.9.4   | ✅ Latest |
+| Go            | golangci-lint | 1.61.0  | ✅ Latest |
+| Rust          | clippy        | 1.82.0  | ✅ Latest |
+| SQL           | sqlfluff      | 3.2     | ✅ Latest |
+| C++           | clang-format  | 19.x    | ✅ Latest |
 
 ### Package Managers
-| Language | Tool | Version | Status |
-|----------|------|---------|--------|
-| Python | uv | 0.9.3 | ✅ Latest |
-| TypeScript/JS | pnpm | 9.12.3 | ✅ Latest |
-| Go | go mod | 1.23 | ✅ Latest |
-| Rust | cargo | 1.82.0 | ✅ Latest |
+| Language      | Tool   | Version | Status   |
+| ------------- | ------ | ------- | -------- |
+| Python        | uv     | 0.9.3   | ✅ Latest |
+| TypeScript/JS | pnpm   | 9.12.3  | ✅ Latest |
+| Go            | go mod | 1.23    | ✅ Latest |
+| Rust          | cargo  | 1.82.0  | ✅ Latest |
 
 ---
 

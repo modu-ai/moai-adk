@@ -2,7 +2,7 @@
   "permissions": {
     "allow": [
       "Read(//Users/goos/.claude/**)",
-      "Skill(moai-alfred-tui-survey)",
+      "Skill(moai-alfred-interactive-questions)",
       "Bash(curl:*)",
       "Bash(gh release delete:*)"
     ],

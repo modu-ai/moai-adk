@@ -37,13 +37,13 @@ skill-factory Approach:
 
 This agent **orchestrates** rather than implements. It delegates specialized tasks to Skills:
 
-| Responsibility | Handler | Method |
-|---|---|---|
-| **User interaction** | `moai-alfred-tui-survey` Skill | Invoke for clarification surveys |
-| **Web research** | WebFetch/WebSearch tools | Built-in Claude tools for research |
-| **Skill generation** | `moai-skill-factory` Skill | Invoke for template application & file creation |
-| **Quality validation** | `moai-skill-factory` Skill | Invoke CHECKLIST.md validation |
-| **Workflow orchestration** | skill-factory agent | Coordinate phases, manage handoffs |
+| Responsibility             | Handler                                   | Method                                          |
+| -------------------------- | ----------------------------------------- | ----------------------------------------------- |
+| **User interaction**       | `moai-alfred-interactive-questions` Skill | Invoke for clarification surveys                |
+| **Web research**           | WebFetch/WebSearch tools                  | Built-in Claude tools for research              |
+| **Skill generation**       | `moai-skill-factory` Skill                | Invoke for template application & file creation |
+| **Quality validation**     | `moai-skill-factory` Skill                | Invoke CHECKLIST.md validation                  |
+| **Workflow orchestration** | skill-factory agent                       | Coordinate phases, manage handoffs              |
 
 **Key Principle**: The agent never performs tasks directly when a Skill can handle them. Always delegate to the appropriate specialist.
 
@@ -51,14 +51,14 @@ This agent **orchestrates** rather than implements. It delegates specialized tas
 
 ## Responsibility Matrix
 
-| Phase | Owner | Input | Process | Output |
-|---|---|---|---|---|
-| **Phase 0** | skill-factory | User request | Delegate to `moai-alfred-tui-survey` | Clarified requirements |
-| **Phase 1** | skill-factory | Requirements | Invoke WebSearch/WebFetch | Latest info + best practices |
-| **Phase 2** | skill-factory | Analyzed info | Design architecture & metadata | Updated structure plan |
-| **Phase 3** | skill-factory | Design | Delegate validation to `moai-skill-factory` | Quality gate pass/fail |
-| **Phase 4** | `moai-skill-factory` Skill | Validated design | Apply templates, create files | Complete Skill package |
-| **Phase 5** | skill-factory | Generated package | Test activation & content quality | Ready for publication |
+| Phase       | Owner                      | Input             | Process                                         | Output                       |
+| ----------- | -------------------------- | ----------------- | ----------------------------------------------- | ---------------------------- |
+| **Phase 0** | skill-factory              | User request      | Delegate to `moai-alfred-interactive-questions` | Clarified requirements       |
+| **Phase 1** | skill-factory              | Requirements      | Invoke WebSearch/WebFetch                       | Latest info + best practices |
+| **Phase 2** | skill-factory              | Analyzed info     | Design architecture & metadata                  | Updated structure plan       |
+| **Phase 3** | skill-factory              | Design            | Delegate validation to `moai-skill-factory`     | Quality gate pass/fail       |
+| **Phase 4** | `moai-skill-factory` Skill | Validated design  | Apply templates, create files                   | Complete Skill package       |
+| **Phase 5** | skill-factory              | Generated package | Test activation & content quality               | Ready for publication        |
 
 ---
 
@@ -70,15 +70,15 @@ skill-factory extends the ADAP pattern with **Phase 0** (Interactive Discovery) 
 
 **Goal**: Engage users through structured dialogue to clarify intent and capture all requirements.
 
-**Delegation Strategy**: Invoke `moai-alfred-tui-survey` Skill for all interactive surveys.
+**Delegation Strategy**: Invoke `moai-alfred-interactive-questions` Skill for all interactive surveys.
 
 **Step 0a: Problem Definition**
 
 Instead of assuming user intent, invoke the TUI survey Skill:
 
 ```python
-# Delegate to moai-alfred-tui-survey
-Skill("moai-alfred-tui-survey")
+# Delegate to moai-alfred-interactive-questions
+Skill("moai-alfred-interactive-questions")
 
 # Present structured survey
 Survey: "What problem does this Skill solve?"
@@ -95,8 +95,8 @@ Options:
 Continue using the TUI survey Skill to clarify:
 
 ```python
-# Delegate to moai-alfred-tui-survey for scope questions
-Skill("moai-alfred-tui-survey")
+# Delegate to moai-alfred-interactive-questions for scope questions
+Skill("moai-alfred-interactive-questions")
 
 Questions:
 1. Primary domain: "Which technology/framework?"
@@ -342,15 +342,15 @@ Task(
 
 ---
 
-## Interactive Survey Patterns (via moai-alfred-tui-survey)
+## Interactive Survey Patterns (via moai-alfred-interactive-questions)
 
 ### Pattern 1: Domain Selection Survey
 
-Always delegate to `moai-alfred-tui-survey`:
+Always delegate to `moai-alfred-interactive-questions`:
 
 ```python
 # Invoke TUI survey Skill
-Skill("moai-alfred-tui-survey")
+Skill("moai-alfred-interactive-questions")
 
 Survey: "Which technology domain?"
 Options:
@@ -371,7 +371,7 @@ Options:
 
 ```python
 # Invoke TUI survey Skill
-Skill("moai-alfred-tui-survey")
+Skill("moai-alfred-interactive-questions")
 
 Survey: "Which features are most important?" (Multiple selection)
 Options:
@@ -389,7 +389,7 @@ Options:
 
 ```python
 # Invoke TUI survey Skill
-Skill("moai-alfred-tui-survey")
+Skill("moai-alfred-interactive-questions")
 
 Survey: "Target experience level?"
 Options:
@@ -454,7 +454,7 @@ Tier 3 (Supporting, ~10% weight):
 **Recovery**:
 ```python
 # 1. Activate TUI Survey
-Skill("moai-alfred-tui-survey")
+Skill("moai-alfred-interactive-questions")
 
 # 2. Ask structured questions: domain, problem, audience
 # 3. Document clarified requirements
@@ -490,7 +490,7 @@ Skill("moai-alfred-tui-survey")
 **Recovery**:
 ```python
 # 1. Use TUI Survey to identify priorities
-Skill("moai-alfred-tui-survey")
+Skill("moai-alfred-interactive-questions")
 
 # 2. Suggest splitting into multiple Skills
 # 3. Create foundational Skill first
@@ -513,7 +513,7 @@ User Request
 │ - Manages delegation                    │
 └─────────────────────────────────────────┘
     ↓
-Phase 0: Invoke moai-alfred-tui-survey
+Phase 0: Invoke moai-alfred-interactive-questions
     ↓
 Phase 1: Invoke WebSearch/WebFetch
     ↓
@@ -530,7 +530,7 @@ Phase 5: skill-factory tests & finalizes
 
 ### Key Handoff Points
 
-**skill-factory → moai-alfred-tui-survey**:
+**skill-factory → moai-alfred-interactive-questions**:
 ```
 Input: Ambiguous user request
 Output: Clarified requirements, domain, audience, scope
@@ -585,7 +585,7 @@ A Skill is **production-ready** when:
 
 ### Skills Used by skill-factory
 
-- `moai-alfred-tui-survey`: Interactive user surveys (delegated)
+- `moai-alfred-interactive-questions`: Interactive user surveys (delegated)
 - `moai-skill-factory`: Skill generation, validation, templating (delegated)
 
 ### Tools Used by skill-factory
@@ -711,11 +711,11 @@ Changes Recommended:
 
 ## Key Findings
 
-| Category | Current | Recommended | Status |
-|----------|---------|-------------|--------|
+| Category  | Current   | Recommended   | Status            |
+| --------- | --------- | ------------- | ----------------- |
 | Framework | [current] | [recommended] | [icon + severity] |
-| Target | [current] | [recommended] | [icon + severity] |
-| Features | [current] | [recommended] | [icon + severity] |
+| Target    | [current] | [recommended] | [icon + severity] |
+| Features  | [current] | [recommended] | [icon + severity] |
 
 ## Files to Update
 
@@ -786,7 +786,7 @@ Escalate to Alfred or user when:
 ### When to Delegate
 
 **Always Delegate**:
-- **User interaction** → `moai-alfred-tui-survey` Skill
+- **User interaction** → `moai-alfred-interactive-questions` Skill
 - **File generation** → `moai-skill-factory` Skill
 - **Quality validation** → `moai-skill-factory` Skill (CHECKLIST.md)
 - **Web research** → WebSearch/WebFetch (built-in Claude tools)
@@ -794,7 +794,7 @@ Escalate to Alfred or user when:
 **Never Perform Directly**:
 - ❌ Do NOT write SKILL.md or Skill files manually
 - ❌ Do NOT create Skill packages without invoking moai-skill-factory
-- ❌ Do NOT perform TUI surveys without delegating to moai-alfred-tui-survey
+- ❌ Do NOT perform TUI surveys without delegating to moai-alfred-interactive-questions
 - ❌ Do NOT research without using WebSearch/WebFetch tools
 - ❌ Do NOT validate Skills manually — use moai-skill-factory CHECKLIST.md
 

@@ -21,15 +21,15 @@ If you're **new to MoAI-ADK**, start with "What is MoAI-ADK?".
 If you want to **get started quickly**, jump straight to "5-Minute Quick Start".
 If you've **already installed it and want to understand the concepts**, we recommend "5 Key Concepts".
 
-| Question | Jump To |
-| --- | --- |
-| First time here—what is it? | [What is MoAI-ADK?](#what-is-moai-adk) |
-| How do I get started? | [5-Minute Quick Start](#5-minute-quick-start) |
-| What's the basic flow? | [Core Workflow (0 → 3)](#core-workflow-0--3) |
-| What do Plan/Run/Sync commands do? | [Command Cheat Sheet](#command-cheat-sheet) |
-| What are SPEC, TDD, TAG? | [5 Key Concepts](#5-key-concepts) |
-| Tell me about agents/Skills | [Sub-agents & Skills Overview](#sub-agents--skills-overview) |
-| Want to dive deeper? | [Additional Resources](#additional-resources) |
+| Question                           | Jump To                                                      |
+| ---------------------------------- | ------------------------------------------------------------ |
+| First time here—what is it?        | [What is MoAI-ADK?](#what-is-moai-adk)                       |
+| How do I get started?              | [5-Minute Quick Start](#5-minute-quick-start)                |
+| What's the basic flow?             | [Core Workflow (0 → 3)](#core-workflow-0--3)                 |
+| What do Plan/Run/Sync commands do? | [Command Cheat Sheet](#command-cheat-sheet)                  |
+| What are SPEC, TDD, TAG?           | [5 Key Concepts](#5-key-concepts)                            |
+| Tell me about agents/Skills        | [Sub-agents & Skills Overview](#sub-agents--skills-overview) |
+| Want to dive deeper?               | [Additional Resources](#additional-resources)                |
 
 ---
 
@@ -97,14 +97,14 @@ One `/alfred:3-sync` command auto-updates all documentation. README, CHANGELOG, 
 
 Modern AI-powered development faces various challenges. MoAI-ADK **systematically solves** all these problems:
 
-| Concern | Traditional Approach Problem | MoAI-ADK Solution |
-| --- | --- | --- |
-| "Can't trust AI code" | Implementation without tests, unclear verification | Enforces SPEC → TEST → CODE order, guarantees 85%+ coverage |
-| "Repeating same explanations" | Context loss, unrecorded project history | Alfred remembers everything, 19 AI team members collaborate |
-| "Hard to write prompts" | Don't know how to write good prompts | `/alfred` commands provide standardized prompts automatically |
-| "Documentation always outdated" | Forget to update docs after code changes | `/alfred:3-sync` auto-syncs with one command |
-| "Don't know what changed where" | Hard to search code, unclear intent | @TAG chain connects SPEC → TEST → CODE → DOC |
-| "Team onboarding takes forever" | New members can't grasp code context | Reading SPEC makes intent immediately clear |
+| Concern                         | Traditional Approach Problem                       | MoAI-ADK Solution                                             |
+| ------------------------------- | -------------------------------------------------- | ------------------------------------------------------------- |
+| "Can't trust AI code"           | Implementation without tests, unclear verification | Enforces SPEC → TEST → CODE order, guarantees 85%+ coverage   |
+| "Repeating same explanations"   | Context loss, unrecorded project history           | Alfred remembers everything, 19 AI team members collaborate   |
+| "Hard to write prompts"         | Don't know how to write good prompts               | `/alfred` commands provide standardized prompts automatically |
+| "Documentation always outdated" | Forget to update docs after code changes           | `/alfred:3-sync` auto-syncs with one command                  |
+| "Don't know what changed where" | Hard to search code, unclear intent                | @TAG chain connects SPEC → TEST → CODE → DOC                  |
+| "Team onboarding takes forever" | New members can't grasp code context               | Reading SPEC makes intent immediately clear                   |
 
 ### Benefits You Can Experience Right Now
 
@@ -396,12 +396,12 @@ graph TD
 
 ## Command Cheat Sheet
 
-| Command | What it does | Key Outputs |
-| --- | --- | --- |
-| `/alfred:0-project` | Collect project description, create config/docs, recommend Skills | `.moai/config.json`, `.moai/project/*`, initial report |
-| `/alfred:1-plan <description>` | Analyze requirements, draft SPEC, write Plan Board | `.moai/specs/SPEC-*/spec.md`, plan/acceptance docs, feature branch |
-| `/alfred:2-run <SPEC-ID>` | Execute TDD, test/implement/refactor, verify quality | `tests/`, `src/` implementation, quality report, TAG connection |
-| `/alfred:3-sync` | Sync docs/README/CHANGELOG, organize TAG/PR status | `docs/`, `.moai/reports/sync-report.md`, Ready PR |
+| Command                        | What it does                                                      | Key Outputs                                                        |
+| ------------------------------ | ----------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `/alfred:0-project`            | Collect project description, create config/docs, recommend Skills | `.moai/config.json`, `.moai/project/*`, initial report             |
+| `/alfred:1-plan <description>` | Analyze requirements, draft SPEC, write Plan Board                | `.moai/specs/SPEC-*/spec.md`, plan/acceptance docs, feature branch |
+| `/alfred:2-run <SPEC-ID>`      | Execute TDD, test/implement/refactor, verify quality              | `tests/`, `src/` implementation, quality report, TAG connection    |
+| `/alfred:3-sync`               | Sync docs/README/CHANGELOG, organize TAG/PR status                | `docs/`, `.moai/reports/sync-report.md`, Ready PR                  |
 
 > ❗ All commands maintain **Phase 0 (optional) → Phase 1 → Phase 2 → Phase 3** cycle structure. Alfred automatically reports execution status and next-step suggestions.
 
@@ -923,18 +923,18 @@ Alfred works by combining **19 agents** (1 SuperAgent + 10 Core Sub-agents + 6 0
 
 ### Core Sub-agents (Plan → Run → Sync)
 
-| Sub-agent | Model | Role |
-| --- | --- | --- |
-| project-manager 📋 | Sonnet | Project initialization, metadata interviews |
-| spec-builder 🏗️ | Sonnet | Plan board, EARS SPEC authoring |
-| code-builder 💎 | Sonnet | Performs complete TDD with `implementation-planner` + `tdd-implementer` |
-| doc-syncer 📖 | Haiku | Living Doc, README, CHANGELOG sync |
-| tag-agent 🏷️ | Haiku | TAG inventory, orphan detection |
-| git-manager 🚀 | Haiku | GitFlow, Draft/Ready, Auto Merge |
-| debug-helper 🔍 | Sonnet | Failure analysis, fix-forward strategy |
-| trust-checker ✅ | Haiku | TRUST 5 quality gate |
-| quality-gate 🛡️ | Haiku | Coverage change and release blocker review |
-| cc-manager 🛠️ | Sonnet | Claude Code session optimization, Skill deployment |
+| Sub-agent         | Model  | Role                                                                    |
+| ----------------- | ------ | ----------------------------------------------------------------------- |
+| project-manager 📋 | Sonnet | Project initialization, metadata interviews                             |
+| spec-builder 🏗️    | Sonnet | Plan board, EARS SPEC authoring                                         |
+| code-builder 💎    | Sonnet | Performs complete TDD with `implementation-planner` + `tdd-implementer` |
+| doc-syncer 📖      | Haiku  | Living Doc, README, CHANGELOG sync                                      |
+| tag-agent 🏷️       | Haiku  | TAG inventory, orphan detection                                         |
+| git-manager 🚀     | Haiku  | GitFlow, Draft/Ready, Auto Merge                                        |
+| debug-helper 🔍    | Sonnet | Failure analysis, fix-forward strategy                                  |
+| trust-checker ✅   | Haiku  | TRUST 5 quality gate                                                    |
+| quality-gate 🛡️    | Haiku  | Coverage change and release blocker review                              |
+| cc-manager 🛠️      | Sonnet | Claude Code session optimization, Skill deployment                      |
 
 ### Skills (Progressive Disclosure - v0.4 New!)
 
@@ -943,93 +943,93 @@ Alfred organizes **56 Claude Skills** in a 4-tier architecture using **Progressi
 #### Foundation Tier (6)
 Core skills containing fundamental TRUST/TAG/SPEC/Git/EARS/Language principles
 
-| Skill | Description |
-| --- | --- |
+| Skill                   | Description                                                                        |
+| ----------------------- | ---------------------------------------------------------------------------------- |
 | `moai-foundation-trust` | TRUST 5-principles (Test 85%+, Readable, Unified, Secured, Trackable) verification |
-| `moai-foundation-tags` | @TAG markers scan and inventory generation (CODE-FIRST principle) |
-| `moai-foundation-specs` | SPEC YAML frontmatter (7 required fields) and HISTORY section validation |
-| `moai-foundation-ears` | EARS (Easy Approach to Requirements Syntax) requirements writing guide |
-| `moai-foundation-git` | Git workflow automation (branching, TDD commits, PR management) |
-| `moai-foundation-langs` | Project language/framework auto-detection (package.json, pyproject.toml, etc.) |
+| `moai-foundation-tags`  | @TAG markers scan and inventory generation (CODE-FIRST principle)                  |
+| `moai-foundation-specs` | SPEC YAML frontmatter (7 required fields) and HISTORY section validation           |
+| `moai-foundation-ears`  | EARS (Easy Approach to Requirements Syntax) requirements writing guide             |
+| `moai-foundation-git`   | Git workflow automation (branching, TDD commits, PR management)                    |
+| `moai-foundation-langs` | Project language/framework auto-detection (package.json, pyproject.toml, etc.)     |
 
 #### Essentials Tier (4)
 Core tools needed for daily development work
 
-| Skill | Description |
-| --- | --- |
-| `moai-essentials-debug` | Stack trace analysis, error pattern detection, quick diagnosis support |
-| `moai-essentials-perf` | Performance profiling, bottleneck detection, tuning strategies |
-| `moai-essentials-refactor` | Refactoring guide, design patterns, code improvement strategies |
-| `moai-essentials-review` | Automated code review, SOLID principles, code smell detection |
+| Skill                      | Description                                                            |
+| -------------------------- | ---------------------------------------------------------------------- |
+| `moai-essentials-debug`    | Stack trace analysis, error pattern detection, quick diagnosis support |
+| `moai-essentials-perf`     | Performance profiling, bottleneck detection, tuning strategies         |
+| `moai-essentials-refactor` | Refactoring guide, design patterns, code improvement strategies        |
+| `moai-essentials-review`   | Automated code review, SOLID principles, code smell detection          |
 
 #### Alfred Tier (11)
 MoAI-ADK internal workflow orchestration skills
 
-| Skill | Description |
-| --- | --- |
-| `moai-alfred-code-reviewer` | Automated code review with language-specific best practices, SOLID principles, improvement suggestions |
-| `moai-alfred-debugger-pro` | Stack trace analysis, error pattern detection, complex runtime error interpretation |
-| `moai-alfred-ears-authoring` | EARS syntax validation, 5 requirement pattern guide |
-| `moai-alfred-git-workflow` | MoAI-ADK conventions (feature branch, TDD commits, Draft PR) automation |
-| `moai-alfred-language-detection` | Project language/runtime detection, default test tool recommendations |
-| `moai-alfred-performance-optimizer` | Performance profiling, bottleneck detection, language-specific optimization |
-| `moai-alfred-refactoring-coach` | Refactoring guide, design patterns, step-by-step improvement plan |
-| `moai-alfred-spec-metadata-validation` | SPEC YAML frontmatter (7 fields) and HISTORY section consistency validation |
-| `moai-alfred-tag-scanning` | Complete @TAG marker scan and inventory generation (CODE-FIRST principle) |
-| `moai-alfred-trust-validation` | TRUST 5-principles compliance verification (Test 85%+, constraints, security, trackability) |
-| `moai-alfred-tui-survey` | Claude Code Tools AskUserQuestion TUI menu standardization |
+| Skill                                  | Description                                                                                            |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `moai-alfred-code-reviewer`            | Automated code review with language-specific best practices, SOLID principles, improvement suggestions |
+| `moai-alfred-debugger-pro`             | Stack trace analysis, error pattern detection, complex runtime error interpretation                    |
+| `moai-alfred-ears-authoring`           | EARS syntax validation, 5 requirement pattern guide                                                    |
+| `moai-alfred-git-workflow`             | MoAI-ADK conventions (feature branch, TDD commits, Draft PR) automation                                |
+| `moai-alfred-language-detection`       | Project language/runtime detection, default test tool recommendations                                  |
+| `moai-alfred-performance-optimizer`    | Performance profiling, bottleneck detection, language-specific optimization                            |
+| `moai-alfred-refactoring-coach`        | Refactoring guide, design patterns, step-by-step improvement plan                                      |
+| `moai-alfred-spec-metadata-validation` | SPEC YAML frontmatter (7 fields) and HISTORY section consistency validation                            |
+| `moai-alfred-tag-scanning`             | Complete @TAG marker scan and inventory generation (CODE-FIRST principle)                              |
+| `moai-alfred-trust-validation`         | TRUST 5-principles compliance verification (Test 85%+, constraints, security, trackability)            |
+| `moai-alfred-interactive-questions`    | Claude Code Tools AskUserQuestion TUI menu standardization                                             |
 
 #### Domain Tier (10)
 Specialized domain expertise
 
-| Skill | Description |
-| --- | --- |
-| `moai-domain-backend` | Backend architecture, API design, scaling guide |
-| `moai-domain-cli-tool` | CLI tool development, argument parsing, POSIX compliance, user-friendly help messages |
-| `moai-domain-data-science` | Data analysis, visualization, statistical modeling, reproducible research workflows |
-| `moai-domain-database` | Database design, schema optimization, indexing strategies, migration management |
-| `moai-domain-devops` | CI/CD pipelines, Docker containerization, Kubernetes orchestration, IaC |
-| `moai-domain-frontend` | React/Vue/Angular development, state management, performance optimization, accessibility |
-| `moai-domain-ml` | Machine learning model training, evaluation, deployment, MLOps workflows |
-| `moai-domain-mobile-app` | Flutter/React Native development, state management, native integration |
-| `moai-domain-security` | OWASP Top 10, static analysis (SAST), dependency security, secrets management |
-| `moai-domain-web-api` | REST API, GraphQL design patterns, authentication, versioning, OpenAPI documentation |
+| Skill                      | Description                                                                              |
+| -------------------------- | ---------------------------------------------------------------------------------------- |
+| `moai-domain-backend`      | Backend architecture, API design, scaling guide                                          |
+| `moai-domain-cli-tool`     | CLI tool development, argument parsing, POSIX compliance, user-friendly help messages    |
+| `moai-domain-data-science` | Data analysis, visualization, statistical modeling, reproducible research workflows      |
+| `moai-domain-database`     | Database design, schema optimization, indexing strategies, migration management          |
+| `moai-domain-devops`       | CI/CD pipelines, Docker containerization, Kubernetes orchestration, IaC                  |
+| `moai-domain-frontend`     | React/Vue/Angular development, state management, performance optimization, accessibility |
+| `moai-domain-ml`           | Machine learning model training, evaluation, deployment, MLOps workflows                 |
+| `moai-domain-mobile-app`   | Flutter/React Native development, state management, native integration                   |
+| `moai-domain-security`     | OWASP Top 10, static analysis (SAST), dependency security, secrets management            |
+| `moai-domain-web-api`      | REST API, GraphQL design patterns, authentication, versioning, OpenAPI documentation     |
 
 #### Language Tier (24)
 Programming language-specific best practices
 
-| Skill | Description |
-| --- | --- |
-| `moai-lang-python` | pytest, mypy, ruff, black, uv package management |
-| `moai-lang-typescript` | Vitest, Biome, strict typing, npm/pnpm |
-| `moai-lang-javascript` | Jest, ESLint, Prettier, npm package management |
-| `moai-lang-go` | go test, golint, gofmt, standard library |
-| `moai-lang-rust` | cargo test, clippy, rustfmt, ownership/borrow checker |
-| `moai-lang-java` | JUnit, Maven/Gradle, Checkstyle, Spring Boot patterns |
-| `moai-lang-kotlin` | JUnit, Gradle, ktlint, coroutines, extension functions |
-| `moai-lang-swift` | XCTest, SwiftLint, iOS/macOS development patterns |
-| `moai-lang-dart` | flutter test, dart analyze, Flutter widget patterns |
-| `moai-lang-csharp` | xUnit, .NET tooling, LINQ, async/await patterns |
-| `moai-lang-cpp` | Google Test, clang-format, modern C++ (C++17/20) |
-| `moai-lang-c` | Unity test framework, cppcheck, Make build system |
-| `moai-lang-scala` | ScalaTest, sbt, functional programming patterns |
-| `moai-lang-ruby` | RSpec, RuboCop, Bundler, Rails patterns |
-| `moai-lang-php` | PHPUnit, Composer, PSR standards |
-| `moai-lang-sql` | Test frameworks, query optimization, migration management |
-| `moai-lang-shell` | bats, shellcheck, POSIX compliance |
-| `moai-lang-haskell` | HUnit, Stack/Cabal, pure functional programming |
-| `moai-lang-elixir` | ExUnit, Mix, OTP patterns |
-| `moai-lang-clojure` | clojure.test, Leiningen, immutable data structures |
-| `moai-lang-lua` | busted, luacheck, embedded scripting patterns |
-| `moai-lang-julia` | Test stdlib, Pkg manager, scientific computing patterns |
-| `moai-lang-r` | testthat, lintr, data analysis patterns |
-| `moai-lang-kotlin` | JUnit, Gradle, ktlint, coroutines, extension functions |
+| Skill                  | Description                                               |
+| ---------------------- | --------------------------------------------------------- |
+| `moai-lang-python`     | pytest, mypy, ruff, black, uv package management          |
+| `moai-lang-typescript` | Vitest, Biome, strict typing, npm/pnpm                    |
+| `moai-lang-javascript` | Jest, ESLint, Prettier, npm package management            |
+| `moai-lang-go`         | go test, golint, gofmt, standard library                  |
+| `moai-lang-rust`       | cargo test, clippy, rustfmt, ownership/borrow checker     |
+| `moai-lang-java`       | JUnit, Maven/Gradle, Checkstyle, Spring Boot patterns     |
+| `moai-lang-kotlin`     | JUnit, Gradle, ktlint, coroutines, extension functions    |
+| `moai-lang-swift`      | XCTest, SwiftLint, iOS/macOS development patterns         |
+| `moai-lang-dart`       | flutter test, dart analyze, Flutter widget patterns       |
+| `moai-lang-csharp`     | xUnit, .NET tooling, LINQ, async/await patterns           |
+| `moai-lang-cpp`        | Google Test, clang-format, modern C++ (C++17/20)          |
+| `moai-lang-c`          | Unity test framework, cppcheck, Make build system         |
+| `moai-lang-scala`      | ScalaTest, sbt, functional programming patterns           |
+| `moai-lang-ruby`       | RSpec, RuboCop, Bundler, Rails patterns                   |
+| `moai-lang-php`        | PHPUnit, Composer, PSR standards                          |
+| `moai-lang-sql`        | Test frameworks, query optimization, migration management |
+| `moai-lang-shell`      | bats, shellcheck, POSIX compliance                        |
+| `moai-lang-haskell`    | HUnit, Stack/Cabal, pure functional programming           |
+| `moai-lang-elixir`     | ExUnit, Mix, OTP patterns                                 |
+| `moai-lang-clojure`    | clojure.test, Leiningen, immutable data structures        |
+| `moai-lang-lua`        | busted, luacheck, embedded scripting patterns             |
+| `moai-lang-julia`      | Test stdlib, Pkg manager, scientific computing patterns   |
+| `moai-lang-r`          | testthat, lintr, data analysis patterns                   |
+| `moai-lang-kotlin`     | JUnit, Gradle, ktlint, coroutines, extension functions    |
 
 #### Claude Code Ops (1)
 Claude Code session management
 
-| Skill | Description |
-| --- | --- |
+| Skill              | Description                                                                        |
+| ------------------ | ---------------------------------------------------------------------------------- |
 | `moai-claude-code` | Claude Code agents, commands, skills, plugins, settings scaffolding and monitoring |
 
 > **v0.4.6 New Feature**: 56 Claude Skills organized in 4-tier architecture (100% complete in v0.4.6). Each Skill loads via Progressive Disclosure only when needed to minimize context cost. Organized in Foundation → Essentials → Alfred → Domain/Language/Ops tiers, with all skills including 1,000+ lines of official documentation and 300+ executable TDD examples.
@@ -1038,10 +1038,10 @@ Claude Code session management
 
 ## AI Model Selection Guide
 
-| Scenario | Default Model | Why |
-| --- | --- | --- |
+| Scenario                                             | Default Model         | Why                                             |
+| ---------------------------------------------------- | --------------------- | ----------------------------------------------- |
 | Specifications, design, refactoring, problem solving | **Claude 4.5 Sonnet** | Strong in deep reasoning and structured writing |
-| Document sync, TAG checks, Git automation | **Claude 4.5 Haiku** | Strong in rapid iteration, string processing |
+| Document sync, TAG checks, Git automation            | **Claude 4.5 Haiku**  | Strong in rapid iteration, string processing    |
 
 - Start with Haiku for patterned tasks; switch to Sonnet when complex judgment is needed.
 - If you manually change models, noting "why switched" in logs helps collaboration.
@@ -1063,14 +1063,14 @@ Claude Code session management
 
 ## v0.4 Series Updates (New!)
 
-| Version | Key Features | Date |
-| --- | --- | --- |
+| Version    | Key Features                                                                         | Date       |
+| ---------- | ------------------------------------------------------------------------------------ | ---------- |
 | **v0.4.6** | 🎉 Complete Skills v2.0 (56/56 100%) + 85,000 lines official docs + 300+ TDD examples | 2025-10-22 |
-| **v0.4.5** | ✅ CI/CD fixes + Multi-language README + Deployment cleanup | 2025-10-22 |
-| **v0.4.4** | Korean language support | 2025-10-21 |
-| **v0.4.3** | Interactive question tool (TUI menu) | 2025-10-21 |
-| **v0.4.1** | Skills localization | 2025-10-21 |
-| **v0.4.0** | **56 Claude Skills** + 19-member AI team + 4-stage workflow | 2025-10-21 |
+| **v0.4.5** | ✅ CI/CD fixes + Multi-language README + Deployment cleanup                           | 2025-10-22 |
+| **v0.4.4** | Korean language support                                                              | 2025-10-21 |
+| **v0.4.3** | Interactive question tool (TUI menu)                                                 | 2025-10-21 |
+| **v0.4.1** | Skills localization                                                                  | 2025-10-21 |
+| **v0.4.0** | **56 Claude Skills** + 19-member AI team + 4-stage workflow                          | 2025-10-21 |
 
 > 📦 **Install Now**: `pip install moai-adk==0.4.6` or `uv tool install moai-adk==0.4.6`
 
@@ -1078,25 +1078,25 @@ Claude Code session management
 
 ## Additional Resources
 
-| Purpose | Resource |
-| --- | --- |
-| Skills detailed structure | `.claude/skills/` directory (56 Skills) |
-| Sub-agent details | `.claude/agents/alfred/` directory |
-| Workflow guide | `.claude/commands/alfred/` (0-3 commands) |
-| Development guidelines | `.moai/memory/development-guide.md`, `.moai/memory/spec-metadata.md` |
-| Release notes | GitHub Releases: https://github.com/modu-ai/moai-adk/releases |
+| Purpose                   | Resource                                                             |
+| ------------------------- | -------------------------------------------------------------------- |
+| Skills detailed structure | `.claude/skills/` directory (56 Skills)                              |
+| Sub-agent details         | `.claude/agents/alfred/` directory                                   |
+| Workflow guide            | `.claude/commands/alfred/` (0-3 commands)                            |
+| Development guidelines    | `.moai/memory/development-guide.md`, `.moai/memory/spec-metadata.md` |
+| Release notes             | GitHub Releases: https://github.com/modu-ai/moai-adk/releases        |
 
 ---
 
 ## Community & Support
 
-| Channel | Link |
-| --- | --- |
-| **GitHub Repository** | https://github.com/modu-ai/moai-adk |
-| **Issues & Discussions** | https://github.com/modu-ai/moai-adk/issues |
-| **PyPI Package** | https://pypi.org/project/moai-adk/ (Latest: v0.4.6) |
-| **Latest Release** | https://github.com/modu-ai/moai-adk/releases/tag/v0.4.6 |
-| **Documentation** | See `.moai/`, `.claude/`, `docs/` within project |
+| Channel                  | Link                                                    |
+| ------------------------ | ------------------------------------------------------- |
+| **GitHub Repository**    | https://github.com/modu-ai/moai-adk                     |
+| **Issues & Discussions** | https://github.com/modu-ai/moai-adk/issues              |
+| **PyPI Package**         | https://pypi.org/project/moai-adk/ (Latest: v0.4.6)     |
+| **Latest Release**       | https://github.com/modu-ai/moai-adk/releases/tag/v0.4.6 |
+| **Documentation**        | See `.moai/`, `.claude/`, `docs/` within project        |
 
 ---
 

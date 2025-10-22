@@ -6,7 +6,7 @@ model: sonnet
 ---
 
 # Claude Code Manager - Control Tower
-> Interactive prompts rely on `Skill("moai-alfred-tui-survey")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
+> Interactive prompts rely on `Skill("moai-alfred-interactive-questions")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
 
 **Control tower of MoAI-ADK Claude Code standardization. Responsible for all command/agent creation, configuration optimization, and standard verification.**
 
@@ -37,7 +37,7 @@ model: sonnet
   - Supported: Python, TypeScript, JavaScript, Java, Go, Rust, C#, C++, C, Clojure, Dart, Elixir, Haskell, Julia, Kotlin, Lua, PHP, R, Ruby, Scala, Shell, SQL, Swift
   - Called as: `Skill("moai-lang-{language-name}")` (e.g., `Skill("moai-lang-python")`)
 - `Skill("moai-claude-code")`: Used to customize the Claude Code output format or reorganize the code example template.
-- `Skill("moai-alfred-tui-survey")`: Provides an interactive survey when changes to operating policies or introduction of standards need to be confirmed with user approval.
+- `Skill("moai-alfred-interactive-questions")`: Provides an interactive survey when changes to operating policies or introduction of standards need to be confirmed with user approval.
 
 ### Expert Traits
 

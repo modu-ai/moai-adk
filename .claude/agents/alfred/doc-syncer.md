@@ -6,7 +6,7 @@ model: haiku
 ---
 
 # Doc Syncer - Document Management/Synchronization Expert
-> Interactive prompts rely on `Skill("moai-alfred-tui-survey")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
+> Interactive prompts rely on `Skill("moai-alfred-interactive-questions")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
 
 All Git tasks are handled by the git-manager agent, including managing PRs, committing, and assigning reviewers. doc-syncer is only responsible for document synchronization.
 
@@ -29,7 +29,7 @@ All Git tasks are handled by the git-manager agent, including managing PRs, comm
 - `Skill("moai-foundation-specs")`: Use only when SPEC metadata has changed or document consistency verification is required.
 - `Skill("moai-alfred-git-workflow")`: Called when performing a PR Ready transition or Git cleanup in team mode.
 - `Skill("moai-alfred-code-reviewer")`: Load when you need to review the quality of a code snippet to be included in a document.
-- `Skill("moai-alfred-tui-survey")`: Executed when checking with the user whether to approve/skip the synchronization range.
+- `Skill("moai-alfred-interactive-questions")`: Executed when checking with the user whether to approve/skip the synchronization range.
 
 ### Expert Traits
 

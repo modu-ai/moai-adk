@@ -1,6 +1,6 @@
 # Interactive Discovery: TUI-Based Skill Requirement Gathering
 
-This guide covers using **moai-alfred-tui-survey** Skill to engage users through interactive dialogue and clarify Skill requirements.
+This guide covers using **moai-alfred-interactive-questions** Skill to engage users through interactive dialogue and clarify Skill requirements.
 
 ---
 
@@ -242,13 +242,13 @@ framework_versions = {
 
 **Available Stable Version Matrix** (referenced as source of truth):
 
-| Framework | Latest | LTS | EOL Date | Ref |
-|---|---|---|---|---|
-| **Python** | 3.13.1 | 3.12.7 | 3.12: 2028-10 | [python.org](https://python.org) |
-| **Node.js** | 23.0.0 | 22.11.0 | 22.x: 2025-10 | [nodejs.org](https://nodejs.org) |
-| **Go** | 1.23.3 | 1.22.x | 1.22: 2025-02 | [golang.org](https://golang.org) |
-| **Rust** | 1.82.0 | MSRV: 1.70 | N/A | [rust-lang.org](https://rust-lang.org) |
-| **Java** | 23.0.1 | 21.0.x | 21: 2028-09 | [oracle.com](https://oracle.com) |
+| Framework   | Latest | LTS        | EOL Date      | Ref                                    |
+| ----------- | ------ | ---------- | ------------- | -------------------------------------- |
+| **Python**  | 3.13.1 | 3.12.7     | 3.12: 2028-10 | [python.org](https://python.org)       |
+| **Node.js** | 23.0.0 | 22.11.0    | 22.x: 2025-10 | [nodejs.org](https://nodejs.org)       |
+| **Go**      | 1.23.3 | 1.22.x     | 1.22: 2025-02 | [golang.org](https://golang.org)       |
+| **Rust**    | 1.82.0 | MSRV: 1.70 | N/A           | [rust-lang.org](https://rust-lang.org) |
+| **Java**    | 23.0.1 | 21.0.x     | 21: 2028-09   | [oracle.com](https://oracle.com)       |
 
 **When This Survey Is Needed**:
 - ✅ Creating a new Skill (always)
@@ -501,12 +501,12 @@ WebSearch findings INFORM the Skill
 
 Map survey answers to research queries:
 
-| Survey Answer | WebSearch Topic | Example Query |
-|---|---|---|
-| Python 3.12 | Latest version | "Python 3.12 best practices 2025" |
-| Async testing | Modern pattern | "async/await testing patterns 2025" |
-| Performance | Optimization | "performance profiling tools 2025" |
-| Security | Compliance | "OWASP security patterns 2025" |
+| Survey Answer | WebSearch Topic | Example Query                       |
+| ------------- | --------------- | ----------------------------------- |
+| Python 3.12   | Latest version  | "Python 3.12 best practices 2025"   |
+| Async testing | Modern pattern  | "async/await testing patterns 2025" |
+| Performance   | Optimization    | "performance profiling tools 2025"  |
+| Security      | Compliance      | "OWASP security patterns 2025"      |
 
 ---
 
@@ -515,7 +515,7 @@ Map survey answers to research queries:
 - [SKILL.md](SKILL.md) — Main Skill framework
 - [WEB-RESEARCH.md](WEB-RESEARCH.md) — Using discoveries in research
 - [skill-factory.md](../../agents/alfred/skill-factory.md) — Sub-Agent orchestration
-- `moai-alfred-tui-survey` Skill — TUI implementation
+- `moai-alfred-interactive-questions` Skill — TUI implementation
 
 ---
 
