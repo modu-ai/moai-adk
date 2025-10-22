@@ -62,11 +62,11 @@ SKILL.md should stay **under 500 lines**. Trust that Claude is already intellige
 
 Match specificity to task fragility:
 
-| Freedom Level | When to Use | Example | Content Style |
-|---------------|-----------|---------|----------------|
-| **High** | Flexible, creative work | Architecture design, strategy | Principles, trade-offs, considerations |
-| **Medium** | Standard patterns exist | Data validation workflows | Pseudocode, flowcharts, annotated code |
-| **Low** | Deterministic, error-prone | Bash operations, file handling | Specific scripts with error handling |
+| Freedom Level | When to Use                | Example                        | Content Style                          |
+| ------------- | -------------------------- | ------------------------------ | -------------------------------------- |
+| **High**      | Flexible, creative work    | Architecture design, strategy  | Principles, trade-offs, considerations |
+| **Medium**    | Standard patterns exist    | Data validation workflows      | Pseudocode, flowcharts, annotated code |
+| **Low**       | Deterministic, error-prone | Bash operations, file handling | Specific scripts with error handling   |
 
 ### 3. Multi-Model Testing
 
@@ -126,13 +126,13 @@ skill-name/
 
 ### Rules for File Organization
 
-| Rule | Rationale | Example |
-|------|-----------|---------|
-| One level deep | Avoids nested discovery | ✅ `reference.md` not `docs/reference/api.md` |
-| Relative paths | Cross-platform compatibility | ✅ `[see reference.md](reference.md)` not `./docs/...` |
-| Forward slashes | Unix convention | ✅ `scripts/helper.sh` not `scripts\helper.sh` |
-| Clear naming | Self-documenting | ✅ `validate-skill.sh` not `v.sh` |
-| <500 lines per file | Manageable context | Split if SKILL.md exceeds 500 lines |
+| Rule                | Rationale                    | Example                                               |
+| ------------------- | ---------------------------- | ----------------------------------------------------- |
+| One level deep      | Avoids nested discovery      | ✅ `reference.md` not `docs/reference/api.md`          |
+| Relative paths      | Cross-platform compatibility | ✅ `[see reference.md](reference.md)` not `./docs/...` |
+| Forward slashes     | Unix convention              | ✅ `scripts/helper.sh` not `scripts\helper.sh`         |
+| Clear naming        | Self-documenting             | ✅ `validate-skill.sh` not `v.sh`                      |
+| <500 lines per file | Manageable context           | Split if SKILL.md exceeds 500 lines                   |
 
 ---
 
@@ -215,11 +215,11 @@ For creative, flexible tasks where direction matters more than prescription.
 ```
 ## Architecture Trade-offs
 
-| Pattern | Pros | Cons | When to use |
-|---------|------|------|-------------|
-| Monolith | Simple to start | Scales poorly | MVP, <10 microservices |
-| Microservices | Scales, independent deploy | Complex networking | 10+ teams, different stacks |
-| Serverless | Zero ops, elastic | Cold starts, vendor lock-in | Event-driven, variable load |
+| Pattern       | Pros                       | Cons                        | When to use                 |
+| ------------- | -------------------------- | --------------------------- | --------------------------- |
+| Monolith      | Simple to start            | Scales poorly               | MVP, <10 microservices      |
+| Microservices | Scales, independent deploy | Complex networking          | 10+ teams, different stacks |
+| Serverless    | Zero ops, elastic          | Cold starts, vendor lock-in | Event-driven, variable load |
 ```
 
 ### Medium Freedom: Patterns & Pseudocode (40-50% of SKILL.md)
@@ -327,13 +327,13 @@ Every major concept needs at least one example:
 
 ### Anti-Patterns to Avoid
 
-| Anti-Pattern | Example | Fix |
-|--------------|---------|-----|
-| Time-sensitive info | "Today's date is 2025-01-15" | "Use current system date" |
-| Vague instructions | "Make it fast" | "Profile with [tool], measure [metric]" |
-| Too many options | 10+ approaches listed | Pick 3 main approaches, others in "Alternatives" |
-| Nested references | `docs/api/v2/reference/examples.md` | Keep to one level: `reference.md` |
-| Windows paths | `docs\api\reference.md` | Use `/`: `docs/api/reference.md` |
+| Anti-Pattern        | Example                             | Fix                                              |
+| ------------------- | ----------------------------------- | ------------------------------------------------ |
+| Time-sensitive info | "Today's date is 2025-01-15"        | "Use current system date"                        |
+| Vague instructions  | "Make it fast"                      | "Profile with [tool], measure [metric]"          |
+| Too many options    | 10+ approaches listed               | Pick 3 main approaches, others in "Alternatives" |
+| Nested references   | `docs/api/v2/reference/examples.md` | Keep to one level: `reference.md`                |
+| Windows paths       | `docs\api\reference.md`             | Use `/`: `docs/api/reference.md`                 |
 
 ---
 
@@ -452,14 +452,14 @@ See `templates/` directory:
 
 ## Common Failure Modes & Fixes
 
-| Issue | Root Cause | Fix |
-|-------|-----------|-----|
-| **Not activating** | Description too generic | Add 5+ specific keywords, mention common triggers |
-| **Haiku ignores it** | Examples too complex | Simplify pseudocode, add short examples |
-| **Over-specifying** | Too much low-freedom content | Reduce scripts, increase principles |
-| **Scope creep** | Covers too many domains | Split into 2-3 focused Skills |
-| **Terminology mismatch** | Terms used inconsistently | Audit and standardize with glossary |
-| **File too large** | SKILL.md > 500 lines | Move content to reference.md or examples.md |
+| Issue                    | Root Cause                   | Fix                                               |
+| ------------------------ | ---------------------------- | ------------------------------------------------- |
+| **Not activating**       | Description too generic      | Add 5+ specific keywords, mention common triggers |
+| **Haiku ignores it**     | Examples too complex         | Simplify pseudocode, add short examples           |
+| **Over-specifying**      | Too much low-freedom content | Reduce scripts, increase principles               |
+| **Scope creep**          | Covers too many domains      | Split into 2-3 focused Skills                     |
+| **Terminology mismatch** | Terms used inconsistently    | Audit and standardize with glossary               |
+| **File too large**       | SKILL.md > 500 lines         | Move content to reference.md or examples.md       |
 
 ---
 
@@ -551,7 +551,7 @@ See [SKILL-UPDATE-ADVISOR.md](SKILL-UPDATE-ADVISOR.md) for detailed guidance on:
 **Framework**: MoAI-ADK + Claude Skills + skill-factory Sub-Agent
 **Status**: Production-ready
 **Key Features**:
-- ✅ Interactive user surveys via moai-alfred-tui-survey
+- ✅ Interactive user surveys via moai-alfred-interactive-questions
 - ✅ Web research integration for latest information
 - ✅ Skill analysis & update recommendations
 - ✅ Official documentation validation

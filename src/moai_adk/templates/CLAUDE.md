@@ -10,12 +10,12 @@
 
 ### 4-Layer Architecture (v0.4.0)
 
-| Layer | Owner | Purpose | Examples |
-| --- | --- | --- | --- |
-| **Commands** | User ↔ Alfred | Workflow entry points that establish the Plan → Run → Sync cadence | `/alfred:0-project`, `/alfred:1-plan`, `/alfred:2-run`, `/alfred:3-sync` |
-| **Sub-agents** | Alfred | Deep reasoning and decision making for each phase | project-manager, spec-builder, code-builder pipeline, doc-syncer |
-| **Skills (55)** | Claude Skills | Reusable knowledge capsules loaded just-in-time | Foundation (TRUST/TAG/Git), Essentials (debug/refactor/review), Alfred workflow, Domain & Language packs |
-| **Hooks** | Runtime guardrails | Fast validation + JIT context hints (<100 ms) | SessionStart status card, PreToolUse destructive-command blocker |
+| Layer           | Owner              | Purpose                                                            | Examples                                                                                                 |
+| --------------- | ------------------ | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| **Commands**    | User ↔ Alfred      | Workflow entry points that establish the Plan → Run → Sync cadence | `/alfred:0-project`, `/alfred:1-plan`, `/alfred:2-run`, `/alfred:3-sync`                                 |
+| **Sub-agents**  | Alfred             | Deep reasoning and decision making for each phase                  | project-manager, spec-builder, code-builder pipeline, doc-syncer                                         |
+| **Skills (55)** | Claude Skills      | Reusable knowledge capsules loaded just-in-time                    | Foundation (TRUST/TAG/Git), Essentials (debug/refactor/review), Alfred workflow, Domain & Language packs |
+| **Hooks**       | Runtime guardrails | Fast validation + JIT context hints (<100 ms)                      | SessionStart status card, PreToolUse destructive-command blocker                                         |
 
 ### Core Sub-agent Roster
 
@@ -23,40 +23,40 @@
 >
 > **Note on Counting**: The "code-builder pipeline" is counted as 1 conceptual agent but implemented as 2 physical files (`implementation-planner` + `tdd-implementer`) for sequential RED → GREEN → REFACTOR execution. This maintains the 19-member team concept while acknowledging that 20 distinct agent files exist in `.claude/agents/alfred/`.
 
-| Sub-agent | Model | Phase | Responsibility | Trigger |
-| --- | --- | --- | --- | --- |
-| **project-manager** 📋 | Sonnet | Init | Project bootstrap, metadata interview, mode selection | `/alfred:0-project` |
-| **spec-builder** 🏗️ | Sonnet | Plan | Plan board consolidation, EARS-based SPEC authoring | `/alfred:1-plan` |
-| **code-builder pipeline** 💎 | Sonnet | Run | Phase 1 `implementation-planner` → Phase 2 `tdd-implementer` to execute RED → GREEN → REFACTOR | `/alfred:2-run` |
-| **doc-syncer** 📖 | Haiku | Sync | Living documentation, README/CHANGELOG updates | `/alfred:3-sync` |
-| **tag-agent** 🏷️ | Haiku | Sync | TAG inventory, orphan detection, chain repair | `@agent-tag-agent` |
-| **git-manager** 🚀 | Haiku | Plan · Sync | GitFlow automation, Draft→Ready PR, auto-merge policy | `@agent-git-manager` |
-| **debug-helper** 🔍 | Sonnet | Run | Failure diagnosis, fix-forward guidance | `@agent-debug-helper` |
-| **trust-checker** ✅ | Haiku | All phases | TRUST 5 principle enforcement and risk flags | `@agent-trust-checker` |
-| **quality-gate** 🛡️ | Haiku | Sync | Coverage delta review, release gate validation | Auto during `/alfred:3-sync` |
-| **cc-manager** 🛠️ | Sonnet | Ops | Claude Code session tuning, Skill lifecycle management | `@agent-cc-manager` |
+| Sub-agent                   | Model  | Phase       | Responsibility                                                                                 | Trigger                      |
+| --------------------------- | ------ | ----------- | ---------------------------------------------------------------------------------------------- | ---------------------------- |
+| **project-manager** 📋       | Sonnet | Init        | Project bootstrap, metadata interview, mode selection                                          | `/alfred:0-project`          |
+| **spec-builder** 🏗️          | Sonnet | Plan        | Plan board consolidation, EARS-based SPEC authoring                                            | `/alfred:1-plan`             |
+| **code-builder pipeline** 💎 | Sonnet | Run         | Phase 1 `implementation-planner` → Phase 2 `tdd-implementer` to execute RED → GREEN → REFACTOR | `/alfred:2-run`              |
+| **doc-syncer** 📖            | Haiku  | Sync        | Living documentation, README/CHANGELOG updates                                                 | `/alfred:3-sync`             |
+| **tag-agent** 🏷️             | Haiku  | Sync        | TAG inventory, orphan detection, chain repair                                                  | `@agent-tag-agent`           |
+| **git-manager** 🚀           | Haiku  | Plan · Sync | GitFlow automation, Draft→Ready PR, auto-merge policy                                          | `@agent-git-manager`         |
+| **debug-helper** 🔍          | Sonnet | Run         | Failure diagnosis, fix-forward guidance                                                        | `@agent-debug-helper`        |
+| **trust-checker** ✅         | Haiku  | All phases  | TRUST 5 principle enforcement and risk flags                                                   | `@agent-trust-checker`       |
+| **quality-gate** 🛡️          | Haiku  | Sync        | Coverage delta review, release gate validation                                                 | Auto during `/alfred:3-sync` |
+| **cc-manager** 🛠️            | Sonnet | Ops         | Claude Code session tuning, Skill lifecycle management                                         | `@agent-cc-manager`          |
 
 The **code-builder pipeline** runs two Sonnet specialists in sequence: **implementation-planner** (strategy, libraries, TAG design) followed by **tdd-implementer** (RED → GREEN → REFACTOR execution).
 
 ### Zero-project Specialists
 
-| Sub-agent | Model | Focus | Trigger |
-| --- | --- | --- | --- |
-| **language-detector** 🔍 | Haiku | Stack detection, language matrix | Auto during `/alfred:0-project` |
-| **backup-merger** 📦 | Sonnet | Backup restore, checkpoint diff | `@agent-backup-merger` |
-| **project-interviewer** 💬 | Sonnet | Requirement interviews, persona capture | `/alfred:0-project` Q&A |
-| **document-generator** 📝 | Haiku | Project docs seed (`product.md`, `structure.md`, `tech.md`) | `/alfred:0-project` |
-| **feature-selector** 🎯 | Haiku | Skill pack recommendation | `/alfred:0-project` |
-| **template-optimizer** ⚙️ | Haiku | Template cleanup, migration helpers | `/alfred:0-project` |
+| Sub-agent                 | Model  | Focus                                                       | Trigger                         |
+| ------------------------- | ------ | ----------------------------------------------------------- | ------------------------------- |
+| **language-detector** 🔍   | Haiku  | Stack detection, language matrix                            | Auto during `/alfred:0-project` |
+| **backup-merger** 📦       | Sonnet | Backup restore, checkpoint diff                             | `@agent-backup-merger`          |
+| **project-interviewer** 💬 | Sonnet | Requirement interviews, persona capture                     | `/alfred:0-project` Q&A         |
+| **document-generator** 📝  | Haiku  | Project docs seed (`product.md`, `structure.md`, `tech.md`) | `/alfred:0-project`             |
+| **feature-selector** 🎯    | Haiku  | Skill pack recommendation                                   | `/alfred:0-project`             |
+| **template-optimizer** ⚙️  | Haiku  | Template cleanup, migration helpers                         | `/alfred:0-project`             |
 
 > **Implementation Note**: Zero-project specialists may be embedded within other agents (e.g., functionality within `project-manager`) or implemented as dedicated Skills (e.g., `moai-alfred-language-detection`). For example, `language-detector` functionality is provided by the `moai-alfred-language-detection` Skill during `/alfred:0-project` initialization.
 
 ### Built-in Claude Agents
 
-| Agent | Model | Specialty | Invocation |
-| --- | --- | --- | --- |
-| **Explore** 🔍 | Haiku | Repository-wide search & architecture mapping | `@agent-Explore` |
-| **general-purpose** | Sonnet | General assistance | Automatic |
+| Agent               | Model  | Specialty                                     | Invocation       |
+| ------------------- | ------ | --------------------------------------------- | ---------------- |
+| **Explore** 🔍       | Haiku  | Repository-wide search & architecture mapping | `@agent-Explore` |
+| **general-purpose** | Sonnet | General assistance                            | Automatic        |
 
 #### Explore Agent Guide
 
@@ -117,51 +117,51 @@ Alfred relies on 55 Claude Skills grouped by tier. Skills load via Progressive D
 
 **Skills Distribution by Tier**:
 
-| Tier | Count | Purpose |
-| --- | --- | --- |
-| Foundation | 6 | Core TRUST/TAG/SPEC/Git/EARS/Lang principles |
-| Essentials | 4 | Debug/Perf/Refactor/Review workflows |
-| Alfred | 11 | Internal workflow orchestration |
-| Domain | 10 | Specialized domain expertise |
-| Language | 23 | Language-specific best practices |
-| Claude Code Ops | 1 | Session management |
-| **Total** | **55** | Complete knowledge capsule library |
+| Tier            | Count  | Purpose                                      |
+| --------------- | ------ | -------------------------------------------- |
+| Foundation      | 6      | Core TRUST/TAG/SPEC/Git/EARS/Lang principles |
+| Essentials      | 4      | Debug/Perf/Refactor/Review workflows         |
+| Alfred          | 11     | Internal workflow orchestration              |
+| Domain          | 10     | Specialized domain expertise                 |
+| Language        | 23     | Language-specific best practices             |
+| Claude Code Ops | 1      | Session management                           |
+| **Total**       | **55** | Complete knowledge capsule library           |
 
 **Foundation Tier (6)**
 
-| Skill | Purpose | Auto-load |
-| --- | --- | --- |
+| Skill                   | Purpose                                 | Auto-load                      |
+| ----------------------- | --------------------------------------- | ------------------------------ |
 | `moai-foundation-trust` | TRUST checklist, coverage gate policies | SessionStart, `/alfred:3-sync` |
-| `moai-foundation-tags` | TAG inventory & orphan detection | `/alfred:3-sync` |
-| `moai-foundation-specs` | SPEC metadata policy and versioning | `/alfred:1-plan` |
-| `moai-foundation-ears` | EARS templates and requirement phrasing | `/alfred:1-plan` |
-| `moai-foundation-git` | GitFlow automation & PR policy | Plan/Run/Sync |
-| `moai-foundation-langs` | Language detection & Skill preload | SessionStart, `/alfred:2-run` |
+| `moai-foundation-tags`  | TAG inventory & orphan detection        | `/alfred:3-sync`               |
+| `moai-foundation-specs` | SPEC metadata policy and versioning     | `/alfred:1-plan`               |
+| `moai-foundation-ears`  | EARS templates and requirement phrasing | `/alfred:1-plan`               |
+| `moai-foundation-git`   | GitFlow automation & PR policy          | Plan/Run/Sync                  |
+| `moai-foundation-langs` | Language detection & Skill preload      | SessionStart, `/alfred:2-run`  |
 
 **Essentials Tier (4)**
 
-| Skill | Purpose | Auto-load |
-| --- | --- | --- |
-| `moai-essentials-debug` | Failure diagnosis & reproduction checklist | Auto when `/alfred:2-run` detects failures |
-| `moai-essentials-perf` | Performance analysis & profiling strategies | On demand |
-| `moai-essentials-refactor` | Refactoring patterns & code-smell remediation | `/alfred:2-run` |
-| `moai-essentials-review` | Code review checklist & quality feedback | `/alfred:3-sync` |
+| Skill                      | Purpose                                       | Auto-load                                  |
+| -------------------------- | --------------------------------------------- | ------------------------------------------ |
+| `moai-essentials-debug`    | Failure diagnosis & reproduction checklist    | Auto when `/alfred:2-run` detects failures |
+| `moai-essentials-perf`     | Performance analysis & profiling strategies   | On demand                                  |
+| `moai-essentials-refactor` | Refactoring patterns & code-smell remediation | `/alfred:2-run`                            |
+| `moai-essentials-review`   | Code review checklist & quality feedback      | `/alfred:3-sync`                           |
 
 **Alfred Tier (11)** — Internal workflow orchestration
 
-| Skill | Purpose | Auto-load |
-| --- | --- | --- |
-| `moai-alfred-code-reviewer` | Automated code quality review | `/alfred:3-sync` |
-| `moai-alfred-debugger-pro` | Advanced debugging strategies | `/alfred:2-run` failures |
-| `moai-alfred-ears-authoring` | EARS syntax validation & templates | `/alfred:1-plan` |
-| `moai-alfred-git-workflow` | GitFlow automation patterns | Plan/Run/Sync |
-| `moai-alfred-language-detection` | Stack detection & Skill preload | SessionStart, `/alfred:0-project` |
-| `moai-alfred-performance-optimizer` | Performance profiling & optimization | On demand |
-| `moai-alfred-refactoring-coach` | Refactoring guidance & patterns | `/alfred:2-run` |
-| `moai-alfred-spec-metadata-validation` | SPEC metadata policy enforcement | `/alfred:1-plan` |
-| `moai-alfred-tag-scanning` | TAG integrity & orphan detection | `/alfred:3-sync` |
-| `moai-alfred-trust-validation` | TRUST 5 principle verification | All phases |
-| `moai-alfred-tui-survey` | Interactive user surveys & menus | On demand |
+| Skill                                  | Purpose                              | Auto-load                         |
+| -------------------------------------- | ------------------------------------ | --------------------------------- |
+| `moai-alfred-code-reviewer`            | Automated code quality review        | `/alfred:3-sync`                  |
+| `moai-alfred-debugger-pro`             | Advanced debugging strategies        | `/alfred:2-run` failures          |
+| `moai-alfred-ears-authoring`           | EARS syntax validation & templates   | `/alfred:1-plan`                  |
+| `moai-alfred-git-workflow`             | GitFlow automation patterns          | Plan/Run/Sync                     |
+| `moai-alfred-language-detection`       | Stack detection & Skill preload      | SessionStart, `/alfred:0-project` |
+| `moai-alfred-performance-optimizer`    | Performance profiling & optimization | On demand                         |
+| `moai-alfred-refactoring-coach`        | Refactoring guidance & patterns      | `/alfred:2-run`                   |
+| `moai-alfred-spec-metadata-validation` | SPEC metadata policy enforcement     | `/alfred:1-plan`                  |
+| `moai-alfred-tag-scanning`             | TAG integrity & orphan detection     | `/alfred:3-sync`                  |
+| `moai-alfred-trust-validation`         | TRUST 5 principle verification       | All phases                        |
+| `moai-alfred-interactive-questions`    | Interactive user surveys & menus     | On demand                         |
 
 **Domain Tier (10)** — `moai-domain-backend`, `web-api`, `frontend`, `mobile-app`, `security`, `devops`, `database`, `data-science`, `ml`, `cli-tool`.
 
@@ -181,10 +181,10 @@ Skills keep the core knowledge lightweight while allowing Alfred to assemble the
 
 ### Model Selection Guide
 
-| Model | Primary use cases | Representative sub-agents | Why it fits |
-| --- | --- | --- | --- |
-| **Claude 4.5 Haiku** | Documentation sync, TAG inventory, Git automation, rule-based checks | doc-syncer, tag-agent, git-manager, trust-checker, quality-gate, Explore | Fast, deterministic output for patterned or string-heavy work |
-| **Claude 4.5 Sonnet** | Planning, implementation, troubleshooting, session ops | Alfred, project-manager, spec-builder, code-builder pipeline, debug-helper, cc-manager | Deep reasoning, multi-step synthesis, creative problem solving |
+| Model                 | Primary use cases                                                    | Representative sub-agents                                                              | Why it fits                                                    |
+| --------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| **Claude 4.5 Haiku**  | Documentation sync, TAG inventory, Git automation, rule-based checks | doc-syncer, tag-agent, git-manager, trust-checker, quality-gate, Explore               | Fast, deterministic output for patterned or string-heavy work  |
+| **Claude 4.5 Sonnet** | Planning, implementation, troubleshooting, session ops               | Alfred, project-manager, spec-builder, code-builder pipeline, debug-helper, cc-manager | Deep reasoning, multi-step synthesis, creative problem solving |
 
 **Guidelines**:
 - Default to **Haiku** when the task is pattern-driven or requires rapid iteration; escalate to **Sonnet** for novel design, architecture, or ambiguous problem solving.
@@ -342,7 +342,7 @@ Refs: @TAG-ID (if applicable)
 
 ### Solution: Interactive Question Tool + TUI Survey Skill
 
-Claude Code now features an **Interactive Question Tool** powered by the `moai-alfred-tui-survey` Skill that transforms vague requests into precise, contextual specifications through guided clarification. Instead of AI making assumptions, the tool actively:
+Claude Code now features an **Interactive Question Tool** powered by the `moai-alfred-interactive-questions` Skill that transforms vague requests into precise, contextual specifications through guided clarification. Instead of AI making assumptions, the tool actively:
 
 1. **Analyzes** existing code and project context
 2. **Identifies** ambiguity and competing approaches
@@ -350,11 +350,11 @@ Claude Code now features an **Interactive Question Tool** powered by the `moai-a
 4. **Captures** explicit user choices (arrow keys, enter)
 5. **Executes** with certainty based on confirmed intent
 
-**Implementation**: The `moai-alfred-tui-survey` Skill provides interactive survey menus that render as terminal UI elements, allowing users to navigate options with arrow keys and confirm with enter.
+**Implementation**: The `moai-alfred-interactive-questions` Skill provides interactive survey menus that render as terminal UI elements, allowing users to navigate options with arrow keys and confirm with enter.
 
 ### How It Works
 
-When you provide a high-level request, Alfred may invoke the `moai-alfred-tui-survey` Skill to clarify implementation details through structured TUI menus:
+When you provide a high-level request, Alfred may invoke the `moai-alfred-interactive-questions` Skill to clarify implementation details through structured TUI menus:
 
 ```
 User: "Add a completion page for the competition."
@@ -398,13 +398,13 @@ Execution with confirmed specifications
 
 ### Key Benefits
 
-| Benefit | Impact |
-| --- | --- |
-| **Reduced ambiguity** | AI asks before acting; eliminates guess work |
-| **Faster iteration** | Choices are presented upfront, not discovered after implementation |
-| **Higher quality** | Implementation matches intent precisely |
-| **Lower communication cost** | Answering 3-5 specific questions beats endless refinement |
-| **Active collaboration** | AI becomes a partner, not just a code generator |
+| Benefit                      | Impact                                                             |
+| ---------------------------- | ------------------------------------------------------------------ |
+| **Reduced ambiguity**        | AI asks before acting; eliminates guess work                       |
+| **Faster iteration**         | Choices are presented upfront, not discovered after implementation |
+| **Higher quality**           | Implementation matches intent precisely                            |
+| **Lower communication cost** | Answering 3-5 specific questions beats endless refinement          |
+| **Active collaboration**     | AI becomes a partner, not just a code generator                    |
 
 ### When to Use Interactive Questions
 
@@ -456,7 +456,7 @@ Alfred scans the codebase and detects:
 - Existing `/end` page (auth required, shows results)
 - Need for clarification on scope and user behavior
 
-**Step 2: Interactive Survey (moai-alfred-tui-survey activated)**
+**Step 2: Interactive Survey (moai-alfred-interactive-questions activated)**
 
 ```
 ────────────────────────────────────────────────────────────────

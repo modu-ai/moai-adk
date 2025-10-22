@@ -21,15 +21,15 @@ MoAI-ADK는 세 가지 핵심 원칙으로 AI 협력 개발을 혁신합니다. 
 **빨리 시작하고 싶다면** "5분 Quick Start"로 바로 진행할 수 있습니다.
 **이미 설치했고 개념을 이해하고 싶다면** "핵심 개념 쉽게 이해하기"를 추천합니다.
 
-| 질문 | 바로 보기 |
-| --- | --- |
-| 처음 접했는데 무엇인가요? | [MoAI-ADK란?](#moai-adk란) |
-| 어떻게 시작하나요? | [5분 Quick Start](#5-분-quick-start) |
-| 기본 흐름이 궁금해요 | [기본 워크플로우 (0 → 3)](#기본-워크플로우-0--3) |
-| Plan / Run / Sync 명령은 무엇을 하나요? | [핵심 명령 요약](#핵심-명령-요약) |
-| SPEC·TDD·TAG가 뭐죠? | [핵심 개념 쉽게 이해하기](#핵심-개념-쉽게-이해하기) |
-| 에이전트/Skills가 궁금해요 | [Sub-agent & Skills 개요](#sub-agent--skills-개요) |
-| 더 깊이 공부하고 싶어요 | [추가 자료](#추가-자료) |
+| 질문                                    | 바로 보기                                           |
+| --------------------------------------- | --------------------------------------------------- |
+| 처음 접했는데 무엇인가요?               | [MoAI-ADK란?](#moai-adk란)                          |
+| 어떻게 시작하나요?                      | [5분 Quick Start](#5-분-quick-start)                |
+| 기본 흐름이 궁금해요                    | [기본 워크플로우 (0 → 3)](#기본-워크플로우-0--3)    |
+| Plan / Run / Sync 명령은 무엇을 하나요? | [핵심 명령 요약](#핵심-명령-요약)                   |
+| SPEC·TDD·TAG가 뭐죠?                    | [핵심 개념 쉽게 이해하기](#핵심-개념-쉽게-이해하기) |
+| 에이전트/Skills가 궁금해요              | [Sub-agent & Skills 개요](#sub-agent--skills-개요)  |
+| 더 깊이 공부하고 싶어요                 | [추가 자료](#추가-자료)                             |
 
 ---
 
@@ -97,14 +97,14 @@ MoAI-ADK는 세 가지 핵심 원칙으로 AI 협력 개발을 혁신합니다. 
 
 현대 AI 협력 개발은 다양한 도전에 직면해 있습니다. MoAI-ADK는 이 모든 문제를 **체계적으로 해결**합니다:
 
-| 고민 | 기존 방식의 문제 | MoAI-ADK의 해결 |
-| --- | --- | --- |
-| "AI 코드를 믿을 수 없다" | 테스트 없는 구현, 검증 방법 불명확 | SPEC → TEST → CODE 순서 강제, 커버리지 85%+ 보증 |
-| "매번 같은 설명 반복" | 컨텍스트 손실, 프로젝트 히스토리 미기록 | Alfred가 모든 정보 기억, 19명 AI 팀 협력 |
-| "프롬프트 작성 어려움" | 좋은 프롬프트 만드는 법을 모름 | `/alfred` 명령이 표준화된 프롬프트 자동 제공 |
-| "문서가 항상 구식" | 코드 수정 후 문서 갱신 까먹음 | `/alfred:3-sync` 한 명령으로 자동 동기화 |
-| "어디 수정했는지 모름" | 코드 검색 어려움, 의도 불명확 | @TAG 체인으로 SPEC → TEST → CODE → DOC 연결 |
-| "팀 온보딩 시간 오래" | 새 팀원이 코드 맥락 파악 불가 | SPEC 읽으면 의도 즉시 이해 가능 |
+| 고민                     | 기존 방식의 문제                        | MoAI-ADK의 해결                                  |
+| ------------------------ | --------------------------------------- | ------------------------------------------------ |
+| "AI 코드를 믿을 수 없다" | 테스트 없는 구현, 검증 방법 불명확      | SPEC → TEST → CODE 순서 강제, 커버리지 85%+ 보증 |
+| "매번 같은 설명 반복"    | 컨텍스트 손실, 프로젝트 히스토리 미기록 | Alfred가 모든 정보 기억, 19명 AI 팀 협력         |
+| "프롬프트 작성 어려움"   | 좋은 프롬프트 만드는 법을 모름          | `/alfred` 명령이 표준화된 프롬프트 자동 제공     |
+| "문서가 항상 구식"       | 코드 수정 후 문서 갱신 까먹음           | `/alfred:3-sync` 한 명령으로 자동 동기화         |
+| "어디 수정했는지 모름"   | 코드 검색 어려움, 의도 불명확           | @TAG 체인으로 SPEC → TEST → CODE → DOC 연결      |
+| "팀 온보딩 시간 오래"    | 새 팀원이 코드 맥락 파악 불가           | SPEC 읽으면 의도 즉시 이해 가능                  |
 
 ### 지금 바로 경험할 수 있는 이득
 
@@ -396,12 +396,12 @@ graph TD
 
 ## 핵심 명령 요약
 
-| 명령 | 무엇을 하나요? | 대표 산출물 |
-| --- | --- | --- |
-| `/alfred:0-project` | 프로젝트 설명 수집, 설정·문서 생성, Skill 추천 | `.moai/config.json`, `.moai/project/*`, 초기 보고서 |
-| `/alfred:1-plan <설명>` | 요구사항 분석, SPEC 초안, Plan Board 작성 | `.moai/specs/SPEC-*/spec.md`, plan/acceptance 문서, feature 브랜치 |
-| `/alfred:2-run <SPEC-ID>` | TDD 실행, 테스트/구현/리팩토링, 품질 검증 | `tests/`, `src/` 구현, 품질 리포트, TAG 연결 |
-| `/alfred:3-sync` | 문서/README/CHANGELOG 동기화, TAG/PR 상태 정리 | `docs/`, `.moai/reports/sync-report.md`, Ready PR |
+| 명령                      | 무엇을 하나요?                                 | 대표 산출물                                                        |
+| ------------------------- | ---------------------------------------------- | ------------------------------------------------------------------ |
+| `/alfred:0-project`       | 프로젝트 설명 수집, 설정·문서 생성, Skill 추천 | `.moai/config.json`, `.moai/project/*`, 초기 보고서                |
+| `/alfred:1-plan <설명>`   | 요구사항 분석, SPEC 초안, Plan Board 작성      | `.moai/specs/SPEC-*/spec.md`, plan/acceptance 문서, feature 브랜치 |
+| `/alfred:2-run <SPEC-ID>` | TDD 실행, 테스트/구현/리팩토링, 품질 검증      | `tests/`, `src/` 구현, 품질 리포트, TAG 연결                       |
+| `/alfred:3-sync`          | 문서/README/CHANGELOG 동기화, TAG/PR 상태 정리 | `docs/`, `.moai/reports/sync-report.md`, Ready PR                  |
 
 > ❗ 모든 명령은 **Phase 0(선택) → Phase 1 → Phase 2 → Phase 3** 순환 구조를 유지합니다. 실행 중 상태와 다음 단계 제안은 Alfred가 자동으로 보고합니다.
 
@@ -923,18 +923,18 @@ Alfred는 **19개의 에이전트**(SuperAgent 1 + Core Sub-agent 10 + 0-project
 
 ### Core Sub-agents (Plan → Run → Sync)
 
-| Sub-agent | 모델 | 역할 |
-| --- | --- | --- |
-| project-manager 📋 | Sonnet | 프로젝트 초기화, 메타데이터 인터뷰 |
-| spec-builder 🏗️ | Sonnet | Plan 보드, EARS SPEC 작성 |
-| code-builder 💎 | Sonnet | `implementation-planner` + `tdd-implementer`로 TDD 전체 수행 |
-| doc-syncer 📖 | Haiku | Living Doc, README, CHANGELOG 동기화 |
-| tag-agent 🏷️ | Haiku | TAG 인벤토리, orphan 탐지 |
-| git-manager 🚀 | Haiku | GitFlow, Draft/Ready, Auto Merge |
-| debug-helper 🔍 | Sonnet | 실패 분석, fix-forward 전략 |
-| trust-checker ✅ | Haiku | TRUST 5 품질 게이트 |
-| quality-gate 🛡️ | Haiku | 커버리지 변화 및 릴리스 차단 조건 검토 |
-| cc-manager 🛠️ | Sonnet | Claude Code 세션 최적화, Skill 배포 |
+| Sub-agent         | 모델   | 역할                                                         |
+| ----------------- | ------ | ------------------------------------------------------------ |
+| project-manager 📋 | Sonnet | 프로젝트 초기화, 메타데이터 인터뷰                           |
+| spec-builder 🏗️    | Sonnet | Plan 보드, EARS SPEC 작성                                    |
+| code-builder 💎    | Sonnet | `implementation-planner` + `tdd-implementer`로 TDD 전체 수행 |
+| doc-syncer 📖      | Haiku  | Living Doc, README, CHANGELOG 동기화                         |
+| tag-agent 🏷️       | Haiku  | TAG 인벤토리, orphan 탐지                                    |
+| git-manager 🚀     | Haiku  | GitFlow, Draft/Ready, Auto Merge                             |
+| debug-helper 🔍    | Sonnet | 실패 분석, fix-forward 전략                                  |
+| trust-checker ✅   | Haiku  | TRUST 5 품질 게이트                                          |
+| quality-gate 🛡️    | Haiku  | 커버리지 변화 및 릴리스 차단 조건 검토                       |
+| cc-manager 🛠️      | Sonnet | Claude Code 세션 최적화, Skill 배포                          |
 
 ### Skills (Progressive Disclosure - v0.4 신규!)
 
@@ -943,93 +943,93 @@ Alfred는 **56개의 Claude Skills**를 4-tier 아키텍처로 구성하여 필�
 #### Foundation Tier (6)
 핵심 TRUST/TAG/SPEC/Git/EARS/Language 원칙을 담은 기반 스킬
 
-| Skill | 설명 |
-| --- | --- |
+| Skill                   | 설명                                                                       |
+| ----------------------- | -------------------------------------------------------------------------- |
 | `moai-foundation-trust` | TRUST 5-principles (Test 85%+, Readable, Unified, Secured, Trackable) 검증 |
-| `moai-foundation-tags` | @TAG markers 스캔 및 인벤토리 생성 (CODE-FIRST 원칙) |
-| `moai-foundation-specs` | SPEC YAML frontmatter (7개 필수 필드) 및 HISTORY 섹션 검증 |
-| `moai-foundation-ears` | EARS (Easy Approach to Requirements Syntax) 요구사항 작성 가이드 |
-| `moai-foundation-git` | Git workflow 자동화 (branching, TDD commits, PR 관리) |
-| `moai-foundation-langs` | 프로젝트 언어/프레임워크 자동 감지 (package.json, pyproject.toml 등) |
+| `moai-foundation-tags`  | @TAG markers 스캔 및 인벤토리 생성 (CODE-FIRST 원칙)                       |
+| `moai-foundation-specs` | SPEC YAML frontmatter (7개 필수 필드) 및 HISTORY 섹션 검증                 |
+| `moai-foundation-ears`  | EARS (Easy Approach to Requirements Syntax) 요구사항 작성 가이드           |
+| `moai-foundation-git`   | Git workflow 자동화 (branching, TDD commits, PR 관리)                      |
+| `moai-foundation-langs` | 프로젝트 언어/프레임워크 자동 감지 (package.json, pyproject.toml 등)       |
 
 #### Essentials Tier (4)
 일상 개발 업무에 필요한 핵심 도구들
 
-| Skill | 설명 |
-| --- | --- |
-| `moai-essentials-debug` | 스택 추적 분석, 에러 패턴 감지, 빠른 진단 지원 |
-| `moai-essentials-perf` | 성능 프로파일링, 병목 지점 탐지, 튜닝 전략 |
-| `moai-essentials-refactor` | 리팩토링 가이드, 설계 패턴, 코드 개선 전략 |
-| `moai-essentials-review` | 자동 코드 리뷰, SOLID 원칙, 코드 냄새 감지 |
+| Skill                      | 설명                                           |
+| -------------------------- | ---------------------------------------------- |
+| `moai-essentials-debug`    | 스택 추적 분석, 에러 패턴 감지, 빠른 진단 지원 |
+| `moai-essentials-perf`     | 성능 프로파일링, 병목 지점 탐지, 튜닝 전략     |
+| `moai-essentials-refactor` | 리팩토링 가이드, 설계 패턴, 코드 개선 전략     |
+| `moai-essentials-review`   | 자동 코드 리뷰, SOLID 원칙, 코드 냄새 감지     |
 
 #### Alfred Tier (11)
 MoAI-ADK 내부 워크플로우 오케스트레이션 스킬
 
-| Skill | 설명 |
-| --- | --- |
-| `moai-alfred-code-reviewer` | 언어별 최고 관행, SOLID 원칙, 개선 제안을 포함한 자동 코드 리뷰 |
-| `moai-alfred-debugger-pro` | 스택 추적 분석, 에러 패턴 감지, 복잡한 런타임 에러 해석 |
-| `moai-alfred-ears-authoring` | EARS 구문 검증, 5가지 requirement 패턴 가이드 |
-| `moai-alfred-git-workflow` | MoAI-ADK conventions (feature branch, TDD commits, Draft PR) 자동화 |
-| `moai-alfred-language-detection` | 프로젝트 언어/런타임 감지, 기본 테스트 도구 추천 |
-| `moai-alfred-performance-optimizer` | 성능 프로파일링, 병목 감지, 언어별 최적화 |
-| `moai-alfred-refactoring-coach` | 리팩토링 가이드, 설계 패턴, 단계별 개선 계획 |
-| `moai-alfred-spec-metadata-validation` | SPEC YAML frontmatter (7개 필드) 및 HISTORY 섹션 정합성 검증 |
-| `moai-alfred-tag-scanning` | @TAG 마커 전체 스캔 및 인벤토리 생성 (CODE-FIRST 원칙) |
-| `moai-alfred-trust-validation` | TRUST 5-principles 준수 검증 (Test 85%+, constraints, security, trackability) |
-| `moai-alfred-tui-survey` | Claude Code Tools AskUserQuestion TUI 메뉴 표준화 |
+| Skill                                  | 설명                                                                          |
+| -------------------------------------- | ----------------------------------------------------------------------------- |
+| `moai-alfred-code-reviewer`            | 언어별 최고 관행, SOLID 원칙, 개선 제안을 포함한 자동 코드 리뷰               |
+| `moai-alfred-debugger-pro`             | 스택 추적 분석, 에러 패턴 감지, 복잡한 런타임 에러 해석                       |
+| `moai-alfred-ears-authoring`           | EARS 구문 검증, 5가지 requirement 패턴 가이드                                 |
+| `moai-alfred-git-workflow`             | MoAI-ADK conventions (feature branch, TDD commits, Draft PR) 자동화           |
+| `moai-alfred-language-detection`       | 프로젝트 언어/런타임 감지, 기본 테스트 도구 추천                              |
+| `moai-alfred-performance-optimizer`    | 성능 프로파일링, 병목 감지, 언어별 최적화                                     |
+| `moai-alfred-refactoring-coach`        | 리팩토링 가이드, 설계 패턴, 단계별 개선 계획                                  |
+| `moai-alfred-spec-metadata-validation` | SPEC YAML frontmatter (7개 필드) 및 HISTORY 섹션 정합성 검증                  |
+| `moai-alfred-tag-scanning`             | @TAG 마커 전체 스캔 및 인벤토리 생성 (CODE-FIRST 원칙)                        |
+| `moai-alfred-trust-validation`         | TRUST 5-principles 준수 검증 (Test 85%+, constraints, security, trackability) |
+| `moai-alfred-interactive-questions`    | Claude Code Tools AskUserQuestion TUI 메뉴 표준화                             |
 
 #### Domain Tier (10)
 특화된 도메인 전문 지식
 
-| Skill | 설명 |
-| --- | --- |
-| `moai-domain-backend` | 백엔드 아키텍처, API 설계, 스케일링 가이드 |
-| `moai-domain-cli-tool` | CLI 도구 개발, 인자 파싱, POSIX 준수, 사용자친화적 help 메시지 |
-| `moai-domain-data-science` | 데이터 분석, 시각화, 통계 모델링, 재현 가능한 연구 워크플로우 |
-| `moai-domain-database` | 데이터베이스 설계, 스키마 최적화, 인덱싱 전략, 마이그레이션 관리 |
-| `moai-domain-devops` | CI/CD 파이프라인, Docker containerization, Kubernetes 오케스트레이션, IaC |
-| `moai-domain-frontend` | React/Vue/Angular 개발, 상태 관리, 성능 최적화, 접근성 |
-| `moai-domain-ml` | 머신러닝 모델 학습, 평가, 배포, MLOps 워크플로우 |
-| `moai-domain-mobile-app` | Flutter/React Native 개발, 상태 관리, 네이티브 통합 |
-| `moai-domain-security` | OWASP Top 10, 정적 분석 (SAST), 의존성 보안, secrets 관리 |
-| `moai-domain-web-api` | REST API, GraphQL 설계 패턴, 인증, 버전 관리, OpenAPI 문서화 |
+| Skill                      | 설명                                                                      |
+| -------------------------- | ------------------------------------------------------------------------- |
+| `moai-domain-backend`      | 백엔드 아키텍처, API 설계, 스케일링 가이드                                |
+| `moai-domain-cli-tool`     | CLI 도구 개발, 인자 파싱, POSIX 준수, 사용자친화적 help 메시지            |
+| `moai-domain-data-science` | 데이터 분석, 시각화, 통계 모델링, 재현 가능한 연구 워크플로우             |
+| `moai-domain-database`     | 데이터베이스 설계, 스키마 최적화, 인덱싱 전략, 마이그레이션 관리          |
+| `moai-domain-devops`       | CI/CD 파이프라인, Docker containerization, Kubernetes 오케스트레이션, IaC |
+| `moai-domain-frontend`     | React/Vue/Angular 개발, 상태 관리, 성능 최적화, 접근성                    |
+| `moai-domain-ml`           | 머신러닝 모델 학습, 평가, 배포, MLOps 워크플로우                          |
+| `moai-domain-mobile-app`   | Flutter/React Native 개발, 상태 관리, 네이티브 통합                       |
+| `moai-domain-security`     | OWASP Top 10, 정적 분석 (SAST), 의존성 보안, secrets 관리                 |
+| `moai-domain-web-api`      | REST API, GraphQL 설계 패턴, 인증, 버전 관리, OpenAPI 문서화              |
 
 #### Language Tier (24)
 프로그래밍 언어별 최고 관행
 
-| Skill | 설명 |
-| --- | --- |
-| `moai-lang-python` | pytest, mypy, ruff, black, uv 패키지 관리 |
-| `moai-lang-typescript` | Vitest, Biome, strict typing, npm/pnpm |
-| `moai-lang-javascript` | Jest, ESLint, Prettier, npm 패키지 관리 |
-| `moai-lang-go` | go test, golint, gofmt, 표준 라이브러리 |
-| `moai-lang-rust` | cargo test, clippy, rustfmt, ownership/borrow checker |
-| `moai-lang-java` | JUnit, Maven/Gradle, Checkstyle, Spring Boot 패턴 |
-| `moai-lang-kotlin` | JUnit, Gradle, ktlint, coroutines, extension functions |
-| `moai-lang-swift` | XCTest, SwiftLint, iOS/macOS 개발 패턴 |
-| `moai-lang-dart` | flutter test, dart analyze, Flutter widget 패턴 |
-| `moai-lang-csharp` | xUnit, .NET tooling, LINQ, async/await 패턴 |
-| `moai-lang-cpp` | Google Test, clang-format, 현대 C++ (C++17/20) |
-| `moai-lang-c` | Unity test framework, cppcheck, Make 빌드 시스템 |
-| `moai-lang-scala` | ScalaTest, sbt, 함수형 프로그래밍 패턴 |
-| `moai-lang-ruby` | RSpec, RuboCop, Bundler, Rails 패턴 |
-| `moai-lang-php` | PHPUnit, Composer, PSR 표준 |
-| `moai-lang-sql` | 테스트 프레임워크, 쿼리 최적화, 마이그레이션 관리 |
-| `moai-lang-shell` | bats, shellcheck, POSIX 준수 |
-| `moai-lang-haskell` | HUnit, Stack/Cabal, 순수 함수형 프로그래밍 |
-| `moai-lang-elixir` | ExUnit, Mix, OTP 패턴 |
-| `moai-lang-clojure` | clojure.test, Leiningen, 불변 데이터 구조 |
-| `moai-lang-lua` | busted, luacheck, embedded scripting 패턴 |
-| `moai-lang-julia` | Test stdlib, Pkg manager, 과학 계산 패턴 |
-| `moai-lang-r` | testthat, lintr, 데이터 분석 패턴 |
-| `moai-lang-kotlin` | JUnit, Gradle, ktlint, coroutines, extension functions |
+| Skill                  | 설명                                                   |
+| ---------------------- | ------------------------------------------------------ |
+| `moai-lang-python`     | pytest, mypy, ruff, black, uv 패키지 관리              |
+| `moai-lang-typescript` | Vitest, Biome, strict typing, npm/pnpm                 |
+| `moai-lang-javascript` | Jest, ESLint, Prettier, npm 패키지 관리                |
+| `moai-lang-go`         | go test, golint, gofmt, 표준 라이브러리                |
+| `moai-lang-rust`       | cargo test, clippy, rustfmt, ownership/borrow checker  |
+| `moai-lang-java`       | JUnit, Maven/Gradle, Checkstyle, Spring Boot 패턴      |
+| `moai-lang-kotlin`     | JUnit, Gradle, ktlint, coroutines, extension functions |
+| `moai-lang-swift`      | XCTest, SwiftLint, iOS/macOS 개발 패턴                 |
+| `moai-lang-dart`       | flutter test, dart analyze, Flutter widget 패턴        |
+| `moai-lang-csharp`     | xUnit, .NET tooling, LINQ, async/await 패턴            |
+| `moai-lang-cpp`        | Google Test, clang-format, 현대 C++ (C++17/20)         |
+| `moai-lang-c`          | Unity test framework, cppcheck, Make 빌드 시스템       |
+| `moai-lang-scala`      | ScalaTest, sbt, 함수형 프로그래밍 패턴                 |
+| `moai-lang-ruby`       | RSpec, RuboCop, Bundler, Rails 패턴                    |
+| `moai-lang-php`        | PHPUnit, Composer, PSR 표준                            |
+| `moai-lang-sql`        | 테스트 프레임워크, 쿼리 최적화, 마이그레이션 관리      |
+| `moai-lang-shell`      | bats, shellcheck, POSIX 준수                           |
+| `moai-lang-haskell`    | HUnit, Stack/Cabal, 순수 함수형 프로그래밍             |
+| `moai-lang-elixir`     | ExUnit, Mix, OTP 패턴                                  |
+| `moai-lang-clojure`    | clojure.test, Leiningen, 불변 데이터 구조              |
+| `moai-lang-lua`        | busted, luacheck, embedded scripting 패턴              |
+| `moai-lang-julia`      | Test stdlib, Pkg manager, 과학 계산 패턴               |
+| `moai-lang-r`          | testthat, lintr, 데이터 분석 패턴                      |
+| `moai-lang-kotlin`     | JUnit, Gradle, ktlint, coroutines, extension functions |
 
 #### Claude Code Ops (1)
 Claude Code 세션 관리
 
-| Skill | 설명 |
-| --- | --- |
+| Skill              | 설명                                                                     |
+| ------------------ | ------------------------------------------------------------------------ |
 | `moai-claude-code` | Claude Code agents, commands, skills, plugins, settings 스캐폴딩 및 감시 |
 
 > **v0.4.6 신기능**: 56개의 Claude Skills가 4-tier 아키텍처로 구성되었습니다 (v0.4.6에서 100% 완성). 각 Skill은 Progressive Disclosure를 통해 필요할 때만 로드되어 컨텍스트 비용을 최소화합니다. Foundation → Essentials → Alfred → Domain/Language/Ops 계층으로 구성되어 있으며, 모든 스킬이 1,000줄 이상의 공식 문서와 300+ 실행 가능한 TDD 예제를 포함합니다.
@@ -1038,10 +1038,10 @@ Claude Code 세션 관리
 
 ## AI 모델 선택 가이드
 
-| 상황 | 기본 모델 | 이유 |
-| --- | --- | --- |
-| 명세/설계/리팩토링/문제 해결 | **Claude 4.5 Sonnet** | 깊은 추론과 구조화된 작성에 강함 |
-| 문서 동기화, TAG 검사, Git 자동화 | **Claude 4.5 Haiku** | 빠른 반복 작업, 문자열 처리에 강함 |
+| 상황                              | 기본 모델             | 이유                               |
+| --------------------------------- | --------------------- | ---------------------------------- |
+| 명세/설계/리팩토링/문제 해결      | **Claude 4.5 Sonnet** | 깊은 추론과 구조화된 작성에 강함   |
+| 문서 동기화, TAG 검사, Git 자동화 | **Claude 4.5 Haiku**  | 빠른 반복 작업, 문자열 처리에 강함 |
 
 - 패턴화된 작업은 Haiku로 시작하고, 복잡한 판단이 필요하면 Sonnet으로 전환하세요.
 - 수동으로 모델을 변경했다면 “왜 전환했는지” 로그에 남겨두면 협업에 도움이 됩니다.
@@ -1063,14 +1063,14 @@ Claude Code 세션 관리
 
 ## v0.4 Series 업데이트 (신규!)
 
-| 버전 | 주요 기능 | 날짜 |
-| --- | --- | --- |
+| 버전       | 주요 기능                                                                   | 날짜       |
+| ---------- | --------------------------------------------------------------------------- | ---------- |
 | **v0.4.6** | 🎉 완전한 Skills v2.0 완성 (56/56 100%) + 85,000줄 공식 문서 + 300+ TDD 예제 | 2025-10-22 |
-| **v0.4.5** | ✅ CI/CD 수정 + 다국어 README + 배포 정리 | 2025-10-22 |
-| **v0.4.4** | 한국어 언어 지원 | 2025-10-21 |
-| **v0.4.3** | 대화형 질문 도구 (TUI 메뉴) | 2025-10-21 |
-| **v0.4.1** | Skills 지역화 | 2025-10-21 |
-| **v0.4.0** | **55개 Claude Skills** + 19명 AI 팀 + 4단계 워크플로우 | 2025-10-21 |
+| **v0.4.5** | ✅ CI/CD 수정 + 다국어 README + 배포 정리                                    | 2025-10-22 |
+| **v0.4.4** | 한국어 언어 지원                                                            | 2025-10-21 |
+| **v0.4.3** | 대화형 질문 도구 (TUI 메뉴)                                                 | 2025-10-21 |
+| **v0.4.1** | Skills 지역화                                                               | 2025-10-21 |
+| **v0.4.0** | **55개 Claude Skills** + 19명 AI 팀 + 4단계 워크플로우                      | 2025-10-21 |
 
 > 📦 **지금 바로 설치**: `pip install moai-adk==0.4.6` 또는 `uv tool install moai-adk==0.4.6`
 
@@ -1078,25 +1078,25 @@ Claude Code 세션 관리
 
 ## 추가 자료
 
-| 목적 | 리소스 |
-| --- | --- |
-| Skills 세부 구조 | `.claude/skills/` 디렉터리 (56개 Skill) |
-| Sub-agent 상세 | `.claude/agents/alfred/` 디렉터리 |
-| 워크플로우 가이드 | `.claude/commands/alfred/` (0-3 명령) |
-| 개발 가드라인 | `.moai/memory/development-guide.md`, `.moai/memory/spec-metadata.md` |
-| 릴리즈 노트 | GitHub Releases: https://github.com/modu-ai/moai-adk/releases |
+| 목적              | 리소스                                                               |
+| ----------------- | -------------------------------------------------------------------- |
+| Skills 세부 구조  | `.claude/skills/` 디렉터리 (56개 Skill)                              |
+| Sub-agent 상세    | `.claude/agents/alfred/` 디렉터리                                    |
+| 워크플로우 가이드 | `.claude/commands/alfred/` (0-3 명령)                                |
+| 개발 가드라인     | `.moai/memory/development-guide.md`, `.moai/memory/spec-metadata.md` |
+| 릴리즈 노트       | GitHub Releases: https://github.com/modu-ai/moai-adk/releases        |
 
 ---
 
 ## 커뮤니티 & 지원
 
-| 채널 | 링크 |
-| --- | --- |
-| **GitHub Repository** | https://github.com/modu-ai/moai-adk |
-| **Issues & Discussions** | https://github.com/modu-ai/moai-adk/issues |
-| **PyPI Package** | https://pypi.org/project/moai-adk/ (최신: v0.4.6) |
-| **Latest Release** | https://github.com/modu-ai/moai-adk/releases/tag/v0.4.6 |
-| **Documentation** | 프로젝트 내 `.moai/`, `.claude/`, `docs/` 참고 |
+| 채널                     | 링크                                                    |
+| ------------------------ | ------------------------------------------------------- |
+| **GitHub Repository**    | https://github.com/modu-ai/moai-adk                     |
+| **Issues & Discussions** | https://github.com/modu-ai/moai-adk/issues              |
+| **PyPI Package**         | https://pypi.org/project/moai-adk/ (최신: v0.4.6)       |
+| **Latest Release**       | https://github.com/modu-ai/moai-adk/releases/tag/v0.4.6 |
+| **Documentation**        | 프로젝트 내 `.moai/`, `.claude/`, `docs/` 참고          |
 
 ---
 

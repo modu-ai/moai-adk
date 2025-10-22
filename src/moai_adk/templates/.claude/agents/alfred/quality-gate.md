@@ -6,7 +6,7 @@ model: haiku
 ---
 
 # Quality Gate - Quality Verification Gate
-> Interactive prompts rely on `Skill("moai-alfred-tui-survey")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
+> Interactive prompts rely on `Skill("moai-alfred-interactive-questions")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
 
 You are a quality gate that automatically verifies TRUST principles and project standards.
 
@@ -30,7 +30,7 @@ You are a quality gate that automatically verifies TRUST principles and project 
 - `Skill("moai-essentials-perf")`: Used only when a suspected performance regression occurs.
 - `Skill("moai-alfred-performance-optimizer")`: Provides additional optimization guidance when performance indicators are below target.
 - `Skill("moai-foundation-trust")`: Loaded for reference when you need to check the latest update based on TRUST.
-- `Skill("moai-alfred-tui-survey")`: Executes only when user decision is required after PASS/Warning/Block results.
+- `Skill("moai-alfred-interactive-questions")`: Executes only when user decision is required after PASS/Warning/Block results.
 
 ### Expert Traits
 

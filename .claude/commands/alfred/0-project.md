@@ -16,7 +16,7 @@ allowed-tools:
 ---
 
 # 📋 MoAI-ADK Step 0: Initialize/Update Universal Language Support Project Documentation
-> Interactive prompts rely on `Skill("moai-alfred-tui-survey")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
+> Interactive prompts rely on `Skill("moai-alfred-interactive-questions")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
 
 ## 🎯 Command Purpose
 
@@ -33,10 +33,10 @@ Automatically analyzes the project environment to create/update product/structur
 
 ## 🧠 Skill Loadout Overview
 
-| Agent | Core Skill | Purpose |
-| ----- | -------- | ------- |
+| Agent           | Core Skill                       | Purpose                                       |
+| --------------- | -------------------------------- | --------------------------------------------- |
 | project-manager | `moai-alfred-language-detection` | Initialize project and interview requirements |
-| trust-checker | `moai-alfred-trust-validation` | Verify initial project structure (optional) |
+| trust-checker   | `moai-alfred-trust-validation`   | Verify initial project structure (optional)   |
 
 **Note**: TUI Survey Skill is used for user confirmations during project initialization and is shared across all interactive prompts.
 
@@ -94,14 +94,14 @@ The user executes the `/alfred:8-project` command to start analyzing the project
 
 ### 0.1 Display Language Selection Menu
 
-Alfred displays a language selection menu as the **very first interaction** using `Skill("moai-alfred-tui-survey")`:
+Alfred displays a language selection menu as the **very first interaction** using `Skill("moai-alfred-interactive-questions")`:
 
 **Question**:
 ```
 Which language would you like to use for the project initialization and documentation?
 ```
 
-**Options** (AskUserQuestion with moai-alfred-tui-survey):
+**Options** (AskUserQuestion with moai-alfred-interactive-questions):
 - **English** (en) — All dialogs and documentation in English
 - **한국어** (ko) — All dialogs and documentation in Korean
 - **日本語** (ja) — All dialogs and documentation in Japanese
@@ -161,7 +161,7 @@ grep "optimized" .moai/config.json
 - `optimized: false` in `config.json` (immediately after reinitialization)
 
 **Select user if backup exists**  
-Call `Skill("moai-alfred-tui-survey")` to display a TUI with the following options:
+Call `Skill("moai-alfred-interactive-questions")` to display a TUI with the following options:
 - **Merge**: Merge backup contents and latest template (recommended)
 - **New**: Ignore the backup and start a new interview
 - **Skip**: Keep current file (terminate task)
@@ -373,9 +373,9 @@ Set optimization flags after the merge is complete:
  (Choose “Proceed,” “Modify [Content],” or “Abort”)
 ```
 
-### 1.5 Wait for user approval (moai-alfred-tui-survey) (when user selects "New")
+### 1.5 Wait for user approval (moai-alfred-interactive-questions) (when user selects "New")
 
-After Alfred receives the project-manager's interview plan report, calls `Skill("moai-alfred-tui-survey")` and asks whether Phase 2 is approved.
+After Alfred receives the project-manager's interview plan report, calls `Skill("moai-alfred-interactive-questions")` and asks whether Phase 2 is approved.
 - **Proceed**: Interview conducted according to approved plan
 - **Modify**: Re-establish the plan (re-execute Phase 1)
 - **Stop**: Stop initialization
@@ -449,7 +449,7 @@ After the project-manager has finished creating the document, **Alfred can optio
 
 **Note**: Quality verification is optional during the project initialization phase.
 
-### 2.3 Sub-agent moai-alfred-tui-survey (Nested)
+### 2.3 Sub-agent moai-alfred-interactive-questions (Nested)
 
 **The project-manager agent can internally call the TUI survey skill** to check the details of the task.
 
@@ -458,7 +458,7 @@ After the project-manager has finished creating the document, **Alfred can optio
 - When selecting language/framework
 - When changing important settings
 
-**Example** (inside project-manager): Ask whether to "overwrite file" with `Skill("moai-alfred-tui-survey")`,
+**Example** (inside project-manager): Ask whether to "overwrite file" with `Skill("moai-alfred-interactive-questions")`,
 - Allows you to choose between **Overwrite** / **Merge** / **Skip**.
 
 **Nested pattern**:
@@ -721,7 +721,7 @@ Alfred only calls the trust-checker agent to perform project initial structural 
 ### 2.6: Agent & Skill Tailoring (Project Optimization)
 
 Based on the results of the interviews and initial analysis, we recommend and activate sub-agents and skills that should be immediately utilized in the project.
-Before actual application, user confirmation is received with `Skill("moai-alfred-tui-survey")`, and selected items are recorded in `CLAUDE.md` and `.moai/config.json`.
+Before actual application, user confirmation is received with `Skill("moai-alfred-interactive-questions")`, and selected items are recorded in `CLAUDE.md` and `.moai/config.json`.
 
 #### 2.6.0 Create cc-manager briefing
 
@@ -737,21 +737,21 @@ Be sure to include the source (e.g. `product.md@SPEC:SUCCESS-001`) for each item
 
 cc-manager selects the required sub-agents and skills based on the briefing.The table below is a reference guide to help you make a decision, and when making an actual call, the supporting sentences from the relevant document are also delivered.
 
-|Project requirements (document basis) |Recommended sub-agent/skill |Purpose |
-| -------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------ |
-|High quality and coverage goals (`product.md@SPEC:SUCCESS-001`) |`tdd-implementer`, `moai-essentials-debug`, `moai-essentials-review` |Establishment of RED·GREEN·REFACTOR workflow |
-|Traceability/TAG improvement request (`structure.md@DOC:TRACEABILITY-001`) |`doc-syncer`, `moai-alfred-tag-scanning`, `moai-alfred-trust-validation` |Enhanced TAG traceability and document/code synchronization |
-|Deployment automation/branch strategy required (`structure.md` Architecture/TODO) |`git-manager`, `moai-alfred-git-workflow`, `moai-foundation-git` |Branch Strategy·Commit Policy·PR Automation |
-|Refactoring legacy modules (`product.md` BACKLOG, `tech.md` TODO) |`implementation-planner`, `moai-alfred-refactoring-coach`, `moai-essentials-refactor` |Technical Debt Diagnosis and Refactoring Roadmap |
-|Strengthening regulatory/security compliance (`tech.md@DOC:SECURITY-001`) |`quality-gate`, `moai-alfred-trust-validation`, `moai-foundation-trust`, `moai-domain-security` |TRUST S (Secured) and Trackable Compliance, Security Consulting |
-|CLI Automation/Tooling Requirements (`tech.md` BUILD/CLI section) |`implementation-planner`, `moai-domain-cli-tool`, detected language skills (e.g. `moai-lang-python`) |CLI command design, input/output standardization |
-|Data analysis/reporting needs (`product.md` DATA, `tech.md` ANALYTICS) |`implementation-planner`, `moai-domain-data-science`, detected language skills |Data Pipeline·Notebook Job Definition |
-|Improved database structure (`structure.md` DB, `tech.md` STORAGE) |`doc-syncer`, `moai-domain-database`, `moai-alfred-tag-scanning` |Strengthening schema documentation and TAG-DB mapping |
-|DevOps/Infrastructure automation required (`tech.md` DEVOPS, `structure.md` CI/CD) |`implementation-planner`, `moai-domain-devops`, `moai-alfred-git-workflow` |Establishing a deployment pipeline and IaC strategy |
-|Introduction of ML/AI functions (`product.md` AI, `tech.md` MODEL) |`implementation-planner`, `moai-domain-ml`, detected language skills |Model training/inference pipeline definition |
-|Mobile app strategy (`product.md` MOBILE, `structure.md` CLIENT) |`implementation-planner`, `moai-domain-mobile-app`, detected language skills (e.g. `moai-lang-dart`, `moai-lang-swift`) |Mobile client structure design |
-|Strengthening coding standards/review process (`tech.md` REVIEW) |`quality-gate`, `moai-essentials-review`, `moai-alfred-code-reviewer` |Strengthening review checklist and quality reporting |
-|Requires onboarding/training mode (`tech.md` STACK description, etc.) |`moai-alfred-tui-survey`, `moai-adk-learning`, `agentic-coding` Output style |Enhanced interview TUI and automatically provided onboarding materials |
+| Project requirements (document basis)                                              | Recommended sub-agent/skill                                                                                             | Purpose                                                                |
+| ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| High quality and coverage goals (`product.md@SPEC:SUCCESS-001`)                    | `tdd-implementer`, `moai-essentials-debug`, `moai-essentials-review`                                                    | Establishment of RED·GREEN·REFACTOR workflow                           |
+| Traceability/TAG improvement request (`structure.md@DOC:TRACEABILITY-001`)         | `doc-syncer`, `moai-alfred-tag-scanning`, `moai-alfred-trust-validation`                                                | Enhanced TAG traceability and document/code synchronization            |
+| Deployment automation/branch strategy required (`structure.md` Architecture/TODO)  | `git-manager`, `moai-alfred-git-workflow`, `moai-foundation-git`                                                        | Branch Strategy·Commit Policy·PR Automation                            |
+| Refactoring legacy modules (`product.md` BACKLOG, `tech.md` TODO)                  | `implementation-planner`, `moai-alfred-refactoring-coach`, `moai-essentials-refactor`                                   | Technical Debt Diagnosis and Refactoring Roadmap                       |
+| Strengthening regulatory/security compliance (`tech.md@DOC:SECURITY-001`)          | `quality-gate`, `moai-alfred-trust-validation`, `moai-foundation-trust`, `moai-domain-security`                         | TRUST S (Secured) and Trackable Compliance, Security Consulting        |
+| CLI Automation/Tooling Requirements (`tech.md` BUILD/CLI section)                  | `implementation-planner`, `moai-domain-cli-tool`, detected language skills (e.g. `moai-lang-python`)                    | CLI command design, input/output standardization                       |
+| Data analysis/reporting needs (`product.md` DATA, `tech.md` ANALYTICS)             | `implementation-planner`, `moai-domain-data-science`, detected language skills                                          | Data Pipeline·Notebook Job Definition                                  |
+| Improved database structure (`structure.md` DB, `tech.md` STORAGE)                 | `doc-syncer`, `moai-domain-database`, `moai-alfred-tag-scanning`                                                        | Strengthening schema documentation and TAG-DB mapping                  |
+| DevOps/Infrastructure automation required (`tech.md` DEVOPS, `structure.md` CI/CD) | `implementation-planner`, `moai-domain-devops`, `moai-alfred-git-workflow`                                              | Establishing a deployment pipeline and IaC strategy                    |
+| Introduction of ML/AI functions (`product.md` AI, `tech.md` MODEL)                 | `implementation-planner`, `moai-domain-ml`, detected language skills                                                    | Model training/inference pipeline definition                           |
+| Mobile app strategy (`product.md` MOBILE, `structure.md` CLIENT)                   | `implementation-planner`, `moai-domain-mobile-app`, detected language skills (e.g. `moai-lang-dart`, `moai-lang-swift`) | Mobile client structure design                                         |
+| Strengthening coding standards/review process (`tech.md` REVIEW)                   | `quality-gate`, `moai-essentials-review`, `moai-alfred-code-reviewer`                                                   | Strengthening review checklist and quality reporting                   |
+| Requires onboarding/training mode (`tech.md` STACK description, etc.)              | `moai-alfred-interactive-questions`, `moai-adk-learning`, `agentic-coding` Output style                                 | Enhanced interview TUI and automatically provided onboarding materials |
 
 > **Language/Domain Skill Selection Rules**
 > - Select and add one relevant language skill (`moai-lang-python`, `moai-lang-java`, …) based on the `moai-alfred-language-detection` results or the stack recorded in the Tech section of the briefing.
@@ -762,7 +762,7 @@ If multiple conditions are met, the candidates are merged without duplicates and
 
 #### 2.6.2 User confirmation flow
 
-`Skill("moai-alfred-tui-survey")` asks “whether to enable recommended items.”
+`Skill("moai-alfred-interactive-questions")` asks “whether to enable recommended items.”
 - Provides three options: **Install all** / **Install selectively** / **Do not install**.
 Selecting “Selective Install” presents the list of candidates again as multiple choices, allowing the user to select only the items they need.
 
@@ -907,7 +907,7 @@ This subcommand is executed under the following conditions:
    ```
 
 4. **Waiting for user approval**  
-`Skill("moai-alfred-tui-survey")` asks “Do you want to proceed with template optimization?” and provides the following options.
+`Skill("moai-alfred-interactive-questions")` asks “Do you want to proceed with template optimization?” and provides the following options.
 - **Proceed** → Phase 2 execution
 - **Preview** → Display change details and recheck
 - **Skip** → keep optimized=false

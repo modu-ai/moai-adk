@@ -21,15 +21,15 @@ MoAI-ADK 通过三个核心原则革新 AI 协作开发。使用下面的导航�
 如果您想**快速开始**，可以直接跳转到"5分钟快速开始"。
 如果您**已经安装并想了解概念**，推荐阅读"轻松理解核心概念"。
 
-| 问题 | 快速跳转 |
-| --- | --- |
-| 第一次接触，这是什么？ | [什么是 MoAI-ADK？](#什么是-moai-adk) |
-| 如何开始？ | [5分钟快速开始](#5分钟快速开始) |
-| 基本流程是什么？ | [基本工作流程 (0 → 3)](#基本工作流程-0--3) |
-| Plan / Run / Sync 命令做什么？ | [核心命令摘要](#核心命令摘要) |
-| SPEC·TDD·TAG 是什么？ | [轻松理解核心概念](#轻松理解核心概念) |
-| Agent/Skills 是什么？ | [Sub-agent & Skills 概述](#sub-agent--skills-概述) |
-| 想深入学习 | [更多资源](#更多资源) |
+| 问题                           | 快速跳转                                           |
+| ------------------------------ | -------------------------------------------------- |
+| 第一次接触，这是什么？         | [什么是 MoAI-ADK？](#什么是-moai-adk)              |
+| 如何开始？                     | [5分钟快速开始](#5分钟快速开始)                    |
+| 基本流程是什么？               | [基本工作流程 (0 → 3)](#基本工作流程-0--3)         |
+| Plan / Run / Sync 命令做什么？ | [核心命令摘要](#核心命令摘要)                      |
+| SPEC·TDD·TAG 是什么？          | [轻松理解核心概念](#轻松理解核心概念)              |
+| Agent/Skills 是什么？          | [Sub-agent & Skills 概述](#sub-agent--skills-概述) |
+| 想深入学习                     | [更多资源](#更多资源)                              |
 
 ---
 
@@ -97,14 +97,14 @@ MoAI-ADK 通过三个核心原则革新 AI 协作开发。使用下面的导航�
 
 现代 AI 协作开发面临各种挑战。MoAI-ADK **系统化地解决**所有这些问题：
 
-| 困扰 | 传统方式的问题 | MoAI-ADK 的解决方案 |
-| --- | --- | --- |
-| "无法信任 AI 代码" | 没有测试的实现，验证方法不明确 | 强制 SPEC → TEST → CODE 顺序，保证覆盖率 85%+ |
-| "每次都要重复相同的解释" | 上下文丢失，项目历史未记录 | Alfred 记住所有信息，19人 AI 团队协作 |
-| "编写提示词困难" | 不知道如何编写好的提示词 | `/alfred` 命令自动提供标准化提示词 |
-| "文档总是过时" | 代码修改后忘记更新文档 | `/alfred:3-sync` 一个命令自动同步 |
-| "不知道修改了哪里" | 代码搜索困难，意图不明确 | @TAG 链连接 SPEC → TEST → CODE → DOC |
-| "团队入职时间长" | 新成员无法理解代码上下文 | 阅读 SPEC 即可立即理解意图 |
+| 困扰                     | 传统方式的问题                 | MoAI-ADK 的解决方案                           |
+| ------------------------ | ------------------------------ | --------------------------------------------- |
+| "无法信任 AI 代码"       | 没有测试的实现，验证方法不明确 | 强制 SPEC → TEST → CODE 顺序，保证覆盖率 85%+ |
+| "每次都要重复相同的解释" | 上下文丢失，项目历史未记录     | Alfred 记住所有信息，19人 AI 团队协作         |
+| "编写提示词困难"         | 不知道如何编写好的提示词       | `/alfred` 命令自动提供标准化提示词            |
+| "文档总是过时"           | 代码修改后忘记更新文档         | `/alfred:3-sync` 一个命令自动同步             |
+| "不知道修改了哪里"       | 代码搜索困难，意图不明确       | @TAG 链连接 SPEC → TEST → CODE → DOC          |
+| "团队入职时间长"         | 新成员无法理解代码上下文       | 阅读 SPEC 即可立即理解意图                    |
 
 ### 立即体验到的好处
 
@@ -396,12 +396,12 @@ graph TD
 
 ## 核心命令摘要
 
-| 命令 | 做什么？ | 主要产出 |
-| --- | --- | --- |
-| `/alfred:0-project` | 收集项目描述，生成设置·文档，推荐 Skill | `.moai/config.json`、`.moai/project/*`、初始报告 |
-| `/alfred:1-plan <描述>` | 分析需求，编写 SPEC 草稿，编写 Plan Board | `.moai/specs/SPEC-*/spec.md`、plan/acceptance 文档、feature 分支 |
-| `/alfred:2-run <SPEC-ID>` | 执行 TDD，测试/实现/重构，质量验证 | `tests/`、`src/` 实现、质量报告、TAG 连接 |
-| `/alfred:3-sync` | 同步文档/README/CHANGELOG，整理 TAG/PR 状态 | `docs/`、`.moai/reports/sync-report.md`、Ready PR |
+| 命令                      | 做什么？                                    | 主要产出                                                         |
+| ------------------------- | ------------------------------------------- | ---------------------------------------------------------------- |
+| `/alfred:0-project`       | 收集项目描述，生成设置·文档，推荐 Skill     | `.moai/config.json`、`.moai/project/*`、初始报告                 |
+| `/alfred:1-plan <描述>`   | 分析需求，编写 SPEC 草稿，编写 Plan Board   | `.moai/specs/SPEC-*/spec.md`、plan/acceptance 文档、feature 分支 |
+| `/alfred:2-run <SPEC-ID>` | 执行 TDD，测试/实现/重构，质量验证          | `tests/`、`src/` 实现、质量报告、TAG 连接                        |
+| `/alfred:3-sync`          | 同步文档/README/CHANGELOG，整理 TAG/PR 状态 | `docs/`、`.moai/reports/sync-report.md`、Ready PR                |
 
 > ❗ 所有命令都维护 **Phase 0（可选）→ Phase 1 → Phase 2 → Phase 3** 循环结构。Alfred 会自动报告执行期间的状态和下一步建议。
 
@@ -923,18 +923,18 @@ Alfred 结合 **19个代理**（SuperAgent 1 + Core Sub-agent 10 + 0-project Sub
 
 ### Core Sub-agents（Plan → Run → Sync）
 
-| Sub-agent | 模型 | 角色 |
-| --- | --- | --- |
-| project-manager 📋 | Sonnet | 项目初始化，元数据采访 |
-| spec-builder 🏗️ | Sonnet | Plan 看板，EARS SPEC 编写 |
-| code-builder 💎 | Sonnet | 通过 `implementation-planner` + `tdd-implementer` 执行完整 TDD |
-| doc-syncer 📖 | Haiku | Living Doc、README、CHANGELOG 同步 |
-| tag-agent 🏷️ | Haiku | TAG 清单，orphan 检测 |
-| git-manager 🚀 | Haiku | GitFlow、Draft/Ready、Auto Merge |
-| debug-helper 🔍 | Sonnet | 失败分析，fix-forward 策略 |
-| trust-checker ✅ | Haiku | TRUST 5 质量门 |
-| quality-gate 🛡️ | Haiku | 检查覆盖率变化和发布阻止条件 |
-| cc-manager 🛠️ | Sonnet | Claude Code 会话优化，Skill 部署 |
+| Sub-agent         | 模型   | 角色                                                           |
+| ----------------- | ------ | -------------------------------------------------------------- |
+| project-manager 📋 | Sonnet | 项目初始化，元数据采访                                         |
+| spec-builder 🏗️    | Sonnet | Plan 看板，EARS SPEC 编写                                      |
+| code-builder 💎    | Sonnet | 通过 `implementation-planner` + `tdd-implementer` 执行完整 TDD |
+| doc-syncer 📖      | Haiku  | Living Doc、README、CHANGELOG 同步                             |
+| tag-agent 🏷️       | Haiku  | TAG 清单，orphan 检测                                          |
+| git-manager 🚀     | Haiku  | GitFlow、Draft/Ready、Auto Merge                               |
+| debug-helper 🔍    | Sonnet | 失败分析，fix-forward 策略                                     |
+| trust-checker ✅   | Haiku  | TRUST 5 质量门                                                 |
+| quality-gate 🛡️    | Haiku  | 检查覆盖率变化和发布阻止条件                                   |
+| cc-manager 🛠️      | Sonnet | Claude Code 会话优化，Skill 部署                               |
 
 ### Skills（Progressive Disclosure - v0.4 新功能！）
 
@@ -943,93 +943,93 @@ Alfred 使用 4-tier 架构配置 **56个 Claude Skills**，采用**渐进披露
 #### Foundation Tier（6）
 包含核心 TRUST/TAG/SPEC/Git/EARS/Language 原则的基础技能
 
-| Skill | 描述 |
-| --- | --- |
+| Skill                   | 描述                                                                       |
+| ----------------------- | -------------------------------------------------------------------------- |
 | `moai-foundation-trust` | TRUST 5-principles（Test 85%+、Readable、Unified、Secured、Trackable）验证 |
-| `moai-foundation-tags` | @TAG 标记扫描和清单生成（CODE-FIRST 原则） |
-| `moai-foundation-specs` | SPEC YAML frontmatter（7个必需字段）和 HISTORY 部分验证 |
-| `moai-foundation-ears` | EARS（Easy Approach to Requirements Syntax）需求编写指南 |
-| `moai-foundation-git` | Git 工作流程自动化（分支、TDD 提交、PR 管理） |
-| `moai-foundation-langs` | 项目语言/框架自动检测（package.json、pyproject.toml 等） |
+| `moai-foundation-tags`  | @TAG 标记扫描和清单生成（CODE-FIRST 原则）                                 |
+| `moai-foundation-specs` | SPEC YAML frontmatter（7个必需字段）和 HISTORY 部分验证                    |
+| `moai-foundation-ears`  | EARS（Easy Approach to Requirements Syntax）需求编写指南                   |
+| `moai-foundation-git`   | Git 工作流程自动化（分支、TDD 提交、PR 管理）                              |
+| `moai-foundation-langs` | 项目语言/框架自动检测（package.json、pyproject.toml 等）                   |
 
 #### Essentials Tier（4）
 日常开发工作所需的核心工具
 
-| Skill | 描述 |
-| --- | --- |
-| `moai-essentials-debug` | 堆栈跟踪分析，错误模式检测，快速诊断支持 |
-| `moai-essentials-perf` | 性能分析，瓶颈检测，调优策略 |
-| `moai-essentials-refactor` | 重构指南，设计模式，代码改进策略 |
-| `moai-essentials-review` | 自动代码审查，SOLID 原则，代码异味检测 |
+| Skill                      | 描述                                     |
+| -------------------------- | ---------------------------------------- |
+| `moai-essentials-debug`    | 堆栈跟踪分析，错误模式检测，快速诊断支持 |
+| `moai-essentials-perf`     | 性能分析，瓶颈检测，调优策略             |
+| `moai-essentials-refactor` | 重构指南，设计模式，代码改进策略         |
+| `moai-essentials-review`   | 自动代码审查，SOLID 原则，代码异味检测   |
 
 #### Alfred Tier（11）
 MoAI-ADK 内部工作流程编排技能
 
-| Skill | 描述 |
-| --- | --- |
-| `moai-alfred-code-reviewer` | 包含语言特定最佳实践、SOLID 原则、改进建议的自动代码审查 |
-| `moai-alfred-debugger-pro` | 堆栈跟踪分析，错误模式检测，复杂运行时错误解释 |
-| `moai-alfred-ears-authoring` | EARS 语法验证，5种需求模式指南 |
-| `moai-alfred-git-workflow` | MoAI-ADK conventions（feature 分支、TDD 提交、Draft PR）自动化 |
-| `moai-alfred-language-detection` | 项目语言/运行时检测，基本测试工具推荐 |
-| `moai-alfred-performance-optimizer` | 性能分析，瓶颈检测，语言特定优化 |
-| `moai-alfred-refactoring-coach` | 重构指南，设计模式，分步改进计划 |
-| `moai-alfred-spec-metadata-validation` | SPEC YAML frontmatter（7个字段）和 HISTORY 部分一致性验证 |
-| `moai-alfred-tag-scanning` | @TAG 标记完整扫描和清单生成（CODE-FIRST 原则） |
-| `moai-alfred-trust-validation` | TRUST 5-principles 合规性验证（Test 85%+、约束、安全、可追踪性） |
-| `moai-alfred-tui-survey` | Claude Code Tools AskUserQuestion TUI 菜单标准化 |
+| Skill                                  | 描述                                                             |
+| -------------------------------------- | ---------------------------------------------------------------- |
+| `moai-alfred-code-reviewer`            | 包含语言特定最佳实践、SOLID 原则、改进建议的自动代码审查         |
+| `moai-alfred-debugger-pro`             | 堆栈跟踪分析，错误模式检测，复杂运行时错误解释                   |
+| `moai-alfred-ears-authoring`           | EARS 语法验证，5种需求模式指南                                   |
+| `moai-alfred-git-workflow`             | MoAI-ADK conventions（feature 分支、TDD 提交、Draft PR）自动化   |
+| `moai-alfred-language-detection`       | 项目语言/运行时检测，基本测试工具推荐                            |
+| `moai-alfred-performance-optimizer`    | 性能分析，瓶颈检测，语言特定优化                                 |
+| `moai-alfred-refactoring-coach`        | 重构指南，设计模式，分步改进计划                                 |
+| `moai-alfred-spec-metadata-validation` | SPEC YAML frontmatter（7个字段）和 HISTORY 部分一致性验证        |
+| `moai-alfred-tag-scanning`             | @TAG 标记完整扫描和清单生成（CODE-FIRST 原则）                   |
+| `moai-alfred-trust-validation`         | TRUST 5-principles 合规性验证（Test 85%+、约束、安全、可追踪性） |
+| `moai-alfred-interactive-questions`    | Claude Code Tools AskUserQuestion TUI 菜单标准化                 |
 
 #### Domain Tier（10）
 专业领域专业知识
 
-| Skill | 描述 |
-| --- | --- |
-| `moai-domain-backend` | 后端架构，API 设计，扩展指南 |
-| `moai-domain-cli-tool` | CLI 工具开发，参数解析，POSIX 合规，用户友好的帮助消息 |
-| `moai-domain-data-science` | 数据分析，可视化，统计建模，可重现的研究工作流程 |
-| `moai-domain-database` | 数据库设计，模式优化，索引策略，迁移管理 |
-| `moai-domain-devops` | CI/CD 管道，Docker 容器化，Kubernetes 编排，IaC |
-| `moai-domain-frontend` | React/Vue/Angular 开发，状态管理，性能优化，可访问性 |
-| `moai-domain-ml` | 机器学习模型训练，评估，部署，MLOps 工作流程 |
-| `moai-domain-mobile-app` | Flutter/React Native 开发，状态管理，原生集成 |
-| `moai-domain-security` | OWASP Top 10，静态分析（SAST），依赖安全，secrets 管理 |
-| `moai-domain-web-api` | REST API、GraphQL 设计模式，认证，版本管理，OpenAPI 文档 |
+| Skill                      | 描述                                                     |
+| -------------------------- | -------------------------------------------------------- |
+| `moai-domain-backend`      | 后端架构，API 设计，扩展指南                             |
+| `moai-domain-cli-tool`     | CLI 工具开发，参数解析，POSIX 合规，用户友好的帮助消息   |
+| `moai-domain-data-science` | 数据分析，可视化，统计建模，可重现的研究工作流程         |
+| `moai-domain-database`     | 数据库设计，模式优化，索引策略，迁移管理                 |
+| `moai-domain-devops`       | CI/CD 管道，Docker 容器化，Kubernetes 编排，IaC          |
+| `moai-domain-frontend`     | React/Vue/Angular 开发，状态管理，性能优化，可访问性     |
+| `moai-domain-ml`           | 机器学习模型训练，评估，部署，MLOps 工作流程             |
+| `moai-domain-mobile-app`   | Flutter/React Native 开发，状态管理，原生集成            |
+| `moai-domain-security`     | OWASP Top 10，静态分析（SAST），依赖安全，secrets 管理   |
+| `moai-domain-web-api`      | REST API、GraphQL 设计模式，认证，版本管理，OpenAPI 文档 |
 
 #### Language Tier（24）
 编程语言特定最佳实践
 
-| Skill | 描述 |
-| --- | --- |
-| `moai-lang-python` | pytest、mypy、ruff、black、uv 包管理 |
-| `moai-lang-typescript` | Vitest、Biome、strict typing、npm/pnpm |
-| `moai-lang-javascript` | Jest、ESLint、Prettier、npm 包管理 |
-| `moai-lang-go` | go test、golint、gofmt、标准库 |
-| `moai-lang-rust` | cargo test、clippy、rustfmt、ownership/borrow checker |
-| `moai-lang-java` | JUnit、Maven/Gradle、Checkstyle、Spring Boot 模式 |
-| `moai-lang-kotlin` | JUnit、Gradle、ktlint、coroutines、extension functions |
-| `moai-lang-swift` | XCTest、SwiftLint、iOS/macOS 开发模式 |
-| `moai-lang-dart` | flutter test、dart analyze、Flutter widget 模式 |
-| `moai-lang-csharp` | xUnit、.NET tooling、LINQ、async/await 模式 |
-| `moai-lang-cpp` | Google Test、clang-format、现代 C++（C++17/20） |
-| `moai-lang-c` | Unity test framework、cppcheck、Make 构建系统 |
-| `moai-lang-scala` | ScalaTest、sbt、函数式编程模式 |
-| `moai-lang-ruby` | RSpec、RuboCop、Bundler、Rails 模式 |
-| `moai-lang-php` | PHPUnit、Composer、PSR 标准 |
-| `moai-lang-sql` | 测试框架，查询优化，迁移管理 |
-| `moai-lang-shell` | bats、shellcheck、POSIX 合规 |
-| `moai-lang-haskell` | HUnit、Stack/Cabal、纯函数式编程 |
-| `moai-lang-elixir` | ExUnit、Mix、OTP 模式 |
-| `moai-lang-clojure` | clojure.test、Leiningen、不可变数据结构 |
-| `moai-lang-lua` | busted、luacheck、嵌入式脚本模式 |
-| `moai-lang-julia` | Test stdlib、Pkg manager、科学计算模式 |
-| `moai-lang-r` | testthat、lintr、数据分析模式 |
-| `moai-lang-kotlin` | JUnit、Gradle、ktlint、coroutines、extension functions |
+| Skill                  | 描述                                                   |
+| ---------------------- | ------------------------------------------------------ |
+| `moai-lang-python`     | pytest、mypy、ruff、black、uv 包管理                   |
+| `moai-lang-typescript` | Vitest、Biome、strict typing、npm/pnpm                 |
+| `moai-lang-javascript` | Jest、ESLint、Prettier、npm 包管理                     |
+| `moai-lang-go`         | go test、golint、gofmt、标准库                         |
+| `moai-lang-rust`       | cargo test、clippy、rustfmt、ownership/borrow checker  |
+| `moai-lang-java`       | JUnit、Maven/Gradle、Checkstyle、Spring Boot 模式      |
+| `moai-lang-kotlin`     | JUnit、Gradle、ktlint、coroutines、extension functions |
+| `moai-lang-swift`      | XCTest、SwiftLint、iOS/macOS 开发模式                  |
+| `moai-lang-dart`       | flutter test、dart analyze、Flutter widget 模式        |
+| `moai-lang-csharp`     | xUnit、.NET tooling、LINQ、async/await 模式            |
+| `moai-lang-cpp`        | Google Test、clang-format、现代 C++（C++17/20）        |
+| `moai-lang-c`          | Unity test framework、cppcheck、Make 构建系统          |
+| `moai-lang-scala`      | ScalaTest、sbt、函数式编程模式                         |
+| `moai-lang-ruby`       | RSpec、RuboCop、Bundler、Rails 模式                    |
+| `moai-lang-php`        | PHPUnit、Composer、PSR 标准                            |
+| `moai-lang-sql`        | 测试框架，查询优化，迁移管理                           |
+| `moai-lang-shell`      | bats、shellcheck、POSIX 合规                           |
+| `moai-lang-haskell`    | HUnit、Stack/Cabal、纯函数式编程                       |
+| `moai-lang-elixir`     | ExUnit、Mix、OTP 模式                                  |
+| `moai-lang-clojure`    | clojure.test、Leiningen、不可变数据结构                |
+| `moai-lang-lua`        | busted、luacheck、嵌入式脚本模式                       |
+| `moai-lang-julia`      | Test stdlib、Pkg manager、科学计算模式                 |
+| `moai-lang-r`          | testthat、lintr、数据分析模式                          |
+| `moai-lang-kotlin`     | JUnit、Gradle、ktlint、coroutines、extension functions |
 
 #### Claude Code Ops（1）
 Claude Code 会话管理
 
-| Skill | 描述 |
-| --- | --- |
+| Skill              | 描述                                                                 |
+| ------------------ | -------------------------------------------------------------------- |
 | `moai-claude-code` | Claude Code agents、commands、skills、plugins、settings 脚手架和监控 |
 
 > **v0.4.6 新功能**：56个 Claude Skills 采用 4-tier 架构配置（v0.4.6 100% 完成）。每个 Skill 通过渐进披露仅在需要时加载，最小化上下文成本。由 Foundation → Essentials → Alfred → Domain/Language/Ops 层组成，所有技能都包含超过1,000行的官方文档和300+ 可执行的 TDD 示例。
@@ -1038,10 +1038,10 @@ Claude Code 会话管理
 
 ## AI 模型选择指南
 
-| 情况 | 基本模型 | 原因 |
-| --- | --- | --- |
-| 规范/设计/重构/问题解决 | **Claude 4.5 Sonnet** | 擅长深度推理和结构化写作 |
-| 文档同步、TAG 检查、Git 自动化 | **Claude 4.5 Haiku** | 擅长快速迭代工作、字符串处理 |
+| 情况                           | 基本模型              | 原因                         |
+| ------------------------------ | --------------------- | ---------------------------- |
+| 规范/设计/重构/问题解决        | **Claude 4.5 Sonnet** | 擅长深度推理和结构化写作     |
+| 文档同步、TAG 检查、Git 自动化 | **Claude 4.5 Haiku**  | 擅长快速迭代工作、字符串处理 |
 
 - 对于模式化的工作从 Haiku 开始，如果需要复杂判断则切换到 Sonnet。
 - 如果手动更改了模型，在日志中记录"为什么切换"有助于协作。
@@ -1063,14 +1063,14 @@ Claude Code 会话管理
 
 ## v0.4 系列更新（新！）
 
-| 版本 | 主要功能 | 日期 |
-| --- | --- | --- |
+| 版本       | 主要功能                                                                | 日期       |
+| ---------- | ----------------------------------------------------------------------- | ---------- |
 | **v0.4.6** | 🎉 完整 Skills v2.0 完成（56/56 100%）+ 85,000行官方文档 + 300+ TDD 示例 | 2025-10-22 |
-| **v0.4.5** | ✅ CI/CD 修复 + 多语言 README + 部署清理 | 2025-10-22 |
-| **v0.4.4** | 韩语语言支持 | 2025-10-21 |
-| **v0.4.3** | 交互式问题工具（TUI 菜单） | 2025-10-21 |
-| **v0.4.1** | Skills 本地化 | 2025-10-21 |
-| **v0.4.0** | **55个 Claude Skills** + 19人 AI 团队 + 4步工作流程 | 2025-10-21 |
+| **v0.4.5** | ✅ CI/CD 修复 + 多语言 README + 部署清理                                 | 2025-10-22 |
+| **v0.4.4** | 韩语语言支持                                                            | 2025-10-21 |
+| **v0.4.3** | 交互式问题工具（TUI 菜单）                                              | 2025-10-21 |
+| **v0.4.1** | Skills 本地化                                                           | 2025-10-21 |
+| **v0.4.0** | **55个 Claude Skills** + 19人 AI 团队 + 4步工作流程                     | 2025-10-21 |
 
 > 📦 **立即安装**：`pip install moai-adk==0.4.6` 或 `uv tool install moai-adk==0.4.6`
 
@@ -1078,25 +1078,25 @@ Claude Code 会话管理
 
 ## 更多资源
 
-| 目的 | 资源 |
-| --- | --- |
-| Skills 详细结构 | `.claude/skills/` 目录（56个 Skill） |
-| Sub-agent 详情 | `.claude/agents/alfred/` 目录 |
-| 工作流程指南 | `.claude/commands/alfred/`（0-3 命令） |
-| 开发指南 | `.moai/memory/development-guide.md`、`.moai/memory/spec-metadata.md` |
-| 发布说明 | GitHub Releases: https://github.com/modu-ai/moai-adk/releases |
+| 目的            | 资源                                                                 |
+| --------------- | -------------------------------------------------------------------- |
+| Skills 详细结构 | `.claude/skills/` 目录（56个 Skill）                                 |
+| Sub-agent 详情  | `.claude/agents/alfred/` 目录                                        |
+| 工作流程指南    | `.claude/commands/alfred/`（0-3 命令）                               |
+| 开发指南        | `.moai/memory/development-guide.md`、`.moai/memory/spec-metadata.md` |
+| 发布说明        | GitHub Releases: https://github.com/modu-ai/moai-adk/releases        |
 
 ---
 
 ## 社区 & 支持
 
-| 渠道 | 链接 |
-| --- | --- |
-| **GitHub Repository** | https://github.com/modu-ai/moai-adk |
-| **Issues & Discussions** | https://github.com/modu-ai/moai-adk/issues |
-| **PyPI Package** | https://pypi.org/project/moai-adk/（最新：v0.4.6） |
-| **Latest Release** | https://github.com/modu-ai/moai-adk/releases/tag/v0.4.6 |
-| **Documentation** | 参考项目内 `.moai/`、`.claude/`、`docs/` |
+| 渠道                     | 链接                                                    |
+| ------------------------ | ------------------------------------------------------- |
+| **GitHub Repository**    | https://github.com/modu-ai/moai-adk                     |
+| **Issues & Discussions** | https://github.com/modu-ai/moai-adk/issues              |
+| **PyPI Package**         | https://pypi.org/project/moai-adk/（最新：v0.4.6）      |
+| **Latest Release**       | https://github.com/modu-ai/moai-adk/releases/tag/v0.4.6 |
+| **Documentation**        | 参考项目内 `.moai/`、`.claude/`、`docs/`                |
 
 ---
 

@@ -6,7 +6,7 @@ model: haiku
 ---
 
 # Git Manager - Agent dedicated to Git tasks
-> Interactive prompts rely on `Skill("moai-alfred-tui-survey")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
+> Interactive prompts rely on `Skill("moai-alfred-interactive-questions")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
 
 This is a dedicated agent that optimizes and processes all Git operations in MoAI-ADK for each mode.
 
@@ -28,7 +28,7 @@ This is a dedicated agent that optimizes and processes all Git operations in MoA
 - `Skill("moai-foundation-git")`: Called when this is a new repository or the Git standard needs to be redefined.
 - `Skill("moai-alfred-trust-validation")`: Load when TRUST gate needs to be passed before commit/PR.
 - `Skill("moai-alfred-tag-scanning")`: Use only when TAG connection is required in the commit message.
-- `Skill("moai-alfred-tui-survey")`: Called when user approval is obtained before performing risky operations such as rebase/force push.
+- `Skill("moai-alfred-interactive-questions")`: Called when user approval is obtained before performing risky operations such as rebase/force push.
 
 ### Expert Traits
 
