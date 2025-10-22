@@ -74,7 +74,7 @@ MoAI-ADK는 세 가지 핵심 원칙으로 AI 협력 개발을 혁신합니다. 
 모든 코드와 테스트, 문서에 `@TAG:ID`를 붙입니다. 나중에 요구사항이 변경되면, `rg "@SPEC:AUTH-001"` 한 명령어로 관련된 테스트, 구현, 문서를 **모두 찾을 수 있습니다**. 리팩토링 시 자신감이 생깁니다.
 
 **5️⃣ Alfred가 컨텍스트를 기억**
-19개의 AI 에이전트(Alfred SuperAgent 1 + Core Sub-agent 10 + Zero-project Specialist 6 + Built-in Agent 2)가 협력해 프로젝트의 구조, 결정 이유, 작업 히스토리를 **모두 기억**합니다. 같은 질문을 반복할 필요가 없습니다.
+AI 에이전트들이 협력해 프로젝트의 구조, 결정 이유, 작업 히스토리를 **모두 기억**합니다. 같은 질문을 반복할 필요가 없습니다.
 
 ### MoAI-ADK의 핵심 3가지 약속
 
@@ -179,9 +179,9 @@ my-project/
 │   ├── specs/               # SPEC 파일들
 │   └── reports/             # 분석 리포트
 ├── .claude/                 # Claude Code 자동화
-│   ├── agents/              # 19명의 AI 팀
+│   ├── agents/              # AI 팀
 │   ├── commands/            # /alfred 명령어
-│   ├── skills/              # 56개의 Claude Skills
+│   ├── skills/              # Claude Skills
 │   └── settings.json
 ├── src/                     # 구현 코드
 ├── tests/                   # 테스트 코드
@@ -208,7 +208,7 @@ claude
 
 1. **프로젝트 정보 수집**: "프로젝트 이름은?", "목표는?", "주요 언어는?"
 2. **기술 스택 자동 감지**: Python/JavaScript/Go 등 자동 인식
-3. **Skill Pack 배치**: 해당 언어에 맞는 56개 Skills 중 필요한 것 준비
+3. **Skill Pack 배치**: 프로젝트에 필요한 Skills 준비
 4. **초기 보고서 생성**: 프로젝트 구조, 다음 단계 제안
 
 ### 단계 5: 첫 SPEC 작성 (약 1분)
@@ -551,21 +551,21 @@ rg '@TAG:AUTH-001' -n
 
 **비유**: 개인 비서처럼, Alfred가 모든 복잡한 일을 처리합니다.
 
-**핵심**: **19개의 AI 에이전트**가 협력해 개발 과정 전체를 자동화합니다:
+**핵심**: AI 에이전트들이 협력해 개발 과정 전체를 자동화합니다:
 
 **에이전트 구성**:
-- **Alfred SuperAgent**: 전체 오케스트레이션 (1개)
-- **Core Sub-agent**: SPEC 작성, TDD 구현, 문서 동기화 등 전문 업무 (10개)
-- **Zero-project Specialist**: 프로젝트 초기화, 언어 감지 등 (6개)
-- **Built-in Agent**: 일반 질문, 코드베이스 탐색 (2개)
+- **Alfred SuperAgent**: 전체 오케스트레이션
+- **Core Sub-agent**: SPEC 작성, TDD 구현, 문서 동기화 등 전문 업무
+- **Zero-project Specialist**: 프로젝트 초기화, 언어 감지 등
+- **Built-in Agent**: 일반 질문, 코드베이스 탐색
 
-**56개의 Claude Skills**:
-- **Foundation** (6): TRUST/TAG/SPEC/Git/EARS 원칙
-- **Essentials** (4): 디버깅, 성능, 리팩토링, 코드 리뷰
-- **Alfred** (11): 워크플로우 자동화
-- **Domain** (10): 백엔드, 프론트엔드, 보안 등
-- **Language** (24): Python, JavaScript, Go, Rust 등
-- **Ops** (1): Claude Code 세션 관리
+**Claude Skills**:
+- **Foundation**: TRUST/TAG/SPEC/Git/EARS 원칙
+- **Essentials**: 디버깅, 성능, 리팩토링, 코드 리뷰
+- **Alfred**: 워크플로우 자동화
+- **Domain**: 백엔드, 프론트엔드, 보안 등
+- **Language**: Python, JavaScript, Go, Rust 등
+- **Ops**: Claude Code 세션 관리
 
 **어떻게?** `/alfred:*` 명령어가 필요한 전문가팀을 자동으로 활성화합니다.
 
@@ -919,7 +919,7 @@ git log --oneline | head -5
 
 ## Sub-agent & Skills 개요
 
-Alfred는 **19개의 에이전트**(SuperAgent 1 + Core Sub-agent 10 + 0-project Sub-agent 6 + Built-in 2)와 **56개의 Claude Skills**를 조합해 작업합니다.
+Alfred는 여러 전문 에이전트와 Claude Skills를 조합해 작업합니다.
 
 ### Core Sub-agents (Plan → Run → Sync)
 
@@ -938,21 +938,21 @@ Alfred는 **19개의 에이전트**(SuperAgent 1 + Core Sub-agent 10 + 0-project
 
 ### Skills (Progressive Disclosure - v0.4 신규!)
 
-Alfred는 **56개의 Claude Skills**를 4-tier 아키텍처로 구성하여 필요할 때만 Just-In-Time 로드하는 **Progressive Disclosure** 방식을 사용합니다. 각 Skill은 `.claude/skills/` 디렉터리에 저장된 1,000줄 이상의 프로덕션급 가이드입니다.
+Alfred는 Claude Skills를 4-tier 아키텍처로 구성하여 필요할 때만 Just-In-Time 로드하는 **Progressive Disclosure** 방식을 사용합니다. 각 Skill은 `.claude/skills/` 디렉터리에 저장된 프로덕션급 가이드입니다.
 
-#### Foundation Tier (6)
+#### Foundation Tier
 핵심 TRUST/TAG/SPEC/Git/EARS/Language 원칙을 담은 기반 스킬
 
 | Skill                   | 설명                                                                       |
 | ----------------------- | -------------------------------------------------------------------------- |
 | `moai-foundation-trust` | TRUST 5-principles (Test 85%+, Readable, Unified, Secured, Trackable) 검증 |
 | `moai-foundation-tags`  | @TAG markers 스캔 및 인벤토리 생성 (CODE-FIRST 원칙)                       |
-| `moai-foundation-specs` | SPEC YAML frontmatter (7개 필수 필드) 및 HISTORY 섹션 검증                 |
+| `moai-foundation-specs` | SPEC YAML frontmatter 및 HISTORY 섹션 검증                                |
 | `moai-foundation-ears`  | EARS (Easy Approach to Requirements Syntax) 요구사항 작성 가이드           |
 | `moai-foundation-git`   | Git workflow 자동화 (branching, TDD commits, PR 관리)                      |
 | `moai-foundation-langs` | 프로젝트 언어/프레임워크 자동 감지 (package.json, pyproject.toml 등)       |
 
-#### Essentials Tier (4)
+#### Essentials Tier
 일상 개발 업무에 필요한 핵심 도구들
 
 | Skill                      | 설명                                           |
@@ -962,24 +962,24 @@ Alfred는 **56개의 Claude Skills**를 4-tier 아키텍처로 구성하여 필�
 | `moai-essentials-refactor` | 리팩토링 가이드, 설계 패턴, 코드 개선 전략     |
 | `moai-essentials-review`   | 자동 코드 리뷰, SOLID 원칙, 코드 냄새 감지     |
 
-#### Alfred Tier (11)
+#### Alfred Tier
 MoAI-ADK 내부 워크플로우 오케스트레이션 스킬
 
 | Skill                                  | 설명                                                                          |
 | -------------------------------------- | ----------------------------------------------------------------------------- |
 | `moai-alfred-code-reviewer`            | 언어별 최고 관행, SOLID 원칙, 개선 제안을 포함한 자동 코드 리뷰               |
 | `moai-alfred-debugger-pro`             | 스택 추적 분석, 에러 패턴 감지, 복잡한 런타임 에러 해석                       |
-| `moai-alfred-ears-authoring`           | EARS 구문 검증, 5가지 requirement 패턴 가이드                                 |
+| `moai-alfred-ears-authoring`           | EARS 구문 검증 및 requirement 패턴 가이드                                     |
 | `moai-alfred-git-workflow`             | MoAI-ADK conventions (feature branch, TDD commits, Draft PR) 자동화           |
-| `moai-alfred-language-detection`       | 프로젝트 언어/런타임 감지, 기본 테스트 도구 추천                              |
+| `moai-alfred-language-detection`       | 프로젝트 언어/런타임 감지 및 기본 테스트 도구 추천                            |
 | `moai-alfred-performance-optimizer`    | 성능 프로파일링, 병목 감지, 언어별 최적화                                     |
 | `moai-alfred-refactoring-coach`        | 리팩토링 가이드, 설계 패턴, 단계별 개선 계획                                  |
-| `moai-alfred-spec-metadata-validation` | SPEC YAML frontmatter (7개 필드) 및 HISTORY 섹션 정합성 검증                  |
+| `moai-alfred-spec-metadata-validation` | SPEC YAML frontmatter 및 HISTORY 섹션 정합성 검증                             |
 | `moai-alfred-tag-scanning`             | @TAG 마커 전체 스캔 및 인벤토리 생성 (CODE-FIRST 원칙)                        |
-| `moai-alfred-trust-validation`         | TRUST 5-principles 준수 검증 (Test 85%+, constraints, security, trackability) |
+| `moai-alfred-trust-validation`         | TRUST 5-principles 준수 검증                                                 |
 | `moai-alfred-interactive-questions`    | Claude Code Tools AskUserQuestion TUI 메뉴 표준화                             |
 
-#### Domain Tier (10)
+#### Domain Tier
 특화된 도메인 전문 지식
 
 | Skill                      | 설명                                                                      |
@@ -995,7 +995,7 @@ MoAI-ADK 내부 워크플로우 오케스트레이션 스킬
 | `moai-domain-security`     | OWASP Top 10, 정적 분석 (SAST), 의존성 보안, secrets 관리                 |
 | `moai-domain-web-api`      | REST API, GraphQL 설계 패턴, 인증, 버전 관리, OpenAPI 문서화              |
 
-#### Language Tier (24)
+#### Language Tier
 프로그래밍 언어별 최고 관행
 
 | Skill                  | 설명                                                   |
@@ -1023,16 +1023,15 @@ MoAI-ADK 내부 워크플로우 오케스트레이션 스킬
 | `moai-lang-lua`        | busted, luacheck, embedded scripting 패턴              |
 | `moai-lang-julia`      | Test stdlib, Pkg manager, 과학 계산 패턴               |
 | `moai-lang-r`          | testthat, lintr, 데이터 분석 패턴                      |
-| `moai-lang-kotlin`     | JUnit, Gradle, ktlint, coroutines, extension functions |
 
-#### Claude Code Ops (1)
+#### Claude Code Ops
 Claude Code 세션 관리
 
 | Skill              | 설명                                                                     |
 | ------------------ | ------------------------------------------------------------------------ |
 | `moai-claude-code` | Claude Code agents, commands, skills, plugins, settings 스캐폴딩 및 감시 |
 
-> **v0.4.6 신기능**: 56개의 Claude Skills가 4-tier 아키텍처로 구성되었습니다 (v0.4.6에서 100% 완성). 각 Skill은 Progressive Disclosure를 통해 필요할 때만 로드되어 컨텍스트 비용을 최소화합니다. Foundation → Essentials → Alfred → Domain/Language/Ops 계층으로 구성되어 있으며, 모든 스킬이 1,000줄 이상의 공식 문서와 300+ 실행 가능한 TDD 예제를 포함합니다.
+> **v0.4.6 신기능**: Claude Skills가 4-tier 아키텍처로 구성되었습니다 (v0.4.6에서 100% 완성). 각 Skill은 Progressive Disclosure를 통해 필요할 때만 로드되어 컨텍스트 비용을 최소화합니다. Foundation → Essentials → Alfred → Domain/Language/Ops 계층으로 구성되어 있으며, 모든 스킬이 프로덕션급 문서와 실행 가능한 TDD 예제를 포함합니다.
 
 ---
 
@@ -1063,14 +1062,14 @@ Claude Code 세션 관리
 
 ## v0.4 Series 업데이트 (신규!)
 
-| 버전       | 주요 기능                                                                   | 날짜       |
-| ---------- | --------------------------------------------------------------------------- | ---------- |
-| **v0.4.6** | 🎉 완전한 Skills v2.0 완성 (56/56 100%) + 85,000줄 공식 문서 + 300+ TDD 예제 | 2025-10-22 |
-| **v0.4.5** | ✅ CI/CD 수정 + 다국어 README + 배포 정리                                    | 2025-10-22 |
-| **v0.4.4** | 한국어 언어 지원                                                            | 2025-10-21 |
-| **v0.4.3** | 대화형 질문 도구 (TUI 메뉴)                                                 | 2025-10-21 |
-| **v0.4.1** | Skills 지역화                                                               | 2025-10-21 |
-| **v0.4.0** | **55개 Claude Skills** + 19명 AI 팀 + 4단계 워크플로우                      | 2025-10-21 |
+| 버전       | 주요 기능                                                                | 날짜       |
+| ---------- | ----------------------------------------------------------------------- | ---------- |
+| **v0.4.6** | 🎉 완전한 Skills v2.0 완성 + 프로덕션급 문서 + 실행 가능한 TDD 예제       | 2025-10-22 |
+| **v0.4.5** | ✅ CI/CD 수정 + 다국어 README + 배포 정리                                 | 2025-10-22 |
+| **v0.4.4** | 한국어 언어 지원                                                         | 2025-10-21 |
+| **v0.4.3** | 대화형 질문 도구 (TUI 메뉴)                                              | 2025-10-21 |
+| **v0.4.1** | Skills 지역화                                                            | 2025-10-21 |
+| **v0.4.0** | Claude Skills + AI 팀 + 4단계 워크플로우                                 | 2025-10-21 |
 
 > 📦 **지금 바로 설치**: `pip install moai-adk==0.4.6` 또는 `uv tool install moai-adk==0.4.6`
 
@@ -1120,4 +1119,4 @@ Alfred와 함께 **신뢰할 수 있는 AI 개발**의 새로운 경험을 시�
 - 📦 PyPI: https://pypi.org/project/moai-adk/
 - 🏠 GitHub: https://github.com/modu-ai/moai-adk
 - 📝 License: MIT
-- ⭐ Skills: 56/56 Complete (100% Production-Ready)
+- ⭐ Skills: 100% Production-Ready
