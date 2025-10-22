@@ -70,9 +70,8 @@ class TestProjectInitializerInit:
         assert initializer.path == tmp_path.resolve()
 
     def test_init_creates_components(self, tmp_path: Path) -> None:
-        """Should create detector, validator, and executor"""
+        """Should create validator and executor"""
         initializer = ProjectInitializer(tmp_path)
-        assert initializer.detector is not None
         assert initializer.validator is not None
         assert initializer.executor is not None
 
@@ -124,12 +123,13 @@ class TestInitialize:
         assert result.success is True, f"Initialization failed with errors: {result.errors}"
 
     def test_initialize_detects_language(self, tmp_path: Path) -> None:
-        """Should auto-detect project language"""
-        # Create Python project
+        """Should accept explicit language parameter"""
+        # Language detection moved to project-manager in /alfred:0-project
+        # ProjectInitializer accepts explicit language parameter
         (tmp_path / "requirements.txt").write_text("pytest==8.0.0")
 
         initializer = ProjectInitializer(tmp_path)
-        result = initializer.initialize()
+        result = initializer.initialize(language="python")
 
         assert result.success is True, f"Initialization failed with errors: {result.errors}"
         assert result.language == "python"
