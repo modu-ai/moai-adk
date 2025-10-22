@@ -4,7 +4,7 @@
 Common type definitions and utility functions
 """
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from typing import Any, NotRequired, TypedDict
 
 
@@ -33,8 +33,42 @@ class HookResult:
     exitCode: int = 0  # noqa: N815
 
     def to_dict(self) -> dict[str, Any]:
-        """Dictionary conversion for general Hook"""
-        return asdict(self)
+        """Dictionary conversion for general Hook (Claude Code standard schema)
+
+        Converts HookResult to Claude Code standard output format:
+        {
+            "systemMessage": "...",  # Displayed directly to user
+            "hookSpecificOutput": {
+                "contextFiles": [...],
+                "suggestions": [...],
+                "exitCode": 0
+            }
+        }
+
+        Returns:
+            Claude Code standard Hook dictionary
+
+        Examples:
+            >>> result = HookResult(systemMessage="Status", contextFiles=["a.txt"])
+            >>> result.to_dict()
+            {'systemMessage': 'Status', 'hookSpecificOutput': {'contextFiles': ['a.txt'], 'suggestions': [], 'exitCode': 0}}
+        """
+        output = {}
+
+        # systemMessage at top-level (Claude Code standard)
+        if self.systemMessage:
+            output["systemMessage"] = self.systemMessage
+
+        # hookSpecificOutput contains operational data
+        hook_output = {
+            "contextFiles": self.contextFiles,
+            "suggestions": self.suggestions,
+            "exitCode": self.exitCode
+        }
+
+        output["hookSpecificOutput"] = hook_output
+
+        return output
 
     def to_user_prompt_submit_dict(self) -> dict[str, Any]:
         """UserPromptSubmit Hook-specific output format
