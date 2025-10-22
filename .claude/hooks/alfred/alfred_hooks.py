@@ -137,9 +137,11 @@ def main() -> None:
         handler = handlers.get(event_name)
         result = handler({"cwd": cwd, **data}) if handler else HookResult()
 
-        # UserPromptSubmit uses a special output schema
+        # UserPromptSubmit and PreToolUse use special output schemas
         if event_name == "UserPromptSubmit":
             print(json.dumps(result.to_user_prompt_submit_dict()))
+        elif event_name == "PreToolUse":
+            print(json.dumps(result.to_pre_tool_use_dict()))
         else:
             print(json.dumps(result.to_dict()))
 

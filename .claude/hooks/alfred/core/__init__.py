@@ -75,6 +75,45 @@ class HookResult:
             "additionalContext": context_str
         }
 
+    def to_pre_tool_use_dict(self) -> dict[str, Any]:
+        """PreToolUse Hook-specific output format
+
+        Claude Code requires a specific schema for PreToolUse:
+        {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "allow" | "deny" | "ask" (optional),
+            "permissionDecisionReason": "string (optional)",
+            "updatedInput": "object (optional)"
+        }
+
+        Returns:
+            Claude Code PreToolUse Hook dictionary matching schema
+
+        Examples:
+            >>> result = HookResult(blocked=False)
+            >>> result.to_pre_tool_use_dict()
+            {'hookEventName': 'PreToolUse', 'permissionDecision': 'allow'}
+
+            >>> result = HookResult(blocked=True, message="⚠️ Risky operation")
+            >>> result.to_pre_tool_use_dict()
+            {'hookEventName': 'PreToolUse', 'permissionDecision': 'deny', 'permissionDecisionReason': '⚠️ Risky operation'}
+        """
+        output = {
+            "hookEventName": "PreToolUse"
+        }
+
+        # Map blocked to permissionDecision
+        if self.blocked:
+            output["permissionDecision"] = "deny"
+            if self.message:
+                output["permissionDecisionReason"] = self.message
+        else:
+            output["permissionDecision"] = "allow"
+            if self.message:
+                output["permissionDecisionReason"] = self.message
+
+        return output
+
 
 __all__ = ["HookPayload", "HookResult"]
 
