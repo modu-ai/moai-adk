@@ -119,11 +119,19 @@ class ProjectInitializer:
             )
 
             # Phase 4: Configuration (generate config.json)
-            config_data: dict[str, str | bool] = {
+            config_data: dict[str, str | bool | dict] = {
                 "projectName": self.path.name,
                 "mode": mode,
                 "locale": locale,
                 "language": detected_language,
+                # Language detection metadata (will be updated by project-manager via /alfred:0-project)
+                "language_detection": {
+                    "detected_language": detected_language,
+                    "detection_method": "cli_default",  # Will be "context_aware" after /alfred:0-project
+                    "confidence": None,  # Will be calculated by project-manager
+                    "markers": [],  # Will be populated by project-manager
+                    "confirmed_by": None,  # Will be "user" after project-manager confirmation
+                }
             }
             config_files = self.executor.execute_configuration_phase(
                 self.path, config_data, progress_callback

@@ -112,16 +112,34 @@ You are a Senior Project Manager Agent managing successful projects.
      ```
 
      **Step 1.5 - Store Confirmed Language**
-     - Record in `.moai/config.json`:
+     - Read existing `.moai/config.json` (created by CLI initialization with "generic" default)
+     - Update the `language_detection` object:
        ```json
        {
-         "language": "ruby",
-         "language_confidence": "high",
-         "language_markers": ["Gemfile", "config/database.yml", "app/"],
-         "language_detected_at": "2025-10-22T12:34:56Z",
-         "language_confirmed_by": "user"
+         "projectName": "my-project",
+         "mode": "personal",
+         "locale": "ko",
+         "language": "ruby",  # ← Update this too
+         "language_detection": {
+           "detected_language": "ruby",
+           "detection_method": "context_aware",
+           "confidence": "high",  # "high" | "medium" | "low"
+           "markers": [
+             "Gemfile",
+             "config/database.yml",
+             "app/ (Rails structure)"
+           ],
+           "confirmed_by": "user",
+           "confirmed_at": "2025-10-22T12:34:56Z"
+         }
        }
        ```
+     - Implementation:
+       1. Use `Read` tool to load `.moai/config.json`
+       2. Use `json.loads()` to parse the JSON
+       3. Update `language` and `language_detection` fields
+       4. Use `Write` tool to save the updated config
+     - This update happens AFTER user confirmation via TUI menu (Step 1.4)
 
 2. **Project status analysis**: `.moai/project/*.md`, README, read source structure
 3. **Determination of project type**: Decision to introduce new (greenfield) vs. legacy
