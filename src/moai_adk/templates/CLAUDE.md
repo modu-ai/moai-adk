@@ -14,12 +14,14 @@
 | --- | --- | --- | --- |
 | **Commands** | User ↔ Alfred | Workflow entry points that establish the Plan → Run → Sync cadence | `/alfred:0-project`, `/alfred:1-plan`, `/alfred:2-run`, `/alfred:3-sync` |
 | **Sub-agents** | Alfred | Deep reasoning and decision making for each phase | project-manager, spec-builder, code-builder pipeline, doc-syncer |
-| **Skills (44)** | Claude Skills | Reusable knowledge capsules loaded just-in-time | Foundation (TRUST/TAG/Git), Essentials (debug/refactor/review), Domain & Language packs |
-| **Hooks** | Runtime guardrails | Fast validation + JIT context hints (<100 ms) | SessionStart status card, PreToolUse destructive-command blocker |
+| **Skills (55)** | Claude Skills | Reusable knowledge capsules loaded just-in-time | Foundation (TRUST/TAG/Git), Essentials (debug/refactor/review), Alfred workflow, Domain & Language packs |
+| **Hooks** | Runtime guardrails | Fast validation + JIT context hints (<100 ms) | SessionStart status card, PreToolUse destructive-command blocker |
 
 ### Core Sub-agent Roster
 
 > Alfred + 10 core sub-agents + 6 zero-project specialists + 2 built-in Claude agents = **19-member team**
+>
+> **Note on Counting**: The "code-builder pipeline" is counted as 1 conceptual agent but implemented as 2 physical files (`implementation-planner` + `tdd-implementer`) for sequential RED → GREEN → REFACTOR execution. This maintains the 19-member team concept while acknowledging that 20 distinct agent files exist in `.claude/agents/alfred/`.
 
 | Sub-agent | Model | Phase | Responsibility | Trigger |
 | --- | --- | --- | --- | --- |
@@ -46,6 +48,8 @@ The **code-builder pipeline** runs two Sonnet specialists in sequence: **impleme
 | **document-generator** 📝 | Haiku | Project docs seed (`product.md`, `structure.md`, `tech.md`) | `/alfred:0-project` |
 | **feature-selector** 🎯 | Haiku | Skill pack recommendation | `/alfred:0-project` |
 | **template-optimizer** ⚙️ | Haiku | Template cleanup, migration helpers | `/alfred:0-project` |
+
+> **Implementation Note**: Zero-project specialists may be embedded within other agents (e.g., functionality within `project-manager`) or implemented as dedicated Skills (e.g., `moai-alfred-language-detection`). For example, `language-detector` functionality is provided by the `moai-alfred-language-detection` Skill during `/alfred:0-project` initialization.
 
 ### Built-in Claude Agents
 
@@ -107,9 +111,21 @@ User: "Where is JWT authentication implemented in this project?"
 - `medium`: moderate sweep (multiple locations + naming rules) — **recommended**
 - `very thorough`: exhaustive scan (full codebase analysis)
 
-### Claude Skills (44 packs)
+### Claude Skills (55 packs)
 
-Alfred relies on 44 Claude Skills grouped by tier. Skills load via Progressive Disclosure: metadata is available at session start, full `SKILL.md` content loads when a sub-agent references it, and supporting templates stream only when required.
+Alfred relies on 55 Claude Skills grouped by tier. Skills load via Progressive Disclosure: metadata is available at session start, full `SKILL.md` content loads when a sub-agent references it, and supporting templates stream only when required.
+
+**Skills Distribution by Tier**:
+
+| Tier | Count | Purpose |
+| --- | --- | --- |
+| Foundation | 6 | Core TRUST/TAG/SPEC/Git/EARS/Lang principles |
+| Essentials | 4 | Debug/Perf/Refactor/Review workflows |
+| Alfred | 11 | Internal workflow orchestration |
+| Domain | 10 | Specialized domain expertise |
+| Language | 23 | Language-specific best practices |
+| Claude Code Ops | 1 | Session management |
+| **Total** | **55** | Complete knowledge capsule library |
 
 **Foundation Tier (6)**
 
@@ -130,6 +146,22 @@ Alfred relies on 44 Claude Skills grouped by tier. Skills load via Progressive D
 | `moai-essentials-perf` | Performance analysis & profiling strategies | On demand |
 | `moai-essentials-refactor` | Refactoring patterns & code-smell remediation | `/alfred:2-run` |
 | `moai-essentials-review` | Code review checklist & quality feedback | `/alfred:3-sync` |
+
+**Alfred Tier (11)** — Internal workflow orchestration
+
+| Skill | Purpose | Auto-load |
+| --- | --- | --- |
+| `moai-alfred-code-reviewer` | Automated code quality review | `/alfred:3-sync` |
+| `moai-alfred-debugger-pro` | Advanced debugging strategies | `/alfred:2-run` failures |
+| `moai-alfred-ears-authoring` | EARS syntax validation & templates | `/alfred:1-plan` |
+| `moai-alfred-git-workflow` | GitFlow automation patterns | Plan/Run/Sync |
+| `moai-alfred-language-detection` | Stack detection & Skill preload | SessionStart, `/alfred:0-project` |
+| `moai-alfred-performance-optimizer` | Performance profiling & optimization | On demand |
+| `moai-alfred-refactoring-coach` | Refactoring guidance & patterns | `/alfred:2-run` |
+| `moai-alfred-spec-metadata-validation` | SPEC metadata policy enforcement | `/alfred:1-plan` |
+| `moai-alfred-tag-scanning` | TAG integrity & orphan detection | `/alfred:3-sync` |
+| `moai-alfred-trust-validation` | TRUST 5 principle verification | All phases |
+| `moai-alfred-tui-survey` | Interactive user surveys & menus | On demand |
 
 **Domain Tier (10)** — `moai-domain-backend`, `web-api`, `frontend`, `mobile-app`, `security`, `devops`, `database`, `data-science`, `ml`, `cli-tool`.
 
@@ -163,16 +195,16 @@ Skills keep the core knowledge lightweight while allowing Alfred to assemble the
 
 Alfred commands follow a three-phase loop, with an optional bootstrap stage for `/alfred:0-project`.
 
-- **Phase 0 — Bootstrap (optional)**  
+- **Phase 0 — Bootstrap (optional)**
   Capture project metadata, create `.moai/config.json` and project docs, detect languages, and stage the recommended Skill packs.
 
-- **Phase 1 — Analyze & Plan**  
+- **Phase 1 — Analyze & Plan**
   Understand scope, constraints, and desired outputs; review existing context (files, specs, tests); outline the execution plan and surface risks.
 
-- **Phase 2 — Execute**  
+- **Phase 2 — Execute**
   Run the approved steps in order, log progress in the task thread, escalate blockers immediately with mitigation options, and record decisions.
 
-- **Phase 3 — Sync & Handoff**  
+- **Phase 3 — Sync & Handoff**
   Update docs, TAG inventory, and reports; verify quality gates; summarize outcomes; and suggest the next command or manual follow-up.
 
 ### Alfred's Next-Step Suggestion Principles
@@ -526,15 +558,15 @@ MoAI-ADK assigns every responsibility to a dedicated execution layer.
 - Examples: spec-builder, code-builder pipeline, doc-syncer, tag-agent, git-manager.
 - Communicate status, escalate blockers, and request Skills when additional knowledge is required.
 
-### Skills — Reusable knowledge capsules (44 packs)
+### Skills — Reusable knowledge capsules (55 packs)
 
 - <500-word playbooks stored under `.claude/skills/`.
 - Loaded via Progressive Disclosure only when relevant.
-- Provide standard templates, best practices, and checklists across Foundation, Essentials, Domain, Language, and Ops tiers.
+- Provide standard templates, best practices, and checklists across Foundation, Essentials, Alfred, Domain, Language, and Ops tiers.
 
 ### Hooks — Guardrails & just-in-time context
 
-- Lightweight (<100 ms) checks triggered by session events.
+- Lightweight (<100 ms) checks triggered by session events.
 - Block destructive commands, surface status cards, and seed context pointers.
 - Examples: SessionStart project summary, PreToolUse safety checks.
 
