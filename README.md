@@ -277,14 +277,101 @@ Alfred는 **19명의 팀**(SuperAgent 1 + Core Sub-agent 10 + 0-project Sub-agen
 | cc-manager 🛠️ | Sonnet | Claude Code 세션 최적화, Skill 배포 |
 
 ### Skills (Progressive Disclosure - v0.4 신규!)
-- **Foundation (6)**: TRUST, TAG, SPEC, EARS, Git, Language 감지
-- **Essentials (4)**: Debug, Refactor, Review, Performance
-- **Alfred (11)**: Code Reviewer, Debugger Pro, EARS Authoring, Git Workflow, Language Detection, Performance Optimizer, Refactoring Coach, Spec Validation, TAG Scanning, TRUST Validation, TUI Survey
-- **Domain (10)**: Backend, Web API, Security, Data, Mobile, CLI, Database, DevOps, Data Science, ML
-- **Language (23)**: Python, TypeScript, Go, Rust, Java, Swift, Kotlin, C/C++, C#, Scala, Haskell, Elixir, Clojure, Lua, Ruby, PHP, JavaScript, SQL, Shell, Julia, R, Dart 등
-- **Claude Code Ops (1)**: 세션 설정, Output Style 관리
 
-> **v0.4 신기능**: 55개의 Claude Skills가 4-tier 아키텍처로 구성되었습니다. 각 Skill은 `.claude/skills/` 디렉터리에 저장된 500단어 이하 가이드로, 필요할 때만 로드되어 컨텍스트 비용을 줄입니다. Progressive Disclosure를 통해 관련 Skill만 Just-In-Time 로드됩니다.
+Alfred는 **55개의 Claude Skills**를 4-tier 아키텍처로 구성하여 필요할 때만 Just-In-Time 로드하는 **Progressive Disclosure** 방식을 사용합니다. 각 Skill은 `.claude/skills/` 디렉터리에 저장된 500단어 이하의 재사용 가능한 가이드입니다.
+
+#### Foundation Tier (6)
+핵심 TRUST/TAG/SPEC/Git/EARS/Language 원칙을 담은 기반 스킬
+
+| Skill | 설명 |
+| --- | --- |
+| `moai-foundation-trust` | TRUST 5-principles (Test 85%+, Readable, Unified, Secured, Trackable) 검증 |
+| `moai-foundation-tags` | @TAG markers 스캔 및 인벤토리 생성 (CODE-FIRST 원칙) |
+| `moai-foundation-specs` | SPEC YAML frontmatter (7개 필수 필드) 및 HISTORY 섹션 검증 |
+| `moai-foundation-ears` | EARS (Easy Approach to Requirements Syntax) 요구사항 작성 가이드 |
+| `moai-foundation-git` | Git workflow 자동화 (branching, TDD commits, PR 관리) |
+| `moai-foundation-langs` | 프로젝트 언어/프레임워크 자동 감지 (package.json, pyproject.toml 등) |
+
+#### Essentials Tier (4)
+일상 개발 업무에 필요한 핵심 도구들
+
+| Skill | 설명 |
+| --- | --- |
+| `moai-essentials-debug` | 스택 추적 분석, 에러 패턴 감지, 빠른 진단 지원 |
+| `moai-essentials-perf` | 성능 프로파일링, 병목 지점 탐지, 튜닝 전략 |
+| `moai-essentials-refactor` | 리팩토링 가이드, 설계 패턴, 코드 개선 전략 |
+| `moai-essentials-review` | 자동 코드 리뷰, SOLID 원칙, 코드 냄새 감지 |
+
+#### Alfred Tier (11)
+MoAI-ADK 내부 워크플로우 오케스트레이션 스킬
+
+| Skill | 설명 |
+| --- | --- |
+| `moai-alfred-code-reviewer` | 언어별 최고 관행, SOLID 원칙, 개선 제안을 포함한 자동 코드 리뷰 |
+| `moai-alfred-debugger-pro` | 스택 추적 분석, 에러 패턴 감지, 복잡한 런타임 에러 해석 |
+| `moai-alfred-ears-authoring` | EARS 구문 검증, 5가지 requirement 패턴 가이드 |
+| `moai-alfred-git-workflow` | MoAI-ADK conventions (feature branch, TDD commits, Draft PR) 자동화 |
+| `moai-alfred-language-detection` | 프로젝트 언어/런타임 감지, 기본 테스트 도구 추천 |
+| `moai-alfred-performance-optimizer` | 성능 프로파일링, 병목 감지, 언어별 최적화 |
+| `moai-alfred-refactoring-coach` | 리팩토링 가이드, 설계 패턴, 단계별 개선 계획 |
+| `moai-alfred-spec-metadata-validation` | SPEC YAML frontmatter (7개 필드) 및 HISTORY 섹션 정합성 검증 |
+| `moai-alfred-tag-scanning` | @TAG 마커 전체 스캔 및 인벤토리 생성 (CODE-FIRST 원칙) |
+| `moai-alfred-trust-validation` | TRUST 5-principles 준수 검증 (Test 85%+, constraints, security, trackability) |
+| `moai-alfred-tui-survey` | Claude Code Tools AskUserQuestion TUI 메뉴 표준화 |
+
+#### Domain Tier (10)
+특화된 도메인 전문 지식
+
+| Skill | 설명 |
+| --- | --- |
+| `moai-domain-backend` | 백엔드 아키텍처, API 설계, 스케일링 가이드 |
+| `moai-domain-cli-tool` | CLI 도구 개발, 인자 파싱, POSIX 준수, 사용자친화적 help 메시지 |
+| `moai-domain-data-science` | 데이터 분석, 시각화, 통계 모델링, 재현 가능한 연구 워크플로우 |
+| `moai-domain-database` | 데이터베이스 설계, 스키마 최적화, 인덱싱 전략, 마이그레이션 관리 |
+| `moai-domain-devops` | CI/CD 파이프라인, Docker containerization, Kubernetes 오케스트레이션, IaC |
+| `moai-domain-frontend` | React/Vue/Angular 개발, 상태 관리, 성능 최적화, 접근성 |
+| `moai-domain-ml` | 머신러닝 모델 학습, 평가, 배포, MLOps 워크플로우 |
+| `moai-domain-mobile-app` | Flutter/React Native 개발, 상태 관리, 네이티브 통합 |
+| `moai-domain-security` | OWASP Top 10, 정적 분석 (SAST), 의존성 보안, secrets 관리 |
+| `moai-domain-web-api` | REST API, GraphQL 설계 패턴, 인증, 버전 관리, OpenAPI 문서화 |
+
+#### Language Tier (23)
+프로그래밍 언어별 최고 관행
+
+| Skill | 설명 |
+| --- | --- |
+| `moai-lang-python` | pytest, mypy, ruff, black, uv 패키지 관리 |
+| `moai-lang-typescript` | Vitest, Biome, strict typing, npm/pnpm |
+| `moai-lang-javascript` | Jest, ESLint, Prettier, npm 패키지 관리 |
+| `moai-lang-go` | go test, golint, gofmt, 표준 라이브러리 |
+| `moai-lang-rust` | cargo test, clippy, rustfmt, ownership/borrow checker |
+| `moai-lang-java` | JUnit, Maven/Gradle, Checkstyle, Spring Boot 패턴 |
+| `moai-lang-kotlin` | JUnit, Gradle, ktlint, coroutines, extension functions |
+| `moai-lang-swift` | XCTest, SwiftLint, iOS/macOS 개발 패턴 |
+| `moai-lang-dart` | flutter test, dart analyze, Flutter widget 패턴 |
+| `moai-lang-csharp` | xUnit, .NET tooling, LINQ, async/await 패턴 |
+| `moai-lang-cpp` | Google Test, clang-format, 현대 C++ (C++17/20) |
+| `moai-lang-c` | Unity test framework, cppcheck, Make 빌드 시스템 |
+| `moai-lang-scala` | ScalaTest, sbt, 함수형 프로그래밍 패턴 |
+| `moai-lang-ruby` | RSpec, RuboCop, Bundler, Rails 패턴 |
+| `moai-lang-php` | PHPUnit, Composer, PSR 표준 |
+| `moai-lang-sql` | 테스트 프레임워크, 쿼리 최적화, 마이그레이션 관리 |
+| `moai-lang-shell` | bats, shellcheck, POSIX 준수 |
+| `moai-lang-haskell` | HUnit, Stack/Cabal, 순수 함수형 프로그래밍 |
+| `moai-lang-elixir` | ExUnit, Mix, OTP 패턴 |
+| `moai-lang-clojure` | clojure.test, Leiningen, 불변 데이터 구조 |
+| `moai-lang-lua` | busted, luacheck, embedded scripting 패턴 |
+| `moai-lang-julia` | Test stdlib, Pkg manager, 과학 계산 패턴 |
+| `moai-lang-r` | testthat, lintr, 데이터 분석 패턴 |
+
+#### Claude Code Ops (1)
+Claude Code 세션 관리
+
+| Skill | 설명 |
+| --- | --- |
+| `moai-claude-code` | Claude Code agents, commands, skills, plugins, settings 스캐폴딩 및 감시 |
+
+> **v0.4 신기능**: 55개의 Claude Skills가 4-tier 아키텍처로 구성되었습니다. 각 Skill은 Progressive Disclosure를 통해 필요할 때만 로드되어 컨텍스트 비용을 최소화합니다. Foundation → Essentials → Alfred → Domain/Language/Ops 계층으로 구성되어 있습니다.
 
 ---
 
