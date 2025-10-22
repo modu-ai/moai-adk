@@ -63,8 +63,11 @@
     "mode": "personal",
     "name": "MoAI-ADK",
     "moai_adk_version": "0.4.1",
-    "optimized": false,
-    "language": "ko"
+    "optimized": true,
+    "optimized_at": "2025-10-22T12:45:00Z",
+    "language": "ko",
+    "conversation_language": "ko",
+    "conversation_language_name": "한국어"
   },
   "tags": {
     "auto_sync": true,
