@@ -1126,8 +1126,6 @@ Claude Code 会话管理
 
 ## 第二个实战：Mini Kanban Board
 
-## 第二个实战：Mini Kanban Board
-
 本节超越第一个 Todo API 示例，带你完成一个为期 4 周的完整全栈项目。
 
 我们将一起构建一个 Mini Kanban Board Web 应用，专为系统化掌握 MoAI‑ADK 而设计。该项目覆盖 SPEC‑First TDD 的每一步。

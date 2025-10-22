@@ -236,7 +236,7 @@ graph TD
 
 ## Sub-agent と Skills の概要
 
-Alfred は **19名のチーム**（SuperAgent 1 + コア Sub-agent 10 + 0-project Sub-agent 6 + ビルトイン 2）と **44個の Claude Skills** を組み合わせて動作します。
+Alfred は **19名のチーム**（SuperAgent 1 + コア Sub-agent 10 + 0-project Sub-agent 6 + ビルトイン 2）と **56個の Claude Skills** を組み合わせて動作します。
 
 ### コア Sub-agent（Plan → Run → Sync）
 
@@ -254,13 +254,12 @@ Alfred は **19名のチーム**（SuperAgent 1 + コア Sub-agent 10 + 0-projec
 | cc-manager 🛠️ | Sonnet | Claude Code セッション最適化と Skills 配備 |
 
 ### Skills（段階的開示）
-- **Foundation (6)**: TRUST, TAG, SPEC, EARS, Git, 言語検出
+- **Foundation (6)**: TRUST, TAG, SPEC, EARS, Git, 言語ポリシー
 - **Essentials (4)**: Debug, Refactor, Review, Performance
-- **Domain (10)**: Backend, Web API, Security, Data, Mobile など
-- **Language (23)**: Python, TypeScript, Go, Rust, Java, Swift など主要言語パック
-- **Claude Code Ops (1)**: セッション設定、出力スタイル管理
+- **Alfred Tier (11)**: MoAI‑ADK の内部オーケストレーション（Plan/Run/Sync、TAG、TRUST 等）
+- **Domain/Language/Ops**: バックエンド/Web API/セキュリティ、主要言語パック、Claude Code 運用
 
-> Skills は `.claude/skills/` に 500語以下のガイドとして保存されています。必要なときだけ読み込み、コンテキストコストを抑えます。
+> Skills は `.claude/skills/` に保存され、必要なときにのみ JIT で読み込みます（合計 56 Skills）。
 
 ---
 
