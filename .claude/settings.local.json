@@ -3,7 +3,8 @@
     "allow": [
       "Read(//Users/goos/.claude/**)",
       "Skill(moai-alfred-tui-survey)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(gh release delete:*)"
     ],
     "deny": [],
     "ask": []
