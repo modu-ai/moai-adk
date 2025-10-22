@@ -4,10 +4,15 @@
       "Read(//Users/goos/.claude/**)",
       "Skill(moai-alfred-interactive-questions)",
       "Bash(curl:*)",
-      "Bash(gh release delete:*)"
+      "Bash(gh release delete:*)",
+      "Read(//Users/goos/MoAI/my-book/.claude/**)",
+      "Read(//Users/goos/MoAI/my-book/**)",
+      "Bash(context7 query:*)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs"
     ],
     "deny": [],
     "ask": []
   },
-  "outputStyle": "MoAI ADK Learning"
+  "outputStyle": "Agentic Coding"
 }

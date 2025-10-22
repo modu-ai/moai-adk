@@ -29,7 +29,7 @@ If you've **already installed it and want to understand the concepts**, we recom
 | What do Plan/Run/Sync commands do? | [Command Cheat Sheet](#command-cheat-sheet)                  |
 | What are SPEC, TDD, TAG?           | [5 Key Concepts](#5-key-concepts)                            |
 | Tell me about agents/Skills        | [Sub-agents & Skills Overview](#sub-agents--skills-overview) |
-| How do Claude Code Hooks work?     | [Claude Code Hooks Guide](#claude-code-hooks-guide)          |
+| I want a 4-week hands-on project   | [Second Practice: Mini Kanban Board](#second-practice-mini-kanban-board) |
 | Want to dive deeper?               | [Additional Resources](#additional-resources)                |
 
 ---
@@ -1203,6 +1203,276 @@ If you need to temporarily disable hooks, edit `.claude/settings.json`:
 
 ---
 
+##
+
+## Second Practice: Mini Kanban Board
+
+This section goes beyond the first Todo API example and outlines a full 4-week full‑stack project.
+
+Let’s build a Mini Kanban Board web application designed to help you master MoAI‑ADK end‑to‑end. This project lets you experience every step of SPEC‑First TDD.
+
+### Project Overview
+
+- Backend: FastAPI + Pydantic v2 + uv + WebSocket (Python)
+- Frontend: React 19 + TypeScript 5.9 + Vite + Zustand + TanStack Query
+- Real-time: Multi‑client sync over WebSocket
+- Storage: Local filesystem (.moai/specs/)
+- DevOps: Docker Compose + GitHub Actions CI/CD + Playwright E2E
+
+### 4‑Week Timeline
+
+```mermaid
+gantt
+    title Mini Kanban Board — 4‑week plan
+    dateFormat YYYY-MM-DD
+
+    section Phase 1: Backend Basics
+    CH07: Define SPEC-001~004           :active, ch07-spec, 2025-11-03, 1d
+    CH07: Implement SpecScanner (TDD)   :active, ch07-impl, 2025-11-04, 1d
+
+    section Phase 2: Backend Advanced
+    CH08: Implement REST API            :active, ch08-api, 2025-11-05, 1d
+    CH08: WebSocket + File Watch        :active, ch08-ws, 2025-11-06, 1d
+
+    section Phase 3: Frontend Basics
+    CH09: React init + SPEC-009~012     :active, ch09-spec, 2025-11-10, 1d
+    CH09: Kanban Board (TDD)            :active, ch09-impl, 2025-11-11, 1d
+
+    section Phase 4: Advanced + Deploy
+    CH10: E2E + CI/CD                   :active, ch10-e2e, 2025-11-12, 1d
+    CH10: Docker Compose + Optimize     :active, ch10-deploy, 2025-11-13, 1d
+```
+
+### 16‑SPEC Roadmap
+
+| Phase | SPEC ID | Title | Stack | Est. | Status |
+|------|---------|-------|-------|------|--------|
+| Backend Basics | SPEC-001 | SPEC file scanner | FastAPI + pathlib + YAML | 1h | 📋 |
+|  | SPEC-002 | YAML metadata parser | Pydantic v2 validation | 1h | 📋 |
+|  | SPEC-003 | GET /api/specs (list) | FastAPI router | 0.5h | 📋 |
+|  | SPEC-004 | GET /api/specs/{id} (detail) | FastAPI router | 0.5h | 📋 |
+| Backend Advanced | SPEC-005 | PATCH /api/specs/{id}/status | FastAPI + update | 1h | 📋 |
+|  | SPEC-006 | GET /api/specs/summary | Aggregation | 0.5h | 📋 |
+|  | SPEC-007 | File watcher | watchdog + async | 1h | 📋 |
+|  | SPEC-008 | WebSocket events | FastAPI WebSocket | 1.5h | 📋 |
+| Frontend Basics | SPEC-009 | Kanban layout | React + CSS Grid | 1.5h | 📋 |
+|  | SPEC-010 | SPEC card component | React + TypeScript | 1h | 📋 |
+|  | SPEC-011 | TanStack Query integration | useQuery + useMutation | 1.5h | 📋 |
+|  | SPEC-012 | Drag & Drop | React Beautiful DnD | 1.5h | 📋 |
+| Advanced + Deploy | SPEC-013 | E2E automated tests | Playwright | 1.5h | 📋 |
+|  | SPEC-014 | GitHub Actions CI/CD | Test + Release | 1h | 📋 |
+|  | SPEC-015 | Docker Compose deploy | Multi‑container | 1h | 📋 |
+|  | SPEC-016 | Performance + extensions | Caching + WS tuning | 1.5h | 📋 |
+|  |  | Overall |  | 20h |  |
+
+### System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                Mini Kanban Board — Architecture              │
+└─────────────────────────────────────────────────────────────┘
+
+┌──────────────────────┐         ┌────────────────────────┐
+│   📱 Frontend        │         │   🖥️ Backend Server    │
+│  (React 19 + Vite)   │◄───────►│ (FastAPI + Pydantic)   │
+│                      │  REST   │                        │
+│ ┌──────────────────┐ │ API +   │ ┌──────────────────┐   │
+│ │ DashboardHeader  │ │WebSocket│ │ GET /api/specs   │   │
+│ ├──────────────────┤ │         │ ├──────────────────┤   │
+│ │ KanbanBoard      │ │         │ │ PATCH /api/specs/{id}││
+│ │ ┌──────────────┐ │ │         │ │ /status          │   │
+│ │ │ Column: Draft│ │ │         │ ├──────────────────┤   │
+│ │ │ Column: Active││ │         │ │ WebSocket        │   │
+│ │ │ Column: Done │ │ │         │ │ /ws              │   │
+│ │ └──────────────┘ │ │         │ │                  │   │
+│ ├──────────────────┤ │         │ ├──────────────────┤   │
+│ │ SpecCard (DnD)   │ │         │ │ SpecScanner      │   │
+│ ├──────────────────┤ │         │ │ (.moai/specs/)   │   │
+│ │ SearchBar        │ │         │ ├──────────────────┤   │
+│ └──────────────────┘ │         │ │ YAML Parser      │   │
+│                      │         │ │ (Pydantic v2)    │   │
+│ Zustand Store:       │         │ └──────────────────┘   │
+│ • filterStore        │         │                        │
+│ • uiStore            │         │ File System:           │
+│                      │         │ .moai/specs/           │
+│ TanStack Query:      │         │ SPEC-001/              │
+│ • useQuery           │         │ SPEC-002/              │
+│ • useMutation        │         │ ...                    │
+└──────────────────────┘         └────────────────────────┘
+         │                                    │
+         │            WebSocket               │
+         └────────────────────────────────────┘
+              (Real-time Sync)
+```
+
+### Phase Details
+
+#### Phase 1: Backend Basics (SPEC-001~004)
+
+Goal: Build the core data scanning service with FastAPI + Pydantic v2 + uv
+
+```bash
+# 1) Initialize project
+/alfred:0-project
+# → creates .moai/, backend/, frontend/
+# → configures .moai/config.json
+
+# 2) Write SPECs (SPEC-001~004)
+/alfred:1-plan
+# → SPEC-001: SPEC file scanner
+# → SPEC-002: YAML metadata parser
+# → SPEC-003: GET /api/specs endpoint
+# → SPEC-004: GET /api/specs/{id} endpoint
+
+# 3) TDD (RED → GREEN → REFACTOR)
+/alfred:2-run SPEC-001
+/alfred:2-run SPEC-002
+/alfred:2-run SPEC-003
+/alfred:2-run SPEC-004
+```
+
+Key Concepts:
+- FastAPI project structure
+- Pydantic v2 validation
+- YAML front matter parsing
+- Dependency Injection
+- First TDD cycle completed
+
+#### Phase 2: Backend Advanced (SPEC-005~008)
+
+Goal: Implement file watching and WebSocket real-time events
+
+```bash
+# REST endpoints
+/alfred:2-run SPEC-005  # PATCH /api/specs/{id}/status
+/alfred:2-run SPEC-006  # GET /api/specs/summary
+
+# WebSocket + File Watcher
+/alfred:2-run SPEC-007  # File watching (watchdog)
+/alfred:2-run SPEC-008  # WebSocket broadcast
+
+# TRUST 5 verification
+/alfred:3-sync          # verify all principles
+```
+
+Key Concepts:
+- File system monitoring (watchdog)
+- FastAPI WebSocket endpoint
+- Async event broadcast
+- Automated TRUST 5 verification
+
+#### Phase 3: Frontend Basics (SPEC-009~012)
+
+Goal: Build Kanban UI with React 19 + TypeScript + Vite
+
+```bash
+# Initialize React + Vite
+cd frontend
+npm create vite@latest . -- --template react-ts
+
+# TanStack Query + Zustand
+npm install @tanstack/react-query zustand
+
+# SPECs
+/alfred:1-plan SPEC-009  # layout
+/alfred:1-plan SPEC-010  # card component
+/alfred:1-plan SPEC-011  # TanStack Query integration
+/alfred:1-plan SPEC-012  # drag & drop
+
+# TDD
+/alfred:2-run SPEC-009
+/alfred:2-run SPEC-010
+/alfred:2-run SPEC-011
+/alfred:2-run SPEC-012
+```
+
+Key Concepts:
+- React 19 Hooks (useState, useEffect, useContext)
+- TypeScript 5.9 strict typing
+- TanStack Query (useQuery, useMutation)
+- Zustand state management
+- React Beautiful DnD drag & drop
+
+#### Phase 4: Advanced + Deploy (SPEC-013~016)
+
+Goal: E2E tests, CI/CD, Docker deployment, performance optimization
+
+```bash
+# E2E tests (Playwright)
+/alfred:2-run SPEC-013
+
+# GitHub Actions CI/CD
+/alfred:2-run SPEC-014
+
+# Docker Compose deploy
+/alfred:2-run SPEC-015
+
+# Performance optimization
+/alfred:2-run SPEC-016
+```
+
+Key Concepts:
+- Playwright E2E automation
+- GitHub Actions workflows
+- Docker multi-stage builds
+- Production performance tuning
+
+### Quick Start Guide
+
+#### Step 1: Initialize project
+
+```bash
+# Install MoAI-ADK
+pip install moai-adk==0.4.6
+
+# Create project
+mkdir mini-kanban-board && cd mini-kanban-board
+git init
+
+# Initialize with Alfred
+/alfred:0-project
+```
+
+#### Step 2: Write SPECs
+
+```bash
+# Start planning
+/alfred:1-plan
+
+# Answer prompts:
+# - Project name: Mini Kanban Board
+# - Tech stack: FastAPI + React 19
+# - Duration: 4-week practice project
+```
+
+#### Step 3: Start TDD
+
+```bash
+# Phase 1 (Backend basics)
+/alfred:2-run SPEC-001  # first TDD cycle
+
+# Phase 2 (Backend advanced)
+/alfred:2-run SPEC-005
+/alfred:2-run SPEC-006
+/alfred:2-run SPEC-007
+/alfred:2-run SPEC-008
+
+# Phase 3 (Frontend basics)
+cd frontend
+/alfred:2-run SPEC-009
+/alfred:2-run SPEC-010
+/alfred:2-run SPEC-011
+/alfred:2-run SPEC-012
+
+# Phase 4 (Advanced + deploy)
+/alfred:2-run SPEC-013
+/alfred:2-run SPEC-014
+/alfred:2-run SPEC-015
+/alfred:2-run SPEC-016
+```
+
+---
+
 ## Additional Resources
 
 | Purpose                   | Resource                                                             |
@@ -1248,3 +1518,5 @@ Start a new experience of **trustworthy AI development** with Alfred! 🤖
 - 🏠 GitHub: https://github.com/modu-ai/moai-adk
 - 📝 License: MIT
 - ⭐ Skills: 56/56 Complete (100% Production-Ready)
+
+---
