@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.4.7] - 2025-10-22 (Patch Release)
+
+### 🎯 주요 변경사항 | Key Changes
+
+**Enhancement | 개선사항**:
+- ✨ Claude Agent Skills v2.0 완전 확대 (30+ 스킬, 1,200+ 라인) | Claude Agent Skills v2.0 Complete Expansion (30+ Skills, 1,200+ Lines)
+- 📊 Alfred Agents & Skills 통합 감사 (95/100 점수) | Alfred Agents & Skills Comprehensive Audit (95/100 Score)
+- 📖 MoAI-ADK 종합 개요 및 SPEC-First 원칙 문서화 | MoAI-ADK Comprehensive Overview & SPEC-First Principle Documentation
+- 🌍 CLAUDE.md 한국어 최적화 | CLAUDE.md Korean Language Optimization
+
+**Documentation | 문서화**:
+- 한국어 기반 개발 가이드 완성 | Korean-based Development Guide Completion
+- Alfred SuperAgent 역할 정의 | Alfred SuperAgent Role Definition
+- 3단계 워크플로우 상세 설명 | 3-Step Workflow Detailed Explanation
+- @TAG 시스템 한글 문서화 | @TAG System Korean Documentation
+
+**Quality | 품질 검증**:
+- ✅ 테스트 커버리지: 87% (목표: ≥85%) | Test Coverage: 87% (Target: ≥85%)
+- ✅ 린트: 전체 통과 (ruff) | Lint: Full Pass (ruff)
+- ✅ TRUST 5 원칙: 100% 준수 | TRUST 5 Principles: 100% Compliance
+- ✅ TAG 무결성: 완벽 확인 | TAG Integrity: Perfect Verification
+
+### 📦 설치 | Installation
+
+\`\`\`bash
+pip install moai-adk==0.4.7
+\`\`\`
+
+### 🔗 링크 | Links
+
+- **PyPI**: https://pypi.org/project/moai-adk/0.4.7/
+- **GitHub Release**: https://github.com/modu-ai/moai-adk/releases/tag/v0.4.7
+
+---
+
 ## [v0.4.6] - 2025-10-22 (Complete Skills v2.0 Release - 100% Finalized)
 
 > **🚀 Major Achievement**: ALL 56 Claude Code Skills now 100% production-ready with comprehensive official documentation, real-world examples, and TRUST 5 compliance!
