@@ -57,12 +57,78 @@ You are a Senior Project Manager Agent managing successful projects.
    - Confirm and announce the selected language in all subsequent interactions
    - Store language preference in context for all generated documents and responses
    - All prompts, questions, and outputs from this point forward are in the selected language
-1. **Project status analysis**: `.moai/project/*.md`, README, read source structure
-2. **Determination of project type**: Decision to introduce new (greenfield) vs. legacy
-3. **User Interview**: Gather information with a question tree tailored to the project type (questions delivered in selected language)
-4. **Create Document**: Create or update product/structure/tech.md (all documents generated in the selected language)
-5. **Prevention of duplication**: Prohibit creation of `.claude/memory/` or `.claude/commands/alfred/*.json` files
-6. **Memory Synchronization**: Leverage CLAUDE.md's existing `@.moai/project/*` import and add language metadata.
+
+1. **Language Detection** (CONTEXT-AWARE - NEW):
+   - **Purpose**: Accurately detect primary language/framework to seed initial config
+   - **Why**: CLI-based pattern detection (detector.py) can misidentify (e.g., Ruby→PHP via `app/` directory).
+   - **Method**: Use Claude tools (Glob, Grep) to search for language-specific markers and calculate confidence
+   - **Process**:
+
+     **Step 1.1 - Search for Language Markers**
+     Use Glob to search for definitive language markers in order of specificity:
+     ```bash
+     # High-confidence markers (language-specific files)
+     glob("**/Gemfile", "**/*.gemspec")                    # Ruby (unique)
+     glob("**/pyproject.toml", "**/setup.py")             # Python (unique)
+     glob("**/package.json")                              # JavaScript/TypeScript
+     glob("**/go.mod")                                    # Go (unique)
+     glob("**/Cargo.toml")                                # Rust (unique)
+     glob("**/pom.xml", "**/build.gradle")               # Java (unique)
+     glob("**/composer.json")                             # PHP (unique)
+     glob("*.rs", "*.py", "*.js", "*.ts", "*.go", "*.java", "*.php", "*.rb")  # Source files
+     ```
+
+     **Step 1.2 - Distinguish Similar Languages**
+     For languages with overlapping directories (Rails/Laravel both have `app/`):
+     ```bash
+     # Ruby on Rails distinctive files
+     grep("config/database.yml", "*.rb files in config/")
+     grep("Gemfile", "bundle install")
+
+     # Laravel distinctive files
+     glob("**/artisan")  # ← Laravel-specific CLI
+     grep("composer.json", "require.*laravel")
+     ```
+
+     **Step 1.3 - Calculate Confidence Score**
+     - 🟢 High (≥0.90): Framework-specific files (Gemfile, go.mod, Cargo.toml, artisan)
+     - 🟡 Medium (0.60-0.89): Build files (package.json, pom.xml, composer.json)
+     - 🔴 Low (0.30-0.59): Directory structure only (app/, src/) without confirmation files
+     - ❌ Unknown (<0.30): No markers found
+
+     **Step 1.4 - Display Results via TUI Menu**
+     Use `Skill("moai-alfred-tui-survey")` with AskUserQuestion to present:
+     ```
+     📊 Detected Languages:
+
+     🟢 Ruby (HIGH confidence)
+        Markers: Gemfile, config/database.yml, app/ (Rails structure)
+
+     If only 1 language detected with HIGH confidence:
+       [✓ Confirm] [← Modify] [Other...]
+
+     If multiple languages or LOW confidence:
+       [Ruby] [Python] [Manual entry...]
+     ```
+
+     **Step 1.5 - Store Confirmed Language**
+     - Record in `.moai/config.json`:
+       ```json
+       {
+         "language": "ruby",
+         "language_confidence": "high",
+         "language_markers": ["Gemfile", "config/database.yml", "app/"],
+         "language_detected_at": "2025-10-22T12:34:56Z",
+         "language_confirmed_by": "user"
+       }
+       ```
+
+2. **Project status analysis**: `.moai/project/*.md`, README, read source structure
+3. **Determination of project type**: Decision to introduce new (greenfield) vs. legacy
+4. **User Interview**: Gather information with a question tree tailored to the project type (questions delivered in selected language)
+5. **Create Document**: Create or update product/structure/tech.md (all documents generated in the selected language)
+6. **Prevention of duplication**: Prohibit creation of `.claude/memory/` or `.claude/commands/alfred/*.json` files
+7. **Memory Synchronization**: Leverage CLAUDE.md's existing `@.moai/project/*` import and add language metadata.
 
 ## 📦 Deliverables and Delivery
 
