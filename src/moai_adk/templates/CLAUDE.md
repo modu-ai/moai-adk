@@ -2,6 +2,9 @@
 
 **SPEC-First TDD Development with Alfred SuperAgent**
 
+> **문서 언어 | Document Language**: {{CONVERSATION_LANGUAGE_NAME}} ({{CONVERSATION_LANGUAGE}})
+> **설정 파일 | Config**: `.moai/config.json` → `project.conversation_language`
+
 ---
 
 ## ▶◀ Meet Alfred: Your MoAI SuperAgent
@@ -746,22 +749,22 @@ Alfred enforces these quality gates on every change:
 
 ---
 
-## Project Information
+## 프로젝트 정보 | Project Information
 
-- **Name**: {{PROJECT_NAME}}
-- **Description**: {{PROJECT_DESCRIPTION}}
-- **Version**: {{PROJECT_VERSION}}
-- **Mode**: {{PROJECT_MODE}}
-- **Conversation Language**: {{CONVERSATION_LANGUAGE}} ({{CONVERSATION_LANGUAGE_NAME}})
-- **Codebase Language**: {{CODEBASE_LANGUAGE}}
-- **Toolchain**: Automatically selects the best tools for the chosen language
+- **이름 | Name**: {{PROJECT_NAME}}
+- **설명 | Description**: {{PROJECT_DESCRIPTION}}
+- **버전 | Version**: {{PROJECT_VERSION}}
+- **모드 | Mode**: {{PROJECT_MODE}}
+- **대화 언어 | Conversation Language**: {{CONVERSATION_LANGUAGE}} ({{CONVERSATION_LANGUAGE_NAME}})
+- **코드 언어 | Codebase Language**: {{CODEBASE_LANGUAGE}}
+- **도구 | Toolchain**: 선택된 언어에 최적화된 도구 자동 선택 | Automatically selects the best tools for the chosen language
 
-### Language Configuration
+### 언어 설정 | Language Configuration
 
-- **Conversation Language** (`{{CONVERSATION_LANGUAGE}}`): All Alfred dialogs, documentation, and project interviews conducted in this language
-- **Codebase Language** (`{{CODEBASE_LANGUAGE}}`): Primary programming language(s) detected in this project
-- **Documentation**: Generated in the conversation language ({{CONVERSATION_LANGUAGE_NAME}})
+- **대화 언어 | Conversation Language** (`{{CONVERSATION_LANGUAGE}}`): 모든 Alfred 대화, 문서, 프로젝트 인터뷰가 이 언어로 진행됨 | All Alfred dialogs, documentation, and project interviews conducted in this language
+- **코드 언어 | Codebase Language** (`{{CODEBASE_LANGUAGE}}`): 이 프로젝트에서 감지된 주요 프로그래밍 언어 | Primary programming language(s) detected in this project
+- **문서 | Documentation**: 대화 언어로 생성됨 | Generated in the conversation language ({{CONVERSATION_LANGUAGE_NAME}})
 
 ---
 
-**Note**: The conversation language is selected at the beginning of `/alfred:0-project` and applies to all subsequent project initialization steps. All generated documentation (product.md, structure.md, tech.md) will be created in the selected language.
+**주의 | Note**: 대화 언어는 `/alfred:0-project` 시작 시점에 선택되며, 모든 후속 프로젝트 초기화 단계에 적용됩니다. 생성되는 모든 문서(product.md, structure.md, tech.md)는 선택된 언어로 생성됩니다 | The conversation language is selected at the beginning of `/alfred:0-project` and applies to all subsequent project initialization steps. All generated documentation (product.md, structure.md, tech.md) will be created in the selected language.
