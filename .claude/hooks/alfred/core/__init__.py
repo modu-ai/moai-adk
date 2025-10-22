@@ -114,6 +114,41 @@ class HookResult:
 
         return output
 
+    def to_post_tool_use_dict(self) -> dict[str, Any]:
+        """PostToolUse Hook-specific output format
+
+        Claude Code requires a specific schema for PostToolUse:
+        {
+            "decision": "block" | undefined,
+            "reason": "string (optional)"
+        }
+
+        PostToolUse hooks run AFTER tool execution, so they can only:
+        - "block": Prevent the result from being shown (post-execution blocking)
+        - undefined/omit: Allow normal operation
+
+        Returns:
+            Claude Code PostToolUse Hook dictionary matching schema
+
+        Examples:
+            >>> result = HookResult(blocked=False)
+            >>> result.to_post_tool_use_dict()
+            {}
+
+            >>> result = HookResult(blocked=True, message="Test failed")
+            >>> result.to_post_tool_use_dict()
+            {'decision': 'block', 'reason': 'Test failed'}
+        """
+        output = {}
+
+        # Map blocked to decision
+        if self.blocked:
+            output["decision"] = "block"
+            if self.message:
+                output["reason"] = self.message
+
+        return output
+
 
 __all__ = ["HookPayload", "HookResult"]
 
