@@ -19,7 +19,7 @@ def handle_session_start(payload: HookPayload) -> HookResult:
         payload: Claude Code event payload (cwd key required)
 
     Returns:
-        HookResult(message=project status summary message, systemMessage=for user display)
+        HookResult(system_message=project status summary message)
 
     Message Format:
         🚀 MoAI-ADK Session Started
@@ -31,14 +31,15 @@ def handle_session_start(payload: HookPayload) -> HookResult:
 
     Note:
         - Claude Code processes SessionStart in several stages (clear → compact)
-        - Display message only at “compact” stage to prevent duplicate output
-        - "clear" step returns empty result (invisible to user)
+        - Display message only at "compact" stage to prevent duplicate output
+        - "clear" step returns minimal result (empty hookSpecificOutput)
 
     TDD History:
         - RED: Session startup message format test
         - GREEN: Generate status message by combining helper functions
         - REFACTOR: Improved message format, improved readability, added checkpoint list
         - FIX: Prevent duplicate output of clear step (only compact step is displayed)
+        - UPDATE: Migrated to Claude Code standard Hook schema
 
     @TAG:CHECKPOINT-EVENT-001
     """
@@ -46,7 +47,8 @@ def handle_session_start(payload: HookPayload) -> HookResult:
     # Ignore the "clear" stage and output messages only at the "compact" stage
     event_phase = payload.get("phase", "")
     if event_phase == "clear":
-        return HookResult() # returns an empty result (prevents duplicate output)
+        # Return minimal valid Hook result for clear phase
+        return HookResult(continue_execution=True)
 
     cwd = payload.get("cwd", ".")
     language = detect_language(cwd)
@@ -59,7 +61,7 @@ def handle_session_start(payload: HookPayload) -> HookResult:
     changes = git_info.get("changes", 0)
     spec_progress = f"{specs['completed']}/{specs['total']}"
 
-    # systemMessage: displayed directly to the user
+    # system_message: displayed directly to the user
     lines = [
         "🚀 MoAI-ADK Session Started",
         f"   Language: {language}",
@@ -78,10 +80,7 @@ def handle_session_start(payload: HookPayload) -> HookResult:
 
     system_message = "\n".join(lines)
 
-    return HookResult(
-        message=system_message, # for Claude context
-        systemMessage=system_message, # For user display
-    )
+    return HookResult(system_message=system_message)
 
 
 def handle_session_end(payload: HookPayload) -> HookResult:
