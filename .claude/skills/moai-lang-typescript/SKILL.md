@@ -4,14 +4,14 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: TypeScript 5.7+ best practices with Vitest 2.1, Biome 1.9, strict typing, and npm/pnpm/bun package management.
-keywords: ['typescript', 'testing', 'vitest', 'biome', 'types', 'react', 'nextjs']
+description: TypeScript 5.7+ best practices with Vitest 2.1, Biome 1.9, React 19 patterns.
+keywords: ['typescript', 'vitest', 'biome', 'react']
 allowed-tools:
   - Read
   - Bash
 ---
 
-# Lang Typescript Skill
+# Lang TypeScript Skill
 
 ## Skill Metadata
 
@@ -27,7 +27,7 @@ allowed-tools:
 
 ## What It Does
 
-TypeScript 5.7+ best practices with Vitest 2.1, Biome 1.9, strict typing, and npm/pnpm/bun package management.
+TypeScript 5.7+ best practices with Vitest 2.1, Biome 1.9, React 19 patterns.
 
 **Key capabilities**:
 - ✅ Best practices enforcement for language domain
@@ -55,13 +55,10 @@ TypeScript 5.7+ best practices with Vitest 2.1, Biome 1.9, strict typing, and np
 
 | Tool | Version | Purpose | Status |
 |------|---------|---------|--------|
-| **TypeScript** | 5.7.2 | Primary | ✅ Current |
-| **Vitest** | 2.1.0 | Primary | ✅ Current |
-| **Biome** | 1.9.4 | Primary | ✅ Current |
-| **Bun** | 1.1.0 | Primary | ✅ Current |
-| **pnpm** | 9.14.2 | Primary | ✅ Current |
-| **React** | 19.0.0 | Primary | ✅ Current |
-| **Next.js** | 15.1.0 | Primary | ✅ Current |
+| **TypeScript** | 5.7.0 | Compiler | ✅ Current |
+| **Vitest** | 2.1.0 | Testing | ✅ Current |
+| **Biome** | 1.9.0 | Linting | ✅ Current |
+| **React** | 19.0.0 | Framework | ✅ Current |
 
 ---
 
@@ -115,13 +112,13 @@ _Documentation links updated 2025-10-22_
 ## Best Practices
 
 ✅ **DO**:
-- Follow language best practices
-- Use latest stable tool versions
+- Enable strict TypeScript mode
+- Use Vitest for fast testing
 - Maintain test coverage ≥85%
-- Document all public APIs
+- Leverage React 19 features
 
 ❌ **DON'T**:
 - Skip quality gates
-- Use deprecated tools
-- Ignore security warnings
-- Mix testing frameworks
+- Use 'any' type liberally
+- Ignore type errors
+- Mix JavaScript and TypeScript

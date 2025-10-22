@@ -4,14 +4,14 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: PHP 8.4+ best practices with PHPUnit 11, Composer, and PSR-12 standards.
-keywords: ['php', 'phpunit', 'composer', 'psr']
+description: PHP 8.3+ best practices with PHPUnit 11, Composer, PSR-12 standards.
+keywords: ['php', 'phpunit', 'composer', 'psr12']
 allowed-tools:
   - Read
   - Bash
 ---
 
-# Lang Php Skill
+# Lang PHP Skill
 
 ## Skill Metadata
 
@@ -27,7 +27,7 @@ allowed-tools:
 
 ## What It Does
 
-PHP 8.4+ best practices with PHPUnit 11, Composer, and PSR-12 standards.
+PHP 8.3+ best practices with PHPUnit 11, Composer, PSR-12 standards.
 
 **Key capabilities**:
 - ✅ Best practices enforcement for language domain
@@ -55,9 +55,10 @@ PHP 8.4+ best practices with PHPUnit 11, Composer, and PSR-12 standards.
 
 | Tool | Version | Purpose | Status |
 |------|---------|---------|--------|
-| **PHP** | 8.4.0 | Primary | ✅ Current |
-| **PHPUnit** | 11.5.0 | Primary | ✅ Current |
-| **Composer** | 2.8.0 | Primary | ✅ Current |
+| **PHP** | 8.3.0 | Runtime | ✅ Current |
+| **PHPUnit** | 11.5.0 | Testing | ✅ Current |
+| **Composer** | 2.8.0 | Package Manager | ✅ Current |
+| **PHP_CodeSniffer** | 3.10.0 | Linting | ✅ Current |
 
 ---
 
@@ -111,13 +112,13 @@ _Documentation links updated 2025-10-22_
 ## Best Practices
 
 ✅ **DO**:
-- Follow language best practices
-- Use latest stable tool versions
+- Follow PSR-12 coding standards
+- Use Composer for dependency management
 - Maintain test coverage ≥85%
-- Document all public APIs
+- Leverage PHP 8.3 features (attributes, enums)
 
 ❌ **DON'T**:
 - Skip quality gates
-- Use deprecated tools
-- Ignore security warnings
-- Mix testing frameworks
+- Use deprecated functions
+- Ignore Composer security warnings
+- Mix coding styles

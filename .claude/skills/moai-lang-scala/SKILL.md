@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: Scala 3.6+ best practices with ScalaTest 3.2, sbt 1.10, and functional programming patterns.
+description: Scala 3.4+ best practices with ScalaTest 3.2, sbt 1.9, functional programming patterns.
 keywords: ['scala', 'scalatest', 'sbt', 'functional']
 allowed-tools:
   - Read
@@ -27,7 +27,7 @@ allowed-tools:
 
 ## What It Does
 
-Scala 3.6+ best practices with ScalaTest 3.2, sbt 1.10, and functional programming patterns.
+Scala 3.4+ best practices with ScalaTest 3.2, sbt 1.9, functional programming patterns.
 
 **Key capabilities**:
 - ✅ Best practices enforcement for language domain
@@ -55,9 +55,10 @@ Scala 3.6+ best practices with ScalaTest 3.2, sbt 1.10, and functional programmi
 
 | Tool | Version | Purpose | Status |
 |------|---------|---------|--------|
-| **Scala** | 3.6.0 | Primary | ✅ Current |
-| **ScalaTest** | 3.2.19 | Primary | ✅ Current |
-| **sbt** | 1.10.0 | Primary | ✅ Current |
+| **Scala** | 3.4.0 | Compiler | ✅ Current |
+| **ScalaTest** | 3.2.0 | Testing | ✅ Current |
+| **sbt** | 1.9.0 | Build Tool | ✅ Current |
+| **Scalafmt** | 3.8.0 | Formatting | ✅ Current |
 
 ---
 
@@ -111,13 +112,13 @@ _Documentation links updated 2025-10-22_
 ## Best Practices
 
 ✅ **DO**:
-- Follow language best practices
-- Use latest stable tool versions
+- Prefer immutability and pure functions
+- Use ScalaTest for testing
 - Maintain test coverage ≥85%
-- Document all public APIs
+- Leverage Scala 3 features
 
 ❌ **DON'T**:
 - Skip quality gates
-- Use deprecated tools
-- Ignore security warnings
-- Mix testing frameworks
+- Use null values
+- Ignore compiler warnings
+- Mix functional and imperative styles

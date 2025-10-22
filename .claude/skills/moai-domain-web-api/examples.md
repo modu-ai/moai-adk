@@ -1,29 +1,66 @@
-# moai-domain-web-api - Working Examples
+# Web API - Working Examples
 
-_Last updated: 2025-10-22_
+> Real-world REST and GraphQL API implementations
 
-## Example 1: Basic Setup
+---
 
-```bash
-# Setup commands
-# ...
-```
+## Example 1: Express REST API
 
-## Example 2: TDD Workflow
+### server.ts
+```typescript
+import express from 'express';
 
-```bash
-# RED: Write failing test
-# GREEN: Implement feature
-# REFACTOR: Improve code
-```
+const app = express();
+app.use(express.json());
 
-## Example 3: Quality Gate
+// GET all users
+app.get('/api/users', async (req, res) => {
+  const users = await db.getAllUsers();
+  res.json(users);
+});
 
-```bash
-# Run quality checks
-# Verify coverage ≥85%
+// POST create user
+app.post('/api/users', async (req, res) => {
+  const user = await db.createUser(req.body);
+  res.status(201).json(user);
+});
+
+app.listen(3000, () => console.log('Server running on port 3000'));
 ```
 
 ---
 
-_For more examples, see SKILL.md reference section_
+## Example 2: GraphQL API
+
+### schema.ts
+```typescript
+import { ApolloServer, gql } from 'apollo-server';
+
+const typeDefs = gql`
+  type User {
+    id: ID!
+    name: String!
+    email: String!
+  }
+
+  type Query {
+    users: [User!]!
+    user(id: ID!): User
+  }
+`;
+
+const resolvers = {
+  Query: {
+    users: () => db.getAllUsers(),
+    user: (_: any, { id }: { id: string }) => db.findUser(id),
+  },
+};
+
+const server = new ApolloServer({ typeDefs, resolvers });
+server.listen().then(({ url }) => console.log(`Server ready at ${url}`));
+```
+
+---
+
+**Last Updated**: 2025-10-22
+**Technologies**: Express, Apollo Server, GraphQL

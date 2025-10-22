@@ -4,8 +4,8 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: Rust 1.84+ best practices with cargo test, clippy, rustfmt, and ownership/borrow checker mastery.
-keywords: ['rust', 'testing', 'cargo', 'clippy', 'rustfmt', 'ownership']
+description: Rust 1.83+ best practices with cargo test, clippy, ownership/borrow checker patterns.
+keywords: ['rust', 'cargo', 'clippy', 'ownership', 'borrow-checker']
 allowed-tools:
   - Read
   - Bash
@@ -27,7 +27,7 @@ allowed-tools:
 
 ## What It Does
 
-Rust 1.84+ best practices with cargo test, clippy, rustfmt, and ownership/borrow checker mastery.
+Rust 1.83+ best practices with cargo test, clippy, ownership/borrow checker patterns.
 
 **Key capabilities**:
 - ✅ Best practices enforcement for language domain
@@ -55,10 +55,10 @@ Rust 1.84+ best practices with cargo test, clippy, rustfmt, and ownership/borrow
 
 | Tool | Version | Purpose | Status |
 |------|---------|---------|--------|
-| **Rust** | 1.84.0 | Primary | ✅ Current |
-| **cargo** | 1.84.0 | Primary | ✅ Current |
-| **clippy** | 1.84.0 | Primary | ✅ Current |
-| **rustfmt** | 1.84.0 | Primary | ✅ Current |
+| **Rust** | 1.83.0 | Compiler | ✅ Current |
+| **cargo** | 1.83.0 | Build Tool | ✅ Current |
+| **clippy** | 1.83.0 | Linting | ✅ Current |
+| **rustfmt** | 1.83.0 | Formatting | ✅ Current |
 
 ---
 
@@ -112,13 +112,13 @@ _Documentation links updated 2025-10-22_
 ## Best Practices
 
 ✅ **DO**:
-- Follow language best practices
-- Use latest stable tool versions
+- Embrace ownership and borrowing
+- Use cargo test for testing
 - Maintain test coverage ≥85%
-- Document all public APIs
+- Leverage zero-cost abstractions
 
 ❌ **DON'T**:
 - Skip quality gates
-- Use deprecated tools
-- Ignore security warnings
-- Mix testing frameworks
+- Overuse clone()
+- Ignore clippy warnings
+- Use unsafe without documentation
