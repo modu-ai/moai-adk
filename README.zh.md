@@ -152,7 +152,7 @@ uv tool install moai-adk
 
 # 验证安装
 moai-adk --version
-# 输出：MoAI-ADK v0.4.6
+# 输出：MoAI-ADK v0.4.10
 ```
 
 安装完成后，可以在任何地方使用 `moai-adk` 命令。
@@ -1080,7 +1080,7 @@ Claude Code 会话管理
 | ------------------ | -------------------------------------------------------------------- |
 | `moai-claude-code` | Claude Code agents、commands、skills、plugins、settings 脚手架和监控 |
 
-> **v0.4.6 新功能**：56个 Claude Skills 采用 4-tier 架构配置（v0.4.6 100% 完成）。每个 Skill 通过渐进披露仅在需要时加载，最小化上下文成本。由 Foundation → Essentials → Alfred → Domain/Language/Ops 层组成，所有技能都包含超过1,000行的官方文档和300+ 可执行的 TDD 示例。
+> **v0.4.10 新功能**：56个 Claude Skills 采用 4-tier 架构配置（v0.4.10 100% 完成）。每个 Skill 通过渐进披露仅在需要时加载，最小化上下文成本。由 Foundation → Essentials → Alfred → Domain/Language/Ops 层组成，所有技能都包含超过1,000行的官方文档和300+ 可执行的 TDD 示例。
 
 ---
 
@@ -1113,14 +1113,14 @@ Claude Code 会话管理
 
 | 版本       | 主要功能                                                                | 日期       |
 | ---------- | ----------------------------------------------------------------------- | ---------- |
-| **v0.4.6** | 🎉 完整 Skills v2.0 完成（100% Production-Ready）+ 85,000行官方文档 + 300+ TDD 示例 | 2025-10-22 |
+| **v0.4.10** | 🎉 完整 Skills v2.0 完成（100% Production-Ready）+ 85,000行官方文档 + 300+ TDD 示例 | 2025-10-22 |
 | **v0.4.5** | ✅ CI/CD 修复 + 多语言 README + 部署清理                                 | 2025-10-22 |
 | **v0.4.4** | 韩语语言支持                                                            | 2025-10-21 |
 | **v0.4.3** | 交互式问题工具（TUI 菜单）                                              | 2025-10-21 |
 | **v0.4.1** | Skills 本地化                                                           | 2025-10-21 |
 | **v0.4.0** | **55个 Claude Skills** + 19人 AI 团队 + 4步工作流程                     | 2025-10-21 |
 
-> 📦 **立即安装**：`pip install moai-adk==0.4.6` 或 `uv tool install moai-adk==0.4.6`
+> 📦 **立即安装**：`pip install moai-adk==0.4.10` 或 `uv tool install moai-adk==0.4.10`
 
 ---
 
@@ -1342,7 +1342,7 @@ npm install @tanstack/react-query zustand
 
 ```bash
 # 安装 MoAI-ADK
-pip install moai-adk==0.4.6
+pip install moai-adk==0.4.10
 
 # 创建项目
 mkdir mini-kanban-board && cd mini-kanban-board
@@ -1496,8 +1496,8 @@ open http://localhost:3000
 | ------------------------ | ------------------------------------------------------- |
 | **GitHub Repository**    | https://github.com/modu-ai/moai-adk                     |
 | **Issues & Discussions** | https://github.com/modu-ai/moai-adk/issues              |
-| **PyPI Package**         | https://pypi.org/project/moai-adk/（最新：v0.4.6）      |
-| **Latest Release**       | https://github.com/modu-ai/moai-adk/releases/tag/v0.4.6 |
+| **PyPI Package**         | https://pypi.org/project/moai-adk/（最新：v0.4.10）      |
+| **Latest Release**       | https://github.com/modu-ai/moai-adk/releases/tag/v0.4.10 |
 | **Documentation**        | 参考项目内 `.moai/`、`.claude/`、`docs/`                |
 
 ---
@@ -1518,7 +1518,7 @@ MoAI-ADK 不仅仅是生成代码的工具。Alfred SuperAgent 和19人团队、
 
 ---
 
-**MoAI-ADK v0.4.6** — SPEC-First TDD with AI SuperAgent & Complete Skills v2.0
+**MoAI-ADK v0.4.10** — SPEC-First TDD with AI SuperAgent & Complete Skills v2.0
 - 📦 PyPI: https://pypi.org/project/moai-adk/
 - 🏠 GitHub: https://github.com/modu-ai/moai-adk
 - 📝 License: MIT

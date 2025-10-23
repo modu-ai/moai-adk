@@ -151,7 +151,7 @@ uv tool install moai-adk
 
 # Verify installation
 moai-adk --version
-# Output: MoAI-ADK v0.4.6
+# Output: MoAI-ADK v0.4.10
 ```
 
 Once installed, you can use the `moai-adk` command anywhere.
@@ -1184,14 +1184,14 @@ If you need to temporarily disable hooks, edit `.claude/settings.json`:
 
 | Version    | Key Features                                                                         | Date       |
 | ---------- | ------------------------------------------------------------------------------------ | ---------- |
+| **v0.4.10** | 🔧 Hook robustness improvements + Bilingual documentation + Template language config | 2025-10-23 |
+| **v0.4.9** | 🎯 Hook JSON schema validation fixes + Comprehensive tests (468/468 passing)        | 2025-10-23 |
+| **v0.4.8** | 🚀 Release automation + PyPI deployment + Skills refinement                          | 2025-10-23 |
+| **v0.4.7** | 📖 Korean language optimization + SPEC-First principle documentation                 | 2025-10-22 |
 | **v0.4.6** | 🎉 Complete Skills v2.0 (100% Production-Ready) + 85,000 lines official docs + 300+ TDD examples | 2025-10-22 |
 | **v0.4.5** | ✅ CI/CD fixes + Multi-language README + Deployment cleanup                           | 2025-10-22 |
-| **v0.4.4** | Korean language support                                                              | 2025-10-21 |
-| **v0.4.3** | Interactive question tool (TUI menu)                                                 | 2025-10-21 |
-| **v0.4.1** | Skills localization                                                                  | 2025-10-21 |
-| **v0.4.0** | Claude Skills + AI team + 4-stage workflow                                          | 2025-10-21 |
 
-> 📦 **Install Now**: `pip install moai-adk==0.4.6` or `uv tool install moai-adk==0.4.6`
+> 📦 **Install Now**: `pip install moai-adk==0.4.10` or `uv tool install moai-adk==0.4.10`
 
 ---
 
@@ -1505,10 +1505,11 @@ Start a new experience of **trustworthy AI development** with Alfred! 🤖
 
 ---
 
-**MoAI-ADK v0.4.6** — SPEC-First TDD with AI SuperAgent & Complete Skills v2.0
+**MoAI-ADK v0.4.10** — SPEC-First TDD with AI SuperAgent & Complete Skills v2.0
 - 📦 PyPI: https://pypi.org/project/moai-adk/
 - 🏠 GitHub: https://github.com/modu-ai/moai-adk
 - 📝 License: MIT
-- ⭐ Skills: 56/56 Complete (100% Production-Ready)
+- ⭐ Skills: 55+ Production-Ready Guides
+- ✅ Tests: 468/468 Passing (86% coverage)
 
 ---
