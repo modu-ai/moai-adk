@@ -1142,24 +1142,24 @@ Claude Code सत्र प्रबंधन
 
 ```mermaid
 gantt
-    title Mini Kanban Board — 4‑सप्ताह की योजना
+    title Mini Kanban Board - 4-week plan
     dateFormat YYYY-MM-DD
 
     section चरण 1: बैकएंड आधार
-    CH07: SPEC-001~004 परिभाषित          :active, ch07-spec, 2025-11-03, 1d
+    CH07: SPEC-001-004 परिभाषित          :active, ch07-spec, 2025-11-03, 1d
     CH07: SpecScanner (TDD) इम्प्लीमेंट  :active, ch07-impl, 2025-11-04, 1d
 
     section चरण 2: बैकएंड उन्नत
     CH08: REST API इम्प्लीमेंट            :active, ch08-api, 2025-11-05, 1d
-    CH08: WebSocket + फाइल वॉच           :active, ch08-ws, 2025-11-06, 1d
+    WebSocket + फाइल वॉच           :active, ch08-ws, 2025-11-06, 1d
 
     section चरण 3: फ्रंटएंड आधार
-    CH09: React इनिट + SPEC-009~012      :active, ch09-spec, 2025-11-10, 1d
-    CH09: Kanban Board (TDD)             :active, ch09-impl, 2025-11-11, 1d
+    CH09: React इनिट + SPEC-009-012      :active, ch09-spec, 2025-11-10, 1d
+    Kanban Board (TDD)             :active, ch09-impl, 2025-11-11, 1d
 
     section चरण 4: एडवांस्ड + डिप्लॉय
-    CH10: E2E + CI/CD                    :active, ch10-e2e, 2025-11-12, 1d
-    CH10: Docker Compose + ऑप्टिमाइज़     :active, ch10-deploy, 2025-11-13, 1d
+    E2E + CI/CD                    :active, ch10-e2e, 2025-11-12, 1d
+    Docker Compose + ऑप्टिमाइज़     :active, ch10-deploy, 2025-11-13, 1d
 ```
 
 ### 16‑SPEC रोडमैप
@@ -1226,7 +1226,7 @@ gantt
 
 ### चरणवार विवरण
 
-#### चरण 1: बैकएंड आधार (SPEC-001~004)
+#### चरण 1: बैकएंड आधार (SPEC-001-004)
 
 लक्ष्य: FastAPI + Pydantic v2 + uv से कोर डेटा स्कैनिंग सेवा बनाना
 
@@ -1236,7 +1236,7 @@ gantt
 # → .moai/, backend/, frontend/ बनते हैं
 # → .moai/config.json सेटअप
 
-# 2) SPEC लिखें (SPEC-001~004)
+# 2) SPEC लिखें (SPEC-001-004)
 /alfred:1-plan
 # → SPEC-001: SPEC फ़ाइल स्कैनर
 # → SPEC-002: YAML मेटाडेटा पार्सर
@@ -1280,7 +1280,7 @@ gantt
 - असिंक्रोनस इवेंट ब्रॉडकास्ट
 - TRUST 5 का स्वचालित सत्यापन
 
-#### चरण 3: फ्रंटएंड आधार (SPEC-009~012)
+#### चरण 3: फ्रंटएंड आधार (SPEC-009-012)
 
 लक्ष्य: React 19 + TypeScript + Vite से Kanban UI बनाना
 

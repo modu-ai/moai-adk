@@ -1215,24 +1215,24 @@ Let’s build a Mini Kanban Board web application designed to help you master Mo
 
 ```mermaid
 gantt
-    title Mini Kanban Board — 4‑week plan
+    title Mini Kanban Board - 4-week plan
     dateFormat YYYY-MM-DD
 
     section Phase 1: Backend Basics
-    CH07: Define SPEC-001~004           :active, ch07-spec, 2025-11-03, 1d
-    CH07: Implement SpecScanner (TDD)   :active, ch07-impl, 2025-11-04, 1d
+    Define SPEC-001-004           :active, ch07-spec, 2025-11-03, 1d
+    Implement SpecScanner (TDD)   :active, ch07-impl, 2025-11-04, 1d
 
     section Phase 2: Backend Advanced
-    CH08: Implement REST API            :active, ch08-api, 2025-11-05, 1d
-    CH08: WebSocket + File Watch        :active, ch08-ws, 2025-11-06, 1d
+    Implement REST API            :active, ch08-api, 2025-11-05, 1d
+    WebSocket + File Watch        :active, ch08-ws, 2025-11-06, 1d
 
     section Phase 3: Frontend Basics
-    CH09: React init + SPEC-009~012     :active, ch09-spec, 2025-11-10, 1d
-    CH09: Kanban Board (TDD)            :active, ch09-impl, 2025-11-11, 1d
+    React init + SPEC-009-012     :active, ch09-spec, 2025-11-10, 1d
+    Kanban Board (TDD)            :active, ch09-impl, 2025-11-11, 1d
 
     section Phase 4: Advanced + Deploy
-    CH10: E2E + CI/CD                   :active, ch10-e2e, 2025-11-12, 1d
-    CH10: Docker Compose + Optimize     :active, ch10-deploy, 2025-11-13, 1d
+    E2E + CI/CD                   :active, ch10-e2e, 2025-11-12, 1d
+    Docker Compose + Optimize     :active, ch10-deploy, 2025-11-13, 1d
 ```
 
 ### 16‑SPEC Roadmap
