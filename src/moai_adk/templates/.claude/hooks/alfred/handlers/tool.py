@@ -6,8 +6,8 @@ PreToolUse, PostToolUse event handling
 """
 
 from core import HookPayload, HookResult
-from core.tags import scan_recent_changes_for_missing_tags
 from core.checkpoint import create_checkpoint, detect_risky_operation
+from core.tags import scan_recent_changes_for_missing_tags
 
 
 def handle_pre_tool_use(payload: HookPayload) -> HookResult:

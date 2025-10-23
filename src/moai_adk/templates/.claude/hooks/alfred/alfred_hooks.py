@@ -55,6 +55,7 @@ Setup sys.path for package imports
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 from core import HookResult
 from handlers import (

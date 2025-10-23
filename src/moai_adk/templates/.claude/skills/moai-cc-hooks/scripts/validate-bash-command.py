@@ -20,5 +20,5 @@ try:
             print(f"🔴 {msg}", file=sys.stderr)
             sys.exit(2)
     sys.exit(0)
-except:
+except Exception:
     sys.exit(0)
