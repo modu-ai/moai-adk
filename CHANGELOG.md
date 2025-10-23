@@ -7,6 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.4.10] - 2025-10-23 (Hook Robustness & Bilingual Documentation)
+
+### 🎯 주요 변경사항 | Key Changes
+
+**Bug Fix | 버그 수정**:
+- 🔧 Empty stdin 처리 개선 | Improved Empty stdin Handling
+  - Hook stdin 입력이 비어있을 때 JSON 파싱 오류 해결 | Fixed JSON parsing error when Hook stdin input is empty
+  - Alfred hooks 안정성 향상 | Enhanced Alfred hooks stability across all platforms
+  - 크로스 플랫폼 호환성 개선 (Windows/macOS/Linux) | Improved cross-platform compatibility
+
+**Testing | 테스트 추가**:
+- ✅ Hook stdin 처리 테스트 개선 | Enhanced Hook stdin handling tests
+- ✅ HookResult JSON 스키마 검증 테스트 수정 | Fixed HookResult JSON schema validation tests
+- ✅ 모든 테스트 통과: 468/468 ✅ | All tests passing: 468/468 ✅
+- ✅ 테스트 커버리지: 86% (목표: 85%) | Test Coverage: 86% (Goal: 85%) ✅
+
+**Documentation | 문서화**:
+- 📖 README.md 전체 버전 업데이트 (v0.4.6 → v0.4.10) | Updated README.md versions (v0.4.6 → v0.4.10)
+- 🌍 모든 언어 README 동기화 | Synchronized all language READMEs
+- 📝 Hook 스키마 정정 사항 문서화 | Documented Hook schema corrections
+- 🎓 Claude Code Hooks 가이드 강화 | Enhanced Claude Code Hooks guide
+
+**Enhancement | 개선사항**:
+- 🎯 CLAUDE.md 템플릿 언어 설정 개선 | Improved CLAUDE.md template language configuration
+  - Alfred Core Directives 추가 | Added Alfred Core Directives
+  - 프로젝트 담당자 개인화 지원 | Added project owner personalization support
+  - 3가지 코어 원칙 명시 | Clarified 3 core principles
+- 📦 패키지 템플릿 언어 설정 동기화 | Synchronized package template language settings
+  - SKILL-template.md: 언어 필드 추가 | Added language field
+  - command-template.md: 메타데이터 강화 | Enhanced metadata
+  - agent-template.md: Context Engineering 섹션 추가 | Added Context Engineering section
+
+**Quality | 품질 검증**:
+- ✅ Hook JSON 스키마: 100% 통과 | Hook JSON schema: 100% passing
+- ✅ 빈 stdin 처리: 안정화 | Empty stdin handling: Stabilized
+- ✅ 언어 설정 일관성: 완벽 | Language configuration consistency: Perfect
+- ✅ 릴리스 준비: 완료 | Release readiness: Complete
+
+### 🔗 참고 자료 | References
+
+**파일 변경**:
+- `.claude/hooks/alfred/alfred_hooks.py`: Empty stdin 처리 로직 추가 | Added empty stdin handling logic
+- `tests/hooks/test_alfred_hooks_stdin.py`: Stdin 테스트 검증 | Verified stdin tests
+- `tests/hooks/test_hook_result.py`: HookResult 테스트 수정 (5개) | Fixed 5 HookResult tests
+- `README.md`: 버전 업데이트 및 문서화 개선 | Updated versions and improved documentation
+- `CLAUDE.md`: Alfred Core Directives 추가 | Added Alfred Core Directives
+- `.moai/config.json`: 언어 설정 한국어 동기화 | Synchronized Korean language settings
+
+### 📦 설치 | Installation
+
+```bash
+pip install moai-adk==0.4.10
+```
+
+### 🔗 링크 | Links
+
+- **PyPI**: https://pypi.org/project/moai-adk/0.4.10/
+- **GitHub Release**: https://github.com/modu-ai/moai-adk/releases/tag/v0.4.10
+
+---
+
 ## [v0.4.9] - 2025-10-23 (Hook JSON Schema Validation Fix)
 
 ### 🎯 주요 변경사항 | Key Changes

@@ -1,21 +1,33 @@
 ---
-name: command-name
-description: Brief description of what the command does
-argument-hint: "[param1] [param2]"
-tools: Read, Write, Task
-model: sonnet
+name: {{command_name}}
+description: {{command_description}}
+argument-hint: "{{command_args}}"
+tools: {{command_tools}}
+model: {{command_model}}
+language: {{conversation_language_name}}
+project: {{project_name}}
 ---
 
-# Command Title
+# {{command_title}}
 
-Brief description of functionality.
+{{command_description}}
 
 ## Usage
 
-`/command-name param1 param2` — Basic usage
+`/{{command_name}} {{command_args}}` — {{command_usage_example}}
 
 ## Agent Orchestration
 
-1. Call specific agent for task
-2. Handle results
-3. Provide user feedback
+1. **Phase 1**: Call {{primary_agent}} for {{phase1_task}}
+2. **Phase 2**: Call {{secondary_agent}} for {{phase2_task}}
+3. **Phase 3**: Call {{tertiary_agent}} for {{phase3_task}}
+
+## Success Criteria
+
+- {{success_criterion_1}}
+- {{success_criterion_2}}
+- {{success_criterion_3}}
+
+## Language
+
+> All output in {{conversation_language_name}}

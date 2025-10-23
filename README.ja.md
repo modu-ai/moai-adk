@@ -544,7 +544,7 @@ npm install @tanstack/react-query zustand
 #### 1) 初期化
 
 ```bash
-pip install moai-adk==0.4.6
+pip install moai-adk==0.4.10
 mkdir mini-kanban-board && cd mini-kanban-board
 git init
 /alfred:0-project

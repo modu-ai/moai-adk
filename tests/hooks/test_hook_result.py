@@ -49,38 +49,41 @@ class TestHookResultSchema:
         assert isinstance(output, dict)
 
     def test_hook_result_with_system_message(self):
-        """system_message가 있을 때 hookSpecificOutput에 포함되어야 한다
+        """system_message가 있을 때 systemMessage 필드에 포함되어야 한다
 
         SPEC 요구사항:
-            - WHEN system_message가 설정되면, hookSpecificOutput.systemMessage에 포함되어야 한다
+            - WHEN system_message가 설정되면, systemMessage가 TOP-LEVEL 필드로 포함되어야 한다
 
         Given: system_message="Test message"인 HookResult
         When: to_dict()를 호출하면
-        Then: hookSpecificOutput.systemMessage="Test message"를 포함한다
+        Then: systemMessage="Test message"를 최상위 레벨에서 반환한다
         """
         result = HookResult(system_message="Test message")
         output = result.to_dict()
 
         assert "continue" in output
         assert output["continue"] is True
-        assert "hookSpecificOutput" in output
-        assert output["hookSpecificOutput"]["systemMessage"] == "Test message"
+        assert "systemMessage" in output
+        assert output["systemMessage"] == "Test message"
 
     def test_hook_result_with_context_files(self):
-        """context_files가 hookSpecificOutput에 포함되어야 한다
+        """context_files는 내부 전용 필드로 to_dict()에 포함되지 않음
 
         SPEC 요구사항:
-            - WHEN context_files가 설정되면, hookSpecificOutput.contextFiles에 포함되어야 한다
+            - WHEN context_files가 설정되면, 내부 속성으로만 유지되고 JSON 출력에 포함되지 않아야 한다
 
         Given: context_files=["file1.txt", "file2.txt"]인 HookResult
         When: to_dict()를 호출하면
-        Then: hookSpecificOutput.contextFiles에 목록이 포함된다
+        Then: context_files는 JSON에 포함되지 않는다 (내부 전용 필드)
         """
         result = HookResult(context_files=["file1.txt", "file2.txt"])
         output = result.to_dict()
 
-        assert "hookSpecificOutput" in output
-        assert output["hookSpecificOutput"]["contextFiles"] == ["file1.txt", "file2.txt"]
+        # context_files는 내부 전용 필드로 JSON에 포함되지 않음
+        assert "contextFiles" not in output
+        assert "hookSpecificOutput" not in output
+        # 하지만 객체 속성으로는 유지됨
+        assert result.context_files == ["file1.txt", "file2.txt"]
 
     def test_hook_result_decision_block(self):
         """decision="block"일 때 reason과 함께 반환되어야 한다
@@ -133,11 +136,13 @@ class TestHookResultSchema:
         """전체 필드가 설정된 HookResult
 
         SPEC 요구사항:
-            - WHEN 모든 필드가 설정되면, 모든 필드가 올바르게 반환되어야 한다
+            - WHEN 모든 필드가 설정되면, Claude Code 표준 스키마로 반환되어야 한다
+            - systemMessage는 TOP-LEVEL 필드
+            - context_files, suggestions은 내부 전용 필드 (JSON에 포함 안됨)
 
         Given: 모든 필드가 설정된 HookResult
         When: to_dict()를 호출하면
-        Then: 모든 필드가 올바르게 포함된다
+        Then: 표준 스키마 필드만 포함된다
         """
         result = HookResult(
             continue_execution=True,
@@ -154,31 +159,37 @@ class TestHookResultSchema:
 
         assert output["continue"] is True
         assert output["permissionDecision"] == "ask"
-        assert output["hookSpecificOutput"]["systemMessage"] == "Status message"
-        assert output["hookSpecificOutput"]["contextFiles"] == ["file1.txt"]
-        assert output["hookSpecificOutput"]["suggestions"] == ["Do this first"]
-        assert "exitCode" not in output["hookSpecificOutput"]  # 0 should be omitted
+        assert output["systemMessage"] == "Status message"
+        # context_files, suggestions, exit_code는 내부 전용 필드
+        assert "contextFiles" not in output
+        assert "suggestions" not in output
+        assert "exitCode" not in output
 
     def test_hook_result_no_old_fields(self):
-        """이전 필드명(message, blocked, contextFiles)이 없어야 한다
+        """이전 필드명(message, blocked)이 없어야 한다
 
         SPEC 요구사항:
             - WHEN to_dict()를 호출하면, 이전 필드명이 없어야 한다
+            - systemMessage는 현재 표준 필드 (TOP-LEVEL)
+            - contextFiles는 내부 전용 필드 (JSON에 미포함)
 
         Given: HookResult 객체
         When: to_dict()를 호출하면
-        Then: message, blocked, contextFiles 필드가 없다
+        Then: message, blocked 필드가 없고, systemMessage는 포함된다
         """
         result = HookResult(system_message="Test", context_files=["file.txt"])
         output = result.to_dict()
 
-        # 최상위 레벨에 없어야 함
+        # 이전 필드명은 최상위 레벨에 없어야 함
         assert "message" not in output
         assert "blocked" not in output
-        assert "contextFiles" not in output
 
-        # camelCase 버전도 없어야 함
-        assert "systemMessage" not in output
+        # systemMessage는 현재 표준 필드이므로 포함되어야 함
+        assert "systemMessage" in output
+        assert output["systemMessage"] == "Test"
+
+        # contextFiles는 내부 전용 필드이므로 JSON에 포함 안됨
+        assert "contextFiles" not in output
 
     def test_hook_result_json_serializable(self):
         """to_dict() 결과가 JSON 직렬화 가능해야 한다
@@ -244,33 +255,39 @@ class TestHookResultSchema:
             assert "suggestions" not in output["hookSpecificOutput"]
 
     def test_hook_result_exit_code_nonzero(self):
-        """exit_code가 0이 아니면 hookSpecificOutput에 포함되어야 한다
+        """exit_code는 내부 전용 필드로 JSON에 포함되지 않음
 
         SPEC 요구사항:
-            - WHEN exit_code가 0이 아니면, hookSpecificOutput.exitCode에 포함되어야 한다
+            - WHEN exit_code가 설정되면, 내부 속성으로만 유지되고 JSON에 포함되지 않아야 한다
 
         Given: exit_code=1인 HookResult
         When: to_dict()를 호출하면
-        Then: hookSpecificOutput.exitCode=1를 포함한다
+        Then: exit_code는 JSON에 포함되지 않지만 객체 속성으로는 유지된다
         """
         result = HookResult(exit_code=1)
         output = result.to_dict()
 
-        assert "hookSpecificOutput" in output
-        assert output["hookSpecificOutput"]["exitCode"] == 1
+        # exit_code는 내부 전용 필드로 JSON에 포함 안됨
+        assert "exitCode" not in output
+        assert "hookSpecificOutput" not in output
+        # 하지만 객체 속성으로는 유지됨
+        assert result.exit_code == 1
 
     def test_hook_result_exit_code_zero_omitted(self):
-        """exit_code가 0이면 hookSpecificOutput에서 제외되어야 한다
+        """exit_code=0일 때도 JSON에 포함되지 않음
 
         SPEC 요구사항:
-            - WHEN exit_code가 0이면, hookSpecificOutput에서 제외되어야 한다
+            - WHEN exit_code가 0이면, JSON에 포함되지 않아야 한다 (내부 전용 필드)
 
         Given: exit_code=0인 HookResult
         When: to_dict()를 호출하면
-        Then: hookSpecificOutput에 exitCode가 없다
+        Then: exit_code는 JSON에 포함되지 않는다
         """
         result = HookResult(exit_code=0)
         output = result.to_dict()
 
-        if "hookSpecificOutput" in output:
-            assert "exitCode" not in output["hookSpecificOutput"]
+        # exit_code는 내부 전용 필드로 JSON에 포함 안됨 (0이든 아니든)
+        assert "exitCode" not in output
+        assert "hookSpecificOutput" not in output
+        # 객체 속성으로는 유지됨
+        assert result.exit_code == 0

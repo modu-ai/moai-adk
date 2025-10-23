@@ -151,7 +151,7 @@ uv tool install moai-adk
 
 # 설치 확인
 moai-adk --version
-# 출력: MoAI-ADK v0.4.6
+# 출력: MoAI-ADK v0.4.10
 ```
 
 설치가 완료되면, `moai-adk` 명령어를 어디서나 사용할 수 있습니다.
@@ -1023,7 +1023,7 @@ Claude Code 세션 관리
 | ------------------ | ------------------------------------------------------------------------ |
 | `moai-claude-code` | Claude Code agents, commands, skills, plugins, settings 스캐폴딩 및 감시 |
 
-> Claude Skills가 4-tier 아키텍처로 구성되었습니다 (v0.4.6에서 100% 완성). 각 Skill은 Progressive Disclosure를 통해 필요할 때만 로드되어 컨텍스트 비용을 최소화합니다. Foundation → Essentials → Alfred → Domain/Language/Ops 계층으로 구성되어 있으며, 모든 스킬이 프로덕션급 문서와 실행 가능한 TDD 예제를 포함합니다.
+> Claude Skills가 4-tier 아키텍처로 구성되었습니다 (v0.4.10에서 100% 완성). 각 Skill은 Progressive Disclosure를 통해 필요할 때만 로드되어 컨텍스트 비용을 최소화합니다. Foundation → Essentials → Alfred → Domain/Language/Ops 계층으로 구성되어 있으며, 모든 스킬이 프로덕션급 문서와 실행 가능한 TDD 예제를 포함합니다.
 
 ---
 
@@ -1327,7 +1327,7 @@ npm install @tanstack/react-query zustand
 
 ```bash
 # MoAI-ADK 설치
-pip install moai-adk==0.4.6
+pip install moai-adk==0.4.10
 
 # Mini Kanban Board 프로젝트 생성
 mkdir mini-kanban-board && cd mini-kanban-board
@@ -1438,7 +1438,7 @@ Mini Kanban Board 프로젝트에서는 모든 단계에서 TRUST 5원칙이 자
 | **GitHub Repository**    | https://github.com/modu-ai/moai-adk                     |
 | **Issues & Discussions** | https://github.com/modu-ai/moai-adk/issues              |
 | **PyPI Package**         | https://pypi.org/project/moai-adk      |
-| **Latest Release**       | https://github.com/modu-ai/moai-adk/releases/tag/v0.4.6 |
+| **Latest Release**       | https://github.com/modu-ai/moai-adk/releases/tag/v0.4.10 |
 | **Documentation**        | 프로젝트 내 `.moai/`, `.claude/`, `docs/` 참고          |
 
 ---
@@ -1459,7 +1459,7 @@ Alfred와 함께 **신뢰할 수 있는 AI 개발**의 새로운 경험을 시�
 
 ---
 
-**MoAI-ADK v0.4.6** — SPEC-First TDD with AI SuperAgent & Complete Skills v2.0
+**MoAI-ADK v0.4.10** — SPEC-First TDD with AI SuperAgent & Complete Skills v2.0
 - 📦 PyPI: https://pypi.org/project/moai-adk/
 - 🏠 GitHub: https://github.com/modu-ai/moai-adk
 - 📝 License: MIT
