@@ -968,13 +968,9 @@ MoAI-ADK 내부 워크플로우 오케스트레이션 스킬
 
 | Skill                                  | 설명                                                                |
 | -------------------------------------- | ------------------------------------------------------------------- |
-| `moai-alfred-code-reviewer`            | 언어별 최고 관행, SOLID 원칙, 개선 제안을 포함한 자동 코드 리뷰     |
-| `moai-alfred-debugger-pro`             | 스택 추적 분석, 에러 패턴 감지, 복잡한 런타임 에러 해석             |
 | `moai-alfred-ears-authoring`           | EARS 구문 검증 및 requirement 패턴 가이드                           |
 | `moai-alfred-git-workflow`             | MoAI-ADK conventions (feature branch, TDD commits, Draft PR) 자동화 |
 | `moai-alfred-language-detection`       | 프로젝트 언어/런타임 감지 및 기본 테스트 도구 추천                  |
-| `moai-alfred-performance-optimizer`    | 성능 프로파일링, 병목 감지, 언어별 최적화                           |
-| `moai-alfred-refactoring-coach`        | 리팩토링 가이드, 설계 패턴, 단계별 개선 계획                        |
 | `moai-alfred-spec-metadata-validation` | SPEC YAML frontmatter 및 HISTORY 섹션 정합성 검증                   |
 | `moai-alfred-tag-scanning`             | @TAG 마커 전체 스캔 및 인벤토리 생성 (CODE-FIRST 원칙)              |
 | `moai-alfred-trust-validation`         | TRUST 5-principles 준수 검증                                        |
@@ -1018,11 +1014,6 @@ MoAI-ADK 내부 워크플로우 오케스트레이션 스킬
 | `moai-lang-php`        | PHPUnit, Composer, PSR 표준                            |
 | `moai-lang-sql`        | 테스트 프레임워크, 쿼리 최적화, 마이그레이션 관리      |
 | `moai-lang-shell`      | bats, shellcheck, POSIX 준수                           |
-| `moai-lang-haskell`    | HUnit, Stack/Cabal, 순수 함수형 프로그래밍             |
-| `moai-lang-elixir`     | ExUnit, Mix, OTP 패턴                                  |
-| `moai-lang-clojure`    | clojure.test, Leiningen, 불변 데이터 구조              |
-| `moai-lang-lua`        | busted, luacheck, embedded scripting 패턴              |
-| `moai-lang-julia`      | Test stdlib, Pkg manager, 과학 계산 패턴               |
 | `moai-lang-r`          | testthat, lintr, 데이터 분석 패턴                      |
 
 #### Claude Code Ops

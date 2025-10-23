@@ -66,7 +66,7 @@ allowed-tools:
 4. **Plan creation**: Generate specifications of EARS structure (spec.md, plan.md, acceptance.md)
 5. **Git operations**: Create branches/PRs via git-manager
 
-## 🧠 Skill Loadout Overview
+## 🧠 Associated Skills & Agents
 
 | Agent        | Core Skill                 | Purpose                     |
 | ------------ | -------------------------- | --------------------------- |

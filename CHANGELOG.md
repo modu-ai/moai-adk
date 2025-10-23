@@ -7,6 +7,81 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.4.9] - 2025-10-23 (Hook JSON Schema Validation Fix)
+
+### 🎯 주요 변경사항 | Key Changes
+
+**Bug Fix | 버그 수정**:
+- 🔧 SessionStart Hook JSON 스키마 검증 오류 해결 | Fixed SessionStart Hook JSON Schema Validation Error
+  - `systemMessage`를 최상위 필드로 정정 (hookSpecificOutput에서 이동) | Moved `systemMessage` to top-level field (from hookSpecificOutput)
+  - 모든 Hook 이벤트 스키마 정규화 | Normalized all Hook event schemas per Claude Code official specification
+  - UserPromptSubmit 특수 스키마 명확화 | Clarified UserPromptSubmit special schema usage
+
+**Testing | 테스트 추가**:
+- ✅ 자동 Hook 검증 테스트 추가 (8/8 통과) | Added automated Hook validation tests (8/8 passing)
+- ✅ 실제 Hook 실행 검증 완료 | Verified actual Hook execution
+
+**Documentation | 문서화**:
+- 📖 Hook JSON 스키마 검증 가이드 추가 | Added Hook JSON Schema Validation Guide
+- 📊 각 Hook 이벤트별 올바른 스키마 문서화 | Documented correct schema for each Hook event
+- 🔍 근본 원인 분석 및 해결 방안 기록 | Recorded root cause analysis and solution approach
+
+**Quality | 품질 검증**:
+- ✅ Hook 스키마 자동 검증: 100% 통과 | Hook schema auto-validation: 100% passing
+- ✅ JSON 직렬화 검증 완료 | JSON serialization verification complete
+- ✅ Claude Code 공식 표준 준수 확인 | Verified compliance with Claude Code official standard
+
+### 🔗 참고 자료 | References
+
+**공식 문서 기준**:
+- Claude Code Hooks Mastery (Context7: /disler/claude-code-hooks-mastery, Trust Score: 8.3)
+- Claude Code Templates (Context7: /davila7/claude-code-templates, Trust Score: 10)
+- Official Claude Code Hooks Documentation: https://docs.claude.com/en/docs/claude-code/hooks
+
+**변경 파일**:
+- `.claude/hooks/alfred/core/__init__.py`: HookResult 클래스 검증
+- `.claude/hooks/alfred/test_hook_output.py`: 자동 검증 스크립트 (신규)
+- `.claude/hooks/alfred/HOOK_SCHEMA_VALIDATION.md`: 상세 문서 (신규)
+
+### 📦 설치 | Installation
+
+```bash
+pip install moai-adk==0.4.9
+```
+
+### 🔗 링크 | Links
+
+- **PyPI**: https://pypi.org/project/moai-adk/0.4.9/
+- **GitHub Release**: https://github.com/modu-ai/moai-adk/releases/tag/v0.4.9
+
+---
+
+## [v0.4.8] - 2025-10-23 (Release Automation & Skills Refinement)
+
+### 🎯 주요 변경사항 | Key Changes
+
+**Enhancement | 개선사항**:
+- 🚀 PyPI 자동 배포 및 GitHub 릴리즈 자동화 | Automated PyPI Deployment & GitHub Release Automation
+- 📋 릴리즈 검증 및 버전 관리 개선 | Release Verification & Version Management Improvements
+- 🎯 Skills 팩 최종 정제 및 최적화 | Final Skill Packs Refinement & Optimization
+
+**Documentation | 문서화**:
+- 버전 관리 원칙 (Semantic Versioning) | Version Management Principles (Semantic Versioning)
+- 릴리즈 자동화 가이드 | Release Automation Guide
+- SSOT (Single Source of Truth) 버전 관리 | SSOT Version Management
+
+**Quality | 품질 검증**:
+- ✅ 테스트 커버리지: 87% | Test Coverage: 87%
+- ✅ 패키지 검증: 완료 | Package Validation: Complete
+
+### 📦 설치 | Installation
+
+```bash
+pip install moai-adk==0.4.8
+```
+
+---
+
 ## [v0.4.7] - 2025-10-22 (Patch Release)
 
 ### 🎯 주요 변경사항 | Key Changes

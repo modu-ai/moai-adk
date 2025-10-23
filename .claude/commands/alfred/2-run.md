@@ -65,7 +65,7 @@ Analyze SPEC documents to execute planned tasks. It supports not only TDD implem
 4. **Execute work**: Perform work according to the approved plan
 5. **Git Operations**: Creating step-by-step commits with git-manager
 
-## 🧠 Skill Loadout Overview
+## 🧠 Associated Skills & Agents
 
 | Agent                  | Core Skill                       | Purpose                                 |
 | ---------------------- | -------------------------------- | --------------------------------------- |

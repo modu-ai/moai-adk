@@ -1,39 +1,29 @@
-# TRUST Validation Examples
+# moai-alfred-trust-validation - Working Examples
 
 _Last updated: 2025-10-22_
 
-## Example 1: TypeScript Project TRUST Validation
+## Example 1: Basic Setup
 
 ```bash
-# Run all TRUST checks
-npm run trust-gate
+# Setup commands
+# ...
+```
 
-# Output:
-# ✓ Test coverage: 92% (≥85% ✅)
-# ✓ Linting: 0 errors
-# ✓ Type checking: No errors
-# ✓ Security: No vulnerabilities
-# ✓ TAGs: Complete chain
+## Example 2: TDD Workflow
 
-# ✅ TRUST validation passed!
+```bash
+# RED: Write failing test
+# GREEN: Implement feature
+# REFACTOR: Improve code
+```
+
+## Example 3: Quality Gate
+
+```bash
+# Run quality checks
+# Verify coverage ≥85%
 ```
 
 ---
 
-## Example 2: Python Project TRUST Validation
-
-```bash
-# Run TRUST gate script
-./scripts/trust-gate.sh
-
-# Output:
-# ✓ pytest coverage: 89% ✅
-# ✓ ruff check: All good ✅
-# ✓ mypy: No type errors ✅
-# ✓ bandit: No security issues ✅
-# ✓ TAG chain: Complete ✅
-```
-
----
-
-**For complete TRUST reference, see [reference.md](reference.md)**
+_For more examples, see SKILL.md reference section_

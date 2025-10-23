@@ -228,43 +228,5 @@ except Exception as e:
 
 ---
 
-## 🤝 Works Well With
-
-**Complementary Skills:**
-- **moai-cc-settings** - Define permissions + register Hooks in `settings.json`
-- **moai-cc-agents** - Use Hooks to validate agent outputs before execution
-- **moai-cc-commands** - Trigger Hooks on command events (SessionStart, PostToolUse)
-- **cc-manager agent** - Automate Hook creation and validation
-
-**MoAI-ADK Workflows:**
-- **`/alfred:0-project`** - SessionStart Hook displays project status
-- **`/alfred:2-run`** - PreToolUse validates @TAG, PostToolUse auto-formats
-- **`/alfred:3-sync`** - PostToolUse generates docs, README updates
-
-**Example Integration:**
-```bash
-# 1. Define settings.json with Hooks
-@agent-cc-manager "Register PreToolUse Hook to validate @TAG"
-
-# 2. Link to agent validation
-# Create agent that processes Hook output
-
-# 3. Use in workflow
-/alfred:2-run AUTH-001  # Triggers PreToolUse Hook
-```
-
-**Common Patterns:**
-- ✅ PreToolUse (Edit) + moai-cc-settings = Permission enforcement
-- ✅ PostToolUse (Edit) + language skill = Auto-formatting (black, prettier)
-- ✅ SessionStart + moai-cc-claude-md = Load project context
-- ✅ PostToolUse (Bash) + moai-cc-memory = Cache test results
-
-**See Also:**
-- 📖 **Orchestrator Guide:** `Skill("moai-cc-guide")` → SKILL.md
-- 📖 **Implementation Workflow:** `Skill("moai-cc-guide")` → workflows/alfred-2-run-flow.md
-- 📖 **Security Guide:** `Skill("moai-cc-settings")` → Permission Patterns
-
----
-
 **Reference**: Context7 Claude Code Hooks documentation
 **Version**: 1.0.0

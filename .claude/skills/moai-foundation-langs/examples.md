@@ -1,60 +1,29 @@
-# Language Detection Examples
+# moai-foundation-langs - Working Examples
 
 _Last updated: 2025-10-22_
 
-## Example 1: Next.js (TypeScript) Project
+## Example 1: Basic Setup
 
-**Project Structure**:
-```
-my-nextjs-app/
-├── package.json
-├── tsconfig.json
-├── next.config.js
-├── src/
-│   ├── app/
-│   └── components/
-└── tests/
+```bash
+# Setup commands
+# ...
 ```
 
-**Detection Result**:
-```json
-{
-  "primary": "typescript",
-  "framework": "nextjs",
-  "testing": "vitest",
-  "recommended_skills": [
-    "moai-lang-typescript",
-    "moai-domain-frontend"
-  ]
-}
+## Example 2: TDD Workflow
+
+```bash
+# RED: Write failing test
+# GREEN: Implement feature
+# REFACTOR: Improve code
+```
+
+## Example 3: Quality Gate
+
+```bash
+# Run quality checks
+# Verify coverage ≥85%
 ```
 
 ---
 
-## Example 2: FastAPI (Python) Project
-
-**Project Structure**:
-```
-my-api/
-├── pyproject.toml
-├── src/
-│   └── api/
-└── tests/
-```
-
-**Detection Result**:
-```json
-{
-  "primary": "python",
-  "framework": "fastapi",
-  "testing": "pytest",
-  "recommended_skills": [
-    "moai-lang-python",
-    "moai-domain-backend"
-  ]
-}
-```
-
----
-
-**For complete detection patterns, see [reference.md](reference.md)**
+_For more examples, see SKILL.md reference section_

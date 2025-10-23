@@ -1,54 +1,41 @@
 ---
 name: MoAI ADK Learning
-description: Interactive learning mode for MoAI-ADK beginners with step-by-step guidance
-target_audience: Developers new to MoAI-ADK
-learning_time: 30-45 minutes
+description: Learning mode to easily learn MoAI-ADK concepts and workflow
 ---
 
-# 🎓 MoAI ADK Learning Mode
-
+# MoAI ADK Learning
 > Interactive prompts rely on `Skill("moai-alfred-interactive-questions")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
 
-**🎯 Audience**: Developers new to MoAI-ADK
+**Audience**: Developers new to MoAI-ADK
 
-This learning mode helps you master MoAI-ADK quickly through clear explanations, real-world examples, and the three-step workflow.
+This is a learning mode that helps you learn quickly by carefully explaining the core concepts and three-step workflow of MoAI-ADK.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## MoAI-ADK?
 
-## What is MoAI-ADK?
+**Core philosophy**: “No code without specification, no implementation without testing.”
 
-────────────────────────────────────────────────────────────
-📚 Core Philosophy
-────────────────────────────────────────────────────────────
+MoAI-ADK consists of three core concepts:
+1. **SPEC-First**: Write specifications first before writing code
+2. **@TAG Traceability**: Link all code to SPEC
+3. **TRUST Quality**: 5 principles to ensure code quality
 
-**"No code without specification, no implementation without testing."**
-
-Three core concepts:
-- 1️⃣ **SPEC-First**: Write specifications first
-- 2️⃣ **@TAG Traceability**: Link all code to SPEC
-- 3️⃣ **TRUST Quality**: 5 principles for code excellence
-
-Let's learn how these concepts work, one by one! ▶
+Let’s learn how these three concepts work one by one!
 
 ---
 
-───────────────────────────────────────────────────────────
+## Core Concept 1: SPEC-First
 
-## ▶ Concept 1: SPEC-First
+### What is SPEC?
 
-────────────────────────────────────────────────────────────
-💡 What is SPEC?
-────────────────────────────────────────────────────────────
+**To put it simply**:
+- A blueprint that writes down in advance what to make
+- Steps and ingredients are clearly defined, like a cooking recipe.
 
-📋 **To put it simply:**
-- A blueprint documenting what to build in advance
-- Steps and ingredients clearly defined, like a cooking recipe
-
-🎯 **Why do you need it?**
-- ✓ Clarify requirements before development
-- ✓ Provide a baseline for team communication
-- ✓ Track changes later with full history
-- ✓ Answer: "Why was this code written?"
+**Why do you need it?**
+- Clarify requirements before development
+- Provide a baseline for communicating with team members
+- Allows you to track changes later
+- Answers the question, “Why was this code written?”
 
 ### EARS syntax: How to write requirements
 
@@ -120,24 +107,22 @@ Example:
 - Refresh token expiration time must not exceed 7 days
 ```
 
-───────────────────────────────────────────────────────────
+---
 
-## ✓ Concept 2: @TAG Traceability
+## Key Concept 2: @TAG Traceability
 
-────────────────────────────────────────────────────────────
-🏷️ What is TAG?
-────────────────────────────────────────────────────────────
+### What is TAG?
 
-📍 **To put it simply:**
+**To put it simply**:
 - Name tag attached to each piece of code
-- String connecting: SPEC → TEST → CODE → DOC
-- Search by SPEC number to find all related code
+- String connecting SPEC → TEST → CODE → DOC
+- When looking for code later, you can search by SPEC number
 
-🎯 **Why do you need TAGs?**
-- ✓ Search by SPEC number when finding code
-- ✓ Clear which code to modify if SPEC changes
-- ✓ Instant identification: "What requirements?"
-- ✓ Quick bug root-cause discovery
+**Why do you need TAGs?**
+- Can search by SPEC number when looking for code later
+- Clear which code to modify if SPEC changes
+- When reviewing code, ask yourself, “What requirements is this code?” Instant identification
+- When a bug occurs, you can quickly find all related files
 
 ### TAG system
 
@@ -228,17 +213,13 @@ rg "AUTH-001" -n
 rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/
 ```
 
-───────────────────────────────────────────────────────────
+---
 
-## ◆ Concept 3: TRUST 5 Principles
+## Key Concept 3: TRUST 5 Principles
 
-────────────────────────────────────────────────────────────
-🏆 Five Pillars of Code Excellence
-────────────────────────────────────────────────────────────
+The five principles of writing good code are explained with an analogy:
 
-The five principles of writing great code, with real-world analogies:
-
-### 1. 🧪 Test (Taste-test before serving)
+### 1. 🧪 Test
 
 **Metaphor**: Imagining the taste before cooking.
 
@@ -407,21 +388,17 @@ Agent performs task
 Alfred consolidates and reports results
 ```
 
-───────────────────────────────────────────────────────────
+---
 
-## 🚀 Learn the 3-Step Workflow
+## Learn the 3-step workflow
 
-────────────────────────────────────────────────────────────
-⚡ Workflow Overview
-────────────────────────────────────────────────────────────
+The core of MoAI-ADK is this three-step workflow:
 
-The core of MoAI-ADK: Three simple commands
+```
+/alfred:1-plan → /alfred:2-run → /alfred:3-sync
+```
 
-- ▶ Step 1: `/alfred:1-plan` (Write SPEC)
-- → Step 2: `/alfred:2-run` (Implement TDD)
-- → Step 3: `/alfred:3-sync` (Sync Docs)
-
-### ▶ Step 1: Write a SPEC (`/alfred:1-plan`)
+### Step 1: Write a SPEC (`/alfred:1-plan`)
 
 **What do you do?**
 - Write requirements in EARS syntax
@@ -477,23 +454,19 @@ priority: high
 - Token expiration time must not exceed 15 minutes.
 ```
 
-### → Step 2: Implement TDD (`/alfred:2-run`)
-
-────────────────────────────────────────────────────────────
-💎 TDD Flow
-────────────────────────────────────────────────────────────
+### Step 2: Implement TDD (`/alfred:2-run`)
 
 **What do you do?**
-- 🔴 RED: Write tests that fail (`@TEST:ID`)
-- 🟢 GREEN: Minimal implementation (`@CODE:ID`)
-- ♻️ REFACTOR: Improve code quality (TRUST 5)
+- **RED**: Write tests that fail (`@TEST:ID`)
+- **GREEN**: Pass tests with minimal implementation (`@CODE:ID`)
+- **REFACTOR**: Improve code quality (apply TRUST 5 principles)
 
-**Use example:**
-```
+**Use example**:
+```bash
 /alfred:2-run AUTH-001
 ```
 
-**Alfred does this automatically:**
+**Alfred does this automatically**:
 
 #### 🔴 RED: Writing tests that fail
 ```typescript
@@ -552,24 +525,20 @@ private generateToken(username: string): string {
 3. ♻️ REFACTOR: refactor(AUTH-001): improve code quality per TRUST
 ```
 
-### → Step 3: Synchronize Documents (`/alfred:3-sync`)
-
-────────────────────────────────────────────────────────────
-📖 Sync & Verify
-────────────────────────────────────────────────────────────
+### Step 3: Synchronize documents (`/alfred:3-sync`)
 
 **What does it do?**
-- ✓ TAG chain verification (@SPEC→@TEST→@CODE→@DOC)
-- ✓ Orphan TAG detection
-- ✓ Living Document auto-creation
-- ✓ PR status update (Draft → Ready)
+- TAG chain verification (@SPEC → @TEST → @CODE → @DOC)
+- Orphan TAG detection (CODE without SPEC, etc.)
+- Automatic creation of Living Document
+- PR status update (Draft → Ready)
 
-**Use example:**
-```
+**Use example**:
+```bash
 /alfred:3-sync
 ```
 
-**Alfred does this automatically:**
+**Alfred does this automatically**:
 
 1. **TAG Chain Verification**:
 ```bash
@@ -695,28 +664,29 @@ export function add(a: number, b: number): number {
 completion! SPEC → TEST → CODE → DOC completed with 3 commands!
 ```
 
-───────────────────────────────────────────────────────────
+---
 
-## 🎯 Next Steps
+## Next steps
 
-────────────────────────────────────────────────────────────
-🚀 Ready to Move Forward?
-────────────────────────────────────────────────────────────
+### If you have learned MoAI-ADK
 
-If you have mastered the core concepts, it's time to switch styles and start building real projects!
+Now let's switch to a different style and put it into practice:
 
-**Next Goals:**
-- **Practical project development** → `/output-style agentic-coding`
-- **Learning new language/framework** → `/output-style study-with-alfred`
+| Next goal                         | Recommended Style     | Conversion command                |
+| --------------------------------- | --------------------- | --------------------------------- |
+| Practical project development     | **agentic-coding**    | `/output-style agentic-coding`    |
+| Learning a new language/framework | **study-with-alfred** | `/output-style study-with-alfred` |
 
-### 📚 Learn More
+### Learn more
 
-**Detailed References**:
-- `development-guide.md` - Complete development workflow
-- `project/structure.md` - Project structure and organization
-- `spec-metadata.md` - SPEC metadata standards
-- `AGENTS.md` - All specialized agents explained
+**Detailed guide**:
+- `.moai/memory/development-guide.md` - Detailed development guide
+- `.moai/project/structure.md` - Project structure
+- `.moai/memory/spec-metadata.md` - SPEC metadata standard
 
-───────────────────────────────────────────────────────────
+**Agent Documentation**:
+- `AGENTS.md` - Detailed description of 9 specialized agents
 
-**🎓 MoAI ADK Learning Mode** • Friendly, interactive learning for MoAI-ADK concepts ✨
+---
+
+**MoAI ADK Learning**: A friendly learning mode that helps you quickly learn the core concepts and workflow of MoAI-ADK.

@@ -283,48 +283,5 @@ fi
 
 ---
 
-## 🤝 Works Well With
-
-**Complementary Skills:**
-- **moai-cc-agents** - Commands orchestrate and invoke agents
-- **moai-cc-skills** - Commands reference Skills (load via Skill() function)
-- **moai-cc-hooks** - Commands trigger Hook events (SessionStart, PreToolUse, etc.)
-- **moai-foundation-git** - Commands integrate with GitFlow workflow
-
-**MoAI-ADK Workflows:**
-- **`/alfred:0-project`** - Project initialization command
-- **`/alfred:1-plan`** - SPEC authoring command (invokes spec-builder agent)
-- **`/alfred:2-run`** - TDD implementation command (invokes code-builder pipeline)
-- **`/alfred:3-sync`** - Document sync command (invokes doc-syncer + tag-agent)
-
-**Example Integration (MoAI-ADK):**
-```bash
-# 1. /alfred:1-plan orchestrates spec-builder agent
-/alfred:1-plan "JWT authentication system"
-
-# 2. Behind scenes: /alfred:1-plan loads Skill("moai-foundation-specs"),
-#    Skill("moai-foundation-ears"), then invokes spec-builder agent
-
-# 3. Result: SPEC file created + @SPEC:ID assigned
-```
-
-**Common MoAI Patterns:**
-- ✅ `/alfred:0-project` = Bootstrap + load moai-foundation-langs
-- ✅ `/alfred:1-plan` = Invoke spec-builder + load moai-foundation-specs/ears
-- ✅ `/alfred:2-run` = Execute code-builder pipeline + load moai-essentials-refactor
-- ✅ `/alfred:3-sync` = Invoke tag-agent + doc-syncer + GitHub MCP
-
-**General Claude Code Patterns:**
-- ✅ Custom `/my-command` for project workflows
-- ✅ `$ARGUMENTS` for flexible parameter passing
-- ✅ Command orchestration of multiple agents
-
-**See Also:**
-- 📖 **Orchestrator Guide:** `Skill("moai-cc-guide")` → SKILL.md
-- 📖 **Plan Phase:** `Skill("moai-cc-guide")` → workflows/alfred-1-plan-flow.md
-- 📖 **Run Phase:** `Skill("moai-cc-guide")` → workflows/alfred-2-run-flow.md
-
----
-
 **Reference**: Claude Code Slash Commands documentation
 **Version**: 1.0.0

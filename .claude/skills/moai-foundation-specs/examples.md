@@ -1,35 +1,29 @@
-# SPEC Documentation Examples
+# moai-foundation-specs - Working Examples
 
 _Last updated: 2025-10-22_
 
-## Example 1: Feature SPEC (Active)
+## Example 1: Basic Setup
 
-```markdown
----
-id: SPEC-AUTH-001
-version: 1.0.0
-status: active
-created: 2025-10-15
-updated: 2025-10-22
-author: MoAI Team
-tags: [authentication, jwt, security]
----
+```bash
+# Setup commands
+# ...
+```
 
-# @SPEC:AUTH-001 | JWT Authentication
+## Example 2: TDD Workflow
 
-## Requirements
-- The system shall validate JWT tokens with HS256
-- When token expires, system shall return HTTP 401
+```bash
+# RED: Write failing test
+# GREEN: Implement feature
+# REFACTOR: Improve code
+```
 
-## HISTORY
+## Example 3: Quality Gate
 
-### v1.0.0 (2025-10-22)
-- **RELEASE**: Production-ready authentication
-
-### v0.0.1 (2025-10-15)
-- **INITIAL**: Draft JWT SPEC
+```bash
+# Run quality checks
+# Verify coverage ≥85%
 ```
 
 ---
 
-**For complete validation rules, see [reference.md](reference.md)**
+_For more examples, see SKILL.md reference section_
