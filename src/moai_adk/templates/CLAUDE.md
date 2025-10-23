@@ -1,10 +1,11 @@
+<!-- @DOC:CLAUDE-001 | SPEC: TBD -->
 # MoAI-ADK - MoAI-Agentic Development Kit
 
-**SPEC-First TDD Development with Alfred SuperAgent**
+## SPEC-First TDD Development with Alfred SuperAgent
 
 > **Document Language**: {{conversation_language_name}} ({{conversation_language}})
 > **Project Owner**: {{project_owner}}
-> **Config**: `.moai/config.json` → `project.conversation_language`
+> **Config**: `.moai/config.json`
 >
 > All interactions with Alfred can use `Skill("moai-alfred-interactive-questions")` for TUI-based responses.
 
@@ -81,6 +82,7 @@ The **code-builder pipeline** runs two Sonnet specialists in sequence: **impleme
 The **Explore** agent excels at navigating large codebases.
 
 **Use cases**:
+
 - ✅ **Code analysis** (understand complex implementations, trace dependencies, study architecture)
 - ✅ Search for specific keywords or patterns (e.g., "API endpoints", "authentication logic")
 - ✅ Locate files (e.g., `src/components/**/*.tsx`)
@@ -88,6 +90,7 @@ The **Explore** agent excels at navigating large codebases.
 - ✅ Search across many files (Glob + Grep patterns)
 
 **Recommend Explore when**:
+
 - 🔍 You need to understand a complex structure
 - 🔍 The implementation spans multiple files
 - 🔍 You want the end-to-end flow of a feature
@@ -95,6 +98,7 @@ The **Explore** agent excels at navigating large codebases.
 - 🔍 You're planning a refactor and need impact analysis
 
 **Usage examples**:
+
 ```python
 # 1. Deep code analysis
 Task(
@@ -125,6 +129,9 @@ User: "Where is JWT authentication implemented in this project?"
 ```
 
 **thoroughness levels** (declare explicitly inside the prompt text):
+
+**thoroughness levels** (declare explicitly inside the prompt text):
+
 - `quick`: fast scan (basic patterns)
 - `medium`: moderate sweep (multiple locations + naming rules) — **recommended**
 - `very thorough`: exhaustive scan (full codebase analysis)
@@ -145,7 +152,7 @@ Alfred relies on 55 Claude Skills grouped by tier. Skills load via Progressive D
 | Claude Code Ops | 1      | Session management                           |
 | **Total**       | **55** | Complete knowledge capsule library           |
 
-**Foundation Tier (6)**
+### Foundation Tier (6)
 
 | Skill                   | Purpose                                 | Auto-load                      |
 | ----------------------- | --------------------------------------- | ------------------------------ |
@@ -156,7 +163,7 @@ Alfred relies on 55 Claude Skills grouped by tier. Skills load via Progressive D
 | `moai-foundation-git`   | GitFlow automation & PR policy          | Plan/Run/Sync                  |
 | `moai-foundation-langs` | Language detection & Skill preload      | SessionStart, `/alfred:2-run`  |
 
-**Essentials Tier (4)**
+### Essentials Tier (4)
 
 | Skill                      | Purpose                                       | Auto-load                                  |
 | -------------------------- | --------------------------------------------- | ------------------------------------------ |
@@ -165,7 +172,7 @@ Alfred relies on 55 Claude Skills grouped by tier. Skills load via Progressive D
 | `moai-essentials-refactor` | Refactoring patterns & code-smell remediation | `/alfred:2-run`                            |
 | `moai-essentials-review`   | Code review checklist & quality feedback      | `/alfred:3-sync`                           |
 
-**Alfred Tier (11)** — Internal workflow orchestration
+### Alfred Tier (11) — Internal workflow orchestration
 
 | Skill                                  | Purpose                              | Auto-load                         |
 | -------------------------------------- | ------------------------------------ | --------------------------------- |
@@ -181,11 +188,11 @@ Alfred relies on 55 Claude Skills grouped by tier. Skills load via Progressive D
 | `moai-alfred-trust-validation`         | TRUST 5 principle verification       | All phases                        |
 | `moai-alfred-interactive-questions`    | Interactive user surveys & menus     | On demand                         |
 
-**Domain Tier (10)** — `moai-domain-backend`, `web-api`, `frontend`, `mobile-app`, `security`, `devops`, `database`, `data-science`, `ml`, `cli-tool`.
+### Domain Tier (10) — `moai-domain-backend`, `web-api`, `frontend`, `mobile-app`, `security`, `devops`, `database`, `data-science`, `ml`, `cli-tool`
 
-**Language Tier (23)** — Python, TypeScript, Go, Rust, Java, Kotlin, Swift, Dart, C/C++, C#, Scala, Haskell, Elixir, Clojure, Lua, Ruby, PHP, JavaScript, SQL, Shell, Julia, R, plus supporting stacks.
+### Language Tier (23) — Python, TypeScript, Go, Rust, Java, Kotlin, Swift, Dart, C/C++, C#, Scala, Haskell, Elixir, Clojure, Lua, Ruby, PHP, JavaScript, SQL, Shell, Julia, R, plus supporting stacks
 
-**Claude Code Ops (1)** — `moai-claude-code` manages session settings, output styles, and Skill deployment.
+### Claude Code Ops (1) — `moai-claude-code` manages session settings, output styles, and Skill deployment
 
 Skills keep the core knowledge lightweight while allowing Alfred to assemble the right expertise for each request.
 
@@ -205,6 +212,7 @@ Skills keep the core knowledge lightweight while allowing Alfred to assemble the
 | **Claude 4.5 Sonnet** | Planning, implementation, troubleshooting, session ops               | Alfred, project-manager, spec-builder, code-builder pipeline, debug-helper, cc-manager | Deep reasoning, multi-step synthesis, creative problem solving |
 
 **Guidelines**:
+
 - Default to **Haiku** when the task is pattern-driven or requires rapid iteration; escalate to **Sonnet** for novel design, architecture, or ambiguous problem solving.
 - Record any manual model switch in the task notes (who, why, expected benefit).
 - Combine both models when needed: e.g., Sonnet plans a refactor, Haiku formats and validates the resulting docs.
@@ -230,13 +238,14 @@ Alfred commands follow a three-phase loop, with an optional bootstrap stage for 
 #### Pre-suggestion Checklist
 
 Before suggesting the next step, always verify:
+
 - You have the latest status from agents.
 - All blockers are documented with context.
 - Required approvals or user confirmations are noted.
 - Suggested tasks include clear owners and outcomes.
 - There is at most one "must-do" suggestion per step.
 
-**cc-manager validation sequence**
+### cc-manager validation sequence
 
 1. **SPEC** – Confirm the SPEC file exists and note its status (`draft`, `active`, `completed`, `archived`). If missing, queue `/alfred:1-plan`.
 2. **TEST & CODE** – Check whether tests and implementation files exist and whether the latest test run passed. Address failing tests before proposing new work.
@@ -290,7 +299,7 @@ Before suggesting the next step, always verify:
 
 #### Message Format
 
-```
+```text
 🔴 <Title>
 - Cause: <root cause>
 - Scope: <affected components>
@@ -310,7 +319,7 @@ Before suggesting the next step, always verify:
 
 #### Commit Structure
 
-```
+```text
 <type>(scope): <subject>
 
 - Context of the change
@@ -374,7 +383,7 @@ Claude Code now features an **Interactive Question Tool** powered by the `moai-a
 
 When you provide a high-level request, Alfred may invoke the `moai-alfred-interactive-questions` Skill to clarify implementation details through structured TUI menus:
 
-```
+```text
 User: "Add a completion page for the competition."
          ↓
 Alfred analyzes codebase & context
@@ -410,6 +419,7 @@ Execution with confirmed specifications
 ```
 
 **Where it's used**:
+
 - Sub-agents (spec-builder, code-builder pipeline) invoke this skill when ambiguity is detected
 - Alfred commands may trigger interactive surveys during Plan/Run/Sync phases
 - User approvals and architectural decisions benefit most from TUI-based selection
@@ -427,6 +437,7 @@ Execution with confirmed specifications
 ### When to Use Interactive Questions
 
 **Ideal for**:
+
 - 🎯 Complex features with multiple valid approaches
 - 🎯 Architectural decisions with trade-offs
 - 🎯 Ambiguous or high-level requirements
@@ -434,6 +445,7 @@ Execution with confirmed specifications
 - 🎯 Decisions involving user experience or data flow
 
 **Example triggers**:
+
 - "Add a dashboard" → needs clarification on layout, data sources, authentication
 - "Refactor the auth system" → needs clarification on scope, backwards compatibility, migration strategy
 - "Optimize performance" → needs clarification on which bottleneck, acceptable trade-offs
@@ -469,14 +481,16 @@ Execution with confirmed specifications
 
 **User Request**: "Competition is over. Add a completion page."
 
-**Step 1: Code Analysis**
+#### Step 1: Code Analysis
+
 Alfred scans the codebase and detects:
+
 - Existing `/end` page (auth required, shows results)
 - Need for clarification on scope and user behavior
 
-**Step 2: Interactive Survey (moai-alfred-interactive-questions activated)**
+#### Step 2: Interactive Survey (moai-alfred-interactive-questions activated)
 
-```
+```text
 ────────────────────────────────────────────────────────────────
 ALFRED: How should the completion page be implemented?
 ────────────────────────────────────────────────────────────────
@@ -501,7 +515,7 @@ ALFRED: How should the completion page be implemented?
 → Selection: Create a new public page (/competition-closed)
 ```
 
-```
+```text
 ────────────────────────────────────────────────────────────────
 ALFRED: For logged-in participants accessing the new page?
 ────────────────────────────────────────────────────────────────
@@ -525,9 +539,9 @@ ALFRED: For logged-in participants accessing the new page?
 → Selection: Show simple completion message only
 ```
 
-**Step 3: Review & Confirmation**
+#### Step 3: Review & Confirmation
 
-```
+```text
 ────────────────────────────────────────────────────────────────
 ALFRED: Review your answers
 ────────────────────────────────────────────────────────────────
@@ -549,9 +563,10 @@ ALFRED: Review your answers
 → Action: Submit answers (enter)
 ```
 
-**Step 4: Execution**
+#### Step 4: Execution
 
 Alfred now executes with **confirmed specifications**:
+
 - ✅ Creates `/app/competition-closed/page.tsx` (public route)
 - ✅ Implements simple "Competition concluded" message
 - ✅ Handles authenticated users appropriately
@@ -655,7 +670,7 @@ Combine layers when necessary: a command triggers sub-agents, sub-agents activat
 
 ### TAG Block Template
 
-```
+```text
 // @CODE:AUTH-001 | SPEC: SPEC-AUTH-001.md | TEST: tests/auth/service.test.ts
 ```
 
@@ -686,6 +701,7 @@ Combine layers when necessary: a command triggers sub-agents, sub-agents activat
 ### TAG Validation & Integrity
 
 **Avoid duplicates**:
+
 ```bash
 rg "@SPEC:AUTH" -n          # Search AUTH specs
 rg "@CODE:AUTH-001" -n      # Targeted ID search
@@ -693,6 +709,7 @@ rg "AUTH-001" -n            # Global ID search
 ```
 
 **TAG chain verification** (`/alfred:3-sync` runs automatically):
+
 ```bash
 rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/
 
@@ -722,18 +739,21 @@ Alfred enforces these quality gates on every change:
 ## Language-specific Code Rules
 
 **Global constraints**:
+
 - Files ≤ 300 LOC
 - Functions ≤ 50 LOC
 - Parameters ≤ 5
 - Cyclomatic complexity ≤ 10
 
 **Quality targets**:
+
 - Test coverage ≥ 85%
 - Intent-revealing names
 - Early guard clauses
 - Use language-standard tooling
 
 **Testing strategy**:
+
 - Prefer the standard framework per language
 - Keep tests isolated and deterministic
 - Derive cases directly from the SPEC
@@ -743,6 +763,7 @@ Alfred enforces these quality gates on every change:
 ## TDD Workflow Checklist
 
 **Step 1: SPEC authoring** (`/alfred:1-plan`)
+
 - [ ] Create `.moai/specs/SPEC-<ID>/spec.md` (with directory structure)
 - [ ] Add YAML front matter (id, version: 0.0.1, status: draft, created)
 - [ ] Include the `@SPEC:ID` TAG
@@ -751,12 +772,14 @@ Alfred enforces these quality gates on every change:
 - [ ] Check for duplicate IDs: `rg "@SPEC:<ID>" -n`
 
 **Step 2: TDD implementation** (`/alfred:2-run`)
+
 - [ ] **RED**: Write `@TEST:ID` under `tests/` and watch it fail
 - [ ] **GREEN**: Add `@CODE:ID` under `src/` and make the test pass
 - [ ] **REFACTOR**: Improve code quality; document TDD history in comments
 - [ ] List SPEC/TEST file paths in the TAG block
 
 **Step 3: Documentation sync** (`/alfred:3-sync`)
+
 - [ ] Scan TAGs: `rg '@(SPEC|TEST|CODE):' -n`
 - [ ] Ensure no orphan TAGs remain
 - [ ] Regenerate the Living Document

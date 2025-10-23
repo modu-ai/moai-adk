@@ -287,11 +287,47 @@ Claude Code セッションの重要イベントで自動発火するイベン�
 
 | Hook | 状態 | 機能 |
 |------|------|------|
-| SessionStart | ✅ 有効 | プロジェクト状態の要約（言語/Git/SPEC 進捗/チェックポイント） |
-| PreToolUse | ✅ 有効 | リスク検知 + 自動チェックポイント（削除/マージ/一括編集/重要ファイル） |
-| UserPromptSubmit | ✅ 有効 | JIT コンテキスト読み込み（関連する SPEC/テスト/コード/ドキュメントを自動ロード） |
-| PostToolUse | ✅ 有効 | 変更後の自動テスト実行（Python/TS/JS/Go/Rust/Java ほか） |
-| SessionEnd | ✅ 有効 | セッションクリーンアップと状態保存 |
+| **SessionStart** | ✅ 有効 | プロジェクト状態の要約（言語/Git/SPEC 進捗/チェックポイント） |
+| **PreToolUse** | ✅ 有効 | リスク検知 + 自動チェックポイント（削除/マージ/一括編集/重要ファイル） + **TAG Guard** （@TAGの欠落検出） |
+| **UserPromptSubmit** | ✅ 有効 | JIT コンテキスト読み込み（関連する SPEC/テスト/コード/ドキュメントを自動ロード） |
+| **PostToolUse** | ✅ 有効 | 変更後の自動テスト実行（9言語対応: Python、TS、JS、Go、Rust、Java、Kotlin、Swift、Dart） |
+| **SessionEnd** | ✅ 有効 | セッションクリーンアップと状態保存 |
+
+#### PreToolUse Hook の詳細
+
+**トリガー**: ファイル編集、Bashコマンド、MultiEdit操作の実行前
+**目的**: 危険な操作を検出し、自動的に安全チェックポイントを作成 + TAG Guard
+
+**保護対象**:
+- `rm -rf`（ファイル削除）
+- `git merge`、`git reset --hard`（Git危険操作）
+- 重要ファイルの編集（`CLAUDE.md`、`config.json`）
+- 大量編集（MultiEditで10ファイル以上を一度に）
+
+**TAG Guard（v0.4.11新機能）**:
+変更されたファイルの@TAGアノテーション欠落を自動検出:
+- staged、modified、untrackedファイルをスキャン
+- SPEC/TEST/CODE/DOCファイルに必要な@TAGマーカーがない場合に警告
+- `.moai/tag-rules.json`でルール設定可能
+- 非ブロッキング方式（優しいリマインダー、実行を停止しない）
+
+**表示内容**:
+```
+🛡️ Checkpoint created: before-delete-20251023-143000
+   Operation: delete
+```
+
+または、TAGが欠落している場合:
+```
+⚠️ TAG欠落検出: 作成/変更されたファイルに@TAGがありません
+ - src/auth/service.py → 期待されるタグ: @CODE:
+ - tests/test_auth.py → 期待されるタグ: @TEST:
+推奨アクション:
+  1) SPEC/TEST/CODE/DOCタイプに適した@TAGをファイルヘッダーに追加
+  2) rgで確認: rg '@(SPEC|TEST|CODE|DOC):' -n <パス>
+```
+
+**重要性**: ミスによるデータ損失を防ぎ、@TAGトレーサビリティを保証。問題が発生した場合は、常にチェックポイントから復元できます。
 
 ### 技術情報
 
@@ -318,6 +354,21 @@ Claude Code セッションの重要イベントで自動発火するイベン�
 - 実行されない: `.claude/settings.json` を確認、`uv` がインストール済みか、実行権限 `chmod +x .claude/hooks/alfred/alfred_hooks.py`
 - パフォーマンス低下: 100ms 超の Hook がないか、不要 Hook を無効化、stderr のエラー確認
 - チェックポイントが多すぎる: PreToolUse の条件/閾値を調整（`core/checkpoint.py`）
+
+---
+
+## 最新アップデート
+
+| バージョン    | 主な機能                                                                         | 日付       |
+| ---------- | -------------------------------------------------------------------------------- | ---------- |
+| **v0.4.11** | ✨ TAG Guardシステム + CLAUDE.mdフォーマット改善 + コードクリーンアップ                | 2025-10-23 |
+| **v0.4.10** | 🔧 Hook堅牢性向上 + バイリンガルドキュメント + テンプレート言語設定                | 2025-10-23 |
+| **v0.4.9** | 🎯 Hook JSONスキーマ検証修正 + 包括的テスト（468/468パス）                        | 2025-10-23 |
+| **v0.4.8** | 🚀 リリース自動化 + PyPIデプロイ + Skills改良                                      | 2025-10-23 |
+| **v0.4.7** | 📖 韓国語最適化 + SPEC-First原則ドキュメント                                      | 2025-10-22 |
+| **v0.4.6** | 🎉 完全Skills v2.0（100%本番対応）+ 85,000行公式ドキュメント + 300+ TDD例          | 2025-10-22 |
+
+> 📦 **今すぐインストール**: `pip install moai-adk==0.4.11` または `uv tool install moai-adk==0.4.11`
 
 ---
 
@@ -352,24 +403,24 @@ MoAI‑ADK を end‑to‑end で習得するための Web アプリ「Mini Kanb
 
 ```mermaid
 gantt
-    title Mini Kanban Board — 4週間プラン
+    title Mini Kanban Board - 4-week plan
     dateFormat YYYY-MM-DD
 
     section フェーズ1: Backend 基礎
-    CH07: SPEC-001~004 を定義         :active, ch07-spec, 2025-11-03, 1d
+    CH07: SPEC-001-004 を定義         :active, ch07-spec, 2025-11-03, 1d
     CH07: SpecScanner 実装 (TDD)      :active, ch07-impl, 2025-11-04, 1d
 
     section フェーズ2: Backend 応用
     CH08: REST API 実装               :active, ch08-api, 2025-11-05, 1d
-    CH08: WebSocket + ファイル監視     :active, ch08-ws, 2025-11-06, 1d
+    WebSocket + ファイル監視     :active, ch08-ws, 2025-11-06, 1d
 
     section フェーズ3: Frontend 基礎
-    CH09: React 初期化 + SPEC-009~012 :active, ch09-spec, 2025-11-10, 1d
-    CH09: Kanban Board (TDD)          :active, ch09-impl, 2025-11-11, 1d
+    CH09: React 初期化 + SPEC-009-012 :active, ch09-spec, 2025-11-10, 1d
+    Kanban Board (TDD)          :active, ch09-impl, 2025-11-11, 1d
 
     section フェーズ4: 高度化 + デプロイ
-    CH10: E2E + CI/CD                 :active, ch10-e2e, 2025-11-12, 1d
-    CH10: Docker Compose + 最適化      :active, ch10-deploy, 2025-11-13, 1d
+    E2E + CI/CD                 :active, ch10-e2e, 2025-11-12, 1d
+    Docker Compose + 最適化      :active, ch10-deploy, 2025-11-13, 1d
 ```
 
 ### 16 SPEC ロードマップ
@@ -436,7 +487,7 @@ gantt
 
 ### フェーズ詳細
 
-#### フェーズ1: Backend 基礎（SPEC-001~004）
+#### フェーズ1: Backend 基礎（SPEC-001-004）
 
 目的: FastAPI + Pydantic v2 + uv でコアのデータスキャンサービスを構築
 
@@ -446,7 +497,7 @@ gantt
 # → .moai/, backend/, frontend/ を作成
 # → .moai/config.json を設定
 
-# 2) SPEC 作成（SPEC-001~004）
+# 2) SPEC 作成（SPEC-001-004）
 /alfred:1-plan
 # → SPEC-001: SPEC ファイルスキャナ
 # → SPEC-002: YAML メタデータパーサ
@@ -490,7 +541,7 @@ gantt
 - 非同期イベント配信
 - TRUST 5 の自動検証
 
-#### フェーズ3: Frontend 基礎（SPEC-009~012）
+#### フェーズ3: Frontend 基礎（SPEC-009-012）
 
 目的: React 19 + TypeScript + Vite でカンバン UI を構築
 
@@ -544,7 +595,7 @@ npm install @tanstack/react-query zustand
 #### 1) 初期化
 
 ```bash
-pip install moai-adk==0.4.10
+pip install moai-adk==0.4.11
 mkdir mini-kanban-board && cd mini-kanban-board
 git init
 /alfred:0-project
@@ -680,11 +731,38 @@ open http://localhost:3000
 
 ## コミュニティとサポート
 
-- GitHub リポジトリ: <https://github.com/modu-ai/moai-adk>
-- Issues & Discussions: バグ報告、機能要望、アイデアを歓迎します。
-- PyPI: <https://pypi.org/project/moai-adk/>
-- 連絡先: `CONTRIBUTING.md` のガイドラインを参照してください。
+| チャンネル                  | リンク                                                    |
+| ------------------------ | ------------------------------------------------------- |
+| **GitHub Repository**    | https://github.com/modu-ai/moai-adk                     |
+| **Issues & Discussions** | https://github.com/modu-ai/moai-adk/issues              |
+| **PyPI Package**         | https://pypi.org/project/moai-adk/ (最新: v0.4.11)     |
+| **Latest Release**       | https://github.com/modu-ai/moai-adk/releases/tag/v0.4.11 |
+| **Documentation**        | プロジェクト内の `.moai/`, `.claude/`, `docs/` を参照        |
 
-> 🙌 「SPEC がなければ CODE もない」— Alfred とともに、一貫した AI 開発文化を体験しましょう。
+---
+
+## 🚀 MoAI-ADK Philosophy
+
+> **「SPECがなければCODEもない」**
+
+MoAI-ADKは単なるコード生成ツールではありません。19名のチームと56個のClaude Skillsを持つAlfred SuperAgentが一緒に保証します:
+
+- ✅ **SPEC → TEST (TDD) → CODE → DOCSの一貫性**
+- ✅ **@TAGシステムによる完全な履歴追跡**
+- ✅ **87.84%+のカバレッジ保証**
+- ✅ **4段階ワークフロー（0-project → 1-plan → 2-run → 3-sync）による反復開発**
+- ✅ **AIとの透明でトレース可能なコラボレーション**
+
+Alfredと一緒に**信頼できるAI開発**の新しい体験を始めましょう！ 🤖
+
+---
+
+**MoAI-ADK v0.4.11** — AI SuperAgent & Complete Skills v2.0 + TAG Guardを備えたSPEC-First TDD
+- 📦 PyPI: https://pypi.org/project/moai-adk/
+- 🏠 GitHub: https://github.com/modu-ai/moai-adk
+- 📝 License: MIT
+- ⭐ Skills: 55+ 本番対応ガイド
+- ✅ テスト結果: 467/476 パス (85.60% カバレッジ)
+- 🏷️ TAG Guard: PreToolUse Hookで自動@TAG検証
 
 ---

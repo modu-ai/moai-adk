@@ -1,6 +1,6 @@
 # MoAI-ADK (Agentic Development Kit)
 
-[English](README.md) | [한국어](README.ko.md) | [ไทย](README.th.md) | [日本語](README.ja.md) | [中文](README.zh.md) | [हिन्दी](README.hi.md)
+[한국어](README.ko.md) | [English](README.md) | [ไทย](README.th.md) | [日本語](README.ja.md) | [中文](README.zh.md) | [हिन्दी](README.hi.md)
 
 [![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -151,7 +151,7 @@ uv tool install moai-adk
 
 # 설치 확인
 moai-adk --version
-# 출력: MoAI-ADK v0.4.10
+# 출력: MoAI-ADK v0.4.11
 ```
 
 설치가 완료되면, `moai-adk` 명령어를 어디서나 사용할 수 있습니다.
@@ -1052,10 +1052,30 @@ Hook은 Claude Code 세션의 특정 이벤트에 반응하는 이벤트 기반 
 | Hook | 상태 | 기능 |
 |------|------|------|
 | SessionStart | ✅ 활성 | 언어/Git/SPEC 진행/체크포인트 등 프로젝트 상태 요약 |
-| PreToolUse | ✅ 활성 | 위험 탐지 + 자동 체크포인트(삭제/병합/대량편집/중요파일) |
+| PreToolUse | ✅ 활성 | 위험 탐지 + 자동 체크포인트(삭제/병합/대량편집/중요파일) + **TAG Guard** (누락된 @TAG 감지) |
 | UserPromptSubmit | ✅ 활성 | JIT 컨텍스트 로딩(@SPEC·테스트·코드·문서 자동 로드) |
 | PostToolUse | ✅ 활성 | 코드 변경 후 자동 테스트(파이썬/TS/JS/Go/Rust/Java 등) |
 | SessionEnd | ✅ 활성 | 세션 정리 및 상태 보존 |
+
+#### TAG Guard (v0.4.11 신규 기능)
+
+PreToolUse Hook에서 작동하는 자동 @TAG 검증 시스템:
+- 스테이징, 수정, 미추적 파일 자동 스캔
+- SPEC/TEST/CODE/DOC 파일에 @TAG 마커가 없으면 경고
+- `.moai/tag-rules.json`으로 규칙 설정 가능
+- 비차단 방식 (부드러운 알림, 실행을 중단하지 않음)
+
+**경고 메시지 예시**:
+```
+⚠️ TAG 누락 감지: 생성/수정한 파일 중 @TAG가 없는 항목이 있습니다.
+ - src/auth/service.py → 기대 태그: @CODE:
+ - tests/test_auth.py → 기대 태그: @TEST:
+권장 조치:
+  1) SPEC/TEST/CODE/DOC 유형에 맞는 @TAG를 파일 상단 주석이나 헤더에 추가
+  2) rg로 확인: rg '@(SPEC|TEST|CODE|DOC):' -n <경로>
+```
+
+**Why It Matters**: 코드 추적성을 보장하고 @TAG 체인이 완전하도록 합니다. 실수로 TAG를 누락하는 것을 방지합니다.
 
 ### 기술 정보
 
@@ -1096,6 +1116,21 @@ Hook은 Claude Code 세션의 특정 이벤트에 반응하는 이벤트 기반 
 
 ---
 
+## 최신 업데이트
+
+| 버전 | 주요 기능 | 날짜 |
+| ---------- | ------------------------------------------------------------------------------------ | ---------- |
+| **v0.4.11** | ✨ TAG Guard 시스템 + CLAUDE.md 포맷팅 개선 + 코드 정리                | 2025-10-23 |
+| **v0.4.10** | 🔧 Hook 견고성 향상 + 다국어 문서화 + 템플릿 언어 설정 | 2025-10-23 |
+| **v0.4.9** | 🎯 Hook JSON 스키마 검증 수정 + 포괄적 테스트 (468/468 통과)        | 2025-10-23 |
+| **v0.4.8** | 🚀 릴리즈 자동화 + PyPI 배포 + Skills 개선                          | 2025-10-23 |
+| **v0.4.7** | 📖 한국어 최적화 + SPEC-First 원칙 문서화                 | 2025-10-22 |
+| **v0.4.6** | 🎉 Skills v2.0 완성 (100% 프로덕션 준비) + 85,000줄 공식 문서 + 300+ TDD 예제 | 2025-10-22 |
+
+> 📦 **지금 설치**: `pip install moai-adk==0.4.11` 또는 `uv tool install moai-adk==0.4.11`
+
+---
+
 ## 두 번째 실습: Mini Kanban Board
 
 **이 섹션은 첫 번째 Todo API 예제를 넘어서, 완전한 Full-Stack 프로젝트입니다.**
@@ -1116,24 +1151,24 @@ MoAI-ADK를 마스터하기 위해 설계된 **Mini Kanban Board 웹 애플리�
 
 ```mermaid
 gantt
-    title Mini Kanban Board 4주 개발 일정
+    title Mini Kanban Board - 4주 개발 일정
     dateFormat YYYY-MM-DD
 
     section Phase 1: Backend 기초
-    CH07: SPEC-001~004 SPEC 정의   :active, ch07-spec, 2025-11-03, 1d
-    CH07: SpecScanner TDD 구현      :active, ch07-impl, 2025-11-04, 1d
+    SPEC-001-004 SPEC 정의   :active, ch07-spec, 2025-11-03, 1d
+    SpecScanner TDD 구현      :active, ch07-impl, 2025-11-04, 1d
 
     section Phase 2: Backend 고급
-    CH08: REST API 구현             :active, ch08-api, 2025-11-05, 1d
-    CH08: WebSocket + File Watch    :active, ch08-ws, 2025-11-06, 1d
+    REST API 구현             :active, ch08-api, 2025-11-05, 1d
+    WebSocket + File Watch    :active, ch08-ws, 2025-11-06, 1d
 
     section Phase 3: Frontend 기초
-    CH09: React 초기화 + SPEC-009~012 :active, ch09-spec, 2025-11-10, 1d
-    CH09: Kanban Board TDD 구현      :active, ch09-impl, 2025-11-11, 1d
+    React 초기화 + SPEC-009-012 :active, ch09-spec, 2025-11-10, 1d
+    Kanban Board TDD 구현      :active, ch09-impl, 2025-11-11, 1d
 
     section Phase 4: Advanced + 배포
-    CH10: E2E + CI/CD               :active, ch10-e2e, 2025-11-12, 1d
-    CH10: Docker Compose + 최적화    :active, ch10-deploy, 2025-11-13, 1d
+    E2E + CI/CD               :active, ch10-e2e, 2025-11-12, 1d
+    Docker Compose + 최적화    :active, ch10-deploy, 2025-11-13, 1d
 ```
 
 ### 🎯 16-SPEC 완전 로드맵
@@ -1327,7 +1362,7 @@ npm install @tanstack/react-query zustand
 
 ```bash
 # MoAI-ADK 설치
-pip install moai-adk==0.4.10
+pip install moai-adk==0.4.11
 
 # Mini Kanban Board 프로젝트 생성
 mkdir mini-kanban-board && cd mini-kanban-board
@@ -1437,8 +1472,8 @@ Mini Kanban Board 프로젝트에서는 모든 단계에서 TRUST 5원칙이 자
 | ------------------------ | ------------------------------------------------------- |
 | **GitHub Repository**    | https://github.com/modu-ai/moai-adk                     |
 | **Issues & Discussions** | https://github.com/modu-ai/moai-adk/issues              |
-| **PyPI Package**         | https://pypi.org/project/moai-adk      |
-| **Latest Release**       | https://github.com/modu-ai/moai-adk/releases/tag/v0.4.10 |
+| **PyPI Package**         | https://pypi.org/project/moai-adk/ (최신: v0.4.11)     |
+| **Latest Release**       | https://github.com/modu-ai/moai-adk/releases/tag/v0.4.11 |
 | **Documentation**        | 프로젝트 내 `.moai/`, `.claude/`, `docs/` 참고          |
 
 ---
@@ -1459,8 +1494,10 @@ Alfred와 함께 **신뢰할 수 있는 AI 개발**의 새로운 경험을 시�
 
 ---
 
-**MoAI-ADK v0.4.10** — SPEC-First TDD with AI SuperAgent & Complete Skills v2.0
+**MoAI-ADK v0.4.11** — SPEC-First TDD with AI SuperAgent & Complete Skills v2.0 + TAG Guard
 - 📦 PyPI: https://pypi.org/project/moai-adk/
 - 🏠 GitHub: https://github.com/modu-ai/moai-adk
 - 📝 License: MIT
-- ⭐ Skills: 100% Production-Ready
+- ⭐ Skills: 55+ Production-Ready Guides
+- ✅ Tests: 467/476 Passing (85.60% coverage)
+- 🏷️ TAG Guard: Automatic @TAG validation in PreToolUse Hook
