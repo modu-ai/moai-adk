@@ -560,13 +560,14 @@ rg '@TAG:AUTH-001' -n
 - **Zero-project Specialists**: Project initialization, language detection, etc. (6)
 - **Built-in Agents**: General questions, codebase exploration (2)
 
-**56 Claude Skills**:
+**55 Claude Skills**:
 - **Foundation** (6): TRUST/TAG/SPEC/Git/EARS principles
 - **Essentials** (4): Debugging, performance, refactoring, code review
-- **Alfred** (11): Workflow automation
+- **Alfred** (7): Workflow automation
 - **Domain** (10): Backend, frontend, security, etc.
-- **Language** (24): Python, JavaScript, Go, Rust, etc.
+- **Language** (18): Python, JavaScript, Go, Rust, Java, Kotlin, Swift, Dart, C/C#, Ruby, PHP, SQL, Shell, and more
 - **Ops** (1): Claude Code session management
+- **Other** (2): Skill factory, Spec authoring
 
 **How?** `/alfred:*` commands automatically activate the right expert team.
 
@@ -968,13 +969,9 @@ MoAI-ADK internal workflow orchestration skills
 
 | Skill                                  | Description                                                                                            |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `moai-alfred-code-reviewer`            | Automated code review with language-specific best practices, SOLID principles, improvement suggestions |
-| `moai-alfred-debugger-pro`             | Stack trace analysis, error pattern detection, complex runtime error interpretation                    |
 | `moai-alfred-ears-authoring`           | EARS syntax validation and requirement pattern guidance                                                |
 | `moai-alfred-git-workflow`             | MoAI-ADK conventions (feature branch, TDD commits, Draft PR) automation                                |
 | `moai-alfred-language-detection`       | Project language/runtime detection and test tool recommendations                                       |
-| `moai-alfred-performance-optimizer`    | Performance profiling, bottleneck detection, language-specific optimization                            |
-| `moai-alfred-refactoring-coach`        | Refactoring guide, design patterns, step-by-step improvement plan                                      |
 | `moai-alfred-spec-metadata-validation` | SPEC YAML frontmatter and HISTORY section consistency validation                                       |
 | `moai-alfred-tag-scanning`             | Complete @TAG marker scan and inventory generation (CODE-FIRST principle)                              |
 | `moai-alfred-trust-validation`         | TRUST 5-principles compliance verification                                                             |
@@ -1018,11 +1015,6 @@ Programming language-specific best practices
 | `moai-lang-php`        | PHPUnit, Composer, PSR standards                          |
 | `moai-lang-sql`        | Test frameworks, query optimization, migration management |
 | `moai-lang-shell`      | bats, shellcheck, POSIX compliance                        |
-| `moai-lang-haskell`    | HUnit, Stack/Cabal, pure functional programming           |
-| `moai-lang-elixir`     | ExUnit, Mix, OTP patterns                                 |
-| `moai-lang-clojure`    | clojure.test, Leiningen, immutable data structures        |
-| `moai-lang-lua`        | busted, luacheck, embedded scripting patterns             |
-| `moai-lang-julia`      | Test stdlib, Pkg manager, scientific computing patterns   |
 | `moai-lang-r`          | testthat, lintr, data analysis patterns                   |
 
 #### Claude Code Ops

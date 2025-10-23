@@ -4,8 +4,8 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: Ruby 3.3+ best practices with RSpec 3.13, RuboCop 1.60, Rails patterns.
-keywords: ['ruby', 'rspec', 'rubocop', 'rails']
+description: Ruby 3.4+ best practices with RSpec 4, RuboCop 2, Bundler, and Rails 8 patterns.
+keywords: ['ruby', 'rspec', 'rubocop', 'bundler', 'rails']
 allowed-tools:
   - Read
   - Bash
@@ -27,7 +27,7 @@ allowed-tools:
 
 ## What It Does
 
-Ruby 3.3+ best practices with RSpec 3.13, RuboCop 1.60, Rails patterns.
+Ruby 3.4+ best practices with RSpec 4, RuboCop 2, Bundler, and Rails 8 patterns.
 
 **Key capabilities**:
 - ✅ Best practices enforcement for language domain
@@ -55,10 +55,10 @@ Ruby 3.3+ best practices with RSpec 3.13, RuboCop 1.60, Rails patterns.
 
 | Tool | Version | Purpose | Status |
 |------|---------|---------|--------|
-| **Ruby** | 3.3.0 | Runtime | ✅ Current |
-| **RSpec** | 3.13.0 | Testing | ✅ Current |
-| **RuboCop** | 1.60.0 | Linting | ✅ Current |
-| **Bundler** | 2.5.0 | Package Manager | ✅ Current |
+| **Ruby** | 3.4.0 | Primary | ✅ Current |
+| **RSpec** | 4.0.0 | Primary | ✅ Current |
+| **RuboCop** | 2.0.0 | Primary | ✅ Current |
+| **Rails** | 8.0.0 | Primary | ✅ Current |
 
 ---
 
@@ -112,13 +112,13 @@ _Documentation links updated 2025-10-22_
 ## Best Practices
 
 ✅ **DO**:
-- Follow Ruby style guide
-- Use RSpec for behavior-driven development
+- Follow language best practices
+- Use latest stable tool versions
 - Maintain test coverage ≥85%
-- Leverage Rails conventions
+- Document all public APIs
 
 ❌ **DON'T**:
 - Skip quality gates
-- Ignore RuboCop warnings
-- Use global variables
+- Use deprecated tools
+- Ignore security warnings
 - Mix testing frameworks

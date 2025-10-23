@@ -1,6 +1,12 @@
-# MoAI-ADK - MoAI-Agentic Development Kit
+# {{PROJECT_NAME}} - MoAI-Agentic Development Kit
 
 **SPEC-First TDD Development with Alfred SuperAgent**
+
+> **Document Language**: {{CONVERSATION_LANGUAGE_NAME}} ({{CONVERSATION_LANGUAGE}})
+> **Project Owner**: {{USER_NICKNAME}}
+> **Config**: `.moai/config.json` → `project.conversation_language`
+>
+> All interactions with Alfred can use `Skill("moai-alfred-interactive-questions")` for TUI-based responses.
 
 ---
 
@@ -15,7 +21,7 @@
 | **Commands**    | User ↔ Alfred      | Workflow entry points that establish the Plan → Run → Sync cadence | `/alfred:0-project`, `/alfred:1-plan`, `/alfred:2-run`, `/alfred:3-sync`                                 |
 | **Sub-agents**  | Alfred             | Deep reasoning and decision making for each phase                  | project-manager, spec-builder, code-builder pipeline, doc-syncer                                         |
 | **Skills (55)** | Claude Skills      | Reusable knowledge capsules loaded just-in-time                    | Foundation (TRUST/TAG/Git), Essentials (debug/refactor/review), Alfred workflow, Domain & Language packs |
-| **Hooks**       | Runtime guardrails | Fast validation + JIT context hints (<100 ms)                      | SessionStart status card, PreToolUse destructive-command blocker                                         |
+| **Hooks**       | Runtime guardrails | Fast validation + JIT context hints (<100 ms)                      | SessionStart status card, PreToolUse destructive-command blocker                                         |
 
 ### Core Sub-agent Roster
 
@@ -195,16 +201,16 @@ Skills keep the core knowledge lightweight while allowing Alfred to assemble the
 
 Alfred commands follow a three-phase loop, with an optional bootstrap stage for `/alfred:0-project`.
 
-- **Phase 0 — Bootstrap (optional)**  
+- **Phase 0 — Bootstrap (optional)**
   Capture project metadata, create `.moai/config.json` and project docs, detect languages, and stage the recommended Skill packs.
 
-- **Phase 1 — Analyze & Plan**  
+- **Phase 1 — Analyze & Plan**
   Understand scope, constraints, and desired outputs; review existing context (files, specs, tests); outline the execution plan and surface risks.
 
-- **Phase 2 — Execute**  
+- **Phase 2 — Execute**
   Run the approved steps in order, log progress in the task thread, escalate blockers immediately with mitigation options, and record decisions.
 
-- **Phase 3 — Sync & Handoff**  
+- **Phase 3 — Sync & Handoff**
   Update docs, TAG inventory, and reports; verify quality gates; summarize outcomes; and suggest the next command or manual follow-up.
 
 ### Alfred's Next-Step Suggestion Principles
@@ -566,7 +572,7 @@ MoAI-ADK assigns every responsibility to a dedicated execution layer.
 
 ### Hooks — Guardrails & just-in-time context
 
-- Lightweight (<100 ms) checks triggered by session events.
+- Lightweight (<100 ms) checks triggered by session events.
 - Block destructive commands, surface status cards, and seed context pointers.
 - Examples: SessionStart project summary, PreToolUse safety checks.
 
@@ -748,20 +754,20 @@ Alfred enforces these quality gates on every change:
 
 ## 프로젝트 정보 | Project Information
 
-- **이름 | Name**: MoAI-ADK
-- **설명 | Description**: MoAI-Agentic Development Kit
-- **버전 | Version**: 0.4.8
-- **모드 | Mode**: personal
-- **프로젝트 담당자 | Project Owner**: GOOS
-- **대화 언어 | Conversation Language**: 한국어 (ko)
-- **코드 언어 | Codebase Language**: Python
+- **이름 | Name**: {{PROJECT_NAME}}
+- **설명 | Description**: {{PROJECT_DESCRIPTION}}
+- **버전 | Version**: {{PROJECT_VERSION}}
+- **모드 | Mode**: {{PROJECT_MODE}}
+- **프로젝트 담당자 | Project Owner**: {{USER_NICKNAME}}
+- **대화 언어 | Conversation Language**: {{CONVERSATION_LANGUAGE_NAME}} ({{CONVERSATION_LANGUAGE}})
+- **코드 언어 | Codebase Language**: {{CODEBASE_LANGUAGE}}
 - **도구 | Toolchain**: 선택된 언어에 최적화된 도구 자동 선택 | Automatically selects the best tools for the chosen language
 
 ### 언어 설정 | Language Configuration
 
-- **대화 언어 | Conversation Language** (`ko`): 모든 Alfred 대화, 문서, 프로젝트 인터뷰가 이 언어로 진행됨 | All Alfred dialogs, documentation, and project interviews conducted in this language
-- **코드 언어 | Codebase Language** (`Python`): 이 프로젝트에서 감지된 주요 프로그래밍 언어 | Primary programming language(s) detected in this project
-- **문서 | Documentation**: 대화 언어로 생성됨 | Generated in the conversation language (한국어)
+- **대화 언어 | Conversation Language** (`{{CONVERSATION_LANGUAGE}}`): 모든 Alfred 대화, 문서, 프로젝트 인터뷰가 이 언어로 진행됨 | All Alfred dialogs, documentation, and project interviews conducted in this language
+- **코드 언어 | Codebase Language** (`{{CODEBASE_LANGUAGE}}`): 이 프로젝트에서 감지된 주요 프로그래밍 언어 | Primary programming language(s) detected in this project
+- **문서 | Documentation**: 대화 언어로 생성됨 | Generated in the conversation language ({{CONVERSATION_LANGUAGE_NAME}})
 
 ---
 

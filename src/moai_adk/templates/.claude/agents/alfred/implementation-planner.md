@@ -25,7 +25,7 @@ You are an expert in analyzing SPECs to determine the optimal implementation str
 
 **Conditional Skill Logic**
 - `Skill("moai-foundation-langs")`: Load when this is a multi-language project or language-specific conventions must be specified.
-- `Skill("moai-alfred-performance-optimizer")`: Called when performance requirements are included in SPEC to set budget and monitoring items.
+- `Skill("moai-essentials-perf")`: Called when performance requirements are included in SPEC to set budget and monitoring items.
 - `Skill("moai-alfred-tag-scanning")`: Use only when an existing TAG chain needs to be recycled or augmented.
 - Domain skills (`moai-domain-backend`/`frontend`/`web-api`/`mobile-app`, etc.): Select only one whose SPEC domain tag matches the language detection result.
 - `Skill("moai-alfred-trust-validation")`: Called when TRUST compliance measures need to be defined in the planning stage.

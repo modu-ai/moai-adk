@@ -245,48 +245,5 @@ Bash(curl:*)          # Arbitrary downloads
 
 ---
 
-## 🤝 Works Well With
-
-**Complementary Skills:**
-- **moai-cc-hooks** - Validate agent inputs/outputs with Pre/PostToolUse Hooks
-- **moai-cc-commands** - Invoke agents from slash commands (`/alfred:2-run`)
-- **moai-cc-settings** - Restrict agent tool access (principle of least privilege)
-- **moai-cc-memory** - Cache agent results to avoid re-computation
-
-**MoAI-ADK Workflows:**
-- **`/alfred:2-run`** - code-builder pipeline (implementation-planner → tdd-implementer)
-- **`/alfred:3-sync`** - tag-agent (verify TAG chains), doc-syncer (generate docs)
-- **`/alfred:2-run` failures** - debug-helper agent auto-invoked for error diagnosis
-
-**Example Integration (MoAI-ADK):**
-```bash
-# 1. Create code-review agent for /alfred:3-sync
-@agent-cc-manager "Create code-reviewer agent for TRUST 5 validation"
-
-# 2. Define tool restrictions in YAML
-tools: Read, Glob, Grep, Bash(git:*)
-
-# 3. Use in workflow
-/alfred:3-sync  # Invokes code-reviewer agent before PR merge
-```
-
-**Common MoAI Patterns:**
-- ✅ spec-builder (Plan) + moai-foundation-specs = SPEC authoring
-- ✅ code-builder (Run) + moai-essentials-refactor = TDD implementation
-- ✅ tag-agent (Sync) + moai-foundation-tags = TAG verification
-- ✅ debug-helper (Run errors) + error logs = Fix-forward guidance
-
-**General Claude Code Patterns:**
-- ✅ Custom agents for code review, security audit, architecture
-- ✅ Parallel agents for simultaneous analysis
-- ✅ Agent orchestration in commands
-
-**See Also:**
-- 📖 **Orchestrator Guide:** `Skill("moai-cc-guide")` → SKILL.md
-- 📖 **MoAI Workflows:** `Skill("moai-cc-guide")` → workflows/alfred-*
-- 📖 **Orchestration:** `Skill("moai-cc-commands")` → Agent Orchestration
-
----
-
 **Reference**: Claude Code Sub-agents documentation
 **Version**: 1.0.0

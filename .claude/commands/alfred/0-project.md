@@ -31,7 +31,7 @@ Automatically analyzes the project environment to create/update product/structur
 4. **Create project documentation**: Create product/structure/tech.md in the selected language
 5. **Create configuration file**: config.json auto-configuration
 
-## 🧠 Skill Loadout Overview
+## 🧠 Associated Skills & Agents
 
 | Agent           | Core Skill                       | Purpose                                       |
 | --------------- | -------------------------------- | --------------------------------------------- |
@@ -80,21 +80,33 @@ The user executes the `/alfred:8-project` command to start analyzing the project
 
 **Expressions to use**:
 
-- ✅ “High/medium/low priority”
-- ✅ “Immediately needed”, “step-by-step improvements”
+- ✅ "High/medium/low priority"
+- ✅ "Immediately needed", "step-by-step improvements"
 - ✅ Current facts
 - ✅ Existing technology stack
 - ✅ Real problems
 
 ---
 
-## 🚀 STEP 0: Conversation Language Selection (NEW in v0.4.2)
+## 🚀 STEP 0: 초기 설정 - 언어 및 사용자 정보 선택
 
-**Purpose**: Establish the conversation language before project initialization begins. This selection applies to all Alfred prompts, interview questions, and generated documentation.
+**목적**: 프로젝트 초기화 시작 전에 대화 언어를 설정하고 사용자 닉네임을 등록합니다. 이 설정은 모든 Alfred 프롬프트, 인터뷰 질문 및 생성된 문서에 적용됩니다.
 
-### 0.1 Display Language Selection Menu
+### 0.0 Alfred 자기소개 및 환영 인사
 
-Alfred displays a language selection menu as the **very first interaction** using `Skill("moai-alfred-interactive-questions")`:
+Alfred가 첫 상호작용으로 다음과 같이 인사합니다:
+
+```
+안녕하세요! 👋 저는 Alfred입니다.
+MoAI-ADK의 SuperAgent로서 당신의 프로젝트를 함께 만들어갈 준비가 되어 있습니다.
+
+앞으로의 모든 대화에서 당신을 편하게 부르기 위해,
+먼저 기본 설정을 진행하겠습니다.
+```
+
+### 0.1 언어 선택
+
+Alfred가 `Skill("moai-alfred-interactive-questions")` 를 사용하여 **첫 번째 상호작용**으로 언어 선택 메뉴를 표시합니다:
 
 **Question**:
 ```
@@ -108,59 +120,83 @@ Which language would you like to use for the project initialization and document
 - **中文** (zh) — All dialogs and documentation in Chinese
 - **Other** — User can specify custom language (e.g., "Español", "Français", "Deutsch")
 
-### 0.2 User Nickname Selection (NEW in v0.4.6)
+### 0.2 Store Language Preference
 
-**Purpose**: Personalize the Alfred experience by capturing the user's preferred nickname.
-
-After language selection, Alfred prompts for the user's nickname using `Skill("moai-alfred-interactive-questions")`:
-
-**Question** (in the selected conversation language):
-```
-대화 언어가 한국어일 때:
-"어떤 닉네임으로 불러드릴까요? (예: GOOS오라버니)"
-
-For English:
-"What nickname would you like to be called? (e.g., JohnDev)"
-```
-
-**Input Method**:
-- Free text input field
-- Default suggestion: User's system username (from `$USER` or `whoami`)
-- Examples shown based on conversation language
-
-**Validation**:
-- Nickname length: 1-50 characters
-- No validation on special characters (allow emoji, spaces, etc.)
-- If empty, use system username as fallback
-
-### 0.3 Store Language and User Preferences
-
-Alfred records the selected language and user nickname:
+Alfred records the selected language:
 
 ```json
 {
   "conversation_language": "ko",
   "conversation_language_name": "한국어",
-  "selected_at": "2025-10-22T12:34:56Z",
-  "user_nickname": "GOOS오라버니"
+  "selected_at": "2025-10-22T12:34:56Z"
 }
 ```
 
-These preferences are:
-- Passed to all sub-agents as context parameters
-- Stored in `.moai/config.json` under the `project` and `user` sections
+This language preference is:
+- Passed to all sub-agents as a context parameter
+- Stored in `.moai/config.json` under `language` field
 - Used to generate all documentation in the selected language
-- Used to personalize Alfred's communication style
-- Displayed in CLAUDE.md under "## 프로젝트 정보 | Project Information"
+- Displayed in CLAUDE.md under "## Project Information"
 
-### 0.4 Transition to STEP 1
+### 0.2.5 사용자 닉네임 선택
 
-After language and nickname selection, all subsequent interactions proceed with personalization:
-- Alfred addresses the user by their chosen nickname (e.g., "안녕하세요, GOOS오라버니님!")
-- project-manager sub-agent receives both language and nickname parameters
-- Interview questions are in the selected language
-- Generated documents (product.md, structure.md, tech.md) are in the selected language
-- CLAUDE.md displays both language and nickname prominently
+언어 선택 완료 후, Alfred가 `Skill("moai-alfred-interactive-questions")` 를 사용하여 사용자 닉네임을 요청합니다:
+
+**질문**:
+```
+앞으로 대화에서 당신을 어떻게 부르면 좋을까요?
+(예: GOOS, 팀장님, 개발자님, 또는 자유롭게 입력)
+```
+
+**입력 방식**:
+- 텍스트 직접 입력 가능 (자유 형식)
+- 예시: "GOOS", "팀장", "개발자" 등
+- 최대 20자 한도
+
+### 0.2.6 사용자 정보 저장
+
+Alfred가 선택된 닉네임을 다음과 같이 저장합니다:
+
+```json
+{
+  "conversation_language": "ko",
+  "conversation_language_name": "한국어",
+  "user_nickname": "GOOS",
+  "selected_at": "2025-10-23T12:34:56Z"
+}
+```
+
+이 정보는:
+- 모든 sub-agents 에게 컨텍스트 파라미터로 전달됨
+- `.moai/config.json` 의 `user` 필드에 저장됨
+- CLAUDE.md의 `{{USER_NICKNAME}}` 변수로 치환됨
+- 모든 Alfred 대화에서 사용됨
+
+**예시**:
+```
+안녕하세요, GOOS님! 👋
+
+이제 프로젝트 환경 분석으로 진행하겠습니다...
+```
+
+### 0.3 STEP 1로 전환
+
+언어 및 사용자 정보 설정 완료 후, 모든 후속 상호작용이 선택된 언어로 진행됩니다:
+- Alfred의 모든 프롬프트가 선택된 언어로 번역됨
+- project-manager sub-agent이 언어 및 사용자 정보 파라미터를 수신
+- 인터뷰 질문이 선택된 언어로 진행됨
+- 생성된 문서 (product.md, structure.md, tech.md)가 선택된 언어로 작성됨
+- CLAUDE.md가 선택된 언어와 사용자 닉네임을 표시함
+
+**한국어 선택 시 출력 예시**:
+```markdown
+✅ 설정 완료!
+
+언어: 한국어 (ko)
+닉네임: GOOS
+
+이제 GOOS님의 프로젝트 환경 분석으로 진행하겠습니다...
+```
 
 ---
 
@@ -333,12 +369,13 @@ Set optimization flags after the merge is complete:
  - Empty directory → New project
  - Code/documentation present → Existing project
 
-2. **Context-aware language detection** (Performed by project-manager in STEP 1):
-   - Uses Glob/Grep to search for language-specific markers (Gemfile, pyproject.toml, package.json, go.mod, Cargo.toml, etc.)
-   - Calculates confidence scores for each detected language
-   - Presents results via TUI menu for user confirmation
-   - Stores confirmed language in `.moai/config.json` with full metadata
-   - **Advantage**: Eliminates Ruby→PHP misidentification via context analysis (not just directory patterns)
+2. **Auto-detect language/framework**: Detects the main language of your project based on file patterns
+   - pyproject.toml, requirements.txt → Python
+   - package.json, tsconfig.json → TypeScript/Node.js
+   - pom.xml, build.gradle → Java
+   - go.mod → Go
+   - Cargo.toml → Rust
+- backend/ + frontend/ → full stack
 
 3. **Document status analysis**
  - Check the status of existing `.moai/project/*.md` files
@@ -428,9 +465,8 @@ After user approval, the project-manager agent performs initialization.
 Alfred starts project initialization by calling the project-manager agent with the following parameters:
 
 **Parameters passed to project-manager**:
-- **conversation_language** (from STEP 0.1): Language code selected by user (e.g., "ko", "en", "ja", "zh")
-- **language_name** (from STEP 0.1): Display name of selected language (e.g., "한국어", "English")
-- **user_nickname** (from STEP 0.2): User's chosen nickname (e.g., "GOOS오라버니", "JohnDev")
+- **conversation_language** (from STEP 0): Language code selected by user (e.g., "ko", "en", "ja", "zh")
+- **language_name** (from STEP 0): Display name of selected language (e.g., "Korean", "English")
 - Detected Languages: [Language List from codebase detection]
 - Project Type: [New/Existing]
 - Existing Document Status: [Existence/Absence]
@@ -441,22 +477,20 @@ Alfred starts project initialization by calling the project-manager agent with t
 # Pseudo-code showing parameter flow
 Task(
     subagent_type="project-manager",
-    description="Initialize project with conversation language and user personalization",
+    description="Initialize project with conversation language support",
     prompt=f"""You are project-manager. Initialize project with these parameters:
     - conversation_language: "{conversation_language}"  # e.g., "ko"
-    - language_name: "{language_name}"  # e.g., "한국어"
-    - user_nickname: "{user_nickname}"  # e.g., "GOOS오라버니"
+    - language_name: "{language_name}"  # e.g., "Korean"
     - project_type: "{project_type}"  # e.g., "new"
     - detected_languages: {detected_languages}
 
     All interviews and documentation must be generated in the conversation_language.
-    Address the user by their nickname throughout all interactions.
-    Update .moai/config.json with language and user parameters.
+    Update .moai/config.json with these language parameters.
     """
 )
 ```
 
-**Outcome**: The project-manager agent conducts structured interviews entirely in the selected language, addresses the user by their nickname, and creates/updates product/structure/tech.md documents in that language.
+**Outcome**: The project-manager agent conducts structured interviews entirely in the selected language and creates/updates product/structure/tech.md documents in that language.
 
 ### 2.2 Automatic activation of Alfred Skills (optional)
 
@@ -772,7 +806,7 @@ cc-manager selects the required sub-agents and skills based on the briefing.The 
 | High quality and coverage goals (`product.md@SPEC:SUCCESS-001`)                    | `tdd-implementer`, `moai-essentials-debug`, `moai-essentials-review`                                                    | Establishment of RED·GREEN·REFACTOR workflow                           |
 | Traceability/TAG improvement request (`structure.md@DOC:TRACEABILITY-001`)         | `doc-syncer`, `moai-alfred-tag-scanning`, `moai-alfred-trust-validation`                                                | Enhanced TAG traceability and document/code synchronization            |
 | Deployment automation/branch strategy required (`structure.md` Architecture/TODO)  | `git-manager`, `moai-alfred-git-workflow`, `moai-foundation-git`                                                        | Branch Strategy·Commit Policy·PR Automation                            |
-| Refactoring legacy modules (`product.md` BACKLOG, `tech.md` TODO)                  | `implementation-planner`, `moai-alfred-refactoring-coach`, `moai-essentials-refactor`                                   | Technical Debt Diagnosis and Refactoring Roadmap                       |
+| Refactoring legacy modules (`product.md` BACKLOG, `tech.md` TODO)                  | `implementation-planner`, `moai-essentials-refactor`                                                                     | Technical Debt Diagnosis and Refactoring Roadmap                       |
 | Strengthening regulatory/security compliance (`tech.md@DOC:SECURITY-001`)          | `quality-gate`, `moai-alfred-trust-validation`, `moai-foundation-trust`, `moai-domain-security`                         | TRUST S (Secured) and Trackable Compliance, Security Consulting        |
 | CLI Automation/Tooling Requirements (`tech.md` BUILD/CLI section)                  | `implementation-planner`, `moai-domain-cli-tool`, detected language skills (e.g. `moai-lang-python`)                    | CLI command design, input/output standardization                       |
 | Data analysis/reporting needs (`product.md` DATA, `tech.md` ANALYTICS)             | `implementation-planner`, `moai-domain-data-science`, detected language skills                                          | Data Pipeline·Notebook Job Definition                                  |
@@ -780,7 +814,7 @@ cc-manager selects the required sub-agents and skills based on the briefing.The 
 | DevOps/Infrastructure automation required (`tech.md` DEVOPS, `structure.md` CI/CD) | `implementation-planner`, `moai-domain-devops`, `moai-alfred-git-workflow`                                              | Establishing a deployment pipeline and IaC strategy                    |
 | Introduction of ML/AI functions (`product.md` AI, `tech.md` MODEL)                 | `implementation-planner`, `moai-domain-ml`, detected language skills                                                    | Model training/inference pipeline definition                           |
 | Mobile app strategy (`product.md` MOBILE, `structure.md` CLIENT)                   | `implementation-planner`, `moai-domain-mobile-app`, detected language skills (e.g. `moai-lang-dart`, `moai-lang-swift`) | Mobile client structure design                                         |
-| Strengthening coding standards/review process (`tech.md` REVIEW)                   | `quality-gate`, `moai-essentials-review`, `moai-alfred-code-reviewer`                                                   | Strengthening review checklist and quality reporting                   |
+| Strengthening coding standards/review process (`tech.md` REVIEW)                   | `quality-gate`, `moai-essentials-review`                                                                                | Strengthening review checklist and quality reporting                   |
 | Requires onboarding/training mode (`tech.md` STACK description, etc.)              | `moai-alfred-interactive-questions`, `moai-adk-learning`, `agentic-coding` Output style                                 | Enhanced interview TUI and automatically provided onboarding materials |
 
 > **Language/Domain Skill Selection Rules**

@@ -26,9 +26,9 @@ You are the agent responsible for the TRUST 5 principles, code standards, and se
 **Conditional Skill Logic**
 - `Skill("moai-alfred-tag-scanning")`: Loads when Trackable items need to be scanned.
 - `Skill("moai-foundation-trust")`: Reference only when comparison with the latest TRUST policy is necessary.
-- `Skill("moai-alfred-code-reviewer")`: Called when qualitative verification of Readable/Unified indicators is required.
-- `Skill("moai-alfred-performance-optimizer")`: Used when performance analysis is required in Level 3 scan.
-- `Skill("moai-alfred-debugger-pro")`: Called when a critical result occurs and root cause analysis is required.
+- `Skill("moai-essentials-review")`: Called when qualitative verification of Readable/Unified indicators is required.
+- `Skill("moai-essentials-perf")`: Used when performance analysis is required in Level 3 scan.
+- `Skill("moai-essentials-debug")`: Called when a critical result occurs and root cause analysis is required.
 - `Skill("moai-alfred-interactive-questions")`: Run when it is necessary to coordinate with the user whether to re-verify/suspend.
 
 ### Expert Traits

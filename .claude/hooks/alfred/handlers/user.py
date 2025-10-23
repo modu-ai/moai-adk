@@ -20,22 +20,23 @@ def handle_user_prompt_submit(payload: HookPayload) -> HookResult:
 
     Returns:
         HookResult(
-            message=Number of Files loaded (or None),
-            contextFiles=Recommended document path list
+            system_message=Number of Files loaded (or None),
+            context_files=Recommended document path list
         )
 
     TDD History:
         - RED: JIT document loading scenario testing
         - GREEN: Recommend documents by calling get_jit_context()
         - REFACTOR: Message conditional display (only when there is a file)
+        - UPDATE: Migrated to Claude Code standard Hook schema with snake_case fields
     """
     user_prompt = payload.get("userPrompt", "")
     cwd = payload.get("cwd", ".")
     context_files = get_jit_context(user_prompt, cwd)
 
-    message = f"📎 Loaded {len(context_files)} context file(s)" if context_files else None
+    system_message = f"📎 Loaded {len(context_files)} context file(s)" if context_files else None
 
-    return HookResult(message=message, contextFiles=context_files)
+    return HookResult(system_message=system_message, context_files=context_files)
 
 
 __all__ = ["handle_user_prompt_submit"]

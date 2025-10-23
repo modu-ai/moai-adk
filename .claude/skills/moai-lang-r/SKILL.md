@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: R 4.4+ best practices with testthat 3.2, lintr, data analysis patterns.
+description: R 4.4+ best practices with testthat 3.2, lintr 3.2, and data analysis patterns.
 keywords: ['r', 'testthat', 'lintr', 'data-analysis']
 allowed-tools:
   - Read
@@ -27,7 +27,7 @@ allowed-tools:
 
 ## What It Does
 
-R 4.4+ best practices with testthat 3.2, lintr, data analysis patterns.
+R 4.4+ best practices with testthat 3.2, lintr 3.2, and data analysis patterns.
 
 **Key capabilities**:
 - ✅ Best practices enforcement for language domain
@@ -55,10 +55,9 @@ R 4.4+ best practices with testthat 3.2, lintr, data analysis patterns.
 
 | Tool | Version | Purpose | Status |
 |------|---------|---------|--------|
-| **R** | 4.4.0 | Runtime | ✅ Current |
-| **testthat** | 3.2.3 | Testing | ✅ Current |
-| **lintr** | 3.2.0 | Linting | ✅ Current |
-| **devtools** | 2.4.5 | Development | ✅ Current |
+| **R** | 4.4.2 | Primary | ✅ Current |
+| **testthat** | 3.2.2 | Primary | ✅ Current |
+| **lintr** | 3.2.0 | Primary | ✅ Current |
 
 ---
 
@@ -112,13 +111,13 @@ _Documentation links updated 2025-10-22_
 ## Best Practices
 
 ✅ **DO**:
-- Follow tidyverse style guide
-- Use testthat for unit testing
+- Follow language best practices
+- Use latest stable tool versions
 - Maintain test coverage ≥85%
-- Leverage vectorization for performance
+- Document all public APIs
 
 ❌ **DON'T**:
 - Skip quality gates
-- Use loops instead of vectorization
-- Ignore memory management
-- Mix data types carelessly
+- Use deprecated tools
+- Ignore security warnings
+- Mix testing frameworks

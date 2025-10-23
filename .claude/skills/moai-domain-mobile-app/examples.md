@@ -1,62 +1,29 @@
-# Mobile App Development - Working Examples
+# moai-domain-mobile-app - Working Examples
 
-> Real-world Flutter and React Native examples
+_Last updated: 2025-10-22_
 
----
+## Example 1: Basic Setup
 
-## Example 1: Flutter Todo App
+```bash
+# Setup commands
+# ...
+```
 
-### main.dart
-```dart
-import 'package:flutter/material.dart';
+## Example 2: TDD Workflow
 
-void main() => runApp(MyApp());
+```bash
+# RED: Write failing test
+# GREEN: Implement feature
+# REFACTOR: Improve code
+```
 
-class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Todo App',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: TodoList(),
-    );
-  }
-}
+## Example 3: Quality Gate
 
-class TodoList extends StatefulWidget {
-  @override
-  _TodoListState createState() => _TodoListState();
-}
-
-class _TodoListState extends State<TodoList> {
-  List<String> todos = [];
-
-  void _addTodo(String task) {
-    setState(() {
-      todos.add(task);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Todos')),
-      body: ListView.builder(
-        itemCount: todos.length,
-        itemBuilder: (context, index) {
-          return ListTile(title: Text(todos[index]));
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _addTodo('New task'),
-        child: Icon(Icons.add),
-      ),
-    );
-  }
-}
+```bash
+# Run quality checks
+# Verify coverage ≥85%
 ```
 
 ---
 
-**Last Updated**: 2025-10-22
-**Framework**: Flutter 3.27.0
+_For more examples, see SKILL.md reference section_

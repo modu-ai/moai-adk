@@ -2,8 +2,27 @@
 
 _Last updated: 2025-10-22_
 
-## Status
+## Quick Reference
 
-Comprehensive CLI reference generated with latest tool versions.
+### Installation
 
-_Content: ~300-400 lines of commands, configurations, and best practices_
+```bash
+# Installation commands
+```
+
+### Common Commands
+
+```bash
+# Test
+# Lint
+# Format
+# Build
+```
+
+## Tool Versions (2025-10-22)
+
+_No specific tool versions (workflow/process Skill)_
+
+---
+
+_For detailed usage, see SKILL.md_

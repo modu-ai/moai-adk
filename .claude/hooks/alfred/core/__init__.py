@@ -5,7 +5,7 @@ Common type definitions and utility functions
 """
 
 from dataclasses import dataclass, field
-from typing import Any, NotRequired, TypedDict
+from typing import Any, Literal, NotRequired, TypedDict
 
 
 class HookPayload(TypedDict):
@@ -16,172 +16,148 @@ class HookPayload(TypedDict):
     """
 
     cwd: str
-    userPrompt: NotRequired[str] # Includes only UserPromptSubmit events
+    userPrompt: NotRequired[str]  # Includes only UserPromptSubmit events
     tool: NotRequired[str]  # PreToolUse/PostToolUse events
     arguments: NotRequired[dict[str, Any]]  # Tool arguments
 
 
 @dataclass
 class HookResult:
-    """Hook execution result"""
+    """Hook execution result following Claude Code standard schema.
 
-    message: str | None = None
-    systemMessage: str | None = None  # Message displayed directly to the user  # noqa: N815
-    blocked: bool = False
-    contextFiles: list[str] = field(default_factory=list)  # noqa: N815
+    Attributes conform to Claude Code Hook output specification:
+    https://docs.claude.com/en/docs/claude-code/hooks
+
+    Standard Fields (Claude Code schema - included in JSON output):
+        continue_execution: Allow execution to continue (default True)
+        suppress_output: Suppress hook output display (default False)
+        decision: "approve" or "block" operation (optional)
+        reason: Explanation for decision (optional)
+        permission_decision: "allow", "deny", or "ask" (optional)
+        system_message: Message displayed to user (top-level field)
+
+    Internal Fields (MoAI-ADK only - NOT in JSON output):
+        context_files: List of context files to load (internal use only)
+        suggestions: Suggestions for user (internal use only)
+        exit_code: Exit code for diagnostics (internal use only)
+
+    Note:
+        - systemMessage appears at TOP LEVEL in JSON output
+        - hookSpecificOutput is ONLY used for UserPromptSubmit events
+        - Internal fields are used for Python logic but not serialized to JSON
+    """
+
+    # Claude Code standard fields
+    continue_execution: bool = True
+    suppress_output: bool = False
+    decision: Literal["approve", "block"] | None = None
+    reason: str | None = None
+    permission_decision: Literal["allow", "deny", "ask"] | None = None
+
+    # MoAI-ADK custom fields (wrapped in hookSpecificOutput)
+    system_message: str | None = None
+    context_files: list[str] = field(default_factory=list)
     suggestions: list[str] = field(default_factory=list)
-    exitCode: int = 0  # noqa: N815
+    exit_code: int = 0
 
     def to_dict(self) -> dict[str, Any]:
-        """Dictionary conversion for general Hook (Claude Code standard schema)
-
-        Converts HookResult to Claude Code standard output format:
-        {
-            "systemMessage": "...",  # Displayed directly to user
-            "hookSpecificOutput": {
-                "contextFiles": [...],
-                "suggestions": [...],
-                "exitCode": 0
-            }
-        }
+        """Convert to Claude Code standard Hook output schema.
 
         Returns:
-            Claude Code standard Hook dictionary
+            Dictionary conforming to Claude Code Hook specification with:
+            - Top-level fields: continue, suppressOutput, decision, reason,
+              permissionDecision, systemMessage
+            - MoAI-ADK internal fields (context_files, suggestions, exit_code)
+              are NOT included in JSON output (used for internal logic only)
 
         Examples:
-            >>> result = HookResult(systemMessage="Status", contextFiles=["a.txt"])
+            >>> result = HookResult(continue_execution=True)
             >>> result.to_dict()
-            {'systemMessage': 'Status', 'hookSpecificOutput': {'contextFiles': ['a.txt'], 'suggestions': [], 'exitCode': 0}}
+            {'continue': True}
+
+            >>> result = HookResult(decision="block", reason="Dangerous")
+            >>> result.to_dict()
+            {'decision': 'block', 'reason': 'Dangerous'}
+
+            >>> result = HookResult(system_message="Test")
+            >>> result.to_dict()
+            {'continue': True, 'systemMessage': 'Test'}
+
+        Note:
+            - systemMessage is a TOP-LEVEL field (not nested in hookSpecificOutput)
+            - hookSpecificOutput is ONLY used for UserPromptSubmit events
+            - context_files, suggestions, exit_code are internal-only fields
         """
-        output = {}
+        output: dict[str, Any] = {}
 
-        # systemMessage at top-level (Claude Code standard)
-        if self.systemMessage:
-            output["systemMessage"] = self.systemMessage
+        # Add decision or continue flag
+        if self.decision:
+            output["decision"] = self.decision
+        else:
+            output["continue"] = self.continue_execution
 
-        # hookSpecificOutput contains operational data
-        hook_output = {
-            "contextFiles": self.contextFiles,
-            "suggestions": self.suggestions,
-            "exitCode": self.exitCode
-        }
+        # Add reason if provided (works with both decision and permissionDecision)
+        if self.reason:
+            output["reason"] = self.reason
 
-        output["hookSpecificOutput"] = hook_output
+        # Add suppressOutput if True
+        if self.suppress_output:
+            output["suppressOutput"] = True
+
+        # Add permissionDecision if set
+        if self.permission_decision:
+            output["permissionDecision"] = self.permission_decision
+
+        # Add systemMessage at TOP LEVEL (required by Claude Code schema)
+        if self.system_message:
+            output["systemMessage"] = self.system_message
+
+        # Note: context_files, suggestions, exit_code are internal-only fields
+        # and are NOT included in the JSON output per Claude Code schema
 
         return output
 
     def to_user_prompt_submit_dict(self) -> dict[str, Any]:
-        """UserPromptSubmit Hook-specific output format
+        """UserPromptSubmit Hook-specific output format.
 
-        Claude Code requires a special schema for UserPromptSubmit:
-        {
-            "hookEventName": "UserPromptSubmit",
-            "additionalContext": "string (required)"
-        }
+        Claude Code requires a special schema for UserPromptSubmit events.
+        The result is wrapped in the standard Hook schema with hookSpecificOutput.
 
         Returns:
-            Claude Code UserPromptSubmit Hook Dictionary matching schema
+            Claude Code UserPromptSubmit Hook Dictionary matching schema:
+            {
+                "continue": true,
+                "hookSpecificOutput": {
+                    "hookEventName": "UserPromptSubmit",
+                    "additionalContext": "string"
+                }
+            }
 
         Examples:
-            >>> result = HookResult(contextFiles=["tests/"])
+            >>> result = HookResult(context_files=["tests/"])
             >>> result.to_user_prompt_submit_dict()
-            {'hookEventName': 'UserPromptSubmit', 'additionalContext': '📎 Context: tests/'}
+            {'continue': True, 'hookSpecificOutput': {'hookEventName': 'UserPromptSubmit', 'additionalContext': '📎 Context: tests/'}}
         """
-        # Convert contextFiles to additionalContext string
-        if self.contextFiles:
-            context_str = "\n".join([f"📎 Context: {f}" for f in self.contextFiles])
+        # Convert context_files to additionalContext string
+        if self.context_files:
+            context_str = "\n".join([f"📎 Context: {f}" for f in self.context_files])
         else:
             context_str = ""
 
-        # Add message if there is one
-        if self.message:
+        # Add system_message if there is one
+        if self.system_message:
             if context_str:
-                context_str = f"{self.message}\n\n{context_str}"
+                context_str = f"{self.system_message}\n\n{context_str}"
             else:
-                context_str = self.message
-
-        # If the string is empty, use default
-        if not context_str:
-            context_str = ""
+                context_str = self.system_message
 
         return {
-            "hookEventName": "UserPromptSubmit",
-            "additionalContext": context_str
+            "continue": self.continue_execution,
+            "hookSpecificOutput": {
+                "hookEventName": "UserPromptSubmit",
+                "additionalContext": context_str
+            }
         }
-
-    def to_pre_tool_use_dict(self) -> dict[str, Any]:
-        """PreToolUse Hook-specific output format
-
-        Claude Code requires a specific schema for PreToolUse:
-        {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": "allow" | "deny" | "ask" (optional),
-            "permissionDecisionReason": "string (optional)",
-            "updatedInput": "object (optional)"
-        }
-
-        Returns:
-            Claude Code PreToolUse Hook dictionary matching schema
-
-        Examples:
-            >>> result = HookResult(blocked=False)
-            >>> result.to_pre_tool_use_dict()
-            {'hookEventName': 'PreToolUse', 'permissionDecision': 'allow'}
-
-            >>> result = HookResult(blocked=True, message="⚠️ Risky operation")
-            >>> result.to_pre_tool_use_dict()
-            {'hookEventName': 'PreToolUse', 'permissionDecision': 'deny', 'permissionDecisionReason': '⚠️ Risky operation'}
-        """
-        output = {
-            "hookEventName": "PreToolUse"
-        }
-
-        # Map blocked to permissionDecision
-        if self.blocked:
-            output["permissionDecision"] = "deny"
-            if self.message:
-                output["permissionDecisionReason"] = self.message
-        else:
-            output["permissionDecision"] = "allow"
-            if self.message:
-                output["permissionDecisionReason"] = self.message
-
-        return output
-
-    def to_post_tool_use_dict(self) -> dict[str, Any]:
-        """PostToolUse Hook-specific output format
-
-        Claude Code requires a specific schema for PostToolUse:
-        {
-            "decision": "block" | undefined,
-            "reason": "string (optional)"
-        }
-
-        PostToolUse hooks run AFTER tool execution, so they can only:
-        - "block": Prevent the result from being shown (post-execution blocking)
-        - undefined/omit: Allow normal operation
-
-        Returns:
-            Claude Code PostToolUse Hook dictionary matching schema
-
-        Examples:
-            >>> result = HookResult(blocked=False)
-            >>> result.to_post_tool_use_dict()
-            {}
-
-            >>> result = HookResult(blocked=True, message="Test failed")
-            >>> result.to_post_tool_use_dict()
-            {'decision': 'block', 'reason': 'Test failed'}
-        """
-        output = {}
-
-        # Map blocked to decision
-        if self.blocked:
-            output["decision"] = "block"
-            if self.message:
-                output["reason"] = self.message
-
-        return output
 
 
 __all__ = ["HookPayload", "HookResult"]

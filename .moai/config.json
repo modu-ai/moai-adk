@@ -4,7 +4,7 @@
     "@SPEC:PROJECT-CONFIG-001": "@SPEC:MOAI-CONFIG-001"
   },
   "moai": {
-    "version": "0.4.1"
+    "version": "0.4.8"
   },
   "constitution": {
     "enforce_tdd": true,

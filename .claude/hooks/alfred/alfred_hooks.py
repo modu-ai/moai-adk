@@ -55,6 +55,7 @@ Setup sys.path for package imports
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 from core import HookResult
 from handlers import (
@@ -117,8 +118,7 @@ def main() -> None:
     try:
         # Read JSON from stdin
         input_data = sys.stdin.read()
-        # Handle empty stdin by treating it as empty object
-        data = json.loads(input_data) if input_data.strip() else {}
+        data = json.loads(input_data)
 
         cwd = data.get("cwd", ".")
 
@@ -137,22 +137,31 @@ def main() -> None:
         handler = handlers.get(event_name)
         result = handler({"cwd": cwd, **data}) if handler else HookResult()
 
-        # UserPromptSubmit, PreToolUse, and PostToolUse use special output schemas
+        # Output Hook result as JSON
+        # Note: UserPromptSubmit uses to_user_prompt_submit_dict() for special schema
         if event_name == "UserPromptSubmit":
             print(json.dumps(result.to_user_prompt_submit_dict()))
-        elif event_name == "PreToolUse":
-            print(json.dumps(result.to_pre_tool_use_dict()))
-        elif event_name == "PostToolUse":
-            print(json.dumps(result.to_post_tool_use_dict()))
         else:
             print(json.dumps(result.to_dict()))
 
         sys.exit(0)
 
     except json.JSONDecodeError as e:
+        # Return valid Hook response even on JSON parse error
+        error_response = {
+            "continue": True,
+            "systemMessage": f"⚠️ Hook JSON parse error: {e}"
+        }
+        print(json.dumps(error_response))
         print(f"JSON parse error: {e}", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
+        # Return valid Hook response even on unexpected error
+        error_response = {
+            "continue": True,
+            "systemMessage": f"⚠️ Hook execution error: {e}"
+        }
+        print(json.dumps(error_response))
         print(f"Unexpected error: {e}", file=sys.stderr)
         sys.exit(1)
 
