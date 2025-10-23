@@ -28,18 +28,23 @@ class HookResult:
     Attributes conform to Claude Code Hook output specification:
     https://docs.claude.com/en/docs/claude-code/hooks
 
-    Standard Fields (Claude Code schema):
+    Standard Fields (Claude Code schema - included in JSON output):
         continue_execution: Allow execution to continue (default True)
         suppress_output: Suppress hook output display (default False)
         decision: "approve" or "block" operation (optional)
         reason: Explanation for decision (optional)
         permission_decision: "allow", "deny", or "ask" (optional)
+        system_message: Message displayed to user (top-level field)
 
-    MoAI-ADK Fields (wrapped in hookSpecificOutput):
-        system_message: Message displayed to user
-        context_files: List of context files to load
-        suggestions: Suggestions for user
-        exit_code: Exit code (for diagnostics)
+    Internal Fields (MoAI-ADK only - NOT in JSON output):
+        context_files: List of context files to load (internal use only)
+        suggestions: Suggestions for user (internal use only)
+        exit_code: Exit code for diagnostics (internal use only)
+
+    Note:
+        - systemMessage appears at TOP LEVEL in JSON output
+        - hookSpecificOutput is ONLY used for UserPromptSubmit events
+        - Internal fields are used for Python logic but not serialized to JSON
     """
 
     # Claude Code standard fields
@@ -60,8 +65,10 @@ class HookResult:
 
         Returns:
             Dictionary conforming to Claude Code Hook specification with:
-            - Top-level fields: continue, suppressOutput, decision, reason, permissionDecision
-            - Nested field: hookSpecificOutput containing MoAI-ADK-specific data
+            - Top-level fields: continue, suppressOutput, decision, reason,
+              permissionDecision, systemMessage
+            - MoAI-ADK internal fields (context_files, suggestions, exit_code)
+              are NOT included in JSON output (used for internal logic only)
 
         Examples:
             >>> result = HookResult(continue_execution=True)
@@ -72,19 +79,26 @@ class HookResult:
             >>> result.to_dict()
             {'decision': 'block', 'reason': 'Dangerous'}
 
-            >>> result = HookResult(system_message="Test", context_files=["a.txt"])
+            >>> result = HookResult(system_message="Test")
             >>> result.to_dict()
-            {'continue': True, 'hookSpecificOutput': {'systemMessage': 'Test', 'contextFiles': ['a.txt']}}
+            {'continue': True, 'systemMessage': 'Test'}
+
+        Note:
+            - systemMessage is a TOP-LEVEL field (not nested in hookSpecificOutput)
+            - hookSpecificOutput is ONLY used for UserPromptSubmit events
+            - context_files, suggestions, exit_code are internal-only fields
         """
         output: dict[str, Any] = {}
 
         # Add decision or continue flag
         if self.decision:
             output["decision"] = self.decision
-            if self.reason:
-                output["reason"] = self.reason
         else:
             output["continue"] = self.continue_execution
+
+        # Add reason if provided (works with both decision and permissionDecision)
+        if self.reason:
+            output["reason"] = self.reason
 
         # Add suppressOutput if True
         if self.suppress_output:
@@ -94,24 +108,12 @@ class HookResult:
         if self.permission_decision:
             output["permissionDecision"] = self.permission_decision
 
-        # Wrap MoAI-ADK custom fields in hookSpecificOutput
-        hook_output: dict[str, Any] = {}
-
+        # Add systemMessage at TOP LEVEL (required by Claude Code schema)
         if self.system_message:
-            hook_output["systemMessage"] = self.system_message
+            output["systemMessage"] = self.system_message
 
-        if self.context_files:
-            hook_output["contextFiles"] = self.context_files
-
-        if self.suggestions:
-            hook_output["suggestions"] = self.suggestions
-
-        if self.exit_code != 0:
-            hook_output["exitCode"] = self.exit_code
-
-        # Only add hookSpecificOutput if there's custom data
-        if hook_output:
-            output["hookSpecificOutput"] = hook_output
+        # Note: context_files, suggestions, exit_code are internal-only fields
+        # and are NOT included in the JSON output per Claude Code schema
 
         return output
 
