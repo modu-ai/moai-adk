@@ -14,7 +14,6 @@ Phase-based 5-step initialization process:
 import time
 from pathlib import Path
 
-from moai_adk.core.project.detector import LanguageDetector
 from moai_adk.core.project.phase_executor import PhaseExecutor, ProgressCallback
 from moai_adk.core.project.validator import ProjectValidator
 
@@ -53,7 +52,6 @@ class ProjectInitializer:
             path: Project root directory
         """
         self.path = Path(path).resolve()
-        self.detector = LanguageDetector()
         self.validator = ProjectValidator()
         self.executor = PhaseExecutor(self.validator)
 
@@ -92,8 +90,9 @@ class ProjectInitializer:
                     f"Use 'python -m moai_adk status' to check the current configuration."
                 )
 
-            # Detect language
-            detected_language = language or self.detector.detect(self.path) or "generic"
+            # Use provided language or default to generic
+            # Language detection now happens in /alfred:0-project via project-manager
+            detected_language = language or "generic"
 
             # Phase 1: Preparation (backup and validation)
             self.executor.execute_preparation_phase(
@@ -120,11 +119,19 @@ class ProjectInitializer:
             )
 
             # Phase 4: Configuration (generate config.json)
-            config_data: dict[str, str | bool] = {
+            config_data: dict[str, str | bool | dict] = {
                 "projectName": self.path.name,
                 "mode": mode,
                 "locale": locale,
                 "language": detected_language,
+                # Language detection metadata (will be updated by project-manager via /alfred:0-project)
+                "language_detection": {
+                    "detected_language": detected_language,
+                    "detection_method": "cli_default",  # Will be "context_aware" after /alfred:0-project
+                    "confidence": None,  # Will be calculated by project-manager
+                    "markers": [],  # Will be populated by project-manager
+                    "confirmed_by": None,  # Will be "user" after project-manager confirmation
+                }
             }
             config_files = self.executor.execute_configuration_phase(
                 self.path, config_data, progress_callback

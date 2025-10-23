@@ -1,5 +1,7 @@
 # MoAI-ADK (Agentic Development Kit)
 
+[English](README.md) | [한국어](README.ko.md) | [ไทย](README.th.md) | [日本語](README.ja.md) | [中文](README.zh.md) | [हिन्दी](README.hi.md)
+
 [![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.13+-blue)](https://www.python.org/)
@@ -21,6 +23,8 @@
 | Plan / Run / Sync は何をする？ | [主要コマンドまとめ](#主要コマンドまとめ) |
 | SPEC・TDD・TAG とは？ | [主要コンセプトを理解する](#主要コンセプトを理解する) |
 | エージェントとSkillsが知りたい | [Sub-agent と Skills の概要](#sub-agent-と-skills-の概要) |
+| Claude Code Hooks の動作は？ | [Claude Code Hooks ガイド](#claude-code-hooks-ガイド) |
+| 4週間の実践プロジェクトがしたい | [第2の実践: Mini Kanban Board](#第2の実践-mini-kanban-board) |
 | もっと学びたい | [追加リソース](#追加リソース) |
 
 ---
@@ -232,7 +236,7 @@ graph TD
 
 ## Sub-agent と Skills の概要
 
-Alfred は **19名のチーム**（SuperAgent 1 + コア Sub-agent 10 + 0-project Sub-agent 6 + ビルトイン 2）と **44個の Claude Skills** を組み合わせて動作します。
+Alfred は **19名のチーム**（SuperAgent 1 + コア Sub-agent 10 + 0-project Sub-agent 6 + ビルトイン 2）と **56個の Claude Skills** を組み合わせて動作します。
 
 ### コア Sub-agent（Plan → Run → Sync）
 
@@ -250,13 +254,12 @@ Alfred は **19名のチーム**（SuperAgent 1 + コア Sub-agent 10 + 0-projec
 | cc-manager 🛠️ | Sonnet | Claude Code セッション最適化と Skills 配備 |
 
 ### Skills（段階的開示）
-- **Foundation (6)**: TRUST, TAG, SPEC, EARS, Git, 言語検出
+- **Foundation (6)**: TRUST, TAG, SPEC, EARS, Git, 言語ポリシー
 - **Essentials (4)**: Debug, Refactor, Review, Performance
-- **Domain (10)**: Backend, Web API, Security, Data, Mobile など
-- **Language (23)**: Python, TypeScript, Go, Rust, Java, Swift など主要言語パック
-- **Claude Code Ops (1)**: セッション設定、出力スタイル管理
+- **Alfred Tier (11)**: MoAI‑ADK の内部オーケストレーション（Plan/Run/Sync、TAG、TRUST 等）
+- **Domain/Language/Ops**: バックエンド/Web API/セキュリティ、主要言語パック、Claude Code 運用
 
-> Skills は `.claude/skills/` に 500語以下のガイドとして保存されています。必要なときだけ読み込み、コンテキストコストを抑えます。
+> Skills は `.claude/skills/` に保存され、必要なときにのみ JIT で読み込みます（合計 56 Skills）。
 
 ---
 
@@ -272,6 +275,52 @@ Alfred は **19名のチーム**（SuperAgent 1 + コア Sub-agent 10 + 0-projec
 
 ---
 
+## Claude Code Hooks ガイド
+
+MoAI-ADK は開発フローに統合された 5 つの Claude Code Hooks を提供します。セッション開始/終了、ツール実行の前後、プロンプト送信のタイミングで自動実行され、チェックポイント、JIT コンテキスト読み込み、セッション管理を行います。
+
+### Hooks とは？
+
+Claude Code セッションの重要イベントで自動発火するイベント駆動スクリプトです。作業を妨げずに安全性と生産性を高めます。
+
+### インストール済み Hooks（5）
+
+| Hook | 状態 | 機能 |
+|------|------|------|
+| SessionStart | ✅ 有効 | プロジェクト状態の要約（言語/Git/SPEC 進捗/チェックポイント） |
+| PreToolUse | ✅ 有効 | リスク検知 + 自動チェックポイント（削除/マージ/一括編集/重要ファイル） |
+| UserPromptSubmit | ✅ 有効 | JIT コンテキスト読み込み（関連する SPEC/テスト/コード/ドキュメントを自動ロード） |
+| PostToolUse | ✅ 有効 | 変更後の自動テスト実行（Python/TS/JS/Go/Rust/Java ほか） |
+| SessionEnd | ✅ 有効 | セッションクリーンアップと状態保存 |
+
+### 技術情報
+
+- 位置: `.claude/hooks/alfred/`
+- 環境変数: `$CLAUDE_PROJECT_DIR`（プロジェクトルートを動的参照）
+- 性能: 各 Hook は <100ms で実行
+- ロギング: エラーは stderr（stdout は JSON 用）
+
+### 無効化するには
+
+`.claude/settings.json` を編集:
+
+```json
+{
+  "hooks": {
+    "SessionStart": [],
+    "PreToolUse": ["risk-detector", "checkpoint-maker"]
+  }
+}
+```
+
+### トラブルシューティング
+
+- 実行されない: `.claude/settings.json` を確認、`uv` がインストール済みか、実行権限 `chmod +x .claude/hooks/alfred/alfred_hooks.py`
+- パフォーマンス低下: 100ms 超の Hook がないか、不要 Hook を無効化、stderr のエラー確認
+- チェックポイントが多すぎる: PreToolUse の条件/閾値を調整（`core/checkpoint.py`）
+
+---
+
 ## よくある質問 (FAQ)
 
 - **Q. 既存プロジェクトにも導入できますか？**  
@@ -282,6 +331,338 @@ Alfred は **19名のチーム**（SuperAgent 1 + コア Sub-agent 10 + 0-projec
   A. `/alfred:3-sync` が Sync Report を生成します。Pull Request で確認してください。
 - **Q. 手動で進めてもいいですか？**  
   A. 可能ですが、SPEC → TEST → CODE → DOC の順序と TAG の付与は必須です。
+
+---
+
+## 第2の実践: Mini Kanban Board
+
+このセクションは最初の Todo API 例を超え、4週間のフルスタック開発プロジェクトを提示します。
+
+MoAI‑ADK を end‑to‑end で習得するための Web アプリ「Mini Kanban Board」を一緒に構築します。SPEC‑First TDD の全工程を体験できます。
+
+### プロジェクト概要
+
+- Backend: FastAPI + Pydantic v2 + uv + WebSocket (Python)
+- Frontend: React 19 + TypeScript 5.9 + Vite + Zustand + TanStack Query
+- Real-time: WebSocket によるマルチクライアント同期
+- Storage: ローカルファイルシステム（.moai/specs/）
+- DevOps: Docker Compose + GitHub Actions CI/CD + Playwright E2E
+
+### 4週間のタイムライン
+
+```mermaid
+gantt
+    title Mini Kanban Board — 4週間プラン
+    dateFormat YYYY-MM-DD
+
+    section フェーズ1: Backend 基礎
+    CH07: SPEC-001~004 を定義         :active, ch07-spec, 2025-11-03, 1d
+    CH07: SpecScanner 実装 (TDD)      :active, ch07-impl, 2025-11-04, 1d
+
+    section フェーズ2: Backend 応用
+    CH08: REST API 実装               :active, ch08-api, 2025-11-05, 1d
+    CH08: WebSocket + ファイル監視     :active, ch08-ws, 2025-11-06, 1d
+
+    section フェーズ3: Frontend 基礎
+    CH09: React 初期化 + SPEC-009~012 :active, ch09-spec, 2025-11-10, 1d
+    CH09: Kanban Board (TDD)          :active, ch09-impl, 2025-11-11, 1d
+
+    section フェーズ4: 高度化 + デプロイ
+    CH10: E2E + CI/CD                 :active, ch10-e2e, 2025-11-12, 1d
+    CH10: Docker Compose + 最適化      :active, ch10-deploy, 2025-11-13, 1d
+```
+
+### 16 SPEC ロードマップ
+
+| フェーズ | SPEC | タイトル | スタック | 目安 | 状態 |
+|----------|------|----------|----------|------|------|
+| Backend 基礎 | SPEC-001 | SPEC ファイルスキャナ | FastAPI + pathlib + YAML | 1h | 📋 |
+|  | SPEC-002 | YAML メタデータパーサ | Pydantic v2 検証 | 1h | 📋 |
+|  | SPEC-003 | GET /api/specs（一覧） | FastAPI ルータ | 0.5h | 📋 |
+|  | SPEC-004 | GET /api/specs/{id}（詳細） | FastAPI ルータ | 0.5h | 📋 |
+| Backend 応用 | SPEC-005 | PATCH /api/specs/{id}/status | FastAPI + 更新 | 1h | 📋 |
+|  | SPEC-006 | GET /api/specs/summary | 集計 | 0.5h | 📋 |
+|  | SPEC-007 | ファイル監視 | watchdog + 非同期 | 1h | 📋 |
+|  | SPEC-008 | WebSocket イベント | FastAPI WebSocket | 1.5h | 📋 |
+| Frontend 基礎 | SPEC-009 | カンバンレイアウト | React + CSS Grid | 1.5h | 📋 |
+|  | SPEC-010 | SPEC カードコンポーネント | React + TypeScript | 1h | 📋 |
+|  | SPEC-011 | TanStack Query 統合 | useQuery + useMutation | 1.5h | 📋 |
+|  | SPEC-012 | ドラッグ&ドロップ | React Beautiful DnD | 1.5h | 📋 |
+| 高度化 + デプロイ | SPEC-013 | E2E 自動テスト | Playwright | 1.5h | 📋 |
+|  | SPEC-014 | GitHub Actions CI/CD | テスト + リリース | 1h | 📋 |
+|  | SPEC-015 | Docker Compose デプロイ | 複数コンテナ | 1h | 📋 |
+|  | SPEC-016 | 性能最適化 + 機能拡張 | キャッシュ + WS チューニング | 1.5h | 📋 |
+|  |  | 合計 |  | 20h |  |
+
+### システムアーキテクチャ
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│            Mini Kanban Board — アーキテクチャ                │
+└─────────────────────────────────────────────────────────────┘
+
+┌──────────────────────┐         ┌────────────────────────┐
+│   📱 Frontend        │         │   🖥️ Backend Server   │
+│  (React 19 + Vite)   │◄───────►│ (FastAPI + Pydantic)   │
+│                      │  REST   │                        │
+│ ┌──────────────────┐ │ API +   │ ┌──────────────────┐   │
+│ │ DashboardHeader  │ │WebSocket│ │ GET /api/specs   │   │
+│ ├──────────────────┤ │         │ ├──────────────────┤   │
+│ │ KanbanBoard      │ │         │ │ PATCH /api/specs/{id}││
+│ │ ┌──────────────┐ │ │         │ │ /status          │   │
+│ │ │ Column: Draft│ │ │         │ ├──────────────────┤   │
+│ │ │ Column: Active││ │         │ │ WebSocket        │   │
+│ │ │ Column: Done │ │ │         │ │ /ws              │   │
+│ │ └──────────────┘ │ │         │ │                  │   │
+│ ├──────────────────┤ │         │ ├──────────────────┤   │
+│ │ SpecCard (DnD)   │ │         │ │ SpecScanner      │   │
+│ ├──────────────────┤ │         │ │ (.moai/specs/)   │   │
+│ │ SearchBar        │ │         │ ├──────────────────┤   │
+│ └──────────────────┘ │         │ │ YAML Parser      │   │
+│                      │         │ │ (Pydantic v2)    │   │
+│ Zustand ストア:       │         │ └──────────────────┘   │
+│ • filterStore        │         │                        │
+│ • uiStore            │         │ ファイルシステム:       │
+│                      │         │ .moai/specs/           │
+│ TanStack Query:      │         │ SPEC-001/              │
+│ • useQuery           │         │ SPEC-002/              │
+│ • useMutation        │         │ ...                    │
+└──────────────────────┘         └────────────────────────┘
+         │                                    │
+         │            WebSocket               │
+         └────────────────────────────────────┘
+              (リアルタイム同期)
+```
+
+### フェーズ詳細
+
+#### フェーズ1: Backend 基礎（SPEC-001~004）
+
+目的: FastAPI + Pydantic v2 + uv でコアのデータスキャンサービスを構築
+
+```bash
+# 1) 初期化
+/alfred:0-project
+# → .moai/, backend/, frontend/ を作成
+# → .moai/config.json を設定
+
+# 2) SPEC 作成（SPEC-001~004）
+/alfred:1-plan
+# → SPEC-001: SPEC ファイルスキャナ
+# → SPEC-002: YAML メタデータパーサ
+# → SPEC-003: GET /api/specs
+# → SPEC-004: GET /api/specs/{id}
+
+# 3) TDD（RED → GREEN → REFACTOR）
+/alfred:2-run SPEC-001
+/alfred:2-run SPEC-002
+/alfred:2-run SPEC-003
+/alfred:2-run SPEC-004
+```
+
+キーポイント:
+- FastAPI プロジェクト構成
+- Pydantic v2 検証
+- YAML Front Matter 解析
+- 依存性注入（DI）
+- 最初の TDD サイクル完了
+
+#### フェーズ2: Backend 応用（SPEC-005~008）
+
+目的: ファイル監視と WebSocket リアルタイムイベント
+
+```bash
+# REST エンドポイント
+/alfred:2-run SPEC-005  # PATCH /api/specs/{id}/status
+/alfred:2-run SPEC-006  # GET /api/specs/summary
+
+# WebSocket + File Watcher
+/alfred:2-run SPEC-007  # ファイル監視（watchdog）
+/alfred:2-run SPEC-008  # WebSocket ブロードキャスト
+
+# TRUST 5 検証
+/alfred:3-sync
+```
+
+キーポイント:
+- ファイルシステム監視（watchdog）
+- FastAPI WebSocket エンドポイント
+- 非同期イベント配信
+- TRUST 5 の自動検証
+
+#### フェーズ3: Frontend 基礎（SPEC-009~012）
+
+目的: React 19 + TypeScript + Vite でカンバン UI を構築
+
+```bash
+# React + Vite 初期化
+cd frontend
+npm create vite@latest . -- --template react-ts
+
+# TanStack Query + Zustand
+npm install @tanstack/react-query zustand
+
+# SPEC
+/alfred:1-plan SPEC-009  # レイアウト
+/alfred:1-plan SPEC-010  # カードコンポーネント
+/alfred:1-plan SPEC-011  # TanStack Query 統合
+/alfred:1-plan SPEC-012  # ドラッグ&ドロップ
+
+# TDD
+/alfred:2-run SPEC-009
+/alfred:2-run SPEC-010
+/alfred:2-run SPEC-011
+/alfred:2-run SPEC-012
+```
+
+キーポイント:
+- React 19 Hooks（useState, useEffect, useContext）
+- TypeScript 5.9 strict
+- TanStack Query（useQuery, useMutation）
+- Zustand 状態管理
+- React Beautiful DnD による DnD
+
+#### フェーズ4: 高度化 + デプロイ（SPEC-013~016）
+
+目的: E2E テスト、CI/CD、Docker デプロイ、性能最適化
+
+```bash
+/alfred:2-run SPEC-013  # E2E（Playwright）
+/alfred:2-run SPEC-014  # GitHub Actions
+/alfred:2-run SPEC-015  # Docker Compose
+/alfred:2-run SPEC-016  # 性能最適化
+```
+
+キーポイント:
+- Playwright による E2E 自動化
+- GitHub Actions ワークフロー
+- Docker マルチステージビルド
+- 本番性能チューニング
+
+### クイックスタートガイド
+
+#### 1) 初期化
+
+```bash
+pip install moai-adk==0.4.10
+mkdir mini-kanban-board && cd mini-kanban-board
+git init
+/alfred:0-project
+```
+
+#### 2) SPEC 作成
+
+```bash
+/alfred:1-plan
+# - プロジェクト名: Mini Kanban Board
+# - スタック: FastAPI + React 19
+# - 期間: 4週間
+```
+
+#### 3) TDD 開始
+
+```bash
+/alfred:2-run SPEC-001
+/alfred:2-run SPEC-005
+/alfred:2-run SPEC-006
+/alfred:2-run SPEC-007
+/alfred:2-run SPEC-008
+cd frontend
+/alfred:2-run SPEC-009
+/alfred:2-run SPEC-010
+/alfred:2-run SPEC-011
+/alfred:2-run SPEC-012
+/alfred:2-run SPEC-013
+/alfred:2-run SPEC-014
+/alfred:2-run SPEC-015
+/alfred:2-run SPEC-016
+```
+
+### プロジェクトセットアップ
+
+#### 1) 初期化
+
+```bash
+moai-adk init mini-kanban
+cd mini-kanban
+
+# 任意：frontend/backend ディレクトリを用意
+mkdir -p backend frontend
+```
+
+#### 2) SPEC 作成
+
+```bash
+# Planning を開始
+/alfred:1-plan
+
+# 回答する内容:
+# - プロジェクト名: Mini Kanban Board
+# - 技術スタック: FastAPI + React 19
+# - 期間: 4週間の実践プロジェクト
+```
+
+#### 3) TDD を開始
+
+```bash
+# フェーズ1（Backend 基礎）
+/alfred:2-run SPEC-001
+
+# フェーズ2（Backend 応用）
+/alfred:2-run SPEC-005
+/alfred:2-run SPEC-006
+/alfred:2-run SPEC-007
+/alfred:2-run SPEC-008
+
+# フェーズ3（Frontend 基礎）
+cd frontend
+/alfred:2-run SPEC-009
+/alfred:2-run SPEC-010
+/alfred:2-run SPEC-011
+/alfred:2-run SPEC-012
+
+# フェーズ4（高度化 + デプロイ）
+/alfred:2-run SPEC-013
+/alfred:2-run SPEC-014
+/alfred:2-run SPEC-015
+/alfred:2-run SPEC-016
+```
+
+#### 4) ドキュメント同期とデプロイ
+
+```bash
+# 変更を同期
+/alfred:3-sync
+
+# Docker で起動
+docker-compose up -d
+
+# ブラウザで確認
+open http://localhost:3000
+```
+
+### TRUST 5 原則
+
+| 原則 | 基準 | 本プロジェクトでの実践 |
+|------|------|------------------------|
+| Test First | カバレッジ ≥ 85% | pytest（Backend）、Vitest（Frontend）+ TRUST 自動検証 |
+| Readable | 300 LOC/ファイル、50 LOC/関数 | ruff format + Biome 自動整形 |
+| Unified | 型安全 | mypy --strict（Backend）、TypeScript strict（Frontend） |
+| Secured | 入力検証 + 静的解析 | Pydantic 検証 + eslint‑plugin‑security |
+| Trackable | コード全体を @TAG で連結 | @SPEC:001~016 → @TEST → @CODE → @DOC 完全リンク |
+
+### 学習成果
+
+- SPEC‑First TDD 手法
+- FastAPI + Pydantic v2 による Backend API 設計
+- React 19 + TypeScript + Vite による Frontend
+- WebSocket によるリアルタイム同期
+- Playwright による E2E テスト
+- GitHub Actions による CI/CD
+- Docker Compose によるマルチコンテナデプロイ
+- @TAG システムによる完全なトレーサビリティ
+- TRUST 5 の自動検証
+- 19 名の AI エージェントとの協働
 
 ---
 
@@ -306,3 +687,4 @@ Alfred は **19名のチーム**（SuperAgent 1 + コア Sub-agent 10 + 0-projec
 
 > 🙌 「SPEC がなければ CODE もない」— Alfred とともに、一貫した AI 開発文化を体験しましょう。
 
+---

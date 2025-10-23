@@ -17,14 +17,14 @@ allowed-tools:
 ---
 
 # 📚 MoAI-ADK Step 3: Document Synchronization (+Optional PR Ready)
-> Interactive prompts rely on `Skill("moai-alfred-tui-survey")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
+> Interactive prompts rely on `Skill("moai-alfred-interactive-questions")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
 
 ## 🚀 START HERE
 
 **CRITICAL**: Load the TUI Survey Skill FIRST before any user interaction:
 
 ```
-Skill("moai-alfred-tui-survey")
+Skill("moai-alfred-interactive-questions")
 ```
 
 This Skill MUST be loaded at the very beginning to enable TUI menu rendering for AskUserQuestion calls throughout this workflow.
@@ -40,7 +40,7 @@ Synchronize code changes to Living Documents and verify @TAG system to ensure co
 ## 📋 Execution flow
 
 **Phase 0: Skill Loading** (IMMEDIATE)
-- Load `Skill("moai-alfred-tui-survey")` at the very start
+- Load `Skill("moai-alfred-interactive-questions")` at the very start
 - This enables TUI menu rendering for all user interactions
 
 **Phase 1: Analysis & Planning**
@@ -56,12 +56,12 @@ Synchronize code changes to Living Documents and verify @TAG system to ensure co
 
 ## 🧠 Associated Skills & Agents
 
-| Agent | Core Skill | Purpose |
-| ----- | -------- | ------- |
-| tag-agent | `moai-alfred-tag-scanning` | Verify TAG system integrity |
+| Agent        | Core Skill                     | Purpose                        |
+| ------------ | ------------------------------ | ------------------------------ |
+| tag-agent    | `moai-alfred-tag-scanning`     | Verify TAG system integrity    |
 | quality-gate | `moai-alfred-trust-validation` | Check code quality before sync |
-| doc-syncer | `moai-alfred-tag-scanning` | Synchronize Living Documents |
-| git-manager | `moai-alfred-git-workflow` | Handle Git operations |
+| doc-syncer   | `moai-alfred-tag-scanning`     | Synchronize Living Documents   |
+| git-manager  | `moai-alfred-git-workflow`     | Handle Git operations          |
 
 **Note**: TUI Survey Skill is loaded once at Phase 0 and reused throughout all user interactions.
 
@@ -205,7 +205,7 @@ To skip pre-verification, use the `/alfred:3-sync --skip-pre-check` option.
 
 ### User verification steps
 
-After reviewing your sync plan, `Skill("moai-alfred-tui-survey")` presents the following options for user decision:
+After reviewing your sync plan, `Skill("moai-alfred-interactive-questions")` presents the following options for user decision:
 - **"Proceed"** or **"Start"**: Start synchronization as planned
 - **"Modify [Contents]"**: Request modifications to your sync plan
 - **"Abort"**: Abort the sync operation
@@ -214,7 +214,7 @@ After reviewing your sync plan, `Skill("moai-alfred-tui-survey")` presents the f
 
 ## 🚀 STEP 2: Execute document synchronization (after user approval)
 
-After user approval (collected via `Skill("moai-alfred-tui-survey")`), the doc-syncer agent performs **Living Document synchronization and @TAG updates**, and optionally executes PR Ready transitions only in team mode.
+After user approval (collected via `Skill("moai-alfred-interactive-questions")`), the doc-syncer agent performs **Living Document synchronization and @TAG updates**, and optionally executes PR Ready transitions only in team mode.
 
 ### Phase 2 Details: SPEC Completion Processing (Automatic)
 

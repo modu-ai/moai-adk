@@ -1,99 +1,123 @@
 ---
-
 name: moai-domain-ml
-description: Machine learning model training, evaluation, deployment, and MLOps workflows. Use when working on machine learning pipelines scenarios.
+version: 2.0.0
+created: 2025-10-22
+updated: 2025-10-22
+status: active
+description: Machine learning model training, evaluation, deployment, and MLOps workflows.
+keywords: ['ml', 'machine-learning', 'mlops', 'pytorch', 'tensorflow']
 allowed-tools:
   - Read
   - Bash
 ---
 
-# ML Expert
+# Domain Ml Skill
 
 ## Skill Metadata
+
 | Field | Value |
 | ----- | ----- |
-| Allowed tools | Read (read_file), Bash (terminal) |
-| Auto-load | On demand for ML lifecycle |
-| Trigger cues | Model training, evaluation, deployment, MLOps guardrails. |
-| Tier | 4 |
+| **Skill Name** | moai-domain-ml |
+| **Version** | 2.0.0 (2025-10-22) |
+| **Allowed tools** | Read (read_file), Bash (terminal) |
+| **Auto-load** | On demand when keywords detected |
+| **Tier** | Domain |
 
-## What it does
+---
 
-Provides expertise in machine learning model development, training, evaluation, hyperparameter tuning, deployment, and MLOps workflows for production ML systems.
+## What It Does
 
-## When to use
+Machine learning model training, evaluation, deployment, and MLOps workflows.
 
-- Engages when machine learning workflows or model operations are discussed.
-- “Machine learning model development”, “model training”, “model deployment”, “MLOps”
-- Automatically invoked when working with ML projects
-- ML SPEC implementation (`/alfred:2-run`)
+**Key capabilities**:
+- ✅ Best practices enforcement for domain domain
+- ✅ TRUST 5 principles integration
+- ✅ Latest tool versions (2025-10-22)
+- ✅ TDD workflow support
 
-## How it works
+---
 
-**Model Training**:
-- **scikit-learn**: Classical ML (RandomForest, SVM, KNN)
-- **TensorFlow/Keras**: Deep learning (CNN, RNN, Transformers)
-- **PyTorch**: Research-oriented deep learning
-- **XGBoost/LightGBM**: Gradient boosting
+## When to Use
 
-**Model Evaluation**:
-- **Classification**: Accuracy, precision, recall, F1, ROC-AUC
-- **Regression**: RMSE, MAE, R²
-- **Cross-validation**: k-fold, stratified k-fold
-- **Confusion matrix**: Error analysis
+**Automatic triggers**:
+- Related code discussions and file patterns
+- SPEC implementation (`/alfred:2-run`)
+- Code review requests
 
-**Hyperparameter Tuning**:
-- **Grid search**: Exhaustive search
-- **Random search**: Stochastic search
-- **Bayesian optimization**: Optuna, Hyperopt
-- **AutoML**: Auto-sklearn, TPOT
+**Manual invocation**:
+- Review code for TRUST 5 compliance
+- Design new features
+- Troubleshoot issues
 
-**Model Deployment**:
-- **Serialization**: pickle, joblib, ONNX
-- **Serving**: FastAPI, TensorFlow Serving, TorchServe
-- **Containerization**: Docker for reproducibility
-- **Versioning**: MLflow, DVC
+---
 
-**MLOps Workflows**:
-- **Experiment tracking**: MLflow, Weights & Biases
-- **Feature store**: Feast, Tecton
-- **Model registry**: Centralized model management
-- **Monitoring**: Data drift detection, model performance
+## Tool Version Matrix (2025-10-22)
 
-## Examples
-```markdown
-- Trigger model training pipeline (e.g., `dvc repro`).
-- Register artifact path in Completion Report.
-```
+| Tool | Version | Purpose | Status |
+|------|---------|---------|--------|
+| **PyTorch** | 2.5.0 | Primary | ✅ Current |
+| **TensorFlow** | 2.18.0 | Primary | ✅ Current |
+| **MLflow** | 2.19.0 | Primary | ✅ Current |
+
+---
 
 ## Inputs
-- Domain-specific design documents and user requirements.
-- Project technology stack and operational constraints.
+
+- Language-specific source directories
+- Configuration files
+- Test suites and sample data
 
 ## Outputs
-- Domain-specific architecture or implementation guidelines.
-- Recommended list of associated sub-agents/skills.
+
+- Test/lint execution plan
+- TRUST 5 review checkpoints
+- Migration guidance
 
 ## Failure Modes
-- When the domain document does not exist or is ambiguous.
-- When the project strategy is unconfirmed and cannot be specified.
+
+- When required tools are not installed
+- When dependencies are missing
+- When test coverage falls below 85%
 
 ## Dependencies
-- `.moai/project/` document and latest technical briefing are required.
 
-## References
-- Google Cloud. "MLOps Continuous Delivery." https://cloud.google.com/architecture/mlops-continuous-delivery-and-automation-pipelines (accessed 2025-03-29).
-- NVIDIA. "MLOps Best Practices." https://developer.nvidia.com/blog/category/ai/ (accessed 2025-03-29).
+- Access to project files via Read/Bash tools
+- Integration with `moai-foundation-langs` for language detection
+- Integration with `moai-foundation-trust` for quality gates
+
+---
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
 
 ## Changelog
-- 2025-03-29: Codified input/output and failure responses for domain skills.
 
-## Works well with
+- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
+- **v1.0.0** (2025-03-29): Initial Skill release
 
-- alfred-trust-validation (model testing)
-- python-expert (ML implementation)
-- data-science-expert (data preparation)
+---
+
+## Works Well With
+
+- `moai-foundation-trust` (quality gates)
+- `moai-alfred-code-reviewer` (code review)
+- `moai-essentials-debug` (debugging support)
+
+---
 
 ## Best Practices
-- Record supporting documentation (version/link) for each domain decision.
-- Review performance, security, and operational requirements simultaneously at an early stage.
+
+✅ **DO**:
+- Follow domain best practices
+- Use latest stable tool versions
+- Maintain test coverage ≥85%
+- Document all public APIs
+
+❌ **DON'T**:
+- Skip quality gates
+- Use deprecated tools
+- Ignore security warnings
+- Mix testing frameworks

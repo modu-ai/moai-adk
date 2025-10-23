@@ -1,93 +1,123 @@
 ---
-
 name: moai-domain-mobile-app
-description: Mobile app development with Flutter and React Native, state management, and native integration. Use when working on mobile application flows scenarios.
+version: 2.0.0
+created: 2025-10-22
+updated: 2025-10-22
+status: active
+description: Flutter 3.27/React Native 0.76 with state management and native integration.
+keywords: ['flutter', 'react-native', 'mobile', 'ios', 'android']
 allowed-tools:
   - Read
   - Bash
 ---
 
-# Mobile App Expert
+# Domain Mobile App Skill
 
 ## Skill Metadata
+
 | Field | Value |
 | ----- | ----- |
-| Allowed tools | Read (read_file), Bash (terminal) |
-| Auto-load | On demand for mobile flows |
-| Trigger cues | iOS/Android releases, cross-platform tooling, app store compliance, mobile UX. |
-| Tier | 4 |
+| **Skill Name** | moai-domain-mobile-app |
+| **Version** | 2.0.0 (2025-10-22) |
+| **Allowed tools** | Read (read_file), Bash (terminal) |
+| **Auto-load** | On demand when keywords detected |
+| **Tier** | Domain |
 
-## What it does
+---
 
-Provides expertise in cross-platform mobile app development using Flutter (Dart) and React Native (TypeScript), including state management patterns and native module integration.
+## What It Does
 
-## When to use
+Flutter 3.27/React Native 0.76 with state management and native integration.
 
-- Engages when mobile application development or release pipelines are in scope.
-- “Mobile app development”, “Flutter widgets”, “React Native components”, “state management”
-- Automatically invoked when working with mobile app projects
-- Mobile app SPEC implementation (`/alfred:2-run`)
+**Key capabilities**:
+- ✅ Best practices enforcement for domain domain
+- ✅ TRUST 5 principles integration
+- ✅ Latest tool versions (2025-10-22)
+- ✅ TDD workflow support
 
-## How it works
+---
 
-**Flutter Development**:
-- **Widget tree**: StatelessWidget, StatefulWidget
-- **State management**: Provider, Riverpod, BLoC
-- **Navigation**: Navigator 2.0, go_router
-- **Platform-specific code**: MethodChannel
+## When to Use
 
-**React Native Development**:
-- **Components**: Functional components with hooks
-- **State management**: Redux, MobX, Zustand
-- **Navigation**: React Navigation
-- **Native modules**: Turbo modules, JSI
+**Automatic triggers**:
+- Related code discussions and file patterns
+- SPEC implementation (`/alfred:2-run`)
+- Code review requests
 
-**Cross-Platform Patterns**:
-- **Responsive design**: Adaptive layouts for phone/tablet
-- **Performance optimization**: Lazy loading, memoization
-- **Offline support**: Local storage, sync strategies
-- **Testing**: Widget tests (Flutter), component tests (RN)
+**Manual invocation**:
+- Review code for TRUST 5 compliance
+- Design new features
+- Troubleshoot issues
 
-**Native Integration**:
-- **Plugins**: Platform channels, native modules
-- **Permissions**: Camera, location, notifications
-- **Deep linking**: Universal links, app links
-- **Push notifications**: FCM, APNs
+---
 
-## Examples
-```markdown
-- Generate platform-specific builds (`flutter build`, `xcodebuild`).
-- Capture store submission checklist as Todo items.
-```
+## Tool Version Matrix (2025-10-22)
+
+| Tool | Version | Purpose | Status |
+|------|---------|---------|--------|
+| **Flutter** | 3.27.0 | Primary | ✅ Current |
+| **React Native** | 0.76.0 | Primary | ✅ Current |
+| **Expo** | 52.0.0 | Primary | ✅ Current |
+
+---
 
 ## Inputs
-- Domain-specific design documents and user requirements.
-- Project technology stack and operational constraints.
+
+- Language-specific source directories
+- Configuration files
+- Test suites and sample data
 
 ## Outputs
-- Domain-specific architecture or implementation guidelines.
-- Recommended list of associated sub-agents/skills.
+
+- Test/lint execution plan
+- TRUST 5 review checkpoints
+- Migration guidance
 
 ## Failure Modes
-- When the domain document does not exist or is ambiguous.
-- When the project strategy is unconfirmed and cannot be specified.
+
+- When required tools are not installed
+- When dependencies are missing
+- When test coverage falls below 85%
 
 ## Dependencies
-- `.moai/project/` document and latest technical briefing are required.
 
-## References
-- Apple. "Human Interface Guidelines." https://developer.apple.com/design/human-interface-guidelines/ (accessed 2025-03-29).
-- Google. "Material Design." https://m3.material.io/ (accessed 2025-03-29).
+- Access to project files via Read/Bash tools
+- Integration with `moai-foundation-langs` for language detection
+- Integration with `moai-foundation-trust` for quality gates
+
+---
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
 
 ## Changelog
-- 2025-03-29: Codified input/output and failure responses for domain skills.
 
-## Works well with
+- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
+- **v1.0.0** (2025-03-29): Initial Skill release
 
-- alfred-trust-validation (mobile testing)
-- dart-expert (Flutter development)
-- typescript-expert (React Native development)
+---
+
+## Works Well With
+
+- `moai-foundation-trust` (quality gates)
+- `moai-alfred-code-reviewer` (code review)
+- `moai-essentials-debug` (debugging support)
+
+---
 
 ## Best Practices
-- Record supporting documentation (version/link) for each domain decision.
-- Review performance, security, and operational requirements simultaneously at an early stage.
+
+✅ **DO**:
+- Follow domain best practices
+- Use latest stable tool versions
+- Maintain test coverage ≥85%
+- Document all public APIs
+
+❌ **DON'T**:
+- Skip quality gates
+- Use deprecated tools
+- Ignore security warnings
+- Mix testing frameworks

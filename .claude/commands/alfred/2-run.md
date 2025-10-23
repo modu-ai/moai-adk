@@ -20,7 +20,7 @@ allowed-tools:
 ---
 
 # ⚒️ MoAI-ADK Phase 2: Run the plan - Flexible implementation strategy
-> Interactive prompts rely on `Skill("moai-alfred-tui-survey")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
+> Interactive prompts rely on `Skill("moai-alfred-interactive-questions")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
 
 ## 🎯 Command Purpose
 
@@ -65,14 +65,14 @@ Analyze SPEC documents to execute planned tasks. It supports not only TDD implem
 4. **Execute work**: Perform work according to the approved plan
 5. **Git Operations**: Creating step-by-step commits with git-manager
 
-## 🧠 Skill Loadout Overview
+## 🧠 Associated Skills & Agents
 
-| Agent | Core Skill | Purpose |
-| ----- | -------- | ------- |
+| Agent                  | Core Skill                       | Purpose                                 |
+| ---------------------- | -------------------------------- | --------------------------------------- |
 | implementation-planner | `moai-alfred-language-detection` | Detect language and design architecture |
-| tdd-implementer | `moai-essentials-debug` | Implement TDD (RED → GREEN → REFACTOR) |
-| quality-gate | `moai-alfred-trust-validation` | Verify TRUST 5 principles |
-| git-manager | `moai-alfred-git-workflow` | Commit and manage Git workflows |
+| tdd-implementer        | `moai-essentials-debug`          | Implement TDD (RED → GREEN → REFACTOR)  |
+| quality-gate           | `moai-alfred-trust-validation`   | Verify TRUST 5 principles               |
+| git-manager            | `moai-alfred-git-workflow`       | Commit and manage Git workflows         |
 
 **Note**: TUI Survey Skill is used for user confirmations during the run phase and is shared across all interactive prompts.
 
@@ -133,7 +133,7 @@ Task tool call example:
           3. TAG chain design
  4. Step-by-step execution plan
  5. Risks and response plans
-6. Create action plan and use `Skill("moai-alfred-tui-survey")` to confirm the next action with the user
+6. Create action plan and use `Skill("moai-alfred-interactive-questions")` to confirm the next action with the user
  (Optional) Explore results: $EXPLORE_RESULTS"
 ```
 
@@ -177,7 +177,7 @@ After reviewing the action plan, select one of the following:
 
 ## 🚀 STEP 2: Execute task (after user approval)
 
-After user approval (gathered through `Skill("moai-alfred-tui-survey")`), **call the tdd-implementer agent using the Task tool**.
+After user approval (gathered through `Skill("moai-alfred-interactive-questions")`), **call the tdd-implementer agent using the Task tool**.
 
 ### ⚙️ How to call an agent
 
@@ -214,22 +214,22 @@ Execute on: $ARGUMENTS"
 
 #### Backend/System
 
-| SPEC Type | Implementation language | Test Framework | Performance Goals | Coverage Goals |
-|-----------|-----------|-------------------|-----------|---------------|
-| **CLI/System** | TypeScript | jest + ts-node | < 18ms | 95%+ |
-| **API/Backend** | TypeScript | Jest + SuperTest | < 50ms | 90%+ |
-| **Frontend** | TypeScript | Jest + Testing Library | < 100ms | 85%+ |
-| **Data Processing** | TypeScript | Jest + Mock | < 200ms | 85%+ |
-| **Python Project** | Python | pytest + mypy | Custom | 85%+ |
+| SPEC Type           | Implementation language | Test Framework         | Performance Goals | Coverage Goals |
+| ------------------- | ----------------------- | ---------------------- | ----------------- | -------------- |
+| **CLI/System**      | TypeScript              | jest + ts-node         | < 18ms            | 95%+           |
+| **API/Backend**     | TypeScript              | Jest + SuperTest       | < 50ms            | 90%+           |
+| **Frontend**        | TypeScript              | Jest + Testing Library | < 100ms           | 85%+           |
+| **Data Processing** | TypeScript              | Jest + Mock            | < 200ms           | 85%+           |
+| **Python Project**  | Python                  | pytest + mypy          | Custom            | 85%+           |
 
 #### Mobile Framework
 
-| SPEC Type | Implementation language | Test Framework | Performance Goals | Coverage Goals |
-|-----------|-----------|-------------------|-----------|---------------|
-| **Flutter App** | Dart | flutter test + widget test | < 100ms | 85%+ |
-| **React Native** | TypeScript | Jest + RN Testing Library | < 100ms | 85%+ |
-| **iOS App** | Swift | XCTest + XCUITest | < 150ms | 80%+ |
-| **Android App** | Kotlin | JUnit + Espresso | < 150ms | 80%+ |
+| SPEC Type        | Implementation language | Test Framework             | Performance Goals | Coverage Goals |
+| ---------------- | ----------------------- | -------------------------- | ----------------- | -------------- |
+| **Flutter App**  | Dart                    | flutter test + widget test | < 100ms           | 85%+           |
+| **React Native** | TypeScript              | Jest + RN Testing Library  | < 100ms           | 85%+           |
+| **iOS App**      | Swift                   | XCTest + XCUITest          | < 150ms           | 80%+           |
+| **Android App**  | Kotlin                  | JUnit + Espresso           | < 150ms           | 80%+           |
 
 ## 🚀 Optimized agent collaboration structure
 
@@ -250,7 +250,7 @@ The `implementation-planner` agent does the following:
 2. **Library selection**: Check the latest stable version and verify compatibility through WebFetch
 3. **TAG chain design**: Determine TAG order and dependency
 4. **Establishment of implementation strategy**: Step-by-step implementation plan and risk identification
-5. **Create action plan**: Create a structured plan and, via `Skill("moai-alfred-tui-survey")`, collect user approval before proceeding
+5. **Create action plan**: Create a structured plan and, via `Skill("moai-alfred-interactive-questions")`, collect user approval before proceeding
 
 ### Phase 2: Task execution phase (after approval)
 
@@ -326,13 +326,13 @@ Alfred calls the implementation-planner agent to check the SPEC document and cre
 
 #### TypeScript execution criteria
 
-| SPEC characteristics | execution language | Reason |
-|-----------|-----------|------|
-| CLI/System Tools | TypeScript | High performance (18ms), type safety, SQLite3 integration |
-| API/Backend | TypeScript | Node.js ecosystem, Express/Fastify compatibility |
-| Frontend | TypeScript | React/Vue native support |
-| data processing | TypeScript | High-performance asynchronous processing, type safety |
-| User Python Project | Python tool support | MoAI-ADK provides Python project development tools |
+| SPEC characteristics | execution language  | Reason                                                    |
+| -------------------- | ------------------- | --------------------------------------------------------- |
+| CLI/System Tools     | TypeScript          | High performance (18ms), type safety, SQLite3 integration |
+| API/Backend          | TypeScript          | Node.js ecosystem, Express/Fastify compatibility          |
+| Frontend             | TypeScript          | React/Vue native support                                  |
+| data processing      | TypeScript          | High-performance asynchronous processing, type safety     |
+| User Python Project  | Python tool support | MoAI-ADK provides Python project development tools        |
 
 #### Approach
 
@@ -359,16 +359,16 @@ Present your plan in the following format:
 
 ### 📦 Library version (required - based on web search)
 **Backend dependencies** (example):
-| package | Latest stable version | installation command |
-|--------|--------------|----------|
-| FastAPI | 0.118.3 | fastapi>=0.118.3 |
-| SQLAlchemy | 2.0.43 | sqlalchemy>=2.0.43 |
+| package    | Latest stable version | installation command |
+| ---------- | --------------------- | -------------------- |
+| FastAPI    | 0.118.3               | fastapi>=0.118.3     |
+| SQLAlchemy | 2.0.43                | sqlalchemy>=2.0.43   |
 
 **Frontend dependency** (example):
 | package | Latest stable version | installation command |
-|--------|--------------|----------|
-| React | 18.3.1 | react@^18.3.1 |
-| Vite | 7.1.9 | vite@^7.1.9 |
+| ------- | --------------------- | -------------------- |
+| React   | 18.3.1                | react@^18.3.1        |
+| Vite    | 7.1.9                 | vite@^7.1.9          |
 
 **Important Compatibility Information**:
 - [Specific Version Requirements]

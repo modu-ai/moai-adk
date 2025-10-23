@@ -20,8 +20,8 @@ def handle_pre_tool_use(payload: HookPayload) -> HookResult:
 
     Returns:
         HookResult(
-            message=checkpoint creation notification (when danger is detected);
-            blocked=False (always continue operation)
+            system_message=checkpoint creation notification (when danger is detected);
+            continue_execution=True (always continue operation)
         )
 
     Checkpoint Triggers:
@@ -34,7 +34,7 @@ def handle_pre_tool_use(payload: HookPayload) -> HookResult:
         → "🛡️ Checkpoint created: before-delete-20251015-143000"
 
     Notes:
-        - Return blocked=False even after detection of danger (continue operation)
+        - Return continue_execution=True even after detection of danger (continue operation)
         - Work continues even when checkpoint fails (ignores)
         - Transparent background operation
 
@@ -52,14 +52,14 @@ def handle_pre_tool_use(payload: HookPayload) -> HookResult:
         checkpoint_branch = create_checkpoint(cwd, operation_type)
 
         if checkpoint_branch != "checkpoint-failed":
-            message = (
+            system_message = (
                 f"🛡️ Checkpoint created: {checkpoint_branch}\n"
                 f"   Operation: {operation_type}"
             )
 
-            return HookResult(message=message, blocked=False)
+            return HookResult(system_message=system_message, continue_execution=True)
 
-    return HookResult(blocked=False)
+    return HookResult(continue_execution=True)
 
 
 def handle_post_tool_use(payload: HookPayload) -> HookResult:

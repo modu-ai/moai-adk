@@ -6,18 +6,58 @@
     "PYTHON_ENV": "{{PROJECT_MODE}}"
   },
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/alfred/alfred_hooks.py SessionStart",
+            "type": "command"
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "hooks": [
           {
-            "command": "uv run .claude/hooks/alfred/alfred_hooks.py PreToolUse",
+            "command": "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/alfred/alfred_hooks.py PreToolUse",
             "type": "command"
           }
         ],
         "matcher": "Edit|Write|MultiEdit"
       }
     ],
-    "PostToolUse": []
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "command": "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/alfred/alfred_hooks.py UserPromptSubmit",
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "command": "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/alfred/alfred_hooks.py SessionEnd",
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/alfred/alfred_hooks.py PostToolUse",
+            "type": "command"
+          }
+        ],
+        "matcher": "Edit|Write|MultiEdit"
+      }
+    ]
   },
   "permissions": {
     "defaultMode": "default",

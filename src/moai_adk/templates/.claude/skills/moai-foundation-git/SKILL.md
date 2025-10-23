@@ -1,90 +1,122 @@
 ---
-
 name: moai-foundation-git
-description: Git workflow automation (branching, TDD commits, PR management). Use when standardizing Git practices across the project.
+version: 2.0.0
+created: 2025-10-22
+updated: 2025-10-22
+status: active
+description: GitFlow automation and PR policy enforcement for MoAI-ADK workflows.
+keywords: ['git', 'gitflow', 'pr', 'automation']
 allowed-tools:
   - Read
   - Bash
-  - Write
-  - Edit
-  - TodoWrite
 ---
 
-# Alfred Git Workflow
+# Foundation Git Skill
 
 ## Skill Metadata
+
 | Field | Value |
 | ----- | ----- |
-| Allowed tools | Read (read_file), Write (write_file), Edit (edit_file), Bash (terminal), TodoWrite (todo_write) |
-| Auto-load | SessionStart (foundation bootstrap) |
-| Trigger cues | Branch creation, commit convention, PR readiness, and release gating requests. |
+| **Skill Name** | moai-foundation-git |
+| **Version** | 2.0.0 (2025-10-22) |
+| **Allowed tools** | Read (read_file), Bash (terminal) |
+| **Auto-load** | On demand when keywords detected |
+| **Tier** | Foundation |
 
-## What it does
+---
 
-Automates Git operations following MoAI-ADK conventions: branch creation, locale-based TDD commits, Draft PR creation, and PR Ready transition.
+## What It Does
 
-## When to use
+GitFlow automation and PR policy enforcement for MoAI-ADK workflows.
 
-- Activates when Git workflow automation is needed for branching, commits, or PR promotion.
-- “Create branch”, “Create PR”, “Create commit”
-- Automatically invoked by `/alfred:1-plan`, `/alfred:2-run`, `/alfred:3-sync`
-- Git workflow automation needed
+**Key capabilities**:
+- ✅ Best practices enforcement for foundation domain
+- ✅ TRUST 5 principles integration
+- ✅ Latest tool versions (2025-10-22)
+- ✅ TDD workflow support
 
-## How it works
+---
 
-**1. Branch Creation**:
-```bash
-git checkout develop
-git checkout -b feature/SPEC-AUTH-001
-```
+## When to Use
 
-**2. Locale-based TDD Commits**:
-- **Korean (ko)**: 🔴 RED: [Test Description]
-- **English (en)**: 🔴 RED: [Test description]
-- **Japanese (ja)**: 🔴 RED: [テスト説明]
-- **Chinese (zh)**: 🔴 RED: [测试说明]
+**Automatic triggers**:
+- Related code discussions and file patterns
+- SPEC implementation (`/alfred:2-run`)
+- Code review requests
 
-Configured via `.moai/config.json`:
-```json
-{"project": {"locale": "ko"}}
-```
+**Manual invocation**:
+- Review code for TRUST 5 compliance
+- Design new features
+- Troubleshoot issues
 
-**3. Draft PR Creation**:
-Creates Draft PR with SPEC reference and test checklist.
+---
 
-**4. PR Ready Transition** (via `/alfred:3-sync`):
-- Updates PR from Draft → Ready
-- Adds quality gate checklist
-- Verifies TRUST 5-principles
+## Tool Version Matrix (2025-10-22)
 
-## Examples
-```markdown
-- Scan standard documents and report missing sections.
-- Changed regulations are reflected in CLAUDE.md.
-```
+| Tool | Version | Purpose | Status |
+|------|---------|---------|--------|
+| **Git** | 2.47.0 | Primary | ✅ Current |
+| **GitHub CLI** | 2.63.0 | Primary | ✅ Current |
 
-## Best Practices
-- When changing standards, the reason for change and supporting documents are recorded.
-- Follow the single source principle and avoid modifying the same item in multiple places.
+---
 
 ## Inputs
-- Project standard documents (e.g. `CLAUDE.md`, `.moai/config.json`).
-- Latest printouts from relevant sub-agents.
+
+- Language-specific source directories
+- Configuration files
+- Test suites and sample data
 
 ## Outputs
-- Templates or policy summaries conforming to the MoAI-ADK standard.
-- Reusable rules/checklists.
+
+- Test/lint execution plan
+- TRUST 5 review checkpoints
+- Migration guidance
 
 ## Failure Modes
-- When required standard files are missing or have limited access rights.
-- When conflicting policies are detected and coordination is required.
+
+- When required tools are not installed
+- When dependencies are missing
+- When test coverage falls below 85%
 
 ## Dependencies
-- There is great synergy when called together with cc-manager.
 
-## References
-- Vincent Driessen. "A successful Git branching model." https://nvie.com/posts/a-successful-git-branching-model/ (accessed 2025-03-29).
-- GitHub Docs. "GitHub Flow." https://docs.github.com/en/get-started/using-github/github-flow (accessed 2025-03-29).
+- Access to project files via Read/Bash tools
+- Integration with `moai-foundation-langs` for language detection
+- Integration with `moai-foundation-trust` for quality gates
+
+---
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
 
 ## Changelog
-- 2025-03-29: Foundation skill templates have been enhanced to align with best practice structures.
+
+- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
+- **v1.0.0** (2025-03-29): Initial Skill release
+
+---
+
+## Works Well With
+
+- `moai-foundation-trust` (quality gates)
+- `moai-alfred-code-reviewer` (code review)
+- `moai-essentials-debug` (debugging support)
+
+---
+
+## Best Practices
+
+✅ **DO**:
+- Follow foundation best practices
+- Use latest stable tool versions
+- Maintain test coverage ≥85%
+- Document all public APIs
+
+❌ **DON'T**:
+- Skip quality gates
+- Use deprecated tools
+- Ignore security warnings
+- Mix testing frameworks

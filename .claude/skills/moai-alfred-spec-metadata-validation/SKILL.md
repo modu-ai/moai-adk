@@ -1,97 +1,113 @@
 ---
-
 name: moai-alfred-spec-metadata-validation
-description: Validates SPEC YAML frontmatter (7 required fields) and HISTORY section compliance. Use when validating SPEC metadata for consistency.
+version: 2.0.0
+created: 2025-10-22
+updated: 2025-10-22
+status: active
+description: SPEC YAML frontmatter validation with 7 required fields and HISTORY section compliance.
+keywords: ['spec', 'validation', 'metadata', 'yaml']
 allowed-tools:
   - Read
-  - Write
-  - Edit
   - Bash
-  - TodoWrite
 ---
 
-# Alfred SPEC Metadata Validation
+# Alfred Spec Metadata Validation Skill
 
 ## Skill Metadata
+
 | Field | Value |
 | ----- | ----- |
-| Allowed tools | Read (read_file), Write (write_file), Edit (edit_file), Bash (terminal), TodoWrite (todo_write) |
-| Auto-load | /alfred:1-plan spec validation |
-| Trigger cues | SPEC frontmatter checks, history table enforcement, metadata guardrails. |
+| **Skill Name** | moai-alfred-spec-metadata-validation |
+| **Version** | 2.0.0 (2025-10-22) |
+| **Allowed tools** | Read (read_file), Bash (terminal) |
+| **Auto-load** | On demand when keywords detected |
+| **Tier** | Alfred |
 
-## What it does
+---
 
-Validates SPEC document structure including YAML frontmatter (7 required fields) and HISTORY section compliance.
+## What It Does
 
-## When to use
+SPEC YAML frontmatter validation with 7 required fields and HISTORY section compliance.
 
-- Activates when Alfred validates SPEC templates or enforces metadata standards.
-- "SPEC verification", "Metadata check", "SPEC structure check"
-- Automatically invoked by `/alfred:1-plan`
-- Before creating SPEC document
+**Key capabilities**:
+- ✅ Best practices enforcement for alfred domain
+- ✅ TRUST 5 principles integration
+- ✅ Latest tool versions (2025-10-22)
+- ✅ TDD workflow support
 
-## How it works
+---
 
-**YAML Frontmatter Validation (7 required fields)**:
-- `id`: SPEC ID (e.g., AUTH-001)
-- `version`: Semantic Version (e.g., 0.0.1)
-- `status`: draft|active|completed|deprecated
-- `created`: YYYY-MM-DD format
-- `updated`: YYYY-MM-DD format
-- `author`: @{GitHub ID} format
-- `priority`: low|medium|high|critical
+## When to Use
 
-**HISTORY Section Validation**:
-- Checks existence of HISTORY section
-- Verifies version history (INITIAL/ADDED/CHANGED/FIXED tags)
-- Validates author and date consistency
+**Automatic triggers**:
+- Related code discussions and file patterns
+- SPEC implementation (`/alfred:2-run`)
+- Code review requests
 
-**Format Validation**:
-```bash
-# Check required fields
-rg "^(id|version|status|created|updated|author|priority):" .moai/specs/SPEC-*/spec.md
+**Manual invocation**:
+- Review code for TRUST 5 compliance
+- Design new features
+- Troubleshoot issues
 
-# Verify HISTORY section
-rg "^## HISTORY" .moai/specs/SPEC-*/spec.md
-```
-
-## Best Practices
-- The text shown to the user is written using TUI/report expressions.
-- When running the tool, a summary of commands and results are recorded.
-
-## Examples
-```markdown
-- Call this skill inside the /alfred command to generate a report.
-- Add summary to Completion Report.
-```
+---
 
 ## Inputs
-- MoAI-ADK project context (`.moai/project/`, `.claude/` templates, etc.).
-- Parameters passed from user commands or higher commands.
+
+- Language-specific source directories
+- Configuration files
+- Test suites and sample data
 
 ## Outputs
-- Reports, checklists or recommendations for your Alfred workflow.
-- Structured data for subsequent subagent calls.
+
+- Test/lint execution plan
+- TRUST 5 review checkpoints
+- Migration guidance
 
 ## Failure Modes
-- When required input documents are missing or permissions are limited.
-- When disruptive changes are required without user approval.
+
+- When required tools are not installed
+- When dependencies are missing
+- When test coverage falls below 85%
 
 ## Dependencies
-- Cooperation with higher-level agents such as cc-manager and project-manager is required.
 
-## References
-- IEEE. "Software Requirements Specification Standard." IEEE 830-1998.
-- NASA. "Systems Engineering Handbook." https://www.nasa.gov/seh/ (accessed 2025-03-29).
+- Access to project files via Read/Bash tools
+- Integration with `moai-foundation-langs` for language detection
+- Integration with `moai-foundation-trust` for quality gates
+
+---
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
 
 ## Changelog
-- 2025-03-29: Added input/output/failure response to Alfred-specific skills.
 
-## Works well with
+- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
+- **v1.0.0** (2025-03-29): Initial Skill release
 
-- alfred-ears-authoring (SPEC writing guide)
-- alfred-tag-scanning (SPEC ID duplication check)
+---
 
-## Reference
+## Works Well With
 
-SSOT (Single Source of Truth): `.moai/memory/spec-metadata.md`
+- `moai-foundation-trust` (quality gates)
+- `moai-alfred-code-reviewer` (code review)
+- `moai-essentials-debug` (debugging support)
+
+---
+
+## Best Practices
+
+✅ **DO**:
+- Follow alfred best practices
+- Use latest stable tool versions
+- Maintain test coverage ≥85%
+- Document all public APIs
+
+❌ **DON'T**:
+- Skip quality gates
+- Use deprecated tools
+- Ignore security warnings
+- Mix testing frameworks

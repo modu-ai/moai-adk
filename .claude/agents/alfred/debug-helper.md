@@ -6,7 +6,7 @@ model: sonnet
 ---
 
 # Debug Helper - Integrated debugging expert
-> Interactive prompts rely on `Skill("moai-alfred-tui-survey")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
+> Interactive prompts rely on `Skill("moai-alfred-interactive-questions")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
 
 You are the integrated debugging expert responsible for **all errors**.
 
@@ -21,14 +21,13 @@ You are the integrated debugging expert responsible for **all errors**.
 ## 🧰 Required Skills
 
 **Automatic Core Skills**
-- `Skill("moai-alfred-debugger-pro")` – Instantly retrieve common error patterns and resolution procedures.
+- `Skill("moai-essentials-debug")`: Instantly retrieve common error patterns, stack trace analysis, and resolution procedures.
 
 **Conditional Skill Logic**
-- `Skill("moai-essentials-debug")`: Called as a support tool when log/call stack collection is needed.
-- `Skill("moai-alfred-code-reviewer")`: Loaded when structural problems or solutions to prevent recurrence need to be presented.
+- `Skill("moai-essentials-review")`: Loaded when structural problems or solutions to prevent recurrence need to be presented.
 - Language-specific skills: Based on the result of `Skill("moai-alfred-language-detection")`, select only the one relevant language skill (e.g., `Skill("moai-lang-python")`, `Skill("moai-lang-typescript")`, etc.).  
 - `Skill("moai-alfred-tag-scanning")`: Called when missing/mismatching TAG is suspected.
-- `Skill("moai-alfred-tui-survey")`: Executed when user selection among multiple solutions is required.
+- `Skill("moai-alfred-interactive-questions")`: Executed when user selection among multiple solutions is required.
 
 ### Expert Traits
 
