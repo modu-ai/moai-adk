@@ -1142,24 +1142,24 @@ Claude Code 会话管理
 
 ```mermaid
 gantt
-    title Mini Kanban Board — 4 周计划
+    title Mini Kanban Board - 4-week plan
     dateFormat YYYY-MM-DD
 
     section 阶段 1：后端基础
-    CH07: 定义 SPEC-001~004           :active, ch07-spec, 2025-11-03, 1d
+    CH07: 定义 SPEC-001-004           :active, ch07-spec, 2025-11-03, 1d
     CH07: 实现 SpecScanner（TDD）     :active, ch07-impl, 2025-11-04, 1d
 
     section 阶段 2：后端进阶
     CH08: 实现 REST API               :active, ch08-api, 2025-11-05, 1d
-    CH08: WebSocket + 文件监听        :active, ch08-ws, 2025-11-06, 1d
+    WebSocket + 文件监听        :active, ch08-ws, 2025-11-06, 1d
 
     section 阶段 3：前端基础
-    CH09: React 初始化 + SPEC-009~012 :active, ch09-spec, 2025-11-10, 1d
+    CH09: React 初始化 + SPEC-009-012 :active, ch09-spec, 2025-11-10, 1d
     CH09: 看板页面（TDD）             :active, ch09-impl, 2025-11-11, 1d
 
     section 阶段 4：高级 + 部署
-    CH10: E2E + CI/CD                 :active, ch10-e2e, 2025-11-12, 1d
-    CH10: Docker Compose + 优化       :active, ch10-deploy, 2025-11-13, 1d
+    E2E + CI/CD                 :active, ch10-e2e, 2025-11-12, 1d
+    Docker Compose + 优化       :active, ch10-deploy, 2025-11-13, 1d
 ```
 
 ### 16 个 SPEC 路线图
@@ -1226,7 +1226,7 @@ gantt
 
 ### 分阶段详解
 
-#### 阶段 1：后端基础（SPEC-001~004）
+#### 阶段 1：后端基础（SPEC-001-004）
 
 目标：使用 FastAPI + Pydantic v2 + uv 搭建核心数据扫描服务
 
@@ -1236,7 +1236,7 @@ gantt
 # → 创建 .moai/, backend/, frontend/
 # → 配置 .moai/config.json
 
-# 2）编写 SPEC（SPEC-001~004）
+# 2）编写 SPEC（SPEC-001-004）
 /alfred:1-plan
 # → SPEC-001: SPEC 文件扫描
 # → SPEC-002: YAML 元数据解析
@@ -1280,7 +1280,7 @@ gantt
 - 异步事件广播
 - TRUST 5 自动验证
 
-#### 阶段 3：前端基础（SPEC-009~012）
+#### 阶段 3：前端基础（SPEC-009-012）
 
 目标：使用 React 19 + TypeScript + Vite 构建看板 UI
 

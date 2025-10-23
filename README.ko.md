@@ -1116,24 +1116,24 @@ MoAI-ADK를 마스터하기 위해 설계된 **Mini Kanban Board 웹 애플리�
 
 ```mermaid
 gantt
-    title Mini Kanban Board 4주 개발 일정
+    title Mini Kanban Board - 4주 개발 일정
     dateFormat YYYY-MM-DD
 
     section Phase 1: Backend 기초
-    CH07: SPEC-001~004 SPEC 정의   :active, ch07-spec, 2025-11-03, 1d
-    CH07: SpecScanner TDD 구현      :active, ch07-impl, 2025-11-04, 1d
+    SPEC-001-004 SPEC 정의   :active, ch07-spec, 2025-11-03, 1d
+    SpecScanner TDD 구현      :active, ch07-impl, 2025-11-04, 1d
 
     section Phase 2: Backend 고급
-    CH08: REST API 구현             :active, ch08-api, 2025-11-05, 1d
-    CH08: WebSocket + File Watch    :active, ch08-ws, 2025-11-06, 1d
+    REST API 구현             :active, ch08-api, 2025-11-05, 1d
+    WebSocket + File Watch    :active, ch08-ws, 2025-11-06, 1d
 
     section Phase 3: Frontend 기초
-    CH09: React 초기화 + SPEC-009~012 :active, ch09-spec, 2025-11-10, 1d
-    CH09: Kanban Board TDD 구현      :active, ch09-impl, 2025-11-11, 1d
+    React 초기화 + SPEC-009-012 :active, ch09-spec, 2025-11-10, 1d
+    Kanban Board TDD 구현      :active, ch09-impl, 2025-11-11, 1d
 
     section Phase 4: Advanced + 배포
-    CH10: E2E + CI/CD               :active, ch10-e2e, 2025-11-12, 1d
-    CH10: Docker Compose + 최적화    :active, ch10-deploy, 2025-11-13, 1d
+    E2E + CI/CD               :active, ch10-e2e, 2025-11-12, 1d
+    Docker Compose + 최적화    :active, ch10-deploy, 2025-11-13, 1d
 ```
 
 ### 🎯 16-SPEC 완전 로드맵

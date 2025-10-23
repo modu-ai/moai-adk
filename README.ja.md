@@ -352,24 +352,24 @@ MoAI‑ADK を end‑to‑end で習得するための Web アプリ「Mini Kanb
 
 ```mermaid
 gantt
-    title Mini Kanban Board — 4週間プラン
+    title Mini Kanban Board - 4-week plan
     dateFormat YYYY-MM-DD
 
     section フェーズ1: Backend 基礎
-    CH07: SPEC-001~004 を定義         :active, ch07-spec, 2025-11-03, 1d
+    CH07: SPEC-001-004 を定義         :active, ch07-spec, 2025-11-03, 1d
     CH07: SpecScanner 実装 (TDD)      :active, ch07-impl, 2025-11-04, 1d
 
     section フェーズ2: Backend 応用
     CH08: REST API 実装               :active, ch08-api, 2025-11-05, 1d
-    CH08: WebSocket + ファイル監視     :active, ch08-ws, 2025-11-06, 1d
+    WebSocket + ファイル監視     :active, ch08-ws, 2025-11-06, 1d
 
     section フェーズ3: Frontend 基礎
-    CH09: React 初期化 + SPEC-009~012 :active, ch09-spec, 2025-11-10, 1d
-    CH09: Kanban Board (TDD)          :active, ch09-impl, 2025-11-11, 1d
+    CH09: React 初期化 + SPEC-009-012 :active, ch09-spec, 2025-11-10, 1d
+    Kanban Board (TDD)          :active, ch09-impl, 2025-11-11, 1d
 
     section フェーズ4: 高度化 + デプロイ
-    CH10: E2E + CI/CD                 :active, ch10-e2e, 2025-11-12, 1d
-    CH10: Docker Compose + 最適化      :active, ch10-deploy, 2025-11-13, 1d
+    E2E + CI/CD                 :active, ch10-e2e, 2025-11-12, 1d
+    Docker Compose + 最適化      :active, ch10-deploy, 2025-11-13, 1d
 ```
 
 ### 16 SPEC ロードマップ
@@ -436,7 +436,7 @@ gantt
 
 ### フェーズ詳細
 
-#### フェーズ1: Backend 基礎（SPEC-001~004）
+#### フェーズ1: Backend 基礎（SPEC-001-004）
 
 目的: FastAPI + Pydantic v2 + uv でコアのデータスキャンサービスを構築
 
@@ -446,7 +446,7 @@ gantt
 # → .moai/, backend/, frontend/ を作成
 # → .moai/config.json を設定
 
-# 2) SPEC 作成（SPEC-001~004）
+# 2) SPEC 作成（SPEC-001-004）
 /alfred:1-plan
 # → SPEC-001: SPEC ファイルスキャナ
 # → SPEC-002: YAML メタデータパーサ
@@ -490,7 +490,7 @@ gantt
 - 非同期イベント配信
 - TRUST 5 の自動検証
 
-#### フェーズ3: Frontend 基礎（SPEC-009~012）
+#### フェーズ3: Frontend 基礎（SPEC-009-012）
 
 目的: React 19 + TypeScript + Vite でカンバン UI を構築
 
