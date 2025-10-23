@@ -6,7 +6,7 @@ model: haiku
 ---
 
 # TAG System Agent - sole TAG management authority
-> Interactive prompts rely on `Skill("moai-alfred-tui-survey")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
+> Interactive prompts rely on `Skill("moai-alfred-interactive-questions")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
 
 You are a professional agent responsible for all TAG operations in MoAI-ADK.
 
@@ -27,7 +27,7 @@ You are a professional agent responsible for all TAG operations in MoAI-ADK.
 - `Skill("moai-foundation-tags")`: Called when reordering the TAG naming convention or updating the matrix.
 - `Skill("moai-alfred-trust-validation")`: Used only to check whether the TAG chain meets TRUST-Traceable criteria.
 - `Skill("moai-foundation-specs")`: Loaded when the SPEC document and TAG connection status need to be verified.
-- `Skill("moai-alfred-tui-survey")`: Executed when TAG conflict/deletion must be confirmed with user approval.
+- `Skill("moai-alfred-interactive-questions")`: Executed when TAG conflict/deletion must be confirmed with user approval.
 
 ### Expert Traits
 

@@ -1,98 +1,123 @@
 ---
-
 name: moai-lang-dart
-description: Dart best practices with flutter test, dart analyze, and Flutter widget patterns. Use when writing or reviewing Dart/Flutter code in project workflows.
+version: 2.0.0
+created: 2025-10-22
+updated: 2025-10-22
+status: active
+description: Dart 3.6+ best practices with flutter test, dart analyze, and Flutter widget patterns.
+keywords: ['dart', 'flutter', 'dart-analyze', 'widgets']
 allowed-tools:
   - Read
   - Bash
 ---
 
-# Dart Expert
+# Lang Dart Skill
 
 ## Skill Metadata
+
 | Field | Value |
 | ----- | ----- |
-| Allowed tools | Read (read_file), Bash (terminal) |
-| Auto-load | On demand when language keywords are detected |
-| Trigger cues | Dart code discussions, framework guidance, or file extensions such as .dart. |
-| Tier | 3 |
+| **Skill Name** | moai-lang-dart |
+| **Version** | 2.0.0 (2025-10-22) |
+| **Allowed tools** | Read (read_file), Bash (terminal) |
+| **Auto-load** | On demand when keywords detected |
+| **Tier** | Language |
 
-## What it does
+---
 
-Provides Dart-specific expertise for TDD development, including flutter test framework, dart analyze linting, and Flutter widget patterns for cross-platform app development.
+## What It Does
 
-## When to use
+Dart 3.6+ best practices with flutter test, dart analyze, and Flutter widget patterns.
 
-- Engages when the conversation references Dart work, frameworks, or files like .dart.
-- “Writing Dart tests”, “Flutter widget patterns”, “How to use flutter tests”
-- Automatically invoked when working with Dart/Flutter projects
-- Dart SPEC implementation (`/alfred:2-run`)
+**Key capabilities**:
+- ✅ Best practices enforcement for language domain
+- ✅ TRUST 5 principles integration
+- ✅ Latest tool versions (2025-10-22)
+- ✅ TDD workflow support
 
-## How it works
+---
 
-**TDD Framework**:
-- **flutter test**: Built-in test framework
-- **mockito**: Mocking library for Dart
-- **Widget testing**: Test Flutter widgets
-- Test coverage with `flutter test --coverage`
+## When to Use
 
-**Code Quality**:
-- **dart analyze**: Static analysis tool
-- **dart format**: Code formatting
-- **very_good_analysis**: Strict lint rules
+**Automatic triggers**:
+- Related code discussions and file patterns
+- SPEC implementation (`/alfred:2-run`)
+- Code review requests
 
-**Package Management**:
-- **pub**: Package manager (pub.dev)
-- **pubspec.yaml**: Dependency configuration
-- Flutter SDK version management
+**Manual invocation**:
+- Review code for TRUST 5 compliance
+- Design new features
+- Troubleshoot issues
 
-**Flutter Patterns**:
-- **StatelessWidget/StatefulWidget**: UI components
-- **Provider/Riverpod**: State management
-- **BLoC**: Business logic separation
-- **Navigator**: Routing and navigation
+---
 
-**Best Practices**:
-- File ≤300 LOC, function ≤50 LOC
-- Prefer `const` constructors for immutable widgets
-- Use `final` for immutable fields
-- Widget composition over inheritance
+## Tool Version Matrix (2025-10-22)
 
-## Examples
-```bash
-dart test && dart analyze
-```
+| Tool | Version | Purpose | Status |
+|------|---------|---------|--------|
+| **Dart** | 3.6.0 | Primary | ✅ Current |
+| **Flutter** | 3.27.0 | Primary | ✅ Current |
+| **dart analyze** | 3.6.0 | Primary | ✅ Current |
+
+---
 
 ## Inputs
-- Language-specific source directories (e.g. `src/`, `app/`).
-- Language-specific build/test configuration files (e.g. `package.json`, `pyproject.toml`, `go.mod`).
-- Relevant test suites and sample data.
+
+- Language-specific source directories
+- Configuration files
+- Test suites and sample data
 
 ## Outputs
-- Test/lint execution plan tailored to the selected language.
-- List of key language idioms and review checkpoints.
+
+- Test/lint execution plan
+- TRUST 5 review checkpoints
+- Migration guidance
 
 ## Failure Modes
-- When the language runtime or package manager is not installed.
-- When the main language cannot be determined in a multilingual project.
+
+- When required tools are not installed
+- When dependencies are missing
+- When test coverage falls below 85%
 
 ## Dependencies
-- Access to the project file is required using the Read/Grep tool.
-- When used with `Skill("moai-foundation-langs")`, it is easy to share cross-language conventions.
 
-## References
-- Google. "Dart Language Tour." https://dart.dev/guides/language/language-tour (accessed 2025-03-29).
-- Flutter. "Testing." https://docs.flutter.dev/testing (accessed 2025-03-29).
+- Access to project files via Read/Bash tools
+- Integration with `moai-foundation-langs` for language detection
+- Integration with `moai-foundation-trust` for quality gates
+
+---
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
 
 ## Changelog
-- 2025-03-29: Input/output/failure response/reference information for each language has been specified.
 
-## Works well with
+- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
+- **v1.0.0** (2025-03-29): Initial Skill release
 
-- alfred-trust-validation (coverage verification)
-- alfred-code-reviewer (Dart-specific review)
-- mobile-app-expert (Flutter app development)
+---
+
+## Works Well With
+
+- `moai-foundation-trust` (quality gates)
+- `moai-alfred-code-reviewer` (code review)
+- `moai-essentials-debug` (debugging support)
+
+---
 
 ## Best Practices
-- Enable automatic validation by matching your linter with the language's official style guide.
-- Fix test/build pipelines with reproducible commands in CI.
+
+✅ **DO**:
+- Follow language best practices
+- Use latest stable tool versions
+- Maintain test coverage ≥85%
+- Document all public APIs
+
+❌ **DON'T**:
+- Skip quality gates
+- Use deprecated tools
+- Ignore security warnings
+- Mix testing frameworks

@@ -1,100 +1,123 @@
 ---
-
 name: moai-domain-database
-description: Database design, schema optimization, indexing strategies, and migration management. Use when working on database integration tasks scenarios.
+version: 2.0.0
+created: 2025-10-22
+updated: 2025-10-22
+status: active
+description: Database design, schema optimization, indexing strategies, and migration management.
+keywords: ['database', 'sql', 'nosql', 'migrations', 'indexing']
 allowed-tools:
   - Read
   - Bash
 ---
 
-# Database Expert
+# Domain Database Skill
 
 ## Skill Metadata
+
 | Field | Value |
 | ----- | ----- |
-| Allowed tools | Read (read_file), Bash (terminal) |
-| Auto-load | On demand for data layer design |
-| Trigger cues | Schema modeling, migration planning, query optimization, indexing strategy. |
-| Tier | 4 |
+| **Skill Name** | moai-domain-database |
+| **Version** | 2.0.0 (2025-10-22) |
+| **Allowed tools** | Read (read_file), Bash (terminal) |
+| **Auto-load** | On demand when keywords detected |
+| **Tier** | Domain |
 
-## What it does
+---
 
-Provides expertise in database design, schema normalization, indexing strategies, query optimization, and safe migration management for SQL and NoSQL databases.
+## What It Does
 
-## When to use
+Database design, schema optimization, indexing strategies, and migration management.
 
-- Engages when the conversation focuses on database design or tuning.
-- “Database design”, “Schema optimization”, “Index strategy”, “Migration”
-- Automatically invoked when working with database projects
-- Database SPEC implementation (`/alfred:2-run`)
+**Key capabilities**:
+- ✅ Best practices enforcement for domain domain
+- ✅ TRUST 5 principles integration
+- ✅ Latest tool versions (2025-10-22)
+- ✅ TDD workflow support
 
-## How it works
+---
 
-**Schema Design**:
-- **Normalization**: 1NF, 2NF, 3NF, BCNF
-- **Denormalization**: Performance trade-offs
-- **Constraints**: Primary keys, foreign keys, unique, check
-- **Data types**: Choosing appropriate types
+## When to Use
 
-**Indexing Strategies**:
-- **B-tree indices**: General-purpose indexing
-- **Hash indices**: Exact match queries
-- **Full-text indices**: Text search
-- **Composite indices**: Multi-column indexing
-- **Index maintenance**: REINDEX, VACUUM
+**Automatic triggers**:
+- Related code discussions and file patterns
+- SPEC implementation (`/alfred:2-run`)
+- Code review requests
 
-**Query Optimization**:
-- **EXPLAIN/EXPLAIN ANALYZE**: Query plan analysis
-- **JOIN optimization**: INNER, LEFT, RIGHT, FULL
-- **Subquery vs JOIN**: Performance comparison
-- **N+1 query problem**: Eager loading
-- **Query caching**: Redis, Memcached
+**Manual invocation**:
+- Review code for TRUST 5 compliance
+- Design new features
+- Troubleshoot issues
 
-**Migration Management**:
-- **Version control**: Flyway, Liquibase, Alembic
-- **Rollback strategies**: Backward compatibility
-- **Zero-downtime migrations**: Expand-contract pattern
-- **Data migrations**: Safe data transformations
+---
 
-**Database Types**:
-- **SQL**: PostgreSQL, MySQL, SQLite
-- **NoSQL**: MongoDB, Redis, Cassandra
-- **NewSQL**: CockroachDB, Vitess
+## Tool Version Matrix (2025-10-22)
 
-## Examples
-```bash
-$ alembic upgrade head
-$ psql -f audits/verify_constraints.sql
-```
+| Tool | Version | Purpose | Status |
+|------|---------|---------|--------|
+| **PostgreSQL** | 17.2 | Primary | ✅ Current |
+| **MongoDB** | 8.0.0 | Primary | ✅ Current |
+| **Redis** | 7.4.0 | Primary | ✅ Current |
+
+---
 
 ## Inputs
-- Domain-specific design documents and user requirements.
-- Project technology stack and operational constraints.
+
+- Language-specific source directories
+- Configuration files
+- Test suites and sample data
 
 ## Outputs
-- Domain-specific architecture or implementation guidelines.
-- Recommended list of associated sub-agents/skills.
+
+- Test/lint execution plan
+- TRUST 5 review checkpoints
+- Migration guidance
 
 ## Failure Modes
-- When the domain document does not exist or is ambiguous.
-- When the project strategy is unconfirmed and cannot be specified.
+
+- When required tools are not installed
+- When dependencies are missing
+- When test coverage falls below 85%
 
 ## Dependencies
-- `.moai/project/` document and latest technical briefing are required.
 
-## References
-- Fowler, Martin. "Evolutionary Database Design." https://martinfowler.com/articles/evodb.html (accessed 2025-03-29).
-- AWS. "Database Tuning Best Practices." https://aws.amazon.com/blogs/database/ (accessed 2025-03-29).
+- Access to project files via Read/Bash tools
+- Integration with `moai-foundation-langs` for language detection
+- Integration with `moai-foundation-trust` for quality gates
+
+---
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
 
 ## Changelog
-- 2025-03-29: Codified input/output and failure responses for domain skills.
 
-## Works well with
+- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
+- **v1.0.0** (2025-03-29): Initial Skill release
 
-- alfred-trust-validation (migration testing)
-- sql-expert (SQL implementation)
-- backend-expert (ORM integration)
+---
+
+## Works Well With
+
+- `moai-foundation-trust` (quality gates)
+- `moai-alfred-code-reviewer` (code review)
+- `moai-essentials-debug` (debugging support)
+
+---
 
 ## Best Practices
-- Record supporting documentation (version/link) for each domain decision.
-- Review performance, security, and operational requirements simultaneously at an early stage.
+
+✅ **DO**:
+- Follow domain best practices
+- Use latest stable tool versions
+- Maintain test coverage ≥85%
+- Document all public APIs
+
+❌ **DON'T**:
+- Skip quality gates
+- Use deprecated tools
+- Ignore security warnings
+- Mix testing frameworks

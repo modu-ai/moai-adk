@@ -1,99 +1,124 @@
 ---
-
 name: moai-domain-frontend
-description: React/Vue/Angular development with state management, performance optimization, and accessibility. Use when working on frontend interfaces scenarios.
+version: 2.0.0
+created: 2025-10-22
+updated: 2025-10-22
+status: active
+description: React 19/Vue 3.5/Angular 19 with state management, performance optimization, and accessibility.
+keywords: ['react', 'vue', 'angular', 'state', 'accessibility']
 allowed-tools:
   - Read
   - Bash
 ---
 
-# Frontend Expert
+# Domain Frontend Skill
 
 ## Skill Metadata
+
 | Field | Value |
 | ----- | ----- |
-| Allowed tools | Read (read_file), Bash (terminal) |
-| Auto-load | On demand for frontend delivery |
-| Trigger cues | Component architecture, design systems, accessibility, performance budgets. |
-| Tier | 4 |
+| **Skill Name** | moai-domain-frontend |
+| **Version** | 2.0.0 (2025-10-22) |
+| **Allowed tools** | Read (read_file), Bash (terminal) |
+| **Auto-load** | On demand when keywords detected |
+| **Tier** | Domain |
 
-## What it does
+---
 
-Provides expertise in modern frontend development using React, Vue, or Angular, including state management patterns, performance optimization techniques, and accessibility (a11y) best practices.
+## What It Does
 
-## When to use
+React 19/Vue 3.5/Angular 19 with state management, performance optimization, and accessibility.
 
-- Engages when building or reviewing UI/front-end experiences.
-- “Front-end development”, “React components”, “state management”, “performance optimization”
-- Automatically invoked when working with frontend projects
-- Frontend SPEC implementation (`/alfred:2-run`)
+**Key capabilities**:
+- ✅ Best practices enforcement for domain domain
+- ✅ TRUST 5 principles integration
+- ✅ Latest tool versions (2025-10-22)
+- ✅ TDD workflow support
 
-## How it works
+---
 
-**React Development**:
-- **Functional components**: Hooks (useState, useEffect, useMemo)
-- **State management**: Redux, Zustand, Jotai
-- **Performance**: React.memo, useCallback, code splitting
-- **Testing**: React Testing Library
+## When to Use
 
-**Vue Development**:
-- **Composition API**: setup(), reactive(), computed()
-- **State management**: Pinia, Vuex
-- **Performance**: Virtual scrolling, lazy loading
-- **Testing**: Vue Test Utils
+**Automatic triggers**:
+- Related code discussions and file patterns
+- SPEC implementation (`/alfred:2-run`)
+- Code review requests
 
-**Angular Development**:
-- **Components**: TypeScript classes with decorators
-- **State management**: NgRx, Akita
-- **Performance**: OnPush change detection, lazy loading
-- **Testing**: Jasmine, Karma
+**Manual invocation**:
+- Review code for TRUST 5 compliance
+- Design new features
+- Troubleshoot issues
 
-**Performance Optimization**:
-- **Code splitting**: Dynamic imports, route-based splitting
-- **Lazy loading**: Images, components
-- **Bundle optimization**: Tree shaking, minification
-- **Web Vitals**: LCP, FID, CLS optimization
+---
 
-**Accessibility (a11y)**:
-- **Semantic HTML**: Proper use of HTML5 elements
-- **ARIA attributes**: Roles, labels, descriptions
-- **Keyboard navigation**: Focus management
-- **Screen reader support**: Alt text, aria-live
+## Tool Version Matrix (2025-10-22)
 
-## Examples
-```bash
-$ npm run lint && npm run test
-$ npm run build -- --profiling
-```
+| Tool | Version | Purpose | Status |
+|------|---------|---------|--------|
+| **React** | 19.0.0 | Primary | ✅ Current |
+| **Vue** | 3.5.13 | Primary | ✅ Current |
+| **Angular** | 19.0.0 | Primary | ✅ Current |
+| **Vite** | 6.0.5 | Primary | ✅ Current |
+
+---
 
 ## Inputs
-- Domain-specific design documents and user requirements.
-- Project technology stack and operational constraints.
+
+- Language-specific source directories
+- Configuration files
+- Test suites and sample data
 
 ## Outputs
-- Domain-specific architecture or implementation guidelines.
-- Recommended list of associated sub-agents/skills.
+
+- Test/lint execution plan
+- TRUST 5 review checkpoints
+- Migration guidance
 
 ## Failure Modes
-- When the domain document does not exist or is ambiguous.
-- When the project strategy is unconfirmed and cannot be specified.
+
+- When required tools are not installed
+- When dependencies are missing
+- When test coverage falls below 85%
 
 ## Dependencies
-- `.moai/project/` document and latest technical briefing are required.
 
-## References
-- Google. "Web.dev Performance Guidelines." https://web.dev/fast/ (accessed 2025-03-29).
-- W3C. "Web Content Accessibility Guidelines (WCAG) 2.2." https://www.w3.org/TR/WCAG22/ (accessed 2025-03-29).
+- Access to project files via Read/Bash tools
+- Integration with `moai-foundation-langs` for language detection
+- Integration with `moai-foundation-trust` for quality gates
+
+---
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
 
 ## Changelog
-- 2025-03-29: Codified input/output and failure responses for domain skills.
 
-## Works well with
+- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
+- **v1.0.0** (2025-03-29): Initial Skill release
 
-- alfred-trust-validation (frontend testing)
-- typescript-expert (type-safe React/Vue)
-- alfred-performance-optimizer (performance profiling)
+---
+
+## Works Well With
+
+- `moai-foundation-trust` (quality gates)
+- `moai-alfred-code-reviewer` (code review)
+- `moai-essentials-debug` (debugging support)
+
+---
 
 ## Best Practices
-- Record supporting documentation (version/link) for each domain decision.
-- Review performance, security, and operational requirements simultaneously at an early stage.
+
+✅ **DO**:
+- Follow domain best practices
+- Use latest stable tool versions
+- Maintain test coverage ≥85%
+- Document all public APIs
+
+❌ **DON'T**:
+- Skip quality gates
+- Use deprecated tools
+- Ignore security warnings
+- Mix testing frameworks

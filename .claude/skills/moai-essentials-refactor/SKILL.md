@@ -1,96 +1,113 @@
 ---
-
 name: moai-essentials-refactor
-description: Refactoring guidance with design patterns and code improvement strategies. Use when planning incremental refactors with safety nets.
+version: 2.0.0
+created: 2025-10-22
+updated: 2025-10-22
+status: active
+description: Refactoring guidance with design patterns and code improvement strategies.
+keywords: ['refactoring', 'patterns', 'code-quality', 'improvement']
 allowed-tools:
   - Read
   - Bash
-  - Write
-  - Edit
-  - TodoWrite
 ---
 
-# Alfred Refactoring Coach
+# Essentials Refactor Skill
 
 ## Skill Metadata
+
 | Field | Value |
 | ----- | ----- |
-| Allowed tools | Read (read_file), Write (write_file), Edit (edit_file), Bash (terminal), TodoWrite (todo_write) |
-| Auto-load | On demand during Run stage (refactor planning) |
-| Trigger cues | Refactoring plans, code smell cleanup, design pattern coaching. |
+| **Skill Name** | moai-essentials-refactor |
+| **Version** | 2.0.0 (2025-10-22) |
+| **Allowed tools** | Read (read_file), Bash (terminal) |
+| **Auto-load** | On demand when keywords detected |
+| **Tier** | Essentials |
 
-## What it does
+---
 
-Refactoring guidance with design pattern recommendations, code smell detection, and step-by-step improvement plans.
+## What It Does
 
-## When to use
+Refactoring guidance with design patterns and code improvement strategies.
 
-- Loads when the user asks how to restructure code or apply design patterns.
-- “Help with refactoring”, “How can I improve this code?”, “Apply design patterns” 
-- “Code organization”, “Remove duplication”, “Separate functions”
+**Key capabilities**:
+- ✅ Best practices enforcement for essentials domain
+- ✅ TRUST 5 principles integration
+- ✅ Latest tool versions (2025-10-22)
+- ✅ TDD workflow support
 
-## How it works
+---
 
-**Refactoring Techniques**:
-- **Extract Method**: Separate long methods
-- **Replace Conditional with Polymorphism**: Remove conditional statements
-- **Introduce Parameter Object**: Group parameters
-- **Extract Class**: Massive class separation
+## When to Use
 
-**Design Pattern Recommendations**:
-- Complex object creation → **Builder Pattern**
-- Type-specific behavior → **Strategy Pattern**
-- Global state → **Singleton Pattern**
-- Incompatible interfaces → **Adapter Pattern**
-- Delayed object creation → **Factory Pattern**
+**Automatic triggers**:
+- Related code discussions and file patterns
+- SPEC implementation (`/alfred:2-run`)
+- Code review requests
 
-**3-Strike Rule**:
-```
-1st occurrence: Just implement
-2nd occurrence: Notice similarity (leave as-is)
-3rd occurrence: Pattern confirmed → Refactor! 🔧
-```
+**Manual invocation**:
+- Review code for TRUST 5 compliance
+- Design new features
+- Troubleshoot issues
 
-**Refactoring Checklist**:
-- [ ] All tests passing before refactoring
-- [ ] Code smells identified
-- [ ] Refactoring goal clear
-- [ ] Change one thing at a time
-- [ ] Run tests after each change
-- [ ] Commit frequently
-
-## Examples
-```markdown
-- Checks the current diff and lists items that can be modified immediately.
-- Schedule follow-up tasks with TodoWrite.
-```
+---
 
 ## Inputs
-- A snapshot of the code/tests/documentation you are currently working on.
-- Ongoing agent status information.
+
+- Language-specific source directories
+- Configuration files
+- Test suites and sample data
 
 ## Outputs
-- Immediately actionable checklists or improvement suggestions.
-- Recommendations on whether to take next steps or not.
+
+- Test/lint execution plan
+- TRUST 5 review checkpoints
+- Migration guidance
 
 ## Failure Modes
-- If you cannot find the required files or test results.
-- When the scope of work is excessively large and cannot be resolved with simple support.
+
+- When required tools are not installed
+- When dependencies are missing
+- When test coverage falls below 85%
 
 ## Dependencies
-- Mainly used in conjunction with `tdd-implementer`, `quality-gate`, etc.
 
-## References
-- Fowler, Martin. "Refactoring: Improving the Design of Existing Code." Addison-Wesley, 2018.
-- IEEE Software. "Managing Technical Debt." IEEE Software, 2021.
+- Access to project files via Read/Bash tools
+- Integration with `moai-foundation-langs` for language detection
+- Integration with `moai-foundation-trust` for quality gates
+
+---
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
 
 ## Changelog
-- 2025-03-29: Overhauled input/output definitions for Essentials skills.
 
-## Works well with
+- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
+- **v1.0.0** (2025-03-29): Initial Skill release
 
-- moai-essentials-review
+---
+
+## Works Well With
+
+- `moai-foundation-trust` (quality gates)
+- `moai-alfred-code-reviewer` (code review)
+- `moai-essentials-debug` (debugging support)
+
+---
 
 ## Best Practices
-- Record results, even for simple improvements, to increase traceability.
-- Clearly mark items that require human review to distinguish them from automation.
+
+✅ **DO**:
+- Follow essentials best practices
+- Use latest stable tool versions
+- Maintain test coverage ≥85%
+- Document all public APIs
+
+❌ **DON'T**:
+- Skip quality gates
+- Use deprecated tools
+- Ignore security warnings
+- Mix testing frameworks

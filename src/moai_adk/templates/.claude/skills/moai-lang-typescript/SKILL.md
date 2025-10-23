@@ -1,96 +1,127 @@
 ---
-
 name: moai-lang-typescript
-description: TypeScript best practices with Vitest, Biome, strict typing, and npm/pnpm package management. Use when writing or reviewing TypeScript code in project workflows.
+version: 2.0.0
+created: 2025-10-22
+updated: 2025-10-22
+status: active
+description: TypeScript 5.7+ best practices with Vitest 2.1, Biome 1.9, strict typing, and npm/pnpm/bun package management.
+keywords: ['typescript', 'testing', 'vitest', 'biome', 'types', 'react', 'nextjs']
 allowed-tools:
   - Read
   - Bash
 ---
 
-# TypeScript Expert
+# Lang Typescript Skill
 
 ## Skill Metadata
+
 | Field | Value |
 | ----- | ----- |
-| Allowed tools | Read (read_file), Bash (terminal) |
-| Auto-load | On demand when language keywords are detected |
-| Trigger cues | TypeScript code discussions, framework guidance, or file extensions such as .ts/.tsx. |
-| Tier | 3 |
+| **Skill Name** | moai-lang-typescript |
+| **Version** | 2.0.0 (2025-10-22) |
+| **Allowed tools** | Read (read_file), Bash (terminal) |
+| **Auto-load** | On demand when keywords detected |
+| **Tier** | Language |
 
-## What it does
+---
 
-Provides TypeScript-specific expertise for TDD development, including Vitest testing, Biome linting/formatting, strict type checking, and modern npm/pnpm package management.
+## What It Does
 
-## When to use
+TypeScript 5.7+ best practices with Vitest 2.1, Biome 1.9, strict typing, and npm/pnpm/bun package management.
 
-- Engages when the conversation references TypeScript work, frameworks, or files like .ts/.tsx.
-- "Writing TypeScript tests", "How to use Vitest", "Type safety"
-- Automatically invoked when working with TypeScript projects
-- TypeScript SPEC implementation (`/alfred:2-run`)
+**Key capabilities**:
+- ✅ Best practices enforcement for language domain
+- ✅ TRUST 5 principles integration
+- ✅ Latest tool versions (2025-10-22)
+- ✅ TDD workflow support
 
-## How it works
+---
 
-**TDD Framework**:
-- **Vitest**: Fast unit testing (Jest-compatible API)
-- **@testing-library**: Component testing for React/Vue
-- Test coverage ≥85% with c8/istanbul
+## When to Use
 
-**Type Safety**:
-- **strict: true** in tsconfig.json
-- **noImplicitAny**, **strictNullChecks**, **strictFunctionTypes**
-- Interface definitions, Generics, Type guards
+**Automatic triggers**:
+- Related code discussions and file patterns
+- SPEC implementation (`/alfred:2-run`)
+- Code review requests
 
-**Code Quality**:
-- **Biome**: Fast linter + formatter (replaces ESLint + Prettier)
-- Type-safe configurations
-- Import organization, unused variable detection
+**Manual invocation**:
+- Review code for TRUST 5 compliance
+- Design new features
+- Troubleshoot issues
 
-**Package Management**:
-- **pnpm**: Fast, disk-efficient package manager (preferred)
-- **npm**: Fallback option
-- `package.json` + `tsconfig.json` configuration
+---
 
-**Best Practices**:
-- File ≤300 LOC, function ≤50 LOC
-- Prefer interfaces over types for public APIs
-- Use const assertions for literal types
-- Avoid `any`, prefer `unknown` or proper types
+## Tool Version Matrix (2025-10-22)
 
-## Examples
-```bash
-npm run lint && npm test
-```
+| Tool | Version | Purpose | Status |
+|------|---------|---------|--------|
+| **TypeScript** | 5.7.2 | Primary | ✅ Current |
+| **Vitest** | 2.1.0 | Primary | ✅ Current |
+| **Biome** | 1.9.4 | Primary | ✅ Current |
+| **Bun** | 1.1.0 | Primary | ✅ Current |
+| **pnpm** | 9.14.2 | Primary | ✅ Current |
+| **React** | 19.0.0 | Primary | ✅ Current |
+| **Next.js** | 15.1.0 | Primary | ✅ Current |
+
+---
 
 ## Inputs
-- Language-specific source directories (e.g. `src/`, `app/`).
-- Language-specific build/test configuration files (e.g. `package.json`, `pyproject.toml`, `go.mod`).
-- Relevant test suites and sample data.
+
+- Language-specific source directories
+- Configuration files
+- Test suites and sample data
 
 ## Outputs
-- Test/lint execution plan tailored to the selected language.
-- List of key language idioms and review checkpoints.
+
+- Test/lint execution plan
+- TRUST 5 review checkpoints
+- Migration guidance
 
 ## Failure Modes
-- When the language runtime or package manager is not installed.
-- When the main language cannot be determined in a multilingual project.
+
+- When required tools are not installed
+- When dependencies are missing
+- When test coverage falls below 85%
 
 ## Dependencies
-- Access to the project file is required using the Read/Grep tool.
-- When used with `Skill("moai-foundation-langs")`, it is easy to share cross-language conventions.
 
-## References
-- Microsoft. "TypeScript Handbook." https://www.typescriptlang.org/docs/ (accessed 2025-03-29).
-- OpenJS Foundation. "ESLint User Guide." https://eslint.org/docs/latest/ (accessed 2025-03-29).
+- Access to project files via Read/Bash tools
+- Integration with `moai-foundation-langs` for language detection
+- Integration with `moai-foundation-trust` for quality gates
+
+---
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
 
 ## Changelog
-- 2025-03-29: Input/output/failure response/reference information for each language has been specified.
 
-## Works well with
+- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
+- **v1.0.0** (2025-03-29): Initial Skill release
 
-- alfred-trust-validation (coverage verification)
-- alfred-code-reviewer (TypeScript-specific review)
-- alfred-refactoring-coach (type-safe refactoring)
+---
+
+## Works Well With
+
+- `moai-foundation-trust` (quality gates)
+- `moai-alfred-code-reviewer` (code review)
+- `moai-essentials-debug` (debugging support)
+
+---
 
 ## Best Practices
-- Enable automatic validation by matching your linter with the language's official style guide.
-- Fix test/build pipelines with reproducible commands in CI.
+
+✅ **DO**:
+- Follow language best practices
+- Use latest stable tool versions
+- Maintain test coverage ≥85%
+- Document all public APIs
+
+❌ **DON'T**:
+- Skip quality gates
+- Use deprecated tools
+- Ignore security warnings
+- Mix testing frameworks

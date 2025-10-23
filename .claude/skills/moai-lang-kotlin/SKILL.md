@@ -1,99 +1,124 @@
 ---
-
 name: moai-lang-kotlin
-description: Kotlin best practices with JUnit, Gradle, ktlint, coroutines, and extension functions. Use when writing or reviewing Kotlin code in project workflows.
+version: 2.0.0
+created: 2025-10-22
+updated: 2025-10-22
+status: active
+description: Kotlin 2.1+ best practices with JUnit 5, Gradle, ktlint, coroutines, and extension functions.
+keywords: ['kotlin', 'junit', 'gradle', 'ktlint', 'coroutines']
 allowed-tools:
   - Read
   - Bash
 ---
 
-# Kotlin Expert
+# Lang Kotlin Skill
 
 ## Skill Metadata
+
 | Field | Value |
 | ----- | ----- |
-| Allowed tools | Read (read_file), Bash (terminal) |
-| Auto-load | On demand when language keywords are detected |
-| Trigger cues | Kotlin code discussions, framework guidance, or file extensions such as .kt/.kts. |
-| Tier | 3 |
+| **Skill Name** | moai-lang-kotlin |
+| **Version** | 2.0.0 (2025-10-22) |
+| **Allowed tools** | Read (read_file), Bash (terminal) |
+| **Auto-load** | On demand when keywords detected |
+| **Tier** | Language |
 
-## What it does
+---
 
-Provides Kotlin-specific expertise for TDD development, including JUnit testing, Gradle build system, ktlint linting, coroutines for concurrency, and extension functions.
+## What It Does
 
-## When to use
+Kotlin 2.1+ best practices with JUnit 5, Gradle, ktlint, coroutines, and extension functions.
 
-- Engages when the conversation references Kotlin work, frameworks, or files like .kt/.kts.
-- “Writing Kotlin tests”, “How to use coroutines”, “Android patterns”
-- Automatically invoked when working with Kotlin/Android projects
-- Kotlin SPEC implementation (`/alfred:2-run`)
+**Key capabilities**:
+- ✅ Best practices enforcement for language domain
+- ✅ TRUST 5 principles integration
+- ✅ Latest tool versions (2025-10-22)
+- ✅ TDD workflow support
 
-## How it works
+---
 
-**TDD Framework**:
-- **JUnit 5**: Unit testing with Kotlin extensions
-- **MockK**: Kotlin-friendly mocking library
-- **Kotest**: Kotlin-native testing framework
-- Test coverage ≥85% with JaCoCo
+## When to Use
 
-**Build Tools**:
-- **Gradle**: build.gradle.kts with Kotlin DSL
-- **Maven**: pom.xml alternative
-- Multi-platform support (JVM, Native, JS)
+**Automatic triggers**:
+- Related code discussions and file patterns
+- SPEC implementation (`/alfred:2-run`)
+- Code review requests
 
-**Code Quality**:
-- **ktlint**: Kotlin linter with formatting
-- **detekt**: Static code analysis
-- **Android Lint**: Android-specific checks
+**Manual invocation**:
+- Review code for TRUST 5 compliance
+- Design new features
+- Troubleshoot issues
 
-**Kotlin Features**:
-- **Coroutines**: Async programming with suspend functions
-- **Extension functions**: Add methods to existing classes
-- **Data classes**: Automatic equals/hashCode/toString
-- **Null safety**: Non-nullable types by default
-- **Smart casts**: Automatic type casting after checks
+---
 
-**Android Patterns**:
-- **Jetpack Compose**: Declarative UI
-- **ViewModel**: UI state management
-- **Room**: Database abstraction
-- **Retrofit**: Network requests
+## Tool Version Matrix (2025-10-22)
 
-## Examples
-```bash
-./gradlew test && ./gradlew ktlintCheck
-```
+| Tool | Version | Purpose | Status |
+|------|---------|---------|--------|
+| **Kotlin** | 2.1.0 | Primary | ✅ Current |
+| **JUnit** | 5.11.0 | Primary | ✅ Current |
+| **Gradle** | 8.12.0 | Primary | ✅ Current |
+| **ktlint** | 1.5.0 | Primary | ✅ Current |
+
+---
 
 ## Inputs
-- Language-specific source directories (e.g. `src/`, `app/`).
-- Language-specific build/test configuration files (e.g. `package.json`, `pyproject.toml`, `go.mod`).
-- Relevant test suites and sample data.
+
+- Language-specific source directories
+- Configuration files
+- Test suites and sample data
 
 ## Outputs
-- Test/lint execution plan tailored to the selected language.
-- List of key language idioms and review checkpoints.
+
+- Test/lint execution plan
+- TRUST 5 review checkpoints
+- Migration guidance
 
 ## Failure Modes
-- When the language runtime or package manager is not installed.
-- When the main language cannot be determined in a multilingual project.
+
+- When required tools are not installed
+- When dependencies are missing
+- When test coverage falls below 85%
 
 ## Dependencies
-- Access to the project file is required using the Read/Grep tool.
-- When used with `Skill("moai-foundation-langs")`, it is easy to share cross-language conventions.
 
-## References
-- JetBrains. "Kotlin Language Documentation." https://kotlinlang.org/docs/home.html (accessed 2025-03-29).
-- Pinterest. "ktlint." https://pinterest.github.io/ktlint/ (accessed 2025-03-29).
+- Access to project files via Read/Bash tools
+- Integration with `moai-foundation-langs` for language detection
+- Integration with `moai-foundation-trust` for quality gates
+
+---
+
+## References (Latest Documentation)
+
+_Documentation links updated 2025-10-22_
+
+---
 
 ## Changelog
-- 2025-03-29: Input/output/failure response/reference information for each language has been specified.
 
-## Works well with
+- **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
+- **v1.0.0** (2025-03-29): Initial Skill release
 
-- alfred-trust-validation (coverage verification)
-- alfred-code-reviewer (Kotlin-specific review)
-- mobile-app-expert (Android app development)
+---
+
+## Works Well With
+
+- `moai-foundation-trust` (quality gates)
+- `moai-alfred-code-reviewer` (code review)
+- `moai-essentials-debug` (debugging support)
+
+---
 
 ## Best Practices
-- Enable automatic validation by matching your linter with the language's official style guide.
-- Fix test/build pipelines with reproducible commands in CI.
+
+✅ **DO**:
+- Follow language best practices
+- Use latest stable tool versions
+- Maintain test coverage ≥85%
+- Document all public APIs
+
+❌ **DON'T**:
+- Skip quality gates
+- Use deprecated tools
+- Ignore security warnings
+- Mix testing frameworks

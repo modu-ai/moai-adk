@@ -17,7 +17,7 @@ allowed-tools:
 ---
 
 # 🏗️ MoAI-ADK Step 1: Establish a plan (Plan) - Always make a plan first and then proceed.
-> Interactive prompts rely on `Skill("moai-alfred-tui-survey")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
+> Interactive prompts rely on `Skill("moai-alfred-interactive-questions")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
 
 ## 🎯 Command Purpose
 
@@ -68,10 +68,10 @@ allowed-tools:
 
 ## 🧠 Associated Skills & Agents
 
-| Agent | Core Skill | Purpose |
-| ----- | -------- | ------- |
-| spec-builder | `moai-foundation-ears` | Write SPEC with EARS syntax |
-| git-manager | `moai-alfred-git-workflow` | Create branch and PR |
+| Agent        | Core Skill                 | Purpose                     |
+| ------------ | -------------------------- | --------------------------- |
+| spec-builder | `moai-foundation-ears`     | Write SPEC with EARS syntax |
+| git-manager  | `moai-alfred-git-workflow` | Create branch and PR        |
 
 **Note**: TUI Survey Skill is used for user confirmations during the plan phase and is shared across all interactive prompts.
 
@@ -152,7 +152,7 @@ Call the Task tool:
 
 ### User verification steps
 
-After reviewing your implementation plan, Alfred invokes `Skill("moai-alfred-tui-survey")` to present the following options:
+After reviewing your implementation plan, Alfred invokes `Skill("moai-alfred-interactive-questions")` to present the following options:
 - **"Go"** or **"Start"**: Start writing the plan as planned
 - **"Modify [Content]"**: Request modifications to the plan
 - **"Stop"**: Stop writing the plan
@@ -161,7 +161,7 @@ After reviewing your implementation plan, Alfred invokes `Skill("moai-alfred-tui
 
 ## 🚀 STEP 2: Create plan document (after user approval)
 
-After user approval (collected via `Skill("moai-alfred-tui-survey")`), call the spec-builder and git-manager agents using the **Task tool**.
+After user approval (collected via `Skill("moai-alfred-interactive-questions")`), call the spec-builder and git-manager agents using the **Task tool**.
 
 ### ⚙️ How to call an agent
 
