@@ -151,7 +151,7 @@ uv tool install moai-adk
 
 # Verify installation
 moai-adk --version
-# Output: MoAI-ADK v0.4.10
+# Output: MoAI-ADK v0.4.11
 ```
 
 Once installed, you can use the `moai-adk` command anywhere.
@@ -1069,7 +1069,7 @@ Hooks are **event-driven** scripts that trigger automatically at specific points
 #### 2. PreToolUse (Before Tool Execution)
 
 **Triggers**: Before executing file edits, Bash commands, or MultiEdit operations
-**Purpose**: Detect risky operations and automatically create safety checkpoints
+**Purpose**: Detect risky operations and automatically create safety checkpoints + TAG Guard
 
 **Protection Against**:
 - `rm -rf` (file deletion)
@@ -1077,13 +1077,30 @@ Hooks are **event-driven** scripts that trigger automatically at specific points
 - Editing critical files (`CLAUDE.md`, `config.json`)
 - Mass edits (10+ files at once via MultiEdit)
 
+**TAG Guard (New in v0.4.11)**:
+Automatically detects missing @TAG annotations in changed files:
+- Scans staged, modified, and untracked files
+- Warns when SPEC/TEST/CODE/DOC files lack required @TAG markers
+- Configurable rules via `.moai/tag-rules.json`
+- Non-blocking (gentle reminder, doesn't stop execution)
+
 **What You See**:
 ```
 🛡️ Checkpoint created: before-delete-20251023-143000
    Operation: delete
 ```
 
-**Why It Matters**: Prevents data loss from mistakes. You can always restore from the checkpoint if something goes wrong.
+Or when TAGs are missing:
+```
+⚠️ TAG 누락 감지: 생성/수정한 파일 중 @TAG가 없는 항목이 있습니다.
+ - src/auth/service.py → 기대 태그: @CODE:
+ - tests/test_auth.py → 기대 태그: @TEST:
+권장 조치:
+  1) SPEC/TEST/CODE/DOC 유형에 맞는 @TAG를 파일 상단 주석이나 헤더에 추가
+  2) rg로 확인: rg '@(SPEC|TEST|CODE|DOC):' -n <경로>
+```
+
+**Why It Matters**: Prevents data loss from mistakes and ensures @TAG traceability. You can always restore from the checkpoint if something goes wrong.
 
 #### 3. UserPromptSubmit (Prompt Input)
 
@@ -1146,7 +1163,7 @@ If you need to temporarily disable hooks, edit `.claude/settings.json`:
 | Hook | Status | Feature |
 |------|--------|---------|
 | **SessionStart** | ✅ Active | Project status summary (language, Git, SPEC progress, checkpoints) |
-| **PreToolUse** | ✅ Active | Risk detection + auto checkpoint (critical-delete, delete, merge, script) |
+| **PreToolUse** | ✅ Active | Risk detection + auto checkpoint (critical-delete, delete, merge, script) + **TAG Guard** (missing @TAG detection) |
 | **UserPromptSubmit** | ✅ Active | JIT context loading (auto-load related SPEC, tests, code, docs) |
 | **PostToolUse** | ✅ Active | Auto-run tests after code changes (9 languages: Python, TS, JS, Go, Rust, Java, Kotlin, Swift, Dart) |
 | **SessionEnd** | ✅ Active | Session cleanup and state saving |
@@ -1180,18 +1197,18 @@ If you need to temporarily disable hooks, edit `.claude/settings.json`:
 
 ---
 
-## v0.4 Series Updates (New!)
+## Latest Updates (New!)
 
 | Version    | Key Features                                                                         | Date       |
 | ---------- | ------------------------------------------------------------------------------------ | ---------- |
+| **v0.4.11** | ✨ TAG Guard system + CLAUDE.md formatting improvements + Code cleanup                | 2025-10-23 |
 | **v0.4.10** | 🔧 Hook robustness improvements + Bilingual documentation + Template language config | 2025-10-23 |
 | **v0.4.9** | 🎯 Hook JSON schema validation fixes + Comprehensive tests (468/468 passing)        | 2025-10-23 |
 | **v0.4.8** | 🚀 Release automation + PyPI deployment + Skills refinement                          | 2025-10-23 |
 | **v0.4.7** | 📖 Korean language optimization + SPEC-First principle documentation                 | 2025-10-22 |
 | **v0.4.6** | 🎉 Complete Skills v2.0 (100% Production-Ready) + 85,000 lines official docs + 300+ TDD examples | 2025-10-22 |
-| **v0.4.5** | ✅ CI/CD fixes + Multi-language README + Deployment cleanup                           | 2025-10-22 |
 
-> 📦 **Install Now**: `pip install moai-adk==0.4.10` or `uv tool install moai-adk==0.4.10`
+> 📦 **Install Now**: `pip install moai-adk==0.4.11` or `uv tool install moai-adk==0.4.11`
 
 ---
 
@@ -1483,8 +1500,8 @@ cd frontend
 | ------------------------ | ------------------------------------------------------- |
 | **GitHub Repository**    | https://github.com/modu-ai/moai-adk                     |
 | **Issues & Discussions** | https://github.com/modu-ai/moai-adk/issues              |
-| **PyPI Package**         | https://pypi.org/project/moai-adk/ (Latest: v0.4.6)     |
-| **Latest Release**       | https://github.com/modu-ai/moai-adk/releases/tag/v0.4.6 |
+| **PyPI Package**         | https://pypi.org/project/moai-adk/ (Latest: v0.4.11)     |
+| **Latest Release**       | https://github.com/modu-ai/moai-adk/releases/tag/v0.4.11 |
 | **Documentation**        | See `.moai/`, `.claude/`, `docs/` within project        |
 
 ---
@@ -1505,11 +1522,12 @@ Start a new experience of **trustworthy AI development** with Alfred! 🤖
 
 ---
 
-**MoAI-ADK v0.4.10** — SPEC-First TDD with AI SuperAgent & Complete Skills v2.0
+**MoAI-ADK v0.4.11** — SPEC-First TDD with AI SuperAgent & Complete Skills v2.0 + TAG Guard
 - 📦 PyPI: https://pypi.org/project/moai-adk/
 - 🏠 GitHub: https://github.com/modu-ai/moai-adk
 - 📝 License: MIT
 - ⭐ Skills: 55+ Production-Ready Guides
-- ✅ Tests: 468/468 Passing (86% coverage)
+- ✅ Tests: 467/476 Passing (85.60% coverage)
+- 🏷️ TAG Guard: Automatic @TAG validation in PreToolUse Hook
 
 ---

@@ -41,14 +41,15 @@ class TestPreToolUseHandler:
     """
 
     def test_pre_tool_use_safe_operation(self):
-        """안전한 작업은 기본 결과 반환
+        """안전한 작업은 기본 결과 반환 (TAG Guard 포함 가능)
 
         SPEC 요구사항:
-            - WHEN 안전한 작업이 감지되면, continue_execution=True만 반환해야 한다
+            - WHEN 안전한 작업이 감지되면, continue_execution=True를 반환해야 한다
+            - TAG Guard가 누락된 TAG를 감지하면 systemMessage를 포함할 수 있다
 
         Given: 안전한 Bash 명령어 payload
         When: handle_pre_tool_use()를 호출하면
-        Then: {"continue": true}를 반환한다
+        Then: {"continue": true}를 반환하고, 선택적으로 TAG 경고 메시지를 포함할 수 있다
         """
         payload: HookPayload = {
             "cwd": ".",
@@ -61,7 +62,11 @@ class TestPreToolUseHandler:
         assert isinstance(result, HookResult)
         assert result.continue_execution is True
         output = result.to_dict()
-        assert output == {"continue": True}
+        assert "continue" in output
+        assert output["continue"] is True
+        # TAG Guard may add systemMessage if missing TAGs detected
+        if "systemMessage" in output:
+            assert "TAG" in output["systemMessage"] or "tag" in output["systemMessage"].lower()
 
     @patch("handlers.tool.detect_risky_operation")
     @patch("handlers.tool.create_checkpoint")
