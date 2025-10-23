@@ -7,6 +7,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.4.11] - 2025-10-23 (TAG Guard System & Template Improvements)
+
+### 🎯 주요 변경사항 | Key Changes
+
+**Feature | 새 기능**:
+- ✨ TAG Guard 시스템 추가 | Added TAG Guard System
+  - PreToolUse Hook에서 변경 파일의 @TAG 자동 검증 | Automatic @TAG validation in PreToolUse Hook
+  - 누락 시 경고 메시지 + 권장 조치 안내 | Warning messages with recommended actions when TAGs are missing
+  - 설정 가능한 룰 시스템 (`.moai/tag-rules.json`) | Configurable rule system via `.moai/tag-rules.json`
+  - 비차단 방식 (부드러운 알림, 실행 중단하지 않음) | Non-blocking (gentle reminder, doesn't stop execution)
+
+**Documentation | 문서화**:
+- 📖 CLAUDE.md 템플릿 포맷팅 개선 | Improved CLAUDE.md template formatting
+  - 헤딩 계층 구조 명확화 | Clarified heading hierarchy
+  - 코드블록 언어 지정 추가 | Added code block language specifications
+- 📝 모든 언어 README 업데이트 (6개 언어) | Updated all language READMEs (6 languages)
+  - TAG Guard 기능 설명 추가 | Added TAG Guard feature description
+  - v0.4.11 버전 정보 반영 | Reflected v0.4.11 version info
+
+**Code Quality | 코드 품질**:
+- 🧹 validate-bash-command.py 코드 정리 | Code cleanup in validate-bash-command.py
+- 🏷️ @TAG 마커 추가 (4개 파일) | Added @TAG markers (4 files)
+  - `@CODE:HOOK-TAG-001`: TAG 검증 헬퍼
+  - `@CODE:HOOK-TOOL-001`: Tool 핸들러
+  - `@CODE:HOOK-BASH-001`: Bash 검증 스크립트
+  - `@DOC:CLAUDE-001`: CLAUDE.md 템플릿
+
+**Testing | 테스트**:
+- ✅ test_pre_tool_use_safe_operation 업데이트 | Updated test_pre_tool_use_safe_operation
+  - TAG Guard 메시지를 선택적으로 허용 | Optionally allow TAG Guard messages
+- ✅ 모든 테스트 통과: 467/476 ✅ | All tests passing: 467/476 ✅
+- ✅ 테스트 커버리지: 85.60% (목표: 85%) | Test Coverage: 85.60% (Goal: 85%) ✅
+
+### 🔗 파일 변경 | Files Changed
+
+**신규 파일** | **New Files**:
+- `src/moai_adk/templates/.claude/hooks/alfred/core/tags.py` (TAG 검증 시스템)
+
+**수정 파일** | **Modified Files**:
+- `src/moai_adk/templates/.claude/hooks/alfred/handlers/tool.py` (TAG Guard 통합)
+- `src/moai_adk/templates/.claude/skills/moai-cc-hooks/scripts/validate-bash-command.py` (코드 정리)
+- `src/moai_adk/templates/CLAUDE.md` (포맷팅 개선)
+- `README.md`, `README.ko.md`, `README.th.md`, `README.ja.md`, `README.zh.md`, `README.hi.md` (TAG Guard 문서화)
+- `tests/hooks/test_handlers.py` (테스트 업데이트)
+
+### 📦 설치 | Installation
+
+```bash
+pip install moai-adk==0.4.11
+# or
+uv tool install moai-adk==0.4.11
+```
+
+### 🔗 링크 | Links
+
+- **PyPI**: https://pypi.org/project/moai-adk/0.4.11/
+- **GitHub Release**: https://github.com/modu-ai/moai-adk/releases/tag/v0.4.11
+
+---
+
 ## [v0.4.10] - 2025-10-23 (Hook Robustness & Bilingual Documentation)
 
 ### 🎯 주요 변경사항 | Key Changes
