@@ -16,7 +16,17 @@ class LanguageDetector:
     """
 
     LANGUAGE_PATTERNS = {
-        # PHP moved to top for priority (Laravel detection)
+        # Ruby moved to top for priority (Rails detection over generic frameworks)
+        # @CODE:LANG-DETECT-RUBY-001 | SPEC: Issue #51 Language Detection Fix
+        "ruby": [
+            "*.rb",
+            "Gemfile",
+            "Gemfile.lock",           # Bundler: lock file (unique to Ruby)
+            "config/routes.rb",       # Rails: routing file (unique identifier)
+            "app/controllers/",       # Rails: controller directory
+            "Rakefile"                # Rails/Ruby: task file
+        ],
+        # PHP moved to second for priority (Laravel detection after Rails)
         "php": [
             "*.php",
             "composer.json",
@@ -34,7 +44,6 @@ class LanguageDetector:
         "swift": ["*.swift", "Package.swift"],
         "kotlin": ["*.kt", "build.gradle.kts"],
         "csharp": ["*.cs", "*.csproj"],
-        "ruby": ["*.rb", "Gemfile"],
         "elixir": ["*.ex", "mix.exs"],
         "scala": ["*.scala", "build.sbt"],
         "clojure": ["*.clj", "project.clj"],
