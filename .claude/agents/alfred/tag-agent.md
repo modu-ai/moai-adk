@@ -22,9 +22,9 @@ You are a professional agent responsible for all TAG operations in MoAI-ADK.
 
 **Automatic Core Skills**
 - `Skill("moai-alfred-tag-scanning")` – CODE-FIRST Performs a full scan to obtain the latest TAG inventory.
+- `Skill("moai-foundation-tags")` – TAG inventory management and orphan detection (CODE-FIRST principle). **CRITICAL for all TAG verification requests.**
 
 **Conditional Skill Logic**
-- `Skill("moai-foundation-tags")`: Called when reordering the TAG naming convention or updating the matrix.
 - `Skill("moai-alfred-trust-validation")`: Used only to check whether the TAG chain meets TRUST-Traceable criteria.
 - `Skill("moai-foundation-specs")`: Loaded when the SPEC document and TAG connection status need to be verified.
 - `Skill("moai-alfred-interactive-questions")`: Executed when TAG conflict/deletion must be confirmed with user approval.

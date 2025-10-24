@@ -133,23 +133,116 @@ Skills keep the core knowledge lightweight while allowing Alfred to assemble the
 
 ---
 
-## 🎯 Skill Invocation Rules
+## 🎯 Skill Invocation Rules (English-Only)
 
-### Mandatory Skill Usage
+### ✅ Mandatory Skill Explicit Invocation
 
-**IMPORTANT**: When you receive a request containing the following keywords, you **MUST** explicitly invoke the corresponding Skill. DO NOT use direct tools (Read, Grep, Bash).
+**CRITICAL**: All 55 Skills in MoAI-ADK must be invoked **explicitly** using the `Skill("skill-name")` syntax. DO NOT use direct tools (Bash, Grep, Read) when a dedicated Skill exists for the task.
 
-| User Request Keywords | Skill to Invoke | Prohibited Actions |
-|----------------------|-----------------|-------------------|
-| **TRUST validation**, code quality check, quality gate, coverage check, test coverage | `Skill("moai-foundation-trust")` | ❌ Direct ruff/mypy execution |
-| **TAG validation**, tag check, orphan detection, TAG scan | `Skill("moai-foundation-tags")` | ❌ Direct rg search |
-| **SPEC validation**, spec check, SPEC metadata | `Skill("moai-foundation-specs")` | ❌ Direct YAML reading |
-| **EARS syntax**, requirement authoring | `Skill("moai-foundation-ears")` | ❌ Generic templates |
-| **Git workflow**, branch management, PR policy | `Skill("moai-foundation-git")` | ❌ Direct git commands |
-| **debugging**, error analysis, bug fix | `Skill("moai-essentials-debug")` | ❌ Generic diagnostics |
-| **refactoring**, code improvement | `Skill("moai-essentials-refactor")` | ❌ Direct modifications |
-| **performance optimization**, profiling | `Skill("moai-essentials-perf")` | ❌ Guesswork |
-| **code review**, quality review | `Skill("moai-essentials-review")` | ❌ Generic review |
+| **User Request Keywords** | **Skill to Invoke** | **Invocation Pattern** | **Prohibited Actions** |
+|----------------------|-------------------|----------------------|-------------------|
+| TRUST validation, code quality check, quality gate, coverage check, test coverage | `moai-foundation-trust` | `Skill("moai-foundation-trust")` | ❌ Direct ruff/mypy |
+| TAG validation, tag check, orphan detection, TAG scan, TAG chain | `moai-foundation-tags` | `Skill("moai-foundation-tags")` | ❌ Direct rg search |
+| SPEC validation, spec check, SPEC metadata, spec authoring | `moai-foundation-specs` | `Skill("moai-foundation-specs")` | ❌ Direct YAML reading |
+| EARS syntax, requirement authoring, requirement formatting | `moai-foundation-ears` | `Skill("moai-foundation-ears")` | ❌ Generic templates |
+| Git workflow, branch management, PR policy, commit strategy | `moai-foundation-git` | `Skill("moai-foundation-git")` | ❌ Direct git commands |
+| Language detection, stack detection, framework identification | `moai-foundation-langs` | `Skill("moai-foundation-langs")` | ❌ Manual detection |
+| Debugging, error analysis, bug fix, exception handling | `moai-essentials-debug` | `Skill("moai-essentials-debug")` | ❌ Generic diagnostics |
+| Refactoring, code improvement, code cleanup, design patterns | `moai-essentials-refactor` | `Skill("moai-essentials-refactor")` | ❌ Direct modifications |
+| Performance optimization, profiling, bottleneck analysis | `moai-essentials-perf` | `Skill("moai-essentials-perf")` | ❌ Guesswork |
+| Code review, quality review, architecture review, security review | `moai-essentials-review` | `Skill("moai-essentials-review")` | ❌ Generic review |
+
+### Skill Tier Overview (55 Total Skills)
+
+| **Tier** | **Count** | **Purpose** | **Auto-Trigger Conditions** |
+|----------|-----------|------------|--------------------------|
+| **Foundation** | 6 | Core TRUST/TAG/SPEC/EARS/Git/Language principles | Keyword detection in user request |
+| **Essentials** | 4 | Debug/Perf/Refactor/Review workflows | Error detection, refactor triggers |
+| **Alfred** | 11 | Workflow orchestration (SPEC authoring, TDD, sync, Git) | Command execution (`/alfred:*`) |
+| **Domain** | 10 | Backend, Frontend, Web API, Database, Security, DevOps, Data Science, ML, Mobile, CLI | Domain-specific keywords |
+| **Language** | 23 | Python, TypeScript, Go, Rust, Java, Kotlin, Swift, Dart, C/C++, C#, Scala, Ruby, PHP, JavaScript, SQL, Shell, and more | File extension detection (`.py`, `.ts`, `.go`, etc.) |
+| **Ops** | 1 | Claude Code session settings, output styles | Session start/configuration |
+
+### Progressive Disclosure Pattern
+
+All Skills follow the **Progressive Disclosure** principle:
+
+1. **Metadata** (always available): Skill name, description, triggers, keywords
+2. **Content** (on-demand): Full SKILL.md loads when explicitly invoked via `Skill("name")`
+3. **Supporting** (JIT): Templates, examples, and resources load only when needed
+
+### Explicit Invocation Syntax
+
+**Standard Pattern**:
+```python
+Skill("skill-name")  # Invoke any Skill explicitly
+```
+
+**With Context** (recommended):
+```python
+# Example: Validate code quality
+Skill("moai-foundation-trust")
+
+# Example: Debug runtime error
+Skill("moai-essentials-debug")
+```
+
+### Example Workflows Using Explicit Skill Invocation
+
+**Workflow 1: Code Quality Validation (TRUST 5)**
+```
+User: "Check code quality"
+    ↓
+Invoke: Skill("moai-foundation-trust")
+    → Verify Test First: pytest coverage ≥85%
+    → Verify Readable: ruff lint + linter checks
+    → Verify Unified: mypy type safety
+    → Verify Secured: security scanner (trivy)
+    → Verify Trackable: @TAG chain validation
+    → Return: Quality report with TRUST 5-principles
+```
+
+**Workflow 2: TAG Orphan Detection (Full Project)**
+```
+User: "Find all TAG orphans in the project"
+    ↓
+Invoke: Skill("moai-foundation-tags")
+    → Scan entire project: .moai/specs/, tests/, src/, docs/
+    → Detect @CODE without @SPEC
+    → Detect @SPEC without @CODE
+    → Detect @TEST without @SPEC
+    → Detect @DOC without @SPEC/@CODE
+    → Return: Complete orphan report with locations
+```
+
+**Workflow 3: SPEC Authoring with EARS**
+```
+User: "Create AUTH-001 JWT authentication SPEC"
+    ↓
+Invoke: Skill("moai-foundation-specs")
+    → Validate SPEC structure (YAML metadata, HISTORY)
+    ↓
+Invoke: Skill("moai-foundation-ears")
+    → Format requirements using EARS syntax
+    → Ubiquitous: "The system must provide JWT-based authentication"
+    → Event: "WHEN valid credentials provided, THEN issue JWT token"
+    → Constraints: "Token expiration ≤ 30 minutes"
+    ↓
+Return: Properly formatted SPEC file with @SPEC:AUTH-001 TAG
+```
+
+**Workflow 4: Debugging with Error Context**
+```
+User: "TypeError: Cannot read property 'name' of undefined"
+    ↓
+Invoke: Skill("moai-essentials-debug")
+    → Analyze stack trace
+    → Identify root cause: null/undefined object access
+    → Check related SPEC: @SPEC:USER-003
+    → Check missing test cases: @TEST:USER-003
+    → Suggest fix: Add null check, update test
+    → Recommend: Re-run /alfred:2-run
+```
 
 ### Example: Correct Skill Usage
 

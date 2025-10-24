@@ -99,7 +99,9 @@ Users can run the command as follows:
 
 Analyze project status to determine synchronization scope, develop a systematic synchronization plan, and receive user confirmation.
 
-**The doc-syncer agent automatically scans the TAG chain and identifies and analyzes Git changes.**
+**The tag-agent performs comprehensive TAG verification (full project scope), and doc-syncer analyzes Git changes and establishes synchronization plan.**
+
+⚠️ **Important**: Tag-agent must verify the ENTIRE PROJECT for TAG orphans, not just changed files. Full-project scope is MANDATORY.
 
 ### 🔍 TAG chain navigation (optional)
 
@@ -129,12 +131,27 @@ Invoking the Task tool (Explore agent):
 **In STEP 1, call doc-syncer and tag-agent using the Task tool**:
 
 ```
-1. Tag-agent call (TAG verification):
+1. Tag-agent call (TAG verification - FULL PROJECT SCOPE):
    - subagent_type: "tag-agent"
-- description: "Verify TAG system"
- - prompt: "Please verify the integrity of the entire TAG chain.
- Please verify the integrity of @SPEC, @TEST, @CODE, @DOC TAGs
- and orphan TAGs.
+- description: "Verify TAG system across entire project"
+ - prompt: "Please perform a COMPREHENSIVE TAG system verification across the ENTIRE PROJECT.
+
+ **Required scope**: Scan all source files, not just changed files.
+
+ **Verification items**:
+ 1. @SPEC TAGs in .moai/specs/ directory
+ 2. @TEST TAGs in tests/ directory
+ 3. @CODE TAGs in src/ directory
+ 4. @DOC TAGs in docs/ directory
+
+ **Orphan detection** (MANDATORY):
+ - Detect @CODE TAGs without matching @SPEC
+ - Detect @SPEC TAGs without matching @CODE
+ - Detect @TEST TAGs without matching @SPEC
+ - Detect @DOC TAGs without matching @SPEC/@CODE
+
+ **Output format**: Provide complete list of orphan TAGs with locations.
+
  (Optional) Explore results: $EXPLORE_RESULTS"
 
 2. doc-syncer call (synchronization plan):
