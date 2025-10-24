@@ -10,7 +10,7 @@
       {
         "hooks": [
           {
-            "command": "python .claude/hooks/alfred/alfred_hooks.py SessionStart",
+            "command": "uv run .claude/hooks/alfred/alfred_hooks.py SessionStart",
             "type": "command"
           }
         ]
@@ -20,7 +20,7 @@
       {
         "hooks": [
           {
-            "command": "python .claude/hooks/alfred/alfred_hooks.py PreToolUse",
+            "command": "uv run .claude/hooks/alfred/alfred_hooks.py PreToolUse",
             "type": "command"
           }
         ],
@@ -31,7 +31,7 @@
       {
         "hooks": [
           {
-            "command": "python .claude/hooks/alfred/alfred_hooks.py UserPromptSubmit",
+            "command": "uv run .claude/hooks/alfred/alfred_hooks.py UserPromptSubmit",
             "type": "command"
           }
         ]
@@ -41,7 +41,7 @@
       {
         "hooks": [
           {
-            "command": "python .claude/hooks/alfred/alfred_hooks.py SessionEnd",
+            "command": "uv run .claude/hooks/alfred/alfred_hooks.py SessionEnd",
             "type": "command"
           }
         ]
@@ -51,7 +51,7 @@
       {
         "hooks": [
           {
-            "command": "python .claude/hooks/alfred/alfred_hooks.py PostToolUse",
+            "command": "uv run .claude/hooks/alfred/alfred_hooks.py PostToolUse",
             "type": "command"
           }
         ],
