@@ -234,3 +234,89 @@ class TestConfigManagerDeepMerge:
 
         assert base == {"a": 1}  # Original base unchanged
         assert result == {"a": 1, "b": 2}
+
+
+class TestConfigManagerSetOptimized:
+    """Test set_optimized static method"""
+
+    def test_set_optimized_with_existing_config(self, tmp_project_dir: Path):
+        """Should set optimized field in existing config"""
+        config_path = tmp_project_dir / ".moai" / "config.json"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Create initial config
+        test_config = {"mode": "personal"}
+        config_path.write_text(json.dumps(test_config), encoding="utf-8")
+
+        # Set optimized to True
+        ConfigManager.set_optimized(config_path, True)
+
+        # Verify
+        result = json.loads(config_path.read_text(encoding="utf-8"))
+        assert result["project"]["optimized"] is True
+
+    def test_set_optimized_creates_project_section(self, tmp_project_dir: Path):
+        """Should create project section if not exists"""
+        config_path = tmp_project_dir / ".moai" / "config.json"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+
+        test_config = {"mode": "personal"}
+        config_path.write_text(json.dumps(test_config), encoding="utf-8")
+
+        ConfigManager.set_optimized(config_path, True)
+
+        result = json.loads(config_path.read_text(encoding="utf-8"))
+        assert "project" in result
+        assert "optimized" in result["project"]
+
+    def test_set_optimized_preserves_other_fields(self, tmp_project_dir: Path):
+        """Should preserve other fields when setting optimized"""
+        config_path = tmp_project_dir / ".moai" / "config.json"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+
+        test_config = {"mode": "team", "locale": "en"}
+        config_path.write_text(json.dumps(test_config), encoding="utf-8")
+
+        ConfigManager.set_optimized(config_path, False)
+
+        result = json.loads(config_path.read_text(encoding="utf-8"))
+        assert result["mode"] == "team"
+        assert result["locale"] == "en"
+        assert result["project"]["optimized"] is False
+
+    def test_set_optimized_with_nonexistent_path(self, tmp_project_dir: Path):
+        """Should do nothing when config path doesn't exist"""
+        config_path = tmp_project_dir / ".moai" / "nonexistent.json"
+
+        # Should not raise exception
+        ConfigManager.set_optimized(config_path, True)
+
+        # File should not be created
+        assert not config_path.exists()
+
+    def test_set_optimized_with_invalid_json(self, tmp_project_dir: Path):
+        """Should handle invalid JSON gracefully"""
+        config_path = tmp_project_dir / ".moai" / "config.json"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Write invalid JSON
+        config_path.write_text("{invalid json}", encoding="utf-8")
+
+        # Should not raise exception
+        ConfigManager.set_optimized(config_path, True)
+
+        # Config should remain unchanged
+        assert config_path.read_text() == "{invalid json}"
+
+    def test_set_optimized_adds_trailing_newline(self, tmp_project_dir: Path):
+        """Should add trailing newline to config file"""
+        config_path = tmp_project_dir / ".moai" / "config.json"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+
+        test_config = {"mode": "personal"}
+        config_path.write_text(json.dumps(test_config), encoding="utf-8")
+
+        ConfigManager.set_optimized(config_path, True)
+
+        content = config_path.read_text(encoding="utf-8")
+        assert content.endswith("\n")

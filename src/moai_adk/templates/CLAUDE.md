@@ -136,164 +136,164 @@ Skills keep the core knowledge lightweight while allowing Alfred to assemble the
 
 ---
 
-## 🎯 Skill Invocation Rules (Skills 호출 규칙)
+## 🎯 Skill Invocation Rules
 
-### Mandatory Skill Usage (필수 Skill 사용)
+### Mandatory Skill Usage
 
-**중요**: 다음 키워드가 포함된 요청을 받으면 **반드시** 해당 Skill을 명시적으로 호출해야 합니다. 직접 도구(Read, Grep, Bash)를 사용하지 마세요.
+**IMPORTANT**: When you receive a request containing the following keywords, you **MUST** explicitly invoke the corresponding Skill. DO NOT use direct tools (Read, Grep, Bash).
 
-| 사용자 요청 키워드 (한국어) | 영어 키워드 | 호출 방법 | 금지 |
-|--------------------------|-----------|---------|------|
-| **TRUST 검증**, 코드 품질 확인, 품질 게이트, 커버리지 확인, 테스트 커버리지 체크 | TRUST validation, code quality check, quality gate, coverage check | `Skill("moai-foundation-trust")` | ❌ 직접 ruff/mypy 실행 |
-| **TAG 검증**, 태그 확인, orphan 감지, TAG 스캔 | TAG validation, orphan detection, TAG scan | `Skill("moai-foundation-tags")` | ❌ 직접 rg 검색 |
-| **SPEC 검증**, 명세 확인, SPEC 메타데이터 | SPEC validation, spec metadata | `Skill("moai-foundation-specs")` | ❌ 직접 YAML 읽기 |
-| **EARS 구문**, 요구사항 작성 | EARS syntax, requirement authoring | `Skill("moai-foundation-ears")` | ❌ 일반 템플릿 |
-| **Git 전략**, 브랜치 관리, PR 정책 | Git workflow, branch management, PR policy | `Skill("moai-foundation-git")` | ❌ 직접 git 명령 |
-| **디버깅**, 오류 분석, 버그 수정 | debugging, error analysis, bug fix | `Skill("moai-essentials-debug")` | ❌ 일반 진단 |
-| **리팩토링**, 코드 개선 | refactoring, code improvement | `Skill("moai-essentials-refactor")` | ❌ 직접 수정 |
-| **성능 최적화**, 프로파일링 | performance optimization, profiling | `Skill("moai-essentials-perf")` | ❌ 추측 |
-| **코드 리뷰**, 품질 검토 | code review, quality review | `Skill("moai-essentials-review")` | ❌ 일반 검토 |
+| User Request Keywords | Skill to Invoke | Prohibited Actions |
+|----------------------|-----------------|-------------------|
+| **TRUST validation**, code quality check, quality gate, coverage check, test coverage | `Skill("moai-foundation-trust")` | ❌ Direct ruff/mypy execution |
+| **TAG validation**, tag check, orphan detection, TAG scan | `Skill("moai-foundation-tags")` | ❌ Direct rg search |
+| **SPEC validation**, spec check, SPEC metadata | `Skill("moai-foundation-specs")` | ❌ Direct YAML reading |
+| **EARS syntax**, requirement authoring | `Skill("moai-foundation-ears")` | ❌ Generic templates |
+| **Git workflow**, branch management, PR policy | `Skill("moai-foundation-git")` | ❌ Direct git commands |
+| **debugging**, error analysis, bug fix | `Skill("moai-essentials-debug")` | ❌ Generic diagnostics |
+| **refactoring**, code improvement | `Skill("moai-essentials-refactor")` | ❌ Direct modifications |
+| **performance optimization**, profiling | `Skill("moai-essentials-perf")` | ❌ Guesswork |
+| **code review**, quality review | `Skill("moai-essentials-review")` | ❌ Generic review |
 
 ### Example: Correct Skill Usage
 
-#### ❌ **잘못된 응답** (Skill 호출 없음)
+#### ❌ **Incorrect Response** (No Skill Invocation)
 
 ```
-User: "코드 품질 확인해줘"
+User: "Check code quality"
 
-Claude: [일반 도구로 직접 처리]
+Claude: [Direct tool usage]
 - Bash(ruff check src/)
 - Bash(mypy src/)
 - Read .moai/config.json
 ```
 
-**문제점**: Skill을 사용하지 않아 표준화된 TRUST 5원칙 체크리스트를 따르지 않음.
+**Problem**: Not following the standardized TRUST 5-principles checklist by skipping Skill usage.
 
-#### ✅ **올바른 응답** (Skill 호출)
+#### ✅ **Correct Response** (Skill Invocation)
 
 ```
-User: "코드 품질 확인해줘"
+User: "Check code quality"
 
-Claude: TRUST 5원칙으로 코드 품질을 검증하겠습니다.
+Claude: I'll validate code quality using TRUST 5-principles.
 
 Skill("moai-foundation-trust")
 
-[Skill 로드 후]
+[After Skill loads]
 1. Test First: pytest coverage ≥85%
 2. Readable: ruff lint
 3. Unified: mypy strict
 4. Secured: trivy scan
 5. Trackable: TAG validation
 
-각 원칙별로 검증을 진행하겠습니다...
+Let me verify each principle...
 ```
 
-**장점**: 표준화된 워크플로우, 일관된 품질 기준, 최신 도구 버전 사용.
+**Benefits**: Standardized workflow, consistent quality criteria, up-to-date tool versions.
 
 ---
 
-## 🎯 Interactive Question Rules (AskUserQuestion 호출 규칙)
+## 🎯 Interactive Question Rules
 
-### Mandatory AskUserQuestion Usage (필수 AskUserQuestion 사용)
+### Mandatory AskUserQuestion Usage
 
-**중요**: 사용자가 **선택** 또는 **결정**을 해야 하는 상황에서는 **반드시** AskUserQuestion을 사용하세요. 직접 가정하거나 구현하지 마세요.
+**IMPORTANT**: When the user needs to make a **choice** or **decision**, you **MUST** use AskUserQuestion. DO NOT make assumptions or implement directly.
 
-| 상황 유형 | 예시 | 호출 방법 | 필수 여부 |
-|---------|------|---------|--------|
-| **여러 유효한 접근법이 있는 경우** | 데이터베이스 선택 (PostgreSQL vs MongoDB), 상태 관리 라이브러리 (Redux vs Zustand), 테스트 프레임워크 선택 | `AskUserQuestion(...)` | ✅ 필수 |
-| **아키텍처/설계 결정** | 마이크로서비스 vs 모놀리식, 클라이언트 렌더링 vs 서버 렌더링, 인증 방식 (JWT vs OAuth) | `AskUserQuestion(...)` | ✅ 필수 |
-| **모호하거나 고수준의 요구사항** | "대시보드 추가해줘", "성능 최적화해줘", "다국어 지원 추가" | `AskUserQuestion(...)` | ✅ 필수 |
-| **기존 컴포넌트에 영향을 미치는 요청** | 리팩토링 범위, 하위호환성 유지 여부, 마이그레이션 전략 | `AskUserQuestion(...)` | ✅ 필수 |
-| **사용자 경험/비즈니스 로직 결정** | UI 레이아웃, 데이터 표시 방식, 워크플로우 순서 | `AskUserQuestion(...)` | ✅ 필수 |
+| Situation Type | Examples | Invocation | Required |
+|---------------|----------|------------|----------|
+| **Multiple valid approaches exist** | Database choice (PostgreSQL vs MongoDB), state management library (Redux vs Zustand), test framework selection | `AskUserQuestion(...)` | ✅ Required |
+| **Architecture/design decisions** | Microservices vs monolithic, client-side vs server-side rendering, authentication method (JWT vs OAuth) | `AskUserQuestion(...)` | ✅ Required |
+| **Ambiguous or high-level requirements** | "Add a dashboard", "Optimize performance", "Add multi-language support" | `AskUserQuestion(...)` | ✅ Required |
+| **Requests affecting existing components** | Refactoring scope, backward compatibility, migration strategy | `AskUserQuestion(...)` | ✅ Required |
+| **User experience/business logic decisions** | UI layout, data display method, workflow order | `AskUserQuestion(...)` | ✅ Required |
 
-### Optional AskUserQuestion Usage (선택적 AskUserQuestion 사용)
+### Optional AskUserQuestion Usage
 
-다음 상황에서는 AskUserQuestion 없이 진행할 수 있습니다:
+You can proceed without AskUserQuestion in the following situations:
 
-- ✅ 사용자가 이미 명확한 지시를 제공한 경우
-- ✅ 표준적인 관례나 모범 사례가 명백한 경우
-- ✅ 기술적 제약으로 한 가지 방법만 가능한 경우
-- ✅ 사용자가 "이미 결정했으니 구현만 해줘"라고 명시한 경우
+- ✅ User has already provided clear instructions
+- ✅ Standard conventions or best practices are obvious
+- ✅ Technical constraints allow only one approach
+- ✅ User explicitly states "just implement it, I've already decided"
 
 ### Example: Correct AskUserQuestion Usage
 
-#### ❌ **잘못된 응답** (가정하고 진행)
+#### ❌ **Incorrect Response** (Making assumptions)
 
 ```
-User: "대시보드 페이지를 추가해줘"
+User: "Add a dashboard page"
 
-Claude: [사용자에게 묻지 않고 진행]
-- 기술: React + TypeScript
-- 레이아웃: 좌측 사이드바 + 메인 콘텐츠
-- 차트 라이브러리: Recharts
-- 데이터 소스: REST API 직접 호출
+Claude: [Proceeding without asking]
+- Tech: React + TypeScript
+- Layout: Left sidebar + main content
+- Chart library: Recharts
+- Data source: Direct REST API calls
 
-구현을 시작하겠습니다...
+Starting implementation...
 ```
 
-**문제점**: 사용자의 실제 의도를 파악하지 않아 다시 수정해야 할 가능성 높음.
+**Problem**: High risk of rework due to not understanding actual user intent.
 
-#### ✅ **올바른 응답** (사용자에게 질문)
+#### ✅ **Correct Response** (Asking questions)
 
 ```
-User: "대시보드 페이지를 추가해줘"
+User: "Add a dashboard page"
 
-Claude: 대시보드 구현을 위해 몇 가지 결정사항을 확인하겠습니다.
+Claude: I'll need to clarify a few decisions for the dashboard implementation.
 
 AskUserQuestion(...)
 
-[질문 예시]
-- "데이터 소스는?" → [REST API | GraphQL | 로컬 상태]
-- "주요 차트 유형은?" → [시계열 | 카테고리별 비교 | 분포도]
-- "실시간 업데이트 필요한가요?" → [네 | 아니오 | 10초마다]
-- "접근 권한 제한 필요한가요?" → [관리자만 | 로그인 사용자 | 누구나]
+[Example questions]
+- "Data source?" → [REST API | GraphQL | Local state]
+- "Primary chart type?" → [Time series | Category comparison | Distribution]
+- "Real-time updates needed?" → [Yes | No | Every 10 seconds]
+- "Access restrictions?" → [Admin only | Logged-in users | Public]
 
-[사용자 응답 수집 후]
-확인된 선택사항:
-- 데이터: REST API
-- 차트: 시계열
-- 실시간: 아니오
-- 권한: 로그인 사용자
+[After user responses]
+Confirmed selections:
+- Data: REST API
+- Charts: Time series
+- Real-time: No
+- Access: Logged-in users
 
-이제 이 조건에 맞게 구현을 시작하겠습니다...
+Now implementing based on these requirements...
 ```
 
-**장점**: 명확한 의도 파악, 재작업 최소화, 정확한 구현.
+**Benefits**: Clear intent understanding, minimized rework, accurate implementation.
 
 ### Best Practices for AskUserQuestion
 
-1. **질문은 3-5개로 제한**
-   - ✅ "3개의 상호배타적 옵션 중 선택"
-   - ❌ "10개 이상의 옵션" (사용자 피로도)
+1. **Limit to 3-5 questions**
+   - ✅ "Choose from 3 mutually exclusive options"
+   - ❌ "10+ options" (user fatigue)
 
-2. **선택지는 구체적이어야 함**
-   - ✅ "PostgreSQL (ACID, JSON 지원)", "MongoDB (수평 확장, 유연한 스키마)"
-   - ❌ "데이터베이스 1", "데이터베이스 2"
+2. **Options must be specific**
+   - ✅ "PostgreSQL (ACID, JSON support)", "MongoDB (horizontal scaling, flexible schema)"
+   - ❌ "Database 1", "Database 2"
 
-3. **"Other" 옵션 항상 포함**
-   - 사용자의 선택지가 없을 수 있음
-   - "Other"를 선택하면 커스텀 입력 가능
+3. **Always include "Other" option**
+   - User's choice may not be listed
+   - "Other" allows custom input
 
-4. **선택 후 정리 단계**
-   - 사용자 선택사항 요약 표시
-   - "이대로 진행할까요?" 최종 확인
+4. **Summary step after selection**
+   - Display user selections summary
+   - "Proceed with these choices?" final confirmation
 
-5. **Context Engineering과 통합**
-   - AskUserQuestion 전에 기존 코드/SPEC 분석
-   - "기존 프로젝트에서는 X를 사용 중입니다" 정보 제공
+5. **Integrate with Context Engineering**
+   - Analyze existing code/SPEC before AskUserQuestion
+   - Provide context like "Your project currently uses X"
 
 ### When NOT to Use AskUserQuestion
 
-❌ 사용자가 이미 구체적인 지시를 했을 때:
+❌ When user has already given specific instructions:
 ```
-User: "Zustand을 사용해서 상태 관리를 구현해줘"
-→ AskUserQuestion 불필요 (이미 선택됨)
+User: "Implement state management using Zustand"
+→ AskUserQuestion unnecessary (already decided)
 ```
 
-❌ 기술적으로 유일한 선택지가 있을 때:
+❌ When only one technical choice exists:
 ```
-User: "TypeScript에서 타입 안전성을 높여줘"
-→ AskUserQuestion 불필요 (타입 시스템은 고정)
+User: "Improve type safety in TypeScript"
+→ AskUserQuestion unnecessary (type system is fixed)
 ```
 
 ---

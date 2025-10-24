@@ -7,7 +7,12 @@
       "Bash(test:*)",
       "Bash(deactivate)",
       "Bash(/usr/local/bin/python3:*)",
-      "Bash(/usr/bin/python3:*)"
+      "Bash(/usr/bin/python3:*)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
+      "Bash(awk:*)",
+      "Skill(moai-foundation-git)",
+      "Skill(moai-alfred-interactive-questions)"
     ],
     "deny": [],
     "ask": []

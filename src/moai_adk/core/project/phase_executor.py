@@ -15,6 +15,7 @@ import subprocess
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from rich.console import Console
 
@@ -166,7 +167,7 @@ class PhaseExecutor:
     def execute_configuration_phase(
         self,
         project_path: Path,
-        config: dict[str, str | bool],
+        config: dict[str, str | bool | dict[Any, Any]],
         progress_callback: ProgressCallback | None = None,
     ) -> list[str]:
         """Phase 4: generate configuration.
