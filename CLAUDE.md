@@ -131,6 +131,170 @@ Alfred relies on 55 Claude Skills grouped by tier. Skills load via Progressive D
 
 Skills keep the core knowledge lightweight while allowing Alfred to assemble the right expertise for each request.
 
+---
+
+## 🎯 Skill Invocation Rules (Skills 호출 규칙)
+
+### Mandatory Skill Usage (필수 Skill 사용)
+
+**중요**: 다음 키워드가 포함된 요청을 받으면 **반드시** 해당 Skill을 명시적으로 호출해야 합니다. 직접 도구(Read, Grep, Bash)를 사용하지 마세요.
+
+| 사용자 요청 키워드 (한국어) | 영어 키워드 | 호출 방법 | 금지 |
+|--------------------------|-----------|---------|------|
+| **TRUST 검증**, 코드 품질 확인, 품질 게이트, 커버리지 확인, 테스트 커버리지 체크 | TRUST validation, code quality check, quality gate, coverage check | `Skill("moai-foundation-trust")` | ❌ 직접 ruff/mypy 실행 |
+| **TAG 검증**, 태그 확인, orphan 감지, TAG 스캔 | TAG validation, orphan detection, TAG scan | `Skill("moai-foundation-tags")` | ❌ 직접 rg 검색 |
+| **SPEC 검증**, 명세 확인, SPEC 메타데이터 | SPEC validation, spec metadata | `Skill("moai-foundation-specs")` | ❌ 직접 YAML 읽기 |
+| **EARS 구문**, 요구사항 작성 | EARS syntax, requirement authoring | `Skill("moai-foundation-ears")` | ❌ 일반 템플릿 |
+| **Git 전략**, 브랜치 관리, PR 정책 | Git workflow, branch management, PR policy | `Skill("moai-foundation-git")` | ❌ 직접 git 명령 |
+| **디버깅**, 오류 분석, 버그 수정 | debugging, error analysis, bug fix | `Skill("moai-essentials-debug")` | ❌ 일반 진단 |
+| **리팩토링**, 코드 개선 | refactoring, code improvement | `Skill("moai-essentials-refactor")` | ❌ 직접 수정 |
+| **성능 최적화**, 프로파일링 | performance optimization, profiling | `Skill("moai-essentials-perf")` | ❌ 추측 |
+| **코드 리뷰**, 품질 검토 | code review, quality review | `Skill("moai-essentials-review")` | ❌ 일반 검토 |
+
+### Example: Correct Skill Usage
+
+#### ❌ **잘못된 응답** (Skill 호출 없음)
+
+```
+User: "코드 품질 확인해줘"
+
+Claude: [일반 도구로 직접 처리]
+- Bash(ruff check src/)
+- Bash(mypy src/)
+- Read .moai/config.json
+```
+
+**문제점**: Skill을 사용하지 않아 표준화된 TRUST 5원칙 체크리스트를 따르지 않음.
+
+#### ✅ **올바른 응답** (Skill 호출)
+
+```
+User: "코드 품질 확인해줘"
+
+Claude: TRUST 5원칙으로 코드 품질을 검증하겠습니다.
+
+Skill("moai-foundation-trust")
+
+[Skill 로드 후]
+1. Test First: pytest coverage ≥85%
+2. Readable: ruff lint
+3. Unified: mypy strict
+4. Secured: trivy scan
+5. Trackable: TAG validation
+
+각 원칙별로 검증을 진행하겠습니다...
+```
+
+**장점**: 표준화된 워크플로우, 일관된 품질 기준, 최신 도구 버전 사용.
+
+---
+
+## 🎯 Interactive Question Rules (AskUserQuestion 호출 규칙)
+
+### Mandatory AskUserQuestion Usage (필수 AskUserQuestion 사용)
+
+**중요**: 사용자가 **선택** 또는 **결정**을 해야 하는 상황에서는 **반드시** AskUserQuestion을 사용하세요. 직접 가정하거나 구현하지 마세요.
+
+| 상황 유형 | 예시 | 호출 방법 | 필수 여부 |
+|---------|------|---------|--------|
+| **여러 유효한 접근법이 있는 경우** | 데이터베이스 선택 (PostgreSQL vs MongoDB), 상태 관리 라이브러리 (Redux vs Zustand), 테스트 프레임워크 선택 | `AskUserQuestion(...)` | ✅ 필수 |
+| **아키텍처/설계 결정** | 마이크로서비스 vs 모놀리식, 클라이언트 렌더링 vs 서버 렌더링, 인증 방식 (JWT vs OAuth) | `AskUserQuestion(...)` | ✅ 필수 |
+| **모호하거나 고수준의 요구사항** | "대시보드 추가해줘", "성능 최적화해줘", "다국어 지원 추가" | `AskUserQuestion(...)` | ✅ 필수 |
+| **기존 컴포넌트에 영향을 미치는 요청** | 리팩토링 범위, 하위호환성 유지 여부, 마이그레이션 전략 | `AskUserQuestion(...)` | ✅ 필수 |
+| **사용자 경험/비즈니스 로직 결정** | UI 레이아웃, 데이터 표시 방식, 워크플로우 순서 | `AskUserQuestion(...)` | ✅ 필수 |
+
+### Optional AskUserQuestion Usage (선택적 AskUserQuestion 사용)
+
+다음 상황에서는 AskUserQuestion 없이 진행할 수 있습니다:
+
+- ✅ 사용자가 이미 명확한 지시를 제공한 경우
+- ✅ 표준적인 관례나 모범 사례가 명백한 경우
+- ✅ 기술적 제약으로 한 가지 방법만 가능한 경우
+- ✅ 사용자가 "이미 결정했으니 구현만 해줘"라고 명시한 경우
+
+### Example: Correct AskUserQuestion Usage
+
+#### ❌ **잘못된 응답** (가정하고 진행)
+
+```
+User: "대시보드 페이지를 추가해줘"
+
+Claude: [사용자에게 묻지 않고 진행]
+- 기술: React + TypeScript
+- 레이아웃: 좌측 사이드바 + 메인 콘텐츠
+- 차트 라이브러리: Recharts
+- 데이터 소스: REST API 직접 호출
+
+구현을 시작하겠습니다...
+```
+
+**문제점**: 사용자의 실제 의도를 파악하지 않아 다시 수정해야 할 가능성 높음.
+
+#### ✅ **올바른 응답** (사용자에게 질문)
+
+```
+User: "대시보드 페이지를 추가해줘"
+
+Claude: 대시보드 구현을 위해 몇 가지 결정사항을 확인하겠습니다.
+
+AskUserQuestion(...)
+
+[질문 예시]
+- "데이터 소스는?" → [REST API | GraphQL | 로컬 상태]
+- "주요 차트 유형은?" → [시계열 | 카테고리별 비교 | 분포도]
+- "실시간 업데이트 필요한가요?" → [네 | 아니오 | 10초마다]
+- "접근 권한 제한 필요한가요?" → [관리자만 | 로그인 사용자 | 누구나]
+
+[사용자 응답 수집 후]
+확인된 선택사항:
+- 데이터: REST API
+- 차트: 시계열
+- 실시간: 아니오
+- 권한: 로그인 사용자
+
+이제 이 조건에 맞게 구현을 시작하겠습니다...
+```
+
+**장점**: 명확한 의도 파악, 재작업 최소화, 정확한 구현.
+
+### Best Practices for AskUserQuestion
+
+1. **질문은 3-5개로 제한**
+   - ✅ "3개의 상호배타적 옵션 중 선택"
+   - ❌ "10개 이상의 옵션" (사용자 피로도)
+
+2. **선택지는 구체적이어야 함**
+   - ✅ "PostgreSQL (ACID, JSON 지원)", "MongoDB (수평 확장, 유연한 스키마)"
+   - ❌ "데이터베이스 1", "데이터베이스 2"
+
+3. **"Other" 옵션 항상 포함**
+   - 사용자의 선택지가 없을 수 있음
+   - "Other"를 선택하면 커스텀 입력 가능
+
+4. **선택 후 정리 단계**
+   - 사용자 선택사항 요약 표시
+   - "이대로 진행할까요?" 최종 확인
+
+5. **Context Engineering과 통합**
+   - AskUserQuestion 전에 기존 코드/SPEC 분석
+   - "기존 프로젝트에서는 X를 사용 중입니다" 정보 제공
+
+### When NOT to Use AskUserQuestion
+
+❌ 사용자가 이미 구체적인 지시를 했을 때:
+```
+User: "Zustand을 사용해서 상태 관리를 구현해줘"
+→ AskUserQuestion 불필요 (이미 선택됨)
+```
+
+❌ 기술적으로 유일한 선택지가 있을 때:
+```
+User: "TypeScript에서 타입 안전성을 높여줘"
+→ AskUserQuestion 불필요 (타입 시스템은 고정)
+```
+
+---
+
 ### Agent Collaboration Principles
 
 - **Command precedence**: Command instructions outrank agent guidelines; follow the command if conflicts occur.
@@ -578,7 +742,7 @@ Alfred enforces these quality gates on every change:
 - **Name**: MoAI-ADK
 - **Description**: MoAI-Agentic Development Kit
 - **Version**: 0.4.1
-- **Mode**: personal
+- **Mode**: personal거류
 - **Project Owner**: GOOS오라버니
 - **Conversation Language**: 한국어 (ko)
 - **Codebase Language**: python
