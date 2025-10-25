@@ -17,7 +17,7 @@ from pathlib import Path
 HOOKS_DIR = Path(__file__).parent.parent.parent / "src" / "moai_adk" / "templates" / ".claude" / "hooks" / "alfred"
 sys.path.insert(0, str(HOOKS_DIR))
 
-from core import HookResult
+from core import HookResult  # noqa: E402
 
 
 class TestHookResultSchema:
