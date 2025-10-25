@@ -59,7 +59,7 @@
     "created_at": "2025-10-21 23:59:19",
     "description": "",
     "initialized": true,
-    "mode": "personal",
+    "mode": "team",
     "name": "MoAI-ADK",
     "moai_adk_version": "0.4.1",
     "optimized": true,
