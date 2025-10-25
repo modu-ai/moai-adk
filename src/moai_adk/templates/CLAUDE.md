@@ -136,23 +136,189 @@ Skills keep the core knowledge lightweight while allowing Alfred to assemble the
 
 ---
 
-## 🎯 Skill Invocation Rules
+## 🎯 Skill Invocation Rules (English-Only)
 
-### Mandatory Skill Usage
+### ✅ Mandatory Skill Explicit Invocation
 
-**IMPORTANT**: When you receive a request containing the following keywords, you **MUST** explicitly invoke the corresponding Skill. DO NOT use direct tools (Read, Grep, Bash).
+**CRITICAL**: When you receive a request containing the following keywords, you **MUST** explicitly invoke the corresponding Skill using `Skill("skill-name")` syntax. DO NOT use direct tools (Read, Grep, Bash) as substitutes.
 
-| User Request Keywords | Skill to Invoke | Prohibited Actions |
-|----------------------|-----------------|-------------------|
-| **TRUST validation**, code quality check, quality gate, coverage check, test coverage | `Skill("moai-foundation-trust")` | ❌ Direct ruff/mypy execution |
-| **TAG validation**, tag check, orphan detection, TAG scan | `Skill("moai-foundation-tags")` | ❌ Direct rg search |
-| **SPEC validation**, spec check, SPEC metadata | `Skill("moai-foundation-specs")` | ❌ Direct YAML reading |
-| **EARS syntax**, requirement authoring | `Skill("moai-foundation-ears")` | ❌ Generic templates |
-| **Git workflow**, branch management, PR policy | `Skill("moai-foundation-git")` | ❌ Direct git commands |
-| **debugging**, error analysis, bug fix | `Skill("moai-essentials-debug")` | ❌ Generic diagnostics |
-| **refactoring**, code improvement | `Skill("moai-essentials-refactor")` | ❌ Direct modifications |
-| **performance optimization**, profiling | `Skill("moai-essentials-perf")` | ❌ Guesswork |
-| **code review**, quality review | `Skill("moai-essentials-review")` | ❌ Generic review |
+| User Request Keywords | Skill to Invoke | Invocation Syntax | Prohibited Actions |
+|---|---|---|---|
+| **TRUST validation**, code quality check, quality gate, coverage check, test coverage, linting, type safety | `moai-foundation-trust` | `Skill("moai-foundation-trust")` | ❌ Direct ruff/mypy/pytest execution |
+| **TAG validation**, tag check, orphan detection, TAG scan, TAG chain verification | `moai-foundation-tags` | `Skill("moai-foundation-tags")` | ❌ Direct rg search without Skill context |
+| **SPEC validation**, spec check, SPEC metadata, YAML frontmatter validation | `moai-foundation-specs` | `Skill("moai-foundation-specs")` | ❌ Direct YAML reading |
+| **EARS syntax**, requirement authoring, requirement specification, ubiquitous language | `moai-foundation-ears` | `Skill("moai-foundation-ears")` | ❌ Generic requirement templates |
+| **Git workflow**, branch management, PR policy, GitFlow automation, commit strategy | `moai-foundation-git` | `Skill("moai-foundation-git")` | ❌ Direct git commands without workflow context |
+| **Language detection**, stack detection, language matrix, language identification | `moai-foundation-langs` | `Skill("moai-foundation-langs")` | ❌ Hardcoded file extension checks |
+| **Debugging**, error analysis, bug fix, troubleshooting, stack trace analysis | `moai-essentials-debug` | `Skill("moai-essentials-debug")` | ❌ Generic error handling |
+| **Refactoring**, code improvement, design patterns, code smell detection | `moai-essentials-refactor` | `Skill("moai-essentials-refactor")` | ❌ Direct code modifications |
+| **Performance optimization**, profiling, bottleneck detection, performance tuning | `moai-essentials-perf` | `Skill("moai-essentials-perf")` | ❌ Guesswork-based optimization |
+| **Code review**, quality review, SOLID principles, best practices | `moai-essentials-review` | `Skill("moai-essentials-review")` | ❌ Generic code review |
+
+---
+
+### 📦 Skill Tier Architecture (55 Skills Total)
+
+Alfred's 55 Skills are organized into 6 tiers, each with specific responsibilities and auto-trigger conditions:
+
+| **Tier** | **Count** | **Purpose** | **Auto-Trigger Conditions** | **Examples** |
+|---|---|---|---|---|
+| **Foundation** | 6 | Core TRUST/TAG/SPEC/EARS/Git/Language principles | Keyword detection in user request | `moai-foundation-trust`, `moai-foundation-tags`, `moai-foundation-specs`, `moai-foundation-ears`, `moai-foundation-git`, `moai-foundation-langs` |
+| **Essentials** | 4 | Debug/Perf/Refactor/Review workflows | Error detection, refactor triggers, performance concerns | `moai-essentials-debug`, `moai-essentials-perf`, `moai-essentials-refactor`, `moai-essentials-review` |
+| **Alfred** | 11 | Workflow orchestration (SPEC authoring, TDD, sync, Git) | Command execution (`/alfred:*`), agent requests | `moai-alfred-ears-authoring`, `moai-alfred-tag-scanning`, `moai-alfred-spec-metadata-validation`, `moai-alfred-trust-validation`, `moai-alfred-interactive-questions`, and 6 more |
+| **Domain** | 10 | Specialized domain expertise | Domain-specific keywords | `moai-domain-backend`, `moai-domain-frontend`, `moai-domain-web-api`, `moai-domain-database`, `moai-domain-security`, and 5 more |
+| **Language** | 23 | Language-specific best practices | File extension detection (`.py`, `.ts`, `.go`, `.rs`, etc.) | Python, TypeScript, Go, Rust, Java, Kotlin, Swift, Dart, C/C++, C#, Scala, Ruby, PHP, JavaScript, SQL, Shell, and more |
+| **Ops** | 1 | Claude Code session settings | Session start/configuration | `moai-cc-settings`, `moai-cc-memory`, `moai-cc-hooks`, `moai-cc-commands`, `moai-cc-agents`, `moai-cc-skills`, `moai-cc-mcp-plugins` |
+| **Total** | **55** | Complete knowledge capsule library | Progressive Disclosure (metadata → content → supporting) | — |
+
+---
+
+### 📋 Progressive Disclosure Pattern
+
+Skills load dynamically using the Progressive Disclosure principle:
+
+1. **Metadata Phase**: Skill name, description, and trigger keywords are available at session start (~50 bytes each).
+2. **Content Phase**: Full `SKILL.md` content loads when an agent or user explicitly invokes `Skill("skill-name")`.
+3. **Supporting Phase**: Templates, examples, and tools load only when required by the Skill's workflow (JIT loading).
+
+**Benefits**:
+- Lightweight session startup (55 skills @ 50 bytes = ~3 KB metadata)
+- Fast context switching (only loaded skills consume tokens)
+- Extensible architecture (new Skills integrate without session overhead)
+
+---
+
+### 💡 Example Workflows (English-Only Documentation)
+
+#### Example 1: TRUST 5 Validation Workflow
+
+```
+User: "Check code quality for {{codebase_language}}"
+
+Claude: I'll validate code quality using TRUST 5-principles.
+
+Skill("moai-foundation-trust")
+
+[After Skill loads]
+
+**TRUST 5 Validation Results**:
+
+1. **T**est First: pytest coverage ≥ 85%
+2. **R**eadable: ruff lint, complexity ≤ 10
+3. **U**nified: mypy strict typing
+4. **S**ecured: trivy scan, input validation
+5. **T**rackable: @TAG coverage in code
+
+Verification complete. All gates passed ✅
+```
+
+#### Example 2: TAG Orphan Detection Workflow
+
+```
+User: "Verify TAG system integrity"
+
+Claude: I'll scan the entire project for TAG chain integrity.
+
+Skill("moai-foundation-tags")
+
+[After Skill loads]
+
+**TAG Inventory**:
+- @SPEC TAGs: 12 found
+- @TEST TAGs: 12 found
+- @CODE TAGs: 12 found
+- @DOC TAGs: 11 found
+
+**Orphan Detection**:
+- @CODE without @SPEC: 0 ❌ (all valid)
+- @SPEC without @CODE: 1 ⚠️  (VERIFICATION-001)
+- @TEST without @SPEC: 0 ✅
+- @DOC without @SPEC/@CODE: 1 ⚠️  (CLAUDE-001 - template doc)
+
+**Chain Status**: 99% complete (1 SPEC ready for CODE, 1 template doc expected)
+```
+
+#### Example 3: EARS Requirement Authoring Workflow
+
+```
+User: "Create SPEC-AUTH-002 for multi-factor authentication"
+
+Claude: I'll guide you through EARS-based requirement authoring.
+
+Skill("moai-foundation-ears")
+
+[After Skill loads]
+
+**EARS Requirement Template**:
+
+Ubiquitous: The system shall support multi-factor authentication (MFA).
+
+Event-driven: WHEN a user provides valid credentials, THEN the system requests an MFA verification code.
+
+State: IF the user has MFA enabled, THEN authentication must complete MFA verification.
+
+Optional: IF the user is on a trusted device, THEN MFA can be skipped (configurable).
+
+Constraints: MFA verification codes expire after 5 minutes. Maximum 3 retry attempts per session.
+
+[Generates SPEC-AUTH-002.md with YAML frontmatter]
+```
+
+#### Example 4: Debugging with Error Context Workflow
+
+```
+User: "TypeError: Cannot read property 'name' of undefined at src/services/user.ts:42"
+
+Claude: I'll analyze the error and diagnose the root cause.
+
+Skill("moai-essentials-debug")
+
+[After Skill loads]
+
+**Error Analysis**:
+- **Error Type**: TypeError (null/undefined access)
+- **Location**: src/services/user.ts:42
+- **Root Cause**: Missing null check for user object returned from fetchUser()
+- **Related SPEC**: @SPEC:USER-003
+- **Related Test**: @TEST:USER-003 (edge case missing)
+
+**Recommended Fix**:
+```{{codebase_language}}
+// Before
+const userName = user.name;
+
+// After
+if (!user) {
+  throw new NotFoundError('User not found');
+}
+const userName = user.name;
+```
+
+[Provides fix-forward guidance with edge case handling]
+```
+
+---
+
+### ✅ When to Invoke Skills Explicitly
+
+Use explicit Skill invocation when:
+
+1. **User mentions any keyword** from the Mandatory Skill table above
+2. **Ambiguous request** requires standardized best practices
+3. **Quality verification** is needed (TRUST, TAG, SPEC, etc.)
+4. **Architecture decisions** require domain expertise
+5. **Error analysis** requires structured debugging workflow
+
+### ❌ When NOT to Invoke Skills
+
+You can skip Skill invocation when:
+
+- User has already provided specific, complete instructions
+- Task follows standard conventions with no ambiguity
+- Technical constraints allow only one valid approach
+- User explicitly states "just implement it" (already decided)
+
+---
 
 ### Example: Correct Skill Usage
 
@@ -167,7 +333,7 @@ Claude: [Direct tool usage]
 - Read .moai/config.json
 ```
 
-**Problem**: Not following the standardized TRUST 5-principles checklist by skipping Skill usage.
+**Problem**: Bypasses standardized TRUST 5-principles checklist and misses quality context.
 
 #### ✅ **Correct Response** (Skill Invocation)
 
@@ -188,7 +354,11 @@ Skill("moai-foundation-trust")
 Let me verify each principle...
 ```
 
-**Benefits**: Standardized workflow, consistent quality criteria, up-to-date tool versions.
+**Benefits**:
+- ✅ Standardized workflow across all projects
+- ✅ Consistent quality criteria based on latest TRUST 5 specification
+- ✅ Up-to-date tool versions and configurations
+- ✅ Language-specific adaptations ({{codebase_language}} toolchain)
 
 ---
 
