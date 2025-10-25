@@ -72,7 +72,7 @@ allowed-tools: Read, Bash
 
 ```bash
 # Install pytest
-pip install pytest pytest-cov
+uv uv pip install pytest pytest-cov
 
 # Run tests
 pytest
