@@ -573,3 +573,239 @@ class TestMergeConfig:
         merged = processor.merge_config(detected_language="go")
 
         assert merged["language"] == "go"
+
+
+class TestCopyClaudeMissingTemplate:
+    """Test _copy_claude when template doesn't exist"""
+
+    @patch("moai_adk.core.template.processor.console")
+    def test_copy_claude_template_not_found_logs_warning(
+        self, mock_console: Mock, tmp_path: Path
+    ) -> None:
+        """Should log warning when .claude template not found"""
+        processor = TemplateProcessor(tmp_path)
+        processor.template_root = tmp_path / "nonexistent"
+
+        processor._copy_claude(silent=False)
+
+        # Should call console.print with warning
+        assert mock_console.print.called
+
+    @patch("moai_adk.core.template.processor.console")
+    def test_copy_claude_template_not_found_silent(
+        self, mock_console: Mock, tmp_path: Path
+    ) -> None:
+        """Should not log warning when silent=True"""
+        processor = TemplateProcessor(tmp_path)
+        processor.template_root = tmp_path / "nonexistent"
+
+        processor._copy_claude(silent=True)
+
+        # Should not call console.print
+        mock_console.print.assert_not_called()
+
+
+class TestCopyMoaiMissingTemplate:
+    """Test _copy_moai when template doesn't exist"""
+
+    @patch("moai_adk.core.template.processor.console")
+    def test_copy_moai_template_not_found_logs_warning(
+        self, mock_console: Mock, tmp_path: Path
+    ) -> None:
+        """Should log warning when .moai template not found"""
+        processor = TemplateProcessor(tmp_path)
+        processor.template_root = tmp_path / "nonexistent"
+
+        processor._copy_moai(silent=False)
+
+        # Should call console.print with warning
+        assert mock_console.print.called
+
+    @patch("moai_adk.core.template.processor.console")
+    def test_copy_moai_template_not_found_silent(
+        self, mock_console: Mock, tmp_path: Path
+    ) -> None:
+        """Should not log warning when silent=True"""
+        processor = TemplateProcessor(tmp_path)
+        processor.template_root = tmp_path / "nonexistent"
+
+        processor._copy_moai(silent=True)
+
+        # Should not call console.print
+        mock_console.print.assert_not_called()
+
+
+class TestVariableSubstitution:
+    """Test variable substitution and warnings"""
+
+    def test_substitute_variables_unsubstituted_warning(self, tmp_path: Path) -> None:
+        """Should generate warning for unsubstituted variables"""
+        processor = TemplateProcessor(tmp_path)
+        processor.set_context({"PROJECT_NAME": "TestProject"})
+
+        content = "Project: {{PROJECT_NAME}} Author: {{AUTHOR}}"
+        substituted, warnings = processor._substitute_variables(content)
+
+        assert "TestProject" in substituted
+        assert len(warnings) > 0
+        assert "AUTHOR" in warnings[0]
+
+    def test_substitute_variables_no_warnings_when_all_substituted(
+        self, tmp_path: Path
+    ) -> None:
+        """Should not generate warnings when all variables substituted"""
+        processor = TemplateProcessor(tmp_path)
+        processor.set_context({"PROJECT_NAME": "TestProject", "AUTHOR": "Alice"})
+
+        content = "Project: {{PROJECT_NAME}} Author: {{AUTHOR}}"
+        substituted, warnings = processor._substitute_variables(content)
+
+        assert "TestProject" in substituted
+        assert "Alice" in substituted
+        assert len(warnings) == 0
+
+    def test_sanitize_value_removes_control_characters(self, tmp_path: Path) -> None:
+        """Should remove control characters from values"""
+        processor = TemplateProcessor(tmp_path)
+
+        value = "test\x00value\x01"
+        sanitized = processor._sanitize_value(value)
+
+        assert "\x00" not in sanitized
+        assert "\x01" not in sanitized
+        assert "test" in sanitized
+        assert "value" in sanitized
+
+    def test_sanitize_value_prevents_recursive_substitution(
+        self, tmp_path: Path
+    ) -> None:
+        """Should prevent recursive substitution by removing {{}}"""
+        processor = TemplateProcessor(tmp_path)
+
+        value = "value with {{NESTED}}"
+        sanitized = processor._sanitize_value(value)
+
+        assert "{{" not in sanitized
+        assert "}}" not in sanitized
+
+
+class TestIsTextFile:
+    """Test text file detection"""
+
+    def test_is_text_file_recognizes_python(self, tmp_path: Path) -> None:
+        """Should recognize .py as text"""
+        processor = TemplateProcessor(tmp_path)
+        py_file = tmp_path / "test.py"
+        assert processor._is_text_file(py_file) is True
+
+    def test_is_text_file_recognizes_markdown(self, tmp_path: Path) -> None:
+        """Should recognize .md as text"""
+        processor = TemplateProcessor(tmp_path)
+        md_file = tmp_path / "test.md"
+        assert processor._is_text_file(md_file) is True
+
+    def test_is_text_file_recognizes_json(self, tmp_path: Path) -> None:
+        """Should recognize .json as text"""
+        processor = TemplateProcessor(tmp_path)
+        json_file = tmp_path / "test.json"
+        assert processor._is_text_file(json_file) is True
+
+    def test_is_text_file_recognizes_binary(self, tmp_path: Path) -> None:
+        """Should not recognize binary files as text"""
+        processor = TemplateProcessor(tmp_path)
+        bin_file = tmp_path / "test.bin"
+        assert processor._is_text_file(bin_file) is False
+
+    def test_is_text_file_recognizes_image(self, tmp_path: Path) -> None:
+        """Should not recognize images as text"""
+        processor = TemplateProcessor(tmp_path)
+        img_file = tmp_path / "test.png"
+        assert processor._is_text_file(img_file) is False
+
+
+class TestCopyFileWithSubstitution:
+    """Test file copying with variable substitution"""
+
+    def test_copy_file_with_substitution_text_file(self, tmp_path: Path) -> None:
+        """Should substitute variables in text files"""
+        processor = TemplateProcessor(tmp_path)
+        processor.set_context({"PROJECT_NAME": "MyProject"})
+
+        src = tmp_path / "template.md"
+        src.write_text("# {{PROJECT_NAME}}")
+        dst = tmp_path / "output.md"
+
+        processor._copy_file_with_substitution(src, dst)
+
+        assert dst.exists()
+        assert "MyProject" in dst.read_text()
+
+    def test_copy_file_with_substitution_binary_file(self, tmp_path: Path) -> None:
+        """Should copy binary files without substitution"""
+        processor = TemplateProcessor(tmp_path)
+        processor.set_context({"PROJECT_NAME": "MyProject"})
+
+        src = tmp_path / "image.png"
+        src.write_bytes(b"PNG\x00\x01")
+        dst = tmp_path / "output.png"
+
+        processor._copy_file_with_substitution(src, dst)
+
+        assert dst.exists()
+        assert dst.read_bytes() == b"PNG\x00\x01"
+
+    def test_copy_file_with_substitution_no_context(self, tmp_path: Path) -> None:
+        """Should copy text file without substitution when no context"""
+        processor = TemplateProcessor(tmp_path)
+
+        src = tmp_path / "template.md"
+        src.write_text("# {{PROJECT_NAME}}")
+        dst = tmp_path / "output.md"
+
+        processor._copy_file_with_substitution(src, dst)
+
+        assert dst.exists()
+        assert "{{PROJECT_NAME}}" in dst.read_text()
+
+
+class TestCopyDirWithSubstitution:
+    """Test directory copying with substitution"""
+
+    def test_copy_dir_with_substitution_creates_directories(self, tmp_path: Path) -> None:
+        """Should create directory structure"""
+        processor = TemplateProcessor(tmp_path)
+        processor.set_context({"PROJECT_NAME": "MyProject"})
+
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "subdir").mkdir()
+        (src / "subdir" / "file.md").write_text("# {{PROJECT_NAME}}")
+
+        dst = tmp_path / "dst"
+
+        processor._copy_dir_with_substitution(src, dst)
+
+        assert (dst / "subdir" / "file.md").exists()
+        assert "MyProject" in (dst / "subdir" / "file.md").read_text()
+
+
+class TestCopyGithub:
+    """Test .github directory copying"""
+
+    @patch("moai_adk.core.template.processor.console")
+    def test_copy_github_replaces_directory(self, mock_console: Mock, tmp_path: Path) -> None:
+        """Should completely replace .github directory"""
+        processor = TemplateProcessor(tmp_path)
+        processor._copy_github(silent=True)
+
+        github_dir = tmp_path / ".github"
+        assert github_dir.exists()
+        assert (github_dir / "workflows").exists()
+
+    def test_copy_gitignore_creates_file(self, tmp_path: Path) -> None:
+        """Should copy .gitignore template"""
+        processor = TemplateProcessor(tmp_path)
+        processor._copy_gitignore(silent=True)
+
+        gitignore = tmp_path / ".gitignore"
+        assert gitignore.exists()

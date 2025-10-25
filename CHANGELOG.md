@@ -7,6 +7,88 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.5.2] - 2025-10-25 (AskUserQuestion Rules & Test Code Optimization)
+
+### 🎯 주요 변경사항 | Key Changes
+
+**Feature | 새 기능**:
+- ✨ AskUserQuestion 호출 규칙 추가 | Added explicit AskUserQuestion invocation rules
+  - CLAUDE.md에 명시적인 AskUserQuestion 사용 규칙 문서화 | Documented explicit AskUserQuestion invocation rules in CLAUDE.md
+  - 모호한 의사결정(3-5개 선택지) 시 자동 활성화 | Auto-activate for ambiguous decisions (3-5 options)
+  - 사용자 확인 필요한 아키텍처 결정(DB, 라이브러리, 패턴 선택 등) | User confirmation required for architecture decisions
+  - "이미 결정됨", "기술적 제약으로 1개만 가능", "사용자 명시 지시" 상황에서는 미필요 | Not needed for predetermined decisions, technical constraints, or explicit directives
+
+**Documentation | 문서화**:
+- 📖 CLAUDE.md 업데이트 | Updated CLAUDE.md
+  - "Interactive Question Rules" 섹션 추가 | Added "Interactive Question Rules" section
+  - "Mandatory AskUserQuestion Usage" 표 추가 | Added "Mandatory AskUserQuestion Usage" table
+  - "Optional AskUserQuestion Usage" 사례 명확화 | Clarified "Optional AskUserQuestion Usage" cases
+  - "Best Practices for AskUserQuestion" 가이드 추가 | Added "Best Practices for AskUserQuestion" guide
+  - "When NOT to Use AskUserQuestion" 명시 | Explicitly stated "When NOT to Use AskUserQuestion"
+
+**Testing | 테스트 최적화**:
+- ✅ 테스트 코드 구조 개선 | Improved test code structure
+  - `test_template_config.py` 추가 (+86 LOC) | Added test_template_config.py (+86 LOC)
+    - ConfigManager 초기화 테스트 | ConfigManager initialization tests
+    - 파일 로드/저장 기능 테스트 | File load/save functionality tests
+    - UTF-8 문자 인코딩 (한글 지원) 테스트 | UTF-8 encoding tests (Korean support)
+  - `test_template_processor.py` 확대 (+236 LOC) | Expanded test_template_processor.py (+236 LOC)
+    - TemplateProcessor 경로 분석 테스트 | TemplateProcessor path resolution tests
+    - 템플릿 복사 워크플로우 테스트 | Template copying workflow tests
+    - 백업 생성 및 보호 경로 처리 테스트 | Backup creation and protected path handling tests
+    - 파일 병합(CLAUDE.md, .gitignore, config.json) 테스트 | File merging tests
+
+**Code Quality | 코드 품질**:
+- 🧹 `phase_executor.py` 소규모 리팩토링 | Minor refactoring in phase_executor.py
+  - ProgressCallback 타입 정의 정리 | Cleaned up ProgressCallback type definition
+  - 문서화 주석 개선 | Improved documentation comments
+
+**Settings | 설정 업데이트**:
+- ⚙️ `.claude/settings.local.json` 업데이트 | Updated .claude/settings.local.json
+  - `Skill("moai-alfred-interactive-questions")` 명시적 허용 | Explicitly allowed Skill("moai-alfred-interactive-questions")
+
+**TRUST Validation | TRUST 검증**:
+- ✅ 모든 테스트 통과: 476/476 ✅ | All tests passing: 476/476 ✅
+- ✅ 테스트 커버리지 유지: 85%+ | Test coverage maintained: 85%+ ✅
+- 🏷️ 새 TEST TAG 추가 | Added new TEST TAGs
+  - `@TEST:TEST-COVERAGE-001`: Template configuration & processor tests | 템플릿 설정 및 프로세서 테스트
+
+### 🔗 파일 변경 | Files Changed
+
+**수정 파일** | **Modified Files**:
+- `CLAUDE.md` (Interactive Question Rules 추가)
+- `src/moai_adk/templates/CLAUDE.md` (Interactive Question Rules 추가)
+- `src/moai_adk/core/project/phase_executor.py` (3 lines 리팩토링)
+- `.claude/settings.local.json` (AskUserQuestion Skill 추가 허용)
+- `.claude/skills/moai-foundation-trust/SKILL.md` (2025-10-25 업데이트)
+
+**신규 파일** | **New Files**:
+- `tests/unit/test_template_config.py` (+86 LOC, ConfigManager 테스트)
+- `tests/unit/test_template_processor.py` (+236 LOC, TemplateProcessor 통합 테스트)
+
+### 📊 통계 | Statistics
+
+- Total insertions: +508
+- Total deletions: -175
+- Net change: +333
+- Test coverage: 85%+ (Green)
+- All tests passing: 476/476
+
+### 📦 설치 | Installation
+
+```bash
+pip install moai-adk==0.5.2
+# or
+uv tool install moai-adk==0.5.2
+```
+
+### 🔗 링크 | Links
+
+- **PyPI**: https://pypi.org/project/moai-adk/0.5.2/
+- **GitHub Release**: https://github.com/modu-ai/moai-adk/releases/tag/v0.5.2
+
+---
+
 ## [v0.4.11] - 2025-10-23 (TAG Guard System & Template Improvements)
 
 ### 🎯 주요 변경사항 | Key Changes
