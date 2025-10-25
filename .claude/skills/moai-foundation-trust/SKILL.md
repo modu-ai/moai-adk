@@ -1,6 +1,11 @@
 ---
 name: moai-foundation-trust
-description: Validates TRUST 5-principles (Test 85%+, Readable, Unified, Secured, Trackable). Use when aligning with TRUST governance.
+description: |
+  Validates TRUST 5-principles: pytest coverage ≥85%, ruff lint, mypy strict, trivy security scan, TAG chain integrity. Enforces quality gates for pre-merge checks and CI/CD pipelines.
+
+  Use when user mentions "coverage", "linting", "security scan", "TAG validation", "quality gate", "pre-merge check", "release readiness", or "/alfred:3-sync".
+
+  TRUST 5원칙 검증 (테스트 커버리지 85%+, 린팅, 타입 체크, 보안 스캔, TAG 체인 무결성). 품질 게이트, 머지 전 검사, CI/CD 파이프라인 검증 시 사용.
 allowed-tools:
   - Read
   - Write

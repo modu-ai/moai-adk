@@ -134,6 +134,170 @@ Alfred relies on 55 Claude Skills grouped by tier. Skills load via Progressive D
 
 Skills keep the core knowledge lightweight while allowing Alfred to assemble the right expertise for each request.
 
+---
+
+## 🎯 Skill Invocation Rules
+
+### Mandatory Skill Usage
+
+**IMPORTANT**: When you receive a request containing the following keywords, you **MUST** explicitly invoke the corresponding Skill. DO NOT use direct tools (Read, Grep, Bash).
+
+| User Request Keywords | Skill to Invoke | Prohibited Actions |
+|----------------------|-----------------|-------------------|
+| **TRUST validation**, code quality check, quality gate, coverage check, test coverage | `Skill("moai-foundation-trust")` | ❌ Direct ruff/mypy execution |
+| **TAG validation**, tag check, orphan detection, TAG scan | `Skill("moai-foundation-tags")` | ❌ Direct rg search |
+| **SPEC validation**, spec check, SPEC metadata | `Skill("moai-foundation-specs")` | ❌ Direct YAML reading |
+| **EARS syntax**, requirement authoring | `Skill("moai-foundation-ears")` | ❌ Generic templates |
+| **Git workflow**, branch management, PR policy | `Skill("moai-foundation-git")` | ❌ Direct git commands |
+| **debugging**, error analysis, bug fix | `Skill("moai-essentials-debug")` | ❌ Generic diagnostics |
+| **refactoring**, code improvement | `Skill("moai-essentials-refactor")` | ❌ Direct modifications |
+| **performance optimization**, profiling | `Skill("moai-essentials-perf")` | ❌ Guesswork |
+| **code review**, quality review | `Skill("moai-essentials-review")` | ❌ Generic review |
+
+### Example: Correct Skill Usage
+
+#### ❌ **Incorrect Response** (No Skill Invocation)
+
+```
+User: "Check code quality"
+
+Claude: [Direct tool usage]
+- Bash(ruff check src/)
+- Bash(mypy src/)
+- Read .moai/config.json
+```
+
+**Problem**: Not following the standardized TRUST 5-principles checklist by skipping Skill usage.
+
+#### ✅ **Correct Response** (Skill Invocation)
+
+```
+User: "Check code quality"
+
+Claude: I'll validate code quality using TRUST 5-principles.
+
+Skill("moai-foundation-trust")
+
+[After Skill loads]
+1. Test First: pytest coverage ≥85%
+2. Readable: ruff lint
+3. Unified: mypy strict
+4. Secured: trivy scan
+5. Trackable: TAG validation
+
+Let me verify each principle...
+```
+
+**Benefits**: Standardized workflow, consistent quality criteria, up-to-date tool versions.
+
+---
+
+## 🎯 Interactive Question Rules
+
+### Mandatory AskUserQuestion Usage
+
+**IMPORTANT**: When the user needs to make a **choice** or **decision**, you **MUST** use AskUserQuestion. DO NOT make assumptions or implement directly.
+
+| Situation Type | Examples | Invocation | Required |
+|---------------|----------|------------|----------|
+| **Multiple valid approaches exist** | Database choice (PostgreSQL vs MongoDB), state management library (Redux vs Zustand), test framework selection | `AskUserQuestion(...)` | ✅ Required |
+| **Architecture/design decisions** | Microservices vs monolithic, client-side vs server-side rendering, authentication method (JWT vs OAuth) | `AskUserQuestion(...)` | ✅ Required |
+| **Ambiguous or high-level requirements** | "Add a dashboard", "Optimize performance", "Add multi-language support" | `AskUserQuestion(...)` | ✅ Required |
+| **Requests affecting existing components** | Refactoring scope, backward compatibility, migration strategy | `AskUserQuestion(...)` | ✅ Required |
+| **User experience/business logic decisions** | UI layout, data display method, workflow order | `AskUserQuestion(...)` | ✅ Required |
+
+### Optional AskUserQuestion Usage
+
+You can proceed without AskUserQuestion in the following situations:
+
+- ✅ User has already provided clear instructions
+- ✅ Standard conventions or best practices are obvious
+- ✅ Technical constraints allow only one approach
+- ✅ User explicitly states "just implement it, I've already decided"
+
+### Example: Correct AskUserQuestion Usage
+
+#### ❌ **Incorrect Response** (Making assumptions)
+
+```
+User: "Add a dashboard page"
+
+Claude: [Proceeding without asking]
+- Tech: React + TypeScript
+- Layout: Left sidebar + main content
+- Chart library: Recharts
+- Data source: Direct REST API calls
+
+Starting implementation...
+```
+
+**Problem**: High risk of rework due to not understanding actual user intent.
+
+#### ✅ **Correct Response** (Asking questions)
+
+```
+User: "Add a dashboard page"
+
+Claude: I'll need to clarify a few decisions for the dashboard implementation.
+
+AskUserQuestion(...)
+
+[Example questions]
+- "Data source?" → [REST API | GraphQL | Local state]
+- "Primary chart type?" → [Time series | Category comparison | Distribution]
+- "Real-time updates needed?" → [Yes | No | Every 10 seconds]
+- "Access restrictions?" → [Admin only | Logged-in users | Public]
+
+[After user responses]
+Confirmed selections:
+- Data: REST API
+- Charts: Time series
+- Real-time: No
+- Access: Logged-in users
+
+Now implementing based on these requirements...
+```
+
+**Benefits**: Clear intent understanding, minimized rework, accurate implementation.
+
+### Best Practices for AskUserQuestion
+
+1. **Limit to 3-5 questions**
+   - ✅ "Choose from 3 mutually exclusive options"
+   - ❌ "10+ options" (user fatigue)
+
+2. **Options must be specific**
+   - ✅ "PostgreSQL (ACID, JSON support)", "MongoDB (horizontal scaling, flexible schema)"
+   - ❌ "Database 1", "Database 2"
+
+3. **Always include "Other" option**
+   - User's choice may not be listed
+   - "Other" allows custom input
+
+4. **Summary step after selection**
+   - Display user selections summary
+   - "Proceed with these choices?" final confirmation
+
+5. **Integrate with Context Engineering**
+   - Analyze existing code/SPEC before AskUserQuestion
+   - Provide context like "Your project currently uses X"
+
+### When NOT to Use AskUserQuestion
+
+❌ When user has already given specific instructions:
+```
+User: "Implement state management using Zustand"
+→ AskUserQuestion unnecessary (already decided)
+```
+
+❌ When only one technical choice exists:
+```
+User: "Improve type safety in TypeScript"
+→ AskUserQuestion unnecessary (type system is fixed)
+```
+
+---
+
 ### Agent Collaboration Principles
 
 - **Command precedence**: Command instructions outrank agent guidelines; follow the command if conflicts occur.

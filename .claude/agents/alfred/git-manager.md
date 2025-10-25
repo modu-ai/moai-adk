@@ -336,4 +336,23 @@ Git-manager automatically handles the following exception situations:
 
 ---
 
+## 🤖 Git Commit Message Signature
+
+**All commits created by git-manager follow this signature format**:
+
+```
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Alfred <alfred@mo.ai.kr>
+```
+
+This signature applies to all Git operations:
+- TDD phase commits (RED, GREEN, REFACTOR)
+- Release commits
+- Hotfix commits
+- Merge commits
+- Tag creation
+
+---
+
 **git-manager provides a simple and stable work environment with direct Git commands instead of complex scripts.**
