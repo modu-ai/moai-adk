@@ -1208,7 +1208,7 @@ If you need to temporarily disable hooks, edit `.claude/settings.json`:
 | **v0.4.7** | 📖 Korean language optimization + SPEC-First principle documentation                 | 2025-10-22 |
 | **v0.4.6** | 🎉 Complete Skills v2.0 (100% Production-Ready) + 85,000 lines official docs + 300+ TDD examples | 2025-10-22 |
 
-> 📦 **Install Now**: `pip install moai-adk==0.4.11` or `uv tool install moai-adk==0.4.11`
+> 📦 **Install Now**: `uv tool install moai-adk==0.4.11` or `pip install moai-adk==0.4.11`
 
 ---
 

@@ -286,7 +286,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install uv
-        run: pip install uv
+        run: uv pip install uv
 
       - name: Create venv
         run: uv venv
