@@ -491,7 +491,13 @@ Before suggesting the next step, always verify:
 - Additional notes (optional)
 
 Refs: @TAG-ID (if applicable)
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Alfred <alfred@mo.ai.kr>
 ```
+
+**Signature Standard**: All git commits created through MoAI-ADK are attributed to **Alfred** (`alfred@mo.ai.kr`), the MoAI SuperAgent orchestrating all Git operations. This ensures clear traceability and accountability for all automated workflows.
 
 ## Context Engineering Strategy
 
