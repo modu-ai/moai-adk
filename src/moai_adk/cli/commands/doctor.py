@@ -8,6 +8,30 @@ System diagnostics command:
 - Validate project structure
 - Inspect language-specific tool chains
 - Diagnose slash command loading issues (--check-commands)
+
+## Skill Invocation Guide (English-Only)
+
+### Related Skills
+- **moai-foundation-langs**: For language toolchain verification and detection
+  - Trigger: Use `--verbose` or `--fix` flag to inspect language-specific tools
+  - Invocation: `Skill("moai-foundation-langs")` for detailed language stack analysis
+
+- **moai-foundation-trust**: For TRUST 5-principles verification after fixing tools
+  - Trigger: After running doctor with `--fix` to validate improvements
+  - Invocation: `Skill("moai-foundation-trust")` to verify code quality toolchain
+
+### When to Invoke Skills in Related Workflows
+1. **After doctor diagnosis**:
+   - Run `Skill("moai-foundation-trust")` to validate that all TRUST tools are properly configured
+   - Run `Skill("moai-foundation-langs")` to confirm language-specific toolchains
+
+2. **When tools are missing** (`--fix` flag):
+   - Use suggested fixes from doctor command
+   - Follow up with `Skill("moai-foundation-langs")` to validate corrections
+
+3. **Debugging slash command issues** (`--check-commands`):
+   - Run `Skill("moai-cc-commands")` if commands fail to load
+   - Check `.claude/commands/` directory structure and permissions
 """
 
 import json
