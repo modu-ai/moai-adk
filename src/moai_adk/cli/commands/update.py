@@ -344,8 +344,16 @@ def update(path: str, force: bool, check: bool) -> None:
         console.print("\n[green]✓ Update complete![/green]")
         if latest_version and version.parse(current_version) < version.parse(latest_version):
             console.print(
-                "[yellow]⚠ Python package still on older version. "
-                "Run 'pip install --upgrade moai-adk' to upgrade the CLI package.[/yellow]"
+                "[yellow]⚠ Python package still on older version.[/yellow]"
+            )
+            console.print(
+                "[cyan]Upgrade options:[/cyan]"
+            )
+            console.print(
+                "  1. uv tool (recommended): uv tool upgrade moai-adk"
+            )
+            console.print(
+                "  2. pip (legacy):          pip install --upgrade moai-adk"
             )
         console.print("\n[cyan]ℹ️  Next step: Run /alfred:0-project update to optimize template changes[/cyan]")
 

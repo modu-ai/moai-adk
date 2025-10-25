@@ -168,11 +168,13 @@ def _suggest_fixes(tools: dict[str, bool], language: str | None) -> None:
 
 def _get_install_command(tool: str, language: str | None) -> str:
     """Return the install command for a given tool (helper)"""
-    # Common tools
+    # Common tools with preferred package managers
     install_commands = {
-        "pytest": "pip install pytest",
-        "mypy": "pip install mypy",
-        "ruff": "pip install ruff",
+        # Python tools (prefer uv)
+        "pytest": "uv pip install pytest",
+        "mypy": "uv pip install mypy",
+        "ruff": "uv pip install ruff",
+        # JavaScript tools
         "vitest": "npm install -D vitest",
         "biome": "npm install -D @biomejs/biome",
         "eslint": "npm install -D eslint",
