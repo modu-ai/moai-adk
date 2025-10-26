@@ -1,6 +1,6 @@
 ---
 id: SPEC-TEST-001
-version: v0.1.0
+version: v0.1.1
 status: draft
 created: 2025-10-27
 updated: 2025-10-27
