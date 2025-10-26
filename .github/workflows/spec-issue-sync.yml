@@ -19,59 +19,70 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Find and extract SPEC
+      - name: Extract SPEC metadata
         id: extract
         run: |
-          set -x  # Debug mode - show all commands
+          #!/bin/bash
+          set -e
 
-          echo "=== Starting SPEC extraction ==="
+          echo "::group::SPEC Extraction"
 
           # Find SPEC file
-          SPEC_FILE=$(find .moai/specs -name "spec.md" | head -1)
-          echo "Found SPEC file: $SPEC_FILE"
+          SPEC_FILE=$(find .moai/specs -name "spec.md" -type f | head -1)
 
           if [ -z "$SPEC_FILE" ]; then
-            echo "No SPEC file found"
+            echo "❌ No SPEC file found"
             exit 0
           fi
 
-          # Extract YAML frontmatter
+          echo "✅ Found SPEC file: $SPEC_FILE"
+
+          # Extract YAML frontmatter values
           SPEC_ID=$(grep "^id:" "$SPEC_FILE" | sed 's/^id: *//' | xargs)
           SPEC_VERSION=$(grep "^version:" "$SPEC_FILE" | sed 's/^version: *//' | xargs)
           SPEC_STATUS=$(grep "^status:" "$SPEC_FILE" | sed 's/^status: *//' | xargs)
           SPEC_PRIORITY=$(grep "^priority:" "$SPEC_FILE" | sed 's/^priority: *//' | xargs)
 
-          # Extract title
+          # Extract title from H1 heading
           SPEC_TITLE=$(grep "^# @SPEC:" "$SPEC_FILE" | sed 's/^# @SPEC:[^:]*: *//' | xargs)
 
-          echo "=== Extracted metadata ==="
-          echo "ID: $SPEC_ID"
-          echo "Title: $SPEC_TITLE"
-          echo "Version: $SPEC_VERSION"
-          echo "Status: $SPEC_STATUS"
-          echo "Priority: $SPEC_PRIORITY"
+          # Validate extraction
+          if [ -z "$SPEC_ID" ]; then
+            echo "❌ Failed to extract SPEC_ID"
+            exit 0
+          fi
 
-          # Save to environment
-          {
-            echo "spec_file=$SPEC_FILE"
-            echo "spec_id=$SPEC_ID"
-            echo "spec_version=$SPEC_VERSION"
-            echo "spec_status=$SPEC_STATUS"
-            echo "spec_priority=$SPEC_PRIORITY"
-            echo "spec_title=$SPEC_TITLE"
-          } >> $GITHUB_OUTPUT
+          echo "Extracted metadata:"
+          echo "  ID: $SPEC_ID"
+          echo "  Title: $SPEC_TITLE"
+          echo "  Version: $SPEC_VERSION"
+          echo "  Status: $SPEC_STATUS"
+          echo "  Priority: $SPEC_PRIORITY"
 
-          echo "=== Outputs saved ==="
+          # Set outputs for next steps
+          echo "spec_file=$SPEC_FILE" >> "$GITHUB_OUTPUT"
+          echo "spec_id=$SPEC_ID" >> "$GITHUB_OUTPUT"
+          echo "spec_version=$SPEC_VERSION" >> "$GITHUB_OUTPUT"
+          echo "spec_status=$SPEC_STATUS" >> "$GITHUB_OUTPUT"
+          echo "spec_priority=$SPEC_PRIORITY" >> "$GITHUB_OUTPUT"
+          echo "spec_title=$SPEC_TITLE" >> "$GITHUB_OUTPUT"
+
+          echo "::endgroup::"
 
       - name: Create GitHub Issue
-        if: steps.extract.outputs.spec_id != ''
+        if: steps.extract.outputs.spec_id
+        id: create-issue
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          set -x
+          #!/bin/bash
+          set -e
 
-          echo "=== Creating GitHub Issue ==="
+          echo "::group::Create GitHub Issue"
 
           SPEC_FILE="${{ steps.extract.outputs.spec_file }}"
           SPEC_ID="${{ steps.extract.outputs.spec_id }}"
@@ -81,17 +92,17 @@ jobs:
           SPEC_TITLE="${{ steps.extract.outputs.spec_title }}"
           PR_NUMBER="${{ github.event.pull_request.number }}"
 
-          echo "Variables received:"
-          echo "  SPEC_FILE=$SPEC_FILE"
-          echo "  SPEC_ID=$SPEC_ID"
-          echo "  SPEC_TITLE=$SPEC_TITLE"
-          echo "  PR_NUMBER=$PR_NUMBER"
+          echo "Creating issue with:"
+          echo "  Title: [$SPEC_ID] $SPEC_TITLE (v$SPEC_VERSION)"
+          echo "  Priority: $SPEC_PRIORITY"
+          echo "  PR: #$PR_NUMBER"
 
-          # Read SPEC content (skip first 6 lines of YAML)
+          # Read SPEC content (skip YAML frontmatter)
           SPEC_CONTENT=$(tail -n +7 "$SPEC_FILE")
 
           # Create issue body
           ISSUE_BODY="## SPEC Metadata
+
 | Field | Value |
 |-------|-------|
 | **ID** | SPEC-$SPEC_ID |
@@ -109,60 +120,57 @@ $SPEC_CONTENT
 🔗 **PR**: #$PR_NUMBER
 📝 **Auto-synced**: This issue is automatically synchronized from the SPEC document"
 
-          echo "=== Issue body prepared ==="
-          echo "Body length: ${#ISSUE_BODY}"
-
           # Create issue
-          echo "Creating issue with gh CLI..."
-          ISSUE_OUTPUT=$(gh issue create \
+          ISSUE_URL=$(gh issue create \
             --title "[SPEC-$SPEC_ID] $SPEC_TITLE (v$SPEC_VERSION)" \
             --body "$ISSUE_BODY" \
             --label "spec" \
             --label "planning" \
-            --label "$SPEC_PRIORITY" 2>&1)
+            --label "$SPEC_PRIORITY" \
+            --repo "$GH_REPO")
 
-          ISSUE_EXIT_CODE=$?
-          echo "gh issue create exit code: $ISSUE_EXIT_CODE"
-          echo "Issue output: $ISSUE_OUTPUT"
+          if [ $? -eq 0 ]; then
+            echo "✅ Issue created: $ISSUE_URL"
 
-          if [ $ISSUE_EXIT_CODE -eq 0 ]; then
-            echo "✅ Issue created successfully"
-            # Extract issue number
-            ISSUE_NUM=$(echo "$ISSUE_OUTPUT" | grep -oP 'issues/\K[0-9]+' || echo "")
-            echo "Issue number: $ISSUE_NUM"
-
-            if [ -n "$ISSUE_NUM" ]; then
-              echo "issue_number=$ISSUE_NUM" >> $GITHUB_OUTPUT
-            fi
+            # Extract issue number from URL
+            ISSUE_NUM=$(echo "$ISSUE_URL" | grep -oP 'issues/\K[0-9]+')
+            echo "issue_number=$ISSUE_NUM" >> "$GITHUB_OUTPUT"
+            echo "issue_url=$ISSUE_URL" >> "$GITHUB_OUTPUT"
           else
             echo "❌ Failed to create issue"
-            exit 0  # Don't fail PR, just skip issue creation
+            echo "Response: $ISSUE_URL"
           fi
 
-      - name: Add PR comment
-        if: steps.create-issue.outputs.issue_number != ''
+          echo "::endgroup::"
+
+      - name: Add PR comment with issue link
+        if: steps.create-issue.outputs.issue_number
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          set -x
+          #!/bin/bash
+          set -e
+
+          echo "::group::Add PR Comment"
 
           ISSUE_NUM="${{ steps.create-issue.outputs.issue_number }}"
           SPEC_ID="${{ steps.extract.outputs.spec_id }}"
           SPEC_TITLE="${{ steps.extract.outputs.spec_title }}"
           PR_NUMBER="${{ github.event.pull_request.number }}"
 
-          echo "=== Adding PR comment ==="
-          echo "Issue: #$ISSUE_NUM"
-          echo "PR: #$PR_NUMBER"
-
           PR_COMMENT="✅ **SPEC GitHub Issue Created**
 
-This SPEC has been synchronized to GitHub Issue.
+This SPEC has been automatically synchronized to a GitHub Issue.
 
 📋 **Issue**: [#$ISSUE_NUM - SPEC-$SPEC_ID: $SPEC_TITLE](../issues/$ISSUE_NUM)
 🔗 **SPEC File**: \`.moai/specs/SPEC-$SPEC_ID/spec.md\`
 
 The issue will be automatically updated as you modify the SPEC document."
 
-          gh pr comment $PR_NUMBER --body "$PR_COMMENT" || true
-          echo "PR comment added"
+          gh pr comment "$PR_NUMBER" \
+            --body "$PR_COMMENT" \
+            --repo "$GH_REPO"
+
+          echo "✅ PR comment added"
+          echo "::endgroup::"
