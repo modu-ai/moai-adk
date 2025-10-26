@@ -1,0 +1,176 @@
+name: 📋 SPEC Document
+description: Create a new SPEC document for feature planning
+title: "[SPEC-] "
+labels: ["spec", "planning"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 📋 SPEC Metadata
+
+        Fill out the SPEC details below. This will be synchronized with the SPEC document and GitHub Issue.
+
+  - type: input
+    id: spec-id
+    attributes:
+      label: SPEC ID
+      description: "Format: DOMAIN-###. Example: AUTH-001, API-DESIGN-001"
+      placeholder: "AUTH-001"
+    validations:
+      required: true
+
+  - type: input
+    id: spec-title
+    attributes:
+      label: SPEC Title
+      description: "Brief description of the specification"
+      placeholder: "JWT-based authentication system"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: "Feature priority level"
+      options:
+        - "critical"
+        - "high"
+        - "medium"
+        - "low"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      description: "SPEC category"
+      options:
+        - "API"
+        - "Backend"
+        - "Frontend"
+        - "Infrastructure"
+        - "Security"
+        - "Testing"
+        - "DevOps"
+        - "Documentation"
+        - "Performance"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: ubiquitous-requirements
+    attributes:
+      label: "Ubiquitous Requirements"
+      description: "Statements that apply universally to the system"
+      placeholder: |
+        - The system must provide JWT-based authentication
+        - The system must support token expiration
+      value: "### Ubiquitous\n"
+    validations:
+      required: true
+
+  - type: textarea
+    id: event-requirements
+    attributes:
+      label: "Event-driven Requirements (WHEN)"
+      description: "Event-triggered requirements in EARS format"
+      placeholder: |
+        - WHEN the user submits login credentials, the system must validate them against the database
+        - WHEN credentials are valid, the system must issue a JWT token with expiration
+      value: "### Event-driven (WHEN)\n"
+    validations:
+      required: false
+
+  - type: textarea
+    id: state-requirements
+    attributes:
+      label: "State-driven Requirements (WHILE)"
+      description: "State-based requirements in EARS format"
+      placeholder: |
+        - WHILE the token is unexpired, the system must allow access to protected resources
+        - WHILE the user is logged in, the system must track the session
+      value: "### State-driven (WHILE)\n"
+    validations:
+      required: false
+
+  - type: textarea
+    id: optional-requirements
+    attributes:
+      label: "Optional Requirements (WHERE)"
+      description: "Optional features and capabilities"
+      placeholder: |
+        - WHERE the user requests token refresh, the system can issue a new token
+        - WHERE OAuth2 is available, the system can support social login
+      value: "### Optional (WHERE)\n"
+    validations:
+      required: false
+
+  - type: textarea
+    id: constraints
+    attributes:
+      label: "Constraints (IF)"
+      description: "System constraints and conditions"
+      placeholder: |
+        - IF the token has expired, the system must return 401 Unauthorized
+        - IF the password is incorrect, the system must reject the login attempt
+      value: "### Constraints (IF)\n"
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: "Acceptance Criteria (Given-When-Then)"
+      description: "At least 2-3 test scenarios"
+      placeholder: |
+        **Scenario 1: Successful Login**
+        - Given a user with valid credentials exists
+        - When the user submits their credentials
+        - Then the system returns a valid JWT token
+
+        **Scenario 2: Token Expiration**
+        - Given a user with an expired token
+        - When the user tries to access a protected resource
+        - Then the system returns a 401 Unauthorized response
+      value: "## Acceptance Criteria\n\n"
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: "Dependencies"
+      description: "Related SPECs, tasks, or blockers"
+      placeholder: |
+        - Related: SPEC-SECURITY-001
+        - Blocks: SPEC-API-DESIGN-001
+        - Depends on: SPEC-DATABASE-001
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: "Additional Notes"
+      description: "Technical notes, assumptions, or context"
+      placeholder: |
+        - Consider token refresh token rotation
+        - JWT payload should be minimal for performance
+        - Consider rate limiting on login attempts
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ## 📚 Reference
+
+        - **SPEC Metadata Guide**: See `.moai/memory/spec-metadata.md`
+        - **EARS Syntax Guide**: See `.moai/memory/development-guide.md`
+        - **Acceptance Criteria**: Use Given-When-Then (Gherkin) format
+        - **@TAG System**: @SPEC, @TEST, @CODE, @DOC traceability
