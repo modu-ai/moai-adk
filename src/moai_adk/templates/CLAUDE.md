@@ -81,28 +81,11 @@ The **code-builder pipeline** runs two Sonnet specialists in sequence: **impleme
 
 The **Explore** agent excels at navigating large codebases.
 
-**Use cases**:
+**Use cases**: Code analysis, keyword/pattern search, file location, codebase structure understanding
 
-- ✅ **Code analysis** (understand complex implementations, trace dependencies, study architecture)
-- ✅ Search for specific keywords or patterns (e.g., "API endpoints", "authentication logic")
-- ✅ Locate files (e.g., `src/components/**/*.tsx`)
-- ✅ Understand codebase structure (e.g., "explain the project architecture")
-- ✅ Search across many files (Glob + Grep patterns)
+**Recommend when**: Complex structures, multi-file implementations, dependency analysis, refactor planning
 
-**Recommend Explore when**:
-
-- 🔍 You need to understand a complex structure
-- 🔍 The implementation spans multiple files
-- 🔍 You want the end-to-end flow of a feature
-- 🔍 Dependency relationships must be analyzed
-- 🔍 You're planning a refactor and need impact analysis
-
-**Usage**: Use `Task(subagent_type="Explore", ...)` for deep codebase analysis. Declare `thoroughness: quick|medium|very thorough` in the prompt.
-
-**Examples**:
-- Deep analysis: "Analyze TemplateProcessor class and its dependencies" (thoroughness: very thorough)
-- Domain search: "Find all AUTH-related files in SPEC/tests/src/docs" (thoroughness: medium)
-- Natural language: "Where is JWT authentication implemented?" → Alfred auto-delegates
+**Usage**: `Task(subagent_type="Explore", thoroughness="quick|medium|very thorough")`
 
 ### Claude Skills (55 packs)
 
@@ -237,67 +220,6 @@ Skill("moai-foundation-tags")
 
 **Chain Status**: 99% complete (1 SPEC ready for CODE, 1 template doc expected)
 ```
-
-#### Example 3: EARS Requirement Authoring Workflow
-
-```
-User: "Create SPEC-AUTH-002 for multi-factor authentication"
-
-Claude: I'll guide you through EARS-based requirement authoring.
-
-Skill("moai-foundation-ears")
-
-[After Skill loads]
-
-**EARS Requirement Template**:
-
-Ubiquitous: The system shall support multi-factor authentication (MFA).
-
-Event-driven: WHEN a user provides valid credentials, THEN the system requests an MFA verification code.
-
-State: IF the user has MFA enabled, THEN authentication must complete MFA verification.
-
-Optional: IF the user is on a trusted device, THEN MFA can be skipped (configurable).
-
-Constraints: MFA verification codes expire after 5 minutes. Maximum 3 retry attempts per session.
-
-[Generates SPEC-AUTH-002.md with YAML frontmatter]
-```
-
-#### Example 4: Debugging with Error Context Workflow
-
-```
-User: "TypeError: Cannot read property 'name' of undefined at src/services/user.ts:42"
-
-Claude: I'll analyze the error and diagnose the root cause.
-
-Skill("moai-essentials-debug")
-
-[After Skill loads]
-
-**Error Analysis**:
-- **Error Type**: TypeError (null/undefined access)
-- **Location**: src/services/user.ts:42
-- **Root Cause**: Missing null check for user object returned from fetchUser()
-- **Related SPEC**: @SPEC:USER-003
-- **Related Test**: @TEST:USER-003 (edge case missing)
-
-**Recommended Fix**:
-```{{codebase_language}}
-// Before
-const userName = user.name;
-
-// After
-if (!user) {
-  throw new NotFoundError('User not found');
-}
-const userName = user.name;
-```
-
-[Provides fix-forward guidance with edge case handling]
-```
-
----
 
 ### ✅ When to Invoke Skills Explicitly
 
@@ -601,153 +523,6 @@ Refs: @TAG-ID (if applicable)
 - Use `/alfred:3-sync` to update Living Docs and TAG references.
 - Record rationale for deviations from the SPEC.
 
-## Clarification & Interactive Prompting
-
-### The "Vibe Coding" Challenge
-
-**Vibe Coding** refers to requesting AI assistance with minimal context, expecting the AI to infer intent from incomplete instructions. While this approach works for experienced developers with high-context understanding of their codebase, it often results in:
-
-- ❌ Ambiguous or conflicting implementations
-- ❌ Unnecessary modifications to existing code
-- ❌ Multiple rounds of back-and-forth refinement
-- ❌ Wasted time clarifying intent
-
-**Root cause**: AI must *guess* user intent without explicit guidance.
-
-### Solution: Interactive Question Tool + TUI Survey Skill
-
-Claude Code now features an **Interactive Question Tool** powered by the `moai-alfred-interactive-questions` Skill that transforms vague requests into precise, contextual specifications through guided clarification. Instead of AI making assumptions, the tool actively:
-
-1. **Analyzes** existing code and project context
-2. **Identifies** ambiguity and competing approaches
-3. **Presents** concrete options with clear trade-offs via **TUI menu**
-4. **Captures** explicit user choices (arrow keys, enter)
-5. **Executes** with certainty based on confirmed intent
-
-**Implementation**: The `moai-alfred-interactive-questions` Skill provides interactive survey menus that render as terminal UI elements, allowing users to navigate options with arrow keys and confirm with enter.
-
-### How It Works
-
-When you provide a high-level request, Alfred invokes `moai-alfred-interactive-questions` to clarify via structured TUI menus:
-
-1. **Analyze** codebase & context
-2. **Present** concrete options (3-5 per question)
-3. **Capture** user selections via arrow keys + enter
-4. **Review** summary before submission
-5. **Execute** with confirmed intent
-
-**Where it's used**:
-
-- Sub-agents (spec-builder, code-builder pipeline) invoke this skill when ambiguity is detected
-- Alfred commands may trigger interactive surveys during Plan/Run/Sync phases
-- User approvals and architectural decisions benefit most from TUI-based selection
-
-### Key Benefits
-
-| Benefit                      | Impact                                                             |
-| ---------------------------- | ------------------------------------------------------------------ |
-| **Reduced ambiguity**        | AI asks before acting; eliminates guess work                       |
-| **Faster iteration**         | Choices are presented upfront, not discovered after implementation |
-| **Higher quality**           | Implementation matches intent precisely                            |
-| **Lower communication cost** | Answering 3-5 specific questions beats endless refinement          |
-| **Active collaboration**     | AI becomes a partner, not just a code generator                    |
-
-### When to Use Interactive Questions
-
-**Ideal for**:
-
-- 🎯 Complex features with multiple valid approaches
-- 🎯 Architectural decisions with trade-offs
-- 🎯 Ambiguous or high-level requirements
-- 🎯 Requests that affect multiple existing components
-- 🎯 Decisions involving user experience or data flow
-
-**Example triggers**:
-
-- "Add a dashboard" → needs clarification on layout, data sources, authentication
-- "Refactor the auth system" → needs clarification on scope, backwards compatibility, migration strategy
-- "Optimize performance" → needs clarification on which bottleneck, acceptable trade-offs
-- "Add multi-language support" → needs clarification on scope, default language, i18n library
-
-### Best Practices for Interactive Prompting
-
-1. **Provide initial context** (even if vague)
-   - ✅ "Add a competition results page"
-   - ❌ "Do something"
-
-2. **Trust the guided questions**
-   - AI will ask if it detects ambiguity
-   - Answer each question honestly, don't over-explain
-   - Use "Other" option to provide custom input if preset options don't fit
-
-3. **Review before submission**
-   - The summary step lets you verify all choices
-   - Use "back" to revise any answer
-   - Only submit when you're confident in the selections
-
-4. **Iterative refinement is OK**
-   - If implementation doesn't match intent, re-run with clearer guidance
-   - Your answers inform Alfred's future prompting
-   - This feedback loop improves collaboration quality
-
-5. **Combine with Context Engineering**
-   - Provide high-level intent + let interactive questions fill in details
-   - Reference existing code patterns ("like the auth flow in `/src/auth.ts`")
-   - Mention constraints or non-negotiables upfront
-
-### Example: Using AskUserQuestion in Practice
-
-When Alfred detects ambiguity (e.g., "Add a completion page"), it invokes `AskUserQuestion` to gather precise intent:
-
-**Typical flow**:
-1. Alfred analyzes existing code (detects `/end` page, auth patterns)
-2. Calls `AskUserQuestion` with 2-3 structured questions
-3. User selects via arrow keys (✓ confirms → next question)
-4. Alfred summarizes selections & executes with SPEC → TDD → Sync
-
-**Example questions**:
-- "Implementation approach?" → [New page | Modify existing | Environment gating]
-- "User visibility?" → [Auth required | Public | Based on time]
-
-**Result**: Precise, intentional implementation matching confirmed specifications. ✅
-
-## Commands · Sub-agents · Skills · Hooks
-
-MoAI-ADK assigns every responsibility to a dedicated execution layer.
-
-### Commands — Workflow orchestration
-
-- User-facing entry points that enforce the Plan → Run → Sync cadence.
-- Examples: `/alfred:0-project`, `/alfred:1-plan`, `/alfred:2-run`, `/alfred:3-sync`.
-- Coordinate multiple sub-agents, manage approvals, and track progress.
-
-### Sub-agents — Deep reasoning & decision making
-
-- Task-focused specialists (Sonnet/Haiku) that analyze, design, or validate.
-- Examples: spec-builder, code-builder pipeline, doc-syncer, tag-agent, git-manager.
-- Communicate status, escalate blockers, and request Skills when additional knowledge is required.
-
-### Skills — Reusable knowledge capsules (55 packs)
-
-- <500-word playbooks stored under `.claude/skills/`.
-- Loaded via Progressive Disclosure only when relevant.
-- Provide standard templates, best practices, and checklists across Foundation, Essentials, Alfred, Domain, Language, and Ops tiers.
-
-### Hooks — Guardrails & just-in-time context
-
-- Lightweight (<100 ms) checks triggered by session events.
-- Block destructive commands, surface status cards, and seed context pointers.
-- Examples: SessionStart project summary, PreToolUse safety checks.
-
-### Selecting the right layer
-
-1. Runs automatically on an event? → **Hook**.
-2. Requires reasoning or conversation? → **Sub-agent**.
-3. Encodes reusable knowledge or policy? → **Skill**.
-4. Orchestrates multiple steps or approvals? → **Command**.
-
-Combine layers when necessary: a command triggers sub-agents, sub-agents activate Skills, and Hooks keep the session safe.
-
 ## Core Philosophy
 
 - **SPEC-first**: requirements drive implementation and tests.
@@ -839,19 +614,14 @@ Combine layers when necessary: a command triggers sub-agents, sub-agents activat
 **Avoid duplicates**:
 
 ```bash
-rg "@SPEC:AUTH" -n          # Search AUTH specs
-rg "@CODE:AUTH-001" -n      # Targeted ID search
-rg "AUTH-001" -n            # Global ID search
+rg "@SPEC:AUTH" -n
+rg "AUTH-001" -n  # Global search
 ```
 
-**TAG chain verification** (`/alfred:3-sync` runs automatically):
+**TAG chain verification**:
 
 ```bash
 rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/
-
-# Detect orphaned TAGs
-rg '@CODE:AUTH-001' -n src/          # CODE exists
-rg '@SPEC:AUTH-001' -n .moai/specs/  # SPEC missing → orphan
 ```
 
 ---
@@ -899,26 +669,18 @@ Alfred enforces these quality gates on every change:
 ## TDD Workflow Checklist
 
 **Step 1: SPEC authoring** (`/alfred:1-plan`)
-
-- [ ] Create `.moai/specs/SPEC-<ID>/spec.md` (with directory structure)
-- [ ] Add YAML front matter (id, version: 0.0.1, status: draft, created)
-- [ ] Include the `@SPEC:ID` TAG
-- [ ] Write the **HISTORY** section (v0.0.1 INITIAL)
-- [ ] Use EARS syntax for requirements
-- [ ] Check for duplicate IDs: `rg "@SPEC:<ID>" -n`
+- [ ] Create `.moai/specs/SPEC-<ID>/spec.md` with YAML frontmatter (id, version: 0.0.1, status: draft)
+- [ ] Add `@SPEC:ID` TAG and HISTORY section (v0.0.1 INITIAL)
+- [ ] Use EARS syntax, check duplicates: `rg "@SPEC:<ID>" -n`
 
 **Step 2: TDD implementation** (`/alfred:2-run`)
-
 - [ ] **RED**: Write `@TEST:ID` under `tests/` and watch it fail
 - [ ] **GREEN**: Add `@CODE:ID` under `src/` and make the test pass
-- [ ] **REFACTOR**: Improve code quality; document TDD history in comments
-- [ ] List SPEC/TEST file paths in the TAG block
+- [ ] **REFACTOR**: Improve code quality, list SPEC/TEST paths in TAG block
 
 **Step 3: Documentation sync** (`/alfred:3-sync`)
-
 - [ ] Scan TAGs: `rg '@(SPEC|TEST|CODE):' -n`
-- [ ] Ensure no orphan TAGs remain
-- [ ] Regenerate the Living Document
+- [ ] Ensure no orphan TAGs remain, regenerate Living Document
 - [ ] Move PR status from Draft → Ready
 
 ---
