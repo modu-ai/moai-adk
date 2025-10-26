@@ -139,18 +139,18 @@ def _build_template_context(
 
     project_name = _coalesce(
         project_section.get("name"),
-        existing_config.get("projectName"),
+        existing_config.get("projectName"),  # Legacy fallback
         project_path.name,
     )
     project_mode = _coalesce(
         project_section.get("mode"),
-        existing_config.get("mode"),
+        existing_config.get("mode"),  # Legacy fallback
         default="personal",
     )
     project_description = _coalesce(
         project_section.get("description"),
-        existing_config.get("projectDescription"),
-        existing_config.get("description"),
+        existing_config.get("projectDescription"),  # Legacy fallback
+        existing_config.get("description"),  # Legacy fallback
     )
     project_version = _coalesce(
         project_section.get("version"),
@@ -196,7 +196,6 @@ def _preserve_project_metadata(
     project_data["mode"] = context["PROJECT_MODE"]
     project_data["description"] = context["PROJECT_DESCRIPTION"]
     project_data["created_at"] = context["CREATION_TIMESTAMP"]
-    project_data["moai_adk_version"] = version_for_config
 
     if "optimized" not in project_data and isinstance(existing_config, dict):
         existing_project = _extract_project_section(existing_config)
