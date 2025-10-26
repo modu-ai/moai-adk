@@ -1,8 +1,28 @@
 ---
-name: "Configuring Claude Code settings.json & Security"
-description: "Set up permissions (allow/deny), permission modes, environment variables, tool restrictions. Use when securing Claude Code, restricting tool access, or optimizing session settings."
+name: moai-cc-settings
+description: "Configuring Claude Code settings.json & Security. Set up permissions (allow/deny), permission modes, environment variables, tool restrictions. Use when securing Claude Code, restricting tool access, or optimizing session settings."
 allowed-tools: "Read, Write, Edit, Bash"
 ---
+
+## Skill Metadata
+
+| Field | Value |
+| ----- | ----- |
+| Version | 1.0.0 |
+| Tier | Ops |
+| Auto-load | When configuring security & permissions |
+
+## What It Does
+
+settings.json 설정 및 보안 구성을 위한 전체 가이드를 제공합니다. Permissions (allow/deny), permission modes, environment variables, tool restrictions 설정 방법을 다룹니다.
+
+## When to Use
+
+- 새 프로젝트의 settings.json을 설정할 때
+- Tool access를 제한하거나 보안을 강화할 때
+- Environment variables를 구성할 때
+- Permission mode (ask/allow/deny)를 변경할 때
+
 
 # Configuring Claude Code settings.json
 

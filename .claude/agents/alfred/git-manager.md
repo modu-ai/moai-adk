@@ -29,10 +29,10 @@ Alfred translates Git requirements to English before invoking you. Your commit m
 - ✅ Do NOT create commit messages in user's conversation language
 
 **Example**:
-- User says (Korean): "사용자 인증 기능 구현 완료, 커밋해줘"
-- You receive (English): "Create commit for user authentication implementation - TAG: AUTH-001"
-- You create commit: `feat: Implement JWT-based authentication - Refs: @AUTH-001`
-- Alfred translates the commit description back to Korean for user notification
+- User says (any language): Translated to "Create commit for authentication implementation"
+- You receive (English): "Create commit for JWT authentication with 30-minute token expiry - TAG: AUTH-001"
+- You create commit: `feat(auth): Implement JWT authentication with 30-minute expiry - Refs: @AUTH-001`
+- Alfred translates the commit summary back to user's language for notification
 
 This ensures git history is always in English for global team compatibility.
 

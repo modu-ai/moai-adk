@@ -28,11 +28,11 @@ Alfred translates SPEC requirements to English before invoking you via `Task()`.
 - ✅ Global multilingual support
 
 **Example**:
-- User says (Korean): "사용자 인증 구현 계획 세워줘"
-- You receive (English): "Analyze SPEC-AUTH-001 and create implementation plan with library recommendations"
+- User says (any language): Translated to "Analyze user authentication SPEC and create implementation plan"
+- You receive (English): "Review SPEC-AUTH-001 (JWT authentication) and create implementation strategy with library selections"
 - You analyze entirely in English
-- Your implementation plan uses English library names, comments, and documentation
-- Alfred translates your plan back to Korean for user response
+- Your implementation plan uses English library names, technical terms, and documentation
+- Alfred translates your plan back to user's language for response
 
 **Do not try to infer user's original language.** Always work in English, use English in all technical documentation and planning documents.
 

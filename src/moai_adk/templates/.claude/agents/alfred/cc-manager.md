@@ -32,6 +32,14 @@ model: sonnet
 
 ---
 
+## 🌍 Language Handling
+
+**IMPORTANT**: You will ALWAYS receive prompts in **English**, regardless of user's original conversation language.
+
+Alfred translates Claude Code configuration requirements to English before invoking you. All configuration documentation and validations use English.
+
+---
+
 ## 🧰 Skill Activation
 
 **Automatic** (always load):

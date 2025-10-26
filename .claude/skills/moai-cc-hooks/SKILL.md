@@ -1,8 +1,28 @@
 ---
-name: "Configuring Claude Code Hooks System"
-description: "Design, implement, and manage PreToolUse/PostToolUse/SessionStart/Notification/Stop hooks. Use when enforcing safety checks, auto-formatting, running linters, or triggering automated workflows based on development events."
+name: moai-cc-hooks
+description: "Configuring Claude Code Hooks System. Design, implement, and manage PreToolUse/PostToolUse/SessionStart/Notification/Stop hooks. Use when enforcing safety checks, auto-formatting, running linters, or triggering automated workflows based on development events."
 allowed-tools: "Read, Write, Edit, Glob, Bash"
 ---
+
+## Skill Metadata
+
+| Field | Value |
+| ----- | ----- |
+| Version | 1.0.0 |
+| Tier | Ops |
+| Auto-load | When configuring hook system |
+
+## What It Does
+
+Hook system 설정 및 관리를 위한 전체 가이드를 제공합니다. PreToolUse, PostToolUse, SessionStart 등 다양한 hook type의 설계와 구현 방법을 다룹니다.
+
+## When to Use
+
+- Safety check나 validation hook을 추가할 때
+- Auto-formatting이나 linting을 자동화할 때
+- Session lifecycle event에 응답하는 로직을 작성할 때
+- 개발 이벤트 기반 workflow를 트리거할 때
+
 
 # Configuring Claude Code Hooks System
 

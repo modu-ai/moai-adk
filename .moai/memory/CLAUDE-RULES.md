@@ -69,17 +69,18 @@ All Skills follow the **Progressive Disclosure** principle:
 2. **Content** (on-demand): Full SKILL.md loads when explicitly invoked via `Skill("name")`
 3. **Supporting** (JIT): Templates, examples, and resources load only when needed
 
-### 🌍 Language Boundary in Skill Invocation (다국어 환경)
+### 🌍 Language Boundary in Skill Invocation
 
 **CRITICAL: Three-Layer Language Rule**
 
 ```
-Layer 1: User Conversation (사용자 대면)
-├─ ALWAYS: 사용자의 conversation_language로 응답
-├─ Example: 한국어 사용자 → 한국어로만 응답
-└─ Includes: 질문, 설명, 모든 대화
+Layer 1: User Conversation
+├─ ALWAYS: Use user's configured conversation_language
+├─ Example: Korean user → respond in Korean only
+├─ Example: Japanese user → respond in Japanese only
+└─ Includes: questions, explanations, all dialogue
 
-Layer 2: Internal Operations (내부 작업) ← THE KEY DIFFERENCE
+Layer 2: Internal Operations ← THE KEY DIFFERENCE
 ├─ Task() prompts → **English**
 ├─ Skill() invocations → **English**
 ├─ Sub-agent communication → **English**
@@ -87,44 +88,45 @@ Layer 2: Internal Operations (내부 작업) ← THE KEY DIFFERENCE
 ├─ Error messages (internal) → **English**
 └─ ALL technical instructions → **English**
 
-Layer 3: Skills (Skill 계층)
+Layer 3: Skills & Code
 ├─ Descriptions → English only
 ├─ Examples → English only
-├─ Guides → English only
+├─ Code comments → English only
 └─ ✅ NO multilingual versions needed!
 ```
 
 **Why This Works**:
 - ✅ **100% Reliability**: English prompts always match English Skill keywords = guaranteed activation
-- ✅ **Zero Maintenance**: 55 Skills in English only (no need for 55 × N languages)
+- ✅ **Zero Maintenance**: 55 Skills in English only (no 55 × N language variants)
 - ✅ **Infinite Scalability**: Add Korean/Japanese/Spanish/Russian/any language with ZERO Skill modifications
-- ✅ **Industry Standard**: Localized UI (user language) + English backend = standard i18n pattern
+- ✅ **Industry Standard**: Localized UI + English backend = standard i18n pattern (like Netflix, Google, AWS)
 
 **The Golden Rule**:
 ```
 User Language ≠ Internal Language
-사용자 언어    ≠   내부 언어 (English)
-                   ↓
-            100% Skill Match Guaranteed
-            Skills는 영어만으로 충분!
+                ↓
+        100% Skill Match Guaranteed
+        English-only Skills = Complete Scalability!
 ```
 
-**Sub-agent Implementation**:
+**Sub-agent Implementation Example**:
 ```
-User (한국어):     "인증 시스템 구현"
+User Input (any language):  "Create authentication system"  / "認証システムを実装"  / "Implementar sistema de autenticación"
      ↓
-Alfred (번역):     "Implement authentication system"
+Alfred (internal):          "Implement authentication system"
      ↓
-Task(prompt="Create JWT authentication SPEC with 30-minute expiry",
+Task(prompt="Create JWT authentication SPEC with 30-minute token expiry",
      subagent_type="spec-builder")
      ↓
-spec-builder (영어로 받음):
-  Skill("moai-foundation-specs") ← 100% 매칭!
-  Skill("moai-foundation-ears") ← 100% 매칭!
+spec-builder (receives English):
+  Skill("moai-foundation-specs") ← 100% match!
+  Skill("moai-foundation-ears") ← 100% match!
      ↓
-Alfred (번역):     "인증 SPEC 완성: JWT 토큰, 30분 만료..."
+Alfred (receives):          English SPEC output
      ↓
-사용자 (한국어):   응답 수신
+Alfred (translates):        User's language response
+     ↓
+User Receives:              Response in their configured language
 ```
 
 ### Explicit Invocation Syntax
