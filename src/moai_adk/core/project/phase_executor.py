@@ -191,7 +191,10 @@ class PhaseExecutor:
         # Ensure project section exists and set defaults
         if "project" not in config:
             config["project"] = {}
-        config["project"]["optimized"] = False  # Default value
+        # Type guard for mypy
+        project_config = config["project"]
+        if isinstance(project_config, dict):
+            project_config["optimized"] = False  # Default value
 
         # Write config.json
         config_path = project_path / ".moai" / "config.json"
