@@ -118,6 +118,15 @@ jobs:
           spec_priority="${{ steps.extract.outputs.spec_priority }}"
           spec_file="${{ steps.extract.outputs.spec_file }}"
 
+          # Debug: Print extracted values
+          echo "Debug - Extracted values:"
+          echo "  spec_id: [$spec_id]"
+          echo "  spec_title: [$spec_title]"
+          echo "  spec_version: [$spec_version]"
+          echo "  spec_status: [$spec_status]"
+          echo "  spec_priority: [$spec_priority]"
+          echo "  spec_file: [$spec_file]"
+
           # Read SPEC content
           spec_content=$(cat "$spec_file" | tail -n +7)  # Skip YAML frontmatter
 
