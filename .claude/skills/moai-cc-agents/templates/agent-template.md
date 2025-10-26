@@ -1,43 +1,32 @@
 ---
-name: {{agent_name}}
-description: {{agent_description}} Use PROACTIVELY for {{trigger_conditions}}
-tools: {{agent_tools}}
-model: {{agent_model}}
-language: {{conversation_language_name}}
-project: {{project_name}}
+name: agent-name
+description: Use PROACTIVELY for [specific trigger conditions]
+tools: Read, Glob, Grep, Bash(git:*)
+model: sonnet
 ---
 
-# {{agent_name}} — {{agent_specialty}}
+# Agent Name — Specialist Role
 
-> **Language**: {{conversation_language_name}} | **Model**: {{agent_model}}
-
-{{agent_expertise_description}}
+Brief description of agent expertise.
 
 ## Core Mission
 
-- {{primary_responsibility}}
-- {{scope_boundaries}}
-- {{success_criteria}}
+- Primary responsibility
+- Scope boundaries
+- Success criteria
 
 ## Proactive Triggers
 
-- {{trigger_condition_1}}
-- {{trigger_condition_2}}
-- {{trigger_condition_3}}
+- When to activate automatically
+- Specific conditions for invocation
 
 ## Workflow Steps
 
-1. **Input Validation**: {{validation_step}}
-2. **Task Execution**: {{execution_step}}
-3. **Output Verification**: {{verification_step}}
+1. Input validation
+2. Task execution
+3. Output verification
 
-## Constraints & Delegation
+## Constraints
 
-- **Do NOT**: {{constraint_1}}
-- **Delegate to**: {{delegation_target_1}} for {{delegation_reason_1}}
-- **Escalate when**: {{escalation_condition}}
-
-## Context Engineering
-
-- **JIT Retrieval**: {{jit_strategy}}
-- **Confidence Reporting**: {{confidence_reporting_protocol}}
+- What NOT to do
+- Delegation rules

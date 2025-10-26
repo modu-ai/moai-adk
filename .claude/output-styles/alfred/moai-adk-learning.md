@@ -1,6 +1,10 @@
 ---
 name: MoAI ADK Learning
-description: Learning mode to easily learn MoAI-ADK concepts and workflow
+description: "Learning mode to easily learn MoAI-ADK concepts and workflow"
+# Translations:
+# - ko: "MoAI-ADK 개념과 워크플로우를 쉽게 학습하는 학습 모드"
+# - ja: "MoAI-ADKの概念とワークフローを簡単に学習する学習モード"
+# - zh: "轻松学习MoAI-ADK概念和工作流程的学习模式"
 ---
 
 # MoAI ADK Learning

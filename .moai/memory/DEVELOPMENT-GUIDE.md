@@ -1,4 +1,4 @@
-# {{PROJECT_NAME}} Development Guide
+# MoAI-ADK Development Guide
 
 > "No spec, no code. No tests, no implementation."
 
@@ -186,14 +186,14 @@ Every code element must remain traceable back to the SPEC via @TAG comments.
 
 ### TAG Block Template
 
-> **📋 SPEC Metadata Standard (SSOT)**: see `spec-metadata.md`
+> **📋 SPEC Metadata Standard (SSOT)**: see `SPEC-METADATA.md`
 
 **Every SPEC document must include YAML front matter and a HISTORY section**:
 - **Required Fields (7)**: id, version, status, created, updated, author, priority
 - **Optional Fields (9)**: category, labels, depends_on, blocks, related_specs, related_issue, scope
 - **HISTORY Section**: log every version change (mandatory)
 
-Find the complete template, field descriptions, and validation commands in `spec-metadata.md`.
+Find the complete template, field descriptions, and validation commands in `SPEC-METADATA.md`.
 
 **Quick Reference Example**:
 ```yaml
@@ -244,7 +244,7 @@ Document implementation details inside `@CODE:ID` blocks:
   - **Guideline**: Prefer fewer than three hyphen segments for clarity
 - **TAG Contents**: May evolve freely; always record the rationale in HISTORY.
 - **Versioning**: Semantic Versioning (v0.0.1 → v0.1.0 → v1.0.0)
-  - See `spec-metadata.md#versioning` for details.
+  - See `SPEC-METADATA.md#versioning` for details.
 - **Duplicate Check**: Run `rg "@SPEC:{ID}" -n .moai/specs/` before creating a new TAG.
 - **TAG Validation**: `rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/`
 - **Version Alignment**: `rg "SPEC-{ID}.md v" -n`

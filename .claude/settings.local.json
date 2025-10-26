@@ -12,10 +12,17 @@
       "mcp__context7__get-library-docs",
       "Bash(awk:*)",
       "Skill(moai-foundation-git)",
-      "Skill(moai-alfred-interactive-questions)"
+      "Skill(moai-alfred-interactive-questions)",
+      "Bash(/Users/goos/.local/bin/moai-adk:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh api:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh label list:*)",
+      "Bash(bandit:*)",
+      "Bash(pip-audit:*)"
     ],
     "deny": [],
     "ask": []
   },
-  "outputStyle": "Agentic Coding"
+  "outputStyle": "Explanatory"
 }

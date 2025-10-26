@@ -76,8 +76,10 @@ def status() -> None:
         table.add_column("Key", style="cyan")
         table.add_column("Value", style="bold")
 
-        table.add_row("Mode", config.get("mode", "unknown"))
-        table.add_row("Locale", config.get("locale", "unknown"))
+        # Read from project section (with legacy fallback)
+        project = config.get("project", {})
+        table.add_row("Mode", project.get("mode") or config.get("mode", "unknown"))
+        table.add_row("Locale", project.get("locale") or config.get("locale", "unknown"))
         table.add_row("SPECs", str(spec_count))
 
         # Optionally include Git information

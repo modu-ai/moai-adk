@@ -1,19 +1,23 @@
 ---
 name: alfred:1-plan
-description: Planning (brainstorming, plan writing, design discussion) + Branch/PR creation
-argument-hint: "Title 1 Title 2 ... | SPEC-ID modifications"
+description: "Planning (brainstorming, plan writing, design discussion) + Branch/PR creation"
+# Translations:
+# - ko: "계획 수립 (브레인스토밍, 설계 논의) + 브랜치/PR 생성"
+# - ja: "計画策定（ブレインストーミング、設計議論）+ ブランチ/PR作成"
+# - zh: "规划（头脑风暴、设计讨论）+ 分支/PR创建"
+argument-hint: Title 1 Title 2 ... | SPEC-ID modifications
 allowed-tools:
-  - Read
-  - Write
-  - Edit
-  - MultiEdit
-  - Grep
-  - Glob
-  - TodoWrite
-  - Bash(git:*)
-  - Bash(gh:*)
-  - Bash(rg:*)
-  - Bash(mkdir:*)
+- Read
+- Write
+- Edit
+- MultiEdit
+- Grep
+- Glob
+- TodoWrite
+- Bash(git:*)
+- Bash(gh:*)
+- Bash(rg:*)
+- Bash(mkdir:*)
 ---
 
 # 🏗️ MoAI-ADK Step 1: Establish a plan (Plan) - Always make a plan first and then proceed.
@@ -25,7 +29,7 @@ allowed-tools:
 
 **Plan for**: $ARGUMENTS
 
-## 💡 Planning philosophy: “Always make a plan first and then proceed.”
+## 💡 Planning philosophy: "Always make a plan first and then proceed."
 
 `/alfred:1-plan` is a general-purpose command that **creates a plan**, rather than simply “creating” a SPEC document.
 

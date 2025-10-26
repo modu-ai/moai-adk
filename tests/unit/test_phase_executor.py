@@ -266,10 +266,12 @@ class TestConfigurationPhase:
     ) -> None:
         """Should write config data correctly"""
         config = {
-            "projectName": "TestProject",
-            "mode": "team",
-            "locale": "en",
-            "language": "typescript",
+            "project": {
+                "name": "TestProject",
+                "mode": "team",
+                "locale": "en",
+                "language": "typescript",
+            }
         }
 
         (tmp_path / ".moai").mkdir(parents=True)
@@ -279,10 +281,12 @@ class TestConfigurationPhase:
         config_path = tmp_path / ".moai" / "config.json"
         saved_config = json.loads(config_path.read_text())
 
-        assert saved_config["projectName"] == "TestProject"
-        assert saved_config["mode"] == "team"
-        assert saved_config["locale"] == "en"
-        assert saved_config["language"] == "typescript"
+        # Check project section
+        assert "project" in saved_config
+        assert saved_config["project"]["name"] == "TestProject"
+        assert saved_config["project"]["mode"] == "team"
+        assert saved_config["project"]["locale"] == "en"
+        assert saved_config["project"]["language"] == "typescript"
 
 
 class TestValidationPhase:

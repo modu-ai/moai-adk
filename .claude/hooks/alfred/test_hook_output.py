@@ -23,7 +23,7 @@ HOOKS_DIR = Path(__file__).parent
 if str(HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(HOOKS_DIR))
 
-from core import HookResult
+from core import HookResult  # noqa: E402
 
 
 def test_basic_output():
