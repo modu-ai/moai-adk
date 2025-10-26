@@ -90,11 +90,12 @@ jobs:
           spec_id="${{ steps.extract.outputs.spec_id }}"
           spec_title="${{ steps.extract.outputs.spec_title }}"
 
-          # Search for existing issue
+          # Search for existing issue - use simpler query
+          echo "Searching for existing issue with SPEC-$spec_id..."
           issue_number=$(gh issue list \
-            --search "SPEC-$spec_id in:title" \
-            --json number \
-            --jq '.[0].number' 2>/dev/null || echo "")
+            --limit 100 \
+            --json number,title \
+            --jq ".[] | select(.title | contains(\"SPEC-$spec_id\")) | .number" 2>/dev/null | head -1 || echo "")
 
           if [ -z "$issue_number" ] || [ "$issue_number" = "null" ]; then
             echo "issue_exists=false" >> $GITHUB_OUTPUT
@@ -152,7 +153,9 @@ $spec_content
 "
 
           # Check if issue exists
-          if [ "${{ steps.check-issue.outputs.issue_exists }}" = "true" ]; then
+          issue_exists="${{ steps.check-issue.outputs.issue_exists }}"
+          echo "Debug - issue_exists: [$issue_exists]"
+          if [ "$issue_exists" = "true" ]; then
             # Update existing issue
             issue_num="${{ steps.check-issue.outputs.issue_number }}"
             gh issue edit "$issue_num" \
