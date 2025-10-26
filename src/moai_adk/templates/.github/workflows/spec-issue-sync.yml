@@ -151,14 +151,17 @@ jobs:
           spec_id="${{ steps.spec.outputs.spec_id }}"
           spec_title="${{ steps.spec.outputs.spec_title }}"
 
-          pr_comment="✅ **SPEC GitHub Issue Created**
+          # Create PR comment body using same pattern
+          {
+            echo "✅ **SPEC GitHub Issue Created**"
+            echo ""
+            echo "This SPEC has been synchronized to GitHub Issue."
+            echo ""
+            echo "📋 **Issue**: [#$issue_num - SPEC-$spec_id: $spec_title](../issues/$issue_num)"
+            echo "🔗 **SPEC File**: \`.moai/specs/SPEC-$spec_id/spec.md\`"
+            echo ""
+            echo "The issue will be automatically updated as you modify the SPEC document."
+          } > /tmp/pr_comment.txt
 
-This SPEC has been synchronized to GitHub Issue.
-
-📋 **Issue**: [#$issue_num - SPEC-$spec_id: $spec_title](../issues/$issue_num)
-🔗 **SPEC File**: \`.moai/specs/SPEC-$spec_id/spec.md\`
-
-The issue will be automatically updated as you modify the SPEC document."
-
-          gh pr comment ${{ github.event.pull_request.number }} --body "$pr_comment"
+          gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/pr_comment.txt
           echo "✅ Added PR comment linking to issue #$issue_num"
