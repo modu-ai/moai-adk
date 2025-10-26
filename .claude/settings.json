@@ -3,6 +3,7 @@
     "MOAI_RUNTIME": "python",
     "MOAI_AUTO_ROUTING": "true",
     "MOAI_PERFORMANCE_MONITORING": "true",
+    "PYTHON_ENV": "{{PROJECT_MODE}}",
     "MOAI_PROJECT_MODE": "team"
   },
   "hooks": {
@@ -10,7 +11,7 @@
       {
         "hooks": [
           {
-            "command": "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/alfred/alfred_hooks.py SessionStart",
+            "command": "uv run .claude/hooks/alfred/alfred_hooks.py SessionStart",
             "type": "command"
           }
         ]
@@ -20,99 +21,116 @@
       {
         "hooks": [
           {
-            "command": "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/alfred/alfred_hooks.py PreToolUse",
+            "command": "uv run .claude/hooks/alfred/alfred_hooks.py PreToolUse",
             "type": "command"
           }
         ],
-        "matcher": "Edit|Write|MultiEdit|Bash"
+        "matcher": "Edit|Write|MultiEdit"
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "command": "uv run .claude/hooks/alfred/alfred_hooks.py UserPromptSubmit",
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "command": "uv run .claude/hooks/alfred/alfred_hooks.py SessionEnd",
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "uv run .claude/hooks/alfred/alfred_hooks.py PostToolUse",
+            "type": "command"
+          }
+        ],
+        "matcher": "Edit|Write|MultiEdit"
       }
     ]
   },
   "permissions": {
     "defaultMode": "default",
     "allow": [
-      "Task",
-      "Read",
-      "Write",
+      "Bash(alfred:*)",
+      "Bash(black:*)",
+      "Bash(coverage:*)",
+      "Bash(cp:*)",
+      "Bash(diff:*)",
+      "Bash(echo:*)",
+      "Bash(gh issue:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh repo view:*)",
+      "Bash(git:*)",
+      "Bash(ls:*)",
+      "Bash(make:*)",
+      "Bash(mkdir:*)",
+      "Bash(moai-adk:*)",
+      "Bash(mv:*)",
+      "Bash(mypy:*)",
+      "Bash(pytest:*)",
+      "Bash(python3:*)",
+      "Bash(python:*)",
+      "Bash(rg:*)",
+      "Bash(ruff:*)",
+      "Bash(sort:*)",
+      "Bash(touch:*)",
+      "Bash(tree:*)",
+      "Bash(uniq:*)",
+      "Bash(uv:*)",
+      "Bash(wc:*)",
+      "Bash(which:*)",
+      "BashOutput",
       "Edit",
+      "Glob",
+      "Grep",
+      "KillShell",
       "MultiEdit",
       "NotebookEdit",
-      "Grep",
-      "Glob",
+      "Read",
+      "Task",
       "TodoWrite",
       "WebFetch",
       "WebSearch",
-      "BashOutput",
-      "KillShell",
-      "Bash(git:*)",
-      "Bash(rg:*)",
-      "Bash(ls:*)",
-      "Bash(echo:*)",
-      "Bash(which:*)",
-      "Bash(make:*)",
-      "Bash(python:*)",
-      "Bash(python3:*)",
-      "Bash(uv:*)",
-      "Bash(pytest:*)",
-      "Bash(mypy:*)",
-      "Bash(ruff:*)",
-      "Bash(black:*)",
-      "Bash(coverage:*)",
-      "Bash(moai-adk:*)",
-      "Bash(alfred:*)",
-      "Bash(gh pr create:*)",
-      "Bash(gh pr view:*)",
-      "Bash(gh pr list:*)",
-      "Bash(gh pr merge:*)",
-      "Bash(gh repo view:*)",
-      "Bash(gh issue:*)",
-      "Bash(mkdir:*)",
-      "Bash(touch:*)",
-      "Bash(cp:*)",
-      "Bash(mv:*)",
-      "Bash(tree:*)",
-      "Bash(diff:*)",
-      "Bash(wc:*)",
-      "Bash(sort:*)",
-      "Bash(uniq:*)"
+      "Write"
     ],
     "ask": [
-      "Bash(git push:*)",
-      "Bash(git pull:*)",
-      "Bash(git merge:*)",
-      "Bash(git reset:*)",
-      "Bash(git rebase:*)",
-      "Bash(git clean:*)",
       "Bash(gh pr merge:*)",
-      "Bash(uv add:*)",
-      "Bash(uv remove:*)",
+      "Bash(git clean:*)",
+      "Bash(git merge:*)",
+      "Bash(git pull:*)",
+      "Bash(git push:*)",
+      "Bash(git rebase:*)",
+      "Bash(git reset:*)",
       "Bash(pip install:*)",
       "Bash(pip3 install:*)",
+      "Bash(rm -rf:*)",
       "Bash(rm:*)",
-      "Bash(sudo:*)"
+      "Bash(sudo:*)",
+      "Bash(uv add:*)",
+      "Bash(uv remove:*)"
     ],
     "deny": [
       "Read(./.env)",
       "Read(./.env.*)",
-      "Read(**/.env)",
-      "Read(**/.env.*)",
       "Read(./secrets/**)",
-      "Read(**/credentials.*)",
-      "Read(**/id_rsa*)",
-      "Read(**/*.pem)",
-      "Read(**/*.key)",
       "Read(~/.ssh/**)",
       "Read(~/.aws/**)",
       "Read(~/.config/gcloud/**)",
-      "Bash(git clean -fd:*)",
-      "Bash(git clean -fdx:*)",
-      "Bash(git reset --hard:*)",
-      "Bash(git push --force:*)",
-      "Bash(git push -f:*)",
-      "Bash(eval:*)",
-      "Bash(exec:*)",
-      "Bash(python -c:*)",
-      "Bash(python -m pip install:*)",
       "Bash(rm -rf /:*)",
       "Bash(rm -rf /*:*)",
       "Bash(rm -rf C\\:/:*)",

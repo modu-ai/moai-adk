@@ -1,8 +1,28 @@
 ---
-name: "Authoring CLAUDE.md Project Instructions"
-description: "Design project-specific AI guidance, document workflows, define architecture patterns. Use when creating CLAUDE.md files for projects, documenting team standards, or establishing AI collaboration guidelines."
+name: moai-cc-claude-md
+description: "Authoring CLAUDE.md Project Instructions. Design project-specific AI guidance, document workflows, define architecture patterns. Use when creating CLAUDE.md files for projects, documenting team standards, or establishing AI collaboration guidelines."
 allowed-tools: "Read, Write, Edit, Glob"
 ---
+
+## Skill Metadata
+
+| Field | Value |
+| ----- | ----- |
+| Version | 1.0.0 |
+| Tier | Ops |
+| Auto-load | When authoring CLAUDE.md files |
+
+## What It Does
+
+프로젝트별 CLAUDE.md 파일 작성을 위한 표준 구조와 패턴을 제공합니다. AI 협업 가이드라인, 워크플로우 문서화, 아키텍처 패턴 정의 방법을 다룹니다.
+
+## When to Use
+
+- 새 프로젝트의 CLAUDE.md 파일을 생성할 때
+- 기존 CLAUDE.md를 업데이트하거나 개선할 때
+- 팀 표준 및 개발 워크플로우를 문서화할 때
+- AI 협업 패턴을 정의할 때
+
 
 # Authoring CLAUDE.md Project Instructions
 
