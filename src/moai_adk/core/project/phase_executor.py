@@ -151,7 +151,7 @@ class PhaseExecutor:
                 "PROJECT_VERSION": config.get("version", "0.1.0"),
                 "PROJECT_OWNER": config.get("author", "@user"),
                 "AUTHOR": config.get("author", "@user"),
-                "CONVERSATION_LANGUAGE": config.get("locale", "en"),
+                "CONVERSATION_LANGUAGE": config.get("conversation_language", config.get("locale", "en")),
                 "CODEBASE_LANGUAGE": config.get("language", "generic"),
             }
             processor.set_context(context)

@@ -245,6 +245,86 @@ labels:
   - maintenance
 ```
 
+### Updating config.json for Language Support (v0.4.2+)
+
+**Background**: MoAI-ADK v0.4.2 introduces conversation language selection in `/alfred:0-project`. Existing projects need to add language metadata to `.moai/config.json`.
+
+#### Migration Steps
+
+**For Existing Projects** (before v0.4.2):
+
+Current config.json structure:
+```json
+{
+  "project": {
+    "locale": "en",
+    "mode": "personal",
+    "language": "python"
+  }
+}
+```
+
+**Updated Structure** (v0.4.2+):
+```json
+{
+  "project": {
+    "locale": "en",
+    "mode": "personal",
+    "language": "python",
+    "conversation_language": "en",
+    "conversation_language_name": "English",
+    "codebase_languages": ["python"]
+  }
+}
+```
+
+#### New Fields
+
+| Field | Type | Required | Description | Example |
+|-------|------|----------|-------------|---------|
+| `conversation_language` | string (ISO 639-1 code) | ✅ Yes | Two-letter language code for Alfred dialogs | `"ko"`, `"en"`, `"ja"`, `"zh"` |
+| `conversation_language_name` | string | ✅ Yes | Display name of conversation language | `"Korean"`, `"English"` |
+| `codebase_languages` | array of strings | ✅ Yes | List of programming languages detected | `["python"]`, `["typescript", "python"]` |
+
+#### Manual Update Process
+
+1. Open `.moai/config.json`
+2. Add the three new fields under `project`:
+   ```json
+   "conversation_language": "en",
+   "conversation_language_name": "English",
+   "codebase_languages": ["python"]
+   ```
+3. Save and commit:
+   ```bash
+   git add .moai/config.json
+   git commit -m "chore: add language metadata to config.json for v0.4.2+"
+   ```
+
+#### Automated Update (via `/alfred:0-project`)
+
+Running `/alfred:0-project` on an existing project will:
+1. Detect current language settings
+2. Add new fields automatically
+3. Preserve existing values
+
+**No manual action required if running `/alfred:0-project` after upgrade.**
+
+#### Field Mapping (Legacy → New)
+
+| Old Field | New Field | Migration Rule |
+|-----------|-----------|-----------------|
+| `locale` | `conversation_language` | Keep as-is (or run `/alfred:0-project` to re-select) |
+| (none) | `conversation_language_name` | Auto-populate from locale mapping |
+| `language` | `codebase_languages` | Wrap in array: `"python"` → `["python"]` |
+
+#### Backward Compatibility
+
+- ✅ Projects without new fields will continue working
+- ⚠️ New language features (multilingual documentation) unavailable without migration
+- ✅ `/alfred:0-project` automatically migrates on next run
+- ✅ Auto-detection will prefer new fields if present
+
 ---
 
 ## Design Principles

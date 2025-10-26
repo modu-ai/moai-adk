@@ -151,7 +151,7 @@ uv tool install moai-adk
 
 # 설치 확인
 moai-adk --version
-# 출력: MoAI-ADK v0.4.11
+# 출력: MoAI-ADK v1.0.0
 ```
 
 설치가 완료되면, `moai-adk` 명령어를 어디서나 사용할 수 있습니다.
@@ -159,12 +159,14 @@ moai-adk --version
 ### 단계 3: 프로젝트 생성 (약 1분)
 
 **새 프로젝트를 시작하려면:**
+
 ```bash
 moai-adk init my-project
 cd my-project
 ```
 
 **기존 프로젝트에 추가하려면:**
+
 ```bash
 cd your-existing-project
 moai-adk init .
@@ -174,19 +176,68 @@ moai-adk init .
 
 ```
 my-project/
-├── .moai/                   # MoAI-ADK 프로젝트 설정
-│   ├── config.json          
-│   ├── project/             # 프로젝트 정보
-│   ├── specs/               # SPEC 파일들
-│   └── reports/             # 분석 리포트
-├── .claude/                 # Claude Code 자동화
-│   ├── agents/              # AI 팀
-│   ├── commands/            # /alfred 명령어
-│   ├── skills/              # Claude Skills
-│   └── settings.json
-├── src/                     # 구현 코드
-├── tests/                   # 테스트 코드
-├── docs/                    # 자동 생성 문서
+├── .moai/                          # MoAI-ADK 프로젝트 설정
+│   ├── config.json                 # 프로젝트 설정 (언어, 모드, 소유자)
+│   ├── project/                    # 프로젝트 정보
+│   │   ├── product.md              # 제품 비전과 목표
+│   │   ├── structure.md            # 디렉토리 구조
+│   │   └── tech.md                 # 기술 스택 및 아키텍처
+│   ├── memory/                     # Alfred의 지식 베이스 (8개 파일)
+│   │   ├── CLAUDE-AGENTS-GUIDE.md  # Sub-agent 협업 가이드
+│   │   ├── CLAUDE-RULES.md         # 의사결정 규칙 및 표준
+│   │   ├── CLAUDE-PRACTICES.md     # 워크플로우 패턴 및 예제
+│   │   ├── CONFIG-SCHEMA.md        # .moai/config.json 스키마
+│   │   ├── DEVELOPMENT-GUIDE.md    # SPEC-First TDD 워크플로우 가이드
+│   │   ├── GITFLOW-PROTECTION-POLICY.md  # Git 브랜치 보호 정책
+│   │   ├── SKILLS-DESCRIPTION-POLICY.md  # Skills 관리 정책
+│   │   └── SPEC-METADATA.md        # SPEC YAML frontmatter 표준
+│   ├── specs/                      # SPEC 파일들
+│   │   └── SPEC-XXX-001/           # 각 SPEC은 독립 폴더
+│   │       └── spec.md             # EARS 형식 명세서
+│   └── reports/                    # 분석 리포트
+├── .claude/                        # Claude Code 자동화
+│   ├── agents/                     # 12개 Sub-agent
+│   │   └── alfred/
+│   │       ├── project-manager.md         # 프로젝트 초기화
+│   │       ├── spec-builder.md            # SPEC 작성 (EARS)
+│   │       ├── implementation-planner.md  # 아키텍처 & TAG 설계
+│   │       ├── tdd-implementer.md         # RED-GREEN-REFACTOR 루프
+│   │       ├── doc-syncer.md              # 문서 동기화
+│   │       ├── quality-gate.md            # TRUST 5 검증
+│   │       ├── tag-agent.md               # TAG 체인 검증
+│   │       ├── trust-checker.md           # 코드 품질 검사
+│   │       ├── debug-helper.md            # 오류 분석 및 수정
+│   │       ├── git-manager.md             # GitFlow & PR 관리
+│   │       ├── cc-manager.md              # Claude Code 최적화
+│   │       └── skill-factory.md           # Skills 생성 및 업데이트
+│   ├── commands/                   # 4개 Alfred 명령
+│   │   └── alfred/
+│   │       ├── 0-project.md        # 프로젝트 초기화
+│   │       ├── 1-plan.md           # SPEC 작성
+│   │       ├── 2-run.md            # TDD 구현
+│   │       └── 3-sync.md           # 문서 동기화
+│   ├── skills/                     # 58개 Claude Skills
+│   │   ├── moai-foundation-*       # 6개 Foundation 티어
+│   │   ├── moai-essentials-*       # 4개 Essentials 티어
+│   │   ├── moai-alfred-*           # 7개 Alfred 티어
+│   │   ├── moai-domain-*           # 10개 Domain 티어
+│   │   ├── moai-lang-*             # 18개 Language 티어
+│   │   ├── moai-cc-*               # 8개 Claude Code 티어
+│   │   ├── moai-skill-factory      # 1개 Skill Factory
+│   │   └── moai-spec-authoring     # 1개 SPEC 작성
+│   ├── hooks/                      # 이벤트 기반 자동화
+│   │   └── alfred/
+│   │       └── alfred_hooks.py     # 5개 hooks (Session, PreTool 등)
+│   ├── output-styles/              # 응답 스타일
+│   │   └── alfred/
+│   │       ├── agentic-coding.md
+│   │       ├── moai-adk-learning.md
+│   │       └── study-with-alfred.md
+│   └── settings.json               # Claude Code 설정
+├── src/                            # 구현 코드
+├── tests/                          # 테스트 코드
+├── docs/                           # 자동 생성 문서
+├── CLAUDE.md                       # Alfred의 핵심 지침
 └── README.md
 ```
 
@@ -221,6 +272,7 @@ claude
 ```
 
 자동으로 생성되는 것:
+
 - `@SPEC:USER-001` - 고유 ID 할당
 - `.moai/specs/SPEC-USER-001/spec.md` - EARS 형식의 전문적 SPEC
 - `feature/spec-user-001` - Git 브랜치 자동 생성
@@ -234,6 +286,7 @@ SPEC이 작성되면, TDD 방식으로 구현합니다:
 ```
 
 이 명령어가 처리합니다:
+
 - 🔴 **RED**: 실패하는 테스트 자동 작성 (`@TEST:USER-001`)
 - 🟢 **GREEN**: 최소 구현으로 테스트 통과 (`@CODE:USER-001`)
 - ♻️ **REFACTOR**: 코드 품질 개선
@@ -247,6 +300,7 @@ SPEC이 작성되면, TDD 방식으로 구현합니다:
 ```
 
 자동으로 생성/업데이트되는 것:
+
 - Living Document (API 문서)
 - README 업데이트
 - CHANGELOG 생성
@@ -282,9 +336,11 @@ cat README.md
 ```
 
 > 🔍 **확인용 명령**: `moai-adk doctor` — Python/uv 버전, `.moai/` 구조, 에이전트/Skills 구성이 모두 준비됐는지 점검합니다.
+>
 > ```bash
 > moai-adk doctor
 > ```
+>
 > 모든 초록색 체크마크가 나오면 완벽한 준비 상태입니다!
 
 ---
@@ -292,6 +348,7 @@ cat README.md
 ## MoAI-ADK 최신 버전 유지하기
 
 ### 버전 확인
+
 ```bash
 # 현재 설치된 버전 확인
 moai-adk --version
@@ -303,6 +360,7 @@ uv tool list  # moai-adk의 현재 버전 확인
 ### 업그레이드 하기
 
 #### 방법 1: moai-adk 자체 업데이트 명령어 (가장 간단)
+
 ```bash
 # MoAI-ADK 자체 업데이트 명령어 - 에이전트/Skills 템플릿도 함께 업데이트
 moai-adk update
@@ -314,24 +372,28 @@ moai-adk init .
 #### 방법 2: uv tool 명령어로 업그레이드
 
 **특정 도구만 업그레이드 (권장)**
+
 ```bash
 # moai-adk만 최신 버전으로 업그레이드
 uv tool upgrade moai-adk
 ```
 
 **모든 설치된 도구 업그레이드**
+
 ```bash
 # 모든 uv tool 도구를 최신 버전으로 업그레이트
 uv tool update
 ```
 
 **특정 버전으로 설치**
+
 ```bash
 # 특정 버전으로 재설치 (예: 0.4.2)
 uv tool install moai-adk==0.4.2
 ```
 
 ### 업데이트 후 확인
+
 ```bash
 # 1. 설치된 버전 확인
 moai-adk --version
@@ -350,6 +412,7 @@ claude
 ```
 
 > 💡 **Tip**:
+>
 > - `moai-adk update`: MoAI-ADK 패키지 버전 업데이트 + 에이전트/Skills 템플릿 동기화
 > - `moai-adk init .`: 기존 프로젝트에 새 템플릿 적용 (코드는 안전하게 유지)
 > - 두 명령을 함께 실행하면 완전한 업데이트가 완료됩니다.
@@ -373,22 +436,26 @@ graph TD
 ```
 
 ### 0. PROJECT — 프로젝트 준비
+
 - 프로젝트 소개, 타깃, 언어, 모드(locale) 질문
 - `.moai/config.json`, `.moai/project/*` 문서 5종 자동 생성
 - 언어 감지 및 추천 Skill Pack 배치 (Foundation + Essentials + Domain/Language)
 - 템플릿 정리, 초깃 Git/백업 체크
 
 ### 1. PLAN — 무엇을 만들지 SPEC 생성
+
 - EARS 템플릿으로 SPEC 작성 (`@SPEC:ID` 포함)
 - Plan Board, 구현 아이디어, 위험 요소 정리
 - Team 모드라면 브랜치/초기 Draft PR 자동 생성
 
 ### 2. RUN — 테스트 주도 개발(TDD)
+
 - Phase 1 `implementation-planner`: 라이브러리, 폴더, TAG 설계
 - Phase 2 `tdd-implementer`: RED(실패 테스트) → GREEN(최소 구현) → REFACTOR(정리)
 - quality-gate가 TRUST 5 원칙, 커버리지 변화를 검증
 
 ### 3. SYNC — 문서 & PR 정리
+
 - Living Document, README, CHANGELOG 등 문서 동기화
 - TAG 체인 검증 및 orphan TAG 복구
 - Sync Report 생성, Draft → Ready for Review 전환, `--auto-merge` 옵션 지원
@@ -429,6 +496,7 @@ MoAI-ADK는 5가지 핵심 개념으로 이루어져 있습니다. 각 개념은
 **어떻게?** `/alfred:1-plan` 명령어가 EARS 형식으로 전문적인 SPEC을 자동으로 만들어줍니다.
 
 **얻는 것**:
+
 - ✅ 팀 모두가 이해하는 명확한 요구사항
 - ✅ SPEC 기반의 테스트 케이스 (무엇을 테스트할지 이미 정의됨)
 - ✅ 요구사항 변경 시 `@SPEC:ID` TAG로 영향받는 모든 코드 추적 가능
@@ -444,11 +512,13 @@ MoAI-ADK는 5가지 핵심 개념으로 이루어져 있습니다. 각 개념은
 **3단계 순환**:
 
 1. **🔴 RED**: 실패하는 테스트를 먼저 작성합니다
+
    - SPEC의 각 요구사항이 테스트 케이스가 됨
    - 아직 구현이 없으므로 반드시 실패
    - Git 커밋: `test(AUTH-001): add failing test`
 
 2. **🟢 GREEN**: 테스트를 통과시키는 최소 구현을 합니다
+
    - 가장 단순한 방법으로 테스트 통과
    - 완벽함보다 통과가 먼저
    - Git 커밋: `feat(AUTH-001): implement minimal solution`
@@ -462,6 +532,7 @@ MoAI-ADK는 5가지 핵심 개념으로 이루어져 있습니다. 각 개념은
 **어떻게?** `/alfred:2-run` 명령어가 이 3단계를 자동으로 진행합니다.
 
 **얻는 것**:
+
 - ✅ 커버리지 85% 이상 보증 (테스트 없는 코드 없음)
 - ✅ 리팩토링 자신감 (언제든 테스트로 검증 가능)
 - ✅ 명확한 Git 히스토리 (RED → GREEN → REFACTOR 과정 추적)
@@ -475,6 +546,7 @@ MoAI-ADK는 5가지 핵심 개념으로 이루어져 있습니다. 각 개념은
 **핵심**: 모든 SPEC, 테스트, 코드, 문서에 `@TAG:ID`를 붙여 **일대일 대응**을 만듭니다.
 
 **TAG 체인**:
+
 ```
 @SPEC:AUTH-001 (요구사항)
     ↓
@@ -486,11 +558,13 @@ MoAI-ADK는 5가지 핵심 개념으로 이루어져 있습니다. 각 개념은
 ```
 
 **TAG ID 규칙**: `<도메인>-<3자리 숫자>`
+
 - AUTH-001, AUTH-002, AUTH-003...
 - USER-001, USER-002...
 - 한번 할당되면 **절대 변경하지 않습니다**
 
 **어떻게 사용?** 요구사항이 변경되면:
+
 ```bash
 # AUTH-001과 관련된 모든 것 찾기
 rg '@TAG:AUTH-001' -n
@@ -502,6 +576,7 @@ rg '@TAG:AUTH-001' -n
 **어떻게?** `/alfred:3-sync` 명령어가 TAG 체인을 검증하고, orphan TAG(대응되지 않은 TAG)를 탐지합니다.
 
 **얻는 것**:
+
 - ✅ 모든 코드의 의도가 명확 (SPEC을 읽으면 왜 이 코드가 있는지 이해)
 - ✅ 리팩토링 시 영향받는 모든 코드 즉시 파악
 - ✅ 3개월 후에도 코드 이해 가능 (TAG → SPEC 추적)
@@ -515,21 +590,25 @@ rg '@TAG:AUTH-001' -n
 **핵심**: 모든 코드는 다음 5가지 원칙을 반드시 지켜야 합니다. `/alfred:3-sync`가 이를 자동으로 검증합니다.
 
 1. **🧪 Test First** (테스트가 먼저)
+
    - 테스트 커버리지 ≥ 85%
    - 모든 코드가 테스트로 보호받음
    - 기능 추가 = 테스트 추가
 
 2. **📖 Readable** (읽기 쉬운 코드)
+
    - 함수 ≤ 50줄, 파일 ≤ 300줄
    - 변수명이 의도를 드러냄
    - 린터(ESLint/ruff/clippy) 통과
 
 3. **🎯 Unified** (일관된 구조)
+
    - SPEC 기반 아키텍처 유지
    - 같은 패턴이 반복됨 (학습 곡선 감소)
    - 타입 안전성 또는 런타임 검증
 
 4. **🔒 Secured** (보안)
+
    - 입력 검증 (XSS, SQL Injection 방어)
    - 비밀번호 해싱 (bcrypt, Argon2)
    - 민감정보 보호 (환경변수)
@@ -542,6 +621,7 @@ rg '@TAG:AUTH-001' -n
 **어떻게?** `/alfred:3-sync` 명령어가 TRUST 검증을 자동으로 수행합니다.
 
 **얻는 것**:
+
 - ✅ 프로덕션 품질의 코드 보증
 - ✅ 팀 전체가 같은 기준으로 개발
 - ✅ 버그 감소, 보안 취약점 사전 방지
@@ -555,12 +635,14 @@ rg '@TAG:AUTH-001' -n
 **핵심**: AI 에이전트들이 협력해 개발 과정 전체를 자동화합니다:
 
 **에이전트 구성**:
+
 - **Alfred SuperAgent**: 전체 오케스트레이션
 - **Core Sub-agent**: SPEC 작성, TDD 구현, 문서 동기화 등 전문 업무
 - **Zero-project Specialist**: 프로젝트 초기화, 언어 감지 등
 - **Built-in Agent**: 일반 질문, 코드베이스 탐색
 
 **Claude Skills**:
+
 - **Foundation**: TRUST/TAG/SPEC/Git/EARS 원칙
 - **Essentials**: 디버깅, 성능, 리팩토링, 코드 리뷰
 - **Alfred**: 워크플로우 자동화
@@ -571,6 +653,7 @@ rg '@TAG:AUTH-001' -n
 **어떻게?** `/alfred:*` 명령어가 필요한 전문가팀을 자동으로 활성화합니다.
 
 **얻는 것**:
+
 - ✅ 프롬프트 작성 불필요 (표준화된 명령어 사용)
 - ✅ 프로젝트 컨텍스트 자동 기억 (같은 질문 반복 안 함)
 - ✅ 최적의 전문가 팀 자동 구성 (상황에 맞는 Sub-agent 활성화)
@@ -625,6 +708,7 @@ priority: high
 ```
 
 **또한 다음도 자동 생성됩니다**:
+
 - 📋 `Plan Board`: 구현 아이디어, 위험 요소, 해결 전략
 - ✅ `Acceptance Criteria`: 검증 기준
 - 🌿 `feature/spec-todo-001` Git 브랜치
@@ -638,6 +722,7 @@ priority: high
 **Phase 1: 구현 전략 수립**
 
 **implementation-planner** Sub-agent가 다음을 결정합니다:
+
 - 📚 라이브러리: FastAPI + SQLAlchemy
 - 📁 폴더 구조: `src/todo/`, `tests/todo/`
 - 🏷️ TAG 설계: `@CODE:TODO-001:API`, `@CODE:TODO-001:MODEL`, `@CODE:TODO-001:REPO`
@@ -681,6 +766,7 @@ def test_get_todo_with_invalid_id_should_return_404():
 **결과**: ❌ 모두 실패 (create_todo가 정의되지 않음)
 
 **Git 커밋**:
+
 ```bash
 git commit -m "🔴 test(TODO-001): add failing API tests"
 ```
@@ -725,6 +811,7 @@ def get_todo(todo_id: str):
 **결과**: ✅ 모두 통과!
 
 **Git 커밋**:
+
 ```bash
 git commit -m "🟢 feat(TODO-001): implement minimal Todo API"
 ```
@@ -759,6 +846,7 @@ class Todo(Base):
 **결과**: ✅ 여전히 모두 통과!
 
 **Git 커밋**:
+
 ```bash
 git commit -m "♻️ refactor(TODO-001): add database models and validation"
 ```
@@ -783,6 +871,7 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
 **자동으로 수행되는 것**:
 
 1. **TAG 체인 검증**
+
    ```bash
    ✅ @SPEC:TODO-001 → .moai/specs/SPEC-TODO-001/spec.md
    ✅ @TEST:TODO-001 → tests/test_todo_api.py
@@ -794,15 +883,18 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
    ```
 
 2. **Living Document 생성**
+
    ```markdown
    # @DOC:TODO-001: Todo Management API
 
    ## Overview
+
    REST API for managing tasks with CRUD operations.
 
    ## Endpoints
 
    ### Create Todo
+
    - Method: POST
    - URL: /todos
    - Request: {"title": "string (1-200 chars)"}
@@ -811,6 +903,7 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
    - Tested in: @TEST:TODO-001
 
    ### Get All Todos
+
    - Method: GET
    - URL: /todos
    - Response: 200 OK with array of todos
@@ -819,6 +912,7 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
    ```
 
 3. **README 업데이트**
+
    ```markdown
    ## Features
 
@@ -826,12 +920,14 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
    ```
 
 4. **CHANGELOG 생성**
+
    ```markdown
    # Changelog
 
    ## [0.1.0] - 2025-10-22
 
    ### Added
+
    - Todo Management API with CRUD operations (@SPEC:TODO-001)
      - Create new todos
      - List all todos
@@ -839,6 +935,7 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
      - Delete todos
 
    ### Implementation Details
+
    - SPEC: .moai/specs/SPEC-TODO-001/spec.md
    - Tests: tests/test_todo_api.py (87% coverage)
    - Code: src/todo/ with models, API, repository layers
@@ -924,8 +1021,8 @@ Alfred는 여러 전문 에이전트와 Claude Skills를 조합해 작업합니�
 
 ### Core Sub-agents (Plan → Run → Sync)
 
-| Sub-agent         | 모델   | 역할                                                         |
-| ----------------- | ------ | ------------------------------------------------------------ |
+| Sub-agent          | 모델   | 역할                                                         |
+| ------------------ | ------ | ------------------------------------------------------------ |
 | project-manager 📋 | Sonnet | 프로젝트 초기화, 메타데이터 인터뷰                           |
 | spec-builder 🏗️    | Sonnet | Plan 보드, EARS SPEC 작성                                    |
 | code-builder 💎    | Sonnet | `implementation-planner` + `tdd-implementer`로 TDD 전체 수행 |
@@ -942,6 +1039,7 @@ Alfred는 여러 전문 에이전트와 Claude Skills를 조합해 작업합니�
 Alfred는 Claude Skills를 4-tier 아키텍처로 구성하여 필요할 때만 Just-In-Time 로드하는 **Progressive Disclosure** 방식을 사용합니다. 각 Skill은 `.claude/skills/` 디렉터리에 저장된 프로덕션급 가이드입니다.
 
 #### Foundation Tier
+
 핵심 TRUST/TAG/SPEC/Git/EARS/Language 원칙을 담은 기반 스킬
 
 | Skill                   | 설명                                                                       |
@@ -954,6 +1052,7 @@ Alfred는 Claude Skills를 4-tier 아키텍처로 구성하여 필요할 때만 
 | `moai-foundation-langs` | 프로젝트 언어/프레임워크 자동 감지 (package.json, pyproject.toml 등)       |
 
 #### Essentials Tier
+
 일상 개발 업무에 필요한 핵심 도구들
 
 | Skill                      | 설명                                           |
@@ -964,6 +1063,7 @@ Alfred는 Claude Skills를 4-tier 아키텍처로 구성하여 필요할 때만 
 | `moai-essentials-review`   | 자동 코드 리뷰, SOLID 원칙, 코드 냄새 감지     |
 
 #### Alfred Tier
+
 MoAI-ADK 내부 워크플로우 오케스트레이션 스킬
 
 | Skill                                  | 설명                                                                |
@@ -977,6 +1077,7 @@ MoAI-ADK 내부 워크플로우 오케스트레이션 스킬
 | `moai-alfred-interactive-questions`    | Claude Code Tools AskUserQuestion TUI 메뉴 표준화                   |
 
 #### Domain Tier
+
 특화된 도메인 전문 지식
 
 | Skill                      | 설명                                                                      |
@@ -993,6 +1094,7 @@ MoAI-ADK 내부 워크플로우 오케스트레이션 스킬
 | `moai-domain-web-api`      | REST API, GraphQL 설계 패턴, 인증, 버전 관리, OpenAPI 문서화              |
 
 #### Language Tier
+
 프로그래밍 언어별 최고 관행
 
 | Skill                  | 설명                                                   |
@@ -1017,6 +1119,7 @@ MoAI-ADK 내부 워크플로우 오케스트레이션 스킬
 | `moai-lang-r`          | testthat, lintr, 데이터 분석 패턴                      |
 
 #### Claude Code Ops
+
 Claude Code 세션 관리
 
 | Skill              | 설명                                                                     |
@@ -1049,23 +1152,25 @@ Hook은 Claude Code 세션의 특정 이벤트에 반응하는 이벤트 기반 
 
 ### 설치된 Hooks (5개)
 
-| Hook | 상태 | 기능 |
-|------|------|------|
-| SessionStart | ✅ 활성 | 언어/Git/SPEC 진행/체크포인트 등 프로젝트 상태 요약 |
-| PreToolUse | ✅ 활성 | 위험 탐지 + 자동 체크포인트(삭제/병합/대량편집/중요파일) + **TAG Guard** (누락된 @TAG 감지) |
-| UserPromptSubmit | ✅ 활성 | JIT 컨텍스트 로딩(@SPEC·테스트·코드·문서 자동 로드) |
-| PostToolUse | ✅ 활성 | 코드 변경 후 자동 테스트(파이썬/TS/JS/Go/Rust/Java 등) |
-| SessionEnd | ✅ 활성 | 세션 정리 및 상태 보존 |
+| Hook             | 상태    | 기능                                                                                        |
+| ---------------- | ------- | ------------------------------------------------------------------------------------------- |
+| SessionStart     | ✅ 활성 | 언어/Git/SPEC 진행/체크포인트 등 프로젝트 상태 요약                                         |
+| PreToolUse       | ✅ 활성 | 위험 탐지 + 자동 체크포인트(삭제/병합/대량편집/중요파일) + **TAG Guard** (누락된 @TAG 감지) |
+| UserPromptSubmit | ✅ 활성 | JIT 컨텍스트 로딩(@SPEC·테스트·코드·문서 자동 로드)                                         |
+| PostToolUse      | ✅ 활성 | 코드 변경 후 자동 테스트(파이썬/TS/JS/Go/Rust/Java 등)                                      |
+| SessionEnd       | ✅ 활성 | 세션 정리 및 상태 보존                                                                      |
 
 #### TAG Guard (v0.4.11 신규 기능)
 
 PreToolUse Hook에서 작동하는 자동 @TAG 검증 시스템:
+
 - 스테이징, 수정, 미추적 파일 자동 스캔
 - SPEC/TEST/CODE/DOC 파일에 @TAG 마커가 없으면 경고
 - `.moai/tag-rules.json`으로 규칙 설정 가능
 - 비차단 방식 (부드러운 알림, 실행을 중단하지 않음)
 
 **경고 메시지 예시**:
+
 ```
 ⚠️ TAG 누락 감지: 생성/수정한 파일 중 @TAG가 없는 항목이 있습니다.
  - src/auth/service.py → 기대 태그: @CODE:
@@ -1118,425 +1223,41 @@ PreToolUse Hook에서 작동하는 자동 @TAG 검증 시스템:
 
 ## 최신 업데이트
 
-| 버전 | 주요 기능 | 날짜 |
-| ---------- | ------------------------------------------------------------------------------------ | ---------- |
-| **v0.4.11** | ✨ TAG Guard 시스템 + CLAUDE.md 포맷팅 개선 + 코드 정리                | 2025-10-23 |
-| **v0.4.10** | 🔧 Hook 견고성 향상 + 다국어 문서화 + 템플릿 언어 설정 | 2025-10-23 |
-| **v0.4.9** | 🎯 Hook JSON 스키마 검증 수정 + 포괄적 테스트 (468/468 통과)        | 2025-10-23 |
-| **v0.4.8** | 🚀 릴리즈 자동화 + PyPI 배포 + Skills 개선                          | 2025-10-23 |
-| **v0.4.7** | 📖 한국어 최적화 + SPEC-First 원칙 문서화                 | 2025-10-22 |
-| **v0.4.6** | 🎉 Skills v2.0 완성 (100% 프로덕션 준비) + 85,000줄 공식 문서 + 300+ TDD 예제 | 2025-10-22 |
+| 버전        | 주요 기능                                                                     | 날짜       |
+| ----------- | ----------------------------------------------------------------------------- | ---------- |
+| **v0.4.11** | ✨ TAG Guard 시스템 + CLAUDE.md 포맷팅 개선 + 코드 정리                       | 2025-10-23 |
+| **v0.4.10** | 🔧 Hook 견고성 향상 + 다국어 문서화 + 템플릿 언어 설정                        | 2025-10-23 |
+| **v0.4.9**  | 🎯 Hook JSON 스키마 검증 수정 + 포괄적 테스트 (468/468 통과)                  | 2025-10-23 |
+| **v0.4.8**  | 🚀 릴리즈 자동화 + PyPI 배포 + Skills 개선                                    | 2025-10-23 |
+| **v0.4.7**  | 📖 한국어 최적화 + SPEC-First 원칙 문서화                                     | 2025-10-22 |
+| **v0.4.6**  | 🎉 Skills v2.0 완성 (100% 프로덕션 준비) + 85,000줄 공식 문서 + 300+ TDD 예제 | 2025-10-22 |
 
 > 📦 **지금 설치**: `uv tool install moai-adk==0.4.11` 또는 `pip install moai-adk==0.4.11`
 
 ---
 
-## 두 번째 실습: Mini Kanban Board
-
-**이 섹션은 첫 번째 Todo API 예제를 넘어서, 완전한 Full-Stack 프로젝트입니다.**
-
-MoAI-ADK를 마스터하기 위해 설계된 **Mini Kanban Board 웹 애플리케이션**을 함께 구축해봅시다. 이 프로젝트는 SPEC-First TDD의 모든 단계를 경험할 수 있도록 구성되어 있습니다.
-
-### 📌 프로젝트 개요
-
-**Mini Kanban Board**는 팀의 SPEC 작업을 추적하는 실시간 협업 칸반 보드입니다.
-
-- **Backend**: FastAPI + Pydantic v2 + uv + WebSocket (Python)
-- **Frontend**: React 19 + TypeScript 5.9 + Vite + Zustand + TanStack Query
-- **Real-time**: WebSocket을 통한 다중 클라이언트 동기화
-- **Storage**: 로컬 파일 시스템 (.moai/specs/)
-- **DevOps**: Docker Compose + GitHub Actions CI/CD + Playwright E2E
-
-### 📅 4주 개발 일정
-
-```mermaid
-gantt
-    title Mini Kanban Board - 4주 개발 일정
-    dateFormat YYYY-MM-DD
-
-    section Phase 1: Backend 기초
-    SPEC-001-004 SPEC 정의   :active, ch07-spec, 2025-11-03, 1d
-    SpecScanner TDD 구현      :active, ch07-impl, 2025-11-04, 1d
-
-    section Phase 2: Backend 고급
-    REST API 구현             :active, ch08-api, 2025-11-05, 1d
-    WebSocket + File Watch    :active, ch08-ws, 2025-11-06, 1d
-
-    section Phase 3: Frontend 기초
-    React 초기화 + SPEC-009-012 :active, ch09-spec, 2025-11-10, 1d
-    Kanban Board TDD 구현      :active, ch09-impl, 2025-11-11, 1d
-
-    section Phase 4: Advanced + 배포
-    E2E + CI/CD               :active, ch10-e2e, 2025-11-12, 1d
-    Docker Compose + 최적화    :active, ch10-deploy, 2025-11-13, 1d
-```
-
-### 🎯 16-SPEC 완전 로드맵
-
-| Phase                        | SPEC ID  | 제목                                     | 기술 스택                | 추정 시간  | 상태 |
-| ---------------------------- | -------- | ---------------------------------------- | ------------------------ | ---------- | ---- |
-| **Phase 1: Backend 기초**    |          |                                          |                          |            |      |
-|                              | SPEC-001 | SPEC 파일 스캐너                         | FastAPI + pathlib + YAML | 1h         | 📋    |
-|                              | SPEC-002 | YAML 메타데이터 파서                     | Pydantic v2 검증         | 1h         | 📋    |
-|                              | SPEC-003 | GET /api/specs (목록)                    | FastAPI 라우터           | 0.5h       | 📋    |
-|                              | SPEC-004 | GET /api/specs/{id} (상세)               | FastAPI 라우터           | 0.5h       | 📋    |
-| **Phase 2: Backend 고급**    |          |                                          |                          |            |      |
-|                              | SPEC-005 | PATCH /api/specs/{id}/status (상태 변경) | FastAPI + DB 업데이트    | 1h         | 📋    |
-|                              | SPEC-006 | GET /api/specs/summary (통계)            | 데이터 집계              | 0.5h       | 📋    |
-|                              | SPEC-007 | 파일 감시 (File Watcher)                 | watchdog + 비동기        | 1h         | 📋    |
-|                              | SPEC-008 | WebSocket 실시간 이벤트                  | FastAPI WebSocket        | 1.5h       | 📋    |
-| **Phase 3: Frontend 기초**   |          |                                          |                          |            |      |
-|                              | SPEC-009 | 칸반 보드 레이아웃                       | React + CSS Grid         | 1.5h       | 📋    |
-|                              | SPEC-010 | SPEC 카드 컴포넌트                       | React + TypeScript       | 1h         | 📋    |
-|                              | SPEC-011 | TanStack Query 통합                      | useQuery + useMutation   | 1.5h       | 📋    |
-|                              | SPEC-012 | 드래그 앤 드롭                           | React Beautiful DnD      | 1.5h       | 📋    |
-| **Phase 4: Advanced + 배포** |          |                                          |                          |            |      |
-|                              | SPEC-013 | E2E 자동 테스트                          | Playwright               | 1.5h       | 📋    |
-|                              | SPEC-014 | GitHub Actions CI/CD                     | 자동 테스트 + 배포       | 1h         | 📋    |
-|                              | SPEC-015 | Docker Compose 배포                      | 멀티 컨테이너            | 1h         | 📋    |
-|                              | SPEC-016 | 성능 최적화 + 기능 확장                  | 캐싱 + WebSocket 최적화  | 1.5h       | 📋    |
-|                              |          | **전체**                                 |                          | **20시간** |      |
-
-### 🏗️ 시스템 아키텍처
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Mini Kanban Board 아키텍처                 │
-└─────────────────────────────────────────────────────────────┘
-
-┌──────────────────────┐         ┌────────────────────────┐
-│   📱 Frontend        │         │   🖥️ Backend Server    │
-│  (React 19 + Vite)   │◄───────►│ (FastAPI + Pydantic)   │
-│                      │  REST   │                        │
-│ ┌──────────────────┐ │ API +   │ ┌──────────────────┐   │
-│ │ DashboardHeader  │ │WebSocket│ │ GET /api/specs   │   │
-│ ├──────────────────┤ │         │ ├──────────────────┤   │
-│ │ KanbanBoard      │ │         │ │ PATCH /specs/{id}│   │
-│ │ ┌────────────────┤ │         │ │ /status          │   │
-│ │ │ Column (Draft) │ │         │ ├──────────────────┤   │
-│ │ │ Column (Active)│ │         │ │ WebSocket        │   │
-│ │ │ Column (Done)  │ │         │ │ /ws              │   │
-│ │ └────────────────┤ │         │ │                  │   │
-│ ├──────────────────┤ │         │ ├──────────────────┤   │
-│ │ SpecCard (DnD)   │ │         │ │ SpecScanner      │   │
-│ ├──────────────────┤ │         │ │ (.moai/specs/)   │   │
-│ │ SearchBar        │ │         │ ├──────────────────┤   │
-│ └──────────────────┘ │         │ │ YAML Parser      │   │
-│                      │         │ │ (Pydantic v2)    │   │
-│ Zustand Store:       │         │ └──────────────────┘   │
-│ • filterStore        │         │                        │
-│ • uiStore            │         │ File System:           │
-│                      │         │ .moai/specs/           │
-│ TanStack Query:      │         │ SPEC-001/              │
-│ • useQuery           │         │ SPEC-002/              │
-│ • useMutation        │         │ ...                    │
-└──────────────────────┘         └────────────────────────┘
-         │                                    │
-         │            WebSocket               │
-         └────────────────────────────────────┘
-              (Real-time Sync)
-```
-
-### 📚 각 Phase 상세 설명
-
-#### **Phase 1: Backend 기초 (SPEC-001~004)**
-
-**목표**: FastAPI + Pydantic v2 + uv로 핵심 데이터 스캐닝 서비스 구축
-
-```bash
-# 1️⃣ 프로젝트 초기화
-/alfred:0-project
-# → .moai/, backend/, frontend/ 자동 생성
-# → .moai/config.json 설정
-
-# 2️⃣ SPEC 작성 (SPEC-001~004)
-/alfred:1-plan
-# → SPEC-001: SPEC 파일 스캐너
-# → SPEC-002: YAML 메타데이터 파서
-# → SPEC-003: GET /api/specs 엔드포인트
-# → SPEC-004: GET /api/specs/{id} 엔드포인트
-
-# 3️⃣ TDD 구현 (RED → GREEN → REFACTOR)
-/alfred:2-run SPEC-001
-# → tests/test_spec_scanner.py 실패 확인
-# → services/spec_scanner.py 구현
-# → ruff format + mypy --strict 검증
-# → pytest 커버리지 85%+ 확인
-
-# 4️⃣ 문서 동기화
-/alfred:3-sync
-# → Living Document 자동 생성
-# → TAG 체인 검증
-# → README, CHANGELOG 업데이트
-```
-
-**핵심 개념**:
-- ✅ FastAPI 기본 구조
-- ✅ Pydantic v2 데이터 검증
-- ✅ YAML Front Matter 파싱
-- ✅ 의존성 주입 (Dependency Injection)
-- ✅ 첫 번째 TDD 사이클 완성
-
-#### **Phase 2: Backend 고급 (SPEC-005~008)**
-
-**목표**: 파일 감시 및 WebSocket 실시간 이벤트 구현
-
-```bash
-# REST API 4개 엔드포인트 추가
-/alfred:2-run SPEC-005  # PATCH /api/specs/{id}/status
-/alfred:2-run SPEC-006  # GET /api/specs/summary
-
-# WebSocket + File Watcher
-/alfred:2-run SPEC-007  # 파일 감시 (watchdog)
-/alfred:2-run SPEC-008  # WebSocket 브로드캐스트
-
-# TRUST 5원칙 검증
-/alfred:3-sync          # 모든 원칙 검증
-```
-
-**핵심 개념**:
-- ✅ 파일 시스템 모니터링 (watchdog)
-- ✅ FastAPI WebSocket 엔드포인트
-- ✅ 비동기 이벤트 브로드캐스트
-- ✅ TRUST 5 원칙 검증 자동화
-
-#### **Phase 3: Frontend 기초 (SPEC-009~012)**
-
-**목표**: React 19 + TypeScript + Vite로 칸반 보드 UI 구축
-
-```bash
-# React + Vite 프로젝트 초기화
-cd frontend
-npm create vite@latest . -- --template react-ts
-
-# TanStack Query + Zustand 설정
-npm install @tanstack/react-query zustand
-
-# SPEC 작성
-/alfred:1-plan SPEC-009  # 칸반 레이아웃
-/alfred:1-plan SPEC-010  # 카드 컴포넌트
-/alfred:1-plan SPEC-011  # TanStack Query 통합
-/alfred:1-plan SPEC-012  # 드래그 앤 드롭
-
-# TDD 구현
-/alfred:2-run SPEC-009
-/alfred:2-run SPEC-010
-/alfred:2-run SPEC-011
-/alfred:2-run SPEC-012
-```
-
-**핵심 개념**:
-- ✅ React 19 Hooks (useState, useEffect, useContext)
-- ✅ TypeScript 5.9 strict typing
-- ✅ TanStack Query (useQuery, useMutation)
-- ✅ Zustand 상태 관리
-- ✅ React Beautiful DnD 드래그 앤 드롭
-
-#### **Phase 4: Advanced + 배포 (SPEC-013~016)**
-
-**목표**: E2E 테스트, CI/CD, Docker 배포, 성능 최적화
-
-```bash
-# E2E 테스트 (Playwright)
-/alfred:2-run SPEC-013
-
-# GitHub Actions CI/CD
-/alfred:2-run SPEC-014
-
-# Docker Compose 배포
-/alfred:2-run SPEC-015
-
-# 성능 최적화
-/alfred:2-run SPEC-016
-```
-
-**핵심 개념**:
-- ✅ Playwright E2E 자동 테스트
-- ✅ GitHub Actions 워크플로우
-- ✅ Docker Multi-stage builds
-- ✅ 프로덕션 성능 최적화
-
-### 🚀 빠른 시작 가이드
-
-#### 1단계: 프로젝트 초기화
-
-```bash
-# MoAI-ADK 설치
-pip install moai-adk==0.4.11
-
-# Mini Kanban Board 프로젝트 생성
-mkdir mini-kanban-board && cd mini-kanban-board
-git init
-
-# Alfred로 프로젝트 초기화
-/alfred:0-project
-```
-
-#### 2단계: SPEC 작성
-
-```bash
-# Planning 단계 시작
-/alfred:1-plan
-
-# 질문에 답하기:
-# - 프로젝트 이름: Mini Kanban Board
-# - 기술 스택: FastAPI + React 19
-# - 4주 실습 프로젝트
-```
-
-#### 3단계: TDD 구현 시작
-
-```bash
-# Phase 1 (Backend 기초)
-/alfred:2-run SPEC-001  # 첫 번째 TDD 사이클
-
-# Phase 2 (Backend 고급)
-/alfred:2-run SPEC-005
-/alfred:2-run SPEC-006
-/alfred:2-run SPEC-007
-/alfred:2-run SPEC-008
-
-# Phase 3 (Frontend 기초)
-cd frontend
-/alfred:2-run SPEC-009
-/alfred:2-run SPEC-010
-/alfred:2-run SPEC-011
-/alfred:2-run SPEC-012
-
-# Phase 4 (Advanced + 배포)
-/alfred:2-run SPEC-013
-/alfred:2-run SPEC-014
-/alfred:2-run SPEC-015
-/alfred:2-run SPEC-016
-```
-
-#### 4단계: 문서 동기화 및 배포
-
-```bash
-# 모든 변경사항 동기화
-/alfred:3-sync
-
-# Docker로 실행
-docker-compose up -d
-
-# 브라우저에서 확인
-open http://localhost:3000
-```
-
-### 📊 TRUST 5원칙 적용
-
-Mini Kanban Board 프로젝트에서는 모든 단계에서 TRUST 5원칙이 자동으로 검증됩니다:
-
-| 원칙           | 기준                      | Mini Kanban Board 적용                                  |
-| -------------- | ------------------------- | ------------------------------------------------------- |
-| **T**est First | 커버리지 ≥ 85%            | pytest (Backend), Vitest (Frontend) + TRUST 검증 자동화 |
-| **R**eadable   | 300 LOC/파일, 50 LOC/함수 | ruff format + Biome 자동 포매팅                         |
-| **U**nified    | 타입 안전성               | mypy --strict (Backend), TypeScript strict (Frontend)   |
-| **S**ecured    | 입력 검증 + 정적 분석     | Pydantic 검증 + eslint-plugin-security                  |
-| **T**rackable  | 모든 코드에 @TAG          | @SPEC:001~016 → @TEST → @CODE → @DOC 완전 연결          |
-
-모든 `/alfred:2-run` 실행 후 `/alfred:3-sync`를 통해 TRUST 5 검증이 자동으로 수행됩니다.
-
-### 📖 학습 결과
-
-4주 후, 다음을 완전히 마스터하게 됩니다:
-
-- ✅ SPEC-First TDD 방법론
-- ✅ FastAPI + Pydantic v2로 백엔드 API 설계
-- ✅ React 19 + TypeScript + Vite로 프론트엔드 구축
-- ✅ WebSocket을 이용한 실시간 동기화
-- ✅ Playwright로 E2E 테스트 작성
-- ✅ GitHub Actions를 이용한 CI/CD 자동화
-- ✅ Docker Compose로 멀티 컨테이너 배포
-- ✅ @TAG 시스템으로 전체 프로젝트 추적
-- ✅ TRUST 5원칙 검증 자동화
-- ✅ 19명 AI 팀과의 협업
-
----
-
-## Alfred의 메모리 파일 (.moai/memory/)
-
-Alfred의 지식 기반은 `.moai/memory/`에 저장된 **14개의 메모리 파일**로 구성됩니다. 이 파일들은 Alfred와 Sub-agent들이 개발 중 참조하는 표준, 규칙, 가이드라인을 정의합니다.
-
-### 핵심 지식 기반 (14개 파일)
-
-**핵심 가이드 (3개 파일)**:
-
-| 파일                        | 크기  | 용도                                  | 사용자                      |
-| --------------------------- | ----- | ------------------------------------- | --------------------------- |
-| `CLAUDE-AGENTS-GUIDE.md`    | ~15KB | Sub-agent 선택 및 협업 가이드          | Alfred, 개발자              |
-| `CLAUDE-PRACTICES.md`       | ~12KB | 실전 워크플로우 예제 및 패턴           | Alfred, 모든 Sub-agent      |
-| `CLAUDE-RULES.md`           | ~19KB | Skill/TAG/Git 규칙 및 의사결정 표준    | Alfred, 모든 Sub-agent      |
-
-**표준 정의 (4개 파일)**:
-
-| 파일                            | 크기  | 용도                                   | 사용자                      |
-| ------------------------------- | ----- | -------------------------------------- | --------------------------- |
-| `CONFIG-SCHEMA.md`              | ~12KB | `.moai/config.json` 스키마 정의         | project-manager             |
-| `DEVELOPMENT-GUIDE.md`          | ~14KB | SPEC-First TDD 워크플로우 가이드        | 모든 Sub-agent, 개발자      |
-| `GITFLOW-PROTECTION-POLICY.md`  | ~6KB  | Git 브랜치 보호 정책                    | git-manager                 |
-| `SPEC-METADATA.md`              | ~9KB  | SPEC YAML frontmatter 표준 (SSOT)       | spec-builder, doc-syncer    |
-
-**구현 분석 (7개 파일)**: Skills 관리, 워크플로우 개선, 팀 통합 분석을 위한 내부 보고서 및 정책 문서
-
-### 메모리 파일은 언제 로드되나요?
-
-**세션 시작 시 (항상)**:
-- `CLAUDE.md`
-- `CLAUDE-AGENTS-GUIDE.md`
-- `CLAUDE-RULES.md`
-
-**Just-In-Time (명령어 실행 시)**:
-- `/alfred:1-plan` → `SPEC-METADATA.md`, `DEVELOPMENT-GUIDE.md`
-- `/alfred:2-run` → `DEVELOPMENT-GUIDE.md`
-- `/alfred:3-sync` → `DEVELOPMENT-GUIDE.md`
-
-**조건부 (필요 시)**:
-- Config 변경 → `CONFIG-SCHEMA.md`
-- Git 작업 → `GITFLOW-PROTECTION-POLICY.md`
-- Skill 생성 → `SKILLS-DESCRIPTION-POLICY.md`
-
-### 메모리 파일이 중요한 이유
-
-1. **단일 진실 공급원 (SSOT)**: 각 표준이 정확히 한 곳에만 정의되어 충돌 제거
-2. **컨텍스트 효율성**: JIT 로딩으로 초기 세션 오버헤드 감소 (시작 시 3개 파일만)
-3. **일관된 의사결정**: 모든 Sub-agent가 `CLAUDE-RULES.md`의 동일한 규칙 따름
-4. **추적성**: SPEC 메타데이터, @TAG 규칙, Git 표준 모두 문서화
-
-### 사용 빈도
-
-| 우선순위 | 파일                                                | 사용 패턴          |
-| -------- | --------------------------------------------------- | ------------------ |
-| 매우 높음 | `CLAUDE-RULES.md`                                   | 모든 의사결정      |
-| 높음     | `DEVELOPMENT-GUIDE.md`, `SPEC-METADATA.md`          | 모든 명령어        |
-| 중간     | `CLAUDE-AGENTS-GUIDE.md`, `CLAUDE-PRACTICES.md`     | Agent 조율         |
-| 낮음     | `CONFIG-SCHEMA.md`, `GITFLOW-PROTECTION-POLICY.md`  | 특정 작업          |
-
-> 📚 **완전한 분석**: `.moai/memory/MEMORY-FILES-USAGE.md`에서 각 파일을 누가 사용하는지, 언제 로드되는지, 어디서 참조되는지, 왜 필요한지에 대한 종합 문서를 확인하세요.
-
----
 
 ## 추가 자료
 
-| 목적              | 리소스                                                               |
-| ----------------- | -------------------------------------------------------------------- |
-| Skills 세부 구조  | `.claude/skills/` 디렉터리 (56개 Skill)                              |
-| Sub-agent 상세    | `.claude/agents/alfred/` 디렉터리                                    |
-| 워크플로우 가이드 | `.claude/commands/alfred/` (0-3 명령)                                |
-| 개발 가드라인     | `.moai/memory/development-guide.md`, `.moai/memory/spec-metadata.md` |
-| 릴리즈 노트       | GitHub Releases: https://github.com/modu-ai/moai-adk/releases        |
+| 목적              | 리소스                                                            |
+| ----------------- | ----------------------------------------------------------------- |
+| Skills 세부 구조  | `.claude/skills/` 디렉터리 (58개 Skills)                           |
+| Sub-agent 상세    | `.claude/agents/alfred/` 디렉터리 (12개 agents)                    |
+| 워크플로우 가이드 | `.claude/commands/alfred/` (4개 명령: 0-project ~ 3-sync)          |
+| 문서              | 추후 제공 예정 (프로젝트의 `.moai/`, `.claude/`, `docs/` 참고)      |
+| 릴리즈 노트       | GitHub Releases: https://github.com/modu-ai/moai-adk/releases     |
 
 ---
 
 ## 커뮤니티 & 지원
 
-| 채널                     | 링크                                                    |
-| ------------------------ | ------------------------------------------------------- |
-| **GitHub Repository**    | https://github.com/modu-ai/moai-adk                     |
-| **Issues & Discussions** | https://github.com/modu-ai/moai-adk/issues              |
-| **PyPI Package**         | https://pypi.org/project/moai-adk/ (최신: v0.4.11)     |
+| 채널                     | 링크                                                     |
+| ------------------------ | -------------------------------------------------------- |
+| **GitHub Repository**    | https://github.com/modu-ai/moai-adk                      |
+| **Issues & Discussions** | https://github.com/modu-ai/moai-adk/issues               |
+| **PyPI Package**         | https://pypi.org/project/moai-adk/ (최신: v0.4.11)       |
 | **Latest Release**       | https://github.com/modu-ai/moai-adk/releases/tag/v0.4.11 |
-| **Documentation**        | 프로젝트 내 `.moai/`, `.claude/`, `docs/` 참고          |
+| **Documentation**        | 프로젝트 내 `.moai/`, `.claude/`, `docs/` 참고           |
 
 ---
 
@@ -1556,7 +1277,8 @@ Alfred와 함께 **신뢰할 수 있는 AI 개발**의 새로운 경험을 시�
 
 ---
 
-**MoAI-ADK v0.4.11** — SPEC-First TDD with AI SuperAgent & Complete Skills v2.0 + TAG Guard
+**MoAI-ADK** — SPEC-First TDD with AI SuperAgent & Complete Skills + TAG Guard
+
 - 📦 PyPI: https://pypi.org/project/moai-adk/
 - 🏠 GitHub: https://github.com/modu-ai/moai-adk
 - 📝 License: MIT

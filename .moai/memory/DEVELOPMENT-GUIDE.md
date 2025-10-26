@@ -68,7 +68,7 @@ MoAI-ADK follows Anthropic's principles from “Effective Context Engineering fo
 | Command          | Required Load    | Optional Load                    | Timing                             |
 | ---------------- | ---------------- | -------------------------------- | ---------------------------------- |
 | `/alfred:1-plan` | product.md       | structure.md, tech.md            | While discovering SPEC candidates  |
-| `/alfred:2-run`  | SPEC-XXX/spec.md | DEVELOPMENT-GUIDE.md             | At the start of TDD implementation |
+| `/alfred:2-run`  | SPEC-XXX/spec.md | development-guide.md             | At the start of TDD implementation |
 | `/alfred:3-sync` | sync-report.md   | TAG chain validation (`rg` scan) | During documentation sync          |
 
 **Implementation Notes**:

@@ -151,7 +151,7 @@ uv tool install moai-adk
 
 # Verify installation
 moai-adk --version
-# Output: MoAI-ADK v0.4.11
+# Output: MoAI-ADK v1.0.0
 ```
 
 Once installed, you can use the `moai-adk` command anywhere.
@@ -176,19 +176,68 @@ This one command automatically generates:
 
 ```
 my-project/
-├── .moai/                   # MoAI-ADK project configuration
-│   ├── config.json
-│   ├── project/             # Project information
-│   ├── specs/               # SPEC files
-│   └── reports/             # Analysis reports
-├── .claude/                 # Claude Code automation
-│   ├── agents/              # AI team
-│   ├── commands/            # /alfred commands
-│   ├── skills/              # Claude Skills
-│   └── settings.json
-├── src/                     # Implementation code
-├── tests/                   # Test code
-├── docs/                    # Auto-generated documentation
+├── .moai/                          # MoAI-ADK project configuration
+│   ├── config.json                 # Project settings (language, mode, owner)
+│   ├── project/                    # Project information
+│   │   ├── product.md              # Product vision and goals
+│   │   ├── structure.md            # Directory structure
+│   │   └── tech.md                 # Tech stack and architecture
+│   ├── memory/                     # Alfred's knowledge base (8 files)
+│   │   ├── CLAUDE-AGENTS-GUIDE.md  # Sub-agent collaboration guide
+│   │   ├── CLAUDE-RULES.md         # Decision rules and standards
+│   │   ├── CLAUDE-PRACTICES.md     # Workflow patterns and examples
+│   │   ├── CONFIG-SCHEMA.md        # .moai/config.json schema
+│   │   ├── DEVELOPMENT-GUIDE.md    # SPEC-First TDD workflow guide
+│   │   ├── GITFLOW-PROTECTION-POLICY.md  # Git branch protection
+│   │   ├── SKILLS-DESCRIPTION-POLICY.md  # Skills management policy
+│   │   └── SPEC-METADATA.md        # SPEC YAML frontmatter standard
+│   ├── specs/                      # SPEC files
+│   │   └── SPEC-XXX-001/           # Each SPEC in its own folder
+│   │       └── spec.md             # EARS-format specification
+│   └── reports/                    # Analysis reports
+├── .claude/                        # Claude Code automation
+│   ├── agents/                     # 12 Sub-agents
+│   │   └── alfred/
+│   │       ├── project-manager.md         # Project initialization
+│   │       ├── spec-builder.md            # SPEC authoring (EARS)
+│   │       ├── implementation-planner.md  # Architecture & TAG design
+│   │       ├── tdd-implementer.md         # RED-GREEN-REFACTOR loop
+│   │       ├── doc-syncer.md              # Documentation sync
+│   │       ├── quality-gate.md            # TRUST 5 verification
+│   │       ├── tag-agent.md               # TAG chain validation
+│   │       ├── trust-checker.md           # Code quality checks
+│   │       ├── debug-helper.md            # Error analysis & fixes
+│   │       ├── git-manager.md             # GitFlow & PR management
+│   │       ├── cc-manager.md              # Claude Code optimization
+│   │       └── skill-factory.md           # Skills creation & updates
+│   ├── commands/                   # 4 Alfred commands
+│   │   └── alfred/
+│   │       ├── 0-project.md        # Project initialization
+│   │       ├── 1-plan.md           # SPEC authoring
+│   │       ├── 2-run.md            # TDD implementation
+│   │       └── 3-sync.md           # Documentation sync
+│   ├── skills/                     # 58 Claude Skills
+│   │   ├── moai-foundation-*       # 6 Foundation tier
+│   │   ├── moai-essentials-*       # 4 Essentials tier
+│   │   ├── moai-alfred-*           # 7 Alfred tier
+│   │   ├── moai-domain-*           # 10 Domain tier
+│   │   ├── moai-lang-*             # 18 Language tier
+│   │   ├── moai-cc-*               # 8 Claude Code tier
+│   │   ├── moai-skill-factory      # 1 Skill Factory
+│   │   └── moai-spec-authoring     # 1 SPEC authoring
+│   ├── hooks/                      # Event-driven automation
+│   │   └── alfred/
+│   │       └── alfred_hooks.py     # 5 hooks (Session, PreTool, etc.)
+│   ├── output-styles/              # Response styles
+│   │   └── alfred/
+│   │       ├── agentic-coding.md       # Professional development mode
+│   │       ├── moai-adk-learning.md    # Educational explanations mode
+│   │       └── study-with-alfred.md    # Interactive learning mode
+│   └── settings.json               # Claude Code settings
+├── src/                            # Implementation code
+├── tests/                          # Test code
+├── docs/                           # Auto-generated documentation
+├── CLAUDE.md                       # Alfred's core directives
 └── README.md
 ```
 
@@ -354,36 +403,39 @@ Alfred's knowledge base consists of **14 memory files** stored in `.moai/memory/
 
 **Core Guides (3 files)**:
 
-| File                        | Size  | Purpose                                  | Who Uses It                 |
-| --------------------------- | ----- | ---------------------------------------- | --------------------------- |
-| `CLAUDE-AGENTS-GUIDE.md`    | ~15KB | Sub-agent selection & collaboration      | Alfred, Developers          |
-| `CLAUDE-PRACTICES.md`       | ~12KB | Real-world workflow examples & patterns  | Alfred, All Sub-agents      |
-| `CLAUDE-RULES.md`           | ~19KB | Skill/TAG/Git rules & decision standards | Alfred, All Sub-agents      |
+| File                     | Size  | Purpose                                  | Who Uses It            |
+| ------------------------ | ----- | ---------------------------------------- | ---------------------- |
+| `CLAUDE-AGENTS-GUIDE.md` | ~15KB | Sub-agent selection & collaboration      | Alfred, Developers     |
+| `CLAUDE-PRACTICES.md`    | ~12KB | Real-world workflow examples & patterns  | Alfred, All Sub-agents |
+| `CLAUDE-RULES.md`        | ~19KB | Skill/TAG/Git rules & decision standards | Alfred, All Sub-agents |
 
 **Standards (4 files)**:
 
-| File                            | Size | Purpose                              | Who Uses It                    |
-| ------------------------------- | ---- | ------------------------------------ | ------------------------------ |
-| `CONFIG-SCHEMA.md`              | ~12KB | `.moai/config.json` schema definition | project-manager               |
-| `DEVELOPMENT-GUIDE.md`          | ~14KB | SPEC-First TDD workflow guide         | All Sub-agents, Developers    |
-| `GITFLOW-PROTECTION-POLICY.md`  | ~6KB | Git branch protection policy          | git-manager                   |
-| `SPEC-METADATA.md`              | ~9KB | SPEC YAML frontmatter standard (SSOT) | spec-builder, doc-syncer      |
+| File                           | Size  | Purpose                               | Who Uses It                |
+| ------------------------------ | ----- | ------------------------------------- | -------------------------- |
+| `CONFIG-SCHEMA.md`             | ~12KB | `.moai/config.json` schema definition | project-manager            |
+| `DEVELOPMENT-GUIDE.md`         | ~14KB | SPEC-First TDD workflow guide         | All Sub-agents, Developers |
+| `GITFLOW-PROTECTION-POLICY.md` | ~6KB  | Git branch protection policy          | git-manager                |
+| `SPEC-METADATA.md`             | ~9KB  | SPEC YAML frontmatter standard (SSOT) | spec-builder, doc-syncer   |
 
 **Implementation Analysis (7 files)**: Internal reports and policy documents for Skills management, workflow improvements, and team integration analysis.
 
 ### When Are Memory Files Loaded?
 
 **Session Start (Always)**:
+
 - `CLAUDE.md`
 - `CLAUDE-AGENTS-GUIDE.md`
 - `CLAUDE-RULES.md`
 
 **Just-In-Time (Command Execution)**:
+
 - `/alfred:1-plan` → `SPEC-METADATA.md`, `DEVELOPMENT-GUIDE.md`
 - `/alfred:2-run` → `DEVELOPMENT-GUIDE.md`
 - `/alfred:3-sync` → `DEVELOPMENT-GUIDE.md`
 
 **Conditional (On-Demand)**:
+
 - Config changes → `CONFIG-SCHEMA.md`
 - Git operations → `GITFLOW-PROTECTION-POLICY.md`
 - Skill creation → `SKILLS-DESCRIPTION-POLICY.md`
@@ -397,12 +449,12 @@ Alfred's knowledge base consists of **14 memory files** stored in `.moai/memory/
 
 ### Usage Frequency
 
-| Priority   | Files                                               | Usage Pattern       |
-| ---------- | --------------------------------------------------- | ------------------- |
-| Very High  | `CLAUDE-RULES.md`                                   | Every decision      |
-| High       | `DEVELOPMENT-GUIDE.md`, `SPEC-METADATA.md`          | All commands        |
-| Medium     | `CLAUDE-AGENTS-GUIDE.md`, `CLAUDE-PRACTICES.md`     | Agent coordination  |
-| Low        | `CONFIG-SCHEMA.md`, `GITFLOW-PROTECTION-POLICY.md`  | Specific operations |
+| Priority  | Files                                              | Usage Pattern       |
+| --------- | -------------------------------------------------- | ------------------- |
+| Very High | `CLAUDE-RULES.md`                                  | Every decision      |
+| High      | `DEVELOPMENT-GUIDE.md`, `SPEC-METADATA.md`         | All commands        |
+| Medium    | `CLAUDE-AGENTS-GUIDE.md`, `CLAUDE-PRACTICES.md`    | Agent coordination  |
+| Low       | `CONFIG-SCHEMA.md`, `GITFLOW-PROTECTION-POLICY.md` | Specific operations |
 
 > 📚 **Complete Analysis**: See `.moai/memory/MEMORY-FILES-USAGE.md` for comprehensive documentation on who uses each file, when they're loaded, where they're referenced, and why they're needed.
 
@@ -1387,289 +1439,15 @@ If you need to temporarily disable hooks, edit `.claude/settings.json`:
 
 ---
 
-##
-
-## Second Practice: Mini Kanban Board
-
-This section goes beyond the first Todo API example and outlines a full 4-week full‑stack project.
-
-Let’s build a Mini Kanban Board web application designed to help you master MoAI‑ADK end‑to‑end. This project lets you experience every step of SPEC‑First TDD.
-
-### Project Overview
-
-- Backend: FastAPI + Pydantic v2 + uv + WebSocket (Python)
-- Frontend: React 19 + TypeScript 5.9 + Vite + Zustand + TanStack Query
-- Real-time: Multi‑client sync over WebSocket
-- Storage: Local filesystem (.moai/specs/)
-- DevOps: Docker Compose + GitHub Actions CI/CD + Playwright E2E
-
-### 4‑Week Timeline
-
-```mermaid
-gantt
-    title Mini Kanban Board - 4-week plan
-    dateFormat YYYY-MM-DD
-
-    section Phase 1: Backend Basics
-    Define SPEC-001-004           :active, ch07-spec, 2025-11-03, 1d
-    Implement SpecScanner (TDD)   :active, ch07-impl, 2025-11-04, 1d
-
-    section Phase 2: Backend Advanced
-    Implement REST API            :active, ch08-api, 2025-11-05, 1d
-    WebSocket + File Watch        :active, ch08-ws, 2025-11-06, 1d
-
-    section Phase 3: Frontend Basics
-    React init + SPEC-009-012     :active, ch09-spec, 2025-11-10, 1d
-    Kanban Board (TDD)            :active, ch09-impl, 2025-11-11, 1d
-
-    section Phase 4: Advanced + Deploy
-    E2E + CI/CD                   :active, ch10-e2e, 2025-11-12, 1d
-    Docker Compose + Optimize     :active, ch10-deploy, 2025-11-13, 1d
-```
-
-### 16‑SPEC Roadmap
-
-| Phase             | SPEC ID  | Title                        | Stack                    | Est. | Status |
-| ----------------- | -------- | ---------------------------- | ------------------------ | ---- | ------ |
-| Backend Basics    | SPEC-001 | SPEC file scanner            | FastAPI + pathlib + YAML | 1h   | 📋     |
-|                   | SPEC-002 | YAML metadata parser         | Pydantic v2 validation   | 1h   | 📋     |
-|                   | SPEC-003 | GET /api/specs (list)        | FastAPI router           | 0.5h | 📋     |
-|                   | SPEC-004 | GET /api/specs/{id} (detail) | FastAPI router           | 0.5h | 📋     |
-| Backend Advanced  | SPEC-005 | PATCH /api/specs/{id}/status | FastAPI + update         | 1h   | 📋     |
-|                   | SPEC-006 | GET /api/specs/summary       | Aggregation              | 0.5h | 📋     |
-|                   | SPEC-007 | File watcher                 | watchdog + async         | 1h   | 📋     |
-|                   | SPEC-008 | WebSocket events             | FastAPI WebSocket        | 1.5h | 📋     |
-| Frontend Basics   | SPEC-009 | Kanban layout                | React + CSS Grid         | 1.5h | 📋     |
-|                   | SPEC-010 | SPEC card component          | React + TypeScript       | 1h   | 📋     |
-|                   | SPEC-011 | TanStack Query integration   | useQuery + useMutation   | 1.5h | 📋     |
-|                   | SPEC-012 | Drag & Drop                  | React Beautiful DnD      | 1.5h | 📋     |
-| Advanced + Deploy | SPEC-013 | E2E automated tests          | Playwright               | 1.5h | 📋     |
-|                   | SPEC-014 | GitHub Actions CI/CD         | Test + Release           | 1h   | 📋     |
-|                   | SPEC-015 | Docker Compose deploy        | Multi‑container          | 1h   | 📋     |
-|                   | SPEC-016 | Performance + extensions     | Caching + WS tuning      | 1.5h | 📋     |
-|                   |          | Overall                      |                          | 20h  |        |
-
-### System Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                Mini Kanban Board — Architecture              │
-└─────────────────────────────────────────────────────────────┘
-
-┌──────────────────────┐         ┌────────────────────────┐
-│   📱 Frontend        │         │   🖥️ Backend Server    │
-│  (React 19 + Vite)   │◄───────►│ (FastAPI + Pydantic)   │
-│                      │  REST   │                        │
-│ ┌──────────────────┐ │ API +   │ ┌──────────────────┐   │
-│ │ DashboardHeader  │ │WebSocket│ │ GET /api/specs   │   │
-│ ├──────────────────┤ │         │ ├──────────────────┤   │
-│ │ KanbanBoard      │ │         │ │ PATCH /api/specs/{id}││
-│ │ ┌──────────────┐ │ │         │ │ /status          │   │
-│ │ │ Column: Draft│ │ │         │ ├──────────────────┤   │
-│ │ │ Column: Active││ │         │ │ WebSocket        │   │
-│ │ │ Column: Done │ │ │         │ │ /ws              │   │
-│ │ └──────────────┘ │ │         │ │                  │   │
-│ ├──────────────────┤ │         │ ├──────────────────┤   │
-│ │ SpecCard (DnD)   │ │         │ │ SpecScanner      │   │
-│ ├──────────────────┤ │         │ │ (.moai/specs/)   │   │
-│ │ SearchBar        │ │         │ ├──────────────────┤   │
-│ └──────────────────┘ │         │ │ YAML Parser      │   │
-│                      │         │ │ (Pydantic v2)    │   │
-│ Zustand Store:       │         │ └──────────────────┘   │
-│ • filterStore        │         │                        │
-│ • uiStore            │         │ File System:           │
-│                      │         │ .moai/specs/           │
-│ TanStack Query:      │         │ SPEC-001/              │
-│ • useQuery           │         │ SPEC-002/              │
-│ • useMutation        │         │ ...                    │
-└──────────────────────┘         └────────────────────────┘
-         │                                    │
-         │            WebSocket               │
-         └────────────────────────────────────┘
-              (Real-time Sync)
-```
-
-### Phase Details
-
-#### Phase 1: Backend Basics (SPEC-001~004)
-
-Goal: Build the core data scanning service with FastAPI + Pydantic v2 + uv
-
-```bash
-# 1) Initialize project
-/alfred:0-project
-# → creates .moai/, backend/, frontend/
-# → configures .moai/config.json
-
-# 2) Write SPECs (SPEC-001~004)
-/alfred:1-plan
-# → SPEC-001: SPEC file scanner
-# → SPEC-002: YAML metadata parser
-# → SPEC-003: GET /api/specs endpoint
-# → SPEC-004: GET /api/specs/{id} endpoint
-
-# 3) TDD (RED → GREEN → REFACTOR)
-/alfred:2-run SPEC-001
-/alfred:2-run SPEC-002
-/alfred:2-run SPEC-003
-/alfred:2-run SPEC-004
-```
-
-Key Concepts:
-
-- FastAPI project structure
-- Pydantic v2 validation
-- YAML front matter parsing
-- Dependency Injection
-- First TDD cycle completed
-
-#### Phase 2: Backend Advanced (SPEC-005~008)
-
-Goal: Implement file watching and WebSocket real-time events
-
-```bash
-# REST endpoints
-/alfred:2-run SPEC-005  # PATCH /api/specs/{id}/status
-/alfred:2-run SPEC-006  # GET /api/specs/summary
-
-# WebSocket + File Watcher
-/alfred:2-run SPEC-007  # File watching (watchdog)
-/alfred:2-run SPEC-008  # WebSocket broadcast
-
-# TRUST 5 verification
-/alfred:3-sync          # verify all principles
-```
-
-Key Concepts:
-
-- File system monitoring (watchdog)
-- FastAPI WebSocket endpoint
-- Async event broadcast
-- Automated TRUST 5 verification
-
-#### Phase 3: Frontend Basics (SPEC-009~012)
-
-Goal: Build Kanban UI with React 19 + TypeScript + Vite
-
-```bash
-# Initialize React + Vite
-cd frontend
-npm create vite@latest . -- --template react-ts
-
-# TanStack Query + Zustand
-npm install @tanstack/react-query zustand
-
-# SPECs
-/alfred:1-plan SPEC-009  # layout
-/alfred:1-plan SPEC-010  # card component
-/alfred:1-plan SPEC-011  # TanStack Query integration
-/alfred:1-plan SPEC-012  # drag & drop
-
-# TDD
-/alfred:2-run SPEC-009
-/alfred:2-run SPEC-010
-/alfred:2-run SPEC-011
-/alfred:2-run SPEC-012
-```
-
-Key Concepts:
-
-- React 19 Hooks (useState, useEffect, useContext)
-- TypeScript 5.9 strict typing
-- TanStack Query (useQuery, useMutation)
-- Zustand state management
-- React Beautiful DnD drag & drop
-
-#### Phase 4: Advanced + Deploy (SPEC-013~016)
-
-Goal: E2E tests, CI/CD, Docker deployment, performance optimization
-
-```bash
-# E2E tests (Playwright)
-/alfred:2-run SPEC-013
-
-# GitHub Actions CI/CD
-/alfred:2-run SPEC-014
-
-# Docker Compose deploy
-/alfred:2-run SPEC-015
-
-# Performance optimization
-/alfred:2-run SPEC-016
-```
-
-Key Concepts:
-
-- Playwright E2E automation
-- GitHub Actions workflows
-- Docker multi-stage builds
-- Production performance tuning
-
-### Quick Start Guide
-
-#### Step 1: Initialize project
-
-```bash
-# Install MoAI-ADK (recommended: uv tool mode)
-uv tool install moai-adk
-
-# Create project
-mkdir mini-kanban-board && cd mini-kanban-board
-git init
-
-# Initialize with Alfred
-/alfred:0-project
-```
-
-#### Step 2: Write SPECs
-
-```bash
-# Start planning
-/alfred:1-plan
-
-# Answer prompts:
-# - Project name: Mini Kanban Board
-# - Tech stack: FastAPI + React 19
-# - Duration: 4-week practice project
-```
-
-#### Step 3: Start TDD
-
-```bash
-# Phase 1 (Backend basics)
-/alfred:2-run SPEC-001  # first TDD cycle
-
-# Phase 2 (Backend advanced)
-/alfred:2-run SPEC-005
-/alfred:2-run SPEC-006
-/alfred:2-run SPEC-007
-/alfred:2-run SPEC-008
-
-# Phase 3 (Frontend basics)
-cd frontend
-/alfred:2-run SPEC-009
-/alfred:2-run SPEC-010
-/alfred:2-run SPEC-011
-/alfred:2-run SPEC-012
-
-# Phase 4 (Advanced + deploy)
-/alfred:2-run SPEC-013
-/alfred:2-run SPEC-014
-/alfred:2-run SPEC-015
-/alfred:2-run SPEC-016
-```
-
----
-
 ## Additional Resources
 
-| Purpose                   | Resource                                                             |
-| ------------------------- | -------------------------------------------------------------------- |
-| Skills detailed structure | `.claude/skills/` directory (56 Skills)                              |
-| Sub-agent details         | `.claude/agents/alfred/` directory                                   |
-| Workflow guide            | `.claude/commands/alfred/` (0-3 commands)                            |
-| Development guidelines    | `.moai/memory/development-guide.md`, `.moai/memory/spec-metadata.md` |
-| Release notes             | GitHub Releases: https://github.com/modu-ai/moai-adk/releases        |
+| Purpose                   | Resource                                                        |
+| ------------------------- | --------------------------------------------------------------- |
+| Skills detailed structure | `.claude/skills/` directory (58 Skills)                         |
+| Sub-agent details         | `.claude/agents/alfred/` directory (12 agents)                  |
+| Workflow guide            | `.claude/commands/alfred/` (4 commands: 0-project ~ 3-sync)     |
+| Documentation             | Coming soon (see `.moai/`, `.claude/`, `docs/` in your project) |
+| Release notes             | GitHub Releases: https://github.com/modu-ai/moai-adk/releases   |
 
 ---
 
@@ -1701,7 +1479,7 @@ Start a new experience of **trustworthy AI development** with Alfred! 🤖
 
 ---
 
-**MoAI-ADK v0.4.11** — SPEC-First TDD with AI SuperAgent & Complete Skills v2.0 + TAG Guard
+**MoAI-ADK** — SPEC-First TDD with AI SuperAgent & Complete Skills + TAG Guard
 
 - 📦 PyPI: https://pypi.org/project/moai-adk/
 - 🏠 GitHub: https://github.com/modu-ai/moai-adk

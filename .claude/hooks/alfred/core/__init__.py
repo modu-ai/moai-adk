@@ -136,7 +136,8 @@ class HookResult:
         Examples:
             >>> result = HookResult(context_files=["tests/"])
             >>> result.to_user_prompt_submit_dict()
-            {'continue': True, 'hookSpecificOutput': {'hookEventName': 'UserPromptSubmit', 'additionalContext': '📎 Context: tests/'}}
+            {'continue': True, 'hookSpecificOutput': \
+{'hookEventName': 'UserPromptSubmit', 'additionalContext': '📎 Context: tests/'}}
         """
         # Convert context_files to additionalContext string
         if self.context_files:
