@@ -1507,6 +1507,68 @@ open http://localhost:3000
 
 ---
 
+## Alfred的内存文件 (.moai/memory/)
+
+Alfred的知识库由存储在`.moai/memory/`中的**14个内存文件**组成。这些文件定义了Alfred和Sub-agent在开发过程中参考的标准、规则和指南。
+
+### 核心知识库（14个文件）
+
+**核心指南（3个文件）**：
+
+| 文件 | 大小 | 用途 | 使用者 |
+| --- | --- | --- | --- |
+| `CLAUDE-AGENTS-GUIDE.md` | ~15KB | Sub-agent选择和协作指南 | Alfred、开发者 |
+| `CLAUDE-PRACTICES.md` | ~12KB | 实际工作流程示例和模式 | Alfred、所有Sub-agent |
+| `CLAUDE-RULES.md` | ~19KB | Skill/TAG/Git规则和决策标准 | Alfred、所有Sub-agent |
+
+**标准定义（4个文件）**：
+
+| 文件 | 大小 | 用途 | 使用者 |
+| --- | --- | --- | --- |
+| `CONFIG-SCHEMA.md` | ~12KB | `.moai/config.json`模式定义 | project-manager |
+| `DEVELOPMENT-GUIDE.md` | ~14KB | SPEC-First TDD工作流程指南 | 所有Sub-agent、开发者 |
+| `GITFLOW-PROTECTION-POLICY.md` | ~6KB | Git分支保护策略 | git-manager |
+| `SPEC-METADATA.md` | ~9KB | SPEC YAML前置元数据标准（SSOT） | spec-builder、doc-syncer |
+
+**实施分析（7个文件）**：用于Skills管理、工作流程改进和团队集成分析的内部报告和策略文档
+
+### 内存文件何时加载？
+
+**会话开始时（始终）**：
+- `CLAUDE.md`
+- `CLAUDE-AGENTS-GUIDE.md`
+- `CLAUDE-RULES.md`
+
+**即时加载（命令执行时）**：
+- `/alfred:1-plan` → `SPEC-METADATA.md`、`DEVELOPMENT-GUIDE.md`
+- `/alfred:2-run` → `DEVELOPMENT-GUIDE.md`
+- `/alfred:3-sync` → `DEVELOPMENT-GUIDE.md`
+
+**条件加载（按需）**：
+- 配置更改 → `CONFIG-SCHEMA.md`
+- Git操作 → `GITFLOW-PROTECTION-POLICY.md`
+- Skill创建 → `SKILLS-DESCRIPTION-POLICY.md`
+
+### 内存文件为何重要
+
+1. **单一真实来源（SSOT）**：每个标准只在一处定义，消除冲突
+2. **上下文效率**：JIT加载减少初始会话开销（启动时仅3个文件）
+3. **一致决策**：所有Sub-agent遵循`CLAUDE-RULES.md`中的相同规则
+4. **可追溯性**：SPEC元数据、@TAG规则、Git标准均有文档记录
+
+### 使用频率
+
+| 优先级 | 文件 | 使用模式 |
+| --- | --- | --- |
+| 非常高 | `CLAUDE-RULES.md` | 所有决策 |
+| 高 | `DEVELOPMENT-GUIDE.md`、`SPEC-METADATA.md` | 所有命令 |
+| 中等 | `CLAUDE-AGENTS-GUIDE.md`、`CLAUDE-PRACTICES.md` | Agent协调 |
+| 低 | `CONFIG-SCHEMA.md`、`GITFLOW-PROTECTION-POLICY.md` | 特定操作 |
+
+> 📚 **完整分析**：查看`.moai/memory/MEMORY-FILES-USAGE.md`，了解每个文件的使用者、加载时机、引用位置以及需要的原因的综合文档。
+
+---
+
 ## 更多资源
 
 | 目的            | 资源                                                                 |

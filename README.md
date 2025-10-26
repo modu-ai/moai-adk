@@ -346,6 +346,68 @@ When you run MoAI-ADK, Alfred loads configuration from **4 coordinated documents
 
 ---
 
+## Alfred's Memory Files (.moai/memory/)
+
+Alfred's knowledge base consists of **14 memory files** stored in `.moai/memory/`. These files define standards, rules, and guidelines that Alfred and Sub-agents reference during development.
+
+### Core Knowledge Base (14 Files)
+
+**Core Guides (3 files)**:
+
+| File                        | Size  | Purpose                                  | Who Uses It                 |
+| --------------------------- | ----- | ---------------------------------------- | --------------------------- |
+| `CLAUDE-AGENTS-GUIDE.md`    | ~15KB | Sub-agent selection & collaboration      | Alfred, Developers          |
+| `CLAUDE-PRACTICES.md`       | ~12KB | Real-world workflow examples & patterns  | Alfred, All Sub-agents      |
+| `CLAUDE-RULES.md`           | ~19KB | Skill/TAG/Git rules & decision standards | Alfred, All Sub-agents      |
+
+**Standards (4 files)**:
+
+| File                            | Size | Purpose                              | Who Uses It                    |
+| ------------------------------- | ---- | ------------------------------------ | ------------------------------ |
+| `CONFIG-SCHEMA.md`              | ~12KB | `.moai/config.json` schema definition | project-manager               |
+| `DEVELOPMENT-GUIDE.md`          | ~14KB | SPEC-First TDD workflow guide         | All Sub-agents, Developers    |
+| `GITFLOW-PROTECTION-POLICY.md`  | ~6KB | Git branch protection policy          | git-manager                   |
+| `SPEC-METADATA.md`              | ~9KB | SPEC YAML frontmatter standard (SSOT) | spec-builder, doc-syncer      |
+
+**Implementation Analysis (7 files)**: Internal reports and policy documents for Skills management, workflow improvements, and team integration analysis.
+
+### When Are Memory Files Loaded?
+
+**Session Start (Always)**:
+- `CLAUDE.md`
+- `CLAUDE-AGENTS-GUIDE.md`
+- `CLAUDE-RULES.md`
+
+**Just-In-Time (Command Execution)**:
+- `/alfred:1-plan` → `SPEC-METADATA.md`, `DEVELOPMENT-GUIDE.md`
+- `/alfred:2-run` → `DEVELOPMENT-GUIDE.md`
+- `/alfred:3-sync` → `DEVELOPMENT-GUIDE.md`
+
+**Conditional (On-Demand)**:
+- Config changes → `CONFIG-SCHEMA.md`
+- Git operations → `GITFLOW-PROTECTION-POLICY.md`
+- Skill creation → `SKILLS-DESCRIPTION-POLICY.md`
+
+### Why Memory Files Matter
+
+1. **Single Source of Truth (SSOT)**: Each standard is defined exactly once, eliminating conflicts
+2. **Context Efficiency**: JIT loading reduces initial session overhead (only 3 files at start)
+3. **Consistent Decisions**: All Sub-agents follow the same rules from `CLAUDE-RULES.md`
+4. **Traceability**: SPEC metadata, @TAG rules, and Git standards all documented
+
+### Usage Frequency
+
+| Priority   | Files                                               | Usage Pattern       |
+| ---------- | --------------------------------------------------- | ------------------- |
+| Very High  | `CLAUDE-RULES.md`                                   | Every decision      |
+| High       | `DEVELOPMENT-GUIDE.md`, `SPEC-METADATA.md`          | All commands        |
+| Medium     | `CLAUDE-AGENTS-GUIDE.md`, `CLAUDE-PRACTICES.md`     | Agent coordination  |
+| Low        | `CONFIG-SCHEMA.md`, `GITFLOW-PROTECTION-POLICY.md`  | Specific operations |
+
+> 📚 **Complete Analysis**: See `.moai/memory/MEMORY-FILES-USAGE.md` for comprehensive documentation on who uses each file, when they're loaded, where they're referenced, and why they're needed.
+
+---
+
 ## Keeping MoAI-ADK Up-to-Date
 
 ### Check Version
