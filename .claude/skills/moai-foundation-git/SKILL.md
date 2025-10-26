@@ -130,7 +130,7 @@ _Documentation links updated 2025-10-22_
 ```
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Alfred <alfred@mo.ai.kr>
+Co-Authored-By: 🎩 Alfred@[MoAI](https://adk.mo.ai.kr)
 ```
 
 **Applied to**:

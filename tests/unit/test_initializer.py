@@ -189,10 +189,12 @@ class TestInitialize:
             call_args = mock_conf.call_args
             config = call_args[0][1]
 
-            assert config["projectName"] == tmp_path.name
-            assert config["mode"] == "team"
-            assert config["locale"] == "en"
-            assert config["language"] == "go"
+            # Config should have project section
+            assert "project" in config
+            assert config["project"]["name"] == tmp_path.name
+            assert config["project"]["mode"] == "team"
+            assert config["project"]["locale"] == "en"
+            assert config["project"]["language"] == "go"
 
     def test_initialize_calls_progress_callback(self, tmp_path: Path) -> None:
         """Should call progress callback during initialization"""

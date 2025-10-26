@@ -30,21 +30,20 @@
     }
   },
   "project": {
-    "created_at": "2025-10-21 23:59:19",
-    "description": "MoAI-Agentic Development Kit",
-    "initialized": true,
-    "mode": "team",
     "name": "MoAI-ADK",
-    "moai_adk_version": "0.5.4",
+    "description": "MoAI-Agentic Development Kit",
+    "mode": "team",
+    "locale": "ko",
+    "language": "python",
+    "created_at": "2025-10-21 23:59:19",
+    "initialized": true,
     "optimized": true,
     "optimized_at": "2025-10-25T10:00:00Z",
-    "language": "python",
-    "locale": "ko",
     "conversation_language": "ko",
     "conversation_language_name": "한국어"
   },
   "user": {
-    "nickname": "GOOS 오라버니"
+    "nickname": "🪿G00$"
   },
   "tags": {
     "auto_sync": true,
@@ -62,10 +61,7 @@
     "code_scan_policy": {
       "no_intermediate_cache": true,
       "realtime_validation": true,
-      "scan_tools": [
-        "rg",
-        "grep"
-      ],
+      "scan_tools": ["rg", "grep"],
       "scan_command": "rg '@TAG' -n",
       "philosophy": "The source of truth for TAGs lives in the code itself"
     }

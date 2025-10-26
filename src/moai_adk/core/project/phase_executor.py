@@ -188,9 +188,10 @@ class PhaseExecutor:
             "Phase 4: Generating configurations...", progress_callback
         )
 
-        # Attach version metadata (v0.3.1+)
-        config["moai_adk_version"] = __version__
-        config["optimized"] = False  # Default value
+        # Ensure project section exists and set defaults
+        if "project" not in config:
+            config["project"] = {}
+        config["project"]["optimized"] = False  # Default value
 
         # Write config.json
         config_path = project_path / ".moai" / "config.json"

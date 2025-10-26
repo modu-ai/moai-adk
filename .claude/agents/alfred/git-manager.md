@@ -360,7 +360,7 @@ Git-manager automatically handles the following exception situations:
 ```
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Alfred <alfred@mo.ai.kr>
+Co-Authored-By: 🎩 Alfred@[MoAI](https://adk.mo.ai.kr)
 ```
 
 This signature applies to all Git operations:

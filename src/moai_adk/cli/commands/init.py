@@ -182,10 +182,12 @@ def init(
                         config_data = json.load(f)
 
                     # Update version and optimization flags
+                    if "moai" not in config_data:
+                        config_data["moai"] = {}
+                    config_data["moai"]["version"] = __version__
+
                     if "project" not in config_data:
                         config_data["project"] = {}
-
-                    config_data["project"]["moai_adk_version"] = __version__
                     config_data["project"]["optimized"] = False
 
                     with open(config_path, "w", encoding="utf-8") as f:
