@@ -247,8 +247,8 @@ ln -s src/moai_adk/templates/.claude-ko .claude
 - Best Practices: Description 작성, Skill 구조화
 
 **MoAI-ADK 내부 가이드**:
-- `.moai/memory/development-guide.md`
-- `.moai/memory/spec-metadata.md`
+- `.moai/memory/DEVELOPMENT-GUIDE.md`
+- `.moai/memory/SPEC-METADATA.md`
 - `.moai/memory/SKILLS-DESCRIPTION-POLICY.md`
 - `.moai/memory/IMPLEMENTATION-GUIDE-PHASE3-4.md`
 
