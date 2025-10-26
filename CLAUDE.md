@@ -78,41 +78,48 @@ Alfred는 항상 다음을 자문합니다:
 
 ## 🌍 Alfred's Language Boundary Rule (언어 경계 규칙)
 
-Alfred operates with a clear **language boundary** to support global users while keeping Skills maintainable:
+Alfred operates with a **crystal-clear language boundary** to support global users while keeping all Skills in English only:
 
-### User-Facing Layer (사용자 대면 레이어)
-- **Conversation Language**: Respond in the user's `conversation_language` from `.moai/config.json`
-- **Current Project**: Korean (한국어) — But supports ANY language (日本語, 中文, Español, etc.)
-- **Localization**: All user-facing responses, explanations, and documentation are localized
+### Rule 1: User Conversation Layer (사용자 대면 계층)
+**ALWAYS use user's `conversation_language` for ALL user-facing content:**
+- 🗣️ **Responses to user**: 사용자 언어 (현재: 한국어)
+- 📝 **Explanations**: 사용자 언어
+- ❓ **Questions to user**: 사용자 언어
+- 💬 **All dialogue**: 사용자 언어
 
-### Internal Operations Layer (내부 작업 레이어)
-- **Sub-agent Prompts**: ALWAYS use **English** for `Task()` invocations
-- **Skill Invocations**: ALWAYS use **English** for `Skill("skill-name")` calls
-- **Tool Descriptions**: English only (no localization needed internally)
-- **Agent Communication**: All inter-agent communication is in English
+### Rule 2: Internal Operations Layer (내부 작업 계층)
+**EVERYTHING internal MUST be in English:**
+- `Task(prompt="...")` 호출 → **영어**
+- `Skill("skill-name")` 호출 → **영어**
+- Sub-agent 간 통신 → **영어**
+- 에러 메시지 (내부용) → **영어**
+- Git 커밋 메시지 → **영어**
+- 기술 지시문 → 모두 **영어**
 
-### Translation Pattern (번역 패턴)
+### Rule 3: Skills Layer (Skill 계층)
+**Skills는 영어만 유지하면 됨:**
+- Skill descriptions → **영어만**
+- Skill examples → **영어만**
+- Skill guides → **영어만**
+- **다국어 번역 불필요!** ✅
 
-When user makes a non-English request:
+### Execution Flow (실행 흐름)
 
 ```
-Step 1. User speaks in their language
-        ↓ (사용자: "코드 품질 체크해줘" | 日本語: "コード品質をチェック" | etc.)
-
-Step 2. Alfred understands and translates to English internally
-        ↓ (Internal: "Check code quality")
-
-Step 3. Alfred invokes Sub-agents with English prompts
-        ↓ Task(prompt="Validate TRUST 5 principles...", subagent_type="trust-checker")
-
-Step 4. Sub-agents use English-based Skills
-        ↓ Skill("moai-foundation-trust") [English triggers match perfectly]
-
-Step 5. Alfred receives English results and translates back
-        ↓ (Internal processing in English)
-
-Step 6. Alfred responds in user's language
-        ↓ (사용자: "품질 검증 완료: 테스트 커버리지 87%...")
+사용자 (User's Language):  "코드 품질 체크해줘"
+                            ↓
+Alfred (내부 번역):        "Check code quality" (→ English)
+                            ↓
+Invoke Sub-agent:          Task(prompt="Validate TRUST 5 principles",
+                                subagent_type="trust-checker")
+                            ↓
+Sub-agent (영어로 작업):   Skill("moai-foundation-trust") ← 100% 매칭!
+                            ↓
+Alfred (결과 수신):        English TRUST report
+                            ↓
+Alfred (번역):             "품질 검증 완료: 테스트 커버리지 87%..."
+                            ↓
+사용자 응답:               "품질 검증 완료: 테스트 커버리지 87%..." (사용자 언어)
 ```
 
 ### Why This Pattern Works

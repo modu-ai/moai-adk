@@ -71,36 +71,60 @@ All Skills follow the **Progressive Disclosure** principle:
 
 ### 🌍 Language Boundary in Skill Invocation (다국어 환경)
 
-**CRITICAL RULE for Multilingual Projects**: When invoking Skills in projects supporting multiple languages (Korean, Japanese, Chinese, Spanish, etc.):
+**CRITICAL: Three-Layer Language Rule**
 
-**Alfred's Responsibility**:
-1. **Receive** user request in their `conversation_language` (e.g., Korean "코드 품질 체크해줘")
-2. **Translate** request to **English** internally
-3. **Invoke Skills** with English-only prompts: `Skill("moai-foundation-trust")` (English triggers guaranteed to match)
-4. **Receive** Skill results in English
-5. **Translate** results back to user's language for response
-
-**Why This Pattern**:
-- ✅ **100% Reliability**: English keywords in prompts always match English Skill descriptions
-- ✅ **Zero Maintenance**: No need to maintain Skills in multiple languages (single source of truth)
-- ✅ **Scalability**: Support any language (Korean/Japanese/Chinese/Spanish/Russian/etc.) without modifying Skills
-- ✅ **Consistency**: All internal communication in English (standard lingua franca)
-
-**Sub-agent Rule**:
-- **All sub-agents MUST receive English prompts** in `Task(prompt="...", subagent_type="...")` invocations
-- Sub-agents should NOT infer or try to handle user's original language
-- Sub-agents output results in English; Alfred handles translation
-
-**Example**:
 ```
-User (Korean):  "인증 시스템 구현해줘"
-Alfred (internal): Translate to English "Implement authentication system"
-Alfred (invokes): Task(subagent_type="implementation-planner", prompt="Analyze authentication SPEC and create implementation plan")
-Sub-agent (receives): English prompt
-Sub-agent (uses): Skill("moai-domain-backend") [English description, 100% match]
-Sub-agent (returns): English implementation plan
-Alfred (translates): "인증 시스템 구현 계획: JWT 토큰 기반..."
-User (receives): Korean response
+Layer 1: User Conversation (사용자 대면)
+├─ ALWAYS: 사용자의 conversation_language로 응답
+├─ Example: 한국어 사용자 → 한국어로만 응답
+└─ Includes: 질문, 설명, 모든 대화
+
+Layer 2: Internal Operations (내부 작업) ← THE KEY DIFFERENCE
+├─ Task() prompts → **English**
+├─ Skill() invocations → **English**
+├─ Sub-agent communication → **English**
+├─ Git commits → **English**
+├─ Error messages (internal) → **English**
+└─ ALL technical instructions → **English**
+
+Layer 3: Skills (Skill 계층)
+├─ Descriptions → English only
+├─ Examples → English only
+├─ Guides → English only
+└─ ✅ NO multilingual versions needed!
+```
+
+**Why This Works**:
+- ✅ **100% Reliability**: English prompts always match English Skill keywords = guaranteed activation
+- ✅ **Zero Maintenance**: 55 Skills in English only (no need for 55 × N languages)
+- ✅ **Infinite Scalability**: Add Korean/Japanese/Spanish/Russian/any language with ZERO Skill modifications
+- ✅ **Industry Standard**: Localized UI (user language) + English backend = standard i18n pattern
+
+**The Golden Rule**:
+```
+User Language ≠ Internal Language
+사용자 언어    ≠   내부 언어 (English)
+                   ↓
+            100% Skill Match Guaranteed
+            Skills는 영어만으로 충분!
+```
+
+**Sub-agent Implementation**:
+```
+User (한국어):     "인증 시스템 구현"
+     ↓
+Alfred (번역):     "Implement authentication system"
+     ↓
+Task(prompt="Create JWT authentication SPEC with 30-minute expiry",
+     subagent_type="spec-builder")
+     ↓
+spec-builder (영어로 받음):
+  Skill("moai-foundation-specs") ← 100% 매칭!
+  Skill("moai-foundation-ears") ← 100% 매칭!
+     ↓
+Alfred (번역):     "인증 SPEC 완성: JWT 토큰, 30분 만료..."
+     ↓
+사용자 (한국어):   응답 수신
 ```
 
 ### Explicit Invocation Syntax
