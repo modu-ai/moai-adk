@@ -30,7 +30,6 @@ MoAI-ADK ปฏิวัติการพัฒนาซอฟต์แวร�
 | SPEC·TDD·TAG คืออะไร?                | [ทำความเข้าใจแนวคิดหลักอย่างง่าย](#ทำความเข้าใจแนวคิดหลักอย่างง่าย)      |
 | อยากรู้เรื่อง Agent/Skills           | [ภาพรวม Sub-agent & Skills](#ภาพรวม-sub-agent--skills)                   |
 | Claude Code Hooks ทำงานอย่างไร?      | [Claude Code Hooks คู่มือ](#claude-code-hooks-คู่มือ)                    |
-| อยากทำโปรเจกต์ฝึก 4 สัปดาห์          | [แบบฝึกหัดที่สอง: Mini Kanban Board](#แบบฝึกหัดที่สอง-mini-kanban-board) |
 | ต้องการศึกษาเพิ่มเติม                | [แหล่งข้อมูลเพิ่มเติม](#แหล่งข้อมูลเพิ่มเติม)                            |
 
 ---
@@ -424,6 +423,36 @@ graph TD
 | `/alfred:3-sync`            | ซิงค์เอกสาร/README/CHANGELOG จัดสถานะ TAG/PR              | `docs/`, `.moai/reports/sync-report.md`, Ready PR                  |
 
 > ❗ คำสั่งทั้งหมดรักษาโครงสร้างแบบวน **Phase 0(ตัวเลือก) → Phase 1 → Phase 2 → Phase 3** Alfred รายงานสถานะและแนะนำขั้นตอนถัดไปโดยอัตโนมัติระหว่างดำเนินการ
+
+---
+
+<!-- TRANSLATION NEEDED: This section should be translated to Thai -->
+<!-- For complete documentation in English, see README.md -->
+<!-- For complete documentation in Korean, see README.ko.md -->
+
+## 🎯 NEW in v0.5.7: SPEC GitHub Issue Automation
+
+MoAI-ADK now provides automatic GitHub Issue synchronization from SPEC documents in team mode.
+
+### Key Features
+
+✅ **Automatic Issue Creation**: GitHub Issue created on every PR with SPEC file changes
+✅ **Metadata Extraction**: ID, version, status, priority automatically parsed
+✅ **PR Integration**: Issue linked to PR via automatic comment
+✅ **Label Management**: Priority-based labels auto-applied
+✅ **CodeRabbit Review** (local only): AI-powered SPEC quality validation
+
+### How It Works
+
+1. Create SPEC with `/alfred:1-plan`
+2. Push to feature branch
+3. GitHub Actions automatically creates Issue
+4. PR comment added with Issue link
+5. CodeRabbit reviews SPEC quality (local only)
+
+For complete documentation, see:
+- English: [README.md](README.md#spec-github-issue-automation)
+- Korean: [README.ko.md](README.ko.md#spec-github-issue-자동화)
 
 ---
 

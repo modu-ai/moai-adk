@@ -29,7 +29,6 @@ If you've **already installed it and want to understand the concepts**, we recom
 | What do Plan/Run/Sync commands do? | [Command Cheat Sheet](#command-cheat-sheet)                              |
 | What are SPEC, TDD, TAG?           | [5 Key Concepts](#5-key-concepts)                                        |
 | Tell me about agents/Skills        | [Sub-agents & Skills Overview](#sub-agents--skills-overview)             |
-| I want a 4-week hands-on project   | [Second Practice: Mini Kanban Board](#second-practice-mini-kanban-board) |
 | Want to dive deeper?               | [Additional Resources](#additional-resources)                            |
 
 ---
@@ -587,6 +586,119 @@ graph TD
 | `/alfred:3-sync`               | Sync docs/README/CHANGELOG, organize TAG/PR status                | `docs/`, `.moai/reports/sync-report.md`, Ready PR                  |
 
 > ❗ All commands maintain **Phase 0 (optional) → Phase 1 → Phase 2 → Phase 3** cycle structure. Alfred automatically reports execution status and next-step suggestions.
+
+---
+
+## SPEC GitHub Issue Automation
+
+MoAI-ADK now provides **automatic GitHub Issue synchronization** from SPEC documents, seamlessly integrating requirements with issue tracking in team mode.
+
+### How It Works
+
+When you create a SPEC document using `/alfred:1-plan` and push it to a feature branch:
+
+1. **GitHub Actions Workflow** automatically triggers on PR events
+2. **SPEC Metadata** (ID, version, status, priority) is extracted from YAML frontmatter
+3. **GitHub Issue** is created with full SPEC content and metadata table
+4. **PR Comment** is added with a link to the created issue
+5. **Labels** are automatically applied based on priority (critical, high, medium, low)
+
+### What Gets Synchronized
+
+**From SPEC to GitHub Issue:**
+- **SPEC ID**: Unique identifier (e.g., AUTH-001, USER-001)
+- **Version**: Semantic versioning (v0.1.0, v1.0.0)
+- **Status**: draft, in-review, in-progress, completed, stable
+- **Priority**: critical, high, medium, low (becomes GitHub label)
+- **Full Content**: EARS requirements, acceptance criteria, dependencies
+
+**GitHub Issue Format:**
+```markdown
+# [SPEC-AUTH-001] User Authentication (v1.0.0)
+
+## SPEC Metadata
+
+| Field | Value |
+|-------|-------|
+| **ID** | AUTH-001 |
+| **Version** | v1.0.0 |
+| **Status** | in-progress |
+| **Priority** | high |
+
+## SPEC Document
+
+[Full SPEC content from .moai/specs/SPEC-AUTH-001/spec.md]
+
+---
+
+📎 **Branch**: `feature/AUTH-001`
+🔗 **PR**: #123
+📝 **Auto-synced**: This issue is automatically synchronized from the SPEC document
+```
+
+### Features
+
+✅ **Automatic Issue Creation**: GitHub Issue created on every PR with SPEC file changes
+✅ **Metadata Extraction**: ID, version, status, priority automatically parsed from YAML frontmatter
+✅ **PR Integration**: Issue linked to PR via automatic comment
+✅ **Label Management**: Priority-based labels (critical, high, medium, low) auto-applied
+✅ **CodeRabbit Review** (local only): AI-powered SPEC quality validation in local development
+
+### Setup Requirements
+
+**GitHub Actions Workflow**: `.github/workflows/spec-issue-sync.yml`
+**GitHub Issue Template**: `.github/ISSUE_TEMPLATE/spec.yml`
+**GitHub Labels**: `spec`, `planning`, `critical`, `high`, `medium`, `low`
+
+All templates are automatically installed with MoAI-ADK and synced during `moai-adk init`.
+
+### CodeRabbit Integration (Local Only)
+
+When working in your **local development environment**, CodeRabbit provides automatic SPEC quality review:
+
+**What CodeRabbit Reviews:**
+- ✅ All 7 required metadata fields (id, version, status, created, updated, author, priority)
+- ✅ HISTORY section formatting and chronological order
+- ✅ EARS requirements structure (Ubiquitous, Event-driven, State-driven, Constraints, Optional)
+- ✅ Acceptance criteria in Given-When-Then format
+- ✅ @TAG system compliance for traceability
+
+**CodeRabbit Configuration**: `.coderabbit.yaml` (local only, not distributed in packages)
+
+> **Note**: CodeRabbit integration is available only in local development environments. Package users receive core GitHub Issue automation without CodeRabbit review.
+
+### Workflow Example
+
+```bash
+# 1. Create SPEC
+/alfred:1-plan "User authentication feature"
+
+# 2. SPEC file created at .moai/specs/SPEC-AUTH-001/spec.md
+# 3. Feature branch created: feature/SPEC-AUTH-001
+# 4. Draft PR created (team mode)
+
+# 5. GitHub Actions automatically:
+#    - Parses SPEC metadata
+#    - Creates GitHub Issue #45
+#    - Adds PR comment: "✅ SPEC GitHub Issue Created - Issue: #45"
+#    - Applies labels: spec, planning, high
+
+# 6. CodeRabbit reviews SPEC (local only):
+#    - Validates metadata
+#    - Checks EARS requirements
+#    - Provides quality score
+
+# 7. Continue with TDD implementation
+/alfred:2-run AUTH-001
+```
+
+### Benefits
+
+1. **Centralized Tracking**: All SPEC requirements tracked as GitHub Issues
+2. **Team Visibility**: Non-technical stakeholders can follow progress via Issues
+3. **Automated Workflow**: No manual issue creation—fully automated from SPEC to Issue
+4. **Traceability**: Direct link between SPEC files, Issues, PRs, and implementation
+5. **Quality Assurance**: CodeRabbit validates SPEC quality before implementation (local only)
 
 ---
 
@@ -1428,6 +1540,7 @@ If you need to temporarily disable hooks, edit `.claude/settings.json`:
 
 | Version     | Key Features                                                                                     | Date       |
 | ----------- | ------------------------------------------------------------------------------------------------ | ---------- |
+| **v0.5.7**  | 🎯 SPEC → GitHub Issue automation + CodeRabbit integration + Auto PR comments                    | 2025-10-27 |
 | **v0.4.11** | ✨ TAG Guard system + CLAUDE.md formatting improvements + Code cleanup                           | 2025-10-23 |
 | **v0.4.10** | 🔧 Hook robustness improvements + Bilingual documentation + Template language config             | 2025-10-23 |
 | **v0.4.9**  | 🎯 Hook JSON schema validation fixes + Comprehensive tests (468/468 passing)                     | 2025-10-23 |

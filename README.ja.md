@@ -24,7 +24,6 @@
 | SPEC・TDD・TAG とは？            | [主要コンセプトを理解する](#主要コンセプトを理解する)          |
 | エージェントと Skills が知りたい | [Sub-agent と Skills の概要](#sub-agent-と-skills-の概要)      |
 | Claude Code Hooks の動作は？     | [Claude Code Hooks ガイド](#claude-code-hooks-ガイド)          |
-| 4 週間の実践プロジェクトがしたい | [第 2 の実践: Mini Kanban Board](#第2の実践-mini-kanban-board) |
 | もっと学びたい                   | [追加リソース](#追加リソース)                                  |
 
 ---
@@ -180,6 +179,36 @@ graph TD
 | `/alfred:3-sync`          | ドキュメント／README／CHANGELOG 同期、TAG／PR 状態を整理 | `docs/`, `.moai/reports/sync-report.md`, レビュー準備済み PR             |
 
 > ❗ すべてのコマンドは **Phase 0（任意）→ Phase 1 → Phase 2 → Phase 3** のループを守ります。Alfred が現在の状況と次のステップを自動で報告します。
+
+---
+
+<!-- TRANSLATION NEEDED: This section should be translated to Japanese -->
+<!-- For complete documentation in English, see README.md -->
+<!-- For complete documentation in Korean, see README.ko.md -->
+
+## 🎯 NEW in v0.5.7: SPEC GitHub Issue Automation
+
+MoAI-ADK now provides automatic GitHub Issue synchronization from SPEC documents in team mode.
+
+### Key Features
+
+✅ **Automatic Issue Creation**: GitHub Issue created on every PR with SPEC file changes
+✅ **Metadata Extraction**: ID, version, status, priority automatically parsed
+✅ **PR Integration**: Issue linked to PR via automatic comment
+✅ **Label Management**: Priority-based labels auto-applied
+✅ **CodeRabbit Review** (local only): AI-powered SPEC quality validation
+
+### How It Works
+
+1. Create SPEC with `/alfred:1-plan`
+2. Push to feature branch
+3. GitHub Actions automatically creates Issue
+4. PR comment added with Issue link
+5. CodeRabbit reviews SPEC quality (local only)
+
+For complete documentation, see:
+- English: [README.md](README.md#spec-github-issue-automation)
+- Korean: [README.ko.md](README.ko.md#spec-github-issue-자동화)
 
 ---
 
@@ -385,6 +414,7 @@ Claude Code セッションの重要イベントで自動発火するイベン�
 
 | バージョン  | 主な機能                                                                     | 日付       |
 | ----------- | ---------------------------------------------------------------------------- | ---------- |
+| **v0.5.7**  | 🎯 SPEC → GitHub Issue 自動化 + CodeRabbit 統合 + 自動 PR コメント           | 2025-10-27 |
 | **v0.4.11** | ✨ TAG Guard システム + CLAUDE.md フォーマット改善 + コードクリーンアップ    | 2025-10-23 |
 | **v0.4.10** | 🔧 Hook 堅牢性向上 + バイリンガルドキュメント + テンプレート言語設定         | 2025-10-23 |
 | **v0.4.9**  | 🎯 Hook JSON スキーマ検証修正 + 包括的テスト（468/468 パス）                 | 2025-10-23 |
