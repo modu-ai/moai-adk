@@ -96,10 +96,13 @@ $spec_content
           echo "  Title: [SPEC-$spec_id] $spec_title (v$spec_version)"
           echo "  Body length: ${#issue_body} characters"
 
-          # Create issue with labels
+          # Save issue body to file for safe gh CLI usage
+          echo "$issue_body" > /tmp/issue_body.txt
+
+          # Create issue with labels using body-file
           issue_output=$(gh issue create \
             --title "[SPEC-$spec_id] $spec_title (v$spec_version)" \
-            --body "$issue_body" \
+            --body-file /tmp/issue_body.txt \
             --label "spec" \
             --label "planning" \
             --label "$spec_priority" 2>&1)
