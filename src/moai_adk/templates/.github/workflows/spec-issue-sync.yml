@@ -23,14 +23,30 @@ jobs:
       - name: Find and parse SPEC file
         id: spec
         run: |
+          set -x  # Enable debug mode
+
+          # Debug: Show current directory and files
+          echo "=== Debug: Current directory ==="
+          pwd
+          ls -la
+
+          echo "=== Debug: Looking for .moai/specs ==="
+          ls -la .moai/ 2>&1 || echo ".moai/ directory not found"
+
           # Find SPEC files in the PR
-          spec_file=$(find .moai/specs -name "spec.md" -type f | head -1)
+          echo "=== Debug: Searching for SPEC files ==="
+          find . -name "spec.md" -type f 2>&1 || echo "find command failed"
+
+          spec_file=$(find .moai/specs -name "spec.md" -type f 2>&1 | head -1)
+          echo "Found spec_file: [$spec_file]"
 
           if [ -z "$spec_file" ]; then
-            echo "No SPEC file found"
+            echo "⚠️  No SPEC file found in .moai/specs"
+            echo "Exiting gracefully (this is expected if no SPEC files changed)"
             exit 0
           fi
 
+          echo "✅ Found SPEC file: $spec_file"
           echo "spec_file=$spec_file" >> $GITHUB_OUTPUT
 
           # Extract YAML metadata using grep
