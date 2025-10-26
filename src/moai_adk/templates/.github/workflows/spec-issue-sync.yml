@@ -20,193 +20,149 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
-      - name: Find and parse SPEC file
-        id: spec
+      - name: Find and extract SPEC
+        id: extract
         run: |
-          import os
-          import re
-          from pathlib import Path
+          set -x  # Debug mode - show all commands
 
-          # Find SPEC files
-          spec_files = list(Path(".moai/specs").glob("SPEC-*/spec.md"))
+          echo "=== Starting SPEC extraction ==="
 
-          if not spec_files:
-            print("No SPEC files found")
-            exit(0)
+          # Find SPEC file
+          SPEC_FILE=$(find .moai/specs -name "spec.md" | head -1)
+          echo "Found SPEC file: $SPEC_FILE"
 
-          spec_file = str(spec_files[0])
-          print(f"Found SPEC file: {spec_file}")
-
-          # Read and parse SPEC
-          with open(spec_file, 'r', encoding='utf-8') as f:
-            content = f.read()
+          if [ -z "$SPEC_FILE" ]; then
+            echo "No SPEC file found"
+            exit 0
+          fi
 
           # Extract YAML frontmatter
-          yaml_match = re.search(r'^---(.*?)---', content, re.DOTALL)
-          if not yaml_match:
-            print("No YAML frontmatter found")
-            exit(0)
+          SPEC_ID=$(grep "^id:" "$SPEC_FILE" | sed 's/^id: *//' | xargs)
+          SPEC_VERSION=$(grep "^version:" "$SPEC_FILE" | sed 's/^version: *//' | xargs)
+          SPEC_STATUS=$(grep "^status:" "$SPEC_FILE" | sed 's/^status: *//' | xargs)
+          SPEC_PRIORITY=$(grep "^priority:" "$SPEC_FILE" | sed 's/^priority: *//' | xargs)
 
-          yaml_content = yaml_match.group(1)
+          # Extract title
+          SPEC_TITLE=$(grep "^# @SPEC:" "$SPEC_FILE" | sed 's/^# @SPEC:[^:]*: *//' | xargs)
 
-          # Extract metadata
-          metadata = {}
-          for line in yaml_content.split('\n'):
-            match = re.match(r'^(\w+):\s*(.+)$', line.strip())
-            if match:
-              metadata[match.group(1)] = match.group(2).strip('"').strip()
+          echo "=== Extracted metadata ==="
+          echo "ID: $SPEC_ID"
+          echo "Title: $SPEC_TITLE"
+          echo "Version: $SPEC_VERSION"
+          echo "Status: $SPEC_STATUS"
+          echo "Priority: $SPEC_PRIORITY"
 
-          spec_id = metadata.get('id', '')
-          spec_version = metadata.get('version', '')
-          spec_status = metadata.get('status', '')
-          spec_priority = metadata.get('priority', '')
+          # Save to environment
+          {
+            echo "spec_file=$SPEC_FILE"
+            echo "spec_id=$SPEC_ID"
+            echo "spec_version=$SPEC_VERSION"
+            echo "spec_status=$SPEC_STATUS"
+            echo "spec_priority=$SPEC_PRIORITY"
+            echo "spec_title=$SPEC_TITLE"
+          } >> $GITHUB_OUTPUT
 
-          # Extract title from H1 heading
-          title_match = re.search(r'^# @SPEC:[^:]*:\s*(.+)$', content, re.MULTILINE)
-          spec_title = title_match.group(1) if title_match else ''
-
-          print(f"SPEC ID: {spec_id}")
-          print(f"Title: {spec_title}")
-          print(f"Version: {spec_version}")
-          print(f"Status: {spec_status}")
-          print(f"Priority: {spec_priority}")
-
-          # Output for next steps
-          print(f"::set-output name=spec_file::{spec_file}")
-          print(f"::set-output name=spec_id::{spec_id}")
-          print(f"::set-output name=spec_version::{spec_version}")
-          print(f"::set-output name=spec_status::{spec_status}")
-          print(f"::set-output name=spec_priority::{spec_priority}")
-          print(f"::set-output name=spec_title::{spec_title}")
-
-        shell: python
+          echo "=== Outputs saved ==="
 
       - name: Create GitHub Issue
-        if: steps.spec.outputs.spec_id
+        if: steps.extract.outputs.spec_id != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SPEC_FILE: ${{ steps.spec.outputs.spec_file }}
-          SPEC_ID: ${{ steps.spec.outputs.spec_id }}
-          SPEC_VERSION: ${{ steps.spec.outputs.spec_version }}
-          SPEC_STATUS: ${{ steps.spec.outputs.spec_status }}
-          SPEC_PRIORITY: ${{ steps.spec.outputs.spec_priority }}
-          SPEC_TITLE: ${{ steps.spec.outputs.spec_title }}
         run: |
-          import os
-          import subprocess
+          set -x
 
-          spec_file = os.environ['SPEC_FILE']
-          spec_id = os.environ['SPEC_ID']
-          spec_version = os.environ['SPEC_VERSION']
-          spec_status = os.environ['SPEC_STATUS']
-          spec_priority = os.environ['SPEC_PRIORITY']
-          spec_title = os.environ['SPEC_TITLE']
+          echo "=== Creating GitHub Issue ==="
 
-          # Read SPEC content
-          with open(spec_file, 'r', encoding='utf-8') as f:
-            content = f.read()
+          SPEC_FILE="${{ steps.extract.outputs.spec_file }}"
+          SPEC_ID="${{ steps.extract.outputs.spec_id }}"
+          SPEC_VERSION="${{ steps.extract.outputs.spec_version }}"
+          SPEC_STATUS="${{ steps.extract.outputs.spec_status }}"
+          SPEC_PRIORITY="${{ steps.extract.outputs.spec_priority }}"
+          SPEC_TITLE="${{ steps.extract.outputs.spec_title }}"
+          PR_NUMBER="${{ github.event.pull_request.number }}"
 
-          # Skip frontmatter
-          lines = content.split('\n')
-          body_start = 0
-          dash_count = 0
-          for i, line in enumerate(lines):
-            if line.strip() == '---':
-              dash_count += 1
-              if dash_count == 2:
-                body_start = i + 1
-                break
+          echo "Variables received:"
+          echo "  SPEC_FILE=$SPEC_FILE"
+          echo "  SPEC_ID=$SPEC_ID"
+          echo "  SPEC_TITLE=$SPEC_TITLE"
+          echo "  PR_NUMBER=$PR_NUMBER"
 
-          spec_content = '\n'.join(lines[body_start:])
+          # Read SPEC content (skip first 6 lines of YAML)
+          SPEC_CONTENT=$(tail -n +7 "$SPEC_FILE")
 
-          # Build issue body
-          issue_body = f"""## SPEC Metadata
-
+          # Create issue body
+          ISSUE_BODY="## SPEC Metadata
 | Field | Value |
 |-------|-------|
-| **ID** | SPEC-{spec_id} |
-| **Version** | {spec_version} |
-| **Status** | {spec_status} |
-| **Priority** | {spec_priority} |
+| **ID** | SPEC-$SPEC_ID |
+| **Version** | $SPEC_VERSION |
+| **Status** | $SPEC_STATUS |
+| **Priority** | $SPEC_PRIORITY |
 
 ## SPEC Document
 
-{spec_content}
+$SPEC_CONTENT
 
 ---
 
-📎 **Branch**: `feature/SPEC-{spec_id}`
-🔗 **PR**: #{os.environ.get('GITHUB_EVENT_NUMBER', 'N/A')}
-📝 **Auto-synced**: This issue is automatically synchronized from the SPEC document
-"""
+📎 **Branch**: \`feature/SPEC-$SPEC_ID\`
+🔗 **PR**: #$PR_NUMBER
+📝 **Auto-synced**: This issue is automatically synchronized from the SPEC document"
+
+          echo "=== Issue body prepared ==="
+          echo "Body length: ${#ISSUE_BODY}"
 
           # Create issue
-          result = subprocess.run(
-            ['gh', 'issue', 'create',
-             '--title', f'[SPEC-{spec_id}] {spec_title} (v{spec_version})',
-             '--body', issue_body,
-             '--label', 'spec',
-             '--label', 'planning',
-             '--label', spec_priority],
-            capture_output=True,
-            text=True
-          )
+          echo "Creating issue with gh CLI..."
+          ISSUE_OUTPUT=$(gh issue create \
+            --title "[SPEC-$SPEC_ID] $SPEC_TITLE (v$SPEC_VERSION)" \
+            --body "$ISSUE_BODY" \
+            --label "spec" \
+            --label "planning" \
+            --label "$SPEC_PRIORITY" 2>&1)
 
-          if result.returncode == 0:
-            print("✅ Issue created successfully")
-            # Extract issue number from URL
-            import re
-            match = re.search(r'issues/(\d+)', result.stdout)
-            if match:
-              issue_num = match.group(1)
-              print(f"::set-output name=issue_number::{issue_num}")
-              print(f"Issue URL: {result.stdout}")
-          else:
-            print(f"❌ Failed to create issue: {result.stderr}")
-            exit(1)
+          ISSUE_EXIT_CODE=$?
+          echo "gh issue create exit code: $ISSUE_EXIT_CODE"
+          echo "Issue output: $ISSUE_OUTPUT"
 
-        shell: python
+          if [ $ISSUE_EXIT_CODE -eq 0 ]; then
+            echo "✅ Issue created successfully"
+            # Extract issue number
+            ISSUE_NUM=$(echo "$ISSUE_OUTPUT" | grep -oP 'issues/\K[0-9]+' || echo "")
+            echo "Issue number: $ISSUE_NUM"
+
+            if [ -n "$ISSUE_NUM" ]; then
+              echo "issue_number=$ISSUE_NUM" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "❌ Failed to create issue"
+            exit 0  # Don't fail PR, just skip issue creation
+          fi
 
       - name: Add PR comment
-        if: steps.create-issue.outputs.issue_number
+        if: steps.create-issue.outputs.issue_number != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE_NUM: ${{ steps.create-issue.outputs.issue_number }}
-          SPEC_ID: ${{ steps.spec.outputs.spec_id }}
-          SPEC_TITLE: ${{ steps.spec.outputs.spec_title }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          import os
-          import subprocess
+          set -x
 
-          issue_num = os.environ['ISSUE_NUM']
-          spec_id = os.environ['SPEC_ID']
-          spec_title = os.environ['SPEC_TITLE']
-          pr_number = os.environ['PR_NUMBER']
+          ISSUE_NUM="${{ steps.create-issue.outputs.issue_number }}"
+          SPEC_ID="${{ steps.extract.outputs.spec_id }}"
+          SPEC_TITLE="${{ steps.extract.outputs.spec_title }}"
+          PR_NUMBER="${{ github.event.pull_request.number }}"
 
-          pr_comment = f"""✅ **SPEC GitHub Issue Created**
+          echo "=== Adding PR comment ==="
+          echo "Issue: #$ISSUE_NUM"
+          echo "PR: #$PR_NUMBER"
+
+          PR_COMMENT="✅ **SPEC GitHub Issue Created**
 
 This SPEC has been synchronized to GitHub Issue.
 
-📋 **Issue**: [#{{issue_num}} - SPEC-{{spec_id}}: {{spec_title}}](../issues/{{issue_num}})
-🔗 **SPEC File**: `.moai/specs/SPEC-{{spec_id}}/spec.md`
+📋 **Issue**: [#$ISSUE_NUM - SPEC-$SPEC_ID: $SPEC_TITLE](../issues/$ISSUE_NUM)
+🔗 **SPEC File**: \`.moai/specs/SPEC-$SPEC_ID/spec.md\`
 
-The issue will be automatically updated as you modify the SPEC document."""
+The issue will be automatically updated as you modify the SPEC document."
 
-          result = subprocess.run(
-            ['gh', 'pr', 'comment', pr_number, '--body', pr_comment],
-            capture_output=True,
-            text=True
-          )
-
-          if result.returncode == 0:
-            print("✅ PR comment added successfully")
-          else:
-            print(f"⚠️ Failed to add PR comment: {result.stderr}")
-
-        shell: python
+          gh pr comment $PR_NUMBER --body "$PR_COMMENT" || true
+          echo "PR comment added"
