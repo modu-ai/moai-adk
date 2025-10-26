@@ -1,8 +1,28 @@
 ---
-name: "Creating and Optimizing Claude Code Skills"
-description: "Design reusable knowledge capsules with progressive disclosure (metadata → content → resources). Apply freedom levels (high/medium/low), create examples, validate YAML. Use when building domain-specific guidance or automating recurring patterns."
+name: moai-cc-skills
+description: "Creating and Optimizing Claude Code Skills. Design reusable knowledge capsules with progressive disclosure (metadata → content → resources). Apply freedom levels (high/medium/low), create examples, validate YAML. Use when building domain-specific guidance or automating recurring patterns."
 allowed-tools: "Read, Write, Edit, Glob, Bash"
 ---
+
+## Skill Metadata
+
+| Field | Value |
+| ----- | ----- |
+| Version | 1.0.0 |
+| Tier | Ops |
+| Auto-load | When creating or updating Skills |
+
+## What It Does
+
+Claude Code Skill 생성 및 최적화를 위한 전체 가이드를 제공합니다. Progressive disclosure 패턴, freedom level framework, YAML metadata 작성, 예제 구성 방법을 다룹니다.
+
+## When to Use
+
+- 새로운 Skill을 생성할 때
+- 기존 Skill을 최적화하거나 리팩토링할 때
+- Freedom level (high/medium/low) 균형을 조정할 때
+- Skill metadata나 구조를 검증할 때
+
 
 # Creating and Optimizing Claude Code Skills
 
@@ -31,7 +51,7 @@ skill-name/
 ```yaml
 ---
 name: "Skill Name (Gerund + Domain)"
-description: "[Capability]. Use when [trigger 1], [trigger 2], [trigger 3]."
+description: "Creating and Optimizing Claude Code Skills. [Capability]. Use when [trigger 1], [trigger 2], [trigger 3]."
 allowed-tools: "Read, Write, Bash(python:*)"
 ---
 ```
@@ -129,7 +149,7 @@ if __name__ == "__main__":
 **Level 1**: Metadata (always loaded)
 ```yaml
 name: "Database Query Optimization"
-description: "Profile slow queries, analyze execution plans, suggest indexes..."
+description: "Creating and Optimizing Claude Code Skills. Profile slow queries, analyze execution plans, suggest indexes..."
 allowed-tools: "Read, Bash(sqlite3:*)"
 ```
 
@@ -164,7 +184,7 @@ data cleaning, validation, or transformation."
 ```yaml
 ---
 name: "Testing React Components with Vitest"
-description: "Write unit tests for React components, mock hooks, test async behavior. Use when testing React components, setting up Vitest, or debugging test failures."
+description: "Creating and Optimizing Claude Code Skills. Write unit tests for React components, mock hooks, test async behavior. Use when testing React components, setting up Vitest, or debugging test failures."
 allowed-tools: "Read, Write, Bash(npm:*), Bash(npm run:*)"
 ---
 

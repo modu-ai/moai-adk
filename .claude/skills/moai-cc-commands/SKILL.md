@@ -1,8 +1,28 @@
 ---
-name: "Designing Slash Commands for Claude Code"
-description: "Create and optimize slash commands with proper argument parsing, tool permissions, and agent orchestration. Use when building workflow entry points, automation commands, or user-facing shortcuts."
+name: moai-cc-commands
+description: "Designing Slash Commands for Claude Code. Create and optimize slash commands with proper argument parsing, tool permissions, and agent orchestration. Use when building workflow entry points, automation commands, or user-facing shortcuts."
 allowed-tools: "Read, Write, Edit, Glob, Bash"
 ---
+
+## Skill Metadata
+
+| Field | Value |
+| ----- | ----- |
+| Version | 1.0.0 |
+| Tier | Ops |
+| Auto-load | When designing slash commands |
+
+## What It Does
+
+Slash command 설계 및 최적화 방법을 제공합니다. Argument parsing, tool permissions, agent orchestration을 포함한 command 구조를 다룹니다.
+
+## When to Use
+
+- 새로운 slash command를 생성할 때
+- 기존 command를 최적화하거나 리팩토링할 때
+- Workflow entry point를 설계할 때
+- User-facing automation을 구축할 때
+
 
 # Designing Slash Commands
 

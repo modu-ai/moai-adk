@@ -17,8 +17,8 @@ from unittest.mock import patch
 HOOKS_DIR = Path(__file__).parent.parent.parent / "src" / "moai_adk" / "templates" / ".claude" / "hooks" / "alfred"
 sys.path.insert(0, str(HOOKS_DIR))
 
-from core import HookPayload, HookResult
-from handlers import (
+from core import HookPayload, HookResult  # noqa: E402
+from handlers import (  # noqa: E402
     handle_notification,
     handle_post_tool_use,
     handle_pre_tool_use,

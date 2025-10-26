@@ -1,61 +1,49 @@
-# MoAI Essentials Debug - Language Reference Guide
+# moai-essentials-debug — 기술 레퍼런스
 
-## Table of Contents
-1. [Systems Programming](#systems-programming)
-2. [JVM Ecosystem](#jvm-ecosystem)
-3. [Scripting Languages](#scripting-languages)
-4. [Web & Mobile](#web--mobile)
-5. [Functional & Concurrency](#functional--concurrency)
-6. [Enterprise & Data](#enterprise--data)
-7. [Container & Distributed Systems](#container--distributed-systems)
+> **Version**: 2.1.0  
+> **Last Updated**: 2025-10-27
+
+이 문서는 moai-essentials-debug Skill의 상세한 기술 사양, 23개 언어별 디버거 설정, 컨테이너/분산 시스템 디버깅 가이드를 제공합니다.
 
 ---
 
-## Systems Programming
+## 23개 언어별 디버거 매트릭스
 
-### C
+### Systems Programming
 
-#### Installation
+#### C/C++
+**디버거**: GDB 14.x, LLDB 17.x, AddressSanitizer
+
+**CLI 명령어**:
 ```bash
-# Linux/macOS (usually pre-installed)
-which gdb
-
-# macOS with Homebrew
-brew install gdb
-
-# Ubuntu/Debian
-sudo apt-get install gdb
-
-# LLDB alternative
-brew install llvm  # macOS
-```
-
-#### CLI Usage
-```bash
-# Basic debugging
-gdb ./program
+# GDB 기본 사용
+gdb ./myapp
 (gdb) break main
-(gdb) run arg1 arg2
-(gdb) step         # Step into
-(gdb) next         # Step over
-(gdb) continue     # Continue execution
-(gdb) print var    # Inspect variable
-(gdb) backtrace    # Stack trace
+(gdb) run
+(gdb) next
+(gdb) print variable
+(gdb) backtrace
 
-# Debug with core dump
-gdb ./program core
+# LLDB 사용
+lldb ./myapp
+(lldb) b main
+(lldb) run
+(lldb) n
+(lldb) p variable
+(lldb) bt
 
-# Attach to running process
-gdb -p <pid>
+# AddressSanitizer (메모리 오류 감지)
+gcc -fsanitize=address -g myapp.c -o myapp
+./myapp
 ```
 
-#### VSCode Configuration
+**VSCode launch.json**:
 ```json
 {
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "C: Debug",
+      "name": "C++ Debug",
       "type": "cppdbg",
       "request": "launch",
       "program": "${workspaceFolder}/build/myapp",
@@ -77,232 +65,80 @@ gdb -p <pid>
 }
 ```
 
-#### Common Commands
+#### Rust
+**디버거**: rust-lldb, rust-gdb, RUST_BACKTRACE
+
+**CLI 명령어**:
 ```bash
-# Watchpoints
-watch variable_name    # Break when variable changes
-
-# Conditional breakpoints
-break line_number if condition
-
-# Memory inspection
-x/10x address         # Display 10 hex values at address
-```
-
----
-
-### C++
-
-#### Installation
-Same as C (gdb/lldb), plus sanitizers:
-```bash
-# Compile with AddressSanitizer
-g++ -fsanitize=address -g program.cpp -o program
-
-# Valgrind for memory analysis
-sudo apt-get install valgrind
-brew install valgrind  # macOS
-```
-
-#### CLI Usage
-```bash
-# GDB with C++ pretty-printers
-gdb ./program
-(gdb) set print pretty on
-(gdb) set print object on
-
-# LLDB
-lldb ./program
-(lldb) breakpoint set -n main
-(lldb) process launch -- arg1 arg2
-(lldb) thread backtrace
-```
-
-#### Valgrind Usage
-```bash
-# Memory leak detection
-valgrind --leak-check=full --show-leak-kinds=all ./program
-
-# Callgrind profiling
-valgrind --tool=callgrind ./program
-callgrind_annotate callgrind.out.<pid>
-```
-
-#### VSCode Configuration
-```json
-{
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "C++: Debug",
-      "type": "cppdbg",
-      "request": "launch",
-      "program": "${workspaceFolder}/build/myapp",
-      "args": [],
-      "stopAtEntry": false,
-      "cwd": "${workspaceFolder}",
-      "environment": [],
-      "externalConsole": false,
-      "MIMode": "gdb",
-      "miDebuggerPath": "/usr/bin/gdb"
-    }
-  ]
-}
-```
-
----
-
-### Rust
-
-#### Installation
-```bash
-# Installed with rustup (automatic)
-rustup component add rust-src
-rustup component add rust-analyzer
-
-# VSCode extension
-code --install-extension vadimcn.vscode-lldb
-```
-
-#### CLI Usage
-```bash
-# Run with backtrace
+# 백트레이스 활성화
 RUST_BACKTRACE=1 cargo run
-RUST_BACKTRACE=full cargo run
+RUST_BACKTRACE=full cargo run  # 전체 백트레이스
 
-# Debug build
-cargo build
+# rust-lldb 사용
 rust-lldb target/debug/myapp
-
-# In LLDB
 (lldb) b main
-(lldb) r
-(lldb) bt  # Backtrace
+(lldb) run
+
+# rust-gdb 사용
+rust-gdb target/debug/myapp
+(gdb) break main
+(gdb) run
 ```
 
-#### VSCode Configuration
+**VSCode launch.json**:
 ```json
 {
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Rust Debug",
       "type": "lldb",
       "request": "launch",
-      "name": "Debug executable",
-      "cargo": {
-        "args": [
-          "build",
-          "--bin=myapp",
-          "--package=myapp"
-        ],
-        "filter": {
-          "name": "myapp",
-          "kind": "bin"
-        }
-      },
+      "program": "${workspaceFolder}/target/debug/${workspaceFolderBasename}",
       "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug unit tests",
-      "cargo": {
-        "args": [
-          "test",
-          "--no-run",
-          "--lib",
-          "--package=myapp"
-        ],
-        "filter": {
-          "name": "myapp",
-          "kind": "lib"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_BACKTRACE": "1"
+      }
     }
   ]
 }
 ```
 
----
+#### Go
+**디버거**: Delve 1.22.x
 
-### Go
-
-#### Installation
+**CLI 명령어**:
 ```bash
-# Install Delve
-go install github.com/go-delve/delve/cmd/dlv@latest
-
-# Verify
-dlv version
-
-# VSCode extension
-code --install-extension golang.go
-```
-
-#### CLI Usage
-```bash
-# Debug main package
+# Delve 디버깅
 dlv debug
-
-# Debug with arguments
-dlv debug -- --config=dev.json
-
-# Debug tests
-dlv test
-
-# Attach to running process
-dlv attach <pid>
-
-# Remote debugging
-dlv debug --headless --listen=:2345 --api-version=2
-
-# In Delve
 (dlv) break main.main
 (dlv) continue
-(dlv) print myVar
-(dlv) goroutines           # List all goroutines
-(dlv) goroutine 5 bt       # Stack trace for goroutine 5
+(dlv) next
+(dlv) print variable
+(dlv) goroutines  # 고루틴 목록
+(dlv) goroutine 1  # 특정 고루틴 전환
+
+# 실행 중인 프로세스에 연결
+dlv attach <pid>
+
+# 테스트 디버깅
+dlv test -- -test.run TestName
 ```
 
-#### VSCode Configuration
+**VSCode launch.json**:
 ```json
 {
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Launch Package",
-      "type": "go",
-      "request": "launch",
-      "mode": "auto",
-      "program": "${workspaceFolder}",
-      "env": {},
-      "args": []
-    },
-    {
-      "name": "Launch File",
+      "name": "Go Debug",
       "type": "go",
       "request": "launch",
       "mode": "debug",
-      "program": "${file}"
-    },
-    {
-      "name": "Attach to Process",
-      "type": "go",
-      "request": "attach",
-      "mode": "local",
-      "processId": "${command:pickProcess}"
-    },
-    {
-      "name": "Connect to Remote",
-      "type": "go",
-      "request": "attach",
-      "mode": "remote",
-      "remotePath": "/app",
-      "port": 2345,
-      "host": "localhost"
+      "program": "${workspaceFolder}",
+      "env": {},
+      "args": []
     }
   ]
 }
@@ -310,1224 +146,902 @@ dlv debug --headless --listen=:2345 --api-version=2
 
 ---
 
-## JVM Ecosystem
+### JVM Ecosystem
 
-### Java
+#### Java
+**디버거**: jdb, IntelliJ IDEA, Remote JDWP
 
-#### Installation
+**CLI 명령어**:
 ```bash
-# JDB comes with JDK
-java -version
-jdb -version
-
-# IntelliJ IDEA (recommended for GUI debugging)
-# Download from jetbrains.com
-```
-
-#### CLI Usage
-```bash
-# Start application with debug port
-java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 -jar app.jar
-
-# Connect with JDB
-jdb -attach localhost:5005
-
-# JDB commands
-> stop at ClassName:lineNumber
+# jdb 사용
+jdb -classpath . MyApp
+> stop at MyClass:42
 > run
 > step
-> next
 > print variable
-> locals
-> where    # Stack trace
+
+# 원격 디버깅 활성화
+java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 MyApp
 ```
 
-#### Remote Debugging Setup
+**원격 디버깅 설정**:
 ```bash
-# Server side
-java -Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=*:5005 -jar app.jar
-
-# Or with modern syntax
-java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 -jar app.jar
+# IntelliJ/VSCode 원격 디버거 연결
+Host: localhost
+Port: 5005
 ```
 
-#### VSCode Configuration
-```json
-{
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "type": "java",
-      "name": "Debug (Launch)",
-      "request": "launch",
-      "mainClass": "com.example.Main",
-      "projectName": "myapp"
-    },
-    {
-      "type": "java",
-      "name": "Debug (Attach)",
-      "request": "attach",
-      "hostName": "localhost",
-      "port": 5005
-    }
-  ]
-}
-```
+#### Kotlin
+**디버거**: IntelliJ Kotlin Debugger, Coroutines Debugger
 
-#### IntelliJ IDEA Setup
-1. Run → Edit Configurations
-2. Add New Configuration → Remote JVM Debug
-3. Set host and port
-4. Set breakpoints and click Debug
-
----
-
-### Kotlin
-
-#### Installation
-Same as Java (uses JVM debug infrastructure)
-
-#### CLI Usage
-```bash
-# Gradle with debug
-./gradlew run --debug-jvm
-
-# Maven with debug
-mvn spring-boot:run -Dspring-boot.run.jvmArguments="-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=*:5005"
-```
-
-#### Coroutine Debugging
+**코루틴 디버깅**:
 ```kotlin
-// Enable coroutine debugging
-System.setProperty("kotlinx.coroutines.debug", "on")
-
-// In IntelliJ IDEA:
-// Run → Edit Configurations → VM Options:
--Dkotlinx.coroutines.debug
-```
-
-#### VSCode Configuration
-Same as Java, works with Kotlin bytecode
-
----
-
-### Scala
-
-#### Installation
-```bash
-# sbt with debug support
-sbt
-
-# Metals language server (VSCode)
-code --install-extension scalameta.metals
-```
-
-#### CLI Usage
-```bash
-# sbt with debug port
-sbt -jvm-debug 5005
-
-# In sbt shell
-sbt:myapp> ~run  # Continuous compilation + run
-```
-
-#### VSCode Configuration
-```json
-{
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "type": "scala",
-      "request": "launch",
-      "name": "Launch Scala App",
-      "mainClass": "com.example.Main",
-      "args": [],
-      "jvmOptions": []
-    }
-  ]
+// 코루틴 디버그 정보 활성화
+kotlinOptions {
+    freeCompilerArgs += ["-Xdebug"]
 }
 ```
 
----
+**IntelliJ 코루틴 뷰어**: View → Tool Windows → Kotlin Coroutines
 
-### Clojure
+#### Scala
+**디버거**: IntelliJ Scala Plugin, sbt debug mode
 
-#### Installation
+**sbt 디버그 모드**:
 ```bash
-# Leiningen
-brew install leiningen  # macOS
-# Ubuntu: see leiningen.org
-
-# CIDER (Emacs)
-# Add to ~/.emacs: (require 'cider)
-
-# Cursive (IntelliJ)
-# Install from JetBrains Marketplace
+# sbt 디버그 모드 실행
+sbt -jvm-debug 5005 run
 ```
 
-#### REPL-Based Debugging
+#### Clojure
+**디버거**: CIDER, Cursive, REPL-based debugging
+
+**CIDER 디버깅**:
 ```clojure
-; Load file in REPL
-(load-file "src/myapp/core.clj")
-
-; Add breakpoints
-(require '[clojure.tools.trace :as trace])
-(trace/trace-ns 'myapp.core)
-
-; Call function to see trace
-(myapp.core/my-function arg1 arg2)
-
-; Inspect vars
-(def result (my-function arg1))
-(println result)
-```
-
-#### Leiningen Debug Plugin
-```bash
-# project.clj
-:plugins [[cider/cider-nrepl "0.30.0"]]
-
-# Start REPL with debug
-lein repl
-
-# Connect to running process
-lein repl :connect 5005
+;; 브레이크포인트 설정
+#break
+(defn my-function [x]
+  #break  ; 여기서 중단
+  (+ x 1))
 ```
 
 ---
 
-## Scripting Languages
+### Scripting Languages
 
-### Python
+#### Python
+**디버거**: pdb, debugpy 1.8.0, pudb (TUI)
 
-#### Installation
+**CLI 명령어**:
 ```bash
-# pdb (built-in, no installation needed)
-python3 -m pdb
-
-# Enhanced debuggers
-pip install pudb ipdb debugpy
-
-# VSCode extension
-code --install-extension ms-python.python
-```
-
-#### CLI Usage
-```bash
-# pdb
+# pdb 사용
 python -m pdb script.py
-(Pdb) break script.py:42
+(Pdb) break module.py:42
 (Pdb) continue
-(Pdb) step
 (Pdb) next
-(Pdb) print variable
-(Pdb) list      # Show code context
-(Pdb) where     # Stack trace
+(Pdb) print(variable)
+(Pdb) where  # 스택 트레이스
 
-# pudb (TUI)
-pudb script.py
+# pudb TUI 디버거
+python -m pudb script.py
 
-# ipdb (IPython-enhanced)
-ipdb script.py
+# debugpy 원격 디버깅
+python -m debugpy --listen 5678 script.py
 ```
 
-#### Code-Level Debugging
+**코드 내 브레이크포인트**:
 ```python
-# Insert breakpoint
+# 코드에서 pdb 시작
 import pdb; pdb.set_trace()
 
-# Python 3.7+
+# Python 3.7+ breakpoint()
 breakpoint()
-
-# Remote debugging with debugpy
-import debugpy
-debugpy.listen(5678)
-print("Waiting for debugger attach...")
-debugpy.wait_for_client()
 ```
 
-#### VSCode Configuration
+**VSCode launch.json**:
 ```json
 {
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Python: Current File",
+      "name": "Python Debug",
       "type": "debugpy",
       "request": "launch",
       "program": "${file}",
       "console": "integratedTerminal",
       "justMyCode": false
-    },
-    {
-      "name": "Python: Remote Attach",
-      "type": "debugpy",
-      "request": "attach",
-      "connect": {
-        "host": "localhost",
-        "port": 5678
-      },
-      "pathMappings": [
-        {
-          "localRoot": "${workspaceFolder}",
-          "remoteRoot": "/app"
-        }
-      ]
-    },
-    {
-      "name": "Python: Django",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "${workspaceFolder}/manage.py",
-      "args": ["runserver", "--noreload"],
-      "django": true
-    },
-    {
-      "name": "Python: Flask",
-      "type": "debugpy",
-      "request": "launch",
-      "module": "flask",
-      "env": {
-        "FLASK_APP": "app.py",
-        "FLASK_DEBUG": "1"
-      },
-      "args": ["run", "--no-debugger"],
-      "jinja": true
     }
   ]
 }
 ```
 
-#### Async Debugging
-```python
-import asyncio
-import pdb
+#### Ruby
+**디버거**: debug gem (built-in), byebug, pry-byebug
 
-async def debug_async():
-    await asyncio.sleep(1)
-    breakpoint()  # Works in async context
-    await asyncio.sleep(1)
-
-asyncio.run(debug_async())
-```
-
----
-
-### Ruby
-
-#### Installation
+**CLI 명령어**:
 ```bash
-# Ruby 3.2+ (built-in debug gem)
-ruby -v
-
-# For older versions
-gem install debug
-
-# Alternative debuggers
-gem install byebug
-gem install pry-byebug
-
-# VSCode extension
-code --install-extension Shopify.ruby-lsp
-```
-
-#### CLI Usage
-```bash
-# debug gem
+# Ruby 3.1+ 내장 디버거
 ruby -r debug script.rb
+debugger  # 코드 내
 
-# In code
-require 'debug'
-binding.break
+# byebug 사용
+gem install byebug
+# 코드 내에서
+require 'byebug'
+byebug
 
-# byebug
-byebug script.rb
-
-# Commands
-(rdbg) break script.rb:42
-(rdbg) continue
-(rdbg) step
-(rdbg) next
-(rdbg) display variable
-(rdbg) backtrace
+# pry-byebug 사용
+gem install pry-byebug
+# 코드 내에서
+require 'pry-byebug'
+binding.pry
 ```
 
-#### Rails Debugging
-```ruby
-# In controller/view
-binding.break  # Ruby 3.2+
-byebug         # Older versions
+#### PHP
+**디버거**: Xdebug 3.3.x, phpdbg
 
-# Start Rails with debugger
-rails server
-# Trigger breakpoint, debugger opens in terminal
-```
-
-#### VSCode Configuration
-```json
-{
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "Debug Ruby",
-      "type": "rdbg",
-      "request": "launch",
-      "script": "${file}",
-      "args": [],
-      "useBundler": true
-    },
-    {
-      "name": "Debug Rails",
-      "type": "rdbg",
-      "request": "launch",
-      "command": "rails",
-      "script": "server",
-      "args": [],
-      "useBundler": true
-    }
-  ]
-}
-```
-
----
-
-### PHP
-
-#### Installation
-```bash
-# Xdebug (most common)
-# Ubuntu/Debian
-sudo apt-get install php-xdebug
-
-# macOS with Homebrew
-brew install php
-pecl install xdebug
-
-# Configure php.ini
-zend_extension=xdebug.so
+**Xdebug 설정** (php.ini):
+```ini
+[xdebug]
+zend_extension=xdebug
 xdebug.mode=debug
 xdebug.start_with_request=yes
 xdebug.client_port=9003
-
-# VSCode extension
-code --install-extension xdebug.php-debug
 ```
 
-#### CLI Usage
+**phpdbg 사용**:
 ```bash
-# phpdbg (built-in CLI debugger)
-phpdbg -qrr script.php
-
-# phpdbg commands
-phpdbg> break file.php:42
+phpdbg -e script.php
+phpdbg> break script.php:42
 phpdbg> run
-phpdbg> step
-phpdbg> print $variable
-
-# Xdebug from command line
-php -dxdebug.mode=debug -dxdebug.start_with_request=yes script.php
 ```
 
-#### VSCode Configuration
-```json
-{
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "Listen for Xdebug",
-      "type": "php",
-      "request": "launch",
-      "port": 9003,
-      "pathMappings": {
-        "/var/www/html": "${workspaceFolder}"
-      }
-    },
-    {
-      "name": "Launch current script",
-      "type": "php",
-      "request": "launch",
-      "program": "${file}",
-      "cwd": "${workspaceFolder}",
-      "port": 9003
-    }
-  ]
-}
-```
+#### Lua
+**디버거**: ZeroBrane Studio, MobDebug
 
-#### Laravel Debugging
-```php
-// Use Laravel Debugbar
-composer require barryvdh/laravel-debugbar --dev
-
-// Or Telescope for advanced debugging
-composer require laravel/telescope --dev
-php artisan telescope:install
-```
-
----
-
-### Lua
-
-#### Installation
-```bash
-# ZeroBrane Studio (GUI)
-# Download from studio.zerobrane.com
-
-# MobDebug
-luarocks install mobdebug
-
-# VSCode extension
-code --install-extension actboy168.lua-debug
-```
-
-#### CLI Usage
+**MobDebug 사용**:
 ```lua
--- MobDebug
-local mobdebug = require('mobdebug')
-mobdebug.start()  -- Start debugging session
-
--- In code
-mobdebug.pause()  -- Breakpoint
+require("mobdebug").start()
+-- 브레이크포인트
+require("mobdebug").pause()
 ```
 
-#### VSCode Configuration
-```json
-{
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "Debug Lua",
-      "type": "lua",
-      "request": "launch",
-      "program": "${file}"
-    }
-  ]
-}
-```
-
----
-
-### Shell (Bash)
-
-#### Built-in Debugging
+#### Shell (Bash)
+**디버깅 모드**:
 ```bash
-# Trace mode
+# 디버그 모드 실행
 bash -x script.sh
 
-# Or in script
-#!/bin/bash
-set -x  # Enable tracing
-# ... code ...
-set +x  # Disable tracing
-
-# Custom trace format
-PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
-set -x
-```
-
-#### Debugging Options
-```bash
-# Exit on error
-set -e
-
-# Exit on undefined variable
-set -u
-
-# Exit on pipe failure
-set -o pipefail
-
-# Combine (common)
-set -euo pipefail
-```
-
-#### VSCode Configuration
-```json
-{
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "Bash-Debug",
-      "type": "bashdb",
-      "request": "launch",
-      "program": "${file}",
-      "cwd": "${workspaceFolder}",
-      "args": [],
-      "internalConsoleOptions": "openOnSessionStart"
-    }
-  ]
-}
+# 스크립트 내 토글
+set -x  # 디버그 모드 활성화
+# ... 코드 ...
+set +x  # 디버그 모드 비활성화
 ```
 
 ---
 
-## Web & Mobile
+### Web & Mobile
 
-### JavaScript (Node.js)
+#### JavaScript
+**디버거**: Chrome DevTools, node --inspect
 
-#### Installation
+**Node.js 디버깅**:
 ```bash
-# Built-in with Node.js
-node --version
-
-# VSCode (built-in debugger)
-```
-
-#### CLI Usage
-```bash
-# Start with inspector
+# 디버그 모드 실행
 node --inspect script.js
-
-# Start with inspector and break at first line
+# 또는 첫 줄에서 중단
 node --inspect-brk script.js
 
-# Connect with Chrome DevTools
-# Navigate to chrome://inspect
-
-# Built-in REPL debugging
-node inspect script.js
-debug> cont
-debug> next
-debug> step
-debug> repl  # Evaluate expressions
+# Chrome DevTools 연결
+chrome://inspect
 ```
 
-#### Code-Level Debugging
+**코드 내 브레이크포인트**:
 ```javascript
-// Trigger debugger breakpoint
-debugger;
-
-// When Chrome DevTools is open, execution will pause here
+debugger;  // 여기서 중단
 ```
 
-#### VSCode Configuration
-```json
-{
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Launch Program",
-      "skipFiles": ["<node_internals>/**"],
-      "program": "${workspaceFolder}/app.js"
-    },
-    {
-      "type": "node",
-      "request": "attach",
-      "name": "Attach",
-      "port": 9229,
-      "skipFiles": ["<node_internals>/**"]
-    },
-    {
-      "name": "Jest Tests",
-      "type": "node",
-      "request": "launch",
-      "runtimeArgs": [
-        "--inspect-brk",
-        "${workspaceFolder}/node_modules/.bin/jest",
-        "--runInBand"
-      ],
-      "console": "integratedTerminal"
-    }
-  ]
-}
-```
+#### TypeScript
+**디버거**: Chrome DevTools + Source Maps, VS Code
 
----
-
-### TypeScript
-
-#### Installation
-```bash
-# TypeScript + ts-node
-npm install -D typescript ts-node @types/node
-
-# VSCode (built-in support)
-```
-
-#### CLI Usage
-```bash
-# Compile with source maps
-npx tsc --sourceMap
-
-# Debug with Node.js
-node --inspect -r ts-node/register script.ts
-
-# Or use ts-node directly
-ts-node --inspect script.ts
-```
-
-#### tsconfig.json
+**tsconfig.json 소스맵 설정**:
 ```json
 {
   "compilerOptions": {
     "sourceMap": true,
-    "outDir": "./dist",
-    "rootDir": "./src"
+    "inlineSources": true
   }
 }
 ```
 
-#### VSCode Configuration
+**VSCode launch.json**:
 ```json
 {
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "TypeScript Debug",
       "type": "node",
       "request": "launch",
-      "name": "TypeScript: Current File",
-      "runtimeArgs": ["-r", "ts-node/register"],
-      "args": ["${file}"],
-      "cwd": "${workspaceFolder}",
-      "protocol": "inspector"
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "TypeScript: Jest",
-      "program": "${workspaceFolder}/node_modules/.bin/jest",
-      "args": ["--runInBand"],
-      "console": "integratedTerminal"
+      "program": "${workspaceFolder}/src/index.ts",
+      "preLaunchTask": "tsc: build - tsconfig.json",
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+      "sourceMaps": true
     }
   ]
 }
 ```
 
----
+#### Dart/Flutter
+**디버거**: Flutter DevTools, Hot Reload
 
-### Dart/Flutter
-
-#### Installation
+**CLI 명령어**:
 ```bash
-# Install Flutter SDK
-# flutter.dev/docs/get-started/install
+# Flutter 디버그 모드 실행
+flutter run --debug
 
-# VSCode extension
-code --install-extension Dart-Code.flutter
-```
-
-#### CLI Usage
-```bash
-# Run with debugger enabled
-flutter run --observe
-
-# Attach to running app
-flutter attach
-
-# Dart VM Observatory
-# Opens in browser automatically
-
-# Hot reload
-r  # Reload
-R  # Hot restart
-```
-
-#### VSCode Configuration
-```json
-{
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "Flutter: Launch",
-      "request": "launch",
-      "type": "dart",
-      "program": "lib/main.dart"
-    },
-    {
-      "name": "Flutter: Attach",
-      "request": "attach",
-      "type": "dart"
-    },
-    {
-      "name": "Dart: Tests",
-      "request": "launch",
-      "type": "dart",
-      "program": "test/"
-    }
-  ]
-}
-```
-
-#### Flutter DevTools
-```bash
-# Open DevTools
+# DevTools 열기
 flutter pub global activate devtools
 flutter pub global run devtools
-
-# Or from running app
-# Click DevTools link in terminal
 ```
 
----
+#### Swift
+**디버거**: LLDB (Xcode), Instruments
 
-### Swift
-
-#### Installation
+**LLDB 사용**:
 ```bash
-# Xcode (macOS only)
-xcode-select --install
-
-# LLDB comes with Xcode
-lldb --version
-
-# VSCode extension
-code --install-extension vknabel.vscode-swift-development-environment
-```
-
-#### CLI Usage
-```bash
-# Build and debug
-swift build
-lldb .build/debug/MyApp
-
-# In LLDB
-(lldb) breakpoint set -n main
+lldb MyApp.app
+(lldb) breakpoint set --name viewDidLoad
 (lldb) run
-(lldb) thread backtrace
-(lldb) frame variable
-```
-
-#### Xcode Debugging
-1. Set breakpoints in gutter
-2. Run (⌘+R) or Debug (⌘+Y)
-3. Use LLDB console in bottom pane
-4. View hierarchy debugger: Debug → View Debugging → Capture View Hierarchy
-
-#### LLDB Configuration for Swift
-```bash
-# ~/.lldbinit
-command script import lldb.macosx.heap
-settings set target.process.follow-fork-mode child
-settings set target.x86-disassembly-flavor intel
+(lldb) po variable  # Print Object
 ```
 
 ---
 
-## Functional & Concurrency
+### Functional & Concurrency
 
-### Haskell
+#### Haskell
+**디버거**: GHCi debugger, Debug.Trace
 
-#### Installation
-```bash
-# GHC with GHCi debugger
-ghcup install ghc
-ghci --version
-
-# VSCode extension
-code --install-extension haskell.haskell
-```
-
-#### GHCi Debugger
-```bash
-# Load module with debugging
-ghci -fbreak-on-exception Main.hs
-
-# Set breakpoint
-:break main
-:break MyModule.myFunction
-
-# Run
-:main
-
-# Step through
+**GHCi 디버깅**:
+```haskell
+-- GHCi에서
+:break module.function
+:trace expression
 :step
-:steplocal  # Don't step into libraries
-:trace myFunction args
-
-# Inspect
-:show breaks
-:show bindings
-:print variable
+:continue
 ```
 
-#### Profiling
-```bash
-# Compile with profiling
-ghc -prof -fprof-auto Main.hs
+**Debug.Trace 사용**:
+```haskell
+import Debug.Trace
 
-# Run with profiling
-./Main +RTS -p
-
-# View report
-cat Main.prof
-
-# Heap profiling
-./Main +RTS -hy
-hp2ps Main.hp
-open Main.ps
+myFunction x = trace ("x = " ++ show x) $ x + 1
 ```
 
----
+#### Elixir
+**디버거**: IEx debugger, :observer.start()
 
-### Elixir
-
-#### Installation
-```bash
-# Elixir includes debugging tools
-elixir --version
-
-# VSCode extension
-code --install-extension JakeBecker.elixir-ls
-```
-
-#### IEx Debugger
+**IEx 디버깅**:
 ```elixir
-# Start IEx
-iex -S mix
+# 코드 내
+require IEx
+IEx.pry()
 
-# Load debugger
-:debugger.start()
-
-# Set breakpoint
-:int.break(MyModule, :my_function, 2)  # arity 2
-
-# Call function, GUI debugger opens
-MyModule.my_function(arg1, arg2)
-```
-
-#### Observer
-```elixir
-# Start observer (live system inspection)
+# Observer 실행
 :observer.start()
-
-# Trace calls
-:sys.trace(pid, true)
-
-# Get state
-:sys.get_status(pid)
 ```
 
-#### Phoenix LiveDashboard
-```elixir
-# Add to mix.exs
-{:phoenix_live_dashboard, "~> 0.8"}
+#### Julia
+**디버거**: Debugger.jl, Infiltrator.jl
 
-# Add to router
-live_dashboard "/dashboard"
-
-# Navigate to localhost:4000/dashboard
-```
-
----
-
-### Julia
-
-#### Installation
-```bash
-# Install Julia
-# julialang.org/downloads
-
-# Install debugger
-julia> using Pkg
-julia> Pkg.add("Debugger")
-julia> Pkg.add("Infiltrator")
-
-# VSCode extension
-code --install-extension julialang.language-julia
-```
-
-#### CLI Usage
+**Debugger.jl 사용**:
 ```julia
-# Debugger.jl
 using Debugger
 
-@enter my_function(args)
-
-# Commands
-n  # next
-s  # step into
-finish  # finish current function
-bt  # backtrace
+@enter myfunction(args)
+# 또는
+@bp  # 브레이크포인트
 ```
 
-#### Infiltrator.jl (Lightweight)
-```julia
-using Infiltrator
+#### R
+**디버거**: browser(), debug(), RStudio Debugger
 
-function my_function(x)
-    y = x * 2
-    @infiltrate  # Breakpoint
-    z = y + 1
-    return z
-end
+**CLI 명령어**:
+```r
+# 함수 디버깅
+debug(my_function)
+my_function(args)
 
-# Run function, drops into REPL at breakpoint
+# 코드 내 브레이크포인트
+browser()
+
+# 디버그 모드 해제
+undebug(my_function)
 ```
 
-#### VSCode Debugging
+---
+
+### Enterprise & Data
+
+#### C#
+**디버거**: Visual Studio Debugger, Rider, vsdbg
+
+**vsdbg 사용** (Linux/macOS):
+```bash
+# vsdbg 설치
+curl -sSL https://aka.ms/getvsdbgsh | bash /dev/stdin -v latest -l ~/.vsdbg
+```
+
+**VSCode launch.json**:
 ```json
 {
   "version": "0.2.0",
   "configurations": [
     {
-      "type": "julia",
+      "name": ".NET Core Debug",
+      "type": "coreclr",
       "request": "launch",
-      "name": "Run Julia",
-      "program": "${file}",
-      "stopOnEntry": false,
-      "cwd": "${workspaceFolder}"
+      "program": "${workspaceFolder}/bin/Debug/net8.0/MyApp.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "stopAtEntry": false
     }
   ]
 }
 ```
 
----
+#### SQL
+**디버거**: EXPLAIN ANALYZE, pg_stat_statements
 
-### R
-
-#### Installation
-```bash
-# R comes with debugging tools
-R --version
-
-# RStudio (recommended)
-# Download from rstudio.com
-
-# VSCode extension
-code --install-extension REditorSupport.r
-```
-
-#### CLI Usage
-```R
-# Set breakpoint
-debug(myFunction)
-myFunction(args)  # Enters debugger
-
-# Or use browser()
-myFunction <- function(x) {
-  browser()  # Breakpoint
-  result <- x * 2
-  return(result)
-}
-
-# Commands
-n  # next
-s  # step into
-c  # continue
-Q  # quit
-```
-
-#### RStudio Debugging
-1. Set breakpoints by clicking line numbers
-2. Source file with Debug button
-3. Use Debug menu: Debug → On Error → Break in Code
-
-#### Traceback
-```R
-# After error
-traceback()
-
-# Recover mode (interactive debugging)
-options(error = recover)
-myFunction()  # On error, choose frame to debug
-```
-
----
-
-## Enterprise & Data
-
-### C#
-
-#### Installation
-```bash
-# .NET SDK
-# dotnet.microsoft.com/download
-
-# VSCode extension
-code --install-extension ms-dotnettools.csharp
-
-# Visual Studio (full IDE, Windows)
-# visualstudio.microsoft.com
-```
-
-#### CLI Usage
-```bash
-# Run with debugging
-dotnet run
-
-# In VSCode, use integrated debugger
-```
-
-#### Visual Studio Debugging
-1. Set breakpoints (F9)
-2. Start debugging (F5)
-3. Step over (F10), Step into (F11)
-4. Immediate Window for expression evaluation
-
-#### Remote Debugging (vsdbg)
-```bash
-# Install vsdbg on remote machine
-curl -sSL https://aka.ms/getvsdbgsh | bash /dev/stdin -v latest -l ~/vsdbg
-
-# VSCode configuration
-{
-  "name": ".NET Core Attach (Remote)",
-  "type": "coreclr",
-  "request": "attach",
-  "processId": "${command:pickRemoteProcess}",
-  "pipeTransport": {
-    "pipeCwd": "${workspaceFolder}",
-    "pipeProgram": "ssh",
-    "pipeArgs": ["user@remote-host"],
-    "debuggerPath": "~/vsdbg/vsdbg"
-  }
-}
-```
-
----
-
-### SQL
-
-#### PostgreSQL Debugging
+**PostgreSQL 디버깅**:
 ```sql
--- Enable verbose error messages
-\set VERBOSITY verbose
-
--- Explain query execution
+-- 쿼리 플랜 분석
 EXPLAIN ANALYZE SELECT * FROM users WHERE id = 1;
 
--- Check slow queries
-SELECT * FROM pg_stat_statements ORDER BY total_time DESC LIMIT 10;
-
--- Enable query logging in postgresql.conf
-log_statement = 'all'
-log_duration = on
-log_min_duration_statement = 100  -- ms
+-- 느린 쿼리 추적
+CREATE EXTENSION pg_stat_statements;
+SELECT * FROM pg_stat_statements ORDER BY total_exec_time DESC LIMIT 10;
 ```
-
-#### MySQL Debugging
-```sql
--- Show warnings
-SHOW WARNINGS;
-
--- Explain query
-EXPLAIN SELECT * FROM users WHERE id = 1;
-
--- Enable slow query log (in my.cnf)
-slow_query_log = 1
-slow_query_log_file = /var/log/mysql/slow.log
-long_query_time = 1
-```
-
-#### pgAdmin Debugger
-1. Install pldbgapi extension
-2. Right-click function in pgAdmin
-3. Select "Debugging" → "Set breakpoint"
-4. Execute function, debugger opens
 
 ---
 
-## Container & Distributed Systems
+## 컨테이너 디버깅 완전 가이드
 
-### Docker Debugging
+### Docker 디버깅
 
-#### Interactive Shell
+#### 기본 디버깅 패턴
 ```bash
-# Exec into running container
-docker exec -it <container-name> /bin/sh
+# 1. 실행 중인 컨테이너에 접속
+docker exec -it <container_name> /bin/sh
 
-# Run with interactive shell
-docker run -it myimage /bin/bash
+# 2. 로그 확인
+docker logs <container_name>
+docker logs -f <container_name>  # 실시간
+
+# 3. 컨테이너 상태 확인
+docker inspect <container_name>
+docker stats <container_name>
 ```
 
-#### Remote Debugging
+#### 언어별 원격 디버깅
+
+**Java (JDWP)**:
 ```dockerfile
-# Python example
-FROM python:3.11
+# Dockerfile
+ENV JAVA_TOOL_OPTIONS='-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005'
+EXPOSE 5005
+```
+
+```bash
+# 컨테이너 실행
+docker run -p 5005:5005 -p 8080:8080 myapp
+```
+
+**Python (debugpy)**:
+```dockerfile
+# Dockerfile
 RUN pip install debugpy
+ENV DEBUGPY_ENABLE=true
 EXPOSE 5678
-CMD ["python", "-m", "debugpy", "--listen", "0.0.0.0:5678", "--wait-for-client", "app.py"]
+```
+
+```python
+# app.py
+import debugpy
+
+if os.environ.get('DEBUGPY_ENABLE'):
+    debugpy.listen(("0.0.0.0", 5678))
+    print("Debugger listening on port 5678")
 ```
 
 ```bash
-# Run container
-docker run -p 5678:5678 myapp
-
-# Attach from VSCode (see Python Remote Attach config above)
+# 컨테이너 실행
+docker run -p 5678:5678 -p 8000:8000 myapp
 ```
 
-#### Log Analysis
+**Node.js (--inspect)**:
+```dockerfile
+# Dockerfile
+EXPOSE 9229
+CMD ["node", "--inspect=0.0.0.0:9229", "app.js"]
+```
+
 ```bash
-# Stream logs
-docker logs -f <container>
+# 컨테이너 실행
+docker run -p 9229:9229 -p 3000:3000 myapp
+```
 
-# Logs with timestamps
-docker logs --timestamps <container>
+**Go (Delve)**:
+```dockerfile
+# Dockerfile
+RUN go install github.com/go-delve/delve/cmd/dlv@latest
+EXPOSE 2345
+CMD ["dlv", "debug", "--headless", "--listen=:2345", "--api-version=2", "--accept-multiclient"]
+```
 
-# Last N lines
-docker logs --tail 100 <container>
+```bash
+# 컨테이너 실행
+docker run -p 2345:2345 -p 8080:8080 myapp
+```
+
+#### 멀티스테이지 빌드 디버깅
+```dockerfile
+# 디버그 스테이지
+FROM golang:1.22 AS debug
+RUN go install github.com/go-delve/delve/cmd/dlv@latest
+COPY . .
+CMD ["dlv", "debug", "--headless", "--listen=:2345"]
+
+# 프로덕션 스테이지
+FROM golang:1.22 AS production
+COPY . .
+RUN go build -o app
+CMD ["./app"]
+```
+
+```bash
+# 디버그 빌드
+docker build --target debug -t myapp:debug .
+docker run -p 2345:2345 myapp:debug
 ```
 
 ---
 
-### Kubernetes Debugging
+### Kubernetes 디버깅
 
-#### Port Forwarding
+#### 기본 디버깅 커맨드
 ```bash
-# Forward debugger port
-kubectl port-forward pod/myapp-pod 5005:5005
+# 1. Pod 로그 확인
+kubectl logs <pod-name>
+kubectl logs -f <pod-name>  # 실시간
+kubectl logs <pod-name> -c <container-name>  # 특정 컨테이너
+kubectl logs <pod-name> --previous  # 이전 컨테이너 로그
 
-# Forward service
-kubectl port-forward svc/myapp-service 5005:5005
+# 2. Pod에 접속
+kubectl exec -it <pod-name> -- /bin/sh
+kubectl exec -it <pod-name> -c <container-name> -- /bin/bash
+
+# 3. Pod 상태 확인
+kubectl describe pod <pod-name>
+kubectl get pod <pod-name> -o yaml
 ```
 
-#### Exec into Pod
+#### 포트 포워딩 (디버거 연결)
 ```bash
-# Get shell
-kubectl exec -it myapp-pod -- /bin/bash
+# Java JDWP
+kubectl port-forward pod/<pod-name> 5005:5005
 
-# Specific container in multi-container pod
-kubectl exec -it myapp-pod -c sidecar -- /bin/sh
+# Python debugpy
+kubectl port-forward pod/<pod-name> 5678:5678
+
+# Node.js --inspect
+kubectl port-forward pod/<pod-name> 9229:9229
+
+# Go Delve
+kubectl port-forward pod/<pod-name> 2345:2345
 ```
 
-#### Ephemeral Containers (K8s 1.23+)
+#### Ephemeral 컨테이너 (K8s 1.23+)
 ```bash
-# Debug with temporary container
-kubectl debug -it myapp-pod --image=busybox --target=myapp
+# 디버그 도구가 있는 임시 컨테이너 추가
+kubectl debug -it <pod-name> --image=busybox --target=<container-name>
 
-# Copy pod and add debug tools
-kubectl debug myapp-pod -it --copy-to=myapp-debug --container=debug-tools --image=ubuntu
+# 또는 디버그 도구 이미지 사용
+kubectl debug -it <pod-name> --image=nicolaka/netshoot --target=<container-name>
 ```
 
-#### Log Streaming
+#### 네트워크 디버깅
 ```bash
-# Stream logs
-kubectl logs -f deployment/myapp
+# 네트워크 정책 확인
+kubectl get networkpolicies
 
-# All containers
-kubectl logs -f deployment/myapp --all-containers=true
+# Service 엔드포인트 확인
+kubectl get endpoints <service-name>
 
-# Previous container instance (after crash)
-kubectl logs myapp-pod --previous
+# DNS 확인 (Pod 내부에서)
+kubectl exec -it <pod-name> -- nslookup <service-name>
+```
+
+#### 리소스 디버깅
+```bash
+# 리소스 사용량 확인
+kubectl top pod <pod-name>
+kubectl top node <node-name>
+
+# 이벤트 확인
+kubectl get events --sort-by='.lastTimestamp'
+kubectl get events --field-selector involvedObject.name=<pod-name>
 ```
 
 ---
 
-### OpenTelemetry Distributed Tracing
+## 분산 추적 (Distributed Tracing)
 
-See SKILL.md for detailed code examples.
+### OpenTelemetry 1.24.0+ 설정
 
-#### Setup Checklist
-- [ ] Install OpenTelemetry SDK for your language
-- [ ] Configure OTLP exporter (gRPC or HTTP)
-- [ ] Set up trace collector (Jaeger, Zipkin, or vendor)
-- [ ] Instrument key operations with spans
-- [ ] Add span attributes for context
-- [ ] Propagate trace context across services
+#### Python 설정
+```python
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 
-#### Common Endpoints
-```bash
-# OTLP gRPC (default)
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+# Tracer Provider 설정
+trace.set_tracer_provider(TracerProvider())
+tracer = trace.get_tracer(__name__)
 
-# OTLP HTTP
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+# OTLP Exporter 설정
+otlp_exporter = OTLPSpanExporter(
+    endpoint="http://localhost:4317",
+    insecure=True
+)
+trace.get_tracer_provider().add_span_processor(
+    BatchSpanProcessor(otlp_exporter)
+)
 
-# Jaeger UI
-http://localhost:16686
+# 사용 예제
+with tracer.start_as_current_span("my-operation"):
+    # 작업 수행
+    pass
+```
+
+#### TypeScript/Node.js 설정
+```typescript
+import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
+import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-grpc';
+
+// Tracer Provider 설정
+const provider = new NodeTracerProvider();
+const exporter = new OTLPTraceExporter({
+  url: 'http://localhost:4317',
+});
+
+provider.addSpanProcessor(new BatchSpanProcessor(exporter));
+provider.register();
+
+// 사용 예제
+import { trace } from '@opentelemetry/api';
+
+const tracer = trace.getTracer('my-service');
+const span = tracer.startSpan('my-operation');
+// 작업 수행
+span.end();
+```
+
+#### Go 설정
+```go
+import (
+    "go.opentelemetry.io/otel"
+    "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+    sdktrace "go.opentelemetry.io/otel/sdk/trace"
+)
+
+// Tracer Provider 설정
+exporter, _ := otlptracegrpc.New(ctx,
+    otlptracegrpc.WithEndpoint("localhost:4317"),
+    otlptracegrpc.WithInsecure(),
+)
+
+tp := sdktrace.NewTracerProvider(
+    sdktrace.WithBatcher(exporter),
+)
+otel.SetTracerProvider(tp)
+
+// 사용 예제
+tracer := otel.Tracer("my-service")
+ctx, span := tracer.Start(ctx, "my-operation")
+defer span.End()
 ```
 
 ---
 
-This reference guide provides installation, CLI usage, and VSCode configuration for all 23 supported languages plus container and distributed system debugging.
+### Prometheus 2.48.x 통합
+
+#### Python (prometheus-client 0.19.0)
+```python
+from prometheus_client import Counter, Histogram, Gauge, start_http_server
+
+# 메트릭 정의
+request_count = Counter('http_requests_total', 'Total HTTP requests')
+request_duration = Histogram('http_request_duration_seconds', 'HTTP request duration')
+active_connections = Gauge('active_connections', 'Active connections')
+
+# 사용 예제
+request_count.inc()
+with request_duration.time():
+    # 작업 수행
+    pass
+active_connections.set(42)
+
+# 메트릭 서버 시작 (포트 8000)
+start_http_server(8000)
+```
+
+#### Go (prometheus/client_golang)
+```go
+import (
+    "github.com/prometheus/client_golang/prometheus"
+    "github.com/prometheus/client_golang/prometheus/promhttp"
+)
+
+var (
+    requestCount = prometheus.NewCounter(prometheus.CounterOpts{
+        Name: "http_requests_total",
+        Help: "Total HTTP requests",
+    })
+    
+    requestDuration = prometheus.NewHistogram(prometheus.HistogramOpts{
+        Name: "http_request_duration_seconds",
+        Help: "HTTP request duration",
+    })
+)
+
+func init() {
+    prometheus.MustRegister(requestCount)
+    prometheus.MustRegister(requestDuration)
+}
+
+// 메트릭 엔드포인트
+http.Handle("/metrics", promhttp.Handler())
+```
+
+---
+
+### Cloud Debugger 통합
+
+#### AWS X-Ray
+```python
+from aws_xray_sdk.core import xray_recorder
+from aws_xray_sdk.ext.flask.middleware import XRayMiddleware
+
+app = Flask(__name__)
+XRayMiddleware(app, xray_recorder)
+
+# 커스텀 서브세그먼트
+@xray_recorder.capture('my_function')
+def my_function():
+    # 작업 수행
+    pass
+```
+
+#### GCP Cloud Debugger
+```python
+try:
+    import googleclouddebugger
+    googleclouddebugger.enable()
+except ImportError:
+    pass
+```
+
+---
+
+## 성능 프로파일링
+
+### CPU 프로파일링
+
+#### Python (cProfile, py-spy)
+```bash
+# cProfile
+python -m cProfile -o output.prof script.py
+python -m pstats output.prof
+
+# py-spy (프로덕션 안전)
+py-spy record -o profile.svg -- python script.py
+py-spy top --pid <pid>
+```
+
+#### Go (pprof)
+```go
+import _ "net/http/pprof"
+
+// HTTP 서버에 pprof 엔드포인트 자동 추가
+go func() {
+    log.Println(http.ListenAndServe("localhost:6060", nil))
+}()
+```
+
+```bash
+# CPU 프로파일 수집
+go tool pprof http://localhost:6060/debug/pprof/profile?seconds=30
+
+# 프로파일 분석
+go tool pprof -http=:8080 cpu.prof
+```
+
+#### Rust (flamegraph)
+```toml
+[dependencies]
+pprof = { version = "0.13", features = ["flamegraph"] }
+```
+
+```bash
+# Flamegraph 생성
+cargo flamegraph
+```
+
+#### Java (JFR)
+```bash
+# JFR 활성화
+java -XX:+FlightRecorder -XX:StartFlightRecording=duration=60s,filename=recording.jfr MyApp
+
+# JFR 파일 분석 (JDK Mission Control)
+jmc recording.jfr
+```
+
+---
+
+### 메모리 프로파일링
+
+#### Python (memory_profiler, tracemalloc)
+```python
+from memory_profiler import profile
+
+@profile
+def my_function():
+    # 작업 수행
+    pass
+```
+
+```bash
+python -m memory_profiler script.py
+```
+
+**tracemalloc (내장)**:
+```python
+import tracemalloc
+
+tracemalloc.start()
+# 작업 수행
+snapshot = tracemalloc.take_snapshot()
+top_stats = snapshot.statistics('lineno')
+
+for stat in top_stats[:10]:
+    print(stat)
+```
+
+#### Go (pprof heap)
+```bash
+# 힙 프로파일 수집
+go tool pprof http://localhost:6060/debug/pprof/heap
+
+# 메모리 할당 추적
+go tool pprof http://localhost:6060/debug/pprof/allocs
+```
+
+#### C/C++ (Valgrind massif)
+```bash
+# Massif 실행
+valgrind --tool=massif ./myapp
+
+# Massif 시각화
+ms_print massif.out.<pid>
+```
+
+#### Rust (heaptrack)
+```bash
+# heaptrack 실행
+heaptrack ./target/release/myapp
+
+# 결과 분석
+heaptrack_gui heaptrack.myapp.<pid>.gz
+```
+
+---
+
+## Advanced 디버깅 기법
+
+### 조건부 브레이크포인트
+
+**Python (pdb)**:
+```python
+# 조건부 브레이크포인트
+(Pdb) break script.py:42, x > 100
+```
+
+**GDB**:
+```bash
+(gdb) break main.c:42 if x > 100
+```
+
+**LLDB**:
+```bash
+(lldb) breakpoint set --file main.c --line 42 --condition 'x > 100'
+```
+
+---
+
+### 역방향 디버깅 (Time Travel Debugging)
+
+**GDB 역방향 실행**:
+```bash
+(gdb) target record-full
+(gdb) continue
+# 오류 발생 후
+(gdb) reverse-continue  # 역방향 실행
+(gdb) reverse-step
+```
+
+**WinDbg Time Travel Debugging** (Windows):
+```bash
+# TTD 트레이스 수집
+ttd.exe -out trace.run myapp.exe
+
+# 트레이스 디버깅
+windbg -z trace.run
+```
+
+---
+
+### 동적 계측 (Dynamic Instrumentation)
+
+**DTrace (macOS/FreeBSD)**:
+```bash
+# 함수 호출 추적
+sudo dtrace -n 'pid$target::my_function:entry { printf("Called with arg=%d", arg0); }' -p <pid>
+```
+
+**SystemTap (Linux)**:
+```bash
+# 함수 호출 추적
+stap -e 'probe process("/path/to/binary").function("my_function") { println("Called") }'
+```
+
+**BPF/eBPF (Linux)**:
+```bash
+# bpftrace 사용
+bpftrace -e 'uprobe:/path/to/binary:my_function { printf("Called\n"); }'
+```
+
+---
+
+## Best Practices 요약
+
+### 1. 디버거 선택
+- 언어에 적합한 디버거 사용 (Python → debugpy, Go → Delve)
+- 프로덕션 환경에서는 안전한 프로파일러 사용 (py-spy, async-profiler)
+
+### 2. 로깅 전략
+- 구조화된 로깅 사용 (JSON 형식)
+- 로그 레벨 적절히 설정 (DEBUG, INFO, WARNING, ERROR)
+- 분산 시스템에서는 Correlation ID 추가
+
+### 3. 성능 고려
+- 디버그 심볼 포함 (-g 플래그)
+- 소스맵 생성 (TypeScript, JavaScript)
+- 프로파일링 전 워밍업 수행
+
+### 4. 보안
+- 프로덕션 디버그 포트는 방화벽으로 보호
+- 민감 정보 로그에 기록 금지
+- 디버그 모드는 환경 변수로 제어
+
+### 5. 자동화
+- CI/CD 파이프라인에 디버그 빌드 추가
+- 자동 스택 트레이스 수집 (Sentry, Rollbar)
+- 메트릭 자동 수집 (Prometheus, Datadog)
+
+---
+
+**End of Reference** | moai-essentials-debug v2.1.0

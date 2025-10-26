@@ -56,13 +56,13 @@
     "current_stage": "initialized"
   },
   "project": {
-    "created_at": "{{CREATION_TIMESTAMP}}",
-    "description": "{{PROJECT_DESCRIPTION}}",
-    "initialized": true,
-    "locale": "en",
-    "mode": "{{PROJECT_MODE}}",
     "name": "{{PROJECT_NAME}}",
-    "moai_adk_version": "{{MOAI_VERSION}}",
+    "description": "{{PROJECT_DESCRIPTION}}",
+    "mode": "{{PROJECT_MODE}}",
+    "locale": "{{CONVERSATION_LANGUAGE}}",
+    "language": "{{CODEBASE_LANGUAGE}}",
+    "created_at": "{{CREATION_TIMESTAMP}}",
+    "initialized": true,
     "optimized": false
   },
   "tags": {

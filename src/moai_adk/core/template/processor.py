@@ -110,8 +110,59 @@ class TemplateProcessor:
         }
         return file_path.suffix.lower() in text_extensions
 
+    def _localize_yaml_description(self, content: str, language: str = "en") -> str:
+        """Localize multilingual YAML description field.
+
+        Converts multilingual description maps to single-language strings:
+        description:
+          en: "English text"
+          ko: "Korean text"
+        →
+        description: "Korean text"  (if language="ko")
+
+        Args:
+            content: File content.
+            language: Target language code (en, ko, ja, zh).
+
+        Returns:
+            Content with localized descriptions.
+        """
+        import yaml
+
+        # Pattern to match YAML frontmatter
+        frontmatter_pattern = r'^---\n(.*?)\n---'
+        match = re.match(frontmatter_pattern, content, re.DOTALL)
+
+        if not match:
+            return content
+
+        try:
+            yaml_content = match.group(1)
+            yaml_data = yaml.safe_load(yaml_content)
+
+            # Check if description is a dict (multilingual)
+            if isinstance(yaml_data.get('description'), dict):
+                # Select language (fallback to English)
+                descriptions = yaml_data['description']
+                selected_desc = descriptions.get(language, descriptions.get('en', ''))
+
+                # Replace description with selected language
+                yaml_data['description'] = selected_desc
+
+                # Reconstruct frontmatter
+                new_yaml = yaml.dump(yaml_data, allow_unicode=True, sort_keys=False)
+                # Preserve the rest of the content
+                rest_content = content[match.end():]
+                return f"---\n{new_yaml}---{rest_content}"
+
+        except Exception:
+            # If YAML parsing fails, return original content
+            pass
+
+        return content
+
     def _copy_file_with_substitution(self, src: Path, dst: Path) -> list[str]:
-        """Copy file with variable substitution for text files.
+        """Copy file with variable substitution and description localization for text files.
 
         Args:
             src: Source file path.
@@ -127,6 +178,14 @@ class TemplateProcessor:
             try:
                 content = src.read_text(encoding='utf-8')
                 content, file_warnings = self._substitute_variables(content)
+
+                # Apply description localization for command/output-style files
+                if src.suffix == '.md' and (
+                    'commands/alfred' in str(src) or 'output-styles/alfred' in str(src)
+                ):
+                    lang = self.context.get('CONVERSATION_LANGUAGE', 'en')
+                    content = self._localize_yaml_description(content, lang)
+
                 dst.write_text(content, encoding='utf-8')
                 warnings.extend(file_warnings)
             except UnicodeDecodeError:

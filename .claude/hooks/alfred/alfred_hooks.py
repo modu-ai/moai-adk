@@ -118,8 +118,11 @@ def main() -> None:
     try:
         # Read JSON from stdin
         input_data = sys.stdin.read()
-        # Handle empty stdin by treating it as empty object
-        data = json.loads(input_data) if input_data.strip() else {}
+        # Handle empty stdin gracefully (return empty dict)
+        if not input_data or not input_data.strip():
+            data = {}
+        else:
+            data = json.loads(input_data)
 
         cwd = data.get("cwd", ".")
 
@@ -149,18 +152,18 @@ def main() -> None:
 
     except json.JSONDecodeError as e:
         # Return valid Hook response even on JSON parse error
-        error_response = {
+        error_response: dict[str, Any] = {
             "continue": True,
-            "systemMessage": f"⚠️ Hook JSON parse error: {e}"
+            "hookSpecificOutput": {"error": f"JSON parse error: {e}"}
         }
         print(json.dumps(error_response))
         print(f"JSON parse error: {e}", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
         # Return valid Hook response even on unexpected error
-        error_response = {
+        error_response: dict[str, Any] = {
             "continue": True,
-            "systemMessage": f"⚠️ Hook execution error: {e}"
+            "hookSpecificOutput": {"error": f"Hook error: {e}"}
         }
         print(json.dumps(error_response))
         print(f"Unexpected error: {e}", file=sys.stderr)

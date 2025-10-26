@@ -4,7 +4,7 @@
     "@SPEC:PROJECT-CONFIG-001": "@SPEC:MOAI-CONFIG-001"
   },
   "moai": {
-    "version": "0.4.8"
+    "version": "{{MOAI_VERSION}}"
   },
   "constitution": {
     "enforce_tdd": true,
@@ -56,21 +56,17 @@
     "current_stage": "initialized"
   },
   "project": {
-    "created_at": "2025-10-21 23:59:19",
-    "description": "",
-    "initialized": true,
-    "mode": "personal",
     "name": "MoAI-ADK",
-    "moai_adk_version": "0.4.1",
-    "optimized": true,
-    "optimized_at": "2025-10-22T12:45:00Z",
-    "language": "python",
+    "description": "MoAI-Agentic Development Kit",
+    "mode": "team",
     "locale": "ko",
+    "language": "python",
     "conversation_language": "ko",
-    "conversation_language_name": "한국어"
-  },
-  "user": {
-    "nickname": "GOOS오라버니"
+    "conversation_language_name": "한국어",
+    "user_nickname": "GOOS",
+    "created_at": "2025-10-27T12:34:56+09:00",
+    "initialized": true,
+    "optimized": true
   },
   "tags": {
     "auto_sync": true,

@@ -8,6 +8,30 @@ System diagnostics command:
 - Validate project structure
 - Inspect language-specific tool chains
 - Diagnose slash command loading issues (--check-commands)
+
+## Skill Invocation Guide (English-Only)
+
+### Related Skills
+- **moai-foundation-langs**: For language toolchain verification and detection
+  - Trigger: Use `--verbose` or `--fix` flag to inspect language-specific tools
+  - Invocation: `Skill("moai-foundation-langs")` for detailed language stack analysis
+
+- **moai-foundation-trust**: For TRUST 5-principles verification after fixing tools
+  - Trigger: After running doctor with `--fix` to validate improvements
+  - Invocation: `Skill("moai-foundation-trust")` to verify code quality toolchain
+
+### When to Invoke Skills in Related Workflows
+1. **After doctor diagnosis**:
+   - Run `Skill("moai-foundation-trust")` to validate that all TRUST tools are properly configured
+   - Run `Skill("moai-foundation-langs")` to confirm language-specific toolchains
+
+2. **When tools are missing** (`--fix` flag):
+   - Use suggested fixes from doctor command
+   - Follow up with `Skill("moai-foundation-langs")` to validate corrections
+
+3. **Debugging slash command issues** (`--check-commands`):
+   - Run `Skill("moai-cc-commands")` if commands fail to load
+   - Check `.claude/commands/` directory structure and permissions
 """
 
 import json
@@ -168,11 +192,13 @@ def _suggest_fixes(tools: dict[str, bool], language: str | None) -> None:
 
 def _get_install_command(tool: str, language: str | None) -> str:
     """Return the install command for a given tool (helper)"""
-    # Common tools
+    # Common tools with preferred package managers
     install_commands = {
-        "pytest": "pip install pytest",
-        "mypy": "pip install mypy",
-        "ruff": "pip install ruff",
+        # Python tools (prefer uv)
+        "pytest": "uv pip install pytest",
+        "mypy": "uv pip install mypy",
+        "ruff": "uv pip install ruff",
+        # JavaScript tools
         "vitest": "npm install -D vitest",
         "biome": "npm install -D @biomejs/biome",
         "eslint": "npm install -D eslint",

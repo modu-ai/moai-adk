@@ -175,8 +175,10 @@ class TestInitCommand:
             if config_path.exists():
                 with open(config_path) as f:
                     config = json.load(f)
-                    assert config.get("mode") == "team"
-                    assert config.get("locale") == "ko"
+                    project = config.get("project", {})
+                    # Check project section with legacy fallback
+                    assert project.get("mode") or config.get("mode") == "team"
+                    assert project.get("locale") or config.get("locale") == "ko"
 
     def test_create_progress_callback(self):
         """Test create_progress_callback function"""

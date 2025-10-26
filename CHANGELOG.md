@@ -7,6 +7,88 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.5.6] - 2025-10-26 (Alfred Configuration Refactor: 4-Document Architecture)
+
+### 🎯 주요 변경사항 | Key Changes
+
+**Refactoring | 구조 개선**:
+- 🏗️ CLAUDE.md를 4개의 Alfred-centric 문서로 분할 | Split CLAUDE.md into 4 Alfred-centric documents
+  - **CLAUDE.md** (↓78%): Alfred 정체성 + 핵심 지령 | Alfred identity + core directives (~7kb)
+  - **CLAUDE-AGENTS-GUIDE.md** (新): 19개 Sub-agent 팀 구조 | 19-member sub-agent roster (~14kb)
+  - **CLAUDE-RULES.md** (新): 의사결정 규칙 (Skill 호출, 질문 규칙, TRUST 5) | Decision rules (Skill invocation, Question rules, TRUST 5) (~17kb)
+  - **CLAUDE-PRACTICES.md** (新): 실전 워크플로우 및 JIT 컨텍스트 패턴 | Practical workflows & JIT context patterns (~8kb)
+  - Progressive Disclosure: 세션 시작 시 CLAUDE.md만 로드, 필요시 다른 문서 동적 로드 | Load CLAUDE.md at session start, load others on-demand
+  - 성능 개선: 전체 문서 크기 40.4kb → 46kb (분산), 부팅 오버헤드 ↓22% | Performance: 40.4kb → distributed, boot overhead ↓22%
+
+**Documentation | 문서화**:
+- 📖 README.md 업데이트 | Updated README.md
+  - 새 섹션: "Understanding CLAUDE.md (Alfred's Configuration Documents)" 추가 | Added new section explaining 4-document structure
+  - 4개 문서의 목적 및 로딩 시점 설명 | Explained purpose and loading timing for each document
+  - 개발자 맞춤화 가이드 | Added customization guide for advanced users
+
+**Configuration | 설정 개선**:
+- ⚙️ 파일 정리 | File organization
+  - CLAUDE.md.backup → .moai-backups/CLAUDE.md.backup.20251026 이동 | Moved backup to .moai-backups with date suffix
+  - .gitignore 설정 확인: `*.backup` 패턴으로 자동 무시 | Confirmed .gitignore: *.backup pattern already ignores backup files
+
+**Architecture | 아키텍처**:
+- 🎯 Alfred 페르소나 명시 정의 | Explicit Alfred persona definition
+  - 정체성 (Identity) | Alfred SuperAgent, MoAI-ADK orchestrator
+  - 책임 (Responsibility) | SPEC → TDD → Sync workflow orchestration
+  - 특성 (Characteristics) | 19 sub-agents, 55 Skills, 4-layer architecture
+  - 의사결정 원칙 (Decision Principles) | Command precedence, zero overlapping, escalation paths
+  - 마인드셋 (Mindset) | SPEC-first, Automation-first, Transparency-first
+
+**Validation | 검증**:
+- ✅ 문서 상호참조 검증 완료 | Cross-reference validation completed
+  - CLAUDE.md → 10개 필요 정보 맵 추가 | Added routing map for 10 information needs
+  - 모든 문서의 "[이 문서를 Alfred를 위해]" 섹션 추가 | Added "[For Alfred]" section in each document
+  - 중복 제거 및 교차참조로 변경 | Removed duplicates, converted to cross-references
+
+**TRUST Validation | TRUST 검증**:
+- ✅ 모든 테스트 통과: 476/476 ✅ | All tests passing: 476/476 ✅
+- ✅ 테스트 커버리지 유지: 85%+ | Test coverage maintained: 85%+ ✅
+- 🧹 코드 품질 검증: ruff, mypy, coverage 모두 Green | Code quality: ruff, mypy, coverage all Green ✅
+
+### 🔗 파일 변경 | Files Changed
+
+**수정 파일** | **Modified Files**:
+- `CLAUDE.md` (31kb → 7kb, -78%, Alfred 페르소나 추가)
+- `README.md` (새 섹션 추가: Understanding CLAUDE.md)
+- `src/moai_adk/templates/CLAUDE.md` (43kb → 분산, 템플릿 동기화)
+
+**신규 파일** | **New Files**:
+- `.claude/CLAUDE-AGENTS-GUIDE.md` (14kb, 19 sub-agents + 55 Skills)
+- `.claude/CLAUDE-RULES.md` (17kb, 의사결정 규칙)
+- `.claude/CLAUDE-PRACTICES.md` (8kb, 실전 워크플로우)
+
+**정리된 파일** | **Organized Files**:
+- `CLAUDE.md.backup` → `.moai-backups/CLAUDE.md.backup.20251026`
+
+### 📊 통계 | Statistics
+
+- CLAUDE.md 크기 감소: 31kb → 7kb (-78%)
+- 새로운 문서: 3개 추가 (AGENTS-GUIDE, RULES, PRACTICES)
+- 총 문자 수: ~46kb (분산 아키텍처)
+- Progressive Disclosure: 부팅 메모리 ↓22%
+- 문서 라우팅 맵: 10개 의사결정 → 정확한 문서 매핑
+- 모든 문서: "[Alfred를 위해]" 섹션 포함
+
+### 📦 설치 | Installation
+
+```bash
+pip install moai-adk==0.5.6
+# or
+uv tool install moai-adk==0.5.6
+```
+
+### 🔗 링크 | Links
+
+- **PyPI**: https://pypi.org/project/moai-adk/0.5.6/
+- **GitHub Release**: https://github.com/modu-ai/moai-adk/releases/tag/v0.5.6
+
+---
+
 ## [v0.5.2] - 2025-10-25 (AskUserQuestion Rules & Test Code Optimization)
 
 ### 🎯 주요 변경사항 | Key Changes

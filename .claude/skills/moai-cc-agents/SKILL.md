@@ -1,8 +1,28 @@
 ---
-name: "Creating and Managing Sub-agents in Claude Code"
-description: "Design agent personas, define proactive triggers, set tool permissions, structure agent files. Use when building specialized agents for code review, debugging, architecture, or domain-specific tasks."
+name: moai-cc-agents
+description: "Creating and Managing Sub-agents in Claude Code. Design agent personas, define proactive triggers, set tool permissions, structure agent files. Use when building specialized agents for code review, debugging, architecture, or domain-specific tasks."
 allowed-tools: "Read, Write, Edit, Glob, Bash"
 ---
+
+## Skill Metadata
+
+| Field | Value |
+| ----- | ----- |
+| Version | 1.0.0 |
+| Tier | Ops |
+| Auto-load | When creating or managing sub-agents |
+
+## What It Does
+
+Sub-agent 생성 및 관리를 위한 전체 가이드를 제공합니다. Agent persona 설계, proactive trigger 정의, tool 권한 설정, agent 파일 구조화 방법을 다룹니다.
+
+## When to Use
+
+- Sub-agent를 새로 생성할 때
+- 기존 agent의 권한이나 trigger 조건을 수정할 때
+- Agent 간 협업 패턴을 설계할 때
+- Tool access 최소화 원칙을 적용할 때
+
 
 # Creating and Managing Sub-agents
 

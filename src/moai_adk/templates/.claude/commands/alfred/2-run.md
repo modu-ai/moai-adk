@@ -1,7 +1,11 @@
 ---
 name: alfred:2-run
-description: "Implement all SPECs with SPEC ID to implement (e.g. SPEC-001) or all - Execute planned work (TDD implementation, prototyping, documentation, etc.)" 
-argument-hint: "SPEC-ID - All with SPEC ID to implement (e.g. SPEC-001) or all “SPEC Implementation”
+description: "Execute planned work (TDD implementation, prototyping, documentation, etc.)"
+# Translations:
+# - ko: "계획된 작업 실행 (TDD 구현, 프로토타이핑, 문서화 등)"
+# - ja: "計画されたタスクの実行（TDD実装、プロトタイピング、ドキュメント作成など）"
+# - zh: "执行计划任务（TDD实现、原型开发、文档编写等）"
+argument-hint: "SPEC-ID - All with SPEC ID to implement (e.g. SPEC-001) or all \"SPEC Implementation\""
 allowed-tools:
   - Read
   - Write

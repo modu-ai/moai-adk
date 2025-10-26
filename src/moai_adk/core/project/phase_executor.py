@@ -149,7 +149,10 @@ class PhaseExecutor:
                 "PROJECT_DESCRIPTION": config.get("description", ""),
                 "PROJECT_MODE": config.get("mode", "personal"),
                 "PROJECT_VERSION": config.get("version", "0.1.0"),
+                "PROJECT_OWNER": config.get("author", "@user"),
                 "AUTHOR": config.get("author", "@user"),
+                "CONVERSATION_LANGUAGE": config.get("conversation_language", config.get("locale", "en")),
+                "CODEBASE_LANGUAGE": config.get("language", "generic"),
             }
             processor.set_context(context)
 
@@ -185,9 +188,10 @@ class PhaseExecutor:
             "Phase 4: Generating configurations...", progress_callback
         )
 
-        # Attach version metadata (v0.3.1+)
-        config["moai_adk_version"] = __version__
-        config["optimized"] = False  # Default value
+        # Ensure project section exists and set defaults
+        if "project" not in config:
+            config["project"] = {}
+        config["project"]["optimized"] = False  # Default value
 
         # Write config.json
         config_path = project_path / ".moai" / "config.json"

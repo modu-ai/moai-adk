@@ -1,8 +1,28 @@
 ---
-name: "Configuring MCP Servers & Plugins for Claude Code"
-description: "Set up Model Context Protocol servers (GitHub, Filesystem, Brave Search, SQLite). Configure OAuth, manage permissions, validate MCP structure. Use when integrating external tools, APIs, or expanding Claude Code capabilities."
+name: moai-cc-mcp-plugins
+description: "Configuring MCP Servers & Plugins for Claude Code. Set up Model Context Protocol servers (GitHub, Filesystem, Brave Search, SQLite). Configure OAuth, manage permissions, validate MCP structure. Use when integrating external tools, APIs, or expanding Claude Code capabilities."
 allowed-tools: "Read, Write, Edit, Bash, Glob"
 ---
+
+## Skill Metadata
+
+| Field | Value |
+| ----- | ----- |
+| Version | 1.0.0 |
+| Tier | Ops |
+| Auto-load | When setting up MCP servers |
+
+## What It Does
+
+MCP (Model Context Protocol) server 및 plugin 설정을 위한 전체 가이드를 제공합니다. GitHub, Filesystem, SQLite 등 다양한 MCP server의 OAuth 설정, 권한 관리, 구조 검증 방법을 다룹니다.
+
+## When to Use
+
+- 새로운 MCP server를 설정할 때
+- OAuth 인증을 구성할 때
+- External tool이나 API를 통합할 때
+- MCP plugin의 permissions이나 구조를 검증할 때
+
 
 # Configuring MCP Servers & Plugins
 

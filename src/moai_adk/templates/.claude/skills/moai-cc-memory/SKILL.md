@@ -1,8 +1,28 @@
 ---
-name: "Managing Claude Code Session Memory & Context"
-description: "Understand session context limits, use just-in-time retrieval, cache insights, manage memory files. Use when optimizing context usage, handling large projects, or implementing efficient workflows."
+name: moai-cc-memory
+description: "Managing Claude Code Session Memory & Context. Understand session context limits, use just-in-time retrieval, cache insights, manage memory files. Use when optimizing context usage, handling large projects, or implementing efficient workflows."
 allowed-tools: "Read, Write, Glob, Bash"
 ---
+
+## Skill Metadata
+
+| Field | Value |
+| ----- | ----- |
+| Version | 1.0.0 |
+| Tier | Ops |
+| Auto-load | When optimizing context usage |
+
+## What It Does
+
+Session memory 및 context 관리 전략을 제공합니다. Just-in-time retrieval, insight caching, memory file 관리를 통해 context window를 효율적으로 사용하는 방법을 다룹니다.
+
+## When to Use
+
+- Context limit에 도달할 위험이 있을 때
+- 대규모 프로젝트에서 효율적인 context 관리가 필요할 때
+- Session handoff를 준비할 때
+- Memory file 구조를 설계하거나 정리할 때
+
 
 # Managing Claude Code Session Memory & Context
 
