@@ -25,6 +25,9 @@ jobs:
     name: 🔄 Sync SPEC to GitHub Issue
     runs-on: ubuntu-latest
 
+    env:
+      RUNNER_DEBUG: 1
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
