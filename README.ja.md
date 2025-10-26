@@ -717,6 +717,68 @@ open http://localhost:3000
 
 ---
 
+## Alfredのメモリファイル (.moai/memory/)
+
+Alfredの知識ベースは、`.moai/memory/`に保存された**14個のメモリファイル**で構成されています。これらのファイルは、AlfredとSub-agentが開発中に参照する標準、ルール、ガイドラインを定義します。
+
+### コア知識ベース（14ファイル）
+
+**コアガイド（3ファイル）**：
+
+| ファイル | サイズ | 用途 | 使用者 |
+| --- | --- | --- | --- |
+| `CLAUDE-AGENTS-GUIDE.md` | ~15KB | Sub-agent選択と協業ガイド | Alfred、開発者 |
+| `CLAUDE-PRACTICES.md` | ~12KB | 実践的なワークフロー例とパターン | Alfred、全Sub-agent |
+| `CLAUDE-RULES.md` | ~19KB | Skill/TAG/Gitルールと意思決定標準 | Alfred、全Sub-agent |
+
+**標準定義（4ファイル）**：
+
+| ファイル | サイズ | 用途 | 使用者 |
+| --- | --- | --- | --- |
+| `CONFIG-SCHEMA.md` | ~12KB | `.moai/config.json`スキーマ定義 | project-manager |
+| `DEVELOPMENT-GUIDE.md` | ~14KB | SPEC-First TDDワークフローガイド | 全Sub-agent、開発者 |
+| `GITFLOW-PROTECTION-POLICY.md` | ~6KB | Gitブランチ保護ポリシー | git-manager |
+| `SPEC-METADATA.md` | ~9KB | SPEC YAMLフロントマター標準（SSOT） | spec-builder、doc-syncer |
+
+**実装分析（7ファイル）**：Skills管理、ワークフロー改善、チーム統合分析のための内部レポートとポリシー文書
+
+### メモリファイルはいつロードされますか？
+
+**セッション開始時（常時）**：
+- `CLAUDE.md`
+- `CLAUDE-AGENTS-GUIDE.md`
+- `CLAUDE-RULES.md`
+
+**Just-In-Time（コマンド実行時）**：
+- `/alfred:1-plan` → `SPEC-METADATA.md`、`DEVELOPMENT-GUIDE.md`
+- `/alfred:2-run` → `DEVELOPMENT-GUIDE.md`
+- `/alfred:3-sync` → `DEVELOPMENT-GUIDE.md`
+
+**条件付き（必要時）**：
+- Config変更 → `CONFIG-SCHEMA.md`
+- Git操作 → `GITFLOW-PROTECTION-POLICY.md`
+- Skill作成 → `SKILLS-DESCRIPTION-POLICY.md`
+
+### メモリファイルが重要な理由
+
+1. **単一真実源（SSOT）**：各標準が正確に1箇所のみに定義され、競合を排除
+2. **コンテキスト効率**：JITロードで初期セッションのオーバーヘッドを削減（開始時は3ファイルのみ）
+3. **一貫した意思決定**：全Sub-agentが`CLAUDE-RULES.md`の同じルールに従う
+4. **トレーサビリティ**：SPECメタデータ、@TAGルール、Git標準がすべて文書化
+
+### 使用頻度
+
+| 優先度 | ファイル | 使用パターン |
+| --- | --- | --- |
+| 非常に高い | `CLAUDE-RULES.md` | すべての意思決定 |
+| 高い | `DEVELOPMENT-GUIDE.md`、`SPEC-METADATA.md` | すべてのコマンド |
+| 中程度 | `CLAUDE-AGENTS-GUIDE.md`、`CLAUDE-PRACTICES.md` | Agent調整 |
+| 低い | `CONFIG-SCHEMA.md`、`GITFLOW-PROTECTION-POLICY.md` | 特定の操作 |
+
+> 📚 **完全な分析**：`.moai/memory/MEMORY-FILES-USAGE.md`で、各ファイルを誰が使用するか、いつロードされるか、どこで参照されるか、なぜ必要かについての包括的なドキュメントを確認してください。
+
+---
+
 ## 追加リソース
 
 | 目的 | リソース |

@@ -1454,6 +1454,68 @@ Mini Kanban Board 프로젝트에서는 모든 단계에서 TRUST 5원칙이 자
 
 ---
 
+## Alfred의 메모리 파일 (.moai/memory/)
+
+Alfred의 지식 기반은 `.moai/memory/`에 저장된 **14개의 메모리 파일**로 구성됩니다. 이 파일들은 Alfred와 Sub-agent들이 개발 중 참조하는 표준, 규칙, 가이드라인을 정의합니다.
+
+### 핵심 지식 기반 (14개 파일)
+
+**핵심 가이드 (3개 파일)**:
+
+| 파일                        | 크기  | 용도                                  | 사용자                      |
+| --------------------------- | ----- | ------------------------------------- | --------------------------- |
+| `CLAUDE-AGENTS-GUIDE.md`    | ~15KB | Sub-agent 선택 및 협업 가이드          | Alfred, 개발자              |
+| `CLAUDE-PRACTICES.md`       | ~12KB | 실전 워크플로우 예제 및 패턴           | Alfred, 모든 Sub-agent      |
+| `CLAUDE-RULES.md`           | ~19KB | Skill/TAG/Git 규칙 및 의사결정 표준    | Alfred, 모든 Sub-agent      |
+
+**표준 정의 (4개 파일)**:
+
+| 파일                            | 크기  | 용도                                   | 사용자                      |
+| ------------------------------- | ----- | -------------------------------------- | --------------------------- |
+| `CONFIG-SCHEMA.md`              | ~12KB | `.moai/config.json` 스키마 정의         | project-manager             |
+| `DEVELOPMENT-GUIDE.md`          | ~14KB | SPEC-First TDD 워크플로우 가이드        | 모든 Sub-agent, 개발자      |
+| `GITFLOW-PROTECTION-POLICY.md`  | ~6KB  | Git 브랜치 보호 정책                    | git-manager                 |
+| `SPEC-METADATA.md`              | ~9KB  | SPEC YAML frontmatter 표준 (SSOT)       | spec-builder, doc-syncer    |
+
+**구현 분석 (7개 파일)**: Skills 관리, 워크플로우 개선, 팀 통합 분석을 위한 내부 보고서 및 정책 문서
+
+### 메모리 파일은 언제 로드되나요?
+
+**세션 시작 시 (항상)**:
+- `CLAUDE.md`
+- `CLAUDE-AGENTS-GUIDE.md`
+- `CLAUDE-RULES.md`
+
+**Just-In-Time (명령어 실행 시)**:
+- `/alfred:1-plan` → `SPEC-METADATA.md`, `DEVELOPMENT-GUIDE.md`
+- `/alfred:2-run` → `DEVELOPMENT-GUIDE.md`
+- `/alfred:3-sync` → `DEVELOPMENT-GUIDE.md`
+
+**조건부 (필요 시)**:
+- Config 변경 → `CONFIG-SCHEMA.md`
+- Git 작업 → `GITFLOW-PROTECTION-POLICY.md`
+- Skill 생성 → `SKILLS-DESCRIPTION-POLICY.md`
+
+### 메모리 파일이 중요한 이유
+
+1. **단일 진실 공급원 (SSOT)**: 각 표준이 정확히 한 곳에만 정의되어 충돌 제거
+2. **컨텍스트 효율성**: JIT 로딩으로 초기 세션 오버헤드 감소 (시작 시 3개 파일만)
+3. **일관된 의사결정**: 모든 Sub-agent가 `CLAUDE-RULES.md`의 동일한 규칙 따름
+4. **추적성**: SPEC 메타데이터, @TAG 규칙, Git 표준 모두 문서화
+
+### 사용 빈도
+
+| 우선순위 | 파일                                                | 사용 패턴          |
+| -------- | --------------------------------------------------- | ------------------ |
+| 매우 높음 | `CLAUDE-RULES.md`                                   | 모든 의사결정      |
+| 높음     | `DEVELOPMENT-GUIDE.md`, `SPEC-METADATA.md`          | 모든 명령어        |
+| 중간     | `CLAUDE-AGENTS-GUIDE.md`, `CLAUDE-PRACTICES.md`     | Agent 조율         |
+| 낮음     | `CONFIG-SCHEMA.md`, `GITFLOW-PROTECTION-POLICY.md`  | 특정 작업          |
+
+> 📚 **완전한 분석**: `.moai/memory/MEMORY-FILES-USAGE.md`에서 각 파일을 누가 사용하는지, 언제 로드되는지, 어디서 참조되는지, 왜 필요한지에 대한 종합 문서를 확인하세요.
+
+---
+
 ## 추가 자료
 
 | 목적              | 리소스                                                               |
