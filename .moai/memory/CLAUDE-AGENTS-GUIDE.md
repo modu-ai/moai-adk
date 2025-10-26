@@ -179,20 +179,20 @@ Skills keep the core knowledge lightweight while allowing Alfred to assemble the
 
 ## Agent Selection Decision Tree
 
-| Situation                  | Recommended Agent        | Reason                                                                                              |
-| -------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------- |
-| Need codebase understanding | **Explore**              | Specialized in rapid analysis of large projects. Understand entire structure with Glob + Grep patterns |
-| Write SPEC for new feature | **spec-builder**         | Expert in EARS syntax + SPEC structure. Auto-manage YAML metadata + HISTORY                         |
-| Analyze bug causes         | **debug-helper**         | Expert in stack trace + error pattern analysis. Recommends fix-forward vs rollback                  |
-| Code implementation (TDD)  | **code-builder pipeline** | Automates RED → GREEN → REFACTOR. Sequential execution of implementation-planner + tdd-implementer  |
-| Need document sync         | **doc-syncer**           | Automates Living Documents. Generates README + CHANGELOG, verifies TAG chain                        |
-| Git/PR management          | **git-manager**          | Automates GitFlow + Draft→Ready. Creates feature branches + PRs                                     |
-| Version release            | **git-manager**          | Automates releases. Generates CHANGELOG + creates tags + merges PR                                  |
-| Verify TAG integrity       | **tag-agent**            | Specializes in TAG chain verification. Detects orphan TAGs + recommends fixes                       |
-| Verify code quality        | **trust-checker**        | Verifies TRUST 5 principles. Checks Test/Readable/Unified/Secured/Trackable                         |
-| Verify release gate        | **quality-gate**         | Coverage delta + security scan. Final verification before release                                    |
-| Project initialization     | **project-manager**      | Metadata interview + mode selection. Dedicated to `/alfred:0-project`                               |
-| Claude Code session mgmt   | **cc-manager**           | Skill lifecycle + output style management. Specialized in session tuning                            |
+| Situation                   | Recommended Agent         | Reason                                                                                                 |
+| --------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Need codebase understanding | **Explore**               | Specialized in rapid analysis of large projects. Understand entire structure with Glob + Grep patterns |
+| Write SPEC for new feature  | **spec-builder**          | Expert in EARS syntax + SPEC structure. Auto-manage YAML metadata + HISTORY                            |
+| Analyze bug causes          | **debug-helper**          | Expert in stack trace + error pattern analysis. Recommends fix-forward vs rollback                     |
+| Code implementation (TDD)   | **code-builder pipeline** | Automates RED → GREEN → REFACTOR. Sequential execution of implementation-planner + tdd-implementer     |
+| Need document sync          | **doc-syncer**            | Automates Living Documents. Generates README + CHANGELOG, verifies TAG chain                           |
+| Git/PR management           | **git-manager**           | Automates GitFlow + Draft→Ready. Creates feature branches + PRs                                        |
+| Version release             | **git-manager**           | Automates releases. Generates CHANGELOG + creates tags + merges PR                                     |
+| Verify TAG integrity        | **tag-agent**             | Specializes in TAG chain verification. Detects orphan TAGs + recommends fixes                          |
+| Verify code quality         | **trust-checker**         | Verifies TRUST 5 principles. Checks Test/Readable/Unified/Secured/Trackable                            |
+| Verify release gate         | **quality-gate**          | Coverage delta + security scan. Final verification before release                                      |
+| Project initialization      | **project-manager**       | Metadata interview + mode selection. Dedicated to `/alfred:0-project`                                  |
+| Claude Code session mgmt    | **cc-manager**            | Skill lifecycle + output style management. Specialized in session tuning                               |
 
 ---
 

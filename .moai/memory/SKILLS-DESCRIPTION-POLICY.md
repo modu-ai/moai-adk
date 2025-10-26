@@ -1,119 +1,119 @@
-# Skills Description Improvement Policy
+# Skills Description 개선 정책
 
-> Description authoring standards applied to all Skills in MoAI-ADK
+> MoAI-ADK의 모든 Skills에 적용되는 description 작성 표준
 
 ---
 
-## 🎯 Description Authoring Principles
+## 🎯 설명 (Description) 작성 원칙
 
-### 1. Basic Structure
+### 1. 기본 구조
 
-All Skill descriptions must include the following 3 elements:
+모든 Skill의 description은 다음 3가지를 포함해야 합니다:
 
 ```
-[What it does]: Brief functional description (8-12 words)
-[Key capabilities]: List of core functions (2-3 items)
-[When to use]: Usage timing (3-5 trigger keywords, use "Use when")
+[What it does]: 간단한 기능 설명 (8-12 단어)
+[Key capabilities]: 핵심 기능 목록 (2-3개)
+[When to use]: 사용 시점 (3-5개 트리거 키워드, "Use when" 사용)
 ```
 
-### 2. Authoring Templates
+### 2. 작성 템플릿
 
-**Basic Template**:
+**기본 템플릿**:
 ```
-description: [Feature description]. [Core capabilities]. Use when [trigger1], [trigger2], or [trigger3].
-```
-
-**Extended Template** (when needed):
-```
-description: [Feature description]. [Core capability1], [Core capability2]. Use when [trigger1], [trigger2], [trigger3], or [trigger4]. Automatically activates [related Skills] for [purpose].
+description: [기능 설명]. [핵심 기능]. Use when [트리거1], [트리거2], or [트리거3].
 ```
 
-### 3. Skills Category-specific Templates
+**확장 템플릿** (필요 시):
+```
+description: [기능 설명]. [핵심 기능1], [핵심 기능2]. Use when [트리거1], [트리거2], [트리거3], or [트리거4]. Automatically activates [연관 Skills] for [목적].
+```
+
+### 3. Skills 카테고리별 템플릿
 
 #### Foundation Skills (moai-foundation-*)
 ```
-description: [Function]. [Core capabilities (e.g., validation, authoring)]. Use when [task1], [task2], [task3], or [task4].
+description: [기능]. [핵심 기능 (예: validation, authoring)]. Use when [작업1], [작업2], [작업3], or [작업4].
 ```
-**Example**:
+**예시**:
 - ✅ "Validates SPEC YAML frontmatter (7 required fields) and HISTORY section. Use when creating SPEC documents, validating SPEC metadata, checking SPEC structure, or authoring specifications."
-- ❌ "SPEC metadata validation" (too short)
+- ❌ "SPEC metadata validation" (너무 짧음)
 
 #### Alfred Skills (moai-alfred-*)
 ```
-description: [Function]. [Core capabilities]. Use when [validation/analysis/management target], [condition], or [situation]. Automatically activates [related Skills] for [purpose].
+description: [기능]. [핵심 능력]. Use when [검증/분석/관리 대상], [조건], or [상황]. Automatically activates [연관 Skills] for [목적].
 ```
-**Example**:
-- ✅ "Validates TRUST 5 principles (Test 85%+, Code constraints, Architecture unity, Security, TAG trackability). Use when validating code quality, checking TRUST compliance, verifying test coverage, or analyzing security patterns. Automatically activates moai-foundation-trust and language-specific skills for comprehensive validation."
-- ❌ "TRUST validation" (too short and no trigger keywords)
+**예시**:
+- ✅ "Validates TRUST 5-principles (Test 85%+, Code constraints, Architecture unity, Security, TAG trackability). Use when validating code quality, checking TRUST compliance, verifying test coverage, or analyzing security patterns. Automatically activates moai-foundation-trust and language-specific skills for comprehensive validation."
+- ❌ "TRUST validation" (너무 짧고 트리거 키워드 없음)
 
 #### Language Skills (moai-lang-*)
 ```
-description: [Language] best practices with [main tools]. Use when [development activity], [pattern], or [special case].
+description: [언어] best practices with [주요 도구]. Use when [개발 활동], [패턴], or [특수 케이스].
 ```
-**Example**:
+**예시**:
 - ✅ "Python best practices with pytest, mypy, ruff, black. Use when writing Python code, implementing tests, type-checking, formatting code, or following PEP standards."
-- ❌ "Python best practices" (too general)
+- ❌ "Python best practices" (너무 일반적)
 
 #### Domain Skills (moai-domain-*)
 ```
-description: [Domain] development with [main technologies/patterns]. Use when [domain activity1], [domain activity2], or [special situation].
+description: [도메인] development with [주요 기술/패턴]. Use when [도메인 활동1], [도메인 활동2], or [특수 상황].
 ```
-**Example**:
+**예시**:
 - ✅ "Backend API development with REST patterns, authentication, error handling. Use when designing REST APIs, implementing authentication, or building backend services."
-- ❌ "Backend development" (lack of specificity)
+- ❌ "Backend development" (구체성 부족)
 
-### 4. Trigger Keyword Guide
+### 4. 트리거 키워드 가이드
 
-#### Task-focused Keywords
+#### 작업 중심 키워드
 - "creating [artifact]", "writing [code/docs]", "implementing [feature]"
 - "validating [aspect]", "checking [quality]", "verifying [compliance]"
 - "analyzing [code/data]", "debugging [issue]", "diagnosing [problem]"
 
-#### Condition-focused Keywords
+#### 조건 중심 키워드
 - "when working with [file type/framework]"
 - "when developing [feature/component]"
 - "when applying [pattern/practice]"
 
-#### Situation-focused Keywords
+#### 상황 중심 키워드
 - "for [workflow/process]", "during [phase/stage]"
 - "to [achieve goal/outcome]"
 
-### 5. Prohibited Patterns (Anti-patterns)
+### 5. 금지 사항 (Anti-patterns)
 
-❌ **Too Short**:
+❌ **너무 짧음**:
 ```
 description: Helps with documents
 ```
 
-❌ **No Trigger Keywords**:
+❌ **트리거 키워드 없음**:
 ```
 description: PDF processing tool
 ```
 
-❌ **Using "I can", "You can"** (avoid first person):
+❌ **"I can", "You can" 사용** (첫 인칭 회피):
 ```
 description: I help you process Excel files
 ```
 
-❌ **Technical Details Only**:
+❌ **기술적 세부사항만**:
 ```
 description: Uses pdfplumber library
 ```
 
 ---
 
-## 📊 Skills List Improvement Checklist
+## 📊 Skills 목록별 개선 체크리스트
 
-### Priority 1: Foundation Skills (7 items)
-- [ ] moai-foundation-specs ✅ Complete
-- [ ] moai-foundation-ears ✅ Complete
+### Priority 1: Foundation Skills (7개)
+- [ ] moai-foundation-specs ✅ 완료
+- [ ] moai-foundation-ears ✅ 완료
 - [ ] moai-foundation-tags
 - [ ] moai-foundation-trust
 - [ ] moai-foundation-langs
 - [ ] moai-claude-code
 - [ ] moai-foundation-git
 
-### Priority 2: Alfred Skills (10 items)
+### Priority 2: Alfred Skills (10개)
 - [ ] moai-alfred-tag-scanning
 - [ ] moai-alfred-trust-validation
 - [ ] moai-alfred-spec-metadata-validation
@@ -125,22 +125,22 @@ description: Uses pdfplumber library
 - [ ] moai-alfred-performance-optimizer
 - [ ] moai-alfred-refactoring-coach
 
-### Priority 3: Language Skills (20 items)
+### Priority 3: Language Skills (20개)
 - moai-lang-typescript
 - moai-lang-python
 - moai-lang-go
 - moai-lang-rust
 - moai-lang-java
-- ... (14 more)
+- ... (14개 더)
 
-### Priority 4: Domain Skills (12 items)
+### Priority 4: Domain Skills (12개)
 - moai-domain-backend
 - moai-domain-frontend
 - moai-domain-web-api
 - moai-domain-database
-- ... (8 more)
+- ... (8개 더)
 
-### Priority 5: Essentials Skills (4 items)
+### Priority 5: Essentials Skills (4개)
 - moai-essentials-debug
 - moai-essentials-review
 - moai-essentials-refactor
@@ -148,28 +148,28 @@ description: Uses pdfplumber library
 
 ---
 
-## 🔧 Improvement Methods
+## 🔧 개선 방법
 
-### Method 1: Individual Edit (High quality)
-Manually edit each Skill's `description` field
-- Advantage: Optimized description for each Skill
-- Disadvantage: Time-consuming (60+ Skills)
+### 방법 1: 개별 Edit (고품질)
+각 Skill의 `description` 필드를 수작업 Edit
+- 이점: 각 Skill에 최적화된 description
+- 단점: 시간이 오래 걸림 (60+ Skills)
 
-### Method 2: Policy-based Batch Improvement (Efficiency)
-Pattern matching-based improvement by priority using templates
-1. Priority 1-2: Individual Edit (most important)
-2. Priority 3-5: Batch application using templates
+### 방법 2: 정책 기반 일괄 개선 (효율성)
+템플릿을 기반으로 Pattern matching으로 우선순위별 개선
+1. Priority 1-2: 개별 Edit (가장 중요)
+2. Priority 3-5: 템플릿 기반 일괄 적용
 
-### Current Progress Status
+### 현재 진행 상태
 - ✅ moai-foundation-specs (Priority 1)
 - ✅ moai-foundation-ears (Priority 1)
-- ⏳ Remaining 50+ Skills (Priority 2-5)
+- ⏳ 나머지 50+ Skills (Priority 2-5)
 
 ---
 
-## 📝 Authoring Examples
+## 📝 작성 예시
 
-### Good Examples
+### 좋은 예시
 
 #### Foundation Skill
 ```yaml
@@ -191,7 +191,7 @@ description: TypeScript best practices with Vitest, Biome, strict typing. Use wh
 description: REST API design patterns with authentication, versioning, error handling. Use when designing REST APIs, implementing authentication, building backend services, or managing API versions.
 ```
 
-### Before vs After
+### 수정 전 vs 수정 후
 
 | Skill | Before | After |
 |-------|--------|-------|
@@ -200,20 +200,19 @@ description: REST API design patterns with authentication, versioning, error han
 
 ---
 
-## ✅ Final Validation Checklist
+## ✅ 최종 검증 체크리스트
 
-Verify that each Skill's description satisfies the following:
+각 Skill의 description이 다음을 만족하는지 확인:
 
-- [ ] **"What it does"**: Clear functional description (noun + verb)
-- [ ] **"Use when"**: Includes 3~5 specific trigger keywords
-- [ ] **Length**: Single line (recommended 150-200 characters)
-- [ ] **Relationships**: Specify related Skills (optional)
-- [ ] **Discoverability**: Includes search keywords (sub-agents can discover)
-- [ ] **Avoid First Person**: Do not use "I", "You", "Our"
-- [ ] **Avoid Technical Centricity**: Prioritize function/purpose over library/tool names
+- [ ] **"What it does"**: 명확한 기능 설명 (명사 + 동사)
+- [ ] **"Use when"**: 3~5개 구체적 트리거 키워드 포함
+- [ ] **길이**: 한 줄 (150-200 자 권장)
+- [ ] **관계**: 연관된 Skills 명시 (선택)
+- [ ] **발견성**: 검색 키워드 포함 (sub-agent가 발견 가능)
+- [ ] **첫 인칭 회피**: "I", "You", "Our" 사용 안 함
+- [ ] **기술 중심성 회피**: 라이브러리/도구명보다 기능/목적 우선
 
 ---
 
-**Created**: 2025-10-20
-**Last Updated**: Phase 2 in Progress
-**Document Version**: v1.0.0
+**작성일**: 2025-10-20
+**최종 업데이트**: Phase 2 진행 중

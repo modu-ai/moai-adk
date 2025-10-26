@@ -2,8 +2,8 @@
 
 **SPEC-First TDD Development with Alfred SuperAgent**
 
-> **Document Language**: ko
-> **Project Owner**: MoAI Agents Factory
+> **Document Language**: {{CONVERSATION_LANGUAGE}}
+> **Project Owner**: {{PROJECT_OWNER}}
 > **Config**: `.moai/config.json`
 >
 > All interactions with Alfred can use `Skill("moai-alfred-interactive-questions")` for TUI-based responses.

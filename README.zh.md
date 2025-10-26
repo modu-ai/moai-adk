@@ -18,20 +18,20 @@
 MoAI-ADK 通过三个核心原则革新 AI 协作开发。使用下面的导航跳转到适合您情况的部分。
 
 如果您是**第一次接触** MoAI-ADK，请从"什么是 MoAI-ADK？"开始。
-如果您想**快速开始**，可以直接跳转到"5分钟快速开始"。
+如果您想**快速开始**，可以直接跳转到"5 分钟快速开始"。
 如果您**已经安装并想了解概念**，推荐阅读"轻松理解核心概念"。
 
-| 问题                           | 快速跳转                                           |
-| ------------------------------ | -------------------------------------------------- |
-| 第一次接触，这是什么？         | [什么是 MoAI-ADK？](#什么是-moai-adk)              |
-| 如何开始？                     | [5分钟快速开始](#5分钟快速开始)                    |
-| 基本流程是什么？               | [基本工作流程 (0 → 3)](#基本工作流程-0--3)         |
-| Plan / Run / Sync 命令做什么？ | [核心命令摘要](#核心命令摘要)                      |
-| SPEC·TDD·TAG 是什么？          | [轻松理解核心概念](#轻松理解核心概念)              |
-| Agent/Skills 是什么？          | [Sub-agent & Skills 概述](#sub-agent--skills-概述) |
-| Claude Code Hooks 如何运作？   | [Claude Code Hooks 指南](#claude-code-hooks-指南) |
-| 想做一个 4 周实战项目           | [第二个实战：Mini Kanban Board](#第二个实战-mini-kanban-board) |
-| 想深入学习                     | [更多资源](#更多资源)                              |
+| 问题                           | 快速跳转                                                       |
+| ------------------------------ | -------------------------------------------------------------- |
+| 第一次接触，这是什么？         | [什么是 MoAI-ADK？](#什么是-moai-adk)                          |
+| 如何开始？                     | [5 分钟快速开始](#5分钟快速开始)                               |
+| 基本流程是什么？               | [基本工作流程 (0 → 3)](#基本工作流程-0--3)                     |
+| Plan / Run / Sync 命令做什么？ | [核心命令摘要](#核心命令摘要)                                  |
+| SPEC·TDD·TAG 是什么？          | [轻松理解核心概念](#轻松理解核心概念)                          |
+| Agent/Skills 是什么？          | [Sub-agent & Skills 概述](#sub-agent--skills-概述)             |
+| Claude Code Hooks 如何运作？   | [Claude Code Hooks 指南](#claude-code-hooks-指南)              |
+| 想做一个 4 周实战项目          | [第二个实战：Mini Kanban Board](#第二个实战-mini-kanban-board) |
+| 想深入学习                     | [更多资源](#更多资源)                                          |
 
 ---
 
@@ -44,7 +44,7 @@ MoAI-ADK 通过三个核心原则革新 AI 协作开发。使用下面的导航�
 现实是这样的：当您对 AI 说"创建登录功能"时，会得到语法完美的代码。但以下问题会反复出现:
 
 - **需求不明确**："究竟要创建什么？"这个基本问题没有答案。邮箱/密码登录？OAuth？2FA？一切都依赖猜测。
-- **缺少测试**：大多数 AI 只测试"happy path"。错误的密码？网络错误？3个月后生产环境中出现 bug。
+- **缺少测试**：大多数 AI 只测试"happy path"。错误的密码？网络错误？3 个月后生产环境中出现 bug。
 - **文档不一致**：代码修改了，但文档保持不变。"这段代码为什么在这里？"这个问题不断重复。
 - **上下文丢失**：即使在同一个项目中，每次都要从头解释。项目结构、决策原因、之前的尝试都没有记录。
 - **无法评估变更影响**：需求变更时，无法追踪哪些代码会受到影响。
@@ -70,13 +70,13 @@ MoAI-ADK 通过三个核心原则革新 AI 协作开发。使用下面的导航�
 `/alfred:2-run` 自动进行测试驱动开发（TDD）。按照 RED（失败测试）→ GREEN（最小实现）→ REFACTOR（代码清理）的顺序进行，**保证测试覆盖率在 85% 以上**。不再有"以后再测试"。测试引导代码编写。
 
 **3️⃣ 文档自动同步**
-一个 `/alfred:3-sync` 命令就能让代码、测试、文档**全部同步到最新状态**。README、CHANGELOG、API 文档，甚至 Living Document 都会自动更新。6个月后，代码和文档依然保持一致。
+一个 `/alfred:3-sync` 命令就能让代码、测试、文档**全部同步到最新状态**。README、CHANGELOG、API 文档，甚至 Living Document 都会自动更新。6 个月后，代码和文档依然保持一致。
 
 **4️⃣ @TAG 系统追踪**
 所有代码、测试和文档都标记 `@TAG:ID`。稍后需求变更时，使用 `rg "@SPEC:AUTH-001"` 一个命令就能**找到所有相关的测试、实现和文档**。重构时更有信心。
 
 **5️⃣ Alfred 记住上下文**
-19个 AI 代理（Alfred SuperAgent 1 + Core Sub-agent 10 + Zero-project Specialist 6 + Built-in Agent 2）协作，**记住项目结构、决策原因和工作历史**。无需重复相同的问题。
+19 个 AI 代理（Alfred SuperAgent 1 + Core Sub-agent 10 + Zero-project Specialist 6 + Built-in Agent 2）协作，**记住项目结构、决策原因和工作历史**。无需重复相同的问题。
 
 ### MoAI-ADK 的三个核心承诺
 
@@ -102,7 +102,7 @@ MoAI-ADK 通过三个核心原则革新 AI 协作开发。使用下面的导航�
 | 困扰                     | 传统方式的问题                 | MoAI-ADK 的解决方案                           |
 | ------------------------ | ------------------------------ | --------------------------------------------- |
 | "无法信任 AI 代码"       | 没有测试的实现，验证方法不明确 | 强制 SPEC → TEST → CODE 顺序，保证覆盖率 85%+ |
-| "每次都要重复相同的解释" | 上下文丢失，项目历史未记录     | Alfred 记住所有信息，19人 AI 团队协作         |
+| "每次都要重复相同的解释" | 上下文丢失，项目历史未记录     | Alfred 记住所有信息，19 人 AI 团队协作        |
 | "编写提示词困难"         | 不知道如何编写好的提示词       | `/alfred` 命令自动提供标准化提示词            |
 | "文档总是过时"           | 代码修改后忘记更新文档         | `/alfred:3-sync` 一个命令自动同步             |
 | "不知道修改了哪里"       | 代码搜索困难，意图不明确       | @TAG 链连接 SPEC → TEST → CODE → DOC          |
@@ -120,13 +120,13 @@ MoAI-ADK 通过三个核心原则革新 AI 协作开发。使用下面的导航�
 
 ---
 
-## 5分钟快速开始
+## 5 分钟快速开始
 
-现在让我们用 MoAI-ADK 开始第一个项目。按照以下5个步骤，**5分钟内**就能完成一个连接了 SPEC、TDD 和文档的项目。
+现在让我们用 MoAI-ADK 开始第一个项目。按照以下 5 个步骤，**5 分钟内**就能完成一个连接了 SPEC、TDD 和文档的项目。
 
-### 步骤 1：安装 uv（约30秒）
+### 步骤 1：安装 uv（约 30 秒）
 
-首先安装 `uv`。`uv` 是用 Rust 编写的超高速 Python 包管理器。比传统的 `pip` **快10倍以上**，与 MoAI-ADK 完美兼容。
+首先安装 `uv`。`uv` 是用 Rust 编写的超高速 Python 包管理器。比传统的 `pip` **快 10 倍以上**，与 MoAI-ADK 完美兼容。
 
 ```bash
 # macOS/Linux
@@ -142,7 +142,7 @@ uv --version
 
 **为什么选择 uv？** MoAI-ADK 经过优化，可以利用 uv 的快速安装速度和稳定性。项目隔离也很完善，不会影响其他 Python 环境。
 
-### 步骤 2：安装 MoAI-ADK（约1分钟）
+### 步骤 2：安装 MoAI-ADK（约 1 分钟）
 
 将 MoAI-ADK 作为全局工具安装。这不会影响项目依赖。
 
@@ -152,20 +152,22 @@ uv tool install moai-adk
 
 # 验证安装
 moai-adk --version
-# 输出：MoAI-ADK v0.4.11
+# 输出：MoAI-ADK v1.0.0
 ```
 
 安装完成后，可以在任何地方使用 `moai-adk` 命令。
 
-### 步骤 3：创建项目（约1分钟）
+### 步骤 3：创建项目（约 1 分钟）
 
 **开始新项目：**
+
 ```bash
 moai-adk init my-project
 cd my-project
 ```
 
 **添加到现有项目：**
+
 ```bash
 cd your-existing-project
 moai-adk init .
@@ -175,23 +177,72 @@ moai-adk init .
 
 ```
 my-project/
-├── .moai/                   # MoAI-ADK 项目设置
-│   ├── config.json
-│   ├── project/             # 项目信息
-│   ├── specs/               # SPEC 文件
-│   └── reports/             # 分析报告
-├── .claude/                 # Claude Code 自动化
-│   ├── agents/              # 19人 AI 团队
-│   ├── commands/            # /alfred 命令
-│   ├── skills/              # 56个 Claude Skills
-│   └── settings.json
-├── src/                     # 实现代码
-├── tests/                   # 测试代码
-├── docs/                    # 自动生成的文档
+├── .moai/                          # MoAI-ADK 项目配置
+│   ├── config.json                 # 项目设置（语言、模式、所有者）
+│   ├── project/                    # 项目信息
+│   │   ├── product.md              # 产品愿景和目标
+│   │   ├── structure.md            # 目录结构
+│   │   └── tech.md                 # 技术栈和架构
+│   ├── memory/                     # Alfred的知识库（8个文件）
+│   │   ├── CLAUDE-AGENTS-GUIDE.md  # Sub-agent协作指南
+│   │   ├── CLAUDE-RULES.md         # 决策规则和标准
+│   │   ├── CLAUDE-PRACTICES.md     # 工作流模式和示例
+│   │   ├── CONFIG-SCHEMA.md        # .moai/config.json 模式
+│   │   ├── DEVELOPMENT-GUIDE.md    # SPEC-First TDD 工作流指南
+│   │   ├── GITFLOW-PROTECTION-POLICY.md  # Git 分支保护策略
+│   │   ├── SKILLS-DESCRIPTION-POLICY.md  # Skills 管理策略
+│   │   └── SPEC-METADATA.md        # SPEC YAML frontmatter 标准
+│   ├── specs/                      # SPEC文件
+│   │   └── SPEC-XXX-001/           # 每个SPEC在独立文件夹中
+│   │       └── spec.md             # EARS格式规范
+│   └── reports/                    # 分析报告
+├── .claude/                        # Claude Code自动化
+│   ├── agents/                     # 12个Sub-agent
+│   │   └── alfred/
+│   │       ├── project-manager.md         # 项目初始化
+│   │       ├── spec-builder.md            # SPEC编写 (EARS)
+│   │       ├── implementation-planner.md  # 架构 & TAG 设计
+│   │       ├── tdd-implementer.md         # RED-GREEN-REFACTOR 循环
+│   │       ├── doc-syncer.md              # 文档同步
+│   │       ├── quality-gate.md            # TRUST 5 验证
+│   │       ├── tag-agent.md               # TAG 链验证
+│   │       ├── trust-checker.md           # 代码质量检查
+│   │       ├── debug-helper.md            # 错误分析和修复
+│   │       ├── git-manager.md             # GitFlow & PR 管理
+│   │       ├── cc-manager.md              # Claude Code 优化
+│   │       └── skill-factory.md           # Skills 创建和更新
+│   ├── commands/                   # 4个Alfred命令
+│   │   └── alfred/
+│   │       ├── 0-project.md        # 项目初始化
+│   │       ├── 1-plan.md           # SPEC编写
+│   │       ├── 2-run.md            # TDD实现
+│   │       └── 3-sync.md           # 文档同步
+│   ├── skills/                     # 58个Claude Skills
+│   │   ├── moai-foundation-*       # 6个Foundation层
+│   │   ├── moai-essentials-*       # 4个Essentials层
+│   │   ├── moai-alfred-*           # 7个Alfred层
+│   │   ├── moai-domain-*           # 10个Domain层
+│   │   ├── moai-lang-*             # 18个Language层
+│   │   ├── moai-cc-*               # 8个Claude Code层
+│   │   ├── moai-skill-factory      # 1个Skill Factory
+│   │   └── moai-spec-authoring     # 1个SPEC编写
+│   ├── hooks/                      # 事件驱动自动化
+│   │   └── alfred/
+│   │       └── alfred_hooks.py     # 5个hooks（Session、PreTool等）
+│   ├── output-styles/              # 响应风格
+│   │   └── alfred/
+│   │       ├── agentic-coding.md       # 专业开发模式
+│   │       ├── moai-adk-learning.md    # 教育说明模式
+│   │       └── study-with-alfred.md    # 交互学习模式
+│   └── settings.json               # Claude Code设置
+├── src/                            # 实现代码
+├── tests/                          # 测试代码
+├── docs/                           # 自动生成的文档
+├── CLAUDE.md                       # Alfred的核心指令
 └── README.md
 ```
 
-### 步骤 4：在 Claude Code 中启动 Alfred（约2分钟）
+### 步骤 4：在 Claude Code 中启动 Alfred（约 2 分钟）
 
 运行 Claude Code 并调用 Alfred SuperAgent：
 
@@ -210,10 +261,10 @@ claude
 
 1. **收集项目信息**："项目名称是什么？"、"目标是什么？"、"主要语言是什么？"
 2. **自动检测技术栈**：自动识别 Python/JavaScript/Go 等
-3. **部署 Skill Pack**：准备56个 Skills 中适合该语言的 Skills
+3. **部署 Skill Pack**：准备 56 个 Skills 中适合该语言的 Skills
 4. **生成初始报告**：项目结构，下一步建议
 
-### 步骤 5：编写第一个 SPEC（约1分钟）
+### 步骤 5：编写第一个 SPEC（约 1 分钟）
 
 项目初始化完成后，将第一个功能写成 SPEC：
 
@@ -222,11 +273,12 @@ claude
 ```
 
 自动生成的内容：
+
 - `@SPEC:USER-001` - 分配唯一 ID
 - `.moai/specs/SPEC-USER-001/spec.md` - EARS 格式的专业 SPEC
 - `feature/spec-user-001` - 自动创建 Git 分支
 
-### 步骤 6：TDD 实现（约3分钟）
+### 步骤 6：TDD 实现（约 3 分钟）
 
 编写 SPEC 后，以 TDD 方式实现：
 
@@ -235,11 +287,12 @@ claude
 ```
 
 此命令处理：
+
 - 🔴 **RED**：自动编写失败的测试（`@TEST:USER-001`）
 - 🟢 **GREEN**：用最小实现通过测试（`@CODE:USER-001`）
 - ♻️ **REFACTOR**：改进代码质量
 
-### 步骤 7：同步文档（约1分钟）
+### 步骤 7：同步文档（约 1 分钟）
 
 最后自动同步所有文档：
 
@@ -248,6 +301,7 @@ claude
 ```
 
 自动生成/更新的内容：
+
 - Living Document（API 文档）
 - README 更新
 - CHANGELOG 生成
@@ -255,7 +309,7 @@ claude
 
 ### 完成！
 
-经过这7个步骤，以下所有内容都已准备就绪：
+经过这 7 个步骤，以下所有内容都已准备就绪：
 
 ✅ 需求规范（SPEC）
 ✅ 测试代码（覆盖率 85%+）
@@ -264,7 +318,7 @@ claude
 ✅ 变更历史（CHANGELOG）
 ✅ Git 提交历史（RED/GREEN/REFACTOR）
 
-**所有内容在15分钟内完成！**
+**所有内容在 15 分钟内完成！**
 
 ### 验证生成的结果
 
@@ -283,9 +337,11 @@ cat README.md
 ```
 
 > 🔍 **验证命令**：`moai-adk doctor` — 检查 Python/uv 版本、`.moai/` 结构、代理/Skills 配置是否都已准备就绪。
+>
 > ```bash
 > moai-adk doctor
 > ```
+>
 > 如果所有绿色对勾都出现，说明准备完美！
 
 ---
@@ -293,6 +349,7 @@ cat README.md
 ## 保持 MoAI-ADK 最新版本
 
 ### 检查版本
+
 ```bash
 # 检查当前安装的版本
 moai-adk --version
@@ -304,6 +361,7 @@ uv tool list  # 检查 moai-adk 的当前版本
 ### 升级
 
 #### 方法 1：moai-adk 自身更新命令（最简单）
+
 ```bash
 # MoAI-ADK 自身更新命令 - 同时更新代理/Skills 模板
 moai-adk update
@@ -315,24 +373,28 @@ moai-adk init .
 #### 方法 2：使用 uv tool 命令升级
 
 **升级特定工具（推荐）**
+
 ```bash
 # 仅将 moai-adk 升级到最新版本
 uv tool upgrade moai-adk
 ```
 
 **升级所有已安装的工具**
+
 ```bash
 # 将所有 uv tool 工具升级到最新版本
 uv tool update
 ```
 
 **安装特定版本**
+
 ```bash
 # 重新安装特定版本（例如：0.4.2）
 uv tool install moai-adk==0.4.2
 ```
 
 ### 更新后确认
+
 ```bash
 # 1. 检查安装的版本
 moai-adk --version
@@ -351,6 +413,7 @@ claude
 ```
 
 > 💡 **提示**：
+>
 > - `moai-adk update`：更新 MoAI-ADK 包版本 + 同步代理/Skills 模板
 > - `moai-adk init .`：将新模板应用到现有项目（安全保留代码）
 > - 同时执行这两个命令即可完成完整更新。
@@ -374,22 +437,26 @@ graph TD
 ```
 
 ### 0. INIT — 准备项目
+
 - 询问项目介绍、目标、语言、模式（locale）
-- 自动生成 `.moai/config.json`、`.moai/project/*` 文档5种
+- 自动生成 `.moai/config.json`、`.moai/project/*` 文档 5 种
 - 检测语言并部署推荐的 Skill Pack（Foundation + Essentials + Domain/Language）
 - 清理模板，检查初始 Git/备份
 
 ### 1. PLAN — 就要创建什么达成一致
+
 - 使用 EARS 模板编写 SPEC（包含 `@SPEC:ID`）
 - 整理 Plan Board、实现想法、风险因素
 - 如果是 Team 模式，自动创建分支/初始 Draft PR
 
 ### 2. RUN — 测试驱动开发（TDD）
+
 - Phase 1 `implementation-planner`：设计库、文件夹、TAG
 - Phase 2 `tdd-implementer`：RED（失败测试）→ GREEN（最小实现）→ REFACTOR（清理）
 - quality-gate 验证 TRUST 5 原则、覆盖率变化
 
 ### 3. SYNC — 文档 & PR 清理
+
 - 同步 Living Document、README、CHANGELOG 等文档
 - 验证 TAG 链并恢复 orphan TAG
 - 生成 Sync Report，从 Draft → Ready for Review 转换，支持 `--auto-merge` 选项
@@ -411,7 +478,7 @@ graph TD
 
 ## 轻松理解核心概念
 
-MoAI-ADK 由5个核心概念组成。每个概念相互连接，一起工作时创建强大的开发系统。
+MoAI-ADK 由 5 个核心概念组成。每个概念相互连接，一起工作时创建强大的开发系统。
 
 ### 核心概念 1：SPEC-First（需求优先）
 
@@ -419,17 +486,18 @@ MoAI-ADK 由5个核心概念组成。每个概念相互连接，一起工作时�
 
 **核心**：在实现前**"明确定义要创建什么"**。这不是简单的文档，而是团队和 AI 可以共同理解的**可执行规范**。
 
-**EARS 语法的5种模式**：
+**EARS 语法的 5 种模式**：
 
 1. **Ubiquitous**（基本功能）："系统应该提供基于 JWT 的认证"
 2. **Event-driven**（条件）："WHEN 提供有效凭证时，系统应该发放令牌"
 3. **State-driven**（状态中）："WHILE 用户处于认证状态时，系统应该允许访问受保护的资源"
 4. **Optional**（可选）："WHERE 存在刷新令牌时，系统可以发放新令牌"
-5. **Constraints**（约束）："令牌过期时间不应超过15分钟"
+5. **Constraints**（约束）："令牌过期时间不应超过 15 分钟"
 
 **如何操作？** `/alfred:1-plan` 命令自动以 EARS 格式创建专业的 SPEC。
 
 **获得的好处**：
+
 - ✅ 团队所有人都理解的明确需求
 - ✅ 基于 SPEC 的测试用例（已经定义了要测试什么）
 - ✅ 需求变更时，可以通过 `@SPEC:ID` TAG 追踪所有受影响的代码
@@ -442,14 +510,16 @@ MoAI-ADK 由5个核心概念组成。每个概念相互连接，一起工作时�
 
 **核心**：在实现**之前**先编写测试。这就像烹饪前先确认材料一样，在实现前明确需求是什么。
 
-**3步循环**：
+**3 步循环**：
 
 1. **🔴 RED**：首先编写失败的测试
+
    - SPEC 的每个需求都成为测试用例
    - 因为还没有实现，所以必然失败
    - Git 提交：`test(AUTH-001): add failing test`
 
 2. **🟢 GREEN**：进行使测试通过的最小实现
+
    - 用最简单的方法通过测试
    - 通过优先于完美
    - Git 提交：`feat(AUTH-001): implement minimal solution`
@@ -460,9 +530,10 @@ MoAI-ADK 由5个核心概念组成。每个概念相互连接，一起工作时�
    - 测试仍然应该通过
    - Git 提交：`refactor(AUTH-001): improve code quality`
 
-**如何操作？** `/alfred:2-run` 命令自动进行这3个步骤。
+**如何操作？** `/alfred:2-run` 命令自动进行这 3 个步骤。
 
 **获得的好处**：
+
 - ✅ 保证覆盖率 85% 以上（没有没测试的代码）
 - ✅ 重构信心（随时可以通过测试验证）
 - ✅ 清晰的 Git 历史（追踪 RED → GREEN → REFACTOR 过程）
@@ -476,6 +547,7 @@ MoAI-ADK 由5个核心概念组成。每个概念相互连接，一起工作时�
 **核心**：在所有 SPEC、测试、代码、文档上标记 `@TAG:ID` 以创建**一对一对应**。
 
 **TAG 链**：
+
 ```
 @SPEC:AUTH-001（需求）
     ↓
@@ -487,11 +559,13 @@ MoAI-ADK 由5个核心概念组成。每个概念相互连接，一起工作时�
 ```
 
 **TAG ID 规则**：`<域>-<3位数字>`
+
 - AUTH-001、AUTH-002、AUTH-003...
 - USER-001、USER-002...
 - 一旦分配，**绝不更改**
 
 **如何使用？** 需求变更时：
+
 ```bash
 # 查找与 AUTH-001 相关的所有内容
 rg '@TAG:AUTH-001' -n
@@ -503,34 +577,39 @@ rg '@TAG:AUTH-001' -n
 **如何操作？** `/alfred:3-sync` 命令验证 TAG 链，检测 orphan TAG（未对应的 TAG）。
 
 **获得的好处**：
+
 - ✅ 所有代码的意图都清晰（阅读 SPEC 就能理解为什么有这段代码）
 - ✅ 重构时立即了解所有受影响的代码
-- ✅ 3个月后仍然能理解代码（TAG → SPEC 追踪）
+- ✅ 3 个月后仍然能理解代码（TAG → SPEC 追踪）
 
 ---
 
-### 核心概念 4：TRUST 5原则
+### 核心概念 4：TRUST 5 原则
 
-**比喻**：就像健康的身体一样，好的代码必须满足5个要素。
+**比喻**：就像健康的身体一样，好的代码必须满足 5 个要素。
 
-**核心**：所有代码都必须遵守以下5个原则。`/alfred:3-sync` 会自动验证这些。
+**核心**：所有代码都必须遵守以下 5 个原则。`/alfred:3-sync` 会自动验证这些。
 
 1. **🧪 Test First**（测试优先）
+
    - 测试覆盖率 ≥ 85%
    - 所有代码都受测试保护
    - 功能添加 = 测试添加
 
 2. **📖 Readable**（可读代码）
-   - 函数 ≤ 50行，文件 ≤ 300行
+
+   - 函数 ≤ 50 行，文件 ≤ 300 行
    - 变量名体现意图
    - 通过 Linter（ESLint/ruff/clippy）
 
 3. **🎯 Unified**（一致结构）
+
    - 维护基于 SPEC 的架构
    - 相同模式重复（降低学习曲线）
    - 类型安全或运行时验证
 
 4. **🔒 Secured**（安全）
+
    - 输入验证（防御 XSS、SQL 注入）
    - 密码哈希（bcrypt、Argon2）
    - 保护敏感信息（环境变量）
@@ -543,6 +622,7 @@ rg '@TAG:AUTH-001' -n
 **如何操作？** `/alfred:3-sync` 命令自动执行 TRUST 验证。
 
 **获得的好处**：
+
 - ✅ 保证生产质量的代码
 - ✅ 整个团队按相同标准开发
 - ✅ 减少 bug，提前预防安全漏洞
@@ -553,15 +633,17 @@ rg '@TAG:AUTH-001' -n
 
 **比喻**：就像私人助理一样，Alfred 处理所有复杂的事情。
 
-**核心**：**19个 AI 代理**协作，自动化整个开发过程：
+**核心**：**19 个 AI 代理**协作，自动化整个开发过程：
 
 **代理组成**：
-- **Alfred SuperAgent**：整体编排（1个）
-- **Core Sub-agent**：SPEC 编写、TDD 实现、文档同步等专业工作（10个）
-- **Zero-project Specialist**：项目初始化、语言检测等（6个）
-- **Built-in Agent**：一般问题、代码库探索（2个）
 
-**56个 Claude Skills**：
+- **Alfred SuperAgent**：整体编排（1 个）
+- **Core Sub-agent**：SPEC 编写、TDD 实现、文档同步等专业工作（10 个）
+- **Zero-project Specialist**：项目初始化、语言检测等（6 个）
+- **Built-in Agent**：一般问题、代码库探索（2 个）
+
+**56 个 Claude Skills**：
+
 - **Foundation**（6）：TRUST/TAG/SPEC/Git/EARS 原则
 - **Essentials**（4）：调试、性能、重构、代码审查
 - **Alfred**（11）：工作流程自动化
@@ -572,6 +654,7 @@ rg '@TAG:AUTH-001' -n
 **如何操作？** `/alfred:*` 命令自动激活所需的专家团队。
 
 **获得的好处**：
+
 - ✅ 无需编写提示词（使用标准化命令）
 - ✅ 自动记住项目上下文（不重复相同问题）
 - ✅ 自动配置最佳专家团队（根据情况激活 Sub-agent）
@@ -584,7 +667,7 @@ rg '@TAG:AUTH-001' -n
 
 现在让我们**亲身体验** MoAI-ADK 的**完整工作流程**。在创建简单的"待办事项管理 API"时，看看 SPEC、TDD 和文档如何连接。
 
-### 步骤 1：PLAN - 编写 SPEC（约3分钟）
+### 步骤 1：PLAN - 编写 SPEC（约 3 分钟）
 
 ```bash
 /alfred:1-plan "待办事项添加、查询、修改、删除 API"
@@ -626,11 +709,12 @@ priority: high
 ```
 
 **同时也会自动生成**：
+
 - 📋 `Plan Board`：实现想法、风险因素、解决策略
 - ✅ `Acceptance Criteria`：验证标准
 - 🌿 `feature/spec-todo-001` Git 分支
 
-### 步骤 2：RUN - TDD 实现（约5分钟）
+### 步骤 2：RUN - TDD 实现（约 5 分钟）
 
 ```bash
 /alfred:2-run TODO-001
@@ -639,6 +723,7 @@ priority: high
 **Phase 1：制定实现策略**
 
 **implementation-planner** Sub-agent 决定以下内容：
+
 - 📚 库：FastAPI + SQLAlchemy
 - 📁 文件夹结构：`src/todo/`、`tests/todo/`
 - 🏷️ TAG 设计：`@CODE:TODO-001:API`、`@CODE:TODO-001:MODEL`、`@CODE:TODO-001:REPO`
@@ -682,6 +767,7 @@ def test_get_todo_with_invalid_id_should_return_404():
 **结果**：❌ 全部失败（create_todo 未定义）
 
 **Git 提交**：
+
 ```bash
 git commit -m "🔴 test(TODO-001): add failing API tests"
 ```
@@ -726,6 +812,7 @@ def get_todo(todo_id: str):
 **结果**：✅ 全部通过！
 
 **Git 提交**：
+
 ```bash
 git commit -m "🟢 feat(TODO-001): implement minimal Todo API"
 ```
@@ -760,6 +847,7 @@ class Todo(Base):
 **结果**：✅ 仍然全部通过！
 
 **Git 提交**：
+
 ```bash
 git commit -m "♻️ refactor(TODO-001): add database models and validation"
 ```
@@ -775,7 +863,7 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
 ✅ Trackable: 所有代码都标记 @TAG:TODO-001
 ```
 
-### 步骤 3：SYNC - 同步文档（约1分钟）
+### 步骤 3：SYNC - 同步文档（约 1 分钟）
 
 ```bash
 /alfred:3-sync
@@ -784,6 +872,7 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
 **自动执行的操作**：
 
 1. **TAG 链验证**
+
    ```bash
    ✅ @SPEC:TODO-001 → .moai/specs/SPEC-TODO-001/spec.md
    ✅ @TEST:TODO-001 → tests/test_todo_api.py
@@ -795,15 +884,18 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
    ```
 
 2. **生成 Living Document**
+
    ```markdown
    # @DOC:TODO-001: Todo Management API
 
    ## Overview
+
    用于通过 CRUD 操作管理任务的 REST API。
 
    ## Endpoints
 
    ### Create Todo
+
    - Method: POST
    - URL: /todos
    - Request: {"title": "string (1-200 chars)"}
@@ -812,6 +904,7 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
    - Tested in: @TEST:TODO-001
 
    ### Get All Todos
+
    - Method: GET
    - URL: /todos
    - Response: 200 OK with array of todos
@@ -820,6 +913,7 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
    ```
 
 3. **README 更新**
+
    ```markdown
    ## Features
 
@@ -827,12 +921,14 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
    ```
 
 4. **CHANGELOG 生成**
+
    ```markdown
    # Changelog
 
    ## [0.1.0] - 2025-10-22
 
    ### Added
+
    - Todo Management API with CRUD operations (@SPEC:TODO-001)
      - 创建新待办事项
      - 列出所有待办事项
@@ -840,12 +936,13 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
      - 删除待办事项
 
    ### Implementation Details
+
    - SPEC: .moai/specs/SPEC-TODO-001/spec.md
    - Tests: tests/test_todo_api.py (87% coverage)
    - Code: src/todo/ with models, API, repository layers
    ```
 
-### 步骤 4：验证（约1分钟）
+### 步骤 4：验证（约 1 分钟）
 
 让我们检查生成的所有内容是否正确连接：
 
@@ -884,7 +981,7 @@ git log --oneline | head -5
 # 5m6n7o8 🌿 Create feature/spec-todo-001 branch
 ```
 
-### 15分钟后：完整系统
+### 15 分钟后：完整系统
 
 ```
 ✅ SPEC 编写（3分钟）
@@ -921,12 +1018,12 @@ git log --oneline | head -5
 
 ## Sub-agent & Skills 概述
 
-Alfred 结合 **19个代理**（SuperAgent 1 + Core Sub-agent 10 + 0-project Sub-agent 6 + Built-in 2）和 **56个 Claude Skills** 工作。
+Alfred 结合 **19 个代理**（SuperAgent 1 + Core Sub-agent 10 + 0-project Sub-agent 6 + Built-in 2）和 **56 个 Claude Skills** 工作。
 
 ### Core Sub-agents（Plan → Run → Sync）
 
-| Sub-agent         | 模型   | 角色                                                           |
-| ----------------- | ------ | -------------------------------------------------------------- |
+| Sub-agent          | 模型   | 角色                                                           |
+| ------------------ | ------ | -------------------------------------------------------------- |
 | project-manager 📋 | Sonnet | 项目初始化，元数据采访                                         |
 | spec-builder 🏗️    | Sonnet | Plan 看板，EARS SPEC 编写                                      |
 | code-builder 💎    | Sonnet | 通过 `implementation-planner` + `tdd-implementer` 执行完整 TDD |
@@ -940,21 +1037,23 @@ Alfred 结合 **19个代理**（SuperAgent 1 + Core Sub-agent 10 + 0-project Sub
 
 ### Skills（Progressive Disclosure - v0.4 新功能！）
 
-Alfred 使用 4-tier 架构配置 **56个 Claude Skills**，采用**渐进披露（Progressive Disclosure）**方式，仅在需要时 Just-In-Time 加载。每个 Skill 是存储在 `.claude/skills/` 目录中的超过1,000行的生产级指南。
+Alfred 使用 4-tier 架构配置 **56 个 Claude Skills**，采用**渐进披露（Progressive Disclosure）**方式，仅在需要时 Just-In-Time 加载。每个 Skill 是存储在 `.claude/skills/` 目录中的超过 1,000 行的生产级指南。
 
 #### Foundation Tier（6）
+
 包含核心 TRUST/TAG/SPEC/Git/EARS/Language 原则的基础技能
 
 | Skill                   | 描述                                                                       |
 | ----------------------- | -------------------------------------------------------------------------- |
 | `moai-foundation-trust` | TRUST 5-principles（Test 85%+、Readable、Unified、Secured、Trackable）验证 |
 | `moai-foundation-tags`  | @TAG 标记扫描和清单生成（CODE-FIRST 原则）                                 |
-| `moai-foundation-specs` | SPEC YAML frontmatter（7个必需字段）和 HISTORY 部分验证                    |
+| `moai-foundation-specs` | SPEC YAML frontmatter（7 个必需字段）和 HISTORY 部分验证                   |
 | `moai-foundation-ears`  | EARS（Easy Approach to Requirements Syntax）需求编写指南                   |
 | `moai-foundation-git`   | Git 工作流程自动化（分支、TDD 提交、PR 管理）                              |
 | `moai-foundation-langs` | 项目语言/框架自动检测（package.json、pyproject.toml 等）                   |
 
 #### Essentials Tier（4）
+
 日常开发工作所需的核心工具
 
 | Skill                      | 描述                                     |
@@ -965,18 +1064,19 @@ Alfred 使用 4-tier 架构配置 **56个 Claude Skills**，采用**渐进披露
 | `moai-essentials-review`   | 自动代码审查，SOLID 原则，代码异味检测   |
 
 #### Alfred Tier（11）
+
 MoAI-ADK 内部工作流程编排技能
 
 | Skill                                  | 描述                                                             |
 | -------------------------------------- | ---------------------------------------------------------------- |
 | `moai-alfred-code-reviewer`            | 包含语言特定最佳实践、SOLID 原则、改进建议的自动代码审查         |
 | `moai-alfred-debugger-pro`             | 堆栈跟踪分析，错误模式检测，复杂运行时错误解释                   |
-| `moai-alfred-ears-authoring`           | EARS 语法验证，5种需求模式指南                                   |
+| `moai-alfred-ears-authoring`           | EARS 语法验证，5 种需求模式指南                                  |
 | `moai-alfred-git-workflow`             | MoAI-ADK conventions（feature 分支、TDD 提交、Draft PR）自动化   |
 | `moai-alfred-language-detection`       | 项目语言/运行时检测，基本测试工具推荐                            |
 | `moai-alfred-performance-optimizer`    | 性能分析，瓶颈检测，语言特定优化                                 |
 | `moai-alfred-refactoring-coach`        | 重构指南，设计模式，分步改进计划                                 |
-| `moai-alfred-spec-metadata-validation` | SPEC YAML frontmatter（7个字段）和 HISTORY 部分一致性验证        |
+| `moai-alfred-spec-metadata-validation` | SPEC YAML frontmatter（7 个字段）和 HISTORY 部分一致性验证       |
 | `moai-alfred-tag-scanning`             | @TAG 标记完整扫描和清单生成（CODE-FIRST 原则）                   |
 | `moai-alfred-trust-validation`         | TRUST 5-principles 合规性验证（Test 85%+、约束、安全、可追踪性） |
 
@@ -992,19 +1092,20 @@ Hook 是在 Claude Code 会话关键事件上自动触发的事件驱动脚本�
 
 ### 已安装的 Hooks（共 5 个）
 
-| Hook | 状态 | 功能 |
-|------|------|------|
-| SessionStart | ✅ 启用 | 项目状态摘要（语言、Git、SPEC 进度、检查点） |
-| PreToolUse | ✅ 启用 | 风险检测 + 自动检查点（删除/合并/批量编辑/关键文件） + **TAG Guard**（检测缺失的@TAG） |
-| UserPromptSubmit | ✅ 启用 | JIT 上下文加载（自动加载相关 SPEC/测试/代码/文档） |
-| PostToolUse | ✅ 启用 | 代码更改后自动运行测试（Python/TS/JS/Go/Rust/Java 等） |
-| SessionEnd | ✅ 启用 | 会话清理与状态保存 |
+| Hook             | 状态    | 功能                                                                                   |
+| ---------------- | ------- | -------------------------------------------------------------------------------------- |
+| SessionStart     | ✅ 启用 | 项目状态摘要（语言、Git、SPEC 进度、检查点）                                           |
+| PreToolUse       | ✅ 启用 | 风险检测 + 自动检查点（删除/合并/批量编辑/关键文件） + **TAG Guard**（检测缺失的@TAG） |
+| UserPromptSubmit | ✅ 启用 | JIT 上下文加载（自动加载相关 SPEC/测试/代码/文档）                                     |
+| PostToolUse      | ✅ 启用 | 代码更改后自动运行测试（Python/TS/JS/Go/Rust/Java 等）                                 |
+| SessionEnd       | ✅ 启用 | 会话清理与状态保存                                                                     |
 
-### PreToolUse Hook：TAG Guard 功能（v0.4.11新功能）
+### PreToolUse Hook：TAG Guard 功能（v0.4.11 新功能）
 
 **TAG Guard** 是在 PreToolUse Hook 中运行的自动 @TAG 验证系统，确保所有修改的 SPEC/TEST/CODE/DOC 文件都包含适当的 @TAG 标记。
 
 **工作原理**：
+
 - 在文件编辑、Bash 命令或 MultiEdit 操作之前触发
 - 扫描已暂存、已修改和未跟踪的文件
 - 当 SPEC/TEST/CODE/DOC 文件缺少 @TAG 标记时发出警告
@@ -1012,12 +1113,14 @@ Hook 是在 Claude Code 会话关键事件上自动触发的事件驱动脚本�
 - 非阻塞方式（温和提醒，不停止执行）
 
 **检测范围**：
+
 - `.moai/specs/` 目录中的 SPEC 文件 → 期望 `@SPEC:` 标记
 - `tests/` 目录中的测试文件 → 期望 `@TEST:` 标记
 - `src/` 目录中的代码文件 → 期望 `@CODE:` 标记
 - `docs/` 目录中的文档文件 → 期望 `@DOC:` 标记
 
 **示例警告**：
+
 ```
 ⚠️ 检测到缺失TAG：创建/修改的文件中缺少@TAG
  - src/auth/service.py → 预期标签: @CODE:
@@ -1027,7 +1130,7 @@ Hook 是在 Claude Code 会话关键事件上自动触发的事件驱动脚本�
   2) 使用rg确认: rg '@(SPEC|TEST|CODE|DOC):' -n <路径>
 ```
 
-**为什么重要**：确保所有代码更改都具有可追溯性。通过 @TAG 系统，您可以轻松跟踪需求（SPEC）→测试（TEST）→实现（CODE）→文档（DOC）的完整链条。
+**为什么重要**：确保所有代码更改都具有可追溯性。通过 @TAG 系统，您可以轻松跟踪需求（SPEC）→ 测试（TEST）→ 实现（CODE）→ 文档（DOC）的完整链条。
 
 ### 技术细节
 
@@ -1054,9 +1157,10 @@ Hook 是在 Claude Code 会话关键事件上自动触发的事件驱动脚本�
 - 未执行: 检查 `.claude/settings.json`、确认安装 `uv`、给予执行权限 `chmod +x .claude/hooks/alfred/alfred_hooks.py`
 - 性能下降: 检查是否超过 100ms、禁用不必要 Hook、查看 stderr 错误
 - 检查点过多: 调整 PreToolUse 触发条件与阈值（`core/checkpoint.py`）
-| `moai-alfred-interactive-questions`    | Claude Code Tools AskUserQuestion TUI 菜单标准化                 |
+  | `moai-alfred-interactive-questions` | Claude Code Tools AskUserQuestion TUI 菜单标准化 |
 
 #### Domain Tier（10）
+
 专业领域专业知识
 
 | Skill                      | 描述                                                     |
@@ -1073,6 +1177,7 @@ Hook 是在 Claude Code 会话关键事件上自动触发的事件驱动脚本�
 | `moai-domain-web-api`      | REST API、GraphQL 设计模式，认证，版本管理，OpenAPI 文档 |
 
 #### Language Tier（24）
+
 编程语言特定最佳实践
 
 | Skill                  | 描述                                                   |
@@ -1103,13 +1208,14 @@ Hook 是在 Claude Code 会话关键事件上自动触发的事件驱动脚本�
 | `moai-lang-kotlin`     | JUnit、Gradle、ktlint、coroutines、extension functions |
 
 #### Claude Code Ops（1）
+
 Claude Code 会话管理
 
 | Skill              | 描述                                                                 |
 | ------------------ | -------------------------------------------------------------------- |
 | `moai-claude-code` | Claude Code agents、commands、skills、plugins、settings 脚手架和监控 |
 
-> **v0.4.10 新功能**：56个 Claude Skills 采用 4-tier 架构配置（v0.4.10 100% 完成）。每个 Skill 通过渐进披露仅在需要时加载，最小化上下文成本。由 Foundation → Essentials → Alfred → Domain/Language/Ops 层组成，所有技能都包含超过1,000行的官方文档和300+ 可执行的 TDD 示例。
+> **v0.4.10 新功能**：56 个 Claude Skills 采用 4-tier 架构配置（v0.4.10 100% 完成）。每个 Skill 通过渐进披露仅在需要时加载，最小化上下文成本。由 Foundation → Essentials → Alfred → Domain/Language/Ops 层组成，所有技能都包含超过 1,000 行的官方文档和 300+ 可执行的 TDD 示例。
 
 ---
 
@@ -1140,430 +1246,78 @@ Claude Code 会话管理
 
 ## 最新更新（新！）
 
-| 版本       | 主要功能                                                                | 日期       |
-| ---------- | ----------------------------------------------------------------------- | ---------- |
-| **v0.4.11** | ✨ TAG Guard系统 + CLAUDE.md格式改进 + 代码清理 | 2025-10-23 |
-| **v0.4.10** | 🎉 完整 Skills v2.0 完成（100% Production-Ready）+ 85,000行官方文档 + 300+ TDD 示例 | 2025-10-22 |
-| **v0.4.9** | 🎯 Hook JSON schema验证修复 + 全面测试（468/468通过） | 2025-10-23 |
-| **v0.4.8** | 🚀 发布自动化 + PyPI部署 + Skills优化 | 2025-10-23 |
-| **v0.4.7** | 📖 韩语优化 + SPEC-First原则文档 | 2025-10-22 |
-| **v0.4.6** | 🎉 完整 Skills v2.0（100%生产就绪）+ 85,000行官方文档 + 300+ TDD示例 | 2025-10-22 |
+| 版本        | 主要功能                                                                             | 日期       |
+| ----------- | ------------------------------------------------------------------------------------ | ---------- |
+| **v0.4.11** | ✨ TAG Guard 系统 + CLAUDE.md 格式改进 + 代码清理                                    | 2025-10-23 |
+| **v0.4.10** | 🎉 完整 Skills v2.0 完成（100% Production-Ready）+ 85,000 行官方文档 + 300+ TDD 示例 | 2025-10-22 |
+| **v0.4.9**  | 🎯 Hook JSON schema 验证修复 + 全面测试（468/468 通过）                              | 2025-10-23 |
+| **v0.4.8**  | 🚀 发布自动化 + PyPI 部署 + Skills 优化                                              | 2025-10-23 |
+| **v0.4.7**  | 📖 韩语优化 + SPEC-First 原则文档                                                    | 2025-10-22 |
+| **v0.4.6**  | 🎉 完整 Skills v2.0（100%生产就绪）+ 85,000 行官方文档 + 300+ TDD 示例               | 2025-10-22 |
 
 > 📦 **立即安装**：`uv tool install moai-adk==0.4.11` 或 `pip install moai-adk==0.4.11`
 
 ---
+## Alfred 的内存文件 (.moai/memory/)
 
-## 第二个实战：Mini Kanban Board
+Alfred 的知识库由存储在`.moai/memory/`中的**14 个内存文件**组成。这些文件定义了 Alfred 和 Sub-agent 在开发过程中参考的标准、规则和指南。
 
-本节超越第一个 Todo API 示例，带你完成一个为期 4 周的完整全栈项目。
+### 核心知识库（14 个文件）
 
-我们将一起构建一个 Mini Kanban Board Web 应用，专为系统化掌握 MoAI‑ADK 而设计。该项目覆盖 SPEC‑First TDD 的每一步。
+**核心指南（3 个文件）**：
 
-### 项目概览
+| 文件                     | 大小  | 用途                         | 使用者                 |
+| ------------------------ | ----- | ---------------------------- | ---------------------- |
+| `CLAUDE-AGENTS-GUIDE.md` | ~15KB | Sub-agent 选择和协作指南     | Alfred、开发者         |
+| `CLAUDE-PRACTICES.md`    | ~12KB | 实际工作流程示例和模式       | Alfred、所有 Sub-agent |
+| `CLAUDE-RULES.md`        | ~19KB | Skill/TAG/Git 规则和决策标准 | Alfred、所有 Sub-agent |
 
-- 后端：FastAPI + Pydantic v2 + uv + WebSocket（Python）
-- 前端：React 19 + TypeScript 5.9 + Vite + Zustand + TanStack Query
-- 实时：通过 WebSocket 进行多客户端同步
-- 存储：本地文件系统（.moai/specs/）
-- DevOps：Docker Compose + GitHub Actions CI/CD + Playwright E2E
+**标准定义（4 个文件）**：
 
-### 4 周时间表
+| 文件                           | 大小  | 用途                             | 使用者                   |
+| ------------------------------ | ----- | -------------------------------- | ------------------------ |
+| `CONFIG-SCHEMA.md`             | ~12KB | `.moai/config.json`模式定义      | project-manager          |
+| `DEVELOPMENT-GUIDE.md`         | ~14KB | SPEC-First TDD 工作流程指南      | 所有 Sub-agent、开发者   |
+| `GITFLOW-PROTECTION-POLICY.md` | ~6KB  | Git 分支保护策略                 | git-manager              |
+| `SPEC-METADATA.md`             | ~9KB  | SPEC YAML 前置元数据标准（SSOT） | spec-builder、doc-syncer |
 
-```mermaid
-gantt
-    title Mini Kanban Board - 4-week plan
-    dateFormat YYYY-MM-DD
-
-    section 阶段 1：后端基础
-    CH07: 定义 SPEC-001-004           :active, ch07-spec, 2025-11-03, 1d
-    CH07: 实现 SpecScanner（TDD）     :active, ch07-impl, 2025-11-04, 1d
-
-    section 阶段 2：后端进阶
-    CH08: 实现 REST API               :active, ch08-api, 2025-11-05, 1d
-    WebSocket + 文件监听        :active, ch08-ws, 2025-11-06, 1d
-
-    section 阶段 3：前端基础
-    CH09: React 初始化 + SPEC-009-012 :active, ch09-spec, 2025-11-10, 1d
-    CH09: 看板页面（TDD）             :active, ch09-impl, 2025-11-11, 1d
-
-    section 阶段 4：高级 + 部署
-    E2E + CI/CD                 :active, ch10-e2e, 2025-11-12, 1d
-    Docker Compose + 优化       :active, ch10-deploy, 2025-11-13, 1d
-```
-
-### 16 个 SPEC 路线图
-
-| 阶段 | SPEC | 标题 | 技术栈 | 预估 | 状态 |
-|------|------|------|--------|------|------|
-| 后端基础 | SPEC-001 | SPEC 文件扫描 | FastAPI + pathlib + YAML | 1h | 📋 |
-|  | SPEC-002 | YAML 元数据解析 | Pydantic v2 校验 | 1h | 📋 |
-|  | SPEC-003 | GET /api/specs（列表） | FastAPI 路由 | 0.5h | 📋 |
-|  | SPEC-004 | GET /api/specs/{id}（详情） | FastAPI 路由 | 0.5h | 📋 |
-| 后端进阶 | SPEC-005 | PATCH /api/specs/{id}/status | FastAPI + 更新 | 1h | 📋 |
-|  | SPEC-006 | GET /api/specs/summary | 聚合统计 | 0.5h | 📋 |
-|  | SPEC-007 | 文件监听 | watchdog + 异步 | 1h | 📋 |
-|  | SPEC-008 | WebSocket 事件 | FastAPI WebSocket | 1.5h | 📋 |
-| 前端基础 | SPEC-009 | 看板布局 | React + CSS Grid | 1.5h | 📋 |
-|  | SPEC-010 | SPEC 卡片组件 | React + TypeScript | 1h | 📋 |
-|  | SPEC-011 | 集成 TanStack Query | useQuery + useMutation | 1.5h | 📋 |
-|  | SPEC-012 | 拖拽放置 | React Beautiful DnD | 1.5h | 📋 |
-| 高级 + 部署 | SPEC-013 | E2E 自动化测试 | Playwright | 1.5h | 📋 |
-|  | SPEC-014 | GitHub Actions CI/CD | 测试 + 发布 | 1h | 📋 |
-|  | SPEC-015 | Docker Compose 部署 | 多容器 | 1h | 📋 |
-|  | SPEC-016 | 性能优化 + 功能扩展 | 缓存 + WS 调优 | 1.5h | 📋 |
-|  |  | 合计 |  | 20h |  |
-
-### 系统架构
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                  Mini Kanban Board — 架构                    │
-└─────────────────────────────────────────────────────────────┘
-
-┌──────────────────────┐         ┌────────────────────────┐
-│   📱 前端            │         │   🖥️ 后端服务         │
-│  (React 19 + Vite)   │◄───────►│ (FastAPI + Pydantic)   │
-│                      │  REST   │                        │
-│ ┌──────────────────┐ │ API +   │ ┌──────────────────┐   │
-│ │ DashboardHeader  │ │WebSocket│ │ GET /api/specs   │   │
-│ ├──────────────────┤ │         │ ├──────────────────┤   │
-│ │ KanbanBoard      │ │         │ │ PATCH /api/specs/{id}││
-│ │ ┌──────────────┐ │ │         │ │ /status          │   │
-│ │ │ Column: Draft│ │ │         │ ├──────────────────┤   │
-│ │ │ Column: Active││ │         │ │ WebSocket        │   │
-│ │ │ Column: Done │ │ │         │ │ /ws              │   │
-│ │ └──────────────┘ │ │         │ │                  │   │
-│ ├──────────────────┤ │         │ ├──────────────────┤   │
-│ │ SpecCard (DnD)   │ │         │ │ SpecScanner      │   │
-│ ├──────────────────┤ │         │ │ (.moai/specs/)   │   │
-│ │ SearchBar        │ │         │ ├──────────────────┤   │
-│ └──────────────────┘ │         │ │ YAML Parser      │   │
-│                      │         │ │ (Pydantic v2)    │   │
-│ Zustand 存储:        │         │ └──────────────────┘   │
-│ • filterStore        │         │                        │
-│ • uiStore            │         │ 文件系统:               │
-│                      │         │ .moai/specs/           │
-│ TanStack Query:      │         │ SPEC-001/              │
-│ • useQuery           │         │ SPEC-002/              │
-│ • useMutation        │         │ ...                    │
-└──────────────────────┘         └────────────────────────┘
-         │                                    │
-         │            WebSocket               │
-         └────────────────────────────────────┘
-              (实时同步)
-```
-
-### 分阶段详解
-
-#### 阶段 1：后端基础（SPEC-001-004）
-
-目标：使用 FastAPI + Pydantic v2 + uv 搭建核心数据扫描服务
-
-```bash
-# 1）项目初始化
-/alfred:0-project
-# → 创建 .moai/, backend/, frontend/
-# → 配置 .moai/config.json
-
-# 2）编写 SPEC（SPEC-001-004）
-/alfred:1-plan
-# → SPEC-001: SPEC 文件扫描
-# → SPEC-002: YAML 元数据解析
-# → SPEC-003: GET /api/specs 端点
-# → SPEC-004: GET /api/specs/{id} 端点
-
-# 3）TDD（RED → GREEN → REFACTOR）
-/alfred:2-run SPEC-001
-/alfred:2-run SPEC-002
-/alfred:2-run SPEC-003
-/alfred:2-run SPEC-004
-```
-
-要点：
-- FastAPI 项目结构
-- Pydantic v2 校验
-- YAML Front Matter 解析
-- 依赖注入（DI）
-- 完成首个 TDD 循环
-
-#### 阶段 2：后端进阶（SPEC-005~008）
-
-目标：实现文件监听与 WebSocket 实时事件
-
-```bash
-# REST 端点
-/alfred:2-run SPEC-005  # PATCH /api/specs/{id}/status
-/alfred:2-run SPEC-006  # GET /api/specs/summary
-
-# WebSocket + 文件监听
-/alfred:2-run SPEC-007  # 文件监听（watchdog）
-/alfred:2-run SPEC-008  # WebSocket 广播
-
-# TRUST 5 验证
-/alfred:3-sync          # 验证所有原则
-```
-
-要点：
-- 文件系统监控（watchdog）
-- FastAPI WebSocket 端点
-- 异步事件广播
-- TRUST 5 自动验证
-
-#### 阶段 3：前端基础（SPEC-009-012）
-
-目标：使用 React 19 + TypeScript + Vite 构建看板 UI
-
-```bash
-# 初始化 React + Vite
-cd frontend
-npm create vite@latest . -- --template react-ts
-
-# 安装 TanStack Query + Zustand
-npm install @tanstack/react-query zustand
-
-# SPEC
-/alfred:1-plan SPEC-009  # 布局
-/alfred:1-plan SPEC-010  # 卡片组件
-/alfred:1-plan SPEC-011  # 集成 TanStack Query
-/alfred:1-plan SPEC-012  # 拖拽放置
-
-# TDD
-/alfred:2-run SPEC-009
-/alfred:2-run SPEC-010
-/alfred:2-run SPEC-011
-/alfred:2-run SPEC-012
-```
-
-要点：
-- React 19 Hooks（useState, useEffect, useContext）
-- TypeScript 5.9 严格模式
-- TanStack Query（useQuery, useMutation）
-- Zustand 状态管理
-- React Beautiful DnD 拖拽
-
-#### 阶段 4：高级 + 部署（SPEC-013~016）
-
-目标：E2E 测试、CI/CD、Docker 部署、性能优化
-
-```bash
-# E2E 测试（Playwright）
-/alfred:2-run SPEC-013
-
-# GitHub Actions CI/CD
-/alfred:2-run SPEC-014
-
-# Docker Compose 部署
-/alfred:2-run SPEC-015
-
-# 性能优化
-/alfred:2-run SPEC-016
-```
-
-要点：
-- Playwright E2E 自动化
-- GitHub Actions 工作流
-- Docker 多阶段构建
-- 生产性能优化
-
-### 快速开始指南
-
-#### 第 1 步：项目初始化
-
-```bash
-# 安装 MoAI-ADK
-pip install moai-adk==0.4.10
-
-# 创建项目
-mkdir mini-kanban-board && cd mini-kanban-board
-git init
-
-# 使用 Alfred 初始化
-/alfred:0-project
-```
-
-#### 第 2 步：编写 SPEC
-
-```bash
-# 开始规划
-/alfred:1-plan
-
-# 回答问题：
-# - 项目名称：Mini Kanban Board
-# - 技术栈：FastAPI + React 19
-# - 周期：4 周实战项目
-```
-
-#### 第 3 步：开始 TDD
-
-```bash
-# 阶段 1（后端基础）
-/alfred:2-run SPEC-001  # 首个 TDD 循环
-
-# 阶段 2（后端进阶）
-/alfred:2-run SPEC-005
-/alfred:2-run SPEC-006
-/alfred:2-run SPEC-007
-/alfred:2-run SPEC-008
-
-# 阶段 3（前端基础）
-cd frontend
-/alfred:2-run SPEC-009
-/alfred:2-run SPEC-010
-/alfred:2-run SPEC-011
-/alfred:2-run SPEC-012
-
-# 阶段 4（高级 + 部署）
-/alfred:2-run SPEC-013
-/alfred:2-run SPEC-014
-/alfred:2-run SPEC-015
-/alfred:2-run SPEC-016
-```
-
-### 项目搭建
-
-#### 1）初始化项目
-
-```bash
-moai-adk init mini-kanban
-cd mini-kanban
-
-# （可选）预建前后端目录
-mkdir -p backend frontend
-```
-
-#### 2）编写 SPEC
-
-```bash
-# 进入规划阶段
-/alfred:1-plan
-
-# 回答问题：
-# - 项目名称：Mini Kanban Board
-# - 技术栈：FastAPI + React 19
-# - 周期：4 周实战项目
-```
-
-#### 3）开始 TDD
-
-```bash
-# 阶段 1（后端基础）
-/alfred:2-run SPEC-001
-
-# 阶段 2（后端进阶）
-/alfred:2-run SPEC-005
-/alfred:2-run SPEC-006
-/alfred:2-run SPEC-007
-/alfred:2-run SPEC-008
-
-# 阶段 3（前端基础）
-cd frontend
-/alfred:2-run SPEC-009
-/alfred:2-run SPEC-010
-/alfred:2-run SPEC-011
-/alfred:2-run SPEC-012
-
-# 阶段 4（高级 + 部署）
-/alfred:2-run SPEC-013
-/alfred:2-run SPEC-014
-/alfred:2-run SPEC-015
-/alfred:2-run SPEC-016
-```
-
-#### 4）同步文档与部署
-
-```bash
-# 同步所有变更
-/alfred:3-sync
-
-# 通过 Docker 运行
-docker-compose up -d
-
-# 浏览器打开
-open http://localhost:3000
-```
-
-### TRUST 5 原则
-
-| 原则 | 标准 | 在本项目中的实践 |
-|------|------|------------------|
-| Test First | 覆盖率 ≥ 85% | pytest（后端）、Vitest（前端）+ 自动 TRUST 校验 |
-| Readable | 300 LOC/文件、50 LOC/函数 | ruff format + Biome 自动格式化 |
-| Unified | 类型安全 | mypy --strict（后端）、TypeScript strict（前端） |
-| Secured | 输入校验 + 静态分析 | Pydantic 校验 + eslint‑plugin‑security |
-| Trackable | 代码全链路 @TAG | @SPEC:001~016 → @TEST → @CODE → @DOC 完整关联 |
-
-### 学习收获
-
-- SPEC‑First TDD 方法论
-- 使用 FastAPI + Pydantic v2 设计后端 API
-- 使用 React 19 + TypeScript + Vite 构建前端
-- 基于 WebSocket 的实时同步
-- 使用 Playwright 进行 E2E 测试
-- 使用 GitHub Actions 构建 CI/CD
-- 使用 Docker Compose 进行多容器部署
-- 基于 @TAG 系统实现完整可追踪性
-- 自动化 TRUST 5 校验
-- 与 19 名 AI 代理协作
-
----
-
-## Alfred的内存文件 (.moai/memory/)
-
-Alfred的知识库由存储在`.moai/memory/`中的**14个内存文件**组成。这些文件定义了Alfred和Sub-agent在开发过程中参考的标准、规则和指南。
-
-### 核心知识库（14个文件）
-
-**核心指南（3个文件）**：
-
-| 文件 | 大小 | 用途 | 使用者 |
-| --- | --- | --- | --- |
-| `CLAUDE-AGENTS-GUIDE.md` | ~15KB | Sub-agent选择和协作指南 | Alfred、开发者 |
-| `CLAUDE-PRACTICES.md` | ~12KB | 实际工作流程示例和模式 | Alfred、所有Sub-agent |
-| `CLAUDE-RULES.md` | ~19KB | Skill/TAG/Git规则和决策标准 | Alfred、所有Sub-agent |
-
-**标准定义（4个文件）**：
-
-| 文件 | 大小 | 用途 | 使用者 |
-| --- | --- | --- | --- |
-| `CONFIG-SCHEMA.md` | ~12KB | `.moai/config.json`模式定义 | project-manager |
-| `DEVELOPMENT-GUIDE.md` | ~14KB | SPEC-First TDD工作流程指南 | 所有Sub-agent、开发者 |
-| `GITFLOW-PROTECTION-POLICY.md` | ~6KB | Git分支保护策略 | git-manager |
-| `SPEC-METADATA.md` | ~9KB | SPEC YAML前置元数据标准（SSOT） | spec-builder、doc-syncer |
-
-**实施分析（7个文件）**：用于Skills管理、工作流程改进和团队集成分析的内部报告和策略文档
+**实施分析（7 个文件）**：用于 Skills 管理、工作流程改进和团队集成分析的内部报告和策略文档
 
 ### 内存文件何时加载？
 
 **会话开始时（始终）**：
+
 - `CLAUDE.md`
 - `CLAUDE-AGENTS-GUIDE.md`
 - `CLAUDE-RULES.md`
 
 **即时加载（命令执行时）**：
+
 - `/alfred:1-plan` → `SPEC-METADATA.md`、`DEVELOPMENT-GUIDE.md`
 - `/alfred:2-run` → `DEVELOPMENT-GUIDE.md`
 - `/alfred:3-sync` → `DEVELOPMENT-GUIDE.md`
 
 **条件加载（按需）**：
+
 - 配置更改 → `CONFIG-SCHEMA.md`
-- Git操作 → `GITFLOW-PROTECTION-POLICY.md`
-- Skill创建 → `SKILLS-DESCRIPTION-POLICY.md`
+- Git 操作 → `GITFLOW-PROTECTION-POLICY.md`
+- Skill 创建 → `SKILLS-DESCRIPTION-POLICY.md`
 
 ### 内存文件为何重要
 
 1. **单一真实来源（SSOT）**：每个标准只在一处定义，消除冲突
-2. **上下文效率**：JIT加载减少初始会话开销（启动时仅3个文件）
-3. **一致决策**：所有Sub-agent遵循`CLAUDE-RULES.md`中的相同规则
-4. **可追溯性**：SPEC元数据、@TAG规则、Git标准均有文档记录
+2. **上下文效率**：JIT 加载减少初始会话开销（启动时仅 3 个文件）
+3. **一致决策**：所有 Sub-agent 遵循`CLAUDE-RULES.md`中的相同规则
+4. **可追溯性**：SPEC 元数据、@TAG 规则、Git 标准均有文档记录
 
 ### 使用频率
 
-| 优先级 | 文件 | 使用模式 |
-| --- | --- | --- |
-| 非常高 | `CLAUDE-RULES.md` | 所有决策 |
-| 高 | `DEVELOPMENT-GUIDE.md`、`SPEC-METADATA.md` | 所有命令 |
-| 中等 | `CLAUDE-AGENTS-GUIDE.md`、`CLAUDE-PRACTICES.md` | Agent协调 |
-| 低 | `CONFIG-SCHEMA.md`、`GITFLOW-PROTECTION-POLICY.md` | 特定操作 |
+| 优先级 | 文件                                               | 使用模式   |
+| ------ | -------------------------------------------------- | ---------- |
+| 非常高 | `CLAUDE-RULES.md`                                  | 所有决策   |
+| 高     | `DEVELOPMENT-GUIDE.md`、`SPEC-METADATA.md`         | 所有命令   |
+| 中等   | `CLAUDE-AGENTS-GUIDE.md`、`CLAUDE-PRACTICES.md`    | Agent 协调 |
+| 低     | `CONFIG-SCHEMA.md`、`GITFLOW-PROTECTION-POLICY.md` | 特定操作   |
 
 > 📚 **完整分析**：查看`.moai/memory/MEMORY-FILES-USAGE.md`，了解每个文件的使用者、加载时机、引用位置以及需要的原因的综合文档。
 
@@ -1573,7 +1327,7 @@ Alfred的知识库由存储在`.moai/memory/`中的**14个内存文件**组成�
 
 | 目的            | 资源                                                                 |
 | --------------- | -------------------------------------------------------------------- |
-| Skills 详细结构 | `.claude/skills/` 目录（56个 Skill）                                 |
+| Skills 详细结构 | `.claude/skills/` 目录（56 个 Skill）                                |
 | Sub-agent 详情  | `.claude/agents/alfred/` 目录                                        |
 | 工作流程指南    | `.claude/commands/alfred/`（0-3 命令）                               |
 | 开发指南        | `.moai/memory/development-guide.md`、`.moai/memory/spec-metadata.md` |
@@ -1583,13 +1337,13 @@ Alfred的知识库由存储在`.moai/memory/`中的**14个内存文件**组成�
 
 ## 社区 & 支持
 
-| 渠道                     | 链接                                                    |
-| ------------------------ | ------------------------------------------------------- |
-| **GitHub Repository**    | https://github.com/modu-ai/moai-adk                     |
-| **Issues & Discussions** | https://github.com/modu-ai/moai-adk/issues              |
+| 渠道                     | 链接                                                     |
+| ------------------------ | -------------------------------------------------------- |
+| **GitHub Repository**    | https://github.com/modu-ai/moai-adk                      |
+| **Issues & Discussions** | https://github.com/modu-ai/moai-adk/issues               |
 | **PyPI Package**         | https://pypi.org/project/moai-adk/（最新：v0.4.11）      |
 | **Latest Release**       | https://github.com/modu-ai/moai-adk/releases/tag/v0.4.11 |
-| **Documentation**        | 参考项目内 `.moai/`、`.claude/`、`docs/`                |
+| **Documentation**        | 参考项目内 `.moai/`、`.claude/`、`docs/`                 |
 
 ---
 
@@ -1597,24 +1351,25 @@ Alfred的知识库由存储在`.moai/memory/`中的**14个内存文件**组成�
 
 > **"没有 SPEC 就没有 CODE"**
 
-MoAI-ADK 不仅仅是生成代码的工具。Alfred SuperAgent 和19人团队、56个 Claude Skills 共同保证：
+MoAI-ADK 不仅仅是生成代码的工具。Alfred SuperAgent 和 19 人团队、56 个 Claude Skills 共同保证：
 
 - ✅ **规范（SPEC）→ 测试（TDD）→ 代码（CODE）→ 文档（DOC）一致性**
 - ✅ **通过 @TAG 系统可追踪完整历史**
 - ✅ **保证覆盖率 87.84% 以上**
-- ✅ **通过 4步工作流程（0-project → 1-plan → 2-run → 3-sync）迭代开发**
+- ✅ **通过 4 步工作流程（0-project → 1-plan → 2-run → 3-sync）迭代开发**
 - ✅ **与 AI 协作，但保持透明和可追踪的开发文化**
 
 与 Alfred 一起开始**可信的 AI 开发**新体验！🤖
 
 ---
 
-**MoAI-ADK v0.4.11** — SPEC-First TDD with AI SuperAgent & Complete Skills v2.0 + TAG Guard
+**MoAI-ADK** — SPEC-First TDD with AI SuperAgent & Complete Skills + TAG Guard
+
 - 📦 PyPI: https://pypi.org/project/moai-adk/
 - 🏠 GitHub: https://github.com/modu-ai/moai-adk
 - 📝 License: MIT
 - ⭐ Skills: 55+ 生产就绪指南
 - ✅ 测试结果: 467/476 通过（85.60% 覆盖率）
-- 🏷️ TAG Guard: PreToolUse Hook中自动@TAG验证
+- 🏷️ TAG Guard: PreToolUse Hook 中自动@TAG 验证
 
 ---

@@ -4,7 +4,7 @@
     "@SPEC:PROJECT-CONFIG-001": "@SPEC:MOAI-CONFIG-001"
   },
   "moai": {
-    "version": "0.5.4"
+    "version": "{{MOAI_VERSION}}"
   },
   "constitution": {
     "enforce_tdd": true,
@@ -15,19 +15,45 @@
       }
     },
     "require_tags": true,
+    "simplicity_threshold": 5,
     "test_coverage_target": 85
   },
   "git_strategy": {
-    "active_mode": "team",
+    "personal": {
+      "auto_checkpoint": "event-driven",
+      "checkpoint_events": [
+        "delete",
+        "refactor",
+        "merge",
+        "script",
+        "critical-file"
+      ],
+      "checkpoint_type": "local-branch",
+      "max_checkpoints": 10,
+      "cleanup_days": 7,
+      "push_to_remote": false,
+      "auto_commit": true,
+      "branch_prefix": "feature/",
+      "develop_branch": "develop",
+      "main_branch": "main"
+    },
     "team": {
       "auto_pr": true,
       "develop_branch": "develop",
       "draft_pr": true,
       "feature_prefix": "feature/SPEC-",
       "main_branch": "main",
-      "use_gitflow": true,
-      "auto_ready_on_sync": true
+      "use_gitflow": true
     }
+  },
+  "pipeline": {
+    "available_commands": [
+      "/alfred:0-project",
+      "/alfred:1-plan",
+      "/alfred:2-run",
+      "/alfred:3-sync"
+    ],
+    "current_stage": "initialized"
   },
   "project": {
     "name": "MoAI-ADK",
@@ -35,15 +61,12 @@
     "mode": "team",
     "locale": "ko",
     "language": "python",
-    "created_at": "2025-10-21 23:59:19",
-    "initialized": true,
-    "optimized": true,
-    "optimized_at": "2025-10-25T10:00:00Z",
     "conversation_language": "ko",
-    "conversation_language_name": "한국어"
-  },
-  "user": {
-    "nickname": "🪿G00$"
+    "conversation_language_name": "한국어",
+    "user_nickname": "GOOS",
+    "created_at": "2025-10-27T12:34:56+09:00",
+    "initialized": true,
+    "optimized": true
   },
   "tags": {
     "auto_sync": true,
@@ -61,7 +84,10 @@
     "code_scan_policy": {
       "no_intermediate_cache": true,
       "realtime_validation": true,
-      "scan_tools": ["rg", "grep"],
+      "scan_tools": [
+        "rg",
+        "grep"
+      ],
       "scan_command": "rg '@TAG' -n",
       "philosophy": "The source of truth for TAGs lives in the code itself"
     }
