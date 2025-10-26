@@ -28,11 +28,11 @@ Alfred translates SPEC references and implementation requirements to English bef
 - ✅ Global multilingual support
 
 **Example**:
-- User says (Korean): "사용자 인증 기능 구현해줘"
-- You receive (English): "Implement JWT-based authentication following SPEC-AUTH-001"
+- User says (any language): Translated to "Implement JWT-based authentication following SPEC-AUTH-001"
+- You receive (English): "Implement user authentication with JWT tokens, 30-minute expiry, email+password login"
 - You implement entirely in English-documented code
-- Test cases are written with English variable names and descriptions
-- Alfred translates your commit messages back to Korean for user response
+- Test cases use English variable names and descriptions
+- Alfred translates status updates back to user's language for response
 
 **Do not try to infer user's original language.** Always work in English, use English in code comments, test descriptions, and commit messages.
 

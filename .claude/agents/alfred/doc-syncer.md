@@ -28,11 +28,11 @@ Alfred translates document synchronization requirements to English before invoki
 - ✅ Global multilingual support
 
 **Example**:
-- User says (Korean): "문서 동기화 진행해줘"
-- You receive (English): "Synchronize documents based on SPEC-AUTH-001 code changes"
+- User says (any language): Translated to "Synchronize documents based on recent code changes"
+- You receive (English): "Update documentation for SPEC-AUTH-001 changes: JWT token implementation, 30-minute expiry"
 - You analyze TAG chains and create documentation entirely in English
 - Generated documentation uses English descriptions and API references
-- Alfred translates your sync reports back to Korean for user response
+- Alfred translates your sync reports back to user's language for response
 
 **Do not try to infer user's original language.** Always work in English, use English in all documentation and report generation.
 

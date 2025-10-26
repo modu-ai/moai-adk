@@ -1,102 +1,102 @@
-# MoAI-ADK Team 모드 GitHub 통합 상세 분석 보고서
+# MoAI-ADK Team Mode GitHub Integration Analysis Report
 
-## 1. 분석 개요
+## 1. Analysis Overview
 
-**분석 대상**: MoAI-ADK의 Team 모드에서 GitHub과의 통합이 어떻게 작동하는지  
-**분석 기준**: 실제 구현 코드 + Agent 정의 + Command 구현  
-**분석 범위**: `.moai/config.json`, `.claude/agents/`, `.claude/commands/`, 핵심 Skills  
+**Analysis Target**: How GitHub integration works in MoAI-ADK Team mode
+**Analysis Criteria**: Actual implementation code + Agent definitions + Command implementation
+**Analysis Scope**: `.moai/config.json`, `.claude/agents/`, `.claude/commands/`, core Skills
 
 ---
 
-## 2. Team 모드 GitHub 설정
+## 2. Team Mode GitHub Configuration
 
-### 2.1 Config 구조 (.moai/config.json)
+### 2.1 Config Structure (.moai/config.json)
 
 ```json
 {
   "git_strategy": {
     "active_mode": "team",
     "team": {
-      "auto_pr": true,              // Draft PR 자동 생성 활성화
-      "develop_branch": "develop",   // 개발 브랜치
-      "draft_pr": true,              // Draft PR 기본값
-      "feature_prefix": "feature/SPEC-",  // 피처 브랜치 이름 규칙
-      "main_branch": "main",         // 프로덕션 브랜치
-      "use_gitflow": true,           // GitFlow 워크플로우 사용
-      "auto_ready_on_sync": true    // /alfred:3-sync에서 PR 자동 Ready 전환
+      "auto_pr": true,              // Auto-create Draft PR
+      "develop_branch": "develop",   // Development branch
+      "draft_pr": true,              // Default to Draft PR
+      "feature_prefix": "feature/SPEC-",  // Feature branch naming convention
+      "main_branch": "main",         // Production branch
+      "use_gitflow": true,           // Use GitFlow workflow
+      "auto_ready_on_sync": true    // Auto-transition PR to Ready in /alfred:3-sync
     }
   },
   "project": {
-    "mode": "team",                 // Team 모드 활성화
+    "mode": "team",                 // Team mode activated
     "language": "python"
   }
 }
 ```
 
-**핵심 설정**:
-- ✅ `auto_pr: true` → Draft PR 자동 생성
-- ✅ `draft_pr: true` → 기본적으로 Draft 상태로 생성
-- ✅ `auto_ready_on_sync: true` → Sync 단계에서 PR Ready 자동 전환
-- ✅ `use_gitflow: true` → GitFlow 표준 준수
+**Key Settings**:
+- ✅ `auto_pr: true` → Auto-create Draft PR
+- ✅ `draft_pr: true` → Create as Draft by default
+- ✅ `auto_ready_on_sync: true` → Auto-transition PR to Ready during Sync phase
+- ✅ `use_gitflow: true` → Comply with GitFlow standard
 
 ---
 
-## 3. Team 모드 GitHub 통합 워크플로우
+## 3. Team Mode GitHub Integration Workflow
 
-### 3.1 전체 흐름도
+### 3.1 Overall Flow
 
 ```
-/alfred:1-plan (SPEC 생성)
-    ├─ spec-builder: SPEC 작성 + @SPEC TAG 추가
-    └─ git-manager: 
-        ├─ feature/SPEC-{ID} 브랜치 생성 (develop 기반)
-        ├─ GitHub Issue 생성 (Team 모드 용)
-        └─ Draft PR 생성 (feature → develop)
-
-/alfred:2-run (TDD 구현)
-    ├─ implementation-planner: 실행 계획 수립
-    ├─ tdd-implementer: RED → GREEN → REFACTOR
-    │   ├─ @TEST TAG 추가
-    │   └─ @CODE TAG 추가
-    └─ git-manager: 
-        ├─ RED/GREEN/REFACTOR 커밋 생성
-        ├─ Draft PR 자동 업데이트
-        └─ 테스트/커버리지 리포트 작성
-
-/alfred:3-sync (문서 동기화)
-    ├─ doc-syncer: 
-    │   ├─ Living Document 동기화
-    │   ├─ @TAG 체인 검증
-    │   └─ SPEC 메타데이터 업데이트
+/alfred:1-plan (SPEC creation)
+    ├─ spec-builder: Write SPEC + add @SPEC TAG
     └─ git-manager:
-        ├─ 문서 변경사항 커밋
-        ├─ PR Ready 전환 (gh pr ready)
-        ├─ [선택] PR 자동 머지 (--auto-merge 플래그)
-        └─ 브랜치 정리 + develop 체크아웃
+        ├─ Create feature/SPEC-{ID} branch (based on develop)
+        ├─ Create GitHub Issue (Team mode)
+        └─ Create Draft PR (feature → develop)
+
+/alfred:2-run (TDD implementation)
+    ├─ implementation-planner: Establish execution plan
+    ├─ tdd-implementer: RED → GREEN → REFACTOR
+    │   ├─ Add @TEST TAG
+    │   └─ Add @CODE TAG
+    └─ git-manager:
+        ├─ Create RED/GREEN/REFACTOR commits
+        ├─ Auto-update Draft PR
+        └─ Generate test/coverage reports
+
+/alfred:3-sync (Document synchronization)
+    ├─ doc-syncer:
+    │   ├─ Sync Living Documents
+    │   ├─ Verify @TAG chain
+    │   └─ Update SPEC metadata
+    └─ git-manager:
+        ├─ Commit documentation changes
+        ├─ Transition PR to Ready (gh pr ready)
+        ├─ [Optional] Auto-merge PR (--auto-merge flag)
+        └─ Branch cleanup + checkout develop
 ```
 
 ---
 
-## 4. 각 단계별 GitHub 자동화
+## 4. GitHub Automation by Phase
 
-### 4.1 Stage 1: `/alfred:1-plan` - SPEC 생성 및 Branch/Draft PR 생성
+### 4.1 Stage 1: `/alfred:1-plan` - SPEC Creation and Branch/Draft PR Creation
 
-**참여 에이전트**:
-- `spec-builder` (Sonnet): SPEC 문서 작성
-- `git-manager` (Haiku): Git/GitHub 작업
+**Participating Agents**:
+- `spec-builder` (Sonnet): SPEC document authoring
+- `git-manager` (Haiku): Git/GitHub operations
 
-**수행 작업**:
+**Operations**:
 
-#### Step 1-1: SPEC 생성
+#### Step 1-1: SPEC Creation
 ```bash
-# 위치: .moai/specs/SPEC-{ID}/
-# 생성 파일:
-- spec.md      (EARS 구조 SPEC)
-- plan.md      (구현 계획)
-- acceptance.md (수용 기준)
+# Location: .moai/specs/SPEC-{ID}/
+# Created files:
+- spec.md      (EARS-structured SPEC)
+- plan.md      (Implementation plan)
+- acceptance.md (Acceptance criteria)
 ```
 
-**SPEC 메타데이터 구조** (YAML Front Matter):
+**SPEC Metadata Structure** (YAML Front Matter):
 ```yaml
 ---
 id: AUTH-001
@@ -108,67 +108,67 @@ author: @username
 priority: high
 ---
 
-# @SPEC:AUTH-001: [제목]
+# @SPEC:AUTH-001: [Title]
 
 ## HISTORY
 ### v0.0.1 (2025-10-25)
-- **INITIAL**: 초기 SPEC 생성
+- **INITIAL**: Initial SPEC creation
 ```
 
-#### Step 1-2: Feature 브랜치 생성 (Team 모드)
+#### Step 1-2: Feature Branch Creation (Team Mode)
 ```bash
-git checkout develop              # develop 기반에서 시작
-git pull origin develop           # 최신 상태로 동기화
-git checkout -b feature/SPEC-{ID} # feature/SPEC-AUTH-001 생성
+git checkout develop              # Start from develop base
+git pull origin develop           # Sync to latest state
+git checkout -b feature/SPEC-{ID} # Create feature/SPEC-AUTH-001
 ```
 
-**규칙**:
-- 항상 `develop` 브랜치에서 시작
-- 브랜치 이름: `feature/SPEC-{ID}` (설정값: `feature_prefix`)
-- 직접 main 브랜치 생성 금지
+**Rules**:
+- Always start from `develop` branch
+- Branch name: `feature/SPEC-{ID}` (config value: `feature_prefix`)
+- Direct main branch creation prohibited
 
-#### Step 1-3: GitHub Issue 생성 (Team 모드 고유)
+#### Step 1-3: GitHub Issue Creation (Team Mode Exclusive)
 ```bash
 gh issue create \
   --title "[SPEC-AUTH-001] JWT Authentication System" \
-  --body "[SPEC 문서 내용]
-  
+  --body "[SPEC document content]
+
   ## Acceptance Criteria
   - Test coverage ≥ 85%
   - All tests pass
-  
+
   ## Implementation Plan
-  [plan.md 내용]"
+  [plan.md content]"
 ```
 
-**Issue 특징**:
-- 제목: `[SPEC-{ID}] {SPEC 제목}`
-- 본문: SPEC, Acceptance Criteria, Implementation Plan 포함
-- GitHub Projects 연동 가능
-- PR과 자동 연결됨
+**Issue Characteristics**:
+- Title: `[SPEC-{ID}] {SPEC title}`
+- Body: Includes SPEC, Acceptance Criteria, Implementation Plan
+- Can integrate with GitHub Projects
+- Automatically linked to PR
 
-#### Step 1-4: Draft PR 생성
+#### Step 1-4: Draft PR Creation
 ```bash
-# git-manager가 자동 실행
+# Automatically executed by git-manager
 gh pr create \
   --draft \
   --base develop \
   --head feature/SPEC-{ID} \
   --title "[SPEC-AUTH-001] JWT Authentication System" \
-  --body "[Draft PR 본문 - SPEC 링크 포함]"
+  --body "[Draft PR body - includes SPEC link]"
 ```
 
-**Draft PR 특징**:
-- 초기 상태: `DRAFT` (리뷰 요청 불가)
-- 기본 브랜치: `develop`
-- Feature 브랜치에 push할 때마다 자동 업데이트
-- `/alfred:3-sync`에서 Ready로 전환
+**Draft PR Characteristics**:
+- Initial state: `DRAFT` (review requests not allowed)
+- Base branch: `develop`
+- Auto-updates with each push to feature branch
+- Transitions to Ready in `/alfred:3-sync`
 
-**git-manager 구현 (git-manager.md에서)**:
+**git-manager Implementation** (from git-manager.md):
 ```markdown
-## 📋 Feature 개발 워크플로우 (feature/*)
+## 📋 Feature Development Workflow (feature/*)
 
-### 1. SPEC 작성 시 (/alfred:1-plan)
+### 1. During SPEC authoring (/alfred:1-plan)
 ```bash
 git checkout develop
 git checkout -b feature/SPEC-{ID}
@@ -179,69 +179,69 @@ gh pr create --draft --base develop --head feature/SPEC-{ID}
 
 ---
 
-### 4.2 Stage 2: `/alfred:2-run` - TDD 구현 및 자동 커밋
+### 4.2 Stage 2: `/alfred:2-run` - TDD Implementation and Auto-commit
 
-**참여 에이전트**:
-- `implementation-planner` (Sonnet): 구현 계획 수립
+**Participating Agents**:
+- `implementation-planner` (Sonnet): Establish implementation plan
 - `tdd-implementer` (Sonnet): RED → GREEN → REFACTOR
-- `quality-gate` (Haiku): TRUST 5 원칙 검증
-- `git-manager` (Haiku): 커밋 생성 및 PR 업데이트
+- `quality-gate` (Haiku): Verify TRUST 5 principles
+- `git-manager` (Haiku): Create commits and update PR
 
-**수행 작업**:
+**Operations**:
 
-#### Step 2-1: RED - 실패하는 테스트 작성
+#### Step 2-1: RED - Write Failing Test
 ```python
 # tests/auth/test_service.py
-# @TEST:AUTH-001 TAG 추가
+# Add @TEST:AUTH-001 TAG
 
 def test_user_authentication_with_valid_credentials():
-    """JWT 토큰 발급 테스트"""
-    # Given: 유효한 사용자 자격증명
+    """JWT token issuance test"""
+    # Given: Valid user credentials
     credentials = {"username": "user", "password": "pass"}
-    
-    # When: 로그인 요청
-    # Then: JWT 토큰 발급 (아직 구현되지 않아 FAIL)
+
+    # When: Login request
+    # Then: JWT token issued (not yet implemented, FAIL)
 ```
 
-**자동 커밋**:
+**Auto-commit**:
 ```bash
 git add tests/auth/test_service.py
 git commit -m "🔴 RED: Add JWT token issuance test
-  
+
   @TEST:AUTH-001 | SPEC: .moai/specs/SPEC-AUTH-001/spec.md
 
   🤖 Generated with Claude Code
   Co-Authored-By: Alfred <alfred@mo.ai.kr>"
 ```
 
-#### Step 2-2: GREEN - 최소 구현으로 테스트 통과
+#### Step 2-2: GREEN - Minimal Implementation to Pass Test
 ```python
 # src/auth/service.py
-# @CODE:AUTH-001 TAG 추가
+# Add @CODE:AUTH-001 TAG
 
 def authenticate_user(username: str, password: str) -> str:
-    """JWT 토큰 발급 (최소 구현)"""
-    # 검증 로직 없이 토큰만 생성
+    """JWT token issuance (minimal implementation)"""
+    # Generate token without validation logic
     return jwt.encode({"user": username}, "secret", algorithm="HS256")
 ```
 
-**자동 커밋**:
+**Auto-commit**:
 ```bash
 git add src/auth/service.py
 git commit -m "🟢 GREEN: Implement JWT token issuance
-  
+
   @CODE:AUTH-001 | TEST: tests/auth/test_service.py | SPEC: .moai/specs/SPEC-AUTH-001/spec.md
 
   🤖 Generated with Claude Code
   Co-Authored-By: Alfred <alfred@mo.ai.kr>"
 ```
 
-#### Step 2-3: REFACTOR - 코드 품질 개선
+#### Step 2-3: REFACTOR - Improve Code Quality
 ```python
-# src/auth/service.py (개선)
+# src/auth/service.py (improved)
 
 def authenticate_user(username: str, password: str) -> str:
-    """JWT 토큰 발급 (개선된 버전)"""
+    """JWT token issuance (improved version)"""
     _validate_credentials(username, password)
     payload = {
         "user": username,
@@ -250,16 +250,16 @@ def authenticate_user(username: str, password: str) -> str:
     return jwt.encode(payload, os.getenv("JWT_SECRET"), algorithm="HS256")
 
 def _validate_credentials(username: str, password: str) -> None:
-    """자격증명 검증"""
+    """Credential validation"""
     if not username or not password:
         raise ValueError("Username and password required")
 ```
 
-**자동 커밋**:
+**Auto-commit**:
 ```bash
 git add src/auth/service.py
 git commit -m "♻️ REFACTOR: Improve JWT token handling and validation
-  
+
   - Add token expiration
   - Add environment-based secret management
   - Extract validation logic
@@ -269,28 +269,28 @@ git commit -m "♻️ REFACTOR: Improve JWT token handling and validation
   Co-Authored-By: Alfred <alfred@mo.ai.kr>"
 ```
 
-#### Step 2-4: 자동 PR 업데이트
+#### Step 2-4: Auto PR Update
 ```bash
-# git-manager가 각 커밋 후 자동 실행
+# Automatically executed by git-manager after each commit
 git push origin feature/SPEC-{ID}
 
-# Draft PR 자동 업데이트 (gh CLI가 처리)
-# PR 본문에 커밋 로그, 테스트 결과, 커버리지 리포트 추가
+# Draft PR auto-updates (handled by gh CLI)
+# Adds commit log, test results, coverage report to PR body
 ```
 
-**Draft PR 상태**:
-- 브랜치에 새 커밋이 push될 때마다 자동 업데이트
-- CI/CD 파이프라인 자동 실행
-- 리뷰어 자동 할당 (구성된 경우)
-- 리뷰 요청 불가 (Draft 상태이므로)
+**Draft PR State**:
+- Auto-updates with each new commit pushed to branch
+- CI/CD pipeline auto-executes
+- Reviewers auto-assigned (if configured)
+- Review requests not allowed (Draft state)
 
-**Draft PR 본문 자동 업데이트 내용**:
+**Draft PR Body Auto-update Content**:
 ```markdown
 ## Implementation Summary
 
 ### Commits
 - 🔴 RED: Add JWT token issuance test
-- 🟢 GREEN: Implement JWT token issuance  
+- 🟢 GREEN: Implement JWT token issuance
 - ♻️ REFACTOR: Improve JWT token handling and validation
 
 ### Test Results
@@ -312,29 +312,29 @@ git push origin feature/SPEC-{ID}
 
 ---
 
-### 4.3 Stage 3: `/alfred:3-sync` - 문서 동기화 및 PR Ready 전환
+### 4.3 Stage 3: `/alfred:3-sync` - Document Sync and PR Ready Transition
 
-**참여 에이전트**:
-- `tag-agent` (Haiku): TAG 체인 검증
-- `quality-gate` (Haiku): 최종 품질 확인
-- `doc-syncer` (Haiku): Living Document 동기화
-- `git-manager` (Haiku): PR Ready 전환 및 자동 머지
+**Participating Agents**:
+- `tag-agent` (Haiku): TAG chain verification
+- `quality-gate` (Haiku): Final quality check
+- `doc-syncer` (Haiku): Living Document sync
+- `git-manager` (Haiku): PR Ready transition and auto-merge
 
-**수행 작업**:
+**Operations**:
 
-#### Step 3-1: TAG 체인 검증 (전체 프로젝트 범위)
+#### Step 3-1: TAG Chain Verification (Full Project Scope)
 ```bash
-# tag-agent가 실행
+# Executed by tag-agent
 rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/
 
-# 검증 항목:
-# - @SPEC:AUTH-001 존재 ✅
-# - @TEST:AUTH-001 존재 ✅
-# - @CODE:AUTH-001 존재 ✅
-# - @DOC:AUTH-001 존재 (필요 시)
+# Validation items:
+# - @SPEC:AUTH-001 exists ✅
+# - @TEST:AUTH-001 exists ✅
+# - @CODE:AUTH-001 exists ✅
+# - @DOC:AUTH-001 exists (if needed)
 ```
 
-**검증 결과**:
+**Verification Results**:
 ```markdown
 ## TAG Chain Verification Report
 
@@ -348,22 +348,22 @@ rg '@(SPEC|TEST|CODE|DOC):' -n .moai/specs/ tests/ src/ docs/
 ✅ No Broken References detected
 ```
 
-#### Step 3-2: Living Document 동기화
+#### Step 3-2: Living Document Sync
 ```bash
-# doc-syncer가 실행
+# Executed by doc-syncer
 
-# 1. 자동 생성/업데이트 문서:
-docs/api/authentication.md    # @CODE:AUTH-001에서 함수 서명 추출
-README.md                     # 새 기능 섹션 추가
-CHANGELOG.md                  # v0.1.0 변경사항 기록
+# 1. Auto-generated/updated documents:
+docs/api/authentication.md    # Extract function signatures from @CODE:AUTH-001
+README.md                     # Add new features section
+CHANGELOG.md                  # Record v0.1.0 changes
 
-# 2. SPEC 메타데이터 자동 업데이트
+# 2. SPEC metadata auto-update
 .moai/specs/SPEC-AUTH-001/spec.md:
   status: draft → completed
   version: 0.0.1 → 0.1.0
 ```
 
-**생성된 문서 예시**:
+**Generated Document Example**:
 
 `docs/api/authentication.md`:
 ```markdown
@@ -375,13 +375,13 @@ CHANGELOG.md                  # v0.1.0 변경사항 기록
 
 #### authenticate_user(username: str, password: str) -> str
 
-**Description**: JWT 토큰 발급
+**Description**: JWT token issuance
 
 **Parameters**:
-- `username` (str): 사용자명
-- `password` (str): 패스워드
+- `username` (str): Username
+- `password` (str): Password
 
-**Returns**: JWT 토큰 문자열
+**Returns**: JWT token string
 
 **Example**:
 ```python
@@ -394,17 +394,17 @@ token = authenticate_user("user", "password")
 - Implementation: src/auth/service.py
 ```
 
-#### Step 3-3: PR Ready 전환 (Team 모드 자동)
+#### Step 3-3: PR Ready Transition (Team Mode Auto)
 ```bash
-# doc-syncer가 문서 커밋 후 git-manager 호출
+# Called by git-manager after doc-syncer commits documents
 git add -A docs/ CHANGELOG.md README.md .moai/specs/SPEC-AUTH-001/spec.md
 git commit -m "docs: Synchronize documentation with AUTH-001 implementation
-  
+
   - Update API documentation
   - Add CHANGELOG entry
   - Update SPEC metadata (draft → completed)
   - Update README features list
-  
+
   @DOC:AUTH-001 @SPEC:AUTH-001
 
   🤖 Generated with Claude Code
@@ -412,24 +412,24 @@ git commit -m "docs: Synchronize documentation with AUTH-001 implementation
 
 git push origin feature/SPEC-AUTH-001
 
-# Draft PR를 Ready for Review로 전환
+# Transition Draft PR to Ready for Review
 gh pr ready {PR_NUMBER}
 ```
 
-**PR 상태 변화**:
+**PR State Change**:
 - `DRAFT` → `READY_FOR_REVIEW`
-- 리뷰어 자동 요청 활성화
-- CI/CD 최종 검사 실행
+- Reviewer auto-request activation
+- CI/CD final check execution
 
-#### Step 3-4: [선택] PR 자동 머지 (--auto-merge 플래그 사용 시)
+#### Step 3-4: [Optional] PR Auto-merge (when --auto-merge flag used)
 ```bash
-# /alfred:3-sync --auto-merge 실행 시
+# When executing /alfred:3-sync --auto-merge
 
-# 1. CI/CD 상태 확인
+# 1. Check CI/CD status
 gh pr checks --watch {PR_NUMBER}
-# → 모든 체크 통과 대기
+# → Wait for all checks to pass
 
-# 2. Squash 머지 실행
+# 2. Execute squash merge
 gh pr merge --squash --delete-branch {PR_NUMBER}
 
 # 3. Local cleanup
@@ -438,7 +438,7 @@ git pull origin develop
 git branch -d feature/SPEC-AUTH-001
 ```
 
-**머지 커밋 예시**:
+**Merge Commit Example**:
 ```
 docs: Synchronize documentation with AUTH-001 implementation (#5)
 
@@ -456,193 +456,193 @@ Co-Authored-By: Alfred <alfred@mo.ai.kr>
 
 ---
 
-## 5. 현재 구현 상태 분석
+## 5. Current Implementation Status Analysis
 
-### 5.1 완전 구현 항목
+### 5.1 Fully Implemented Items
 
-| 항목 | 상태 | 증거 |
+| Item | Status | Evidence |
 |------|------|------|
-| **Draft PR 자동 생성** | ✅ 완전 구현 | `git-manager.md`: "gh pr create --draft" |
-| **Feature 브랜치 자동 생성** | ✅ 완전 구현 | `.moai/config.json`: `feature_prefix: "feature/SPEC-"` |
-| **TDD 단계별 커밋** | ✅ 완전 구현 | `git-manager.md`: RED/GREEN/REFACTOR 커밋 템플릿 |
-| **Tag 기반 추적** | ✅ 완전 구현 | SPEC/TEST/CODE/DOC TAG 시스템 |
-| **PR Ready 전환** | ✅ 완전 구현 | `/alfred:3-sync`: `gh pr ready` |
-| **자동 문서 동기화** | ✅ 완전 구현 | `doc-syncer.md`: Living Document 동기화 |
-| **Develop 기반 브랜치** | ✅ 완전 구현 | `git-manager.md`: GitFlow 표준 준수 |
+| **Draft PR auto-creation** | ✅ Fully implemented | `git-manager.md`: "gh pr create --draft" |
+| **Feature branch auto-creation** | ✅ Fully implemented | `.moai/config.json`: `feature_prefix: "feature/SPEC-"` |
+| **TDD step-by-step commits** | ✅ Fully implemented | `git-manager.md`: RED/GREEN/REFACTOR commit templates |
+| **Tag-based tracking** | ✅ Fully implemented | SPEC/TEST/CODE/DOC TAG system |
+| **PR Ready transition** | ✅ Fully implemented | `/alfred:3-sync`: `gh pr ready` |
+| **Auto document sync** | ✅ Fully implemented | `doc-syncer.md`: Living Document sync |
+| **Develop-based branching** | ✅ Fully implemented | `git-manager.md`: GitFlow standard compliance |
 
-### 5.2 부분 구현 항목
+### 5.2 Partially Implemented Items
 
-| 항목 | 상태 | 설명 |
+| Item | Status | Description |
 |------|------|------|
-| **GitHub Issue 자동 생성** | ⚠️ 부분 구현 | `/alfred:1-plan`에서 "Create GitHub Issue" 언급 있으나 실제 구현 세부사항 미흡 |
-| **PR 자동 머지** | ✅ 구현됨 | `/alfred:3-sync --auto-merge` 플래그로 활성화 |
-| **리뷰어 자동 할당** | ⚠️ 부분 구현 | `doc-syncer.md`에서 언급만 있고 세부 로직 미설명 |
-| **CI/CD 자동 검사** | ✅ 구현됨 | `.github/workflows/` 자동 트리거 |
+| **GitHub Issue auto-creation** | ⚠️ Partially implemented | `/alfred:1-plan` mentions "Create GitHub Issue" but detailed implementation lacking |
+| **PR auto-merge** | ✅ Implemented | `/alfred:3-sync --auto-merge` flag activates |
+| **Reviewer auto-assignment** | ⚠️ Partially implemented | `doc-syncer.md` mentions only, detailed logic unexplained |
+| **CI/CD auto-check** | ✅ Implemented | `.github/workflows/` auto-trigger |
 
-### 5.3 미구현 항목
+### 5.3 Not Implemented Items
 
-| 항목 | 설명 |
+| Item | Description |
 |------|------|
-| **Automatic Merge Conflict Resolution** | PR 머지 시 충돌 발생 시 자동 해결 불가 |
-| **PR Template Validation** | PR 템플릿 준수 여부 자동 검증 |
-| **Release Notes Auto-generation** | Release 브랜치에서 자동 Release Notes 생성 |
+| **Automatic Merge Conflict Resolution** | Cannot auto-resolve conflicts during PR merge |
+| **PR Template Validation** | No auto-validation of PR template compliance |
+| **Release Notes Auto-generation** | No auto-generated Release Notes from Release branch |
 
 ---
 
-## 6. GitHub 이슈/PR 자동 생성 메커니즘
+## 6. GitHub Issue/PR Auto-creation Mechanism
 
-### 6.1 Issue 자동 생성 (미구현이지만 설계된 흐름)
+### 6.1 Issue Auto-creation (Not implemented but designed)
 
-**설계된 흐름** (git-manager.md 참조):
+**Designed Flow** (from git-manager.md):
 ```
 /alfred:1-plan
-  → spec-builder: SPEC 작성
-  → git-manager: 
-    1. feature 브랜치 생성
-    2. [Team 모드] GitHub Issue 생성 (title: "[SPEC-{ID}] {제목}")
-    3. Draft PR 생성 (feature → develop)
+  → spec-builder: Write SPEC
+  → git-manager:
+    1. Create feature branch
+    2. [Team mode] Create GitHub Issue (title: "[SPEC-{ID}] {title}")
+    3. Create Draft PR (feature → develop)
 ```
 
-**현재 구현 상태**:
-- Issue 생성 명령어 정의: `gh issue create` (예상)
-- 정확한 구현 코드 미확인
-- Agent 협력 구조에는 포함됨
+**Current Implementation Status**:
+- Issue creation command defined: `gh issue create` (expected)
+- Exact implementation code unconfirmed
+- Included in agent cooperation structure
 
-### 6.2 Draft PR 자동 생성 (완전 구현)
+### 6.2 Draft PR Auto-creation (Fully implemented)
 
-**구현 확인됨** (git-manager.md):
+**Confirmed Implementation** (git-manager.md):
 ```bash
 gh pr create --draft --base develop --head feature/SPEC-{ID}
 ```
 
-**작동 방식**:
-1. `/alfred:1-plan` 실행 → SPEC 파일 생성
-2. git-manager 에이전트 호출 → branch + Draft PR 생성
-3. Draft 상태로 시작 → `/alfred:3-sync`에서 Ready로 전환
+**How it Works**:
+1. Execute `/alfred:1-plan` → Create SPEC files
+2. Call git-manager agent → Create branch + Draft PR
+3. Start as Draft → Transition to Ready in `/alfred:3-sync`
 
-### 6.3 PR 상태 변화 (완전 구현)
+### 6.3 PR State Changes (Fully implemented)
 
 ```
-Draft PR 생성 (/alfred:1-plan)
+Draft PR creation (/alfred:1-plan)
     ↓
-TDD 구현 중 자동 업데이트 (/alfred:2-run)
+Auto-update during TDD implementation (/alfred:2-run)
     ↓
-문서 동기화 및 Ready 전환 (/alfred:3-sync)
+Document sync and Ready transition (/alfred:3-sync)
     ↓
-[선택] PR 자동 머지 + 브랜치 정리 (/alfred:3-sync --auto-merge)
+[Optional] PR auto-merge + branch cleanup (/alfred:3-sync --auto-merge)
 ```
 
 ---
 
-## 7. Team 모드 워크플로우 다이어그램
+## 7. Team Mode Workflow Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ Phase 1: SPEC 생성 (/alfred:1-plan)                        │
+│ Phase 1: SPEC Creation (/alfred:1-plan)                     │
 └─────────────────────────────────────────────────────────────┘
                     ↓
          ┌──────────────────────┐
          │  spec-builder        │
-         │  (SPEC 작성)         │
+         │  (Write SPEC)        │
          └──────────────────────┘
                     ↓
          ┌──────────────────────────────────────┐
          │     git-manager                      │
-         │  1. feature 브랜치 생성              │
-         │     (develop 기반)                   │
-         │  2. GitHub Issue 생성                │
-         │  3. Draft PR 생성                    │
+         │  1. Create feature branch            │
+         │     (based on develop)               │
+         │  2. Create GitHub Issue              │
+         │  3. Create Draft PR                  │
          │     (feature → develop)              │
          └──────────────────────────────────────┘
                     ↓
-         SPEC 문서 + Branch + Draft PR 준비됨
+         SPEC document + Branch + Draft PR ready
          (.moai/specs/SPEC-{ID}/)
 
 ┌─────────────────────────────────────────────────────────────┐
-│ Phase 2: TDD 구현 (/alfred:2-run)                           │
+│ Phase 2: TDD Implementation (/alfred:2-run)                 │
 └─────────────────────────────────────────────────────────────┘
                     ↓
   ┌──────────────────────────────────────────────────┐
-  │ implementation-planner: 실행 계획 수립           │
+  │ implementation-planner: Establish execution plan │
   └──────────────────────────────────────────────────┘
                     ↓
   ┌──────────────────────────────────────────────────┐
   │ tdd-implementer: RED → GREEN → REFACTOR          │
-  │  • @TEST TAG 추가                                │
-  │  • @CODE TAG 추가                                │
+  │  • Add @TEST TAG                                 │
+  │  • Add @CODE TAG                                 │
   └──────────────────────────────────────────────────┘
                     ↓
   ┌──────────────────────────────────────────────────┐
-  │ git-manager: 자동 커밋                           │
+  │ git-manager: Auto-commit                         │
   │  • git add + commit (RED)                        │
   │  • git add + commit (GREEN)                      │
   │  • git add + commit (REFACTOR)                   │
   │  • git push origin feature/SPEC-{ID}             │
-  │  → Draft PR 자동 업데이트                        │
+  │  → Auto-update Draft PR                          │
   └──────────────────────────────────────────────────┘
                     ↓
-         Draft PR 상태 리포트
+         Draft PR status report
          - Commits: RED/GREEN/REFACTOR
          - Coverage: X%
          - CI/CD: In Progress
 
 ┌─────────────────────────────────────────────────────────────┐
-│ Phase 3: 동기화 (/alfred:3-sync [--auto-merge])             │
+│ Phase 3: Synchronization (/alfred:3-sync [--auto-merge])    │
 └─────────────────────────────────────────────────────────────┘
                     ↓
   ┌──────────────────────────────────────────────────┐
-  │ tag-agent: TAG 체인 검증 (전체 프로젝트)        │
-  │  • @SPEC, @TEST, @CODE, @DOC 존재 확인          │
-  │  • 고아 TAG 및 끊어진 링크 검출                 │
+  │ tag-agent: TAG chain verification (full project) │
+  │  • Verify @SPEC, @TEST, @CODE, @DOC existence    │
+  │  • Detect orphan TAGs and broken links           │
   └──────────────────────────────────────────────────┘
                     ↓
   ┌──────────────────────────────────────────────────┐
-  │ quality-gate: 품질 게이트 검증 (선택사항)      │
-  │  • TRUST 5 원칙 검증                             │
-  │  • 코드 스타일 검증                             │
-  │  • 테스트 커버리지 확인                         │
+  │ quality-gate: Quality gate verification (option) │
+  │  • Verify TRUST 5 principles                     │
+  │  • Verify code style                             │
+  │  • Check test coverage                           │
   └──────────────────────────────────────────────────┘
                     ↓
   ┌──────────────────────────────────────────────────┐
-  │ doc-syncer: Living Document 동기화              │
-  │  • API 문서 생성/업데이트                        │
-  │  • README 업데이트                              │
-  │  • CHANGELOG 추가                               │
-  │  • SPEC 메타데이터 업데이트                     │
-  │  • git commit + push                            │
+  │ doc-syncer: Living Document sync                 │
+  │  • Generate/update API documentation             │
+  │  • Update README                                 │
+  │  • Add CHANGELOG                                 │
+  │  • Update SPEC metadata                          │
+  │  • git commit + push                             │
   └──────────────────────────────────────────────────┘
                     ↓
   ┌──────────────────────────────────────────────────┐
-  │ git-manager: PR Ready 전환                       │
+  │ git-manager: PR Ready transition                 │
   │  • gh pr ready {PR_NUMBER}                       │
-  │  • Draft → Ready for Review 상태 변경           │
-  │  • CI/CD 최종 검사 실행                         │
+  │  • Change Draft → Ready for Review state         │
+  │  • Execute CI/CD final check                     │
   └──────────────────────────────────────────────────┘
                     ↓
-    PR 준비 완료 (Ready for Review 상태)
-    - 리뷰어 자동 요청 가능
-    - CI/CD 모두 통과 중
+    PR ready (Ready for Review state)
+    - Reviewer auto-request available
+    - CI/CD all passing
 
-[선택: --auto-merge 플래그 사용 시]
+[Optional: when --auto-merge flag used]
                     ↓
   ┌──────────────────────────────────────────────────┐
-  │ git-manager: 자동 머지 실행                      │
-  │  1. gh pr checks --watch (CI/CD 완료 대기)       │
+  │ git-manager: Execute auto-merge                  │
+  │  1. gh pr checks --watch (wait for CI/CD done)   │
   │  2. gh pr merge --squash --delete-branch         │
-  │  3. git checkout develop                        │
-  │  4. git pull origin develop                     │
-  │  5. feature 브랜치 정리                         │
+  │  3. git checkout develop                         │
+  │  4. git pull origin develop                      │
+  │  5. Clean up feature branch                      │
   └──────────────────────────────────────────────────┘
                     ↓
-    완성! develop 브랜치에서 다음 작업 준비
-    → /alfred:1-plan "다음 기능" 실행 가능
+    Complete! Ready for next work on develop branch
+    → Can execute /alfred:1-plan "next feature"
 ```
 
 ---
 
-## 8. 실제 코드 예시
+## 8. Actual Code Examples
 
-### 8.1 Commit 서명 표준
+### 8.1 Commit Signature Standard
 
 ```
 🔴 RED: Add authentication test case
@@ -654,111 +654,113 @@ TDD 구현 중 자동 업데이트 (/alfred:2-run)
 Co-Authored-By: Alfred <alfred@mo.ai.kr>
 ```
 
-### 8.2 Tag 체인 구조
+### 8.2 Tag Chain Structure
 
 ```
 .moai/specs/SPEC-AUTH-001/spec.md
-├─ @SPEC:AUTH-001 (명시적 TAG)
+├─ @SPEC:AUTH-001 (explicit TAG)
 │
 tests/auth/test_service.py
-├─ @TEST:AUTH-001 (테스트 구현)
+├─ @TEST:AUTH-001 (test implementation)
 │
 src/auth/service.py
-├─ @CODE:AUTH-001 (소스 구현)
+├─ @CODE:AUTH-001 (source implementation)
 │
 docs/api/authentication.md
-├─ @DOC:AUTH-001 (문서 참조)
+├─ @DOC:AUTH-001 (documentation reference)
 ```
 
-### 8.3 Config 기반 자동 선택
+### 8.3 Config-based Auto-selection
 
 ```python
-# .moai/config.json 읽음
+# Read .moai/config.json
 if config["project"]["mode"] == "team":
-    # Team 모드 활성화
+    # Activate Team mode
     use_gitflow = config["git_strategy"]["team"]["use_gitflow"]
     develop_branch = config["git_strategy"]["team"]["develop_branch"]
     auto_pr = config["git_strategy"]["team"]["auto_pr"]
-    
-    # 자동 실행:
-    # 1. develop 기반 feature 브랜치 생성
-    # 2. Draft PR 자동 생성
-    # 3. Sync 단계에서 Ready 자동 전환
+
+    # Auto-execute:
+    # 1. Create feature branch based on develop
+    # 2. Auto-create Draft PR
+    # 3. Auto-transition to Ready during Sync phase
 ```
 
 ---
 
-## 9. 핵심 결론
+## 9. Key Conclusions
 
-### 9.1 구현 완성도
+### 9.1 Implementation Completeness
 
-| 영역 | 완성도 | 설명 |
+| Area | Completeness | Description |
 |------|--------|------|
-| **Branch 자동화** | 100% | Feature 브랜치 생성, GitFlow 준수 |
-| **PR 자동화** | 95% | Draft PR 생성, Ready 전환, 자동 머지 모두 구현 |
-| **Issue 자동화** | 70% | 설계됨, 일부 구현 확인 |
-| **문서 동기화** | 100% | Living Document, TAG 체인 검증 완전 구현 |
-| **Commit 관리** | 100% | TDD 단계별 자동 커밋, 서명 표준화 |
+| **Branch automation** | 100% | Feature branch creation, GitFlow compliance |
+| **PR automation** | 95% | Draft PR creation, Ready transition, auto-merge all implemented |
+| **Issue automation** | 70% | Designed, partially confirmed |
+| **Document sync** | 100% | Living Document, TAG chain verification fully implemented |
+| **Commit management** | 100% | TDD step-by-step auto-commit, signature standardization |
 
-### 9.2 Team 모드 GitHub 통합 특징
+### 9.2 Team Mode GitHub Integration Characteristics
 
-✅ **자동화**
-- 모든 기본 작업이 자동화됨
-- 개발자는 코드 작성만 집중
+✅ **Automation**
+- All basic tasks automated
+- Developers focus only on code
 
-✅ **추적성**
-- @SPEC → @TEST → @CODE → @DOC TAG 완전한 추적
-- 모든 커밋이 Alfred 서명으로 추적 가능
-- PR 코멘트에 SPEC 링크 자동 포함
+✅ **Traceability**
+- Complete @SPEC → @TEST → @CODE → @DOC TAG tracking
+- All commits traceable with Alfred signature
+- SPEC links auto-included in PR comments
 
-✅ **품질 보증**
-- Draft PR로 시작 → 검증 후 Ready 전환
-- CI/CD 자동 실행
-- TRUST 5 원칙 자동 검증
+✅ **Quality Assurance**
+- Start with Draft PR → Transition to Ready after validation
+- CI/CD auto-execution
+- TRUST 5 principles auto-verification
 
-✅ **협업 지원**
-- GitHub Issue 기반 요구사항 추적
-- Draft → Ready PR 상태 관리
-- 리뷰어 자동 할당 (설정 시)
+✅ **Collaboration Support**
+- GitHub Issue-based requirement tracking
+- Draft → Ready PR state management
+- Reviewer auto-assignment (when configured)
 
-### 9.3 권장사항
+### 9.3 Recommendations
 
-1. **Issue 자동 생성 로직 명시화**
-   - `gh issue create` 정확한 스펙 문서화
-   - 테스트 케이스 추가
+1. **Clarify Issue Auto-creation Logic**
+   - Document exact `gh issue create` specs
+   - Add test cases
 
-2. **PR 템플릿 강화**
-   - Checklist 추가
-   - Acceptance Criteria 자동 포함
+2. **Enhance PR Template**
+   - Add checklist
+   - Auto-include Acceptance Criteria
 
-3. **Auto-merge 정책 문서화**
-   - Squash vs. Merge vs. Rebase 기준 명확히
-   - CI/CD 요구사항 명시
+3. **Document Auto-merge Policy**
+   - Clarify Squash vs. Merge vs. Rebase criteria
+   - Specify CI/CD requirements
 
-4. **리뷰어 할당 규칙**
-   - CODEOWNERS 파일 활용
-   - 자동 할당 로직 구현
+4. **Reviewer Assignment Rules**
+   - Utilize CODEOWNERS file
+   - Implement auto-assignment logic
 
 ---
 
-## 10. 참고 자료
+## 10. References
 
-### 명령어
-- `/alfred:1-plan "기능 제목"` - SPEC + Branch + Draft PR
-- `/alfred:2-run SPEC-{ID}` - TDD 구현
-- `/alfred:3-sync` - 문서 동기화 + PR Ready
-- `/alfred:3-sync --auto-merge` - 자동 머지까지 (Team 모드)
+### Commands
+- `/alfred:1-plan "feature title"` - SPEC + Branch + Draft PR
+- `/alfred:2-run SPEC-{ID}` - TDD implementation
+- `/alfred:3-sync` - Document sync + PR Ready
+- `/alfred:3-sync --auto-merge` - Auto-merge (Team mode)
 
-### Agent
-- `spec-builder`: SPEC 작성
-- `git-manager`: Git/GitHub 자동화
-- `doc-syncer`: 문서 동기화
-- `tdd-implementer`: TDD 구현
+### Agents
+- `spec-builder`: SPEC authoring
+- `git-manager`: Git/GitHub automation
+- `doc-syncer`: Document synchronization
+- `tdd-implementer`: TDD implementation
 
 ### Skills
-- `moai-alfred-git-workflow`: GitFlow 자동화
-- `moai-alfred-tag-scanning`: TAG 검증
-- `moai-foundation-trust`: TRUST 5 검증
+- `moai-alfred-git-workflow`: GitFlow automation
+- `moai-alfred-tag-scanning`: TAG verification
+- `moai-foundation-trust`: TRUST 5 verification
 
 ---
 
+**Last Updated**: 2025-10-27
+**Document Version**: v1.0.0

@@ -30,10 +30,10 @@ Alfred translates user requests to English before invoking you via `Task()`. Thi
 - ✅ Global multilingual support (Korean, Japanese, Chinese, Spanish, etc.)
 
 **Example**:
-- User says (Korean): "사용자 인증 SPEC 만들어줘"
-- You receive (English): "Create SPEC for user authentication with JWT token strategy"
+- User says (any language): Translated to "Create SPEC for user authentication with JWT token strategy"
+- You receive (English): "Create SPEC for user authentication with JWT tokens and email/password login"
 - You work entirely in English
-- Alfred translates your results back to Korean for user response
+- Alfred translates your results back to user's language for response
 
 **Do not try to infer user's original language from your prompt.** Always work in English.
 

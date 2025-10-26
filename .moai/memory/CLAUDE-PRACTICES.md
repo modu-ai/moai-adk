@@ -294,90 +294,74 @@ After reading this document:
 
 ### Scenario 4: Multilingual Workflow (Language Boundary Pattern)
 
-**Situation**: User from Korea requests a feature in **한국어** (Korean). System should respond in Korean while keeping internal Skills/Agents in English.
+**Situation**: Users request features in their preferred language. System responds in that language while keeping all internal operations in English.
 
-**Multi-Language Examples**:
-
-#### 4.1 Korean User (한국어)
+**Generic Multilingual Pattern**:
 
 ```
-User (Korean):  "사용자 인증 기능 추가해줘"
-                (Translate: "Add user authentication feature")
+User Input (any language):  "[Feature request in user's language]"
+                             Examples:
+                             - "Add user authentication feature" (English)
+                             - "사용자 인증 기능 추가해줘" (Korean)
+                             - "ユーザー認証機能を追加してください" (Japanese)
+                             - "Agregar funcionalidad de autenticación de usuarios" (Spanish)
 
-Alfred's Internal Translation:
-                → "Create authentication feature SPEC with JWT strategy"
+↓ [Alfred's Internal Translation Layer]
 
-Alfred's Actions:
-1. Invoke: Task(subagent_type="spec-builder",
-              prompt="Create SPEC for user authentication with JWT tokens,
-                      email+password login, 30-minute token expiry")
-2. spec-builder receives English prompt
-3. spec-builder uses Skill("moai-foundation-ears") [English keywords match]
-4. Returns English SPEC
-5. Alfred translates SPEC to Korean for user response
+Alfred Internal Prompt:      "Create authentication feature SPEC with JWT strategy,
+                             email+password login, 30-minute token expiry"
 
-User Response (Korean):
-"인증 SPEC을 작성했습니다.
-- 요구사항: JWT 토큰 기반 인증
-- 토큰 만료: 30분
-- 구현 계획: Red-Green-Refactor..."
+↓ [Invoke spec-builder with English prompt]
+
+Task(subagent_type="spec-builder",
+     prompt="Create SPEC for user authentication with JWT tokens...")
+
+↓ [spec-builder receives English prompt]
+
+spec-builder Execution:
+1. Detects SPEC authoring task → Skill("moai-foundation-specs") ✅ [100% match]
+2. Applies EARS syntax → Skill("moai-foundation-ears") ✅ [100% match]
+3. Returns structured English SPEC
+
+↓ [Alfred receives English SPEC output]
+
+SPEC Output:
+{
+  "id": "AUTH-001",
+  "version": "0.0.1",
+  "requirements": [
+    "The system must provide JWT-based authentication",
+    "WHEN valid credentials provided, THEN issue JWT token with 30-minute expiry",
+    "IF user not authenticated, THEN redirect to login page"
+  ]
+}
+
+↓ [Alfred's Response Translation Layer]
+
+User Response (in user's language):
+- English: "I've created the authentication SPEC with JWT strategy..."
+- Korean: "인증 SPEC을 작성했습니다. JWT 전략으로..."
+- Japanese: "認証SPECを作成しました。JWT戦略で..."
+- Spanish: "He creado la especificación de autenticación. Con estrategia JWT..."
 ```
 
-#### 4.2 Japanese User (日本語)
+**Key Principles**:
 
-```
-User (Japanese): "ユーザー認証機能を追加してください"
-                 (Translate: "Add user authentication feature")
-
-Alfred's Internal Translation:
-                 → "Create authentication feature SPEC with JWT strategy"
-
-Same execution flow as Korean:
-1. Translate user request to English
-2. Invoke spec-builder with English prompt
-3. spec-builder uses English Skills
-4. Translate results back to Japanese
-
-User Response (Japanese):
-"認証SPECを作成しました。
-- 要件: JWT トークンベースの認証
-- トークン有効期限: 30分
-- 実装計画: Red-Green-Refactor..."
-```
-
-#### 4.3 Spanish User (Español)
-
-```
-User (Spanish):  "Agregar funcionalidad de autenticación de usuarios"
-                 (Add user authentication feature)
-
-Alfred's Internal Translation:
-                 → "Create authentication feature SPEC with JWT strategy"
-
-Same execution flow:
-1. Translate to English
-2. Invoke spec-builder with English prompt
-3. Translate results back to Spanish
-
-User Response (Spanish):
-"He creado la especificación de autenticación.
-- Requisitos: Autenticación basada en tokens JWT
-- Expiración del token: 30 minutos
-- Plan de implementación: Red-Green-Refactor..."
-```
-
-**Key Principle**:
-- User language: **Flexible** (한국어, 日本語, Español, Русский, etc.)
-- Internal language: **English only** (all Sub-agents, Skills, prompts)
-- Alfred's job: **Seamless translation** between user language and English
+| Aspect | Implementation |
+|--------|-----------------|
+| **User-Facing (External)** | User's configured language (flexible) |
+| **Internal Operations (Layer 2)** | English only (Task prompts, Sub-agent communication) |
+| **Skills & Code (Layer 3)** | English only (Skill descriptions, code comments) |
+| **Translation Points** | User Input → English (entry), English → User Language (response) |
 
 **Why This Works**:
-- ✅ **Skills remain unchanged**: English-only Skills work reliably
-- ✅ **Zero maintenance burden**: No need to translate 55 Skills
-- ✅ **Global scalability**: Add new languages instantly
+- ✅ **Skills remain unchanged**: English-only Skills work reliably for ANY user language
+- ✅ **Zero maintenance burden**: No need to translate 55 Skills into N languages
+- ✅ **Infinite scalability**: Add Korean, Russian, Mandarin, Arabic without code changes
 - ✅ **Consistent quality**: English prompts guarantee 100% Skill trigger matching
+- ✅ **Industry standard**: Same pattern used by Netflix, Google, AWS (localized UI + English backend)
 
-**Estimated Duration**: Same as English (no overhead from translation)
+**Estimated Duration**: Same as English (no overhead from translation layer)
 
 ---
 

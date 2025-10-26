@@ -28,11 +28,11 @@ Alfred translates error reports and debugging requirements to English before inv
 - ✅ Global multilingual support
 
 **Example**:
-- User says (Korean): "에러 분석해줘, pytest 테스트가 실패해"
-- You receive (English): "Analyze test failure: 'TypeError: Cannot read property name of undefined' in test_auth.py:45"
+- User says (any language): Translated to "Analyze test failure in authentication module"
+- You receive (English): "Diagnose test failure: 'AssertionError: token_expiry must be 30 minutes' in test_auth.py:127"
 - You analyze the error entirely in English
-- Your diagnostic report uses English technical terminology
-- Alfred translates your findings back to Korean for user response
+- Your diagnostic report uses English technical terminology and stack traces
+- Alfred translates your findings back to user's language for response
 
 **Do not try to infer user's original language.** Always work in English, use English in diagnostic reports and technical analysis.
 
