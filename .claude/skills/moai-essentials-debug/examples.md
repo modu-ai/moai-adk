@@ -1,1107 +1,1064 @@
-# MoAI Essentials Debug - Real-World Examples
+# moai-essentials-debug — 실전 예제
 
-## Table of Contents
-1. [Async/Await Debugging (Python)](#asyncawait-debugging-python)
-2. [Goroutine Leak Investigation (Go)](#goroutine-leak-investigation-go)
-3. [Distributed Tracing with OpenTelemetry (Multi-service)](#distributed-tracing-with-opentelemetry-multi-service)
-4. [Kubernetes Pod Crash Debugging](#kubernetes-pod-crash-debugging)
-5. [Memory Leak Diagnosis (Rust)](#memory-leak-diagnosis-rust)
-6. [Race Condition Detection (Go)](#race-condition-detection-go)
-7. [Null Pointer Debugging (TypeScript)](#null-pointer-debugging-typescript)
-8. [Database Query Performance (SQL)](#database-query-performance-sql)
+> **Version**: 2.1.0  
+> **Last Updated**: 2025-10-27
+
+이 문서는 언어별 스택 트레이스 분석 실전 예제와 디버깅 시나리오를 제공합니다.
 
 ---
 
-## Async/Await Debugging (Python)
+## Python 디버깅 예제
 
-### Problem
-FastAPI application experiencing intermittent timeouts and "Event loop is closed" errors.
+### 예제 1: TypeError — 타입 불일치
 
-### Stack Trace
-```python
+**에러 메시지**:
+```
 Traceback (most recent call last):
-  File "app.py", line 87, in process_request
-    result = await fetch_data()
-  File "app.py", line 42, in fetch_data
-    async with session.get(url) as response:
-RuntimeError: Event loop is closed
+  File "app.py", line 45, in <module>
+    main()
+  File "app.py", line 38, in main
+    result = process_data(data)
+  File "app.py", line 15, in process_data
+    total = sum(items)
+TypeError: unsupported operand type(s) for +: 'int' and 'str'
 ```
 
-### Investigation Steps
+**분석**:
+1. **에러 위치**: `app.py:15` (`sum(items)`)
+2. **에러 타입**: `TypeError` — 정수와 문자열을 더하려고 시도
+3. **실행 경로**: `main()` → `process_data()` → `sum()`
+4. **근본 원인**: `items` 리스트에 문자열이 포함됨
 
-#### 1. Reproduce with Debugger
+**디버깅 단계**:
 ```python
-# app.py
-import asyncio
-import debugpy
+# 1. 브레이크포인트 설정
+import pdb; pdb.set_trace()
 
-# Enable remote debugging
-debugpy.listen(5678)
-print("Waiting for debugger...")
-debugpy.wait_for_client()
+# 2. items 내용 확인
+(Pdb) print(items)
+[1, 2, '3', 4, 5]  # '3'이 문자열!
 
-async def fetch_data():
-    # Set breakpoint here
-    breakpoint()
-    async with session.get(url) as response:
-        return await response.json()
+# 3. 타입 검증
+(Pdb) [type(x) for x in items]
+[<class 'int'>, <class 'int'>, <class 'str'>, <class 'int'>, <class 'int'>]
 ```
 
-#### 2. Run with Async Debugging
-```bash
-# Terminal 1: Start app
-python app.py
-
-# Terminal 2: Connect VSCode debugger (Remote Attach config)
-# Step through async code
-```
-
-#### 3. VSCode launch.json
-```json
-{
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "Python: Async Debug",
-      "type": "debugpy",
-      "request": "attach",
-      "connect": {
-        "host": "localhost",
-        "port": 5678
-      },
-      "justMyCode": false,
-      "pathMappings": [
-        {
-          "localRoot": "${workspaceFolder}",
-          "remoteRoot": "."
-        }
-      ]
-    }
-  ]
-}
-```
-
-#### 4. Inspect Async Context
+**해결 방법**:
 ```python
-# In debugger console
-import asyncio
-loop = asyncio.get_event_loop()
-print(f"Loop running: {loop.is_running()}")
-print(f"Loop closed: {loop.is_closed()}")
+# Option 1: 입력 데이터 검증
+def process_data(items):
+    # 타입 체크 및 변환
+    items = [int(x) if isinstance(x, str) else x for x in items]
+    total = sum(items)
+    return total
 
-# Check pending tasks
-tasks = asyncio.all_tasks(loop)
-print(f"Pending tasks: {len(tasks)}")
-for task in tasks:
-    print(task)
-```
-
-### Root Cause
-Multiple event loops created; old loop closed while tasks still pending.
-
-### Fix
-```python
-# Before (problematic)
-def main():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(fetch_data())
-    loop.close()  # ❌ Closes loop prematurely
-
-# After (correct)
-async def main():
-    await fetch_data()
-
-if __name__ == "__main__":
-    asyncio.run(main())  # ✅ Proper lifecycle management
-```
-
-### Test Case
-```python
-# tests/test_fetch_data.py
-import pytest
-import asyncio
-
-@pytest.mark.asyncio
-async def test_fetch_data_no_event_loop_error():
-    """Ensure fetch_data doesn't close event loop prematurely."""
-    result = await fetch_data()
-    assert result is not None
-
-    # Verify loop still running
-    loop = asyncio.get_event_loop()
-    assert not loop.is_closed()
+# Option 2: 타입 힌트 + mypy
+def process_data(items: list[int]) -> int:
+    total = sum(items)
+    return total
 ```
 
 ---
 
-## Goroutine Leak Investigation (Go)
+### 예제 2: ImportError — 모듈 미설치
 
-### Problem
-Go service memory usage growing indefinitely over time.
-
-### Stack Trace
+**에러 메시지**:
 ```
-goroutine 1543 [chan receive]:
-main.processMessages()
-    /app/worker.go:42 +0x120
-created by main.startWorker
-    /app/worker.go:25 +0x80
-
-goroutine 1544 [chan receive]:
-main.processMessages()
-    /app/worker.go:42 +0x120
-created by main.startWorker
-    /app/worker.go:25 +0x80
-... (1542 more goroutines)
+Traceback (most recent call last):
+  File "script.py", line 3, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
 ```
 
-### Investigation Steps
+**분석**:
+1. **에러 위치**: `script.py:3`
+2. **에러 타입**: `ModuleNotFoundError` — requests 모듈이 설치되지 않음
+3. **근본 원인**: 가상환경 활성화 안 됨 또는 의존성 미설치
 
-#### 1. Enable Goroutine Profiling
-```go
-// main.go
-import (
-    "net/http"
-    _ "net/http/pprof"
-)
-
-func main() {
-    // Enable pprof
-    go func() {
-        log.Println(http.ListenAndServe("localhost:6060", nil))
-    }()
-
-    // ... rest of application
-}
-```
-
-#### 2. Capture Goroutine Dump
+**디버깅 단계**:
 ```bash
-# Get goroutine count
-curl http://localhost:6060/debug/pprof/goroutine?debug=1 > goroutines.txt
+# 1. 가상환경 확인
+which python
+# /usr/bin/python (시스템 Python — 잘못됨!)
 
-# Analyze goroutines
-go tool pprof http://localhost:6060/debug/pprof/goroutine
-(pprof) top
-(pprof) list processMessages
+# 2. 가상환경 활성화
+source venv/bin/activate
+which python
+# /path/to/venv/bin/python (올바름)
+
+# 3. 패키지 설치 확인
+pip list | grep requests
+# (없음)
+
+# 4. 의존성 설치
+pip install requests
 ```
 
-#### 3. Debug with Delve
+**해결 방법**:
 ```bash
-# Attach to running process
-dlv attach $(pgrep myapp)
+# pyproject.toml 또는 requirements.txt에 의존성 명시
+# requirements.txt
+requests==2.31.0
 
-(dlv) goroutines
-Goroutine 1 - User: /app/main.go:15 main.main (0x10a4b20)
-Goroutine 2 - User: /app/worker.go:42 main.processMessages (0x10a5c30)
-... (1542 more)
-
-(dlv) goroutine 2 bt
-0  0x000000000043e3e5 in runtime.gopark
-   at /usr/local/go/src/runtime/proc.go:363
-1  0x000000000040b5b6 in runtime.chanrecv
-   at /usr/local/go/src/runtime/chan.go:583
-2  0x00000000010a5c30 in main.processMessages
-   at /app/worker.go:42
-```
-
-#### 4. VSCode launch.json
-```json
-{
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "Debug with Goroutine Inspection",
-      "type": "go",
-      "request": "launch",
-      "mode": "debug",
-      "program": "${workspaceFolder}",
-      "showLog": true,
-      "logOutput": "debugger",
-      "dlvToolPath": "/usr/local/bin/dlv"
-    },
-    {
-      "name": "Attach to Process",
-      "type": "go",
-      "request": "attach",
-      "mode": "local",
-      "processId": "${command:pickProcess}"
-    }
-  ]
-}
-```
-
-### Root Cause
-Worker goroutines waiting on channel that never gets closed when context cancelled.
-
-```go
-// Before (leaking)
-func startWorker(ctx context.Context) {
-    msgChan := make(chan Message)
-    go func() {
-        for msg := range msgChan {  // ❌ Never exits if channel not closed
-            processMessage(msg)
-        }
-    }()
-    // ... no channel close on ctx.Done()
-}
-
-// After (fixed)
-func startWorker(ctx context.Context) {
-    msgChan := make(chan Message)
-    go func() {
-        defer close(msgChan)
-        for {
-            select {
-            case msg := <-msgChan:
-                processMessage(msg)
-            case <-ctx.Done():
-                return  // ✅ Proper cleanup
-            }
-        }
-    }()
-}
-```
-
-### Test Case
-```go
-// worker_test.go
-func TestNoGoroutineLeak(t *testing.T) {
-    initialCount := runtime.NumGoroutine()
-
-    ctx, cancel := context.WithCancel(context.Background())
-    startWorker(ctx)
-
-    time.Sleep(100 * time.Millisecond)
-    cancel()
-    time.Sleep(100 * time.Millisecond)
-
-    finalCount := runtime.NumGoroutine()
-    assert.Equal(t, initialCount, finalCount, "Goroutine leak detected")
-}
+# 설치
+pip install -r requirements.txt
 ```
 
 ---
 
-## Distributed Tracing with OpenTelemetry (Multi-service)
+### 예제 3: AttributeError — 속성 없음
 
-### Problem
-Request slow across microservices; need to identify bottleneck.
-
-### Architecture
+**에러 메시지**:
 ```
-User → API Gateway → Auth Service → User Service → Database
-                  → Product Service → Cache
+Traceback (most recent call last):
+  File "app.py", line 28, in <module>
+    result = user.get_profile()
+AttributeError: 'NoneType' object has no attribute 'get_profile'
 ```
 
-### Investigation Steps
+**분석**:
+1. **에러 위치**: `app.py:28`
+2. **에러 타입**: `AttributeError` — `user`가 `None`임
+3. **근본 원인**: `user` 객체가 생성되지 않았거나 None 반환
 
-#### 1. Instrument Services with OpenTelemetry
-
-**API Gateway (Python/FastAPI)**
+**디버깅 단계**:
 ```python
-# gateway/main.py
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+# 1. 브레이크포인트 설정
+breakpoint()
 
-# Setup tracing
-provider = TracerProvider()
-processor = BatchSpanProcessor(OTLPSpanExporter(endpoint="http://jaeger:4317"))
-provider.add_span_processor(processor)
-trace.set_tracer_provider(provider)
+# 2. user 확인
+(Pdb) print(user)
+None
 
-app = FastAPI()
-FastAPIInstrumentor.instrument_app(app)
+# 3. user가 None이 된 이유 추적
+(Pdb) where
+  app.py(20)main()
+  app.py(15)get_user()
+  -> return None  # 여기서 None 반환!
 
-@app.get("/users/{user_id}")
-async def get_user(user_id: int):
-    tracer = trace.get_tracer(__name__)
-
-    with tracer.start_as_current_span("gateway.get_user") as span:
-        span.set_attribute("user.id", user_id)
-
-        # Call auth service
-        with tracer.start_as_current_span("gateway.verify_auth"):
-            auth_result = await verify_auth(user_id)
-
-        # Call user service
-        with tracer.start_as_current_span("gateway.fetch_user_data"):
-            user_data = await fetch_user_data(user_id)
-
-        return user_data
+# 4. get_user() 함수 확인
+def get_user(user_id):
+    user = database.find_user(user_id)
+    if not user:
+        return None  # 문제 발견!
+    return user
 ```
 
-**User Service (Go)**
-```go
-// user-service/main.go
-import (
-    "go.opentelemetry.io/otel"
-    "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
-    "go.opentelemetry.io/otel/sdk/trace"
-)
-
-func initTracing() {
-    exporter, _ := otlptracegrpc.New(
-        context.Background(),
-        otlptracegrpc.WithEndpoint("jaeger:4317"),
-        otlptracegrpc.WithInsecure(),
-    )
-
-    tp := trace.NewTracerProvider(
-        trace.WithBatcher(exporter),
-    )
-    otel.SetTracerProvider(tp)
-}
-
-func GetUser(w http.ResponseWriter, r *http.Request) {
-    ctx := r.Context()
-    tracer := otel.Tracer("user-service")
-
-    ctx, span := tracer.Start(ctx, "user-service.get_user")
-    defer span.End()
-
-    userID := chi.URLParam(r, "userID")
-    span.SetAttributes(attribute.String("user.id", userID))
-
-    // Database query with tracing
-    ctx, dbSpan := tracer.Start(ctx, "user-service.db_query")
-    user, err := db.GetUser(ctx, userID)
-    dbSpan.End()
-
-    if err != nil {
-        span.RecordError(err)
-        http.Error(w, "User not found", 404)
-        return
-    }
-
-    json.NewEncoder(w).Render(user)
-}
-```
-
-#### 2. Deploy Jaeger for Trace Collection
-```yaml
-# docker-compose.yml
-version: '3.8'
-services:
-  jaeger:
-    image: jaegertracing/all-in-one:1.50
-    ports:
-      - "16686:16686"  # Jaeger UI
-      - "4317:4317"    # OTLP gRPC
-      - "4318:4318"    # OTLP HTTP
-    environment:
-      - COLLECTOR_OTLP_ENABLED=true
-```
-
-#### 3. Generate Load and Capture Traces
-```bash
-# Start services
-docker-compose up -d
-
-# Generate test traffic
-for i in {1..100}; do
-  curl http://localhost:8000/users/123
-  sleep 0.1
-done
-
-# Open Jaeger UI
-open http://localhost:16686
-```
-
-#### 4. Analyze Traces in Jaeger UI
-1. Navigate to Jaeger UI
-2. Select service: `api-gateway`
-3. Find slow traces (> 500ms)
-4. Click trace to see waterfall view
-5. Identify bottleneck span
-
-**Example Trace Timeline**
-```
-Total: 1,245ms
-├─ gateway.get_user: 1,245ms
-   ├─ gateway.verify_auth: 45ms
-   │  └─ auth-service.verify_token: 42ms
-   │     └─ redis.get: 15ms
-   ├─ gateway.fetch_user_data: 1,180ms  ← BOTTLENECK
-      └─ user-service.get_user: 1,175ms
-         └─ user-service.db_query: 1,165ms  ← ROOT CAUSE
-            └─ postgres.query: 1,160ms
-```
-
-### Root Cause
-Database query missing index on `users.id`.
-
-### Fix
-```sql
--- Add missing index
-CREATE INDEX idx_users_id ON users(id);
-
--- Verify with EXPLAIN
-EXPLAIN ANALYZE SELECT * FROM users WHERE id = 123;
--- Before: Seq Scan on users (cost=0.00..1245.00 rows=1 width=100) (actual time=1160.234..1160.235 rows=1 loops=1)
--- After:  Index Scan using idx_users_id on users (cost=0.42..8.44 rows=1 width=100) (actual time=0.023..0.024 rows=1 loops=1)
-```
-
-### Test Case
+**해결 방법**:
 ```python
-# tests/test_performance.py
-import pytest
-from opentelemetry import trace
+# Option 1: None 체크
+user = get_user(user_id)
+if user is None:
+    print("User not found")
+    return
+result = user.get_profile()
 
-@pytest.mark.asyncio
-async def test_get_user_performance():
-    """Ensure /users/{id} responds within 100ms."""
-    tracer = trace.get_tracer(__name__)
+# Option 2: Optional 타입 힌트
+from typing import Optional
 
-    with tracer.start_as_current_span("test.get_user_performance") as span:
-        start = time.time()
-        response = await client.get("/users/123")
-        duration = time.time() - start
+def get_user(user_id: int) -> Optional[User]:
+    user = database.find_user(user_id)
+    return user
 
-        span.set_attribute("response.duration_ms", duration * 1000)
-
-        assert response.status_code == 200
-        assert duration < 0.1, f"Request took {duration}s, expected < 0.1s"
+# Option 3: 예외 처리
+try:
+    result = user.get_profile()
+except AttributeError:
+    print("User is None or has no get_profile method")
 ```
 
 ---
 
-## Kubernetes Pod Crash Debugging
+## TypeScript 디버깅 예제
 
-### Problem
-Pod enters `CrashLoopBackOff` state with OOMKilled status.
+### 예제 1: undefined 접근
 
-### Symptoms
-```bash
-kubectl get pods
-NAME                    READY   STATUS             RESTARTS   AGE
-myapp-7d4f8c9b5-xyz     0/1     CrashLoopBackOff   5          10m
-
-kubectl describe pod myapp-7d4f8c9b5-xyz
-...
-Last State:     Terminated
-  Reason:       OOMKilled
-  Exit Code:    137
-```
-
-### Investigation Steps
-
-#### 1. Check Logs (Current and Previous)
-```bash
-# Current logs
-kubectl logs myapp-7d4f8c9b5-xyz
-
-# Logs before crash
-kubectl logs myapp-7d4f8c9b5-xyz --previous
-
-# Output:
-[INFO] Application starting...
-[INFO] Loading dataset (1M records)...
-[WARNING] Memory usage: 450MB
-[WARNING] Memory usage: 750MB
-[ERROR] Out of memory
-```
-
-#### 2. Inspect Resource Limits
-```bash
-kubectl get pod myapp-7d4f8c9b5-xyz -o yaml | grep -A 10 resources
-  resources:
-    limits:
-      memory: 512Mi  # ❌ Too low
-    requests:
-      memory: 256Mi
-```
-
-#### 3. Debug with Ephemeral Container
-```bash
-# Add debug container to running pod
-kubectl debug -it myapp-7d4f8c9b5-xyz --image=ubuntu --target=myapp
-
-# In debug container
-apt-get update && apt-get install -y htop
-htop
-
-# Check memory usage patterns
-cat /proc/meminfo
-free -h
-```
-
-#### 4. Profile Memory Usage
-```python
-# Add memory profiling to application
-from memory_profiler import profile
-
-@profile
-def load_dataset():
-    # This function is consuming too much memory
-    data = [process_record(r) for r in fetch_records()]  # ❌ Loads all into memory
-    return data
-```
-
-```bash
-# Run with memory profiler
-python -m memory_profiler app.py
-
-# Output:
-Line #    Mem usage    Increment   Line Contents
-================================================
-     3    125.2 MiB    0.0 MiB     @profile
-     4                             def load_dataset():
-     5    875.4 MiB  750.2 MiB         data = [process_record(r) for r in fetch_records()]
-     6    875.4 MiB    0.0 MiB         return data
-```
-
-### Root Cause
-Loading entire dataset into memory at once; exceeds pod memory limit.
-
-### Fix
-```python
-# Before (memory-intensive)
-def load_dataset():
-    data = [process_record(r) for r in fetch_records()]  # ❌ 750MB
-    return data
-
-# After (streaming)
-def load_dataset():
-    for record in fetch_records():  # ✅ Process one at a time
-        yield process_record(record)
-```
-
-**Update Kubernetes Deployment**
-```yaml
-# deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: myapp
-spec:
-  template:
-    spec:
-      containers:
-      - name: myapp
-        resources:
-          limits:
-            memory: 1Gi  # ✅ Increased limit
-          requests:
-            memory: 512Mi
-```
-
-### Test Case
-```python
-# tests/test_memory.py
-import tracemalloc
-
-def test_load_dataset_memory_efficient():
-    """Ensure load_dataset uses < 100MB memory."""
-    tracemalloc.start()
-
-    list(load_dataset())  # Consume generator
-
-    current, peak = tracemalloc.get_traced_memory()
-    tracemalloc.stop()
-
-    assert peak / 1024 / 1024 < 100, f"Peak memory {peak/1024/1024}MB exceeds 100MB"
-```
-
----
-
-## Memory Leak Diagnosis (Rust)
-
-### Problem
-Long-running Rust service memory usage increasing over time.
-
-### Stack Trace
-```rust
-thread 'main' panicked at 'allocation error: Cannot allocate memory', src/main.rs:142:23
-```
-
-### Investigation Steps
-
-#### 1. Enable Memory Profiling with Valgrind
-```bash
-# Build with debug symbols
-cargo build --release
-
-# Run with Valgrind
-valgrind --leak-check=full --show-leak-kinds=all ./target/release/myapp
-
-# Output:
-HEAP SUMMARY:
-    in use at exit: 1,048,576 bytes in 1,024 blocks
-  total heap usage: 5,120 allocs, 4,096 frees, 52,428,800 bytes allocated
-
-LEAK SUMMARY:
-   definitely lost: 1,048,576 bytes in 1,024 blocks
-```
-
-#### 2. Use Rust-specific Tools
-```bash
-# Install cargo-flamegraph
-cargo install flamegraph
-
-# Generate flamegraph
-cargo flamegraph --bin myapp
-
-# Opens flamegraph.svg showing allocation hotspots
-```
-
-#### 3. Debug with rust-lldb
-```bash
-cargo build
-rust-lldb target/debug/myapp
-
-(lldb) breakpoint set -n main
-(lldb) run
-(lldb) memory read --size 8 --format x --count 10 $rsp
-```
-
-#### 4. Inspect with AddressSanitizer
-```bash
-# Rebuild with sanitizer
-RUSTFLAGS="-Z sanitizer=address" cargo build --target x86_64-unknown-linux-gnu
-
-# Run
-./target/x86_64-unknown-linux-gnu/debug/myapp
-
-# Output shows leak locations
-```
-
-### Root Cause
-`Rc<RefCell<T>>` circular reference preventing drop.
-
-```rust
-// Before (memory leak)
-use std::rc::Rc;
-use std::cell::RefCell;
-
-struct Node {
-    data: String,
-    next: Option<Rc<RefCell<Node>>>,
-}
-
-fn create_cycle() {
-    let node1 = Rc::new(RefCell::new(Node {
-        data: "Node 1".to_string(),
-        next: None,
-    }));
-
-    let node2 = Rc::new(RefCell::new(Node {
-        data: "Node 2".to_string(),
-        next: Some(Rc::clone(&node1)),
-    }));
-
-    node1.borrow_mut().next = Some(Rc::clone(&node2));  // ❌ Cycle!
-}  // node1 and node2 never dropped
-
-// After (fixed with Weak)
-use std::rc::{Rc, Weak};
-
-struct Node {
-    data: String,
-    next: Option<Weak<RefCell<Node>>>,  // ✅ Use Weak to break cycle
-}
-
-fn create_no_cycle() {
-    let node1 = Rc::new(RefCell::new(Node {
-        data: "Node 1".to_string(),
-        next: None,
-    }));
-
-    let node2 = Rc::new(RefCell::new(Node {
-        data: "Node 2".to_string(),
-        next: Some(Rc::downgrade(&node1)),  // ✅ Weak reference
-    }));
-
-    node1.borrow_mut().next = Some(Rc::downgrade(&node2));
-}  // Properly cleaned up
-```
-
-### Test Case
-```rust
-// tests/memory_test.rs
-#[test]
-fn test_no_memory_leak() {
-    let initial_allocs = ALLOCATOR.allocated();
-
-    {
-        create_no_cycle();
-    }  // Scope ends, should free memory
-
-    let final_allocs = ALLOCATOR.allocated();
-    assert_eq!(initial_allocs, final_allocs, "Memory leak detected");
-}
-```
-
----
-
-## Race Condition Detection (Go)
-
-### Problem
-Intermittent test failures; data corruption in concurrent writes.
-
-### Symptoms
-```
-panic: runtime error: invalid memory address or nil pointer dereference
-[signal SIGSEGV: segmentation violation]
-```
-
-### Investigation Steps
-
-#### 1. Enable Race Detector
-```bash
-# Run tests with race detector
-go test -race ./...
-
-# Output:
-==================
-WARNING: DATA RACE
-Write at 0x00c0001a0180 by goroutine 7:
-  main.updateCounter()
-      /app/counter.go:23 +0x45
-
-Previous read at 0x00c0001a0180 by goroutine 6:
-  main.getCounter()
-      /app/counter.go:15 +0x38
-
-Goroutine 7 (running) created at:
-  main.main()
-      /app/main.go:42 +0x120
-==================
-```
-
-#### 2. Debug with Delve + Race Detector
-```bash
-# Build with race detection
-go build -race -o myapp
-
-# Debug
-dlv exec ./myapp
-
-(dlv) break counter.go:23
-(dlv) continue
-(dlv) print counter
-(dlv) goroutines
-```
-
-### Root Cause
-Unsynchronized access to shared counter.
-
-```go
-// Before (race condition)
-var counter int
-
-func updateCounter() {
-    counter++  // ❌ Not atomic
-}
-
-func getCounter() int {
-    return counter  // ❌ Unsynchronized read
-}
-
-// After (fixed with mutex)
-import "sync"
-
-var (
-    counter int
-    mu      sync.RWMutex
-)
-
-func updateCounter() {
-    mu.Lock()
-    defer mu.Unlock()
-    counter++  // ✅ Protected
-}
-
-func getCounter() int {
-    mu.RLock()
-    defer mu.RUnlock()
-    return counter  // ✅ Protected
-}
-
-// Alternative: Use atomic operations
-import "sync/atomic"
-
-var counter int64
-
-func updateCounter() {
-    atomic.AddInt64(&counter, 1)  // ✅ Atomic
-}
-
-func getCounter() int64 {
-    return atomic.LoadInt64(&counter)  // ✅ Atomic
-}
-```
-
-### Test Case
-```go
-// counter_test.go
-func TestConcurrentCounterAccess(t *testing.T) {
-    counter = 0
-
-    var wg sync.WaitGroup
-    iterations := 1000
-    goroutines := 10
-
-    for i := 0; i < goroutines; i++ {
-        wg.Add(1)
-        go func() {
-            defer wg.Done()
-            for j := 0; j < iterations; j++ {
-                updateCounter()
-            }
-        }()
-    }
-
-    wg.Wait()
-    expected := iterations * goroutines
-    assert.Equal(t, int64(expected), getCounter(), "Counter mismatch indicates race condition")
-}
-```
-
----
-
-## Null Pointer Debugging (TypeScript)
-
-### Problem
-Production error: `Cannot read properties of undefined (reading 'name')`.
-
-### Stack Trace
+**에러 메시지**:
 ```
 TypeError: Cannot read properties of undefined (reading 'name')
-    at getUserName (user.service.ts:15:23)
-    at processUser (user.controller.ts:42:10)
-    at async Router.handle (express.js:234:15)
+    at processUser (app.ts:42:28)
+    at Array.map (<anonymous>)
+    at getUserNames (app.ts:35:18)
+    at main (app.ts:10:5)
 ```
 
-### Investigation Steps
+**분석**:
+1. **에러 위치**: `app.ts:42` (`user.name` 접근)
+2. **에러 타입**: `TypeError` — `user`가 `undefined`
+3. **실행 경로**: `main()` → `getUserNames()` → `map()` → `processUser()`
+4. **근본 원인**: 배열에 `undefined` 요소가 포함됨
 
-#### 1. Add Source Maps for Debugging
-```json
-// tsconfig.json
-{
-  "compilerOptions": {
-    "sourceMap": true,
-    "inlineSourceMap": false,
-    "outDir": "./dist",
-    "rootDir": "./src"
+**코드**:
+```typescript
+// app.ts
+function processUser(user: User) {
+  return user.name.toUpperCase();  // 여기서 에러!
+}
+
+function getUserNames(users: User[]): string[] {
+  return users.map(processUser);
+}
+
+const users = [
+  { id: 1, name: 'Alice' },
+  undefined,  // 문제 발견!
+  { id: 2, name: 'Bob' },
+];
+```
+
+**디버깅 단계**:
+```typescript
+// 1. 브레이크포인트 설정 (debugger 키워드)
+function processUser(user: User) {
+  debugger;  // 여기서 중단
+  return user.name.toUpperCase();
+}
+
+// Chrome DevTools에서:
+// user: undefined
+```
+
+**해결 방법**:
+```typescript
+// Option 1: 타입 가드
+function processUser(user: User | undefined): string {
+  if (!user) {
+    return 'Unknown';
+  }
+  return user.name.toUpperCase();
+}
+
+// Option 2: Optional 체이닝
+function processUser(user?: User): string {
+  return user?.name?.toUpperCase() ?? 'Unknown';
+}
+
+// Option 3: 필터링
+function getUserNames(users: (User | undefined)[]): string[] {
+  return users
+    .filter((user): user is User => user !== undefined)
+    .map(user => user.name.toUpperCase());
+}
+```
+
+---
+
+### 예제 2: Promise rejection
+
+**에러 메시지**:
+```
+UnhandledPromiseRejectionWarning: Error: Network request failed
+    at fetchData (api.ts:15:11)
+    at async processRequest (handler.ts:28:18)
+    at async main (app.ts:12:3)
+```
+
+**분석**:
+1. **에러 위치**: `api.ts:15`
+2. **에러 타입**: `UnhandledPromiseRejectionWarning` — Promise 거부가 처리되지 않음
+3. **근본 원인**: `fetchData()`에서 발생한 에러가 catch되지 않음
+
+**코드**:
+```typescript
+// api.ts
+async function fetchData(url: string): Promise<Data> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error('Network request failed');  // 여기서 에러 발생!
+  }
+  return response.json();
+}
+
+// handler.ts
+async function processRequest(url: string) {
+  const data = await fetchData(url);  // 에러 처리 없음!
+  return data;
+}
+```
+
+**디버깅 단계**:
+```typescript
+// 1. 브레이크포인트 설정
+async function fetchData(url: string): Promise<Data> {
+  debugger;
+  const response = await fetch(url);
+  debugger;  // response 확인
+  // response.ok: false
+  // response.status: 404
+  if (!response.ok) {
+    throw new Error('Network request failed');
+  }
+  return response.json();
+}
+```
+
+**해결 방법**:
+```typescript
+// Option 1: try-catch
+async function processRequest(url: string): Promise<Data | null> {
+  try {
+    const data = await fetchData(url);
+    return data;
+  } catch (error) {
+    console.error('Failed to fetch data:', error);
+    return null;
+  }
+}
+
+// Option 2: Result 타입
+type Result<T> = { success: true; data: T } | { success: false; error: Error };
+
+async function fetchData(url: string): Promise<Result<Data>> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      return { success: false, error: new Error('Network request failed') };
+    }
+    const data = await response.json();
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: error as Error };
   }
 }
 ```
 
-#### 2. Debug with Node Inspector
+---
+
+## Java 디버깅 예제
+
+### 예제 1: NullPointerException
+
+**에러 메시지**:
+```
+Exception in thread "main" java.lang.NullPointerException: Cannot invoke "User.getName()" because "user" is null
+    at com.example.UserService.processUser(UserService.java:42)
+    at com.example.UserService.processAllUsers(UserService.java:28)
+    at com.example.Main.main(Main.java:15)
+```
+
+**분석**:
+1. **에러 위치**: `UserService.java:42` (`user.getName()` 호출)
+2. **에러 타입**: `NullPointerException` — `user`가 `null`
+3. **실행 경로**: `Main.main()` → `processAllUsers()` → `processUser()`
+4. **근본 원인**: `user` 객체가 `null`인 채로 메서드 호출 시도
+
+**코드**:
+```java
+// UserService.java
+public class UserService {
+    public void processUser(User user) {
+        String name = user.getName();  // 여기서 NPE 발생!
+        System.out.println("Processing: " + name);
+    }
+    
+    public void processAllUsers(List<User> users) {
+        for (User user : users) {
+            processUser(user);
+        }
+    }
+}
+```
+
+**디버깅 단계**:
+```java
+// 1. 브레이크포인트 설정 (IntelliJ/Eclipse)
+// UserService.java:42에 브레이크포인트
+
+// 2. 변수 확인
+// user: null
+
+// 3. 호출 스택 확인
+// processUser() ← processAllUsers() ← main()
+
+// 4. users 리스트 확인
+// users: [User@123, null, User@456]  // null 발견!
+```
+
+**해결 방법**:
+```java
+// Option 1: Null 체크
+public void processUser(User user) {
+    if (user == null) {
+        System.out.println("User is null");
+        return;
+    }
+    String name = user.getName();
+    System.out.println("Processing: " + name);
+}
+
+// Option 2: Optional<T> 사용 (Java 8+)
+public void processUser(Optional<User> userOpt) {
+    userOpt.ifPresent(user -> {
+        String name = user.getName();
+        System.out.println("Processing: " + name);
+    });
+}
+
+public void processAllUsers(List<User> users) {
+    users.stream()
+        .filter(Objects::nonNull)  // null 필터링
+        .forEach(this::processUser);
+}
+
+// Option 3: @NonNull 어노테이션 (Lombok, Checker Framework)
+import lombok.NonNull;
+
+public void processUser(@NonNull User user) {
+    String name = user.getName();
+    System.out.println("Processing: " + name);
+}
+```
+
+---
+
+### 예제 2: ClassNotFoundException
+
+**에러 메시지**:
+```
+Exception in thread "main" java.lang.ClassNotFoundException: com.example.database.DatabaseDriver
+    at java.base/java.net.URLClassLoader.findClass(URLClassLoader.java:445)
+    at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:587)
+    at java.base/java.lang.Class.forName0(Native Method)
+    at java.base/java.lang.Class.forName(Class.java:467)
+    at com.example.Main.main(Main.java:12)
+```
+
+**분석**:
+1. **에러 위치**: `Main.java:12` (`Class.forName()` 호출)
+2. **에러 타입**: `ClassNotFoundException` — 클래스를 찾을 수 없음
+3. **근본 원인**: JDBC 드라이버 JAR이 classpath에 없음
+
+**디버깅 단계**:
 ```bash
-# Run with inspector
-node --inspect -r ts-node/register src/app.ts
+# 1. Classpath 확인
+echo $CLASSPATH
 
-# Or debug tests
-node --inspect-brk node_modules/.bin/jest --runInBand
+# 2. JAR 파일 확인
+ls lib/
+# mysql-connector-java-8.0.33.jar (있음)
+
+# 3. 컴파일 및 실행 명령 확인
+javac -cp ".:lib/*" Main.java
+java -cp ".:lib/*" Main  # classpath에 lib/* 포함 필요!
 ```
 
-#### 3. VSCode Debugging
-```json
-{
-  "version": "0.2.0",
-  "configurations": [
+**해결 방법**:
+```bash
+# Option 1: Classpath 명시
+java -cp ".:lib/*" com.example.Main
+
+# Option 2: Maven/Gradle 사용
+# pom.xml (Maven)
+<dependency>
+    <groupId>mysql</groupId>
+    <artifactId>mysql-connector-java</artifactId>
+    <version>8.0.33</version>
+</dependency>
+
+# build.gradle (Gradle)
+dependencies {
+    implementation 'mysql:mysql-connector-java:8.0.33'
+}
+
+# Option 3: Manifest에 Class-Path 추가
+# MANIFEST.MF
+Class-Path: lib/mysql-connector-java-8.0.33.jar
+```
+
+---
+
+## Go 디버깅 예제
+
+### 예제 1: nil pointer dereference
+
+**에러 메시지**:
+```
+panic: runtime error: invalid memory address or nil pointer dereference
+[signal SIGSEGV: segmentation violation code=0x1 addr=0x0 pc=0x10a4f20]
+
+goroutine 1 [running]:
+main.processUser(...)
+    /Users/dev/project/main.go:42
+main.main()
+    /Users/dev/project/main.go:15 +0x120
+```
+
+**분석**:
+1. **에러 위치**: `main.go:42` (`processUser` 함수)
+2. **에러 타입**: `panic: nil pointer dereference`
+3. **근본 원인**: `nil` 포인터에 접근 시도
+
+**코드**:
+```go
+// main.go
+type User struct {
+    Name string
+    Age  int
+}
+
+func processUser(user *User) {
+    fmt.Printf("Name: %s\n", user.Name)  // 여기서 panic!
+}
+
+func main() {
+    var user *User  // nil 포인터
+    processUser(user)
+}
+```
+
+**디버깅 단계**:
+```bash
+# 1. Delve로 디버깅
+dlv debug main.go
+(dlv) break main.go:42
+(dlv) continue
+
+# 2. 변수 확인
+(dlv) print user
+nil
+
+# 3. 호출 스택 확인
+(dlv) stack
+0  0x00000000010a4f20 in main.processUser
+   at main.go:42
+1  0x00000000010a5040 in main.main
+   at main.go:15
+```
+
+**해결 방법**:
+```go
+// Option 1: Nil 체크
+func processUser(user *User) {
+    if user == nil {
+        fmt.Println("User is nil")
+        return
+    }
+    fmt.Printf("Name: %s\n", user.Name)
+}
+
+// Option 2: 값 타입 사용
+func processUser(user User) {  // 포인터 아님
+    fmt.Printf("Name: %s\n", user.Name)
+}
+
+// Option 3: 생성자 패턴
+func NewUser(name string, age int) *User {
+    return &User{Name: name, Age: age}
+}
+
+func main() {
+    user := NewUser("Alice", 30)  // 항상 non-nil
+    processUser(user)
+}
+```
+
+---
+
+### 예제 2: Goroutine leak
+
+**문제 설명**: 고루틴이 종료되지 않고 계속 실행되어 메모리 누수 발생
+
+**코드**:
+```go
+// main.go
+func worker(ch chan int) {
+    for {
+        val := <-ch  // 채널이 닫히지 않으면 영원히 대기
+        fmt.Println(val)
+    }
+}
+
+func main() {
+    ch := make(chan int)
+    go worker(ch)
+    
+    ch <- 1
+    ch <- 2
+    // ch를 닫지 않고 종료 → goroutine leak!
+}
+```
+
+**디버깅 단계**:
+```bash
+# 1. pprof로 고루틴 확인
+go tool pprof http://localhost:6060/debug/pprof/goroutine
+
+# 2. 고루틴 수 확인
+(pprof) top
+Showing nodes accounting for 1000 goroutines
+      flat  flat%   sum%        cum   cum%
+      1000 100%   100%       1000 100%  main.worker
+
+# 3. Delve로 고루틴 확인
+dlv debug main.go
+(dlv) goroutines
+[1000 goroutines]
+
+(dlv) goroutine 5
+Goroutine 5 - User: main.worker
+   main.go:10 (0x10a4f20) (Waiting)
+```
+
+**해결 방법**:
+```go
+// Option 1: 채널 닫기
+func main() {
+    ch := make(chan int)
+    go worker(ch)
+    
+    ch <- 1
+    ch <- 2
+    close(ch)  // 채널 닫기
+    time.Sleep(time.Second)  // worker가 종료될 시간
+}
+
+func worker(ch chan int) {
+    for val := range ch {  // 채널이 닫히면 종료
+        fmt.Println(val)
+    }
+}
+
+// Option 2: Context 사용
+func worker(ctx context.Context, ch chan int) {
+    for {
+        select {
+        case val := <-ch:
+            fmt.Println(val)
+        case <-ctx.Done():
+            return  // Context 취소 시 종료
+        }
+    }
+}
+
+func main() {
+    ctx, cancel := context.WithCancel(context.Background())
+    defer cancel()
+    
+    ch := make(chan int)
+    go worker(ctx, ch)
+    
+    ch <- 1
+    ch <- 2
+    cancel()  // 고루틴 종료
+    time.Sleep(time.Second)
+}
+```
+
+---
+
+## Rust 디버깅 예제
+
+### 예제 1: Borrow checker 에러
+
+**에러 메시지**:
+```
+error[E0502]: cannot borrow `data` as mutable because it is also borrowed as immutable
+  --> src/main.rs:8:5
+   |
+6  |     let first = &data[0];
+   |                 -------- immutable borrow occurs here
+7  |
+8  |     data.push(4);
+   |     ^^^^^^^^^^^^ mutable borrow occurs here
+9  |
+10 |     println!("First: {}", first);
+   |                           ----- immutable borrow later used here
+```
+
+**분석**:
+1. **에러 위치**: `main.rs:8` (`data.push(4)`)
+2. **에러 타입**: Borrow checker 위반 — 불변 참조가 있는데 가변 참조 시도
+3. **근본 원인**: `first`가 `data`의 불변 참조를 보유한 상태에서 `data`를 변경하려 함
+
+**코드**:
+```rust
+// main.rs
+fn main() {
+    let mut data = vec![1, 2, 3];
+    let first = &data[0];  // 불변 참조
+    
+    data.push(4);  // 에러! 가변 참조 시도
+    
+    println!("First: {}", first);
+}
+```
+
+**디버깅 단계**:
+```bash
+# 1. rust-analyzer로 에러 확인 (VSCode)
+# 에러 메시지에 lifetime 정보 포함
+
+# 2. 컴파일러 설명 확인
+cargo build --explain E0502
+```
+
+**해결 방법**:
+```rust
+// Option 1: 참조 사용 범위 조정
+fn main() {
+    let mut data = vec![1, 2, 3];
+    let first = data[0];  // 값 복사
+    
+    data.push(4);  // OK
+    
+    println!("First: {}", first);
+}
+
+// Option 2: 참조를 먼저 해제
+fn main() {
+    let mut data = vec![1, 2, 3];
     {
-      "type": "node",
-      "request": "launch",
-      "name": "TypeScript: Debug",
-      "runtimeArgs": ["-r", "ts-node/register"],
-      "args": ["${file}"],
-      "cwd": "${workspaceFolder}",
-      "sourceMaps": true
+        let first = &data[0];
+        println!("First: {}", first);
+    }  // first가 여기서 드롭됨
+    
+    data.push(4);  // OK
+}
+
+// Option 3: Clone
+fn main() {
+    let mut data = vec![1, 2, 3];
+    let first = data.get(0).cloned();  // Option<i32>
+    
+    data.push(4);  // OK
+    
+    if let Some(first) = first {
+        println!("First: {}", first);
     }
-  ]
 }
-```
-
-#### 4. Set Breakpoint and Inspect
-```typescript
-// user.service.ts
-export function getUserName(user: User): string {
-    // Set breakpoint here
-    debugger;
-    return user.name;  // user is undefined!
-}
-
-// In debugger console:
-// > user
-// undefined
-// > user?.name
-// undefined
-```
-
-### Root Cause
-Async data not awaited; function called before user fetched.
-
-```typescript
-// Before (bug)
-async function processUser(userId: string) {
-    const user = fetchUser(userId);  // ❌ Missing await
-    const name = getUserName(user);  // user is Promise<User>, not User
-    console.log(name);
-}
-
-// After (fixed)
-async function processUser(userId: string) {
-    const user = await fetchUser(userId);  // ✅ Await promise
-    if (!user) {
-        throw new Error(`User ${userId} not found`);
-    }
-    const name = getUserName(user);
-    console.log(name);
-}
-
-// Better: Use optional chaining
-function getUserName(user: User | undefined): string {
-    return user?.name ?? 'Unknown';  // ✅ Safe access
-}
-```
-
-### Test Case
-```typescript
-// user.service.test.ts
-describe('getUserName', () => {
-    it('should handle undefined user gracefully', () => {
-        const result = getUserName(undefined);
-        expect(result).toBe('Unknown');
-    });
-
-    it('should return user name when defined', () => {
-        const user = { id: '123', name: 'Alice' };
-        const result = getUserName(user);
-        expect(result).toBe('Alice');
-    });
-});
 ```
 
 ---
 
-## Database Query Performance (SQL)
+### 예제 2: Panic in thread
 
-### Problem
-Dashboard loads slowly; query taking 5+ seconds.
-
-### Investigation Steps
-
-#### 1. Enable Query Logging
-```sql
--- PostgreSQL: Enable slow query log
-ALTER SYSTEM SET log_min_duration_statement = 1000;  -- 1 second
-SELECT pg_reload_conf();
-
--- Check logs
-SELECT query, calls, total_time, mean_time
-FROM pg_stat_statements
-ORDER BY total_time DESC
-LIMIT 10;
+**에러 메시지**:
+```
+thread 'main' panicked at 'index out of bounds: the len is 3 but the index is 5', src/main.rs:5:23
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 ```
 
-#### 2. Analyze Query with EXPLAIN
-```sql
--- Original slow query
-EXPLAIN ANALYZE
-SELECT u.name, COUNT(o.id) as order_count
-FROM users u
-LEFT JOIN orders o ON u.id = o.user_id
-WHERE u.created_at > '2024-01-01'
-GROUP BY u.id, u.name
-ORDER BY order_count DESC;
+**분석**:
+1. **에러 위치**: `main.rs:5` (인덱스 접근)
+2. **에러 타입**: `panic: index out of bounds`
+3. **근본 원인**: 벡터 범위를 벗어난 인덱스 접근
 
--- Output:
-Sort  (cost=15234.56..15235.56 rows=400 width=16) (actual time=5234.123..5234.234 rows=1000 loops=1)
-  ->  HashAggregate  (cost=15210.00..15214.00 rows=400 width=16) (actual time=5233.456..5233.789 rows=1000 loops=1)
-        ->  Hash Left Join  (cost=1234.00..12345.00 rows=286500 width=8) (actual time=123.456..4567.890 rows=500000 loops=1)
-              ->  Seq Scan on users u  (cost=0.00..1245.00 rows=50000 width=8) (actual time=0.012..234.567 rows=50000 loops=1)
-                    Filter: (created_at > '2024-01-01'::date)
-              ->  Hash  (cost=800.00..800.00 rows=30000 width=8) (actual time=123.444..123.444 rows=30000 loops=1)
-                    ->  Seq Scan on orders o  (cost=0.00..800.00 rows=30000 width=8) (actual time=0.010..89.123 rows=30000 loops=1)
-Planning Time: 1.234 ms
-Execution Time: 5234.567 ms  ← SLOW!
+**코드**:
+```rust
+// main.rs
+fn main() {
+    let data = vec![1, 2, 3];
+    let value = data[5];  // panic!
+    println!("Value: {}", value);
+}
 ```
 
-#### 3. Identify Missing Indexes
-```sql
--- Check existing indexes
-SELECT tablename, indexname, indexdef
-FROM pg_indexes
-WHERE tablename IN ('users', 'orders');
+**디버깅 단계**:
+```bash
+# 1. RUST_BACKTRACE로 전체 스택 트레이스 확인
+RUST_BACKTRACE=1 cargo run
+# 또는
+RUST_BACKTRACE=full cargo run
 
--- Missing:
--- 1. Index on users.created_at
--- 2. Index on orders.user_id
+# 2. rust-lldb로 디버깅
+rust-lldb target/debug/myapp
+(lldb) breakpoint set --file main.rs --line 5
+(lldb) run
+(lldb) frame variable
+(Vec<i32>) data = vec![1, 2, 3]
+(lldb) print data.len()
+3
 ```
 
-#### 4. Add Indexes and Re-test
-```sql
--- Add indexes
-CREATE INDEX idx_users_created_at ON users(created_at);
-CREATE INDEX idx_orders_user_id ON orders(user_id);
+**해결 방법**:
+```rust
+// Option 1: get() 메서드 사용
+fn main() {
+    let data = vec![1, 2, 3];
+    match data.get(5) {
+        Some(value) => println!("Value: {}", value),
+        None => println!("Index out of bounds"),
+    }
+}
 
--- Re-run EXPLAIN ANALYZE
-EXPLAIN ANALYZE
-SELECT u.name, COUNT(o.id) as order_count
-FROM users u
-LEFT JOIN orders o ON u.id = o.user_id
-WHERE u.created_at > '2024-01-01'
-GROUP BY u.id, u.name
-ORDER BY order_count DESC;
+// Option 2: 범위 체크
+fn main() {
+    let data = vec![1, 2, 3];
+    let index = 5;
+    
+    if index < data.len() {
+        let value = data[index];
+        println!("Value: {}", value);
+    } else {
+        println!("Index out of bounds");
+    }
+}
 
--- Output (improved):
-Sort  (cost=234.56..235.56 rows=400 width=16) (actual time=45.123..45.234 rows=1000 loops=1)
-  ->  HashAggregate  (cost=210.00..214.00 rows=400 width=16) (actual time=44.456..44.789 rows=1000 loops=1)
-        ->  Hash Left Join  (cost=123.00..200.00 rows=5000 width=8) (actual time=12.345..40.567 rows=5000 loops=1)
-              ->  Index Scan using idx_users_created_at on users u  (cost=0.42..100.00 rows=5000 width=8) (actual time=0.023..15.234 rows=5000 loops=1)
-                    Index Cond: (created_at > '2024-01-01'::date)
-              ->  Hash  (cost=80.00..80.00 rows=3000 width=8) (actual time=12.321..12.321 rows=3000 loops=1)
-                    ->  Index Scan using idx_orders_user_id on orders o  (cost=0.42..80.00 rows=3000 width=8) (actual time=0.012..8.123 rows=3000 loops=1)
-Execution Time: 45.567 ms  ← 100x FASTER!
+// Option 3: unwrap_or 사용
+fn main() {
+    let data = vec![1, 2, 3];
+    let value = data.get(5).unwrap_or(&0);  // 기본값 0
+    println!("Value: {}", value);
+}
 ```
 
-### Root Cause
-Missing indexes on frequently queried columns (`users.created_at`, `orders.user_id`).
+---
 
-### Test Case
+## 컨테이너 디버깅 시나리오
+
+### 시나리오 1: 컨테이너가 즉시 종료됨
+
+**문제**:
+```bash
+$ docker ps -a
+CONTAINER ID   IMAGE     STATUS                     
+abc123         myapp     Exited (1) 2 seconds ago
+```
+
+**디버깅 단계**:
+```bash
+# 1. 로그 확인
+docker logs abc123
+# Error: Database connection failed
+
+# 2. 컨테이너 재시작하지 않고 셸 접속
+docker run --rm -it --entrypoint /bin/sh myapp
+
+# 3. 환경 변수 확인
+env | grep DB
+# DB_HOST=localhost  # 문제 발견! 컨테이너 내에서는 localhost가 아님
+
+# 4. 네트워크 확인
+ping db-host
+# ping: db-host: Name or service not known
+```
+
+**해결 방법**:
+```bash
+# Option 1: 환경 변수 수정
+docker run -e DB_HOST=db-container myapp
+
+# Option 2: Docker Compose로 네트워크 설정
+# docker-compose.yml
+version: '3'
+services:
+  app:
+    image: myapp
+    environment:
+      DB_HOST: db
+    depends_on:
+      - db
+  db:
+    image: postgres:15
+```
+
+---
+
+### 시나리오 2: Kubernetes Pod CrashLoopBackOff
+
+**문제**:
+```bash
+$ kubectl get pods
+NAME                READY   STATUS             RESTARTS
+myapp-pod-abc123    0/1     CrashLoopBackOff   5
+```
+
+**디버깅 단계**:
+```bash
+# 1. Pod 설명 확인
+kubectl describe pod myapp-pod-abc123
+# Events:
+#   Warning  BackOff  kubelet  Back-off restarting failed container
+
+# 2. 로그 확인
+kubectl logs myapp-pod-abc123
+# panic: open /config/app.yaml: no such file or directory
+
+# 3. 이전 컨테이너 로그 확인
+kubectl logs myapp-pod-abc123 --previous
+
+# 4. ConfigMap 확인
+kubectl get configmap myapp-config -o yaml
+# (ConfigMap이 없거나 잘못 마운트됨)
+
+# 5. 볼륨 마운트 확인
+kubectl get pod myapp-pod-abc123 -o yaml | grep -A 10 volumeMounts
+```
+
+**해결 방법**:
+```yaml
+# 1. ConfigMap 생성
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: myapp-config
+data:
+  app.yaml: |
+    database:
+      host: db-service
+      port: 5432
+
+# 2. Pod에 ConfigMap 마운트
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp-pod
+spec:
+  containers:
+  - name: myapp
+    image: myapp:latest
+    volumeMounts:
+    - name: config
+      mountPath: /config
+  volumes:
+  - name: config
+    configMap:
+      name: myapp-config
+```
+
+---
+
+## 분산 시스템 디버깅 시나리오
+
+### 시나리오: 마이크로서비스 간 타임아웃
+
+**문제**: Service A → Service B 호출 시 타임아웃 발생
+
+**디버깅 단계**:
+
+**1. OpenTelemetry로 트레이스 수집**:
 ```python
-# tests/test_query_performance.py
-import pytest
-import time
+# Service A
+from opentelemetry import trace
 
-def test_dashboard_query_performance(db):
-    """Ensure dashboard query completes within 100ms."""
-    query = """
-        SELECT u.name, COUNT(o.id) as order_count
-        FROM users u
-        LEFT JOIN orders o ON u.id = o.user_id
-        WHERE u.created_at > '2024-01-01'
-        GROUP BY u.id, u.name
-        ORDER BY order_count DESC
-    """
+tracer = trace.get_tracer(__name__)
 
-    start = time.time()
-    result = db.execute(query)
-    duration = time.time() - start
+with tracer.start_as_current_span("call-service-b") as span:
+    response = requests.get("http://service-b/api/data", timeout=5)
+    span.set_attribute("http.status_code", response.status_code)
+```
 
-    assert duration < 0.1, f"Query took {duration}s, expected < 0.1s"
-    assert len(result) > 0, "Query returned no results"
+**2. Jaeger UI에서 트레이스 분석**:
+```
+Trace: request-123
+├─ Service A: call-service-b (50ms)
+│  └─ HTTP GET http://service-b/api/data
+│     ├─ DNS lookup: 10ms
+│     ├─ TCP connect: 15ms
+│     └─ Waiting for response: 5000ms ← 타임아웃!
+└─ Service B: process-request (4950ms)
+   ├─ Database query: 4900ms ← 병목!
+   └─ Response serialization: 50ms
+```
+
+**3. 근본 원인 식별**:
+- Service B의 데이터베이스 쿼리가 4.9초 소요
+- Service A의 타임아웃이 5초로 설정되어 있어 경합 상태 발생
+
+**해결 방법**:
+```python
+# Option 1: Service B의 쿼리 최적화
+# 인덱스 추가
+CREATE INDEX idx_user_email ON users(email);
+
+# Option 2: Service A의 타임아웃 증가
+response = requests.get("http://service-b/api/data", timeout=10)
+
+# Option 3: 캐싱 추가
+from redis import Redis
+
+cache = Redis(host='redis', port=6379)
+
+def get_data():
+    cached = cache.get('data')
+    if cached:
+        return cached
+    
+    data = expensive_database_query()
+    cache.setex('data', 300, data)  # 5분 캐시
+    return data
 ```
 
 ---
 
-## Summary
+## 성능 디버깅 시나리오
 
-These real-world examples demonstrate:
-1. **Async debugging** with Python debugpy and asyncio inspection
-2. **Goroutine leak detection** with Delve and pprof
-3. **Distributed tracing** with OpenTelemetry across microservices
-4. **Kubernetes debugging** with ephemeral containers and memory profiling
-5. **Rust memory leaks** using Valgrind and Weak references
-6. **Go race conditions** with built-in race detector
-7. **TypeScript null pointers** with optional chaining and type guards
-8. **SQL performance** with EXPLAIN ANALYZE and index optimization
+### 시나리오: 느린 API 응답
 
-Each example follows the **Reproduce → Isolate → Investigate → Fix → Verify** workflow and includes regression tests to prevent recurrence.
+**문제**: API 엔드포인트 응답 시간이 3초 이상
+
+**디버깅 단계**:
+
+**1. py-spy로 CPU 프로파일링** (Python):
+```bash
+py-spy record -o profile.svg --pid <pid>
+```
+
+**2. Flamegraph 분석**:
+```
+main() [100%]
+├─ process_request() [95%]
+│  ├─ load_users() [80%]  ← 병목!
+│  │  └─ database.query() [78%]
+│  └─ serialize_response() [15%]
+└─ logging() [5%]
+```
+
+**3. 데이터베이스 쿼리 분석**:
+```sql
+EXPLAIN ANALYZE SELECT * FROM users WHERE status = 'active';
+-- Seq Scan on users (cost=0.00..1234.56)
+-- 인덱스 없음!
+```
+
+**4. 해결 방법**:
+```sql
+-- 인덱스 추가
+CREATE INDEX idx_users_status ON users(status);
+
+-- 쿼리 재실행
+EXPLAIN ANALYZE SELECT * FROM users WHERE status = 'active';
+-- Index Scan using idx_users_status (cost=0.28..45.67)
+-- 응답 시간: 3초 → 50ms
+```
+
+---
+
+## 요약: 디버깅 체크리스트
+
+### 1. 재현 (Reproduce)
+- [ ] 최소 재현 예제 (MRE) 작성
+- [ ] 일관된 재현 단계 문서화
+- [ ] 환경 정보 기록 (OS, 언어 버전, 의존성)
+
+### 2. 격리 (Isolate)
+- [ ] 이진 탐색으로 문제 범위 좁히기
+- [ ] 최근 변경사항 확인 (git diff, git log)
+- [ ] 입력 데이터 및 엣지 케이스 검증
+
+### 3. 조사 (Investigate)
+- [ ] 스택 트레이스를 아래에서 위로 읽기
+- [ ] 주요 결정 지점에 로깅 추가
+- [ ] 에러 위치 이전에 브레이크포인트 설정
+- [ ] 디버거에서 변수 상태 확인
+
+### 4. 가설 (Hypothesize)
+- [ ] 근본 원인에 대한 이론 수립
+- [ ] 가장 가능성 높은 원인 2-3개 식별
+- [ ] 가설 검증 실험 설계
+
+### 5. 수정 (Fix)
+- [ ] 최소한의 수정 먼저 구현
+- [ ] 회귀 테스트 추가 (RED → GREEN)
+- [ ] 필요시 리팩토링 (REFACTOR 단계)
+- [ ] 문서 업데이트
+
+### 6. 검증 (Verify)
+- [ ] 전체 테스트 스위트 실행
+- [ ] 엣지 케이스 명시적 테스트
+- [ ] 프로덕션 유사 환경에서 수정 검증
+- [ ] 재발 모니터링
+
+---
+
+**End of Examples** | moai-essentials-debug v2.1.0

@@ -1,6 +1,6 @@
 # MoAI-ADK (Agentic Development Kit)
 
-[English](README.md) | [한국어](README.ko.md) | [ไทย](README.th.md) | [日本語](README.ja.md) | [中文](README.zh.md) | [हिन्दी](README.hi.md)
+[한국어](README.ko.md) |[English](README.md) | [ไทย](README.th.md) | [日本語](README.ja.md) | [中文](README.zh.md) | [हिन्दी](README.hi.md)
 
 [![PyPI version](https://img.shields.io/pypi/v/moai-adk)](https://pypi.org/project/moai-adk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -21,16 +21,16 @@ If you're **new to MoAI-ADK**, start with "What is MoAI-ADK?".
 If you want to **get started quickly**, jump straight to "5-Minute Quick Start".
 If you've **already installed it and want to understand the concepts**, we recommend "5 Key Concepts".
 
-| Question                           | Jump To                                                      |
-| ---------------------------------- | ------------------------------------------------------------ |
-| First time here—what is it?        | [What is MoAI-ADK?](#what-is-moai-adk)                       |
-| How do I get started?              | [5-Minute Quick Start](#5-minute-quick-start)                |
-| What's the basic flow?             | [Core Workflow (0 → 3)](#core-workflow-0--3)                 |
-| What do Plan/Run/Sync commands do? | [Command Cheat Sheet](#command-cheat-sheet)                  |
-| What are SPEC, TDD, TAG?           | [5 Key Concepts](#5-key-concepts)                            |
-| Tell me about agents/Skills        | [Sub-agents & Skills Overview](#sub-agents--skills-overview) |
+| Question                           | Jump To                                                                  |
+| ---------------------------------- | ------------------------------------------------------------------------ |
+| First time here—what is it?        | [What is MoAI-ADK?](#what-is-moai-adk)                                   |
+| How do I get started?              | [5-Minute Quick Start](#5-minute-quick-start)                            |
+| What's the basic flow?             | [Core Workflow (0 → 3)](#core-workflow-0--3)                             |
+| What do Plan/Run/Sync commands do? | [Command Cheat Sheet](#command-cheat-sheet)                              |
+| What are SPEC, TDD, TAG?           | [5 Key Concepts](#5-key-concepts)                                        |
+| Tell me about agents/Skills        | [Sub-agents & Skills Overview](#sub-agents--skills-overview)             |
 | I want a 4-week hands-on project   | [Second Practice: Mini Kanban Board](#second-practice-mini-kanban-board) |
-| Want to dive deeper?               | [Additional Resources](#additional-resources)                |
+| Want to dive deeper?               | [Additional Resources](#additional-resources)                            |
 
 ---
 
@@ -151,7 +151,7 @@ uv tool install moai-adk
 
 # Verify installation
 moai-adk --version
-# Output: MoAI-ADK v0.4.11
+# Output: MoAI-ADK v1.0.0
 ```
 
 Once installed, you can use the `moai-adk` command anywhere.
@@ -159,12 +159,14 @@ Once installed, you can use the `moai-adk` command anywhere.
 ### Step 3: Create Project (about 1 minute)
 
 **To start a new project:**
+
 ```bash
 moai-adk init my-project
 cd my-project
 ```
 
 **To add to an existing project:**
+
 ```bash
 cd your-existing-project
 moai-adk init .
@@ -174,19 +176,68 @@ This one command automatically generates:
 
 ```
 my-project/
-├── .moai/                   # MoAI-ADK project configuration
-│   ├── config.json
-│   ├── project/             # Project information
-│   ├── specs/               # SPEC files
-│   └── reports/             # Analysis reports
-├── .claude/                 # Claude Code automation
-│   ├── agents/              # AI team
-│   ├── commands/            # /alfred commands
-│   ├── skills/              # Claude Skills
-│   └── settings.json
-├── src/                     # Implementation code
-├── tests/                   # Test code
-├── docs/                    # Auto-generated documentation
+├── .moai/                          # MoAI-ADK project configuration
+│   ├── config.json                 # Project settings (language, mode, owner)
+│   ├── project/                    # Project information
+│   │   ├── product.md              # Product vision and goals
+│   │   ├── structure.md            # Directory structure
+│   │   └── tech.md                 # Tech stack and architecture
+│   ├── memory/                     # Alfred's knowledge base (8 files)
+│   │   ├── CLAUDE-AGENTS-GUIDE.md  # Sub-agent collaboration guide
+│   │   ├── CLAUDE-RULES.md         # Decision rules and standards
+│   │   ├── CLAUDE-PRACTICES.md     # Workflow patterns and examples
+│   │   ├── CONFIG-SCHEMA.md        # .moai/config.json schema
+│   │   ├── DEVELOPMENT-GUIDE.md    # SPEC-First TDD workflow guide
+│   │   ├── GITFLOW-PROTECTION-POLICY.md  # Git branch protection
+│   │   ├── SKILLS-DESCRIPTION-POLICY.md  # Skills management policy
+│   │   └── SPEC-METADATA.md        # SPEC YAML frontmatter standard
+│   ├── specs/                      # SPEC files
+│   │   └── SPEC-XXX-001/           # Each SPEC in its own folder
+│   │       └── spec.md             # EARS-format specification
+│   └── reports/                    # Analysis reports
+├── .claude/                        # Claude Code automation
+│   ├── agents/                     # 12 Sub-agents
+│   │   └── alfred/
+│   │       ├── project-manager.md         # Project initialization
+│   │       ├── spec-builder.md            # SPEC authoring (EARS)
+│   │       ├── implementation-planner.md  # Architecture & TAG design
+│   │       ├── tdd-implementer.md         # RED-GREEN-REFACTOR loop
+│   │       ├── doc-syncer.md              # Documentation sync
+│   │       ├── quality-gate.md            # TRUST 5 verification
+│   │       ├── tag-agent.md               # TAG chain validation
+│   │       ├── trust-checker.md           # Code quality checks
+│   │       ├── debug-helper.md            # Error analysis & fixes
+│   │       ├── git-manager.md             # GitFlow & PR management
+│   │       ├── cc-manager.md              # Claude Code optimization
+│   │       └── skill-factory.md           # Skills creation & updates
+│   ├── commands/                   # 4 Alfred commands
+│   │   └── alfred/
+│   │       ├── 0-project.md        # Project initialization
+│   │       ├── 1-plan.md           # SPEC authoring
+│   │       ├── 2-run.md            # TDD implementation
+│   │       └── 3-sync.md           # Documentation sync
+│   ├── skills/                     # 58 Claude Skills
+│   │   ├── moai-foundation-*       # 6 Foundation tier
+│   │   ├── moai-essentials-*       # 4 Essentials tier
+│   │   ├── moai-alfred-*           # 7 Alfred tier
+│   │   ├── moai-domain-*           # 10 Domain tier
+│   │   ├── moai-lang-*             # 18 Language tier
+│   │   ├── moai-cc-*               # 8 Claude Code tier
+│   │   ├── moai-skill-factory      # 1 Skill Factory
+│   │   └── moai-spec-authoring     # 1 SPEC authoring
+│   ├── hooks/                      # Event-driven automation
+│   │   └── alfred/
+│   │       └── alfred_hooks.py     # 5 hooks (Session, PreTool, etc.)
+│   ├── output-styles/              # Response styles
+│   │   └── alfred/
+│   │       ├── agentic-coding.md       # Professional development mode
+│   │       ├── moai-adk-learning.md    # Educational explanations mode
+│   │       └── study-with-alfred.md    # Interactive learning mode
+│   └── settings.json               # Claude Code settings
+├── src/                            # Implementation code
+├── tests/                          # Test code
+├── docs/                           # Auto-generated documentation
+├── CLAUDE.md                       # Alfred's core directives
 └── README.md
 ```
 
@@ -221,6 +272,7 @@ After project initialization completes, write your first feature as a SPEC:
 ```
 
 Automatically generated:
+
 - `@SPEC:USER-001` - Unique ID assigned
 - `.moai/specs/SPEC-USER-001/spec.md` - Professional SPEC in EARS format
 - `feature/spec-user-001` - Git branch auto-created
@@ -234,6 +286,7 @@ Once SPEC is written, implement using TDD:
 ```
 
 This command handles:
+
 - 🔴 **RED**: Automatically write failing test (`@TEST:USER-001`)
 - 🟢 **GREEN**: Minimal implementation to pass test (`@CODE:USER-001`)
 - ♻️ **REFACTOR**: Improve code quality
@@ -247,6 +300,7 @@ Finally, auto-sync all documentation:
 ```
 
 Automatically generated/updated:
+
 - Living Document (API documentation)
 - README updates
 - CHANGELOG generation
@@ -282,16 +336,134 @@ cat README.md
 ```
 
 > 🔍 **Verification Command**: `moai-adk doctor` — Checks if Python/uv versions, `.moai/` structure, and agent/Skills configuration are all ready.
+>
 > ```bash
 > moai-adk doctor
 > ```
+>
 > All green checkmarks mean perfect readiness!
+
+---
+
+## Understanding CLAUDE.md (Alfred's Configuration Documents)
+
+MoAI-ADK's AI coordination is powered by **Alfred**, the MoAI SuperAgent. Alfred's behavior and decision-making are guided by a set of **internal configuration documents** in the `.claude/` directory.
+
+### 4-Document Structure
+
+When you run MoAI-ADK, Alfred loads configuration from **4 coordinated documents** (stored in your `.claude/` directory):
+
+| Document                   | Size  | Purpose                                                                                                          | When Alfred Reads It                                          |
+| -------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| **CLAUDE.md**              | ~7kb  | Alfred's identity, core directives, project metadata                                                             | At session start (bootstrap)                                  |
+| **CLAUDE-AGENTS-GUIDE.md** | ~14kb | Sub-agent roster (19 members), Skills distribution (55 packs), team structure                                    | When selecting which agent to invoke                          |
+| **CLAUDE-RULES.md**        | ~17kb | Decision-making rules (Skill invocation, Interactive Questions, TAG validation), commit templates, TRUST 5 gates | During each decision point (e.g., when to ask user questions) |
+| **CLAUDE-PRACTICES.md**    | ~8kb  | Practical workflows, context engineering (JIT retrieval), on-demand agent patterns, real examples                | During implementation phase                                   |
+
+### Why This Structure Matters
+
+**For Developers**: These documents define how Alfred interprets your requirements and orchestrates development. Understanding them helps you:
+
+- Write clearer specifications that Alfred understands better
+- Know which agent/Skill will be invoked for your request
+- Understand decision points where Alfred might ask you questions
+
+**For AI**: Progressive disclosure means:
+
+- **Session Start**: Load only CLAUDE.md (7kb) — minimal overhead
+- **On-Demand**: Load CLAUDE-AGENTS-GUIDE.md, CLAUDE-RULES.md, CLAUDE-PRACTICES.md only when needed
+- **Result**: Faster session boot, cleaner context, clear decision logic
+
+### Example: What Happens When You Run `/alfred:2-run`
+
+1. **CLAUDE.md** is already loaded → Alfred knows its role and project context
+2. Alfred checks **CLAUDE-RULES.md** → "Should I ask user questions? Which Skill applies here?"
+3. If implementing code: Alfred loads **CLAUDE-AGENTS-GUIDE.md** → "Which agent executes TDD?"
+4. During implementation: Alfred loads **CLAUDE-PRACTICES.md** → "How do I structure the RED → GREEN → REFACTOR workflow?"
+
+### Customizing Alfred's Behavior
+
+**Most developers never modify these files.** MoAI-ADK ships with optimized defaults.
+
+**If you need to customize Alfred's behavior** (rare), edit these documents in your project's `.claude/` directory:
+
+- Add new decision rules in **CLAUDE-RULES.md**
+- Adjust agent selection logic in **CLAUDE-AGENTS-GUIDE.md**
+- Document team-specific workflows in **CLAUDE-PRACTICES.md**
+
+> ⚠️ **Important**: These are internal configuration files for Alfred, not user guides. Keep them concise and decision-focused. Most teams don't modify them.
+
+---
+
+## Alfred's Memory Files (.moai/memory/)
+
+Alfred's knowledge base consists of **14 memory files** stored in `.moai/memory/`. These files define standards, rules, and guidelines that Alfred and Sub-agents reference during development.
+
+### Core Knowledge Base (14 Files)
+
+**Core Guides (3 files)**:
+
+| File                     | Size  | Purpose                                  | Who Uses It            |
+| ------------------------ | ----- | ---------------------------------------- | ---------------------- |
+| `CLAUDE-AGENTS-GUIDE.md` | ~15KB | Sub-agent selection & collaboration      | Alfred, Developers     |
+| `CLAUDE-PRACTICES.md`    | ~12KB | Real-world workflow examples & patterns  | Alfred, All Sub-agents |
+| `CLAUDE-RULES.md`        | ~19KB | Skill/TAG/Git rules & decision standards | Alfred, All Sub-agents |
+
+**Standards (4 files)**:
+
+| File                           | Size  | Purpose                               | Who Uses It                |
+| ------------------------------ | ----- | ------------------------------------- | -------------------------- |
+| `CONFIG-SCHEMA.md`             | ~12KB | `.moai/config.json` schema definition | project-manager            |
+| `DEVELOPMENT-GUIDE.md`         | ~14KB | SPEC-First TDD workflow guide         | All Sub-agents, Developers |
+| `GITFLOW-PROTECTION-POLICY.md` | ~6KB  | Git branch protection policy          | git-manager                |
+| `SPEC-METADATA.md`             | ~9KB  | SPEC YAML frontmatter standard (SSOT) | spec-builder, doc-syncer   |
+
+**Implementation Analysis (7 files)**: Internal reports and policy documents for Skills management, workflow improvements, and team integration analysis.
+
+### When Are Memory Files Loaded?
+
+**Session Start (Always)**:
+
+- `CLAUDE.md`
+- `CLAUDE-AGENTS-GUIDE.md`
+- `CLAUDE-RULES.md`
+
+**Just-In-Time (Command Execution)**:
+
+- `/alfred:1-plan` → `SPEC-METADATA.md`, `DEVELOPMENT-GUIDE.md`
+- `/alfred:2-run` → `DEVELOPMENT-GUIDE.md`
+- `/alfred:3-sync` → `DEVELOPMENT-GUIDE.md`
+
+**Conditional (On-Demand)**:
+
+- Config changes → `CONFIG-SCHEMA.md`
+- Git operations → `GITFLOW-PROTECTION-POLICY.md`
+- Skill creation → `SKILLS-DESCRIPTION-POLICY.md`
+
+### Why Memory Files Matter
+
+1. **Single Source of Truth (SSOT)**: Each standard is defined exactly once, eliminating conflicts
+2. **Context Efficiency**: JIT loading reduces initial session overhead (only 3 files at start)
+3. **Consistent Decisions**: All Sub-agents follow the same rules from `CLAUDE-RULES.md`
+4. **Traceability**: SPEC metadata, @TAG rules, and Git standards all documented
+
+### Usage Frequency
+
+| Priority  | Files                                              | Usage Pattern       |
+| --------- | -------------------------------------------------- | ------------------- |
+| Very High | `CLAUDE-RULES.md`                                  | Every decision      |
+| High      | `DEVELOPMENT-GUIDE.md`, `SPEC-METADATA.md`         | All commands        |
+| Medium    | `CLAUDE-AGENTS-GUIDE.md`, `CLAUDE-PRACTICES.md`    | Agent coordination  |
+| Low       | `CONFIG-SCHEMA.md`, `GITFLOW-PROTECTION-POLICY.md` | Specific operations |
+
+> 📚 **Complete Analysis**: See `.moai/memory/MEMORY-FILES-USAGE.md` for comprehensive documentation on who uses each file, when they're loaded, where they're referenced, and why they're needed.
 
 ---
 
 ## Keeping MoAI-ADK Up-to-Date
 
 ### Check Version
+
 ```bash
 # Check currently installed version
 moai-adk --version
@@ -303,6 +475,7 @@ uv tool list  # Check current version of moai-adk
 ### Upgrading
 
 #### Method 1: MoAI-ADK Built-in Update Command (Simplest)
+
 ```bash
 # MoAI-ADK's own update command - also updates agent/Skills templates
 moai-adk update
@@ -314,24 +487,28 @@ moai-adk init .
 #### Method 2: Upgrade with uv tool command
 
 **Upgrade specific tool (recommended)**
+
 ```bash
 # Upgrade only moai-adk to latest version
 uv tool upgrade moai-adk
 ```
 
 **Upgrade all installed tools**
+
 ```bash
 # Upgrade all uv tool installations to latest versions
 uv tool update
 ```
 
 **Install specific version**
+
 ```bash
 # Reinstall specific version (e.g., 0.4.2)
 uv tool install moai-adk==0.4.2
 ```
 
 ### Verify After Update
+
 ```bash
 # 1. Check installed version
 moai-adk --version
@@ -350,6 +527,7 @@ claude
 ```
 
 > 💡 **Tip**:
+>
 > - `moai-adk update`: Updates MoAI-ADK package version + syncs agent/Skills templates
 > - `moai-adk init .`: Applies new templates to existing project (keeps code safe)
 > - Running both commands completes a full update
@@ -373,22 +551,26 @@ graph TD
 ```
 
 ### 0. INIT — Project Preparation
+
 - Questions about project introduction, target, language, mode (locale)
 - Auto-generates `.moai/config.json`, `.moai/project/*` 5 documents
 - Language detection and recommended Skill Pack deployment (Foundation + Essentials + Domain/Language)
 - Template cleanup, initial Git/backup checks
 
 ### 1. PLAN — Agree on What to Build
+
 - Write SPEC with EARS template (includes `@SPEC:ID`)
 - Organize Plan Board, implementation ideas, risk factors
 - Auto-create branch/initial Draft PR in Team mode
 
 ### 2. RUN — Test-Driven Development (TDD)
+
 - Phase 1 `implementation-planner`: Design libraries, folders, TAG layout
 - Phase 2 `tdd-implementer`: RED (failing test) → GREEN (minimal implementation) → REFACTOR (cleanup)
 - quality-gate verifies TRUST 5 principles, coverage changes
 
 ### 3. SYNC — Documentation & PR Organization
+
 - Sync Living Document, README, CHANGELOG, etc.
 - Validate TAG chain and recover orphan TAGs
 - Generate Sync Report, transition Draft → Ready for Review, support `--auto-merge` option
@@ -429,6 +611,7 @@ MoAI-ADK consists of 5 key concepts. Each concept connects to the others, and to
 **How?** The `/alfred:1-plan` command automatically creates professional SPECs in EARS format.
 
 **What You Get**:
+
 - ✅ Clear requirements everyone on the team understands
 - ✅ SPEC-based test cases (what to test is already defined)
 - ✅ When requirements change, track all affected code with `@SPEC:ID` TAG
@@ -444,11 +627,13 @@ MoAI-ADK consists of 5 key concepts. Each concept connects to the others, and to
 **3-Step Cycle**:
 
 1. **🔴 RED**: Write a failing test first
+
    - Each SPEC requirement becomes a test case
    - Must fail because implementation doesn't exist yet
    - Git commit: `test(AUTH-001): add failing test`
 
 2. **🟢 GREEN**: Minimal implementation to pass the test
+
    - Make it pass using the simplest approach
    - Passing comes before perfection
    - Git commit: `feat(AUTH-001): implement minimal solution`
@@ -462,6 +647,7 @@ MoAI-ADK consists of 5 key concepts. Each concept connects to the others, and to
 **How?** The `/alfred:2-run` command automatically executes these 3 steps.
 
 **What You Get**:
+
 - ✅ Guaranteed 85%+ coverage (no code without tests)
 - ✅ Refactoring confidence (always verifiable with tests)
 - ✅ Clear Git history (trace RED → GREEN → REFACTOR process)
@@ -475,6 +661,7 @@ MoAI-ADK consists of 5 key concepts. Each concept connects to the others, and to
 **Core Idea**: Add `@TAG:ID` to all SPECs, tests, code, and documentation to create **one-to-one correspondence**.
 
 **TAG Chain**:
+
 ```
 @SPEC:AUTH-001 (requirements)
     ↓
@@ -486,11 +673,13 @@ MoAI-ADK consists of 5 key concepts. Each concept connects to the others, and to
 ```
 
 **TAG ID Rules**: `<Domain>-<3 digits>`
+
 - AUTH-001, AUTH-002, AUTH-003...
 - USER-001, USER-002...
 - Once assigned, **never change**
 
 **How to Use?** When requirements change:
+
 ```bash
 # Find everything related to AUTH-001
 rg '@TAG:AUTH-001' -n
@@ -502,6 +691,7 @@ rg '@TAG:AUTH-001' -n
 **How?** The `/alfred:3-sync` command validates TAG chains and detects orphan TAGs (TAGs without correspondence).
 
 **What You Get**:
+
 - ✅ Clear intent for all code (reading SPEC explains why this code exists)
 - ✅ Instantly identify all affected code during refactoring
 - ✅ Code remains understandable 3 months later (trace TAG → SPEC)
@@ -515,21 +705,25 @@ rg '@TAG:AUTH-001' -n
 **Core Idea**: All code must follow these 5 principles. `/alfred:3-sync` automatically verifies them.
 
 1. **🧪 Test First** (tests come first)
+
    - Test coverage ≥ 85%
    - All code protected by tests
    - Adding feature = adding test
 
 2. **📖 Readable** (easy-to-read code)
+
    - Functions ≤ 50 lines, files ≤ 300 lines
    - Variable names reveal intent
    - Pass linters (ESLint/ruff/clippy)
 
 3. **🎯 Unified** (consistent structure)
+
    - Maintain SPEC-based architecture
    - Same patterns repeat (reduces learning curve)
    - Type safety or runtime validation
 
 4. **🔒 Secured** (security)
+
    - Input validation (defend against XSS, SQL Injection)
    - Password hashing (bcrypt, Argon2)
    - Protect sensitive information (environment variables)
@@ -542,6 +736,7 @@ rg '@TAG:AUTH-001' -n
 **How?** The `/alfred:3-sync` command automatically performs TRUST verification.
 
 **What You Get**:
+
 - ✅ Production-quality code guaranteed
 - ✅ Entire team develops with same standards
 - ✅ Fewer bugs, prevent security vulnerabilities in advance
@@ -555,12 +750,14 @@ rg '@TAG:AUTH-001' -n
 **Core Idea**: **19 AI agents** collaborate to automate the entire development process:
 
 **Agent Composition**:
+
 - **Alfred SuperAgent**: Overall orchestration (1)
 - **Core Sub-agents**: Specialized tasks like SPEC writing, TDD implementation, documentation sync (10)
 - **Zero-project Specialists**: Project initialization, language detection, etc. (6)
 - **Built-in Agents**: General questions, codebase exploration (2)
 
 **55 Claude Skills**:
+
 - **Foundation** (6): TRUST/TAG/SPEC/Git/EARS principles
 - **Essentials** (4): Debugging, performance, refactoring, code review
 - **Alfred** (7): Workflow automation
@@ -572,6 +769,7 @@ rg '@TAG:AUTH-001' -n
 **How?** `/alfred:*` commands automatically activate the right expert team.
 
 **What You Get**:
+
 - ✅ No prompt writing needed (use standardized commands)
 - ✅ Automatically remember project context (no repeating same questions)
 - ✅ Auto-assemble optimal expert team (activate appropriate Sub-agents)
@@ -626,6 +824,7 @@ priority: high
 ```
 
 **Also auto-generated**:
+
 - 📋 `Plan Board`: Implementation ideas, risk factors, solution strategies
 - ✅ `Acceptance Criteria`: Verification standards
 - 🌿 `feature/spec-todo-001` Git branch
@@ -639,6 +838,7 @@ priority: high
 **Phase 1: Establish Implementation Strategy**
 
 The **implementation-planner** Sub-agent decides:
+
 - 📚 Libraries: FastAPI + SQLAlchemy
 - 📁 Folder structure: `src/todo/`, `tests/todo/`
 - 🏷️ TAG design: `@CODE:TODO-001:API`, `@CODE:TODO-001:MODEL`, `@CODE:TODO-001:REPO`
@@ -682,6 +882,7 @@ def test_get_todo_with_invalid_id_should_return_404():
 **Result**: ❌ All fail (create_todo not defined)
 
 **Git Commit**:
+
 ```bash
 git commit -m "🔴 test(TODO-001): add failing API tests"
 ```
@@ -726,6 +927,7 @@ def get_todo(todo_id: str):
 **Result**: ✅ All pass!
 
 **Git Commit**:
+
 ```bash
 git commit -m "🟢 feat(TODO-001): implement minimal Todo API"
 ```
@@ -760,6 +962,7 @@ class Todo(Base):
 **Result**: ✅ Still all pass!
 
 **Git Commit**:
+
 ```bash
 git commit -m "♻️ refactor(TODO-001): add database models and validation"
 ```
@@ -784,6 +987,7 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
 **Automatically Performed**:
 
 1. **TAG Chain Validation**
+
    ```bash
    ✅ @SPEC:TODO-001 → .moai/specs/SPEC-TODO-001/spec.md
    ✅ @TEST:TODO-001 → tests/test_todo_api.py
@@ -795,15 +999,18 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
    ```
 
 2. **Living Document Generation**
+
    ```markdown
    # @DOC:TODO-001: Todo Management API
 
    ## Overview
+
    REST API for managing tasks with CRUD operations.
 
    ## Endpoints
 
    ### Create Todo
+
    - Method: POST
    - URL: /todos
    - Request: {"title": "string (1-200 chars)"}
@@ -812,6 +1019,7 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
    - Tested in: @TEST:TODO-001
 
    ### Get All Todos
+
    - Method: GET
    - URL: /todos
    - Response: 200 OK with array of todos
@@ -820,6 +1028,7 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
    ```
 
 3. **README Update**
+
    ```markdown
    ## Features
 
@@ -827,12 +1036,14 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
    ```
 
 4. **CHANGELOG Generation**
+
    ```markdown
    # Changelog
 
    ## [0.1.0] - 2025-10-22
 
    ### Added
+
    - Todo Management API with CRUD operations (@SPEC:TODO-001)
      - Create new todos
      - List all todos
@@ -840,6 +1051,7 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
      - Delete todos
 
    ### Implementation Details
+
    - SPEC: .moai/specs/SPEC-TODO-001/spec.md
    - Tests: tests/test_todo_api.py (87% coverage)
    - Code: src/todo/ with models, API, repository layers
@@ -925,8 +1137,8 @@ Alfred works by combining multiple specialized agents with Claude Skills.
 
 ### Core Sub-agents (Plan → Run → Sync)
 
-| Sub-agent         | Model  | Role                                                                    |
-| ----------------- | ------ | ----------------------------------------------------------------------- |
+| Sub-agent          | Model  | Role                                                                    |
+| ------------------ | ------ | ----------------------------------------------------------------------- |
 | project-manager 📋 | Sonnet | Project initialization, metadata interviews                             |
 | spec-builder 🏗️    | Sonnet | Plan board, EARS SPEC authoring                                         |
 | code-builder 💎    | Sonnet | Performs complete TDD with `implementation-planner` + `tdd-implementer` |
@@ -943,18 +1155,20 @@ Alfred works by combining multiple specialized agents with Claude Skills.
 Alfred organizes Claude Skills in a 4-tier architecture using **Progressive Disclosure** to load Just-In-Time only when needed. Each Skill is a production-grade guide stored in `.claude/skills/` directory.
 
 #### Foundation Tier
+
 Core skills containing fundamental TRUST/TAG/SPEC/Git/EARS/Language principles
 
 | Skill                   | Description                                                                        |
 | ----------------------- | ---------------------------------------------------------------------------------- |
 | `moai-foundation-trust` | TRUST 5-principles (Test 85%+, Readable, Unified, Secured, Trackable) verification |
 | `moai-foundation-tags`  | @TAG markers scan and inventory generation (CODE-FIRST principle)                  |
-| `moai-foundation-specs` | SPEC YAML frontmatter validation and HISTORY section management                   |
+| `moai-foundation-specs` | SPEC YAML frontmatter validation and HISTORY section management                    |
 | `moai-foundation-ears`  | EARS (Easy Approach to Requirements Syntax) requirements writing guide             |
 | `moai-foundation-git`   | Git workflow automation (branching, TDD commits, PR management)                    |
 | `moai-foundation-langs` | Project language/framework auto-detection (package.json, pyproject.toml, etc.)     |
 
 #### Essentials Tier
+
 Core tools needed for daily development work
 
 | Skill                      | Description                                                            |
@@ -965,19 +1179,21 @@ Core tools needed for daily development work
 | `moai-essentials-review`   | Automated code review, SOLID principles, code smell detection          |
 
 #### Alfred Tier
+
 MoAI-ADK internal workflow orchestration skills
 
-| Skill                                  | Description                                                                                            |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `moai-alfred-ears-authoring`           | EARS syntax validation and requirement pattern guidance                                                |
-| `moai-alfred-git-workflow`             | MoAI-ADK conventions (feature branch, TDD commits, Draft PR) automation                                |
-| `moai-alfred-language-detection`       | Project language/runtime detection and test tool recommendations                                       |
-| `moai-alfred-spec-metadata-validation` | SPEC YAML frontmatter and HISTORY section consistency validation                                       |
-| `moai-alfred-tag-scanning`             | Complete @TAG marker scan and inventory generation (CODE-FIRST principle)                              |
-| `moai-alfred-trust-validation`         | TRUST 5-principles compliance verification                                                             |
-| `moai-alfred-interactive-questions`    | Claude Code Tools AskUserQuestion TUI menu standardization                                             |
+| Skill                                  | Description                                                               |
+| -------------------------------------- | ------------------------------------------------------------------------- |
+| `moai-alfred-ears-authoring`           | EARS syntax validation and requirement pattern guidance                   |
+| `moai-alfred-git-workflow`             | MoAI-ADK conventions (feature branch, TDD commits, Draft PR) automation   |
+| `moai-alfred-language-detection`       | Project language/runtime detection and test tool recommendations          |
+| `moai-alfred-spec-metadata-validation` | SPEC YAML frontmatter and HISTORY section consistency validation          |
+| `moai-alfred-tag-scanning`             | Complete @TAG marker scan and inventory generation (CODE-FIRST principle) |
+| `moai-alfred-trust-validation`         | TRUST 5-principles compliance verification                                |
+| `moai-alfred-interactive-questions`    | Claude Code Tools AskUserQuestion TUI menu standardization                |
 
 #### Domain Tier
+
 Specialized domain expertise
 
 | Skill                      | Description                                                                              |
@@ -994,6 +1210,7 @@ Specialized domain expertise
 | `moai-domain-web-api`      | REST API, GraphQL design patterns, authentication, versioning, OpenAPI documentation     |
 
 #### Language Tier
+
 Programming language-specific best practices
 
 | Skill                  | Description                                               |
@@ -1018,6 +1235,7 @@ Programming language-specific best practices
 | `moai-lang-r`          | testthat, lintr, data analysis patterns                   |
 
 #### Claude Code Ops
+
 Claude Code session management
 
 | Skill              | Description                                                                        |
@@ -1056,6 +1274,7 @@ Hooks are **event-driven** scripts that trigger automatically at specific points
 **Purpose**: Display project status at a glance
 
 **What You See**:
+
 ```
 🚀 MoAI-ADK Session Started
    Language: Python
@@ -1072,6 +1291,7 @@ Hooks are **event-driven** scripts that trigger automatically at specific points
 **Purpose**: Detect risky operations and automatically create safety checkpoints + TAG Guard
 
 **Protection Against**:
+
 - `rm -rf` (file deletion)
 - `git merge`, `git reset --hard` (Git dangerous operations)
 - Editing critical files (`CLAUDE.md`, `config.json`)
@@ -1079,18 +1299,21 @@ Hooks are **event-driven** scripts that trigger automatically at specific points
 
 **TAG Guard (New in v0.4.11)**:
 Automatically detects missing @TAG annotations in changed files:
+
 - Scans staged, modified, and untracked files
 - Warns when SPEC/TEST/CODE/DOC files lack required @TAG markers
 - Configurable rules via `.moai/tag-rules.json`
 - Non-blocking (gentle reminder, doesn't stop execution)
 
 **What You See**:
+
 ```
 🛡️ Checkpoint created: before-delete-20251023-143000
    Operation: delete
 ```
 
 Or when TAGs are missing:
+
 ```
 ⚠️ TAG 누락 감지: 생성/수정한 파일 중 @TAG가 없는 항목이 있습니다.
  - src/auth/service.py → 기대 태그: @CODE:
@@ -1108,6 +1331,7 @@ Or when TAGs are missing:
 **Purpose**: JIT (Just-In-Time) context loading—automatically add relevant files
 
 **How It Works**:
+
 - You type: "Fix AUTH bug"
 - Hook scans for AUTH-related files
 - Auto-loads: SPEC, tests, implementation, docs related to AUTH
@@ -1145,28 +1369,31 @@ If you need to temporarily disable hooks, edit `.claude/settings.json`:
 ### Troubleshooting
 
 **Problem: Hook doesn't execute**
+
 - ✅ Verify `.claude/settings.json` is properly configured
 - ✅ Check `uv` is installed: `which uv`
 - ✅ Ensure hook script has execute permissions: `chmod +x .claude/hooks/alfred/alfred_hooks.py`
 
 **Problem: Performance degradation**
+
 - ✅ Check if any hook exceeds 100ms execution time
 - ✅ Disable unnecessary hooks
 - ✅ Review error messages in stderr output
 
 **Problem: Too many checkpoints created**
+
 - ✅ Review PreToolUse trigger conditions
 - ✅ Adjust detection thresholds in `core/checkpoint.py` if needed
 
 ### Installed Hooks (5 total)
 
-| Hook | Status | Feature |
-|------|--------|---------|
-| **SessionStart** | ✅ Active | Project status summary (language, Git, SPEC progress, checkpoints) |
-| **PreToolUse** | ✅ Active | Risk detection + auto checkpoint (critical-delete, delete, merge, script) + **TAG Guard** (missing @TAG detection) |
-| **UserPromptSubmit** | ✅ Active | JIT context loading (auto-load related SPEC, tests, code, docs) |
-| **PostToolUse** | ✅ Active | Auto-run tests after code changes (9 languages: Python, TS, JS, Go, Rust, Java, Kotlin, Swift, Dart) |
-| **SessionEnd** | ✅ Active | Session cleanup and state saving |
+| Hook                 | Status    | Feature                                                                                                            |
+| -------------------- | --------- | ------------------------------------------------------------------------------------------------------------------ |
+| **SessionStart**     | ✅ Active | Project status summary (language, Git, SPEC progress, checkpoints)                                                 |
+| **PreToolUse**       | ✅ Active | Risk detection + auto checkpoint (critical-delete, delete, merge, script) + **TAG Guard** (missing @TAG detection) |
+| **UserPromptSubmit** | ✅ Active | JIT context loading (auto-load related SPEC, tests, code, docs)                                                    |
+| **PostToolUse**      | ✅ Active | Auto-run tests after code changes (9 languages: Python, TS, JS, Go, Rust, Java, Kotlin, Swift, Dart)               |
+| **SessionEnd**       | ✅ Active | Session cleanup and state saving                                                                                   |
 
 ### Future Enhancements
 
@@ -1199,310 +1426,40 @@ If you need to temporarily disable hooks, edit `.claude/settings.json`:
 
 ## Latest Updates (New!)
 
-| Version    | Key Features                                                                         | Date       |
-| ---------- | ------------------------------------------------------------------------------------ | ---------- |
-| **v0.4.11** | ✨ TAG Guard system + CLAUDE.md formatting improvements + Code cleanup                | 2025-10-23 |
-| **v0.4.10** | 🔧 Hook robustness improvements + Bilingual documentation + Template language config | 2025-10-23 |
-| **v0.4.9** | 🎯 Hook JSON schema validation fixes + Comprehensive tests (468/468 passing)        | 2025-10-23 |
-| **v0.4.8** | 🚀 Release automation + PyPI deployment + Skills refinement                          | 2025-10-23 |
-| **v0.4.7** | 📖 Korean language optimization + SPEC-First principle documentation                 | 2025-10-22 |
-| **v0.4.6** | 🎉 Complete Skills v2.0 (100% Production-Ready) + 85,000 lines official docs + 300+ TDD examples | 2025-10-22 |
+| Version     | Key Features                                                                                     | Date       |
+| ----------- | ------------------------------------------------------------------------------------------------ | ---------- |
+| **v0.4.11** | ✨ TAG Guard system + CLAUDE.md formatting improvements + Code cleanup                           | 2025-10-23 |
+| **v0.4.10** | 🔧 Hook robustness improvements + Bilingual documentation + Template language config             | 2025-10-23 |
+| **v0.4.9**  | 🎯 Hook JSON schema validation fixes + Comprehensive tests (468/468 passing)                     | 2025-10-23 |
+| **v0.4.8**  | 🚀 Release automation + PyPI deployment + Skills refinement                                      | 2025-10-23 |
+| **v0.4.7**  | 📖 Korean language optimization + SPEC-First principle documentation                             | 2025-10-22 |
+| **v0.4.6**  | 🎉 Complete Skills v2.0 (100% Production-Ready) + 85,000 lines official docs + 300+ TDD examples | 2025-10-22 |
 
-> 📦 **Install Now**: `pip install moai-adk==0.4.11` or `uv tool install moai-adk==0.4.11`
-
----
-
-##
-
-## Second Practice: Mini Kanban Board
-
-This section goes beyond the first Todo API example and outlines a full 4-week full‑stack project.
-
-Let’s build a Mini Kanban Board web application designed to help you master MoAI‑ADK end‑to‑end. This project lets you experience every step of SPEC‑First TDD.
-
-### Project Overview
-
-- Backend: FastAPI + Pydantic v2 + uv + WebSocket (Python)
-- Frontend: React 19 + TypeScript 5.9 + Vite + Zustand + TanStack Query
-- Real-time: Multi‑client sync over WebSocket
-- Storage: Local filesystem (.moai/specs/)
-- DevOps: Docker Compose + GitHub Actions CI/CD + Playwright E2E
-
-### 4‑Week Timeline
-
-```mermaid
-gantt
-    title Mini Kanban Board - 4-week plan
-    dateFormat YYYY-MM-DD
-
-    section Phase 1: Backend Basics
-    Define SPEC-001-004           :active, ch07-spec, 2025-11-03, 1d
-    Implement SpecScanner (TDD)   :active, ch07-impl, 2025-11-04, 1d
-
-    section Phase 2: Backend Advanced
-    Implement REST API            :active, ch08-api, 2025-11-05, 1d
-    WebSocket + File Watch        :active, ch08-ws, 2025-11-06, 1d
-
-    section Phase 3: Frontend Basics
-    React init + SPEC-009-012     :active, ch09-spec, 2025-11-10, 1d
-    Kanban Board (TDD)            :active, ch09-impl, 2025-11-11, 1d
-
-    section Phase 4: Advanced + Deploy
-    E2E + CI/CD                   :active, ch10-e2e, 2025-11-12, 1d
-    Docker Compose + Optimize     :active, ch10-deploy, 2025-11-13, 1d
-```
-
-### 16‑SPEC Roadmap
-
-| Phase | SPEC ID | Title | Stack | Est. | Status |
-|------|---------|-------|-------|------|--------|
-| Backend Basics | SPEC-001 | SPEC file scanner | FastAPI + pathlib + YAML | 1h | 📋 |
-|  | SPEC-002 | YAML metadata parser | Pydantic v2 validation | 1h | 📋 |
-|  | SPEC-003 | GET /api/specs (list) | FastAPI router | 0.5h | 📋 |
-|  | SPEC-004 | GET /api/specs/{id} (detail) | FastAPI router | 0.5h | 📋 |
-| Backend Advanced | SPEC-005 | PATCH /api/specs/{id}/status | FastAPI + update | 1h | 📋 |
-|  | SPEC-006 | GET /api/specs/summary | Aggregation | 0.5h | 📋 |
-|  | SPEC-007 | File watcher | watchdog + async | 1h | 📋 |
-|  | SPEC-008 | WebSocket events | FastAPI WebSocket | 1.5h | 📋 |
-| Frontend Basics | SPEC-009 | Kanban layout | React + CSS Grid | 1.5h | 📋 |
-|  | SPEC-010 | SPEC card component | React + TypeScript | 1h | 📋 |
-|  | SPEC-011 | TanStack Query integration | useQuery + useMutation | 1.5h | 📋 |
-|  | SPEC-012 | Drag & Drop | React Beautiful DnD | 1.5h | 📋 |
-| Advanced + Deploy | SPEC-013 | E2E automated tests | Playwright | 1.5h | 📋 |
-|  | SPEC-014 | GitHub Actions CI/CD | Test + Release | 1h | 📋 |
-|  | SPEC-015 | Docker Compose deploy | Multi‑container | 1h | 📋 |
-|  | SPEC-016 | Performance + extensions | Caching + WS tuning | 1.5h | 📋 |
-|  |  | Overall |  | 20h |  |
-
-### System Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                Mini Kanban Board — Architecture              │
-└─────────────────────────────────────────────────────────────┘
-
-┌──────────────────────┐         ┌────────────────────────┐
-│   📱 Frontend        │         │   🖥️ Backend Server    │
-│  (React 19 + Vite)   │◄───────►│ (FastAPI + Pydantic)   │
-│                      │  REST   │                        │
-│ ┌──────────────────┐ │ API +   │ ┌──────────────────┐   │
-│ │ DashboardHeader  │ │WebSocket│ │ GET /api/specs   │   │
-│ ├──────────────────┤ │         │ ├──────────────────┤   │
-│ │ KanbanBoard      │ │         │ │ PATCH /api/specs/{id}││
-│ │ ┌──────────────┐ │ │         │ │ /status          │   │
-│ │ │ Column: Draft│ │ │         │ ├──────────────────┤   │
-│ │ │ Column: Active││ │         │ │ WebSocket        │   │
-│ │ │ Column: Done │ │ │         │ │ /ws              │   │
-│ │ └──────────────┘ │ │         │ │                  │   │
-│ ├──────────────────┤ │         │ ├──────────────────┤   │
-│ │ SpecCard (DnD)   │ │         │ │ SpecScanner      │   │
-│ ├──────────────────┤ │         │ │ (.moai/specs/)   │   │
-│ │ SearchBar        │ │         │ ├──────────────────┤   │
-│ └──────────────────┘ │         │ │ YAML Parser      │   │
-│                      │         │ │ (Pydantic v2)    │   │
-│ Zustand Store:       │         │ └──────────────────┘   │
-│ • filterStore        │         │                        │
-│ • uiStore            │         │ File System:           │
-│                      │         │ .moai/specs/           │
-│ TanStack Query:      │         │ SPEC-001/              │
-│ • useQuery           │         │ SPEC-002/              │
-│ • useMutation        │         │ ...                    │
-└──────────────────────┘         └────────────────────────┘
-         │                                    │
-         │            WebSocket               │
-         └────────────────────────────────────┘
-              (Real-time Sync)
-```
-
-### Phase Details
-
-#### Phase 1: Backend Basics (SPEC-001~004)
-
-Goal: Build the core data scanning service with FastAPI + Pydantic v2 + uv
-
-```bash
-# 1) Initialize project
-/alfred:0-project
-# → creates .moai/, backend/, frontend/
-# → configures .moai/config.json
-
-# 2) Write SPECs (SPEC-001~004)
-/alfred:1-plan
-# → SPEC-001: SPEC file scanner
-# → SPEC-002: YAML metadata parser
-# → SPEC-003: GET /api/specs endpoint
-# → SPEC-004: GET /api/specs/{id} endpoint
-
-# 3) TDD (RED → GREEN → REFACTOR)
-/alfred:2-run SPEC-001
-/alfred:2-run SPEC-002
-/alfred:2-run SPEC-003
-/alfred:2-run SPEC-004
-```
-
-Key Concepts:
-- FastAPI project structure
-- Pydantic v2 validation
-- YAML front matter parsing
-- Dependency Injection
-- First TDD cycle completed
-
-#### Phase 2: Backend Advanced (SPEC-005~008)
-
-Goal: Implement file watching and WebSocket real-time events
-
-```bash
-# REST endpoints
-/alfred:2-run SPEC-005  # PATCH /api/specs/{id}/status
-/alfred:2-run SPEC-006  # GET /api/specs/summary
-
-# WebSocket + File Watcher
-/alfred:2-run SPEC-007  # File watching (watchdog)
-/alfred:2-run SPEC-008  # WebSocket broadcast
-
-# TRUST 5 verification
-/alfred:3-sync          # verify all principles
-```
-
-Key Concepts:
-- File system monitoring (watchdog)
-- FastAPI WebSocket endpoint
-- Async event broadcast
-- Automated TRUST 5 verification
-
-#### Phase 3: Frontend Basics (SPEC-009~012)
-
-Goal: Build Kanban UI with React 19 + TypeScript + Vite
-
-```bash
-# Initialize React + Vite
-cd frontend
-npm create vite@latest . -- --template react-ts
-
-# TanStack Query + Zustand
-npm install @tanstack/react-query zustand
-
-# SPECs
-/alfred:1-plan SPEC-009  # layout
-/alfred:1-plan SPEC-010  # card component
-/alfred:1-plan SPEC-011  # TanStack Query integration
-/alfred:1-plan SPEC-012  # drag & drop
-
-# TDD
-/alfred:2-run SPEC-009
-/alfred:2-run SPEC-010
-/alfred:2-run SPEC-011
-/alfred:2-run SPEC-012
-```
-
-Key Concepts:
-- React 19 Hooks (useState, useEffect, useContext)
-- TypeScript 5.9 strict typing
-- TanStack Query (useQuery, useMutation)
-- Zustand state management
-- React Beautiful DnD drag & drop
-
-#### Phase 4: Advanced + Deploy (SPEC-013~016)
-
-Goal: E2E tests, CI/CD, Docker deployment, performance optimization
-
-```bash
-# E2E tests (Playwright)
-/alfred:2-run SPEC-013
-
-# GitHub Actions CI/CD
-/alfred:2-run SPEC-014
-
-# Docker Compose deploy
-/alfred:2-run SPEC-015
-
-# Performance optimization
-/alfred:2-run SPEC-016
-```
-
-Key Concepts:
-- Playwright E2E automation
-- GitHub Actions workflows
-- Docker multi-stage builds
-- Production performance tuning
-
-### Quick Start Guide
-
-#### Step 1: Initialize project
-
-```bash
-# Install MoAI-ADK
-pip install moai-adk==0.4.6
-
-# Create project
-mkdir mini-kanban-board && cd mini-kanban-board
-git init
-
-# Initialize with Alfred
-/alfred:0-project
-```
-
-#### Step 2: Write SPECs
-
-```bash
-# Start planning
-/alfred:1-plan
-
-# Answer prompts:
-# - Project name: Mini Kanban Board
-# - Tech stack: FastAPI + React 19
-# - Duration: 4-week practice project
-```
-
-#### Step 3: Start TDD
-
-```bash
-# Phase 1 (Backend basics)
-/alfred:2-run SPEC-001  # first TDD cycle
-
-# Phase 2 (Backend advanced)
-/alfred:2-run SPEC-005
-/alfred:2-run SPEC-006
-/alfred:2-run SPEC-007
-/alfred:2-run SPEC-008
-
-# Phase 3 (Frontend basics)
-cd frontend
-/alfred:2-run SPEC-009
-/alfred:2-run SPEC-010
-/alfred:2-run SPEC-011
-/alfred:2-run SPEC-012
-
-# Phase 4 (Advanced + deploy)
-/alfred:2-run SPEC-013
-/alfred:2-run SPEC-014
-/alfred:2-run SPEC-015
-/alfred:2-run SPEC-016
-```
+> 📦 **Install Now**: `uv tool install moai-adk==0.4.11` or `pip install moai-adk==0.4.11`
 
 ---
 
 ## Additional Resources
 
-| Purpose                   | Resource                                                             |
-| ------------------------- | -------------------------------------------------------------------- |
-| Skills detailed structure | `.claude/skills/` directory (56 Skills)                              |
-| Sub-agent details         | `.claude/agents/alfred/` directory                                   |
-| Workflow guide            | `.claude/commands/alfred/` (0-3 commands)                            |
-| Development guidelines    | `.moai/memory/development-guide.md`, `.moai/memory/spec-metadata.md` |
-| Release notes             | GitHub Releases: https://github.com/modu-ai/moai-adk/releases        |
+| Purpose                   | Resource                                                        |
+| ------------------------- | --------------------------------------------------------------- |
+| Skills detailed structure | `.claude/skills/` directory (58 Skills)                         |
+| Sub-agent details         | `.claude/agents/alfred/` directory (12 agents)                  |
+| Workflow guide            | `.claude/commands/alfred/` (4 commands: 0-project ~ 3-sync)     |
+| Documentation             | Coming soon (see `.moai/`, `.claude/`, `docs/` in your project) |
+| Release notes             | GitHub Releases: https://github.com/modu-ai/moai-adk/releases   |
 
 ---
 
 ## Community & Support
 
-| Channel                  | Link                                                    |
-| ------------------------ | ------------------------------------------------------- |
-| **GitHub Repository**    | https://github.com/modu-ai/moai-adk                     |
-| **Issues & Discussions** | https://github.com/modu-ai/moai-adk/issues              |
+| Channel                  | Link                                                     |
+| ------------------------ | -------------------------------------------------------- |
+| **GitHub Repository**    | https://github.com/modu-ai/moai-adk                      |
+| **Issues & Discussions** | https://github.com/modu-ai/moai-adk/issues               |
 | **PyPI Package**         | https://pypi.org/project/moai-adk/ (Latest: v0.4.11)     |
 | **Latest Release**       | https://github.com/modu-ai/moai-adk/releases/tag/v0.4.11 |
-| **Documentation**        | See `.moai/`, `.claude/`, `docs/` within project        |
+| **Documentation**        | See `.moai/`, `.claude/`, `docs/` within project         |
 
 ---
 
@@ -1522,7 +1479,8 @@ Start a new experience of **trustworthy AI development** with Alfred! 🤖
 
 ---
 
-**MoAI-ADK v0.4.11** — SPEC-First TDD with AI SuperAgent & Complete Skills v2.0 + TAG Guard
+**MoAI-ADK** — SPEC-First TDD with AI SuperAgent & Complete Skills + TAG Guard
+
 - 📦 PyPI: https://pypi.org/project/moai-adk/
 - 🏠 GitHub: https://github.com/modu-ai/moai-adk
 - 📝 License: MIT

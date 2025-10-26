@@ -1,4 +1,36 @@
-"""Update command"""
+"""Update command
+
+Update MoAI-ADK to the latest version available on PyPI.
+Includes:
+- Version checking from PyPI
+- Template and configuration updates
+- Backward compatibility validation
+
+## Skill Invocation Guide (English-Only)
+
+### Related Skills
+- **moai-foundation-trust**: For post-update validation
+  - Trigger: After updating MoAI-ADK version
+  - Invocation: `Skill("moai-foundation-trust")` to verify all toolchains still work
+
+- **moai-foundation-langs**: For language detection after update
+  - Trigger: After updating, confirm language stack is intact
+  - Invocation: `Skill("moai-foundation-langs")` to re-detect and validate language configuration
+
+### When to Invoke Skills in Related Workflows
+1. **After successful update**:
+   - Run `Skill("moai-foundation-trust")` to validate all TRUST 5 gates
+   - Run `Skill("moai-foundation-langs")` to confirm language toolchain still works
+   - Run project doctor command for full system validation
+
+2. **Before updating**:
+   - Create backup with `python -m moai_adk backup`
+   - Run `Skill("moai-foundation-tags")` to document current TAG state
+
+3. **If update fails**:
+   - Use backup to restore previous state
+   - Debug with `python -m moai_adk doctor --verbose`
+"""
 from __future__ import annotations
 
 import json
@@ -107,18 +139,18 @@ def _build_template_context(
 
     project_name = _coalesce(
         project_section.get("name"),
-        existing_config.get("projectName"),
+        existing_config.get("projectName"),  # Legacy fallback
         project_path.name,
     )
     project_mode = _coalesce(
         project_section.get("mode"),
-        existing_config.get("mode"),
+        existing_config.get("mode"),  # Legacy fallback
         default="personal",
     )
     project_description = _coalesce(
         project_section.get("description"),
-        existing_config.get("projectDescription"),
-        existing_config.get("description"),
+        existing_config.get("projectDescription"),  # Legacy fallback
+        existing_config.get("description"),  # Legacy fallback
     )
     project_version = _coalesce(
         project_section.get("version"),
@@ -164,7 +196,6 @@ def _preserve_project_metadata(
     project_data["mode"] = context["PROJECT_MODE"]
     project_data["description"] = context["PROJECT_DESCRIPTION"]
     project_data["created_at"] = context["CREATION_TIMESTAMP"]
-    project_data["moai_adk_version"] = version_for_config
 
     if "optimized" not in project_data and isinstance(existing_config, dict):
         existing_project = _extract_project_section(existing_config)
@@ -344,8 +375,16 @@ def update(path: str, force: bool, check: bool) -> None:
         console.print("\n[green]✓ Update complete![/green]")
         if latest_version and version.parse(current_version) < version.parse(latest_version):
             console.print(
-                "[yellow]⚠ Python package still on older version. "
-                "Run 'pip install --upgrade moai-adk' to upgrade the CLI package.[/yellow]"
+                "[yellow]⚠ Python package still on older version.[/yellow]"
+            )
+            console.print(
+                "[cyan]Upgrade options:[/cyan]"
+            )
+            console.print(
+                "  1. uv tool (recommended): uv tool upgrade moai-adk"
+            )
+            console.print(
+                "  2. pip (legacy):          pip install --upgrade moai-adk"
             )
         console.print("\n[cyan]ℹ️  Next step: Run /alfred:0-project update to optimize template changes[/cyan]")
 

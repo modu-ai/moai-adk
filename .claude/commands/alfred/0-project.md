@@ -1,18 +1,22 @@
 ---
 name: alfred:0-project
-description: Initialize project document - create product/structure/tech.md and set optimization for each language
+description: "Initialize project document - create product/structure/tech.md and set optimization for each language"
+# Translations:
+# - ko: "프로젝트 문서 초기화 - product/structure/tech.md 생성 및 언어별 최적화 설정"
+# - ja: "プロジェクト文書の初期化 - product/structure/tech.mdの作成と言語別最適化設定"
+# - zh: "初始化项目文档 - 创建product/structure/tech.md并设置语言优化"
 allowed-tools:
-  - Read
-  - Write
-  - Edit
-  - MultiEdit
-  - Grep
-  - Glob
-  - TodoWrite
-  - Bash(ls:*)
-  - Bash(find:*)
-  - Bash(cat:*)
-  - Task
+- Read
+- Write
+- Edit
+- MultiEdit
+- Grep
+- Glob
+- TodoWrite
+- Bash(ls:*)
+- Bash(find:*)
+- Bash(cat:*)
+- Task
 ---
 
 # 📋 MoAI-ADK Step 0: Initialize/Update Universal Language Support Project Documentation
@@ -263,7 +267,7 @@ The following patterns are considered "template defaults" (not merged):
 - "Define your key user base"
 - "Describe the core problem you are trying to solve"
 - "List the strengths and differences of your project"
-- "{{PROJECT_NAME}}", "{{PROJECT_DESCRIPTION}}", etc. Variable format
+- "MoAI-ADK", "MoAI-Agentic Development Kit", etc. Variable format
 - Guide phrases such as "Example:", "Sample:", "Example:", etc.
 
 **STEP 3: Extract user customization**
@@ -1106,7 +1110,7 @@ Alfred: Skill("moai-alfred-template-generator")
 ✅ Project customized optimization completed!
 
 📊 Optimization results:
-- **Project**: {{PROJECT_NAME}}
+- **Project**: MoAI-ADK
 - **Category**: web-api
 - **Main language**: python
 - **Framework**: fastapi

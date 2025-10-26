@@ -1,19 +1,24 @@
 ---
 name: alfred:3-sync
-description: Document synchronization + PR Ready conversion
-argument-hint: "Mode target path - Mode: auto (default)|force|status|project, target path: Synchronization target path"
+description: "Document synchronization + PR Ready conversion"
+# Translations:
+# - ko: "문서 동기화 + PR Ready 전환"
+# - ja: "ドキュメント同期 + PR Ready変換"
+# - zh: "文档同步 + PR Ready转换"
+argument-hint: 'Mode target path - Mode: auto (default)|force|status|project, target
+  path: Synchronization target path'
 allowed-tools:
-  - Read
-  - Write
-  - Edit
-  - MultiEdit
-  - Bash(git:*)
-  - Bash(gh:*)
-  - Bash(python3:*)
-  - Task
-  - Grep
-  - Glob
-  - TodoWrite
+- Read
+- Write
+- Edit
+- MultiEdit
+- Bash(git:*)
+- Bash(gh:*)
+- Bash(python3:*)
+- Task
+- Grep
+- Glob
+- TodoWrite
 ---
 
 # 📚 MoAI-ADK Step 3: Document Synchronization (+Optional PR Ready)

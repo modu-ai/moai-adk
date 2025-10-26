@@ -5,6 +5,34 @@ Project status display:
 - Read project information from config.json
 - Show the number of SPEC documents
 - Summarize the Git status
+
+## Skill Invocation Guide (English-Only)
+
+### Related Skills
+- **moai-foundation-tags**: For detailed TAG inventory and orphan detection
+  - Trigger: When you need to verify TAG chain integrity beyond what status shows
+  - Invocation: `Skill("moai-foundation-tags")` to scan full project for orphan TAGs
+
+- **moai-foundation-trust**: For comprehensive TRUST 5-principles verification
+  - Trigger: After status shows SPECs exist, to validate code quality
+  - Invocation: `Skill("moai-foundation-trust")` to verify all quality gates
+
+- **moai-foundation-git**: For detailed Git workflow information
+  - Trigger: When Git status shows "Modified" and you need workflow guidance
+  - Invocation: `Skill("moai-foundation-git")` for GitFlow automation details
+
+### When to Invoke Skills in Related Workflows
+1. **Before starting new SPEC creation**:
+   - Run `Skill("moai-foundation-tags")` to verify no orphan TAGs exist from previous work
+   - Check the SPEC count from status command
+
+2. **After modifications to code/docs**:
+   - If status shows "Modified", run `Skill("moai-foundation-git")` for commit strategy
+   - Follow up with `Skill("moai-foundation-trust")` to validate code quality
+
+3. **Periodic health checks**:
+   - Run status command regularly
+   - When SPEC count grows, verify with `Skill("moai-foundation-tags")` and `Skill("moai-foundation-trust")`
 """
 
 import json
@@ -48,8 +76,10 @@ def status() -> None:
         table.add_column("Key", style="cyan")
         table.add_column("Value", style="bold")
 
-        table.add_row("Mode", config.get("mode", "unknown"))
-        table.add_row("Locale", config.get("locale", "unknown"))
+        # Read from project section (with legacy fallback)
+        project = config.get("project", {})
+        table.add_row("Mode", project.get("mode") or config.get("mode", "unknown"))
+        table.add_row("Locale", project.get("locale") or config.get("locale", "unknown"))
         table.add_row("SPECs", str(spec_count))
 
         # Optionally include Git information

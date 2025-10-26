@@ -6,6 +6,25 @@
 Project initialization command (interactive/non-interactive):
 - Interactive Mode: Ask user for project settings
 - Non-Interactive Mode: Use defaults or CLI options
+
+## Skill Invocation Guide (English-Only)
+
+### Related Skills
+- **moai-foundation-langs**: For language detection and stack configuration
+  - Trigger: When language parameter is not specified (auto-detection)
+  - Invocation: Called implicitly during project initialization for language matrix detection
+
+### When to Invoke Skills in Related Workflows
+1. **After project initialization**:
+   - Run `Skill("moai-foundation-trust")` to verify project structure and toolchain
+   - Run `Skill("moai-foundation-langs")` to validate detected language stack
+
+2. **Before first SPEC creation**:
+   - Use `Skill("moai-alfred-language-detection")` to confirm language selection
+
+3. **Project reinitialization** (`--force`):
+   - Skills automatically adapt to new project structure
+   - No manual intervention required
 """
 
 import json
@@ -163,10 +182,12 @@ def init(
                         config_data = json.load(f)
 
                     # Update version and optimization flags
+                    if "moai" not in config_data:
+                        config_data["moai"] = {}
+                    config_data["moai"]["version"] = __version__
+
                     if "project" not in config_data:
                         config_data["project"] = {}
-
-                    config_data["project"]["moai_adk_version"] = __version__
                     config_data["project"]["optimized"] = False
 
                     with open(config_path, "w", encoding="utf-8") as f:
