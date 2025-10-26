@@ -1,4 +1,28 @@
-"""Backup command"""
+"""Backup command
+
+Create a backup of the current project including:
+- .claude/ (entire directory)
+- .moai/ (excluding specs and reports)
+- CLAUDE.md
+
+Backup location: .moai-backups/YYYYMMDD-HHMMSS/
+
+## Skill Invocation Guide (English-Only)
+
+### Related Skills
+- **moai-foundation-git**: For Git workflow and backup management
+  - Trigger: Before creating critical backups, review Git state
+  - Invocation: `Skill("moai-foundation-git")` for backup naming conventions
+
+### When to Invoke Skills in Related Workflows
+1. **Before backup creation**:
+   - Run `Skill("moai-foundation-git")` to document current Git branch state
+   - Tag backup with feature branch name for easier recovery
+
+2. **After restoration from backup**:
+   - Verify with `Skill("moai-foundation-tags")` that TAGs are intact
+   - Run `Skill("moai-foundation-trust")` to validate toolchain
+"""
 from pathlib import Path
 
 import click

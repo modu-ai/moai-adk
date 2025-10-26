@@ -242,7 +242,7 @@ If users are on Pytest 7.2:
    New features available: Full async support
 
 2. Step-by-step guide
-   - Step 1: pip install --upgrade pytest
+   - Step 1: uv pip install --upgrade pytest
    - Step 2: Run existing tests (should pass)
    - Step 3: Adopt new async patterns (optional)
 

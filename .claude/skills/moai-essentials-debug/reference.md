@@ -506,7 +506,7 @@ lein repl :connect 5005
 python3 -m pdb
 
 # Enhanced debuggers
-pip install pudb ipdb debugpy
+uv uv pip install pudb ipdb debugpy
 
 # VSCode extension
 code --install-extension ms-python.python
@@ -1435,7 +1435,7 @@ docker run -it myimage /bin/bash
 ```dockerfile
 # Python example
 FROM python:3.11
-RUN pip install debugpy
+RUN uv uv pip install debugpy
 EXPOSE 5678
 CMD ["python", "-m", "debugpy", "--listen", "0.0.0.0:5678", "--wait-for-client", "app.py"]
 ```
