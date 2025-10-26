@@ -29,7 +29,6 @@ MoAI-ADK는 세 가지 핵심 원칙으로 AI 협력 개발을 혁신합니다. 
 | SPEC·TDD·TAG가 뭐죠?                    | [핵심 개념 쉽게 이해하기](#핵심-개념-쉽게-이해하기)                |
 | 에이전트/Skills가 궁금해요              | [Sub-agent & Skills 개요](#sub-agent--skills-개요)                 |
 | Claude Code Hooks가 궁금해요            | [Claude Code Hooks 가이드](#claude-code-hooks-가이드)              |
-| 4주 실습 프로젝트를 하고 싶어요         | [두 번째 실습: Mini Kanban Board](#두-번째-실습-mini-kanban-board) |
 | 더 깊이 공부하고 싶어요                 | [추가 자료](#추가-자료)                                            |
 
 ---
@@ -472,6 +471,119 @@ graph TD
 | `/alfred:3-sync`          | 문서/README/CHANGELOG 동기화, TAG/PR 상태 정리 | `docs/`, `.moai/reports/sync-report.md`, Ready PR                  |
 
 > ❗ 모든 명령은 **Phase 0(선택) → Phase 1 → Phase 2 → Phase 3** 순환 구조를 유지합니다. 실행 중 상태와 다음 단계 제안은 Alfred가 자동으로 보고합니다.
+
+---
+
+## SPEC GitHub Issue 자동화
+
+MoAI-ADK는 이제 SPEC 문서에서 **GitHub Issue 자동 동기화**를 제공하여, 팀 모드에서 요구사항과 이슈 추적을 원활하게 통합합니다.
+
+### 작동 방식
+
+`/alfred:1-plan`으로 SPEC 문서를 생성하고 feature 브랜치에 푸시하면:
+
+1. **GitHub Actions 워크플로우**가 PR 이벤트에서 자동으로 트리거됩니다
+2. **SPEC 메타데이터**(ID, version, status, priority)가 YAML frontmatter에서 추출됩니다
+3. **GitHub Issue**가 전체 SPEC 내용과 메타데이터 테이블과 함께 생성됩니다
+4. **PR 코멘트**가 생성된 이슈 링크와 함께 자동으로 추가됩니다
+5. **라벨**이 우선순위에 따라 자동으로 적용됩니다 (critical, high, medium, low)
+
+### 동기화되는 내용
+
+**SPEC에서 GitHub Issue로:**
+- **SPEC ID**: 고유 식별자 (예: AUTH-001, USER-001)
+- **Version**: 시맨틱 버저닝 (v0.1.0, v1.0.0)
+- **Status**: draft, in-review, in-progress, completed, stable
+- **Priority**: critical, high, medium, low (GitHub 라벨로 변환)
+- **전체 내용**: EARS 요구사항, 수락 기준, 의존성
+
+**GitHub Issue 형식:**
+```markdown
+# [SPEC-AUTH-001] 사용자 인증 (v1.0.0)
+
+## SPEC 메타데이터
+
+| 필드 | 값 |
+|-------|-------|
+| **ID** | AUTH-001 |
+| **Version** | v1.0.0 |
+| **Status** | in-progress |
+| **Priority** | high |
+
+## SPEC 문서
+
+[.moai/specs/SPEC-AUTH-001/spec.md의 전체 SPEC 내용]
+
+---
+
+📎 **브랜치**: `feature/AUTH-001`
+🔗 **PR**: #123
+📝 **자동 동기화**: 이 이슈는 SPEC 문서에서 자동으로 동기화됩니다
+```
+
+### 기능
+
+✅ **자동 Issue 생성**: SPEC 파일이 변경된 모든 PR에서 GitHub Issue 자동 생성
+✅ **메타데이터 추출**: ID, version, status, priority가 YAML frontmatter에서 자동으로 파싱됨
+✅ **PR 통합**: Issue가 PR과 자동 코멘트를 통해 연결됨
+✅ **라벨 관리**: 우선순위 기반 라벨 (critical, high, medium, low) 자동 적용
+✅ **CodeRabbit 리뷰** (로컬 전용): 로컬 개발 환경에서 AI 기반 SPEC 품질 검증
+
+### 설정 요구사항
+
+**GitHub Actions 워크플로우**: `.github/workflows/spec-issue-sync.yml`
+**GitHub Issue 템플릿**: `.github/ISSUE_TEMPLATE/spec.yml`
+**GitHub 라벨**: `spec`, `planning`, `critical`, `high`, `medium`, `low`
+
+모든 템플릿은 MoAI-ADK와 함께 자동으로 설치되며 `moai-adk init` 실행 시 동기화됩니다.
+
+### CodeRabbit 통합 (로컬 전용)
+
+**로컬 개발 환경**에서 작업할 때 CodeRabbit가 자동 SPEC 품질 리뷰를 제공합니다:
+
+**CodeRabbit가 검토하는 항목:**
+- ✅ 필수 메타데이터 7개 필드 (id, version, status, created, updated, author, priority)
+- ✅ HISTORY 섹션 포맷 및 시간순 정렬
+- ✅ EARS 요구사항 구조 (Ubiquitous, Event-driven, State-driven, Constraints, Optional)
+- ✅ Given-When-Then 형식의 수락 기준
+- ✅ 추적 가능성을 위한 @TAG 시스템 준수
+
+**CodeRabbit 설정**: `.coderabbit.yaml` (로컬 전용, 패키지에는 배포되지 않음)
+
+> **참고**: CodeRabbit 통합은 로컬 개발 환경에서만 사용 가능합니다. 패키지 사용자는 CodeRabbit 리뷰 없이 핵심 GitHub Issue 자동화를 받습니다.
+
+### 워크플로우 예시
+
+```bash
+# 1. SPEC 생성
+/alfred:1-plan "사용자 인증 기능"
+
+# 2. SPEC 파일이 .moai/specs/SPEC-AUTH-001/spec.md에 생성됨
+# 3. Feature 브랜치 생성: feature/SPEC-AUTH-001
+# 4. Draft PR 생성 (팀 모드)
+
+# 5. GitHub Actions가 자동으로:
+#    - SPEC 메타데이터 파싱
+#    - GitHub Issue #45 생성
+#    - PR 코멘트 추가: "✅ SPEC GitHub Issue Created - Issue: #45"
+#    - 라벨 적용: spec, planning, high
+
+# 6. CodeRabbit가 SPEC 리뷰 (로컬 전용):
+#    - 메타데이터 검증
+#    - EARS 요구사항 확인
+#    - 품질 점수 제공
+
+# 7. TDD 구현 계속
+/alfred:2-run AUTH-001
+```
+
+### 이점
+
+1. **중앙 집중식 추적**: 모든 SPEC 요구사항이 GitHub Issues로 추적됨
+2. **팀 가시성**: 비기술 이해관계자도 Issues를 통해 진행 상황 확인 가능
+3. **자동화된 워크플로우**: 수동 이슈 생성 불필요—SPEC에서 Issue까지 완전 자동화
+4. **추적 가능성**: SPEC 파일, Issues, PRs, 구현 간의 직접 링크
+5. **품질 보증**: CodeRabbit가 구현 전에 SPEC 품질 검증 (로컬 전용)
 
 ---
 
@@ -1225,6 +1337,7 @@ PreToolUse Hook에서 작동하는 자동 @TAG 검증 시스템:
 
 | 버전        | 주요 기능                                                                     | 날짜       |
 | ----------- | ----------------------------------------------------------------------------- | ---------- |
+| **v0.5.7**  | 🎯 SPEC → GitHub Issue 자동화 + CodeRabbit 통합 + 자동 PR 코멘트             | 2025-10-27 |
 | **v0.4.11** | ✨ TAG Guard 시스템 + CLAUDE.md 포맷팅 개선 + 코드 정리                       | 2025-10-23 |
 | **v0.4.10** | 🔧 Hook 견고성 향상 + 다국어 문서화 + 템플릿 언어 설정                        | 2025-10-23 |
 | **v0.4.9**  | 🎯 Hook JSON 스키마 검증 수정 + 포괄적 테스트 (468/468 통과)                  | 2025-10-23 |

@@ -30,7 +30,6 @@ MoAI-ADK 通过三个核心原则革新 AI 协作开发。使用下面的导航�
 | SPEC·TDD·TAG 是什么？          | [轻松理解核心概念](#轻松理解核心概念)                          |
 | Agent/Skills 是什么？          | [Sub-agent & Skills 概述](#sub-agent--skills-概述)             |
 | Claude Code Hooks 如何运作？   | [Claude Code Hooks 指南](#claude-code-hooks-指南)              |
-| 想做一个 4 周实战项目          | [第二个实战：Mini Kanban Board](#第二个实战-mini-kanban-board) |
 | 想深入学习                     | [更多资源](#更多资源)                                          |
 
 ---
@@ -473,6 +472,36 @@ graph TD
 | `/alfred:3-sync`          | 同步文档/README/CHANGELOG，整理 TAG/PR 状态 | `docs/`、`.moai/reports/sync-report.md`、Ready PR                |
 
 > ❗ 所有命令都维护 **Phase 0（可选）→ Phase 1 → Phase 2 → Phase 3** 循环结构。Alfred 会自动报告执行期间的状态和下一步建议。
+
+---
+
+<!-- TRANSLATION NEEDED: This section should be translated to Chinese -->
+<!-- For complete documentation in English, see README.md -->
+<!-- For complete documentation in Korean, see README.ko.md -->
+
+## 🎯 NEW in v0.5.7: SPEC GitHub Issue Automation
+
+MoAI-ADK now provides automatic GitHub Issue synchronization from SPEC documents in team mode.
+
+### Key Features
+
+✅ **Automatic Issue Creation**: GitHub Issue created on every PR with SPEC file changes
+✅ **Metadata Extraction**: ID, version, status, priority automatically parsed
+✅ **PR Integration**: Issue linked to PR via automatic comment
+✅ **Label Management**: Priority-based labels auto-applied
+✅ **CodeRabbit Review** (local only): AI-powered SPEC quality validation
+
+### How It Works
+
+1. Create SPEC with `/alfred:1-plan`
+2. Push to feature branch
+3. GitHub Actions automatically creates Issue
+4. PR comment added with Issue link
+5. CodeRabbit reviews SPEC quality (local only)
+
+For complete documentation, see:
+- English: [README.md](README.md#spec-github-issue-automation)
+- Korean: [README.ko.md](README.ko.md#spec-github-issue-자동화)
 
 ---
 
@@ -1248,6 +1277,7 @@ Claude Code 会话管理
 
 | 版本        | 主要功能                                                                             | 日期       |
 | ----------- | ------------------------------------------------------------------------------------ | ---------- |
+| **v0.5.7**  | 🎯 SPEC → GitHub Issue 自动化 + CodeRabbit 集成 + 自动 PR 评论                       | 2025-10-27 |
 | **v0.4.11** | ✨ TAG Guard 系统 + CLAUDE.md 格式改进 + 代码清理                                    | 2025-10-23 |
 | **v0.4.10** | 🎉 完整 Skills v2.0 完成（100% Production-Ready）+ 85,000 行官方文档 + 300+ TDD 示例 | 2025-10-22 |
 | **v0.4.9**  | 🎯 Hook JSON schema 验证修复 + 全面测试（468/468 通过）                              | 2025-10-23 |

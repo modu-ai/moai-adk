@@ -30,7 +30,6 @@ MoAI-ADK तीन मुख्य सिद्धांतों के सा�
 | SPEC·TDD·TAG क्या हैं?                      | [मुख्य अवधारणाएं आसानी से समझें](#मुख्य-अवधारणाएं-आसानी-से-समझें)  |
 | एजेंट/Skills के बारे में जानना चाहते हैं    | [Sub-agent & Skills अवलोकन](#sub-agent--skills-अवलोकन)             |
 | Claude Code Hooks कैसे काम करते हैं?        | [Claude Code Hooks गाइड](#claude-code-hooks-गाइड)                  |
-| 4‑सप्ताह हैंड्स‑ऑन प्रोजेक्ट करना चाहते हैं | [दूसरा अभ्यास: Mini Kanban Board](#दूसरा-अभ्यास-mini-kanban-board) |
 | और गहराई से अध्ययन करना चाहते हैं           | [अतिरिक्त संसाधन](#अतिरिक्त-संसाधन)                                |
 
 ---
@@ -424,6 +423,36 @@ graph TD
 | `/alfred:3-sync`          | दस्तावेज़/README/CHANGELOG समन्वय, TAG/PR स्थिति व्यवस्थित       | `docs/`, `.moai/reports/sync-report.md`, Ready PR                       |
 
 > ❗ सभी कमांड **Phase 0 (वैकल्पिक) → Phase 1 → Phase 2 → Phase 3** चक्र संरचना बनाए रखते हैं। निष्पादन के दौरान स्थिति और अगले चरण सुझाव Alfred स्वचालित रूप से रिपोर्ट करता है।
+
+---
+
+<!-- TRANSLATION NEEDED: This section should be translated to Hindi -->
+<!-- For complete documentation in English, see README.md -->
+<!-- For complete documentation in Korean, see README.ko.md -->
+
+## 🎯 NEW in v0.5.7: SPEC GitHub Issue Automation
+
+MoAI-ADK now provides automatic GitHub Issue synchronization from SPEC documents in team mode.
+
+### Key Features
+
+✅ **Automatic Issue Creation**: GitHub Issue created on every PR with SPEC file changes
+✅ **Metadata Extraction**: ID, version, status, priority automatically parsed
+✅ **PR Integration**: Issue linked to PR via automatic comment
+✅ **Label Management**: Priority-based labels auto-applied
+✅ **CodeRabbit Review** (local only): AI-powered SPEC quality validation
+
+### How It Works
+
+1. Create SPEC with `/alfred:1-plan`
+2. Push to feature branch
+3. GitHub Actions automatically creates Issue
+4. PR comment added with Issue link
+5. CodeRabbit reviews SPEC quality (local only)
+
+For complete documentation, see:
+- English: [README.md](README.md#spec-github-issue-automation)
+- Korean: [README.ko.md](README.ko.md#spec-github-issue-자동화)
 
 ---
 
@@ -1207,6 +1236,7 @@ Claude Code सत्र प्रबंधन
 
 | संस्करण     | मुख्य सुविधा                                                                                    | तिथि       |
 | ----------- | ----------------------------------------------------------------------------------------------- | ---------- |
+| **v0.5.7**  | 🎯 SPEC → GitHub Issue स्वचालन + CodeRabbit एकीकरण + स्वचालित PR टिप्पणी                      | 2025-10-27 |
 | **v0.4.11** | ✨ TAG Guard सिस्टम + CLAUDE.md फ़ॉर्मेटिंग सुधार + कोड सफाई                                    | 2025-10-23 |
 | **v0.4.10** | 🔧 Hook Robustness सुधार + द्विभाषी दस्तावेज़ीकरण + Template भाषा कॉन्फ़िगरेशन                  | 2025-10-23 |
 | **v0.4.9**  | 🎯 Hook JSON schema सत्यापन सुधार + व्यापक परीक्षण (468/468 पासिंग)                             | 2025-10-23 |
