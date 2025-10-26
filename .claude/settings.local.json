@@ -12,10 +12,11 @@
       "mcp__context7__get-library-docs",
       "Bash(awk:*)",
       "Skill(moai-foundation-git)",
-      "Skill(moai-alfred-interactive-questions)"
+      "Skill(moai-alfred-interactive-questions)",
+      "Bash(/Users/goos/.local/bin/moai-adk:*)"
     ],
     "deny": [],
     "ask": []
   },
-  "outputStyle": "Agentic Coding"
+  "outputStyle": "Study with Alfred"
 }
