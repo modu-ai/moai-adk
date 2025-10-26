@@ -29,7 +29,23 @@ allowed-tools:
 
 **Plan for**: $ARGUMENTS
 
-## 💡 Planning philosophy: “Always make a plan first and then proceed.”
+## 🤖 CodeRabbit AI Integration (Local Only)
+
+This local environment includes CodeRabbit AI review integration for SPEC documents:
+
+**Automatic workflows:**
+- ✅ SPEC review: CodeRabbit analyzes SPEC metadata and EARS structure
+- ✅ GitHub Issue sync: SPEC files automatically create/update GitHub Issues
+- ✅ Auto-approval: Draft PRs are approved when quality meets standards (80%+)
+- ✅ SPEC quality validation: Checklist for metadata, structure, and content
+
+**Scope:**
+- 🏠 **Local environment**: Full CodeRabbit integration with auto-approval
+- 📦 **Published packages**: Users get GitHub Issue sync only (no CodeRabbit)
+
+> See `.coderabbit.yaml` for detailed review rules and SPEC validation checklist
+
+## 💡 Planning philosophy: "Always make a plan first and then proceed."
 
 `/alfred:1-plan` is a general-purpose command that **creates a plan**, rather than simply “creating” a SPEC document.
 
@@ -548,6 +564,48 @@ The `git-manager` agent does **all at once** after the SPEC is complete:
 2. **GitHub Issue**: Create SPEC Issue in Team mode
 3. **Initial commit**: Commit SPEC document and create tags
 4. **Remote Sync**: Apply synchronization strategy for each mode
+
+### Phase 3.5: CodeRabbit SPEC Review (Local Only)
+
+**After Draft PR is created, CodeRabbit automatically:**
+
+```bash
+echo "🤖 Waiting for CodeRabbit SPEC review..."
+
+# CodeRabbit triggers automatically on Draft PR creation
+# Review includes:
+# - SPEC metadata validation (YAML frontmatter)
+# - EARS structure completeness check
+# - Acceptance criteria quality (Given-When-Then)
+# - @TAG system traceability
+# - Documentation clarity
+
+# Expected time: 1-2 minutes
+for i in {1..12}; do
+    sleep 10
+
+    # Check PR review status
+    approval=$(gh pr view $pr_num --json reviewDecision --jq '.reviewDecision')
+
+    if [ "$approval" = "APPROVED" ]; then
+        echo "✅ CodeRabbit approved SPEC PR!"
+        echo "→ Ready for development with /alfred:2-run SPEC-$spec_id"
+        break
+    fi
+
+    echo "⏳ CodeRabbit reviewing... ($i/12)"
+done
+```
+
+**CodeRabbit review includes:**
+- ✅ YAML frontmatter validation (7 required fields)
+- ✅ HISTORY section structure and completeness
+- ✅ EARS requirements clarity (Ubiquitous/Event/State/Optional/Constraints)
+- ✅ Acceptance criteria quality (Given-When-Then scenarios)
+- ✅ @TAG system compliance (SPEC/TEST/CODE/DOC traceability)
+- ✅ Documentation and formatting
+
+See `.coderabbit.yaml` for detailed SPEC review checklist.
 
 ## Writing Tips
 

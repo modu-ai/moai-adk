@@ -29,6 +29,53 @@ coderabbit:
     - check_pep8: true
     - check_test_coverage: true
 
+  # SPEC document review rules
+  spec_review:
+    enabled: true
+    files: ".moai/specs/**/spec.md"
+    instructions: |
+      SPEC Document Review Checklist:
+
+      ## Metadata Validation (YAML Frontmatter)
+      - ✅ All 7 required fields present: id, version, status, created, updated, author, priority
+      - ✅ ID format correct: DOMAIN-### (e.g., AUTH-001)
+      - ✅ Version format: v0.0.1 (initial) or higher
+      - ✅ Status valid: draft, in-review, in-progress, completed, stable
+      - ✅ Author includes @ prefix (e.g., @username)
+      - ✅ Priority valid: critical, high, medium, low
+
+      ## Document Structure
+      - ✅ HISTORY section exists immediately after frontmatter
+      - ✅ HISTORY entries in reverse chronological order (latest first)
+      - ✅ Version history properly documented
+      - ✅ Main heading includes @SPEC:ID: format
+
+      ## EARS Requirements
+      - ✅ Ubiquitous requirements defined
+      - ✅ Event-driven (WHEN) requirements specified
+      - ✅ State-driven (WHILE) requirements included
+      - ✅ Constraints (IF) properly defined
+      - ✅ Optional features (WHERE) noted if applicable
+
+      ## Acceptance Criteria
+      - ✅ At least 2-3 test scenarios (Given-When-Then format)
+      - ✅ Clear test preconditions (Given)
+      - ✅ Specific actions (When)
+      - ✅ Expected outcomes (Then)
+
+      ## Traceability (@TAG System)
+      - ✅ @SPEC:ID tag present in heading
+      - ✅ Related @TEST tags referenced
+      - ✅ Related @CODE tags referenced
+      - ✅ Related @DOC tags referenced
+
+      ## Best Practices
+      - ✅ Clear and unambiguous language
+      - ✅ No spelling or grammar errors
+      - ✅ Proper Markdown formatting
+      - ✅ Links to related SPECs/issues
+      - ✅ Dependencies clearly documented
+
   # Ignore patterns
   ignore:
     - "*.md"
