@@ -289,6 +289,53 @@ cat README.md
 
 ---
 
+## Understanding CLAUDE.md (Alfred's Configuration Documents)
+
+MoAI-ADK's AI coordination is powered by **Alfred**, the MoAI SuperAgent. Alfred's behavior and decision-making are guided by a set of **internal configuration documents** in the `.claude/` directory.
+
+### 4-Document Structure
+
+When you run MoAI-ADK, Alfred loads configuration from **4 coordinated documents** (stored in your `.claude/` directory):
+
+| Document | Size | Purpose | When Alfred Reads It |
+|----------|------|---------|----------------------|
+| **CLAUDE.md** | ~7kb | Alfred's identity, core directives, project metadata | At session start (bootstrap) |
+| **CLAUDE-AGENTS-GUIDE.md** | ~14kb | Sub-agent roster (19 members), Skills distribution (55 packs), team structure | When selecting which agent to invoke |
+| **CLAUDE-RULES.md** | ~17kb | Decision-making rules (Skill invocation, Interactive Questions, TAG validation), commit templates, TRUST 5 gates | During each decision point (e.g., when to ask user questions) |
+| **CLAUDE-PRACTICES.md** | ~8kb | Practical workflows, context engineering (JIT retrieval), on-demand agent patterns, real examples | During implementation phase |
+
+### Why This Structure Matters
+
+**For Developers**: These documents define how Alfred interprets your requirements and orchestrates development. Understanding them helps you:
+- Write clearer specifications that Alfred understands better
+- Know which agent/Skill will be invoked for your request
+- Understand decision points where Alfred might ask you questions
+
+**For AI**: Progressive disclosure means:
+- **Session Start**: Load only CLAUDE.md (7kb) — minimal overhead
+- **On-Demand**: Load CLAUDE-AGENTS-GUIDE.md, CLAUDE-RULES.md, CLAUDE-PRACTICES.md only when needed
+- **Result**: Faster session boot, cleaner context, clear decision logic
+
+### Example: What Happens When You Run `/alfred:2-run`
+
+1. **CLAUDE.md** is already loaded → Alfred knows its role and project context
+2. Alfred checks **CLAUDE-RULES.md** → "Should I ask user questions? Which Skill applies here?"
+3. If implementing code: Alfred loads **CLAUDE-AGENTS-GUIDE.md** → "Which agent executes TDD?"
+4. During implementation: Alfred loads **CLAUDE-PRACTICES.md** → "How do I structure the RED → GREEN → REFACTOR workflow?"
+
+### Customizing Alfred's Behavior
+
+**Most developers never modify these files.** MoAI-ADK ships with optimized defaults.
+
+**If you need to customize Alfred's behavior** (rare), edit these documents in your project's `.claude/` directory:
+- Add new decision rules in **CLAUDE-RULES.md**
+- Adjust agent selection logic in **CLAUDE-AGENTS-GUIDE.md**
+- Document team-specific workflows in **CLAUDE-PRACTICES.md**
+
+> ⚠️ **Important**: These are internal configuration files for Alfred, not user guides. Keep them concise and decision-focused. Most teams don't modify them.
+
+---
+
 ## Keeping MoAI-ADK Up-to-Date
 
 ### Check Version
