@@ -91,39 +91,28 @@ jobs:
           # Start reading from line 11
           spec_content=$(tail -n +11 "$spec_file")
 
-          # Prepare issue body using heredoc (safer for special characters)
-          cat > /tmp/issue_body_template.txt <<'ISSUE_BODY_EOF'
-## SPEC Metadata
-
-| Field | Value |
-|-------|-------|
-| **ID** | SPEC_ID_PLACEHOLDER |
-| **Version** | SPEC_VERSION_PLACEHOLDER |
-| **Status** | SPEC_STATUS_PLACEHOLDER |
-| **Priority** | SPEC_PRIORITY_PLACEHOLDER |
-
-## SPEC Document
-
-SPEC_CONTENT_PLACEHOLDER
-
----
-
-📎 **Branch**: `feature/SPEC_ID_PLACEHOLDER`
-🔗 **PR**: #PR_NUMBER_PLACEHOLDER
-📝 **Auto-synced**: This issue is automatically synchronized from the SPEC document
-ISSUE_BODY_EOF
-
-          # Replace placeholders
-          sed -e "s/SPEC_ID_PLACEHOLDER/$spec_id/g" \
-              -e "s/SPEC_VERSION_PLACEHOLDER/$spec_version/g" \
-              -e "s/SPEC_STATUS_PLACEHOLDER/$spec_status/g" \
-              -e "s/SPEC_PRIORITY_PLACEHOLDER/$spec_priority/g" \
-              -e "s/PR_NUMBER_PLACEHOLDER/${{ github.event.pull_request.number }}/g" \
-              /tmp/issue_body_template.txt > /tmp/issue_body_partial.txt
-
-          # Insert SPEC content (handling it separately to preserve formatting)
-          awk -v content="$spec_content" '{gsub(/SPEC_CONTENT_PLACEHOLDER/, content)}1' \
-              /tmp/issue_body_partial.txt > /tmp/issue_body.txt
+          # Create issue body using GitHub Actions recommended pattern
+          # Reference: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions
+          {
+            echo "## SPEC Metadata"
+            echo ""
+            echo "| Field | Value |"
+            echo "|-------|-------|"
+            echo "| **ID** | $spec_id |"
+            echo "| **Version** | $spec_version |"
+            echo "| **Status** | $spec_status |"
+            echo "| **Priority** | $spec_priority |"
+            echo ""
+            echo "## SPEC Document"
+            echo ""
+            echo "$spec_content"
+            echo ""
+            echo "---"
+            echo ""
+            echo "📎 **Branch**: \`feature/$spec_id\`"
+            echo "🔗 **PR**: #${{ github.event.pull_request.number }}"
+            echo "📝 **Auto-synced**: This issue is automatically synchronized from the SPEC document"
+          } > /tmp/issue_body.txt
 
           echo "📋 Creating GitHub Issue..."
           echo "  Title: [SPEC-$spec_id] $spec_title (v$spec_version)"
