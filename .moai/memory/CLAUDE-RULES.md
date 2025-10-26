@@ -4,34 +4,34 @@
 
 ---
 
-## Alfred를 위해: 이 문서가 필요한 이유
+## For Alfred: Why This Document Matters
 
-Alfred가 이 문서를 읽는 시점:
-1. Skill을 호출하기 직전 - "이 Skill 호출이 필수인가, 선택인가?"
-2. 사용자 질문이 모호할 때 - "AskUserQuestion을 써야 할 상황인가?"
-3. 코드를 검증할 때 - "TRUST 5 원칙을 모두 지켰는가?"
-4. Git 커밋 전 - "이 커밋 메시지 형식이 맞는가?"
-5. TAG 체인 무결성 확인 시 - "TAG 규칙을 따랐는가?"
+When Alfred reads this document:
+1. Before invoking a Skill - "Is this Skill invocation mandatory or optional?"
+2. When user questions are ambiguous - "Should I use AskUserQuestion in this situation?"
+3. When verifying code - "Have all TRUST 5 principles been followed?"
+4. Before git commits - "Is this commit message format correct?"
+5. When checking TAG chain integrity - "Have TAG rules been followed?"
 
-Alfred의 의사결정:
-- "이 상황에서 반드시 Skill을 호출해야 하는가?"
-- "사용자의 모호한 질문에 대해 AskUserQuestion을 실행할 것인가?"
-- "이 코드/커밋이 우리 규칙을 모두 준수했는가?"
+Alfred's Decision Making:
+- "Must I invoke a Skill in this situation?"
+- "Should I execute AskUserQuestion for the user's ambiguous question?"
+- "Does this code/commit comply with all our rules?"
 
-이 문서를 읽으면:
-- 10가지 필수 Skill 호출 시나리오 이해
-- AskUserQuestion의 5가지 필수 상황 숙달
-- TRUST 5의 5가지 품질 게이트 적용 가능
-- TAG 규칙과 검증 방법 숙달
-
----
-→ 관련 문서:
-- [Agent 선택 기준은 CLAUDE-AGENTS-GUIDE.md](./CLAUDE-AGENTS-GUIDE.md#agent-선택-결정-트리)를 참조하세요
-- [구체적 실행 예제는 CLAUDE-PRACTICES.md](./CLAUDE-PRACTICES.md#실전-워크플로우-예제)를 참조하세요
+After reading this document:
+- Understand 10 mandatory Skill invocation scenarios
+- Master 5 mandatory situations for AskUserQuestion
+- Apply TRUST 5's 5 quality gates
+- Master TAG rules and validation methods
 
 ---
+→ Related Documents:
+- [For Agent selection criteria, see CLAUDE-AGENTS-GUIDE.md](./CLAUDE-AGENTS-GUIDE.md#agent-selection-decision-tree)
+- [For specific execution examples, see CLAUDE-PRACTICES.md](./CLAUDE-PRACTICES.md#practical-workflow-examples)
 
-## 🎯 Skill Invocation Rules (English-Only)
+---
+
+## 🎯 Skill Invocation Rules 
 
 ### ✅ Mandatory Skill Explicit Invocation
 
@@ -68,6 +68,40 @@ All Skills follow the **Progressive Disclosure** principle:
 1. **Metadata** (always available): Skill name, description, triggers, keywords
 2. **Content** (on-demand): Full SKILL.md loads when explicitly invoked via `Skill("name")`
 3. **Supporting** (JIT): Templates, examples, and resources load only when needed
+
+### 🌍 Language Boundary in Skill Invocation (다국어 환경)
+
+**CRITICAL RULE for Multilingual Projects**: When invoking Skills in projects supporting multiple languages (Korean, Japanese, Chinese, Spanish, etc.):
+
+**Alfred's Responsibility**:
+1. **Receive** user request in their `conversation_language` (e.g., Korean "코드 품질 체크해줘")
+2. **Translate** request to **English** internally
+3. **Invoke Skills** with English-only prompts: `Skill("moai-foundation-trust")` (English triggers guaranteed to match)
+4. **Receive** Skill results in English
+5. **Translate** results back to user's language for response
+
+**Why This Pattern**:
+- ✅ **100% Reliability**: English keywords in prompts always match English Skill descriptions
+- ✅ **Zero Maintenance**: No need to maintain Skills in multiple languages (single source of truth)
+- ✅ **Scalability**: Support any language (Korean/Japanese/Chinese/Spanish/Russian/etc.) without modifying Skills
+- ✅ **Consistency**: All internal communication in English (standard lingua franca)
+
+**Sub-agent Rule**:
+- **All sub-agents MUST receive English prompts** in `Task(prompt="...", subagent_type="...")` invocations
+- Sub-agents should NOT infer or try to handle user's original language
+- Sub-agents output results in English; Alfred handles translation
+
+**Example**:
+```
+User (Korean):  "인증 시스템 구현해줘"
+Alfred (internal): Translate to English "Implement authentication system"
+Alfred (invokes): Task(subagent_type="implementation-planner", prompt="Analyze authentication SPEC and create implementation plan")
+Sub-agent (receives): English prompt
+Sub-agent (uses): Skill("moai-domain-backend") [English description, 100% match]
+Sub-agent (returns): English implementation plan
+Alfred (translates): "인증 시스템 구현 계획: JWT 토큰 기반..."
+User (receives): Korean response
+```
 
 ### Explicit Invocation Syntax
 
@@ -381,7 +415,7 @@ Co-Authored-By: Alfred <alfred@mo.ai.kr>
 - **TAG ID**: `<Domain>-<3 digits>` (e.g., `AUTH-003`) — immutable.
 - **TAG Content**: Flexible but record changes in HISTORY.
 - **Versioning**: Semantic Versioning (`v0.0.1 → v0.1.0 → v1.0.0`).
-  - Detailed rules: see `@.moai/memory/spec-metadata.md#versioning`.
+  - Detailed rules: see `@.moai/memory/SPEC-METADATA.md#versioning`.
 - **TAG References**: Use file names without versions (e.g., `SPEC-AUTH-001.md`).
 - **Duplicate Check**: `rg "@SPEC:AUTH" -n` or `rg "AUTH-001" -n`.
 - **Code-first**: The source of truth lives in code.
@@ -416,7 +450,7 @@ rg '@SPEC:AUTH-001' -n .moai/specs/  # SPEC missing → orphan
 
 ## TRUST 5 Principles (Language-agnostic)
 
-> Detailed guide: `@.moai/memory/development-guide.md#trust-5-principles`
+> Detailed guide: `@.moai/memory/DEVELOPMENT-GUIDE.md#trust-5-principles`
 
 Alfred enforces these quality gates on every change:
 
@@ -426,7 +460,7 @@ Alfred enforces these quality gates on every change:
 - **S**ecured: Apply security/static analysis tools.
 - **T**rackable: Maintain @TAG coverage directly in code.
 
-**Language-specific guidance**: `.moai/memory/development-guide.md#trust-5-principles`.
+**Language-specific guidance**: `.moai/memory/DEVELOPMENT-GUIDE.md#trust-5-principles`.
 
 ---
 
@@ -475,5 +509,5 @@ Alfred enforces these quality gates on every change:
 
 ---
 
-**마지막 업데이트**: 2025-10-26
-**문서 버전**: v1.0.0 (Option A Refactoring)
+**Last Updated**: 2025-10-27
+**Document Version**: v1.0.0
