@@ -4,7 +4,7 @@
     "@SPEC:PROJECT-CONFIG-001": "@SPEC:MOAI-CONFIG-001"
   },
   "moai": {
-    "version": "0.4.8"
+    "version": "0.5.4"
   },
   "constitution": {
     "enforce_tdd": true,
@@ -15,62 +15,36 @@
       }
     },
     "require_tags": true,
-    "simplicity_threshold": 5,
     "test_coverage_target": 85
   },
   "git_strategy": {
-    "personal": {
-      "auto_checkpoint": "event-driven",
-      "checkpoint_events": [
-        "delete",
-        "refactor",
-        "merge",
-        "script",
-        "critical-file"
-      ],
-      "checkpoint_type": "local-branch",
-      "max_checkpoints": 10,
-      "cleanup_days": 7,
-      "push_to_remote": false,
-      "auto_commit": true,
-      "branch_prefix": "feature/",
-      "develop_branch": "develop",
-      "main_branch": "main"
-    },
+    "active_mode": "team",
     "team": {
       "auto_pr": true,
       "develop_branch": "develop",
       "draft_pr": true,
       "feature_prefix": "feature/SPEC-",
       "main_branch": "main",
-      "use_gitflow": true
+      "use_gitflow": true,
+      "auto_ready_on_sync": true
     }
-  },
-  "pipeline": {
-    "available_commands": [
-      "/alfred:0-project",
-      "/alfred:1-plan",
-      "/alfred:2-run",
-      "/alfred:3-sync"
-    ],
-    "current_stage": "initialized"
   },
   "project": {
     "created_at": "2025-10-21 23:59:19",
-    "description": "",
+    "description": "MoAI-Agentic Development Kit",
     "initialized": true,
-    "mode": "personal",
+    "mode": "team",
     "name": "MoAI-ADK",
-    "moai_adk_version": "0.4.1",
+    "moai_adk_version": "0.5.4",
     "optimized": true,
-    "optimized_at": "2025-10-22T12:45:00Z",
+    "optimized_at": "2025-10-25T10:00:00Z",
     "language": "python",
     "locale": "ko",
     "conversation_language": "ko",
     "conversation_language_name": "한국어"
   },
   "user": {
-    "nickname": "GOOS오라버니"
+    "nickname": "GOOS 오라버니"
   },
   "tags": {
     "auto_sync": true,

@@ -183,7 +183,7 @@ prometheus-client = "^0.21.0"
 
 ```bash
 # Old workflow (3.12 + black + pylint)
-python -m pip install black pylint pytest
+python -m uv uv pip install black pylint pytest
 
 # New workflow (3.13 + ruff + pytest + uv)
 uv venv
