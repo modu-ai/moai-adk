@@ -1,15 +1,6 @@
 name: 📋 SPEC Issue Sync
 
-# Automatically synchronize SPEC documents to GitHub Issues
-# Triggered when SPEC files are created or modified in feature/SPEC-* branches
-
 on:
-  push:
-    paths:
-      - '.moai/specs/SPEC-*/spec.md'
-    branches:
-      - 'feature/SPEC-*'
-      - 'develop'
   pull_request:
     paths:
       - '.moai/specs/SPEC-*/spec.md'
@@ -17,64 +8,58 @@ on:
 
 permissions:
   issues: write
-  pull-requests: read
+  pull-requests: write
   contents: read
 
 jobs:
-  sync-spec-issue:
-    name: 🔄 Sync SPEC to GitHub Issue
+  sync-spec-to-issue:
     runs-on: ubuntu-latest
+    name: 🔄 Sync SPEC to GitHub Issue
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
-      - name: Extract SPEC metadata
-        id: extract
+      - name: Find and parse SPEC file
+        id: spec
         run: |
-          # Find SPEC files that changed
-          spec_dirs=$(find .moai/specs -type d -name "SPEC-*" | head -1)
+          set -x  # Enable debug mode
 
-          if [ -z "$spec_dirs" ]; then
-            echo "No SPEC directories found"
+          # Debug: Show current directory and files
+          echo "=== Debug: Current directory ==="
+          pwd
+          ls -la
+
+          echo "=== Debug: Looking for .moai/specs ==="
+          ls -la .moai/ 2>&1 || echo ".moai/ directory not found"
+
+          # Find SPEC files in the PR
+          echo "=== Debug: Searching for SPEC files ==="
+          find . -name "spec.md" -type f 2>&1 || echo "find command failed"
+
+          spec_file=$(find .moai/specs -name "spec.md" -type f 2>&1 | head -1)
+          echo "Found spec_file: [$spec_file]"
+
+          if [ -z "$spec_file" ]; then
+            echo "⚠️  No SPEC file found in .moai/specs"
+            echo "Exiting gracefully (this is expected if no SPEC files changed)"
             exit 0
           fi
 
-          spec_file="$spec_dirs/spec.md"
-
-          if [ ! -f "$spec_file" ]; then
-            echo "SPEC file not found: $spec_file"
-            exit 0
-          fi
-
-          # Extract YAML frontmatter
-          spec_id=$(grep "^id:" "$spec_file" | head -1 | sed 's/^id: *//' | tr -d ' "')
-          spec_version=$(grep "^version:" "$spec_file" | head -1 | sed 's/^version: *//' | tr -d ' "')
-          spec_status=$(grep "^status:" "$spec_file" | head -1 | sed 's/^status: *//' | tr -d ' "')
-          spec_priority=$(grep "^priority:" "$spec_file" | head -1 | sed 's/^priority: *//' | tr -d ' "')
-
-          # Extract title (first H1 heading)
-          spec_title=$(grep "^# @SPEC:" "$spec_file" | head -1 | sed 's/^# @SPEC:[^:]*: //' | tr -d ' "')
-
-          if [ -z "$spec_id" ]; then
-            echo "Could not extract SPEC ID"
-            exit 0
-          fi
-
-          # Output for next steps
-          echo "spec_id=$spec_id" >> $GITHUB_OUTPUT
-          echo "spec_version=$spec_version" >> $GITHUB_OUTPUT
-          echo "spec_status=$spec_status" >> $GITHUB_OUTPUT
-          echo "spec_priority=$spec_priority" >> $GITHUB_OUTPUT
-          echo "spec_title=$spec_title" >> $GITHUB_OUTPUT
+          echo "✅ Found SPEC file: $spec_file"
           echo "spec_file=$spec_file" >> $GITHUB_OUTPUT
+
+          # Extract YAML metadata using grep
+          spec_id=$(grep "^id:" "$spec_file" | sed 's/^id: *//' | tr -d ' "')
+          spec_version=$(grep "^version:" "$spec_file" | sed 's/^version: *//' | tr -d ' "')
+          spec_status=$(grep "^status:" "$spec_file" | sed 's/^status: *//' | tr -d ' "')
+          spec_priority=$(grep "^priority:" "$spec_file" | sed 's/^priority: *//' | tr -d ' "')
+
+          # Extract title from H1 heading
+          spec_title=$(grep "^# @SPEC:" "$spec_file" | sed 's/^# @SPEC:[^:]*: //')
 
           echo "✅ Extracted SPEC metadata:"
           echo "  ID: $spec_id"
@@ -83,135 +68,100 @@ jobs:
           echo "  Status: $spec_status"
           echo "  Priority: $spec_priority"
 
-      - name: Check for existing issue
-        if: steps.extract.outputs.spec_id
-        id: check-issue
-        run: |
-          spec_id="${{ steps.extract.outputs.spec_id }}"
-          spec_title="${{ steps.extract.outputs.spec_title }}"
+          echo "spec_id=$spec_id" >> $GITHUB_OUTPUT
+          echo "spec_version=$spec_version" >> $GITHUB_OUTPUT
+          echo "spec_status=$spec_status" >> $GITHUB_OUTPUT
+          echo "spec_priority=$spec_priority" >> $GITHUB_OUTPUT
+          echo "spec_title=$spec_title" >> $GITHUB_OUTPUT
 
-          # Search for existing issue
-          issue_number=$(gh issue list \
-            --search "SPEC-$spec_id in:title" \
-            --json number \
-            --jq '.[0].number' 2>/dev/null || echo "")
-
-          if [ -z "$issue_number" ] || [ "$issue_number" = "null" ]; then
-            echo "issue_exists=false" >> $GITHUB_OUTPUT
-            echo "ℹ️  No existing issue found for SPEC-$spec_id"
-          else
-            echo "issue_exists=true" >> $GITHUB_OUTPUT
-            echo "issue_number=$issue_number" >> $GITHUB_OUTPUT
-            echo "✅ Found existing issue #$issue_number"
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create or update GitHub Issue
-        if: steps.extract.outputs.spec_id
+      - name: Create GitHub Issue
+        if: steps.spec.outputs.spec_id
         id: create-issue
-        run: |
-          spec_id="${{ steps.extract.outputs.spec_id }}"
-          spec_title="${{ steps.extract.outputs.spec_title }}"
-          spec_version="${{ steps.extract.outputs.spec_version }}"
-          spec_status="${{ steps.extract.outputs.spec_status }}"
-          spec_priority="${{ steps.extract.outputs.spec_priority }}"
-          spec_file="${{ steps.extract.outputs.spec_file }}"
-
-          # Read SPEC content
-          spec_content=$(cat "$spec_file" | tail -n +7)  # Skip YAML frontmatter
-
-          # Prepare issue body
-          issue_body="## SPEC Metadata
-
-| Field | Value |
-|-------|-------|
-| **ID** | SPEC-$spec_id |
-| **Version** | $spec_version |
-| **Status** | $spec_status |
-| **Priority** | $spec_priority |
-
-## SPEC Document
-
-$spec_content
-
----
-
-📎 **Linked Branch**: \`feature/SPEC-$spec_id\`
-🔗 **Related PR**: Check pull requests for this SPEC
-📝 **Auto-synced**: This issue is automatically synchronized from the SPEC document
-"
-
-          # Check if issue exists
-          if [ "${{ steps.check-issue.outputs.issue_exists }}" = "true" ]; then
-            # Update existing issue
-            issue_num="${{ steps.check-issue.outputs.issue_number }}"
-            gh issue edit "$issue_num" \
-              --title "[SPEC-$spec_id] $spec_title (v$spec_version)" \
-              --body "$issue_body" \
-              2>&1 || echo "⚠️ Failed to update issue #$issue_num"
-
-            echo "issue_number=$issue_num" >> $GITHUB_OUTPUT
-            echo "✅ Updated issue #$issue_num"
-          else
-            # Create new issue
-            issue_output=$(gh issue create \
-              --title "[SPEC-$spec_id] $spec_title (v$spec_version)" \
-              --body "$issue_body" \
-              --label "spec,planning" \
-              --label "$spec_priority" \
-              2>&1)
-
-            issue_num=$(echo "$issue_output" | grep -oP 'github.com/[^/]+/[^/]+/issues/\K[0-9]+' || echo "")
-
-            if [ -z "$issue_num" ]; then
-              # Fallback: extract from output
-              issue_num=$(echo "$issue_output" | tail -1 | grep -oP '/issues/\K[0-9]+' || echo "")
-            fi
-
-            if [ -z "$issue_num" ]; then
-              echo "⚠️ Could not extract issue number from output"
-              echo "issue_output=$issue_output" >> $GITHUB_OUTPUT
-            else
-              echo "issue_number=$issue_num" >> $GITHUB_OUTPUT
-              echo "✅ Created issue #$issue_num"
-            fi
-          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Add PR comment (if in PR)
-        if: github.event_name == 'pull_request' && steps.create-issue.outputs.issue_number
         run: |
-          issue_num="${{ steps.create-issue.outputs.issue_number }}"
-          spec_id="${{ steps.extract.outputs.spec_id }}"
+          spec_id="${{ steps.spec.outputs.spec_id }}"
+          spec_version="${{ steps.spec.outputs.spec_version }}"
+          spec_title="${{ steps.spec.outputs.spec_title }}"
+          spec_status="${{ steps.spec.outputs.spec_status }}"
+          spec_priority="${{ steps.spec.outputs.spec_priority }}"
+          spec_file="${{ steps.spec.outputs.spec_file }}"
 
-          pr_comment="✅ **SPEC GitHub Issue Created**
+          # Read SPEC content (skip YAML frontmatter: 9 lines + 1 blank = 10 lines total)
+          # Start reading from line 11
+          spec_content=$(tail -n +11 "$spec_file")
 
-This SPEC has been synchronized to GitHub Issue #$issue_num.
+          # Create issue body using GitHub Actions recommended pattern
+          # Reference: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions
+          {
+            echo "## SPEC Metadata"
+            echo ""
+            echo "| Field | Value |"
+            echo "|-------|-------|"
+            echo "| **ID** | $spec_id |"
+            echo "| **Version** | $spec_version |"
+            echo "| **Status** | $spec_status |"
+            echo "| **Priority** | $spec_priority |"
+            echo ""
+            echo "## SPEC Document"
+            echo ""
+            echo "$spec_content"
+            echo ""
+            echo "---"
+            echo ""
+            echo "📎 **Branch**: \`feature/$spec_id\`"
+            echo "🔗 **PR**: #${{ github.event.pull_request.number }}"
+            echo "📝 **Auto-synced**: This issue is automatically synchronized from the SPEC document"
+          } > /tmp/issue_body.txt
 
-📋 **Issue**: [SPEC-$spec_id: ${{ steps.extract.outputs.spec_title }}](../../issues/$issue_num)
-🔗 **SPEC File**: \`.moai/specs/SPEC-$spec_id/spec.md\`
+          echo "📋 Creating GitHub Issue..."
+          echo "  Title: [SPEC-$spec_id] $spec_title (v$spec_version)"
+          echo "  Body file: /tmp/issue_body.txt"
+          wc -l /tmp/issue_body.txt
 
-The issue will be automatically updated as you modify the SPEC document."
+          # Create issue with labels using body-file
+          issue_output=$(gh issue create \
+            --title "[SPEC-$spec_id] $spec_title (v$spec_version)" \
+            --body-file /tmp/issue_body.txt \
+            --label "spec" \
+            --label "planning" \
+            --label "$spec_priority" 2>&1)
 
-          gh pr comment ${{ github.event.pull_request.number }} \
-            --body "$pr_comment" 2>&1 || echo "⚠️ Failed to add PR comment"
+          echo "$issue_output" | tee /tmp/issue_output.txt
+
+          # Extract issue number from output
+          issue_num=$(echo "$issue_output" | grep -oE '/issues/[0-9]+' | grep -oE '[0-9]+' | head -1)
+
+          if [ -z "$issue_num" ]; then
+            echo "⚠️  Could not extract issue number from output"
+            echo "Full output:"
+            cat /tmp/issue_output.txt
+            exit 1
+          fi
+
+          echo "issue_number=$issue_num" >> $GITHUB_OUTPUT
+          echo "✅ Created issue #$issue_num"
+
+      - name: Add PR comment
+        if: steps.create-issue.outputs.issue_number
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Report results
-        if: steps.extract.outputs.spec_id
         run: |
-          spec_id="${{ steps.extract.outputs.spec_id }}"
           issue_num="${{ steps.create-issue.outputs.issue_number }}"
+          spec_id="${{ steps.spec.outputs.spec_id }}"
+          spec_title="${{ steps.spec.outputs.spec_title }}"
 
-          if [ -n "$issue_num" ] && [ "$issue_num" != "null" ]; then
-            echo "✅ SPEC Issue Sync Complete"
-            echo "  - SPEC ID: SPEC-$spec_id"
-            echo "  - Issue #: $issue_num"
-            echo "  - URL: https://github.com/${{ github.repository }}/issues/$issue_num"
-          else
-            echo "⚠️ SPEC Issue Sync Skipped or Failed"
-            echo "  - Could not create/update issue"
-          fi
+          # Create PR comment body using same pattern
+          {
+            echo "✅ **SPEC GitHub Issue Created**"
+            echo ""
+            echo "This SPEC has been synchronized to GitHub Issue."
+            echo ""
+            echo "📋 **Issue**: [#$issue_num - SPEC-$spec_id: $spec_title](../issues/$issue_num)"
+            echo "🔗 **SPEC File**: \`.moai/specs/SPEC-$spec_id/spec.md\`"
+            echo ""
+            echo "The issue will be automatically updated as you modify the SPEC document."
+          } > /tmp/pr_comment.txt
+
+          gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/pr_comment.txt
+          echo "✅ Added PR comment linking to issue #$issue_num"
