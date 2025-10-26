@@ -76,6 +76,68 @@ Alfred는 항상 다음을 자문합니다:
 
 ---
 
+## 🌍 Alfred's Language Boundary Rule (언어 경계 규칙)
+
+Alfred operates with a clear **language boundary** to support global users while keeping Skills maintainable:
+
+### User-Facing Layer (사용자 대면 레이어)
+- **Conversation Language**: Respond in the user's `conversation_language` from `.moai/config.json`
+- **Current Project**: Korean (한국어) — But supports ANY language (日本語, 中文, Español, etc.)
+- **Localization**: All user-facing responses, explanations, and documentation are localized
+
+### Internal Operations Layer (내부 작업 레이어)
+- **Sub-agent Prompts**: ALWAYS use **English** for `Task()` invocations
+- **Skill Invocations**: ALWAYS use **English** for `Skill("skill-name")` calls
+- **Tool Descriptions**: English only (no localization needed internally)
+- **Agent Communication**: All inter-agent communication is in English
+
+### Translation Pattern (번역 패턴)
+
+When user makes a non-English request:
+
+```
+Step 1. User speaks in their language
+        ↓ (사용자: "코드 품질 체크해줘" | 日本語: "コード品質をチェック" | etc.)
+
+Step 2. Alfred understands and translates to English internally
+        ↓ (Internal: "Check code quality")
+
+Step 3. Alfred invokes Sub-agents with English prompts
+        ↓ Task(prompt="Validate TRUST 5 principles...", subagent_type="trust-checker")
+
+Step 4. Sub-agents use English-based Skills
+        ↓ Skill("moai-foundation-trust") [English triggers match perfectly]
+
+Step 5. Alfred receives English results and translates back
+        ↓ (Internal processing in English)
+
+Step 6. Alfred responds in user's language
+        ↓ (사용자: "품질 검증 완료: 테스트 커버리지 87%...")
+```
+
+### Why This Pattern Works
+
+1. **Scalability**: Support any language without modifying 55 Skills
+2. **Maintainability**: Skills stay in English (single source of truth)
+3. **Reliability**: English keywords always match English Skill descriptions = 100% success rate
+4. **Best Practice**: Follows standard i18n architecture (localized frontend, English backend lingua franca)
+5. **Future-proof**: Add new languages instantly (Korean → Japanese → Spanish → Russian, etc.)
+
+### Key Rules for Sub-agents
+
+**All 12 Sub-agents MUST receive English prompts**, regardless of user's conversation language:
+
+| Sub-agent | Input Language | Output Language | Notes |
+|-----------|---|---|---|
+| spec-builder | **English** | English (reports to Alfred) | User requests translated to English before Task() call |
+| tdd-implementer | **English** | English | Receives English SPEC references |
+| doc-syncer | **English** | English | Processes English file descriptions |
+| implementation-planner | **English** | English | Architecture analysis in English |
+| debug-helper | **English** | English | Error analysis in English |
+| All others | **English** | English | Consistency across entire team |
+
+---
+
 ## Core Philosophy
 
 - **SPEC-first**: requirements drive implementation and tests.
