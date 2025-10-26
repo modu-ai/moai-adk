@@ -1,0 +1,83 @@
+# CodeRabbit Configuration File
+# https://docs.coderabbit.ai/guides/configure-coderabbit
+
+coderabbit:
+  language: python
+  framework: general
+
+  # Enable reviews on all branches including develop
+  rules:
+    - name: "Enable reviews on all branches"
+      type: "config"
+      enabled: true
+
+  # Review settings
+  reviews:
+    review_status: true
+    review_on_draft: true
+    review_comment_lgtm: true
+
+  # Auto-approval settings (Pro feature)
+  auto_approve:
+    enabled: true
+    min_score: 0.80  # Approve if 80%+ quality
+
+  # Python-specific rules
+  python:
+    - check_type_hints: true
+    - check_docstrings: true
+    - check_pep8: true
+    - check_test_coverage: true
+
+  # Ignore patterns
+  ignore:
+    - "*.md"
+    - "*.txt"
+    - "docs/"
+    - "build/"
+    - "dist/"
+    - ".git/"
+    - "__pycache__/"
+    - "*.pyc"
+
+  # Review instructions
+  instructions: |
+    Review this pull request focusing on:
+
+    ## Code Quality
+    - Type hints presence and correctness
+    - Docstring completeness
+    - PEP-8 compliance
+    - Code readability and maintainability
+    - Design patterns and SOLID principles
+
+    ## Security
+    - Vulnerability detection
+    - Sensitive data handling
+    - Input validation
+    - Error handling
+
+    ## Testing
+    - Test coverage
+    - Edge case handling
+    - Test quality and assertions
+
+    ## Performance
+    - Algorithm efficiency
+    - Resource usage
+    - Potential bottlenecks
+
+    ## Documentation
+    - Comment clarity
+    - README updates
+    - Changelog entries
+
+  # Languages to review
+  languages:
+    - python
+    - yaml
+    - json
+    - markdown
+
+  # Disable review_skip_pattern to enable reviews on all branches
+  skip_review_on_forbidden_base_branch: false
