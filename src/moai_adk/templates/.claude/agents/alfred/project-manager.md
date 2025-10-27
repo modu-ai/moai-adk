@@ -1,6 +1,6 @@
 ---
 name: project-manager
-description: "Use when: When initial project setup and .moai/ directory structure creation are required. Called from the /alfred:0-project command."
+description: "Actively use for project initialization, creating product/structure/tech documents, and conducting user interviews. Use proactively when setting up new projects, analyzing legacy codebases, or updating project documentation. Essential for conversation language selection, project type detection, and establishing development context."
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite
 model: sonnet
 ---

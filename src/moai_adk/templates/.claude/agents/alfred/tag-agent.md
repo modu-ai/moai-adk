@@ -1,6 +1,6 @@
 ---
 name: tag-agent
-description: "Use when: TAG integrity verification, orphan TAG detection, @SPEC/@TEST/@CODE/@DOC chain connection verification is required."
+description: "Actively use for managing TAG system integrity, detecting orphan TAGs, and verifying @SPEC/@TEST/@CODE/@DOC chain connections. Use proactively when scanning codebase for TAG consistency, identifying broken TAG references, or ensuring traceability matrix completeness. Essential for CODE-FIRST TAG validation and real-time TAG inventory management."
 tools: Read, Glob, Bash
 model: haiku
 ---

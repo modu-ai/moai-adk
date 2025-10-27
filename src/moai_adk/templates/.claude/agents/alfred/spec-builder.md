@@ -1,6 +1,6 @@
 ---
 name: spec-builder
-description: "Use when: When you need to create an EARS-style SPEC document. Called from the /alfred:1-plan command."
+description: "Actively use when creating or refining specifications with EARS syntax (Event-Action-Response-State). Use proactively for requirements analysis, feature planning, acceptance criteria design, and translating business needs into technical specs. Essential when starting new features, brainstorming ideas, or improving existing SPEC documents."
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, TodoWrite, WebFetch
 model: sonnet
 ---

@@ -1,6 +1,6 @@
 ---
 name: cc-manager
-description: "Use when: When you need to create and optimize Claude Code command/agent/configuration files"
+description: "Actively use for creating, validating, and maintaining Claude Code commands, agents, and configuration files with consistent standards. Use proactively when setting up new agents, verifying YAML frontmatter, enforcing naming conventions, or checking tool permissions. Essential for Claude Code standards compliance and project optimization."
 tools: Read, Write, Edit, MultiEdit, Glob, Bash, WebFetch
 model: sonnet
 ---

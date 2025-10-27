@@ -1,6 +1,6 @@
 ---
 name: implementation-planner
-description: "Use when: When SPEC analysis and implementation strategy need to be established. Called from /alfred:2-run Phase 1"
+description: "Actively use for analyzing SPEC requirements and designing implementation strategies. Use proactively when planning architecture, selecting libraries with version specifications, designing TAG chains, and assessing technical feasibility. Essential before starting TDD implementation, when evaluating technology stacks, or when risk analysis is needed."
 tools: Read, Grep, Glob, WebFetch, TodoWrite
 model: sonnet
 ---

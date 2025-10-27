@@ -1,6 +1,6 @@
 ---
 name: doc-syncer
-description: "Use when: When automatic document synchronization based on code changes is required. Called from the /alfred:3-sync command."
+description: "Actively use for synchronizing Living Documents with code changes, maintaining code-documentation consistency, and ensuring TAG traceability. Use proactively after code implementation, when API documentation needs updates, or when TAG chains require verification. Essential for keeping README, architecture docs, and API references current with codebase."
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, TodoWrite
 model: haiku
 ---

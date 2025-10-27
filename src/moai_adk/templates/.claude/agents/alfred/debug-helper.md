@@ -1,6 +1,6 @@
 ---
 name: debug-helper
-description: "Use when: When a runtime error occurs and it is necessary to analyze the cause and suggest a solution."
+description: "Actively use when errors, test failures, or unexpected behavior occurs. Use proactively for diagnosing runtime errors, analyzing stack traces, identifying root causes, and suggesting actionable fixes. Must use for TypeError, ImportError, test failures, Git errors, and configuration issues."
 tools: Read, Grep, Glob, Bash, TodoWrite
 model: sonnet
 ---

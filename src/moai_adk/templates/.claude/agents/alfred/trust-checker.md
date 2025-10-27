@@ -1,6 +1,6 @@
 ---
 name: trust-checker
-description: "Use when: When verification of compliance with TRUST 5 principles such as code quality, security, and test coverage is required."
+description: "Actively use for comprehensive verification of TRUST 5 principles (Test First, Readable, Unified, Secured, Trackable). Use proactively for differential scanning (Level 1/2/3), performance analysis, and security audits. Essential when assessing code quality, measuring test coverage, or validating architectural integrity."
 tools: Read, Grep, Glob, Bash, TodoWrite
 model: haiku
 ---

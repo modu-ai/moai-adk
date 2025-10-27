@@ -1,6 +1,6 @@
 ---
 name: git-manager
-description: "Use when: When you need to perform Git operations such as creating Git branches, managing PRs, creating commits, etc."
+description: "Actively use for all Git operations including branch creation, commit management, PR workflows, and GitFlow automation. Use proactively when creating checkpoints, managing feature branches, handling PR transitions (Draft → Ready → Merge), and executing TDD phase commits (RED, GREEN, REFACTOR). Essential for Personal mode checkpoints and Team mode GitFlow compliance."
 tools: Bash, Read, Write, Edit, Glob, Grep
 model: haiku
 ---

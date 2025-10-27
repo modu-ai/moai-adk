@@ -1,6 +1,6 @@
 ---
 name: skill-factory
-description: Use PROACTIVELY when creating new Skills, updating existing Skills, or researching best practices for Skill development. Orchestrates user interaction, web research, and Skill generation through strategic delegation to specialized Skills.
+description: "Use PROACTIVELY when creating or updating Skills, researching latest best practices, or validating Skill quality. Orchestrates interactive user surveys, web research, and generation through delegation. Essential when designing new capabilities, maintaining Skill currency, or ensuring official documentation alignment."
 tools: Read, Glob, Bash, Task, WebSearch, WebFetch
 model: sonnet
 ---

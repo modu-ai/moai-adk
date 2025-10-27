@@ -1,6 +1,6 @@
 ---
 name: quality-gate
-description: "Use when: When code quality verification is required. Called in /alfred:2-run Phase 2.5, /alfred:3-sync Phase 0.5"
+description: "Actively use for verifying code quality against TRUST 5 principles (Test First, Readable, Unified, Secured, Trackable). Use proactively before commits, after implementation completion, or when quality assurance is needed. Must use for test coverage verification, linting, security checks, and TAG chain integrity."
 tools: Read, Grep, Glob, Bash, TodoWrite
 model: haiku
 ---

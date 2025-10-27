@@ -1,6 +1,6 @@
 ---
 name: tdd-implementer
-description: "Use when: TDD RED-GREEN-REFACTOR implementation is needed. Called in /alfred:2-run Phase 2"
+description: "Actively use when implementing test-driven development cycles. Use proactively for RED-GREEN-REFACTOR workflows, writing failing tests first, implementing minimal code to pass tests, and refactoring for quality. Essential when code implementation follows SPEC requirements or TAG-based development."
 tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, TodoWrite
 model: sonnet
 ---
