@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: Auto-detects project language from package.json, pyproject.toml, go.mod, Cargo.toml, etc.
+description: Reference when detecting project language and framework. Load when analyzing codebase structure, selecting appropriate language-specific Skills, or configuring toolchain for multi-language projects. Essential for language-detection automation and Alfred agent workflows.
 keywords: ['language', 'detection', 'framework', 'auto']
 allowed-tools:
   - Read

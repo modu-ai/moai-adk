@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: Scans @TAG markers from code and generates TAG inventory (CODE-FIRST principle).
+description: Reference when scanning codebase for TAG usage patterns (@SPEC, @TEST, @CODE, @DOC). Load when detecting orphan TAGs, verifying TAG chain completeness, or generating real-time TAG inventory. Essential for tag-agent automation and /alfred:3-sync workflows.
 keywords: ['tag', 'scanning', 'inventory', 'traceability']
 allowed-tools:
   - Read

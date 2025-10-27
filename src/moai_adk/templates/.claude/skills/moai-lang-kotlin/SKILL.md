@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: Kotlin 2.1+ best practices with JUnit 5, Gradle, ktlint, coroutines, and extension functions.
+description: "Reference when writing Kotlin 2.1+ code with JUnit 5 and coroutines. Load for Android development, JVM optimization, or multiplatform projects requiring null safety, extension functions, and functional programming patterns."
 keywords: ['kotlin', 'junit', 'gradle', 'ktlint', 'coroutines']
 allowed-tools:
   - Read

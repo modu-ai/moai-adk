@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: PHP 8.4+ best practices with PHPUnit 11, Composer, and PSR-12 standards.
+description: "Reference when writing PHP 8.4+ code with PHPUnit and Composer. Load for web applications, Laravel/Symfony frameworks, or server-side development requiring modern PHP features, dependency management, and PSR standards."
 keywords: ['php', 'phpunit', 'composer', 'psr']
 allowed-tools:
   - Read

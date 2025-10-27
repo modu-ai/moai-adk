@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: SQL best practices with pgTAP, sqlfluff 3.2, query optimization, and migration management.
+description: "Reference when writing SQL with pgTAP and query optimization techniques. Load for database development, data analysis, complex query design (window functions, CTEs), or performance tuning with execution plans."
 keywords: ['sql', 'postgresql', 'mysql', 'sqlfluff', 'migrations']
 allowed-tools:
   - Read

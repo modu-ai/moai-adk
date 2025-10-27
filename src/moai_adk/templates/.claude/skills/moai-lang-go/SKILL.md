@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: Go 1.24+ best practices with go test, golangci-lint, gofmt, and standard library utilization.
+description: "Reference when writing Go 1.24+ code with goroutines, interfaces, and go test. Load for cloud-native applications, microservices, or concurrency-heavy systems requiring idiomatic Go patterns and standard library utilization."
 keywords: ['go', 'golang', 'testing', 'golangci-lint', 'gofmt']
 allowed-tools:
   - Read

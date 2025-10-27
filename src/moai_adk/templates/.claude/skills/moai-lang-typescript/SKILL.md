@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: TypeScript 5.7+ best practices with Vitest 2.1, Biome 1.9, strict typing, and npm/pnpm/bun package management.
+description: "Reference when writing TypeScript 5.7+ with Vitest 2.1 and strict typing. Load for type-safe JavaScript, frontend frameworks (React, Next.js), or backend services requiring compile-time type checking, advanced types, and modern ECMAScript features."
 keywords: ['typescript', 'testing', 'vitest', 'biome', 'types', 'react', 'nextjs']
 allowed-tools:
   - Read

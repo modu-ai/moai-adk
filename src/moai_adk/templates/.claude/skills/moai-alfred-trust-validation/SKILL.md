@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: TRUST 5-principles validation (Test 85%+, Readable, Unified, Secured, Trackable).
+description: Reference when automating TRUST 5 validation (Test First, Readable, Unified, Secured, Trackable) in workflows. Load when executing differential scanning (Level 1/2/3), quality gate enforcement, or pre-merge verification. Essential for trust-checker agent and /alfred:3-sync automation.
 keywords: ['trust', 'quality', 'validation', 'principles']
 allowed-tools:
   - Read

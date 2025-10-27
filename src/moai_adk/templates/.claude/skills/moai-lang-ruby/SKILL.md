@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: Ruby 3.4+ best practices with RSpec 4, RuboCop 2, Bundler, and Rails 8 patterns.
+description: "Reference when writing Ruby 3.4+ code with RSpec and Rails patterns. Load for web applications, Rails development, or scripting with dynamic typing, blocks/procs, and convention-over-configuration principles."
 keywords: ['ruby', 'rspec', 'rubocop', 'bundler', 'rails']
 allowed-tools:
   - Read

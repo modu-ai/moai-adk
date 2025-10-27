@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: Swift 6+ best practices with XCTest, SwiftLint, and iOS/macOS development patterns.
+description: "Reference when writing Swift 6+ code with XCTest and iOS/macOS patterns. Load for Apple platform development, iOS apps, SwiftUI interfaces, or Combine-based reactive programming with value types and protocols."
 keywords: ['swift', 'xctest', 'swiftlint', 'ios', 'macos']
 allowed-tools:
   - Read

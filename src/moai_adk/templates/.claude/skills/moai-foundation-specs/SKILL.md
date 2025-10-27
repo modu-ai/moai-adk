@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: SPEC YAML frontmatter validation (7 required fields) and HISTORY section enforcement.
+description: Reference when validating SPEC YAML frontmatter (id, title, status, priority, owner, created, updated) or enforcing HISTORY section completeness. Load when creating SPECs, auditing SPEC compliance, or ensuring @TAG traceability in SPEC documents.
 keywords: ['spec', 'yaml', 'validation', 'history']
 allowed-tools:
   - Read

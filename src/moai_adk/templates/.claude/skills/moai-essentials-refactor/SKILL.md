@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: Refactoring guidance with design patterns and code improvement strategies.
+description: Reference when refactoring code smells (long methods, duplicated logic, high complexity) or applying SOLID principles. Load when preparing REFACTOR phase in TDD cycle, reducing cyclomatic complexity (>10), or improving code readability for TRUST R principle.
 keywords: ['refactoring', 'patterns', 'code-quality', 'improvement']
 allowed-tools:
   - Read

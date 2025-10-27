@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: Java 23+ best practices with JUnit 5, Maven/Gradle, CheckStyle, and modern patterns.
+description: "Reference when writing Java 23+ code with JUnit 5 and Spring frameworks. Load for enterprise applications, JVM-based systems, or large-scale distributed systems requiring dependency injection and reactive programming."
 keywords: ['java', 'junit', 'maven', 'gradle', 'checkstyle']
 allowed-tools:
   - Read

@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: EARS (Easy Approach to Requirements Syntax) authoring with 5 statement patterns for clear requirements.
+description: Reference when authoring EARS-formatted requirements interactively. Load when clarifying user intent via AskUserQuestion surveys, transforming vague requests into structured SPEC requirements, or guiding spec-builder agent to gather complete context.
 keywords: ['ears', 'requirements', 'specs', 'authoring']
 allowed-tools:
   - Read

@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: GitFlow automation and PR policy enforcement for MoAI-ADK workflows.
+description: Reference when applying Git workflows, GitFlow branching strategies, or TDD commit patterns (RED/GREEN/REFACTOR). Load when managing feature branches, creating checkpoints, or automating PR workflows in Personal/Team modes. Essential for git-manager agent integration.
 keywords: ['git', 'gitflow', 'pr', 'automation']
 allowed-tools:
   - Read

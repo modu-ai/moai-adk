@@ -19,7 +19,8 @@
       "Bash(gh run view:*)",
       "Bash(gh label list:*)",
       "Bash(bandit:*)",
-      "Bash(pip-audit:*)"
+      "Bash(pip-audit:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

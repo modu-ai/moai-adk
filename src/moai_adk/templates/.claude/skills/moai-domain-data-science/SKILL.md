@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: Data analysis, visualization, statistical modeling, and reproducible research workflows.
+description: "Reference when conducting data analysis, visualization, or statistical modeling. Load when building reproducible research workflows (Pandas 2.2, NumPy 2.2, Jupyter), managing datasets, or implementing data pipelines with TRUST quality gates."
 keywords: ['data', 'analysis', 'visualization', 'statistics', 'jupyter']
 allowed-tools:
   - Read

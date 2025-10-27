@@ -1,6 +1,6 @@
 ---
 name: moai-cc-commands
-description: "Designing Slash Commands for Claude Code. Create and optimize slash commands with proper argument parsing, tool permissions, and agent orchestration. Use when building workflow entry points, automation commands, or user-facing shortcuts."
+description: "Reference when creating or validating Claude Code custom commands in .claude/commands/. Load when structuring command YAML files, defining command arguments, or ensuring command naming conventions (e.g., /alfred:0-project). Essential for extending MoAI-ADK workflow automation."
 allowed-tools: "Read, Write, Edit, Glob, Bash"
 ---
 

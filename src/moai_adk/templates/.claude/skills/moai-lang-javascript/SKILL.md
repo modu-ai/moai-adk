@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: JavaScript ES2024+ best practices with Jest 29, ESLint 9, Prettier 3, and npm package management.
+description: "Reference when writing JavaScript ES2024+ code with Jest and Node.js. Load for frontend frameworks (React, Vue), backend services (Express), or full-stack development requiring async patterns and module systems."
 keywords: ['javascript', 'testing', 'jest', 'eslint', 'prettier', 'nodejs']
 allowed-tools:
   - Read

@@ -5,7 +5,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: Python 3.13+ best practices with pytest 8.4.2, mypy 1.8.0, ruff 0.13.1, and uv 0.9.3. Use when writing or reviewing Python code in project workflows.
+description: Python 3.13+ best practices with pytest 8.4.2, mypy 1.8.0, ruff 0.13.1, and uv 0.9.3. Reference when writing or reviewing Python code, managing dependencies, or implementing async patterns. Load for Python projects requiring TRUST validation and TDD workflows.
 keywords: [python, testing, pytest, mypy, ruff, uv, async, fastapi, pydantic]
 allowed-tools:
   - Read

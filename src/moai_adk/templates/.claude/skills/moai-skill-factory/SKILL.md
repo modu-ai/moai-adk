@@ -4,7 +4,7 @@ version: 2.1.0
 created: 2025-10-22
 updated: 2025-10-27
 status: active
-description: Create and maintain high-quality Claude Code Skills through interactive discovery, web research, and continuous updates. Use when building new Skills, researching latest best practices, updating existing Skills with current information, or generating Skill packages backed by official documentation and real-world examples.
+description: Reference PROACTIVELY when creating or updating Skills, researching latest best practices, or validating Skill quality. Orchestrates interactive surveys (AskUserQuestion), web research, and generation workflows. Essential for maintaining Skill currency and ensuring official Claude Code documentation alignment.
 keywords: [skill-creation, claude-skills, best-practices, web-research, interactive-discovery, skill-updates]
 allowed-tools:
   - Read

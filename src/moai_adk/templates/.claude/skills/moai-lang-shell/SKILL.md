@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: Shell scripting best practices with bats-core 1.11, shellcheck 0.10, and POSIX compliance.
+description: "Reference when writing shell scripts with bats-core and POSIX compliance. Load for DevOps automation, system administration, or cross-platform scripting requiring portable syntax and error handling best practices."
 keywords: ['shell', 'bash', 'shellcheck', 'bats', 'posix']
 allowed-tools:
   - Read

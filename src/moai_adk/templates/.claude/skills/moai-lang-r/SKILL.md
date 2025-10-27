@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: R 4.4+ best practices with testthat 3.2, lintr 3.2, and data analysis patterns.
+description: "Reference when writing R 4.4+ code with testthat and tidyverse patterns. Load for statistical computing, data science, visualization-focused projects (ggplot2), or reproducible research workflows with R Markdown."
 keywords: ['r', 'testthat', 'lintr', 'data-analysis']
 allowed-tools:
   - Read

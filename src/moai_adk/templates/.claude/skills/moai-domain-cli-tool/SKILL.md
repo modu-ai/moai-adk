@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: CLI tool development with argument parsing, POSIX compliance, and user-friendly help messages.
+description: "Reference when developing CLI tools with argument parsing or output formatting. Load when building command-line utilities (Click, Typer, Rich), implementing POSIX compliance, or designing user-friendly help messages with TDD workflows."
 keywords: ['cli', 'terminal', 'argparse', 'commands']
 allowed-tools:
   - Read

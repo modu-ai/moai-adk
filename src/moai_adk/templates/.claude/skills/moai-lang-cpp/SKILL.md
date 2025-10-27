@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: C++23 best practices with Google Test 1.15, clang-format 19, and modern C++ standards.
+description: "Reference when writing C++23 code with Google Test and modern standards. Load for systems programming, game development, or high-performance computing requiring advanced C++ features, RAII patterns, and template metaprogramming."
 keywords: ['cpp', 'gtest', 'clang-format', 'cmake']
 allowed-tools:
   - Read

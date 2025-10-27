@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: CI/CD pipelines, Docker 27, Kubernetes 1.32, and infrastructure as code.
+description: "Reference when designing CI/CD pipelines, Kubernetes 1.32 deployments, or infrastructure as code. Load when automating GitHub Actions workflows, configuring Docker 27 containers, or managing cloud resources with Terraform 1.10."
 keywords: ['cicd', 'docker', 'kubernetes', 'terraform', 'iac']
 allowed-tools:
   - Read

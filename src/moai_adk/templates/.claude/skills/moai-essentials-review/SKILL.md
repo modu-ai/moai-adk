@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: Automated code review with SOLID principles, code smells, and language-specific best practices.
+description: Reference when conducting code reviews against TRUST 5 principles. Load when assessing code quality, readability, security, or test coverage. Essential for PR review workflows, quality gates, and pre-merge verification in /alfred:3-sync.
 keywords: ['code-review', 'solid', 'best-practices', 'quality']
 allowed-tools:
   - Read

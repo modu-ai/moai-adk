@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: REST API and GraphQL design with OpenAPI 3.1, authentication, versioning, and rate limiting.
+description: "Reference when designing RESTful APIs, GraphQL schemas, or gRPC services with OpenAPI 3.1. Load when applying API design patterns, securing endpoints (OWASP API Security), implementing authentication, or integrating versioning and rate limiting."
 keywords: ['rest', 'graphql', 'openapi', 'api-design', 'authentication']
 allowed-tools:
   - Read

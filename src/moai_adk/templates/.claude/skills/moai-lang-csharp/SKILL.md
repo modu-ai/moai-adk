@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: C# 13+ best practices with xUnit, .NET 9, LINQ, and async/await patterns.
+description: "Reference when writing C# 13+ code with xUnit and .NET 9. Load for Windows/cross-platform applications, enterprise systems, ASP.NET Core development, or LINQ-based data operations with async/await patterns."
 keywords: ['csharp', 'dotnet', 'xunit', 'linq', 'async']
 allowed-tools:
   - Read

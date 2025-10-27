@@ -1,6 +1,6 @@
 ---
 name: moai-domain-backend
-description: Provides backend architecture and scaling guidance; use when the project targets server-side APIs or infrastructure design decisions.
+description: "Reference when designing backend architecture, scaling strategies, or microservices patterns. Load when planning RESTful/GraphQL APIs, Kubernetes deployments, or applying cloud-native patterns (OWASP API Security 2023). Essential for server-side projects requiring TRUST validation."
 allowed-tools:
   - Read
   - Bash

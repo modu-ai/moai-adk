@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: Machine learning model training, evaluation, deployment, and MLOps workflows.
+description: "Reference when training machine learning models, evaluating performance, or deploying ML systems. Load when implementing MLOps workflows, managing model versioning (PyTorch, TensorFlow), or handling data pipelines with reproducible experiments."
 keywords: ['ml', 'machine-learning', 'mlops', 'pytorch', 'tensorflow']
 allowed-tools:
   - Read

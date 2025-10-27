@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: React 19/Vue 3.5/Angular 19 with state management, performance optimization, and accessibility.
+description: "Reference when building React 19/Vue 3.5/Angular 19 interfaces with state management and accessibility. Load when optimizing performance, implementing responsive design, or ensuring WCAG compliance with modern frontend frameworks."
 keywords: ['react', 'vue', 'angular', 'state', 'accessibility']
 allowed-tools:
   - Read

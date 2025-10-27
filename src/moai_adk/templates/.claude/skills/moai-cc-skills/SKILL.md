@@ -1,6 +1,6 @@
 ---
 name: moai-cc-skills
-description: "Creating and Optimizing Claude Code Skills. Design reusable knowledge capsules with progressive disclosure (metadata → content → resources). Apply freedom levels (high/medium/low), create examples, validate YAML. Use when building domain-specific guidance or automating recurring patterns."
+description: "Reference when creating or managing Skills using Progressive Disclosure (metadata → content → resources). Load when structuring SKILL.md files, defining trigger keywords, or organizing Skill directories. Essential for skill-factory agent and extending MoAI-ADK capabilities with reusable knowledge."
 allowed-tools: "Read, Write, Edit, Glob, Bash"
 ---
 

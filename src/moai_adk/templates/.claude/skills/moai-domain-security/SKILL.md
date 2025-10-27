@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: OWASP Top 10, SAST/DAST, dependency security, and secrets management.
+description: "Reference when applying security best practices (OWASP Top 10 2023) or configuring SAST tools. Load when validating TRUST S (Secured) principle, detecting secrets, auditing dependencies, or implementing secure coding patterns."
 keywords: ['security', 'owasp', 'sast', 'secrets', 'vulnerabilities']
 allowed-tools:
   - Read

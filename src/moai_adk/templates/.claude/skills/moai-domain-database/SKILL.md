@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: Database design, schema optimization, indexing strategies, and migration management.
+description: "Reference when designing database schemas, optimizing queries, or managing migrations. Load when implementing indexing strategies (PostgreSQL 17, MongoDB 8, Redis 7.4), ensuring ACID compliance, or scaling data persistence."
 keywords: ['database', 'sql', 'nosql', 'migrations', 'indexing']
 allowed-tools:
   - Read

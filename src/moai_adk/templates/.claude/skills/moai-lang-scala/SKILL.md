@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: Scala 3.6+ best practices with ScalaTest 3.2, sbt 1.10, and functional programming patterns.
+description: "Reference when writing Scala 3.6+ code with ScalaTest and functional patterns. Load for JVM-based functional programming, Spark data processing, or type-safe development requiring implicits, case classes, and for-comprehensions."
 keywords: ['scala', 'scalatest', 'sbt', 'functional']
 allowed-tools:
   - Read

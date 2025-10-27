@@ -1,6 +1,6 @@
 ---
 name: moai-cc-hooks
-description: "Configuring Claude Code Hooks System. Design, implement, and manage PreToolUse/PostToolUse/SessionStart/Notification/Stop hooks. Use when enforcing safety checks, auto-formatting, running linters, or triggering automated workflows based on development events."
+description: "Reference when creating Claude Code hooks (SessionStart, PreToolUse, PostToolUse) for guardrails and context seeding. Load when enforcing safety checks, blocking destructive commands, or surfacing just-in-time context. Essential for MoAI-ADK session management and TRUST security gates."
 allowed-tools: "Read, Write, Edit, Glob, Bash"
 ---
 

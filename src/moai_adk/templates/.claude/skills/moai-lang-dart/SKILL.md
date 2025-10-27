@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: Dart 3.6+ best practices with flutter test, dart analyze, and Flutter widget patterns.
+description: "Reference when writing Dart 3.6+ code with Flutter testing framework. Load for mobile app development, Flutter widget design, or cross-platform applications requiring reactive UI patterns and null safety."
 keywords: ['dart', 'flutter', 'dart-analyze', 'widgets']
 allowed-tools:
   - Read

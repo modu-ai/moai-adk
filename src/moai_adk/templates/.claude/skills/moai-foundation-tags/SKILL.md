@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: TAG inventory management and orphan detection (CODE-FIRST principle).
+description: Reference when validating TAG chain integrity (@SPEC/@TEST/@CODE/@DOC) and detecting orphan TAGs. Load when scanning codebase for TAG consistency, ensuring traceability matrix completeness, or verifying CODE-FIRST TAG principles in MoAI-ADK workflows.
 keywords: ['tag', 'inventory', 'traceability', 'code-first']
 allowed-tools:
   - Read

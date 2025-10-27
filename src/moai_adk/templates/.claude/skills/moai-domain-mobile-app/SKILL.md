@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: Flutter 3.27/React Native 0.76 with state management and native integration.
+description: "Reference when developing Flutter 3.27/React Native 0.76 mobile applications. Load when managing state, integrating native modules, or optimizing cross-platform performance for iOS/Android development."
 keywords: ['flutter', 'react-native', 'mobile', 'ios', 'android']
 allowed-tools:
   - Read

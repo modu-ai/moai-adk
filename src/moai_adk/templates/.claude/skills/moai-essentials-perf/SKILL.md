@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: Performance optimization with profiling, bottleneck detection, and tuning strategies.
+description: Reference when optimizing performance bottlenecks or analyzing profiling data. Load when investigating slow queries, memory leaks, or CPU-bound operations. Covers language-specific profilers (Python cProfile, Go pprof, Java JFR) and cloud debugging tools (AWS X-Ray, OpenTelemetry).
 keywords: ['performance', 'profiling', 'optimization', 'bottleneck']
 allowed-tools:
   - Read

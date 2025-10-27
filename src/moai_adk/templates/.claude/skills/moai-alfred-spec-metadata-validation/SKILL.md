@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: SPEC YAML frontmatter validation with 7 required fields and HISTORY section compliance.
+description: Reference when validating SPEC metadata fields (id, title, status, priority, owner, created, updated) for completeness. Load when auditing SPEC YAML frontmatter, enforcing metadata standards, or integrating with spec-builder workflows. Complements moai-foundation-specs with Alfred automation.
 keywords: ['spec', 'validation', 'metadata', 'yaml']
 allowed-tools:
   - Read

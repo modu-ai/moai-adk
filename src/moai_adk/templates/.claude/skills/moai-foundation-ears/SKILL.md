@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: EARS requirement authoring guide (Ubiquitous/Event/State/Optional/Constraints).
+description: Reference when writing requirements using EARS syntax (Event-Action-Response-State). Load when creating SPEC documents, translating business needs into technical requirements, or designing acceptance criteria. Essential for spec-builder agent and /alfred:1-plan workflows.
 keywords: ['ears', 'requirements', 'authoring', 'syntax']
 allowed-tools:
   - Read

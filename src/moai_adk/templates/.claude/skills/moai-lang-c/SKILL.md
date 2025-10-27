@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: C17/C23 best practices with Unity test framework, cppcheck, and Make/CMake build systems.
+description: "Reference when writing C17/C23 code with Unity test framework. Load for embedded systems, system programming, or performance-critical applications requiring strict C standards compliance and memory management expertise."
 keywords: ['c', 'unity', 'cppcheck', 'cmake', 'make']
 allowed-tools:
   - Read

@@ -4,7 +4,7 @@ version: 2.0.0
 created: 2025-10-22
 updated: 2025-10-22
 status: active
-description: Rust 1.84+ best practices with cargo test, clippy, rustfmt, and ownership/borrow checker mastery.
+description: "Reference when writing Rust 1.84+ code with cargo test and ownership patterns. Load for systems programming, WebAssembly, or performance-critical applications requiring memory safety, zero-cost abstractions, and fearless concurrency."
 keywords: ['rust', 'testing', 'cargo', 'clippy', 'rustfmt', 'ownership']
 allowed-tools:
   - Read

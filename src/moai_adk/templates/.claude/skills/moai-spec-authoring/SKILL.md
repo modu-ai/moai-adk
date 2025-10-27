@@ -4,7 +4,7 @@ version: 1.1.0
 created: 2025-10-23
 updated: 2025-10-27
 status: active
-description: SPEC 문서 작성 가이드 - YAML 메타데이터, EARS 문법, 검증 체크리스트 제공
+description: "Reference when authoring SPEC documents with YAML metadata and EARS syntax. Load when creating project specifications, validating frontmatter, ensuring HISTORY section completeness, or integrating with /alfred:1-plan workflows. Essential for spec-builder agent."
 keywords: ['spec', 'authoring', 'ears', 'metadata', 'requirements', 'tdd', 'planning']
 allowed-tools:
   - Read
