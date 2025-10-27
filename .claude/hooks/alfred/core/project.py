@@ -5,9 +5,42 @@ Project information inquiry (language, Git, SPEC progress, etc.)
 """
 
 import json
+import signal
 import subprocess
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
+
+
+class TimeoutError(Exception):
+    """Signal-based timeout exception"""
+    pass
+
+
+@contextmanager
+def timeout_handler(seconds: int):
+    """Hard timeout using SIGALRM (works on Unix systems including macOS)
+
+    This uses kernel-level signal to interrupt ANY blocking operation,
+    even if subprocess.run() timeout fails on macOS.
+
+    Args:
+        seconds: Timeout duration in seconds
+
+    Raises:
+        TimeoutError: If operation exceeds timeout
+    """
+    def _handle_timeout(signum, frame):
+        raise TimeoutError(f"Operation timed out after {seconds} seconds")
+
+    # Set the signal handler
+    old_handler = signal.signal(signal.SIGALRM, _handle_timeout)
+    signal.alarm(seconds)
+    try:
+        yield
+    finally:
+        signal.alarm(0)  # Disable alarm
+        signal.signal(signal.SIGALRM, old_handler)
 
 
 def detect_language(cwd: str) -> str:
@@ -89,9 +122,10 @@ def detect_language(cwd: str) -> str:
 
 
 def _run_git_command(args: list[str], cwd: str, timeout: int = 2) -> str:
-    """Git command execution helper function
+    """Git command execution with HARD timeout protection
 
     Safely execute Git commands and return output.
+    Uses SIGALRM (kernel-level interrupt) to handle macOS subprocess timeout bug.
     Eliminates code duplication and provides consistent error handling.
 
     Args:
@@ -103,22 +137,39 @@ def _run_git_command(args: list[str], cwd: str, timeout: int = 2) -> str:
         Git command output (stdout, removing leading and trailing spaces)
 
     Raises:
-        subprocess.TimeoutExpired: Timeout exceeded
+        subprocess.TimeoutExpired: Timeout exceeded (via TimeoutError)
         subprocess.CalledProcessError: Git command failed
 
     Examples:
         >>> _run_git_command(["branch", "--show-current"], ".")
         'main'
+
+    TDD History:
+        - RED: Git command hang scenario test
+        - GREEN: SIGALRM-based timeout implementation
+        - REFACTOR: Exception conversion to subprocess.TimeoutExpired
     """
-    result = subprocess.run(
-        ["git"] + args,
-        cwd=cwd,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-        check=True,
-    )
-    return result.stdout.strip()
+    try:
+        with timeout_handler(timeout):
+            result = subprocess.run(
+                ["git"] + args,
+                cwd=cwd,
+                capture_output=True,
+                text=True,
+                check=False,  # Don't raise on non-zero exit - we'll check manually
+            )
+
+            # Check exit code manually
+            if result.returncode != 0:
+                raise subprocess.CalledProcessError(
+                    result.returncode, ["git"] + args, result.stdout, result.stderr
+                )
+
+            return result.stdout.strip()
+
+    except TimeoutError:
+        # Convert to subprocess.TimeoutExpired for consistent error handling
+        raise subprocess.TimeoutExpired(["git"] + args, timeout)
 
 
 def get_git_info(cwd: str) -> dict[str, Any]:
