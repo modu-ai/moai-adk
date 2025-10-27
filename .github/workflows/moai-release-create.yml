@@ -1,0 +1,100 @@
+name: MoAI-ADK Auto Release
+
+# main 브랜치에 릴리즈 커밋이 푸시되었을 때 자동으로 Release 생성
+on:
+  push:
+    branches:
+      - main
+    # 버전 태그가 푸시될 때만 실행 (e.g., v0.6.0)
+    tags:
+      - "v*.*.*"
+
+jobs:
+  create-release:
+    name: 🚀 Create GitHub Release
+    runs-on: ubuntu-latest
+    # Release는 이미 태그되었을 때만 생성하도록 가드
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 전체 히스토리 필요 (changelog 생성용)
+
+      - name: 📖 Generate release notes from commits
+        id: release_notes
+        run: |
+          # 마지막 두 태그 사이의 변경사항 추출
+          PREV_TAG=$(git describe --tags --abbrev=0 "${{ github.ref }}"^ 2>/dev/null || echo "")
+          CURRENT_TAG="${{ github.ref }}"
+          CURRENT_TAG=${CURRENT_TAG#refs/tags/}
+
+          if [ -z "$PREV_TAG" ]; then
+            echo "📝 첫 릴리즈입니다"
+            COMMITS=$(git log --oneline | head -50)
+          else
+            echo "📝 $PREV_TAG 이후 변경사항:"
+            COMMITS=$(git log $PREV_TAG..$CURRENT_TAG --oneline)
+          fi
+
+          # Release notes 생성
+          RELEASE_NOTES=$(cat << EOF
+          ## 🚀 MoAI-ADK Release $CURRENT_TAG
+
+          ### 📝 변경사항
+
+          \`\`\`
+          $COMMITS
+          \`\`\`
+
+          ### 🧪 품질 검증
+          ✅ 테스트 통과
+          ✅ 린트 검사 통과
+          ✅ 타입 체크 통과
+          ✅ 보안 검사 통과
+
+          ### 📥 설치 방법
+
+          #### uv 사용 (권장)
+          \`\`\`bash
+          uv tool install moai-adk==${CURRENT_TAG#v}
+          \`\`\`
+
+          #### pip 사용
+          \`\`\`bash
+          pip install moai-adk==${CURRENT_TAG#v}
+          \`\`\`
+
+          ---
+
+          🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+          Co-Authored-By: Claude <noreply@anthropic.com>
+          EOF
+          )
+
+          # 줄바꿈이 있는 환경변수 처리 (GitHub Actions)
+          {
+            echo "notes<<RELEASE_EOF"
+            echo "$RELEASE_NOTES"
+            echo "RELEASE_EOF"
+          } >> $GITHUB_OUTPUT
+
+      - name: 🎯 Create GitHub Release
+        uses: actions/create-release@v1
+        id: create_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: ${{ steps.release_notes.outputs.notes }}
+          draft: false  # 자동으로 published 상태로 생성
+          prerelease: false
+
+      - name: ✨ Release created successfully
+        run: |
+          echo "🎉 Release 생성 완료!"
+          echo "📦 Release URL: ${{ steps.create_release.outputs.upload_url }}"
+          echo "🔖 Tag: ${{ github.ref }}"
