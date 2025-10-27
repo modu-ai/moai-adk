@@ -38,7 +38,7 @@ def show_logo() -> None:
     console.print(__version__, style="cyan bold")
     console.print()
     console.print("  Tip: Run ", style="yellow", end="")
-    console.print("python -m moai_adk --help", style="cyan", end="")
+    console.print("uv run moai-adk --help", style="cyan", end="")
     console.print(" to see available commands", style="yellow")
 
 

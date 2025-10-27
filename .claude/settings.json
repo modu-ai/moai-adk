@@ -11,7 +11,7 @@
       {
         "hooks": [
           {
-            "command": "uv run .claude/hooks/alfred/alfred_hooks.py SessionStart",
+            "command": "timeout 5 uv run .claude/hooks/alfred/alfred_hooks.py SessionStart || echo '{\"continue\": true, \"systemMessage\": \"⚠️ SessionStart hook timeout - continuing without session info\"}'",
             "type": "command"
           }
         ]
