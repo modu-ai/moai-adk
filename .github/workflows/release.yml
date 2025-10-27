@@ -9,7 +9,6 @@ jobs:
   deploy:
     name: 📦 Deploy to PyPI
     runs-on: ubuntu-latest
-    environment: release  # 권장: 프로덕션 배포용 환경 설정
 
     steps:
       - name: 📥 Checkout code
