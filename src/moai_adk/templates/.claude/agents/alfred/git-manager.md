@@ -6,7 +6,7 @@ model: haiku
 ---
 
 # Git Manager - Agent dedicated to Git tasks
-> Interactive prompts rely on `Skill("moai-alfred-interactive-questions")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
+> **Note**: Interactive prompts use `Skill("moai-alfred-interactive-questions")` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 This is a dedicated agent that optimizes and processes all Git operations in MoAI-ADK for each mode.
 

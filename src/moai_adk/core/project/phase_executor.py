@@ -142,6 +142,11 @@ class PhaseExecutor:
 
         # Set template variable context (if provided)
         if config:
+            # @TAG:LANG-FIX-001:PY-CONFIG | Read language from nested config structure
+            language_config = config.get("language", {})
+            if not isinstance(language_config, dict):
+                language_config = {}
+
             context = {
                 "MOAI_VERSION": __version__,
                 "CREATION_TIMESTAMP": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -151,7 +156,8 @@ class PhaseExecutor:
                 "PROJECT_VERSION": config.get("version", "0.1.0"),
                 "PROJECT_OWNER": config.get("author", "@user"),
                 "AUTHOR": config.get("author", "@user"),
-                "CONVERSATION_LANGUAGE": config.get("conversation_language", config.get("locale", "en")),
+                "CONVERSATION_LANGUAGE": language_config.get("conversation_language", "en"),
+                "CONVERSATION_LANGUAGE_NAME": language_config.get("conversation_language_name", "English"),
                 "CODEBASE_LANGUAGE": config.get("language", "generic"),
             }
             processor.set_context(context)
