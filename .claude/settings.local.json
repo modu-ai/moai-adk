@@ -19,7 +19,9 @@
       "Bash(gh run view:*)",
       "Bash(gh label list:*)",
       "Bash(bandit:*)",
-      "Bash(pip-audit:*)"
+      "Bash(pip-audit:*)",
+      "SlashCommand(/alfred:1-plan moai-adk Self-Update Integration Feature)",
+      "SlashCommand(/alfred:2-run SPEC-UPDATE-REFACTOR-002)"
     ],
     "deny": [],
     "ask": []
