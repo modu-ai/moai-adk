@@ -122,7 +122,7 @@ def handle_session_start(payload: HookPayload) -> HookResult:
 
     # Add version info with update recommendation if available
     if version_info and version_info.get("current") != "unknown":
-        version_line = f"   📦 MoAI-ADK Ver: {version_info['current']}"
+        version_line = f"   🗿 MoAI-ADK Ver: {version_info['current']}"
         if version_info.get("update_available"):
             version_line += f" → {version_info['latest']} available ✨"
         lines.append(version_line)
