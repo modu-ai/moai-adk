@@ -1,71 +1,71 @@
 # SPEC Authoring Examples
 
-## 실전 EARS 예제
+## Real-World EARS Examples
 
-### 예제 1: E-commerce 체크아웃
+### Example 1: E-commerce Checkout
 
 ```markdown
 ### Ubiquitous Requirements
-**UR-001**: 시스템은 장바구니를 제공해야 한다.
-**UR-002**: 시스템은 신용카드 결제를 지원해야 한다.
+**UR-001**: The system shall provide a shopping cart feature.
+**UR-002**: The system shall support credit card payment.
 
 ### Event-driven Requirements
-**ER-001**: WHEN 사용자가 장바구니에 아이템을 추가하면, 시스템은 장바구니 총액을 업데이트해야 한다.
-**ER-002**: WHEN 결제가 성공하면, 시스템은 주문 확인 이메일을 보내야 한다.
-**ER-003**: WHEN 재고가 부족하면, 시스템은 "품절" 메시지를 표시해야 한다.
+**ER-001**: WHEN the user adds an item to the cart, the system shall update the cart total.
+**ER-002**: WHEN payment succeeds, the system shall send a confirmation email.
+**ER-003**: WHEN inventory is insufficient, the system shall display an "Out of Stock" message.
 
 ### State-driven Requirements
-**SR-001**: WHILE 아이템이 장바구니에 있으면, 시스템은 30분 동안 재고를 예약해야 한다.
-**SR-002**: WHILE 결제가 처리 중이면, UI는 로딩 인디케이터를 표시해야 한다.
+**SR-001**: WHILE items exist in the cart, the system shall reserve inventory for 30 minutes.
+**SR-002**: WHILE payment is being processed, the UI shall display a loading indicator.
 
 ### Optional Features
-**OF-001**: WHERE 특급 배송이 선택된 경우, 시스템은 특급 배송 비용을 계산할 수 있다.
-**OF-002**: WHERE 선물 포장이 가능한 경우, 시스템은 선물 포장 옵션을 제공할 수 있다.
+**OF-001**: WHERE express shipping is selected, the system can calculate express shipping cost.
+**OF-002**: WHERE gift wrapping is available, the system can offer gift wrapping option.
 
-### Constraints
-**C-001**: IF 장바구니 총액이 $50 미만이면, THEN 시스템은 $5 배송료를 추가해야 한다.
-**C-002**: IF 3번 결제 실패 후, THEN 시스템은 주문을 1시간 동안 잠가야 한다.
-**C-003**: 주문 처리 시간은 5초를 초과하지 않아야 한다.
+### Unwanted Behaviors
+**UB-001**: IF cart total is less than $50, THEN the system shall add a $5 shipping fee.
+**UB-002**: IF 3 payment failures occur, THEN the system shall lock the order for 1 hour.
+**UB-003**: Order processing time shall not exceed 5 seconds.
 ```
 
-### 예제 2: 모바일 앱 푸시 알림
+### Example 2: Mobile App Push Notifications
 
 ```markdown
 ### Ubiquitous Requirements
-**UR-001**: 앱은 푸시 알림을 지원해야 한다.
-**UR-002**: 앱은 사용자가 알림을 활성화/비활성화할 수 있도록 해야 한다.
+**UR-001**: The app shall support push notifications.
+**UR-002**: The app shall allow users to enable/disable notifications.
 
 ### Event-driven Requirements
-**ER-001**: WHEN 새 메시지가 도착하면, 앱은 푸시 알림을 표시해야 한다.
-**ER-002**: WHEN 알림을 탭하면, 앱은 메시지 화면으로 이동해야 한다.
-**ER-003**: WHEN 알림 권한이 거부되면, 앱은 인앱 알림 배너를 표시해야 한다.
+**ER-001**: WHEN a new message arrives, the app shall display a push notification.
+**ER-002**: WHEN the user taps a notification, the app shall navigate to the message screen.
+**ER-003**: WHEN notification permission is denied, the app shall display an in-app banner.
 
 ### State-driven Requirements
-**SR-001**: WHILE 앱이 포어그라운드 상태이면, 시스템은 푸시 알림 대신 인앱 배너를 표시해야 한다.
-**SR-002**: WHILE 방해 금지 모드가 활성화된 경우, 시스템은 모든 알림을 음소거해야 한다.
+**SR-001**: WHILE the app is in foreground state, the system shall display in-app banner instead of push notification.
+**SR-002**: WHILE Do Not Disturb mode is enabled, the system shall mute all notifications.
 
 ### Optional Features
-**OF-001**: WHERE 알림 사운드가 활성화된 경우, 시스템은 알림 사운드를 재생할 수 있다.
-**OF-002**: WHERE 알림 그룹화가 지원되는 경우, 시스템은 대화별로 알림을 그룹화할 수 있다.
+**OF-001**: WHERE notification sound is enabled, the system can play notification sound.
+**OF-002**: WHERE notification grouping is supported, the system can group notifications by conversation.
 
-### Constraints
-**C-001**: IF 10개 이상의 알림이 대기 중이면, THEN 시스템은 이를 요약 알림으로 그룹화해야 한다.
-**C-002**: 알림 전달 지연은 5초를 초과하지 않아야 한다.
+### Unwanted Behaviors
+**UB-001**: IF 10 or more notifications are pending, THEN the system shall consolidate them into a summary notification.
+**UB-002**: Notification delivery latency shall not exceed 5 seconds.
 ```
 
 ---
 
-## 완전한 SPEC 예제
+## Complete SPEC Examples
 
-### 예제 1: 최소 SPEC
+### Example 1: Minimal SPEC
 
 ```markdown
 ---
 id: HELLO-001
 version: 0.0.1
 status: draft
-created: 2025-10-23
-updated: 2025-10-23
+created: 2025-10-29
+updated: 2025-10-29
 author: @Goos
 priority: low
 ---
@@ -74,8 +74,8 @@ priority: low
 
 ## HISTORY
 
-### v0.0.1 (2025-10-23)
-- **INITIAL**: Hello World API SPEC 초안 생성
+### v0.0.1 (2025-10-29)
+- **INITIAL**: Hello World API SPEC draft created
 - **AUTHOR**: @Goos
 
 ## Environment
@@ -85,33 +85,33 @@ priority: low
 
 ## Assumptions
 
-1. 단일 엔드포인트 필요
-2. 인증 불필요
-3. JSON 응답 형식
+1. Single endpoint required
+2. No authentication needed
+3. JSON response format
 
 ## Requirements
 
 ### Ubiquitous Requirements
 
-**UR-001**: 시스템은 GET /hello 엔드포인트를 제공해야 한다.
+**UR-001**: The system shall provide a GET /hello endpoint.
 
 ### Event-driven Requirements
 
-**ER-001**: WHEN GET 요청이 /hello로 전송되면, 시스템은 JSON `{"message": "Hello, World!"}`를 반환해야 한다.
+**ER-001**: WHEN a GET request is sent to /hello, the system shall return JSON `{"message": "Hello, World!"}`.
 
-### Constraints
+### Unwanted Behaviors
 
-**C-001**: 응답 시간은 50ms를 초과하지 않아야 한다.
+**UB-001**: Response time shall not exceed 50ms.
 ```
 
-### 예제 2: 프로덕션급 SPEC
+### Example 2: Production-Grade SPEC
 
 ```markdown
 ---
 id: AUTH-001
 version: 0.1.0
 status: completed
-created: 2025-10-23
+created: 2025-10-29
 updated: 2025-10-30
 author: @Goos
 priority: high
@@ -143,10 +143,10 @@ scope:
 ## HISTORY
 
 ### v0.1.0 (2025-10-30)
-- **COMPLETED**: TDD 구현 완료
+- **COMPLETED**: TDD implementation finished
 - **AUTHOR**: @Goos
 - **EVIDENCE**: Commits 4c66076, 34e1bd9, 1dec08f
-- **TEST COVERAGE**: 89.13% (목표: 85%)
+- **TEST COVERAGE**: 89.13% (target: 85%)
 - **QUALITY METRICS**:
   - Test Pass Rate: 100% (42/42 tests)
   - Linting: ruff ✅
@@ -157,15 +157,15 @@ scope:
   - @CODE:AUTH-001: 12 occurrences
 
 ### v0.0.2 (2025-10-25)
-- **REFINED**: 비밀번호 재설정 플로우 요구사항 추가
-- **REFINED**: 토큰 수명 제약 명확화
+- **REFINED**: Added password reset flow requirements
+- **REFINED**: Clarified token lifetime constraints
 - **AUTHOR**: @Goos
 
-### v0.0.1 (2025-10-23)
-- **INITIAL**: JWT 인증 SPEC 초안 생성
+### v0.0.1 (2025-10-29)
+- **INITIAL**: JWT authentication SPEC draft created
 - **AUTHOR**: @Goos
-- **SCOPE**: 사용자 인증, 토큰 생성, 토큰 검증
-- **CONTEXT**: 2025년 4분기 제품 로드맵 요구사항
+- **SCOPE**: User authentication, token generation, token validation
+- **CONTEXT**: Q4 2025 product roadmap requirements
 
 ## Environment
 
@@ -184,56 +184,56 @@ scope:
 
 ## Assumptions
 
-1. **User Storage**: 사용자 인증 정보는 PostgreSQL에 저장
-2. **Secret Management**: JWT 시크릿은 환경변수로 관리
-3. **Clock Sync**: 서버 시계는 NTP로 동기화
-4. **Password Policy**: 가입 시 최소 8자 강제
+1. **User Storage**: User credentials are stored in PostgreSQL
+2. **Secret Management**: JWT secrets are managed via environment variables
+3. **Clock Sync**: Server clock is synchronized with NTP
+4. **Password Policy**: Minimum 8 characters enforced during registration
 
 ## Requirements
 
 ### Ubiquitous Requirements
 
-**UR-001**: 시스템은 JWT 기반 인증을 제공해야 한다.
+**UR-001**: The system shall provide JWT-based authentication.
 
-**UR-002**: 시스템은 이메일과 비밀번호로 사용자 로그인을 지원해야 한다.
+**UR-002**: The system shall support user login with email and password.
 
-**UR-003**: 시스템은 액세스 토큰과 리프레시 토큰을 발급해야 한다.
+**UR-003**: The system shall issue both access and refresh tokens.
 
 ### Event-driven Requirements
 
-**ER-001**: WHEN 사용자가 유효한 인증 정보를 제출하면, 시스템은 15분 만료 시간을 가진 JWT 액세스 토큰을 발급해야 한다.
+**ER-001**: WHEN the user submits valid credentials, the system shall issue a JWT access token with 15-minute expiration.
 
-**ER-002**: WHEN 토큰이 만료되면, 시스템은 HTTP 401 Unauthorized를 반환해야 한다.
+**ER-002**: WHEN a token expires, the system shall return HTTP 401 Unauthorized.
 
-**ER-003**: WHEN 리프레시 토큰이 제시되면, 시스템은 리프레시 토큰이 유효한 경우 새 액세스 토큰을 발급해야 한다.
+**ER-003**: WHEN a refresh token is presented, the system shall issue a new access token if the refresh token is valid.
 
 ### State-driven Requirements
 
-**SR-001**: WHILE 사용자가 인증된 상태이면, 시스템은 보호된 리소스에 대한 접근을 허용해야 한다.
+**SR-001**: WHILE the user is in an authenticated state, the system shall permit access to protected resources.
 
-**SR-002**: WHILE 토큰이 유효하면, 시스템은 토큰 클레임에서 사용자 ID를 추출해야 한다.
+**SR-002**: WHILE a token is valid, the system shall extract the user ID from token claims.
 
 ### Optional Features
 
-**OF-001**: WHERE 다중 인증이 활성화된 경우, 시스템은 비밀번호 확인 후 OTP 검증을 요구할 수 있다.
+**OF-001**: WHERE multi-factor authentication is enabled, the system can require OTP verification after password confirmation.
 
-**OF-002**: WHERE 세션 로깅이 활성화된 경우, 시스템은 로그인 타임스탬프와 IP 주소를 기록할 수 있다.
+**OF-002**: WHERE session logging is enabled, the system can record login timestamp and IP address.
 
-### Constraints
+### Unwanted Behaviors
 
-**C-001**: IF 토큰이 만료되었다면, 시스템은 접근을 거부하고 HTTP 401을 반환해야 한다.
+**UB-001**: IF a token has expired, THEN the system shall deny access and return HTTP 401.
 
-**C-002**: IF 10분 이내에 5번 이상 로그인 실패가 발생하면, 시스템은 임시로 계정을 잠가야 한다.
+**UB-002**: IF 5 or more login failures occur within 10 minutes, THEN the system shall temporarily lock the account.
 
-**C-003**: 액세스 토큰은 15분 수명을 초과하지 않아야 한다.
+**UB-003**: Access token lifetime shall not exceed 15 minutes.
 
-**C-004**: 리프레시 토큰은 7일 수명을 초과하지 않아야 한다.
+**UB-004**: Refresh token lifetime shall not exceed 7 days.
 
 ## Traceability (@TAG Chain)
 
-### TAG 체인 구조
+### TAG Chain Structure
 ```
-@SPEC:AUTH-001 (이 문서)
+@SPEC:AUTH-001 (this document)
   ↓
 @TEST:AUTH-001 (tests/auth/service.test.ts)
   ↓
@@ -242,300 +242,300 @@ scope:
 @DOC:AUTH-001 (docs/api/authentication.md)
 ```
 
-### 검증 명령어
+### Validation Commands
 ```bash
-# SPEC TAG 검증
+# Validate SPEC TAG
 rg '@SPEC:AUTH-001' -n .moai/specs/
 
-# 중복 ID 확인
+# Check for duplicate IDs
 rg '@SPEC:AUTH' -n .moai/specs/
 rg 'AUTH-001' -n
 
-# 전체 TAG 체인 스캔
+# Scan full TAG chain
 rg '@(SPEC|TEST|CODE|DOC):AUTH-001' -n
 ```
 
 ## Decision Log
 
-### Decision 1: JWT vs Session Cookies (2025-10-23)
-**Context**: 마이크로서비스를 위한 무상태 인증 필요
-**Decision**: JWT 토큰 사용
-**Alternatives Considered**: 
-  - 세션 쿠키 (거부: 상태 기반, 확장 불가)
-  - OAuth 2.0 (연기: MVP에 너무 복잡)
-**Consequences**: 
-  - ✅ 무상태, 확장 가능
-  - ✅ 서비스 간 인증
-  - ❌ 토큰 취소 복잡성
+### Decision 1: JWT vs Session Cookies (2025-10-29)
+**Context**: Need stateless authentication for microservices
+**Decision**: Use JWT tokens
+**Alternatives Considered**:
+  - Session cookies (rejected: stateful, not scalable)
+  - OAuth 2.0 (deferred: too complex for MVP)
+**Consequences**:
+  - ✅ Stateless, scalable
+  - ✅ Service-to-service authentication
+  - ❌ Token revocation complexity
 
-### Decision 2: 토큰 만료 15분 (2025-10-24)
-**Context**: 보안과 UX 균형
-**Decision**: 15분 액세스 토큰, 7일 리프레시 토큰
-**Rationale**: 업계 표준, 보안 모범 사례
-**References**: OWASP JWT 모범 사례
+### Decision 2: Token Expiration 15 minutes (2025-10-30)
+**Context**: Balance between security and UX
+**Decision**: 15-minute access token, 7-day refresh token
+**Rationale**: Industry standard, OWASP best practices
+**References**: OWASP JWT best practices
 
 ## Requirements Traceability Matrix
 
 | Req ID | Description | Test Cases | Status |
 |--------|-------------|------------|--------|
-| UR-001 | JWT 인증 | test_authenticate_valid_user | ✅ |
-| ER-001 | 토큰 발급 | test_token_generation | ✅ |
-| ER-002 | 토큰 만료 | test_expired_token_rejection | ✅ |
-| SR-001 | 인증된 접근 | test_protected_route_access | ✅ |
-| C-001 | 토큰 수명 | test_token_expiry_constraint | ✅ |
+| UR-001 | JWT authentication | test_authenticate_valid_user | ✅ |
+| ER-001 | Token issuance | test_token_generation | ✅ |
+| ER-002 | Token expiration | test_expired_token_rejection | ✅ |
+| SR-001 | Authenticated access | test_protected_route_access | ✅ |
+| UB-001 | Token lifetime | test_token_expiry_constraint | ✅ |
 ```
 
 ---
 
-## 고급 패턴
+## Advanced Patterns
 
-### 패턴 1: 버전화된 요구사항
+### Pattern 1: Versioned Requirements
 
-요구사항이 버전 간 변경될 때 진화 과정 문서화:
+Document requirement evolution across versions:
 
 ```markdown
 ### v0.2.0 (2025-11-15)
-**UR-001** (CHANGED): 시스템은 요청의 99%에 대해 200ms 이내에 응답해야 한다.
-  - 이전 (v0.1.0): 요청의 95%
-  - 근거: 사용자 피드백 기반 성능 개선
+**UR-001** (CHANGED): The system shall respond within 200ms for 99% of requests.
+  - Previous (v0.1.0): 95% of requests
+  - Rationale: User feedback-driven performance improvement
 
 ### v0.1.0 (2025-10-30)
-**UR-001**: 시스템은 요청의 95%에 대해 200ms 이내에 응답해야 한다.
+**UR-001**: The system shall respond within 200ms for 95% of requests.
 ```
 
-### 패턴 2: 요구사항 추적 매트릭스
+### Pattern 2: Requirements Traceability Matrix
 
-요구사항을 테스트 케이스에 명시적으로 연결:
+Explicitly link requirements to test cases:
 
 ```markdown
 ## Requirements Traceability Matrix
 
 | Req ID | Description | Test Cases | Status |
 |--------|-------------|------------|--------|
-| UR-001 | JWT 인증 | test_authenticate_valid_user | ✅ |
-| ER-001 | 토큰 발급 | test_token_generation | ✅ |
-| ER-002 | 토큰 만료 | test_expired_token_rejection | ✅ |
-| SR-001 | 인증된 접근 | test_protected_route_access | ✅ |
-| C-001 | 토큰 수명 | test_token_expiry_constraint | ✅ |
+| UR-001 | JWT authentication | test_authenticate_valid_user | ✅ |
+| ER-001 | Token issuance | test_token_generation | ✅ |
+| ER-002 | Token expiration | test_expired_token_rejection | ✅ |
+| SR-001 | Authenticated access | test_protected_route_access | ✅ |
+| UB-001 | Token lifetime | test_token_expiry_constraint | ✅ |
 ```
 
-### 패턴 3: 결정 로그
+### Pattern 3: Decision Log
 
-SPEC 내에서 아키텍처 결정 문서화:
+Document architectural decisions within the SPEC:
 
 ```markdown
 ## Decision Log
 
-### Decision 1: JWT vs Session Cookies (2025-10-23)
-**Context**: 마이크로서비스를 위한 무상태 인증 필요
-**Decision**: JWT 토큰 사용
-**Alternatives Considered**: 
-  - 세션 쿠키 (거부: 상태 기반, 확장 불가)
-  - OAuth 2.0 (연기: MVP에 너무 복잡)
-**Consequences**: 
-  - ✅ 무상태, 확장 가능
-  - ✅ 서비스 간 인증
-  - ❌ 토큰 취소 복잡성
+### Decision 1: JWT vs Session Cookies (2025-10-29)
+**Context**: Need stateless authentication for microservices
+**Decision**: Use JWT tokens
+**Alternatives Considered**:
+  - Session cookies (rejected: stateful, not scalable)
+  - OAuth 2.0 (deferred: too complex for MVP)
+**Consequences**:
+  - ✅ Stateless, scalable
+  - ✅ Service-to-service authentication
+  - ❌ Token revocation complexity
 
-### Decision 2: 토큰 만료 15분 (2025-10-24)
-**Context**: 보안과 UX 균형
-**Decision**: 15분 액세스 토큰, 7일 리프레시 토큰
-**Rationale**: 업계 표준, 보안 모범 사례
-**References**: OWASP JWT 모범 사례
+### Decision 2: Token Expiration 15 minutes (2025-10-30)
+**Context**: Balance between security and UX
+**Decision**: 15-minute access token, 7-day refresh token
+**Rationale**: Industry standard, OWASP best practices
+**References**: OWASP JWT best practices
 ```
 
 ---
 
-## 트러블슈팅
+## Troubleshooting
 
-### 이슈: "중복 SPEC ID 감지됨"
+### Issue: "Duplicate SPEC ID detected"
 
-**증상**: `rg "@SPEC:AUTH-001" -n`이 여러 결과 반환
+**Symptom**: `rg "@SPEC:AUTH-001" -n` returns multiple results
 
-**해결책**:
+**Resolution**:
 ```bash
-# 모든 발생 찾기
+# Find all occurrences
 rg "@SPEC:AUTH-001" -n .moai/specs/
 
-# 하나의 SPEC 유지, 나머지 이름 변경
-# 코드/테스트에서 TAG 참조 업데이트
+# Keep one SPEC, rename the other
+# Update TAG references in code/tests
 rg '@SPEC:AUTH-001' -l src/ tests/ | xargs sed -i 's/@SPEC:AUTH-001/@SPEC:AUTH-002/g'
 ```
 
-### 이슈: "버전 번호가 상태와 일치하지 않음"
+### Issue: "Version number doesn't match status"
 
-**증상**: `status: completed`이지만 `version: 0.0.1`
+**Symptom**: `status: completed` but `version: 0.0.1`
 
-**해결책**:
+**Resolution**:
 ```yaml
-# 완료를 반영하도록 버전 업데이트
-version: 0.1.0  # 구현 완료
+# Update version to reflect completion
+version: 0.1.0  # Implementation completed
 status: completed
 ```
 
-### 이슈: "HISTORY 섹션 버전 누락"
+### Issue: "HISTORY section missing version entry"
 
-**증상**: 콘텐츠가 변경되었지만 새 HISTORY 엔트리 없음
+**Symptom**: Content changed but no new HISTORY entry
 
-**해결책**:
+**Resolution**:
 ```markdown
 ## HISTORY
 
-### v0.0.2 (2025-10-25)  ← 새 엔트리 추가
-- **REFINED**: XYZ 요구사항 업데이트
+### v0.0.2 (2025-10-25)  ← Add new entry
+- **REFINED**: XYZ requirement updated
 - **AUTHOR**: @YourHandle
 
 ### v0.0.1 (2025-10-23)
-- **INITIAL**: 첫 초안
+- **INITIAL**: Initial draft
 ```
 
-### 이슈: "작성자 필드 @ 접두사 누락"
+### Issue: "Author field missing @ prefix"
 
-**증상**: `author: Goos` 대신 `author: @Goos`
+**Symptom**: `author: Goos` instead of `author: @Goos`
 
-**해결책**:
+**Resolution**:
 ```yaml
-# 잘못됨
+# Incorrect
 author: Goos
 author: goos
 
-# 올바름
+# Correct
 author: @Goos
 ```
 
-### 이슈: "EARS 패턴 혼합"
+### Issue: "EARS pattern mixing"
 
-**증상**: "WHEN 사용자가 로그인 상태이면, WHILE 세션이 활성 상태이면, 시스템은..."
+**Symptom**: "WHEN user logs in, WHILE session is active, the system shall..."
 
-**해결책**:
+**Resolution**:
 ```markdown
-# 나쁨 (패턴 혼합)
-**ER-001**: WHEN 사용자가 로그인하면, WHILE 세션이 활성 상태이면, 시스템은 접근을 허용해야 한다.
+# Bad (pattern mixing)
+**ER-001**: WHEN user logs in, WHILE session is active, the system shall permit access.
 
-# 좋음 (요구사항 분리)
-**ER-001**: WHEN 사용자가 성공적으로 로그인하면, 시스템은 세션을 생성해야 한다.
-**SR-001**: WHILE 세션이 활성 상태이면, 시스템은 보호된 리소스에 대한 접근을 허용해야 한다.
+# Good (separate requirements)
+**ER-001**: WHEN user successfully logs in, the system shall create a session.
+**SR-001**: WHILE session is active, the system shall permit access to protected resources.
 ```
 
 ---
 
-## 모범 사례 요약
+## Best Practices Summary
 
-### ✅ DO (해야 할 것)
+### ✅ DO (Best Practices)
 
-1. **새 SPEC 생성 전 중복 ID 확인**
+1. **Check for duplicate IDs before creating**
    ```bash
    rg "@SPEC:AUTH-001" -n .moai/specs/
    rg "AUTH-001" -n
    ```
 
-2. **모든 콘텐츠 변경 시 HISTORY 업데이트**
+2. **Update HISTORY on every content change**
    ```markdown
    ### v0.0.2 (2025-10-25)
-   - **REFINED**: XYZ 추가
+   - **REFINED**: XYZ added
    - **AUTHOR**: @YourHandle
    ```
 
-3. **버전 생애주기 엄격히 따르기**
+3. **Follow version lifecycle strictly**
    ```
    0.0.1 → 0.0.2 → ... → 0.1.0 → 0.1.1 → ... → 1.0.0
    (draft)  (draft)       (completed)  (patches)     (stable)
    ```
 
-4. **작성자 필드에 @ 접두사 사용**
+4. **Use @ prefix in author field**
    ```yaml
-   author: @Goos  # 올바름
+   author: @Goos  # Correct
    ```
 
-5. **테스트 가능하고 측정 가능한 요구사항 작성**
+5. **Write testable, measurable requirements**
    ```markdown
-   # 좋음
-   **UR-001**: API 응답 시간은 요청의 95%에 대해 200ms를 초과하지 않아야 한다.
-   
-   # 나쁨
-   **UR-001**: 시스템은 빨라야 한다.
+   # Good
+   **UR-001**: API response time shall not exceed 200ms for 95% of requests.
+
+   # Bad
+   **UR-001**: The system should be fast.
    ```
 
-6. **7개 필수 메타데이터 필드 모두 포함**
+6. **Include all 7 required metadata fields**
    ```yaml
    id: AUTH-001
    version: 0.0.1
    status: draft
-   created: 2025-10-23
-   updated: 2025-10-23
+   created: 2025-10-29
+   updated: 2025-10-29
    author: @Goos
    priority: high
    ```
 
-7. **EARS 패턴 일관되게 사용**
+7. **Use EARS patterns consistently**
 
-### ❌ DON'T (하지 말아야 할 것)
+### ❌ DON'T (Anti-Patterns)
 
-1. **할당 후 SPEC ID 변경하지 않기**
-   - TAG 체인 파괴
-   - 기존 코드/테스트 고아화
-   - Git 히스토리 손실
+1. **Don't change SPEC ID after assignment**
+   - Breaks TAG chain
+   - Orphans existing code/tests
+   - Loses Git history
 
-2. **HISTORY 업데이트 건너뛰지 않기**
-   - 변경 근거 손실
-   - 불명확한 버전 진행
-   - 감사 추적 격차
+2. **Don't skip HISTORY updates**
+   - Loses change rationale
+   - Unclear version progression
+   - Audit trail gaps
 
-3. **정당화 없이 버전 번호 건너뛰지 않기**
+3. **Don't jump version numbers without reason**
    ```markdown
-   # 나쁨: 0.0.1 → 1.0.0
-   # 좋음: 0.0.1 → 0.0.2 → ... → 0.1.0 → 1.0.0
+   # Bad: 0.0.1 → 1.0.0
+   # Good: 0.0.1 → 0.0.2 → ... → 0.1.0 → 1.0.0
    ```
 
-4. **모호한 요구사항 작성하지 않기**
-   - "빠른", "사용자 친화적", "좋은" 같은 용어 피하기
-   - 측정 가능한 기준 사용
+4. **Don't write ambiguous requirements**
+   - Avoid "fast", "user-friendly", "good"
+   - Use measurable criteria
 
-5. **하나의 요구사항에 여러 EARS 패턴 혼합하지 않기**
+5. **Don't mix EARS patterns in one requirement**
 
-6. **제출 전 검증 잊지 않기**
+6. **Don't skip validation before submission**
    ```bash
    ./validate-spec.sh .moai/specs/SPEC-AUTH-001
    ```
 
-7. **중복 SPEC ID 생성하지 않기**
+7. **Don't create duplicate SPEC IDs**
 
 ---
 
-## 통합 워크플로우
+## Integration Workflow
 
-### `/alfred:1-plan`과 통합
+### `/alfred:1-plan` Integration
 
-`/alfred:1-plan`이 호출되면, `spec-builder` 에이전트는 이 Skill을 사용하여:
+When `/alfred:1-plan` is called, the `spec-builder` agent uses this Skill to:
 
-1. **분석**: 사용자 요청 및 프로젝트 컨텍스트 분석
-2. **생성**: 적절한 구조로 SPEC 후보 생성
-3. **검증**: 메타데이터 완전성 검증
-4. **생성**: EARS 요구사항으로 `.moai/specs/SPEC-{ID}/spec.md` 생성
-5. **초기화**: Git 워크플로우 (기능 브랜치, Draft PR)
+1. **Analyze**: User request and project context
+2. **Generate**: SPEC candidates with appropriate structure
+3. **Validate**: Metadata completeness
+4. **Create**: `.moai/specs/SPEC-{ID}/spec.md` with EARS requirements
+5. **Initialize**: Git workflow (feature branch, Draft PR)
 
-### spec-builder 통합 지점
+### spec-builder Integration Points
 
 ```markdown
-Phase 1: SPEC 후보 생성
-  ↓ (메타데이터 구조를 위해 moai-spec-authoring 사용)
-Phase 2: 사용자 승인
+Phase 1: SPEC candidate generation
+  ↓ (uses moai-spec-authoring for metadata structure)
+Phase 2: User approval
   ↓
-Phase 3: SPEC 파일 생성
-  ↓ (이 Skill의 EARS 템플릿 적용)
-Phase 4: Git 워크플로우 초기화
+Phase 3: SPEC file creation
+  ↓ (applies EARS templates from this Skill)
+Phase 4: Git workflow initialization
   ↓
-Phase 5: /alfred:2-run으로 핸드오프
+Phase 5: Handoff to /alfred:2-run
 ```
 
-### 에이전트 협업
+### Agent Collaboration
 
-- **spec-builder**: 이 Skill의 템플릿을 사용하여 SPEC 생성
-- **tag-agent**: TAG 형식 및 고유성 검증
-- **trust-checker**: 메타데이터 완전성 확인
-- **git-manager**: 기능 브랜치 및 Draft PR 생성
+- **spec-builder**: Creates SPEC using this Skill's templates
+- **tag-agent**: Validates TAG format and uniqueness
+- **trust-checker**: Verifies metadata completeness
+- **git-manager**: Creates feature branch and Draft PR
 
 ---
 
-**Last Updated**: 2025-10-27
-**Version**: 1.1.0
+**Last Updated**: 2025-10-29
+**Version**: 1.2.0
