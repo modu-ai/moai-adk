@@ -113,27 +113,27 @@ def handle_session_start(payload: HookPayload) -> HookResult:
 
     # Add version info first (at the top, right after title)
     if version_info and version_info.get("current") != "unknown":
-        version_line = f"   🗿  MoAI-ADK Ver: {version_info['current']}"
+        version_line = f"   🗿 MoAI-ADK Ver: {version_info['current']}"
         if version_info.get("update_available"):
             version_line += f" → {version_info['latest']} available ✨"
         lines.append(version_line)
 
         # Add upgrade recommendation if update is available
         if version_info.get("update_available") and version_info.get("upgrade_command"):
-            lines.append(f"   ⬆️  Upgrade: {version_info['upgrade_command']}")
+            lines.append(f"   ⬆️ Upgrade: {version_info['upgrade_command']}")
 
     # Add language info
-    lines.append(f"   🐍  Language: {language}")
+    lines.append(f"   🐍 Language: {language}")
 
     # Add Git info only if available (not degraded)
     if git_info:
-        lines.append(f"   🌿  Branch: {branch} ({commit})")
-        lines.append(f"   📝  Changes: {changes}")
+        lines.append(f"   🌿 Branch: {branch} ({commit})")
+        lines.append(f"   📝 Changes: {changes}")
 
         # Add last commit message if available
         last_commit = git_info.get("last_commit", "")
         if last_commit:
-            lines.append(f"   🔨  Last: {last_commit}")
+            lines.append(f"   🔨 Last: {last_commit}")
 
     # Add Checkpoint list (show only the latest 3 items)
     if checkpoints:
@@ -146,7 +146,7 @@ def handle_session_start(payload: HookPayload) -> HookResult:
 
     # Add SPEC progress only if available (not degraded) - at the bottom
     if specs["total"] > 0:
-        lines.append(f"   📋  SPEC Progress: {spec_progress} ({specs['percentage']}%)")
+        lines.append(f"   📋 SPEC Progress: {spec_progress} ({specs['percentage']}%)")
 
     system_message = "\n".join(lines)
 
