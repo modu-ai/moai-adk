@@ -170,7 +170,9 @@ body:
       value: |
         ## 📚 Reference
 
-        - **SPEC Metadata Guide**: See `.moai/memory/spec-metadata.md`
-        - **EARS Syntax Guide**: See `.moai/memory/development-guide.md`
+        - **SPEC Metadata Guide**: See `{{DOCS_DIR}}/spec-metadata.md`
+        - **EARS Syntax Guide**: See `{{DOCS_DIR}}/development-guide.md`
         - **Acceptance Criteria**: Use Given-When-Then (Gherkin) format
-        - **@TAG System**: @SPEC, @TEST, @CODE, @DOC traceability
+        {% if ENABLE_TAG_SYSTEM -%}
+        - **Traceability System**: @SPEC, @TEST, @CODE, @DOC traceability
+        {% endif -%}

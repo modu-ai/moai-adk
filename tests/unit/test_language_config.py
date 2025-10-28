@@ -7,7 +7,6 @@ Tests verify that:
 3. Template variables are correctly set and substituted
 """
 
-import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import MagicMock, patch

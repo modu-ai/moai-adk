@@ -5,7 +5,6 @@ Tests for version management and 2-stage update workflow.
 RED Phase: These tests should initially fail.
 """
 
-import json
 import subprocess
 import urllib.error
 from pathlib import Path

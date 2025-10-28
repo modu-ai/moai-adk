@@ -469,11 +469,11 @@ graph TD
 | `/alfred:1-plan <설명>`   | 요구사항 분석, SPEC 초안, Plan Board 작성      | `.moai/specs/SPEC-*/spec.md`, plan/acceptance 문서, feature 브랜치 |
 | `/alfred:2-run <SPEC-ID>` | TDD 실행, 테스트/구현/리팩토링, 품질 검증      | `tests/`, `src/` 구현, 품질 리포트, TAG 연결                       |
 | `/alfred:3-sync`          | 문서/README/CHANGELOG 동기화, TAG/PR 상태 정리 | `docs/`, `.moai/reports/sync-report.md`, Ready PR                  |
-| `/alfred:9-help` | 대화형으로 GitHub Issue 생성 (타입 → 제목 → 설명 → 우선순위) | GitHub Issue + 자동 라벨 + 우선순위 + URL |
+| `/alfred:9-feedback` | 대화형으로 GitHub Issue 생성 (타입 → 제목 → 설명 → 우선순위) | GitHub Issue + 자동 라벨 + 우선순위 + URL |
 
 > ❗ 모든 명령은 **Phase 0(선택) → Phase 1 → Phase 2 → Phase 3** 순환 구조를 유지합니다. 실행 중 상태와 다음 단계 제안은 Alfred가 자동으로 보고합니다.
 >
-> 💡 **v0.7.0+부터 추가**: `/alfred:9-help`로 개발 중 GitHub Issue를 즉시 생성할 수 있습니다. 개발 흐름을 끊지 않으면서 팀 전체가 이슈를 추적하고 논의할 수 있습니다.
+> 💡 **v0.7.0+부터 추가**: `/alfred:9-feedback`로 개발 중 GitHub Issue를 즉시 생성할 수 있습니다. 개발 흐름을 끊지 않으면서 팀 전체가 이슈를 추적하고 논의할 수 있습니다.
 
 ---
 
@@ -590,7 +590,7 @@ MoAI-ADK는 이제 SPEC 문서에서 **GitHub Issue 자동 동기화**를 제공
 
 ---
 
-## `/alfred:9-help`로 빠른 Issue 생성하기
+## `/alfred:9-feedback`로 빠른 Issue 생성하기
 
 MoAI-ADK v0.7.0+부터 개발 중 **GitHub Issue를 즉시 생성**할 수 있는 기능을 제공합니다. 개발 흐름을 끊지 않으면서 팀 전체가 버그, 기능, 개선사항을 추적할 수 있습니다.
 
@@ -607,7 +607,7 @@ MoAI-ADK v0.7.0+부터 개발 중 **GitHub Issue를 즉시 생성**할 수 있�
 
 ### 대화형 대화 흐름
 
-`/alfred:9-help`를 실행하면 Alfred가 단계별 대화형 인터페이스로 안내합니다:
+`/alfred:9-feedback`를 실행하면 Alfred가 단계별 대화형 인터페이스로 안내합니다:
 
 **1단계: Issue 타입 선택**
 ```
@@ -660,7 +660,7 @@ Alfred가 자동으로:
 
 ```bash
 # 코드 리뷰 중 심각한 문제를 발견하고 즉시 보고하고 싶을 때
-$ /alfred:9-help
+$ /alfred:9-feedback
 
 Alfred: 어떤 타입의 Issue를 만들고 싶으신가요?
 > 🐛 버그 리포트
@@ -689,7 +689,7 @@ Alfred: 우선순위를 선택하세요
 
 ### MoAI-ADK 워크플로우와의 통합
 
-1. **개발 중**: `/alfred:9-help`로 버그/아이디어를 즉시 추적
+1. **개발 중**: `/alfred:9-feedback`로 버그/아이디어를 즉시 추적
 2. **코드 리뷰**: 개선 제안을 Issue로 변환
 3. **계획 단계**: 생성된 Issue를 SPEC 문서에서 참조
 4. **동기화 단계**: `/alfred:3-sync`로 Issue를 SPEC과 연결
