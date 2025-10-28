@@ -20,7 +20,7 @@ class TestUpdateCommand:
         runner = CliRunner()
         result = runner.invoke(update, ["--help"])
         assert result.exit_code == 0
-        assert "Update command with 2-stage workflow" in result.output
+        assert "Update command with 3-stage workflow" in result.output
 
     def test_update_not_initialized(self, tmp_path):
         """Test update when project is not initialized"""
