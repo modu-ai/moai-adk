@@ -1,11 +1,11 @@
 ---
 name: moai-foundation-ears
-version: 2.0.0
+version: 2.1.0
 created: 2025-10-22
-updated: 2025-10-22
+updated: 2025-10-29
 status: active
-description: EARS requirement authoring guide (Ubiquitous/Event/State/Optional/Constraints).
-keywords: ['ears', 'requirements', 'authoring', 'syntax']
+description: EARS requirement authoring guide (Ubiquitous/Event-driven/State-driven/Optional/Unwanted Behaviors) with 5 official patterns.
+keywords: ['ears', 'requirements', 'authoring', 'syntax', 'unwanted-behaviors']
 allowed-tools:
   - Read
   - Bash
@@ -27,13 +27,15 @@ allowed-tools:
 
 ## What It Does
 
-EARS requirement authoring guide (Ubiquitous/Event/State/Optional/Constraints).
+Official EARS (Easy Approach to Requirements Syntax) requirement authoring guide with 5 patterns: Ubiquitous, Event-driven, State-driven, Optional, and Unwanted Behaviors.
 
 **Key capabilities**:
+- ✅ Five official EARS patterns with real-world examples
 - ✅ Best practices enforcement for foundation domain
 - ✅ TRUST 5 principles integration
-- ✅ Latest tool versions (2025-10-22)
+- ✅ Latest tool versions (2025-10-29)
 - ✅ TDD workflow support
+- ✅ Unwanted Behaviors pattern for error handling & quality gates
 
 ---
 
@@ -85,6 +87,7 @@ _Documentation links updated 2025-10-22_
 
 ## Changelog
 
+- **v2.1.0** (2025-10-29): Standardized Unwanted Behaviors as 5th official EARS pattern, replacing Constraints terminology
 - **v2.0.0** (2025-10-22): Major update with latest tool versions, comprehensive best practices, TRUST 5 integration
 - **v1.0.0** (2025-03-29): Initial Skill release
 
