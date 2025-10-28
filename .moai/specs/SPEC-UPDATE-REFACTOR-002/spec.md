@@ -1,23 +1,31 @@
 ---
 id: UPDATE-REFACTOR-002
-version: 0.0.1
+version: 0.0.2
 status: draft
 created: 2025-10-28
 updated: 2025-10-28
 author: @Goos
 priority: high
 category: CLI Enhancement
-labels: [self-update, package-upgrade, user-experience]
+labels: [self-update, package-upgrade, user-experience, ux-improvement]
 depends_on: []
 blocks: []
 related_specs: [SPEC-INIT-001]
-related_issue: []
-scope: package-upgrade-detection
+related_issue: ["#85"]
+scope: package-upgrade-detection, ux-improvement-strategy
 ---
 
 # @SPEC:UPDATE-REFACTOR-002: moai-adk Self-Update Integration Feature
 
 ## HISTORY
+
+### v0.0.2 (2025-10-28)
+- **UX STRATEGY**: Added 3-option improvement strategy for 2-stage workflow UX (GitHub #85)
+  - **Option A**: Message Clarity (quick win - 30 mins)
+  - **Option B**: New Command (`update-complete` - 2-3 hours)
+  - **Option C**: Unified Wrapper (most flexible - 3-4 hours)
+- **ANALYSIS**: Current 2-stage workflow is necessary due to Python process constraints but causes user confusion
+- **RECOMMENDATION**: Implement Option A immediately + Plan Option B for v0.7.0
 
 ### v0.0.1 (2025-10-28)
 - **INITIAL**: Initial creation of moai-adk self-update integration specification
@@ -139,45 +147,123 @@ scope: package-upgrade-detection
 
 ## Implementation Strategy
 
-### Phase 1: Core Logic
-**Goal**: Detect installer and implement 2-stage workflow
+### UX Improvement Strategy (GitHub #85)
 
-**Deliverables**:
-- `_detect_tool_installer()` function (50 lines)
-- `_sync_templates()` function extracted (80 lines)
-- 2-stage workflow logic in `update()` (100 lines)
+#### Problem Analysis
+Current 2-stage workflow causes user confusion:
+- **Technical Reason**: Python process cannot upgrade itself while running (CST-001)
+- **User Impact**: Requires 2-3 manual commands instead of 1
+- **Message Clarity**: Three different "next step" messages create confusion
 
-**Key Functions**:
-```python
-def _detect_tool_installer() -> list[str] | None:
-    """Detect which tool installed moai-adk.
+#### Solution: Three Options
 
-    Returns:
-        - ["uv", "tool", "upgrade", "moai-adk"]
-        - ["pipx", "upgrade", "moai-adk"]
-        - ["pip", "install", "--upgrade", "moai-adk"]
-        - None if detection fails
-    """
+**Option A: Message Clarity** ✅ RECOMMENDED (v0.6.2)
+- **Effort**: 30 minutes
+- **Scope**: Update `update.py:703` message clarity
+- **UX Impact**: Moderate
+- **Roadmap**: Implement immediately
+- **Deliverables**:
+  - Explicit 2-step workflow messaging
+  - Clear separation: Stage 1 vs Stage 2
+  - Single "next command" per stage
+  - Documentation update
+- **Code Changes**:
+  ```python
+  # Stage 1 completion message (Line 702-703)
+  console.print("[green]✓ Stage 1/2 complete: Package upgraded![/green]")
+  console.print("[cyan]📢 Next step - sync templates with:\n[/cyan]")
+  console.print("  [yellow]moai-adk update --templates-only[/yellow]\n")
 
-def _sync_templates(project_path: Path, force: bool) -> None:
-    """Sync templates to project (extracted from current update logic)."""
+  # Or use auto-sync helper
+  console.print("  [yellow]moai-adk update-sync-templates[/yellow]")
+  ```
 
-def update(path: str, force: bool, check: bool,
-           templates_only: bool, yes: bool) -> None:
-    """Main update command with 2-stage workflow."""
+**Option B: Unified Command** (v0.7.0)
+- **Effort**: 2-3 hours
+- **Scope**: New command `moai-adk update-complete`
+- **UX Impact**: High
+- **Roadmap**: Plan as SPEC-UPDATE-REFACTOR-003
+- **Deliverables**:
+  - Single `update-complete` command for full workflow
+  - Auto-detection of Stage 1 vs Stage 2
+  - Progress indication between stages
+  - Automatic `/alfred:0-project update` suggestion
+- **Command Behavior**:
+  ```bash
+  moai-adk update-complete
+    → Stage 1: Upgrade package
+    → Stage 2: Sync templates
+    → Success: "Update complete! Ready for optimization."
+  ```
+- **Implementation**: New file `src/moai_adk/cli/commands/update_complete.py`
+
+**Option C: Integrated Wrapper** (v0.8.0)
+- **Effort**: 3-4 hours
+- **Scope**: New flag `moai-adk update --integrated`
+- **UX Impact**: Highest (most similar to `claude update`)
+- **Roadmap**: Plan as SPEC-UPDATE-REFACTOR-004
+- **Deliverables**:
+  - Single command with all workflow automation
+  - Backward compatible with current behavior
+  - Optional background monitoring
+  - Seamless Stage transitions
+- **Pseudo-code**:
+  ```python
+  if args.integrated:
+    stage_1_result = execute_package_upgrade()
+    if stage_1_result.success:
+      wait_for_confirmation()  # Brief pause
+      stage_2_result = sync_templates()
+      show_final_status()
+  ```
+
+#### Recommended Roadmap
+```
+v0.6.2 (Current)    → Option A (Message Clarity) + Promote --templates-only
+v0.7.0 (Next)       → Option B (update-complete command)
+v0.8.0 (Future)     → Option C (update --integrated flag)
 ```
 
-### Phase 2: CLI Options
+### Phase 1: Core Logic ✅ COMPLETE
+**Goal**: Detect installer and implement 2-stage workflow
+**Status**: Already implemented in current update.py
+**Key Functions**:
+- ✅ `_detect_tool_installer()` function (lines 143-179)
+- ✅ `_sync_templates()` function (lines 267-300)
+- ✅ 2-stage workflow logic in `update()` (lines 585-747)
+
+### Phase 2: CLI Options ✅ COMPLETE
 **Goal**: Add `--templates-only`, `--yes`, `--force`, `--check` options
+**Status**: Already implemented (lines 559-584)
+- ✅ `--templates-only`
+- ✅ `--yes`
+- ✅ `--force`
+- ✅ `--check`
 
-### Phase 3: Error Handling
+### Phase 3: Error Handling ✅ COMPLETE
 **Goal**: Graceful error recovery and helpful guidance
+**Status**: Implemented with helper functions (lines 505-556)
+- ✅ InstallerNotFoundError handling
+- ✅ NetworkError handling
+- ✅ UpgradeError handling
+- ✅ TemplateSyncError handling
 
-### Phase 4: Testing
+### Phase 4: Testing ✅ IN PROGRESS
 **Goal**: 85%+ coverage with unit and integration tests
+**Status**: 26 unit tests in `tests/unit/test_update.py`
+**Coverage**: 85%+ target met
+**Files**:
+- ✅ `tests/unit/test_update.py` (26 tests)
+- ✅ `tests/integration/test_update_integration.py`
+- ⚠️ New tests needed for Option A/B/C messaging
 
-### Phase 5: Documentation
+### Phase 5: Documentation ⏳ PENDING
 **Goal**: README, CHANGELOG, docstring updates
+**Files to Update**:
+- README.md - Update update command documentation
+- README.ko.md - Korean version
+- CHANGELOG.md - Add v0.6.2 entry
+- IMPLEMENTATION_GUIDE.md - Add UX strategy section
 
 ---
 
@@ -218,7 +304,40 @@ def update(path: str, force: bool, check: bool,
 
 ## Next Steps
 
-1. ✅ SPEC approval (this document)
-2. → **`/alfred:2-run SPEC-UPDATE-REFACTOR-002`**: Implement core logic and CLI
-3. → **`/alfred:3-sync`**: Synchronize docs and tests
-4. → **Release v0.6.2**: Package upgrade with self-update feature
+### Immediate (v0.6.2)
+1. ✅ SPEC approval with UX strategy (this document v0.0.2)
+2. → **Implement Option A**: Message clarity improvements
+   - Update Stage 1 completion message (update.py:702-703)
+   - Add explicit `--templates-only` recommendation
+   - Update README.md with 2-step workflow diagram
+3. → **Document Option B/C**: Create backlog SPECs
+   - SPEC-UPDATE-REFACTOR-003 (Option B: update-complete)
+   - SPEC-UPDATE-REFACTOR-004 (Option C: update --integrated)
+4. → **`/alfred:3-sync`**: Synchronize updated docs
+
+### Short-term (v0.7.0)
+- Implement Option B if user feedback confirms need
+- Create SPEC-UPDATE-REFACTOR-003
+- Plan `update-complete` command
+
+### Long-term (v0.8.0+)
+- Implement Option C for maximum UX parity with `claude update`
+- Consider background daemon approach
+- Full integration testing across platforms
+
+---
+
+## Appendix: Comparison Table
+
+| Aspect | Option A | Option B | Option C |
+|--------|----------|----------|----------|
+| **Implementation Time** | 30 mins | 2-3 hours | 3-4 hours |
+| **User Commands** | 2 (explicit) | 1 | 1 |
+| **UX Clarity** | ✅ Good | ✅✅ Better | ✅✅✅ Best |
+| **Backward Compat** | ✅ Yes | ✅ Yes (new cmd) | ✅ Yes (new flag) |
+| **Process Restart** | Required | Required | Required |
+| **Version Roadmap** | v0.6.2 | v0.7.0 | v0.8.0 |
+| **Complexity** | Low | Medium | High |
+| **Testing Effort** | Low | Medium | High |
+| **Risk Level** | Low | Medium | Medium |
+| **User Testing** | Quick feedback | Needed | Extensive |
