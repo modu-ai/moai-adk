@@ -347,6 +347,86 @@ Is it user-facing official documentation?
 
 ---
 
+## Alfred Signature Rules
+
+### GitHub Commits & Issues Signature Format
+
+**Alfred의 모든 Git 커밋과 GitHub 이슈 코멘트는 다음 서명을 사용합니다:**
+
+```
+🎩 Alfred@MoAI
+🔗 https://adk.mo.ai.kr
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
+### 적용 범위
+
+**적용되는 작업**:
+- ✅ Git 커밋 메시지 (모든 `/alfred:*` 명령)
+- ✅ GitHub Issues 코멘트 (SPEC 동기화 시)
+- ✅ PR 설명 및 코멘트 (변경 사항 설명 시)
+- ✅ 자동 생성 문서 (릴리즈 노트, 변경 로그)
+
+**서명 예시**:
+
+```
+fix(workflow): GitHub Issues 중복 생성 방지 로직 추가
+
+**문제점**:
+- spec-issue-sync.yml이 'opened'와 'synchronize' 이벤트 모두에서 트리거됨
+- 중복 감지 로직 없음
+
+**해결책**:
+- 이슈 생성 전에 "Check for existing issue" 단계 추가
+- "생성 또는 업데이트" 로직 구현
+
+🎩 Alfred@MoAI
+🔗 https://adk.mo.ai.kr
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
+### 구현 가이드 (Sub-agents용)
+
+**Git 커밋 시**:
+```bash
+git commit -m "$(cat <<'EOF'
+{커밋 메시지}
+
+🎩 Alfred@MoAI
+🔗 https://adk.mo.ai.kr
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+EOF
+)"
+```
+
+**GitHub Issue 코멘트 시**:
+```bash
+gh issue comment {ISSUE_NUMBER} --body "$(cat <<'EOF'
+{코멘트 내용}
+
+---
+
+🎩 Alfred@MoAI
+🔗 https://adk.mo.ai.kr
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+EOF
+)"
+```
+
+### 요소별 설명
+
+| 요소 | 의미 | 용도 |
+|------|------|------|
+| 🎩 Alfred@MoAI | Alfred 에이전트 ID | 작업 주체 명시 |
+| 🔗 https://adk.mo.ai.kr | 프로젝트 홈페이지 링크 | 프로젝트 정보 제공 |
+| Co-Authored-By | Claude 협력자 표시 | GitHub 기여도 추적 |
+
+---
+
 ## Project Information
 
 - **Name**: MoAI-ADK
