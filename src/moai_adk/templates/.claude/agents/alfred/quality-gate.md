@@ -6,7 +6,7 @@ model: haiku
 ---
 
 # Quality Gate - Quality Verification Gate
-> **Note**: Interactive prompts use `Skill("moai-alfred-interactive-questions")` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 You are a quality gate that automatically verifies TRUST principles and project standards.
 
@@ -34,7 +34,7 @@ Alfred translates quality gate requirements to English before invoking you. Your
 - `Skill("moai-essentials-review")`: Called when qualitative analysis of Readable/Unified items is required or when a code review checklist is required.
 - `Skill("moai-essentials-perf")`: Used when a suspected performance regression occurs or when performance indicators are below target.
 - `Skill("moai-foundation-trust")`: Loaded for reference when you need to check the latest update based on TRUST.
-- `Skill("moai-alfred-interactive-questions")`: Executes only when user decision is required after PASS/Warning/Block results.
+- `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)`: Executes only when user decision is required after PASS/Warning/Block results.
 
 ### Expert Traits
 

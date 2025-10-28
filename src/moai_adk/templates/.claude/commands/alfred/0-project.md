@@ -20,7 +20,7 @@ allowed-tools:
 ---
 
 # 📋 MoAI-ADK Step 0: Initialize/Update Universal Language Support Project Documentation
-> **Note**: Interactive prompts use `Skill("moai-alfred-interactive-questions")` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 ## 🎯 Command Purpose
 
@@ -110,7 +110,7 @@ MoAI-ADK의 SuperAgent로서 당신의 프로젝트를 함께 만들어갈 준�
 
 ### 0.1 언어 선택
 
-Alfred가 `Skill("moai-alfred-interactive-questions")` 를 사용하여 **첫 번째 상호작용**으로 언어 선택 메뉴를 표시합니다:
+Alfred가 `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` 를 사용하여 **첫 번째 상호작용**으로 언어 선택 메뉴를 표시합니다:
 
 **Question**:
 ```
@@ -144,7 +144,7 @@ This language preference is:
 
 ### 0.2.5 사용자 닉네임 선택
 
-언어 선택 완료 후, Alfred가 `Skill("moai-alfred-interactive-questions")` 를 사용하여 사용자 닉네임을 요청합니다:
+언어 선택 완료 후, Alfred가 `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` 를 사용하여 사용자 닉네임을 요청합니다:
 
 **질문**:
 ```
@@ -228,7 +228,7 @@ grep "optimized" .moai/config.json
 - `optimized: false` in `config.json` (immediately after reinitialization)
 
 **Select user if backup exists**  
-Call `Skill("moai-alfred-interactive-questions")` to display a TUI with the following options:
+Call `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` to display a TUI with the following options:
 - **Merge**: Merge backup contents and latest template (recommended)
 - **New**: Ignore the backup and start a new interview
 - **Skip**: Keep current file (terminate task)
@@ -443,7 +443,7 @@ Set optimization flags after the merge is complete:
 
 ### 1.5 Wait for user approval (moai-alfred-interactive-questions) (when user selects "New")
 
-After Alfred receives the project-manager's interview plan report, calls `Skill("moai-alfred-interactive-questions")` and asks whether Phase 2 is approved.
+After Alfred receives the project-manager's interview plan report, uses `AskUserQuestion` tool (documented in moai-alfred-interactive-questions skill) and asks whether Phase 2 is approved.
 - **Proceed**: Interview conducted according to approved plan
 - **Modify**: Re-establish the plan (re-execute Phase 1)
 - **Stop**: Stop initialization
@@ -543,7 +543,7 @@ After the project-manager has finished creating the document, **Alfred can optio
 - When selecting language/framework
 - When changing important settings
 
-**Example** (inside project-manager): Ask whether to "overwrite file" with `Skill("moai-alfred-interactive-questions")`,
+**Example** (inside project-manager): Ask whether to "overwrite file" with `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)`,
 - Allows you to choose between **Overwrite** / **Merge** / **Skip**.
 
 **Nested pattern**:
@@ -806,7 +806,7 @@ Alfred only calls the trust-checker agent to perform project initial structural 
 ### 2.6: Agent & Skill Tailoring (Project Optimization)
 
 Based on the results of the interviews and initial analysis, we recommend and activate sub-agents and skills that should be immediately utilized in the project.
-Before actual application, user confirmation is received with `Skill("moai-alfred-interactive-questions")`, and selected items are recorded in `CLAUDE.md` and `.moai/config.json`.
+Before actual application, user confirmation is received with `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)`, and selected items are recorded in `CLAUDE.md` and `.moai/config.json`.
 
 #### 2.6.0 Create cc-manager briefing
 
@@ -847,7 +847,7 @@ If multiple conditions are met, the candidates are merged without duplicates and
 
 #### 2.6.2 User confirmation flow
 
-`Skill("moai-alfred-interactive-questions")` asks “whether to enable recommended items.”
+`AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` asks “whether to enable recommended items.”
 - Provides three options: **Install all** / **Install selectively** / **Do not install**.
 Selecting “Selective Install” presents the list of candidates again as multiple choices, allowing the user to select only the items they need.
 
@@ -992,7 +992,7 @@ This subcommand is executed under the following conditions:
    ```
 
 4. **Waiting for user approval**  
-`Skill("moai-alfred-interactive-questions")` asks “Do you want to proceed with template optimization?” and provides the following options.
+`AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` asks “Do you want to proceed with template optimization?” and provides the following options.
 - **Proceed** → Phase 2 execution
 - **Preview** → Display change details and recheck
 - **Skip** → keep optimized=false
