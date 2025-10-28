@@ -91,5 +91,17 @@
       "scan_command": "rg '@TAG' -n",
       "philosophy": "The source of truth for TAGs lives in the code itself"
     }
+  },
+  "github": {
+    "@CODE:GITHUB-CONFIG-001": "@DOC:GITHUB-TEMPLATES-001",
+    "templates": {
+      "enable_trust_5": true,
+      "enable_tag_system": true,
+      "enable_alfred_commands": true,
+      "spec_directory": ".moai/specs",
+      "docs_directory": ".moai/docs",
+      "test_directory": "tests",
+      "notes": "Configure GitHub templates for project customization. When enable_* flags are false, corresponding MoAI-specific sections are omitted from templates."
+    }
   }
 }
