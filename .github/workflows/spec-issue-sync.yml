@@ -136,7 +136,37 @@ jobs:
           echo "spec_priority=$spec_priority" >> $GITHUB_OUTPUT
           echo "spec_title=$spec_title" >> $GITHUB_OUTPUT
 
-      - name: Create GitHub Issue
+      - name: Check for existing issue
+        if: steps.spec.outputs.spec_id
+        id: check-issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          spec_id="${{ steps.spec.outputs.spec_id }}"
+
+          echo "=== Checking for existing issue ==="
+          echo "Searching for existing GitHub issue with SPEC-$spec_id..."
+
+          # Search for existing issue with the SPEC ID in the title
+          # Use label filter for efficiency, then search in title
+          existing_issue=$(gh issue list \
+            --label "spec" \
+            --state all \
+            --search "[SPEC-$spec_id]" \
+            --json number,title,state \
+            --jq '.[] | select(.title | contains("[SPEC-'$spec_id']")) | .number' \
+            2>/dev/null | head -1)
+
+          if [ -n "$existing_issue" ]; then
+            echo "✅ Found existing issue: #$existing_issue"
+            echo "issue_exists=true" >> $GITHUB_OUTPUT
+            echo "issue_number=$existing_issue" >> $GITHUB_OUTPUT
+          else
+            echo "📋 No existing issue found for SPEC-$spec_id"
+            echo "issue_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create or Update GitHub Issue
         if: steps.spec.outputs.spec_id
         id: create-issue
         env:
@@ -148,6 +178,8 @@ jobs:
           spec_status="${{ steps.spec.outputs.spec_status }}"
           spec_priority="${{ steps.spec.outputs.spec_priority }}"
           spec_file="${{ steps.spec.outputs.spec_file }}"
+          issue_exists="${{ steps.check-issue.outputs.issue_exists }}"
+          existing_issue="${{ steps.check-issue.outputs.issue_number }}"
 
           # Read SPEC content (skip YAML frontmatter: 9 lines + 1 blank = 10 lines total)
           # Start reading from line 11
@@ -176,33 +208,47 @@ jobs:
             echo "📝 **Auto-synced**: This issue is automatically synchronized from the SPEC document"
           } > /tmp/issue_body.txt
 
-          echo "📋 Creating GitHub Issue..."
-          echo "  Title: [SPEC-$spec_id] $spec_title (v$spec_version)"
-          echo "  Body file: /tmp/issue_body.txt"
-          wc -l /tmp/issue_body.txt
+          if [ "$issue_exists" = "true" ]; then
+            echo "📝 Updating existing issue #$existing_issue..."
+            echo "  Title: [SPEC-$spec_id] $spec_title (v$spec_version)"
 
-          # Create issue with labels using body-file
-          issue_output=$(gh issue create \
-            --title "[SPEC-$spec_id] $spec_title (v$spec_version)" \
-            --body-file /tmp/issue_body.txt \
-            --label "spec" \
-            --label "planning" \
-            --label "$spec_priority" 2>&1)
+            # Update existing issue with new content
+            gh issue edit "$existing_issue" \
+              --title "[SPEC-$spec_id] $spec_title (v$spec_version)" \
+              --body-file /tmp/issue_body.txt
 
-          echo "$issue_output" | tee /tmp/issue_output.txt
+            issue_num=$existing_issue
+            echo "✅ Updated issue #$issue_num"
+          else
+            echo "📋 Creating new GitHub Issue..."
+            echo "  Title: [SPEC-$spec_id] $spec_title (v$spec_version)"
+            echo "  Body file: /tmp/issue_body.txt"
+            wc -l /tmp/issue_body.txt
 
-          # Extract issue number from output
-          issue_num=$(echo "$issue_output" | grep -oE '/issues/[0-9]+' | grep -oE '[0-9]+' | head -1)
+            # Create issue with labels using body-file
+            issue_output=$(gh issue create \
+              --title "[SPEC-$spec_id] $spec_title (v$spec_version)" \
+              --body-file /tmp/issue_body.txt \
+              --label "spec" \
+              --label "planning" \
+              --label "$spec_priority" 2>&1)
 
-          if [ -z "$issue_num" ]; then
-            echo "⚠️  Could not extract issue number from output"
-            echo "Full output:"
-            cat /tmp/issue_output.txt
-            exit 1
+            echo "$issue_output" | tee /tmp/issue_output.txt
+
+            # Extract issue number from output
+            issue_num=$(echo "$issue_output" | grep -oE '/issues/[0-9]+' | grep -oE '[0-9]+' | head -1)
+
+            if [ -z "$issue_num" ]; then
+              echo "⚠️  Could not extract issue number from output"
+              echo "Full output:"
+              cat /tmp/issue_output.txt
+              exit 1
+            fi
+
+            echo "✅ Created issue #$issue_num"
           fi
 
           echo "issue_number=$issue_num" >> $GITHUB_OUTPUT
-          echo "✅ Created issue #$issue_num"
 
       - name: Add PR comment
         if: steps.create-issue.outputs.issue_number
