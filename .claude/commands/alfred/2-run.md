@@ -24,7 +24,7 @@ allowed-tools:
 ---
 
 # ⚒️ MoAI-ADK Phase 2: Run the plan - Flexible implementation strategy
-> Interactive prompts rely on `Skill("moai-alfred-interactive-questions")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
+> **Note**: Interactive prompts use `Skill("moai-alfred-interactive-questions")` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 ## 🎯 Command Purpose
 
@@ -188,19 +188,31 @@ After user approval (gathered through `Skill("moai-alfred-interactive-questions"
 **STEP 2 calls tdd-implementer using the Task tool**:
 
 ```
-Task tool call example:
+Call the Task tool:
 - subagent_type: "tdd-implementer"
-- description: "Execute task"
-- prompt: "Please execute the task according to the plan approved in STEP 1.
- For TDD scenario:
- - Perform RED → GREEN → REFACTOR cycle,
- Perform the following for each TAG:
- 1. RED Phase: Write a test that fails with the @TEST:ID tag
- 2. GREEN Phase: Minimal implementation with the @CODE:ID tag
- 3. REFACTOR Phase: Improve code quality
- 4. Verify TAG completion conditions and proceed to the next TAG
+- description: "Execute task with TDD implementation"
+- prompt: """You are tdd-implementer agent.
 
-Execute on: $ARGUMENTS"
+LANGUAGE CONFIGURATION:
+- conversation_language: {{CONVERSATION_LANGUAGE}}
+- language_name: {{CONVERSATION_LANGUAGE_NAME}}
+
+CRITICAL INSTRUCTION:
+Code and technical output MUST be in English.
+Code comments MAY be in {{CONVERSATION_LANGUAGE}} if appropriate.
+Test descriptions and documentation can use {{CONVERSATION_LANGUAGE}}.
+
+TASK: Execute the task according to the plan approved in STEP 1.
+
+For TDD scenario:
+- Perform RED → GREEN → REFACTOR cycle
+- Perform the following for each TAG:
+  1. RED Phase: Write a test that fails with the @TEST:ID tag
+  2. GREEN Phase: Minimal implementation with the @CODE:ID tag
+  3. REFACTOR Phase: Improve code quality
+  4. Verify TAG completion conditions and proceed to the next TAG
+
+Execute on: $ARGUMENTS"""
 ```
 
 ## 🔗 TDD optimization for each language
