@@ -1602,3 +1602,9 @@ Start a new experience of **trustworthy AI development** with Alfred! 🤖
 - 🏷️ TAG Guard: Automatic @TAG validation in PreToolUse Hook
 
 ---
+
+## ⭐ Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=date&legend=top-left)](https://www.star-history.com/#modu-ai/moai-adk&Date)
+
+---
