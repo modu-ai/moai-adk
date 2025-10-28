@@ -213,6 +213,74 @@ Combine layers when necessary: a command triggers sub-agents, sub-agents activat
 
 ---
 
+## Document Management Rules
+
+### Internal Documentation Location Policy
+
+**CRITICAL**: Alfred and all Sub-agents MUST follow these document placement rules.
+
+#### ✅ Allowed Document Locations
+
+| Document Type | Location | Examples |
+|---------------|----------|----------|
+| **Internal Guides** | `.moai/docs/` | Implementation guides, strategy docs |
+| **Exploration Reports** | `.moai/docs/` | Analysis, investigation results |
+| **SPEC Documents** | `.moai/specs/SPEC-*/` | spec.md, plan.md, acceptance.md |
+| **Sync Reports** | `.moai/reports/` | Sync analysis, tag validation |
+| **Technical Analysis** | `.moai/analysis/` | Architecture studies, optimization |
+| **Memory Files** | `.moai/memory/` | Session context, persistent state |
+
+#### ❌ FORBIDDEN: Root Directory
+
+**NEVER proactively create documentation in project root** unless explicitly requested by user:
+- ❌ `IMPLEMENTATION_GUIDE.md`
+- ❌ `EXPLORATION_REPORT.md`
+- ❌ `*_ANALYSIS.md`
+- ❌ `*_GUIDE.md`
+- ❌ `*_REPORT.md`
+
+**Exceptions** (ONLY these files allowed in root):
+- ✅ `README.md` - Official user documentation
+- ✅ `CHANGELOG.md` - Version history
+- ✅ `CONTRIBUTING.md` - Contribution guidelines
+- ✅ `LICENSE` - License file
+
+#### Decision Tree for Document Creation
+
+```
+Need to create a .md file?
+    ↓
+Is it user-facing official documentation?
+    ├─ YES → Root (README.md, CHANGELOG.md only)
+    └─ NO → Is it internal to Alfred/workflow?
+             ├─ YES → Check type:
+             │    ├─ SPEC-related → .moai/specs/SPEC-*/
+             │    ├─ Sync report → .moai/reports/
+             │    ├─ Analysis → .moai/analysis/
+             │    └─ Guide/Strategy → .moai/docs/
+             └─ NO → Ask user explicitly before creating
+```
+
+#### Document Naming Convention
+
+**Internal documents in `.moai/docs/`**:
+- `implementation-{SPEC-ID}.md` - Implementation guides
+- `exploration-{topic}.md` - Exploration/analysis reports
+- `strategy-{topic}.md` - Strategic planning documents
+- `guide-{topic}.md` - How-to guides for Alfred use
+
+#### Sub-agent Output Guidelines
+
+| Sub-agent | Default Output Location | Document Type |
+|-----------|-------------------------|---------------|
+| implementation-planner | `.moai/docs/` | implementation-{SPEC}.md |
+| Explore | `.moai/docs/` | exploration-{topic}.md |
+| Plan | `.moai/docs/` | strategy-{topic}.md |
+| doc-syncer | `.moai/reports/` | sync-report-{type}.md |
+| tag-agent | `.moai/reports/` | tag-validation-{date}.md |
+
+---
+
 ## Project Information
 
 - **Name**: MoAI-ADK
