@@ -8,7 +8,6 @@ Tests verify complete user workflows for Korean, Japanese, and Spanish:
 4. Language setting persists throughout workflow
 """
 
-import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import MagicMock, patch

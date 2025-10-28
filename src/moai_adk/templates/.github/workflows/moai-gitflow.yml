@@ -1,6 +1,6 @@
-name: MoAI-ADK GitFlow Automation
+name: "{{PROJECT_NAME}} GitFlow Automation"
 
-# MoAI-ADK 3-stage pipeline: spec → build → sync
+# {{PROJECT_NAME}} 3-stage pipeline: spec → build → sync
 # Full GitFlow transparency — no Git expertise needed
 
 on:
@@ -11,7 +11,7 @@ on:
 
 jobs:
   moai-pipeline:
-    name: 🗿 MoAI-ADK Pipeline
+    name: "{{PROJECT_NAME}} Pipeline"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -86,13 +86,13 @@ jobs:
           distribution: "temurin"
           java-version: "21"
 
-      # TRUST 5 Principles — automated validation
-      # Note: Validation is handled by TypeScript-based tools
-      - name: 🧭 TRUST 5 Principles Check
+      # TRUST 5 Principles — automated validation (if enabled)
+      {% if ENABLE_TRUST_5 -%}
+      - name: 🧭 Quality Principles Check
         run: |
-          echo "✅ TRUST validation is performed by TypeScript-based tools"
-          echo "   - Uses @agent-trust-checker"
-          echo "   - Leverages TypeScript hook system"
+          echo "✅ Quality validation is performed"
+          echo "   - Automated quality checks enabled"
+      {% endif -%}
 
       # Ignore test failures on Draft PRs; fail CI on Ready PRs
       - name: Run language-aware tests
@@ -221,11 +221,14 @@ jobs:
             fi
           fi
 
-      # TAG system validation (code files only)
-      - name: 🏷️ TAG System Validation
+      # TAG system validation (if enabled)
+      {% if ENABLE_TAG_SYSTEM -%}
+      - name: 🏷️ Traceability Validation
         run: |
-          echo "✅ TAG validation is handled automatically in the tag_validator.py hook"
+          echo "✅ Traceability validation is handled automatically"
+      {% endif -%}
 
+      {% if ENABLE_ALFRED_COMMANDS -%}
       # Run per-branch stages
       - name: 📝 SPEC Stage (feature branch)
         if: startsWith(github.ref, 'refs/heads/feature/')
@@ -239,7 +242,9 @@ jobs:
         run: |
           echo "📝 Draft PR: TDD implementation stage"
           echo "- code-builder agent runs RED-GREEN-REFACTOR"
-          echo "- Validate TRUST 5 Principles compliance"
+          {% if ENABLE_TRUST_5 -%}
+          echo "- Validate Quality Principles compliance"
+          {% endif -%}
 
       - name: 📚 SYNC Stage (Ready PR)
         if: github.event.pull_request.draft == false && github.event.action == 'ready_for_review'
@@ -247,10 +252,11 @@ jobs:
           echo "✅ Ready PR: documentation sync stage"
           echo "- doc-syncer agent synchronizes Living Documents"
           echo "- PR is ready for review"
+      {% endif -%}
 
       # Final result report
-      - name: 📊 MoAI Pipeline Complete
+      - name: "🎯 {{PROJECT_NAME}} Pipeline Complete"
         run: |
-          echo "🗿 MoAI-ADK GitFlow automation complete"
-          echo "✨ Professional workflow without needing to know Git"
+          echo "{{PROJECT_NAME}} GitFlow automation complete"
+          echo "✨ Professional workflow enabled"
 

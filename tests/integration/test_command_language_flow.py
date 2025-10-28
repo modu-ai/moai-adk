@@ -8,7 +8,6 @@ Tests verify that:
 4. All 4 Alfred commands support language parameters
 """
 
-import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import MagicMock, patch

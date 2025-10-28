@@ -656,11 +656,11 @@ graph TD
 | `/alfred:1-plan <description>` | Analyze requirements, draft SPEC, write Plan Board                | `.moai/specs/SPEC-*/spec.md`, plan/acceptance docs, feature branch |
 | `/alfred:2-run <SPEC-ID>`      | Execute TDD, test/implement/refactor, verify quality              | `tests/`, `src/` implementation, quality report, TAG connection    |
 | `/alfred:3-sync`               | Sync docs/README/CHANGELOG, organize TAG/PR status                | `docs/`, `.moai/reports/sync-report.md`, Ready PR                  |
-| `/alfred:9-help` | Interactively create GitHub Issues (type → title → description → priority) | GitHub Issue with auto labels, priority, URL        |
+| `/alfred:9-feedback` | Interactively create GitHub Issues (type → title → description → priority) | GitHub Issue with auto labels, priority, URL        |
 
 > ❗ All commands maintain **Phase 0 (optional) → Phase 1 → Phase 2 → Phase 3** cycle structure. Alfred automatically reports execution status and next-step suggestions.
 >
-> 💡 **New in v0.7.0+**: `/alfred:9-help` enables instant GitHub Issue creation during development, keeping your workflow uninterrupted while keeping issues tracked and visible to the team.
+> 💡 **New in v0.7.0+**: `/alfred:9-feedback` enables instant GitHub Issue creation during development, keeping your workflow uninterrupted while keeping issues tracked and visible to the team.
 
 ---
 
@@ -777,7 +777,7 @@ When working in your **local development environment**, CodeRabbit provides auto
 
 ---
 
-## Quick Issue Creation with `/alfred:9-help`
+## Quick Issue Creation with `/alfred:9-feedback`
 
 MoAI-ADK v0.7.0+ includes the **Quick Issue Creation** feature, allowing developers to instantly create GitHub Issues without interrupting their development workflow.
 
@@ -847,7 +847,7 @@ Alfred automatically:
 
 ```bash
 # During code review, you notice a critical issue and want to report it instantly
-$ /alfred:9-help
+$ /alfred:9-feedback
 
 Alfred: What type of issue do you want to create?
 > 🐛 Bug Report
