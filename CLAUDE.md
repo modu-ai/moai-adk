@@ -451,12 +451,13 @@ EOF
 - `.claude/commands/`
 - `.claude/skills/`
 - `.moai/memory/`
-- `CLAUDE.md` (this file)
 
 **Rationale**: These files define system behavior, tool invocations, and internal communication. English ensures:
 1. Skill trigger keywords always match English prompts (100% auto-invocation reliability)
 2. Global maintainability without translation burden
 3. Infinite language scalability (support any user language without code changes)
+
+**Note on CLAUDE.md**: This project guidance document is intentionally written in the user's `conversation_language` (한국어) to provide clear direction to the project owner. The critical infrastructure (agents, commands, skills, memory) stays in English to support global teams, but CLAUDE.md serves as the project's internal playbook in the team's working language.
 
 ### Implementation Status (v0.7.0+)
 
