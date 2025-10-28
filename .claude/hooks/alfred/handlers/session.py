@@ -137,12 +137,12 @@ def handle_session_start(payload: HookPayload) -> HookResult:
 
     # Add Checkpoint list (show only the latest 3 items)
     if checkpoints:
-        lines.append(f"   🗂️  Checkpoints: {len(checkpoints)} available")
+        lines.append(f"   🗂️ Checkpoints: {len(checkpoints)} available")
         for cp in reversed(checkpoints[-3:]):  # Latest 3 items
             branch_short = cp["branch"].replace("before-", "")
-            lines.append(f"      📌  {branch_short}")
+            lines.append(f"      📌 {branch_short}")
         lines.append("")  # Blank line before restore command
-        lines.append("   ↩️  Restore: /alfred:0-project restore")
+        lines.append("   ↩️ Restore: /alfred:0-project restore")
 
     # Add SPEC progress only if available (not degraded) - at the bottom
     if specs["total"] > 0:
