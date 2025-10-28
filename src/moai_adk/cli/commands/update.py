@@ -274,6 +274,10 @@ def _get_project_config_version(project_path: Path) -> str:
     Raises:
         ValueError: If config.json exists but cannot be parsed
     """
+    def _is_placeholder(value: str) -> bool:
+        """Check if value contains unsubstituted template placeholders."""
+        return isinstance(value, str) and value.startswith("{{") and value.endswith("}}")
+
     config_path = project_path / ".moai" / "config.json"
 
     if not config_path.exists():
@@ -284,15 +288,15 @@ def _get_project_config_version(project_path: Path) -> str:
         config_data = json.loads(config_path.read_text(encoding="utf-8"))
         # Check for template_version in project section
         template_version = config_data.get("project", {}).get("template_version")
-        if template_version:
+        if template_version and not _is_placeholder(template_version):
             return template_version
 
         # Fallback to moai version if no template_version exists
         moai_version = config_data.get("moai", {}).get("version")
-        if moai_version:
+        if moai_version and not _is_placeholder(moai_version):
             return moai_version
 
-        # If neither exists, this is a new/old project
+        # If values are placeholders or don't exist, treat as uninitialized (0.0.0 triggers sync)
         return "0.0.0"
     except json.JSONDecodeError as e:
         raise ValueError(f"Failed to parse project config.json: {e}") from e
@@ -796,7 +800,14 @@ def update(path: str, force: bool, check: bool, templates_only: bool, yes: bool)
         console.print(f"   Package template: {package_config_version}")
         console.print(f"   Project config:   {project_config_version}")
 
-        config_comparison = _compare_versions(package_config_version, project_config_version)
+        try:
+            config_comparison = _compare_versions(package_config_version, project_config_version)
+        except version.InvalidVersion as e:
+            # Handle invalid version strings (e.g., unsubstituted template placeholders, corrupted configs)
+            console.print(f"[yellow]⚠ Invalid version format in config: {e}[/yellow]")
+            console.print("[cyan]ℹ️  Forcing template sync to repair configuration...[/cyan]")
+            # Force template sync by treating project version as outdated
+            config_comparison = 1  # package_config_version > project_config_version
 
         # If versions are equal, no sync needed
         if config_comparison <= 0:
