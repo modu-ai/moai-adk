@@ -6,7 +6,7 @@
 > **Project Owner**: {{PROJECT_OWNER}}
 > **Config**: `.moai/config.json`
 >
-> **Note**: `Skill("moai-alfred-interactive-questions")` provides TUI-based responses when user interaction is needed. The skill loads on-demand.
+> **Note**: `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` provides TUI-based responses when user interaction is needed. The skill loads on-demand.
 
 ---
 
