@@ -21,7 +21,7 @@ allowed-tools:
 ---
 
 # 🏗️ MoAI-ADK Step 1: Establish a plan (Plan) - Always make a plan first and then proceed.
-> **Note**: Interactive prompts use `Skill("moai-alfred-interactive-questions")` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 ## 🎯 Command Purpose
 
@@ -186,7 +186,7 @@ User input: $ARGUMENTS
 
 ### User verification steps
 
-After reviewing your implementation plan, Alfred invokes `Skill("moai-alfred-interactive-questions")` to present the following options:
+After reviewing your implementation plan, Alfred invokes `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` to present the following options:
 - **"Go"** or **"Start"**: Start writing the plan as planned
 - **"Modify [Content]"**: Request modifications to the plan
 - **"Stop"**: Stop writing the plan
@@ -195,7 +195,7 @@ After reviewing your implementation plan, Alfred invokes `Skill("moai-alfred-int
 
 ## 🚀 STEP 2: Create plan document (after user approval)
 
-After user approval (collected via `Skill("moai-alfred-interactive-questions")`), call the spec-builder and git-manager agents using the **Task tool**.
+After user approval (collected via `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)`), call the spec-builder and git-manager agents using the **Task tool**.
 
 ### ⚙️ How to call an agent
 

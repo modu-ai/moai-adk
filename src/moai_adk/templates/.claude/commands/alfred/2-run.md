@@ -24,7 +24,7 @@ allowed-tools:
 ---
 
 # ⚒️ MoAI-ADK Phase 2: Run the plan - Flexible implementation strategy
-> **Note**: Interactive prompts use `Skill("moai-alfred-interactive-questions")` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+> **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 ## 🎯 Command Purpose
 
@@ -137,7 +137,7 @@ Task tool call example:
           3. TAG chain design
  4. Step-by-step execution plan
  5. Risks and response plans
-6. Create action plan and use `Skill("moai-alfred-interactive-questions")` to confirm the next action with the user
+6. Create action plan and use `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` to confirm the next action with the user
  (Optional) Explore results: $EXPLORE_RESULTS"
 ```
 
@@ -181,7 +181,7 @@ After reviewing the action plan, select one of the following:
 
 ## 🚀 STEP 2: Execute task (after user approval)
 
-After user approval (gathered through `Skill("moai-alfred-interactive-questions")`), **call the tdd-implementer agent using the Task tool**.
+After user approval (gathered through `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)`), **call the tdd-implementer agent using the Task tool**.
 
 ### ⚙️ How to call an agent
 
@@ -266,7 +266,7 @@ The `implementation-planner` agent does the following:
 2. **Library selection**: Check the latest stable version and verify compatibility through WebFetch
 3. **TAG chain design**: Determine TAG order and dependency
 4. **Establishment of implementation strategy**: Step-by-step implementation plan and risk identification
-5. **Create action plan**: Create a structured plan and, via `Skill("moai-alfred-interactive-questions")`, collect user approval before proceeding
+5. **Create action plan**: Create a structured plan and, via `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)`, collect user approval before proceeding
 
 ### Phase 2: Task execution phase (after approval)
 
