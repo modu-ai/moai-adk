@@ -213,6 +213,72 @@ Combine layers when necessary: a command triggers sub-agents, sub-agents activat
 
 ---
 
+## ⚡ Alfred Command Completion Pattern
+
+**CRITICAL RULE**: When any Alfred command (`/alfred:0-project`, `/alfred:1-plan`, `/alfred:2-run`, `/alfred:3-sync`) completes, **ALWAYS use `AskUserQuestion` tool** to ask the user what to do next.
+
+### Pattern for Each Command
+
+#### `/alfred:0-project` Completion
+```
+After project initialization completes:
+├─ Use AskUserQuestion to ask:
+│  ├─ Option 1: Proceed to /alfred:1-plan (plan specifications)
+│  ├─ Option 2: Start new session with /clear
+│  └─ Option 3: Review project structure
+└─ DO NOT suggest multiple next steps in prose - use AskUserQuestion only
+```
+
+#### `/alfred:1-plan` Completion
+```
+After planning completes:
+├─ Use AskUserQuestion to ask:
+│  ├─ Option 1: Proceed to /alfred:2-run (implement SPEC)
+│  ├─ Option 2: Revise SPEC before implementation
+│  └─ Option 3: Start new session with /clear
+└─ DO NOT suggest multiple next steps in prose - use AskUserQuestion only
+```
+
+#### `/alfred:2-run` Completion
+```
+After implementation completes:
+├─ Use AskUserQuestion to ask:
+│  ├─ Option 1: Proceed to /alfred:3-sync (synchronize docs)
+│  ├─ Option 2: Run additional tests/validation
+│  └─ Option 3: Start new session with /clear
+└─ DO NOT suggest multiple next steps in prose - use AskUserQuestion only
+```
+
+#### `/alfred:3-sync` Completion
+```
+After sync completes:
+├─ Use AskUserQuestion to ask:
+│  ├─ Option 1: Return to /alfred:1-plan (next feature)
+│  ├─ Option 2: Merge PR to main
+│  └─ Option 3: Complete session
+└─ DO NOT suggest multiple next steps in prose - use AskUserQuestion only
+```
+
+### Implementation Rules
+
+1. **Always use AskUserQuestion** - Never suggest next steps in prose (e.g., "You can now run `/alfred:1-plan`...")
+2. **Provide 3-4 clear options** - Not open-ended or free-form
+3. **Language**: Present options in user's `conversation_language` (Korean, Japanese, etc.)
+4. **Question format**: Use the `moai-alfred-interactive-questions` skill documentation as reference (don't invoke Skill())
+
+### Example (Correct Pattern)
+```markdown
+# CORRECT ✅
+After project setup, use AskUserQuestion tool to ask:
+- "프로젝트 초기화가 완료되었습니다. 다음으로 뭘 하시겠습니까?"
+- Options: 1) 스펙 작성 진행 2) 프로젝트 구조 검토 3) 새 세션 시작
+
+# INCORRECT ❌
+Your project is ready. You can now run `/alfred:1-plan` to start planning specs...
+```
+
+---
+
 ## Project Information
 
 - **Name**: MoAI-ADK
