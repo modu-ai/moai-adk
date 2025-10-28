@@ -21,7 +21,7 @@ allowed-tools:
 ---
 
 # 🏗️ MoAI-ADK Step 1: Establish a plan (Plan) - Always make a plan first and then proceed.
-> Interactive prompts rely on `Skill("moai-alfred-interactive-questions")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
+> **Note**: Interactive prompts use `Skill("moai-alfred-interactive-questions")` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 ## 🎯 Command Purpose
 
@@ -142,14 +142,28 @@ Invoking the Task tool (Explore agent):
 Call the Task tool:
 - subagent_type: "spec-builder"
 - description: "Analyze the plan and establish a plan"
-- prompt: "Please analyze the project document and suggest SPEC candidates.
- Run in analysis mode, and must include the following:
- 1. In-depth analysis of product/structure/tech.md
- 2. Identify SPEC candidates and Determine priorities
- 3. Design EARS structure
- 4. Wait for user approval
- User input: $ARGUMENTS
- (Optional) Explore results: $EXPLORE_RESULTS"
+- prompt: """You are spec-builder agent.
+
+LANGUAGE CONFIGURATION:
+- conversation_language: {{CONVERSATION_LANGUAGE}}
+- language_name: {{CONVERSATION_LANGUAGE_NAME}}
+
+CRITICAL INSTRUCTION:
+All SPEC documents and analysis must be generated in conversation_language.
+- If conversation_language is 'ko' (Korean): Generate ALL analysis, plans, and SPEC documents in Korean
+- If conversation_language is 'ja' (Japanese): Generate ALL analysis, plans, and SPEC documents in Japanese
+- If conversation_language is other language: Follow the specified language
+
+TASK:
+Please analyze the project document and suggest SPEC candidates.
+Run in analysis mode, and must include the following:
+1. In-depth analysis of product/structure/tech.md
+2. Identify SPEC candidates and Determine priorities
+3. Design EARS structure
+4. Wait for user approval
+
+User input: $ARGUMENTS
+(Optional) Explore results: $EXPLORE_RESULTS"""
 ```
 
 ### Plan analysis progress
@@ -188,14 +202,30 @@ After user approval (collected via `Skill("moai-alfred-interactive-questions")`)
 ```
 1. Call spec-builder (create plan):
    - subagent_type: "spec-builder"
-- description: "Create SPEC document"
- - prompt: "Please fill out the SPEC document according to the plan approved in STEP 1.
- Create a specification for the EARS structure."
+   - description: "Create SPEC document"
+   - prompt: """You are spec-builder agent.
+
+LANGUAGE CONFIGURATION:
+- conversation_language: {{CONVERSATION_LANGUAGE}}
+- language_name: {{CONVERSATION_LANGUAGE_NAME}}
+
+CRITICAL INSTRUCTION:
+ALL SPEC documents MUST be generated in conversation_language:
+- spec.md: Full document in conversation_language
+- plan.md: Full document in conversation_language
+- acceptance.md: Full document in conversation_language
+
+YAML frontmatter and @TAG identifiers MUST remain in English.
+Code examples and technical keywords can be mixed (code in English, narrative in user language).
+
+TASK:
+Please fill out the SPEC document according to the plan approved in STEP 1.
+Create a specification for the EARS structure."""
 
 2. Invoke git-manager (Git task):
    - subagent_type: "git-manager"
-- description: "Create Git branch/PR"
- - prompt: "After completing the plan, please create a branch and Draft PR."
+   - description: "Create Git branch/PR"
+   - prompt: "After completing the plan, please create a branch and Draft PR."
 ```
 
 ## function
