@@ -6,7 +6,7 @@ SessionStart, SessionEnd event handling
 
 from core import HookPayload, HookResult
 from core.checkpoint import list_checkpoints
-from core.project import count_specs, detect_language, get_git_info
+from core.project import count_specs, detect_language, get_git_info, get_package_version_info
 
 
 def handle_session_start(payload: HookPayload) -> HookResult:
@@ -91,6 +91,14 @@ def handle_session_start(payload: HookPayload) -> HookResult:
         # Graceful degradation - continue without checkpoints
         pass
 
+    # OPTIONAL: Package version info - skip if timeout/failure
+    version_info = {}
+    try:
+        version_info = get_package_version_info()
+    except Exception:
+        # Graceful degradation - continue without version info
+        pass
+
     # Build message with available information
     branch = git_info.get("branch", "N/A") if git_info else "N/A"
     commit = git_info.get("commit", "N/A")[:7] if git_info else "N/A"
@@ -100,25 +108,45 @@ def handle_session_start(payload: HookPayload) -> HookResult:
     # system_message: displayed directly to the user
     lines = [
         "🚀 MoAI-ADK Session Started",
-        f"   Language: {language}",
+        "",  # Blank line after title
     ]
+
+    # Add version info first (at the top, right after title)
+    if version_info and version_info.get("current") != "unknown":
+        version_line = f"   🗿 MoAI-ADK Ver: {version_info['current']}"
+        if version_info.get("update_available"):
+            version_line += f" → {version_info['latest']} available ✨"
+        lines.append(version_line)
+
+        # Add upgrade recommendation if update is available
+        if version_info.get("update_available") and version_info.get("upgrade_command"):
+            lines.append(f"   ⬆️ Upgrade: {version_info['upgrade_command']}")
+
+    # Add language info
+    lines.append(f"   🐍 Language: {language}")
 
     # Add Git info only if available (not degraded)
     if git_info:
-        lines.append(f"   Branch: {branch} ({commit})")
-        lines.append(f"   Changes: {changes}")
+        lines.append(f"   🌿 Branch: {branch} ({commit})")
+        lines.append(f"   📝 Changes: {changes}")
 
-    # Add SPEC progress only if available (not degraded)
-    if specs["total"] > 0:
-        lines.append(f"   SPEC Progress: {spec_progress} ({specs['percentage']}%)")
+        # Add last commit message if available
+        last_commit = git_info.get("last_commit", "")
+        if last_commit:
+            lines.append(f"   🔨 Last: {last_commit}")
 
     # Add Checkpoint list (show only the latest 3 items)
     if checkpoints:
-        lines.append(f"   Checkpoints: {len(checkpoints)} available")
+        lines.append(f"   🗂️  Checkpoints: {len(checkpoints)} available")
         for cp in reversed(checkpoints[-3:]):  # Latest 3 items
             branch_short = cp["branch"].replace("before-", "")
-            lines.append(f"      - {branch_short}")
-        lines.append("   Restore: /alfred:0-project restore")
+            lines.append(f"      📌 {branch_short}")
+        lines.append("")  # Blank line before restore command
+        lines.append("   ↩️  Restore: /alfred:0-project restore")
+
+    # Add SPEC progress only if available (not degraded) - at the bottom
+    if specs["total"] > 0:
+        lines.append(f"   📋 SPEC Progress: {spec_progress} ({specs['percentage']}%)")
 
     system_message = "\n".join(lines)
 

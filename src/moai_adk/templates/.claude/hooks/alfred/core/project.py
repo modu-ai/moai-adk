@@ -5,9 +5,42 @@ Project information inquiry (language, Git, SPEC progress, etc.)
 """
 
 import json
+import signal
 import subprocess
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
+
+
+class TimeoutError(Exception):
+    """Signal-based timeout exception"""
+    pass
+
+
+@contextmanager
+def timeout_handler(seconds: int):
+    """Hard timeout using SIGALRM (works on Unix systems including macOS)
+
+    This uses kernel-level signal to interrupt ANY blocking operation,
+    even if subprocess.run() timeout fails on macOS.
+
+    Args:
+        seconds: Timeout duration in seconds
+
+    Raises:
+        TimeoutError: If operation exceeds timeout
+    """
+    def _handle_timeout(signum, frame):
+        raise TimeoutError(f"Operation timed out after {seconds} seconds")
+
+    # Set the signal handler
+    old_handler = signal.signal(signal.SIGALRM, _handle_timeout)
+    signal.alarm(seconds)
+    try:
+        yield
+    finally:
+        signal.alarm(0)  # Disable alarm
+        signal.signal(signal.SIGALRM, old_handler)
 
 
 def detect_language(cwd: str) -> str:
@@ -89,9 +122,10 @@ def detect_language(cwd: str) -> str:
 
 
 def _run_git_command(args: list[str], cwd: str, timeout: int = 2) -> str:
-    """Git command execution helper function
+    """Git command execution with HARD timeout protection
 
     Safely execute Git commands and return output.
+    Uses SIGALRM (kernel-level interrupt) to handle macOS subprocess timeout bug.
     Eliminates code duplication and provides consistent error handling.
 
     Args:
@@ -103,29 +137,46 @@ def _run_git_command(args: list[str], cwd: str, timeout: int = 2) -> str:
         Git command output (stdout, removing leading and trailing spaces)
 
     Raises:
-        subprocess.TimeoutExpired: Timeout exceeded
+        subprocess.TimeoutExpired: Timeout exceeded (via TimeoutError)
         subprocess.CalledProcessError: Git command failed
 
     Examples:
         >>> _run_git_command(["branch", "--show-current"], ".")
         'main'
+
+    TDD History:
+        - RED: Git command hang scenario test
+        - GREEN: SIGALRM-based timeout implementation
+        - REFACTOR: Exception conversion to subprocess.TimeoutExpired
     """
-    result = subprocess.run(
-        ["git"] + args,
-        cwd=cwd,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-        check=True,
-    )
-    return result.stdout.strip()
+    try:
+        with timeout_handler(timeout):
+            result = subprocess.run(
+                ["git"] + args,
+                cwd=cwd,
+                capture_output=True,
+                text=True,
+                check=False,  # Don't raise on non-zero exit - we'll check manually
+            )
+
+            # Check exit code manually
+            if result.returncode != 0:
+                raise subprocess.CalledProcessError(
+                    result.returncode, ["git"] + args, result.stdout, result.stderr
+                )
+
+            return result.stdout.strip()
+
+    except TimeoutError:
+        # Convert to subprocess.TimeoutExpired for consistent error handling
+        raise subprocess.TimeoutExpired(["git"] + args, timeout)
 
 
 def get_git_info(cwd: str) -> dict[str, Any]:
     """Gather Git repository information
 
     View the current status of a Git repository.
-    Returns the branch name, commit hash, and number of changes.
+    Returns the branch name, commit hash, number of changes, and last commit message.
     If it is not a Git repository, it returns an empty dictionary.
 
     Args:
@@ -136,12 +187,13 @@ def get_git_info(cwd: str) -> dict[str, Any]:
         - branch: Current branch name (str)
         - commit: Current commit hash (str, full hash)
         - changes: Number of changed files (int, staged + unstaged)
+        - last_commit: Last commit message (str, subject only)
 
         Empty dictionary {} if it is not a Git repository or the query fails.
 
     Examples:
         >>> get_git_info("/path/to/git/repo")
-        {'branch': 'main', 'commit': 'abc123...', 'changes': 3}
+        {'branch': 'main', 'commit': 'abc123...', 'changes': 3, 'last_commit': 'Fix bug'}
         >>> get_git_info("/path/to/non-git")
         {}
 
@@ -149,11 +201,13 @@ def get_git_info(cwd: str) -> dict[str, Any]:
         - Timeout: 2 seconds for each Git command
         - Security: Safe execution with subprocess.run(shell=False)
         - Error handling: Returns an empty dictionary in case of all exceptions
+        - Commit message limited to 50 characters for display purposes
 
     TDD History:
         - RED: 3 items scenario test (Git repo, non-Git, error)
         - GREEN: Implementation of subprocess-based Git command execution
         - REFACTOR: Add timeout (2 seconds), strengthen exception handling, remove duplicates with helper function
+        - UPDATE: Added last_commit message field for SessionStart display
     """
     try:
         # Check if it's a git repository
@@ -165,10 +219,16 @@ def get_git_info(cwd: str) -> dict[str, Any]:
         status_output = _run_git_command(["status", "--short"], cwd)
         changes = len([line for line in status_output.splitlines() if line])
 
+        # Get last commit message (subject only, limited to 50 chars)
+        last_commit = _run_git_command(["log", "-1", "--format=%s"], cwd)
+        if len(last_commit) > 50:
+            last_commit = last_commit[:47] + "..."
+
         return {
             "branch": branch,
             "commit": commit,
             "changes": changes,
+            "last_commit": last_commit,
         }
 
     except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError):
@@ -276,9 +336,81 @@ def get_project_language(cwd: str) -> str:
     return detect_language(cwd)
 
 
+def get_package_version_info() -> dict[str, Any]:
+    """Check MoAI-ADK current and latest version from PyPI
+
+    Compares the installed version with the latest version available on PyPI.
+    Returns version information for SessionStart hook to display update recommendations.
+
+    Returns:
+        dict with keys:
+            - "current": Current installed version
+            - "latest": Latest version available on PyPI
+            - "update_available": Boolean indicating if update is available
+            - "upgrade_command": Recommended upgrade command (if update available)
+
+    Note:
+        - Has 1-second timeout to avoid blocking SessionStart
+        - Returns graceful fallback if PyPI check fails
+        - Handles version parsing gracefully
+    """
+    from importlib.metadata import version, PackageNotFoundError
+    import urllib.request
+    import urllib.error
+
+    result = {
+        "current": "unknown",
+        "latest": "unknown",
+        "update_available": False,
+        "upgrade_command": ""
+    }
+
+    # Get current version
+    try:
+        result["current"] = version("moai-adk")
+    except PackageNotFoundError:
+        result["current"] = "dev"
+        return result
+
+    # Get latest version from PyPI (with 1-second timeout)
+    try:
+        with timeout_handler(1):
+            url = "https://pypi.org/pypi/moai-adk/json"
+            headers = {"Accept": "application/json"}
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=0.8) as response:
+                data = json.load(response)
+                result["latest"] = data.get("info", {}).get("version", "unknown")
+    except (urllib.error.URLError, TimeoutError, Exception):
+        # Network error or timeout - return with unknown latest version
+        return result
+
+    # Compare versions (simple comparison)
+    if result["current"] != "unknown" and result["latest"] != "unknown":
+        try:
+            # Parse versions for comparison
+            current_parts = [int(x) for x in result["current"].split(".")]
+            latest_parts = [int(x) for x in result["latest"].split(".")]
+
+            # Pad shorter version with zeros
+            max_len = max(len(current_parts), len(latest_parts))
+            current_parts.extend([0] * (max_len - len(current_parts)))
+            latest_parts.extend([0] * (max_len - len(latest_parts)))
+
+            if latest_parts > current_parts:
+                result["update_available"] = True
+                result["upgrade_command"] = f"uv pip install --upgrade moai-adk>={result['latest']}"
+        except (ValueError, AttributeError):
+            # Version parsing failed - skip comparison
+            pass
+
+    return result
+
+
 __all__ = [
     "detect_language",
     "get_git_info",
     "count_specs",
     "get_project_language",
+    "get_package_version_info",
 ]
