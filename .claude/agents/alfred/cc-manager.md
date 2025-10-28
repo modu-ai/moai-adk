@@ -54,7 +54,7 @@ Alfred translates Claude Code configuration requirements to English before invok
 - `Skill("moai-alfred-git-workflow")` - Git strategy impact
 - Domain skills (CLI/Data Science/Database/etc) - When relevant
 - Language skills (23 available) - Based on detected language
-- `Skill("moai-alfred-interactive-questions")` - User clarification
+- `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` - User clarification
 
 ---
 

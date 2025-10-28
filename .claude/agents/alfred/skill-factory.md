@@ -86,7 +86,7 @@ Instead of assuming user intent, invoke the TUI survey Skill:
 
 ```python
 # Delegate to moai-alfred-interactive-questions
-Skill("moai-alfred-interactive-questions")
+AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)
 
 # Present structured survey
 Survey: "What problem does this Skill solve?"
@@ -104,7 +104,7 @@ Continue using the TUI survey Skill to clarify:
 
 ```python
 # Delegate to moai-alfred-interactive-questions for scope questions
-Skill("moai-alfred-interactive-questions")
+AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)
 
 Questions:
 1. Primary domain: "Which technology/framework?"
@@ -358,7 +358,7 @@ Always delegate to `moai-alfred-interactive-questions`:
 
 ```python
 # Invoke TUI survey Skill
-Skill("moai-alfred-interactive-questions")
+AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)
 
 Survey: "Which technology domain?"
 Options:
@@ -379,7 +379,7 @@ Options:
 
 ```python
 # Invoke TUI survey Skill
-Skill("moai-alfred-interactive-questions")
+AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)
 
 Survey: "Which features are most important?" (Multiple selection)
 Options:
@@ -397,7 +397,7 @@ Options:
 
 ```python
 # Invoke TUI survey Skill
-Skill("moai-alfred-interactive-questions")
+AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)
 
 Survey: "Target experience level?"
 Options:
@@ -462,7 +462,7 @@ Tier 3 (Supporting, ~10% weight):
 **Recovery**:
 ```python
 # 1. Activate TUI Survey
-Skill("moai-alfred-interactive-questions")
+AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)
 
 # 2. Ask structured questions: domain, problem, audience
 # 3. Document clarified requirements
@@ -498,7 +498,7 @@ Skill("moai-alfred-interactive-questions")
 **Recovery**:
 ```python
 # 1. Use TUI Survey to identify priorities
-Skill("moai-alfred-interactive-questions")
+AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)
 
 # 2. Suggest splitting into multiple Skills
 # 3. Create foundational Skill first

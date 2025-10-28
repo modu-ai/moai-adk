@@ -26,6 +26,7 @@ from moai_adk.core.project.backup_utils import (
     is_protected_path,
 )
 from moai_adk.core.project.validator import ProjectValidator
+from moai_adk.core.template.processor import TemplateProcessor
 
 console = Console()
 
@@ -136,8 +137,6 @@ class PhaseExecutor:
         )
 
         # Copy resources via TemplateProcessor in silent mode
-        from moai_adk.core.template import TemplateProcessor
-
         processor = TemplateProcessor(project_path)
 
         # Set template variable context (if provided)
