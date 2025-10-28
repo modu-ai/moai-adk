@@ -55,6 +55,10 @@
     ],
     "current_stage": "initialized"
   },
+  "language": {
+    "conversation_language": "{{CONVERSATION_LANGUAGE}}",
+    "conversation_language_name": "{{CONVERSATION_LANGUAGE_NAME}}"
+  },
   "project": {
     "name": "{{PROJECT_NAME}}",
     "description": "{{PROJECT_DESCRIPTION}}",

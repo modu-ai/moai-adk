@@ -5,19 +5,20 @@ description: "Document synchronization + PR Ready conversion"
 # - ko: "문서 동기화 + PR Ready 전환"
 # - ja: "ドキュメント同期 + PR Ready変換"
 # - zh: "文档同步 + PR Ready转换"
-argument-hint: "Mode target path - Mode: auto (default)|force|status|project, target path: Synchronization target path"
+argument-hint: 'Mode target path - Mode: auto (default)|force|status|project, target
+  path: Synchronization target path'
 allowed-tools:
-  - Read
-  - Write
-  - Edit
-  - MultiEdit
-  - Bash(git:*)
-  - Bash(gh:*)
-  - Bash(python3:*)
-  - Task
-  - Grep
-  - Glob
-  - TodoWrite
+- Read
+- Write
+- Edit
+- MultiEdit
+- Bash(git:*)
+- Bash(gh:*)
+- Bash(python3:*)
+- Task
+- Grep
+- Glob
+- TodoWrite
 ---
 
 # 📚 MoAI-ADK Step 3: Document Synchronization (+Optional PR Ready)
@@ -160,10 +161,26 @@ Invoking the Task tool (Explore agent):
 
 2. doc-syncer call (synchronization plan):
    - subagent_type: "doc-syncer"
-- description: "Establish a document synchronization plan"
- - prompt: "Please analyze Git changes and establish a document synchronization plan.
-             $ARGUMENTS
-(Optional) TAG validation results: $TAG_VALIDATION_RESULTS"
+   - description: "Establish a document synchronization plan"
+   - prompt: """You are doc-syncer agent.
+
+LANGUAGE CONFIGURATION:
+- conversation_language: {{CONVERSATION_LANGUAGE}}
+- language_name: {{CONVERSATION_LANGUAGE_NAME}}
+
+CRITICAL INSTRUCTION:
+Documentation updates MUST respect conversation_language:
+- User-facing documentation (README, guides): {{CONVERSATION_LANGUAGE}}
+- SPEC documents (spec.md, plan.md, acceptance.md): {{CONVERSATION_LANGUAGE}}
+- Code comments: {{CONVERSATION_LANGUAGE}} (when not technical keywords)
+- Technical documentation and YAML frontmatter: English
+
+TASK:
+Please analyze Git changes and establish a document synchronization plan.
+Ensure all documentation updates align with the conversation_language setting.
+
+$ARGUMENTS
+(Optional) TAG validation results: $TAG_VALIDATION_RESULTS"""
 ```
 
 ### Synchronization analysis in progress

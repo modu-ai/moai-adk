@@ -29,6 +29,22 @@ allowed-tools:
 
 **Plan for**: $ARGUMENTS
 
+## 🤖 CodeRabbit AI Integration (Local Only)
+
+This local environment includes CodeRabbit AI review integration for SPEC documents:
+
+**Automatic workflows:**
+- ✅ SPEC review: CodeRabbit analyzes SPEC metadata and EARS structure
+- ✅ GitHub Issue sync: SPEC files automatically create/update GitHub Issues
+- ✅ Auto-approval: Draft PRs are approved when quality meets standards (80%+)
+- ✅ SPEC quality validation: Checklist for metadata, structure, and content
+
+**Scope:**
+- 🏠 **Local environment**: Full CodeRabbit integration with auto-approval
+- 📦 **Published packages**: Users get GitHub Issue sync only (no CodeRabbit)
+
+> See `.coderabbit.yaml` for detailed review rules and SPEC validation checklist
+
 ## 💡 Planning philosophy: "Always make a plan first and then proceed."
 
 `/alfred:1-plan` is a general-purpose command that **creates a plan**, rather than simply “creating” a SPEC document.
@@ -126,14 +142,28 @@ Invoking the Task tool (Explore agent):
 Call the Task tool:
 - subagent_type: "spec-builder"
 - description: "Analyze the plan and establish a plan"
-- prompt: "Please analyze the project document and suggest SPEC candidates.
- Run in analysis mode, and must include the following:
- 1. In-depth analysis of product/structure/tech.md
- 2. Identify SPEC candidates and Determine priorities
- 3. Design EARS structure
- 4. Wait for user approval
- User input: $ARGUMENTS
- (Optional) Explore results: $EXPLORE_RESULTS"
+- prompt: """You are spec-builder agent.
+
+LANGUAGE CONFIGURATION:
+- conversation_language: {{CONVERSATION_LANGUAGE}}
+- language_name: {{CONVERSATION_LANGUAGE_NAME}}
+
+CRITICAL INSTRUCTION:
+All SPEC documents and analysis must be generated in conversation_language.
+- If conversation_language is 'ko' (Korean): Generate ALL analysis, plans, and SPEC documents in Korean
+- If conversation_language is 'ja' (Japanese): Generate ALL analysis, plans, and SPEC documents in Japanese
+- If conversation_language is other language: Follow the specified language
+
+TASK:
+Please analyze the project document and suggest SPEC candidates.
+Run in analysis mode, and must include the following:
+1. In-depth analysis of product/structure/tech.md
+2. Identify SPEC candidates and Determine priorities
+3. Design EARS structure
+4. Wait for user approval
+
+User input: $ARGUMENTS
+(Optional) Explore results: $EXPLORE_RESULTS"""
 ```
 
 ### Plan analysis progress
@@ -172,14 +202,30 @@ After user approval (collected via `Skill("moai-alfred-interactive-questions")`)
 ```
 1. Call spec-builder (create plan):
    - subagent_type: "spec-builder"
-- description: "Create SPEC document"
- - prompt: "Please fill out the SPEC document according to the plan approved in STEP 1.
- Create a specification for the EARS structure."
+   - description: "Create SPEC document"
+   - prompt: """You are spec-builder agent.
+
+LANGUAGE CONFIGURATION:
+- conversation_language: {{CONVERSATION_LANGUAGE}}
+- language_name: {{CONVERSATION_LANGUAGE_NAME}}
+
+CRITICAL INSTRUCTION:
+ALL SPEC documents MUST be generated in conversation_language:
+- spec.md: Full document in conversation_language
+- plan.md: Full document in conversation_language
+- acceptance.md: Full document in conversation_language
+
+YAML frontmatter and @TAG identifiers MUST remain in English.
+Code examples and technical keywords can be mixed (code in English, narrative in user language).
+
+TASK:
+Please fill out the SPEC document according to the plan approved in STEP 1.
+Create a specification for the EARS structure."""
 
 2. Invoke git-manager (Git task):
    - subagent_type: "git-manager"
-- description: "Create Git branch/PR"
- - prompt: "After completing the plan, please create a branch and Draft PR."
+   - description: "Create Git branch/PR"
+   - prompt: "After completing the plan, please create a branch and Draft PR."
 ```
 
 ## function
@@ -548,6 +594,48 @@ The `git-manager` agent does **all at once** after the SPEC is complete:
 2. **GitHub Issue**: Create SPEC Issue in Team mode
 3. **Initial commit**: Commit SPEC document and create tags
 4. **Remote Sync**: Apply synchronization strategy for each mode
+
+### Phase 3.5: CodeRabbit SPEC Review (Local Only)
+
+**After Draft PR is created, CodeRabbit automatically:**
+
+```bash
+echo "🤖 Waiting for CodeRabbit SPEC review..."
+
+# CodeRabbit triggers automatically on Draft PR creation
+# Review includes:
+# - SPEC metadata validation (YAML frontmatter)
+# - EARS structure completeness check
+# - Acceptance criteria quality (Given-When-Then)
+# - @TAG system traceability
+# - Documentation clarity
+
+# Expected time: 1-2 minutes
+for i in {1..12}; do
+    sleep 10
+
+    # Check PR review status
+    approval=$(gh pr view $pr_num --json reviewDecision --jq '.reviewDecision')
+
+    if [ "$approval" = "APPROVED" ]; then
+        echo "✅ CodeRabbit approved SPEC PR!"
+        echo "→ Ready for development with /alfred:2-run SPEC-$spec_id"
+        break
+    fi
+
+    echo "⏳ CodeRabbit reviewing... ($i/12)"
+done
+```
+
+**CodeRabbit review includes:**
+- ✅ YAML frontmatter validation (7 required fields)
+- ✅ HISTORY section structure and completeness
+- ✅ EARS requirements clarity (Ubiquitous/Event/State/Optional/Constraints)
+- ✅ Acceptance criteria quality (Given-When-Then scenarios)
+- ✅ @TAG system compliance (SPEC/TEST/CODE/DOC traceability)
+- ✅ Documentation and formatting
+
+See `.coderabbit.yaml` for detailed SPEC review checklist.
 
 ## Writing Tips
 
