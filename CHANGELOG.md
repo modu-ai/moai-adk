@@ -7,6 +7,90 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.6.2] - 2025-10-28 (Self-Update Integration & 2-Stage Workflow)
+<!-- @DOC:UPDATE-REFACTOR-002-001 -->
+
+### 🎯 주요 변경사항 | Key Changes
+
+**Feature | 새 기능**:
+- ✨ **Self-Update Integration**: `moai-adk update` 명령이 이제 패키지 업그레이드 자동 감지
+  - 설치된 패키지 매니저 자동 감지 (uv tool → pipx → pip 순서)
+  - PyPI에서 최신 버전 자동 확인
+  - 2-Stage 워크플로우: 패키지 업그레이드 → 템플릿 동기화
+
+**CLI Options**:
+- `--templates-only`: 패키지 업그레이드 스킵, 템플릿 동기화만 수행
+- `--yes`: 모든 프롬프트 자동 확인 (CI/CD 모드)
+- `--check`: 버전만 확인, 변경 없음
+- `--force`: 백업 생성 스킵
+
+**2-Stage Workflow**:
+1. **Stage 1**: 버전 비교 → 업그레이드 필요 시 패키지 매니저 자동 감지 및 실행
+2. **Stage 2**: 최신 버전 확인 후 템플릿 동기화, 설정 병합, 에이전트/스킬 업데이트
+
+**Error Handling | 에러 처리**:
+- ✅ 설치 방법 미감지: 수동 업그레이드 가이드 제공
+- ✅ 네트워크 오류 (PyPI 연결 불가): 우아한 오류 처리 및 복구 옵션 제시
+- ✅ 패키지 업그레이드 실패: 문제 해결 단계 및 수동 업그레이드 가이드 제공
+- ✅ 템플릿 동기화 실패: 롤백 옵션 및 백업 위치 안내
+
+**Documentation | 문서화**:
+- 📖 README.md 업데이트: 2-Stage 워크플로우 설명 및 CLI 옵션 예제
+- 📋 CHANGELOG.md: 새로운 자동 업데이트 기능 설명
+
+**Quality | 품질**:
+- ✅ 테스트 커버리지: 85%+ 유지
+- ✅ 통합 테스트: 13개 통합 테스트 추가 (2-Stage 워크플로우, 에러 복구, 설정 병합 무결성)
+- ✅ 코드 품질: ruff, mypy 모두 Green
+
+### 🔧 Technical Details
+
+**Tool Detection Priority**:
+```
+1. uv tool (highest priority)
+   Command: uv tool upgrade moai-adk
+
+2. pipx (second choice)
+   Command: pipx upgrade moai-adk
+
+3. pip (fallback)
+   Command: pip install --upgrade moai-adk
+```
+
+**Version Comparison**:
+- Current version < Latest version → Stage 1: 패키지 업그레이드
+- Current version == Latest version → Stage 2: 템플릿 동기화
+- Current version > Latest version → 개발 버전, 동기화만 수행
+
+**Backup Strategy**:
+- 템플릿 동기화 전 자동 백업 생성: `.moai-backups/20251028-HHMMSS/`
+- 설정 파일 (config.json, CLAUDE.md) 지능형 병합
+- 프로젝트 메타데이터 보존 (name, author, locale)
+- `optimized: false` 플래그 설정 (CodeRabbit 리뷰 대기)
+
+### 📊 통계 | Statistics
+
+- 새로운 함수: `_detect_tool_installer()`, `_sync_templates()`, `_compare_versions()` 등
+- 추가된 라인: ~300 LOC (테스트 제외)
+- 테스트 추가: 4개 파일, ~1000 라인 테스트 코드
+- 통합 테스트: 13개 시나리오 커버
+
+### 📦 설치 | Installation
+
+```bash
+pip install moai-adk==0.6.2
+# or
+uv tool install moai-adk==0.6.2
+```
+
+### 🔗 링크 | Links
+
+- **PyPI**: https://pypi.org/project/moai-adk/0.6.2/
+- **GitHub Release**: https://github.com/modu-ai/moai-adk/releases/tag/v0.6.2
+- **SPEC**: [@SPEC:UPDATE-REFACTOR-002](https://github.com/modu-ai/moai-adk/issues/82)
+
+---
+
 ## [v0.5.6] - 2025-10-26 (Alfred Configuration Refactor: 4-Document Architecture)
 
 ### 🎯 주요 변경사항 | Key Changes

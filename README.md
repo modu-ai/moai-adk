@@ -473,15 +473,61 @@ uv tool list  # Check current version of moai-adk
 
 ### Upgrading
 
-#### Method 1: MoAI-ADK Built-in Update Command (Simplest)
+#### Method 1: MoAI-ADK Built-in Update Command (Recommended - 2-Stage Workflow)
+<!-- @DOC:UPDATE-REFACTOR-002-002 -->
 
+MoAI-ADK's `update` command now provides **automatic tool detection** and **intelligent 2-stage workflow** for seamless updates:
+
+**Basic 2-Stage Workflow** (automatic tool detection):
 ```bash
-# MoAI-ADK's own update command - also updates agent/Skills templates
+# Stage 1: Detects installer (uv tool/pipx/pip) & upgrades package
+# Shows version comparison and executes upgrade
 moai-adk update
 
-# Apply new templates to project after update (optional)
-moai-adk init .
+# Stage 2: After upgrade completes, re-run to sync templates
+moai-adk update
 ```
+
+**Check for updates without applying them**:
+```bash
+# Preview available updates (shows current vs latest version)
+moai-adk update --check
+```
+
+**Templates-only mode** (skip package upgrade, useful for manual upgrades):
+```bash
+# If you manually upgraded the package, sync templates only
+moai-adk update --templates-only
+```
+
+**CI/CD mode** (auto-confirm all prompts):
+```bash
+# Auto-confirms all prompts - useful in automated pipelines
+moai-adk update --yes
+# Then run again for Stage 2
+moai-adk update --yes
+```
+
+**Force mode** (skip backup creation):
+```bash
+# Update without creating backup (use with caution)
+moai-adk update --force
+```
+
+**How the 2-Stage Workflow Works**:
+
+| Stage | Condition | Action | Message |
+|-------|-----------|--------|---------|
+| **Stage 1** | Current version < Latest | Detects installer → Upgrades package | "Run 'moai-adk update' again to sync templates" |
+| **Stage 2** | Current version >= Latest | Creates backup → Syncs templates → Updates config | "✓ Templates synced!" |
+
+This 2-stage approach ensures your running process doesn't try to upgrade itself (impossible in Python). After Stage 1, the new process will sync templates in Stage 2.
+
+**Why 2 stages?**
+Python processes cannot upgrade themselves while running. The 2-stage workflow is necessary for safety:
+1. **Stage 1**: Package upgrade happens, process exits
+2. **User re-runs** (new process with updated code)
+3. **Stage 2**: Templates and configuration sync in the new process
 
 #### Method 2: Upgrade with uv tool command
 
@@ -515,22 +561,20 @@ moai-adk --version
 # 2. Verify project works correctly
 moai-adk doctor
 
-# 3. Apply new templates to existing project (if needed)
-cd your-project
-moai-adk init .  # Keeps existing code, updates only .moai/ structure and templates
-
-# 4. Check updated features in Alfred
+# 3. Check updated features in Alfred
 cd your-project
 claude
 /alfred:0-project  # Verify new features like language selection
 ```
 
-> 💡 **Tip**:
+> 💡 **New 2-Stage Update Workflow**:
 >
-> - `moai-adk update`: Updates MoAI-ADK package version + syncs agent/Skills templates
-> - `moai-adk init .`: Applies new templates to existing project (keeps code safe)
-> - Running both commands completes a full update
-> - When major updates (minor/major) release, run these procedures to utilize new agents/Skills
+> - **Stage 1**: `moai-adk update` detects installer (uv tool, pipx, or pip) and upgrades package
+> - **Stage 2**: `moai-adk update` again to sync templates, config, and agent/Skills
+> - **Smart detection**: Auto-detects whether package upgrade is needed based on version comparison
+> - **CI/CD ready**: Use `moai-adk update --yes` for fully automated updates in pipelines
+> - **Manual upgrade path**: Use `moai-adk update --templates-only` after manually upgrading the package
+> - **Rollback safe**: Automatic backups in `.moai-backups/` before template sync
 
 ---
 

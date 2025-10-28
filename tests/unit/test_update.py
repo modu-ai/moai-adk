@@ -20,7 +20,7 @@ class TestUpdateCommand:
         runner = CliRunner()
         result = runner.invoke(update, ["--help"])
         assert result.exit_code == 0
-        assert "Update template files to the latest version" in result.output
+        assert "Update command with 2-stage workflow" in result.output
 
     def test_update_not_initialized(self, tmp_path):
         """Test update when project is not initialized"""
@@ -86,9 +86,9 @@ class TestUpdateCommand:
 
                 # Use --force to skip version check and test backup process
                 result = runner.invoke(update, ["--force"])
-                # Should show skip backup message with --force, but still show updating templates
+                # Should show skip backup message with --force, but still show syncing templates
                 assert "Skipping backup (--force)" in result.output
-                assert "Updating templates" in result.output
+                assert "Syncing templates" in result.output
                 assert result.exit_code == 0
 
     def test_update_with_force_flag(self, tmp_path):
@@ -109,7 +109,7 @@ class TestUpdateCommand:
 
                 result = runner.invoke(update, ["--force"])
                 assert "Skipping backup (--force)" in result.output
-                assert "Updating templates" in result.output
+                assert "Syncing templates" in result.output
                 # create_backup should NOT be called with --force
                 mock_instance.create_backup.assert_not_called()
                 assert result.exit_code == 0
@@ -242,7 +242,7 @@ class TestUpdateCommand:
             assert "Latest version" in result.output
 
     def test_update_suggests_alfred_when_same_version_not_optimized(self, tmp_path):
-        """Test update suggests /alfred:0-project when version same but not optimized"""
+        """Test update syncs templates when version same (2-stage workflow Stage 2)"""
         runner = CliRunner()
 
         with runner.isolated_filesystem(temp_dir=tmp_path):
@@ -259,18 +259,23 @@ class TestUpdateCommand:
             import json
             (moai_dir / "config.json").write_text(json.dumps(config_data))
 
-            # Mock get_latest_version to return same version as current
-            with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
-                with patch("moai_adk.cli.commands.update.__version__", "0.3.2"):
-                    mock_get_version.return_value = "0.3.2"
+            # Mock version functions to return same version
+            with patch("moai_adk.cli.commands.update._get_current_version") as mock_current, \
+                 patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest, \
+                 patch("moai_adk.cli.commands.update._sync_templates") as mock_sync:
 
-                    result = runner.invoke(update)
-                    assert result.exit_code == 0
-                    assert "Template optimization needed" in result.output
-                    assert "alfred:0-project update" in result.output
+                mock_current.return_value = "0.3.2"
+                mock_latest.return_value = "0.3.2"
+                mock_sync.return_value = True
+
+                result = runner.invoke(update)
+                assert result.exit_code == 0
+                # In 2-stage workflow, same version goes to Stage 2 (template sync)
+                assert "Syncing templates" in result.output
+                assert "alfred:0-project update" in result.output
 
     def test_update_proceeds_when_config_missing(self, tmp_path):
-        """Test update shows already up to date when config.json missing"""
+        """Test update syncs templates when config.json missing (2-stage Stage 2)"""
         runner = CliRunner()
 
         with runner.isolated_filesystem(temp_dir=tmp_path):
@@ -278,14 +283,19 @@ class TestUpdateCommand:
             moai_dir = Path(".moai")
             moai_dir.mkdir()
 
-            # Mock get_latest_version to return same version as current
-            with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
-                with patch("moai_adk.cli.commands.update.__version__", "0.3.2"):
-                    mock_get_version.return_value = "0.3.2"
+            # Mock version functions to return same version
+            with patch("moai_adk.cli.commands.update._get_current_version") as mock_current, \
+                 patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest, \
+                 patch("moai_adk.cli.commands.update._sync_templates") as mock_sync:
 
-                    result = runner.invoke(update)
-                    assert result.exit_code == 0
-                    assert "Already up to date" in result.output
+                mock_current.return_value = "0.3.2"
+                mock_latest.return_value = "0.3.2"
+                mock_sync.return_value = True
+
+                result = runner.invoke(update)
+                assert result.exit_code == 0
+                # In 2-stage workflow, same version goes to Stage 2 (template sync)
+                assert "Syncing templates" in result.output
 
     def test_update_check_when_local_version_newer(self, tmp_path):
         """Test update --check when local version is newer than PyPI (development version)"""
@@ -295,14 +305,17 @@ class TestUpdateCommand:
             # Create .moai directory
             Path(".moai").mkdir()
 
-            # Mock get_latest_version to return an older version
-            with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
-                with patch("moai_adk.cli.commands.update.__version__", "0.4.0"):
-                    mock_get_version.return_value = "0.3.3"  # Older version on PyPI
-                    result = runner.invoke(update, ["--check"])
-                    assert result.exit_code == 0
-                    assert "Checking versions" in result.output
-                    assert "Development version" in result.output
+            # Mock version functions to return dev version > latest
+            with patch("moai_adk.cli.commands.update._get_current_version") as mock_current, \
+                 patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest:
+
+                mock_current.return_value = "0.4.0"
+                mock_latest.return_value = "0.3.3"  # Older version on PyPI
+
+                result = runner.invoke(update, ["--check"])
+                assert result.exit_code == 0
+                assert "Checking versions" in result.output
+                assert ("Development version" in result.output or "Dev version" in result.output)
 
     def test_update_skips_when_local_version_newer(self, tmp_path):
         """Test update skips when local version is newer than PyPI"""
@@ -316,13 +329,18 @@ class TestUpdateCommand:
             import json
             (moai_dir / "config.json").write_text(json.dumps(config_data))
 
-            # Mock get_latest_version to return an older version
-            with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
-                with patch("moai_adk.cli.commands.update.__version__", "0.4.0"):
-                    mock_get_version.return_value = "0.3.3"  # Older version on PyPI
-                    result = runner.invoke(update)
-                    assert result.exit_code == 0
-                    # Should exit silently when local version is newer and optimized
+            # Mock version functions to return dev version > latest
+            with patch("moai_adk.cli.commands.update._get_current_version") as mock_current, \
+                 patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest, \
+                 patch("moai_adk.cli.commands.update._sync_templates") as mock_sync:
+                mock_current.return_value = "0.4.0"
+                mock_latest.return_value = "0.3.3"  # Older version on PyPI
+                mock_sync.return_value = True
+
+                result = runner.invoke(update)
+                assert result.exit_code == 0
+                # Should proceed to template sync when local version is newer
+                mock_sync.assert_called_once()
 
     def test_update_handles_pypi_fetch_failure(self, tmp_path):
         """Test update handles PyPI fetch failure gracefully"""
@@ -332,12 +350,17 @@ class TestUpdateCommand:
             # Create .moai directory
             Path(".moai").mkdir()
 
-            # Mock get_latest_version to return None (failure)
-            with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
-                mock_get_version.return_value = None
+            # Mock version functions - _get_latest_version raises RuntimeError
+            with patch("moai_adk.cli.commands.update._get_current_version") as mock_current, \
+                 patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest:
+
+                mock_current.return_value = "0.6.1"
+                mock_latest.side_effect = RuntimeError("Failed to fetch latest version from PyPI")
+
                 result = runner.invoke(update, ["--check"])
-                assert result.exit_code == 0
-                assert "Unable to fetch from PyPI" in result.output or "Unable to check for updates" in result.output
+                # Should handle error gracefully
+                assert "Error" in result.output
+                assert "Failed to fetch latest version" in result.output
 
     def test_update_proceeds_with_force_when_pypi_fails(self, tmp_path):
         """Test update proceeds with --force even when PyPI fetch fails"""
@@ -348,14 +371,16 @@ class TestUpdateCommand:
             moai_dir = Path(".moai")
             moai_dir.mkdir()
 
-            # Mock get_latest_version to return None (failure)
-            with patch("moai_adk.cli.commands.update.get_latest_version") as mock_get_version:
-                with patch("moai_adk.cli.commands.update.TemplateProcessor") as mock_processor:
-                    mock_get_version.return_value = None
-                    mock_instance = Mock()
-                    mock_instance.copy_templates.return_value = None
-                    mock_processor.return_value = mock_instance
+            # Mock version functions - _get_latest_version raises RuntimeError but --force proceeds
+            with patch("moai_adk.cli.commands.update._get_current_version") as mock_current, \
+                 patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest, \
+                 patch("moai_adk.cli.commands.update._sync_templates") as mock_sync:
 
-                    result = runner.invoke(update, ["--force"])
-                    assert result.exit_code == 0
-                    assert "Updating templates" in result.output
+                mock_current.return_value = "0.6.1"
+                mock_latest.side_effect = RuntimeError("Failed to fetch latest version from PyPI")
+                mock_sync.return_value = True
+
+                result = runner.invoke(update, ["--force"])
+                assert result.exit_code == 0
+                # With --force, should proceed to Stage 2 even if version check fails
+                assert "Syncing templates" in result.output
