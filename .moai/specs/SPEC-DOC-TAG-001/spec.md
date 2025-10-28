@@ -193,35 +193,21 @@ scope: "Phase 1 of 4-phase @DOC TAG automatic generation system"
 
 ---
 
-### 5. Constraints (제약조건)
+### 5. Unwanted Behaviors (원하지 않는 동작)
 
-**C-1: 파일 형식 제약**
-- **CONSTRAINT**: 마크다운 파일만 처리 (.md 확장자)
-- **REASON**: @DOC 태그는 문서 파일에만 적용
+**IF** 입력 파일이 마크다운 파일이 아니면 **THE SYSTEM SHALL NOT** 처리를 진행해야 함
 
-**C-2: 역호환성 제약**
-- **CONSTRAINT**: 기존 2개 수동 태그 문서는 변경 금지
-- **REASON**: 데이터 손실 방지 및 안정성 유지
+**IF** 태그 대상이 기존의 수동 생성 문서면 **THE SYSTEM SHALL NOT** 변경 또는 덮어쓰기를 수행해야 함
 
-**C-3: 성능 제약**
-- **CONSTRAINT**: TAG ID 생성은 2초 이내 완료
-- **REASON**: 실시간 제안 시 사용자 경험 보장
+**IF** TAG ID 생성 시간이 2초를 초과하면 **THE SYSTEM SHALL NOT** 해당 제안을 사용자에게 표시해야 함
 
-**C-4: 도메인 제약**
-- **CONSTRAINT**: 도메인명은 대문자 영문자만 허용 (A-Z, 하이픈 허용)
-- **REASON**: TAG 형식 일관성 유지
+**IF** 도메인명에 소문자나 특수문자(하이픈, 언더스코어 제외)가 포함되면 **THE SYSTEM SHALL NOT** TAG를 생성해야 함
 
-**C-5: 번호 제약**
-- **CONSTRAINT**: 도메인당 최대 999개 TAG 지원 (001-999)
-- **REASON**: 3자리 숫자 형식 유지
+**IF** 도메인의 시퀀스 번호가 999를 초과하면 **THE SYSTEM SHALL NOT** 새로운 TAG를 할당해야 함
 
-**C-6: 테스트 제약**
-- **CONSTRAINT**: 모든 테스트는 격리 환경에서 실행 (임시 파일 사용)
-- **REASON**: 실제 문서 파일 손상 방지
+**IF** 테스트 환경이 격리되지 않았으면(임시 파일 미사용) **THE SYSTEM SHALL NOT** 실제 문서 파일에 접근해야 함
 
-**C-7: 의존성 제약**
-- **CONSTRAINT**: 외부 라이브러리 최소화 (표준 라이브러리 우선)
-- **REASON**: 설치 복잡도 감소 및 유지보수 용이성
+**IF** 의존성으로 요청된 외부 라이브러리가 표준 라이브러리로 대체 가능하면 **THE SYSTEM SHALL NOT** 외부 라이브러리 추가를 허용해야 함
 
 ---
 
