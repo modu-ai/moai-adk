@@ -358,9 +358,10 @@ Git-manager automatically handles the following exception situations:
 **All commits created by git-manager follow this signature format**:
 
 ```
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
+🎩 Alfred@MoAI
+🔗 https://adk.mo.ai.kr
 
-Co-Authored-By: 🎩 Alfred@[MoAI](https://adk.mo.ai.kr)
+Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 This signature applies to all Git operations:
@@ -369,6 +370,28 @@ This signature applies to all Git operations:
 - Hotfix commits
 - Merge commits
 - Tag creation
+
+**Signature breakdown**:
+- `🎩 Alfred@MoAI` - Alfred 에이전트의 공식 식별자
+- `🔗 https://adk.mo.ai.kr` - MoAI-ADK 공식 홈페이지 링크
+- `Co-Authored-By: Claude <noreply@anthropic.com>` - Claude AI 협력자 표시
+
+**Implementation Example (HEREDOC)**:
+```bash
+git commit -m "$(cat <<'EOF'
+feat(update): Implement 3-stage workflow with config version comparison
+
+- Stage 2: Config version comparison (NEW)
+- 70-80% performance improvement
+- All tests passing
+
+🎩 Alfred@MoAI
+🔗 https://adk.mo.ai.kr
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+EOF
+)"
+```
 
 ---
 

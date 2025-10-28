@@ -354,9 +354,9 @@ def get_package_version_info() -> dict[str, Any]:
         - Returns graceful fallback if PyPI check fails
         - Handles version parsing gracefully
     """
-    from importlib.metadata import version, PackageNotFoundError
-    import urllib.request
     import urllib.error
+    import urllib.request
+    from importlib.metadata import PackageNotFoundError, version
 
     result = {
         "current": "unknown",
