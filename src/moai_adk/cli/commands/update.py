@@ -236,6 +236,62 @@ def _compare_versions(current: str, latest: str) -> int:
         return 1
 
 
+# @CODE:UPDATE-REFACTOR-002-006
+def _get_package_config_version() -> str:
+    """Get the current package template version.
+
+    This returns the version of the currently installed moai-adk package,
+    which is the version of templates that this package provides.
+
+    Returns:
+        Version string of the installed package (e.g., "0.6.1")
+    """
+    # Package template version = current installed package version
+    # This is simple and reliable since templates are versioned with the package
+    return __version__
+
+
+# @CODE:UPDATE-REFACTOR-002-007
+def _get_project_config_version(project_path: Path) -> str:
+    """Get current project config.json template version.
+
+    This reads the project's .moai/config.json to determine the current
+    template version that the project is configured with.
+
+    Args:
+        project_path: Project directory path (absolute)
+
+    Returns:
+        Version string from project's config.json (e.g., "0.6.1")
+        Returns "0.0.0" if template_version field not found (indicates no prior sync)
+
+    Raises:
+        ValueError: If config.json exists but cannot be parsed
+    """
+    config_path = project_path / ".moai" / "config.json"
+
+    if not config_path.exists():
+        # No config yet, treat as version 0.0.0 (needs initial sync)
+        return "0.0.0"
+
+    try:
+        config_data = json.loads(config_path.read_text(encoding="utf-8"))
+        # Check for template_version in project section
+        template_version = config_data.get("project", {}).get("template_version")
+        if template_version:
+            return template_version
+
+        # Fallback to moai version if no template_version exists
+        moai_version = config_data.get("moai", {}).get("version")
+        if moai_version:
+            return moai_version
+
+        # If neither exists, this is a new/old project
+        return "0.0.0"
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Failed to parse project config.json: {e}") from e
+
+
 def _execute_upgrade(installer_cmd: list[str]) -> bool:
     """Execute package upgrade using detected installer.
 
@@ -428,7 +484,10 @@ def _preserve_project_metadata(
     existing_config: dict[str, Any],
     version_for_config: str,
 ) -> None:
-    """Restore project-specific metadata in the new config.json."""
+    """Restore project-specific metadata in the new config.json.
+
+    Also updates template_version to track which template version is synchronized.
+    """
     config_path = project_path / ".moai" / "config.json"
     if not config_path.exists():
         return
@@ -462,6 +521,10 @@ def _preserve_project_metadata(
 
     config_data.setdefault("moai", {})
     config_data["moai"]["version"] = version_for_config
+
+    # @CODE:UPDATE-REFACTOR-002-008: Update template_version to track sync status
+    # This allows Stage 2 to compare package vs project template versions
+    project_data["template_version"] = version_for_config
 
     config_path.write_text(
         json.dumps(config_data, indent=2, ensure_ascii=False) + "\n",
@@ -665,6 +728,7 @@ def update(path: str, force: bool, check: bool, templates_only: bool, yes: bool)
         comparison = _compare_versions(current, latest)
 
         # Stage 1: Package Upgrade (if current < latest)
+        # @CODE:UPDATE-REFACTOR-002-009: Stage 1 - Package version check and upgrade
         if comparison < 0:
             console.print(f"\n[cyan]📦 Upgrading: {current} → {latest}[/cyan]")
 
@@ -703,9 +767,34 @@ def update(path: str, force: bool, check: bool, templates_only: bool, yes: bool)
             console.print("[cyan]📢 Run 'moai-adk update' again to sync templates[/cyan]")
             return
 
-        # Stage 2: Template Sync (if current == latest)
+        # Stage 2: Config Version Comparison
+        # @CODE:UPDATE-REFACTOR-002-010: Stage 2 - Compare template versions to determine if sync needed
         console.print(f"✓ Package already up to date ({current})")
-        console.print("\n[cyan]📄 Syncing templates...[/cyan]")
+
+        try:
+            package_config_version = _get_package_config_version()
+            project_config_version = _get_project_config_version(project_path)
+        except ValueError as e:
+            console.print(f"[yellow]⚠ Warning: {e}[/yellow]")
+            # On version detection error, proceed with template sync (safer choice)
+            package_config_version = __version__
+            project_config_version = "0.0.0"
+
+        console.print("\n[cyan]🔍 Comparing config versions...[/cyan]")
+        console.print(f"   Package template: {package_config_version}")
+        console.print(f"   Project config:   {project_config_version}")
+
+        config_comparison = _compare_versions(package_config_version, project_config_version)
+
+        # If versions are equal, no sync needed
+        if config_comparison <= 0:
+            console.print(f"\n[green]✓ Project already has latest template version ({project_config_version})[/green]")
+            console.print("[cyan]ℹ️  Templates are up to date! No changes needed.[/cyan]")
+            return
+
+        # Stage 3: Template Sync (Only if package_config_version > project_config_version)
+        # @CODE:UPDATE-REFACTOR-002-011: Stage 3 - Template sync only if versions differ
+        console.print(f"\n[cyan]📄 Syncing templates ({project_config_version} → {package_config_version})...[/cyan]")
 
         # Create backup unless --force
         if not force:
