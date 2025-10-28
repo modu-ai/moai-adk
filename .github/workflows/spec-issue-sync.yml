@@ -25,33 +25,62 @@ jobs:
 
       - name: Find and parse SPEC file
         id: spec
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -x  # Enable debug mode
 
-          # Debug: Show current directory and files
-          echo "=== Debug: Current directory ==="
-          pwd
-          ls -la
+          echo "=== STEP 1: Get PR branch name ==="
+          branch_name="${{ github.head_ref }}"
+          echo "Branch: $branch_name"
 
-          echo "=== Debug: Looking for .moai/specs ==="
-          ls -la .moai/ 2>&1 || echo ".moai/ directory not found"
+          echo ""
+          echo "=== STEP 2: Get changed files from PR ==="
+          # Get list of changed files from PR
+          changed_files=$(gh pr view ${{ github.event.pull_request.number }} --json files --jq '.files[].path' 2>&1)
 
-          # Find SPEC files in the PR
-          echo "=== Debug: Searching for SPEC files ==="
-          find . -name "spec.md" -type f 2>&1 || echo "find command failed"
+          if [ $? -ne 0 ]; then
+            echo "⚠️  Failed to fetch PR files, falling back to git diff"
+            changed_files=$(git diff --name-only origin/main HEAD 2>&1)
+          fi
 
-          spec_file=$(find .moai/specs -name "spec.md" -type f 2>&1 | head -1)
-          echo "Found spec_file: [$spec_file]"
+          echo "Changed files:"
+          echo "$changed_files"
 
-          if [ -z "$spec_file" ]; then
-            echo "⚠️  No SPEC file found in .moai/specs"
+          echo ""
+          echo "=== STEP 3: Find SPEC files that were actually changed ==="
+          # Find spec files that were actually modified in this PR
+          spec_files=$(echo "$changed_files" | grep -E '\.moai/specs/SPEC-.*/spec\.md$' || true)
+
+          if [ -z "$spec_files" ]; then
+            echo "⚠️  No SPEC file changes detected in this PR"
             echo "Exiting gracefully (this is expected if no SPEC files changed)"
             exit 0
           fi
 
-          echo "✅ Found SPEC file: $spec_file"
+          echo "Found SPEC files:"
+          echo "$spec_files"
+
+          # Count SPEC files
+          spec_file_count=$(echo "$spec_files" | wc -l)
+          echo "Count: $spec_file_count"
+
+          if [ "$spec_file_count" -gt 1 ]; then
+            echo ""
+            echo "⚠️  WARNING: Multiple SPEC files detected in this PR"
+            echo "   This is unusual. Using first SPEC file."
+            echo "   Files:"
+            echo "$spec_files" | sed 's/^/     /'
+          fi
+
+          # Select first SPEC file
+          spec_file=$(echo "$spec_files" | head -1)
+          echo ""
+          echo "✅ Selected SPEC file: $spec_file"
           echo "spec_file=$spec_file" >> $GITHUB_OUTPUT
 
+          echo ""
+          echo "=== STEP 4: Extract YAML metadata ==="
           # Extract YAML metadata using grep
           spec_id=$(grep "^id:" "$spec_file" | sed 's/^id: *//' | tr -d ' "')
           spec_version=$(grep "^version:" "$spec_file" | sed 's/^version: *//' | tr -d ' "')
@@ -68,6 +97,39 @@ jobs:
           echo "  Status: $spec_status"
           echo "  Priority: $spec_priority"
 
+          echo ""
+          echo "=== STEP 5: Validate SPEC status ==="
+          # Skip if SPEC is already completed (historical document)
+          if [ "$spec_status" = "completed" ]; then
+            echo "⚠️  SPEC status is 'completed' (historical document)"
+            echo "   Skipping issue creation for completed SPEC"
+            exit 0
+          fi
+
+          echo "✅ SPEC status is valid (not completed)"
+
+          echo ""
+          echo "=== STEP 6: Validate branch name matches SPEC ID ==="
+          # Extract SPEC ID from branch name (feature/SPEC-UPDATE-REFACTOR-002 -> UPDATE-REFACTOR-002)
+          branch_spec_id=$(echo "$branch_name" | grep -oE 'SPEC-[A-Z0-9_-]+' | sed 's/^SPEC-//' || true)
+
+          if [ -n "$branch_spec_id" ]; then
+            if [ "$branch_spec_id" != "$spec_id" ]; then
+              echo "⚠️  WARNING: Branch name mismatch!"
+              echo "   Branch SPEC ID: $branch_spec_id"
+              echo "   File SPEC ID:   $spec_id"
+              echo "   Continuing anyway (might be intentional)"
+            else
+              echo "✅ Branch name matches SPEC ID"
+            fi
+          else
+            echo "⚠️  Could not extract SPEC ID from branch name"
+            echo "   Branch: $branch_name"
+            echo "   Continuing anyway"
+          fi
+
+          echo ""
+          echo "=== STEP 7: Output all variables ==="
           echo "spec_id=$spec_id" >> $GITHUB_OUTPUT
           echo "spec_version=$spec_version" >> $GITHUB_OUTPUT
           echo "spec_status=$spec_status" >> $GITHUB_OUTPUT
