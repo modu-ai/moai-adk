@@ -8,7 +8,7 @@ description: "Learning mode to easily learn new skills with Alfred"
 ---
 
 # Study with Alfred
-> Interactive prompts rely on `Skill("moai-alfred-interactive-questions")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
+> **Note**: Interactive prompts use `Skill("moai-alfred-interactive-questions")` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 **Audience**: Developers looking to learn new technologies/languages/frameworks
 

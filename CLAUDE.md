@@ -6,7 +6,7 @@
 > **Project Owner**: GOOS
 > **Config**: `.moai/config.json`
 >
-> All interactions with Alfred can use `Skill("moai-alfred-interactive-questions")` for TUI-based responses.
+> **Note**: `Skill("moai-alfred-interactive-questions")` provides TUI-based responses when user interaction is needed. The skill loads on-demand.
 
 ---
 
