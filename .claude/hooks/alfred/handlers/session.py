@@ -134,10 +134,6 @@ def handle_session_start(payload: HookPayload) -> HookResult:
         if last_commit:
             lines.append(f"   🔨 Last: {last_commit}")
 
-    # Add SPEC progress only if available (not degraded)
-    if specs["total"] > 0:
-        lines.append(f"   📋 SPEC Progress: {spec_progress} ({specs['percentage']}%)")
-
     # Add Checkpoint list (show only the latest 3 items)
     if checkpoints:
         lines.append(f"   🗂️ Checkpoints: {len(checkpoints)} available")
@@ -145,6 +141,10 @@ def handle_session_start(payload: HookPayload) -> HookResult:
             branch_short = cp["branch"].replace("before-", "")
             lines.append(f"      📌 {branch_short}")
         lines.append("   ↩️ Restore: /alfred:0-project restore")
+
+    # Add SPEC progress only if available (not degraded) - at the bottom
+    if specs["total"] > 0:
+        lines.append(f"   📋 SPEC Progress: {spec_progress} ({specs['percentage']}%)")
 
     system_message = "\n".join(lines)
 
