@@ -20,7 +20,7 @@ allowed-tools:
 ---
 
 # 📋 MoAI-ADK Step 0: Initialize/Update Universal Language Support Project Documentation
-> Interactive prompts rely on `Skill("moai-alfred-interactive-questions")` so AskUserQuestion renders TUI selection menus for user surveys and approvals.
+> **Note**: Interactive prompts use `Skill("moai-alfred-interactive-questions")` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
 ## 🎯 Command Purpose
 
@@ -477,21 +477,38 @@ Alfred starts project initialization by calling the project-manager agent with t
 - Approved Interview Plan: [Plan Summary]
 
 **Execution**:
-```bash
-# Pseudo-code showing parameter flow
-Task(
-    subagent_type="project-manager",
-    description="Initialize project with conversation language support",
-    prompt=f"""You are project-manager. Initialize project with these parameters:
-    - conversation_language: "{conversation_language}"  # e.g., "ko"
-    - language_name: "{language_name}"  # e.g., "Korean"
-    - project_type: "{project_type}"  # e.g., "new"
-    - detected_languages: {detected_languages}
+```
+Call the Task tool:
+- subagent_type: "project-manager"
+- description: "Initialize project with conversation language support"
+- prompt: """You are project-manager agent.
 
-    All interviews and documentation must be generated in the conversation_language.
-    Update .moai/config.json with these language parameters.
-    """
-)
+LANGUAGE CONFIGURATION:
+- conversation_language: {{CONVERSATION_LANGUAGE}}
+- language_name: {{CONVERSATION_LANGUAGE_NAME}}
+
+PROJECT_TYPE: [new|existing]
+DETECTED_LANGUAGES: [detected codebase languages]
+
+CRITICAL INSTRUCTION:
+All interviews and generated documentation MUST be in conversation_language:
+- product.md: Generate in {{CONVERSATION_LANGUAGE}}
+- structure.md: Generate in {{CONVERSATION_LANGUAGE}}
+- tech.md: Generate in {{CONVERSATION_LANGUAGE}}
+
+If conversation_language is 'ko': All narrative content in Korean
+If conversation_language is 'ja': All narrative content in Japanese
+If conversation_language is other: Follow the specified language
+
+After project initialization, update .moai/config.json with nested language structure:
+{
+  "language": {
+    "conversation_language": "{{CONVERSATION_LANGUAGE}}",
+    "conversation_language_name": "{{CONVERSATION_LANGUAGE_NAME}}"
+  }
+}
+
+TASK: Conduct project interviews and create/update product/structure/tech.md documents."""
 ```
 
 **Outcome**: The project-manager agent conducts structured interviews entirely in the selected language and creates/updates product/structure/tech.md documents in that language.
