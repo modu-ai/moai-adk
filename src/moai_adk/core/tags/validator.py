@@ -22,14 +22,14 @@ Usage:
     report = validator.create_report(result, format="json")
 """
 
-import re
 import json
+import re
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import List, Dict, Set, Tuple, Optional, Any
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 
 @dataclass

@@ -556,7 +556,7 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
         else:
             # Skip caching if module can't be loaded
             VersionCache = None
-    except (ImportError, OSError) as e:
+    except (ImportError, OSError):
         # Graceful degradation: skip caching on import errors
         VersionCache = None
 
