@@ -336,11 +336,91 @@ def get_project_language(cwd: str) -> str:
     return detect_language(cwd)
 
 
-def get_package_version_info() -> dict[str, Any]:
+def get_version_check_config(cwd: str) -> dict[str, Any]:
+    """Read version check configuration from .moai/config.json
+
+    Returns version check settings with sensible defaults.
+    Supports frequency-based cache TTL configuration.
+
+    Args:
+        cwd: Project root directory path
+
+    Returns:
+        dict with keys:
+            - "enabled": Boolean (default: True)
+            - "frequency": "always" | "daily" | "weekly" | "never" (default: "daily")
+            - "cache_ttl_hours": TTL in hours based on frequency
+
+    Frequency to TTL mapping:
+        - "always": 0 hours (no caching)
+        - "daily": 24 hours
+        - "weekly": 168 hours (7 days)
+        - "never": infinity (never check)
+
+    @CODE:CONFIG-INTEGRATION-001
+    """
+    # TTL mapping by frequency
+    TTL_BY_FREQUENCY = {
+        "always": 0,
+        "daily": 24,
+        "weekly": 168,
+        "never": float('inf')
+    }
+
+    # Default configuration
+    defaults = {
+        "enabled": True,
+        "frequency": "daily",
+        "cache_ttl_hours": 24
+    }
+
+    config_path = Path(cwd) / ".moai" / "config.json"
+    if not config_path.exists():
+        return defaults
+
+    try:
+        config = json.loads(config_path.read_text())
+
+        # Extract moai.version_check section
+        moai_config = config.get("moai", {})
+        version_check_config = moai_config.get("version_check", {})
+
+        # Read enabled flag (default: True)
+        enabled = version_check_config.get("enabled", defaults["enabled"])
+
+        # Read frequency (default: "daily")
+        frequency = moai_config.get("update_check_frequency", defaults["frequency"])
+
+        # Validate frequency
+        if frequency not in TTL_BY_FREQUENCY:
+            frequency = defaults["frequency"]
+
+        # Calculate TTL from frequency
+        cache_ttl_hours = TTL_BY_FREQUENCY[frequency]
+
+        # Allow explicit cache_ttl_hours override
+        if "cache_ttl_hours" in version_check_config:
+            cache_ttl_hours = version_check_config["cache_ttl_hours"]
+
+        return {
+            "enabled": enabled,
+            "frequency": frequency,
+            "cache_ttl_hours": cache_ttl_hours
+        }
+
+    except (OSError, json.JSONDecodeError, KeyError):
+        # Config read or parse error - return defaults
+        return defaults
+
+
+def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
     """Check MoAI-ADK current and latest version from PyPI
 
     Compares the installed version with the latest version available on PyPI.
     Returns version information for SessionStart hook to display update recommendations.
+
+    Args:
+        cwd: Project root directory (default: current directory)
 
     Returns:
         dict with keys:
@@ -353,6 +433,7 @@ def get_package_version_info() -> dict[str, Any]:
         - Has 1-second timeout to avoid blocking SessionStart
         - Returns graceful fallback if PyPI check fails
         - Handles version parsing gracefully
+        - Respects version_check.enabled config option
     """
     from importlib.metadata import version, PackageNotFoundError
     import urllib.request
@@ -370,6 +451,12 @@ def get_package_version_info() -> dict[str, Any]:
         result["current"] = version("moai-adk")
     except PackageNotFoundError:
         result["current"] = "dev"
+        return result
+
+    # Check if version check is enabled in config
+    config = get_version_check_config(cwd)
+    if not config["enabled"]:
+        # Version check disabled - return only current version
         return result
 
     # Get latest version from PyPI (with 1-second timeout)
@@ -412,5 +499,6 @@ __all__ = [
     "get_git_info",
     "count_specs",
     "get_project_language",
+    "get_version_check_config",
     "get_package_version_info",
 ]

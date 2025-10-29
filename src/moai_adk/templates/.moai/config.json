@@ -4,7 +4,12 @@
     "@SPEC:PROJECT-CONFIG-001": "@SPEC:MOAI-CONFIG-001"
   },
   "moai": {
-    "version": "{{MOAI_VERSION}}"
+    "version": "{{MOAI_VERSION}}",
+    "update_check_frequency": "daily",
+    "version_check": {
+      "enabled": true,
+      "cache_ttl_hours": 24
+    }
   },
   "constitution": {
     "enforce_tdd": true,
