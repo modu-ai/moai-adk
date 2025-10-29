@@ -206,7 +206,6 @@ class PreCommitValidator:
                 for line_num, line in enumerate(lines, start=1):
                     matches = self.tag_pattern.findall(line)
                     for prefix, domain in matches:
-                        tag = f"@{prefix}:{domain}"
                         if domain not in tags_by_type[prefix]:
                             tags_by_type[prefix][domain] = []
                         tags_by_type[prefix][domain].append((filepath, line_num))

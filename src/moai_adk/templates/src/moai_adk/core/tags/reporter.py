@@ -224,7 +224,6 @@ class InventoryGenerator:
 
                 for tag_type, domain in matches:
                     tag_id = domain
-                    full_tag = f"@{tag_type}:{domain}"
 
                     # Extract context (±2 lines)
                     context_lines = []
@@ -421,7 +420,7 @@ class MatrixGenerator:
             spec = "1" if row["SPEC"] else "0"
             code = "1" if row["CODE"] else "0"
             test = "1" if row["TEST"] else "0"
-            doc = "1" if row["DOC"] else "0"
+            "1" if row["DOC"] else "0"
             completion = f"{matrix.completion_percentages[domain]:.1f}"
 
             lines.append(f"{domain},{spec},{code},{test},{completion}")
