@@ -37,9 +37,11 @@ Includes:
    - Use backup to restore previous state
    - Debug with `python -m moai_adk doctor --verbose`
 """
+
 from __future__ import annotations
 
 import json
+import logging
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -53,6 +55,7 @@ from moai_adk import __version__
 from moai_adk.core.template.processor import TemplateProcessor
 
 console = Console()
+logger = logging.getLogger(__name__)
 
 # Constants for tool detection
 TOOL_DETECTION_TIMEOUT = 5  # seconds
@@ -65,26 +68,31 @@ PIP_COMMAND = ["pip", "install", "--upgrade", "moai-adk"]
 # Custom exceptions for better error handling
 class UpdateError(Exception):
     """Base exception for update operations."""
+
     pass
 
 
 class InstallerNotFoundError(UpdateError):
     """Raised when no package installer detected."""
+
     pass
 
 
 class NetworkError(UpdateError):
     """Raised when network operation fails."""
+
     pass
 
 
 class UpgradeError(UpdateError):
     """Raised when package upgrade fails."""
+
     pass
 
 
 class TemplateSyncError(UpdateError):
     """Raised when template sync fails."""
+
     pass
 
 
@@ -96,11 +104,7 @@ def _is_installed_via_uv_tool() -> bool:
     """
     try:
         result = subprocess.run(
-            ["uv", "tool", "list"],
-            capture_output=True,
-            text=True,
-            timeout=TOOL_DETECTION_TIMEOUT,
-            check=False
+            ["uv", "tool", "list"], capture_output=True, text=True, timeout=TOOL_DETECTION_TIMEOUT, check=False
         )
         return result.returncode == 0 and "moai-adk" in result.stdout
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
@@ -115,11 +119,7 @@ def _is_installed_via_pipx() -> bool:
     """
     try:
         result = subprocess.run(
-            ["pipx", "list"],
-            capture_output=True,
-            text=True,
-            timeout=TOOL_DETECTION_TIMEOUT,
-            check=False
+            ["pipx", "list"], capture_output=True, text=True, timeout=TOOL_DETECTION_TIMEOUT, check=False
         )
         return result.returncode == 0 and "moai-adk" in result.stdout
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
@@ -134,11 +134,7 @@ def _is_installed_via_pip() -> bool:
     """
     try:
         result = subprocess.run(
-            ["pip", "show", "moai-adk"],
-            capture_output=True,
-            text=True,
-            timeout=TOOL_DETECTION_TIMEOUT,
-            check=False
+            ["pip", "show", "moai-adk"], capture_output=True, text=True, timeout=TOOL_DETECTION_TIMEOUT, check=False
         )
         return result.returncode == 0
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
@@ -274,6 +270,7 @@ def _get_project_config_version(project_path: Path) -> str:
     Raises:
         ValueError: If config.json exists but cannot be parsed
     """
+
     def _is_placeholder(value: str) -> bool:
         """Check if value contains unsubstituted template placeholders."""
         return isinstance(value, str) and value.startswith("{{") and value.endswith("}}")
@@ -302,6 +299,200 @@ def _get_project_config_version(project_path: Path) -> str:
         raise ValueError(f"Failed to parse project config.json: {e}") from e
 
 
+# @CODE:UPDATE-CACHE-FIX-001-001-DETECT-STALE
+def _detect_stale_cache(upgrade_output: str, current_version: str, latest_version: str) -> bool:
+    """
+    Detect if uv cache is stale by comparing versions.
+
+    A stale cache occurs when PyPI metadata is outdated, causing uv to incorrectly
+    report "Nothing to upgrade" even though a newer version exists. This function
+    detects this condition by:
+    1. Checking if upgrade output contains "Nothing to upgrade"
+    2. Verifying that latest version is actually newer than current version
+
+    Uses packaging.version.parse() for robust semantic version comparison that
+    handles pre-releases, dev versions, and other PEP 440 version formats correctly.
+
+    Args:
+        upgrade_output: Output from uv tool upgrade command
+        current_version: Currently installed version (string, e.g., "0.8.3")
+        latest_version: Latest version available on PyPI (string, e.g., "0.9.0")
+
+    Returns:
+        True if cache is stale (output shows "Nothing to upgrade" but current < latest),
+        False otherwise
+
+    Examples:
+        >>> _detect_stale_cache("Nothing to upgrade", "0.8.3", "0.9.0")
+        True
+        >>> _detect_stale_cache("Updated moai-adk", "0.8.3", "0.9.0")
+        False
+        >>> _detect_stale_cache("Nothing to upgrade", "0.9.0", "0.9.0")
+        False
+    """
+    # Check if output indicates no upgrade needed
+    if not upgrade_output or "Nothing to upgrade" not in upgrade_output:
+        return False
+
+    # Compare versions using packaging.version
+    try:
+        current_v = version.parse(current_version)
+        latest_v = version.parse(latest_version)
+        return current_v < latest_v
+    except (version.InvalidVersion, TypeError) as e:
+        # Graceful degradation: if version parsing fails, assume cache is not stale
+        logger.debug(f"Version parsing failed: {e}")
+        return False
+
+
+# @CODE:UPDATE-CACHE-FIX-001-002-CLEAR-SUCCESS
+def _clear_uv_package_cache(package_name: str = "moai-adk") -> bool:
+    """
+    Clear uv cache for specific package.
+
+    Executes `uv cache clean <package>` with 10-second timeout to prevent
+    hanging on network issues. Provides user-friendly error handling for
+    various failure scenarios (timeout, missing uv, etc.).
+
+    Args:
+        package_name: Package name to clear cache for (default: "moai-adk")
+
+    Returns:
+        True if cache cleared successfully, False otherwise
+
+    Exceptions:
+        - subprocess.TimeoutExpired: Logged as warning, returns False
+        - FileNotFoundError: Logged as warning, returns False
+        - Exception: Logged as warning, returns False
+
+    Examples:
+        >>> _clear_uv_package_cache("moai-adk")
+        True  # If uv cache clean succeeds
+    """
+    try:
+        result = subprocess.run(
+            ["uv", "cache", "clean", package_name],
+            capture_output=True,
+            text=True,
+            timeout=10,  # 10 second timeout
+            check=False,
+        )
+
+        if result.returncode == 0:
+            logger.debug(f"UV cache cleared for {package_name}")
+            return True
+        else:
+            logger.warning(f"Failed to clear UV cache: {result.stderr}")
+            return False
+
+    except subprocess.TimeoutExpired:
+        logger.warning(f"UV cache clean timed out for {package_name}")
+        return False
+    except FileNotFoundError:
+        logger.warning("UV command not found. Is uv installed?")
+        return False
+    except Exception as e:
+        logger.warning(f"Unexpected error clearing cache: {e}")
+        return False
+
+
+# @CODE:UPDATE-CACHE-FIX-001-003-RETRY-LOGIC
+def _execute_upgrade_with_retry(installer_cmd: list[str], package_name: str = "moai-adk") -> bool:
+    """
+    Execute upgrade with automatic cache retry on stale detection.
+
+    Implements a robust 7-stage upgrade flow that handles PyPI cache staleness:
+
+    Stage 1: First upgrade attempt (up to 60 seconds)
+    Stage 2: Check success condition (returncode=0 AND no "Nothing to upgrade")
+    Stage 3: Detect stale cache using _detect_stale_cache()
+    Stage 4: Show user feedback if stale cache detected
+    Stage 5: Clear cache using _clear_uv_package_cache()
+    Stage 6: Retry upgrade with same command
+    Stage 7: Return final result (success or failure)
+
+    Retry Logic:
+    - Only ONE retry is performed to prevent infinite loops
+    - Retry only happens if stale cache is detected AND cache clear succeeds
+    - Cache clear failures are reported to user with manual workaround
+
+    User Feedback:
+    - Shows emoji-based status messages for each stage
+    - Clear guidance on manual workaround if automatic retry fails
+    - All errors logged at WARNING level for debugging
+
+    Args:
+        installer_cmd: Command list from _detect_tool_installer()
+                      e.g., ["uv", "tool", "upgrade", "moai-adk"]
+        package_name: Package name for cache clearing (default: "moai-adk")
+
+    Returns:
+        True if upgrade succeeded (either first attempt or after retry),
+        False otherwise
+
+    Examples:
+        >>> # First attempt succeeds
+        >>> _execute_upgrade_with_retry(["uv", "tool", "upgrade", "moai-adk"])
+        True
+
+        >>> # First attempt stale, retry succeeds
+        >>> _execute_upgrade_with_retry(["uv", "tool", "upgrade", "moai-adk"])
+        True  # After cache clear and retry
+
+    Raises:
+        subprocess.TimeoutExpired: Re-raised if upgrade command times out
+    """
+    # Stage 1: First upgrade attempt
+    try:
+        result = subprocess.run(installer_cmd, capture_output=True, text=True, timeout=60, check=False)
+    except subprocess.TimeoutExpired:
+        raise  # Re-raise timeout for caller to handle
+    except Exception:
+        return False
+
+    # Stage 2: Check if upgrade succeeded without stale cache
+    if result.returncode == 0 and "Nothing to upgrade" not in result.stdout:
+        return True
+
+    # Stage 3: Detect stale cache
+    try:
+        current_version = _get_current_version()
+        latest_version = _get_latest_version()
+    except RuntimeError:
+        # If version check fails, return original result
+        return result.returncode == 0
+
+    if _detect_stale_cache(result.stdout, current_version, latest_version):
+        # Stage 4: User feedback
+        console.print("[yellow]⚠️ Cache outdated, refreshing...[/yellow]")
+
+        # Stage 5: Clear cache
+        if _clear_uv_package_cache(package_name):
+            console.print("[cyan]♻️ Cache cleared, retrying upgrade...[/cyan]")
+
+            # Stage 6: Retry upgrade
+            try:
+                result = subprocess.run(installer_cmd, capture_output=True, text=True, timeout=60, check=False)
+
+                if result.returncode == 0:
+                    return True
+                else:
+                    console.print("[red]✗ Upgrade failed after retry[/red]")
+                    return False
+            except subprocess.TimeoutExpired:
+                raise  # Re-raise timeout
+            except Exception:
+                return False
+        else:
+            # Cache clear failed
+            console.print("[red]✗ Cache clear failed. Manual workaround:[/red]")
+            console.print("  [cyan]uv cache clean moai-adk && moai-adk update[/cyan]")
+            return False
+
+    # Stage 7: Cache is not stale, return original result
+    return result.returncode == 0
+
+
 def _execute_upgrade(installer_cmd: list[str]) -> bool:
     """Execute package upgrade using detected installer.
 
@@ -316,13 +507,7 @@ def _execute_upgrade(installer_cmd: list[str]) -> bool:
         subprocess.TimeoutExpired: If upgrade times out
     """
     try:
-        result = subprocess.run(
-            installer_cmd,
-            capture_output=True,
-            text=True,
-            timeout=60,
-            check=False
-        )
+        result = subprocess.run(installer_cmd, capture_output=True, text=True, timeout=60, check=False)
         return result.returncode == 0
     except subprocess.TimeoutExpired:
         raise  # Re-raise timeout for caller to handle
@@ -395,10 +580,7 @@ def set_optimized_false(project_path: Path) -> None:
     try:
         config_data = json.loads(config_path.read_text(encoding="utf-8"))
         config_data.setdefault("project", {})["optimized"] = False
-        config_path.write_text(
-            json.dumps(config_data, indent=2, ensure_ascii=False) + "\n",
-            encoding="utf-8"
-        )
+        config_path.write_text(json.dumps(config_data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     except (json.JSONDecodeError, KeyError):
         # Ignore errors if config.json is invalid
         pass
@@ -536,10 +718,7 @@ def _preserve_project_metadata(
     # This allows Stage 2 to compare package vs project template versions
     project_data["template_version"] = version_for_config
 
-    config_path.write_text(
-        json.dumps(config_data, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8"
-    )
+    config_path.write_text(json.dumps(config_data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def _apply_context_to_file(processor: TemplateProcessor, target_path: Path) -> None:
@@ -629,32 +808,11 @@ def _show_timeout_error_help() -> None:
 
 
 @click.command()
-@click.option(
-    "--path",
-    type=click.Path(exists=True),
-    default=".",
-    help="Project path (default: current directory)"
-)
-@click.option(
-    "--force",
-    is_flag=True,
-    help="Skip backup and force the update"
-)
-@click.option(
-    "--check",
-    is_flag=True,
-    help="Only check version (do not update)"
-)
-@click.option(
-    "--templates-only",
-    is_flag=True,
-    help="Skip package upgrade, sync templates only"
-)
-@click.option(
-    "--yes",
-    is_flag=True,
-    help="Auto-confirm all prompts (CI/CD mode)"
-)
+@click.option("--path", type=click.Path(exists=True), default=".", help="Project path (default: current directory)")
+@click.option("--force", is_flag=True, help="Skip backup and force the update")
+@click.option("--check", is_flag=True, help="Only check version (do not update)")
+@click.option("--templates-only", is_flag=True, help="Skip package upgrade, sync templates only")
+@click.option("--yes", is_flag=True, help="Auto-confirm all prompts (CI/CD mode)")
 def update(path: str, force: bool, check: bool, templates_only: bool, yes: bool) -> None:
     """Update command with 3-stage workflow (v0.6.3+).
 
