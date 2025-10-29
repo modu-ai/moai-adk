@@ -68,7 +68,17 @@ logs/
 *.tmp
 *.temp
 
+
+
+
 .claudeignore
 
 # Project Plans (internal tracking, not versioned)
 CURSOR_INTEGRATION_PLAN.md
+
+
+# MoAI internal directories (not versioned)
+.moai/analysis/
+.moai/reports/
+.moai/scripts/
+src/moai_adk/templates/.moai/docs/
