@@ -215,7 +215,7 @@ my-project/
 │   │       ├── 1-plan.md           # SPEC authoring
 │   │       ├── 2-run.md            # TDD implementation
 │   │       └── 3-sync.md           # Documentation sync
-│   ├── skills/                     # 58 Claude Skills
+│   ├── skills/                     # 55+ Claude Skills
 │   │   ├── moai-foundation-*       # 6 Foundation tier
 │   │   ├── moai-essentials-*       # 4 Essentials tier
 │   │   ├── moai-alfred-*           # 7 Alfred tier
@@ -577,7 +577,7 @@ uv tool update
 
 ```bash
 # Reinstall specific version (e.g., 0.4.2)
-uv tool install moai-adk==0.4.2
+uv tool install moai-adk
 ```
 
 ### Verify After Update
@@ -1828,7 +1828,7 @@ Hooks are **event-driven** scripts that trigger automatically at specific points
 - Editing critical files (`CLAUDE.md`, `config.json`)
 - Mass edits (10+ files at once via MultiEdit)
 
-**TAG Guard (New in v0.4.11)**:
+**TAG Guard**:
 Automatically detects missing @TAG annotations in changed files:
 
 - Scans staged, modified, and untracked files
@@ -1959,15 +1959,16 @@ If you need to temporarily disable hooks, edit `.claude/settings.json`:
 
 | Version     | Key Features                                                                                     | Date       |
 | ----------- | ------------------------------------------------------------------------------------------------ | ---------- |
+| **v0.8.2**  | 📖 EARS terminology update: "Constraints" → "Unwanted Behaviors" for clarity                     | 2025-10-29 |
+| **v0.8.1**  | 🔄 Command rename: `/alfred:9-help` → `/alfred:9-feedback` + User feedback workflow improvements | 2025-10-28 |
+| **v0.8.0**  | 🏷️ @DOC TAG auto-generation system + SessionStart version check enhancement                      | 2025-10-27 |
+| **v0.7.0**  | 🌍 Complete language localization system (English, Korean, Japanese, Chinese, Spanish)           | 2025-10-26 |
+| **v0.6.3**  | ⚡ 3-Stage update workflow: 70-80% performance improvement via parallel operations               | 2025-10-25 |
+| **v0.6.0**  | 🏗️ Major architecture refactor + Enhanced SPEC metadata structure (7 required + 9 optional)      | 2025-10-24 |
 | **v0.5.7**  | 🎯 SPEC → GitHub Issue automation + CodeRabbit integration + Auto PR comments                    | 2025-10-27 |
 | **v0.4.11** | ✨ TAG Guard system + CLAUDE.md formatting improvements + Code cleanup                           | 2025-10-23 |
-| **v0.4.10** | 🔧 Hook robustness improvements + Bilingual documentation + Template language config             | 2025-10-23 |
-| **v0.4.9**  | 🎯 Hook JSON schema validation fixes + Comprehensive tests (468/468 passing)                     | 2025-10-23 |
-| **v0.4.8**  | 🚀 Release automation + PyPI deployment + Skills refinement                                      | 2025-10-23 |
-| **v0.4.7**  | 📖 Korean language optimization + SPEC-First principle documentation                             | 2025-10-22 |
-| **v0.4.6**  | 🎉 Complete Skills v2.0 (100% Production-Ready) + 85,000 lines official docs + 300+ TDD examples | 2025-10-22 |
 
-> 📦 **Install Now**: `uv tool install moai-adk==0.4.11` or `pip install moai-adk==0.4.11`
+> 📦 **Install Now**: `uv tool install moai-adk` or `pip install moai-adk`
 
 ---
 
@@ -1975,7 +1976,7 @@ If you need to temporarily disable hooks, edit `.claude/settings.json`:
 
 | Purpose                   | Resource                                                        |
 | ------------------------- | --------------------------------------------------------------- |
-| Skills detailed structure | `.claude/skills/` directory (58 Skills)                         |
+| Skills detailed structure | `.claude/skills/` directory (55+ Skills)                         |
 | Sub-agent details         | `.claude/agents/alfred/` directory (12 agents)                  |
 | Workflow guide            | `.claude/commands/alfred/` (4 commands: 0-project ~ 3-sync)     |
 | Documentation             | Coming soon (see `.moai/`, `.claude/`, `docs/` in your project) |
@@ -1989,8 +1990,8 @@ If you need to temporarily disable hooks, edit `.claude/settings.json`:
 | ------------------------ | -------------------------------------------------------- |
 | **GitHub Repository**    | https://github.com/modu-ai/moai-adk                      |
 | **Issues & Discussions** | https://github.com/modu-ai/moai-adk/issues               |
-| **PyPI Package**         | https://pypi.org/project/moai-adk/ (Latest: v0.4.11)     |
-| **Latest Release**       | https://github.com/modu-ai/moai-adk/releases/tag/v0.4.11 |
+| **PyPI Package**         | https://pypi.org/project/moai-adk/                       |
+| **Latest Release**       | https://github.com/modu-ai/moai-adk/releases             |
 | **Documentation**        | See `.moai/`, `.claude/`, `docs/` within project         |
 
 ---
@@ -1999,7 +2000,7 @@ If you need to temporarily disable hooks, edit `.claude/settings.json`:
 
 > **"No CODE without SPEC"**
 
-MoAI-ADK is not simply a code generation tool. Alfred SuperAgent with its 19-member team and 56 Claude Skills together guarantee:
+MoAI-ADK is not simply a code generation tool. Alfred SuperAgent with its 19-member team and 55+ Claude Skills together guarantee:
 
 - ✅ **SPEC → TEST (TDD) → CODE → DOCS consistency**
 - ✅ **Complete history tracking with @TAG system**
