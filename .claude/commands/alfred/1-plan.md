@@ -23,6 +23,10 @@ allowed-tools:
 # 🏗️ MoAI-ADK Step 1: Establish a plan (Plan) - Always make a plan first and then proceed.
 > **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
+<!-- @CODE:ALF-WORKFLOW-001:CMD-PLAN -->
+
+**4-Step Workflow Integration**: This command implements Steps 1-2 of Alfred's workflow (Intent Understanding → Plan Creation). See CLAUDE.md for full workflow details.
+
 ## 🎯 Command Purpose
 
 **"Plan → Run → Sync"** As the first step in the workflow, it supports the entire planning process from ideation to plan creation.

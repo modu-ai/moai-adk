@@ -174,7 +174,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 ### Interview Question Guide
 
-> At all interview stages, you must call `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` to display the AskUserQuestion TUI menu.Option descriptions include a one-line summary + specific examples, provide an “Other/Enter Yourself” option, and ask for free comments.
+> At all interview stages, you must use `AskUserQuestion` tool (documented in moai-alfred-interactive-questions skill) to display the AskUserQuestion TUI menu.Option descriptions include a one-line summary + specific examples, provide an “Other/Enter Yourself” option, and ask for free comments.
 
 #### 0. Common dictionary questions (common for new/legacy)
 1. **Check language & framework**

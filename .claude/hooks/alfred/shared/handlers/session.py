@@ -6,17 +6,11 @@ SessionStart, SessionEnd event handling
 
 from core import HookPayload, HookResult
 from core.checkpoint import list_checkpoints
-from core.platform import is_windows
 from core.project import count_specs, detect_language, get_git_info, get_package_version_info
 
 
 def handle_session_start(payload: HookPayload) -> HookResult:
     """SessionStart event handler with GRACEFUL DEGRADATION
-
-    CRITICAL: Windows platform compatibility issue (Issue #107)
-    - Upstream bug: https://github.com/anthropics/claude-code/issues/9542
-    - Symptom: Hook executes successfully but blocks user input on Windows
-    - Solution: Return minimal valid response on Windows until upstream fix
 
     When Claude Code Session starts, it displays a summary of project status.
     You can check the language, Git status, SPEC progress, and checkpoint list at a glance.
@@ -28,10 +22,6 @@ def handle_session_start(payload: HookPayload) -> HookResult:
 
     Returns:
         HookResult(system_message=project status summary message)
-
-    Platform Behavior:
-        - Windows: Returns minimal valid response (Issue #107 workaround)
-        - macOS/Linux: Full session status display
 
     Message Format:
         🚀 MoAI-ADK Session Started
@@ -61,24 +51,12 @@ def handle_session_start(payload: HookPayload) -> HookResult:
         - FIX: Prevent duplicate output of clear step (only compact step is displayed)
         - UPDATE: Migrated to Claude Code standard Hook schema
         - HOTFIX: Add graceful degradation for timeout scenarios (Issue #66)
-        - Phase 3: Add major version warning and release notes display
-        - HOTFIX: Windows platform compatibility workaround (Issue #107)
+        - Phase 3: Add major version warning and release notes display (@TEST:MAJOR-UPDATE-001-07/08)
 
     @TAG:CHECKPOINT-EVENT-001
     @TAG:HOOKS-TIMEOUT-001
-    @CODE:MAJOR-UPDATE-DISPLAY-001
-
-    References CODE:WINDOWS-HOOK-COMPAT-001 (platform detection in core/platform.py)
+    @CODE:MAJOR-UPDATE-WARN-001
     """
-    # WORKAROUND: Windows subprocess hang (Issue #107)
-    # Return minimal valid response on Windows until upstream fix
-    # Reference: https://github.com/anthropics/claude-code/issues/9542
-    if is_windows():
-        return HookResult(
-            continue_execution=True,
-            system_message="🚀 MoAI-ADK Session Started (Windows mode - limited info due to platform issue #107)"
-        )
-
     # Claude Code SessionStart runs in several stages (clear, compact, etc.)
     # Ignore the "clear" stage and output messages only at the "compact" stage
     event_phase = payload.get("phase", "")

@@ -52,16 +52,14 @@ After reading this document:
 
 ### Skill Tier Overview (55 Total Skills)
 
-| **Tier** | **Count** | **Purpose** | **Invocation Method** |
-|----------|-----------|------------|----------------------|
-| **Foundation** | 6 | Core TRUST/TAG/SPEC/EARS/Git/Language principles | Explicit: `Skill("moai-foundation-*")` |
-| **Essentials** | 4 | Debug/Perf/Refactor/Review workflows | Explicit: `Skill("moai-essentials-*")` |
-| **Alfred** | 11 | Workflow orchestration (SPEC authoring, TDD, sync, Git) | Explicit: `Skill("moai-alfred-*")` |
-| **Domain** | 10 | Backend, Frontend, Web API, Database, Security, DevOps, Data Science, ML, Mobile, CLI | Explicit: `Skill("moai-domain-*")` |
-| **Language** | 23 | Python, TypeScript, Go, Rust, Java, Kotlin, Swift, Dart, C/C++, C#, Scala, Ruby, PHP, JavaScript, SQL, Shell, and more | Explicit: `Skill("moai-lang-*")` |
-| **Ops** | 1 | Claude Code session settings, output styles | Explicit: `Skill("moai-cc-*")` |
-
-**IMPORTANT**: All Skills require **explicit invocation** using `Skill("skill-name")` syntax. There is NO auto-triggering based on keywords or file extensions.
+| **Tier** | **Count** | **Purpose** | **Auto-Trigger Conditions** |
+|----------|-----------|------------|--------------------------|
+| **Foundation** | 6 | Core TRUST/TAG/SPEC/EARS/Git/Language principles | Keyword detection in user request |
+| **Essentials** | 4 | Debug/Perf/Refactor/Review workflows | Error detection, refactor triggers |
+| **Alfred** | 11 | Workflow orchestration (SPEC authoring, TDD, sync, Git) | Command execution (`/alfred:*`) |
+| **Domain** | 10 | Backend, Frontend, Web API, Database, Security, DevOps, Data Science, ML, Mobile, CLI | Domain-specific keywords |
+| **Language** | 23 | Python, TypeScript, Go, Rust, Java, Kotlin, Swift, Dart, C/C++, C#, Scala, Ruby, PHP, JavaScript, SQL, Shell, and more | File extension detection (`.py`, `.ts`, `.go`, etc.) |
+| **Ops** | 1 | Claude Code session settings, output styles | Session start/configuration |
 
 ### Progressive Disclosure Pattern
 
@@ -73,57 +71,62 @@ All Skills follow the **Progressive Disclosure** principle:
 
 ### 🌍 Language Boundary in Skill Invocation
 
-**CRITICAL: Two-Layer Language Architecture**
+**CRITICAL: Three-Layer Language Rule**
 
 ```
-Layer 1: User Conversation & Dynamic Content
+Layer 1: User Conversation
 ├─ ALWAYS: Use user's configured conversation_language
-├─ Example: Korean user → all dialogue in Korean
-├─ Example: Japanese user → all dialogue in Japanese
-├─ Includes: questions, explanations, all dialogue
-├─ Task() prompts → **User's language** (passed directly)
-├─ Sub-agent communication → **User's language**
-└─ Generated documents → **User's language** (SPEC, reports, analysis)
+├─ Example: Korean user → respond in Korean only
+├─ Example: Japanese user → respond in Japanese only
+└─ Includes: questions, explanations, all dialogue
 
-Layer 2: Static Infrastructure (English Only)
-├─ Skill() names → **English** (explicit invocation)
-├─ Skill content → **English** (technical documentation)
-├─ Code comments → **English**
+Layer 2: Internal Operations ← THE KEY DIFFERENCE
+├─ Task() prompts → **English**
+├─ Skill() invocations → **English**
+├─ Sub-agent communication → **English**
 ├─ Git commits → **English**
-├─ @TAG identifiers → **English**
-└─ Technical keywords → **English**
+├─ Error messages (internal) → **English**
+└─ ALL technical instructions → **English**
+
+Layer 3: Skills & Code
+├─ Descriptions → English only
+├─ Examples → English only
+├─ Code comments → English only
+└─ ✅ NO multilingual versions needed!
 ```
 
 **Why This Works**:
-- ✅ **Explicit Invocation**: `Skill("moai-foundation-trust")` works regardless of prompt language
-- ✅ **Zero Maintenance**: 55 Skills in English only (no translation needed)
-- ✅ **Infinite Scalability**: Add any language without modifying Skills
-- ✅ **Industry Standard**: Technical documentation in English (single source of truth)
-- ✅ **Simplified Architecture**: No translation layer overhead
+- ✅ **100% Reliability**: English prompts always match English Skill keywords = guaranteed activation
+- ✅ **Zero Maintenance**: 55 Skills in English only (no 55 × N language variants)
+- ✅ **Infinite Scalability**: Add Korean/Japanese/Spanish/Russian/any language with ZERO Skill modifications
+- ✅ **Industry Standard**: Localized UI + English backend = standard i18n pattern (like Netflix, Google, AWS)
 
 **The Golden Rule**:
 ```
-Skill Invocation = Explicit Function Call
+User Language ≠ Internal Language
                 ↓
-        Prompt Language is Irrelevant!
-        Skill("name") works with any language!
+        100% Skill Match Guaranteed
+        English-only Skills = Complete Scalability!
 ```
 
 **Sub-agent Implementation Example**:
 ```
-User Input (any language):  "인증 시스템 만들어줘"  / "Create authentication system"  / "認証システムを実装"
+User Input (any language):  "Create authentication system"  / "認証システムを実装"  / "Implementar sistema de autenticación"
      ↓
-Alfred (passes directly):   Task(prompt="인증 시스템을 만들어주세요. JWT 전략 사용, 30분 토큰 만료",
-                                 subagent_type="spec-builder")
+Alfred (internal):          "Implement authentication system"
      ↓
-spec-builder (receives Korean prompt):
-  Recognizes SPEC authoring task
-  Skill("moai-foundation-specs") ✅ [Explicit invocation]
-  Skill("moai-foundation-ears") ✅ [Explicit invocation]
+Task(prompt="Create JWT authentication SPEC with 30-minute token expiry",
+     subagent_type="spec-builder")
      ↓
-spec-builder:               Reads English Skill content, generates Korean SPEC
+spec-builder (receives English):
+  Skill("moai-foundation-specs") ← 100% match!
+  Skill("moai-foundation-ears") ← 100% match!
      ↓
-User Receives:              Korean SPEC document with English @TAGs
+Alfred (receives):          English SPEC output
+     ↓
+Alfred (translates):        User's language response
+     ↓
+User Receives:              Response in their configured language
 ```
 
 ### Explicit Invocation Syntax
@@ -505,6 +508,126 @@ Alfred enforces these quality gates on every change:
 - Prefer the standard framework per language
 - Keep tests isolated and deterministic
 - Derive cases directly from the SPEC
+
+---
+
+## 🎯 TodoWrite Usage Rules
+
+<!-- @CODE:ALF-WORKFLOW-001:RULES -->
+
+### Mandatory TodoWrite Usage
+
+Alfred MUST use TodoWrite for ALL multi-step tasks (3+ steps) to provide transparent progress tracking.
+
+**When to initialize TodoWrite**:
+- ✅ At the start of any command execution (/alfred:0-project, 1-plan, 2-run, 3-sync)
+- ✅ When Plan Agent identifies multiple tasks
+- ✅ When a task will be delegated to multiple sub-agents
+- ✅ When implementing TDD cycles (RED → GREEN → REFACTOR for each @TAG)
+
+**When NOT to use TodoWrite**:
+- ❌ Single, straightforward tasks (e.g., "read this file")
+- ❌ Trivial tasks completable in <3 steps
+- ❌ Purely conversational/informational requests
+
+### TodoWrite State Transition Rules
+
+**Task States**:
+- `pending`: Task not yet started
+- `in_progress`: Currently executing (EXACTLY ONE at a time, unless Plan Agent approved parallel)
+- `completed`: Task fully accomplished (tests pass, no errors, implementation done)
+
+**State Transition Rules**:
+1. `pending → in_progress`: Mark BEFORE calling sub-agent or starting work
+2. `in_progress → completed`: Mark IMMEDIATELY after task completion (no batching)
+3. `in_progress → pending`: Only when blocker occurs (create new blocker task)
+
+**Completion Criteria**:
+- ✅ Tests passing
+- ✅ Implementation complete
+- ✅ No errors or blockers
+- ❌ Never mark completed if: tests failing, partial implementation, unresolved errors
+
+### TodoWrite Task Format
+
+Each task MUST have two forms:
+- `content`: Imperative form (e.g., "Run tests", "Build project")
+- `activeForm`: Present continuous form (e.g., "Running tests", "Building project")
+
+**Example**:
+```json
+{
+  "content": "Write SPEC document for AUTH-001",
+  "activeForm": "Writing SPEC document for AUTH-001",
+  "status": "pending"
+}
+```
+
+---
+
+## 🎯 Report Generation Rules
+
+### Default Behavior: No Report Files
+
+Alfred MUST NOT proactively create report/guide files in the project root unless explicitly requested.
+
+**Prohibited Auto-generation** (❌):
+- `IMPLEMENTATION_GUIDE.md`
+- `EXPLORATION_REPORT.md`
+- `*_ANALYSIS.md`
+- `*_REPORT.md`
+- `*_GUIDE.md`
+- Any `.md` file in project root (except README.md, CHANGELOG.md, CONTRIBUTING.md, LICENSE)
+
+**Allowed Report Locations** (✅ only when explicitly requested):
+- `.moai/docs/` - Implementation guides, strategy documents
+- `.moai/reports/` - Sync reports, TAG validation results
+- `.moai/analysis/` - Technical analysis documents
+- `.moai/specs/SPEC-*/` - SPEC-related documentation
+
+### Explicit Request Detection
+
+Report generation is allowed ONLY when user explicitly requests:
+
+**Keywords indicating explicit request**:
+- "보고서 만들어줘", "create report", "write report"
+- "분석 문서 작성", "write analysis document"
+- "구현 가이드 문서화", "create implementation guide"
+- "문서 생성", "generate documentation"
+
+**When in doubt**: Use AskUserQuestion to confirm: "Do you want me to create a report file for this analysis?"
+
+---
+
+## 🎯 Git Commit Rules
+
+### Mandatory Git Commits
+
+Alfred MUST create Git commits for ALL completed work, regardless of whether a report was generated.
+
+**Commit Timing**:
+- After all TodoWrite tasks are marked `completed`
+- Delegated to git-manager (other agents do NOT perform Git operations)
+- TDD commits: Separate commits for RED, GREEN, REFACTOR phases
+
+**Commit Message Format**:
+```
+<type>: <subject>
+
+<body>
+
+Refs: @SPEC:<ID> or @CODE:<ID>
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: 🎩 Alfred@[MoAI](https://adk.mo.ai.kr)
+```
+
+**Types**: test (RED), feat (GREEN), refactor (REFACTOR), docs, chore
+
+**Alfred Co-authorship**:
+- MUST be included in all commits
+- Format: `Co-Authored-By: 🎩 Alfred@[MoAI](https://adk.mo.ai.kr)`
 
 ---
 

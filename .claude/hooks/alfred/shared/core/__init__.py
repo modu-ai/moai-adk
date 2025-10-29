@@ -165,7 +165,6 @@ __all__ = ["HookPayload", "HookResult"]
 
 # Note: core module exports:
 # - HookPayload, HookResult (type definitions)
-# - platform.py: get_platform, is_windows, PlatformType (platform detection - Issue #107)
 # - project.py: detect_language, get_git_info, count_specs, get_project_language
 # - context.py: get_jit_context
 # - checkpoint.py: detect_risky_operation, create_checkpoint, log_checkpoint, list_checkpoints
