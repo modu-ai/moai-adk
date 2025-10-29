@@ -102,15 +102,60 @@ Users can run the command as follows:
 
 ## 🔍 STEP 1: Analyze synchronization scope and establish plan
 
-Analyze project status to determine synchronization scope, develop a systematic synchronization plan, and receive user confirmation.
+STEP 1 consists of **two independent phases** to provide flexible workflow based on project complexity:
 
-**The tag-agent performs comprehensive TAG verification (full project scope), and doc-syncer analyzes Git changes and establishes synchronization plan.**
+### 📋 STEP 1 Workflow Overview
 
-⚠️ **Important**: Tag-agent must verify the ENTIRE PROJECT for TAG orphans, not just changed files. Full-project scope is MANDATORY.
+```
+┌─────────────────────────────────────────────────────────────┐
+│ STEP 1: Synchronization Analysis & Planning                │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Phase A (OPTIONAL)                                         │
+│  ┌─────────────────────────────────────────┐               │
+│  │ 🔍 Explore Agent                        │               │
+│  │ • Navigate complex TAG chains           │               │
+│  │ • Scan entire TAG system                │               │
+│  │ • Identify orphan TAGs                  │               │
+│  └─────────────────────────────────────────┘               │
+│                    ↓                                        │
+│          (exploration results)                              │
+│                    ↓                                        │
+│  Phase B (REQUIRED)                                         │
+│  ┌─────────────────────────────────────────┐               │
+│  │ ⚙️ tag-agent + doc-syncer Agents        │               │
+│  │ • Verify TAG integrity (full project)   │               │
+│  │ • Analyze Git changes                   │               │
+│  │ • Create synchronization plan           │               │
+│  │ • Request user approval                 │               │
+│  └─────────────────────────────────────────┘               │
+│                    ↓                                        │
+│          (user approval via AskUserQuestion)                │
+│                    ↓                                        │
+│              PROCEED TO STEP 2                              │
+└─────────────────────────────────────────────────────────────┘
+```
 
-### 🔍 TAG chain navigation (optional)
+**Key Points**:
+- **Phase A is optional** - Skip for simple single-SPEC changes
+- **Phase B is required** - Always runs to verify TAGs and plan sync
+- **Results flow forward** - Exploration results (if any) are passed to tag-agent
+- **⚠️ Important**: tag-agent verifies ENTIRE PROJECT, not just changed files
 
-**If your TAG chain is complex or extensive**, utilize the Explore agent first:
+---
+
+### 🔍 Phase A: TAG Chain Navigation (OPTIONAL)
+
+**Use the Explore agent for complex or extensive TAG chains.**
+
+#### When to use Phase A:
+
+- ✅ Large projects (100+ files)
+- ✅ Need comprehensive TAG chain integrity verification
+- ✅ Changes span multiple SPECs or modules
+- ❌ Simple changes to a single SPEC (skip to Phase B)
+
+#### How to invoke Explore agent:
 
 ```
 Invoking the Task tool (Explore agent):
@@ -120,20 +165,22 @@ Invoking the Task tool (Explore agent):
  - @SPEC TAG location (.moai/specs/)
  - @TEST TAG location (tests/)
  - @CODE TAG location (src/)
-          - @DOC TAG location (docs/)
+ - @DOC TAG location (docs/)
  - Detect orphan TAGs and broken references
- Thoroughness level: very thorough"
+ thoroughness level: very thorough"
 ```
 
-**Explore Agent When to Use**:
-- ✅ Large projects (100+ files)
-- ✅ When TAG chain integrity verification is required
-- ✅ Changes across multiple SPECs
-- ❌ Simple changes to a single SPEC
+**Note**: For simple changes, skip Phase A and proceed directly to Phase B.
 
-### ⚙️ How to call an agent
+---
 
-**In STEP 1, call doc-syncer and tag-agent using the Task tool**:
+### ⚙️ Phase B: TAG Verification & Sync Planning (REQUIRED)
+
+**Call tag-agent and doc-syncer to verify TAG integrity and plan synchronization.**
+
+This phase is **always required** and runs **two agents sequentially**:
+
+#### How to invoke agents:
 
 ```
 1. Tag-agent call (TAG verification - FULL PROJECT SCOPE):
@@ -188,6 +235,13 @@ Ensure all documentation updates align with the conversation_language setting.
 $ARGUMENTS
 (Optional) TAG validation results: $TAG_VALIDATION_RESULTS"""
 ```
+
+**Note**:
+- **Sequential execution**: Run tag-agent first, then doc-syncer
+- **Results flow**: TAG validation results from tag-agent are passed to doc-syncer via `$TAG_VALIDATION_RESULTS`
+- **Phase A results**: If Phase A was executed, exploration results are passed to tag-agent via `$EXPLORE_RESULTS`
+
+---
 
 ### Synchronization analysis in progress
 

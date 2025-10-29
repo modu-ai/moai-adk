@@ -96,13 +96,59 @@ Users can run commands as follows:
 
 ## 🔍 STEP 1: SPEC analysis and execution plan establishment
 
-First, the specified SPEC is analyzed to establish an action plan and receive user confirmation.
+STEP 1 consists of **two independent phases** to provide flexible workflow based on task complexity:
 
-**The implementation-planner agent automatically loads and analyzes the required documents.**
+### 📋 STEP 1 Workflow Overview
 
-### 🔍 Browse the code base (recommended)
+```
+┌─────────────────────────────────────────────────────────────┐
+│ STEP 1: SPEC Analysis & Planning                           │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Phase A (OPTIONAL)                                         │
+│  ┌─────────────────────────────────────────┐               │
+│  │ 🔍 Explore Agent                        │               │
+│  │ • Browse existing codebase              │               │
+│  │ • Find similar implementations          │               │
+│  │ • Identify patterns & architecture      │               │
+│  └─────────────────────────────────────────┘               │
+│                    ↓                                        │
+│          (exploration results)                              │
+│                    ↓                                        │
+│  Phase B (REQUIRED)                                         │
+│  ┌─────────────────────────────────────────┐               │
+│  │ ⚙️ implementation-planner Agent         │               │
+│  │ • Analyze SPEC requirements             │               │
+│  │ • Design execution strategy             │               │
+│  │ • Create implementation plan            │               │
+│  │ • Request user approval                 │               │
+│  └─────────────────────────────────────────┘               │
+│                    ↓                                        │
+│          (user approval via AskUserQuestion)                │
+│                    ↓                                        │
+│              PROCEED TO STEP 2                              │
+└─────────────────────────────────────────────────────────────┘
+```
 
-**If you need to understand existing code structure or find similar patterns** Use the Explore agent first:
+**Key Points**:
+- **Phase A is optional** - Skip if you don't need to explore existing code
+- **Phase B is required** - Always runs to analyze SPEC and create execution plan
+- **Results flow forward** - Exploration results (if any) are passed to implementation-planner
+
+---
+
+### 🔍 Phase A: Codebase Exploration (OPTIONAL)
+
+**Use the Explore agent when you need to understand existing code before planning.**
+
+#### When to use Phase A:
+
+- ✅ Need to understand existing code structure/patterns
+- ✅ Need to find similar function implementations for reference
+- ✅ Need to understand project architectural rules
+- ✅ Need to check libraries and versions being used
+
+#### How to invoke Explore agent:
 
 ```
 Invoking the Task tool (Explore agent):
@@ -112,34 +158,38 @@ Invoking the Task tool (Explore agent):
  - Similar function implementation code (src/)
  - Test patterns for reference (tests/)
  - Architectural patterns and design patterns
- - Use Current libraries and versions (package.json, requirements.txt)
+ - Current libraries and versions (package.json, requirements.txt)
  thoroughness level: medium"
 ```
 
-**When to use the Explore Agent**:
-- ✅ When you need to understand the existing code structure/pattern
-- ✅ When you need to refer to how a similar function is implemented
-- ✅ When you need to understand the architectural rules of the project
-- ✅ Check the library and version being used
+**Note**: If you skip Phase A, proceed directly to Phase B.
 
-### ⚙️ How to call an agent
+---
 
-**In STEP 1, we call the implementation-planner agent using the Task tool**:
+### ⚙️ Phase B: Execution Planning (REQUIRED)
+
+**Call the implementation-planner agent to analyze SPEC and establish execution strategy.**
+
+This phase is **always required** regardless of whether Phase A was executed.
+
+#### How to invoke implementation-planner:
 
 ```
-Task tool call example:
+Task tool call:
 - subagent_type: "implementation-planner"
 - description: "SPEC analysis and establishment of execution strategy"
 - prompt: "Please analyze the SPEC of $ARGUMENTS and establish an execution plan.
  It must include the following:
  1. SPEC requirements extraction and complexity assessment
  2. Library and tool selection (using WebFetch)
-          3. TAG chain design
+ 3. TAG chain design
  4. Step-by-step execution plan
  5. Risks and response plans
-6. Create action plan and use `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` to confirm the next action with the user
+ 6. Create action plan and use `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` to confirm the next action with the user
  (Optional) Explore results: $EXPLORE_RESULTS"
 ```
+
+**Note**: If Phase A was executed, pass the exploration results via `$EXPLORE_RESULTS` variable.
 
 ### SPEC analysis in progress
 
