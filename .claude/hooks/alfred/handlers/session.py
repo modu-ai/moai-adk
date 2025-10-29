@@ -100,7 +100,7 @@ def handle_session_start(payload: HookPayload) -> HookResult:
         pass
 
     # OPTIONAL: SPEC progress - skip if timeout/failure
-    specs = {"completed": 0, "total": 0, "percentage": 0}
+    specs = {"completed": 0, "total": 0, "percentage": 0, "deprecated": 0}
     try:
         specs = count_specs(cwd)
     except Exception:
@@ -182,7 +182,11 @@ def handle_session_start(payload: HookPayload) -> HookResult:
 
     # Add SPEC progress only if available (not degraded) - at the bottom
     if specs["total"] > 0:
-        lines.append(f"   📋 SPEC Progress: {spec_progress} ({specs['percentage']}%)")
+        progress_msg = f"   📋 SPEC Progress: {spec_progress} ({specs['percentage']}%)"
+        # Add deprecated SPEC count if any exist
+        if specs.get("deprecated", 0) > 0:
+            progress_msg += f" - {specs['deprecated']} deprecated"
+        lines.append(progress_msg)
 
     system_message = "\n".join(lines)
 
