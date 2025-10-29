@@ -14,43 +14,42 @@ This module provides TAG validation functionality for:
 """
 
 # Component 1: Pre-commit validator
-from .pre_commit_validator import (
-    PreCommitValidator,
-    ValidationResult,
-    ValidationError,
-    ValidationWarning,
-)
-
 # Component 2: CI/CD validator
 from .ci_validator import CIValidator
-
-# Component 3: Central validation system
-from .validator import (
-    ValidationConfig,
-    TagValidator,
-    DuplicateValidator,
-    OrphanValidator,
-    ChainValidator,
-    FormatValidator,
-    CentralValidator,
-    CentralValidationResult,
-    ValidationIssue,
-    ValidationStatistics,
+from .pre_commit_validator import (
+    PreCommitValidator,
+    ValidationError,
+    ValidationResult,
+    ValidationWarning,
 )
 
 # Component 4: Documentation & Reporting
 from .reporter import (
-    TagInventory,
-    TagMatrix,
+    CoverageAnalyzer,
+    CoverageMetrics,
     InventoryGenerator,
     MatrixGenerator,
-    CoverageAnalyzer,
-    StatisticsGenerator,
     ReportFormatter,
     ReportGenerator,
-    CoverageMetrics,
-    StatisticsReport,
     ReportResult,
+    StatisticsGenerator,
+    StatisticsReport,
+    TagInventory,
+    TagMatrix,
+)
+
+# Component 3: Central validation system
+from .validator import (
+    CentralValidationResult,
+    CentralValidator,
+    ChainValidator,
+    DuplicateValidator,
+    FormatValidator,
+    OrphanValidator,
+    TagValidator,
+    ValidationConfig,
+    ValidationIssue,
+    ValidationStatistics,
 )
 
 __all__ = [
