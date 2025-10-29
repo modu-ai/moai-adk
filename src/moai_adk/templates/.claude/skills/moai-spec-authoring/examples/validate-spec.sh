@@ -147,9 +147,9 @@ else
   echo "⚠️  (none found)"
 fi
 
-echo -n "  Constraints (C-XXX)... "
-if rg "^\*\*C-\d+" "$SPEC_DIR/spec.md" > /dev/null 2>&1; then
-  COUNT=$(rg "^\*\*C-\d+" "$SPEC_DIR/spec.md" | wc -l | tr -d ' ')
+echo -n "  Unwanted Behaviors (UB-XXX)... "
+if rg "^\*\*UB-\d+" "$SPEC_DIR/spec.md" > /dev/null 2>&1; then
+  COUNT=$(rg "^\*\*UB-\d+" "$SPEC_DIR/spec.md" | wc -l | tr -d ' ')
   echo "✅ ($COUNT found)"
 else
   echo "⚠️  (none found)"

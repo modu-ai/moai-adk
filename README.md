@@ -606,6 +606,231 @@ claude
 
 ---
 
+## Development Setup for Contributors
+
+If you're developing **MoAI-ADK itself**, follow these steps to set up your development environment.
+
+### Prerequisites
+
+- Python 3.13+
+- `uv` package manager
+- Git
+
+### Setup Steps
+
+#### Step 1: Clone and Install in Editable Mode
+
+```bash
+# Clone the repository
+git clone https://github.com/modu-ai/moai-adk.git
+cd moai-adk
+
+# Install in editable mode (creates symlink, not a copy)
+uv pip install -e .
+
+# Or with pip (also works)
+pip install -e .
+```
+
+The editable install allows your local changes to be immediately reflected when using `moai-adk` command.
+
+#### Step 2: Initialize Development Configuration
+
+After the editable install, initialize the development repository's configuration:
+
+```bash
+# Run the initialization script
+bash .moai/scripts/init-dev-config.sh
+```
+
+**What this script does:**
+- Extracts the actual version from `pyproject.toml`
+- Replaces template placeholders (`{{MOAI_VERSION}}`) with actual version values in `.moai/config.json`
+- Sets up `project.template_version` field
+- Ensures the `moai-adk update` command works correctly on first run
+
+**Why is this necessary?**
+
+When you install MoAI-ADK in editable mode, the `.moai/config.json` file contains unsubstituted template placeholders. This causes the first `moai-adk update` command to fail with version comparison errors. The init script resolves these placeholders so everything works seamlessly.
+
+#### Step 3: Verify Setup
+
+```bash
+# Check that moai-adk works
+moai-adk --version
+
+# Run the health check
+moai-adk doctor
+
+# Expected output:
+# ✅ Python version: 3.13+
+# ✅ UV installed
+# ✅ Project structure: Valid
+# ✅ Configuration: Ready
+```
+
+#### Step 4: Run Tests
+
+```bash
+# Run all tests with coverage
+pytest tests/
+
+# Run specific test module
+pytest tests/unit/test_update.py -v
+
+# Run with coverage report
+pytest tests/ --cov=src/moai_adk --cov-report=html
+
+# Check coverage thresholds
+pytest tests/ --cov=src/moai_adk --cov-report=term-missing
+```
+
+### Common Development Workflow
+
+#### After Making Code Changes
+
+```bash
+# 1. Run tests to ensure nothing broke
+pytest tests/ -v
+
+# 2. Check code style
+ruff check src/
+ruff format src/
+
+# 3. Type checking
+mypy src/
+
+# 4. If you modified update.py, test the update command
+moai-adk update --check
+```
+
+#### Testing the Update Command
+
+The update command has been fixed to handle invalid version strings gracefully. To test it in development:
+
+```bash
+# Test update without applying it
+moai-adk update --check
+
+# Test with force mode (skips backup)
+moai-adk update --force
+
+# Test with specific version
+moai-adk update --templates-only
+```
+
+### Understanding the Init Script
+
+The `.moai/scripts/init-dev-config.sh` script performs these operations:
+
+1. **Extracts Version**: Reads `pyproject.toml` to get the current version
+2. **Updates Config**: Modifies `.moai/config.json` to set:
+   - `moai.version` → actual version value
+   - `project.template_version` → actual version value
+3. **Validates**: Ensures the JSON structure is preserved correctly
+4. **Provides Feedback**: Shows what was updated and verifies the changes
+
+### Troubleshooting Development Setup
+
+#### Problem: `moai-adk` command not found
+
+```bash
+# Solution 1: Reinstall in editable mode
+uv pip install -e .
+
+# Solution 2: Verify uv environment
+uv pip list | grep moai-adk
+
+# Solution 3: Use full path
+python -m moai_adk --version
+```
+
+#### Problem: `.moai/config.json` still has placeholders after running init script
+
+```bash
+# Manually check the config
+cat .moai/config.json | grep -i moai_version
+
+# If still showing {{MOAI_VERSION}}, rerun the script:
+bash .moai/scripts/init-dev-config.sh
+
+# Or manually update using Python:
+python3 << 'EOF'
+import json
+from pathlib import Path
+
+config_path = Path(".moai/config.json")
+config = json.loads(config_path.read_text())
+
+# Update manually
+config['moai']['version'] = "0.8.1"
+config['project']['template_version'] = "0.8.1"
+
+config_path.write_text(json.dumps(config, indent=2) + '\n')
+print("✅ Config updated manually")
+EOF
+```
+
+#### Problem: `moai-adk update` requires running twice
+
+This issue has been **fixed** in v0.8.1+. If you're experiencing this:
+
+1. Ensure you've run the init script: `bash .moai/scripts/init-dev-config.sh`
+2. Update to the latest version: `pip install -e --upgrade .`
+3. Verify the config has actual versions: `cat .moai/config.json | grep version`
+
+**What was the issue?**
+- Development installations had unsubstituted `{{MOAI_VERSION}}` placeholders in config
+- First `moai-adk update` would fail comparing "0.8.1" vs "{{MOAI_VERSION}}"
+- Second run might partially work after partial sync
+
+**How it's fixed:**
+- `init-dev-config.sh` replaces placeholders with actual versions
+- Code now gracefully handles InvalidVersion exceptions
+- Added comprehensive unit tests for placeholder detection
+
+### Contributing Tests
+
+When adding new features, always include tests:
+
+```bash
+# Add tests to tests/unit/ or tests/integration/
+# Follow existing test patterns in test_update.py
+
+# Run your new tests
+pytest tests/unit/test_*.py -v
+
+# Ensure coverage remains ≥ 85%
+pytest tests/ --cov=src/moai_adk --cov-report=term-missing
+```
+
+### Making a Pull Request
+
+Before opening a PR, ensure:
+
+```bash
+# 1. All tests pass
+pytest tests/ -v
+
+# 2. Coverage is adequate
+pytest tests/ --cov=src/moai_adk --cov-report=term-missing
+
+# 3. Code is formatted
+ruff format src/
+ruff check src/
+
+# 4. Types are valid
+mypy src/
+
+# 5. Init script works
+bash .moai/scripts/init-dev-config.sh
+
+# 6. Update command works
+moai-adk update --check
+```
+
+---
+
 ## Core Workflow (0 → 3)
 
 Alfred iteratively develops projects with four commands.

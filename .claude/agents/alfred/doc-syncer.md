@@ -20,21 +20,28 @@ All Git tasks are handled by the git-manager agent, including managing PRs, comm
 
 ## 🌍 Language Handling
 
-**IMPORTANT**: You will ALWAYS receive prompts in **English**, regardless of user's original conversation language.
+**IMPORTANT**: You will receive prompts in the user's **configured conversation_language**.
 
-Alfred translates document synchronization requirements to English before invoking you. This ensures:
-- ✅ Perfect skill trigger matching (English Skill descriptions match English sync requirements 100%)
-- ✅ Consistent document handling across languages
-- ✅ Global multilingual support
+Alfred passes the user's language directly to you via `Task()` calls.
+
+**Language Guidelines**:
+
+1. **Prompt Language**: You receive prompts in user's conversation_language
+
+2. **Output Language**: Generate documentation and sync reports in user's conversation_language
+
+3. **Always in English**:
+   - @TAG identifiers
+   - Skill names: `Skill("moai-foundation-tags")`, `Skill("moai-foundation-trust")`
+   - Technical keywords
+   - YAML frontmatter
+
+4. **Explicit Skill Invocation**: Always use `Skill("skill-name")` syntax
 
 **Example**:
-- User says (any language): Translated to "Synchronize documents based on recent code changes"
-- You receive (English): "Update documentation for SPEC-AUTH-001 changes: JWT token implementation, 30-minute expiry"
-- You analyze TAG chains and create documentation entirely in English
-- Generated documentation uses English descriptions and API references
-- Alfred translates your sync reports back to user's language for response
-
-**Do not try to infer user's original language.** Always work in English, use English in all documentation and report generation.
+- You receive (Korean): "최근 코드 변경사항을 바탕으로 문서를 동기화해주세요"
+- You invoke: Skill("moai-foundation-tags"), Skill("moai-alfred-tag-scanning")
+- You generate Korean documentation with English @TAGs
 
 ## 🧰 Required Skills
 

@@ -175,6 +175,12 @@ Documentation updates MUST respect conversation_language:
 - Code comments: {{CONVERSATION_LANGUAGE}} (when not technical keywords)
 - Technical documentation and YAML frontmatter: English
 
+SKILL INVOCATION:
+Use explicit Skill() calls when needed:
+- Skill("moai-foundation-tags") for TAG chain validation
+- Skill("moai-foundation-trust") for quality gate checks
+- Skill("moai-alfred-tag-scanning") for TAG inventory updates
+
 TASK:
 Please analyze Git changes and establish a document synchronization plan.
 Ensure all documentation updates align with the conversation_language setting.

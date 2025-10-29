@@ -727,3 +727,106 @@ class TestUpdateThreeStageWorkflow:
         updated_config = json.loads((moai_dir / "config.json").read_text())
         assert updated_config["project"]["template_version"] == "0.6.1"
         assert updated_config["moai"]["version"] == "0.6.1"
+
+    # @TEST:PLACEHOLDER-HANDLING-001 - Tests for unsubstituted template placeholders
+    def test_get_project_config_version_with_placeholder(self, tmp_path):
+        """Test that _get_project_config_version detects and handles placeholder values"""
+        from moai_adk.cli.commands.update import _get_project_config_version
+        import json
+
+        project_path = tmp_path / "test-project"
+        moai_dir = project_path / ".moai"
+        moai_dir.mkdir(parents=True)
+
+        # Test 1: Placeholder in moai.version (no template_version)
+        config_data = {"moai": {"version": "{{MOAI_VERSION}}"}}
+        (moai_dir / "config.json").write_text(json.dumps(config_data))
+
+        result = _get_project_config_version(project_path)
+        assert result == "0.0.0", "Should return 0.0.0 when moai.version is a placeholder"
+
+        # Test 2: Placeholder in project.template_version - falls back to moai.version
+        config_data = {"moai": {"version": "0.8.0"}, "project": {"template_version": "{{TEMPLATE_VERSION}}"}}
+        (moai_dir / "config.json").write_text(json.dumps(config_data))
+
+        result = _get_project_config_version(project_path)
+        assert result == "0.8.0", "Should fall back to moai.version when template_version is a placeholder"
+
+        # Test 3: Both have placeholders
+        config_data = {"moai": {"version": "{{MOAI_VERSION}}"}, "project": {"template_version": "{{TEMPLATE_VERSION}}"}}
+        (moai_dir / "config.json").write_text(json.dumps(config_data))
+
+        result = _get_project_config_version(project_path)
+        assert result == "0.0.0", "Should return 0.0.0 when both versions are placeholders"
+
+        # Test 4: Valid versions (no placeholders)
+        config_data = {"moai": {"version": "0.8.1"}, "project": {"template_version": "0.8.1"}}
+        (moai_dir / "config.json").write_text(json.dumps(config_data))
+
+        result = _get_project_config_version(project_path)
+        assert result == "0.8.1", "Should return template_version when it's valid"
+
+        # Test 5: template_version preferred over moai.version
+        config_data = {"moai": {"version": "0.8.0"}, "project": {"template_version": "0.8.1"}}
+        (moai_dir / "config.json").write_text(json.dumps(config_data))
+
+        result = _get_project_config_version(project_path)
+        assert result == "0.8.1", "Should prefer template_version over moai.version"
+
+    def test_compare_versions_with_invalid_version(self):
+        """Test that _compare_versions handles InvalidVersion exceptions gracefully"""
+        from moai_adk.cli.commands.update import _compare_versions
+        from packaging.version import InvalidVersion
+        import pytest
+
+        # Valid versions should work fine
+        result = _compare_versions("0.8.0", "0.8.1")
+        assert result == -1, "0.8.0 should be less than 0.8.1"
+
+        # Invalid versions should raise InvalidVersion
+        with pytest.raises(InvalidVersion):
+            _compare_versions("{{MOAI_VERSION}}", "0.8.1")
+
+        with pytest.raises(InvalidVersion):
+            _compare_versions("0.8.1", "{{MOAI_VERSION}}")
+
+    def test_update_command_with_unsubstituted_config(self, tmp_path):
+        """Test that update command handles unsubstituted placeholders gracefully"""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            # Create .moai structure with placeholder version
+            moai_dir = Path(".moai")
+            moai_dir.mkdir()
+            import json
+            config_data = {
+                "moai": {"version": "{{MOAI_VERSION}}"},  # Unsubstituted placeholder
+                "project": {"template_version": "0.8.0", "mode": "personal"}
+            }
+            (moai_dir / "config.json").write_text(json.dumps(config_data))
+
+            # Mock the TemplateProcessor to avoid actual file operations
+            with patch("moai_adk.cli.commands.update.TemplateProcessor") as mock_processor, \
+                 patch("moai_adk.cli.commands.update._get_current_version") as mock_current, \
+                 patch("moai_adk.cli.commands.update._get_latest_version") as mock_latest, \
+                 patch("moai_adk.cli.commands.update._get_package_config_version") as mock_pkg_ver, \
+                 patch("moai_adk.cli.commands.update._detect_tool_installer") as mock_installer:
+
+                mock_instance = Mock()
+                mock_instance.copy_templates.return_value = None
+                mock_processor.return_value = mock_instance
+
+                mock_current.return_value = "0.8.1"
+                mock_latest.return_value = "0.8.1"
+                mock_pkg_ver.return_value = "0.8.1"
+                mock_installer.return_value = ["echo", "upgraded"]
+
+                # Run update - should handle the invalid version gracefully
+                result = runner.invoke(update, ["--force"])
+
+                # Should not fail, should show warning about invalid version
+                assert result.exit_code == 0, f"Update should succeed but got: {result.output}"
+                assert ("Comparing config versions" in result.output or
+                        "Invalid version" in result.output or
+                        "Forcing template sync" in result.output), \
+                       f"Should handle invalid version gracefully: {result.output}"

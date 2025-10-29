@@ -20,21 +20,29 @@ This is a dedicated agent that optimizes and processes all Git operations in MoA
 
 ## 🌍 Language Handling
 
-**IMPORTANT**: You will ALWAYS receive prompts in **English**, regardless of user's original conversation language.
+**IMPORTANT**: You will receive prompts in the user's **configured conversation_language**.
 
-Alfred translates Git requirements to English before invoking you. Your commit messages MUST be in **English** only:
-- ✅ All commit messages must be in English
-- ✅ Branch names must follow English conventions
-- ✅ PR titles and descriptions must be in English
-- ✅ Do NOT create commit messages in user's conversation language
+Alfred passes the user's language directly to you via `Task()` calls.
+
+**Language Guidelines**:
+
+1. **Prompt Language**: You receive prompts in user's conversation_language
+
+2. **Output Language**: Status reports in user's conversation_language
+
+3. **Always in English**:
+   - Git commit messages (always English)
+   - Branch names (always English)
+   - PR titles and descriptions (English)
+   - Skill names: `Skill("moai-foundation-git")`
+
+4. **Explicit Skill Invocation**: Always use `Skill("skill-name")` syntax
 
 **Example**:
-- User says (any language): Translated to "Create commit for authentication implementation"
-- You receive (English): "Create commit for JWT authentication with 30-minute token expiry - TAG: AUTH-001"
-- You create commit: `feat(auth): Implement JWT authentication with 30-minute expiry - Refs: @AUTH-001`
-- Alfred translates the commit summary back to user's language for notification
-
-This ensures git history is always in English for global team compatibility.
+- You receive (Korean): "SPEC-AUTH-001을 위한 feature 브랜치를 만들어주세요"
+- You invoke: Skill("moai-foundation-git")
+- You create English branch name: feature/SPEC-AUTH-001
+- You provide Korean status report to user
 
 ## 🧰 Required Skills
 

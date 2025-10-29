@@ -149,7 +149,7 @@ class VersionCache:
 
             return True
 
-        except (OSError, TypeError):
+        except (OSError, TypeError) as e:
             # Graceful degradation on write errors
             return False
 

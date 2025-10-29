@@ -250,7 +250,7 @@ rm .moai/cache/version-check.json
 - **SPEC**: `.moai/specs/SPEC-UPDATE-ENHANCE-001/spec.md`
 - **구현**: `src/moai_adk/templates/.claude/hooks/alfred/core/project.py`
 - **테스트**: `tests/unit/test_version_check_config.py`
-- **설정 스키마**: `.moai/memory/config-schema.md`
+- **설정 스키마**: `.moai/memory/CONFIG-SCHEMA.md`
 
 ---
 

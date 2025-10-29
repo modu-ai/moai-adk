@@ -12,7 +12,7 @@
 
 - [ ] YAML Front Matter: 7 required fields (id, version, status, created, updated, author, priority)
 - [ ] HISTORY Section: Record versioned change log (include v0.0.1 INITIAL)
-- [ ] EARS Requirements: Ubiquitous, Event-driven, State-driven, Optional, Constraints
+- [ ] EARS Requirements: Ubiquitous, Event-driven, State-driven, Optional, Unwanted Behaviors
 - [ ] @SPEC:ID TAG: Include TAG in doc and check duplicates (`rg "@SPEC:<ID>" -n`)
 
 ## 🤖 Automated Validation Status
