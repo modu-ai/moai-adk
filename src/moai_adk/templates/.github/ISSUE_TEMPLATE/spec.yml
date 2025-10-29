@@ -111,14 +111,14 @@ body:
       required: false
 
   - type: textarea
-    id: constraints
+    id: unwanted-behaviors
     attributes:
-      label: "Constraints (IF)"
-      description: "System constraints and conditions"
+      label: "Unwanted Behaviors (IF-THEN)"
+      description: "Error handling, quality gates, and business rule enforcement"
       placeholder: |
-        - IF the token has expired, the system must return 401 Unauthorized
-        - IF the password is incorrect, the system must reject the login attempt
-      value: "### Constraints (IF)\n"
+        - IF the token has expired, THEN the system must return 401 Unauthorized
+        - IF the password is incorrect, THEN the system must reject the login attempt
+      value: "### Unwanted Behaviors (IF-THEN)\n"
     validations:
       required: false
 
@@ -170,9 +170,7 @@ body:
       value: |
         ## 📚 Reference
 
-        - **SPEC Metadata Guide**: See `{{DOCS_DIR}}/spec-metadata.md`
-        - **EARS Syntax Guide**: See `{{DOCS_DIR}}/development-guide.md`
+        - **SPEC Metadata Guide**: See `.moai/memory/spec-metadata.md`
+        - **EARS Syntax Guide**: See `.moai/memory/development-guide.md`
         - **Acceptance Criteria**: Use Given-When-Then (Gherkin) format
-        {% if ENABLE_TAG_SYSTEM -%}
-        - **Traceability System**: @SPEC, @TEST, @CODE, @DOC traceability
-        {% endif -%}
+        - **@TAG System**: @SPEC, @TEST, @CODE, @DOC traceability

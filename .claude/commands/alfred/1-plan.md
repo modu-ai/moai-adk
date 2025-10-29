@@ -372,7 +372,7 @@ Only if the user selects **"Proceed"** or **"Start"** will Alfred call the spec-
 ### State-driven Requirements
 - When the WHILE token is in an unexpired state, the system must allow access to the protected resource.
 
-### Constraints
+### Unwanted Behaviors
 - If the IF token has expired, the system must return a 401 Unauthorized response.
 ```
 
@@ -484,8 +484,8 @@ author: @username
 ### Optional (Optional function)
 - If WHERE [condition], the system can [operate]
 
-### Constraints
-- IF [condition], the system must be [constrained]
+### Unwanted Behaviors
+- IF [condition], the system must [respond appropriately with error handling or quality gates]
 
 ## Traceability (@TAG)
 - **SPEC**: @SPEC:AUTH-001
@@ -630,7 +630,7 @@ done
 **CodeRabbit review includes:**
 - ✅ YAML frontmatter validation (7 required fields)
 - ✅ HISTORY section structure and completeness
-- ✅ EARS requirements clarity (Ubiquitous/Event/State/Optional/Constraints)
+- ✅ EARS requirements clarity (Ubiquitous/Event-driven/State-driven/Optional/Unwanted Behaviors)
 - ✅ Acceptance criteria quality (Given-When-Then scenarios)
 - ✅ @TAG system compliance (SPEC/TEST/CODE/DOC traceability)
 - ✅ Documentation and formatting
