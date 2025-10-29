@@ -53,25 +53,499 @@ MoAI-ADK（MoAI Agentic Development Kit）は、**開発プロセスのすべて
 
 ---
 
-## 5 分クイックスタート
+## ⚡ 3 分超スピードスタート
+
+初めてのMoAI-ADKプロジェクトを**3ステップ**で実行。初心者なら5分以内に完成できます。
+
+### ステップ1️⃣: uv をインストール（約1分）
+
+#### コマンド
 
 ```bash
-# 1.（任意）uv をインストール — pip より速い Python パッケージマネージャー
+# macOS/Linux
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# 2. MoAI-ADK をインストール（tool モード: グローバル隔離実行）
-uv tool install moai-adk
+# Windows (PowerShell)
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 
-# 3. 新規プロジェクトを開始
-moai-adk init my-project
-cd my-project
-
-# 4. Claude Code（または CLI）から Alfred を呼び出す
-claude  # Claude Code を起動して以下のコマンドを実行
-/alfred:0-project "プロジェクト名"
+# 確認
+uv --version
 ```
 
-> 🔍 確認コマンド: `moai-adk doctor` — Python/uv バージョン、`.moai/` 構造、エージェント／Skills の準備状況をチェックします。
+#### 期待される出力
+```
+✓ uv 0.5.1 is already installed
+$ uv --version
+uv 0.5.1
+```
+
+#### 次: MoAI-ADK をインストール
+
+```bash
+uv tool install moai-adk
+
+# 結果: ✅ Installed moai-adk v0.9.0
+```
+
+**確認**:
+```bash
+moai-adk --version
+# 出力: MoAI-ADK v0.9.0
+```
+
+---
+
+### ステップ2️⃣: 初めてのプロジェクトを作成（約1分）
+
+#### コマンド
+
+```bash
+moai-adk init hello-world
+cd hello-world
+```
+
+#### 作成されるもの
+
+```
+hello-world/
+├── .moai/              ✅ Alfred設定
+├── .claude/            ✅ Claude Code自動化
+├── CLAUDE.md           ✅ プロジェクトガイド
+└── README.md           ✅ プロジェクトドキュメント
+```
+
+#### 確認: 主要ファイルをチェック
+
+```bash
+# 設定ファイルが存在するか確認
+ls -la .moai/config.json  # ✅ 存在するはず
+ls -la .claude/commands/  # ✅ コマンドがあるはず
+
+# または一括確認
+moai-adk doctor
+```
+
+**期待される出力**:
+```
+✅ Python 3.13.0
+✅ uv 0.5.1
+✅ .moai/ directory initialized
+✅ .claude/ directory ready
+✅ 12 agents configured
+✅ 55 skills loaded
+```
+
+---
+
+### ステップ3️⃣: Alfred を起動（約1分）
+
+#### Claude Code を実行
+
+```bash
+claude
+```
+
+#### Claude Code で以下を入力
+
+```
+/alfred:0-project
+```
+
+#### Alfred が質問すること
+
+```
+Q1: プロジェクト名は？
+A: hello-world
+
+Q2: プロジェクトの目標は？
+A: MoAI-ADK の学習
+
+Q3: 主な開発言語は？
+A: python
+
+Q4: モードは？
+A: personal（ローカル開発用）
+```
+
+#### 結果: プロジェクト準備完了！ ✅
+
+```
+✅ プロジェクト初期化完了
+✅ 設定を .moai/config.json に保存
+✅ ドキュメントを .moai/project/ に作成
+✅ Alfred がスキルを推奨
+
+次へ: /alfred:1-plan "機能説明"
+```
+
+---
+
+## 次へ: 10分で初めての機能を完成させる
+
+SPEC、TDD、自動生成ドキュメントでプロジェクトを構築する準備ができました！
+
+> **→ 続きを見る: ["初めての10分実習: Hello World API"](#-初めての10分実習-hello-world-api)**
+
+このセクションで体験すること:
+- ✅ SPEC を使用して API を定義する
+- ✅ TDD サイクル完全体験（RED → GREEN → REFACTOR）
+- ✅ ドキュメント自動生成
+- ✅ @TAG システムの理解
+
+---
+
+## 前のバージョンのガイド（任意）
+
+詳しい説明が必要な場合は、以下を参考にしてください。
+
+### インストール詳細ガイド
+
+**uv インストール後、PATH を設定**:
+```bash
+# uv コマンドが見つからない場合は、PATH を手動で追加（macOS/Linux）
+export PATH="$HOME/.cargo/bin:$PATH"
+
+# 再度確認
+uv --version
+```
+
+**利用可能な moai-adk コマンド**:
+```bash
+moai-adk init          # 新規プロジェクト初期化
+moai-adk doctor        # システム診断
+moai-adk update        # 最新バージョンに更新
+```
+
+### プロジェクト作成詳細ガイド
+
+**新しいプロジェクトを作成**:
+```bash
+moai-adk init my-project
+cd my-project
+```
+
+**既存プロジェクトに追加**:
+```bash
+cd your-existing-project
+moai-adk init .
+```
+
+完全なディレクトリ構造が作成されます:
+```
+my-project/
+├── .moai/                          # MoAI-ADK プロジェクト設定
+│   ├── config.json                 # プロジェクト設定（言語、モード、所有者）
+│   ├── project/                    # プロジェクト情報
+│   │   ├── product.md              # 製品ビジョンと目標
+│   │   ├── structure.md            # ディレクトリ構造
+│   │   └── tech.md                 # テックスタックとアーキテクチャ
+│   ├── memory/                     # Alfred の知識ベース（8ファイル）
+│   ├── specs/                      # SPEC ファイル
+│   └── reports/                    # 分析レポート
+├── .claude/                        # Claude Code 自動化
+│   ├── agents/                     # 12 Sub-agents
+│   ├── commands/                   # 4 Alfred コマンド
+│   ├── skills/                     # 55+ Claude Skills
+│   ├── hooks/                      # イベント駆動自動化
+│   ├── output-styles/              # レスポンススタイル
+│   └── settings.json               # Claude Code 設定
+├── src/                            # 実装コード
+├── tests/                          # テストコード
+├── docs/                           # 自動生成ドキュメント
+├── CLAUDE.md                       # Alfred のコア指令
+└── README.md
+```
+
+---
+
+## コア概念: 3ステップ反復サイクル
+
+初期設定後、すべての機能は次の3ステップを反復します:
+
+| ステップ | コマンド | 説明 | 時間 |
+|---------|---------|------|------|
+| 📋 **PLAN** | `/alfred:1-plan "機能説明"` | SPEC を作成（EARS 形式） | 2分 |
+| 💻 **RUN** | `/alfred:2-run SPEC-ID` | TDD 実装（RED→GREEN→REFACTOR） | 5分 |
+| 📚 **SYNC** | `/alfred:3-sync` | ドキュメントを自動同期 | 1分 |
+
+**1サイクル = 約8分** → **1日に7～8機能が完成** ⚡
+
+---
+
+## 完全な7ステップガイド
+
+詳細な説明が必要な場合は、[GitHub History](https://github.com/modu-ai/moai-adk/blob/main/README.ja.md) のバージョン履歴を参照してください。
+
+---
+
+---
+
+## 🚀 初めての10分実習: Hello World API
+
+**目標**: MoAI-ADK の完全なワークフローを10分で体験する
+**学習内容**: SPEC 作成、TDD 実装、ドキュメント自動化、TAG システム
+
+> 3分超スピードスタートをすでに完了しましたか？ここから始めてください！
+
+### 前提条件
+- ✅ MoAI-ADK がインストール済み
+- ✅ プロジェクト作成完了（`moai-adk init hello-world`）
+- ✅ Claude Code 実行中
+
+---
+
+### ステップ1: SPEC を作成（2分）
+
+#### コマンド
+```bash
+/alfred:1-plan "GET /hello エンドポイント - クエリパラメータ 'name' を受け取り、挨拶を返す"
+```
+
+#### Alfred が自動的に作成
+```
+✅ SPEC ID: HELLO-001
+✅ ファイル: .moai/specs/SPEC-HELLO-001/spec.md
+✅ ブランチ: feature/SPEC-HELLO-001
+```
+
+#### 生成された SPEC を確認
+```bash
+cat .moai/specs/SPEC-HELLO-001/spec.md
+```
+
+**コンテンツ例**:
+```yaml
+---
+id: HELLO-001
+version: 0.0.1
+status: draft
+priority: high
+---
+
+# `@SPEC:HELLO-001: Hello World API
+
+## Ubiquitous Requirements
+- システムは HTTP GET /hello エンドポイントを提供しなければならない
+
+## Event-driven Requirements
+- WHEN クエリパラメータ 'name' が提供される場合、"Hello, {name}!" を返さなければならない
+- WHEN name がない場合、"Hello, World!" を返さなければならない
+
+## Constraints
+- name は最大50文字に制限されなければならない
+- レスポンス形式は JSON でなければならない
+```
+
+✅ **確認**: `ls .moai/specs/SPEC-HELLO-001/`
+
+---
+
+### ステップ2: TDD 実装（5分）
+
+#### コマンド
+```bash
+/alfred:2-run HELLO-001
+```
+
+#### 🔴 RED フェーズ: 失敗するテストを作成
+
+**作成されるファイル**: `tests/test_hello.py`
+
+```python
+# `@TEST:HELLO-001 | SPEC: SPEC-HELLO-001.md
+
+import pytest
+from fastapi.testclient import TestClient
+from src.hello.api import app
+
+client = TestClient(app)
+
+def test_hello_with_name_should_return_personalized_greeting():
+    """WHEN name が提供される場合、パーソナライズされた挨拶を返す"""
+    response = client.get("/hello?name=太郎")
+    assert response.status_code == 200
+    assert response.json() == {"message": "Hello, 太郎!"}
+
+def test_hello_without_name_should_return_default_greeting():
+    """WHEN name がない場合、デフォルト挨拶を返す"""
+    response = client.get("/hello")
+    assert response.status_code == 200
+    assert response.json() == {"message": "Hello, World!"}
+```
+
+**実行**:
+```bash
+pytest tests/test_hello.py -v
+```
+
+**結果**: ❌ FAILED（app が存在しない - 予期した動作！）
+
+**コミット**:
+```bash
+git add tests/test_hello.py
+git commit -m "🔴 test(HELLO-001): add failing hello API tests"
+```
+
+---
+
+#### 🟢 GREEN フェーズ: 最小限の実装
+
+**作成されるファイル**: `src/hello/api.py`
+
+```python
+# `@CODE:HELLO-001:API | SPEC: SPEC-HELLO-001.md | TEST: tests/test_hello.py
+
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/hello")
+def hello(name: str = "World"):
+    """@CODE:HELLO-001:API - Hello endpoint"""
+    return {"message": f"Hello, {name}!"}
+```
+
+**実行**:
+```bash
+pytest tests/test_hello.py -v
+```
+
+**結果**: ✅ PASSED（すべてのテストが成功！）
+
+**コミット**:
+```bash
+git add src/hello/api.py
+git commit -m "🟢 feat(HELLO-001): implement hello API"
+```
+
+---
+
+#### ♻️ REFACTOR フェーズ: コードを改善
+
+**改善されたコード**:
+
+```python
+from fastapi import FastAPI, HTTPException
+
+app = FastAPI()
+
+@app.get("/hello")
+def hello(name: str = "World"):
+    """@CODE:HELLO-001:API - Hello endpoint with validation"""
+    if len(name) > 50:
+        raise HTTPException(status_code=400, detail="Name too long (max 50 chars)")
+    return {"message": f"Hello, {name}!"}
+```
+
+**テストを追加**:
+```python
+def test_hello_with_long_name_should_return_400():
+    """WHEN name が50文字を超える場合、400エラーを返す"""
+    long_name = "a" * 51
+    response = client.get(f"/hello?name={long_name}")
+    assert response.status_code == 400
+```
+
+**実行**:
+```bash
+pytest tests/test_hello.py -v
+```
+
+**結果**: ✅ PASSED（すべてのテストが成功！）
+
+**コミット**:
+```bash
+git add tests/test_hello.py src/hello/api.py
+git commit -m "♻️ refactor(HELLO-001): add name length validation"
+```
+
+---
+
+### ステップ3: ドキュメント同期（2分）
+
+#### コマンド
+```bash
+/alfred:3-sync
+```
+
+#### Alfred が自動的に処理
+```
+✅ docs/api/hello.md - API ドキュメント生成
+✅ README.md - 使用例追加
+✅ CHANGELOG.md - リリースノート追加
+✅ TAG チェーン検証 - すべての @TAG 確認
+```
+
+#### 生成された API ドキュメントを確認
+```bash
+cat docs/api/hello.md
+```
+
+**コンテンツ例**:
+```markdown
+# Hello API ドキュメント
+
+## GET /hello
+
+### 説明
+提供されている名前に基づいてパーソナライズされた挨拶を返します。
+
+### パラメータ
+- `name` (query, optional): 人の名前（デフォルト: "World"、最大50文字）
+
+### レスポンス
+- **200**: 成功
+  ```json
+  { "message": "Hello, 太郎!" }
+  ```
+- **400**: 名前が長すぎる
+
+### 例
+```bash
+curl "http://localhost:8000/hello?name=太郎"
+# → {"message": "Hello, 太郎!"}
+
+curl "http://localhost:8000/hello"
+# → {"message": "Hello, World!"}
+```
+
+### トレーサビリティ
+- `@SPEC:HELLO-001` - 要件
+- `@TEST:HELLO-001` - テスト
+- `@CODE:HELLO-001:API` - 実装
+```
+
+---
+
+### ステップ4: TAG チェーンを検証（1分）
+
+#### コマンド
+```bash
+rg '@(SPEC|TEST|CODE|DOC):HELLO-001' -n
+```
+
+#### 出力（完全なトレーサビリティ）
+```
+.moai/specs/SPEC-HELLO-001/spec.md:7:# `@SPEC:HELLO-001: Hello World API
+tests/test_hello.py:3:# `@TEST:HELLO-001 | SPEC: SPEC-HELLO-001.md
+src/hello/api.py:3:# `@CODE:HELLO-001:API | SPEC: SPEC-HELLO-001.md
+docs/api/hello.md:24:- `@SPEC:HELLO-001`
+```
+
+✅ **完全なチェーン**: SPEC → TEST → CODE → DOC（完全にトレーサブル！）
+
+---
+
+### まとめ: 成し遂げたこと
+
+わずか10分で：
+
+✅ **SPEC** - 明確な要件文書化
+✅ **TDD** - Red → Green → Refactor サイクル
+✅ **実装** - シンプルで テスト可能なコード（@CODE TAG付き）
+✅ **ドキュメント** - コードから自動生成
+✅ **トレーサビリティ** - 完全な @TAG チェーン: SPEC → TEST → CODE → DOC
+✅ **Git履歴** - クリーンでセマンティックなコミット（🔴 🟢 ♻️）
 
 ---
 
@@ -177,8 +651,11 @@ graph TD
 | `/alfred:1-plan <説明>`   | 要件分析、SPEC 下書き、Plan Board 作成                   | `.moai/specs/SPEC-*/spec.md`, plan/acceptance 文書, フィーチャーブランチ |
 | `/alfred:2-run <SPEC-ID>` | TDD 実行、テスト／実装／リファクタリング、品質検証       | `tests/`, `src/` 実装, 品質レポート, TAG 連携                            |
 | `/alfred:3-sync`          | ドキュメント／README／CHANGELOG 同期、TAG／PR 状態を整理 | `docs/`, `.moai/reports/sync-report.md`, レビュー準備済み PR             |
+| `/alfred:9-feedback`      | 対話的に GitHub Issue を作成（種類 → タイトル → 説明 → 優先度） | GitHub Issue + 自動ラベル + 優先度 + URL |
 
 > ❗ すべてのコマンドは **Phase 0（任意）→ Phase 1 → Phase 2 → Phase 3** のループを守ります。Alfred が現在の状況と次のステップを自動で報告します。
+>
+> 💡 **v0.7.0+ の新機能**: `/alfred:9-feedback` を使用して、開発中に GitHub Issue をその場で作成できます。開発フローを中断することなく、チーム全体で Issue を追跡・議論できます。
 
 ---
 

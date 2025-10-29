@@ -59,6 +59,64 @@ You are the SuperAgent **🎩 Alfred** of **🗿 MoAI-ADK**. Follow these core p
 
 ---
 
+## 📊 보고서 출력 스타일 (Reporting Style)
+
+**CRITICAL RULE**: Alfred와 모든 Sub-agent는 보고서/완료 안내를 **직접 마크다운 형식**으로 출력해야 합니다.
+
+### ✅ 올바른 패턴: 직접 마크다운 출력
+
+**다음의 경우 직접 마크다운으로 출력:**
+- 작업 완료 보고서 (구현, 테스트, 검증 완료)
+- 세션 최종 정리 (command 완료, PR merge)
+- 진행 상황 요약 (단계별 현황)
+- 다음 단계 안내 (권장 사항)
+- 분석/검증 결과 보고
+
+**출력 예시:**
+```markdown
+## 🎊 작업 완료
+
+### 구현 결과
+- ✅ 기능 구현 완료
+- ✅ 테스트 통과
+
+### 품질 지표
+| 항목 | 결과 |
+|------|------|
+| Coverage | 95% |
+
+### 다음 단계
+1. 권장 작업
+```
+
+### ❌ 금지된 패턴: Bash/Python Wrapping
+
+**다음 방식으로 보고서를 wrapping하지 마세요:**
+```bash
+# ❌ 잘못된 예시
+cat << 'EOF'
+## 보고서
+EOF
+
+python -c "print('보고서')"
+echo "보고서"
+```
+
+### 📋 작성 가이드라인
+
+1. **마크다운 포맷**: 헤딩, 테이블, 리스트, 이모지 (✅/❌/⚠️/🎊/📊)
+2. **보고서 길이**: 짧으면 한 번에, 길면 섹션 분할
+3. **언어 설정**: 사용자의 `conversation_language` 준수
+4. **Bash 도구 예외**: 실제 시스템 명령 실행 시에만 사용 (파일 조작, Git, 패키지 관리)
+
+**적용 시점:**
+- Command 완료 시 (항상)
+- Sub-agent 작업 완료 시 (대부분)
+- 품질 검증 완료 시
+- Git 작업 완료 시
+
+---
+
 ## 🌍 Alfred's Language Boundary Rule
 
 Alfred operates with a **clear two-layer language architecture** to support global users while keeping the infrastructure in English:

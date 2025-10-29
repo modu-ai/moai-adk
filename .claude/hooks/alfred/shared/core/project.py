@@ -16,58 +16,6 @@ from typing import Any
 CACHE_DIR_NAME = ".moai/cache"
 
 
-def find_project_root(start_path: str | Path = ".") -> Path:
-    """Find MoAI-ADK project root by searching upward for .moai/config.json
-
-    Traverses up the directory tree until it finds .moai/config.json or CLAUDE.md,
-    which indicates the project root. This ensures cache and other files are
-    always created in the correct location, regardless of where hooks execute.
-
-    Args:
-        start_path: Starting directory (default: current directory)
-
-    Returns:
-        Project root Path. If not found, returns start_path as absolute path.
-
-    Examples:
-        >>> find_project_root(".")
-        Path("/Users/user/my-project")
-        >>> find_project_root(".claude/hooks/alfred")
-        Path("/Users/user/my-project")  # Found root 3 levels up
-
-    Notes:
-        - Searches for .moai/config.json first (most reliable)
-        - Falls back to CLAUDE.md if config.json not found
-        - Max depth: 10 levels up (prevent infinite loop)
-        - Returns absolute path for consistency
-
-    TDD History:
-        - RED: 4 test scenarios (root, nested, not found, symlinks)
-        - GREEN: Minimal upward search with .moai/config.json detection
-        - REFACTOR: Add CLAUDE.md fallback, max depth limit, absolute path return
-    """
-    current = Path(start_path).resolve()
-    max_depth = 10  # Prevent infinite loop
-
-    for _ in range(max_depth):
-        # Check for .moai/config.json (primary indicator)
-        if (current / ".moai" / "config.json").exists():
-            return current
-
-        # Check for CLAUDE.md (secondary indicator)
-        if (current / "CLAUDE.md").exists():
-            return current
-
-        # Move up one level
-        parent = current.parent
-        if parent == current:  # Reached filesystem root
-            break
-        current = parent
-
-    # Not found - return start_path as absolute
-    return Path(start_path).resolve()
-
-
 class TimeoutError(Exception):
     """Signal-based timeout exception"""
     pass
@@ -299,7 +247,7 @@ def count_specs(cwd: str) -> dict[str, int]:
     Also tracks deprecated SPECs (archived TypeScript implementations).
 
     Args:
-        cwd: Project root directory path (or any subdirectory, will search upward)
+        cwd: Project root directory path
 
     Returns:
         SPEC progress dictionary. Includes the following keys:
@@ -319,18 +267,16 @@ def count_specs(cwd: str) -> dict[str, int]:
     Notes:
         - SPEC File Location: .moai/specs/SPEC-{ID}/spec.md
         - Completion condition: Include "status: completed" in YAML front matter
+        - Deprecated condition: Include "archived-typescript" label
         - If parsing fails, the SPEC is considered incomplete.
-        - Automatically finds project root to locate .moai/specs/
 
     TDD History:
         - RED: 5 items scenario test (0/0, 2/5, 5/5, no directory, parsing error)
         - GREEN: SPEC search with Path.iterdir(), YAML parsing implementation
         - REFACTOR: Strengthened exception handling, improved percentage calculation safety
-        - UPDATE: Add project root detection for consistent path resolution
+        - UPDATE: Track deprecated SPECs (archived TypeScript implementations)
     """
-    # Find project root to ensure we read specs from correct location
-    project_root = find_project_root(cwd)
-    specs_dir = project_root / ".moai" / "specs"
+    specs_dir = Path(cwd) / ".moai" / "specs"
 
     if not specs_dir.exists():
         return {"completed": 0, "total": 0, "percentage": 0, "deprecated": 0}
@@ -380,7 +326,7 @@ def get_project_language(cwd: str) -> str:
     """Determine the primary project language (prefers config.json).
 
     Args:
-        cwd: Project root directory (or any subdirectory, will search upward).
+        cwd: Project root directory.
 
     Returns:
         Language string in lower-case.
@@ -388,11 +334,8 @@ def get_project_language(cwd: str) -> str:
     Notes:
         - Reads ``.moai/config.json`` first for a quick answer.
         - Falls back to ``detect_language`` if configuration is missing.
-        - Automatically finds project root to locate .moai/config.json
     """
-    # Find project root to ensure we read config from correct location
-    project_root = find_project_root(cwd)
-    config_path = project_root / ".moai" / "config.json"
+    config_path = Path(cwd) / ".moai" / "config.json"
     if config_path.exists():
         try:
             config = json.loads(config_path.read_text())
@@ -403,8 +346,8 @@ def get_project_language(cwd: str) -> str:
             # Fall back to detection on parse errors
             pass
 
-    # Fall back to the original language detection routine (use project root)
-    return detect_language(str(project_root))
+    # Fall back to the original language detection routine
+    return detect_language(cwd)
 
 
 # @CODE:CONFIG-INTEGRATION-001
@@ -449,9 +392,7 @@ def get_version_check_config(cwd: str) -> dict[str, Any]:
         "cache_ttl_hours": 24
     }
 
-    # Find project root to ensure we read config from correct location
-    project_root = find_project_root(cwd)
-    config_path = project_root / ".moai" / "config.json"
+    config_path = Path(cwd) / ".moai" / "config.json"
     if not config_path.exists():
         return defaults
 
@@ -578,36 +519,42 @@ def is_major_version_change(current: str, latest: str) -> bool:
 def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
     """Check MoAI-ADK current and latest version with caching and offline support.
 
+    ⭐ CRITICAL GUARANTEE: This function ALWAYS returns the current installed version.
+    Network failures, cache issues, and timeouts NEVER result in "unknown" version.
+
     Execution flow:
-    1. Try to load from cache (< 50ms)
-    2. If cache invalid, check network
-    3. If network available, query PyPI
-    4. If network unavailable, return current version only
-    5. Save result to cache for next time
+    1. Get current installed version (ALWAYS succeeds) ← CRITICAL
+    2. Build minimal result with current version
+    3. Try to load from cache (< 50ms) - optional enhancement
+    4. If cache valid, return cached latest info
+    5. If cache invalid/miss, optionally query PyPI - optional enhancement
+    6. Save result to cache for next time - optional
 
     Args:
         cwd: Project root directory (for cache location)
 
     Returns:
         dict with keys:
-            - "current": Current installed version
-            - "latest": Latest version available on PyPI
+            - "current": Current installed version (ALWAYS valid, never empty)
+            - "latest": Latest version available on PyPI (may be "unknown")
             - "update_available": Boolean indicating if update is available
             - "upgrade_command": Recommended upgrade command (if update available)
-            - "release_notes_url": URL to release notes (Phase 3)
-            - "is_major_update": Boolean indicating major version change (Phase 3)
+            - "release_notes_url": URL to release notes
+            - "is_major_update": Boolean indicating major version change
 
-    Note:
-        - Cache hit (< 24 hours): Returns in ~20ms, no network access
-        - Cache miss + online: Query PyPI (1s timeout), cache result
-        - Cache miss + offline: Return current version only (~100ms)
-        - Offline + cached: Return from cache in ~20ms
+    Guarantees:
+        - Cache hit (< 24 hours): Returns in ~20ms, no network access ✓
+        - Cache miss + online: Query PyPI (1s timeout), cache result ✓
+        - Cache miss + offline: Return current version only (~100ms) ✓
+        - Network timeout: Returns current + "unknown" latest (~50ms) ✓
+        - Any exception: Always returns current version ✓
 
     TDD History:
         - RED: 5 test scenarios (network detection, cache integration, offline mode)
         - GREEN: Integrate VersionCache with network detection
         - REFACTOR: Extract cache directory constant, improve error handling
         - Phase 3: Add release_notes_url and is_major_update fields (@CODE:VERSION-INTEGRATE-FIELDS-001)
+        - Phase 4: CRITICAL FIX - Always guarantee current version return (@CODE:VERSION-ALWAYS-VALID-001)
     """
     import importlib.util
     import urllib.error
@@ -629,51 +576,47 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
         # Graceful degradation: skip caching on import errors
         VersionCache = None
 
-    # 1. Find project root (ensure cache is always in correct location)
-    # This prevents creating .moai/cache in wrong locations when hooks run
-    # from subdirectories like .claude/hooks/alfred/
-    project_root = find_project_root(cwd)
-
-    # 2. Initialize cache (skip if VersionCache couldn't be imported)
-    cache_dir = project_root / CACHE_DIR_NAME
+    # 1. Initialize cache (skip if VersionCache couldn't be imported)
+    cache_dir = Path(cwd) / CACHE_DIR_NAME
     version_cache = VersionCache(cache_dir) if VersionCache else None
 
-    # 2. Get current installed version first (needed for cache validation)
+    # 2. CRITICAL: Get current installed version first (NEVER skip this)
     current_version = "unknown"
     try:
         current_version = version("moai-adk")
     except PackageNotFoundError:
         current_version = "dev"
-        # Dev mode - skip cache and return immediately
-        return {
-            "current": "dev",
-            "latest": "unknown",
-            "update_available": False,
-            "upgrade_command": ""
-        }
+    except Exception:
+        # Fallback for any other import errors
+        current_version = "unknown"
 
-    # 3. Try to load from cache (fast path with version validation)
-    if version_cache and version_cache.is_valid():
-        cached_info = version_cache.load()
-        if cached_info:
-            # Only use cache if the cached version matches current installed version
-            # This prevents stale cache when package is upgraded locally
-            if cached_info.get("current") == current_version:
-                # Ensure new fields exist for backward compatibility
-                if "release_notes_url" not in cached_info:
-                    # Add missing fields to old cached data
-                    cached_info.setdefault("release_notes_url", None)
-                    cached_info.setdefault("is_major_update", False)
-                return cached_info
-            # else: cache is stale (version changed), fall through to re-check
-
-    # 4. Cache miss or stale - need to query PyPI
+    # 2a. Build minimal result with current version guaranteed
     result = {
         "current": current_version,
         "latest": "unknown",
         "update_available": False,
-        "upgrade_command": ""
+        "upgrade_command": "",
+        "release_notes_url": None,
+        "is_major_update": False
     }
+
+    # 2b. Early exit for dev/unknown modes (no cache/network needed)
+    if current_version in ["dev", "unknown"]:
+        return result
+
+    # 3. Try to load from cache (optional optimization)
+    if version_cache and version_cache.is_valid():
+        cached_info = version_cache.load()
+        if cached_info and cached_info.get("current") == current_version:
+            # Cache is valid and up-to-date
+            # Ensure new fields exist for backward compatibility
+            cached_info.setdefault("release_notes_url", None)
+            cached_info.setdefault("is_major_update", False)
+            return cached_info
+        # else: cache is stale (version changed) or invalid, fall through to re-check
+
+    # 4. Cache miss or stale - optionally query PyPI (but result is already built at line 589)
+    # Note: result already has current_version set, so we'll only enhance it with latest info
 
     # 5. Check if version check is enabled in config
     config = get_version_check_config(cwd)
@@ -746,7 +689,6 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
 
 
 __all__ = [
-    "find_project_root",
     "detect_language",
     "get_git_info",
     "count_specs",

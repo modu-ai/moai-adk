@@ -118,13 +118,13 @@ From the moment you adopt MoAI-ADK, you'll feel:
 
 ---
 
-## 5-Minute Quick Start
+## ⚡ 3-Minute Lightning Start
 
-Now let's start your first project with MoAI-ADK. Follow these 5 steps and in just **5 minutes** you'll have a project with SPEC, TDD, and documentation all connected.
+Get your first MoAI-ADK project running in **3 simple steps**. Beginners can finish in under 5 minutes.
 
-### Step 1: Install uv (about 30 seconds)
+### Step 1: Install uv (about 1 minute)
 
-First, install `uv`. `uv` is an ultra-fast Python package manager written in Rust. It's **10+ times faster** than traditional `pip` and works perfectly with MoAI-ADK.
+#### Command
 
 ```bash
 # macOS/Linux
@@ -133,46 +133,169 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # Windows (PowerShell)
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 
-# Verify installation
+# Verify
 uv --version
-# Output: uv 0.x.x
 ```
 
-**Why uv?** MoAI-ADK is optimized to leverage uv's fast installation speed and stability. Perfect project isolation means no impact on other Python environments.
+#### Expected Output
+```
+✓ uv 0.5.1 is already installed
+$ uv --version
+uv 0.5.1
+```
 
-### Step 2: Install MoAI-ADK (about 1 minute)
-
-Install MoAI-ADK as a global tool. This won't affect your project dependencies.
+#### Next: Install MoAI-ADK
 
 ```bash
-# Install in tool mode (recommended: runs in isolated environment)
 uv tool install moai-adk
 
-# Verify installation
-moai-adk --version
-# Output: MoAI-ADK v1.0.0
+# Result: ✅ Installed moai-adk v0.9.0
 ```
 
-Once installed, you can use the `moai-adk` command anywhere.
+**Verification**:
+```bash
+moai-adk --version
+# Output: MoAI-ADK v0.9.0
+```
 
-### Step 3: Create Project (about 1 minute)
+---
 
-**To start a new project:**
+### Step 2: Create Your First Project (about 1 minute)
 
+#### Command
+
+```bash
+moai-adk init hello-world
+cd hello-world
+```
+
+#### What Gets Created
+
+```
+hello-world/
+├── .moai/              ✅ Alfred configuration
+├── .claude/            ✅ Claude Code automation
+├── CLAUDE.md           ✅ Project guide
+└── README.md           ✅ Project documentation
+```
+
+#### Verification: Check Core Files
+
+```bash
+# Verify core config file exists
+ls -la .moai/config.json  # ✅ Should exist
+ls -la .claude/commands/  # ✅ Should have commands
+
+# Or all at once
+moai-adk doctor
+```
+
+**Expected Output**:
+```
+✅ Python 3.13.0
+✅ uv 0.5.1
+✅ .moai/ directory initialized
+✅ .claude/ directory ready
+✅ 12 agents configured
+✅ 55 skills loaded
+```
+
+---
+
+### Step 3: Start Alfred (about 1 minute)
+
+#### Run Claude Code
+
+```bash
+claude
+```
+
+#### Enter in Claude Code
+
+```
+/alfred:0-project
+```
+
+#### Alfred Will Ask
+
+```
+Q1: Project name?
+A: hello-world
+
+Q2: Project goal?
+A: Learning MoAI-ADK
+
+Q3: Main development language?
+A: python
+
+Q4: Mode?
+A: personal (for local development)
+```
+
+#### Result: Project Ready! ✅
+
+```
+✅ Project initialized
+✅ Config saved to .moai/config.json
+✅ Documents created in .moai/project/
+✅ Alfred recommends skills
+
+Next: Run /alfred:1-plan "your feature description"
+```
+
+---
+
+## Next: Complete Your First Feature in 10 Minutes
+
+You're now ready to build your first complete feature with SPEC, TDD, and auto-generated docs!
+
+> **→ Continue to: ["First 10-Minute Hands-On: Hello World API"](#-first-10-minute-hands-on-hello-world-api)**
+
+In this section you'll experience:
+- ✅ Define an API using SPEC
+- ✅ Complete TDD cycle (RED → GREEN → REFACTOR)
+- ✅ Auto-generate documentation
+- ✅ Understand @TAG system
+
+---
+
+## Earlier Detailed Guide (Optional Reading)
+
+Need more explanations? See detailed guides below.
+
+### Detailed Installation Guide
+
+**After installing uv, verify PATH is set**:
+```bash
+# If uv command not found, set PATH manually (macOS/Linux)
+export PATH="$HOME/.cargo/bin:$PATH"
+
+# Verify again
+uv --version
+```
+
+**Available moai-adk commands**:
+```bash
+moai-adk init          # Initialize new project
+moai-adk doctor        # System diagnostics
+moai-adk update        # Update to latest version
+```
+
+### Detailed Project Creation
+
+**Create a new project**:
 ```bash
 moai-adk init my-project
 cd my-project
 ```
 
-**To add to an existing project:**
-
+**Add to existing project**:
 ```bash
 cd your-existing-project
 moai-adk init .
 ```
 
-This one command automatically generates:
-
+Complete directory structure created:
 ```
 my-project/
 ├── .moai/                          # MoAI-ADK project configuration
@@ -240,107 +363,300 @@ my-project/
 └── README.md
 ```
 
-### Step 4: Start Alfred in Claude Code (about 2 minutes)
+---
 
-Run Claude Code and invoke the Alfred SuperAgent:
+## Core Concept: 3-Step Repeating Cycle
 
+After initial setup, every feature follows this cycle:
+
+| Step | Command | What It Does | Output |
+|------|---------|-------------|--------|
+| 🚀 **INIT** | `/alfred:0-project` | Collect project description, create config/docs, recommend Skills | `.moai/config.json`, `.moai/project/*`, initial report |
+| 📋 **PLAN** | `/alfred:1-plan "feature description"` | Analyze requirements, draft SPEC, create Plan Board | `.moai/specs/SPEC-*/spec.md`, plan/acceptance docs, feature branch |
+| 💻 **RUN** | `/alfred:2-run SPEC-ID` | Execute TDD, run tests/implementation/refactor, verify quality | `tests/`, `src/` implementation, quality report, TAG links |
+| 📚 **SYNC** | `/alfred:3-sync` | Auto-sync docs/README/CHANGELOG, organize TAG/PR status | `docs/`, `.moai/reports/sync-report.md`, Ready PR |
+| 💬 **FEEDBACK** | `/alfred:9-feedback` | Interactive GitHub Issue creation (type → title → description → priority) | GitHub Issue + auto labels + priority + URL |
+
+> ✅ All commands follow the **Phase 0(optional) → Phase 1 → Phase 2 → Phase 3** cycle. Alfred automatically reports status and suggests next steps.
+>
+> 💡 **New in v0.7.0+**: Use `/alfred:9-feedback` to create GitHub Issues on-the-fly during development. Keep your team in sync without interrupting your workflow.
+
+---
+
+## Original Detailed Guide (Complete 7-Step Analysis)
+
+For comprehensive explanation, see the previous version in [GitHub History](https://github.com/modu-ai/moai-adk/blob/main/README.md).
+
+---
+
+---
+
+## 🚀 First 10-Minute Hands-On: Hello World API
+
+**Goal**: Experience the complete MoAI-ADK workflow in 10 minutes
+**Learn**: SPEC writing, TDD implementation, documentation automation, @TAG system
+
+> Already completed the 3-minute quick start? Start here!
+
+### Prerequisites
+- ✅ MoAI-ADK installed
+- ✅ Project created (`moai-adk init hello-world`)
+- ✅ Claude Code running
+
+---
+
+### Step 1: Write SPEC (2 minutes)
+
+#### Command
 ```bash
-# Run Claude Code
-claude
+/alfred:1-plan "GET /hello endpoint - receive query parameter 'name' and return greeting"
 ```
 
-Then enter this in Claude Code's command input:
-
+#### Alfred Automatically Creates
 ```
-/alfred:0-project
-```
-
-This command performs:
-
-1. **Collect Project Info**: "Project name?", "Goals?", "Main language?"
-2. **Auto-detect Tech Stack**: Automatically recognizes Python/JavaScript/Go, etc.
-3. **Deploy Skill Packs**: Prepares necessary Skills for your project
-4. **Generate Initial Report**: Project structure, suggested next steps
-
-### Step 5: Write First SPEC (about 1 minute)
-
-After project initialization completes, write your first feature as a SPEC:
-
-```
-/alfred:1-plan "User registration feature"
+✅ SPEC ID: HELLO-001
+✅ File: .moai/specs/SPEC-HELLO-001/spec.md
+✅ Branch: feature/SPEC-HELLO-001
 ```
 
-Automatically generated:
-
-- `@SPEC:USER-001` - Unique ID assigned
-- `.moai/specs/SPEC-USER-001/spec.md` - Professional SPEC in EARS format
-- `feature/spec-user-001` - Git branch auto-created
-
-### Step 6: TDD Implementation (about 3 minutes)
-
-Once SPEC is written, implement using TDD:
-
-```
-/alfred:2-run USER-001
+#### Check Generated SPEC
+```bash
+cat .moai/specs/SPEC-HELLO-001/spec.md
 ```
 
-This command handles:
+**Example Content**:
+```yaml
+---
+id: HELLO-001
+version: 0.0.1
+status: draft
+priority: high
+---
 
-- 🔴 **RED**: Automatically write failing test (`@TEST:USER-001`)
-- 🟢 **GREEN**: Minimal implementation to pass test (`@CODE:USER-001`)
-- ♻️ **REFACTOR**: Improve code quality
+# `@SPEC:HELLO-001: Hello World API
 
-### Step 7: Documentation Sync (about 1 minute)
+## Ubiquitous Requirements
+- System SHALL provide HTTP GET /hello endpoint
 
-Finally, auto-sync all documentation:
+## Event-driven Requirements
+- WHEN query parameter 'name' is provided, THEN return "Hello, {name}!"
+- WHEN name is absent, THEN return "Hello, World!"
 
+## Constraints
+- name limited to 50 characters max
+- Response format: JSON
 ```
+
+✅ **Verify**: `ls .moai/specs/SPEC-HELLO-001/`
+
+---
+
+### Step 2: TDD Implementation (5 minutes)
+
+#### Command
+```bash
+/alfred:2-run HELLO-001
+```
+
+#### 🔴 RED Phase: Write Failing Test
+
+**File Created**: `tests/test_hello.py`
+
+```python
+# `@TEST:HELLO-001 | SPEC: SPEC-HELLO-001.md
+
+import pytest
+from fastapi.testclient import TestClient
+from src.hello.api import app
+
+client = TestClient(app)
+
+def test_hello_with_name_should_return_personalized_greeting():
+    """WHEN name provided, THEN return personalized greeting"""
+    response = client.get("/hello?name=Alice")
+    assert response.status_code == 200
+    assert response.json() == {"message": "Hello, Alice!"}
+
+def test_hello_without_name_should_return_default_greeting():
+    """WHEN name absent, THEN return default greeting"""
+    response = client.get("/hello")
+    assert response.status_code == 200
+    assert response.json() == {"message": "Hello, World!"}
+```
+
+**Run**:
+```bash
+pytest tests/test_hello.py -v
+```
+
+**Result**: ❌ FAILED (app doesn't exist yet - expected!)
+
+**Commit**:
+```bash
+git add tests/test_hello.py
+git commit -m "🔴 test(HELLO-001): add failing hello API tests"
+```
+
+---
+
+#### 🟢 GREEN Phase: Minimal Implementation
+
+**File Created**: `src/hello/api.py`
+
+```python
+# `@CODE:HELLO-001:API | SPEC: SPEC-HELLO-001.md | TEST: tests/test_hello.py
+
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/hello")
+def hello(name: str = "World"):
+    """@CODE:HELLO-001:API - Hello endpoint"""
+    return {"message": f"Hello, {name}!"}
+```
+
+**Run**:
+```bash
+pytest tests/test_hello.py -v
+```
+
+**Result**: ✅ PASSED (all tests pass!)
+
+**Commit**:
+```bash
+git add src/hello/api.py
+git commit -m "🟢 feat(HELLO-001): implement hello API"
+```
+
+---
+
+#### ♻️ REFACTOR Phase: Add Validation
+
+**Enhanced Code**:
+
+```python
+from fastapi import FastAPI, HTTPException
+
+app = FastAPI()
+
+@app.get("/hello")
+def hello(name: str = "World"):
+    """@CODE:HELLO-001:API - Hello endpoint with validation"""
+    if len(name) > 50:
+        raise HTTPException(status_code=400, detail="Name too long (max 50 chars)")
+    return {"message": f"Hello, {name}!"}
+```
+
+**Add Test**:
+```python
+def test_hello_with_long_name_should_return_400():
+    """WHEN name exceeds 50 chars, THEN return 400 error"""
+    long_name = "a" * 51
+    response = client.get(f"/hello?name={long_name}")
+    assert response.status_code == 400
+```
+
+**Run**:
+```bash
+pytest tests/test_hello.py -v
+```
+
+**Result**: ✅ PASSED (all tests pass!)
+
+**Commit**:
+```bash
+git add tests/test_hello.py src/hello/api.py
+git commit -m "♻️ refactor(HELLO-001): add name length validation"
+```
+
+---
+
+### Step 3: Documentation Sync (2 minutes)
+
+#### Command
+```bash
 /alfred:3-sync
 ```
 
-Automatically generated/updated:
-
-- Living Document (API documentation)
-- README updates
-- CHANGELOG generation
-- @TAG chain validation
-
-### Complete!
-
-After these 7 steps, everything is ready:
-
-✅ Requirements specification (SPEC)
-✅ Test code (85%+ coverage)
-✅ Implementation code (tracked with @TAG)
-✅ API documentation (auto-generated)
-✅ Change history (CHANGELOG)
-✅ Git commit history (RED/GREEN/REFACTOR)
-
-**Everything completes in 15 minutes!**
-
-### Verify Generated Results
-
-Check if the generated results were properly created:
-
-```bash
-# 1. Check TAG chain (SPEC → TEST → CODE → DOC)
-rg '@(SPEC|TEST|CODE):USER-001' -n
-
-# 2. Run tests
-pytest tests/ -v
-
-# 3. Check generated documentation
-cat docs/api/user.md
-cat README.md
+#### Alfred Automatically
+```
+✅ docs/api/hello.md - API documentation generated
+✅ README.md - Usage examples added
+✅ CHANGELOG.md - Release notes added
+✅ TAG chain validated - All @TAG verified
 ```
 
-> 🔍 **Verification Command**: `moai-adk doctor` — Checks if Python/uv versions, `.moai/` structure, and agent/Skills configuration are all ready.
->
-> ```bash
-> moai-adk doctor
-> ```
->
-> All green checkmarks mean perfect readiness!
+#### Check Generated API Documentation
+```bash
+cat docs/api/hello.md
+```
+
+**Example Content**:
+```markdown
+# Hello API Documentation
+
+## GET /hello
+
+### Description
+Returns a personalized greeting based on provided name.
+
+### Parameters
+- `name` (query, optional): Person's name (default: "World", max 50 chars)
+
+### Responses
+- **200**: Success
+  ```json
+  { "message": "Hello, Alice!" }
+  ```
+- **400**: Name too long
+
+### Examples
+```bash
+curl "http://localhost:8000/hello?name=Alice"
+# → {"message": "Hello, Alice!"}
+
+curl "http://localhost:8000/hello"
+# → {"message": "Hello, World!"}
+```
+
+### Traceability
+- `@SPEC:HELLO-001` - Requirements
+- `@TEST:HELLO-001` - Tests
+- `@CODE:HELLO-001:API` - Implementation
+```
+
+---
+
+### Step 4: Verify TAG Chain (1 minute)
+
+#### Command
+```bash
+rg '@(SPEC|TEST|CODE|DOC):HELLO-001' -n
+```
+
+#### Output (Complete Traceability)
+```
+.moai/specs/SPEC-HELLO-001/spec.md:7:# `@SPEC:HELLO-001: Hello World API
+tests/test_hello.py:3:# `@TEST:HELLO-001 | SPEC: SPEC-HELLO-001.md
+src/hello/api.py:3:# `@CODE:HELLO-001:API | SPEC: SPEC-HELLO-001.md
+docs/api/hello.md:24:- `@SPEC:HELLO-001`
+```
+
+✅ **Complete chain**: SPEC → TEST → CODE → DOC (fully traceable!)
+
+---
+
+### Summary: What You've Accomplished
+
+In just 10 minutes:
+
+✅ **SPEC** - Clear requirements documented
+✅ **TDD** - Red → Green → Refactor cycle
+✅ **Implementation** - Simple, testable code with @CODE TAG
+✅ **Documentation** - Auto-generated from code
+✅ **Traceability** - Complete @TAG chain: SPEC → TEST → CODE → DOC
+✅ **Git History** - Clean, semantic commits (🔴 🟢 ♻️)
 
 ---
 
@@ -2003,6 +2319,325 @@ If you need to temporarily disable hooks, edit `.claude/settings.json`:
 | **v0.4.11** | ✨ TAG Guard system + CLAUDE.md formatting improvements + Code cleanup                           | 2025-10-23 |
 
 > 📦 **Install Now**: `uv tool install moai-adk` or `pip install moai-adk`
+
+---
+
+## 🔧 Beginner's Troubleshooting Guide
+
+Common errors and solutions for getting started with MoAI-ADK.
+
+### 1. uv is Not Installed
+
+**Symptom**:
+```bash
+$ uv --version
+bash: uv: command not found
+```
+
+**Cause**: uv not installed or not in PATH
+
+**Solution**:
+
+**macOS/Linux**:
+```bash
+# Install
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Restart shell
+source ~/.bashrc  # or ~/.zshrc
+
+# Verify
+uv --version
+```
+
+**Windows (PowerShell)**:
+```powershell
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Verify
+uv --version
+```
+
+**If still not working**:
+```bash
+# Manually add PATH (macOS/Linux)
+export PATH="$HOME/.cargo/bin:$PATH"
+
+# Verify
+uv --version
+```
+
+---
+
+### 2. Python Version Mismatch
+
+**Symptom**:
+```
+Python 3.8 found, but 3.13+ required
+```
+
+**Cause**: Python version is less than 3.13
+
+**Solution**:
+
+**Option A: Using pyenv (Recommended)**:
+```bash
+# Install pyenv
+curl https://pyenv.run | bash
+
+# Install Python 3.13
+pyenv install 3.13
+pyenv global 3.13
+
+# Verify
+python --version  # Python 3.13.x
+```
+
+**Option B: Let uv manage Python**:
+```bash
+# uv automatically downloads Python 3.13
+uv python install 3.13
+uv python pin 3.13
+
+# Verify
+python --version
+```
+
+---
+
+### 3. Git Not Found
+
+**Symptom**:
+```
+✗ Git (runtime): not found
+```
+
+**Cause**: Git not installed on system
+
+**Solution**:
+
+**macOS**:
+```bash
+# Using Homebrew
+brew install git
+
+# Or install Xcode Command Line Tools
+xcode-select --install
+```
+
+**Ubuntu/Debian**:
+```bash
+sudo apt update
+sudo apt install git -y
+```
+
+**Windows**:
+```powershell
+# Using winget
+winget install Git.Git
+
+# Or download from https://git-scm.com/download/win
+```
+
+**Verify**:
+```bash
+git --version  # git version 2.x.x
+```
+
+---
+
+### 4. Claude Code Doesn't Recognize .moai/ Folder
+
+**Symptom**:
+```
+"Project not initialized"
+/alfred:0-project command doesn't work
+```
+
+**Cause**: `.moai/` or `.claude/` folders missing or corrupted
+
+**Solution**:
+
+```bash
+# 1. Verify current directory
+pwd  # /path/to/your-project
+
+# 2. Check if .moai/ exists
+ls -la .moai/config.json
+
+# 3. If missing, reinitialize
+moai-adk init .
+
+# 4. Restart Claude Code
+exit  # Exit Claude Code
+claude  # Restart
+```
+
+**Verify**:
+```bash
+moai-adk doctor
+# All items should show ✅
+```
+
+---
+
+### 5. Module Not Found When Running Tests
+
+**Symptom**:
+```
+FAILED tests/test_hello.py - ModuleNotFoundError: No module named 'fastapi'
+```
+
+**Cause**: Required package not installed
+
+**Solution**:
+
+```bash
+# Install dependencies from project root
+uv sync
+
+# Or install specific packages
+uv add fastapi pytest
+
+# Activate virtual environment
+source .venv/bin/activate  # macOS/Linux
+.venv\Scripts\activate     # Windows
+
+# Run tests
+pytest tests/ -v
+```
+
+---
+
+### 6. `/alfred` Commands Not Working
+
+**Symptom**:
+```
+Unknown command: /alfred:1-plan
+```
+
+**Cause**: Claude Code version issue or `.claude/` folder corrupted
+
+**Solution**:
+
+```bash
+# 1. Check Claude Code version (need v1.5.0+)
+claude --version
+
+# 2. Verify .claude/ folder
+ls -la .claude/commands/
+
+# 3. Reinitialize if needed
+moai-adk init .
+
+# 4. Restart Claude Code
+exit
+claude
+```
+
+---
+
+### 7. TAG Chain Broken
+
+**Symptom**:
+```
+⚠ Orphan TAG detected: @TEST:HELLO-001 (no matching @SPEC)
+```
+
+**Cause**: SPEC deleted or TAGs don't match
+
+**Solution**:
+
+```bash
+# 1. Validate TAG chain
+rg '@(SPEC|TEST|CODE):HELLO-001' -n
+
+# 2. Check if SPEC exists
+rg '@SPEC:HELLO-001' -n .moai/specs/
+
+# 3. If SPEC missing, regenerate
+/alfred:1-plan "feature description"
+
+# Or fix TAG in test file
+# Edit tests/test_hello.py: @TEST:HELLO-001 → @TEST:HELLO-002
+
+# 4. Sync
+/alfred:3-sync
+```
+
+---
+
+### 8. General Debugging Commands
+
+**Check System Status**:
+```bash
+moai-adk doctor
+```
+Shows all dependency checks + recommendations
+
+**Check Project Structure**:
+```bash
+tree -L 2 .moai/
+```
+
+**Validate TAG Chain Integrity**:
+```bash
+rg '@(SPEC|TEST|CODE|DOC):' -n | wc -l
+```
+Shows total TAG count
+
+**Check Git Status**:
+```bash
+git status
+git log --oneline -5
+```
+
+---
+
+### Debugging Checklist
+
+When something goes wrong:
+
+1. **Read**: Copy the complete error message
+2. **Search**: Check GitHub Issues for similar errors
+3. **Diagnose**: Run `moai-adk doctor`
+4. **Restart**: Quit and restart Claude Code
+5. **Ask**: Post in GitHub Discussions
+
+Quick diagnosis with details:
+```bash
+moai-adk doctor --verbose
+```
+
+---
+
+### Need More Help?
+
+- **GitHub Issues**: Search for similar problems
+- **GitHub Discussions**: Ask questions
+- **Discord Community**: Real-time chat support
+
+**When reporting issues, include**:
+1. Output from `moai-adk doctor --verbose`
+2. Complete error message (screenshot or text)
+3. Steps to reproduce
+4. Your OS and version
+
+---
+
+### Frequently Asked Questions
+
+**Q. Can I install on an existing project?**
+A. Yes! Run `moai-adk init .` - it only adds `.moai/` structure without touching existing code.
+
+**Q. How do I run tests?**
+A. `/alfred:2-run` runs tests first. You can also run `pytest`, `pnpm test` separately.
+
+**Q. How do I verify documentation is current?**
+A. Run `/alfred:3-sync` which generates a Sync Report. Check the PR to see the report.
+
+**Q. Can I do this manually without Alfred?**
+A. Possible, but remember: SPEC → TEST → CODE → DOC order and keep @TAGs updated.
 
 ---
 
