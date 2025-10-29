@@ -34,7 +34,7 @@ def migrate_config_to_nested_structure(config: dict[str, Any]) -> dict[str, Any]
     if "conversation_language" in config and "language" not in config:
         # Extract conversation language from legacy location
         conversation_language = config.pop("conversation_language", "en")
-        locale = config.pop("locale", None)
+        config.pop("locale", None)  # Remove legacy locale field
 
         # Map language codes to language names
         language_names = {
