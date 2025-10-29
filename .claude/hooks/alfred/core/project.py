@@ -240,10 +240,11 @@ def get_git_info(cwd: str) -> dict[str, Any]:
 
 
 def count_specs(cwd: str) -> dict[str, int]:
-    """SPEC File count and progress calculation
+    """SPEC File count and progress calculation with deprecated tracking
 
     Browse the .moai/specs/ directory to find the number of SPEC Files and
     Counts the number of SPECs with status: completed.
+    Also tracks deprecated SPECs (archived TypeScript implementations).
 
     Args:
         cwd: Project root directory path
@@ -253,32 +254,36 @@ def count_specs(cwd: str) -> dict[str, int]:
         - completed: Number of completed SPECs (int)
         - total: total number of SPECs (int)
         - percentage: completion percentage (int, 0~100)
+        - deprecated: Number of deprecated but completed SPECs (int)
 
         All 0 if .moai/specs/ directory does not exist
 
     Examples:
         >>> count_specs("/path/to/project")
-        {'completed': 2, 'total': 5, 'percentage': 40}
+        {'completed': 2, 'total': 5, 'percentage': 40, 'deprecated': 1}
         >>> count_specs("/path/to/no-specs")
-        {'completed': 0, 'total': 0, 'percentage': 0}
+        {'completed': 0, 'total': 0, 'percentage': 0, 'deprecated': 0}
 
     Notes:
         - SPEC File Location: .moai/specs/SPEC-{ID}/spec.md
-        - Completion condition: Include “status: completed” in YAML front matter
+        - Completion condition: Include "status: completed" in YAML front matter
+        - Deprecated condition: Include "archived-typescript" label
         - If parsing fails, the SPEC is considered incomplete.
 
     TDD History:
         - RED: 5 items scenario test (0/0, 2/5, 5/5, no directory, parsing error)
         - GREEN: SPEC search with Path.iterdir(), YAML parsing implementation
         - REFACTOR: Strengthened exception handling, improved percentage calculation safety
+        - UPDATE: Track deprecated SPECs (archived TypeScript implementations)
     """
     specs_dir = Path(cwd) / ".moai" / "specs"
 
     if not specs_dir.exists():
-        return {"completed": 0, "total": 0, "percentage": 0}
+        return {"completed": 0, "total": 0, "percentage": 0, "deprecated": 0}
 
     completed = 0
     total = 0
+    deprecated = 0
 
     for spec_dir in specs_dir.iterdir():
         if not spec_dir.is_dir() or not spec_dir.name.startswith("SPEC-"):
@@ -299,6 +304,10 @@ def count_specs(cwd: str) -> dict[str, int]:
                     yaml_content = content[3:yaml_end]
                     if "status: completed" in yaml_content:
                         completed += 1
+
+                        # Check if this is a deprecated (archived TypeScript) SPEC
+                        if "archived-typescript" in yaml_content:
+                            deprecated += 1
         except (OSError, UnicodeDecodeError):
             # File read failure or encoding error - considered incomplete
             pass
@@ -309,6 +318,7 @@ def count_specs(cwd: str) -> dict[str, int]:
         "completed": completed,
         "total": total,
         "percentage": percentage,
+        "deprecated": deprecated,
     }
 
 
