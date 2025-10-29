@@ -48,6 +48,7 @@ jobs:
       - name: Install MoAI-ADK
         run: |
           uv pip install --system -e .
+          uv pip install --system requests
 
       - name: Create reports directory
         run: |
