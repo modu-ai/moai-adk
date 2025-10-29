@@ -152,7 +152,7 @@
 - 실제 구현 코드에서 추출
 
 ### 3.4 레퍼런스 (5개 페이지)
-- `docs/reference/config-schema.md` - .moai/config.json 스키마 (SPEC-CONFIG-001 참조)
+- `docs/reference/CONFIG-SCHEMA.md` - .moai/config.json 스키마 (SPEC-CONFIG-001 참조)
 - `docs/reference/spec-template.md` - SPEC 템플릿
 - `docs/reference/tag-reference.md` - @TAG 레퍼런스
 - `docs/reference/trust-checklist.md` - TRUST 체크리스트

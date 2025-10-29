@@ -30,7 +30,7 @@ This document defines the complete language configuration structure for MoAI-ADK
 ```json
 {
   "_meta": {
-    "@CODE:CONFIG-STRUCTURE-001": "@DOC:JSON-CONFIG-001"
+    "tag_format_example": "@TYPE:DOMAIN-NNN"
   },
   "moai": {
     "version": "0.7.0"
@@ -227,9 +227,10 @@ TASK: [Actual task description]
 ```
 
 **Rules**:
-1. **Sub-agent input**: Always in English (Alfred translates)
+1. **Sub-agent input**: In user's configured language (passed directly by Alfred)
 2. **Sub-agent output**: Generated in user's language based on parameter
 3. **No inference**: Sub-agents NEVER guess language from prompt content
+4. **Explicit Skill invocation**: Skills invoked using `Skill("skill-name")` syntax, NOT auto-triggered
 
 ---
 

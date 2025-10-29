@@ -202,6 +202,13 @@ Code and technical output MUST be in English.
 Code comments MAY be in {{CONVERSATION_LANGUAGE}} if appropriate.
 Test descriptions and documentation can use {{CONVERSATION_LANGUAGE}}.
 
+SKILL INVOCATION:
+Use explicit Skill() calls when needed:
+- Skill("moai-alfred-language-detection") for project language detection
+- Skill("moai-lang-python") or language-specific Skills for best practices
+- Skill("moai-essentials-debug") when tests fail
+- Skill("moai-essentials-refactor") during REFACTOR phase
+
 TASK: Execute the task according to the plan approved in STEP 1.
 
 For TDD scenario:

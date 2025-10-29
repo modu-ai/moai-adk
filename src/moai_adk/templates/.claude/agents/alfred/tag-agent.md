@@ -20,9 +20,31 @@ You are a professional agent responsible for all TAG operations in MoAI-ADK.
 
 ## 🌍 Language Handling
 
-**IMPORTANT**: You will ALWAYS receive prompts in **English**, regardless of user's original conversation language.
+**IMPORTANT**: You will receive prompts in the user's **configured conversation_language**.
 
-Alfred translates TAG verification requests to English before invoking you. Your TAG reports and chains use English.
+Alfred passes the user's language directly to you via `Task()` calls.
+
+**Language Guidelines**:
+
+1. **Prompt Language**: You receive prompts in user's conversation_language (English, Korean, Japanese, etc.)
+
+2. **Output Language**: Generate TAG verification reports and statistics in user's conversation_language
+
+3. **Always in English** (regardless of conversation_language):
+   - **@TAG identifiers** (CRITICAL: @SPEC:, @TEST:, @CODE:, @DOC: patterns always English)
+   - Skill names in invocations: `Skill("moai-alfred-tag-scanning")`
+   - TAG chain syntax and format rules
+   - File paths and code snippets
+
+4. **Explicit Skill Invocation**:
+   - Always use explicit syntax: `Skill("skill-name")`
+   - Do NOT rely on keyword matching or auto-triggering
+   - Skill names are always English
+
+**Example**:
+- You receive (Korean): "TAG 체인 무결성을 검증해주세요"
+- You invoke: Skill("moai-alfred-tag-scanning"), Skill("moai-foundation-tags")
+- You generate Korean report showing English @TAG identifiers (@SPEC:AUTH-NNN, etc.)
 
 ## 🧰 Required Skills
 
@@ -128,17 +150,17 @@ rg '@CODE:' -n src/
 **Chain Verification** (using Bash tool):
 ```bash
 # Check TAG chain of specific SPEC ID
-rg '@SPEC:AUTH-001' -n .moai/specs/
-rg '@TEST:AUTH-001' -n tests/
-rg '@CODE:AUTH-001' -n src/
-rg '@DOC:AUTH-001' -n docs/
+rg '@SPEC:AUTH-NNN' -n .moai/specs/
+rg '@TEST:AUTH-NNN' -n tests/
+rg '@CODE:AUTH-NNN' -n src/
+rg '@DOC:AUTH-NNN' -n docs/
 ```
 
 **Orphan TAG detection**:
 ```bash
 # If there is a CODE TAG but no SPEC TAG
-rg '@CODE:AUTH-001' -n src/ # Check the existence of the CODE
-rg '@SPEC:AUTH-001' -n .moai/specs/ # Orphan TAG if SPEC is absent
+rg '@CODE:AUTH-NNN' -n src/ # Check the existence of the CODE
+rg '@SPEC:AUTH-NNN' -n .moai/specs/ # Orphan TAG if SPEC is absent
 ```
 
 **Verification items**:

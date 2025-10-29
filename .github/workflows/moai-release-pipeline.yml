@@ -29,16 +29,17 @@ jobs:
       - name: 🔍 Detect release commit
         id: detect
         run: |
-          # 마지막 커밋 메시지 확인
+          # 마지막 커밋 메시지 확인 (merge commit 포함)
           LAST_COMMIT=$(git log -1 --pretty=%B)
           echo "최근 커밋: $LAST_COMMIT"
 
           # RELEASE 패턴 감지 (🔖 RELEASE: v0.6.0)
-          if echo "$LAST_COMMIT" | grep -q "^🔖 RELEASE:"; then
+          # 커밋 메시지 어디든 RELEASE 패턴이 있으면 감지 (merge commit 지원)
+          if echo "$LAST_COMMIT" | grep -q "🔖 RELEASE:"; then
             echo "✅ Release 커밋 감지됨"
 
             # 버전 추출 (🔖 RELEASE: v0.6.0 → 0.6.0)
-            VERSION=$(echo "$LAST_COMMIT" | grep -oP 'RELEASE: v\K[0-9]+\.[0-9]+\.[0-9]+' || echo "")
+            VERSION=$(echo "$LAST_COMMIT" | grep -oP 'RELEASE: v\K[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "")
 
             if [ -n "$VERSION" ]; then
               echo "🔖 버전: v$VERSION"

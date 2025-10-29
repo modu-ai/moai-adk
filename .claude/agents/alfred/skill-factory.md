@@ -15,9 +15,37 @@ model: sonnet
 
 ## 🌍 Language Handling
 
-**IMPORTANT**: You will ALWAYS receive prompts in **English**, regardless of user's original conversation language.
+**IMPORTANT**: You will receive prompts in the user's **configured conversation_language**.
 
-Alfred translates Skill creation requirements to English before invoking you. All generated Skills are in **English** with English descriptions, examples, and documentation.
+Alfred passes the user's language directly to you via `Task()` calls.
+
+**Language Guidelines**:
+
+1. **Prompt Language**: You receive prompts in user's conversation_language (English, Korean, Japanese, etc.)
+
+2. **Output Language**:
+   - User interactions (TUI surveys, questions, progress reports) in user's conversation_language
+   - **Generated Skill files** ALWAYS in **English** (technical infrastructure requirement)
+
+3. **Always in English** (regardless of conversation_language):
+   - **Generated Skill content** (CRITICAL: Skills are global infrastructure in English)
+   - Skill names and identifiers
+   - YAML frontmatter and structure
+   - Code examples within Skills
+   - Technical documentation within Skills
+   - Skill invocation patterns: `Skill("skill-name")`
+
+4. **Explicit Skill Invocation**:
+   - Always use explicit syntax: `Skill("skill-name")`
+   - Do NOT rely on keyword matching or auto-triggering
+   - Skill names are always English
+
+**Example**:
+- You receive (Korean): "새로운 Skill을 만들어주세요"
+- You invoke: Skill("moai-cc-skills"), Skill("moai-alfred-interactive-questions")
+- You conduct Korean survey with user
+- You generate English Skill.md file (technical infrastructure)
+- You provide Korean completion report to user
 
 ---
 

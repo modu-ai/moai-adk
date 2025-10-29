@@ -304,10 +304,48 @@ class HookResult:
 ### 다음 단계
 - ✅ Hook 스키마 검증 자동화
 - ✅ 테스트 스크립트 작성
+- ✅ Windows 플랫폼 호환성 우회 방법 구현
 - ⏭️ 현재 상태 유지 및 모니터링
 
 ---
 
-**검증 완료**: 2025-10-23  
-**담당자**: @agent-cc-manager  
-**참고**: @CODE:HOOKS-REFACTOR-001
+## 🪟 Windows Platform Compatibility
+
+**Issue**: Windows subprocess hang after SessionStart hook execution (Issue #107)
+**Upstream Bug**: https://github.com/anthropics/claude-code/issues/9542
+**Status**: Workaround implemented (v0.7.1+)
+
+### Behavior by Platform
+
+| Platform | SessionStart Hook | Status |
+|----------|------------------|--------|
+| **Windows** | Minimal valid response | ⚠️ Degraded (Issue #107) |
+| **macOS** | Full session info | ✅ Normal |
+| **Linux** | Full session info | ✅ Normal |
+
+### Windows Workaround
+
+SessionStart 핸들러는 Windows 플랫폼을 감지하고 최소한의 유효한 응답을 반환합니다.
+
+### Testing on Windows
+
+```bash
+echo '{"cwd": ".", "phase": "compact"}' | python .claude/hooks/alfred/alfred_hooks.py SessionStart
+```
+
+### Test Coverage
+
+**File**: `test_platform.py` (TEST:WINDOWS-HOOK-COMPAT-001)
+- 12 unit tests (100% pass rate)
+
+### Related Tags
+
+- CODE:WINDOWS-HOOK-COMPAT-001 - Platform detection and workaround
+- TEST:WINDOWS-HOOK-COMPAT-001 - Unit tests
+
+---
+
+**검증 완료**: 2025-10-23
+**Windows 호환성 추가**: 2025-10-29
+**담당자**: @agent-cc-manager, @agent-debug-helper
+**참고**: CODE:HOOKS-REFACTOR-001, CODE:WINDOWS-HOOK-COMPAT-001
