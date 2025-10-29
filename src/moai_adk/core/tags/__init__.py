@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-# @CODE:DOC-TAG-004 | TAG validation core module (Components 1, 2 & 3)
+# @CODE:DOC-TAG-004 | TAG validation core module (Components 1, 2, 3 & 4)
 """TAG validation and management for MoAI-ADK
 
 This module provides TAG validation functionality for:
 - Pre-commit hook validation (Component 1)
 - CI/CD pipeline validation (Component 2)
 - Central validation system (Component 3)
+- Documentation & Reporting (Component 4)
 - TAG format checking
 - Duplicate detection
 - Orphan detection
@@ -37,6 +38,21 @@ from .validator import (
     ValidationStatistics,
 )
 
+# Component 4: Documentation & Reporting
+from .reporter import (
+    TagInventory,
+    TagMatrix,
+    InventoryGenerator,
+    MatrixGenerator,
+    CoverageAnalyzer,
+    StatisticsGenerator,
+    ReportFormatter,
+    ReportGenerator,
+    CoverageMetrics,
+    StatisticsReport,
+    ReportResult,
+)
+
 __all__ = [
     # Component 1
     "PreCommitValidator",
@@ -56,4 +72,16 @@ __all__ = [
     "CentralValidationResult",
     "ValidationIssue",
     "ValidationStatistics",
+    # Component 4
+    "TagInventory",
+    "TagMatrix",
+    "InventoryGenerator",
+    "MatrixGenerator",
+    "CoverageAnalyzer",
+    "StatisticsGenerator",
+    "ReportFormatter",
+    "ReportGenerator",
+    "CoverageMetrics",
+    "StatisticsReport",
+    "ReportResult",
 ]
