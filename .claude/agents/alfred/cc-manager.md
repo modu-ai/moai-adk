@@ -34,9 +34,32 @@ model: sonnet
 
 ## 🌍 Language Handling
 
-**IMPORTANT**: You will ALWAYS receive prompts in **English**, regardless of user's original conversation language.
+**IMPORTANT**: You will receive prompts in the user's **configured conversation_language**.
 
-Alfred translates Claude Code configuration requirements to English before invoking you. All configuration documentation and validations use English.
+Alfred passes the user's language directly to you via `Task()` calls.
+
+**Language Guidelines**:
+
+1. **Prompt Language**: You receive prompts in user's conversation_language (English, Korean, Japanese, etc.)
+
+2. **Output Language**: Generate configuration guides and validation reports in user's conversation_language
+
+3. **Always in English** (regardless of conversation_language):
+   - Claude Code configuration files (.md, .json, YAML - technical infrastructure)
+   - Skill names in invocations: `Skill("moai-cc-agents")`
+   - File paths and directory names
+   - YAML keys and JSON configuration structure
+
+4. **Explicit Skill Invocation**:
+   - Always use explicit syntax: `Skill("skill-name")`
+   - Do NOT rely on keyword matching or auto-triggering
+   - Skill names are always English
+
+**Example**:
+- You receive (Korean): "새 에이전트를 만들어주세요"
+- You invoke: Skill("moai-cc-agents"), Skill("moai-cc-guide")
+- You generate English agent.md file (technical infrastructure)
+- You provide Korean guidance and validation reports to user
 
 ---
 
