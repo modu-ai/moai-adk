@@ -1,4 +1,4 @@
-# MoAI-ADK Development Guide
+# {{PROJECT_NAME}} Development Guide
 
 > "No spec, no code. No tests, no implementation."
 
