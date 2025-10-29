@@ -1,0 +1,143 @@
+#!/bin/bash
+
+# MoAI-ADK GitFlow Main Branch Control Hook
+# Purpose: Enforce GitFlow in team mode, advisory in personal mode
+# Enforces: Strict team workflow, flexible personal development
+#
+# This hook runs before any git push operation:
+# Team Mode:   Blocks direct main/master push (non-develop), requires confirmation for develop→main
+# Personal Mode: Advisory warnings, allows flexibility
+#
+# Exit codes:
+# 0 - Push allowed
+# 1 - Push blocked (team mode violation or user declined)
+
+# Check team mode from .moai/config.json
+is_team_mode() {
+    if [ -f ".moai/config.json" ]; then
+        # Check if mode is "team"
+        grep -q '"mode".*:.*"team"' ".moai/config.json" 2>/dev/null
+        return $?
+    fi
+    return 1
+}
+
+# Colors for output
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+TEAM_MODE=false
+is_team_mode && TEAM_MODE=true
+
+# Read from stdin (git sends remote, local ref info)
+# Format: <local ref> <local oid> <remote ref> <remote oid>
+while read local_ref local_oid remote_ref remote_oid; do
+    # Extract the remote branch name from the reference
+    # remote_ref format: refs/heads/main
+    remote_branch=$(echo "$remote_ref" | sed 's|refs/heads/||')
+    local_branch=$(echo "$local_ref" | sed 's|refs/heads/||')
+
+    # Check if attempting to push to main branch
+    if [ "$remote_branch" = "main" ] || [ "$remote_branch" = "master" ]; then
+        # Get the current branch to determine if this is the develop branch
+        current_branch=$(git rev-parse --abbrev-ref HEAD)
+
+        # TEAM MODE ENFORCEMENT
+        if [ "$TEAM_MODE" = true ]; then
+            # Block non-develop, non-release branches from pushing to main
+            if [ "$local_branch" != "develop" ] && [ "${local_branch#release/}" = "$local_branch" ]; then
+                echo ""
+                echo -e "${RED}❌ BLOCKED: Non-standard GitFlow in TEAM MODE${NC}"
+                echo ""
+                echo -e "${BLUE}Current branch: ${local_branch}${NC}"
+                echo -e "${BLUE}Target branch: ${remote_branch}${NC}"
+                echo ""
+                echo "🚀 Correct GitFlow workflow for TEAM MODE:"
+                echo "  1. Work on feature/SPEC-{ID} branch (created from develop)"
+                echo "  2. Push to feature/SPEC-{ID} and create PR to develop"
+                echo "  3. Code review & merge into develop"
+                echo "  4. When develop is stable, create PR from develop to main"
+                echo "  5. Release manager merges develop → main with tag"
+                echo ""
+                echo -e "${RED}⚠️  Push to ${remote_branch} blocked in team mode${NC}"
+                echo ""
+                exit 1
+            fi
+
+            # For develop → main or release/* → main, ask for confirmation
+            if [ "$local_branch" = "develop" ] || [ "${local_branch#release/}" != "$local_branch" ]; then
+                echo ""
+                echo -e "${YELLOW}⚠️  TEAM MODE: Pushing ${local_branch} → ${remote_branch}${NC}"
+                echo ""
+                echo "📋 Summary:"
+                echo "  • Source branch: ${local_branch}"
+                echo "  • Target branch: ${remote_branch}"
+                echo "  • Mode: TEAM MODE (strict enforcement)"
+                echo ""
+                read -p "❓ Are you sure you want to push ${local_branch} to ${remote_branch}? (y/n) " -n 1 -r
+                echo ""
+                if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                    echo -e "${RED}✓ Push cancelled by user${NC}"
+                    exit 1
+                fi
+            fi
+        fi
+
+        # PERSONAL MODE: Advisory warnings (allow all pushes)
+        if [ "$TEAM_MODE" = false ]; then
+            # Advisory: recommend develop -> main workflow
+            if [ "$local_branch" != "develop" ] && [ "${local_branch#release/}" = "$local_branch" ]; then
+                echo ""
+                echo -e "${YELLOW}⚠️  ADVISORY: Non-standard GitFlow detected${NC}"
+                echo ""
+                echo -e "${BLUE}Current branch: ${local_branch}${NC}"
+                echo -e "${BLUE}Target branch: ${remote_branch}${NC}"
+                echo ""
+                echo "Recommended GitFlow workflow:"
+                echo "  1. Work on feature/SPEC-{ID} branch (created from develop)"
+                echo "  2. Push to feature/SPEC-{ID} and create PR to develop"
+                echo "  3. Merge into develop after code review"
+                echo "  4. When develop is stable, create PR from develop to main"
+                echo "  5. Release manager merges develop -> main with tag"
+                echo ""
+                echo -e "${GREEN}✓ Push will proceed (personal mode - flexibility enabled)${NC}"
+                echo ""
+            fi
+
+            # Check for delete operation
+            if [ "$local_oid" = "0000000000000000000000000000000000000000" ]; then
+                echo ""
+                echo -e "${RED}⚠️  WARNING: Attempting to delete main branch${NC}"
+                echo ""
+                echo -e "${YELLOW}This operation is highly discouraged.${NC}"
+                echo -e "${GREEN}✓ Push will proceed (personal mode - flexibility enabled)${NC}"
+                echo ""
+            fi
+
+            # Check for force push attempts to main
+            if [ "$remote_branch" = "main" ] || [ "$remote_branch" = "master" ]; then
+                # Check if remote_oid exists (non-zero means we're trying to update existing ref)
+                if [ "$remote_oid" != "0000000000000000000000000000000000000000" ]; then
+                    # Verify this is a fast-forward merge (no force push)
+                    if ! git merge-base --is-ancestor "$remote_oid" "$local_oid" 2>/dev/null; then
+                        echo ""
+                        echo -e "${YELLOW}⚠️  ADVISORY: Force-push to main branch detected${NC}"
+                        echo ""
+                        echo "Recommended approach:"
+                        echo "  - Use GitHub PR with proper code review"
+                        echo "  - Ensure changes are merged via fast-forward"
+                        echo ""
+                        echo -e "${GREEN}✓ Push will proceed (personal mode - flexibility enabled)${NC}"
+                        echo ""
+                    fi
+                fi
+            fi
+        fi
+    fi
+done
+
+# All checks passed (or advisory warnings shown)
+exit 0
