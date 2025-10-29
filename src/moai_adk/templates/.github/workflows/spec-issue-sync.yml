@@ -3,7 +3,7 @@ name: 📋 SPEC Issue Sync
 on:
   pull_request:
     paths:
-      - '.moai/specs/SPEC-*/spec.md'
+      - '{{SPEC_DIR}}/SPEC-*/spec.md'
     types: [opened, synchronize]
 
 permissions:
@@ -33,18 +33,18 @@ jobs:
           pwd
           ls -la
 
-          echo "=== Debug: Looking for .moai/specs ==="
-          ls -la .moai/ 2>&1 || echo ".moai/ directory not found"
+          echo "=== Debug: Looking for {{SPEC_DIR}} ==="
+          ls -la {{SPEC_DIR}}/ 2>&1 || echo "{{SPEC_DIR}}/ directory not found"
 
           # Find SPEC files in the PR
           echo "=== Debug: Searching for SPEC files ==="
           find . -name "spec.md" -type f 2>&1 || echo "find command failed"
 
-          spec_file=$(find .moai/specs -name "spec.md" -type f 2>&1 | head -1)
+          spec_file=$(find {{SPEC_DIR}} -name "spec.md" -type f 2>&1 | head -1)
           echo "Found spec_file: [$spec_file]"
 
           if [ -z "$spec_file" ]; then
-            echo "⚠️  No SPEC file found in .moai/specs"
+            echo "⚠️  No SPEC file found in {{SPEC_DIR}}"
             echo "Exiting gracefully (this is expected if no SPEC files changed)"
             exit 0
           fi
@@ -59,7 +59,11 @@ jobs:
           spec_priority=$(grep "^priority:" "$spec_file" | sed 's/^priority: *//' | tr -d ' "')
 
           # Extract title from H1 heading
+          {% if ENABLE_TAG_SYSTEM -%}
           spec_title=$(grep "^# @SPEC:" "$spec_file" | sed 's/^# @SPEC:[^:]*: //')
+          {% else -%}
+          spec_title=$(grep "^# " "$spec_file" | head -1 | sed 's/^# //')
+          {% endif -%}
 
           echo "✅ Extracted SPEC metadata:"
           echo "  ID: $spec_id"
@@ -158,7 +162,7 @@ jobs:
             echo "This SPEC has been synchronized to GitHub Issue."
             echo ""
             echo "📋 **Issue**: [#$issue_num - SPEC-$spec_id: $spec_title](../issues/$issue_num)"
-            echo "🔗 **SPEC File**: \`.moai/specs/SPEC-$spec_id/spec.md\`"
+            echo "🔗 **SPEC File**: \`{{SPEC_DIR}}/SPEC-$spec_id/spec.md\`"
             echo ""
             echo "The issue will be automatically updated as you modify the SPEC document."
           } > /tmp/pr_comment.txt

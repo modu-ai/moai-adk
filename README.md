@@ -656,8 +656,11 @@ graph TD
 | `/alfred:1-plan <description>` | Analyze requirements, draft SPEC, write Plan Board                | `.moai/specs/SPEC-*/spec.md`, plan/acceptance docs, feature branch |
 | `/alfred:2-run <SPEC-ID>`      | Execute TDD, test/implement/refactor, verify quality              | `tests/`, `src/` implementation, quality report, TAG connection    |
 | `/alfred:3-sync`               | Sync docs/README/CHANGELOG, organize TAG/PR status                | `docs/`, `.moai/reports/sync-report.md`, Ready PR                  |
+| `/alfred:9-feedback` | Interactively create GitHub Issues (type → title → description → priority) | GitHub Issue with auto labels, priority, URL        |
 
 > ❗ All commands maintain **Phase 0 (optional) → Phase 1 → Phase 2 → Phase 3** cycle structure. Alfred automatically reports execution status and next-step suggestions.
+>
+> 💡 **New in v0.7.0+**: `/alfred:9-feedback` enables instant GitHub Issue creation during development, keeping your workflow uninterrupted while keeping issues tracked and visible to the team.
 
 ---
 
@@ -771,6 +774,125 @@ When working in your **local development environment**, CodeRabbit provides auto
 3. **Automated Workflow**: No manual issue creation—fully automated from SPEC to Issue
 4. **Traceability**: Direct link between SPEC files, Issues, PRs, and implementation
 5. **Quality Assurance**: CodeRabbit validates SPEC quality before implementation (local only)
+
+---
+
+## Quick Issue Creation with `/alfred:9-feedback`
+
+MoAI-ADK v0.7.0+ includes the **Quick Issue Creation** feature, allowing developers to instantly create GitHub Issues without interrupting their development workflow.
+
+### Why Quick Issue Creation?
+
+During development, you frequently encounter:
+- 🐛 Bugs that need immediate reporting
+- ✨ Feature ideas that come to mind
+- ⚡ Performance improvements to suggest
+- ❓ Architecture questions that need team discussion
+
+**The old way**: Stop coding, go to GitHub, manually fill issue form, remember what you were working on.
+**The new way**: Type one command, GitHub Issue is created instantly, continue coding.
+
+### Interactive Dialog Flow
+
+When you run `/alfred:9-help`, Alfred guides you through an interactive multi-step dialog:
+
+**Step 1: Select Issue Type**
+```
+Alfred: What type of issue do you want to create?
+[ ] 🐛 Bug Report - Something isn't working
+[ ] ✨ Feature Request - Suggest new functionality
+[ ] ⚡ Improvement - Enhance existing features
+[ ] ❓ Question/Discussion - Ask the team
+```
+
+**Step 2: Enter Issue Title**
+```
+Alfred: What's the issue title?
+Your input: "Login button not responding to clicks"
+```
+
+**Step 3: Enter Description (Optional)**
+```
+Alfred: Provide a detailed description (optional—press Enter to skip)
+Your input: "When I click the login button on iPhone 15, it freezes for 5 seconds then crashes"
+```
+
+**Step 4: Select Priority Level**
+```
+Alfred: What's the priority level?
+[ ] 🔴 Critical - System down, data loss, security breach
+[ ] 🟠 High - Major feature broken, significant impact
+[✓] 🟡 Medium - Normal priority (default)
+[ ] 🟢 Low - Minor issues, nice-to-have
+```
+
+**Step 5: Automatic Issue Creation**
+```
+Alfred automatically:
+1. Determines appropriate labels based on issue type and priority
+2. Formats title with emoji: "🐛 [BUG] Login button not responding..."
+3. Creates GitHub Issue with all information
+4. Returns the issue number and URL
+```
+
+### Key Features
+
+1. **⚡ Instant Creation**: Create GitHub Issues in seconds
+2. **🏷️ Automatic Labels**: Issue type + priority automatically labeled
+3. **🎯 Priority Selection**: Choose from Critical/High/Medium/Low
+4. **🔗 Team Visibility**: Issues immediately visible and discussable
+5. **📋 Standardized Format**: All issues follow consistent structure
+
+### Complete Example: Bug Report During Code Review
+
+```bash
+# During code review, you notice a critical issue and want to report it instantly
+$ /alfred:9-feedback
+
+Alfred: What type of issue do you want to create?
+> 🐛 Bug Report
+
+Alfred: What's the issue title?
+> Login button crash on mobile devices
+
+Alfred: Provide a detailed description (optional—press Enter to skip)
+> Tapping the login button on iPhone 15 causes app to freeze for 5 seconds then crash.
+> Tested on iOS 17.2, Chrome 120 on macOS 14.2.
+> Expected: Login modal should appear
+> Actual: No response then crash
+
+Alfred: What's the priority level?
+> 🟠 High
+
+✅ GitHub Issue #234 created successfully!
+
+📋 Title: 🐛 [BUG] Login button crash on mobile devices
+🟠 Priority: High
+🏷️  Labels: bug, reported, priority-high
+🔗 URL: https://github.com/owner/repo/issues/234
+
+💡 Next: Continue with your work—the issue is now tracked!
+```
+
+### Integration with MoAI-ADK Workflow
+
+1. **During Development**: Use `/alfred:9-help` to report bugs/ideas instantly
+2. **In Code Review**: Convert improvement suggestions to tracked issues
+3. **When Planning**: Reference created issues in SPEC documents
+4. **During Sync**: Link issues to SPEC requirements with `/alfred:3-sync`
+
+### Prerequisites
+
+- GitHub CLI (`gh`) installed and authenticated
+- Repository initialized with Git
+
+### Learn More
+
+See `.moai/docs/quick-issue-creation-guide.md` for comprehensive documentation including:
+- Detailed usage examples
+- Best practices and tips
+- Troubleshooting guide
+- Integration with SPEC documents
 
 ---
 
