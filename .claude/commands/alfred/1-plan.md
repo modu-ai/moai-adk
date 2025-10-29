@@ -109,13 +109,59 @@ Users can run commands like this:
 
 ## 🔍 STEP 1: Project analysis and planning
 
-Analyze project documents to propose SPEC candidates, establish implementation strategies, and receive user confirmation.
+STEP 1 consists of **two independent phases** to provide flexible workflow based on user request clarity:
 
-**The spec-builder agent automatically loads and analyzes the required documents.**
+### 📋 STEP 1 Workflow Overview
 
-### 🔍 Explore the codebase (optional)
+```
+┌─────────────────────────────────────────────────────────────┐
+│ STEP 1: Project Analysis & Planning                        │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Phase A (OPTIONAL)                                         │
+│  ┌─────────────────────────────────────────┐               │
+│  │ 🔍 Explore Agent                        │               │
+│  │ • Find relevant files by keywords       │               │
+│  │ • Locate existing SPEC documents        │               │
+│  │ • Identify implementation patterns      │               │
+│  └─────────────────────────────────────────┘               │
+│                    ↓                                        │
+│          (exploration results)                              │
+│                    ↓                                        │
+│  Phase B (REQUIRED)                                         │
+│  ┌─────────────────────────────────────────┐               │
+│  │ ⚙️ spec-builder Agent                   │               │
+│  │ • Analyze project documents             │               │
+│  │ • Propose SPEC candidates               │               │
+│  │ • Design EARS structure                 │               │
+│  │ • Request user approval                 │               │
+│  └─────────────────────────────────────────┘               │
+│                    ↓                                        │
+│          (user approval via AskUserQuestion)                │
+│                    ↓                                        │
+│              PROCEED TO STEP 2                              │
+└─────────────────────────────────────────────────────────────┘
+```
 
-**If the user request is unclear or requires understanding of existing code** Use the Explore agent first:
+**Key Points**:
+- **Phase A is optional** - Skip if user provides clear SPEC title
+- **Phase B is required** - Always runs to analyze project and create SPEC
+- **Results flow forward** - Exploration results (if any) are passed to spec-builder
+
+---
+
+### 🔍 Phase A: Codebase Exploration (OPTIONAL)
+
+**Use the Explore agent when user request is unclear or needs context.**
+
+#### When to use Phase A:
+
+- ✅ User uses vague keywords ("where is...", "find me...", "related to...")
+- ✅ Need to understand existing code structure before planning
+- ✅ Feature spans multiple files or modules
+- ❌ User provides clear SPEC title (skip to Phase B)
+
+#### How to invoke Explore agent:
 
 ```
 Invoking the Task tool (Explore agent):
@@ -125,18 +171,20 @@ Invoking the Task tool (Explore agent):
  - File location (src/, tests/, docs/)
  - Relevant SPEC document (.moai/specs/)
  - Existing implementation code
-          thoroughness level: medium"
+ thoroughness level: medium"
 ```
 
-**Criteria for using the Explore Agent**:
-- ✅ Users use keywords like “where am”, “find me”, etc.
-- ✅ Need to understand existing code structure
-- ✅ Investigate features across multiple files
-- ❌ Given a clear SPEC title (straight into spec-builder)
+**Note**: If user provides clear SPEC title, skip Phase A and proceed directly to Phase B.
 
-### ⚙️ How to call an agent
+---
 
-**STEP 1 calls the spec-builder agent using the Task tool**:
+### ⚙️ Phase B: SPEC Planning (REQUIRED)
+
+**Call the spec-builder agent to analyze project and create SPEC documents.**
+
+This phase is **always required** regardless of whether Phase A was executed.
+
+#### How to invoke spec-builder:
 
 ```
 Call the Task tool:
@@ -171,6 +219,8 @@ Run in analysis mode, and must include the following:
 User input: $ARGUMENTS
 (Optional) Explore results: $EXPLORE_RESULTS"""
 ```
+
+**Note**: If Phase A was executed, pass the exploration results via `$EXPLORE_RESULTS` variable.
 
 ### Plan analysis progress
 
