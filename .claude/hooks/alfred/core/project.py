@@ -564,44 +564,55 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
     cache_dir = Path(cwd) / CACHE_DIR_NAME
     version_cache = VersionCache(cache_dir) if VersionCache else None
 
-    # 2. Try to load from cache (fast path)
+    # 2. Get current installed version first (needed for cache validation)
+    current_version = "unknown"
+    try:
+        current_version = version("moai-adk")
+    except PackageNotFoundError:
+        current_version = "dev"
+        # Dev mode - skip cache and return immediately
+        return {
+            "current": "dev",
+            "latest": "unknown",
+            "update_available": False,
+            "upgrade_command": ""
+        }
+
+    # 3. Try to load from cache (fast path with version validation)
     if version_cache and version_cache.is_valid():
         cached_info = version_cache.load()
         if cached_info:
-            # Ensure new fields exist for backward compatibility
-            if "release_notes_url" not in cached_info:
-                # Add missing fields to old cached data
-                cached_info.setdefault("release_notes_url", None)
-                cached_info.setdefault("is_major_update", False)
-            return cached_info
+            # Only use cache if the cached version matches current installed version
+            # This prevents stale cache when package is upgraded locally
+            if cached_info.get("current") == current_version:
+                # Ensure new fields exist for backward compatibility
+                if "release_notes_url" not in cached_info:
+                    # Add missing fields to old cached data
+                    cached_info.setdefault("release_notes_url", None)
+                    cached_info.setdefault("is_major_update", False)
+                return cached_info
+            # else: cache is stale (version changed), fall through to re-check
 
-    # 3. Cache miss - need to query PyPI
+    # 4. Cache miss or stale - need to query PyPI
     result = {
-        "current": "unknown",
+        "current": current_version,
         "latest": "unknown",
         "update_available": False,
         "upgrade_command": ""
     }
 
-    # Get current version
-    try:
-        result["current"] = version("moai-adk")
-    except PackageNotFoundError:
-        result["current"] = "dev"
-        return result
-
-    # 4. Check if version check is enabled in config (Phase 4)
+    # 5. Check if version check is enabled in config
     config = get_version_check_config(cwd)
     if not config["enabled"]:
         # Version check disabled - return only current version
         return result
 
-    # 5. Check network before PyPI query
+    # 6. Check network before PyPI query
     if not is_network_available():
         # Offline mode - return current version only
         return result
 
-    # 6. Network available - query PyPI
+    # 7. Network available - query PyPI
     pypi_data = None
     try:
         with timeout_handler(1):
