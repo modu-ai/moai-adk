@@ -789,6 +789,40 @@ This issue has been **fixed** in v0.8.1+. If you're experiencing this:
 - Code now gracefully handles InvalidVersion exceptions
 - Added comprehensive unit tests for placeholder detection
 
+#### Problem: UV Tool Upgrade Shows "Nothing to upgrade" Despite New Version
+
+**Status**: Automatically fixed in v0.9.1+ with cache refresh retry
+
+**Symptoms:**
+- `moai-adk update` shows "Nothing to upgrade"
+- PyPI has a newer version available
+- Caused by stale UV cache metadata
+
+**Automatic Fix (v0.9.1+):**
+The system now automatically detects stale cache and retries:
+1. Detects "Nothing to upgrade" message
+2. Compares installed version vs PyPI latest version
+3. Clears UV cache: `uv cache clean moai-adk`
+4. Automatically retries upgrade
+5. Completes in a single command run
+
+**Manual Workaround (if needed):**
+```bash
+# Clear UV cache and retry
+uv cache clean moai-adk && moai-adk update
+```
+
+**Technical Details:**
+- Root cause: UV caches PyPI metadata that can become outdated
+- Detection: Compares version strings when "Nothing to upgrade" appears
+- Retry limit: Maximum 1 retry to prevent infinite loops
+- Timeout: 10 seconds for cache clear operation
+
+**References:**
+- SPEC: @SPEC:UPDATE-CACHE-FIX-001
+- Implementation: @CODE:UPDATE-CACHE-FIX-001-001, @CODE:UPDATE-CACHE-FIX-001-002, @CODE:UPDATE-CACHE-FIX-001-003
+- Tests: @TEST:UPDATE-CACHE-FIX-001
+
 ### Contributing Tests
 
 When adding new features, always include tests:

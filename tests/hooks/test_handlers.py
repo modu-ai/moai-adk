@@ -221,7 +221,7 @@ class TestSessionStartHandler:
     ):
         """Regular update shows version info with release notes
 
-        @TEST:MAJOR-UPDATE-001-08
+        @TEST:REGULAR-UPDATE-001-08
 
         SPEC Requirements:
             - WHEN minor/patch update is available (e.g., 0.8.1 → 0.9.0),
@@ -318,6 +318,100 @@ class TestUserPromptSubmitHandler:
 
         assert result.context_files == []
         assert result.system_message is None
+
+    @patch("handlers.user.get_jit_context")
+    @patch("handlers.user.Path")
+    def test_user_prompt_submit_alfred_command_logging(self, mock_path_class, mock_get_jit):
+        # @TEST:HOOKS-COMMAND-LOGGING-001
+        """Alfred 명령어 실행 시 로깅 기능
+
+        SPEC 요구사항:
+            - WHEN /alfred:* 명령어가 실행되면, 타임스탐프와 함께 로그 파일에 기록해야 한다
+            - WHEN 로깅이 실패하면, 메인 플로우는 계속되어야 한다 (비차단)
+
+        Given: "/alfred:1-plan 테스트" 프롬프트
+        When: handle_user_prompt_submit()를 호출하면
+        Then: 로그 파일에 명령어가 기록되고, 정상적으로 완료된다
+        """
+        mock_get_jit.return_value = []
+
+        # Mock Path and file operations
+        mock_log_dir = mock_path_class.return_value / ".moai" / "logs"
+        mock_log_file = mock_log_dir / "command-invocations.log"
+        mock_log_file.parent.return_value.mkdir = mock_log_file.parent.mkdir = lambda **kwargs: None
+        mock_log_file.exists.return_value = False
+
+        # Mock file write
+        mock_file_handle = mock_log_file.open.__enter__.return_value
+        mock_file_handle.write = lambda x: None
+
+        payload: HookPayload = {
+            "cwd": ".",
+            "userPrompt": "/alfred:1-plan 테스트 명령어",
+        }
+
+        result = handle_user_prompt_submit(payload)
+
+        # Verify main flow continues (no exceptions)
+        assert isinstance(result, HookResult)
+        assert result.context_files == []
+        assert result.system_message is None
+
+    @patch("handlers.user.get_jit_context")
+    def test_user_prompt_submit_non_alfred_command_no_logging(self, mock_get_jit):
+        # @TEST:HOOKS-COMMAND-LOGGING-002
+        """Alfred가 아닌 명령어는 로깅하지 않음
+
+        SPEC 요구사항:
+            - WHEN /alfred:가 아닌 명령어가 실행되면, 로깅하지 않아야 한다
+
+        Given: "/help" 사용자 프롬프트
+        When: handle_user_prompt_submit()를 호출하면
+        Then: 로그 파일 접근이 없고 정상적으로 완료된다
+        """
+        mock_get_jit.return_value = []
+
+        payload: HookPayload = {
+            "cwd": ".",
+            "userPrompt": "/help",
+        }
+
+        result = handle_user_prompt_submit(payload)
+
+        # Verify no errors and normal operation
+        assert isinstance(result, HookResult)
+        assert result.context_files == []
+        assert result.system_message is None
+
+    @patch("handlers.user.get_jit_context")
+    @patch("handlers.user.Path")
+    def test_user_prompt_submit_logging_graceful_failure(self, mock_path_class, mock_get_jit):
+        # @TEST:HOOKS-COMMAND-LOGGING-003
+        """로깅 실패 시에도 메인 플로우는 계속됨 (비차단)
+
+        SPEC 요구사항:
+            - WHEN 로그 파일 작성이 실패하면, 사일런트 페일로 메인 플로우를 방해하지 않아야 한다
+
+        Given: 파일 쓰기 권한이 없는 상황
+        When: handle_user_prompt_submit()를 호출하면
+        Then: 로깅 오류가 발생하지만 정상적으로 완료된다
+        """
+        mock_get_jit.return_value = []
+
+        # Mock Path to raise exception on file write
+        mock_path_class.side_effect = PermissionError("Permission denied")
+
+        payload: HookPayload = {
+            "cwd": ".",
+            "userPrompt": "/alfred:2-run SPEC-001",
+        }
+
+        # Should not raise exception despite logging failure
+        result = handle_user_prompt_submit(payload)
+
+        # Verify main flow continues
+        assert isinstance(result, HookResult)
+        assert result.context_files == []
 
 
 class TestPostToolUseHandler:
