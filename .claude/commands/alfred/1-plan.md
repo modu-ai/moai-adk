@@ -477,7 +477,7 @@ priority: high
 You must include a HISTORY section **right after the YAML Front Matter**:
 
 ```markdown
-# @SPEC:AUTH-001: JWT-based authentication system
+# @SPEC:DOMAIN-NNN: JWT-based authentication system
 
 ## HISTORY
 
@@ -523,7 +523,7 @@ updated: 2025-09-15
 author: @username
 ---
 
-# @SPEC:AUTH-001: [SPEC title]
+# @SPEC:DOMAIN-NNN: [SPEC title]
 
 ## HISTORY
 [Change history by version – see example above]
@@ -551,7 +551,7 @@ author: @username
 - IF [condition], the system must [respond appropriately with error handling or quality gates]
 
 ## Traceability (@TAG)
-- **SPEC**: @SPEC:AUTH-001
+- **SPEC**: @SPEC:DOMAIN-NNN
 - **TEST**: tests/auth/test_service.py
 - **CODE**: src/auth/service.py
 - **DOC**: docs/api/authentication.md

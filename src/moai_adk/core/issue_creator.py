@@ -214,7 +214,7 @@ class GitHubIssueCreator:
         footer += f"**Priority**: {config.priority.value}  \n"
         if config.category:
             footer += f"**Category**: {config.category}  \n"
-        footer += f"**Created via**: `/alfred:9-feedback`"
+        footer += "**Created via**: `/alfred:9-feedback`"
 
         return body + footer
 
@@ -276,7 +276,9 @@ class IssueCreatorFactory:
         )
 
     @staticmethod
-    def create_feature_issue(title: str, description: str, priority: IssuePriority = IssuePriority.MEDIUM) -> IssueConfig:
+    def create_feature_issue(
+        title: str, description: str, priority: IssuePriority = IssuePriority.MEDIUM
+    ) -> IssueConfig:
         """Create a feature request issue configuration."""
         return IssueConfig(
             issue_type=IssueType.FEATURE,
@@ -287,7 +289,9 @@ class IssueCreatorFactory:
         )
 
     @staticmethod
-    def create_improvement_issue(title: str, description: str, priority: IssuePriority = IssuePriority.MEDIUM) -> IssueConfig:
+    def create_improvement_issue(
+        title: str, description: str, priority: IssuePriority = IssuePriority.MEDIUM
+    ) -> IssueConfig:
         """Create an improvement issue configuration."""
         return IssueConfig(
             issue_type=IssueType.IMPROVEMENT,
