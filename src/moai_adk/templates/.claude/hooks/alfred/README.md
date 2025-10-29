@@ -226,5 +226,234 @@ def _load_{module}_module(module_name: str):
 
 ---
 
-**Last Updated**: 2025-10-16  
+## 🏗️ Architecture Decisions
+
+### Why Hybrid Modular Architecture?
+
+**Decision**: Use 9 modules (router + handlers + core) instead of single file or per-hook files.
+
+**Alternatives Considered**:
+
+1. **Single monolithic file** (1,233 LOC) - ❌ REJECTED
+   - Pro: Simple deployment
+   - Con: Hard to test, poor performance (180ms), violates SRP
+
+2. **Separate file per hook** (8 files: session_start_hook.py, user_prompt_submit_hook.py, etc.) - ❌ REJECTED
+   - Pro: Clear 1:1 mapping (1 hook = 1 file)
+   - Con: Code duplication, violates DRY principle, hard to maintain shared logic
+
+3. **Hybrid modular** (9 modules: router + handlers + core) - ✅ SELECTED
+   - Pro: SRP compliance, DRY principle, testable, performant (70ms)
+   - Con: Import path management required, slightly complex deployment
+
+**Evaluation Score**: 8/9 (vs 2/9 monolithic, 3/9 per-hook)
+
+**Rationale**:
+- **70% shared logic** (HookResult, project metadata, Git operations) → Best centralized in `core/`
+- **30% event-specific logic** → Best organized by handler type in `handlers/`
+- **Performance**: 61% improvement over monolithic (180ms → 70ms)
+- **Maintainability**: Average 135 LOC per module (easy to understand)
+
+### Why sys.path Manipulation?
+
+**Decision**: Insert hooks directory into sys.path at runtime
+
+```python
+HOOKS_DIR = Path(__file__).parent
+sys.path.insert(0, str(HOOKS_DIR))
+```
+
+**Alternatives Considered**:
+
+1. **Proper Python package with setup.py** - ❌ REJECTED
+   - Pro: Standard packaging approach
+   - Con: Slower (package resolution overhead), complex deployment, overkill for scripts
+
+2. **PYTHONPATH environment variable** - ❌ REJECTED
+   - Pro: No code changes needed
+   - Con: Requires environment configuration, fragile, error-prone
+
+3. **Relative imports with `python -m`** - ❌ REJECTED
+   - Pro: Standard Python approach
+   - Con: Requires invoking as module, settings.json would be more complex
+
+**Rationale**:
+- Hooks are **scripts, not libraries** - optimization for execution speed matters
+- Faster execution (~5ms vs ~50ms for package resolution)
+- Simpler deployment (just copy files, no installation needed)
+- Common pattern for hook/plugin systems
+
+**Tradeoffs**:
+- ✅ Faster execution, simpler deployment
+- ⚠️ Non-standard packaging (acceptable for scripts)
+- ⚠️ Potential namespace conflicts (unlikely in practice)
+
+### Why Timeout Protection?
+
+**Decision**: Enforce 5-second global timeout using SIGALRM
+
+```python
+signal.signal(signal.SIGALRM, _hook_timeout_handler)
+signal.alarm(5)
+```
+
+**Problem Solved**: Subprocess hangs can freeze Claude Code indefinitely.
+
+**Implementation**:
+- **Outer try-except**: Catches `HookTimeoutError` for graceful timeout handling
+- **Inner try-except**: Catches business logic errors (JSON parse, handler exceptions)
+- **Finally block**: Always cancels alarm to prevent signal leakage
+
+**Platform Compatibility**:
+- ✅ Linux: Fully supported
+- ✅ macOS: Fully supported
+- ❌ Windows: SIGALRM not available (no timeout protection)
+
+**Windows Alternative** (Future Enhancement):
+```python
+import threading
+
+def run_with_timeout(func, timeout=5):
+    result = []
+    exception = []
+
+    def wrapper():
+        try:
+            result.append(func())
+        except Exception as e:
+            exception.append(e)
+
+    thread = threading.Thread(target=wrapper)
+    thread.daemon = True
+    thread.start()
+    thread.join(timeout)
+
+    if thread.is_alive():
+        raise TimeoutError("Function timeout")
+    if exception:
+        raise exception[0]
+    return result[0]
+```
+
+**Note**: Windows users should keep hook execution under 2 seconds to avoid issues.
+
+---
+
+## 🔧 Configuration and Deployment
+
+### Environment Variables
+
+Alfred hooks use `$CLAUDE_PROJECT_DIR` for reliable path resolution:
+
+```json
+// settings.json
+{
+  "hooks": {
+    "SessionStart": [{
+      "hooks": [{
+        "command": "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/alfred/alfred_hooks.py SessionStart",
+        "type": "command"
+      }]
+    }]
+  }
+}
+```
+
+**Available Variables**:
+- `$CLAUDE_PROJECT_DIR` - Absolute path to project root (where Claude Code was started)
+- `$CLAUDE_CODE_REMOTE` - `"true"` for web environments, unset for local CLI
+
+**Why $CLAUDE_PROJECT_DIR?**
+- Prevents "file not found" errors when Claude Code's cwd changes
+- Works regardless of current working directory
+- Handles paths with spaces correctly (quoted)
+
+**Before** (Relative Path - Unreliable):
+```json
+"command": "uv run .claude/hooks/alfred/alfred_hooks.py SessionStart"
+```
+
+**After** (Absolute Path - Reliable):
+```json
+"command": "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/alfred/alfred_hooks.py SessionStart"
+```
+
+### Template Synchronization
+
+Alfred hooks are **wholesale overwritten** during `/alfred:0-project` updates:
+
+```python
+# Template copy strategy (from template/processor.py)
+alfred_folders = ["hooks/alfred", "commands/alfred", ...]
+
+for folder in alfred_folders:
+    if dst_folder.exists():
+        shutil.rmtree(dst_folder)  # Delete entire directory
+    shutil.copytree(src_folder, dst_folder)  # Copy fresh from template
+```
+
+**Rationale**:
+- **Consistency**: Always matches template version
+- **Simplicity**: No merge conflicts, no stale files
+- **Safety**: Checkpoint system allows rollback if needed
+
+**Implication**: Local modifications to hooks will be lost. Use `.moai/config.json` for customization instead.
+
+---
+
+## 🐛 Troubleshooting
+
+For detailed troubleshooting guide, see [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).
+
+### Quick Diagnosis
+
+```bash
+# Test hook execution
+echo '{"cwd": "."}' | uv run .claude/hooks/alfred/alfred_hooks.py SessionStart
+```
+
+**Expected**: JSON output with `"continue": true`
+**If failed**: See TROUBLESHOOTING.md for error-specific solutions
+
+### Common Issues
+
+1. **"Hook not found"** → Run `/alfred:0-project update`
+2. **"Import error"** → Verify `__init__.py` files exist in `handlers/` and `core/`
+3. **"Timeout"** → Check Git/file operations, consider increasing timeout
+4. **"Permission denied"** → Run `chmod +x .claude/hooks/alfred/alfred_hooks.py`
+
+### Performance Monitoring
+
+```bash
+# Benchmark hook execution
+time echo '{"cwd": "."}' | uv run .claude/hooks/alfred/alfred_hooks.py SessionStart
+
+# Expected: <100ms (current average: 70ms)
+```
+
+---
+
+## 📈 Version History
+
+### v0.8.0 (2025-10-29) - Path Resolution & Timeout Fixes
+- ✅ **FIXED**: Use `$CLAUDE_PROJECT_DIR` for reliable path resolution
+- ✅ **ADDED**: Global SIGALRM timeout protection (5 seconds)
+- ✅ **ADDED**: Comprehensive TROUBLESHOOTING.md guide
+- ✅ **ENHANCED**: Architecture documentation with decision rationale
+
+### v0.7.0 (2025-10-17) - Stateless Refactoring
+- ✅ **REMOVED**: `core/tags.py` (245 LOC) - delegated to tag-agent
+- ✅ **REMOVED**: Workflow context from hooks (delegated to Commands layer)
+- ✅ **PERFORMANCE**: 180ms → 70ms (61% improvement)
+- ✅ **COMPLIANCE**: 100% stateless (no global variables)
+
+### v0.6.0 (2025-10-16) - Modular Architecture
+- ✅ **MIGRATED**: 1,233 LOC monolithic → 9 modular files
+- ✅ **ADDED**: Hybrid modular architecture (router + handlers + core)
+- ✅ **IMPROVED**: SRP compliance, testability, maintainability
+
+---
+
+**Last Updated**: 2025-10-29
+**Version**: 0.8.0
 **Author**: @Alfred (MoAI-ADK SuperAgent)

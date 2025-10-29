@@ -159,6 +159,106 @@ class TestSessionStartHandler:
         assert "main" in result.system_message
         assert "5/10" in result.system_message
 
+    @patch("handlers.session.get_package_version_info")
+    @patch("handlers.session.list_checkpoints")
+    @patch("handlers.session.count_specs")
+    @patch("handlers.session.get_git_info")
+    @patch("handlers.session.detect_language")
+    def test_session_start_major_version_warning(
+        self, mock_detect_lang, mock_get_git, mock_count_specs,
+        mock_list_checkpoints, mock_version_info
+    ):
+        """Major version update shows warning with release notes
+
+        @TEST:MAJOR-UPDATE-001-07
+
+        SPEC Requirements:
+            - WHEN major version update is available (e.g., 0.8.1 → 1.0.0),
+              THEN SessionStart should display warning with release notes URL
+
+        Given: Major version update available (0.8.1 → 1.0.0)
+        When: handle_session_start() is called
+        Then: system_message includes "⚠️ Major version update available"
+              and release notes URL
+        """
+        mock_detect_lang.return_value = "Python"
+        mock_get_git.return_value = {}
+        mock_count_specs.return_value = {"completed": 0, "total": 0, "percentage": 0}
+        mock_list_checkpoints.return_value = []
+
+        # Mock major version update
+        mock_version_info.return_value = {
+            "current": "0.8.1",
+            "latest": "1.0.0",
+            "update_available": True,
+            "is_major_update": True,
+            "release_notes_url": "https://github.com/modu-ai/moai-adk/releases/tag/v1.0.0",
+            "upgrade_command": "uv pip install --upgrade moai-adk>=1.0.0"
+        }
+
+        payload: HookPayload = {"cwd": ".", "phase": "compact"}
+        result = handle_session_start(payload)
+
+        assert result.system_message is not None
+        # Should show major version warning
+        assert "⚠️" in result.system_message
+        assert "Major version update available" in result.system_message
+        assert "0.8.1" in result.system_message
+        assert "1.0.0" in result.system_message
+        # Should include release notes URL
+        assert "github.com/modu-ai/moai-adk/releases" in result.system_message
+        # Should include upgrade command
+        assert "Upgrade:" in result.system_message or "⬆️" in result.system_message
+
+    @patch("handlers.session.get_package_version_info")
+    @patch("handlers.session.list_checkpoints")
+    @patch("handlers.session.count_specs")
+    @patch("handlers.session.get_git_info")
+    @patch("handlers.session.detect_language")
+    def test_session_start_regular_update_with_release_notes(
+        self, mock_detect_lang, mock_get_git, mock_count_specs,
+        mock_list_checkpoints, mock_version_info
+    ):
+        """Regular update shows version info with release notes
+
+        @TEST:MAJOR-UPDATE-001-08
+
+        SPEC Requirements:
+            - WHEN minor/patch update is available (e.g., 0.8.1 → 0.9.0),
+              THEN SessionStart should display version info and release notes
+
+        Given: Regular version update available (0.8.1 → 0.9.0)
+        When: handle_session_start() is called
+        Then: system_message includes version line and release notes URL
+        """
+        mock_detect_lang.return_value = "Python"
+        mock_get_git.return_value = {}
+        mock_count_specs.return_value = {"completed": 0, "total": 0, "percentage": 0}
+        mock_list_checkpoints.return_value = []
+
+        # Mock regular update (no major version change)
+        mock_version_info.return_value = {
+            "current": "0.8.1",
+            "latest": "0.9.0",
+            "update_available": True,
+            "is_major_update": False,
+            "release_notes_url": "https://github.com/modu-ai/moai-adk/releases/tag/v0.9.0",
+            "upgrade_command": "uv pip install --upgrade moai-adk>=0.9.0"
+        }
+
+        payload: HookPayload = {"cwd": ".", "phase": "compact"}
+        result = handle_session_start(payload)
+
+        assert result.system_message is not None
+        # Should show regular version line (NOT major warning)
+        assert "0.8.1" in result.system_message
+        assert "0.9.0" in result.system_message
+        assert "available" in result.system_message
+        # Should NOT show major version warning
+        assert "⚠️" not in result.system_message or "Major" not in result.system_message
+        # Should include release notes URL
+        assert "github.com/modu-ai/moai-adk/releases" in result.system_message
+
 
 class TestUserPromptSubmitHandler:
     """UserPromptSubmit 핸들러 테스트
