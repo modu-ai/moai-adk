@@ -508,6 +508,11 @@ After project initialization, update .moai/config.json with nested language stru
   }
 }
 
+SKILL INVOCATION:
+Use explicit Skill() calls when needed:
+- Skill("moai-alfred-language-detection") for codebase language detection
+- Skill("moai-foundation-langs") for multi-language project setup
+
 TASK: Conduct project interviews and create/update product/structure/tech.md documents."""
 ```
 
