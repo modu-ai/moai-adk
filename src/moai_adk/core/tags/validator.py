@@ -841,3 +841,57 @@ class CentralValidator:
         lines.append("")
 
         return "\n".join(lines)
+
+    def export_for_reporting(self, result: CentralValidationResult) -> Dict[str, Any]:
+        """Export validation result in format compatible with ReportGenerator
+
+        This method bridges Component 3 (Validation) with Component 4 (Reporting).
+        Exports validation results as structured data for integration with
+        automated reporting workflows.
+
+        Args:
+            result: CentralValidationResult from validation
+
+        Returns:
+            Dictionary with validation data formatted for reporting:
+            {
+                "timestamp": ISO timestamp,
+                "is_valid": bool,
+                "statistics": {
+                    "total_files_scanned": int,
+                    "total_tags_found": int,
+                    "total_issues": int,
+                    "error_count": int,
+                    "warning_count": int,
+                    "coverage_percentage": float
+                },
+                "issues_by_type": {
+                    "duplicate": [...],
+                    "orphan": [...],
+                    "chain": [...],
+                    "format": [...]
+                },
+                "execution_time_ms": float
+            }
+        """
+        # Group issues by type
+        issues_by_type: Dict[str, List[Dict[str, Any]]] = {
+            "duplicate": [],
+            "orphan": [],
+            "chain": [],
+            "format": []
+        }
+
+        for issue in result.issues:
+            issues_by_type[issue.type].append(issue.to_dict())
+
+        # Build export data
+        export_data = {
+            "timestamp": result.timestamp.isoformat(),
+            "is_valid": result.is_valid,
+            "statistics": result.statistics.to_dict(),
+            "issues_by_type": issues_by_type,
+            "execution_time_ms": result.execution_time_ms
+        }
+
+        return export_data
