@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @CODE:HOOKS-CLARITY-001 | SPEC: Individual hook files for better UX
+# @CODE:ALF-WORKFLOW-001:HOOKS-CLARITY:SUBAGENT-STOP | SPEC: Individual hook files for better UX
 """SubagentStop Hook: Handle Sub-agent Termination
 
 Claude Code Event: SubagentStop

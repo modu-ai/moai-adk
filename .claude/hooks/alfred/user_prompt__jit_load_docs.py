@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @CODE:HOOKS-CLARITY-001 | SPEC: Individual hook files for better UX
+# @CODE:ALF-WORKFLOW-001:HOOKS-CLARITY:USER-PROMPT | SPEC: Individual hook files for better UX
 """UserPromptSubmit Hook: Just-In-Time Document Loading
 
 Claude Code Event: UserPromptSubmit

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @CODE:HOOKS-CLARITY-001 | SPEC: Individual hook files for better UX
+# @CODE:ALF-WORKFLOW-001:HOOKS-CLARITY:STOP | SPEC: Individual hook files for better UX
 """Stop Hook: Handle Execution Interruption
 
 Claude Code Event: Stop
