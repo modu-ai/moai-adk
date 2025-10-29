@@ -1,36 +1,40 @@
-# GitFlow Advisory Policy
+# GitFlow Protection Policy
 
-**Document ID**: @DOC:GITFLOW-POLICY-001  
-**Published**: 2025-10-17  
-**Status**: Advisory (recommended, not enforced)  
+**Document ID**: @DOC:GITFLOW-POLICY-ALIAS
+**Published**: 2025-10-17
+**Updated**: 2025-10-29
+**Status**: **Enforced via GitHub Branch Protection** (v0.8.3+)
 **Scope**: Personal and Team modes
 
 ---
 
 ## Overview
 
-MoAI-ADK **recommends** a GitFlow-inspired workflow. This policy shares best practices while letting teams adapt them as needed.
+MoAI-ADK **enforces** a GitFlow-inspired workflow through GitHub Branch Protection. As of v0.8.3, the `main` branch is protected and requires Pull Requests for all changes, including from administrators.
 
-## Key Recommendations
+**What Changed**: Previously (v0.3.5-v0.8.2), we used an advisory approach with warnings. Now we enforce proper GitFlow to ensure code quality and prevent accidental direct pushes to main.
 
-### 1. Main Branch Access (Recommended)
+## Key Requirements (Enforced)
 
-| Recommendation | Summary | Enforcement |
-|----------------|---------|-------------|
-| **Merge via develop** | Prefer merging `develop` into `main` | Advisory ⚠️ |
-| **Feature branches off develop** | Branch from `develop` and raise PRs back to `develop` | Advisory ⚠️ |
-| **Release process** | Release flow: `develop` → `main` (release engineer encouraged) | Advisory ⚠️ |
-| **Force push** | Warn when force-pushing, but allow it | Warning ⚠️ |
-| **Direct push** | Warn on direct pushes to `main`, but allow them | Warning ⚠️ |
+### 1. Main Branch Access (Enforced)
 
-### 2. Git Workflow (Recommended)
+| Requirement | Summary | Enforcement |
+|-------------|---------|-------------|
+| **Merge via develop** | MUST merge `develop` into `main` | ✅ Enforced |
+| **Feature branches off develop** | MUST branch from `develop` and raise PRs back to `develop` | ✅ Enforced |
+| **Release process** | Release flow: `develop` → `main` (PR required) | ✅ Enforced |
+| **Force push** | Blocked on `main` | ✅ Blocked |
+| **Direct push** | Blocked on `main` (PR required) | ✅ Blocked |
+
+### 2. Git Workflow (Required)
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                RECOMMENDED GITFLOW                      │
+│                ENFORCED GITFLOW                         │
+│         (GitHub Branch Protection Active)               │
 └─────────────────────────────────────────────────────────┘
 
-        develop (recommended base branch)
+        develop (required base branch)
           ↑     ↓
     ┌─────────────────┐
     │                 │
@@ -46,13 +50,15 @@ feature/SPEC-{ID}   [PR: feature -> develop]
          │   (release manager prepares)
          ↓
     [PR: develop -> main]
+    [Code review + approval REQUIRED]
+    [All discussions resolved]
     [CI/CD validation]
     [tag creation]
          ↓
-       main (release)
+       main (protected release)
 ```
 
-**Flexibility**: Direct pushes to `main` are still possible, but the workflow above is preferred.
+**Enforcement**: Direct pushes to `main` are **blocked** via GitHub Branch Protection. All changes must go through Pull Requests.
 
 ## Technical Implementation
 
@@ -156,18 +162,29 @@ git push origin v1.0.0
 
 ## Policy Modes
 
-### Strict Mode (Legacy, Currently Disabled)
+### Strict Mode (Active, v0.8.3+) ✅ ENFORCED
 
-- ❌ Block direct pushes to `main`
-- ❌ Block force pushes
-- ❌ Block merges into `main` from any branch other than `develop`
+**GitHub Branch Protection Enabled**:
+- ✅ **enforce_admins: true** - Administrators must follow all rules
+- ✅ **required_pull_request_reviews** - 1 approval required
+- ✅ **required_conversation_resolution** - All discussions must be resolved
+- ✅ **Block direct pushes to `main`** - PR required for all users
+- ✅ **Block force pushes** - Prevents history rewriting
+- ✅ **Block branch deletion** - Protects main from accidental deletion
 
-### Advisory Mode (Active, v0.3.5+)
+**What This Means**:
+- ❌ No one (including admins) can push directly to `main`
+- ✅ All changes must go through Pull Requests
+- ✅ PRs require code review approval
+- ✅ All code discussions must be resolved before merge
+- ✅ Enforces proper GitFlow: feature → develop → main
 
-- ⚠️ Warn but allow direct pushes to `main`
-- ⚠️ Warn but allow force pushes
-- ⚠️ Recommend best practices while preserving flexibility
-- ✅ Respect user judgment
+### Advisory Mode (Legacy, v0.3.5 - v0.8.2)
+
+- ⚠️ Warned but allowed direct pushes to `main`
+- ⚠️ Warned but allowed force pushes
+- ⚠️ Recommended best practices while preserving flexibility
+- ❌ **Deprecated** - Replaced by Strict Mode for better quality control
 
 ---
 
@@ -202,8 +219,98 @@ A: Yes. Expect an advisory warning, yet the push continues.
 **Q: Can I disable the hook entirely?**  
 A: Yes. Remove `.git/hooks/pre-push` or strip its execute permission.
 
-**Q: Why switch to Advisory Mode?**  
-A: To promote best practices while respecting contributor flexibility and judgment.
+**Q: Why switch to Advisory Mode?**
+A: Advisory Mode was used in v0.3.5-v0.8.2. As of v0.8.3, we've switched to Strict Mode with GitHub Branch Protection for better quality control.
+
+**Q: What if develop falls behind main?**
+A: This can happen when hotfixes or releases go directly to main. Regularly sync main → develop to prevent divergence. See "Maintaining develop-main Sync" section below.
+
+**Q: Can I bypass branch protection in emergencies?**
+A: No. Even administrators must follow the PR process. For true emergencies, temporarily disable protection via GitHub Settings (requires admin access), but re-enable immediately after.
+
+---
+
+## Maintaining develop-main Sync
+
+### ⚠️ Critical Rule: develop Must Stay Current
+
+**Problem**: When main receives direct commits (hotfixes, emergency releases) without syncing back to develop, GitFlow breaks:
+
+```
+❌ BAD STATE:
+develop: 3 commits ahead, 29 commits behind main
+- develop has outdated dependencies
+- New features branch from old code
+- Merge conflicts multiply over time
+```
+
+### Signs of Drift
+
+Monitor for these warnings:
+- `git status` shows "Your branch is X commits behind main"
+- Feature branches conflict with main during PR
+- CI/CD failures due to dependency mismatches
+- Version numbers in develop don't match main
+
+### Recovery Procedure
+
+When develop falls behind main:
+
+1. **Assess the Gap**
+   ```bash
+   git log --oneline develop..main  # Commits in main but not develop
+   git log --oneline main..develop  # Commits in develop but not main
+   ```
+
+2. **Sync Strategy: Merge main into develop (Recommended)**
+   ```bash
+   git checkout develop
+   git pull origin develop        # Get latest develop
+   git merge main                 # Merge main into develop
+   # Resolve conflicts if any (prefer main for version/config files)
+   git push origin develop
+   ```
+
+3. **Emergency Only: Reset develop to main (Destructive)**
+   ```bash
+   # ⚠️ ONLY if develop's unique commits are unwanted
+   git checkout develop
+   git reset --hard main
+   git push origin develop --force
+   ```
+
+### Prevention: Regular Sync Schedule
+
+**After every main release** (REQUIRED):
+```bash
+# Immediately after merging develop → main:
+git checkout develop
+git merge main
+git push origin develop
+```
+
+**Weekly maintenance** (for active projects):
+```bash
+# Every Monday morning:
+git checkout develop
+git pull origin main
+git push origin develop
+```
+
+### Real-World Case Study (2025-10-29)
+
+**Situation**: develop was 29 commits behind main due to:
+- v0.8.2, v0.8.3 released directly to main
+- No reverse sync to develop
+- Feature branches contained outdated code
+
+**Resolution**:
+- Merged main → develop (14 file conflicts)
+- Resolved conflicts prioritizing main's versions
+- TAG validation bypassed for merge commit
+- Enabled Strict Mode to prevent future direct pushes
+
+**Lesson**: With Strict Mode active, this won't happen again. All releases must go through develop → main PR flow.
 
 ---
 
@@ -213,6 +320,9 @@ A: To promote best practices while respecting contributor flexibility and judgme
 |------|------|--------|
 | 2025-10-17 | Initial policy drafted (Strict Mode)             | git-manager  |
 | 2025-10-17 | Switched to Advisory Mode (warnings only)        | git-manager  |
+| 2025-10-29 | **Enabled GitHub Branch Protection (Strict Mode)** | Alfred       |
+| 2025-10-29 | Added develop-main sync guidelines and real-world case study | Alfred       |
+| 2025-10-29 | Enforced `enforce_admins`, `required_conversation_resolution` | Alfred       |
 
 ---
 
