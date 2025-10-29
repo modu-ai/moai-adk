@@ -482,7 +482,7 @@ rm -rf .moai/cache/version-check.json
 
 ### 10.2 후속 작업
 
-- [ ] `.moai/memory/config-schema.md` 업데이트 (version_check 섹션 추가)
+- [ ] `.moai/memory/CONFIG-SCHEMA.md` 업데이트 (version_check 섹션 추가)
 - [ ] 사용자 가이드 작성 (버전 체크 설정 방법)
 - [ ] 통합 테스트 시나리오 작성 (E2E)
 - [ ] 성능 벤치마크 스크립트 작성
