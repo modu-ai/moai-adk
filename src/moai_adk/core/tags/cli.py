@@ -15,15 +15,15 @@ Usage:
     moai-adk validate-tags --no-duplicates --no-orphans
 """
 
-import sys
 import argparse
+import sys
 from pathlib import Path
 from typing import Optional
 
 from .validator import (
+    CentralValidationResult,
     CentralValidator,
     ValidationConfig,
-    CentralValidationResult,
 )
 
 

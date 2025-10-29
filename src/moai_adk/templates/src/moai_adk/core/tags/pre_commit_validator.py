@@ -15,7 +15,7 @@ import re
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Tuple, Dict, Set, Optional
+from typing import Dict, List, Optional, Tuple
 
 
 @dataclass
@@ -160,7 +160,7 @@ class PreCommitValidator:
         for tag, locations in tag_locations.items():
             if len(locations) > 1:
                 errors.append(ValidationError(
-                    message=f"Duplicate TAG found",
+                    message="Duplicate TAG found",
                     tag=tag,
                     locations=locations
                 ))
@@ -220,7 +220,7 @@ class PreCommitValidator:
             if domain not in tags_by_type["TEST"]:
                 for filepath, line_num in locations:
                     warnings.append(ValidationWarning(
-                        message=f"CODE TAG without corresponding TEST",
+                        message="CODE TAG without corresponding TEST",
                         tag=f"@CODE:{domain}",
                         location=(filepath, line_num)
                     ))
@@ -230,7 +230,7 @@ class PreCommitValidator:
             if domain not in tags_by_type["CODE"]:
                 for filepath, line_num in locations:
                     warnings.append(ValidationWarning(
-                        message=f"TEST TAG without corresponding CODE",
+                        message="TEST TAG without corresponding CODE",
                         tag=f"@TEST:{domain}",
                         location=(filepath, line_num)
                     ))
@@ -302,8 +302,8 @@ class PreCommitValidator:
 
 def main():
     """CLI entry point for pre-commit hook"""
-    import sys
     import argparse
+    import sys
 
     parser = argparse.ArgumentParser(
         description="Validate TAG annotations in git staged files"

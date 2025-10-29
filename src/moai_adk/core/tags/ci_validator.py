@@ -13,15 +13,13 @@ Used by GitHub Actions workflow to validate TAGs on every PR.
 
 import json
 import os
-from pathlib import Path
-from typing import List, Dict, Any, Optional, Tuple
+from typing import Any, Dict, List, Optional
+
 import requests
 
 from .pre_commit_validator import (
     PreCommitValidator,
     ValidationResult,
-    ValidationError,
-    ValidationWarning,
 )
 
 
@@ -357,8 +355,8 @@ class CIValidator(PreCommitValidator):
 
 def main():
     """CLI entry point for CI/CD validation"""
-    import sys
     import argparse
+    import sys
 
     parser = argparse.ArgumentParser(
         description="Validate TAG annotations in GitHub PR"

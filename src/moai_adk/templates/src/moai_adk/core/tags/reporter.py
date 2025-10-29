@@ -23,14 +23,12 @@ Usage:
     print(f"Generated reports: {result.inventory_path}, {result.matrix_path}")
 """
 
-import re
 import json
+import re
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import List, Dict, Set, Tuple, Optional, Any
 from datetime import datetime
-import fnmatch
-
+from pathlib import Path
+from typing import Dict, List, Set
 
 # ============================================================================
 # Data Models
