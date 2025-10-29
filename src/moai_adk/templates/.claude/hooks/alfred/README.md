@@ -8,223 +8,336 @@ Alfred Hooks integrates with Claude Code's event system to automatically manage 
 
 ## 📐 Architecture
 
-### Modular Design (9 Files, ≤284 LOC each)
+### Individual Hook Files (Event + Function Naming)
 
 ```
 .claude/hooks/alfred/
-├── alfred_hooks.py          # Main entry point (CLI router)
-├── core/                    # Core business logic
-│   ├── __init__.py         # Type definitions (HookPayload, HookResult)
-│   ├── project.py          # Language detection, Git info, SPEC counting
-│   ├── context.py          # JIT retrieval, workflow context
-│   ├── checkpoint.py       # Event-driven checkpoint creation
-│   └── tags.py             # TAG search, verification, caching
-└── handlers/                # Event handlers
-    ├── __init__.py         # Handler exports
-    ├── session.py          # SessionStart, SessionEnd
-    ├── user.py             # UserPromptSubmit
-    ├── tool.py             # PreToolUse, PostToolUse
-    └── notification.py     # Notification, Stop, SubagentStop
+├── session_start__show_project_info.py       # SessionStart: Display project status
+├── user_prompt__jit_load_docs.py             # UserPromptSubmit: JIT document loading
+├── pre_tool__auto_checkpoint.py              # PreToolUse: Automatic safety checkpoints
+├── post_tool__log_changes.py                 # PostToolUse: Change tracking (stub)
+├── session_end__cleanup.py                   # SessionEnd: Cleanup resources (stub)
+├── notification__handle_events.py            # Notification: Event processing (stub)
+├── stop__handle_interrupt.py                 # Stop: Interrupt handling (stub)
+├── subagent_stop__handle_subagent_end.py     # SubagentStop: Sub-agent cleanup (stub)
+└── shared/                                    # Shared business logic
+    ├── core/                                  # Core modules
+    │   ├── __init__.py                       # Type definitions (HookPayload, HookResult)
+    │   ├── project.py                        # Language detection, Git info, SPEC counting
+    │   ├── context.py                        # JIT retrieval, workflow context
+    │   ├── checkpoint.py                     # Event-driven checkpoint creation
+    │   └── version_cache.py                  # Library version management
+    └── handlers/                              # Event handlers
+        ├── __init__.py                       # Handler exports
+        ├── session.py                        # SessionStart, SessionEnd handlers
+        ├── user.py                           # UserPromptSubmit handler
+        ├── tool.py                           # PreToolUse, PostToolUse handlers
+        └── notification.py                   # Notification, Stop handlers
 ```
 
 ### Design Principles
 
-- **Single Responsibility**: Each module has one clear responsibility
-- **Separation of Concerns**: core (business logic) vs handlers (event processing)
-- **CODE-FIRST**: Scan code directly without intermediate cache (mtime Based invalidation)
-- **Context Engineering**: Minimize initial context burden with JIT Retrieval
+- **Clarity First**: File names describe what each hook does (UX priority)
+- **DRY Implementation**: Shared logic in `shared/` modules (maintainability)
+- **Self-Documenting**: Event + Function naming convention (e.g., `session_start__show_project_info.py`)
+- **Independent Execution**: Each hook file is self-contained and executable
+- **Timeout Protection**: All hooks enforce 5-second SIGALRM timeout
 
 ---
 
-## 🎯 Core Modules
+## 🎯 Hook Files
 
-### `core/project.py` (284 LOC)
+### `session_start__show_project_info.py`
 
-**Project metadata and language detection**
+**Event**: SessionStart
+**Purpose**: Display project information when session begins
 
+**Output**:
+- Programming language
+- Git branch and status
+- SPEC progress (completed/total %)
+- Recent checkpoints
+
+**Example**:
+```bash
+echo '{"cwd": "."}' | uv run session_start__show_project_info.py
+# Output: {"continue": true, "systemMessage": "🚀 MoAI-ADK v0.8.0 | 📦 python..."}
+```
+
+---
+
+### `user_prompt__jit_load_docs.py`
+
+**Event**: UserPromptSubmit
+**Purpose**: Analyze prompt and recommend relevant documents
+
+**Features**:
+- Pattern matching for Alfred commands (`/alfred:1-plan` → spec-metadata.md)
+- @TAG mention detection
+- SPEC reference extraction
+- Document path suggestions
+
+**Output Schema** (UserPromptSubmit-specific):
+```json
+{
+  "continue": true,
+  "hookSpecificOutput": {
+    "hookEventName": "UserPromptSubmit",
+    "additionalContext": "Suggested documents: .moai/memory/spec-metadata.md"
+  }
+}
+```
+
+---
+
+### `pre_tool__auto_checkpoint.py`
+
+**Event**: PreToolUse
+**Matcher**: `Edit|Write|MultiEdit`
+**Purpose**: Automatically create Git checkpoints before risky operations
+
+**Risky Operations Detected**:
+- **Bash**: `rm -rf`, `git merge`, `git reset --hard`
+- **Edit/Write**: `CLAUDE.md`, `config.json`, critical configuration files
+- **MultiEdit**: Operations affecting ≥10 files
+
+**Checkpoint Strategy**:
+1. Detect risky pattern
+2. Create checkpoint branch: `checkpoint/before-{operation}-{timestamp}`
+3. Log to `.moai/checkpoints.log`
+4. Return guidance message to user
+
+**Example**:
+```bash
+echo '{"toolName": "Bash", "arguments": {"command": "rm -rf temp/"}}' | uv run pre_tool__auto_checkpoint.py
+# Output: {"continue": true, "systemMessage": "✅ Checkpoint created: checkpoint/before-rm-20251029-174500"}
+```
+
+---
+
+### Stub Hooks (Future Enhancement)
+
+**`post_tool__log_changes.py`**
+- Change tracking and audit logging
+- Metrics collection (files modified, lines changed)
+
+**`session_end__cleanup.py`**
+- Clear temporary caches
+- Save session metrics
+
+**`notification__handle_events.py`**
+- Filter and categorize notifications
+- Send alerts to external systems
+
+**`stop__handle_interrupt.py`**
+- Save partial work before interruption
+- Create recovery checkpoint
+
+**`subagent_stop__handle_subagent_end.py`**
+- Collect sub-agent execution metrics
+- Log results and errors
+
+---
+
+## 🏗️ Shared Modules
+
+### `shared/core/` - Business Logic
+
+**`project.py`** (284 LOC)
 ```python
-# Public API
 detect_language(cwd: str) -> str
-get_project_language(cwd: str) -> str
-get_git_info(cwd: str) -> dict[str, Any]
-count_specs(cwd: str) -> dict[str, int]
+get_git_info(cwd: str) -> dict
+count_specs(cwd: str) -> dict
 ```
 
-**Features**:
-- Automatic detection of 20 languages ​​(Python, TypeScript, Java, Go, Rust, etc.)
-- `.moai/config.json` First, fallback to auto-detection
-- Check Git information (branch, commit, changes)
-- SPEC progress calculation (total, completed, percentage)
-
-### `core/context.py` (110 LOC)
-
-**JIT Context Retrieval and Workflow Management**
-
+**`context.py`** (110 LOC)
 ```python
-# Public API
 get_jit_context(prompt: str, cwd: str) -> list[str]
-save_phase_context(phase: str, data: Any, ttl: int = 600)
-load_phase_context(phase: str, ttl: int = 600) -> Any | None
-clear_workflow_context()
 ```
 
-**Features**:
-- Automatically recommend documents based on prompt analysis
-  - `/alfred:1-plan` → `spec-metadata.md`
-  - `/alfred:2-run` → `development-guide.md`
-- Context caching for each workflow step (TTL 10 minutes)
-- Compliance with Anthropic Context Engineering principles
-
-### `core/checkpoint.py` (244 LOC)
-
-**Event-Driven Checkpoint Automation**
-
+**`checkpoint.py`** (244 LOC)
 ```python
-# Public API
-detect_risky_operation(tool: str, args: dict, cwd: str) -> tuple[bool, str]
+detect_risky_operation(tool: str, args: dict) -> tuple[bool, str]
 create_checkpoint(cwd: str, operation: str) -> str
-log_checkpoint(cwd: str, branch: str, description: str)
-list_checkpoints(cwd: str, max_count: int = 10) -> list[dict]
 ```
 
-**Features**:
-- Automatic detection of dangerous tasks:
-  - Bash: `rm -rf`, `git merge`, `git reset --hard`
-  - Edit/Write: `CLAUDE.md`, `config.json`
-  - MultiEdit: ≥10 files
-- Automatic creation of Git checkpoint: `checkpoint/before-{operation}-{timestamp}`
-- Checkpoint history management and recovery guide
+### `shared/handlers/` - Event Processing
 
-### `core/tags.py` (244 LOC)
-
-**CODE-FIRST TAG SYSTEM**
-
-```python
-# Public API
-search_tags(pattern: str, scope: list[str], cache_ttl: int = 60) -> list[dict]
-verify_tag_chain(tag_id: str) -> dict[str, Any]
-find_all_tags_by_type(tag_type: str) -> dict[str, list[str]]
-suggest_tag_reuse(keyword: str) -> list[str]
-get_library_version(library: str, cache_ttl: int = 86400) -> str | None
-set_library_version(library: str, version: str)
-```
-
-**Features**:
-- ripgrep-based TAG search (parsing JSON output)
-- mtime-based cache invalidation (CODE-FIRST guaranteed)
-- TAG chain verification (@SPEC → @TEST → @CODE completeness check)
-- Library version caching (TTL 24 hours)
+**`session.py`** - SessionStart, SessionEnd
+**`user.py`** - UserPromptSubmit
+**`tool.py`** - PreToolUse, PostToolUse
+**`notification.py`** - Notification, Stop, SubagentStop
 
 ---
 
-## 🎬 Event Handlers
+## 🔧 Configuration
 
-### `handlers/session.py`
+### settings.json
 
-**SessionStart, SessionEnd handlers**
+```json
+{
+  "hooks": {
+    "SessionStart": [{
+      "hooks": [{
+        "command": "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/alfred/session_start__show_project_info.py",
+        "type": "command"
+      }]
+    }],
+    "UserPromptSubmit": [{
+      "hooks": [{
+        "command": "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/alfred/user_prompt__jit_load_docs.py",
+        "type": "command"
+      }]
+    }],
+    "PreToolUse": [{
+      "hooks": [{
+        "command": "uv run \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/alfred/pre_tool__auto_checkpoint.py",
+        "type": "command"
+      }],
+      "matcher": "Edit|Write|MultiEdit"
+    }]
+  }
+}
+```
 
-- **SessionStart**: Display project information
- - Language, Git status, SPEC progress, recent checkpoint
- - Display directly to user with `systemMessage` field
-- **SessionEnd**: Cleanup task (stub)
-
-### `handlers/user.py`
-
-**UserPromptSubmit Handler**
-
-- Return list of JIT Context recommended documents
-- Analyze user prompt patterns and load related documents
-
-### `handlers/tool.py`
-
-**PreToolUse, PostToolUse handlers**
-
-- **PreToolUse**: Automatic checkpoint creation when dangerous operation is detected
-- **PostToolUse**: Post-processing operation (stub)
-
-### `handlers/notification.py`
-
-**Notification, Stop, SubagentStop handlers**
-
-- Basic implementation (stub, can be expanded in the future)
+**Key Changes**:
+- ✅ File names are self-descriptive (no arguments needed)
+- ✅ `$CLAUDE_PROJECT_DIR` for reliable path resolution
+- ✅ Each hook file is independent and testable
 
 ---
 
 ## 🧪 Testing
 
-### Test Suite
+### Test Individual Hooks
 
 ```bash
-# Run all tests
-uv run pytest tests/unit/test_alfred_hooks_*.py -v --no-cov
+# Test SessionStart hook
+echo '{"cwd": "."}' | uv run session_start__show_project_info.py
 
-# Run specific module tests
-uv run pytest tests/unit/test_alfred_hooks_core_tags.py -v
-uv run pytest tests/unit/test_alfred_hooks_core_context.py -v
-uv run pytest tests/unit/test_alfred_hooks_core_project.py -v
+# Test UserPromptSubmit hook
+echo '{"cwd": ".", "userPrompt": "/alfred:1-plan"}' | uv run user_prompt__jit_load_docs.py
+
+# Test PreToolUse hook
+echo '{"cwd": ".", "toolName": "Edit", "arguments": {"file_path": "CLAUDE.md"}}' | uv run pre_tool__auto_checkpoint.py
 ```
 
-### Test Coverage (18 tests)
+### Expected Output
 
-- ✅ **tags.py**: 7 tests (cache, TAG verification, version management)
-- ✅ **context.py**: 5 tests (JIT, workflow context)
-- ✅ **project.py**: 6 tests (language detection, Git, SPEC count)
+All hooks should return valid JSON with:
+- `"continue": true` (required field)
+- `"systemMessage"` or `"hookSpecificOutput"` (depending on hook type)
 
-### Test Structure
+---
 
+## 🐛 Troubleshooting
+
+For detailed troubleshooting guide, see [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).
+
+### Quick Diagnosis
+
+```bash
+# List all hook files
+ls -la .claude/hooks/alfred/*.py
+
+# Expected output:
+# session_start__show_project_info.py
+# user_prompt__jit_load_docs.py
+# pre_tool__auto_checkpoint.py
+# post_tool__log_changes.py
+# session_end__cleanup.py
+# notification__handle_events.py
+# stop__handle_interrupt.py
+# subagent_stop__handle_subagent_end.py
+```
+
+### Common Issues
+
+1. **"Hook not found"** → Run `/alfred:0-project update`
+2. **"Import error: No module named 'handlers'"** → Check `shared/handlers/__init__.py` exists
+3. **"Timeout"** → Check Git/file operations, consider increasing timeout in hook file
+4. **"Permission denied"** → Run `chmod +x .claude/hooks/alfred/*.py`
+
+---
+
+## 🏗️ Architecture Decisions
+
+### Why Individual Hook Files? (UX Priority)
+
+**Before** (Single Router):
+```
+alfred_hooks.py SessionStart  ❌ Unclear what "SessionStart" does
+```
+
+**After** (Individual Files):
+```
+session_start__show_project_info.py  ✅ Immediately clear purpose
+```
+
+**Benefits**:
+1. ✅ **Self-Documenting**: File name describes functionality
+2. ✅ **Easy Debugging**: Error messages show which hook failed
+3. ✅ **Simple Discovery**: `ls` command shows all available hooks
+4. ✅ **Independent Testing**: Each hook can be tested in isolation
+5. ✅ **Selective Disabling**: Comment out specific hook in settings.json
+
+**Tradeoffs**:
+- ⚠️ **More Files**: 8 hook files instead of 1 router
+- ⚠️ **Shared Logic**: Still needs `shared/` directory for DRY principle
+
+**Decision**: **UX > Technical Elegance** - Users benefit from clarity
+
+### Why Keep shared/ Directory? (DRY Principle)
+
+**Shared Logic** (70% of codebase):
+- Type definitions (HookResult, HookPayload)
+- Project metadata (language detection, Git info)
+- Checkpoint creation
+- JIT context analysis
+
+**Alternative** (Code Duplication):
 ```python
-# Dynamic module loading for isolated testing
-def _load_{module}_module(module_name: str):
-    repo_root = Path(__file__).resolve().parents[2]
-    hooks_dir = repo_root / ".claude" / "hooks" / "alfred"
-    sys.path.insert(0, str(hooks_dir))
-    
-    module_path = hooks_dir / "core" / "{module}.py"
-    spec = importlib.util.spec_from_file_location(module_name, module_path)
-    # ...
+# ❌ BAD: Copy HookResult to each hook file
+# session_start__show_project_info.py
+class HookResult:  # 50 LOC duplicated
+    ...
+
+# user_prompt__jit_load_docs.py
+class HookResult:  # 50 LOC duplicated again
+    ...
 ```
 
----
+**Current** (Shared Module):
+```python
+# ✅ GOOD: Import from shared module
+from shared.core import HookResult  # DRY principle
+```
 
-## 🔄 Migration from moai_hooks.py
-
-### Before (Monolithic)
-
-- **1 file**: 1233 LOC
-- **Issues**: 
-- All functions concentrated in one file
- - Difficult to test, complex to maintain
- - Unclear separation of responsibilities
-
-### After (Modular)
-
-- **9 files**: ≤284 LOC each
-- **Benefits**:
-- Clear separation of responsibilities (SRP)
- - Independent module testing possible
- - Easy to expand, easy to maintain
- - Compliance with Context Engineering principles
-
-### Breaking Changes
-
-**None** - External APIs remain the same.
+**Decision**: **Hybrid Approach** - Individual files for UX + Shared modules for DRY
 
 ---
 
-## 📚 References
+## 📈 Version History
 
-### Internal Documents
+### v0.9.0 (2025-10-29) - Individual Hook Files (UX Priority)
+- ✅ **BREAKING**: Split `alfred_hooks.py` into 8 individual files
+- ✅ **NAMING**: Event + Function naming convention (`session_start__show_project_info.py`)
+- ✅ **STRUCTURE**: Moved shared logic to `shared/` directory
+- ✅ **UX**: File names are self-descriptive (no arguments needed)
+- ✅ **DEBUGGING**: Error messages now show which hook failed
 
-- **CLAUDE.md**: MoAI-ADK User Guide
-- **.moai/memory/development-guide.md**: SPEC-First TDD Workflow
-- **.moai/memory/spec-metadata.md**: SPEC metadata standard
+### v0.8.0 (2025-10-29) - Path Resolution & Timeout Fixes
+- ✅ **FIXED**: Use `$CLAUDE_PROJECT_DIR` for reliable path resolution
+- ✅ **ADDED**: Global SIGALRM timeout protection (5 seconds)
+- ✅ **ADDED**: Comprehensive TROUBLESHOOTING.md guide
 
-### External Resources
-
-- [Claude Code Hooks Documentation](https://docs.claude.com/en/docs/claude-code)
-- [Anthropic Context Engineering](https://docs.anthropic.com/claude/docs/context-engineering)
+### v0.7.0 (2025-10-17) - Stateless Refactoring
+- ✅ **REMOVED**: Workflow context from hooks (delegated to Commands layer)
+- ✅ **PERFORMANCE**: 180ms → 70ms (61% improvement)
+- ✅ **COMPLIANCE**: 100% stateless (no global variables)
 
 ---
 
-**Last Updated**: 2025-10-16  
+**Last Updated**: 2025-10-29
+**Version**: 0.9.0
 **Author**: @Alfred (MoAI-ADK SuperAgent)

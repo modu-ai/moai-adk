@@ -51,9 +51,11 @@ def handle_session_start(payload: HookPayload) -> HookResult:
         - FIX: Prevent duplicate output of clear step (only compact step is displayed)
         - UPDATE: Migrated to Claude Code standard Hook schema
         - HOTFIX: Add graceful degradation for timeout scenarios (Issue #66)
+        - Phase 3: Add major version warning and release notes display (@TEST:MAJOR-UPDATE-001-07/08)
 
     @TAG:CHECKPOINT-EVENT-001
     @TAG:HOOKS-TIMEOUT-001
+    @CODE:MAJOR-UPDATE-WARN-001
     """
     # Claude Code SessionStart runs in several stages (clear, compact, etc.)
     # Ignore the "clear" stage and output messages only at the "compact" stage
@@ -113,14 +115,26 @@ def handle_session_start(payload: HookPayload) -> HookResult:
 
     # Add version info first (at the top, right after title)
     if version_info and version_info.get("current") != "unknown":
-        version_line = f"   🗿 MoAI-ADK Ver: {version_info['current']}"
         if version_info.get("update_available"):
-            version_line += f" → {version_info['latest']} available ✨"
-        lines.append(version_line)
+            # Check if this is a major version update
+            if version_info.get("is_major_update"):
+                # Major version warning
+                lines.append(f"   ⚠️  Major version update available: {version_info['current']} → {version_info['latest']}")
+                lines.append("   Breaking changes detected. Review release notes:")
+                if version_info.get("release_notes_url"):
+                    lines.append(f"   📝 {version_info['release_notes_url']}")
+            else:
+                # Regular update
+                lines.append(f"   🗿 MoAI-ADK Ver: {version_info['current']} → {version_info['latest']} available ✨")
+                if version_info.get("release_notes_url"):
+                    lines.append(f"   📝 Release Notes: {version_info['release_notes_url']}")
 
-        # Add upgrade recommendation if update is available
-        if version_info.get("update_available") and version_info.get("upgrade_command"):
-            lines.append(f"   ⬆️ Upgrade: {version_info['upgrade_command']}")
+            # Add upgrade recommendation
+            if version_info.get("upgrade_command"):
+                lines.append(f"   ⬆️  Upgrade: {version_info['upgrade_command']}")
+        else:
+            # No update available - show current version only
+            lines.append(f"   🗿 MoAI-ADK Ver: {version_info['current']}")
 
     # Add language info
     lines.append(f"   🐍 Language: {language}")
