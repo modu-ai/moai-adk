@@ -478,6 +478,36 @@ Combine layers when necessary: a command triggers sub-agents, sub-agents activat
 
 **CRITICAL RULE**: When any Alfred command (`/alfred:0-project`, `/alfred:1-plan`, `/alfred:2-run`, `/alfred:3-sync`) completes, **ALWAYS use `AskUserQuestion` tool** to ask the user what to do next.
 
+### Batched Design Principle
+
+**Multi-question UX optimization**: Use batched AskUserQuestion calls (1-4 questions per call) to reduce user interaction turns:
+
+- ✅ **Batched** (RECOMMENDED): 2-4 related questions in 1 AskUserQuestion call
+- ❌ **Sequential** (AVOID): Multiple AskUserQuestion calls for independent questions
+
+**Example**:
+```python
+# ✅ CORRECT: Batch 2 questions in 1 call
+AskUserQuestion(
+    questions=[
+        {
+            "question": "What type of issue do you want to create?",
+            "header": "Issue Type",
+            "options": [...]
+        },
+        {
+            "question": "What is the priority level?",
+            "header": "Priority",
+            "options": [...]
+        }
+    ]
+)
+
+# ❌ WRONG: Sequential 2 calls
+AskUserQuestion(questions=[{"question": "Type?", ...}])
+AskUserQuestion(questions=[{"question": "Priority?", ...}])
+```
+
 ### Pattern for Each Command
 
 #### `/alfred:0-project` Completion
@@ -489,6 +519,23 @@ After project initialization completes:
 │  ├─ Option 2: Start new session with /clear
 │  └─ Option 3: Review project structure
 └─ DO NOT suggest multiple next steps in prose - use AskUserQuestion only
+```
+
+**Batched Implementation Example**:
+```python
+AskUserQuestion(
+    questions=[
+        {
+            "question": "프로젝트 초기화가 완료되었습니다. 다음으로 뭘 하시겠습니까?",
+            "header": "다음 단계",
+            "options": [
+                {"label": "📋 스펙 작성 진행", "description": "/alfred:1-plan 실행"},
+                {"label": "🔍 프로젝트 구조 검토", "description": "현재 상태 확인"},
+                {"label": "🔄 새 세션 시작", "description": "/clear 실행"}
+            ]
+        }
+    ]
+)
 ```
 
 #### `/alfred:1-plan` Completion
@@ -528,8 +575,9 @@ After sync completes:
 
 1. **Always use AskUserQuestion** - Never suggest next steps in prose (e.g., "You can now run `/alfred:1-plan`...")
 2. **Provide 3-4 clear options** - Not open-ended or free-form
-3. **Language**: Present options in user's `conversation_language` (Korean, Japanese, etc.)
-4. **Question format**: Use the `moai-alfred-interactive-questions` skill documentation as reference (don't invoke Skill())
+3. **Batch questions when possible** - Combine related questions in 1 call (1-4 questions max)
+4. **Language**: Present options in user's `conversation_language` (Korean, Japanese, etc.)
+5. **Question format**: Use the `moai-alfred-interactive-questions` skill documentation as reference (don't invoke Skill())
 
 ### Example (Correct Pattern)
 
@@ -540,6 +588,13 @@ After project setup, use AskUserQuestion tool to ask:
 
 - "프로젝트 초기화가 완료되었습니다. 다음으로 뭘 하시겠습니까?"
 - Options: 1) 스펙 작성 진행 2) 프로젝트 구조 검토 3) 새 세션 시작
+
+# CORRECT ✅ (Batched Design)
+
+Use batched AskUserQuestion to collect multiple responses:
+
+- Question 1: "Which language?" + Question 2: "What's your nickname?"
+- Both collected in 1 turn (50% UX improvement)
 
 # INCORRECT ❌
 

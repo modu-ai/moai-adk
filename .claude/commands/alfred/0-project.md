@@ -96,6 +96,8 @@ The user executes the `/alfred:8-project` command to start analyzing the project
 
 **목적**: 프로젝트 초기화 시작 전에 대화 언어를 설정하고 사용자 닉네임을 등록합니다. 이 설정은 모든 Alfred 프롬프트, 인터뷰 질문 및 생성된 문서에 적용됩니다.
 
+**UX 개선**: 2개 질문을 **1회 배치 호출**로 통합 (50% 상호작용 감소: 2 turns → 1 turn)
+
 ### 0.0 Alfred 자기소개 및 환영 인사
 
 Alfred가 첫 상호작용으로 다음과 같이 인사합니다:
@@ -108,58 +110,61 @@ MoAI-ADK의 SuperAgent로서 당신의 프로젝트를 함께 만들어갈 준�
 먼저 기본 설정을 진행하겠습니다.
 ```
 
-### 0.1 언어 선택
+### 0.1 배치 설계: 언어 선택 + 사용자 닉네임 수집 (1회 호출)
 
-Alfred가 `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` 를 사용하여 **첫 번째 상호작용**으로 언어 선택 메뉴를 표시합니다:
+Alfred가 `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` 를 사용하여 **단일 배치 호출**로 언어와 닉네임을 동시에 수집합니다:
 
-**Question**:
+**Example AskUserQuestion Call**:
+```python
+AskUserQuestion(
+    questions=[
+        {
+            "question": "Which language would you like to use for the project initialization and documentation?",
+            "header": "Language",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "🌍 English",
+                    "description": "All dialogs and documentation in English"
+                },
+                {
+                    "label": "🇰🇷 한국어",
+                    "description": "All dialogs and documentation in Korean"
+                },
+                {
+                    "label": "🇯🇵 日本語",
+                    "description": "All dialogs and documentation in Japanese"
+                },
+                {
+                    "label": "🇨🇳 中文",
+                    "description": "All dialogs and documentation in Chinese"
+                }
+            ]
+        },
+        {
+            "question": "How would you like to be called in our conversations? (e.g., GOOS, Team Lead, Developer, or custom name - max 20 chars)",
+            "header": "Nickname",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "Enter custom nickname",
+                    "description": "Type your preferred name using the 'Other' option below"
+                }
+            ]
+        }
+    ]
+)
 ```
-Which language would you like to use for the project initialization and documentation?
+
+**User Response Example**:
+```
+Selected Language: 🇰🇷 한국어
+Selected Nickname: GOOS (typed via "Other" option)
 ```
 
-**Options** (AskUserQuestion with moai-alfred-interactive-questions):
-- **English** (en) — All dialogs and documentation in English
-- **한국어** (ko) — All dialogs and documentation in Korean
-- **日本語** (ja) — All dialogs and documentation in Japanese
-- **中文** (zh) — All dialogs and documentation in Chinese
-- **Other** — User can specify custom language (e.g., "Español", "Français", "Deutsch")
+### 0.2 사용자 정보 저장
 
-### 0.2 Store Language Preference
-
-Alfred records the selected language:
-
-```json
-{
-  "conversation_language": "ko",
-  "conversation_language_name": "한국어",
-  "selected_at": "2025-10-22T12:34:56Z"
-}
-```
-
-This language preference is:
-- Passed to all sub-agents as a context parameter
-- Stored in `.moai/config.json` under `language` field
-- Used to generate all documentation in the selected language
-- Displayed in CLAUDE.md under "## Project Information"
-
-### 0.2.5 사용자 닉네임 선택
-
-언어 선택 완료 후, Alfred가 `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` 를 사용하여 사용자 닉네임을 요청합니다:
-
-**질문**:
-```
-앞으로 대화에서 당신을 어떻게 부르면 좋을까요?
-(예: GOOS, 팀장님, 개발자님, 또는 자유롭게 입력)
-```
-
-**입력 방식**:
-- 텍스트 직접 입력 가능 (자유 형식)
-- 예시: "GOOS", "팀장", "개발자" 등
-- 최대 20자 한도
-
-### 0.2.6 사용자 정보 저장
-
-Alfred가 선택된 닉네임을 다음과 같이 저장합니다:
+Alfred가 선택된 언어와 닉네임을 다음과 같이 저장합니다:
 
 ```json
 {
@@ -172,15 +177,18 @@ Alfred가 선택된 닉네임을 다음과 같이 저장합니다:
 
 이 정보는:
 - 모든 sub-agents 에게 컨텍스트 파라미터로 전달됨
-- `.moai/config.json` 의 `user` 필드에 저장됨
-- CLAUDE.md의 `{{USER_NICKNAME}}` 변수로 치환됨
+- `.moai/config.json` 의 `language` 및 `user` 필드에 저장됨
+- CLAUDE.md의 `{{CONVERSATION_LANGUAGE}}` 및 `{{USER_NICKNAME}}` 변수로 치환됨
 - 모든 Alfred 대화에서 사용됨
 
-**예시**:
-```
-안녕하세요, GOOS님! 👋
+**설정 완료 출력 예시**:
+```markdown
+✅ 초기 설정 완료!
 
-이제 프로젝트 환경 분석으로 진행하겠습니다...
+언어: 한국어 (ko)
+닉네임: GOOS
+
+이제 GOOS님의 프로젝트 환경 분석으로 진행하겠습니다...
 ```
 
 ### 0.3 STEP 1로 전환
@@ -191,16 +199,6 @@ Alfred가 선택된 닉네임을 다음과 같이 저장합니다:
 - 인터뷰 질문이 선택된 언어로 진행됨
 - 생성된 문서 (product.md, structure.md, tech.md)가 선택된 언어로 작성됨
 - CLAUDE.md가 선택된 언어와 사용자 닉네임을 표시함
-
-**한국어 선택 시 출력 예시**:
-```markdown
-✅ 설정 완료!
-
-언어: 한국어 (ko)
-닉네임: GOOS
-
-이제 GOOS님의 프로젝트 환경 분석으로 진행하겠습니다...
-```
 
 ---
 
