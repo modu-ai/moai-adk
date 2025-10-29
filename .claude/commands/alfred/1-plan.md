@@ -154,6 +154,12 @@ All SPEC documents and analysis must be generated in conversation_language.
 - If conversation_language is 'ja' (Japanese): Generate ALL analysis, plans, and SPEC documents in Japanese
 - If conversation_language is other language: Follow the specified language
 
+SKILL INVOCATION:
+Use explicit Skill() calls when needed:
+- Skill("moai-foundation-specs") for SPEC structure guidance
+- Skill("moai-foundation-ears") for EARS syntax requirements
+- Skill("moai-alfred-spec-metadata-validation") for metadata validation
+
 TASK:
 Please analyze the project document and suggest SPEC candidates.
 Run in analysis mode, and must include the following:
@@ -217,6 +223,13 @@ ALL SPEC documents MUST be generated in conversation_language:
 
 YAML frontmatter and @TAG identifiers MUST remain in English.
 Code examples and technical keywords can be mixed (code in English, narrative in user language).
+
+SKILL INVOCATION:
+Use explicit Skill() calls when needed:
+- Skill("moai-foundation-specs") for SPEC structure guidance
+- Skill("moai-foundation-ears") for EARS syntax requirements
+- Skill("moai-alfred-spec-metadata-validation") for metadata validation
+- Skill("moai-alfred-tag-scanning") for TAG chain references
 
 TASK:
 Please fill out the SPEC document according to the plan approved in STEP 1.
@@ -372,7 +385,7 @@ Only if the user selects **"Proceed"** or **"Start"** will Alfred call the spec-
 ### State-driven Requirements
 - When the WHILE token is in an unexpired state, the system must allow access to the protected resource.
 
-### Constraints
+### Unwanted Behaviors
 - If the IF token has expired, the system must return a 401 Unauthorized response.
 ```
 
@@ -484,8 +497,8 @@ author: @username
 ### Optional (Optional function)
 - If WHERE [condition], the system can [operate]
 
-### Constraints
-- IF [condition], the system must be [constrained]
+### Unwanted Behaviors
+- IF [condition], the system must [respond appropriately with error handling or quality gates]
 
 ## Traceability (@TAG)
 - **SPEC**: @SPEC:AUTH-001
@@ -630,7 +643,7 @@ done
 **CodeRabbit review includes:**
 - ✅ YAML frontmatter validation (7 required fields)
 - ✅ HISTORY section structure and completeness
-- ✅ EARS requirements clarity (Ubiquitous/Event/State/Optional/Constraints)
+- ✅ EARS requirements clarity (Ubiquitous/Event-driven/State-driven/Optional/Unwanted Behaviors)
 - ✅ Acceptance criteria quality (Given-When-Then scenarios)
 - ✅ @TAG system compliance (SPEC/TEST/CODE/DOC traceability)
 - ✅ Documentation and formatting

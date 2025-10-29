@@ -265,7 +265,7 @@ scope:
 - **SPEC-INSTALL-001**: installation/init-options.md 콘텐츠 소스
 - **SPEC-INIT-001**: installation/non-interactive.md 콘텐츠 소스
 - **SPEC-INIT-002**: installation/windows-wsl.md 콘텐츠 소스
-- **SPEC-CONFIG-001**: reference/config-schema.md 콘텐츠 소스
+- **SPEC-CONFIG-001**: reference/CONFIG-SCHEMA.md 콘텐츠 소스
 
 **외부 의존성**:
 - VitePress v1.x

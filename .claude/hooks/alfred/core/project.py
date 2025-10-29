@@ -6,10 +6,14 @@ Project information inquiry (language, Git, SPEC progress, etc.)
 
 import json
 import signal
+import socket
 import subprocess
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
+
+# Cache directory for version check results
+CACHE_DIR_NAME = ".moai/cache"
 
 
 class TimeoutError(Exception):
@@ -336,11 +340,184 @@ def get_project_language(cwd: str) -> str:
     return detect_language(cwd)
 
 
-def get_package_version_info() -> dict[str, Any]:
-    """Check MoAI-ADK current and latest version from PyPI
+# @CODE:CONFIG-INTEGRATION-001
+def get_version_check_config(cwd: str) -> dict[str, Any]:
+    """Read version check configuration from .moai/config.json
 
-    Compares the installed version with the latest version available on PyPI.
-    Returns version information for SessionStart hook to display update recommendations.
+    Returns version check settings with sensible defaults.
+    Supports frequency-based cache TTL configuration.
+
+    Args:
+        cwd: Project root directory path
+
+    Returns:
+        dict with keys:
+            - "enabled": Boolean (default: True)
+            - "frequency": "always" | "daily" | "weekly" | "never" (default: "daily")
+            - "cache_ttl_hours": TTL in hours based on frequency
+
+    Frequency to TTL mapping:
+        - "always": 0 hours (no caching)
+        - "daily": 24 hours
+        - "weekly": 168 hours (7 days)
+        - "never": infinity (never check)
+
+    TDD History:
+        - RED: 8 test scenarios (defaults, custom, disabled, TTL, etc.)
+        - GREEN: Minimal config reading with defaults
+        - REFACTOR: Add validation and error handling
+    """
+    # TTL mapping by frequency
+    TTL_BY_FREQUENCY = {
+        "always": 0,
+        "daily": 24,
+        "weekly": 168,
+        "never": float('inf')
+    }
+
+    # Default configuration
+    defaults = {
+        "enabled": True,
+        "frequency": "daily",
+        "cache_ttl_hours": 24
+    }
+
+    config_path = Path(cwd) / ".moai" / "config.json"
+    if not config_path.exists():
+        return defaults
+
+    try:
+        config = json.loads(config_path.read_text())
+
+        # Extract moai.version_check section
+        moai_config = config.get("moai", {})
+        version_check_config = moai_config.get("version_check", {})
+
+        # Read enabled flag (default: True)
+        enabled = version_check_config.get("enabled", defaults["enabled"])
+
+        # Read frequency (default: "daily")
+        frequency = moai_config.get("update_check_frequency", defaults["frequency"])
+
+        # Validate frequency
+        if frequency not in TTL_BY_FREQUENCY:
+            frequency = defaults["frequency"]
+
+        # Calculate TTL from frequency
+        cache_ttl_hours = TTL_BY_FREQUENCY[frequency]
+
+        # Allow explicit cache_ttl_hours override
+        if "cache_ttl_hours" in version_check_config:
+            cache_ttl_hours = version_check_config["cache_ttl_hours"]
+
+        return {
+            "enabled": enabled,
+            "frequency": frequency,
+            "cache_ttl_hours": cache_ttl_hours
+        }
+
+    except (OSError, json.JSONDecodeError, KeyError):
+        # Config read or parse error - return defaults
+        return defaults
+
+
+# @CODE:NETWORK-DETECT-001
+def is_network_available(timeout_seconds: float = 0.1) -> bool:
+    """Quick network availability check using socket.
+
+    Does NOT check PyPI specifically, just basic connectivity.
+    Returns immediately on success (< 50ms typically).
+    Returns False on any error without raising exceptions.
+
+    Args:
+        timeout_seconds: Socket timeout in seconds (default 0.1s)
+
+    Returns:
+        True if network appears available, False otherwise
+
+    Examples:
+        >>> is_network_available()
+        True  # Network is available
+        >>> is_network_available(timeout_seconds=0.001)
+        False  # Timeout too short, returns False
+
+    TDD History:
+        - RED: 3 test scenarios (success, failure, timeout)
+        - GREEN: Minimal socket.create_connection implementation
+        - REFACTOR: Add error handling for all exception types
+    """
+    try:
+        # Try connecting to Google's public DNS server (8.8.8.8:53)
+        # This is a reliable host that's typically reachable
+        connection = socket.create_connection(("8.8.8.8", 53), timeout=timeout_seconds)
+        connection.close()
+        return True
+    except (socket.timeout, OSError, Exception):
+        # Any connection error means network is unavailable
+        # This includes: timeout, connection refused, network unreachable, etc.
+        return False
+
+
+# @CODE:VERSION-DETECT-MAJOR-001
+def is_major_version_change(current: str, latest: str) -> bool:
+    """Detect if version change is a major version bump.
+
+    A major version change is when the first (major) component increases:
+    - 0.8.1 → 1.0.0: True (0 → 1)
+    - 1.2.3 → 2.0.0: True (1 → 2)
+    - 0.8.1 → 0.9.0: False (0 → 0, minor changed)
+    - 1.2.3 → 1.3.0: False (1 → 1)
+
+    Args:
+        current: Current version string (e.g., "0.8.1")
+        latest: Latest version string (e.g., "1.0.0")
+
+    Returns:
+        True if major version increased, False otherwise
+
+    Examples:
+        >>> is_major_version_change("0.8.1", "1.0.0")
+        True
+        >>> is_major_version_change("0.8.1", "0.9.0")
+        False
+        >>> is_major_version_change("dev", "1.0.0")
+        False  # Invalid versions return False
+
+    TDD History:
+        - RED: 4 test scenarios (0→1, 1→2, minor, invalid)
+        - GREEN: Minimal version parsing and comparison
+        - REFACTOR: Improve error handling for invalid versions
+    """
+    try:
+        # Parse version strings into integer components
+        current_parts = [int(x) for x in current.split(".")]
+        latest_parts = [int(x) for x in latest.split(".")]
+
+        # Compare major version (first component)
+        if len(current_parts) >= 1 and len(latest_parts) >= 1:
+            return latest_parts[0] > current_parts[0]
+
+        # If parsing succeeds but empty, no major change
+        return False
+
+    except (ValueError, AttributeError, IndexError):
+        # Invalid version format - return False (no exception)
+        return False
+
+
+# @CODE:VERSION-CACHE-INTEGRATION-001
+def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
+    """Check MoAI-ADK current and latest version with caching and offline support.
+
+    Execution flow:
+    1. Try to load from cache (< 50ms)
+    2. If cache invalid, check network
+    3. If network available, query PyPI
+    4. If network unavailable, return current version only
+    5. Save result to cache for next time
+
+    Args:
+        cwd: Project root directory (for cache location)
 
     Returns:
         dict with keys:
@@ -348,16 +525,57 @@ def get_package_version_info() -> dict[str, Any]:
             - "latest": Latest version available on PyPI
             - "update_available": Boolean indicating if update is available
             - "upgrade_command": Recommended upgrade command (if update available)
+            - "release_notes_url": URL to release notes (Phase 3)
+            - "is_major_update": Boolean indicating major version change (Phase 3)
 
     Note:
-        - Has 1-second timeout to avoid blocking SessionStart
-        - Returns graceful fallback if PyPI check fails
-        - Handles version parsing gracefully
-    """
-    from importlib.metadata import version, PackageNotFoundError
-    import urllib.request
-    import urllib.error
+        - Cache hit (< 24 hours): Returns in ~20ms, no network access
+        - Cache miss + online: Query PyPI (1s timeout), cache result
+        - Cache miss + offline: Return current version only (~100ms)
+        - Offline + cached: Return from cache in ~20ms
 
+    TDD History:
+        - RED: 5 test scenarios (network detection, cache integration, offline mode)
+        - GREEN: Integrate VersionCache with network detection
+        - REFACTOR: Extract cache directory constant, improve error handling
+        - Phase 3: Add release_notes_url and is_major_update fields (@CODE:VERSION-INTEGRATE-FIELDS-001)
+    """
+    import importlib.util
+    import urllib.error
+    import urllib.request
+    from importlib.metadata import PackageNotFoundError, version
+
+    # Import VersionCache from the same directory (using dynamic import for testing compatibility)
+    try:
+        version_cache_path = Path(__file__).parent / "version_cache.py"
+        spec = importlib.util.spec_from_file_location("version_cache", version_cache_path)
+        if spec and spec.loader:
+            version_cache_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(version_cache_module)
+            VersionCache = version_cache_module.VersionCache
+        else:
+            # Skip caching if module can't be loaded
+            VersionCache = None
+    except (ImportError, OSError) as e:
+        # Graceful degradation: skip caching on import errors
+        VersionCache = None
+
+    # 1. Initialize cache (skip if VersionCache couldn't be imported)
+    cache_dir = Path(cwd) / CACHE_DIR_NAME
+    version_cache = VersionCache(cache_dir) if VersionCache else None
+
+    # 2. Try to load from cache (fast path)
+    if version_cache and version_cache.is_valid():
+        cached_info = version_cache.load()
+        if cached_info:
+            # Ensure new fields exist for backward compatibility
+            if "release_notes_url" not in cached_info:
+                # Add missing fields to old cached data
+                cached_info.setdefault("release_notes_url", None)
+                cached_info.setdefault("is_major_update", False)
+            return cached_info
+
+    # 3. Cache miss - need to query PyPI
     result = {
         "current": "unknown",
         "latest": "unknown",
@@ -372,20 +590,45 @@ def get_package_version_info() -> dict[str, Any]:
         result["current"] = "dev"
         return result
 
-    # Get latest version from PyPI (with 1-second timeout)
+    # 4. Check if version check is enabled in config (Phase 4)
+    config = get_version_check_config(cwd)
+    if not config["enabled"]:
+        # Version check disabled - return only current version
+        return result
+
+    # 5. Check network before PyPI query
+    if not is_network_available():
+        # Offline mode - return current version only
+        return result
+
+    # 6. Network available - query PyPI
+    pypi_data = None
     try:
         with timeout_handler(1):
             url = "https://pypi.org/pypi/moai-adk/json"
             headers = {"Accept": "application/json"}
             req = urllib.request.Request(url, headers=headers)
             with urllib.request.urlopen(req, timeout=0.8) as response:
-                data = json.load(response)
-                result["latest"] = data.get("info", {}).get("version", "unknown")
-    except (urllib.error.URLError, TimeoutError, Exception):
-        # Network error or timeout - return with unknown latest version
-        return result
+                pypi_data = json.load(response)
+                result["latest"] = pypi_data.get("info", {}).get("version", "unknown")
 
-    # Compare versions (simple comparison)
+                # Extract release notes URL from project_urls
+                try:
+                    project_urls = pypi_data.get("info", {}).get("project_urls", {})
+                    release_url = project_urls.get("Changelog", "")
+                    if not release_url:
+                        # Fallback to GitHub releases URL pattern
+                        release_url = f"https://github.com/modu-ai/moai-adk/releases/tag/v{result['latest']}"
+                    result["release_notes_url"] = release_url
+                except (KeyError, AttributeError, TypeError):
+                    result["release_notes_url"] = None
+
+    except (urllib.error.URLError, TimeoutError, Exception):
+        # PyPI query failed - return current version
+        result["release_notes_url"] = None
+        pass
+
+    # 7. Compare versions (simple comparison)
     if result["current"] != "unknown" and result["latest"] != "unknown":
         try:
             # Parse versions for comparison
@@ -400,9 +643,19 @@ def get_package_version_info() -> dict[str, Any]:
             if latest_parts > current_parts:
                 result["update_available"] = True
                 result["upgrade_command"] = f"uv pip install --upgrade moai-adk>={result['latest']}"
+
+                # Detect major version change
+                result["is_major_update"] = is_major_version_change(result["current"], result["latest"])
+            else:
+                result["is_major_update"] = False
         except (ValueError, AttributeError):
             # Version parsing failed - skip comparison
+            result["is_major_update"] = False
             pass
+
+    # 8. Save result to cache (if caching is available)
+    if version_cache:
+        version_cache.save(result)
 
     return result
 
@@ -412,5 +665,8 @@ __all__ = [
     "get_git_info",
     "count_specs",
     "get_project_language",
+    "get_version_check_config",
+    "is_network_available",
+    "is_major_version_change",
     "get_package_version_info",
 ]
