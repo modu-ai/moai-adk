@@ -522,8 +522,9 @@ class TestUpdateVersionFunctions:
 
     def test_get_project_config_version_from_template_version(self, tmp_path):
         """Test _get_project_config_version reads template_version field"""
-        from moai_adk.cli.commands.update import _get_project_config_version
         import json
+
+        from moai_adk.cli.commands.update import _get_project_config_version
 
         project_path = tmp_path / "test-project"
         moai_dir = project_path / ".moai"
@@ -541,8 +542,9 @@ class TestUpdateVersionFunctions:
 
     def test_get_project_config_version_fallback_to_moai_version(self, tmp_path):
         """Test _get_project_config_version falls back to moai.version"""
-        from moai_adk.cli.commands.update import _get_project_config_version
         import json
+
+        from moai_adk.cli.commands.update import _get_project_config_version
 
         project_path = tmp_path / "test-project"
         moai_dir = project_path / ".moai"
