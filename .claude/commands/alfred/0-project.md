@@ -443,7 +443,7 @@ Set optimization flags after the merge is complete:
 
 ### 1.5 Wait for user approval (moai-alfred-interactive-questions) (when user selects "New")
 
-After Alfred receives the project-manager's interview plan report, calls `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` and asks whether Phase 2 is approved.
+After Alfred receives the project-manager's interview plan report, uses `AskUserQuestion` tool (documented in moai-alfred-interactive-questions skill) and asks whether Phase 2 is approved.
 - **Proceed**: Interview conducted according to approved plan
 - **Modify**: Re-establish the plan (re-execute Phase 1)
 - **Stop**: Stop initialization

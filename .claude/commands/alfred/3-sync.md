@@ -24,6 +24,10 @@ allowed-tools:
 # 📚 MoAI-ADK Step 3: Document Synchronization (+Optional PR Ready)
 > **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
+<!-- @CODE:ALF-WORKFLOW-001:CMD-SYNC -->
+
+**4-Step Workflow Integration**: This command implements Step 4 of Alfred's workflow (Report & Commit with conditional report generation). See CLAUDE.md for full workflow details.
+
 ## 🚀 START HERE
 
 **CRITICAL**: Load the TUI Survey Skill FIRST before any user interaction:
