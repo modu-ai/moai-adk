@@ -470,8 +470,11 @@ graph TD
 | `/alfred:1-plan <描述>`   | 分析需求，编写 SPEC 草稿，编写 Plan Board   | `.moai/specs/SPEC-*/spec.md`、plan/acceptance 文档、feature 分支 |
 | `/alfred:2-run <SPEC-ID>` | 执行 TDD，测试/实现/重构，质量验证          | `tests/`、`src/` 实现、质量报告、TAG 连接                        |
 | `/alfred:3-sync`          | 同步文档/README/CHANGELOG，整理 TAG/PR 状态 | `docs/`、`.moai/reports/sync-report.md`、Ready PR                |
+| `/alfred:9-feedback`      | 交互式创建 GitHub Issue（类型 → 标题 → 描述 → 优先级） | GitHub Issue + 自动标签 + 优先级 + URL |
 
 > ❗ 所有命令都维护 **Phase 0（可选）→ Phase 1 → Phase 2 → Phase 3** 循环结构。Alfred 会自动报告执行期间的状态和下一步建议。
+>
+> 💡 **v0.7.0+ 新增**: 使用 `/alfred:9-feedback` 可以在开发中即时创建 GitHub Issue。在不中断开发流程的情况下，让整个团队跟踪和讨论问题。
 
 ---
 
