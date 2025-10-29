@@ -37,12 +37,12 @@ class VersionCache:
         '0.8.1'
     """
 
-    def __init__(self, cache_dir: Path, ttl_hours: int = 24):
+    def __init__(self, cache_dir: Path, ttl_hours: int = 4):
         """Initialize cache with TTL in hours
 
         Args:
             cache_dir: Directory where cache file will be stored
-            ttl_hours: Time-to-live in hours (default 24)
+            ttl_hours: Time-to-live in hours (default 4)
         """
         self.cache_dir = Path(cache_dir)
         self.ttl_hours = ttl_hours
