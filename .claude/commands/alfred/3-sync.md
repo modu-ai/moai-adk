@@ -23,6 +23,8 @@ allowed-tools:
 
 # 📚 MoAI-ADK Step 3: Document Synchronization (+Optional PR Ready)
 > **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+>
+> **Batched Design**: All AskUserQuestion calls follow batched design principles (1-4 questions per call) to minimize user interaction turns. See CLAUDE.md section "Alfred Command Completion Pattern" for details.
 
 <!-- @CODE:ALF-WORKFLOW-001:CMD-SYNC -->
 
