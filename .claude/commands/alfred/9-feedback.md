@@ -117,213 +117,33 @@ Alfred automatically:
 
 ---
 
-## 📋 Issue Type → Label Mapping
-
-| User Selection | Issue Type | Automatic Labels |
-|---|---|---|
-| 🐛 Bug Report | bug | `bug`, `reported` |
-| ✨ Feature Request | feature | `feature-request`, `enhancement` |
-| ⚡ Improvement | improvement | `improvement`, `enhancement` |
-| ❓ Question/Discussion | question | `question`, `help-wanted` |
-
-**Priority Label** (added based on Step 5):
-- `priority-critical` for 🔴 Critical
-- `priority-high` for 🟠 High
-- `priority-medium` for 🟡 Medium
-- `priority-low` for 🟢 Low
-
----
-
 ## ⚠️ Important Rules
 
 ### ✅ What to Do
 
-- ✅ Ask all 5 questions in sequence (type → title → description → priority → confirm)
+- ✅ Ask all 4 questions in sequence (type → title → description → priority)
 - ✅ Preserve exact user wording in title and description
 - ✅ Use AskUserQuestion for all user inputs
 - ✅ Allow skipping description (optional field)
-- ✅ Default priority to Medium if user doesn't select
 - ✅ Show issue URL after creation
 
 ### ❌ What NOT to Do
 
-- ❌ Accept command arguments (`/alfred:9-help --bug` is wrong—just use `/alfred:9-help`)
+- ❌ Accept command arguments (`/alfred:9-feedback --bug` is wrong—just use `/alfred:9-feedback`)
 - ❌ Skip questions or change order
 - ❌ Rephrase user's input
 - ❌ Create issues without labels
-- ❌ Modify existing issues—only create new ones
 
 ---
 
-## 💡 Real-World Examples
+## 💡 Key Benefits
 
-### Example 1: Bug Report Flow
-
-```
-User: /alfred:9-feedback
-
-Alfred: 🎯 Quick GitHub Issue Creation - What type of issue?
-User:   🐛 Bug Report
-
-Alfred: What's the title?
-User:   Login button crash on mobile
-
-Alfred: Description? (Optional)
-User:   Tapping login button on iPhone 15 freezes app for 5 seconds then crashes.
-        iOS 17.2
-
-Alfred: Priority?
-User:   🟠 High
-
-Alfred: ✅ Creating issue...
-        ✅ GitHub Issue #234 created!
-        📋 🐛 [BUG] Login button crash on mobile
-        🟠 Priority: High
-        🏷️  bug, reported, priority-high
-        🔗 https://github.com/owner/repo/issues/234
-```
-
-### Example 2: Feature Request Flow
-
-```
-User: /alfred:9-feedback
-
-Alfred: What type of issue?
-User:   ✨ Feature Request
-
-Alfred: What's the title?
-User:   Add dark mode theme support
-
-Alfred: Description? (Optional)
-User:   Users are requesting a dark mode option.
-        Should affect all pages and persist in user preferences.
-
-Alfred: Priority?
-User:   🟡 Medium
-
-Alfred: ✅ Creating issue...
-        ✅ GitHub Issue #235 created!
-        📋 ✨ [FEATURE] Add dark mode theme support
-        🟡 Priority: Medium
-        🏷️  feature-request, enhancement, priority-medium
-        🔗 https://github.com/owner/repo/issues/235
-```
-
-### Example 3: Quick Improvement (Skip Description)
-
-```
-User: /alfred:9-feedback
-
-Alfred: What type of issue?
-User:   ⚡ Improvement
-
-Alfred: What's the title?
-User:   Optimize N+1 query in user listing
-
-Alfred: Description? (Optional)
-User:   (Press Enter to skip)
-
-Alfred: Priority?
-User:   🟠 High
-
-Alfred: ✅ Creating issue...
-        ✅ GitHub Issue #236 created!
-        📋 ⚡ [IMPROVEMENT] Optimize N+1 query in user listing
-        🟠 Priority: High
-        🏷️  improvement, enhancement, priority-high
-        🔗 https://github.com/owner/repo/issues/236
-```
-
----
-
-## 🔧 Technical Implementation
-
-### Dialog Questions (AskUserQuestion)
-
-**Question 1** (multiSelect: false):
-```
-header: "Issue Type"
-question: "What type of issue do you want to create?"
-options: [
-  { label: "🐛 Bug Report", description: "..." },
-  { label: "✨ Feature Request", description: "..." },
-  { label: "⚡ Improvement", description: "..." },
-  { label: "❓ Question/Discussion", description: "..." }
-]
-```
-
-**Question 2** (free text):
-```
-header: "Issue Title"
-question: "What's the issue title?"
-multiSelect: false
-(Accept any text input)
-```
-
-**Question 3** (free text, optional):
-```
-header: "Description"
-question: "Provide detailed description (press Enter to skip)"
-multiSelect: false
-(Accept any text input or empty)
-```
-
-**Question 4** (multiSelect: false):
-```
-header: "Priority"
-question: "What's the priority level?"
-options: [
-  { label: "🔴 Critical", description: "..." },
-  { label: "🟠 High", description: "..." },
-  { label: "🟡 Medium", description: "..." },
-  { label: "🟢 Low", description: "..." }
-]
-```
-
-### Issue Creation Process
-
-```python
-# After all 4 questions:
-1. Determine labels from issue_type
-2. Determine priority_label from priority
-3. Combine all labels: [type_label1, type_label2, priority_label]
-4. Format title: "{emoji} [{TYPE}] {user_title}"
-5. Format body: "{user_description}\n\n---\n\nType: {type}\nPriority: {priority}\nCreated via: /alfred:9-help"
-6. Execute: gh issue create --title "{title}" --body "{body}" --label "{labels}"
-7. Parse issue number from output URL
-8. Display success with URL
-```
-
----
-
-## 🔄 Related Commands
-
-- `/alfred:0-project` - Initialize project
-- `/alfred:1-plan` - Create SPEC documents
-- `/alfred:2-run` - Implement features (RED-GREEN-REFACTOR)
-- `/alfred:3-sync` - Synchronize documentation
-- `/alfred:9-feedback` - **Create issues interactively (this command)**
-
----
-
-## 📚 Learn More
-
-For detailed information:
-- `.moai/docs/quick-issue-creation-guide.md` - Complete usage guide with examples
-- `.moai/memory/ISSUE-LABEL-MAPPING.md` - Label configuration and setup
-- `.moai/memory/interactive-dialogs.md` - AskUserQuestion best practices
-
----
-
-## ✨ Key Benefits
-
-1. **🚀 No Arguments Needed**: Just `/alfred:9-help`—Alfred asks what you need
-2. **💬 Conversational**: Step-by-step dialog is intuitive and friendly
-3. **🏷️ Auto-labeled**: Labels applied automatically based on selections
-4. **🔗 Team Visible**: Issues appear immediately in GitHub for team coordination
-5. **⏱️ Fast**: Create issues in 30 seconds without leaving your IDE
+1. **🚀 No Arguments Needed**: Just `/alfred:9-feedback`
+2. **💬 Conversational**: Intuitive step-by-step dialog
+3. **🏷️ Auto-labeled**: Labels applied automatically
+4. **🔗 Team Visible**: Issues immediately visible
+5. **⏱️ Fast**: Create issues in 30 seconds
 
 ---
 
 **Supported since**: MoAI-ADK v0.7.0+
-**Updated**: 2025-10-29 (Interactive dialog version)
