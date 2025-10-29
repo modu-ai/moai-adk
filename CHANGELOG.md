@@ -7,6 +7,82 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.9.1] - 2025-10-30 (UV Cache Automatic Retry Fix)
+<!-- @DOC:UPDATE-CACHE-FIX-001-002 -->
+
+### 🎯 주요 변경사항 | Key Changes
+
+**Bug Fix | 버그 수정**:
+- 🐛 **UV Tool Upgrade Cache Issue**: "Nothing to upgrade" 표시 문제 자동 해결
+  - 증상: PyPI에 새 버전이 있는데도 "Nothing to upgrade" 메시지 표시
+  - 원인: UV의 PyPI 메타데이터 캐시가 오래됨
+  - 해결: 자동으로 캐시 감지 → 정리 → 재시도 수행
+
+### 🔧 Technical Details
+
+**New Functions**:
+- `_detect_stale_cache()`: Detects stale UV cache by comparing versions (@CODE:UPDATE-CACHE-FIX-001-001)
+- `_clear_uv_package_cache()`: Clears UV cache for specific package (@CODE:UPDATE-CACHE-FIX-001-002)
+- `_execute_upgrade_with_retry()`: Executes upgrade with automatic cache refresh retry (@CODE:UPDATE-CACHE-FIX-001-003)
+
+**Implementation Flow**:
+1. First upgrade attempt
+2. If "Nothing to upgrade" detected:
+   - Compare installed version vs PyPI latest
+   - If stale cache detected: Clear cache automatically
+   - Retry upgrade once
+3. User feedback at each stage (⚠️, ♻️, ✓, ✗)
+
+**Safety Features**:
+- Maximum 1 retry (prevents infinite loops)
+- 10-second timeout for cache clear
+- Graceful degradation on version parsing failure
+- Clear error messages with manual workaround
+
+### 🧪 Testing
+
+**Test Coverage**: 8 unit tests, 100% passing ✅
+- `test_detect_stale_cache_true`: Stale cache detection (3 scenarios)
+- `test_detect_stale_cache_false`: Fresh cache detection (5 scenarios)
+- `test_clear_cache_success`: Cache clear success
+- `test_clear_cache_failure`: Cache clear failures (4 scenarios)
+- `test_upgrade_with_retry_stale_cache`: Retry logic success
+- `test_upgrade_without_retry_fresh_cache`: No retry when fresh
+- `test_upgrade_fails_after_retry`: Retry failure handling
+- `test_upgrade_cache_clear_fails`: Cache clear failure handling
+
+### 📖 Documentation
+
+**Updated Files**:
+- `README.md`: Added troubleshooting section for UV cache issue (@DOC:UPDATE-CACHE-FIX-001-001)
+- `CHANGELOG.md`: This entry (@DOC:UPDATE-CACHE-FIX-001-002)
+- `.moai/specs/SPEC-UPDATE-CACHE-FIX-001/`: Complete SPEC documentation
+
+**References**:
+- SPEC: @SPEC:UPDATE-CACHE-FIX-001
+- Tests: @TEST:UPDATE-CACHE-FIX-001
+- Code: @CODE:UPDATE-CACHE-FIX-001
+
+### 🚀 User Impact
+
+**Before (v0.9.0)**:
+```bash
+$ moai-adk update
+Nothing to upgrade  # False message!
+$ moai-adk update   # Had to run twice
+Updated to 0.9.1    # Finally works
+```
+
+**After (v0.9.1)**:
+```bash
+$ moai-adk update
+⚠️ Cache outdated, refreshing...
+♻️ Cache cleared, retrying upgrade...
+✓ Updated moai-adk 0.9.0 -> 0.9.1  # Works in one run!
+```
+
+---
+
 ## [v0.6.3] - 2025-10-29 (3-Stage Workflow with Config Version Comparison)
 <!-- @DOC:UPDATE-REFACTOR-002-003 -->
 
