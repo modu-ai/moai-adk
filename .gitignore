@@ -81,4 +81,5 @@ CURSOR_INTEGRATION_PLAN.md
 .moai/analysis/
 .moai/reports/
 .moai/scripts/
-src/moai_adk/templates/.moai/docs/
+.moai/cache/
+
