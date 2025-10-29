@@ -576,7 +576,7 @@ def test_minor_update_shows_normal_message():
 
 ### 4.1 Config 스키마 업데이트
 
-**수정 파일**: `.moai/memory/config-schema.md`
+**수정 파일**: `.moai/memory/CONFIG-SCHEMA.md`
 
 ```markdown
 ## version_check
@@ -750,7 +750,7 @@ def test_disabled_version_check(tmp_path):
 ### 수정 파일 (3개)
 1. `.claude/hooks/alfred/core/project.py` - 버전 체크 로직 강화
 2. `.claude/hooks/alfred/handlers/session.py` - SessionStart 출력 개선
-3. `.moai/memory/config-schema.md` - Config 스키마 확장
+3. `.moai/memory/CONFIG-SCHEMA.md` - Config 스키마 확장
 
 ### 테스트 파일 (5개)
 1. `tests/unit/hooks/test_version_cache.py` - 캐시 단위 테스트
@@ -783,7 +783,7 @@ def test_disabled_version_check(tmp_path):
 - [ ] Major 업데이트 경고 테스트 2개 작성 및 통과
 
 ### Phase 4: 문서화 (3시간)
-- [ ] Config 스키마 확장 (`config-schema.md`)
+- [ ] Config 스키마 확장 (`CONFIG-SCHEMA.md`)
 - [ ] 사용자 가이드 작성 (`version-check-guide.md`)
 - [ ] E2E 통합 테스트 2개 작성 및 통과
 - [ ] README 업데이트 (버전 체크 섹션 추가)
