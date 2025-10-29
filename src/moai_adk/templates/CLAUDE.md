@@ -117,204 +117,204 @@ Alfred follows a systematic **4-step workflow** for all user requests to ensure 
 
 ---
 
-## 📊 보고서 출력 스타일 (Reporting Style)
+## 📊 Reporting Style
 
-**CRITICAL RULE**: Alfred와 모든 Sub-agent는 보고서/완료 안내를 **직접 마크다운 형식**으로 출력해야 합니다.
+**CRITICAL RULE**: Alfred and all Sub-agents MUST output reports/completion notices in **direct markdown format**.
 
-### ✅ 올바른 보고서 출력 패턴
+### ✅ Correct Report Output Pattern
 
-**다음의 경우 직접 마크다운으로 출력하세요:**
+**Output directly in markdown for these cases:**
 
-1. **작업 완료 보고서** - 구현, 테스트, 검증 완료 후
-2. **세션 최종 정리** - `/alfred:3-sync` 완료, PR merge 후
-3. **진행 상황 요약** - 단계별 진행 현황
-4. **다음 단계 안내** - 사용자에게 권장 사항 제시
-5. **분석 결과 보고** - 코드 품질, 구조 분석 결과
-6. **검증 결과 요약** - TRUST 5, @TAG 검증 완료
+1. **Task Completion Report** - After implementation, testing, verification
+2. **Session Finalization** - After `/alfred:3-sync` completion, PR merge
+3. **Progress Summary** - Phase-by-phase status updates
+4. **Next Steps Guidance** - Recommendations for user
+5. **Analysis Results Report** - Code quality, architecture analysis
+6. **Validation Results Summary** - TRUST 5, @TAG verification
 
-**출력 방식**:
+**Output Format**:
 ```markdown
-## 🎊 작업 완료 보고
+## 🎊 Task Completion Report
 
-### 구현 결과
-- ✅ 기능 A 구현 완료
-- ✅ 테스트 작성 완료
-- ✅ 문서 동기화 완료
+### Implementation Results
+- ✅ Feature A implementation completed
+- ✅ Tests written and passing
+- ✅ Documentation synchronized
 
-### 품질 지표
-| 항목 | 결과 |
-|------|------|
-| 테스트 커버리지 | 95% |
-| Lint | 통과 |
+### Quality Metrics
+| Item | Result |
+|------|--------|
+| Test Coverage | 95% |
+| Linting | Passed |
 
-### 다음 단계
-1. `/alfred:3-sync` 실행
-2. PR 생성 및 검토
-3. main 브랜치 병합
+### Next Steps
+1. Run `/alfred:3-sync`
+2. Create and review PR
+3. Merge to main branch
 ```
 
-### ❌ 금지된 보고서 출력 패턴
+### ❌ Prohibited Report Output Patterns
 
-**다음 방식으로 보고서를 wrapping하지 마세요:**
+**DO NOT wrap reports using these methods:**
 
 ```bash
-# ❌ 잘못된 예시 1: Bash 명령으로 wrapping
+# ❌ Wrong Example 1: Bash command wrapping
 cat << 'EOF'
-## 보고서
-...내용...
+## Report
+...content...
 EOF
 
-# ❌ 잘못된 예시 2: Python으로 wrapping
+# ❌ Wrong Example 2: Python wrapping
 python -c "print('''
-## 보고서
-...내용...
+## Report
+...content...
 ''')"
 
-# ❌ 잘못된 예시 3: echo 사용
-echo "## 보고서"
-echo "...내용..."
+# ❌ Wrong Example 3: echo usage
+echo "## Report"
+echo "...content..."
 ```
 
-### 📋 보고서 작성 가이드라인
+### 📋 Report Writing Guidelines
 
-1. **마크다운 포맷 활용**
-   - 헤딩 (`##`, `###`)으로 섹션 구분
-   - 테이블로 구조화된 정보 제시
-   - 리스트로 항목 나열
-   - 이모지로 상태 표시 (✅, ❌, ⚠️, 🎊, 📊)
+1. **Markdown Format**
+   - Use headings (`##`, `###`) for section separation
+   - Present structured information in tables
+   - List items with bullet points
+   - Use emojis for status indicators (✅, ❌, ⚠️, 🎊, 📊)
 
-2. **보고서 길이 관리**
-   - 짧은 보고서 (<500자): 한 번에 출력
-   - 긴 보고서 (>500자): 섹션으로 나눠 출력
-   - 핵심 요약을 먼저, 세부사항은 나중에
+2. **Report Length Management**
+   - Short reports (<500 chars): Output once
+   - Long reports (>500 chars): Split by sections
+   - Lead with summary, follow with details
 
-3. **구조화된 섹션**
+3. **Structured Sections**
    ```markdown
-   ## 🎯 주요 성과
-   - 핵심 달성 사항
+   ## 🎯 Key Achievements
+   - Core accomplishments
 
-   ## 📊 통계 요약
-   | 항목 | 결과 |
+   ## 📊 Statistics Summary
+   | Item | Result |
 
-   ## ⚠️ 주의사항
-   - 사용자가 알아야 할 내용
+   ## ⚠️ Important Notes
+   - Information user needs to know
 
-   ## 🚀 다음 단계
-   1. 권장 작업
+   ## 🚀 Next Steps
+   1. Recommended action
    ```
 
-4. **언어 설정 준수**
-   - 사용자의 `conversation_language` 사용
-   - 코드/기술 용어는 영어 유지
-   - 설명/안내는 사용자 언어
+4. **Language Settings**
+   - Use user's `conversation_language`
+   - Keep code/technical terms in English
+   - Use user's language for explanations/guidance
 
-### 🔧 Bash 도구 사용 예외
+### 🔧 Bash Tool Usage Exceptions
 
-**다음의 경우에만 Bash 도구 사용 허용:**
+**Bash tools allowed ONLY for:**
 
-1. **실제 시스템 명령 실행**
-   - 파일 생성/수정 (`touch`, `mkdir`, `cp`)
-   - Git 작업 (`git add`, `git commit`, `git push`)
-   - 패키지 설치 (`pip`, `npm`, `uv`)
-   - 테스트 실행 (`pytest`, `npm test`)
+1. **Actual System Commands**
+   - File operations (`touch`, `mkdir`, `cp`)
+   - Git operations (`git add`, `git commit`, `git push`)
+   - Package installation (`pip`, `npm`, `uv`)
+   - Test execution (`pytest`, `npm test`)
 
-2. **환경 설정**
-   - 권한 변경 (`chmod`)
-   - 환경 변수 설정 (`export`)
-   - 디렉토리 이동 (`cd`)
+2. **Environment Configuration**
+   - Permission changes (`chmod`)
+   - Environment variables (`export`)
+   - Directory navigation (`cd`)
 
-3. **정보 조회 (파일 내용 제외)**
-   - 시스템 정보 (`uname`, `df`)
-   - 프로세스 상태 (`ps`, `top`)
-   - 네트워크 상태 (`ping`, `curl`)
+3. **Information Queries (excluding file content)**
+   - System info (`uname`, `df`)
+   - Process status (`ps`, `top`)
+   - Network status (`ping`, `curl`)
 
-**파일 내용 조회는 Read 도구 사용:**
+**Use Read tool for file content:**
 ```markdown
 ❌ Bash: cat file.txt
 ✅ Read: Read(file_path="/absolute/path/file.txt")
 ```
 
-### 📝 Sub-agent별 보고서 출력 예시
+### 📝 Sub-agent Report Examples
 
-#### spec-builder (SPEC 작성 완료)
+#### spec-builder (SPEC Creation Complete)
 ```markdown
-## 📋 SPEC 작성 완료
+## 📋 SPEC Creation Complete
 
-### 생성된 문서
+### Generated Documents
 - ✅ `.moai/specs/SPEC-XXX-001/spec.md`
 - ✅ `.moai/specs/SPEC-XXX-001/plan.md`
 - ✅ `.moai/specs/SPEC-XXX-001/acceptance.md`
 
-### EARS 검증 결과
-- ✅ 모든 요구사항 EARS 형식 준수
-- ✅ @TAG 체인 생성 완료
+### EARS Validation Results
+- ✅ All requirements follow EARS format
+- ✅ @TAG chain created
 ```
 
-#### tdd-implementer (구현 완료)
+#### tdd-implementer (Implementation Complete)
 ```markdown
-## 🚀 TDD 구현 완료
+## 🚀 TDD Implementation Complete
 
-### 구현 파일
-- ✅ `src/feature.py` (코드 작성)
-- ✅ `tests/test_feature.py` (테스트 작성)
+### Implementation Files
+- ✅ `src/feature.py` (code written)
+- ✅ `tests/test_feature.py` (tests written)
 
-### 테스트 결과
-| 단계 | 상태 |
-|------|------|
-| RED | ✅ 실패 확인 |
-| GREEN | ✅ 구현 성공 |
-| REFACTOR | ✅ 리팩토링 완료 |
+### Test Results
+| Phase | Status |
+|-------|--------|
+| RED | ✅ Failure confirmed |
+| GREEN | ✅ Implementation successful |
+| REFACTOR | ✅ Refactoring complete |
 
-### 품질 지표
-- 테스트 커버리지: 95%
-- Lint 통과: 0 issues
+### Quality Metrics
+- Test coverage: 95%
+- Linting: 0 issues
 ```
 
-#### doc-syncer (문서 동기화 완료)
+#### doc-syncer (Documentation Sync Complete)
 ```markdown
-## 📚 문서 동기화 완료
+## 📚 Documentation Sync Complete
 
-### 업데이트된 문서
-- ✅ `README.md` - 사용 예시 추가
-- ✅ `.moai/docs/architecture.md` - 구조 갱신
-- ✅ `CHANGELOG.md` - v0.8.0 항목 추가
+### Updated Documents
+- ✅ `README.md` - Usage examples added
+- ✅ `.moai/docs/architecture.md` - Structure updated
+- ✅ `CHANGELOG.md` - v0.8.0 entries added
 
-### @TAG 검증
-- ✅ SPEC → CODE 연결 확인
-- ✅ CODE → TEST 연결 확인
-- ✅ TEST → DOC 연결 확인
+### @TAG Verification
+- ✅ SPEC → CODE connection verified
+- ✅ CODE → TEST connection verified
+- ✅ TEST → DOC connection verified
 ```
 
-### 🎯 적용 시점
+### 🎯 When to Apply
 
-**보고서 직접 출력이 필요한 순간:**
+**Reports should be output directly in these moments:**
 
-1. **Command 완료 시** (항상)
-   - `/alfred:0-project` 완료
-   - `/alfred:1-plan` 완료
-   - `/alfred:2-run` 완료
-   - `/alfred:3-sync` 완료
+1. **Command Completion** (always)
+   - `/alfred:0-project` complete
+   - `/alfred:1-plan` complete
+   - `/alfred:2-run` complete
+   - `/alfred:3-sync` complete
 
-2. **Sub-agent 작업 완료 시** (대부분)
-   - spec-builder: SPEC 작성 완료
-   - tdd-implementer: 구현 완료
-   - doc-syncer: 문서 동기화 완료
-   - tag-agent: TAG 검증 완료
+2. **Sub-agent Task Completion** (mostly)
+   - spec-builder: SPEC creation done
+   - tdd-implementer: Implementation done
+   - doc-syncer: Documentation sync done
+   - tag-agent: TAG validation done
 
-3. **품질 검증 완료 시**
-   - TRUST 5 검증 완료
-   - 테스트 실행 완료
-   - Lint/타입 체크 완료
+3. **Quality Verification Complete**
+   - TRUST 5 verification passed
+   - Test execution complete
+   - Linting/type checking passed
 
-4. **Git 작업 완료 시**
-   - 커밋 생성 후
-   - PR 생성 후
-   - Merge 완료 후
+4. **Git Operations Complete**
+   - After commit creation
+   - After PR creation
+   - After merge completion
 
-**예외: 보고서가 필요 없는 경우**
-- 단순 조회/읽기 작업
-- 중간 단계 (아직 완료되지 않은 작업)
-- 사용자가 명시적으로 "간단히" 요청한 경우
+**Exceptions: When reports are NOT needed**
+- Simple query/read operations
+- Intermediate steps (incomplete tasks)
+- When user explicitly requests "quick" response
 
 ---
 
