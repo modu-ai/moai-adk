@@ -299,15 +299,24 @@ def _get_project_config_version(project_path: Path) -> str:
         raise ValueError(f"Failed to parse project config.json: {e}") from e
 
 
-# @CODE:UPDATE-CACHE-FIX-001-001
+# @CODE:UPDATE-CACHE-FIX-001-001-DETECT-STALE
 def _detect_stale_cache(upgrade_output: str, current_version: str, latest_version: str) -> bool:
     """
     Detect if uv cache is stale by comparing versions.
 
+    A stale cache occurs when PyPI metadata is outdated, causing uv to incorrectly
+    report "Nothing to upgrade" even though a newer version exists. This function
+    detects this condition by:
+    1. Checking if upgrade output contains "Nothing to upgrade"
+    2. Verifying that latest version is actually newer than current version
+
+    Uses packaging.version.parse() for robust semantic version comparison that
+    handles pre-releases, dev versions, and other PEP 440 version formats correctly.
+
     Args:
         upgrade_output: Output from uv tool upgrade command
-        current_version: Currently installed version
-        latest_version: Latest version available on PyPI
+        current_version: Currently installed version (string, e.g., "0.8.3")
+        latest_version: Latest version available on PyPI (string, e.g., "0.9.0")
 
     Returns:
         True if cache is stale (output shows "Nothing to upgrade" but current < latest),
@@ -336,16 +345,25 @@ def _detect_stale_cache(upgrade_output: str, current_version: str, latest_versio
         return False
 
 
-# @CODE:UPDATE-CACHE-FIX-001-002
+# @CODE:UPDATE-CACHE-FIX-001-002-CLEAR-SUCCESS
 def _clear_uv_package_cache(package_name: str = "moai-adk") -> bool:
     """
     Clear uv cache for specific package.
+
+    Executes `uv cache clean <package>` with 10-second timeout to prevent
+    hanging on network issues. Provides user-friendly error handling for
+    various failure scenarios (timeout, missing uv, etc.).
 
     Args:
         package_name: Package name to clear cache for (default: "moai-adk")
 
     Returns:
         True if cache cleared successfully, False otherwise
+
+    Exceptions:
+        - subprocess.TimeoutExpired: Logged as warning, returns False
+        - FileNotFoundError: Logged as warning, returns False
+        - Exception: Logged as warning, returns False
 
     Examples:
         >>> _clear_uv_package_cache("moai-adk")
@@ -378,10 +396,30 @@ def _clear_uv_package_cache(package_name: str = "moai-adk") -> bool:
         return False
 
 
-# @CODE:UPDATE-CACHE-FIX-001-003
+# @CODE:UPDATE-CACHE-FIX-001-003-RETRY-LOGIC
 def _execute_upgrade_with_retry(installer_cmd: list[str], package_name: str = "moai-adk") -> bool:
     """
     Execute upgrade with automatic cache retry on stale detection.
+
+    Implements a robust 7-stage upgrade flow that handles PyPI cache staleness:
+
+    Stage 1: First upgrade attempt (up to 60 seconds)
+    Stage 2: Check success condition (returncode=0 AND no "Nothing to upgrade")
+    Stage 3: Detect stale cache using _detect_stale_cache()
+    Stage 4: Show user feedback if stale cache detected
+    Stage 5: Clear cache using _clear_uv_package_cache()
+    Stage 6: Retry upgrade with same command
+    Stage 7: Return final result (success or failure)
+
+    Retry Logic:
+    - Only ONE retry is performed to prevent infinite loops
+    - Retry only happens if stale cache is detected AND cache clear succeeds
+    - Cache clear failures are reported to user with manual workaround
+
+    User Feedback:
+    - Shows emoji-based status messages for each stage
+    - Clear guidance on manual workaround if automatic retry fails
+    - All errors logged at WARNING level for debugging
 
     Args:
         installer_cmd: Command list from _detect_tool_installer()
@@ -400,6 +438,9 @@ def _execute_upgrade_with_retry(installer_cmd: list[str], package_name: str = "m
         >>> # First attempt stale, retry succeeds
         >>> _execute_upgrade_with_retry(["uv", "tool", "upgrade", "moai-adk"])
         True  # After cache clear and retry
+
+    Raises:
+        subprocess.TimeoutExpired: Re-raised if upgrade command times out
     """
     # Stage 1: First upgrade attempt
     try:
