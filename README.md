@@ -367,15 +367,19 @@ my-project/
 
 ## Core Concept: 3-Step Repeating Cycle
 
-After initial setup, every feature follows this 3-step cycle:
+After initial setup, every feature follows this cycle:
 
-| Step | Command | What It Does | Time |
-|------|---------|-------------|------|
-| 📋 **PLAN** | `/alfred:1-plan "feature description"` | Write SPEC (EARS format) | 2 min |
-| 💻 **RUN** | `/alfred:2-run SPEC-ID` | TDD implementation (RED→GREEN→REFACTOR) | 5 min |
-| 📚 **SYNC** | `/alfred:3-sync` | Auto-sync documentation | 1 min |
+| Step | Command | What It Does | Output |
+|------|---------|-------------|--------|
+| 🚀 **INIT** | `/alfred:0-project` | Collect project description, create config/docs, recommend Skills | `.moai/config.json`, `.moai/project/*`, initial report |
+| 📋 **PLAN** | `/alfred:1-plan "feature description"` | Analyze requirements, draft SPEC, create Plan Board | `.moai/specs/SPEC-*/spec.md`, plan/acceptance docs, feature branch |
+| 💻 **RUN** | `/alfred:2-run SPEC-ID` | Execute TDD, run tests/implementation/refactor, verify quality | `tests/`, `src/` implementation, quality report, TAG links |
+| 📚 **SYNC** | `/alfred:3-sync` | Auto-sync docs/README/CHANGELOG, organize TAG/PR status | `docs/`, `.moai/reports/sync-report.md`, Ready PR |
+| 💬 **FEEDBACK** | `/alfred:9-feedback` | Interactive GitHub Issue creation (type → title → description → priority) | GitHub Issue + auto labels + priority + URL |
 
-**One cycle = ~8 minutes** → **Complete 7-8 features per day** ⚡
+> ✅ All commands follow the **Phase 0(optional) → Phase 1 → Phase 2 → Phase 3** cycle. Alfred automatically reports status and suggests next steps.
+>
+> 💡 **New in v0.7.0+**: Use `/alfred:9-feedback` to create GitHub Issues on-the-fly during development. Keep your team in sync without interrupting your workflow.
 
 ---
 
