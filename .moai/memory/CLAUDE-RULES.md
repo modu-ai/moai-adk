@@ -52,14 +52,16 @@ After reading this document:
 
 ### Skill Tier Overview (55 Total Skills)
 
-| **Tier** | **Count** | **Purpose** | **Auto-Trigger Conditions** |
-|----------|-----------|------------|--------------------------|
-| **Foundation** | 6 | Core TRUST/TAG/SPEC/EARS/Git/Language principles | Keyword detection in user request |
-| **Essentials** | 4 | Debug/Perf/Refactor/Review workflows | Error detection, refactor triggers |
-| **Alfred** | 11 | Workflow orchestration (SPEC authoring, TDD, sync, Git) | Command execution (`/alfred:*`) |
-| **Domain** | 10 | Backend, Frontend, Web API, Database, Security, DevOps, Data Science, ML, Mobile, CLI | Domain-specific keywords |
-| **Language** | 23 | Python, TypeScript, Go, Rust, Java, Kotlin, Swift, Dart, C/C++, C#, Scala, Ruby, PHP, JavaScript, SQL, Shell, and more | File extension detection (`.py`, `.ts`, `.go`, etc.) |
-| **Ops** | 1 | Claude Code session settings, output styles | Session start/configuration |
+| **Tier** | **Count** | **Purpose** | **Invocation Method** |
+|----------|-----------|------------|----------------------|
+| **Foundation** | 6 | Core TRUST/TAG/SPEC/EARS/Git/Language principles | Explicit: `Skill("moai-foundation-*")` |
+| **Essentials** | 4 | Debug/Perf/Refactor/Review workflows | Explicit: `Skill("moai-essentials-*")` |
+| **Alfred** | 11 | Workflow orchestration (SPEC authoring, TDD, sync, Git) | Explicit: `Skill("moai-alfred-*")` |
+| **Domain** | 10 | Backend, Frontend, Web API, Database, Security, DevOps, Data Science, ML, Mobile, CLI | Explicit: `Skill("moai-domain-*")` |
+| **Language** | 23 | Python, TypeScript, Go, Rust, Java, Kotlin, Swift, Dart, C/C++, C#, Scala, Ruby, PHP, JavaScript, SQL, Shell, and more | Explicit: `Skill("moai-lang-*")` |
+| **Ops** | 1 | Claude Code session settings, output styles | Explicit: `Skill("moai-cc-*")` |
+
+**IMPORTANT**: All Skills require **explicit invocation** using `Skill("skill-name")` syntax. There is NO auto-triggering based on keywords or file extensions.
 
 ### Progressive Disclosure Pattern
 
@@ -71,62 +73,57 @@ All Skills follow the **Progressive Disclosure** principle:
 
 ### 🌍 Language Boundary in Skill Invocation
 
-**CRITICAL: Three-Layer Language Rule**
+**CRITICAL: Two-Layer Language Architecture**
 
 ```
-Layer 1: User Conversation
+Layer 1: User Conversation & Dynamic Content
 ├─ ALWAYS: Use user's configured conversation_language
-├─ Example: Korean user → respond in Korean only
-├─ Example: Japanese user → respond in Japanese only
-└─ Includes: questions, explanations, all dialogue
+├─ Example: Korean user → all dialogue in Korean
+├─ Example: Japanese user → all dialogue in Japanese
+├─ Includes: questions, explanations, all dialogue
+├─ Task() prompts → **User's language** (passed directly)
+├─ Sub-agent communication → **User's language**
+└─ Generated documents → **User's language** (SPEC, reports, analysis)
 
-Layer 2: Internal Operations ← THE KEY DIFFERENCE
-├─ Task() prompts → **English**
-├─ Skill() invocations → **English**
-├─ Sub-agent communication → **English**
+Layer 2: Static Infrastructure (English Only)
+├─ Skill() names → **English** (explicit invocation)
+├─ Skill content → **English** (technical documentation)
+├─ Code comments → **English**
 ├─ Git commits → **English**
-├─ Error messages (internal) → **English**
-└─ ALL technical instructions → **English**
-
-Layer 3: Skills & Code
-├─ Descriptions → English only
-├─ Examples → English only
-├─ Code comments → English only
-└─ ✅ NO multilingual versions needed!
+├─ @TAG identifiers → **English**
+└─ Technical keywords → **English**
 ```
 
 **Why This Works**:
-- ✅ **100% Reliability**: English prompts always match English Skill keywords = guaranteed activation
-- ✅ **Zero Maintenance**: 55 Skills in English only (no 55 × N language variants)
-- ✅ **Infinite Scalability**: Add Korean/Japanese/Spanish/Russian/any language with ZERO Skill modifications
-- ✅ **Industry Standard**: Localized UI + English backend = standard i18n pattern (like Netflix, Google, AWS)
+- ✅ **Explicit Invocation**: `Skill("moai-foundation-trust")` works regardless of prompt language
+- ✅ **Zero Maintenance**: 55 Skills in English only (no translation needed)
+- ✅ **Infinite Scalability**: Add any language without modifying Skills
+- ✅ **Industry Standard**: Technical documentation in English (single source of truth)
+- ✅ **Simplified Architecture**: No translation layer overhead
 
 **The Golden Rule**:
 ```
-User Language ≠ Internal Language
+Skill Invocation = Explicit Function Call
                 ↓
-        100% Skill Match Guaranteed
-        English-only Skills = Complete Scalability!
+        Prompt Language is Irrelevant!
+        Skill("name") works with any language!
 ```
 
 **Sub-agent Implementation Example**:
 ```
-User Input (any language):  "Create authentication system"  / "認証システムを実装"  / "Implementar sistema de autenticación"
+User Input (any language):  "인증 시스템 만들어줘"  / "Create authentication system"  / "認証システムを実装"
      ↓
-Alfred (internal):          "Implement authentication system"
+Alfred (passes directly):   Task(prompt="인증 시스템을 만들어주세요. JWT 전략 사용, 30분 토큰 만료",
+                                 subagent_type="spec-builder")
      ↓
-Task(prompt="Create JWT authentication SPEC with 30-minute token expiry",
-     subagent_type="spec-builder")
+spec-builder (receives Korean prompt):
+  Recognizes SPEC authoring task
+  Skill("moai-foundation-specs") ✅ [Explicit invocation]
+  Skill("moai-foundation-ears") ✅ [Explicit invocation]
      ↓
-spec-builder (receives English):
-  Skill("moai-foundation-specs") ← 100% match!
-  Skill("moai-foundation-ears") ← 100% match!
+spec-builder:               Reads English Skill content, generates Korean SPEC
      ↓
-Alfred (receives):          English SPEC output
-     ↓
-Alfred (translates):        User's language response
-     ↓
-User Receives:              Response in their configured language
+User Receives:              Korean SPEC document with English @TAGs
 ```
 
 ### Explicit Invocation Syntax

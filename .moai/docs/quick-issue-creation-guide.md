@@ -463,7 +463,7 @@ gh issue close 456 -c "Duplicate of #123"
 ## 📚 Additional Resources
 
 - **CLAUDE.md**: MoAI-ADK project guidance
-- **`.moai/memory/issue-label-mapping.md`**: Complete label configuration
+- **`.moai/memory/ISSUE-LABEL-MAPPING.md`**: Complete label configuration
 - **GitHub Docs**: [Creating issues](https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-an-issue)
 - **GitHub CLI Docs**: [Issue commands](https://cli.github.com/manual/gh_issue)
 

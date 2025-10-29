@@ -310,7 +310,7 @@ options: [
 
 For detailed information:
 - `.moai/docs/quick-issue-creation-guide.md` - Complete usage guide with examples
-- `.moai/memory/issue-label-mapping.md` - Label configuration and setup
+- `.moai/memory/ISSUE-LABEL-MAPPING.md` - Label configuration and setup
 - `.moai/memory/interactive-dialogs.md` - AskUserQuestion best practices
 
 ---
