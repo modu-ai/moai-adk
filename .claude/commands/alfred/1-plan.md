@@ -154,6 +154,12 @@ All SPEC documents and analysis must be generated in conversation_language.
 - If conversation_language is 'ja' (Japanese): Generate ALL analysis, plans, and SPEC documents in Japanese
 - If conversation_language is other language: Follow the specified language
 
+SKILL INVOCATION:
+Use explicit Skill() calls when needed:
+- Skill("moai-foundation-specs") for SPEC structure guidance
+- Skill("moai-foundation-ears") for EARS syntax requirements
+- Skill("moai-alfred-spec-metadata-validation") for metadata validation
+
 TASK:
 Please analyze the project document and suggest SPEC candidates.
 Run in analysis mode, and must include the following:
@@ -217,6 +223,13 @@ ALL SPEC documents MUST be generated in conversation_language:
 
 YAML frontmatter and @TAG identifiers MUST remain in English.
 Code examples and technical keywords can be mixed (code in English, narrative in user language).
+
+SKILL INVOCATION:
+Use explicit Skill() calls when needed:
+- Skill("moai-foundation-specs") for SPEC structure guidance
+- Skill("moai-foundation-ears") for EARS syntax requirements
+- Skill("moai-alfred-spec-metadata-validation") for metadata validation
+- Skill("moai-alfred-tag-scanning") for TAG chain references
 
 TASK:
 Please fill out the SPEC document according to the plan approved in STEP 1.
