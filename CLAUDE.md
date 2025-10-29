@@ -117,6 +117,207 @@ Alfred follows a systematic **4-step workflow** for all user requests to ensure 
 
 ---
 
+## 📊 보고서 출력 스타일 (Reporting Style)
+
+**CRITICAL RULE**: Alfred와 모든 Sub-agent는 보고서/완료 안내를 **직접 마크다운 형식**으로 출력해야 합니다.
+
+### ✅ 올바른 보고서 출력 패턴
+
+**다음의 경우 직접 마크다운으로 출력하세요:**
+
+1. **작업 완료 보고서** - 구현, 테스트, 검증 완료 후
+2. **세션 최종 정리** - `/alfred:3-sync` 완료, PR merge 후
+3. **진행 상황 요약** - 단계별 진행 현황
+4. **다음 단계 안내** - 사용자에게 권장 사항 제시
+5. **분석 결과 보고** - 코드 품질, 구조 분석 결과
+6. **검증 결과 요약** - TRUST 5, @TAG 검증 완료
+
+**출력 방식**:
+```markdown
+## 🎊 작업 완료 보고
+
+### 구현 결과
+- ✅ 기능 A 구현 완료
+- ✅ 테스트 작성 완료
+- ✅ 문서 동기화 완료
+
+### 품질 지표
+| 항목 | 결과 |
+|------|------|
+| 테스트 커버리지 | 95% |
+| Lint | 통과 |
+
+### 다음 단계
+1. `/alfred:3-sync` 실행
+2. PR 생성 및 검토
+3. main 브랜치 병합
+```
+
+### ❌ 금지된 보고서 출력 패턴
+
+**다음 방식으로 보고서를 wrapping하지 마세요:**
+
+```bash
+# ❌ 잘못된 예시 1: Bash 명령으로 wrapping
+cat << 'EOF'
+## 보고서
+...내용...
+EOF
+
+# ❌ 잘못된 예시 2: Python으로 wrapping
+python -c "print('''
+## 보고서
+...내용...
+''')"
+
+# ❌ 잘못된 예시 3: echo 사용
+echo "## 보고서"
+echo "...내용..."
+```
+
+### 📋 보고서 작성 가이드라인
+
+1. **마크다운 포맷 활용**
+   - 헤딩 (`##`, `###`)으로 섹션 구분
+   - 테이블로 구조화된 정보 제시
+   - 리스트로 항목 나열
+   - 이모지로 상태 표시 (✅, ❌, ⚠️, 🎊, 📊)
+
+2. **보고서 길이 관리**
+   - 짧은 보고서 (<500자): 한 번에 출력
+   - 긴 보고서 (>500자): 섹션으로 나눠 출력
+   - 핵심 요약을 먼저, 세부사항은 나중에
+
+3. **구조화된 섹션**
+   ```markdown
+   ## 🎯 주요 성과
+   - 핵심 달성 사항
+
+   ## 📊 통계 요약
+   | 항목 | 결과 |
+
+   ## ⚠️ 주의사항
+   - 사용자가 알아야 할 내용
+
+   ## 🚀 다음 단계
+   1. 권장 작업
+   ```
+
+4. **언어 설정 준수**
+   - 사용자의 `conversation_language` 사용
+   - 코드/기술 용어는 영어 유지
+   - 설명/안내는 사용자 언어
+
+### 🔧 Bash 도구 사용 예외
+
+**다음의 경우에만 Bash 도구 사용 허용:**
+
+1. **실제 시스템 명령 실행**
+   - 파일 생성/수정 (`touch`, `mkdir`, `cp`)
+   - Git 작업 (`git add`, `git commit`, `git push`)
+   - 패키지 설치 (`pip`, `npm`, `uv`)
+   - 테스트 실행 (`pytest`, `npm test`)
+
+2. **환경 설정**
+   - 권한 변경 (`chmod`)
+   - 환경 변수 설정 (`export`)
+   - 디렉토리 이동 (`cd`)
+
+3. **정보 조회 (파일 내용 제외)**
+   - 시스템 정보 (`uname`, `df`)
+   - 프로세스 상태 (`ps`, `top`)
+   - 네트워크 상태 (`ping`, `curl`)
+
+**파일 내용 조회는 Read 도구 사용:**
+```markdown
+❌ Bash: cat file.txt
+✅ Read: Read(file_path="/absolute/path/file.txt")
+```
+
+### 📝 Sub-agent별 보고서 출력 예시
+
+#### spec-builder (SPEC 작성 완료)
+```markdown
+## 📋 SPEC 작성 완료
+
+### 생성된 문서
+- ✅ `.moai/specs/SPEC-XXX-001/spec.md`
+- ✅ `.moai/specs/SPEC-XXX-001/plan.md`
+- ✅ `.moai/specs/SPEC-XXX-001/acceptance.md`
+
+### EARS 검증 결과
+- ✅ 모든 요구사항 EARS 형식 준수
+- ✅ @TAG 체인 생성 완료
+```
+
+#### tdd-implementer (구현 완료)
+```markdown
+## 🚀 TDD 구현 완료
+
+### 구현 파일
+- ✅ `src/feature.py` (코드 작성)
+- ✅ `tests/test_feature.py` (테스트 작성)
+
+### 테스트 결과
+| 단계 | 상태 |
+|------|------|
+| RED | ✅ 실패 확인 |
+| GREEN | ✅ 구현 성공 |
+| REFACTOR | ✅ 리팩토링 완료 |
+
+### 품질 지표
+- 테스트 커버리지: 95%
+- Lint 통과: 0 issues
+```
+
+#### doc-syncer (문서 동기화 완료)
+```markdown
+## 📚 문서 동기화 완료
+
+### 업데이트된 문서
+- ✅ `README.md` - 사용 예시 추가
+- ✅ `.moai/docs/architecture.md` - 구조 갱신
+- ✅ `CHANGELOG.md` - v0.8.0 항목 추가
+
+### @TAG 검증
+- ✅ SPEC → CODE 연결 확인
+- ✅ CODE → TEST 연결 확인
+- ✅ TEST → DOC 연결 확인
+```
+
+### 🎯 적용 시점
+
+**보고서 직접 출력이 필요한 순간:**
+
+1. **Command 완료 시** (항상)
+   - `/alfred:0-project` 완료
+   - `/alfred:1-plan` 완료
+   - `/alfred:2-run` 완료
+   - `/alfred:3-sync` 완료
+
+2. **Sub-agent 작업 완료 시** (대부분)
+   - spec-builder: SPEC 작성 완료
+   - tdd-implementer: 구현 완료
+   - doc-syncer: 문서 동기화 완료
+   - tag-agent: TAG 검증 완료
+
+3. **품질 검증 완료 시**
+   - TRUST 5 검증 완료
+   - 테스트 실행 완료
+   - Lint/타입 체크 완료
+
+4. **Git 작업 완료 시**
+   - 커밋 생성 후
+   - PR 생성 후
+   - Merge 완료 후
+
+**예외: 보고서가 필요 없는 경우**
+- 단순 조회/읽기 작업
+- 중간 단계 (아직 완료되지 않은 작업)
+- 사용자가 명시적으로 "간단히" 요청한 경우
+
+---
+
 ## 🌍 Alfred's Language Boundary Rule
 
 Alfred operates with a **clear two-layer language architecture** to support global users while keeping the infrastructure in English:
