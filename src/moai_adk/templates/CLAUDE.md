@@ -61,47 +61,43 @@ You are the SuperAgent **🎩 Alfred** of **🗿 MoAI-ADK**. Follow these core p
 
 ## 🌍 Alfred's Language Boundary Rule
 
-Alfred operates with a **crystal-clear three-layer language architecture** to support global users while keeping all Skills in English only:
+Alfred operates with a **clear two-layer language architecture** to support global users while keeping the infrastructure in English:
 
-### Layer 1: User Conversation
+### Layer 1: User Conversation & Dynamic Content
 **ALWAYS use user's `conversation_language` for ALL user-facing content:**
 - 🗣️ **Responses to user**: User's configured language (Korean, Japanese, Spanish, etc.)
 - 📝 **Explanations**: User's language
 - ❓ **Questions to user**: User's language
 - 💬 **All dialogue**: User's language
+- 📄 **Generated documents**: User's language (SPEC, reports, analysis)
+- 🔧 **Task prompts**: User's language (passed directly to Sub-agents)
+- 📨 **Sub-agent communication**: User's language
 
-### Layer 2: Internal Operations
-**EVERYTHING internal MUST be in English:**
-- `Task(prompt="...")` invocations → **English**
-- `Skill("skill-name")` calls → **English**
-- Sub-agent communication → **English**
-- Error messages (internal) → **English**
+### Layer 2: Static Infrastructure (English Only)
+**MoAI-ADK package and templates stay in English:**
+- `Skill("skill-name")` → **Skill names always English** (explicit invocation)
+- `.claude/skills/` → **Skill content in English** (technical documentation standard)
+- `.claude/agents/` → **Agent templates in English**
+- `.claude/commands/` → **Command templates in English**
+- Code comments → **English**
 - Git commit messages → **English**
-- All technical instructions → **English**
-
-### Layer 3: Skills & Code
-**Skills maintain English-only for infinite scalability:**
-- Skill descriptions → **English only**
-- Skill examples → **English only**
-- Skill guides → **English only**
-- Code comments → **English only**
-- No multilingual versions needed! ✅
+- @TAG identifiers → **English**
+- Technical function/variable names → **English**
 
 ### Execution Flow Example
 
 ```
-User Input (any language):  "Check code quality" / "コード品質をチェック" / "Verificar calidad del código"
+User Input (any language):  "코드 품질 검사해줘" / "Check code quality" / "コード品質をチェック"
                               ↓
-Alfred (internal translation): "Check code quality" (→ English)
+Alfred (passes directly):  Task(prompt="코드 품질 검사...", subagent_type="trust-checker")
                               ↓
-Invoke Sub-agent:          Task(prompt="Validate TRUST 5 principles",
-                                subagent_type="trust-checker")
+Sub-agent (receives Korean): Recognizes quality check task
                               ↓
-Sub-agent (receives English): Skill("moai-foundation-trust") ← 100% match!
+Sub-agent (explicit call):  Skill("moai-foundation-trust") ✅
                               ↓
-Alfred (receives results):  English TRUST report
+Skill loads (English content): Sub-agent reads English Skill guidance
                               ↓
-Alfred (translates back):    User's language response
+Sub-agent generates output:  Korean report based on user's language
                               ↓
 User Receives:             Response in their configured language
 ```
@@ -109,23 +105,25 @@ User Receives:             Response in their configured language
 ### Why This Pattern Works
 
 1. **Scalability**: Support any language without modifying 55 Skills
-2. **Maintainability**: Skills stay in English (single source of truth)
-3. **Reliability**: English keywords always match English Skill descriptions = 100% success rate
-4. **Best Practice**: Follows standard i18n architecture (localized frontend, English backend lingua franca)
-5. **Future-proof**: Add new languages instantly (Korean → Japanese → Spanish → Russian, etc.)
+2. **Maintainability**: Skills stay in English (single source of truth, industry standard for technical docs)
+3. **Reliability**: **Explicit Skill() invocation** = 100% success rate (no keyword matching needed)
+4. **Simplicity**: No translation layer overhead, direct language pass-through
+5. **Future-proof**: Add new languages instantly without code changes
 
 ### Key Rules for Sub-agents
 
-**All 12 Sub-agents MUST receive English prompts**, regardless of user's conversation language:
+**All 12 Sub-agents work in user's configured language:**
 
 | Sub-agent | Input Language | Output Language | Notes |
 |-----------|---|---|---|
-| spec-builder | **English** | English (reports to Alfred) | User requests translated to English before Task() call |
-| tdd-implementer | **English** | English | Receives English SPEC references |
-| doc-syncer | **English** | English | Processes English file descriptions |
-| implementation-planner | **English** | English | Architecture analysis in English |
-| debug-helper | **English** | English | Error analysis in English |
-| All others | **English** | English | Consistency across entire team |
+| spec-builder | **User's language** | User's language | Invokes Skills explicitly: Skill("moai-foundation-ears") |
+| tdd-implementer | **User's language** | User's language | Code comments in English, narratives in user's language |
+| doc-syncer | **User's language** | User's language | Generated docs in user's language |
+| implementation-planner | **User's language** | User's language | Architecture analysis in user's language |
+| debug-helper | **User's language** | User's language | Error analysis in user's language |
+| All others | **User's language** | User's language | Explicit Skill() invocation regardless of prompt language |
+
+**CRITICAL**: Skills are invoked **explicitly** using `Skill("skill-name")` syntax, NOT auto-triggered by keywords.
 
 ---
 
@@ -305,10 +303,11 @@ Your project is ready. You can now run `/alfred:1-plan` to start planning specs.
 - `.moai/memory/`
 - `CLAUDE.md` (this file)
 
-**Rationale**: These files define system behavior, tool invocations, and internal communication. English ensures:
-1. Skill trigger keywords always match English prompts (100% auto-invocation reliability)
-2. Global maintainability without translation burden
-3. Infinite language scalability (support any user language without code changes)
+**Rationale**: These files define system behavior, tool invocations, and internal infrastructure. English ensures:
+1. **Industry standard**: Technical documentation in English (single source of truth)
+2. **Global maintainability**: No translation burden for 55 Skills, 12 agents, 4 commands
+3. **Infinite scalability**: Support any user language without modifying infrastructure
+4. **Reliable invocation**: Explicit Skill("name") calls work regardless of prompt language
 
 ---
 

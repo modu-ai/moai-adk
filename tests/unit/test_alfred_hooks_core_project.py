@@ -131,3 +131,169 @@ def test_count_specs(tmp_path: Path, project_module):
     assert result["completed"] == 1
     # Calculate expected percentage: 1/3 * 100 = 33
     assert result["percentage"] == 33
+
+
+# @TEST:OFFLINE-001-05
+def test_get_package_version_offline_mode(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, project_module):
+    """Returns current version when offline
+
+    Given: Network is unavailable
+    When: get_package_version_info() is called
+    Then: Should return current version only (no PyPI query)
+    """
+    from unittest.mock import patch
+
+    # Mock is_network_available to return False
+    with patch.object(project_module, 'is_network_available', return_value=False):
+        # Also mock urllib to ensure it's not called
+        with patch('urllib.request.urlopen') as mock_urlopen:
+            mock_urlopen.side_effect = Exception("Should not call PyPI in offline mode!")
+
+            result = project_module.get_package_version_info(cwd=str(tmp_path))
+
+            # Assert: Should return current version
+            assert result["current"] != "unknown"
+
+            # Assert: Latest should be "unknown" (no PyPI query)
+            assert result["latest"] == "unknown"
+
+            # Assert: No update available
+            assert result["update_available"] is False
+
+            # Assert: urllib should NOT have been called
+            mock_urlopen.assert_not_called()
+
+
+# ========================================
+# Phase 3: Major Version Warning Tests
+# ========================================
+
+# @TEST:MAJOR-UPDATE-001-01
+def test_is_major_version_change_0_to_1(project_module):
+    """Detects 0.x → 1.x major version change
+
+    Given: Current version "0.8.1" and latest "1.0.0"
+    When: is_major_version_change() is called
+    Then: Should return True (major version increased from 0 to 1)
+
+    @CODE:MAJOR-UPDATE-WARN-001
+    """
+    result = project_module.is_major_version_change("0.8.1", "1.0.0")
+    assert result is True
+
+
+# @TEST:MAJOR-UPDATE-001-02
+def test_is_major_version_no_change_minor_update(project_module):
+    """Minor update not flagged as major version change
+
+    Given: Current version "0.8.1" and latest "0.9.0"
+    When: is_major_version_change() is called
+    Then: Should return False (major version stayed at 0)
+    """
+    result = project_module.is_major_version_change("0.8.1", "0.9.0")
+    assert result is False
+
+
+# @TEST:MAJOR-UPDATE-001-03
+def test_is_major_version_change_1_to_2(project_module):
+    """Detects 1.x → 2.x major version change
+
+    Given: Current version "1.2.3" and latest "2.0.0"
+    When: is_major_version_change() is called
+    Then: Should return True (major version increased from 1 to 2)
+    """
+    result = project_module.is_major_version_change("1.2.3", "2.0.0")
+    assert result is True
+
+
+# @TEST:MAJOR-UPDATE-001-04
+def test_is_major_version_change_invalid_versions(project_module):
+    """Gracefully handles invalid version strings
+
+    Given: Invalid version strings ("dev", "unknown", non-numeric)
+    When: is_major_version_change() is called
+    Then: Should return False (no exception, safe fallback)
+    """
+    # Test various invalid formats
+    assert project_module.is_major_version_change("dev", "1.0.0") is False
+    assert project_module.is_major_version_change("0.8.1", "unknown") is False
+    assert project_module.is_major_version_change("invalid", "also-invalid") is False
+
+
+# @TEST:MAJOR-UPDATE-001-05
+def test_get_package_version_includes_release_url(tmp_path: Path, project_module):
+    """Release notes URL included in version info
+
+    Given: PyPI response includes project_urls.Changelog
+    When: get_package_version_info() is called
+    Then: Should include release_notes_url in result dict
+    """
+    from unittest.mock import patch, MagicMock
+    import json
+    import io
+
+    # Mock PyPI response with release notes URL
+    pypi_data = {
+        "info": {
+            "version": "0.9.0",
+            "project_urls": {
+                "Changelog": "https://github.com/modu-ai/moai-adk/releases"
+            }
+        }
+    }
+
+    # Create a file-like object for json.load()
+    mock_response = MagicMock()
+    mock_response.__enter__ = MagicMock(return_value=io.BytesIO(json.dumps(pypi_data).encode()))
+    mock_response.__exit__ = MagicMock(return_value=False)
+
+    with patch('urllib.request.urlopen', return_value=mock_response):
+        with patch.object(project_module, 'is_network_available', return_value=True):
+            result = project_module.get_package_version_info(cwd=str(tmp_path))
+
+    # Assert: Should include release_notes_url
+    assert "release_notes_url" in result
+    assert result["release_notes_url"] is not None
+    assert "github.com" in result["release_notes_url"]
+
+
+# @TEST:MAJOR-UPDATE-001-06
+def test_get_package_version_includes_major_flag(tmp_path: Path, project_module):
+    """Major update flag included in version info
+
+    Given: Latest version is major bump (0.8.1 → 1.0.0)
+    When: get_package_version_info() is called
+    Then: Should include is_major_update: True
+    """
+    from unittest.mock import patch, MagicMock
+    import json
+    import io
+
+    # Mock current version as 0.8.1
+    with patch('importlib.metadata.version', return_value='0.8.1'):
+        # Mock PyPI response with version 1.0.0
+        pypi_data = {
+            "info": {
+                "version": "1.0.0",
+                "project_urls": {
+                    "Changelog": "https://github.com/modu-ai/moai-adk/releases"
+                }
+            }
+        }
+
+        # Create a file-like object for json.load()
+        mock_response = MagicMock()
+        mock_response.__enter__ = MagicMock(return_value=io.BytesIO(json.dumps(pypi_data).encode()))
+        mock_response.__exit__ = MagicMock(return_value=False)
+
+        with patch('urllib.request.urlopen', return_value=mock_response):
+            with patch.object(project_module, 'is_network_available', return_value=True):
+                result = project_module.get_package_version_info(cwd=str(tmp_path))
+
+        # Assert: Should include is_major_update flag
+        assert "is_major_update" in result
+        assert result["is_major_update"] is True
+
+        # Assert: Update should be available
+        assert result["update_available"] is True
+        assert result["latest"] == "1.0.0"

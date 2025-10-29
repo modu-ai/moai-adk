@@ -7,39 +7,10 @@ Detect risky tasks and create automatic checkpoints
 
 import json
 import re
-import signal
 import subprocess
-from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-
-
-class TimeoutError(Exception):
-    """Signal-based timeout exception for file I/O"""
-    pass
-
-
-@contextmanager
-def timeout_handler(seconds: int):
-    """Hard timeout using SIGALRM for file I/O operations
-
-    Args:
-        seconds: Timeout duration in seconds
-
-    Raises:
-        TimeoutError: If operation exceeds timeout
-    """
-    def _handle_timeout(signum, frame):
-        raise TimeoutError(f"File I/O operation timed out after {seconds} seconds")
-
-    old_handler = signal.signal(signal.SIGALRM, _handle_timeout)
-    signal.alarm(seconds)
-    try:
-        yield
-    finally:
-        signal.alarm(0)
-        signal.signal(signal.SIGALRM, old_handler)
 
 # Script execution pattern for each language supported by MoAI-ADK
 # Python, TypeScript, Java, Go, Rust, Dart, Swift, Kotlin + Shell
@@ -243,11 +214,10 @@ def log_checkpoint(cwd: str, branch_name: str, operation_type: str) -> None:
 
 
 def list_checkpoints(cwd: str, max_count: int = 10) -> list[dict[str, str]]:
-    """Checkpoint list with FILE I/O TIMEOUT PROTECTION
+    """Checkpoint list (parsing .moai/checkpoints.log)
 
     Returns a list of recently created checkpoints.
     Used in the SessionStart, /alfred:0-project restore command.
-    Includes 1-second timeout to prevent blocking on large or locked log files.
 
     Args:
         cwd: Project root directory path
@@ -256,7 +226,6 @@ def list_checkpoints(cwd: str, max_count: int = 10) -> list[dict[str, str]]:
     Returns:
         Checkpoint list (most recent)
         [{"timestamp": "...", "branch": "...", "operation": "..."}, ...]
-        Empty list if timeout, missing file, or read error occurs
 
     Examples:
         >>> list_checkpoints(".")
@@ -269,15 +238,8 @@ def list_checkpoints(cwd: str, max_count: int = 10) -> list[dict[str, str]]:
         - If there is no log file, an empty list is returned.
         - Ignore lines where JSON parsing fails
         - Return only the latest max_count
-        - File I/O is protected by 1-second timeout to prevent SessionStart hook hang
-
-    TDD History:
-        - RED: File I/O timeout scenario test
-        - GREEN: SIGALRM-based timeout for file read
-        - REFACTOR: Graceful fallback to empty list on timeout
 
     @TAG:CHECKPOINT-EVENT-001
-    @TAG:HOOKS-TIMEOUT-001
     """
     log_file = Path(cwd) / ".moai" / "checkpoints.log"
 
@@ -287,17 +249,14 @@ def list_checkpoints(cwd: str, max_count: int = 10) -> list[dict[str, str]]:
     checkpoints = []
 
     try:
-        # Use signal-based timeout for file I/O (1 second should be more than enough)
-        with timeout_handler(1):
-            with log_file.open("r") as f:
-                for line in f:
-                    try:
-                        checkpoints.append(json.loads(line.strip()))
-                    except json.JSONDecodeError:
-                        # Ignore lines where parsing failed
-                        pass
-    except (OSError, PermissionError, TimeoutError):
-        # Graceful degradation on any file I/O error or timeout
+        with log_file.open("r") as f:
+            for line in f:
+                try:
+                    checkpoints.append(json.loads(line.strip()))
+                except json.JSONDecodeError:
+                    # Ignore lines where parsing failed
+                    pass
+    except (OSError, PermissionError):
         return []
 
     # Return only the most recent max_count items (in order of latest)
