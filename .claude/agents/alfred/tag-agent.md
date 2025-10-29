@@ -44,7 +44,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 **Example**:
 - You receive (Korean): "TAG 체인 무결성을 검증해주세요"
 - You invoke: Skill("moai-alfred-tag-scanning"), Skill("moai-foundation-tags")
-- You generate Korean report showing English @TAG identifiers (format: @TYPE:DOMAIN-NNN)
+- You generate Korean report showing English @TAG identifiers (@SPEC:AUTH-NNN, etc.)
 
 ## 🧰 Required Skills
 
@@ -149,7 +149,7 @@ rg '@CODE:' -n src/
 
 **Chain Verification** (using Bash tool):
 ```bash
-# Check TAG chain of specific SPEC ID (example: AUTH-001)
+# Check TAG chain of specific SPEC ID
 rg '@SPEC:AUTH-NNN' -n .moai/specs/
 rg '@TEST:AUTH-NNN' -n tests/
 rg '@CODE:AUTH-NNN' -n src/

@@ -292,11 +292,11 @@ After reading this document:
 
 ---
 
-### Scenario 4: Multilingual Workflow (Direct Language Pass-through)
+### Scenario 4: Multilingual Workflow (Language Boundary Pattern)
 
-**Situation**: Users request features in their preferred language. System works directly in that language while keeping infrastructure (Skills, code) in English.
+**Situation**: Users request features in their preferred language. System responds in that language while keeping all internal operations in English.
 
-**Direct Pass-through Pattern**:
+**Generic Multilingual Pattern**:
 
 ```
 User Input (any language):  "[Feature request in user's language]"
@@ -306,35 +306,37 @@ User Input (any language):  "[Feature request in user's language]"
                              - "ユーザー認証機能を追加してください" (Japanese)
                              - "Agregar funcionalidad de autenticación de usuarios" (Spanish)
 
-↓ [Alfred passes directly to Sub-agent]
+↓ [Alfred's Internal Translation Layer]
+
+Alfred Internal Prompt:      "Create authentication feature SPEC with JWT strategy,
+                             email+password login, 30-minute token expiry"
+
+↓ [Invoke spec-builder with English prompt]
 
 Task(subagent_type="spec-builder",
-     prompt="사용자 인증 기능을 추가해주세요. JWT 전략 사용, 이메일+비밀번호 로그인, 30분 토큰 만료",
-     conversation_language="ko")
+     prompt="Create SPEC for user authentication with JWT tokens...")
 
-↓ [spec-builder receives Korean prompt directly]
+↓ [spec-builder receives English prompt]
 
 spec-builder Execution:
-1. Recognizes SPEC authoring task
-2. Explicitly invokes: Skill("moai-foundation-specs") ✅
-3. Explicitly invokes: Skill("moai-foundation-ears") ✅
-4. Reads English Skill content (technical documentation)
-5. Generates Korean SPEC document
+1. Detects SPEC authoring task → Skill("moai-foundation-specs") ✅ [100% match]
+2. Applies EARS syntax → Skill("moai-foundation-ears") ✅ [100% match]
+3. Returns structured English SPEC
 
-↓ [spec-builder generates output in user's language]
+↓ [Alfred receives English SPEC output]
 
-SPEC Output (Korean with English technical elements):
+SPEC Output:
 {
-  "id": "AUTH-001",  ← English (technical identifier)
+  "id": "AUTH-001",
   "version": "0.0.1",
-  "requirements": [  ← Korean (narrative)
-    "시스템은 JWT 기반 인증을 제공해야 한다",
-    "WHEN 유효한 자격 증명이 제공될 때, THEN 30분 만료 시간의 JWT 토큰을 발급한다",
-    "IF 사용자가 인증되지 않았을 때, THEN 로그인 페이지로 리다이렉트한다"
+  "requirements": [
+    "The system must provide JWT-based authentication",
+    "WHEN valid credentials provided, THEN issue JWT token with 30-minute expiry",
+    "IF user not authenticated, THEN redirect to login page"
   ]
 }
 
-↓ [Alfred receives Korean output]
+↓ [Alfred's Response Translation Layer]
 
 User Response (in user's language):
 - English: "I've created the authentication SPEC with JWT strategy..."
@@ -347,20 +349,19 @@ User Response (in user's language):
 
 | Aspect | Implementation |
 |--------|-----------------|
-| **User-Facing** | User's configured language (conversations, documents) |
-| **Task Prompts** | User's language (passed directly to Sub-agents) |
-| **Skill Invocation** | Explicit: `Skill("moai-foundation-*")` (works with any language) |
-| **Static Infrastructure** | English only (Skills, agents, commands, code comments) |
-| **Translation Points** | None - direct pass-through |
+| **User-Facing (External)** | User's configured language (flexible) |
+| **Internal Operations (Layer 2)** | English only (Task prompts, Sub-agent communication) |
+| **Skills & Code (Layer 3)** | English only (Skill descriptions, code comments) |
+| **Translation Points** | User Input → English (entry), English → User Language (response) |
 
 **Why This Works**:
-- ✅ **Explicit invocation**: `Skill("name")` works regardless of prompt language
-- ✅ **Zero maintenance**: No translation logic to maintain
-- ✅ **Infinite scalability**: Add any language without code changes
-- ✅ **Simplified architecture**: Direct language flow, no overhead
-- ✅ **Industry standard**: Technical docs in English (Skills), UI in user's language
+- ✅ **Skills remain unchanged**: English-only Skills work reliably for ANY user language
+- ✅ **Zero maintenance burden**: No need to translate 55 Skills into N languages
+- ✅ **Infinite scalability**: Add Korean, Russian, Mandarin, Arabic without code changes
+- ✅ **Consistent quality**: English prompts guarantee 100% Skill trigger matching
+- ✅ **Industry standard**: Same pattern used by Netflix, Google, AWS (localized UI + English backend)
 
-**Estimated Duration**: Same as English (no translation overhead)
+**Estimated Duration**: Same as English (no overhead from translation layer)
 
 ---
 
