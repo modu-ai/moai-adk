@@ -22,7 +22,6 @@ import threading
 import time
 from typing import Any, Callable, Optional, TypeVar
 
-
 T = TypeVar('T')
 
 

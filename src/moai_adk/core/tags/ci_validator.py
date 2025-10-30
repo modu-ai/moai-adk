@@ -290,7 +290,7 @@ class CIValidator(PreCommitValidator):
                 tag = error.tag
                 message = error.message
                 locations = ', '.join([
-                    f"`{f}:{l}`" for f, l in error.locations[:3]
+                    f"`{f}:{line}`" for f, line in error.locations[:3]
                 ])
                 if len(error.locations) > 3:
                     locations += f" (+{len(error.locations) - 3} more)"

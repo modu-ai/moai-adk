@@ -8,8 +8,6 @@ import json
 import socket
 import subprocess
 from contextlib import contextmanager
-
-from .timeout import CrossPlatformTimeout, TimeoutError as PlatformTimeoutError
 from pathlib import Path
 from typing import Any
 
@@ -607,7 +605,7 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
         else:
             # Skip caching if module can't be loaded
             version_cache_class = None
-    except (ImportError, OSError) as e:
+    except (ImportError, OSError):
         # Graceful degradation: skip caching on import errors
         version_cache_class = None
 

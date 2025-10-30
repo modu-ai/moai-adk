@@ -5,9 +5,10 @@ Tests workflow template creation, language detection, and package manager detect
 for all supported languages (Python, JavaScript, TypeScript, Go).
 """
 
-import pytest
-import yaml
 from pathlib import Path
+
+import pytest
+
 from moai_adk.core.project.detector import LanguageDetector
 
 
