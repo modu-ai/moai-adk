@@ -54,8 +54,7 @@ def handle_pre_tool_use(payload: HookPayload) -> HookResult:
             checkpoint_branch = create_checkpoint(cwd, operation_type)
             if checkpoint_branch != "checkpoint-failed":
                 system_message = (
-                    f"🛡️ Checkpoint created: {checkpoint_branch}\n"
-                    f"   Operation: {operation_type}"
+                    f"🛡️ Checkpoint created: {checkpoint_branch}\n   Operation: {operation_type}"
                 )
                 return HookResult(system_message=system_message, continue_execution=True)
     except Exception:
@@ -66,10 +65,8 @@ def handle_pre_tool_use(payload: HookPayload) -> HookResult:
     issues = scan_recent_changes_for_missing_tags(cwd)
     if issues:
         # Summarize first few issues for display
-        preview = "\n".join(
-            f" - {i.path} → 기대 태그: {i.expected}" for i in issues[:5]
-        )
-        more = "" if len(issues) <= 5 else f"\n (외 {len(issues)-5}건 더 존재)"
+        preview = "\n".join(f" - {i.path} → 기대 태그: {i.expected}" for i in issues[:5])
+        more = "" if len(issues) <= 5 else f"\n (외 {len(issues) - 5}건 더 존재)"
         msg = (
             "⚠️ TAG 누락 감지: 생성/수정한 파일 중 @TAG가 없는 항목이 있습니다.\n"
             f"{preview}{more}\n"

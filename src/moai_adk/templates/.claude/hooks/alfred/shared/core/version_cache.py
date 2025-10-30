@@ -86,7 +86,7 @@ class VersionCache:
             return False
 
         try:
-            with open(self.cache_file, 'r') as f:
+            with open(self.cache_file, "r") as f:
                 data = json.load(f)
 
             age_hours = self._calculate_age_hours(data["last_check"])
@@ -112,7 +112,7 @@ class VersionCache:
             return None
 
         try:
-            with open(self.cache_file, 'r') as f:
+            with open(self.cache_file, "r") as f:
                 return json.load(f)
         except (json.JSONDecodeError, OSError):
             # Graceful degradation on read errors
@@ -144,7 +144,7 @@ class VersionCache:
                 version_info["last_check"] = datetime.now(timezone.utc).isoformat()
 
             # Write to cache file
-            with open(self.cache_file, 'w') as f:
+            with open(self.cache_file, "w") as f:
                 json.dump(version_info, f, indent=2)
 
             return True
@@ -186,7 +186,7 @@ class VersionCache:
             return 0.0
 
         try:
-            with open(self.cache_file, 'r') as f:
+            with open(self.cache_file, "r") as f:
                 data = json.load(f)
 
             return self._calculate_age_hours(data["last_check"])
