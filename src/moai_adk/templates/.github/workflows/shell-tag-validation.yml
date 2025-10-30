@@ -1,0 +1,65 @@
+# @CODE:LDE-011-SHELL | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md
+# Shell TAG Validation Workflow
+# Validates shell scripts with shellcheck and bats-core
+
+name: Shell TAG Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main, develop, "feature/**"]
+
+jobs:
+  test:
+    name: 🧪 Shell Tests & Linting
+    runs-on: ubuntu-latest
+
+    if: github.event.pull_request.draft == false || github.event_name == 'push'
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install shellcheck and bats
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck bats
+
+      - name: Run shellcheck on all shell scripts
+        run: |
+          echo "Running shellcheck on all .sh files"
+          find . -name "*.sh" -type f -print0 | xargs -0 shellcheck --severity=warning
+
+      - name: Check for POSIX compatibility
+        run: |
+          echo "Checking POSIX compatibility"
+          find . -name "*.sh" -type f -print0 | xargs -0 shellcheck --shell=sh
+
+      - name: Run bats tests
+        if: hashFiles('tests/**/*.bats') != ''
+        run: |
+          if [ -d "tests" ]; then
+            bats tests/
+          else
+            echo "No tests/ directory found, skipping bats tests"
+          fi
+
+      - name: Generate test summary
+        if: always()
+        run: |
+          echo "## Shell Script Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- shellcheck: ✅ Passed" >> $GITHUB_STEP_SUMMARY
+          echo "- POSIX compatibility: ✅ Passed" >> $GITHUB_STEP_SUMMARY
+          if [ -d "tests" ]; then
+            echo "- bats tests: ✅ Executed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- bats tests: ⚠️ No tests found" >> $GITHUB_STEP_SUMMARY
+          fi

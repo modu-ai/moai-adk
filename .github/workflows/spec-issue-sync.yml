@@ -270,6 +270,49 @@ jobs:
 
           echo "issue_number=$issue_num" >> $GITHUB_OUTPUT
 
+      - name: Validate SPEC issue labels
+        if: steps.create-issue.outputs.issue_number
+        id: validate-labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          issue_num="${{ steps.create-issue.outputs.issue_number }}"
+          spec_priority="${{ steps.spec.outputs.spec_priority }}"
+
+          echo "🔍 Validating SPEC issue #$issue_num labels..."
+
+          # Get current labels
+          current_labels=$(gh issue view $issue_num --json labels --jq '.labels[].name' | tr '\n' ',' | sed 's/,$//')
+          echo "Current labels: $current_labels"
+
+          # Check for mandatory labels
+          needs_update=false
+
+          if [[ ! "$current_labels" =~ "spec" ]]; then
+            echo "⚠️  Missing 'spec' label, adding..."
+            gh issue edit $issue_num --add-label "spec"
+            needs_update=true
+          fi
+
+          if [[ ! "$current_labels" =~ "planning" ]]; then
+            echo "⚠️  Missing 'planning' label, adding..."
+            gh issue edit $issue_num --add-label "planning"
+            needs_update=true
+          fi
+
+          # Check for priority label
+          if [[ ! "$current_labels" =~ (critical|high|medium|low) ]]; then
+            echo "⚠️  No priority label found, adding '$spec_priority' as default"
+            gh issue edit $issue_num --add-label "$spec_priority"
+            needs_update=true
+          fi
+
+          if [ "$needs_update" = true ]; then
+            echo "✅ SPEC labels validated and corrected"
+          else
+            echo "✅ SPEC labels already valid"
+          fi
+
       - name: Add PR comment
         if: steps.create-issue.outputs.issue_number
         env:

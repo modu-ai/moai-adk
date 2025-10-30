@@ -113,6 +113,173 @@ class LanguageDetector:
         return False
 
 
+    def get_workflow_template_path(self, language: str) -> str:
+        """Get the GitHub Actions workflow template path for a language.
+
+        @CODE:LDE-WORKFLOW-PATH-001 | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md
+
+        Args:
+            language: Programming language name (lowercase).
+
+        Returns:
+            Workflow template file path relative to templates directory.
+
+        Raises:
+            ValueError: If language is not supported for workflows.
+        """
+        workflow_mapping = {
+            "python": ".github/workflows/python-tag-validation.yml",
+            "javascript": ".github/workflows/javascript-tag-validation.yml",
+            "typescript": ".github/workflows/typescript-tag-validation.yml",
+            "go": ".github/workflows/go-tag-validation.yml",
+            "ruby": ".github/workflows/ruby-tag-validation.yml",
+            "php": ".github/workflows/php-tag-validation.yml",
+            "java": ".github/workflows/java-tag-validation.yml",
+            "rust": ".github/workflows/rust-tag-validation.yml",
+            "dart": ".github/workflows/dart-tag-validation.yml",
+            "swift": ".github/workflows/swift-tag-validation.yml",
+            "kotlin": ".github/workflows/kotlin-tag-validation.yml",
+            "csharp": ".github/workflows/csharp-tag-validation.yml",
+            "c": ".github/workflows/c-tag-validation.yml",
+            "cpp": ".github/workflows/cpp-tag-validation.yml",
+            "shell": ".github/workflows/shell-tag-validation.yml",
+        }
+
+        if language.lower() not in workflow_mapping:
+            raise ValueError(
+                f"No workflow template available for language: {language}. "
+                f"Supported languages: {', '.join(workflow_mapping.keys())}"
+            )
+
+        return workflow_mapping[language.lower()]
+
+    def detect_package_manager(self, path: str | Path = ".") -> str | None:
+        """Detect the package manager for the detected language.
+
+        @CODE:LDE-PKG-MGR-001 | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md
+
+        Args:
+            path: Directory to inspect.
+
+        Returns:
+            Package manager name or None if not detected.
+        """
+        path = Path(path)
+
+        # Ruby
+        if (path / "Gemfile").exists():
+            return "bundle"
+
+        # PHP
+        if (path / "composer.json").exists():
+            return "composer"
+
+        # Java/Kotlin
+        if (path / "pom.xml").exists():
+            return "maven"
+        if (path / "build.gradle").exists() or (path / "build.gradle.kts").exists():
+            return "gradle"
+
+        # Rust
+        if (path / "Cargo.toml").exists():
+            return "cargo"
+
+        # Dart/Flutter
+        if (path / "pubspec.yaml").exists():
+            return "dart_pub"
+
+        # Swift
+        if (path / "Package.swift").exists():
+            return "spm"
+
+        # C#
+        if list(path.glob("*.csproj")) or list(path.glob("*.sln")):
+            return "dotnet"
+
+        # Python
+        if (path / "pyproject.toml").exists():
+            return "pip"
+
+        # JavaScript/TypeScript
+        if (path / "package.json").exists():
+            return "npm"
+
+        # Go
+        if (path / "go.mod").exists():
+            return "go_modules"
+
+        return None
+
+    def detect_build_tool(self, path: str | Path = ".", language: str | None = None) -> str | None:
+        """Detect the build tool for the detected language.
+
+        @CODE:LDE-BUILD-TOOL-001 | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md
+
+        Args:
+            path: Directory to inspect.
+            language: Optional language hint for disambiguation.
+
+        Returns:
+            Build tool name or None if not detected.
+        """
+        path = Path(path)
+
+        # C/C++
+        if (path / "CMakeLists.txt").exists():
+            return "cmake"
+        if (path / "Makefile").exists():
+            return "make"
+
+        # Java/Kotlin
+        if language in ["java", "kotlin"]:
+            if (path / "pom.xml").exists():
+                return "maven"
+            if (path / "build.gradle").exists() or (path / "build.gradle.kts").exists():
+                return "gradle"
+
+        # Rust
+        if (path / "Cargo.toml").exists():
+            return "cargo"
+
+        # Swift
+        if (path / "Package.swift").exists():
+            return "spm"
+        if list(path.glob("*.xcodeproj")) or list(path.glob("*.xcworkspace")):
+            return "xcode"
+
+        # C#
+        if list(path.glob("*.csproj")) or list(path.glob("*.sln")):
+            return "dotnet"
+
+        return None
+
+    def get_supported_languages_for_workflows(self) -> list[str]:
+        """Get the list of languages with dedicated CI/CD workflow support.
+
+        @CODE:LDE-SUPPORTED-LANGS-001 | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md
+
+        Returns:
+            List of supported language names (15 total).
+        """
+        return [
+            "python",
+            "javascript",
+            "typescript",
+            "go",
+            "ruby",
+            "php",
+            "java",
+            "rust",
+            "dart",
+            "swift",
+            "kotlin",
+            "csharp",
+            "c",
+            "cpp",
+            "shell",
+        ]
+
+
 def detect_project_language(path: str | Path = ".") -> str | None:
     """Detect the project language (helper).
 
