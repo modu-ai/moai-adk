@@ -247,7 +247,6 @@ my-project/
 │   ├── commands/                   # 4 Alfred コマンド
 │   ├── skills/                     # 55+ Claude Skills
 │   ├── hooks/                      # イベント駆動自動化
-│   ├── output-styles/              # レスポンススタイル
 │   └── settings.json               # Claude Code 設定
 ├── src/                            # 実装コード
 ├── tests/                          # テストコード

@@ -350,11 +350,6 @@ my-project/
 │   ├── hooks/                      # Event-driven automation
 │   │   └── alfred/
 │   │       └── alfred_hooks.py     # 5 hooks (Session, PreTool, etc.)
-│   ├── output-styles/              # Response styles
-│   │   └── alfred/
-│   │       ├── agentic-coding.md       # Professional development mode
-│   │       ├── moai-adk-learning.md    # Educational explanations mode
-│   │       └── study-with-alfred.md    # Interactive learning mode
 │   └── settings.json               # Claude Code settings
 ├── src/                            # Implementation code
 ├── tests/                          # Test code
