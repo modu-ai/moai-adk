@@ -4,8 +4,9 @@
 Tests workflow file creation and correctness for Python, JavaScript, TypeScript, and Go.
 """
 
-import yaml
 from pathlib import Path
+
+import yaml
 
 
 class TestWorkflowFileCreation:

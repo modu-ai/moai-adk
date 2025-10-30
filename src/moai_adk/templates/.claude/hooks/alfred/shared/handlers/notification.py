@@ -5,9 +5,7 @@ Notification, Stop, SubagentStop event handling
 """
 
 import json
-from datetime import datetime, timedelta
-
-from utils.timeout import CrossPlatformTimeout, TimeoutError as PlatformTimeoutError
+from datetime import datetime
 from pathlib import Path
 
 from core import HookPayload, HookResult

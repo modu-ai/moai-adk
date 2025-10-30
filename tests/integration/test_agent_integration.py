@@ -5,8 +5,6 @@ Tests that tdd-implementer correctly detects project language and selects
 appropriate workflow templates for CI/CD generation.
 """
 
-import pytest
-from pathlib import Path
 from moai_adk.core.project.detector import LanguageDetector
 
 

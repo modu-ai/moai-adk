@@ -54,10 +54,10 @@ Setup sys.path for package imports
 
 import json
 import sys
-from pathlib import
-from utils.timeout import CrossPlatformTimeout, TimeoutError as PlatformTimeoutError
- Path
+from pathlib import Path
 from typing import Any
+
+from utils.timeout import CrossPlatformTimeout, TimeoutError as PlatformTimeoutError
 
 from core import HookResult
 from handlers import (
