@@ -11,9 +11,8 @@ Output: System message with formatted project summary
 
 import json
 import sys
-from pathlib import
+from pathlib import Path
 from utils.timeout import CrossPlatformTimeout, TimeoutError as PlatformTimeoutError
- Path
 from typing import Any
 
 # Setup import path for shared modules
@@ -23,9 +22,6 @@ if str(SHARED_DIR) not in sys.path:
     sys.path.insert(0, str(SHARED_DIR))
 
 from handlers import handle_session_start
-
-
-    pass
 
 
 
@@ -44,7 +40,7 @@ def main() -> None:
     """
     # Set 5-second timeout
     timeout = CrossPlatformTimeout(5)
-timeout.start()
+    timeout.start()
 
     try:
         # Read JSON payload from stdin
