@@ -311,7 +311,6 @@ my-project/
 │   ├── commands/                   # 4개 Alfred 명령
 │   ├── skills/                     # 55개 Claude Skills
 │   ├── hooks/                      # 이벤트 기반 자동화
-│   ├── output-styles/              # 응답 스타일
 │   └── settings.json               # Claude Code 설정
 ├── src/                            # 구현 코드
 ├── tests/                          # 테스트 코드

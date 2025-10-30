@@ -31,13 +31,17 @@ class TemplateEngine:
     - File-based and string-based template rendering
     """
 
-    def __init__(self, strict_undefined: bool = False):
+    def __init__(self, strict_undefined: bool = True):
         """
         Initialize the template engine.
 
         Args:
-            strict_undefined: If True, raise error on undefined variables.
+            strict_undefined: If True, raise error on undefined variables (default: True).
                              If False, render undefined variables as empty strings.
+
+        Note:
+            Changed to strict_undefined=True (v0.10.2+) for safer template rendering.
+            Variables must be explicitly provided to avoid silent template failures.
         """
         self.strict_undefined = strict_undefined
         self.undefined_behavior = StrictUndefined if strict_undefined else None

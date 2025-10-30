@@ -228,11 +228,6 @@ my-project/
 │   ├── hooks/                      # 事件驱动自动化
 │   │   └── alfred/
 │   │       └── alfred_hooks.py     # 5个hooks（Session、PreTool等）
-│   ├── output-styles/              # 响应风格
-│   │   └── alfred/
-│   │       ├── agentic-coding.md       # 专业开发模式
-│   │       ├── moai-adk-learning.md    # 教育说明模式
-│   │       └── study-with-alfred.md    # 交互学习模式
 │   └── settings.json               # Claude Code设置
 ├── src/                            # 实现代码
 ├── tests/                          # 测试代码

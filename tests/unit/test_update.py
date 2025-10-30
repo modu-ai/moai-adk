@@ -731,8 +731,9 @@ class TestUpdateThreeStageWorkflow:
     # @TEST:PLACEHOLDER-HANDLING-001 - Tests for unsubstituted template placeholders
     def test_get_project_config_version_with_placeholder(self, tmp_path):
         """Test that _get_project_config_version detects and handles placeholder values"""
-        from moai_adk.cli.commands.update import _get_project_config_version
         import json
+
+        from moai_adk.cli.commands.update import _get_project_config_version
 
         project_path = tmp_path / "test-project"
         moai_dir = project_path / ".moai"
@@ -775,9 +776,10 @@ class TestUpdateThreeStageWorkflow:
 
     def test_compare_versions_with_invalid_version(self):
         """Test that _compare_versions handles InvalidVersion exceptions gracefully"""
-        from moai_adk.cli.commands.update import _compare_versions
-        from packaging.version import InvalidVersion
         import pytest
+        from packaging.version import InvalidVersion
+
+        from moai_adk.cli.commands.update import _compare_versions
 
         # Valid versions should work fine
         result = _compare_versions("0.8.0", "0.8.1")

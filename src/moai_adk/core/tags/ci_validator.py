@@ -16,6 +16,8 @@ import os
 from typing import Any, Dict, List, Optional
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util import Retry
 
 from .pre_commit_validator import (
     PreCommitValidator,
@@ -87,16 +89,44 @@ class CIValidator(PreCommitValidator):
             'Accept': 'application/vnd.github.v3+json'
         }
 
+        # Create session with retry strategy
+        session = requests.Session()
+        retry = Retry(
+            total=3,
+            backoff_factor=0.5,
+            status_forcelist=[500, 502, 503, 504],
+            allowed_methods=["GET"]
+        )
+        adapter = HTTPAdapter(max_retries=retry)
+        session.mount("https://", adapter)
+
         try:
-            response = requests.get(url, headers=headers, timeout=10)
+            # Dual timeout: (connect_timeout, read_timeout)
+            response = session.get(
+                url,
+                headers=headers,
+                timeout=(5, 10)
+            )
             response.raise_for_status()
 
             files_data = response.json()
             return [file_info['filename'] for file_info in files_data]
 
-        except Exception:
-            # Return empty list on any error (network, auth, etc.)
+        except requests.exceptions.Timeout:
+            # Network timeout - return empty list gracefully
             return []
+        except requests.exceptions.HTTPError as e:
+            # HTTP error (4xx, 5xx)
+            if e.response.status_code == 404:
+                # PR not found
+                return []
+            # Other HTTP errors: log but continue
+            return []
+        except requests.exceptions.RequestException:
+            # Network/connection errors
+            return []
+        finally:
+            session.close()
 
     def validate_pr_changes(
         self,

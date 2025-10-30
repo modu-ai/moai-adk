@@ -83,4 +83,5 @@ CURSOR_INTEGRATION_PLAN.md
 .moai/reports/
 .moai/scripts/
 .moai/cache/
-
+.claude/
+.moai/

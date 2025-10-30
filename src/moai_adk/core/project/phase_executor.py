@@ -312,8 +312,12 @@ class PhaseExecutor:
                 cwd=project_path,
                 check=True,
                 capture_output=True,
+                timeout=30,  # Default timeout for git operations
             )
             # Intentionally avoid printing to keep progress output clean
+        except subprocess.TimeoutExpired:
+            # Timeout is non-fatal
+            pass
         except subprocess.CalledProcessError:
             # Only log on error; failures are non-fatal
             pass
