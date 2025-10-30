@@ -1,0 +1,178 @@
+{
+  "$schema": "https://moai-adk.github.io/schemas/marketplace/v1.json",
+  "metadata": {
+    "name": "moai-alfred-marketplace",
+    "title": "MoAI-ADK Official Alfred Marketplace",
+    "version": "1.0.0-dev",
+    "description": "Official marketplace for MoAI-ADK Alfred plugins (PM, UI/UX, Frontend, Backend, DevOps)",
+    "owner": "moai-adk",
+    "repository": "https://github.com/moai-adk/moai-alfred-marketplace",
+    "license": "MIT",
+    "updated": "2025-10-30T21:53:00Z"
+  },
+  "plugins": [
+    {
+      "id": "moai-alfred-pm",
+      "name": "PM Plugin",
+      "version": "1.0.0-dev",
+      "status": "development",
+      "description": "Project Management kickoff automation - generates EARS SPEC templates, project charters, and risk matrices",
+      "author": "GOOS🪿",
+      "category": "pm",
+      "tags": ["project-management", "spec", "ears", "planning"],
+      "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-alfred-pm",
+      "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-alfred-pm/README.md",
+      "minClaudeCodeVersion": "1.0.0",
+      "commands": [
+        {
+          "name": "init-pm",
+          "description": "Initialize project management templates"
+        }
+      ],
+      "permissions": {
+        "allowedTools": ["Read", "Write", "Edit", "Bash", "Task"],
+        "deniedTools": ["DeleteFile"]
+      },
+      "dependencies": [],
+      "installCommand": "/plugin install moai-alfred-pm",
+      "releaseNotes": "Initial v1.0.0-dev release for MoAI-ADK v1.0"
+    },
+    {
+      "id": "moai-alfred-uiux",
+      "name": "UI/UX Plugin",
+      "version": "1.0.0-dev",
+      "status": "development",
+      "description": "Design System foundation - Tailwind CSS + shadcn/ui initialization and component management",
+      "author": "GOOS🪿",
+      "category": "uiux",
+      "tags": ["design-system", "tailwind", "shadcn-ui", "components"],
+      "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-alfred-uiux",
+      "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-alfred-uiux/README.md",
+      "minClaudeCodeVersion": "1.0.0",
+      "commands": [
+        {
+          "name": "setup-shadcn-ui",
+          "description": "Initialize Tailwind CSS and shadcn/ui components"
+        }
+      ],
+      "permissions": {
+        "allowedTools": ["Read", "Write", "Edit", "Bash"],
+        "deniedTools": []
+      },
+      "dependencies": [],
+      "installCommand": "/plugin install moai-alfred-uiux",
+      "releaseNotes": "Initial v1.0.0-dev release with 20 core components"
+    },
+    {
+      "id": "moai-alfred-frontend",
+      "name": "Frontend Plugin",
+      "version": "1.0.0-dev",
+      "status": "development",
+      "description": "Next.js 16 + React 19.2 scaffolding - App Router, Biome, shadcn/ui integration",
+      "author": "GOOS🪿",
+      "category": "frontend",
+      "tags": ["nextjs", "react", "typescript", "biome"],
+      "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-alfred-frontend",
+      "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-alfred-frontend/README.md",
+      "minClaudeCodeVersion": "1.0.0",
+      "commands": [
+        {
+          "name": "init-next",
+          "description": "Initialize Next.js 16 project with React 19.2"
+        },
+        {
+          "name": "biome-setup",
+          "description": "Configure Biome linter and formatter"
+        }
+      ],
+      "permissions": {
+        "allowedTools": ["Read", "Write", "Edit", "Bash"],
+        "deniedTools": []
+      },
+      "dependencies": ["moai-alfred-uiux"],
+      "installCommand": "/plugin install moai-alfred-frontend",
+      "releaseNotes": "Initial v1.0.0-dev with support for bun, npm, pnpm"
+    },
+    {
+      "id": "moai-alfred-backend",
+      "name": "Backend Plugin",
+      "version": "1.0.0-dev",
+      "status": "development",
+      "description": "FastAPI 0.120.2 + uv scaffolding - SQLAlchemy 2.0, Alembic migrations, Pydantic 2.12",
+      "author": "GOOS🪿",
+      "category": "backend",
+      "tags": ["fastapi", "python", "sqlalchemy", "uv", "database"],
+      "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-alfred-backend",
+      "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-alfred-backend/README.md",
+      "minClaudeCodeVersion": "1.0.0",
+      "commands": [
+        {
+          "name": "init-fastapi",
+          "description": "Initialize FastAPI project with uv"
+        },
+        {
+          "name": "db-setup",
+          "description": "Setup database (PostgreSQL or MySQL) with Alembic"
+        },
+        {
+          "name": "resource-crud",
+          "description": "Generate CRUD endpoints from SPEC"
+        }
+      ],
+      "permissions": {
+        "allowedTools": ["Read", "Write", "Edit", "Bash"],
+        "deniedTools": []
+      },
+      "dependencies": [],
+      "installCommand": "/plugin install moai-alfred-backend",
+      "releaseNotes": "Initial v1.0.0-dev with PostgreSQL 18 and MySQL 8.4 support"
+    },
+    {
+      "id": "moai-alfred-devops",
+      "name": "DevOps Plugin",
+      "version": "1.0.0-dev",
+      "status": "development",
+      "description": "Multi-cloud deployment - Vercel, Supabase, Render support with CI/CD pipelines",
+      "author": "GOOS🪿",
+      "category": "devops",
+      "tags": ["deployment", "vercel", "supabase", "render", "github-actions"],
+      "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-alfred-devops",
+      "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-alfred-devops/README.md",
+      "minClaudeCodeVersion": "1.0.0",
+      "commands": [
+        {
+          "name": "deploy-config",
+          "description": "Configure deployment settings (Vercel, Supabase, Render)"
+        },
+        {
+          "name": "connect-vercel",
+          "description": "Connect Vercel MCP for frontend deployment"
+        },
+        {
+          "name": "connect-supabase",
+          "description": "Connect Supabase MCP for backend database"
+        }
+      ],
+      "permissions": {
+        "allowedTools": ["Read", "Write", "Edit", "Bash"],
+        "deniedTools": ["DeleteFile"]
+      },
+      "dependencies": ["moai-alfred-frontend", "moai-alfred-backend"],
+      "installCommand": "/plugin install moai-alfred-devops",
+      "releaseNotes": "Initial v1.0.0-dev with 3-path deployment support"
+    }
+  ],
+  "governance": {
+    "securityPolicy": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/SECURITY.md",
+    "contributionGuide": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/CONTRIBUTING.md",
+    "codeOfConduct": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/CODE_OF_CONDUCT.md"
+  },
+  "stats": {
+    "totalPlugins": 5,
+    "stablePlugins": 0,
+    "betaPlugins": 0,
+    "devPlugins": 5,
+    "totalDownloads": 0,
+    "lastUpdated": "2025-10-30"
+  }
+}

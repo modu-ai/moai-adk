@@ -1,0 +1,45 @@
+{
+  "id": "moai-alfred-pm",
+  "name": "PM Plugin",
+  "version": "1.0.0-dev",
+  "status": "development",
+  "description": "Project Management kickoff automation - generates EARS SPEC templates, project charters, and risk matrices",
+  "author": "GOOS🪿",
+  "category": "pm",
+  "tags": ["project-management", "spec", "ears", "planning"],
+  "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-alfred-pm",
+  "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-alfred-pm/README.md",
+  "minClaudeCodeVersion": "1.0.0",
+  "commands": [
+    {
+      "name": "init-pm",
+      "path": "commands/init-pm.md",
+      "description": "Initialize project management templates"
+    }
+  ],
+  "agents": [
+    {
+      "name": "pm-agent",
+      "path": "agents/pm-agent.md",
+      "type": "specialist",
+      "description": "Project management specialist for SPEC generation"
+    }
+  ],
+  "hooks": {
+    "sessionStart": ".claude-plugin/hooks.json#onSessionStart"
+  },
+  "mcpServers": [],
+  "permissions": {
+    "allowedTools": ["Read", "Write", "Edit", "Bash"],
+    "deniedTools": ["DeleteFile"]
+  },
+  "skills": [
+    "moai-foundation-ears",
+    "moai-spec-authoring",
+    "moai-plugin-scaffolding"
+  ],
+  "settings": {},
+  "dependencies": [],
+  "installCommand": "/plugin install moai-alfred-pm",
+  "releaseNotes": "Initial v1.0.0-dev release for MoAI-ADK v1.0"
+}

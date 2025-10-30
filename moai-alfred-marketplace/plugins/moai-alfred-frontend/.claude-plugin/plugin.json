@@ -1,0 +1,53 @@
+{
+  "id": "moai-alfred-frontend",
+  "name": "Frontend Plugin",
+  "version": "1.0.0-dev",
+  "status": "development",
+  "description": "Next.js 16 + React 19.2 scaffolding - App Router, Biome, shadcn/ui integration",
+  "author": "GOOS🪿",
+  "category": "frontend",
+  "tags": ["nextjs", "react", "typescript", "biome"],
+  "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-alfred-frontend",
+  "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-alfred-frontend/README.md",
+  "minClaudeCodeVersion": "1.0.0",
+  "commands": [
+    {
+      "name": "init-next",
+      "path": "commands/init-next.md",
+      "description": "Initialize Next.js 16 project with React 19.2"
+    },
+    {
+      "name": "biome-setup",
+      "path": "commands/biome-setup.md",
+      "description": "Configure Biome linter and formatter"
+    }
+  ],
+  "agents": [
+    {
+      "name": "frontend-agent",
+      "path": "agents/frontend-agent.md",
+      "type": "specialist",
+      "description": "Frontend scaffolding specialist"
+    }
+  ],
+  "hooks": {
+    "sessionStart": ".claude-plugin/hooks.json#onSessionStart"
+  },
+  "mcpServers": [],
+  "permissions": {
+    "allowedTools": ["Read", "Write", "Edit", "Bash"],
+    "deniedTools": []
+  },
+  "skills": [
+    "moai-lang-nextjs-advanced",
+    "moai-lang-typescript",
+    "moai-domain-frontend",
+    "moai-plugin-scaffolding"
+  ],
+  "settings": {},
+  "dependencies": [
+    "moai-alfred-uiux"
+  ],
+  "installCommand": "/plugin install moai-alfred-frontend",
+  "releaseNotes": "Initial v1.0.0-dev with support for bun, npm, pnpm"
+}

@@ -1,0 +1,57 @@
+{
+  "id": "moai-alfred-backend",
+  "name": "Backend Plugin",
+  "version": "1.0.0-dev",
+  "status": "development",
+  "description": "FastAPI 0.120.2 + uv scaffolding - SQLAlchemy 2.0, Alembic migrations, Pydantic 2.12",
+  "author": "GOOS🪿",
+  "category": "backend",
+  "tags": ["fastapi", "python", "sqlalchemy", "uv", "database"],
+  "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-alfred-backend",
+  "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-alfred-backend/README.md",
+  "minClaudeCodeVersion": "1.0.0",
+  "commands": [
+    {
+      "name": "init-fastapi",
+      "path": "commands/init-fastapi.md",
+      "description": "Initialize FastAPI project with uv"
+    },
+    {
+      "name": "db-setup",
+      "path": "commands/db-setup.md",
+      "description": "Setup database (PostgreSQL or MySQL) with Alembic"
+    },
+    {
+      "name": "resource-crud",
+      "path": "commands/resource-crud.md",
+      "description": "Generate CRUD endpoints from SPEC"
+    }
+  ],
+  "agents": [
+    {
+      "name": "backend-agent",
+      "path": "agents/backend-agent.md",
+      "type": "specialist",
+      "description": "Backend scaffolding specialist"
+    }
+  ],
+  "hooks": {
+    "sessionStart": ".claude-plugin/hooks.json#onSessionStart"
+  },
+  "mcpServers": [],
+  "permissions": {
+    "allowedTools": ["Read", "Write", "Edit", "Bash"],
+    "deniedTools": []
+  },
+  "skills": [
+    "moai-lang-fastapi-patterns",
+    "moai-lang-python",
+    "moai-domain-backend",
+    "moai-domain-database",
+    "moai-plugin-scaffolding"
+  ],
+  "settings": {},
+  "dependencies": [],
+  "installCommand": "/plugin install moai-alfred-backend",
+  "releaseNotes": "Initial v1.0.0-dev with PostgreSQL 18 and MySQL 8.4 support"
+}

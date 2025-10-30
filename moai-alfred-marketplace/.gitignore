@@ -1,0 +1,77 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+env.bak/
+venv.bak/
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+pnpm-lock.yaml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.editorconfig
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Build
+dist/
+build/
+*.tar.gz
+
+# OS
+.DS_Store
+Thumbs.db
+.env.local
+.env.*.local
+
+# Claude Code
+.claude/
+.moai/
+
+# API Keys and secrets
+.env
+.env.local
+.env.*.local
+secrets/
+*.pem
+*.key
