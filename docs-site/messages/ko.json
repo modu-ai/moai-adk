@@ -1,0 +1,28 @@
+{
+  "common": {
+    "home": "홈",
+    "about": "소개",
+    "docs": "문서",
+    "language": "언어",
+    "search": "검색",
+    "learnMore": "자세히 보기",
+    "getStarted": "시작하기"
+  },
+  "navigation": {
+    "introduction": "제품 개요",
+    "architecture": "4-Layer 아키텍처",
+    "concepts": "핵심 개념",
+    "api": "API 레퍼런스",
+    "guide": "가이드"
+  },
+  "home": {
+    "title": "MoAI-ADK 문서",
+    "subtitle": "SPEC-First TDD 개발 프레임워크",
+    "description": "AI 기반의 체계적인 개발 워크플로우로 고품질 코드를 작성하세요."
+  },
+  "footer": {
+    "copyright": "© 2025 Modu AI. All rights reserved.",
+    "github": "GitHub",
+    "discord": "Discord"
+  }
+}

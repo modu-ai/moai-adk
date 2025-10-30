@@ -1,0 +1,28 @@
+{
+  "common": {
+    "home": "Home",
+    "about": "About",
+    "docs": "Documentation",
+    "language": "Language",
+    "search": "Search",
+    "learnMore": "Learn More",
+    "getStarted": "Get Started"
+  },
+  "navigation": {
+    "introduction": "Product Overview",
+    "architecture": "4-Layer Architecture",
+    "concepts": "Core Concepts",
+    "api": "API Reference",
+    "guide": "Guide"
+  },
+  "home": {
+    "title": "MoAI-ADK Documentation",
+    "subtitle": "SPEC-First TDD Development Framework",
+    "description": "Write high-quality code with AI-powered systematic development workflows."
+  },
+  "footer": {
+    "copyright": "© 2025 Modu AI. All rights reserved.",
+    "github": "GitHub",
+    "discord": "Discord"
+  }
+}
