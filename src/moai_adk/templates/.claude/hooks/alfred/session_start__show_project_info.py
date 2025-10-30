@@ -26,6 +26,7 @@ from handlers import handle_session_start
 
 class HookTimeoutError(Exception):
     """Hook execution timeout exception"""
+
     pass
 
 
@@ -67,7 +68,7 @@ def main() -> None:
         # Timeout - return minimal valid response
         timeout_response: dict[str, Any] = {
             "continue": True,
-            "systemMessage": "⚠️ Session start timeout - continuing without project info"
+            "systemMessage": "⚠️ Session start timeout - continuing without project info",
         }
         print(json.dumps(timeout_response))
         print("SessionStart hook timeout after 5 seconds", file=sys.stderr)
@@ -77,7 +78,7 @@ def main() -> None:
         # JSON parse error
         error_response: dict[str, Any] = {
             "continue": True,
-            "hookSpecificOutput": {"error": f"JSON parse error: {e}"}
+            "hookSpecificOutput": {"error": f"JSON parse error: {e}"},
         }
         print(json.dumps(error_response))
         print(f"SessionStart JSON parse error: {e}", file=sys.stderr)
@@ -87,7 +88,7 @@ def main() -> None:
         # Unexpected error
         error_response: dict[str, Any] = {
             "continue": True,
-            "hookSpecificOutput": {"error": f"SessionStart error: {e}"}
+            "hookSpecificOutput": {"error": f"SessionStart error: {e}"},
         }
         print(json.dumps(error_response))
         print(f"SessionStart unexpected error: {e}", file=sys.stderr)

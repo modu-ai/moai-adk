@@ -26,6 +26,7 @@ from handlers import handle_stop
 
 class HookTimeoutError(Exception):
     """Hook execution timeout exception"""
+
     pass
 
 
@@ -67,7 +68,7 @@ def main() -> None:
         # Timeout - return minimal valid response
         timeout_response: dict[str, Any] = {
             "continue": True,
-            "systemMessage": "⚠️ Stop handler timeout"
+            "systemMessage": "⚠️ Stop handler timeout",
         }
         print(json.dumps(timeout_response))
         print("Stop hook timeout after 5 seconds", file=sys.stderr)
@@ -77,7 +78,7 @@ def main() -> None:
         # JSON parse error
         error_response: dict[str, Any] = {
             "continue": True,
-            "hookSpecificOutput": {"error": f"JSON parse error: {e}"}
+            "hookSpecificOutput": {"error": f"JSON parse error: {e}"},
         }
         print(json.dumps(error_response))
         print(f"Stop JSON parse error: {e}", file=sys.stderr)
@@ -87,7 +88,7 @@ def main() -> None:
         # Unexpected error
         error_response: dict[str, Any] = {
             "continue": True,
-            "hookSpecificOutput": {"error": f"Stop error: {e}"}
+            "hookSpecificOutput": {"error": f"Stop error: {e}"},
         }
         print(json.dumps(error_response))
         print(f"Stop unexpected error: {e}", file=sys.stderr)

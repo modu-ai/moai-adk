@@ -26,6 +26,7 @@ from handlers import handle_user_prompt_submit
 
 class HookTimeoutError(Exception):
     """Hook execution timeout exception"""
+
     pass
 
 
@@ -78,8 +79,8 @@ def main() -> None:
             "continue": True,
             "hookSpecificOutput": {
                 "hookEventName": "UserPromptSubmit",
-                "additionalContext": "⚠️ JIT context timeout - continuing without suggestions"
-            }
+                "additionalContext": "⚠️ JIT context timeout - continuing without suggestions",
+            },
         }
         print(json.dumps(timeout_response))
         print("UserPromptSubmit hook timeout after 5 seconds", file=sys.stderr)
@@ -91,8 +92,8 @@ def main() -> None:
             "continue": True,
             "hookSpecificOutput": {
                 "hookEventName": "UserPromptSubmit",
-                "error": f"JSON parse error: {e}"
-            }
+                "error": f"JSON parse error: {e}",
+            },
         }
         print(json.dumps(error_response))
         print(f"UserPromptSubmit JSON parse error: {e}", file=sys.stderr)
@@ -104,8 +105,8 @@ def main() -> None:
             "continue": True,
             "hookSpecificOutput": {
                 "hookEventName": "UserPromptSubmit",
-                "error": f"UserPromptSubmit error: {e}"
-            }
+                "error": f"UserPromptSubmit error: {e}",
+            },
         }
         print(json.dumps(error_response))
         print(f"UserPromptSubmit unexpected error: {e}", file=sys.stderr)

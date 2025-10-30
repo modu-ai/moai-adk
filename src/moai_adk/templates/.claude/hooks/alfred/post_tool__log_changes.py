@@ -27,6 +27,7 @@ from handlers import handle_post_tool_use
 
 class HookTimeoutError(Exception):
     """Hook execution timeout exception"""
+
     pass
 
 
@@ -67,7 +68,7 @@ def main() -> None:
         # Timeout - return minimal valid response
         timeout_response: dict[str, Any] = {
             "continue": True,
-            "systemMessage": "⚠️ PostToolUse timeout - continuing"
+            "systemMessage": "⚠️ PostToolUse timeout - continuing",
         }
         print(json.dumps(timeout_response))
         print("PostToolUse hook timeout after 5 seconds", file=sys.stderr)
@@ -77,7 +78,7 @@ def main() -> None:
         # JSON parse error
         error_response: dict[str, Any] = {
             "continue": True,
-            "hookSpecificOutput": {"error": f"JSON parse error: {e}"}
+            "hookSpecificOutput": {"error": f"JSON parse error: {e}"},
         }
         print(json.dumps(error_response))
         print(f"PostToolUse JSON parse error: {e}", file=sys.stderr)
@@ -87,7 +88,7 @@ def main() -> None:
         # Unexpected error
         error_response: dict[str, Any] = {
             "continue": True,
-            "hookSpecificOutput": {"error": f"PostToolUse error: {e}"}
+            "hookSpecificOutput": {"error": f"PostToolUse error: {e}"},
         }
         print(json.dumps(error_response))
         print(f"PostToolUse unexpected error: {e}", file=sys.stderr)
