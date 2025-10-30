@@ -1,5 +1,5 @@
 {
-  "id": "moai-alfred-devops",
+  "id": "moai-plugin-devops",
   "name": "DevOps Plugin",
   "version": "1.0.0-dev",
   "status": "development",
@@ -7,8 +7,8 @@
   "author": "GOOS🪿",
   "category": "devops",
   "tags": ["deployment", "vercel", "supabase", "render", "github-actions"],
-  "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-alfred-devops",
-  "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-alfred-devops/README.md",
+  "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-plugin-devops",
+  "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-plugin-devops/README.md",
   "minClaudeCodeVersion": "1.0.0",
   "commands": [
     {
@@ -71,9 +71,9 @@
     }
   },
   "dependencies": [
-    "moai-alfred-frontend",
-    "moai-alfred-backend"
+    "moai-plugin-frontend",
+    "moai-plugin-backend"
   ],
-  "installCommand": "/plugin install moai-alfred-devops",
+  "installCommand": "/plugin install moai-plugin-devops",
   "releaseNotes": "Initial v1.0.0-dev with 3-path deployment support"
 }

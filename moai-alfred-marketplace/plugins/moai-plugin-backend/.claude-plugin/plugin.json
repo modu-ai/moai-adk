@@ -1,5 +1,5 @@
 {
-  "id": "moai-alfred-backend",
+  "id": "moai-plugin-backend",
   "name": "Backend Plugin",
   "version": "1.0.0-dev",
   "status": "development",
@@ -7,8 +7,8 @@
   "author": "GOOS🪿",
   "category": "backend",
   "tags": ["fastapi", "python", "sqlalchemy", "uv", "database"],
-  "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-alfred-backend",
-  "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-alfred-backend/README.md",
+  "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-plugin-backend",
+  "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-plugin-backend/README.md",
   "minClaudeCodeVersion": "1.0.0",
   "commands": [
     {
@@ -52,6 +52,6 @@
   ],
   "settings": {},
   "dependencies": [],
-  "installCommand": "/plugin install moai-alfred-backend",
+  "installCommand": "/plugin install moai-plugin-backend",
   "releaseNotes": "Initial v1.0.0-dev with PostgreSQL 18 and MySQL 8.4 support"
 }

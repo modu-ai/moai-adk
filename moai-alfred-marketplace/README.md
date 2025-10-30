@@ -25,11 +25,10 @@ Alfred Framework is the next-generation extensibility system for Claude Code:
 
 | Plugin | Category | Version | Purpose |
 |--------|----------|---------|---------|
-| **moai-alfred-pm** | Project Management | 1.0.0-dev | Generate SPEC templates, project charters, risk matrices |
-| **moai-alfred-uiux** | Design System | 1.0.0-dev | Tailwind CSS + shadcn/ui component initialization |
-| **moai-alfred-frontend** | Frontend Framework | 1.0.0-dev | Next.js 16 + React 19.2 + Biome scaffolding |
-| **moai-alfred-backend** | Backend Framework | 1.0.0-dev | FastAPI + uv + SQLAlchemy + Alembic scaffolding |
-| **moai-alfred-devops** | Deployment | 1.0.0-dev | Vercel, Supabase, Render multi-cloud configuration |
+| **moai-plugin-uiux** | Design System | 1.0.0-dev | Tailwind CSS + shadcn/ui component initialization |
+| **moai-plugin-frontend** | Frontend Framework | 1.0.0-dev | Next.js 16 + React 19.2 + Biome scaffolding |
+| **moai-plugin-backend** | Backend Framework | 1.0.0-dev | FastAPI + uv + SQLAlchemy + Alembic scaffolding |
+| **moai-plugin-devops** | Deployment | 1.0.0-dev | Vercel, Supabase, Render multi-cloud configuration |
 
 ## 🚀 Quick Start
 
@@ -44,11 +43,10 @@ Alfred Framework is the next-generation extensibility system for Claude Code:
 #### Method 1: Using `/plugin` Command (Recommended)
 
 ```bash
-/plugin install moai-alfred-pm
-/plugin install moai-alfred-uiux
-/plugin install moai-alfred-frontend
-/plugin install moai-alfred-backend
-/plugin install moai-alfred-devops
+/plugin install moai-plugin-uiux
+/plugin install moai-plugin-frontend
+/plugin install moai-plugin-backend
+/plugin install moai-plugin-devops
 ```
 
 #### Method 2: Manual Installation
@@ -60,7 +58,7 @@ Alfred Framework is the next-generation extensibility system for Claude Code:
 ```json
 {
   "plugins": {
-    "moai-alfred-pm": {
+    "moai-plugin-frontend": {
       "version": "1.0.0-dev",
       "enabled": true
     }
@@ -75,28 +73,15 @@ Alfred Framework is the next-generation extensibility system for Claude Code:
 /plugin list
 
 # Check plugin status
-/plugin status moai-alfred-pm
+/plugin status moai-plugin-frontend
 
 # View plugin commands
-/plugin help moai-alfred-pm
+/plugin help moai-plugin-frontend
 ```
 
 ## 📋 Plugin Categories
 
-### Project Management (moai-alfred-pm)
-
-Kickstart project planning with EARS-based requirements:
-
-```bash
-/init-pm my-awesome-project --template=moai-spec
-```
-
-**Output**:
-- `spec.md` - EARS requirement specification
-- `plan.md` - Implementation plan
-- `acceptance.md` - Acceptance criteria
-
-### Design System (moai-alfred-uiux)
+### Design System (moai-plugin-uiux)
 
 Initialize Tailwind CSS + shadcn/ui with 20 pre-configured components:
 
@@ -109,7 +94,7 @@ Initialize Tailwind CSS + shadcn/ui with 20 pre-configured components:
 - `globals.css` - Global styles
 - `components/ui/` - 20 shadcn/ui components
 
-### Frontend (moai-alfred-frontend)
+### Frontend (moai-plugin-frontend)
 
 Scaffold Next.js 16 + React 19.2 + Biome project:
 
@@ -123,7 +108,7 @@ Scaffold Next.js 16 + React 19.2 + Biome project:
 - Biome linter configuration
 - Example pages and components
 
-### Backend (moai-alfred-backend)
+### Backend (moai-plugin-backend)
 
 Scaffold FastAPI + SQLAlchemy project:
 
@@ -139,7 +124,7 @@ Scaffold FastAPI + SQLAlchemy project:
 - SQLAlchemy models
 - CRUD endpoints
 
-### DevOps (moai-alfred-devops)
+### DevOps (moai-plugin-devops)
 
 Configure multi-cloud deployment:
 
@@ -185,24 +170,24 @@ Every plugin requires a `plugin.json` manifest:
 
 ```json
 {
-  "id": "moai-alfred-pm",
-  "name": "PM Plugin",
+  "id": "moai-plugin-frontend",
+  "name": "Frontend Plugin",
   "version": "1.0.0-dev",
-  "description": "Project Management kickoff automation",
+  "description": "Next.js 16 + React 19.2 scaffolding",
   "author": "GOOS🪿",
   "repository": "https://github.com/moai-adk/moai-alfred-marketplace",
   "minClaudeCodeVersion": "1.0.0",
   "commands": [
     {
-      "name": "init-pm",
-      "description": "Initialize project management templates"
+      "name": "init-next",
+      "description": "Initialize Next.js 16 project with React 19.2"
     }
   ],
   "agents": [],
   "hooks": [],
   "permissions": {
     "allowedTools": ["Read", "Write", "Edit", "Bash"],
-    "deniedTools": ["DeleteFile"]
+    "deniedTools": []
   }
 }
 ```
@@ -263,12 +248,12 @@ Example:
 
 | Metric | Value |
 |--------|-------|
-| Total Plugins | 5 |
+| Total Plugins | 4 |
 | Stable | 0 |
 | Beta | 0 |
-| Development | 5 |
+| Development | 4 |
 | Total Downloads | 0 |
-| Last Updated | 2025-10-30 |
+| Last Updated | 2025-10-31 |
 
 ## 🗺️ Roadmap
 

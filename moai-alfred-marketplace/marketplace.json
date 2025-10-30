@@ -12,33 +12,7 @@
   },
   "plugins": [
     {
-      "id": "moai-alfred-pm",
-      "name": "PM Plugin",
-      "version": "1.0.0-dev",
-      "status": "development",
-      "description": "Project Management kickoff automation - generates EARS SPEC templates, project charters, and risk matrices",
-      "author": "GOOS🪿",
-      "category": "pm",
-      "tags": ["project-management", "spec", "ears", "planning"],
-      "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-alfred-pm",
-      "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-alfred-pm/README.md",
-      "minClaudeCodeVersion": "1.0.0",
-      "commands": [
-        {
-          "name": "init-pm",
-          "description": "Initialize project management templates"
-        }
-      ],
-      "permissions": {
-        "allowedTools": ["Read", "Write", "Edit", "Bash", "Task"],
-        "deniedTools": ["DeleteFile"]
-      },
-      "dependencies": [],
-      "installCommand": "/plugin install moai-alfred-pm",
-      "releaseNotes": "Initial v1.0.0-dev release for MoAI-ADK v1.0"
-    },
-    {
-      "id": "moai-alfred-uiux",
+      "id": "moai-plugin-uiux",
       "name": "UI/UX Plugin",
       "version": "1.0.0-dev",
       "status": "development",
@@ -46,8 +20,8 @@
       "author": "GOOS🪿",
       "category": "uiux",
       "tags": ["design-system", "tailwind", "shadcn-ui", "components"],
-      "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-alfred-uiux",
-      "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-alfred-uiux/README.md",
+      "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-plugin-uiux",
+      "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-plugin-uiux/README.md",
       "minClaudeCodeVersion": "1.0.0",
       "commands": [
         {
@@ -60,11 +34,11 @@
         "deniedTools": []
       },
       "dependencies": [],
-      "installCommand": "/plugin install moai-alfred-uiux",
+      "installCommand": "/plugin install moai-plugin-uiux",
       "releaseNotes": "Initial v1.0.0-dev release with 20 core components"
     },
     {
-      "id": "moai-alfred-frontend",
+      "id": "moai-plugin-frontend",
       "name": "Frontend Plugin",
       "version": "1.0.0-dev",
       "status": "development",
@@ -72,8 +46,8 @@
       "author": "GOOS🪿",
       "category": "frontend",
       "tags": ["nextjs", "react", "typescript", "biome"],
-      "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-alfred-frontend",
-      "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-alfred-frontend/README.md",
+      "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-plugin-frontend",
+      "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-plugin-frontend/README.md",
       "minClaudeCodeVersion": "1.0.0",
       "commands": [
         {
@@ -89,12 +63,12 @@
         "allowedTools": ["Read", "Write", "Edit", "Bash"],
         "deniedTools": []
       },
-      "dependencies": ["moai-alfred-uiux"],
-      "installCommand": "/plugin install moai-alfred-frontend",
+      "dependencies": ["moai-plugin-uiux"],
+      "installCommand": "/plugin install moai-plugin-frontend",
       "releaseNotes": "Initial v1.0.0-dev with support for bun, npm, pnpm"
     },
     {
-      "id": "moai-alfred-backend",
+      "id": "moai-plugin-backend",
       "name": "Backend Plugin",
       "version": "1.0.0-dev",
       "status": "development",
@@ -102,8 +76,8 @@
       "author": "GOOS🪿",
       "category": "backend",
       "tags": ["fastapi", "python", "sqlalchemy", "uv", "database"],
-      "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-alfred-backend",
-      "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-alfred-backend/README.md",
+      "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-plugin-backend",
+      "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-plugin-backend/README.md",
       "minClaudeCodeVersion": "1.0.0",
       "commands": [
         {
@@ -124,11 +98,11 @@
         "deniedTools": []
       },
       "dependencies": [],
-      "installCommand": "/plugin install moai-alfred-backend",
+      "installCommand": "/plugin install moai-plugin-backend",
       "releaseNotes": "Initial v1.0.0-dev with PostgreSQL 18 and MySQL 8.4 support"
     },
     {
-      "id": "moai-alfred-devops",
+      "id": "moai-plugin-devops",
       "name": "DevOps Plugin",
       "version": "1.0.0-dev",
       "status": "development",
@@ -136,8 +110,8 @@
       "author": "GOOS🪿",
       "category": "devops",
       "tags": ["deployment", "vercel", "supabase", "render", "github-actions"],
-      "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-alfred-devops",
-      "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-alfred-devops/README.md",
+      "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-plugin-devops",
+      "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-plugin-devops/README.md",
       "minClaudeCodeVersion": "1.0.0",
       "commands": [
         {
@@ -157,8 +131,8 @@
         "allowedTools": ["Read", "Write", "Edit", "Bash"],
         "deniedTools": ["DeleteFile"]
       },
-      "dependencies": ["moai-alfred-frontend", "moai-alfred-backend"],
-      "installCommand": "/plugin install moai-alfred-devops",
+      "dependencies": ["moai-plugin-frontend", "moai-plugin-backend"],
+      "installCommand": "/plugin install moai-plugin-devops",
       "releaseNotes": "Initial v1.0.0-dev with 3-path deployment support"
     }
   ],
@@ -168,11 +142,11 @@
     "codeOfConduct": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/CODE_OF_CONDUCT.md"
   },
   "stats": {
-    "totalPlugins": 5,
+    "totalPlugins": 4,
     "stablePlugins": 0,
     "betaPlugins": 0,
-    "devPlugins": 5,
+    "devPlugins": 4,
     "totalDownloads": 0,
-    "lastUpdated": "2025-10-30"
+    "lastUpdated": "2025-10-31"
   }
 }

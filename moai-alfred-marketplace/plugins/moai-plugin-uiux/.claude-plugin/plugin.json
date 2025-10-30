@@ -1,5 +1,5 @@
 {
-  "id": "moai-alfred-uiux",
+  "id": "moai-plugin-uiux",
   "name": "UI/UX Plugin",
   "version": "1.0.0-dev",
   "status": "development",
@@ -7,8 +7,8 @@
   "author": "GOOS🪿",
   "category": "uiux",
   "tags": ["design-system", "tailwind", "shadcn-ui", "components"],
-  "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-alfred-uiux",
-  "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-alfred-uiux/README.md",
+  "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-plugin-uiux",
+  "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-plugin-uiux/README.md",
   "minClaudeCodeVersion": "1.0.0",
   "commands": [
     {
@@ -40,6 +40,6 @@
   ],
   "settings": {},
   "dependencies": [],
-  "installCommand": "/plugin install moai-alfred-uiux",
+  "installCommand": "/plugin install moai-plugin-uiux",
   "releaseNotes": "Initial v1.0.0-dev release with 20 core components"
 }

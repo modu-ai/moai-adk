@@ -1,5 +1,5 @@
 {
-  "id": "moai-alfred-frontend",
+  "id": "moai-plugin-frontend",
   "name": "Frontend Plugin",
   "version": "1.0.0-dev",
   "status": "development",
@@ -7,8 +7,8 @@
   "author": "GOOS🪿",
   "category": "frontend",
   "tags": ["nextjs", "react", "typescript", "biome"],
-  "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-alfred-frontend",
-  "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-alfred-frontend/README.md",
+  "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-plugin-frontend",
+  "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-plugin-frontend/README.md",
   "minClaudeCodeVersion": "1.0.0",
   "commands": [
     {
@@ -46,8 +46,8 @@
   ],
   "settings": {},
   "dependencies": [
-    "moai-alfred-uiux"
+    "moai-plugin-uiux"
   ],
-  "installCommand": "/plugin install moai-alfred-frontend",
+  "installCommand": "/plugin install moai-plugin-frontend",
   "releaseNotes": "Initial v1.0.0-dev with support for bun, npm, pnpm"
 }
