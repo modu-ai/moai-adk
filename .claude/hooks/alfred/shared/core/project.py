@@ -5,15 +5,15 @@ Project information inquiry (language, Git, SPEC progress, etc.)
 """
 
 import json
-import signal
 import socket
 import subprocess
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
-# Import TTL cache for performance optimization
-from core.ttl_cache import ttl_cache
+# Import from local modules
+from .timeout import CrossPlatformTimeout, TimeoutError as PlatformTimeoutError
+from .ttl_cache import ttl_cache
 
 # Cache directory for version check results
 CACHE_DIR_NAME = ".moai/cache"
@@ -46,7 +46,7 @@ def timeout_handler(seconds: int):
     try:
         yield
     finally:
-        signal.alarm(0)  # Disable alarm
+        timeout.cancel()  # Disable alarm
         signal.signal(signal.SIGALRM, old_handler)
 
 

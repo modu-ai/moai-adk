@@ -53,7 +53,6 @@ Setup sys.path for package imports
 """
 
 import json
-import signal
 import sys
 from pathlib import Path
 from typing import Any
@@ -69,21 +68,12 @@ from handlers import (
     handle_subagent_stop,
     handle_user_prompt_submit,
 )
+from utils.timeout import CrossPlatformTimeout, TimeoutError as PlatformTimeoutError
 
 # Add the hooks directory to sys.path to enable package imports
 HOOKS_DIR = Path(__file__).parent
 if str(HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(HOOKS_DIR))
-
-
-class HookTimeoutError(Exception):
-    """Hook execution timeout exception"""
-    pass
-
-
-def _hook_timeout_handler(signum, frame):
-    """Signal handler for global hook timeout"""
-    raise HookTimeoutError("Hook execution exceeded 5-second timeout")
 
 
 def main() -> None:
@@ -124,11 +114,10 @@ def main() -> None:
 
     @TAG:HOOKS-TIMEOUT-001
     """
-    # Set global 5-second timeout for entire hook execution
-    signal.signal(signal.SIGALRM, _hook_timeout_handler)
-    signal.alarm(5)
-
     try:
+        # Set global 5-second timeout for entire hook execution (cross-platform)
+        timeout = CrossPlatformTimeout(5)
+        timeout.start()
         # Check for event argument
         if len(sys.argv) < 2:
             print("Usage: alfred_hooks.py <event>", file=sys.stderr)
@@ -189,8 +178,10 @@ def main() -> None:
             print(json.dumps(error_response))
             print(f"Unexpected error: {e}", file=sys.stderr)
             sys.exit(1)
+        finally:
+            timeout.cancel()
 
-    except HookTimeoutError:
+    except PlatformTimeoutError:
         # CRITICAL: Hook took too long - return minimal valid response to prevent Claude Code freeze
         timeout_response: dict[str, Any] = {
             "continue": True,

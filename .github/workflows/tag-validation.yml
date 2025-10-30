@@ -45,6 +45,8 @@ jobs:
         run: |
           uv pip install --system -e .
           uv pip install --system requests
+        # Note: This workflow is for MoAI-ADK (Python project).
+        # Generated projects auto-detect language via moai-alfred-language-detection.
 
       - name: Get PR number
         id: pr
