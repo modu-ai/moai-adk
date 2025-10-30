@@ -322,7 +322,7 @@ echo "...content..."
 
 Alfred operates with a **clear two-layer language architecture** to support global users while keeping the infrastructure in English:
 
-### Layer 1: User Conversation & Dynamic Content
+### Layer 1: User Conversation & Dynamic Content (한국어)
 
 **ALWAYS use user's `conversation_language` for ALL user-facing content:**
 
@@ -334,18 +334,43 @@ Alfred operates with a **clear two-layer language architecture** to support glob
 - 🔧 **Task prompts**: User's language (passed directly to Sub-agents)
 - 📨 **Sub-agent communication**: User's language
 
-### Layer 2: Static Infrastructure (English Only)
+### Layer 2: Package Distribution Templates Only (English Only)
 
-**MoAI-ADK package and templates stay in English:**
+**ONLY MoAI-ADK package distribution templates stay in English:**
 
+- **Package templates**: `src/moai_adk/templates/.claude/` (배포용 템플릿만 영어)
 - `Skill("skill-name")` → **Skill names always English** (explicit invocation)
-- `.claude/skills/` → **Skill content in English** (technical documentation standard)
-- `.claude/agents/` → **Agent templates in English**
-- `.claude/commands/` → **Command templates in English**
-- Code comments → **English**
-- Git commit messages → **English**
-- @TAG identifiers → **English**
-- Technical function/variable names → **English**
+- Code comments → **English** (global standard)
+- Git commit messages → **English** (global standard)
+- @TAG identifiers → **English** (system markers)
+- Technical function/variable names → **English** (programming standard)
+
+### 📁 파일 위치별 언어 규칙 Quick Reference
+
+**한국어 (Layer 1 - User-facing)**:
+
+| 디렉토리 | 파일 | 언어 | 예시 |
+|---|---|---|---|
+| `.moai/specs/` | spec.md, plan.md, acceptance.md | **한국어** | 사용자 SPEC 문서 |
+| `.moai/docs/` | 구현 가이드, 전략 문서 | **한국어** | implementation-*.md, strategy-*.md |
+| `.moai/analysis/` | 분석 보고서 | **한국어** | plugin-ecosystem-redesign-v2.0.md |
+| `.moai/reports/` | 동기화 보고서 | **한국어** | sync-report-*.md, tag-validation-*.md |
+| Root | README.md, CHANGELOG.md | **한국어** | 사용자 대면 문서 |
+
+**영어 (Layer 2 - Package templates only)**:
+
+| 디렉토리 | 파일 | 언어 | 이유 |
+|---|---|---|---|
+| `src/moai_adk/templates/.claude/skills/` | SKILL.md (템플릿) | **영어** | 패키지 배포용 |
+| `src/moai_adk/templates/.claude/agents/` | *.md (템플릿) | **영어** | 패키지 배포용 |
+| `src/moai_adk/templates/.claude/commands/` | *.md (템플릿) | **영어** | 패키지 배포용 |
+| 모든 코드 | *.py, *.ts, *.js | **영어** | 글로벌 표준 |
+
+### 핵심 규칙
+
+1. **로컬 프로젝트 문서 (.moai/\*)**: 항상 **한국어**
+2. **패키지 템플릿 (src/moai_adk/templates/\*)**: 항상 **영어**
+3. **코드 주석 & Git**: 항상 **영어** (글로벌 표준)
 
 ### Execution Flow Example
 

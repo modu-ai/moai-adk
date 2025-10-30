@@ -83,8 +83,9 @@ CURSOR_INTEGRATION_PLAN.md
 .moai/scripts/
 .moai/cache/
 .moai/memory/
-.claude/
 
-# Exception: SPEC and public docs are tracked
+# Exception: SPEC, docs, and analysis are tracked
 !.moai/specs/
 !.moai/docs/*.md
+!.moai/analysis/
+!.moai/reports/
