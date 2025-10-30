@@ -7,8 +7,9 @@ for TAG generation system.
 @SPEC:DOC-TAG-001: @DOC tag automatic generation infrastructure
 """
 
+
 import pytest
-from pathlib import Path
+
 from src.moai_adk.core.tags.parser import extract_spec_id, parse_domain
 
 
