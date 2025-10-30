@@ -293,8 +293,30 @@ Create a specification for the EARS structure."""
 
 2. Invoke git-manager (Git task):
    - subagent_type: "git-manager"
-   - description: "Create Git branch/PR"
-   - prompt: "After completing the plan, please create a branch and Draft PR."
+   - description: "Create Git branch/PR with duplicate prevention"
+   - prompt: """You are git-manager agent.
+
+LANGUAGE CONFIGURATION:
+- conversation_language: {{CONVERSATION_LANGUAGE}}
+- language_name: {{CONVERSATION_LANGUAGE_NAME}}
+
+CRITICAL INSTRUCTION (Team Mode Duplicate Prevention):
+Before creating any GitHub Issue or PR:
+1. ALWAYS check for existing Issue with SPEC-ID in title
+2. ALWAYS check for existing PR with branch name feature/SPEC-{ID}
+3. If Issue exists → Update it, don't create duplicate
+4. If PR exists → Update it, don't create duplicate
+5. If both exist → Update both with latest SPEC version
+6. Use fallback search if label filter fails (some Issues may lack labels)
+7. ALWAYS add labels: "spec", "planning", + priority label
+
+See git-manager.md section "When writing a SPEC" for detailed duplicate prevention protocol and code examples.
+
+TASK:
+Create a feature branch (feature/SPEC-{SPEC_ID}) and Draft PR (→ develop) for the completed SPEC document.
+Implement the duplicate prevention protocol before creating any GitHub entities.
+
+Output language: {{CONVERSATION_LANGUAGE}}"""
 ```
 
 ## function

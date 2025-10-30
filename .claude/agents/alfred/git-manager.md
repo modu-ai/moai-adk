@@ -78,6 +78,7 @@ This is a dedicated agent that optimizes and processes all Git operations in MoA
 - **Branch management**: Direct use of `git checkout -b` command, settings Based naming
 - **Commit generation**: Create template-based messages, apply structured format
 - **Synchronization**: Wrap `git push/pull` commands, detect and automatically resolve conflicts
+- **Duplicate Prevention** (Team Mode): Check for existing Issues/PRs before creating, update if found
 
 ## 🎯 Core Mission
 
@@ -156,14 +157,95 @@ git-manager **recommends** GitFlow best practices with pre-push hooks, but respe
 git-manager manages feature development in the following steps:
 
 **1. When writing a SPEC** (`/alfred:1-plan`):
-```bash
-# Create a feature branch in develop
-git checkout develop
-git checkout -b feature/SPEC-{ID}
 
-# Create Draft PR (feature → develop)
-gh pr create --draft --base develop --head feature/SPEC-{ID}
+**CRITICAL: Duplicate Prevention Protocol (Team Mode)**
+
+Before creating Issue/PR, MUST check for existing entities:
+
+```bash
+# Step 1: Check for existing Issue
+existing_issue=$(gh issue list \
+  --label "spec" \
+  --state all \
+  --search "[SPEC-$spec_id]" \
+  --json number,title,state \
+  --jq '.[] | select(.title | contains("[SPEC-'$spec_id']")) | .number' \
+  2>/dev/null | head -1)
+
+# Fallback search WITHOUT label filter (in case labels missing)
+if [ -z "$existing_issue" ]; then
+  existing_issue=$(gh issue list \
+    --state all \
+    --search "[SPEC-$spec_id]" \
+    --json number,title,state \
+    --jq '.[] | select(.title | contains("[SPEC-'$spec_id']")) | .number' \
+    2>/dev/null | head -1)
+fi
+
+# Step 2: Check for existing PR
+existing_pr=$(gh pr list \
+  --state all \
+  --head "feature/SPEC-$spec_id" \
+  --json number,title,state \
+  --jq '.[0].number' \
+  2>/dev/null)
+
+# Step 3: Decision Logic
+if [ -n "$existing_issue" ] && [ -n "$existing_pr" ]; then
+  echo "✅ Found existing Issue #$existing_issue and PR #$existing_pr"
+  echo "   Updating existing entities instead of creating duplicates"
+
+  # Update Issue with latest SPEC version
+  gh issue edit "$existing_issue" \
+    --title "[SPEC-$spec_id] $spec_title (v$spec_version)" \
+    --add-label "spec,planning,$spec_priority" \
+    --state open
+
+  # Update PR body with latest SPEC link
+  gh pr edit "$existing_pr" \
+    --title "[SPEC-$spec_id] $spec_title (v$spec_version)" \
+    --body "$(echo -e "## $spec_title\n\nVersion: $spec_version\n\nRelated Issue: #$existing_issue\n\nSee .moai/specs/SPEC-$spec_id/spec.md for details")"
+
+elif [ -n "$existing_issue" ]; then
+  echo "✅ Found existing Issue #$existing_issue"
+  echo "   Creating Draft PR linked to existing issue"
+
+  # Create Draft PR (feature → develop)
+  git checkout develop
+  git checkout -b feature/SPEC-$spec_id
+  gh pr create --draft --base develop --head feature/SPEC-$spec_id \
+    --title "[SPEC-$spec_id] $spec_title (v$spec_version)" \
+    --body "## Related Issue\n\nCloses #$existing_issue\n\nSee .moai/specs/SPEC-$spec_id/spec.md for details"
+
+elif [ -n "$existing_pr" ]; then
+  echo "✅ Found existing PR #$existing_pr (Issue may be created by GitHub Actions)"
+  echo "   Skipping duplicate creation"
+
+else
+  echo "📋 No existing Issue/PR found for SPEC-$spec_id"
+  echo "   Creating new Issue and Draft PR"
+
+  # Create a feature branch in develop
+  git checkout develop
+  git checkout -b feature/SPEC-$spec_id
+
+  # Create Draft PR (feature → develop)
+  gh pr create --draft --base develop --head feature/SPEC-$spec_id \
+    --title "[SPEC-$spec_id] $spec_title (v$spec_version)" \
+    --body "See .moai/specs/SPEC-$spec_id/spec.md for details"
+
+  # GitHub Actions workflow will automatically create Issue when PR is created
+  # Workflow: .github/workflows/spec-issue-sync.yml
+fi
 ```
+
+**Key Behavior**:
+- ✅ **Always check for existing Issue/PR** before creating new ones
+- ✅ **Fallback search**: If label filter fails, search all issues
+- ✅ **Update, don't duplicate**: If both exist, update them
+- ✅ **Mandatory labels**: Always add "spec", "planning", and priority labels
+- ✅ **GitHub Actions handles**: Issue creation is primarily handled by GitHub Actions workflow
+- ✅ **Idempotency**: Safe to run command multiple times
 
 **2. When implementing TDD** (`/alfred:2-run`):
 ```bash
