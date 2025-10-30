@@ -68,8 +68,8 @@ priority: critical
 - ✅ 빌드 시간 < 3분
 - ✅ Lighthouse 성능 점수 90+ (모바일/데스크톱)
 - ✅ 보안 헤더 응답 확인 (X-Content-Type-Options, X-Frame-Options 등)
-- ✅ 개발 가이드 문서 작성 완료 (`@DOC:SITE-GUIDE-001`)
-- ✅ 배포 가이드 문서 작성 완료 (`@DOC:SITE-DEPLOY-001`)
+- ✅ 개발 가이드 문서 작성 완료 (`DOC:SITE-GUIDE-001`)
+- ✅ 배포 가이드 문서 작성 완료 (`DOC:SITE-DEPLOY-001`)
 
 **주요 작업**:
 1. 빌드 시간 측정 및 최적화 (필요시)
@@ -317,7 +317,7 @@ moai-adk-docs/
 
 ## Documentation Plan (문서 작성 계획)
 
-### 1. 개발 가이드 (`@DOC:SITE-GUIDE-001`)
+### 1. 개발 가이드 (`DOC:SITE-GUIDE-001`)
 **내용**:
 - 로컬 개발 환경 설정 (Node.js, npm 설치)
 - 프로젝트 클론 및 의존성 설치
@@ -325,7 +325,7 @@ moai-adk-docs/
 - HMR 동작 확인 방법
 - 빌드 프로세스 설명 (`npm run build`)
 
-### 2. 배포 가이드 (`@DOC:SITE-DEPLOY-001`)
+### 2. 배포 가이드 (`DOC:SITE-DEPLOY-001`)
 **내용**:
 - Vercel 프로젝트 생성 방법
 - Git 저장소 연동 방법
@@ -369,8 +369,8 @@ moai-adk-docs/
 ### 의존 관계
 - **선행 작업**: 없음 (첫 번째 SPEC)
 - **후속 작업**:
-  - **@SPEC:NEXTRA-I18N-001**: 다국어 지원 (NEXTRA-SITE-001 완료 후)
-  - **@SPEC:NEXTRA-CONTENT-001**: 콘텐츠 마이그레이션 (NEXTRA-SITE-001 완료 후)
+  - **`SPEC:NEXTRA-I18N-001`**: 다국어 지원 (NEXTRA-SITE-001 완료 후)
+  - **`SPEC:NEXTRA-CONTENT-001`**: 콘텐츠 마이그레이션 (NEXTRA-SITE-001 완료 후)
 
 ### Handoff Points
 - **구현 담당**: TDD-implementer (via `/alfred:2-run SPEC-NEXTRA-SITE-001`)

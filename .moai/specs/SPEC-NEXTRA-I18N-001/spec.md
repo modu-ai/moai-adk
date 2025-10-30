@@ -466,8 +466,8 @@ export default config;
 ## Traceability (추적성)
 
 ### Related SPECs
-- **@SPEC:NEXTRA-SITE-001**: Next.js 14 + Nextra 4.0 기본 구조 (선행 조건)
-- **@SPEC:NEXTRA-CONTENT-001**: 콘텐츠 마이그레이션 (후속 작업)
+- **`SPEC:NEXTRA-SITE-001`**: Next.js 14 + Nextra 4.0 기본 구조 (선행 조건)
+- **`SPEC:NEXTRA-CONTENT-001`**: 콘텐츠 마이그레이션 (후속 작업)
 
 ### Related Tasks
 - **@TASK:I18N-SETUP-001**: next-intl 설치 및 설정

@@ -339,13 +339,13 @@ git push origin main
 - **@TASK:SITE-DEPLOY-001**: Vercel 배포 환경 구성
 
 ### Related Tests
-- **@TEST:SITE-BUILD-001**: 빌드 프로세스 성공 여부 테스트
-- **@TEST:SITE-DEV-001**: 개발 서버 시작 및 HMR 동작 테스트
-- **@TEST:SITE-DEPLOY-001**: Vercel 배포 성공 여부 테스트
+- **`TEST:NEXTRA-BUILD-001`**: 빌드 프로세스 성공 여부 테스트
+- **`TEST:NEXTRA-CONFIG-001`**: 개발 서버 시작 및 HMR 동작 테스트
+- **`TEST:NEXTRA-THEME-001`**: Vercel 배포 성공 여부 테스트
 
 ### Related Documentation
-- **@DOC:SITE-GUIDE-001**: Nextra 4.0 개발 가이드
-- **@DOC:SITE-DEPLOY-001**: Vercel 배포 가이드
+- **`DOC:SITE-GUIDE-001`**: Nextra 4.0 개발 가이드
+- **`DOC:SITE-DEPLOY-001`**: Vercel 배포 가이드
 
 ---
 

@@ -1,6 +1,6 @@
 # MoAI-ADK Documentation Site
 
-<!-- @CODE:NEXTRA-INIT-001 @CODE:NEXTRA-CONFIG-001 - Project documentation and configuration -->
+<!-- Project documentation and configuration (Nextra 4.0 + Next.js 14) -->
 
 > **Next.js 14 + Nextra 4.0** based documentation site for MoAI-ADK
 >

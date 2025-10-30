@@ -431,8 +431,8 @@ validateTranslations();
 ## Next Steps (다음 단계)
 
 ### 의존 관계
-- **선행 작업**: @SPEC:NEXTRA-SITE-001 (Next.js 14 + Nextra 4.0 기본 구조)
-- **후속 작업**: @SPEC:NEXTRA-CONTENT-001 (콘텐츠 마이그레이션)
+- **선행 작업**: `SPEC:NEXTRA-SITE-001` (Next.js 14 + Nextra 4.0 기본 구조)
+- **후속 작업**: `SPEC:NEXTRA-CONTENT-001` (콘텐츠 마이그레이션)
 
 ### Handoff Points
 - **구현 담당**: TDD-implementer (via `/alfred:2-run SPEC-NEXTRA-I18N-001`)

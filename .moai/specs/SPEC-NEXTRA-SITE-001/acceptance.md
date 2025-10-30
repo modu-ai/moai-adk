@@ -489,8 +489,8 @@ cat axe-report.json | jq '.violations'
 - ✅ **모든 Test Scenarios 통과**: 10개 시나리오 모두 성공
 - ✅ **모든 Quality Gates 통과**: 5개 게이트 모두 충족
 - ✅ **문서 작성 완료**:
-  - `@DOC:SITE-GUIDE-001`: 개발 가이드
-  - `@DOC:SITE-DEPLOY-001`: 배포 가이드
+  - `DOC:SITE-GUIDE-001`: 개발 가이드
+  - `DOC:SITE-DEPLOY-001`: 배포 가이드
 - ✅ **Git 커밋 완료**: "feat: implement Nextra 4.0 basic structure (SPEC-NEXTRA-SITE-001)"
 - ✅ **Vercel 배포 성공**: https://adk.mo.ai.kr 정상 접속
 - ✅ **후속 SPEC 준비**: NEXTRA-I18N-001, NEXTRA-CONTENT-001 준비 완료
