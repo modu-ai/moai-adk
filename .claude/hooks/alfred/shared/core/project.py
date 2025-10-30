@@ -12,6 +12,9 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
+# Import TTL cache for performance optimization
+from core.ttl_cache import ttl_cache
+
 # Cache directory for version check results
 CACHE_DIR_NAME = ".moai/cache"
 
@@ -176,12 +179,15 @@ def _run_git_command(args: list[str], cwd: str, timeout: int = 2) -> str:
         raise subprocess.TimeoutExpired(["git"] + args, timeout)
 
 
+@ttl_cache(ttl_seconds=10)  # 10 seconds TTL (Git info changes frequently)
 def get_git_info(cwd: str) -> dict[str, Any]:
     """Gather Git repository information
 
     View the current status of a Git repository.
     Returns the branch name, commit hash, number of changes, and last commit message.
     If it is not a Git repository, it returns an empty dictionary.
+
+    Performance: Cached with 10-second TTL to reduce Git command overhead.
 
     Args:
         cwd: Project root directory path
@@ -516,6 +522,8 @@ def is_major_version_change(current: str, latest: str) -> bool:
 
 
 # @CODE:VERSION-CACHE-INTEGRATION-001
+# @CODE:HOOK-PERF-002 - Added TTL caching for performance optimization
+@ttl_cache(ttl_seconds=30 * 60)  # 30 minutes TTL (version info is stable)
 def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
     """Check MoAI-ADK current and latest version with caching and offline support.
 
