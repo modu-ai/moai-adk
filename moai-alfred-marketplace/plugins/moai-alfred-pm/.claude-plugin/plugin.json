@@ -36,7 +36,9 @@
   "skills": [
     "moai-foundation-ears",
     "moai-spec-authoring",
-    "moai-plugin-scaffolding"
+    "moai-foundation-specs",
+    "moai-plugin-scaffolding",
+    "moai-pm-patterns"
   ],
   "settings": {},
   "dependencies": [],
