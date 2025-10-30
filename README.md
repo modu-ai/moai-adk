@@ -277,23 +277,39 @@ In this section you'll experience:
 
 ## Language Support
 
-MoAI-ADK automatically detects and supports **20 programming languages** with dedicated CI/CD workflows for:
+MoAI-ADK automatically detects and supports **15 programming languages** with dedicated CI/CD workflows:
+
+### Core Languages (v0.11.0+)
 - **Python** (pytest, mypy, ruff, 85% coverage target)
 - **JavaScript** (npm/yarn/pnpm/bun auto-detect, 80% coverage target)
 - **TypeScript** (tsc type checking, biome/eslint, 85% coverage target)
 - **Go** (golangci-lint, gofmt, 75% coverage target)
 
+### Extended Languages (v0.11.1+)
+- **Ruby** (RSpec, Rubocop, bundle)
+- **PHP** (PHPUnit, PHPCS, composer)
+- **Java** (JUnit 5, Jacoco, Maven/Gradle auto-detection)
+- **Rust** (cargo test, clippy, rustfmt)
+- **Dart** (flutter test, dart analyze)
+- **Swift** (XCTest, SwiftLint, SPM)
+- **Kotlin** (JUnit 5, ktlint, Gradle)
+- **C#** (xUnit, StyleCop, dotnet CLI)
+- **C** (gcc/clang, cppcheck, CMake)
+- **C++** (g++/clang++, Google Test, cpplint)
+- **Shell** (shellcheck, bats-core)
+
 ### How Language Detection Works
 
 When you run `/alfred:2-run SPEC-XXX`, MoAI-ADK automatically:
-1. Scans your project for configuration files (package.json, pyproject.toml, go.mod, etc.)
-2. Detects your project's primary language
-3. Selects the appropriate CI/CD workflow template
-4. Generates language-specific testing and linting configuration
+1. Scans your project for configuration files (package.json, pyproject.toml, go.mod, Cargo.toml, pom.xml, build.gradle, etc.)
+2. Detects your project's primary language using priority-based detection (Rust → Dart → Swift → ... → Shell)
+3. Auto-detects build tools (Maven/Gradle for Java, CMake for C/C++, SPM for Swift, etc.)
+4. Selects the appropriate CI/CD workflow template
+5. Generates language-specific testing and linting configuration
 
 ### Supported Languages
 
-Full list of 20 supported languages: See [Language Detection Guide](.moai/docs/language-detection-guide.md)
+For detailed language detection priority and build tool detection, see [Language Detection Guide](.moai/docs/language-detection-guide.md)
 
 ### Customization
 
