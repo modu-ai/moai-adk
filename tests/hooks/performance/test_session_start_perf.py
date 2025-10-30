@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @TEST:HOOK-PERF-001 | SPEC: SPEC-ENHANCE-PERF-001
+# @TEST:ENHANCE-PERF-001:SESSION | SPEC: SPEC-ENHANCE-PERF-001
 """SessionStart Hook Performance Tests
 
 Tests caching performance optimization for get_package_version_info() and get_git_info().
@@ -39,6 +39,8 @@ class TestSessionStartPerformance:
     def test_version_info_first_call_baseline(self, tmp_path):
         """RED: Measure baseline performance of get_package_version_info()
 
+        @TEST:ENHANCE-PERF-001:VERSION-BASELINE
+
         This test documents the current performance before optimization.
         First call should complete within reasonable time (< 2000ms).
         """
@@ -59,6 +61,8 @@ class TestSessionStartPerformance:
 
     def test_version_info_cached_call_fast(self, tmp_path):
         """RED: Verify cached call is at least 10x faster
+
+        @TEST:ENHANCE-PERF-001:VERSION-CACHED
 
         After first call, subsequent calls should hit cache and be much faster.
         Target: < 20ms (compared to ~100ms uncached)
@@ -161,6 +165,8 @@ class TestSessionStartPerformance:
     def test_session_start_total_time(self, tmp_path):
         """RED: Verify total SessionStart time meets target
 
+        @TEST:ENHANCE-PERF-001:TOTAL-TIME
+
         Total time for SessionStart (including all info gathering) should be < 20ms
         after first call (when cache is warm).
 
@@ -200,6 +206,8 @@ class TestCacheHitRate:
     def test_cache_hit_rate_in_typical_session(self, tmp_path):
         """RED: Verify cache hit rate > 90% in typical session
 
+        @TEST:ENHANCE-PERF-001:HITRATE
+
         Simulate a typical session with multiple SessionStart calls.
         Cache hit rate should exceed 90%.
         """
@@ -223,6 +231,8 @@ class TestCacheErrorHandling:
 
     def test_cache_failure_fallback_to_direct_call(self, tmp_path):
         """RED: Verify graceful degradation when cache fails
+
+        @TEST:ENHANCE-PERF-001:FALLBACK
 
         If cache is corrupted or unavailable, should fall back to direct call.
         """

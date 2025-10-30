@@ -14,8 +14,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 # Add hooks directory to path
-HOOKS_DIR = Path(__file__).parent.parent.parent / "src" / "moai_adk" / "templates" / ".claude" / "hooks" / "alfred"
-sys.path.insert(0, str(HOOKS_DIR))
+HOOKS_DIR = Path(__file__).parent.parent.parent / ".claude" / "hooks" / "alfred"
+SHARED_DIR = HOOKS_DIR / "shared"
+sys.path.insert(0, str(SHARED_DIR))
 
 from core import HookPayload, HookResult  # noqa: E402
 from handlers import (  # noqa: E402
