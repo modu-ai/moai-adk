@@ -110,9 +110,28 @@ MoAI-ADK의 SuperAgent로서 당신의 프로젝트를 함께 만들어갈 준�
 먼저 기본 설정을 진행하겠습니다.
 ```
 
-### 0.1 배치 설계: 언어 선택 + 사용자 닉네임 수집 (1회 호출)
+### 0.1 배치 설계: 언어 선택 + 사용자 닉네임 + GitHub 설정 확인 (1-3회 호출)
 
-Alfred가 `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` 를 사용하여 **단일 배치 호출**로 언어와 닉네임을 동시에 수집합니다:
+Alfred가 `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` 를 사용하여 **배치 호출**로 필수 정보를 수집합니다:
+
+**기본 배치 (항상 실행)**:
+- 언어 선택
+- 사용자 닉네임
+
+**추가 배치 (팀 모드 감지 시)**:
+- GitHub "Automatically delete head branches" 설정 확인
+
+#### 0.1.1 팀 모드 감지
+
+```bash
+# config.json에서 mode 확인
+grep "mode" .moai/config.json
+
+# 결과: "mode": "team" → 추가 질문 포함
+#      "mode": "personal" → 기본 질문만 실행
+```
+
+#### 0.1.2 기본 배치: 언어 선택 + 닉네임
 
 **Example AskUserQuestion Call**:
 ```python
@@ -156,6 +175,42 @@ AskUserQuestion(
 )
 ```
 
+#### 0.1.3 팀 모드 추가 배치: GitHub 설정 확인 (팀 모드만)
+
+**조건**: `config.json`에서 `"mode": "team"` 감지 시 실행
+
+**Example AskUserQuestion Call**:
+```python
+AskUserQuestion(
+    questions=[
+        {
+            "question": "[Team Mode] Is 'Automatically delete head branches' enabled in your GitHub repository settings?",
+            "header": "GitHub Branch Settings",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "✅ Yes, already enabled",
+                    "description": "PR merge 후 자동으로 원격 브랜치 삭제됨"
+                },
+                {
+                    "label": "❌ No, not enabled (Recommended: Enable)",
+                    "description": "Settings → General → '자동 삭제' 체크박스 확인 필요"
+                },
+                {
+                    "label": "🤔 Not sure / Need to check",
+                    "description": "GitHub Settings → General 확인 후 다시 진행"
+                }
+            ]
+        }
+    ]
+)
+```
+
+**응답 처리**:
+- **"Yes, already enabled"** → `auto_delete_branches: true` 저장
+- **"No, not enabled"** → `auto_delete_branches: false` + 권장사항 저장
+- **"Not sure"** → `auto_delete_branches: null` + 경고 메시지
+
 **User Response Example**:
 ```
 Selected Language: 🇰🇷 한국어
@@ -164,22 +219,55 @@ Selected Nickname: GOOS (typed via "Other" option)
 
 ### 0.2 사용자 정보 저장
 
-Alfred가 선택된 언어와 닉네임을 다음과 같이 저장합니다:
+Alfred가 선택된 언어, 닉네임, 그리고 팀 모드 설정을 다음과 같이 저장합니다:
+
+#### 0.2.1 기본 정보 저장 (항상)
 
 ```json
 {
-  "conversation_language": "ko",
-  "conversation_language_name": "한국어",
-  "user_nickname": "GOOS",
-  "selected_at": "2025-10-23T12:34:56Z"
+  "language": {
+    "conversation_language": "ko",
+    "conversation_language_name": "한국어"
+  },
+  "user": {
+    "nickname": "GOOS",
+    "selected_at": "2025-10-23T12:34:56Z"
+  }
 }
 ```
 
+#### 0.2.2 GitHub 설정 저장 (팀 모드만)
+
+**팀 모드 감지 시 추가 저장**:
+```json
+{
+  "github": {
+    "auto_delete_branches": true,
+    "checked_at": "2025-10-23T12:34:56Z",
+    "recommendation": "Branch cleanup will be automated after PR merge"
+  }
+}
+```
+
+**또는 (미활성화 상태)**:
+```json
+{
+  "github": {
+    "auto_delete_branches": false,
+    "checked_at": "2025-10-23T12:34:56Z",
+    "recommendation": "Enable 'Automatically delete head branches' in GitHub Settings → General for better GitFlow workflow"
+  }
+}
+```
+
+#### 0.2.3 저장된 정보 활용
+
 이 정보는:
 - 모든 sub-agents 에게 컨텍스트 파라미터로 전달됨
-- `.moai/config.json` 의 `language` 및 `user` 필드에 저장됨
+- `.moai/config.json` 의 `language`, `user`, `github` 필드에 저장됨
 - CLAUDE.md의 `{{CONVERSATION_LANGUAGE}}` 및 `{{USER_NICKNAME}}` 변수로 치환됨
 - 모든 Alfred 대화에서 사용됨
+- **팀 모드**: git-manager가 GitHub 설정 상태를 참고하여 브랜치 정리 전략 수립
 
 **설정 완료 출력 예시**:
 ```markdown
