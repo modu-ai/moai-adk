@@ -1,0 +1,73 @@
+# @CODE:LDE-004-RUST | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md
+# Rust TAG Validation Workflow
+# Validates Rust code with cargo test, clippy linting, and rustfmt formatting
+
+name: Rust TAG Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main, develop, "feature/**"]
+
+jobs:
+  test:
+    name: 🧪 Rust Tests & Linting
+    runs-on: ubuntu-latest
+
+    if: github.event.pull_request.draft == false || github.event_name == 'push'
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    strategy:
+      matrix:
+        rust-version: ['stable', 'beta']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust-version }}
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run cargo test
+        run: cargo test --verbose
+
+      - name: Run clippy (treat warnings as errors)
+        run: cargo clippy -- -D warnings
+
+      - name: Check formatting with rustfmt
+        run: cargo fmt -- --check
+
+      - name: Generate coverage report
+        if: matrix.rust-version == 'stable'
+        run: |
+          cargo install cargo-tarpaulin
+          cargo tarpaulin --out Xml --output-dir coverage
+
+      - name: Upload coverage artifacts
+        if: always() && matrix.rust-version == 'stable'
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-coverage
+          path: coverage/
+          retention-days: 30

@@ -1,0 +1,75 @@
+# @CODE:LDE-003-JAVA | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md
+# Java TAG Validation Workflow
+# Validates Java code with JUnit 5 tests, Jacoco coverage, and Maven/Gradle builds
+
+name: Java TAG Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main, develop, "feature/**"]
+
+jobs:
+  test:
+    name: 🧪 Java Tests & Build
+    runs-on: ubuntu-latest
+
+    if: github.event.pull_request.draft == false || github.event_name == 'push'
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    strategy:
+      matrix:
+        java-version: ['17', '21']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ matrix.java-version }}
+          cache: 'maven'  # Auto-detects Maven or Gradle
+
+      - name: Detect build tool
+        id: detect-build
+        run: |
+          if [ -f "pom.xml" ]; then
+            echo "tool=maven" >> $GITHUB_OUTPUT
+            echo "Maven detected"
+          elif [ -f "build.gradle" ] || [ -f "build.gradle.kts" ]; then
+            echo "tool=gradle" >> $GITHUB_OUTPUT
+            echo "Gradle detected"
+          else
+            echo "No build tool detected"
+            exit 1
+          fi
+
+      - name: Build and test with Maven
+        if: steps.detect-build.outputs.tool == 'maven'
+        run: |
+          mvn clean verify
+          mvn jacoco:report
+
+      - name: Build and test with Gradle
+        if: steps.detect-build.outputs.tool == 'gradle'
+        run: |
+          chmod +x gradlew
+          ./gradlew clean test jacocoTestReport
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: java-coverage-${{ matrix.java-version }}
+          path: |
+            target/site/jacoco/
+            build/reports/jacoco/
+          retention-days: 30
