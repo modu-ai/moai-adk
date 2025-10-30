@@ -1,7 +1,7 @@
 # SessionStart Hook Performance Optimization Report
 
 **SPEC**: SPEC-ENHANCE-PERF-001
-**TAG**: @DOC:HOOK-PERF-001
+**TAG**: @DOC:ENHANCE-PERF-001:IMPLEMENTATION
 **Date**: October 31, 2025
 **Status**: ✅ Completed
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @CODE:HOOK-PERF-002 | SPEC: SPEC-ENHANCE-PERF-001
+# @CODE:ENHANCE-PERF-001:CACHE | SPEC: SPEC-ENHANCE-PERF-001
 """TTL (Time-To-Live) Cache Decorator
 
 Provides simple in-memory caching with time-based expiration.
