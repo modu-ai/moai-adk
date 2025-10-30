@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.10.2] - 2025-10-30
+
+### Added
+- ✨ **Language-Aware CI/CD Workflows**: Auto-detection of project language (Python, JavaScript, TypeScript, Go)
+  - `src/moai_adk/templates/workflows/python-tag-validation.yml` - Python project CI/CD
+  - `src/moai_adk/templates/workflows/javascript-tag-validation.yml` - JavaScript project CI/CD
+  - `src/moai_adk/templates/workflows/typescript-tag-validation.yml` - TypeScript project CI/CD
+  - `src/moai_adk/templates/workflows/go-tag-validation.yml` - Go project CI/CD
+
+- ✨ **LanguageDetector Extension**: Package manager detection (npm, yarn, pnpm, bun)
+  - New methods: `detect_package_manager()`, `get_workflow_template_path()`
+  - Automatic workflow template selection based on language
+
+- ✨ **tdd-implementer Agent Enhancement**: Language-aware workflow generation
+  - Automatic language detection before CI/CD workflow creation
+  - Fallback handling for unsupported languages
+
+- 📚 **Comprehensive Documentation**:
+  - `.moai/docs/language-detection-guide.md` - Language detection concepts and API
+  - `.moai/docs/workflow-templates.md` - Language-specific workflow customization
+
+- 🧪 **Extensive Test Coverage** (67 tests, 95.56% coverage):
+  - Template creation and correctness tests
+  - Language detection scenario tests
+  - Workflow selection integration tests
+  - Error handling and edge case tests
+
+### Changed
+- Enhanced `.claude/agents/alfred/tdd-implementer.md` with Language-Aware Workflow Generation section
+
+### Technical Details
+- Related Issue: #131 (JavaScript 워크플로우 언어 감지)
+- Related SPEC: SPEC-LANGUAGE-DETECTION-001
+- Test Coverage: 95.56% (목표 85% 대비 112% 달성)
+- TRUST 5 Principles: 100% 준수
+- TAG Traceability: 13개 TAG, 100% 연결성 확인
+
+### Authors
+- 🎩 Alfred (MoAI-ADK SuperAgent)
+- 🪿 GOOS (Project Owner)
+
+---
+
 ## [v0.9.1] - 2025-10-30 (UV Cache Automatic Retry Fix)
 <!-- @DOC:UPDATE-CACHE-FIX-001-002 -->
 

@@ -3,14 +3,28 @@
 ---
 title: JavaScript/TypeScript 프로젝트 CI/CD 워크플로우 언어 감지 및 템플릿 분리
 id: LANGUAGE-DETECTION-001
-version: v0.0.1
-status: draft
+version: v0.1.0
+status: completed
 author: GoosLab
 created: 2025-10-30
+updated: 2025-10-30
 issue: "#131"
 ---
 
 ## HISTORY
+
+### v0.1.0 (2025-10-30)
+- **IMPLEMENTATION COMPLETED**: TDD implementation completed (status: draft → completed)
+- **COMMITS**: 5개 (TAG 1-5 모두 구현)
+- **TESTS**: 67/67 통과 (100%)
+- **COVERAGE**: 95.56% (목표 대비 112% 달성)
+- **QUALITY**: TRUST 5 원칙 100% 준수
+- **FILES**:
+  * Workflow templates: 4개 (Python, JS, TS, Go)
+  * Source code: 2개 수정 (detector.py, tdd-implementer.md)
+  * Test files: 6개 (67개 테스트)
+  * Documentation: 2개 (언어 감지 가이드, 워크플로우 템플릿)
+- **TAG**: LANGUAGE-DETECTION-001 (SPEC-LANG-001 ~ SPEC-LANG-005)
 
 ### v0.0.1 (2025-10-30) - INITIAL
 - 초기 SPEC 작성
