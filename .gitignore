@@ -79,9 +79,12 @@ CURSOR_INTEGRATION_PLAN.md
 
 # MoAI internal directories (not versioned)
 .moai/analysis/
-.moai/docs/
 .moai/reports/
 .moai/scripts/
 .moai/cache/
+.moai/memory/
 .claude/
-.moai/
+
+# Exception: SPEC and public docs are tracked
+!.moai/specs/
+!.moai/docs/*.md

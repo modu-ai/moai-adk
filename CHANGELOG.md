@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v1.0.0] - Unreleased (Enterprise Plugin Ecosystem)
+<!-- @SPEC:V1-PLUGIN-ECOSYSTEM-001 -->
+
+### ✨ Major Features | 핵심 기능
+
+**Claude Code Plugin Ecosystem Launch**:
+- 🔌 5 Official MoAI-ADK Plugins (PM / UI-UX / Frontend / Backend / DevOps)
+- 📦 Plugin Marketplace Integration (moai-adk/moai-cc-marketplace)
+- 🛠️ Plugin Development Framework (Commands / Agents / Skills / Hooks / MCP)
+
+### 🚀 New Components | 신규 구성
+
+**Frontend Plugin (Next.js 16 + React 19.2)**:
+- Tailwind CSS + shadcn/ui Integration
+- Biome for formatting/linting
+- DevTools MCP support
+- Package manager selection (bun|npm|pnpm)
+
+**Backend Plugin (FastAPI + uv)**:
+- Python 3.14 support
+- FastAPI 0.120.2, Pydantic 2.12, SQLAlchemy 2.0.44, Alembic 1.17
+- Multi-database support (PostgreSQL 18, MySQL 8.4 LTS)
+- uv-based dependency management (venv, lock, index)
+
+**Plugin Infrastructure**:
+- Command templates with tool permissions
+- Agent coordination patterns
+- Skill loading strategies
+- Hook event handlers
+- MCP server configuration
+
+### 📚 Documentation
+
+- 📖 ch08: Claude Code Plugin Introduction & Migration Guide
+- 📖 ch09: 5-Plugin Development & Deployment Workflow
+- 🎯 SPEC-V1-001: Enterprise Plugin Ecosystem Specification
+
+### 🔄 Breaking Changes | 주요 변경
+
+- ⚠️ Output Styles feature removed (EOL 2025-11-05)
+- ⚠️ Plugin-based customization now preferred (hooks/skills/commands)
+- ⚠️ MCP configuration moved to .mcp.json
+
+### 🛡️ Security & Governance
+
+- Plugin permission model (allowed-tools, denied-tools)
+- Registry management (NPM, PyPI with custom indices)
+- Secrets management (OS Keychain, .env local files)
+- Org-level marketplace policies
+
+---
+
 ## [v0.9.1] - 2025-10-30 (UV Cache Automatic Retry Fix)
 <!-- @DOC:UPDATE-CACHE-FIX-001-002 -->
 
