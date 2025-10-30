@@ -16,7 +16,18 @@ class LanguageDetector:
     """
 
     LANGUAGE_PATTERNS = {
-        # Ruby moved to top for priority (Rails detection over generic frameworks)
+        # @CODE:LDE-PRIORITY-001 | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md
+        # Priority order (highest to lowest):
+        # 1. Rust, 2. Dart, 3. Swift, 4. Kotlin, 5. C#, 6. Java, 7. Ruby, 8. PHP
+        # 9. Go, 10. Python, 11. TypeScript, 12. JavaScript, 13. C++, 14. C, 15. Shell
+
+        "rust": ["*.rs", "Cargo.toml"],
+        "dart": ["*.dart", "pubspec.yaml"],
+        "swift": ["*.swift", "Package.swift"],
+        "kotlin": ["*.kt", "build.gradle.kts"],
+        "csharp": ["*.cs", "*.csproj"],
+        "java": ["*.java", "pom.xml", "build.gradle"],
+        # Ruby moved for priority (Rails detection)
         # @CODE:LANG-DETECT-RUBY-001 | SPEC: Issue #51 Language Detection Fix
         "ruby": [
             "*.rb",
@@ -26,7 +37,7 @@ class LanguageDetector:
             "app/controllers/",       # Rails: controller directory
             "Rakefile"                # Rails/Ruby: task file
         ],
-        # PHP moved to second for priority (Laravel detection after Rails)
+        # PHP after Ruby (Laravel detection)
         "php": [
             "*.php",
             "composer.json",
@@ -34,23 +45,18 @@ class LanguageDetector:
             "app/",                   # Laravel: application directory
             "bootstrap/laravel.php"   # Laravel: bootstrap file
         ],
+        "go": ["*.go", "go.mod"],
         "python": ["*.py", "pyproject.toml", "requirements.txt", "setup.py"],
         "typescript": ["*.ts", "tsconfig.json"],
         "javascript": ["*.js", "package.json"],
-        "java": ["*.java", "pom.xml", "build.gradle"],
-        "go": ["*.go", "go.mod"],
-        "rust": ["*.rs", "Cargo.toml"],
-        "dart": ["*.dart", "pubspec.yaml"],
-        "swift": ["*.swift", "Package.swift"],
-        "kotlin": ["*.kt", "build.gradle.kts"],
-        "csharp": ["*.cs", "*.csproj"],
+        "cpp": ["*.cpp", "CMakeLists.txt"],
+        "c": ["*.c", "Makefile"],
+        "shell": ["*.sh", "*.bash"],
+        # Additional languages (lower priority)
         "elixir": ["*.ex", "mix.exs"],
         "scala": ["*.scala", "build.sbt"],
         "clojure": ["*.clj", "project.clj"],
         "haskell": ["*.hs", "*.cabal"],
-        "c": ["*.c", "Makefile"],
-        "cpp": ["*.cpp", "CMakeLists.txt"],
-        "shell": ["*.sh", "*.bash"],
         "lua": ["*.lua"],
     }
 
