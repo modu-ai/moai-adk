@@ -1,0 +1,140 @@
+---
+title: MoAI-ADK 설치
+description: MoAI-ADK 설치 및 환경 설정 가이드
+---
+
+# MoAI-ADK 설치
+
+## 사전 요구사항
+
+### 필수 항목
+
+- **Python**: 3.11+ (3.13 권장)
+- **uv**: 0.5.0+ (Python 패키지 관리자)
+- **Claude Code**: 최신 버전
+
+### 선택 항목
+
+- **Git**: 2.30+
+- **VS Code**: Claude Code 통합 시
+
+## 설치 방법
+
+### Option 1: uv 사용 (권장)
+
+```bash
+# Step 1: uv 설치
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Step 2: MoAI-ADK 설치
+uv tool install moai-adk
+
+# Step 3: 설치 확인
+moai-adk --version
+# 출력: MoAI-ADK v0.9.0
+```
+
+### Option 2: pip 사용
+
+```bash
+# Step 1: pip로 설치
+pip install moai-adk
+
+# Step 2: 설치 확인
+moai-adk --version
+```
+
+### Option 3: 소스에서 설치
+
+```bash
+# Step 1: 저장소 클론
+git clone https://github.com/modu-ai/moai-adk.git
+cd moai-adk
+
+# Step 2: 개발 모드로 설치
+uv pip install -e .
+
+# Step 3: 설치 확인
+moai-adk --version
+```
+
+## 환경 확인
+
+```bash
+# 시스템 상태 체크
+moai-adk doctor
+```
+
+### 예상 출력
+
+```
+✅ Python 3.13.0
+✅ uv 0.5.1
+✅ Claude Code detected
+✅ Git 2.43.0
+✅ All dependencies satisfied
+```
+
+## Claude Code 설정
+
+### Step 1: Claude Code 설치
+
+[Claude Code 다운로드](https://claude.ai/code)에서 최신 버전을 다운로드합니다.
+
+### Step 2: 프로젝트 초기화
+
+```bash
+# 새 프로젝트 생성
+moai-adk init my-project
+cd my-project
+
+# Claude Code 실행
+claude
+```
+
+### Step 3: Alfred 시작
+
+Claude Code에서:
+
+```
+/alfred:0-project
+```
+
+## 문제 해결
+
+### uv 설치 실패
+
+```bash
+# macOS/Linux
+export PATH="$HOME/.cargo/bin:$PATH"
+
+# Windows
+# 환경 변수에 %USERPROFILE%\.cargo\bin 추가
+```
+
+### Python 버전 오류
+
+```bash
+# Python 버전 확인
+python --version
+
+# Python 3.11+ 아니면 설치
+# macOS: brew install python@3.13
+# Ubuntu: sudo apt install python3.13
+# Windows: python.org에서 다운로드
+```
+
+### Permission 오류
+
+```bash
+# Linux/macOS
+sudo uv tool install moai-adk
+
+# 또는 사용자 디렉토리에 설치
+uv tool install --user moai-adk
+```
+
+## 다음 단계
+
+- [빠른 시작](/ko/getting-started/quick-start) - 5분 안에 시작하기
+- [첫 프로젝트](/ko/getting-started/first-project) - 첫 번째 SPEC 작성하기

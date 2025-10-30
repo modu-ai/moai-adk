@@ -2,7 +2,7 @@
 title: shadcn/ui Component Patterns
 description: Master shadcn/ui component customization, accessibility, and Radix UI integration patterns
 freedom_level: high
-tier: domain
+tier: design
 updated: 2025-10-31
 ---
 

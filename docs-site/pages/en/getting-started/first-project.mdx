@@ -1,0 +1,75 @@
+---
+title: First Project
+description: Learn MoAI-ADK with TODO app
+---
+
+# First Project: TODO App
+
+## Create Project
+
+```bash
+moai-adk init todo-app
+cd todo-app
+claude
+```
+
+## Step 1: Initialize Project
+
+```
+/alfred:0-project
+```
+
+- Name: todo-app
+- Goal: TODO management app
+- Language: python
+
+## Step 2: Write SPEC
+
+```
+/alfred:1-plan "add TODO item feature"
+```
+
+Alfred generates SPEC:
+
+```markdown
+## @SPEC:TODO-ADD-001
+
+WHEN user adds a TODO item,
+THE SYSTEM SHALL save the item and return an ID.
+```
+
+## Step 3: TDD Implementation
+
+```
+/alfred:2-run SPEC-TODO-ADD-001
+```
+
+Alfred generates:
+- `tests/test_todo.py` (tests)
+- `src/todo.py` (implementation)
+- 85%+ coverage
+
+## Step 4: Sync Documentation
+
+```
+/alfred:3-sync
+```
+
+Updated docs:
+- README.md
+- CHANGELOG.md
+
+## Add More Features
+
+Add more SPECs:
+```
+/alfred:1-plan "mark TODO item as complete feature"
+/alfred:2-run SPEC-TODO-COMPLETE-001
+/alfred:3-sync
+```
+
+## Key Learnings
+
+- SPEC → TEST → CODE order
+- Traceability with @TAG
+- Auto documentation sync

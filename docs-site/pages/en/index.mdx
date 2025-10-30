@@ -1,0 +1,117 @@
+---
+title: MoAI-ADK - AI-Powered SPEC-First TDD Development Framework
+description: Systematic AI development workflow with Alfred SuperAgent
+---
+
+# MoAI-ADK (Agentic Development Kit)
+
+> **MoAI-ADK delivers a seamless development workflow that naturally connects SPEC → TEST (TDD) → CODE → DOCUMENTATION with AI.**
+
+## What is MoAI-ADK?
+
+### The Trust Crisis in AI Development
+
+Today, countless developers want help from Claude or ChatGPT, but can't shake one fundamental doubt: **"Can I really trust the code this AI generates?"**
+
+The reality looks like this. Ask an AI to "build a login feature" and you'll get syntactically perfect code. But these problems keep repeating:
+
+- **Unclear Requirements**: The basic question "What exactly should we build?" remains unanswered. Email/password login? OAuth? 2FA? Everything relies on guessing.
+- **Missing Tests**: Most AIs only test the "happy path". Wrong password? Network error? Three months later, bugs explode in production.
+- **Documentation Drift**: Code gets modified but docs stay the same. The question "Why is this code here?" keeps repeating.
+- **Context Loss**: Even within the same project, you have to explain everything from scratch each time. Project structure, decision rationale, previous attempts—nothing gets recorded.
+- **Impact Tracking Impossible**: When requirements change, you can't track which code is affected.
+
+### The Solution: SPEC-First TDD with Alfred SuperAgent
+
+**MoAI-ADK** (MoAI Agentic Development Kit) is an open-source framework designed to **systematically solve** these problems.
+
+The core principle is simple yet powerful:
+
+> **"No tests without code, no SPEC without tests"**
+
+More precisely, it's the reverse order:
+
+> **"SPEC comes first. No tests without SPEC. No complete documentation without tests and code."**
+
+When you follow this order, magical things happen.
+
+## MoAI-ADK's 3 Core Promises
+
+For beginners to remember easily, MoAI-ADK's value simplifies to three things:
+
+### First, SPEC comes before code
+
+Start by clearly defining what to build. Writing SPEC helps discover problems before implementation. Communication costs with teammates drop dramatically.
+
+### Second, tests drive code (TDD)
+
+Write tests before implementation (RED). Implement minimally to pass tests (GREEN). Then clean up the code (REFACTOR). Result: fewer bugs, confidence in refactoring, code anyone can understand.
+
+### Third, documentation and code always match
+
+One `/alfred:3-sync` command auto-updates all documentation. README, CHANGELOG, API docs, and Living Documents always sync with code. No more despair when modifying six-month-old code.
+
+## Quick Start
+
+### Installation
+
+```bash
+# Using uv (recommended)
+uv tool install moai-adk
+
+# Or using pip
+pip install moai-adk
+```
+
+### Your First Project
+
+```bash
+# Initialize project
+moai-adk init my-project
+
+# Start with Alfred
+cd my-project
+/alfred:0-project  # Project setup
+/alfred:1-plan     # Write SPEC
+/alfred:2-run      # TDD implementation
+/alfred:3-sync     # Sync documentation
+```
+
+## Key Features
+
+### 1️⃣ Clear Requirements
+
+Write SPECs first with the `/alfred:1-plan` command. A vague request like "login feature" transforms into **clear requirements** like "WHEN valid credentials are provided, the system SHALL issue a JWT token".
+
+### 2️⃣ Test Guarantee
+
+`/alfred:2-run` automatically performs Test-Driven Development (TDD). It proceeds in RED (failing test) → GREEN (minimal implementation) → REFACTOR (cleanup) order, **guaranteeing 85%+ test coverage**.
+
+### 3️⃣ Automatic Documentation Sync
+
+A single `/alfred:3-sync` command **synchronizes** all code, tests, and documentation. README, CHANGELOG, API docs, and Living Documents all update automatically.
+
+### 4️⃣ Tracking with @TAG System
+
+Every piece of code, test, and documentation gets a `@TAG:ID`. When requirements change later, one command—`rg "@SPEC:AUTH-001"`—**finds all related tests, implementations, and docs**.
+
+### 5️⃣ Alfred Remembers Context
+
+A team of AI agents collaborate to **remember** your project's structure, decision rationale, and work history. No need to repeat the same questions.
+
+## Next Steps
+
+- [Installation Guide](/en/getting-started/installation) - Detailed installation instructions
+- [Quick Start](/en/getting-started/quick-start) - Get started in 5 minutes
+- [Core Concepts](/en/concepts/spec-first-tdd) - Understand SPEC-First TDD
+- [Workflow](/en/workflow/overview) - Detailed 4-step workflow guide
+
+## Community
+
+- **GitHub**: [modu-ai/moai-adk](https://github.com/modu-ai/moai-adk)
+- **Documentation**: [adk.mo.ai.kr](https://adk.mo.ai.kr)
+- **Issues**: [GitHub Issues](https://github.com/modu-ai/moai-adk/issues)
+
+## License
+
+MIT License - Feel free to use and contribute!

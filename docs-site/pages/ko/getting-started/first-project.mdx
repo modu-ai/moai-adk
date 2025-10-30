@@ -1,0 +1,75 @@
+---
+title: 첫 프로젝트
+description: TODO 앱으로 MoAI-ADK 배우기
+---
+
+# 첫 프로젝트: TODO 앱
+
+## 프로젝트 생성
+
+```bash
+moai-adk init todo-app
+cd todo-app
+claude
+```
+
+## Step 1: 프로젝트 초기화
+
+```
+/alfred:0-project
+```
+
+- 이름: todo-app
+- 목표: TODO 관리 앱
+- 언어: python
+
+## Step 2: SPEC 작성
+
+```
+/alfred:1-plan "TODO 항목 추가 기능"
+```
+
+Alfred가 생성하는 SPEC:
+
+```markdown
+## @SPEC:TODO-ADD-001
+
+WHEN 사용자가 TODO 항목을 추가하면,
+THE SYSTEM SHALL 항목을 저장하고 ID를 반환해야 한다.
+```
+
+## Step 3: TDD 구현
+
+```
+/alfred:2-run SPEC-TODO-ADD-001
+```
+
+Alfred가 생성하는 파일:
+- `tests/test_todo.py` (테스트)
+- `src/todo.py` (구현)
+- 85%+ 커버리지
+
+## Step 4: 문서 동기화
+
+```
+/alfred:3-sync
+```
+
+업데이트되는 문서:
+- README.md
+- CHANGELOG.md
+
+## 다음 기능 추가
+
+추가 SPEC 작성:
+```
+/alfred:1-plan "TODO 항목 완료 표시 기능"
+/alfred:2-run SPEC-TODO-COMPLETE-001
+/alfred:3-sync
+```
+
+## 학습 포인트
+
+- SPEC → TEST → CODE 순서
+- @TAG로 추적성 확보
+- 자동 문서 동기화

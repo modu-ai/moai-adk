@@ -2,7 +2,7 @@
 title: Tailwind CSS 4 Features & Optimization
 description: Master Tailwind CSS 4 performance engine, CSS-first configuration, and modern CSS features
 freedom_level: high
-tier: domain
+tier: design
 updated: 2025-10-31
 ---
 

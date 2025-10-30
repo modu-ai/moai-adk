@@ -1,0 +1,116 @@
+---
+title: MoAI-ADK 아키텍처
+description: Commands, Sub-agents, Skills, Hooks 4-레이어 구조
+---
+
+# MoAI-ADK 아키텍처
+
+## 4-레이어 구조
+
+MoAI-ADK는 **Commands → Sub-agents → Skills → Hooks** 4개 레이어로 구성됩니다.
+
+```mermaid
+graph TB
+    A[Commands] --> B[Sub-agents]
+    B --> C[Skills]
+    C --> D[Hooks]
+
+    A1[/alfred:0-project<br/>/alfred:1-plan<br/>/alfred:2-run<br/>/alfred:3-sync] --> A
+    B1[spec-builder<br/>tdd-implementer<br/>doc-syncer<br/>git-manager] --> B
+    C1[Foundation: EARS, TRUST<br/>Essentials: TDD, Refactor<br/>Alfred: Context, Memory<br/>Domain: Python, TypeScript] --> C
+    D1[SessionStart<br/>PreToolUse<br/>PostToolUse] --> D
+```
+
+## Layer 1: Commands (워크플로우 오케스트레이션)
+
+사용자가 직접 호출하는 진입점입니다.
+
+### 주요 명령어
+
+- **`/alfred:0-project`**: 프로젝트 초기화
+- **`/alfred:1-plan`**: SPEC 작성
+- **`/alfred:2-run`**: TDD 구현
+- **`/alfred:3-sync`**: 문서 동기화
+
+### 특징
+
+- 여러 sub-agent 조율
+- 사용자 승인 관리
+- 진행 상황 추적
+
+## Layer 2: Sub-agents (추론 & 의사결정)
+
+작업별 전문가 에이전트들입니다.
+
+### 핵심 에이전트 (10개)
+
+1. **spec-builder**: SPEC 문서 작성
+2. **implementation-planner**: 구현 계획 수립
+3. **tdd-implementer**: TDD 사이클 실행
+4. **quality-gate**: 코드 품질 검증
+5. **doc-syncer**: 문서 동기화
+6. **tag-agent**: @TAG 체인 관리
+7. **git-manager**: Git 작업 수행
+8. **debug-helper**: 오류 디버깅
+9. **cc-manager**: Claude Code 관리
+10. **skill-factory**: Skills 동적 생성
+
+### 전문 에이전트 (6개)
+
+- 언어별 전문가 (Python, TypeScript, etc.)
+- 도메인별 전문가 (Backend, Frontend, etc.)
+
+### Built-in 에이전트 (2개)
+
+- **Plan Agent**: 작업 분석 및 계획
+- **Explore Agent**: 코드베이스 탐색
+
+## Layer 3: Skills (재사용 가능 지식)
+
+<500단어 플레이북들입니다.
+
+### 6개 Tier
+
+1. **Foundation** (8개): EARS, TRUST, TAG 등 핵심 원칙
+2. **Essentials** (12개): TDD, Refactor, Debug 등 필수 기술
+3. **Alfred** (10개): Context, Memory, Commands 등 Alfred 고유 기능
+4. **Domain** (10개): 특정 도메인 지식 (Backend, Frontend 등)
+5. **Language** (10개): 언어별 베스트 프랙티스
+6. **Ops** (5개): DevOps, CI/CD 등 운영 관련
+
+### 로딩 방식
+
+- **Progressive Disclosure**: 필요할 때만 로드
+- **명시적 호출**: `Skill("skill-name")` 형식
+- **컨텍스트 최적화**: 토큰 사용량 최소화
+
+## Layer 4: Hooks (가드레일 & JIT 컨텍스트)
+
+세션 이벤트에 자동 반응하는 가벼운 체크들입니다.
+
+### 주요 Hook
+
+- **SessionStart**: 프로젝트 요약 표시
+- **PreToolUse**: 파괴적 명령 차단
+- **PostToolUse**: 상태 카드 업데이트
+
+### 특징
+
+- <100ms 실행 시간
+- 안전성 보장
+- 컨텍스트 포인터 제공
+
+## 레이어 선택 가이드
+
+작업에 적합한 레이어를 선택하세요:
+
+1. **이벤트에 자동 실행?** → Hook
+2. **추론이나 대화 필요?** → Sub-agent
+3. **재사용 가능한 지식이나 정책?** → Skill
+4. **여러 단계나 승인 필요?** → Command
+
+## 다음 단계
+
+- [주요 개념](/ko/introduction/concepts) - SPEC, TDD, TAG 시스템
+- [워크플로우 개요](/ko/workflow/overview) - 4단계 워크플로우
+- [Skills 개요](/ko/skills/overview) - 55개 Skills 소개

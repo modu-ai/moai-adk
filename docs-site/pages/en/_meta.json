@@ -1,0 +1,13 @@
+{
+  "index": "Home",
+  "introduction": "Introduction",
+  "getting-started": "Getting Started",
+  "concepts": "Core Concepts",
+  "workflow": "Workflow",
+  "skills": "Skills",
+  "agents": "Sub-agents",
+  "cli": "CLI",
+  "config": "Configuration",
+  "api": "API Reference",
+  "misc": "Miscellaneous"
+}

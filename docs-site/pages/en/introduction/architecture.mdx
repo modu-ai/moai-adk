@@ -1,0 +1,116 @@
+---
+title: MoAI-ADK Architecture
+description: 4-layer structure - Commands, Sub-agents, Skills, Hooks
+---
+
+# MoAI-ADK Architecture
+
+## 4-Layer Structure
+
+MoAI-ADK consists of **Commands → Sub-agents → Skills → Hooks** 4 layers.
+
+```mermaid
+graph TB
+    A[Commands] --> B[Sub-agents]
+    B --> C[Skills]
+    C --> D[Hooks]
+
+    A1[/alfred:0-project<br/>/alfred:1-plan<br/>/alfred:2-run<br/>/alfred:3-sync] --> A
+    B1[spec-builder<br/>tdd-implementer<br/>doc-syncer<br/>git-manager] --> B
+    C1[Foundation: EARS, TRUST<br/>Essentials: TDD, Refactor<br/>Alfred: Context, Memory<br/>Domain: Python, TypeScript] --> C
+    D1[SessionStart<br/>PreToolUse<br/>PostToolUse] --> D
+```
+
+## Layer 1: Commands (Workflow Orchestration)
+
+Entry points directly invoked by users.
+
+### Main Commands
+
+- **`/alfred:0-project`**: Project initialization
+- **`/alfred:1-plan`**: SPEC writing
+- **`/alfred:2-run`**: TDD implementation
+- **`/alfred:3-sync`**: Documentation sync
+
+### Features
+
+- Coordinate multiple sub-agents
+- Manage user approvals
+- Track progress
+
+## Layer 2: Sub-agents (Reasoning & Decision Making)
+
+Task-focused specialist agents.
+
+### Core Agents (10)
+
+1. **spec-builder**: Write SPEC documents
+2. **implementation-planner**: Plan implementation
+3. **tdd-implementer**: Execute TDD cycles
+4. **quality-gate**: Verify code quality
+5. **doc-syncer**: Synchronize documentation
+6. **tag-agent**: Manage @TAG chains
+7. **git-manager**: Perform Git operations
+8. **debug-helper**: Debug errors
+9. **cc-manager**: Manage Claude Code
+10. **skill-factory**: Dynamically create Skills
+
+### Specialist Agents (6)
+
+- Language specialists (Python, TypeScript, etc.)
+- Domain specialists (Backend, Frontend, etc.)
+
+### Built-in Agents (2)
+
+- **Plan Agent**: Analyze and plan tasks
+- **Explore Agent**: Explore codebase
+
+## Layer 3: Skills (Reusable Knowledge)
+
+<500-word playbooks.
+
+### 6 Tiers
+
+1. **Foundation** (8): Core principles like EARS, TRUST, TAG
+2. **Essentials** (12): Essential skills like TDD, Refactor, Debug
+3. **Alfred** (10): Alfred-specific features like Context, Memory, Commands
+4. **Domain** (10): Domain-specific knowledge (Backend, Frontend, etc.)
+5. **Language** (10): Language-specific best practices
+6. **Ops** (5): Operations-related like DevOps, CI/CD
+
+### Loading Method
+
+- **Progressive Disclosure**: Load only when needed
+- **Explicit Call**: `Skill("skill-name")` format
+- **Context Optimization**: Minimize token usage
+
+## Layer 4: Hooks (Guardrails & JIT Context)
+
+Lightweight checks that automatically respond to session events.
+
+### Main Hooks
+
+- **SessionStart**: Display project summary
+- **PreToolUse**: Block destructive commands
+- **PostToolUse**: Update status cards
+
+### Features
+
+- <100ms execution time
+- Ensure safety
+- Provide context pointers
+
+## Layer Selection Guide
+
+Choose the appropriate layer for your task:
+
+1. **Auto-run on events?** → Hook
+2. **Need reasoning or conversation?** → Sub-agent
+3. **Reusable knowledge or policy?** → Skill
+4. **Multiple steps or approvals?** → Command
+
+## Next Steps
+
+- [Key Concepts](/en/introduction/concepts) - SPEC, TDD, TAG system
+- [Workflow Overview](/en/workflow/overview) - 4-step workflow
+- [Skills Overview](/en/skills/overview) - Introduction to 55 Skills

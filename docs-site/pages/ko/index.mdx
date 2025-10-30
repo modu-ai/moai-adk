@@ -1,0 +1,117 @@
+---
+title: MoAI-ADK - AI 기반 SPEC-First TDD 개발 프레임워크
+description: Alfred SuperAgent와 함께하는 체계적인 AI 개발 워크플로우
+---
+
+# MoAI-ADK (Agentic Development Kit)
+
+> **MoAI-ADK는 SPEC → TEST (TDD) → CODE → DOCUMENTATION을 AI로 자연스럽게 연결하는 완벽한 개발 워크플로우를 제공합니다.**
+
+## MoAI-ADK란?
+
+### AI 개발의 신뢰 위기
+
+오늘날 수많은 개발자들이 Claude나 ChatGPT의 도움을 받고 싶어 하지만, 근본적인 의구심을 떨쳐낼 수 없습니다: **"이 AI가 생성한 코드를 정말 믿어도 될까?"**
+
+현실은 이렇습니다. AI에게 "로그인 기능 만들어줘"라고 요청하면 문법적으로 완벽한 코드를 받습니다. 하지만 이런 문제가 반복됩니다:
+
+- **불명확한 요구사항**: "정확히 무엇을 만들어야 하는가?"라는 기본 질문이 해결되지 않습니다. 이메일/비밀번호 로그인? OAuth? 2FA? 모든 것이 추측에 의존합니다.
+- **테스트 부재**: 대부분의 AI는 "정상 경로"만 테스트합니다. 잘못된 비밀번호? 네트워크 오류? 3개월 후 프로덕션에서 버그가 터집니다.
+- **문서 불일치**: 코드는 수정되지만 문서는 그대로입니다. "왜 이 코드가 여기 있지?"라는 질문이 계속됩니다.
+- **컨텍스트 손실**: 같은 프로젝트 내에서도 매번 처음부터 설명해야 합니다. 프로젝트 구조, 결정 근거, 이전 시도—아무것도 기록되지 않습니다.
+- **영향 추적 불가**: 요구사항이 변경되면 어떤 코드가 영향을 받는지 추적할 수 없습니다.
+
+### 해결책: Alfred SuperAgent와 SPEC-First TDD
+
+**MoAI-ADK** (MoAI Agentic Development Kit)는 이러한 문제를 **체계적으로 해결**하기 위해 설계된 오픈소스 프레임워크입니다.
+
+핵심 원칙은 간단하면서도 강력합니다:
+
+> **"코드 없는 테스트 없음, 테스트 없는 SPEC 없음"**
+
+더 정확히는 역순입니다:
+
+> **"SPEC이 먼저입니다. SPEC 없는 테스트 없음. 테스트와 코드 없는 완전한 문서 없음."**
+
+이 순서를 따르면 마법 같은 일이 일어납니다:
+
+## MoAI-ADK의 3가지 핵심 약속
+
+초보자도 쉽게 기억할 수 있도록, MoAI-ADK의 가치는 세 가지로 단순화됩니다:
+
+### 첫째, 코드보다 SPEC이 먼저
+
+무엇을 만들지 명확히 정의하는 것부터 시작합니다. SPEC을 작성하면 구현 전에 문제를 발견할 수 있습니다. 팀원과의 커뮤니케이션 비용이 극적으로 줄어듭니다.
+
+### 둘째, 테스트가 코드를 주도합니다 (TDD)
+
+구현 전에 테스트를 작성합니다 (RED). 테스트를 통과하는 최소한의 구현을 합니다 (GREEN). 그 다음 코드를 정리합니다 (REFACTOR). 결과: 버그 감소, 리팩토링 자신감, 누구나 이해할 수 있는 코드.
+
+### 셋째, 문서와 코드가 항상 일치합니다
+
+`/alfred:3-sync` 명령 하나로 모든 문서가 자동 업데이트됩니다. README, CHANGELOG, API 문서, Living Documents 모두 코드와 동기화됩니다. 6개월 된 코드를 수정할 때 더 이상 절망하지 않습니다.
+
+## 빠른 시작
+
+### 설치
+
+```bash
+# uv 사용 (권장)
+uv tool install moai-adk
+
+# 또는 pip 사용
+pip install moai-adk
+```
+
+### 첫 번째 프로젝트
+
+```bash
+# 프로젝트 초기화
+moai-adk init my-project
+
+# Alfred와 함께 시작
+cd my-project
+/alfred:0-project  # 프로젝트 설정
+/alfred:1-plan     # SPEC 작성
+/alfred:2-run      # TDD 구현
+/alfred:3-sync     # 문서 동기화
+```
+
+## 핵심 기능
+
+### 1️⃣ 명확한 요구사항
+
+`/alfred:1-plan` 명령으로 SPEC을 먼저 작성합니다. "로그인 기능"이라는 모호한 요청이 **"유효한 자격 증명이 제공되면, 시스템은 JWT 토큰을 발급해야 한다"**와 같은 명확한 요구사항으로 변환됩니다.
+
+### 2️⃣ 테스트 보증
+
+`/alfred:2-run`은 자동으로 Test-Driven Development (TDD)를 수행합니다. RED (실패 테스트) → GREEN (최소 구현) → REFACTOR (정리) 순서로 진행하여 **85%+ 테스트 커버리지를 보장**합니다.
+
+### 3️⃣ 자동 문서 동기화
+
+`/alfred:3-sync` 명령 하나로 모든 코드, 테스트, 문서가 **동기화**됩니다. README, CHANGELOG, API 문서, Living Documents 모두 자동으로 업데이트됩니다.
+
+### 4️⃣ @TAG 시스템으로 추적
+
+모든 코드, 테스트, 문서에 `@TAG:ID`가 부여됩니다. 요구사항이 나중에 변경되면 `rg "@SPEC:AUTH-001"` 명령 하나로 **관련된 모든 테스트, 구현, 문서를 찾을 수 있습니다**.
+
+### 5️⃣ Alfred가 컨텍스트를 기억합니다
+
+AI 에이전트 팀이 협력하여 프로젝트 구조, 결정 근거, 작업 이력을 **기억**합니다. 같은 질문을 반복할 필요가 없습니다.
+
+## 다음 단계
+
+- [설치 가이드](/ko/getting-started/installation) - 자세한 설치 방법
+- [빠른 시작](/ko/getting-started/quick-start) - 5분 안에 시작하기
+- [핵심 개념](/ko/concepts/spec-first-tdd) - SPEC-First TDD 이해하기
+- [워크플로우](/ko/workflow/overview) - 4단계 워크플로우 상세 가이드
+
+## 커뮤니티
+
+- **GitHub**: [modu-ai/moai-adk](https://github.com/modu-ai/moai-adk)
+- **Documentation**: [adk.mo.ai.kr](https://adk.mo.ai.kr)
+- **Issues**: [GitHub Issues](https://github.com/modu-ai/moai-adk/issues)
+
+## 라이선스
+
+MIT License - 자유롭게 사용하고 기여하세요!

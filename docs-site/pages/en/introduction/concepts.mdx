@@ -1,0 +1,115 @@
+---
+title: MoAI-ADK Key Concepts
+description: Core concepts - SPEC-First, TDD, @TAG system
+---
+
+# MoAI-ADK Key Concepts
+
+## 1. SPEC-First Development
+
+All development starts with clear requirement definitions.
+
+### EARS Syntax
+
+**E**asy **A**pproach to **R**equirements **S**yntax
+
+```
+WHEN [condition]
+WHILE [state]
+WHERE [constraint]
+THE SYSTEM SHALL [action]
+```
+
+### Example
+
+```markdown
+WHEN valid email and password are provided,
+THE SYSTEM SHALL issue a JWT token.
+
+WHERE email format is invalid,
+THE SYSTEM SHALL return a 400 error.
+```
+
+## 2. Test-Driven Development (TDD)
+
+Follows the RED-GREEN-REFACTOR cycle.
+
+### RED Phase
+- Write failing test
+- Express requirements as test code
+
+### GREEN Phase
+- Minimal implementation to pass test
+- Follow YAGNI principle
+
+### REFACTOR Phase
+- Improve code quality
+- Improve structure without changing functionality
+
+## 3. @TAG System
+
+Connects all SPEC, TEST, CODE, DOC.
+
+### TAG Format
+
+```
+@SPEC:AUTH-001    # SPEC requirement
+@TEST:AUTH-001    # Test code
+@CODE:AUTH-001    # Implementation code
+@DOC:AUTH-001     # Documentation
+```
+
+### Traceability
+
+```bash
+# Find all code related to specific SPEC
+rg "@SPEC:AUTH-001"
+
+# Result
+# src/auth.py:15:    # @CODE:AUTH-001
+# tests/test_auth.py:8:    # @TEST:AUTH-001
+# docs/api.md:42:    <!-- @DOC:AUTH-001 -->
+```
+
+## 4. Alfred SuperAgent
+
+Team of 19 AI agents collaborating.
+
+### Core Agents
+
+- **spec-builder**: Write SPEC
+- **tdd-implementer**: TDD implementation
+- **doc-syncer**: Documentation sync
+- **git-manager**: Git operations
+
+### Skills System
+
+55 reusable knowledge capsules:
+- Foundation: EARS, TRUST, TAG
+- Essentials: TDD, Refactor, Debug
+- Alfred: Commands, Context, Memory
+
+## 5. TRUST 5 Principles
+
+Code quality standards.
+
+### T - Test First
+Write tests first.
+
+### R - Readable
+Write readable code.
+
+### U - Unified
+Maintain unified coding style.
+
+### S - Secured
+Consider security.
+
+### T - Trackable
+Make traceable with @TAG.
+
+## Next Steps
+
+- [Getting Started](/en/getting-started/installation) - Install MoAI-ADK
+- [SPEC-First TDD](/en/concepts/spec-first-tdd) - Detailed guide
+- [TAG System](/en/concepts/tag-system) - TAG usage

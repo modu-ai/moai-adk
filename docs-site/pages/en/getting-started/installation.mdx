@@ -1,0 +1,140 @@
+---
+title: MoAI-ADK Installation
+description: Installation and environment setup guide for MoAI-ADK
+---
+
+# MoAI-ADK Installation
+
+## Prerequisites
+
+### Required
+
+- **Python**: 3.11+ (3.13 recommended)
+- **uv**: 0.5.0+ (Python package manager)
+- **Claude Code**: Latest version
+
+### Optional
+
+- **Git**: 2.30+
+- **VS Code**: For Claude Code integration
+
+## Installation Methods
+
+### Option 1: Using uv (Recommended)
+
+```bash
+# Step 1: Install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Step 2: Install MoAI-ADK
+uv tool install moai-adk
+
+# Step 3: Verify installation
+moai-adk --version
+# Output: MoAI-ADK v0.9.0
+```
+
+### Option 2: Using pip
+
+```bash
+# Step 1: Install with pip
+pip install moai-adk
+
+# Step 2: Verify installation
+moai-adk --version
+```
+
+### Option 3: From Source
+
+```bash
+# Step 1: Clone repository
+git clone https://github.com/modu-ai/moai-adk.git
+cd moai-adk
+
+# Step 2: Install in dev mode
+uv pip install -e .
+
+# Step 3: Verify installation
+moai-adk --version
+```
+
+## Environment Check
+
+```bash
+# Check system status
+moai-adk doctor
+```
+
+### Expected Output
+
+```
+✅ Python 3.13.0
+✅ uv 0.5.1
+✅ Claude Code detected
+✅ Git 2.43.0
+✅ All dependencies satisfied
+```
+
+## Claude Code Setup
+
+### Step 1: Install Claude Code
+
+Download the latest version from [Claude Code Download](https://claude.ai/code).
+
+### Step 2: Initialize Project
+
+```bash
+# Create new project
+moai-adk init my-project
+cd my-project
+
+# Run Claude Code
+claude
+```
+
+### Step 3: Start Alfred
+
+In Claude Code:
+
+```
+/alfred:0-project
+```
+
+## Troubleshooting
+
+### uv Installation Fails
+
+```bash
+# macOS/Linux
+export PATH="$HOME/.cargo/bin:$PATH"
+
+# Windows
+# Add %USERPROFILE%\.cargo\bin to environment variables
+```
+
+### Python Version Error
+
+```bash
+# Check Python version
+python --version
+
+# If not Python 3.11+, install
+# macOS: brew install python@3.13
+# Ubuntu: sudo apt install python3.13
+# Windows: Download from python.org
+```
+
+### Permission Error
+
+```bash
+# Linux/macOS
+sudo uv tool install moai-adk
+
+# Or install to user directory
+uv tool install --user moai-adk
+```
+
+## Next Steps
+
+- [Quick Start](/en/getting-started/quick-start) - Get started in 5 minutes
+- [First Project](/en/getting-started/first-project) - Write your first SPEC

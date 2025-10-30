@@ -1,0 +1,81 @@
+---
+title: Quick Start
+description: Get started with MoAI-ADK in 5 minutes
+---
+
+# Quick Start
+
+## Get Started in 5 Minutes
+
+### Step 1: Installation (1 min)
+
+```bash
+uv tool install moai-adk
+moai-adk --version
+```
+
+### Step 2: Create Project (1 min)
+
+```bash
+moai-adk init hello-world
+cd hello-world
+```
+
+### Step 3: Start Alfred (3 min)
+
+```bash
+claude
+```
+
+In Claude Code:
+
+```
+/alfred:0-project
+```
+
+Alfred will ask:
+
+1. **Project name?** → hello-world
+2. **Project goal?** → Learning MoAI-ADK
+3. **Main language?** → python
+4. **Mode?** → personal
+
+## Implement Your First Feature
+
+### Step 1: Write SPEC
+
+```
+/alfred:1-plan "user authentication feature"
+```
+
+Alfred creates SPEC:
+- `.moai/specs/SPEC-AUTH-001/spec.md`
+- Clear EARS requirements
+- @TAG chain generated
+
+### Step 2: TDD Implementation
+
+```
+/alfred:2-run SPEC-AUTH-001
+```
+
+Alfred automatically:
+1. **RED**: Write tests
+2. **GREEN**: Implement
+3. **REFACTOR**: Improve code
+
+### Step 3: Sync Documentation
+
+```
+/alfred:3-sync
+```
+
+Alfred updates:
+- README.md
+- CHANGELOG.md
+- API documentation
+
+## Next Steps
+
+- [First Project](/en/getting-started/first-project) - Detailed tutorial
+- [Workflow](/en/workflow/overview) - 4-step workflow
