@@ -228,9 +228,9 @@ def test_get_package_version_includes_release_url(tmp_path: Path, project_module
     When: get_package_version_info() is called
     Then: Should include release_notes_url in result dict
     """
-    from unittest.mock import patch, MagicMock
-    import json
     import io
+    import json
+    from unittest.mock import MagicMock, patch
 
     # Mock PyPI response with release notes URL
     pypi_data = {
@@ -265,9 +265,9 @@ def test_get_package_version_includes_major_flag(tmp_path: Path, project_module)
     When: get_package_version_info() is called
     Then: Should include is_major_update: True
     """
-    from unittest.mock import patch, MagicMock
-    import json
     import io
+    import json
+    from unittest.mock import MagicMock, patch
 
     # Mock current version as 0.8.1
     with patch('importlib.metadata.version', return_value='0.8.1'):

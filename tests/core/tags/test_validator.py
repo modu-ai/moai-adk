@@ -11,24 +11,24 @@ This module tests the unified CentralValidator that:
 Following TDD RED-GREEN-REFACTOR cycle.
 """
 
-import tempfile
 import json
-from pathlib import Path
+import tempfile
 from datetime import datetime
-from typing import List
+from pathlib import Path
+
 import pytest
 
 # Import will fail initially (RED phase) - that's expected
 try:
     from moai_adk.core.tags.validator import (
-        ValidationConfig,
-        TagValidator,
-        DuplicateValidator,
-        OrphanValidator,
-        ChainValidator,
-        FormatValidator,
-        CentralValidator,
         CentralValidationResult,
+        CentralValidator,
+        ChainValidator,
+        DuplicateValidator,
+        FormatValidator,
+        OrphanValidator,
+        TagValidator,
+        ValidationConfig,
         ValidationIssue,
         ValidationStatistics,
     )

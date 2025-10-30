@@ -9,12 +9,12 @@ This module tests configuration-based version checking with:
 @TEST:CONFIG-001-01 to @TEST:CONFIG-001-08
 """
 import importlib.util
+import io
 import json
 import sys
 import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-import io
 
 import pytest
 
