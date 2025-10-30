@@ -11,9 +11,8 @@ Output: additionalContext with document path suggestions
 
 import json
 import sys
-from pathlib import
+from pathlib import Path
 from utils.timeout import CrossPlatformTimeout, TimeoutError as PlatformTimeoutError
- Path
 from typing import Any
 
 # Setup import path for shared modules
@@ -23,9 +22,6 @@ if str(SHARED_DIR) not in sys.path:
     sys.path.insert(0, str(SHARED_DIR))
 
 from handlers import handle_user_prompt_submit
-
-
-    pass
 
 
 

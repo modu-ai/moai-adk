@@ -147,8 +147,8 @@ jobs:
           echo "=== Checking for existing issue ==="
           echo "Searching for existing GitHub issue with SPEC-$spec_id..."
 
-          # Search for existing issue with the SPEC ID in the title
-          # Use label filter for efficiency, then search in title
+          # PRIMARY: Search with label filter (efficient)
+          echo "  Attempt 1: Searching with 'spec' label filter..."
           existing_issue=$(gh issue list \
             --label "spec" \
             --state all \
@@ -156,6 +156,23 @@ jobs:
             --json number,title,state \
             --jq '.[] | select(.title | contains("[SPEC-'$spec_id']")) | .number' \
             2>/dev/null | head -1)
+
+          # FALLBACK: Search without label filter (in case labels missing)
+          if [ -z "$existing_issue" ]; then
+            echo "  Attempt 2: Searching WITHOUT label filter (fallback for missing labels)..."
+            existing_issue=$(gh issue list \
+              --state all \
+              --search "[SPEC-$spec_id]" \
+              --json number,title,state,labels \
+              --jq '.[] | select(.title | contains("[SPEC-'$spec_id']")) | .number' \
+              2>/dev/null | head -1)
+
+            if [ -n "$existing_issue" ]; then
+              echo "  ⚠️  Found issue without 'spec' label, adding labels..."
+              # Add missing labels to existing issue
+              gh issue edit "$existing_issue" --add-label "spec,planning" 2>/dev/null || true
+            fi
+          fi
 
           if [ -n "$existing_issue" ]; then
             echo "✅ Found existing issue: #$existing_issue"
@@ -211,14 +228,17 @@ jobs:
           if [ "$issue_exists" = "true" ]; then
             echo "📝 Updating existing issue #$existing_issue..."
             echo "  Title: [SPEC-$spec_id] $spec_title (v$spec_version)"
+            echo "  Labels: spec, planning, $spec_priority"
 
-            # Update existing issue with new content
+            # Update existing issue with new content and ensure proper labels
             gh issue edit "$existing_issue" \
               --title "[SPEC-$spec_id] $spec_title (v$spec_version)" \
-              --body-file /tmp/issue_body.txt
+              --body-file /tmp/issue_body.txt \
+              --add-label "spec,planning,$spec_priority" \
+              --state open
 
             issue_num=$existing_issue
-            echo "✅ Updated issue #$issue_num"
+            echo "✅ Updated issue #$issue_num with latest SPEC version"
           else
             echo "📋 Creating new GitHub Issue..."
             echo "  Title: [SPEC-$spec_id] $spec_title (v$spec_version)"
@@ -249,6 +269,49 @@ jobs:
           fi
 
           echo "issue_number=$issue_num" >> $GITHUB_OUTPUT
+
+      - name: Validate SPEC issue labels
+        if: steps.create-issue.outputs.issue_number
+        id: validate-labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          issue_num="${{ steps.create-issue.outputs.issue_number }}"
+          spec_priority="${{ steps.spec.outputs.spec_priority }}"
+
+          echo "🔍 Validating SPEC issue #$issue_num labels..."
+
+          # Get current labels
+          current_labels=$(gh issue view $issue_num --json labels --jq '.labels[].name' | tr '\n' ',' | sed 's/,$//')
+          echo "Current labels: $current_labels"
+
+          # Check for mandatory labels
+          needs_update=false
+
+          if [[ ! "$current_labels" =~ "spec" ]]; then
+            echo "⚠️  Missing 'spec' label, adding..."
+            gh issue edit $issue_num --add-label "spec"
+            needs_update=true
+          fi
+
+          if [[ ! "$current_labels" =~ "planning" ]]; then
+            echo "⚠️  Missing 'planning' label, adding..."
+            gh issue edit $issue_num --add-label "planning"
+            needs_update=true
+          fi
+
+          # Check for priority label
+          if [[ ! "$current_labels" =~ (critical|high|medium|low) ]]; then
+            echo "⚠️  No priority label found, adding '$spec_priority' as default"
+            gh issue edit $issue_num --add-label "$spec_priority"
+            needs_update=true
+          fi
+
+          if [ "$needs_update" = true ]; then
+            echo "✅ SPEC labels validated and corrected"
+          else
+            echo "✅ SPEC labels already valid"
+          fi
 
       - name: Add PR comment
         if: steps.create-issue.outputs.issue_number
