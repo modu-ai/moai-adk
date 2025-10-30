@@ -1,8 +1,6 @@
 {
   "permissions": {
     "allow": [
-      "Bash(for event in PreToolUse PostToolUse UserPromptSubmit SessionEnd)",
-      "Bash(do echo \"Testing $event...\" echo '{\"\"\"\"cwd\"\"\"\": \"\"\"\".\"\"\"\", \"\"\"\"toolName\"\"\"\": \"\"\"\"Read\"\"\"\", \"\"\"\"userPrompt\"\"\"\": \"\"\"\"test\"\"\"\"}')",
       "Read(//private/tmp/**)",
       "Bash(test:*)",
       "Bash(deactivate)",
@@ -27,6 +25,5 @@
     ],
     "deny": [],
     "ask": []
-  },
-  "outputStyle": "Agentic Coding"
+  }
 }
