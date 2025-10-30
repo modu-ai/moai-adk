@@ -10,17 +10,16 @@ Tests platform-specific timeout handling:
 @TEST:TIMEOUT-003 - Timeout cancellation
 """
 
-import sys
 import signal
+import sys
 import threading
 import time
-from contextlib import contextmanager
-from unittest import mock
-import pytest
 
 # Import the module to test
-import sys
 from pathlib import Path
+from unittest import mock
+
+import pytest
 
 # Add templates path to sys.path for imports
 templates_path = Path(__file__).parent.parent.parent / "src" / "moai_adk" / "templates" / ".claude" / "hooks" / "alfred"

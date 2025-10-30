@@ -13,13 +13,13 @@ Following TDD RED-GREEN-REFACTOR cycle.
 
 import tempfile
 from pathlib import Path
-from typing import List
+
 import pytest
 
 from moai_adk.core.tags.pre_commit_validator import (
     PreCommitValidator,
-    ValidationResult,
     ValidationError,
+    ValidationResult,
     ValidationWarning,
 )
 

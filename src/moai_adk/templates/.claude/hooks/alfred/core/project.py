@@ -5,10 +5,11 @@ Project information inquiry (language, Git, SPEC progress, etc.)
 """
 
 import json
-import signal
 import socket
 import subprocess
 from contextlib import contextmanager
+
+from .timeout import CrossPlatformTimeout, TimeoutError as PlatformTimeoutError
 from pathlib import Path
 from typing import Any
 
@@ -97,7 +98,7 @@ def timeout_handler(seconds: int):
     try:
         yield
     finally:
-        signal.alarm(0)  # Disable alarm
+        timeout.cancel()  # Disable alarm
         signal.signal(signal.SIGALRM, old_handler)
 
 

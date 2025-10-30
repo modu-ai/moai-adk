@@ -53,9 +53,10 @@ Setup sys.path for package imports
 """
 
 import json
-import signal
 import sys
-from pathlib import Path
+from pathlib import
+from utils.timeout import CrossPlatformTimeout, TimeoutError as PlatformTimeoutError
+ Path
 from typing import Any
 
 from core import HookResult
@@ -75,9 +76,6 @@ HOOKS_DIR = Path(__file__).parent
 if str(HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(HOOKS_DIR))
 
-
-class HookTimeoutError(Exception):
-    """Hook execution timeout exception"""
 
     pass
 
@@ -191,7 +189,7 @@ def main() -> None:
             print(f"Unexpected error: {e}", file=sys.stderr)
             sys.exit(1)
 
-    except HookTimeoutError:
+    except PlatformTimeoutError:
         # CRITICAL: Hook took too long - return minimal valid response to prevent Claude Code freeze
         timeout_response: dict[str, Any] = {
             "continue": True,
@@ -203,7 +201,7 @@ def main() -> None:
 
     finally:
         # Always cancel the alarm to prevent signal leakage
-        signal.alarm(0)
+        timeout.cancel()
 
 
 if __name__ == "__main__":
