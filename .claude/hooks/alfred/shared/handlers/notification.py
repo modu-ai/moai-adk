@@ -2,11 +2,12 @@
 """Notification and control handlers
 
 Notification, Stop, SubagentStop event handling
-@CODE:HOOKS-DUPLICATE-DETECTION-001 | SPEC: SPEC-HOOKS-DUPLICATE-DETECTION-001
 """
 
 import json
 from datetime import datetime, timedelta
+
+from utils.timeout import CrossPlatformTimeout, TimeoutError as PlatformTimeoutError
 from pathlib import Path
 
 from core import HookPayload, HookResult
