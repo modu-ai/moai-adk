@@ -1,34 +1,25 @@
 // @CODE:NEXTRA-CONFIG-001 - Nextra 4.0 configuration for Next.js 14
+// @CODE:NEXTRA-I18N-012 - next-intl plugin integration
 /**
  * Next.js Configuration for MoAI-ADK Documentation Site
  *
- * This configuration integrates Nextra 4.0 documentation theme with Next.js 14.
+ * This configuration integrates:
+ * - Nextra 4.0 documentation theme with Next.js 14 (Pages Router)
+ * - next-intl for multilingual support (Korean/English)
  *
  * Key Features:
  * - Static Site Generation (SSG) with output: 'export'
- * - Nextra theme with built-in search and code highlighting
- * - LaTeX support for mathematical expressions
+ * - Nextra theme configuration in theme.config.tsx
+ * - Internationalization (i18n) with next-intl
  * - Optimized for Vercel deployment
  */
 
-const withNextra = require('nextra')({
-  // Nextra theme configuration
-  theme: 'nextra-theme-docs',
-  themeConfig: './theme.config.tsx',
+const withNextIntl = require('next-intl/plugin')(
+  // Path to request configuration (message loader)
+  './i18n/request.ts'
+);
 
-  // Enable LaTeX support for mathematical expressions
-  latex: true,
-
-  // Enable search in code blocks
-  search: {
-    codeblocks: true
-  },
-
-  // Show copy button on code blocks by default
-  defaultShowCopyCode: true
-});
-
-module.exports = withNextra({
+module.exports = withNextIntl({
   // Enable React strict mode for better development experience
   reactStrictMode: true,
 

@@ -1,7 +1,9 @@
 // @CODE:NEXTRA-THEME-001 - Nextra theme configuration
-import { DocsThemeConfig } from 'nextra-theme-docs';
+// @CODE:NEXTRA-I18N-010 - Language switcher integration
+import React from 'react';
+import LanguageSwitcher from './components/LanguageSwitcher';
 
-const config: DocsThemeConfig = {
+const config = {
   logo: <span>MoAI-ADK Documentation</span>,
   project: {
     link: 'https://github.com/GoosLab/moai-adk'
@@ -14,6 +16,9 @@ const config: DocsThemeConfig = {
     return {
       titleTemplate: '%s – MoAI-ADK'
     };
+  },
+  navbar: {
+    extraContent: () => <LanguageSwitcher />
   }
 };
 
