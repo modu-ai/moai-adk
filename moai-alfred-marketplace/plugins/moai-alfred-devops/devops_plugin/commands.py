@@ -6,7 +6,7 @@ DevOps Plugin Commands - Docker, CI/CD, Kubernetes setup implementations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 import yaml
 from datetime import datetime
 
@@ -16,7 +16,7 @@ from datetime import datetime
 class CommandResult:
     """Result object for command execution"""
     success: bool
-    config_dir: Path
+    config_dir: Optional[Path]
     files_created: List[str]
     message: str
     error: Optional[str] = None
@@ -211,7 +211,7 @@ class SetupCICommand:
         github_dir = project_dir / ".github" / "workflows"
         github_dir.mkdir(parents=True, exist_ok=True)
 
-        workflow = {
+        workflow: Dict[str, Any] = {
             "name": "CI",
             "on": {
                 "push": {"branches": ["main", "develop"]},
@@ -230,7 +230,9 @@ class SetupCICommand:
         }
 
         if include_tests:
-            workflow["jobs"]["build"]["steps"].append({"run": "pytest"})
+            steps = workflow["jobs"]["build"]["steps"]
+            assert isinstance(steps, list)
+            steps.append({"run": "pytest"})
 
         workflow_file = github_dir / "ci.yml"
         with open(workflow_file, "w") as f:

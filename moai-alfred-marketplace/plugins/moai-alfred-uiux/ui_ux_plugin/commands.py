@@ -16,7 +16,7 @@ from datetime import datetime
 class CommandResult:
     """Result object for command execution"""
     success: bool
-    config_dir: Path
+    config_dir: Optional[Path]
     files_created: List[str]
     message: str
     error: Optional[str] = None
