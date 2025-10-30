@@ -15,17 +15,16 @@ Following TDD RED-GREEN-REFACTOR cycle.
 import json
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Any
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
+
 import pytest
 
 from moai_adk.core.tags.pre_commit_validator import (
     PreCommitValidator,
-    ValidationResult,
     ValidationError,
+    ValidationResult,
     ValidationWarning,
 )
-
 
 # Import will fail initially (RED phase) - that's expected
 try:

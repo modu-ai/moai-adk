@@ -10,9 +10,39 @@ on:
     branches: [main, develop, "feature/**"]
 
 jobs:
+  detect-language:
+    name: 🔍 Detect Project Language
+    runs-on: ubuntu-latest
+    outputs:
+      language: ${{ steps.detect.outputs.language }}
+      is-python: ${{ steps.detect.outputs.is-python }}
+      is-javascript: ${{ steps.detect.outputs.is-javascript }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Detect language
+        id: detect
+        run: |
+          if [ -f "pyproject.toml" ] || [ -f "setup.py" ] || [ -f "requirements.txt" ]; then
+            echo "language=python" >> $GITHUB_OUTPUT
+            echo "is-python=true" >> $GITHUB_OUTPUT
+            echo "is-javascript=false" >> $GITHUB_OUTPUT
+          elif [ -f "package.json" ]; then
+            echo "language=javascript" >> $GITHUB_OUTPUT
+            echo "is-python=false" >> $GITHUB_OUTPUT
+            echo "is-javascript=true" >> $GITHUB_OUTPUT
+          else
+            echo "language=unknown" >> $GITHUB_OUTPUT
+            echo "is-python=false" >> $GITHUB_OUTPUT
+            echo "is-javascript=false" >> $GITHUB_OUTPUT
+          fi
+
   validate-tags:
     name: 🏷️ Validate TAG Annotations
     runs-on: ubuntu-latest
+    needs: detect-language
 
     # Skip validation on draft PRs (allow WIP)
     if: github.event.pull_request.draft == false || github.event_name == 'push'
@@ -21,26 +51,41 @@ jobs:
       contents: read
       pull-requests: write
 
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+        node-version: ["18", "20"]
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Fetch all history for comprehensive validation
 
-      - name: Setup Python
+      - name: Setup Python (if Python project)
+        if: needs.detect-language.outputs.is-python == 'true'
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: ${{ matrix.python-version }}
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
+      - name: Setup Node.js (if JavaScript project)
+        if: needs.detect-language.outputs.is-javascript == 'true'
+        uses: actions/setup-node@v4
         with:
-          version: "latest"
+          node-version: ${{ matrix.node-version }}
 
-      - name: Install dependencies
+      - name: Install dependencies (Python)
+        if: needs.detect-language.outputs.is-python == 'true'
         run: |
-          uv pip install --system -e .
-          uv pip install --system requests
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install requests
+
+      - name: Install dependencies (JavaScript)
+        if: needs.detect-language.outputs.is-javascript == 'true'
+        run: |
+          npm ci
+          npm install requests 2>/dev/null || true
 
       - name: Get PR number
         id: pr

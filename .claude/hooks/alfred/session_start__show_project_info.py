@@ -10,9 +10,10 @@ Output: System message with formatted project summary
 """
 
 import json
-import signal
 import sys
-from pathlib import Path
+from pathlib import
+from utils.timeout import CrossPlatformTimeout, TimeoutError as PlatformTimeoutError
+ Path
 from typing import Any
 
 # Setup import path for shared modules
@@ -24,14 +25,6 @@ if str(SHARED_DIR) not in sys.path:
 from handlers import handle_session_start
 
 
-class HookTimeoutError(Exception):
-    """Hook execution timeout exception"""
-    pass
-
-
-def _timeout_handler(signum, frame):
-    """Signal handler for 5-second timeout"""
-    raise HookTimeoutError("Hook execution exceeded 5-second timeout")
 
 
 def main() -> None:
@@ -48,8 +41,8 @@ def main() -> None:
         1: Error (timeout, JSON parse failure, handler exception)
     """
     # Set 5-second timeout
-    signal.signal(signal.SIGALRM, _timeout_handler)
-    signal.alarm(5)
+    timeout = CrossPlatformTimeout(5)
+timeout.start()
 
     try:
         # Read JSON payload from stdin
@@ -63,7 +56,7 @@ def main() -> None:
         print(json.dumps(result.to_dict()))
         sys.exit(0)
 
-    except HookTimeoutError:
+    except PlatformTimeoutError:
         # Timeout - return minimal valid response
         timeout_response: dict[str, Any] = {
             "continue": True,
@@ -95,7 +88,7 @@ def main() -> None:
 
     finally:
         # Always cancel alarm
-        signal.alarm(0)
+        timeout.cancel()
 
 
 if __name__ == "__main__":

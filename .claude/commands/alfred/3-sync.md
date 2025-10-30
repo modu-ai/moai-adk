@@ -23,6 +23,8 @@ allowed-tools:
 
 # 📚 MoAI-ADK Step 3: Document Synchronization (+Optional PR Ready)
 > **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
+>
+> **Batched Design**: All AskUserQuestion calls follow batched design principles (1-4 questions per call) to minimize user interaction turns. See CLAUDE.md section "Alfred Command Completion Pattern" for details.
 
 <!-- @CODE:ALF-WORKFLOW-001:CMD-SYNC -->
 
@@ -681,6 +683,56 @@ Report synchronization results in a structured format:
 **Load first**: `.moai/reports/sync-report-latest.md` (old sync state)
 
 **Recommendation**: Document synchronization is complete. Now that the entire MoAI-ADK cycle (1-spec → 2-build → 3-sync) has been completed, start a new conversation session with the `/clear` or `/new` command before developing the next feature.
+
+---
+
+## Final Step: Next Action Selection
+
+<!-- @CODE:SESSION-CLEANUP-001:CMD-3-SYNC -->
+
+After documentation synchronization completes, use AskUserQuestion tool to ask the user what to do next:
+
+```python
+AskUserQuestion(
+    questions=[
+        {
+            "question": "Documentation synchronization is complete. What would you like to do next?",
+            "header": "Next Steps",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "📋 Plan next feature",
+                    "description": "Run /alfred:1-plan to create SPEC for next feature"
+                },
+                {
+                    "label": "🔀 Merge PR",
+                    "description": "Merge current PR to main branch"
+                },
+                {
+                    "label": "✅ Complete session",
+                    "description": "Finish current work and close session"
+                }
+            ]
+        }
+    ]
+)
+```
+
+**Important Notes**:
+- **ALWAYS use AskUserQuestion** - Never suggest next steps in prose (e.g., "You can now run `/alfred:1-plan`...")
+- **Batched design** - Use single AskUserQuestion call with 1-4 questions (not sequential calls)
+- **Language support** - Question text should respect user's `conversation_language` setting
+- **Clear options** - Each option has emoji, label, and description for clarity
+
+**Prohibited Pattern**:
+```
+❌ "Sync complete! You can now run `/alfred:1-plan` for the next feature..."
+```
+
+**Correct Pattern**:
+```
+✅ Use AskUserQuestion tool with 3 clear options as shown above
+```
 
 ---
 
