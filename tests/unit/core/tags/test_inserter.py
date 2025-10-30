@@ -7,10 +7,10 @@ and error handling for file operations.
 @SPEC:DOC-TAG-001: @DOC tag automatic generation infrastructure
 """
 
-import pytest
 from pathlib import Path
-from unittest.mock import patch, mock_open, MagicMock
-from src.moai_adk.core.tags.inserter import insert_tag_to_markdown, format_tag_header
+from unittest.mock import patch
+
+from src.moai_adk.core.tags.inserter import format_tag_header, insert_tag_to_markdown
 
 
 def test_insert_tag_into_header():

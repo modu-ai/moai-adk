@@ -9,7 +9,7 @@ import socket
 import sys
 import time
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
@@ -111,8 +111,8 @@ def test_get_package_version_with_valid_cache(project_module, tmp_path):
     When: get_package_version_info() is called
     Then: Should return cached data without PyPI query
     """
-    from datetime import datetime, timezone
     import json
+    from datetime import datetime, timezone
 
     # Create cache directory and file
     cache_dir = tmp_path / ".moai" / "cache"
