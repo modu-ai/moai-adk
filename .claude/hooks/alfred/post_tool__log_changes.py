@@ -26,6 +26,8 @@ if str(SHARED_DIR) not in sys.path:
 from handlers import handle_post_tool_use
 
 
+    pass
+
 
 def main() -> None:
     """Main entry point for PostToolUse hook

@@ -25,6 +25,8 @@ if str(SHARED_DIR) not in sys.path:
 from handlers import handle_notification
 
 
+    pass
+
 
 def main() -> None:
     """Main entry point for Notification hook
