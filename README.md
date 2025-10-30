@@ -275,6 +275,32 @@ In this section you'll experience:
 
 ---
 
+## Language Support
+
+MoAI-ADK automatically detects and supports **20 programming languages** with dedicated CI/CD workflows for:
+- **Python** (pytest, mypy, ruff, 85% coverage target)
+- **JavaScript** (npm/yarn/pnpm/bun auto-detect, 80% coverage target)
+- **TypeScript** (tsc type checking, biome/eslint, 85% coverage target)
+- **Go** (golangci-lint, gofmt, 75% coverage target)
+
+### How Language Detection Works
+
+When you run `/alfred:2-run SPEC-XXX`, MoAI-ADK automatically:
+1. Scans your project for configuration files (package.json, pyproject.toml, go.mod, etc.)
+2. Detects your project's primary language
+3. Selects the appropriate CI/CD workflow template
+4. Generates language-specific testing and linting configuration
+
+### Supported Languages
+
+Full list of 20 supported languages: See [Language Detection Guide](.moai/docs/language-detection-guide.md)
+
+### Customization
+
+For advanced workflow customization, see [Workflow Templates Guide](.moai/docs/workflow-templates.md)
+
+---
+
 ## Earlier Detailed Guide (Optional Reading)
 
 Need more explanations? See detailed guides below.
