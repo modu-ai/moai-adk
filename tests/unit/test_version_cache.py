@@ -12,9 +12,10 @@ import importlib.util
 import json
 import sys
 import time
-import pytest
 from datetime import datetime, timedelta
 from pathlib import Path
+
+import pytest
 
 
 def _load_version_cache_module(module_name: str = "version_cache_module"):

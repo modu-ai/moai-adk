@@ -112,7 +112,7 @@ class CIValidator(PreCommitValidator):
             files_data = response.json()
             return [file_info['filename'] for file_info in files_data]
 
-        except requests.exceptions.Timeout as e:
+        except requests.exceptions.Timeout:
             # Network timeout - return empty list gracefully
             return []
         except requests.exceptions.HTTPError as e:
@@ -122,7 +122,7 @@ class CIValidator(PreCommitValidator):
                 return []
             # Other HTTP errors: log but continue
             return []
-        except requests.exceptions.RequestException as e:
+        except requests.exceptions.RequestException:
             # Network/connection errors
             return []
         finally:

@@ -12,8 +12,9 @@ Requirements:
 - REQ-SESSION-011: Commands MUST NOT complete without AskUserQuestion
 """
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 
 class TestCommandCompletionPatterns:

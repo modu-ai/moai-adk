@@ -7,10 +7,10 @@ and confidence scoring for TAG chain references.
 @SPEC:DOC-TAG-001: @DOC tag automatic generation infrastructure
 """
 
-import pytest
 from pathlib import Path
-from unittest.mock import patch, mock_open
-from src.moai_adk.core.tags.mapper import find_related_spec, calculate_confidence
+from unittest.mock import mock_open, patch
+
+from src.moai_adk.core.tags.mapper import calculate_confidence, find_related_spec
 
 
 def test_find_spec_by_domain_match():

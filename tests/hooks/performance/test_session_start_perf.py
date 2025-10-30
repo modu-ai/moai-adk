@@ -18,9 +18,6 @@ TDD History:
 import sys
 import time
 from pathlib import Path
-from typing import Callable
-
-import pytest
 
 # Setup sys.path for hook imports
 HOOKS_DIR = Path(__file__).parent.parent.parent.parent / ".claude" / "hooks" / "alfred"
