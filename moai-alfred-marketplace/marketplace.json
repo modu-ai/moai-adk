@@ -108,6 +108,7 @@
       "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-plugin-frontend",
       "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-plugin-frontend/README.md",
       "minClaudeCodeVersion": "1.0.0",
+      "agents": [],
       "commands": [
         {
           "name": "init-next",
@@ -117,6 +118,12 @@
           "name": "biome-setup",
           "description": "Configure Biome linter and formatter"
         }
+      ],
+      "skills": [
+        "moai-framework-nextjs-advanced",
+        "moai-framework-react-19",
+        "moai-design-shadcn-ui",
+        "moai-domain-frontend"
       ],
       "permissions": {
         "allowedTools": ["Read", "Write", "Edit", "Bash"],
@@ -138,6 +145,7 @@
       "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-plugin-backend",
       "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-plugin-backend/README.md",
       "minClaudeCodeVersion": "1.0.0",
+      "agents": [],
       "commands": [
         {
           "name": "init-fastapi",
@@ -151,6 +159,11 @@
           "name": "resource-crud",
           "description": "Generate CRUD endpoints from SPEC"
         }
+      ],
+      "skills": [
+        "moai-framework-fastapi-patterns",
+        "moai-domain-backend",
+        "moai-domain-database"
       ],
       "permissions": {
         "allowedTools": ["Read", "Write", "Edit", "Bash"],
@@ -345,6 +358,30 @@
       "id": "moai-domain-devops",
       "name": "DevOps Architecture",
       "tier": "domain",
+      "version": "1.0.0"
+    },
+    {
+      "id": "moai-domain-frontend",
+      "name": "Frontend Architecture",
+      "tier": "domain",
+      "version": "1.0.0"
+    },
+    {
+      "id": "moai-domain-backend",
+      "name": "Backend Architecture",
+      "tier": "domain",
+      "version": "1.0.0"
+    },
+    {
+      "id": "moai-domain-database",
+      "name": "Database Design",
+      "tier": "domain",
+      "version": "1.0.0"
+    },
+    {
+      "id": "moai-essentials-review",
+      "name": "Code Review & Quality",
+      "tier": "essentials",
       "version": "1.0.0"
     }
   ],
