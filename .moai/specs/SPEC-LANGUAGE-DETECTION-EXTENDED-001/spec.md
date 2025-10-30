@@ -2,10 +2,10 @@
 
 ---
 id: LANGUAGE-DETECTION-EXTENDED-001
-version: 0.0.1
-status: draft
+version: 1.0.0
+status: completed
 created: 2025-10-30
-updated: 2025-10-30
+updated: 2025-10-31
 author: @GoosLab
 priority: high
 category: feature
@@ -13,6 +13,14 @@ depends_on: LANGUAGE-DETECTION-001
 ---
 
 ## HISTORY
+
+### v1.0.0 (2025-10-31) - COMPLETED
+
+- **작성자**: @GoosLab
+- **변경사항**: SPEC 구현 완료 및 PR #135 병합
+- **설명**: 11개 언어 전담 CI/CD 워크플로우 지원 완료, LanguageDetector 클래스 확장, 34개 테스트 추가
+- **커밋**: PR #135 병합 (commit 449e7b42)
+- **상태**: 마스터 브랜치 병합 완료, 프로덕션 배포 준비됨
 
 ### v0.0.1 (2025-10-30) - INITIAL
 
