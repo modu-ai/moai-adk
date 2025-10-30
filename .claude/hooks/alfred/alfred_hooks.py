@@ -59,6 +59,8 @@ from utils.timeout import CrossPlatformTimeout, TimeoutError as PlatformTimeoutE
  Path
 from typing import Any
 
+from utils.timeout import CrossPlatformTimeout, TimeoutError as PlatformTimeoutError
+
 from core import HookResult
 from handlers import (
     handle_notification,

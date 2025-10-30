@@ -5,9 +5,11 @@ Tests workflow selection, error handling, and full integration scenarios
 for all supported languages.
 """
 
+from pathlib import Path
+
 import pytest
 import yaml
-from pathlib import Path
+
 from moai_adk.core.project.detector import LanguageDetector
 
 
