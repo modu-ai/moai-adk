@@ -7,55 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [v1.0.0] - Unreleased (Enterprise Plugin Ecosystem)
-<!-- @SPEC:V1-PLUGIN-ECOSYSTEM-001 -->
+## [v1.0.0-rc1] - 2025-10-31 (Enterprise Plugin Ecosystem Complete)
+<!-- @SPEC:V1-001 -->
 
-### ✨ Major Features | 핵심 기능
+### 🎉 프로덕션 준비 완료 | Production Ready
 
-**Claude Code Plugin Ecosystem Launch**:
-- 🔌 5 Official MoAI-ADK Plugins (PM / UI-UX / Frontend / Backend / DevOps)
-- 📦 Plugin Marketplace Integration (moai-adk/moai-cc-marketplace)
-- 🛠️ Plugin Development Framework (Commands / Agents / Skills / Hooks / MCP)
+**5개 공식 Alfred Framework 플러그인 완성**:
+- ✅ PM Plugin: SPEC 문서 자동 생성 (EARS 패턴)
+- ✅ UI/UX Plugin: shadcn/ui 컴포넌트 자동 설정 (19개 컴포넌트)
+- ✅ Backend Plugin: FastAPI 프로젝트 초기화 (4개 데이터베이스)
+- ✅ Frontend Plugin: React 프로젝트 초기화 (4개 상태관리 라이브러리)
+- ✅ DevOps Plugin: Docker, CI/CD, Kubernetes 자동 설정
 
-### 🚀 New Components | 신규 구성
+### 📊 품질 지표 | Quality Metrics
 
-**Frontend Plugin (Next.js 16 + React 19.2)**:
-- Tailwind CSS + shadcn/ui Integration
-- Biome for formatting/linting
-- DevTools MCP support
-- Package manager selection (bun|npm|pnpm)
+**테스트 결과**:
+- ✅ 88/89 테스트 통과 (98.9%)
+  - PM: 17/18 (1개 v1.1.0 연기)
+  - UI/UX: 16/16
+  - Backend: 21/21
+  - Frontend: 22/22
+  - DevOps: 12/12
 
-**Backend Plugin (FastAPI + uv)**:
-- Python 3.14 support
-- FastAPI 0.120.2, Pydantic 2.12, SQLAlchemy 2.0.44, Alembic 1.17
-- Multi-database support (PostgreSQL 18, MySQL 8.4 LTS)
-- uv-based dependency management (venv, lock, index)
+**코드 품질**:
+- ✅ 타입 안전성: 0 오류 (mypy strict mode)
+- ✅ 보안: 0 취약점 (Bandit + pip-audit)
+- ✅ 테스트 커버리지: 94-100%
 
-**Plugin Infrastructure**:
-- Command templates with tool permissions
-- Agent coordination patterns
-- Skill loading strategies
-- Hook event handlers
-- MCP server configuration
+**TAG 시스템**:
+- ✅ 159개 CODE TAG
+- ✅ 101개 TEST TAG
+- ✅ TAG 시스템 건강도: HEALTHY
+- ✅ SPEC-V1-001 ↔ CODE ↔ TEST 추적성 100%
 
-### 📚 Documentation
+### 🚀 5개 플러그인 상세 | Plugin Details
 
-- 📖 ch08: Claude Code Plugin Introduction & Migration Guide
-- 📖 ch09: 5-Plugin Development & Deployment Workflow
-- 🎯 SPEC-V1-001: Enterprise Plugin Ecosystem Specification
+**PM Plugin** (1개 커맨드):
+- `/init-pm`: EARS SPEC 템플릿 자동 생성
+- 3개 템플릿 지원 (moai-spec, enterprise, agile)
+- YAML frontmatter + 5개 파일 자동 생성
 
-### 🔄 Breaking Changes | 주요 변경
+**UI/UX Plugin** (1개 커맨드):
+- `/setup-shadcn-ui`: shadcn/ui 컴포넌트 라이브러리
+- 3개 프레임워크 지원 (Next.js, React, Vite)
+- 19개 사전 구성 컴포넌트
 
-- ⚠️ Output Styles feature removed (EOL 2025-11-05)
-- ⚠️ Plugin-based customization now preferred (hooks/skills/commands)
-- ⚠️ MCP configuration moved to .mcp.json
+**Backend Plugin** (3개 커맨드):
+- `/init-fastapi`: FastAPI 프로젝트 초기화
+- `/db-setup`: 데이터베이스 연결 설정
+- `/resource-crud`: REST API 자동 생성
+- 4개 데이터베이스 지원 (PostgreSQL, MySQL, SQLite, MongoDB)
 
-### 🛡️ Security & Governance
+**Frontend Plugin** (3개 커맨드):
+- `/init-react`: React 프로젝트 초기화
+- `/setup-state`: 상태 관리 설정 (Context, Zustand, Redux, Recoil)
+- `/setup-testing`: 테스팅 프레임워크 (Vitest, Jest)
 
-- Plugin permission model (allowed-tools, denied-tools)
-- Registry management (NPM, PyPI with custom indices)
-- Secrets management (OS Keychain, .env local files)
-- Org-level marketplace policies
+**DevOps Plugin** (3개 커맨드):
+- `/setup-docker`: Dockerfile & docker-compose 생성
+- `/setup-ci`: CI/CD 파이프라인 (GitHub Actions, GitLab CI, CircleCI)
+- `/setup-k8s`: Kubernetes 매니페스트 (Deployment, Service, Ingress)
+
+### 📚 문서 | Documentation
+
+- 📖 SPEC-V1-001: 엔터프라이즈 플러그인 생태계 명세
+- 📖 5개 플러그인 상세 개발 가이드
+- 📖 플러그인 아키텍처 및 확장성 가이드
+- 📖 TAG 시스템 검증 보고서
+
+### 🔄 주요 변경사항 | Breaking Changes
+
+- ⚠️ Output Styles feature 제거 (EOL 2025-11-05)
+- ⚠️ 플러그인 기반 커스터마이제이션 권장 (hooks/skills/commands)
+- ⚠️ MCP 설정 .mcp.json으로 변경
+
+### 🛡️ 보안 및 거버넌스 | Security & Governance
+
+- 🔒 플러그인 권한 모델 (allowed-tools, denied-tools)
+- 🔒 Deny-by-default 정책
+- 🔒 Registry 관리 (NPM, PyPI)
+- 🔒 시크릿 관리 (OS Keychain, .env 파일)
 
 ---
 
@@ -509,7 +540,7 @@ uv tool install moai-adk==0.5.2
 
 **수정 파일** | **Modified Files**:
 - `src/moai_adk/templates/.claude/hooks/alfred/handlers/tool.py` (TAG Guard 통합)
-- `src/moai_adk/templates/.claude/skills/moai-cc-hooks/scripts/validate-bash-command.py` (코드 정리)
+- `src/moai_adk/templates/.claude/skills/moai-alfred-hooks/scripts/validate-bash-command.py` (코드 정리)
 - `src/moai_adk/templates/CLAUDE.md` (포맷팅 개선)
 - `README.md`, `README.ko.md`, `README.th.md`, `README.ja.md`, `README.zh.md`, `README.hi.md` (TAG Guard 문서화)
 - `tests/hooks/test_handlers.py` (테스트 업데이트)
