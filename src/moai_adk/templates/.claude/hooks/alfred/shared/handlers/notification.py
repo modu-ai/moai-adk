@@ -74,6 +74,7 @@ def handle_notification(payload: HookPayload) -> HookResult:
         if "/alfred:" in text:
             # Extract /alfred: command
             import re
+
             match = re.search(r"/alfred:\S+", text)
             if match:
                 current_cmd = match.group()
@@ -100,10 +101,7 @@ def handle_notification(payload: HookPayload) -> HookResult:
         state["duplicate_timestamp"] = datetime.now().isoformat()
         _save_command_state(cwd, state)
 
-        return HookResult(
-            system_message=warning_msg,
-            continue_execution=True
-        )
+        return HookResult(system_message=warning_msg, continue_execution=True)
 
     # Update state with current command
     state["last_command"] = current_cmd
@@ -137,7 +135,11 @@ def handle_subagent_stop(payload: HookPayload) -> HookResult:
     cwd = payload.get("cwd", ".")
 
     # Extract subagent name if available
-    subagent_name = payload.get("subagent", {}).get("name") if isinstance(payload.get("subagent"), dict) else None
+    subagent_name = (
+        payload.get("subagent", {}).get("name")
+        if isinstance(payload.get("subagent"), dict)
+        else None
+    )
 
     try:
         state_file = _get_command_state_file(cwd).parent / "subagent-execution.log"

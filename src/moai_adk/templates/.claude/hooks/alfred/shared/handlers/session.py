@@ -119,13 +119,17 @@ def handle_session_start(payload: HookPayload) -> HookResult:
             # Check if this is a major version update
             if version_info.get("is_major_update"):
                 # Major version warning
-                lines.append(f"   ⚠️  Major version update available: {version_info['current']} → {version_info['latest']}")
+                lines.append(
+                    f"   ⚠️  Major version update available: {version_info['current']} → {version_info['latest']}"
+                )
                 lines.append("   Breaking changes detected. Review release notes:")
                 if version_info.get("release_notes_url"):
                     lines.append(f"   📝 {version_info['release_notes_url']}")
             else:
                 # Regular update
-                lines.append(f"   🗿 MoAI-ADK Ver: {version_info['current']} → {version_info['latest']} available ✨")
+                lines.append(
+                    f"   🗿 MoAI-ADK Ver: {version_info['current']} → {version_info['latest']} available ✨"
+                )
                 if version_info.get("release_notes_url"):
                     lines.append(f"   📝 Release Notes: {version_info['release_notes_url']}")
 
