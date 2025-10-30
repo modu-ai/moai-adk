@@ -2,32 +2,91 @@
   "$schema": "https://moai-adk.github.io/schemas/marketplace/v1.json",
   "metadata": {
     "name": "moai-alfred-marketplace",
-    "title": "MoAI-ADK Official Alfred Marketplace",
-    "version": "1.0.0-dev",
-    "description": "Official marketplace for MoAI-ADK Alfred plugins (PM, UI/UX, Frontend, Backend, DevOps)",
+    "title": "MoAI-ADK Official Alfred Marketplace v2.0",
+    "version": "2.0.0-dev",
+    "description": "Official marketplace for MoAI-ADK Alfred plugins with expanded design, content, and SaaS integrations",
     "owner": "moai-adk",
     "repository": "https://github.com/moai-adk/moai-alfred-marketplace",
     "license": "MIT",
-    "updated": "2025-10-30T21:53:00Z"
+    "updated": "2025-10-31T00:00:00Z"
   },
   "plugins": [
     {
       "id": "moai-plugin-uiux",
       "name": "UI/UX Plugin",
-      "version": "1.0.0-dev",
+      "version": "2.0.0-dev",
       "status": "development",
-      "description": "Design System foundation - Tailwind CSS + shadcn/ui initialization and component management",
+      "description": "Design automation with Figma MCP integration - 7 specialist agents, design-to-code conversion, shadcn/ui components",
       "author": "GOOS🪿",
       "category": "uiux",
-      "tags": ["design-system", "tailwind", "shadcn-ui", "components"],
+      "tags": ["design-system", "figma", "design-to-code", "shadcn-ui", "tailwind", "accessibility"],
       "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-plugin-uiux",
       "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-plugin-uiux/README.md",
       "minClaudeCodeVersion": "1.0.0",
+      "agents": [
+        {
+          "name": "Design Strategist",
+          "type": "Specialist",
+          "model": "Sonnet",
+          "role": "Design Direction Lead"
+        },
+        {
+          "name": "Design System Architect",
+          "type": "Specialist",
+          "model": "Haiku",
+          "role": "Design System Lead"
+        },
+        {
+          "name": "Component Builder",
+          "type": "Specialist",
+          "model": "Haiku",
+          "role": "Component Development Lead"
+        },
+        {
+          "name": "Figma Designer",
+          "type": "Specialist",
+          "model": "Haiku",
+          "role": "Design MCP Integration Lead"
+        },
+        {
+          "name": "CSS/HTML Generator",
+          "type": "Specialist",
+          "model": "Haiku",
+          "role": "Design-to-Code Production Generator"
+        },
+        {
+          "name": "Accessibility Specialist",
+          "type": "Specialist",
+          "model": "Haiku",
+          "role": "Accessibility Compliance Lead"
+        },
+        {
+          "name": "Design Documentation Writer",
+          "type": "Specialist",
+          "model": "Haiku",
+          "role": "Design System Documentation Lead"
+        }
+      ],
       "commands": [
+        {
+          "name": "ui-ux",
+          "description": "Design directive orchestration - delegates to specialized agents"
+        },
         {
           "name": "setup-shadcn-ui",
           "description": "Initialize Tailwind CSS and shadcn/ui components"
+        },
+        {
+          "name": "design-tokens",
+          "description": "Extract and manage design tokens from Figma"
         }
+      ],
+      "skills": [
+        "moai-design-figma-mcp",
+        "moai-design-figma-to-code",
+        "moai-design-shadcn-ui",
+        "moai-domain-frontend",
+        "moai-essentials-review"
       ],
       "permissions": {
         "allowedTools": ["Read", "Write", "Edit", "Bash"],
@@ -35,7 +94,7 @@
       },
       "dependencies": [],
       "installCommand": "/plugin install moai-plugin-uiux",
-      "releaseNotes": "Initial v1.0.0-dev release with 20 core components"
+      "releaseNotes": "v2.0.0-dev: Added Figma MCP integration, design-to-code automation, 4 new specialist agents"
     },
     {
       "id": "moai-plugin-frontend",
@@ -104,28 +163,66 @@
     {
       "id": "moai-plugin-devops",
       "name": "DevOps Plugin",
-      "version": "1.0.0-dev",
+      "version": "2.0.0-dev",
       "status": "development",
-      "description": "Multi-cloud deployment - Vercel, Supabase, Render support with CI/CD pipelines",
+      "description": "Multi-cloud deployment with official MCPs - Vercel, Supabase, Render specialists with CI/CD automation",
       "author": "GOOS🪿",
       "category": "devops",
-      "tags": ["deployment", "vercel", "supabase", "render", "github-actions"],
+      "tags": ["deployment", "vercel", "supabase", "render", "github-actions", "ci-cd", "mcp"],
       "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-plugin-devops",
       "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-plugin-devops/README.md",
       "minClaudeCodeVersion": "1.0.0",
+      "agents": [
+        {
+          "name": "Deployment Strategist",
+          "type": "Specialist",
+          "model": "Sonnet",
+          "role": "Deployment Architecture Lead"
+        },
+        {
+          "name": "Vercel Specialist",
+          "type": "Specialist",
+          "model": "Haiku",
+          "role": "Vercel Deployment Expert"
+        },
+        {
+          "name": "Supabase Specialist",
+          "type": "Specialist",
+          "model": "Haiku",
+          "role": "Supabase/PostgreSQL Expert"
+        },
+        {
+          "name": "Render Specialist",
+          "type": "Specialist",
+          "model": "Haiku",
+          "role": "Render Deployment Expert"
+        }
+      ],
       "commands": [
         {
           "name": "deploy-config",
-          "description": "Configure deployment settings (Vercel, Supabase, Render)"
+          "description": "Configure multi-cloud deployment settings"
         },
         {
           "name": "connect-vercel",
-          "description": "Connect Vercel MCP for frontend deployment"
+          "description": "Connect and configure Vercel MCP frontend deployment"
         },
         {
           "name": "connect-supabase",
-          "description": "Connect Supabase MCP for backend database"
+          "description": "Connect and configure Supabase MCP database"
+        },
+        {
+          "name": "connect-render",
+          "description": "Connect and configure Render MCP backend deployment"
         }
+      ],
+      "skills": [
+        "moai-domain-devops",
+        "moai-saas-vercel-mcp",
+        "moai-saas-supabase-mcp",
+        "moai-saas-render-mcp",
+        "moai-domain-backend",
+        "moai-domain-database"
       ],
       "permissions": {
         "allowedTools": ["Read", "Write", "Edit", "Bash"],
@@ -133,7 +230,7 @@
       },
       "dependencies": ["moai-plugin-frontend", "moai-plugin-backend"],
       "installCommand": "/plugin install moai-plugin-devops",
-      "releaseNotes": "Initial v1.0.0-dev with 3-path deployment support"
+      "releaseNotes": "v2.0.0-dev: Migrated to official MCPs, added Render specialist, 4-path multi-cloud support"
     }
   ],
   "governance": {
@@ -141,11 +238,123 @@
     "contributionGuide": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/CONTRIBUTING.md",
     "codeOfConduct": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/CODE_OF_CONDUCT.md"
   },
+  "skills": [
+    {
+      "id": "moai-design-figma-mcp",
+      "name": "Figma MCP Integration",
+      "tier": "design",
+      "version": "1.0.0"
+    },
+    {
+      "id": "moai-design-figma-to-code",
+      "name": "Figma-to-Code Conversion",
+      "tier": "design",
+      "version": "1.0.0"
+    },
+    {
+      "id": "moai-design-shadcn-ui",
+      "name": "shadcn/ui Component Patterns",
+      "tier": "design",
+      "version": "1.0.0"
+    },
+    {
+      "id": "moai-saas-vercel-mcp",
+      "name": "Vercel Deployment Best Practices",
+      "tier": "saas",
+      "version": "1.0.0"
+    },
+    {
+      "id": "moai-saas-supabase-mcp",
+      "name": "Supabase PostgreSQL & Auth Best Practices",
+      "tier": "saas",
+      "version": "1.0.0"
+    },
+    {
+      "id": "moai-saas-render-mcp",
+      "name": "Render FastAPI Deployment Guide",
+      "tier": "saas",
+      "version": "1.0.0"
+    },
+    {
+      "id": "moai-saas-wordpress-publishing",
+      "name": "WordPress Publishing",
+      "tier": "saas",
+      "version": "1.0.0"
+    },
+    {
+      "id": "moai-saas-naver-blog-publishing",
+      "name": "Naver Blog Publishing",
+      "tier": "saas",
+      "version": "1.0.0"
+    },
+    {
+      "id": "moai-saas-tistory-publishing",
+      "name": "Tistory Publishing",
+      "tier": "saas",
+      "version": "1.0.0"
+    },
+    {
+      "id": "moai-content-seo-optimization",
+      "name": "SEO Optimization Best Practices",
+      "tier": "content",
+      "version": "1.0.0"
+    },
+    {
+      "id": "moai-content-image-generation",
+      "name": "AI Image Generation Patterns",
+      "tier": "content",
+      "version": "1.0.0"
+    },
+    {
+      "id": "moai-content-blog-strategy",
+      "name": "Blog Content Strategy",
+      "tier": "content",
+      "version": "1.0.0"
+    },
+    {
+      "id": "moai-content-markdown-to-blog",
+      "name": "Markdown to Blog Conversion",
+      "tier": "content",
+      "version": "1.0.0"
+    },
+    {
+      "id": "moai-content-llms-txt-management",
+      "name": "llms.txt Knowledge Management",
+      "tier": "content",
+      "version": "1.0.0"
+    },
+    {
+      "id": "moai-framework-nextjs-advanced",
+      "name": "Next.js 16 Advanced Patterns",
+      "tier": "framework",
+      "version": "1.0.0"
+    },
+    {
+      "id": "moai-framework-react-19",
+      "name": "React 19.2 Patterns",
+      "tier": "framework",
+      "version": "1.0.0"
+    },
+    {
+      "id": "moai-framework-fastapi-patterns",
+      "name": "FastAPI 0.115+ Best Practices",
+      "tier": "framework",
+      "version": "1.0.0"
+    },
+    {
+      "id": "moai-domain-devops",
+      "name": "DevOps Architecture",
+      "tier": "domain",
+      "version": "1.0.0"
+    }
+  ],
   "stats": {
     "totalPlugins": 4,
     "stablePlugins": 0,
     "betaPlugins": 0,
     "devPlugins": 4,
+    "totalSkills": 18,
+    "totalAgents": 16,
     "totalDownloads": 0,
     "lastUpdated": "2025-10-31"
   }
