@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @CODE:ALF-WORKFLOW-001:HOOKS-CLARITY:USER-PROMPT | SPEC: Individual hook files for better UX
+# @CODE:HOOKS-CLARITY-001 | SPEC: Individual hook files for better UX
 """UserPromptSubmit Hook: Just-In-Time Document Loading
 
 Claude Code Event: UserPromptSubmit
@@ -24,6 +24,8 @@ if str(SHARED_DIR) not in sys.path:
 
 from handlers import handle_user_prompt_submit
 
+
+    pass
 
 
 
@@ -71,8 +73,8 @@ timeout.start()
             "continue": True,
             "hookSpecificOutput": {
                 "hookEventName": "UserPromptSubmit",
-                "additionalContext": "⚠️ JIT context timeout - continuing without suggestions"
-            }
+                "additionalContext": "⚠️ JIT context timeout - continuing without suggestions",
+            },
         }
         print(json.dumps(timeout_response))
         print("UserPromptSubmit hook timeout after 5 seconds", file=sys.stderr)
@@ -84,8 +86,8 @@ timeout.start()
             "continue": True,
             "hookSpecificOutput": {
                 "hookEventName": "UserPromptSubmit",
-                "error": f"JSON parse error: {e}"
-            }
+                "error": f"JSON parse error: {e}",
+            },
         }
         print(json.dumps(error_response))
         print(f"UserPromptSubmit JSON parse error: {e}", file=sys.stderr)
@@ -97,8 +99,8 @@ timeout.start()
             "continue": True,
             "hookSpecificOutput": {
                 "hookEventName": "UserPromptSubmit",
-                "error": f"UserPromptSubmit error: {e}"
-            }
+                "error": f"UserPromptSubmit error: {e}",
+            },
         }
         print(json.dumps(error_response))
         print(f"UserPromptSubmit unexpected error: {e}", file=sys.stderr)
