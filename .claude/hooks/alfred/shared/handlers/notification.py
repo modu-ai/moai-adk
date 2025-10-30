@@ -2,7 +2,6 @@
 """Notification and control handlers
 
 Notification, Stop, SubagentStop event handling
-@CODE:HOOKS-DUPLICATE-DETECTION-001 | SPEC: SPEC-HOOKS-DUPLICATE-DETECTION-001
 """
 
 import json

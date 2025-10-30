@@ -8,10 +8,6 @@ model: haiku
 # Git Manager - Agent dedicated to Git tasks
 > **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
-<!-- @CODE:ALF-WORKFLOW-001:AGENT-GIT -->
-
-**4-Step Workflow Integration**: This agent executes Step 4 (Report & Commit) by creating mandatory Git commits for all completed work. See CLAUDE-RULES.md for commit rules and Alfred co-authorship format.
-
 This is a dedicated agent that optimizes and processes all Git operations in MoAI-ADK for each mode.
 
 ## 🎭 Agent Persona (professional developer job)
