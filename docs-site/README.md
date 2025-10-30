@@ -1,8 +1,10 @@
 # MoAI-ADK Documentation Site
 
-<!-- @CODE:NEXTRA-INIT-001 - Project documentation -->
+<!-- @CODE:NEXTRA-INIT-001 @CODE:NEXTRA-CONFIG-001 - Project documentation and configuration -->
 
 > **Next.js 14 + Nextra 4.0** based documentation site for MoAI-ADK
+>
+> Static-generated documentation platform with automatic deployment to Vercel
 
 ## Getting Started
 
