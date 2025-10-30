@@ -34,9 +34,26 @@ class LanguageDetector:
             "app/",                   # Laravel: application directory
             "bootstrap/laravel.php"   # Laravel: bootstrap file
         ],
+        # JavaScript/TypeScript moved to third for priority (Issue #131 fix)
+        # @CODE:LANG-DETECT-JS-001 | ISSUE: #131 Language Detection Priority
+        "typescript": [
+            "*.ts",
+            "tsconfig.json",
+            "vite.config.ts",         # Vite (TypeScript): build config
+            "nest-cli.json"           # NestJS: framework config
+        ],
+        # JavaScript patterns must come after TypeScript due to overlap
+        # (tsconfig.json implies TypeScript, but package.json could mean JS or TS)
+        "javascript": [
+            "*.js",
+            "package.json",
+            "next.config.js",         # Next.js: framework config (can be JS or TS, but indicates JS primary)
+            "vite.config.js",         # Vite (JavaScript): build config
+            "webpack.config.js",      # Webpack: bundler config (unique to JS projects)
+            "src/index.js",           # Express/Node.js: common entry point
+            "server.js"               # Express/Node.js: server file (unique identifier)
+        ],
         "python": ["*.py", "pyproject.toml", "requirements.txt", "setup.py"],
-        "typescript": ["*.ts", "tsconfig.json"],
-        "javascript": ["*.js", "package.json"],
         "java": ["*.java", "pom.xml", "build.gradle"],
         "go": ["*.go", "go.mod"],
         "rust": ["*.rs", "Cargo.toml"],

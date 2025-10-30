@@ -273,3 +273,122 @@ class TestLanguageDetectorLaravel:
 
         # Then
         assert result == "php"
+
+
+# @TEST:LANG-DETECT-JS-001 | ISSUE: #131 Fix JavaScript detection in mixed projects
+class TestLanguageDetectorJavaScript:
+    """Test JavaScript/TypeScript project detection"""
+
+    def test_detect_javascript_over_python_in_mixed_project(self, tmp_project_dir: Path):
+        """Should prioritize JavaScript when both Python and JavaScript exist (Issue #131)
+
+        Given: Mixed Python + JavaScript project with Node.js markers
+        When: detect language is called
+        Then: JavaScript should be detected first (not Python)
+
+        This test specifically addresses Issue #131 where tdd-implementer was
+        creating Python workflows for JavaScript/Node.js projects.
+        """
+        # Given: Mixed Python + JavaScript project
+        (tmp_project_dir / "script.py").write_text("import os")
+        (tmp_project_dir / "package.json").write_text('{"name": "express-app", "type": "module"}')
+        (tmp_project_dir / "src").mkdir()
+        (tmp_project_dir / "src" / "index.js").write_text("const express = require('express');")
+
+        # When: detect language
+        detector = LanguageDetector()
+        result = detector.detect(tmp_project_dir)
+
+        # Then: JavaScript should be detected first (not Python)
+        assert result == "javascript", f"Expected 'javascript' but got '{result}' in mixed Python+JS project"
+
+    def test_detect_typescript_over_python_in_mixed_project(self, tmp_project_dir: Path):
+        """Should prioritize TypeScript over Python when tsconfig.json exists"""
+        # Given: Mixed Python + TypeScript project
+        (tmp_project_dir / "main.py").write_text("import sys")
+        (tmp_project_dir / "tsconfig.json").write_text('{"compilerOptions": {"target": "ES2020"}}')
+        (tmp_project_dir / "src").mkdir()
+        (tmp_project_dir / "src" / "index.ts").write_text("const x: number = 1;")
+
+        # When
+        detector = LanguageDetector()
+        result = detector.detect(tmp_project_dir)
+
+        # Then: TypeScript should be detected first
+        assert result == "typescript"
+
+    def test_detect_express_framework_as_javascript(self, tmp_project_dir: Path):
+        """Should detect Express.js framework-specific files as JavaScript"""
+        # Given: Express.js project
+        (tmp_project_dir / "server.js").write_text("const express = require('express');")
+        (tmp_project_dir / "package.json").write_text('{"dependencies": {"express": "^4.18.0"}}')
+        (tmp_project_dir / "routes").mkdir()
+        (tmp_project_dir / "routes" / "api.js").write_text("// API routes")
+
+        # When
+        detector = LanguageDetector()
+        result = detector.detect(tmp_project_dir)
+
+        # Then
+        assert result == "javascript"
+
+    def test_detect_nextjs_as_javascript_or_typescript(self, tmp_project_dir: Path):
+        """Should detect Next.js framework by config file"""
+        # Given: Next.js project (JavaScript version)
+        (tmp_project_dir / "next.config.js").write_text("module.exports = {};")
+        (tmp_project_dir / "package.json").write_text('{"dependencies": {"next": "^14.0.0"}}')
+        (tmp_project_dir / "pages").mkdir()
+        (tmp_project_dir / "pages" / "index.js").write_text("export default function Home() {}")
+
+        # When
+        detector = LanguageDetector()
+        result = detector.detect(tmp_project_dir)
+
+        # Then: Should detect as JavaScript
+        assert result == "javascript"
+
+    def test_detect_vite_javascript_project(self, tmp_project_dir: Path):
+        """Should detect Vite.js (JavaScript) config"""
+        # Given: Vite JavaScript project
+        (tmp_project_dir / "vite.config.js").write_text("export default {};")
+        (tmp_project_dir / "package.json").write_text('{"devDependencies": {"vite": "^4.0.0"}}')
+        (tmp_project_dir / "src").mkdir()
+        (tmp_project_dir / "src" / "main.js").write_text("// Vite entry point")
+
+        # When
+        detector = LanguageDetector()
+        result = detector.detect(tmp_project_dir)
+
+        # Then
+        assert result == "javascript"
+
+    def test_detect_webpack_as_javascript_marker(self, tmp_project_dir: Path):
+        """Should use webpack.config.js as JavaScript-specific marker"""
+        # Given: Webpack JavaScript project (unique to JS ecosystem)
+        (tmp_project_dir / "webpack.config.js").write_text("module.exports = {};")
+        (tmp_project_dir / "package.json").write_text('{"devDependencies": {"webpack": "^5.0.0"}}')
+        (tmp_project_dir / "src").mkdir()
+        (tmp_project_dir / "src" / "index.js").write_text("// entry point")
+
+        # When
+        detector = LanguageDetector()
+        result = detector.detect(tmp_project_dir)
+
+        # Then
+        assert result == "javascript"
+
+    def test_javascript_detection_priority_order(self, tmp_project_dir: Path):
+        """Should respect priority: TypeScript > JavaScript > Python"""
+        # Given: Project with Python, JavaScript, and TypeScript files
+        (tmp_project_dir / "setup.py").write_text("from setuptools import setup")
+        (tmp_project_dir / "app.js").write_text("const app = {};")
+        (tmp_project_dir / "types.ts").write_text("type User = { id: number };")
+        (tmp_project_dir / "package.json").write_text('{}')
+        (tmp_project_dir / "tsconfig.json").write_text('{}')
+
+        # When
+        detector = LanguageDetector()
+        result = detector.detect(tmp_project_dir)
+
+        # Then: TypeScript should be detected first (it comes before JavaScript in priority)
+        assert result == "typescript", "TypeScript should have priority over JavaScript and Python"

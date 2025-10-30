@@ -102,11 +102,11 @@ def timeout_handler(seconds: int):
 
 
 def detect_language(cwd: str) -> str:
-    """Detect project language (supports 20 items languages)
+    """Detect project language (supports 20+ languages)
 
-    Browse the File system to detect your project's main development language.
-    First, check configuration files such as pyproject.toml and tsconfig.json.
-    Apply TypeScript first principles (if tsconfig.json exists).
+    Uses the core LanguageDetector from moai_adk.core.project.detector which
+    prioritizes framework-specific files (e.g., Laravel, Django, Next.js, Express)
+    over generic language files to improve accuracy in mixed-language projects.
 
     Args:
         cwd: Project root directory path (both absolute and relative paths are possible)
@@ -122,6 +122,8 @@ def detect_language(cwd: str) -> str:
         'python'
         >>> detect_language("/path/to/typescript/project")
         'typescript'
+        >>> detect_language("/path/to/javascript/project")
+        'javascript'
         >>> detect_language("/path/to/unknown/project")
         'Unknown Language'
 
@@ -129,14 +131,48 @@ def detect_language(cwd: str) -> str:
         - RED: Write a 21 items language detection test (20 items language + 1 items unknown)
         - GREEN: 20 items language + unknown implementation, all tests passed
         - REFACTOR: Optimize file inspection order, apply TypeScript priority principle
+        - REFACTOR v2: Use core LanguageDetector class (Issue #131 fix)
+
+    Notes:
+        - Uses core.project.detector.LanguageDetector for consistent detection
+        - Respects priority order: Ruby → PHP → TypeScript → JavaScript → Python
+        - Handles framework-specific detection (Rails, Laravel, Next.js, Express, etc.)
+        - Falls back to "Unknown Language" if no patterns match
+    """
+    try:
+        # Import and use the core LanguageDetector
+        # This ensures consistent detection across all MoAI-ADK hooks and tools
+        from moai_adk.core.project.detector import LanguageDetector
+
+        detector = LanguageDetector()
+        result = detector.detect(cwd)
+        return result or "Unknown Language"
+    except ImportError:
+        # Fallback if core module is not available
+        # This ensures backwards compatibility with installations that may have
+        # the hooks but not the core module
+        return _detect_language_fallback(cwd)
+
+
+def _detect_language_fallback(cwd: str) -> str:
+    """Fallback language detection when core module is unavailable.
+
+    This is a reduced version that doesn't have framework-specific detection,
+    but provides basic language identification when moai_adk.core is not available.
+
+    Args:
+        cwd: Project root directory path
+
+    Returns:
+        Detected language name or "Unknown Language"
     """
     cwd_path = Path(cwd)
 
-    # Language detection mapping
+    # Language detection mapping (simplified, without framework detection)
     language_files = {
-        "pyproject.toml": "python",
-        "tsconfig.json": "typescript",
+        "tsconfig.json": "typescript",  # TypeScript priority over Python/JavaScript
         "package.json": "javascript",
+        "pyproject.toml": "python",
         "pom.xml": "java",
         "go.mod": "go",
         "Cargo.toml": "rust",
@@ -152,12 +188,9 @@ def detect_language(cwd: str) -> str:
         "Makefile": "c",
     }
 
-    # Check standard language files
+    # Check standard language files (in priority order)
     for file_name, language in language_files.items():
         if (cwd_path / file_name).exists():
-            # Special handling for package.json - prefer typescript if tsconfig exists
-            if file_name == "package.json" and (cwd_path / "tsconfig.json").exists():
-                return "typescript"
             return language
 
     # Check for C# project files (*.csproj)
