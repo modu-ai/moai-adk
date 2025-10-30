@@ -244,6 +244,98 @@
       "dependencies": ["moai-plugin-frontend", "moai-plugin-backend"],
       "installCommand": "/plugin install moai-plugin-devops",
       "releaseNotes": "v2.0.0-dev: Migrated to official MCPs, added Render specialist, 4-path multi-cloud support"
+    },
+    {
+      "id": "moai-plugin-technical-blog",
+      "name": "Technical Blog Writing Plugin",
+      "version": "2.0.0-dev",
+      "status": "development",
+      "description": "Technical writing excellence with single /blog-write command - Template-based creation (Tutorial, Case Study, How-to, Announcement, Comparison), SEO optimization, markdown best practices, code examples, and AI discoverability",
+      "author": "GOOS🪿",
+      "category": "content",
+      "tags": [
+        "technical-writing",
+        "blog",
+        "seo",
+        "markdown",
+        "developer-content",
+        "templates",
+        "code-examples"
+      ],
+      "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-plugin-technical-blog",
+      "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-plugin-technical-blog/README.md",
+      "minClaudeCodeVersion": "1.0.0",
+      "agents": [
+        {
+          "name": "Technical Content Strategist",
+          "type": "Specialist",
+          "model": "Sonnet",
+          "role": "Content Strategy and Audience Profiling"
+        },
+        {
+          "name": "Technical Writer",
+          "type": "Specialist",
+          "model": "Haiku",
+          "role": "Developer-Focused Blog Writing"
+        },
+        {
+          "name": "SEO & Discoverability Specialist",
+          "type": "Specialist",
+          "model": "Haiku",
+          "role": "SEO, Meta Tags, Hashtags, AI Systems Optimization"
+        },
+        {
+          "name": "Code Example Curator",
+          "type": "Specialist",
+          "model": "Haiku",
+          "role": "Runnable Code Examples Generation and Validation"
+        },
+        {
+          "name": "Visual Content Designer",
+          "type": "Specialist",
+          "model": "Haiku",
+          "role": "Diagrams, Image Prompts, OG Images"
+        },
+        {
+          "name": "Markdown Formatter",
+          "type": "Specialist",
+          "model": "Haiku",
+          "role": "Markdown Quality Assurance and Linting"
+        },
+        {
+          "name": "Template Workflow Coordinator",
+          "type": "Coordinator",
+          "model": "Sonnet",
+          "role": "Template Management and Agent Orchestration"
+        }
+      ],
+      "commands": [
+        {
+          "name": "blog-write",
+          "description": "Write/optimize blog posts with natural language (auto template selection, auto parsing)"
+        }
+      ],
+      "skills": [
+        "moai-content-technical-writing",
+        "moai-content-markdown-best-practices",
+        "moai-content-code-examples",
+        "moai-content-blog-templates",
+        "moai-content-seo-optimization",
+        "moai-content-technical-seo",
+        "moai-content-meta-tags",
+        "moai-content-hashtag-strategy",
+        "moai-content-image-generation",
+        "moai-content-blog-strategy",
+        "moai-content-markdown-to-blog",
+        "moai-content-llms-txt-management"
+      ],
+      "permissions": {
+        "allowedTools": ["Read", "Write", "Edit", "Bash", "Task"],
+        "deniedTools": []
+      },
+      "dependencies": [],
+      "installCommand": "/plugin install moai-plugin-technical-blog",
+      "releaseNotes": "v2.0.0-dev: Technical writing focus with single /blog-write command (removed platform publishing)"
     }
   ],
   "governance": {
@@ -285,24 +377,6 @@
     {
       "id": "moai-saas-render-mcp",
       "name": "Render FastAPI Deployment Guide",
-      "tier": "saas",
-      "version": "1.0.0"
-    },
-    {
-      "id": "moai-saas-wordpress-publishing",
-      "name": "WordPress Publishing",
-      "tier": "saas",
-      "version": "1.0.0"
-    },
-    {
-      "id": "moai-saas-naver-blog-publishing",
-      "name": "Naver Blog Publishing",
-      "tier": "saas",
-      "version": "1.0.0"
-    },
-    {
-      "id": "moai-saas-tistory-publishing",
-      "name": "Tistory Publishing",
       "tier": "saas",
       "version": "1.0.0"
     },
@@ -383,15 +457,57 @@
       "name": "Code Review & Quality",
       "tier": "essentials",
       "version": "1.0.0"
+    },
+    {
+      "id": "moai-content-technical-writing",
+      "name": "Technical Writing Best Practices",
+      "tier": "content",
+      "version": "1.0.0"
+    },
+    {
+      "id": "moai-content-markdown-best-practices",
+      "name": "Markdown Best Practices & Linting",
+      "tier": "content",
+      "version": "1.0.0"
+    },
+    {
+      "id": "moai-content-code-examples",
+      "name": "Runnable Code Examples Generation",
+      "tier": "content",
+      "version": "1.0.0"
+    },
+    {
+      "id": "moai-content-blog-templates",
+      "name": "Blog Template Library (5 Templates)",
+      "tier": "content",
+      "version": "1.0.0"
+    },
+    {
+      "id": "moai-content-meta-tags",
+      "name": "Meta Tags & OG Cards Optimization",
+      "tier": "content",
+      "version": "1.0.0"
+    },
+    {
+      "id": "moai-content-hashtag-strategy",
+      "name": "Hashtag Strategy for Technical Content",
+      "tier": "content",
+      "version": "1.0.0"
+    },
+    {
+      "id": "moai-content-technical-seo",
+      "name": "Technical SEO for Developers",
+      "tier": "content",
+      "version": "1.0.0"
     }
   ],
   "stats": {
-    "totalPlugins": 4,
+    "totalPlugins": 5,
     "stablePlugins": 0,
     "betaPlugins": 0,
-    "devPlugins": 4,
-    "totalSkills": 18,
-    "totalAgents": 16,
+    "devPlugins": 5,
+    "totalSkills": 22,
+    "totalAgents": 23,
     "totalDownloads": 0,
     "lastUpdated": "2025-10-31"
   }
