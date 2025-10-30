@@ -7,6 +7,91 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.11.1] - 2025-10-31 (11 New Language Workflow Support)
+<!-- @DOC:LANGUAGE-DETECTION-EXTENDED-001 -->
+
+### 🎯 주요 변경사항 | Key Changes
+
+**Feature Enhancement | 기능 추가**:
+- 🚀 **15개 언어 CI/CD 워크플로우 지원**: 기존 4개 언어에서 15개 언어로 확장
+  - 기존: Python, JavaScript, TypeScript, Go
+  - 신규 추가: Ruby, PHP, Java, Rust, Dart, Swift, Kotlin, C#, C, C++, Shell
+  - 총 15개 언어 전담 GitHub Actions 워크플로우 템플릿 제공
+
+### 🔧 Technical Details
+
+**New Workflow Templates** (11개):
+- `ruby-tag-validation.yml`: RSpec, Rubocop, bundle
+- `php-tag-validation.yml`: PHPUnit, PHPCS, composer
+- `java-tag-validation.yml`: JUnit 5, Jacoco, Maven/Gradle auto-detection
+- `rust-tag-validation.yml`: cargo test, clippy, rustfmt
+- `dart-tag-validation.yml`: flutter test, dart analyze
+- `swift-tag-validation.yml`: XCTest, SwiftLint (macOS runner)
+- `kotlin-tag-validation.yml`: JUnit 5, ktlint, Gradle
+- `csharp-tag-validation.yml`: xUnit, StyleCop, dotnet CLI
+- `c-tag-validation.yml`: gcc/clang, cppcheck, CMake
+- `cpp-tag-validation.yml`: g++/clang++, Google Test, cpplint
+- `shell-tag-validation.yml`: shellcheck, bats-core
+
+**Extended LanguageDetector Class**:
+- `get_workflow_template_path(language)`: Get workflow template path for 15 languages (@CODE:LDE-WORKFLOW-PATH-001)
+- `detect_package_manager(path)`: Auto-detect package managers (bundle, composer, cargo, etc.) (@CODE:LDE-PKG-MGR-001)
+- `detect_build_tool(path, language)`: Auto-detect build tools (Maven, Gradle, CMake, etc.) (@CODE:LDE-BUILD-TOOL-001)
+- `get_supported_languages_for_workflows()`: Returns list of 15 supported languages (@CODE:LDE-SUPPORTED-LANGS-001)
+
+**Language Detection Priority** (SPEC-compliant):
+1. Rust → 2. Dart → 3. Swift → 4. Kotlin → 5. C# → 6. Java → 7. Ruby → 8. PHP
+9. Go → 10. Python → 11. TypeScript → 12. JavaScript → 13. C++ → 14. C → 15. Shell
+
+### 🧪 Testing
+
+**Test Coverage**: 34 unit tests, 100% passing ✅
+- 11 language detection tests (Ruby, PHP, Java, Rust, Dart, Swift, Kotlin, C#, C, C++, Shell)
+- 5 build tool detection tests (Maven, Gradle, CMake, SPM, dotnet)
+- 3 package manager detection tests (bundle, composer, cargo)
+- 4 priority conflict resolution tests (Kotlin vs Java, C++ vs C, Rust highest, Ruby vs Python)
+- 3 error handling tests (unknown language, unsupported workflow, no build tool)
+- 4 backward compatibility tests (Python, JS, TS, Go regression prevention)
+- 3 integration tests (workflow path retrieval, 15 languages count)
+
+**Coverage**: `detector.py` 67.09% line coverage
+
+### 📖 Documentation
+
+**References**:
+- SPEC: @SPEC:LANGUAGE-DETECTION-EXTENDED-001
+- Tests: @TEST:LDE-EXTENDED-001
+- Code: @CODE:LDE-001-RUBY through @CODE:LDE-011-SHELL
+- GitHub Issue: #131 (11 language extension request)
+
+### 🚀 User Impact
+
+**Before (v0.11.0)**:
+- Workflow support: Python, JavaScript, TypeScript, Go only
+- Manual workflow setup required for other languages
+
+**After (v0.11.1)**:
+```bash
+# Ruby project
+$ moai-adk init
+Detected language: Ruby
+Generated: .github/workflows/ruby-tag-validation.yml
+
+# Java project (Maven/Gradle auto-detection)
+$ moai-adk init
+Detected language: Java
+Build tool: Maven (pom.xml detected)
+Generated: .github/workflows/java-tag-validation.yml
+```
+
+**Key Benefits**:
+- 🎯 Auto-detection for 15 languages
+- 🔧 Auto-selection of build tools (Maven vs Gradle, CMake, etc.)
+- ✅ Production-ready CI/CD workflows out-of-the-box
+- 🔄 Backward compatible (existing 4 languages unchanged)
+
+---
+
 ## [v0.9.1] - 2025-10-30 (UV Cache Automatic Retry Fix)
 <!-- @DOC:UPDATE-CACHE-FIX-001-002 -->
 
