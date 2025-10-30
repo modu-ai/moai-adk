@@ -6,14 +6,14 @@ Tests integrated TAG suggestion, domain inference, and chain validation.
 @SPEC:DOC-TAG-001: @DOC tag automatic generation infrastructure
 """
 
-import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
+
 from src.moai_adk.core.tags.tags import (
+    TagSuggestion,
+    _infer_domain_from_path,
     suggest_tag_for_file,
     validate_tag_chain,
-    _infer_domain_from_path,
-    TagSuggestion,
 )
 
 

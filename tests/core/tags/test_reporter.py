@@ -13,27 +13,27 @@ Following TDD RED-GREEN-REFACTOR cycle.
 Target: 33 tests with 85%+ coverage
 """
 
-import tempfile
 import json
-from pathlib import Path
+import tempfile
 from datetime import datetime
-from typing import List, Dict, Set
+from pathlib import Path
+
 import pytest
 
 # Import will fail initially (RED phase) - that's expected
 try:
     from moai_adk.core.tags.reporter import (
-        TagInventory,
-        TagMatrix,
+        CoverageAnalyzer,
+        CoverageMetrics,
         InventoryGenerator,
         MatrixGenerator,
-        CoverageAnalyzer,
-        StatisticsGenerator,
         ReportFormatter,
         ReportGenerator,
-        CoverageMetrics,
-        StatisticsReport,
         ReportResult,
+        StatisticsGenerator,
+        StatisticsReport,
+        TagInventory,
+        TagMatrix,
     )
 except ImportError:
     # Allow tests to be written before implementation
