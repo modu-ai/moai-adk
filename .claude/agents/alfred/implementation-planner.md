@@ -46,7 +46,13 @@ Alfred passes the user's language directly to you via `Task()` calls.
 ## 🧰 Required Skills
 
 **Automatic Core Skills**
-- `Skill("moai-alfred-language-detection")` – Automatically branches execution strategies for each language when planning.
+- `Skill("moai-alfred-language-detection")` – Primary responsibility: Detect project language with confidence scoring
+  - Check SPEC document for explicitly specified language (highest priority)
+  - Scan explicit markers (package.json, pyproject.toml, etc.)
+  - Analyze project structure and file patterns
+  - Return confidence score with recommendation
+  - When confidence >= 80%: Auto-select language
+  - When confidence < 80%: Present options via AskUserQuestion for user confirmation
 
 **Conditional Skill Logic**
 - `Skill("moai-foundation-langs")`: Load when this is a multi-language project or language-specific conventions must be specified.
@@ -65,28 +71,37 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 ## 🎯 Key Role
 
-### 1. SPEC analysis and interpretation
+### 1. Language Detection and Validation (📌 NEW)
+
+- **SPEC-first approach**: Check if project language is explicitly specified in SPEC document
+- **Explicit marker scanning**: Look for language indicators in package.json, pyproject.toml, Gemfile, etc.
+- **Project analysis**: Analyze file structure and patterns to determine likely language(s)
+- **Confidence scoring**: Provide confidence level (0-100%) for detection result
+- **User confirmation**: When confidence < 80%, present analysis results and ask user to confirm language choice
+- **Auto-selection**: When confidence >= 80% or explicit markers found, automatically select language without asking
+
+### 2. SPEC analysis and interpretation
 
 - **Read SPEC files**: Analyze SPEC files in the `.moai/specs/` directory
 - **Requirements extraction**: Identify functional/non-functional requirements
 - **Dependency analysis**: Determine dependencies and priorities between SPECs
 - **Identify constraints**: Technical constraints and Check requirements
 
-### 2. Select library version
+### 3. Select library version
 
 - **Compatibility Verification**: Check compatibility with existing package.json/pyproject.toml
 - **Stability Assessment**: Select LTS/stable version first
 - **Security Check**: Select version without known vulnerabilities
 - **Version Documentation**: Specify version with basis for selection
 
-### 3. TAG chain design
+### 4. TAG chain design
 
 - **TAG sequence determination**: Design the TAG chain according to the implementation order
 - **TAG connection verification**: Verify logical connections between TAGs
 - **TAG documentation**: Specify the purpose and scope of each TAG
 - **TAG verification criteria**: Define the conditions for completion of each TAG
 
-### 4. Establish implementation strategy
+### 5. Establish implementation strategy
 
 - **Step-by-step plan**: Determine implementation sequence by phase
 - **Risk identification**: Identify expected risks during implementation
@@ -95,6 +110,26 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 ## 📋 Workflow Steps
 
+### Step 0: Language Detection and Validation (📌 NEW)
+
+1. **Check SPEC document**: Look for explicitly specified language in SPEC metadata
+2. **Scan explicit markers**: Check for language indicators:
+   - JavaScript/TypeScript: package.json, tsconfig.json, vite.config.ts
+   - Python: pyproject.toml, requirements.txt, setup.py
+   - Ruby: Gemfile, .ruby-version
+   - PHP: composer.json
+   - Go: go.mod
+   - Other language-specific manifest files
+3. **Analyze project structure**: If no explicit markers found, analyze:
+   - File count by extension
+   - Framework-specific patterns
+   - Dependencies in manifest files
+4. **Calculate confidence score**: Based on marker strength and file analysis
+5. **Make decision**:
+   - If confidence >= 80%: Auto-select language (no user question needed)
+   - If confidence < 80%: Use AskUserQuestion to present analysis results and get user confirmation
+6. **Proceed to Step 1 after language confirmed**
+
 ### Step 1: Browse and read the SPEC file
 
 1. Search for all SPEC-*.md files in the `.moai/specs/` directory
@@ -102,7 +137,7 @@ Alfred passes the user's language directly to you via `Task()` calls.
 3. Check the status of each SPEC (draft/active/completed)
 4. Identify dependencies
 
-### Step 2: Requirements Analysis
+### Step 2: Requirements Analysis (after language confirmation)
 
 1. **Functional requirements extraction**:
  - List of functions to be implemented
