@@ -31,6 +31,8 @@ if str(SHARED_DIR) not in sys.path:
 from handlers import handle_pre_tool_use
 
 
+    pass
+
 
 def main() -> None:
     """Main entry point for PreToolUse hook

@@ -156,8 +156,8 @@ class HookResult:
             "continue": self.continue_execution,
             "hookSpecificOutput": {
                 "hookEventName": "UserPromptSubmit",
-                "additionalContext": context_str
-            }
+                "additionalContext": context_str,
+            },
         }
 
 

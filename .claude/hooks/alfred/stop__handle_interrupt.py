@@ -25,6 +25,8 @@ if str(SHARED_DIR) not in sys.path:
 from handlers import handle_stop
 
 
+    pass
+
 
 def main() -> None:
     """Main entry point for Stop hook

@@ -54,7 +54,9 @@ Setup sys.path for package imports
 
 import json
 import sys
-from pathlib import Path
+from pathlib import
+from utils.timeout import CrossPlatformTimeout, TimeoutError as PlatformTimeoutError
+ Path
 from typing import Any
 
 from utils.timeout import CrossPlatformTimeout, TimeoutError as PlatformTimeoutError
