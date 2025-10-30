@@ -100,6 +100,108 @@ Alfred passes the user's language directly to you via `Task()` calls. This enabl
 - **Integration testing**: Add integration tests when needed
 - **Test execution**: Run and verify tests with pytest/jest
 
+### 5. Language-Aware Workflow Generation
+
+#### Process
+
+1. **Detect Project Language**:
+   - Use `LanguageDetector` from `moai_adk.core.project.detector` to identify project language
+   - Supported languages with dedicated workflows: python, javascript, typescript, go
+   - Falls back to generic workflow for other languages
+
+2. **Select Appropriate Workflow Template**:
+   - Use `LanguageDetector.get_workflow_template_path(language)` to get template path
+   - Available templates in `src/moai_adk/templates/workflows/`:
+     * `python-tag-validation.yml` - Python projects (pytest, mypy, ruff)
+     * `javascript-tag-validation.yml` - JavaScript projects (npm/yarn/pnpm/bun auto-detect)
+     * `typescript-tag-validation.yml` - TypeScript projects (biome, tsc)
+     * `go-tag-validation.yml` - Go projects (golangci-lint, gofmt)
+
+3. **Generate Project-Specific Workflow**:
+   - Copy the selected template to `.github/workflows/tag-validation.yml`
+   - Apply project-specific customization if needed
+   - Validate workflow syntax using PyYAML
+
+#### Error Handling
+
+- **Unsupported Language**: If detected language not in supported list, raise ValueError with clear message
+- **Missing Template**: Ensure template file exists before copying
+- **Syntax Error**: Validate YAML before copying to .github/workflows/
+
+#### Detection Priority
+
+When multiple language indicators are present:
+- TypeScript has priority over JavaScript (when both package.json and tsconfig.json exist)
+- Framework-specific files prioritized (e.g., Rails routes.rb over generic .rb files)
+
+#### Example Usage
+
+```python
+from moai_adk.core.project.detector import LanguageDetector
+
+# Initialize detector
+detector = LanguageDetector()
+
+# Detect project language
+language = detector.detect("/path/to/project")
+
+# Get workflow template path
+if language in ["python", "javascript", "typescript", "go"]:
+    template_path = detector.get_workflow_template_path(language)
+    # Copy template to .github/workflows/tag-validation.yml
+else:
+    # Use generic workflow or notify user
+    pass
+```
+
+#### Workflow Features by Language
+
+**Python (`python-tag-validation.yml`)**:
+- Test framework: pytest with 85% coverage target
+- Type checking: mypy
+- Linting: ruff
+- Python versions: 3.11, 3.12, 3.13
+
+**JavaScript (`javascript-tag-validation.yml`)**:
+- Package manager: Auto-detect (npm, yarn, pnpm, bun)
+- Test: npm test (or yarn test, pnpm test, bun test)
+- Linting: eslint or biome
+- Coverage target: 80%
+- Node versions: 20, 22 LTS
+
+**TypeScript (`typescript-tag-validation.yml`)**:
+- Type checking: tsc --noEmit
+- Test: npm test (vitest/jest)
+- Linting: biome or eslint
+- Coverage target: 85%
+- Node versions: 20, 22 LTS
+
+**Go (`go-tag-validation.yml`)**:
+- Test: go test -v -cover
+- Linting: golangci-lint
+- Format check: gofmt
+- Coverage target: 75%
+
+#### Troubleshooting
+
+**Problem: Language detection returns None**
+- **Cause**: No language indicator files found in project directory
+- **Solution**: Ensure at least one language indicator file exists (e.g., pyproject.toml for Python, package.json for JavaScript)
+
+**Problem: ValueError when getting workflow template**
+- **Cause**: Detected language doesn't have a dedicated workflow template
+- **Solution**: Check supported languages with `detector.get_supported_languages_for_workflows()`. For unsupported languages, use generic workflow or create custom template.
+
+**Problem: TypeScript project incorrectly detected as JavaScript**
+- **Cause**: tsconfig.json missing from project root
+- **Solution**: Add tsconfig.json to project root. TypeScript detection requires both package.json and tsconfig.json.
+
+**Problem: Wrong package manager detected**
+- **Cause**: Multiple lock files present (e.g., both yarn.lock and package-lock.json)
+- **Solution**: Remove outdated lock files. Keep only one package manager's lock file. Priority order: bun.lockb > pnpm-lock.yaml > yarn.lock > package-lock.json
+
+**Performance Note**: Language detection scans project files recursively. For large projects with many files, consider caching the detection result.
+
 ## 📋 Workflow Steps
 
 ### Step 1: Confirm implementation plan
