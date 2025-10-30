@@ -5,7 +5,6 @@ Tests that language detection and workflow template documentation exists
 and contains required information.
 """
 
-import pytest
 from pathlib import Path
 
 

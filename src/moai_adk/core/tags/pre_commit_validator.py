@@ -26,7 +26,7 @@ class ValidationError:
     locations: List[Tuple[str, int]] = field(default_factory=list)
 
     def __str__(self) -> str:
-        loc_str = ", ".join([f"{f}:{l}" for f, l in self.locations])
+        loc_str = ", ".join([f"{f}:{line}" for f, line in self.locations])
         return f"{self.message}: {self.tag} at {loc_str}"
 
 

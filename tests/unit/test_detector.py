@@ -411,9 +411,22 @@ class TestLanguageDetectorWorkflowTemplate:
         detector = LanguageDetector()
         result = detector.get_supported_languages_for_workflows()
 
-        # Should return exactly 4 languages
-        assert len(result) == 4
+        # Should return exactly 15 languages (extended support)
+        assert len(result) == 15
+        # Check core languages
         assert "python" in result
         assert "javascript" in result
         assert "typescript" in result
         assert "go" in result
+        # Check extended languages
+        assert "ruby" in result
+        assert "php" in result
+        assert "java" in result
+        assert "rust" in result
+        assert "dart" in result
+        assert "swift" in result
+        assert "kotlin" in result
+        assert "csharp" in result
+        assert "c" in result
+        assert "cpp" in result
+        assert "shell" in result
