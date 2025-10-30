@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @CODE:ALF-WORKFLOW-001:HOOKS-CLARITY:PRE-TOOL | SPEC: Individual hook files for better UX
+# @CODE:HOOKS-CLARITY-001 | SPEC: Individual hook files for better UX
 """PreToolUse Hook: Automatic Safety Checkpoint Creation
 
 Claude Code Event: PreToolUse
@@ -30,6 +30,8 @@ if str(SHARED_DIR) not in sys.path:
 
 from handlers import handle_pre_tool_use
 
+
+    pass
 
 
 
@@ -66,7 +68,7 @@ timeout.start()
         # Timeout - return minimal valid response (allow operation to continue)
         timeout_response: dict[str, Any] = {
             "continue": True,
-            "systemMessage": "⚠️ Checkpoint creation timeout - operation proceeding without checkpoint"
+            "systemMessage": "⚠️ Checkpoint creation timeout - operation proceeding without checkpoint",
         }
         print(json.dumps(timeout_response))
         print("PreToolUse hook timeout after 5 seconds", file=sys.stderr)
@@ -76,7 +78,7 @@ timeout.start()
         # JSON parse error - allow operation to continue
         error_response: dict[str, Any] = {
             "continue": True,
-            "hookSpecificOutput": {"error": f"JSON parse error: {e}"}
+            "hookSpecificOutput": {"error": f"JSON parse error: {e}"},
         }
         print(json.dumps(error_response))
         print(f"PreToolUse JSON parse error: {e}", file=sys.stderr)
@@ -86,7 +88,7 @@ timeout.start()
         # Unexpected error - allow operation to continue
         error_response: dict[str, Any] = {
             "continue": True,
-            "hookSpecificOutput": {"error": f"PreToolUse error: {e}"}
+            "hookSpecificOutput": {"error": f"PreToolUse error: {e}"},
         }
         print(json.dumps(error_response))
         print(f"PreToolUse unexpected error: {e}", file=sys.stderr)

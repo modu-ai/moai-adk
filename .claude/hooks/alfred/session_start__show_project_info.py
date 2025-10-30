@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @CODE:ALF-WORKFLOW-001:HOOKS-CLARITY:SESSION-START | SPEC: Individual hook files for better UX
+# @CODE:HOOKS-CLARITY-001 | SPEC: Individual hook files for better UX
 """SessionStart Hook: Show Project Information
 
 Claude Code Event: SessionStart
@@ -11,9 +11,8 @@ Output: System message with formatted project summary
 
 import json
 import sys
-from pathlib import
+from pathlib import Path
 from utils.timeout import CrossPlatformTimeout, TimeoutError as PlatformTimeoutError
- Path
 from typing import Any
 
 # Setup import path for shared modules
@@ -23,7 +22,6 @@ if str(SHARED_DIR) not in sys.path:
     sys.path.insert(0, str(SHARED_DIR))
 
 from handlers import handle_session_start
-
 
 
 
@@ -42,7 +40,7 @@ def main() -> None:
     """
     # Set 5-second timeout
     timeout = CrossPlatformTimeout(5)
-timeout.start()
+    timeout.start()
 
     try:
         # Read JSON payload from stdin
@@ -60,7 +58,7 @@ timeout.start()
         # Timeout - return minimal valid response
         timeout_response: dict[str, Any] = {
             "continue": True,
-            "systemMessage": "⚠️ Session start timeout - continuing without project info"
+            "systemMessage": "⚠️ Session start timeout - continuing without project info",
         }
         print(json.dumps(timeout_response))
         print("SessionStart hook timeout after 5 seconds", file=sys.stderr)
@@ -70,7 +68,7 @@ timeout.start()
         # JSON parse error
         error_response: dict[str, Any] = {
             "continue": True,
-            "hookSpecificOutput": {"error": f"JSON parse error: {e}"}
+            "hookSpecificOutput": {"error": f"JSON parse error: {e}"},
         }
         print(json.dumps(error_response))
         print(f"SessionStart JSON parse error: {e}", file=sys.stderr)
@@ -80,7 +78,7 @@ timeout.start()
         # Unexpected error
         error_response: dict[str, Any] = {
             "continue": True,
-            "hookSpecificOutput": {"error": f"SessionStart error: {e}"}
+            "hookSpecificOutput": {"error": f"SessionStart error: {e}"},
         }
         print(json.dumps(error_response))
         print(f"SessionStart unexpected error: {e}", file=sys.stderr)

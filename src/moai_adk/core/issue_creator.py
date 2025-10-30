@@ -59,7 +59,7 @@ class GitHubIssueCreator:
         IssueType.BUG: ["bug", "reported"],
         IssueType.FEATURE: ["feature-request", "enhancement"],
         IssueType.IMPROVEMENT: ["improvement", "enhancement"],
-        IssueType.QUESTION: ["question", "help-wanted"],
+        IssueType.QUESTION: ["question", "help wanted"],  # Fixed: "help-wanted" → "help wanted" (GitHub standard)
     }
 
     # Priority emoji
@@ -145,7 +145,7 @@ class GitHubIssueCreator:
         # Collect labels
         labels = self.LABEL_MAP.get(config.issue_type, []).copy()
         if config.priority:
-            labels.append(f"priority-{config.priority.value}")
+            labels.append(config.priority.value)  # Fixed: removed "priority-" prefix (use direct label names)
         if config.category:
             labels.append(f"category-{config.category.lower().replace(' ', '-')}")
         if config.custom_labels:
