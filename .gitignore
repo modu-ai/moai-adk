@@ -33,10 +33,6 @@ docs/_build/
 docs/*
 !docs/public/
 
-# MoAI Project - 모두 공개
-# /.moai/ - 공개로 전환
-# !src/moai_adk/templates/.moai/ - 이미 공개
-
 # Virtual environment
 venv/
 .venv/
@@ -50,12 +46,6 @@ env/
 *.swo
 *~
 
-# Claude Code - 모두 공개
-AGENTS.md
-# CLAUDE.md - 공개로 전환
-# /.claude/ - 공개로 전환
-# !src/moai_adk/templates/.claude/ - 이미 공개
-
 # OS
 .DS_Store
 Thumbs.db
@@ -68,20 +58,7 @@ logs/
 *.tmp
 *.temp
 
-
-
-
 .claudeignore
 
 # Project Plans (internal tracking, not versioned)
 CURSOR_INTEGRATION_PLAN.md
-
-
-# MoAI internal directories (not versioned)
-.moai/analysis/
-.moai/docs/
-.moai/reports/
-.moai/scripts/
-.moai/cache/
-.claude/
-.moai/
