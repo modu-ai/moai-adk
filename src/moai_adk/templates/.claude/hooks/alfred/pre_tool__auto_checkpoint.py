@@ -32,6 +32,7 @@ from handlers import handle_pre_tool_use
 
 class HookTimeoutError(Exception):
     """Hook execution timeout exception"""
+
     pass
 
 
@@ -73,7 +74,7 @@ def main() -> None:
         # Timeout - return minimal valid response (allow operation to continue)
         timeout_response: dict[str, Any] = {
             "continue": True,
-            "systemMessage": "⚠️ Checkpoint creation timeout - operation proceeding without checkpoint"
+            "systemMessage": "⚠️ Checkpoint creation timeout - operation proceeding without checkpoint",
         }
         print(json.dumps(timeout_response))
         print("PreToolUse hook timeout after 5 seconds", file=sys.stderr)
@@ -83,7 +84,7 @@ def main() -> None:
         # JSON parse error - allow operation to continue
         error_response: dict[str, Any] = {
             "continue": True,
-            "hookSpecificOutput": {"error": f"JSON parse error: {e}"}
+            "hookSpecificOutput": {"error": f"JSON parse error: {e}"},
         }
         print(json.dumps(error_response))
         print(f"PreToolUse JSON parse error: {e}", file=sys.stderr)
@@ -93,7 +94,7 @@ def main() -> None:
         # Unexpected error - allow operation to continue
         error_response: dict[str, Any] = {
             "continue": True,
-            "hookSpecificOutput": {"error": f"PreToolUse error: {e}"}
+            "hookSpecificOutput": {"error": f"PreToolUse error: {e}"},
         }
         print(json.dumps(error_response))
         print(f"PreToolUse unexpected error: {e}", file=sys.stderr)

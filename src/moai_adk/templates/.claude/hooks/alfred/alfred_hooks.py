@@ -78,6 +78,7 @@ if str(HOOKS_DIR) not in sys.path:
 
 class HookTimeoutError(Exception):
     """Hook execution timeout exception"""
+
     pass
 
 
@@ -175,7 +176,7 @@ def main() -> None:
             # Return valid Hook response even on JSON parse error
             error_response: dict[str, Any] = {
                 "continue": True,
-                "hookSpecificOutput": {"error": f"JSON parse error: {e}"}
+                "hookSpecificOutput": {"error": f"JSON parse error: {e}"},
             }
             print(json.dumps(error_response))
             print(f"JSON parse error: {e}", file=sys.stderr)
@@ -184,7 +185,7 @@ def main() -> None:
             # Return valid Hook response even on unexpected error
             error_response: dict[str, Any] = {
                 "continue": True,
-                "hookSpecificOutput": {"error": f"Hook error: {e}"}
+                "hookSpecificOutput": {"error": f"Hook error: {e}"},
             }
             print(json.dumps(error_response))
             print(f"Unexpected error: {e}", file=sys.stderr)
@@ -194,7 +195,7 @@ def main() -> None:
         # CRITICAL: Hook took too long - return minimal valid response to prevent Claude Code freeze
         timeout_response: dict[str, Any] = {
             "continue": True,
-            "systemMessage": "⚠️ Hook execution timeout - continuing without session info"
+            "systemMessage": "⚠️ Hook execution timeout - continuing without session info",
         }
         print(json.dumps(timeout_response))
         print("Hook timeout after 5 seconds", file=sys.stderr)

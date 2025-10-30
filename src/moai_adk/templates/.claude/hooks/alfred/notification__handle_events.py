@@ -26,6 +26,7 @@ from handlers import handle_notification
 
 class HookTimeoutError(Exception):
     """Hook execution timeout exception"""
+
     pass
 
 
@@ -67,7 +68,7 @@ def main() -> None:
         # Timeout - return minimal valid response
         timeout_response: dict[str, Any] = {
             "continue": True,
-            "systemMessage": "⚠️ Notification handler timeout"
+            "systemMessage": "⚠️ Notification handler timeout",
         }
         print(json.dumps(timeout_response))
         print("Notification hook timeout after 5 seconds", file=sys.stderr)
@@ -77,7 +78,7 @@ def main() -> None:
         # JSON parse error
         error_response: dict[str, Any] = {
             "continue": True,
-            "hookSpecificOutput": {"error": f"JSON parse error: {e}"}
+            "hookSpecificOutput": {"error": f"JSON parse error: {e}"},
         }
         print(json.dumps(error_response))
         print(f"Notification JSON parse error: {e}", file=sys.stderr)
@@ -87,7 +88,7 @@ def main() -> None:
         # Unexpected error
         error_response: dict[str, Any] = {
             "continue": True,
-            "hookSpecificOutput": {"error": f"Notification error: {e}"}
+            "hookSpecificOutput": {"error": f"Notification error: {e}"},
         }
         print(json.dumps(error_response))
         print(f"Notification unexpected error: {e}", file=sys.stderr)

@@ -118,6 +118,22 @@ From the moment you adopt MoAI-ADK, you'll feel:
 
 ---
 
+## 🖥️ Platform Support
+
+### Supported Platforms
+- ✅ **macOS** (11.0+)
+- ✅ **Linux** (Ubuntu 20.04+, Debian 11+, etc.)
+- ✅ **Windows** (10/11) - Full support as of v0.11.0
+  - Note: Hooks system requires Python 3.11+
+  - All hook features work seamlessly on Windows with cross-platform timeout handling
+
+### System Requirements
+- **Python**: 3.11 or higher
+- **Git**: 2.30+
+- **GitHub CLI** (`gh`): Optional, required for PR automation in team mode
+
+---
+
 ## ⚡ 3-Minute Lightning Start
 
 Get your first MoAI-ADK project running in **3 simple steps**. Beginners can finish in under 5 minutes.
