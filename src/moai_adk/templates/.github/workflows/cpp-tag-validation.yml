@@ -1,0 +1,79 @@
+# @CODE:LDE-010-CPP | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md
+# C++ TAG Validation Workflow
+# Validates C++ code with g++/clang++, Google Test, and cpplint
+
+name: C++ TAG Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main, develop, "feature/**"]
+
+jobs:
+  test:
+    name: 🧪 C++ Tests & Static Analysis
+    runs-on: ubuntu-latest
+
+    if: github.event.pull_request.draft == false || github.event_name == 'push'
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    strategy:
+      matrix:
+        compiler: ['g++', 'clang++']
+        cpp-standard: ['17', '20']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install build tools and Google Test
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ clang libgtest-dev lcov
+
+      - name: Install cpplint
+        run: pip install cpplint
+
+      - name: Set compiler
+        run: |
+          if [ "${{ matrix.compiler }}" == "g++" ]; then
+            echo "CXX=g++" >> $GITHUB_ENV
+          else
+            echo "CXX=clang++" >> $GITHUB_ENV
+          fi
+
+      - name: Run cpplint
+        run: cpplint --recursive --filter=-legal/copyright src/
+
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_STANDARD=${{ matrix.cpp-standard }} -DENABLE_COVERAGE=ON
+
+      - name: Build project
+        run: cmake --build build --config Debug
+
+      - name: Run Google Test
+        run: |
+          cd build
+          ctest --output-on-failure --verbose
+
+      - name: Generate coverage report
+        if: matrix.compiler == 'g++' && matrix.cpp-standard == '17'
+        run: |
+          cd build
+          lcov --capture --directory . --output-file coverage.info
+          lcov --remove coverage.info '/usr/*' '*/test/*' --output-file coverage.info
+          lcov --list coverage.info
+
+      - name: Upload coverage artifacts
+        if: always() && matrix.compiler == 'g++' && matrix.cpp-standard == '17'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpp-coverage-${{ matrix.compiler }}-cpp${{ matrix.cpp-standard }}
+          path: build/coverage.info
+          retention-days: 30

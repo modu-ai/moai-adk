@@ -117,22 +117,102 @@ Alfred follows a systematic **4-step workflow** for all user requests to ensure 
 
 ---
 
+## 🛠️ Auto-Fix & Merge Conflict Protocol
+
+When Alfred detects issues that could automatically fix code (merge conflicts, overwritten changes, deprecated code, etc.), follow this protocol BEFORE making any changes:
+
+### Step 1: Analysis & Reporting
+- Analyze the problem thoroughly using git history, file content, and logic
+- Write a clear report (plain text, NO markdown) explaining:
+  - Root cause of the issue
+  - Files affected
+  - Proposed changes
+  - Impact analysis
+
+Example Report Format:
+```
+    Detected Merge Conflict:
+
+    Root Cause:
+    - Commit c054777b removed language detection from develop
+    - Merge commit e18c7f98 (main → develop) re-introduced the line
+
+    Impact:
+    - .claude/hooks/alfred/shared/handlers/session.py
+    - src/moai_adk/templates/.claude/hooks/alfred/shared/handlers/session.py
+
+    Proposed Fix:
+    - Remove detect_language() import and call
+    - Delete "🐍 Language: {language}" display line
+    - Synchronize both local + package templates
+```
+
+### Step 2: User Confirmation (AskUserQuestion)
+- Present the analysis to the user
+- Use AskUserQuestion to get explicit approval
+- Options should be clear: "Should I proceed with this fix?" with YES/NO choices
+- Wait for user response before proceeding
+
+### Step 3: Execute Only After Approval
+- Only modify files after user confirms
+- Apply changes to both local project AND package templates
+- Maintain consistency between `/` and `src/moai_adk/templates/`
+
+### Step 4: Commit with Full Context
+- Create commit with detailed message explaining:
+  - What problem was fixed
+  - Why it happened
+  - How it was resolved
+- Reference the conflict commit if applicable
+
+### Critical Rules
+- ❌ NEVER auto-modify without user approval
+- ❌ NEVER skip the report step
+- ✅ ALWAYS report findings first
+- ✅ ALWAYS ask for user confirmation (AskUserQuestion)
+- ✅ ALWAYS update both local + package templates together
+
+---
+
 ## 📊 Reporting Style
 
-**CRITICAL RULE**: Alfred and all Sub-agents MUST output reports/completion notices in **direct markdown format**.
+**CRITICAL RULE**: Distinguish between screen output (user-facing) and internal documents (files).
 
-### ✅ Correct Report Output Pattern
+### Output Format Rules
+- **Screen output to user**: Plain text (NO markdown syntax)
+- **Internal documents** (files in `.moai/docs/`, `.moai/reports/`): Markdown format
+- **Code comments and git commits**: English, clear structure
 
-**Output directly in markdown for these cases:**
+### Screen Output to User (Plain Text)
 
-1. **Task Completion Report** - After implementation, testing, verification
-2. **Session Finalization** - After `/alfred:3-sync` completion, PR merge
-3. **Progress Summary** - Phase-by-phase status updates
-4. **Next Steps Guidance** - Recommendations for user
-5. **Analysis Results Report** - Code quality, architecture analysis
-6. **Validation Results Summary** - TRUST 5, @TAG verification
+**When responding directly to user in chat/prompt:**
 
-**Output Format**:
+Use plain text format (NO markdown headers, tables, or special formatting):
+
+Example:
+```
+Detected Merge Conflict:
+
+Root Cause:
+- Commit c054777b removed language detection from develop
+- Merge commit e18c7f98 re-introduced the line
+
+Impact Range:
+- .claude/hooks/alfred/shared/handlers/session.py
+- src/moai_adk/templates/.claude/hooks/alfred/shared/handlers/session.py
+
+Proposed Actions:
+- Remove detect_language() import and call
+- Delete language display line
+- Synchronize both files
+```
+
+### Internal Documents (Markdown Format)
+
+**When creating files in `.moai/docs/`, `.moai/reports/`, `.moai/analysis/`:**
+
+Use markdown format with proper structure:
+
 ```markdown
 ## 🎊 Task Completion Report
 

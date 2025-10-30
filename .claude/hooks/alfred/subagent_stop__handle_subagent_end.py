@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @CODE:ALF-WORKFLOW-001:HOOKS-CLARITY:SUBAGENT-STOP | SPEC: Individual hook files for better UX
+# @CODE:HOOKS-CLARITY-001 | SPEC: Individual hook files for better UX
 """SubagentStop Hook: Handle Sub-agent Termination
 
 Claude Code Event: SubagentStop
@@ -24,6 +24,8 @@ if str(SHARED_DIR) not in sys.path:
 
 from handlers import handle_subagent_stop
 
+
+    pass
 
 
 
@@ -60,7 +62,7 @@ timeout.start()
         # Timeout - return minimal valid response
         timeout_response: dict[str, Any] = {
             "continue": True,
-            "systemMessage": "⚠️ SubagentStop handler timeout"
+            "systemMessage": "⚠️ SubagentStop handler timeout",
         }
         print(json.dumps(timeout_response))
         print("SubagentStop hook timeout after 5 seconds", file=sys.stderr)
@@ -70,7 +72,7 @@ timeout.start()
         # JSON parse error
         error_response: dict[str, Any] = {
             "continue": True,
-            "hookSpecificOutput": {"error": f"JSON parse error: {e}"}
+            "hookSpecificOutput": {"error": f"JSON parse error: {e}"},
         }
         print(json.dumps(error_response))
         print(f"SubagentStop JSON parse error: {e}", file=sys.stderr)
@@ -80,7 +82,7 @@ timeout.start()
         # Unexpected error
         error_response: dict[str, Any] = {
             "continue": True,
-            "hookSpecificOutput": {"error": f"SubagentStop error: {e}"}
+            "hookSpecificOutput": {"error": f"SubagentStop error: {e}"},
         }
         print(json.dumps(error_response))
         print(f"SubagentStop unexpected error: {e}", file=sys.stderr)

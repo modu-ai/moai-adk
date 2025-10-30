@@ -54,7 +54,9 @@ Setup sys.path for package imports
 
 import json
 import sys
-from pathlib import Path
+from pathlib import
+from utils.timeout import CrossPlatformTimeout, TimeoutError as PlatformTimeoutError
+ Path
 from typing import Any
 
 from core import HookResult
@@ -68,12 +70,19 @@ from handlers import (
     handle_subagent_stop,
     handle_user_prompt_submit,
 )
-from utils.timeout import CrossPlatformTimeout, TimeoutError as PlatformTimeoutError
 
 # Add the hooks directory to sys.path to enable package imports
 HOOKS_DIR = Path(__file__).parent
 if str(HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(HOOKS_DIR))
+
+
+    pass
+
+
+def _hook_timeout_handler(signum, frame):
+    """Signal handler for global hook timeout"""
+    raise HookTimeoutError("Hook execution exceeded 5-second timeout")
 
 
 def main() -> None:
@@ -114,10 +123,11 @@ def main() -> None:
 
     @TAG:HOOKS-TIMEOUT-001
     """
+    # Set global 5-second timeout for entire hook execution
+    signal.signal(signal.SIGALRM, _hook_timeout_handler)
+    signal.alarm(5)
+
     try:
-        # Set global 5-second timeout for entire hook execution (cross-platform)
-        timeout = CrossPlatformTimeout(5)
-        timeout.start()
         # Check for event argument
         if len(sys.argv) < 2:
             print("Usage: alfred_hooks.py <event>", file=sys.stderr)
@@ -164,7 +174,7 @@ def main() -> None:
             # Return valid Hook response even on JSON parse error
             error_response: dict[str, Any] = {
                 "continue": True,
-                "hookSpecificOutput": {"error": f"JSON parse error: {e}"}
+                "hookSpecificOutput": {"error": f"JSON parse error: {e}"},
             }
             print(json.dumps(error_response))
             print(f"JSON parse error: {e}", file=sys.stderr)
@@ -173,19 +183,17 @@ def main() -> None:
             # Return valid Hook response even on unexpected error
             error_response: dict[str, Any] = {
                 "continue": True,
-                "hookSpecificOutput": {"error": f"Hook error: {e}"}
+                "hookSpecificOutput": {"error": f"Hook error: {e}"},
             }
             print(json.dumps(error_response))
             print(f"Unexpected error: {e}", file=sys.stderr)
             sys.exit(1)
-        finally:
-            timeout.cancel()
 
     except PlatformTimeoutError:
         # CRITICAL: Hook took too long - return minimal valid response to prevent Claude Code freeze
         timeout_response: dict[str, Any] = {
             "continue": True,
-            "systemMessage": "⚠️ Hook execution timeout - continuing without session info"
+            "systemMessage": "⚠️ Hook execution timeout - continuing without session info",
         }
         print(json.dumps(timeout_response))
         print("Hook timeout after 5 seconds", file=sys.stderr)
@@ -193,7 +201,7 @@ def main() -> None:
 
     finally:
         # Always cancel the alarm to prevent signal leakage
-        signal.alarm(0)
+        timeout.cancel()
 
 
 if __name__ == "__main__":

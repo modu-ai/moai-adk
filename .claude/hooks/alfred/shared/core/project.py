@@ -5,22 +5,72 @@ Project information inquiry (language, Git, SPEC progress, etc.)
 """
 
 import json
+import signal
 import socket
 import subprocess
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
-# Import from local modules
-from .timeout import CrossPlatformTimeout, TimeoutError as PlatformTimeoutError
-from .ttl_cache import ttl_cache
-
 # Cache directory for version check results
 CACHE_DIR_NAME = ".moai/cache"
 
 
+def find_project_root(start_path: str | Path = ".") -> Path:
+    """Find MoAI-ADK project root by searching upward for .moai/config.json
+
+    Traverses up the directory tree until it finds .moai/config.json or CLAUDE.md,
+    which indicates the project root. This ensures cache and other files are
+    always created in the correct location, regardless of where hooks execute.
+
+    Args:
+        start_path: Starting directory (default: current directory)
+
+    Returns:
+        Project root Path. If not found, returns start_path as absolute path.
+
+    Examples:
+        >>> find_project_root(".")
+        Path("/Users/user/my-project")
+        >>> find_project_root(".claude/hooks/alfred")
+        Path("/Users/user/my-project")  # Found root 3 levels up
+
+    Notes:
+        - Searches for .moai/config.json first (most reliable)
+        - Falls back to CLAUDE.md if config.json not found
+        - Max depth: 10 levels up (prevent infinite loop)
+        - Returns absolute path for consistency
+
+    TDD History:
+        - RED: 4 test scenarios (root, nested, not found, symlinks)
+        - GREEN: Minimal upward search with .moai/config.json detection
+        - REFACTOR: Add CLAUDE.md fallback, max depth limit, absolute path return
+    """
+    current = Path(start_path).resolve()
+    max_depth = 10  # Prevent infinite loop
+
+    for _ in range(max_depth):
+        # Check for .moai/config.json (primary indicator)
+        if (current / ".moai" / "config.json").exists():
+            return current
+
+        # Check for CLAUDE.md (secondary indicator)
+        if (current / "CLAUDE.md").exists():
+            return current
+
+        # Move up one level
+        parent = current.parent
+        if parent == current:  # Reached filesystem root
+            break
+        current = parent
+
+    # Not found - return start_path as absolute
+    return Path(start_path).resolve()
+
+
 class TimeoutError(Exception):
     """Signal-based timeout exception"""
+
     pass
 
 
@@ -37,6 +87,7 @@ def timeout_handler(seconds: int):
     Raises:
         TimeoutError: If operation exceeds timeout
     """
+
     def _handle_timeout(signum, frame):
         raise TimeoutError(f"Operation timed out after {seconds} seconds")
 
@@ -46,7 +97,7 @@ def timeout_handler(seconds: int):
     try:
         yield
     finally:
-        timeout.cancel()  # Disable alarm
+        signal.alarm(0)  # Disable alarm
         signal.signal(signal.SIGALRM, old_handler)
 
 
@@ -179,15 +230,12 @@ def _run_git_command(args: list[str], cwd: str, timeout: int = 2) -> str:
         raise subprocess.TimeoutExpired(["git"] + args, timeout)
 
 
-@ttl_cache(ttl_seconds=10)  # 10 seconds TTL (Git info changes frequently)
 def get_git_info(cwd: str) -> dict[str, Any]:
     """Gather Git repository information
 
     View the current status of a Git repository.
     Returns the branch name, commit hash, number of changes, and last commit message.
     If it is not a Git repository, it returns an empty dictionary.
-
-    Performance: Cached with 10-second TTL to reduce Git command overhead.
 
     Args:
         cwd: Project root directory path
@@ -246,50 +294,49 @@ def get_git_info(cwd: str) -> dict[str, Any]:
 
 
 def count_specs(cwd: str) -> dict[str, int]:
-    """SPEC File count and progress calculation with deprecated tracking
+    """SPEC File count and progress calculation
 
     Browse the .moai/specs/ directory to find the number of SPEC Files and
     Counts the number of SPECs with status: completed.
-    Also tracks deprecated SPECs (archived TypeScript implementations).
 
     Args:
-        cwd: Project root directory path
+        cwd: Project root directory path (or any subdirectory, will search upward)
 
     Returns:
         SPEC progress dictionary. Includes the following keys:
         - completed: Number of completed SPECs (int)
         - total: total number of SPECs (int)
         - percentage: completion percentage (int, 0~100)
-        - deprecated: Number of deprecated but completed SPECs (int)
 
         All 0 if .moai/specs/ directory does not exist
 
     Examples:
         >>> count_specs("/path/to/project")
-        {'completed': 2, 'total': 5, 'percentage': 40, 'deprecated': 1}
+        {'completed': 2, 'total': 5, 'percentage': 40}
         >>> count_specs("/path/to/no-specs")
-        {'completed': 0, 'total': 0, 'percentage': 0, 'deprecated': 0}
+        {'completed': 0, 'total': 0, 'percentage': 0}
 
     Notes:
         - SPEC File Location: .moai/specs/SPEC-{ID}/spec.md
         - Completion condition: Include "status: completed" in YAML front matter
-        - Deprecated condition: Include "archived-typescript" label
         - If parsing fails, the SPEC is considered incomplete.
+        - Automatically finds project root to locate .moai/specs/
 
     TDD History:
         - RED: 5 items scenario test (0/0, 2/5, 5/5, no directory, parsing error)
         - GREEN: SPEC search with Path.iterdir(), YAML parsing implementation
         - REFACTOR: Strengthened exception handling, improved percentage calculation safety
-        - UPDATE: Track deprecated SPECs (archived TypeScript implementations)
+        - UPDATE: Add project root detection for consistent path resolution
     """
-    specs_dir = Path(cwd) / ".moai" / "specs"
+    # Find project root to ensure we read specs from correct location
+    project_root = find_project_root(cwd)
+    specs_dir = project_root / ".moai" / "specs"
 
     if not specs_dir.exists():
-        return {"completed": 0, "total": 0, "percentage": 0, "deprecated": 0}
+        return {"completed": 0, "total": 0, "percentage": 0}
 
     completed = 0
     total = 0
-    deprecated = 0
 
     for spec_dir in specs_dir.iterdir():
         if not spec_dir.is_dir() or not spec_dir.name.startswith("SPEC-"):
@@ -310,10 +357,6 @@ def count_specs(cwd: str) -> dict[str, int]:
                     yaml_content = content[3:yaml_end]
                     if "status: completed" in yaml_content:
                         completed += 1
-
-                        # Check if this is a deprecated (archived TypeScript) SPEC
-                        if "archived-typescript" in yaml_content:
-                            deprecated += 1
         except (OSError, UnicodeDecodeError):
             # File read failure or encoding error - considered incomplete
             pass
@@ -324,7 +367,6 @@ def count_specs(cwd: str) -> dict[str, int]:
         "completed": completed,
         "total": total,
         "percentage": percentage,
-        "deprecated": deprecated,
     }
 
 
@@ -332,7 +374,7 @@ def get_project_language(cwd: str) -> str:
     """Determine the primary project language (prefers config.json).
 
     Args:
-        cwd: Project root directory.
+        cwd: Project root directory (or any subdirectory, will search upward).
 
     Returns:
         Language string in lower-case.
@@ -340,8 +382,11 @@ def get_project_language(cwd: str) -> str:
     Notes:
         - Reads ``.moai/config.json`` first for a quick answer.
         - Falls back to ``detect_language`` if configuration is missing.
+        - Automatically finds project root to locate .moai/config.json
     """
-    config_path = Path(cwd) / ".moai" / "config.json"
+    # Find project root to ensure we read config from correct location
+    project_root = find_project_root(cwd)
+    config_path = project_root / ".moai" / "config.json"
     if config_path.exists():
         try:
             config = json.loads(config_path.read_text())
@@ -352,8 +397,8 @@ def get_project_language(cwd: str) -> str:
             # Fall back to detection on parse errors
             pass
 
-    # Fall back to the original language detection routine
-    return detect_language(cwd)
+    # Fall back to the original language detection routine (use project root)
+    return detect_language(str(project_root))
 
 
 # @CODE:CONFIG-INTEGRATION-001
@@ -384,21 +429,14 @@ def get_version_check_config(cwd: str) -> dict[str, Any]:
         - REFACTOR: Add validation and error handling
     """
     # TTL mapping by frequency
-    TTL_BY_FREQUENCY = {
-        "always": 0,
-        "daily": 24,
-        "weekly": 168,
-        "never": float('inf')
-    }
+    ttl_by_frequency = {"always": 0, "daily": 24, "weekly": 168, "never": float("inf")}
 
     # Default configuration
-    defaults = {
-        "enabled": True,
-        "frequency": "daily",
-        "cache_ttl_hours": 24
-    }
+    defaults = {"enabled": True, "frequency": "daily", "cache_ttl_hours": 24}
 
-    config_path = Path(cwd) / ".moai" / "config.json"
+    # Find project root to ensure we read config from correct location
+    project_root = find_project_root(cwd)
+    config_path = project_root / ".moai" / "config.json"
     if not config_path.exists():
         return defaults
 
@@ -416,21 +454,17 @@ def get_version_check_config(cwd: str) -> dict[str, Any]:
         frequency = moai_config.get("update_check_frequency", defaults["frequency"])
 
         # Validate frequency
-        if frequency not in TTL_BY_FREQUENCY:
+        if frequency not in ttl_by_frequency:
             frequency = defaults["frequency"]
 
         # Calculate TTL from frequency
-        cache_ttl_hours = TTL_BY_FREQUENCY[frequency]
+        cache_ttl_hours = ttl_by_frequency[frequency]
 
         # Allow explicit cache_ttl_hours override
         if "cache_ttl_hours" in version_check_config:
             cache_ttl_hours = version_check_config["cache_ttl_hours"]
 
-        return {
-            "enabled": enabled,
-            "frequency": frequency,
-            "cache_ttl_hours": cache_ttl_hours
-        }
+        return {"enabled": enabled, "frequency": frequency, "cache_ttl_hours": cache_ttl_hours}
 
     except (OSError, json.JSONDecodeError, KeyError):
         # Config read or parse error - return defaults
@@ -522,8 +556,6 @@ def is_major_version_change(current: str, latest: str) -> bool:
 
 
 # @CODE:VERSION-CACHE-INTEGRATION-001
-# @CODE:HOOK-PERF-002 - Added TTL caching for performance optimization
-@ttl_cache(ttl_seconds=30 * 60)  # 30 minutes TTL (version info is stable)
 def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
     """Check MoAI-ADK current and latest version with caching and offline support.
 
@@ -576,55 +608,59 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
         if spec and spec.loader:
             version_cache_module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(version_cache_module)
-            VersionCache = version_cache_module.VersionCache
+            version_cache_class = version_cache_module.VersionCache
         else:
             # Skip caching if module can't be loaded
-            VersionCache = None
-    except (ImportError, OSError) as e:
+            version_cache_class = None
+    except (ImportError, OSError):
         # Graceful degradation: skip caching on import errors
-        VersionCache = None
+        version_cache_class = None
 
-    # 1. Initialize cache (skip if VersionCache couldn't be imported)
-    cache_dir = Path(cwd) / CACHE_DIR_NAME
-    version_cache = VersionCache(cache_dir) if VersionCache else None
+    # 1. Find project root (ensure cache is always in correct location)
+    # This prevents creating .moai/cache in wrong locations when hooks run
+    # from subdirectories like .claude/hooks/alfred/
+    project_root = find_project_root(cwd)
 
-    # 2. CRITICAL: Get current installed version first (NEVER skip this)
+    # 2. Initialize cache (skip if VersionCache couldn't be imported)
+    cache_dir = project_root / CACHE_DIR_NAME
+    version_cache = version_cache_class(cache_dir) if version_cache_class else None
+
+    # 2. Get current installed version first (needed for cache validation)
     current_version = "unknown"
     try:
         current_version = version("moai-adk")
     except PackageNotFoundError:
         current_version = "dev"
-    except Exception:
-        # Fallback for any other import errors
-        current_version = "unknown"
+        # Dev mode - skip cache and return immediately
+        return {
+            "current": "dev",
+            "latest": "unknown",
+            "update_available": False,
+            "upgrade_command": "",
+        }
 
-    # 2a. Build minimal result with current version guaranteed
+    # 3. Try to load from cache (fast path with version validation)
+    if version_cache and version_cache.is_valid():
+        cached_info = version_cache.load()
+        if cached_info:
+            # Only use cache if the cached version matches current installed version
+            # This prevents stale cache when package is upgraded locally
+            if cached_info.get("current") == current_version:
+                # Ensure new fields exist for backward compatibility
+                if "release_notes_url" not in cached_info:
+                    # Add missing fields to old cached data
+                    cached_info.setdefault("release_notes_url", None)
+                    cached_info.setdefault("is_major_update", False)
+                return cached_info
+            # else: cache is stale (version changed), fall through to re-check
+
+    # 4. Cache miss or stale - need to query PyPI
     result = {
         "current": current_version,
         "latest": "unknown",
         "update_available": False,
         "upgrade_command": "",
-        "release_notes_url": None,
-        "is_major_update": False
     }
-
-    # 2b. Early exit for dev/unknown modes (no cache/network needed)
-    if current_version in ["dev", "unknown"]:
-        return result
-
-    # 3. Try to load from cache (optional optimization)
-    if version_cache and version_cache.is_valid():
-        cached_info = version_cache.load()
-        if cached_info and cached_info.get("current") == current_version:
-            # Cache is valid and up-to-date
-            # Ensure new fields exist for backward compatibility
-            cached_info.setdefault("release_notes_url", None)
-            cached_info.setdefault("is_major_update", False)
-            return cached_info
-        # else: cache is stale (version changed) or invalid, fall through to re-check
-
-    # 4. Cache miss or stale - optionally query PyPI (but result is already built at line 589)
-    # Note: result already has current_version set, so we'll only enhance it with latest info
 
     # 5. Check if version check is enabled in config
     config = get_version_check_config(cwd)
@@ -654,7 +690,9 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
                     release_url = project_urls.get("Changelog", "")
                     if not release_url:
                         # Fallback to GitHub releases URL pattern
-                        release_url = f"https://github.com/modu-ai/moai-adk/releases/tag/v{result['latest']}"
+                        release_url = (
+                            f"https://github.com/modu-ai/moai-adk/releases/tag/v{result['latest']}"
+                        )
                     result["release_notes_url"] = release_url
                 except (KeyError, AttributeError, TypeError):
                     result["release_notes_url"] = None
@@ -681,7 +719,9 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
                 result["upgrade_command"] = f"uv pip install --upgrade moai-adk>={result['latest']}"
 
                 # Detect major version change
-                result["is_major_update"] = is_major_version_change(result["current"], result["latest"])
+                result["is_major_update"] = is_major_version_change(
+                    result["current"], result["latest"]
+                )
             else:
                 result["is_major_update"] = False
         except (ValueError, AttributeError):
@@ -697,6 +737,7 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
 
 
 __all__ = [
+    "find_project_root",
     "detect_language",
     "get_git_info",
     "count_specs",

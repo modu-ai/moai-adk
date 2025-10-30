@@ -1,0 +1,67 @@
+# @CODE:LDE-007-KOTLIN | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md
+# Kotlin TAG Validation Workflow
+# Validates Kotlin code with JUnit 5 tests, ktlint, and Gradle
+
+name: Kotlin TAG Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main, develop, "feature/**"]
+
+jobs:
+  test:
+    name: 🧪 Kotlin Tests & Linting
+    runs-on: ubuntu-latest
+
+    if: github.event.pull_request.draft == false || github.event_name == 'push'
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    strategy:
+      matrix:
+        java-version: ['17', '21']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java (for Kotlin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ matrix.java-version }}
+          cache: 'gradle'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Run ktlint check
+        run: ./gradlew ktlintCheck
+
+      - name: Build project
+        run: ./gradlew build
+
+      - name: Run tests with coverage
+        run: ./gradlew test jacocoTestReport
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kotlin-coverage-java${{ matrix.java-version }}
+          path: build/reports/jacoco/
+          retention-days: 30
+
+      - name: Publish test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kotlin-test-results-java${{ matrix.java-version }}
+          path: build/test-results/
+          retention-days: 30

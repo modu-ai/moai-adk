@@ -88,7 +88,7 @@ def detect_risky_operation(tool_name: str, tool_args: dict[str, Any], cwd: str) 
             return (True, "merge")
 
         # Execute external script (potentially destructive)
-        if SCRIPT_EXECUTION_PATTERN.search(command):
+        if any(command.startswith(prefix) for prefix in ["python ", "node ", "bash ", "sh "]):
             return (True, "script")
 
     # Edit/Write tool: Detect important files

@@ -1,0 +1,68 @@
+# @CODE:LDE-001-RUBY | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md
+# Ruby TAG Validation Workflow
+# Validates Ruby code with RSpec tests, Rubocop linting, and bundle dependencies
+
+name: Ruby TAG Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main, develop, "feature/**"]
+
+jobs:
+  test:
+    name: 🧪 Ruby Tests & Linting
+    runs-on: ubuntu-latest
+
+    # Skip validation on draft PRs (allow WIP)
+    if: github.event.pull_request.draft == false || github.event_name == 'push'
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    strategy:
+      matrix:
+        ruby-version: ['3.1', '3.2', '3.3']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for comprehensive validation
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+          bundler-cache: true  # Enable bundler caching
+
+      - name: Install dependencies
+        run: |
+          gem install bundler
+          bundle install
+
+      - name: Run RSpec tests
+        run: bundle exec rspec --format documentation
+
+      - name: Run Rubocop linting
+        run: bundle exec rubocop
+
+      - name: Generate coverage report
+        if: always()
+        run: |
+          echo "## Ruby Test Coverage" >> $GITHUB_STEP_SUMMARY
+          if [ -f coverage/.last_run.json ]; then
+            cat coverage/.last_run.json | ruby -rjson -e "puts JSON.parse(STDIN.read)['result']['line'].to_s + '%'" >> $GITHUB_STEP_SUMMARY || echo "Coverage data not available" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Coverage report not generated" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ruby-coverage-${{ matrix.ruby-version }}
+          path: coverage/
+          retention-days: 30

@@ -1,0 +1,65 @@
+# @CODE:LDE-008-CSHARP | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md
+# C# TAG Validation Workflow
+# Validates C# code with xUnit tests, StyleCop linting, and dotnet CLI
+
+name: C# TAG Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main, develop, "feature/**"]
+
+jobs:
+  test:
+    name: 🧪 C# Tests & Linting
+    runs-on: ubuntu-latest
+
+    if: github.event.pull_request.draft == false || github.event_name == 'push'
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    strategy:
+      matrix:
+        dotnet-version: ['8.0.x', '9.0.x']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ matrix.dotnet-version }}
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build project
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Run tests with coverage
+        run: dotnet test --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage"
+
+      - name: Run StyleCop analysis
+        run: dotnet build --no-restore /p:EnforceCodeStyleInBuild=true /p:TreatWarningsAsErrors=true
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: csharp-coverage-${{ matrix.dotnet-version }}
+          path: '**/TestResults/**/*.coverage'
+          retention-days: 30
+
+      - name: Publish test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: csharp-test-results-${{ matrix.dotnet-version }}
+          path: '**/TestResults/**/*.trx'
+          retention-days: 30

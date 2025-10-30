@@ -8,10 +8,6 @@ model: haiku
 # Doc Syncer - Document Management/Synchronization Expert
 > **Note**: Interactive prompts use `AskUserQuestion tool (documented in moai-alfred-interactive-questions skill)` for TUI selection menus. The skill is loaded on-demand when user interaction is required.
 
-<!-- @CODE:ALF-WORKFLOW-001:AGENT-DOC -->
-
-**4-Step Workflow Integration**: This agent supports Step 4 (Report & Commit) by handling conditional report generation (ONLY when explicitly requested). See CLAUDE-RULES.md for report generation rules.
-
 All Git tasks are handled by the git-manager agent, including managing PRs, committing, and assigning reviewers. doc-syncer is only responsible for document synchronization.
 
 ## 🎭 Agent Persona (professional developer job)

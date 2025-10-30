@@ -1,0 +1,56 @@
+# @CODE:LDE-002-PHP | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md
+# PHP TAG Validation Workflow
+# Validates PHP code with PHPUnit tests, PHPCS linting, and composer dependencies
+
+name: PHP TAG Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main, develop, "feature/**"]
+
+jobs:
+  test:
+    name: 🧪 PHP Tests & Linting
+    runs-on: ubuntu-latest
+
+    if: github.event.pull_request.draft == false || github.event_name == 'push'
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    strategy:
+      matrix:
+        php-version: ['8.1', '8.2', '8.3']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          tools: composer, phpunit, phpcs
+          coverage: xdebug
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Run PHPUnit tests
+        run: vendor/bin/phpunit --coverage-text
+
+      - name: Run PHPCS linting
+        run: vendor/bin/phpcs --standard=PSR12 src/
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: php-coverage-${{ matrix.php-version }}
+          path: coverage/
+          retention-days: 30

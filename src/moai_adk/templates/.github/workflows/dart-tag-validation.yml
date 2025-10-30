@@ -1,0 +1,82 @@
+# @CODE:LDE-005-DART | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md
+# Dart/Flutter TAG Validation Workflow
+# Validates Dart code with flutter test, dart analyze, and pub dependencies
+
+name: Dart TAG Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main, develop, "feature/**"]
+
+jobs:
+  test:
+    name: 🧪 Dart Tests & Analysis
+    runs-on: ubuntu-latest
+
+    if: github.event.pull_request.draft == false || github.event_name == 'push'
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    strategy:
+      matrix:
+        dart-version: ['stable', 'beta']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if Flutter project
+        id: detect-flutter
+        run: |
+          if grep -q "flutter:" pubspec.yaml 2>/dev/null; then
+            echo "is_flutter=true" >> $GITHUB_OUTPUT
+            echo "Flutter project detected"
+          else
+            echo "is_flutter=false" >> $GITHUB_OUTPUT
+            echo "Dart project detected"
+          fi
+
+      - name: Setup Dart (non-Flutter)
+        if: steps.detect-flutter.outputs.is_flutter == 'false'
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: ${{ matrix.dart-version }}
+
+      - name: Setup Flutter (Flutter projects)
+        if: steps.detect-flutter.outputs.is_flutter == 'true'
+        uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ matrix.dart-version }}
+
+      - name: Install dependencies (Dart)
+        if: steps.detect-flutter.outputs.is_flutter == 'false'
+        run: dart pub get
+
+      - name: Install dependencies (Flutter)
+        if: steps.detect-flutter.outputs.is_flutter == 'true'
+        run: flutter pub get
+
+      - name: Run dart analyze
+        run: dart analyze --fatal-infos
+
+      - name: Run tests (Dart)
+        if: steps.detect-flutter.outputs.is_flutter == 'false'
+        run: dart test
+
+      - name: Run tests (Flutter)
+        if: steps.detect-flutter.outputs.is_flutter == 'true'
+        run: flutter test
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dart-coverage-${{ matrix.dart-version }}
+          path: coverage/
+          retention-days: 30

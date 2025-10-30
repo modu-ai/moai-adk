@@ -1,0 +1,83 @@
+# @CODE:LDE-009-C | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md
+# C TAG Validation Workflow
+# Validates C code with gcc/clang, cppcheck, and Unity/ctest
+
+name: C TAG Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main, develop, "feature/**"]
+
+jobs:
+  test:
+    name: 🧪 C Tests & Static Analysis
+    runs-on: ubuntu-latest
+
+    if: github.event.pull_request.draft == false || github.event_name == 'push'
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    strategy:
+      matrix:
+        compiler: ['gcc', 'clang']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake gcc clang cppcheck valgrind
+
+      - name: Set compiler
+        run: |
+          if [ "${{ matrix.compiler }}" == "gcc" ]; then
+            echo "CC=gcc" >> $GITHUB_ENV
+            echo "CXX=g++" >> $GITHUB_ENV
+          else
+            echo "CC=clang" >> $GITHUB_ENV
+            echo "CXX=clang++" >> $GITHUB_ENV
+          fi
+
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DENABLE_COVERAGE=ON
+
+      - name: Build project
+        run: cmake --build build --config Debug
+
+      - name: Run cppcheck static analysis
+        run: cppcheck --enable=all --error-exitcode=1 --suppress=missingIncludeSystem src/
+
+      - name: Run tests with ctest
+        run: |
+          cd build
+          ctest --output-on-failure --verbose
+
+      - name: Run Valgrind memory check
+        if: matrix.compiler == 'gcc'
+        run: |
+          cd build
+          ctest -T memcheck
+
+      - name: Generate coverage report
+        if: matrix.compiler == 'gcc'
+        run: |
+          cd build
+          gcov -r CMakeFiles/**/*.gcno
+          lcov --capture --directory . --output-file coverage.info
+          lcov --remove coverage.info '/usr/*' --output-file coverage.info
+
+      - name: Upload coverage artifacts
+        if: always() && matrix.compiler == 'gcc'
+        uses: actions/upload-artifact@v4
+        with:
+          name: c-coverage-${{ matrix.compiler }}
+          path: build/coverage.info
+          retention-days: 30

@@ -293,8 +293,30 @@ Create a specification for the EARS structure."""
 
 2. Invoke git-manager (Git task):
    - subagent_type: "git-manager"
-   - description: "Create Git branch/PR"
-   - prompt: "After completing the plan, please create a branch and Draft PR."
+   - description: "Create Git branch/PR with duplicate prevention"
+   - prompt: """You are git-manager agent.
+
+LANGUAGE CONFIGURATION:
+- conversation_language: {{CONVERSATION_LANGUAGE}}
+- language_name: {{CONVERSATION_LANGUAGE_NAME}}
+
+CRITICAL INSTRUCTION (Team Mode Duplicate Prevention):
+Before creating any GitHub Issue or PR:
+1. ALWAYS check for existing Issue with SPEC-ID in title
+2. ALWAYS check for existing PR with branch name feature/SPEC-{ID}
+3. If Issue exists → Update it, don't create duplicate
+4. If PR exists → Update it, don't create duplicate
+5. If both exist → Update both with latest SPEC version
+6. Use fallback search if label filter fails (some Issues may lack labels)
+7. ALWAYS add labels: "spec", "planning", + priority label
+
+See git-manager.md section "When writing a SPEC" for detailed duplicate prevention protocol and code examples.
+
+TASK:
+Create a feature branch (feature/SPEC-{SPEC_ID}) and Draft PR (→ develop) for the completed SPEC document.
+Implement the duplicate prevention protocol before creating any GitHub entities.
+
+Output language: {{CONVERSATION_LANGUAGE}}"""
 ```
 
 ## function
@@ -732,53 +754,3 @@ See `.coderabbit.yaml` for detailed SPEC review checklist.
 
 - Start implementing TDD with `/alfred:2-run SPEC-XXX`
 - Team mode: After creating an issue, the git-manager agent automatically creates a branch.
-
----
-
-## Final Step: Next Action Selection
-
-<!-- @CODE:SESSION-CLEANUP-001:CMD-1-PLAN -->
-
-After SPEC creation completes, use AskUserQuestion tool to ask the user what to do next:
-
-```python
-AskUserQuestion(
-    questions=[
-        {
-            "question": "SPEC creation is complete. What would you like to do next?",
-            "header": "Next Steps",
-            "multiSelect": false,
-            "options": [
-                {
-                    "label": "🚀 Start implementation",
-                    "description": "Run /alfred:2-run SPEC-XXX-001 to implement with TDD"
-                },
-                {
-                    "label": "✏️ Revise SPEC",
-                    "description": "Modify current SPEC documents before implementation"
-                },
-                {
-                    "label": "🔄 Start new session",
-                    "description": "Run /clear to begin a fresh conversation"
-                }
-            ]
-        }
-    ]
-)
-```
-
-**Important Notes**:
-- **ALWAYS use AskUserQuestion** - Never suggest next steps in prose (e.g., "You can now run `/alfred:2-run`...")
-- **Batched design** - Use single AskUserQuestion call with 1-4 questions (not sequential calls)
-- **Language support** - Question text should respect user's `conversation_language` setting
-- **Clear options** - Each option has emoji, label, and description for clarity
-
-**Prohibited Pattern**:
-```
-❌ "Your SPEC is ready. You can now run `/alfred:2-run SPEC-AUTH-001` to start implementation..."
-```
-
-**Correct Pattern**:
-```
-✅ Use AskUserQuestion tool with 3 clear options as shown above
-```

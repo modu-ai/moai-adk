@@ -1,0 +1,79 @@
+# @CODE:LDE-006-SWIFT | SPEC: SPEC-LANGUAGE-DETECTION-EXTENDED-001/spec.md
+# Swift TAG Validation Workflow
+# Validates Swift code with XCTest, SwiftLint, and Swift Package Manager
+
+name: Swift TAG Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main, develop, "feature/**"]
+
+jobs:
+  test:
+    name: 🧪 Swift Tests & Linting
+    runs-on: macos-latest  # Swift requires macOS runner
+
+    if: github.event.pull_request.draft == false || github.event_name == 'push'
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    strategy:
+      matrix:
+        swift-version: ['5.9', '5.10']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: ${{ matrix.swift-version }}
+
+      - name: Detect project type
+        id: detect-project
+        run: |
+          if [ -f "Package.swift" ]; then
+            echo "type=spm" >> $GITHUB_OUTPUT
+            echo "Swift Package Manager project detected"
+          elif [ -n "$(find . -name '*.xcodeproj' -o -name '*.xcworkspace')" ]; then
+            echo "type=xcode" >> $GITHUB_OUTPUT
+            echo "Xcode project detected"
+          else
+            echo "No Swift project detected"
+            exit 1
+          fi
+
+      - name: Install SwiftLint
+        run: brew install swiftlint
+
+      - name: Run SwiftLint
+        run: swiftlint lint --strict
+
+      - name: Build with Swift Package Manager
+        if: steps.detect-project.outputs.type == 'spm'
+        run: swift build
+
+      - name: Run tests with Swift Package Manager
+        if: steps.detect-project.outputs.type == 'spm'
+        run: swift test --enable-code-coverage
+
+      - name: Generate coverage report (SPM)
+        if: steps.detect-project.outputs.type == 'spm' && always()
+        run: |
+          xcrun llvm-cov export -format="lcov" .build/debug/*.xctest/Contents/MacOS/* \
+            -instr-profile .build/debug/codecov/default.profdata > coverage.lcov
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: swift-coverage-${{ matrix.swift-version }}
+          path: coverage.lcov
+          retention-days: 30
