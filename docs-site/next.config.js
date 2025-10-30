@@ -1,4 +1,4 @@
-// @CODE:NEXTRA-CONFIG-001 - Nextra 4.0 configuration for Next.js 14
+// @CODE:NEXTRA-SITE-001:CONFIG - Nextra 4.0 configuration for Next.js 14
 // @CODE:NEXTRA-I18N-012 - next-intl plugin integration
 /**
  * Next.js Configuration for MoAI-ADK Documentation Site

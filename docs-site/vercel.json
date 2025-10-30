@@ -1,5 +1,5 @@
 {
-  "_comment": "@CODE:NEXTRA-BUILD-001 - Vercel deployment configuration",
+  "_comment": "@CODE:NEXTRA-SITE-001:BUILD - Vercel deployment configuration",
   "framework": "nextjs",
   "buildCommand": "npm run build",
   "devCommand": "npm run dev",

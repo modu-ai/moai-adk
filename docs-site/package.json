@@ -1,5 +1,5 @@
 {
-  "_comment": "@CODE:NEXTRA-INIT-001 - Next.js 14 project initialization",
+  "_comment": "@CODE:NEXTRA-SITE-001:INIT - Next.js 14 project initialization",
   "name": "moai-adk-docs",
   "version": "1.0.0",
   "private": true,
