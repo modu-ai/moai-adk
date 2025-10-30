@@ -732,3 +732,53 @@ See `.coderabbit.yaml` for detailed SPEC review checklist.
 
 - Start implementing TDD with `/alfred:2-run SPEC-XXX`
 - Team mode: After creating an issue, the git-manager agent automatically creates a branch.
+
+---
+
+## Final Step: Next Action Selection
+
+<!-- @CODE:SESSION-CLEANUP-001:CMD-1-PLAN -->
+
+After SPEC creation completes, use AskUserQuestion tool to ask the user what to do next:
+
+```python
+AskUserQuestion(
+    questions=[
+        {
+            "question": "SPEC creation is complete. What would you like to do next?",
+            "header": "Next Steps",
+            "multiSelect": false,
+            "options": [
+                {
+                    "label": "🚀 Start implementation",
+                    "description": "Run /alfred:2-run SPEC-XXX-001 to implement with TDD"
+                },
+                {
+                    "label": "✏️ Revise SPEC",
+                    "description": "Modify current SPEC documents before implementation"
+                },
+                {
+                    "label": "🔄 Start new session",
+                    "description": "Run /clear to begin a fresh conversation"
+                }
+            ]
+        }
+    ]
+)
+```
+
+**Important Notes**:
+- **ALWAYS use AskUserQuestion** - Never suggest next steps in prose (e.g., "You can now run `/alfred:2-run`...")
+- **Batched design** - Use single AskUserQuestion call with 1-4 questions (not sequential calls)
+- **Language support** - Question text should respect user's `conversation_language` setting
+- **Clear options** - Each option has emoji, label, and description for clarity
+
+**Prohibited Pattern**:
+```
+❌ "Your SPEC is ready. You can now run `/alfred:2-run SPEC-AUTH-001` to start implementation..."
+```
+
+**Correct Pattern**:
+```
+✅ Use AskUserQuestion tool with 3 clear options as shown above
+```
