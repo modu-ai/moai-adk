@@ -49,7 +49,7 @@ def main() -> None:
     """
     # Set 5-second timeout
     timeout = CrossPlatformTimeout(5)
-timeout.start()
+    timeout.start()
 
     try:
         # Read JSON payload from stdin
