@@ -1,10 +1,75 @@
 {
+  "id": "moai-plugin-technical-blog",
   "name": "technical-blog-plugin",
   "description": "Technical writing excellence - Template-based content creation, SEO optimization, multi-platform publishing",
   "version": "1.0.0-dev",
+  "status": "development",
+  "category": "pm",
+  "minClaudeCodeVersion": "1.0.0",
   "author": {
     "name": "GOOS"
   },
+  "repository": "https://github.com/moai-adk/moai-marketplace/tree/main/plugins/moai-plugin-technical-blog",
+  "license": "MIT",
+  "tags": [
+    "content",
+    "technical-writing",
+    "seo",
+    "blog",
+    "markdown",
+    "publishing"
+  ],
+  "agents": [
+    {
+      "name": "technical-writer",
+      "path": "agents/technical-writer.md",
+      "type": "specialist",
+      "description": "Technical writing and clarity for engineering audiences"
+    },
+    {
+      "name": "technical-content-strategist",
+      "path": "agents/technical-content-strategist.md",
+      "type": "specialist",
+      "description": "Content planning and audience strategy"
+    },
+    {
+      "name": "code-example-curator",
+      "path": "agents/code-example-curator.md",
+      "type": "specialist",
+      "description": "Code examples and documentation samples"
+    },
+    {
+      "name": "markdown-formatter",
+      "path": "agents/markdown-formatter.md",
+      "type": "specialist",
+      "description": "Markdown formatting and consistency"
+    },
+    {
+      "name": "seo-discoverability-specialist",
+      "path": "agents/seo-discoverability-specialist.md",
+      "type": "specialist",
+      "description": "SEO optimization and search discoverability"
+    },
+    {
+      "name": "visual-content-designer",
+      "path": "agents/visual-content-designer.md",
+      "type": "specialist",
+      "description": "Visual content creation and design"
+    },
+    {
+      "name": "template-workflow-coordinator",
+      "path": "agents/template-workflow-coordinator.md",
+      "type": "specialist",
+      "description": "Template-based content workflow orchestration"
+    }
+  ],
+  "commands": [
+    {
+      "name": "blog-write",
+      "path": "commands/blog-write.md",
+      "description": "Write or optimize blog posts with natural language directives"
+    }
+  ],
   "skills": [
     "skills/moai-content-blog-strategy.md",
     "skills/moai-content-blog-templates.md",
@@ -18,5 +83,20 @@
     "skills/moai-content-seo-optimization.md",
     "skills/moai-content-technical-seo.md",
     "skills/moai-content-technical-writing.md"
-  ]
+  ],
+  "permissions": {
+    "allowedTools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Bash(git:*)",
+      "Task",
+      "AskUserQuestion"
+    ],
+    "deniedTools": []
+  },
+  "installCommand": "/plugin install moai-plugin-technical-blog",
+  "releaseNotes": "Initial 1.0.0-dev release with 7 specialist agents for technical writing and 12 skills covering blog strategy, SEO, content creation, and multi-platform publishing"
 }
