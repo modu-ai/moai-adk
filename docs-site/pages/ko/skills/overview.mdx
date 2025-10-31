@@ -1,30 +1,427 @@
 ---
-title: overview
-description: overview 가이드
+title: Skills 시스템 개요 (75개 Specialist Skills)
+description: MoAI-ADK Skills - 6-Tier Architecture로 구성된 도메인별 전문 지식
 ---
 
-# overview
+# Skills 시스템: 75개 전문 지식 카프셀
 
-이 페이지는 현재 작성 중입니다.
+Alfred의 12개 Agent는 **75개의 Specialist Skills**로 지원됩니다. Skills는 **Progressive Disclosure** 패턴으로 설계되어, 필요할 때만 로드되어 속도와 정확성을 함께 제공합니다.
 
-## 개요
+## Skills 아키텍처: 6-Tier System
 
-overview에 대한 자세한 내용은 곧 업데이트될 예정입니다.
+```
+┌─────────────────────────────────────────────────────┐
+│ Foundation Tier (6개 Skills)                         │
+│ - 핵심 개념: EARS, Git, Specs, Tags, Trust, Langs   │
+├─────────────────────────────────────────────────────┤
+│ Essentials Tier (4개 Skills)                        │
+│ - 일상 업무: Debug, Perf, Refactor, Review         │
+├─────────────────────────────────────────────────────┤
+│ Alfred Tier (7개 Skills)                           │
+│ - Alfred 기능: Ears-authoring, Git-workflow, ...   │
+├─────────────────────────────────────────────────────┤
+│ Domain Tier (10개 Skills)                          │
+│ - 도메인 지식: Backend, Frontend, Database, ...    │
+├─────────────────────────────────────────────────────┤
+│ Language Tier (18개 Skills)                        │
+│ - 프로그래밍 언어: Python, TypeScript, Go, Rust... │
+├─────────────────────────────────────────────────────┤
+│ Framework/Design/Content/Ops Tier (30개 Skills)   │
+│ - Framework: React, Next.js, FastAPI               │
+│ - Design: TailwindCSS, Figma, shadcn/ui           │
+│ - Content: Blog, SEO, Markdown, Image             │
+│ - Ops: SaaS (Vercel, Supabase, Render)            │
+└─────────────────────────────────────────────────────┘
+```
 
-## 주요 특징
+---
 
-- 특징 1
-- 특징 2
-- 특징 3
+## 📊 Tier별 Skills 분포
 
-## 사용법
+| Tier | 개수 | 목적 | 로드 타이밍 |
+|------|------|------|-----------|
+| **Foundation** | 6개 | 핵심 개념 | 항상 로드 |
+| **Essentials** | 4개 | 일상 업무 | 자동 호출 |
+| **Alfred** | 7개 | Alfred 기능 | 필요시 로드 |
+| **Domain** | 10개 | 도메인 지식 | 프로젝트 타입별 |
+| **Language** | 18개 | 프로그래밍 언어 | 언어 자동 감지 |
+| **Framework/Design/Content/Ops** | 30개 | 특화 분야 | 명시적 호출 |
+| **Total** | **75개** | | |
+
+---
+
+## 1️⃣ Foundation Tier (6개)
+
+### 핵심 개념 (코어 지식)
+
+```
+moai-foundation-ears
+├─ EARS 5가지 패턴 (UBIQUITOUS, EVENT-DRIVEN, STATE-DRIVEN, OPTIONAL, UNWANTED)
+├─ 요구사항 문법 및 검증
+└─ 테스트 케이스 자동 생성
+
+moai-foundation-specs
+├─ SPEC 메타데이터 (ID, version, status, 의존성)
+├─ SPEC 작성 템플릿
+└─ YAML frontmatter 검증
+
+moai-foundation-tags
+├─ @TAG 명명 규칙 (4-Core: @SPEC, @TEST, @CODE, @DOC)
+├─ TAG 체인 무결성 검증
+└─ TAG 통계 및 분석
+
+moai-foundation-trust
+├─ TRUST 5 원칙 (Test, Readable, Unified, Secured, Trackable)
+├─ 품질 메트릭 정의
+└─ 검증 체크리스트
+
+moai-foundation-git
+├─ GitFlow 전략 (Feature/Release/Hotfix)
+├─ 커밋 메시지 표준
+└─ 브랜치 보호 규칙
+
+moai-foundation-langs
+├─ 언어별 감지 (Python, TypeScript, Go, Rust...)
+├─ 프로젝트 구조 인식
+└─ 언어별 도구 체인
+```
+
+---
+
+## 2️⃣ Essentials Tier (4개)
+
+### 일상 업무 자동화
+
+```
+moai-essentials-debug
+├─ 스택 트레이스 분석
+├─ 근본 원인 식별 (RCA)
+└─ 최소 수정 경로 제안
+
+moai-essentials-refactor
+├─ SOLID 원칙 기반 리팩토링
+├─ 코드 냄새 감지 (Code Smells)
+└─ 리팩토링 안전성 검증
+
+moai-essentials-review
+├─ 코드 리뷰 체크리스트
+├─ SOLID/DRY/KISS 평가
+└─ 성능 및 보안 리뷰
+
+moai-essentials-perf
+├─ 성능 병목 감지
+├─ 프로파일링 전략
+└─ 최적화 제안
+```
+
+---
+
+## 3️⃣ Alfred Tier (7개)
+
+### Alfred SuperAgent 기능 지원
+
+```
+moai-alfred-interactive-questions
+├─ AskUserQuestion 도구 사용
+├─ TUI 메뉴 생성
+└─ 사용자 입력 수집
+
+moai-alfred-ears-authoring
+├─ EARS 문장 자동 작성
+├─ 패턴 매칭 및 확장
+└─ 요구사항 정제
+
+moai-alfred-spec-metadata-validation
+├─ SPEC ID 검증 (형식: SPEC-DOMAIN-NNN)
+├─ 의존성 관계 검증
+└─ YAML frontmatter 검증
+
+moai-alfred-tag-scanning
+├─ ripgrep 기반 TAG 검색
+├─ CODE-FIRST 스캔
+└─ Orphan TAG 감지
+
+moai-alfred-trust-validation
+├─ 자동 TRUST 5 검증
+├─ 메트릭 계산
+└─ PASS/WARNING/FAIL 판정
+
+moai-alfred-git-workflow
+├─ 자동 GitFlow 생성
+├─ Personal/Team mode 선택
+└─ 안전한 Git 명령어 실행
+
+moai-alfred-language-detection
+├─ 프로젝트 언어 감지
+├─ 프레임워크 인식
+└─ 도메인 자동 선택
+```
+
+---
+
+## 4️⃣ Domain Tier (10개)
+
+### 도메인별 아키텍처 지식
+
+```
+Backend Architecture (4개):
+├─ moai-domain-backend: 아키텍처 패턴, API 설계
+├─ moai-domain-database: 스키마 설계, 최적화, 마이그레이션
+├─ moai-domain-web-api: REST/GraphQL 설계, 버전 관리
+└─ moai-framework-fastapi-patterns: FastAPI 모범 사례
+
+Frontend Architecture (2개):
+├─ moai-domain-frontend: React/Vue 패턴, 상태 관리
+└─ moai-domain-mobile-app: Flutter/React Native
+
+Infrastructure (3개):
+├─ moai-domain-devops: CI/CD, 배포 전략
+├─ moai-domain-security: OWASP Top 10, 보안 검증
+└─ moai-domain-cli-tool: CLI 개발, 사용성 설계
+
+Specialized (1개):
+└─ moai-domain-ml: 모델 학습, 평가, 배포
+```
+
+---
+
+## 5️⃣ Language Tier (18개)
+
+### 프로그래밍 언어별 모범 사례
+
+```
+Big 3:
+├─ moai-lang-python (3.13+): pytest, mypy, ruff, uv
+├─ moai-lang-typescript (5.7+): Vitest, Biome, 타입 안전
+└─ moai-lang-javascript (ES2024+): Jest, ESLint, Prettier
+
+Systems Languages:
+├─ moai-lang-go (1.24+): 테스트, golangci-lint, gofmt
+├─ moai-lang-rust (1.84+): cargo, clippy, 소유권 모델
+├─ moai-lang-c/cpp: 컴파일, 메모리 관리
+
+JVM Ecosystem:
+├─ moai-lang-java
+├─ moai-lang-kotlin (2.1+): coroutines, ktlint
+└─ moai-lang-scala
+
+Modern Languages:
+├─ moai-lang-ruby (3.4+): RSpec, RuboCop, Bundler
+├─ moai-lang-php (8.4+): PHPUnit, Composer, PSR-12
+├─ moai-lang-csharp
+├─ moai-lang-dart
+
+Data & Scripting:
+├─ moai-lang-r (4.4+): testthat, lintr
+├─ moai-lang-sql: pgTAP, sqlfluff, 최적화
+└─ moai-lang-shell: bats-core, shellcheck, POSIX
+
+Specialized:
+└─ moai-lang-swift
+```
+
+---
+
+## 6️⃣ Framework/Design/Content/Ops Tier (30개)
+
+### 특화 분야
+
+### Framework Tier (5개)
+
+```
+moai-framework-react-19
+├─ use() hook, useTransition, Suspense
+├─ Server Components 통합
+
+moai-framework-nextjs-advanced
+├─ App Router, middleware, streaming
+├─ Server Components, 성능 최적화
+
+moai-framework-fastapi-patterns
+├─ async/await, Pydantic, middleware
+├─ 프로덕션 배포
+
++ 2개 추가 (Vue, Angular)
+```
+
+### Design Tier (5개)
+
+```
+moai-design-tailwindcss-v4
+├─ CSS-first 아키텍처
+├─ 성능 엔진, 최적화
+
+moai-design-shadcn-ui
+├─ Radix UI 기반 컴포넌트
+├─ 접근성, 커스터마이징
+
+moai-design-figma-to-code
+├─ Figma 디자인 → Code
+├─ 자동 컴포넌트 생성
+
+moai-design-figma-mcp
+├─ Figma MCP 통합
+├─ 실시간 동기화
+
++ 1개 추가
+```
+
+### Content Tier (10개)
+
+```
+Blog & Writing:
+├─ moai-content-blog-strategy: 편집 계획, 주제 연구
+├─ moai-content-markdown-best-practices: Markdown 표준
+└─ moai-content-technical-writing: 기술 라이팅
+
+SEO & Discovery:
+├─ moai-content-seo-optimization: 검색 엔진 최적화
+├─ moai-content-technical-seo: 기술 SEO
+├─ moai-content-meta-tags: 메타 태그, OG
+└─ moai-content-llms-txt-management: llms.txt 관리
+
+Multimedia:
+├─ moai-content-image-generation: AI 이미지 생성
+└─ moai-content-code-examples: 코드 예제 생성
+```
+
+### Ops/SaaS Tier (10개)
+
+```
+Platform Integration:
+├─ moai-saas-vercel-mcp: Next.js 배포 (Vercel)
+├─ moai-saas-supabase-mcp: PostgreSQL + Auth (Supabase)
+├─ moai-saas-render-mcp: Python/Node.js 배포 (Render)
+├─ moai-saas-naver-blog-publishing: Naver 블로그 발행
+└─ moai-saas-wordpress-publishing: WordPress 발행
+
+Claude Code Integration:
+├─ moai-cc-hooks: Hook 시스템 설정
+├─ moai-cc-commands: Slash command 설계
+├─ moai-cc-agents: Agent 생성 및 최적화
+├─ moai-cc-skills: Skill 개발
+├─ moai-cc-mcp-plugins: MCP 서버 통합
+├─ moai-cc-settings: 보안 및 권한 설정
+├─ moai-cc-memory: 세션 메모리 최적화
+└─ moai-cc-claude-md: CLAUDE.md 작성
+```
+
+---
+
+## 🔄 Progressive Disclosure Pattern
+
+Skills는 **필요할 때만 로드**됩니다:
+
+```
+사용자: "/alfred:2-run SPEC-AUTH-001"
+       ↓
+tdd-implementer (필요한 Skills 결정):
+       ↓
+1️⃣ Core Skills 로드 (자동)
+   └─ Skill("moai-essentials-debug")
+       ↓
+2️⃣ 조건부 Skills 로드
+   ├─ Skill("moai-lang-python") [Python 프로젝트 감지]
+   ├─ Skill("moai-essentials-refactor") [REFACTOR 단계 진입]
+   └─ Skill("moai-essentials-perf") [성능 요구사항 있음]
+       ↓
+3️⃣ 명시적 호출 Skills
+   └─ Skill("moai-domain-backend") [사용자가 요청]
+```
+
+---
+
+## 📋 Skill 사용 가이드
+
+### 올바른 Skill 호출 (Explicit Invocation)
+
+```python
+# ✅ 올바른 예시
+Skill("moai-lang-python")
+Skill("moai-foundation-specs")
+Skill("moai-alfred-ears-authoring")
+
+# ❌ 잘못된 예시 (키워드 기반)
+# Skill 자동 감지 불가능
+# Skill 이름 오류
+```
+
+### Skill 선택 기준
+
+```
+1. 현재 작업 단계 확인
+   → Setup: Foundation + Domain + Language
+   → TDD: Essentials + Framework
+   → Verify: TRUST + Domain
+
+2. 프로젝트 타입 확인
+   → Backend: moai-domain-backend + moai-lang-python
+   → Frontend: moai-domain-frontend + moai-lang-typescript
+   → Full-stack: 모두 필요
+
+3. 명시적 로드
+   → Skill("명확한-이름") 호출
+```
+
+---
+
+## 🎯 Best Practices
+
+### ✅ Do's
+
+- 필요한 Skill만 명시적으로 호출
+- Skill 이름 정확하게 입력
+- 조건부 로직으로 성능 최적화
+
+### ❌ Don'ts
+
+- 모든 Skill을 한 번에 로드 (성능 저하)
+- Skill 이름 추측 (실패)
+- 키워드 기반 자동 감지 (작동하지 않음)
+
+---
+
+## 📚 Skills 발견 및 학습
+
+### Skill 찾기
 
 ```bash
-# 예제 명령어
-# 상세 사용법은 곧 업데이트됩니다
+# 사용 가능한 모든 Skills 확인
+$ ls -la .claude/skills/
+
+# 특정 Skill 문서 읽기
+$ cat .claude/skills/moai-lang-python/SKILL.md
 ```
+
+### Progressive Disclosure 구조
+
+각 Skill은 3가지 섹션으로 구성:
+
+1. **SKILL.md** (개요)
+   - 개념 설명, 사용 시기, 핵심 내용
+
+2. **examples.md** (실제 사용)
+   - 코드 예제, 워크플로우, 사용 케이스
+
+3. **reference.md** (상세 참고)
+   - API 문서, 명령어, 고급 주제
+
+---
 
 ## 다음 단계
 
-- [홈으로](/ko)
-- [문서 개요](/ko/introduction/overview)
+각 Tier에 대해 더 알아보세요:
+
+- [Foundation Tier](/ko/skills/foundation) - 핵심 개념
+- [Essentials Tier](/ko/skills/essentials) - 일상 업무
+- [Domain Tier](/ko/skills/domain) - 도메인 지식
+- [Language Tier](/ko/skills/languages) - 프로그래밍 언어
+- [Framework & Design Tier](/ko/skills/frameworks) - 특화 분야
+
+---
+
+## 참고 자료
+
+- [Agent System](/ko/agents/overview) - Skill을 사용하는 Agent
+- [TRUST 5 Principles](/ko/concepts/trust) - 검증 기준
+- [Skill Factory](/ko/agents/skill-factory) - 새 Skill 개발
