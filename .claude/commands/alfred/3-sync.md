@@ -336,9 +336,132 @@ The doc-syncer agent automatically determines whether TDD implementation is comp
 
 **If conditions are not met**: Phase 2 detailed work is automatically skipped
 
+---
+
+### Phase 2-1: SPEC Document Synchronization (CRITICAL)
+
+**IMPORTANT**: Any code or file changes MUST be reflected in SPEC documents to maintain specification alignment.
+
+#### When to synchronize SPEC documents:
+
+1. **After code modifications**:
+   - Functional changes to implemented features
+   - Bug fixes that alter expected behavior
+   - Performance optimizations with observable changes
+   - API/function signature changes
+   - New dependencies or external integrations
+
+2. **After requirement clarifications**:
+   - Acceptance criteria refinements
+   - Edge case discoveries during implementation
+   - User feedback incorporation
+   - Security/compliance adjustments
+
+3. **After structural changes**:
+   - File organization or module restructuring
+   - New configuration options
+   - Breaking API changes
+   - Database schema modifications
+
+#### SPEC documents requiring update:
+
+All files in `.moai/specs/SPEC-{ID}/` must be synchronized:
+
+- **spec.md**: Update EARS requirements if implementation differs from specification
+- **plan.md**: Revise implementation strategy if approach changed
+- **acceptance.md**: Update acceptance criteria if new test cases or edge cases discovered
+
+#### Synchronization rules:
+
+**Code ↔ SPEC Comparison**:
+```
+1. Review Git diff for changed files
+2. Identify functional impacts:
+   ├─ Signature changes (parameters, return values)
+   ├─ Behavior changes (logic flow, edge cases)
+   ├─ Performance characteristics (latency, throughput changes)
+   └─ External dependencies (new APIs, services)
+3. Map changes to SPEC requirements:
+   ├─ Verify each changed function matches EARS statement
+   ├─ Check if acceptance criteria still valid
+   └─ Identify any spec-to-code divergence
+4. Update SPEC documents:
+   ├─ Correct EARS statements to match actual implementation
+   ├─ Add discovered edge cases to acceptance criteria
+   ├─ Update plan.md with implementation changes
+   └─ Maintain TAG references (@SPEC, @CODE, @TEST consistency)
+```
+
+#### Example: When synchronization is needed
+
+**Scenario 1: Bug Fix Changes Behavior**
+```
+Git change: Fixed database connection retry logic
+- Was: Max 3 retries with 1-second delay
+- Now: Max 5 retries with exponential backoff
+
+SPEC update required:
+- spec.md: Update EARS statement for retry behavior
+- acceptance.md: Add test case for exponential backoff
+- Update @CODE TAG location if function moved
+```
+
+**Scenario 2: API Signature Changes**
+```
+Git change: Refactored authentication function signature
+- Was: validate_token(token: str) -> bool
+- Now: validate_token(token: str, ttl: int = 3600) -> dict
+
+SPEC update required:
+- spec.md: Update function requirements for new TTL parameter
+- acceptance.md: Add test cases for TTL validation
+- plan.md: Document reason for signature change
+```
+
+**Scenario 3: New Edge Cases Discovered**
+```
+Git change: Added null-check validation during testing
+- Discovered: Special handling needed for empty strings
+
+SPEC update required:
+- spec.md: Add EARS statement for empty string edge case
+- acceptance.md: Add test case for empty string handling
+- Link with @TEST TAG from test file
+```
+
+#### SPEC-Code Divergence Detection:
+
+**Anti-pattern: Code without matching SPEC**
+```
+❌ WRONG: Code changes exist but SPEC documents unchanged
+- Function behavior diverges from specification
+- Acceptance criteria becomes inaccurate
+- @TAG chain breaks (CODE exists without matching SPEC reference)
+
+✅ CORRECT: Code changes synchronized to SPEC
+- SPEC documents updated to match implementation
+- All EARS statements verified against actual code
+- @TAG chain maintained: SPEC ↔ CODE ↔ TEST ↔ DOC
+```
+
+#### SPEC Synchronization Checklist (doc-syncer responsibility):
+
+Before marking sync as complete:
+- [ ] All changed code files reviewed against SPEC
+- [ ] EARS statements match implementation behavior
+- [ ] Acceptance criteria valid for current code
+- [ ] Edge cases discovered during implementation added to SPEC
+- [ ] @CODE/@TEST TAGs point to correct locations
+- [ ] @SPEC TAG references updated if files reorganized
+- [ ] HISTORY section updated if version changed
+- [ ] No spec-code divergence remains
+
+---
+
 ## function
 
 - **Automatic Document Synchronization**: The doc-syncer agent performs Living Document synchronization and @TAG updates. Optionally implements the PR Ready transition only in team mode.
+- **SPEC-Code Alignment**: doc-syncer verifies that SPEC documents match implemented code and updates them when changes are detected.
 
 ## Synchronization output
 
