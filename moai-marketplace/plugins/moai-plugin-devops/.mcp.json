@@ -1,0 +1,141 @@
+{
+  "name": "moai-plugin-devops",
+  "version": "1.0.0-dev",
+  "description": "Model Context Protocol configuration for DevOps plugin",
+  "type": "plugin",
+  "mcpServers": [
+    {
+      "name": "vercel-mcp",
+      "type": "stdio",
+      "command": "node",
+      "args": ["./mcp-servers/vercel/index.js"],
+      "env": {
+        "VERCEL_API_TOKEN": "${VERCEL_API_TOKEN}",
+        "VERCEL_ORG_ID": "${VERCEL_ORG_ID}"
+      },
+      "description": "Vercel deployment and management",
+      "resources": [
+        {
+          "type": "project",
+          "description": "Vercel projects"
+        },
+        {
+          "type": "deployment",
+          "description": "Deployment history and logs"
+        },
+        {
+          "type": "environment",
+          "description": "Environment variables"
+        }
+      ],
+      "tools": [
+        {
+          "name": "deploy",
+          "description": "Deploy to Vercel"
+        },
+        {
+          "name": "list-deployments",
+          "description": "List recent deployments"
+        },
+        {
+          "name": "set-env",
+          "description": "Set environment variables"
+        }
+      ]
+    },
+    {
+      "name": "supabase-mcp",
+      "type": "stdio",
+      "command": "node",
+      "args": ["./mcp-servers/supabase/index.js"],
+      "env": {
+        "SUPABASE_URL": "${SUPABASE_URL}",
+        "SUPABASE_KEY": "${SUPABASE_KEY}"
+      },
+      "description": "Supabase database and authentication",
+      "resources": [
+        {
+          "type": "database",
+          "description": "PostgreSQL database access"
+        },
+        {
+          "type": "auth",
+          "description": "Authentication configuration"
+        },
+        {
+          "type": "realtime",
+          "description": "Real-time subscriptions"
+        }
+      ],
+      "tools": [
+        {
+          "name": "query",
+          "description": "Execute SQL queries"
+        },
+        {
+          "name": "setup-auth",
+          "description": "Configure authentication"
+        },
+        {
+          "name": "enable-realtime",
+          "description": "Enable real-time features"
+        }
+      ]
+    },
+    {
+      "name": "render-mcp",
+      "type": "stdio",
+      "command": "node",
+      "args": ["./mcp-servers/render/index.js"],
+      "env": {
+        "RENDER_API_KEY": "${RENDER_API_KEY}"
+      },
+      "description": "Render deployment platform",
+      "resources": [
+        {
+          "type": "service",
+          "description": "Render services"
+        },
+        {
+          "type": "database",
+          "description": "PostgreSQL databases"
+        },
+        {
+          "type": "cron",
+          "description": "Scheduled cron jobs"
+        }
+      ],
+      "tools": [
+        {
+          "name": "deploy-service",
+          "description": "Deploy service to Render"
+        },
+        {
+          "name": "create-database",
+          "description": "Create PostgreSQL database"
+        },
+        {
+          "name": "schedule-job",
+          "description": "Schedule cron job"
+        }
+      ]
+    }
+  ],
+  "permissions": {
+    "resources": ["read", "write"],
+    "tools": ["execute"],
+    "environment": ["read"]
+  },
+  "environment": {
+    "required": [
+      "VERCEL_API_TOKEN",
+      "SUPABASE_URL",
+      "SUPABASE_KEY",
+      "RENDER_API_KEY"
+    ],
+    "optional": [
+      "VERCEL_ORG_ID",
+      "LOG_LEVEL"
+    ]
+  }
+}

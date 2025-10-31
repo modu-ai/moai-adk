@@ -1,0 +1,110 @@
+{
+  "name": "moai-plugin-uiux",
+  "version": "1.0.0-dev",
+  "description": "Model Context Protocol configuration for UI/UX plugin",
+  "type": "plugin",
+  "mcpServers": [
+    {
+      "name": "figma-mcp",
+      "type": "stdio",
+      "command": "node",
+      "args": ["./mcp-servers/figma/index.js"],
+      "env": {
+        "FIGMA_API_TOKEN": "${FIGMA_API_TOKEN}",
+        "FIGMA_FILE_ID": "${FIGMA_FILE_ID}"
+      },
+      "description": "Figma API integration for design files",
+      "resources": [
+        {
+          "type": "file",
+          "description": "Figma design files"
+        },
+        {
+          "type": "component",
+          "description": "Design components and library"
+        },
+        {
+          "type": "token",
+          "description": "Design tokens and variables"
+        },
+        {
+          "type": "asset",
+          "description": "Design assets and exports"
+        }
+      ],
+      "tools": [
+        {
+          "name": "get-file",
+          "description": "Fetch Figma file structure"
+        },
+        {
+          "name": "list-components",
+          "description": "List components in file"
+        },
+        {
+          "name": "extract-tokens",
+          "description": "Extract design tokens"
+        },
+        {
+          "name": "export-assets",
+          "description": "Export assets and images"
+        },
+        {
+          "name": "setup-webhook",
+          "description": "Setup Figma webhooks for change detection"
+        }
+      ]
+    }
+  ],
+  "webhooks": {
+    "enabled": true,
+    "events": [
+      "file:update",
+      "component:create",
+      "component:update",
+      "component:delete"
+    ],
+    "endpoint": "/webhooks/figma",
+    "description": "Real-time Figma change notifications"
+  },
+  "permissions": {
+    "resources": ["read", "write"],
+    "tools": ["execute"],
+    "webhooks": ["manage"],
+    "environment": ["read"]
+  },
+  "environment": {
+    "required": [
+      "FIGMA_API_TOKEN",
+      "FIGMA_FILE_ID"
+    ],
+    "optional": [
+      "FIGMA_WEBHOOK_SECRET",
+      "DESIGN_OUTPUT_DIR",
+      "LOG_LEVEL"
+    ]
+  },
+  "features": {
+    "designToCode": {
+      "enabled": true,
+      "description": "Convert Figma designs to React components",
+      "framework": "react",
+      "styling": "tailwind"
+    },
+    "tokenExtraction": {
+      "enabled": true,
+      "description": "Extract design tokens from Figma",
+      "formats": ["json", "typescript", "css"]
+    },
+    "componentSync": {
+      "enabled": true,
+      "description": "Keep Figma and code components in sync",
+      "bidirectional": false
+    },
+    "accessibility": {
+      "enabled": true,
+      "description": "Accessibility auditing and WCAG compliance",
+      "wcagLevel": "AA"
+    }
+  }
+}
