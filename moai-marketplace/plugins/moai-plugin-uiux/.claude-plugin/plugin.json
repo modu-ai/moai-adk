@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "name": "uiux-plugin",
+  "display_name": "UI/UX Design Automation",
+  "version": "1.0.0",
+  "description": "Design automation with Figma MCP - 7 agents, design-to-code workflows, shadcn/ui component generation",
+  "author": {
+    "name": "moai-adk",
+    "url": "https://adk.mo.ai.kr"
+  },
+  "capabilities": [
+    "Figma design extraction",
+    "Design-to-code conversion",
+    "shadcn/ui component generation",
+    "Accessibility compliance checking",
+    "Design system documentation",
+    "Component library generation",
+    "Responsive design validation"
+  ],
+  "entry_point": "uiux_plugin",
+  "supported_languages": ["typescript", "python"],
+  "min_version": "1.0.0"
+}
