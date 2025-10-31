@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @CODE:HOOKS-CLARITY-001 | SPEC: Individual hook files for better UX
+# @CODE:HOOKS-CLARITY-LOG | SPEC: Individual hook files for better UX
 """PostToolUse Hook: Log Tool Usage and Changes
 
 Claude Code Event: PostToolUse
@@ -26,7 +26,6 @@ if str(SHARED_DIR) not in sys.path:
 from handlers import handle_post_tool_use
 
 
-    pass
 
 
 def main() -> None:

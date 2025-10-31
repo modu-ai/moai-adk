@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @CODE:HOOKS-CLARITY-001 | SPEC: Individual hook files for better UX
+# @CODE:HOOKS-CLARITY-DOCS | SPEC: Individual hook files for better UX
 """UserPromptSubmit Hook: Just-In-Time Document Loading
 
 Claude Code Event: UserPromptSubmit
@@ -49,7 +49,7 @@ def main() -> None:
     """
     # Set 5-second timeout
     timeout = CrossPlatformTimeout(5)
-timeout.start()
+    timeout.start()
 
     try:
         # Read JSON payload from stdin

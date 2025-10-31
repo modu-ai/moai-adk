@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @CODE:HOOKS-CLARITY-001 | SPEC: Individual hook files for better UX
+# @CODE:HOOKS-CLARITY-SUBAGENT | SPEC: Individual hook files for better UX
 """SubagentStop Hook: Handle Sub-agent Termination
 
 Claude Code Event: SubagentStop
@@ -25,7 +25,6 @@ if str(SHARED_DIR) not in sys.path:
 from handlers import handle_subagent_stop
 
 
-    pass
 
 
 def main() -> None:

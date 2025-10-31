@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @CODE:HOOKS-CLARITY-001 | SPEC: Individual hook files for better UX
+# @CODE:HOOKS-CLARITY-CKPT | SPEC: Individual hook files for better UX
 """PreToolUse Hook: Automatic Safety Checkpoint Creation
 
 Claude Code Event: PreToolUse
@@ -31,7 +31,6 @@ if str(SHARED_DIR) not in sys.path:
 from handlers import handle_pre_tool_use
 
 
-    pass
 
 
 def main() -> None:
