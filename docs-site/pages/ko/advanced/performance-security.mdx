@@ -1,0 +1,391 @@
+---
+title: Performance & Security Guide (성능 & 보안)
+description: MoAI-ADK - 성능 최적화, 보안 검증, OWASP Top 10, 모니터링 가이드
+---
+
+# Performance & Security: 프로덕션 준비
+
+이 가이드는 **프로덕션 배포 전 필수 사항**인 성능 최적화와 보안 강화를 다룹니다.
+
+---
+
+## 🚀 Part 1: 성능 최적화
+
+### 1단계: 베이스라인 측정
+
+```bash
+$ /alfred:3-sync --measure-performance
+
+Profiler:
+  📊 CPU Profile
+    - login_user: 45ms (20% of request)
+    - verify_token: 8ms (3% of request)
+    - database_query: 120ms (55% of request) ⚠️
+
+  💾 Memory Profile
+    - Peak memory: 256MB
+    - Memory leaks: None detected
+    - GC pause: 2.3ms
+
+  📈 Database Profile
+    - Query count: 5 queries per request
+    - Slow queries (> 100ms): 1 query
+```
+
+### 2단계: 병목 지점 분석
+
+```python
+# 느린 데이터베이스 쿼리 최적화
+
+# ❌ Before (120ms)
+def get_user_with_orders(user_id):
+    user = User.query.filter_by(id=user_id).first()
+    orders = Order.query.filter_by(user_id=user_id).all()  # N+1 문제
+    
+    for order in orders:
+        items = OrderItem.query.filter_by(order_id=order.id).all()
+
+# ✅ After (8ms, 15배 빨라짐)
+def get_user_with_orders(user_id):
+    user = User.query\
+        .options(
+            joinedload(User.orders)
+            .joinedload(Order.items)
+        ).filter_by(id=user_id).first()
+```
+
+### 3단계: 캐싱 전략
+
+```python
+# 1. 쿼리 결과 캐싱
+from functools import lru_cache
+
+@lru_cache(maxsize=1000)
+def get_product(product_id):
+    return Product.query.get(product_id)
+
+# 2. Redis 캐싱
+def get_user_profile(user_id):
+    cache_key = f"user:{user_id}"
+    
+    # 캐시에서 먼저 확인
+    cached = redis.get(cache_key)
+    if cached:
+        return json.loads(cached)
+    
+    # 캐시 미스: DB에서 조회
+    user = User.query.get(user_id)
+    
+    # 캐시에 저장 (5분)
+    redis.setex(cache_key, 300, json.dumps(user))
+    
+    return user
+
+# 3. HTTP 캐싱
+@app.route('/products/<id>')
+def get_product(id):
+    return {
+        "data": product,
+        "headers": {
+            "Cache-Control": "public, max-age=3600"  # 1시간
+        }
+    }
+```
+
+### 4단계: 성능 검증
+
+```bash
+$ pytest tests/performance/ -v
+
+🏃 Performance Tests:
+  ✅ test_get_products < 100ms (actual: 45ms)
+  ✅ test_login < 200ms (actual: 120ms)
+  ✅ test_cache_hit_rate > 80% (actual: 87%)
+  ✅ test_memory_usage < 512MB (actual: 256MB)
+
+📊 CI/CD Integration:
+  - PRs fail if perf regression > 10%
+  - Dashboard shows trend over time
+```
+
+---
+
+## 🔒 Part 2: 보안 검증
+
+### OWASP Top 10 체크리스트
+
+```yaml
+A1: Broken Access Control
+  ✅ 모든 엔드포인트 인증 검증
+  ✅ 역할 기반 접근 제어 (RBAC)
+  ✅ 토큰 검증 (매 요청마다)
+
+A2: Cryptographic Failures
+  ✅ TLS 1.3+ 사용
+  ✅ AES-256-GCM 암호화
+  ✅ 민감한 데이터 암호화
+
+A3: Injection
+  ✅ SQL Injection 방지 (parameterized queries)
+  ✅ NoSQL Injection 방지
+  ✅ Command Injection 방지 (subprocess 사용 제한)
+
+A4: Insecure Design
+  ✅ Threat modeling 완료
+  ✅ Security by design
+  ✅ Rate limiting 구현
+
+A5: Security Misconfiguration
+  ✅ 기본 자격증명 변경
+  ✅ 불필요한 기능 비활성화
+  ✅ 보안 헤더 설정
+
+A6: Vulnerable and Outdated Components
+  ✅ 의존성 최신 버전 유지
+  ✅ 정기적 보안 패치 적용
+  ✅ Dependency check 자동화
+
+A7: Authentication Failures
+  ✅ 강력한 비밀번호 정책
+  ✅ MFA (Multi-Factor Auth) 지원
+  ✅ Session 보안
+
+A8: Software and Data Integrity Failures
+  ✅ 서명된 업데이트 배포
+  ✅ 안전한 CI/CD 파이프라인
+  ✅ 코드 서명 (git)
+
+A9: Logging and Monitoring Failures
+  ✅ 모든 보안 이벤트 로깅
+  ✅ 실시간 알림 설정
+  ✅ 감사 로그 보관
+
+A10: SSRF (Server-Side Request Forgery)
+  ✅ 내부 IP 범위 차단
+  ✅ DNS rebinding 방지
+  ✅ URL 유효성 검증
+```
+
+### 자동 보안 스캔
+
+```bash
+$ /alfred:2-run SPEC-XXX --security-scan
+
+Security Scan:
+  🔍 SAST (Static Application Security Testing)
+    - bandit: Python 보안 문제 검사
+    - semgrep: 패턴 기반 취약점 검사
+    - npm audit: 의존성 취약점 검사
+  
+  ✅ Results:
+    ✅ SQL Injection: 0 issues
+    ✅ XSS: 0 issues
+    ⚠️ Hardcoded Secrets: 1 warning
+    ✅ Weak Cryptography: 0 issues
+```
+
+---
+
+## 📊 Part 3: 모니터링 & 로깅
+
+### 구조화된 로깅
+
+```python
+import json
+from datetime import datetime
+
+# ✅ 좋은 예: 구조화된 로그
+logger.info(json.dumps({
+    "timestamp": datetime.utcnow().isoformat(),
+    "event": "user_login",
+    "user_id": 123,
+    "ip_address": "192.168.1.1",
+    "success": True,
+    "duration_ms": 120
+}))
+
+# ❌ 나쁜 예: 자유형 로그
+logger.info(f"User 123 logged in from 192.168.1.1")
+```
+
+### 성능 메트릭 수집
+
+```python
+import time
+from prometheus_client import Histogram, Counter
+
+# 응답 시간 추적
+request_duration = Histogram(
+    'http_request_duration_seconds',
+    'Request duration in seconds',
+    ['method', 'endpoint']
+)
+
+# 요청 수 추적
+request_count = Counter(
+    'http_requests_total',
+    'Total HTTP requests',
+    ['method', 'endpoint', 'status']
+)
+
+@app.route('/api/products')
+def list_products():
+    with request_duration.labels('GET', '/products').time():
+        products = Product.query.all()
+        request_count.labels('GET', '/products', '200').inc()
+        return products
+```
+
+### 알람 규칙
+
+```yaml
+AlertRules:
+  # 성능
+  - name: HighLatency
+    condition: "p95_latency > 200ms"
+    severity: warning
+    action: notify_team
+
+  - name: HighErrorRate
+    condition: "error_rate > 5%"
+    severity: critical
+    action: page_oncall
+
+  # 보안
+  - name: MultipleFailedLogins
+    condition: "failed_logins > 5 in 5min"
+    severity: warning
+    action: block_ip, notify_security
+
+  - name: UnauthorizedAccess
+    condition: "401_errors > 10 in 1min"
+    severity: critical
+    action: investigate, block_ip
+
+  # 리소스
+  - name: HighMemoryUsage
+    condition: "memory > 80%"
+    severity: warning
+    action: restart_service, notify_team
+
+  - name: DiskFull
+    condition: "disk_usage > 95%"
+    severity: critical
+    action: page_oncall
+```
+
+---
+
+## 🧪 Part 4: 테스트 & 검증
+
+### 부하 테스트 (Load Testing)
+
+```bash
+$ locust -f locustfile.py --users 1000 --spawn-rate 100
+
+Locust Results:
+  📊 Concurrent Users: 1000
+  📊 RPS: 5,000 req/s
+  
+  Response Times:
+    - Min: 10ms
+    - Max: 500ms
+    - Median (p50): 50ms
+    - p95: 150ms ✅ (< 200ms 목표)
+    - p99: 300ms ✅
+  
+  Error Rate: 0.1% ✅ (< 1% 목표)
+  
+  Bottleneck: Database connection pool (20 → 50 권장)
+```
+
+### 보안 테스트
+
+```python
+# tests/security/test_injection.py
+
+def test_sql_injection():
+    """SQL injection 방지"""
+    malicious_input = "'; DROP TABLE users; --"
+    
+    # ❌ 취약한 코드
+    # query = f"SELECT * FROM users WHERE name = '{malicious_input}'"
+    
+    # ✅ 안전한 코드
+    query = "SELECT * FROM users WHERE name = %s"
+    user = db.execute(query, (malicious_input,))
+    
+    # 테이블이 여전히 존재해야 함
+    assert db.execute("SELECT COUNT(*) FROM users")[0] > 0
+
+def test_rate_limiting():
+    """Rate limiting이 작동하는가?"""
+    for i in range(101):  # 100 + 1
+        response = client.get("/api/login")
+    
+    # 101번째 요청은 429 (Too Many Requests)
+    assert response.status_code == 429
+```
+
+---
+
+## ✅ 배포 체크리스트
+
+### Pre-Production
+
+```
+성능:
+  ☑️ P95 latency 목표 달성
+  ☑️ Error rate < 1%
+  ☑️ Memory leak 없음
+  ☑️ 캐시 hit rate > 80%
+
+보안:
+  ☑️ OWASP Top 10 체크 완료
+  ☑️ 의존성 보안 업데이트
+  ☑️ SAST 스캔 통과
+  ☑️ Secrets 제거됨
+  ☑️ TLS 설정 완료
+
+모니터링:
+  ☑️ Logging 구조화됨
+  ☑️ Metrics 수집 중
+  ☑️ Alerting 규칙 설정
+  ☑️ Dashboard 생성됨
+
+테스트:
+  ☑️ 단위 테스트 85%+ 커버리지
+  ☑️ 통합 테스트 완료
+  ☑️ 부하 테스트 통과
+  ☑️ 보안 테스트 통과
+```
+
+---
+
+## 📚 Best Practices
+
+### 성능
+
+- ✅ 측정 먼저 (Measure first)
+- ✅ 캐시 활용
+- ✅ 데이터베이스 최적화
+- ✅ N+1 쿼리 방지
+- ✅ 정기적 벤치마크
+
+### 보안
+
+- ✅ 기본값 안전하게 설정
+- ✅ 정기적 업데이트
+- ✅ 최소 권한 원칙
+- ✅ 로깅 & 모니터링
+- ✅ 공유 책임 모델
+
+---
+
+## 📖 참고 자료
+
+- [OWASP Top 10](https://owasp.org/www-project-top-ten/)
+- [TRUST 5 Principles](/ko/concepts/trust)
+- [Hooks System](/ko/concepts/hooks-system)
+- [Agent System](/ko/agents/overview)
+
