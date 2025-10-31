@@ -1,0 +1,433 @@
+---
+title: 첫 번째 프로젝트 시작하기 (Complete Workflow)
+description: MoAI-ADK로 첫 프로젝트를 생성하고 배포하는 완전한 워크플로우
+---
+
+# 첫 번째 프로젝트 시작하기
+
+이 가이드는 MoAI-ADK의 **4단계 워크플로우를 사용하여 완전한 프로젝트를 생성하고 배포**하는 방법을 보여줍니다.
+
+## 📋 전제 조건
+
+- Claude Code 설치 및 활성화
+- Git 설치 및 기본 설정
+- Python 3.13+ 또는 Node.js 18+ (프로젝트 타입에 따라)
+- GitHub 계정 (Team mode 사용 시)
+
+---
+
+## 🚀 Step 1: 프로젝트 초기화 (`/alfred:0-project`)
+
+### 1️⃣ 프로젝트 초기화 실행
+
+```bash
+# Claude Code 열기
+$ claude
+
+# Alfred 초기화 명령 실행
+/alfred:0-project
+```
+
+### 2️⃣ 프로젝트 정보 입력
+
+project-manager가 대화형 인터뷰를 시작합니다:
+
+```
+🏗️ Project Manager: 프로젝트를 초기화하겠습니다.
+
+Q1: 프로젝트 이름?
+    → "E-commerce Platform"
+
+Q2: 한 줄 설명?
+    → "온라인 쇼핑 플랫폼"
+
+Q3: 기술 스택?
+    → "Python + FastAPI (선택 또는 입력)"
+
+Q4: 개발 모드?
+    → "Personal" (또는 "Team")
+
+Q5: 주요 목표?
+    → "MVP 완성"
+```
+
+### 3️⃣ 생성되는 파일
+
+```
+프로젝트/
+├─ .moai/                          (MoAI 워크스페이스)
+│  ├─ config.json                  (프로젝트 설정)
+│  ├─ memory/                      (세션 메모리)
+│  ├─ specs/                       (SPEC 문서)
+│  ├─ docs/                        (구현 가이드)
+│  ├─ reports/                     (동기화 리포트)
+│  └─ logs/                        (실행 로그)
+├─ .claude/                        (Claude Code 설정)
+│  ├─ agents/                      (Agent 정의)
+│  ├─ commands/                    (Slash command)
+│  ├─ skills/                      (Skill 라이브러리)
+│  └─ hooks/                       (Event hook)
+├─ product.md                      (비전, 목표, 사용자)
+├─ structure.md                    (아키텍처, 디렉토리)
+├─ tech.md                         (기술 스택, 도구)
+└─ README.md                       (프로젝트 소개)
+```
+
+---
+
+## 📋 Step 2: SPEC 작성 (`/alfred:1-plan`)
+
+### 1️⃣ SPEC 계획 시작
+
+```bash
+/alfred:1-plan "사용자 인증 시스템"
+```
+
+### 2️⃣ spec-builder 대화형 작성
+
+```
+🏗️ SPEC Builder: 요구사항을 정리하겠습니다.
+
+Q1: 주요 기능?
+    → "로그인, 로그아웃, 토큰 갱신"
+
+Q2: 인증 방식?
+    → "JWT (Access + Refresh token)"
+
+Q3: 보안 요구사항?
+    → "최소 TLS 1.3, 암호화된 비밀번호"
+
+Q4: 성능 목표?
+    → "로그인 < 100ms"
+
+Q5: 에러 처리?
+    → "상세한 에러 코드 반환"
+```
+
+### 3️⃣ 생성되는 SPEC 문서
+
+```
+.moai/specs/SPEC-AUTH-001/
+├─ spec.md           (명세, EARS 형식)
+├─ plan.md           (구현 계획)
+└─ acceptance.md     (수용 테스트 기준)
+```
+
+**spec.md 내용**:
+```markdown
+# 사용자 인증 시스템
+
+## UBIQUITOUS: 항상 적용되는 요구사항
+- 모든 비밀번호는 bcrypt로 암호화
+- 모든 API 응답은 JSON 형식
+- 모든 에러는 에러 코드 포함
+
+## EVENT-DRIVEN: 이벤트 기반 요구사항
+- 로그인 요청 시 JWT 토큰 반환
+- 토큰 갱신 요청 시 새 토큰 발급
+- 로그아웃 시 토큰 무효화
+
+## STATE-DRIVEN: 상태 기반 요구사항
+- 사용자가 로그인 상태인 동안 유효한 권한 유지
+- 토큰 만료 후 재로그인 필요
+
+## OPTIONAL: 선택 기능
+- 소셜 로그인 (구글, 깃허브)
+- 2FA (2단계 인증)
+
+## UNWANTED: 금지되는 기능
+- 평문 비밀번호 저장 금지
+- 세션 토큰 사용 금지 (JWT 필수)
+```
+
+---
+
+## 🔬 Step 3: TDD 구현 (`/alfred:2-run`)
+
+### 1️⃣ 구현 시작
+
+```bash
+/alfred:2-run SPEC-AUTH-001
+```
+
+### 2️⃣ tdd-implementer가 자동 실행
+
+#### Phase 1: 계획 수립
+```
+📊 Implementation Planner:
+  - Task 분해: 모델(1), 스키마(1), 로그인(1), 로그아웃(1), 토큰갱신(1)
+  - 의존성: 모델 → 스키마, 로그인/로그아웃/토큰갱신
+  - 병렬화: 로그아웃 + 토큰갱신 (병렬 가능)
+  - 예상 시간: 2시간 (직렬 3시간)
+```
+
+#### Phase 2: RED (테스트 작성)
+```python
+# tests/test_auth.py
+
+def test_login_success():
+    """Given valid credentials, When login, Then return JWT token"""
+    result = login(email="user@example.com", password="password123")
+    assert result.status == "success"
+    assert result.token is not None
+
+def test_login_invalid_password():
+    """Given invalid password, When login, Then return error"""
+    result = login(email="user@example.com", password="wrong")
+    assert result.status == "error"
+    assert result.error_code == "INVALID_CREDENTIALS"
+
+def test_token_refresh():
+    """Given valid refresh token, When refresh, Then return new access token"""
+    new_token = refresh_token(refresh_token="xxx")
+    assert new_token is not None
+```
+
+#### Phase 3: GREEN (구현)
+```python
+# src/auth.py
+
+from pydantic import BaseModel
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["bcrypt"])
+
+@dataclass
+class LoginResult:
+    status: str
+    token: Optional[str] = None
+    error_code: Optional[str] = None
+
+def login(email: str, password: str) -> LoginResult:
+    user = find_user_by_email(email)
+    if not user or not pwd_context.verify(password, user.password_hash):
+        return LoginResult(status="error", error_code="INVALID_CREDENTIALS")
+    
+    token = create_jwt_token(user.id)
+    return LoginResult(status="success", token=token)
+```
+
+#### Phase 4: REFACTOR (코드 정리)
+```python
+# 개선 사항:
+# - 에러 처리 강화
+# - 로깅 추가
+# - 타입 힌트 100% 추가
+# - 보안 헤더 검증
+# - 성능 최적화 (캐싱)
+
+# 테스트 커버리지: 98%
+# 코드 복잡도: 낮음 (함수당 5줄)
+# 보안 검사: 0 이슈
+```
+
+### 3️⃣ 품질 검증 (자동)
+
+```
+🛡️ Quality Gate:
+  ✅ Test Coverage: 98% (목표 85%)
+  ✅ Readable: 156 lines (제한 300)
+  ✅ Unified: 100% type hints
+  ⚠️ Security: 0 critical (1 warning: bcrypt rounds)
+  ✅ Trackable: TAG 체인 완전
+
+→ PASS! 모든 기준 충족
+```
+
+### 4️⃣ Git 커밋 자동 생성
+
+```
+🚀 Git Manager:
+  ✅ Branch: feature/SPEC-AUTH-001 생성
+  ✅ Commit 1: [RED] Add authentication tests
+  ✅ Commit 2: [GREEN] Implement login/logout/refresh
+  ✅ Commit 3: [REFACTOR] Improve code quality
+  ✅ PR #1: Create PR for code review
+```
+
+---
+
+## 📚 Step 4: 문서 동기화 (`/alfred:3-sync`)
+
+### 1️⃣ 동기화 시작
+
+```bash
+/alfred:3-sync
+```
+
+### 2️⃣ doc-syncer가 자동 실행
+
+```
+📖 Doc Syncer:
+
+Phase 1: 변경 감지
+  - TAG 스캔: @CODE:AUTH-001 3개 발견
+  - 파일 변경: src/auth.py, tests/test_auth.py
+  - 범위: 인증 관련 문서만 동기화
+
+Phase 2: 문서 생성
+  ✅ README.md: "인증" 섹션 추가
+  ✅ API.md: 엔드포인트 문서 생성
+  ✅ CHANGELOG.md: v0.1.0 항목 추가
+  ✅ Architecture.md: 인증 흐름 다이어그램
+
+Phase 3: 검증
+  ✅ TRUST 5 검증: PASS
+  ✅ TAG 무결성: PASS
+  ✅ 링크 검증: PASS
+```
+
+### 3️⃣ 최종 PR 및 배포
+
+```
+🚀 Git Manager:
+  ✅ PR 업데이트: 최신 변경사항 반영
+  ✅ 리뷰 완료
+  ✅ Main으로 Merge 완료
+```
+
+---
+
+## 📊 완전한 워크플로우 예시
+
+### 시나리오: E-commerce 플랫폼 구축
+
+```
+[Day 1] Project Setup
+├─ /alfred:0-project "E-commerce Platform"
+└─ ✅ 프로젝트 초기화 완료
+
+[Day 2] User Authentication SPEC
+├─ /alfred:1-plan "사용자 인증 시스템"
+└─ ✅ SPEC-AUTH-001 작성 완료
+
+[Day 3] User Authentication Implementation
+├─ /alfred:2-run SPEC-AUTH-001
+└─ ✅ 인증 시스템 구현, 테스트, 커밋
+
+[Day 4] Product Management SPEC
+├─ /alfred:1-plan "상품 관리 시스템"
+└─ ✅ SPEC-PRODUCT-001 작성
+
+[Day 5-6] Product Management Implementation
+├─ /alfred:2-run SPEC-PRODUCT-001
+└─ ✅ 상품 시스템 구현
+
+[Day 7] Documentation Sync & Deployment
+├─ /alfred:3-sync
+├─ PR 리뷰 및 Merge
+└─ ✅ 프로덕션 배포 준비 완료
+```
+
+---
+
+## 🎯 Best Practices
+
+### ✅ Do's
+
+1. **명확한 요구사항 작성**
+   - EARS 패턴 따르기
+   - 구체적인 예제 제공
+   - 제약 조건 명시
+
+2. **작은 단위로 SPEC 작성**
+   - 기능당 1개 SPEC
+   - 100줄 이내로 유지
+   - 의존성 최소화
+
+3. **테스트 우선 작성**
+   - 실패하는 테스트부터 시작
+   - 경계값 테스트 포함
+   - 85%+ 커버리지 유지
+
+4. **정기적인 문서 동기화**
+   - 매 구현 단계 후 /alfred:3-sync
+   - 동기화 리포트 검토
+   - README 항상 최신 유지
+
+### ❌ Don'ts
+
+1. **불명확한 요구사항**
+   - ❌ "인증 구현하기" (구체적이지 않음)
+   - ✅ "JWT 기반 로그인/로그아웃 구현"
+
+2. **너무 큰 SPEC**
+   - ❌ 전체 시스템을 1개 SPEC에
+   - ✅ 기능별로 분리
+
+3. **테스트 작성 건너뛰기**
+   - ❌ 모의 테스트 (테스트 없음)
+   - ✅ 항상 RED부터 시작
+
+4. **문서 동기화 지연**
+   - ❌ 구현 완료 1주일 후 동기화
+   - ✅ 매 SPEC 완료 후 동기화
+
+---
+
+## 🔍 문제 해결
+
+### 문제 1: SPEC 작성 중 막힐 때
+
+**해결**:
+1. spec-builder의 대화형 질문 활용
+2. 기존 SPEC 예제 참고
+3. EARS 패턴 검토
+
+### 문제 2: 테스트가 자꾸 실패할 때
+
+**해결**:
+1. debug-helper 자동 호출 (에러 분석)
+2. 스택 트레이스 읽기
+3. Given-When-Then 구조 재확인
+
+### 문제 3: 품질 검증에서 FAIL
+
+**해결**:
+1. quality-gate 리포트 읽기
+2. 개선 제안 자동 적용
+3. 재시도
+
+---
+
+## 📚 추가 자료
+
+- [Alfred 4-Step Workflow](/ko/introduction/workflow)
+- [SPEC-First TDD](/ko/concepts/spec-first-tdd)
+- [EARS 패턴](/ko/concepts/ears-guide)
+- [TRUST 5 원칙](/ko/concepts/trust)
+- [Plugin 생태계](/ko/concepts/plugin-ecosystem)
+- [Agent 시스템](/ko/agents/overview)
+- [Skills 시스템](/ko/skills/overview)
+
+---
+
+## 🎓 다음 학습 경로
+
+1. **첫 번째 프로젝트** (1주)
+   - /alfred:0-project → 1-plan → 2-run → 3-sync
+
+2. **플러그인 활용** (2주)
+   - Backend Plugin으로 FastAPI 프로젝트
+   - Frontend Plugin으로 Next.js 프로젝트
+   - DevOps Plugin으로 배포 자동화
+
+3. **고급 패턴** (1개월)
+   - 복잡한 SPEC 작성
+   - 병렬 Task 관리
+   - Team mode 협업
+
+4. **커스터마이징** (진행 중)
+   - 새 Skill 개발
+   - Agent 확장
+   - Hook 커스터마이징
+
+---
+
+## 💬 피드백 & 도움
+
+- GitHub Issues: [질문/버그 리포트](https://github.com/anthropics/claude-code/issues)
+- 문서: [MoAI-ADK Docs](/)
+- 커뮤니티: [Discussions](/)
+
+행운을 빕니다! 🚀
