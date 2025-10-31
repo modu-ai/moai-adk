@@ -1,30 +1,594 @@
 ---
-title: TAG 시스템
-description: TAG 시스템 가이드
+title: TAG 시스템 - 코드 추적 가능성
+description: MoAI-ADK의 @TAG 시스템으로 SPEC, TEST, CODE, DOC 전체 체인 추적
 ---
 
-# TAG 시스템
-
-이 페이지는 현재 작성 중입니다.
+# TAG 시스템 - 코드 추적 가능성
 
 ## 개요
 
-TAG 시스템에 대한 자세한 내용은 곧 업데이트될 예정입니다.
+**TAG 시스템**은 MoAI-ADK의 핵심 추적 가능성(Traceability) 메커니즘입니다. `@SPEC`, `@TEST`, `@CODE`, `@DOC` 마커를 사용하여 요구사항에서 구현, 테스트, 문서화까지 모든 것을 연결합니다.
 
-## 주요 특징
+### 핵심 목표
 
-- 특징 1
-- 특징 2
-- 특징 3
+- ✅ **CODE-FIRST 원칙**: 소스 코드에서 직접 TAG 추출
+- ✅ **4-Core 체인 무결성**: SPEC → TEST → CODE → DOC 연결 보증
+- ✅ **자동 검증**: 중복/고아 TAG 자동 감지
+- ✅ **실시간 추적**: 코드 스캔을 통한 항상 최신의 TAG 인벤토리
 
-## 사용법
+---
+
+## TAG 구조 및 형식
+
+### 기본 형식
+
+```
+@CATEGORY:DOMAIN-ID
+
+예시:
+`@SPEC:SAMPLE-001`     # 기능 요구사항
+`@TEST:SAMPLE-001`     # 테스트 코드
+`@CODE:SAMPLE-001`     # 구현 코드
+`@DOC:SAMPLE-001`      # 문서화
+```
+
+### 4-Core TAG 카테고리
+
+| 카테고리 | 목적 | 위치 | 예시 |
+|---------|------|------|------|
+| **SPEC** | 요구사항 정의 | `.moai/specs/SPEC-*/spec.md` | `` `@SPEC:*-001` `` |
+| **TEST** | 테스트 코드 | `tests/test_*.py` | `` `@TEST:*-001` `` |
+| **CODE** | 구현 코드 | `src/` | `` `@CODE:*-001` `` |
+| **DOC** | 문서화 | `.moai/docs/`, `README.md` | `` `@DOC:*-001` `` |
+
+### DOMAIN 명명 규칙
+
+- **대문자 알파벳**: `AUTH`, `PAYMENT`, `ORDER`, `USER`
+- **명확한 의미**: 기능 도메인을 한눈에 알 수 있게
+- **3-6자 권장**: 짧고 기억하기 쉽게
+- **분할 표기 불가**: `AUTH-USER` 대신 `AUTH` 사용
+
+### ID 번호 규칙
+
+- **001부터 시작**: 도메인별 순차 번호
+- **3자리 숫자**: `001`, `002`, `010` 등
+- **재사용 금지**: 한번 사용한 ID는 변경 불가
+- **연속 증가**: 도메인 내에서 항상 순차적으로
+
+---
+
+## TAG 체인 생명주기
+
+### Phase 1: SPEC 작성 시 SPEC TAG 생성
 
 ```bash
-# 예제 명령어
-# 상세 사용법은 곧 업데이트됩니다
+# .moai/specs/SPEC-AUTH-001/spec.md 파일 생성 시
+# @SPEC:SAMPLE-001 마커 추가
+
+@SPEC:SAMPLE-001
+## 개요
+사용자 인증 기능
+
+## 요구사항
+- 이메일 기반 로그인
+- JWT 토큰 발급
 ```
+
+**상태**: 🔴 SPEC만 존재 (TEST, CODE 미완성)
+
+### Phase 2: 테스트 작성 시 TEST TAG 생성
+
+```python
+# tests/test_auth.py
+
+# @TEST:SAMPLE-001
+class TestLogin:
+    """사용자 로그인 테스트"""
+
+    def test_login_with_valid_credentials(self):
+        """유효한 자격증명으로 로그인"""
+        result = login("user@example.com", "password123")
+        assert result.status == "authenticated"
+```
+
+**상태**: 🟡 SPEC + TEST (CODE 미완성)
+
+### Phase 3: 코드 작성 시 CODE TAG 생성
+
+```python
+# src/auth.py
+
+# @CODE:SAMPLE-001
+class AuthService:
+    """사용자 인증 서비스"""
+
+    @staticmethod
+    def login(email: str, password: str) -> LoginResult:
+        """사용자 로그인"""
+        # 구현 코드...
+        pass
+```
+
+**상태**: 🟢 SPEC + TEST + CODE (DOC 미완성)
+
+### Phase 4: 문서화 시 DOC TAG 생성
+
+```markdown
+# .moai/docs/auth.md
+
+<!-- @DOC:SAMPLE-001 -->
+
+# 인증 기능
+
+## 개요
+사용자 인증 시스템의 사용 방법
+
+## 사용 예시
+```
+
+**상태**: ✅ SPEC + TEST + CODE + DOC (완전한 체인)
+
+---
+
+## TAG 체인 검증
+
+### 1️⃣ 자동 검증 프로세스
+
+MoAI-ADK는 자동으로 다음을 검증합니다:
+
+```
+코드 변경 감지
+    ↓
+TAG 스캔 (ripgrep 사용)
+    ↓
+체인 무결성 검증
+    ├─ @SPEC 존재 확인
+    ├─ @TEST 존재 확인
+    ├─ @CODE 존재 확인
+    └─ @DOC 존재 확인
+    ↓
+결과 리포트 생성
+```
+
+### 2️⃣ 검증 규칙
+
+#### 필수 규칙 (CRITICAL)
+
+- ✅ 모든 @CODE는 @SPEC이 있어야 함
+- ✅ 모든 @CODE는 @TEST가 있어야 함
+- ✅ 모든 @SPEC은 유일해야 함 (중복 불가)
+- ✅ 체인은 @SPEC부터 시작해야 함
+
+#### 경고 규칙 (WARNING)
+
+- ⚠️ @CODE가 없는 @SPEC (구현 미완성)
+- ⚠️ @TEST가 없는 @CODE (테스트 미완성)
+- ⚠️ @DOC가 없는 @CODE (문서화 미완성)
+
+#### 선택 규칙 (OPTIONAL)
+
+- 📝 @DOC는 필수가 아님 (나중에 작성 가능)
+
+### 3️⃣ 검증 실행
+
+```bash
+# 전체 TAG 검증
+moai validate
+
+# 결과 예시
+✓ TAG Validation Results:
+  ✓ SPEC → CODE connection verified (45 chains)
+  ✓ CODE → TEST connection verified (45 chains)
+  ✓ No orphan TAGs found
+  ✓ No duplicate TAGs found
+  ✓ No circular references detected
+
+Total: 180 TAGs, 0 issues ✅
+```
+
+---
+
+## TAG 검증 명령어
+
+### 1. 전체 TAG 검증
+
+```bash
+# .moai/reports/ 디렉토리에 검증 리포트 생성
+/alfred:3-sync
+
+# 출력:
+# ✓ TAG Validation Results
+# ✓ Files scanned: 127
+# ✓ TAGs found: 180
+# ✓ Chain completeness: 98%
+```
+
+### 2. 특정 도메인 검증
+
+```bash
+# AUTH 도메인만 검증
+moai validate --domain AUTH
+
+# 결과:
+# AUTH domain TAGs (12 total):
+#   @SPEC:SAMPLE-001 → @TEST:SAMPLE-001 → @CODE:SAMPLE-001 ✅
+#   @SPEC:SAMPLE-002 → @TEST:SAMPLE-002 → @CODE:SAMPLE-002 ✅
+```
+
+### 3. 고아 TAG 감지
+
+```bash
+# CODE가 있지만 SPEC이 없는 고아 TAG 찾기
+moai validate --check-orphans
+
+# 예시 결과:
+# ⚠️ Orphan TAGs found (3):
+#   @CODE:OTHER-099 - No corresponding SPEC
+#   @TEST:OTHER-888 - No corresponding SPEC
+```
+
+### 4. TAG 통계 조회
+
+```bash
+# 프로젝트의 전체 TAG 통계
+moai validate --stats
+
+# 결과:
+# TAG Statistics:
+#   Total: 180
+#   SPEC: 45
+#   TEST: 45
+#   CODE: 45
+#   DOC: 45
+#   Chain completeness: 100%
+```
+
+---
+
+## TAG 생성 및 관리
+
+### TAG 생성 절차
+
+#### Step 1: SPEC에서 TAG ID 결정
+
+새로운 기능을 구현할 때:
+
+1. **도메인 결정**: `AUTH` (인증), `PAYMENT` (결제) 등
+2. **다음 ID 확인**: 기존 `@SPEC:SAMPLE-001` 있으면 → `@SPEC:SAMPLE-002` 사용
+3. **SPEC 파일 생성**: `.moai/specs/SPEC-AUTH-002/spec.md`
+
+```markdown
+# SPEC-AUTH-002: 사용자 로그아웃
+
+@SPEC:SAMPLE-002
+
+## 개요
+사용자 로그아웃 기능
+```
+
+#### Step 2: 테스트에 TEST TAG 추가
+
+```python
+# tests/test_auth.py
+
+# @TEST:SAMPLE-002
+class TestLogout:
+    def test_logout_invalidates_token(self):
+        # 테스트 코드...
+        pass
+```
+
+#### Step 3: 구현에 CODE TAG 추가
+
+```python
+# src/auth.py
+
+# @CODE:SAMPLE-002
+def logout(token: str) -> LogoutResult:
+    """사용자 로그아웃"""
+    # 구현...
+    pass
+```
+
+#### Step 4: 문서에 DOC TAG 추가 (선택)
+
+```markdown
+# .moai/docs/auth.md
+
+<!-- @DOC:SAMPLE-002 -->
+
+## 로그아웃 기능
+
+사용자 로그아웃 방법...
+```
+
+### TAG 재사용 규칙
+
+❌ **불가능**: 한번 사용한 TAG ID를 다른 기능에 사용
+
+```python
+# ❌ WRONG - AUTH-001은 이미 LOGIN 기능에 사용됨
+@CODE:SAMPLE-001  # 다른 기능에 재사용 금지!
+def different_function():
+    pass
+```
+
+✅ **가능**: 같은 기능의 여러 파일에서 같은 TAG 사용
+
+```python
+# ✅ CORRECT - AUTH-002는 logout 기능의 모든 파일에서 사용
+@TEST:SAMPLE-002  # tests/test_auth.py
+class TestLogout: pass
+
+@CODE:SAMPLE-002  # src/auth.py
+def logout(): pass
+
+@DOC:SAMPLE-002  # .moai/docs/auth.md
+<!-- documentation -->
+```
+
+---
+
+## TAG 검증 오류 처리
+
+### 오류 1: 중복 TAG
+
+```
+❌ Error: Duplicate TAG found
+   @SPEC:SAMPLE-001 appears 2 times
+   - Location 1: .moai/specs/SPEC-AUTH-001/spec.md
+   - Location 2: .moai/specs/SPEC-AUTH-002/spec.md (wrong!)
+```
+
+**해결책**: 중복된 위치의 TAG를 새로운 ID로 변경
+
+```markdown
+# SPEC-AUTH-002의 spec.md에서
+- @SPEC:SAMPLE-001 ❌ (중복)
++ @SPEC:SAMPLE-002 ✅ (변경)
+```
+
+### 오류 2: 고아 TAG
+
+```
+⚠️ Warning: Orphan TAG found
+   @CODE:OTHER-099 - No corresponding SPEC found
+
+   Suggestion: Either
+   1. Create @SPEC:OTHER-099 in .moai/specs/
+   2. Remove orphan @CODE:OTHER-099 from src/
+```
+
+**해결책**: 대응하는 SPEC을 생성하거나 CODE TAG 제거
+
+### 오류 3: 끊긴 체인
+
+```
+⚠️ Warning: Incomplete TAG chain
+   @SPEC:SAMPLE-003 → @TEST:SAMPLE-003 ❌ Missing
+
+   Need: Create @TEST:SAMPLE-003 in tests/
+```
+
+**해결책**: 누락된 TEST 파일 생성 및 TAG 추가
+
+---
+
+## TAG와 Git 워크플로우
+
+### 커밋 메시지와 TAG
+
+```bash
+# RED phase: 테스트 작성
+git commit -m "test(RED): Add authentication tests
+
+@TEST:SAMPLE-003
+- test_token_refresh
+- test_session_timeout
+"
+
+# GREEN phase: 구현
+git commit -m "feat(GREEN): Implement authentication features
+
+@CODE:SAMPLE-003
+- token refresh logic
+- session timeout handling
+"
+
+# REFACTOR phase: 개선
+git commit -m "refactor(REFACTOR): Improve auth security
+
+@CODE:SAMPLE-003
+- add input validation
+- improve error handling
+"
+```
+
+### PR 설명에 TAG 포함
+
+```markdown
+## Pull Request: Authentication v2
+
+**Related TAGs**:
+- @SPEC:SAMPLE-003, @SPEC:SAMPLE-004, @SPEC:SAMPLE-005
+- @TEST:SAMPLE-003, @TEST:SAMPLE-004, @TEST:SAMPLE-005
+- @CODE:SAMPLE-003, @CODE:SAMPLE-004, @CODE:SAMPLE-005
+
+**Changes**:
+- Implement token refresh
+- Add session timeout
+- Improve security
+```
+
+---
+
+## TAG 시스템 베스트 프랙티스
+
+### ✅ Good Practice
+
+```python
+# 명확한 TAG 위치
+# src/auth/service.py
+
+# @CODE:SAMPLE-001
+class AuthService:
+    """인증 서비스"""
+
+    def login(self, email: str, password: str) -> LoginResult:
+        """로그인 구현"""
+        # 한 파일에 한 기능의 TAG
+        pass
+```
+
+### ❌ Bad Practice
+
+```python
+# ❌ 불명확한 위치
+def random_function():
+    @CODE:SAMPLE-001  # 주석 처리된 TAG
+    pass
+
+# ❌ 혼합된 TAG
+class MixedClass:
+    # @CODE:SAMPLE-001
+    def login(self): pass
+
+    # @CODE:PAYMENT-001  # 다른 기능과 섞임
+    def charge(self): pass
+```
+
+### TAG 작명 팁
+
+**유지보수하기 좋은 TAG**:
+
+- ✅ `@SPEC:LOGIN-001` - 명확함
+- ✅ `@SPEC:JWT-TOKEN-001` - 구체적
+- ✅ `@SPEC:PASSWORD-HASHING-001` - 자세함
+
+**피해야 할 TAG**:
+
+- ❌ `@SPEC:FEATURE-001` - 너무 모호함
+- ❌ `@SPEC:IMPL-001` - 의미 불명확
+- ❌ `@SPEC:X-001` - 축약 사용
+
+---
+
+## TAG와 TRUST 5 원칙
+
+TAG 시스템은 **TRUST 5의 "T" (Trackable)** 부분을 담당합니다:
+
+| 원칙 | TAG의 역할 |
+|------|-----------|
+| **T**est | 모든 TEST TAG가 CODE와 연결되는지 확인 |
+| **R**eadable | TAG ID로 코드 의도를 명확하게 표현 |
+| **U**nified | SPEC-TEST-CODE의 통일된 ID 사용 |
+| **S**ecured | 보안 관련 TAG로 보안 감시 (예: `@CODE:OTHER-400`) |
+| **T**rackable | ✅ **SPEC → TEST → CODE → DOC 체인 보증** |
+
+---
+
+## 고급 TAG 기능
+
+### TAG 도메인 그룹화
+
+큰 프로젝트에서는 도메인을 계층적으로 구성:
+
+```
+인증 (AUTH)
+├─ 로그인: @SPEC:SAMPLE-001
+├─ 로그아웃: @SPEC:SAMPLE-002
+├─ 토큰 갱신: @SPEC:SAMPLE-003
+└─ 권한 검사: @SPEC:SAMPLE-004
+
+결제 (PAYMENT)
+├─ 결제 처리: @SPEC:OTHER-200
+├─ 환불: @SPEC:PAYMENT-002
+└─ 영수증: @SPEC:PAYMENT-003
+```
+
+### TAG 우선순위 표시
+
+```markdown
+# 높은 우선순위 기능
+@SPEC:SAMPLE-001 [CRITICAL]
+
+# 보안 관련
+@SPEC:SAMPLE-002 [SECURITY]
+
+# 성능 최적화
+@CODE:OTHER-300 [OPTIMIZATION]
+```
+
+### TAG 검색 및 추적
+
+```bash
+# 특정 도메인의 모든 TAG 찾기
+grep -r "@CODE:AUTH" src/
+
+# SPEC에서 구현까지의 변경 추적
+git log --all --grep="@CODE:SAMPLE-001"
+
+# 특정 TAG의 전체 이력
+git log --oneline --all -- "*.py" | grep "AUTH-001"
+```
+
+---
+
+## 문제 해결
+
+### Q: TAG가 중복되었다는 오류가 나옵니다
+
+**A**: 다음을 확인하세요:
+
+```bash
+# 중복된 TAG 찾기
+grep -r "@SPEC:SAMPLE-001" .moai/specs/ tests/ src/ docs/
+
+# 중복 개수 확인
+grep -r "@SPEC:SAMPLE-001" . | wc -l
+
+# 2개 이상이면 하나를 새로운 ID로 변경
+```
+
+### Q: 고아 TAG가 발견되었습니다
+
+**A**: SPEC이 없는데 CODE가 있다는 의미:
+
+```bash
+# 1. 대응하는 SPEC 생성
+.moai/specs/SPEC-USER-999/spec.md 에 @SPEC:OTHER-099 추가
+
+# 또는 2. CODE TAG 제거
+src/ 에서 @CODE:OTHER-099 삭제
+```
+
+### Q: TAG 체인이 끊겼습니다
+
+**A**: 누락된 부분을 추가하세요:
+
+```bash
+# 체인 상태 확인
+@SPEC:SAMPLE-005 ✅ (spec.md 있음)
+@TEST:SAMPLE-005 ❌ (tests/ 에 없음)
+@CODE:SAMPLE-005 ✅ (src/ 있음)
+
+# 해결: tests/test_auth.py 에 @TEST:SAMPLE-005 추가
+```
+
+---
 
 ## 다음 단계
 
-- [홈으로](/ko)
-- [문서 개요](/ko/introduction/overview)
+TAG 시스템을 이해한 후:
+
+1. **[SPEC-First TDD](/ko/concepts/spec-first-tdd)** - TAG와 함께 TDD 실행
+2. **[EARS 가이드](/ko/concepts/ears-guide)** - 요구사항 작성 방식
+3. **[Concepts 목록](/ko/concepts)** - 다른 핵심 개념 학습
+
+---
+
+## 참고 자료
+
+- **TRUST 5 원칙**: Trackable 부분 구현 메커니즘
+- **MoAI-ADK 아키텍처**: 8개 서브시스템과 TAG 통합
+- **Git 워크플로우**: TAG 기반 커밋 메시지 작성

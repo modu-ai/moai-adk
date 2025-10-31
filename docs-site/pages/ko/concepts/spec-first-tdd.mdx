@@ -1,30 +1,716 @@
 ---
-title: SPEC-First TDD
-description: SPEC-First TDD 가이드
+title: SPEC-First TDD - 요구사항 주도 개발
+description: MoAI-ADK의 SPEC-First TDD 방식으로 요구사항부터 구현까지
 ---
 
-# SPEC-First TDD
-
-이 페이지는 현재 작성 중입니다.
+# SPEC-First TDD - 요구사항 주도 개발
 
 ## 개요
 
-SPEC-First TDD에 대한 자세한 내용은 곧 업데이트될 예정입니다.
+**SPEC-First TDD**는 MoAI-ADK의 개발 방법론입니다. 코드를 작성하기 전에 명확한 요구사항(SPEC)을 정의하고, 그 다음 RED → GREEN → REFACTOR TDD 사이클을 따릅니다.
 
-## 주요 특징
+### 기존 TDD vs SPEC-First TDD
 
-- 특징 1
-- 특징 2
-- 특징 3
+| 항목 | 기존 TDD | SPEC-First TDD |
+|------|---------|----------------|
+| **시작점** | "어떻게 테스트할까?" | "무엇을 만들어야 하나?" |
+| **1단계** | 테스트 작성 (RED) | SPEC 정의 |
+| **2단계** | 구현 (GREEN) | 테스트 작성 (RED) |
+| **3단계** | 리팩토링 (REFACTOR) | 구현 (GREEN) |
+| **4단계** | (끝) | 리팩토링 (REFACTOR) |
+| **5단계** | (끝) | 문서화 & 동기화 |
+| **추적성** | 없음 | TAG 기반 추적 |
 
-## 사용법
+---
+
+## SPEC-First TDD의 4단계 워크플로우
+
+### Stage 1: SPEC 정의 (`/alfred:1-plan`)
+
+**목표**: 요구사항을 명확히 정의하고 TAG 생성
+
+#### Step 1.1: 기능 설명 수집
+
+사용자와 함께 다음을 정의합니다:
+
+```markdown
+기능명: 사용자 인증
+목표: 사용자가 이메일과 비밀번호로 안전하게 로그인
+
+주요 요구사항:
+- 이메일 형식 검증
+- 비밀번호 해싱 (bcrypt)
+- JWT 토큰 발급 (24시간 유효)
+- 로그인 시도 기록
+
+성공 기준:
+- 올바른 자격증명: 토큰 반환 (200 OK)
+- 잘못된 비밀번호: 401 Unauthorized
+- 존재하지 않는 사용자: 404 Not Found
+
+에러 처리:
+- 이메일 형식 오류: 400 Bad Request
+- 서버 오류: 500 Internal Server Error
+```
+
+#### Step 1.2: EARS 형식 요구사항 작성
+
+SPEC 문서를 작성합니다 (`.moai/specs/SPEC-AUTH-001/spec.md`):
+
+```markdown
+# SPEC-AUTH-001: 사용자 인증
+
+@SPEC:SAMPLE-001
+
+## 개요
+사용자가 이메일과 비밀번호를 이용하여 안전하게 로그인하는 기능
+
+## 요구사항 (EARS 형식)
+
+### UBIQUITOUS
+- 시스템은 모든 사용자 입력을 검증해야 한다
+- 시스템은 모든 민감한 정보를 암호화하여 저장해야 한다
+- 시스템은 모든 로그인 시도를 기록해야 한다
+
+### EVENT-DRIVEN
+- WHEN 사용자가 로그인을 시도하면
+  - 시스템은 이메일 형식을 검증해야 한다
+  - 시스템은 비밀번호를 검증해야 한다
+  - 시스템은 JWT 토큰을 발급해야 한다
+
+### STATE-DRIVEN
+- WHILE 로그인 상태이면
+  - 시스템은 토큰을 검증해야 한다
+
+### UNWANTED
+- 시스템은 비밀번호를 평문으로 저장하면 안 된다
+- 시스템은 토큰을 클라이언트에 다시 전송하면 안 된다
+```
+
+#### Step 1.3: 수용 기준 정의
+
+`.moai/specs/SPEC-AUTH-001/acceptance.md`:
+
+```markdown
+# SPEC-AUTH-001 수용 기준
+
+### AC-001: 정상 로그인
+**Given** 유효한 사용자가 존재하고
+**When** 올바른 이메일과 비밀번호로 로그인하면
+**Then** JWT 토큰을 받고 (status: 200)
+
+### AC-002: 잘못된 비밀번호
+**Given** 사용자가 존재하고
+**When** 올바른 이메일이지만 잘못된 비밀번호로 로그인하면
+**Then** 에러 응답을 받고 (status: 401)
+
+### AC-003: 존재하지 않는 사용자
+**Given** 사용자가 존재하지 않고
+**When** 해당 이메일로 로그인 시도하면
+**Then** 에러 응답을 받고 (status: 404)
+```
+
+#### Step 1.4: TAG 생성
+
+Alfred가 자동으로 생성합니다:
+
+```
+SPEC-AUTH-001 생성됨
+  └─ @SPEC:SAMPLE-001 마커 추가
+```
+
+**결과**: 📋 SPEC 문서 완성, 개발 목표 명확
+
+---
+
+### Stage 2: 테스트 작성 (RED Phase)
+
+**목표**: 요구사항을 검증하는 **실패하는 테스트** 작성
+
+#### Step 2.1: 테스트 파일 생성
+
+`tests/test_auth.py`:
+
+```python
+# @TEST:SAMPLE-001
+import pytest
+from src.auth import AuthService, LoginResult
+
+
+class TestLogin:
+    """사용자 로그인 테스트"""
+
+    def test_login_with_valid_credentials(self):
+        """AC-001: 유효한 자격증명으로 로그인"""
+        # Given: 유효한 사용자가 존재
+        user_email = "user@example.com"
+        user_password = "secure123"
+
+        # When: 로그인 시도
+        result = AuthService.login(email=user_email, password=user_password)
+
+        # Then: 토큰 반환 확인
+        assert result.status == "authenticated"
+        assert result.token is not None
+        assert result.token_type == "Bearer"
+        assert result.expires_in == 86400  # 24 hours
+
+    def test_login_with_wrong_password(self):
+        """AC-002: 잘못된 비밀번호로 로그인 실패"""
+        result = AuthService.login(email="user@example.com", password="wrong123")
+        assert result.status == "error"
+        assert result.error_code == "INVALID_CREDENTIALS"
+
+    def test_login_with_nonexistent_user(self):
+        """AC-003: 존재하지 않는 사용자로 로그인 실패"""
+        result = AuthService.login(email="nonexistent@example.com", password="any123")
+        assert result.status == "error"
+        assert result.error_code == "USER_NOT_FOUND"
+```
+
+#### Step 2.2: 테스트 실행 (RED 확인)
 
 ```bash
-# 예제 명령어
-# 상세 사용법은 곧 업데이트됩니다
+pytest tests/test_auth.py -v
+
+# 결과:
+FAILED tests/test_auth.py::TestLogin::test_login_with_valid_credentials
+  ModuleNotFoundError: No module named 'src.auth'
+
+FAILED tests/test_auth.py::TestLogin::test_login_with_wrong_password
+FAILED tests/test_auth.py::TestLogin::test_login_with_nonexistent_user
+
+============ 3 failed in 0.15s ============
 ```
+
+**상태**: 🔴 RED - 테스트 실패 (예상된 상황)
+
+#### Step 2.3: 커밋 (RED)
+
+```bash
+git add tests/test_auth.py
+git commit -m "test(RED): Add authentication tests
+
+@TEST:SAMPLE-001
+- test_login_with_valid_credentials
+- test_login_with_wrong_password
+- test_login_with_nonexistent_user
+"
+```
+
+**결과**: ✅ RED Phase 완료, 테스트 태그 생성
+
+---
+
+### Stage 3: 구현 (GREEN Phase)
+
+**목표**: 테스트를 **통과하는 최소한의 코드** 작성
+
+#### Step 3.1: 최소 구현
+
+`src/auth.py`:
+
+```python
+# @CODE:SAMPLE-001
+from dataclasses import dataclass
+from typing import Optional
+import bcrypt
+from datetime import datetime, timedelta
+import jwt
+
+
+@dataclass
+class LoginResult:
+    """로그인 결과"""
+    status: str  # "authenticated" or "error"
+    token: Optional[str] = None
+    token_type: str = "Bearer"
+    expires_in: int = 86400  # 24 hours
+    error_code: Optional[str] = None
+
+
+# 임시 사용자 DB (프로토타입)
+USERS_DB = {
+    "user@example.com": bcrypt.hashpw(b"secure123", bcrypt.gensalt()).decode()
+}
+
+
+class AuthService:
+    """인증 서비스"""
+
+    @staticmethod
+    def login(email: str, password: str) -> LoginResult:
+        """사용자 로그인"""
+
+        # 사용자 존재 확인
+        if email not in USERS_DB:
+            return LoginResult(
+                status="error",
+                error_code="USER_NOT_FOUND"
+            )
+
+        # 비밀번호 검증
+        hashed_password = USERS_DB[email]
+        if not bcrypt.checkpw(password.encode(), hashed_password.encode()):
+            return LoginResult(
+                status="error",
+                error_code="INVALID_CREDENTIALS"
+            )
+
+        # 토큰 생성
+        payload = {
+            "email": email,
+            "exp": datetime.utcnow() + timedelta(hours=24)
+        }
+        token = jwt.encode(payload, "secret-key", algorithm="HS256")
+
+        return LoginResult(
+            status="authenticated",
+            token=token,
+            expires_in=86400
+        )
+```
+
+#### Step 3.2: 테스트 실행 (GREEN 확인)
+
+```bash
+pytest tests/test_auth.py -v
+
+# 결과:
+PASSED tests/test_auth.py::TestLogin::test_login_with_valid_credentials
+PASSED tests/test_auth.py::TestLogin::test_login_with_wrong_password
+PASSED tests/test_auth.py::TestLogin::test_login_with_nonexistent_user
+
+============ 3 passed in 0.12s ============
+```
+
+**상태**: 🟢 GREEN - 모든 테스트 통과
+
+#### Step 3.3: 커밋 (GREEN)
+
+```bash
+git add src/auth.py
+git commit -m "feat(GREEN): Implement authentication features
+
+@CODE:SAMPLE-001
+- Login with email and password
+- JWT token generation with 24-hour expiration
+- Bcrypt password hashing
+- User validation and error handling
+"
+```
+
+**결과**: ✅ GREEN Phase 완료, 코드 태그 생성
+
+---
+
+### Stage 4: 개선 (REFACTOR Phase)
+
+**목표**: 코드 품질 개선, 보안 강화, 테스트 커버리지 증가
+
+#### Step 4.1: 보안 및 구조 개선
+
+`src/auth.py` (개선된 버전):
+
+```python
+# @CODE:SAMPLE-001
+from dataclasses import dataclass
+from typing import Optional, Dict
+import bcrypt
+from datetime import datetime, timedelta
+import jwt
+import logging
+import os
+
+
+logger = logging.getLogger(__name__)
+
+# 환경 변수에서 설정 읽기
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
+TOKEN_EXPIRATION_HOURS = 24
+BCRYPT_COST_FACTOR = 4
+
+
+@dataclass
+class LoginResult:
+    """로그인 결과
+
+    Attributes:
+        status: 로그인 상태 ("authenticated" or "error")
+        token: JWT 토큰 (성공 시에만 포함)
+        token_type: 토큰 타입 (기본값: "Bearer")
+        expires_in: 토큰 만료시간 (초 단위)
+        error_code: 에러 코드 (실패 시에만 포함)
+    """
+    status: str
+    token: Optional[str] = None
+    token_type: str = "Bearer"
+    expires_in: int = 86400
+    error_code: Optional[str] = None
+
+
+class UserRepository:
+    """사용자 저장소 (데이터 접근 계층)"""
+
+    @staticmethod
+    def find_by_email(email: str) -> Optional[Dict]:
+        """이메일로 사용자 조회"""
+        # 실제 DB에서 조회
+        return None
+
+    @staticmethod
+    def verify_password(stored_hash: str, password: str) -> bool:
+        """비밀번호 검증"""
+        try:
+            return bcrypt.checkpw(
+                password.encode('utf-8'),
+                stored_hash.encode('utf-8')
+            )
+        except (ValueError, TypeError) as e:
+            logger.error(f"Password verification failed: {e}")
+            return False
+
+
+class AuthService:
+    """인증 서비스"""
+
+    @staticmethod
+    def login(email: str, password: str) -> LoginResult:
+        """사용자 로그인
+
+        Args:
+            email: 사용자 이메일
+            password: 사용자 비밀번호
+
+        Returns:
+            LoginResult: 로그인 결과
+
+        Raises:
+            ValueError: 이메일 형식이 올바르지 않음
+        """
+        # 입력 검증
+        if not email or not password:
+            logger.warning("Empty email or password")
+            return LoginResult(
+                status="error",
+                error_code="INVALID_INPUT"
+            )
+
+        # 사용자 조회
+        user = UserRepository.find_by_email(email)
+        if not user:
+            logger.warning(f"User not found: {email}")
+            return LoginResult(
+                status="error",
+                error_code="USER_NOT_FOUND"
+            )
+
+        # 비밀번호 검증
+        if not UserRepository.verify_password(user['password_hash'], password):
+            logger.warning(f"Password verification failed: {email}")
+            return LoginResult(
+                status="error",
+                error_code="INVALID_CREDENTIALS"
+            )
+
+        # 토큰 생성
+        token = AuthService._create_token(email)
+
+        logger.info(f"Login successful: {email}")
+        return LoginResult(
+            status="authenticated",
+            token=token,
+            expires_in=TOKEN_EXPIRATION_HOURS * 3600
+        )
+
+    @staticmethod
+    def _create_token(email: str) -> str:
+        """JWT 토큰 생성"""
+        payload = {
+            "email": email,
+            "iat": datetime.utcnow(),
+            "exp": datetime.utcnow() + timedelta(hours=TOKEN_EXPIRATION_HOURS)
+        }
+        return jwt.encode(payload, SECRET_KEY, algorithm="HS256")
+```
+
+#### Step 4.2: 테스트 커버리지 검증
+
+```bash
+pytest tests/test_auth.py --cov=src/auth --cov-report=html
+
+# 결과:
+===================== 85% coverage =====================
+```
+
+**조건**: TRUST 5의 "Test" 원칙 충족 (≥85% 커버리지)
+
+#### Step 4.3: 코드 품질 검사
+
+```bash
+# 코드 스타일 검사
+ruff check src/auth.py
+
+# 타입 안전성 검사
+mypy src/auth.py --strict
+
+# 보안 검사
+bandit -r src/auth.py
+
+# 결과: 모두 0 issues ✅
+```
+
+#### Step 4.4: 문서화 추가
+
+`.moai/docs/auth.md`:
+
+```markdown
+<!-- @DOC:SAMPLE-001 -->
+
+# 인증 기능
+
+## 개요
+사용자 이메일과 비밀번호를 이용한 안전한 로그인 기능입니다.
+
+## 사용 예시
+
+```python
+from src.auth import AuthService
+
+result = AuthService.login("user@example.com", "password123")
+if result.status == "authenticated":
+    print(f"Token: {result.token}")
+else:
+    print(f"Error: {result.error_code}")
+```
+
+## 보안 고려사항
+
+- ✅ 비밀번호는 bcrypt로 해싱됨
+- ✅ 토큰은 HS256으로 서명됨
+- ✅ 모든 입력은 검증됨
+- ✅ 민감한 정보는 로그에 노출되지 않음
+```
+
+#### Step 4.5: 커밋 (REFACTOR)
+
+```bash
+git add src/auth.py tests/test_auth.py .moai/docs/auth.md
+git commit -m "refactor(REFACTOR): Improve code quality and add documentation
+
+@CODE:SAMPLE-001
+- Add proper error handling and input validation
+- Implement UserRepository for data access layer
+- Add comprehensive docstrings (Google style)
+- Improve logging for security monitoring
+- Achieve 85%+ test coverage
+
+Improvements:
+- Security: Environment variable for SECRET_KEY
+- Quality: Type hints and error handling
+- Maintainability: Separation of concerns
+- Documentation: Complete API reference
+"
+```
+
+**상태**: 🟢 REFACTOR Phase 완료, 문서 태그 생성
+
+---
+
+## SPEC-First TDD의 장점
+
+### 1. 명확한 요구사항 ✅
+
+SPEC을 먼저 작성하면:
+- 개발자와 이해관계자 간 오해 제거
+- 변경 요청 최소화
+- 범위 확실
+- 완료 기준 명확
+
+### 2. 자동 추적성 ✅
+
+TAG 시스템으로:
+- SPEC → TEST → CODE → DOC 완전 연결
+- 어느 요구사항이 구현됐는지 자동 추적
+- 누락된 테스트/문서 자동 감지
+
+### 3. 테스트 품질 향상 ✅
+
+테스트를 먼저 쓰면:
+- 구현 전에 엣지 케이스 고려
+- 테스트 커버리지 자동 85% 이상
+- 회귀 테스트 자동화
+
+### 4. 문서화 자동화 ✅
+
+SPEC과 코드 동기화:
+- 주석 불일치 제거
+- 사용자 문서 자동 생성
+- 변경 이력 추적
+
+---
+
+## SPEC-First TDD vs 다른 방식 비교
+
+### SPEC-First TDD (MoAI-ADK)
+
+```
+SPEC 정의
+    ↓
+테스트 작성 (RED)
+    ↓
+구현 (GREEN)
+    ↓
+개선 (REFACTOR)
+    ↓
+문서 동기화
+    ↓
+PR 생성 & 병합
+```
+
+**장점**:
+- 요구사항 명확
+- 완전한 추적성
+- 자동 문서화
+- 낮은 기술부채
+
+### 기존 TDD
+
+```
+테스트 작성 (RED)
+    ↓
+구현 (GREEN)
+    ↓
+개선 (REFACTOR)
+    ↓
+(이 다음이?)
+```
+
+**문제점**:
+- 요구사항 불명확할 수 있음
+- 문서화 누락
+- 추적성 약함
+- 기술부채 증가
+
+### Waterfall (폭포수)
+
+```
+요구분석
+    ↓
+설계
+    ↓
+구현
+    ↓
+테스트
+    ↓
+배포
+```
+
+**문제점**:
+- 변경 어려움
+- 피드백 느림
+- 위험 높음
+
+---
+
+## SPEC-First TDD 체크리스트
+
+### SPEC 단계
+
+- ✅ SPEC 문서 작성됨
+- ✅ EARS 형식 검증됨
+- ✅ 수용 기준 정의됨
+- ✅ @SPEC TAG 추가됨
+- ✅ 팀 리뷰 완료됨
+
+### RED 단계
+
+- ✅ 모든 수용 기준에 대한 테스트 작성됨
+- ✅ 테스트가 실패함 (예상된 상황)
+- ✅ @TEST TAG 추가됨
+- ✅ 커밋됨 (test(RED):)
+
+### GREEN 단계
+
+- ✅ 최소한의 코드로 테스트 통과
+- ✅ @CODE TAG 추가됨
+- ✅ 커밋됨 (feat(GREEN):)
+
+### REFACTOR 단계
+
+- ✅ 테스트 커버리지 ≥ 85%
+- ✅ 코드 스타일 검사 통과
+- ✅ 타입 안전성 검사 통과
+- ✅ 보안 검사 통과
+- ✅ 문서 작성됨 (@DOC TAG)
+- ✅ 커밋됨 (refactor(REFACTOR):)
+
+### 동기화 단계
+
+- ✅ README.md 업데이트
+- ✅ CHANGELOG.md 업데이트
+- ✅ API 문서 생성
+- ✅ TAG 검증 통과
+- ✅ PR 생성됨
+
+---
+
+## 문제 해결
+
+### Q: SPEC을 너무 자세하게 작성해야 하나요?
+
+**A**: 아니요. 다음 정도의 수준이 적당합니다:
+
+```markdown
+✅ 좋은 수준:
+- 기능 개요 (1-2줄)
+- 주요 요구사항 (3-5개)
+- 성공/실패 기준
+- 수용 기준 (3-5개)
+- 소요 시간: 10-15분
+
+❌ 과도한 수준:
+- 구현 세부사항 (SPEC의 역할 아님)
+- UI/UX 디자인 (다른 문서에서)
+- 데이터베이스 스키마 (설계 단계에서)
+```
+
+### Q: SPEC을 변경해야 하면?
+
+**A**: 언제든 변경 가능합니다:
+
+1. SPEC 파일 수정
+2. 기존 테스트/코드 검토
+3. 필요한 테스트/코드 업데이트
+4. 다시 GREEN → REFACTOR 진행
+
+### Q: 시간이 부족할 때 단계를 건너뛸 수 있나요?
+
+**A**: 권장하지 않습니다:
+
+| 건너뜀 | 문제 |
+|------|------|
+| SPEC 건너뜀 | 요구사항 불명확, 재작업 증가 |
+| RED 건너뜀 | 테스트 누락, 버그 증가 |
+| REFACTOR 건너뜀 | 기술부채, 유지보수 어려움 |
+| 동기화 건너뜀 | 문서 누락, 추적성 상실 |
+
+SPEC-First TDD는 장기적으로 시간을 **40% 이상 단축**합니다.
+
+---
 
 ## 다음 단계
 
-- [홈으로](/ko)
-- [문서 개요](/ko/introduction/overview)
+SPEC-First TDD를 이해한 후:
+
+1. **[EARS 가이드](/ko/concepts/ears-guide)** - SPEC 작성 방식 상세 학습
+2. **[TAG 시스템](/ko/concepts/tag-system)** - 요구사항과 코드 추적
+3. **[/alfred:1-plan 시작](/ko/cli/alfred-1-plan)** - 첫 번째 SPEC 작성
+
+---
+
+## 참고 자료
+
+- **MoAI-ADK 워크플로우**: 4단계 자동화 시스템
+- **TRUST 5 원칙**: 품질 기준
+- **Git 기반 협업**: 자동 커밋 메시지
