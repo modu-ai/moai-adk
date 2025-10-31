@@ -1,0 +1,231 @@
+---
+title: Team Mode & 협업 가이드 (Advanced)
+description: MoAI-ADK Team Mode - 다중 개발자 협업, PR 리뷰 프로세스, 코드 품질 관리
+---
+
+# Team Mode: 팀 협업 & PR 워크플로우
+
+MoAI-ADK의 **Team Mode**는 여러 개발자가 함께 작업할 수 있도록 설계되었습니다. 자동화된 코드 리뷰, PR 관리, 충돌 해결 메커니즘을 제공합니다.
+
+## 📋 Team Mode vs Personal Mode
+
+| 기능 | Personal Mode | Team Mode |
+|------|---------------|-----------|
+| **개발자 수** | 1명 | 2명 이상 |
+| **브랜치 전략** | Simple | GitFlow |
+| **PR 관리** | Optional | 필수 (자동) |
+| **코드 리뷰** | Self-review | 팀원 리뷰 (자동) |
+| **충돌 해결** | Manual | 자동 감지 |
+| **승인** | None | 최소 1명 필수 |
+| **배포** | 수동 | 자동 (main merge) |
+
+---
+
+## 🚀 Team Mode 활성화
+
+### 프로젝트 초기화 시
+
+```bash
+$ /alfred:0-project
+
+# 질문 4: 개발 모드?
+→ "Team"
+
+# config.json 자동 생성
+{
+  "mode": "team",
+  "team": {
+    "members": ["alice@example.com", "bob@example.com"],
+    "github_org": "my-org",
+    "require_approval": true
+  }
+}
+```
+
+---
+
+## 👥 팀원 관리
+
+### 팀원 설정
+
+```json
+{
+  "team": {
+    "members": [
+      {
+        "name": "Alice",
+        "github": "alice-dev",
+        "email": "alice@example.com",
+        "expertise": ["backend", "database"],
+        "timezone": "UTC+9"
+      },
+      {
+        "name": "Bob",
+        "github": "bob-ui",
+        "email": "bob@example.com",
+        "expertise": ["frontend", "design"],
+        "timezone": "UTC+9"
+      }
+    ]
+  }
+}
+```
+
+### 자동 리뷰어 할당
+
+```
+git-manager가 자동으로 실행:
+
+규칙:
+1. 작업 분야 기반: Backend → backend 전문가
+2. 로드 밸런싱: 공평한 리뷰 분배
+3. 충돌 감지: 같은 파일 수정 → 해당 팀원 우선
+```
+
+---
+
+## 🔀 GitFlow 브랜치 전략
+
+```
+main (프로덕션)
+  ↑
+develop (개발)
+  ├─ feature/SPEC-AUTH-001 (Alice)
+  ├─ feature/SPEC-PRODUCT-001 (Bob)
+  └─ hotfix/BUG-001
+```
+
+---
+
+## 📝 PR 워크플로우
+
+### 자동 PR 생성
+
+```bash
+$ /alfred:2-run SPEC-AUTH-001
+
+git-manager:
+  ✅ PR #1 자동 생성
+  - 제목: [FEATURE] SPEC-AUTH-001 사용자 인증
+  - 설명: SPEC, 체크리스트, 메트릭
+  - 리뷰어: alice-dev, bob-ui (자동 할당)
+```
+
+### 코드 리뷰 프로세스
+
+```
+1️⃣ 리뷰어 검토 (< 24시간)
+   - 코드 품질
+   - 보안
+   - 성능
+   - 테스트 커버리지
+
+2️⃣ 피드백 제공
+   - 건설적인 코멘트
+   - 개선 제안
+
+3️⃣ 작업자 피드백 반영
+   - 추가 커밋
+   - 재리뷰 요청
+
+4️⃣ 승인 & Merge
+   - 최소 1명 승인
+   - main 자동 배포
+```
+
+---
+
+## ⚠️ 충돌 해결
+
+### 자동 충돌 감지
+
+```
+git-manager:
+  ⚠️ Conflict detected!
+  
+  File: src/auth.py
+  - Alice: feature/SPEC-AUTH-001
+  - Bob: feature/SPEC-PRODUCT-001
+  
+  Lines 50-60, 120-130 충돌
+```
+
+### 해결 프로세스
+
+```
+1️⃣ 자동 감지 (ripgrep)
+2️⃣ 영향도 분석
+3️⃣ 해결 전략 제안
+4️⃣ 수동 병합 (필요 시)
+5️⃣ 리뷰어 승인 후 merge
+```
+
+---
+
+## 📊 팀 메트릭
+
+### Weekly Report
+
+```
+Commits: 45개
+  - Alice: 25개 (55%)
+  - Bob: 20개 (45%)
+
+PRs: 8개 (6 merged, 2 pending)
+Code Review: 평균 2.5시간
+Test Coverage: 87% ↑
+Build Status: ✅ All passing
+```
+
+---
+
+## 🔐 권한 및 보안
+
+### Branch Protection
+
+```json
+{
+  "protected_branches": {
+    "main": {
+      "require_approvals": 1,
+      "require_status_checks": true,
+      "require_code_owner_reviews": true
+    }
+  }
+}
+```
+
+### 커밋 서명 (GPG)
+
+```
+자동 추가:
+  [FEATURE] Implement feature
+  Co-Authored-By: Alice <alice@example.com>
+  Signed-off-by: Bob <bob@example.com>
+```
+
+---
+
+## ✅ Best Practices
+
+### Do's
+
+- ✅ 작은 PR (< 400줄)
+- ✅ 명확한 설명
+- ✅ 24시간 내 리뷰
+- ✅ 비동기 협업
+
+### Don'ts
+
+- ❌ 큰 PR (> 1000줄)
+- ❌ 피드백 무시
+- ❌ 강제 푸시
+- ❌ 기술 빚 방치
+
+---
+
+## 📚 참고
+
+- [SPEC-First TDD](/ko/concepts/spec-first-tdd)
+- [Git Workflow](/ko/agents/git-manager)
+- [Quality Gate](/ko/agents/quality-gate)
