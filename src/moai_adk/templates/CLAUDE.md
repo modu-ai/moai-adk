@@ -800,12 +800,36 @@ Is it user-facing official documentation?
 
 ## Project Information
 
-- **Name**: MoAI-ADK
-- **Description**: MoAI-Agentic Development Kit
-- **Version**: 0.7.0 (Language localization complete)
-- **Mode**: Personal/Team (configurable)
-- **Codebase Language**: python
-- **Toolchain**: Automatically selects the best tools for python
+**Source of Truth**: `.moai/config.json`
+
+This section provides an overview of project settings. For authoritative values, always consult `.moai/config.json` (Single Source of Truth per CONFIG-SCHEMA.md).
+
+### Dynamic Project Metadata
+
+The following information is configured in `.moai/config.json` under the `project` section:
+
+- **Name**: Read from `project.name`
+- **Description**: Read from `project.description`
+- **Mode**: Read from `project.mode` (personal | team)
+- **Codebase Language**: Read from `project.language`
+- **Created**: Read from `project.created_at`
+- **Conversation Language**: Read from `project.conversation_language`
+- **Toolchain**: Automatically selected based on `project.language`
+
+For detailed field descriptions and validation rules, see: `.moai/memory/PROJECT-METADATA.md`
+
+### Configuration Reference
+
+To view or update project settings:
+```bash
+cat .moai/config.json
+```
+
+Key sections:
+- `project`: Project metadata (name, version, mode, language)
+- `user`: User preferences (nickname)
+- `constitution`: Development principles (TDD enforcement, test coverage targets)
+- `git_strategy`: Git workflow configuration (personal/team mode)
 
 ### Language Architecture
 
@@ -833,55 +857,9 @@ Is it user-facing official documentation?
 
 **Note on CLAUDE.md**: This project guidance document is intentionally written in the user's `conversation_language` to provide clear direction to the project owner. The critical infrastructure (agents, commands, skills, memory) stays in English to support global teams, but CLAUDE.md serves as the project's internal playbook in the team's working language.
 
-### Implementation Status (v0.7.0+)
+### Implementation & Feature Status
 
-**✅ FULLY IMPLEMENTED** - Language localization is complete:
-
-**Phase 1: Python Configuration Reading** ✅
-
-- Configuration properly read from nested structure: `config.language.conversation_language`
-- All template variables (CONVERSATION_LANGUAGE, CONVERSATION_LANGUAGE_NAME) working
-- Default fallback to English when language config missing
-- Unit tests: 11/13 passing (config path fixes verified)
-
-**Phase 2: Configuration System** ✅
-
-- Nested language structure in config.json: `language.conversation_language` and `language.conversation_language_name`
-- Migration module for legacy configs (v0.6.3 → v0.7.0+)
-- Supports 5 languages: English, Korean, Japanese, Chinese, Spanish
-- Schema documentation: `.moai/memory/language-config-schema.md`
-
-**Phase 3: Agent Instructions** ✅
-
-- All 12 agents have "🌍 Language Handling" sections
-- Sub-agents receive language parameters via Task() calls
-- Output language determined by `conversation_language` parameter
-- Code/technical keywords stay in English, narratives in user language
-
-**Phase 4: Command Updates** ✅
-
-- All 4 commands pass language parameters to sub-agents:
-  - `/alfred:0-project` → project-manager (product/structure/tech.md in user language)
-  - `/alfred:1-plan` → spec-builder (SPEC documents in user language)
-  - `/alfred:2-run` → tdd-implementer (code in English, comments flexible)
-  - `/alfred:3-sync` → doc-syncer (documentation respects language setting)
-- All 4 command templates mirrored correctly
-
-**Phase 5: Testing** ✅
-
-- Integration tests: 14/17 passing (82%)
-- E2E tests: 13/16 passing (81%)
-- Config migration tests: 100% passing
-- Template substitution tests: 100% passing
-- Command documentation verification: 100% passing
-
-**Known Limitations:**
-
-- Mock path tests fail due to local imports in phase_executor (non-blocking, functionality verified)
-- Full test coverage run requires integration with complete test suite
-
----
-
-**Note**: The conversation language is selected at the beginning of `/alfred:0-project` and applies to all subsequent project initialization steps. User-facing documentation will be generated in the user's configured language.
-
-For detailed configuration reference, see: `.moai/memory/language-config-schema.md`
+For detailed information about implemented features, testing status, and known limitations, see:
+- `.moai/memory/IMPLEMENTATION-STATUS.md` - Feature completion tracking
+- `.moai/memory/language-config-schema.md` - Language localization details
+- `.moai/memory/CONFIG-SCHEMA.md` - Configuration system documentation
