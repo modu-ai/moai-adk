@@ -1,82 +1,60 @@
 {
-  "id": "moai-plugin-uiux",
-  "name": "UI/UX Plugin",
+  "name": "uiux-plugin",
+  "description": "Design automation with Figma MCP - 7 agents, design-to-code conversion, shadcn/ui components",
   "version": "1.0.0-dev",
-  "status": "development",
-  "description": "Design System foundation - Tailwind CSS + shadcn/ui initialization and component management",
-  "author": "GOOS\ud83e\udebf",
-  "category": "uiux",
-  "tags": [
-    "design-system",
-    "tailwind",
-    "shadcn-ui",
-    "components"
-  ],
-  "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-plugin-uiux",
-  "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-plugin-uiux/README.md",
-  "minClaudeCodeVersion": "1.0.0",
+  "author": {
+    "name": "GOOS"
+  },
   "commands": [
     {
+      "name": "ui-ux",
+      "description": "Design directive orchestration"
+    },
+    {
       "name": "setup-shadcn-ui",
-      "path": "commands/setup-shadcn-ui.md",
-      "description": "Initialize Tailwind CSS and shadcn/ui components"
+      "description": "Initialize shadcn/ui components"
+    },
+    {
+      "name": "design-tokens",
+      "description": "Extract design tokens from Figma"
     }
   ],
   "agents": [
     {
-      "name": "uiux-agent",
-      "path": "agents/uiux-agent.md",
-      "type": "specialist",
-      "description": "Design system initialization specialist"
+      "name": "design-strategist",
+      "description": "Design strategy specialist"
+    },
+    {
+      "name": "design-system-architect",
+      "description": "Design system architecture specialist"
+    },
+    {
+      "name": "component-builder",
+      "description": "Component development specialist"
+    },
+    {
+      "name": "figma-designer",
+      "description": "Figma MCP integration specialist"
+    },
+    {
+      "name": "css-html-generator",
+      "description": "CSS/HTML generation specialist"
+    },
+    {
+      "name": "accessibility-specialist",
+      "description": "Accessibility compliance specialist"
+    },
+    {
+      "name": "design-documentation-writer",
+      "description": "Design documentation specialist"
     }
   ],
-  "hooks": {
-    "sessionStart": ".claude-plugin/hooks.json#onSessionStart"
-  },
-  "mcpServers": [],
-  "permissions": {
-    "allowedTools": [
-      "Read",
-      "Write",
-      "Edit",
-      "Bash"
-    ],
-    "deniedTools": []
-  },
   "skills": [
-    {
-      "name": "Tailwind + shadcn",
-      "path": "skills/moai-lang-tailwind-shadcn.md",
-      "description": "Tailwind + shadcn integration"
-    },
-    {
-      "name": "Frontend Architecture",
-      "path": "skills/moai-domain-frontend.md",
-      "description": "Frontend architecture patterns"
-    },
-    {
-      "name": "Tailwind CSS",
-      "path": "skills/moai-design-tailwind-v4.md",
-      "description": "Tailwind CSS 4 patterns"
-    },
-    {
-      "name": "shadcn/ui",
-      "path": "skills/moai-design-shadcn-ui.md",
-      "description": "shadcn/ui customization"
-    },
-    {
-      "name": "Figma to Code",
-      "path": "skills/moai-design-figma-to-code.md",
-      "description": "Design to code conversion"
-    },
-    {
-      "name": "Figma MCP",
-      "path": "skills/moai-design-figma-mcp.md",
-      "description": "Figma MCP integration"
-    }
-  ],
-  "settings": {},
-  "dependencies": [],
-  "installCommand": "/plugin install moai-plugin-uiux",
-  "releaseNotes": "Initial v1.0.0-dev release with 20 core components"
+    "./skills/moai-design-figma-mcp.md",
+    "./skills/moai-design-figma-to-code.md",
+    "./skills/moai-design-shadcn-ui.md",
+    "./skills/moai-design-tailwind-v4.md",
+    "./skills/moai-domain-frontend.md",
+    "./skills/moai-essentials-review.md"
+  ]
 }

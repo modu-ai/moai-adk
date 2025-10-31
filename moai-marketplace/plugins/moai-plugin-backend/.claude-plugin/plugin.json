@@ -1,83 +1,46 @@
 {
-  "id": "moai-plugin-backend",
-  "name": "Backend Plugin",
-  "version": "1.0.0-dev",
-  "status": "development",
+  "name": "backend-plugin",
   "description": "FastAPI 0.120.2 + uv scaffolding - SQLAlchemy 2.0, Alembic migrations, Pydantic 2.12",
-  "author": "GOOS\ud83e\udebf",
-  "category": "backend",
-  "tags": [
-    "fastapi",
-    "python",
-    "sqlalchemy",
-    "uv",
-    "database"
-  ],
-  "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-plugin-backend",
-  "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-plugin-backend/README.md",
-  "minClaudeCodeVersion": "1.0.0",
+  "version": "1.0.0-dev",
+  "author": {
+    "name": "GOOS🪿"
+  },
   "commands": [
     {
       "name": "init-fastapi",
-      "path": "commands/init-fastapi.md",
       "description": "Initialize FastAPI project with uv"
     },
     {
       "name": "db-setup",
-      "path": "commands/db-setup.md",
       "description": "Setup database (PostgreSQL or MySQL) with Alembic"
     },
     {
       "name": "resource-crud",
-      "path": "commands/resource-crud.md",
       "description": "Generate CRUD endpoints from SPEC"
     }
   ],
   "agents": [
     {
-      "name": "backend-agent",
-      "path": "agents/backend-agent.md",
-      "type": "specialist",
-      "description": "Backend scaffolding specialist"
+      "name": "api-designer",
+      "description": "API design specialist"
+    },
+    {
+      "name": "backend-architect",
+      "description": "Backend architecture expert"
+    },
+    {
+      "name": "database-expert",
+      "description": "Database design specialist"
+    },
+    {
+      "name": "fastapi-specialist",
+      "description": "FastAPI implementation specialist"
     }
   ],
-  "hooks": {
-    "sessionStart": ".claude-plugin/hooks.json#onSessionStart"
-  },
-  "mcpServers": [],
-  "permissions": {
-    "allowedTools": [
-      "Read",
-      "Write",
-      "Edit",
-      "Bash"
-    ],
-    "deniedTools": []
-  },
   "skills": [
-    {
-      "name": "FastAPI Patterns",
-      "path": "skills/moai-lang-fastapi-patterns.md",
-      "description": "FastAPI best practices and patterns"
-    },
-    {
-      "name": "Python",
-      "path": "skills/moai-lang-python.md",
-      "description": "Python 3.13+ best practices"
-    },
-    {
-      "name": "Backend Architecture",
-      "path": "skills/moai-domain-backend.md",
-      "description": "Backend architecture patterns"
-    },
-    {
-      "name": "Database Design",
-      "path": "skills/moai-domain-database.md",
-      "description": "Database design and optimization"
-    }
-  ],
-  "settings": {},
-  "dependencies": [],
-  "installCommand": "/plugin install moai-plugin-backend",
-  "releaseNotes": "Initial v1.0.0-dev with PostgreSQL 18 and MySQL 8.4 support"
+    "./skills/moai-framework-fastapi-patterns.md",
+    "./skills/moai-lang-python.md",
+    "./skills/moai-domain-backend.md",
+    "./skills/moai-domain-database.md"
+  ]
 }

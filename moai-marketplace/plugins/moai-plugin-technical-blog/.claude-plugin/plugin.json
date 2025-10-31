@@ -1,137 +1,57 @@
 {
-  "id": "moai-plugin-technical-blog",
-  "name": "Technical Blog Writing Plugin",
-  "version": "2.0.0-dev",
-  "status": "development",
-  "description": "Technical writing excellence with single /blog-write command - Template-based creation (Tutorial, Case Study, How-to, Announcement, Comparison), SEO optimization, markdown best practices, code examples, and AI discoverability",
-  "author": "GOOS🪿",
-  "category": "content",
-  "tags": [
-    "technical-writing",
-    "blog",
-    "seo",
-    "markdown",
-    "developer-content",
-    "templates",
-    "code-examples"
-  ],
-  "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-plugin-technical-blog",
-  "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-plugin-technical-blog/README.md",
-  "minClaudeCodeVersion": "1.0.0",
+  "name": "technical-blog-plugin",
+  "description": "Technical writing excellence - Template-based content creation, SEO optimization, multi-platform publishing",
+  "version": "1.0.0-dev",
+  "author": {
+    "name": "GOOS"
+  },
   "commands": [
     {
       "name": "blog-write",
-      "description": "Write/optimize blog posts with natural language (auto template selection, auto parsing)"
+      "description": "Write and publish technical blog posts"
     }
   ],
   "agents": [
     {
-      "id": "technical-content-strategist",
-      "name": "Technical Content Strategist",
-      "type": "Specialist",
-      "model": "Sonnet",
-      "role": "Content Strategy and Audience Profiling"
+      "name": "technical-writer",
+      "description": "Technical writing specialist"
     },
     {
-      "id": "technical-writer",
-      "name": "Technical Writer",
-      "type": "Specialist",
-      "model": "Haiku",
-      "role": "Developer-Focused Blog Writing"
+      "name": "technical-content-strategist",
+      "description": "Content strategy specialist"
     },
     {
-      "id": "seo-discoverability-specialist",
-      "name": "SEO & Discoverability Specialist",
-      "type": "Specialist",
-      "model": "Haiku",
-      "role": "SEO, Meta Tags, Hashtags, AI Systems Optimization"
+      "name": "code-example-curator",
+      "description": "Code example curation specialist"
     },
     {
-      "id": "code-example-curator",
-      "name": "Code Example Curator",
-      "type": "Specialist",
-      "model": "Haiku",
-      "role": "Runnable Code Examples Generation and Validation"
+      "name": "seo-discoverability-specialist",
+      "description": "SEO and discoverability specialist"
     },
     {
-      "id": "visual-content-designer",
-      "name": "Visual Content Designer",
-      "type": "Specialist",
-      "model": "Haiku",
-      "role": "Diagrams, Image Prompts, OG Images"
+      "name": "markdown-formatter",
+      "description": "Markdown formatting specialist"
     },
     {
-      "id": "markdown-formatter",
-      "name": "Markdown Formatter",
-      "type": "Specialist",
-      "model": "Haiku",
-      "role": "Markdown Quality Assurance and Linting"
+      "name": "visual-content-designer",
+      "description": "Visual content design specialist"
     },
     {
-      "id": "template-workflow-coordinator",
-      "name": "Template Workflow Coordinator",
-      "type": "Coordinator",
-      "model": "Sonnet",
-      "role": "Template Management and Agent Orchestration"
+      "name": "template-workflow-coordinator",
+      "description": "Template workflow coordination specialist"
     }
   ],
   "skills": [
-    "moai-content-technical-writing",
-    "moai-content-markdown-best-practices",
-    "moai-content-code-examples",
-    "moai-content-blog-templates",
-    "moai-content-seo-optimization",
-    "moai-content-technical-seo",
-    "moai-content-meta-tags",
-    "moai-content-hashtag-strategy",
-    "moai-content-image-generation",
-    "moai-content-blog-strategy",
-    "moai-content-markdown-to-blog",
-    "moai-content-llms-txt-management"
-  ],
-  "templates": [
-    {
-      "id": "tutorial",
-      "name": "Tutorial Template",
-      "file": "templates/tutorial.md",
-      "keywords": ["튜토리얼", "가이드", "배우기", "시작하기"]
-    },
-    {
-      "id": "case-study",
-      "name": "Case Study Template",
-      "file": "templates/case-study.md",
-      "keywords": ["케이스 스터디", "사례", "성공", "개선", "마이그레이션"]
-    },
-    {
-      "id": "howto",
-      "name": "How-to Guide Template",
-      "file": "templates/howto.md",
-      "keywords": ["방법", "어떻게", "구현"]
-    },
-    {
-      "id": "announcement",
-      "name": "Announcement Template",
-      "file": "templates/announcement.md",
-      "keywords": ["발표", "공지", "소개", "릴리즈"]
-    },
-    {
-      "id": "comparison",
-      "name": "Comparison Template",
-      "file": "templates/comparison.md",
-      "keywords": ["비교", "vs", "차이점"]
-    }
-  ],
-  "permissions": {
-    "allowedTools": ["Read", "Write", "Edit", "Bash", "Task"],
-    "deniedTools": []
-  },
-  "settings": {
-    "output_directory": "./posts",
-    "auto_create_frontmatter": true,
-    "enable_seo_optimization": true,
-    "markdown_linting": true
-  },
-  "dependencies": [],
-  "installCommand": "/plugin install moai-plugin-technical-blog",
-  "releaseNotes": "v2.0.0-dev: Technical writing focus with single /blog-write command (removed platform publishing). Features: 5 templates, 7 specialist agents, auto template selection, SEO optimization, markdown linting"
+    "./skills/moai-content-blog-strategy.md",
+    "./skills/moai-content-markdown-to-blog.md",
+    "./skills/moai-content-seo-optimization.md",
+    "./skills/moai-content-image-generation.md",
+    "./skills/moai-content-llms-txt-management.md",
+    "./skills/moai-content-technical-writing.md",
+    "./skills/moai-content-technical-seo.md",
+    "./skills/moai-content-markdown-best-practices.md",
+    "./skills/moai-content-code-examples.md",
+    "./skills/moai-content-hashtag-strategy.md",
+    "./skills/moai-content-meta-tags.md"
+  ]
 }

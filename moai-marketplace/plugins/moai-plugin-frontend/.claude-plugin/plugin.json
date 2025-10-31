@@ -1,84 +1,47 @@
 {
-  "id": "moai-plugin-frontend",
-  "name": "Frontend Plugin",
+  "name": "frontend-plugin",
+  "description": "Next.js 16 + React 19.2 scaffolding with Playwright-MCP integration for E2E testing",
   "version": "1.0.0-dev",
-  "status": "development",
-  "description": "Next.js 16 + React 19.2 scaffolding - App Router, Biome, shadcn/ui integration",
-  "author": "GOOS\ud83e\udebf",
-  "category": "frontend",
-  "tags": [
-    "nextjs",
-    "react",
-    "typescript",
-    "biome"
-  ],
-  "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-plugin-frontend",
-  "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-plugin-frontend/README.md",
-  "minClaudeCodeVersion": "1.0.0",
+  "author": {
+    "name": "GOOS"
+  },
   "commands": [
     {
       "name": "init-next",
-      "path": "commands/init-next.md",
-      "description": "Initialize Next.js 16 project with React 19.2"
+      "description": "Initialize Next.js 16 project with React 19"
     },
     {
       "name": "biome-setup",
-      "path": "commands/biome-setup.md",
-      "description": "Configure Biome linter and formatter"
+      "description": "Setup Biome for code quality and formatting"
+    },
+    {
+      "name": "playwright-setup",
+      "description": "Initialize Playwright-MCP for E2E testing automation"
     }
   ],
   "agents": [
     {
-      "name": "frontend-agent",
-      "path": "agents/frontend-agent.md",
-      "type": "specialist",
-      "description": "Frontend scaffolding specialist"
+      "name": "frontend-architect",
+      "description": "Frontend architecture specialist"
+    },
+    {
+      "name": "design-system-manager",
+      "description": "Design system management specialist"
+    },
+    {
+      "name": "performance-optimizer",
+      "description": "Performance optimization specialist"
+    },
+    {
+      "name": "typescript-specialist",
+      "description": "TypeScript implementation specialist"
     }
   ],
-  "hooks": {
-    "sessionStart": ".claude-plugin/hooks.json#onSessionStart"
-  },
-  "mcpServers": [],
-  "permissions": {
-    "allowedTools": [
-      "Read",
-      "Write",
-      "Edit",
-      "Bash"
-    ],
-    "deniedTools": []
-  },
   "skills": [
-    {
-      "name": "Next.js Advanced",
-      "path": "skills/moai-lang-nextjs-advanced.md",
-      "description": "Next.js 16 advanced patterns"
-    },
-    {
-      "name": "TypeScript",
-      "path": "skills/moai-lang-typescript.md",
-      "description": "TypeScript 5.7+ best practices"
-    },
-    {
-      "name": "Frontend Architecture",
-      "path": "skills/moai-domain-frontend.md",
-      "description": "Frontend architecture patterns"
-    },
-    {
-      "name": "Tailwind CSS",
-      "path": "skills/moai-design-tailwind-v4.md",
-      "description": "Tailwind CSS 4 patterns"
-    },
-    {
-      "name": "shadcn/ui",
-      "path": "skills/moai-design-shadcn-ui.md",
-      "description": "shadcn/ui customization"
-    }
-  ],
-  "settings": {},
-  "dependencies": [
-    "moai-plugin-uiux"
-  ],
-  "installCommand": "/plugin install moai-plugin-frontend",
-  "releaseNotes": "Initial v1.0.0-dev with support for bun, npm, pnpm"
+    "./skills/moai-framework-nextjs-advanced.md",
+    "./skills/moai-framework-react-19.md",
+    "./skills/moai-design-shadcn-ui.md",
+    "./skills/moai-domain-frontend.md",
+    "./skills/moai-testing-playwright-mcp.md"
+  ]
 }
