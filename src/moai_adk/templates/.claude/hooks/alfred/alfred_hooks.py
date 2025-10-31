@@ -53,6 +53,7 @@ Setup sys.path for package imports
 """
 
 import json
+import signal
 import sys
 from pathlib import Path
 from typing import Any
@@ -75,9 +76,6 @@ from handlers import (
 HOOKS_DIR = Path(__file__).parent
 if str(HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(HOOKS_DIR))
-
-
-    pass
 
 
 def _hook_timeout_handler(signum, frame):

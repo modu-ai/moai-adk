@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @CODE:HOOKS-CLARITY-001 | SPEC: Individual hook files for better UX
+# @CODE:HOOKS-CLARITY-NOTIF | SPEC: Individual hook files for better UX
 """Notification Hook: Handle System Notifications
 
 Claude Code Event: Notification
@@ -23,6 +23,7 @@ if str(SHARED_DIR) not in sys.path:
     sys.path.insert(0, str(SHARED_DIR))
 
 from handlers import handle_notification
+
 
 
 
