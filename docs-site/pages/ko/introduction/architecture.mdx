@@ -109,8 +109,257 @@ graph TB
 3. **재사용 가능한 지식이나 정책?** → Skill
 4. **여러 단계나 승인 필요?** → Command
 
+---
+
+## 8개 핵심 서브시스템 (Subsystems)
+
+MoAI-ADK의 **57개 Python 모듈**은 8개의 논리적 서브시스템으로 구성됩니다. 각 서브시스템은 명확한 책임을 가지고 독립적으로 동작하면서도 다른 시스템과 협력합니다.
+
+### 1. CLI 서브시스템 (7개 파일)
+
+**책임**: 사용자 인터페이스 및 명령어 처리
+
+**주요 파일**:
+- `init.py` (302줄): 프로젝트 초기화 명령어
+- `doctor.py` (260줄): 프로젝트 상태 진단
+- `update.py` (1,017줄): 프로젝트 자동 업데이트
+- `status.py`: 현재 상태 조회
+- `config.py`: 설정 관리
+- `main.py`: CLI 진입점
+
+**기능**:
+- Rich console을 이용한 사용자 친화적 출력
+- 명령어 파싱 및 라우팅
+- 진행 상황 표시 (progress bars, spinners)
+- 에러 처리 및 로깅
+
+**사용 예**:
+```bash
+moai init                    # 프로젝트 초기화
+moai doctor                  # 상태 진단
+moai update                  # 자동 업데이트
+```
+
+### 2. Project 서브시스템 (6개 파일)
+
+**책임**: 프로젝트 초기화, 단계별 설정, 프로젝트 상태 관리
+
+**주요 파일**:
+- `initializer.py` (194줄): 프로젝트 기본 구조 생성
+- `phase_executor.py` (335줄): 5단계 설정 실행
+- `checker.py` (302줄): 프로젝트 요구사항 검증
+- `validator.py`: 프로젝트 정합성 확인
+
+**기능**:
+- 새 프로젝트 생성 및 템플릿 적용
+- `.moai/` 디렉토리 구조 초기화
+- `config.json` 생성 및 검증
+- 프로젝트 메타데이터 관리
+
+**데이터 모델**:
+```python
+# 프로젝트 구조
+- .moai/
+  - specs/
+  - docs/
+  - reports/
+  - memory/
+  - config.json
+```
+
+### 3. Git 서브시스템 (6개 파일)
+
+**책임**: Git 작업 자동화 및 버전 관리
+
+**주요 파일**:
+- `manager.py` (127줄): Git 기본 작업 (add, commit, push)
+- `branch_manager.py` (137줄): 브랜치 생성 및 전환
+- `checkpoint.py` (140줄): 작업 스냅샷 저장/복구
+- `pre_commit.py`: Pre-commit 훅 관리
+- `commit_formatter.py`: 커밋 메시지 포맷팅
+
+**기능**:
+- 자동 브랜치 생성 (feature/SPEC-XXX)
+- RED → GREEN → REFACTOR 커밋 추적
+- 체크포인트 시스템 (작업 임시 저장)
+- Pre-commit 훅 자동 설치
+
+**GIT Flow**:
+```
+main
+ ├─ release/v1.0
+ └─ feature/SPEC-001 (feature branch)
+    ├─ RED commit
+    ├─ GREEN commit
+    └─ REFACTOR commit
+```
+
+### 4. TAG 서브시스템 (10개 파일, 897줄 validator)
+
+**책임**: @TAG 생성, 검증, 보고서 생성, 추적 가능성 보증
+
+**핵심 컴포넌트**:
+- `validator.py` (897줄): TAG 체인 검증 & 무결성 확인
+- `reporter.py` (956줄): 다중 형식 보고서 생성 (JSON, Markdown, Plain)
+- `ci_validator.py` (463줄): CI/CD 파이프라인 통합
+- `pre_commit_validator.py` (354줄): Pre-commit 훅 검증
+
+**TAG 체인 예시**:
+```
+SPEC:SAMPLE-001           (요구사항)
+  ├─ TEST:SAMPLE-001      (테스트)
+  ├─ CODE:SAMPLE-001      (구현)
+  └─ DOC:SAMPLE-001       (문서)
+```
+
+**검증 규칙**:
+- ✅ 중복 TAG 감지
+- ✅ 고아 TAG 감지
+- ✅ SPEC → CODE → TEST → DOC 연결 확인
+- ✅ TAG 포맷 검증
+
+**보고서 형식**:
+- JSON: 자동화 도구 연동용
+- Markdown: 사용자 조회용
+- PlainText: 로그용
+
+### 5. Quality 서브시스템 (2개 파일, 441줄)
+
+**책임**: TRUST 5 원칙 기반 품질 관리
+
+**주요 파일**:
+- `trust_checker.py` (441줄): 5가지 품질 메트릭 검증
+
+**TRUST 5 원칙**:
+
+| 원칙 | 메트릭 | 기준 |
+|------|--------|------|
+| **T**est | 테스트 커버리지 | ≥ 85% |
+| **R**eadable | 코드 가독성 | 파일 ≤300줄, 함수 ≤50줄 |
+| **U**nified | 타입 안전성 | 타입 힌팅 100% |
+| **S**ecured | 보안 검사 | Bandit 0 issues |
+| **T**rackable | TAG 무결성 | SPEC-TEST-CODE-DOC 연결 확인 |
+
+**검증 프로세스**:
+```python
+# 실행 흐름
+1. pytest 실행 → 커버리지 계산
+2. radon complexity 분석 → 가독성 확인
+3. mypy --strict → 타입 검증
+4. bandit → 보안 스캔
+5. TAG validator → 추적성 확인
+```
+
+### 6. Template 서브시스템 (6개 파일)
+
+**책임**: Jinja2 템플릿 처리, 파일 생성, 병합 전략
+
+**주요 파일**:
+- `processor.py` (521줄): 템플릿 처리 및 변수 대체
+- `merger.py` (184줄): 기존 파일과 템플릿 병합 전략
+- `template_engine.py` (257줄): Jinja2 엔진 관리
+
+**기능**:
+- Jinja2 템플릿 렌더링
+- 변수 치환 (프로젝트명, 언어, 저자 등)
+- 기존 파일 충돌 해결 (3-way merge)
+- 조건부 파일 생성
+
+**템플릿 구조**:
+```
+templates/
+ ├─ .claude/          (Claude Code 설정)
+ ├─ .moai/            (프로젝트 기본 구조)
+ └─ src/              (코드 템플릿)
+```
+
+### 7. Config 서브시스템 (1개 파일)
+
+**책임**: 설정 관리 및 마이그레이션
+
+**주요 파일**:
+- `config.py`: 설정 읽기/쓰기 및 버전 관리
+
+**기능**:
+- YAML/JSON 형식 지원
+- 중첩 설정 구조 (`config.language.conversation_language`)
+- 버전 마이그레이션 (v0.6.3 → v0.7.0+)
+- 설정 검증 및 기본값 제공
+
+**설정 예**:
+```json
+{
+  "project": {
+    "name": "my-project",
+    "language": "python"
+  },
+  "language": {
+    "conversation_language": "ko",
+    "conversation_language_name": "Korean"
+  }
+}
+```
+
+### 8. Utils 서브시스템 (3개 파일)
+
+**책임**: 공유 유틸리티 (로깅, 배너, 진단)
+
+**주요 파일**:
+- `logging.py`: 센시티브 정보 마스킹 로깅
+- `banner.py`: CLI 배너 출력
+- `diagnostics.py`: 시스템 진단 도구
+
+**기능**:
+- 민감 정보 자동 마스킹 (API 키, 경로 등)
+- 컬러 배너 출력
+- 시스템 사양 진단 (Python 버전, 의존성 등)
+- 디버그 정보 수집
+
+---
+
+## 서브시스템 간 데이터 흐름
+
+```
+사용자 입력
+    ↓
+[CLI] 명령어 파싱
+    ↓
+[Project] 프로젝트 상태 확인
+    ↓
+[Template] 필요 파일 생성
+    ↓
+[Git] 변경사항 커밋
+    ↓
+[TAG] 추적 관계 검증
+    ↓
+[Quality] TRUST 5 검증
+    ↓
+사용자 결과 출력
+```
+
+---
+
+## 아키텍처 설계 원칙
+
+### 1. 단일 책임 원칙 (Single Responsibility)
+각 서브시스템은 하나의 책임만 가집니다.
+
+### 2. 인터페이스 분리 (Interface Segregation)
+외부에서 필요한 메서드만 노출합니다.
+
+### 3. 의존성 주입 (Dependency Injection)
+결합도를 낮추기 위해 의존성을 주입받습니다.
+
+### 4. 확장성 (Extensibility)
+새로운 기능은 기존 코드 수정 없이 추가 가능합니다.
+
+### 5. 테스트 용이성 (Testability)
+각 서브시스템은 독립적으로 테스트 가능합니다.
+
+---
+
 ## 다음 단계
 
 - [주요 개념](/ko/introduction/concepts) - SPEC, TDD, TAG 시스템
+- [CLI 명령어](/ko/cli/commands) - 4가지 핵심 명령어 상세 가이드
 - [워크플로우 개요](/ko/workflow/overview) - 4단계 워크플로우
-- [Skills 개요](/ko/skills/overview) - 55개 Skills 소개

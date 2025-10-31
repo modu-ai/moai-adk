@@ -1,30 +1,308 @@
 ---
-title: 커맨드 개요
-description: 커맨드 개요 가이드
+title: Alfred 명령어 개요
+description: MoAI-ADK의 4가지 핵심 Alfred 명령어 가이드
 ---
 
-# 커맨드 개요
+# Alfred 명령어 개요
 
-이 페이지는 현재 작성 중입니다.
+MoAI-ADK는 **4가지 핵심 Alfred 명령어**로 SPEC-First TDD 워크플로우를 자동화합니다.
 
-## 개요
+## 명령어 요약
 
-커맨드 개요에 대한 자세한 내용은 곧 업데이트될 예정입니다.
+| 명령어 | 목적 | 입력 | 산출물 |
+|--------|------|------|--------|
+| `/alfred:0-project` | 프로젝트 초기화 | 프로젝트 정보 | `.moai/` 구조 생성 |
+| `/alfred:1-plan` | SPEC 작성 | 기능 설명 | `.moai/specs/SPEC-*/` |
+| `/alfred:2-run` | TDD 구현 | SPEC ID | 코드 + 테스트 + 문서 |
+| `/alfred:3-sync` | 문서 동기화 | - | 문서 업데이트 |
 
-## 주요 특징
+---
 
-- 특징 1
-- 특징 2
-- 특징 3
+## 1. `/alfred:0-project` - 프로젝트 초기화
 
-## 사용법
+**목적**: 새 MoAI-ADK 프로젝트 초기화 및 기본 구조 설정
+
+**시작 시기**: 프로젝트 처음 시작할 때
+
+**기본 사용법**:
+```bash
+claude
+```
+
+```
+/alfred:0-project
+```
+
+**Alfred가 물어볼 질문**:
+
+1. **프로젝트 이름** (예: my-awesome-api)
+2. **프로젝트 설명** (예: RESTful API for e-commerce)
+3. **주 개발 언어** (Python, TypeScript, Java, Go, Rust, etc.)
+4. **작업 모드** (personal, team)
+5. **대화 언어** (한국어, English, 日本語, etc.)
+
+**생성되는 파일**:
+
+```
+my-awesome-api/
+├── .moai/
+│   ├── config.json          # 프로젝트 설정
+│   ├── specs/               # SPEC 문서들
+│   ├── docs/                # 구현 가이드
+│   ├── reports/             # 분석 리포트
+│   └── memory/              # Alfred 메모리
+├── .claude/
+│   ├── commands/            # 사용자 정의 명령어
+│   ├── agents/              # 특화 에이전트
+│   ├── skills/              # 재사용 가능 기술
+│   └── hooks/               # 자동 트리거
+├── src/                     # 소스 코드
+├── tests/                   # 테스트 코드
+└── CLAUDE.md               # 프로젝트 가이드
+```
+
+**주요 기능**:
+- ✅ 프로젝트 메타데이터 설정
+- ✅ `.moai/` 디렉토리 구조 생성
+- ✅ Claude Code 설정 초기화
+- ✅ Git 리포지토리 자동 생성
+- ✅ 언어별 템플릿 적용
+
+**다음 단계**: `/alfred:1-plan` → 첫 SPEC 작성
+
+---
+
+## 2. `/alfred:1-plan` - SPEC 작성
+
+**목적**: 구현할 기능에 대한 SPEC 문서 작성
+
+**시작 시기**: 새 기능이나 개선사항을 구현하기 전
+
+**기본 사용법**:
+```
+/alfred:1-plan "사용자 인증 기능" "이메일 검증" "암호 암호화"
+```
+
+**Alfred가 생성하는 문서**:
+
+```
+.moai/specs/SPEC-LOGIN-001/
+├── spec.md              # EARS 형식 요구사항
+├── plan.md              # 구현 계획
+└── acceptance.md        # 수용 기준
+```
+
+**SPEC 문서 예시**:
+
+```markdown
+# SPEC-LOGIN-001: 사용자 인증
+
+## 요구사항 (EARS 형식)
+
+### UBIQUITOUS (보편적)
+- 시스템은 모든 사용자 입력을 검증해야 한다
+
+### EVENT-DRIVEN (이벤트 기반)
+- WHEN 사용자가 로그인을 시도하면
+  - 시스템은 이메일을 검증해야 한다
+  - 시스템은 암호를 검증해야 한다
+  - 시스템은 인증 토큰을 발급해야 한다
+
+### STATE-DRIVEN (상태 기반)
+- WHILE 로그인 세션이 유효하면
+  - 시스템은 토큰을 유지해야 한다
+```
+
+**주요 기능**:
+- ✅ EARS 형식 요구사항 작성
+- ✅ SPEC 마커 자동 생성
+- ✅ 구현 계획 수립
+- ✅ 수용 기준 정의
+- ✅ 의존성 분석
+
+**다음 단계**: `/alfred:2-run SPEC-LOGIN-001` → 구현 시작
+
+---
+
+## 3. `/alfred:2-run` - TDD 구현
+
+**목적**: RED → GREEN → REFACTOR 사이클로 자동 구현
+
+**시작 시기**: SPEC이 준비되었을 때
+
+**기본 사용법**:
+```
+/alfred:2-run SPEC-LOGIN-001
+```
+
+**실행 흐름**:
+
+### Phase 1: RED - 테스트 작성
+```python
+# 로그인 기능 테스트 작성
+# tests/test_login.py
+def test_user_login_success():
+    result = login(email="user@example.com", password="secure123")
+    assert result.status == "authenticated"
+    assert result.token is not None
+```
+
+### Phase 2: GREEN - 최소 구현
+```python
+# 로그인 기능 구현
+# src/login.py
+def login(email: str, password: str) -> LoginResult:
+    """사용자 로그인"""
+    if validate_email(email) and validate_password(password):
+        token = generate_token(email)
+        return LoginResult(status="authenticated", token=token)
+```
+
+### Phase 3: REFACTOR - 코드 개선
+- 코드 검토 및 최적화
+- 에러 처리 추가
+- 문서 작성
+- 타입 힌팅 추가
+
+**자동으로 수행되는 작업**:
+- ✅ 테스트 작성 및 실행
+- ✅ 구현 코드 작성
+- ✅ 테스트 커버리지 검증 (≥85%)
+- ✅ 코드 품질 검사 (TRUST 5)
+- ✅ Git 커밋 자동 생성
+- ✅ TAG 마커 체인 생성
+
+**생성되는 파일**:
+
+```
+├── src/login.py              # 로그인 구현
+├── tests/test_login.py       # 로그인 테스트
+└── .moai/docs/login.md       # 로그인 문서
+```
+
+**다음 단계**: `/alfred:3-sync` → 문서 동기화
+
+---
+
+## 4. `/alfred:3-sync` - 문서 동기화
+
+**목적**: 코드 변경사항을 문서에 자동 반영
+
+**시작 시기**: 구현이 완료된 후
+
+**기본 사용법**:
+```
+/alfred:3-sync
+```
+
+**자동으로 업데이트되는 문서**:
+
+| 파일 | 내용 |
+|------|------|
+| `README.md` | 새 기능 사용 예시 |
+| `CHANGELOG.md` | v0.X.0 변경사항 추가 |
+| `.moai/docs/*.md` | 구현 가이드 및 전략 |
+| `API_DOCS.md` | 함수/클래스 API 설명 |
+
+**동기화 내용**:
+
+```markdown
+# README.md (자동 생성)
+
+## Features
+
+### v0.5.0
+- 사용자 인증 기능 추가 (SPEC-AUTH-001)
+  - 이메일 기반 로그인
+  - JWT 토큰 발급
+  - 세션 관리
+
+## Usage
+
+```python
+from moai_auth import login
+
+result = login(email="user@example.com", password="secure123")
+if result.status == "authenticated":
+    print(f"Token: {result.token}")
+```
+```
+
+**검증 프로세스**:
+- ✅ @TAG 체인 무결성 확인
+- ✅ 문서와 코드 일치성 검증
+- ✅ 커버리지 재확인
+- ✅ 깃 히스토리 생성
+
+**결과**:
+- ✅ PR 자동 생성
+- ✅ 모든 문서 최신화
+- ✅ 배포 준비 완료
+
+---
+
+## 명령어 실행 순서
+
+```
+프로젝트 시작
+    ↓
+/alfred:0-project (프로젝트 초기화)
+    ↓
+반복 실행:
+    ├─ /alfred:1-plan "기능 설명" (SPEC 작성)
+    ├─ /alfred:2-run SPEC-XXX (구현)
+    └─ /alfred:3-sync (문서 동기화)
+    ↓
+배포 준비 완료
+```
+
+---
+
+## 명령어별 상세 가이드
+
+각 명령어의 더 자세한 내용은 다음 페이지에서 확인하세요:
+
+- [/alfred:0-project 상세 가이드](/ko/cli/alfred-0-project) - 프로젝트 초기화
+- [/alfred:1-plan 상세 가이드](/ko/cli/alfred-1-plan) - SPEC 작성
+- [/alfred:2-run 상세 가이드](/ko/cli/alfred-2-run) - TDD 구현
+- [/alfred:3-sync 상세 가이드](/ko/cli/alfred-3-sync) - 문서 동기화
+
+---
+
+## 팁과 트릭
+
+### 자동 완성 활용
+Claude Code에서 `/` 입력 후 자동 완성 사용:
+
+```
+/ ← 시작
+/alfred:0 ← 프로젝트 명령어 표시
+/alfred:1 ← SPEC 명령어 표시
+/alfred:2 ← 구현 명령어 표시
+/alfred:3 ← 동기화 명령어 표시
+```
+
+### 빠른 참조
+명령어 헬프 보기:
 
 ```bash
-# 예제 명령어
-# 상세 사용법은 곧 업데이트됩니다
+moai --help                 # 전체 명령어
+moai init --help           # 특정 명령어 상세
 ```
+
+### 로컬 테스트
+구현 전에 로컬에서 검증:
+
+```bash
+pytest tests/              # 테스트 실행
+mypy src/                  # 타입 검사
+ruff check src/            # 스타일 검사
+```
+
+---
 
 ## 다음 단계
 
-- [홈으로](/ko)
-- [문서 개요](/ko/introduction/overview)
+- [빠른 시작](/ko/getting-started/quick-start) - 5분 안에 시작
+- [첫 프로젝트](/ko/getting-started/first-project) - 상세 튜토리얼
+- [워크플로우 개요](/ko/workflow/overview) - 4단계 워크플로우
