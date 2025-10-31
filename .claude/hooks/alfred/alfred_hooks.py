@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # @CODE:HOOKS-REFACTOR-001 | SPEC: SPEC-HOOKS-REFACTOR-001.md
+# @CODE:HOOKS-EMERGENCY-001:IMPORT-FIX | SPEC: SPEC-HOOKS-EMERGENCY-001.md
 """Alfred Hooks - Main entry point for MoAI-ADK Claude Code Hooks
 
 A main entry point that routes Claude Code events to the appropriate handlers.
@@ -53,13 +54,18 @@ Setup sys.path for package imports
 """
 
 import json
-import signal
 import sys
 from pathlib import Path
 from typing import Any
 
-from utils.timeout import CrossPlatformTimeout, TimeoutError as PlatformTimeoutError
+# Add the hooks directory to sys.path to enable package imports
+# CRITICAL: Must be set BEFORE imports to prevent ImportError
+HOOKS_DIR = Path(__file__).parent
+SHARED_DIR = HOOKS_DIR / "shared"
+if str(SHARED_DIR) not in sys.path:
+    sys.path.insert(0, str(SHARED_DIR))
 
+# ruff: noqa: I001, E402
 from core import HookResult
 from handlers import (
     handle_notification,
@@ -71,16 +77,7 @@ from handlers import (
     handle_subagent_stop,
     handle_user_prompt_submit,
 )
-
-# Add the hooks directory to sys.path to enable package imports
-HOOKS_DIR = Path(__file__).parent
-if str(HOOKS_DIR) not in sys.path:
-    sys.path.insert(0, str(HOOKS_DIR))
-
-
-def _hook_timeout_handler(signum, frame):
-    """Signal handler for global hook timeout"""
-    raise HookTimeoutError("Hook execution exceeded 5-second timeout")
+from utils.timeout import CrossPlatformTimeout, TimeoutError as PlatformTimeoutError
 
 
 def main() -> None:
@@ -121,71 +118,69 @@ def main() -> None:
 
     @TAG:HOOKS-TIMEOUT-001
     """
-    # Set global 5-second timeout for entire hook execution
-    signal.signal(signal.SIGALRM, _hook_timeout_handler)
-    signal.alarm(5)
-
     try:
-        # Check for event argument
-        if len(sys.argv) < 2:
-            print("Usage: alfred_hooks.py <event>", file=sys.stderr)
-            sys.exit(1)
+        # Use CrossPlatformTimeout context manager for 5-second global timeout
+        with CrossPlatformTimeout(5):
+            # Check for event argument
+            if len(sys.argv) < 2:
+                print("Usage: alfred_hooks.py <event>", file=sys.stderr)
+                sys.exit(1)
 
-        event_name = sys.argv[1]
+            event_name = sys.argv[1]
 
-        try:
-            # Read JSON from stdin
-            input_data = sys.stdin.read()
-            # Handle empty stdin gracefully (return empty dict)
-            if not input_data or not input_data.strip():
-                data = {}
-            else:
-                data = json.loads(input_data)
+            try:
+                # Read JSON from stdin
+                input_data = sys.stdin.read()
+                # Handle empty stdin gracefully (return empty dict)
+                if not input_data or not input_data.strip():
+                    data = {}
+                else:
+                    data = json.loads(input_data)
 
-            cwd = data.get("cwd", ".")
+                cwd = data.get("cwd", ".")
 
-            # Route to appropriate handler
-            handlers = {
-                "SessionStart": handle_session_start,
-                "UserPromptSubmit": handle_user_prompt_submit,
-                "SessionEnd": handle_session_end,
-                "PreToolUse": handle_pre_tool_use,
-                "PostToolUse": handle_post_tool_use,
-                "Notification": handle_notification,
-                "Stop": handle_stop,
-                "SubagentStop": handle_subagent_stop,
-            }
+                # Route to appropriate handler
+                handlers = {
+                    "SessionStart": handle_session_start,
+                    "UserPromptSubmit": handle_user_prompt_submit,
+                    "SessionEnd": handle_session_end,
+                    "PreToolUse": handle_pre_tool_use,
+                    "PostToolUse": handle_post_tool_use,
+                    "Notification": handle_notification,
+                    "Stop": handle_stop,
+                    "SubagentStop": handle_subagent_stop,
+                }
 
-            handler = handlers.get(event_name)
-            result = handler({"cwd": cwd, **data}) if handler else HookResult()
+                handler = handlers.get(event_name)
+                result = handler({"cwd": cwd, **data}) if handler else HookResult()
 
-            # Output Hook result as JSON
-            # Note: UserPromptSubmit uses to_user_prompt_submit_dict() for special schema
-            if event_name == "UserPromptSubmit":
-                print(json.dumps(result.to_user_prompt_submit_dict()))
-            else:
-                print(json.dumps(result.to_dict()))
+                # Output Hook result as JSON
+                # Note: UserPromptSubmit uses to_user_prompt_submit_dict() for special schema
+                if event_name == "UserPromptSubmit":
+                    print(json.dumps(result.to_user_prompt_submit_dict()))
+                else:
+                    print(json.dumps(result.to_dict()))
 
-            sys.exit(0)
+                sys.exit(0)
 
-        except json.JSONDecodeError as e:
-            # Return valid Hook response even on JSON parse error
-            error_response: dict[str, Any] = {
-                "continue": True,
-                "hookSpecificOutput": {"error": f"JSON parse error: {e}"},
-            }
-            print(json.dumps(error_response))
-            print(f"JSON parse error: {e}", file=sys.stderr)
-            sys.exit(1)
-        except Exception as e:
-            # Return valid Hook response even on unexpected error
-            error_response: dict[str, Any] = {
-                "continue": True,
-                "hookSpecificOutput": {"error": f"Hook error: {e}"},
-            }
-            print(json.dumps(error_response))
-            print(f"Unexpected error: {e}", file=sys.stderr)
-            sys.exit(1)
+            except json.JSONDecodeError as e:
+                # Return valid Hook response even on JSON parse error
+                json_error_response: dict[str, Any] = {
+                    "continue": True,
+                    "hookSpecificOutput": {"error": f"JSON parse error: {e}"},
+                }
+                print(json.dumps(json_error_response))
+                print(f"JSON parse error: {e}", file=sys.stderr)
+                sys.exit(1)
+            except Exception as e:
+                # Return valid Hook response even on unexpected error
+                general_error_response: dict[str, Any] = {
+                    "continue": True,
+                    "hookSpecificOutput": {"error": f"Hook error: {e}"},
+                }
+                print(json.dumps(general_error_response))
+                print(f"Unexpected error: {e}", file=sys.stderr)
+                sys.exit(1)
 
     except PlatformTimeoutError:
         # CRITICAL: Hook took too long - return minimal valid response to prevent Claude Code freeze
@@ -196,10 +191,6 @@ def main() -> None:
         print(json.dumps(timeout_response))
         print("Hook timeout after 5 seconds", file=sys.stderr)
         sys.exit(1)
-
-    finally:
-        # Always cancel the alarm to prevent signal leakage
-        timeout.cancel()
 
 
 if __name__ == "__main__":
