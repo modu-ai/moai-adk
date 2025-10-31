@@ -1,0 +1,79 @@
+{
+  "id": "moai-plugin-devops",
+  "name": "DevOps Plugin",
+  "version": "1.0.0-dev",
+  "status": "development",
+  "description": "Multi-cloud deployment - Vercel, Supabase, Render support with CI/CD pipelines",
+  "author": "GOOS🪿",
+  "category": "devops",
+  "tags": ["deployment", "vercel", "supabase", "render", "github-actions"],
+  "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-plugin-devops",
+  "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-plugin-devops/README.md",
+  "minClaudeCodeVersion": "1.0.0",
+  "commands": [
+    {
+      "name": "deploy-config",
+      "path": "commands/deploy-config.md",
+      "description": "Configure deployment settings (Vercel, Supabase, Render)"
+    },
+    {
+      "name": "connect-vercel",
+      "path": "commands/connect-vercel.md",
+      "description": "Connect Vercel MCP for frontend deployment"
+    },
+    {
+      "name": "connect-supabase",
+      "path": "commands/connect-supabase.md",
+      "description": "Connect Supabase MCP for backend database"
+    }
+  ],
+  "agents": [
+    {
+      "name": "devops-agent",
+      "path": "agents/devops-agent.md",
+      "type": "specialist",
+      "description": "DevOps and deployment specialist"
+    }
+  ],
+  "hooks": {
+    "sessionStart": ".claude-plugin/hooks.json#onSessionStart"
+  },
+  "mcpServers": [
+    {
+      "name": "vercel",
+      "type": "optional",
+      "configPath": ".mcp.json"
+    },
+    {
+      "name": "supabase",
+      "type": "optional",
+      "configPath": ".mcp.json"
+    }
+  ],
+  "permissions": {
+    "allowedTools": ["Read", "Write", "Edit", "Bash"],
+    "deniedTools": ["DeleteFile"]
+  },
+  "skills": [
+    "moai-domain-devops",
+    "moai-domain-backend",
+    "moai-domain-frontend",
+    "moai-plugin-scaffolding"
+  ],
+  "settings": {
+    "vercelToken": {
+      "type": "secret",
+      "description": "Vercel API token for deployment"
+    },
+    "supabaseToken": {
+      "type": "secret",
+      "description": "Supabase API token for database management"
+    }
+  },
+  "dependencies": [
+    "moai-plugin-frontend",
+    "moai-plugin-backend"
+  ],
+  "installCommand": "/plugin install moai-plugin-devops",
+  "releaseNotes": "Initial v1.0.0-dev with 3-path deployment support"
+}
