@@ -464,7 +464,7 @@ DevOps Plugin 입력 (배포 대상 설정)
 ### 플러그인 마켓플레이스 구조
 
 ```
-moai-alfred-marketplace/
+moai-marketplace/
 └── plugins/
     ├── moai-alfred-pm/           # 공식 플러그인
     ├── moai-alfred-uiux/

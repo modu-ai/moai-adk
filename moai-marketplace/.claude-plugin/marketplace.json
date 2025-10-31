@@ -1,12 +1,12 @@
 {
   "$schema": "https://moai-adk.github.io/schemas/marketplace/v1.json",
   "metadata": {
-    "name": "moai-alfred-marketplace",
-    "title": "MoAI-ADK Official Alfred Marketplace v2.0",
+    "name": "moai-marketplace",
+    "title": "MoAI-ADK Official Marketplace v2.0",
     "version": "2.0.0-dev",
-    "description": "Official marketplace for MoAI-ADK Alfred plugins with expanded design, content, and SaaS integrations",
+    "description": "Official marketplace for MoAI-ADK plugins with expanded design, content, and SaaS integrations (Figma, Playwright, Vercel, Supabase, Render MCPs)",
     "owner": "moai-adk",
-    "repository": "https://github.com/moai-adk/moai-alfred-marketplace",
+    "repository": "https://github.com/moai-adk/moai-marketplace",
     "license": "MIT",
     "updated": "2025-10-31T00:00:00Z"
   },
@@ -20,8 +20,8 @@
       "author": "GOOS🪿",
       "category": "uiux",
       "tags": ["design-system", "figma", "design-to-code", "shadcn-ui", "tailwind", "accessibility"],
-      "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-plugin-uiux",
-      "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-plugin-uiux/README.md",
+      "repository": "https://github.com/moai-adk/moai-marketplace/tree/main/plugins/moai-plugin-uiux",
+      "documentation": "https://github.com/moai-adk/moai-marketplace/blob/main/plugins/moai-plugin-uiux/README.md",
       "minClaudeCodeVersion": "1.0.0",
       "agents": [
         {
@@ -101,12 +101,12 @@
       "name": "Frontend Plugin",
       "version": "1.0.0-dev",
       "status": "development",
-      "description": "Next.js 16 + React 19.2 scaffolding - App Router, Biome, shadcn/ui integration",
+      "description": "Next.js 16 + React 19.2 scaffolding with Playwright-MCP integration - App Router, Biome, shadcn/ui, E2E testing automation",
       "author": "GOOS🪿",
       "category": "frontend",
-      "tags": ["nextjs", "react", "typescript", "biome"],
-      "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-plugin-frontend",
-      "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-plugin-frontend/README.md",
+      "tags": ["nextjs", "react", "typescript", "biome", "playwright", "testing", "e2e"],
+      "repository": "https://github.com/moai-adk/moai-marketplace/tree/main/plugins/moai-plugin-frontend",
+      "documentation": "https://github.com/moai-adk/moai-marketplace/blob/main/plugins/moai-plugin-frontend/README.md",
       "minClaudeCodeVersion": "1.0.0",
       "agents": [],
       "commands": [
@@ -117,13 +117,18 @@
         {
           "name": "biome-setup",
           "description": "Configure Biome linter and formatter"
+        },
+        {
+          "name": "playwright-setup",
+          "description": "Initialize Playwright-MCP for E2E testing automation"
         }
       ],
       "skills": [
         "moai-framework-nextjs-advanced",
         "moai-framework-react-19",
         "moai-design-shadcn-ui",
-        "moai-domain-frontend"
+        "moai-domain-frontend",
+        "moai-testing-playwright-mcp"
       ],
       "permissions": {
         "allowedTools": ["Read", "Write", "Edit", "Bash"],
@@ -131,7 +136,7 @@
       },
       "dependencies": ["moai-plugin-uiux"],
       "installCommand": "/plugin install moai-plugin-frontend",
-      "releaseNotes": "Initial v1.0.0-dev with support for bun, npm, pnpm"
+      "releaseNotes": "v1.0.0-dev: Added Playwright-MCP for E2E testing, support for bun, npm, pnpm"
     },
     {
       "id": "moai-plugin-backend",
@@ -142,8 +147,8 @@
       "author": "GOOS🪿",
       "category": "backend",
       "tags": ["fastapi", "python", "sqlalchemy", "uv", "database"],
-      "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-plugin-backend",
-      "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-plugin-backend/README.md",
+      "repository": "https://github.com/moai-adk/moai-marketplace/tree/main/plugins/moai-plugin-backend",
+      "documentation": "https://github.com/moai-adk/moai-marketplace/blob/main/plugins/moai-plugin-backend/README.md",
       "minClaudeCodeVersion": "1.0.0",
       "agents": [],
       "commands": [
@@ -182,8 +187,8 @@
       "author": "GOOS🪿",
       "category": "devops",
       "tags": ["deployment", "vercel", "supabase", "render", "github-actions", "ci-cd", "mcp"],
-      "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-plugin-devops",
-      "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-plugin-devops/README.md",
+      "repository": "https://github.com/moai-adk/moai-marketplace/tree/main/plugins/moai-plugin-devops",
+      "documentation": "https://github.com/moai-adk/moai-marketplace/blob/main/plugins/moai-plugin-devops/README.md",
       "minClaudeCodeVersion": "1.0.0",
       "agents": [
         {
@@ -262,8 +267,8 @@
         "templates",
         "code-examples"
       ],
-      "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-plugin-technical-blog",
-      "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-plugin-technical-blog/README.md",
+      "repository": "https://github.com/moai-adk/moai-marketplace/tree/main/plugins/moai-plugin-technical-blog",
+      "documentation": "https://github.com/moai-adk/moai-marketplace/blob/main/plugins/moai-plugin-technical-blog/README.md",
       "minClaudeCodeVersion": "1.0.0",
       "agents": [
         {
@@ -339,9 +344,9 @@
     }
   ],
   "governance": {
-    "securityPolicy": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/SECURITY.md",
-    "contributionGuide": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/CONTRIBUTING.md",
-    "codeOfConduct": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/CODE_OF_CONDUCT.md"
+    "securityPolicy": "https://github.com/moai-adk/moai-marketplace/blob/main/SECURITY.md",
+    "contributionGuide": "https://github.com/moai-adk/moai-marketplace/blob/main/CONTRIBUTING.md",
+    "codeOfConduct": "https://github.com/moai-adk/moai-marketplace/blob/main/CODE_OF_CONDUCT.md"
   },
   "skills": [
     {
@@ -499,6 +504,12 @@
       "name": "Technical SEO for Developers",
       "tier": "content",
       "version": "1.0.0"
+    },
+    {
+      "id": "moai-testing-playwright-mcp",
+      "name": "Playwright-MCP E2E Testing Integration",
+      "tier": "testing",
+      "version": "1.0.0"
     }
   ],
   "stats": {
@@ -506,7 +517,7 @@
     "stablePlugins": 0,
     "betaPlugins": 0,
     "devPlugins": 5,
-    "totalSkills": 22,
+    "totalSkills": 23,
     "totalAgents": 23,
     "totalDownloads": 0,
     "lastUpdated": "2025-10-31"

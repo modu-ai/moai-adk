@@ -1713,7 +1713,7 @@ AdvancedCounter 렌더링 시간:
 ## 문의 및 피드백
 
 이 가이드에 대한 질문이나 제안은:
-- GitHub Issues: `moai-adk/moai-alfred-marketplace`
+- GitHub Issues: `moai-adk/moai-marketplace`
 - Discussions: `moai-adk/moai-adk`
 - Email: team@mo.ai.kr
 

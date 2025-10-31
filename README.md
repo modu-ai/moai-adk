@@ -2648,6 +2648,31 @@ A. Possible, but remember: SPEC → TEST → CODE → DOC order and keep @TAGs u
 
 ---
 
+## Advanced Topics (고급 주제)
+
+MoAI-ADK를 더 깊이 있게 활용하기 위한 고급 주제들입니다.
+
+### 📖 Documentation Topics
+
+| 주제 | 설명 | 링크 |
+|------|------|------|
+| **Team Mode & Collaboration** | 팀 환경에서 협업 및 GitFlow 운영 | [docs/advanced/team-mode.mdx](docs/advanced/team-mode.mdx) |
+| **SPEC Patterns & Best Practices** | 효과적인 SPEC 작성 패턴 및 팁 | [docs/advanced/spec-patterns.mdx](docs/advanced/spec-patterns.mdx) |
+| **Performance & Security** | 성능 최적화 및 보안 가이드라인 | [docs/advanced/performance-security.mdx](docs/advanced/performance-security.mdx) |
+| **Plugin Development** | 커스텀 플러그인 개발 및 배포 | See "Plugin Ecosystem" section below |
+| **Claude Code Integration** | Claude Code 플러그인 시스템 | [docs/guide/claude-code-integration.mdx](docs/guide/claude-code-integration.mdx) |
+
+### 🎯 Getting Started Guides
+
+프로젝트를 시작하는 단계별 가이드:
+
+1. **[5-Step Project Initialization](docs/guide/getting-started.mdx)** - 처음부터 끝까지
+2. **[First SPEC Document](docs/guide/first-spec.mdx)** - EARS 형식 작성법
+3. **[TDD Implementation Workflow](docs/guide/tdd-workflow.mdx)** - RED→GREEN→REFACTOR 사이클
+4. **[Document Synchronization](docs/guide/doc-sync.mdx)** - `/alfred:3-sync` 활용
+
+---
+
 ## v1.0.0 Plugin Ecosystem 🔌
 
 ### 5 Official Alfred Framework Plugins (완성됨!)
