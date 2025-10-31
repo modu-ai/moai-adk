@@ -1,10 +1,51 @@
 {
+  "id": "moai-plugin-devops",
   "name": "devops-plugin",
   "description": "Multi-cloud deployment with Vercel, Supabase, Render MCPs - CI/CD automation",
   "version": "1.0.0-dev",
+  "status": "development",
+  "category": "devops",
+  "minClaudeCodeVersion": "1.0.0",
   "author": {
     "name": "GOOS"
   },
+  "repository": "https://github.com/moai-adk/moai-marketplace/tree/main/plugins/moai-plugin-devops",
+  "license": "MIT",
+  "tags": [
+    "devops",
+    "vercel",
+    "supabase",
+    "render",
+    "mcp",
+    "cicd",
+    "deployment"
+  ],
+  "agents": [
+    {
+      "name": "deployment-strategist",
+      "path": "agents/deployment-strategist.md",
+      "type": "specialist",
+      "description": "Multi-cloud deployment strategy and optimization"
+    },
+    {
+      "name": "vercel-specialist",
+      "path": "agents/vercel-specialist.md",
+      "type": "specialist",
+      "description": "Vercel platform deployment and edge function configuration"
+    },
+    {
+      "name": "supabase-specialist",
+      "path": "agents/supabase-specialist.md",
+      "type": "specialist",
+      "description": "Supabase PostgreSQL, authentication, and real-time setup"
+    },
+    {
+      "name": "render-specialist",
+      "path": "agents/render-specialist.md",
+      "type": "specialist",
+      "description": "Render platform deployment and environment management"
+    }
+  ],
   "skills": [
     "skills/moai-saas-vercel-mcp.md",
     "skills/moai-saas-supabase-mcp.md",
@@ -12,5 +53,39 @@
     "skills/moai-domain-backend.md",
     "skills/moai-domain-frontend.md",
     "skills/moai-domain-devops.md"
-  ]
+  ],
+  "mcpServers": [
+    {
+      "name": "vercel",
+      "type": "optional",
+      "description": "Vercel deployment automation and preview environments"
+    },
+    {
+      "name": "supabase",
+      "type": "optional",
+      "description": "Supabase PostgreSQL database and authentication"
+    },
+    {
+      "name": "render",
+      "type": "optional",
+      "description": "Render backend deployment platform"
+    }
+  ],
+  "permissions": {
+    "allowedTools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Bash(git:*)",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(uv:*)",
+      "Task"
+    ],
+    "deniedTools": []
+  },
+  "installCommand": "/plugin install moai-plugin-devops",
+  "releaseNotes": "Initial 1.0.0-dev release with 4 specialist agents for multi-cloud deployment and 6 skills covering Vercel, Supabase, Render, and general DevOps patterns"
 }

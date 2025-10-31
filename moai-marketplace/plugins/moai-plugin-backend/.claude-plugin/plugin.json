@@ -1,14 +1,71 @@
 {
+  "id": "moai-plugin-backend",
   "name": "backend-plugin",
   "description": "FastAPI 0.120.2 + uv scaffolding - SQLAlchemy 2.0, Alembic migrations, Pydantic 2.12",
   "version": "1.0.0-dev",
+  "status": "development",
+  "category": "backend",
+  "minClaudeCodeVersion": "1.0.0",
   "author": {
     "name": "GOOS"
   },
+  "repository": "https://github.com/moai-adk/moai-marketplace/tree/main/plugins/moai-plugin-backend",
+  "license": "MIT",
+  "tags": [
+    "fastapi",
+    "python",
+    "sqlalchemy",
+    "database",
+    "async",
+    "alembic"
+  ],
+  "agents": [
+    {
+      "name": "fastapi-specialist",
+      "path": "agents/fastapi-specialist.md",
+      "type": "specialist",
+      "description": "FastAPI async endpoint development and API architecture"
+    },
+    {
+      "name": "backend-architect",
+      "path": "agents/backend-architect.md",
+      "type": "specialist",
+      "description": "Backend system design and scalability patterns"
+    },
+    {
+      "name": "database-expert",
+      "path": "agents/database-expert.md",
+      "type": "specialist",
+      "description": "Database design, indexing, and optimization"
+    },
+    {
+      "name": "api-designer",
+      "path": "agents/api-designer.md",
+      "type": "specialist",
+      "description": "REST API design and resource modeling"
+    }
+  ],
   "skills": [
     "skills/moai-lang-fastapi-patterns.md",
     "skills/moai-lang-python.md",
     "skills/moai-domain-backend.md",
     "skills/moai-domain-database.md"
-  ]
+  ],
+  "permissions": {
+    "allowedTools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Bash(python3:*)",
+      "Bash(pip:*)",
+      "Bash(uv:*)",
+      "Bash(git:*)",
+      "Task"
+    ],
+    "deniedTools": []
+  },
+  "installCommand": "/plugin install moai-plugin-backend",
+  "releaseNotes": "Initial 1.0.0-dev release with 4 specialist agents for FastAPI development and 4 skills covering framework patterns, Python best practices, backend architecture, and database design"
 }
