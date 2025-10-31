@@ -182,6 +182,215 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 ---
 
+## 🔌 Plugin File Structure
+
+Claude Code plugins extend Claude Code with new capabilities (commands, agents, skills, hooks, MCP servers).
+
+### Plugin Directory Layout
+
+```
+my-plugin/
+├── .claude-plugin/
+│   ├── plugin.json           # Plugin manifest (required)
+│   └── hooks.json            # Hook definitions (optional)
+├── commands/
+│   └── my-command.md         # Command definitions
+├── agents/
+│   └── my-agent.md           # Agent definitions
+├── skills/
+│   └── my-skill/
+│       ├── SKILL.md          # Skill content
+│       ├── reference.md      # Optional detailed docs
+│       └── examples.md       # Optional code examples
+├── README.md                 # Plugin documentation
+├── LICENSE                   # License file
+└── .mcp.json                 # MCP server config (optional)
+```
+
+### Plugin.json Schema
+
+**Required Fields**:
+
+```json
+{
+  "id": "my-plugin",                    // kebab-case identifier
+  "name": "My Plugin",                  // Display name
+  "version": "1.0.0",                   // Semantic version
+  "status": "development|active",       // Plugin status
+  "description": "Short description",   // One-line description
+  "author": "Author Name",              // Plugin author
+  "category": "frontend|backend|devops|uiux|ai", // Category
+  "tags": ["tag1", "tag2"],            // Searchable tags
+  "repository": "https://...",         // Repository URL
+  "documentation": "https://...",      // Docs URL
+  "minClaudeCodeVersion": "2.0.0",     // Min Claude Code version
+  "commands": [                        // Optional
+    {
+      "name": "my-command",
+      "path": "commands/my-command.md",
+      "description": "What it does"
+    }
+  ],
+  "agents": [                          // Optional
+    {
+      "name": "my-agent",
+      "path": "agents/my-agent.md",
+      "type": "specialist",
+      "description": "What it specializes in"
+    }
+  ],
+  "skills": [                          // Optional
+    {
+      "name": "My Skill",
+      "path": "skills/my-skill/SKILL.md",
+      "description": "Skill description"
+    }
+  ],
+  "hooks": {                           // Optional
+    "sessionStart": ".claude-plugin/hooks.json#onSessionStart",
+    "preToolUse": ".claude-plugin/hooks.json#onPreToolUse"
+  },
+  "mcpServers": [                      // Optional
+    {
+      "name": "server-name",
+      "type": "required|optional",
+      "configPath": ".mcp.json"
+    }
+  ],
+  "permissions": {                     // Tool access control
+    "allowedTools": ["Read", "Write"],
+    "deniedTools": ["DeleteFile"]
+  },
+  "settings": {                        // Plugin settings
+    "apiKey": {
+      "type": "secret",
+      "description": "API key for service"
+    }
+  },
+  "dependencies": ["plugin-id"],       // Plugin dependencies
+  "installCommand": "/plugin install my-plugin",
+  "releaseNotes": "Release notes"
+}
+```
+
+### Plugin.json Validation Checklist
+
+- [ ] `id` matches directory name (kebab-case)
+- [ ] `version` follows semantic versioning (X.Y.Z)
+- [ ] `status` is one of: development, active, deprecated
+- [ ] `category` is valid (frontend, backend, devops, uiux, ai, content)
+- [ ] All `path` values point to existing files
+- [ ] `minClaudeCodeVersion` is valid
+- [ ] `permissions.deniedTools` includes dangerous commands: DeleteFile, KillProcess
+- [ ] `dependencies` refer to valid plugin IDs
+- [ ] `commands[].path`, `agents[].path`, `skills[].path` all exist
+- [ ] No hardcoded secrets (use `settings` with type: "secret")
+- [ ] `mcpServers` reference valid `.mcp.json` configs
+- [ ] Hook paths use absolute notation: `path#hookName`
+
+---
+
+## 🔌 Plugin Installation & Validation
+
+### CLI Commands
+
+```bash
+# Install plugin
+/plugin install my-plugin
+
+# Validate plugin.json syntax
+/plugin validate my-plugin
+
+# List installed plugins
+/plugin list
+
+# Remove plugin
+/plugin remove my-plugin
+
+# Check plugin status
+/plugin status my-plugin
+```
+
+### Validation Results
+
+**Valid Plugin**:
+```json
+{
+  "valid": true,
+  "plugin": "my-plugin",
+  "version": "1.0.0",
+  "status": "active",
+  "resources": {
+    "commands": 2,
+    "agents": 1,
+    "skills": 3,
+    "hooks": 1
+  }
+}
+```
+
+**Invalid Plugin**:
+```json
+{
+  "valid": false,
+  "errors": [
+    "Missing required field: id",
+    "Path 'commands/foo.md' does not exist",
+    "Invalid semantic version"
+  ]
+}
+```
+
+---
+
+## 🛠️ Common Plugin Patterns
+
+### Command Plugin (No State)
+
+```json
+{
+  "id": "my-commands",
+  "commands": [
+    {
+      "name": "analyze-code",
+      "path": "commands/analyze.md",
+      "description": "Analyze code quality"
+    }
+  ]
+}
+```
+
+### Agent Plugin (Specialist)
+
+```json
+{
+  "id": "my-agent",
+  "agents": [
+    {
+      "name": "code-reviewer",
+      "path": "agents/code-reviewer.md",
+      "type": "specialist",
+      "description": "Reviews code for quality"
+    }
+  ]
+}
+```
+
+### Multi-feature Plugin (Comprehensive)
+
+```json
+{
+  "id": "full-plugin",
+  "commands": [...],      // Workflow entry points
+  "agents": [...],        // Specialist reasoning
+  "skills": [...],        // Reusable knowledge
+  "hooks": {...},         // Auto-triggered safety checks
+  "mcpServers": [...]    // External integrations
+}
+```
+
+---
+
 ## 🚀 Quick Workflows
 
 ### Create New Command
@@ -202,11 +411,26 @@ Alfred passes the user's language directly to you via `Task()` calls.
 ```
 **Then**: Reference `Skill("moai-cc-agents")` for patterns
 
+### Create New Plugin
+```bash
+@agent-cc-manager "Create plugin: my-plugin
+- Category: [frontend|backend|devops|etc]
+- Resources: [commands/agents/skills/hooks]
+- Dependencies: [other plugins]"
+```
+**Then**: Reference `Skill("moai-cc-mcp-plugins")` for plugin patterns
+
 ### Verify All Standards
 ```bash
 @agent-cc-manager "Run full standards verification across .claude/"
 ```
 **Result**: Report of violations + fixes
+
+### Validate Plugin
+```bash
+@agent-cc-manager "Validate plugin: my-plugin"
+```
+**Result**: Detailed validation report + fix suggestions
 
 ### Setup Project Claude Code
 ```bash
