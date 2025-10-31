@@ -1,30 +1,323 @@
 ---
-title: /alfred:0-project
-description: /alfred:0-project 가이드
+title: /alfred:0-project - 프로젝트 초기화
+description: MoAI-ADK 프로젝트 초기화 명령어 상세 가이드
 ---
 
-# /alfred:0-project
+# /alfred:0-project - 프로젝트 초기화
 
-이 페이지는 현재 작성 중입니다.
+프로젝트 초기화는 MoAI-ADK 워크플로우의 첫 번째 단계입니다. 새로운 프로젝트를 생성하고 기본 구조를 설정합니다.
 
 ## 개요
 
-/alfred:0-project에 대한 자세한 내용은 곧 업데이트될 예정입니다.
+**목적**: 새로운 MoAI-ADK 프로젝트 초기화 및 Alfred SuperAgent 설정
 
-## 주요 특징
+**실행 위치**: 프로젝트 루트 디렉토리
 
-- 특징 1
-- 특징 2
-- 특징 3
+**예상 시간**: 2-3분
 
-## 사용법
+**출력**: 프로젝트 메타데이터, `.moai/` 디렉토리 구조, Claude Code 설정
+
+---
+
+## 기본 사용법
+
+Claude Code에서:
+
+```
+/alfred:0-project
+```
+
+또는 더 자세한 프로젝트 정보를 지정하려면:
+
+```
+/alfred:0-project --name "my-awesome-project" --language python --mode personal
+```
+
+---
+
+## 초기화 프로세스
+
+### Step 1: 프로젝트 정보 수집 (15초)
+
+Alfred가 물어볼 질문들:
+
+| # | 질문 | 예시 | 필수 |
+|---|------|------|------|
+| 1 | **프로젝트 이름** | `ecommerce-api` | ✅ |
+| 2 | **프로젝트 설명** | `RESTful API for online store` | ✅ |
+| 3 | **주요 개발 언어** | `python` | ✅ |
+| 4 | **작업 모드** | `personal` 또는 `team` | ✅ |
+| 5 | **대화 언어** | `ko` (Korean) | ✅ |
+
+**입력 예시**:
+
+```
+프로젝트 이름: ecommerce-api
+프로젝트 설명: E-commerce platform with order management and payment processing
+주요 언어: python
+작업 모드: team
+대화 언어: ko
+```
+
+### Step 2: 디렉토리 생성 (20초)
+
+Alfred가 생성하는 디렉토리 구조:
+
+```
+ecommerce-api/
+├── .moai/                          # MoAI-ADK 프로젝트 설정
+│   ├── config.json                 # 프로젝트 메타데이터
+│   ├── specs/                      # SPEC 문서들
+│   │   └── SPEC-INIT-001/          # 초기 SPEC
+│   │       ├── spec.md
+│   │       ├── plan.md
+│   │       └── acceptance.md
+│   ├── docs/                       # 구현 가이드 및 전략
+│   │   └── .gitkeep
+│   ├── reports/                    # 분석 리포트
+│   │   └── .gitkeep
+│   └── memory/                     # Alfred 메모리 (세션 상태)
+│       └── .gitkeep
+│
+├── .claude/                        # Claude Code 설정
+│   ├── CLAUDE.md                   # 프로젝트 AI 가이드
+│   ├── commands/                   # 사용자 정의 슬래시 명령어
+│   │   └── .gitkeep
+│   ├── agents/                     # 특화된 sub-agents
+│   │   └── .gitkeep
+│   ├── skills/                     # 재사용 가능한 skills
+│   │   └── .gitkeep
+│   └── hooks/                      # 자동 트리거 (Pre/Post tooluse 등)
+│       └── .gitkeep
+│
+├── src/                            # 소스 코드
+│   └── __init__.py
+│
+├── tests/                          # 테스트 코드
+│   └── __init__.py
+│
+├── README.md                       # 프로젝트 소개
+├── CHANGELOG.md                    # 버전 기록
+├── .gitignore                      # Git 무시 규칙
+├── .pre-commit-config.yaml         # Pre-commit 훅 설정
+└── pyproject.toml                  # Python 프로젝트 설정
+```
+
+### Step 3: 설정 파일 작성 (30초)
+
+#### config.json
+```json
+{
+  "project": {
+    "name": "ecommerce-api",
+    "description": "E-commerce platform with order management",
+    "version": "0.1.0",
+    "language": "python"
+  },
+  "workflow": {
+    "mode": "team",
+    "git_provider": "github"
+  },
+  "language": {
+    "conversation_language": "ko",
+    "conversation_language_name": "Korean"
+  },
+  "team": {
+    "owner": "Your Name",
+    "email": "your.email@example.com"
+  }
+}
+```
+
+#### CLAUDE.md (프로젝트 AI 가이드)
+```markdown
+# ecommerce-api - Project AI Guide
+
+**Framework**: MoAI-ADK (SPEC-First TDD)
+**Language**: Python 3.11+
+**Conversation**: Korean
+
+## Core Directives
+
+1. **SPEC-First**: All features start with SPEC documents
+2. **TDD**: RED → GREEN → REFACTOR
+3. **Traceability**: @TAG system links code, tests, docs
+4. **Quality**: TRUST 5 principles enforced
+```
+
+### Step 4: Git 초기화 (10초)
 
 ```bash
-# 예제 명령어
-# 상세 사용법은 곧 업데이트됩니다
+git init
+git add .
+git commit -m "init: Initialize MoAI-ADK project structure"
+git branch -M main
 ```
+
+### Step 5: Alfred 준비 (10초)
+
+Alfred가 프로젝트 메모리 초기화:
+- 프로젝트 메타데이터 캐싱
+- 언어 설정 적용
+- 워크플로우 상태 초기화
+
+---
+
+## 생성되는 파일 상세
+
+### 1. .moai/config.json
+프로젝트 전체 설정을 관리합니다.
+
+**주요 섹션**:
+- `project`: 프로젝트 이름, 설명, 버전
+- `workflow`: 작업 모드, Git 프로바이더
+- `language`: 대화 언어, 지원 언어
+- `team`: 팀 정보, 권한 설정
+
+### 2. .claude/CLAUDE.md
+Alfred의 행동 지침서입니다.
+
+**내용**:
+- 프로젝트 소개
+- Alfred 코어 지시사항
+- 팀 규칙
+- 의사결정 원칙
+
+### 3. .moai/specs/SPEC-INIT-001/
+초기 SPEC 템플릿입니다.
+
+**파일**:
+- `spec.md`: EARS 형식 요구사항
+- `plan.md`: 구현 계획
+- `acceptance.md`: 수용 기준
+
+---
+
+## 설정 옵션
+
+### 프로젝트 모드
+
+| 모드 | 설명 | 대상 |
+|------|------|------|
+| **personal** | 개인 프로젝트 | 혼자 작업하는 개발자 |
+| **team** | 팀 프로젝트 | 여러 명의 팀 멤버 |
+
+### 지원하는 언어
+
+| 언어 | 버전 | 비고 |
+|------|------|------|
+| Python | 3.11+ | 권장 (MoAI-ADK 제작 언어) |
+| TypeScript | 5.0+ | JavaScript 프로젝트용 |
+| Go | 1.20+ | 성능이 중요한 프로젝트 |
+| Rust | 1.70+ | 시스템 프로그래밍 |
+| Java | 17+ | 엔터프라이즈 프로젝트 |
+
+### 대화 언어
+
+| 언어 | 코드 | 지원 |
+|------|------|------|
+| Korean | `ko` | ✅ |
+| English | `en` | ✅ |
+| Japanese | `ja` | ✅ |
+| Chinese | `zh` | ✅ |
+| Spanish | `es` | ✅ |
+
+---
+
+## 초기화 후 확인 사항
+
+### ✅ 체크리스트
+
+초기화 후 다음을 확인하세요:
+
+```bash
+# 1. 디렉토리 구조 확인
+ls -la
+
+# 2. .moai/config.json 검증
+cat .moai/config.json
+
+# 3. Git 상태 확인
+git status
+
+# 4. 첫 번째 SPEC 확인
+cat .moai/specs/SPEC-INIT-001/spec.md
+```
+
+### ⚠️ 일반적인 문제
+
+**문제**: "Git이 초기화되지 않음"
+
+```bash
+# 해결: Git 수동 초기화
+git init
+git add .
+git commit -m "init: Initialize project"
+```
+
+**문제**: "Python 버전 호환성"
+
+```bash
+# 확인: Python 버전 확인
+python --version
+
+# 해결: Python 3.11+ 필요
+pyenv install 3.13
+pyenv local 3.13
+```
+
+---
 
 ## 다음 단계
 
-- [홈으로](/ko)
-- [문서 개요](/ko/introduction/overview)
+초기화가 완료되면:
+
+1. **[/alfred:1-plan 실행](/ko/cli/alfred-1-plan)** - 첫 번째 기능 SPEC 작성
+2. **[README.md 작성](/ko/getting-started/first-project)** - 프로젝트 문서 작성
+3. **[팀 설정](** - 팀 권한 및 규칙 정의 (team 모드인 경우)
+
+---
+
+## 고급 사용법
+
+### 프로젝트 초기화 건너뛰기
+
+이미 MoAI-ADK 프로젝트가 있는 경우:
+
+```bash
+# 기존 프로젝트에서 Alfred 시작
+cd existing-project
+claude
+/alfred:1-plan "새 기능"
+```
+
+### 여러 프로젝트 관리
+
+다른 프로젝트로 전환:
+
+```bash
+cd ../another-project
+claude
+```
+
+각 프로젝트는 독립적인 `.moai/` 디렉토리를 가집니다.
+
+### 초기화 재실행
+
+프로젝트를 완전히 재초기화:
+
+```bash
+# 주의: 기존 .moai/ 디렉토리 백업
+cp -r .moai/ .moai.backup
+
+# Alfred에서
+/alfred:0-project --reset
+```
+
+---
+
+## 참고 자료
+
+- [MoAI-ADK 소개](/ko/introduction/overview)
+- [아키텍처 설명](/ko/introduction/architecture)
+- [다음 명령어: /alfred:1-plan](/ko/cli/alfred-1-plan)
