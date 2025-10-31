@@ -39,7 +39,6 @@ def handle_user_prompt_submit(payload: HookPayload) -> HookResult:
     context_files = get_jit_context(user_prompt, cwd)
 
     # Command execution logging (DEBUG feature for tracking invocations)
-    # @CODE:HOOKS-COMMAND-LOGGING-001
     if user_prompt.startswith("/alfred:"):
         try:
             log_dir = Path(cwd) / ".moai" / "logs"

@@ -58,6 +58,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from utils.timeout import CrossPlatformTimeout, TimeoutError as PlatformTimeoutError
+
 from core import HookResult
 from handlers import (
     handle_notification,
@@ -74,11 +76,6 @@ from handlers import (
 HOOKS_DIR = Path(__file__).parent
 if str(HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(HOOKS_DIR))
-
-
-class HookTimeoutError(Exception):
-    """Hook execution timeout exception"""
-    pass
 
 
 def _hook_timeout_handler(signum, frame):
@@ -175,7 +172,7 @@ def main() -> None:
             # Return valid Hook response even on JSON parse error
             error_response: dict[str, Any] = {
                 "continue": True,
-                "hookSpecificOutput": {"error": f"JSON parse error: {e}"}
+                "hookSpecificOutput": {"error": f"JSON parse error: {e}"},
             }
             print(json.dumps(error_response))
             print(f"JSON parse error: {e}", file=sys.stderr)
@@ -184,17 +181,17 @@ def main() -> None:
             # Return valid Hook response even on unexpected error
             error_response: dict[str, Any] = {
                 "continue": True,
-                "hookSpecificOutput": {"error": f"Hook error: {e}"}
+                "hookSpecificOutput": {"error": f"Hook error: {e}"},
             }
             print(json.dumps(error_response))
             print(f"Unexpected error: {e}", file=sys.stderr)
             sys.exit(1)
 
-    except HookTimeoutError:
+    except PlatformTimeoutError:
         # CRITICAL: Hook took too long - return minimal valid response to prevent Claude Code freeze
         timeout_response: dict[str, Any] = {
             "continue": True,
-            "systemMessage": "⚠️ Hook execution timeout - continuing without session info"
+            "systemMessage": "⚠️ Hook execution timeout - continuing without session info",
         }
         print(json.dumps(timeout_response))
         print("Hook timeout after 5 seconds", file=sys.stderr)
@@ -202,7 +199,7 @@ def main() -> None:
 
     finally:
         # Always cancel the alarm to prevent signal leakage
-        signal.alarm(0)
+        timeout.cancel()
 
 
 if __name__ == "__main__":

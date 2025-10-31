@@ -6,7 +6,7 @@ SessionStart, SessionEnd event handling
 
 from core import HookPayload, HookResult
 from core.checkpoint import list_checkpoints
-from core.project import count_specs, detect_language, get_git_info, get_package_version_info
+from core.project import count_specs, get_git_info, get_package_version_info
 
 
 def handle_session_start(payload: HookPayload) -> HookResult:
@@ -25,14 +25,14 @@ def handle_session_start(payload: HookPayload) -> HookResult:
 
     Message Format:
         🚀 MoAI-ADK Session Started
-           Language: {language}
+           [Version: {version}] - optional if version check fails
            [Branch: {branch} ({commit hash})] - optional if git fails
            [Changes: {Number of Changed Files}] - optional if git fails
            [SPEC Progress: {Complete}/{Total} ({percent}%)] - optional if specs fail
            [Checkpoints: {number} available] - optional if checkpoint list fails
 
     Graceful Degradation Strategy:
-        - CRITICAL: Language detection (must succeed - no try-except)
+        - OPTIONAL: Version info (skip if timeout/failure)
         - OPTIONAL: Git info (skip if timeout/failure)
         - OPTIONAL: SPEC progress (skip if timeout/failure)
         - OPTIONAL: Checkpoint list (skip if timeout/failure)
@@ -65,9 +65,6 @@ def handle_session_start(payload: HookPayload) -> HookResult:
         return HookResult(continue_execution=True)
 
     cwd = payload.get("cwd", ".")
-
-    # CRITICAL: Language detection - MUST succeed (no try-except)
-    language = detect_language(cwd)
 
     # OPTIONAL: Git info - skip if timeout/failure
     git_info = {}
@@ -119,13 +116,17 @@ def handle_session_start(payload: HookPayload) -> HookResult:
             # Check if this is a major version update
             if version_info.get("is_major_update"):
                 # Major version warning
-                lines.append(f"   ⚠️  Major version update available: {version_info['current']} → {version_info['latest']}")
+                lines.append(
+                    f"   ⚠️  Major version update available: {version_info['current']} → {version_info['latest']}"
+                )
                 lines.append("   Breaking changes detected. Review release notes:")
                 if version_info.get("release_notes_url"):
                     lines.append(f"   📝 {version_info['release_notes_url']}")
             else:
                 # Regular update
-                lines.append(f"   🗿 MoAI-ADK Ver: {version_info['current']} → {version_info['latest']} available ✨")
+                lines.append(
+                    f"   🗿 MoAI-ADK Ver: {version_info['current']} → {version_info['latest']} available ✨"
+                )
                 if version_info.get("release_notes_url"):
                     lines.append(f"   📝 Release Notes: {version_info['release_notes_url']}")
 
@@ -136,8 +137,6 @@ def handle_session_start(payload: HookPayload) -> HookResult:
             # No update available - show current version only
             lines.append(f"   🗿 MoAI-ADK Ver: {version_info['current']}")
 
-    # Add language info
-    lines.append(f"   🐍 Language: {language}")
 
     # Add Git info only if available (not degraded)
     if git_info:

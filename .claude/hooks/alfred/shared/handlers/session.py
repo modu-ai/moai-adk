@@ -6,7 +6,7 @@ SessionStart, SessionEnd event handling
 
 from core import HookPayload, HookResult
 from core.checkpoint import list_checkpoints
-from core.project import count_specs, detect_language, get_git_info, get_package_version_info
+from core.project import count_specs, get_git_info, get_package_version_info
 
 
 def handle_session_start(payload: HookPayload) -> HookResult:
@@ -25,14 +25,14 @@ def handle_session_start(payload: HookPayload) -> HookResult:
 
     Message Format:
         🚀 MoAI-ADK Session Started
-           Language: {language}
+           [Version: {version}] - optional if version check fails
            [Branch: {branch} ({commit hash})] - optional if git fails
            [Changes: {Number of Changed Files}] - optional if git fails
            [SPEC Progress: {Complete}/{Total} ({percent}%)] - optional if specs fail
            [Checkpoints: {number} available] - optional if checkpoint list fails
 
     Graceful Degradation Strategy:
-        - CRITICAL: Language detection (must succeed - no try-except)
+        - OPTIONAL: Version info (skip if timeout/failure)
         - OPTIONAL: Git info (skip if timeout/failure)
         - OPTIONAL: SPEC progress (skip if timeout/failure)
         - OPTIONAL: Checkpoint list (skip if timeout/failure)
@@ -66,9 +66,6 @@ def handle_session_start(payload: HookPayload) -> HookResult:
 
     cwd = payload.get("cwd", ".")
 
-    # CRITICAL: Language detection - MUST succeed (no try-except)
-    language = detect_language(cwd)
-
     # OPTIONAL: Git info - skip if timeout/failure
     git_info = {}
     try:
@@ -78,7 +75,7 @@ def handle_session_start(payload: HookPayload) -> HookResult:
         pass
 
     # OPTIONAL: SPEC progress - skip if timeout/failure
-    specs = {"completed": 0, "total": 0, "percentage": 0, "deprecated": 0}
+    specs = {"completed": 0, "total": 0, "percentage": 0}
     try:
         specs = count_specs(cwd)
     except Exception:
@@ -136,8 +133,6 @@ def handle_session_start(payload: HookPayload) -> HookResult:
             # No update available - show current version only
             lines.append(f"   🗿 MoAI-ADK Ver: {version_info['current']}")
 
-    # Add language info
-    lines.append(f"   🐍 Language: {language}")
 
     # Add Git info only if available (not degraded)
     if git_info:
@@ -160,11 +155,7 @@ def handle_session_start(payload: HookPayload) -> HookResult:
 
     # Add SPEC progress only if available (not degraded) - at the bottom
     if specs["total"] > 0:
-        progress_msg = f"   📋 SPEC Progress: {spec_progress} ({specs['percentage']}%)"
-        # Add deprecated SPEC count if any exist
-        if specs.get("deprecated", 0) > 0:
-            progress_msg += f" - {specs['deprecated']} deprecated"
-        lines.append(progress_msg)
+        lines.append(f"   📋 SPEC Progress: {spec_progress} ({specs['percentage']}%)")
 
     system_message = "\n".join(lines)
 

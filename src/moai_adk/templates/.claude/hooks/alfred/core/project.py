@@ -5,7 +5,6 @@ Project information inquiry (language, Git, SPEC progress, etc.)
 """
 
 import json
-import signal
 import socket
 import subprocess
 from contextlib import contextmanager
@@ -70,6 +69,7 @@ def find_project_root(start_path: str | Path = ".") -> Path:
 
 class TimeoutError(Exception):
     """Signal-based timeout exception"""
+
     pass
 
 
@@ -86,6 +86,7 @@ def timeout_handler(seconds: int):
     Raises:
         TimeoutError: If operation exceeds timeout
     """
+
     def _handle_timeout(signum, frame):
         raise TimeoutError(f"Operation timed out after {seconds} seconds")
 
@@ -95,7 +96,7 @@ def timeout_handler(seconds: int):
     try:
         yield
     finally:
-        signal.alarm(0)  # Disable alarm
+        timeout.cancel()  # Disable alarm
         signal.signal(signal.SIGALRM, old_handler)
 
 
@@ -427,19 +428,10 @@ def get_version_check_config(cwd: str) -> dict[str, Any]:
         - REFACTOR: Add validation and error handling
     """
     # TTL mapping by frequency
-    TTL_BY_FREQUENCY = {
-        "always": 0,
-        "daily": 24,
-        "weekly": 168,
-        "never": float('inf')
-    }
+    ttl_by_frequency = {"always": 0, "daily": 24, "weekly": 168, "never": float("inf")}
 
     # Default configuration
-    defaults = {
-        "enabled": True,
-        "frequency": "daily",
-        "cache_ttl_hours": 24
-    }
+    defaults = {"enabled": True, "frequency": "daily", "cache_ttl_hours": 24}
 
     # Find project root to ensure we read config from correct location
     project_root = find_project_root(cwd)
@@ -461,21 +453,17 @@ def get_version_check_config(cwd: str) -> dict[str, Any]:
         frequency = moai_config.get("update_check_frequency", defaults["frequency"])
 
         # Validate frequency
-        if frequency not in TTL_BY_FREQUENCY:
+        if frequency not in ttl_by_frequency:
             frequency = defaults["frequency"]
 
         # Calculate TTL from frequency
-        cache_ttl_hours = TTL_BY_FREQUENCY[frequency]
+        cache_ttl_hours = ttl_by_frequency[frequency]
 
         # Allow explicit cache_ttl_hours override
         if "cache_ttl_hours" in version_check_config:
             cache_ttl_hours = version_check_config["cache_ttl_hours"]
 
-        return {
-            "enabled": enabled,
-            "frequency": frequency,
-            "cache_ttl_hours": cache_ttl_hours
-        }
+        return {"enabled": enabled, "frequency": frequency, "cache_ttl_hours": cache_ttl_hours}
 
     except (OSError, json.JSONDecodeError, KeyError):
         # Config read or parse error - return defaults
@@ -613,13 +601,13 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
         if spec and spec.loader:
             version_cache_module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(version_cache_module)
-            VersionCache = version_cache_module.VersionCache
+            version_cache_class = version_cache_module.VersionCache
         else:
             # Skip caching if module can't be loaded
-            VersionCache = None
-    except (ImportError, OSError) as e:
+            version_cache_class = None
+    except (ImportError, OSError):
         # Graceful degradation: skip caching on import errors
-        VersionCache = None
+        version_cache_class = None
 
     # 1. Find project root (ensure cache is always in correct location)
     # This prevents creating .moai/cache in wrong locations when hooks run
@@ -628,7 +616,7 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
 
     # 2. Initialize cache (skip if VersionCache couldn't be imported)
     cache_dir = project_root / CACHE_DIR_NAME
-    version_cache = VersionCache(cache_dir) if VersionCache else None
+    version_cache = version_cache_class(cache_dir) if version_cache_class else None
 
     # 2. Get current installed version first (needed for cache validation)
     current_version = "unknown"
@@ -641,7 +629,7 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
             "current": "dev",
             "latest": "unknown",
             "update_available": False,
-            "upgrade_command": ""
+            "upgrade_command": "",
         }
 
     # 3. Try to load from cache (fast path with version validation)
@@ -664,7 +652,7 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
         "current": current_version,
         "latest": "unknown",
         "update_available": False,
-        "upgrade_command": ""
+        "upgrade_command": "",
     }
 
     # 5. Check if version check is enabled in config
@@ -695,7 +683,9 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
                     release_url = project_urls.get("Changelog", "")
                     if not release_url:
                         # Fallback to GitHub releases URL pattern
-                        release_url = f"https://github.com/modu-ai/moai-adk/releases/tag/v{result['latest']}"
+                        release_url = (
+                            f"https://github.com/modu-ai/moai-adk/releases/tag/v{result['latest']}"
+                        )
                     result["release_notes_url"] = release_url
                 except (KeyError, AttributeError, TypeError):
                     result["release_notes_url"] = None
@@ -722,7 +712,9 @@ def get_package_version_info(cwd: str = ".") -> dict[str, Any]:
                 result["upgrade_command"] = f"uv pip install --upgrade moai-adk>={result['latest']}"
 
                 # Detect major version change
-                result["is_major_update"] = is_major_version_change(result["current"], result["latest"])
+                result["is_major_update"] = is_major_version_change(
+                    result["current"], result["latest"]
+                )
             else:
                 result["is_major_update"] = False
         except (ValueError, AttributeError):

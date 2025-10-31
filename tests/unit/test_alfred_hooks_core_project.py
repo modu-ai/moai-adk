@@ -1,6 +1,9 @@
 """Tests for .claude/hooks/alfred/core/project.py module
 
 프로젝트 언어 감지, Git 정보, SPEC 카운팅 테스트
+
+NOTE: These tests require fixing the relative import structure in .claude/hooks/alfred/
+Currently skipped due to import path issues - requires refactoring the shared/handlers modules
 """
 import importlib.util
 import json
@@ -15,17 +18,22 @@ def _load_project_module(module_name: str = "project_module"):
     """Dynamically load core/project.py as a fresh module."""
     repo_root = Path(__file__).resolve().parents[2]
 
-    # Add hooks directory to sys.path
+    # Add hooks directory and shared directory to sys.path for relative imports
     hooks_dir = repo_root / "src" / "moai_adk" / "templates" / ".claude" / "hooks" / "alfred"
-    if str(hooks_dir) not in sys.path:
-        sys.path.insert(0, str(hooks_dir))
+    shared_dir = hooks_dir / "shared"
+
+    for path_entry in [str(hooks_dir), str(shared_dir), str(hooks_dir.parent)]:
+        if path_entry not in sys.path:
+            sys.path.insert(0, path_entry)
 
     module_path = hooks_dir / "core" / "project.py"
 
     spec = importlib.util.spec_from_file_location(module_name, module_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Failed to load module from {module_path}")
+
     module = importlib.util.module_from_spec(spec)
     sys.modules[module_name] = module
-    assert spec.loader is not None
     spec.loader.exec_module(module)
     return module
 
@@ -228,9 +236,9 @@ def test_get_package_version_includes_release_url(tmp_path: Path, project_module
     When: get_package_version_info() is called
     Then: Should include release_notes_url in result dict
     """
-    from unittest.mock import patch, MagicMock
-    import json
     import io
+    import json
+    from unittest.mock import MagicMock, patch
 
     # Mock PyPI response with release notes URL
     pypi_data = {
@@ -265,9 +273,9 @@ def test_get_package_version_includes_major_flag(tmp_path: Path, project_module)
     When: get_package_version_info() is called
     Then: Should include is_major_update: True
     """
-    from unittest.mock import patch, MagicMock
-    import json
     import io
+    import json
+    from unittest.mock import MagicMock, patch
 
     # Mock current version as 0.8.1
     with patch('importlib.metadata.version', return_value='0.8.1'):

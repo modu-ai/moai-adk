@@ -273,3 +273,160 @@ class TestLanguageDetectorLaravel:
 
         # Then
         assert result == "php"
+
+
+# @TEST:LANG-002 | SPEC: SPEC-LANGUAGE-DETECTION-001.md
+class TestLanguageDetectorPackageManager:
+    """Test package manager detection for JavaScript/TypeScript projects"""
+
+    def test_detect_package_manager_bun(self, tmp_project_dir: Path):
+        """Should detect Bun from bun.lockb file"""
+        # Given: bun.lockb file
+        (tmp_project_dir / "bun.lockb").write_text("bun lock")
+        (tmp_project_dir / "package.json").write_text('{"name": "test"}')
+
+        # When: detect package manager
+        detector = LanguageDetector()
+        result = detector.detect_package_manager(tmp_project_dir)
+
+        # Then: should return 'bun'
+        assert result == "bun"
+
+    def test_detect_package_manager_pnpm(self, tmp_project_dir: Path):
+        """Should detect pnpm from pnpm-lock.yaml file"""
+        # Given
+        (tmp_project_dir / "pnpm-lock.yaml").write_text("lockfileVersion: 5.4")
+        (tmp_project_dir / "package.json").write_text('{"name": "test"}')
+
+        # When
+        detector = LanguageDetector()
+        result = detector.detect_package_manager(tmp_project_dir)
+
+        # Then
+        assert result == "pnpm"
+
+    def test_detect_package_manager_yarn(self, tmp_project_dir: Path):
+        """Should detect Yarn from yarn.lock file"""
+        # Given
+        (tmp_project_dir / "yarn.lock").write_text("# yarn lockfile v1")
+        (tmp_project_dir / "package.json").write_text('{"name": "test"}')
+
+        # When
+        detector = LanguageDetector()
+        result = detector.detect_package_manager(tmp_project_dir)
+
+        # Then
+        assert result == "yarn"
+
+    def test_detect_package_manager_npm(self, tmp_project_dir: Path):
+        """Should detect npm from package-lock.json file"""
+        # Given
+        (tmp_project_dir / "package-lock.json").write_text('{"lockfileVersion": 3}')
+        (tmp_project_dir / "package.json").write_text('{"name": "test"}')
+
+        # When
+        detector = LanguageDetector()
+        result = detector.detect_package_manager(tmp_project_dir)
+
+        # Then
+        assert result == "npm"
+
+    def test_detect_package_manager_priority_bun_over_yarn(self, tmp_project_dir: Path):
+        """Should prioritize bun over yarn when both exist"""
+        # Given: both bun.lockb and yarn.lock
+        (tmp_project_dir / "bun.lockb").write_text("bun lock")
+        (tmp_project_dir / "yarn.lock").write_text("# yarn")
+        (tmp_project_dir / "package.json").write_text('{}')
+
+        # When
+        detector = LanguageDetector()
+        result = detector.detect_package_manager(tmp_project_dir)
+
+        # Then: bun has higher priority
+        assert result == "bun"
+
+    def test_detect_package_manager_returns_npm_default(self, tmp_project_dir: Path):
+        """Should return npm as default when no lock files found"""
+        # Given: only package.json, no lock files
+        (tmp_project_dir / "package.json").write_text('{"name": "test"}')
+
+        # When
+        detector = LanguageDetector()
+        result = detector.detect_package_manager(tmp_project_dir)
+
+        # Then: default to npm
+        assert result == "npm"
+
+
+# @TEST:LANG-002 | SPEC: SPEC-LANGUAGE-DETECTION-001.md
+class TestLanguageDetectorWorkflowTemplate:
+    """Test workflow template path selection"""
+
+    def test_get_workflow_template_path_python(self, tmp_project_dir: Path):
+        """Should return correct path for Python workflow"""
+        detector = LanguageDetector()
+        result = detector.get_workflow_template_path("python")
+
+        # Should return path containing 'python-tag-validation.yml'
+        assert "python-tag-validation.yml" in str(result)
+        assert result.endswith("python-tag-validation.yml")
+
+    def test_get_workflow_template_path_javascript(self, tmp_project_dir: Path):
+        """Should return correct path for JavaScript workflow"""
+        detector = LanguageDetector()
+        result = detector.get_workflow_template_path("javascript")
+
+        assert "javascript-tag-validation.yml" in str(result)
+        assert result.endswith("javascript-tag-validation.yml")
+
+    def test_get_workflow_template_path_typescript(self, tmp_project_dir: Path):
+        """Should return correct path for TypeScript workflow"""
+        detector = LanguageDetector()
+        result = detector.get_workflow_template_path("typescript")
+
+        assert "typescript-tag-validation.yml" in str(result)
+        assert result.endswith("typescript-tag-validation.yml")
+
+    def test_get_workflow_template_path_go(self, tmp_project_dir: Path):
+        """Should return correct path for Go workflow"""
+        detector = LanguageDetector()
+        result = detector.get_workflow_template_path("go")
+
+        assert "go-tag-validation.yml" in str(result)
+        assert result.endswith("go-tag-validation.yml")
+
+    def test_get_workflow_template_path_unsupported_language(self, tmp_project_dir: Path):
+        """Should raise ValueError for unsupported language"""
+        detector = LanguageDetector()
+
+        # RED: Should raise ValueError for unsupported language
+        try:
+            detector.get_workflow_template_path("cobol")
+            assert False, "Should have raised ValueError"
+        except ValueError as e:
+            assert "cobol" in str(e).lower()
+
+    def test_get_supported_languages_for_workflows(self, tmp_project_dir: Path):
+        """Should return list of languages with dedicated workflow templates"""
+        detector = LanguageDetector()
+        result = detector.get_supported_languages_for_workflows()
+
+        # Should return exactly 15 languages (extended support)
+        assert len(result) == 15
+        # Check core languages
+        assert "python" in result
+        assert "javascript" in result
+        assert "typescript" in result
+        assert "go" in result
+        # Check extended languages
+        assert "ruby" in result
+        assert "php" in result
+        assert "java" in result
+        assert "rust" in result
+        assert "dart" in result
+        assert "swift" in result
+        assert "kotlin" in result
+        assert "csharp" in result
+        assert "c" in result
+        assert "cpp" in result
+        assert "shell" in result

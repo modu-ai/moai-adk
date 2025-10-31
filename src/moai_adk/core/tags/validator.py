@@ -85,7 +85,7 @@ class ValidationIssue:
             "tag": self.tag,
             "message": self.message,
             "locations": [
-                {"file": f, "line": l} for f, l in self.locations
+                {"file": f, "line": line} for f, line in self.locations
             ],
             "suggestion": self.suggestion
         }

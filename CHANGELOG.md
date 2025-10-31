@@ -7,109 +7,449 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [v1.0.0-rc1] - 2025-10-31 (Enterprise Plugin Ecosystem Complete)
-<!-- @SPEC:V1-001 -->
+## [v0.11.1] - 2025-10-31 (11 New Language Workflow Support)
+<!-- @DOC:LANGUAGE-DETECTION-EXTENDED-001 -->
 
-### 📚 Documentation | 문서화
+### 🎯 주요 변경사항 | Key Changes
 
-**Advanced Topics 추가**:
-- 📖 Team Mode & Collaboration: 팀 환경에서의 GitFlow 및 협업 가이드
-- 📖 SPEC Patterns & Best Practices: 효과적인 SPEC 작성 패턴
-- 📖 Performance & Security: 성능 최적화 및 보안 가이드라인
+**Feature Enhancement | 기능 추가**:
+- 🚀 **15개 언어 CI/CD 워크플로우 지원**: 기존 4개 언어에서 15개 언어로 확장
+  - 기존: Python, JavaScript, TypeScript, Go
+  - 신규 추가: Ruby, PHP, Java, Rust, Dart, Swift, Kotlin, C#, C, C++, Shell
+  - 총 15개 언어 전담 GitHub Actions 워크플로우 템플릿 제공
 
-**Getting Started Guides**:
-- 📖 5-Step Project Initialization: 처음부터 끝까지의 프로젝트 설정
-- 📖 First SPEC Document: EARS 형식 작성 가이드
-- 📖 TDD Implementation Workflow: RED→GREEN→REFACTOR 사이클
-- 📖 Document Synchronization: `/alfred:3-sync` 활용법
+### 🔧 Technical Details
 
-**Claude Code Integration**:
-- 📖 Plugin Documentation: 플러그인 구조 및 검증 방법
-- 📖 Plugin.json Schema: 플러그인 매니페스트 상세 명세
-- 📖 Plugin CLI Commands: `/plugin install`, `/plugin validate` 등
+**New Workflow Templates** (11개):
+- `ruby-tag-validation.yml`: RSpec, Rubocop, bundle
+- `php-tag-validation.yml`: PHPUnit, PHPCS, composer
+- `java-tag-validation.yml`: JUnit 5, Jacoco, Maven/Gradle auto-detection
+- `rust-tag-validation.yml`: cargo test, clippy, rustfmt
+- `dart-tag-validation.yml`: flutter test, dart analyze
+- `swift-tag-validation.yml`: XCTest, SwiftLint (macOS runner)
+- `kotlin-tag-validation.yml`: JUnit 5, ktlint, Gradle
+- `csharp-tag-validation.yml`: xUnit, StyleCop, dotnet CLI
+- `c-tag-validation.yml`: gcc/clang, cppcheck, CMake
+- `cpp-tag-validation.yml`: g++/clang++, Google Test, cpplint
+- `shell-tag-validation.yml`: shellcheck, bats-core
 
-**TAG System Updates**:
-- ✅ TAG 시스템 종합 검증: 323개 CODE TAG, 105개 SPEC TAG
-- ✅ 추적성 92.4% 달성
-- ✅ 고아 TAG 분석 및 정책 수립
+**Extended LanguageDetector Class**:
+- `get_workflow_template_path(language)`: Get workflow template path for 15 languages (@CODE:LDE-WORKFLOW-PATH-001)
+- `detect_package_manager(path)`: Auto-detect package managers (bundle, composer, cargo, etc.) (@CODE:LDE-PKG-MGR-001)
+- `detect_build_tool(path, language)`: Auto-detect build tools (Maven, Gradle, CMake, etc.) (@CODE:LDE-BUILD-TOOL-001)
+- `get_supported_languages_for_workflows()`: Returns list of 15 supported languages (@CODE:LDE-SUPPORTED-LANGS-001)
 
-### 🎉 프로덕션 준비 완료 | Production Ready
+**Language Detection Priority** (SPEC-compliant):
+1. Rust → 2. Dart → 3. Swift → 4. Kotlin → 5. C# → 6. Java → 7. Ruby → 8. PHP
+9. Go → 10. Python → 11. TypeScript → 12. JavaScript → 13. C++ → 14. C → 15. Shell
 
-**5개 공식 Alfred Framework 플러그인 완성**:
-- ✅ PM Plugin: SPEC 문서 자동 생성 (EARS 패턴)
-- ✅ UI/UX Plugin: shadcn/ui 컴포넌트 자동 설정 (19개 컴포넌트)
-- ✅ Backend Plugin: FastAPI 프로젝트 초기화 (4개 데이터베이스)
-- ✅ Frontend Plugin: React 프로젝트 초기화 (4개 상태관리 라이브러리)
-- ✅ DevOps Plugin: Docker, CI/CD, Kubernetes 자동 설정
+### 🧪 Testing
 
-### 📊 품질 지표 | Quality Metrics
+**Test Coverage**: 34 unit tests, 100% passing ✅
+- 11 language detection tests (Ruby, PHP, Java, Rust, Dart, Swift, Kotlin, C#, C, C++, Shell)
+- 5 build tool detection tests (Maven, Gradle, CMake, SPM, dotnet)
+- 3 package manager detection tests (bundle, composer, cargo)
+- 4 priority conflict resolution tests (Kotlin vs Java, C++ vs C, Rust highest, Ruby vs Python)
+- 3 error handling tests (unknown language, unsupported workflow, no build tool)
+- 4 backward compatibility tests (Python, JS, TS, Go regression prevention)
+- 3 integration tests (workflow path retrieval, 15 languages count)
 
-**테스트 결과**:
-- ✅ 88/89 테스트 통과 (98.9%)
-  - PM: 17/18 (1개 v1.1.0 연기)
-  - UI/UX: 16/16
-  - Backend: 21/21
-  - Frontend: 22/22
-  - DevOps: 12/12
+**Coverage**: `detector.py` 67.09% line coverage
 
-**코드 품질**:
-- ✅ 타입 안전성: 0 오류 (mypy strict mode)
-- ✅ 보안: 0 취약점 (Bandit + pip-audit)
-- ✅ 테스트 커버리지: 94-100%
+### 📖 Documentation
 
-**TAG 시스템**:
-- ✅ 159개 CODE TAG
-- ✅ 101개 TEST TAG
-- ✅ TAG 시스템 건강도: HEALTHY
-- ✅ SPEC-V1-001 ↔ CODE ↔ TEST 추적성 100%
+**References**:
+- SPEC: @SPEC:LANGUAGE-DETECTION-EXTENDED-001
+- Tests: @TEST:LDE-EXTENDED-001
+- Code: @CODE:LDE-001-RUBY through @CODE:LDE-011-SHELL
+- GitHub Issue: #131 (11 language extension request)
 
-### 🚀 5개 플러그인 상세 | Plugin Details
+### 🚀 User Impact
 
-**PM Plugin** (1개 커맨드):
-- `/init-pm`: EARS SPEC 템플릿 자동 생성
-- 3개 템플릿 지원 (moai-spec, enterprise, agile)
-- YAML frontmatter + 5개 파일 자동 생성
+**Before (v0.11.0)**:
+- Workflow support: Python, JavaScript, TypeScript, Go only
+- Manual workflow setup required for other languages
 
-**UI/UX Plugin** (1개 커맨드):
-- `/setup-shadcn-ui`: shadcn/ui 컴포넌트 라이브러리
-- 3개 프레임워크 지원 (Next.js, React, Vite)
-- 19개 사전 구성 컴포넌트
+**After (v0.11.1)**:
+```bash
+# Ruby project
+$ moai-adk init
+Detected language: Ruby
+Generated: .github/workflows/ruby-tag-validation.yml
 
-**Backend Plugin** (3개 커맨드):
-- `/init-fastapi`: FastAPI 프로젝트 초기화
-- `/db-setup`: 데이터베이스 연결 설정
-- `/resource-crud`: REST API 자동 생성
-- 4개 데이터베이스 지원 (PostgreSQL, MySQL, SQLite, MongoDB)
+# Java project (Maven/Gradle auto-detection)
+$ moai-adk init
+Detected language: Java
+Build tool: Maven (pom.xml detected)
+Generated: .github/workflows/java-tag-validation.yml
+```
 
-**Frontend Plugin** (3개 커맨드):
-- `/init-react`: React 프로젝트 초기화
-- `/setup-state`: 상태 관리 설정 (Context, Zustand, Redux, Recoil)
-- `/setup-testing`: 테스팅 프레임워크 (Vitest, Jest)
+**Key Benefits**:
+- 🎯 Auto-detection for 15 languages
+- 🔧 Auto-selection of build tools (Maven vs Gradle, CMake, etc.)
+- ✅ Production-ready CI/CD workflows out-of-the-box
+- 🔄 Backward compatible (existing 4 languages unchanged)
 
-**DevOps Plugin** (3개 커맨드):
-- `/setup-docker`: Dockerfile & docker-compose 생성
-- `/setup-ci`: CI/CD 파이프라인 (GitHub Actions, GitLab CI, CircleCI)
-- `/setup-k8s`: Kubernetes 매니페스트 (Deployment, Service, Ingress)
+---
 
-### 📚 문서 | Documentation
+## [v0.11.0] - 2025-10-30 (Windows Compatibility - Cross-Platform Timeout Handler)
+<!-- @DOC:BUGFIX-001 -->
 
-- 📖 SPEC-V1-001: 엔터프라이즈 플러그인 생태계 명세
-- 📖 5개 플러그인 상세 개발 가이드
-- 📖 플러그인 아키텍처 및 확장성 가이드
-- 📖 TAG 시스템 검증 보고서
+### 🎯 주요 변경사항 | Key Changes
 
-### 🔄 주요 변경사항 | Breaking Changes
+**Bug Fix | 버그 수정**:
+- 🐛 **Windows Hook 실행 오류 (Critical)**: `signal.SIGALRM` Unix 전용 문제 해결
+  - 증상: Windows 10/11에서 모든 Hook 실행 실패 (AttributeError: module 'signal' has no attribute 'SIGALRM')
+  - 원인: POSIX 신호인 `signal.SIGALRM`이 Windows에서 미지원
+  - 해결: `CrossPlatformTimeout` 유틸리티 구현
+    - Windows: `threading.Timer` 기반 타임아웃
+    - Unix/Linux/macOS: `signal.SIGALRM` 기반 타임아웃 (기존 동작 유지)
+  - 영향: MoAI-ADK를 Windows에서도 완벽하게 사용 가능
+  - 성능: <10ms 오버헤드 (무시할 수 있는 수준)
 
-- ⚠️ Output Styles feature 제거 (EOL 2025-11-05)
-- ⚠️ 플러그인 기반 커스터마이제이션 권장 (hooks/skills/commands)
-- ⚠️ MCP 설정 .mcp.json으로 변경
+### 🔧 Technical Details
 
-### 🛡️ 보안 및 거버넌스 | Security & Governance
+**New Module**:
+- `src/moai_adk/templates/.claude/hooks/alfred/utils/timeout.py` (@CODE:BUGFIX-001)
+  - `CrossPlatformTimeout` class: 플랫폼별 타임아웃 처리
+  - `TimeoutError` exception: 타임아웃 예외
+  - 프로덕션 레벨 구현 (문서화, 에러 처리 포함)
 
-- 🔒 플러그인 권한 모델 (allowed-tools, denied-tools)
-- 🔒 Deny-by-default 정책
-- 🔒 Registry 관리 (NPM, PyPI)
-- 🔒 시크릿 관리 (OS Keychain, .env 파일)
+**Modified Files**:
+- 9개 hook 파일들에 `CrossPlatformTimeout` 통합
+  - `alfred_hooks.py` (main router)
+  - `core/project.py` (설정 읽기 타임아웃)
+  - `shared/core/project.py` (공유 유틸리티)
+  - 8개 standalone hook files (다양한 이벤트 처리)
+
+**Implementation Details**:
+- Windows 감지: `platform.system() == "Windows"`
+- Windows 타임아웃: Daemon thread로 타임아웃 실행
+- Unix 타임아웃: signal.SIGALRM 유지 (역호환성 100%)
+- Timeout 값: 5초 (global, 모든 hook에 적용)
+
+### 🧪 Testing
+
+**Test Coverage**: 47 unit tests, 100% passing ✅
+- Windows timeout handling (mocked)
+- Unix signal.SIGALRM timeout
+- Timeout cancellation
+- Exception propagation
+- Integration tests
+- Edge cases (zero timeout, negative timeout, nested timeouts)
+
+**Quality Metrics**:
+- Code Coverage: 91.67% (timeout.py)
+- No security issues detected (Bandit)
+- All thread safety checks passed
+- Cross-platform compatibility verified
+
+### ✅ Platform Support
+
+**Full Platform Coverage** (v0.11.0+):
+- ✅ **Windows** 10/11: First full support
+- ✅ **macOS**: No regression (signal.SIGALRM unchanged)
+- ✅ **Linux**: No regression (signal.SIGALRM unchanged)
+
+### 🔗 Related Issues
+
+- Closes #129: "Windows users blocked - signal.SIGALRM not available"
+- Fixes [SPEC-BUGFIX-001](https://github.com/modu-ai/moai-adk/blob/main/.moai/specs/SPEC-BUGFIX-001/spec.md)
+
+### 📝 Migration Guide
+
+**For Windows Users**:
+No action needed. Update to v0.11.0 and all hooks will work seamlessly.
+
+**For Existing Users**:
+- Backward compatible (no breaking changes)
+- Upgrade recommended to support Windows collaboration
+- Signal-based timeout behavior on Unix/Linux/macOS unchanged
+
+---
+
+## [v0.10.2] - 2025-10-30
+
+### Added
+- ✨ **Language-Aware CI/CD Workflows**: Auto-detection of project language (Python, JavaScript, TypeScript, Go)
+  - `src/moai_adk/templates/workflows/python-tag-validation.yml` - Python project CI/CD
+  - `src/moai_adk/templates/workflows/javascript-tag-validation.yml` - JavaScript project CI/CD
+  - `src/moai_adk/templates/workflows/typescript-tag-validation.yml` - TypeScript project CI/CD
+  - `src/moai_adk/templates/workflows/go-tag-validation.yml` - Go project CI/CD
+
+- ✨ **LanguageDetector Extension**: Package manager detection (npm, yarn, pnpm, bun)
+  - New methods: `detect_package_manager()`, `get_workflow_template_path()`
+  - Automatic workflow template selection based on language
+
+- ✨ **tdd-implementer Agent Enhancement**: Language-aware workflow generation
+  - Automatic language detection before CI/CD workflow creation
+  - Fallback handling for unsupported languages
+
+- 📚 **Comprehensive Documentation**:
+  - `.moai/docs/language-detection-guide.md` - Language detection concepts and API
+  - `.moai/docs/workflow-templates.md` - Language-specific workflow customization
+
+- 🧪 **Extensive Test Coverage** (67 tests, 95.56% coverage):
+  - Template creation and correctness tests
+  - Language detection scenario tests
+  - Workflow selection integration tests
+  - Error handling and edge case tests
+
+### Changed
+- Enhanced `.claude/agents/alfred/tdd-implementer.md` with Language-Aware Workflow Generation section
+
+### Technical Details
+- Related Issue: #131 (JavaScript 워크플로우 언어 감지)
+- Related SPEC: SPEC-LANGUAGE-DETECTION-001
+- Test Coverage: 95.56% (목표 85% 대비 112% 달성)
+- TRUST 5 Principles: 100% 준수
+- TAG Traceability: 13개 TAG, 100% 연결성 확인
+
+### Authors
+- 🎩 Alfred (MoAI-ADK SuperAgent)
+- 🪿 GOOS (Project Owner)
+
+---
+
+## [v0.7.1] - 2025-10-31 (Performance Optimization - SessionStart Hook Caching)
+<!-- @DOC:ENHANCE-PERF-001:CHANGELOG -->
+
+### 🎯 주요 변경사항 | Key Changes
+
+**Performance Enhancement | 성능 개선**:
+- ⚡ **SessionStart Hook 성능 최적화 (4,625x improvement)**: TTL 기반 캐싱으로 극적인 속도 향상
+  - 개선 전: 185ms (네트워크 호출 + Git 명령어)
+  - 개선 후: < 0.04ms (캐시 히트 시)
+  - 평균 개선: 185ms → < 20ms (캐시 워밍 후)
+
+### 🔧 Technical Details
+
+**New Module**:
+- `.claude/hooks/alfred/shared/core/ttl_cache.py` (@CODE:ENHANCE-PERF-001:CACHE)
+  - `TTLCache` 클래스: 시간 기반 메모리 캐싱
+  - `ttl_cache()` 데코레이터: 함수 결과 자동 캐싱
+  - 스레드 안전성 보장 (threading.Lock 사용)
+  - 자동 TTL 만료 처리
+
+**Performance Targets Met**:
+- ✅ 첫 호출 (콜드 캐시): < 200ms 달성
+- ✅ 캐시된 호출: < 20ms 달성
+- ✅ 캐시 히트율: > 90% (일반적인 세션)
+
+### 🧪 Testing
+
+**Test Coverage**: 9개 성능 테스트, 100% 통과 ✅
+- `test_version_info_first_call_baseline`: 기본 성능 측정
+- `test_version_info_cached_call_fast`: 캐시 스피드업 검증
+- `test_git_info_first_call_baseline`: Git 명령어 기본 성능
+- `test_git_info_cached_call_fast`: Git 캐시 스피드업
+- `test_cache_ttl_expiration`: TTL 만료 검증
+- `test_session_start_total_time`: 통합 성능 테스트
+- `test_cache_hit_rate_in_typical_session`: 캐시 히트율 검증
+- `test_cache_failure_fallback_to_direct_call`: 폴백 동작
+- `test_network_timeout_uses_cached_data`: 네트워크 타임아웃 폴백
+
+**Quality Metrics**:
+- Code Coverage: 100% (ttl_cache.py)
+- Type Checking: 0 errors (mypy)
+- Linting: 0 issues (ruff)
+- Thread Safety: Lock 기반 동기화 검증
+
+### 📊 Impact Analysis
+
+**User Experience Improvement**:
+| 시나리오 | 개선 전 | 개선 후 | 개선율 |
+|--------|-------|--------|------|
+| 프로젝트 초기화 (콜드 스타트) | 185ms | 185ms | 동일 (첫 호출) |
+| 프로젝트 재초기화 (같은 세션) | 185ms | < 20ms | 9배 향상 |
+| SessionStart (캐시 워밍) | 185ms | < 0.04ms | 4,625배 향상 |
+| 전형적 세션 (10회 호출) | ~1,850ms | ~20ms + 9×<0.04ms | ~99% 개선 |
+
+### 📝 Migration Guide
+
+**For All Users**:
+No action needed. Performance improvements are automatic.
+
+**For Integration Testing**:
+- Cache clearing: Use `MOAI_DISABLE_CACHE=1` environment variable
+- Performance profiling: Enable with `MOAI_PROFILE_HOOKS=1`
+
+### 🔗 Related SPEC
+
+- Implements: [SPEC-ENHANCE-PERF-001](https://github.com/modu-ai/moai-adk/blob/main/.moai/specs/SPEC-ENHANCE-PERF-001/spec.md)
+
+---
+
+## [v0.11.0] - 2025-10-30 (Windows Compatibility - Cross-Platform Timeout Handler)
+<!-- @DOC:BUGFIX-001 -->
+
+### 🎯 주요 변경사항 | Key Changes
+
+**Bug Fix | 버그 수정**:
+- 🐛 **Windows Hook 실행 오류 (Critical)**: `signal.SIGALRM` Unix 전용 문제 해결
+  - 증상: Windows 10/11에서 모든 Hook 실행 실패 (AttributeError: module 'signal' has no attribute 'SIGALRM')
+  - 원인: POSIX 신호인 `signal.SIGALRM`이 Windows에서 미지원
+  - 해결: `CrossPlatformTimeout` 유틸리티 구현
+    - Windows: `threading.Timer` 기반 타임아웃
+    - Unix/Linux/macOS: `signal.SIGALRM` 기반 타임아웃 (기존 동작 유지)
+  - 영향: MoAI-ADK를 Windows에서도 완벽하게 사용 가능
+  - 성능: <10ms 오버헤드 (무시할 수 있는 수준)
+
+### 🔧 Technical Details
+
+**New Module**:
+- `src/moai_adk/templates/.claude/hooks/alfred/utils/timeout.py` (@CODE:BUGFIX-001)
+  - `CrossPlatformTimeout` class: 플랫폼별 타임아웃 처리
+  - `TimeoutError` exception: 타임아웃 예외
+  - 프로덕션 레벨 구현 (문서화, 에러 처리 포함)
+
+**Modified Files**:
+- 9개 hook 파일들에 `CrossPlatformTimeout` 통합
+  - `alfred_hooks.py` (main router)
+  - `core/project.py` (설정 읽기 타임아웃)
+  - `shared/core/project.py` (공유 유틸리티)
+  - 8개 standalone hook files (다양한 이벤트 처리)
+
+**Implementation Details**:
+- Windows 감지: `platform.system() == "Windows"`
+- Windows 타임아웃: Daemon thread로 타임아웃 실행
+- Unix 타임아웃: signal.SIGALRM 유지 (역호환성 100%)
+- Timeout 값: 5초 (global, 모든 hook에 적용)
+
+### 🧪 Testing
+
+**Test Coverage**: 47 unit tests, 100% passing ✅
+- Windows timeout handling (mocked)
+- Unix signal.SIGALRM timeout
+- Timeout cancellation
+- Exception propagation
+- Integration tests
+- Edge cases (zero timeout, negative timeout, nested timeouts)
+
+**Quality Metrics**:
+- Code Coverage: 91.67% (timeout.py)
+- No security issues detected (Bandit)
+- All thread safety checks passed
+- Cross-platform compatibility verified
+
+### ✅ Platform Support
+
+**Full Platform Coverage** (v0.11.0+):
+- ✅ **Windows** 10/11: First full support
+- ✅ **macOS**: No regression (signal.SIGALRM unchanged)
+- ✅ **Linux**: No regression (signal.SIGALRM unchanged)
+
+### 🔗 Related Issues
+
+- Closes #129: "Windows users blocked - signal.SIGALRM not available"
+- Fixes [SPEC-BUGFIX-001](https://github.com/modu-ai/moai-adk/blob/main/.moai/specs/SPEC-BUGFIX-001/spec.md)
+
+### 📝 Migration Guide
+
+**For Windows Users**:
+No action needed. Update to v0.11.0 and all hooks will work seamlessly.
+
+**For Existing Users**:
+- Backward compatible (no breaking changes)
+- Upgrade recommended to support Windows collaboration
+- Signal-based timeout behavior on Unix/Linux/macOS unchanged
+
+---
+
+## [v0.10.2] - 2025-10-30 (Alfred Command Completion Pattern & Hook Code Quality)
+<!-- @DOC:SPEC-SESSION-CLEANUP-001 -->
+
+### 🎯 주요 변경사항 | Key Changes
+
+**New Feature | 새로운 기능**:
+- ✨ **SPEC-SESSION-CLEANUP-001**: Alfred 커맨드 완료 후 세션 정리 및 다음 단계 안내 프레임워크
+  - Alfred의 모든 커맨드(`/alfred:0-3`) 완료 시 일관된 UX 패턴 정의
+  - AskUserQuestion을 통한 구조화된 선택지 제공 (3-4 옵션)
+  - TodoWrite 정리 및 세션 요약 생성 로직
+
+### 📋 문서 | Documentation
+
+**SPEC-SESSION-CLEANUP-001 (Phase 1)**:
+- `spec.md` (330라인): 12개 요구사항 정의
+  - REQ-SESSION-001: Alfred 모든 커맨드 완료 시 반드시 AskUserQuestion 사용
+  - REQ-SESSION-002: 커맨드 완료 시 TodoWrite 정리
+  - REQ-SESSION-003~006: 각 커맨드별 3개 옵션 정의
+  - REQ-SESSION-007~012: 세션 요약, 상태 관리, 부정 요구사항 등
+
+- `plan.md` (376라인): 구현 계획
+  - Step 1: 4개 커맨드 파일 업데이트 (AskUserQuestion 패턴 추가)
+  - Step 2: 세션 정리 프로토콜 구현 (TodoWrite cleanup, session summary)
+  - Step 3: CLAUDE.md 검증 및 업데이트
+
+- `acceptance.md` (484라인): 수락 기준 및 테스트 시나리오
+  - Scenario 1-4: 각 커맨드별 AskUserQuestion 호출 검증
+  - Scenario 5-6: 세션 요약 및 TodoWrite 정리 검증
+  - Scenario 7-8: Prose 제안 금지 및 Batched design 검증
+  - 8개 상세 테스트 케이스 포함
+
+### 🔧 Technical Details
+
+**Files Created**:
+- `.moai/specs/SPEC-SESSION-CLEANUP-001/spec.md` (@SPEC:SESSION-CLEANUP-001)
+- `.moai/specs/SPEC-SESSION-CLEANUP-001/plan.md` (@PLAN:SESSION-CLEANUP-001)
+- `.moai/specs/SPEC-SESSION-CLEANUP-001/acceptance.md` (@ACCEPTANCE:SESSION-CLEANUP-001)
+- `.moai/reports/sync-report-SPEC-SESSION-CLEANUP-001.md` (@DOC:SYNC-SESSION-CLEANUP-001)
+
+**Files Enhanced**:
+- 14개 Hook 프레임워크 파일: 코드 품질 및 포맷팅 표준화
+  - `alfred_hooks.py`, `core/project.py`, `core/version_cache.py`
+  - `notification__handle_events.py`, `post_tool__log_changes.py`
+  - `pre_tool__auto_checkpoint.py`, `session_end__cleanup.py`
+  - `session_start__show_project_info.py`, `stop__handle_interrupt.py`
+  - `user_prompt__jit_load_docs.py`, `subagent_stop__handle_subagent_end.py`
+  - 공유 핸들러: `shared/core/*.py`, `shared/handlers/*.py`
+
+**Code Quality Improvements**:
+- 인용문 스타일 표준화 (큰따옴표 일관성)
+- 들여쓰기 및 공백 정리 (PEP 8 준수)
+- 함수 정의 간격 개선
+- 100% 역호환성 유지 (기능 동작 변경 없음)
+
+### 📊 TAG Traceability
+
+**Primary Chain** (SPEC → REQ → TEST):
+- ✅ 1개 SPEC 문서 + 12개 요구사항 + 8개 테스트 케이스
+- ✅ 모든 요구사항이 수락 기준에 매핑됨
+- ✅ 0개 고아 TAG (모든 TAG가 추적 가능)
+
+**Quality Chain**:
+- `@REQ:SESSION-001~012`: 각 요구사항 추적 (acceptance.md에서 정의된 테스트 시나리오)
+
+### ✅ Quality Metrics
+
+**Documentation**:
+- SPEC 문서 완전성: 100%
+- 요구사항 커버리지: 100% (12/12)
+- 테스트 시나리오: 100% (8/8)
+- TAG 무결성: 100% (0개 고아)
+
+**Code Quality**:
+- Hook 파일 포맷팅: 100% (14/14)
+- 역호환성: 100%
+- Syntax 오류: 0개
+
+### 🔗 Dependencies
+
+- **Parent SPEC**: SPEC-ALF-WORKFLOW-001 (Alfred 4-Step Workflow)
+- **Related Skills**: `moai-alfred-interactive-questions`
+- **Affected Components**: `.claude/commands/alfred-*.md`, `.claude/agents/agent-alfred.md`
+
+### 📝 Phase Status
+
+**Phase 1 (현재)**: 문서 동기화 및 Hook 검증 ✅ 완료
+- SPEC 문서 작성: ✅ 완료
+- Hook 코드 품질 개선: ✅ 완료
+- TAG 체인 검증: ✅ 완료
+
+**Phase 2 (예정)**: Alfred 커맨드 파일 업데이트 ⏳ 대기 중
+- 4개 커맨드 파일 수정 (AskUserQuestion 패턴 추가)
+- agent-alfred.md 업데이트
+- CLAUDE.md 검증
 
 ---
 
@@ -563,7 +903,7 @@ uv tool install moai-adk==0.5.2
 
 **수정 파일** | **Modified Files**:
 - `src/moai_adk/templates/.claude/hooks/alfred/handlers/tool.py` (TAG Guard 통합)
-- `src/moai_adk/templates/.claude/skills/moai-alfred-hooks/scripts/validate-bash-command.py` (코드 정리)
+- `src/moai_adk/templates/.claude/skills/moai-cc-hooks/scripts/validate-bash-command.py` (코드 정리)
 - `src/moai_adk/templates/CLAUDE.md` (포맷팅 개선)
 - `README.md`, `README.ko.md`, `README.th.md`, `README.ja.md`, `README.zh.md`, `README.hi.md` (TAG Guard 문서화)
 - `tests/hooks/test_handlers.py` (테스트 업데이트)

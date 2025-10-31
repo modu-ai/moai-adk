@@ -14,20 +14,21 @@ from pathlib import Path
 from unittest.mock import patch
 
 # Add hooks directory to path
-HOOKS_DIR = Path(__file__).parent.parent.parent / "src" / "moai_adk" / "templates" / ".claude" / "hooks" / "alfred"
+HOOKS_DIR = Path(__file__).parent.parent.parent / ".claude" / "hooks" / "alfred"
+SHARED_DIR = HOOKS_DIR / "shared"
+UTILS_DIR = HOOKS_DIR / "utils"
+sys.path.insert(0, str(SHARED_DIR))
 sys.path.insert(0, str(HOOKS_DIR))
 
 from core import HookPayload, HookResult  # noqa: E402
-from handlers import (  # noqa: E402
+from handlers.notification import (  # noqa: E402
     handle_notification,
-    handle_post_tool_use,
-    handle_pre_tool_use,
-    handle_session_end,
-    handle_session_start,
     handle_stop,
     handle_subagent_stop,
-    handle_user_prompt_submit,
 )
+from handlers.session import handle_session_end, handle_session_start  # noqa: E402
+from handlers.tool import handle_post_tool_use, handle_pre_tool_use  # noqa: E402
+from handlers.user import handle_user_prompt_submit  # noqa: E402
 
 
 class TestPreToolUseHandler:

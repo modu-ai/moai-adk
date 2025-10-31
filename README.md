@@ -118,6 +118,22 @@ From the moment you adopt MoAI-ADK, you'll feel:
 
 ---
 
+## 🖥️ Platform Support
+
+### Supported Platforms
+- ✅ **macOS** (11.0+)
+- ✅ **Linux** (Ubuntu 20.04+, Debian 11+, etc.)
+- ✅ **Windows** (10/11) - Full support as of v0.11.0
+  - Note: Hooks system requires Python 3.11+
+  - All hook features work seamlessly on Windows with cross-platform timeout handling
+
+### System Requirements
+- **Python**: 3.11 or higher
+- **Git**: 2.30+
+- **GitHub CLI** (`gh`): Optional, required for PR automation in team mode
+
+---
+
 ## ⚡ 3-Minute Lightning Start
 
 Get your first MoAI-ADK project running in **3 simple steps**. Beginners can finish in under 5 minutes.
@@ -256,6 +272,48 @@ In this section you'll experience:
 - ✅ Complete TDD cycle (RED → GREEN → REFACTOR)
 - ✅ Auto-generate documentation
 - ✅ Understand @TAG system
+
+---
+
+## Language Support
+
+MoAI-ADK automatically detects and supports **15 programming languages** with dedicated CI/CD workflows:
+
+### Core Languages (v0.11.0+)
+- **Python** (pytest, mypy, ruff, 85% coverage target)
+- **JavaScript** (npm/yarn/pnpm/bun auto-detect, 80% coverage target)
+- **TypeScript** (tsc type checking, biome/eslint, 85% coverage target)
+- **Go** (golangci-lint, gofmt, 75% coverage target)
+
+### Extended Languages (v0.11.1+)
+- **Ruby** (RSpec, Rubocop, bundle)
+- **PHP** (PHPUnit, PHPCS, composer)
+- **Java** (JUnit 5, Jacoco, Maven/Gradle auto-detection)
+- **Rust** (cargo test, clippy, rustfmt)
+- **Dart** (flutter test, dart analyze)
+- **Swift** (XCTest, SwiftLint, SPM)
+- **Kotlin** (JUnit 5, ktlint, Gradle)
+- **C#** (xUnit, StyleCop, dotnet CLI)
+- **C** (gcc/clang, cppcheck, CMake)
+- **C++** (g++/clang++, Google Test, cpplint)
+- **Shell** (shellcheck, bats-core)
+
+### How Language Detection Works
+
+When you run `/alfred:2-run SPEC-XXX`, MoAI-ADK automatically:
+1. Scans your project for configuration files (package.json, pyproject.toml, go.mod, Cargo.toml, pom.xml, build.gradle, etc.)
+2. Detects your project's primary language using priority-based detection (Rust → Dart → Swift → ... → Shell)
+3. Auto-detects build tools (Maven/Gradle for Java, CMake for C/C++, SPM for Swift, etc.)
+4. Selects the appropriate CI/CD workflow template
+5. Generates language-specific testing and linting configuration
+
+### Supported Languages
+
+For detailed language detection priority and build tool detection, see [Language Detection Guide](.moai/docs/language-detection-guide.md)
+
+### Customization
+
+For advanced workflow customization, see [Workflow Templates Guide](.moai/docs/workflow-templates.md)
 
 ---
 
@@ -1725,7 +1783,7 @@ The **implementation-planner** Sub-agent decides:
 
 ```python
 # tests/test_todo_api.py
-# @TEST:TODO-001 | SPEC: SPEC-TODO-001.md
+# @TEST:README-EXAMPLE-TODO | SPEC: SPEC-TODO-001.md
 
 import pytest
 from src.todo.api import create_todo, get_todos
@@ -1866,7 +1924,7 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
 
    ```bash
    ✅ @SPEC:TODO-001 → .moai/specs/SPEC-TODO-001/spec.md
-   ✅ @TEST:TODO-001 → tests/test_todo_api.py
+   ✅ @TEST:README-EXAMPLE-TODO → tests/test_todo_api.py
    ✅ @CODE:TODO-001 → src/todo/ (3 files)
    ✅ @DOC:TODO-001 → docs/api/todo.md (auto-generated)
 
@@ -1892,7 +1950,7 @@ git commit -m "♻️ refactor(TODO-001): add database models and validation"
    - Request: {"title": "string (1-200 chars)"}
    - Response: 201 Created with todo object
    - Implemented in: @CODE:TODO-001:API
-   - Tested in: @TEST:TODO-001
+   - Tested in: @TEST:README-EXAMPLE-TODO
 
    ### Get All Todos
 
@@ -1943,7 +2001,7 @@ rg '@(SPEC|TEST|CODE|DOC):TODO-001' -n
 
 # Output:
 # .moai/specs/SPEC-TODO-001/spec.md:1: # @SPEC:TODO-001: Todo Management API
-# tests/test_todo_api.py:2: # @TEST:TODO-001 | SPEC: SPEC-TODO-001.md
+# tests/test_todo_api.py:2: # @TEST:README-EXAMPLE-TODO | SPEC: SPEC-TODO-001.md
 # src/todo/api.py:5: # @CODE:TODO-001:API | SPEC: SPEC-TODO-001.md
 # src/todo/models.py:5: # @CODE:TODO-001:MODEL | SPEC: SPEC-TODO-001.md
 # docs/api/todo.md:1: # @DOC:TODO-001: Todo Management API
@@ -1983,7 +2041,7 @@ git log --oneline | head -5
    └─ 🔴 RED: Tests written first
    └─ 🟢 GREEN: Minimal implementation
    └─ ♻️ REFACTOR: Quality improvement
-   └─ @TEST:TODO-001, @CODE:TODO-001 TAGs assigned
+   └─ @TEST:README-EXAMPLE-TODO, @CODE:TODO-001 TAGs assigned
    └─ 87% coverage, TRUST 5 principles verified
 
 ✅ Documentation sync (1 minute)
@@ -2554,7 +2612,7 @@ rg '@SPEC:HELLO-001' -n .moai/specs/
 /alfred:1-plan "feature description"
 
 # Or fix TAG in test file
-# Edit tests/test_hello.py: @TEST:HELLO-001 → @TEST:HELLO-002
+# Edit tests/test_hello.py: @TEST:HELLO-001 → @TEST:README-EXAMPLE-HELLO
 
 # 4. Sync
 /alfred:3-sync

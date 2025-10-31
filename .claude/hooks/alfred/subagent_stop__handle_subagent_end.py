@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# @CODE:ALF-WORKFLOW-001:HOOKS-CLARITY:SUBAGENT-STOP | SPEC: Individual hook files for better UX
+# @CODE:HOOKS-CLARITY-SUBAGENT | SPEC: Individual hook files for better UX
 """SubagentStop Hook: Handle Sub-agent Termination
 
 Claude Code Event: SubagentStop
@@ -10,10 +10,11 @@ Output: Continue execution (currently a stub for future enhancements)
 """
 
 import json
-import signal
 import sys
 from pathlib import Path
 from typing import Any
+
+from utils.timeout import CrossPlatformTimeout, TimeoutError as PlatformTimeoutError
 
 # Setup import path for shared modules
 HOOKS_DIR = Path(__file__).parent
@@ -24,14 +25,6 @@ if str(SHARED_DIR) not in sys.path:
 from handlers import handle_subagent_stop
 
 
-class HookTimeoutError(Exception):
-    """Hook execution timeout exception"""
-    pass
-
-
-def _timeout_handler(signum, frame):
-    """Signal handler for 5-second timeout"""
-    raise HookTimeoutError("Hook execution exceeded 5-second timeout")
 
 
 def main() -> None:
@@ -48,8 +41,8 @@ def main() -> None:
         1: Error (timeout, JSON parse failure, handler exception)
     """
     # Set 5-second timeout
-    signal.signal(signal.SIGALRM, _timeout_handler)
-    signal.alarm(5)
+    timeout = CrossPlatformTimeout(5)
+    timeout.start()
 
     try:
         # Read JSON payload from stdin
@@ -63,11 +56,11 @@ def main() -> None:
         print(json.dumps(result.to_dict()))
         sys.exit(0)
 
-    except HookTimeoutError:
+    except PlatformTimeoutError:
         # Timeout - return minimal valid response
         timeout_response: dict[str, Any] = {
             "continue": True,
-            "systemMessage": "⚠️ SubagentStop handler timeout"
+            "systemMessage": "⚠️ SubagentStop handler timeout",
         }
         print(json.dumps(timeout_response))
         print("SubagentStop hook timeout after 5 seconds", file=sys.stderr)
@@ -77,7 +70,7 @@ def main() -> None:
         # JSON parse error
         error_response: dict[str, Any] = {
             "continue": True,
-            "hookSpecificOutput": {"error": f"JSON parse error: {e}"}
+            "hookSpecificOutput": {"error": f"JSON parse error: {e}"},
         }
         print(json.dumps(error_response))
         print(f"SubagentStop JSON parse error: {e}", file=sys.stderr)
@@ -87,7 +80,7 @@ def main() -> None:
         # Unexpected error
         error_response: dict[str, Any] = {
             "continue": True,
-            "hookSpecificOutput": {"error": f"SubagentStop error: {e}"}
+            "hookSpecificOutput": {"error": f"SubagentStop error: {e}"},
         }
         print(json.dumps(error_response))
         print(f"SubagentStop unexpected error: {e}", file=sys.stderr)
@@ -95,7 +88,7 @@ def main() -> None:
 
     finally:
         # Always cancel alarm
-        signal.alarm(0)
+        timeout.cancel()
 
 
 if __name__ == "__main__":

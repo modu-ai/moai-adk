@@ -7,9 +7,11 @@ and domain validation for @DOC tags.
 @SPEC:DOC-TAG-001: @DOC tag automatic generation infrastructure
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
-from src.moai_adk.core.tags.generator import generate_doc_tag, detect_duplicates
+
+from src.moai_adk.core.tags.generator import detect_duplicates, generate_doc_tag
 
 
 def test_generate_first_doc_tag():
