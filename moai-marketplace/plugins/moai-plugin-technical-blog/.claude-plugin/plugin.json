@@ -5,42 +5,6 @@
   "author": {
     "name": "GOOS"
   },
-  "commands": [
-    {
-      "name": "blog-write",
-      "description": "Write and publish technical blog posts"
-    }
-  ],
-  "agents": [
-    {
-      "name": "technical-writer",
-      "description": "Technical writing specialist"
-    },
-    {
-      "name": "technical-content-strategist",
-      "description": "Content strategy specialist"
-    },
-    {
-      "name": "code-example-curator",
-      "description": "Code example curation specialist"
-    },
-    {
-      "name": "seo-discoverability-specialist",
-      "description": "SEO and discoverability specialist"
-    },
-    {
-      "name": "markdown-formatter",
-      "description": "Markdown formatting specialist"
-    },
-    {
-      "name": "visual-content-designer",
-      "description": "Visual content design specialist"
-    },
-    {
-      "name": "template-workflow-coordinator",
-      "description": "Template workflow coordination specialist"
-    }
-  ],
   "skills": [
     "./skills/moai-content-blog-strategy.md",
     "./skills/moai-content-markdown-to-blog.md",

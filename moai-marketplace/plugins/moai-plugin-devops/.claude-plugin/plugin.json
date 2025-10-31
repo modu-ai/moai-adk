@@ -5,42 +5,6 @@
   "author": {
     "name": "GOOS"
   },
-  "commands": [
-    {
-      "name": "init-vercel",
-      "description": "Initialize Vercel deployment configuration"
-    },
-    {
-      "name": "init-supabase",
-      "description": "Initialize Supabase PostgreSQL setup"
-    },
-    {
-      "name": "init-render",
-      "description": "Initialize Render deployment configuration"
-    },
-    {
-      "name": "setup-cicd",
-      "description": "Setup GitHub Actions CI/CD pipeline"
-    }
-  ],
-  "agents": [
-    {
-      "name": "deployment-strategist",
-      "description": "Deployment strategy specialist"
-    },
-    {
-      "name": "vercel-specialist",
-      "description": "Vercel platform specialist"
-    },
-    {
-      "name": "supabase-specialist",
-      "description": "Supabase database specialist"
-    },
-    {
-      "name": "render-specialist",
-      "description": "Render deployment specialist"
-    }
-  ],
   "skills": [
     "./skills/moai-saas-vercel-mcp.md",
     "./skills/moai-saas-supabase-mcp.md",

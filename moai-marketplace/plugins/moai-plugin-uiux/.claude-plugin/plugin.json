@@ -5,50 +5,6 @@
   "author": {
     "name": "GOOS"
   },
-  "commands": [
-    {
-      "name": "ui-ux",
-      "description": "Design directive orchestration"
-    },
-    {
-      "name": "setup-shadcn-ui",
-      "description": "Initialize shadcn/ui components"
-    },
-    {
-      "name": "design-tokens",
-      "description": "Extract design tokens from Figma"
-    }
-  ],
-  "agents": [
-    {
-      "name": "design-strategist",
-      "description": "Design strategy specialist"
-    },
-    {
-      "name": "design-system-architect",
-      "description": "Design system architecture specialist"
-    },
-    {
-      "name": "component-builder",
-      "description": "Component development specialist"
-    },
-    {
-      "name": "figma-designer",
-      "description": "Figma MCP integration specialist"
-    },
-    {
-      "name": "css-html-generator",
-      "description": "CSS/HTML generation specialist"
-    },
-    {
-      "name": "accessibility-specialist",
-      "description": "Accessibility compliance specialist"
-    },
-    {
-      "name": "design-documentation-writer",
-      "description": "Design documentation specialist"
-    }
-  ],
   "skills": [
     "./skills/moai-design-figma-mcp.md",
     "./skills/moai-design-figma-to-code.md",

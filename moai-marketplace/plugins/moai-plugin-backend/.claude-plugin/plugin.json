@@ -5,38 +5,6 @@
   "author": {
     "name": "GOOS🪿"
   },
-  "commands": [
-    {
-      "name": "init-fastapi",
-      "description": "Initialize FastAPI project with uv"
-    },
-    {
-      "name": "db-setup",
-      "description": "Setup database (PostgreSQL or MySQL) with Alembic"
-    },
-    {
-      "name": "resource-crud",
-      "description": "Generate CRUD endpoints from SPEC"
-    }
-  ],
-  "agents": [
-    {
-      "name": "api-designer",
-      "description": "API design specialist"
-    },
-    {
-      "name": "backend-architect",
-      "description": "Backend architecture expert"
-    },
-    {
-      "name": "database-expert",
-      "description": "Database design specialist"
-    },
-    {
-      "name": "fastapi-specialist",
-      "description": "FastAPI implementation specialist"
-    }
-  ],
   "skills": [
     "./skills/moai-framework-fastapi-patterns.md",
     "./skills/moai-lang-python.md",

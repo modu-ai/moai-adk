@@ -5,38 +5,6 @@
   "author": {
     "name": "GOOS"
   },
-  "commands": [
-    {
-      "name": "init-next",
-      "description": "Initialize Next.js 16 project with React 19"
-    },
-    {
-      "name": "biome-setup",
-      "description": "Setup Biome for code quality and formatting"
-    },
-    {
-      "name": "playwright-setup",
-      "description": "Initialize Playwright-MCP for E2E testing automation"
-    }
-  ],
-  "agents": [
-    {
-      "name": "frontend-architect",
-      "description": "Frontend architecture specialist"
-    },
-    {
-      "name": "design-system-manager",
-      "description": "Design system management specialist"
-    },
-    {
-      "name": "performance-optimizer",
-      "description": "Performance optimization specialist"
-    },
-    {
-      "name": "typescript-specialist",
-      "description": "TypeScript implementation specialist"
-    }
-  ],
   "skills": [
     "./skills/moai-framework-nextjs-advanced.md",
     "./skills/moai-framework-react-19.md",
