@@ -24,7 +24,8 @@ model: sonnet
 | Command design | `Skill("moai-cc-commands")` |
 | Skill building | `Skill("moai-cc-skills")` |
 | settings.json config | `Skill("moai-cc-settings")` |
-| MCP/Plugin setup | `Skill("moai-cc-mcp-plugins")` |
+| Plugin manifest (plugin.json) | `Skill("moai-cc-plugins")` |
+| MCP server setup | `Skill("moai-cc-mcp-plugins")` |
 | CLAUDE.md authoring | `Skill("moai-cc-claude-md")` |
 | Memory optimization | `Skill("moai-cc-memory")` |
 
@@ -182,17 +183,33 @@ Alfred passes the user's language directly to you via `Task()` calls.
 
 ---
 
-## 🔌 Plugin File Structure
+## 🔌 Plugin System
 
 Claude Code plugins extend Claude Code with new capabilities (commands, agents, skills, hooks, MCP servers).
+
+### Quick Reference
+
+For comprehensive plugin manifest (plugin.json) schema, validation, and best practices:
+
+**→ Invoke**: `Skill("moai-cc-plugins")`
+
+This skill provides:
+- ✅ Official plugin.json schema (v2.0)
+- ✅ Required vs optional fields
+- ✅ Directory structure guide
+- ✅ Validation checklist
+- ✅ 10+ executable examples
+- ✅ Common patterns (minimal → full-stack → MCP integration)
+- ✅ Best practices
+- ✅ Troubleshooting guide
+- ✅ Migration guide (v1.0 → v2.0)
 
 ### Plugin Directory Layout
 
 ```
 my-plugin/
 ├── .claude-plugin/
-│   ├── plugin.json           # Plugin manifest (required)
-│   └── hooks.json            # Hook definitions (optional)
+│   └── plugin.json           # Plugin manifest (required)
 ├── commands/
 │   └── my-command.md         # Command definitions
 ├── agents/
@@ -203,190 +220,39 @@ my-plugin/
 │       ├── reference.md      # Optional detailed docs
 │       └── examples.md       # Optional code examples
 ├── README.md                 # Plugin documentation
-├── LICENSE                   # License file
 └── .mcp.json                 # MCP server config (optional)
 ```
 
-### Plugin.json Schema
-
-**Required Fields**:
+### Basic plugin.json Structure
 
 ```json
 {
-  "id": "my-plugin",                    // kebab-case identifier
-  "name": "My Plugin",                  // Display name
-  "version": "1.0.0",                   // Semantic version
-  "status": "development|active",       // Plugin status
-  "description": "Short description",   // One-line description
-  "author": "Author Name",              // Plugin author
-  "category": "frontend|backend|devops|uiux|ai", // Category
-  "tags": ["tag1", "tag2"],            // Searchable tags
-  "repository": "https://...",         // Repository URL
-  "documentation": "https://...",      // Docs URL
-  "minClaudeCodeVersion": "2.0.0",     // Min Claude Code version
-  "commands": [                        // Optional
-    {
-      "name": "my-command",
-      "path": "commands/my-command.md",
-      "description": "What it does"
-    }
-  ],
-  "agents": [                          // Optional
-    {
-      "name": "my-agent",
-      "path": "agents/my-agent.md",
-      "type": "specialist",
-      "description": "What it specializes in"
-    }
-  ],
-  "skills": [                          // Optional
-    {
-      "name": "My Skill",
-      "path": "skills/my-skill/SKILL.md",
-      "description": "Skill description"
-    }
-  ],
-  "hooks": {                           // Optional
-    "sessionStart": ".claude-plugin/hooks.json#onSessionStart",
-    "preToolUse": ".claude-plugin/hooks.json#onPreToolUse"
+  "name": "my-plugin",
+  "description": "Short description",
+  "version": "1.0.0",
+  "author": {
+    "name": "Your Name"
   },
-  "mcpServers": [                      // Optional
-    {
-      "name": "server-name",
-      "type": "required|optional",
-      "configPath": ".mcp.json"
-    }
-  ],
-  "permissions": {                     // Tool access control
-    "allowedTools": ["Read", "Write"],
-    "deniedTools": ["DeleteFile"]
-  },
-  "settings": {                        // Plugin settings
-    "apiKey": {
-      "type": "secret",
-      "description": "API key for service"
-    }
-  },
-  "dependencies": ["plugin-id"],       // Plugin dependencies
-  "installCommand": "/plugin install my-plugin",
-  "releaseNotes": "Release notes"
+  "skills": [
+    "./skills/my-skill/SKILL.md"
+  ]
 }
 ```
 
-### Plugin.json Validation Checklist
+**Key Points**:
+- ✅ Commands/agents defined in separate markdown files (NOT in plugin.json)
+- ✅ Skills referenced with relative paths (`./skills/...`)
+- ✅ Author must be object format `{name: "..."}` (NOT string)
+- ✅ Plugin names use kebab-case (e.g., `my-plugin` not `My Plugin`)
 
-- [ ] `id` matches directory name (kebab-case)
-- [ ] `version` follows semantic versioning (X.Y.Z)
-- [ ] `status` is one of: development, active, deprecated
-- [ ] `category` is valid (frontend, backend, devops, uiux, ai, content)
-- [ ] All `path` values point to existing files
-- [ ] `minClaudeCodeVersion` is valid
-- [ ] `permissions.deniedTools` includes dangerous commands: DeleteFile, KillProcess
-- [ ] `dependencies` refer to valid plugin IDs
-- [ ] `commands[].path`, `agents[].path`, `skills[].path` all exist
-- [ ] No hardcoded secrets (use `settings` with type: "secret")
-- [ ] `mcpServers` reference valid `.mcp.json` configs
-- [ ] Hook paths use absolute notation: `path#hookName`
-
----
-
-## 🔌 Plugin Installation & Validation
-
-### CLI Commands
+### Plugin Validation
 
 ```bash
-# Install plugin
-/plugin install my-plugin
-
 # Validate plugin.json syntax
-/plugin validate my-plugin
+jq . .claude-plugin/plugin.json
 
-# List installed plugins
-/plugin list
-
-# Remove plugin
-/plugin remove my-plugin
-
-# Check plugin status
-/plugin status my-plugin
-```
-
-### Validation Results
-
-**Valid Plugin**:
-```json
-{
-  "valid": true,
-  "plugin": "my-plugin",
-  "version": "1.0.0",
-  "status": "active",
-  "resources": {
-    "commands": 2,
-    "agents": 1,
-    "skills": 3,
-    "hooks": 1
-  }
-}
-```
-
-**Invalid Plugin**:
-```json
-{
-  "valid": false,
-  "errors": [
-    "Missing required field: id",
-    "Path 'commands/foo.md' does not exist",
-    "Invalid semantic version"
-  ]
-}
-```
-
----
-
-## 🛠️ Common Plugin Patterns
-
-### Command Plugin (No State)
-
-```json
-{
-  "id": "my-commands",
-  "commands": [
-    {
-      "name": "analyze-code",
-      "path": "commands/analyze.md",
-      "description": "Analyze code quality"
-    }
-  ]
-}
-```
-
-### Agent Plugin (Specialist)
-
-```json
-{
-  "id": "my-agent",
-  "agents": [
-    {
-      "name": "code-reviewer",
-      "path": "agents/code-reviewer.md",
-      "type": "specialist",
-      "description": "Reviews code for quality"
-    }
-  ]
-}
-```
-
-### Multi-feature Plugin (Comprehensive)
-
-```json
-{
-  "id": "full-plugin",
-  "commands": [...],      // Workflow entry points
-  "agents": [...],        // Specialist reasoning
-  "skills": [...],        // Reusable knowledge
-  "hooks": {...},         // Auto-triggered safety checks
-  "mcpServers": [...]    // External integrations
-}
+# Check all paths exist
+ls -R .claude-plugin/ commands/ agents/ skills/
 ```
 
 ---
@@ -418,7 +284,7 @@ my-plugin/
 - Resources: [commands/agents/skills/hooks]
 - Dependencies: [other plugins]"
 ```
-**Then**: Reference `Skill("moai-cc-mcp-plugins")` for plugin patterns
+**Then**: Reference `Skill("moai-cc-plugins")` for manifest schema and patterns
 
 ### Verify All Standards
 ```bash

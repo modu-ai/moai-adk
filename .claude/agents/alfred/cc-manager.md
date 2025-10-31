@@ -24,7 +24,8 @@ model: sonnet
 | Command design | `Skill("moai-cc-commands")` |
 | Skill building | `Skill("moai-cc-skills")` |
 | settings.json config | `Skill("moai-cc-settings")` |
-| MCP/Plugin setup | `Skill("moai-cc-mcp-plugins")` |
+| Plugin manifest (plugin.json) | `Skill("moai-cc-plugins")` |
+| MCP server setup | `Skill("moai-cc-mcp-plugins")` |
 | CLAUDE.md authoring | `Skill("moai-cc-claude-md")` |
 | Memory optimization | `Skill("moai-cc-memory")` |
 
