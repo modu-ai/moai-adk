@@ -25,8 +25,6 @@
 
 ### TEST-001: `/alfred:0-project` 완료 후 AskUserQuestion 호출 검증
 
-**@TAG**: `@TEST:IMPL-001`
-
 **Priority**: MUST
 
 **Given**:
@@ -69,8 +67,6 @@ rg "You can now run" src/moai_adk/templates/.claude/commands/alfred-0-project.md
 ---
 
 ### TEST-002: `/alfred:1-plan` 완료 후 AskUserQuestion 호출 검증
-
-**@TAG**: `@TEST:IMPL-002`
 
 **Priority**: MUST
 
@@ -115,8 +111,6 @@ rg "You can now run" src/moai_adk/templates/.claude/commands/alfred-1-plan.md
 
 ### TEST-003: `/alfred:2-run` 완료 후 AskUserQuestion 호출 검증
 
-**@TAG**: `@TEST:IMPL-003`
-
 **Priority**: MUST
 
 **Given**:
@@ -159,8 +153,6 @@ rg "You can now run" src/moai_adk/templates/.claude/commands/alfred-2-run.md
 ---
 
 ### TEST-004: `/alfred:3-sync` 완료 후 AskUserQuestion 호출 검증
-
-**@TAG**: `@TEST:IMPL-004`
 
 **Priority**: MUST
 
@@ -206,8 +198,6 @@ rg "You can now run" src/moai_adk/templates/.claude/commands/alfred-3-sync.md
 ## Test Group 2: 세션 정리 검증
 
 ### TEST-005: 세션 요약 생성 (Markdown 형식 출력)
-
-**@TAG**: `@TEST:IMPL-005`
 
 **Priority**: SHOULD
 
@@ -284,8 +274,6 @@ rg "cat <<" src/moai_adk/templates/.claude/agents/agent-alfred.md
 
 ### TEST-006: TodoWrite 정리 (completed 작업 추출)
 
-**@TAG**: `@TEST:IMPL-006`
-
 **Priority**: SHOULD
 
 **Given**:
@@ -346,8 +334,6 @@ assert all(task["status"] == "completed" for task in completed_tasks)
 
 ### TEST-007: Prose 패턴 검색 (검출 0건)
 
-**@TAG**: `@TEST:IMPL-007`
-
 **Priority**: MUST
 
 **Given**:
@@ -396,8 +382,6 @@ rg "Now you can" src/moai_adk/templates/.claude/commands/alfred-*.md
 ---
 
 ### TEST-008: Batched 디자인 (호출 횟수 = 1)
-
-**@TAG**: `@TEST:IMPL-008`
 
 **Priority**: MUST
 
