@@ -1,0 +1,414 @@
+---
+title: Advanced SPEC Patterns (고급 명세 작성)
+description: MoAI-ADK - 복잡한 요구사항, 의존성, 확장성, 마이크로서비스 SPEC 작성 가이드
+---
+
+# Advanced SPEC Patterns: 복잡한 요구사항 명세
+
+이 가이드는 **단순한 SPEC을 넘어서** 복잡한 시스템을 설계하고 문서화하는 Advanced 패턴을 다룹니다.
+
+---
+
+## 📊 Pattern 1: 의존성 있는 SPEC 체인
+
+### 시나리오
+
+```
+SPEC-AUTH-001 (사용자 인증)
+    ↓ 의존
+SPEC-USER-001 (사용자 관리)
+    ↓ 의존
+SPEC-PRODUCT-001 (상품 관리)
+```
+
+### SPEC 정의
+
+```yaml
+# SPEC-AUTH-001/spec.md
+id: SPEC-AUTH-001
+title: 사용자 인증 시스템
+dependencies: []
+next_spec: SPEC-USER-001
+
+# SPEC-USER-001/spec.md
+id: SPEC-USER-001
+title: 사용자 관리 시스템
+dependencies:
+  - SPEC-AUTH-001
+next_spec: SPEC-PRODUCT-001
+
+# SPEC-PRODUCT-001/spec.md
+id: SPEC-PRODUCT-001
+title: 상품 관리 시스템
+dependencies:
+  - SPEC-AUTH-001
+  - SPEC-USER-001
+next_spec: null
+```
+
+### 자동 실행 순서
+
+```
+tdd-implementer:
+  1️⃣ SPEC-AUTH-001 구현 (의존성 없음)
+  2️⃣ SPEC-USER-001 구현 (SPEC-AUTH-001 필요)
+  3️⃣ SPEC-PRODUCT-001 구현 (AUTH, USER 필요)
+  
+  ✅ 의존성 자동 검증
+  ✅ 순서 자동 계획
+  ✅ 병렬 불가 알림
+```
+
+---
+
+## 🔄 Pattern 2: 마이크로서비스 SPEC
+
+### 아키텍처
+
+```
+┌─ API Gateway
+│  ├─ Auth Service (SPEC-AUTH-001)
+│  ├─ User Service (SPEC-USER-001)
+│  ├─ Product Service (SPEC-PRODUCT-001)
+│  └─ Order Service (SPEC-ORDER-001)
+│      └─ Cache Layer (Redis)
+│      └─ Message Queue (RabbitMQ)
+```
+
+### SPEC 구성
+
+각 마이크로서비스는 독립적인 SPEC:
+
+```yaml
+# SPEC-AUTH-001
+name: Auth Service
+port: 5001
+database: postgres
+dependencies:
+  - external: JWT library
+  - external: bcrypt
+
+# SPEC-USER-001
+name: User Service
+port: 5002
+database: postgres
+dependencies:
+  - service: SPEC-AUTH-001 (API call)
+
+# SPEC-ORDER-001
+name: Order Service
+port: 5004
+database: postgres
+cache: redis:6379
+message_queue: rabbitmq:5672
+dependencies:
+  - service: SPEC-AUTH-001
+  - service: SPEC-PRODUCT-001
+```
+
+### 통합 테스트
+
+```python
+# tests/integration/test_order_flow.py
+
+def test_order_creation_with_auth():
+    """
+    Given: 인증된 사용자
+    When: 상품 구매 주문 생성
+    Then: 모든 서비스 정상 작동
+    """
+    # 1. Auth Service: 로그인
+    token = auth_service.login("user@example.com", "password")
+    
+    # 2. User Service: 사용자 정보 조회
+    user = user_service.get_profile(token)
+    
+    # 3. Product Service: 상품 검증
+    product = product_service.get_product(123)
+    
+    # 4. Order Service: 주문 생성
+    order = order_service.create_order(user_id, product_id, quantity=1)
+    
+    # 5. Message Queue: 주문 처리 시작
+    assert queue.has_message("order.created")
+    
+    # 6. Cache: 주문 조회 성능 확인
+    cached_order = cache.get(f"order:{order.id}")
+    assert cached_order is not None
+```
+
+---
+
+## 🔀 Pattern 3: 조건부 기능 (Feature Flag)
+
+### SPEC에 조건 추가
+
+```yaml
+# SPEC-PAYMENT-001
+title: 결제 시스템
+
+UBIQUITOUS:
+  - 모든 결제는 PCI-DSS 준수
+  - 모든 금액은 최소 100원
+
+EVENT-DRIVEN:
+  - 사용자가 결제 요청 시 → 결제 처리
+  - 결제 완료 시 → 주문 확정
+  
+  CONDITIONAL (Feature Flag):
+    - IF feature_flag.advanced_payment THEN
+        - 할부 결제 지원
+        - 구독 자동 결제
+    - IF feature_flag.crypto_payment THEN
+        - 암호화폐 결제 지원
+
+OPTIONAL:
+  - 결제 시뮬레이션 (테스트용)
+  - 환불 자동화
+```
+
+### 구현
+
+```python
+# src/payment.py
+
+class PaymentProcessor:
+    def process_payment(self, amount, method):
+        # 기본 결제 (항상 포함)
+        transaction = self._process_basic(amount, method)
+        
+        # 고급 결제 (Feature Flag)
+        if feature_flags.advanced_payment:
+            if method == "installment":
+                transaction = self._process_installment(transaction)
+        
+        # 암호화폐 (Feature Flag)
+        if feature_flags.crypto_payment:
+            if method == "bitcoin":
+                transaction = self._process_crypto(transaction)
+        
+        return transaction
+```
+
+---
+
+## 📈 Pattern 4: 성능 요구사항 명시
+
+### SPEC에 성능 기준 추가
+
+```yaml
+# SPEC-PRODUCT-001
+title: 상품 관리 시스템
+
+PERFORMANCE_REQUIREMENTS:
+  response_time:
+    - GET /products: < 100ms (p95)
+    - POST /products: < 200ms (p99)
+    - GET /products/{id}: < 50ms (p95)
+  
+  throughput:
+    - Min: 1,000 req/s
+    - Peak: 10,000 req/s
+    - Max Burst: 50,000 req/s
+  
+  database:
+    - Query time: < 50ms (p95)
+    - Connection pool: 20
+    - Max connections: 100
+  
+  caching:
+    - Cache hit rate: > 80%
+    - Cache TTL: 300s (5분)
+```
+
+### 테스트
+
+```python
+# tests/test_product_performance.py
+
+def test_get_products_response_time():
+    """P95 응답 시간 < 100ms"""
+    times = []
+    for _ in range(1000):
+        start = time.time()
+        response = client.get("/products")
+        times.append((time.time() - start) * 1000)  # ms
+    
+    p95 = numpy.percentile(times, 95)
+    assert p95 < 100, f"P95 응답 시간: {p95}ms"
+
+def test_cache_hit_rate():
+    """캐시 히트율 > 80%"""
+    cache.clear()
+    
+    hits = 0
+    total = 0
+    for product_id in range(1, 101):
+        total += 1
+        if cache.get(f"product:{product_id}"):
+            hits += 1
+        else:
+            cache.set(f"product:{product_id}", get_product(product_id))
+    
+    hit_rate = hits / total
+    assert hit_rate > 0.8
+```
+
+---
+
+## 🔒 Pattern 5: 보안 요구사항 명시
+
+### SPEC에 보안 추가
+
+```yaml
+# SPEC-AUTH-001
+title: 사용자 인증
+
+SECURITY_REQUIREMENTS:
+  authentication:
+    - Method: JWT (RS256)
+    - Token lifetime: 1시간
+    - Refresh token: 7일
+    - Token rotation: 필수
+  
+  password_policy:
+    - Min length: 12자
+    - Complexity: 대소문자 + 숫자 + 특수문자
+    - Hash: bcrypt (cost >= 12)
+    - History: 마지막 5개 비밀번호 불가
+  
+  encryption:
+    - Transport: TLS 1.3+
+    - Database: AES-256-GCM
+    - Sensitive data: PII 암호화 필수
+  
+  logging:
+    - Log failed login: 필수
+    - Audit trail: 30일 보관
+    - Log sensitive data: 금지 (암호화 키, 토큰 등)
+```
+
+### 테스트
+
+```python
+# tests/security/test_auth_security.py
+
+def test_password_hashing():
+    """비밀번호는 bcrypt로 해싱"""
+    hashed = hash_password("TestPassword123!")
+    assert hashed.startswith("$2a$") or hashed.startswith("$2b$")
+    assert verify_password("TestPassword123!", hashed)
+    assert not verify_password("WrongPassword", hashed)
+
+def test_jwt_expiration():
+    """JWT 토큰 1시간 후 만료"""
+    token = create_token(user_id=1, expires_in=3600)
+    
+    # 즉시: 유효
+    assert is_valid_token(token)
+    
+    # 3600초 후: 만료
+    with freeze_time() as frozen_time:
+        frozen_time.move_to(frozen_time() + 3601)
+        assert not is_valid_token(token)
+
+def test_no_sensitive_data_in_logs():
+    """로그에 민감한 데이터 없음"""
+    logs = capture_logs()
+    assert "password" not in logs.lower()
+    assert "secret" not in logs.lower()
+    assert "token" not in logs.lower()
+```
+
+---
+
+## 🌐 Pattern 6: 다국어 & 지역화
+
+### SPEC에 i18n 추가
+
+```yaml
+# SPEC-PRODUCT-001
+title: 상품 관리 시스템
+
+INTERNATIONALIZATION:
+  supported_languages:
+    - ko (Korean) - 기본
+    - en (English)
+    - ja (Japanese)
+    - zh (Chinese)
+  
+  currency:
+    - KRW (₩) - 기본
+    - USD ($)
+    - JPY (¥)
+    - CNY (¥)
+  
+  date_format:
+    - ko: YYYY.MM.DD
+    - en: MM/DD/YYYY
+    - ja: YYYY年MM月DD日
+  
+  translation_keys:
+    - product.title
+    - product.description
+    - product.price
+    - error.product_not_found
+```
+
+### 구현
+
+```python
+# src/i18n.py
+
+class LocalizationService:
+    def __init__(self, language="ko", currency="KRW"):
+        self.language = language
+        self.currency = currency
+    
+    def translate(self, key):
+        """product.title → "상품명" (한국어)"""
+        translations = {
+            "ko": {"product.title": "상품명"},
+            "en": {"product.title": "Product Name"},
+            "ja": {"product.title": "商品名"},
+        }
+        return translations[self.language].get(key, key)
+    
+    def format_price(self, amount):
+        """100000 → ₩100,000 (한국어)"""
+        formats = {
+            "KRW": f"₩{amount:,}",
+            "USD": f"${amount:,.2f}",
+            "JPY": f"¥{amount:,}",
+        }
+        return formats[self.currency]
+```
+
+---
+
+## 🎯 Best Practices
+
+### ✅ Do's
+
+- ✅ 의존성 명확히 정의
+- ✅ 성능 기준 수치화
+- ✅ 보안 요구사항 구체화
+- ✅ 조건부 기능 Feature Flag 사용
+- ✅ 테스트 케이스 먼저 작성
+
+### ❌ Don'ts
+
+- ❌ "빨라야 한다" (수치 필수)
+- ❌ "안전해야 한다" (구체적 방법)
+- ❌ 의존성 순환 참조
+- ❌ 불가능한 요구사항
+- ❌ 테스트 없는 SPEC
+
+---
+
+## 📚 참고
+
+- [SPEC-First TDD](/ko/concepts/spec-first-tdd)
+- [EARS 패턴](/ko/concepts/ears-guide)
+- [TAG System](/ko/concepts/tag-system)
+
