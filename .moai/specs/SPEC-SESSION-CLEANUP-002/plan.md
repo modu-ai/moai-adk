@@ -333,25 +333,21 @@ if user_choice in ["🔄 새 세션 시작", "✅ 세션 완료"]:
 - **Given**: 프로젝트 초기화 완료
 - **When**: 커맨드 종료 직전
 - **Then**: AskUserQuestion이 3개 옵션과 함께 호출됨
-- **@TAG**: `@TEST:IMPL-001`
 
 **TEST-002**: `/alfred:1-plan` 완료 후 AskUserQuestion 호출 검증
 - **Given**: SPEC 작성 완료
 - **When**: 커맨드 종료 직전
 - **Then**: AskUserQuestion이 3개 옵션과 함께 호출됨
-- **@TAG**: `@TEST:IMPL-002`
 
 **TEST-003**: `/alfred:2-run` 완료 후 AskUserQuestion 호출 검증
 - **Given**: TDD 구현 완료
 - **When**: 커맨드 종료 직전
 - **Then**: AskUserQuestion이 3개 옵션과 함께 호출됨
-- **@TAG**: `@TEST:IMPL-003`
 
 **TEST-004**: `/alfred:3-sync` 완료 후 AskUserQuestion 호출 검증
 - **Given**: 문서 동기화 완료
 - **When**: 커맨드 종료 직전
 - **Then**: AskUserQuestion이 3개 옵션과 함께 호출됨
-- **@TAG**: `@TEST:IMPL-004`
 
 ---
 
@@ -361,13 +357,11 @@ if user_choice in ["🔄 새 세션 시작", "✅ 세션 완료"]:
 - **Given**: 사용자가 "세션 완료" 선택
 - **When**: 세션 정리 시작
 - **Then**: Markdown 형식의 세션 요약 출력됨
-- **@TAG**: `@TEST:IMPL-005`
 
 **TEST-006**: TodoWrite 정리 (completed 작업 추출)
 - **Given**: 커맨드 실행 중 3개 작업 completed
 - **When**: AskUserQuestion 호출 직전
 - **Then**: 3개 completed 작업이 session_context에 저장됨
-- **@TAG**: `@TEST:IMPL-006`
 
 ---
 
@@ -377,13 +371,11 @@ if user_choice in ["🔄 새 세션 시작", "✅ 세션 완료"]:
 - **Given**: 4개 커맨드 파일 수정 완료
 - **When**: `rg "You can now run" .claude/commands/alfred-*.md` 실행
 - **Then**: 검색 결과 0건
-- **@TAG**: `@TEST:IMPL-007`
 
 **TEST-008**: Batched 디자인 (호출 횟수 = 1)
 - **Given**: 각 커맨드 완료 시
 - **When**: AskUserQuestion 호출
 - **Then**: 호출 횟수 = 1 (batched design)
-- **@TAG**: `@TEST:IMPL-008`
 
 ---
 
@@ -457,7 +449,7 @@ Co-Authored-By: 🎩 Alfred@[MoAI](https://adk.mo.ai.kr)
 ## [Unreleased]
 
 ### Added
-- Session Cleanup pattern in Alfred commands (@SPEC:SESSION-CLEANUP-002)
+- Session Cleanup pattern in Alfred commands (from SPEC-SESSION-CLEANUP-002)
   - `/alfred:0-project` completion with AskUserQuestion
   - `/alfred:1-plan` completion with AskUserQuestion
   - `/alfred:2-run` completion with AskUserQuestion

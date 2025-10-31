@@ -407,14 +407,14 @@ if user_choice in ["🔄 새 세션 시작", "✅ 세션 완료"]:
 
 ### Child Requirements
 
-- **@TEST:IMPL-001**: `/alfred:0-project` 완료 후 AskUserQuestion 호출 검증
-- **@TEST:IMPL-002**: `/alfred:1-plan` 완료 후 AskUserQuestion 호출 검증
-- **@TEST:IMPL-003**: `/alfred:2-run` 완료 후 AskUserQuestion 호출 검증
-- **@TEST:IMPL-004**: `/alfred:3-sync` 완료 후 AskUserQuestion 호출 검증
-- **@TEST:IMPL-005**: 세션 요약 생성 (Markdown 형식 출력)
-- **@TEST:IMPL-006**: TodoWrite 정리 (completed 작업 추출)
-- **@TEST:IMPL-007**: Prose 패턴 검색 (검출 0건)
-- **@TEST:IMPL-008**: Batched 디자인 (호출 횟수 = 1)
+- **IMPL-001**: `/alfred:0-project` 완료 후 AskUserQuestion 호출 검증
+- **IMPL-002**: `/alfred:1-plan` 완료 후 AskUserQuestion 호출 검증
+- **IMPL-003**: `/alfred:2-run` 완료 후 AskUserQuestion 호출 검증
+- **IMPL-004**: `/alfred:3-sync` 완료 후 AskUserQuestion 호출 검증
+- **IMPL-005**: 세션 요약 생성 (Markdown 형식 출력)
+- **IMPL-006**: TodoWrite 정리 (completed 작업 추출)
+- **IMPL-007**: Prose 패턴 검색 (검출 0건)
+- **IMPL-008**: Batched 디자인 (호출 횟수 = 1)
 
 ### Related Components
 
