@@ -1,30 +1,542 @@
 ---
-title: /alfred:3-sync
-description: /alfred:3-sync 가이드
+title: /alfred:3-sync - 문서 동기화
+description: MoAI-ADK 문서 동기화 및 PR 생성 명령어
 ---
 
-# /alfred:3-sync
+# /alfred:3-sync - 문서 동기화
 
-이 페이지는 현재 작성 중입니다.
+문서 동기화는 MoAI-ADK 워크플로우의 마지막 단계입니다. 코드 변경사항을 자동으로 문서에 반영하고 PR을 생성합니다.
 
 ## 개요
 
-/alfred:3-sync에 대한 자세한 내용은 곧 업데이트될 예정입니다.
+**목적**: 코드 변경사항을 자동으로 문서에 반영하고 품질 검증 수행
 
-## 주요 특징
+**실행 위치**: 프로젝트 루트 디렉토리
 
-- 특징 1
-- 특징 2
-- 특징 3
+**예상 시간**: 5-10분
 
-## 사용법
+**입력**: 없음 (현재 브랜치의 모든 변경사항 처리)
+
+**출력**: 동기화된 문서 + PR 생성 + 품질 리포트
+
+---
+
+## 기본 사용법
+
+### 기본 형식
+
+Claude Code에서:
+
+```
+/alfred:3-sync
+```
+
+### 옵션 포함
+
+```
+/alfred:3-sync --auto-merge              # PR 자동 병합 (main 브랜치)
+/alfred:3-sync --skip-validation         # 검증 단계 스킵
+/alfred:3-sync --dry-run                 # 미리보기 모드 (실제 변경 없음)
+/alfred:3-sync --target-branch main      # 특정 브랜치로 병합
+```
+
+---
+
+## 문서 동기화 단계
+
+### Step 1: 코드 분석 (1분)
+
+**목표**: 커밋된 코드 변경사항 분석
+
+Alfred가 수행하는 작업:
+
+```python
+# 분석 내용
+- ✅ 새로운 함수/클래스 감지
+- ✅ API 변경사항 추출
+- ✅ 제거된 기능 식별
+- ✅ 주석 및 docstring 수집
+```
+
+**예시**: `/alfred:2-run SPEC-AUTH-001` 후
+
+```
+분석 결과:
+- 새로운 클래스: AuthService
+- 새로운 함수: login(), _create_token()
+- 수정된 모듈: src/auth.py (189 → 316 줄)
+- API 변경: LoginResult 데이터클래스 추가
+```
+
+---
+
+### Step 2: README.md 업데이트 (2분)
+
+**목표**: 새로운 기능을 README에 반영
+
+#### Before (이전):
+```markdown
+# 프로젝트 이름
+
+간단한 설명
+
+## Features
+
+- Feature A
+- Feature B
+```
+
+#### After (업데이트):
+```markdown
+# ecommerce-api
+
+E-commerce platform with order management and payment processing
+
+## Features
+
+### v0.2.0
+- User authentication with JWT tokens
+  - Email-based login
+  - Password encryption with bcrypt
+  - 24-hour session tokens
+  - Secure logout
+- Feature A
+- Feature B
+
+## Installation
+
+### Quick Start
 
 ```bash
-# 예제 명령어
-# 상세 사용법은 곧 업데이트됩니다
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the application
+python -m src.main
 ```
+
+## Usage
+
+### Authentication
+
+```python
+from src.auth import AuthService
+
+result = AuthService.login("user@example.com", "password123")
+if result.status == "authenticated":
+    print(f"Token: {result.token}")
+else:
+    print(f"Error: {result.error_code}")
+```
+```
+
+---
+
+### Step 3: CHANGELOG.md 업데이트 (1분)
+
+**목표**: 변경사항을 버전 히스토리에 기록
+
+#### 생성되는 CHANGELOG 섹션:
+
+```markdown
+# Changelog
+
+## [0.2.0] - 2024-03-15
+
+### Added
+- User authentication module with JWT support
+  - `AuthService.login()` - User email and password authentication
+  - `AuthService._create_token()` - JWT token generation with 24-hour expiration
+  - `LoginResult` - Structured response for login results
+  - Password hashing with bcrypt for secure storage
+  - Comprehensive error handling and logging
+  - 85%+ test coverage for authentication module
+
+### Security
+- Bcrypt password hashing (cost factor: 4)
+- HS256 JWT signing
+- Input validation for all auth endpoints
+- Sensitive information masking in logs
+
+### Performance
+- Optimized password verification
+- Efficient token generation and validation
+
+### Tests
+- 3 new test cases for login functionality
+  - Valid credentials authentication
+  - Invalid password handling
+  - Non-existent user handling
+- Test coverage: 85%
+
+### Documentation
+- Added auth module documentation
+- Provided usage examples and security guidelines
+
+## [0.1.0] - 2024-03-01
+
+### Added
+- Initial project setup
+- Basic project structure
+- Configuration management
+```
+
+---
+
+### Step 4: API 문서 생성 (2분)
+
+**목표**: 새로운 API 함수 문서 자동 생성
+
+#### 생성되는 API_DOCS.md:
+
+```markdown
+# API Reference
+
+## Authentication Module (`src.auth`)
+
+### AuthService
+
+Main authentication service class.
+
+#### Methods
+
+##### `login(email: str, password: str) -> LoginResult`
+
+User authentication with email and password.
+
+**Parameters:**
+- `email` (str): User email address
+- `password` (str): User password
+
+**Returns:**
+- `LoginResult`: Authentication result with token or error
+
+**Example:**
+```python
+from src.auth import AuthService
+
+result = AuthService.login("user@example.com", "secure123")
+assert result.status == "authenticated"
+assert result.token_type == "Bearer"
+```
+
+**Raises:**
+- `ValueError`: If email format is invalid
+
+**Security Notes:**
+- Password verified using bcrypt
+- Token expires in 24 hours
+- All login attempts logged
+
+---
+
+### LoginResult (Dataclass)
+
+Authentication operation result.
+
+**Attributes:**
+```python
+@dataclass
+class LoginResult:
+    status: str              # "authenticated" or "error"
+    token: Optional[str]     # JWT token (success only)
+    token_type: str          # "Bearer" (default)
+    expires_in: int          # Token expiration in seconds
+    error_code: Optional[str] # Error code (failure only)
+```
+
+**Example:**
+```python
+# Successful login
+result = LoginResult(
+    status="authenticated",
+    token="eyJ0eXAi...",
+    expires_in=86400
+)
+
+# Failed login
+result = LoginResult(
+    status="error",
+    error_code="USER_NOT_FOUND"
+)
+```
+```
+
+---
+
+### Step 5: TAG 검증 (1분)
+
+**목표**: 모든 TAG 체인이 올바르게 연결되었는지 확인
+
+```bash
+$ moai validate
+
+✓ TAG Validation Results:
+  ✓ SPEC → CODE connection verified
+  ✓ CODE → TEST connection verified
+  ✓ TEST → DOC connection verified
+  ✓ No orphan TAGs found
+  ✓ No duplicate TAGs found
+
+Total: 15 TAGs, 0 issues
+```
+
+---
+
+### Step 6: 품질 검증 (1분)
+
+**목표**: TRUST 5 원칙 검증
+
+```bash
+$ moai trust-check
+
+TRUST 5 Quality Report:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Test (T)      : 85% coverage (≥85%) ✓
+✅ Readable (R)  : Max 316 lines (≤300) ⚠️
+✅ Unified (U)   : 100% type hints ✓
+✅ Secured (S)   : 0 security issues ✓
+✅ Trackable (T) : TAG integrity verified ✓
+
+Overall: PASSED (4/5)
+```
+
+---
+
+### Step 7: PR 생성 (자동)
+
+**목표**: GitHub PR 자동 생성 및 문서화
+
+#### 생성되는 Pull Request:
+
+```markdown
+# Pull Request: User Authentication Implementation
+
+**Branch**: feature/SPEC-AUTH-001 → main
+
+## Summary
+
+Implemented secure user authentication system with JWT tokens, password encryption, and comprehensive error handling.
+
+- User login with email and password
+- JWT token generation (24-hour expiration)
+- Bcrypt password hashing
+- Full test coverage (85%+)
+- Security best practices implemented
+
+## Changes
+
+### New Files
+- `src/auth.py` - Authentication module (316 lines)
+- `tests/test_auth.py` - Test suite (89 lines)
+- `.moai/docs/auth.md` - Documentation
+
+### Modified Files
+- `README.md` - Added usage examples
+- `CHANGELOG.md` - v0.2.0 release notes
+- `requirements.txt` - Added bcrypt, PyJWT dependencies
+
+## Quality Metrics
+
+| Metric | Result |
+|--------|--------|
+| Test Coverage | 85% ✅ |
+| Code Style | PEP 8 ✅ |
+| Type Safety | 100% ✅ |
+| Security | 0 issues ✅ |
+| Documentation | Complete ✅ |
+
+## Checklist
+
+- ✅ Code implemented
+- ✅ Tests passing (3/3)
+- ✅ Documentation complete
+- ✅ TRUST 5 verified
+- ✅ TAG chain validated
+- ✅ Ready for merge
+
+## Related
+
+- SPEC: SPEC-AUTH-001
+- Closes: None
+```
+
+---
+
+### Step 8: Git 커밋 및 푸시 (자동)
+
+**목표**: 동기화된 문서 커밋 및 푸시
+
+```bash
+$ git log --oneline -5
+
+a1b2c3d docs(SYNC): Update docs for authentication feature (v0.2.0)
+e4f5g6h refactor(REFACTOR): Code quality improvements
+i7j8k9l feat(GREEN): Implement login functionality
+m0n1o2p test(RED): Add auth tests
+q3r4s5t init: Initialize project
+```
+
+---
+
+## 자동 생성되는 동기화 리포트
+
+Alfred가 생성하는 `.moai/reports/sync-report-*.md`:
+
+```markdown
+# Document Synchronization Report
+
+**Date**: 2024-03-15
+**Branch**: feature/SPEC-AUTH-001
+**Status**: ✅ COMPLETED
+
+## Summary
+
+- Files Updated: 4
+- Files Created: 2
+- TAGs Validated: 15
+- Quality Score: 95%
+
+## Synchronized Files
+
+### Updated
+- README.md (8 new lines added)
+- CHANGELOG.md (35 new lines added)
+- API_DOCS.md (112 new lines added)
+
+### Created
+- `.moai/docs/auth.md` (78 lines)
+- `.moai/reports/sync-report-2024-03-15.md` (this file)
+
+## Quality Verification
+
+| Check | Status | Details |
+|-------|--------|---------|
+| Test Coverage | ✅ | 85% (≥85%) |
+| Code Style | ✅ | 0 issues |
+| Type Hints | ✅ | 100% |
+| Security | ✅ | 0 issues |
+| Documentation | ✅ | Complete |
+| TAG Integrity | ✅ | All connected |
+
+## Git Operations
+
+- Branch: `feature/SPEC-AUTH-001`
+- Commits: 4 (test + feat + refactor + docs)
+- PR Created: #42
+- Status: Ready for review
+
+## Next Steps
+
+1. Review pull request #42
+2. Address any feedback
+3. Merge to main branch
+4. Deploy to production
+```
+
+---
+
+## 동기화 옵션
+
+### --dry-run (미리보기 모드)
+
+실제 변경 없이 미리보기:
+
+```bash
+/alfred:3-sync --dry-run
+
+Preview of changes:
+- README.md: +8 lines (no actual changes)
+- CHANGELOG.md: +35 lines (no actual changes)
+- API_DOCS.md: +112 lines (no actual changes)
+- PR will be created (but not pushed)
+```
+
+### --skip-validation (검증 스킵)
+
+긴급 상황에서 검증 단계 건너뛰기:
+
+```bash
+/alfred:3-sync --skip-validation
+
+⚠️ Skipping validation checks
+- Proceeding with documentation sync
+- PR will be created without quality checks
+```
+
+### --auto-merge (자동 병합)
+
+PR을 자동으로 병합 (CI 통과 필수):
+
+```bash
+/alfred:3-sync --auto-merge
+
+✅ PR #42 created
+⏳ Waiting for CI checks...
+✅ CI passed
+✅ PR automatically merged to main
+```
+
+---
+
+## 자주 묻는 질문
+
+### Q: 동기화 후 어떻게 배포하나요?
+
+**A**: PR이 main 브랜치에 병합되면:
+
+```bash
+# 배포 파이프라인 자동 실행
+# 1. 새 버전 생성
+# 2. PyPI에 게시
+# 3. GitHub Releases 업데이트
+# 4. 문서 배포
+```
+
+### Q: README 업데이트를 원하지 않으면?
+
+**A**: `.moai/config.json`에서 비활성화:
+
+```json
+{
+  "sync": {
+    "update_readme": false,
+    "update_changelog": true,
+    "update_api_docs": true
+  }
+}
+```
+
+### Q: PR 자동 생성을 막으려면?
+
+**A**: 옵션 사용:
+
+```bash
+/alfred:3-sync --no-pr
+```
+
+---
 
 ## 다음 단계
 
-- [홈으로](/ko)
-- [문서 개요](/ko/introduction/overview)
+동기화 완료 후:
+
+1. **PR 리뷰** - GitHub에서 PR 검토
+2. **CI 확인** - 모든 테스트와 검사 통과 확인
+3. **병합** - main 브랜치에 병합
+4. **배포** - 자동 배포 파이프라인 실행
+
+또는 새로운 기능 구현:
+
+```bash
+/alfred:1-plan "다음 기능"
+```
+
+---
+
+## 참고 자료
+
+- [TRUST 5 원칙](/ko/introduction/overview) - 품질 기준
+- [TAG 시스템](/ko/concepts/tag-system) - TAG 체인 이해
+- [Git 워크플로우](/ko/config/git-strategy) - Git 전략
