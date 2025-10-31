@@ -4,9 +4,15 @@
   "version": "1.0.0-dev",
   "status": "development",
   "description": "Multi-cloud deployment - Vercel, Supabase, Render support with CI/CD pipelines",
-  "author": "GOOS🪿",
+  "author": "GOOS\ud83e\udebf",
   "category": "devops",
-  "tags": ["deployment", "vercel", "supabase", "render", "github-actions"],
+  "tags": [
+    "deployment",
+    "vercel",
+    "supabase",
+    "render",
+    "github-actions"
+  ],
   "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-plugin-devops",
   "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-plugin-devops/README.md",
   "minClaudeCodeVersion": "1.0.0",
@@ -51,14 +57,47 @@
     }
   ],
   "permissions": {
-    "allowedTools": ["Read", "Write", "Edit", "Bash"],
-    "deniedTools": ["DeleteFile"]
+    "allowedTools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Bash"
+    ],
+    "deniedTools": [
+      "DeleteFile"
+    ]
   },
   "skills": [
-    "moai-domain-devops",
-    "moai-domain-backend",
-    "moai-domain-frontend",
-    "moai-plugin-scaffolding"
+    {
+      "name": "DevOps",
+      "path": "skills/moai-domain-devops.md",
+      "description": "DevOps best practices"
+    },
+    {
+      "name": "Backend Architecture",
+      "path": "skills/moai-domain-backend.md",
+      "description": "Backend architecture patterns"
+    },
+    {
+      "name": "Frontend Architecture",
+      "path": "skills/moai-domain-frontend.md",
+      "description": "Frontend architecture patterns"
+    },
+    {
+      "name": "Vercel MCP",
+      "path": "skills/moai-saas-vercel-mcp.md",
+      "description": "Vercel deployment"
+    },
+    {
+      "name": "Supabase MCP",
+      "path": "skills/moai-saas-supabase-mcp.md",
+      "description": "Supabase integration"
+    },
+    {
+      "name": "Render MCP",
+      "path": "skills/moai-saas-render-mcp.md",
+      "description": "Render deployment"
+    }
   ],
   "settings": {
     "vercelToken": {

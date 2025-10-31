@@ -4,9 +4,14 @@
   "version": "1.0.0-dev",
   "status": "development",
   "description": "Design System foundation - Tailwind CSS + shadcn/ui initialization and component management",
-  "author": "GOOS🪿",
+  "author": "GOOS\ud83e\udebf",
   "category": "uiux",
-  "tags": ["design-system", "tailwind", "shadcn-ui", "components"],
+  "tags": [
+    "design-system",
+    "tailwind",
+    "shadcn-ui",
+    "components"
+  ],
   "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-plugin-uiux",
   "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-plugin-uiux/README.md",
   "minClaudeCodeVersion": "1.0.0",
@@ -30,13 +35,45 @@
   },
   "mcpServers": [],
   "permissions": {
-    "allowedTools": ["Read", "Write", "Edit", "Bash"],
+    "allowedTools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Bash"
+    ],
     "deniedTools": []
   },
   "skills": [
-    "moai-lang-tailwind-shadcn",
-    "moai-domain-frontend",
-    "moai-plugin-scaffolding"
+    {
+      "name": "Tailwind + shadcn",
+      "path": "skills/moai-lang-tailwind-shadcn.md",
+      "description": "Tailwind + shadcn integration"
+    },
+    {
+      "name": "Frontend Architecture",
+      "path": "skills/moai-domain-frontend.md",
+      "description": "Frontend architecture patterns"
+    },
+    {
+      "name": "Tailwind CSS",
+      "path": "skills/moai-design-tailwind-v4.md",
+      "description": "Tailwind CSS 4 patterns"
+    },
+    {
+      "name": "shadcn/ui",
+      "path": "skills/moai-design-shadcn-ui.md",
+      "description": "shadcn/ui customization"
+    },
+    {
+      "name": "Figma to Code",
+      "path": "skills/moai-design-figma-to-code.md",
+      "description": "Design to code conversion"
+    },
+    {
+      "name": "Figma MCP",
+      "path": "skills/moai-design-figma-mcp.md",
+      "description": "Figma MCP integration"
+    }
   ],
   "settings": {},
   "dependencies": [],

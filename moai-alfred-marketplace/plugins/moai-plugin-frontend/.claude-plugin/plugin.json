@@ -4,9 +4,14 @@
   "version": "1.0.0-dev",
   "status": "development",
   "description": "Next.js 16 + React 19.2 scaffolding - App Router, Biome, shadcn/ui integration",
-  "author": "GOOS🪿",
+  "author": "GOOS\ud83e\udebf",
   "category": "frontend",
-  "tags": ["nextjs", "react", "typescript", "biome"],
+  "tags": [
+    "nextjs",
+    "react",
+    "typescript",
+    "biome"
+  ],
   "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-plugin-frontend",
   "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-plugin-frontend/README.md",
   "minClaudeCodeVersion": "1.0.0",
@@ -35,14 +40,40 @@
   },
   "mcpServers": [],
   "permissions": {
-    "allowedTools": ["Read", "Write", "Edit", "Bash"],
+    "allowedTools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Bash"
+    ],
     "deniedTools": []
   },
   "skills": [
-    "moai-lang-nextjs-advanced",
-    "moai-lang-typescript",
-    "moai-domain-frontend",
-    "moai-plugin-scaffolding"
+    {
+      "name": "Next.js Advanced",
+      "path": "skills/moai-lang-nextjs-advanced.md",
+      "description": "Next.js 16 advanced patterns"
+    },
+    {
+      "name": "TypeScript",
+      "path": "skills/moai-lang-typescript.md",
+      "description": "TypeScript 5.7+ best practices"
+    },
+    {
+      "name": "Frontend Architecture",
+      "path": "skills/moai-domain-frontend.md",
+      "description": "Frontend architecture patterns"
+    },
+    {
+      "name": "Tailwind CSS",
+      "path": "skills/moai-design-tailwind-v4.md",
+      "description": "Tailwind CSS 4 patterns"
+    },
+    {
+      "name": "shadcn/ui",
+      "path": "skills/moai-design-shadcn-ui.md",
+      "description": "shadcn/ui customization"
+    }
   ],
   "settings": {},
   "dependencies": [

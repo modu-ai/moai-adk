@@ -4,9 +4,15 @@
   "version": "1.0.0-dev",
   "status": "development",
   "description": "FastAPI 0.120.2 + uv scaffolding - SQLAlchemy 2.0, Alembic migrations, Pydantic 2.12",
-  "author": "GOOS🪿",
+  "author": "GOOS\ud83e\udebf",
   "category": "backend",
-  "tags": ["fastapi", "python", "sqlalchemy", "uv", "database"],
+  "tags": [
+    "fastapi",
+    "python",
+    "sqlalchemy",
+    "uv",
+    "database"
+  ],
   "repository": "https://github.com/moai-adk/moai-alfred-marketplace/tree/main/plugins/moai-plugin-backend",
   "documentation": "https://github.com/moai-adk/moai-alfred-marketplace/blob/main/plugins/moai-plugin-backend/README.md",
   "minClaudeCodeVersion": "1.0.0",
@@ -40,15 +46,35 @@
   },
   "mcpServers": [],
   "permissions": {
-    "allowedTools": ["Read", "Write", "Edit", "Bash"],
+    "allowedTools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Bash"
+    ],
     "deniedTools": []
   },
   "skills": [
-    "moai-lang-fastapi-patterns",
-    "moai-lang-python",
-    "moai-domain-backend",
-    "moai-domain-database",
-    "moai-plugin-scaffolding"
+    {
+      "name": "FastAPI Patterns",
+      "path": "skills/moai-lang-fastapi-patterns.md",
+      "description": "FastAPI best practices and patterns"
+    },
+    {
+      "name": "Python",
+      "path": "skills/moai-lang-python.md",
+      "description": "Python 3.13+ best practices"
+    },
+    {
+      "name": "Backend Architecture",
+      "path": "skills/moai-domain-backend.md",
+      "description": "Backend architecture patterns"
+    },
+    {
+      "name": "Database Design",
+      "path": "skills/moai-domain-database.md",
+      "description": "Database design and optimization"
+    }
   ],
   "settings": {},
   "dependencies": [],
